@@ -124,6 +124,8 @@ bk [\fIglobal_options] \fIcommand [\fIcommand_options] [\fIargs]
 Perform operation at root of repository
 .IP -r
 Perform recursive operations
+.SP 1
+\fBStandard Options:
 .LP
 .B2
 .\" ############################
@@ -134,22 +136,29 @@ Perform recursive operations
 .B1
 .H1
 Repository-Level Commands
-.H2
 .\" # 
 .\" # Changes
 .\" # 
+.H2
 changes
 .LP
 Shows the changesets in your local work area.
+.\" # 
+.\" # Check
+.\" # 
 .H2
+check -r [\fIoptions\fB]
+.LP
+Check consistency of the repository
+.IP -a
+Ensure every delta in Changest is part of repository
 .\" # 
 .\" # Clone
 .\" # 
+.H2
 clone [\fIoptions\fB] \fIsource \fIdestination
 .LP
 Make a copy of a repository
-.IP -q .7i
-Quiet
 .IP -r\fIrev\fP
 Revision
 .IP -z[\fI0-9\fP]
@@ -159,12 +168,11 @@ Compression Level
 .\" # Commit
 .\" # 
 .H2
-commit
+commit [\fIoptions\fB]
 .LP
+Added deltas to a changeset
 .IP -d
 non-interactive; commit with default comments
-.IP -q
-Run silently
 .IP -Smsg
 Tag tree with \fImsg\fB when commiting
 .IP -yx
@@ -175,8 +183,6 @@ Get check-in comment from file \fIfile\fB
 .\" # Export
 .\" # 
 .H2
-export [\fI-kvw\fB] [\fI-i<pat>\fB] [-x<pat>] [\fI-r<rev> | -d<date>\fB]
-[\fIsource\fB] \fIdest\fB
 export [\fIoptions\fB] [\fIsource\fB] \fIdest\fB
 .LP
 Generates clear-text trees or patches from BitKeeper repositories
@@ -188,8 +194,6 @@ Export only pathnames matching <pattern>.
 Do not expand keywords (default is to expand keywords).
 .IP -r<rev>        
 Export the tree as of revision <rev>.
-.IP -v             
-Be verbose.
 .IP -w             
 Make files writable (default is read-only).
 .IP -x<pattern>    
@@ -199,37 +203,6 @@ Export all pathnames not matching <pattern>
 .\"# PAGE TWO
 .\"#
 .B1
-.\" # 
-.\" # Import
-.\" # 
-.H2
-import [\fIoptions\fB] [\fIsource_dir\fB] [\fIdest_dir\fB]
-.LP
-Takes clear-text files and places them into a repository
-.IP -e
-Prompts for a regular expression to apply to the list of files.
-All matches are excluded.
-.IP -f
-Force; do not prompt for list editing.
-.IP -i
-Like -e but includes only files which match.
-.IP -l<file>
-Use the list of files in <file>.
-.IP -q
-Be more quiet.
-.IP -r
-No rename processing when doing patch imports.
-.IP -S<sym>
-Add tag <sym> to the import changeset
-.IP -v
-Be verbose
-.IP -t<type>
-Specify import file type.  \fI<type>\fB can be one of:
-.IP	plain	Import plain text files
-.IP	patch	Import a patch (diffs)
-.IP	RCS		Import RCS files
-.IP	CVS		Import CVS files
-.IP	SCCS	Import SCCS files
 .\" # 
 .\" # Info
 .\" # 
@@ -243,36 +216,13 @@ Shows the state of a list of files
 .H2
 lock [\fIoptions\fB] [\fIfiles\fB]
 .LP
-View or set locks on repository
+View or set locks on a repository
 .IP -l
 list lockers on repository
 .IP -r
 add non-exclusive read lock
 .IP -w
 add exclusive read lock
-.\" # 
-.\" # Resolve
-.\" # 
-.H2
-resolve [\fIoptions\fB] [\fIproject_root\fB]
-.LP
-Merge new work after a push, pull, or resync
-.IP -a
-Automerge
-.IP -c
-No conflicts. Only merge nonconflicting lines.
-.IP -l<\fIlog\fB>
-Save operations to \fIlog\fB. Provides audit info.
-.IP -m\fImerge\fB
-Use the \fImerge\fB program to merge diffs
-.IP -r
-Remerge
-.IP -t
-Text-only mode.
-.IP -y[\fI<str>\fP]
-Use \fImsg\fB as the check-in message
-.IP -q
-Quiet
 .\" # 
 .\" # Parents
 .\" # 
@@ -282,8 +232,6 @@ parent [\fIoptions\fB] [\fIfiles\fB]
 Sets or shows repository where we push and pull from
 .IP -r
 Remove parent pointer.
-.IP -q
-Run quietly.
 .\" # 
 .\" # Pending
 .\" # 
@@ -310,8 +258,6 @@ Turn off automerge.
 Long listing of changesets to be pulled.
 .IP -n
 Don't actually do the pull, just list.
-.IP -q
-Run quietly.
 .IP -r
 Do not run resolve.
 .IP -t
@@ -333,8 +279,6 @@ Long listing of changeset.
 Don't actually do the push
 .IP -t
 Use text-mode when resolving
-.IP -q
-Run quietly.
 .\" # 
 .\" # Receive
 .\" # 
@@ -342,6 +286,27 @@ Run quietly.
 receive [\fItakepatch options\fB] [\fIrepository\fB]
 .LP
 Apply patches received via email
+.\" # 
+.\" # Resolve
+.\" # 
+.H2
+resolve [\fIoptions\fB] [\fIproject_root\fB]
+.LP
+Merge new work after a push, pull, or resync
+.IP -a
+Automerge
+.IP -c
+No conflicts. Only merge nonconflicting lines.
+.IP -l<\fIlog\fB>
+Save operations to \fIlog\fB. Provides audit info.
+.IP -m\fImerge\fB
+Use the \fImerge\fB program to merge diffs
+.IP -r
+Remerge
+.IP -t
+Text-only mode.
+.IP -y[\fI<str>\fP]
+Use \fImsg\fB as the check-in message
 .\" # 
 .\" # Send
 .\" # 
@@ -355,8 +320,6 @@ Prepend the patch with unified diffs.
 Wrap the patch with <cmd> before sending it.
 .IP -r\fIrevs\fP
 Specify the list of changesets to send.
-.IP -q
-Be quiet.
 .\" # 
 .\" # Setup
 .\" # 
@@ -376,8 +339,6 @@ status [\fIoptions\fB] [\fIrepository\fB]
 .LP
 Shows information such as number of files, uncommitted files,
 bk version, etc.
-.IP -v
-Verbose listing
 .H2
 .\" # 
 .\" # Tags
@@ -399,6 +360,12 @@ Shows list of all users who worked on repository
 Print user count.
 .IP -r
 Raw user list (ignore aliases).
+.\" # 
+.\" # Version
+.\" # 
+version
+.LP
+Shows version of BitKeeper software.
 .B2
 .sp 1
 .\" ############################
@@ -418,8 +385,6 @@ ci [\fIoptions\fB] [\fIfiles\fB]
 Stores your new revisions into the repository
 .IP -l
 Follow check in with a locked check out like ``get -e''
-.IP -q
-Run silently.
 .IP -f
 Force creation of a null delta when invoked as ci
 .IP -u
@@ -435,8 +400,6 @@ Print differences before prompting for comments
 clean [\fIoptions\fB] [\fIfiles\fB]
 .LP
 Remove unmodified files from current directory
-.IP -q
-Run quietly.
 .IP -v
 Verbose. List deleted and modified files
 .IP -p
@@ -451,8 +414,6 @@ Check out files read-only
 .IP -l
 Checks out locked copy of the file for editing
 Same as 'get -e'.
-.IP -q
-Run silently.
 .\" # 
 .\" # Diffs
 .\" # 
@@ -460,36 +421,18 @@ Run silently.
 diffs [\fIoptions\fB] [\fIfiles\fB]
 .LP
 View changes between different revision of a file.
-.IP -a
-Do diffs on all sfiles
-.IP -c
-Do context diffs
-.IP -d<dates>
-Diff using date or symbol
 .IP -D
 Prefix lines with dates
 .IP -f
 Prefix lines with file names
-.IP -h
-Don't print headers
 .IP -M
 Prefix lines with revision numbers
-.IP -n
-Do RCS style diffs
-.IP -p
-Procedural diffs, like diff -p
-.IP -P
-Produce patch diffs, similar to diff -Nur
 .IP -r<r>
 Diff revision <r>
-.IP -s
-Do side-by-side
 .IP -u
 Do unified diffs
 .IP -U
 Prefix lines with user names
-.IP -v
-Be verbose about non-matching ranges
 .\" # 
 .\" # Edit
 .\" # 
@@ -497,8 +440,6 @@ Be verbose about non-matching ranges
 edit [\fIoptions\fB] [\fIfiles\fB]
 .LP
 Checks out files for editing.
-.IP -q
-Run quietly
 .\" # 
 .\" # Fix
 .\" # 
@@ -506,8 +447,6 @@ Run quietly
 fix [\fIoptions\fB] [\fIfiles\fB]
 .LP
 Make changes to the most recent delta of a file.
-.IP -q
-Run quietly
 .B2
 .\"#
 .\"# PAGE FOUR
@@ -541,24 +480,12 @@ Add a new file to the repository
 prs [\fIoptions\fB] [\fIfiles\fB]
 .LP
 View revision history of a file or repository
-.IP -a
-Print info on all deltas, not just data deltas
-.IP -b
-Reverse the order of the printed deltas
 .IP -c<date>
-Cut-off dates.  See sccsrange(1) for details.
-.IP -C<rev>
-Make the range be all revs that are the same cset as <rev>
+Cut-off dates.
 .IP -d<spec>
 Specify output data specification
-.IP -h
-Suppress range header
 .IP -m
 Print metadata, such as users and symbols.
-.IP -M
-Do not include branch deltas which are not merged
-.IP -o
-Print the set of deltas that were not specified
 .IP -r<rev>
 Specify a revision, or part of a range.
 .IP -v
@@ -579,14 +506,35 @@ sccslog [\fIoptions\fB] [\fIfiles\fB]
 View BitKeeper logs
 .IP -c<dates>
 Cut off dates.
-.IP -C
-produce comments for a changeset
-.IP -p
-show basenames instead of full pathnames.
-.IP -r<r>
-specify a revision or a part of a range.
-.IP -v
-be verbose about errors and processing
+.\" # 
+.\" # Sfiles
+.\" # 
+.H2
+sfiles [\fIoptions\fB] [\fIdirectories\fB]
+.LP
+Generates a list of files.
+.\" # 
+.\" # Undo
+.\" # 
+.H2
+undo [\fIoptions\fB] [\fIfiles\fB]
+.LP
+Remove one or more changesets
+.IP -a<rev>
+Remove all changesets which occurred after <rev>.
+.IP -f
+Force the undo to complete.
+.IP -s
+Do not save undone changes as a patch.
+.IP -r<revs>
+Remove the list of changesets specified by <revs>.
+.\" # 
+.\" # What
+.\" # 
+.H2
+what [\fIfiles\fB]
+.LP
+Shows SCCS keywords embedded within a file
 .B2
 .\" ############################
 .\" #
@@ -641,4 +589,36 @@ Specify dates:
 .br
 -c98..98
 .sp .5
+.B2
+
+.B1
+.H2
+Graphical Tools
+.H1
+citool [\fIdir or file list\fB]
+.LP
+Check in tool
+.H1
+csettool -r\fIfilename\fB
+.LP
+View detailed info about a changeset
+.H1
+difftool \fIleft\fB \fIright\fB
+.LP
+Side-by-side difference viewer
+.H1
+fmtool \fIlocal\fB \fIremote\fB \fImerge\fB
+.LP
+Side-by-side merge tool for resolving differences
+.H1
+helptool [\fItopic\fB]
+.LP
+Online help system
+.H1
+renametool < \fIfilelist\fB
+.LP
+Use to resolve rename conflicts
+.H1
+sccstool [\fIfilename\fB]
+.LP Graphically browse file or project history
 .B2
