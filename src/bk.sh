@@ -704,7 +704,7 @@ _mv() {
 }
 
 _rm() {
-	${BIN}sccsrm "$@"
+	${BIN}sccsrm -d "$@"
 }
 
 _info() {
