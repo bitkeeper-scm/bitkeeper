@@ -58,8 +58,9 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o approve.o \
 	bkpowered.o bkusers.o bkver.o cat.o changes.o \
 	check.o checksum.o clean.o cleanpath.o clone.o \
 	comment.o comments.o commit.o compress.o converge.o \
-	cp.o cset.o cset_inex.o csetprune.o csets.o cweave.o delta.o diffs.o \
-	diffsplit.o dir_gif.o dirname.o export.o fdiff.o file_gif.o \
+	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
+	delta.o diffs.o diffsplit.o dir_gif.o dirname.o \
+	export.o fdiff.o file_gif.o \
 	find.o findkey.o fix.o fixlod.o g2sccs.o gca.o get.o gethelp.o \
 	gethost.o getopt.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \
@@ -106,17 +107,22 @@ ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
       zlib/gzio.o zlib/infblock.o zlib/infcodes.o zlib/inffast.o \
       zlib/inflate.o zlib/inftrees.o zlib/infutil.o zlib/trees.o \
       zlib/uncompr.o zlib/zutil.o
-GUI	= revtool citool helptool difftool csettool fmtool fm3tool msg \
+TOMCRYPTOBJ = tomcrypt/rsa.o tomcrypt/rsa_sys.o tomcrypt/mpi.o \
+	tomcrypt/ampi.o tomcrypt/prime.o tomcrypt/mem.o tomcrypt/packet.o \
+	tomcrypt/md5.o tomcrypt/ctr.o tomcrypt/aes.o tomcrypt/hash.o \
+	tomcrypt/sprng.o tomcrypt/bits.o tomcrypt/crypt.o tomcrypt/base64.o \
+	tomcrypt/yarrow.o tomcrypt/demos/test.o
+GUI	= revtool citool helptool difftool csettool fmtool fm3tool msgtool \
 	  renametool setuptool 
 SCRIPTS	= applypatch bk.script import resync uuwrap unuuwrap \
       $(GUI) gzip_uuwrap ungzip_uuwrap bugform
 LOCALSCR= testfast build crank
 PSCR	= t/doit
 UWTOBJ	= win32/uwtlib/wapi_intf.o win32/uwtlib/wcrt_intf.o
-LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a $(UWTLIB)
+LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a tomcrypt/libtomcrypt.a $(UWTLIB)
 LINKS	= ci co edit unget
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt bklogo.gif \
-	../doc/bk_refcard.ps ../doc/bk_refcard.pdf
+	../doc/bk_refcard.ps ../doc/bk_refcard.pdf bklicense.pub
 LINKTO	= fm fmtool fm3 fm3tool
 BINLINKS= bk admin get delta unget rmdel prs
 # Note: $(XTRA) must be listed after "gnu"
@@ -128,16 +134,20 @@ CFLAGS	= $(CC_FAST_DEBUG) $(CC_WALL) \
 CPPFLAGS= -Izlib -Imdbm
 # For extra libraries required by the system, e.g. libnsl.
 XLIBS	=
-LINK_LIB= $(XLIBS) $(LSCCS) $(LMDBM) $(LZLIB)
+LINK_LIB= $(XLIBS) $(LSCCS) $(LMDBM) $(LZLIB) $(LTOMCRYPT)
 LSCCS	= -L. -lsccs
 LMDBM	= -Lmdbm -lmdbm
 LZLIB	= -Lzlib -lz
+LTOMCRYPT = -Ltomcrypt -ltomcrypt
 # Override this if you don't have it.
 RANLIB	= ranlib
-SRCS	= $(OBJ:.o=.c) $(MDBMOBJ:.o=.c) $(ZLIBOBJ:.o=.c) 
+SRCS	= $(OBJ:.o=.c) $(MDBMOBJ:.o=.c) $(ZLIBOBJ:.o=.c) $(TOMCRYPTOBJ:.o=.c)
 HDRS	= $(SYS).h $(UWT_H) bkd.h lib_tcp.h logging.h mdbm/common.h \
 	  mdbm/mdbm.h mdbm/tune.h mmap.h purify.h range.h rcs.h \
-	  resolve.h sccs.h system.h zgets.h zlib/deflate.h \
+	  resolve.h sccs.h system.h \
+	  tomcrypt/mpi-config.h tomcrypt/mpi.h tomcrypt/mycrypt_cfg.h \
+	  tomcrypt/mpi-types.h tomcrypt/mycrypt.h \
+	  zgets.h zlib/deflate.h \
 	  zlib/infblock.h zlib/infcodes.h zlib/inffast.h \
 	  zlib/inffixed.h zlib/inftrees.h zlib/infutil.h zlib/trees.h \
 	  zlib/zconf.h zlib/zlib.h zlib/zutil.h
@@ -146,7 +156,7 @@ SCRSRCS	= testfast.perl bk.sh import.sh clone.sh \
 	  gui/revtool.tcl gui/citool.tcl gui/difftool.tcl \
 	  gui/vitool.tcl gui/fmtool.tcl gui/fm3tool.tcl \
 	  gui/helptool.tcl uuwrap.sh gui/setuptool.tcl \
-	  gui/progress.tcl gui/search.tcl gui/msg.tcl gui/bugform.tcl\
+	  gui/progress.tcl gui/search.tcl gui/msgtool.tcl gui/bugform.tcl\
 	  unuuwrap.sh port/unix_platform.sh port/unix_platform.tcl \
 	  port/unix_platform.perl gui/csettool.tcl \
 	  port/win32_platform.perl port/win32_platform.tcl \
@@ -155,11 +165,7 @@ SCRSRCS	= testfast.perl bk.sh import.sh clone.sh \
 MISC	= bkmsg.doc bitkeeper.config t/doit.sh
 
 default:
-	-if [ `uname -s` = "CYGWIN_NT-4.0" ];\
-	then PAGER="less -E"; \
-	else PAGER=more; \
-	fi; \
-	(bk cat HEADER; bk help bksrc; bk cat BUILD.txt) | $${PAGER}
+	bk cat BUILD.txt
 
 all: $(ALL)
 
@@ -220,13 +226,14 @@ production_image: rebuild p image
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # Read the checkin comments on this delta before changing this.
 clean-obj: FORCE
-	-@rm -f bk bk.o shell.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) 
+	-@rm -f bk bk.o shell.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) \
+		$(TOMCRYPTOBJ_) 
 	-@rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
 	-@rm -f $(LIBS) shell.c bkdsubstr bkmsg.txt bkhelp.txt a.out
 	-@rm -f core $(WIN_TMP)
 	-@cd gnu && $(MAKE) clean-obj
 	-@cd win32 && $(MAKE) clean-obj
-	-@cd doc && $(MAKE) clean-obj
+	-@cd ../doc && $(MAKE) clean-obj
 
 clean-bin: FORCE
 	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(LINKS) MANIFEST
@@ -240,14 +247,15 @@ clean clobber distclean: rebuild FORCE
 	-@cd ../man/man2help && $(MAKE) clobber
 
 rebuild:
-	-@rm -f bk.o shell.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) 
+	-@rm -f bk.o shell.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) \
+		$(TOMCRYPTOBJ)
 	-@rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
 	-@rm -f $(LIBS) shell.c bkdsubstr bkhelp.txt bkmsg.txt a.out
 	-@rm -f core $(WIN_TMP)
 	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(LINKS) MANIFEST
 	-@cd gnu && $(MAKE) clean clean-obj
 	-@cd win32 && $(MAKE) clean clean-obj
-	-@cd doc && $(MAKE) clean clean-obj
+	-@cd ../doc && $(MAKE) clean clean-obj
 	cd t && rm -f doit
 
 srcs src: FORCE
@@ -320,6 +328,12 @@ mdbm/libmdbm.a: $(MDBMOBJ)
 	rm -f $@
 	$(AR) cr mdbm/libmdbm.a $(MDBMOBJ)
 	-$(RANLIB) mdbm/libmdbm.a
+
+tomcrypt/libtomcrypt.a: $(TOMCRYPTOBJ)
+	$(RM) $@
+	$(AR) cr $@ $(TOMCRYPTOBJ)
+	-$(RANLIB) $@
+
 libsccs.a: $(OBJ) shell.o
 	rm -f $@
 	$(AR) cr libsccs.a $(OBJ) shell.o
@@ -480,8 +494,8 @@ fm3tool: gui/fm3tool.tcl gui/config.tcl gui/common.tcl port/$(SYS)_platform.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
 	    gui/fm3tool.tcl > fm3tool
 
-msg: gui/msg.tcl
-	cat gui/msg.tcl > msg
+msgtool: gui/msgtool.tcl
+	cat gui/msgtool.tcl > msgtool
 
 #rpm:	bk.spec production
 #	rpm -bb bk.spec
@@ -613,3 +627,6 @@ shell.o: substvars
 	echo 'char *shell() { return ("@FEATURE_SH@"); }' | \
 							./substvars > shell.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c shell.c $(CC_OUT)
+
+$(TOMCRYPTOBJ): tomcrypt/mpi-config.h tomcrypt/mpi-types.h tomcrypt/mpi.h \
+		tomcrypt/mycrypt.h tomcrypt/mycrypt_cfg.h tomcrypt/aes_tab.c

@@ -158,10 +158,10 @@
 #define	ROUNDUP	1
 #define	EXACT	0
 #define	ROUNDDOWN -1
-#define	DATE(d)		(d->date ? d->date : getDate(d))
-#define	CHKDATE(d)	unless (d->date || \
-			    streq("70/01/01 00:00:00", d->sdate)) { \
-				assert(d->date); \
+#define	DATE(d)		((d)->date ? (d)->date : getDate(d))
+#define	CHKDATE(d)	unless ((d)->date || \
+			    streq("70/01/01 00:00:00", (d)->sdate)) { \
+				assert((d)->date); \
 			}
 
 /*
@@ -220,30 +220,30 @@
 #define IS_LOCKED(s)	(((s)->state&S_LOCKED) == S_LOCKED)
 #define IS_TEXT(s)	(((s)->encoding & E_DATAENC) == E_ASCII)
 #define IS_BINARY(s)	(((s)->encoding & E_DATAENC) == E_UUENCODE)
-#define WRITABLE(s)	(IS_WRITABLE(s) && isRegularFile(s->mode))
+#define WRITABLE(s)	(IS_WRITABLE(s) && isRegularFile((s)->mode))
 #define	CSET(s)		((s)->state & S_CSET)
 #define	CONFIG(s)	((s)->state & S_CONFIG)
 #define	READ_ONLY(s)	((s)->state & S_READ_ONLY)
 #define	SET(s)		((s)->state & S_SET)
 #define	MK_GONE(s, d)	(s)->hasgone = 1; (d)->flags |= D_GONE
 
-#define	GOODSCCS(s)	assert(s); unless (s->tree && s->cksumok) return (-1)
+#define	GOODSCCS(s)	assert(s); unless ((s)->tree&&(s)->cksumok) return (-1)
 #define	HASGRAPH(s)	((s)->tree)
 
-#define	BITKEEPER(s)	(s->bitkeeper)
-#define	RCS(s)		(s->xflags & X_RCS)
-#define	YEAR4(s)	(s->xflags & X_YEAR4)
-#define	SHELL(s)	(s->xflags & X_SHELL)
-#define	EXPAND1(s)	(s->xflags & X_EXPAND1)
-#define	CSETMARKED(s)	(s->xflags & X_CSETMARKED)
-#define	HASH(s)		(s->xflags & X_HASH)
-#define	SCCS(s)		(s->xflags & X_SCCS)
-#define	SINGLE(s)	(s->xflags & X_SINGLE)
-#define	LOGS_ONLY(s)	(s->xflags & X_LOGS_ONLY)
-#define	EOLN_NATIVE(s)	(s->xflags & X_EOLN_NATIVE)
-#define	LONGKEY(s)	(s->xflags & X_LONGKEY)
-#define	KV(s)		(s->xflags & X_KV)
-#define	NOMERGE(s)	(s->xflags & X_NOMERGE)
+#define	BITKEEPER(s)	((s)->bitkeeper)
+#define	RCS(s)		((s)->xflags & X_RCS)
+#define	YEAR4(s)	((s)->xflags & X_YEAR4)
+#define	SHELL(s)	((s)->xflags & X_SHELL)
+#define	EXPAND1(s)	((s)->xflags & X_EXPAND1)
+#define	CSETMARKED(s)	((s)->xflags & X_CSETMARKED)
+#define	HASH(s)		((s)->xflags & X_HASH)
+#define	SCCS(s)		((s)->xflags & X_SCCS)
+#define	SINGLE(s)	((s)->xflags & X_SINGLE)
+#define	LOGS_ONLY(s)	((s)->xflags & X_LOGS_ONLY)
+#define	EOLN_NATIVE(s)	((s)->xflags & X_EOLN_NATIVE)
+#define	LONGKEY(s)	((s)->xflags & X_LONGKEY)
+#define	KV(s)		((s)->xflags & X_KV)
+#define	NOMERGE(s)	((s)->xflags & X_NOMERGE)
 
 /*
  * Flags (d->flags) that indicate some state on the delta.
@@ -352,9 +352,9 @@ int	bk_mode(void);
 #define	CNTLA_ESCAPE	'\001'	/* escape character for ^A is also a ^A */
 #define	isData(buf)	((buf[0] != '\001') || \
 			    ((buf[0] == CNTLA_ESCAPE) && (buf[1] == '\001')))
-#define	seekto(s,o)	s->where = (s->mmap + o)
-#define	eof(s)		((s->encoding & E_GZIP) ? \
-			    zeof() : (s->where >= s->mmap + s->size))
+#define	seekto(s,o)	(s)->where = ((s)->mmap + o)
+#define	eof(s)		(((s)->encoding & E_GZIP) ? \
+			    zeof() : ((s)->where >= (s)->mmap + (s)->size))
 #define	new(p)		p = calloc(1, sizeof(*p))
 
 typedef	unsigned short	ser_t;
@@ -500,7 +500,7 @@ extern	project	*bk_proj;	/* bk.c sets this up */
 extern	jmp_buf	exit_buf;
 extern	char *upgrade_msg;
 
-#define	exit(e)	longjmp(exit_buf, e + 1000)
+#define	exit(e)	longjmp(exit_buf, (e) + 1000)
 
 #define	READER_LOCK_DIR	"BitKeeper/readers"
 #define	WRITER_LOCK_DIR	"BitKeeper/writer"
@@ -1133,6 +1133,8 @@ void	saveEnviroment(char *patch);
 void	restoreEnviroment(char *patch);
 int	run_check(char *partial);
 char	*key2path(char *key, MDBM *idDB);
+int	check_licensesig(char *key, char *sign);
+void	delete_cset_cache(char *rootpath, int save);
 
 extern char *bk_vers;
 extern char *bk_utc;

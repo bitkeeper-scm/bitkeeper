@@ -880,6 +880,24 @@ _meta_union() {
 		bk sccscat - | bk _sort -u
 }
 
+# Convert a changeset revision, tag, or key to the file rev 
+# for a given file
+# The inverse of r2c that people expect to find.
+_c2r() {	# undoc
+        REV=X
+	while getopts r: OPT
+	do	case $OPT in
+		r)	REV=@$OPTARG;;
+		esac
+	done
+	if [ $REV = X ]
+	then	echo usage: c2r -rREV file
+		exit 1
+	fi
+	shift `expr $OPTIND - 1`
+	bk prs -r$REV -hnd:REV: "$@"
+}
+
 # ------------- main ----------------------
 __platformInit
 __init
@@ -898,4 +916,6 @@ then
 	exec $cmd "$@"
 else
 	echo "$cmd: command not found"
+	exit 1
 fi
+				

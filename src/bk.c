@@ -38,6 +38,7 @@ int	admin_main(int, char **);
 int	annotate_main(int, char **);
 int	applyall_main(int, char **);
 int	approve_main(int, char **);
+int	base64_main(int, char **);
 int	bkd_main(int, char **);
 int	cat_main(int, char **);
 int	changes_main(int, char **);
@@ -52,6 +53,7 @@ int	config_main(int, char **);
 int	converge_main(int, char **);
 int	cp_main(int, char **);
 int	create_main(int, char **);
+int	crypto_main(int, char **);
 int	cset_main(int, char **);
 int	csetprune_main(int, char **);
 int	deledit_main(int, char **);
@@ -119,6 +121,7 @@ int	park_main(int, char **);
 int	pending_main(int, char **);
 int	preference_main(int, char **);
 int	probekey_main(int, char **);
+int	prompt_main(int, char **);
 int	prs_main(int, char **);
 int	prunekey_main(int, char **);
 int	pull_main(int, char **);
@@ -221,6 +224,7 @@ struct	command cmdtbl[] = {
 	{"admin", admin_main},			/* doc 2.0 */
 	{"approve", approve_main},		/* doc 2.0 */
 	{"annotate", annotate_main},		/* doc 2.0 */
+	{"base64", base64_main},		/* need doc 2.2 */
 	{"bkd", bkd_main },			/* doc 2.0 */
 	{"cat", cat_main},			/* doc 2.0 */
 	{"changes", changes_main},		/* doc 2.0 */
@@ -236,6 +240,7 @@ struct	command cmdtbl[] = {
 	{"config", config_main},		/* doc 2.0 */
 	{"cp", cp_main},
 	{"create", create_main},		/* doc 2.0 */
+	{"crypto", crypto_main},		/* needs doc 2.2 */
 	{"cset", cset_main},			/* doc 2.0 */
 	{"csetprune", csetprune_main},
 	{"f2csets", f2csets_main},		/* undoc? 2.0 */
@@ -289,6 +294,7 @@ struct	command cmdtbl[] = {
 	{"parent", parent_main},		/* doc 2.0 */
 	{"park", park_main},			/* doc 2.0 */
 	{"pending", pending_main},		/* doc 2.0 */
+	{"prompt", prompt_main},
 	{"prs", prs_main},			/* doc 2.0 */
 	{"pull", pull_main},			/* doc 2.0 */
 	{"push", push_main},			/* doc 2.0 */
@@ -584,7 +590,7 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 	    streq(prog, "helptool") ||
 	    streq(prog, "csettool") ||
 	    streq(prog, "renametool") ||
-	    streq(prog, "msg")) {
+	    streq(prog, "msgtool")) {
 		sig_catch(SIG_IGN);
 		argv[0] = find_wish();
 		if (streq(prog, "fm2tool")) prog = "fmtool";

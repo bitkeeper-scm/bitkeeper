@@ -34,7 +34,7 @@ proc cmd_edit {which} \
 			catch {exec bk get -qkp $filename >$old}
 			if {![file readable $old] || [file size $old] == 0} {
 				# XXX - replace with popup when I merge 
-				exec bk msg "Unable to bk get $filename"
+				exec bk msgtool "Unable to bk get $filename"
 				set edit_busy 0
 				return
 			}

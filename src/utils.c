@@ -294,6 +294,7 @@ confirm(char *msg)
 		(void)sig_catch(old);
 		return (0);
 	}
+	old = sig_catch(abort_prompt);
 	fflush(stdout);
 	write(2, msg, strlen(msg));
 	write(2, " (y/n) ", 7);
@@ -301,8 +302,93 @@ confirm(char *msg)
 		(void)sig_catch(old);
 		return (0);
 	}
-	old = sig_catch(abort_prompt);
+	(void)sig_catch(old);
 	return ((buf[0] == 'y') || (buf[0] == 'Y'));
+}
+
+/*
+ * Usage: bk prompt [-n NO] [-y YES] [-t TITLE] msg | -f FILE | -p program
+ */
+int
+prompt_main(int ac, char **av)
+{
+	int	c;
+	char	*prog = 0, *file = 0, *no = "NO", *yes = "OK", *title = 0;
+	pid_t	pid;
+	int	ret;
+
+	while ((c = getopt(ac, av, "f:n:p:t:y:")) != -1) {
+		switch (c) {
+		    case 'f': file = optarg; break;
+		    case 'n': no = optarg; break;
+		    case 'p': prog = optarg; break;
+		    case 't': title = optarg; break;	/* Only for GUI */
+		    case 'y': yes = optarg; break;
+		}
+	}
+	if (((file || prog) && av[optind]) ||
+	    (!(file || prog) && !av[optind]) ||
+	    (av[optind] && av[optind+1]) || (file && prog)) {
+err:		system("bk help -s prompt");
+		exit(1);
+	}
+	if (getenv("BK_GUI")) {
+		int	i;
+		char	*nav[18];
+
+		nav[i=0] = "bk";
+		nav[++i] = "msgtool";
+		if (title) {
+			nav[++i] = "-T";
+			nav[++i] = title;
+		}
+		assert(no);
+		nav[++i] = "-N";
+		nav[++i] = no;
+		assert(yes);
+		nav[++i] = "-Y";
+		nav[++i] = yes;
+		if (file) {
+			nav[++i] = "-F";
+			nav[++i] = file;
+		} else if (prog) {
+			nav[++i] = "-P";
+			nav[++i] = prog;
+		} else {
+			nav[++i] = av[optind];
+		}
+		nav[++i] = 0;
+		assert(i < sizeof(nav)/sizeof(char*));
+		ret = spawnvp_ex(_P_WAIT, nav[0], nav);
+		if (WIFEXITED(ret)) exit(WEXITSTATUS(ret));
+		exit(2);
+	}
+
+	if (file || prog) {
+		FILE	*f;
+		char	buf[1024];
+
+		pid = mkpager();
+		if (file) {
+			unless (f = fopen(file, "r")) goto err;
+		} else {
+			putenv("PAGER=cat");
+			unless (f = popen(prog, "r")) goto err;
+		}
+		while (fnext(buf, f)) {
+			fputs(buf, stdout);
+		}
+		fflush(stdout);
+		if (file) fclose(stdout);
+		if (prog) pclose(stdout);
+		waitpid(pid, 0, 0);
+	} else if (streq(av[optind], "-")) {
+		goto err;
+	} else {
+		fputs(av[optind], stdout);
+		fputc('\n', stdout);
+	}
+	exit(confirm(yes ? yes : "OK") ? 0 : 1);
 }
 
 /*
