@@ -44,7 +44,7 @@ sccs_gethost(void)
 
 		for (i = 0; hp->h_aliases && hp->h_aliases[i]; ++i) {
 			if (strchr(hp->h_aliases[i], '.') &&
-			    !streq(host, "localhost.localdomain")) {
+			    !streq(hp->h_aliases[i], "localhost.localdomain")) {
 				strcpy(host, hp->h_aliases[i]);
 				break;
 			}

@@ -2293,8 +2293,8 @@ pass4_apply(opts *opts)
 			char	*case_folding_err =
 "\n\
 ============================================================================\n\
-BitKeeper have detected a \"Case-Folding file system\". e.g. FAT and NTFS.\n\
-What this mean is that your file system ignores case differences when it looks\n\
+BitKeeper has detected a \"Case-Folding file system\". e.g. FAT and NTFS.\n\
+What this means is that your file system ignores case differences when it looks\n\
 for directories and files. This also means that it is not possible to rename\n\
 a path correctly if there exists a similar path with only upper/lower case\n\
 differences.\n\
@@ -2303,7 +2303,7 @@ BitKeeper wants to rename:\n\
 Your file system is changing it to:\n\
     %s -> %s\n\
 BitKeeper considers this an error, since this may not be what you have\n\
-intended. The recommended work around for this problem is as follows:\n\
+intended.  The recommended work around for this problem is as follows:\n\
 a) Exit from this resolve session.\n\
 b) Run \"bk mv\" to move the directory or file with upper/lower case\n\
    changes to a temporary location.\n\
