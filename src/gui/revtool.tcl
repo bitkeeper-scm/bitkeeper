@@ -2385,6 +2385,12 @@ proc arguments {} \
 		}
 	} elseif {$fnum == 1} {
 		set fname $opts(file,1)
+
+		catch {file type $fname} ftype
+		if {[string equal $ftype "link"] && 
+		    [string equal [exec bk sfiles -g $fname] ""]} {
+			set fname [resolveSymlink $fname]
+		}
 		if {[file isdirectory $fname]} {
 			catch {cd $fname} err
 			if {$err != ""} {

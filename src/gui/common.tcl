@@ -20,6 +20,17 @@ proc cd2root { {startpath {}} } \
 	return -1
 }
 
+proc resolveSymlink {filename} {
+	catch {
+		set original_path [file dirname $filename]
+		set link_path [file readlink $filename]
+		set filename [file join $original_path $link_path]
+		# once we upgrade to tcl 8.4 we should also call 
+		# [file normalize]...
+	}
+	return $filename
+}
+
 proc displayMessage {msg {exit {}}} \
 {
 	global tcl_platform
