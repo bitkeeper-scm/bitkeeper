@@ -28,7 +28,7 @@ usage: sfiles [-aAcCdglpPrx] [directories]\n\n\
     		Note 2: revision control files must look like SCCS/s.*,\n\
 		not foo/bar/blech/s.*\n\
 \n\
-    The -i and -r options can take an optional project root but not any other\n\
+    The -r option can take an optional project root but not any other\n\
     directories.\n\
 \n";
 
@@ -62,6 +62,7 @@ main(int ac, char **av)
 	int	c, i;
 	char	*path;
 
+	debug_main(av);
 	platformSpecificInit(NULL);
 	if ((ac > 1) && streq("--help", av[1])) {
 usage:		fprintf(stderr, "%s", sfiles_usage);
@@ -231,11 +232,16 @@ process(const char *filename, int mode)
 		xfile(file);
 		return;
 	}
-	unless (sccs_filetype(file) == 's') return;
+	unless (sccs_filetype(file) == 's') {
+		unless (pFlg || Pflg) return;
+		unless (file[0] == 's' && file[1] == '.' && isSccs(file)) {
+			return;
+		}
+	}
 	debug((stderr, "sfind process2(%s)\n", filename));
 	s = strrchr(file, '/');
-	assert(s);
-	s++;
+	if (s) s++;
+	else s = file;
 	if (lFlg || cFlg || uFlg) {
 		*s = 'p';
 		if (exists(file)) {

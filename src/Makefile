@@ -8,7 +8,7 @@ BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 PRIVATE	= nextsecond mtime zone
 SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
 	  sccstool citool vitool fm fm3 bithelp mkindex
-PSCR	= install.sh
+PSCR	= install.sh t/doit
 LIBS	= zlib/libz.a mdbm/libmdbm.a libsccs.a
 LINKS	= ci co edit unedit unget
 DATA	= bitkeeper.config bkhelp.txt
@@ -161,7 +161,7 @@ tags: srcs
 TAGS: srcs
 	etags $(SRCS) $(HDRS)
 
-test tests: $(ALL) t/doit
+test tests: $(ALL)
 	-get -q t/SCCS/s.t.* t/setup t/cleanup
 	cd t && ./doit
 
