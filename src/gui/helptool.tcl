@@ -80,7 +80,8 @@ proc doSelect {x} \
 	.ctrl.topics tag add "select" $line "$line lineend + 1 char"
 	.ctrl.topics tag raise "select"
 	bkhelp $topic
-	incr stackPos
+	# Don't increment if we are going to where we are
+	if {$stackPos == 0 || $stack($stackPos) != $line} { incr stackPos }
 	set stack($stackPos) $line
 	if {$stackMax < $stackPos} { set stackMax $stackPos }
 	if {$stackPos > 1} {
@@ -175,6 +176,10 @@ proc embedded_tag {line} \
 		set t [string range $line $start $end]
 		#puts "  big?=$t"
 		if {$t == "bk help "} { incr start 5 }
+		# It may have been "bk helptool"
+		incr end 4
+		set t [string range $line $start $end]
+		if {$t == "bk helptool "} { incr start 9 }
 		incr start 2
 		set t [string range $line 0 $start]
 		#puts "  chop=$t"
@@ -290,12 +295,12 @@ proc widgets {} \
 
 	# Defaults
 	if {$tcl_platform(platform) == "windows"} {
-		set swid 18
+		set swid 20
 		set font {helvetica 10 roman}
 		set buttonFont {helvetica 10 roman bold}
 		set py 0
 	} else {
-		set swid 12
+		set swid 14
 		set font {fixed 13 roman}
 		set buttonFont {Times 13 roman bold}
 		set py 1
@@ -317,7 +322,7 @@ proc widgets {} \
 	wm title . "BitKeeper Help"
 
 	frame .menu -borderwidth 0 -relief flat
-	    button .menu.done -text "Exit" -font $buttonFont -borderwid 1 \
+	    button .menu.done -text "Quit" -font $buttonFont -borderwid 1 \
 		-pady $py -background $bcolor -command { exit }
 	    button .menu.help -text "Help" -font $buttonFont -borderwid 1 \
 		-pady $py -background $bcolor -command {
@@ -352,16 +357,15 @@ proc widgets {} \
 		-font $font -width 14 \
 		-yscrollcommand { .ctrl.yscroll set } \
 		-xscrollcommand { .ctrl.xscroll set }
-	    scrollbar .ctrl.yscroll -width $swid -command ".ctrl.topics yview"
+	    scrollbar .ctrl.yscroll -width $swid \
+		-command ".ctrl.topics yview"
 	    scrollbar .ctrl.xscroll \
 		-orient horiz -width $swid -command ".ctrl.topics xview"
 
-	    grid .ctrl.yscroll -row 0 -column 0 -sticky nse
-	    grid .ctrl.topics -row 0 -column 1 -sticky nsew
+	    grid .ctrl.topics -row 0 -column 0 -sticky nsew
+	    grid .ctrl.yscroll -row 0 -column 1 -sticky nse
 	    grid .ctrl.xscroll -row 1 -column 0 -columnspan 2 -sticky ew
-
 	    grid rowconfigure .ctrl 0 -weight 1
-	    grid columnconfigure .ctrl 0 -weight 0
 
 	frame .text -borderwidth 0 -relief flat
 	    text .text.help -wrap none -font $font \
@@ -433,9 +437,9 @@ proc busy {busy} \
 		.text.help configure -cursor watch
 		.ctrl.topics configure -cursor watch
 	} else {
-		. configure -cursor hand2
-		.text.help configure -cursor hand2
-		.ctrl.topics configure -cursor hand2
+		. configure -cursor left_ptr
+		.text.help configure -cursor left_ptr
+		.ctrl.topics configure -cursor left_ptr
 	}
 	update
 }

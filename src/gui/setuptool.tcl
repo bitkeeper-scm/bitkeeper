@@ -320,7 +320,7 @@ proc create_config { w } \
 		    pack $w.t.bb.b1 -side left -expand 1 -padx 20 -pady 10
 		    label $w.t.bb.l -image bklogo
 		    pack $w.t.bb.l -side left -expand 1 -padx 20 -pady 10
-		    button $w.t.bb.b2 -text "Exit" -bg $bcolor \
+		    button $w.t.bb.b2 -text "Quit" -bg $bcolor \
 			-command "global st_dlg_button; set st_dlg_button 1"
 		    pack $w.t.bb.b2 -side left -expand 1 -padx 20 -pady 10
 	# text widget to contain info about config options

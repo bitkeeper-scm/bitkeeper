@@ -197,16 +197,16 @@ proc sdiff {L R} \
 	return [open "| $sdiffw $dotL $dotR"]
 }
 
-proc readFiles {L R M} \
+proc readFiles {L Ln R Rn} \
 {
 	global	Diffs DiffsEnd diffCount nextDiff lastDiff dev_null rmList
 
 	.diffs.left configure -state normal
 	.diffs.right configure -state normal
  	set t [clock format [file mtime $L] -format "%r %D"]
-	.diffs.status.l configure -text "$L ($t)"
+	.diffs.status.l configure -text "$Ln ($t)"
  	set t [clock format [file mtime $R] -format "%r %D"]
-	.diffs.status.r configure -text "$R ($t)"
+	.diffs.status.r configure -text "$Rn ($t)"
 	.diffs.status.middle configure -text "... Diffing ..."
 	.diffs.left delete 1.0 end
 	.diffs.right delete 1.0 end
@@ -247,11 +247,6 @@ proc readFiles {L R M} \
 	    "<"	{ incr diffCount 1; left $r $l $n }
 	    ">"	{ incr diffCount 1; right $r $l $n }
 	}
-	if {$M != ""} {
-		catch {
-			close [open $M w]
-		} dummy
-	}
 	if {$diffCount == 0} { puts "No differences"; exit }
 	close $r
 	close $l
@@ -263,7 +258,9 @@ proc readFiles {L R M} \
 	}
 	.diffs.left configure -state disabled
 	.diffs.right configure -state disabled
-	. configure -cursor arrow
+	. configure -cursor left_ptr
+	.diffs.left configure -cursor left_ptr
+	.diffs.right configure -cursor left_ptr
 	set lastDiff 1
 	dot
 }
@@ -324,7 +321,7 @@ proc computeHeight {} \
 	set diffHeight [expr $p / $f]
 }
 
-proc widgets {L R} \
+proc widgets {} \
 {
 	global	leftColor rightColor scroll diffHeight
 	global	wish tcl_platform diffbFont
@@ -342,14 +339,14 @@ proc widgets {L R} \
 		set diffbFont {helvetica 9 roman bold}
 		set buttonFont {helvetica 9 roman bold}
 		set lFont {hevlvetica 9 roman }
-		set swid 18
+		set swid 20
 	} else {
 		set py 1; set px 4; set bw 2
 		set buttonFont {times 12 roman bold}
 		set diffFont {fixed 12 roman}
 		set diffbFont {fixed 12 roman bold}
 		set lFont {fixed 12 roman bold}
-		set swid 12
+		set swid 14
 	}
 	set geometry ""
 	if {[file readable ~/.difftoolrc]} {
@@ -375,11 +372,11 @@ proc widgets {L R} \
 		grid .diffs.status.middle -row 0 -column 1
 		grid .diffs.status.r -row 0 -column 2 -sticky ew
 	    text .diffs.left -width $leftWidth -height $diffHeight \
-		-state disabled -wrap none -font $diffFont \
+		-bg white -state disabled -wrap none -font $diffFont \
 		-xscrollcommand { .diffs.xscroll set } \
 		-yscrollcommand { .diffs.yscroll set }
 	    text .diffs.right -width $rightWidth -height $diffHeight \
-		-state disabled -wrap none -font $diffFont
+		-bg white -state disabled -wrap none -font $diffFont
 	    scrollbar .diffs.xscroll -wid $swid -troughcolor $tcolor \
 		-orient horizontal -command { xscroll }
 	    scrollbar .diffs.yscroll -wid $swid -troughcolor $tcolor \
@@ -401,14 +398,18 @@ proc widgets {L R} \
 	    button .menu.quit -font $buttonFont -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Quit" -command exit 
+	    button .menu.reread -font $buttonFont -bg $bcolor \
+		-pady $py -padx $px -borderwid $bw \
+		-text "Reread" -command getFiles 
 	    button .menu.help -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-font $buttonFont -text "Help" \
 		-command { exec bk helptool difftool & }
+	    pack .menu.quit -side left
+	    pack .menu.help -side left
+	    pack .menu.reread -side left
 	    pack .menu.prev -side left
 	    pack .menu.next -side left
-	    pack .menu.quit -side right
-	    pack .menu.help -side right
 
 	grid .menu -row 0 -column 0 -sticky ew
 	grid .diffs -row 1 -column 0 -sticky nsew
@@ -469,55 +470,90 @@ proc keyboard_bindings {} \
 	bind all <period>	dot
 }
 
-proc main {} \
+proc getrev {file rev checkMods} \
+{
+	global	tmp_dir
+
+	set gfile ""
+	set f [open "| bk sfiles -g \"$file\"" r]
+	if { ([gets $f dummy] <= 0)} {
+		puts "$file is not under revision control."
+		exit 1
+	}
+	close $f
+	if {$checkMods} {
+		set f [open "| bk sfiles -gc \"$file\"" r]
+		if { ([gets $f dummy] <= 0)} {
+			puts "$file is the same as the checked in version."
+			exit 1
+		}
+		close $f
+	}
+	set tmp [file join $tmp_dir [file tail $file]]
+	set pid [pid]
+	set tmp "$tmp@$rev-$pid"
+	if {[catch {exec bk get -qkTG$tmp -r$rev $file} msg]} {
+		puts "$msg"
+		exit 1
+	}
+	return $tmp
+}
+
+proc usage {} \
+{
+	global	argv0
+
+	puts "usage:\tbk difftool file"
+	puts "\tbk difftool -r<rev> file"
+	puts "\tbk difftool -r<rev> -r<rev2> file"
+	puts "\tbk difftool file 2"
+	exit
+}
+
+proc getFiles {} \
 {
 	global argv0 argv argc dev_null lfile rfile tmp_dir
 
-	if {$argc < 1 || $argc > 3} {
-		puts "usage: $argv0 left \[right \[done\]\]"
-		exit
-	}
-	bk_init
-	set lfile ""
-	set rfile ""
-	set a [split $argv " "]
-	if {$argc > 1} {
-		set lfile [lindex $argv 0]
-		set rfile [lindex $argv 1]
-	} else {
-		set rfile [lindex $argv 0]
-		set gfile ""
-		set f [open "| bk sfiles -g \"$rfile\"" r]
-		if { ([gets $f dummy] <= 0)} {
-			puts "$rfile is not under revision control."
-			exit 1
-		}
-		close $f
-		set f [open "| bk sfiles -gc \"$rfile\"" r]
-		if { ([gets $f dummy] <= 0)} {
-			puts "$rfile is the same as the checked in version."
-			exit 1
-		}
-		close $f
-		set tmp [file join $tmp_dir [file tail $rfile]]
-		set pid [pid]
-		set tmp "$tmp-$pid"
-		if {[catch {exec bk get -qkTG$tmp $rfile} msg]} {
-			puts "$msg"
-			exit 1
-		}
-		set lfile $tmp
-	}
-	widgets $lfile $rfile
-	if {$argc == 3} {
-		readFiles $lfile $rfile [lindex $argv 2]
-	} else {
-		readFiles $lfile $rfile ""
-	}
+	if {$argc < 1 || $argc > 3} { usage }
+	set tmps [list]
 	if {$argc == 1} {
-		# Done this way so we don't delete the gfile by mistake.
-		file delete $tmp
+		set rfile [lindex $argv 0]
+		set rname $rfile
+		set lfile [getrev $rfile "+" 1]
+		lappend tmps $lfile
+		set lname "$rfile"
+	} elseif {$argc == 2} {
+		set a [lindex $argv 0]
+		if {[regexp -- {-r(.*)} $a junk rev1]} {
+			set rfile [lindex $argv 1]
+			if {[file exists $rfile] != 1} { usage }
+			set rname $rfile
+			set lfile [getrev $rfile $rev1 0]
+			set lname "$rfile@$rev1"
+			lappend tmps $lfile
+		} else {
+			set lfile [lindex $argv 0]
+			set lname $lfile
+			set rfile [lindex $argv 1]
+			set rname $rfile
+		}
+	} else {
+		set file [lindex $argv 2]
+		set a [lindex $argv 0]
+		if {![regexp -- {-r(.*)} $a junk rev1]} { usage }
+		set lfile [getrev $file $rev1 0]
+		set lname "$file@$rev1"
+		lappend tmps $lfile
+		set a [lindex $argv 1]
+		if {![regexp -- {-r(.*)} $a junk rev2]} { usage }
+		set rfile [getrev $file $rev2 0]
+		set rname "$file@$rev2"
+		lappend tmps $rfile
 	}
+	readFiles $lfile $lname $rfile $rname
+	foreach tmp $tmps { file delete $tmp }
 }
 
-main
+widgets
+bk_init
+getFiles

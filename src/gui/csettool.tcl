@@ -470,11 +470,14 @@ proc busy {busy} \
 {
 	if {$busy == 1} {
 		. configure -cursor watch
-		.filelist.t configure -cursor watch
+		.sccslog.t configure -cursor watch
+		.diffs.left configure -cursor watch
+		.diffs.right configure -cursor watch
 	} else {
-		. configure -cursor hand2
-		.filelist.t configure -cursor hand2
-		.menu configure -cursor hand1
+		. configure -cursor left_ptr
+		.sccslog.t configure -cursor left_ptr
+		.diffs.left configure -cursor left_ptr
+		.diffs.right configure -cursor left_ptr
 	}
 	update
 }
@@ -732,11 +735,12 @@ proc widgets {} \
 	    -relief groove -borderwid 1
 	.filelist.t tag configure cset -background #c0c0c0
 	.sccslog.t tag configure cset -background #c0c0c0
-	#.sccslog.t tag configure file_tag -background #b0b0f0
 	.sccslog.t tag configure file_tag -underline true
-	.sccslog.t configure -cursor gumby
-	.diffs.left configure -cursor gumby
-	.diffs.right configure -cursor gumby
+	. configure -cursor left_ptr
+	.sccslog.t configure -cursor left_ptr
+	.filelist.t configure -cursor left_ptr
+	.diffs.left configure -cursor left_ptr
+	.diffs.right configure -cursor left_ptr
 }
 
 # Set up keyboard accelerators.

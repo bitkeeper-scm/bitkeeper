@@ -462,7 +462,7 @@ proc listRevs {file} \
 	}
 
 	if {$bad != 0} {
-		.menus.l configure -text "$file -- $bad bad revs"
+		wm title . "sccstool: $file -- $bad bad revs"
 	}
 	set bb [.p.top.c bbox all]
 	set x1 [expr [lindex $bb 0] - 10]
@@ -583,21 +583,11 @@ proc get {} \
 	csetdiff2 0
 }
 
-proc difftool {a b} \
+proc difftool {file r1 r2} \
 {
-	global	tmp_dir
-
 	set x [expr [winfo rootx .]+150]
 	set y [expr [winfo rooty .]+50]
-	set marker [file join $tmp_dir difftool]
-	set pid [pid]
-	set marker "$marker-$pid"
-	exec bk difftool -geometry +$x+$y $a $b $marker &
-	after 100
-	while {[file exists $marker] == 0} {
-		after 500
-	}
-	file delete -force $a $b $marker
+	exec bk difftool -geometry +$x+$y -r$r1 -r$r2 $file &
 	busy 0
 }
 
@@ -624,15 +614,15 @@ proc diff2 {difftool} \
 		return
 	}
 	busy 1
+	if {$difftool == 1} {
+		difftool $file $rev1 $rev2
+		return
+	}
+
 	set r1 [file join $tmp_dir $rev1-[pid]]
 	catch { exec bk get $getOpts -kPr$rev1 $file >$r1}
 	set r2 [file join $tmp_dir $rev2-[pid]]
 	catch {exec bk get $getOpts -kPr$rev2 $file >$r2}
-	if {$difftool == 1} {
-		difftool $r1 $r2
-		return
-	}
-
 	set diffs [open "| diff $diffOpts $r1 $r2"]
 	set l 3
 	.p.bottom.t configure -state normal; .p.bottom.t delete 1.0 end
@@ -942,9 +932,9 @@ proc busy {busy} \
 		.p.top.c configure -cursor watch
 		.p.bottom.t configure -cursor watch
 	} else {
-		. configure -cursor hand2
-		.p.top.c configure -cursor hand2
-		.p.bottom.t configure -cursor gumby
+		. configure -cursor left_ptr
+		.p.top.c configure -cursor left_ptr
+		.p.bottom.t configure -cursor left_ptr
 	}
 	if {$paned == 0} { return }
 	update
@@ -1004,7 +994,7 @@ proc widgets {} \
 	if {"$geometry" != ""} {
 		wm geometry . $geometry
 	}
-	wm title . "SCCS Tool"
+	wm title . "sccstool"
 	frame .menus
 	    button .menus.quit -font $font(button) -relief raised \
 		-bg $color(bg) -pady $py -padx $px -borderwid $bw \
@@ -1018,16 +1008,13 @@ proc widgets {} \
 	    button .menus.difftool -font $font(button) -relief raised \
 		-bg $color(bg) -pady $py -padx $px -borderwid $bw \
 		-text "Diff tool" -command "diff2 1" -state disabled
-	    label .menus.l -font $font(label) -width 50 -relief groove \
-		-pady $py -padx $px -borderwid $bw
 	    if {"$file" == "ChangeSet"} {
 		    .menus.cset configure -command csettool
-		    pack .menus.help .menus.quit .menus.cset -side right
+		    pack .menus.quit .menus.help .menus.cset -side left
 	    } else {
-		    pack .menus.difftool .menus.help .menus.quit .menus.cset \
-			-side right
+		    pack .menus.quit .menus.help .menus.difftool .menus.cset \
+			-side left
 	    }
-	    pack .menus.l -expand yes -fill x -side left
 
 	frame .p
 	    frame .p.top -borderwidth 2 -relief sunken
@@ -1163,7 +1150,7 @@ proc sccstool {name} \
 		puts "No such file $name"
 		exit 0
 	}
-	.menus.l configure -text "$file"
+	wm title . "sccstool: $file"
 	listRevs "$file"
 
 	revMap "$file"

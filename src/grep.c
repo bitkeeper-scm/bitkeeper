@@ -18,17 +18,22 @@ grep_main(int ac, char **av)
 	char	**sav = malloc(sizeof(char*) * (ac + 10));
 	char	*gav[10];
 	int	c, i, fd, status;
+	char	buf[200];
 	pid_t	pid;
 
 	*s++ = '-';
 	*g++ = '-';
-	while ((c = getopt(ac, av, "dimnu")) != -1) {
+	buf[0] = 0;
+	while ((c = getopt(ac, av, "dimnur|")) != -1) {
 		switch (c) {
 		    case 'd':
 		    case 'm':
 		    case 'n':
 		    case 'u':
 			*s++ = c;
+			break;
+		    case 'r':
+			sprintf(buf, "-r%s", optarg);
 			break;
 		    case 'i':
 			*g++ = c;
@@ -56,8 +61,18 @@ grep_main(int ac, char **av)
 	/*
 	 * Set up the sccscat part of the command line.
 	 */
-	sav[i=0] = "sccscat";
-	if (s) sav[++i] = sccscat_opts;
+	if (buf[0]) {
+		sav[i=0] = "get";
+		sav[++i] = buf;
+		sav[++i] = "-kqp";
+	} else {
+		sav[i=0] = "sccscat";
+	}
+	if (s) {
+		sav[++i] = sccscat_opts;
+	} else {
+		sav[++i] = buf[0] ? "-n" : "-nm";
+	}
 	while (sav[++i] = av[optind++]);
 
 	/*
@@ -65,7 +80,12 @@ grep_main(int ac, char **av)
 	 */
 	close(1); dup(fd); close(fd);
 	getoptReset();
-	if (sccscat_main(i, sav)) {
+	if (buf[0]) {
+		i = get_main(i, sav);
+	} else {
+		i = sccscat_main(i, sav);
+	}
+	if (i) {
 		kill(pid, SIGTERM);
 		waitpid(pid, 0, 0);
 		exit(100);

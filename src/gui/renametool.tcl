@@ -681,13 +681,13 @@ proc busy {busy} \
 		.diffs.r configure -cursor watch
 		.menu configure -cursor watch
 	} else {
-		. configure -cursor hand2
-		.menu configure -cursor hand1
-		.files.l configure -cursor hand2
-		.files.r configure -cursor hand2
-		.files.sh configure -cursor hand2
-		.diffs.l configure -cursor gumby
-		.diffs.r configure -cursor gumby
+		. configure -cursor left_ptr
+		.menu configure -cursor left_ptr
+		.files.l configure -cursor left_ptr
+		.files.r configure -cursor left_ptr
+		.files.sh configure -cursor left_ptr
+		.diffs.l configure -cursor left_ptr
+		.diffs.r configure -cursor left_ptr
 	}
 	update
 }
