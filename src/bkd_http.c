@@ -1718,32 +1718,36 @@ http_related(char *file)
 int
 _f2csets_main(int argc, char **argv)
 {
-	char rootkey[MAXKEY];
-	FILE *f;
-	char buf[MAXPATH+100];
-	char key[MAXKEY*2];
-	int i;
-	int keylen;
-	char *p;
+	char	rootkey[MAXKEY];
+	FILE	*f;
+	char	buf[MAXPATH+100];
+	char	key[MAXKEY*2];
+	int	i;
+	int	keylen;
+	char	*p;
+	sccs	*s;
 
 	unless (argc == 2) {
-		system("bk help _f2csets");
+		fprintf(stderr, "usage: %s <file>\n", argv[0]);
 		return(1);
 	}
 
-	i = snprintf(buf, sizeof buf, "bk prs -hr+ -d:ROOTKEY: %s", argv[1]);
-	if (i == 0) {
-		fprintf(stderr, "string overflow\n");
-		return(1);
+	/* build the SCCS file from the filename, then init it and get
+	 * the rootkey and the bk root out of that
+	 */
+	if (p = strrchr(argv[1], '/')) {
+		++p;
+	} else {
+		p = argv[1];
 	}
-	unless (f = popen(buf, "r")) {
-		perror(buf);
-		return(1);
-	}
-	fnext(rootkey,f);
-	pclose(f);
-	keylen = strlen(rootkey);
 
+	sprintf(buf, "%.*sSCCS/s.%s", (p-argv[1]), argv[1], p);
+
+	unless (s = sccs_init(buf, INIT_NOCKSUM|INIT_NOSTAT, 0)) return(1);
+
+	sccs_cd2root(s, 0);
+	sccs_sdelta(s, sccs_ino(s), rootkey);
+	sccs_free(s);
 
 	i = sprintf(buf, "bk -R sccscat -hm " CHANGESET);
 
@@ -1751,6 +1755,8 @@ _f2csets_main(int argc, char **argv)
 		perror(buf);
 		return(1);
 	}
+
+	keylen = strlen(rootkey);
 	while (fnext(key,f)) {
 		chop(key);
 		for (p = key; *p && *p != '\t'; ++p) ;
