@@ -31,6 +31,8 @@ bk get $Q boo.c
 cmp -s boo.c $HERE/import_dir/src/boo.c
 echo OK
 # XXX - we do not test for links pointing outside the tree
+if [ $PLATFORM != "WIN32" ]
+then
 echo $N Test import of a symbolic link ..............................$NL
 cd $HERE
 ${ECHO} "logging: none" > $HERE/c
@@ -55,6 +57,7 @@ test -f SCCS/s.link
 bk get $Q link
 cmp -s link $HERE/import_dir/src/foo.c
 echo OK
+fi	# Win32
 echo $N Test import of a patch file .................................$NL
 cd $HERE
 mkdir -p import_new/src

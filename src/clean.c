@@ -4,7 +4,7 @@
 WHATSTR("@(#)%K%");
 
 private char *clean_help =
-"usage: clean [-punv] [files...]\n\
+"usage: clean [-pqv] [files...]\n\
     -p	print, i.e., show diffs of modified files\n\
     -q	quiet operation, do not complain about nonexistant files\n\
     -v	list files being cleaned\n\
