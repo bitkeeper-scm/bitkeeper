@@ -200,7 +200,6 @@ XTERN int patch_get;
 XTERN int set_time;
 XTERN int set_utc;
 XTERN bool forcetime;
-XTERN bool bkimport;
 
 enum diff
   {

@@ -136,40 +136,6 @@ too_many_lines (char const *filename)
   fatal ("File %s has too many lines", quotearg (filename));
 }
 
-/*
- * If the file exists, then it needs an s.file
- * */
-int
-needBK(char const *s)
-{
-	struct	stat sbuf;
-	char	*p, *r;
-	char	path[1024];
-
-	if (lstat(s, &sbuf) == -1) return (0);
-	if (p = strrchr(s, '/')) {
-	    strcpy(path, s);
-	    r = strrchr(path, '/');
-	    *++r = 0;
-	    strcat(path, "SCCS/s.");
-	    p++;
-	    strcat(path, p);
-	} else {
-	    sprintf(path, "SCCS/s.%s", s);
-	}
-	return (lstat(path, &sbuf) != 0);
-}
-
-int
-writable(char const *s)
-{
-	struct	stat sbuf;
-
-	if (lstat(s, &sbuf) == -1) return (0);
-	if (S_ISLNK(sbuf.st_mode)) return (1);
-	return ((sbuf.st_mode & 0222) != 0);
-}
-
 void
 get_input_file (char const *filename, char const *outname)
 {
@@ -180,27 +146,6 @@ get_input_file (char const *filename, char const *outname)
 
     if (inerrno == -1)
       inerrno = stat (inname, &instat) == 0 ? 0 : errno;
-
-    /*
-     * I have no idea if this fits generically with patch, I'm just
-     * hacking this in so we can clean modified files first.
-     */
-    if (bkimport && needBK(filename)) {
-	    fatal("File %s is not under BitKeeper control.",
-		quotearg(filename));
-    }
-    if (bkimport && writable(filename)) {
-	char	cmd[1100];
-
-	sprintf(cmd, "bk clean -q %s", filename);
-	if (system(cmd)) {
-	    fatal("File %s seems to be modified already.", quotearg(filename));
-	}
-	sprintf(cmd, "bk edit -q %s", filename);
-	if (system(cmd)) {
-	    fatal("bk edit %s failed", quotearg(filename));
-	}
-    }
 
     /* Perhaps look for RCS or SCCS versions.  */
     if (patch_get

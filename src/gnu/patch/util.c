@@ -381,7 +381,7 @@ version_get (char const *filename, char const *cs, int exists, int readonly,
 	return 0;
     }
 
-  if (dry_run)
+  if (dry_run && (patch_get < 0))
     {
       if (! exists)
 	fatal ("can't do dry run on nonexistent version-controlled file %s; invoke `%s' and try again",
