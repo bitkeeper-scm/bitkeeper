@@ -3356,30 +3356,53 @@ out:	if (streq(host, "localhost") || streq(host, "localhost.localdomain")) {
 /*
  * Save a serial in an array.  If the array is out of space, reallocate it.
  * The size of the array is in array[0].
+ * The serial number is stored in ascending order.
  */
 ser_t *
 addSerial(ser_t *space, ser_t s)
 {
-	int	i;
+	int	i, j;
 
 	if (!space) {
 		space = calloc(16, sizeof(ser_t));
 		assert(space);
 		space[0] = (ser_t)16;
+		space[1] = s;
 	} else if (space[(int)space[0]-1]) {	/* full up, dude */
 		int	size = (int)space[0];
 		ser_t	*tmp = calloc(size*2, sizeof(ser_t));
 
 		assert(tmp);
-		bcopy(space, tmp, size*sizeof(ser_t));
+		if (space[size - 1] < s)  {
+			/* s is the largest, stick it at the end */
+			memcpy(tmp, space, size * sizeof(ser_t));
+			tmp[size] = s;
+		} else {
+			/* s is not the largest, insert it while we copy */
+			for (i = j = 1; i < size;) {
+				if (space[i] > s)  { tmp[j++] = s; break; }
+				tmp[j++] = space[i++];
+			}
+			memcpy(&tmp[j], &space[i], (size - i) * sizeof(ser_t));
+		}
 		tmp[0] = (ser_t)(size * 2);
 		free(space);
 		space = tmp;
+
+	} else {
+		int last = space[0] - 1;
+
+		EACH(space) if (space[i] > s) break; 
+		assert((i >= 1) && (i <= last));
+		if (space[i] > s) {
+			/* we have a "insert", move stuff up one slot */
+			for (j = last; j >= i + 1; j--) {
+				assert((j >= 2) && (j <= last));
+				if (space[ j - 1]) space[j] = space[j - 1];
+			}
+		}
+		space[i] = s; 
 	}
-	EACH(space);
-	assert(i < (int)space[0]);
-	assert(space[i] == 0);
-	space[i] = s;
 	return (space);
 }
 
@@ -3504,14 +3527,11 @@ putserlist(sccs *sc, ser_t *s, FILE *out)
 	char	buf[20];
 
 	if (!s) return;
-	/* This is not EACH because I want to go backwards */
-	for (i = (int)s[0] - 1; i > 0; i--) {
-		if (s[i]) {
-			sertoa(buf, s[i]);
-			if (!first) fputsum(sc, " ", out);
-			fputsum(sc, buf, out);
-			first = 0;
-		}
+	EACH(s) {
+		sertoa(buf, s[i]);
+		if (!first) fputsum(sc, " ", out);
+		fputsum(sc, buf, out);
+		first = 0;
 	}
 }
 
