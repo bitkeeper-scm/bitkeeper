@@ -19,14 +19,15 @@ sub main
 			$line = "";
 			$_ = <>;
 			while ($_ !~ /^$/) {
+				$line .= "\n" if $line && /^\s*bk /;
 				chop;
 				s/^\s*//;
 				s/ \s+/ /g;
 				$line .= "$_ ";
 				$_ = <>;
 			}
-			$line =~ s/Bit- Keeper/BitKeeper/;
-			$line =~ s/\s*$//;
+			$line =~ s/Bit- Keeper/BitKeeper/m;
+			$line =~ s/\s*$//m;
 			print A "$line\n";
 		}
 		if (/^CATEGORY\s*$/) {
