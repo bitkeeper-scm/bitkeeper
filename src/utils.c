@@ -1057,28 +1057,6 @@ remote_lock_fail(char *buf, int verbose)
 }
 
 /*
- * Return the number of files in a repository.
- */
-int
-nFiles(void)
-{
-        FILE    *f;
-        int     i = 0;
-        char    buf[ 2 * MAXKEY + 10];
-	char	*p = getenv("_BK_NFILES");
- 
-        f = popen("bk -R get -qkp ChangeSet", "r");
-        assert(f);
-        while (fnext(buf, f)) {
-                i++;
-        }
-        pclose(f);
-	/* regressions: allow it to be adjusted up only */
-	if (p && (atoi(p) > i)) i = atoi(p);
-        return (i);
-}         
-
-/*
  * This function works like sprintf(), except it return a
  * malloc'ed buffer which caller should free when done
  */
@@ -1089,7 +1067,7 @@ aprintf(char *fmt, ...)
 	int	rc;
 	char	*buf;
 	int	size = strlen(fmt) + 64;
-		
+
 	while (1) {
 		buf = malloc(size);
 		va_start(ptr, fmt);

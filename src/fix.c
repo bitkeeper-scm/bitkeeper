@@ -53,7 +53,6 @@ do_cset(char *qflag, int flags, int save)
 		fprintf(stderr, "fix: can't find repository root\n");
 		exit(1);
 	}
-	save_log_markers();
 	/* 
 	 * check to see if there are later deltas.
 	 * XXX - we could try locking the tree with the RESYNC dir.
@@ -71,7 +70,10 @@ do_cset(char *qflag, int flags, int save)
 		*p = '|';
 		lines = addLine(lines, strdup(path));
 	}
-	pclose(f);
+	if (pclose(f)) {
+		fprintf(stderr, "Sorry, unable to fix this cset.\n");
+		exit(1);
+	}
 
 	EACH(lines) {
 		p = strchr(lines[i], '|');
@@ -110,14 +112,25 @@ do_cset(char *qflag, int flags, int save)
 		p[-1] = '|';
 	}
 
+	/*
+	 * Saving the patch can fail if the repo is in a screwed up state,
+	 * eg one of the files in the patch is missing and not goned.
+	 */
 	if (save) {
-		sysio(0,
-		    "BitKeeper/tmp/fix.patch",0, "bk", "makepatch", "-r+", SYS);
+		int	rc;
+		
+		rc = sysio(0, "BitKeeper/tmp/fix.patch",
+			0, "bk", "makepatch", "-r+", SYS);
+		if (rc) {
+			fprintf(stderr, "fix: unable to save patch, abort.\n");
+			exit(1);
+		}
 	}
 
 	/*
 	 * OK, go fix it up.
 	 */
+	save_log_markers();
 	revs = 0;
 	EACH(lines) {
 		p = strchr(lines[i], '|');
@@ -161,7 +174,7 @@ doit(char *file, char *rev, char *qflag, int flags, char *force)
 	p = name2sccs(file);
 	s = sccs_init(p, SILENT);
 	unless (s && HASGRAPH(s)) {
-		fprintf(stderr, "%s does not exist or is not a BK file.\n", p);
+		fprintf(stderr, "%s removed while fixing?\n", s->sfile);
 		sccs_free(s);
 		return;
 	}
@@ -243,7 +256,7 @@ doit(char *file, char *rev, char *qflag, int flags, char *force)
 }
 
 /*
- * Return true is this is a pure content change delta.
+ * Return true if this is a pure content change delta.
  * Exception: we allow mode changes, we can catch those.
  */
 private	int

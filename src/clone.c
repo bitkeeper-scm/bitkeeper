@@ -69,7 +69,7 @@ clone_main(int ac, char **av)
 	 * Trigger note: it is meaningless to have a pre clone trigger
 	 * for the client side, since we have no tree yet
 	 */
-	r = remote_parse(av[optind], 1);
+	r = remote_parse(av[optind]);
 	unless (r) usage();
 	if (link) {
 #ifdef WIN32
@@ -83,7 +83,7 @@ clone_main(int ac, char **av)
 	}
 	if (av[optind + 1]) {
 		remote	*l;
-		l = remote_parse(av[optind + 1], 1);
+		l = remote_parse(av[optind + 1]);
 		unless (l) {
 err:			if (r) remote_free(r);
 			if (l) remote_free(l);
@@ -216,7 +216,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	}
 
 	unless (opts.quiet) {
-		remote	*l = remote_parse(local, 0);
+		remote	*l = remote_parse(local);
 
 		fromTo("Clone", r, l);
 		remote_free(l);

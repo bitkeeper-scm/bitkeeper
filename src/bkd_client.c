@@ -12,7 +12,7 @@ private	remote	*url_parse(char *p, int default_port);
  * into a struct remote.
  */
 remote *
-remote_parse(const char *url, int skip_checks)
+remote_parse(const char *url)
 {
 	char	*freeme = 0;
 	static	int echo = -1;

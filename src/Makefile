@@ -86,7 +86,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	opark.o parent.o park.o \
 	pending.o preference.o proj.o \
 	port/bkd_client.o port/bkd_server.o \
-	port/check_gfile.o port/executable.o \
+	port/check_gfile.o \
 	port/filecopy.o port/fileinfo.o port/findpid.o \
 	port/flushsocket.o \
 	port/fullname.o port/gethomedir.o \
@@ -96,7 +96,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	port/lock.o port/lock_dir.o port/mail.o port/mnext.o \
 	port/ns_sock_host2ip.o port/platforminit.o \
 	port/randomBits.o \
-	port/rlimit.o port/runable.o port/samepath.o \
+	port/rlimit.o port/samepath.o \
 	port/sccs_getuser.o port/sccs_lockfile.o \
 	port/sccs_root.o port/sig.o port/socket2pipe.o \
 	port/spawn.o port/system.o \
@@ -128,8 +128,7 @@ DATA	= bitkeeper.config bkmsg.txt bkhelp.txt \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA) GUI
 
-# FASTPURIFY does not do overrun/underrun checking at each alloc/free
-CFLAGS	= $(CC_FAST)
+CFLAGS	= $(CC_DEBUG)
 CPPFLAGS= -Izlib -Imdbm
 # Override this if you don't have it.
 RANLIB	= ranlib

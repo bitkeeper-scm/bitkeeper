@@ -390,3 +390,70 @@ grep -q "has uncommitted changes" OUT || {
 	exit 1
 }
 echo OK
+
+# Facetime fix bug when trying to fix a cset with a missing file.
+echo $N Create a cset containing multiple files .....................$NL
+cd $HERE
+bk clone -q project facetime
+cd facetime
+# The names are important, we have to have a file sorted after kasplooey
+for i in blech whoops zorro
+do	echo $i > $i
+	bk new $Q $i
+done
+bk commit $Q -ybaseline
+bk edit $Q
+for i in blech whoops zorro
+do	echo change >> $i
+done
+bk ci $Q -ychange
+bk commit $Q -ychange
+echo OK
+
+echo $N Remove one of the s.files and attempt a fix -c ..............$NL
+rm -f SCCS/s.whoops
+bk fix -c > OUT 2>&1
+EXIT=$?
+for i in blech zorro
+do	test "${i}@1.2" = `bk prs -hr+ -nd:GFILE:@:REV: $i` || {
+		echo should not have removed top delta in $i
+		cat OUT
+		exit 1
+	}
+done
+grep -q 'File named by key' OUT || {
+	echo bad message
+	cat OUT
+	exit 1
+}
+grep -q 'whoops' OUT || {
+	echo bad message
+	cat OUT
+	exit 1
+}
+test $EXIT = 0 && {
+	echo fix should have exited with an error
+	exit 1
+}
+echo OK
+exit 0
+
+# This doesn't work, there is too much stuff that wants the gone file updated.
+echo $N Try it again, forcing it past errors ........................$NL
+bk fix -c -f > OUT 2>&1
+for i in blech whoops zorro
+do	test "${i}@1.1" = `bk prs -hr+ -nd:GFILE:@:REV: $i` || {
+		echo should have removed top delta in $i
+		bk sccslog
+		exit 1
+	}
+	test -f SCCS/c.$i || {
+		echo failed to save comments
+		exit 1
+	}
+done
+test $EXIT = 0 || {
+	echo fix should have not exited with an error
+	exit 1
+}
+echo OK

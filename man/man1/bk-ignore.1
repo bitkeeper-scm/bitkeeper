@@ -56,7 +56,12 @@ The ignore list is saved in the file
 You may edit this file if you wish; the format is simply one glob per line.
 Editing the ignore file is the only way to remove entries from the list.
 .LP
-There is currently no default list, but the following is suggested:
+The default ignore list is
+.DS
+BitKeeper/*/*
+PENDING/*
+.DE
+The following additions are suggested:
 .DS
 core
 *.o
@@ -66,9 +71,6 @@ core
 *~
 *.rej
 *.orig
-BitKeeper/etc/*
-BitKeeper/tmp/*
-BitKeeper/triggers/*
 .DE
 .SH BUGS
 .LP

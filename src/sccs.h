@@ -39,7 +39,7 @@
 #define	GET_REVNUMS	0x40000000	/* get -m: prefix each line with rev */
 #define GET_USER	0x80000000	/* get -u: prefix with user name */
 #define GET_SKIPGET	0x01000000	/* get -g: don't get the file */
-#define	GET_RCSEXPAND	0x02000000	/* do RCS keywords */
+/* available		0x02000000	   used to be GET_RCSEXPAND */
 #define	GET_ASCII	0x04000000	/* Do not gunzip/uudecode */
 #define	GET_LINENUM	0x08000000	/* get -N: show line numbers */
 #define	GET_MODNAME	0x00100000	/* get -n: prefix with %M */
@@ -875,7 +875,6 @@ int	readable(char *f);
 void 	randomBits(char *);
 int	samepath(char *a, char *b);
 int	writable(char *f);
-int	executable(char *f);
 char	*basenm(char *);
 char	*sccs2name(char *);
 char	*name2sccs(char *);
@@ -1058,8 +1057,9 @@ int	sccs_tagleaves(sccs *, delta **, delta **);
 ser_t	*sccs_set(sccs *, delta *, char *iLst, char *xLst);
 int	sccs_graph(sccs *s, delta *d, ser_t *map, char **inc, char **exc);
 
-int     http_connect(remote *r, char *cgi_script);
+int     http_connect(remote *r);
 int     http_send(remote *, char *, size_t, size_t, char *, char *); 
+int	http_fetch_direct(char *url, char *file);
 char *	user_preference(char *what);
 char	*bktmp(char *buf, const char *template);
 void	bktmpenv(void);
@@ -1143,7 +1143,6 @@ void	metaUnionResync2(void);
 int	sccs_istagkey(char *key);
 char	*testdate(time_t t);
 void	putroot(char *where);
-int	runable(char *file);
 int	uuencode(FILE *in, FILE *out);
 int	uudecode(FILE *in, FILE *out);
 void	sccs_unmkroot(char *path);
@@ -1169,7 +1168,6 @@ char	*hashstr(char *str);
 char	*secure_hashstr(char *str, char *key);
 int	write_log(char *root, char *file, int rotate, char *format, ...);
 void	delete_cset_cache(char *rootpath, int save);
-int	nFiles(void);
 void	notice(char *key, char *arg, char *type);
 pid_t	findpid(pid_t pid);
 void	save_log_markers(void);
@@ -1184,7 +1182,6 @@ void	fromTo(char *op, remote *r, remote *l);
 u32	adler32_file(char *filename);
 char	*findDotFile(char *old, char *new, char *buf);
 char	*platform(void);
-char	*find_prog(char *);
 char	*pager(void);
 int	bkmail(char *url, char **to, char *subject, char *file);
 int	sfiles_skipdir(char *dir);

@@ -20,7 +20,6 @@ private char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
 
 
 int	launch_wish(char *script, char **av);
-char	*find_perl5(void);
 private	void	cmdlog_exit(void);
 private	int	cmdlog_repo;
 private	void	cmdlog_dump(int, char **);
@@ -1144,33 +1143,6 @@ bk_sfiles(char *opts, int ac, char **av)
 	exit(100);
 }
 
-char *
-find_prog(char *prog)
-{
-	char *p, *s;
-	char path[MAXLINE];
-	static char prog_path[MAXPATH];
-	int more = 1;
-
-	p  = getenv("PATH");
-	if (p) {;
-		sprintf(path, "%s%c/usr/local/bin", p, PATH_DELIM);
-		localName2bkName(path, path);
-	} else {
-		strcpy(path, "/usr/local/bin");
-	}
-	p = path;
-	while (more) {
-		for (s = p; (*s != PATH_DELIM) && (*s != '\0');  s++);
-		if (*s == '\0') more = 0;
-		*s = '\0';
-		sprintf(prog_path, "%s/%s%s", p, prog, EXE);
-		if (exists(prog_path)) return (prog_path);
-		p = ++s;
-	}
-	return (0);
-}
-
 int
 launch_wish(char *script, char **av)
 {
@@ -1243,12 +1215,16 @@ shell(void)
 {
 	char	*sh;
 
+	/*
+	 * Remember that in the regressions we have a restricted PATH.
+	 * Search for BK_LIMITPATH
+	 */
 #ifndef	WIN32
 	if (sh = getenv("BK_SHELL")) return (sh);
-	if (sh = find_prog("bash")) return (sh);
-	if (sh = find_prog("ksh")) return (sh);
+	if (sh = whichp("bash", 0, 1)) return (sh);
+	if (sh = whichp("ksh", 0, 1)) return (sh);
 #endif
-	if (sh = find_prog("sh")) return (sh);
+	if (sh = whichp("sh", 0, 1)) return (sh);
 	assert("No shell" == 0);
 	return (0);	/* Windows warns otherwise */
 }

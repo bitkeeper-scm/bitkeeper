@@ -20,7 +20,10 @@ D=/c/build/buildenv
 mkdir -p $D
 
 W32TOOLS=/c/build/win32tools
-test -d $W32TOOLS || bk clone bk://data.bitmover.com/win32tools $W32TOOLS
+if [ -d $W32TOOLS ]
+then	(cd $W32TOOLS; bk pull)
+else	bk clone bk://data.bitmover.com/win32tools $W32TOOLS
+fi
 
 # generate hash of this script
 bk crypto -h - < $0 > /c/build/HASH.want
@@ -50,8 +53,8 @@ echo extracting MinGW
 mkdir $D/mingw
 tar -C$D/mingw -xzf $W32TOOLS/binutils-2.13.90-20030111-1.tar.gz
 tar -C$D/mingw -xzf $W32TOOLS/mingw-runtime-3.2.tar.gz
-tar -C$D/mingw -xzf $W32TOOLS/gcc-core-3.3.1-20030804-1.tar.gz
-tar -C$D/mingw -xzf $W32TOOLS/gcc-g++-3.3.1-20030804-1.tar.gz
+tar -C$D/mingw -xzf $W32TOOLS/gcc-core-3.4.1-20040711-1.tar.gz
+tar -C$D/mingw -xzf $W32TOOLS/gcc-g++-3.4.1-20040711-1.tar.gz
 tar -C$D/mingw -xzf $W32TOOLS/w32api-2.5.tar.gz
 
 echo extract perl

@@ -6190,7 +6190,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	MDBM	*DB = 0;
 	int	hash = 0;
 	int	hashFlags = 0;
-	int sccs_expanded, rcs_expanded;
+	int	sccs_expanded, rcs_expanded;
 	int	lf_pend = 0;
 	ser_t	serial;
 	char	align[16];
@@ -6260,13 +6260,11 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 		assert(proj_root(s->proj));
 	}
 
-	if (RCS(s) && (flags & GET_EXPAND)) flags |= GET_RCSEXPAND;
 	/* Think carefully before changing this */
 	if (((s->encoding != E_ASCII) && (s->encoding != E_GZIP)) || hash) {
-		flags &= ~(GET_EXPAND|GET_RCSEXPAND|GET_PREFIX);
+		flags &= ~(GET_EXPAND|GET_PREFIX);
 	}
-	unless (SCCS(s)) flags &= ~(GET_EXPAND);
-	unless (RCS(s)) flags &= ~(GET_RCSEXPAND);
+	unless (SCCS(s) || RCS(s)) flags &= ~GET_EXPAND;
 
 	if (flags & GET_LINENAME) {
 		lnum = calloc(s->nextserial, sizeof(*lnum));
@@ -6436,9 +6434,11 @@ out:			if (slist) free(slist);
 					fprintf(out, "%s\t", p);
 				}
 			}
+
 			e = buf;
 			sccs_expanded = rcs_expanded = 0;
-			if (flags & GET_EXPAND) {
+			unless (flags & GET_EXPAND) goto write;
+			if (SCCS(s)) {
 				for (e = buf; *e != '%' && *e != '\n'; e++);
 				if (*e == '%') {
 					e = e1 =
@@ -6450,19 +6450,20 @@ out:			if (slist) free(slist);
 					e = buf;
 				}
 			}
-			if (flags & GET_RCSEXPAND) {
+			if (RCS(s)) {
 				char	*t;
 
-				for (t = buf; *t != '$' && *t != '\n'; t++);
+				for (t = e; *t != '$' && *t != '\n'; t++);
 				if (*t == '$') {
 					e = e2 =
 					    rcsexpand(s, d, e, &rcs_expanded);
 					if (rcs_expanded && EXPAND1(s)) {
-						flags &= ~GET_RCSEXPAND;
+						flags &= ~GET_EXPAND;
 					}
 				}
 			} 
 
+write:
 			switch (encoding) {
 			    case E_GZIP|E_UUENCODE:
 			    case E_UUENCODE: {
@@ -7853,18 +7854,14 @@ expandnleq(sccs *s, delta *d, MMAP *gbuf, char *fbuf, int *flags)
 	if ((s->encoding != E_ASCII) && (s->encoding != E_GZIP)) {
 		return (MCMP_DIFF);
 	}
-	if (!(*flags & (GET_EXPAND|GET_RCSEXPAND))) return (MCMP_DIFF);
-	if (*flags & GET_EXPAND) {
+	unless (*flags & GET_EXPAND) return (MCMP_DIFF);
+	if (SCCS(s)) {
 		e = e1 = expand(s, d, e, &sccs_expanded);
-		if (EXPAND1(s)) {
-			if (sccs_expanded) *flags &= ~GET_EXPAND;
-		}
+		if (EXPAND1(s) && sccs_expanded) *flags &= ~GET_EXPAND;
 	}
-	if (*flags & GET_RCSEXPAND) {
+	if (RCS(s)) {
 		e = e2 = rcsexpand(s, d, e, &rcs_expanded);
-		if (EXPAND1(s)) {
-			if (rcs_expanded) *flags &= ~GET_RCSEXPAND;
-		}
+		if (EXPAND1(s) && rcs_expanded) *flags &= ~GET_EXPAND;
 	}
 	rc = mcmp(gbuf, e);
 	if (sccs_expanded) free(e1);
@@ -7903,8 +7900,8 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 	/* If the file type changed, it is a diff */
 	if (d->flags & D_MODE) {
 		if (fileType(s->mode) != fileType(d->mode)) RET(1);
-		if (S_ISLNK(s->mode)) RET(!streq(s->symlink, d->symlink));
 	}
+	if (S_ISLNK(s->mode)) RET(!streq(s->symlink, d->symlink));
 
 	/* If the path changed, it is a diff */
 	if (d->pathname) {
@@ -8455,12 +8452,27 @@ sccs_clean(sccs *s, u32 flags)
 	}
 
 	unless (HAS_PFILE(s)) {
-		unless (WRITABLE(s)) {
+		pfile	dummy = { "+", "?", "?", 0, "?", 0, 0, 0 };
+		int	flags = SILENT|GET_EXPAND;
+
+		if (isRegularFile(s->mode) && !IS_WRITABLE(s)) {
 			verbose((stderr, "Clean %s\n", s->gfile));
 			unless (flags & CLEAN_CHECKONLY) unlinkGfile(s);
 			return (0);
 		}
-		fprintf(stderr, "%s writable but not edited?\n", s->gfile);
+
+		/*
+		 * It's likely that they did a chmod +w on the file.
+		 * Go look and see if there are any diffs and if not,
+		 * clean it.
+		 */
+		unless (_hasDiffs(s, sccs_top(s), flags, 0, &dummy)) {
+			verbose((stderr, "Clean %s\n", s->gfile));
+			unless (flags & CLEAN_CHECKONLY) unlinkGfile(s);
+			return (0);
+		}
+		fprintf(stderr,
+		    "%s writable, with changes, but not edited.\n", s->gfile);
 		unless (flags & PRINT) return (1);
 		sccs_diffs(s, 0, 0, DIFF_HEADER|SILENT, DF_DIFF, stdout);
 		return (1);
@@ -8554,7 +8566,6 @@ sccs_clean(sccs *s, u32 flags)
 	unless (IS_EDITED(s)) { 
 		if ((s->encoding == E_ASCII) || (s->encoding == E_GZIP)) {
 			flags |= GET_EXPAND;
-			if (RCS(s)) flags |= GET_RCSEXPAND;
 		}
 	}
 	unless (bktmp(tmpfile, "diffg")) return (1);

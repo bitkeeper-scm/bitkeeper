@@ -152,14 +152,14 @@ fromTo(char *op, remote *f, remote *t)
 	if (f) {
 		from = remote_unparse(f);
 	} else {
-		tmp = remote_parse(proj_root(0), 1);
+		tmp = remote_parse(proj_root(0));
 		from = remote_unparse(tmp);
 		remote_free(tmp);
 	}
 	if (t) {
 		to = remote_unparse(t);
 	} else {
-		tmp = remote_parse(proj_root(0), 1);
+		tmp = remote_parse(proj_root(0));
 		to = remote_unparse(tmp);
 		remote_free(tmp);
 	}

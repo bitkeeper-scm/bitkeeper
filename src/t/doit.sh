@@ -92,7 +92,7 @@ unix_common_setup()
 	BK_LIMITPATH=/build/.bktools-$USER
 	rm -rf $BK_LIMITPATH
 	mkdir $BK_LIMITPATH
-	for f in awk expr sh grep egrep sed env test [ sleep getopts \
+	for f in awk expr sh ksh grep egrep sed env test [ sleep getopts \
 	    basename dirname cat cp ln mkdir mv rm rmdir touch wc xargs \
 	    co rcs ssh rsh gzip gunzip remsh rcmd uname \
 	    perl
@@ -235,10 +235,10 @@ setup_env()
 	BK_DOTBK=$BK_REGRESSION/.bk
 	export BK_DOTBK
 	TMPDIR=/build/.tmp-$USER
-	BKL_P=BKL5413557503d719ed00001200ffffe
-	BKL_P1=YgAAAo0AAAADgAAAADsCeUepwSCv8vdzC+zfqSI/LcdNEi6Oqas5Wj01Fa7w/0rY
-	BKL_P2=dGV7TM68nu7/Yw1sr5iwwEB4/BrY5EerWnFGYHhlOmnrgok04a4Ln/lLTpfFmpyd
-	BKL_P3=zR2DzsoRpyZDrgggmVjmb3IMm5OnW+zd6Di8IuaOkUSZJbjA9BzsZjlJiKIM
+	BKL_P=BKL54316b5003d71c9000001200ffffe
+	BKL_P1=YgAAAo0AAAADgAAAANeWSrorfi5t/kX5twCWkrDJukboDouPS+LG/MTHyQDR1dBJ
+	BKL_P2=ChDM6mO3QoKrhaUcxTtI8avce6YnEUhSzH/CVhYqPPrqX1QONT9S4qn2d3L/FufL
+	BKL_P3=St9lVeCrJaxJNni3VlR2znLbXWhIqy69VawOvBWuYE1eMSq4b96N+Vkt6ZIu
 	BKL_B=BKL53f52d2503d719ed00001100ffffe
 	BKL_B1=YgAAAo4AAAADgQAAAAFh6k0m5PVc4sDTeRu+SHHlRYu/J/S1JQC1uOWZ2d5W/uWF
 	BKL_B2=q+HaT/OgbdCyjQ0vTY65SVvgDml4U2q9yp3dxDJ58MZCarZiIyBcnFnxSddc2jeW
