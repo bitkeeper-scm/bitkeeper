@@ -465,6 +465,7 @@ err:		system("bk help -s prompt");
 		FILE	*out;
 
 		sprintf(buf, "%s 1>&2", pager);
+		signal(SIGPIPE, SIG_IGN);
 		out = popen(buf, "w");
 		EACH(lines) {
 			fprintf(out, "%s", lines[i]);
