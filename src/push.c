@@ -774,7 +774,7 @@ push(char **av, remote *r, char **envVar)
 {
 	int	ret;
 	int	gzip;
-	char	rev_list[MAXPATH];
+	char	rev_list[MAXPATH] = "";
 	char 	buf[MAXKEY];
 
 	gzip = opts.gzip && r->port;
@@ -797,7 +797,7 @@ push(char **av, remote *r, char **envVar)
 		    opts.lcsets, opts.rcsets, opts.rtags);
 	}
 	if (ret < 0) {
-		unlink(rev_list);
+		if (rev_list[0]) unlink(rev_list);
 		return (ret); /* failed */
 	}
 	return (push_part2(av, r, rev_list, ret, envVar));
