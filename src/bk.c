@@ -74,6 +74,7 @@ int	gone_main(int, char **);
 int	graft_main(int, char **);
 int	grep_main(int, char **);
 int	gzip_main(int, char **);
+int	has_main(int, char **);
 int	help_main(int, char **);
 int	helpsearch_main(int, char **);
 int	helptopics_main(int, char **);
@@ -248,6 +249,7 @@ struct	command cmdtbl[] = {
 	{"grep", grep_main},			/* doc 2.0 */
 	{"gnupatch", gnupatch_main},		/* doc 2.0 */
 	{"gone", gone_main},			/* doc 2.0 */
+	{"has", has_main},
 	{"help", help_main},			/* doc 2.0 */
 	{"helpsearch", helpsearch_main},	/* undoc 2.0 */
 	{"helptopics", helptopics_main},	/* undoc 2.0 */

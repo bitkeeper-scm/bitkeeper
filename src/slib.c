@@ -5143,7 +5143,7 @@ compressmap(sccs *s, delta *d, ser_t *set, char **inc, char **exc)
  * across calls.
  */
 private ser_t *
-serialmap(sccs *s, delta *d, int flags, char *iLst, char *xLst, int *errp)
+serialmap(sccs *s, delta *d, char *iLst, char *xLst, int *errp)
 {
 	ser_t	*slist;
 	delta	*t;
@@ -5233,6 +5233,14 @@ serialmap(sccs *s, delta *d, int flags, char *iLst, char *xLst, int *errp)
 	return (slist);
 bad:	free(slist);
 	return (0);
+}
+
+ser_t *
+sccs_set(sccs *s, delta *d, char *iLst, char *xLst)
+{
+	int	junk;
+
+	return (serialmap(s, d, iLst, xLst, &junk));
 }
 
 private void
@@ -6091,7 +6099,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	ser_t	serial;
 	char	align[16];
 
-	slist = d ? serialmap(s, d, flags, iLst, xLst, &error)
+	slist = d ? serialmap(s, d, iLst, xLst, &error)
 		  : setmap(s, D_SET, 0);
 	if (error == 1) {
 		assert(!slist);
@@ -6930,7 +6938,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		s->state |= S_WARNED;
 		goto done2;
 	}
-	slist = serialmap(s, d, flags, 0, 0, &error);
+	slist = serialmap(s, d, 0, 0, &error);
 	state = allocstate(0, 0, s->nextserial);
 	seekto(s, s->data);
 	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
@@ -7780,7 +7788,7 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 		RET(-1);
 	}
 	assert(s->state & S_SOPEN);
-	slist = serialmap(s, d, 0, pf.iLst, pf.xLst, &error);
+	slist = serialmap(s, d, pf.iLst, pf.xLst, &error);
 	assert(!error);
 	state = allocstate(0, 0, s->nextserial);
 	seekto(s, s->data);
@@ -10896,7 +10904,7 @@ delta_body(sccs *s, delta *n, MMAP *diffs, FILE *out, int *ap, int *dp, int *up)
 		zgets_init(s->where, s->size - s->data);
 		zputs_init();
 	}
-	slist = serialmap(s, n, 0, 0, 0, 0);	/* XXX - -gLIST */
+	slist = serialmap(s, n, 0, 0, 0);	/* XXX - -gLIST */
 	s->dsum = 0;
 	assert(s->state & S_SOPEN);
 	state = allocstate(0, 0, s->nextserial);
@@ -14467,9 +14475,9 @@ gca3(sccs *s, delta *left, delta *right, char **inc, char **exc)
 	gca = gca2(s, left, right);
 
 	errp = 0;
-	lmap = serialmap(s, left, 0, 0, 0, &errp);
-	rmap = serialmap(s, right, 0, 0, 0, &errp);
-	gmap = serialmap(s, gca, 0, 0, 0, &errp);
+	lmap = serialmap(s, left, 0, 0, &errp);
+	rmap = serialmap(s, right, 0, 0, &errp);
+	gmap = serialmap(s, gca, 0, 0, &errp);
 
 	if (errp || !lmap || !rmap || !gmap) goto bad;
 

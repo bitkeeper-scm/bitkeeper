@@ -1027,6 +1027,7 @@ char	*sccs_zone(time_t tt);
 MDBM	*sccs_tagConflicts(sccs *s);
 void	sccs_tagMerge(sccs *s, delta *d, char *tag);
 int	sccs_tagleaves(sccs *, delta **, delta **);
+ser_t	*sccs_set(sccs *, delta *, char *iLst, char *xLst);
 
 int     http_connect(remote *r, char *cgi_script);
 int     http_send(remote *, char *, size_t, size_t, char *, char *); 
