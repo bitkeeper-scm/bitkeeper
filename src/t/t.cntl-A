@@ -12,6 +12,7 @@
 # Copyright (c) 1999 Andrew Chang
 # %K%
 
+no_logging project
 echo $N check text file /w leading and trailing cntl-A \(append\)......$NL
 echo "hi mom" > data
 echo "hi dad" >> data

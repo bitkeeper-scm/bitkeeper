@@ -155,6 +155,10 @@ admin_main(int ac, char **av)
 		    "admin: comment may only be specifed with -i and/or -n\n");
 		goto usage;
 	}
+	if (compp && streq(compp, "gzip") && (bk_mode() == BK_BASIC)) {
+		fprintf(stderr, "gzip mode is not supported: %s", upgrade_msg);
+		return (1);
+	}
 	/* All of these need to be here: m/nextf are for resolve,
 	 * newfile is for !BK mode.
 	 */

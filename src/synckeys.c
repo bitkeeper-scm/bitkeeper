@@ -93,8 +93,8 @@ listkey_main(int ac, char **av)
 {
 	sccs	*s;
 	delta	*d = 0;
-	int	c, debug = 0, quiet = 0, nomatch = 1;
-	char	key[MAXKEY] = "", s_cset[] = CHANGESET;
+	int	c, debug = 0, quiet = 0, nomatch = 1, fastkey;
+	char	key[MAXKEY] = "", rootkey[MAXKEY], s_cset[] = CHANGESET;
 
 	while ((c = getopt(ac, av, "dq")) != -1) {
 		switch (c) {
@@ -109,6 +109,12 @@ listkey_main(int ac, char **av)
 		fprintf(stderr, "Can't init changeset\n");
 		return(3); /* cset error */
 	}
+
+	/*
+	 * Turn off fast key algorithm when in BK_BASIC mode
+	 */
+	fastkey = (bk_mode() == BK_BASIC) ? 0 : 1;
+	sccs_sdelta(s, sccs_ino(s), rootkey);
 
 	/*
 	 * Phase 1, get the probe keys.
@@ -135,6 +141,7 @@ listkey_main(int ac, char **av)
 			d = 0;
 			continue;
 		}
+		if (!fastkey && !streq(key, rootkey)) continue;
 		if (!d && (d = sccs_findKey(s, key))) {
 			sccs_color(s, d);
 			if (debug) {
