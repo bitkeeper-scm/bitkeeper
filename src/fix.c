@@ -75,17 +75,24 @@ do_cset(char *qflag)
 			exit(1);
 		}
 		d = sccs_getrev(s, "+", 0, 0);
+		if (CSET(s) && d->merge) {
+			fprintf(stderr, "Unable to fix merge changesets.\n");
+			sccs_free(s);
+			exit(1);
+		}
 		unless (d && streq(p, d->rev)) {
 			fprintf(stderr,
 			    "Unable to fix this changeset, "
 			    "%s has a delta beyond %s\n",
 			    s->gfile, p);
+			sccs_free(s);
 			exit(1);
 		}
 		if (sccs_clean(s, SILENT)) {
 			fprintf(stderr,
 			    "Unable to fix this changeset, %s is modified\n",
 			    s->gfile);
+			sccs_free(s);
 			exit(1);
 		}
 		free(n);
