@@ -47,7 +47,7 @@ proc highlight {id type {rev ""}} \
 	set x1 [lindex $bb 0]
 	set y1 [expr [lindex $bb 1] - 1]
 	set x2 [lindex $bb 2]
-	set y2 [expr [lindex $bb 3] + 1]
+	set y2 [expr [lindex $bb 3] - 2]
 
 	#puts "highlight: REV ($rev)"
 	switch $type {
@@ -689,6 +689,11 @@ proc filltext {win f clear} \
 		#puts "str=($str)"
 	}
 	catch {close $f} ignore
+	set line [$win get "end - 1 char linestart" end]
+	while {"$line" == "\n"} {
+		$win delete "end - 1 char linestart" end
+		set line [$win get "end - 1 char linestart" end]
+	}
 	$win configure -state disabled
 	searchreset
 	set search(prompt) "Welcome"
