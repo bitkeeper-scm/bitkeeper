@@ -112,7 +112,7 @@ _superset() {
 	shift `expr $OPTIND - 1`
 	export PAGER=cat
 	test "X$@" = X && {
-		test "X`bk parent -l`" = "X" && exit 1
+		test "X`bk parent -il1`" = "X" && exit 1
 	}
 	bk changes -Laq $CHANGES "$@" > $TMP2
 	test -s $TMP2 && {
@@ -196,7 +196,7 @@ _superset() {
 		exit 0
 	}
 	if [ $# -eq 0 ]
-	then	PARENT=`bk parent -l`
+	then	PARENT=`bk parent -il1`
 	else	PARENT="$@"
 	fi
 	echo "Child:  `bk gethost`:`pwd`"
@@ -899,9 +899,9 @@ _clonemod() {
 
 	bk clone -lq $2 $3 || exit 1
 	cd $3 || exit 1
-	bk parent -iq $1 || exit 1
+	bk parent -siq $1 || exit 1
 	bk undo -q -fa`bk repogca` || exit 1
-	bk pull `bk parent -iil`
+	bk pull `bk parent -il1`
 }
 
 _leaseflush() {
