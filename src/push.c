@@ -81,6 +81,7 @@ usage:			system("bk help -s push");
 			fprintf(stderr,
 				"push: remote locked, trying again...\n");
 		}
+		disconnect(r, 2); /* close fd before we retry */
 		remote_free(r);
 
 		sleep(min((i++ * 2), 10)); /* auto back off */

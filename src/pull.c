@@ -80,6 +80,7 @@ usage:			system("bk help -s push");
 			fprintf(stderr,
 			    "pull: remote locked, trying again...\n");
 		}
+		disconnect(r, 2);
 		sleep(min((i++ * 2), 10));
 	}
 	if (rc == -2) rc = 1; /* if retry failed, rest exit code to 1 */
