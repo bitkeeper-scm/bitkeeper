@@ -76,21 +76,22 @@ pull_main(int ac, char **av)
 	}
 
 	loadNetLib();
+
+	/*
+	 * Get pull parent(s)
+	 * Must do this before we chdir()
+	 */
+	if (av[optind]) {
+		while (av[optind]) {
+			urls = addLine(urls, normalize_file_url(av[optind++]));
+		}
+	}
+
 	if (proj_cd2root()) {
 		fprintf(stderr, "pull: cannot find package root.\n");
 		exit(1);
 	}
-
-	/*
-	 * Get pull parent(s)
-	 */
-	if (av[optind]) {
-		while (av[optind]) {
-			urls = addLine(urls, strdup(av[optind++]));
-		}
-	} else {
-		urls = parent_pullp();
-	}
+	unless (urls)  urls = parent_pullp();
 
 	unless (urls) {
 err:		freeLines(envVar, free);

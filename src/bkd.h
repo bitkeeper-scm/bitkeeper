@@ -112,6 +112,7 @@ extern	char *logRoot;
 void	bkd_server(int, char **);
 remote	*remote_parse(const char *url, int is_clone);
 char	*remote_unparse(remote *r);
+char	*normalize_file_url(char *url);
 pid_t	bkd(int compress, remote *r);
 void	bkd_reap(pid_t resync, int r_pipe, int w_pipe);
 int	gunzip2fd(char *input, int len, int fd, int hflag);

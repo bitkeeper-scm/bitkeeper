@@ -9,6 +9,11 @@
 #    constitutes your permission for BitMover, Inc. to distribute  the
 #    modifications under any license.
 
+case "$HERE" in
+	[CD]:/*)	PREFIX=file://$HERE;;
+	*)		PREFIX=file:/$HERE;;
+esac
+
 # Tests for pull, push, and clone.
 echo $N Create initial repository ...................................$NL
 no_logging project
@@ -319,5 +324,14 @@ bk pull $Q || {
 }
 chmod +w $HERE/project/SCCS
 echo OK
+
+echo $N make sure pull normalize file url ...........................$NL
+bk pull ../././project > $HERE/pull.out 2> /dev/null
+grep -q "$PREFIX/project" $HERE/pull.out || {
+	echo failed;
+	exit 1;
+}
+echo OK
+
 
 # XXX TODO need test case for pull/pull/clone to/from space in pathname

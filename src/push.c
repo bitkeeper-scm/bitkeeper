@@ -79,6 +79,16 @@ push_main(int ac, char **av)
 	}
 
 	loadNetLib();
+	/*
+	 * Get push parent(s)
+	 * Must do this before we chdir()
+	 */
+	if (av[optind]) {
+		while (av[optind]) {
+			urls = addLine(urls, normalize_file_url(av[optind++]));
+		}
+	}
+
 	if (proj_cd2root()) {
 		fprintf(opts.out, "push: cannot find package root.\n");
 		exit(1);
@@ -88,14 +98,7 @@ push_main(int ac, char **av)
 		exit(1);
 	}                                                                       
 
-	/*
-	 * Get push parent(s)
-	 */
-	if (av[optind]) {
-		while (av[optind]) {
-			urls = addLine(urls, strdup(av[optind++]));
-		}
-	} else {
+	unless (urls) {
 		urls = parent_pushp();
 		if (opts.verbose) print_title = 1;
 	}
