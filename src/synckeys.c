@@ -589,7 +589,7 @@ ChangeSet file do not match.  Please check the pathnames and try again.\n");
 int
 synckeys_main(int ac, char **av)
 {
-	char	c;
+	int	c;
 	remote  *r;
 	int 	flags = 0;
 

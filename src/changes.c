@@ -256,9 +256,10 @@ doit(int dash)
 			/* ignore blank lines and comments */
 			if ((*cmd == '#') || (*cmd == '\n')) continue;
 			chomp(cmd);
-			e = sccs_getrev(s, cmd, NULL, 0);
+			e = sccs_getrev(s, cmd, 0, 0);
 			unless (e) {
-				fprintf(stderr, "Illegal line: %s", cmd);
+				fprintf(stderr,
+				    "changes: can't find key: %s\n", cmd);
 				sccs_free(s);
 				return (1);
 			}
