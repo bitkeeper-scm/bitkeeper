@@ -8,7 +8,7 @@ private int	win32link(const char *from, const char *to);
 
 private	char	*uniqfile(const char *file);
 private	int	linkcount(const char *file);
-private int	share_open(const char *file);
+private int	readlockf(const char *file, pid_t *, char **hostp, time_t *tp);
 
 /*
  * Create a file with a unique name,
@@ -119,7 +119,7 @@ sccs_stalelock(const char *file, int discard)
 	time_t	t;
 	const	int DAY = 24*60*60;
 
-	if (sccs_readlockf(file, &pid, &host, &t) == -1) return (0);
+	if (readlockf(file, &pid, &host, &t) == -1) return (0);
 
 	if (streq(host, sccs_realhost()) && !isLocalHost(host)) {
 		if (findpid(pid) == 0) {
@@ -153,7 +153,7 @@ sccs_mylock(const char *file)
 	pid_t	pid;
 	time_t	t;
 
-	if (sccs_readlockf(file, &pid, &host, &t) == -1) return (0);
+	if (readlockf(file, &pid, &host, &t) == -1) return (0);
 	if ((getpid() == pid) &&
 	    streq(host, sccs_realhost()) && !isLocalHost(host)) {
 	    	free(host);
@@ -163,8 +163,8 @@ sccs_mylock(const char *file)
 	return (0);
 }
 
-int
-sccs_readlockf(const char *file, pid_t *pidp, char **hostp, time_t *tp)
+private int
+readlockf(const char *file, pid_t *pidp, char **hostp, time_t *tp)
 {
 	int	fd, flen;
 	int	try = 0;
@@ -172,7 +172,8 @@ sccs_readlockf(const char *file, pid_t *pidp, char **hostp, time_t *tp)
 	char	*host, *p;
 	int	i, n;
 
-	unless ((fd = share_open(file)) >= 0) return (-1);
+again:	unless ((fd = open(file, O_RDONLY, 0)) >= 0) return (-1);
+
 	bzero(buf, sizeof(buf));
 	if ((flen = fsize(fd)) < 0) {
 		perror("fsize");
@@ -207,7 +208,7 @@ sccs_readlockf(const char *file, pid_t *pidp, char **hostp, time_t *tp)
 		return(-1);
 	}
 	assert(flen > 0);
-	for (;;) {
+	for (try = 0; ; ) {
 		unless ((n = read(fd, buf, flen)) == flen) {
 			close(fd);
 			return (-1);
@@ -217,7 +218,7 @@ sccs_readlockf(const char *file, pid_t *pidp, char **hostp, time_t *tp)
 		if (i == 2) break;	/* should be pid host time_t */
 		if (++try >= 100) {
 			close(fd);
-			fprintf(stderr, "sccs_readlockf: read failed\n");
+			fprintf(stderr, "readlockf: read failed\n");
 			return (-1);
 		}
 		usleep(5000);
@@ -287,50 +288,5 @@ linkcount(const char *file)
 	if (stat(file, &sb) != 0) return (-1);
 	return (sb.st_nlink);
 
-}
-#endif
-
-
-#ifdef WIN32
-/*
- * We need this because we need access to the native win32 error code
- * to filter out spurious error messages. 
- */
-private int
-share_open(const char *file)
-{
-	int fd;
-
-	unless ((fd = open(file, O_RDONLY, 0)) >= 0) {
-		int err = GetLastError();
-
-		if ((err != ERROR_SHARING_VIOLATION) &&
-		    (err != ERROR_PATH_NOT_FOUND) &&
-		    (err != ERROR_FILE_NOT_FOUND)) {
-			fprintf(stderr,
-			    "sccs_readlock: cannot open %s, win32 err %lu\n",
-			    file, GetLastError());
-			return (-1);
-		}
-		return (-1);	/* unknown, may have lost race */
-	}
-	return (fd);
-}
-#else
-private int
-share_open(const char *file)
-{
-	int fd;
-
-	unless ((fd = open(file, O_RDONLY, 0)) >= 0) {
-		if (exists((char*)file)) {
-			fprintf(stderr,
-			    "sccs_readlock: cannot open %s\n", file);
-			perror(file);
-			return (-1);
-		}
-		return (-1);	/* unknown, may have lost race */
-	}
-	return (fd);
 }
 #endif

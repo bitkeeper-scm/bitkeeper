@@ -49,6 +49,11 @@ platformInit(char **av)
 	 */
 	putenv("TMP=");
 
+	/*
+	 * If we don't have a /tmp on Windows, try and make one.
+	 */
+	unless (exists("/tmp")) mkdir("/tmp", 0777);
+
  	/*
 	 * Default to binary mode on all files
 	 */
