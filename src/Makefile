@@ -478,8 +478,9 @@ fm3tool: gui/fm3tool.tcl gui/config.tcl gui/common.tcl port/$(SYS)_platform.tcl
 msg: gui/msg.tcl
 	cat gui/msg.tcl > msg
 
-rpm:	bk.spec production
-	rpm -bb bk.spec
+#rpm:	bk.spec production
+#	rpm -bb bk.spec
+rpm: pkg
 
 pkg: install-nolinks epmhelper.sh
 	rm -rf tmp/bitkeeper; \
