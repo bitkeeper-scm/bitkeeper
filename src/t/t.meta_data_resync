@@ -161,15 +161,18 @@ cd $HERE/copy/src
 bk admin $Q -fEXPAND1 foo.c
 bk commit $S -yperm3
 bk resync -t $Q $HERE/project $HERE/copy
+cd $HERE
+tar cf TAR copy project
+set -x
 bk resolve -t $Q $HERE/copy 2>/dev/null 1>&2 <<EOF
 r
 u
 EOF
-FLAGS=`bk prs -h -r1.4 -d:FLAGS: foo.c`
+cd $HERE/copy/src
+FLAGS=`bk prs -h -r+ -d:FLAGS: foo.c`
 if [ "$FLAGS" != "BITKEEPER,YEAR4,RCS,SCCS,EXPAND1,CSETMARKED" ]
 then	echo failed with mode $FLAGS
 	bk prs -h -d':REV:\t:FLAGS:' foo.c
-	#cat SCCS/s.foo.c
 	exit 1
 fi
 echo OK
