@@ -104,10 +104,9 @@ sccs_getUserName(delta *n)
  * 		WIN32 version  of sccs_getXXXX
  * -------------------------------------------------------------
  */
-#include <windows.h>  /* this must be before sccs.h */
 #include "../system.h"
 #include "../sccs.h"
-WHATSTR("@(#)awc@etp3.bitmover.com|src/port/getinput.c|19990702161620");
+WHATSTR("%K%");
 
 int
 sccs_getComments(char *file, char *rev, delta *n)

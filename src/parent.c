@@ -1,16 +1,16 @@
-#include "system.h"
-#include "sccs.h"
+#include "bkd.h"
 
 #define	PARENT "BitKeeper/log/parent"
+
+char * getParent(char *buf, int len);
 
 int
 parent_main(int ac,  char **av)
 {
 	char	buf[MAXLINE];
-	char	parent[MAXPATH] = PARENT;
-	char	pdir[MAXPATH];
 	FILE	*f;
 	int	c, do_remove = 0, quiet = 0;
+	remote	*r;
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help parent");
@@ -19,7 +19,7 @@ parent_main(int ac,  char **av)
 
 	if (sccs_cd2root(0, 0) == -1) {
 		fprintf(stderr, "parent: cannot find package root.\n");
-		exit(1);
+		return (1);
 	}
 
 	while ((c = getopt(ac, av, "qr")) != -1) {
@@ -28,7 +28,7 @@ parent_main(int ac,  char **av)
 		    case 'r': do_remove = 1; break;	/* doc 2.0 */
 		    default:
 			system("bk help -s parent");
-			exit(1);
+			return (1);
 		}
 	}
 	if (do_remove) {
@@ -40,63 +40,69 @@ parent_main(int ac,  char **av)
 				printf("Removed parent pointer\n");
 			}
 		}
-		if (exists(PARENT)) exit(1);
-		exit(0);
+		if (exists(PARENT)) return (1);
+		return (0);
 	}
-
-#ifdef WIN32
-	/* account for dos path */
-	if (av[optind] && strchr(av[optind], ':') && av[optind][1] != ':') {
-#else
-	if (av[optind] && strchr(av[optind], ':')) {
-#endif
-		/* we have a host:dir format */
-		mkdirf(parent);
-		f = fopen(parent, "wb");
-		assert(f);
-		fprintf(f, "%s\n", av[optind]);
-		fclose(f);
-		unless(quiet) printf("Set parent to %s\n", av[optind]);
-		exit(0);
-	}
-
+	
 	if (av[optind] == NULL) {
-		if (exists(PARENT)) {
-			printf("Parent repository is ");
-			f = fopen(PARENT, "rt");
-			while (fgets(buf, sizeof(buf), f)) fputs(buf, stdout);
-			fclose(f);
-			exit(0);
+		if (getParent(buf, sizeof buf)) {
+			printf("Parent repository is %s\n", buf);
+			return (0);
 		}
-
-		/*
-		 * Warning:
-		 * Do not change the following message string
-		 * We look for it in remote_parse()
-		 */
 		printf("This package has no parent\n");
-		exit(1);
-	}
-	sprintf(buf, "%s/BitKeeper/etc", av[optind]);
-	unless (isdir(buf)) {
-		printf("%s is not a BitKeeper package root\n", av[optind]);
-		exit(1);
+		return (1);
 	}
 
-	strcpy(parent,  fullname(PARENT, 0));
-	if (chdir(av[optind]) != 0) {
-		fprintf(stderr, "Cannot find %s\n", av[1]);
-		exit(1);
+
+	r = remote_parse(av[optind], 0);
+	unless (r) {
+		fprintf(stderr, "Invalid parent address: %s\n", av[optind]);
+		return (1);
 	}
-	getcwd(pdir, sizeof(pdir));
-	assert(IsFullPath(pdir));
-	mkdirf(parent);
-	f = fopen(parent, "wb");
+	if (!r->host || isLocalHost(r->host)) {
+		if (r->path) {
+			sprintf(buf, "%s/BitKeeper/etc", r->path);
+			unless (isdir(buf)) {
+				printf("%s is not a BitKeeper package root\n",
+					r->path);
+				return (1);
+			}
+			unless (IsFullPath(r->path)) {
+				free(r->path);
+				r->path = strdup(fullname(r->path, 0));
+			}
+		}
+		if (r->host) free(r->host);
+		r->host = strdup(sccs_gethost());
+	}
+
+
+	strcpy(buf, PARENT);
+	mkdirf(buf);
+	f = fopen(PARENT, "wb");
 	assert(f);
-	fprintf(f, "%s:%s\n", sccs_gethost(),  pdir);
+	fprintf(f, "%s\n", remote_unparse(r));
 	fclose(f);
-	unless (quiet) {
-		printf("Set parent to %s:%s\n", sccs_gethost(),  pdir);
-	}
-	exit (0);
+	unless (quiet) printf("Set parent to %s\n", remote_unparse(r));
+	free(r);
+	return (0);
+}
+
+
+char *
+getParent(char *buf, int len)
+{
+	char	*p;
+	FILE 	*f;
+
+	assert(bk_proj && bk_proj->root);
+	p = aprintf("%s/%s", bk_proj->root, PARENT);
+	f = fopen(p, "rt");
+	free(p);
+	unless (f)  return (NULL);
+	buf[0] = 0;
+	fgets(buf, len, f);
+	chop(buf);
+	fclose(f);
+	return (buf);
 }

@@ -1,7 +1,4 @@
 /* %K% Copyright (c) 1999 Andrew Chang */
-#ifdef WIN32
-#include <windows.h>
-#endif
 #include "system.h"
 #include "sccs.h"
 
@@ -11,7 +8,7 @@ private char *usage = "pwd [-sc] [path]\n";
 
 pwd_main(int ac, char **av)
 {
-	char	buf[1024], *p;
+	char	buf[MAXPATH], *p;
 	int	c, shortname = 0, cygwin = 0;
 
 	setmode(1, _O_BINARY);
@@ -35,7 +32,7 @@ pwd_main(int ac, char **av)
 	if (getRealCwd(p, sizeof buf -3) == NULL){
 		perror("getcwd");
 	}
-#ifdef WIN32
+#ifdef WIN32 /* handle drive, shortname and cygwin path */
 	if (*p == '/') {
 		buf[1] = 'A' + _getdrive() - 1;
 		buf[2] = ':';

@@ -1,21 +1,8 @@
 /*
  * Copyright (c) 2000, Andrew Chang
  */    
-#ifdef	WIN32
-#include <windows.h>
 #include "system.h"
 #include "sccs.h"
-#else
-#include "system.h"
-#include "sccs.h"
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <arpa/nameser.h>
-#include <sys/ioctl.h>
-#include <netdb.h>
-#include <resolv.h>
-#endif
 
 #define	SEND_SUCCESS	0
 #define	SEND_FAILURE	1
@@ -113,35 +100,6 @@ host2ip(char *host, int trace)
 	return (inaddr.sin_addr.s_addr);
 }
 
-unsigned long
-ns_sock_host2ip(char *host, int trace)
-{
-#ifdef	WIN32
-	return (host2ip(host, trace));
-#else
-	char	*p;
-	int	nscount_sav;
-	unsigned long ip, nsaddr_sav;
-
-	p = getenv("SOCKS_NS");
-	if (p && *p) {
-		gethostbyname("localhost"); /* force init the res structure */
-		res_init();
-		/* save the original values */
-		nsaddr_sav = _res.nsaddr_list[0].sin_addr.s_addr;
-		nscount_sav = _res.nscount;
-		_res.nsaddr_list[0].sin_addr.s_addr = inet_addr(p);
-		_res.nscount = 1;
-		ip = host2ip(host, trace);
-		/* restore the original values */
-		_res.nsaddr_list[0].sin_addr.s_addr = nsaddr_sav;
-		_res.nscount = nscount_sav;
-		return ip;
-	} else {
-		return (host2ip(host, trace));
-	}
-#endif
-}
 
 int
 connect_srv(char *srv, int port, int trace)

@@ -50,6 +50,7 @@ private int	writeCheck(sccs *s, MDBM *db);
 private MDBM	*localDB;	/* real name cache for local tree */
 private MDBM	*resyncDB;	/* real name cache for resyn tree */
 
+
 int
 resolve_main(int ac, char **av)
 {
@@ -100,15 +101,13 @@ resolve_main(int ac, char **av)
 	unless (opts.mergeprog) opts.mergeprog = "merge";
 	if ((av[optind] != 0) && isdir(av[optind])) chdir(av[optind]);
 
-#ifndef WIN32
-	if (opts.pass3 && !opts.textOnly && !getenv("DISPLAY")) {
+	if (opts.pass3 && !opts.textOnly && !hasGUIsupport()) {
 		opts.textOnly = 1; 
 	}
-	if (opts.pass3 && !opts.textOnly && !opts.quiet && getenv("DISPLAY")) {
+	if (opts.pass3 && !opts.textOnly && !opts.quiet && hasGUIsupport()) {
 		fprintf(stderr,
-		    "Using %s as graphical display\n", getenv("DISPLAY"));
+		    "Using %s as graphical display\n", GUI_display());
 	}
-#endif
 
 	if (opts.automerge) {
 		unless (comment || opts.comment) opts.comment = "Automerge";

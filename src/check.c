@@ -549,9 +549,7 @@ buildKeys()
 		assert(t);
 		*t++ = 0;
 		r = strchr(t, '\n');
-#ifdef WIN32
-		if (r[-1] == '\r') r[-1] = 0; /* remove DOS '\r' */
-#endif
+		//if (r[-1] == '\r') r[-1] = 0; /* remove DOS '\r' */
 		*r++ = 0;
 		assert(t);
 		if (mdbm_store_str(db, t, s, MDBM_INSERT)) {

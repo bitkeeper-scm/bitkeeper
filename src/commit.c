@@ -425,13 +425,11 @@ make_comment(char *cmt, char *commentFile)
 	int fd;
 	int flags = O_CREAT|O_TRUNC|O_WRONLY;
 
-#ifdef WIN32
-	flags |= _O_TEXT;
-#endif
 	if ((fd = open(commentFile, flags, 0664)) == -1)  {
 		perror("commit");
 		return (1);
 	}
+	setmode(fd, O_TEXT);
 	write(fd, cmt, strlen(cmt));
 	close(fd);
 	return (0);

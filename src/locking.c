@@ -247,6 +247,7 @@ repository_rdlock()
 	return (0);
 }
 
+
 /*
  * Try and get a write lock for the whole repository.
  * Return -1 if failed, 0 if it worked.
@@ -257,9 +258,6 @@ repository_wrlock()
 	char	path[MAXPATH];
 	char	lock[MAXPATH];
 	project	*p;
-#ifndef WIN32
-	struct	stat sbuf;
-#endif
 
 	unless (p = proj_init(0)) return (-1);
 	unless (p->root) {
@@ -297,13 +295,7 @@ fail:		proj_free(p);
 	 * See the linux open(2) man page.
 	 * We do the lock, then make sure no readers slipped in.
 	 */
-#ifndef WIN32
-	if ((link(path, lock) != 0) || (stat(path, &sbuf) != 0) ||
-	    (sbuf.st_nlink != 2)) {
-	    	unlink(path);
-	    	goto fail;
-	}
-#endif
+	if (lockLeak(path, lock)) goto fail;
 
 	/*
 	 * Make sure no readers sneaked in
@@ -421,9 +413,6 @@ repository_wrunlock(int force)
 	rmdir(path);
 
 out:	proj_free(p);
-#ifdef WIN32
-	usleep(0); /* for NT cache problem */
-#endif
 	return (error);
 }
 

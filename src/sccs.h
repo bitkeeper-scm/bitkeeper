@@ -992,6 +992,9 @@ int	smallTree(int threshold);
 MDBM	*csetDiff(MDBM *, int);
 char	*aprintf(char *fmt, ...);
 void	enableFastPendingScan();
+char	*isHostColonPath(char *);
+int	hasGUIsupport();
+char	*GUI_display();
 
 extern char *bk_vers;
 extern char *bk_utc;

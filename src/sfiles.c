@@ -651,7 +651,7 @@ lftw_inner(char *path, char *base, struct stat *sb,
 	DIR		*d;
 	struct dirent	*e;
 	int		mode, n, plus2 = strneq(path, "./", 2);
-#ifndef WIN32
+#ifndef WIN32	/* Linux 2.3.x NFS bug, skip repeats. */
 	ino_t		lastInode = 0;
 #endif
 
@@ -661,10 +661,7 @@ lftw_inner(char *path, char *base, struct stat *sb,
 	}
 	if (base[-1] != '/') *base++ = '/';
 	while ((e = readdir(d)) != NULL) {
-#ifndef WIN32
-		/*
-		 * Linux 2.3.x NFS bug, skip repeats.
-		 */
+#ifndef WIN32	/* Linux 2.3.x NFS bug, skip repeats. */
 		if (lastInode == e->d_ino) continue;
 		lastInode = e->d_ino;
 #endif

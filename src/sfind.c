@@ -559,7 +559,7 @@ walk(char *dir, int level)
 	DIR	*dh, *sccs_dh;
 	char	buf[MAXPATH], *p;
 	fifo	dlist = {0, 0};
-#ifndef WIN32
+#ifndef WIN32	/* Linux 2.3.x NFS bug, skip repeats. */
         ino_t	lastInode = 0;
 #endif                                 
 
@@ -625,10 +625,7 @@ walk(char *dir, int level)
 			goto done;
 		}
 		while ((e = readdir(dh)) != NULL) { 
-#ifndef WIN32
-			/*
-			 * Linux 2.3.x NFS bug, skip repeats.
-			 */
+#ifndef WIN32		/* Linux 2.3.x NFS bug, skip repeats. */
 			if (lastInode == e->d_ino) continue;
 			lastInode = e->d_ino;
 #endif
@@ -680,11 +677,6 @@ progress(int force)
 	if (force == 2) {
 		usleep(300000);		/* let TK update */
 	}
-#ifdef WIN32
-	else {
-		usleep(0);		/* let TK update */
-	}
-#endif
 }
 
 private int
@@ -885,7 +877,7 @@ sccsdir(char *dir, int level, DIR *sccs_dh, char buf[MAXPATH])
 	datum	k;
 	sccs	*s = 0;
 	q_item	*i;
-#ifndef WIN32
+#ifndef WIN32	/* Linux 2.3.x NFS bug, skip repeats. */
         ino_t	lastInode = 0;
 #endif                                 
 
@@ -893,10 +885,7 @@ sccsdir(char *dir, int level, DIR *sccs_dh, char buf[MAXPATH])
 	 * Get all the SCCS/?.files
 	 */
 	while (e = readdir(sccs_dh)) {
-#ifndef WIN32
-		/*
-		 * Linux 2.3.x NFS bug, skip repeats.
-		 */
+#ifndef WIN32	/* Linux 2.3.x NFS bug, skip repeats. */
 		if (lastInode == e->d_ino) continue;
 		lastInode = e->d_ino;
 #endif
@@ -938,10 +927,7 @@ sccsdir(char *dir, int level, DIR *sccs_dh, char buf[MAXPATH])
 	 */
 	dh = opendir(dir);
 	while (e = readdir(dh)) {
-#ifndef WIN32
-		/*
-		 * Linux 2.3.x NFS bug, skip repeats.
-		 */
+#ifndef WIN32	/* Linux 2.3.x NFS bug, skip repeats. */
 		if (lastInode == e->d_ino) continue;
 		lastInode = e->d_ino;
 #endif

@@ -83,9 +83,7 @@ doit(int verbose, char *rev, int indent, int tagOnly, int dash)
 		if (dashfile[0]) unlink(dashfile);
 		return (0);
 	}
-#ifndef WIN32
 	signal(SIGPIPE, SIG_IGN);
-#endif
 	pid = spawnvp_wPipe(av, &pfd, 0);
 	close(1);
 	dup2(pfd, 1);

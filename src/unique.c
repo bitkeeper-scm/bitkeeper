@@ -73,11 +73,9 @@ keysHome()
 		free(t);
 		return (keysFile = (strdup)(path));
 	}
-#ifndef WIN32
-	if (exists("/var/bitkeeper/keys")) {
-		return (keysFile = (strdup)("/var/bitkeeper/keys"));
+	if (exists(SHARED_KEYDIR)) {
+		return (keysFile = (strdup)(SHARED_KEYDIR));
 	}
-#endif
 	sprintf(path, "%s/.bk_keys", TMP_PATH);
 	return (keysFile = (strdup)(path));
 }

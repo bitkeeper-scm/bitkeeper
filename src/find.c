@@ -85,7 +85,7 @@ walk(char *path)
 	DIR		*d;
 	struct dirent	*e;
 	struct stat	sb;
-#ifndef WIN32
+#ifndef WIN32	/* Linux 2.3.x NFS bug, skip repeats */
 	ino_t		lastInode = 0;
 #endif
 
@@ -100,10 +100,7 @@ walk(char *path)
 		len = 0;
 	}
 	while ((e = readdir(d)) != NULL) {
-#ifndef WIN32
-		/*
-		 * Linux 2.3.x NFS bug, skip repeats.
-		 */
+#ifndef WIN32	/* Linux 2.3.x NFS bug, skip repeats */
 		if (lastInode == e->d_ino) continue;
 		lastInode = e->d_ino;
 #endif

@@ -1,6 +1,3 @@
-#ifdef WIN32
-#include <objbase.h>
-#endif
 #include "../system.h"
 #include "../sccs.h"
 

@@ -12,7 +12,25 @@
 #include <time.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <../../../win32.h>
+#include <io.h>
+#include <stdarg.h>     /* for _vsnprintf */
+#include <time.h>
+#include <share.h>      /* for locks */
+#include <errno.h>
+#include <string.h>
+#include <direct.h>
+#include <process.h>
+#include <sys/types.h>
+#include <sys/utime.h>
+#include "../../uwtlib/sys/wait.h"
+#include "../../uwtlib/misc.h"
+#include "../../uwtlib/stat.h"
+#include "../../uwtlib/mman.h"
+#include "../../uwtlib/times.h"
+#include "../../uwtlib/dirent.h"
+#include "../../uwtlib/utsname.h"
+#include "../../uwtlib/re_map_decl.h"
+#include "../../uwtlib/re_map.h"
 
 #undef	SHORT_FILE_NAMES 
 #undef	INHIBIT_STRING_HEADER
