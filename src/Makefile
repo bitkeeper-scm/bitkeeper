@@ -114,11 +114,13 @@ LZLIB	= -Lzlib -lz
 # Override this if you don't have it.
 RANLIB	= ranlib
 SRCS	= $(OBJ:.o=.c) $(MDBMOBJ:.o=.c) $(ZLIBOBJ:.o=.c) 
-HDRS	= bkd.h lib_tcp.h mmap.h logging.h purify.h range.h resolve.h sccs.h \
-	  system.h $(SYS).h mdbm/common.h mdbm/mdbm.h mdbm/tune.h zgets.h \
-	  zlib/deflate.h zlib/infblock.h zlib/infcodes.h zlib/inffast.h \
+HDRS	= $(SYS).h $(UWT_H) bkd.h lib_tcp.h logging.h mdbm/common.h \
+	  mdbm/mdbm.h mdbm/tune.h mmap.h purify.h range.h rcs.h \
+	  resolve.h sccs.h system.h zgets.h zlib/deflate.h \
+	  zlib/infblock.h zlib/infcodes.h zlib/inffast.h \
 	  zlib/inffixed.h zlib/inftrees.h zlib/infutil.h zlib/trees.h \
 	  zlib/zconf.h zlib/zlib.h zlib/zutil.h
+
 SCRSRCS	= testfast.perl bk.sh import.sh clone.sh \
 	  gui/revtool.tcl gui/citool.tcl gui/difftool.tcl \
 	  gui/vitool.tcl gui/fmtool.tcl gui/fm3tool.tcl \
@@ -556,196 +558,9 @@ crank: crank.sh
 depend: $(SRCS)
 	$(CC) -MM -MG -D_DEPEND $(SRCS) > depends
 
-H=system.h $(SYS).h mdbm/mdbm.h purify.h sccs.h logging.h mmap.h $(UWT_H)
-B=bkd.h lib_tcp.h
-M=mdbm/common.h mdbm/tune.h mdbm/mdbm.h
-Z=zlib/zlib.h zlib/zconf.h
+$(OBJ): $(HDRS)
 
 shell.o: substvars
 	echo 'char *shell() { return ("@FEATURE_SH@"); }' | \
 							./substvars > shell.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c shell.c $(CC_OUT)
-
-abort.o:	abort.c $(H) $(B) $(Z) resolve.h
-adler32.o:	adler32.c $(H) $(Z)
-admin.o:	admin.c $(H)
-annotate.o:	annotate.c $(H)
-bk.o:		bk.c $(H)
-bkd.o:		bkd.c $(B) $(H) $(Z)
-bkd_cd.o:	bkd_cd.c $(B) $(H) $(Z)
-bkd_client.o:	bkd_client.c $(B) $(H) $(Z)
-bkd_clone.o:	bkd_clone.c $(B) $(H) $(Z)
-bkd_cmdtab.o:	bkd_cmdtab.c $(B) $(H) $(Z)
-bkd_misc.o:	bkd_misc.c $(B) $(H) $(Z)
-bkd_pull.o:	bkd_pull.c $(B) $(H) $(Z)
-bkd_push.o:	bkd_push.c $(B) $(H) $(Z)
-bkd_pwd.o:	bkd_pwd.c $(B) $(H) $(Z)
-bkd_rclone.o:	bkd_rclone.c $(B) $(H) $(Z)
-bkd_rootkey.o:	bkd_rootkey.c $(B) $(H) $(Z)
-bkd_status.o:	bkd_status.c $(B) $(H) $(Z)
-bkd_version.o:	bkd_version.c $(B) $(H) $(Z)
-bkusers.o:	bkusers.c $(H)
-changes.o:	changes.c $(H)
-check.o:	check.c $(H) range.h
-clean.o:	clean.c $(H)
-clone.o:	clone.c $(B) $(H) $(Z)
-comments.o:	comments.c $(H)
-commit.o:	commit.c $(H)
-compress.o:	compress.c $(B) $(H) $(Z)
-cset.o:		cset.c $(H) range.h $(Z)
-cset_inex.o:	cset_inex.c $(H) $(Z)
-delta.o:	delta.c $(H)
-diffs.o:	diffs.c $(H) range.h
-dirname.o:	dirname.c
-export.o:	export.c $(H)
-fdiff.o:	fdiff.c $(H)
-files.o:	files.c $(H)
-fix.o:		fix.c $(H)
-fullname.o:	port/fullname.c $(H)
-g2sccs.o:	g2sccs.c $(H)
-gca.o:		gca.c $(H)
-get.o:		get.c $(H)
-gethelp.o:	gethelp.c $(H)
-gethost.o:	gethost.c
-gethost.o:	port/gethost.c $(H)
-getinput.o:	port/getinput.c $(H)
-getopt.o:	getopt.c $(H)
-gettemp.o:	gettemp.c $(H)
-getuser.o:	getuser.c
-glob.o:		glob.c $(H)
-graft.o:	graft.c $(H)
-grep.o:		grep.c $(H)
-help.o:		help.c $(H)
-host.o:		host.c $(H)
-hostme.o:	hostme.c $(H)
-isascii.o:	isascii.c
-key2rev.o:	key2rev.c $(H)
-keysort.o:	keysort.c $(H)
-lib_tcp.o:	lib_tcp.c lib_tcp.h
-libcommit.o:	libcommit.c $(H)
-libdiff.o:	libdiff.c $(H)
-librange.o:	librange.c $(H) range.h
-libsfiles.o:	libsfiles.c $(H)
-libusers.o:	libusers.c $(H) range.h
-license.o:	license.c $(H)
-lines.o:	lines.c $(H)
-localtm.o:	localtm.c $(H)
-lock.o:		lock.c $(H)
-locking.o:	locking.c $(H)
-log.o:		log.c $(H)
-logging.o:	logging.c $(H)
-lod.o:		lod.c $(H) range.h $(Z)
-logaddr.o:	logaddr.c $(H)
-mail.o:		mail.c $(B) $(H)
-merge.o:	merge.c $(H)
-mkdir.o:	mkdir.c $(H)
-mmap.o:		mmap.c $(H)
-mtime.o:	mtime.c
-names.o:	names.c $(H)
-newrev.o:	newrev.c $(H)
-parent.o:	parent.c $(H)
-park.o:		park.c $(H)
-pending.o:	pending.c $(H)
-popen.o:	popen.c $(H)
-port/check_gfile.o:	port/check_gfile.c $(H) 
-port/filecopy.o:	port/filecopy.c $(H)
-port/fileinfo.o:	port/fileinfo.c $(H) 
-port/findprog.o:	port/findprog.c $(H) 
-port/flushsocket.o:	port/flushsocket.c $(B) $(H)
-port/fullname.o:	port/fullname.c $(H)
-port/gethost.o:	port/gethost.c $(H)
-port/getrealname.o:	port/getrealname.c $(H)
-port/getinput.o:	port/getinput.c $(H)
-port/platforminit.o:	port/platforminit.c $(H)
-port/randomBits.o:	port/randomBits.c $(H)
-port/samepath.o:	port/samepath.c $(H)
-port/sccs_root.o:	port/sccs_root.c $(H)
-port/sccs_getuser.o:	port/sccs_getuser.c $(H)
-port/spawn.o:	port/spawn.c $(H)
-prs.o:		prs.c $(H) range.h
-pull.o:		pull.c $(B) $(H) $(Z)
-purify.o:	purify.c $(H)
-push.o:		push.c $(B) $(H) $(Z)
-r2c.o:		r2c.c $(H) range.h
-randomBits.o:	port/randomBits.c $(H)
-range.o:	range.c $(H) range.h
-rcs.o:		rcs.c $(H)
-rccheck.o:	rcheck.c $(B) $(H)
-rclone.o:	rclone.c $(B) $(H) $(Z)
-rcsparse.o:	rcsparse.c $(H) rcs.h
-rcs2sccs.o:	rcs2sccs.c $(H) rcs.h
-receive.o:	receive.c $(H)
-checksum.o:	checksum.c $(H)
-renumber.o:	renumber.c $(H)
-resolve.o:	resolve.c resolve.h $(H)
-resolve_contents.o:	resolve_contents.c resolve.h $(H)
-resolve_create.o:	resolve_create.c resolve.h $(H)
-resolve_flags.o:	resolve_flags.c resolve.h $(H)
-resolve_generic.o:	resolve_generic.c resolve.h $(H)
-resolve_modes.o:	resolve_modes.c resolve.h $(H)
-resolve_renames.o:	resolve_renames.c resolve.h $(H)
-resolve_filetypes.o:	resolve_filetypes.c resolve.h $(H)
-rmdel.o:	rmdel.c $(H)
-samepath.o:	port/samepath.c $(H)
-sane.o:		sane.c $(H)
-sccs_mv.o:	sccs_mv.c $(H)
-sccs_root.o:	port/sccs_root.c $(H)
-sccscat.o:	sccscat.c $(H) range.h
-sccslog.o:	sccslog.c $(H) range.h
-sccsmv.o:	sccsmv.c $(H)
-sccsrm.o:	sccsrm.c $(H)
-send.o:		send.c $(H)
-sendbug.o:	sendbug.c $(H)
-setup.o:	setup.c $(H)
-sfiles.o:	sfiles.c $(H)
-sfind.o:	sfind.c $(H)
-sfio.o:		sfio.c $(H) $(Z)
-sinfo.o:	sinfo.c $(H)
-slib.o:		slib.c $(H) zgets.h
-spawn.o:	port/spawn.c $(H)
-status.o:	status.c $(H)
-stripdel.o:	stripdel.c $(H) range.h
-synckey.o:	synckey.c $(H)
-takepatch.o:	takepatch.c $(H) $(Z)
-trigger.o:	trigger.c $(H)
-undo.o:		undo.c $(H)
-undos.o:	undos.c $(H)
-unedit.o:	unedit.c $(H)
-unique.o:	unique.c $(H)
-unlink.o:	unlink.c $(H)
-unlock.o:	unlock.c $(H)
-unwrap.o:	unwrap.c $(H)
-user.o:		user.c $(H)
-utils.o:	utils.c $(B) $(H) $(Z)
-version.o:	version.c
-webpush.o:	webpush.c $(B) $(H) $(Z)
-webpull.o:	webpush.c $(B) $(H) $(Z)
-what.o:		what.c $(H)
-zgets.o:	zgets.c $(Z) zgets.h
-zone.o:		zone.c $(H)
-
-mdbm/mdbm.o:	mdbm/mdbm.c $(M)
-mdbm/hash.o:	mdbm/hash.c mdbm/mdbm.h
-mdbm/debug.o:	mdbm/debug.c $(M)
-
-Z2	=	zlib/deflate.h zlib/infblock.h zlib/infblock.h \
-		zlib/infcodes.h zlib/infcodes.h zlib/inffast.h \
-		zlib/inffixed.h zlib/inftrees.h zlib/inftrees.h \
-		zlib/infutil.h zlib/infutil.h zlib/trees.h zlib/zconf.h \
-		zlib/zconf.h zlib/zlib.h zlib/zutil.h zlib/zutil.h
-
-zlib/adler32.o:		zlib/adler32.c $(Z2)
-zlib/compress.o:	zlib/compress.c $(Z2)
-zlib/crc32.o:		zlib/crc32.c $(Z2)
-zlib/deflate.o:		zlib/deflate.c $(Z2)
-zlib/gzio.o:		zlib/gzio.c $(Z2)
-zlib/infblock.o:	zlib/infblock.c $(Z2)
-zlib/infcodes.o:	zlib/infcodes.c $(Z2)
-zlib/inffast.o:		zlib/inffast.c $(Z2)
-zlib/inflate.o:		zlib/inflate.c $(Z2)
-zlib/inftrees.o:	zlib/inftrees.c $(Z2)
-zlib/infutil.o:		zlib/infutil.c $(Z2)
-zlib/trees.o:		zlib/trees.c $(Z2)
-zlib/uncompr.o:		zlib/uncompr.c $(Z2)
-zlib/zutil.o:		zlib/zutil.c $(Z2)
-

@@ -1,5 +1,6 @@
 #include "system.h"
 #include "sccs.h" 
+#include "range.h" 
 
 #define BK "bk"
 
@@ -848,22 +849,27 @@ private	void
 cmdlog_dump(int ac, char **av)
 {
 	FILE	*f;
-	time_t	t;
-	char	*p;
+	time_t	t, cutoff = 0;
+	char	*p, *s;
 	char	*version;
 	char	*user;
 	char	buf[MAXPATH*3];
 	char	logf[MAXPATH];
-	int	ct = 0;
-
-	
-	if (ac == 2 && streq("--help", av[1])) { 
-		system("bk help cmdlog");
-		return;
-	}
+	int	yelled = 0, c, all = 0, ct = 0;
+	RANGE_DECL;
 
 	unless (bk_proj && bk_proj->root) return;
-	if (av[1] && streq(av[1], "-a")) {
+	while ((c = getopt(ac, av, "ac;")) != -1) {
+		switch (c) {
+		    case 'a': all = 1; break;
+		    RANGE_OPTS('c', 0);
+		    default:
+usage:			system("bk help cmdlog");
+			return;
+		}
+	}
+	if (things && d[0]) cutoff = rangeCutOff(d[0]);
+	if (all) {
 		sprintf(buf, "sort -n +1");
 		sprintf(logf, "%s/BitKeeper/log/repo_log", bk_proj->root);
 		if (exists(logf)) {
@@ -887,17 +893,19 @@ cmdlog_dump(int ac, char **av)
 	unless (f) return;
 	while (fgets(buf, sizeof(buf), f)) {
 		user = buf;
-		for (p = log_versions; *p; ++p)
+		for (p = log_versions; *p; ++p) {
 			if (*p == buf[0]) {
 				if ((p-log_versions) > LOGVER) {
+					if (yelled) goto nextline;
 					printf("cannot display this "
 					       "log entry; please upgrade\n");
+					yelled = 1;
 					goto nextline;
 				}
 				user = buf+1;
 				break;
 			}
-
+		}
 
 		for (p = user; (*p != ' ') && (*p != '@'); p++);
 		*p++ = 0;
@@ -916,18 +924,20 @@ cmdlog_dump(int ac, char **av)
 			unless (isalnum(*version)) {
 				version = 0;
 			} else  {
-				for (q = 1+version; *q; ++q)
+				for (q = 1+version; *q; ++q) {
 					if ( (*q & 0x80) || (*q < ' ') ) {
 						version = 0;
 						break;
 					}
+				}
 			}
 		}
+		unless (t >= cutoff) continue;
 		printf("%s %.19s %14s %s", user, ctime(&t),
 		    version ? version : "", 1+p);
-    nextline: ;
+nextline:	;
 	}
-	if (av[1] && streq(av[1], "-a")) {
+	if (all) {
 		pclose(f);
 	} else {
 		fclose(f);
