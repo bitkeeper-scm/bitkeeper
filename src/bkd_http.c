@@ -150,7 +150,7 @@ whoami(char *fmt, ...)
 	va_end(ptr);
 
 	if (navbar[0]) {
-		strcat(navbar, ":");
+		strcat(navbar, "|");
 		strcat(navbar, thisPage);
 	} else {
 		strcpy(navbar, "nav=");
@@ -167,12 +167,16 @@ navbutton(int active, int tag, char *start, char *end)
 	char buf[MAXPATH];
 	int ct;
 
-	for (sep = start; sep < end && *sep != '|'; ++sep)
+	for (sep = start; sep < end && *sep != '#'; ++sep)
 	    ;
 	out("<a style=\"text-decoration: none\" ");
 	if (tag) {
+		ct = start-arguments;
+
+		if (arguments[ct-1] == '|') --ct;
+
 		sprintf(buf, "href=\"%.*s?%.*s\">",
-		    sep-start, start, start-arguments, arguments);
+		    sep-start, start, ct, arguments);
 	} else {
 		sprintf(buf, "href=\"%.*s\">", sep-start,start);
 	}
@@ -242,7 +246,7 @@ printnavbar()
 	    "<tr bgcolor=black><td align=left>\n");
 	if (strneq(navbar, "nav=", 4)) {
 		for (start = arguments+4; *start; ++start) {
-			for (end = start; *end && *end != ':'; ++end)
+			for (end = start; *end && *end != '|'; ++end)
 				;
 			navbutton(0, !first,start,end);
 			start = end;
