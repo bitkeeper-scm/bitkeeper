@@ -507,10 +507,12 @@ _commit() {
 	GETCOMMENTS=yes
 	COPTS=
 	CHECKLOG=_checkLog
-	while getopts dfRsS:y:Y: opt
+	FORCE=NO
+	while getopts dfFRsS:y:Y: opt
 	do	case "$opt" in
 		d) DOIT=yes;;
 		f) CHECKLOG=:;;
+		F) FORCE=YES;;
 		R) cfgDir="../BitKeeper/etc/";; # called from RESYNC dir
 		s) COPTS="-s $COPTS";;
 		S) COPTS="-S$OPTARG $COPTS";;
@@ -528,17 +530,19 @@ _commit() {
 	fi
 	if [ $GETCOMMENTS = yes ]
 	then	
-		if [ ! -s /tmp/list$$ ]
+		if [ $FORCE = NO -a ! -s /tmp/list$$ ]
 		then	echo Nothing to commit
 			/bin/rm -f /tmp/list$$
 			exit 0
 		fi
 		${BIN}sccslog -C - < /tmp/list$$ > /tmp/comments$$
-	else	N=`wc -l < /tmp/list$$`
-		if [ $N -eq 0 ]
-		then	echo Nothing to commit
-			/bin/rm -f /tmp/list$$
-			exit 0
+	else	if [ $FORCE = NO ]
+		then	N=`wc -l < /tmp/list$$`
+			if [ $N -eq 0 ]
+			then	echo Nothing to commit
+				/bin/rm -f /tmp/list$$
+				exit 0
+			fi
 		fi
 	fi
 	/bin/rm -f /tmp/list$$
