@@ -246,9 +246,11 @@ check_main(int ac, char **av)
 	if (csetKeys.deltas) free(csetKeys.deltas);
 	if (poly) warnPoly();
 	if (resync) {
-		if (system("cd .. && bk sane")) errors |= 16;
+		chdir(RESYNC2ROOT);
+		if (sys("bk", "sane", SYS)) errors |= 16;
+		chdir(ROOT2RESYNC);
 	} else {
-		if (system("bk sane")) errors |= 16;
+		if (sys("bk", "sane", SYS)) errors |= 16;
 	}
 	return (errors);
 }
