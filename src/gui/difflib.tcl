@@ -433,7 +433,7 @@ proc displayInfo {lfile rfile {parent {}} {stop {}}} \
 	# 1.0 files do not have a mode line. 
 	# XXX: Ask lm if x.0 files have mode lines...
 	set dspec1 "{-d:DPN:\n\tFlags = :FLAGS:\n\tMode  = :RWXMODE:\n}"
-	set dspec2 "{-d:DPN:\n\tFlags = :FLAGS:\n}"
+	set dspec2 "{-d:DPN:\n\tFlags = :FLAGS:\n\n}"
 
 	set files [list left $lfile $parent right $rfile $stop]
 	foreach {side f r} $files {
@@ -498,7 +498,7 @@ proc displayInfo {lfile rfile {parent {}} {stop {}}} \
 proc readFiles {L R {O {}}} \
 {
 	global	Diffs DiffsEnd diffCount nextDiff lastDiff dev_null rmList
-	global  lname rname finfo
+	global  lname rname finfo app gc
 	global  rBoth rDiff rSame nextBoth nextSame maxBoth maxDiff maxSame
 	global  types saved done Marks nextMark outputFile
 
@@ -565,6 +565,18 @@ proc readFiles {L R {O {}}} \
 	if {$O != ""} {set outputFile $O}
 
 	gets $d last
+	if {[regexp {^Binary files.*differ$} $last]} {
+		.diffs.left tag configure warn -background $gc($app.warnColor)
+		.diffs.right tag configure warn -background $gc($app.warnColor)
+		.diffs.left insert end "Binary Files Differ\n" warn
+		.diffs.right insert end "Binary Files Differ\n" warn
+		. configure -cursor left_ptr
+		set lastDiff 0
+		set done 0
+		.diffs.status.middle configure -text "Differences"
+		catch {close $d}
+		return
+	}
 	if {$last == "" || $last == " "} { set last "S" }
 	while { [gets $d diff] >= 0 } {
 		incr lineNo 1
@@ -644,7 +656,7 @@ proc readFiles {L R {O {}}} \
 		# are different
 		.diffs.status.middle configure -text "No differences"
 	}
-}
+} ;# readFiles
 
 # --------------- Window stuff ------------------
 proc yscroll { a args } \

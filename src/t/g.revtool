@@ -48,45 +48,18 @@ w foo
 EOF
 bk ci $Q -i foo 
 if [ ! -f SCCS/s.foo ]; then echo failed to create history; exit 1; fi
+echo OK
+echo $N Test s option on compressed file ............................$NL
 bk edit $Q foo
-ed foo <<EOF >/dev/null 2>&1
-100,120s/stuff/more stuff/
-200,300s/stuff/more stuff with a really long line/
-400,420s/stuff/yuck/
-w
-EOF
-bk ci $Q  -y"test of difftool" foo 
+bk admin -Zgzip foo
+bk ci $Q  -y"test of admin flags" foo 
 bk commit $Q -y"test of difftool"
+bk revtool foo
 echo OK
-echo $N Check difftool for ASCII diffs .............................$NL
-cd $HERE/project/src
-bk edit $Q
-echo "junk" > text.1
-echo "junk" > text.2
-bk ci $Q -i -y"test of text files" text.1
-bk ci $Q -i -y"test of text files" text.2
-bk edit $Q
-echo "junk1" >> text.1
-echo "junk1" >> text.2
-bk difftool
-bk ci $Q -y"test of text files ci" text.1
-bk ci $Q -y"test of text files ci" text.2
-bk clean
-echo OK
-echo $N Check difftool for binary diffs .............................$NL
-cd $HERE/project/src
-bk edit $Q
-head -1 /bin/ls > binary.1
-head -1 /bin/ls > binary.2
-bk ci $Q -i -y"test of binary files" binary.1
-bk ci $Q -i -y"test of binary files" binary.2
-bk edit $Q
-head -1 /bin/ls >> binary.1
-head -1 /bin/ls >> binary.2
-bk commit $Q -y"adding binary.1 and binary.2"
-bk difftool
-bk csettool -r1.1..1.3
-echo OK
-echo $N Check difftool for no diffs in binary files .................$NL
-bk difftool binary.1 binary.2
+echo $N Test s option on ascii file .................................$NL
+bk edit $Q foo
+bk admin -Znone foo
+bk ci $Q  -y"test of admin flags" foo 
+bk commit $Q -y"test of difftool"
+bk revtool foo
 echo OK
