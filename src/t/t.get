@@ -115,7 +115,7 @@ echo OK
 echo $N Make sure get -k does not expand keywords ...................$NL
 bk get $S -e date
 if [ -f core ]; then echo core dumped; exit 1; fi
-echo '@A@ @B@ @D@ @E@ @F@ @G@ @H@ @I@ @L@ @M@ @P@ @R@ @S@ @T@ @U@ @W@ @Y@ @Z@ @@@' | sed s/@/%/g > date
+echo '@A@ @B@ @D@ @E@ @F@ @G@ @H@ @I@ @L@ @M@ @P@ @R@ @S@ @T@ @U@ @W@ @Y@ @Z@ @@@' | sed s/@/%/g | bk undos > date
 X=`wc date`
 bk ci $Q -y date
 bk get $S -k date

@@ -114,6 +114,7 @@ void	sccs_color(sccs *s, delta *d);
 int	getline2(remote *r, char *buf, int size); 
 int	get_ok(remote *r, char *read_ahead, int verbose); 
 int	send_msg(remote *r, char *msg, int mlen, int extra, int compress);
+int	send_file(remote *r, char *file, int extra, int gzip);
 int	skip_hdr(remote *r);
 int	getTriggerInfoBlock(remote *r, int verbose); 
 void	disconnect(remote *r, int how);

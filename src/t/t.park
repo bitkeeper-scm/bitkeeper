@@ -35,7 +35,7 @@ echo $N Check basic park/unpark cycle ...............................$NL
 bk edit $Q foo.c bar.c
 echo foo-new > foo.c
 echo bar-new >> bar.c
-cp foo.c foo.sav
+bk undos foo.c > foo.sav
 bk undos bar.c > bar.sav
 bk park 2> /dev/null
 NUM=`bk sfiles -c | wc -l`

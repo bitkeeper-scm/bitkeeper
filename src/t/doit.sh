@@ -25,6 +25,7 @@ win32_common_setup()
 	if [ X$USER = X ]; then USER=`bk getuser`; fi
 	# Admin user is special, remap to a differnt user before we run the test
 	if [ X$USER = XAdministrator ]; then USER=Administrator-test; fi
+	if [ X$USER = Xadministrator ]; then USER=administrator-test; fi
 }
 
 unix_common_setup()
