@@ -15,7 +15,7 @@ LD_OUT	=-o $@
 LD	=cc
 CC_FAST	=-O2
 CC_DEBUG=-g
-CC_FAST_DEBUG=-g -o
+CC_FAST_DEBUG=-g -O
 CC_NOFRAME=-fomit-frame-pointer
 CC_WALL=-Wall -Wno-parentheses -Wno-char-subscripts
 INSTALL=install
@@ -45,7 +45,7 @@ OBJ	= abort.o adler32.o admin.o bkd.o bkd_cd.o bkd_client.o \
 	  libsfiles.o libusers.o lines.o localtm.o locking.o \
 	  lod.o log.o logaddr.o logchangeset.o mkdir.o mklock.o mmap.o \
 	  mtime.o names.o newrev.o parent.o pending.o popen.o \
-	  port/disksp.o port/executable.o port/findprog.o port/fullname.o \
+	  port/executable.o port/findprog.o port/fullname.o \
 	  port/gethost.o port/getinput.o port/mail.o port/platforminit.o \
 	  port/randomBits.o port/samepath.o port/sccs_root.o \
 	  port/spawn.o port/getnull.o port/service.o \
@@ -69,7 +69,7 @@ ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
 SCRIPTS	= bk.script import resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fmtool fm3tool \
 	  renametool mkdiffs lodset gzip_uuwrap ungzip_uuwrap
-LOCALSCR= testfast mkindex build crank
+LOCALSCR= testfast build crank
 PSCR	= t/doit
 UWTOBJ	= win32/uwtlib/wapi_intf.o win32/uwtlib/wcrt_intf.o
 LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a $(UWTLIB)
@@ -101,14 +101,13 @@ HDRS	= bkd.h lib_tcp.h mmap.h purify.h range.h resolve.h sccs.h \
 SCRSRCS	= testfast.perl bk.sh import.sh clone.sh \
 	  gui/sccstool.tcl gui/citool.tcl gui/difftool.tcl \
 	  gui/vitool.tcl gui/fmtool.tcl gui/fm3tool.tcl \
-	  gui/helptool.tcl gui/mkindex.tcl uuwrap.sh \
+	  gui/helptool.tcl uuwrap.sh \
 	  unuuwrap.sh port/unix_platform.sh port/unix_platform.tcl \
 	  port/unix_platform.perl pmerge.perl gui/csettool.tcl \
 	  port/win32_platform.perl port/win32_platform.tcl \
 	  port/win32_platform.sh gui/renametool.tcl bkmerge.sh \
-	  gzip_uuwrap.sh ungzip_uuwrap.sh resync.sh
-MISC	= bkhelp.doc config.h.in configure substvars.in bitkeeper.config \
-	  t/doit.sh
+	  gzip_uuwrap.sh ungzip_uuwrap.sh resync.sh substvars.sh
+MISC	= bkhelp.doc bitkeeper.config t/doit.sh
 
 default:
 	-if [ `uname -s` = "CYGWIN_NT-4.0" ];\
@@ -191,8 +190,7 @@ clean-bin: FORCE
 	cd t && rm -f doit
 
 clean-cfg: FORCE
-	-rm -f config.h stamp-h substvars config.status \
-	    config.cache config.log bk.ver stamp-ver
+	-rm -f bk.ver substvars
 
 clean-src: FORCE
 	-bk -r . clean
@@ -247,9 +245,8 @@ realtest: $(ALL) t/doit
 	cd t && ./doit
 
 t/doit: t/doit.sh substvars
-	./substvars t/doit.sh >t/doit.T
-	chmod +x t/doit.T
-	mv t/doit.T t/doit
+	substvars t/doit.sh > t/doit
+	chmod +x t/doit
 
 FORCE:
 
@@ -277,10 +274,9 @@ $(BK): bk.o $(LIBS)
 $(BKMERGE): bkmerge.o $(LIBS)
 	$(LD) $(LDFLAGS) $(LD_OUT) bkmerge.o $(LINK_LIB)
 
-testfast: testfast.perl substvars
-	./substvars testfast.perl >testfast.T
-	chmod +x testfast.T
-	mv -f testfast.T testfast
+testfast: testfast.perl
+	cp testfast.perl testfast
+	chmod +x testfast
 
 bk.script: bk.sh port/$(SYS)_platform.sh substvars
 	./substvars port/$(SYS)_platform.sh bk.sh > bk.script
@@ -298,57 +294,51 @@ lodset: lodset.sh
 # XXX Must be changed when ChangeSet moves to BitKeeper/etc.
 # It is structured like this so that rebuilding prs doesn't
 # force bk.ver (and thus the bk script) to be regenerated.
-bk.ver: stamp-ver
-stamp-ver:: ../SCCS/s.ChangeSet utils/os utils/gnu-os
+bk.ver: ../SCCS/s.ChangeSet utils/os utils/gnu-os
 	( echo \
 	  `./bk prs -hr+ -d'$$if(:SYMBOL:){:SYMBOL: }:UTC:' ../ChangeSet;` \
 	  for \
 	  `sh ./utils/os` \
 	) >bk.v
 	mv -f bk.v bk.ver
-	touch stamp-ver
-stamp-ver:: $(BK)
-	touch stamp-ver
 
 # Because we need the execute bit on
 utils/os utils/gnu-os: $(BK)
 	@if [ ! -x utils/os ]; then ./bk get utils/os; fi
 	@if [ ! -x utils/gnu-os ]; then ./bk get utils/gnu-os; fi
 
-uuwrap: uuwrap.sh substvars
-	./substvars uuwrap.sh > uuwrap.T
-	chmod +x uuwrap.T
-	mv -f uuwrap.T uuwrap
+substvars: substvars.sh
+	cp substvars.sh substvars
+	chmod +x substvars
 
-unuuwrap: unuuwrap.sh substvars
-	./substvars unuuwrap.sh > unuuwrap.T
-	chmod +x unuuwrap.T
-	mv -f unuuwrap.T unuuwrap
+uuwrap: uuwrap.sh
+	cp uuwrap.sh uuwrap
+	chmod +x uuwrap
 
-gzip_uuwrap: gzip_uuwrap.sh substvars
-	./substvars gzip_uuwrap.sh > gzip_uuwrap.T
-	chmod +x gzip_uuwrap.T
-	mv -f gzip_uuwrap.T gzip_uuwrap
+unuuwrap: unuuwrap.sh
+	cp unuuwrap.sh unuuwrap
+	chmod +x unuuwrap
 
-ungzip_uuwrap: ungzip_uuwrap.sh substvars
-	./substvars ungzip_uuwrap.sh > ungzip_uuwrap.T
-	chmod +x ungzip_uuwrap.T
-	mv -f ungzip_uuwrap.T ungzip_uuwrap
+gzip_uuwrap: gzip_uuwrap.sh
+	cp gzip_uuwrap.sh gzip_uuwrap
+	chmod +x gzip_uuwrap
+
+ungzip_uuwrap: ungzip_uuwrap.sh
+	cp ungzip_uuwrap.sh ungzip_uuwrap
+	chmod +x ungzip_uuwrap
 
 import: import.sh port/$(SYS)_platform.sh substvars
 	./substvars port/$(SYS)_platform.sh import.sh > import.T
 	chmod +x import.T
 	mv -f import.T import
 
-pmerge: pmerge.perl port/$(SYS)_platform.perl substvars
-	./substvars pmerge.perl port/$(SYS)_platform.perl > pmerge.T
-	chmod +x pmerge.T
-	mv -f pmerge.T pmerge
+pmerge: pmerge.perl port/$(SYS)_platform.perl
+	cat pmerge.perl port/$(SYS)_platform.perl > pmerge
+	chmod +x pmerge
 
-mkdiffs: mkdiffs.perl port/$(SYS)_platform.perl substvars
-	./substvars mkdiffs.perl port/$(SYS)_platform.perl > mkdiffs.T
-	chmod +x mkdiffs.T
-	mv -f mkdiffs.T mkdiffs
+mkdiffs: mkdiffs.perl port/$(SYS)_platform.perl
+	cat mkdiffs.perl port/$(SYS)_platform.perl > mkdiffs
+	chmod +x mkdiffs
 
 resync: resync.sh
 	rm -f resync
@@ -363,77 +353,29 @@ bkdsubstr: bkd.h
 	rm _bkdvers
 	chmod +x bkdsubstr
 
-sccstool: gui/sccstool.tcl gui/common.tcl port/$(SYS)_platform.tcl substvars
-	./substvars port/$(SYS)_platform.tcl \
-				gui/common.tcl gui/sccstool.tcl > sccstool.T
-	chmod +x sccstool.T
-	mv -f sccstool.T sccstool
+sccstool: gui/sccstool.tcl gui/common.tcl port/$(SYS)_platform.tcl
+	cat port/$(SYS)_platform.tcl gui/common.tcl gui/sccstool.tcl > sccstool
 
-citool: gui/citool.tcl gui/common.tcl port/$(SYS)_platform.tcl substvars
-	./substvars port/$(SYS)_platform.tcl \
-				gui/common.tcl gui/citool.tcl > citool.T
-	chmod +x citool.T
-	mv -f citool.T citool
+citool: gui/citool.tcl gui/common.tcl port/$(SYS)_platform.tcl
+	cat port/$(SYS)_platform.tcl gui/common.tcl gui/citool.tcl > citool
 
-helptool: gui/helptool.tcl port/$(SYS)_platform.tcl substvars
-	./substvars port/$(SYS)_platform.tcl gui/helptool.tcl > helptool.T
-	chmod +x helptool.T
-	mv -f helptool.T helptool
+helptool: gui/helptool.tcl port/$(SYS)_platform.tcl
+	cat port/$(SYS)_platform.tcl gui/helptool.tcl > helptool
 
-vitool: gui/vitool.tcl substvars
-	./substvars gui/vitool.tcl > vitool.T
-	chmod +x vitool.T
-	mv -f vitool.T vitool
+difftool: gui/difftool.tcl port/$(SYS)_platform.tcl
+	cat port/$(SYS)_platform.tcl gui/difftool.tcl > difftool
 
-difftool: gui/difftool.tcl port/$(SYS)_platform.tcl substvars
-	./substvars port/$(SYS)_platform.tcl gui/difftool.tcl > difftool.T
-	chmod +x difftool.T
-	mv -f difftool.T difftool
+csettool: gui/csettool.tcl gui/common.tcl port/$(SYS)_platform.tcl
+	cat port/$(SYS)_platform.tcl gui/common.tcl gui/csettool.tcl > csettool
 
-csettool: gui/csettool.tcl gui/common.tcl port/$(SYS)_platform.tcl substvars
-	./substvars port/$(SYS)_platform.tcl \
-	    gui/common.tcl gui/csettool.tcl > csettool.T
-	chmod +x csettool.T
-	mv -f csettool.T csettool
+renametool: gui/renametool.tcl port/$(SYS)_platform.tcl
+	cat port/$(SYS)_platform.tcl gui/renametool.tcl > renametool
 
-renametool: gui/renametool.tcl port/$(SYS)_platform.tcl substvars
-	./substvars port/$(SYS)_platform.tcl gui/renametool.tcl > renametool.T
-	chmod +x renametool.T
-	mv -f renametool.T renametool
+fmtool: gui/fmtool.tcl port/$(SYS)_platform.tcl
+	cat port/$(SYS)_platform.tcl gui/fmtool.tcl > fmtool
 
-fmtool: gui/fmtool.tcl port/$(SYS)_platform.tcl substvars
-	./substvars port/$(SYS)_platform.tcl gui/fmtool.tcl > fmtool.T
-	chmod +x fmtool.T
-	mv -f fmtool.T fmtool
-
-fm3tool: gui/fm3tool.tcl substvars
-	./substvars gui/fm3tool.tcl >fm3tool.T
-	chmod +x fm3tool.T
-	mv -f fm3tool.T fm3tool
-
-mkindex: gui/mkindex.tcl substvars
-	./substvars gui/mkindex.tcl >mkindex.T
-	chmod +x mkindex.T
-	mv -f mkindex.T mkindex
-
-# Autoconf magic.
-# This is not the way this will work in the long run.
-# Unfortunately, there is no portable way to avoid running config.status
-# several times.
-
-# ATT SCCS doesn't respect the stored file mode.
-config.status: configure
-	chmod +x configure
-	sh ./configure --quiet --no-create --bindir=$(BINDIR)
-
-config.h: stamp-h
-stamp-h: config.h.in config.status
-	CONFIG_HEADERS=config.h CONFIG_FILES= ./config.status
-	date > stamp-h
-
-substvars: substvars.in config.status
-	CONFIG_HEADERS= CONFIG_FILES=substvars ./config.status
-	chmod +x substvars
+fm3tool: gui/fm3tool.tcl
+	cat gui/fm3tool.tcl > fm3tool
 
 # Touch this and die.  --lm
 install: install-nolinks
@@ -520,7 +462,7 @@ crank: crank.sh
 depend: $(SRCS)
 	$(CC) -MM -MG -D_DEPEND $(SRCS) > depends
 
-H=system.h $(SYS).h config.h mdbm/mdbm.h purify.h sccs.h mmap.h $(UWT_H)
+H=system.h $(SYS).h mdbm/mdbm.h purify.h sccs.h mmap.h $(UWT_H)
 B=bkd.h lib_tcp.h
 M=mdbm/common.h mdbm/tune.h mdbm/mdbm.h
 Z=zlib/zlib.h zlib/zconf.h
@@ -552,7 +494,7 @@ compress.o:	compress.c $(B) $(H) $(Z)
 cset.o:		cset.c $(H) range.h $(Z)
 delta.o:	delta.c $(H)
 diffs.o:	diffs.c $(H) range.h
-dirname.o:	dirname.c config.h
+dirname.o:	dirname.c 
 export.o:	export.c $(H)
 fdiff.o:	fdiff.c $(H)
 files.o:	files.c $(H)
@@ -595,7 +537,6 @@ newrev.o:	newrev.c $(H)
 parent.o:	parent.c $(H)
 pending.o:	pending.c $(H)
 popen.o:	popen.c $(H)
-port/disksp.o:	port/disksp.c $(H)
 port/findprog.o:	port/findprog.c $(H) 
 port/fullname.o:	port/fullname.c $(H)
 port/gethost.o:	port/gethost.c $(H)
