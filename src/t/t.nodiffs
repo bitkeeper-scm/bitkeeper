@@ -47,7 +47,7 @@ do	cd $HERE/$i
 	bk commit -y$i $Q
 done
 cd $HERE/copy
-bk resync $Q
+bk pull -R $Q
 cd ..
 tar cf TAR copy 
 cd copy

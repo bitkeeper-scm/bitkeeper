@@ -342,8 +342,13 @@ gnu: $(BK) FORCE
 	else cd gnu && $(MAKE) BINDIR=$(BINDIR) ;\
 	fi
 
-tcltk: FORCE
-	cd tcltk && $(MAKE)
+tcltk: tcltk/build FORCE
+	cd tcltk && ./build
+
+tcltk/build: tcltk/build.sh
+	rm -f tcltk/build
+	cp tcltk/build.sh tcltk/build
+	chmod +x tcltk/build
 
 win32: FORCE
 	cd win32 && $(MAKE) BINDIR=$(BINDIR)

@@ -50,7 +50,7 @@ ls > LS
 bk new $Q LS
 bk commit $Q -yuser-content
 cd ../project
-bk resync -t $Q ../copy
+bk pull -R $Q ../copy
 cd RESYNC || exit 1
 # The invariant is that you always get config but none of the others for updates
 test -f BitKeeper/etc/SCCS/s.ignore && { echo Copied ignore; exit 1; }
@@ -64,7 +64,7 @@ echo $N Create cset only conflict, check copies .....................$NL
 date > date
 bk new $Q date
 bk commit $Q -ydate
-bk resync -t $Q ../copy
+bk pull -R $Q ../copy
 cores
 cd RESYNC || exit 1
 # The invariant is that you always get config and all others for conflicts
@@ -97,7 +97,7 @@ do
     bk delta $Q -y'fake update' BitKeeper/etc/$file
     bk commit $Q -y'config test'
     cd $HERE/project
-    bk resync -t $Q ../copy
+    bk pull -R $Q ../copy
     test -f RESYNC/BitKeeper/etc/$file && {
 	    # Could be OK, maybe BK checked it out
 	    bk get -qkp ../copy/BitKeeper/etc/$file > C

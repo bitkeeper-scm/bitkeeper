@@ -663,7 +663,10 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 	 * Is it a known C program ?
 	 */
 	if (streq(prog, "patch") ||
-	    streq(prog, "diff3")) {
+	    streq(prog, "cmp") ||
+	    streq(prog, "diff") ||
+	    streq(prog, "diff3") ||
+	    streq(prog, "sdiff")) {
 		return (spawn_cmd(_P_WAIT, av));
 	}
 

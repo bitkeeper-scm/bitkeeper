@@ -53,7 +53,7 @@ lockHome()
 	char	path[MAXPATH];
 
 	if (lockFile) return (lockFile);
-	sprintf(path, "%s/.bk_kl%s", TMP_PATH, sccs_getuser());
+	sprintf(path, "%s/.bk_kl%s", TMP_PATH, sccs_realuser());
 	return (lockFile = (strdup)(path));
 }
 

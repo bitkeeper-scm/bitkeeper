@@ -48,7 +48,7 @@ echo OK
 cores
 echo $N Create a copy of the project ................................$NL
 cd $HERE
-bk resync -t $Q project copy
+bk clone $Q project copy
 if [ ! -d copy ]; then echo failed to make top level directory; exit 1; fi
 cd copy
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
@@ -58,8 +58,8 @@ echo $N Check propagation of permission .............................$NL
 cd $HERE/project/src
 bk admin -m-rwx------ foo.c
 bk commit $S -yperm1
-bk resync -t $Q $HERE/project $HERE/copy
-bk resolve -t $Q $HERE/copy
+cd $HERE/copy
+bk pull -t $Q $HERE/project
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.foo.c  $HERE/copy/src/SCCS/s.foo.c
 if [ $? -ne 0 ]; then echo failed to propagate permissions; exit 1; fi
@@ -71,8 +71,7 @@ bk commit $S -yperm2
 cd $HERE/copy/src
 bk admin -m-rwx-w---- foo.c
 bk commit $S -yperm3
-bk resync -t $Q $HERE/project $HERE/copy
-bk resolve -t $Q $HERE/copy 2>/dev/null 1>&2 <<EOF
+bk pull -t $Q $HERE/project 2>/dev/null 1>&2 <<EOF
 r
 u
 EOF
@@ -92,17 +91,15 @@ bk admin $Q -fEXPAND1 -fRCS -fYEAR4 bar.c
 bk commit $Q -yabc
 # save a copy of SCCS/s.bar.c for the rollback test
 cp SCCS/s.bar.c $HERE/ref
-bk resync -t $Q $HERE/project $HERE/copy
-bk resolve -t $Q $HERE/copy
 cd $HERE/copy/src
+bk pull -t $Q $HERE/project
 diff $HERE/project/src/SCCS/s.bar.c  $HERE/copy/src/SCCS/s.bar.c
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 cd $HERE/project/src
 bk admin $Q -FRCS -FYEAR4 bar.c
 bk commit $Q -yabc
-bk resync -t $Q $HERE/project $HERE/copy
-bk resolve -t $Q $HERE/copy
 cd $HERE/copy/src
+bk pull -t $Q $HERE/project
 diff $HERE/project/src/SCCS/s.bar.c  $HERE/copy/src/SCCS/s.bar.c
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
@@ -116,9 +113,8 @@ echo $N Check propagation of flags \& permission .....................$NL
 cd $HERE/project/src
 bk admin $Q -fRCS -m-rwxr--r-- bar.c
 bk commit $Q -yabc
-bk resync -t $Q $HERE/project $HERE/copy
-bk resolve -t $Q $HERE/copy
 cd $HERE/copy/src
+bk pull -t $Q $HERE/project
 diff $HERE/project/src/SCCS/s.bar.c  $HERE/copy/src/SCCS/s.bar.c
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
@@ -128,17 +124,15 @@ echo "this is a text entry line 1" > text
 echo "this is a text entry line 2" >> text
 bk admin -ttext h.h
 bk commit $Q -yabc
-bk resync -t $Q $HERE/project $HERE/copy
-bk resolve -t $Q $HERE/copy
 cd $HERE/copy/src
+bk pull -t $Q $HERE/project
 diff $HERE/project/src/SCCS/s.h.h  $HERE/copy/src/SCCS/s.h.h
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 cd $HERE/project/src
 bk admin -T h.h
 bk commit $Q -yabc
-bk resync -t $Q $HERE/project $HERE/copy
-bk resolve -t $Q $HERE/copy
 cd $HERE/copy/src
+bk pull -t $Q $HERE/project
 diff $HERE/project/src/SCCS/s.h.h  $HERE/copy/src/SCCS/s.h.h
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
@@ -146,9 +140,8 @@ echo $N Check propagation of text, flags \& permission ...............$NL
 cd $HERE/project/src
 bk admin -ttext -fYEAR4 -m-rwx-w--w- h.h
 bk commit $Q -yabc
-bk resync -t $Q $HERE/project $HERE/copy
-bk resolve -t $Q $HERE/copy
 cd $HERE/copy/src
+bk pull -t $Q $HERE/project
 diff $HERE/project/src/SCCS/s.h.h  $HERE/copy/src/SCCS/s.h.h
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 bk prs -r+ -h -d':MODE:\n$each(:FD:){(:FD:)\n}' h.h > CMP1
@@ -176,7 +169,8 @@ bk commit $S -yperm2
 cd $HERE/copy/src
 bk admin $Q -fEXPAND1 foo.c
 bk commit $S -yperm3
-bk resync -t $Q $HERE/project $HERE/copy
+cd $HERE/copy
+bk pull -R $Q $HERE/project
 cd $HERE
 tar cf TAR copy project
 bk resolve -t $Q $HERE/copy 2>/dev/null 1>&2 <<EOF
@@ -203,7 +197,8 @@ bk edit $Q foo.c
 echo "new-content" >> foo.c
 bk ci $Q -y"new-content" foo.c
 bk commit $S -y"new-content"
-bk resync -t $Q $HERE/project $HERE/copy
+cd $HERE/copy
+bk pull -R -t $Q $HERE/project
 cd $HERE
 bk resolve -t $Q $HERE/copy 2>$HERE/OUT 1>&2 <<EOF
 r
@@ -235,7 +230,8 @@ bk commit $S -y"new-content2"
 cd $HERE/copy/src
 bk admin $Q -FSCCS foo.c
 bk commit $S -yxflags3
-bk resync -t $Q $HERE/project $HERE/copy
+cd $HERE/copy
+bk pull -R -t $Q $HERE/project
 cd $HERE
 bk resolve -t $Q $HERE/copy 2>/dev/null 1>&2 <<EOF
 l

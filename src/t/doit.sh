@@ -84,6 +84,8 @@ unix_common_setup()
 	test -r $BIN3 || exit 1
 	export BIN1 BIN2 BIN3
 
+	test `uname` = SCO_SV && return
+
 	BK_LIMITPATH=/build/.bktools-$USER
 	rm -rf $BK_LIMITPATH
 	mkdir $BK_LIMITPATH
@@ -368,7 +370,14 @@ init_main_loop
 # Main Loop #
 FAILED=
 for i in $list
-do	echo ------------ ${i#t.} test
+do
+echo ''
+	LEN=`echo ${i#t.} | wc -c`
+	LEN=`expr 40 - $LEN`
+	printf "================="
+	printf " %s test " ${i#t.}
+	printf "%.${LEN}s\n" "================================================"
+
 	mkdir -p $BK_TMP || exit 1
 
 	# Let's be safe out there boys and girls

@@ -48,7 +48,7 @@ cd $HERE/project
 bk mv src/foo.c CONFLICT
 bk commit $Q -ywhatever 
 cd $HERE/copy
-bk resync $Q
+bk pull -t -R $Q
 cd $HERE
 tar cf TAR copy 2> /dev/null
 echo OK
@@ -129,7 +129,7 @@ cd $HERE/project
 bk mv src/bar.c DIRECTORY
 bk commit $Q -ywhatever 
 cd $HERE/copy
-bk resync $Q
+bk pull -t -R $Q
 cd $HERE
 tar cf TAR copy 2> /dev/null
 echo OK
