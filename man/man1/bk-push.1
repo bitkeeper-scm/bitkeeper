@@ -3,8 +3,10 @@
 .SH NAME
 bk push \- send local changes to the parent repository
 .SH SYNOPSIS
-.Bc bk push [\-aglnqt] [\-z[
-.ARGc 0-9
+.Bc bk push [\-aglnqt] [
+.OPTequal \-E env var
+.Bc ] [\-z[
+.ARGc d
 .Bc ]] [
 .OPTreq \-c n
 .Bc ] [
@@ -71,9 +73,8 @@ and that the parent is a superset).
 .OPTreq \-z d
 Do compression at level 
 .ARG d ,
-if possible, where
-.ARG d
-is an integer value 0-9; default is 
+if possible;
+default is 
 .BR \-z6 .
 Compression is possible when using ssh or the BK daemon,
 but not with rsh.
