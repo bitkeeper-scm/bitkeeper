@@ -362,6 +362,7 @@ cleanup:		if (perfile) sccs_free(perfile);
 		}
 		sccs_setpathname(s);
 		unless (streq(s->spathname, s->sfile)) {
+			tmp = sccs_top(s);
 			badpath(s, tmp);
 			goto cleanup;
 		}
