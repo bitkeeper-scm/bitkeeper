@@ -220,35 +220,6 @@ static int parse_headers(void)
 	return 1;
 }
 
-#ifdef OLD
-static void exec_program(void)
-{
-fprintf(stderr, "## %s %s %s\n", argv[0], argv[1], argv[2]);
-	execvp(argv[0], argv);
-	exit(128);
-}
-
-static int run_program(void)
-{
-	int pipefd[2];
-
-	if (pipe(pipefd))
-		syntax("couldn't create pipes");
-	signal(SIGCHLD, SIG_IGN);
-	signal(SIGPIPE, SIG_IGN);
-	switch (fork()) {
-	case -1:
-		syntax("Fork failed");
-	case 0:
-		dup2(pipefd[0], 0);
-		close(pipefd[1]);
-		exec_program();
-	}
-	outfd = pipefd[1];
-	close(pipefd[0]);
-	return 0;
-}
-#endif
 
 static int parse_mail(void)
 {

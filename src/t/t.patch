@@ -54,8 +54,8 @@ bk import $Q -Cftpatch PATCH proj
 cd proj
 export BK_PATCH_IMPORT=YES
 bk commit $Q -y'Should be trini@butthead.com[torvalds]'
-bk changes -vr+ -nd:HOST: > GOT
-cat > ../WANT <<EOF
+bk changes -vr+ -nd:HOST: | bk undos > GOT
+bk undos > ../WANT <<EOF
 butthead.com[torvalds]
 butthead.com[torvalds]
 EOF
@@ -79,8 +79,8 @@ bk import $Q -Cftpatch PATCH child
 cd child
 export BK_PATCH_IMPORT=YES
 bk commit $Q -y'Should be trini@headbutt.com[lm]'
-bk changes -vr+ -nd:HOST: > GOT
-cat > ../WANT <<EOF
+bk changes -vr+ -nd:HOST: | bk undos > GOT
+bk undos > ../WANT <<EOF
 headbutt.com[lm]
 headbutt.com[lm]
 EOF
