@@ -1,6 +1,10 @@
 /* Copyright (c) 2000 Andrew Chang */ 
 #include "system.h"
 #include "sccs.h"
+
+#define LSTATE 0	/* lock state	 */
+#define CSTATE 1	/* change state	 */
+#define PSTATE 2	/* pending state */
  
 WHATSTR("@(#)%K%");
 
@@ -18,8 +22,8 @@ typedef struct {
 	u32     pflg:1;     		/* show pending files	*/
 	u32     xflg:1;     		/* show xtra files	*/
 	u32     dflg:1;     		/* show empty Dir	*/
-	u32     gflg:1;     		/* print in gfile format*/
-	u32     Cflg:1;     		/* file@rev format*/
+	u32     gflg:1;     		/* print gfile name	*/
+	u32     Cflg:1;     		/* want file@rev format	*/
 } options;
 
 typedef struct _q_item {
@@ -36,9 +40,14 @@ private project *proj;
 private options	opts;
 private globv	ignore; 
 
-private void do_print(char lock_state, char state, char pending, char *file);
+private void do_print(char state[4], char *file, char *rev);
+private void walk(char *dir, int level);
+private void file(char *f);
+private void sccsdir(char *dir, int level);
+private int chk_diffs(sccs *s);
 
-void
+
+private void
 enqueue(fifo *q, char *path)
 {
 	q_item *t = (q_item *) malloc(sizeof(q_item));
@@ -55,7 +64,7 @@ enqueue(fifo *q, char *path)
 	}
 }
 
-char *
+private char *
 dequeue(fifo *q)
 {
 	char *t;
@@ -83,12 +92,13 @@ init(char *name, int flags)
 }
 
 
+int
 sfind_main(int ac, char **av)
 {
         int     c, i; 
 	char	*root, *path, buf[MAXPATH];
 
-	while ((c = getopt(ac, av, "aAcCdDeEgjklmpPrRsuvx")) != -1) {
+	while ((c = getopt(ac, av, "aAcCeEgjlmpux")) != -1) {
 		switch (c) {
 		    case 'a':	opts.aflg = 1; break;
 		    case 'A':	opts.Aflg = 1; break;
@@ -101,22 +111,21 @@ sfind_main(int ac, char **av)
 				opts.pflg = 1;
 				break; /* backward compat */
 		    case 'p':	opts.pflg = 1; break; /* replace old -C */
-		    case 'u':	opts.uflg = 1; break; /* new semantic */
+		    case 'u':	opts.uflg = 1; break; 
 		    case 'x':	opts.xflg = 1; break;
 		    case 'm':	opts.show_markers = 1; break;
 		    case 'E':	opts.cflg = 1;	/* detail scan everything */
 				opts.pflg = 1;
-				/* fall thur */
-		    case 'e':	opts.jflg = 1;	/* quick scan every */
+				/* fall thru */
+		    case 'e':	opts.jflg = 1;	/* quick scan everything */
 				opts.lflg = 1;
 				opts.nflg = 1;
 				opts.xflg = 1;
 				break;
-		    case 's': 	opts.cflg = 1;
-				opts.lflg = 1;
-				opts.nflg = 1;
-				break;
-		    default: 	fprintf(stderr ,"usage: sfile2: ....\n");
+				/*
+				 * XXX TODO fix the usage message
+				 */
+		    default: 	fprintf(stderr ,"usage: sfind ....\n");
 				return(1);
 		}
 	}
@@ -176,10 +185,11 @@ sfind_main(int ac, char **av)
 	}
 
 	if (ignore) free_globs(ignore);  
+	return (0);
 }
 
 void 
-chk_sfile(char *name, char *lock_state, char *state)
+chk_sfile(char *name, char *lState, char *cState)
 {
 	char	*s;
 	sccs	*sc = 0;
@@ -189,23 +199,23 @@ chk_sfile(char *name, char *lock_state, char *state)
 	if (s[1] == 's') {
 		s[1] = 'p';
 		if (exists(name)) {
-			*lock_state = 'l';
+			*lState = 'l';
 			s[1] = 's';
 			if (opts.cflg && 
 			    (sc = init(name, INIT_NOCKSUM)) &&
 			    chk_diffs(sc)) { 
-				*state = 'c';
+				*cState = 'c';
 			} else {
-				*state = 'n';
+				*cState = 'n';
 			}
 		} else {
 			s[1] = 'z';
 			if (exists(name)) {
-				*lock_state = 'l';
-				*state = 'n';
+				*lState = 'l';
+				*cState = 'n';
 			} else {
-				*lock_state = 'u';
-				*state = 'n';
+				*lState = 'u';
+				*cState = 'n';
 			}
 			s[1] = 's';
 		}
@@ -213,11 +223,12 @@ chk_sfile(char *name, char *lock_state, char *state)
 	if (sc) sccs_close(sc);
 }
 
-int
+private void
 file(char *f)
 {
 	char	name[MAXPATH], buf[MAXPATH];
-	char    *s, *sfile = 0, lock_state = ' ', state, pending;
+	char    *s, *sfile = 0;
+	char	state[4] = "???";
 	sccs	*sc;
 
 	strcpy(name, f);
@@ -231,10 +242,10 @@ file(char *f)
 	if (s && (name <= &s[-4]) && pathneq("SCCS", &s[-4], 4)) {
 		/* this file is under a SCCS dir */
 		unless (sccs_filetype(f)) {
-			state = 'j';
+			state[CSTATE] = 'j';
 			strcpy(buf, f);
 		} else {
-			chk_sfile(f, &lock_state, &state);
+			chk_sfile(f, &state[LSTATE], &state[CSTATE]);
 			s = sccs2name(f);
 			strcpy(buf, s);
 			sfile = name2sccs(s);
@@ -250,9 +261,9 @@ file(char *f)
 		/* this file is a gname */
 		sfile = name2sccs(f); 
 		unless (exists(sfile)) {
-			state = 'x';
+			state[CSTATE] = 'x';
 		} else {
-			chk_sfile(sfile, &lock_state, &state);
+			chk_sfile(sfile, &state[LSTATE], &state[CSTATE]);
 		}
 		strcpy(buf, f);
 	}
@@ -261,9 +272,8 @@ file(char *f)
 	 * When we get here. buf contain the gname
 	 * Now we check for pending deltas
 	 */
-	if (opts.pflg && state != 'x' &&  state != 'j') {
+	if (opts.pflg && state[CSTATE] != 'x' &&  state[CSTATE] != 'j') {
 		delta *d;
-		char tmp[MAXPATH];
 
 		/*
 		 * check for pending deltas
@@ -273,29 +283,29 @@ file(char *f)
 		
 		d = sccs_top(sc);
 		assert(d);
-		pending = (d->flags & D_CSET) ? ' ' : 'p';
+		state[PSTATE] = (d->flags & D_CSET) ? ' ' : 'p';
 		if (opts.Aflg) {
 			while (d) {
 				if (d->flags & D_CSET) break;
-				sprintf(tmp, "%s@%s", buf, d->rev);
-				do_print(lock_state, state, pending, tmp);
+				do_print(state, buf, d->rev);
 				d = d->parent;
 			}
 		} else {
 			if (opts.Cflg) {
-				sprintf(tmp, "%s@%s", buf, d->rev);
-				do_print(lock_state, state, pending, tmp);
+				do_print(state, buf, d->rev);
 			} else {
-				do_print(lock_state, state, pending, buf);
+				do_print(state, buf, 0);
 			}
 		}
 	} else  {
-		if (state == 'x' || state == 'j') {
+		if (state[CSTATE] == 'x' || state[CSTATE] == 'j') {
 			if (exists(buf)) {
-				do_print(' ', state, ' ', buf);
+				state[LSTATE] = state[PSTATE] = ' ';
+				do_print(state, buf, 0);
 			}
 		} else {
-			do_print(lock_state, state, ' ', buf);
+			state[PSTATE] = ' ';
+			do_print(state, buf, 0);
 		}
 	}
 	if (sfile) free(sfile);
@@ -303,19 +313,19 @@ file(char *f)
 
 
 
-int
-walk(char *path, int level)
+private void
+walk(char *dir, int level)
 {
 	struct dirent   *e;
-	DIR	*d;
+	DIR	*dh;
 	char	*p, buf[MAXPATH];
 	fifo	dlist = {0, 0};
 #ifndef WIN32
         ino_t	lastInode = 0;
 #endif                                 
 
-	assert(isdir(path));
-	concat_path(buf, path, "SCCS");
+	assert(isdir(dir));
+	concat_path(buf, dir, "SCCS");
 	unless (exists(buf)) {
 		/*
 		 * TODO: we need to check for the caes where
@@ -323,11 +333,11 @@ walk(char *path, int level)
 		 * This can fool the current code into wronly treating them
 		 * as xtras.
 		 */
-		if ((d = opendir(path)) == NULL) {
-			perror(path);
+		if ((dh = opendir(dir)) == NULL) {
+			perror(dir);
 			return;
 		}
-		while ((e = readdir(d)) != NULL) { 
+		while ((e = readdir(dh)) != NULL) { 
 #ifndef WIN32
 			/*
 			 * Linux 2.3.x NFS bug, skip repeats.
@@ -342,24 +352,24 @@ walk(char *path, int level)
 				debug((stderr, "SKIP\t%s\n", e->d_name));
 				continue;
 			}
-			concat_path(buf, path, e->d_name);
+			concat_path(buf, dir, e->d_name);
 			unless (isdir(buf)) {
-				do_print(' ', 'x', ' ', buf);
+				do_print(" x ", buf, 0);
 			} else {
 				enqueue(&dlist, buf);
 			}
 		}
-		closedir(d);
+		closedir(dh);
 		while (p = dequeue(&dlist)) {
 			walk(p, level + 1);
 			free(p);
 		}
 	} else {
-		sccsdir(path, level);
+		sccsdir(dir, level);
 	}
 }
 
-int
+private int
 chk_diffs(sccs *s)
 {
 	if (!s) return (0);
@@ -368,67 +378,63 @@ chk_diffs(sccs *s)
 }
 
 private void
-print_it(char lock_state, char state, char pending, char *file)
+print_it(char state[4], char *file, char *rev)
 {
-	char *sfile, *gfile;
+	char *sfile = 0, *gfile;
 
 	gfile =  strneq("./",  file, 2) ? &file[2] : file;
+
+	/*
+	 * HACK to hide stuff in the log directory
+	 * this assumes the sfind is ran from project root
+	 */
 	if (strneq("BitKeeper/log/", gfile, 14)) return;
 
-	if (opts.show_markers) printf("%c%c%c ", lock_state, state, pending);
-	if (opts.gflg || (state == 'x') || (state == 'j')) {
-		/* print in gfile format */
-		printf("%s\n", gfile);
+	if (opts.show_markers) printf("%s ", state);
+	if (opts.gflg || (state[CSTATE] == 'x') || (state[CSTATE] == 'j'))  {
+		fputs(gfile, stdout); 			 /* print gfile name */
 	} else {
-		char *p;
-
-		/* print in sfile format */
-		p = strchr(gfile, '@');
-		if (p) *p = 0;
-		sfile = name2sccs(gfile);
-		fputs(sfile, stdout);
-		if (p) {
-			*p = '@';
-			fputs(p, stdout);
-		}
-		fputs("\n", stdout);
-		free(sfile);
+		fputs(sfile = name2sccs(gfile), stdout); /* print sfile name */
 	}
+	if (rev) printf("@%s", rev);
+	fputs("\n", stdout);
+	if (sfile) free(sfile);
 }
 
 private void
-do_print(char lock_state,  char state, char pending, char *file)
+do_print(char state[4], char *file, char *rev)
 {
 	int show_it = 0;
 
-	switch (lock_state) {
+	switch (state[LSTATE]) {
 	    case 'l':	if (opts.lflg) show_it++; break;
 	    case 'u':	if (opts.uflg) show_it++; break;
 	}
 
-	switch (state) {
+	switch (state[CSTATE]) {
 	    case 'c':	if (opts.cflg) show_it++; break;
 	    case 'n':	if (opts.nflg) show_it++; break;
 	    case 'j':	if (opts.jflg) show_it++; break;
 	    case 'x':	if (opts.xflg) show_it++; break;
 	}
-	if ((pending == 'p') && opts.pflg) show_it++;
+	if ((state[PSTATE] == 'p') && opts.pflg) show_it++;
 
-	if (show_it) print_it(lock_state, state, pending, file);
+	if (show_it) print_it(state, file, rev);
 }
 
 /*
  * Called for each directory that has an SCCS subdirectory
  */
-int
-sccsdir(char *path, int level)
+private void
+sccsdir(char *dir, int level)
 {
 	MDBM	*gDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	MDBM	*sDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	fifo	dlist = {0, 0};
 	fifo	slist = {0, 0};
 	struct dirent   *e;
-	DIR	*dir;
+	DIR	*dh; /* dir handle */
+	int 	dir_len = strlen(dir);
 	char	*p, *gfile, buf[MAXPATH];
 	datum   k, v;
 	kvpair  kv;
@@ -442,8 +448,8 @@ sccsdir(char *path, int level)
 	/*
 	 * Get all the gfiles
 	 */
-	dir = opendir(path);
-	while (e = readdir(dir)) {
+	dh = opendir(dir);
+	while (e = readdir(dh)) {
 #ifndef WIN32
 		/*
 		 * Linux 2.3.x NFS bug, skip repeats.
@@ -458,7 +464,7 @@ sccsdir(char *path, int level)
 		 * do not decent in to another project root. e.g RESYNC
 		 */
 		if ((level > 0)  && patheq(e->d_name, "BitKeeper")) {
-			fprintf(stderr, "Warning: ignoring sub-root: %s\n", path);
+			fprintf(stderr, "Warning: sub-root %s ignored\n", dir);
 			return;
 		}
 
@@ -467,9 +473,17 @@ sccsdir(char *path, int level)
 			continue;
 		}
 
-		// XXX TODO skip files with paths that are too long
+		/*
+		 * Skip files with paths that are too long
+		 * pad = "/SCCS/s." = 8
+		 */
+		if ((dir_len + 8 + strlen(e->d_name)) >= MAXPATH) {
+			fprintf(stderr,
+			    "Warning: %s name too long, skiped\n", dir);
+			continue;
+		}
 
-		concat_path(buf, path, e->d_name);
+		concat_path(buf, dir, e->d_name);
 		lstat(buf, &sb);
 		if (S_ISDIR(sb.st_mode)) {
 			enqueue(&dlist, buf);
@@ -481,15 +495,15 @@ sccsdir(char *path, int level)
 			mdbm_store(gDB, k, v, MDBM_INSERT);
 		}
 	}
-	closedir(dir);
+	closedir(dh);
 
 	/*
 	 * Get all the SCCS/?.files
 	 * TODO compute sPath() for split root config
 	 */
-	concat_path(buf, path, "SCCS");
-	dir = opendir(buf);
-	while (e = readdir(dir)) {
+	concat_path(buf, dir, "SCCS");
+	dh = opendir(buf);
+	while (e = readdir(dh)) {
 #ifndef WIN32
 		/*
 		 * Linux 2.3.x NFS bug, skip repeats.
@@ -498,7 +512,15 @@ sccsdir(char *path, int level)
 		lastInode = e->d_ino;
 #endif
 		if (streq(e->d_name, ".") || streq(e->d_name, "..")) continue;
-		// XXX TODO skip files with paths that are too long
+		/*
+		 * Skip files with paths that are too long
+		 * pad = "/SCCS/" = 6
+		 */
+		if ((dir_len + 6 + strlen(e->d_name)) >= MAXPATH) {
+			fprintf(stderr,
+			    "Warning: %s name too long, skiped\n", dir);
+			continue;
+		}
 
 		if (strneq("s.", e->d_name, 2)) {
 			enqueue(&slist, e->d_name);
@@ -506,7 +528,7 @@ sccsdir(char *path, int level)
 			mdbm_store_str(sDB, e->d_name, "", MDBM_INSERT);
 		}
 	}
-	closedir(dir);
+	closedir(dh);
 
 	/*
 	 * First eliminate as much we can from SCCS dir;
@@ -515,9 +537,8 @@ sccsdir(char *path, int level)
 	 */
 	while (p = dequeue(&slist)) {
 
-		//char	file[MAXPATH];
 		char	*file;
-		char	lock_state, state, pending;
+		char	state[4] = "???";
 		delta	*d;
 
 		s = 0;
@@ -533,7 +554,7 @@ sccsdir(char *path, int level)
 			 * gfile wants to be.
 			 */
 			if (S_ISDIR(*((mode_t *)v.dptr))) {
-				concat_path(buf, path, gfile);
+				concat_path(buf, dir, gfile);
 				fprintf(stderr,
 				    "%s should not be a directory\n", buf);
 			}
@@ -542,33 +563,29 @@ sccsdir(char *path, int level)
 		/*
 		 * look for p.file,
 		 */
-		state = '?'; pending = '?';
 		file[0] = 'p';
 		if (mdbm_fetch_str(sDB, file)) {
 			mdbm_delete_str(sDB, file); /* remove p.file entry */
-			lock_state = 'l';
+			state[LSTATE] = 'l';
 			file[0] = 's';
-			concat_path(buf, path, "SCCS");
+			concat_path(buf, dir, "SCCS");
 			concat_path(buf, buf, file);
 			if (opts.cflg &&
 			    (s = init(buf, INIT_NOCKSUM)) &&
 			    chk_diffs(s)) {
-				state = 'c';
+				state[CSTATE] = 'c';
 			} else {
-				//state = 'l';
-				state = 'n';
+				state[CSTATE] = 'n';
 			}
 		} else {
 			file[0] = 'z';
 			if (mdbm_fetch_str(sDB, file)) {
 				mdbm_delete_str(sDB, file);
-				lock_state = 'l';
-				//state = 'l';
-				state = 'n';
+				state[LSTATE] = 'l';
 			} else {
-				lock_state = 'u';
-				state = 'n';
+				state[LSTATE] = 'u';
 			}
+			state[CSTATE] = 'n';
 		}
 
 		
@@ -579,13 +596,13 @@ sccsdir(char *path, int level)
 		 * check for pending deltas
 		 * TODO: need to handle LOD
 		 */
-		concat_path(buf, path, gfile);
+		concat_path(buf, dir, gfile);
 		if (opts.pflg) {
-			char tmp[MAXPATH];
-
 			file[0] = 's';
 			unless (s) {
-				concat_path(tmp, path, "SCCS");
+				char tmp[MAXPATH];
+
+				concat_path(tmp, dir, "SCCS");
 				concat_path(tmp, tmp, file);
 				s = init(tmp, INIT_NOCKSUM);
 				assert(s);
@@ -593,28 +610,23 @@ sccsdir(char *path, int level)
 			assert(s && s->tree);
 			d = sccs_top(s);
 			assert(d);
-			pending = (d->flags & D_CSET) ? ' ' : 'p';
+			state[PSTATE] = (d->flags & D_CSET) ? ' ' : 'p';
 			if (opts.Aflg) {
 				while (d) {
 					if (d->flags & D_CSET) break;
-					sprintf(tmp, "%s@%s", buf, d->rev);
-					do_print(lock_state, state,
-								pending, tmp);
+					do_print(state, buf, d->rev);
 					d = d->parent;
 				}
 			} else {
 				if (opts.Cflg) {
-					sprintf(tmp, "%s@%s", buf, d->rev);
-					do_print(lock_state, state,
-								pending, tmp);
+					do_print(state, buf, d->rev);
 				} else {
-					do_print(lock_state, state,
-								pending, buf);
+					do_print(state, buf, 0);
 				}
 			}
 		} else {
-			pending = ' ';
-			do_print(lock_state, state, pending, buf);
+			state[PSTATE] = ' ';
+			do_print(state, buf, 0);
 		}
 
 		if (s) sccs_close(s);
@@ -627,14 +639,14 @@ sccsdir(char *path, int level)
 	 * XXX TODO: Do we consider the r.file and m.file "junk" file ?
 	 */
 	if (opts.jflg) {
-		concat_path(buf, path, "SCCS");
+		concat_path(buf, dir, "SCCS");
 		for (k = mdbm_firstkey(sDB); k.dsize != 0;
 						    k = mdbm_nextkey(sDB)) {
 			char buf1[MAXPATH];
 
 			if (strneq("x.", k.dptr, 2)) continue;
 			concat_path(buf1, buf, k.dptr);
-			do_print(' ', 'j', ' ', buf1);
+			do_print(" j ", buf1, 0);
 		}
 	}
 	mdbm_close(sDB);
@@ -645,8 +657,8 @@ sccsdir(char *path, int level)
 	if (opts.xflg) {
 		for (kv = mdbm_first(gDB); kv.key.dsize != 0;
 							kv = mdbm_next(gDB)) {
-			concat_path(buf, path, kv.key.dptr);
-			do_print(' ', 'x', ' ', buf);
+			concat_path(buf, dir, kv.key.dptr);
+			do_print(" x ", buf, 0);
 		}
 	}
 	mdbm_close(gDB);
