@@ -248,7 +248,6 @@ bkd(int compress, remote *r, int *sock)
 	switch (p = fork()) {
 	    case -1: perror("fork"); return (-1);
 	    case 0:
-		setsid();
 		close(0);
 		dup(inout[1]);
 		close(1);
