@@ -45,13 +45,12 @@ examine all files, even if listed in BitKeeper/etc/ignore.
 .tp
 .B \-c
 List changed files (locked and modified).
-.tp
-.B \-ct
-The same as
-.B \-c
-but use file timestamps to speed scanning for modified files.
-The acceptible clock skew can be configured. 
-(See 'clock_skew' in bk help config-etc)
+If clock_skew is set in the config file then the file timestamps
+and other attributes are used to speed scanning.
+The acceptible clock skew can be configured, see 'clock_skew' in
+bk help config-etc.
+For debugging purposes, the timestamp DB may be disabled by
+setting the environment variable BK_NO_TIMESTAMPS.
 .tp
 .B \-d
 List directories under \*(BK control (SCCS subdir exists).

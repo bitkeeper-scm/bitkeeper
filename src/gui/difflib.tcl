@@ -193,6 +193,11 @@ proc dot {} \
 	} else {
 		.menu.next configure -state normal
 	}
+
+	# this lets calling programs know that a different file was
+	# diffed, or a different diff was selected for the current
+	# file. 
+	event generate . <<DiffChanged>>
 }
 
 proc highlightDiffs {start stop} \
@@ -715,24 +720,26 @@ proc xscroll { a args } \
 
 proc Page {view dir one} \
 {
-	set p [winfo pointerxy .]
-	set x [lindex $p 0]
-	set y [lindex $p 1]
-	set w [winfo containing $x $y]
-	#puts "window=($w)"
-	if {[regexp {^.diffs} $w] || [regexp {^.menu} $w]} {
-		page ".diffs" $view $dir $one
-		return 1
+	global app
+
+	# fmtool wants different windows to scroll depending on where
+	# the mouse pointer is; other tools aren't quite so particular.
+	if {"$app" == "fm"} {
+		set p [winfo pointerxy .]
+		set x [lindex $p 0]
+		set y [lindex $p 1]
+		set w [winfo containing $x $y]
+		#puts "window=($w)"
+		if {[regexp {^.merge} $w]} {
+			page ".merge" $view $dir $one
+			return 1
+		} else {
+			page ".diffs" $view $dir $one
+			return 1
+		}
 	}
-	if {[regexp {^.l.filelist.t} $w]} {
-		page ".diffs" $view $dir $one
-		return 1
-	}
-	if {[regexp {^.merge} $w]} {
-		page ".merge" $view $dir $one
-		return 1
-	}
-	return 0
+	page ".diffs" $view $dir $one
+	return 1
 }
 
 proc page {w xy dir one} \

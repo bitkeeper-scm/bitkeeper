@@ -63,6 +63,15 @@ proc search {dir} \
 	searchbuttons both disabled
 }
 
+proc searchdisable {} \
+{
+	global search
+
+	searchbuttons both disabled
+	$search(menu) configure -state disabled
+	$search(text) configure -state disabled
+}
+
 proc searchreset {} \
 {
 	global	search

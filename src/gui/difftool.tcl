@@ -60,6 +60,10 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-font $gc(diff.buttonFont) -text "Help" \
 		-command { exec bk helptool difftool & }
+	    menubutton .menu.shortcuts -bg $gc(diff.buttonColor) \
+		-pady $gc(py) -padx $gc(px) -borderwid 1 -relief raised \
+		-font $gc(diff.buttonFont) -text "Shortcuts" \
+		-menu .menu.shortcuts.menu -indicatoron 1
 	    button .menu.dot -bg $gc(diff.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-font $gc(diff.buttonFont) -text "Current diff" \
@@ -74,13 +78,31 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
                 -pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
                 -image nextImage \
                 -state normal -command { nextFile }
+	    button .menu.discard -font $gc(diff.buttonFont) \
+	        -text "Discard" \
+                -bg $gc(diff.buttonColor) \
+                -pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
+                -state disabled -command { discard }
+	    button .menu.revtool -font $gc(diff.buttonFont) \
+	        -text "Revtool" \
+                -bg $gc(diff.buttonColor) \
+                -pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
+                -state normal -command { revtool }
+	        
             menubutton .menu.fmb -font $gc(diff.buttonFont) -relief raised \
                 -bg $gc(diff.buttonColor) -pady $gc(py) -padx $gc(px) \
-                -borderwid $gc(bw) -text "Files" -width 6 -state normal \
+                -borderwid $gc(bw) -text "Files" -width 10 -state normal \
                 -menu .menu.fmb.menu -indicatoron 1
+
+	    menu .menu.shortcuts.menu \
+	        -title "Difftool shortcuts menu" \
+	        -borderwidth 1
 
 	    pack .menu.quit -side left -fill y
 	    pack .menu.help -side left -fill y
+	    pack .menu.shortcuts -side left -fill y
+	    pack .menu.discard -side left -fill y
+	    pack .menu.revtool -side left -fill y
 	    pack .menu.reread -side left -fill y
 	    pack .menu.prev -side left -fill y 
 	    pack .menu.dot -side left -fill y
@@ -124,6 +146,57 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	search_keyboard_bindings
 	searchreset
 	. configure -background $gc(BG)
+
+	# populate shortcut menu; this needs to be done after
+	# the bindings are created, as we use the bindings 
+	# themselves to define the menu items
+	populateShortcutMenu .menu.shortcuts.menu diff {
+		all <Control-p> 	{Control-p}
+			{Go to previous file}
+		all <Control-n>	{Control-n}
+			{Go to next file}
+		-- --  -- --
+		all <p>		{p}
+			{Go to previous diff}
+		all <space>		{n or space}
+			{Go to next diff}
+		all <period> 		{.}
+			{Center current diff on screen}
+		-- --  -- --
+		all <Home>		{Home}
+		        {Scroll to the top}
+		all <End>		{End}
+			{Scroll to the bottom}
+		all <Prior>		{PageUp}
+			{Scroll up 1 screen}
+		all <Next>		{PageDown}
+			{Scroll down 1 screen}
+		all <Up>		{Up Arrow}
+			{Scroll up 1 line}
+		all <Down>		{Down Arrow}
+			{Scroll down 1 line}
+		all <Right>		{Right Arrow}
+			{Scroll to the right}
+		all <Left>		{Left Arrow}
+			{Scroll to the left}
+		-- --  -- --
+		.	<question> ? 
+			{Reverse search}
+		. 	<slash> / 
+			{Forward search}
+		all 	<p> p 
+			{Search for previous occurance}
+		all 	<n> n 
+			{Search for next occurance}
+		-- --  -- --
+		all  _quit_ {} {Quit}
+	}
+	
+	# Whenever notification is sent that the current diff has
+	# changed, the shortcut menu needs to be updated. 
+	bind . <<DiffChanged>> {
+		updateButtons
+	}
 }
 
 # Set up keyboard accelerators.
@@ -361,7 +434,7 @@ proc getFiles {} \
 			incr item
 		}
 		pack configure .menu.filePrev .menu.fmb .menu.fileNext \
-		    -side left -fill y -after .menu.help 
+		    -side left -fill y -after .menu.revtool
 		set menu(max) [$menu(widget) index last]
 		set menu(selected) 1
 		$menu(widget) invoke 1
@@ -410,62 +483,98 @@ proc pickFile {lf rf fname item {lr {}} {rr {}}} \
 	set rfile $rf
 
 	set menu(selected) $item
-	if {$menu(selected) == 1} {
-		.menu.filePrev configure -state disabled
+	set next [findNextMenuitem 1 $item]
+	set prev [findNextMenuitem -1 $item]
+	if {$next != -1} {
 		.menu.fileNext configure -state normal
-	} elseif {$menu(selected) == $menu(max)} {
-		.menu.filePrev configure -state normal
-		.menu.fileNext configure -state disabled
 	} else {
-		.menu.filePrev configure -state normal
-		.menu.fileNext configure -state normal
+		.menu.fileNext configure -state disabled
 	}
-	# If doesn't have a rev #, assume looking at non-bk files
+	if {$prev != -1} {
+		.menu.filePrev configure -state normal
+	} else {
+		.menu.filePrev configure -state disabled
+	}
+
+	# If we have a rev #, assume looking at non-bk files; otherwise
+	# assume that we aren't
 	if {$lr != ""} {
 		displayInfo $fname $fname $lr $rr
 		#displayMessage "$lf $rf fname=($fname) lr=$lr rr=$rr"
 		set lname "$fname@$lr"
 		set rname "$fname@$rr"
 		readFiles $lf $rf
+		.menu.revtool configure -state normal
+		if {[string match $rr "checked_out"]} {
+			.menu.discard configure -state normal
+		} else {
+			.menu.discard configure -state disabled
+		}
 	} else {
 		displayInfo $lf $rf $lr $rr
 		set lname "$lf"
 		set rname "$rf"
 		readFiles $lf $rf
+		.menu.revtool configure -state disabled
+		.menu.discard configure -state disabled
 	}
 	return
 }
 
-# Get the previous file when the button is selected -- update the arrow state
+# incr must be -1 or 1, and indicates the direction to search
+proc findNextMenuitem {incr i} \
+{
+	global menu
+
+	if {$incr == -1} {
+		set limit 1
+	} else {
+		set limit $menu(max)
+	}
+
+	set i [expr {$i < 1 ? 1 : $i}]
+	set i [expr {$i > $menu(max) ? $menu(max) : $i}]
+	if {$i == $limit} {return -1}
+
+	set tries 0
+	for {set i [expr {$i + $incr}]} {$i != $limit} {incr i $incr} {
+		if {[$menu(widget) entrycget $i -state] == "normal"} {
+			break
+		}
+		# bail if we've tries as many times as their are menu
+		# entries
+		if {[incr tries] >= $menu(max)} break
+	}
+
+	if {[$menu(widget) entrycget $i -state] == "normal"} {
+		return $i
+	} else {
+		return -1
+	}
+}
+
+# Get the previous file when the button is selected
 proc prevFile {} \
 {
 	global menu lastFile
 
-	if {$menu(selected) > 1} {
-		incr menu(selected) -1
+	set i [findNextMenuitem -1 $menu(selected)]
+	if {$i != -1} {
+		set menu(selected) $i
 		.menu.fmb.menu invoke $menu(selected)
-		#puts "invoking $menu(selected)"
-		.menu.filePrev configure -state normal
-		return 1
-	} else {
-		.menu.filePrev configure -state disabled
-		.menu.fileNext configure -state normal
 	}
-	return 0
 }
 
-# Get the next file when the button is selected -- update the arrow state
-proc nextFile {} \
+# Get the next file when the button is selected
+proc nextFile {{i -1}} \
 {
 	global menu lastFile
 
-	if {$menu(selected) < $menu(max)} {
-		incr menu(selected)
+	if {$i == -1} {set i [findNextMenuitem 1 $menu(selected)]}
+
+	if {$i != -1} {
+		set menu(selected) $i
 		.menu.fmb.menu invoke $menu(selected)
-		#puts "invoking $menu(selected)"
-		.menu.filePrev configure -state normal
-	} else {
-		.menu.fileNext configure -state disabled
 	}
 }
 
@@ -473,6 +582,168 @@ proc nextFile {} \
 proc searchsee {location} \
 {
 	scrollDiffs $location $location
+}
+
+proc discard {{what firstClick} args} \
+{
+	global menu
+	global lname rname
+
+	set tmp [split $lname @]
+	set file [lindex $tmp 0]
+
+	switch -exact -- $what {
+		firstClick {
+			# create a temporary message to the right of the 
+			# discard button. (actually, it puts it on top
+			# of the revtool button which is presumed to be
+			# immediately to the right of the discard button)
+			set message "Click Discard again if you really\
+				      want to unedit this file. Otherwise,\
+				      click anywhere else on the window."
+
+			set x1 [winfo x .menu.revtool]
+			set width [expr {[winfo width .] - $x1}]
+			label .menu.transient -text $message -bd 1 \
+			    -relief raised -anchor w
+			place .menu.transient  \
+			    -bordermode outside \
+			    -in .menu.discard \
+			    -relx 1.0 -rely 0.0 -x 1 -y 1 -anchor nw \
+			    -width $width \
+			    -relheight 1.0 \
+			    -height -2
+
+			raise .menu.transient
+			bind .menu.transient <Any-ButtonPress> \
+			    [list discard secondClick %X %Y]
+			    after idle {grab .menu.transient}
+
+			# if they can't make up their minds, cancel out 
+			# after 10 seconds
+			after 10000 [list discard secondClick 0 0]
+		}
+
+		secondClick {
+			catch {after cancel [list discard secondClick 0 0]}
+			foreach {X Y} $args {break}
+			set w [winfo containing $X $Y]
+			if {$w == ".menu.discard"} {
+				doDiscard $file
+			}
+			catch {destroy .menu.transient}
+		}
+	}
+
+}
+
+# this proc actually does the discard, and attempts to select the
+# next file in the list of files. If there are no other files, it
+# clears the display since there's nothing left to diff.
+proc doDiscard {file} \
+{
+	global menu
+
+	if {[catch {exec bk unedit $file} message]} {
+		exec bk msgtool -E "error performing the unedit:\n\n$message\n"
+		return
+	}
+
+	# disable this file's menu item and attempt to select
+	# the "next" file (next being, the next one forward if
+	# there is one, or next one backward if there is one.
+	$menu(widget) entryconfigure $menu(selected) -state disabled
+	set i [findNextMenuitem 1 $menu(selected)]
+	if {$i == -1} {
+		set i [findNextMenuitem -1 $menu(selected)]
+	}
+
+	if {$i != -1} {
+		nextFile $i
+	} else {
+		clearDisplay
+	}
+}
+
+# this is called when there are no files to view; it blanks the display
+# and disabled everything
+proc clearDisplay {} \
+{
+	global search
+
+	.menu.dot configure -state disabled
+	.menu.discard configure -state disabled
+	.menu.revtool configure -state disabled
+	.menu.fmb configure -state disabled
+	.menu.prev configure -state disabled
+	.menu.next configure -state disabled
+	.menu.reread configure -state disabled
+
+	.diffs.left configure -state normal
+	.diffs.right configure -state normal
+	.diffs.left delete 1.0 end
+	.diffs.right delete 1.0 end
+	.diffs.left configure -state disabled
+	.diffs.right configure -state disabled
+	.diffs.status.l configure -text ""
+	.diffs.status.l_lnum configure -text ""
+	.diffs.status.r configure -text ""
+	.diffs.status.r_lnum  configure -text ""
+	.diffs.status.middle configure -text "no files"
+	balloon_help .diffs.status.l ""
+	balloon_help .diffs.status.r ""
+
+	searchdisable
+}
+
+proc revtool {} \
+{
+	global lname rname
+	global menu
+
+	# These regular expressions come straight from revtool, and are
+	# what it uses to validate passed-in revision numbers. We'll use
+	# them here to make sure we don't feed revtool bogus arguments.
+	set r2 {^([1-9][0-9]*)\.([1-9][0-9]*)$}
+	set r4 {^([1-9][0-9]*)\.([1-9][0-9]*)\.([1-9][0-9]*)\.([1-9][0-9]*)$}
+
+	set command [list bk revtool]
+
+	set tmp [split $rname @]
+	set file [lindex $tmp 0]
+	set rev [lindex $tmp 1]
+	if {[regexp $r2 $rev] || [regexp $r4 $rev]} {
+		lappend command "-r$rev"
+
+		set tmp [split $lname @]
+		set rev [lindex $tmp 1]
+		if {[regexp $r2 $rev] || [regexp $r4 $rev]} {
+			lappend command "-l$rev"
+		}
+	}
+	lappend command $file
+	eval exec $command &
+}
+
+proc updateButtons {} \
+{
+	global menu
+
+	if {$menu(selected) == 1} {
+		.menu.shortcuts.menu entryconfigure "Go to previous file" \
+		    -state disabled
+	} else {
+		.menu.shortcuts.menu entryconfigure "Go to previous file" \
+		    -state normal
+	}
+
+	if {$menu(selected) == $menu(max)} {
+		.menu.shortcuts.menu entryconfigure "Go to next file" \
+		    -state disabled
+	} else {
+		.menu.shortcuts.menu entryconfigure "Go to next file" \
+		    -state normal
+	}
 }
 
 # the purpose of this proc is merely to load the persistent state;
@@ -548,4 +819,3 @@ proc main {} \
 }
 
 main
-

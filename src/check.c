@@ -408,7 +408,11 @@ chk_gfile(sccs *s)
 {
 	char	*type;
 
-	unless (exists(s->gfile)) return (0);
+	unless (HAS_GFILE(s)) return (0);
+	/*
+	 * XXX when running in checkout:get mode, these checks are still
+	 * too expensive. Need to do ONE stat.
+	 */
 	if (isreg(s->gfile) || isSymlnk(s->gfile)) return (0);
 	if (isdir(s->gfile)) {
 		type = "directory";
@@ -511,7 +515,7 @@ writable_gfile(sccs *s)
 private int
 no_gfile(sccs *s)
 {
-	if (HAS_PFILE(s) && !exists(s->gfile)) {
+	if (HAS_PFILE(s) && !HAS_GFILE(s)) {
 		if (unlink(sccs_Xfile(s, 'p'))) return (1);
 		s->state &= ~S_PFILE;
 	}
@@ -528,7 +532,6 @@ gfile_unchanged(sccs *s)
 		fprintf(stderr, "%s: cannot read pfile\n", s->gfile);
 		return (1);
 	}
-	
 	rc = diff_gfile(s, &pf, 0, DEV_NULL);
 	if (rc == 1) return (1); /* no changed */
 	if (rc != 0) return (rc); /* error */
@@ -543,7 +546,8 @@ gfile_unchanged(sccs *s)
 private int
 readonly_gfile(sccs *s)
 {
-	if ((HAS_PFILE(s) && exists(s->gfile) && !writable(s->gfile))) {
+	/* XXX slow in checkout:edit mode */
+	if ((HAS_PFILE(s) && HAS_GFILE(s) && !writable(s->gfile))) {
 		if (gfile_unchanged(s) == 1) {
 			unlink(s->pfile);
 			s->state &= ~S_PFILE;
@@ -980,7 +984,9 @@ getRev(char *root, char *key, MDBM *idDB)
 private void
 markCset(sccs *s, delta *d)
 {
-	time_t	now = time(0);
+	static time_t	now;
+
+	unless (now) now = time(0);
 
 	do {
 		if (d->flags & D_SET) {
@@ -1028,6 +1034,7 @@ idsum(u8 *s)
 private int
 check(sccs *s, HASH *db)
 {
+	static	int	haspoly = -1;
 	delta	*d, *ino;
 	int	errors = 0;
 	int	i;
@@ -1176,7 +1183,8 @@ check(sccs *s, HASH *db)
 	/* If we are not already marked as a repository having poly
 	 * cseted deltas, then check to see if it is the case
 	 */
-	if (!exists(POLY) && CSETMARKED(s)) {
+	if (haspoly == -1) haspoly = (exists(POLY) != 0);
+	if (!haspoly && CSETMARKED(s)) {
 		for (d = s->table; d; d = d->next) {
 			d->flags &= ~D_SET;
 		}

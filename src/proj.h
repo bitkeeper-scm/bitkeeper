@@ -5,6 +5,7 @@ typedef struct	project project;
 
 int		proj_cd2root(void);
 int		proj_chdir(char *newdir);
+char*		proj_cwd(void);
 MDBM*		proj_config(project *p);
 void		proj_free(project *p);
 project*	proj_init(char *dir);
