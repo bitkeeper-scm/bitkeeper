@@ -1,0 +1,39 @@
+.so ../bk-macros
+.TH "bk superset" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk superset \- check to see if the parent is ahead of this repository
+.SH SYNOPSIS
+.Bc bk superset [\-q] [
+.ARGc parent
+.B ]
+.SH DESCRIPTION
+.LP
+superset does checks to see if removing the current repository is a lossless
+event.  It checks that:
+.TP .3i
+\*(BU
+the parent has all changesets that are in the current repository
+.tp
+\*(BU
+there are no pending deltas
+.tp
+\*(BU
+there are no modified files
+.tp
+\*(BU
+there are no extra files
+.tp
+\*(BU
+there are no parked files
+.LP
+Unless the -q option is present superset lists all things which are not
+in the parent.
+.SH OPTIONS
+.TP
+.B -q
+Be quiet
+.SH "EXIT STATUS"
+.LP
+superset exits 0 if the parent is a superset, 1 if the parent is not.
+.SH CATEGORY
+.B Repository
