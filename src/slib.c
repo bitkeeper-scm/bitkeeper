@@ -66,6 +66,7 @@ private int	fprintDelta(FILE *,
 private	void	fitCounters(char *buf, int a, int d, int s);
 private delta	*gca(delta *left, delta *right);
 private delta	*gca2(sccs *s, delta *left, delta *right);
+private u16	getnextlod(sccs *s);
 
 private unsigned int u_mask = 0x5eadbeef;
 
@@ -1788,18 +1789,31 @@ morekids(delta *d, int bk_mode)
 }
 
 /*
+ * See if default is a version X.X or X.X.X.X
+ */
+
+private int
+defIsVer(sccs *s)
+{
+	u16	a = 0, b = 0, c = 0, d = 0;
+	int	howmany;
+
+	unless (s->defbranch) return (0);
+	howmany = scanrev(s->defbranch, &a, &b, &c, &d);
+	return ((howmany == 2 || howmany == 4) ? 1 : 0);
+}
+
+/*
  * Get the delta that is the basis for this edit.
  * Get the revision name of the new delta.
  */
-/* XXX: RBS: LOD: Change IF to remove lrev */
 private delta *
-getedit(sccs *s, char **revp, char **lrev, int branch)
+getedit(sccs *s, char **revp, int branch)
 {
 	char	*rev = *revp;
 	u16	a = 0, b = 0, c = 0, d = 0;
 	delta	*e, *t;
 	static	char buf[MAXREV];
-	static	char lbuf[MAXREV];
 
 	debug((stderr,
 	    "getedit(%s, %s, b=%d)\n", s->gfile, notnull(*revp), branch));
@@ -1823,11 +1837,20 @@ getedit(sccs *s, char **revp, char **lrev, int branch)
 		return (0);
 	}
 ok:
+	/* if BK, and no rev and default is x.x or x.x.x.x, then newlod */
+	if ((s->state & S_BITKEEPER) && !rev && defIsVer(s)) {
+		unless (a = getnextlod(s)) {
+			fprintf(stderr, "getedit: no next lod\n");
+			exit(1);
+		}
+		sprintf(buf, "%d.1", a);
+		*revp = buf;
+	}
 	/*
 	 * Just continue trunk/branch
 	 * Because the kid may be a branch, we have to be extra careful here.
 	 */
-	if (!branch && !morekids(e, (s->state & S_BITKEEPER))) {
+	else if (!branch && !morekids(e, (s->state & S_BITKEEPER))) {
 		a = e->r[0];
 		b = e->r[1];
 		c = e->r[2];
@@ -4249,7 +4272,7 @@ strconcat(char *a, char *b, char *sep)
 
 int
 write_pfile(sccs *s, int flags, delta *d,
-	char *rev, char *lrev, char *iLst, char *i2, char *xLst, char *mRev)
+	char *rev, char *iLst, char *i2, char *xLst, char *mRev)
 {
 	int	fd, len;
 	char	*tmp, *tmp2;
@@ -4287,13 +4310,7 @@ write_pfile(sccs *s, int flags, delta *d,
 		len += (iLst ? strlen(iLst) + 3 : 0);
 	}
 	tmp = malloc(len);
-	if (lrev) {
-		sprintf(tmp, "%s %s(%s) %s %s",
-			    d->rev, lrev, rev, getuser(), tmp2);
-	} else {
-		sprintf(tmp,
-		    "%s %s %s %s", d->rev, rev, getuser(), tmp2);
-	}
+	sprintf(tmp, "%s %s %s %s", d->rev, rev, getuser(), tmp2);
 	if (i2) {
 		strcat(tmp, " -i");
 		strcat(tmp, i2);
@@ -4700,7 +4717,7 @@ sccs_get(sccs *s, char *rev,
 {
 	delta	*d;
 	int	lines = 0, locked = 0, error;
-	char	*lrev = 0, *i2 = 0;
+	char	*i2 = 0;
 
 	debug((stderr, "get(%s, %s, %s, %s, %s, %x, %s)\n",
 	    s->sfile, notnull(rev), notnull(mRev),
@@ -4742,7 +4759,7 @@ err:		if (i2) free(i2);
 	if (flags & GET_EDIT) {
 		int	f = (s->state & S_BRANCHOK) ? flags&GET_BRANCH : 0;
 
-		d = getedit(s, &rev, &lrev, f);
+		d = getedit(s, &rev, f);
 		if (!d) {
 			fprintf(stderr, "get: can't find revision %s in %s\n",
 			    notnull(rev), s->sfile);
@@ -4765,7 +4782,7 @@ err:		if (i2) free(i2);
 	unless (d) goto err;
 
 	if (flags & GET_EDIT) {
-		if (write_pfile(s, flags, d, rev, lrev, iLst, i2, xLst, mRev)) {
+		if (write_pfile(s, flags, d, rev, iLst, i2, xLst, mRev)) {
 			goto err;
 		}
 		locked = 1;
@@ -4812,7 +4829,7 @@ skip_get:
 	if (!(flags&SILENT)) {
 		fprintf(stderr, "%s %s", s->gfile, d->rev);
 		if (flags & GET_EDIT) {
-			fprintf(stderr, " -> %s", lrev ? lrev : rev);
+			fprintf(stderr, " -> %s", rev);
 		}
 		unless (flags & GET_SKIPGET) {
 			fprintf(stderr, ": %d lines", lines);
@@ -8810,6 +8827,15 @@ out:
 			free(n->sym);
 			n->sym = 0;
 		}
+	}
+	
+	/*
+	 * Start new lod if X.1
+	 * XXX: Could require the old defbranch to match exactly the
+	 * initial version in the pfile to make conditions tighter.
+	 */
+	if ((s->state & S_BITKEEPER) && n->r[1] == 1 && n->r[2] == 0) {
+		if (s->defbranch) free(s->defbranch);
 	}
 
 	/*
