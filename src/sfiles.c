@@ -479,6 +479,10 @@ caches(const char *filename, int mode)
 		sccs_free(sc);
 		return;
 	}
+	if (sc->defbranch && streq(sc->defbranch, "1.0")) { /* not visible */
+		sccs_free(sc);
+		return;
+	}
 	if (vFlg) printf("%s\n", sc->gfile);
 
 	if (rFlg) {

@@ -1802,6 +1802,12 @@ morekids(delta *d, int bk_mode)
 		&& samebranch_bk(d, d->kid, bk_mode));
 }
 
+int
+sccs_morekids(delta *d, int bk_mode)
+{
+	return (morekids(d, bk_mode));
+}
+
 /*
  * See if default is a version X.X or X.X.X.X
  */
@@ -4824,6 +4830,12 @@ err:		if (i2) free(i2);
 		s->state |= S_WARNED;
 		goto err;
 	}
+	/* general error checking done.  Pretend not here if defbranch 1.0 */
+	if (s->defbranch && streq(s->defbranch, "1.0")) {
+		/* verbose((stderr, "get: ignoring %s\n", s->gfile)); */
+		return (0);
+	}
+
 	/* this has to be above the getedit() - that changes the rev */
 	if (mRev) {
 		char *tmp;
@@ -12406,7 +12418,7 @@ sccs_stripdel(sccs *s, char *who)
 	int	locked;
 
 	assert(s && s->tree && !HAS_PFILE(s));
-	debug((stderr, "stripdel %s %x\n", s->gfile, flags));
+	debug((stderr, "stripdel %s %s\n", s->gfile, who));
 	unless (locked = sccs_lock(s, 'z')) {
 		fprintf(stderr, "%s: can't get lock on %s\n", who, s->sfile);
 		error = -1; s->state |= S_WARNED;
