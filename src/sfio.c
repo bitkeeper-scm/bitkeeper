@@ -12,12 +12,16 @@
  *	char	path[atoi(pathlen)];
  *	char	datalen[10];
  *	char	data[atoi(datalen)];
+ *	char	adler32[10];
  *	char	mode[3];
  * repeats, except for the version number.
  */
 #include "system.h"
+#undef	unlink		/* I know the files are writable, I created them */
 WHATSTR("@(#)%K%");
-#define	SFIO_VERS	"SFIO v 1.0"
+
+#define	SFIO_VERS	"SFIO v 1.1"
+#define	u32		unsigned int
 
 int	sfio_out(void);
 int	out(char *file);
@@ -70,6 +74,7 @@ out(char *file)
 	struct	stat sb;
 	char	len[11];
 	int	n, nread = 0;
+	u32	sum = 0;
 
 	if ((fd == -1) || fstat(fd, &sb)) {
 		perror(file);
@@ -79,6 +84,7 @@ out(char *file)
 	writen(1, len, 10);
 	while ((n = readn(fd, buf, sizeof(buf))) > 0) {
 		nread += n;
+		sum += adler32(sum, buf, n);
 		if (writen(1, buf, n) != n) return (1);
 	}
 	if (nread != sb.st_size) {
@@ -86,6 +92,8 @@ out(char *file)
 		    file, nread, (unsigned int)sb.st_size);
 		return (1);
 	}
+	sprintf(buf, "%010u", sum);
+	writen(1, buf, 10);
 	sprintf(buf, "%03o", sb.st_mode & 0777);
 	writen(1, buf, 3);
 	return (0);
@@ -156,6 +164,7 @@ in(char *file, int todo, int extract)
 	int	n;
 	int	fd = -1;
 	int	mode;
+	u32	sum = 0, sum2 = 0;
 
 	unless (todo) {
 		fprintf(stderr, "Empty file: %s\n", file);
@@ -163,20 +172,32 @@ in(char *file, int todo, int extract)
 	}
 	if (extract) {
 		fd = mkfile(file);
+		/* do NOT jump to err, it unlinks and the file may exist */
 		if (fd == -1) return (1);
 	}
 	while ((n = readn(0, buf, min(todo, sizeof(buf)))) > 0) {
 		todo -= n;
+		sum += adler32(sum, buf, n);
 		unless (extract) continue;
-		if (writen(fd, buf, n) != n) return (1);
+		if (writen(fd, buf, n) != n) goto err;
 	}
 	if (todo) {
 		fprintf(stderr, "Premature EOF on %s\n", file);
-		return (1);
+		goto err;
+	}
+	if (readn(0, buf, 10) != 10) {
+		perror("chksum read");
+		goto err;
+	}
+	sscanf(buf, "%010u", &sum2);
+	if (sum != sum2) {
+		fprintf(stderr,
+		    "Checksum mismatch %u:%u for %s\n", sum, sum2, file);
+		goto err;
 	}
 	if (readn(0, buf, 3) != 3) {
 		perror("mode read");
-		return (1);
+		goto err;
 	}
 	sscanf(buf, "%03o", &mode);
 	if (extract) {
@@ -185,6 +206,13 @@ in(char *file, int todo, int extract)
 	}
 	fprintf(stderr, "%s\n", file);
 	return (0);
+
+err:	
+	if (extract) {
+		close(fd);
+		unlink(file);
+	}
+	return (1);
 }
 
 int

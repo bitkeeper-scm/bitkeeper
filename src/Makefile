@@ -248,8 +248,8 @@ delta: delta.o rcs.o $(LIBS)
 	$(CC) $(CFLAGS) delta.o rcs.o $(LINK) -o delta
 diffs: diffs.o $(LIBS)
 	$(CC) $(CFLAGS) diffs.o $(LINK) -o diffs
-sfio: sfio.o $(LIBS)
-	$(CC) $(CFLAGS) sfio.o $(LINK) -o sfio
+sfio: sfio.o zlib/libz.a 
+	$(CC) $(CFLAGS) sfio.o zlib/libz.a -o sfio
 adler32: adler32.o $(LIBS)
 	$(CC) $(CFLAGS) adler32.o $(LINK) -o adler32
 undos: undos.o
