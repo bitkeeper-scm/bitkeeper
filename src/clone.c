@@ -750,9 +750,12 @@ relink(char *a, char *b)
 {
 	struct	stat sa, sb;
 
-	if (stat(a, &sa) || stat(b, &sb)) return (-1);
+	if (stat(a, &sa) || stat(b, &sb)) return (0);	/* one is missing? */
 	if (sa.st_size != sb.st_size) return (0);
-	if (sa.st_dev != sb.st_dev) return (-1);
+	if (sa.st_dev != sb.st_dev) {
+		fprintf(stderr, "relink: can't cross mount points\n");
+		return (-1);
+	}
 	if (sa.st_ino == sb.st_ino) return (2);
 	if (access(a, R_OK)) return (0);	/* I can't read it */
 	if (sameFiles(a, b)) {
