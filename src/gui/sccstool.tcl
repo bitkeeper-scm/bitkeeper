@@ -1059,10 +1059,8 @@ proc sccstool {name} \
 	.menus.l configure -text $file
 	listRevs $file
 
-	if { 0 } {
-	    revMap $file
-	    dateSeparate
-	}
+	revMap $file
+	dateSeparate
 
 	history
 	set search(text) "Welcome"
