@@ -316,7 +316,7 @@ cset_rel(sccs *s, delta *d, MDBM *mapdb)
 	char	keystr[MAXPATH];
 	datum	key, val;
 	delta	*e;
-	u16	csrel;
+	u16	csrel = 0;
 
 	assert(s && d && mapdb);
 
@@ -332,7 +332,7 @@ cset_rel(sccs *s, delta *d, MDBM *mapdb)
 	key.dsize = strlen(keystr) + 1;
 	val = mdbm_fetch(mapdb, key);
 	assert(val.dsize == sizeof(csrel));
-	csrel = (val.dsize == sizeof(csrel)) ? (*(u16 *)val.dptr) : 0;
+	memcpy(&csrel, val.dptr, val.dsize);
 	debug((stderr, "renumber: cset release == %u\n", csrel));
 	return (csrel);
 }
