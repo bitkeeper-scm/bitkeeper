@@ -118,6 +118,8 @@ bkd_server()
 	while (1) {
 		int	n = tcp_accept(sock);
 
+		if (n == -1) continue;
+
 		if (fork()) {
 		    	close(n);
 			/* reap 'em if you got 'em */
