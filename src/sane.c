@@ -58,7 +58,10 @@ chk_host()
 		host);
 	}
 
-	if (host && strchr(host, '.') && !strneq(host, "localhost", 9)) {
+	if (host && 
+	    strchr(host, '.') && 
+	    !strneq(host, "localhost", 9) &&
+	    !strchr(host, '@')) {
 		return (0);
 	}
 	fprintf(stderr,
