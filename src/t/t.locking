@@ -1,0 +1,125 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2000 Larry McVoy
+# %K%
+
+# Create a repository 
+echo $N Create initial repository ...................................$NL
+HERE=`pwd`
+echo "logging: none" > $HERE/config
+bk setup -f -n'BitKeeper Test repository' -c$HERE/config project
+if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
+cd project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+touch BitKeeper/etc/SCCS/x.marked
+echo OK
+# Make sure that we can edit with a read or write lock
+echo $N Create some data ............................................$NL
+echo 1 > A
+echo 2 > B
+bk ci $Q -i A B
+if [ ! -f SCCS/s.A ]; then echo failed to create history; exit 1; fi
+commit $S -f -y"This is a \"Change Set\""
+echo OK
+echo $N Check edit with existing read lock ..........................$NL
+bk repo -r
+bk edit $Q A 2> /dev/null
+if [ ! -w A ]; then echo failed to get writable file; exit 1; fi
+echo OK
+echo $N Check edit with existing write lock .........................$NL
+bk repo -R 2> /dev/null
+bk repo -w
+if [ ! -w A ]; then echo failed to get writable file; exit 1; fi
+echo OK
+echo $N Make sure delta fails with existing read lock ...............$NL
+bk repo -W
+bk repo -r
+mv BitKeeper/readers/* BitKeeper/readers/1234@nowhere.nowhere
+bk delta $Q -yXXX A 2> /dev/null
+if [ ! -w A ]; then echo failed to fail delta; exit 1; fi
+echo OK
+echo $N Make sure delta fails with existing write lock ..............$NL
+bk repo -f -R
+bk repo -w
+rm -f BitKeeper/writer/lock
+mv BitKeeper/writer/[0-9]* BitKeeper/writer/1234@nowhere.nowhere
+bk delta $Q -yXXX A 2> /dev/null
+if [ ! -w A ]; then echo failed to fail delta; exit 1; fi
+echo OK
+echo $N Make sure clone fails with existing write lock in source ....$NL
+cd $HERE
+bk clone $Q project clone
+if [ -d clone ]; then echo clone failed to clean up; exit 1; fi
+echo OK
+echo $N Make sure clone works with existing read lock in source .....$NL
+cd $HERE/project
+bk repo -W
+bk repo -r
+mv BitKeeper/readers/* BitKeeper/readers/1234@nowhere.nowhere
+cd $HERE
+bk clone $Q project clone
+if [ ! -d clone -o ! -f clone/SCCS/s.A ]; then echo clone failed; exit 1; fi
+echo OK
+echo $N Make sure pull fails with existing write lock in source .....$NL
+cd $HERE/project
+rm -rf BitKeeper/readers BitKeeper/writer
+ls > C
+bk new $Q C
+bk commit $Q -ywhatever
+bk repo -w
+cd $HERE/clone
+bk pull $Q
+if [ $? != 1 ]; then echo pull failed to exit with error; exit 1; fi
+echo OK
+echo $N Make sure pull works with existing read lock in source ......$NL
+cd $HERE/project
+bk repo -W
+bk repo -r
+mv BitKeeper/readers/* BitKeeper/readers/1234@nowhere.nowhere
+cd $HERE/clone
+bk pull $Q -i
+if [ ! -d RESYNC ]; then echo clone failed; exit 1; fi
+bk resolve $Q
+echo OK
+echo $N Make sure push fails with existing read lock in dest ........$NL
+cd $HERE/clone
+ls > D
+bk new $Q D
+bk commit $Q -ywhatever
+bk push $Q
+if [ $? != 1 ]; then echo push failed to exit with an error; exit 1; fi
+echo OK
+echo $N Make sure push fails with existing write lock in dest .......$NL
+cd $HERE/project
+rm -rf BitKeeper/readers BitKeeper/writer
+bk repo -w
+cd $HERE/clone
+bk push $Q
+if [ $? != 1 ]; then echo push failed to exit with an error; exit 1; fi
+echo OK
+echo $N Make sure push succeeds with no locks in destination ........$NL
+cd $HERE/project
+rm -rf BitKeeper/readers BitKeeper/writer
+cd $HERE/clone
+bk push $Q
+if [ $? != 0 ]; then echo push exited with an error; exit 1; fi
+cd $HERE/project
+bk pull $HERE/clone > OUT 2>&1
+if [ "`cat OUT`" != "Nothing to resync." ]
+then	echo failed
+	cat OUT
+	exit 1
+fi
+echo OK

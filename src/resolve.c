@@ -1620,6 +1620,7 @@ pass4_apply(opts *opts)
 	sprintf(key, "%ssfiles %s", bin, ROOT2RESYNC);
 	unless (p = popen(key, "r")) {
 		perror("popen of bk sfiles");
+		fclose(save); unlink(orig);
 		exit (1);
 	}
 	while (fnext(buf, p)) {
@@ -1628,11 +1629,13 @@ pass4_apply(opts *opts)
 			fprintf(stderr,
 			    "resolve: can't init %s - abort.\n", buf);
 			restore(save);
+			unlink(orig);
 			fprintf(stderr, "resolve: no files were applied.\n");
 			exit(1);
 		}
 		if (sccs_admin(r, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0, 0)) {
 			restore(save);
+			unlink(orig);
 			exit(1);	/* ??? */
 		}
 		sccs_sdelta(r, sccs_ino(r), key);
@@ -1644,6 +1647,7 @@ pass4_apply(opts *opts)
 				fprintf(stderr,
 				    "Will not overwrite edited %s\n", l->gfile);
 				restore(save);
+				unlink(orig);
 				exit(1);
 			}
 			sccs_close(l);
@@ -1675,11 +1679,13 @@ pass4_apply(opts *opts)
 	sprintf(key, "%ssfiles %s", bin, ROOT2RESYNC);
 	unless (p = popen(key, "r")) {
 		unbackup(save);
+		unlink(orig);
 		perror("popen of bk sfiles");
 		exit (1);
 	}
 	unless (get = popen("get -s -", "w")) {
 		unbackup(save);
+		unlink(orig);
 		perror("popen of get -");
 		exit (1);
 	}
@@ -1723,6 +1729,8 @@ pass4_apply(opts *opts)
 	sprintf(buf, "%ssfiles | %scheck -a -", bin, bin);
 	unless (system(buf) == 0) {
 		fprintf(stderr, "Check failed.  Resolve not completed.\n");
+		fclose(save);
+		unlink(orig);
 		exit(1);
 	}
 	unbackup(save);

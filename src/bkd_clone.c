@@ -20,8 +20,10 @@ cmd_clone(int ac, char **av, int in, int out, int err)
 	    	}
 	}
 	unless (repository_rdlock() == 0) {
-		writen(err, "Can't get read lock on the repository.\n");
+		writen(out, "Can't get read lock on the repository.\n");
 		return (-1);
+	} else {
+		writen(out, "read lock OK\n");
 	}
 	    
 	if (pid = fork()) {
@@ -29,11 +31,11 @@ cmd_clone(int ac, char **av, int in, int out, int err)
 
 		if (pid == -1) {
 			perror("fork");
-			repository_rdunlock();
+			repository_rdunlock(0);
 			exit(1);
 		}
 		waitpid(pid, &status, 0);
-		repository_rdunlock();
+		repository_rdunlock(0);
 		exit(0);
 	} else {
 		if (out != 1) { close(1); dup(out); close(out); }

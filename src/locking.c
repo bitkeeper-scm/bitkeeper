@@ -6,88 +6,40 @@
 #include "system.h"
 #include "sccs.h"
 WHATSTR("@(#)%K%");
+
 int	repository_locked(project *p);
 int	repository_lockers(project *p);
-int	repository_lockerList(project *p);
-int	repository_unlock(project *p);
+int	repository_cleanLocks(project *p, int force);
 int	repository_rdlock(void);
-int	repository_rdunlock(void);
-int	repository_wrunlock(void);
 int	repository_wrlock(void);
+int	repository_rdunlock(int force);
+int	repository_wrunlock(void);
 
 int
 repository_locked(project *p)
 {
 	int	freeit = 0;
 	int	ret;
+	char	path[MAXPATH];
 
 	unless (p) {
 		unless (p = proj_init(0)) return (0);
 		freeit = 1;
 	}
-	ret = (p->flags & (PROJ_RDLOCK|PROJ_WRLOCK)) &&
-	    (getenv("BK_IGNORELOCK") == 0);
-    	if (freeit) proj_free(p);
-	return (ret);
-}
-
-int
-repository_rdlocked(project *p)
-{
-	int	freeit = 0;
-	int	ret;
-
-	unless (p) {
-		unless (p = proj_init(0)) return (0);
-		freeit = 1;
+	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
+	ret = exists(path) && !emptyDir(path);
+	unless (ret) {
+		sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
+		ret = exists(path) && !emptyDir(path);
 	}
-	ret = (p->flags & PROJ_RDLOCK) && (getenv("BK_IGNORELOCK") == 0);
     	if (freeit) proj_free(p);
-	return (ret);
-}
-
-int
-repository_wrlocked(project *p)
-{
-	int	freeit = 0;
-	int	ret;
-
-	unless (p) {
-		unless (p = proj_init(0)) return (0);
-		freeit = 1;
-	}
-	ret = (p->flags & PROJ_WRLOCK) && (getenv("BK_IGNORELOCK") == 0);
-    	if (freeit) proj_free(p);
-	return (ret);
+	if (ret && getenv("BK_IGNORELOCK")) return (0);
+	return (1);
 }
 
 /* used to tell us who is blocking the lock */
 int
 repository_lockers(project *p)
-{
-	int	freeit = 0;
-	int	n = 0;
-
-	unless (p) {
-		unless (p = proj_init(0)) return (n);
-		freeit = 1;
-	}
-	if (repository_locked(p)) {
-		fprintf(stderr, "Entire repository is locked");
-		if (p->flags & PROJ_WRLOCK) fprintf(stderr, " by WRITER lock");
-		if (p->flags & PROJ_RDLOCK) fprintf(stderr, " by READER lock");
-		fprintf(stderr, ".\n");
-		n = repository_lockerList(p);
-	}
-    	if (freeit) proj_free(p);
-	return (n);
-}
-
-/*
- * List the lockers.
- */
-int
-repository_lockerList(project *p)
 {
 	char	path[MAXPATH];
 	DIR	*D;
@@ -99,6 +51,12 @@ repository_lockerList(project *p)
 		unless (p = proj_init(0)) return (0);
 		freeit = 1;
 	}
+	unless (repository_locked(p)) {
+		fprintf(stderr, "Entire repository is locked\n");
+    		if (freeit) proj_free(p);
+		return (0);
+	}
+
 	sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
 	unless (D = opendir(path)) goto rd;
 	while (d = readdir(D)) {
@@ -126,11 +84,10 @@ rd:	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
 
 /*
  * Try to unlock a project.
- * Currently only handles readers, not writers.
  * Returns 0 if successful.
  */
 int
-repository_unlock(project *p)
+repository_cleanLocks(project *p, int force)
 {
 	char	path[MAXPATH];
 	char	*host;
@@ -140,6 +97,7 @@ repository_unlock(project *p)
 	DIR	*D;
 	struct	dirent *d;
 	int	flags = 0;
+	struct	stat sbuf;
 
 	unless (p) {
 		unless (p = proj_init(0)) return (-1);
@@ -153,10 +111,7 @@ err:		if (freeit) proj_free(p);
 	}
 
 	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
-	unless (exists(path)) {
-		if (freeit) proj_free(p);
-		return (0);
-	}
+	unless (exists(path)) goto write;
 
 	unless (D = opendir(path)) {
 		perror(path);
@@ -164,6 +119,13 @@ err:		if (freeit) proj_free(p);
 	}
 	while (d = readdir(D)) {
 		if (streq(d->d_name, ".") || streq(d->d_name, "..")) continue;
+		if (force) {
+			sprintf(path,
+			    "%s/%s/%s", p->root, READER_LOCK_DIR, d->d_name);
+			unlink(path);
+			continue;
+		}
+
 		pid = 0;
 		path[0] = 0;
 		sscanf(d->d_name, "%d@%s", &pid, path);
@@ -179,10 +141,46 @@ err:		if (freeit) proj_free(p);
 		}
 	}
 	closedir(D);
-	if (freeit) {
+	/* If we remove the directory, checking for no locks is faster */
+	unless (left) {
+		sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
+		rmdir(path);
+	}
+
+write:	sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
+	unless (exists(path)) goto out;
+
+	unless (D = opendir(path)) {
+		perror(path);
+		goto err;
+	}
+	while (d = readdir(D)) {
+		if (streq(d->d_name, ".") || streq(d->d_name, "..")) continue;
+		if (force) {
+			unlink(path);
+			continue;
+		}
+
+		pid = 0;
+		path[0] = 0;
+		sscanf(d->d_name, "%d@%s", &pid, path);
+		if (streq(path, host) &&
+		    (kill((pid_t)pid, 0) != 0) && (errno == ESRCH)) {
+		    	verbose((stderr, "bk: discarding stale lock %s\n",
+			    d->d_name));
+			sprintf(path,
+			    "%s/%s/%s", p->root, WRITER_LOCK_DIR, d->d_name);
+			unlink(path);
+		} else {
+			left++;
+		}
+	}
+	closedir(D);
+	sprintf(path, "%s/%s", p->root, WRITER_LOCK);
+	if ((stat(path, &sbuf) == 0) && (sbuf.st_nlink == 1)) unlink(path);
+
+out:	if (freeit) {
 		proj_free(p);
-	} else unless (left) {
-		p->flags &= ~PROJ_RDLOCK;
 	}
 	return (left ? -1 : 0);
 }
@@ -195,7 +193,6 @@ int
 repository_rdlock()
 {
 	char	path[MAXPATH];
-	int	first = 1;
 	project	*p;
 
 	unless (p = proj_init(0)) return (-1);
@@ -204,7 +201,7 @@ repository_rdlock()
 	 * We go ahead and create the lock and then see if there is a
 	 * write lock.  If there is, we lost the race and we back off.
 	 */
-again:	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
+	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
 	unless (exists(path)) {
 		mkdir(path, 0777);
 		chmod(path, 0777);	/* kill their umask */
@@ -213,15 +210,6 @@ again:	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
 	    "%s/%s/%d@%s", p->root, READER_LOCK_DIR, getpid(), sccs_gethost());
 	close(creat(path, 0666));
 	unless (exists(path)) {
-		/* try removing and recreating the lock dir.
-		 * This cleans up bad modes in some cases.
-		 */
-		if (first) {
-			sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
-			rmdir(path);
-			first = 0;
-			goto again;
-		}
 		proj_free(p);
 		return (-1);
 	}
@@ -235,28 +223,6 @@ again:	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
 	}
 	proj_free(p);
 	return (0);
-}
-
-int
-repository_rdunlock()
-{
-	char	path[MAXPATH];
-	project	*p;
-	int	ret = 0;
-
-	unless (p = proj_init(0)) return (-1);
-
-	sprintf(path,
-	    "%s/%s/%d@%s", p->root, READER_LOCK_DIR, getpid(), sccs_gethost());
-	if (ret = unlink(path)) {
-		perror(path);
-		goto out;
-	}
-
-	/* clean up stale locks while we are here */
-	repository_unlock(p);
-out:	proj_free(p);
-	return (ret);
 }
 
 /*
@@ -274,20 +240,17 @@ repository_wrlock()
 	unless (p = proj_init(0)) return (-1);
 
 	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
-	unless (exists(path)) {
-		mkdir(path, 0777);
-		chmod(path, 0777);	/* kill their umask */
-	}
-	unless (emptyDir(path)) {
+	if (exists(path) && !emptyDir(path)) {
 fail:		proj_free(p);
 		return (-1);
 	}
 	sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
+	if (exists(path) && !emptyDir(path)) goto fail;
+
 	unless (exists(path)) {
 		mkdir(path, 0777);
 		chmod(path, 0777);	/* kill their umask */
 	}
-	unless (emptyDir(path)) goto fail;
 
 	sprintf(lock, "%s/%s", p->root, ROOT2RESYNC);
 	if (exists(lock)) goto fail;
@@ -296,6 +259,10 @@ fail:		proj_free(p);
 	sprintf(path,
 	    "%s/%s/%d@%s", p->root, WRITER_LOCK_DIR, getpid(), sccs_gethost());
 	close(creat(path, 0666));
+	unless (exists(path)) {
+		proj_free(p);
+		return (-1);
+	}
 	/*
 	 * See the linux open(2) man page.
 	 * We do the lock, then make sure no readers slipped in.
@@ -305,20 +272,50 @@ fail:		proj_free(p);
 	    	unlink(path);
 	    	goto fail;
 	}
+
+	/*
+	 * Make sure no readers sneaked in
+	 */
 	sprintf(lock, "%s/%s", p->root, READER_LOCK_DIR);
-	unless (emptyDir(lock)) {
+	if (exists(lock) && !emptyDir(lock)) {
 	    	unlink(path);
+		sprintf(path, "%s/%s", p->root, WRITER_LOCK);
+	    	unlink(path);
+		sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
+	    	rmdir(path);
 	    	goto fail;
 	}
 	proj_free(p);
 	return (0);
 }
 
+int
+repository_rdunlock(int force)
+{
+	char	path[MAXPATH];
+	project	*p;
+
+	unless (p = proj_init(0)) return (-1);
+
+	/* clean out our lock, if any */
+	sprintf(path,
+	    "%s/%s/%d@%s", p->root, READER_LOCK_DIR, getpid(), sccs_gethost());
+	unlink(path);
+
+	/* clean up stale locks while we are here */
+	repository_cleanLocks(p, force);
+
+	/* blow away the directory, this makes checking for locks faster */
+	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
+	rmdir(path);
+
+	proj_free(p);
+	return (exists(path) && !emptyDir(path));
+}
+
 /*
- * Unlock the write lock.
- * This is different than the reader lock, since there can be only one writer.
- * We just blow away everything in the WRITER_LOCK_DIR.
- */
+ * Blow away all write locks.
+ **/
 int
 repository_wrunlock()
 {
@@ -326,14 +323,14 @@ repository_wrunlock()
 	project	*p;
 	DIR	*D;
 	struct	dirent *d;
-	int	ret = 0;
 
 	unless (p = proj_init(0)) return (-1);
-
 	sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
+	unless (exists(path)) goto out;
 	unless (D = opendir(path)) {
-		ret = -1;
-		goto out;
+		perror(path);
+		proj_free(p);
+		return (-1);
 	}
 	while (d = readdir(D)) {
 		if (streq(d->d_name, ".") || streq(d->d_name, "..")) continue;
@@ -341,9 +338,8 @@ repository_wrunlock()
 		unlink(path);
 	}
 	closedir(D);
-
-	/* clean up stale readlocks while we are here */
-	repository_unlock(p);
+	sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
+	rmdir(path);
 out:	proj_free(p);
-	return (ret);
+	return (0);
 }

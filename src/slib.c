@@ -3137,20 +3137,9 @@ proj_init(sccs *s)
 
 	assert((s == 0) || (s->proj == 0));
 
-	/* XXX - should set a flag that says NO project if this fails */
 	unless (root = sccs_root(s)) return (0);
 	p = calloc(1, sizeof(*p));
 	p->root = root;
-
-	/*
-	 * Go figure out if we are locked.
-	 */
-	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
-	if (exists(path) && !emptyDir(path)) p->flags |= PROJ_RDLOCK;
-	sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
-	if (exists(path) && !emptyDir(path)) p->flags |= PROJ_WRLOCK;
-	sprintf(path, "%s/%s", p->root, ROOT2RESYNC);
-	if (exists(path)) p->flags |= PROJ_WRLOCK;
 	return (p);
 }
 
@@ -3595,7 +3584,8 @@ sccs_lock(sccs *s, char type)
 
 	if (type == 'z') {
 		if (s->state & S_READ_ONLY) return (0);
-		if (repository_locked(s->proj) && repository_unlock(s->proj)) {
+		if (repository_locked(s->proj) &&
+		    (repository_cleanLocks(s->proj, 0) != 0)) {
 		    	return (0);
 		}
 	}
@@ -6817,7 +6807,7 @@ diff_g(sccs *s, pfile *pf, char **tmpfile)
 private void
 unlinkGfile(sccs *s)
 {
-	unlink(s->gfile);	/* Careful */
+	if (s->state & S_GFILE) unlink(s->gfile);	/* Careful */
 	/*
 	 * zero out all gfile related field
 	 */

@@ -8,9 +8,9 @@ BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  get gethost getuser key2rev lines lod prs range rechksum renumber \
 	  rmdel sccscat sccslog sccsmv sccsrm sccssh sfiles sfio sids	 \
 	  sinfo stripdel smoosh takepatch undos what gca mtime zone	 \
-	  bkd bkusers clone commit fix gethelp getlog help isascii logaddr \
+	  bkd bkusers commit fix gethelp getlog help isascii logaddr \
 	  logchangeset names parent push r2c receive resolve \
-	  send sendconfig setlog setup status unwrap version locked
+	  send sendconfig setlog setup status unwrap version repo
 SCRIPTS	= rcs2sccs testfast bk import resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 mkindex \
 	  renametool mkdiffs lodset build crank pull clone resync merge \
@@ -336,8 +336,8 @@ unwrap: unwrap.o $(LIBS)
 	$(CC) $(CFLAGS) unwrap.o $(LINK) -o unwrap
 receive: receive.o $(LIBS)
 	$(CC) $(CFLAGS) receive.o $(LINK) -o receive
-locked: locked.o $(LIBS)
-	$(CC) $(CFLAGS) locked.o $(LINK) -o locked
+repo: repo.o $(LIBS)
+	$(CC) $(CFLAGS) repo.o $(LINK) -o repo
 fix: fix.o $(LIBS)
 	$(CC) $(CFLAGS) fix.o $(LINK) -o fix
 

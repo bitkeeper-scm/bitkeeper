@@ -34,8 +34,10 @@ cmd_pull(int ac, char **av, int in, int out, int err)
 	}
 
 	unless (repository_rdlock() == 0) {
-		writen(err, "Can't get read lock on the repository.\n");
+		writen(out, "Can't get read lock on the repository.\n");
 		return (-1);
+	} else {
+		writen(out, "read lock OK\n");
 	}
 
 	while ((c = getopt(ac, av, "nq")) != -1) {
@@ -137,6 +139,6 @@ out:
 	if (f) pclose(f);
 	if (them) mdbm_close(them);
 	if (me) mdbm_close(me);
-	repository_rdunlock();
+	repository_rdunlock(0);
 	exit(error);
 }

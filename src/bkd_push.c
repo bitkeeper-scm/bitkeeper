@@ -2,6 +2,7 @@
 
 /*
  * Send:
+ *	lock status
  *	key
  *	key
  *	...
@@ -32,8 +33,10 @@ cmd_push(int ac, char **av, int in, int out, int err)
 	}
 
 	if (repository_wrlock()) {
-		writen(err, "Unable to lock project for update.\n");
+		writen(out, "Unable to lock project for update.\n");
 		return (-1);
+	} else {
+		writen(out, "write lock OK\n");
 	}
 
 	while ((c = getopt(ac, av, "q")) != -1) {

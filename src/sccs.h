@@ -392,9 +392,6 @@ typedef struct {
 	char	*root;		/* to the root of the project */
 } project;
 
-#define	PROJ_WRLOCK	0x00000001	/* Locked by resync */
-#define	PROJ_RDLOCK	0x00000002	/* Locked by reader */
-
 #define	READER_LOCK_DIR	"BitKeeper/readers"
 #define	WRITER_LOCK_DIR	"BitKeeper/writer"
 #define	WRITER_LOCK	"BitKeeper/writer/lock"
@@ -714,13 +711,13 @@ char	*cname_user(char *username);
 globv	read_globs(FILE *f, globv oldglobs);
 char	*match_globs(char *string, globv globs);
 void	free_globs(globv globs);
+
 int	repository_locked(project *p);
 int	repository_lockers(project *p);
-int	repository_lockerList(project *p);
-int	repository_unlock(project *p);
+int	repository_cleanLocks(project *p, int force);
 int	repository_rdlock(void);
-int	repository_rdunlock(void);
-int	repository_wrunlock(void);
 int	repository_wrlock(void);
+int	repository_rdunlock(int force);
+int	repository_wrunlock(void);
 
 #endif	/* _SCCS_H_ */
