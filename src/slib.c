@@ -9700,39 +9700,92 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	if (streq(kw, "DI")) {
-		/* serial number of included, exclude and ignoed deltas */
-		/* :DI: = :Dn:/:Dx:/:Dg: */
-		if (!out) return (strVal);
-		KW("Dn"); fc('/'); KW("Dx"); fc('/'); KW("Dg");
+		/* serial number of included and excluded deltas.
+		 * :DI: = :Dn:/:Dx:/:Dg: in ATT, we do :Dn:/:Dx:
+		 */
+		unless (d->include || d->exclude) return (nullVal);
+		KW("Dn"); 
+		if (d->exclude) {
+			if (d->include) fc('/');
+			KW("Dx"); 
+		}
 		return (strVal);
 	}
+
+	if (streq(kw, "RI")) {
+		/* rev number of included and excluded deltas.
+		 * :DR: = :Rn:/:Rx:
+		 */
+		unless (d->include || d->exclude) return (nullVal);
+		KW("Rn"); 
+		if (d->exclude) {
+			if (d->include) fc('/');
+			KW("Rx"); 
+		}
+		return (strVal);
+	}
+
 
 	if (streq(kw, "Dn")) {
 		/* serial number of included deltas */
 		int i;
+
+		unless (d->include) return (nullVal);
+		fc('+');
 		EACH(d->include) {
+			if (i > 1) fc(',');
 			fd(d->include[i]);
-			if (i > 0) fc('~');
 		}
-		if (i) return (strVal);
-		return (nullVal);
+		return (strVal);
 	}
 
 	if (streq(kw, "Dx")) {
 		/* serial number of excluded deltas */
 		int i;
+
+		unless (d->exclude) return (nullVal);
+		fc('-');
 		EACH(d->exclude) {
+			if (i > 1) fc(',');
 			fd(d->exclude[i]);
-			if (i > 0) fc('~');
 		}
-		if (i) return (strVal);
-		return (nullVal);
+		return (strVal);
 	}
 
 	if (streq(kw, "Dg")) {
 		/* ignored delta - definition unknow, not implemented	*/
 		/* always return null					*/
 		return (nullVal);
+	}
+
+	/* rev number of included deltas */
+	if (streq(kw, "Rn")) {
+		int	i;
+		delta	*r;
+
+		unless (d->include) return (nullVal);
+		fc('+');
+		EACH(d->include) {
+			if (i > 1) fc(',');
+			r = sfind(s, d->include[i]);
+			fs(r->rev);
+		}
+		return (strVal);
+	}
+
+	/* rev number of excluded deltas */
+	if (streq(kw, "Rx")) {
+		int	i;
+		delta	*r;
+
+		unless (d->exclude) return (nullVal);
+		fc('-');
+		EACH(d->exclude) {
+			if (i > 1) fc(',');
+			r = sfind(s, d->exclude[i]);
+			fs(r->rev);
+		}
+		return (strVal);
 	}
 
 	if (streq(kw, "W")) {
