@@ -89,7 +89,7 @@ sccs_tagcolor(sccs *s, delta *d)
 {
         if (d->ptag) sccs_tagcolor(s, sfind(s, d->ptag));
         if (d->mtag) sccs_tagcolor(s, sfind(s, d->mtag));
-        d->flags |= D_VISITED;
+        d->flags |= D_RED;
 }                 
 
 private void
@@ -196,7 +196,7 @@ listkey_main(int ac, char **av)
 	 * Phase 2, send the non marked keys.
 	 */
 	for (d = s->table; d; d = d->next) {
-		if (d->flags & D_VISITED) continue;
+		if (d->flags & D_RED) continue;
 		sccs_sdelta(s, d, key);
 		out(key);
 		out("\n");
@@ -287,7 +287,7 @@ prunekey(sccs *s, remote *r, int outfd,
 		}
 		if (streq("@END@", key)) break;
 		if (d = sccs_findKey(s, key)) {
-			d->flags |= D_VISITED;
+			d->flags |= D_RED;
 		} else {
 			if (sccs_istagkey(key)) {
 				rtags++;
@@ -298,7 +298,7 @@ prunekey(sccs *s, remote *r, int outfd,
 	}
 
 empty:	for (d = s->table; d; d = d->next) {
-		if (d->flags & D_VISITED) continue;
+		if (d->flags & D_RED) continue;
 		sprintf(key, "%u\n", d->serial);
 		write(outfd, key, strlen(key));
 		local++;
@@ -337,7 +337,7 @@ prunekey_main(int ac, char **av)
 	prunekey(s, &r, -1, 0, 0, 0, 0);
 	s->state &= ~S_SET;
 	for (d = s->table; d; d = d->next) {
-		if (d->flags & D_VISITED) continue;
+		if (d->flags & D_RED) continue;
 		s->rstart = s->rstop = d;
 		sccs_prs(s, PRS_ALL, 0, dspec, stdout);
 		d->flags &= ~D_SET;

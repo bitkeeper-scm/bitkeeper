@@ -181,7 +181,7 @@ logs_pending(int ptype, int skipRecentCset)
 
 	for (d = s->table; d; d = d->next) {
 		if (d->type != 'D') continue; 
-		if (d->flags & D_VISITED) continue; 
+		if (d->flags & D_RED) continue; 
 		if (skipRecentCset && ((now - d->date) < max_delay)) continue;
 		i++;
 	}

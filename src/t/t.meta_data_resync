@@ -184,18 +184,46 @@ echo OK
 echo $N Check flags conflict2 .......................................$NL
 cd $HERE/project/src
 bk admin $Q -FSCCS foo.c
-bk commit $S -yperm2
+bk commit $S -yxflags2
 cd $HERE/copy/src
-bk admin $Q -FRCS -FYEAR4 -FSCCS -FEXPAND1 foo.c
-bk commit $S -yperm3
+bk edit $Q foo.c
+echo "new-content" >> foo.c
+bk ci $Q -y"new-content" foo.c
+bk commit $S -y"new-content"
+bk resync -t $Q $HERE/project $HERE/copy
+cd $HERE
+bk resolve -t $Q $HERE/copy 2>/dev/null 1>&2 <<EOF
+r
+m
+C
+EOF
+cd $HERE/copy/src
+FLAGS=`bk prs -h -r+ -d:FLAGS: foo.c`
+if [ "$FLAGS" != "YEAR4,RCS,SINGLE,EXPAND1" ]
+then	echo failed with mode $FLAGS
+	bk prs -h -d':REV:\t:FLAGS:\n' foo.c
+	exit 1
+fi
+echo OK
+echo $N Check flags conflict3 .......................................$NL
+cd $HERE/project/src
+bk edit $Q foo.c
+echo "new-content2" >> foo.c
+bk ci $Q -y"new-content2" foo.c
+bk commit $S -y"new-content2"
+cd $HERE/copy/src
+bk admin $Q -FRCS foo.c
+bk commit $S -yxflags3
 bk resync -t $Q $HERE/project $HERE/copy
 cd $HERE
 bk resolve -t $Q $HERE/copy 2>/dev/null 1>&2 <<EOF
 l
+m
+C
 EOF
 cd $HERE/copy/src
 FLAGS=`bk prs -h -r+ -d:FLAGS: foo.c`
-if [ "$FLAGS" != "SINGLE" ]
+if [ "$FLAGS" != "YEAR4,SINGLE,EXPAND1" ]
 then	echo failed with mode $FLAGS
 	bk prs -h -d':REV:\t:FLAGS:\n' foo.c
 	exit 1

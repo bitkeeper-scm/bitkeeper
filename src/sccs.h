@@ -247,7 +247,7 @@
 #define	D_META		0x00001000	/* this is a metadata removed delta */
 #define	D_SYMBOLS	0x00002000	/* delta has one or more symbols */
 #define	D_DUPCSETFILE	0x00004000	/* this changesetFile is shared */
-#define	D_VISITED	0x00008000	/* and had a nice cup of tea */
+#define	D_RED		0x00008000	/* marker used in graph traeversal */
 #define	D_CKSUM		0x00010000	/* delta has checksum */
 #define	D_MERGED	0x00020000	/* set on branch tip which is merged */
 #define	D_GONE		0x00040000	/* this delta is gone, don't print */

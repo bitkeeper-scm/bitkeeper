@@ -2878,14 +2878,14 @@ sccs_tagConflicts(sccs *s)
 	unless (db) db = mdbm_mem();
 	sccs_tagcolor(s, l1);
 	for (sy1 = s->symbols; sy1; sy1 = sy1->next) {
-		unless (sy1->metad->flags & D_VISITED) continue;
-		sy1->metad->flags &= ~D_VISITED;
+		unless (sy1->metad->flags & D_RED) continue;
+		sy1->metad->flags &= ~D_RED;
 		sy1->left = 1;
 	}
 	sccs_tagcolor(s, l2);
 	for (sy1 = s->symbols; sy1; sy1 = sy1->next) {
-		unless (sy1->metad->flags & D_VISITED) continue;
-		sy1->metad->flags &= ~D_VISITED;
+		unless (sy1->metad->flags & D_RED) continue;
+		sy1->metad->flags &= ~D_RED;
 		sy1->right = 1;
 	}
 
@@ -3398,7 +3398,6 @@ misc(sccs *s)
 			if (bits & X_BITKEEPER) s->state |= S_BITKEEPER;
 			if (bits & X_CSETMARKED) s->state |= S_CSETMARKED;
 			if (bits & X_LOGS_ONLY) s->state |= S_LOGS_ONLY;
-			s->state |= xflags2state(bits);
 			continue;
 		} else if (strneq(buf, "\001f &", 4) ||
 		    strneq(buf, "\001f z _", 6)) {	/* XXX - obsolete */
@@ -4027,10 +4026,19 @@ sccs_init(char *name, u32 flags, project *proj)
 	mkgraph(s, flags);
 	debug((stderr, "mkgraph found %d deltas\n", s->numdeltas));
 	if (s->tree) {
+		u32 bits;
+
 		if (misc(s)) {
 			sccs_free(s);
 			return (0);
 		}
+
+		/*
+		 * get the xflags from the delta graph
+		 * instaed of the sccs flag section
+		 */
+		bits = sccs_getxflags(sccs_top(s));
+		s->state |= xflags2state(bits);
 	}
 
 	/*
@@ -8718,31 +8726,6 @@ sccs_isleaf(sccs *s, delta *d)
 }
 
 /*
- * Verify xflag implied by s->state is the same as 
- * the xflags implied by the top-of-trunk delta.
- */
-private int
-check_xflags(sccs *s, int flags)
-{
-	delta	*d;
-	int x1, x2;
-
-	d = sccs_top(s);
-	if (d) {
-		x1 = state2xflags(s->state) & X_XFLAGS;
-		x2 = sccs_getxflags(d) & X_XFLAGS;
-		if (x2 && (x1 != x2)) {
-			verbose((stderr,
-				"%s: inconsistent xflags: "
-				"s->state => %x, d->xflags => %x\n",
-				s->sfile, x1, x2));
-			return (1); /* failed */
-		}
-	}
-	return (0); /* ok */
-}
-
-/*
  * Check open branch
  */
 private int
@@ -8816,7 +8799,6 @@ checkInvariants(sccs *s, int flags)
 {
 	int	error = 0;
 
-	error |= check_xflags(s, flags);
 	error |= checkOpenBranch(s, flags);
 	error |= checkSymGraph(s, flags);
 	return (error);
@@ -13982,10 +13964,10 @@ gca(delta *left, delta *right)
 	 * Clear the visited flag up to the root via one path,
 	 * set it via the other path, then go look for it.
 	 */
-	for (d = left; d; d = d->parent) d->flags &= ~D_VISITED;
-	for (d = right; d; d = d->parent) d->flags |= D_VISITED;
+	for (d = left; d; d = d->parent) d->flags &= ~D_RED;
+	for (d = right; d; d = d->parent) d->flags |= D_RED;
 	for (d = left; d; d = d->parent) {
-		if (d->flags & D_VISITED) return (d);
+		if (d->flags & D_RED) return (d);
 	}
 	return (0);
 }
@@ -14780,11 +14762,11 @@ sccs_ids(sccs *s, u32 flags, FILE *out)
 void
 sccs_color(sccs *s, delta *d)
 {
-        unless (d && !(d->flags & D_VISITED)) return;
+        unless (d && !(d->flags & D_RED)) return;
         assert(d->type == 'D');
         sccs_color(s, d->parent);
         if (d->merge) sccs_color(s, sfind(s, d->merge));
-        d->flags |= D_VISITED;
+        d->flags |= D_RED;
 }                 
 
 #ifdef	DEBUG

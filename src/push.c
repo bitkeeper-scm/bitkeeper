@@ -169,11 +169,11 @@ log_main(int ac, char **av)
 private void
 unPublish(sccs *s, delta *d)
 {
-	unless (d && !(d->flags & D_VISITED)) return;
+	unless (d && !(d->flags & D_RED)) return;
 	assert(d->type == 'D');
 	unPublish(s, d->parent);
 	if (d->merge) unPublish(s, sfind(s, d->merge));
-	d->flags |= D_VISITED; 
+	d->flags |= D_RED; 
 	d->published = 0;
 }
 
@@ -323,7 +323,7 @@ ChangeSet file do not match.  Please check the pathnames and try again.\n");
 			} else {
 				n = 0;
 				for (d = s->table; d; d = d->next) {
-					if (d->flags & D_VISITED) continue;
+					if (d->flags & D_RED) continue;
 					unless (d->type == 'D') continue;
 					n += strlen(d->rev) + 1;
 					fprintf(stderr, "%s", d->rev);
@@ -689,7 +689,7 @@ listIt(sccs *s, int list)
 	assert(f);
 	for (d = s->table; d; d = d->next) {
 		unless (d->type == 'D') continue;
-		if (d->flags & D_VISITED) continue;
+		if (d->flags & D_RED) continue;
 		fprintf(f, "%s\n", d->rev);
 	}
 	pclose(f);

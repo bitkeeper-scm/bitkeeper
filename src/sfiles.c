@@ -483,7 +483,7 @@ out:	sccs_free(cset);
 private	void
 visit(delta *d)
 {
-	d->flags |= D_VISITED;
+	d->flags |= D_RED;
 	if (d->parent) visit(d->parent);
 }
 
