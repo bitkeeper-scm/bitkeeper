@@ -113,21 +113,24 @@ proc searchstring {} \
 	if {[info exists search(focus)]} { 
 		focus $search(focus) 
 	}
+	# One would think that [0-9][0-9]* would be the more appropriate
+	# regex to find an integer... -ask
 	set string [$search(text) get]
 	if {"$string" == ""} {
 		searchreset
 		return
 	} elseif {("$string" != "") && ($search(dir) == ":")} {
-		if {[string is integer $string]} {
-			$search(widget) see "$string.0"
-		} elseif {[string is integer $string] || $string == "end"} {
+		if {[string match {[0-9]*} $string]} {
+		    $search(widget) see "$string.0"
+		} elseif {[string match {[0-9]*} $string] || 
+		    ($string == "end") || ($string == "last")} {
 			$search(widget) see end
 		} else {
 			$search(status) configure -text "$string not integer"
 		}
 		return
 	} elseif {("$string" != "") && ($search(dir) == "g")} {
-		if {[string is integer $string]} {
+		if {[string match {[0-9]*} $string]} {
 			catch {$search(widget) see diff-${string}}
 			set lastDiff $string
 			#set n [$search(widget) mark names]
@@ -318,13 +321,12 @@ proc search_widgets {w s} \
 	pack $search(menu) -side left -expand 1 -fill y
 	pack $search(text) -side left
 	pack $search(prev) -side left -fill y
-	pack $search(clear) -side left
+	pack $search(clear) -side left -fill y
 	pack $search(next) -side left -fill y
 	pack $search(status) -side left -expand 1 -fill x
 
-	#$search(widget) tag configure search \
-	#    -background $gc($app.searchColor) -font $gc($app.fixedBoldFont)
-
+	$search(widget) tag configure search \
+	    -background $gc($app.searchColor) -font $gc($app.fixedBoldFont)
 }
 
 proc example_main_widgets {} \
