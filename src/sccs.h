@@ -950,6 +950,7 @@ MDBM	*loadConfig(char *root, int convert);
 int	ascii(char *file);
 char	*sccs_rmName(sccs *s, int useCommonDir);
 int	sccs_rm(char *name, char *del_name, int useCommonDir);
+void	sccs_rmEmptyDirs(char *path);
 int	mkconfig(FILE *out);
 int	config2logging(char *root);
 int	logging(char *user, MDBM *configDB, MDBM *okDB);

@@ -235,7 +235,7 @@ whichlod(sccs *s, delta *d, MDBM *lodDb)
 	char	keystr[MAXPATH];
 	datum	key, val;
 	delta	*e;
-	delta	*f;
+	delta	*f = 0;
 	ser_t	lod = 0;
 
 	assert(s && d && lodDb);

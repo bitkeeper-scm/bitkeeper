@@ -6829,6 +6829,24 @@ fmttt(char *p, time_t d)
 	return p + 21 - (x - tmp);
 }
 
+private void
+check_removed(delta *d, int strip_tags)
+{
+	assert(d->type == 'R');
+	if (d->flags & D_GONE) return;
+	if (strip_tags) {
+		d->flags |= D_GONE;
+		return;
+	}
+
+	/*
+	 * We don't need no skinkin' removed deltas.
+	 */
+	unless (d->symGraph || (d->flags & D_SYMBOLS)) {
+		d->flags |= D_GONE;
+	}
+}
+
 /*
  * The table is all here in order, just print it.
  * New in Feb, '99: remove duplicates of metadata.

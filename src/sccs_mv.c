@@ -49,6 +49,32 @@ sccs_hasCsetDerivedKey(sccs *s)
 	return (streq(buf1, buf2));
 }
 
+/*
+ * Give a pathname to a file or a dir, remove the SCCS dir, the parent,
+ * etc, up to the root of the repository.
+ * XXX TODO: for split root, check the G tree too..
+ */
+void
+sccs_rmEmptyDirs(char *path)
+{
+	char	*p = 0;
+	char	*q;
+
+	unless (isdir(path)) p = strrchr(path, '/');
+	do {
+		if (p) *p = 0;
+		if (emptyDir(path)) {
+			rmDir(path);
+		} else {
+			if (p) *p = '/';
+			return;
+		}
+		q = strrchr(path, '/');
+		*p = '/';
+		p = q;
+	} while (p);
+}
+
 int
 sccs_mv(char *name, char *dest, int isDir, int isDelete)
 {
@@ -136,25 +162,7 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 	}
 	if (error) goto out;
 
-	/*
-	 * Remove the parent directory of "name",
-	 * If it is empty after the moves.
-	 * XXX TODO: for split root, check the G tree too..
-	 */
-	p = strrchr(s->sfile, '/');
-	if (p) {
-		*p = 0;
-		if (emptyDir(s->sfile)) rmDir(s->sfile);
-		q = strrchr(s->sfile, '/');
-		*p = '/';
-		if (q) {
-			*q = 0;
-			if (emptyDir(s->sfile)) rmDir(s->sfile);
-			*q = '/';
-		} else {
-			if (emptyDir(".")) rmDir(".");
-		}
-	}
+	sccs_rmEmptyDirs(s->sfile);
 
 	/*
 	 * XXX TODO: we should store the rename comment
@@ -311,7 +319,6 @@ mv(char *src, char *dest)
 		/* try making the dir and see if that helps */
 		mkdirf(dest);
 		if (rename(src, dest)) { 	/* try mv(1) */
-			char	cmd[MAXPATH*2 + 5];
 			int	status;
 			status = sys("/bin/mv", src, dest, SYS);
 			if (WEXITSTATUS(status)) return (1);
