@@ -319,6 +319,7 @@ usage:			sprintf(buf, "bk help -s %s", name);
 		}
 
 		if (fire) {
+			sccs_close(s); /*  for win32 */
 			switch (delta_trigger(s)) {
 			    case 0: break;
 			    case 2: /* trigger ran delta, we won't */
