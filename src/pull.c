@@ -452,7 +452,7 @@ pull(char **av, opts opts, remote *r, char **envVar)
 	unless (licenseAccept(1)) {
 		fprintf(stderr, "pull: failed to accept license, aborting.\n");
 		exit(1);
-	}                                                                       
+	}
 	rc = pull_part1(av, opts, r, key_list, envVar);
 	if (rc) return (rc); /* fail */
 	if (pull_part2(av, opts, r, key_list, envVar)) return (1); /* fail */

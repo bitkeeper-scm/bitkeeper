@@ -1268,3 +1268,25 @@ run_check(char *partial, int fix, int quiet)
 	}
 	return (ret);
 }
+
+#undef	isatty
+
+int
+myisatty(int fd)
+{
+	int	ret;
+	char	*p;
+	char	buf[16];
+
+	sprintf(buf, "BK_ISATTY%d", fd);
+	if (p = getenv(buf)) {
+		ret = atoi(p);
+	} else if (getenv("BK_NOTTY")) {
+		ret = 0;
+	} else {
+		ret = isatty(fd);
+	}
+	return (ret);
+}
+
+#define	isatty	myisatty

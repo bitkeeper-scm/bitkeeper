@@ -76,7 +76,7 @@ usage:			system("bk help -s push");
 	unless (licenseAccept(1)) {
 		fprintf(stderr, "push: failed to accept license, aborting.\n");
 		exit(1);
-	}                                                                       
+	}
 	for (;;) {
 		if (opts.verbose) fromTo("Push", 0, r);
 		rc = push(av, r, envVar);
