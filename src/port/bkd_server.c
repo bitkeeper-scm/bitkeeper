@@ -325,6 +325,8 @@ bkd_service_loop(int ac, char **av)
 
 done:	if (sock) CloseHandle((HANDLE)sock);
 	if (sHandle) reportStatus(sHandle, SERVICE_STOPPED, NO_ERROR, 0);
+	_exit(0); /* We don't want to process atexit() in this */
+		  /* env. otherwise XP will flag an error      */
 }
 
 

@@ -117,9 +117,9 @@ check_tar()
 	echo data > /tmp/tar_tst$$/file
 	chmod 0444 /tmp/tar_tst$$/file
 	TAR=/tmp/tar_tst$$.tar
-	(cd / && tar cf $TAR tmp/tar_tst$$)
+	(cd / && tar cf $TAR tmp/tar_tst$$ 2> /dev/null)
 	rm -rf /tmp/tar_tst$$
-	(cd / && tar xf $TAR)
+	(cd / && tar xf $TAR 2> /dev/null)
 	if [ -w /tmp/tar_tst$$/file ]
 	then
 		T_VER=`tar --version | grep "^tar" | cut -f4 -d' '`

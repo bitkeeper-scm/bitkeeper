@@ -1,0 +1,25 @@
+# This test assumes it is run by a user who has ability to 
+# use 'sudo -u nobody' to run using a different account
+#
+# so this is a run by hand test
+
+
+echo $N Test locks from multiple users ...............................$NL
+no_logging project
+chmod -R og+w .
+bk lock -r &
+PID=$!
+bk lock -l 2> OUT1
+bk=`bk bin`/bk
+sudo -u nobody $bk lock -l 2> OUT2
+bk lock -q && {
+	echo The reposistory should still have locks
+	kill $PID
+	exit 1
+}
+kill $PID
+cmp -s OUT1 OUT2 || {
+	echo both users should see the same locks
+	exit 1
+}
+echo OK

@@ -112,6 +112,8 @@ repository_hasLocks(char *root, char *dir)
 /*
  * See if this is "my" repository.
  * This function assumes we are at the package root.
+ * It may seem like nested calls (see import -> bk commit) would want this
+ * to return true but that's probably not so, see where this is used below.
  */
 int
 repository_mine(char type)
@@ -382,7 +384,11 @@ repository_rdunlock(int all)
 {
 	char	path[MAXPATH];
 	project	*p;
+	char	*didnt;
 
+	if ((didnt = getenv("BK_NO_REPO_LOCK")) && streq(didnt, "DIDNT")) {
+		return (0);
+	}
 	unless (p = getproj()) return (0);
 	ldebug(("repository_rdunlock(%s)\n", p->root));
 	if (all) {
@@ -411,7 +417,11 @@ repository_wrunlock(int all)
 	char	path[MAXPATH];
 	project	*p;
 	int	error = 0;
+	char	*didnt;
 
+	if ((didnt = getenv("BK_NO_REPO_LOCK")) && streq(didnt, "DIDNT")) {
+		return (0);
+	}
 	unless (p = getproj()) return (0);
 	ldebug(("repository_wrunlock(%s)\n", p->root));
 	if (all) {

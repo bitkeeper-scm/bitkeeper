@@ -1156,6 +1156,7 @@ char	*key2path(char *key, MDBM *idDB);
 int	check_licensesig(char *key, char *sign);
 int	write_log(char *root, char *file, int rotate, char *format, ...);
 void	delete_cset_cache(char *rootpath, int save);
+pid_t	findpid(pid_t pid);
 void	set_timestamps(sccs *s);
 
 extern char *bk_vers;

@@ -667,8 +667,24 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 private void
 cmdlog_exit(void)
 {
+	/*
+	 * XXX While almost all bkd command call this function on
+	 * exit. (via the atexit() interface), there is one exception:
+	 * on win32, the top level bkd service thread cannot process atexit()
+	 * when the serice shutdown. (XP consider this an error)
+ 	 * Fortuately, the bkd spawn a child process to process each
+	 * new connection. The child process do follow the the normal
+	 * exit path and process atexit().
+	 *  
+	 */
 	purify_list();
 	if (cmdlog_buffer[0]) cmdlog_end(LOG_BADEXIT);
+
+	/*
+	 * XXX TODO: We need to make win32 serivce child process send the
+	 * the error log to via the serive log interface. (Service process
+	 * cannot send messages to tty/desktop without special configuration).
+	 */
 	repository_lockcleanup();
 }
 
@@ -705,7 +721,7 @@ private	struct {
 void
 cmdlog_start(char **av, int httpMode)
 {
-	int	i, len;
+	int	i, len, do_lock = 1;
 
 	cmdlog_buffer[0] = 0;
 	cmdlog_repo = 0;
@@ -757,7 +773,23 @@ cmdlog_start(char **av, int httpMode)
 	}
 	if (getenv("BK_TRACE")) ttyprintf("CMD %s\n", cmdlog_buffer);
 
-	if (cmdlog_flags & CMD_WRLOCK) {
+	/*
+	 * Provide a way to do nested repo operations.  Used by import
+	 * which calls commit.
+	 * Locking protocol is that BK_NO_REPO_LOCK=YES means we are already
+	 * locked, skip it, but change it to BK_NO_REPO_LOCK=DIDNT to make
+	 * sure we don't unlock either.
+	 */
+	if (cmdlog_flags & (CMD_WRLOCK|CMD_RDLOCK)) {
+		char	*p = getenv("BK_NO_REPO_LOCK");
+
+		if (p && streq(p, "YES")) {
+			putenv("BK_NO_REPO_LOCK=DIDNT");
+			do_lock = 0;
+		}
+	}
+
+	if (do_lock && (cmdlog_flags & CMD_WRLOCK)) {
 		if (i = repository_wrlock()) {
 			unless (strneq("remote ", av[0], 7) || !bk_proj) {
 				repository_lockers(bk_proj);
@@ -783,7 +815,7 @@ cmdlog_start(char **av, int httpMode)
 			exit(1);
 		}
 	}
-	if (cmdlog_flags & CMD_RDLOCK) {
+	if (do_lock && (cmdlog_flags & CMD_RDLOCK)) {
 		if (i = repository_rdlock()) {
 			unless (strneq("remote ", av[0], 7) || !bk_proj) {
 				repository_lockers(bk_proj);

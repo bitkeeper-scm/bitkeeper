@@ -44,6 +44,19 @@ usage:			system("bk help -s lock");
 	sccs_cd2root(0, 0);
 	pid = getpid();
 	if (setjmp(jmp)) {
+		/*
+		 * Win32 note: 
+		 * You cannot do a cygwin "kill" to a non-cygwin process
+		 * such as "bk lock -w". You will get "Operation not permitted"
+		 * This means, on win32, we will never get here...
+	 	 * 
+		 * Also, according to the win32 docs on the raise() interface,
+		 * there is no parameter to specifies the pid, only the signal.
+		 * This means you can only send a signal to yourself. It is
+		 * not clear how win32 translate a cntl-c to a signal for a
+		 * process. The console may have takean over the context of the
+		 * application to rasie() the signal.
+		 */
 		if (what == 'r') repository_rdunlock(0);
 		if (what == 'w') repository_wrunlock(0);
 		exit(0);
