@@ -16,7 +16,7 @@
 # These are not BK specific, per se
 
 echo $N Create graph with some merge, -i, and -x stuff ..............$NL
-${ECHO} foo > foo.c
+echo foo > foo.c
 bk ci $Q -i foo.c
 if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
 bk get $Q -e foo.c
@@ -54,7 +54,7 @@ echo OK
 # it doesn't even have.  This isn't as much a test of the set gca
 # as when we get to the merge stuff.  Need to handle this case.
 echo $N Create graph with some weird pathalogical -i and -x .........$NL
-${ECHO} bar > bar.c
+echo bar > bar.c
 bk ci $Q -i bar.c
 if [ ! -f SCCS/s.bar.c ]; then echo failed to create history; exit 1; fi
 bk get $Q -e bar.c

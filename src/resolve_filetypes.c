@@ -32,7 +32,7 @@ ft_help(resolve *rs)
 
 	fprintf(stderr,
 "---------------------------------------------------------------------------\n\
-The file has a file type conflict:
+The file has a file type conflict:\n\
 Local:  %s@%s\n\t%s\n\
 Remote: %s@%s\n\t%s\n\
 ---------------------------------------------------------------------------\n",

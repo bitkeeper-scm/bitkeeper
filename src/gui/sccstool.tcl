@@ -3,6 +3,7 @@
 #
 # %W% %@%
 
+# Return width of text widget
 proc wid {id} \
 {
 	set bb [.p.top.c bbox $id]
@@ -11,6 +12,7 @@ proc wid {id} \
 	return [expr $x2 - $x1]
 }
 
+# Return height of text widget
 proc ht {id} \
 {
 	set bb [.p.top.c bbox $id]
@@ -19,35 +21,52 @@ proc ht {id} \
 	return [expr $y2 - $y1]
 }
 
-# 0 - do a red rectangle
-# 1 - do a $arrow outline
-# 2 - do a orange rectangle
-# 3 - do a yellow rectangle
+#
+# Set highlighting on the bounding box containing the revision number
+#
+# Really should be symbolic (i.e. left-right or old-new instead of
+# orange-yellow) Maybe -> old, new, bad, 
+#
+# red - do a red rectangle
+# lightblue - do a lightblue rectangle
+# arrow - do a $arrow outline
+# orange - do a orange rectangle
+# yellow - do a yellow rectangle
+# black - do a yellow rectangle
 proc highlight {id type} \
 {
-	global	arrow
+	global	color
 
 	set bb [.p.top.c bbox $id]
 	set x1 [lindex $bb 0]
 	set y1 [lindex $bb 1]
 	set x2 [lindex $bb 2]
 	set y2 [lindex $bb 3]
-	if {$type == 0} {
+
+	switch $type {
+	    revision {\
 		set bg [.p.top.c create rectangle \
-		    $x1 $y1 $x2 $y2 -outline "red" -width 1.5]
-	} elseif {$type == 1} {
+		    $x1 $y1 $x2 $y2 -outline $color(revision) -width 1]}
+	    merge   {\
 		set bg [.p.top.c create rectangle \
-		    $x1 $y1 $x2 $y2 -outline $arrow -width 1]
-	} elseif {$type == 2} {
+		    $x1 $y1 $x2 $y2 -outline $color(merge) -width 1]}
+	    arrow   {\
 		set bg [.p.top.c create rectangle \
-		    $x1 $y1 $x2 $y2 -outline "" -fill orange -tags orange]
-	} elseif {$type == 3} {
+		    $x1 $y1 $x2 $y2 -outline $color(arrow) -width 1]}
+	    red     {\
+	        set bg [.p.top.c create rectangle \
+		    $x1 $y1 $x2 $y2 -outline "red" -width 1.5]}
+	    orange  {\
 		set bg [.p.top.c create rectangle \
-		    $x1 $y1 $x2 $y2 -outline "" -fill yellow -tags yellow]
-	} elseif {$type == 4} {
+		    $x1 $y1 $x2 $y2 -outline "" -fill orange -tags orange]}
+	    yellow   {\
 		set bg [.p.top.c create rectangle \
-		    $x1 $y1 $x2 $y2 -outline black -fill lightblue]
+		    $x1 $y1 $x2 $y2 -outline "" -fill yellow -tags yellow]}
+	    black  {\
+		set bg [.p.top.c create rectangle \
+		    $x1 $y1 $x2 $y2 -outline black -fill lightblue]}
 	}
+
 	.p.top.c lower $bg
 	return $bg
 }
@@ -61,13 +80,114 @@ proc chkSpace {x1 y1 x2 y2} \
 	return [.p.top.c find overlapping $x1 $y1 $x2 $y2]
 }
 
+#
+# Build arrays of revision to date mapping and
+# serial number to rev.
+#
+# These arrays are used to help place date separators in the graph window
+#
+proc revMap {file} \
+{
+        global rev2date serial2rev dev_null
+
+        set dspec "-d:Ds:-:P: :DS: :Dy:/:Dm:/:Dd: :UTC-FUDGE:"
+        set fid [open "|bk prs -h {$dspec} $file 2>$dev_null" "r"]
+        while {[gets $fid s] >= 0} {
+		set rev [lindex $s 0]
+		set serial [lindex $s 1]
+		set date [lindex $s 2]
+		set utc [lindex $s 3]
+		#puts "rev: ($rev) utc: $utc ser: ($serial) date: ($date)"
+
+                set rev2date($rev) $date
+                set serial2rev($serial) $rev
+        }
+}
+
+# Separate the revisions by date with a vertical bar
+# Prints the date on the bottom of the pane
+#
+# Walks down an array serial numbers and places bar when the date
+# changes
+#
+proc dateSeparate { } { \
+
+        global serial2rev rev2date revX revY font ht screen
+	global color
+
+        set curday ""
+        set prevday ""
+        set lastx 0
+
+	# Adjust height of screen by adding text height
+	# so date string is not so scrunched in
+        set miny [expr $screen(miny) - $ht]
+        set maxy [expr $screen(maxy) + $ht]
+
+	# Try to compensate for date text size when canvas is small
+	if { $maxy < 50 } { set maxy [expr $maxy + 15] }
+
+	# set y-position of text
+	set ty [expr $maxy - $ht]
+
+        foreach ser [lsort -integer [array names serial2rev]] {
+
+                set rev $serial2rev($ser)
+                set date $rev2date($rev)
+
+                #puts "s#: $ser rv: $rev d: $date X:$revX($rev) Y:$revY($rev)" 
+
+                set curday $rev2date($rev)
+                if {[string compare $prevday $curday] == 0} {
+                        #puts "SAME: cur: $curday prev: $prevday $rev $nrev"
+                } else {
+                        set x $revX($rev)
+	
+			set date_array [split $prevday "/"]
+			set day [lindex $date_array 1]
+			set mon [lindex $date_array 2]
+			set yr [lindex $date_array 0]
+			set date "$day/$mon\n$yr"
+
+                        # place vertical line short dx behind revision bbox
+                        set lx [ expr $x - 15 ]
+                        .p.top.c create line $lx $miny $lx $maxy -width 1 \
+			    -fill "lightblue"
+
+                       # Attempt to center datestring between verticals
+                        set tx [expr $x - (($x - $lastx)/2) - 13]
+                        .p.top.c create text $tx $ty -fill $color(date) \
+			    -justify center \
+			    -anchor n -text "$date" -font $font(date)
+
+                        set prevday $curday
+                        set lastx $x
+                }
+        }
+
+	set date_array [split $curday "/"]
+	set day [lindex $date_array 1]
+	set mon [lindex $date_array 2]
+	set yr [lindex $date_array 0]
+	set date "$day/$mon\n$yr"
+
+	set tx [expr $screen(maxx) - (($screen(maxx) - $x)/2) + 20]
+	.p.top.c create text $tx $ty -fill $color(date) -anchor n \
+		-text "$date" -font $font(date)
+}
+
+
 # Add the revs starting at location x/y.
 proc addline {y xspace ht l} \
 {
-	global	bad bfont font wid revX revY arrow merges parent line_rev
+	global	bad font wid revX revY color merges parent line_rev screen
+	global  stacked
 
 	set last -1
 	set ly [expr $y - [expr $ht / 2]]
+
+	#puts "y: $y  xspace: $xspace ht: $ht l: $l"
+
 	foreach word $l {
 		# Figure out if we have another parent.
 		# 1.460.1.3-awc-890@1.459.1.2-awc-889
@@ -81,28 +201,50 @@ proc addline {y xspace ht l} \
 		} else {
 			regexp {(.*)-([^-]*)} $word dummy rev serial
 		}
+
+		# make revision two lines
+		if ($stacked) {
+			set jnk [split $rev "-"]
+			set jnk_user [lindex $jnk 1]
+			set jnk_rev [lindex $jnk 0]
+			set txt "$jnk_user\n$jnk_rev"
+			#set txt join [lindex $jnk 1] "\n" [lindex $jnk 0] 
+		} else {
+			set txt $rev
+		}
+
 		set x [expr $xspace * $serial]
 		set b [expr $x - 2]
 		if {$last > 0} {
 			set a [expr $last + 2]
 			.p.top.c create line $a $ly $b $ly \
 			    -arrowshape {4 4 2} -width 1 \
-			    -fill $arrow -arrow last
+			    -fill $color(arrow) -arrow last
 		}
 		if {[regsub -- "-BAD" $rev "" rev] == 1} {
 			set id [.p.top.c create text $x $y -fill "red" \
-			    -anchor sw -text "$rev" -font $bfont \
-			    -tags "$rev"]
-			highlight $id 0
+			    -anchor sw -text "$txt" -justify center \
+			    -font $font(bold) -tags "$rev"]
+			highlight $id "red"
 			incr bad
 		} else {
 			set id [.p.top.c create text $x $y -fill #241e56 \
-			    -anchor sw -text "$rev" -font $bfont \
-			    -tags "$rev"]
+			    -anchor sw -text "$txt" -justify center \
+			    -font $font(bold) -tags "$rev"]
+			if {$m == 1} { 
+				highlight $id "merge"
+			} else {
+				highlight $id "revision"
+			}
 		}
-#puts "ADD $word -> $rev @ $x $y"
-		if {$m == 1} { highlight $id 1 }
+		#puts "ADD $word -> $rev @ $x $y"
+		#if {$m == 1} { highlight $id "arrow" }
 
+		if { $x < $screen(minx) } { set screen(minx) $x }
+		if { $x > $screen(maxx) } { set screen(maxx) $x }
+		if { $y < $screen(miny) } { set screen(miny) $y }
+		if { $y > $screen(maxy) } { set screen(maxy) $y }
+		
 		set revX($rev) $x
 		set revY($rev) $y
 		set lastwid [wid $id]
@@ -120,7 +262,7 @@ proc addline {y xspace ht l} \
 # All nodes use up the same amount of space, $w.
 proc line {s w ht} \
 {
-	global	bfont wid revX revY branchArrow where yspace line_rev
+	global	font wid revX revY color where yspace line_rev screen
 
 	# space for node and arrow
 	set xspace [expr $w + 8]
@@ -203,15 +345,15 @@ proc line {s w ht} \
 	incr y [expr $ht / -2]
 	incr x -4
 	set id [.p.top.c create line $px $py $x $y -arrowshape {4 4 4} \
-	    -width 1 -fill $branchArrow -arrow last]
+	    -width 1 -fill $color(branchArrow) -arrow last]
 	.p.top.c lower $id
 }
 
 # Create a merge arrow, which might have to go below other stuff.
 proc mergeArrow {m ht} \
 {
-	global	bad bfont lineOpts merges parent
-	global	wid revX revY mergeArrow
+	global	bad font lineOpts merges parent
+	global	wid revX revY color
 
 	set b $parent($m)
 	set px $revX($b)
@@ -236,18 +378,23 @@ proc mergeArrow {m ht} \
 		incr px 2
 	}
 	.p.top.c lower [.p.top.c create line $px $py $x $y \
-	    -arrowshape {4 4 4} -width 1 -fill $mergeArrow -arrow last]
+	    -arrowshape {4 4 4} -width 1 -fill $color(mergeArrow) -arrow last]
 }
 
 proc listRevs {file} \
 {
-	global	bad bfont lineOpts merges dev_null line_rev
+	global	bad font lineOpts merges dev_null line_rev ht screen stacked
+
+	set screen(miny) 0
+	set screen(minx) 0
+	set screen(maxx) 0
+	set screen(maxy) 0
 
 	# Put something in the corner so we get our padding.
 	# XXX - should do it in all corners.
 	.p.top.c create text 0 0 -anchor nw -text " "
 
-	# Figure out the biggest size of any node.
+	# Figure out the biggest node and its length.
 	# XXX - this could be done on a per column basis.  Probably not
 	# worth it until we do LOD names.
 	set d [open "| bk lines $lineOpts $file 2>$dev_null" "r"]
@@ -257,19 +404,46 @@ proc listRevs {file} \
 		lappend lines $s
 		foreach word [split $s] {
 			# Figure out if we have another parent.
-			regexp $line_rev $word dummy word
-			regexp {(.*)-([^-]*)} $word dummy rev serial
-			set l [string length $rev]
-			if {([regexp -- "-BAD" $rev] == 0) && ($l > $len)} {
+			set node  [split $word '@']
+			set word [lindex $node 0]
+
+			# figure out whether name or revision is the longest
+			# so we can find the largest text string in the list
+			set revision [split $word '-']
+			set rev [lindex $revision 0]
+			set programmer [lindex $revision 1]
+
+			set revlen [string length $rev]
+			set namelen [string length $programmer]
+
+			if ($stacked) {
+				if {$revlen > $namelen} { 
+					set txt $rev
+					set l $revlen
+				} else {
+					set txt $programmer
+					set l $namelen
+				}
+			} else {
+				set txt $word
+				set l [string length $word]
+			}
+
+			if {($l > $len) && ([string first '-BAD' $rev] == -1)} {
 				set len $l
-				set big $rev
+				set big $txt
 			}
 		}
 	}
 	close $d
-	set len [font measure $bfont "$big"]
-	set ht [font metrics $bfont -ascent]
-	incr ht [font metrics $bfont -descent]
+	set len [font measure $font(bold) "$big"]
+	set ht [font metrics $font(bold) -ascent]
+	incr ht [font metrics $font(bold) -descent]
+
+	set ht [expr $ht * 2]
+	set len [expr $len + 10]
+
+	#puts "big: ($big) len: ($len) ht: ($ht)"
 	set bad 0
 	foreach s $lines {
 		line $s $len $ht
@@ -304,7 +478,7 @@ proc getLeftRev {} \
 	.p.top.c delete orange
 	.menus.cset configure -state disabled -text "View changeset "
 	.menus.difftool configure -state disabled
-	set rev1 [getRev 2]
+	set rev1 [getRev "orange"]
 	if {[info exists rev2]} { unset rev2 }
 	if {$rev1 != ""} { .menus.cset configure -state normal }
 }
@@ -314,7 +488,7 @@ proc getRightRev {} \
 	global	rev2 file
 
 	.p.top.c delete yellow
-	set rev2 [getRev 3]
+	set rev2 [getRev "yellow" ]
 	if {$rev2 != ""} {
 		.menus.difftool configure -state normal
 		.menus.cset configure -text "View changesets"
@@ -439,12 +613,10 @@ proc diff2 {difftool} \
 		return
 	}
 	busy 1
-	set r1 [file join $tmp_dir $rev1[pid]]
-	set a [open "| get $getOpts -kPr$rev1 $file >$r1 2>$dev_null" "w"]
-	set r2 [file join $tmp_dir $rev2[pid]]
-	set b [open "| get $getOpts -kPr$rev2 $file >$r2 2>$dev_null" "w"]
-	catch { close $a; }
-	catch { close $b; }
+	set r1 [file join $tmp_dir $rev1-[pid]]
+	catch { exec bk get $getOpts -kPr$rev1 $file >$r1}
+	set r2 [file join $tmp_dir $rev2-[pid]]
+	catch {exec bk get $getOpts -kPr$rev2 $file >$r2}
 	if {$difftool == 1} {
 		difftool $r1 $r2
 		return
@@ -769,9 +941,8 @@ proc busy {busy} \
 
 proc widgets {} \
 {
-	global	font bfont arrow background search swid diffOpts getOpts
-	global	lineOpts dspec wish yspace paned file branchArrow mergeArrow
-	global	tcl_platform
+	global	font search swid diffOpts getOpts color stacked
+	global	lineOpts dspec wish yspace paned file tcl_platform 
 
 	set dspec \
 "-d:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)}\n\$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}"
@@ -781,26 +952,38 @@ proc widgets {} \
 	set yspace 20
 	set search(text) ""
 	set search(dir) ""
+	set stacked 1
+
 	if {$tcl_platform(platform) == "windows"} {
-		set font {helvetica 9 roman}
-		set bfont {helvetica 9 roman bold}
-		set lFont {helvetica 9 roman bold}
-		set buttonFont {helvetica 9 roman bold}
+		set font(plain) {helvetica 9 roman}
+		set font(date) {helvetica 9 roman}
+		set font(bold) {helvetica 9 roman bold}
+		set font(label) {helvetica 9 roman bold}
+		set font(button) {helvetica 9 roman bold}
 		set py 0; set px 1; set bw 2
 		set swid 18
 	} else {
-		set font {fixed 12 roman}
-		set bfont {fixed 12 roman bold}
-		set lFont {fixed 12 roman bold}
-		set buttonFont {times 12 roman bold}
+		set font(plain) {6x13}
+		set font(date) {6x13}
+		set font(bold) {6x13bold}
+		set font(label) {6x13bold}
+		set font(button) {6x13bold}
 		set py 1; set px 4; set bw 2
 		set swid 12
 	}
-	set arrow darkblue
-	set branchArrow $arrow
-	set mergeArrow $arrow
-	set background #9fb6b8
-	set bcolor #d0d0d0
+
+	# maybe try: -misc-fixed-medium-*-*-*-13-*-*-*-*-*-*-*
+	# if 6x13 doesn't work
+
+	set color(arrow) darkblue
+	set color(merge) darkblue
+	set color(revision) darkblue
+	set color(date) slategrey
+	set color(branchArrow) $color(arrow)
+	set color(mergeArrow) $color(arrow)
+	set color(background) #9fb6b8
+	set color(bg) #d0d0d0
+
 	set geometry ""
 	if {[file readable ~/.sccstoolrc]} {
 		source ~/.sccstoolrc
@@ -810,19 +993,19 @@ proc widgets {} \
 	}
 	wm title . "SCCS Tool"
 	frame .menus
-	    button .menus.quit -font $buttonFont -relief raised \
-		-bg $bcolor -pady $py -padx $px -borderwid $bw \
+	    button .menus.quit -font $font(button) -relief raised \
+		-bg $color(bg) -pady $py -padx $px -borderwid $bw \
 		-text "Quit" -command done
-	    button .menus.help -font $buttonFont -relief raised \
-		-bg $bcolor -pady $py -padx $px -borderwid $bw \
+	    button .menus.help -font $font(button) -relief raised \
+		-bg $color(bg) -pady $py -padx $px -borderwid $bw \
 		-text "Help" -command { exec bk helptool sccstool & }
-	    button .menus.cset -font $buttonFont -relief raised \
-		-bg $bcolor -pady $py -padx $px -borderwid $bw \
+	    button .menus.cset -font $font(button) -relief raised \
+		-bg $color(bg) -pady $py -padx $px -borderwid $bw \
 		-text "View changeset " -width 15 -command r2c -state disabled
-	    button .menus.difftool -font $buttonFont -relief raised \
-		-bg $bcolor -pady $py -padx $px -borderwid $bw \
+	    button .menus.difftool -font $font(button) -relief raised \
+		-bg $color(bg) -pady $py -padx $px -borderwid $bw \
 		-text "Diff tool" -command "diff2 1" -state disabled
-	    label .menus.l -font $lFont -width 50 -relief groove \
+	    label .menus.l -font $font(label) -width 50 -relief groove \
 		-pady $py -padx $px -borderwid $bw
 	    if {$file == "ChangeSet"} {
 		    .menus.cset configure -command csettool
@@ -838,7 +1021,7 @@ proc widgets {} \
 		scrollbar .p.top.xscroll -wid $swid -orient horiz \
 		    -command ".p.top.c xview"
 		scrollbar .p.top.yscroll -wid $swid  -command ".p.top.c yview"
-		canvas .p.top.c -width 500 -background $background \
+		canvas .p.top.c -width 500 -background $color(background) \
 		    -xscrollcommand ".p.top.xscroll set" \
 		    -yscrollcommand ".p.top.yscroll set"
 		pack .p.top.yscroll -side right -fill y
@@ -846,9 +1029,10 @@ proc widgets {} \
 		pack .p.top.c -expand true -fill both
 
 	    frame .p.bottom -borderwidth 2 -relief sunken
-		text .p.bottom.t -width 80 -height 20 -font $font -wrap none \
+		text .p.bottom.t -width 80 -height 30 -font $font(plain) \
 		    -xscrollcommand { .p.bottom.xscroll set } \
-		    -yscrollcommand { .p.bottom.yscroll set }
+		    -yscrollcommand { .p.bottom.yscroll set } \
+		    -wrap none 
 		scrollbar .p.bottom.xscroll -orient horizontal \
 		    -wid $swid -command { .p.bottom.t xview }
 		scrollbar .p.bottom.yscroll -orient vertical -wid $swid \
@@ -863,8 +1047,8 @@ proc widgets {} \
 	}
 
 	frame .cmd -borderwidth 2 -relief ridge
-		text .cmd.t -height 1 -width 30 -font $buttonFont
-		label .cmd.l -font $buttonFont -width 30 -relief groove \
+		text .cmd.t -height 1 -width 30 -font $font(button)
+		label .cmd.l -font $font(button) -width 30 -relief groove \
 		    -textvariable search(text)
 		grid .cmd.l -row 0 -column 0 -sticky ew
 		grid .cmd.t -row 0 -column 1 -sticky ew
@@ -953,7 +1137,7 @@ proc next {inc} \
 
 proc sccstool {name} \
 {
-	global	file bad revX revY search dev_null 
+	global	file bad revX revY search dev_null rev2date serial2rev
 
 	busy 1
 	.p.top.c delete all
@@ -967,6 +1151,10 @@ proc sccstool {name} \
 	}
 	.menus.l configure -text $file
 	listRevs $file
+
+	revMap $file
+	dateSeparate
+
 	history
 	set search(text) "Welcome"
 	focus .p.top.c
@@ -983,7 +1171,7 @@ proc init {} \
 
 proc arguments {} \
 {
-	global	rev1 rev2 argv file gca
+	global rev1 rev2 argv file gca 
 
 	set state flag
 	set rev1 ""
@@ -1038,14 +1226,14 @@ widgets
 sccstool $file
 if {$rev1 != ""} {
 	set rev1 [lineOpts $rev1]
-	highlight $rev1 2
+	highlight $rev1 "orange"
 }
 if {$rev2 != ""} {
 	set rev2 [lineOpts $rev2]
-	highlight $rev2 3
+	highlight $rev2 "yellow"
 	diff2 2
 } 
 if {$gca != ""} {
 	set gca [lineOpts $gca]
-	highlight $gca 4
+	highlight $gca  "black"
 }

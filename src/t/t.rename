@@ -26,7 +26,7 @@ cd gca
 mkdir src
 cd src
 echo Baseline > regression.sh
-${CAT} > INIT <<EOF
+cat > INIT <<EOF
 D 1.1 99/08/03 11:23:13-07:00 zack@zack.bitmover.com 0 0 0/0/0
 c Baseline
 P src/regression.sh
@@ -49,7 +49,7 @@ mkdir t/SCCS
 mv SCCS/s.regression.sh t/SCCS
 cd t
 bk get $S -e regression.sh
-${CAT} > INIT <<EOF
+cat > INIT <<EOF
 D 1.2 99/08/07 15:46:14-07:00 lm@lm.bitmover.com 0 0 0/0/0
 c Rename: src/regression.sh -> src/t/regression.sh
 P src/t/regression.sh
@@ -58,7 +58,7 @@ EOF
 bk delta $Q -IINIT regression.sh
 bk commit $S -yRename > $DEV_NULL
 bk get $S -e regression.sh
-${CAT} > INIT <<EOF
+cat > INIT <<EOF
 D 1.3 99/08/07 15:48:49-07:00 lm@lm.bitmover.com 0 0 0/0/0
 c obsolete
 P src/t/regression.sh
@@ -72,7 +72,7 @@ bk -r check -a
 cd $HERE
 cd b/src
 bk get $S -e regression.sh
-${CAT} > INIT <<EOF
+cat > INIT <<EOF
 D 1.2 99/08/06 11:22:32-07:00 zack@zack.bitmover.com 0 0 0/0/0
 c Don't expect gzipping a uuencoded file to fail.
 P src/regression.sh
@@ -82,7 +82,7 @@ bk delta $Q -IINIT regression.sh
 bk commit $S -ywhatever > $DEV_NULL
 bk -r check -a
 bk get $S -e regression.sh
-${CAT} > INIT <<EOF
+cat > INIT <<EOF
 D 1.3 99/08/18 01:11:42-07:00 lm@lm.bitmover 0 0 0/0/0
 c Some linger prs cleanups.
 P src/regression.sh
@@ -109,10 +109,10 @@ EOF
 if [ $? != 0 ]
 then	echo failed; cat resolve.out; exit 1;
 fi
-${CAT} > PRS <<EOF
+cat > PRS <<EOF
 P src/t/regression.sh
 EOF
-bk prs -hr+ src/t/SCCS/s.regression.sh | grep '^P ' | ${CAT} > PRS2
+bk prs -hr+ src/t/SCCS/s.regression.sh | grep '^P ' | cat > PRS2
 cmp -s PRS PRS2
 if [ $? -ne 0 ]; then echo failed; cat resolve.out; diff PRS PRS2; exit 1; fi
 echo OK
@@ -122,15 +122,15 @@ tar xf chkpt.tar
 echo $N resync b to a ...............................................$NL
 bk resync -t $Q b a
 cd a
-${CAT} > R <<EOF
+cat > R <<EOF
 m
 C
 EOF
 bk resolve $Q -f R >resolve.out 2>&1 #|| { echo failed; cat resolve.out; exit 1; }
-${CAT} > PRS <<EOF
+cat > PRS <<EOF
 P src/t/regression.sh
 EOF
-bk prs -hr+ src/t/SCCS/s.regression.sh | grep '^P ' | ${CAT} > PRS2
+bk prs -hr+ src/t/SCCS/s.regression.sh | grep '^P ' | cat > PRS2
 cmp -s PRS PRS2
 if [ $? -ne 0 ]; then 
 	echo 'failed (known bug)'; diff PRS PRS2

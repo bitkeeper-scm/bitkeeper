@@ -35,7 +35,7 @@ usage: diffs [-acDMPsuU] [-d<d>] [-r<r>] [files...]\n\n\
     -p		procedural diffs, like diff -p\n\
     -P		produce patch diffs, similar to diff -Nur\n\
     -r<r>	diff revision <r>\n\
-    -s		do side by side\n\
+    -s		do side-by-side\n\
     -u		do unified diffs\n\
     -U		prefix lines with user names\n\
     -v		be verbose about non matching ranges\n\n\
@@ -105,7 +105,7 @@ usage:			fprintf(stderr, "diffs: usage error, try --help\n");
 	 */
 	if ((flags & GET_PREFIX) && (things != 2) && !streq("-", av[ac-1])) {
 		fprintf(stderr,
-		    "%s: must have both revisions with -d|u|m\n", av[0]);
+		    "%s: must have both revisions with -d|u|m|s\n", av[0]);
 		return (1);
 	}
 
@@ -173,9 +173,14 @@ usage:			fprintf(stderr, "diffs: usage error, try --help\n");
 		rc = sccs_diffs(s, r1, r2,
 			ex|flags, kind, stdout, lLabel, rLabel);
 		switch (rc) { 
+		    case -1:
+			fprintf(stderr,
+			    "diffs -s of %s failed.\n", s->gfile);
+			break;
 		    case -2:
 		    case -3:
-		    case 0:	break;
+		    case 0:	
+			break;
 		    default:
 			fprintf(stderr,
 			    "diffs of %s failed.\n", s->gfile);

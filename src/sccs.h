@@ -535,8 +535,7 @@ typedef struct patch {
  * 0.8 = 0x flags and V version.
  * 0.9 = Positive termination.
  */
-#define PATCH_CURRENT	"# Patch vers:\t0.9\n"
-#define PATCH_NOSUM	"# Patch vers:\t0.5\n"
+#define PATCH_CURRENT	"# Patch vers:\t1.0\n"
 #define	PATCH_ABORT	"# Patch abort\n"
 #define	PATCH_OK	"# Patch OK\n"
 
@@ -726,14 +725,15 @@ int	uniq_update(char *key, time_t t);
 int	uniq_close(void);
 time_t	sccs_date2time(char *date, char *zone);
 void	cd2root();
-void	mail(char *to, char *subject, char *file);
+pid_t	mail(char *to, char *subject, char *file);
 void	logChangeSet(char *rev, int q);
 char	*getlog(char *u, int q);
 int	setlog(char *u);
 int	checkLog(int quiet, int resync);
 int	get(char *path, int flags, char *output);
 int	gethelp(char *help_name, char *bkarg, FILE *f);
-void	status(int verbose, char *status_log);
+int	is_open_logging(char *logaddr);
+void	status(int verbose, FILE *out);
 void	notify();
 char	*logAddr();
 char	*project_name();
@@ -757,6 +757,7 @@ int	repository_rdlock(void);
 int	repository_wrlock(void);
 int	repository_rdunlock(int force);
 int	repository_wrunlock(int force);
+int	isValidLock(char, pid_t, char *);
 
 void	comments_save(char *s);
 int	comments_got(void);

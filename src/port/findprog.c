@@ -4,15 +4,12 @@
 int
 findprog(char *prog)
 {
-#ifdef WIN32
-	ERROR - awc, you need to do this
-#else
         char	*path = strdup(getenv("PATH"));
 	char	*s, *t;
 	char	buf[MAXPATH];
 
 	for (s = t = path; *t; t++) {
-		if (*t == ':') {
+		if (*t == PATH_DELIM) {
 			*t = 0;
 			sprintf(buf, "%s/%s", s, prog);
 			if (executable(buf)) {
@@ -24,21 +21,17 @@ findprog(char *prog)
 	}
 	free(path);
 	return (0);
-#endif
 }
 
 char	*
 prog2path(char *prog)
 {
-#ifdef WIN32
-	ERROR - awc, you need to do this
-#else
         char	*path = strdup(getenv("PATH"));
 	char	*s, *t;
 	char	buf[MAXPATH];
 
 	for (s = t = path; *t; t++) {
-		if (*t == ':') {
+		if (*t == PATH_DELIM) {
 			*t = 0;
 			sprintf(buf, "%s/%s", s, prog);
 			if (executable(buf)) {
@@ -50,5 +43,4 @@ prog2path(char *prog)
 	}
 	free(path);
 	return (0);
-#endif
 }

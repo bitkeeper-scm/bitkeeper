@@ -63,7 +63,7 @@ res_diffCommon(resolve *rs, rfunc differ)
 		char	right[MAXPATH];
 
 		gettemp(right, "right");
-		if (sccs_get(rs->s, 0, 0, 0, 0, SILENT, right)) {
+		if (sccs_get(rs->s, 0, 0, 0, 0, SILENT|PRINT, right)) {
 		    	fprintf(stderr, "get failed, can't diff.\n");
 			return (0);
 		}
@@ -80,8 +80,8 @@ res_diffCommon(resolve *rs, rfunc differ)
 
 		gettemp(left, "left");
 		gettemp(right, "right");
-		if (sccs_get(s, 0, 0, 0, 0, SILENT, left) ||
-		    sccs_get(rs->s, 0, 0, 0, 0, SILENT, right)) {
+		if (sccs_get(s, 0, 0, 0, 0, SILENT|PRINT, left) ||
+		    sccs_get(rs->s, 0, 0, 0, 0, SILENT|PRINT, right)) {
 		    	fprintf(stderr, "get failed, can't diff.\n");
 			unlink(left);
 			return (0);
@@ -89,6 +89,7 @@ res_diffCommon(resolve *rs, rfunc differ)
 		differ(rs, left, right);
 		unlink(left);
 		unlink(right);
+		return (0);
 	}
 	fprintf(stderr, "Don't know how to diff the files.\n");
 	return (0);
@@ -215,12 +216,13 @@ res_vl(resolve *rs)
 		sccs	*s = (sccs*)rs->opaque;
 
 		gettemp(left, "left");
-		if (sccs_get(s, 0, 0, 0, 0, SILENT, left)) {
+		if (sccs_get(s, 0, 0, 0, 0, SILENT|PRINT, left)) {
 		    	fprintf(stderr, "get failed, can't view.\n");
 			return (0);
 		}
 		more(rs, left);
 		unlink(left);
+		return (0);
 	}
 	fprintf(stderr, "Don't know how to view the file.\n");
 	return (0);
@@ -231,16 +233,36 @@ res_vr(resolve *rs)
 {
 	char	cmd[MAXPATH];
 
-	fprintf(stderr, "--- Viewing %s ---\n", rs->s->gfile);
 	sprintf(cmd, "bk get -qp %s | %s", rs->s->gfile, rs->pager);
 	sys(cmd, rs->opts);
 	return (0);
 }
 
+private	void
+setall(sccs *s)
+{
+	delta	*d;
+
+	for (d = s->table; d; d = d->next) d->flags |= D_SET;
+	if (streq(s->tree->rev, "1.0")) s->tree->flags &= ~D_SET;
+}
+
 int
 res_hl(resolve *rs)
 {
+	if (rs->res_gcreate) {
+		fprintf(stderr, "No history file available\n");
+		return (0);
+	}
+	if (rs->res_screate) {
+		sccs	*s = (sccs*)rs->opaque;
+
+		setall(s);
+		sccs_prs(s, 0, 0, 0, stdout);
+		return (0);
+	}
 	unless (rs->revs) {
+		setall(rs->s);
 		sccs_prs(rs->s, 0, 0, 0, stdout);
 		return (0);
 	}
@@ -252,6 +274,7 @@ int
 res_hr(resolve *rs)
 {
 	unless (rs->revs) {
+		setall(rs->s);
 		sccs_prs(rs->s, 0, 0, 0, stdout);
 		return (0);
 	}
@@ -267,12 +290,17 @@ prs_common(resolve *rs, sccs *s, char *a, char *b)
 	char	*list;
 
 	list = sccs_impliedList(s, "resolve", a, b);
+	if (rs->opts->debug) {
+		fprintf(stderr, "prs(%s, %s, %s) = %s\n", s->gfile, a, b, list);
+	}
 	if (strlen(list) > MAXPATH) {	/* too big */
 		free(list);
+		setall(s);
 		sccs_prs(s, 0, 0, 0, stdout);
 		return (0);
 	}
 	sprintf(cmd, "bk prs -r%s %s | %s", list, rs->s->gfile, rs->pager);
+	free(list);
 	sys(cmd, rs->opts);
 	return (0);
 }
@@ -299,13 +327,15 @@ a) do not move the local file, which means that the entire patch will\n\
    choice if you have done no merge work yet.\n\
 b) remove the local file after making sure it is not something that you\n\
    need.  There are commands you can run now to show you both files.\n\
-c) move the local file to some other pathname.\n\
-d) move the remote file to some other pathname.\n\
+c) remove the remote file after making sure it is not something that you\n\
+   need.  There are commands you can run now to show you both files.\n\
+d) move the local file to some other pathname.\n\
+e) move the remote file to some other pathname.\n\
 \n\
-The choices b, c, or d will allow the file in the patch to be created\n\
+The choices b, c, d, or e will allow the file in the patch to be created\n\
 and you to continue with the rest of the patch.\n\
 \n\
-Warning: choices b and c are not recorded because there is no SCCS file\n\
+Warning: choices b and d are not recorded because there is no SCCS file\n\
 associated with the local file.  So if the rest of the resolve does not\n\
 complete for some reason, it is up to you to go find that file and move it\n\
 back by hand, if that is what you want.\n\n", rs->d->pathname);
@@ -397,16 +427,16 @@ sc_explain(resolve *rs)
 \t``%s''\n\
 The patch you are importing has a file which wants to be in the same\n\
 place as the local file.  Your choices are:\n\
-a) do not move the local file, which means that the entire patch will\n\
+a) do not move either file, which means that the entire patch will\n\
    be aborted, discarding any other merges you may have done.  You can\n\
    then move or delete the local file and retry the patch.\n\
    This is a good choice if you have done no merge work yet.\n\
-b) remove the local file after making sure it is not something that you\n\
-   need.  There are commands you can run now to show you both files.\n\
-c) move the local file to some other pathname.\n\
-d) move the remote file to some other pathname.\n\
+b) remove the local file, which will leave you with the remote file.\n\
+c) remove the remote file, which will leave you with the local file.\n\
+d) move the local file to some other pathname.\n\
+e) move the remote file to some other pathname.\n\
 \n\
-The choices b, c, or d will allow the file in the patch to be created\n\
+All choices other than (a) will allow the file in the patch to be created\n\
 and you to continue with the rest of the patch.\n\n", rs->d->pathname);
 	return (0);
 }
@@ -530,7 +560,7 @@ sc_ml(resolve *rs)
 }
 
 int
-sc_remove(resolve *rs)
+sc_rml(resolve *rs)
 {
 	char	cmd[MAXPATH*2];
 	char	path[MAXPATH];
@@ -550,13 +580,11 @@ sc_remove(resolve *rs)
 	} while (exists(path));
 	sprintf(cmd, "cp -p %s/%s BitKeeper/RENAMES/SCCS/s.%d",
 	    RESYNC2ROOT, ((sccs*)rs->opaque)->sfile, filenum);
-	if (rs->opts->debug) fprintf(stderr, "%s\n", cmd);
 	if (sys(cmd, rs->opts)) {
 		perror(cmd);
 		exit(1);
 	}
 	sprintf(cmd, "bk rm BitKeeper/RENAMES/SCCS/s.%d", filenum);
-	if (rs->opts->debug) fprintf(stderr, "%s\n", cmd);
 	if (sys(cmd, rs->opts)) {
 		perror(cmd);
 		exit(1);
@@ -567,6 +595,21 @@ sc_remove(resolve *rs)
 	return (EAGAIN);
 }
 
+int
+sc_rmr(resolve *rs)
+{
+	char	cmd[MAXPATH*2];
+
+	unless (confirm("Remove remote file?")) return (0);
+	sccs_close(rs->s);
+	sprintf(cmd, "bk rm %s", rs->s->sfile);
+	if (sys(cmd, rs->opts)) {
+		perror(cmd);
+		exit(1);
+	}
+	return (1);
+}
+
 rfuncs	gc_funcs[] = {
     { "?", "help", "print this help", gc_help },
     { "a", "abort", "abort the patch, DISCARDING all merges", res_abort },
@@ -575,7 +618,8 @@ rfuncs	gc_funcs[] = {
     { "ml", "move local", "move the local file to someplace else", gc_ml },
     { "mr", "move remote", "move the remote file to someplace else", res_mr },
     { "q", "quit", "immediately exit resolve", res_quit },
-    { "r", "remove local", "remove the local file", gc_remove },
+    { "rl", "remove local", "remove the local file", gc_remove },
+    { "rr", "remove remote", "remove the remote file", sc_rmr },
     { "sd", "sdiff",
       "side by side diff of the local file vs. the remote file", res_sdiff },
     { "vl", "view local", "view the local file", res_vl },
@@ -594,7 +638,8 @@ rfuncs	sc_funcs[] = {
     { "ml", "move local", "move the local file to someplace else", sc_ml },
     { "mr", "move remote", "move the remote file to someplace else", res_mr },
     { "q", "quit", "immediately exit resolve", res_quit },
-    { "r", "remove local", "remove the local file", sc_remove },
+    { "rl", "remove local", "remove the local copy of the file", sc_rml },
+    { "rr", "remove remote", "remove the remote copy of the file", sc_rmr },
     { "sd", "sdiff",
       "side by side diff of the local file vs. the remote file", res_sdiff },
     { "vl", "view local", "view the local file", res_vl },
@@ -613,12 +658,15 @@ resolve_create(resolve *rs, int type)
 {
 	int	ret;
 
+	if (rs->opts->debug) fprintf(stderr, "TYPE=");
 	switch (type) {
 	    case GFILE_CONFLICT:
+		if (rs->opts->debug) fprintf(stderr, "GFILE\n");
 		rs->prompt = rs->dname;
 		rs->res_gcreate = 1;
 		return (resolve_loop("resolve_create gc", rs, gc_funcs));
 	    case SFILE_CONFLICT:
+		if (rs->opts->debug) fprintf(stderr, "SFILE\n");
 		rs->prompt = rs->dname;
 		rs->res_screate = 1;
 		chdir(RESYNC2ROOT);
@@ -628,6 +676,7 @@ resolve_create(resolve *rs, int type)
 		if (rs->opaque) sccs_free((sccs*)rs->opaque);
 		return (ret);
 	    case RESYNC_CONFLICT:
+		if (rs->opts->debug) fprintf(stderr, "RESYNC\n");
 		rs->res_resync = 1;
 	    	fprintf(stderr, "RESYNC sfile conflicts not done.\n");
 		exit(1);

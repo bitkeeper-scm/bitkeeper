@@ -88,14 +88,11 @@ sendConfig(char *to, int quiet, int quota)
 		fprintf(stderr, "Error %s already exist", config_log);
 		exit(1);
 	}
-	status(0, config_log);
+	f = fopen(config_log, "wb");
+	status(0, f);
 
 	dspec = "$each(:FD:){Proj:\\t(:FD:)}\\nID:\\t:KEY:";
-	f = fopen(config_log, "ab");
 	do_prsdelta(s_cset, "1.0", 0, dspec, f);
-	fclose(f);
-
-	f = fopen(config_log, "ab");
 	fprintf(f, "User:\t%s\n", sccs_getuser());
 	fprintf(f, "Host:\t%s\n", sccs_gethost());
 	fprintf(f, "Root:\t%s\n", fullname(".", 0));
@@ -114,10 +111,8 @@ sendConfig(char *to, int quiet, int quota)
 	fprintf(f, "User List:\n");
 	bkusers(0, 0, f);
 	fprintf(f, "=====\n");
-	fclose(f);
 	sprintf(buf, "%setc/SCCS/s.aliases", BitKeeper);
 	if (exists(buf)) {
-		f = fopen(config_log, "ab");
 		fprintf(f, "Alias  List:\n");
 		sprintf(aliases, "%s/bk_aliasesX%d", TMP_PATH, getpid());
 		sprintf(buf, "%setc/SCCS/s.aliases", BitKeeper);
@@ -130,14 +125,14 @@ sendConfig(char *to, int quiet, int quota)
 		fclose(f1);
 		unlink(aliases);
 		fprintf(f, "=====\n");
-		fclose(f);
 	}
+	fclose(f);
 
 	if (getenv("BK_TRACE_LOG") && streq(getenv("BK_TRACE_LOG"), "YES")) {
 		printf("sending config file...\n");
 	}
 	sprintf(subject, "BitKeeper config: %s", project_name());
-	spawnvp_ex(_P_NOWAIT, av[0], av);
+	if (spawnvp_ex(_P_NOWAIT, av[0], av) == -1) unlink(config_log);
 }
 
 private void
@@ -177,10 +172,24 @@ logChangeSet(char *rev, int quiet)
 	char	commit_log[MAXPATH], buf[MAXLINE], *p;
 	char	subject[MAXLINE];
 	char	start_rev[1024];
+	char	*to = logAddr();
 	FILE	*f;
-	int	dotCount = 0, n;
+	int	dotCount = 0, try = 0, n, status;
+	pid_t	pid;
+	char 	*av[] = {
+		"bk",
+		"log",
+		"http://www.bitkeeper.com/cgi-bin/logit",
+		to,
+		subject, 
+		commit_log,
+		0
+	};
 
-	unless (streq("commit_and_maillog", getlog(NULL, quiet)))  return;
+	unless(is_open_logging(to)) {
+		sendConfig("config@openlogging.org", 1, 1);
+	}
+	if (streq("none", to)) return;
 
 	// XXX TODO  Determine if this is the first rev where logging is active.
 	// if so, send all chnage log from 1.0
@@ -213,11 +222,46 @@ logChangeSet(char *rev, int quiet)
 	sprintf(buf, "bk cset -c -r%s..%s >> %s", start_rev, rev, commit_log);
 	system(buf);
 	if (getenv("BK_TRACE_LOG") && streq(getenv("BK_TRACE_LOG"), "YES")) {
-		printf("sending ChangeSet to %s...\n", logAddr());
+		printf("Sending ChangeSet to %s...\n", logAddr());
+		fflush(stdout);
 	}
 	sprintf(subject, "BitKeeper ChangeSet log: %s", project_name());
-	mail(logAddr(), subject, commit_log);
+#ifdef WIN32
+	/*
+	 * On win32, there is not portable email interface,
+	 * so we use HTTP to do open logging.
+	 */
+	if (is_open_logging(to)) {
+		if (spawnvp_ex(_P_NOWAIT, av[0], av) == -1) unlink(commit_log);
+	} else {
+		mail(to, subject, commit_log);
+		unlink(commit_log);
+	}
+#else
+	pid = mail(to, subject, commit_log);
+	if (pid == -1) {
+err:		fprintf(stdout, "can not mail ChangeSet log\n");
+		fflush(stdout); /* needed for citool */
+		unlink(commit_log);
+		return;
+	}
+	if (pid == -9) { /* -9 means skipped, only happen in regression test */
+		unlink(commit_log);
+		return;
+	}
+	while ((n = waitpid(pid, &status, WNOHANG)) == 0) {
+		fprintf(stdout, "Waiting for mailer...\n");
+		fflush(stdout); /* needed for citool */
+		sleep(2);
+		if (try++ > 60) goto err;
+	}
+	if (n == -1) {
+		perror("waitpid");
+		goto err;
+	}
+	if (WEXITSTATUS(status) != 0) goto err;
 	unlink(commit_log);
+#endif
 }
 
 int
@@ -245,14 +289,16 @@ project_name()
 {
 	sccs	*s;
 	static	char pname[MAXLINE] = "";
-	char	changeset[MAXPATH] = CHANGESET;
+	char	*root, s_cset[MAXPATH] = CHANGESET;
 
 	if (pname[0]) return(pname); /* cached */
-	if (sccs_cd2root(0, 0) == -1) {
+	if ((root = sccs_root(0)) == NULL) {
 		fprintf(stderr, "project name: Can not find project root\n");
 		return (pname);
 	}
-	s = sccs_init(changeset, 0, 0);
+	sprintf(s_cset, "%s/%s", root, CHANGESET);
+
+	s = sccs_init(s_cset, 0, 0);
 	if (s && s->text && (int)(s->text[0])  >= 1) strcpy(pname, s->text[1]);
 	sccs_free(s);
 	return (pname);
@@ -264,6 +310,8 @@ notify()
 	char	buf[MAXPATH], notify_file[MAXPATH], notify_log[MAXPATH];
 	char	subject[MAXLINE], *projectname;
 	FILE	*f;
+	int 	status;
+	pid_t 	pid;
 
 	sprintf(notify_file, "%setc/notify", BitKeeper);
 	unless (exists(notify_file)) {
@@ -294,68 +342,17 @@ notify()
 	f = fopen(notify_file, "rt");
 	while (fgets(buf, sizeof(buf), f)) {
 		chop(buf);
-		mail(buf, subject, notify_log);
+		pid = mail(buf, subject, notify_log);
+		fprintf(stdout, "Waiting for mailer...\n");
+		fflush(stdout); /* needed for citool */
+		waitpid(pid, &status, 0);
+		if (WEXITSTATUS(status) != 0) {
+			fprintf(stdout, "can not notify %s\n", buf);
+			fflush(stdout); /* needed for citool */
+		}
 	}
 	fclose(f);
 	unlink(notify_log);
-}
-
-
-void
-mail(char *to, char *subject, char *file)
-{
-	int	i = -1;
-	char	sendmail[MAXPATH], *mail;
-	char	buf[MAXLINE];
-	struct	utsname ubuf;
-	char	*paths[] = {
-		"/usr/bin",
-		"/usr/sbin",
-		"/usr/lib",
-		"/usr/etc",
-		"/etc",
-		"/bin",
-		0
-	};
-
-	if (strstr(project_name(), "BitKeeper Test repo") &&
-	    (bkusers(1, 1, 0) <= 5)) {
-		/* TODO : make sure our root dir is /tmp/.regression... */
-		return;
-	}
-
-	while (paths[++i]) {
-		sprintf(sendmail, "%s/sendmail", paths[i]);
-		if (exists(sendmail)) {
-			FILE *pipe, *f;
-
-			sprintf(buf, "%s -i %s", sendmail, to);
-			pipe = popen(buf, "w");
-			fprintf(pipe, "To: %s\n", to);
-			if (subject && *subject) {
-				fprintf(pipe, "Subject: %s\n", subject);
-			}
-			f = fopen(file, "r");
-			while (fgets(buf, sizeof(buf), f)) fputs(buf, pipe);
-			fclose(f);
-			pclose(pipe);
-			return;
-		}
-	}
-
-	mail = exists("/usr/bin/mailx") ? "/usr/bin/mailx" : "mail";
-	/* We know that the ``mail -s "$SUBJ"'' form doesn't work on IRIX */
-	assert(uname(&ubuf) == 0);
-	if (strstr(ubuf.sysname, "IRIX")) {
-		sprintf(buf, "%s %s < %s", mail, to, file);
-	} else if (strstr(ubuf.sysname, "Windows")) {
-		sprintf(buf,
-		    "%s/%s -s \"%s\" %s < %s", bin, mail, subject, to, file);
-	}  else {
-		sprintf(buf, "%s -s \"%s\" %s < %s", mail, subject, to, file);
-	}
-	system(buf);
-
 }
 
 void
@@ -371,13 +368,12 @@ remark(int quiet)
 }
 
 void
-status(int verbose, char *status_log)
+status(int verbose, FILE *f)
 {
 	char	buf[MAXLINE], parent_file[MAXPATH];
 	char	tmp_file[MAXPATH];
-	FILE	*f, *f1;
+	FILE	*f1;
 
-	f = fopen(status_log, "a");
 	fprintf(f, "Status for BitKeeper repository %s\n", fullname(".", 0));
 	gethelp("version", 0, f);
 	sprintf(parent_file, "%slog/parent", BitKeeper);
@@ -448,15 +444,15 @@ status(int verbose, char *status_log)
 		fclose(f1);
 		fprintf(f, "%6d files modified and not checked in.\n", i);
 		sprintf(buf, "bk sfiles -C > %s", tmp_file);
+		system(buf);
 		f1 = fopen(tmp_file, "rt");
-		for (i = 0;  fgets(buf, sizeof (buf), f); i++);
+		for (i = 0;  fgets(buf, sizeof (buf), f1); i++);
 		fclose(f1);
 		fprintf(f,
 		    "%6d files with checked in, but not committed, deltas.\n",
 		    i);
 	}
 	unlink(tmp_file);
-	fclose(f);
 }
 
 int
@@ -504,7 +500,7 @@ gethelp(char *help_name, char *bkarg, FILE *outf)
 int
 checkLog(int quiet, int resync)
 {
-	char	ans[MAXLINE], buf[MAXLINE], *r_opt;
+	char	ans[MAXLINE], buf[MAXLINE];
 
 	strcpy(buf, getlog(NULL, quiet));
 	if (strneq("ask_open_logging:", buf, 17)) {
@@ -523,13 +519,11 @@ checkLog(int quiet, int resync)
 		printf("OK [y/n]? ");
 		fgets(ans, sizeof(ans), stdin);
 		if ((ans[0] == 'Y') || (ans[0] == 'y')) setlog(&buf[18]);
-		sendConfig("config@openlogging.org", 1, 1);
 		return (0);
 	} else if (streq("need_seats", buf)) {
 		gethelp("seat_info", "", stdout);
 		return (1);
 	} else if (streq("commit_and_mailcfg", buf)) {
-		sendConfig("config@openlogging.org", 1, 1);
 		return (0);
 	} else if (streq("commit_and_maillog", buf)) {
 		return (0);

@@ -23,7 +23,7 @@ Remote: %s\n\
 		    rs->funcs[i].spec, rs->funcs[i].help);
 	}
 	fprintf(stderr, "\n");
-	fprintf(stderr, "Typical command sequence: 'm' 'e' 'C';\n");
+	fprintf(stderr, "Typical command sequence: 'e' 'C';\n");
 	fprintf(stderr, "Difficult merges may be helped by 'p'.\n");
 	fprintf(stderr, "\n");
 	return (0);
@@ -92,6 +92,7 @@ c_em(resolve *rs)
 {
 	char	cmd[MAXPATH*2];
 
+	unless (exists(rs->s->gfile)) c_merge(rs);
 	sprintf(cmd, "%s %s", rs->editor, rs->s->gfile);
 	sys(cmd, rs->opts);
 	return (0);
@@ -229,6 +230,7 @@ needs_merge(resolve *rs)
 {
 	MMAP	*m;
 	char	*t;
+	int	ok = 1;
 
 	unless (exists(rs->s->gfile)) return (0);
 
@@ -239,11 +241,28 @@ needs_merge(resolve *rs)
 	while ((t = mnext(m)) && ((m->end - t) > 7)) {
 		if (strneq(t, "<<<<<<", 6)) {
 			mclose(m);
-			return (1);
+			ok = 0;
+			break;
 		}
 	}
 	mclose(m);
-	return (0);
+	if (ok) return (0);
+
+	fprintf(stderr, 
+"\nThe file has unresolved conflicts.  These conflicts are marked in the\n\
+file like so\n\
+\n\
+	<<<<<<< BitKeeper/tmp/bk.sh_lm@1.191\n\
+	changes made by user lm in revision 1.191 of bk.sh\n\
+	some more changes by lm\n\
+	=======\n\
+	changes made by user awc in revision 1.189.1.5 of bk.sh\n\
+	more changes by awc\n\
+	>>>>>>> BitKeeper/tmp/bk.sh_awc@1.189.1.5\n\
+\n\
+Use 'e' to edit the file and resolve these conflicts.\n\
+Alternatively, you use 'f' to try the graphical filemerge.\n\n");
+	return (1);
 }
 
 int
@@ -258,23 +277,7 @@ c_commit(resolve *rs)
 
 	if (rs->opts->force) goto doit;
 
-	if (needs_merge(rs)) {
-		fprintf(stderr, 
-"\nThe file has unresolved conflicts.  These conflicts are marked in the\n\
-file like so\n\
-\n\
-	<<<<<<< BitKeeper/tmp/bk.sh_lm@1.191\n\
-	changes made by user lm in revision 1.191 of bk.sh\n\
-	some more changes by lm
-	=======\n\
-	changes made by user awc in revision 1.189.1.5 of bk.sh\n\
-	more changes by awc
-	>>>>>>> BitKeeper/tmp/bk.sh_awc@1.189.1.5\n\
-\n\
-Use 'e' to edit the file and resolve these conflicts.\n\
-Alternatively, you use 'f' to try the graphical filemerge.\n\n");
-		return (0);
-	}
+	if (needs_merge(rs)) return (0);
 	
 	/*
 	 * If in text only mode, then check in the file now.
@@ -297,7 +300,8 @@ rfuncs	c_funcs[] = {
     { "dr", "diff remote", "diff the GCA vs remote file", c_dgr },
     { "dlm", "diff local merge", "diff the local file vs merge file", c_dlm },
     { "drm", "diff remote merge", "diff the remote file vs merge file", c_drm },
-    { "e", "edit merge", "edit the merge file", c_em },
+    { "e", "edit merge",
+      "automerge (if not yet merged) and then edit the merged file", c_em },
     { "f", "fmtool", "merge with graphical filemerge", c_fmtool },
     { "F", "fm3tool",
       "merge with graphical experimental 3 way filemerge", c_fm3tool },

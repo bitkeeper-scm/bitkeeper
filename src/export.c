@@ -47,13 +47,13 @@ usage:			fprintf(stderr,
 		fprintf(stderr, "can not mkdir %s\n", dst);
 		exit(1);
 	}
+	strcpy(dst_path, fullname(dst, 0));
 	chdir(src);
 	if (sccs_cd2root(0, 0) == -1) {
 		fprintf(stderr, "Can not find project root.\n");
 		exit(1);
 	}
-	strcpy(src_path, fullname(src, 0));
-	strcpy(dst_path, fullname(dst, 0));
+	strcpy(src_path, fullname(".", 0));
 
 	sprintf(file_rev, "%s/bk_file_rev%d", TMP_PATH, getpid());
 	if (rev) {
@@ -78,7 +78,7 @@ usage:			fprintf(stderr,
 		sprintf(buf1, "%s/%s", src_path, buf);
 		q = name2sccs(buf1);
 		s = sccs_init(q, SILENT, 0);
-		assert(s);
+		assert(s && s->tree);
 		free(q);
 		d = findrev(s, p);
 		assert(d);

@@ -19,6 +19,7 @@ private char	*unlock_help =
 or\n\
 	unlock [-frsw]\n";
 private	int	doit(sccs *s, char which);
+private int	repo(u32 flags);
 
 int
 unlock_main(int ac, char **av)
@@ -109,7 +110,7 @@ doit(sccs *s, char which)
 	return (0);
 }
 
-int
+private int
 repo(u32 flags)
 {
 	int	error = 0;

@@ -1,9 +1,5 @@
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include "mmap.h"
+#include "system.h"
+#include "sccs.h"
 
 #define	u8	unsigned char
 

@@ -41,6 +41,10 @@ PACKAGE = @PACKAGE@
 U = @U@
 VERSION = @VERSION@
 
+# override Solaris make.rules
+.SCCS_GET:
+	bk get -q $@
+
 prefix = @prefix@
 exec_prefix = @exec_prefix@
 

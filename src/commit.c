@@ -108,7 +108,6 @@ commit_main(int ac, char **av)
 		switch (buf[0]) {
 		    case 'y':  /* fall thru */
 		    case 'u':
-			//exit(do_commit(quiet, checklog, lod, sym, commentFile));
 			exit(do_commit(opts, sym, commentFile));
 			break;
 		    case 'e':
@@ -153,6 +152,16 @@ do_commit(c_opts opts, char *sym, char *commentFile)
 			unlink(commentFile);
 			exit(1);
 		}
+	} else {
+		char *p = getlog(NULL , 1);
+		unless (streq("commit_and_maillog", p) ||
+			streq("commit_and_mailcfg", p)) {
+			fprintf(stderr,
+			    "do_commit: need to comfirm logging: <%s> \n", p);
+			fprintf(stderr, "commit aborted\n");
+			unlink(commentFile);
+			exit(1);
+		}
 	}
 	sprintf(commit_list, "%s/commit_list%d", TMP_PATH, getpid());
 	if (sym) sprintf(sym_opt, "-S\"%s\"", sym);
@@ -167,9 +176,12 @@ do_commit(c_opts opts, char *sym, char *commentFile)
 	unlink(commit_list);
 	notify();
 	s = sccs_init(s_cset, 0, 0);
+	assert(s);
 	d = findrev(s, 0);
-	logChangeSet(d->rev, opts.quiet);
+	assert(d);
+	strcpy(buf, d->rev);
 	sccs_free(s);
+	logChangeSet(buf, opts.quiet);
 	return (rc);
 }
 

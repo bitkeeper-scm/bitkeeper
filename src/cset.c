@@ -72,7 +72,7 @@ private	void	doRange(cset_t *cs, sccs *sc);
 private	void	doEndpoints(cset_t *cs, sccs *sc);
 private	void	doSet(sccs *sc);
 private	void	doMarks(cset_t *cs, sccs *sc);
-private	void	doDiff(sccs *sc, int kind);
+private	void	doDiff(sccs *sc, char kind);
 private	void	sccs_patch(sccs *, cset_t *);
 private	void	cset_exit(int n);
 private void	mklod(sccs *s, delta *start, delta *stop);
@@ -304,45 +304,26 @@ cset_exit(int n)
 	_exit(n);
 }
 
-/*
- * Spin off a subprocess and rejigger stdout to feed into its stdin.
- * The subprocess will run a checksum over the text of the patch
- * (everything from "# Patch vers:\t0.6" on down) and append a trailer
- * line.
- *
- */
 private pid_t
 spawn_checksum_child(void)
 {
-	int	p[2];
 	pid_t	pid;
+	int	pfd;
 	char	*av[3] = {"bk", "adler32", 0};
 
-	if (pipe(p)) {
-		perror("pipe");
-		return -1;
-	}
-	pid = fork();
-	if (pid == -1) {
-		perror("fork");
-		return (-1);
-	} else if (pid) {
-		/* parent sends stdout to the pipe */
-		close(1);
-		dup(p[1]);
-		close(p[1]);
-		close(p[0]);
-		return (pid);
-	}
-	
-	/* Kid gets stdin from the pipe */
-	close(0);
-	dup(p[0]);
-	close(p[0]);
-	close(p[1]);
-	execvp(av[0], av);
-	perror("bk");
-	exit(1);
+	/*
+	 * spawn a child with a write pipe
+	 */
+	pid = spawnvp_wPipe(av, &pfd);
+
+	/*
+	 * Connect our stdout to the write pipe
+	 * i.e parent | child
+	 */
+	close(1);
+	dup2(pfd, 1);
+	close(pfd);
+	return pid;
 }
 
 private int
@@ -808,14 +789,14 @@ csetlist(cset_t *cs, sccs *cset)
 	}
 
 	/* checksum the output */
-	if (cs->makepatch) {
+	if (cs->makepatch && !cs->csetOnly) {
 		cs->pid = spawn_checksum_child();
 		if (cs->pid == -1) goto fail;
 	}
 	if (cs->makepatch || cs->doDiffs) header(cset, cs->doDiffs);
 again:	/* doDiffs can make it two pass */
 	if (!cs->doDiffs && cs->makepatch) {
-		printf("%s", PATCH_CURRENT);
+		printf("\n%s\n", PATCH_CURRENT);
 	}
 
 	sccs_close(cset); /* for win32 */
@@ -858,7 +839,7 @@ again:	/* doDiffs can make it two pass */
 		    "cset: marked %d revisions in %d files\n",
 		    cs->ndeltas, cs->nfiles);
 	}
-	if (cs->makepatch) {
+	if (cs->makepatch && !cs->csetOnly) {
 		printf(PATCH_OK);
 		fclose(stdout);
 		if (waitpid(cs->pid, &status, 0) != cs->pid) {
@@ -877,9 +858,11 @@ again:	/* doDiffs can make it two pass */
 	return;
 
 fail:
-	if (cs->makepatch) {
+	if (cs->makepatch && !cs->csetOnly) {
 		printf(PATCH_ABORT);
 		fclose(stdout);
+		waitpid(cs->pid, &status, 0);	/* for win32: child inherited */
+						/* a low level csort handle */
 	}
 	if (list) fclose(list);
 	unlink(csort);
@@ -892,7 +875,7 @@ fail:
  * Spit out the diffs.
  */
 private void
-doDiff(sccs *sc, int kind)
+doDiff(sccs *sc, char kind)
 {
 	delta	*d, *e = 0;
 
