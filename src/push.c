@@ -517,7 +517,18 @@ send_patch_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
 	if (gzip) fprintf(f, " -z%d", opts.gzip);
 	if (opts.debug) fprintf(f, " -d");
 	if (opts.metaOnly) fprintf(f, " -e");
-	if (opts.nospin) fprintf(f, " -G");
+	if (opts.nospin) {
+		char	*tt = getenv("BKD_TIME_T");
+
+		/* Test for versions before this feature went in */
+		unless (tt && (atoi(tt) >= 985648694)) {
+			fprintf(stderr,
+			    "Remote BKD does not support -G, "
+			    "continuing without -G.\n");
+		} else {
+			fprintf(f, " -G");
+		}
+	}
 	fputs("\n", f);
 	fprintf(f, "@PATCH@\n");
 	fclose(f);

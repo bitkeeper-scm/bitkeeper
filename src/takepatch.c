@@ -1730,8 +1730,8 @@ error:					fprintf(stderr, "GOT: %s", buf);
 
 			if (st.metablank && (echo == 3)) {
 				fprintf(stderr, "%c\b", spin[j % 4]);
+				j++;
 			}
-			j++;
 
 			if (st.preamble && echo > 5) {
 				fprintf(stderr, "Discard: %s", buf);
