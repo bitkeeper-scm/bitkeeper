@@ -1323,3 +1323,23 @@ test -f $HERE/merge-commit || {
 	exit 1
 }
 echo OK
+
+echo $N Modify comment in pre-commit trigger ........................$NL
+cd $HERE
+no_logging comment-chk
+trig=BitKeeper/triggers
+mkdir -p $trig
+cat > $trig/pre-commit.comments <<'EOF'
+#!/bin/sh
+tr '[a-z]' '[A-Z]' > $BK_TMP/comment$$ < $BK_COMMENTFILE
+mv $BK_TMP/comment$$ $BK_COMMENTFILE
+EOF
+chmod +x $trig/*
+touch foo
+bk new $Q foo
+bk commit $Q -y'upper case' || exit 1
+bk prs -r+ -hnd:COMMENTS: ChangeSet | grep -q "UPPER CASE" || {
+	echo Failed
+	exit 1
+}
+echo OK
