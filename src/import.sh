@@ -289,8 +289,9 @@ import_patch() {
 	do 	echo "Patch rejects:"
 		cat ${TMP}rejects$$
 		echo
-		echo Dropping you into a shell to clean these up.
-		echo Please fix up the rejects and we will keep going.
+		echo Dropping you into a shell to clean the rejects.
+		echo Please fix the rejects and then exit the shell 
+		echo to continue the import
 		sh -i
 		find .  -name '*.rej' -print > ${TMP}rejects$$
 	done
@@ -309,7 +310,7 @@ import_patch() {
 			echo ""
 			if [ -s ${TMP}creates$$ ]
 			then	cat ${TMP}creates$$
-	    		fi ) | bk renametool
+	    		fi ) | bk renametool $Q
 		fi
 
 		echo Checking in new or modified files in `pwd` ...
