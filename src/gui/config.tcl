@@ -89,6 +89,7 @@ proc getConfig {prog} \
 	set _d(fm.activeLeftColor) orange  ;# Color of active left region
 	set _d(fm.activeRightColor) yellow ;# Color of active right region
 	set _d(fm3.comments) 1		;# show comments window
+	set _d(fm3.annotate) 1		;# show annotations
 	set _d(fm3.firstdiff) -
 	set _d(fm3.lastdiff) +
 	set _d(fm3.nextdiff) bracketright
