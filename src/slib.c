@@ -6989,7 +6989,7 @@ check_removed(delta *d, int strip_tags)
 	/*
 	 * We don't need no skinkin' removed deltas.
 	 */
-	unless (d->symGraph || (d->flags & D_SYMBOLS)) {
+	unless (d->symGraph || (d->flags & D_SYMBOLS) || d->comments) {
 		d->flags |= D_GONE;
 	}
 }
@@ -7054,7 +7054,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			assert(streq(s->table->rev, "1.0"));
 			break;
 		}
-		if (strip_tags && (d->type == 'R')) d->flags |= D_GONE;
+		if (d->type == 'R') check_removed(d, strip_tags);
 		if (d->flags & D_GONE) {
 			/* This delta has been deleted - it is not to be
 			 * written out at all.
