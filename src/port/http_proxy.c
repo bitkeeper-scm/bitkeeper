@@ -223,14 +223,35 @@ _get_socks_proxy(char **proxies)
 private char **
 _get_http_proxy(char **proxies)
 {
-	char	*p, *q, buf[MAXLINE];
+	char	*p, *q, *r, *h, *cr, buf[MAXLINE];
 
 	p = getenv("http_proxy");  /* http://proxy.host:8080 */
-	if (p && *p && strneq("http://", p, 7) && (q = strchr(&p[7], ':'))) {
+	if (p && *p && strneq("http://", p, 7) && (q = strrchr(&p[7], ':'))) {
+		*q++ = 0;
 		p = &p[7];
-		*q++ = 0; 
-		sprintf(buf, "PROXY %s:%s", p, q);
+		r = strrchr(p, '@'); /* look for optional user:passwd@ */
+		if (r) {
+			*r++ = 0;
+			cr = p;
+			h = r;
+		} else {
+			cr = NULL;
+			h = p;
+		}
+		/*
+		 * When we get here:
+		 * 	 h points to host
+		 * 	 q points to por
+		 * 	 cr points to user:passwd
+	 	 */
+		sprintf(buf, "PROXY %s:%s", h, q);
+		if (cr) {
+			strcat(buf, " ");
+			strcat(buf, cr);
+		}
+		/* buf should look like: PROXY host:port [cred] */
 		q[-1] = ':'; 
+		if (r) r[-1] = '@';
 		proxies = addLine(proxies, strdup(buf));
 	}
 

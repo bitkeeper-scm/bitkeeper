@@ -735,6 +735,7 @@ typedef struct {
 	char	*user;		/* remote user if set */
 	char	*host;		/* remote host if set */
 	char	*path;		/* pathname (must be set) */
+	char 	*cred;		/* user:passwd for proxy authentication */
 	int	contentlen;	/* len from http header (recieve only) */
 	pid_t	pid;		/* if pipe, pid of the child */
 } remote;
