@@ -59,7 +59,7 @@ parent_main(int ac,  char **av)
 		fprintf(stderr, "Invalid parent address: %s\n", av[optind]);
 		return (1);
 	}
-	if (!r->host || isLocalHost(r->host)) {
+	if (isLocalHost(r->host)) {
 		if (r->path) {
 			sprintf(buf, "%s/BitKeeper/etc", r->path);
 			unless (isdir(buf)) {

@@ -1,5 +1,6 @@
 #include "bkd.h"
 
+private remote	*file_parse(char *p);
 private	remote	*nfs_parse(char *p);
 private	remote	*url_parse(char *p, int default_port);
 extern	char	cmdlog_buffer[];
@@ -30,13 +31,20 @@ remote_parse(char *p, int is_clone)
 	unless (p) return (0);
 	if (strneq("bk://", p, 5)) {
 		r = url_parse(p + 5, BK_PORT);
+	} else if (!is_clone && (bk_mode() == BK_BASIC)) {
+		fprintf(stderr,
+		    "Non-bk:// address detected: %s\n", upgrade_msg);
+		r = NULL;
 	} else if (strneq("http://", p, 7)) {
 		r = url_parse(p + 7, WEB_PORT);
 		if (r) r->httpd = 1;
 	} else {
-		if (!is_clone && (bk_mode() == BK_BASIC)) {
+		if (strneq("file://", p, 7)) {
+			r = file_parse(p);
+		} else if (strneq("file:/", p, 6)) {
 			fprintf(stderr,
-				"Non-url address detected: %s\n", upgrade_msg);
+			    "\"file\" is a illegal host name.\n"
+			    "Did you mean \"file://path\"?\n");
 			r = NULL;
 		} else {
 			r = nfs_parse(p);
@@ -50,6 +58,26 @@ remote_parse(char *p, int is_clone)
 		free(rem);
 	}
 	if (echo && r) fprintf(stderr, "RP[%s]->[%s]\n", p, remote_unparse(r));
+	return (r);
+}
+
+/*
+ * file://full/path
+ * Note: We do not support relative path in this format
+ * due to ambiguouity with the host:/path format
+ */
+private remote *
+file_parse(char *p)
+{
+	remote	*r;
+
+	new(r);
+	r->rfd = r->wfd = -1;
+	if (isDriveColonPath(p + 7)) { /* for win32 */
+		r->path = strdup(p + 7);
+	} else {
+		r->path = aprintf("/%s", p + 7);
+	}
 	return (r);
 }
 
@@ -195,7 +223,14 @@ remote_unparse(remote *r)
 		return (strdup(buf));
 	}
 	assert(r->path);
-	return (strdup(r->path));
+	if (isDriveColonPath(r->path)) { /* for win32 */
+		return (aprintf("file://%s", r->path));
+	} else if (r->path[0] == '/') {
+		return (aprintf("file:/%s", r->path));
+	} else {
+		/* if we get here, we got a relative path */
+		return (strdup(r->path));
+	}
 }
 
 void

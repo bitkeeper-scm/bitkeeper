@@ -46,7 +46,7 @@ bk clone $Q $HERE/project $HERE/copy || { echo failed; exit 1; }
 [ -f copy/BitKeeper/log/parent ] || { echo no parent; exit 1; }
 parent=`cat copy/BitKeeper/log/parent`
 host=`bk gethost`
-[ x$parent = x${host}:$HERE/project ] || { echo wrong parent $parent; exit 1; }
+[ x$parent = xfile:/$HERE/project ] || { echo wrong parent $parent; exit 1; }
 cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
 echo OK
 echo $N Clone a nested repository ...................................$NL
