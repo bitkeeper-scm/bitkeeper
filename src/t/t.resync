@@ -513,7 +513,7 @@ bk resolve $L $Q -a -t $HERE/copy
 if [ ! -f "SCCS/s..del-delete.c" ]
 then	echo failed to delete delete.c;
 	pwd
-	find . -name '*delete*' -print
+	bk files .| grep "delete" 
 	exit 1
 fi
 bk co $Q merge.c

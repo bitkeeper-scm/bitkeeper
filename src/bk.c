@@ -616,8 +616,8 @@ gotit:
 				 * This ensure we pick up the correct binary
 				 * such as "patch.exe" and "diff.exe"
 				 *
-				 * XXX We should probable do this for Unix too
-				 * but we don't want to change the unix
+				 * XXX We should probably do this for Unix too
+				 * but we don't want to change the unix code
 				 * until after release 1.0
 				 */
 				int len = strlen(buf);

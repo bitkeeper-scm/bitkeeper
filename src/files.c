@@ -6,10 +6,11 @@ WHATSTR("@(#)%K%");
  * files - find regular files and symbolic links
  */
 private	char *files_usage = "\n\
-usage: files [directories]\n\
+usage: files directories [-names glob_patten]\n\
 \n";
 private	void	walk(char *path);
-private	void	files(char *p, char *pwd);
+private	void	files(char *p);
+private	char 	**globs = 0;
 
 int
 files_main(int ac, char **av)
@@ -19,20 +20,25 @@ files_main(int ac, char **av)
 
 	debug_main(av);
 	platformSpecificInit(NULL);
-	if ((ac > 1) && streq("--help", av[1])) {
-		fprintf(stderr, "%s", files_usage);
+	if (ac  <= 1)  {
+usage:		fprintf(stderr, "%s", files_usage);
 		exit(0);
 	}
-	unless (getcwd(pwd, sizeof(pwd))) {
-		perror("getcwd");
-		exit(1);
+	if ((ac > 1) && streq("--help", av[1])) {
+		goto usage;
+	}
+	if ((ac > 2) && streq("-name", av[ac - 2])) {
+		if (av[ac - 1] == NULL) goto usage;
+		globs = addLine(0, av[ac - 2]);
+		av[ac - 1] = NULL;
+		av[ac - 2] = NULL;
 	}
 	unless (av[1]) {
-		files(0, pwd);
+		files(0);
 	} else {
 		for (i = 1; i < ac; ++i) {
-			files(av[i], pwd);
-			chdir(pwd);
+			files(av[i]);
+			//chdir(pwd);
 		}
 	}
 	purify_list();
@@ -43,7 +49,7 @@ files_main(int ac, char **av)
  * Get the full pathname into the buffer and call the routine.
  */
 private void
-files(char *p, char *pwd)
+files(char *p)
 {
 	char	path[MAXPATH];
 
@@ -55,6 +61,21 @@ files(char *p, char *pwd)
 		walk(path);
 	}
 }
+
+private void
+do_print(char *path)
+{
+	char *t = strrchr(path, '/');
+
+	t = t ? ++t : path;
+
+	unless (globs) {
+		printf("%s\n", path);
+		return;
+	}
+	if (match_globs(t, globs)) printf("%s\n", path);
+}
+
 
 /*
  * Walk a directory tree recursively.  Does not follow symlinks.  
@@ -74,7 +95,7 @@ walk(char *path)
 	ino_t		lastInode = 0;
 #endif
 
-	if ((d = opendir(".")) == NULL) {
+	if ((d = opendir(path[0] ? path : ".")) == NULL) {
 		perror(path);
 		return;
 	}
@@ -107,15 +128,13 @@ walk(char *path)
 		} else {
 			strcpy(path, e->d_name);
 		}
-		if (lstat(e->d_name, &sb)) {
+		if (lstat(path, &sb)) {
 			/* Just ignore it, someone deleted it */
 			continue;
 		} else if (S_ISDIR(sb.st_mode)) {
-			chdir(e->d_name);
 			walk(path);
-			chdir("..");
 		} else if (S_ISREG(sb.st_mode) || S_ISLNK(sb.st_mode)) {
-			printf("%s\n", path);
+			do_print(path);
 		}
 	}
 	closedir(d);

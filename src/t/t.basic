@@ -99,7 +99,7 @@ mkdir -p bar/blech
 echo foo > s.foo
 echo foo > bar/s.foo
 echo foo > bar/blech/s.foo
-find . -name s.foo -print | bk ci $S -i -
+bk files . | grep s.foo | bk ci $S -i -
 if [ ! -f SCCS/s.s.foo ]; then echo failed on s.s.foo; exit 1; fi
 if [ ! -f bar/SCCS/s.s.foo ]; then echo failed on bar/SCCS/s.s.foo; exit 1; fi
 if [ ! -f bar/blech/SCCS/s.s.foo ]; then echo failed on bar/blech/s.foo; exit 1; fi
