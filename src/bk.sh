@@ -246,7 +246,7 @@ _man() {
 }
 
 _root() {
-	if [ X$1 = X -o X$1 = X--help ]
+	if [ X$1 = X--help ]
 	then	echo "usage: root [pathname]"
 		exit 1
 	fi
