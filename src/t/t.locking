@@ -49,27 +49,27 @@ if [ -f SCCS/z.A ]; then echo failed toremove zlock; exit 1; fi
 if [ -w A ]; then echo failed to remove A; exit 1; fi
 echo OK
 echo $N Check edit with existing stale read lock ....................$NL
-bk repo -r
-if [ ! -d BitKeeper/readers ]
-then	echo failed to create read lock; exit 1
-fi
+bk lock -r &
+while bk lock; do true; done
 bk edit $Q A 2> /dev/null
 if [ ! -w A ]; then echo failed to get writable file; exit 1; fi
 bk clean A
 echo OK
 echo $N Check edit with existing stale write lock ...................$NL
-bk repo -R 2> /dev/null
+bk unlock -r 2> /dev/null
 if [ -d BitKeeper/readers ]
 then	echo failed to clean up read lock; exit 1
 fi
-bk repo -w
+bk lock -w &
+while bk lock; do true; done
 bk edit $Q A 2> /dev/null
 if [ ! -w A ]; then echo failed to get writable file; exit 1; fi
 echo OK
 echo $N Check edit with existing valid read lock ....................$NL
 bk clean A
-bk repo -W
-bk repo -r
+bk unlock -w
+bk lock -r &
+while bk lock; do true; done
 mv BitKeeper/readers/* BitKeeper/readers/1234@nowhere.nowhere
 bk edit $Q A
 if [ ! -w A ]; then echo failed to lock A; fi
@@ -83,8 +83,9 @@ bk clean $Q A
 if [ -w A ]; then echo failed to clean; exit 1; fi
 echo OK
 echo $N Check edit with existing valid write lock ...................$NL
-bk repo -f -R
-bk repo -w
+bk unlock -r
+bk lock -w &
+while bk lock; do true; done
 rm BitKeeper/writer/lock
 mv BitKeeper/writer/* BitKeeper/writer/1234@nowhere.nowhere
 ln BitKeeper/writer/1234@nowhere.nowhere BitKeeper/writer/lock
@@ -114,8 +115,9 @@ if [ -d clone ]; then echo clone failed to clean up; exit 1; fi
 echo OK
 echo $N Make sure clone works with existing read lock in source .....$NL
 cd $HERE/project
-bk repo -W
-bk repo -r
+bk unlock -w
+bk lock -r &
+while bk lock; do true; done
 mv BitKeeper/readers/* BitKeeper/readers/1234@nowhere.nowhere
 cd $HERE
 bk clone $Q project clone 2>/dev/null
@@ -138,15 +140,17 @@ rm -rf BitKeeper/readers BitKeeper/writer
 ls > C
 bk new $Q C
 bk commit $Q -ywhatever
-bk repo -w
+bk lock -w &
+while bk lock; do true; done
 cd $HERE/clone
 bk pull -t $Q 2>/dev/null
 if [ $? != 1 ]; then echo pull failed to exit with error; exit 1; fi
 echo OK
 echo $N Make sure pull works with existing read lock in source ......$NL
 cd $HERE/project
-bk repo -W
-bk repo -r
+bk unlock -w
+bk lock -r &
+while bk lock; do true; done
 mv BitKeeper/readers/* BitKeeper/readers/1234@nowhere.nowhere
 cd $HERE/clone
 bk pull -t $Q -r 2>/dev/null
@@ -170,7 +174,8 @@ echo OK
 echo $N Make sure push fails with existing write lock in dest .......$NL
 cd $HERE/project
 rm -rf BitKeeper/readers BitKeeper/writer
-bk repo -w
+bk lock -w &
+while bk lock; do true; done
 cd $HERE/clone
 bk push $Q
 if [ $? != 1 ]; then echo push failed to exit with an error; exit 1; fi

@@ -4,29 +4,24 @@
 WHATSTR("@(#)%K%");
 
 /*
- * repo - repository level stuff
- *
+ * lock - repository level locking
  */
 int
-repo_main(int ac, char **av)
+lock_main(int ac, char **av)
 {
 	int	c;
 	int	what = 0;
-	int	force = 0;
 
 	if (ac > 1 && streq("--help", av[1])) {
 usage:		fprintf(stderr,
-		    "usage: %s -r|w|l|u [repository root]\n", av[0]);
+		    "usage: %s -b|l|r|w [repository root]\n", av[0]);
 		return (1);
 	}
-	while ((c = getopt(ac, av, "frwRWl")) != -1) {
+	while ((c = getopt(ac, av, "lrw")) != -1) {
 		switch (c) {
-		    case 'f': force = 1; break;
+		    case 'l':
 		    case 'r':
 		    case 'w':
-		    case 'R':
-		    case 'W':
-		    case 'l':
 			unless (what) {
 				what = c;
 				break;
@@ -44,6 +39,10 @@ usage:		fprintf(stderr,
 			repository_lockers(0);
 			exit(1);
 		}
+		/* make ourselves go away after the lock is gone */
+		do {
+			usleep(1000000);
+		} while (repository_locked(0));
 		exit(0);
 	    
 	    case 'w':
@@ -52,24 +51,12 @@ usage:		fprintf(stderr,
 			repository_lockers(0);
 			exit(1);
 		}
+		/* make ourselves go away after the lock is gone */
+		do {
+			usleep(1000000);
+		} while (repository_locked(0));
 		exit(0);
 
-	    case 'R':
-		if (repository_rdunlock(force)) {
-			fprintf(stderr, "read unlock failed.\n");
-			repository_lockers(0);
-			exit(1);
-		}
-		exit(0);
-	    
-	    case 'W':
-		if (repository_wrunlock()) {
-			fprintf(stderr, "write unlock failed.\n");
-			repository_lockers(0);
-			exit(1);
-		}
-		exit(0);
-	    
 	    case 'l':
 		repository_lockers(0);
 		/* fall through */
@@ -78,4 +65,13 @@ usage:		fprintf(stderr,
 		if (repository_locked(0)) exit(1);
 		exit(0);
 	}
+}
+
+void
+repo_main()
+{
+	fprintf(stderr, "The repo command has been replaced.\n");
+	fprintf(stderr, "To lock use bk lock.\n");
+	fprintf(stderr, "To unlock use bk unlock.\n");
+	exit(1);
 }
