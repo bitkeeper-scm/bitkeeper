@@ -428,12 +428,15 @@ do_cmds()
 			if (flags & CMD_FAST_EXIT) {
 				/*
 				 * Force server side EOF
+				 * XXX This is optional due to recent client
+				 * side change. We can remove this after people
+				 * have upgraded to the new client.
 				 */
 				shutdown(1, 1); /* For daemon mode */
 				close(1);	/* For non-daemon mode */
 				close(2);	/* For non-daemon mode */
 
-				read(0, &i, 1); /* wait for eof */
+				read(0, &i, 1); /* wait for client side eof */
 				exit(ret);
 			}
 			if (ret != 0) {
