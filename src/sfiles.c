@@ -166,6 +166,12 @@ sfileFirst(char *cmd, char **Av, int Flags)
 			}
 			flist = stdin;
 			flags |= SF_SILENT;
+			/*
+			 * If they specify a file on stdin then they must
+			 * mean it.  (Doing otherwise breaks pending, commit,
+			 * resolve on deleted files.)
+			 */
+			flags |= SF_DELETES;
 			return (sfileNext());
 		}
 		if (isdir(Av[0])) {
