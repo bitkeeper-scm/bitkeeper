@@ -7535,7 +7535,7 @@ private int
 addMode(char *me, sccs *sc, int flags, char *mode, int *ep)
 {
 	delta	*d, *n;
-	char	*rev;
+	char	*rev, buf[30];
 	int 	f = 0;  /* XXX this may be affected by LOD */
 
 	unless (mode) return 0;
@@ -7549,7 +7549,8 @@ addMode(char *me, sccs *sc, int flags, char *mode, int *ep)
 	n->rev = strdup(rev);
 	n->pserial = d->serial;
 	n->serial = sc->nextserial++;
-	n->comments = addLine(n->comments, strdup("Add mode"));
+	sprintf(buf, "Change mode to %s", mode);
+	n->comments = addLine(n->comments, strdup(buf));
 	sc->numdeltas++;
 	n = modeArg(n, mode);
 	dinsert(sc, 0, n);

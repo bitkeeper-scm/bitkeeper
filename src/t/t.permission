@@ -48,6 +48,8 @@ echo $N Change permissions with admin . .............................$NL
 admin -m-rwx------ prog
 REV=`prs -h -r+ -d":I:" prog`
 if [ "$REV" != "1.3" ]; then echo fail to create a new delta; exit 1; fi 
+COMMENT=`prs -h -r+ -d":C:" prog`
+if [ "$COMMENT" != "Change mode to -rwx------" ]; then echo fail; exit 1; fi 
 grep -q '^.cO-rwx------' SCCS/s.prog
 if [ $? -ne 0 ]; then echo failed to add permissions; exit 1; fi
 echo OK
