@@ -1856,7 +1856,6 @@ pass4_apply(opts *opts)
 	MDBM	*backups = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	char	*av[5] = {"bk", "-r", "check", "-a", 0};
 	char 	*av_r[4] = {"bk", "sfiles", ROOT2RESYNC, 0};
-	char 	*av_w[5] = {"bk", "get", "-s", "-", 0};
 	int	rfd, status;
 	pid_t	pid;
 

@@ -115,6 +115,7 @@ char	*res_getlocal(char *gfile);
 resolve	*resolve_init(opts *opts, sccs *s);
 void	automerge(resolve *rs, names *n);
 int	c_sccstool(resolve *rs);
+int	c_merge(resolve *rs);
 int	confirm(char *msg);
 void 	flags_delta(resolve *,char *, delta *, int, char *, int);
 int	edit(resolve *rs);

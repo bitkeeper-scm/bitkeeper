@@ -55,8 +55,7 @@ mail(char *to, char *subject, char *file)
 		pid = spawnvp_wPipe(av, &wfd);
 	}
 	dup2(fd0, 0);
-	if (pid == -1) return (pid);
-	
+	return (pid);
 }
 #else
 pid_t

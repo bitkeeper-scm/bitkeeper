@@ -113,10 +113,8 @@ keysHome()
 int
 uniq_lock()
 {
-	char	*tmp;
 	pid_t	pid = 0;
 	int	fd;
-	int	first = 1;
 	int	uslp = 1000;
 	char	buf[MAXPATH];
 	char	*lock = lockHome();
@@ -245,7 +243,7 @@ uniq_open()
 		}
 		unless ((pipes == 2) &&
 		    s && isdigit(s[1]) && (chop(buf) == '\n')) {
-bad:			fprintf(stderr, "%s is corrupted, fixing.\n", tmp);
+			fprintf(stderr, "%s is corrupted, fixing.\n", tmp);
 			mdbm_close(db);
 			fclose(f);
 			return (uniq_regen());

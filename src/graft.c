@@ -11,6 +11,7 @@ WHATSTR("@(#)%K%");
 
 private	void	sccs_patch(sccs *w, sccs *l);
 private void	_patch(delta *d);
+void		sccs_graft(sccs *s1, sccs *s2);
 
 int
 graft_main(int ac, char **av)
@@ -41,13 +42,14 @@ usage:		fprintf(stderr, "Usage: graft file file\n");
 		if (s2) sccs_free(s2);
 		return (1);
 	}
-	return (sccs_graft(s1, s2));
+	sccs_graft(s1, s2);
+	return (0);	/* XXX */
 }
 
+void
 sccs_graft(sccs *s1, sccs *s2)
 {
 	sccs	*winner, *loser;
-	delta	*d;
 
 	if (s1->tree->date < s2->tree->date) {
 		winner = s1;

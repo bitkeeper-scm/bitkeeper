@@ -686,6 +686,7 @@ delta 	*mkOneZero(sccs *s);
 #ifndef ANSIC
 int     sig(int, int);
 #endif
+int	sigcaught(int sig);
 int	csetIds(sccs *cset, char *rev);
 int	csetIds_merge(sccs *cset, char *rev, char *merge);
 int	cset_inex(int flags, char *op, char *revs);
@@ -785,9 +786,11 @@ int	writen(int to, char *buf, int size);
 char	chop(register char *s);
 int	mkdirp(char *dir);
 int	mkdirf(char *file);
+long	almostUnique(int harder);
 
 int	repository_locked(project *p);
 int	repository_lockers(project *p);
+int	repository_locker(char type, pid_t pid, char *host);
 int	repository_cleanLocks(project *p, int r, int w, int force, int verbose);
 int	repository_rdlock(void);
 int	repository_wrlock(void);

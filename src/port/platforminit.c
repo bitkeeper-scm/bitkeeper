@@ -37,6 +37,7 @@ platformInit(char **av)
 	if (bin) return;
 	if ((editor = getenv("EDITOR")) == NULL) editor = strdup(EDITOR);
 	if ((pager = getenv("PAGER")) == NULL) pager = strdup(PAGER);
+	umask(002);
 
 	unless (p = getenv("PATH")) return;	/* and pray */
 #ifdef WIN32

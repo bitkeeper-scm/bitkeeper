@@ -1153,7 +1153,7 @@ init(char *inputFile, int flags, project **pp)
 		u32	diffs:1;	/* previous line was diffs */
 		u32	diffsblank:1;	/* previous line was \n after diffs */
 	}	st;
-	int	line = 0, first = 1, j = 0;
+	int	line = 0, j = 0;
 
 	bzero(&st, sizeof(st));
 	st.preamble = 1;

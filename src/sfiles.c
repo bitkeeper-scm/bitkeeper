@@ -372,7 +372,6 @@ keys(char *file)
 	for (d = s->table; d; d = d->next) {
 		if (d->date < cutoff) break;
 		if (d->hostname && streq(d->hostname, host)) {
-			u8	*p;
 			u8	buf[MAXPATH+100];
 
 			sccs_shortKey(s, sccs_ino(s), buf);

@@ -14,11 +14,15 @@ status_main(int ac, char **av)
 	int verbose = 0;
 	char *package_path;
 
+	if (av[1] && streq(av[1], "--help")) {
+		fprintf(stderr, "%s", status_help);
+		return (0);
+	}
 	while ((c = getopt(ac, av, "v")) != -1) { 
 		switch (c) {
 		    case 'v': verbose++; break;
 		    default:
-usage:                  fprintf(stderr, "status: usage error, try --help.\n");
+			fprintf(stderr, "status: usage error, try --help.\n");
 			return (1);
 		}
 	}

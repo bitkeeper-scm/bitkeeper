@@ -75,9 +75,6 @@ private	void	uniqDelta(sccs *s);
 private	void	uniqRoot(sccs *s);
 private int	checkGone(sccs *s, int bit, char *who);
 
-
-private unsigned int u_mask;
-
 int
 exists(char *s)
 {
@@ -258,14 +255,10 @@ fileTypeOk(mode_t m)
 	return ((S_ISREG(m)) || (S_ISLNK(m)));
 }
 
-
-/*
- * Not to be used before first sccs_init() call.
- */
 private int
 Chmod(char *fname, mode_t mode)
 {
-	return (chmod(fname, UMASK(mode)));
+	return (chmod(fname, mode));
 }
 
 /*
@@ -1308,15 +1301,6 @@ sccs_cd2root(sccs *s, char *root)
 		perror(BKROOT);
 		return (-1);
 	}
-
-	/*
-	 * This is a hack for locking problems but for now we are
-	 * leaving it.
-	 * Eventually we will want to lift this out.
-	 */
-	chmod("BitKeeper", 0777);
-	chmod("BitKeeper/tmp", 0777);
-	chmod("BitKeeper/log", 0777);
 
 	return (0);
 }
@@ -3411,9 +3395,8 @@ sccs_init(char *name, u32 flags, project *proj)
 {
 	sccs	*s;
 	struct	stat sbuf;
-	char	*t, *val;
+	char	*t;
 	static	int YEAR4;
-	unsigned int i;
 
 	localName2bkName(name, name);
 	if (sccs_filetype(name) == 's') {
@@ -3426,16 +3409,6 @@ sccs_init(char *name, u32 flags, project *proj)
 	}
 
 	s->proj = proj ? proj : proj_init(s);
-	if (s->proj && s->proj->config && 
-	    (val = mdbm_fetch_str(s->proj->config, "umask")) &&
-	    (sscanf(val, "%o", &i) == 1)) {
-		u_mask = ~i;
-		umask(i);
-	} else {
-		u_mask = ~umask(0);
-		umask(~u_mask); 
-	}
-
 	t = strrchr(s->sfile, '/');
 	if (t && streq(t, "/s.ChangeSet")) s->state |= S_HASH|S_CSET;
 	unless (t && (t >= s->sfile + 4) && strneq(t - 4, "SCCS/s.", 7)) {
@@ -3470,7 +3443,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	s->mmap = (caddr_t)-1;
 	if (flags & INIT_MAPWRITE) {
 		sbuf.st_mode |= 0200;
-		if (chmod(s->sfile, UMASK(sbuf.st_mode & 0777)) == 0) {
+		if (chmod(s->sfile, sbuf.st_mode & 0777) == 0) {
 			s->state |= S_CHMOD;
 			s->fd = open(s->sfile, O_RDWR, 0);
 		} else {
@@ -3716,9 +3689,9 @@ sccs_free(sccs *s)
 		if (fstat(s->fd, &sbuf) == 0) {
 			sbuf.st_mode &= ~0200;
 #ifdef	ANSIC
-			chmod(s->sfile, UMASK(sbuf.st_mode & 0777));
+			chmod(s->sfile, sbuf.st_mode & 0777);
 #else
-			fchmod(s->fd, UMASK(sbuf.st_mode & 0777));
+			fchmod(s->fd, sbuf.st_mode & 0777);
 #endif
 		}
 	}
@@ -5639,15 +5612,15 @@ out:			if (slist) free(slist);
 	}
 	if (flags&GET_EDIT) {
 		if (d->mode) {
-			chmod(s->gfile, UMASK(d->mode));
+			chmod(s->gfile, d->mode);
 		} else {
-			chmod(s->gfile, UMASK(0666));
+			chmod(s->gfile, 0666);
 		}
 	} else if (!(flags&PRINT)) {
 		if (d->mode) {
-			chmod(s->gfile, UMASK(d->mode & ~0222));
+			chmod(s->gfile, d->mode & ~0222);
 		} else {
-			chmod(s->gfile, UMASK(0444));
+			chmod(s->gfile, 0444);
 		}
 	}
 
@@ -13251,11 +13224,12 @@ sccs_setlod(char *rev, u32 flags)
 {
 	int	ac;
 	char	*cmd[10];
+	extern	int setload_main(int ac, char **av);
 
 	cmd[0] = "setlod";
 	cmd[1] = 0;
 	ac = 1;
-	return(setlod_main(ac, cmd));
+	return (setlod_main(ac, cmd));
 }
 
 /*

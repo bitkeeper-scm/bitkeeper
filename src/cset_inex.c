@@ -253,7 +253,6 @@ commit(int quiet, delta *d)
 private int
 undoit(MDBM *m)
 {
-	kvpair	kv;
 	int	i, pid, worked = 1;
 	char	*t;
 	FILE	*f;

@@ -6,7 +6,6 @@ private	int	eatsym(RCS *rcs, MMAP *m);
 private	void	mkgraph(RCS *rcs);
 private	void	dates(RCS *rcs);
 private	void	doit(char *f);
-private	void	rcs_prs(RCS *rcs);
 private	void	rcs_table(RCS *rcs);
 private	void	rcs_meta(RCS *rcs);
 
@@ -407,9 +406,6 @@ rcs_table(RCS *rcs)
 private	void
 rcs_meta(RCS *r)
 {
-	rdelta	*d;
-	char	*p;
-
 	fprintf(stderr, "%d deltas\n", r->n);
 	if (r->defbranch) fprintf(stderr, "default branch: %s\n", r->defbranch);
 	if (r->text) fprintf(stderr, "Text: %s\n", r->text);
