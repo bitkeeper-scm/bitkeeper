@@ -332,7 +332,7 @@ bk: bk.sh bk.ver port/unix_platform.sh substvars
 	mv -f bk.T bk
 
 lodset: lodset.sh
-	cp lodset.sh lodset
+	cp -f lodset.sh lodset
 	chmod +x lodset
 
 # XXX Must be changed when ChangeSet moves to BitKeeper/etc.
