@@ -61,7 +61,8 @@ newroot(int single)
 		fprintf(stderr, "Already converted.\n");
 		exit(0);
 	}
-	sprintf(buf, "%s+", s->tree->random);
+	randomBits(buf);
+	assert(!streq(buf, s->tree->random));
 	free(s->tree->random);
 	s->tree->random = strdup(buf);
 	sccs_sdelta(s, s->tree, key);
