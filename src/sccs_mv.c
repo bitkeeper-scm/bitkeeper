@@ -133,13 +133,24 @@ mv(char *src, char *dest)
 	return (0);
 }
 
+private inline int
+sameDir(char *a, char *b)
+{
+        struct  stat sa, sb;
+
+        if (lstat(a, &sa) == -1) return 0;
+        if (lstat(b, &sb) == -1) return 0;
+        return ((sa.st_dev == sb.st_dev) && (sa.st_ino == sb.st_ino));
+}  
+
 int rmDir(char *dir)
 {
-	rmdir(dir);
-	if (exists(dir)) {
+	if (streq(".", dir) || sameDir(".", dir)) {
 		char cmd[1024];
-		sprintf(cmd, "cd /; rmdir %s", fullname(dir, 0));
+		sprintf(cmd, "/bin/rmdir %s", fullname(dir, 0));
 		system(cmd);
+	} else {
+		rmdir(dir);
 	}
 }
 

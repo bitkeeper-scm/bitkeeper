@@ -827,13 +827,14 @@ file2str(char *f)
 		if (fd != -1) close(fd);
 		return (0);
 	}
-	s = malloc(sb.st_size);
+	s = malloc(sb.st_size + 1);
 	if (!s) {
 		perror("malloc");
 		close(fd);
 		return (0);
 	}
 	read(fd, s, sb.st_size);
+	s[sb.st_size] = 0;
 	close(fd);
 	return (s);
 }

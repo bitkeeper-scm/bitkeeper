@@ -192,7 +192,7 @@ extern	char *strdup(char *s);
 #define	PRS_SYMBOLIC	0x20000000	/* show revs as beta1, etc. Not done */
 #define	PRS_PATCH	0x40000000	/* print in patch format */
 /*
- * flags passd to sfileFirst
+ * flags passed to sfileFirst
  */
 #define	SF_GFILE	0x00000001	/* gfile should be readable */
 #define	SF_WRITE_OK	0x00000002	/* gfile should be writable */
