@@ -51,7 +51,7 @@ main(int ac, char **av)
 		if (doit) {
 			fprintf(stderr, "Redid %d in %s\n", doit, s->sfile);
 			unless (sccs_restart(s)) { perror("restart"); exit(1); }
-			if (sccs_admin(s, NEWCKSUM, 0, 0, 0, 0, 0, 0)) {
+			if (sccs_admin(s, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0)) {
 				unless (BEEN_WARNED(s)) {
 					fprintf(stderr,
 					    "admin -z of %s failed.\n",

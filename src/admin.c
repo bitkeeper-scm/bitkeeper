@@ -71,7 +71,8 @@ main(int ac, char **av, char **ev)
 	char	*comment = 0, *text = 0, *newfile = 0;
 	char	*path = 0, *merge = 0;
 	char	*name;
-	int	encoding, *encp = 0, error = 0;
+	int	encoding = 0, *encp = 0, error = 0;
+	int	compress = 0, *compp = 0;
 	int	bigpad = 0;
 	int	fastSym, dopath = 0, rmCset = 0, rmPath = 0;
 	int	doDates = 0, touchGfile = 0;
@@ -146,16 +147,16 @@ main(int ac, char **av, char **ev)
 		    case 's':
 		    case 'q':	flags |= SILENT; break;
 		    case 'u':	doDates = 1; flags |= NEWCKSUM; break;
-		    case 'U':	encp = &encoding;
-		    		encoding = E_ASCII;
+		    case 'U':	compp = &compress;
+				compress &= ~E_GZIP;
 				flags |= NEWCKSUM;
 				break;
 		    case 'z':	init_flags |= INIT_NOCKSUM;
 		    		flags |= NEWCKSUM;
 				touchGfile++;
 				break;
-		    case 'Z':	encoding = E_GZIP;
-		    		encp = &encoding;
+		    case 'Z':	compp = &compress;
+				compress |= E_GZIP;
 		   		flags |= NEWCKSUM;
 				touchGfile++;
 				break;
@@ -257,7 +258,7 @@ main(int ac, char **av, char **ev)
 				goto next;
 			}
 		}
-		if (sccs_admin(sc, flags, encp, f, l, u, s, text)) {
+		if (sccs_admin(sc, flags, encp, compp, f, l, u, s, text)) {
 			sccs_whynot("admin", sc);
 			error = 1;
 		}
