@@ -4301,6 +4301,35 @@ gzip_sum(void *p, u8 *buf, int len, FILE *out)
 }
 
 /*
+ * If the data isn't a control line, just dump it.
+ * Otherwise, put it out there after incrementing the serial.
+ */
+private sum_t
+fputbumpserial(sccs *s, u8 *buf, FILE *out)
+{
+	u8	tmp[20];
+	u8	*t;
+	ser_t	ser, sum;
+
+	unless (buf[0] == '\001') return (fputdata(s, buf, out));
+	/* ^AI ddd\n
+	 * ^AE ddd\n
+	 * ^AE dddN\n
+	 */
+	tmp[1] = 0;
+	tmp[0] = buf[1];
+	sum = fputdata(s, "\001", out);
+	sum += fputdata(s, tmp, out);
+	sum += fputdata(s, " ", out);
+	ser = atoi(&buf[3]);
+	sprintf(tmp, "%u", ser + 1);
+	sum += fputdata(s, tmp, out);
+	for (t = &buf[3]; isdigit(*t); t++);
+	sum += fputdata(s, t, out);
+	return (sum);
+}
+
+/*
  * Like fputmeta, but optionally compresses the data stream.
  * This is used for the data section exclusively.
  * Note that only the first line of the buffer is considered valid.
@@ -8381,6 +8410,62 @@ sccs_encoding(sccs *sc, char *encp, char *compp)
 }
 
 /*
+ * Cons up a 1.0 delta, initializing as much as possible from the 1.1 delta.
+ * If this is a BitKeeper file with changeset marks, then we have to 
+ * replicate the key on the 1.1 delta.
+ */
+insert_1_0(sccs *s)
+{
+	delta	*d;
+	delta	*t;
+	int	i;
+	int	csets = 0;
+
+	/*
+	 * First bump all the serial numbers.
+	 */
+	for (t = d = s->table; d; d = d->next) {
+		if (d->flags & D_CSET) csets++;
+		d->serial++;
+		d->pserial++;
+		if (d->merge) d->merge++;
+		EACH(d->include) d->include[i]++;
+		EACH(d->exclude) d->exclude[i]++;
+		EACH(d->ignore) d->ignore[i]++;
+		t = d;
+	}
+
+	d = calloc(1, sizeof(*d));
+	t->next = d;		/* table is now linked */
+	t = s->tree;
+	d->kid = t;
+	s->tree = d;		/* tree is now linked */
+	d->rev = strdup("1.0");
+	explode_rev(d);
+	d->user = strdup(t->user);
+	if (d->hostname = t->hostname) t->flags |= D_DUPHOST;
+	if (d->pathname = t->pathname) t->flags |= D_DUPPATH;
+	if (d->zone = t->zone) t->flags |= D_DUPZONE;
+	d->serial = 1;
+	if (csets) {
+		d->date = t->date;	/* somebody is using this key already */
+		d->sum = t->sum;
+	} else {
+		unless (s->random) {
+			char	buf[20];
+
+			buf[0] = 0;
+			randomBits(buf);
+			if (buf[0]) s->random = strdup(buf);
+		}
+		d->date = t->date - 1;
+		d->sum = (unsigned short) almostUnique(1);
+	}
+	date(d, d->date);
+	d = sccs_dInit(d, 'D', s, 0);
+}
+
+/*
  * admin the specified file.
  *
  * Note: flag values are optional.
@@ -8675,6 +8760,10 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		}
 	}
 
+	if (flags & ADMIN_ADD1_0) {
+		insert_1_0(sc);
+	}
+
 	if ((flags & NEWCKSUM) == 0) {
 		goto out;
 	}
@@ -8702,12 +8791,20 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		sc->encoding = old_enc;
 		while (buf = nextdata(sc)) {
 			sc->encoding = new_enc;
-			fputdata(sc, buf, sfile);
+			if (flags & ADMIN_ADD1_0) {
+				fputbumpserial(sc, buf, sfile);
+			} else {
+				fputdata(sc, buf, sfile);
+			}
 			sc->encoding = old_enc;
 		}
 	} else {
 		while (buf = nextdata(sc)) {
-			fputdata(sc, buf, sfile);
+			if (flags & ADMIN_ADD1_0) {
+				fputbumpserial(sc, buf, sfile);
+			} else {
+				fputdata(sc, buf, sfile);
+			}
 		}
 	}
 	/* not really needed, we already wrote it */

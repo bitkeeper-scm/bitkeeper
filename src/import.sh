@@ -134,15 +134,18 @@ import() {
 				exit 1
 			fi
 		done < ${TMP}import$$
-		g2sccs < ${TMP}import$$ > ${TMP}sccs$$
-		while read x
-		do	if [ -e $x ]
-			then	echo import: $x exists, entire import aborted
-				rm -f ${TMP}sccs$$ ${TMP}import$$
-				exit 1
-			fi
-		done < ${TMP}sccs$$
-		echo OK
+		if [ $TYPE != SCCS ]
+		then	g2sccs < ${TMP}import$$ > ${TMP}sccs$$
+			while read x
+			do	if [ -e $x ]
+				then	echo \
+				    "import: $x exists, entire import aborted"
+					rm -f ${TMP}sccs$$ ${TMP}import$$
+					exit 1
+				fi
+			done < ${TMP}sccs$$
+			echo OK
+		fi
 	fi
 	rm -f ${TMP}sccs$$
 	cd $TO
@@ -374,13 +377,14 @@ import_SCCS () {
 		do	if [ -f $x ]
 			then	echo $x
 			fi
-		done | admin -C -
+		done | admin -CC -
 		echo OK
 	fi
 	rm -f ${TMP}reparent$$
 	echo Making sure all files have pathnames, proper dates, and checksums
 	sfiles -g | while read x
-	do	admin -q -u -p$x $x
+	do	admin -0q $x
+		admin -q -u -p$x $x
 		rechksum -f $x
 	done
 }
@@ -389,7 +393,7 @@ import_finish () {
 	cd $1
 	echo ""
 	echo Validating all SCCS files
-	sfiles | admin -qhh > ${TMP}admin$$
+	sfiles | admin -hhhq - > ${TMP}admin$$
 	if [ -s ${TMP}admin$$ ]
 	then	echo Import failed because
 		cat ${TMP}admin$$

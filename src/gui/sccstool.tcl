@@ -46,6 +46,9 @@ proc highlight {id type} \
 	} elseif {$type == 3} {
 		set bg [.p.top.c create rectangle \
 		    $x1 $y1 $x2 $y2 -outline "" -fill yellow -tags yellow]
+	} elseif {$type == 4} {
+		set bg [.p.top.c create rectangle \
+		    $x1 $y1 $x2 $y2 -outline black -fill lightblue]
 	}
 	.p.top.c lower $bg
 	return $bg
@@ -873,6 +876,7 @@ proc widgets {} \
 
 	bind .p.top.c <Prior>		".p.bottom.t yview scroll -1 pages"
 	bind .p.top.c <Next>		".p.bottom.t yview scroll  1 pages"
+	bind .p.top.c <space>		".p.bottom.t yview scroll  1 pages"
 	bind .p.top.c <Up>		".p.bottom.t yview scroll -1 units"
 	bind .p.top.c <Down>		".p.bottom.t yview scroll  1 units"
 	bind .p.top.c <Home>		".p.bottom.t yview -pickplace 1.0"
@@ -970,13 +974,75 @@ proc init {} \
 	set env(BK_YEAR4) 1
 }
 
+proc arguments {} \
+{
+	global	rev1 rev2 argv file gca
+
+	set state flag
+	set rev1 ""
+	set rev2 ""
+	set gca ""
+	set file ""
+	foreach arg $argv {
+		switch -- $state {
+		    flag {
+			switch -glob -- $arg {
+			    -G		{ set state gca }
+			    -l		{ set state remote }
+			    -r		{ set state local }
+			    default	{ set file $arg }
+			}
+		    }
+		    gca {
+		    	set gca $arg 
+			set state flag
+		    }
+		    local {
+		    	set rev1 $arg 
+			set state flag
+		    }
+		    remote {
+		    	set rev2 $arg
+			set state flag
+		    }
+		}
+	}
+}
+
+proc lineOpts {rev} \
+{
+	global	lineOpts bk_prs dev_null file
+
+	# XXX - should regsub for it
+	if {"$lineOpts" != "-u"} {
+		return $rev
+	}
+	set prs [open "| $bk_prs -hr$rev -d:P: $file 2>$dev_null"]
+	gets $prs str
+	append rev "-"
+	append rev $str
+	return $rev
+}
+
 init
-if {"$argv" != ""} {
-	set file [lindex $argv 0]
-} else {
+arguments
+if {$file == ""} {
 	cd2root
 	# This should match the CHANGESET path defined in sccs.h
 	set file ChangeSet
 }
 widgets
 sccstool $file
+if {$rev1 != ""} {
+	set rev1 [lineOpts $rev1]
+	highlight $rev1 2
+}
+if {$rev2 != ""} {
+	set rev2 [lineOpts $rev2]
+	highlight $rev2 3
+	diff2 2
+} 
+if {$gca != ""} {
+	set gca [lineOpts $gca]
+	highlight $gca 4
+}

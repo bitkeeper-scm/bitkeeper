@@ -6,6 +6,7 @@ WHATSTR("@(#)%K%");
 static const char help[] = "\n\
 usage: admin options [- | file file file...]\n\
 \n\
+    -0			add a 1.0 delta if there is not one already\n\
     -q			run quietly\n\
     -r<rev>		revision to add or modify\n\
     -y<comment>		comment for change\n\
@@ -93,7 +94,7 @@ main(int ac, char **av)
 	bzero(u, sizeof(u));
 	bzero(s, sizeof(s));
 	while ((c =
-	    getopt(ac, av, "a;e;f;F;d;i|nr;y|M;m;p|PZ|E;L|S;t|TBChHsquz"))
+	    getopt(ac, av, "0a;e;f;F;d;i|nr;y|M;m;p|PZ|E;L|S;t|TBChHsquz"))
 	       != -1) {
 		switch (c) {
 		/* user|group */
@@ -143,6 +144,7 @@ main(int ac, char **av)
 		    case 't':	text = optarg ? optarg : ""; new_delta = 1; break;
 		    case 'T':	text = ""; new_delta = 1; break;
 		/* singletons */
+		    case '0':	flags |= ADMIN_ADD1_0|NEWCKSUM; break;
 		    case 'B':	bigpad++; break;
 		    case 'C':	rmCset++; flags |= NEWCKSUM; break;
 		    case 'h':	if (flags & ADMIN_FORMAT) {
@@ -166,17 +168,23 @@ main(int ac, char **av)
 				goto usage;
 		}
 	}
-	if ((flags & ADMIN_FORMAT) &&
-	    ((flags & ~(ADMIN_FORMAT|ADMIN_BK|ADMIN_ASCII|ADMIN_TIME|SILENT)) ||
-	    nextf || nextu || nexts || nextp || rev)) {
+	if ((flags & ADMIN_FORMAT) && ((flags & ~(ADMIN_CHECKS|SILENT)) ||
+	    nextf || nextu || nexts || nextp || comment || path || rmCset ||
+	    newfile || doDates || rev)) {
 		fprintf(stderr, "admin: -h option must be alone.\n");
 		goto usage;
 	}
-	/* XXX ADMIN_BK? */
-	if ((merge) &&
-	    ((flags & ~(ADMIN_FORMAT|ADMIN_ASCII|ADMIN_TIME|SILENT|NEWCKSUM)) ||
-	    nextf || nextu || nexts || nextp || comment || path || rmCset || doDates)) {
+	if ((merge) && ((flags & ~(ADMIN_CHECKS|SILENT|NEWCKSUM)) ||
+	    nextf || nextu || nexts || nextp || comment || path || rmCset ||
+	    newfile || doDates)) {
 		fprintf(stderr, "admin: -M option must be alone or with -r\n");
+		goto usage;
+	}
+	if ((flags & ADMIN_ADD1_0) &&
+	    ((flags & ~(ADMIN_CHECKS|ADMIN_ADD1_0|SILENT|NEWCKSUM)) ||
+	    nextf || nextu || nexts || nextp || comment || path || rmCset ||
+	    newfile || doDates || rev)) {
+		fprintf(stderr, "admin: -0 option must be alone\n");
 		goto usage;
 	}
 	if (comment && !(flags & NEWFILE)) {
@@ -227,6 +235,23 @@ main(int ac, char **av)
 			error = 1;
 			continue;
 		}
+		if (flags & ADMIN_ADD1_0) {
+			if (streq(sc->tree->rev, "1.0")) {
+				verbose((stderr,
+				    "admin: %s already has 1.0\n", sc->gfile));
+				sccs_free(sc);
+				name = sfileNext();
+				continue;
+			}
+			if (sccs_admin(sc, 0, flags, 0, 0, 0, 0, 0, 0, 0, 0)) {
+			    	fprintf(stderr,
+				    "admin: failed to add 1.0 to %s\n",
+				    sc->gfile);
+				exit(1);
+			}
+			sccs_free(sc);
+			continue;
+		}
 		if (bigpad) {
 			sc->state |= S_BIGPAD;
 			flags |= NEWCKSUM;
@@ -262,7 +287,7 @@ main(int ac, char **av)
 				}
 			} else {
 				was_edited = 0;
-		}
+			}
 		}
 		/*
 		 * if we just created a new file, reuse the new delta

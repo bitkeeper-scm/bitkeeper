@@ -973,7 +973,8 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 
 	if (opts->hadConflicts) {
 		fprintf(stderr,
-		    "resolve: unresolved conflicts, nothing is applied.\n");
+		    "resolve: %d unresolved conflicts, nothing is applied.\n",
+		    opts->hadConflicts);
 		exit(1);
 	}
 
@@ -1203,7 +1204,7 @@ automerge(resolve *rs)
 	if ((ret >> 8) == 1) {
 		fprintf(stderr,
 		    "Conflicts during automerge of %s\n", rs->s->gfile);
-		rs->opts->hadConflicts = 1;
+		rs->opts->hadConflicts++;
 		return;
 	}
 	fprintf(stderr,

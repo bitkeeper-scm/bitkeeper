@@ -167,8 +167,14 @@ c_sccstool(resolve *rs)
 
 	av[0] = "bk";
 	av[1] = "sccstool";
-	av[2] = rs->s->gfile;
-	av[3] = 0;
+	av[2] = "-l";
+	av[3] = rs->revs->local;
+	av[4] = "-r";
+	av[5] = rs->revs->remote;
+	av[6] = "-G";
+	av[7] = rs->revs->gca;
+	av[8] = rs->s->gfile;
+	av[9] = 0;
 	spawnvp_ex(_P_NOWAIT, "bk", av);
 	return (0);
 }

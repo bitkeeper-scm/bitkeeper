@@ -70,6 +70,9 @@
 #define	ADMIN_SHUTUP	0x80000000	/* don't be noisy about bad revs */
 #define	ADMIN_BK	0x01000000	/* check BitKeeper invariants */
 #define	ADMIN_GONE	0x02000000	/* check integrity w/o GONE deltas */
+#define	ADMIN_ADD1_0	0x04000000	/* insert a 1.0 delta */
+
+#define	ADMIN_CHECKS	(ADMIN_FORMAT|ADMIN_ASCII|ADMIN_TIME|ADMIN_BK)
 
 #define	PRS_META	0x10000000	/* show metadata */
 #define	PRS_SYMBOLIC	0x20000000	/* show revs as beta1, etc. Not done */
