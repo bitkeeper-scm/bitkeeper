@@ -6377,14 +6377,16 @@ sccs_clean(sccs *s, u32 flags)
 			free_pfile(&pf);
 			return (0);
 		}
-		unless (flags & PRINT) {
-			fprintf(stderr,
+		unless (flags & CLEAN_SHUTUP) { 
+			unless (flags & PRINT) {
+				fprintf(stderr,
 			    "%s has been modified, needs delta.\n", s->gfile);
-		} else {
-			printf("===== %s %s vs %s =====\n", 
-			    s->gfile, pf.oldrev, "edited");
-			printf("< SYMLINK -> %s\n-\n", d->symlink);
-			printf("> SYMLINK -> %s\n", s->symlink);
+			} else {
+				printf("===== %s %s vs %s =====\n", 
+				    s->gfile, pf.oldrev, "edited");
+				printf("< SYMLINK -> %s\n-\n", d->symlink);
+				printf("> SYMLINK -> %s\n", s->symlink);
+			}
 		}
 		free_pfile(&pf);
 		return (2);
@@ -6416,12 +6418,14 @@ nodiffs:	verbose((stderr, "Clean %s\n", s->gfile));
 		unlink(tmpfile);
 		return (0);
 	    case 0:		/* diffs */
-		unless (flags & PRINT) {
-			fprintf(stderr,
+		unless (flags & CLEAN_SHUTUP) {
+			unless (flags & PRINT) {
+				fprintf(stderr,
 			    "%s has been modified, needs delta.\n", s->gfile);
-		} else {
-			pdiffs(s->gfile,
-			    pf.oldrev, "edited", fopen(tmpfile, "r"));
+			} else {
+				pdiffs(s->gfile,
+				    pf.oldrev, "edited", fopen(tmpfile, "r"));
+		}
 		}
 		free_pfile(&pf);
 		unlink(tmpfile);

@@ -6,6 +6,7 @@ WHATSTR("@(#)%K%");
 char *clean_help = 
 "usage: clean [-punv] [files...]\n\
     -p	print, i.e., show diffs of modified files\n\
+    -Q	quiet\n\
     -u	clean even modified files, discarding changes (DANGEROUS)\n\
     -n  leave the working copy of the file in place\n\
     -v	list files being cleaned\n\n\
@@ -34,9 +35,10 @@ usage:		fputs(clean_help, stderr);
 	if (streq("unedit", av[0]) || streq("unget", av[0])) {
 		flags |= CLEAN_UNEDIT;
 	}
-	while ((c = getopt(ac, av, "npqr:suv")) != -1) {
+	while ((c = getopt(ac, av, "npQqr:suv")) != -1) {
 		switch (c) {
 		    case 'p': flags |= PRINT; break;
+		    case 'Q': flags |= CLEAN_SHUTUP; break;
 		    case 'u': flags |= CLEAN_UNEDIT; sflags &= ~SF_GFILE; break;
 		    case 'n': flags |= CLEAN_UNLOCK; break;
 		    case 'v': flags &= ~SILENT; break;
