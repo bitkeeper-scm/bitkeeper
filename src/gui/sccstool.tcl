@@ -1,8 +1,6 @@
 # sccstool - a tool for viewing SCCS files graphically.
 # Copyright (c) 1998 by Larry McVoy; All rights reserved.
 #
-# TODO: it would be nice if the deltas were all in time order, even across
-# branches.
 # %W% %@%
 
 proc wid {id} \
@@ -64,27 +62,32 @@ proc chkSpace {x1 y1 x2 y2} \
 }
 
 # Add the revs starting at location x/y.
-proc addline {x y xspace ht l} \
+proc addline {y xspace ht l} \
 {
 	global	bad bfont font wid revX revY arrow merges parent line_rev
 
 	set last -1
 	set ly [expr $y - [expr $ht / 2]]
-	foreach rev $l {
+	foreach word $l {
+		# Figure out if we have another parent.
+		# 1.460.1.3-awc-890@1.459.1.2-awc-889
+		set m 0
+		if {[regexp $line_rev $word dummy a b] == 1} {
+			regexp {(.*)-([^-]*)} $a dummy rev serial
+			regexp {(.*)-([^-]*)} $b dummy rev2
+			set parent($rev) $rev2
+			lappend merges $rev
+			set m 1
+		} else {
+			regexp {(.*)-([^-]*)} $word dummy rev serial
+		}
+		set x [expr $xspace * $serial]
 		set b [expr $x - 2]
 		if {$last > 0} {
 			set a [expr $last + 2]
 			.p.top.c create line $a $ly $b $ly \
 			    -arrowshape {4 4 2} -width 1 \
 			    -fill $arrow -arrow last
-		}
-		# Figure out if we have another parent.
-		set m 0
-		if {[regexp $line_rev $rev dummy rev1 rev2] == 1} {
-			set rev $rev1
-			set parent($rev) $rev2
-			lappend merges $rev
-			set m 1
 		}
 		if {[regsub -- "-BAD" $rev "" rev] == 1} {
 			set id [.p.top.c create text $x $y -fill "red" \
@@ -97,6 +100,7 @@ proc addline {x y xspace ht l} \
 			    -anchor sw -text "$rev" -font $bfont \
 			    -tags "$rev"]
 		}
+#puts "ADD $word -> $rev @ $x $y"
 		if {$m == 1} { highlight $id 1 }
 
 		set revX($rev) $x
@@ -104,7 +108,6 @@ proc addline {x y xspace ht l} \
 		set lastwid [wid $id]
 		set wid($rev) $lastwid
 		set last [expr $x + $lastwid]
-		incr x $xspace
 	}
 	if {[info exists merges] != 1} {
 		set merges {}
@@ -117,44 +120,53 @@ proc addline {x y xspace ht l} \
 # All nodes use up the same amount of space, $w.
 proc line {s w ht} \
 {
-	global	bfont wid revX revY arrow where yspace line_rev
+	global	bfont wid revX revY branchArrow where yspace line_rev
 
 	# space for node and arrow
-	set xspace [expr $w + 12]
+	set xspace [expr $w + 8]
 	set l [split $s]
 
 	# Figure out the length of the whole list
-	# The length is the width past in plus the spacing, for each node.
-	set len 0
-	foreach rev $l { incr len $xspace }
+	# The length is determined by the first and last serial numbers.
+	set word [lindex $l 1]
+	if {[regexp $line_rev $word dummy a] == 1} { set word $a }
+	regexp {(.*)-([^-]*)} $word dummy head first
+	set word [lindex $l [expr [llength $l] - 1]]
+	if {[regexp $line_rev $word dummy a] == 1} { set word $a }
+	regexp {(.*)-([^-]*)} $word dummy rev last
+	set diff [expr $last - $first]
+	incr diff
+	set len [expr $xspace * $diff]
 
 	# Now figure out where we can put the list.
-	set rev [lindex $l 0]
-	if {[regexp $line_rev $rev dummy rev1 rev2] == 1} {
-		set rev $rev1
-	}
-	set px [lindex [array get revX $rev] 1]
+	set word [lindex $l 0]
+	if {[regexp $line_rev $word dummy a] == 1} { set word $a }
+	regexp {(.*)-([^-]*)} $word dummy rev last
 
 	# If there is no parent, life is easy, just put it at 0/0.
-	if {$px == ""} {
-		addline 0 0 $xspace $ht $l
+	if {[info exists revX($rev)] == 0} {
+		addline 0 $xspace $ht $l
 		return
 	}
 
 	# Use parent node on the graph as a starting point.
 	# px/py are the sw of the parent; x/y are the sw of the new branch.
-	set py [lindex [array get revY $rev] 1]
-	set pmid [expr [lindex [array get wid $rev] 1] / 2]
-
+	set px $revX($rev)
+	set py $revY($rev)
+	set pmid [expr $wid($rev) / 2]
 
 	# Figure out if we have placed any related branches to either side.
 	# If so, limit the search to that side.
 	set revs [split $rev .]
 	set trunk [join [list [lindex $revs 0] [lindex $revs 1]] .]
-	set prev [lindex [array get where $trunk] 1]
+	if {[info exists where($trunk)] == 0} {
+		set prev ""
+	} else {
+		set prev $where($trunk)
+	}
 
 	# Go look for a space to put the branch.
-	set x1 $px
+	set x1 [expr $first * $xspace]
 	set y 0
 	while {1 == 1} {
 		# Try below.
@@ -182,21 +194,24 @@ proc line {s w ht} \
 		incr y $yspace
 	}
 
-	set x [expr $x1 + $xspace]
+	set x [expr $first * $xspace]
 	set y $y2
-	addline $x $y $xspace $ht [lrange $l 1 end ]
+	addline $y $xspace $ht [lrange $l 1 end ]
 	incr px $pmid
+	set x $revX($head)
+	set y $revY($head)
 	incr y [expr $ht / -2]
 	incr x -4
-	.p.top.c create line $px $py $x $y -arrowshape {4 4 2} \
-	    -width 1 -fill $arrow -arrow last
+	set id [.p.top.c create line $px $py $x $y -arrowshape {4 4 4} \
+	    -width 1 -fill $branchArrow -arrow last]
+	.p.top.c lower $id
 }
 
 # Create a merge arrow, which might have to go below other stuff.
 proc mergeArrow {m ht} \
 {
 	global	bad bfont lineOpts merges parent
-	global	wid revX revY arrow
+	global	wid revX revY mergeArrow
 
 	set b $parent($m)
 	set px $revX($b)
@@ -221,7 +236,7 @@ proc mergeArrow {m ht} \
 		incr px 2
 	}
 	.p.top.c lower [.p.top.c create line $px $py $x $y \
-	    -arrowshape {4 4 2} -width 1 -fill $arrow -arrow last]
+	    -arrowshape {4 4 4} -width 1 -fill $mergeArrow -arrow last]
 }
 
 proc listRevs {file} \
@@ -240,11 +255,10 @@ proc listRevs {file} \
 	set big ""
 	while {[gets $d s] >= 0} {
 		lappend lines $s
-		foreach rev [split $s] {
+		foreach word [split $s] {
 			# Figure out if we have another parent.
-			if {[regexp $line_rev $rev dummy rev1 rev2] == 1} {
-				set rev $rev1
-			}
+			regexp $line_rev $word dummy word
+			regexp {(.*)-([^-]*)} $word dummy rev serial
 			set l [string length $rev]
 			if {([regexp -- "-BAD" $rev] == 0) && ($l > $len)} {
 				set len $l
@@ -369,14 +383,14 @@ proc sfile {} \
 
 proc get {} \
 {
-	global file dev_null bk_cset bk_get rev1 rev2 diffOpts
+	global file dev_null bk_cset bk_get rev1 rev2 getOpts
 
 	getLeftRev
 	if {"$rev1" == ""} { return }
 	busy 1
 	set base [file tail $file]
 	if {$base != "ChangeSet"} {
-		set get [open "| $bk_get -mudPr$rev1 $file 2>$dev_null"]
+		set get [open "| $bk_get $getOpts -Pr$rev1 $file 2>$dev_null"]
 		filltext $get 1
 		return
 	}
@@ -756,14 +770,14 @@ proc busy {busy} \
 proc widgets {} \
 {
 	global	font bfont arrow background search swid diffOpts getOpts
-	global	lineOpts dspec wish yspace paned file
+	global	lineOpts dspec wish yspace paned file branchArrow mergeArrow
 	global	tcl_platform
 
 	set dspec \
 "-d:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)}\n\$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}"
 	set diffOpts "-u"
 	set getOpts "-um"
-	set lineOpts "-u"
+	set lineOpts "-u -t"
 	set yspace 20
 	set search(text) ""
 	set search(dir) ""
@@ -782,8 +796,9 @@ proc widgets {} \
 		set py 1; set px 4; set bw 2
 		set swid 12
 	}
-	set arrow #BCD2EE
 	set arrow darkblue
+	set branchArrow $arrow
+	set mergeArrow $arrow
 	set background #9fb6b8
 	set bcolor #d0d0d0
 	set geometry ""

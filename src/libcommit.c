@@ -242,13 +242,16 @@ notify()
 	sprintf(notify_log, "%s/bk_notify%d", TMP_PATH, getpid());
 	f = fopen(notify_log, "wb");
 	gethelp("version", 0, f);
-	fprintf(f, "BitKeeper repository %s : %s\n",
+	fprintf(f, "BitKeeper repository %s:%s\n",
 					sccs_gethost(), fullname(".", 0));
 	sprintf(parent_file, "%slog/parent", bk_dir);
 	if (exists(parent_file)) {
 		FILE *f1;
 		f1 = fopen(parent_file, "rt");
-		while (fgets(buf, sizeof(buf), f1)) fputs(buf, f);
+		if (fgets(buf, sizeof(buf), f1)) {
+			fputs("Parent repository ", f);
+			fputs(buf, f);
+		}
 		fclose(f1);
 	}
 	fprintf(f, "\n");

@@ -5030,6 +5030,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	}
 	unless (s->state & S_KEYWORDS) flags &= ~(GET_EXPAND|GET_RCSEXPAND);
 
+	if (flags & GET_MODNAME) base = basenm(s->gfile);
 	/*
 	 * We want the data to start on a tab alingned boundry
 	 */
@@ -5037,7 +5038,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 		int	len = 0;
 
 
-		if (flags&GET_MODNAME) len += 15;
+		if (flags&GET_MODNAME) len += strlen(base) + 1;
 		if (flags&GET_PREFIXDATE) len += 9;
 		if (flags&GET_USER) len += s->userLen + 1;
 		if (flags&GET_REVNUMS) len += s->revLen + 1;
@@ -5049,7 +5050,6 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	}
 
 	state = allocstate(0, 0, s->nextserial);
-	if (flags & GET_MODNAME) base = basenm(s->gfile);
 
 	unless (flags & GET_HASHONLY) {
 		f = d ? setupOutput(s, printOut, flags, d) : printOut;
@@ -5115,7 +5115,7 @@ out:			if (slist) free(slist);
 				delta *tmp = sfind(s, (ser_t) print);
 
 				if (flags&GET_MODNAME)
-					fprintf(out, "%-14s ", base);
+					fprintf(out, "%s ", base);
 				if (flags&GET_PREFIXDATE)
 					fprintf(out, "%8.8s ", tmp->sdate);
 				if (flags&GET_USER)
