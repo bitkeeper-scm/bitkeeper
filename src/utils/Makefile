@@ -5,7 +5,8 @@
 .SCCS_GET:
 	bk get -q $@
 
-all image: sfio munge mkbk extractor.c bitkeeper.sh gnu-os os installer.tcl
+all image: sfio munge mkbk extractor.c bitkeeper.sh gnu-os os installer.tcl \
+	   bootstrap.tcl
 	./mkbk
 SFIO_SRC=../sfio.c sfio_utils.c
 
