@@ -9,6 +9,7 @@
 #include "range.h"
 WHATSTR("@(#)%K%");
 
+extern	int	sane_main(int ac, char **av);
 private	MDBM	*buildKeys(void);
 private	char	*csetFind(char *key);
 private	int	check(sccs *s, MDBM *db);

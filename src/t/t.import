@@ -254,9 +254,9 @@ grep -q G foo || {
 	exit 1
 }
 U=`bk getuser`
-test "`bk prs -hr+ -nd:P:@:HOST: foo`" = akushner@bitmover.com\[$U\] || {
+test "`bk prs -hr+ -nd:P:@:HOST::IMPORTER: foo`" = akushner@bitmover.com$U || {
 	echo did not pick up email address
-	bk prs -nd:P:@:HOST: foo
+	bk prs -nd':P:@:HOST::IMPORTER:' foo
 	exit 1
 }
 bk changes -r+ > C

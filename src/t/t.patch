@@ -52,9 +52,9 @@ EOF
 export USER=torvalds BK_USER=trini BK_HOST=butthead.com
 bk import $Q -Cftpatch PATCH proj
 cd proj
-export BK_PATCH_IMPORT=YES
+export BK_IMPORTER=`bk getuser -r`
 bk commit $Q -y'Should be trini@butthead.com[torvalds]'
-bk changes -vr+ -nd:HOST: | bk undos > GOT
+bk changes -vr+ -nd':HOST:[:IMPORTER:]' | bk undos > GOT
 bk undos > ../WANT <<EOF
 butthead.com[torvalds]
 butthead.com[torvalds]
@@ -77,9 +77,9 @@ cd $HERE
 export USER=lm BK_USER=trini BK_HOST=headbutt.com
 bk import $Q -Cftpatch PATCH child
 cd child
-export BK_PATCH_IMPORT=YES
+export BK_IMPORTER=`bk getuser -r`
 bk commit $Q -y'Should be trini@headbutt.com[lm]'
-bk changes -vr+ -nd:HOST: | bk undos > GOT
+bk changes -vr+ -nd':HOST:[:IMPORTER:]' | bk undos > GOT
 bk undos > ../WANT <<EOF
 headbutt.com[lm]
 headbutt.com[lm]
@@ -98,7 +98,7 @@ test `bk prs -hr+ -nd:FUDGE: file` -gt 1243730 || {
 echo OK
 
 echo $N Test pull of a double imported patch, should automerge ......$NL
-unset BK_PATCH_IMPORT
+unset BK_IMPORTER
 unset BK_USER
 unset BK_HOST
 unset USER

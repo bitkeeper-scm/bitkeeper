@@ -6,7 +6,6 @@
 
 WHATSTR("@(#)%K%");
 
-
 typedef	struct cset {
 	/* bits */
 	int	mixed;		/* if set, then both long and short keys */
@@ -48,6 +47,8 @@ private	void	cset_exit(int n);
 private	char	csetFile[] = CHANGESET; /* for win32, need writable buffer */
 private	cset_t	copts;
 private char	*spin = "|/-\\";
+int		cset_main(int ac, char **av);
+extern	int	sane_main(int ac, char **av);
 
 int
 makepatch_main(int ac, char **av)
@@ -1160,7 +1161,7 @@ sccs_patch(sccs *s, cset_t *cs)
 {
 	delta	*d;
 	int	deltas = 0, prs_flags = (PRS_PATCH|SILENT);
-	int	i, n, newfile, empty, encoding;
+	int	i, n, newfile, empty, encoding = 0;
 	delta	**list;
 
         if (sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0, 0)) {

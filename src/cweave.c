@@ -91,7 +91,7 @@ cset_map(sccs *s, int extras)
 	while (p < (s->mmap + s->size)) {
 		assert(strneq(p, "\001I ", 3));
 		p += 3;
-		ser = atoi2(&p);
+		ser = atoi_p(&p);
 		assert(ser < s->nloc);
 		assert(*p == '\n');
 		p++;

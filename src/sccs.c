@@ -3,6 +3,10 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
+extern	int	delta_main(int ac, char **av);
+extern	int	get_main(int ac, char **av);
+extern	int	admin_main(int ac, char **av);
+
 /*
  * sccs.c - provide semi compatible interfaces to the sccs front end command.
  *

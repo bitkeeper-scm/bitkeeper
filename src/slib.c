@@ -519,7 +519,7 @@ atoi(register char *s)
 	return (val);
 }
 
-private inline int
+int
 atoi_p(char **sp)
 {
 	register int val = 0;
@@ -8878,11 +8878,10 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 	} else {
 		unless (d->user) d->user = strdup(sccs_getuser());
 		unless (d->hostname && sccs_gethost()) {
-			if (getenv("BK_PATCH_IMPORT")) {
-				char	*h;
+			char	*imp, *h;
 
-				h = aprintf("%s[%s]",
-					sccs_gethost(), sccs_realuser());
+			if (imp = getenv("BK_IMPORTER")) {
+				h = aprintf("%s[%s]", sccs_gethost(), imp);
 				hostArg(d, h);
 				free(h);
 			} else {
@@ -13838,10 +13837,24 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	if (streq(kw, "HT") || streq(kw, "HOST")) {
-		/* host */
+		/* host without any importer name */
 		if (d->hostname) {
-			fs(d->hostname);
+			for (p = d->hostname; *p && (*p != '['); ) {
+				fc(*p++);
+			}
 			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "IMPORTER")) {
+		/* importer name */
+		if (d->hostname) {
+			for (p = d->hostname; *p && (*p != '['); p++);
+			if (*p) {
+				while (*(++p) != ']') fc(*p);
+				return (strVal);
+			}
 		}
 		return (nullVal);
 	}
