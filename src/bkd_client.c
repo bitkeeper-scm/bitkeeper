@@ -104,6 +104,7 @@ nfs_parse(char *p)
  * host[:port]/path or
  * user@host[:path] or
  * host:port
+ * host
  */
 private	remote *
 url_parse(char *p)
@@ -133,8 +134,10 @@ url_parse(char *p)
 		r->host = strdup(p);
 		*s = '/';
 		r->path = strdup(s);
-	} else {
-		return (0);
+	} else { 				/* host */
+		r->port = BK_PORT;
+		r->host = strdup(p);
+		r->path = 0;
 	}
 	return (r);
 }
