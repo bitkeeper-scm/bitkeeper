@@ -1,14 +1,11 @@
-#
-# %W%  Copyright (c) 1999 Andrew Chang
+# @(#) %K%
+# Platform specific setup for perl scripts
+# Copyright (c) 1999 Andrew Chang
 #
 sub platformInit
 {
-	local($bin) = $_[0];
 
 	$SIG{'TERM'} = $SIG{'INT'} = 'IGNORE';
-	# must use "C:/" syntax for PATH
-	#$unix_bin=$ENV{'UNIX_BIN'};
-	#$ENV{'PATH'} = "$bin;$unix_bin;$ENV{'PATH'}";
 	$tmp = "$ENV{'TEMP'}\\";
 	$tmp =~ s?/?\\?g;	# win32 quirk: redirectded file inside 
 				# a open() call must have back slash
@@ -16,6 +13,7 @@ sub platformInit
 	$tty = "con";
 	$pager = $ENV{'PAGER'} || "less";
 	$editor = $ENV{'EDITOR'} || "vim";
+	$dev_null = "nul" if 0;
 }
 
 sub cd2root
@@ -62,5 +60,4 @@ sub localName2bkName
 	return $path;
 }
 
-return 1;
 

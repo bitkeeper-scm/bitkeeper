@@ -1,12 +1,11 @@
-#
-# %W% Copyright (c) 1999 Andrew Chang
-#
+# @(#) %K%
+# Platform specific setup for perl scripts
+# Copyright (c) 1999 Andrew Chang
+
 sub platformInit
 {
-	local($bin) = $_[0];
 
 	$SIG{'HUP'} = $SIG{'TERM'} = $SIG{'INT'} = 'IGNORE';
-	$ENV{'PATH'} = "$bin:$ENV{'PATH'}";
 	$tmp = "/tmp/";
 	$tty = "/dev/tty";
 	$pager = $ENV{'PAGER'} || "more";
@@ -49,5 +48,5 @@ sub localName2bkName
         return $_[0];
 }        
 
-return 1;
+
 

@@ -311,13 +311,17 @@ import: import.sh substvars
 
 resolve: resolve.perl port/platform.perl substvars
 	./substvars resolve.perl >resolve.T
-	chmod +x resolve.T
-	mv -f resolve.T resolve
+	cat resolve.T port/platform.perl > resolve.T2
+	/bin/rm -f resolve.T
+	chmod +x resolve.T2
+	mv -f resolve.T2 resolve
 
-resync: resync.perl substvars
+resync: resync.perl port/platform.perl substvars
 	./substvars resync.perl >resync.T
-	chmod +x resync.T
-	mv -f resync.T resync
+	cat resync.T port/platform.perl > resync.T2
+	/bin/rm -f resync.T
+	chmod +x resync.T2
+	mv -f resync.T2 resync
 
 gui/sccstool: gui/sccstool.tcl port/platform.tcl substvars
 	./substvars gui/sccstool.tcl >gui/sccstool.T
