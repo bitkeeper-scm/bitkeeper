@@ -19,11 +19,11 @@ win32_common_setup()
 	RM=rm
 	PLATFORM="WIN32"
 	DEV_NULL="nul"
-	if [ -z "$TST_DIR" ]; then TST_DIR=`../bk _nativepath /tmp`; fi
+	if [ -z "$TST_DIR" ]; then TST_DIR=`cygpath -m /tmp | tr A-Z a-z`; fi
 	BK_FS="|"
 	BK_BIN=`cd .. && ./bk pwd -s`
 	CWD="$BK_BIN/bk pwd"
-	touch `../bk _nativepath $TEMP`/BitKeeper_null
+	touch `cygpath -m $TEMP | tr A-Z a-z`/BitKeeper_null
 	BK_USER=`bk getuser`
 	# Admin user is special, remap to a differnt user before we run the test
 	if [ X$BK_USER = XAdministrator ]; then BK_USER=Administrator-test; fi
@@ -200,7 +200,7 @@ setup_env()
 	    Xcygwin|Xcygwin32|XCYGWIN*)
 		win32_common_setup
 		BK_BIN=`cd .. && ./bk pwd -sc`
-		PATH=$BK_BIN:$BK_BIN/gnu/bin:$PATH
+		PATH=/bin:$BK_BIN:$PATH
 		check_mount_mode
 		check_path
 		;;

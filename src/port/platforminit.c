@@ -63,8 +63,8 @@ platformInit(char **av)
 	/*
 	 * Convert to lower case: because W98 gives us upper case av
 	 */
-	for (t = av[0]; *t; t++) *t = tolower(*t);
 	for (t = p; *t; t++) *t = tolower(*t);
+	for (t = av[0]; *t; t++) *t = tolower(*t);
 
 	/*
 	 * Strip .exe .com suffix
