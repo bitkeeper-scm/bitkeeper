@@ -795,10 +795,10 @@ _r2c() {
 	then	echo can not find cset marker at or below $2
 		exit 1
 	fi
-	KEY=`${BIN}prs -hr$REV -d:KEY:`
+	KEY=`${BIN}prs -hr$REV -d:KEY: $FILE`
 	bk -R sccscat -hm ChangeSet | grep "$KEY" > /tmp/r2c$$
 	if [ ! -s /tmp/r2c$$ ]
-	then	SKEY=`${BIN}prs -hr$REV -d:SHORTKEY:`
+	then	SKEY=`${BIN}prs -hr$REV -d:SHORTKEY: $FILE`
 		bk -R sccscat -hm ChangeSet | grep "$SKEY" > /tmp/r2c$$
 	fi
 	if [ ! -s /tmp/r2c$$ ]
