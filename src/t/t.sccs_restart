@@ -22,7 +22,7 @@ cat > X << EOF
 1.1
 EOF
 bk undos X > CMP1
-bk prs -d":I:" FILE > CMP2
+bk prs -d':I:\n' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
@@ -36,7 +36,7 @@ cat > X << EOF
 EOF
 bk undos X > CMP1
 writable FILE || { echo Failed; exit 1; }
-bk prs -r1.1.. -d":I:" FILE  > CMP2
+bk prs -r1.1.. -d':I:\n' FILE  > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK

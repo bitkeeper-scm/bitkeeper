@@ -11,7 +11,7 @@ cmd_push(int ac, char **av)
 	char	buf[4096];
 	int	fd2, wfd, status;
 	static	char *prs[] =
-	    { "bk", "prs", "-r1.0..", "-bhad:KEY:", "ChangeSet", 0 };
+	    { "bk", "prs", "-r1.0..", "-bhad:KEY:\n", "ChangeSet", 0 };
 	static	char *tp[] = { "bk", "takepatch", "-act", "-vv", 0 };
 				    /* see verbose below    ^^ */
 

@@ -23,10 +23,11 @@ sendlog(char *to, char *rev)
 	close(open(x_sendlog, O_CREAT, 0660));
 
 	if (rev == NULL) {
-		sprintf(buf, "bk prs -hd:KEY: ChangeSet | sort > %s", here);
+		sprintf(buf, "bk prs -hd':KEY:\n' ChangeSet | sort > %s", here);
 	} else {
-		sprintf(buf, "bk prs -hd:KEY: -r%s ChangeSet | sort > %s",
-								    rev, here);
+		sprintf(buf,
+		    "bk prs -hd':KEY:\n' -r%s ChangeSet | sort > %s",
+		    rev, here);
 	}
 	system(buf);
 	sprintf(buf, "sort -u < %s > %s", x_sendlog, has);
@@ -50,7 +51,7 @@ sendlog(char *to, char *rev)
 	if (revbuf[0] == '\0') return 0;
 	sprintf(buf, "cp %s %s", x_sendlog, here);
 	system(buf);
-	sprintf(buf, "bk prs -hd:KEY: -r%s ChangeSet >> %s", revbuf, here);
+	sprintf(buf, "bk prs -hd':KEY:\n' -r%s ChangeSet >> %s", revbuf, here);
 	system(buf);
 	sprintf(buf, "sort -u < %s > %s", here, x_sendlog);
 	system(buf);

@@ -36,7 +36,7 @@ cat > X <<EOF
 s.FILE
 EOF
 bk undos X > CMP1
-bk prs -r1.5 -d":F:" FILE > CMP2
+bk prs -r1.5 -d':F:\n' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
@@ -46,7 +46,7 @@ cat > X <<EOF
 SCCS/s.FILE
 EOF
 bk undos X > CMP1
-bk prs -r1.5 -d":PN:" FILE > CMP2
+bk prs -r1.5 -d':PN:\n' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
@@ -60,7 +60,7 @@ this/is/the/pathname.2
 this/is/the/pathname.1
 EOF
 bk undos X > CMP1
-bk prs -r1.1..1.5 -d":DPN:" FILE > CMP2
+bk prs -r1.1..1.5 -d':DPN:\n' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
@@ -79,7 +79,7 @@ This is revision 1.1 of 87/05/28 23:49:57
 This the second comment of 1.1
 EOF
 bk undos X > CMP1 
-bk prs -r1.1..1.5 -d":C:" FILE > CMP2
+bk prs -r1.1..1.5 -d'$each(:C:){(:C:)\n}' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP[12]; exit 1; fi
 echo OK
@@ -89,7 +89,7 @@ cat > X <<EOF
 D
 EOF
 bk undos X > CMP1
-bk prs -d ":DT:" -r1.5 FILE  >CMP2
+bk prs -d ':DT:\n' -r1.5 FILE  >CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
@@ -99,7 +99,7 @@ cat > X <<EOF
 1.3
 EOF
 bk undos X > CMP1
-bk prs -d ":I:" -r1.3 FILE  >CMP2
+bk prs -d ':I:\n' -r1.3 FILE  >CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
@@ -109,7 +109,7 @@ cat > X <<EOF
 87
 EOF
 bk undos X > CMP1
-bk prs -d":Dy:" -r1.1 FILE > CMP2
+bk prs -d':Dy:\n' -r1.1 FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 cat > X <<EOF
@@ -117,7 +117,7 @@ cat > X <<EOF
 06
 EOF
 bk undos X > CMP1
-bk prs -d":Dm:" -r1.4 FILE > CMP2
+bk prs -d':Dm:\n' -r1.4 FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 cat > X <<EOF
@@ -125,7 +125,7 @@ cat > X <<EOF
 23
 EOF
 bk undos X > CMP1
-bk prs -d":Dd:" -r1.4 FILE > CMP2
+bk prs -d':Dd:\n' -r1.4 FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
@@ -139,7 +139,7 @@ cat > X <<EOF
 23:49:57
 EOF
 bk undos X > CMP1
-bk prs -r1.1..1.5 -d":T:" FILE > CMP2
+bk prs -r1.1..1.5 -d':T:\n' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
@@ -149,7 +149,7 @@ cat > X <<EOF
 $USER
 EOF
 bk undos X > CMP1
-bk prs -r1.1 -d":P:" FILE > CMP2
+bk prs -r1.1 -d':P:\n' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
@@ -162,7 +162,7 @@ cat > X <<EOF
 ${HOST}
 EOF
 bk undos X > CMP1
-bk prs -d":HT:" -r1.1 host > CMP2
+bk prs -d':HT:\n' -r1.1 host > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; else echo OK; fi
 echo $N checking lines inserted :Li: ................................$NL
@@ -171,7 +171,7 @@ cat > X <<EOF
 00001
 EOF
 bk undos X > CMP1
-bk prs -d":Li:" -r1.2 FILE > CMP2
+bk prs -d':Li:\n' -r1.2 FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
@@ -181,7 +181,7 @@ cat > X <<EOF
 00000
 EOF
 bk undos X > CMP1
-bk prs -d":Ld:" -r1.2 FILE > CMP2
+bk prs -d':Ld:\n' -r1.2 FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
@@ -191,7 +191,7 @@ cat > X <<EOF
 00002
 EOF
 bk undos X > CMP1
-bk prs -d":Lu:" -r1.3 FILE > CMP2
+bk prs -d':Lu:\n' -r1.3 FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
@@ -201,7 +201,7 @@ cat > X <<EOF
 FILE
 EOF
 bk undos X > CMP1
-bk prs -d":M:" -r1.4 FILE > CMP2
+bk prs -d':M:\n' -r1.4 FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
@@ -211,19 +211,18 @@ cat > X <<EOF
 19980130224517
 EOF
 bk undos X > CMP1
-bk prs -d":UTC:" -r1.5 FILE > CMP2
+bk prs -d':UTC:\n' -r1.5 FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N checking body :GB: ..........................................$NL
 cat > X <<EOF
 1.1
-
 EOF
 bk undos X > CMP1
 bk prs -r1.1 -h -d':GB:' FILE > CMP2
 cmp -s CMP1 CMP2
-if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+if [ $? -ne 0 ]; then echo Failed.; sdiff -w80 CMP[12]; exit 1; fi
 echo OK
 echo $N checking default output......................................$NL
 cat > X <<EOF
@@ -274,7 +273,7 @@ cat > X <<EOF
 1.1 This the second comment of 1.1
 EOF
 bk undos X > CMP1
-bk prs -r1.1..1.5 -d'$each(:C:){:I: (:C:)}' FILE > CMP2
+bk prs -r1.1..1.5 -d'$each(:C:){:I: (:C:)\n}' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
@@ -293,7 +292,7 @@ FOO Comment: This is revision 1.1 of 87/05/28 23:49:57
 Comment: This the second comment of 1.1
 EOF
 bk undos X > CMP1
-bk prs -r1.1..1.5 -d'FOO $each(:C:){Comment: (:C:)}' FILE > CMP2
+bk prs -r1.1..1.5 -d'FOO $each(:C:){Comment: (:C:)\n}' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
@@ -317,15 +316,15 @@ this/is/the/pathname.1
 1.1 This the second comment of 1.1
 EOF
 bk undos X > CMP1
-bk prs -r1.1..1.5 -d'$if(:DPN:){:DPN:\n$each(:C:){:I: (:C:)}}' FILE > CMP2
+bk prs -r1.1..1.5 -d'$if(:DPN:){:DPN:\n$each(:C:){:I: (:C:)\n}}' FILE > CMP2
 cmp -s CMP1 CMP2
-if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+if [ $? -ne 0 ]; then echo Failed.; sdiff -w80 CMP[12]; exit 1; fi
 echo OK
 echo $N another test for nested conditional..........................$NL
 bk co $Q -l FILE
 echo "new data" > FILE
 bk ci $Q -y FILE
-bk prs -r1.5..1.6 -hd':I: Comments:\n$if(:C:){$each(:C:){  (:C:)}\n}------------'  FILE > CMP2
+bk prs -r1.5..1.6 -hd':I: Comments:\n$if(:C:){$each(:C:){  (:C:)\n}}------------\n'  FILE > CMP2
 cat > X <<EOF
 1.6 Comments:
 ------------
@@ -336,7 +335,7 @@ cat > X <<EOF
 EOF
 bk undos X > CMP1
 cmp -s CMP1 CMP2
-if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+if [ $? -ne 0 ]; then echo Failed.; sdiff -w80 CMP[12]; exit 1; fi
 echo OK
 bk stripdel $Q -r1.6 FILE
 echo $N checking escape of control symbol............................$NL
@@ -345,7 +344,7 @@ cat > X <<EOF
 FOO \$if(PN){ BAR }
 EOF
 bk undos X > CMP1
-bk prs -d'FOO \$if(PN){ BAR }' -r1.1 FILE > CMP2
+bk prs -d'FOO \$if(PN){ BAR }\n' -r1.1 FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
@@ -383,9 +382,9 @@ This the second comment of 1.1
 
 EOF
 bk undos X > CMP1
-bk prs -h -r1.1.. -d':Dt:\t:Li:/:Ld:/:Lu:\nMRs:\n:MR:$if(:C:){COMMENTS:\n:C:}\n' FILE > CMP2
+bk prs -h -r1.1.. -d':Dt:\t:Li:/:Ld:/:Lu:\nMRs:\n:MR:$if(:C:){COMMENTS:\n$each(:C:){(:C:)\n}}\n' FILE > CMP2
 cmp -s CMP1 CMP2
-if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+if [ $? -ne 0 ]; then echo Failed.; sdiff -w80 CMP[12]; exit 1; fi
 echo OK
 echo $N checking backslash c in dspec ...............................$NL
 echo $N "00002"$NL > CMP1
@@ -442,8 +441,8 @@ cat > X <<EOF
 <dtext2>
 EOF
 bk undos X > CMP1
-bk prs -h -r+ -d'$each(:FD:){<(:FD:)>}' FILE > CMP2
+bk prs -h -r+ -d'$each(:FD:){<(:FD:)>\n}' FILE > CMP2
 cmp -s CMP1 CMP2
-if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+if [ $? -ne 0 ]; then echo Failed.; sdiff -w80 CMP[12]; exit 1; fi
 echo OK
 rm -f FILE SCCS/s.FILE

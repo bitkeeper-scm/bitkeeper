@@ -20,7 +20,7 @@ cat > X <<EOF
 -08:00
 EOF
 bk undos X > CMP1
-bk prs -d":TZ:" TIME > CMP2
+bk prs -d':TZ:\n' TIME > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
@@ -33,7 +33,7 @@ cat > X <<EOF
 +08:00
 EOF
 bk undos X > CMP1
-bk prs -d":TZ:" -r1.2 TIME  > CMP2
+bk prs -d':TZ:\n' -r1.2 TIME  > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
@@ -46,7 +46,7 @@ cat > X <<EOF
 +00:00
 EOF
 bk undos X > CMP1
-bk prs -d":TZ:" -r1.3 TIME  > CMP2
+bk prs -d':TZ:\n' -r1.3 TIME  > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]
 then	cat > X <<EOF
