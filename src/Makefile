@@ -300,7 +300,7 @@ import: import.sh substvars
 	chmod +x import.T
 	mv -f import.T import
 
-resolve: resolve.perl substvars
+resolve: resolve.perl port/platform.perl substvars
 	./substvars resolve.perl >resolve.T
 	chmod +x resolve.T
 	mv -f resolve.T resolve
