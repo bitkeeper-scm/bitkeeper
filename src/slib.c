@@ -4608,7 +4608,8 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 		f = path;
 		unlink(f);
 	} else {
-		if (WRITABLE(s)) {
+		/* With -G/somewhere/foo.c we need to check the gfile again */
+		if (WRITABLE(s) && writable(s->gfile)) {
 			fprintf(stderr, "Writeable %s exists\n", s->gfile);
 			s->state |= S_WARNED;
 			return 0;

@@ -971,16 +971,24 @@ _export() {
 	if [ x$R = x ]; then R=-r+; fi
 
 	mkdir -p $DST || exit 1
+	HERE=`pwd`
+	cd $DST
+	DST=`pwd`
+	cd $HERE
+	cd $SRC
+	_cd2root
 
 	# XXX: cset -t+ should work.
-	(cd $SRC; ${BIN}cset -t`${BIN}prs $R -hd:I: ChangeSet`) \
+	(${BIN}cset -t`${BIN}prs $R -hd:I: ChangeSet`) \
 	| eval egrep -v "'^(BitKeeper|ChangeSet)'" $INCLUDE $EXCLUDE \
 	| sed 's/:/ /' | while read file rev
 	do
-		dir=./$file
-		dir=$DST/${dir%/*}
-		[ -d $dir ] || mkdir -p $dir
-		${BIN}get $K $Q -r$rev -G$DST/$file $SRC/$file
+		PN=`bk prs -r$rev -hd:DPN: $SRC/$file`
+		if ${BIN}get $K $Q -r$rev -G$DST/$PN $SRC/$file
+		then	DIR=`dirname $DST/$$PN`
+			mkdir -p $DIR || exit 1
+			${BIN}get $K $Q -r$rev -G$DST/$PN $SRC/$file
+		fi
 	done
 
 	if [ x$WRITE != x ]
