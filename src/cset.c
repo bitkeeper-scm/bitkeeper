@@ -66,10 +66,6 @@ private	void	csetlist(cset_t *cs, sccs *cset);
 private	void	csetList(sccs *cset, char *rev, int ignoreDeleted);
 private	int	marklist(char *file, int newlod, MDBM *tot, MDBM *base);
 private	void	csetDeltas(cset_t *cs, sccs *sc, delta *start, delta *d);
-private	void	dump(MDBM *db, FILE *out);
-private	int	sameState(const char *file, const struct stat *sb);
-private	void	lock(char *);
-private	void	unlock(char *);
 private	delta	*mkChangeSet(sccs *cset, FILE *diffs);
 private	char	*file2str(char *f);
 private	void	doRange(cset_t *cs, sccs *sc);
@@ -82,8 +78,6 @@ private	void	cset_exit(int n);
 private void	mklod(sccs *s, delta *start, delta *stop);
 extern	void	explodeKey(char *key, char *parts[4]);
 
-private	FILE	*id_cache;
-private	MDBM	*idDB = 0;
 private	char	csetFile[] = CHANGESET; /* for win32, need writable	*/
 				/* buffer for name convertion	*/
 
@@ -302,7 +296,8 @@ private void
 cset_exit(int n)
 {
 	if (copts.pid) {
-		fprintf(stderr, "cset: failed to wait for adler32\n");
+		printf(PATCH_ABORT);
+		fclose(stdout);
 		waitpid(copts.pid, 0, 0);
 	}
 	fflush(stdout);
@@ -319,48 +314,35 @@ cset_exit(int n)
 private pid_t
 spawn_checksum_child(void)
 {
-	int	p[2], fd0, rc;
+	int	p[2];
 	pid_t	pid;
 	char	*av[3] = {"bk", "adler32", 0};
 
-	/* the strange syntax is to hide the call from purify */
-	if ((pipe)(p)) {
+	if (pipe(p)) {
 		perror("pipe");
 		return -1;
 	}
-
-	/* save fd 0*/
-	fd0 = (dup)(0);
-	assert(fd0 > 0);
-
-
-	/* for Child.
-	 * Replace stdin with the read end of the pipe.
-	 */
-	rc = (close)(0);
-	if (rc == -1) perror("close");
-	assert(rc != -1);
-	rc = (dup2)(p[0], 0);
-	if (rc == -1) perror("dup2");
-	assert(rc != -1);
-
-	/* Now go do the real work... */
-	pid = spawnvp_ex(_P_NOWAIT, av[0], av );
-	if (pid == -1) return -1;
-
-	/*
-	 * for Parent
-	 * restore fd0
-	 * set stdout to write end of the pipe
-	 */
-	rc = (dup2)(fd0, 0); /* restore stdin */
-	assert(rc != -1);
-	(close)(1);
-	rc = (dup2)(p[1], 1);
-	assert(rc != -1);
-	(close)(p[0]);
-	(close)(p[1]);
-	return pid;
+	pid = fork();
+	if (pid == -1) {
+		perror("fork");
+		return (-1);
+	} else if (pid) {
+		/* parent sends stdout to the pipe */
+		close(1);
+		dup(p[1]);
+		close(p[1]);
+		close(p[0]);
+		return (pid);
+	}
+	
+	/* Kid gets stdin from the pipe */
+	close(0);
+	dup(p[0]);
+	close(p[0]);
+	close(p[1]);
+	execvp(av[0], av);
+	perror("bk");
+	exit(1);
 }
 
 private int
@@ -706,7 +688,7 @@ Please stand by.\n\n", stderr);
 	}
 	unless (d = sccs_findKey(sc, val)) {
 		fprintf(stderr,
-		    "cset: failed to find %s in %s\n", val, sc->sfile);
+		    "cset: can not find\n\t%s in\n\t%s\n", val, sc->sfile);
 		return (-1);
 	}
 	markThisCset(cs, sc, d);
@@ -877,9 +859,7 @@ again:	/* doDiffs can make it two pass */
 		    cs->ndeltas, cs->nfiles);
 	}
 	if (cs->makepatch) {
-		char eot[3] = { '\004', '\n', 0 };
-
-		fputs(eot, stdout);	/* send  EOF indicator */
+		printf(PATCH_OK);
 		fclose(stdout);
 		if (waitpid(cs->pid, &status, 0) != cs->pid) {
 			perror("waitpid");
@@ -898,9 +878,7 @@ again:	/* doDiffs can make it two pass */
 
 fail:
 	if (cs->makepatch) {
-		char eot[3] = { '\004', '\n', 0 };
-
-		fputs(eot, stdout);	/* send  EOF indicator */
+		printf(PATCH_ABORT);
 		fclose(stdout);
 	}
 	if (list) fclose(list);
@@ -1101,21 +1079,33 @@ doMarks(cset_t *cs, sccs *s)
 	}
 }
 
+/*
+ * Do the set listing but make sure that the listing isn't > MAXLINE - 200.
+ */
 private void
 doSet(sccs *sc)
 {
 	delta	*d;
 	int	first = 1;
+	int	len = 0;
 
-	printf("%s%c", sc->gfile, BK_FS);
+	printf("%s@", sc->gfile);
+	len = strlen(sc->gfile) + 1;
 	for (d = sc->table; d; d = d->next) {
 		if (d->flags & D_SET) {
 			if (first) {
 				first = 0;
 			} else {
 				printf(",");
+				len++;
 			}
 			printf("%s", d->rev);
+			len += strlen(d->rev);
+			if (len >= (MAXLINE - 200)) {
+				printf("\n");
+				printf("%s@", sc->gfile);
+				len = strlen(sc->gfile) + 1;
+			}
 		}
 	}
 	printf("\n");
@@ -1254,63 +1244,6 @@ mkChangeSet(sccs *cset, FILE *diffs)
 #endif
 	return (d);
 }
-
-void
-dump(MDBM *db, FILE *out)
-{
-	kvpair	kv;
-
-	for (kv = mdbm_first(db); kv.key.dsize; kv = mdbm_next(db)) {
-		fprintf(out, "%s %s\n", kv.key.dptr, kv.val.dptr);
-	}
-}
-
-private	void
-updateIdCacheEntry(sccs *sc, const char *filename)
-{
-	char	*path;
-	char	buf[MAXPATH*2];
-
-	/* update the id cache */
-	sccs_sdelta(sc, sccs_ino(sc), buf);
-	if (sc->tree->pathname && streq(sc->tree->pathname, sc->gfile)) {
-		path = sc->tree->pathname;
-	} else {
-		path = sc->gfile;
-	}
-	fprintf(id_cache, "%s %s\n", buf, path);
-}
-
-#ifndef	PROFILE
-/*
- * XXX TODO
- * the locking code need to handle intr
- * It need to leave the lock in a clean state after a interrupt
- *
- * should hanlde lock fail with re-try
- */
-private	void
-lock(char *lockName)
-{
-	int	i;
-
-	unless ((i = open(lockName, O_CREAT|O_EXCL, GROUP_MODE)) > 0) {
-		fprintf(stderr, "cset: can't lock %s\n", lockName);
-		cset_exit(1);
-	}
-	close(i);
-}
-
-private	void
-unlock(char *lockName)
-{
-	if (unlink(lockName)) {
-		fprintf(stderr, "unlock: lockname=%s\n", lockName);
-		perror("unlink:");
-	}
-}
-#endif
-
 
 /* There are two ways a new LOD can be created:
  * + The user asks for this changeset to be the first on a new lod
@@ -1480,6 +1413,13 @@ sccs_patch(sccs *s, cset_t *cs)
 	int	deltas = 0;
 	int	i, n, newfile;
 	delta	**list;
+
+        if (sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0, 0)) {
+		fprintf(stderr, "Patch aborted, %s has errors\n", s->sfile);
+		fprintf(stderr,
+		    "Run ``bk -r check -a'' for more information.\n");
+		cset_exit(1);
+	}
 
 	if (cs->verbose>1) fprintf(stderr, "makepatch: %s ", s->gfile);
 	n = sccs_markMeta(s);

@@ -1165,6 +1165,10 @@ bk commit $Q -ywhatever
 cd $HERE
 bk resync -t $Q project copy
 tar cf SAVE.copy copy
+if [ ! -d copy/RESYNC ]
+then	echo Failed to create resync dir in COPY
+	exit 1
+fi
 echo OK
 
 echo $N '  resolve by renaming local file ............................'$NL

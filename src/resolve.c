@@ -109,14 +109,6 @@ resolve_main(int ac, char **av)
 		opts.comment = "Merge";
 	}
 
-	unless (opts.quiet) {
-		fprintf(stderr, "Checking the state of the local tree...\n");
-	}
-	unless (sys("bk -r check -a", &opts) == 0) {
-		fprintf(stderr, "Check failed.  Resolve not even started.\n");
-		exit(1);
-	}
-
 	c = passes(&opts);
 	return (c);
 }
@@ -158,6 +150,17 @@ passes(opts *opts)
 	opts->local_proj = proj_init(0);
 	chdir(ROOT2RESYNC);
 	opts->resync_proj = proj_init(0);
+
+	chdir(ROOT2RESYNC);
+	unless (opts->quiet) {
+		fprintf(stderr,
+		    "Verifying consistency of the RESYNC tree...\n");
+	}
+	unless (sys("bk -r check -R", opts) == 0) {
+		fprintf(stderr, "Check failed.  Resolve not even started.\n");
+		/* XXX - better help message */
+		exit(1);
+	}
 
 	/*
 	 * Pass 1 - move files to RENAMES and/or build up rootDB
@@ -1731,8 +1734,10 @@ backup(opts *opts, char *sfile, MDBM *backups, FILE *save)
 	strcpy(buf, sfile);
 	t = strrchr(buf, '/');
 	t[1] = 'b';			/* b is for backup */
+	if (opts->log) fprintf(stdlog, "backing up(%s, %s)\n", sfile, buf);
 	if (exists(buf) && !mdbm_fetch_str(backups, buf)) {
-		fprintf(stderr, "Will not overwrite existing backup %s\n", buf);
+		fprintf(stderr,
+		    "\nWill not overwrite existing backup %s\n", buf);
 		restore(save, opts);
 		return (1);
 	}
@@ -1742,7 +1747,6 @@ backup(opts *opts, char *sfile, MDBM *backups, FILE *save)
 		return (1);
 	}
 	mdbm_store_str(backups, buf, "", MDBM_INSERT);
-	if (opts->log) fprintf(stdlog, "backup(%s, %s)\n", sfile, buf);
 	fprintf(save, "%s\n", buf);
     	return (0);
 }
@@ -1820,7 +1824,8 @@ pass4_apply(opts *opts)
 			 */
 			if (IS_EDITED(l) || IS_LOCKED(l)) {
 				fprintf(stderr,
-				    "Will not overwrite edited %s\n", l->gfile);
+				    "\nWill not overwrite edited %s\n",
+				    l->gfile);
 				restore(save, opts);
 				unlink(orig);
 				exit(1);
@@ -1862,7 +1867,8 @@ pass4_apply(opts *opts)
 			t[1] = 'b';			/* b is for backup */
 			if (exists(key) && !mdbm_fetch_str(backups, key)) {
 				fprintf(stderr,
-				"Will not overwrite existing BACKUP %s\n", key);
+				    "\nWill not overwrite existing BACKUP %s\n",
+				    key);
 				restore(save, opts);
 				unlink(orig);
 				exit(1);
@@ -1929,6 +1935,7 @@ pass4_apply(opts *opts)
 	}
 	unless (sys("bk -r check -a", opts) == 0) {
 		fprintf(stderr, "Check failed.  Resolve not completed.\n");
+		restore(save, opts);
 		fclose(save);
 		unlink(orig);
 		exit(1);
@@ -1975,6 +1982,7 @@ restore(FILE *f, opts *o)
 	char	to[MAXPATH];
 	int	failed = 0, n = 0;
 
+	fprintf(stderr, "\nRestoring original files...\n");
 	fflush(f);
 	rewind(f);
 	while (fnext(from, f)) {
@@ -1989,6 +1997,7 @@ restore(FILE *f, opts *o)
 			failed++;
 		} else {
 			n++;
+			if (size(to) == 0) unlink(to);
 		}
 	}
 	fclose(f);
@@ -2001,7 +2010,11 @@ restore(FILE *f, opts *o)
 		fprintf(stderr,
 "Your repository should be back to where it was before the resolve started.\n\
 We are running a consistency check to verify this.\n");
-		sys("bk -r check -a", o);
+		if (sys("bk -r check -a", o) == 0) {
+			fprintf(stderr, "Check passed.\n");
+		} else {
+			fprintf(stderr, "Check FAILED, contact BitMover.\n");
+		}
 	} else {
 		fprintf(stderr,
 "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\

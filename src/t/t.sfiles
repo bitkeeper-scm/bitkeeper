@@ -372,3 +372,4 @@ EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
+set +e
