@@ -49,7 +49,7 @@ tk/$S/configure:
 	cd tk; bk -Ur get -qS
 
 image: bin/tclsh bin/bkgui
-	find . -type d -print | xargs chmod ug+w
+	find bin lib -type d -print | xargs chmod ug+w
 	rm -rf ../bin ../lib
 	cp -rp bin lib ..
 
