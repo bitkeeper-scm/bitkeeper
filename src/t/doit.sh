@@ -219,7 +219,6 @@ setup_env()
 	BKL_EX3=4OfnMtUM6SsjQ/kNebbbrnJjKLgSfu/61sVkQXaQ3rmEQXvg72eGHrKjnZT1FA==
 }
 
-
 clean_up()
 {
 	# Win32 have no core file

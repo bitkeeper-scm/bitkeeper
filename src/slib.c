@@ -141,35 +141,37 @@ a2mode(char *mode)
 		return (0);
 	}
 	mode++;
-	/* owner bits - does not handle setuid/setgid */
 	if (*mode++ == 'r') m |= S_IRUSR;
 	if (*mode++ == 'w') m |= S_IWUSR;
-	if (*mode++ == 'x') m |= S_IXUSR;
+	switch (*mode++) {
+#ifdef	S_ISUID
+	    case 'S': m |= S_ISUID; break;
+	    case 's': m |= S_ISUID; /* fall-through */
+#endif
+	    case 'x': m |= S_IXUSR; break;
+	}
 
 	/* group - XXX, inherite these on DOS? */
 	if (*mode++ == 'r') m |= S_IRGRP;
 	if (*mode++ == 'w') m |= S_IWGRP;
-	if (*mode++ == 'x') m |= S_IXGRP;
+	switch (*mode++) {
+#ifdef	S_ISGID
+	    case 'S': m |= S_ISGID; break;
+	    case 's': m |= S_ISGID; /* fall-through */
+#endif
+	    case 'x': m |= S_IXGRP; break;
+	}
 
 	/* other */
 	if (*mode++ == 'r') m |= S_IROTH;
 	if (*mode++ == 'w') m |= S_IWOTH;
 	if (*mode++ == 'x') m |= S_IXOTH;
-
 	return (m);
 }
 
 private mode_t
-getMode(char *arg)
+fixModes(mode_t m)
 {
-	mode_t	m;
-
-	if (isdigit(*arg)) {
-		for (m = 0; isdigit(*arg); m <<= 3, m |= (*arg - '0'), arg++);
-		m |= S_IFREG;
-	} else {
-		m = a2mode(arg);
-	}
 	unless (m & 0200) {
 		fprintf(stderr, "Warning: adding owner write permission\n");
 		m |= 0200;
@@ -179,6 +181,94 @@ getMode(char *arg)
 		m |= 0400;
 	}
 	return (m);
+}
+
+private mode_t
+getMode(char *arg)
+{
+	mode_t	m;
+
+	if (isdigit(*arg)) {
+		char	*p = arg;
+		for (m = 0; isdigit(*p); m <<= 3, m |= (*p - '0'), p++) {
+			unless ((*p >= '0') && (*p <= '7')) {
+				fprintf(stderr, "Illegal octal file mode: %s\n",
+				    arg);
+				return (0);
+			}
+		}
+		if (!S_ISLNK(m) && !S_ISDIR(m)) m |= S_IFREG;
+	} else {
+		m = a2mode(arg);
+	}
+	return (fixModes(m));
+}
+
+/*
+ * chmod [ugoa]+rwxs
+ * chmod [ugoa]-rwxs
+ * chmod [ugoa]=rwxs
+ *
+ * Yes, this code knows the values of the bits.  Tough.
+ */
+private mode_t
+newMode(delta *d, char *p)
+{
+	mode_t	mode, or = 0;
+	int	op = 0, setid = 0, u = 0, g = 0, o = 0;
+
+	assert(p && *p);
+	if (isdigit(*p) || (strlen(p) == 10)) return (getMode(p));
+
+	for ( ; *p; p++) {
+		switch (*p) {
+		    case 'u': u = 1; break;
+		    case 'g': g = 1; break;
+		    case 'o': o = 1; break;
+		    case 'a': u = g = o = 1; break;
+		    default: goto plusminus;
+		}
+	}
+plusminus:
+	unless (u || g || o) u = g = o = 1;
+	switch (*p) {
+	    case '+': case '-': case '=': op = *p++; break;
+	    default: return (0);
+	}
+
+	setid = mode = 0;
+	while (*p) {
+		switch (*p++) {
+		    case 'r': or |= 4; break;
+		    case 'w': or |= 2; break;
+		    case 'x': or |= 1; break;
+		    case 's': setid = 1; break;
+		    default: return (0);
+		}
+	}
+	if (u) {
+		mode |= (or << 6);
+		if (setid) mode |= 04000;
+	}
+	if (g) {
+		mode |= (or << 3);
+		if (setid) mode |= 02000;
+	}
+	if (o) mode |= or;
+#ifndef	S_ISUID
+	mode &= 0777;	/* no setgid if no setuid */
+#endif
+	switch (op) {
+	    case '-':	mode = (d->mode & ~mode); break;
+	    case '+':	mode = (d->mode | mode); break;
+	    case '=':
+		unless (u) mode |= (d->mode & 0700);
+		unless (g) mode |= (d->mode & 0070);
+		unless (o) mode |= (d->mode & 0007);
+		break;
+	}
+	mode |= (d->mode & S_IFMT);	/* don't lose file type */
+	return (fixModes(mode));
 }
 
 /* value is overwritten on each call */
@@ -200,10 +290,20 @@ mode2a(mode_t m)
 	}
 	*s++ = (m & S_IRUSR) ? 'r' : '-';
 	*s++ = (m & S_IWUSR) ? 'w' : '-';
+#ifndef	S_ISUID
 	*s++ = (m & S_IXUSR) ? 'x' : '-';
+#else
+	*s++ = (m & S_IXUSR) ? ((m & S_ISUID) ? 's' : 'x')
+			     : ((m & S_ISUID) ? 'S' : '-');
+#endif
 	*s++ = (m & S_IRGRP) ? 'r' : '-';
 	*s++ = (m & S_IWGRP) ? 'w' : '-';
+#ifndef	S_ISGID
 	*s++ = (m & S_IXGRP) ? 'x' : '-';
+#else
+	*s++ = (m & S_IXGRP) ? ((m & S_ISGID) ? 's' : 'x')
+			     : ((m & S_ISGID) ? 'S' : '-');
+#endif
 	*s++ = (m & S_IROTH) ? 'r' : '-';
 	*s++ = (m & S_IWOTH) ? 'w' : '-';
 	*s++ = (m & S_IXOTH) ? 'x' : '-';
@@ -10111,11 +10211,11 @@ modeArg(delta *d, char *arg)
 	unsigned int m;
 
 	if (!d) d = (delta *)calloc(1, sizeof(*d));
-	m = getMode(arg);
+	unless (m = getMode(arg)) return (0);
 	if (S_ISLNK(m))	 {
 		char *p = strchr(arg , ' ');
 		
-		assert(p);
+		unless (p) return (0);
 		d->symlink = strnonldup(++p);
 		assert(!(d->flags & D_DUPLINK));
 	}
@@ -10460,19 +10560,16 @@ name2xflg(char *fl)
 }
 
 private void
-addMode(char *me, sccs *sc, delta *n, char *mode)
+addMode(char *me, sccs *sc, delta *n, mode_t m)
 {
 	char	buf[50];
-	mode_t	m;
 	char	*newmode;
 
-	assert(mode);
 	assert(n);
-	m = getMode(mode);
 	newmode = mode2a(m);
 	sprintf(buf, "Change mode to %s", newmode);
 	n->comments = addLine(n->comments, strdup(buf));
-	n = modeArg(n, newmode);
+	(void)modeArg(n, newmode);
 }
 
 private int
@@ -10779,6 +10876,7 @@ out:
 	}
 	if (mode) {
 		delta *n = sccs_getrev(sc, "+", 0, 0);
+		mode_t m;
 
 		assert(n);
 		if ((n->flags & D_MODE) && n->symlink) {
@@ -10787,10 +10885,29 @@ out:
 				sc->gfile);
 			OUT;
 		} 
+		unless (m = newMode(n, mode)) {
+			fprintf(stderr, "admin: %s: Illegal file mode: %s\n",
+			    sc->gfile, mode);
+			OUT;
+		}
+		/* No null deltas for nothing */
+		if (m == n->mode) goto skipmode;
+		if (S_ISLNK(m) || S_ISDIR(m)) {
+			fprintf(stderr, "admin: %s: Cannot change mode to/of "
+			    "%s\n", sc->gfile,
+			    S_ISLNK(m) ? "symlink" : "directory");
+			OUT;
+		}
 		ALLOC_D();
-		addMode("admin", sc, d, mode);
+		addMode("admin", sc, d, m);
+		if (HAS_GFILE(sc) && HAS_PFILE(sc)) {
+			chmod(sc->gfile, m);
+		} else if (HAS_GFILE(sc)) {
+			chmod(sc->gfile, m & ~0222);
+		}
 		flags |= NEWCKSUM;
 	}
+skipmode:
 
 	if (text) {
 		FILE	*desc;
