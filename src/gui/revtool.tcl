@@ -1009,7 +1009,7 @@ proc highlightAncestry {rev1} \
 #
 proc getLeftRev { {id {}} } \
 {
-	global	rev1 rev2 w comments_mapped gc fname dev_null
+	global	rev1 rev2 w comments_mapped gc fname dev_null file
 
 	# destroy comment window if user is using mouse to click on the canvas
 	if {$id == ""} {
@@ -1023,8 +1023,20 @@ proc getLeftRev { {id {}} } \
 
 	highlightAncestry $rev1
 
+	if {$rev1 != ""} {
+		catch {exec bk prs -hr$rev1 -d:CSETKEY: $file} info
+		#puts "info=($info)"
+		if {$info == ""} {
+			.menus.cset configure \
+			    -state disabled \
+			    -text "Not in a CSET"
+		} else {
+			.menus.cset configure \
+			    -state normal \
+			    -text "View Changeset "
+		}
+	}
 	if {[info exists rev2]} { unset rev2 }
-	if {$rev1 != ""} { .menus.cset configure -state normal }
 }
 
 proc getRightRev { {id {}} } \
@@ -1035,7 +1047,16 @@ proc getRightRev { {id {}} } \
 	set rev2 [getRev "new" $id]
 	if {$rev2 != ""} {
 		.menus.difftool configure -state normal
-		.menus.cset configure -text "View Changesets"
+		catch {exec bk prs -hr$rev2 -d:CSETKEY: $file} info
+		if {$info == ""} {
+			.menus.cset configure \
+			    -state disabled \
+			    -text "Not in a CSET"
+		} else {
+			.menus.cset configure \
+			    -state normal \
+			    -text "View Changesets"
+		}
 	}
 }
 
