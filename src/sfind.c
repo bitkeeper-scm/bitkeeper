@@ -53,7 +53,7 @@ int
 main(int ac, char **av)
 {
 	int	c, i;
-	char	*root = 0;
+	char	*root = 0, *path;
 	
 	if (ac > 1 && streq("--help", av[1])) {
 usage:		fprintf(stderr, "%s", sfiles_usage);
@@ -96,13 +96,16 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		exit(dups ? 1 : 0);
 	}
 	if (!av[optind]) {
-		lftw(".", func, 15);
+		path = xFlg ? "." : sPath(".", 1);
+		lftw(path, func, 15);
 	} else {
 		for (i = optind; i < ac; ++i) {
 			if (isdir(av[i])) {
-				lftw(av[i], func, 15);
+				path =  xFlg ? av[i] : sPath(av[i], 1);
+				lftw(path, func, 15);
 			} else {
-				file(av[i], func);
+				path =  xFlg ? av[i] : sPath(av[i], 0);
+				file(path, func);
 			}
 		}
 	}

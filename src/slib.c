@@ -3197,7 +3197,7 @@ err:			free(s->gfile);
 		}
 		s->state |= S_GFILE;
 		s->mode = sbuf.st_mode;
-		if (flags & INIT_GTIME) s->gtime = sbuf.st_mtime;
+		s->gtime = (flags & INIT_GTIME) ? sbuf.st_mtime : 0;
 		if (S_ISLNK(sbuf.st_mode)) {
 			char link[MAXPATH];
 			int len;
@@ -3205,6 +3205,7 @@ err:			free(s->gfile);
 			len = readlink(s->gfile, link, sizeof(link));
 			if ((len > 0 )  && (len < sizeof(link))){
 				link[len] = 0;
+				if (s->symlink) free(s->symlink);
 				s->symlink = strdup(link);
 			} else {
 				verbose((stderr,
@@ -3354,13 +3355,9 @@ sccs_restart(sccs *s)
 	struct	stat sbuf;
 
 	assert(s);
-	if (lstat(s->gfile, &sbuf) == 0) {
-		unless (fileTypeOk(sbuf.st_mode)) {
-bad:			sccs_free(s);
-			return (0);
-		}
-		s->state |= S_GFILE;
-		s->mode = sbuf.st_mode;
+	unless (check_gfile(s, 0)) {
+bad:		sccs_free(s);
+		return (0);
 	}
 	if (lstat(s->sfile, &sbuf) == 0) {
 		if (!S_ISREG(sbuf.st_mode)) goto bad;
@@ -6015,9 +6012,12 @@ private void
 unlinkGfile(sccs *s)
 {
 	unlink(s->gfile);	/* Careful */
-	s->mode = 0;
+	/*
+	 * zero out all gfile related field
+	 */
 	if (s->symlink) free(s->symlink);
 	s->symlink = 0;
+	s->gtime = s->mode = 0;
 	s->state &= ~S_GFILE;
 }
 
