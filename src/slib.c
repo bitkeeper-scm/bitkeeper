@@ -3462,8 +3462,11 @@ pref_parse(char *buf)
 	return (r);
 }
 
+/*
+ * filter: retutn 1 if match
+ */
 int
-pmatch(char *buf)
+filter(char *buf)
 {
 	remote *r;
 	char *h;
@@ -3500,15 +3503,15 @@ nup:		remote_free(r);
 int
 parseConfig(char *buf)
 {
-	char *p, *q = 0;
+	char *p, *q, *end_filter = 0;
 	
 	/*
-	 * if it is a preference line, we scan backward
+	 * If it has a filter, extract filter part
 	 */
 	if (*buf == '[') {
-		q = strchr(buf, ']');
-		unless (q) return 0;
-		p = strchr(&q[1], ':');
+		end_filter = strchr(buf, ']');
+		unless (end_filter) return 0;
+		p = strchr(&end_filter[1], ':');
 	} else {
 		p = strchr(buf, ':');
 	}
@@ -3519,20 +3522,22 @@ parseConfig(char *buf)
 	 * Handle the [user][@host][:path]/pref_key: vale syntax
 	 */
 	*p = 0;
-	if (q) {
-		*q++ = 0;
+	if (end_filter) {
+		char *t;
+
+		*end_filter = 0;
+		t = &end_filter[1];
 		/*
 		 * Ignore the line if not match 
-		 * for per user/host/path perference
+		 * for per user/host/path filter
 		 */
-		unless (pmatch(&buf[1])) return (0); 
+		unless (filter(&buf[1])) return (0); 
 		*p++ = ' ';
-		memmove(buf, q, strlen(q) + 1);
-		p  = (p - (q - buf)); /* adjust  p to account for memmove */
+		memmove(buf, t, strlen(t) + 1);
+		p  = (p - (t - buf)); /* adjust  p to account for memmove */
 		assert(p[-1] == ' ');
 	} else {
 		*p++ = ' ';
-		if (*buf == '[') memmove(buf, &buf[1], strlen(&buf[1]) + 1);
 	}
 
 	if (strneq(buf, "logging_ok ", 11)) {

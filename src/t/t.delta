@@ -271,6 +271,7 @@ echo $N Make sure ci -i works with checkout:edit preference .........$NL
 cp config.sav BitKeeper/etc/config
 echo "checkout:edit" >> BitKeeper/etc/config
 echo lo > lo.c
+chmod -w lo.c
 bk ci $Q -i lo.c
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 if [ ! -f SCCS/p.lo.c ]; then echo failed; exit 1; fi

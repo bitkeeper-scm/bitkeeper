@@ -237,7 +237,6 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 		}
 
 		nrev = NULL;
-		//unless (dflags & NEWFILE) {
 		if (HAS_PFILE(s)) {
 			if (newrev(s, &pf) == -1) goto next;
 			if (checkout && (gflags &GET_EDIT)) nrev = pf.newrev;
@@ -262,6 +261,23 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 				goto next;
 			}
 			if (rc == -3) nrev = pf.oldrev;
+
+			/*
+			 * If GET_SKIPGET is set, sccs_get() will
+			 * remove the gfile if it is readonly. (don't know why)
+			 * So need to fix up the mode before we call sccs_get()
+			 * note that this only happen with new file, For
+			 * non-new file, if the gfile is not writable
+			 * the sccs_delta() above should have failed.
+			 */
+			if ((dflags&NEWFILE) &&
+					(gflags&GET_EDIT) && !IS_WRITABLE(s)) {
+				if (chmod(s->gfile, s->mode|0200)) {
+					perror(s->gfile);
+				}
+				s->mode |= 0200;
+			}
+
 			if (sccs_get(s, nrev, 0, 0, 0, gflags, "-")) {
 				unless (BEEN_WARNED(s)) {
 					fprintf(stderr,
