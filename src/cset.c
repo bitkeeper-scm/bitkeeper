@@ -268,12 +268,14 @@ usage:		fprintf(stderr, "%s", cset_help);
 		csetlist(&copts, cset);
 next:		sccs_free(cset);
 		if (cFile) free(cFile);
+		freeLines(syms);
 		purify_list();
 		return (0);
 	    case 2:
 	    	csetList(cset, r[0], ignoreDeleted);
 		sccs_free(cset);
 		if (cFile) free(cFile);
+		freeLines(syms);
 		purify_list();
 		return (0);
 	}
@@ -286,6 +288,7 @@ next:		sccs_free(cset);
 	 */
 	c = csetCreate(cset, flags, syms);
 	if (cFile) free(cFile);
+	freeLines(syms);
 	purify_list();
 	return (c);
 }
@@ -348,6 +351,7 @@ intr:		sccs_whynot("cset", cset);
 		comments_done();
 		host_done();
 		user_done();
+		freeLines(syms);
 		purify_list();
 		return (1);
 	}
@@ -356,6 +360,7 @@ intr:		sccs_whynot("cset", cset);
 	comments_done();
 	host_done();
 	user_done();
+	freeLines(syms);
 	sfileDone();
 	purify_list();
 	return (0);
@@ -1292,3 +1297,5 @@ sccs_patch(sccs *s, cset_t *cs)
 	cs->ndeltas += deltas;
 	if (list) free(list);
 }
+
+
