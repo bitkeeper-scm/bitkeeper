@@ -2,10 +2,11 @@
 
 # import.sh - import various sorts of files into BitKeeper
 # Usage:
-#	bk import [-e] [-i] [-l file] [-t type] from to
+#	bk import [-e] [-i] [-l file] [-L] [-r] [-t type] from to
 # TODO
 #	we allow repeated imports on patches but don't error check the other
 #	cases.  We should fail if the repository is not empty.
+#     + Zack wants a completely nointeractive mode for RCS/CVS (at least)
 # %W% %@%
 
 import() {
@@ -19,11 +20,15 @@ import() {
 	INC=NO
 	EX=NO
 	TYPE=
-	while getopts eil:t: opt
+	NEWLOD=
+	RENAMES=YES
+	while getopts eil:Lrt: opt
 	do	case "$opt" in
 		e) EX=YES;;
 		i) INC=YES;;
 		l) LIST=$OPTARG;;
+		L) NEWLOD=-L;;
+		r) RENAMES=NO;;
 		t) TYPE=$OPTARG;;
 		esac
 	done
@@ -240,6 +245,7 @@ transfer() {
 }
 
 import_patch() {
+	Q=-q
 	cd $2
 	echo Locking files in `pwd` ...
 	bk -r get -eq
@@ -247,8 +253,7 @@ import_patch() {
 	# XXX - I want to use -Z here and -G on the ci to pick up the timestamps
 	# but it screws up the printouts for some reason.
 	(cd $HERE && cat $1) |
-	    bk patch -p1 -E -z '=-PaTcH_BaCkUp!' --verbose > /tmp/plog$$ 2>&1
-	echo Removing patch backups...
+	    bk patch -p1 -E -z '=-PaTcH_BaCkUp!' -s --lognames > /tmp/plog$$ 2>&1
 	bk sfiles -x | grep '=-PaTcH_BaCkUp!$' | xargs rm -f
 	REJECTS=NO
 	find .  -name '*.rej' -print > /tmp/rejects$$
@@ -259,43 +264,42 @@ import_patch() {
 		echo "Patch aborted, you need to clean up by hand, XXX"
 		Done 1
 	fi
-	echo Checking for potential renames in `pwd` ...
 	grep '^Creating file ' /tmp/plog$$ |
-	    sed 's/Creating file //' | 
-	    sed 's/ .*//' > /tmp/creates$$
+	    sed 's/Creating file //' > /tmp/creates$$
 	grep '^Removing file ' /tmp/plog$$ |
-	    sed 's/Removing file //' |
-	    sed 's/ .*//' > /tmp/deletes$$
-	SAVE=$USER
-	USER=anon
-	# Go look for renames
-	if [ -s /tmp/deletes$$ -a -s /tmp/creates$$ ]
-	then	(
-		if [ -s /tmp/deletes$$ ]
-		then	cat /tmp/deletes$$
+	    sed 's/Removing file //' > /tmp/deletes$$
+	if [ $RENAMES = YES ]
+	then	echo Checking for potential renames in `pwd` ...
+		SAVE=$USER
+		USER=anon
+		# Go look for renames
+		if [ -s /tmp/deletes$$ -a -s /tmp/creates$$ ]
+		then	(
+			if [ -s /tmp/deletes$$ ]
+			then	cat /tmp/deletes$$
+			fi
+			echo ""
+			if [ -s /tmp/creates$$ ]
+			then	cat /tmp/creates$$
+	    		fi ) | bk renametool
 		fi
-		echo ""
-		if [ -s /tmp/creates$$ ]
-		then	cat /tmp/creates$$
-	    	fi ) | bk renametool
-	fi
 
-	# Do the deletes automatically
-	if [ -s /tmp/deletes$$ -a ! -s /tmp/creates$$ ]
-	then	while read rm
-		do	bk rm -d $rm
-		done < /tmp/deletes$$
-	fi
-	# Do the creates automatically
-	if [ ! -s /tmp/deletes$$ -a -s /tmp/creates$$ ]
-	then	while read new
-		do	bk new -q $new
-		done < /tmp/creates$$
+		# Do the deletes automatically
+		if [ -s /tmp/deletes$$ -a ! -s /tmp/creates$$ ]
+		then	bk rm -d - < /tmp/deletes$$
+		fi
+		# Do the creates automatically
+		if [ ! -s /tmp/deletes$$ -a -s /tmp/creates$$ ]
+		then	bk new $Q - < /tmp/creates$$
+		fi
+	else	# Just delete and create
+		bk rm -d - < /tmp/deletes$$
+		bk new $Q - < /tmp/creates$$
 	fi
 	rm -f /tmp/creates$$ /tmp/deletes$$
 
 	echo Checking in modified files in `pwd` ...
-	bk -r ci -q -y"Patch"
+	bk -r ci $Q -y"Patch"
 
 	echo Cleaning all other files `pwd` ...
 	bk -r clean
@@ -311,8 +315,7 @@ import_patch() {
 
 	USER=$SAVE
 	echo Creating changeset for $1 in `pwd` ...
-	bk sfiles -C | bk cset -y"$1" -
-
+	bk sfiles -C | bk cset $NEWLOD -y"$1" -
 	echo Done.
 	Done 0
 }

@@ -32,7 +32,7 @@ proc prev {} \
 
 proc visible {index} \
 {
-	if {[llength [.diffs.right bbox $index]] > 0} {
+	if {[llength [.diffs.r bbox $index]] > 0} {
 		return 1
 	}
 	return 0
@@ -61,17 +61,17 @@ proc highlightDiffs {start stop} \
 {
 	global	boldFont
 
-	.diffs.left tag delete d
-	.diffs.right tag delete d
-	.diffs.left tag add d $start $stop
-	.diffs.right tag add d $start $stop
-	.diffs.left tag configure d -foreground black -font $boldFont
-	.diffs.right tag configure d -foreground black -font $boldFont
+	.diffs.l tag delete d
+	.diffs.r tag delete d
+	.diffs.l tag add d $start $stop
+	.diffs.r tag add d $start $stop
+	.diffs.l tag configure d -foreground black -font $boldFont
+	.diffs.r tag configure d -foreground black -font $boldFont
 }
 
 proc topLine {} \
 {
-	return [lindex [split [.diffs.left index @1,1] "."] 0]
+	return [lindex [split [.diffs.l index @1,1] "."] 0]
 }
 
 
@@ -101,15 +101,15 @@ proc scrollDiffs {start stop} \
 
 	set top [topLine]
 	set move [expr $want - $top]
-	.diffs.left yview scroll $move units
-	.diffs.right yview scroll $move units
+	.diffs.l yview scroll $move units
+	.diffs.r yview scroll $move units
 }
 
 proc chunks {n} \
 {
 	global	Diffs DiffsEnd nextDiff
 
-	set l [.diffs.left index "end - 1 char linestart"]
+	set l [.diffs.l index "end - 1 char linestart"]
 	set Diffs($nextDiff) $l
 	set e [expr $n + [lindex [split $l .] 0]]
 	set DiffsEnd($nextDiff) "$e.0"
@@ -126,8 +126,8 @@ proc same {r l n} \
 		incr n -1
 	}
 	set l [join $lines "\n"]
-	.diffs.left insert end "$l\n"
-	.diffs.right insert end "$l\n";
+	.diffs.l insert end "$l\n"
+	.diffs.r insert end "$l\n";
 }
 
 proc changed {r l n} \
@@ -144,8 +144,8 @@ proc changed {r l n} \
 	}
 	set lc [join $llines "\n"]
 	set rc [join $rlines "\n"]
-	.diffs.left insert end "$lc\n" diff
-	.diffs.right insert end "$rc\n" diff
+	.diffs.l insert end "$lc\n" diff
+	.diffs.r insert end "$rc\n" diff
 }
 
 proc left {r l n} \
@@ -160,8 +160,8 @@ proc left {r l n} \
 		incr n -1
 	}
 	set lc [join $lines "\n"]
-	.diffs.left insert end "$lc\n" diff
-	.diffs.right insert end "$newlines" 
+	.diffs.l insert end "$lc\n" diff
+	.diffs.r insert end "$newlines" 
 }
 
 proc right {r l n} \
@@ -176,8 +176,8 @@ proc right {r l n} \
 		incr n -1
 	}
 	set rc [join $lines "\n"]
-	.diffs.left insert end "$newlines" 
-	.diffs.right insert end "$rc\n" diff
+	.diffs.l insert end "$newlines" 
+	.diffs.r insert end "$rc\n" diff
 }
 
 # Get the sdiff, making sure it has no \r's from fucking dos in it.
@@ -220,15 +220,15 @@ proc sdiff {L R} \
 
 proc clear {state} \
 {
-	.diffs.left configure -state normal
-	.diffs.right configure -state normal
+	.diffs.l configure -state normal
+	.diffs.r configure -state normal
 	.diffs.status.l configure -text ""
 	.diffs.status.r configure -text ""
 	.diffs.status.middle configure -text ""
-	.diffs.left delete 1.0 end
-	.diffs.right delete 1.0 end
-	.diffs.left configure -state $state
-	.diffs.right configure -state $state
+	.diffs.l delete 1.0 end
+	.diffs.r delete 1.0 end
+	.diffs.l configure -state $state
+	.diffs.r configure -state $state
 }
 
 proc diffFiles {L R} \
@@ -290,8 +290,8 @@ proc diffFiles {L R} \
 			file delete $rm
 		}
 	}
-	.diffs.left configure -state disabled
-	.diffs.right configure -state disabled
+	.diffs.l configure -state disabled
+	.diffs.r configure -state disabled
 	if {$diffCount > 0} {
 		set lastDiff 1
 		dot
@@ -350,8 +350,8 @@ proc getFiles {} \
 	set diff [expr $listHt - $ht]
 	incr diffHeight $listHt
 	incr listHt -$diff
-	.diffs.left configure -height $diffHeight
-	.diffs.right configure -height $diffHeight
+	.diffs.l configure -height $diffHeight
+	.diffs.r configure -height $diffHeight
 	.files.l configure -state disabled -height $listHt
 	.files.r configure -state disabled -height $listHt
 	if {$leftCount > 0} { Select .files.l leftLine leftFile 1.0 }
@@ -419,15 +419,8 @@ proc Delete {doit} \
 	incr leftCount -1
 	# Reuse that code.
 	if {$leftCount == 0} { DeleteAll; return }
-	set leftFile [.files.l get $leftLine "$leftLine lineend"]
-	if {$leftFile == ""} {
-		set leftLine [.files.l index "$leftLine - 1 lines"]
-		set leftFile [.files.l get $leftLine "$leftLine lineend"]
-	}
-	.files.l tag add \
-	    select "$leftLine linestart" "$leftLine lineend + 1 char"
-	.files.l tag configure select -background #b0b0f0 \
-	    -relief groove -borderwid 1
+
+	Select .files.l leftLine leftFile $leftLine
 	if {$doit == 1} {
 		if {$leftFile != "" && $rightFile != ""} {
 			diffFiles $leftFile $rightFile
@@ -452,15 +445,8 @@ proc Create {doit} \
 	incr rightCount -1
 	# Reuse that code.
 	if {$rightCount == 0} { CreateAll; return }
-	set rightFile [.files.r get $rightLine "$rightLine lineend"]
-	if {$rightFile == ""} {
-		set rightLine [.files.r index "$rightLine - 1 lines"]
-		set rightFile [.files.r get $rightLine "$rightLine lineend"]
-	}
-	.files.r tag add \
-	    select "$rightLine linestart" "$rightLine lineend + 1 char"
-	.files.r tag configure select -background #b0b0f0 \
-	    -relief groove -borderwid 1
+
+	Select .files.r rightLine rightFile $rightLine
 	if {$doit == 1} {
 		if {$leftFile != "" && $rightFile != ""} {
 			diffFiles $leftFile $rightFile
@@ -567,6 +553,50 @@ proc sccsFile {type file} \
 	}
 }
 
+# Try to find a match to the file on the left.
+# 1) Try a basename match
+# 2) Try a partial basename match (both ways)
+proc Guess {} \
+{
+	global	leftFile rightFile leftCount rightCount guessNext
+
+	if {$leftCount == 0 || $rightCount == 0 || $leftFile == ""} { return }
+	set left [file tail $leftFile]
+
+	# Try an exact basename match
+	set l [expr $guessNext + 1]
+	set file [.files.r get "$l.0" "$l.0 lineend"]
+	while {$file != ""} {
+		set right [file tail $file]
+		if {$left == $right} {
+			Select .files.r rightLine rightFile $l.0
+			diffFiles $leftFile $rightFile
+			set guessNext $l
+			return 1
+		}
+		incr l
+		set file [.files.r get "$l.0" "$l.0 lineend"]
+	}
+
+	# Try a partial basename match, ignoring case
+	set l [expr $guessNext + 1]
+	set file [.files.r get "$l.0" "$l.0 lineend"]
+	while {$file != ""} {
+		set right [file tail $file]
+		if {[regexp -nocase $left $right] ||
+		    [regexp -nocase $right $left]} {
+			Select .files.r rightLine rightFile $l.0
+			diffFiles $leftFile $rightFile
+			set guessNext $l
+			return 1
+		}
+		incr l
+		set file [.files.r get "$l.0" "$l.0 lineend"]
+	}
+	.menu.guess configure -state disabled
+	return 0
+}
+
 # This needs to try to apply this, checking each file for a destination
 # conflict.  If there is one, then leave that file in the sh window and
 # go on.
@@ -574,9 +604,11 @@ proc Apply {} \
 {
 	global	undoLine leftCount rightCount
 
+	busy 1
 	.files.sh configure -state normal
 	set l 1
 	set buf [.files.sh get "$l.0" "$l.0 lineend"]
+	set NEW [open "|bk new -q -" w]
 	while {$buf != ""} {
 		if {[regexp {^bk mv (.*) (.*)$} $buf dummy from to]} {
 			# want to move the [sp].file by hand, the caller
@@ -589,15 +621,21 @@ proc Apply {} \
 				set status 1
 				set msg "$sto exists"
 			} else {
+				set dir [file dirname $sto]
+				if {[file exists $dir] == 0} {
+					file mkdir $dir
+				}
 				file rename -- $sfrom $sto
 				file rename -- $pfrom $pto
 				set status 0
 				set msg ""
 			}
 		} elseif {[regexp {^bk rm (.*)$} $buf dummy rm]} {
-			set status [catch {exec bk rm $rm} msg]
+			set status [catch {exec bk rm -d $rm} msg]
 		} elseif {[regexp {^bk new (.*)$} $buf dummy new]} {
-			set status [catch {exec bk new -q $new} msg]
+			puts $NEW "$new"
+			set status 0
+			set msg ""
 		}
 		# puts "buf=$buf status=$status msg=$msg"
 		if {$status == 0} {
@@ -608,6 +646,7 @@ proc Apply {} \
 		}
 		set buf [.files.sh get "$l.0" "$l.0 lineend"]
 	}
+	close $NEW
 	if {$l == 1.0 && $leftCount == 0 && $rightCount == 0} { exit 0 }
 	.files.sh tag delete select
 	.files.sh configure -state disabled
@@ -621,6 +660,7 @@ proc Apply {} \
 		.files.sh tag configure select -background #b0b0f0 \
 		    -relief groove -borderwid 1
 	}
+	busy 0
 }
 
 proc history {} \
@@ -638,8 +678,8 @@ proc busy {busy} \
 		.files.l configure -cursor watch
 		.files.r configure -cursor watch
 		.files.sh configure -cursor watch
-		.diffs.left configure -cursor watch
-		.diffs.right configure -cursor watch
+		.diffs.l configure -cursor watch
+		.diffs.r configure -cursor watch
 		.menu configure -cursor watch
 	} else {
 		. configure -cursor hand2
@@ -647,8 +687,8 @@ proc busy {busy} \
 		.files.l configure -cursor hand2
 		.files.r configure -cursor hand2
 		.files.sh configure -cursor hand2
-		.diffs.left configure -cursor gumby
-		.diffs.right configure -cursor gumby
+		.diffs.l configure -cursor gumby
+		.diffs.r configure -cursor gumby
 	}
 	update
 }
@@ -662,6 +702,7 @@ proc pixSelect {which line file x y} \
 proc Select {which line file l} \
 {
 	global	leftFile rightFile leftLine rightLine undoLine rightCount
+	global	guessNext
 
 	set foo [$which get "$l linestart" "$l lineend"]
 	if {$foo != ""} {
@@ -670,18 +711,24 @@ proc Select {which line file l} \
 		$which tag add select "$l linestart" "$l lineend + 1 char"
 		$which tag configure select -background #b0b0f0 \
 		    -relief groove -borderwid 1
+		$which see $l
+		set doDiff 1
 		if {$leftFile != ""} {
 			.menu.history configure -state normal
+			if {$rightCount > 0} {
+				set guessNext 0
+				.menu.guess configure -state normal
+				if {$which == ".files.l" && [Guess] == 1} {
+					set doDiff 0
+				}
+			}
 		}
-		if {$leftFile != "" && $rightFile != ""} {
+		if {$doDiff == 1 && $leftFile != "" && $rightFile != ""} {
 			diffFiles $leftFile $rightFile
 			.menu.rename configure -state normal
 		}
-		if {$leftFile != ""} { 
+		if {$rightFile != ""} { 
 			.menu.delete configure -state normal
-			if {$rightCount > 0} {
-				.menu.guess configure -state normal
-			}
 		}
 		if {$rightFile != ""} { .menu.create configure -state normal }
 		if {$file == "undoFile"} { .menu.undo configure -state normal }
@@ -691,14 +738,14 @@ proc Select {which line file l} \
 
 proc yscroll { a args } \
 {
-	eval { .diffs.left yview $a } $args
-	eval { .diffs.right yview $a } $args
+	eval { .diffs.l yview $a } $args
+	eval { .diffs.r yview $a } $args
 }
 
 proc xscroll { a args } \
 {
-	eval { .diffs.left xview $a } $args
-	eval { .diffs.right xview $a } $args
+	eval { .diffs.l xview $a } $args
+	eval { .diffs.r xview $a } $args
 }
 
 proc Page {view dir one} \
@@ -725,8 +772,8 @@ proc page {w xy dir one} \
 	} else {
 		incr lines -1
 	}
-	.diffs.left $xy scroll $lines units
-	.diffs.right $xy scroll $lines units
+	.diffs.l $xy scroll $lines units
+	.diffs.r $xy scroll $lines units
 }
 
 proc fontHeight {f} \
@@ -739,9 +786,22 @@ proc computeHeight {} \
 	global	diffHeight
 
 	update
-	set f [fontHeight [.diffs.left cget -font]]
-	set p [winfo height .diffs.left]
+	set f [fontHeight [.diffs.l cget -font]]
+	set p [winfo height .diffs.l]
 	set diffHeight [expr $p / $f]
+}
+
+proc adjustHeight {diff list} \
+{
+	global	diffHeight listHt
+
+	incr listHt $list
+	.files.l configure -height $listHt
+	.files.r configure -height $listHt
+	.files.sh configure -height $listHt
+	incr diffHeight $diff
+	.diffs.l configure -height $diffHeight
+	.diffs.r configure -height $diffHeight
 }
 
 proc widgets {} \
@@ -885,11 +945,11 @@ proc widgets {} \
 		grid .diffs.status.l -row 0 -column 0 -sticky ew
 		grid .diffs.status.middle -row 0 -column 1
 		grid .diffs.status.r -row 0 -column 2 -sticky ew
-	    text .diffs.left -width $leftWid -height $diffHeight \
+	    text .diffs.l -width $leftWid -height $diffHeight \
 		-state disabled -wrap none -font $diffFont \
 		-xscrollcommand { .diffs.xscroll set } \
 		-yscrollcommand { .diffs.yscroll set }
-	    text .diffs.right -width $rightWid -height $diffHeight \
+	    text .diffs.r -width $rightWid -height $diffHeight \
 		-state disabled -wrap none -font $diffFont
 	    scrollbar .diffs.xscroll -wid $swid -troughcolor $tcolor \
 		-orient horizontal -command { xscroll }
@@ -898,9 +958,9 @@ proc widgets {} \
 	    grid .diffs.status -row 0 -column 0 -columnspan 3 -stick ew
 	    #grid .diffs.l -row 0 -column 0 -sticky nsew
 	    #grid .diffs.r -row 0 -column 2 -sticky nsew
-	    grid .diffs.left -row 1 -column 0 -sticky nsew
+	    grid .diffs.l -row 1 -column 0 -sticky nsew
 	    grid .diffs.yscroll -row 1 -column 1 -sticky ns
-	    grid .diffs.right -row 1 -column 2 -sticky nsew
+	    grid .diffs.r -row 1 -column 2 -sticky nsew
 	    grid .diffs.xscroll -row 2 -column 0 -sticky ew
 	    grid .diffs.xscroll -columnspan 3
 
@@ -924,14 +984,14 @@ proc widgets {} \
 
 	bind .diffs <Configure> { computeHeight }
 	keyboard_bindings
-	foreach w {.diffs.left .diffs.right} {
+	foreach w {.diffs.l .diffs.r} {
 		bindtags $w {all Text .}
 	}
-	set foo [bindtags .diffs.left]
+	set foo [bindtags .diffs.l]
 	computeHeight
 
-	.diffs.left tag configure diff -background $leftColor
-	.diffs.right tag configure diff -background $rightColor
+	.diffs.l tag configure diff -background $leftColor
+	.diffs.r tag configure diff -background $rightColor
 }
 
 # Set up keyboard accelerators.
@@ -948,22 +1008,26 @@ proc keyboard_bindings {} \
 
 		set lastDiff 1
 		dot
-		.diffs.left yview -pickplace 1.0
-		.diffs.right yview -pickplace 1.0
+		.diffs.l yview -pickplace 1.0
+		.diffs.r yview -pickplace 1.0
 	}
 	bind all <End> {
 		global	lastDiff diffCount
 
 		set lastDiff $diffCount
 		dot
-		.diffs.left yview -pickplace end
-		.diffs.right yview -pickplace end
+		.diffs.l yview -pickplace end
+		.diffs.r yview -pickplace end
 	}
 	bind all <q>		exit
 	bind all <space>	next
 	bind all <n>		next
 	bind all <p>		prev
 	bind all <period>	dot
+
+	# Adjust relative heights
+	bind all <Alt-Up> { adjustHeight 1 -1 }
+	bind all <Alt-Down> { adjustHeight -1 1 }
 
 	bind .files.l <ButtonPress> {
 		pixSelect .files.l leftLine leftFile %x %y
@@ -978,7 +1042,7 @@ proc keyboard_bindings {} \
 		global	rightFile
 
 		pixSelect .files.r rightLine rightFile %x %y
-		fillFile .diffs.right $rightFile
+		fillFile .diffs.r $rightFile
 		break
 	}
 }

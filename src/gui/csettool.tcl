@@ -415,13 +415,13 @@ proc getFiles {revs} \
 	.filelist.t delete 1.0 end
 	set fileCount 0
 	set line 0
-	set r [open "| bk -R prs -hr$revs -d:I: ChangeSet" r]
+	set r [open "| bk -R prs -bhr$revs -d:I: ChangeSet" r]
 	while {[gets $r cset] > 0} {
 		.diffs.status.middle configure -text "Processing cset $cset"
 		update
 		incr line
 		.filelist.t insert end "ChangeSet $cset\n" cset
-		set c [open "| bk cset -r$cset" r]
+		set c [open "| bk cset -r$cset | sort" r]
 		while { [gets $c buf] >= 0 } {
 			incr fileCount
 			incr line
@@ -603,8 +603,6 @@ proc widgets {} \
 	    scrollbar .diffs.yscroll -wid $swid -troughcolor $tcolor \
 		-orient vertical -command { yscroll }
 	    grid .diffs.status -row 0 -column 0 -columnspan 3 -stick ew
-	    #grid .diffs.l -row 0 -column 0 -sticky nsew
-	    #grid .diffs.r -row 0 -column 2 -sticky nsew
 	    grid .diffs.left -row 1 -column 0 -sticky nsew
 	    grid .diffs.yscroll -row 1 -column 1 -sticky ns
 	    grid .diffs.right -row 1 -column 2 -sticky nsew
