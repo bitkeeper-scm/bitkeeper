@@ -142,15 +142,27 @@ BitKeeper 2.0.
 b) bk export now exports all files except the ChangeSet file.
    (In 1.x the files under the BitKeeper directory are not exported)
    User can select files for export by using the export -x/-i options.
+
 c) bk mkdiffs command has been removed in 2.x.  It is replaced by
    bk export -tpatch, which is much faster.
+
 d) The new default option of "bk lock" is the -l option (verbose mode).
    To get the silent mode, use the "bk lock -q" option.
+
 e) prs -d option now supports the -gt -lt -eq -ne -ge -le operators.
+
 f) prs -d option no longer prints a line feed by default at the end of each
    delta record.
+
 g) cset -t option has been moved to rset -l.
    cset -R option has been moved to rset -rA,B.
+
+h) In release 1.x, the ignore filter will ignore a directory even if it has
+   files under SCCS control. This is bad, since citool may miss files that
+   need to be checked-in/committed.  In relesae 2.0, the ignore filter
+   applies _only_ to g-files not under sccs control -- it does not ignore
+   a directory wholesale.
+
 
 
 
@@ -193,24 +205,12 @@ Noteworthy Bug Fixes
 Known bugs
 ----------------------------------------------------------------------------
 
-Resolve has severe problems related to renaming files.  We recommend
-that you avoid attempting to merge conflicts in a file which has been
-renamed in the same changeset(s).  In other words, if you're going to
-rename something, make sure everyone else picks up the rename before
-editing the file again.
-
 Import and rcs2sccs still don't work nearly as well as we would like.
 You can get your CVS tree converted, but it will take quite a bit of
 handholding.  See the comments in rcs2sccs.perl.
 
 Excessive use is made of files in /tmp.  There may be security issues
 related to this.
-
-Files with extremely long (>2048 chars) lines will overflow static
-internal buffers.
-
-Metadata (symbols, permissions, etc) is not versioned and does not
-propagate in resyncs.
 
 LODs are still not implemented.
 
