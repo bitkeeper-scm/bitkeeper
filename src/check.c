@@ -29,16 +29,16 @@ private	int	badWritable; /* if set, list bad writable file only */
 private	int	names;	/* if set, we need to fix names */
 private	int	mixed;	/* mixed short/long keys */
 private	project	*proj;
-private char	csetFile[] = CHANGESET;
 private	sccs	*cset;	/* the initialized cset file */
 private int	flags = SILENT|INIT_SAVEPROJ|INIT_NOCKSUM;
 private	FILE	*idcache;
+private char	id_tmp[100]; /* BitKeeper/tmp/bkXXXXXX */
 private	int	poly;
 private	int	polyList;
 private	MDBM	*goneDB;
+private	char	ctmp[100];  /* BitKeeper/tmp/bkXXXXXX */
 
 #define	POLY	"BitKeeper/etc/SCCS/x.poly"
-#define	CTMP	"BitKeeper/tmp/ChangeSet-all"
 
 /*
  * This data structure is so we don't have to search through all tuples in
@@ -88,7 +88,7 @@ check_main(int ac, char **av)
 		    case 'v': verbose++; break;
 		    case 'w': badWritable++; break;
 		    default:
-usage:			system("bk help -s check");
+			system("bk help -s check");
 			return (1);
 		}
 	}
@@ -106,7 +106,7 @@ usage:			system("bk help -s check");
 		fprintf(stderr, "check: cannot find package root.\n");
 		return (1);
 	}
-	unless (cset = sccs_init(csetFile, flags, 0)) {
+	unless (cset = sccs_init(CHANGESET, flags, 0)) {
 		fprintf(stderr, "Can't init ChangeSet\n");
 		exit(1);
 	}
@@ -202,9 +202,21 @@ To fix all bad writable file, use the following command:\n\
 	sfileDone();
 	if (all) {
 		fclose(idcache);
-		unlink(IDCACHE_LOCK);
+		if (sccs_lockfile(IDCACHE_LOCK, 16)) {
+			fprintf(stderr, "Not updating cache due to locking.\n");
+			unlink(id_tmp);
+		} else {
+			unlink(IDCACHE);
+			if (rename(id_tmp, IDCACHE)) {
+				perror("rename of idcache");
+				unlink(IDCACHE);
+			}
+			unlink(IDCACHE_LOCK);
+		}
 	}
 	if ((all || resync) && checkAll(keys)) errors |= 8;
+	assert(strneq(ctmp, "BitKeeper/tmp/bk", 16));
+	unlink(ctmp);
 	mdbm_close(db);
 	mdbm_close(keys);
 	mdbm_close(marks);
@@ -218,7 +230,6 @@ To fix all bad writable file, use the following command:\n\
 			return (2);
 		}
 	}
-	unlink(CTMP);
 	if (csetKeys.malloc) {
 		int	i;
 
@@ -289,19 +300,19 @@ checkAll(MDBM *db)
 			}
 		}
 		fclose(f);
-		f = fopen(CTMP, "r");
-		sprintf(buf, "%s.p", CTMP);
+		f = fopen(ctmp, "r");
+		sprintf(buf, "%s.p", ctmp);
 		keys = fopen(buf, "w");
 		while (fgets(buf, sizeof(buf), f)) {
 			unless (mdbm_fetch_str(local, buf)) fputs(buf, keys);
 		}
 		fclose(f);
 		fclose(keys);
-		sprintf(buf, "%s.p", CTMP);
+		sprintf(buf, "%s.p", ctmp);
 		keys = fopen(buf, "r");
 		mdbm_close(local);
 	} else {
-full:		keys = fopen(CTMP, "rt");
+full:		keys = fopen(ctmp, "rt");
 	}
 	unless (keys) {
 		perror("checkAll");
@@ -324,7 +335,7 @@ full:		keys = fopen(CTMP, "rt");
 	if (found) listFound(warned);
 	mdbm_close(idDB);
 	mdbm_close(warned);
-	sprintf(buf, "%s.p", CTMP);
+	sprintf(buf, "%s.p", ctmp);
 	unlink(buf);
 	return (found != 0);
 }
@@ -363,17 +374,12 @@ To add all missing key to the gone file, use the following command:\n\
 private void
 init_idcache()
 {
-	int	e;
-
-	unless ((e = open(IDCACHE_LOCK, O_CREAT|O_EXCL, GROUP_MODE)) > 0) {
-		fprintf(stderr, "check: can't lock id cache\n");
+	if (bktemp(id_tmp)) {
+		perror("gettemp");
 		exit(1);
 	}
-	close(e);
-	unlink(IDCACHE);
-	unless (idcache = fopen(IDCACHE, "wb")) {
-		perror(IDCACHE);
-		unlink(IDCACHE_LOCK);
+	unless (idcache = fopen(id_tmp, "wb")) {
+		perror(id_tmp);
 		exit(1);
 	}
 }
@@ -393,6 +399,7 @@ buildKeys()
 	char	*s, *t = 0, *r;
 	int	n = 0;
 	int	e = 0;
+	int	first = 1;
 	int	fd, sz;
 	char	buf[MAXPATH*3];
 	char	key[MAXPATH*2];
@@ -403,7 +410,13 @@ buildKeys()
 		perror("buildkeys");
 		exit(1);
 	}
-	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
+again:	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
+		if (first) {
+			fprintf(stderr, "Rebuilding idcache...\n");
+			first = 0;
+			system("bk idcache");
+			goto again;
+		}
 		perror("idcache");
 		exit(1);
 	}
@@ -412,20 +425,23 @@ buildKeys()
 		exit (1);
 	}
 	unless (exists("BitKeeper/tmp")) mkdir("BitKeeper/tmp", 0777);
-	unlink(CTMP);
-	sprintf(buf, "bk sccscat -h ChangeSet | bk _keysort > %s", CTMP);
+	if (bktemp(ctmp)) {
+		fprintf(stderr, "bktemp failed to get temp file\n");
+		exit(1);
+	}
+	sprintf(buf, "bk sccscat -h ChangeSet | bk _keysort > %s", ctmp);
 	system(buf);
-	unless (exists(CTMP)) {
-		fprintf(stderr, "Unable to create %s\n", CTMP);
+	unless ((sz = size(ctmp)) > 0) {
+		fprintf(stderr, "Unable to create %s\n", ctmp);
 		exit(1);
 	}
 	/*
  	 * Note: malloc would return 0 if sz == 0
 	 */
-	csetKeys.malloc = malloc(sz = size(CTMP));
-	fd = open(CTMP, 0, 0);
+	csetKeys.malloc = malloc(sz);
+	fd = open(ctmp, 0, 0);
 	unless (read(fd, csetKeys.malloc, sz) == sz) {
-		perror(CTMP);
+		perror(ctmp);
 		exit(1);
 	}
 	close(fd);

@@ -20,3 +20,18 @@ gettemp(char *buf, const char *tmpl)
 	perror("mkstemp");
 	return (-1);
 }
+
+int
+bktemp(char *buf)
+{
+	int	fd;
+
+	sprintf(buf, "BitKeeper/tmp/bkXXXXXX");
+	fd = mkstemp(buf);
+	if (fd != -1) {
+		close(fd);
+		return (0);
+	}
+	perror("mkstemp");
+	return (-1);
+}

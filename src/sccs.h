@@ -756,7 +756,8 @@ int	sccs_meta(sccs *s, delta *parent, MMAP *initFile);
 int	sccs_resolveFiles(sccs *s);
 sccs	*sccs_keyinit(char *key, u32 flags, project *p, MDBM *idDB);
 delta	*sfind(sccs *s, ser_t ser);
-int	sccs_lock(sccs *, char);
+int	sccs_lock(sccs *, char);	/* respects repo locks */
+int	sccs_lockfile(char *lockfile, int tries);	/* works in NFS */
 int	sccs_unlock(sccs *, char);
 int	sccs_setlod(char *rev, u32 flags);
 void	sccs_renumber(sccs *s, ser_t nextlod, ser_t thislod, MDBM *lodDb,

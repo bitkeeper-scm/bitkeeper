@@ -173,11 +173,10 @@ private	int
 update_idcache(sccs *s, char *old, char *new)
 {
 	project	*p;
-	char	path[MAXPATH];
+	char	path[MAXPATH*2];
 	char	key[MAXKEY];
 	kvpair	kv;
 	char	*t;
-	int	fd;
 	FILE	*f;
 	MDBM	*idDB;
 	extern	char *relativeName(sccs *sc, int withsccs, int mustHaveRmarker);
@@ -192,16 +191,10 @@ update_idcache(sccs *s, char *old, char *new)
 	/*
 	 * This code ripped off from sfiles -r.
 	 */
-again:	sprintf(path, "%s/%s", p->root, IDCACHE_LOCK);
-	unless ((fd = open(path, O_CREAT|O_EXCL, GROUP_MODE)) > 0) {
-		perror(path);
-		fprintf(stderr, "sccsmv: can't lock id cache\n");
-		return (1);
-	}
-	close(fd);	/* unlink it when we are done */
+again:	
 	sprintf(path, "%s/%s", p->root, IDCACHE);
 	unless (idDB = loadDB(path, 0, DB_KEYFORMAT|DB_NODUPS)) {
-		fprintf(stderr, "No idcache?  Creating one.\n");
+		fprintf(stderr, "Creating new idcache.\n");
 		idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	}
 	sccs_sdelta(s, sccs_ino(s), key);
@@ -212,21 +205,16 @@ again:	sprintf(path, "%s/%s", p->root, IDCACHE_LOCK);
 		unless (exists(path)) {
 			fprintf(stderr,
 			    "Out of date idcache detected, updating...\n");
-			sprintf(path, "%s/%s", p->root, IDCACHE_LOCK);
-			unlink(path);
-			sprintf(path, "%s/%s", p->root, IDCACHE);
-			unlink(path);
 			mdbm_close(idDB);
 			system("bk idcache");
 			goto again;
 		}
 		fprintf(stderr, "Key %s exists for %s\n", key, t);
 		mdbm_close(idDB);
-		sprintf(path, "%s/%s", p->root, IDCACHE_LOCK);
-		unlink(path);
 		return (1);
 	}
 	mdbm_store_str(idDB, key, new, MDBM_REPLACE);
+	sprintf(path, "%s/%s.new", p->root, IDCACHE);
 	unless (f = fopen(path, "w")) {
 		perror(path);
 		mdbm_close(idDB);
@@ -241,9 +229,18 @@ again:	sprintf(path, "%s/%s", p->root, IDCACHE_LOCK);
 	for (kv = mdbm_first(idDB); kv.key.dsize != 0; kv = mdbm_next(idDB)) {
 		fprintf(f, "%s %s\n", kv.key.dptr, kv.val.dptr);
 	}
-	fclose(f);
 	mdbm_close(idDB);
-	chmod(path, 0666);
+	fclose(f);
+	sprintf(path, "%s/%s", p->root, IDCACHE_LOCK);
+	if (sccs_lockfile(path, 16)) {
+		fprintf(stderr, "Not updating idcache due to locking.\n");
+		fprintf(stderr, "Run \"bk idcache\" to rebuild it.\n");
+		return (1);
+	}
+	sprintf(path, "%s/%s", p->root, IDCACHE);
+	unlink(path);
+	sprintf(path, "mv %s/%s.new %s/%s", p->root, IDCACHE, p->root, IDCACHE);
+	system(path);
 	sprintf(path, "%s/%s", p->root, IDCACHE_LOCK);
 	unlink(path);
 	return (0);

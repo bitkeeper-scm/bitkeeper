@@ -117,10 +117,17 @@ setup_env()
 clean_up()
 {
         find $BK_REGRESSION -name core -print > $BK_REGRESSION/cores
-        if [ -s cores ]
+        if [ -s $BK_REGRESSION/cores ]
         then    ls -l `cat $BK_REGRESSION/cores`
                 file `cat $BK_REGRESSION/cores`
                 exit 10
+	fi
+        find $BK_REGRESSION -name bk'*' -print |
+	    grep BitKeeper/tmp > $BK_REGRESSION/junk
+        if [ -s $BK_REGRESSION/junk ]
+        then    ls -l `cat $BK_REGRESSION/junk`
+                file `cat $BK_REGRESSION/junk`
+                exit 11
 	fi
 	rm -rf $BK_REGRESSION
 	# Make sure there are no stale files in $TMP

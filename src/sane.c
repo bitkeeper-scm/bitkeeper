@@ -94,13 +94,12 @@ chk_idcache()
 		fprintf(stderr, "ID cache is locked\n");
 		return (1);
 	}
-	unless ((i = open(IDCACHE_LOCK, O_CREAT|O_EXCL, GROUP_MODE)) > 0) {
+	if (sccs_lockfile(IDCACHE_LOCK, 6)) {
 		fprintf(stderr, "sane: can't lock id cache");
 		open(IDCACHE_LOCK, O_CREAT|O_EXCL, GROUP_MODE);
 		perror("");
 		return (1);
 	}
-	close(i);
 	unlink(IDCACHE_LOCK);
 	return (0);
 }

@@ -24,7 +24,7 @@ cores()
 
 
 # [ -w file ] always succeeds when you are root.
-writable () {
+writable() {
 	[ -f "$1" ] || return 1
 	case "`ls -l "$1" | cut -c1-10`" in
 	    *w*) return 0;;
@@ -32,7 +32,7 @@ writable () {
 	esac
 }
 
-checkLocks () {
+checkLocks() {
 	if [ -d BitKeeper/readers ]
 	then	if [ `find BitKeeper/readers -type f -print | wc -l` -ne 0 ]
 		then	echo Failed to remove read lock in `pwd`
