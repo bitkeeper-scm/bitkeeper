@@ -42,10 +42,6 @@ proc bk_init {} \
 	set bk_get [file join $bin get]
 	set bk_cset [file join $bin cset]
 	set bk_r2c [file join $bin r2c]
-	set bithelp [file join $bin bithelp]
-	set difftool [file join $bin difftool]
-	set helptool [file join $bin helptool]
-	set sccstool [file join $bin sccstool]
 	set tmp_dir  "/tmp"
 	set auto_path "$bin $auto_path"
 	set file_rev {(.*):([0-9].*)}

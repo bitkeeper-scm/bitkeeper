@@ -7,6 +7,7 @@ proc bk_init {} \
 	global env dev_null tmp_dir wish auto_path unix_bin bin
 	global bithelp difftool helptool sccstool sdiffw bk_prs file_rev
 	global file_start_stop file_stop bk_fs
+	global	bk_prs bk_get bk_cset bk_sfiles bk_r2c
 
 	# init for WIN32 env
 	if {[info exists env(BK_BIN)]} {
@@ -20,10 +21,10 @@ proc bk_init {} \
 	#     we are now using tcl/tk 8.1
 	# TODO: get the wish shell name from registry
 	set wish "wish81.exe"
-	set bithelp [file join $bin bithelp.tcl]
-	set difftool [file join $bin difftool.tcl]
-	set helptool [file join $bin helptool.tcl]
-	set sccstool [file join $bin sccstool.tcl]
+	set bk_prs [file join $bin prs]
+	set bk_get [file join $bin get]
+	set bk_cset [file join $bin cset]
+	set bk_r2c [file join $bin r2c]
 	set tmp_dir $env(TEMP)
 	set auto_path "$bin $auto_path"
 	set file_rev {(.*)@([0-9].*)}

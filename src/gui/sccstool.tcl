@@ -830,7 +830,7 @@ proc widgets {} \
 		pack .p.top.c -expand true -fill both
 
 	    frame .p.bottom -borderwidth 2 -relief sunken
-		text .p.bottom.t -width 80 -height 24 -font $font -wrap none \
+		text .p.bottom.t -width 80 -height 20 -font $font -wrap none \
 		    -xscrollcommand { .p.bottom.xscroll set } \
 		    -yscrollcommand { .p.bottom.yscroll set }
 		scrollbar .p.bottom.xscroll -orient horizontal \
@@ -848,15 +848,18 @@ proc widgets {} \
 
 	frame .cmd -borderwidth 2 -relief ridge
 		text .cmd.t -height 1 -width 30 -font $buttonFont
-		label .cmd.l -font $buttonFont -width 40 -relief groove \
+		label .cmd.l -font $buttonFont -width 30 -relief groove \
 		    -textvariable search(text)
-		pack .cmd.l -side left -fill x
-		pack .cmd.t -side left -fill x -expand true
+		grid .cmd.l -row 0 -column 0 -sticky ew
+		grid .cmd.t -row 0 -column 1 -sticky ew
 
-	pack .menus -side top -fill x
-	pack .p -side top -expand true -fill both
-	pack propagate .p off
-	pack .cmd -side left -expand yes -fill x
+	grid .menus -row 0 -column 0 -sticky ew
+	grid .p -row 1 -column 0 -sticky ewns
+	grid .cmd -row 2 -column 0 -sticky ew
+	grid rowconfigure . 1 -weight 1
+	grid columnconfigure . 0 -weight 1
+	grid columnconfigure .cmd 0 -weight 1
+	grid columnconfigure .cmd 1 -weight 2
 
 	# I don't want highlighting in that text widget.
 	bind .p.bottom.t <1> "break"

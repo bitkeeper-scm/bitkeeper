@@ -56,7 +56,8 @@ main(int ac, char **av)
 	} else {
 		shortkey = 0;
 	}
-	unless (cset = sccs_init(CHANGESET, INIT_NOCKSUM, 0)) {
+	strcpy(buf, CHANGESET);
+	unless (cset = sccs_init(buf, INIT_NOCKSUM, 0)) {
 		fprintf(stderr, "r2c: can not init ChangeSet\n");
 		exit(1);
 	}
@@ -94,7 +95,8 @@ notfound:	if (shortkey) {
 			fprintf(stderr,
 			    "r2c: can not find\n\t%s\n", key);
 		}
-		//unlink(tmpfile);
+		fclose(f);
+		unlink(tmpfile);
 		exit(1);
 	}
 	rewind(f);
@@ -110,6 +112,7 @@ notfound:	if (shortkey) {
 	}
 	goto notfound;
 next:	/* for range */
-out:	unlink(tmpfile);
+out:	fclose(f);
+	unlink(tmpfile);
 	exit(0);
 }
