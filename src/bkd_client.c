@@ -74,7 +74,6 @@ remote_parse(char *p, int skip_checks)
 			r = NULL;
 		} else {
 			r = nfs_parse(p);
-			if (r) r->type = ADDR_NFS;;
 		}
 	}
 	if (r && append && cmdlog_buffer[0]) {
@@ -130,8 +129,10 @@ nfs_parse(char *p)
 			return (0);
 		}
 		r->path = strdup(fullname(p, 0));
+		r->type = ADDR_FILE;
 		return (r);
 	}
+	r->type = ADDR_NFS;
 	*s = 0; r->host = strdup(p); p = s + 1; *s = ':';
 	unless (*p) p = ".";	/* we like having a path */
 
