@@ -114,7 +114,7 @@ if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N Check propagation of flags \& permission .....................$NL
 cd $HERE/project/src
-bk admin $Q -fRCS -m-rwx-r--r-- bar.c
+bk admin $Q -fRCS -m-rwxr--r-- bar.c
 bk commit $Q -yabc
 bk resync -t $Q $HERE/project $HERE/copy
 bk resolve -t $Q $HERE/copy

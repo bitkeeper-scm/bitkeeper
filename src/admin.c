@@ -71,19 +71,8 @@ admin_main(int ac, char **av)
 		    case 'M':					/* doc 2.0 */
 				merge = optarg; flags |= NEWCKSUM; break;
 		/* mode */
-		/* XXX should accept octal modes too */
 		    case 'm':	m = optarg;			/* doc 2.0 */
-		    		switch (m[0]) {
-				    case '-':
-				    case 'l':
-				    case 'd':
-					break;
-				    default:
-				    	fprintf(stderr,
-					    "%s: mode must be like ls -l\n",
-					    av[0]);
-					goto usage;
-				}
+				new_delta = 1;
 		   		flags |= NEWCKSUM;
 				break;
 		/* pathname */
@@ -167,9 +156,8 @@ admin_main(int ac, char **av)
 		goto usage;
 	}
 	if (compp && streq(compp, "none") && (bk_mode() != BK_PRO)) {
-		fprintf(stderr,
-		    "uncompressing files requires a commercial license\n");
-		return (1);
+		/* fail silently */
+		return (0);
 	}
 	/* All of these need to be here: m/nextf are for resolve,
 	 * newfile is for !BK mode.
