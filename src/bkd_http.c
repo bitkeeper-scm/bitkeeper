@@ -327,8 +327,8 @@ $each(:C:){<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)</td></tr>}\
 private void
 http_src(char *path)
 {
-	char	buf[MAXPATH], abuf[30];
-	char	html[MAXPATH*2];
+	char	buf[32<<10], abuf[30];
+	char	html[MAXPATH];
 	char	**names = 0;
 	int	i;
 	MDBM	*m;
@@ -428,6 +428,10 @@ http_src(char *path)
 	    "env BK_YEAR4=1 bk prs -hr+ -d'%s' %s", dspec, path[1] ? path : "");
 	f = popen(buf, "r");
 	while (fgets(buf, sizeof(buf), f)) {
+		/*
+		 * XXX - buffer problems, this screws up if we get a line
+		 * bigger than sizeof buf.  Just looks ugly.
+		 */
 		names = addLine(names, strdup(buf));
 	}
 	pclose(f);
