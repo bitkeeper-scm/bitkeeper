@@ -328,7 +328,8 @@ chk_sfile(char *name, char state[5])
 			if (opts.names && sc) {
 				delta	*d = sccs_top(sc);
 
-				unless (streq(sc->gfile, d->pathname)) {
+				unless (d->pathname &&
+					streq(sc->gfile, d->pathname)) {
 					state[NSTATE] = 'n';
 				}
 			}
@@ -344,7 +345,8 @@ chk_sfile(char *name, char state[5])
 			    (sc = init(name, INIT_NOCKSUM, 0, 0))) {
 				delta	*d = sccs_top(sc);
 
-				unless (streq(sc->gfile, d->pathname)) {
+				unless (d->pathname &&
+					streq(sc->gfile, d->pathname)) {
 					state[NSTATE] = 'n';
 				}
 				sccs_free(sc);
@@ -1022,7 +1024,8 @@ skip:			mdbm_close(gDB);
 			    (s = init(buf, INIT_NOCKSUM, sDB, gDB))) {
 				delta	*d = sccs_top(s);
 
-				unless (streq(s->gfile, d->pathname)) {
+				unless (d->pathname &&
+				    streq(s->gfile, d->pathname)) {
 					state[NSTATE] = 'n';
 				}
 				sccs_free(s);
