@@ -309,7 +309,7 @@ import_patch() {
 		echo Checking in new or modified files in `pwd` ...
 		# Do the deletes automatically
 		if [ -s ${TMP}deletes$$ -a ! -s ${TMP}creates$$ ]
-		then	bk rm -d - < ${TMP}deletes$$
+		then	bk rm - < ${TMP}deletes$$
 		fi
 		# Do the creates automatically
 		if [ ! -s ${TMP}deletes$$ -a -s ${TMP}creates$$ ]
@@ -317,7 +317,7 @@ import_patch() {
 		fi
 	else	# Just delete and create
 		echo Checking in new or modified files in `pwd` ...
-		bk rm -d - < ${TMP}deletes$$
+		bk rm - < ${TMP}deletes$$
 		bk new $Q -G -y"Import patch $PNAME" - < ${TMP}creates$$
 	fi
 	rm -f ${TMP}creates$$ ${TMP}deletes$$

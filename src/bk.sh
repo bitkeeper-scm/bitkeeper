@@ -1526,7 +1526,6 @@ _export() {
 	K=
 	R=
 	T=
-	D=
 	WRITE=NO
 	INCLUDE=
 	EXCLUDE=
@@ -1537,7 +1536,6 @@ _export() {
 		v)	Q=;;
 		k)	K=-k;;
 		t)	T=-T;;
-		D)	D=-D;;
 		w)	WRITE=YES;;
 		r|d)	if [ x$R != x ]
 			then	echo "export: use only one -r or -d option"
@@ -1578,9 +1576,9 @@ _export() {
 		exit 1
 	fi
 	
-	${BIN}cset $D -t`${BIN}prs $R -hd:I: ChangeSet` \
+	${BIN}cset -D -t`${BIN}prs $R -hd:I: ChangeSet` \
 	| eval egrep -v "'^ChangeSet'" $INCLUDE $EXCLUDE \
-	| sed 's/[@:]/ /' | while read file rev
+	| sed 's/[@]/ /' | while read file rev
 	do
 		PN=`${BIN}prs -r$rev -hd:DPN: $SRC/$file`
 		if ${BIN}get $T $K $Q -r$rev -G$DST/$PN $SRC/$file
