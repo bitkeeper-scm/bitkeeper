@@ -158,7 +158,6 @@ test -x FILE || {
 	exit 1
 }
 echo OK
-fi #------------------------------------------------------------------
 
 echo $N Make sure we may not fix a merge changeset ..................$NL
 cd $HERE
@@ -184,3 +183,4 @@ grep -q 'fix merge changesets' OUT || {
 	exit 1
 }
 echo OK
+fi #------------------------------------------------------------------
