@@ -121,7 +121,8 @@ proc getConfig {prog} \
 	set _d(help.helptext) ""	;# -f<helptextfile> - undocumented
 	set _d(help.exact) 0		;# helpsearch, allows partial matches
 
-	set _d(newdifftool.diffMargin) .125
+	set _d(newdifftool.topMargin) 2
+	set _d(newdifftool.bottomMargin) 1
 	set _d(newdifftool.newColor) $BKGREEN1
 	set _d(newdifftool.oldColor) $BKGREEN1
 	set _d(newdifftool.diffColor) $GRAY88
