@@ -35,14 +35,6 @@
 
 private void	usage(int op);
 private void	print(sccs *s, delta *d);
-private	ser_t	*getset(sccs *s, char *rev);
-private void	set_list(sccs *s, char *rev);
-private void	set_member(sccs *s, char *rev, ser_t *map);
-private void	set_diff(sccs *s, ser_t *a, ser_t *b);
-private void	set_and(sccs *s, ser_t *a, ser_t *b);
-private void	set_or(sccs *s, ser_t *a, ser_t *b);
-private void	set_xor(sccs *s, ser_t *a, ser_t *b);
-private void	set_set(sccs *s, char *rev);
 
 enum {
 	AND,		/* intersection:		A & B */
@@ -144,19 +136,19 @@ set_main(int ac, char **av)
 	}
 	switch (opts.op) {
 	    case AND:
-		set_and(s, getset(s, r1), getset(s, r2)); break;
+		set_and(s, set_get(s, r1), set_get(s, r2), print); break;
 	    case AND_NOT:
-		set_diff(s, getset(s, r2), getset(s, r1)); break;
+		set_diff(s, set_get(s, r2), set_get(s, r1), print); break;
 	    case OR:
-		set_or(s, getset(s, r1), getset(s, r2)); break;
+		set_or(s, set_get(s, r1), set_get(s, r2), print); break;
 	    case XOR:
-		set_xor(s, getset(s, r1), getset(s, r2)); break;
+		set_xor(s, set_get(s, r1), set_get(s, r2), print); break;
 	    case ELEMENT:
-		set_member(s, r1, getset(s, r2)); break;
+		set_member(s, r1, set_get(s, r2), print); break;
 	    case LIST:
-		set_list(s, r1); break;
+		set_list(s, r1, print); break;
 	    case SET:
-		set_set(s, r1); break;
+		set_set(s, r1, print); break;
 	}
 	sccs_free(s);
 	exit(0);
@@ -191,8 +183,8 @@ stdin_set(sccs *s)
 	return (map);
 }
 
-private	ser_t*
-getset(sccs *s, char *rev)
+ser_t*
+set_get(sccs *s, char *rev)
 {
 	delta	*d;
 	ser_t	*map;
@@ -215,8 +207,8 @@ getset(sccs *s, char *rev)
 /*
  * List elements in A but not in B.
  */
-private void
-set_diff(sccs *s, ser_t *a, ser_t *b)
+void
+set_diff(sccs *s, ser_t *a, ser_t *b, set_pfunc p)
 {
 	int	i;
 	delta	*d;
@@ -227,7 +219,7 @@ set_diff(sccs *s, ser_t *a, ser_t *b)
 		assert(d);
 		unless (d->type == 'D') continue;
 		if (opts.tags && !(d->flags & D_SYMBOLS)) continue;
-		print(s, d);
+		p(s, d);
 	}
 	free(a);
 	free(b);
@@ -236,8 +228,8 @@ set_diff(sccs *s, ser_t *a, ser_t *b)
 /*
  * List elements in A and B.
  */
-private void
-set_and(sccs *s, ser_t *a, ser_t *b)
+void
+set_and(sccs *s, ser_t *a, ser_t *b, set_pfunc p)
 {
 	int	i;
 	delta	*d;
@@ -248,7 +240,7 @@ set_and(sccs *s, ser_t *a, ser_t *b)
 		assert(d);
 		unless (d->type == 'D') continue;
 		if (opts.tags && !(d->flags & D_SYMBOLS)) continue;
-		print(s, d);
+		p(s, d);
 	}
 	free(a);
 	free(b);
@@ -257,8 +249,8 @@ set_and(sccs *s, ser_t *a, ser_t *b)
 /*
  * List elements in A or B.
  */
-private void
-set_or(sccs *s, ser_t *a, ser_t *b)
+void
+set_or(sccs *s, ser_t *a, ser_t *b, set_pfunc p)
 {
 	int	i;
 	delta	*d;
@@ -269,7 +261,7 @@ set_or(sccs *s, ser_t *a, ser_t *b)
 		assert(d);
 		unless (d->type == 'D') continue;
 		if (opts.tags && !(d->flags & D_SYMBOLS)) continue;
-		print(s, d);
+		p(s, d);
 	}
 	free(a);
 	free(b);
@@ -278,8 +270,8 @@ set_or(sccs *s, ser_t *a, ser_t *b)
 /*
  * List A xor B.
  */
-private void
-set_xor(sccs *s, ser_t *a, ser_t *b)
+void
+set_xor(sccs *s, ser_t *a, ser_t *b, set_pfunc p)
 {
 	int	i;
 	delta	*d;
@@ -290,7 +282,7 @@ set_xor(sccs *s, ser_t *a, ser_t *b)
 		assert(d);
 		unless (d->type == 'D') continue;
 		if (opts.tags && !(d->flags & D_SYMBOLS)) continue;
-		print(s, d);
+		p(s, d);
 	}
 	free(a);
 	free(b);
@@ -300,8 +292,8 @@ set_xor(sccs *s, ser_t *a, ser_t *b)
 /*
  * If rev is a member of the set, print it.
  */
-private void
-set_member(sccs *s, char *rev, ser_t *map)
+void
+set_member(sccs *s, char *rev, ser_t *map, set_pfunc p)
 {
 	delta	*d;
 
@@ -314,14 +306,14 @@ set_member(sccs *s, char *rev, ser_t *map)
 		free(map);
 		return;
 	}
-	print(s, d);
+	p(s, d);
 }
 
 /*
  * Print all revs which contain rev
  */
-private void
-set_list(sccs *s, char *rev)
+void
+set_list(sccs *s, char *rev, set_pfunc p)
 {
 	delta	*d, *e;
 	ser_t	*map;
@@ -341,7 +333,7 @@ set_list(sccs *s, char *rev)
 			if (e == d) break;
 			continue;
 		}
-		print(s, e);
+		p(s, e);
 		free(map);
 		if (e == d) break;
 	}
@@ -350,8 +342,8 @@ set_list(sccs *s, char *rev)
 /*
  * Print the set implied by the rev.
  */
-private void
-set_set(sccs *s, char *rev)
+void
+set_set(sccs *s, char *rev, set_pfunc p)
 {
 	delta	*d;
 	ser_t	*map;
@@ -364,7 +356,7 @@ set_set(sccs *s, char *rev)
 	}
 	map = sccs_set(s, d, 0, 0);
 	for (i = 1; i < s->nextserial; ++i) {
-		if (map[i]) print(s, sfind(s, i));
+		if (map[i]) p(s, sfind(s, i));
 	}
 	free(map);
 }

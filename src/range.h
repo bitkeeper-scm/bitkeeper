@@ -2,12 +2,12 @@
 #define	_RANGE_H
 
 void	rangeReset(sccs *sc);
-int	rangeAdd(sccs *sc, char *rev, char *date);
+int	rangeAdd(sccs *sc, char *rev, char *date, int empty);
 int	rangeConnect(sccs *s);
 void	rangeCset(sccs *s, delta *d);
 void	rangeSetExpand(sccs *s);
 int	rangeList(sccs *sc, char *rev);
-int	rangeProcess(char *me, sccs *s, int expand, int noisy,
+int	rangeProcess(char *me, sccs *s, int expand, int noisy, int empty,
 		     int *things, int rd, char **r, char **d);
 time_t	rangeCutOff(char *spec);
 int	closedRange(char *s);
@@ -31,12 +31,12 @@ int	closedRange(char *s);
 	    break
 
 #define	RANGE(me, s, expand, noisy) \
-	if (rangeProcess(me, s, expand, noisy, &things, rd, r, d)) goto next;
+	if (rangeProcess(me, s, expand, noisy, 0, &things, rd, r, d)) goto next;
 
 #endif
 
 #define	RANGE_ERR(me, s, expand, noisy, err) \
-	if (rangeProcess(me, s, expand, noisy, &things, rd, r, d)) { \
+	if (rangeProcess(me, s, expand, noisy, 0, &things, rd, r, d)) { \
 		err = 1; \
 		goto next; \
 	}

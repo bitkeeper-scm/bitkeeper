@@ -109,6 +109,7 @@ int	loggingto_main(int, char **);
 int	mailsplit_main(int, char **);
 int	mail_main(int, char **);
 int	makepatch_main(int, char **);
+int	mdiff_main(int, char **);
 int	merge_main(int, char **);
 int	mklock_main(int, char **);
 int	mtime_main(int, char **);
@@ -288,6 +289,7 @@ struct	command cmdtbl[] = {
 	{"log", log_main},
 	{"mailsplit", mailsplit_main},
 	{"makepatch", makepatch_main},		/* doc 2.0 */
+	{"mdiff", mdiff_main},
 	{"merge", merge_main},			/* doc 2.0 */
 	{"mklock", mklock_main},	/* regression test */ /* undoc 2.0 */
 	{"mtime", mtime_main},		/* regression test */ /* undoc 2.0 */
@@ -602,6 +604,7 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 	    streq(prog, "fm2tool") ||
 	    streq(prog, "fm3tool") ||
 	    streq(prog, "difftool") ||
+	    streq(prog, "newdifftool") ||
 	    streq(prog, "helptool") ||
 	    streq(prog, "csettool") ||
 	    streq(prog, "renametool") ||

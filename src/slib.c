@@ -1790,6 +1790,9 @@ findrev(sccs *s, char *rev)
 		rev = defbranch(s);
 	}
 
+	/* 1.0 == s->tree even if s->tree is 1.1 */
+	if (streq(rev, "1.0")) return (s->tree);
+
 	if (name2rev(s, &rev)) return (0);
 	switch (scanrev(rev, &a, &b, &c, &d)) {
 	    case 1:
@@ -3317,28 +3320,6 @@ sccs_next(sccs *s, delta *d)
 	for (e = d->kid ? d->kid : s->table; e->next != d; e = e->next);
 	assert(e && (e->next == d));
 	return (e);
-}
-
-/*
- * make a fake 1.0 delta and insert it into the graph
- */
-delta	*
-mkOneZero(sccs *s)
-{
-	delta *d =  calloc(sizeof(*d), 1); 
-
-	assert(d);
-	d->next = s->table;
-	s->table = d;
-	d->kid = s->tree;
-	assert(d->kid->parent == 0);
-	d->kid->parent = d;
-	s->tree = d;
-	d->rev = strdup("1.0");
-	explode_rev(d);
-	s->numdeltas++;
-	s->state |= S_FAKE_1_0;       
-	return d;
 }
 
 /*
@@ -10458,7 +10439,7 @@ insert_1_0(sccs *s)
 private int
 remove_1_0(sccs *s)
 {
-	if (streq(s->tree->rev, "1.0") && !(s->state & S_FAKE_1_0)) {
+	if (streq(s->tree->rev, "1.0")) {
 		delta	*d;
 
 		MK_GONE(s, s->tree);
@@ -12674,6 +12655,50 @@ mkDiffHdr(char kind, char tag[], char *buf, FILE *out)
 	} else	fputs(buf, out);
 }
 
+/*
+ * set_comments(), diffComments():
+ * Print out the comments for the diff range passed in.
+ */
+private	char	**h;
+
+private void
+set_comments(sccs *s, delta *d)
+{
+	char	*buf;
+	char	*p;
+
+	buf = sccs_prsbuf(s, d, 0, 
+	    ":D: :T: :P:$if(:HT:){@:HT:} :I: +:LI: -:LD:\n"
+	    "$each(:C:){   (:C:)\n}");
+	if (buf &&
+	    (p = strchr(buf, '\n')) && !streq(p, "\n   Auto merged\n")) {
+		h = addLine(h, strdup(buf));
+	}
+}
+
+private void
+diffComments(char kind, FILE *out, sccs *s, char *lrev, char *rrev)
+{
+	int	i;
+
+	unless (rrev) rrev = "+";
+	if (streq(rrev, "edited")) rrev = "+";	/* XXX - what about edit??? */
+	set_diff(s, set_get(s, rrev), set_get(s, lrev), set_comments);
+	if ((kind == DF_IFDEF) && h) fputs("#ifdef !!COMMENTS!!\n", out);
+	EACH(h) {
+		fputs(h[i], out);
+	}
+	if (h) {
+		if (kind == DF_IFDEF) {
+			fputs("#endif !!COMMENTS!!\n", out);
+		} else {
+			fputs("\n", out);
+		}
+		freeLines(h, free);
+		h = 0;
+	}
+}
+
 private int
 doDiff(sccs *s, u32 flags, char kind, char *opts, char *leftf, char *rightf,
 	FILE *out, char *lrev, char *rrev, char *ltag, char *rtag)
@@ -12708,18 +12733,29 @@ doDiff(sccs *s, u32 flags, char kind, char *opts, char *leftf, char *rightf,
 	}
 	while (fnext(buf, diffs)) {
 		if (first) {
-			if (flags & DIFF_HEADER) {
+			if ((flags & DIFF_HEADER) && (kind == DF_IFDEF)) {
+				fprintf(out, "#ifdef !!HEADER!!\n");
+				fprintf(out, "< %s %s\n", s->gfile, lrev);
+				fprintf(out, "> %s %s\n", s->gfile, rrev);
+				fprintf(out, "#endif !!HEADER!!\n");
+			} else if (flags & DIFF_HEADER) {
 				fprintf(out, "%s %s %s vs %s%s %s\n",
-				    spaces, s->gfile, lrev, rrev, error, spaces);
-			} else {
-				fprintf(out, "\n");
+				   spaces, s->gfile, lrev, rrev, error, spaces);
 			}
+			if (flags & DIFF_COMMENTS) {
+				diffComments(kind, out, s, lrev, rrev);
+			}
+			unless (flags & DIFF_HEADER) fprintf(out, "\n");
 			first = 0;
 			mkDiffHdr(kind, ltag, buf, out);
 			unless (fnext(buf, diffs)) break;
 			mkDiffHdr(kind, rtag, buf, out);
-		} else	fputs(buf, out);
+		} else {
+			fputs(buf, out);
+		}
 	}
+	/* XXX - gross but useful hack to get spacers */
+	if ((flags & DIFF_COMMENTS) && !first) fprintf(out, "\n");
 	if (kind == DF_SDIFF) {
 		pclose(diffs);
 	} else {
