@@ -155,11 +155,7 @@ SCRSRCS	= testfast.perl bk.sh import.sh clone.sh \
 MISC	= bkmsg.doc bitkeeper.config t/doit.sh
 
 default:
-	-if [ `uname -s` = "CYGWIN_NT-4.0" ];\
-	then PAGER="less -E"; \
-	else PAGER=more; \
-	fi; \
-	(bk cat HEADER; bk help bksrc; bk cat BUILD.txt) | $${PAGER}
+	bk cat BUILD.txt
 
 all: $(ALL)
 
