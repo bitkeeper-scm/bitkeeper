@@ -23,6 +23,7 @@ echo "license: $BKL_P" >> c
 echo "licsign1: $BKL_P1" >> c
 echo "licsign2: $BKL_P2" >> c
 echo "licsign3: $BKL_P3" >> c
+echo "eoln: unix" >> c
 BK_HOST=bk_regression.bitkeeper.com bk setup -f -c$HERE/c project
 cd project
 

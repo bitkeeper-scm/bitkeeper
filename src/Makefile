@@ -325,7 +325,7 @@ FORCE:
 
 gnu: $(BK) FORCE
 	@bk get -sS gnu/Makefile
-	@if uname -s | grep _NT; \
+	@if uname -s | grep -q _NT; \
 	then cd gnu && cmd /c $(MAKE) BINDIR=$(BINDIR) DIFF_BINS= DIRS=patch ;\
 	else cd gnu && $(MAKE) BINDIR=$(BINDIR) ;\
 	fi
@@ -357,7 +357,7 @@ libsccs.a: $(OBJ) shell.o
 bk.res: win32/data/bk.rc win32/data/bk.ico
 	rc.exe -fo bk.res -r win32/data/bk.rc
 
-$(BK): bk.o $(LIBS) $(RESOURCE)
+$(BK): bk.o $(LIBS) $(RESOURCE) bklicense.pub
 	$(LD) $(LDFLAGS) $(LD_OUT) bk.o $(LINK_LIB) $(RESOURCE)
 
 testfast: testfast.perl
@@ -375,13 +375,16 @@ bkmsg.txt: bkmsg.doc bk.ver Makefile
 	sed "s/@built_date@/`date`/" > bkmsg.txt
 
 bkhelp.txt: build FRC
-	@cd ../man/man2help && bk get -S Makefile && ../../src/build -u helptxt
+	@bk get -S ../man/man2help/Makefile
+	@cd ../man/man2help && ../../src/build -u helptxt
 	@cp ../man/man2help/helptxt bkhelp.txt
 
 ../doc/bk_refcard.pdf: build FRC
+	@bk get -S ../doc/Makefile
 	@cd ../doc/ && $(MAKE) pdf
 
 ../doc/bk_refcard.ps: build FRC
+	@bk get -S ../doc/Makefile
 	@cd ../doc/ && $(MAKE) ps
 
 FRC:
@@ -567,7 +570,7 @@ pkg: g epmhelper.sh
 install: install-nolinks bklinks binlinks
 
 bklinks:
-	@if uname -s | grep _NT; \
+	@if uname -s | grep -q _NT; \
 	then	LN=cp; EXE=.exe; \
 	else	LN=ln; EXE=; \
 	fi; \
@@ -579,7 +582,7 @@ bklinks:
 	done
 
 binlinks:
-	@if uname -s | grep _NT; \
+	@if uname -s | grep -q _NT; \
 	then	LN=cp; EXE=.exe; \
 	else	LN=ln; EXE=; \
 	fi; \
@@ -607,12 +610,13 @@ install-nolinks:
 		ln $(BINDIR)/$$2 $(BINDIR)/$$1; \
 		shift; shift; \
 	done
-	@if uname -s | grep _NT; \
+	@if uname -s | grep -q _NT; \
 	then cd gnu && $(MAKE) install BINDIR=$(BINDIR) DIFF_BINS= DIRS=patch ;\
 	else (cd gnu && $(MAKE) install BINDIR=$(BINDIR)) ;\
+	     bk get -S ../man/Makefile; \
 	     cd ../man && $(MAKE) install BINDIR=$(BINDIR) ;\
 	fi
-	@if uname -s | grep _NT; \
+	@if uname -s | grep -q _NT; \
 	then cd win32 && $(MAKE) BINDIR=$(BINDIR) install; \
 	fi
 	-@find $(BINDIR) -type d -print | xargs chmod ug+w
@@ -627,7 +631,7 @@ image:
 # Win32 note: Wise install script does not respect the BINDIR env variable
 # It picks up the image at C:/Program Files/BitKeeper
 _image:
-	@if uname -s | grep _NT; \
+	@if uname -s | grep -q _NT; \
 	then	${MAKE} -e install-nolinks; \
 		cd utils && bk get -qS mkbk x86-win32.wse && ./mkbk; \
 	else \
