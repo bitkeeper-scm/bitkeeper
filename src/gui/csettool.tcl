@@ -292,7 +292,7 @@ proc prevFile {} \
 
 proc dotFile {} \
 {
-	global	lastFile fileCount Files
+	global	lastFile fileCount Files tmp_dir file_start_stop file_stop
 
 	busy 1
 	if {$lastFile == 1} {
@@ -311,8 +311,8 @@ proc dotFile {} \
 	.filelist.t tag remove select 1.0 end
 	.filelist.t tag add select $line "$line lineend + 1 char"
 	set file [.filelist.t get $line "$line lineend"]
-	if {[regexp {^  (.*):(.*)\.\.(.*)} $file dummy file start stop] == 0} {
-		regexp {^  (.*):([0-9.]+$)} $file dummy f stop
+	 if {[regexp "^  $file_start_stop" $file dummy file start stop] == 0} {
+		regexp "^  $file_stop" $file dummy f stop
 		set start $stop
 		set file $f
 	}
@@ -321,8 +321,8 @@ proc dotFile {} \
 	close $p
 	if {$parent == ""} { set parent "1.0" }
 	set tmp [file tail $file]
-	set l "/tmp/$tmp-$parent"
-	set r "/tmp/$tmp-$stop"
+	set l [file join $tmp_dir $tmp-$parent]
+	set r [file join $tmp_dir $tmp-$stop]
 	exec bk -R get -qkpr$parent $file > $l
 	exec bk -R get -qkpr$stop $file > $r
 	readFiles $l $r
@@ -350,7 +350,7 @@ proc dotFile {} \
 	}
 	catch { close $prs }
 
-	set r [open "| bk -R prs -bhC$stop {$dspec} $file" r]
+	set prs [open "| bk -R prs -bhC$stop {$dspec} $file" r]
 	set save ""
 	while { [gets $prs buf] >= 0 } {
 		if {$buf == "  "} { continue }
@@ -378,7 +378,7 @@ proc dotFile {} \
 
 proc getFiles {revs} \
 {
-	global	fileCount lastFile Files line2File
+	global	fileCount lastFile Files line2File file_start_stop bk_fs
 
 	busy 1
 	.filelist.t configure -state normal
@@ -397,9 +397,9 @@ proc getFiles {revs} \
 			incr line
 			set line2File($line) $fileCount
 			set Files($fileCount) $line
-			regexp {(.*):(.*)\.\.(.*)} $buf dummy file start stop
+			regexp $file_start_stop $buf dummy file start stop
 			if {$start == $stop} {
-				set buf "$file:$start"
+				set buf "$file$bk_fs$start"
 			}
 			.filelist.t insert end "  $buf\n"
 		}

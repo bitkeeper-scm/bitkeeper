@@ -8,7 +8,8 @@ proc bk_init {} \
 {
 	global env dev_null tmp_dir wish auto_path unix_bin bin
 	global bithelp difftool helptool sccstool sdiffw bk_prs file_rev
-	
+	global file_start_stop file_stop bk_fs
+
 	# init for WIN32 env
 	if {[info exists env(BK_BIN)]} {
 		set bin	$env(BK_BIN)
@@ -25,5 +26,7 @@ proc bk_init {} \
 	set tmp_dir $env(TEMP)
 	set auto_path "$bin $auto_path"
 	set file_rev {(.*)@([0-9].*)}
-
+	set file_start_stop {(.*)@(.*)\.\.(.*)}
+	set file_stop {(.*)@([0-9.]+$)}
+	set bk_fs @
 }
