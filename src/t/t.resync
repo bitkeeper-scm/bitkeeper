@@ -137,7 +137,7 @@ ${ECHO} "this is the old c.c" > ref.c
 cmp -s ref.c d.c
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
 echo OK
-echo $N Check circular rename in two work space .....................$NL
+echo $N Check circular rename in two work spaces ....................$NL
 cd  $HERE
 rm -rf $HERE/copy
 tar xf chkpoint.tar
@@ -152,7 +152,7 @@ bk commit $S -yrename
 cd  $HERE
 bk resync $Q -r1.4 $HERE/project $HERE/copy
 cd  $HERE/copy/src
-bk resolve $Q -f - << EOF > /dev/null
+bk resolve $Q -f - << EOF > /dev/null 2> resolve.out
 l
 m
 C
@@ -173,7 +173,12 @@ if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
 ${ECHO} "this is a.c" > ref.c
 cmp -s ref.c c.c
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
-echo OK
+if [ -s resolve.out ]; then
+    echo "failed (known bug)"
+    cat resolve.out
+else
+    echo OK
+fi
 echo $N Check conflict caused by merge ..............................$NL
 cd  $HERE
 rm -rf $HERE/copy

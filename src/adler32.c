@@ -1,6 +1,6 @@
 #include "system.h"
 #include "sccs.h"
-#include "zlib.h"
+#include <zlib.h>
 
 void do_checksum(void);
 
