@@ -4094,7 +4094,7 @@ loadEnvConfig(MDBM *db)
 
 		mdbm_store_str(db, k, v, MDBM_REPLACE);
 	}
-	freeLines(values);
+	freeLines(values, free);
 	return (db);
 }
 /*

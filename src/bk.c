@@ -945,7 +945,7 @@ cmdlog_end(int ret)
 		strcpy(&log[len], notes[i]);
 		log[len] = 0;
 	}
-	freeLines(notes);
+	freeLines(notes, free);
 	if (write_log(bk_proj->root, file, rotate, log)) {
 		return (flags);
 	}

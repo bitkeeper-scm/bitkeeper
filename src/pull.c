@@ -91,7 +91,7 @@ pull_main(int ac, char **av)
 	}
 
 	unless (pList) {
-err:		freeLines(envVar);
+err:		freeLines(envVar, free);
 		usage();
 		return (1);
 	}

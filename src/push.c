@@ -95,7 +95,7 @@ push_main(int ac, char **av)
 	}
 
 	unless (pList) {
-err:		freeLines(envVar);
+err:		freeLines(envVar, free);
 		usage();
 		if (opts.out && (opts.out != stderr)) fclose(opts.out);
 		return (1);
@@ -140,7 +140,7 @@ err:		freeLines(envVar);
 		if (rc) break;
 	}
 
-	freeLines(pList);
+	freeLines(pList, free);
 	freeLines(envVar, free);
 	if (opts.out && (opts.out != stderr)) fclose(opts.out);
 	return (rc);

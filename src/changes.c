@@ -596,7 +596,7 @@ loadcset(sccs *cset)
 	FILE	*f;
 	MDBM	*db;
 
-	bktemp(tmp);
+	bktmp(tmp, "loadcset");
 	sccs_cat(cset, SILENT|GET_NOHASH|GET_REVNUMS|PRINT, tmp);
 	f = fopen(tmp, "rt");
 
@@ -658,7 +658,7 @@ cset(sccs *cset, FILE *f, char *dspec)
 	if (exists(SGONE)) {
 		char tmp_gone[MAXPATH];
 
-		bktemp(tmp_gone);
+		bktmp(tmp_gone, "change_gone");
 		sysio(0, tmp_gone, 0, "bk", "get", "-kpsC", GONE, SYS);
 		goneDB = loadDB(tmp_gone, 0, DB_KEYSONLY|DB_NODUPS);
 		unlink(tmp_gone);
@@ -738,7 +738,7 @@ cset(sccs *cset, FILE *f, char *dspec)
 			 */
 			list = 	collectDelta(s, d, list, dspec, &n, dbuf);
 		}
-		freeLines(keys); /* reduce mem foot print, could be huge */
+		freeLines(keys, free); /* reduce mem foot print, could be huge */
 		free(ee);
 		list = dumplog(list, &n); /* sort file dspec and print it */
 		if (fflush(stdout)) break;
@@ -764,7 +764,7 @@ cset(sccs *cset, FILE *f, char *dspec)
 
 	EACH_KV(csetDB) {
 		memcpy(&keys, kv.val.dptr, sizeof (char **));
-		freeLines(keys);
+		freeLines(keys, free);
 	}
 
 	mdbm_close(graphDB);

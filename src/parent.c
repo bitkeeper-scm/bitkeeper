@@ -95,14 +95,14 @@ parent_main(int ac,  char **av)
 			unless (pList) goto empty;
 			unless (shell) printf("Push Parent are:\n");
 			EACH(pList) printf("%s\n", pList[i]);
-			freeLines(pList);
+			freeLines(pList, free);
 			return (0);
 		} else if (fflag) {
 			pList = getParentList(PULL_PARENT, pList);
 			unless (pList) goto empty;
 			unless (shell) printf("Pull Parent are:\n");
 			EACH(pList) printf("%s\n", pList[i]);
-			freeLines(pList);
+			freeLines(pList, free);
 			return (0);
 		} else {
 			fp = getParent();

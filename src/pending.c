@@ -194,7 +194,7 @@ send_part1_msg(options *opts, remote *r)
 	int	rc;
 	FILE 	*f;
 
-	gettemp(buf, "pending");
+	bktmp(buf, "pending");
 	f = fopen(buf, "w");
 	assert(f);
 	sendEnv(f, NULL, r, 0);
@@ -219,7 +219,7 @@ send_part2_msg(options *opts, remote *r, char *key_list, int rcsets)
 	char	msgfile[MAXPATH], buf[MAXLINE];
 	FILE	*f;
 
-	bktemp(msgfile);
+	bktmp(msgfile, "pending_part2");
 	f = fopen(msgfile, "wb");
 	assert(f);
 	sendEnv(f, NULL, r, 0);
@@ -305,7 +305,7 @@ pending_part1(options *opts, remote *r, char *key_list)
 	/*
 	 * What we want is: "remote => bk _prunekey => keylist"
 	 */
-	bktemp(key_list);
+	bktmp(key_list, "pending_keylist");
 	fd = open(key_list, O_CREAT|O_WRONLY, 0644);
 	s = sccs_init(s_cset, 0, 0);
 	flags = PK_REVPREFIX|PK_RKEY;
@@ -435,7 +435,7 @@ do_patch(options *opts)
 	i--;
 	if (i && (opts->verbose >= 0)) fputs("\n", stdout);
 done:	if (opts->verbose == V_COUNT) print_count("patch", i);
-	if (list) freeLines(list);
+	if (list) freeLines(list, free);
 	return (i > 0); /* return ture if non-empty */
 }
 
@@ -451,7 +451,7 @@ do_delta(options *opts)
 	char	buf[MAXLINE];
 	FILE	*f, *p = 0;
 
-	tmp = bktmpfile();
+	tmp = bktmp(0, "pending_sfiles");
 	sysio(0, tmp, 0, "bk", "sfiles", "-pCA", SYS);
 
 	if (opts->verbose == V_QUIET) {
