@@ -639,13 +639,17 @@ fi #-------------------------------------------------------------------
 
 test -d $TESTDATA/import-CVS.1 && {
 
-echo $N Make sure that import -A imports Attic files ................$NL
+echo $N Make sure that import handles Attic files ...................$NL
 cd $HERE
 no_logging import-CVS.1
-bk import -AquftCVS $TESTDATA/import-CVS.1 .
+bk import -quftCVS $TESTDATA/import-CVS.1 .
 bk get -q
-test -f pkginfo || {
+test -f BitKeeper/deleted/SCCS/s..del-pkginfo* || {
 	echo failed to get pkginfo from the Attic
+	exit 1
+}
+test -d Attic && {
+	echo Failed to remove Attic
 	exit 1
 }
 test -f COPYING || {
@@ -665,7 +669,7 @@ rm -rf import-CVS.1
 no_logging import-CVS.1
 bk edit $Q BitKeeper/etc/config
 echo checkout:get >> BitKeeper/etc/config
-bk import -AquftCVS $TESTDATA/import-CVS.1 .
+bk import -quftCVS $TESTDATA/import-CVS.1 .
 test -f COPYING || {
 	echo failed to get COPYING after import
 	exit 1

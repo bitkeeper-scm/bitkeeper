@@ -1045,6 +1045,17 @@ uniqDelta(sccs *s)
 		d->date += tdiff;
 		d->dateFudge += tdiff;
 	}
+
+	/*
+	 * We want the import convertor to produce the same tree
+	 * when ran multiple times. Do not enforce unique key
+	 * across different repository; 
+	 */
+	if (IMPORT(s)) {
+		uniq_close();
+		return;
+	}
+
 	sccs_shortKey(s, d, buf);
 	while (!unique(buf)) {
 //fprintf(stderr, "COOL: caught a duplicate key: %s\n", buf);
@@ -12407,6 +12418,7 @@ out:
 		n->xflags |= X_MONOTONIC;
 		n->flags |= D_XFLAGS;
 	}
+	if (BITKEEPER(s)) singleUser(s);
 
 	EACH (syms) {
 		addsym(s, n, n, !(flags&DELTA_PATCH), n->rev, syms[i]);
@@ -15427,6 +15439,26 @@ sccs_md5delta(sccs *s, delta *d, char *b64)
 	hash = hashstr(key);
 	sprintf(b64, "%08x%s", (u32)d->date, hash);
 	free(hash);
+}
+
+/*
+ * Identify SCCS files that the user creates.  Seperate from
+ * BK files.  Basicly the ChangeSet file and anything created
+ * in BitKeeper/ is a system file.  The "created" is because of
+ * BitKeeper/deleted...
+ */
+int
+sccs_userfile(sccs *s)
+{
+	char	*pathname;
+
+	if (CSET(s))		/* ChangeSet */
+		return 0;
+
+	pathname = sccs_ino(s)->pathname;
+	if (strneq(pathname, "BitKeeper/", 10))
+		return 0;
+	return 1;
 }
 
 void

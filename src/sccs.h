@@ -140,6 +140,7 @@
 #define	S_FAKE_1_0	0x00008000	/* the 1.0 delta is a fake */
 #define	S_FORCELOGGING	0x00020000	/* Yuck - force it to logging */
 #define S_CONFIG	0x00040000	/* this is a config file */
+#define S_IMPORT	0x00080000	/* import mode */
 
 #define	KEY_FORMAT2	"BK key2"	/* sym in csets created w/ long keys */
 
@@ -227,6 +228,7 @@
 #define	CONFIG(s)	((s)->state & S_CONFIG)
 #define	READ_ONLY(s)	((s)->state & S_READ_ONLY)
 #define	SET(s)		((s)->state & S_SET)
+#define	IMPORT(s)	((s)->state & S_IMPORT)
 #define	MK_GONE(s, d)	(s)->hasgone = 1; (d)->flags |= D_GONE
 
 #define	GOODSCCS(s)	assert(s); unless ((s)->tree&&(s)->cksumok) return (-1)
@@ -806,6 +808,7 @@ void	sccs_print(delta *d);
 delta	*sccs_getInit(sccs *s, delta *d, MMAP *f, int patch,
 		      int *errorp, int *linesp, char ***symsp);
 delta	*sccs_ino(sccs *);
+int	sccs_userfile(sccs *);
 int	sccs_rmdel(sccs *s, delta *d, u32 flags);
 int	sccs_stripdel(sccs *s, char *who);
 int	sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut);

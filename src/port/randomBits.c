@@ -71,6 +71,8 @@ randomBits(char *buf)
 }
 #endif
 
+int	in_rcs_import = 0;
+
 #ifndef WIN32
 /*
  * Return an at most 5 digit !0 integer.
@@ -82,6 +84,7 @@ almostUnique(int harder)
         int     max = 100;
         int     val;
 
+	if (in_rcs_import) return (0);
         if (harder) max = 1000000;
         do {
                 gettimeofday(&tv, 0);
@@ -98,6 +101,7 @@ almostUnique(int harder)
 	GUID guid;
 	u32 h1, h2,l1, l2;
 
+	if (in_rcs_import) return (0);
 	if (QueryPerformanceCounter(&val)) {
 		return (val.QuadPart % 100000);
 	}

@@ -89,8 +89,14 @@ when you know that this is the only \*(BK activity you are doing.
 Using this option on two parallel imports may cause \*(BK consistency
 problems.
 .tp
-.B \-H 
-do not pass \-h option to rcs2sccs (turns off verification, faster, unsafe).
+.OPTreq \-g gap
+Change or disable the gap used to cluster changeset grouping.  A gap
+of 0 clusters all changes into one big changeset; a gap of non-zero
+clusters changes which happen less than that timespan apart.
+The value is in minutes with the default set to 10.
+.tp
+.OPTreq \-H hostname
+Set the hostname used for the creation of any new deltas during the import.
 .tp
 .B \-i
 Prompts for a regular expression to apply to the list of files.
@@ -126,7 +132,8 @@ Import a patch (diffs)
 Import RCS files
 .tp
 .B CVS
-Import CVS files
+Import CVS files. The only difference from -tRCS is that Attic directories
+are processed and deleted files are detected.
 .tp
 .B SCCS
 Import SCCS files
@@ -141,17 +148,11 @@ of files.  All matches are excluded.  (For use with all types except patches.)
 .SH "RCS OPTIONS"
 .if t .TP
 .if n .TP .8i
-.B \-A
-Attic processing (CVS import only).  Moves all files which do not have
-name conflicts from the Attic subdirectories to the enclosing repository,
-i.e., "mv Attic/*,v .".
+.B \-h 
+turn off verification of contents (faster, unsafe).
 .tp
-.OPTreq \-c tag
-do not import anything after
-.ARG tag .
-.tp
-.OPTreq \-j n
-n-way parallel for RCS conversion.
+.B \-T
+Do not import tags. The default is to import tags.
 .tp
 .B \-u
 Run files through bk undos first; this will convert
