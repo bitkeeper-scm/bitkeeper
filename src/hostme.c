@@ -12,19 +12,31 @@ typedef	struct {
 
 private void usage();
 
+/* For bugfixes tree only */
+char	*
+bktmp(char *dummy, char *tmp)
+{
+	char	buf[] = "/tmp/bk_XXXXXX";
+
+	close(mkstemp(buf));
+	return (strdup(buf));
+}
+
 int
 hostme_main(int ac, char **av)
 {
 	int	c, rc;
 	opts	opts;
-	char	url[] = BK_HOSTME_URL;
-	char	hostme_info[MAXLINE];
+	char	default_url[] = BK_HOSTME_URL;
+	char	*url = default_url;
+	char	*hostme_info;
 	char	*public_key;
 	int	fd;
 	FILE	*f;
 	remote	*r;
 	MMAP	*m;
 	int	i;
+	char	buf[MAXPATH];
 
 	bzero(&opts, sizeof(opts));
 	opts.verbose = 1;
@@ -43,7 +55,7 @@ hostme_main(int ac, char **av)
 
 	unless (opts.keyfile) usage();
 	unless (exists(opts.keyfile)) {
-		printf("Keyfile \'%s\' does not exists.\n", opts.keyfile);
+		printf("Keyfile \'%s\' does not exist.\n", opts.keyfile);
 		usage();
 	}
 
@@ -61,20 +73,21 @@ hostme_main(int ac, char **av)
 	public_key[i] = 0;
 	close(fd);
 
-	if (gettemp(hostme_info, "hinfo")) {
+	unless (hostme_info = bktmp(0, 0)) {
 		fprintf(stderr, "Can't allocate temp file\n");
 		usage();
 	}
 	unless (f = fopen(hostme_info, "wb")) return (1);
 
-	fprintf(f, "version=1.0\n");
-	fprintf(f, "type=PROJECT\n");
 	fprintf(f, "project=%s\n", opts.project);
 	fprintf(f, "repository=%s\n", opts.repository);
-	fprintf(f, "sshkey=%s", public_key);
-	fprintf(f, "end=end\n");
+	fprintf(f, "sshkey=%s\n", public_key);
 	fclose(f);
 
+	if (opts.host) {
+		sprintf(buf, "http://%s:80", opts.host);
+		url = buf;
+	}
 	r = remote_parse(url, 0);
 	if (opts.debug) r->trace = 1;
 	assert(r);
@@ -91,12 +104,13 @@ hostme_main(int ac, char **av)
 	disconnect(r, 2);
 	if (!opts.debug) unlink(hostme_info);
 	return (rc);
-	// XXX - not freeing memory.
 }
 
 private void
 usage()
 {
-	fprintf(stderr, "Usage: bk hostme -s<keyfile> -p<project> -h<host>\n");
+	fprintf(stderr,
+	    "Usage: bk hostme "
+	    "[-h<host>] -p<project> -r<repo> -s<identity.pub>>\n");
 	exit(1);
 }
