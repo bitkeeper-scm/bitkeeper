@@ -8,7 +8,7 @@ private int export_patch(char *, char *, char *, char *, int, int);
 int
 export_main(int ac,  char **av)
 {
-	int	c, count;
+	int	i, c, count, trim = 0;
 	int	vflag = 0, hflag = 0, kflag = 0, tflag = 0, wflag = 0;
 	char	*rev = NULL, *diff_style = NULL;
 	char	file_rev[MAXPATH];
@@ -16,7 +16,7 @@ export_main(int ac,  char **av)
 	char	include[MAXLINE] = "";
 	char	exclude[MAXLINE];
 	char	*src, *dst;
-	char	*p, *q;
+	char	*p, *q, *p_sav;
 	char	src_path[MAXPATH], dst_path[MAXPATH];
 	sccs	*s;
 	delta	*d;
@@ -30,15 +30,16 @@ export_main(int ac,  char **av)
 
 	sprintf(exclude, "*%cBitKeeper/*%c*", BK_FS, BK_FS);
 
-	while ((c = getopt(ac, av, "d:hkt:Twvi|x|r:")) != -1) {
+	while ((c = getopt(ac, av, "d:hkp:t:Twvi|x|r:")) != -1) {
 		switch (c) {
 		    case 'v':	vflag = 1; break;		/* doc 2.0 */
 		    case 'q':					/* undoc 2.0 */
 				break; /* no op; for interface consistency */
 		    case 'd':	diff_style = optarg; break;	/* doc 2.0 */
 		    case 'h':					/* doc 2.0 */
-			hflag = 1; break; /*disbale patch header*/
+			hflag = 1; break; /*disable patch header*/
 		    case 'k':	kflag = 1; break;		/* doc 2.0 */
+		    case 'p':	trim = atoi(optarg); break;
 		    case 'r':	rev = optarg; break;		/* doc 2.0 */
 		    case 't':	if (type) goto usage;		/* doc 2.0 */
 				type = optarg; 
@@ -128,6 +129,18 @@ usage:			system("bk help -s export");
 		*q++ = '\0';
 		d = findrev(s, q);
 		assert(d);
+		p_sav = p;
+		for (i = 0; i < trim; i++) {
+			p = strchr(p, '/');
+			unless (p) {
+				fprintf(stderr,
+				    "%s: Cannot trim path; path too short. "
+				    "File skipped.\n",
+				    p_sav);
+				goto next;
+			}
+			p++;
+		}
 		sprintf(output, "%s/%s", dst_path, p);
 		unless (vflag) flags |= SILENT;
 		unless (kflag) flags |= GET_EXPAND;
@@ -150,6 +163,7 @@ usage:			system("bk help -s export");
 				chmod(output, sb.st_mode | S_IWUSR);
 			}
 		}
+next:		;
 	}
 	fclose(f);
 	unlink(file_rev);
