@@ -11695,6 +11695,10 @@ show_s(delta *d, FILE *out, char *vbuf, char *str) {
  * Keyword definition is compatible with open group SCCS
  * This function may call itself recursively
  * kw2val() and fprintDelta() are mutually recursive
+ *
+ * XXX WARNING: If you add new keyord to this function, do _not_ print
+ * to out directly, you _must_ use the fc()/fd()/fx()/f5d()/fs()
+ * macros.
  */
 private int
 kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
@@ -11704,6 +11708,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 #define	KW(x)	kw2val(out, vbuf, "", 0, x, "", 0, s, d)
 #define	fc(c)	show_d(d, out, vbuf, "%c", c)
 #define	fd(n)	show_d(d, out, vbuf, "%d", n)
+#define	fx(n)	show_d(d, out, vbuf, "0x%x", n)
 #define	f5d(n)	show_d(d, out, vbuf, "%05d", n)
 #define	fs(str)	show_s(d, out, vbuf, str)
 
@@ -12045,7 +12050,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	if (streq(kw, "FL")) {
 		/* flag list */
 		/* XX TODO: ouput flags in symbolic names ? */
-		if (out) fprintf(out, "0x%x", d->flags);
+		fx(d->flags);
 		return (strVal);
 	}
 
@@ -12393,17 +12398,22 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 			}
 			if (sccs_iskeylong(kv.val.dptr)) n++;
 		}
-		fprintf(out, "%d", n);
+		fd(n);
 		return (strVal);
 	}
 
 	if (streq(kw, "KEY")) {
-		if (out) sccs_pdelta(s, d, out);
+		char key[MAXKEY];
+		sccs_sdelta(s, d, key);
+		fs(key);
 		return (strVal);
 	}
 
 	if (streq(kw, "ROOTKEY")) {
-		if (out) sccs_pdelta(s, sccs_ino(s), out);
+		char key[MAXKEY];
+
+		sccs_sdelta(s, sccs_ino(s), key);
+		fs(key);
 		return (strVal);
 	}
 
