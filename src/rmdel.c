@@ -338,7 +338,7 @@ getfiles(sccs *s, char *rev)
 			}
 		}
 		assert(d->parent);
-		sccs_pdelta(d->parent, f);
+		sccs_pdelta(s, d->parent, f);
 		fprintf(f, "\n");
 		s->rstop = s->rstart = d;
 		sccs_prs(s, PRS_PATCH|SILENT, 0, NULL, f);

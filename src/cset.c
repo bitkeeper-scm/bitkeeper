@@ -644,7 +644,15 @@ csetlist(sccs *cset)
 	}
 
 	/* Save away the cset id */
+	/* XXX: saving as short because ChangeSet IDs in ChangeSet
+	 * file will short as the long keys and removing ChangeSet keys
+	 * from ChangeSet file happened at the same time
+	 */
 	sccs_sdelta(cset, sccs_ino(cset), buf);
+	if (csetid = sccs_iskeylong(buf)) {
+		debug((stderr, "cset: csetlist: long key to short\n"));
+		*csetid = 0; /* make into short key */
+	}
 	csetid = strdup(buf);
 
 	/*

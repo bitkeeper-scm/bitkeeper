@@ -31,6 +31,7 @@ main(int ac, char **av)
 	int	e;
 	char	*name;
 	char	buf[MAXPATH];
+	char	*t;
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
@@ -66,8 +67,17 @@ usage:		fprintf(stderr, "%s", check_help);
 			sccs_free(s);
 			continue;
 		}
-		sccs_sdelta(buf, sccs_ino(s));
-		mdbm_store_str(checked, buf, "Y", 0);
+		sccs_sdelta(s, sccs_ino(s), buf);
+		if (mdbm_store_str(checked, buf, "Y", 0)) {
+			fprintf(stderr, "check: problem storing %s\n", buf);
+		}
+		t = sccs_iskeylong(buf);
+		assert(t);
+		*t = 0;
+		if (mdbm_store_str(checked, buf, "Y", 0)) { /* store short */
+			fprintf(stderr, "check: problem storing short %s\n",
+			    buf);
+		}
 		if (e = check(s, db)) {
 			errors += e;
 		} else {
@@ -128,12 +138,15 @@ buildKeys()
 	int	n = 0;
 	int	e = 0;
 	char	buf[MAXPATH*3];
+	char	key[MAXPATH*2];
+	sccs	*cset;
+	delta	*d;
 
 	unless (db && keys) {
 		perror("buildkeys");
 		exit(1);
 	}
-	unless (idDB = loadDB("SCCS/x.id_cache", 0)) {
+	unless (idDB = loadIdDB()) {
 		perror("idcache");
 		exit(1);
 	}
@@ -182,6 +195,31 @@ buildKeys()
 		n++;
 	}
 	pclose(keys);
+	/* Add in ChangeSet keys */
+	unless (cset = sccs_init(CHANGESET, 0, 0)) {
+		fprintf(stderr, "check: ChangeSet file not inited\n");
+		exit (1);
+	}
+	sccs_sdelta(cset, sccs_ino(cset), key);
+	for (d = cset->table; d; d = d->next) {
+		unless (d->type == 'D' && (d->flags & D_CSET)) continue;
+		sccs_sdelta(cset, d, buf);
+		if (mdbm_store_str(db, buf, key, MDBM_INSERT)) {
+			if (errno == EEXIST) {
+				char	*root = mdbm_fetch_str(db, t);
+				unless (streq(root, key)) {
+					fprintf(stderr, 
+			    "check: key %s replicated in ChangeSet: %s %s\n",
+			    		    buf, key, root);
+				}
+			} else {
+				fprintf(stderr, "KEY='%s' VAL='%s'\n", buf,key);
+				perror("mdbm_store_str");
+			}
+		}
+	}
+	sccs_free(cset);
+
 	if (verbose > 1) {
 		fprintf(stderr, "check: found %d keys in ChangeSet\n", n);
 	}
@@ -272,6 +310,7 @@ check(sccs *s, MDBM *db)
 	int	ksize;
 	char	*a;
 	char	buf[MAXPATH];
+	char	*val;
 
 	/*
 	 * Make sure that all marked deltas are found in the ChangeSet
@@ -281,8 +320,15 @@ check(sccs *s, MDBM *db)
 			fprintf(stderr, "Check %s;%s\n", s->sfile, d->rev);
 		}
 		unless (d->flags & D_CSET) continue;
-		sccs_sdelta(buf, d);
-		unless (mdbm_fetch_str(db, buf)) {
+		sccs_sdelta(s, d, buf);
+		unless (val = mdbm_fetch_str(db, buf)) {
+			char	*term;
+			if (term = sccs_iskeylong(buf)) {
+				*term = 0;
+				val = mdbm_fetch_str(db, buf);
+			}
+		}
+		unless (val) {
 			fprintf(stderr,
 		    "%s: marked delta %s should be in ChangeSet but is not\n",
 			    s->sfile, d->rev);
@@ -297,7 +343,7 @@ check(sccs *s, MDBM *db)
 	 * Foreach value in ChangeSet DB, skip if not this file.
 	 * Otherwise, make sure we can find that delta in this file.
 	 */
-	sccs_sdelta(buf, sccs_ino(s));
+	sccs_sdelta(s, sccs_ino(s), buf);
 	ksize = strlen(buf) + 1;	/* strings include null in DB */
 	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
 		/* key is delta key, val is root key */

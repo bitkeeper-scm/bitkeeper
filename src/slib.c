@@ -37,7 +37,7 @@ private void	putserlist(sccs *sc, ser_t *s, FILE *out);
 private ser_t*	getserlist(sccs *sc, int isSer, char *s, int *ep);
 private int	read_pfile(char *who, sccs *s, pfile *pf);
 private int	hasComments(delta *d);
-private int	checkRev(char *file, delta *d, int flags);
+private int	checkRev(sccs *s, char *file, delta *d, int flags);
 private int	checkrevs(sccs *s, int flags);
 private delta*	csetFileArg(delta *d, char *name);
 private delta*	hostArg(delta *d, char *arg);
@@ -7034,13 +7034,13 @@ checkrevs(sccs *s, int flags)
 	int	e;
 
 	for (e = 0, d = s->table; d; d = d->next) {
-		e |= checkRev(s->sfile, d, flags);
+		e |= checkRev(s, s->sfile, d, flags);
 	}
 	return (e);
 }
 
 private int
-checkRev(char *file, delta *d, int flags)
+checkRev(sccs *s, char *file, delta *d, int flags)
 {
 	int	error = 0;
 	delta	*e;
@@ -7175,8 +7175,8 @@ time:	if (d->parent && (d->date < d->parent->date)) {
 	if (d->parent && (d->date == d->parent->date)) {
 		char	me[MAXPATH], parent[MAXPATH];
 
-		sccs_sdelta(me, d);
-		sccs_sdelta(parent, d->parent);
+		sccs_sdelta(s, d, me);
+		sccs_sdelta(s, d->parent, parent);
 		unless (strcmp(parent, me) < 0) {
 			fprintf(stderr,
 			    "\t%s: %s,%s have same date and bad key order\n",
