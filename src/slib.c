@@ -12937,18 +12937,23 @@ set_comments(sccs *s, delta *d)
 }
 
 private void
-diffComments(FILE *out, sccs *s, char *lrev, char *rrev)
+diffComments(char kind, FILE *out, sccs *s, char *lrev, char *rrev)
 {
 	int	i;
 
 	unless (rrev) rrev = "+";
 	if (streq(rrev, "edited")) rrev = "+";	/* XXX - what about edit??? */
 	set_diff(s, set_get(s, rrev), set_get(s, lrev), set_comments);
+	if ((kind == DF_IFDEF) && h) fputs("#ifdef !!COMMENTS!!\n", out);
 	EACH(h) {
 		fputs(h[i], out);
 	}
 	if (h) {
-		fputs("\n", out);
+		if (kind == DF_IFDEF) {
+			fputs("#endif !!COMMENTS!!\n", out);
+		} else {
+			fputs("\n", out);
+		}
 		freeLines(h, free);
 		h = 0;
 	}
@@ -12998,7 +13003,7 @@ doDiff(sccs *s, u32 flags, char kind, char *opts, char *leftf, char *rightf,
 				   spaces, s->gfile, lrev, rrev, error, spaces);
 			}
 			if (flags & DIFF_COMMENTS) {
-				diffComments(out, s, lrev, rrev);
+				diffComments(kind, out, s, lrev, rrev);
 			}
 			unless (flags & DIFF_HEADER) fprintf(out, "\n");
 			first = 0;
