@@ -127,12 +127,7 @@ nfs_parse(char *p)
 	*s = 0; r->host = strdup(p); p = s + 1; *s = ':';
 	unless (*p) p = ".";	/* we like having a path */
 
-	if (streq(r->host, sccs_gethost()) || streq(r->host, "localhost") ||
-	    streq(r->host, "localhost.localdomain")) {
-		    r->path = strdup(fullname(p, 0));
-	} else {
-		r->path = strdup(p);
-	}
+	r->path = strdup(p);
 	return (r);
 }
 
@@ -344,8 +339,7 @@ bkd(int compress, remote *r)
 		assert(r->host);
 		return (bkd_tcp_connect(r));
 	}
-	t = sccs_gethost();
-	if (r->host && (!t || !streq(t, r->host))) { 
+	if (r->host) { 
 		if ((r->type == ADDR_RSH) ||
 		    (r->type == ADDR_NFS &&
 			(t = getenv("PREFER_RSH")) && streq(t, "YES")) ||

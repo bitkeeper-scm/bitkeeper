@@ -68,35 +68,41 @@ echo OK
 if [ $DO_REMOTE = YES ]; then
  cd $HERE/copy
  echo $N Pull with explicit remote parent ............................$NL
- bk pull -t $Q localhost:$HERE/project || { echo failed; exit 1; }
+ bk pull -t $Q localhost:$HERE/project > /dev/null 2>&1 ||
+							{ echo failed; exit 1; }
  revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
  [ $revs -eq 2 ] || { echo failed; exit 1; }
  cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
  echo OK
  echo $N Pull with explicit remote parent and username ...............$NL
  cd $HERE/copy
- bk pull -t $Q $USER@localhost:$HERE/project || { echo failed; exit 1; }
+ bk pull -t $Q $USER@localhost:$HERE/project > /dev/null 2>& 1 ||
+							{ echo failed; exit 1; }
  revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
  [ $revs -eq 2 ] || { echo failed; exit 1; }
  cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
  echo OK
+ echo $N Pull with explicit local parent .............................$NL
+ cd $HERE/copy
+ HOSTNAME=`bk gethost -r`
+ bk pull -t $Q $HOSTNAME:$HERE/project > /dev/null 2>&1 || 
+							{ echo failed; exit 1; }
+ revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
+ [ $revs -eq 2 ] || { echo failed; exit 1; }
+ cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
+ echo OK
+ echo $N Pull with explicit local parent and username ................$NL
+ bk pull -t $Q $USER@$HOSTNAME:$HERE/project > /dev/null 2>&1 ||
+							{ echo failed; exit 1; }
+ revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
+ [ $revs -eq 2 ] || { echo failed; exit 1; }
+ echo OK
 else
  echo Pull with explicit remote parent ............................skipped
  echo Pull with explicit remote parent and username................skipped
+ echo Pull with explicit local parent .............................skipped
+ echo Pull with explicit local parent and username ................skipped
 fi
-echo $N Pull with explicit local parent .............................$NL
-cd $HERE/copy
-HOSTNAME=`bk gethost`
-bk pull -t $Q $HOSTNAME:$HERE/project || { echo failed; exit 1; }
-revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
-[ $revs -eq 2 ] || { echo failed; exit 1; }
-cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
-echo OK
-echo $N Pull with explicit local parent and username ................$NL
-bk pull -t $Q $USER@$HOSTNAME:$HERE/project || { echo failed; exit 1; }
-revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
-[ $revs -eq 2 ] || { echo failed; exit 1; }
-echo OK
 echo $N Pull from subdirectory of repository ........................$NL
 cd src
 bk pull -t $Q || { echo failed; exit 1; }
@@ -212,7 +218,8 @@ echo OK
 if [ $DO_REMOTE = YES -a X$NO_TTY = X ]; then
  echo $N Push with explicit remote parent ............................$NL
  cd $HERE/copy
- bk push $Q localhost:$HERE/project2 || { echo failed; exit 1; }
+ bk push $Q localhost:$HERE/project2 > /dev/null 2>&1 ||
+							{ echo failed; exit 1; }
  KEY2="`cd $HERE/project2 && bk prs -hd:KEY: -r+ ChangeSet`"
  [ "$KEY" = "$KEY2" ] || { echo no push; exit 1; }
  cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
