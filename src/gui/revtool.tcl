@@ -120,31 +120,36 @@ proc highlight {id type {rev ""}} \
 			    -outline $gc(rev.revOutline) \
 			    -fill $gc(rev.oldColor) \
 			    -tags old]
+		catch {$w(graph) raise gca old}
+		catch {$w(graph) raise local old}
+		catch {$w(graph) raise remote old}
 	    }
 	    new   {\
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
 		    -outline $gc(rev.revOutline) -fill $gc(rev.newColor) \
 		    -tags new]}
+		catch {$w(graph) raise gca new}
+		catch {$w(graph) raise local new}
+		catch {$w(graph) raise remote new}
 	    local   {\
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
 		    -outline $gc(rev.revOutline) -fill $gc(rev.localColor) \
 		    -width 2 -tags local]}
+		catch {$w(graph) raise local new}
+		catch {$w(graph) raise local old}
 	    remote   {\
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
 		    -outline $gc(rev.revOutline) -fill $gc(rev.remoteColor) \
 		    -width 2 -tags remote]}
+		catch {$w(graph) raise remote new}
+		catch {$w(graph) raise remote old}
 	    gca  {
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
 			    -outline black -width 2 -fill $gc(rev.gcaColor) \
 			    -tags gca]
+		catch {$w(graph) raise gca new}
+		catch {$w(graph) raise gca old}
 	    }
-	}
-
-	# make sure merge tags have priority over old/new
-	foreach mergeTag {local remote gca} {
-		foreach tag {new old anchor} {
-			catch {$w(graph) raise $mergeTag $tag}
-		}
 	}
 
 	$w(graph) raise anchor
@@ -210,19 +215,25 @@ proc orderSelectedNodes {reva revb} \
 		set rev2 [getRev new $reva]
 		set rev1 [getRev old $revb]
 	}
-
+	# make sure tag priorities still favor the merge tags
+  	foreach mergeTag {local remote gca} {
+  		foreach tag {new old anchor} {
+  			catch {$w(graph) raise $mergeTag $tag}
+  		}
+  	}
 }
 
 # Diff between a rev and its parent, or between the two highlighted
 # nodes
-proc diffParent {} \
+proc doDiff {{difftool 0}} \
 {
-	global w file rev1 rev2 anchor ttype
+	global w file rev1 rev2 anchor
 
 	set rev ""
 	set b ""
 	if {![info exists anchor] || $anchor == ""} return
 
+	# No second rev? Get the parent
 	if {![info exists rev2] || $rev2 == $rev1} {
 		set rev2 $anchor
 		set rev1 [exec bk prs -d:PARENT: -hr${anchor} $file]
@@ -236,7 +247,11 @@ proc diffParent {} \
 	if {$base == "ChangeSet"} {
 		csetdiff2
 	} else {
-		displayDiff $rev1 $rev2
+		if {$difftool} {
+			difftool $file $rev1 $rev2
+		} else {
+			displayDiff $rev1 $rev2
+		}
 	}
 
 	return
@@ -400,7 +415,7 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 		set fname [$win get $prevLine "$prevLine lineend"]
 		regsub -- {^  } $fname "" fname
 		if {($bindtype == "B1") && ($fname != "") && ($fname != "ChangeSet")} {
-			catch {exec bk revtool -l$rev $fname &} err
+			catch {exec bk revtool -r$rev $fname &} err
 		}
 		busy 0
 		return
@@ -1038,11 +1053,10 @@ proc getLeftRev { {id {}} } \
 	if {$id == ""} {
 		catch {pack forget $w(cframe); set comments_mapped 0}
 	}
-	$w(graph) delete new old anchor
+	unsetNodes
 	.menus.cset configure -state disabled -text "View Changeset "
-	.menus.difftool configure -state disabled
 	set rev1 [getRev "old" $id]
-	set anchor [getRev "anchor" $id]
+	setAnchor [getRev "anchor" $id]
 
 	highlightAncestry $rev1
 
@@ -1058,6 +1072,7 @@ proc getLeftRev { {id {}} } \
 			    -state normal \
 			    -text "View Changeset "
 		}
+		.menus.difftool configure -state normal
 	}
 	if {[info exists rev2]} { unset rev2 }
 }
@@ -1069,6 +1084,13 @@ proc getRightRev { {id {}} } \
 	$w(graph) delete new old
 	set rev2 [getRev "unknown" $id]
 
+	if {$rev2 == ""} {
+		# The assumption is, the user must have clicked somewhere 
+		# other than over a node
+		unsetNodes
+		return
+	}
+
 	if {$rev2 == $rev1} {
 		highlight $rev2 old
 	} else {
@@ -1076,7 +1098,7 @@ proc getRightRev { {id {}} } \
 	}
 
 	if {![info exists anchor]} {
-		set anchor $rev2
+		setAnchor $rev2
 	}
 
 	orderSelectedNodes $anchor $rev2
@@ -1094,6 +1116,26 @@ proc getRightRev { {id {}} } \
 			    -text "View Changesets"
 		}
 	}
+}
+
+proc setAnchor {rev} {
+	global anchor
+
+	set anchor $rev
+	if {$anchor == ""} return
+	.menus.difftool configure -state normal
+	highlight $anchor "anchor"
+}
+
+proc unsetNodes {} {
+	global rev1 rev2 anchor w
+
+	set rev1 ""
+	set rev2 ""
+	set anchor ""
+	$w(graph) delete anchor new old
+	.menus.difftool configure -state disabled
+	highlightAncestry ""
 }
 
 # Returns the revision number (without the -username portion)
@@ -1762,7 +1804,7 @@ proc widgets {} \
 	    button .menus.difftool -font $gc(rev.buttonFont) -relief raised \
 		-bg $gc(rev.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "Diff tool" -command "diff2 1" -state disabled
+		-text "Diff tool" -command "doDiff 1" -state disabled
 	    menubutton .menus.fmb -font $gc(rev.buttonFont) -relief raised \
 	        -indicatoron 1 \
 		-bg $gc(rev.buttonColor) \
@@ -1900,7 +1942,7 @@ proc widgets {} \
 	bind $w(graph) <3>		{ diff2 0; currentMenu; break }
 	bind $w(graph) <h>		"history"
 	bind $w(graph) <t>		"history tags"
-	bind $w(graph) <d>		"diffParent"
+	bind $w(graph) <d>		"doDiff"
 	bind $w(graph) <Button-2>	{ history; break }
 	bind $w(graph) <Double-2>	{ history tags; break }
 	bind $w(graph) <$gc(rev.quit)>	"done"
@@ -2055,7 +2097,6 @@ proc revtool {lfname {R {}}} \
 	if {[info exists rev2rev_name]} { unset rev2rev_name }
 	if {[info exists firstnode]} { unset firstnode }
 	if {[info exists firstrev]} { unset firstrev}
-	if {[info exists diffpair]} {unset diffpair}
 
 	set bad 0
 	set file [exec bk sfiles -g $lfname 2>$dev_null]
@@ -2126,18 +2167,20 @@ The file $lfname was last modified ($ago) ago."
  		highlight $rev2 "remote"
  		set rev1 [lineOpts $merge(l)]
  		highlight $rev1 "local"
-		set anchor $gca
-		highlight $gca anchor
+		setAnchor $gca
 	} else {
 		if {[info exists diffpair(left)] && ($diffpair(left) != "")} {
 			set rev1 [lineOpts $diffpair(left)]
 			set anchor $rev1
+			highlightAncestry $diffpair(left)
+			centerRev $rev1
+			setAnchor $rev1
 			highlight $rev1 "old"
-			highlight $anchor "anchor"
 		}
 		if {[info exists diffpair(right)] && ($diffpair(right) != "")} {
 			set rev2 [lineOpts $diffpair(right)]
 			highlight $rev2 "new"
+			orderSelectedNodes $anchor $rev2
 		}
 	}
 	set search(prompt) "Welcome"
@@ -2185,7 +2228,6 @@ proc arguments {} \
 		    }
 		    "^-l.*" {
 			set rev1 [string range $arg 2 end]
-			set anchor $rev1
 		    }
 		    "^-d.*" {
 			set dfile [string range $arg 2 end]
@@ -2292,13 +2334,12 @@ proc startup {} \
 		set merge(l) $rev1
 		set merge(r) $rev2
 	} elseif {$rev2 != ""} { 
-		set diffpair(right) $rev2 
+		set diffpair(left) $rev2
 	}
 	revtool $fname 
-	if {[info exists rev2] && ($rev2 != "")} {
-		set diffpair(right) $rev2
-		diff2 2
-	} 
+	if {[info exists diffpair(left)]} {
+		doDiff
+	}
 	if {[info exists dfile] && ($dfile != "")} {
 		printCanvas
 	}
