@@ -142,6 +142,8 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 	global curLine cdim gc file dev_null dspec rev2rev_name
 	global w rev1 srev errorCode
 
+	if {[info exists fname]} {unset fname}
+
 	# Keep track of whether we are being called from within the 
 	# file annotation text widget
 	set annotated 0
@@ -161,21 +163,21 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 	} else {
 		set curLine [$win index "@$x,$y linestart"]
 	}
-	# If warping on startup, ignore the line we are on
-	if {$srev != ""} {
-		set line ""
-	} else {
+	if {$srev == ""} {
 		set line [$win get $curLine "$curLine lineend"]
 	}
 	if {$srev != ""} {
+		set line ""
 		set rev $srev
-		set srev ""
 		catch {exec bk get -r$rev -g $file 2>$dev_null} err
 		if {[lindex $errorCode 2] == 1} {
-			puts "Error: rev ($rev) is not valid"
+			# XXX: Fix
+			#puts "file=($file)"
+			puts "Error: ($file) rev ($rev) is not valid"
 			return
 		}
 		set found [$w(ap) search -regexp "$rev," 1.0]
+		# Move the found line into view
 		if {$found != ""} {
 			set l [lindex [split $found "."] 0]
 			set curLine "$l.0"
@@ -200,6 +202,7 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 		# backwards up the screen until we find a line with a 
 		# revision number
 		regexp {^(.*)@([0-9]+\.[0-9.]+),.*} $line match fname rev
+		regexp {^\ \ ([0-9]+\.[0-9.]+)\ .*} $line match rev
 		while {![info exists rev]} {
 			set curLine [expr $curLine - 1.0]
 			if {$curLine == "0.0"} {
@@ -209,17 +212,38 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 				return
 			}
 			set line [$win get $curLine "$curLine lineend"]
+			#puts "line=($line)"
 			regexp {^(.*)@([0-9]+\.[0-9.]+),.*} \
 			       $line match fname rev
+			regexp {^\ \ ([0-9]+\.[0-9.]+)\ .*} \
+				$line match rev
 		}
 	}
 	$win tag remove "select" 1.0 end
 	$win tag add "select" "$curLine" "$curLine lineend + 1 char"
 	$win see $curLine
 
+	# If in cset prs output, get the filename and start a new histtool
+	# on that file.
+	#
+	# Assumes that the output of prs looks like:
+	#
+	# filename.c
+	#   1.8 10/09/99 .....
+	#
+	if {![info exists fname] && [info exists rev] && ($srev == "")} {
+		set prevLine [expr $curLine - 1.0]
+		set fname [$win get $prevLine "$prevLine lineend"]
+		#puts "fname=($fname) rev=($rev)"
+		if {($bindtype == "B1") && ($fname != "") && 
+		    ($fname != "ChangeSet")} {
+			catch {exec bk histtool -a $rev $fname &} err
+		}
+		return
+	}
+	set srev ""
 	set name [$win get $curLine "$curLine lineend"]
 	if {$name == ""} { puts "Error: name=($name)"; return }
-
 	if {[info exists rev2rev_name($rev)]} {
 		set revname $rev2rev_name($rev)
 	} else {
@@ -569,7 +593,7 @@ proc setScrollRegion {} \
 {
 	global cdim w
 
-	set bb [$w(graph) bbox date_line revision]
+	set bb [$w(graph) bbox date_line revision first]
 	set x1 [expr {[lindex $bb 0] - 10}]
 	set y1 [expr {[lindex $bb 1] - 10}]
 	set x2 [expr {[lindex $bb 2] + 20}]
@@ -1297,8 +1321,8 @@ proc widgets {fname} \
 	bind $w(graph) <Double-1>	{get "id"; break}
 	bind $w(graph) <h>		"history"
 	bind $w(graph) <t>		"history tags"
-	bind . <Button-2>		{history}
-	bind . <Double-2>		{history tags}
+	bind . <Button-2>		{history; break}
+	bind . <Double-2>		{history tags; break}
 	bind $w(graph) $gc(hist.quit)	"exit"
 	bind $w(graph) <s>		"sfile"
 	bind $w(graph) <Prior>		"$w(ap) yview scroll -1 pages"
@@ -1385,15 +1409,17 @@ proc histtool {fname R} \
 	} else {
 		wm title . "histtool: $proot: $file $R"
 	}
-	set Opts(line_time) "-R$R"
+	if {$srev != ""} {
+		set Opts(line_time) "-R$srev.."
+	} else {
+		set Opts(line_time) "-R$R"
+	}
 	# If valid time range give, do the graph
 	if {[listRevs "$file"] == 0} {
 		revMap "$file"
 		dateSeparate
 		setScrollRegion
 		set first [$w(graph) gettags $firstnode]
-		# If first is not 1.0, create a dummy node that indicates
-		# that there is more data to the left
 		history "-r$R"
 	} else {
 		set ago [exec bk prs -hr+ -d:AGE: $fname]
