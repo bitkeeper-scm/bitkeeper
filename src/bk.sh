@@ -1198,6 +1198,13 @@ fi
 # Run our stuff first if we can find it, else
 # we don't know what it is, try running it and hope it is out there somewhere.
 if [ -x ${BIN}$cmd -a ! -d ${BIN}$cmd ]
-then	exec ${BIN}$cmd "$@"
+then	for w in citool sccstool vitool fm fm3
+	do	if [ $cmd = $w ]
+		then	if [ -x ${BIN}wish ]
+			then	exec ${BIN}wish -f ${BIN}$cmd "$@"
+			fi
+		fi
+	done
+	exec ${BIN}$cmd "$@"
 else	exec $cmd "$@"
 fi
