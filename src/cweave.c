@@ -45,24 +45,6 @@
  *	write the data; in the patch case we need to strip off the leading
  *	"> "
  *	^AE <d->serial>
- * 
- * That's it.  And we can make it be a standalone thing so we can test it
- * by handing it a patch with just the cset data in it.  The interface
- * should be a routine which gets a pointer to an mmapped file and returns
- * a length which it consumed; this is nice for takepatch.
- *
- * Implementation notes: I'd make a 
- *	typedef struct loc {
- *		char	*data;
- *		u32	len;
- *	} loc;
- *
- * and then allocate a chunk of these when reading in the s.ChangeSet file.
- * The hard part is that you don't know how many are needed from the patch,
- * it would be cool if takepatch counted these and passed in the count.  If
- * not, we need to pass over the patch file and count them.  The total count
- * is the count in the patch plus the d->serial of first delta seen in the
- * s.ChangeSet file.
  */
 #include "system.h"
 #include "sccs.h"
@@ -257,23 +239,20 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 	 * Save dF info, used by cset_write() later
 	 * Note: meta delta have NULL dF
 	 */
-	if (dF) {
+	s->locs[serial].p = NULL;
+	s->locs[serial].len = 0;
+	s->locs[serial].isPatch = 1;
+	if (dF && dF->where) {
 		s->locs[serial].p = dF->where;
 		s->locs[serial].len = dF->size;
-		s->locs[serial].isPatch = 1;
 
 		/*
 		 * Fix up d->added
 		 */
-		if ((t = dF->where) != 0)  {
-			r = t + dF->size - 1;
-			while ( t <= r) if (*t++ == '\n') added++;
-			d->added = added - 1;
-		}
-	} else {
-		s->locs[serial].p = NULL;
-		s->locs[serial].len = 0;
-		s->locs[serial].isPatch = 1;
+		t = dF->where;
+		r = t + dF->size - 1;
+		while ( t <= r) if (*t++ == '\n') added++;
+		d->added = added - 1;
 	}
 
 	/*

@@ -599,9 +599,9 @@ send_patch_msg(remote *r, char rev_list[], int ret, char **envVar)
 		fprintf(opts.out, "Send done, waiting for remote\n");
 		if (r->type == ADDR_HTTP) {
 			fprintf(opts.out,
-				"Note: since httpd batch a large block of\n"
-				"output together before it send back a reply\n"
-				"This can take a while, please wait ...\n");
+				"Note: since httpd batches a large block of\n"
+				"output together before it sends back a reply,\n"
+				"this can take a while, please wait...\n");
 		}
 	}
 	return (0);
