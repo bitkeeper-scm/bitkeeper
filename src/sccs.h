@@ -574,6 +574,9 @@ typedef	struct sccs {
 	delta	*rstop;		/* end of range (1.5 - youngest) */
 	sum_t	 cksum;		/* SCCS chksum */
 	sum_t	 dsum;		/* SCCS delta chksum */
+	u32	added;		/* lines added by this delta (u32!) */
+	u32	deleted;	/* and deleted */
+	u32	same;		/* and unchanged */
 	off_t	sumOff;		/* offset of the new delta cksum */
 	time_t	gtime;		/* gfile modidification time */
 	MDBM	*mdbm;		/* If state & S_HASH, put answer here */
@@ -778,6 +781,7 @@ delta	*sccs_findDelta(sccs *s, delta *d);
 sccs	*sccs_init(char *filename, u32 flags, project *proj);
 sccs	*sccs_restart(sccs *s);
 sccs	*sccs_reopen(sccs *s);
+void	sccs_fitCounters(char *buf, int a, int d, int s);
 void	sccs_free(sccs *);
 void	sccs_freetree(delta *);
 void	sccs_close(sccs *);
@@ -801,7 +805,9 @@ void	sccs_pdelta(sccs *s, delta *d, FILE *out);
 char	*sccs_root(sccs *s);
 int	sccs_cd2root(sccs *, char *optional_root);
 delta	*sccs_key2delta(sccs *sc, char *key);
+int	sccs_keyunlink(char *key, project *proj, MDBM *idDB, MDBM *dirs);
 char	*sccs_impliedList(sccs *s, char *who, char *base, char *rev);
+void	sccs_mergeset(sccs *s, char *who, delta *d, delta *m);
 int	sccs_sdelta(sccs *s, delta *, char *);
 void	sccs_shortKey(sccs *s, delta *, char *);
 int	sccs_resum(sccs *s, delta *d, int diags, int dont);
@@ -1111,7 +1117,7 @@ int	onelink(char *s);
 int	isEffectiveDir(char *s);
 int	fileTypeOk(mode_t m);
 void	sccs_tagLeaf(sccs *s, delta *d, delta *md, char *tag);
-int	sccs_scompress(sccs *s);
+int	sccs_scompress(sccs *s, int flags);
 int	hasRootFile(char *gRoot, char *sRoot);
 int	mkBkRootIcon(char *path);
 int	unmkBkRootIcon(char *path);
