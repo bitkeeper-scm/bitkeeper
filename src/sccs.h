@@ -986,7 +986,7 @@ int     http_send(remote *, char *, size_t, size_t, char *, char *);
 char *	user_preference(char *what, char buf[MAXPATH]);
 int	bktemp(char *buf);
 char	*bktmpfile();	/* return a char* to a just created temp file */
-void	updLogMarker(int ptype);
+void	updLogMarker(int ptype, int verbose);
 char	*getRealCwd(char *, size_t);
 
 extern char *bk_vers;

@@ -178,7 +178,7 @@ unPublish(sccs *s, delta *d)
 }
 
 void
-updLogMarker(int ptype)
+updLogMarker(int ptype, int verbose)
 {
 	sccs	*s;
 	delta	*d;
@@ -189,6 +189,7 @@ updLogMarker(int ptype)
 	 * XXX TODO: We should mark the tip of each lod
 	 */
 	if (s = sccs_init(s_cset, INIT_NOCKSUM, 0)) {
+		assert(s->tree);
 		d = findrev(s, 0);
 		assert(d);
 		unPublish(s, d);
@@ -196,13 +197,29 @@ updLogMarker(int ptype)
 		d->ptype = ptype;
 		sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
 		sccs_free(s);
+		if (verbose) {
+			fprintf(stderr,
+				"Log marker updated: pending count = %d\n",
+				logs_pending(ptype, 0));
+		}
+	} else {
+		if (verbose) {
+			char buf[MAXPATH];
+
+			getcwd(buf, sizeof (buf));
+			fprintf(stderr,
+				"updLogMarker: cannot access %s, pwd=%s\n",
+				s_cset, buf);
+		}
 	}
 }
 
 private int
 needLogMarker(opts opts, remote *r)
 {
-	return (opts.metaOnly && streq(OPENLOG_URL, remote_unparse(r)));
+	return (opts.metaOnly && 
+		(streq(OPENLOG_URL, remote_unparse(r)) ||
+		 streq(OPENLOG_IP, remote_unparse(r))));
 }
 
 private void
@@ -351,7 +368,9 @@ ChangeSet file do not match.  Please check the pathnames and try again.\n");
 	/*
 	 * if lcsets > 0, we update the log marker in push part 2
 	 */
-	if ((lcsets == 0) && (needLogMarker(opts, r))) updLogMarker(0);
+	if ((lcsets == 0) && (needLogMarker(opts, r))) {
+		updLogMarker(0, opts.debug);
+	}
 	if ((lcsets == 0) || !opts.doit) return (0);
 	if ((rcsets || rtags) && !opts.metaOnly) {
 		return (opts.autopull ? 1 : -1);
@@ -610,7 +629,7 @@ push_part2(char **av, opts opts,
 	if (opts.debug) fprintf(stderr, "Remote terminated\n");
 
 	if (opts.metaOnly) {
-		if (needLogMarker(opts, r)) updLogMarker(0);
+		if (needLogMarker(opts, r)) updLogMarker(0, opts.debug);
 	} else {
 		unlink(CSETS_OUT);
 		rename(rev_list, CSETS_OUT);
