@@ -282,11 +282,12 @@ get_byte_count()
 	unless (bk_proj && bk_proj->root) return (0);
 	sprintf(buf, "%s/BitKeeper/log/byte_count", bk_proj->root);
 	f = fopen(buf, "r");
-	if (f) {
-		assert(sizeof(off_t) == 4);
-		fscanf(f, "%u", &byte_count);
-		fclose(f);
-		unlink(buf);
+	if (f && fgets(buf, sizeof(buf), f)) {
+		if (strlen(buf) > 11) {
+			fprintf(stderr, "Holy big transfer, Batman!\n");
+			return ((off_t)0xffffffff);
+		}
+		byte_count = strtoul(buf, 0, 10);
 	}
 	return (byte_count);
 }
