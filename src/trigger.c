@@ -69,6 +69,9 @@ trigger(char **av, char *when)
 	} else if (strneq(t, "remote push", 11)) {
 		what = "incoming";
 		event = "incoming push";
+	} else if (strneq(t, "remote rclone", 12)) {
+		what = "incoming";
+		event = "incoming rclone";
 	} else if (streq(t, "resolve") || streq(t, "remote resolve")) {
 		what = event = "resolve";
 	} else if (strneq(t, "clone", 5)) {

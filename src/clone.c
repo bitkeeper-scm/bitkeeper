@@ -2,7 +2,6 @@
  * Copyright (c) 2000, Andrew Chang & Larry McVoy
  */    
 #include "bkd.h"
-#include "bkd.h"
 
 /*
  * Do not change this sturct until we phase out bkd 1.2 support
@@ -19,14 +18,10 @@ typedef struct {
 private int	after(opts opts);
 private int	lod(opts opts);
 private int	clone(char **, opts, remote *, char *, char **);
-private int	consistency(opts opts);
 private void	parent(opts opts, remote *r);
-private void	rmEmptyDirs(opts opts);
 private int	sfio(opts opts, int gz, remote *r);
-private int	uncommitted(opts opts);
 private void	usage(void);
 private int	initProject(char *root);
-private int	uncommitted(opts opts);
 private void	usage(void);
 
 int
@@ -177,7 +172,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	}
 
 	/* remove any uncommited stuff */
-	ret = uncommitted(opts);
+	ret = rmUncommitted(opts.quiet);
 
 	/* set up correct lod while the revision number is accurate */
 	if (opts.rev) {
@@ -195,11 +190,11 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	if (opts.rev) ret |= after(opts);
 
 	/* clean up empty directories */
-	rmEmptyDirs(opts);
+	rmEmptyDirs(opts.quiet);
 
 	parent(opts, r);
 
-	if (ret) ret = consistency(opts);
+	if (ret) ret = consistency(opts.quiet);
 		
 	if (ret) {
 		fprintf(stderr,
@@ -239,7 +234,7 @@ done:	if (rc) {
 	 * Force a client side EOF before we wait for server side EOF.
 	 * Needed only if remote is running csh; csh have a fd lead
 	 * which cause it fail to send us EOF when we close stdout and stderr.
-	 * Csh only send us EOF and the bkd exit, yuck !!
+	 * Csh only send us EOF when the bkd exit, yuck !!
 	 */
 	disconnect(r, 1);
 
@@ -302,8 +297,8 @@ sfio(opts opts, int gzip, remote *r)
 	return (100);
 }
 
-private int
-uncommitted(opts opts)
+int
+rmUncommitted(int quiet)
 {
 	FILE	*in;
 	char	buf[MAXPATH+MAXREV];
@@ -313,7 +308,7 @@ uncommitted(opts opts)
 	int	i;
 	int	did = 0;
 
-	unless (opts.quiet) {
+	unless (quiet) {
 		fprintf(stderr,
 		    "Looking for, and removing, any uncommitted deltas...\n");
     	}
@@ -332,7 +327,7 @@ uncommitted(opts opts)
 		*s++ = 0;
 		cmds[i = 0] = "bk";
 		cmds[++i] = "stripdel";
-		if (opts.quiet) cmds[++i] = "-q";
+		if (quiet) cmds[++i] = "-q";
 		sprintf(rev, "-r%s", s);
 		cmds[++i] = rev;
 		cmds[++i] = buf;
@@ -402,13 +397,13 @@ lod(opts opts)
 	return (WEXITSTATUS(i));
 }
 
-private int
-consistency(opts opts)
+int
+consistency(int quiet)
 {
 	char	*cmds[10];
 	int	ret, i;
 
-	unless (opts.quiet) {
+	unless (quiet) {
 		fprintf(stderr, "Running consistency check ...\n");
 	}
 	cmds[i = 0] = "bk";
@@ -418,7 +413,7 @@ consistency(opts opts)
 	cmds[++i] = "-f";
 	cmds[++i] = 0;
 	unless ((ret = spawnvp_ex(_P_WAIT, "bk", cmds)) == 2) return (ret);
-	unless (opts.quiet) {
+	unless (quiet) {
 		fprintf(stderr, "Running consistency check again ...\n");
 	}
 	cmds[i-1] = 0;
@@ -444,14 +439,14 @@ parent(opts opts, remote *r)
 	free(p);
 }
 
-private void
-rmEmptyDirs(opts opts)
+void
+rmEmptyDirs(int quiet)
 {
 	FILE	*f;
 	int	n;
 	char	buf[MAXPATH], *p;
 
-	unless (opts.quiet) {
+	unless (quiet) {
 		fprintf(stderr, "Removing any directories left empty ...\n");
 	}
 	do {

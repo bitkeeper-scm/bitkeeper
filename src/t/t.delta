@@ -55,7 +55,7 @@ EOF
 cc -c hello.c
 sleep 1
 BK_FORCE_SFILE_MTIME=yes bk delta $Q -l -y"rev1" hello.c
-make -s hello  
+make -s hello > /dev/null 
 if [ ! -f hello ]; then echo failed; exit 1; fi
 echo OK
 fi #--------------------------------------------------------------------

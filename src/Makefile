@@ -35,7 +35,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o approve.o \
 	arrow_gif.o back_gif.o bk.o bkd.o bkd_cd.o \
 	bkd_client.o bkd_clone.o bkd_cmdtab.o bkd_http.o \
 	bkd_misc.o bkd_pull.o bkd_push.o bkd_pwd.o \
-	bkd_rootkey.o bkd_status.o bkd_version.o \
+	bkd_rclone.o bkd_rootkey.o bkd_status.o bkd_version.o \
 	bkpowered.o bkusers.o bkver.o cat.o changes.o \
 	check.o checksum.o clean.o cleanpath.o clone.o \
 	comments.o commit.o compress.o converge.o \
@@ -66,7 +66,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o approve.o \
 	port/sccs_getuser.o port/sccs_lockfile.o \
 	port/sccs_root.o port/sig.o port/socket2pipe.o \
 	port/spawn.o prs.o pull.o purify.o push.o pwd.o \
-	r2c.o range.o rcs.o rcs2sccs.o rcsparse.o \
+	r2c.o range.o rclone.o rcs.o rcs2sccs.o rcsparse.o \
 	receive.o renumber.o resolve.o \
 	resolve_binaries.o resolve_contents.o \
 	resolve_create.o resolve_filetypes.o \
@@ -580,6 +580,7 @@ bkd_misc.o:	bkd_misc.c $(B) $(H) $(Z)
 bkd_pull.o:	bkd_pull.c $(B) $(H) $(Z)
 bkd_push.o:	bkd_push.c $(B) $(H) $(Z)
 bkd_pwd.o:	bkd_pwd.c $(B) $(H) $(Z)
+bkd_rclone.o:	bkd_rclone.c $(B) $(H) $(Z)
 bkd_rootkey.o:	bkd_rootkey.c $(B) $(H) $(Z)
 bkd_status.o:	bkd_status.c $(B) $(H) $(Z)
 bkd_version.o:	bkd_version.c $(B) $(H) $(Z)
@@ -668,6 +669,7 @@ r2c.o:		r2c.c $(H) range.h
 randomBits.o:	port/randomBits.c $(H)
 range.o:	range.c $(H) range.h
 rcs.o:		rcs.c $(H)
+rclone.o:	rclone.c $(B) $(H) $(Z)
 rcsparse.o:	rcsparse.c $(H) rcs.h
 rcs2sccs.o:	rcs2sccs.c $(H) rcs.h
 receive.o:	receive.c $(H)
