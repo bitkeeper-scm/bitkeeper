@@ -1372,7 +1372,10 @@ cleanPath(char *path, char cleanPath[])
 	/* trim trailing '/' */
 	if ((*p == '/') && (p != top))  p--;
 	while (p >= top) { 	/* scan backward */
-		if ((p >= &top[2]) && (p[-2] == '/') &&
+		if (p == &top[1] && (p[-1] == '.') && (p[0] == '.')) {
+			dotCnt++; p = &p[-2];	/* process ".." in the front */
+			break;
+		} else if ((p >= &top[2]) && (p[-2] == '/') &&
 		    (p[-1] == '.') && (p[0] == '.')) {
 			dotCnt++; p = &p[-3];	/* process "/.." */
 		} else if ((p >= &top[1]) && (p[-1] == '/') &&
