@@ -15418,6 +15418,226 @@ smartMkdir(char *dir, int mode)
 	return ((mkdir)(dir, mode));
 }
 
+/* TIMESTAMP HANDLING */
+/*
+ * timestampDBChanged is set when entries in the database have changed but
+ * not deleted. This means the disk file may contain stale data if no
+ * existing entries are modified or new ones added. This does not matter
+ * as the checks that caused the entry to be deleted will fail next time
+ */
+private int timestampDBChanged = 0;
+
+/*
+ * we need to parse the timestamp file. Its format is:
+ * relative/file/path gfile_mtime gfile_size permissions sfile_mtime sfile_size
+ *
+ * This must be parsed backwards to cope with spaces in file names
+ */
+private int
+parseTimestamps(char *buf, tsrec *ts)
+{
+	char	*rover;
+
+	/* parse sfile_size */
+	rover = strrchr(buf, ' ');
+	if (!rover) return 0;	/* bogus entry */
+	ts->sfile_size = strtoul(rover + 1, 0, 0);
+	*rover = '\0';
+
+	/* parse sfile_mtime */
+	rover = strrchr(buf, ' ');
+	if (!rover) return 0;	/* bogus entry */
+	ts->sfile_mtime = strtoul(rover + 1, 0, 0);
+	*rover = '\0';
+
+	/* parse permissions */
+	rover = strrchr(buf, ' ');
+	if (!rover) return 0;	/* bogus entry */
+	ts->permissions = strtoul(rover + 1, 0, 0);
+	*rover = '\0';
+
+	/* parse gfile size */
+	rover = strrchr(buf, ' ');
+	if (!rover) return 0;	/* bogus entry */
+	ts->gfile_size = strtoul(rover + 1, 0, 0);
+	*rover = '\0';
+
+	/* parse sfile_mtime */
+	rover = strrchr(buf, ' ');
+	if (!rover) return 0;	/* bogus entry */
+	ts->gfile_mtime = strtoul(rover + 1, 0, 0);
+	*rover = '\0';
+
+	/* now got the relative path name to file at the start */
+}
+
+/*
+ * generate a timestamp database - cannot use loadDB as it can't cope with
+ * this format - or I couldn't figure out how! (andyc).
+ */
+MDBM*
+generateTimestampDB(project *p)
+{
+	/* want to use the timestamp database */
+	FILE	*f = 0;
+	MDBM	*db;
+	char	*tsname;
+	char	buf[MAXLINE];
+	tsname = aprintf("%s/BitKeeper/etc/timestamps", p->root);
+
+	db = mdbm_mem();
+	assert(db);
+	if (f = fopen(tsname, "r")) {
+		while (fnext(buf, f)) {
+			tsrec	ts;
+			if (parseTimestamps(buf, &ts)) {
+				datum k;
+				datum v;
+				k.dptr = buf;
+				k.dsize = strlen(buf);
+				v.dptr = (char*) &ts;
+				v.dsize = sizeof(ts);
+				mdbm_store(db, k, v, MDBM_INSERT);
+			} else
+				/* the database has invalid information in it
+				 * so get it regenerated
+				 */
+				timestampDBChanged = 1;
+		}
+		fclose(f);
+	}
+	free(tsname);
+	return db;
+}
+
+void
+dumpTimestampDB(project *p, MDBM* db)
+{
+	FILE	*f = 0;
+	char	*tsname;
+	kvpair	kv;
+	int	fh;
+
+	if (!timestampDBChanged) return;
+
+	tsname = aprintf("%s/BitKeeper/etc/timestamps", p->root);
+	f = fopen(tsname, "w");
+	if (!f) {
+		free(tsname);
+		return; /* leave stale timestamp file there */
+	}
+	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
+		tsrec	*ts = (tsrec*) kv.val.dptr;
+		assert(kv.val.dsize == sizeof(*ts));
+		fwrite(kv.key.dptr, sizeof(char), kv.key.dsize, f);
+		fprintf(f, " %ld %ld 0%o %ld %ld\n",
+			ts->gfile_mtime, ts->gfile_size,
+			ts->permissions, ts->sfile_mtime, ts->sfile_size);
+		if (ferror(f)) {
+			/* some error writing the timestamp db so delete it */
+			unlink(tsname);
+			break;
+		}
+	}
+	free(tsname);
+	fclose(f);
+}
+
+/*
+ * timeMatch checks our file of timestamps against the current timestamps
+ * of the given file
+ */
+int
+timeMatch(char *gfile, char *sfile, MDBM *timestamps)
+{
+	datum	k;
+	datum	v;
+	tsrec	*ts;
+	struct	stat	sb;
+
+	k.dptr = gfile;
+	k.dsize = strlen(gfile);
+	v = mdbm_fetch(timestamps, k);
+	if (v.dsize == 0) return 0;	/* no entry for file */
+	assert(v.dsize == sizeof(*ts));
+	ts = (tsrec*) v.dptr;
+
+	if (lstat(gfile, &sb) != 0) return 0;	/* might not exist */
+
+	if (sb.st_mtime != ts->gfile_mtime
+	    || sb.st_size != ts->gfile_size
+	    || sb.st_mode != ts->permissions)
+		return 0;		    /* gfile doesn't match */
+
+	if (lstat(sfile, &sb) != 0) {
+		/* We should never get here */
+		perror(sfile);
+		return 0;
+	}
+	if (sb.st_mtime != ts->sfile_mtime || sb.st_size != ts->sfile_size)
+		return 0;		    /* sfile doesn't match */
+
+	/* as far as we're concerned, the file hasn't changed */
+	return 1;
+}
+
+void
+updateTimestampDB(char *gfile, char *sfile, MDBM *timestamps, int different)
+{
+	datum	k;
+	datum	v;
+	tsrec	ts;
+	struct	stat	sb;
+	const time_t one_week = 7 * 24 * 60 * 60;   /* # of seconds in week */
+	static time_t trust_window = 0;
+	time_t now;
+
+	if (!trust_window) {
+		char *p = user_preference("trust_window");
+		trust_window = strtoul(p, 0, 0);
+		if (!trust_window) trust_window = one_week;
+	}
+
+	k.dptr = gfile;
+	k.dsize = strlen(gfile);
+
+	if (different) {
+		mdbm_delete(timestamps, k);
+		return;
+	}
+		
+	if (lstat(gfile, &sb) != 0) return; /* might not exist */
+	ts.gfile_mtime = sb.st_mtime;
+	ts.gfile_size = sb.st_size;
+	ts.permissions = sb.st_mode;
+
+	if (lstat(sfile, &sb) != 0) {
+		/* We should never get here */
+		perror(sfile);
+		return;
+	}
+	ts.sfile_mtime = sb.st_mtime;
+	ts.sfile_size = sb.st_size;
+
+	now = time(0);
+	if ((now - ts.gfile_mtime) < trust_window)
+		mdbm_delete(timestamps, k);
+	else {
+		v = mdbm_fetch(timestamps, k);
+		if (v.dsize == 0) {
+			/* no entry for file */
+			v.dptr = (char*) &ts;
+			v.dsize = sizeof(ts);
+			mdbm_store(timestamps, k, v, MDBM_INSERT);
+		} else {
+			v.dptr = (char*) &ts;
+			v.dsize = sizeof(ts);
+			mdbm_store(timestamps, k, v, MDBM_REPLACE);
+		}
+		timestampDBChanged = 1;
+	}
+}
+
 #if	defined(linux) && defined(sparc)
 #undef	fclose
 
