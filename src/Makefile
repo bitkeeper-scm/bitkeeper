@@ -106,6 +106,8 @@ p:
 	$(MAKE) CFLAGS="-O2 -fomit-frame-pointer $(CF)" all
 ndebug:
 	$(MAKE) CFLAGS="-O2 -DNDEBUG -fomit-frame-pointer" all
+stats:
+	$(MAKE) CFLAGS="-O2 -DPURIFY_STATS -fomit-frame-pointer" all
 g:
 	$(MAKE) CFLAGS="-g" all
 gO:
