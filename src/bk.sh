@@ -280,48 +280,6 @@ __mail() {
 	fi
 }
 
-_unwrap() {
-	while read x
-	do	case "$x" in
-		    "# Patch vers:"*)
-			(echo "$x"; cat)
-			exit $?
-			;;
-		    "## Wrapped with "*)
-			set `echo "$x"`
-			WRAP=$4
-			if [ ! -x ${BIN}un${WRAP}wrap ]
-			then	echo \
-			    "bk receive: don't have ${WRAP} wrappers" > /dev/tty
-				exit 1
-			fi
-			${BIN}un${WRAP}wrap
-			;;
-		esac
-	done
-}
-
-_receive() {
-	OPTS=
-	NEW=NO
-	while getopts aciv opt
-	do	case "$opt" in
-		    a) OPTS="-a $OPTS";;
-		    c) OPTS="-c $OPTS";;
-		    i) OPTS="-i $OPTS"; NEW=YES;;
-		    v) OPTS="-v $OPTS";;
-		esac
-	done
-	shift `expr $OPTIND - 1`
-	if [ X$1 = X -o X$2 != X ]
-	then	echo "usage: bk receive [takepatch options] pathname"
-	fi
-	if [ ! -d $1 -a $NEW = YES ]; then mkdir -p $1; fi
-	cd $1
-	_unwrap | ${BIN}takepatch $OPTS
-	exit $?
-}
-
 # Advertise this repository for remote lookup
 _advertise() {
 	FILE=${BIN}tmp/advertised
