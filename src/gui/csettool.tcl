@@ -446,8 +446,23 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		-font $gc(cset.buttonFont) -text "Current diff" \
 		-command dot
 
+	    menubutton .menu.shortcuts \
+	        -bg $gc(cset.buttonColor) \
+    		-highlightthickness 1 \
+    		-padx $gc(px) \
+		-pady $gc(py) \
+    		-borderwidth 1 \
+		-relief raised \
+    		-indicatoron 1 \
+		-font $gc(cset.buttonFont) \
+		-text " Shortcuts" \
+    		-menu .menu.shortcuts.menu
+	    menu .menu.shortcuts.menu \
+	        -title "Csettool shortcuts menu" \
+    		-borderwidth 1
 	    pack .menu.quit -side left -fill y
 	    pack .menu.help -side left -fill y
+	    pack .menu.shortcuts -side left -fill y
 	    pack .menu.mb -side left -fill y
 	    pack .menu.prevFile -side left -fill y
 	    pack .menu.fmb -side left -fill y
@@ -491,6 +506,63 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	foreach w {.diffs.left .diffs.right} {
 		bindtags $w {all Text .}
 	}
+
+	# populate shortcut menu; this needs to be done after
+	# the bindings are created, as we use the bindings 
+	# themselves to define the menu items
+	populateShortcutMenu .menu.shortcuts.menu cset {
+		all <Control-p> 	{Control-p}
+			{Go to previous file}
+		all <Control-n>	{Control-n}
+			{Go to next file}
+		-- --  -- --
+		all <p>		{p}
+			{Go to previous diff}
+		all <space>		{n or space}
+			{Go to next diff}
+		all <period> 		{.}
+			{Center current diff on screen}
+		-- --  -- --
+		all <Home>		{Home}
+		        {Scroll to top}
+		all <End>		{End}
+			{Scroll to the bottom}
+		all <Prior>		{PageUp or Control-b}
+			{Scroll up 1 screen}
+		all <Next>		{PageDown or Control-f}
+			{Scroll down 1 screen}
+		all <Up>		{Up Arrow or Control-y}
+			{Scroll up 1 line}
+		all <Down>		{Down Arrow or Control-e}
+			{Scroll down 1 line}
+		all <Right>		{Right Arrow}
+			{Scroll to the right}
+		all <Left>		{Left Arrow}
+			{Scroll to the left}
+		-- --  -- --
+		all <Alt-Up>		{Alt-Up Arrow}
+			{Make diffs window one line bigger}
+		all <Alt-Down>	{Alt-Down Arrow}
+			{Make diffs window one line smaller}
+		-- --  -- --
+		.	<question> ? 
+			{Reverse search}
+		. 	<slash> / 
+			{Forward search}
+		all 	<p> p 
+			{Search for previous occurance}
+		all 	<n> n 
+			{Search for next occurance}
+		-- --  -- --
+		all  _quit_ {} {Quit}
+	}
+
+	# Whenever notification is sent that the current diff has
+	# changed, the shortcut menu needs to be updated. 
+	bind . <<DiffChanged>> {
+		updateShortcutMenu
+	}
+
 	computeHeight "diffs"
 
 	.l.filelist.t tag configure select -background $gc(cset.selectColor) \
@@ -508,6 +580,27 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	. configure -background $gc(BG)
 	wm deiconify .
 	focus .l.filelist
+}
+
+proc updateShortcutMenu {} \
+{
+	global lastDiff diffCount lastFile fileCount
+
+	if {$lastFile == 1} {
+		.menu.shortcuts.menu entryconfigure "Go to previous file" \
+		    -state disabled
+	} else {
+		.menu.shortcuts.menu entryconfigure "Go to previous file" \
+		    -state normal
+	}
+
+	if {$lastFile == $fileCount} {
+		.menu.shortcuts.menu entryconfigure "Go to next file" \
+		    -state disabled
+	} else {
+		.menu.shortcuts.menu entryconfigure "Go to next file" \
+		    -state normal
+	}
 }
 
 # Set up keyboard accelerators.

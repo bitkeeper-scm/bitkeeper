@@ -170,6 +170,38 @@ proc _parray {a {pattern *}} \
 	return $answer
 }
 
+proc populateShortcutMenu {menu app menuspec} \
+{
+	global gc
+
+	foreach {widget event accelerator label} $menuspec {
+
+		if {[string match {$*} $widget]} {
+			set widget [uplevel subst $widget]
+		}
+		if {$event == "--"} {
+			$menu add separator
+		} else {
+
+			if {$event == "_quit_"} {
+				set accelerator $gc($app.quit)
+				set event <$accelerator>
+				set cmd [bind $widget $event]
+			} else {
+				set cmd [bind $widget $event]
+				regsub -all {(; *)?break} $cmd {} cmd
+				if {[regexp break $cmd]} {
+					puts "feh: $cmd"
+				}
+			}
+			$menu add command \
+			    -label $label \
+			    -accelerator $accelerator \
+			    -command $cmd
+		}
+	}
+}
+
 # usage: constrainSize ?toplevel? ?maxwidth? ?maxheight?
 # Adds code to constrain the size of the toplevel to the width of the
 # display and 95% of the height
