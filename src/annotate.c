@@ -26,7 +26,13 @@ annotate_main(int ac, char **av)
 		system("bk help annotate");
 		return (1);
 	}
-	if (t = getenv("BK_ANNOTATE")) flags = annotate_args(flags, t);
+	if (t = getenv("BK_ANNOTATE")) {
+		if ((flags = annotate_args(flags, t)) == -1) {
+			fprintf(stderr,
+			    "annotate: bad flags in $BK_ANNOTATE\n");
+			return (1);
+		}
+	}
 	while ((c = getopt(ac, av, "A;a;c;kr;")) != -1) {
 		switch (c) {
 		    case 'A':

@@ -61,7 +61,7 @@ get_main(int ac, char **av)
 			break;
 		    case 'B': skip_bin = 1; break;
 		    case 'c': cdate = optarg; break;		/* doc 2.0 */
-		    case 'C': getMsg("get_C", 0, 0, stdout); exit(0);
+		    case 'C': getMsg("get_C", 0, 0, stdout); return (1);
 		    case 'D': getdiff++; break;			/* doc 2.0 */
 		    case 'l':					/* doc 2.0 co */
 		    case 'e': flags |= GET_EDIT; break;		/* doc 2.0 */
@@ -169,7 +169,7 @@ onefile:	fprintf(stderr,
 			}
 		}
 		unless (HASGRAPH(s)) {
-			if (!(s->state & S_SFILE)) {
+			unless (HAS_SFILE(s)) {
 				verbose((stderr, "%s: %s doesn't exist.\n",
 				    prog, s->sfile));
 			} else {
@@ -179,7 +179,7 @@ onefile:	fprintf(stderr,
 			errors = 1;
 			continue;
 		}
-		if (skip_bin && (s->encoding & E_BINARY)) {
+		if (skip_bin && IS_BINARY(s)) {
 			sccs_free(s);
 			continue;
 		}
@@ -302,7 +302,7 @@ annotate_args(int flags, char *args)
 		    case 'O': flags |= GET_LINENAME; break;
 		    case 'u': flags |= GET_USER; break;
 		    default:
-			flags = -1;
+			return (-1);
 		}
 		++args;
 	}

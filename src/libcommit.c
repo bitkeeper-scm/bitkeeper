@@ -107,7 +107,7 @@ status(int verbose, FILE *f)
 			fprintf(f, "User:\t%s", buf);
 		}
 		fclose(f1);
-		sprintf(buf, "bk extras > %s", tmp_file);
+		sprintf(buf, "bk sfiles -x > %s", tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) {
@@ -132,7 +132,7 @@ status(int verbose, FILE *f)
 	} else {
 		fprintf(f,
 		    "%6d people have made deltas.\n", bkusers(0, 0, 0));
-		f1 = popen("bk -ESr", "r");
+		f1 = popen("bk sfiles -ES", "r");
 		while (fgets(buf, sizeof (buf), f1)) fputs(buf, f);
 		pclose(f1);
 	}

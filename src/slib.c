@@ -6300,6 +6300,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 		if (flags&GET_USER) len += s->userLen + 1;
 		if (flags&GET_REVNUMS) len += s->revLen + 1;
 		if (flags&GET_LINENUM) len += 7;
+		if (flags&GET_LINENAME) len += 37;
 		len += 2;
 		align[0] = 0;
 		while (len++ % 8) strcat(align, " ");
@@ -6706,7 +6707,7 @@ getLinkBody(sccs *s,
 		}
 		if (flags & GET_PREFIX) {
 			char	*name = 0;
-			
+
 			assert(d->pathname);
 			if (flags & GET_MODNAME) name = basenm(d->pathname);
 			if (flags & GET_RELPATH) name = d->pathname;

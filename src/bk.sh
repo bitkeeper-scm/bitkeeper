@@ -1414,29 +1414,15 @@ _install()
 }
 
 _tclsh() {
-	PLATFORM=`uname -s | awk -F_ '{print $1}'`
 	TCLSH=`bk bin`/gui/bin/tclsh
-	if [ $PLATFORM == "MINGW32" ]; then
-		TCLSH=`win2msys $TCLSH`
-	fi
+	test "X$OSTYPE" = "Xmsys" && TCLSH=`win2msys $TCLSH`
 	exec "$TCLSH" "$@"
 }
 
 _wish() {
-	PLATFORM=`uname -s | awk -F_ '{print $1}'`
 	WISH=`bk bin`/gui/bin/bkgui
-	if [ $PLATFORM == "MINGW32" ]; then
-		WISH=`win2msys $WISH`
-	fi
+	test "X$OSTYPE" = "Xmsys" && WISH=`win2msys $WISH`
 	exec "$WISH" "$@"
-}
-
-_gui() {
-	_bkgui "$@"
-}
-
-_bkgui() {
-	_wish "$@"
 }
 
 _conflicts() {
@@ -1468,8 +1454,7 @@ _conflicts() {
 	bk gfiles "$@" | grep -v '^ChangeSet$' | bk prs -hnr+ \
 	-d'$if(:RREV:){:GPN:|:LPN:|:RPN:|:GFILE:|:LREV:|:RREV:|:GREV:}' - | \
 	bk _sort | while IFS='|' read GPN LPN RPN GFILE LOCAL REMOTE GCA
-	do	export GFILE LPN RPN GPN LOCAL REMOTE GCA
-		if [ "$GFILE" != "$LPN" ]
+	do	if [ "$GFILE" != "$LPN" ]
 		then	PATHS="$GPN (renamed) LOCAL=$LPN REMOTE=$RPN"
 		else	test "$GFILE" = "$LPN" || {
 				echo GFILE=$GFILE LOCALPATH=$LPN
@@ -1481,7 +1466,7 @@ _conflicts() {
 		if [ $SHORTLIST -eq 1 ]; then
 			echo $PATHS
 		else
-			bk _conflict 
+			__conflict 
 		fi
 		if [ $DIFF -eq 1 ]; then
 			bk diffs -r${LOCAL}..${REMOTE} "$GFILE"

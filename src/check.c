@@ -135,7 +135,7 @@ check_main(int ac, char **av)
 		fprintf(stderr, "ERROR: %s is missing, aborting.\n", s_cset);
 		exit(1);
 	}
-retry:	unless (cset = sccs_init(s_cset, flags)) {
+retry:	unless ((cset = sccs_init(s_cset, flags)) && HASGRAPH(cset)) {
 		fprintf(stderr, "Can't init ChangeSet\n");
 		exit(1);
 	}
