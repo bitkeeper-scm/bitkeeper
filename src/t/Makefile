@@ -4,7 +4,7 @@
 # %K%
 all: 
 	if [ ! -f t001 ]; then bk co -q; fi
-	doit
+	./doit
 
 clean:
 	bk clean

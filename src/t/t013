@@ -99,9 +99,21 @@ B=`chksum < gzipuu`
 if [ $A -ne $B ]; then echo Failed - chksums $A $B differ.; exit 1; fi
 echo OK
 echo $N Trying to check in some gzipped data ........$NL
-ls > gzipped
+# This creates a file of approximately 86kB, 16kB compressed.
+# We need a file this large so all internal buffers will overflow
+# at least once.
+for h in 1 2 3 4 5 6 7 8 9 0
+do for i in q w e r t y u i o p
+do for j in a s d f g h j k l
+do for k in z x c v b n m
+do	echo $h $i $j $k $i $j $k >>gzipped
+done
+done
+done
+done
 cp gzipped data
 ci -i $Q gzipped
+cp SCCS/s.gzipped SCCS/s.ref
 admin $Q -Z gzipped
 co -l $Q gzipped
 grep -q '^.f e 4$' SCCS/s.gzipped
@@ -109,6 +121,13 @@ if [ $? -ne 0 ]; then echo Wrong encoding.; exit 1; fi
 cmp -s data gzipped
 if [ $? -ne 0 ]; then echo Failed - files differ.; diff data gzipped; exit 1; fi
 echo OK
+echo $N "admin -Z; admin -U should be a no-op........."$NL
+cp SCCS/s.gzipped SCCS/s.cmp
+admin $Q -U cmp
+cmp SCCS/s.cmp SCCS/s.ref
+if [ $? -ne 0 ]; then echo Failed - files differ.; diff SCCS/s.cmp SCCS/s.ref; exit 1; fi
+echo OK
+rm -f SCCS/s.cmp SCCS/s.ref
 echo $N Trying to change some gzipped data ..........$NL
 ls -l > gzipped
 cp gzipped ll
@@ -117,7 +136,7 @@ co $Q gzipped
 cmp -s ll gzipped
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
-echo $N Trying to clean a gzipped data ..............$NL
+echo $N Trying to clean gzipped data ..............$NL
 co $Q -l gzipped
 clean gzipped
 if [ $? -ne 0 ]; then echo Clean failed ; exit 1; fi
