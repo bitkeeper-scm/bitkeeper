@@ -1,5 +1,5 @@
 # difflib - view differences; loosely based on fmtool
-# Copyright (c) 1999-200 by Larry McVoy; All rights reserved
+# Copyright (c) 1999-2000 by Larry McVoy; All rights reserved
 # %A% %@%
 
 proc next {} \
@@ -238,67 +238,69 @@ proc sdiff {L R} \
 	return [open "| $sdiffw \"$dotL\" \"$dotR\""]
 }
 
-# Displays the flags, modes, path, and encoding for files so that the
-# user can tell whether the left and right file have been modified if
-# the diffs line shows 0 diffs
+# Displays the flags, modes, and path for files so that the
+# user can tell whether the left and right file have been 
+# modified, even when the diffs line shows 0 diffs
+#
+# Also, highlight the differences between the info lines
 #
 proc displayInfo {lfile rfile {parent {}} {stop {}}} \
 {
 	
 	global app gc
 
+	# Use to keep track of whether a file is a bk file or not so that 
+	# we don't bother trying to diff the info lines if not needed.
+	set bkfile(left) 1
+	set bkfile(right) 1
+
 	.diffs.left tag configure "select" -background $gc($app.infoColor)
 	.diffs.right tag configure "select" -background $gc($app.infoColor)
+	# 1.0 files do not have a mode line. 
+	# XXX: Ask lm if x.0 files have mode lines...
 	set dspec1 "{-d:DPN:\n\tFlags = :FLAGS:\n\tMode  = :RWXMODE:\n}"
 	set dspec2 "{-d:DPN:\n\tFlags = :FLAGS:\n}"
 
-	catch {set f [open "| bk sfiles -g \"$lfile\"" r]} err
-	if { ([gets $f fname] <= 0)} {
-		set ltext "Not a BitKeeper revision controlled file"
-	} else {
-		#set ltext "$lfile"
-		if {$parent != "1.0"} {
-			set p [open "| bk prs -hr$parent $dspec1 \"$lfile\""]
+	set files [list left $lfile $parent right $rfile $stop]
+	foreach {side f r} $files {
+		catch {set fd [open "| bk sfiles -g \"$f\"" r]} err
+		if { ([gets $fd fname] <= 0)} {
+			set text($side) \
+			    "Not a BitKeeper revision controlled file"
+			set bkfile($side) 0
 		} else {
-			set p [open "| bk prs -hr$parent $dspec2 \"$lfile\""]
-		}
-		while { [gets $p line] >= 0 } {
-			if {![info exists ltext]} {
-				set ltext "$line"
+			#set ltext "$lfile"
+			if {$r != "1.0"} {
+				set p [open "| bk prs -hr$r $dspec1 \"$f\""]
 			} else {
-				set ltext "$ltext\n$line"
+				set p [open "| bk prs -hr$r $dspec2 \"$f\""]
 			}
-			#puts stderr "ltext=($ltext)"
-		}
-		catch {close $p}
-	}
-	catch {set f [open "| bk sfiles -g \"$rfile\"" r]} err
-	if { ([gets $f fname] <= 0)} {
-		set rtext "Not a BitKeeper revision controlled file"
-	} else {
-		#set rtext "$rfile"
-		if {$parent != "1.0"} {
-			set p [open "| bk prs -hr$stop $dspec1 \"$rfile\""]
-		} else {
-			set p [open "| bk prs -hr$stop $dspec2 \"$rfile\""]
-		}
-		while { [gets $p line] >= 0 } {
-			if {![info exists rtext]} {
-				set rtext "$line"
-			} else {
-				set rtext "$rtext\n$line"
+			while { [gets $p line] >= 0 } {
+				if {![info exists text($side)]} {
+					set text($side) "$line"
+				} else {
+					set text($side) "$text($side)\n$line"
+				}
 			}
-			#puts stderr "rtext=($rtext)"
+			catch {close $p}
 		}
-		catch {close $p}
+		catch {close $fd}
 	}
-	#puts stderr "R=($rfile) L=($lfile) parent=($parent) stop=($stop)"
 	.diffs.left configure -state normal
 	.diffs.right configure -state normal
 	.diffs.left delete 1.0 end
 	.diffs.right delete 1.0 end
-	.diffs.left insert end "$ltext\n" select
-	.diffs.right insert end "$rtext\n" select
+	.diffs.left insert end "$text(left)\n" select
+	.diffs.right insert end "$text(right)\n" select
+	# Pad out info lines
+	if {($bkfile(left) == 0) && ($bkfile(right) == 1)} {
+		.diffs.left insert end "\n\n" select
+	}
+	if {($bkfile(left) == 1) && ($bkfile(right) == 0)} {
+		.diffs.right insert end "\n\n" select
+	}
+	# XXX: Check differences between the info lines
+	return
 }
 
 proc readFiles {L R {Ln {}} {Rn {}}} \

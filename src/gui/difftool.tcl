@@ -228,7 +228,7 @@ proc getRev {file rev checkMods} \
 	catch {close $f}
 	if {$checkMods} {
 		set f [open "| bk sfiles -gc \"$file\"" r]
-		if { ([gets $f dummy] <= 0)} {
+		if {([gets $f dummy] <= 0)} {
 			puts "$file is the same as the checked in version."
 			exit 1
 		}
@@ -266,7 +266,6 @@ proc getFiles {} \
 	if {$argc > 3} { usage }
 	set files [list]
 	set tmps [list]
-	set cfiles ""
 	set rev1 ""
 	set rev2 ""
 
@@ -274,47 +273,47 @@ proc getFiles {} \
 	#puts "argc=($argc) argv=($argv)"
 	if {$argc == 0} {
 		set fd [open "|bk sfiles -gcvU"]
-		while { [gets $fd str] >= 0} {
+		# Sample output from 'bk sfiles -gcvU'
+		# lc   sane.c
+		# lc   gui/difflib.tcl
+		while {[gets $fd str] >= 0} {
 			set fname [string range $str 5 [string length $str]]
 			#puts "fname=($fname)"
-			set cfiles [concat $cfiles [list "$fname"]]
 			set rfile $fname
 			set rname $rfile
 			set lfile [getRev $rfile "+" 1]
 			set lname "$rfile"
 			lappend tmps $lfile
-			eval lappend files {"$rfile $rname $lfile $lname"}
+			set t "$lfile $lname $rfile $rname +"
+			lappend files $t
 		}
-		#puts "cfiles=($cfiles)"
-	} elseif {$argc == 1} { ;# bk difftool file
-		if {$argv == "-"} {
+	} elseif {$argc == 1} {
+		if {$argv == "-"} { ;# files from stdin -- typically from sfiles
 			while {[gets stdin fname] >= 0} {
 				if {$fname != ""} {
-					set cfiles \
-					    [concat $cfiles [list "$fname"]]
 					set rfile $fname
 					set rname $rfile
 					set lfile [getRev $rfile "+" 1]
 					set lname "$rfile"
-					set lname "$rfile"
-					lappend tmps $lfile
-					if {[checkFiles $lfile $rfile]} {
-						eval lappend files \
-						    {"$rfile $rname $lfile $lname"}
-					}
 					set lnorev $rfile
 					set rnorev $rfile
 					set rev1 "+"
+					lappend tmps $lfile
+					if {[checkFiles $lfile $rfile]} {
+						set t \
+						    "$lfile $lname $rfile $rname +"
+						lappend files $t
+					}
 				}
 			}
-		} else {
+		} else { ;# bk difftool file
 			set rfile [lindex $argv 0]
 			set rname $rfile
 			set lfile [getRev $rfile "+" 1]
 			set lname "$rfile"
 			if {[checkFiles $lfile $rfile]} {
-				eval lappend files \
-				    {"$rfile $rname $lfile $lname"}
+				set t "$lfile $lname $rfile $rname +"
+				lappend files $t
 			}
 			lappend tmps $lfile
 			set lnorev $rfile
@@ -329,13 +328,13 @@ proc getFiles {} \
 			set rname $rfile
 			set lfile [getRev $rfile $rev1 0]
 			set lname "$rfile@$rev1"
-			if {[checkFiles $lfile $rfile]} {
-				eval lappend files \
-				    {"$rfile $rname $lfile $lname"}
-			}
 			set lnorev $rfile
 			set rnorev $rfile
 			set rev2 "+"
+			if {[checkFiles $lfile $rfile]} {
+				set t "$lfile $lname $rfile $rname $rev1 +"
+				lappend files $t
+			}
 			lappend tmps $lfile
 		} else {         ;# bk difftool file file2"
 			set lfile [lindex $argv 0]
@@ -343,8 +342,8 @@ proc getFiles {} \
 			set rfile [lindex $argv 1]
 			set rname $rfile
 			if {[checkFiles $lfile $rfile]} {
-				eval lappend files \
-				    {"$rfile $rname $lfile $lname"}
+				set t "$lfile $lname $rfile $rname"
+				lappend files $t
 			}
 			set lnorev $lfile
 			set rnorev $rfile
@@ -366,20 +365,22 @@ proc getFiles {} \
 		#displayInfo $lnorev $rnorev $rev1 $rev2
 		#readFiles $lfile $rfile $lname $rname
 		if {[checkFiles $lfile $rfile]} {
-			eval lappend files {"$rfile $rname $lfile $lname"}
+			set t "$lfile $lname $rfile $rname $rev1 $rev2"
+			lappend files $t
 		}
 	}
-	#puts "files=($files)"
 	# Now add the menubutton items if necessary
 	if {[llength $files] > 1} {
 		set m [menu .menu.fmb.menu]
 		set item 1
 		foreach e $files {
-			set rf [lindex $e 0]; set rn [lindex $e 1]
-			set lf [lindex $e 2]; set ln [lindex $e 3]
+			set lf [lindex $e 0]; set ln [lindex $e 1]
+			set rf [lindex $e 2]; set rn [lindex $e 3]
+			set lr [lindex $e 4]
+			set rr [lindex $e 5]
 			#puts "\nrf=($rf) rn=($rn)\n\tln=($ln) lf=($lf)"
 			$m add command -label $rf \
-			    -command "pickFile $lf $ln $rf $rn $item"
+			    -command "pickFile $lf $ln $rf $rn $item $lr $rr"
 			incr item
 		}
 		pack configure .menu.filePrev .menu.fmb .menu.fileNext \
@@ -388,7 +389,7 @@ proc getFiles {} \
 		set menu(max) [$m index last]
 		set menu(selected) 1
 	} elseif {[llength $files] == 1} {
-		#puts "lf=($lfile) rf=($rfile) lname=($lname) rname=($rname)"
+		puts "lf=($lfile) rf=($rfile) lname=($lname) rname=($rname)"
 		displayInfo $lnorev $rnorev $rev1 $rev2
 		readFiles $lfile $rfile $lname $rname
 	} else {
@@ -411,6 +412,7 @@ proc checkFiles {lfile rfile} \
 		    "File \"$rfile\" does not exist or is not a regular file"
 		return 0
 	}
+	puts stderr "Shouldn't get here"
 	return 0
 }
 
@@ -420,11 +422,10 @@ proc cleanup {} \
 
 	foreach tmp $tmps { catch {file delete $tmp} err }
 	exit
-
 }
 
 # Called from the menubutton -- updates the arrows and reads the correct file
-proc pickFile {lf ln rf rn item} \
+proc pickFile {lf ln rf rn item {lr {}} {rr {}}} \
 {
 	global menu lfile lname rfile rname
 
@@ -445,7 +446,7 @@ proc pickFile {lf ln rf rn item} \
 		.menu.filePrev configure -state normal
 		.menu.fileNext configure -state normal
 	}
-	#displayInfo $lnorev $rnorev $rev1 $rev2
+	displayInfo $ln $rf $lr $rr
 	readFiles $lf $rf $ln $rn
 	return
 }
