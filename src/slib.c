@@ -3735,9 +3735,6 @@ sccs_init(char *name, u32 flags, project *proj)
 	s->proj = proj ? proj : proj_init(s);
 	t = strrchr(s->sfile, '/');
 	if (t && streq(t, "/s.ChangeSet")) s->state |= S_HASH|S_CSET;
-	unless (t && (t >= s->sfile + 4) && strneq(t - 4, "SCCS/s.", 7)) {
-		s->state |= S_NOSCCSDIR;
-	}
 	if (flags & INIT_NOSTAT) {
 		if ((flags & INIT_HASgFILE) && check_gfile(s, flags)) return 0;
 	} else {
@@ -8195,17 +8192,15 @@ checkin(sccs *s,
 	}
 
 	buf[0] = 0;
-	unless (s->state & S_NOSCCSDIR) {
-		t = relativeName(s, 0, 0);
-		if ((s->state & S_CSET) || (t && !IsFullPath(t))) {
-			s->state |= S_BITKEEPER|S_CSETMARKED;
-			if ((strlen(t) > 14) &&
-			    strneq("BitKeeper/etc/", t, 14)) {
-				bk_etc = 1;
-			}
+	t = relativeName(s, 0, 0);
+	if ((s->state & S_CSET) || (t && !IsFullPath(t))) {
+		s->state |= S_BITKEEPER|S_CSETMARKED;
+		if ((strlen(t) > 14) &&
+		    strneq("BitKeeper/etc/", t, 14)) {
+			bk_etc = 1;
 		}
-		if (t) strcpy(buf, t); /* pathname, we need this below */
 	}
+	if (t) strcpy(buf, t); /* pathname, we need this below */
 
 	/*
 	 * XXX - this is bad we should use the x.file

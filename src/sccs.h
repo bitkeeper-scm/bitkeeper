@@ -130,7 +130,7 @@
 #define	S_REINHERIT	0x00002000	/* found stuff in flags, reinherit */
 #define	S_BITKEEPER	0x00004000	/* X_BITKEEPER flag */
 #define	S_CSET		0x00008000	/* this is a changeset file */
-#define	S_NOSCCSDIR	0x00010000	/* this is a s.foo not SCCS/s.foo */
+/* AVALIABLE		0x00010000	*/
 #define S_MAPPRIVATE	0x00020000	/* hack for Samba */
 #define S_READ_ONLY	0x00040000	/* force read only mode */
 #define	S_RANGE2	0x00080000	/* second call for date|rev range */
