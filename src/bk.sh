@@ -1145,9 +1145,22 @@ __keysort()
     bk _sort "$@"
 }
 
-__register_dll()
+__findRegsvr32()
 {
-	# look for the path to regsvr32.exe
+	REGSVR32=""
+	if [ X$SYSTEMROOT != X ]
+	then
+		SYS=`bk pwd "$SYSTEMROOT"`
+		for i in system32 system
+		do
+			REGSVR32="$SYS/$i/regsvr32.exe" 
+			if [ -e "$REGSVR32" ]
+			then echo "$REGSVR32";
+			     return;
+			fi
+		done
+	fi
+
 	for drv in c d e f g h i j k l m n o p q r s t vu v w x y z
 	do
 		for dir in WINDOWS/system32 WINDOWS/system WINNT/system32
@@ -1160,6 +1173,12 @@ __register_dll()
 		done
 		test X"$REGSVR32" != X && break; 
 	done
+	echo "$REGSVR32";
+}
+
+__register_dll()
+{
+	REGSVR32=`__findRegsvr32`
 	test X"$REGSVR32" = X && return; 
 
 	"$REGSVR32" -s "$1"

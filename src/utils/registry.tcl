@@ -58,9 +58,10 @@ proc registry_install {destination} \
 		reg set $HKLMS\\SourceCodeControlProvider ProviderRegkey \
 		    "Software\\bitmover\\bitkeeper"
 	}
-	reg set $HKLMS\\bitmover\\bitkeeper\\shellx\\networkDrive \
+        reg set $HKLMS\\bitmover\\bitkeeper\\shellx
+	reg set $HKLMS\\bitmover\\bitkeeper\\shellx networkDrive \
 	    $options(shellx_network)
-	reg set $HKLMS\\bitmover\\bitkeeper\\shellx\\LocalDrive \
+	reg set $HKLMS\\bitmover\\bitkeeper\\shellx LocalDrive \
 	    $options(shellx_local)
 	reg set $HKLMS\\$MWC\\App\ Management\\ARPCache\\$id
 	reg set $HKLMS\\$MWC\\Uninstall\\$id
