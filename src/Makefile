@@ -252,7 +252,7 @@ rebuild:
 	-@rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
 	-@rm -f $(LIBS) shell.c bkdsubstr bkhelp.txt bkmsg.txt a.out
 	-@rm -f core $(WIN_TMP)
-	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(LINKS) MANIFEST
+	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(LINKS)
 	-@cd gnu && $(MAKE) clean clean-obj
 	-@cd win32 && $(MAKE) clean clean-obj
 	-@cd ../doc && $(MAKE) clean clean-obj
@@ -538,19 +538,16 @@ binlinks:
 
 install-nolinks: all
 	@test -d $(BINDIR) || mkdir -p $(BINDIR)
-	-@find $(BINDIR) -type d -print | xargs chmod +w
+	-@find $(BINDIR) -type d -print | xargs chmod ug+w
 	cp -f $(BINS) $(SCRIPTS) $(DATA) $(BINDIR)
 	@-rm -rf $(BINDIR)/t
 	@if [ ! -d $(BINDIR)/t ]; \
 	then	mkdir $(BINDIR)/t; \
 	fi
 	@-./bk get -q t/SCCS/s.t.* t/setup t/x.chk_env
-	@rm -f $(BINDIR)/MANIFEST
 	@list=`ls t/doit t/setup t/x.chk_env t/t.* \
 		| egrep -v '(.local|.swp|~)$$'`; \
-	cp -f $$list $(BINDIR)/t; \
-	./bk checksum -s $(BINS) $(SCRIPTS) $(DATA) $$list \
-		| sort > $(BINDIR)/MANIFEST
+	cp -f $$list $(BINDIR)/t
 	@set `echo $(LINKTO)`; \
 	while [ "X$$1" != X ]; \
 	do	rm -f $(BINDIR)/$$1; \
