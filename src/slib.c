@@ -13988,7 +13988,7 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 	}
 	if (d->flags & D_CKSUM) {
 		fprintf(out, "K %u", d->sum);
-		if (d->published) {
+		if ((flags & PRS_LOGMARK) && d->published) {
 			fputs(d->ptype ? "\t\n" : " \n", out);
 		} else {
 			fputs("\n", out);

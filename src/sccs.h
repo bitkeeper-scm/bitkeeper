@@ -94,7 +94,7 @@
 #define	PRS_LF		0x02000000	/* terminate non-empty output with LF */
 #define	PRS_LOGGING	0x04000000	/* add logging bit to xflags */
 #define	PRS_COMPAT	0x08000000	/* for makepatch -C, send old tags */
-#define	PRS_KV		0x08000000	/* load  kv file */
+#define	PRS_LOGMARK	0x00100000	/* want log marker */
 
 #define SINFO_TERSE	0x10000000	/* print in terse format: sinfo -t */
 

@@ -1267,7 +1267,7 @@ getLocals(sccs *s, delta *g, char *name)
 		}
 		sccs_restart(s);
 		s->rstart = s->rstop = d;
-		sccs_prs(s, PRS_PATCH|SILENT, 0, NULL, t);
+		sccs_prs(s, PRS_PATCH|PRS_LOGMARK|SILENT, 0, NULL, t);
 		if (ferror(t)) {
 			perror("error on init file");
 			cleanup(CLEAN_RESYNC);
