@@ -197,6 +197,7 @@ bk get $Q -r+ -p foo > foo.now
 cmp -s foo.now foo.ref || { echo failed; exit 1; }
 rm -f foo.now foo.ref bar.ref
 if [ -f bar ]; then echo failed; exit 1; fi
+if [ -f SCCS/p.foo ]; then echo failed to unlock foo; exit 1; fi
 echo OK
 rm -rf $HERE/A $HERE/B $HERE/EDIT/*.rej
 echo $N Make sure we allow a file to be patched multiple times ......$NL
