@@ -1260,6 +1260,7 @@ bk commit $Q -y2 || { echo failed; exit 1; }
 bk push -c0 $Q && { echo failed 1; exit 1; }
 bk lock -s || { echo failed 2; exit 1; }
 echo OK
+
 echo $N auto-mirroring ..............................................$NL
 cd $HERE/project/BitKeeper/triggers
 rm -f *
@@ -1288,4 +1289,37 @@ do
 	TRY=`expr $TRY + 1`
 done
 if [ ! -f $HERE/backup/src/SCCS/s.car.c ]; then echo failed; exit 1; fi
+echo OK
+
+echo $N Make sure we run triggers on a merge commit .................$NL
+cd $HERE/project/BitKeeper/triggers
+rm -f *
+while ! bk lock -ls
+do	#echo waiting for the repository to become unlocked
+	sleep 1
+done
+bk clone $Q $HERE/project $HERE/merge || exit 1
+cat > post-commit <<EOF
+#!/bin/bash
+set | grep BK > $HERE/merge-commit
+EOF
+chmod +x post-commit
+cd $HERE/project
+echo foo > foo
+bk new $Q foo
+bk commit $Q -ywhatever
+rm -f $HERE/merge-commit
+cd $HERE/merge
+echo bar > bar
+bk new $Q bar
+bk commit $Q -ywhatever
+cd $HERE/project
+bk pull $Q $HERE/merge || {
+	echo should have succeeded
+	exit 1
+}
+test -f $HERE/merge-commit || {
+	echo failed to run trigger
+	exit 1
+}
 echo OK

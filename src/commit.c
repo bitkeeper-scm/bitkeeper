@@ -236,7 +236,7 @@ out:		if (pendingFiles) unlink(pendingFiles);
 	comments_writefile(commentFile);
 	safe_putenv("BK_COMMENTFILE=%s", commentFile);
 
-	if (rc = trigger(av[0], "pre")) goto done;
+	if (rc = trigger(opts.resync ? "merge" : av[0], "pre")) goto done;
 	i = 2;
 	if (opts.quiet) dflags |= SILENT;
 	if (sym) syms = addLine(syms, strdup(sym));
@@ -253,7 +253,7 @@ out:		if (pendingFiles) unlink(pendingFiles);
 
 	putenv("BK_STATUS=OK");
 	if (rc) putenv("BK_STATUS=FAILED");
-	trigger(av[0], "post");
+	trigger(opts.resync ? "merge" : av[0], "post");
 done:	if (unlink(pendingFiles)) perror(pendingFiles);
 	unlink(commentFile);
 	if (pendingFiles2[0]) {
