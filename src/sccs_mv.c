@@ -5,7 +5,6 @@ WHATSTR("%W%");
 
 private	char	*getRelativeName(char *, project *proj);
 private	void	rmDir(char *);
-private	int	mv(char *, char *);
 private	int	update_idcache(sccs *s, char *old, char *new);
 
 private char *
@@ -309,18 +308,23 @@ getRelativeName(char *name, project *proj)
 	return rpath;
 }
 
-private	int
+/*
+ * XXX TODO move this to the port directory
+ */
+int
 mv(char *src, char *dest)
 {
 	debug((stderr, "moving %s -> %s\n", src, dest));
-	if (rename(src, dest)) {	/* try mv(1) */
-
+	if (rename(src, dest)) {
 		/* try making the dir and see if that helps */
 		mkdirf(dest);
-		if (rename(src, dest)) { 	/* try mv(1) */
-			int	status;
-			status = sys("/bin/mv", src, dest, SYS);
-			if (WEXITSTATUS(status)) return (1);
+		if (rename(src, dest)) {
+#ifndef WIN32
+			if (fileCopy(src, dest)) return (1);
+			if (unlink(src)) return (1);
+#else
+			return (1);
+#endif
 		}
 	}
 	return (0);

@@ -1,13 +1,18 @@
 #include "system.h"
 #include "sccs.h"
 
+#define	BACKUP_SFIO "BitKeeper/tmp/undo_backup_sfio"
+
 extern char *bin;
 private char	*getrev(char *);
-private MDBM	*mk_list(char *, char *);
-private int	clean_file(MDBM *);
-private int	do_rename(MDBM *, char *);
+private char	**mk_list(char *, char *);
+private int	clean_file(char **);
+private	int	moveAndSave(char **fileList);
+private int	move_file();
+private int	do_rename(char **, char *);
 private void	checkRev(char *);
 private int	check_patch();
+private int	doit(char **fileList, char *rev_list, char *qflag);
 
 int
 undo_main(int ac,  char **av)
@@ -17,7 +22,7 @@ undo_main(int ac,  char **av)
 	char	rev_list[MAXPATH], undo_list[MAXPATH] = { 0 };
 	char	*qflag = "", *vflag = "-v";
 	char	*cmd = 0, *rev = 0;
-	MDBM	*fileList;
+	char	**fileList;
 #define	LINE "---------------------------------------------------------\n"
 #define	BK_TMP  "BitKeeper/tmp"
 #define	BK_UNDO "BitKeeper/tmp/undo_backup"
@@ -33,7 +38,7 @@ undo_main(int ac,  char **av)
 	while ((c = getopt(ac, av, "a:fqsr:")) != -1) {
 		switch (c) {
 		    case 'a':					/* doc 2.0 */
-		    	rev = getrev(optarg);
+			rev = getrev(optarg);
 			unless (rev) return (0); /* we are done */
 			break;
 		    case 'f': force  =  1; break;		/* doc 2.0 */
@@ -47,6 +52,7 @@ usage:			system("bk help -s undo");
 		}
 	}
 	unless (rev) goto usage;
+	unlink(BACKUP_SFIO); /* remove old backup file */
 	if (ckRev) checkRev(rev);
 	sprintf(rev_list, "%s/bk_rev_list%d",  TMP_PATH, getpid());
 	fileList = mk_list(rev_list, rev);
@@ -60,8 +66,28 @@ usage:			system("bk help -s undo");
 		cat(undo_list);
 err:		if (undo_list[0]) unlink(undo_list);
 		unlink(rev_list);
-		if (fileList) mdbm_close(fileList);
+		freeLines(fileList);
 		if (cmd) free(cmd);
+		if (size(BACKUP_SFIO) > 0) {
+			if (sysio(BACKUP_SFIO, 0, 0,
+						"bk", "sfio", "-im", SYS)) {
+				fprintf(stderr,
+"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
+"Your repository is only partially restored\n"
+"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+				exit(1);
+			}
+			fprintf(stderr,
+"Your repository should be backto where it was before undo started\n"
+"We are running a consistency check to verify this.\n");
+			if (sys("bk", "-r", "check", "-a", SYS)) {
+				fprintf(stderr, "check FAILED\n");
+				exit(1);
+			}
+			fprintf(stderr, "check passed\n");
+		}
+		unlink(BACKUP_SFIO);
+		sys(RM, "-rf", "RESYNC", SYS);
 		exit(1);
 	}
 
@@ -73,7 +99,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 		unless (fgets(buf, sizeof(buf), stdin)) buf[0] = 'n';
 		if ((buf[0] != 'y') && (buf[0] != 'Y')) {
 			unlink(rev_list);
-			mdbm_close(fileList);
+			freeLines(fileList);
 			exit(0);
 		}
 	}
@@ -93,20 +119,23 @@ err:		if (undo_list[0]) unlink(undo_list);
 	free(cmd); cmd = 0;
 
 	sig_ignore();
-	sprintf(buf, "bk stripdel %s -C - < %s", qflag, rev_list);
-	if (system(buf) != 0) {
-		fprintf(stderr, "Undo failed\n");
-		goto err;
-	}
 
 	/*
-	 * Handle any renames.  Done outside of stripdel because names only
-	 * make sense at cset boundries.
-	 * Also, run all files through renumber.
+	 * Move file to RESYNC and save a copy in a sfio backup file
 	 */
-	if (do_rename(fileList, qflag)) goto err;
-	mdbm_close(fileList);
+	if (moveAndSave(fileList)) goto err;
+
+	chdir(ROOT2RESYNC);
+	if (doit(fileList, rev_list, qflag)) {
+		chdir(RESYNC2ROOT);
+		goto err;
+	}
+	chdir(RESYNC2ROOT);
+
+	freeLines(fileList);
 	unlink(rev_list); unlink(undo_list);
+	unlink(BACKUP_SFIO);
+	sys(RM, "-rf", "RESYNC", SYS);
 
 	if (streq(qflag, "") && save) {
 		printf("Patch containing these undone deltas left in %s\n",
@@ -121,6 +150,27 @@ err:		if (undo_list[0]) unlink(undo_list);
 	}
 	sig_default();
 	return (rc);
+}
+
+private int
+doit(char **fileList, char *rev_list, char *qflag)
+{
+	char	buf[MAXLINE];
+
+	sprintf(buf, "bk stripdel %s -C - < %s", qflag, rev_list);
+	if (system(buf) != 0) {
+		fprintf(stderr, "Undo failed\n");
+		return (-1);
+	}
+
+	/*
+	 * Handle any renames.  Done outside of stripdel because names only
+	 * make sense at cset boundries.
+	 * Also, run all files through renumber.
+	 */
+	if (do_rename(fileList, qflag)) return (-1);
+	if (move_file()) return (-1); /* mv from RESYNC to user tree */
+	return (0);
 }
 
 private int
@@ -192,12 +242,14 @@ getrev(char *top_rev)
 	return (retptr);
 }
 
-MDBM *
+char **
 mk_list(char *rev_list, char *rev)
 {
-	MDBM 	*DB;
 	char	*p, *cmd, buf[MAXLINE];
-	FILE	 *f;
+	char	**flist = 0;
+	FILE	*f;
+	MDBM	*db;
+	kvpair	kv;
 
 	assert(rev);
 	cmd = malloc(strlen(rev) + 100);
@@ -213,40 +265,45 @@ mk_list(char *rev_list, char *rev)
 		exit(0);
 	}
 	f = fopen(rev_list, "rt");
-	DB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
-	assert(f); assert(DB);
+	db = mdbm_open(NULL, 0, 0, MAXPATH);
+	assert(db);
 	while (fgets(buf, sizeof(buf), f)) {
 		p = strchr(buf, BK_FS);
 		assert(p);
 		*p = 0; /* remove rev part */
-		mdbm_store_str(DB, buf, "", MDBM_INSERT);
+
+		p = name2sccs(buf);
+		mdbm_store_str(db, p, "", MDBM_REPLACE); /* remove dup */
+		free(p);
 	}
 	fclose(f);
-	return DB;
+
+	for (kv = mdbm_first(db); kv.key.dsize; kv = mdbm_next(db)) {
+		flist = addLine(flist, strdup(kv.key.dptr));
+	}
+	mdbm_close(db);
+	return (flist);
 }
 
 private int
-do_rename(MDBM *fileList, char *qflag)
+do_rename(char **fileList, char *qflag)
 {
 	sccs	*s;
 	project *proj = 0;
-	kvpair  kv;
 	FILE	*f, *f1;
 	char	renum_list[MAXPATH], rename_list[MAXPATH], buf[MAXLINE];
-	int 	rc, status, warned = 0;
+	int 	i, rc, status, warned = 0;
 
 	bktemp(renum_list);
 	bktemp(rename_list);
 	f = fopen(renum_list, "wb"); assert(f);
 	f1 = fopen(rename_list, "wb"); assert(f1);
-	for (kv = mdbm_first(fileList); kv.key.dsize;
-						kv = mdbm_next(fileList)) {
+	EACH (fileList) {
 		char	*sfile, *old_path;
 		delta	*d;
 
-		sfile = name2sccs(kv.key.dptr);
+		sfile = fileList[i];
 		unless (exists(sfile)) {
-			free(sfile);
 			continue;
 		}
 		s = sccs_init(sfile, INIT_NOCKSUM|INIT_SAVEPROJ, proj);
@@ -258,7 +315,6 @@ do_rename(MDBM *fileList, char *qflag)
 		sccs_free(s);
 		unless (streq(sfile, old_path)) fprintf(f1, "%s\n", sfile);
 		fprintf(f, "%s\n", old_path);
-		free(sfile);
 		free(old_path);
 	}
 	if (proj) proj_free(proj);
@@ -279,30 +335,108 @@ done:	unlink(rename_list);
 }
 
 private int
-clean_file(MDBM *fileList)
+clean_file(char **fileList)
 {
 	sccs	*s;
 	project *proj = 0;
-	kvpair  kv;
+	int	i;
 
-	for (kv = mdbm_first(fileList); kv.key.dsize;
-						kv = mdbm_next(fileList)) {
-		char *sfile;
-
-		sfile = name2sccs(kv.key.dptr);
-		s = sccs_init(sfile, INIT_NOCKSUM|INIT_SAVEPROJ, proj);
-		assert(s);
+	EACH(fileList) {
+		s = sccs_init(fileList[i], INIT_NOCKSUM|INIT_SAVEPROJ, proj);
+		assert(s && s->tree);
 		unless(proj) proj = s->proj;
 		if (sccs_clean(s, SILENT)) {
-			printf("Cannot clean %s, Undo aborted\n", sfile);
+			printf("Cannot clean %s, Undo aborted\n", fileList[i]);
 			sccs_free(s);
-			free(sfile);
 			if (proj) proj_free(proj);
 			return (-1);
 		}
 		sccs_free(s);
-		free(sfile);
 	}
 	if (proj) proj_free(proj);
 	return (0);
+}
+
+/*
+ * Move file to RESYNC and save a backup copy in sfio file
+ */
+private int
+moveAndSave(char **fileList)
+{
+	FILE	*f;
+	char	tmp[MAXPATH];
+	int	i, rc = 0;
+
+	if (isdir("RESYNC")) {
+		fprintf(stderr, "Repository locked by RESYNC directory\n");
+		return (-1);
+	}
+
+	strcpy(tmp, "RESYNC/BitKeeper/etc");
+	if (mkdirp(tmp)) {
+		perror(tmp);
+		return (-1);
+	}
+
+	strcpy(tmp, "RESYNC/BitKeeper/tmp");
+	if (mkdirp(tmp)) {
+		perror(tmp);
+		return (-1);
+	}
+
+	/*
+	 * Run sfio under RESYNC, because we pick up the files _after_
+	 * it is moved to RESYNC. This works better for win32; We usually
+	 * detect access conflict when we moves file.
+	 */
+	chdir(ROOT2RESYNC);
+	f = popen("bk sfio -omq > " "../" BACKUP_SFIO, "w");
+	chdir(RESYNC2ROOT);
+	unless (f) {
+		perror("sfio");
+		return (-1);
+	}
+	EACH (fileList) {
+		sprintf(tmp, "RESYNC/%s", fileList[i]);
+		if (mv(fileList[i], tmp)) {
+			fprintf(stderr,
+			    "Cannot mv %s to %s\n", fileList[i], tmp);
+			rc = -1;
+			break;
+		} else {
+			/* Important: save a copy only if mv is successful */
+			fprintf(f, "%s\n", fileList[i]);
+		}
+	}
+	pclose(f);
+	return (rc);
+}
+
+
+/*
+ * Move file from RESYNC tree to the user tree
+ */
+private int
+move_file()
+{
+	char	from[MAXPATH], to[MAXPATH];
+	FILE	*f;
+	int	rc = 0;
+
+	/*
+	 * Cannot trust fileList, because file may be renamed
+	 */
+	f = popen("bk sfiles", "r");
+	while (fnext(from, f)) {
+		chop(from);
+		sprintf(to, "../%s", from);
+		if (mv(from, to)) {
+			fprintf(stderr,
+			    "Cannot move %s to %s\n", from, to);
+			rc = -1;
+			break;
+		};
+	}
+	pclose(f);
+	return (rc);
 }
