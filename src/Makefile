@@ -144,6 +144,7 @@ clean-src: FORCE
 	bk clean gui
 	bk clean mdbm
 	bk clean zlib
+	bk clean t
 
 # This would be called "clean" but that's a command name.
 cclean sccsclean nice: clean-obj clean-src
@@ -167,7 +168,8 @@ TAGS: srcs
 	etags $(SRCS) $(HDRS)
 
 test: 
-	cd t && make
+	-get -q t
+	cd t && ./doit
 
 # This uses bk-prefixed commands so it works even if you haven't
 # built anything yet (assuming bk is installed already).
@@ -366,8 +368,7 @@ install.sh: install.in config.status
 	CONFIG_HEADERS= CONFIG_FILES=install.sh:install.in ./config.status
 	chmod +x install.sh
 
-# The "install" target does not build things first.
-install: install.sh FORCE
+install: install.sh all FORCE
 	./install.sh $(prefix)
 
 # The default .c.o rule is broken with some Makes.

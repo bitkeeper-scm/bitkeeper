@@ -976,7 +976,13 @@ init(FILE *p, int flags, char **resyncRootp)
 	/*
 	 * See if we can lock the tree.
 	 */
-	if ((mkdir("RESYNC", 0775) == -1) && (access("RESYNC", F_OK) == 0)) {
+	if (mkdir("RESYNC", 0775) == -1) {
+		if (errno != EEXIST) {
+			SHOUT();
+			perror("mkdir RESYNC");
+			cleanup(0);
+		}
+
 		if ((f = fopen("RESYNC/BitKeeper/tmp/pid", "r")) &&
 		    fnext(buf, f)) {
 			fclose(f);
@@ -1008,13 +1014,13 @@ init(FILE *p, int flags, char **resyncRootp)
 	unless (mkdir("RESYNC/SCCS", 0775) == 0) {
 		SHOUT();
 		perror("mkdir");
-		cleanup(CLEAN_PENDING|CLEAN_RESYNC);
+		cleanup(CLEAN_RESYNC);
 	}
 	sccs_mkroot("RESYNC");
 	unless (f = fopen("RESYNC/BitKeeper/tmp/pid", "w")) {
 		SHOUT();
 		perror("RESYNC/BitKeeper/tmp/pid");
-		cleanup(CLEAN_PENDING|CLEAN_RESYNC);
+		cleanup(CLEAN_RESYNC);
 	}
 	fprintf(f, "%d\n", getpid());
 	fclose(f);
