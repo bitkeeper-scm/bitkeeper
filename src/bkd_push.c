@@ -27,13 +27,7 @@ cmd_push_part1(int ac, char **av)
 
 	if (debug) fprintf(stderr, "cmd_push_part1: sending server info\n");
 	setmode(0, _O_BINARY); /* needed for gzip mode */
-	sendServerInfoBlock(0);
-	unless (isdir("BitKeeper/etc") || metaOnly) {
-		out("ERROR-Not at package root\n");
-		out("@END@\n");
-		drain();
-		return (1);
-	}
+	sendServerInfoBlock(metaOnly);  /* tree might be missing */
 
 	if (getenv("BKD_LEVEL") && (atoi(getenv("BKD_LEVEL")) > getlevel())) {
 		/* they got sent the level so they are exiting already */
@@ -155,7 +149,7 @@ cmd_push_part2(int ac, char **av)
 		goto done;
 	}
 
-	sendServerInfoBlock(0);
+	sendServerInfoBlock(metaOnly);  /* tree might be missing */
 	buf[0] = 0;
 	getline(0, buf, sizeof(buf));
 	if (streq(buf, "@ABORT@")) {
