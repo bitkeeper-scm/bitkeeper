@@ -53,6 +53,12 @@ case `uname -s` in
 		# The shell can not handle space in pathname, so
 		# we use the short name here
 		BINDIR="C:/Progra~1/BitKeeper"
+		# IMPORTANT NOTE: XTRA must be built *after* gnu 
+		# becuase we want diff binary in win32/pub/diffutils
+		# This mean XTRA must be after gnu in the "all" target
+		# in the Makefile.
+		# It is too messy to turn off building diff in guu/diffutiles
+		# so we build them twice.
 		XTRA=win32
 		INSTALL=install-nolinks
 		export SYS CFLAGS CC_OUT LD_OUT LD AR RANLIB UWTLIB LDFLAGS

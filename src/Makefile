@@ -73,6 +73,7 @@ LINKS	= ci co edit unget
 DATA	= bitkeeper.config bkhelp.txt
 LINKTO	= fmtool fm fm3tool fm3
 BINLINKS= bk admin get delta unget rmdel prs
+# Note: $(XTRA) must be listed after "gnu"
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) gnu $(XTRA)
 
 # FASTPURIFY does not do overrun/underrun checking at each alloc/free

@@ -24,8 +24,12 @@ pub/vim/src/vim.exe:
 blat: FORCE
 	cd pub/blat && make
 
-install: all blat pub/vim/src/vim.exe
+diffutils: FORCE
+	cd pub/diffutils && make
+
+install: all blat diffutils pub/vim/src/vim.exe
 	cd util && make BINDIR=$(BINDIR) install
 	cd pub/blat && make BINDIR=$(BINDIR) install
+	cd pub/diffutils && make BINDIR=$(BINDIR) install
 	cp pub/vim/src/vim.exe $(BINDIR)/vi.exe
 	

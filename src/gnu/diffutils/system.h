@@ -107,6 +107,9 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 #define O_RDONLY 0
 #endif
 
+#if HAVE_WAIT_H
+#include <wait.h>
+#endif
 #if HAVE_SYS_WAIT_H
 #include <sys/wait.h>
 #endif
