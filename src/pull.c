@@ -82,7 +82,6 @@ usage:			system("bk help -s push");
 	}
 	if (rc == 2) rc = 1; /* if retry failed, rest exit code to 1 */
 	remote_free(r);
-	unless (opts.metaOnly) trigger(av, "post");
 	freeLines(envVar);
 	return (rc);
 }
@@ -319,7 +318,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	}
 
 done:	if (rc) putenv("BK_INCOMING=CONFLICT");
-	trigger(av, "post");
+	unless (opts.metaOnly) trigger(av, "post");
 	unlink(probe_list);
 	/*
 	 * Wait for remote to disconnect

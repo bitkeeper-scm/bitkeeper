@@ -85,6 +85,7 @@ int oclone_main(int, char **);
 int opull_main(int, char **);
 int opush_main(int, char **);
 int parent_main(int, char **);
+int park_main(int, char **);
 int pending_main(int, char **);
 int probekey_main(int, char **);
 int prs_main(int, char **);
@@ -128,6 +129,7 @@ int undos_main(int, char **);
 int unedit_main(int, char **);
 int unlink_main(int, char **);
 int unlock_main(int, char **);
+int unpark_main(int, char **);
 int unwrap_main(int, char **);
 int users_main(int, char **);
 int version_main(int, char **);
@@ -211,6 +213,7 @@ struct command cmdtbl[] = {
 	{"opull", opull_main},		/* old pull protocol */
 	{"opush", opush_main},		/* old pull protocol */
 	{"parent", parent_main},
+	{"park", park_main},
 	{"pending", pending_main},
 	{"prs", prs_main},
 	{"pull", pull_main},
@@ -251,6 +254,7 @@ struct command cmdtbl[] = {
 	{"unedit", unedit_main},
 	{"unget", unedit_main},		/* aliases */
 	{"unlock", unlock_main },
+	{"unpark", unpark_main},
 	{"unwrap", unwrap_main},
 	{"users", users_main},
 	{"version", version_main},

@@ -250,8 +250,7 @@ static char const RCSDIFF1[] = "rcsdiff %s";
 static char const SCCSPREFIX[] = "s.";
 static char const GET[] = "get ";
 static char const GET_LOCKED[] = "get -e ";
-static char const SCCSDIFF1[] = "get -p ";
-static char const SCCSDIFF2[] = "|diff - %s";
+static char const SCCSDIFF1[] = "bk diffs ";
 
 static char const CLEARTOOL_CO[] = "cleartool co -unr -nc ";
 
@@ -278,7 +277,7 @@ version_controller (char const *filename, int readonly,
   size_t quotelen = quote_system_arg (0, filename);
   size_t maxgetsize = sizeof CLEARTOOL_CO + quotelen + maxfixlen;
   size_t maxdiffsize =
-    (sizeof SCCSDIFF1 + sizeof SCCSDIFF2 + sizeof DEV_NULL - 1
+    (sizeof SCCSDIFF1 + sizeof DEV_NULL - 1
      + 2 * quotelen + maxfixlen);
   char *trybuf = xmalloc (maxtrysize);
   char const *r = 0;
@@ -336,9 +335,6 @@ version_controller (char const *filename, int readonly,
 	  char *p = *diffbuf = xmalloc (maxdiffsize);
 	  strcpy (p, SCCSDIFF1);
 	  p += sizeof SCCSDIFF1 - 1;
-	  p += quote_system_arg (p, trybuf);
-	  sprintf (p, SCCSDIFF2, dotslash);
-	  p += strlen (p);
 	  p += quote_system_arg (p, filename);
 	  *p++ = '>';
 	  strcpy (p, DEV_NULL);

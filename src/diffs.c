@@ -27,7 +27,7 @@ int
 diffs_main(int ac, char **av)
 {
 	sccs	*s;
-	int	all = 0, flags = DIFF_HEADER|SILENT, c;
+	int	all = 0, flags = DIFF_HEADER|SILENT, verbose = 0, rc, c;
 	char	kind;
 	char	*name;
 	project	*proj = 0;
@@ -45,7 +45,7 @@ diffs_main(int ac, char **av)
 	} else {
 		kind = streq(av[0], "sdiffs") ? DF_SDIFF : DF_DIFF;
 	}
-	while ((c = getopt(ac, av, "acC|d;DfhMnpr|R|suU")) != -1) {
+	while ((c = getopt(ac, av, "acC|d;DfhMnpr|R|suUv")) != -1) {
 		switch (c) {
 		    case 'a': all = 1; break;	/* undocumented, unused??? */
 		    case 'h': flags &= ~DIFF_HEADER; break;
@@ -60,6 +60,7 @@ diffs_main(int ac, char **av)
 		    case 's': kind = DF_SDIFF; break;
 		    case 'u': kind = DF_UNIFIED; break;
 		    case 'U': flags |= GET_USER; break;
+		    case 'v': verbose = 1; break;
 		    RANGE_OPTS('d', 'r');
 		    default:
 usage:			system("bk help -s diffs");
@@ -160,14 +161,16 @@ usage:			system("bk help -s diffs");
 		 * Errors come back as -1/-2/-3/0
 		 * -2/-3 means it couldn't find the rev; ignore.
 		 */
-		switch (sccs_diffs(s, r1, r2, ex|flags, kind, stdout)) {
+		switch (rc = sccs_diffs(s, r1, r2, ex|flags, kind, stdout)) {
 		    case -1:
 			fprintf(stderr,
 			    "diffs -s of %s failed.\n", s->gfile);
 			break;
 		    case -2:
 		    case -3:
+			break;
 		    case 0:	
+			if (verbose) fprintf(stderr, "%s\n", s->gfile);
 			break;
 		    default:
 			fprintf(stderr,

@@ -48,6 +48,7 @@ platformInit(char **av)
 	setmode(2, _O_BINARY);
 	localName2bkName(av[0], buf1);	av[0] = buf1;
 	localName2bkName(p, buf2);	p = buf2;
+	for (n = 0; n < 3; n++) make_fd_uninheritable(n);
 #endif
 
 	/*

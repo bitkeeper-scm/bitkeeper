@@ -312,6 +312,7 @@
 #define	WEB_BKD_CGI	"web_bkd"
 #define	WEB_MAIL_CGI	"web_mail"
 #define	SCCSTMP		"SCCS/T.SCCSTMP"
+#define	BKTMP		"BitKeeper/tmp"
 #define	BKROOT		"BitKeeper/etc"
 #define	GONE		"BitKeeper/etc/gone"
 #define CSETS_IN	"BitKeeper/etc/csets-in"
