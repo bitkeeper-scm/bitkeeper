@@ -43,9 +43,9 @@ pwd_main(int ac, char **av)
 		nt2bmfname(p, p); /* needed for win98 */
 	}
 	if (cygwin) { 
+		printf("/cygdrive/");
 		p[1] = p[0];
-		p[-1] = p[0] = '/'; 
-		p--;
+		p++;
 	}
 #endif
 	printf("%s\n", p);
