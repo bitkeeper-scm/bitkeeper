@@ -2378,6 +2378,20 @@ rcsexpand(sccs *s, delta *d, char *l, int *expanded)
 }
 
 /*
+ * We don't consider EPIPE an error since we hit it when we do stuff like
+ * get -p | whatever
+ * and whatever exits first.
+ */
+int
+flushFILE(FILE *out)
+{
+	if (fflush(out) && (errno != EPIPE)) {
+		return (-1);
+	}
+	return (ferror(out));
+}
+
+/*
  * We couldn't initialize an SCCS file.	 Tell the user why not.
  * Possible reasons we handle:
  *	no s.file
@@ -4276,7 +4290,7 @@ fflushdata(sccs *s, FILE *out)
 	}
 	data_next = data_block;
 	debug((stderr, "SUM2 %u\n", s->cksum));
-	if (ferror(out) || fflush(out)) return (-1);
+	if (flushFILE(out)) return(-1);
 	return (0);
 }
 
@@ -4884,7 +4898,7 @@ out:			if (slist) free(slist);
 	if (flags & GET_HASHONLY) {
 		error = 0;
 	} else {
-		error = ferror(out) || fflush(out);
+		error = flushFILE(out);
 		if (popened) {
 			pclose(out);
 		} else if (flags & PRINT) {
@@ -5969,7 +5983,7 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 		fputmeta(s, "\n", out);
 	}
 	fputmeta(s, "\001T\n", out);
-	if (fflush(out) || ferror(out)) return (-1);
+	if (flushFILE(out)) return (-1);
 	return (0);
 }
 
@@ -9795,7 +9809,7 @@ Fucks up citool
 	}
 	fseek(out, 0L, SEEK_SET);
 	fprintf(out, "\001h%05u\n", s->cksum);
-	if (fflush(out) || ferror(out)) return (-1);
+	if (flushFILE(out)) return (-1);
 	return (0);
 }
 
