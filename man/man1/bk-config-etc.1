@@ -119,6 +119,37 @@ The general format for the repository preference config file is
 [filter]preference:option
 .DE
 .LP
+The optional filter can be any of the following:
+.TP 1.4i
+.B no filter
+preference:option
+.tp
+.B empty filter
+[]preference:option
+.tp
+.B per user
+[jdoe]preference:option
+.tp
+.B per host
+[@xyz.com]preference:option
+.tp
+.B per pathname
+[:/path/to/repo]preference:option
+.tp
+.B per user@host
+[jdoe@xyz.com]preference:option
+.tp
+.B per repository
+[:/path/to/repo]preference:option
+.br
+[@xyz.com:/path/to/repo]preference:option
+.br
+[jdoe@xyz.com:/path/to/repo]preference:option 
+.LP
+Preferences can be listed multiple times with different filters.
+The filters are examined in order and the first line that
+matches the current user, host, and pathname is used.  So in general
+the most restrictive directives should appear first.
 .SS Keyword Expansion
 .br
 Keyword expansion is turned OFF by default.  To have keyword expansion
@@ -131,7 +162,7 @@ Keyword preference options are:
 expand SCCS keywords (%keyword%)
 .tp
 .B expand1
-exand keywords in the first line that contains keywords only (avoids printf
+expand keywords in the first line that contains keywords only (avoids printf
 conflicts)
 .tp
 .B rcs
@@ -191,27 +222,6 @@ of the gfile.  This prevents recompilation after a check-in operation.
 Clear the gfile after doing a bk delta
 .ARG file .
 (This is the default.)
-.LP
-The optional filter can be any of the following:
-.TP 1.4i
-.B empty filter
-[]checkout:edit
-.tp
-.B per user
-[jdoe]checkout:get
-.tp
-.B per host
-[@xyz.com]checkout:none
-.tp
-.B per user@host
-[jdoe@xyz.com]checkout:get
-.tp
-.B per repository
-[/path/to/repo]checkout:edit
-.br
-[@xyz.com:/path/to/repo]checkout:get
-.br
-[jdoe@xyz.com:/path/to/repo]checkout:edit 
 .SS BKWEB PREFERENCES
 .LP
 BKWeb preferences can be specified in the BitKeeper/etc/config file.
