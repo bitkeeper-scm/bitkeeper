@@ -1,18 +1,29 @@
 #! @SH@
 
 # import.sh - import various sorts of files into BitKeeper
-# Usage:
-#	bk import [-e] [-i] [-l file] [-L] [-r] [-t type] from to
 # TODO
 #	we allow repeated imports on patches but don't error check the other
 #	cases.  We should fail if the repository is not empty.
-#     + Zack wants a completely nointeractive mode for RCS/CVS (at least)
 # %W% %@%
+
+usage() {
+	cat <<EOF
+Usage: import [-efirv] [-l<list>] [-t<type] from_dir to_dir
+
+	-e	prompts for regular expression to exclude from file list
+	-f	force the import to not ask questions
+	-i	prompts for regular expression to include from file list
+	-l<l>	list of files to import is in <l>
+	-t<t>	type of imported files is <t> where t is plain|patch|RCS|CVS
+	-r	do not do renames when doing patch imports
+	-v	be more verbose
+EOF
+	exit 0
+}
 
 import() {
 	if [ X"$1" = "X--help" ]
-	then	bk help import
-		exit 0
+	then	usage
 	fi
 	INCLUDE=""
 	EXCLUDE=""
@@ -24,9 +35,11 @@ import() {
 	RENAMES=YES
 	QUIET=-q
 	SYMBOL=
-	while getopts eil:LrS:t:v opt
+	FORCE=NO
+	while getopts efil:LrS:t:v opt
 	do	case "$opt" in
 		e) EX=YES;;
+		f) FORCE=YES;;
 		i) INC=YES;;
 		l) LIST=$OPTARG;;
 		L) NEWLOD=-L;;
@@ -38,8 +51,7 @@ import() {
 	done
 	shift `expr $OPTIND - 1`
 	if [ X"$1" = X -o X"$2" = X -o X"$3" != X ]
-	then	bk help import
-		exit 1
+	then	usage
 	fi
 	gettype $TYPE
 	if [ $TYPE = patch ]
@@ -85,7 +97,8 @@ import() {
 		fi
 		read path < $LIST
 		case "$path" in
-		/*) echo "The list of imported files has to match $FROM"
+		/*) echo \
+	    "Absolute pathnames are disallowed, they should relative to $FROM"
 		    exit 1;;
 		esac
 		cd $FROM
@@ -94,7 +107,7 @@ import() {
 			exit 1
 		fi
 		cd $HERE
-		cp $LIST ${TMP}import$$
+		sed 's|^\./||'< $LIST > ${TMP}import$$
 	else	if [ $TYPE != patch ]
 		then	echo Finding files in $FROM
 			cd $FROM
@@ -105,7 +118,7 @@ import() {
 			if [ X"$EXCLUDE" != X ]
 			then	cmd="$cmd | egrep -v '$EXCLUDE'"
 			fi
-			eval "$cmd" | sed 's/^..//' > ${TMP}import$$
+			eval "$cmd" | sed 's|^\./||' > ${TMP}import$$
 			echo OK
 		else	echo "" > ${TMP}import$$
 		fi
@@ -227,26 +240,28 @@ transfer() {
 	TO=$2
 	TYPE=$3
 	NFILES=`wc -l < ${TMP}import$$ | sed 's/ //g'`
-	echo
-	echo $N "Would you like to edit the list of $NFILES files to be imported? " $NL
-	read x
-	echo ""
-	case X"$x" in
-	    Xy*)
-		echo $N "Editor to use [$EDITOR] " $NL
-		read editor
-		echo
-		if [ X$editor != X ]
-		then	eval $editor ${TMP}import$$
-		else	eval $EDITOR ${TMP}import$$
-		fi
-		NFILES=`wc -l < ${TMP}import$$ | sed 's/ //g'`
-	esac
+	if [ $FORCE = NO ]
+	then	echo
+		echo $N "Would you like to edit the list of $NFILES files to be imported? " $NL
+		read x
+		echo ""
+		case X"$x" in
+		    Xy*)
+			echo $N "Editor to use [$EDITOR] " $NL
+			read editor
+			echo
+			if [ X$editor != X ]
+			then	eval $editor ${TMP}import$$
+			else	eval $EDITOR ${TMP}import$$
+			fi
+			NFILES=`wc -l < ${TMP}import$$ | sed 's/ //g'`
+		esac
+	fi
 	echo Importing files
 	echo "	from $FROM"
 	echo "	to   $TO"
 	cd $FROM
-	sfio -omq < ${TMP}import$$ | (cd $TO && sfio -imq) || exit 1
+	sfio -omq < ${TMP}import$$ | (cd $TO && sfio -im $QUIET ) || exit 1
 }
 
 import_patch() {
@@ -338,30 +353,10 @@ import_text () {
 
 import_RCS () {
 	cd $2
-	echo Relocating contents of Attic directories.
-	find . -name Attic | sed 's!^\./!!; s!/Attic$!!' |
-	while read dir
-	do (	echo $dir
-		cd $dir
-		for f in Attic/*,v Attic/.*,v
-		do	[ -e "$f" ] || continue
-			t=.del-${f#Attic/}
-			if [ ! -e $t ]
-			then	mv $f $t
-				echo $dir/$t >> ${TMP}attic$$
-			else	echo WARNING: skipping $f
-			fi
-		done
-		rmdir Attic
-	)
-	done
-	grep -v Attic ${TMP}import$$ >${TMP}notattic$$
-	sort ${TMP}attic$$ ${TMP}notattic$$ >${TMP}import$$
-	rm ${TMP}attic$$ ${TMP}notattic$$
 	echo Converting RCS files.
 	echo WARNING: Branches will be discarded.
 	echo Ignore errors relating to missing newlines at EOF.
-	rcs2sccs -hst - < ${TMP}import$$ || exit 1
+	bk rcs2sccs -hst - < ${TMP}import$$ || exit 1
 	xargs rm -f < ${TMP}import$$
 }
 
@@ -401,6 +396,8 @@ import_finish () {
 	
 	rm -f ${TMP}import$$ ${TMP}admin$$
 	sfiles -r
+	# So it doesn't run consistency check.
+	touch BitKeeper/etc/SCCS/x.marked
 	echo "Creating initial changeset (should have $NFILES + 1 lines)"
 	bk commit -f $SYMBOL -y'Import changeset'
 }
