@@ -1,8 +1,16 @@
 #include "bkd.h"
 
-private int	doit(int verbose, char *rev, int indent, int tagOnly, int dash);
-private int	doit_remote(int verbose, char *rev, int indent, 
-					int rdiff, int tagOnly, char *url);
+typedef struct {
+	u32     verbose:1;
+	u32     tagOnly:1;
+	u32     ldiff:1;	/* want the new local csets */
+	u32     rdiff:1;	/* want the new remote csets */ 
+	char	*rev;
+	int	indent;
+} opts;
+
+private int	doit(opts, int dash);
+private int	doit_remote(opts opts, char **av, int optind);
 
 private void
 usage()
@@ -14,26 +22,32 @@ usage()
 int
 changes_main(int ac, char **av)
 {
-	int	c, indent = 0, verbose = 0, tagOnly = 0, ldiff = 0, rdiff = 0;
-	char	*rev = 0;
+	int	c;
 	char	cmd[MAXLINE];
+	opts	opts;
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help changes");
 		return (1);
 	}   
-
+	
+	bzero(&opts, sizeof(opts));
 	while ((c = getopt(ac, av, "tLRr|v|")) != -1) {
 		switch (c) {
-		    case 'i': indent = atoi(optarg); break;  	/* undoc? 2.0 */
-		    case 't': tagOnly = 1; break;		/* doc 2.0 */
+		    /*
+		     * Note: do not add option 'k', it is reserved
+		     * for internal use
+		     */
+		    case 'i': opts.indent = atoi(optarg);   	/* undoc? 2.0 */
+			      break;
+		    case 't': opts.tagOnly = 1; break;		/* doc 2.0 */
 		    case 'v':					/* doc 2.0 */
-			verbose = 1;
-			indent = optarg ? atoi(optarg) : 2;
+			opts.verbose = 1;
+			opts.indent = optarg ? atoi(optarg) : 2;
 			break;
-		    case 'r': rev = optarg; break;		/* doc 2.0 */
-		    case 'L': ldiff = 1; break;
-		    case 'R': rdiff = 1; break;
+		    case 'r': opts.rev = optarg; break;		/* doc 2.0 */
+		    case 'L': opts.ldiff = 1; break;
+		    case 'R': opts.rdiff = 1; break;
 		    default:
 			usage();
 	    	}
@@ -43,30 +57,46 @@ changes_main(int ac, char **av)
 		exit(1);
 	}
 
-	/*
-	 * 3 cases for av[optind]
-	 * a) NULL
-	 * b) "-"
-	 * c) url (ldiff == 1)
-	 * d) url (ldiff == 0;
-	 */
 	if (!av[optind]) {
-		return(doit(verbose, rev, indent, tagOnly, 0));
+		return(doit(opts, 0));
 	} else if (streq("-", av[optind])) {
-		return(doit(verbose, rev, indent, tagOnly, 1));
-	} else if (ldiff) {
-		char *vopt, *topt;
+		return(doit(opts, 1));
+	} else if (opts.ldiff) {
+		char	*new_av[20];
+		int	i, j, wfd, fd1, status;
+		pid_t	pid;
+		
+		if (opts.rdiff) {
+			fprintf(stderr, "warning: -R option ignored\n");
+		}
 
-		vopt = verbose ? aprintf("-v%d", indent) : "";
-		topt = tagOnly ? "-t" : "";
-		sprintf(cmd,
-			"bk synckeys -lk %s | bk changes %s %s -",
-			av[optind], vopt, topt);
-		if (*vopt) free(vopt);
-		return (system(cmd));
+		/*
+		 * What we want is: bk synckey -lk url | bk changes opts -
+		 */
+		new_av[0] = "bk";
+		new_av[1] = "changes";
+		for (i = 1, j = 2; i < optind; i++) {
+	 	 	/* Copy av[], skip -L */
+			if (streq(av[i], "-L"))  continue;
+			new_av[j++] = av[i];
+		}
+		new_av[j++] = "-";
+		new_av[j] = 0;
+		assert(j < 20);
+		pid = spawnvp_wPipe(new_av, &wfd, 0);
+
+		/*
+		 * Send "bk synckey" stdout into the pipe
+		 */
+		fd1 = dup(1); close(1);
+		dup2(wfd, 1); close(wfd);
+		sys("bk", "synckeys", "-lk", av[optind], SYS);
+		close(1); dup2(fd1, 1); /* restore fd1, just in case */
+		waitpid(pid, &status, 0);
+		if (WIFEXITED(status)) return(WEXITSTATUS(status));
+		return (1); /* interrupted */
 	} else {
-		return(doit_remote(verbose, rev,
-					indent, rdiff, tagOnly, av[optind]));
+		return(doit_remote(opts, av, optind)); 
 	}
 }
 
@@ -126,7 +156,7 @@ line2av(char *cmd, char **av)
 #define	TSPEC	"$if(:TAG:){:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\n$each(:C:){  (:C:)\n}$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n}"
 
 private int
-doit(int verbose, char *rev, int indent, int tagOnly, int dash)
+doit(opts opts, int dash)
 {
 	FILE	*f;
 	char	cmd[MAXKEY];
@@ -134,7 +164,7 @@ doit(int verbose, char *rev, int indent, int tagOnly, int dash)
 	char	dashfile[MAXPATH];
 	char	s_cset[] = CHANGESET;
 	char	buf[100];
-	char	*spec = tagOnly ? TSPEC : DSPEC;
+	char	*spec = opts.tagOnly ? TSPEC : DSPEC;
 	pid_t	pid;
 	extern	char *pager;
 	char	*pager_av[MAXARGS];
@@ -143,8 +173,8 @@ doit(int verbose, char *rev, int indent, int tagOnly, int dash)
 	delta	*d;
 
 	dashfile[0] = 0;
-	if (rev) {
-		sprintf(cmd, "bk prs -Yhd'%s' -r%s ChangeSet", spec, rev);
+	if (opts.rev) {
+		sprintf(cmd, "bk prs -Yhd'%s' -r%s ChangeSet", spec, opts.rev);
 	} else if (dash) {
 		gettemp(dashfile, "dash");
 		f = fopen(dashfile, "w");
@@ -176,7 +206,7 @@ doit(int verbose, char *rev, int indent, int tagOnly, int dash)
 	} else {
 		sprintf(cmd, "bk prs -Yhd'%s' ChangeSet", spec);
 	}
-	unless (verbose) {
+	unless (opts.verbose) {
 		strcat(cmd, " | ");
 		strcat(cmd, pager);
 		system(cmd);
@@ -209,7 +239,7 @@ doit(int verbose, char *rev, int indent, int tagOnly, int dash)
 			 */
 			sprintf(cmd,
 			    "bk cset -Hr%s | bk _sort | bk sccslog -i%d - > %s",
-			    buf, indent, tmpfile);
+			    buf, opts.indent, tmpfile);
 			system(cmd);
 			if (cat(tmpfile)) break;
 		}
@@ -224,11 +254,10 @@ doit(int verbose, char *rev, int indent, int tagOnly, int dash)
 
 
 private int
-send_part1_msg(remote *r, int rdiff,
-			int verbose, char *rev, int tagOnly, int indent)
+send_part1_msg(remote *r, opts opts, char **av, int optind)
 {
 	char	*cmd, buf[MAXPATH];
-	int	rc;
+	int	rc, i;
 	FILE 	*f;
 
 	bktemp(buf);
@@ -237,16 +266,18 @@ send_part1_msg(remote *r, int rdiff,
 	sendEnv(f, NULL, r, 0);
 	if (r->path) add_cd_command(f, r);
 	fprintf(f, "chg_part1");
-	if (rdiff) {
+	if (opts.rdiff) {
 		/*
 		 * When doing rdiff, the -v -t -r options are passed in 
-		 * part2 if this command
+		 * part2 of this command
 	 	 */
 		fputs(" -k", f); /* this enable the key sync code path */
 	} else {
-		if (verbose) fprintf(f, " -v%d", indent);
-		if (tagOnly) fputs(" -t", f);
-		if (rev) fprintf(f, " -r%s", rev);
+		/* Convert av[] vector to line format */
+		for (i = 1; i < optind; i++) {
+			assert(!streq(av[i], "-L") && !streq(av[i], "-R"));
+			fprintf(f, " %s", av[i]);
+		}
 	}
 	fputs("\n", f);
 	fclose(f);
@@ -291,9 +322,9 @@ send_end_msg(remote *r, char *msg)
 }
 
 private int
-send_part2_msg(remote *r, int verbose, int tagOnly, int indent, char *key_list)
+send_part2_msg(remote *r, opts opts, char **av, int optind, char *key_list)
 {
-	int	rc;
+	int	rc, i;
 	char	msgfile[MAXPATH], buf[MAXLINE];
 	FILE	*f;
 
@@ -304,8 +335,11 @@ send_part2_msg(remote *r, int verbose, int tagOnly, int indent, char *key_list)
 
 	if (r->path && (r->type == ADDR_HTTP)) add_cd_command(f, r);
 	fprintf(f, "chg_part2");
-	if (verbose) fprintf(f, " -v%d", indent);
-	if (tagOnly) fputs(" -t", f);
+	/* convert av[] vector to line format */
+	for (i = 1; i < optind; i++) {
+		if (streq("-R", av[i]) || streq("-L", av[i])) continue;
+		fprintf(f, " %s", av[i]);
+	}
 	fputs("\n", f);
 	fclose(f);
 
@@ -324,8 +358,7 @@ send_part2_msg(remote *r, int verbose, int tagOnly, int indent, char *key_list)
  * TODO: this could be merged with synckeys() in synckeys.c
  */
 private int
-changes_part1(remote *r, int rdiff, int verbose,
-			char *rev, int tagOnly, int indent, char *key_list)
+changes_part1(remote *r, opts opts, char **av, int optind, char *key_list)
 {
 	char	buf[MAXPATH], s_cset[] = CHANGESET;
 	int	flags, fd, rc, n, rcsets = 0, rtags = 0;
@@ -333,7 +366,7 @@ changes_part1(remote *r, int rdiff, int verbose,
 	delta	*d;
 
 	if (bkd_connect(r, 0, 1)) return (-1);
-	send_part1_msg(r, rdiff, verbose, rev, tagOnly, indent);
+	send_part1_msg(r, opts, av, optind);
 	if (r->rfd < 0) return (-1);
 
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
@@ -348,7 +381,7 @@ changes_part1(remote *r, int rdiff, int verbose,
 	}
 	if (get_ok(r, buf, 1)) return (-1);
 
-	if (rdiff == 0) {
+	if (opts.rdiff == 0) {
 		getline2(r, buf, sizeof(buf));
 		unless (streq("@CHANGES INFO@", buf)) {
 			return (0); /* protocal error */
@@ -396,8 +429,8 @@ ChangeSet file do not match.  Please check the pathnames and try again.\n");
 }
 
 private int
-changes_part2(remote *r, int verbose,
-			int tagOnly, int indent, char *key_list, int ret)
+changes_part2(remote *r, opts opts,
+			char **av, int optind, char *key_list, int ret)
 {
 	int	rc = 0;
 	char	buf[MAXLINE];
@@ -412,7 +445,7 @@ changes_part2(remote *r, int verbose,
 		send_end_msg(r, "@NOTHING TO SEND@\n");
 		goto done;
 	}
-	send_part2_msg(r, verbose, tagOnly, indent, key_list);
+	send_part2_msg(r, opts, av, optind, key_list);
 
 	getline2(r, buf, sizeof(buf));
 	if (remote_lock_fail(buf, 0)) {
@@ -439,10 +472,10 @@ done:	unlink(key_list);
 }
 
 private int
-doit_remote(int verbose, char *rev,
-			int indent, int rdiff, int tagOnly, char *url)
+doit_remote(opts opts, char **av, int optind)
 {
 	char 	key_list[MAXPATH] = "";
+	char 	*url = av[optind];
 	int	rc;
 	remote	*r;
 
@@ -454,7 +487,7 @@ doit_remote(int verbose, char *rev,
 		exit (1);
 	}
 
-	if (rdiff && rev) {
+	if (opts.rdiff && opts.rev) {
 		fprintf(stderr, "warning: -r option ignored\n");
 	}
 
@@ -465,8 +498,8 @@ doit_remote(int verbose, char *rev,
 		exit(1);
 	}
 
-	rc = changes_part1(r, rdiff, verbose, rev, tagOnly, indent, key_list);
-	rc = changes_part2(r, verbose, tagOnly, indent, key_list, rc);
+	rc = changes_part1(r, opts, av, optind, key_list);
+	rc = changes_part2(r, opts, av, optind, key_list, rc);
 	if (key_list[0]) unlink(key_list);
 	return (rc);
 }
