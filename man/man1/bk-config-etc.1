@@ -7,7 +7,7 @@ bk config-etc \- configuring \*(BK per repository
 Repository preferences can be defined in the BitKeeper/etc/config file.
 The general format for the repository preference config file is 
 .DS
-[filter]:preference:option
+[filter:]preference:option
 .DE
 Currently, checkout is the only user preference supported.
 To set, add a line to the BitKeeper/etc/config file as follows:
@@ -41,20 +41,20 @@ Preferences can be set per user, per host, or per repository via filters.
 .RS 1i
 .TP
 .B per user
-[jdoe]:checkout:get
+[jdoe:]checkout:get
 .tp
 .B per host
-[@xyz.com]:checkout:none
+[@xyz.com:]checkout:none
 .tp
 .B per user@host
-[jdoe@xyz.com]:checkout:get
+[jdoe@xyz.com:]checkout:get
 .tp
 .B per repository
-[/path/to/repository]:checkout:edit
+[/path/to/repository:]checkout:edit
 .br
-[@xyz.com:/path/to/repository]:checkout:get
+[@xyz.com:/path/to/repository:]checkout:get
 .br
-[jdoe@xyz.com:/path/to/repository]:checkout:edit 
+[jdoe@xyz.com:/path/to/repository:]checkout:edit 
 .RE
 .SH "SEE ALSO"
 .SA config-gui 1
