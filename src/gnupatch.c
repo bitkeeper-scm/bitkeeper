@@ -208,7 +208,7 @@ gnupatch_main(int ac, char **av)
                 exit(1);
         }      
 
-	sprintf(tmpdir, "%s/bk%d", TMP_PATH, getpid());
+	sprintf(tmpdir, "%s/bk%u", TMP_PATH, getpid());
 	sprintf(buf, "%s/a", tmpdir);
 	if (mkdirp(buf)) {
                 fprintf(stderr, "gnupatch: cannot mkdir%s.\n", buf);

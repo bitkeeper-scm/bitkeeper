@@ -546,7 +546,6 @@ binlinks:
 
 install-nolinks: all
 	@test -d $(BINDIR) || mkdir -p $(BINDIR)
-	-@find $(BINDIR) -type d -print | xargs chmod ug+w
 	cp -f $(BINS) $(SCRIPTS) $(DATA) $(BINDIR)
 	@-rm -rf $(BINDIR)/t
 	@if [ ! -d $(BINDIR)/t ]; \
@@ -570,6 +569,8 @@ install-nolinks: all
 	@if uname -s | grep _NT; \
 	then cd win32 && $(MAKE) BINDIR=$(BINDIR) install; \
 	fi
+	-@find $(BINDIR) -type d -print | xargs chmod ug+w
+	@true
 
 # Win32 note: Wise install script does not respect the BINDIR env variable
 # It picks up the image at C:/Program Files/BitKeeper

@@ -33,7 +33,7 @@ help_main(int ac,  char **av)
 			return (1);
 		}
 	}
-	sprintf(out, "%s/bk_help%d", TMP_PATH, getpid());
+	sprintf(out, "%s/bk_help%u", TMP_PATH, getpid());
 	unlink(out);
 	unless (av[optind]) {
 		av = new_av;
