@@ -30,6 +30,7 @@ typedef	int (*func)(int, char **);
 int	cmd_cd(int ac, char **av);
 int	cmd_clone(int ac, char **av);
 int	cmd_diffs(int ac, char **av);
+int	cmd_get(int ac, char **av);
 int	cmd_eof(int ac, char **av);
 int	cmd_help(int ac, char **av);
 int	cmd_pull(int ac, char **av);

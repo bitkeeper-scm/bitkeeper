@@ -80,6 +80,7 @@ int range_main(int, char **);
 int rcs2sccs_main(int, char **);
 int rcsparse_main(int, char **);
 int rdiffs_main(int, char **);
+int rget_main(int, char **);
 int receive_main(int, char **);
 int rechksum_main(int, char **);
 int renumber_main(int, char **);
@@ -176,6 +177,7 @@ struct command cmdtbl[] = {
 	{"rcs2sccs", rcs2sccs_main},
 	{"rcsparse", rcsparse_main},
 	{"rdiffs", rdiffs_main},
+	{"rget", rget_main},
 	{"receive", receive_main},
 	{"rechksum", rechksum_main},
 	{"renumber", renumber_main},
