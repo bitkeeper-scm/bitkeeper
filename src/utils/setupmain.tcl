@@ -681,6 +681,13 @@ proc doCommand {args} \
 	# This variable is set by readPipe when we get EOF on the pipe
 	vwait ::DONE
 
+	if {$::DONE == 2} {
+		# exit immediately; system must reboot. If we don't
+		# exit it can cause the reboot process to hang on 
+		# Windows/Me
+		exit 2
+	}
+
 	if {$::DONE != 0} {
 		set error "unexpected error"
 		if {[string length $pipeOutput] > 0} {
