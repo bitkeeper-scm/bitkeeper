@@ -17,7 +17,7 @@ all: os exe
 	for i in $(DIRS); \
 	do	test -d $$i/$$OS || mkdir $$i/$$OS; \
 		( \
-		if [ $${OS} = "x86-cygwin" ]; \
+		if [ $${OS} = "BIN-x86-cygwin" ]; \
 		then unset MAKEFLAGS CFLAGS LDFLAGS LD; CC=gcc; \
 		     export MAKEFLAGS CFLAGS LDFLAGS LD CC; \
 		fi;\

@@ -497,7 +497,7 @@ _unrm () {
 	# Find all the possible files, sort with most recent delete first.
 	bk -r. prs -Dhnr+ -d':TIME_T:|:GFILE' | \
 		sort -r -n | cut -d'|' -f2 | \
-		prs -Dhnpr+ -d':GFILE:|:DPN:' - | \
+		bk prs -Dhnpr+ -d':GFILE:|:DPN:' - | \
 		grep '^.*|.*'"$rpath"'.*' >$LIST
 
 	NUM=`wc -l $LIST | sed -e's/ *//' | cut -d' ' -f1`
