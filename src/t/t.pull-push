@@ -161,8 +161,11 @@ KEY="`bk prs -hd:KEY: -r+ ChangeSet`"
 cd $HERE/copy
 bk push -t -a $Q 2> resolve.out
 test $? -ne 0 || { echo failed; cat resolve.out; exit 1; }
-grep -q 'unresolved conflicts, nothing is applied' resolve.out ||
-    { cat resolve.out; exit 1; }
+grep -q 'unresolved conflicts, nothing is applied' resolve.out || {
+	echo should have had conflicts, but did not
+	cat resolve.out
+	exit 1
+}
 KEY2="`bk prs -hd:KEY: -r+ $HERE/project/ChangeSet`"
 [ "$KEY" = "$KEY2" ] || { echo bad push; exit 1; }
 echo OK
