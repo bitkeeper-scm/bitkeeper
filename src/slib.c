@@ -849,9 +849,11 @@ fixNewDate(sccs *s)
 	 */
 	unless (s->state & S_BITKEEPER) {
 		unless (next = d->next) return;
-		while (next->date >= d->date) {
-			d->date++;
-			d->dateFudge++;
+		if (next->date >= d->date) {
+			time_t	tdiff;
+			tdiff = next->date - d->date + 1;
+			d->date += tdiff;
+			d->dateFudge += tdiff;
 		}
 		return;
 	}
@@ -7541,9 +7543,11 @@ norev:			verbose((stderr, "admin: can't find rev %s in %s\n",
 	 */
 	n = sccs_dInit(0, 'R', sc, 0);
 	n->sum = almostUnique(1);
-	while (n->date <= sc->table->date) {
-		n->date++;
-		n->dateFudge++;
+	if (n->date <= sc->table->date) {
+		time_t	tdiff;
+		tdiff = sc->table->date - n->date + 1;
+		n->date += tdiff;
+		n->dateFudge += tdiff;
 	}
 	if (n->dateFudge) {
 		sprintf(fudge, "\001cF%d\n", n->dateFudge);
