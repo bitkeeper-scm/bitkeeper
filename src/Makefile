@@ -245,7 +245,7 @@ realtest: $(ALL) t/doit
 	cd t && ./doit
 
 t/doit: t/doit.sh substvars
-	substvars t/doit.sh > t/doit
+	./substvars t/doit.sh > t/doit
 	chmod +x t/doit
 
 FORCE:
