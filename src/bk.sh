@@ -525,6 +525,22 @@ _repair()
 	
 }
 
+# For sending repositories back to BitMover, this removes all comments
+# and obscures data contents.
+_obscure() {
+	ARG=--I-know-this-destroys-my-tree
+	test "$1" = "$ARG" || {
+		echo "usage: bk obscure $ARG"
+		exit 1
+	}
+	test `bk -r sfiles -c | wc -c` -gt 0 && {
+		echo "obscure: will not obscure modified tree"
+		exit 1
+	}
+	bk -r admin -Znone
+	BK_FORCE=YES bk -r admin -O
+}
+
 __bkfiles() {
 	bk sfiles "$1" |
 	    bk prs -hr1.0 -nd:DPN: - | grep BitKeeper/ > ${TMP}/bk$$

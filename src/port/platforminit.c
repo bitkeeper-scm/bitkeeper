@@ -21,11 +21,11 @@ cygwinPath()
 	static	char	*cygwinPath = NULL;
 	char	buf[MAXPATH], tmp[MAXPATH];
 	int	len = MAXPATH;
-#define KEY "Software\\Cygnus Solutions\\Cygwin\\mounts v2\\/usr/bin"
+#define CYG_KEY "Software\\Cygnus Solutions\\Cygwin\\mounts v2\\/usr/bin"
 
 	if (cygwinPath) return (cygwinPath);
-	if (getReg(HKEY_CURRENT_USER, KEY, "native", buf, &len) == 0) {
-		if (getReg(HKEY_LOCAL_MACHINE, KEY, "native", buf, &len) == 0) {
+	if (!getReg(HKEY_CURRENT_USER, CYG_KEY, "native", buf, &len)) {
+		if (!getReg(HKEY_LOCAL_MACHINE, CYG_KEY, "native", buf, &len)) {
 			return ("");
 		}
 	}
@@ -36,11 +36,29 @@ cygwinPath()
 	
 }
 
+private char *
+tclPath()
+{
+	static	char	*tclPath = NULL;
+	char	buf[MAXPATH], tmp[MAXPATH];
+	int	len = MAXPATH;
+#define TCL_KEY "Software\\Scriptics\\Tcl\\8.3"
+
+	if (tclPath) return (tclPath);
+	if (!getReg(HKEY_LOCAL_MACHINE, TCL_KEY, "Root", buf, &len)) {
+		return ("");
+	}
+	GetShortPathName(buf, tmp, MAXPATH);
+	localName2bkName(tmp, tmp);
+	tclPath = aprintf("%s/bin", tmp);
+	return (tclPath);
+}
+
 
 private int
-insertCygwinPath(char *bkpath, char *pathList)
+insertTclCygwinPath(char *bkpath, char *pathList)
 {
-	char	*p, *q, *r, *t, *anchor;
+	char	*p, *q, *r, *t, *anchor, *tcl_cygwin;
 	int	offset;
 
 	/*
@@ -50,7 +68,7 @@ insertCygwinPath(char *bkpath, char *pathList)
 	for (t = bkpath; *t; t++) *t = tolower(*t);
 
 	/*
-	 * Insert cygwin path after bk path
+	 * Insert tcl & cygwin path after bk path
 	 * If there is a gnu/bin path, insert cygwin path after that.
 	 * The gnu/bin processsing is mainly for the regression test environment
 	 */
@@ -69,8 +87,13 @@ insertCygwinPath(char *bkpath, char *pathList)
 		} else {
 			t = "";
 		}
-		if (streq(t, cygwinPath())) return(0); /* already got it */
-		safe_putenv("PATH=%s;%s;%s", pathList, cygwinPath(), t);
+		tcl_cygwin = aprintf("%s;%s", tclPath(), cygwinPath());
+		if (streq(t, tcl_cygwin)) {
+			return(0); /* already got it */
+		}
+		safe_putenv("PATH=%s;%s;%s;%s",
+					pathList, tcl_cygwin, t);
+		free(tcl_cygwin);
 		return (0);
 	}
 	return (-1);
@@ -176,26 +199,22 @@ gotit:
 
 #ifdef WIN32
 		/*
-		 * Needed by win32 Dos prompt environment; force a cygwin path
-		 * after the bk path. If gnu/bin is in the path, cygwin path
-		 * must be added after the gnu/bin path, so that we pick up
-		 * the correct diff and patch binary
+		 * Needed by win32 Dos prompt environment; force tcl & cygwin
+		 * path after the bk path. If gnu/bin is in the path, tcl & 
+		 * cygwin path must be added after the gnu/bin path, so that
+		 * we pick up the correct diff and patch binary
+		 * Note also that tcl path must be in fornt of cygwin path
+		 * because we do not want to pick up the cygwin port of tcl.
 		 */
 		if (add2path) {
-			safe_putenv("PATH=%s%c%s/gnu/bin%c%s%c%s",
+			safe_putenv("PATH=%s%c%s/gnu/bin%c%s%c%s%c%s",
 			    		buf, PATH_DELIM,
 					buf, PATH_DELIM,
+					tclPath(), PATH_DELIM,
 					cygwinPath(), PATH_DELIM,
 					p);
 		} else {
-			/*
-			 * Optimization for regression test
-			 * We already got the cygwin path in the regression
-			 * test environemnt
-			 */
-			unless (getenv("BK_REGRESSION")) {
-				insertCygwinPath(buf, p);
-			}
+			insertTclCygwinPath(buf, p);
 		}
 #else
 		if (add2path) {

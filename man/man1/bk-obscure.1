@@ -1,0 +1,37 @@
+.so bk-macros
+.TH "bk obscure" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME 
+bk obscure \- obscure \*(BK file comments and contents
+.SH SYNOPSIS
+.B bk obscure --I-know-this-destroys-my-tree
+.SH NOTICE
+This command will destroy your repository, do it if and only if the repository
+in question is an unneeded copy.
+.SH DESCRIPTION
+.LP
+The obscure command is typically used if you wish to send someone a repository
+for performance analysis and/or debugging.
+All data files have their contents and comments
+obscured.  The intent is that the obscuring of the repository data will
+result in a repository which has the same size, shape, number of deltas,
+number of changesets, etc., but with different data.
+.LP
+The current method used to obscure the data is to sort each line of data
+alphabetically, i.e.,
+.DS
+Please obscure me
+.DE
+turns into
+.DS
+ussromleeeecbaP
+.DE
+The obscuring is currently fairly simple and is theoretically
+reversible with enough compute power so this is not a means to encrypt
+a repository.  All commercial customers of BitMover are covered by an 
+non-disclosure clause in their commercial contract; the
+combination of that clause and the obfuscation are
+a reasonable way to provide BitMover access to a repository.
+.SH SEE ALSO
+.SA admin 1
+.SH CATEGORY
+.B Admin

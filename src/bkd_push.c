@@ -11,6 +11,8 @@ cmd_push_part1(int ac, char **av)
 	int	debug = 0;
 	MMAP    *m;
 	FILE	*l;
+	char	*lktmp;
+	int	ret;
 
 	while ((c = getopt(ac, av, "denz|")) != -1) {
 		switch (c) {
@@ -96,8 +98,8 @@ cmd_push_part1(int ac, char **av)
 	}
 
 	if (debug) fprintf(stderr, "cmd_push_part1: calling listkey\n");
-	sprintf(cmd, "bk _listkey %s > BitKeeper/tmp/lk%u", 
-	    metaOnly ? "-e": "", getpid());
+	lktmp = bktmp(0, "bkdpush");
+	sprintf(cmd, "bk _listkey %s > %s", metaOnly ? "-e": "", lktmp);
 	l = popen(cmd, "w");
 	while ((n = getline(0, buf, sizeof(buf))) > 0) {
 		if (debug) fprintf(stderr, "cmd_push_part1: %s\n", buf);
@@ -114,22 +116,21 @@ cmd_push_part1(int ac, char **av)
 	}
 
 	out("@OK@\n");
-	sprintf(cmd, "BitKeeper/tmp/lk%u", getpid());
-	m = mopen(cmd, "r");
+	m = mopen(lktmp, "r");
 	if (debug) {
 		fprintf(stderr, "cmd_push_part1: sending key list\n");
 		write(2, m->where,  msize(m));
 	}
+	ret = 0;
 	unless (writen(1, m->where,  msize(m)) == msize(m)) {
 		perror("write");
-		mclose(m);
-		unlink(cmd);
-		return (1);
+		ret = 1;
 	}
 	mclose(m);
-	unlink(cmd);
+	unlink(lktmp);
+	free(lktmp);
 	if (debug) fprintf(stderr, "cmd_push_part1: done\n");
-	return (0);
+	return (ret);
 }
 
 int

@@ -10,6 +10,8 @@ cmd_synckeys(int ac, char **av)
 	int	n, status;
 	MMAP    *m;
 	FILE	*l;
+	char	*lktmp;
+	int	ret;
 
 	setmode(0, _O_BINARY); /* needed for gzip mode */
 	sendServerInfoBlock(0);
@@ -46,7 +48,8 @@ cmd_synckeys(int ac, char **av)
 		return (1);
 	}
 
-	sprintf(cmd, "bk _listkey -r > BitKeeper/tmp/lk%u", getpid());
+	lktmp = bktmp(0, "synckey");
+	sprintf(cmd, "bk _listkey -r > %s", lktmp);
 	l = popen(cmd, "w");
 	while ((n = getline(0, buf, sizeof(buf))) > 0) {
 		fprintf(l, "%s\n", buf);
@@ -62,15 +65,14 @@ cmd_synckeys(int ac, char **av)
 	}
 
 	out("@OK@\n");
-	sprintf(cmd, "BitKeeper/tmp/lk%u", getpid());
-	m = mopen(cmd, "r");
+	m = mopen(lktmp, "r");
+	ret = 0;
 	unless (writen(1, m->where,  msize(m)) == msize(m)) {
 		perror("write");
-		mclose(m);
-		unlink(cmd);
-		return (1);
+		ret = 1;
 	}
 	mclose(m);
-	unlink(cmd);
-	return (0);
+	unlink(lktmp);
+	free(lktmp);
+	return (ret);
 }
