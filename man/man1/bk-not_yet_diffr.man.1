@@ -1,0 +1,62 @@
+.so ../macros
+.TH "bk not_yet_diffr" 1 08/18/00 "\*(BC" \*(BK
+.\"    ================= BitKeeper repository differences  =================
+.SH NAME
+bk diffr \- show BitKeeper repository differences
+.SH SYNOPSIS
+.B bk diffr [\-a] [diffopts] 
+.I old new
+.SH DESCRIPTION
+.LP
+The diffr command shows changes in the new repository that are not in 
+the old repository.
+.LP
+The default listing shows the ChangeSet logs in sccslog format.
+If you want to see the diffs, use one of the diffs options.
+.SH OPTIONS
+.TP
+.B \-a
+Show all differences including unchecked and/or uncommitted deltas.
+.TP
+.B \-c
+Show context diffs.
+.TP
+.B \-D
+Prefix lines with dates.
+.TP
+.B \-d
+Show regular diffs.
+.TP
+.B \-f
+Prefix lines with file names.
+.TP
+.B \-M
+Prefix lines with revision numbers.
+.TP
+.B \-p
+Show procedural diffs.
+.TP
+.B \-s
+Show side-by-side diffs.
+.TP
+.B \-U
+Prefix lines with user names.
+.TP
+.B \-u
+Show unified diffs.
+.SH NOTE
+.LP
+The diffr command does not, by default, examine changes that are
+not checked in and committed to a changeset. Thus if a repository has 
+edited files, you won't see these as differences.
+.LP
+If you want to see everything, use the 
+.B -a 
+option. However, files
+that are not under revision control are not shown.
+.SH "SEE ALSO"
+.SA diffs
+.br
+.SA sccslog
+.SH CATEGORY
+.B Obsolete

@@ -1,0 +1,468 @@
+.so ../macros
+.TH "bk manpage" 1 08/18/00 "*(BC" *(BK
+.\" General notes:
+.\" When writing troff docs, I find it nice to keep the lines short.
+.\" It makes editing them easier.  If you can, putting each sentence
+.\" on a line by itself is really nice for moving stuff around, but
+.\" sort of a pain to do.
+.\" You might yell at me to provide a version of fmt which does this.
+.TH "BK MAN" Admin "31 July 2000"  "\*(BC" \*(BK
+.\" Make the description fit in one line, no more than 65 characters
+.\" 5678901234567890123456789012345678901234567890123456789012345
+.nr RS .3i
+.SH NAME
+man - how to write a BitKeeper man page
+.SH SYNOPSIS
+.B bk man man
+.SH DESCRIPTION
+.LP
+The BitKeeper man pages are used to document commands and
+features in the BitKeeper source management system.
+This man page is an example of how to write a BitKeeper man page.
+.LP
+BitKeeper uses names rather than numbers to group man pages.
+The list of names is the list of directories under the 
+.B man 
+directory, and is currently the following list 
+.IP Sections 12
+This has only one man page, which lists all the groups of man
+pages, explaining what is in each group.
+It is essentially the concatenation of each of the other
+sections' Intro man page.
+It is mainly here so that we can put hyper links to each of the other
+sections.
+.IP General
+General man pages covering quick start topics, HOWTOs, FAQs, etc.
+Keep this short.
+.IP License
+All licensing related issues.
+The licenses themselves, docs on open logging, etc.
+.IP Basics
+Basic introduction to revision control in general,
+and BitKeeper specifically.
+This should be a short list of commands which people need to use
+to get started with BitKeeper.
+It's enough to be useful, but nothing advanced.
+.IP Repository
+All repository level commands.
+A repository level command is any command which operates on the
+repository as a whole, rather than at the individual file level.
+Obvious examples are pull, push, clone, resolve.
+.IP File
+All file level commands.
+A file level command is one which can operate on a single file,
+rather than globally on the repository.
+.IP GUI-tools
+All of the graphical tools are documented here.
+Remember to document the all of the variables which can be set
+in the rcfiles.
+We will probably combine all of those rcfiles into one
+$HOME/.bkgui, so make the variables be 
+.B citool_font
+rather than
+.BR font .
+.IP Admin
+All administrative and utility commands.
+A catch all.
+.IP Compat
+Commands which deal with compatibility with other tools or source management
+systems.   Examples: import/export tools, interfacing with 
+.BR make (1)
+rules, interfacing with other IDE environments such as Visual Studio or emacs.
+.IP Obsolete
+Junk goes here.
+.SH PREAMBLE
+The first command in a man page (after comment lines) should be
+.RS \n[RS]u
+.sp
+.B .TH
+.IR "topic section date \*(lqBitMover, Inc.\*(rq BitKeeper"
+.sp
+.RE
+where:
+.RS \n[RS]u
+.TP 10
+.I title
+The title of the man page in upper case (e.g.,
+.IR CITOOL ).
+.TP
+.I section
+The section name the man page should be placed in (e.g.,
+.IR Admin ).
+.TP
+.I date
+The date of the last revision.  You, and should, use SCCS keywords for this.
+.TP
+.I source
+The source of the command.  The source is usually
+.I BitMover, Inc.,
+but may be from some external organization if we have picked something up.
+If it is from an external organization, be sure to have a 
+.B LICENSE
+section which makes the rules clear.
+.sp
+.TP
+.I manual
+The title of the manual.  Until someone thinks up a better idea, this is
+always just
+.IR BitKeeper .
+.RE
+.LP
+.SH SECTIONS
+Section headings are started with
+.B \&.SH
+followed by the heading name.
+If the name contains spaces and appears on the same line as
+.BR \&.SH ,
+then place the heading in double quotes.
+Section headings used by BitKeeper include:  NAME,
+SYNOPSIS, AVAILABILITY, DESCRIPTION, OPTIONS, EXAMPLES, FILES, DIAGNOSTICS,
+ALIASES, BUGS, and SEE ALSO.
+.LP
+The sections have the following contents:
+.TP 14
+.B NAME
+The only required  section heading is  
+.IR NAME ,  
+which should  be  the  first section and be followed on the next
+line by the command name and a one line description of the program:  
+.\" .RS \n[RS]u
+.sp
+\&.SH NAME
+.br
+man \\- how to write a BitKeeper man page
+.sp
+Both the command and beginning of description begin
+with a lower case letter.
+.\" .RE
+.TP 
+.B SYNOPSIS
+This briefly describes the command interface.
+The synopsis must fit on one line.
+For commands, this  shows the syntax of the command and its
+arguments (including options);  boldface is used for as-is text
+and italics are used to indicate replaceable arguments.
+Brackets ([])  surround optional arguments, vertical bars (|)
+separate choices, and ellipses (\&...) 
+indicate arguments that can be repeated.
+.sp
+\&.SH SYNOPSIS
+.br
+\&.B bk unlock [\\-rsw]
+.sp
+If you need multiple lines, use
+.B .br
+to break them up. This should look like you are running
+the command several times.
+If there are too many options, just list [options] 
+instead of showing them all.
+.sp
+XXX - Find examples for the several lines with bk commands.
+.TP
+.B AVAILABILITY
+If the command is not part of all versions of BitKeeper, list which versions
+include this.  The versions are currently
+.BR BitKeeper/Pro ,
+.BR BitKeeper/Basic ,
+and 
+.BR BitKeeper/Free .
+.TP
+.B DESCRIPTION
+This gives an explanation of what the command does.
+Discuss how it interacts with files and standard input,
+and what it produces on standard output or standard error.
+Omit internals and implementation details unless they're
+critical for understanding the interface.
+Describe the usual case; for information on options use the
+.B OPTIONS
+section.
+If there is some kind of input grammar or complex set of subcommands,
+consider describing them in a separate
+.B USAGE
+section (and just place an overview in the
+.B DESCRIPTION
+section).
+.TP
+.B OPTIONS
+This describes the options accepted by the program and how they
+change its behavior.  The options list should be in
+alpha order except when complex.  See Admin/admin.man.
+When there are options with the same letter, but
+lower case and upper case, Upper case comes first.
+So, if there are options ABab, the ordering
+would be AaBb.
+Option letter is bold, if there are arguments to
+the option those are italicized.  Arguments should 
+not have a space between it and the option as a rule,
+but rules are not always adhered to, ATT conformances
+are one place its okay to break the rules.
+There is a MACROS file that will be included in
+man pages that define all the different ways that
+options can be presented.  Include this file by
+.sp
+\&.SO ../Admin/MACROS
+.sp
+Use the macros in that file so all pages can be changed
+at once if need be.
+.TP
+.B EXAMPLES
+Please put lots of examples in the man pages.
+XXX - reference the font stuff below.
+.TP
+.B FILES
+Any files which are used, created, deleted by the command should be listed.
+.TP
+.B DIAGNOSTICS
+All commands must have an exit status.  Document the exit status here.
+Look in the source to find it or ask.
+Typical exit status is 0 for success, 1 for failure, but things can
+differ.
+Do 
+.B not
+document exit status unless you are sure that you have it right.
+In other words, make the engineers tell you what it should be
+and make  sure that they have made it be what they said it would
+be.
+People use exit status in shell scripts all the time, it is important to
+get this right.
+.TP
+.B ALIASES
+Alphabetically ordered list of commands that
+that can be used in place of official command, 
+one per line.
+Each entry is of the format:
+.sp
+\&.BR command (section)
+.sp
+which yields:
+.sp
+.BR citool (GUI-tools)
+.TP
+.B BUGS
+Lists limitations, known defects or inconveniences,
+and other questionable activities.
+.TP
+.B SEE ALSO
+Lists related man pages in alphabetical order.
+For example,
+.sp
+\&.sp
+.br
+\&.B bk help citool
+.br
+\&.br
+.br
+\&.B bk help undo
+.sp
+yields
+.sp
+.B bk help citool
+.br
+.B bk help undo
+.sp
+.SH FONTS
+XXX - is this correct?
+.br
+We will be adhering to the following font standards:
+.IP
+Filenames are always in italics (e.g.,
+.IR "/usr/include/stdio.h" ),
+except in the SYNOPSIS section, where included files are in bold (e.g.,
+.BR "#include <stdio.h>" ).
+.IP
+Special macros, which are usually in upper case, are in bold (e.g.,
+.BR MAXINT ).
+.IP
+When enumerating a list of error codes, the codes are in bold (this list
+usually uses the
+.B \&.TP
+macro).
+.IP
+Any reference to another man page (or to the subject of the
+current man page) is in bold.
+If the manual section number is given, it is given in Roman
+(normal) font, without any spaces (e.g.,
+.BR man (7)).
+.LP
+The commands to select the type face are:
+.TP 4
+.B \&.B
+Bold
+.TP
+.B \&.BI
+Bold alternating with italics (especially useful for function
+specifications)
+.TP
+.B \&.BR
+Bold alternating with Roman (especially useful for referring to
+other manual pages)
+.TP
+.B \&.I
+Italics
+.TP
+.B \&.IB
+Italics alternating with bold
+.TP
+.B \&.IR
+Italics alternating with Roman
+.TP
+.B \&.RB
+Roman alternating with bold
+.TP
+.B \&.RI
+Roman alternating with italics
+.TP
+.B \&.SB
+Small alternating with bold
+.TP
+.B \&.SM
+Small (useful for acronyms)  
+.LP
+Traditionally, each command can have up to six arguments,
+but the GNU implementation removes this limitation (you might
+still want to limit yourself to 6 arguments for portability's
+sake).
+Arguments are delimited by spaces.
+Double quotes can be used to specify an argument which contains
+spaces.
+All of the arguments will be printed next to each other without
+intervening spaces, so that the
+.B \&.BR
+command can be used to specify a word in bold followed by a mark
+of punctuation in Roman.
+If no arguments are given, the command is applied to the
+following line of text.
+.SH "OTHER MACROS AND STRINGS"
+.PP
+Below are other relevant macros and predefined strings.
+Unless noted otherwise, all macros cause a break (end the
+current line of text).
+Many of these macros set or use the "prevailing indent." The
+"prevailing indent" value is set by any macro with the parameter
+.I i
+below; macros may omit
+.I i
+in which case the current prevailing indent will be used.
+As a result, successive indented paragraphs can use the same
+indent without re-specifying the indent value.
+A normal (non-indented) paragraph resets the prevailing indent
+value to its default value (0.5 inches).
+By default a given indent is measured in ens; try to ens or ems
+as units for indents, since these will automatically adjust to
+font size changes.
+The other key macro definitions are:
+.SS "Normal Paragraphs"
+.TP 9m
+.B \&.LP
+Same as
+.B \&.PP
+(begin a new paragraph).
+.TP
+.B \&.P
+Same as
+.B \&.PP
+(begin a new paragraph).
+.TP
+.B \&.PP
+Begin a new paragraph and reset prevailing indent.
+.SS "Relative Margin Indent"
+.TP 9m
+.BI \&.RS " i"
+Start relative margin indent - moves the left margin
+.I i
+to the right (if
+.I i
+is omitted, the prevailing indent value is used).
+A new prevailing indent is set to 0.5 inches.
+As a result, all following paragraph(s) will be indented until
+the corresponding
+.BR \&.RE .
+.TP
+.B \&.RE
+End relative margin indent and restores the previous value of
+the prevailing indent.
+.SS "Indented Paragraph Macros"
+.TP 9m
+.BI \&.HP " i"
+Begin paragraph with a hanging indent (the first line of the
+paragraph is at the left margin of normal paragraphs, and the
+rest of the paragraph's lines are indented).
+.TP
+.BI \&.IP " x i"
+Indented paragraph with optional hanging tag.
+If the tag
+.I x
+is omitted, the entire following paragraph is indented by
+.IR i .
+If the tag
+.I x
+is provided, it is hung at the left margin before the following
+indented paragraph (this is just like
+.BR \&.TP
+except the tag is included with the command instead of being on
+the following line).
+If the tag is too long, the text after the tag will be moved
+down to the next line (text will not be lost or garbled).
+For bulleted lists, use this macro with \e(bu (bullet) or \e(em
+(em dash) as the tag, and for numbered lists, use the number or
+letter followed by a period as the tag; this simplifies
+translation to other formats.
+.TP
+.BI \&.TP " i"
+Begin paragraph with hanging tag.
+The tag is given on the next line, but its results are like
+those of the
+.B \&.IP
+command.
+.SS "Miscellaneous Macros"
+.TP 9m
+.B \&.DT
+Reset tabs to default tab values (every 0.5 inches);
+does not cause a break.
+.TP
+.BI \&.IX " \&..."
+Inserts index information (for a search system or printed index
+list).
+Index information is not normally displayed in the page itself.
+If followed by a single parameter, the parameter is added as a
+standalone index term pointing to this location in the man page.
+If it's two parameters, it's probably in Perl manpage format;
+the first parameter identifies the type of name (one of Name,
+Title, Header, Subsection, or Item) and the second parameter the
+name itself to be indexed.
+Otherwise, it's in the long index format: each parameter gives
+an index term, subordinate index term, subsubordinate index
+term, and so on until terminated by an empty parameter, then a
+parameter with the name of the program, \eem, and short
+description; this may be followed by another empty parameter and
+possibly by page control messages (e.g.
+PAGE START).
+An example of this would be "programming tools" "make" ""
+"\efLmake\efP \e(em build programs".
+.TP
+.BI \&.PD " d"
+Set inter-paragraph vertical distance to d (if omitted, d=0.4v);
+does not cause a break.
+.TP
+.BI \&.SS " t"
+Subheading
+.I t
+(like
+.BR \&.SH ,
+but used for a subsection inside a section).
+.SS "Predefined Strings"
+The
+.B man
+package has the following predefined strings:          
+.IP \e*R
+Registration Symbol: \*R
+.IP \e*S
+Change to default font size
+.IP \e*(Tm
+Trademark Symbol: \*(Tm
+.IP \e*(lq
+Left angled doublequote: \*(lq
+.IP \e*(rq
+Right angled doublequote: \*(rq
+.SH CATEGORY
+.B Admin

@@ -1,0 +1,45 @@
+.so ../macros
+.TH "bk grep" 1 08/18/00 "*(BC" *(BK
+.\"    =================== Searching for strings ===================
+.SH NAME
+bk grep \- search all revisions for a pattern
+.SH SYNOPSIS
+.B bk grep [\-dimnu] 
+.IB pattern \ [
+.IB files... \ | 
+.IB \- ]
+.SH DESCRIPTION
+.LP
+If you need to find a string which you know was present in some version
+of some file, you can use the 
+.B bk grep
+command to do that.
+.LP
+The 
+.B bk grep
+command uses
+.B bk sccscat
+to show the concatenation of all
+lines in all versions of a file.  The listing can be annotated with dates,
+revision numbers, file names, and/or user names.  If no annotations are
+selected, the default is to do "-mn".
+.SH OPTIONS
+.TP
+.B \-d
+Prefix each line with the date it was last modified.
+.TP
+.B \-i
+Ignore the case of letters in making comparisons.
+.TP
+.B \-m
+Prefix each line with the rev it was last modified in.
+.TP
+.B \-n
+Prefix each line with the filename.
+.TP
+.B \-u
+Prefix each line with the user who last modified it.
+.SH "SEE ALSO"
+.SA sccscat
+.SH CATEGORY
+.B File

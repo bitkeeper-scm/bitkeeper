@@ -1,0 +1,152 @@
+.so ../macros
+.TH "bk resolve" 1 08/18/00 "*(BC" *(BK
+.\"    ============== BitKeeper resolve ==============
+.SH NAME
+bk resolve \- merge and/or apply new work after push/pull/resync
+.SH SYNOPSIS
+.if t \{\
+.B bk resolve [\-aAcdqrt1234] [\-l
+.I log
+.B ] [\-m
+.I merge
+.B ] [\-y
+.I comment
+.B ] [
+.I package_root
+.B ]
+.\}
+.if n
+bk resolve [\-aAcdqrt1234] [-l <log>] 
+[\-m<merge>] [-y<comment>] [<package_root>]
+.SH DESCRIPTION
+.LP
+After a 
+.BR bk\ push , 
+.BR bk\ pull , 
+or 
+.BR bk\ resync ,
+use resolve to merge and/or apply
+new work.  Resolve is automatically run by the 
+.B bk pull
+and
+.B bk push
+commands, but must be run manually after a 
+.BR bk\ resync .
+.LP
+If you want to preview the new changesets before merging, you can run
+.B bk csets 
+and that will run csettool on the list of changes (which can
+be found in RESYNC/BitKeeper/etc/csets).
+.LP
+Resolve traverses all of the files, prompting you with a list of files
+needing to be merged.  The following are the stages when resolving files:
+.BU
+create and rename conflicts
+.BU 
+mode conflicts (file permissions)
+.BU
+file flag conflicts
+.BU
+file content conflicts
+.LP
+In the future, we will be adding resolve stages for the following:
+.BU
+symbol "conflicts" (local and remote added the "alpha" symbol to
+different deltas)
+.BU
+descriptive text conflicts
+.BU
+LOD name conflicts
+.LP
+When there are no conflicts left to be merged, resolve groups any merge
+changes into a changeset and moves everything into your repository.
+.LP
+While it is OK to quit out of resolve without finishing, the repository
+will be locked and remain locked until you return to resolve and finish
+up the merge process.
+.LP
+For detailed help on the merge process, see 
+.BR bk\ help\ merge .
+.SH OPTIONS
+.TP
+.B \-a
+Automerge.  This will run a diff3\-based merge of
+all non-overlapping lines.  If there are overlapping
+lines in merged files, the merge will fail and the files
+will not be resolved; you have to run resolve again
+without the 
+.B \-a
+option to finish the resolve.
+.TP
+.B \-A
+Auto advance.  Normally, when doing an interactive resolve,
+the resolution is not complete until you tell the system
+to commit the file ("C" in the content resolve menu).  This
+allows for several false starts on a merge, you can use
+"m" to merge, decide that you didn't like it, and use
+"m" again to try over.  If 
+.B \-A
+is used, any sort of merge
+which completes is immediately used and the resolver 
+advances to the next file.
+.TP
+.B \-c
+No conflicts.  This option tells resolve to complete if and
+only if new non-conflicting work appears in the patch.
+.TP
+.B \-d
+Debugging (mainly useful to BitKeeper developers).
+.TP
+.AN \-l log
+Log operations to 
+.I log 
+(or stderr if destination specified).
+This option is to provide for audit trails; support is not
+yet complete.
+.TP
+.AN \-m merge
+Use 
+.I merge 
+as the merge program called when you press "m"
+in the content resolver.  A merge program takes four file
+arguments: the local version of the file, the ancestor
+version of the file, the remote version of the file,
+and the merged file.  It is the job of the merge program
+to merge the changes into the merge file. 
+.TP
+.B \-q
+Be quiet.
+.TP
+.B \-r
+Re-merge.  If you started to resolve, exited the resolver,
+and then restarted, files already merged will be skipped.
+This options allows you to re-merge files which need
+help, yet allows you to skip past the ones you are happy
+with by hitting "C" in the resolve menu.
+.TP
+.B \-t
+Text-only. Enables the text-based resolve menu when doing 
+the final commit instead of using citool.
+.TP
+.AN \-y msg
+Use 
+.I msg 
+as the changeset check-in message.  This is option
+is typically set by the calling program, i.e., 
+.BR bk\ pull .
+If 
+.I msg 
+is not present, resolve will prompt for one
+at commit time.
+.SH "SEE ALSO"
+.SA csets
+.br
+.SA merge
+.br
+.SA pull
+.br
+.SA push
+.br
+.SA resync
+.SH CATEGORY
+.B Repository

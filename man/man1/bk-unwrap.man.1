@@ -1,0 +1,24 @@
+.so ../macros
+.TH "bk unwrap" 1 08/18/00 "*(BC" *(BK
+.\"    =============== Unwrapping BitKeeper patches ===============
+.SH NAME
+bk unwrap \- unwrap patches
+.SH SYNOPSIS
+.B bk unwrap \< 
+.I patch 
+.BI \>\  patch.unwrapped
+.SH DESCRIPTION
+.LP
+Normally you do not use this command as it is invoked automatically
+as part of the
+.B bk receive
+command.   However, you may want to use this
+command to peek inside a wrapped patch.
+.SH SEE ALSO
+.SA receive
+.br
+.SA send
+.br
+.SA wrap
+.SH CATEGORY
+.B File

@@ -1,0 +1,71 @@
+.so ../macros
+.TH "bk track_xxx" 1 08/18/00 "\*(BC" \*(BK
+.\"    ================= Tracking an upstream repository  =================
+.SH NAME
+bk track \- track an upstream repository
+.SH SYNOPSIS
+.B bk track [\-qr] 
+.I directory tarball
+.SH DESCRIPTION
+.LP
+Sometimes you want to follow someone else's development of a package,
+but maintain local changes in parallel.  The track command helps you
+do this.
+.LP
+Suppose you have a tarball containing the first version of a package.
+We will call it "wget".  You read it into a BitKeeper package, like so:
+.AX
+$ bk track wget wget-2.4.5.tar.gz
+.XA
+This will create a directory named "wget", and set up a BitKeeper
+repository within (see bk help setup for details).  Bitkeeper will then
+import the full contents of the tarball into that repository.
+.LP
+Frequently tarballs contain a top level directory that has all the
+files and subdirectories within, such as 'wget-2.4.5'.  You should
+unpack the tarball and recreate a new one that does not have this
+directory, like so:
+.AX
+$ tar zxf wget-2.4.5.tar.gz
+$ cd wget-2.4.5
+$ tar czf ../wget-2.4.5-notopdir.tar.gz .
+.XA
+and run track on the new tarball.  If you don't do this, when you try
+to merge the next upstream revision, which has a top directory named
+wget-2.5.3 or something, BitKeeper will think every file has been
+moved.
+.LP
+When track completes, the "wget" directory will contain two
+subdirectories, "pristine" and "shared".  You can clone the "shared"
+directory to your personal work area, make changes, and push them back
+up, just as you would any other package.  Never do anything to the
+"pristine" repository.
+.LP
+When the upstream people release a new version, you import that by
+running track again on the new tarball:
+.AX
+$ bk track wget wget-2.5.3.tar.gz
+.XA
+If any files have been deleted, created, or moved, a "renametool"
+window will appear asking you to figure out which files have been
+moved and which have been deleted or created.  See bk help renametool
+for details.
+.LP
+Once renames have been dealt with, track will create a "merge" repository
+in which it will merge the upstream changes with your local
+modifications.  It does this like pull: if there are no overlapping
+changes in any files, the merge will complete automatically.  If there
+are overlapping changes, you will be prompted to resolve the conflicts
+as usual.  See bk help resolve.
+.LP
+Finally, the merge is pushed into the "shared" repository and the work
+area is deleted.
+.SH OPTIONS
+.TP
+.B \-q
+Be quiet.
+.TP
+.B \-r
+Do not run renametool; just do deletes and creates.
+.SH CATEGORY
+.B Obsolete

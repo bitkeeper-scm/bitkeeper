@@ -1,0 +1,118 @@
+.so ../macros
+.TH "bk import" 1 08/18/00 "*(BC" *(BK
+.\"    ================= Importing files into BitKeeper =================
+.SH NAME
+bk import \- import a set of files into a BitKeeper package
+.SH SYNOPSIS
+.if t \{\
+.B bk import [\-efiqrv] [\-l
+.IB file ]
+.B [\-S
+.IB sym ]
+.B [\-t
+.IB type ]
+.\}
+.if n
+bk import [\-efiqrv] [\-l<file>] [-S<sym>] [-t<type>]
+.SH DESCRIPTION
+.LP
+If you have not yet set up a package, read the bk help setup section.
+.LP
+If you have a tree full of files which you wish to include, go to
+your tree and make sure there is nothing in it except for the files
+you want to place under revision control (or see the section on file
+specification below).  Then do this:
+.AX
+$ bk import /path/to/src_files /path/to/package
+.XA
+This will copy all files *below* /path/to/src_files into the
+package directory and check in the initial revision of the files.
+Your original files are left untouched.
+.SH "FILE SPECIFICATION"
+.LP
+You can generate the list of files externally, and pass that list
+to import.  In that case, the usage is
+.AX
+$ bk import -l/tmp/list ~/src/files ~/package
+.XA
+and the list of files must be relative paths, relative to the root
+of the "from" directory.  One way to generate the list might be:
+.AX
+$ cd ~/src/files
+$ find . -type f -name '*.[ch]' -print > /tmp/list
+$ bk import -l/tmp/list ~/src/files ~/package
+.XA
+If you want to filter the lists, you can do that as well. One way would
+is to edit the /tmp/list file with a text editor.  Another way is to
+use bk's interactive mode of setting file inclusions and exclusions.
+Suppose that you have a tree which has other stuff in it, such as .o's
+or core files, whatever.  You happen to know that the files you want
+are all of the form *.c *.h or Makefile and you want to pick up just
+these files.  To do that, try the -include and/or -exclude options
+and enter the patterns one per line:
+.AX
+$ bk import -i ~/src_files ~/package
+End patterns with "." by itself or EOF
+Include>> *.c
+Include>> *.h
+Include>> Makefile
+Include>> .
+.XA
+Importing from a CVS tree:
+.AX
+$ bk import -v -tCVS warehouse new
+.XA
+.SH OPTIONS
+.TP
+.B \-e
+Prompts for a regular expression to apply to the list
+of files.  All matches are excluded.
+.TP
+.B \-f
+Force; do not prompt for list editing.
+.TP
+.B \-i
+Like \-e but includes only files which match.
+.TP
+.AN \-l file
+Use the list of files in 
+.IB file .
+.TP
+.B \-q
+Be quiet.
+.TP
+.B \-r
+Do not do rename processing when doing patch imports.
+.TP
+.AN \-S sym
+Add tag 
+.I sym
+to the changeset created around the import
+.TP
+.B \-v
+Be verbose.
+.TP
+.AN \-t type
+Specify import file type.  
+.I type 
+can be one of:
+.RS .5i
+.TP
+.B plain
+Import plain text files
+.tp
+.B patch
+Import a patch (diffs)
+.tp
+.B RCS
+Import RCS files
+.tp
+.B CVS
+Import CVS files
+.tp
+.B SCCS
+Import SCCS files
+.SH "SEE ALSO"
+.SA HOWTO
+.SH CATEGORY
+.B Repository

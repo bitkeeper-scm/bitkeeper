@@ -1,0 +1,42 @@
+.so ../macros
+.TH "bk mkdiffs" 1 08/18/00 "\*(BC" \*(BK
+.\"    ================= Exporting traditional patches =================
+.SH NAME
+bk mkdiffs \- exporting traditional patches
+.SH SYNOPSIS
+.if t \{\
+.B bk mkdiffs [\-h] [\-b|\-z] \-r 
+.IB start , stop [\-l 
+.IB old , new ]
+.\}
+.if n
+bk mkdiffs [\-h] [\-b|\-z] \-r<start>,<stop> [\-l<old>,<new>]
+.SH DESCRIPTION
+.LP
+The mkdiffs command generates a patch identical (or very close to 
+identical) with what "diff -Nur source dest" would generate on
+two clear text trees.
+.SH OPTIONS
+.TP
+.B \-h
+Suppress BitKeeper header.
+.TP
+.B \-b
+Compress output with bzip2.
+.TP
+.B \-z
+Compress output with gzip.
+.TP
+.B \-l
+Specifies the labels for old and new files.
+.TP
+.B \-r
+Specifies change set revisions to diff.
+.SH NOTE
+mkdiffs has been replaced with 
+.BR bk\ export\ -tpatch . 
+The mkdiffs command will be removed in future release.
+.SH "SEE ALSO"
+.SA export
+.SH CATEGORY
+.B Obsolete
