@@ -38,7 +38,6 @@ test `bk sfiles -p | wc -l` -eq 0 || {
 	bk sfiles -p
 	exit 1
 }
-test -f BitKeeper/etc/SCCS/s.gone || { echo No gone; exit 1; }
 test -f BitKeeper/etc/SCCS/s.ignore || { echo No ignore; exit 1; }
 test -f BitKeeper/etc/SCCS/s.logging_ok || { echo No logging_ok; exit 1; }
 echo OK
@@ -53,7 +52,6 @@ cd ../project
 bk resync -t $Q ../copy
 cd RESYNC || exit 1
 # The invariant is that you always get config but none of the others for updates
-test -f BitKeeper/etc/SCCS/s.gone && { echo Copied gone; exit 1; }
 test -f BitKeeper/etc/SCCS/s.ignore && { echo Copied ignore; exit 1; }
 test -f BitKeeper/etc/SCCS/s.logging_ok && { echo Copied logging_ok; exit 1; }
 test -f BitKeeper/etc/config || { echo No config; exit 1; }
@@ -68,7 +66,6 @@ bk commit $Q -ydate
 bk resync -t $Q ../copy
 cd RESYNC || exit 1
 # The invariant is that you always get config and all others for conflicts
-test -f BitKeeper/etc/SCCS/s.gone || { echo No gone; exit 1; }
 test -f BitKeeper/etc/SCCS/s.ignore || { echo No ignore; exit 1; }
 test -f BitKeeper/etc/SCCS/s.logging_ok || { echo No logging_ok; exit 1; }
 test -f BitKeeper/etc/config || { echo No config; exit 1; }

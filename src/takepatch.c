@@ -226,6 +226,13 @@ usage:		system("bk help -s takepatch");
 		system("bk _converge -R");
 		chdir(RESYNC2ROOT);
 	}
+
+	getGone(); /* 
+		    * We need the Gone file even for no conflict case
+		    * Because user may have deleted the sfile in the
+		    * local tree,
+		    */
+
 	if (resolve) {
 		char 	*resolve[7] = {"bk", "resolve", "-q", 0, 0, 0, 0};
 		int 	i;
@@ -259,6 +266,18 @@ getConfig()
 		    "/BitKeeper/etc/SCCS/s.config > BitKeeper/etc/config");
 	}
 	chdir(RESYNC2ROOT);
+}
+
+getGone()
+{
+	
+	/* XXX - if this is edited, we don't get those changes */
+	if (exists("BitKeeper/etc/SCCS/s.gone")) {
+		unless (exists("RESYNC/BitKeeper/etc/SCCS/s.gone")) {
+			system("cp BitKeeper/etc/SCCS/s.gone "
+			    "RESYNC/BitKeeper/etc/SCCS/s.gone");
+		} 
+    	}
 }
 
 /*
