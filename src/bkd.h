@@ -94,6 +94,7 @@ typedef struct {
 	char	*logfile;		/* if set, log commands to here */
 	char	*startDir;		/* start up directory for daemon */
 	char	remote[16];		/* a.b.c.d of client */
+	char	*vhost_dirpath;		/* directory path to start from */
 } bkdopts;
 
 /*
