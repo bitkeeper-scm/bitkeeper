@@ -164,18 +164,21 @@ private int
 compressed(int gzip, char *tmpfile)
 {
 	pid_t	pid;
-	int	n;
+	int	fd0, fd, n;
 	int	rfd, status;
 	char	buf[8192];
 
 #ifndef WIN32
 	signal(SIGCHLD, SIG_DFL);
 #endif
+	fd0 = dup(0); close(0);
+	fd = open(tmpfile, 0,  0);
 	pid = spawnvp_rPipe(cset, &rfd);
 	if (pid == -1) {
 		repository_rdunlock(0);
 		exit(1);
 	}
+	close(0); dup2(fd0, 0); close(fd0);
 	gzip_init(gzip);
 	while ((n = read(rfd, buf, sizeof(buf))) > 0) {
 		gzip2fd(buf, n, 1);

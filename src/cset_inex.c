@@ -46,7 +46,9 @@ cset_inex(int flags, char *op, char *revs)
 	}
 	unless (f = fdopen(fd, "r")) {
 		perror("fdopen");
+#ifndef WIN32
 		kill(pid, SIGKILL);
+#endif
 		return (1);
 	}
 
@@ -57,8 +59,10 @@ cset_inex(int flags, char *op, char *revs)
 	while (fgets(buf, sizeof(buf), f)) {
 		if (checkLog(0, 1)) {
 			fprintf(stderr, "Cset aborted, no changes applied\n");
+#ifndef WIN32
 			kill(pid, SIGKILL);
 			wait(0);
+#endif
 			mdbm_close(m);
 			return (1);
 		}
@@ -76,8 +80,10 @@ cset_inex(int flags, char *op, char *revs)
 				}
 			} else {		/* flush file, start again */
 				if (doit(flags, file, op, revbuf, d)) {
+#ifndef WIN32
 					kill(pid, SIGKILL);
 					wait(0);
+#endif
 					clean(file);
 					/*
 					 * Nota bene: this "knows" that the
@@ -98,15 +104,19 @@ cset_inex(int flags, char *op, char *revs)
 	}
 	if (file[0]) {
 		if (doit(flags, file, op, revbuf, d)) {
+#ifndef WIN32
 			kill(pid, SIGKILL);
 			wait(0);
+#endif
 			clean(file);
 			unedit();
 			return (undoit(m));
 		}
 		mdbm_store_str(m, file, "", 0);
 	}
+#ifndef WIN32
 	wait(0);
+#endif
 	mdbm_close(m);
 	return (commit(flags & SILENT, d));
 }
@@ -165,7 +175,9 @@ getComments(char *op, char *revs)
 	}
 	unless (f = fdopen(i, "r")) {
 		perror("fdopen");
+#ifndef WIN32
 		kill(pid, SIGKILL);
+#endif
 		return (0);
 	}
 	d = calloc(1, sizeof(delta));
@@ -179,7 +191,9 @@ getComments(char *op, char *revs)
 		d->comments = addLine(d->comments, strdup(buf));
 	}
 	fclose(f);
+#ifndef WIN32
 	wait(0);
+#endif
 
 #if 0
 	/*
@@ -273,7 +287,9 @@ undoit(MDBM *m)
 	}
 	unless (f = fdopen(i, "r")) {
 		perror("fdopen");
+#ifndef WIN32
 		kill(pid, SIGKILL);
+#endif
 		exit(1);
 	}
 	while (fgets(buf, sizeof(buf), f)) {
@@ -299,7 +315,9 @@ undoit(MDBM *m)
 		}
 	}
 	fclose(f);
+#ifndef WIN32
 	wait(0);
+#endif
 	mdbm_close(m);
 	if (worked) fprintf(stderr, "Successfully cleaned up all files.\n");
 	return (1);

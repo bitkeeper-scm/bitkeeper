@@ -1,0 +1,131 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+
+# Copyright (c) 1999 Andrew Chang?
+# awc@etp2.bitmover.com|src/t/t.repository|20000322041145|27344
+
+echo $N Create initial repository ...................................$NL
+HERE=`${CWD}`
+echo "logging: none" > $HERE/c
+bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
+if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
+cd project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo OK
+echo $N Create some data ............................................$NL
+mkdir src
+cd src
+echo foo > foo.c
+echo bar > bar.c
+echo h > h.h
+bk ci $Q -i foo.c bar.c h.h
+bk commit $Q -ycset1
+if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
+echo OK
+echo $N clone the workspace .........................................$NL
+bk clone $Q $HERE/project $HERE/copy
+cd $HERE/copy
+P=50000
+bk bkd -d -p$P -c1 2>/dev/null
+while [ $? -eq 2 ]
+do	P=`expr $P + 1`
+	bk bkd -d -p$P -c1 2>/dev/null
+done
+echo OK
+echo $N "push a new changeset via bkd (no compression)" ...............$NL
+cd $HERE/project/src
+echo woo > woo.c
+bk ci $Q -i woo.c
+bk commit $Q -ycset1
+bk push $Q -z0 bk://localhost:$P
+cd $HERE/copy/src
+if [ ! -f SCCS/s.woo.c ]; then echo failed; exit 1; fi
+echo OK
+echo $N "pull a new changeset via bkd (no compression)" ...............$NL
+cd $HERE/project/src
+echo zoo > zoo.c
+bk ci $Q -i zoo.c
+bk commit $Q -ycset1
+cd $HERE/project
+P=50000
+bk bkd -d -p$P -c1 2>/dev/null
+while [ $? -eq 2 ]
+do	P=`expr $P + 1`
+	bk bkd -d -p$P -c1 2>/dev/null
+done
+cd $HERE/copy/src
+bk pull $Q -z0 bk://localhost:$P
+if [ ! -f SCCS/s.zoo.c ]; then echo failed; exit 1; fi
+echo OK
+echo $N "pull a new changeset via bkd (with compression)" .............$NL
+cd $HERE/project/src
+echo boo > boo.c
+bk ci $Q -i boo.c
+bk commit $Q -ycset1
+cd $HERE/project
+P=50000
+bk bkd -d -p$P -c1 2>/dev/null
+while [ $? -eq 2 ]
+do	P=`expr $P + 1`
+	bk bkd -d -p$P -c1 2>/dev/null
+done
+cd $HERE/copy/src
+bk pull $Q bk://localhost:$P
+if [ ! -f SCCS/s.boo.c ]; then echo failed; exit 1; fi
+echo OK
+echo $N "push a new changeset via bkd (with compression)" .............$NL
+cd $HERE/copy
+P=50000
+bk bkd -d -p$P -c1 2>/dev/null
+while [ $? -eq 2 ]
+do	P=`expr $P + 1`
+	bk bkd -d -p$P -c1 2>/dev/null
+done
+cd $HERE/project/src
+echo aoo > aoo.c
+bk ci $Q -i aoo.c
+bk commit $Q -ycset1
+bk push $Q -z6 bk://localhost:$P
+cd $HERE/copy/src
+if [ ! -f SCCS/s.aoo.c ]; then echo failed; fi
+echo OK
+echo $N clone a tree via bkd ........................................$NL
+cd $HERE/project
+P=50000
+bk bkd -d -p$P -c1 2>/dev/null
+while [ $? -eq 2 ]
+do	P=`expr $P + 1`
+	bk bkd -d -p$P -c1 2>/dev/null
+done
+bk clone $Q bk://localhost:$P $HERE/copy2
+cd $HERE/copy2/src
+if [ ! -f SCCS/s.aoo.c ]; then echo failed; fi
+echo OK
+echo $N "pull a new changeset via bkd -xcd -xpush " ...................$NL
+cd $HERE/project/src
+echo coo > coo.c
+bk ci $Q -i coo.c
+bk commit $Q -ycset1
+cd $HERE/project
+P=50000
+bk bkd -d -p$P -xcd -xpush -c1 2>/dev/null
+while [ $? -eq 2 ]
+do	P=`expr $P + 1`
+	bk bkd -d -p$P -xcd -xpush -c1 2>/dev/null
+done
+cd $HERE/copy/src
+bk pull $Q bk://localhost:$P
+if [ ! -f SCCS/s.coo.c ]; then echo failed; exit 1; fi
+echo OK
