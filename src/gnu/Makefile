@@ -33,7 +33,7 @@ all: os exe
 
 install: all
 	@if [ X$(BINDIR) = X ]; then echo Must set BINDIR; exit 1; fi
-	cp $(BINS) $(BINDIR)
+	cp -f $(BINS) $(BINDIR)
 	@for i in $(BINS); \
 	do	D=`dirname $$i`; \
 		F=`basename $$i`; \

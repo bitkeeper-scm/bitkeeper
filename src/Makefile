@@ -445,6 +445,7 @@ install-nolinks: all
 	fi
 	@-./bk get -q t/SCCS/s.t.* t/setup t/x.chk_env
 	@cp -f t/doit t/t.* t/setup t/x.chk_env $(BINDIR)/t
+	@rm -f $(BINDIR)/MANIFEST
 	@./bk chksum $(BINS) $(SCRIPTS) $(DATA) t/doit t/t.* t/setup \
 		| sort > $(BINDIR)/MANIFEST
 	@set `echo $(LINKTO)`; \
@@ -462,10 +463,11 @@ install-nolinks: all
 	fi
 
 image: all
-	-rm -rf tmp/bitkeeper
+	@-rm -rf tmp
 	DIR=`pwd`/tmp/bitkeeper; set -e; \
-	$(MAKE) install-nolinks BINDIR=$$DIR; \
-	cd utils && $(MAKE) image BINDIR=$$DIR
+	BINDIR=$$DIR $(MAKE) -e install-nolinks; \
+	cd utils && BINDIR=$$DIR $(MAKE) -e image 
+	@-rm -rf tmp
 
 # Rules for test builds.
 HOSTS	= `chosts build`
