@@ -1,5 +1,8 @@
 #include "bkd.h"
 
+/*
+ * Note: this finction is also called from bkd_changes.c
+ */
 int
 cmd_synckeys(int ac, char **av)
 {

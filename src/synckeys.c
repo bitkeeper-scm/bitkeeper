@@ -536,7 +536,7 @@ private int
 synckeys(remote *r, int flags)
 {
 	char	buf[MAXPATH], s_cset[] = CHANGESET;
-	int	fd, rc, n;
+	int	rc, n;
 	sccs	*s;
 	delta	*d;
 
@@ -568,7 +568,6 @@ synckeys(remote *r, int flags)
 			printf(
 "You are trying to sync to an unrelated package. The root keys for the\n\
 ChangeSet file do not match.  Please check the pathnames and try again.\n");
-			close(fd);
 			sccs_free(s);
 			return (1); /* needed to force bkd unlock */
 		    case -3:
@@ -577,12 +576,10 @@ ChangeSet file do not match.  Please check the pathnames and try again.\n");
 			return (1); /* empty dir */
 			break;
 		}
-		close(fd);
 		disconnect(r, 2);
 		sccs_free(s);
 		return (-1);
 	}
-	close(fd);
 	sccs_free(s);
 	if (r->type == ADDR_HTTP) disconnect(r, 2);
 	return (0);

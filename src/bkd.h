@@ -69,6 +69,8 @@ int	cmd_push_part2(int ac, char **av);
 int	cmd_pull_part1(int ac, char **av);
 int	cmd_pull_part2(int ac, char **av);
 int	cmd_synckeys(int ac, char **av);
+int	cmd_chg_part1(int ac, char **av);
+int	cmd_chg_part2(int ac, char **av);
 
 int	cmd_rclone_part1(int ac, char **av);
 int	cmd_rclone_part2(int ac, char **av);

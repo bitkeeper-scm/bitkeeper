@@ -40,5 +40,11 @@ struct cmd cmds[] = {
   { "synckeys", "synckeys_1.3", 
     "sync keys in local repository to remote repository",
     cmd_synckeys },
+  { "chg_part1", "chg_1.3", 
+    "get new csets in remote repository",
+    cmd_chg_part1 },
+  { "chg_part2", "chg_1.3", 
+    "get new csets in remote repository",
+    cmd_chg_part2 },
   { 0, 0, 0 }
 };
