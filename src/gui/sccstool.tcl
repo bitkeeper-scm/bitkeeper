@@ -1255,7 +1255,7 @@ proc widgets {} \
 	bind $w(cvs) <t>		"history tags"
 	bind . <Button-2>		{history}
 	bind . <Double-2>		{history tags}
-	bind $w(cvs) $gc(quit)		"exit"
+	bind $w(cvs) $gc(sccs.quit)	"exit"
 	bind $w(cvs) <s>		"sfile"
 
 	bind $w(cvs) <Prior>		"$w(ap) yview scroll -1 pages"

@@ -1068,7 +1068,7 @@ proc keyboard_bindings {} \
 		.diffs.l yview -pickplace end
 		.diffs.r yview -pickplace end
 	}
-	bind all $gc(quit)	exit
+	bind all $gc(rename.quit)	exit
 	bind all <space>	next
 	bind all <n>		next
 	bind all <p>		prev
