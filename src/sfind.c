@@ -28,7 +28,6 @@ typedef struct {
 	u32     Aflg:1;			/* use with -p show	*/
 					/* all pending deltas	*/
 	u32     Cflg:1;     		/* want file<BK_FS>rev format	*/
-	u32     splitRoot:1;   		/* split root mode	*/
 	u32     dfile:1;   		/* use d.file to find 	*/
 					/* pending delta	*/
 	u32	fixdfile:1;		/* fix up  the dfile tag */
@@ -119,7 +118,6 @@ init(char *name, int flags, MDBM *sDB, MDBM *gDB)
 		if (mdbm_fetch_str(gDB, &p[2])) flags |= INIT_HASgFILE;
 		*p = 's'; /* because hasfile() stomps */
 	}
-	unless (opts.splitRoot) flags |= INIT_ONEROOT;
 	if (strneq(name, "./", 2)) name += 2;
 	s = sccs_init(name, flags|INIT_SAVEPROJ, proj);
         if (s && !proj) proj = s->proj;
@@ -581,7 +579,6 @@ walk(char *dir, int level)
 		 * Find project root and put it in buf
 		 */
 		if (find_root(dir, buf)) {
-			opts.splitRoot = hasRootFile(buf, tmp);
 			if (!opts.all) {
 				FILE	*ignoref; 
 
@@ -617,11 +614,7 @@ walk(char *dir, int level)
 	}
 
 	concat_path(buf, dir, "SCCS");
-	/*
-	 * TODO: for better performance in split root mode,
-	 * we should be able to better optimized the sPath() code
-	 */
-	sdh = getdir(opts.splitRoot ? sPath(buf, 1) : buf);
+	sdh = getdir(buf);
 	unless (sdh) {
 		/*
 		 * TODO: we need to check for the caes where
@@ -794,13 +787,7 @@ error:				perror("output error");
 		if (fputs(gfile, opts.out) < 0) goto error;
 	} else {
 		sfile = name2sccs(gfile);
-		/*
-		 * TODO: for better performance in split root mode,
-		 * we should be able to better optimized the sPath() code
-		 * e.g. we could pass project struct into sPath()
-		 */
-		if (fputs(opts.splitRoot ?
-				sPath(sfile, 0) : sfile, opts.out) < 0) {
+		if (fputs(sfile, opts.out) < 0) {
 			goto error;
 		}
 		free(sfile);

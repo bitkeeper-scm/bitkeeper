@@ -28,7 +28,6 @@
 #define	INIT_HASpFILE	0x08000000	/* has p.file */
 #define	INIT_HASxFILE	0x00100000	/* has x.file */
 #define	INIT_HASzFILE	0x00200000	/* has z.file */
-#define	INIT_ONEROOT	0x00400000	/* one root mode i.e not split root */
 #define	INIT_NOGCHK	0x00800000	/* do not fail on gfile checks */
 #define	INIT_FIXSTIME	0x00010000	/* force sfile mtime < gfile mtime */
 
@@ -896,7 +895,6 @@ void	sccs_mkroot(char *root);
 char	*sccs_nivPath(sccs *s);
 int	sccs_parent_revs(sccs *s, char *rev, char **revP, char **revM);
 char	*sccs_setpathname(sccs *s);
-char	*sPath(char *name, int isDir);
 delta	*sccs_next(sccs *s, delta *d);
 int	sccs_reCache(int quiet);
 int	sccs_meta(sccs *s, delta *parent, MMAP *initFile, int fixDates);
@@ -1116,7 +1114,6 @@ int	isEffectiveDir(char *s);
 int	fileTypeOk(mode_t m);
 void	sccs_tagLeaf(sccs *s, delta *d, delta *md, char *tag);
 int	sccs_scompress(sccs *s, int flags);
-int	hasRootFile(char *gRoot, char *sRoot);
 int	mkBkRootIcon(char *path);
 int	unmkBkRootIcon(char *path);
 char	*fast_getcwd(char *buf, int len);

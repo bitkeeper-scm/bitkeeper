@@ -114,7 +114,7 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		return (dups ? 1 : 0);
 	}
 	if (!av[optind]) {
-		path = xFlg ? "." : sPath(".", 1);
+		path = ".";
 		lftw(path, process);
 	} else if (streq("-", av[optind])) {
 		char	buf[MAXPATH];
@@ -122,7 +122,7 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		setmode(0, _O_TEXT); /* read file list in text mode */
 		while (fnext(buf, stdin)) {
 			chop(buf);
-			path = xFlg ? buf : sPath(buf, 1);
+			path = buf;
 			file(path, process);
 		}
 	} else {
@@ -131,11 +131,10 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		 */
 		for (i = optind; i < ac; ++i) {
 			localName2bkName(av[i], av[i]);
+			path =  av[i];
 			if (isdir(av[i])) {
-				path =  xFlg ? av[i] : sPath(av[i], 1);
 				lftw(path, process);
 			} else {
-				path =  xFlg ? av[i] : sPath(av[i], 0);
 				file(path, process);
 			}
 		}
@@ -410,7 +409,7 @@ idcache_main(int ac, char **av)
  * rebuild the caches.
  */
 private	void
-rebuild()
+rebuild(void)
 {
 	char s_cset[] = CHANGESET;
 
