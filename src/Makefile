@@ -1,9 +1,9 @@
 
 BINS	= delta get admin diffs clean prs what sinfo sccssh sids \
 	  smoosh sccslog sfiles renumber lines rmdel takepatch \
-	  cset g2sccs range zone gethost undos chksum rechksum \
-	  sccsmv sccsrm sccscat key2rev check fdiff adler32 \
-	  nextsecond
+	  cset g2sccs range undos chksum rechksum \
+	  sccsmv sccsrm sccscat key2rev check fdiff adler32
+PRIVATE	= nextsecond mtime gethost zone
 SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge
 GUISCR	= gui/sccstool gui/citool gui/vitool gui/fm gui/fm3 \
 	  gui/bithelp gui/mkindex
@@ -11,7 +11,7 @@ LIBS	= zlib/libz.a mdbm/libmdbm.a libsccs.a
 LINKS	= ci co edit unedit unget
 
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(GUIBIN) $(GUISCR) $(LINKS) \
-	  bitkeeper.config bkhelp.txt install.sh
+	  $(PRIVATE) bitkeeper.config bkhelp.txt install.sh
 
 CFLAGS	= -g -O -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM
 CPPFLAGS= -Izlib
@@ -60,7 +60,7 @@ SRCS	= slib.c range.c newrev.c getopt.c popen.c libdiff.c \
 	  rechksum.c sccs_mv.c sccsmv.c sccsrm.c sccscat.c \
 	  key2rev.c rcs.c comments.c user.c host.c localtm.c \
 	  check.c bkhelp.txt config.h.in configure substvars.in \
-	  bitkeeper.config install.in nextsecond.c
+	  bitkeeper.config install.in nextsecond.c mtime.c
 HDRS	= sccs.h purify.h range.h system.h mdbm/common.h mdbm/mdbm.h \
 	  mdbm/tune.h zlib/zlib.h zlib/zutil.h zlib/zconf.h zlib/deflate.h \
 	  zlib/infblock.h zlib/infcodes.h zlib/inffast.h zlib/inffixed.h \
@@ -112,6 +112,8 @@ fullwarn:
 
 p:
 	$(MAKE) CFLAGS="-O2 -fomit-frame-pointer" all
+ndebug:
+	$(MAKE) CFLAGS="-O2 -DNDEBUG -fomit-frame-pointer" all
 g:
 	$(MAKE) CFLAGS="-g" all
 gO:
@@ -127,6 +129,7 @@ production_all:
 production: rebuild p install
 production_g: rebuild gO install
 production_debug: rebuild debug install
+production_ndebug: rebuild ndebug install
 production_purify: rebuild purify install
 
 # Cleanup targets.
@@ -171,7 +174,7 @@ tags: srcs
 TAGS: srcs
 	etags $(SRCS) $(HDRS)
 
-test tests: 
+test tests: $(ALL)
 	-get -q t
 	cd t && ./doit
 
