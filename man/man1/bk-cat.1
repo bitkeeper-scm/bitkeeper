@@ -22,10 +22,12 @@ Essentially this command does two different things depending on context.
 If the foo.c file exists in a directory, bk uses the native cat 
 to print the file.  If the file does not exist in the directory, 
 but SCCS/s.foo.c exists then
-.DS
-bk get -kp 
+.sp
+.RS .5i
+.B bk get -kp
 .ARG foo.c
-.DE
+.sp
+.RE
 is run to print the file.
 .SH CATEGORY
 .B File
