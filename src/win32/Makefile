@@ -26,7 +26,7 @@ patch: FORCE
 	cd pub/patch && unset MAKEFLAGS && make
 
 MSYSBIN = ../gnu
-msys: ./msysver.sh FORCE
+msys: ./msysver.sh MSYSKEY FORCE
 	mkdir -p $(MSYSBIN)/tmp
 	MSYSVER=`./msysver.sh`; \
 	if [ -n "$$MSYSVER" -a -f "$$MSYSVER" ]; \
