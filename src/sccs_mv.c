@@ -19,14 +19,14 @@ sccs_hasCsetDerivedKey(sccs *s)
 	char 	*p;
 	char	buf1[MAXKEY], buf2[MAXKEY];
 
-	d1 = findrev(s, "1.0");
+	d1 = sccs_findrev(s, "1.0");
 	assert(d1);
 	sccs_sdelta(s, d1, buf1);
 
 	sprintf(buf2, "%s/%s", proj_root(s->proj), CHANGESET);
 	sc = sccs_init(buf2, 0);
 	assert(sc);
-	d2 = findrev(sc, "1.0");
+	d2 = sccs_findrev(sc, "1.0");
 	assert(d2);
 	p = d2->pathname;
 	d2->pathname = d1->pathname;

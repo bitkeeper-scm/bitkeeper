@@ -726,7 +726,7 @@ ok_local(sccs *s, int check_pending)
 		return (0);
 	}
 	unless (check_pending) return (1);
-	d = sccs_getrev(s, "+", 0, 0);
+	d = sccs_top(s);
 	unless (d->flags & D_CSET) {
 		fprintf(stderr,
 		    "Cannot [re]move uncommitted local file %s\n", s->gfile);
