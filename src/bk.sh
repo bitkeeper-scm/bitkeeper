@@ -645,6 +645,7 @@ _undo() {
 	then	echo Failed to create undo backup $UNDO
 		exit 1
 	fi
+	# XXX Colon can not be a BK_FS on win32
 	sed 's/[:@]/ /' < ${TMP}rmlist$$ | while read f r
 	do	echo $f
 		${BIN}stripdel $Q -Cr$r $f
@@ -652,12 +653,12 @@ _undo() {
 		then	echo Undo of "$@" failed 1>&2
 			exit 1
 		fi
-	done > /tmp/mv$$
-	if [ $? != 0 ]; then /bin/rm -f /tmp/mv$$; exit 1; fi
+	done > ${TMP}mv$$
+	if [ $? != 0 ]; then $RM -f ${TMP}mv$$; exit 1; fi
 
 	# Handle any renames.  Done outside of stripdel because names only
 	# make sense at cset boundries.
-	${BIN}prs -hr+ -d':PN: :SPN:' - < /tmp/mv$$ | while read a b
+	${BIN}prs -hr+ -d':PN: :SPN:' - < ${TMP}mv$$ | while read a b
 	do	if [ $a != $b ]
 		then	if [ -f $b ]
 			then	echo Unable to mv $a $b, $b exists
@@ -673,6 +674,7 @@ _undo() {
 		fi
 		${BIN}renumber $b
 	done 
+	/bin/rm -f ${TMP}mv$$ ${TMP}rmlist$$ ${TMP}undo$$
 	if [ X$Q = X ]
 	then	echo Patch containing these undone deltas left in $UNDO,
 		echo running consistency check...
