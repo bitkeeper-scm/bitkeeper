@@ -4,9 +4,7 @@
 .SH NAME
 bk pull \- updates the repository from its parent
 .SH SYNOPSIS
-.Bc bk pull [\-inqRt] [
-.OPTopt \-l arg
-.Bc ] [
+.Bc bk pull [\-iqRt] [
 .OPTequal \-E env var
 .Bc ] [\-z[
 .ARGc d
@@ -49,29 +47,13 @@ Export environment variable to remote site.
 .B \-i
 Turn off automerge feature in resolve.
 .tp
-.OPTopt \-l arg
-Without arguments, \-l lists the changesets and changeset comments
-to be sent (like bk changes).  May be combined with \-n to get
-a repository difference summary (see also bk changes \-R/\-L).
-You can change the listing by supplying one of the following arguments:
-.RS
-.tp .3i
-.B l
-Do a long listing of the changeset and individual file change history to be
-sent (like bk changes \-v).  May be combined with \-n to get a verbose 
-repository difference summary.
-.tp
-.B k
-Do a listing of changeset keys to be sent (like bk changes \-k).  May
-be combined with \-n.
-.tp
-.B r
-Do a listing of the changeset revisions and tags to be sent.  
-May be combined with \-n.
-.RE
+.B \-l
+This option has been obsoleted by bk changes.
+Please see bk help changes (-R/-L options)
+for more information on getting repository differences.
 .tp
 .B \-n
-Don't actually do it, just say what would be done.
+This option has been obsoleted.  Please use bk changes.
 .tp
 .B \-q
 Be quiet.
