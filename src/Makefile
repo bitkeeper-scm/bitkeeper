@@ -4,7 +4,8 @@
 BINS	= delta get admin diffs clean prs what sinfo sccssh sids \
 	  smoosh sccslog sfiles renumber lines rmdel takepatch \
 	  cset g2sccs range undos chksum rechksum \
-	  sccsmv sccsrm sccscat key2rev check fdiff adler32 gethost
+	  sccsmv sccsrm sccscat key2rev check fdiff adler32 gethost \
+	  afio
 PRIVATE	= nextsecond mtime zone install.sh
 SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
 	  sccstool citool vitool fm fm3 bithelp mkindex
@@ -14,6 +15,7 @@ DATA	= bitkeeper.config bkhelp.txt
 
 LINKTO	= ci:delta co:get edit:get unedit:clean unget:clean
 BINLINKS= bk admin get delta unget rmdel prs
+SUBDIRS	= utils/afio
 
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LINKS) $(PRIVATE) $(DATA)
 
@@ -128,9 +130,15 @@ production_purify: rebuild purify install-bin
 clean-obj: FORCE
 	-/bin/rm -f $(PORTOBJ) $(SCCSOBJ) $(MDBMOBJ) $(ZLIBOBJ) $(BINOBJ) \
 		$(LIBS) a.out core
+	for i in $(SUBDIRS); \
+	do	(cd $$i && make clean); \
+	done
 
 clean-bin: FORCE
 	-/bin/rm -f $(BINS) $(PRIVATE) $(SCRIPTS) $(LINKS) MANIFEST
+	for i in $(SUBDIRS); \
+	do	(cd $$i && make clean); \
+	done
 
 clean-cfg: FORCE
 	-/bin/rm -f config.h stamp-h substvars install.sh config.status \
@@ -143,6 +151,9 @@ clean-src: FORCE
 	bk clean mdbm
 	bk clean zlib
 	bk clean t
+	for i in $(SUBDIRS); \
+	do	(cd $$i && bk clean); \
+	done
 
 # This would be called "clean" but that's a command name.
 cclean sccsclean nice: clean-obj clean-src
@@ -360,6 +371,13 @@ mkindex: gui/mkindex.tcl substvars
 	./substvars gui/mkindex.tcl >mkindex.T
 	chmod +x mkindex.T
 	mv -f mkindex.T mkindex
+
+afio: utils/afio/afio
+	/bin/rm -f afio
+	ln utils/afio/afio .
+
+utils/afio/afio: utils/afio/afio.c
+	cd utils/afio && make "CC=$(CC)" "CFLAGS=$(CFLAGS)" afio
 
 # Autoconf magic.
 # This is not the way this will work in the long run.

@@ -263,20 +263,27 @@ _receive() {
 
 # Clone a repository, usage "clone from to"
 _clone() {
+	FROM=
+	TO=
 	for arg in "$@"
 	do	case "$arg" in
 		-*)	;;
-		*)	if [ -z "$from" ]
-			then from="$arg"
-			elif [ -z "$to" ]
-			then to="$arg"
-			else echo 'usage: clone [opts] from to' >&2; exit 1
+		*)	if [ -z "$FROM" ]
+			then	FROM="$arg"
+			elif [ -z "$TO" ]
+			then	TO="$arg"
+			else	echo 'usage: clone [opts] from to' >&2; exit 1
 			fi
 			;;
 		esac
 	done
-	if [ -d $to ]
-	then echo "clone: warning: $to exists" >&2
+	if [ X$TO = X ]
+	then	echo  'usage: clone [opts] from to' >&2
+		exit 1
+	fi
+	if [ -d $TO ]
+	then	echo "clone: $to exists" >&2
+		exit 1
 	fi
 	exec ${BIN}resync -ap "$@"
 }
@@ -1005,16 +1012,24 @@ _export() {
 	if [ x$R = x ]; then R=-r+; fi
 
 	mkdir -p $DST || exit 1
+	HERE=`pwd`
+	cd $DST
+	DST=`pwd`
+	cd $HERE
+	cd $SRC
+	_cd2root
 
 	# XXX: cset -t+ should work.
-	(cd $SRC; ${BIN}cset -t`${BIN}prs $R -hd:I: ChangeSet`) \
+	(${BIN}cset -t`${BIN}prs $R -hd:I: ChangeSet`) \
 	| eval egrep -v "'^(BitKeeper|ChangeSet)'" $INCLUDE $EXCLUDE \
 	| sed 's/:/ /' | while read file rev
 	do
-		dir=./$file
-		dir=$DST/${dir%/*}
-		[ -d $dir ] || mkdir -p $dir
-		${BIN}get $K $Q -r$rev -G$DST/$file $SRC/$file
+		PN=`bk prs -r$rev -hd:DPN: $SRC/$file`
+		if ${BIN}get $K $Q -r$rev -G$DST/$PN $SRC/$file
+		then	DIR=`dirname $DST/$$PN`
+			mkdir -p $DIR || exit 1
+			${BIN}get $K $Q -r$rev -G$DST/$PN $SRC/$file
+		fi
 	done
 
 	if [ x$WRITE != x ]
