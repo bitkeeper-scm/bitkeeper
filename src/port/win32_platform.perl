@@ -24,7 +24,7 @@ sub cd2root
 	while (! -d "$dir/BitKeeper/etc") {
 		# XX TODO use driveType interface
 		# to get root.
-		last if (!defined((stat($dir))[0]));
+		return if (!defined((stat($dir))[0]));
 		$dir = "../" . $dir;
 	}
 	chdir($dir);
