@@ -28,8 +28,8 @@ isMasterTree()
 int
 mv_main(int ac, char **av)
 {
-	char	*name, *name2 = 0, *dest;
-	int	isDir, sflags = 0;
+	char	*name, *dest;
+	int	isDir;
 	int	isUnDelete = 0;
 	int	errors = 0;
 	int	dofree = 0;
@@ -73,13 +73,6 @@ mv_main(int ac, char **av)
 		return (1);
 	}
 
-	for (i = optind; i < ac-1; i++) {
-		if (isdir(av[i])) {
-			fprintf(stderr, 
-"mv only moves files.  Use mvdir to move directories.\n");
-			return (1);
-		}
-	}
 	isDir = isdir(dest);
 	if (ac - (optind - 1) > 3 && !isDir) {
 		fprintf(stderr,
@@ -87,17 +80,20 @@ mv_main(int ac, char **av)
 		return (1);
 	}
 	av[ac-1] = 0;
-	for (name =
-	    sfileFirst("sccsmv", &av[optind], sflags);
-						name; name = sfileNext()) {
-again:		errors |= sccs_mv(name, dest, isDir, 0, isUnDelete, force);
-		if (name2) {
-			name = name2;
-			name2 = 0;
-			goto again;
+
+	for (i = optind; i < (ac - 1); i++) {
+		if (isdir(av[i])) {
+			/*
+			 * TODO: "bk mvdir" is a shell script,
+			 * should re-code "bk mvdir" in C code
+			 * defer this till we get to the 3.0 tree
+			 */
+			errors |= sys("bk", "mvdir", av[i], dest, SYS);
+		} else {
+			errors |= sccs_mv(av[i], dest,
+						isDir, 0, isUnDelete, force);
 		}
 	}
 	if (dofree) free(dest);
-	sfileDone();
 	return (errors);
 }
