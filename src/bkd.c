@@ -115,7 +115,7 @@ bkd_main(int ac, char **av)
 		ids();
 		if (Opts.alarm) {
 			signal(SIGALRM, exit);
-			alarm(Opts.alarm); /* this is no-op on win32 */
+			alarm(Opts.alarm);
 		}
 		do_cmds();
 		return (0);

@@ -10,8 +10,11 @@
 #    modifications under any license.
 
 
-# Copyright (c) 1999 Andrew Chang?
-# awc@etp2.bitmover.com|src/t/t.repository|20000322041145|27344
+# Copyright (c) 1999 Andrew Chang
+# %K%
+
+# Because some proxy disallow proxy for localhost
+unsetHttpProxy
 
 echo $N Create initial repository ...................................$NL
 no_logging project
