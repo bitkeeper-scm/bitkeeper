@@ -510,7 +510,7 @@ mkChangeSet(sccs *cset)
 		add(csDB, buf);
 	}
 
-	sort = popen("sort > ChangeSet", "wt");
+	sort = popen("sort > ChangeSet", "w");
 	assert(sort);
 	r = sccs_ino(cset);
 	/* adjust the date of the new rev, scripts make this be in the

@@ -4151,10 +4151,10 @@ openOutput(int encode, char *file, FILE **op)
 		break;
 	    case E_UUGZIP:
 		if (toStdout) {
-			*op = popen("gzip -d", "wb");
+			*op = popen("gzip -d", "w");
 		} else {
 			sprintf(buf, "gzip -d > %s", file);
-			*op = popen(buf, "wb");
+			*op = popen(buf, "w");
 		}
 		break;
 	    default:
@@ -4612,8 +4612,7 @@ outdiffs(sccs *s, int type, int side, int *left, int *right, int count,
 			fprintf(out, "I%d %d\n", *left, count);
 			*right += count; /* not used, but easy to inc */
 			prefix = "";
-		}
-		else {
+		} else {
 			fprintf(out, "%da%d", *left, *right+1);
 			*right += count;
 			if (count != 1)
@@ -4627,8 +4626,7 @@ outdiffs(sccs *s, int type, int side, int *left, int *right, int count,
 			fprintf(out, "D%d %d\n", *left+1, count);
 			*left += count;
 			prefix = "";
-		}
-		else {
+		} else {
 			fprintf(out, "%d", *left+1);
 			*left += count;
 			if (count != 1)
@@ -4642,17 +4640,24 @@ outdiffs(sccs *s, int type, int side, int *left, int *right, int count,
 	unless (type == GD_BK && side == LEFT) {
 		fseek(in, 0L, SEEK_SET);
 		while (count--) {
-			int	c;
+			char	buf[MAXLINE];
+
 			fputs(prefix, out);
-			while ((c = fgetc(in)) != EOF) {
-				fputc(c, out);
-				if (c == '\n') break;
-			}
-			/* XXX: EOF is error condition */
-			if (c == EOF) {
+			if (fnext(buf, in)) {
+				/*
+				 * We're escaping blank lines and the escape
+				 * character itself.  Takepatch wants the
+				 * diffs ended with ^\n so blan lines confuse
+				 * it.
+				 */
+				if ((buf[0] == '\\') || (buf[0] == '\n')) {
+					fputs("\\", out);
+				}
+				fputs(buf, out);
+			} else {
 				fprintf(stderr,
 				    "get: getdiffs temp file early EOF\n");
-				s->state |= WARNED;
+				s->state |= S_WARNED;
 				return (-1);
 			}
 		}
@@ -4670,7 +4675,7 @@ int
 sccs_getdiffs(sccs *s, char *rev, int flags, char *printOut)
 {
 	/* XXX: lm, wire 'type' in as you'd like: flags or param */
-	int	type = GD_DIFF;	/* hard code output style GD_DIFF || GD_BK */
+	int	type = GD_BK;	/* hard code output style GD_DIFF || GD_BK */
 
 	serlist *state = 0;
 	ser_t	*slist = 0;
@@ -4748,12 +4753,10 @@ sccs_getdiffs(sccs *s, char *rev, int flags, char *printOut)
 			continue;
 		}
 		if (nextside == NEITHER) continue;
-		if (count && nextside != side &&
-			(side == LEFT || side == RIGHT))
-		{
-			if (outdiffs(s, type, side, &left, &right, count,
-				lbuf, out))
-			{
+		if (count &&
+		    nextside != side && (side == LEFT || side == RIGHT)) {
+			if (outdiffs(s, type,
+			    side, &left, &right, count, lbuf, out)) {
 				goto getdifferr;
 			}
 			count = 0;
@@ -4766,7 +4769,8 @@ sccs_getdiffs(sccs *s, char *rev, int flags, char *printOut)
 			unless (type == GD_BK && side == LEFT)
 				fnlputs(buf, lbuf);
 			break;
-		    case BOTH:	left++, right++; break;
+		    case BOTH:
+			left++, right++; break;
 		}
 	}
 	if (count) { /* there is something left in the buffer */
@@ -5278,7 +5282,7 @@ deflate(sccs *s, char *tmpfile)
 		break;
 	    case E_UUGZIP:
 		sprintf(cmd, "gzip -nq4 < %s", s->gfile);
-		in = popen(cmd, "rb");
+		in = popen(cmd, "r");
 		uuencode(in, out);
 		pclose(in);
 		fclose(out);
@@ -5746,10 +5750,10 @@ openInput(sccs *s, int flags, FILE **inp)
 		 * the best time/space tradeoff.
 		 */
 		if (streq("-", file)) {
-			*inp = popen("gzip -nq4", "rb");
+			*inp = popen("gzip -nq4", "r");
 		} else {
 			sprintf(buf, "gzip -nq4 < %s", file);
-			*inp = popen(buf, "rb");
+			*inp = popen(buf, "r");
 		}
 		return (1);
 	}
@@ -5970,9 +5974,12 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 		added = uuencode_sum(s, gfile, sfile);
 	} else {
 		if (diffs) {
+			int	off;
+
 			fnext(buf, diffs);	/* skip diff header */
+			off = isdigit(buf[0]) ? 2 : 0;
 			while (fnext(buf, diffs)) {
-				s->dsum += fputsum(s, &buf[2], sfile);
+				s->dsum += fputsum(s, &buf[off], sfile);
 				added++;
 			}
 			fclose(diffs);
@@ -7241,8 +7248,8 @@ newcmd:
 			while (howmany--) {
 				/* XXX: not break but error */
 				unless (fnext(buf2, diffs)) break;
-				fputsum(s, &buf2[0], out);
-				debug2((stderr, "INS %s", &buf2[0]));
+				s->dsum += fputsum(s, buf2, out);
+				debug2((stderr, "INS %s", buf2));
 				added++;
 			}
 			break;
@@ -7250,6 +7257,7 @@ newcmd:
 		    case 'x':
 			beforeline(unchanged);
 			ctrl("\001D ", n->serial);
+			sum = s->dsum;
 			while (howmany--) {
 				if (isdigit(buf2[0])) {
 					ctrl("\001E ", n->serial);
@@ -7257,6 +7265,7 @@ newcmd:
 				}
 				nextline(deleted);
 			}
+			s->dsum = sum;
 			break;
 		}
 		ctrl("\001E ", n->serial);
