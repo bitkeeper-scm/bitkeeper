@@ -12,6 +12,11 @@ mkgfile(sccs *s, char *rev, char *path, char *tmpdir, char *tag,
 	delta *d;
 	int flags = SILENT;
 
+	/*
+	 * Ignore file under the BitKeeper directory
+	 */
+	if ((strlen(path) >= 10) && strneq(path, "BitKeeper/", 10)) return;
+
 	sprintf(tmp_path, "%s/%s/%s", tmpdir, tag, path);
 	if (isNullFile(rev, path)) {
 		char key[MAXPATH];
@@ -163,7 +168,7 @@ gnupatch_main(int ac, char **av)
 		case 'h':	header = 0; break; /* disable header */
 		case 'T':	fix_mod_time = 1; break; 
 		case 'd':	diff_style = optarg; break;
-		defualt:
+		default:
 				fprintf(stderr,
 					"Usage: gnupatch [-hT] [-d u|c|n]\n");
 				return (1);
@@ -198,8 +203,6 @@ gnupatch_main(int ac, char **av)
 		path1 = strchr(buf, '@');
 		assert(path1);
 		*path1++ = 0;
-		if (((path1 - sfile) > 10) &&
- 		    strneq(sfile, "BitKeeper/", 10)) continue;
 		rev1 = strchr(path1, '@');
 		assert(rev1);
 		*rev1++ = 0;

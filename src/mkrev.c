@@ -40,6 +40,20 @@ upd_s2l(MDBM *s2l,  char *key)
 	}
 }
 
+MDBM *
+mk_s2l(MDBM *db)
+{
+	MDBM *short2long;
+	datum	k;
+
+	short2long = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
+	for (k = mdbm_firstkey(db); k.dsize != 0;
+					k = mdbm_nextkey(db)) {
+		upd_s2l(short2long,  k.dptr);
+	}
+	return short2long;
+}
+
 /*
  * Find entry assocaited with "rootkey"
  * This function may modify the rootkey buffer,
@@ -47,7 +61,7 @@ upd_s2l(MDBM *s2l,  char *key)
  * it can get a match
  */
 private char *
-find_key(MDBM *db, char *rootkey, MDBM *s2l)
+find_key(MDBM *db, char *rootkey, MDBM **s2l)
 {
 	char *p, *q;
 
@@ -62,7 +76,8 @@ find_key(MDBM *db, char *rootkey, MDBM *s2l)
 			*q = 0;
 			p = mdbm_fetch_str(db, rootkey);
 		} else { /* we just tried the short key, so try the long key */
-			q = mdbm_fetch_str(s2l, rootkey);
+			unless (*s2l) *s2l = mk_s2l(db);
+			q = mdbm_fetch_str(*s2l, rootkey);
 			if (q) {
 				strcpy(rootkey, q);
 				p = mdbm_fetch_str(db, rootkey);
@@ -88,7 +103,8 @@ isNullFile(char *rev, char *file)
  * Convert root/start/end keys to sfile@path1@rev1@path2@rev2 format
  */
 private void
-process(char *root, char *start, char *end, MDBM *idDB, int show_all)
+process(char *root, char *start, char *end,
+				MDBM *idDB, MDBM **goneDB, int show_all)
 {
 	sccs	*s;
 	delta 	*d1, *d2;
@@ -97,6 +113,14 @@ process(char *root, char *start, char *end, MDBM *idDB, int show_all)
 
 	s  = sccs_keyinit(root, INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB);
 	unless (s) {
+		unless (*goneDB) {
+			*goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
+		}
+		if (gone(root, *goneDB)) {
+			fprintf(stderr,
+				"Warning: \"%s\" is a gone key\n", root);
+			return;
+		}
 		fprintf(stderr, "Cannot keyinit %s\n", root);
 		return;
 	}
@@ -145,7 +169,7 @@ mkrev_main(int ac, char **av)
 	char	*rev1, *rev2, tmpf1[MAXPATH], tmpf2[MAXPATH];
 	char	*root_key, *start_key, *end_key, s_cset[] = CHANGESET;
 	sccs	*s;
-	MDBM	*db1, *db2, *idDB, *short2long = 0;
+	MDBM	*db1, *db2, *idDB, *goneDB = 0, *short2long = 0;
 	kvpair	kv;
 	datum	k;
 	
@@ -192,19 +216,6 @@ usage:				fprintf(stderr,
 	sccs_close(s);
 	assert(db1 && db2);
 
-	
-	/*
-	 * Create a mini short key to long key map
-	 * so find_key() can use it 
-	 */
-	if (mixed) {
-		short2long = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
-		for (k = mdbm_firstkey(db2); k.dsize != 0;
-						k = mdbm_nextkey(db2)) {
-			upd_s2l(short2long,  k.dptr);
-		}
-	}
-
 	/*
 	 * OK, here is the 2 main loops where we produce the
 	 * delta list. (via the process() function)
@@ -223,9 +234,10 @@ usage:				fprintf(stderr,
 		root_key = kv.key.dptr;
 		start_key = kv.val.dptr;
 		strcpy(root_key2, root_key); /* because find_key stomps */
-		end_key = find_key(db2, root_key2, short2long);
+		end_key = find_key(db2, root_key2, &short2long);
 		unless (is_same(start_key, end_key))  {
-			process(root_key, start_key, end_key, idDB, show_all);
+			process(root_key, start_key, end_key,
+						    idDB, &goneDB, show_all);
 		}
 		/*
 		 * Delete the entry from db2, so we don't 
@@ -241,12 +253,13 @@ usage:				fprintf(stderr,
 	for (kv = mdbm_first(db2); kv.key.dsize != 0; kv = mdbm_next(db2)) {
 		root_key = kv.key.dptr;
 		end_key = kv.val.dptr;
-		process(root_key, NULL, end_key, idDB, show_all);
+		process(root_key, NULL, end_key, idDB, &goneDB, show_all);
 	}
 	mdbm_close(db1);
 	mdbm_close(db2);
 	mdbm_close(idDB);
 	mdbm_close(short2long);
+	if (goneDB) mdbm_close(goneDB);
 	if (proj) proj_free(proj);
 	return (0);
 }
