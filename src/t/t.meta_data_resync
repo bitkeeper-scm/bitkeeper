@@ -87,6 +87,8 @@ bk clone $Q $HERE/project $HERE/copy
 cd $HERE/project/src
 bk admin $Q -fEXPAND1 -fRCS -fYEAR4 bar.c
 bk commit $Q -yabc
+# save a copy of SCCS/s.bar.c for the rollback test
+cp SCCS/s.bar.c $HERE/ref
 bk resync -t $Q $HERE/project $HERE/copy
 bk resolve -t $Q $HERE/copy
 cd $HERE/copy/src
@@ -99,6 +101,12 @@ bk resync -t $Q $HERE/project $HERE/copy
 bk resolve -t $Q $HERE/copy
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.bar.c  $HERE/copy/src/SCCS/s.bar.c
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
+echo $N Check rollback of flags .....................................$NL
+bk clone $Q -r1.5 $HERE/copy $HERE/copy2
+cd $HERE/copy2/src
+diff $HERE/copy2/src/SCCS/s.bar.c  $HERE/ref
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N Check propagation of flags \& permission .....................$NL
@@ -166,7 +174,7 @@ u
 EOF
 cd $HERE/copy/src
 FLAGS=`bk prs -h -r+ -d:FLAGS: foo.c`
-if [ "$FLAGS" != "BITKEEPER,YEAR4,RCS,SCCS,SINGLE,EXPAND1,CSETMARKED" ]
+if [ "$FLAGS" != "YEAR4,RCS,SCCS,SINGLE,EXPAND1" ]
 then	echo failed with mode $FLAGS
 	bk prs -h -d':REV:\t:FLAGS:' foo.c
 	exit 1
