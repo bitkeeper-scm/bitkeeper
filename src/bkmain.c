@@ -14,6 +14,7 @@ int version_main(int, char **);
 int help_main(int, char **);
 int users_main(int, char **);
 int parent_main(int, char **);
+int clone_main(int, char **);
 int send_main(int, char **);
 int unwrap_main(int, char **);
 int receive_main(int, char **);
@@ -69,6 +70,8 @@ int pending_main(int, char **);
 int resolve_main(int, char **);
 int push_main(int, char **);
 int names_main(int, char **);
+int repo_main(int, char **);
+int pull_main(int, char **);
 
 struct command cmdtbl[100] = {
 	{"setup", setup_main },
@@ -78,7 +81,7 @@ struct command cmdtbl[100] = {
 	{"help", help_main},
 	{"users", users_main},
 	{"parent", parent_main},
-//	{"clone", clone_main},
+	{"clone", clone_main},
 	{"send", send_main},
 	{"unwrap", unwrap_main},
 	{"receive", receive_main},
@@ -145,6 +148,8 @@ struct command cmdtbl[100] = {
 	{"resolve", resolve_main},
 	{"push", push_main},
 	{"names", names_main},
+	{"repo", repo_main},
+	{"pull", pull_main},
 	0
 };
 
@@ -285,9 +290,7 @@ main(int ac, char **av)
 	/*
 	 * Handle shell script
 	 */
-	if (streq(av[0], "resync") ||
-	    streq(av[0], "clone") ||
-	    streq(av[0], "pull")) {
+	if (streq(av[0], "resync")) {
 #ifdef WIN32
 		argv[0] = "bash";
 #else

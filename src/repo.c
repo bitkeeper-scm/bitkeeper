@@ -8,7 +8,7 @@ WHATSTR("@(#)%K%");
  *
  */
 int
-main(int ac, char **av)
+repo_main(int ac, char **av)
 {
 	int	c;
 	int	what = 0;

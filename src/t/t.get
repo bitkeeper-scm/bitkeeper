@@ -12,7 +12,7 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
-SAVE=`bk user`
+SAVE=`bk getuser`
 BK_USER=bk
 export BK_USER
 ${RM} -rf bar SCCS

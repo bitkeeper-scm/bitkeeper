@@ -4,13 +4,17 @@
 # You can set this to anywhere you like and do a "make production" and you'll
 # have an installed BitKeeper.
 BK_BIN	= /usr/libexec/bitkeeper
-BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
-	  get gethost getuser key2rev lines lod prs range rechksum renumber \
-	  rmdel sccscat sccslog sccsmv sccsrm sccssh sfiles sfio sids	 \
-	  sinfo stripdel smoosh takepatch undos what gca mtime zone	 \
-	  bkd bkusers commit fix gethelp getlog help isascii logaddr \
-	  logchangeset names parent push r2c receive resolve \
-	  send sendconfig setlog setup status unwrap version repo pull clone
+BINS	= bk bkd sccssh 
+BKOBJ	= bkmain.o adler32.o admin.o check.o chksum.o clean.o cset.o delta.o \
+	  diffs.o fdiff.o g2sccs.o get.o gethost.o getuser.o key2rev.o lines.o \
+	  lod.o prs.o range.o rechksum.o renumber.o rmdel.o sccscat.o \
+	  sccslog.o sccsmv.o sccsrm.o sfiles.o sfio.o sids.o sinfo.o \
+	  stripdel.o smoosh.o takepatch.o undos.o what.o gca.o mtime.o zone.o \
+	  bkusers.o commit.o fix.o gethelp.o getlog.o help.o isascii.o \
+	  logaddr.o logchangeset.o names.o parent.o push.o r2c.o receive.o \
+	  send.o sendconfig.o setlog.o setup.o status.o unwrap.o version.o \
+	  sendbug.o export.o pending.o bkd_client.o lib_tcp.o repo.o pull.o \
+	  clone.o
 SCRIPTS	= rcs2sccs testfast bk import resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 mkindex \
 	  renametool mkdiffs lodset build crank resync merge \
@@ -219,151 +223,16 @@ libsccs.a: $(SCCSOBJ) $(PORTOBJ)
 	$(AR) cr libsccs.a $(SCCSOBJ) $(PORTOBJ)
 	-$(RANLIB) libsccs.a
 
-bk: ${BKOBJ} ${RESOBJ}
-	$(CC) $(CFLAGS) ${BKOBJ} ${RESOBJ} $(LINK) -o bk
-
-zone: zone.o localtm.o port/platforminit.o
-	$(CC) $(CFLAGS) -o zone zone.o localtm.o port/platforminit.o
-fdiff: fdiff.o getopt.o purify.o mmap.o
-	$(CC) $(CFLAGS) fdiff.o getopt.o purify.o mmap.o -o fdiff $(LMDBM)
-
-range: range.o $(LIBS)
-	$(CC) $(CFLAGS) range.o $(LINK) -o range
-sccsmv: sccsmv.o $(LIBS)
-	$(CC) $(CFLAGS) sccsmv.o $(LINK) -o sccsmv
-sccsrm: sccsrm.o $(LIBS)
-	$(CC) $(CFLAGS) sccsrm.o $(LINK) -o sccsrm
-rechksum: rechksum.o $(LIBS)
-	$(CC) $(CFLAGS) rechksum.o $(LINK) -o rechksum
-cset: cset.o $(LIBS)
-	$(CC) $(CFLAGS) cset.o $(LINK) -o cset
-names: names.o $(LIBS)
-	$(CC) $(CFLAGS) names.o $(LINK) -o names
-resolve: $(RESOBJ) $(LIBS)
-	$(CC) $(CFLAGS) $(RESOBJ) $(LINK) -o resolve
-lod: lod.o $(LIBS)
-	$(CC) $(CFLAGS) lod.o $(LINK) -o lod
-rmdel: rmdel.o $(LIBS)
-	$(CC) $(CFLAGS) rmdel.o $(LINK) -o rmdel
-stripdel: stripdel.o $(LIBS)
-	$(CC) $(CFLAGS) stripdel.o $(LINK) -o stripdel
-gethost: gethost.o $(LIBS)
-	$(CC) $(CFLAGS) gethost.o $(LINK) -o gethost
-getuser: getuser.o $(LIBS)
-	$(CC) $(CFLAGS) getuser.o $(LINK) -o getuser
-takepatch: takepatch.o $(LIBS)
-	$(CC) $(CFLAGS) takepatch.o $(LINK) -o takepatch
-sfiles: sfiles.o $(LIBS)
-	$(CC) $(CFLAGS) sfiles.o $(LINK) -o sfiles
-renumber: renumber.o $(LIBS)
-	$(CC) $(CFLAGS) renumber.o $(LINK) -o renumber
-lines: lines.o $(LIBS)
-	$(CC) $(CFLAGS) lines.o $(LINK) -o lines
-what: what.o $(LIBS)
-	$(CC) $(CFLAGS) what.o $(LINK) -o what
 sccssh: sccssh.o rcs.o $(LIBS)
 	$(CC) $(CFLAGS) sccssh.o $(LINK) -o sccssh
-check: check.o $(LIBS)
-	$(CC) $(CFLAGS) check.o $(LINK) -o check
-sccslog: sccslog.o $(LIBS)
-	$(CC) $(CFLAGS) sccslog.o $(LINK) -o sccslog
-r2c: r2c.o $(LIBS)
-	$(CC) $(CFLAGS) r2c.o $(LINK) -o r2c
-gca: gca.o $(LIBS)
-	$(CC) $(CFLAGS) gca.o $(LINK) -o gca
-smoosh: smoosh.o $(LIBS)
-	$(CC) $(CFLAGS) smoosh.o $(LINK) -o smoosh
-g2sccs: g2sccs.o $(LIBS)
-	$(CC) $(CFLAGS) g2sccs.o $(LINK) -o g2sccs
-key2rev: key2rev.o $(LIBS)
-	$(CC) $(CFLAGS) key2rev.o $(LINK) -o key2rev
-admin: admin.o $(LIBS)
-	$(CC) $(CFLAGS) admin.o $(LINK) -o admin
-sids: sids.o $(LIBS)
-	$(CC) $(CFLAGS) sids.o $(LINK) -o sids
-prs: prs.o $(LIBS)
-	$(CC) $(CFLAGS) prs.o $(LINK) -o prs
-get: get.o $(LIBS)
-	$(CC) $(CFLAGS) get.o $(LINK) -o get
-sccscat: sccscat.o $(LIBS)
-	$(CC) $(CFLAGS) sccscat.o $(LINK) -o sccscat
-clean: clean.o $(LIBS)
-	$(CC) $(CFLAGS) clean.o $(LINK) -o clean
-sinfo: sinfo.o $(LIBS)
-	$(CC) $(CFLAGS) sinfo.o $(LINK) -o sinfo
-delta: delta.o $(LIBS)
-	$(CC) $(CFLAGS) delta.o $(LINK) -o delta
-diffs: diffs.o $(LIBS)
-	$(CC) $(CFLAGS) diffs.o $(LINK) -o diffs
-sfio: sfio.o $(LIBS)
-	$(CC) $(CFLAGS) sfio.o $(LINK) -o sfio
-adler32: adler32.o $(LIBS)
-	$(CC) $(CFLAGS) adler32.o $(LINK) -o adler32
-undos: undos.o port/platforminit.o
-	$(CC) $(CFLAGS) undos.o port/platforminit.o -o undos
-chksum: chksum.o
-	$(CC) $(CFLAGS) chksum.o -o chksum
-mtime: mtime.o
-	$(CC) $(CFLAGS) mtime.o -o mtime
-push: push.o $(BKLIB) $(LIBS)
-	$(CC) $(CFLAGS) push.o $(BKLIB) $(LINK) -o push
+bk: ${BKOBJ} ${RESOBJ}
+	$(CC) $(CFLAGS) ${BKOBJ} ${RESOBJ} $(LINK) -o bk
 pull: pull.o $(BKLIB) $(LIBS)
 	$(CC) $(CFLAGS) pull.o $(BKLIB) $(LINK) -o pull
 clone: clone.o $(BKLIB) $(LIBS)
 	$(CC) $(CFLAGS) clone.o $(BKLIB) $(LINK) -o clone
-logaddr: logaddr.o $(LIBS)
-	$(CC) $(CFLAGS) logaddr.o $(LINK) -o logaddr
-setlog: setlog.o $(LIBS)
-	$(CC) $(CFLAGS) setlog.o $(LINK) -o setlog
-getlog: getlog.o $(LIBS)
-	$(CC) $(CFLAGS) getlog.o $(LINK) -o getlog
-setup: setup.o $(LIBS)
-	$(CC) $(CFLAGS) setup.o $(LINK) -o setup
-commit: commit.o $(LIBS)
-	$(CC) $(CFLAGS) commit.o $(LINK) -o commit
-status: status.o $(LIBS)
-	$(CC) $(CFLAGS) status.o $(LINK) -o status
-bkusers: bkusers.o $(LIBS)
-	$(CC) $(CFLAGS) bkusers.o $(LINK) -o bkusers
-gethelp: gethelp.o $(LIBS)
-	$(CC) $(CFLAGS) gethelp.o $(LINK) -o gethelp
-sendconfig: sendconfig.o $(LIBS)
-	$(CC) $(CFLAGS) sendconfig.o $(LINK) -o sendconfig
-logchangeset: logchangeset.o $(LIBS)
-	$(CC) $(CFLAGS) logchangeset.o $(LINK) -o logchangeset
-version: version.o $(LIBS)
-	$(CC) $(CFLAGS) version.o $(LINK) -o version
-help: help.o $(LIBS)
-	$(CC) $(CFLAGS) help.o $(LINK) -o help
-parent: parent.o $(LIBS)
-	$(CC) $(CFLAGS) parent.o $(LINK) -o parent
-send: send.o $(LIBS)
-	$(CC) $(CFLAGS) send.o $(LINK) -o send
-unwrap: unwrap.o $(LIBS)
-	$(CC) $(CFLAGS) unwrap.o $(LINK) -o unwrap
-receive: receive.o $(LIBS)
-	$(CC) $(CFLAGS) receive.o $(LINK) -o receive
 repo: repo.o $(LIBS)
 	$(CC) $(CFLAGS) repo.o $(LINK) -o repo
-fix: fix.o $(LIBS)
-	$(CC) $(CFLAGS) fix.o $(LINK) -o fix
-
-# Links.
-ci: delta
-	-rm -f ci
-	ln delta ci
-co: get
-	-rm -f co
-	ln get co
-edit: get
-	-rm -f edit
-	ln get edit
-unedit: clean
-	-rm -f unedit
-	ln clean unedit
-unget: clean
-	-rm -f unget
-	ln clean unget
 
 # Scripts.
 rcs2sccs: rcs2sccs.perl substvars

@@ -540,8 +540,13 @@ platformInit()
 
 	while (paths[++i]) {
 		sprintf(buf, "%s%s", paths[i], TAG_FILE);
-		if (exists(buf)) bin =  strdup(paths[i]);
+		if (exists(buf)) {
+			bin =  strdup(paths[i]);
+			return;
+		}
 	}
+	printf("Can not find Bitkeeper binary directory\n");
+	exit(1);
 }
 
 int

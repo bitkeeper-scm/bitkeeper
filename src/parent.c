@@ -36,13 +36,11 @@ parent_main(int ac,  char **av)
 		exit(0);
 	}
 
-	if (ac > 2) {
-		fprintf(stderr , "usage: bk parent [host:]dir\n");
-		exit(1);
-	}
 	if (av[optind] && strchr(av[optind], ':')) {
 		/* we have a host:dir format */
+		mkdirf(PARENT);
 		f = fopen(PARENT, "wb");
+		assert(f);
 		fprintf(f , "%s\n", av[optind]);
 		fclose(f);
 		unless(quiet) printf("Set parent to %s\n", av[optind]);
@@ -67,13 +65,15 @@ parent_main(int ac,  char **av)
 	}
 
 	strcpy(parent,  fullname(PARENT, 0));
-	if (chdir(av[1]) != 0) {
+	if (chdir(av[optind]) != 0) {
 		fprintf(stderr, "Can not find %s\n", av[1]);
 		exit(1);
 	}
 	getcwd(pdir, sizeof(pdir));
 	assert(IsFullPath(pdir));
+	mkdirf(parent);
 	f = fopen(parent, "wb");
+	assert(f);
 	fprintf(f, "%s:%s\n", sccs_gethost(),  pdir);
 	fclose(f);
 	unless (quiet) {
