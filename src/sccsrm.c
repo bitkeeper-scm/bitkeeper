@@ -19,12 +19,12 @@ main(int ac, char **av)
                 switch (c) {
                     case 'd': useCommonDir++; break;
                     default:
-                        fprintf(stderr, "delta: usage error\n");
+                        fprintf(stderr, "usage: %s [-d] file1 file2 ...\n", av[0]);
                         return (1);
                 }
         }                    
 	if (ac < 2) {
-usage:		fprintf(stderr, "usage: %s file1 file2 ...\n", av[0]);
+usage:		fprintf(stderr, "usage: %s [-d] file1 file2 ...\n", av[0]);
 		exit(1);
 	}
 	for (name = sfileFirst("sccsrm",&av[optind], 0); name; name = sfileNext()) {
