@@ -68,6 +68,7 @@ int isascii_main(int, char **);
 int key2rev_main(int, char **);
 int keysort_main(int, char **);
 int lconfig_main(int, char **);
+int level_main(int, char **);
 int lines_main(int, char **);
 int listkey_main(int, char **);
 int lock_main(int, char **);
@@ -208,6 +209,7 @@ struct command cmdtbl[] = {
 	{"idcache", idcache_main},	/* undoc? 2.0 */
 	{"isascii", isascii_main},	/* doc 2.0 */
 	{"key2rev", key2rev_main},	/* doc 2.0 */
+	{"level", level_main},		/* doc 2.0 */
 	{"lock", lock_main},		/* doc 2.0 */
 	{"lod", lod_main},	/* XXX - doc 2.0 - says doesn't work yet */
 	{"makepatch", makepatch_main},		/* doc 2.0 */

@@ -1,0 +1,99 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2001 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Tests for pull, push, and clone.
+echo $N Create initial repository ...................................$NL
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+echo bar > bar.c
+bk new $Q bar.c
+bk commit $S -a -yCset
+echo OK
+cores
+
+echo $N Check that the default level is 1 ...........................$NL
+bk level > OUT
+grep -q 'is 1' OUT || {
+	echo bad default
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Change to level 2, make sure it was recorded ................$NL
+bk level 2
+bk level > OUT
+grep -q 'is 2' OUT || {
+	echo bad level
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Clone repository and make sure the level comes with it ......$NL
+bk clone $Q $HERE/project $HERE/copy || { echo failed; exit 1; }
+cd $HERE/copy
+bk level > OUT
+grep -q 'is 2' OUT || {
+	echo bad level
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Push should succeed to same level repo ......................$NL
+cd $HERE/copy
+ls > file
+bk new $Q file
+bk commit $Q -ywhatever
+bk push $Q || exit 1
+echo OK
+
+echo $N Push should fail to lower level repo ........................$NL
+cd $HERE/copy
+bk level 100
+bk edit $Q file
+bk delta $Q -ywhatever file
+bk commit $Q -ywhatever
+bk push $Q 2>OUT && {
+	echo should have failed
+	exit 1
+}
+grep -q 'cannot push to lower level repository' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure the destination unlocked ..........................$NL
+for i in 1 2 3 4 5 6 7 8 9 0
+do	test -d $HERE/project/BitKeeper/writer && sleep 1
+done
+test -d $HERE/project/BitKeeper/writer && {
+	echo failed to clean up writer directory
+	exit 1
+}
+echo OK
+
+echo $N Pull should fail to lower level repo ........................$NL
+cd $HERE/project
+bk pull $Q $HERE/copy 2>OUT && {
+	echo should have failed
+	exit 1
+}
+grep -q 'cannot pull to lower level repository' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+echo OK

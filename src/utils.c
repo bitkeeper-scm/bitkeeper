@@ -492,6 +492,7 @@ sendEnv(FILE *f, char **envVar)
 	fprintf(f, "putenv BK_REMOTE_TIME_T=%s\n", bk_time);
 	fprintf(f, "putenv BK_REMOTE_USER=%s\n", sccs_getuser());
 	fprintf(f, "putenv BK_REMOTE_HOST=%s\n", sccs_gethost());
+	fprintf(f, "putenv BK_REMOTE_LEVEL=%d\n", getlevel());
 	root = sccs_root(0);
 	if (root) {
 		if (streq(root, ".")) {
@@ -543,6 +544,8 @@ sendServerInfoBlock()
         sprintf(buf, "UTC=%s\n", bk_utc);
 	out(buf);
         sprintf(buf, "TIME_T=%s\n", bk_time);
+	out(buf);
+        sprintf(buf, "LEVEL=%d\n", getlevel());
 	out(buf);
 	out("ROOT=");
 	getcwd(buf, sizeof(buf));

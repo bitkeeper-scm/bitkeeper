@@ -153,6 +153,13 @@ cmd_push_part1(int ac, char **av)
 	setmode(0, _O_BINARY); /* needed for gzip mode */
 	sendServerInfoBlock();
 
+	if (getenv("BK_REMOTE_LEVEL") && 
+	    (atoi(getenv("BK_REMOTE_LEVEL")) > getlevel())) {
+		/* they got sent the level so they are exiting already */
+		drain();
+		return (1);
+	}
+
 	p = getenv("BK_REMOTE_PROTOCOL");
 	unless (p && streq(p, BKD_VERSION)) {
 		out("ERROR-protocol version mismatch, want: ");

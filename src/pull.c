@@ -133,6 +133,13 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	} else {
 		drainNonStandardMsg(r, buf, sizeof(buf));
 	}
+	if (getenv("BK_REMOTE_LEVEL") &&
+	    (atoi(getenv("BK_REMOTE_LEVEL")) > getlevel())) {
+	    	fprintf(stderr,
+		    "pull: cannot pull to lower level repository\n");
+		disconnect(r, 2);
+		return (1);
+	}
 	if (get_ok(r, buf, !opts.quiet)) {
 		disconnect(r, 2);
 		return (1);

@@ -247,6 +247,9 @@ initProject(char *root)
 	/* XXX - this function exits and that means the bkd is left hanging */
 	sccs_mkroot(".");
 	repository_wrlock();
+	if (getenv("BK_REMOTE_LEVEL")) {
+		setlevel(atoi(getenv("BK_REMOTE_LEVEL")));
+	}
 	return (0);
 }
 
