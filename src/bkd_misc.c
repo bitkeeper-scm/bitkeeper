@@ -80,7 +80,7 @@ cmd_putenv(int ac, char **av)
 	if ((len == 3) && strneq(av[1], "IFS", 3)) return (1);
 	if ((len == 4) && strneq(av[1], "PATH", 4)) return (1);
 	if ((len == 14) && strneq(av[1], "BK_NO_TRIGGERS", 14)) return (1);
-	unless (strneq("BK_", av[1], 3) ||
+	unless (strneq("BK_", av[1], 3) || strneq("BKU_", av[1], 4) ||
 	    strneq("BKD_", av[1], 4) || strneq("_BK_", av[1], 4)) {
 	    	return (1);
 	}
