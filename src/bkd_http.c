@@ -554,7 +554,6 @@ http_cset(char *rev)
 {
 	char	*av[100];
 	char	buf[2048];
-	char	*cset = 0;
 	FILE	*f;
 	MDBM	*m;
 	int	i;
@@ -599,18 +598,15 @@ http_cset(char *rev)
 	}
 
 	putenv("BK_YEAR4=1");
-	sprintf(buf, "bk rset -r%s", rev);
+	sprintf(buf, "bk cset -r%s", rev);
 	unless (f = popen(buf, "r")) {
 		http_error(500,
-		    "bk rset -r%s failed: %s",
+		    "bk cset -r%s failed: %s",
 		    rev, strerror(errno));
 	}
 
 	while (fnext(buf, f)) {
-		if (strneq("ChangeSet|", buf, 10)) {
-			cset = strdup(buf);
-			continue;
-		}
+		if (strneq("ChangeSet|", buf, 10)) continue;
 		if ((d = strrchr(buf, BK_FS)) && streq(++d, "1.0\n")) continue;
 		lines = addLine(lines, strdup(buf));
 	}
@@ -622,7 +618,6 @@ http_cset(char *rev)
 		av[i=0] = "bk";
 		av[++i] = "prs";
 		av[++i] = "-h";
-		av[++i] = "-x1st";
 		av[++i] = dspec;
 		av[++i] = "-";
 		av[++i] = 0;
@@ -644,13 +639,19 @@ http_cset(char *rev)
 	    "border=0 cellpadding=4>\n");
 
 	if (lines) {
-		write(fd, cset, strlen(cset));
+		char	changeset[] = CHANGESET;
+		sccs	*cset = sccs_init(changeset, 0, 0);
+		delta	*d = findrev(cset, rev);
+
+		cset->rstart = cset->rstop = d;
+		sccs_prs(cset, 0, 0, dspec, stdout);
+		sccs_free(cset);
+		fflush(stdout);
 		EACH(lines) write(fd, lines[i], strlen(lines[i]));
 		freeLines(lines);
 		close(fd);
 		waitpid(child, &i, 0);
 	}
-	if (cset) free(cset);
 
 	out(INNER_END OUTER_END);
 	if (!embedded) trailer("cset");
