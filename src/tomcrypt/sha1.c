@@ -50,7 +50,7 @@ static void sha1_compress(hash_state *md)
     /* compress */
     /* round one */
     for (i = 0;  i < 20; i++)  { 
-        j = (ROL(a, 5) + F0(b,c,d) + e + W[i] + 0x5a827999UL) & 0xFFFFFFFFUL; 
+        j = (ROL(a, 5) + F0(b,c,d) + e + W[i] + 0x5a827999UL); 
         e = d; 
         d = c; 
         c = ROL(b, 30); 
@@ -60,7 +60,7 @@ static void sha1_compress(hash_state *md)
 
     /* round two */
     for (i = 20; i < 40; i++)  { 
-        j = (ROL(a, 5) + F1(b,c,d) + e + W[i] + 0x6ed9eba1UL) & 0xFFFFFFFFUL; 
+        j = (ROL(a, 5) + F1(b,c,d) + e + W[i] + 0x6ed9eba1UL); 
         e = d; 
         d = c; 
         c = ROL(b, 30); 
@@ -70,7 +70,7 @@ static void sha1_compress(hash_state *md)
 
     /* round three */
     for (i = 40; i < 60; i++)  { 
-        j = (ROL(a, 5) + F2(b,c,d) + e + W[i] + 0x8f1bbcdcUL) & 0xFFFFFFFFUL; 
+        j = (ROL(a, 5) + F2(b,c,d) + e + W[i] + 0x8f1bbcdcUL); 
         e = d; 
         d = c; 
         c = ROL(b, 30); 
@@ -80,7 +80,7 @@ static void sha1_compress(hash_state *md)
 
     /* round four */
     for (i = 60; i < 80; i++)  { 
-        j = (ROL(a, 5) + F3(b,c,d) + e + W[i] + 0xca62c1d6UL) & 0xFFFFFFFFUL;
+        j = (ROL(a, 5) + F3(b,c,d) + e + W[i] + 0xca62c1d6UL);
         e = d;
         d = c;
         c = ROL(b, 30);
@@ -89,11 +89,11 @@ static void sha1_compress(hash_state *md)
     }
 
     /* store */
-    md->sha1.state[0] = (md->sha1.state[0] + a) & 0xFFFFFFFFUL;
-    md->sha1.state[1] = (md->sha1.state[1] + b) & 0xFFFFFFFFUL;
-    md->sha1.state[2] = (md->sha1.state[2] + c) & 0xFFFFFFFFUL;
-    md->sha1.state[3] = (md->sha1.state[3] + d) & 0xFFFFFFFFUL;
-    md->sha1.state[4] = (md->sha1.state[4] + e) & 0xFFFFFFFFUL;
+    md->sha1.state[0] = md->sha1.state[0] + a;
+    md->sha1.state[1] = md->sha1.state[1] + b;
+    md->sha1.state[2] = md->sha1.state[2] + c;
+    md->sha1.state[3] = md->sha1.state[3] + d;
+    md->sha1.state[4] = md->sha1.state[4] + e;
 }
 
 #ifdef CLEAN_STACK
@@ -221,8 +221,7 @@ int  sha1_test(void)
       }
   }
   if (failed == 1) {
-     crypt_error = "SHA-1 failed to hash to test vectors.";
-     return CRYPT_ERROR;
+     return CRYPT_FAIL_TESTVECTOR;
   } else {
      return CRYPT_OK;
   }

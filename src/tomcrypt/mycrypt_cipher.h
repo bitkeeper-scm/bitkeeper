@@ -86,7 +86,12 @@ struct des_key {
 struct des3_key {
     unsigned long ek[3][32], dk[3][32];
 };
+#endif
 
+#ifdef CAST5
+struct cast5_key {
+    unsigned long K[32], keylen;
+};
 #endif
 
 typedef union Symmetric_key {
@@ -123,6 +128,9 @@ typedef union Symmetric_key {
 #endif
 #ifdef XTEA
    struct xtea_key     xtea;
+#endif
+#ifdef CAST5
+   struct cast5_key    cast5;
 #endif
 } symmetric_key;
 
@@ -286,6 +294,15 @@ extern int des3_keysize(int *desired_keysize);
 extern const struct _cipher_descriptor des_desc, des3_desc;
 #endif
 
+#ifdef CAST5
+extern int cast5_setup(const unsigned char *key, int keylen, int num_rounds, symmetric_key *skey);
+extern void cast5_ecb_encrypt(const unsigned char *pt, unsigned char *ct, symmetric_key *key);
+extern void cast5_ecb_decrypt(const unsigned char *ct, unsigned char *pt, symmetric_key *key);
+extern int cast5_test(void);
+extern int cast5_keysize(int *desired_keysize);
+extern const struct _cipher_descriptor cast5_desc;
+#endif
+
 #ifdef ECB
 extern int ecb_start(int cipher, const unsigned char *key, 
                      int keylen, int num_rounds, symmetric_ECB *ecb);
@@ -295,7 +312,7 @@ extern int ecb_decrypt(const unsigned char *ct, unsigned char *pt, symmetric_ECB
 
 #ifdef CFB
 extern int cfb_start(int cipher, const unsigned char *IV, const unsigned char *key, 
-                     int keylen, int num_rounds, symmetric_CFB *CFB);
+                     int keylen, int num_rounds, symmetric_CFB *cfb);
 extern int cfb_encrypt(const unsigned char *pt, unsigned char *ct, unsigned long len, symmetric_CFB *cfb);
 extern int cfb_decrypt(const unsigned char *ct, unsigned char *pt, unsigned long len, symmetric_CFB *cfb);
 #endif

@@ -1,6 +1,7 @@
 /* portable way to get secure random bits to feed a PRNG */
 #include "mycrypt.h"
 
+#ifdef DEVRANDOM
 /* on *NIX read /dev/random */
 static unsigned long rng_nix(unsigned char *buf, unsigned long len, 
                              void (*callback)(void))
@@ -13,7 +14,7 @@ static unsigned long rng_nix(unsigned char *buf, unsigned long len,
 #ifdef TRY_URANDOM_FIRST
     f = fopen("/dev/urandom", "rb");
     if (f == NULL)
-#endif
+#endif /* TRY_URANDOM_FIRST */
        f = fopen("/dev/random", "rb");
 
     if (f == NULL) {
@@ -23,8 +24,47 @@ static unsigned long rng_nix(unsigned char *buf, unsigned long len,
     x = fread(buf, 1, len, f);
     fclose(f);
     return x;
-#endif
+#endif /* NO_FILE */
 }
+
+#endif /* DEVRANDOM */
+
+#ifdef SONY_PS2
+#include <eetypes.h>
+#include <eeregs.h>
+#define min(a,b) ((a) < (b) ? (a) : (b))
+// Very simple/stupid MD5-based RNG that samples "entropy" from various PS2 control registers
+static unsigned long rng_ps2(unsigned char *buf, unsigned long len, 
+                             void (*callback)(void))
+{
+  static unsigned long lastx[2] = { 0xaab7cb4b2fd3b2b9, 0xcec58aff72afe49f }; // md5sum of bits.c
+  unsigned long j;
+  unsigned int samples[10];  // number of sample data sources
+  int l;
+  hash_state md;
+
+  md5_init(&md);
+  for (j = 0; j < len; j += sizeof(lastx)) {
+    samples[0] = *T2_COUNT;
+    samples[1] = *T3_COUNT;
+    samples[2] = *IPU_TOP;
+    samples[3] = *GIF_TAG0;
+    samples[4] = *GIF_TAG1;
+    samples[5] = *GIF_TAG2;
+    samples[6] = *VIF1_CODE;
+    samples[7] = *VIF0_CODE;
+    samples[8] = *D0_MADR;
+    samples[9] = *D1_MADR;
+    md5_process(&md, (unsigned char *)(&samples[0]), sizeof(samples));
+    // include previous round
+    md5_process(&md, (unsigned char *)(&lastx[0]), sizeof(lastx));
+    md5_done(&md, (unsigned char *)(&lastx[0]));
+    l = min(sizeof(lastx), len-j);
+    memcpy(buf+j, &lastx[0], l); //min(sizeof(lastx), len-j));
+  }
+  return len;
+}
+#endif /* SONY_PS2 */
 
 /* on ANSI C platforms with 100 < CLOCKS_PER_SEC < 10000 */
 #if !defined(SONY_PS2) && defined(CLOCKS_PER_SEC)
@@ -61,7 +101,7 @@ static unsigned long rng_ansic(unsigned char *buf, unsigned long len,
    return l;
 }
 
-#endif
+#endif 
 
 /* Try the Microsoft CSP */
 #ifdef WIN32
@@ -97,7 +137,11 @@ unsigned long rng_get_bytes(unsigned char *buf, unsigned long len,
 
    _ARGCHK(buf != NULL);
 
+#ifdef SONY_PS2
+   x = rng_ps2(buf, len, callback);   if (x) { return x; }
+#elif defined(DEVRANDOM)
    x = rng_nix(buf, len, callback);   if (x) { return x; }
+#endif
 #ifdef WIN32
    x = rng_win32(buf, len, callback); if (x) { return x; }
 #endif
@@ -111,35 +155,34 @@ int rng_make_prng(int bits, int wprng, prng_state *prng,
                   void (*callback)(void))
 {
    unsigned char buf[256];
+   int errno;
    
    _ARGCHK(prng != NULL);
 
    /* check parameter */
-   if (prng_is_valid(wprng) != CRYPT_OK) {
-      return CRYPT_ERROR;
+   if ((errno = prng_is_valid(wprng)) != CRYPT_OK) {
+      return errno;
    }
 
    if (bits < 64 || bits > 1024) {
-      crypt_error = "Invalid number of bits requested in rng_make_prng().";
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_PRNGSIZE;
    }
 
-   if (prng_descriptor[wprng].start(prng) != CRYPT_OK) {
-      return CRYPT_ERROR;
+   if ((errno = prng_descriptor[wprng].start(prng)) != CRYPT_OK) {
+      return errno;
    }
 
    bits = ((bits/8)+(bits&7?1:0)) * 2;
    if (rng_get_bytes(buf, bits, callback) != (unsigned long)bits) {
-      crypt_error = "Error reading PRNG in rng_make_prng().";
-      return CRYPT_ERROR;
+      return CRYPT_ERROR_READPRNG;
    }
 
-   if (prng_descriptor[wprng].add_entropy(buf, bits, prng) != CRYPT_OK) {
-      return CRYPT_ERROR;
+   if ((errno = prng_descriptor[wprng].add_entropy(buf, bits, prng)) != CRYPT_OK) {
+      return errno;
    }
 
-   if (prng_descriptor[wprng].ready(prng) != CRYPT_OK) {
-      return CRYPT_ERROR;
+   if ((errno = prng_descriptor[wprng].ready(prng)) != CRYPT_OK) {
+      return errno;
    }
 
    #ifdef CLEAN_STACK

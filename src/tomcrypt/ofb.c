@@ -29,11 +29,12 @@ int ofb_start(int cipher, const unsigned char *IV, const unsigned char *key,
 
 int ofb_encrypt(const unsigned char *pt, unsigned char *ct, unsigned long len, symmetric_OFB *ofb)
 {
+   int errno;
    _ARGCHK(pt != NULL);
    _ARGCHK(ct != NULL);
    _ARGCHK(ofb != NULL);
-   if (cipher_is_valid(ofb->cipher) != CRYPT_OK) {
-       return CRYPT_ERROR;
+   if ((errno = cipher_is_valid(ofb->cipher)) != CRYPT_OK) {
+       return errno;
    }
    while (len--) {
        if (ofb->padlen == ofb->blocklen) {

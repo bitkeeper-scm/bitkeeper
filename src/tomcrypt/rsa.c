@@ -5,28 +5,25 @@
 int rsa_make_key(prng_state *prng, int wprng, int size, long e, rsa_key *key)
 {
    mp_int p, q, tmp1, tmp2, tmp3;
-   int res;   
+   int res, errno;   
 
    _ARGCHK(prng != NULL);
    _ARGCHK(key != NULL);
 
    if ((size < (1024/8)) || (size > (4096/8))) {
-      crypt_error = "Invalid key size in rsa_make_key()."; 
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_KEYSIZE;
    }
 
    if ((e < 3) || (!(e & 1))) {
-      crypt_error = "Invalid value of e in rsa_make_key().";
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_ARG;
    }
  
-   if (prng_is_valid(wprng) != CRYPT_OK) {
-      return CRYPT_ERROR;
+   if ((errno = prng_is_valid(wprng)) != CRYPT_OK) {
+      return errno;
    }
 
    if (mp_init_multi(&p, &q, &tmp1, &tmp2, &tmp3, NULL) != MP_OKAY) {
-      crypt_error = "Out of memory in rsa_make_key()."; 
-      return CRYPT_ERROR;
+      return CRYPT_MEM;
    }
 
    /* make primes p and q (optimization provided by Wayne Scott) */
@@ -36,7 +33,7 @@ int rsa_make_key(prng_state *prng, int wprng, int size, long e, rsa_key *key)
    do {
        if (rand_prime(&p, size/2, prng, wprng) != CRYPT_OK) { res = CRYPT_ERROR; goto done; }
        if (mp_sub_d(&p, 1, &tmp1) != MP_OKAY)              { goto error; }  /* tmp1 = p-1 */
-       if (mp_gcd(&tmp1, &tmp3, &tmp2) != MP_OKAY)         { goto error; } /* tmp2 = gcd(p-1, e) */
+       if (mp_gcd(&tmp1, &tmp3, &tmp2) != MP_OKAY)         { goto error; }  /* tmp2 = gcd(p-1, e) */
    } while (mp_cmp_d(&tmp2, 1) != 0);
        
    /* make prime "q" */
@@ -85,8 +82,7 @@ error2:
    mp_clear_multi(&key->d, &key->e, &key->N, &key->dQ, &key->dP, 
                   &key->qP, &key->pQ, &key->p, &key->q, NULL);
 error:
-   res = CRYPT_ERROR;
-   crypt_error = "Out of memory in rsa_make_key().";
+   res = CRYPT_MEM;
 done:
    mp_clear_multi(&tmp3, &tmp2, &tmp1, &p, &q, NULL);
    return res;
@@ -113,8 +109,7 @@ int rsa_exptmod(const unsigned char *in,  unsigned long inlen,
    _ARGCHK(key != NULL);
 
    if (which == PK_PRIVATE && (key->type != PK_PRIVATE && key->type != PK_PRIVATE_OPTIMIZED)) {
-      crypt_error = "Invalid key type in rsa_exptmod().";
-      return CRYPT_ERROR;
+      return CRYPT_PK_NOT_PRIVATE;
    }
 
    /* init and copy into tmp */
@@ -123,8 +118,8 @@ int rsa_exptmod(const unsigned char *in,  unsigned long inlen,
    
    /* sanity check on the input */
    if (mp_cmp(&key->N, &tmp) == MP_LT) {
-      crypt_error = "Invalid sized input for rsa_exptmod().";
-      goto error2;
+      res = CRYPT_PK_INVALID_SIZE;
+      goto done;
    }
 
    /* are we using the private exponent and is the key optimized? */
@@ -147,8 +142,7 @@ int rsa_exptmod(const unsigned char *in,  unsigned long inlen,
    /* read it back */
    x = mp_raw_size(&tmp)-1;
    if (x > *outlen) {
-      crypt_error = "Buffer overflow in rsa_exptmod().";
-      res = CRYPT_ERROR;
+      res = CRYPT_BUFFER_OVERFLOW;
       goto done;
    }
    *outlen = x;
@@ -160,9 +154,7 @@ int rsa_exptmod(const unsigned char *in,  unsigned long inlen,
    res = CRYPT_OK;
    goto done;
 error:
-   crypt_error = "Out of memory in rsa_exptmod().";
-error2:
-   res = CRYPT_ERROR;
+   res = CRYPT_MEM;
 done:
    mp_clear_multi(&tmp, &tmpa, &tmpb, NULL);
    return res;
@@ -178,8 +170,7 @@ int rsa_signpad(const unsigned char *in,  unsigned long inlen,
    _ARGCHK(outlen != NULL);
 
    if (*outlen < (3 * inlen)) {
-      crypt_error = "Output overflow in rsa_signpad().";
-      return CRYPT_ERROR;
+      return CRYPT_BUFFER_OVERFLOW;
    }
    for (y = x = 0; x < inlen; x++)
        out[y++] = 0xFF;
@@ -197,6 +188,7 @@ int rsa_pad(const unsigned char *in,  unsigned long inlen,
 {
    unsigned char buf[2048];
    unsigned long x;
+   int errno;
 
    _ARGCHK(in != NULL);
    _ARGCHK(out != NULL);
@@ -205,24 +197,21 @@ int rsa_pad(const unsigned char *in,  unsigned long inlen,
 
    /* is output big enough? */
    if (*outlen < (3 * inlen)) { 
-      crypt_error = "Output overflow in rsa_pad()."; 
-      return CRYPT_ERROR; 
+      return CRYPT_BUFFER_OVERFLOW;
    }
 
    /* get random padding required */
-   if (prng_is_valid(wprng) != CRYPT_OK) {
-      return CRYPT_ERROR; 
+   if ((errno = prng_is_valid(wprng)) != CRYPT_OK) {
+      return errno; 
    }
 
    /* check inlen */
-   if (inlen > 512) {
-      crypt_error = "Invalid sized input for rsa_pad().";
-      return CRYPT_ERROR;
+   if ((inlen <= 0) || inlen > 512) {
+      return CRYPT_PK_INVALID_SIZE;
    }
 
    if (prng_descriptor[wprng].read(buf, inlen*2-2, prng) != (inlen*2 - 2))  {
-       crypt_error = "Cannot read PRNG in function rsa_pad().";
-       return CRYPT_ERROR;
+       return CRYPT_ERROR_READPRNG;
    }
 
    /* pad it like a sandwitch (sp?) 
@@ -265,15 +254,13 @@ int rsa_signdepad(const unsigned char *in,  unsigned long inlen,
    _ARGCHK(outlen != NULL);
 
    if (*outlen < inlen/3) { 
-      crypt_error = "Output not big enough in rsa_signdepad()."; 
-      return CRYPT_ERROR; 
+      return CRYPT_BUFFER_OVERFLOW;
    }
 
    /* check padding bytes */
    for (x = 0; x < inlen/3; x++) {
        if (in[x] != 0xFF || in[x+(inlen/3)+(inlen/3)] != 0xFF) {
-          crypt_error = "Invalid padding format for rsa_signdepad().";
-          return CRYPT_ERROR;
+          return CRYPT_INVALID_PACKET;
        }
    }
    for (x = 0; x < inlen/3; x++) 
@@ -292,8 +279,7 @@ int rsa_depad(const unsigned char *in,  unsigned long inlen,
    _ARGCHK(outlen != NULL);
 
    if (*outlen < inlen/3) { 
-      crypt_error = "Output not big enough in rsa_depad()."; 
-      return CRYPT_ERROR; 
+      return CRYPT_BUFFER_OVERFLOW;
    }
    for (x = 0; x < inlen/3; x++) 
        out[x] = in[x+(inlen/3)];
@@ -319,13 +305,11 @@ int rsa_depad(const unsigned char *in,  unsigned long inlen,
                                                                  \
      /* sanity check... */                                       \
      if (x > 1024) {                                             \
-        crypt_error = "Invalid size of data in rsa_import().";   \
         goto error2;                                             \
      }                                                           \
                                                                  \
      /* load it */                                               \
      if (mp_read_raw(num, (unsigned char *)in+y, x) != MP_OKAY) {\
-        crypt_error = "Out of memory in rsa_import().";          \
         goto error2;                                             \
      }                                                           \
      y += x;                                                     \
@@ -343,8 +327,7 @@ int rsa_export(unsigned char *out, unsigned long *outlen, int type, rsa_key *key
    /* type valid? */
    if (!(key->type == PK_PRIVATE || key->type == PK_PRIVATE_OPTIMIZED) && 
         (type == PK_PRIVATE || type == PK_PRIVATE_OPTIMIZED)) { 
-      crypt_error = "Invalid key type in rsa_export()."; 
-      return CRYPT_ERROR; 
+      return CRYPT_PK_INVALID_TYPE;
    }
 
    /* start at offset y=PACKET_SIZE */
@@ -374,8 +357,7 @@ int rsa_export(unsigned char *out, unsigned long *outlen, int type, rsa_key *key
 
    /* check size */
    if (*outlen < y) { 
-      crypt_error = "Buffer overrun in rsa_export()."; 
-      return CRYPT_ERROR; 
+      return CRYPT_BUFFER_OVERFLOW;
    }
 
    /* store packet header */
@@ -395,20 +377,20 @@ int rsa_export(unsigned char *out, unsigned long *outlen, int type, rsa_key *key
 int rsa_import(const unsigned char *in, rsa_key *key)
 {
    unsigned long x, y;
+   int errno;
 
    _ARGCHK(in != NULL);
    _ARGCHK(key != NULL);
 
    /* test packet header */
-   if (packet_valid_header((unsigned char *)in, PACKET_SECT_RSA, PACKET_SUB_KEY) != CRYPT_OK) { 
-      return CRYPT_ERROR;
+   if ((errno = packet_valid_header((unsigned char *)in, PACKET_SECT_RSA, PACKET_SUB_KEY)) != CRYPT_OK) { 
+      return errno;
    }
 
    /* init key */
    if (mp_init_multi(&key->e, &key->d, &key->N, &key->dQ, &key->dP, &key->qP, 
                      &key->pQ, &key->p, &key->q, NULL) != MP_OKAY) {
-      crypt_error = "Out of memory in rsa_import().";
-      return CRYPT_ERROR;
+      return CRYPT_MEM;
    }
 
    /* get key type */
@@ -440,8 +422,10 @@ int rsa_import(const unsigned char *in, rsa_key *key)
 error2:
    mp_clear_multi(&key->d, &key->e, &key->N, &key->dQ, &key->dP, 
                   &key->pQ, &key->qP, &key->p, &key->q, NULL);
-   return CRYPT_ERROR;
+   return CRYPT_MEM;
 }
+
+#include "rsa_sys.c"
 
 #endif /* RSA */
 

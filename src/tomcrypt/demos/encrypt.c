@@ -9,12 +9,14 @@
 
 #include <mycrypt.h>
 
+int errno;
+
 static const struct _cipher_descriptor *ciphers[] = {
    &blowfish_desc,   &xtea_desc,        &rc5_desc,        &rc6_desc,
    &saferp_desc,     &serpent_desc,     &rijndael_desc,
    &twofish_desc,    &safer_k64_desc,   &safer_sk64_desc,
    &safer_k128_desc, &safer_sk128_desc, &rc2_desc,
-   &des_desc,        &des3_desc,        NULL
+   &des_desc,        &des3_desc,        &cast5_desc, NULL
 };
 
 int usage(void) 
@@ -34,23 +36,23 @@ void register_algs(void)
    
    for (x = 0; ciphers[x] != NULL; x++) {
        if (register_cipher(ciphers[x]) == -1) {
-          printf("Error registering cipher: %s\n", crypt_error);
+          printf("Error registering cipher\n");
           exit(-1);
        }
    }
 
    if (register_hash(&sha256_desc) == -1) {
-      printf("Error registering SHA256: %s\n", crypt_error);
+      printf("Error registering SHA256\n");
       exit(-1);
    } 
 
    if (register_prng(&yarrow_desc) == -1) {
-      printf("Error registering yarrow PRNG: %s\n", crypt_error);
+      printf("Error registering yarrow PRNG\n");
       exit(-1);
    }
 
    if (register_prng(&sprng_desc) == -1) {
-      printf("Error registering sprng PRNG: %s\n", crypt_error);
+      printf("Error registering sprng PRNG\n");
       exit(-1);
    }
 }
@@ -121,8 +123,8 @@ int main(int argc, char *argv[])
    printf("\nEnter key: ");
    fgets(tmpkey,sizeof(tmpkey), stdin);
    outlen = sizeof(key);
-   if (hash_memory(hash_idx,tmpkey,strlen(tmpkey),key,&outlen) != CRYPT_OK) {
-      printf("Error hashing key: %s\n", crypt_error);
+   if ((errno = hash_memory(hash_idx,tmpkey,strlen(tmpkey),key,&outlen)) != CRYPT_OK) {
+      printf("Error hashing key: %s\n", error_to_string(errno));
       exit(-1);
    }
    
@@ -133,8 +135,8 @@ int main(int argc, char *argv[])
          exit(-1);
       }
    
-      if (ctr_start(cipher_idx,IV,key,ks,0,&ctr) != CRYPT_OK) {
-         printf("ctr_start error: %s\n",crypt_error);
+      if ((errno = ctr_start(cipher_idx,IV,key,ks,0,&ctr)) != CRYPT_OK) {
+         printf("ctr_start error: %s\n",error_to_string(errno));
          exit(-1);
       }
 
@@ -142,8 +144,8 @@ int main(int argc, char *argv[])
       do {
          y = fread(inbuf,1,sizeof(inbuf),fdin);
 
-         if (ctr_decrypt(inbuf,plaintext,y,&ctr) != CRYPT_OK) {
-            printf("ctr_decrypt error: %s\n", crypt_error);
+         if ((errno = ctr_decrypt(inbuf,plaintext,y,&ctr)) != CRYPT_OK) {
+            printf("ctr_decrypt error: %s\n", error_to_string(errno));
             exit(-1);
          }
 
@@ -158,8 +160,8 @@ int main(int argc, char *argv[])
    } else {  /* encrypt */
       /* Setup yarrow for random bytes for IV */
       
-      if (rng_make_prng(128, find_prng("yarrow"), &prng, NULL)!= CRYPT_OK) {
-         printf("Error setting up PRNG, %s\n", crypt_error);
+      if ((errno = rng_make_prng(128, find_prng("yarrow"), &prng, NULL)) != CRYPT_OK) {
+         printf("Error setting up PRNG, %s\n", error_to_string(errno));
       }      
 
       /* You can use rng_get_bytes on platforms that support it */
@@ -175,16 +177,16 @@ int main(int argc, char *argv[])
          exit(-1);
       }
 
-      if (ctr_start(cipher_idx,IV,key,ks,0,&ctr) != CRYPT_OK) {
-         printf("ctr_start error: %s\n",crypt_error);
+      if ((errno = ctr_start(cipher_idx,IV,key,ks,0,&ctr)) != CRYPT_OK) {
+         printf("ctr_start error: %s\n",error_to_string(errno));
          exit(-1);
       }
 
       do {
          y = fread(inbuf,1,sizeof(inbuf),fdin);
 
-         if (ctr_encrypt(inbuf,ciphertext,y,&ctr) != CRYPT_OK) {
-            printf("ctr_encrypt error: %s\n", crypt_error);
+         if ((errno = ctr_encrypt(inbuf,ciphertext,y,&ctr)) != CRYPT_OK) {
+            printf("ctr_encrypt error: %s\n", error_to_string(errno));
             exit(-1);
          }
 

@@ -81,8 +81,9 @@ static void sha256_compress(hash_state * md)
     }
 
     /* feedback */
-    for (i = 0; i < 8; i++)
-        md->sha256.state[i] = (md->sha256.state[i] + S[i]) & 0xFFFFFFFFUL;
+    for (i = 0; i < 8; i++) {
+        md->sha256.state[i] = md->sha256.state[i] + S[i];
+    }
 }
 
 #ifdef CLEAN_STACK
@@ -217,8 +218,7 @@ int  sha256_test(void)
       }
   }
   if (failed == 1) {
-     crypt_error = "SHA-256 failed to hash to test vectors.";
-     return CRYPT_ERROR;
+     return CRYPT_FAIL_TESTVECTOR;
   } else {
      return CRYPT_OK;
   }

@@ -43,8 +43,7 @@ int base64_encode(const unsigned char *in,  unsigned long len,
    /* valid output size ? */
    len2 = 4 * ((len + 2) / 3);
    if (*outlen < len2 + 1) {
-      crypt_error = "Buffer overflow in base64_encode().";
-      return CRYPT_ERROR;
+      return CRYPT_BUFFER_OVERFLOW;
    }
    p = out;
    leven = 3*(len / 3);
@@ -100,14 +99,12 @@ int base64_decode(const unsigned char *in,  unsigned long len,
        }
    }
    if (y != 0) {
-       crypt_error = "Invalid packet in base64_decode().";
-       return CRYPT_ERROR;
+       return CRYPT_INVALID_PACKET;
    }
    *outlen = z;
    return CRYPT_OK;
 error:
-   crypt_error = "Buffer overflow in base64_decode().";
-   return CRYPT_ERROR;
+   return CRYPT_BUFFER_OVERFLOW;
 }
 
 #endif

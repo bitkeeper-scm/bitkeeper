@@ -1,3 +1,4 @@
+/* Implementation of Twofish by Tom St Denis */
 #include "mycrypt.h"
 
 #ifdef TWOFISH
@@ -426,13 +427,11 @@ int twofish_setup(const unsigned char *key, int keylen, int num_rounds, symmetri
 
    /* invalid arguments? */
    if (num_rounds != 16 && num_rounds != 0) {
-      crypt_error = "Invalid number of rounds for Twofish.";
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_ROUNDS;
    }
 
    if (keylen != 16 && keylen != 24 && keylen != 32) {
-      crypt_error = "Invalid key size for Twofish.";
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_KEYSIZE;
    }
 
    /* k = keysize/64 [but since our keysize is in bytes...] */
@@ -673,44 +672,33 @@ int twofish_test(void)
 
  symmetric_key key;
  unsigned char tmp[2][16];
+ int errno;
 
- if (twofish_setup(key128, 16, 0, &key) != CRYPT_OK)
-    return CRYPT_ERROR;
+ if ((errno = twofish_setup(key128, 16, 0, &key)) != CRYPT_OK) {
+    return errno;
+ }
  twofish_ecb_encrypt(pt128, tmp[0], &key);
  twofish_ecb_decrypt(tmp[0], tmp[1], &key);
- if (memcmp(tmp[0], ct128, 16)) {
-    crypt_error = "Twofish-128 did not encrypt properly.";
-    return CRYPT_ERROR;
+ if (memcmp(tmp[0], ct128, 16) || memcmp(tmp[1], pt128, 16)) {
+    return CRYPT_FAIL_TESTVECTOR;
  }
- if (memcmp(tmp[1], pt128, 16)) {
-    crypt_error = "Twofish-128 did not decrypt properly.";
-    return CRYPT_ERROR;
+ 
+ if ((errno = twofish_setup(key192, 24, 0, &key)) != CRYPT_OK) {
+    return errno;
  }
-
- if (twofish_setup(key192, 24, 0, &key) != CRYPT_OK) 
-    return CRYPT_ERROR;
  twofish_ecb_encrypt(pt192, tmp[0], &key);
  twofish_ecb_decrypt(tmp[0], tmp[1], &key);
- if (memcmp(tmp[0], ct192, 16)) {
-    crypt_error = "Twofish-192 did not encrypt properly.";
-    return CRYPT_ERROR;
- }
- if (memcmp(tmp[1], pt192, 16)) {
-    crypt_error = "Twofish-192 did not decrypt properly.";
-    return CRYPT_ERROR;
+ if (memcmp(tmp[0], ct192, 16) || memcmp(tmp[1], pt192, 16)) {
+    return CRYPT_FAIL_TESTVECTOR;
  }
 
- if (twofish_setup(key256, 32, 0, &key) != CRYPT_OK) 
-    return CRYPT_ERROR;
+ if ((errno = twofish_setup(key256, 32, 0, &key)) != CRYPT_OK)  {
+    return errno;
+ }
  twofish_ecb_encrypt(pt256, tmp[0], &key);
  twofish_ecb_decrypt(tmp[0], tmp[1], &key);
- if (memcmp(tmp[0], ct256, 16)) {
-    crypt_error = "Twofish-256 did not encrypt properly.";
-    return CRYPT_ERROR;
- }
- if (memcmp(tmp[1], pt256, 16)) {
-    crypt_error = "Twofish-256 did not decrypt properly.";
-    return CRYPT_ERROR;
+ if (memcmp(tmp[0], ct256, 16) || memcmp(tmp[1], pt256, 16)) {
+    return CRYPT_FAIL_TESTVECTOR;
  }
 
  return CRYPT_OK;
@@ -720,7 +708,7 @@ int twofish_keysize(int *desired_keysize)
 {
    _ARGCHK(desired_keysize);
    if (*desired_keysize < 16)
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_KEYSIZE;
    if (*desired_keysize < 24) {
       *desired_keysize = 16;
       return CRYPT_OK;

@@ -28,17 +28,17 @@ int hmac_init(hmac_state *hmac, int hash, const unsigned char *key, unsigned lon
     unsigned char buf[MAXBLOCKSIZE];
     unsigned long hashsize;
     unsigned long i, z;
+    int errno;
 
     _ARGCHK(hmac != NULL);
     _ARGCHK(key != NULL);
 
-    if(hash_is_valid(hash) != CRYPT_OK) {
-        return CRYPT_ERROR;
+    if ((errno = hash_is_valid(hash)) != CRYPT_OK) {
+        return errno;
     }
 
     if(key == NULL || keylen == 0) {
-        crypt_error = "Empty key used to initialize HMAC.";
-        return CRYPT_ERROR;
+        return CRYPT_INVALID_KEYSIZE;
     }
 
     hmac->hash = hash;
@@ -47,8 +47,8 @@ int hmac_init(hmac_state *hmac, int hash, const unsigned char *key, unsigned lon
     hmac->hashsize = hashsize = hash_descriptor[hash].hashsize;
     if(keylen > HMAC_BLOCKSIZE) {
         z = sizeof(hmac->key);
-        if (hash_memory(hash, key, keylen, hmac->key, &z) != CRYPT_OK) {
-           return CRYPT_ERROR;
+        if ((errno = hash_memory(hash, key, keylen, hmac->key, &z)) != CRYPT_OK) {
+           return errno;
         }
         if(hashsize < HMAC_BLOCKSIZE) {
             zeromem(hmac->key+hashsize, HMAC_BLOCKSIZE - hashsize);
@@ -76,29 +76,31 @@ int hmac_init(hmac_state *hmac, int hash, const unsigned char *key, unsigned lon
     return CRYPT_OK;
 }
 
-void hmac_process(hmac_state *hmac, const unsigned char *buf, unsigned long len)
+int hmac_process(hmac_state *hmac, const unsigned char *buf, unsigned long len)
 {
+    int errno;
     _ARGCHK(hmac != NULL);
     _ARGCHK(buf != NULL);
-    if (hash_is_valid(hmac->hash) != CRYPT_OK) {
-        return;
+    if ((errno = hash_is_valid(hmac->hash)) != CRYPT_OK) {
+        return errno;
     }
     hash_descriptor[hmac->hash].process(&hmac->md, buf, len);
+    return CRYPT_OK;
 }
 
-void hmac_done(hmac_state *hmac, unsigned char *hashOut)
+int hmac_done(hmac_state *hmac, unsigned char *hashOut)
 {
     unsigned char buf[MAXBLOCKSIZE];
     unsigned char isha[MAXBLOCKSIZE];
     unsigned long hashsize, i;
-    int hash;
+    int hash, errno;
 
     _ARGCHK(hmac != NULL);
     _ARGCHK(hashOut != NULL);
 
     hash = hmac->hash;
-    if(hash_is_valid(hash) != CRYPT_OK) {
-        return;
+    if((errno = hash_is_valid(hash)) != CRYPT_OK) {
+        return errno;
     }
 
     // Get the hash of the first HMAC vector plus the data
@@ -119,22 +121,30 @@ void hmac_done(hmac_state *hmac, unsigned char *hashOut)
 #ifdef CLEAN_STACK
     zeromem(hmac->key, sizeof(hmac->key));
 #endif
+    return CRYPT_OK;
 }
 
 int hmac_memory(int hash, const unsigned char *key, unsigned long keylen,
                 const unsigned char *data, unsigned long len, unsigned char *dst)
 {
     hmac_state hmac;
+    int errno;
 
     _ARGCHK(key != NULL);
     _ARGCHK(data != NULL);
     _ARGCHK(dst != NULL);
 
-    if (hmac_init(&hmac, hash, key, keylen) != CRYPT_OK) {
-        return CRYPT_ERROR;
+    if ((errno = hmac_init(&hmac, hash, key, keylen)) != CRYPT_OK) {
+        return errno;
     }
-    hmac_process(&hmac, data, len);
-    hmac_done(&hmac, dst);
+  
+    if ((errno = hmac_process(&hmac, data, len)) != CRYPT_OK) {
+       return errno;
+    }
+
+    if ((errno = hmac_done(&hmac, dst)) != CRYPT_OK) {
+       return errno;
+    }
     return CRYPT_OK;
 }
 
@@ -143,37 +153,40 @@ int hmac_file(int hash, const char *fname, const unsigned char *key,
                 unsigned long keylen, unsigned char *dst)
 {
 #ifdef NO_FILE
-    crypt_error = "Can't call hmac_file() when NO_FILE is defined.";
     return CRYPT_ERROR;
 #else
    hmac_state hmac;
    FILE *in;
    unsigned char buf[512];
-   int x;
+   int x, errno;
 
    _ARGCHK(fname != NULL);
    _ARGCHK(key != NULL);
    _ARGCHK(dst != NULL);
 
-   if (hmac_init(&hmac, hash, key, keylen) != CRYPT_OK) {
-       return CRYPT_ERROR;
+   if ((errno = hmac_init(&hmac, hash, key, keylen)) != CRYPT_OK) {
+       return errno;
    }
 
    in = fopen(fname, "rb");
    if (in == NULL) {
-      crypt_error = "Error opening file in hmac_file().";
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_ARG;
    }
 
    /* process the file contents */
    do {
       x = fread(buf, 1, sizeof(buf), in);
-      hmac_process(&hmac, buf, x);
+      if ((errno = hmac_process(&hmac, buf, x)) != CRYPT_OK) { 
+         fclose(in);
+         return errno;
+      }
    } while (x == sizeof(buf));
    fclose(in);
 
    /* get final hmac */
-   hmac_done(&hmac, dst);
+   if ((errno = hmac_done(&hmac, dst)) != CRYPT_OK) {
+      return errno;
+   }
 
 #ifdef CLEAN_STACK
    /* clear memory */
@@ -423,21 +436,21 @@ Key First"
         {0}
     };
 
-
+    int errno;
     int failed=0;
     for(i=0; cases[i].num; i++) {
         int hash = find_hash(cases[i].algo);
-        if(hmac_memory(hash, cases[i].key, cases[i].keylen, cases[i].data, cases[i].datalen, digest) != CRYPT_OK) {
+        if((errno = hmac_memory(hash, cases[i].key, cases[i].keylen, cases[i].data, cases[i].datalen, digest)) != CRYPT_OK) {
 #if 0
-            printf("HMAC-%s test #%d: %s\n", cases[i].algo, cases[i].num, crypt_error);
+            printf("HMAC-%s test #%d\n", cases[i].algo, cases[i].num);
 #endif
-            return CRYPT_ERROR;
+            return errno;
         }
 
         if(memcmp(digest, cases[i].digest, hash_descriptor[hash].hashsize) != 0)  {
 #if 0
             unsigned int j;
-            printf("\nHMAC-%s test #%d: %s\n", cases[i].algo, cases[i].num, crypt_error);
+            printf("\nHMAC-%s test #%d:\n", cases[i].algo, cases[i].num);
             printf(  "Result:  0x");
             for(j=0; j < hash_descriptor[hash].hashsize; j++) {
                 printf("%2x ", digest[j]);
@@ -448,7 +461,6 @@ Key First"
             }
             printf("\n");
 #endif
-            crypt_error = "Hmac hash code did not match test vector.";
             failed++;
             //return CRYPT_ERROR;
         } else {
@@ -457,7 +469,7 @@ Key First"
     }
 
     if(failed) {
-        return CRYPT_ERROR;
+        return CRYPT_FAIL_TESTVECTOR;
     }
 
     return CRYPT_OK;

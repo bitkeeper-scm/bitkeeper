@@ -5,14 +5,14 @@
 int cfb_start(int cipher, const unsigned char *IV, const unsigned char *key, 
               int keylen, int num_rounds, symmetric_CFB *cfb)
 {
-   int x;
+   int x, errno;
 
    _ARGCHK(IV != NULL);
    _ARGCHK(key != NULL);
    _ARGCHK(cfb != NULL);
 
-   if (cipher_is_valid(cipher) != CRYPT_OK) {
-      return CRYPT_ERROR;
+   if ((errno = cipher_is_valid(cipher)) != CRYPT_OK) {
+      return errno;
    }
 
    /* copy data */
@@ -22,8 +22,8 @@ int cfb_start(int cipher, const unsigned char *IV, const unsigned char *key,
        cfb->IV[x] = IV[x];
 
    /* init the cipher */
-   if (cipher_descriptor[cipher].setup(key, keylen, num_rounds, &cfb->key) != CRYPT_OK) {
-      return CRYPT_ERROR;
+   if ((errno = cipher_descriptor[cipher].setup(key, keylen, num_rounds, &cfb->key)) != CRYPT_OK) {
+      return errno;
    }
 
    /* encrypt the IV */
@@ -35,12 +35,14 @@ int cfb_start(int cipher, const unsigned char *IV, const unsigned char *key,
 
 int cfb_encrypt(const unsigned char *pt, unsigned char *ct, unsigned long len, symmetric_CFB *cfb)
 {
+   int errno;
+
    _ARGCHK(pt != NULL);
    _ARGCHK(ct != NULL);
    _ARGCHK(cfb != NULL);
 
-   if (cipher_is_valid(cfb->cipher) != CRYPT_OK) {
-       return CRYPT_ERROR;
+   if ((errno = cipher_is_valid(cfb->cipher)) != CRYPT_OK) {
+       return errno;
    }
    while (len--) {
        if (cfb->padlen == cfb->blocklen) {
@@ -57,12 +59,14 @@ int cfb_encrypt(const unsigned char *pt, unsigned char *ct, unsigned long len, s
 
 int cfb_decrypt(const unsigned char *ct, unsigned char *pt, unsigned long len, symmetric_CFB *cfb)
 {
+   int errno;
+
    _ARGCHK(pt != NULL);
    _ARGCHK(ct != NULL);
    _ARGCHK(cfb != NULL);
 
-   if (cipher_is_valid(cfb->cipher) != CRYPT_OK) {
-       return CRYPT_ERROR;
+   if ((errno = cipher_is_valid(cfb->cipher)) != CRYPT_OK) {
+       return errno;
    }
    while (len--) {
        if (cfb->padlen == cfb->blocklen) {

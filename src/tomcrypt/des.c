@@ -440,13 +440,11 @@ int des_setup(const unsigned char *key, int keylen, int num_rounds, symmetric_ke
     _ARGCHK(skey != NULL);
 
     if (num_rounds != 0 && num_rounds != 16) {
-        crypt_error = "Invalid number of rounds for DES; must be 16";
-        return CRYPT_ERROR;
+        return CRYPT_INVALID_ROUNDS;
     }
 
     if (keylen != 8) {
-        crypt_error = "Invalid key length for DES; must be 8";
-        return CRYPT_ERROR;
+        return CRYPT_INVALID_KEYSIZE;
     }
 
     deskey(key, EN0, skey->des.ek);
@@ -461,13 +459,11 @@ int des3_setup(const unsigned char *key, int keylen, int num_rounds, symmetric_k
     _ARGCHK(skey != NULL);
 
     if( num_rounds != 0 && num_rounds != 16) {
-        crypt_error = "Invalid number of rounds for 3DES; must be 16";
-        return CRYPT_ERROR;
+        return CRYPT_INVALID_ROUNDS;
     }
 
     if (keylen != 24) {
-        crypt_error = "Invalid key length for 3DES; must be 24";
-        return CRYPT_ERROR;
+        return CRYPT_INVALID_KEYSIZE;
     }
 
     deskey(key,    EN0, skey->des3.ek[0]);
@@ -531,6 +527,7 @@ void des3_ecb_decrypt(const unsigned char *ct, unsigned char *pt, symmetric_key 
 
 int des_test(void)
 {
+    int errno;
     static const struct des_test_case {
         int num, mode; // mode 1 = encrypt
         unsigned char key[8], txt[8], out[8];
@@ -646,7 +643,9 @@ int des_test(void)
 
     for(i=0; cases[i].num; i++)
     {
-        des_setup(cases[i].key, 8, 0, &des);
+        if ((errno = des_setup(cases[i].key, 8, 0, &des)) != CRYPT_OK) {
+           return errno;
+        }
         if (cases[i].mode) { 
            des_ecb_encrypt(cases[i].txt, out, &des);
         } else {
@@ -673,8 +672,9 @@ int des_test(void)
         }
     }
 
-    if(failed > 0)
-        return CRYPT_ERROR;
+    if(failed > 0) {
+        return CRYPT_FAIL_TESTVECTOR;
+    }
 
     return CRYPT_OK;
 }
@@ -683,10 +683,10 @@ int des3_test(void)
 {
    unsigned char key[24], pt[8], ct[8], tmp[8];
    symmetric_key skey;
-   int x;
+   int x, errno;
 
-   if (des_test() != CRYPT_OK) {
-      return CRYPT_ERROR;
+   if ((errno = des_test()) != CRYPT_OK) {
+      return errno;
    }
 
    for (x = 0; x < 8; x++) {
@@ -697,16 +697,15 @@ int des3_test(void)
        key[x] = x;
    }
 
-   if (des3_setup(key, 24, 0, &skey) != CRYPT_OK) {
-      return CRYPT_ERROR;
+   if ((errno = des3_setup(key, 24, 0, &skey)) != CRYPT_OK) {
+      return errno;
    }
    
    des3_ecb_encrypt(pt, ct, &skey);
    des3_ecb_decrypt(ct, tmp, &skey);
    
    if (memcmp(pt, tmp, 8)) {
-      crypt_error = "3DES didn't decrypt properly but single DES works.";
-      return CRYPT_ERROR;
+      return CRYPT_FAIL_TESTVECTOR;
    }
    
    return CRYPT_OK;
@@ -715,8 +714,9 @@ int des3_test(void)
 int des_keysize(int *desired_keysize)
 {
     _ARGCHK(desired_keysize != NULL);
-    if(*desired_keysize < 8)
-        return CRYPT_ERROR;
+    if(*desired_keysize < 8) {
+        return CRYPT_INVALID_KEYSIZE;
+    }
     *desired_keysize = 8;
     return CRYPT_OK;
 }
@@ -724,8 +724,9 @@ int des_keysize(int *desired_keysize)
 int des3_keysize(int *desired_keysize)
 {
     _ARGCHK(desired_keysize != NULL);
-    if(*desired_keysize < 24)
-        return CRYPT_ERROR;
+    if(*desired_keysize < 24) {
+        return CRYPT_INVALID_KEYSIZE;
+    }
     *desired_keysize = 24;
     return CRYPT_OK;
 }

@@ -45,89 +45,16 @@ extern clock_t XCLOCK(void);
    #define ENDIAN_NEUTRAL
 #endif
 
-/* Clean the stack after sensitive functions.  Not always required... 
- * With this defined most of the ciphers and hashes will clean their stack area
- * after usage with a (sometimes) huge penalty in speed.  Normally this is not
- * required if you simply lock your stack and wipe it when your program is done.
- */
-#define CLEAN_STACK
-
-/* What algorithms to include? comment out and rebuild to remove em */
-/* ciphers */
-#define BLOWFISH
-#define RC2
-#define RC5
-#define RC6
-#define SERPENT
-#define SAFERP  /* for the SAFER+ cipher */
-#define SAFER   /* for the SAFER K64, K128, SK64 and SK128 ciphers */
-#define RIJNDAEL
-#define XTEA
-#define TWOFISH
-#define DES
-
-/* Small Ram Variant of Twofish.  For this you must have TWOFISH defined.  This
- * variant requires about 4kb less memory but is considerably slower.  It is ideal
- * when high throughput is less important than conserving memory. By default it is
- * not defined which means the larger ram (about 4.2Kb used) variant is built.
- */
-/* #define TWOFISH_SMALL */
-
-/* Tell Twofish to use precomputed tables.  If you want to use the small table
- * variant of Twofish you may want to turn this on.  Essentially it tells Twofish to use
- * precomputed S-boxes (Q0 and Q1) as well as precomputed GF multiplications [in the MDS].
- * This speeds up the cipher somewhat.
- */
-/* #define TWOFISH_TABLES */
-
-/* modes */
-#define CFB
-#define OFB
-#define ECB
-#define CBC
-#define CTR
-
-/* hashes */
-#define SHA512
-#define SHA384
-#define SHA256
-#define TIGER
-#define SHA1
-#define MD5
-#define MD4
-
 #ifdef SHA384
    #ifndef SHA512
       #error The SHA384 hash requires SHA512 to be defined!
    #endif
 #endif
 
-/* base64 */
-#define BASE64
-
-/* prngs */
-#define YARROW
-#define SPRNG
-#define RC4      /* RC4 is defined in the PRNG section since thats how you access it */
-
 #ifdef YARROW
    #ifndef CTR
       #error YARROW Requires CTR mode
    #endif
-#endif
-
-/* PK code */
-#define MRSA     /* include RSA code ? */
-#define PKCS     /* include the RSA PKCS code? */
-
-#define MDH      /* Include Diffie-Hellman? */
-
-#define MECC     /* Include ECC code? */
-
-#ifndef SONY_PS2
-
-   #define KR       /* Include keyring support? */
-
 #endif
 
 /* packet code */
@@ -177,20 +104,6 @@ extern clock_t XCLOCK(void);
 
 #endif /* MECC */
 
-/* include GF math routines?  (not currently used by anything internally) */
-#define GF
-
-/* include large integer math routines? */
-#define MPI
-
-/* Use a small prime table?  It greatly reduces the size of prime.c at a little impact
- * in speed.
- */
-#define SMALL_PRIME_TAB
-
-/* include HMAC support */
-#define HMAC
-
 #ifdef MPI
    #include "mpi.h"
 #else
@@ -204,9 +117,6 @@ extern clock_t XCLOCK(void);
       #error DH requires the big int library 
    #endif
 #endif /* MPI */
-
-/* Use /dev/urandom first on devices where /dev/random is too slow */
-/* #define TRY_URANDOM_FIRST */
 
 #endif /* MYCRYPT_CFG_H */
 

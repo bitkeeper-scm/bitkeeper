@@ -27,8 +27,7 @@ int rc4_add_entropy(const unsigned char *buf, unsigned long len, prng_state *prn
     _ARGCHK(prng != NULL);
 
     if (prng->rc4.x + len >= 256) {
-       crypt_error = "RC4 can only have 256 bytes of entropy at most.";
-       return CRYPT_ERROR;
+       return CRYPT_INVALID_KEYSIZE;
     }
 
     while (len--) {
@@ -55,7 +54,7 @@ int rc4_ready(prng_state *prng)
 
     for (x = y = 0; x < 256; x++) {
         y = (y + prng->rc4.buf[x] + key[x % keylen]) & 255;
-        tmp = prng->rc4.buf[x]; prng->rc4.buf[x] = prng->rc4.buf[y]; prng->rc4.buf[x] = tmp;
+        tmp = prng->rc4.buf[x]; prng->rc4.buf[x] = prng->rc4.buf[y]; prng->rc4.buf[y] = tmp;
     }
     prng->rc4.x = x;
     prng->rc4.y = y;

@@ -27,14 +27,12 @@ int rc6_setup(const unsigned char *key, int keylen, int num_rounds, symmetric_ke
 
     /* test parameters */
     if (num_rounds != 0 && num_rounds != 20) { 
-       crypt_error = "Invalid number of rounds for RC6.";
-       return CRYPT_ERROR;
+       return CRYPT_INVALID_ROUNDS;
     }
 
     /* key must be between 64 and 1024 bits */
     if (keylen < 8 || keylen > 128) {
-       crypt_error = "Invalid key size for RC6.";
-       return CRYPT_ERROR;
+       return CRYPT_INVALID_KEYSIZE;
     }
 
     /* copy the key into the L array */
@@ -197,13 +195,13 @@ int rc6_test(void)
    }
    };
    unsigned char buf[2][16];
-   int x, failed;
+   int x, failed, errno;
    symmetric_key key;
 
    for (x = failed = 0; x < (int)(sizeof(tests) / sizeof(tests[0])); x++) {
       /* setup key */
-      if (rc6_setup(tests[x].key, tests[x].keylen, 0, &key) != CRYPT_OK) {
-         return CRYPT_ERROR;
+      if ((errno = rc6_setup(tests[x].key, tests[x].keylen, 0, &key)) != CRYPT_OK) {
+         return errno;
       }
 
       /* encrypt and decrypt */
@@ -233,8 +231,7 @@ int rc6_test(void)
    }
 
    if (failed == 1) {
-      crypt_error = "RC6 did not encrypt/decrypt to test vectors.";
-      return CRYPT_ERROR;
+      return CRYPT_FAIL_TESTVECTOR;
    } else {
       return CRYPT_OK;
    }
@@ -244,7 +241,7 @@ int rc6_keysize(int *desired_keysize)
 {
    _ARGCHK(desired_keysize != NULL);
    if (*desired_keysize < 8) {
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_KEYSIZE;
    } else if (*desired_keysize > 128) {
       *desired_keysize = 128;
    }

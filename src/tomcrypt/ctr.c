@@ -5,20 +5,20 @@
 int ctr_start(int cipher, const unsigned char *count, const unsigned char *key, int keylen, 
               int num_rounds, symmetric_CTR *ctr)
 {
-   int x;
+   int x, errno;
 
    _ARGCHK(count != NULL);
    _ARGCHK(key != NULL);
    _ARGCHK(ctr != NULL);
 
    /* bad param? */
-   if (cipher_is_valid(cipher) != CRYPT_OK) {
-      return CRYPT_ERROR;
+   if ((errno = cipher_is_valid(cipher)) != CRYPT_OK) {
+      return errno;
    }
 
    /* setup cipher */
-   if (cipher_descriptor[cipher].setup(key, keylen, num_rounds, &ctr->key) != CRYPT_OK) {
-      return CRYPT_ERROR;
+   if ((errno = cipher_descriptor[cipher].setup(key, keylen, num_rounds, &ctr->key)) != CRYPT_OK) {
+      return errno;
    }
 
    /* copy ctr */
@@ -34,14 +34,14 @@ int ctr_start(int cipher, const unsigned char *count, const unsigned char *key, 
 
 int ctr_encrypt(const unsigned char *pt, unsigned char *ct, unsigned long len, symmetric_CTR *ctr)
 {
-   int x;
+   int x, errno;
 
    _ARGCHK(pt != NULL);
    _ARGCHK(ct != NULL);
    _ARGCHK(ctr != NULL);
 
-   if (cipher_is_valid(ctr->cipher) != CRYPT_OK) {
-       return CRYPT_ERROR;
+   if ((errno = cipher_is_valid(ctr->cipher)) != CRYPT_OK) {
+       return errno;
    }
 
    while (len--) {

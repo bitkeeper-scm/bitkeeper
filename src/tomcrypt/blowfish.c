@@ -286,7 +286,7 @@ static unsigned long F(unsigned long x, symmetric_key *key)
    return (((key->blowfish.S[0][(x>>24)&255] +
             key->blowfish.S[1][(x>>16)&255]) ^
             key->blowfish.S[2][(x>>8)&255]) +
-            key->blowfish.S[3][(x>>0)&255]) & 0xFFFFFFFFUL;
+            key->blowfish.S[3][(x>>0)&255]);
 }
 
 int blowfish_setup(const unsigned char *key, int keylen, int num_rounds,
@@ -300,14 +300,12 @@ int blowfish_setup(const unsigned char *key, int keylen, int num_rounds,
 
    /* check key length */
    if (keylen < 8 || keylen > 56) {
-      crypt_error = "Invalid key length for blowfish.";
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_KEYSIZE;
    }
 
    /* check rounds */
    if (num_rounds != 0 && num_rounds != 16) {
-      crypt_error = "Invalid number of rounds for blowfish.";
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_ROUNDS;
    }   
 
    /* load in key bytes (Supplied by David Hopwood) */
@@ -459,6 +457,7 @@ void blowfish_ecb_decrypt(const unsigned char *ct, unsigned char *pt, symmetric_
 
 int blowfish_test(void)
 {
+   int errno;
    symmetric_key key;
    static const struct {
           unsigned char key[8], pt[8], ct[8];
@@ -639,8 +638,8 @@ int blowfish_test(void)
 
    for (x = failed = 0; x < (int)(sizeof(tests) / sizeof(tests[0])); x++) {
       /* setup key */
-      if (blowfish_setup(tests[x].key, 8, 16, &key) != CRYPT_OK) {
-         return CRYPT_ERROR;
+      if ((errno = blowfish_setup(tests[x].key, 8, 16, &key)) != CRYPT_OK) {
+         return errno;
       }
 
       /* encrypt and decrypt */
@@ -670,8 +669,7 @@ int blowfish_test(void)
    }
 
    if (failed == 1) {
-      crypt_error = "Blowfished failed to meet test vectors.";
-      return CRYPT_ERROR;
+      return CRYPT_FAIL_TESTVECTOR;
    } else {
       return CRYPT_OK;
    }
@@ -682,7 +680,7 @@ int blowfish_keysize(int *desired_keysize)
    _ARGCHK(desired_keysize != NULL);
 
    if (*desired_keysize < 8) {
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_KEYSIZE;
    } else if (*desired_keysize > 56) {
       *desired_keysize = 56;
    }

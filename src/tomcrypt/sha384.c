@@ -95,8 +95,7 @@ int  sha384_test(void)
       }
   }
   if (failed == 1) {
-     crypt_error = "SHA-384 failed to hash to test vectors.";
-     return CRYPT_ERROR;
+     return CRYPT_FAIL_TESTVECTOR;
   } else {
      return CRYPT_OK;
   }

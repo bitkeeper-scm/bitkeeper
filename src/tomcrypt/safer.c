@@ -150,13 +150,11 @@ int safer_k64_setup(const unsigned char *key, int keylen, int numrounds, symmetr
    _ARGCHK(skey != NULL);
 
    if (numrounds && (numrounds < 6 || numrounds > SAFER_MAX_NOF_ROUNDS)) {
-      crypt_error = "Invalid number of rounds for SAFER-K64.";
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_ROUNDS;
    }
 
    if (keylen != 8) {
-      crypt_error = "Invalid key size for SAFER-K64.";
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_KEYSIZE;
    }
 
    Safer_Expand_Userkey(key, key, numrounds?numrounds:SAFER_K64_DEFAULT_NOF_ROUNDS, 0, skey->safer.key);
@@ -169,13 +167,11 @@ int safer_sk64_setup(const unsigned char *key, int keylen, int numrounds, symmet
    _ARGCHK(skey != NULL);
 
    if (numrounds && (numrounds < 6 || numrounds > SAFER_MAX_NOF_ROUNDS)) {
-      crypt_error = "Invalid number of rounds for SAFER-SK64.";
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_ROUNDS;
    }
 
    if (keylen != 8) {
-      crypt_error = "Invalid key size for SAFER-SK64.";
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_KEYSIZE;
    }
 
    Safer_Expand_Userkey(key, key, numrounds?numrounds:SAFER_SK64_DEFAULT_NOF_ROUNDS, 1, skey->safer.key);
@@ -188,13 +184,11 @@ int safer_k128_setup(const unsigned char *key, int keylen, int numrounds, symmet
    _ARGCHK(skey != NULL);
 
    if (numrounds && (numrounds < 6 || numrounds > SAFER_MAX_NOF_ROUNDS)) {
-      crypt_error = "Invalid number of rounds for SAFER-K128.";
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_ROUNDS;
    }
 
    if (keylen != 16) {
-      crypt_error = "Invalid key size for SAFER-K128.";
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_KEYSIZE;
    }
 
    Safer_Expand_Userkey(key, key+8, numrounds?numrounds:SAFER_K128_DEFAULT_NOF_ROUNDS, 0, skey->safer.key);
@@ -207,13 +201,11 @@ int safer_sk128_setup(const unsigned char *key, int keylen, int numrounds, symme
    _ARGCHK(skey != NULL);
 
    if (numrounds && (numrounds < 6 || numrounds > SAFER_MAX_NOF_ROUNDS)) {
-      crypt_error = "Invalid number of rounds for SAFER-SK128.";
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_ROUNDS;
    }
 
    if (keylen != 16) {
-      crypt_error = "Invalid key size for SAFER-SK128.";
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_KEYSIZE;
    }
 
    Safer_Expand_Userkey(key, key+8, numrounds?numrounds:SAFER_SK128_DEFAULT_NOF_ROUNDS, 1, skey->safer.key);
@@ -329,7 +321,7 @@ int safer_64_keysize(int *keysize)
 {
    _ARGCHK(keysize != NULL);
    if (*keysize < 8) {
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_KEYSIZE;
    } else {
       *keysize = 8;
       return CRYPT_OK;
@@ -340,7 +332,7 @@ int safer_128_keysize(int *keysize)
 {
    _ARGCHK(keysize != NULL);
    if (*keysize < 16) {
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_KEYSIZE;
    } else {
       *keysize = 16;
       return CRYPT_OK;
@@ -355,20 +347,17 @@ int safer_k64_test(void)
 
    symmetric_key skey;
    unsigned char buf[2][8];
+   int errno;
 
-   /* test SK64 */
-   safer_k64_setup(k64_key, 8, 6, &skey);
+   /* test K64 */
+   if ((errno = safer_k64_setup(k64_key, 8, 6, &skey)) != CRYPT_OK) {
+      return errno;
+   }
    safer_ecb_encrypt(k64_pt, buf[0], &skey);
    safer_ecb_decrypt(buf[0], buf[1], &skey);
 
-   if (memcmp(buf[0], k64_ct, 8)) {
-      crypt_error = "SAFER K64 did not encrypt to test vector.";
-      return CRYPT_ERROR;
-   }
-
-   if (memcmp(buf[1], k64_pt, 8)) {
-      crypt_error = "SAFER K64 did not decrypt to test vector.";
-      return CRYPT_ERROR;
+   if (memcmp(buf[0], k64_ct, 8) || memcmp(buf[1], k64_pt, 8)) {
+      return CRYPT_FAIL_TESTVECTOR;
    }
 
    return CRYPT_OK;
@@ -383,20 +372,18 @@ int safer_sk64_test(void)
 
    symmetric_key skey;
    unsigned char buf[2][8];
+   int errno;
 
    /* test SK64 */
-   safer_sk64_setup(sk64_key, 8, 6, &skey);
+   if ((errno = safer_sk64_setup(sk64_key, 8, 6, &skey)) != CRYPT_OK) {
+      return errno;
+   }
+
    safer_ecb_encrypt(sk64_pt, buf[0], &skey);
    safer_ecb_decrypt(buf[0], buf[1], &skey);
 
-   if (memcmp(buf[0], sk64_ct, 8)) {
-      crypt_error = "SAFER SK64 did not encrypt to test vector.";
-      return CRYPT_ERROR;
-   }
-
-   if (memcmp(buf[1], sk64_pt, 8)) {
-      crypt_error = "SAFER SK64 did not decrypt to test vector.";
-      return CRYPT_ERROR;
+   if (memcmp(buf[0], sk64_ct, 8) || memcmp(buf[1], sk64_pt, 8)) {
+      return CRYPT_FAIL_TESTVECTOR;
    }
 
    return CRYPT_OK;
@@ -411,21 +398,19 @@ int safer_sk128_test(void)
 
    symmetric_key skey;
    unsigned char buf[2][8];
+   int errno;
 
    /* test SK128 */
-   safer_sk128_setup(sk128_key, 16, 0, &skey);
+   if ((errno = safer_sk128_setup(sk128_key, 16, 0, &skey)) != CRYPT_OK) {
+      return errno;
+   }
    safer_ecb_encrypt(sk128_pt, buf[0], &skey);
    safer_ecb_decrypt(buf[0], buf[1], &skey);
 
-   if (memcmp(buf[0], sk128_ct, 8)) {
-      crypt_error = "SAFER SK128 did not encrypt to test vector.";
-      return CRYPT_ERROR;
+   if (memcmp(buf[0], sk128_ct, 8) || memcmp(buf[1], sk128_pt, 8)) {
+      return CRYPT_FAIL_TESTVECTOR;
    }
 
-   if (memcmp(buf[1], sk128_pt, 8)) {
-      crypt_error = "SAFER SK128 did not decrypt to test vector.";
-      return CRYPT_ERROR;
-   }
 
    return CRYPT_OK;
 }

@@ -47,6 +47,13 @@ struct tiger_state {
 };
 #endif
 
+#ifdef MD2
+struct md2_state {
+    unsigned char chksum[16], X[48], buf[16];
+    unsigned long curlen;
+};
+#endif
+
 typedef union Hash_state {
 #ifdef SHA512
     struct sha512_state sha512;
@@ -62,6 +69,9 @@ typedef union Hash_state {
 #endif
 #ifdef MD4
     struct md4_state    md4;
+#endif
+#ifdef MD2
+    struct md2_state    md2;
 #endif
 #ifdef TIGER
     struct tiger_state  tiger;
@@ -127,6 +137,14 @@ extern int  md4_test(void);
 extern const struct _hash_descriptor md4_desc;
 #endif
 
+#ifdef MD2
+extern void md2_init(hash_state * md);
+extern void md2_process(hash_state * md, const unsigned char *buf, unsigned long len);
+extern void md2_done(hash_state * md, unsigned char *hash);
+extern int  md2_test(void);
+extern const struct _hash_descriptor md2_desc;
+#endif
+
 #ifdef TIGER
 extern void tiger_init(hash_state * md);
 extern void tiger_process(hash_state * md, const unsigned char *buf, unsigned long len);
@@ -155,8 +173,8 @@ typedef struct Hmac_state {
 } hmac_state;
 
 extern int hmac_init(hmac_state *hmac, int hash, const unsigned char *key, unsigned long keylen);
-extern void hmac_process(hmac_state *hmac, const unsigned char *buf, unsigned long len);
-extern void hmac_done(hmac_state *hmac, unsigned char *hash);
+extern int hmac_process(hmac_state *hmac, const unsigned char *buf, unsigned long len);
+extern int hmac_done(hmac_state *hmac, unsigned char *hash);
 extern int hmac_test(void);
 extern int hmac_memory(int hash, const unsigned char *key, unsigned long keylen,
                        const unsigned char *data, unsigned long len, unsigned char *dst);

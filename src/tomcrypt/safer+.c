@@ -163,16 +163,14 @@ int saferp_setup(const unsigned char *key, int keylen, int num_rounds, symmetric
 
    /* check arguments */
    if (keylen != 16 && keylen != 24 && keylen != 32) {
-      crypt_error = "Invalid number of key bytes for SAFER+.";
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_KEYSIZE;
    }
 
    /* Is the number of rounds valid?  Either use zero for default or
     * 8,12,16 rounds for 16,24,32 byte keys 
     */
    if (num_rounds != 0 && num_rounds != rounds[(keylen/8)-2]) {
-      crypt_error = "Invalid number of rounds for SAFER+.";
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_ROUNDS;
    }
 
    /* 128 bit key version */
@@ -408,53 +406,42 @@ int saferp_test(void)
 
    unsigned char buf[2][16];
    symmetric_key skey;
+   int errno;
 
    /* test 128-bit key */
-   if (saferp_setup(key128, 16, 0, &skey) != CRYPT_OK) 
-      return CRYPT_ERROR;
+   if ((errno = saferp_setup(key128, 16, 0, &skey)) != CRYPT_OK)  {
+      return errno;
+   }
    saferp_ecb_encrypt(pt128, buf[0], &skey);
    saferp_ecb_decrypt(buf[0], buf[1], &skey);
 
    /* compare */
-   if (memcmp(buf[0], &ct128, 16)) { 
-      crypt_error = "SAFER+ plaintext did not encrypt to test vector (128).";
-      return CRYPT_ERROR;
-   }
-   if (memcmp(buf[1], &pt128, 16)) {
-      crypt_error = "SAFER+ ciphertext did not decrypt to test vector (128).";
-      return CRYPT_ERROR;
+   if (memcmp(buf[0], &ct128, 16) || memcmp(buf[1], &pt128, 16)) { 
+      return CRYPT_FAIL_TESTVECTOR;
    }
 
    /* test 192-bit key */
-   if (saferp_setup(key192, 24, 0, &skey) != CRYPT_OK)
-      return CRYPT_ERROR;
+   if ((errno = saferp_setup(key192, 24, 0, &skey)) != CRYPT_OK) {
+      return errno;
+   }
    saferp_ecb_encrypt(pt192, buf[0], &skey);
    saferp_ecb_decrypt(buf[0], buf[1], &skey);
 
    /* compare */
-   if (memcmp(buf[0], &ct192, 16)) {
-      crypt_error = "SAFER+ plaintext did not encrypt to test vector (192).";
-      return CRYPT_ERROR;
-   }
-   if (memcmp(buf[1], &pt192, 16)) {
-      crypt_error = "SAFER+ ciphertext did not decrypt to test vector (192).";
-      return CRYPT_ERROR;
+   if (memcmp(buf[0], &ct192, 16) || memcmp(buf[1], &pt192, 16)) {
+      return CRYPT_FAIL_TESTVECTOR;
    }
 
    /* test 256-bit key */
-   if (saferp_setup(key256, 32, 0, &skey) != CRYPT_OK)
-      return CRYPT_ERROR;
+   if ((errno = saferp_setup(key256, 32, 0, &skey)) != CRYPT_OK) {
+      return errno;
+   }
    saferp_ecb_encrypt(pt256, buf[0], &skey);
    saferp_ecb_decrypt(buf[0], buf[1], &skey);
 
    /* compare */
-   if (memcmp(buf[0], &ct256, 16)) { 
-      crypt_error = "SAFER+ plaintext did not encrypt to test vector (256).";
-      return CRYPT_ERROR; 
-   }
-   if (memcmp(buf[1], &pt256, 16)) { 
-      crypt_error = "SAFER+ ciphertext did not decrypt to test vector (256)."; 
-      return CRYPT_ERROR; 
+   if (memcmp(buf[0], &ct256, 16) || memcmp(buf[1], &pt256, 16)) { 
+      return CRYPT_FAIL_TESTVECTOR;
    }
 
    return CRYPT_OK;
@@ -465,7 +452,7 @@ int saferp_keysize(int *desired_keysize)
    _ARGCHK(desired_keysize != NULL);
    
    if (*desired_keysize < 16)
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_KEYSIZE;
    if (*desired_keysize < 24) {
       *desired_keysize = 16;
       return CRYPT_OK;

@@ -3,18 +3,18 @@
 int hash_memory(int hash, const unsigned char *data, unsigned long len, unsigned char *dst, unsigned long *outlen)
 {
     hash_state md;
+    int errno;
 
     _ARGCHK(data != NULL);
     _ARGCHK(dst != NULL);
     _ARGCHK(outlen != NULL);
 
-    if (hash_is_valid(hash) != CRYPT_OK) {
-        return CRYPT_ERROR;
+    if ((errno = hash_is_valid(hash)) != CRYPT_OK) {
+        return errno;
     }
 
     if (*outlen < hash_descriptor[hash].hashsize) {
-       crypt_error ="Invalid output size in hash_file().";
-       return CRYPT_ERROR;
+       return CRYPT_BUFFER_OVERFLOW;
     }
     *outlen = hash_descriptor[hash].hashsize;
 
@@ -27,29 +27,26 @@ int hash_memory(int hash, const unsigned char *data, unsigned long len, unsigned
 int hash_filehandle(int hash, FILE *in, unsigned char *dst, unsigned long *outlen)
 {
 #ifdef NO_FILE
-    crypt_error = "Can't call hash_filehandle() when NO_FILE is defined.";
     return CRYPT_ERROR;
 #else
     hash_state md;
     unsigned char buf[512];
-    int x;
+    int x, errno;
 
     _ARGCHK(dst != NULL);
     _ARGCHK(outlen != NULL);
 
-    if (hash_is_valid(hash) != CRYPT_OK) {
-        return CRYPT_ERROR;
+    if ((errno = hash_is_valid(hash)) != CRYPT_OK) {
+        return errno;
     }
 
     if (*outlen < hash_descriptor[hash].hashsize) {
-       crypt_error ="Invalid output size in hash_file().";
-       return CRYPT_ERROR;
+       return CRYPT_BUFFER_OVERFLOW;
     }
     *outlen = hash_descriptor[hash].hashsize;
 
     if (in == NULL) { 
-       crypt_error = "Invalid file handle in hash_filehandle()."; 
-       return CRYPT_ERROR; 
+       return CRYPT_INVALID_ARG;
     }
     hash_descriptor[hash].init(&md);
     do {
@@ -69,26 +66,25 @@ int hash_filehandle(int hash, FILE *in, unsigned char *dst, unsigned long *outle
 int hash_file(int hash, const char *fname, unsigned char *dst, unsigned long *outlen)
 {
 #ifdef NO_FILE
-    crypt_error = "Can't call hash_file() when NO_FILE is defined.";
     return CRYPT_ERROR;
 #else
     FILE *in;
+    int errno;
     _ARGCHK(fname != NULL);
     _ARGCHK(dst != NULL);
     _ARGCHK(outlen != NULL);
 
-    if (hash_is_valid(hash) != CRYPT_OK) {
-        return CRYPT_ERROR;
+    if ((errno = hash_is_valid(hash)) != CRYPT_OK) {
+        return errno;
     }
 
     in = fopen(fname, "rb");
     if (in == NULL) { 
-       crypt_error = "Error opening file in hash_file()."; 
-       return CRYPT_ERROR; 
+       return CRYPT_INVALID_ARG;
     }
 
-    if (hash_filehandle(hash, in, dst, outlen) != CRYPT_OK) {
-       return CRYPT_ERROR;
+    if ((errno = hash_filehandle(hash, in, dst, outlen)) != CRYPT_OK) {
+       return errno;
     }
     fclose(in);
 

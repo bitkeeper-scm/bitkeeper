@@ -20,16 +20,16 @@ const struct _hash_descriptor md5_desc =
 #define I(x,y,z)  (y ^ (x | (~z)))
 
 #define FF(a,b,c,d,M,s,t) \
-    a = (a + F(b,c,d) + M + t); a = ROL(a, s); a = (b + a) & 0xFFFFFFFFUL;
+    a = (a + F(b,c,d) + M + t); a = ROL(a, s); a = (b + a);
 
 #define GG(a,b,c,d,M,s,t) \
-    a = (a + G(b,c,d) + M + t); a = ROL(a, s); a = (b + a) & 0xFFFFFFFFUL;
+    a = (a + G(b,c,d) + M + t); a = ROL(a, s); a = (b + a);
 
 #define HH(a,b,c,d,M,s,t) \
-    a = (a + H(b,c,d) + M + t); a = ROL(a, s); a = (b + a) & 0xFFFFFFFFUL;
+    a = (a + H(b,c,d) + M + t); a = ROL(a, s); a = (b + a);
 
 #define II(a,b,c,d,M,s,t) \
-    a = (a + I(b,c,d) + M + t); a = ROL(a, s); a = (b + a) & 0xFFFFFFFFUL;
+    a = (a + I(b,c,d) + M + t); a = ROL(a, s); a = (b + a);
 
 #ifdef CLEAN_STACK
 static void _md5_compress(hash_state *md)
@@ -117,10 +117,10 @@ static void md5_compress(hash_state *md)
     II(c,d,a,b,W[2],15,0x2ad7d2bbUL)
     II(b,c,d,a,W[9],21,0xeb86d391UL)
 
-    md->md5.state[0] = (md->md5.state[0] + a) & 0xFFFFFFFFUL;
-    md->md5.state[1] = (md->md5.state[1] + b) & 0xFFFFFFFFUL;
-    md->md5.state[2] = (md->md5.state[2] + c) & 0xFFFFFFFFUL;
-    md->md5.state[3] = (md->md5.state[3] + d) & 0xFFFFFFFFUL;
+    md->md5.state[0] = md->md5.state[0] + a;
+    md->md5.state[1] = md->md5.state[1] + b;
+    md->md5.state[2] = md->md5.state[2] + c;
+    md->md5.state[3] = md->md5.state[3] + d;
 }
 
 #ifdef CLEAN_STACK
@@ -257,8 +257,7 @@ int  md5_test(void)
       }
   }
   if (failed == 1) {
-     crypt_error = "MD5 failed to hash to test vectors.";
-     return CRYPT_ERROR;
+     return CRYPT_FAIL_TESTVECTOR;
   } else {
      return CRYPT_OK;
   }

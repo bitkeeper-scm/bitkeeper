@@ -205,8 +205,6 @@ void ecc_find_base(void)
 
 #endif
 
-static char error[256];
-
 static int is_valid_idx(int n)
 {
    int x;
@@ -246,8 +244,7 @@ static int dbl_point(ecc_point *P, ecc_point *R, mp_int *modulus)
    int res;
 
    if (mp_init_multi(&s, &tmp, &tmpx, NULL) != MP_OKAY) { 
-      crypt_error = "Out of memory in ecc.c::dbl_point().";
-      return CRYPT_ERROR;
+      return CRYPT_MEM;
    }
 
    /* s = (3Xp^2 + a) / (2Yp) */
@@ -272,8 +269,7 @@ static int dbl_point(ecc_point *P, ecc_point *R, mp_int *modulus)
    res = CRYPT_OK;
    goto done;
 error:
-   res = CRYPT_ERROR;
-   crypt_error = "Out of memory in ecc.c::dbl_point().";
+   res = CRYPT_MEM;
 done:
    mp_clear_multi(&tmpx, &tmp, &s, NULL);
    return res;
@@ -286,8 +282,7 @@ static int add_point(ecc_point *P, ecc_point *Q, ecc_point *R, mp_int *modulus)
    int res;
 
    if (mp_init(&tmp) != MP_OKAY) { 
-      crypt_error = "Out of memory in ecc.c::add_point().";
-      return CRYPT_ERROR;
+      return CRYPT_MEM;
    }
 
    /* is P==Q or P==-Q? */
@@ -300,9 +295,8 @@ static int add_point(ecc_point *P, ecc_point *Q, ecc_point *R, mp_int *modulus)
       }
 
    if (mp_init_multi(&tmpx, &s, NULL) != MP_OKAY) { 
-      crypt_error = "Out of memory in ecc.c::add_point()."; 
       mp_clear(&tmp);
-      return CRYPT_ERROR;
+      return CRYPT_MEM;
    }
 
    /* get s = (Yp - Yq)/(Xp-Xq) mod p */
@@ -325,8 +319,7 @@ static int add_point(ecc_point *P, ecc_point *Q, ecc_point *R, mp_int *modulus)
    res = CRYPT_OK;
    goto done;
 error:
-   res = CRYPT_ERROR;
-   crypt_error = "Out of memory in ecc.c::add_point().";
+   res = CRYPT_MEM;
 done:
    mp_clear_multi(&s, &tmpx, &tmp, NULL);
    return res;
@@ -352,8 +345,7 @@ static int ecc_mulmod(mp_int *k, ecc_point *G, ecc_point *R, mp_int *modulus)
    /* make a copy of G incase R==G */
    tG = new_point();
    if (tG == NULL) { 
-      crypt_error = "Out of memory in ecc.c:ecc_mulmod().";
-      return CRYPT_ERROR;
+      return CRYPT_MEM;
    }
 
    /* tG = G */
@@ -380,13 +372,12 @@ static int ecc_mulmod(mp_int *k, ecc_point *G, ecc_point *R, mp_int *modulus)
    res = CRYPT_OK; 
    goto done;
 error:
-   res = CRYPT_ERROR;
-   crypt_error = "Out of memory in ecc.c:ecc_mulmod().";
+   res = CRYPT_MEM;
 done:
    del_point(tG);
-   #ifdef CLEAN_STACK
-       zeromem(bits, sizeof(bits)); 
-   #endif
+#ifdef CLEAN_STACK
+   zeromem(bits, sizeof(bits)); 
+#endif
    return res;
 }
 
@@ -397,23 +388,20 @@ int ecc_test(void)
    int i, res, primality;
 
    if (mp_init_multi(&modulus, &order, NULL) != MP_OKAY) { 
-      crypt_error = "Out of memory in ecc_test()."; 
-      return CRYPT_ERROR;
+      return CRYPT_MEM;
    }
 
    G   = new_point();
    if (G == NULL) { 
-      crypt_error = "Out of memory in ecc_test()."; 
       mp_clear_multi(&modulus, &order, NULL);
-      return CRYPT_ERROR;
+      return CRYPT_MEM;
    }
 
    GG  = new_point();
    if (GG == NULL) { 
-      crypt_error = "Out of memory in ecc_test()."; 
       mp_clear_multi(&modulus, &order, NULL);
       del_point(G);
-      return CRYPT_ERROR;
+      return CRYPT_MEM;
    }
 
    for (i = 0; sets[i].size; i++) {
@@ -423,18 +411,14 @@ int ecc_test(void)
        /* is prime actually prime? */
        if (is_prime(&modulus, &primality) != CRYPT_OK)           { goto error; }
        if (primality == 0) {
-          sprintf(error, "%s modulus not prime", sets[i].name);
-          res = CRYPT_ERROR;
-          crypt_error = error;
+          res = CRYPT_FAIL_TESTVECTOR;
           goto done1;
        }
   
        /* is order prime ? */
        if (is_prime(&order, &primality) != CRYPT_OK)             { goto error; }
        if (primality == 0) {
-          sprintf(error, "%s order not prime", sets[i].name);
-          res = CRYPT_ERROR;
-          crypt_error = error;
+          res = CRYPT_FAIL_TESTVECTOR;
           goto done1;
        }
 
@@ -445,17 +429,14 @@ int ecc_test(void)
        if (mp_add_d(&order, 1, &order) != MP_OKAY)                  { goto error; }
        if (ecc_mulmod(&order, G, GG, &modulus) != CRYPT_OK)      { goto error; }
        if (mp_cmp(&G->x, &GG->x) || mp_cmp(&G->y, &GG->y)) {
-          sprintf(error, "%s point failed", sets[i].name);
-          res = CRYPT_ERROR;
-          crypt_error = error;
+          res = CRYPT_FAIL_TESTVECTOR;
           goto done1;
        }
    }
    res = CRYPT_OK;
    goto done1;
 error:
-   res = CRYPT_ERROR;
-   crypt_error = "Out of memory in ecc_test().";
+   res = CRYPT_MEM;
 done1:
    del_point(GG);
    del_point(G);
@@ -483,7 +464,7 @@ void ecc_sizes(int *low, int *high)
 
 int ecc_make_key(prng_state *prng, int wprng, int keysize, ecc_key *key)
 {
-   int x, res;
+   int x, res, errno;
    ecc_point *base;
    mp_int prime;
 
@@ -493,8 +474,8 @@ int ecc_make_key(prng_state *prng, int wprng, int keysize, ecc_key *key)
    _ARGCHK(key != NULL);
 
    /* good prng? */
-   if (prng_is_valid(wprng) != CRYPT_OK) {
-      return CRYPT_ERROR;
+   if ((errno = prng_is_valid(wprng)) != CRYPT_OK) {
+      return errno;
    }
 
    /* find key size */
@@ -502,28 +483,24 @@ int ecc_make_key(prng_state *prng, int wprng, int keysize, ecc_key *key)
    keysize = sets[x].size;
 
    if (sets[x].size == 0) { 
-      crypt_error = "Invalid keysize passed to ecc_make_key().";
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_KEYSIZE;
    }
    key->idx = x;
 
    /* make up random string */
    buf[0] = 0;
    if (prng_descriptor[wprng].read(buf+1, keysize, prng) != (unsigned long)keysize) {
-      crypt_error = "Error reading PRNG in ecc_make_key().";
-      return CRYPT_ERROR;
+      return CRYPT_ERROR_READPRNG;
    }
 
    /* setup the key variables */
    if (mp_init_multi(&key->pubkey.x, &key->pubkey.y, &key->k, &prime, NULL) != MP_OKAY) { 
-      crypt_error = "Out of memory in ecc_make_key()."; 
-      return CRYPT_ERROR;
+      return CRYPT_MEM;
    }
    base = new_point();
    if (base == NULL) {
       mp_clear_multi(&key->pubkey.x, &key->pubkey.y, &key->k, &prime, NULL);
-      crypt_error = "Out of memory in ecc_make_key()."; 
-      return CRYPT_ERROR;
+      return CRYPT_MEM;
    }
 
    /* read in the specs for this key */
@@ -540,14 +517,13 @@ int ecc_make_key(prng_state *prng, int wprng, int keysize, ecc_key *key)
    res = CRYPT_OK;
    goto done;
 error:
-   res = CRYPT_ERROR;
-   crypt_error = "Out of memory in ecc_make_key().";
+   res = CRYPT_MEM;
 done:
    del_point(base);
    mp_clear(&prime);
-   #ifdef CLEAN_STACK
-      zeromem(buf, sizeof(buf));
-   #endif
+#ifdef CLEAN_STACK
+   zeromem(buf, sizeof(buf));
+#endif
    return res;
 }
 
@@ -566,8 +542,7 @@ int compress_y_point(ecc_point *pt, int idx, int *result)
    _ARGCHK(result != NULL);
 
    if (mp_init_multi(&tmp, &tmp2, &p, NULL) != MP_OKAY) {
-      crypt_error = "Out of memory in compress_y_point().";
-      return CRYPT_ERROR;
+      return CRYPT_MEM;
    }
 
    /* get x^3 - 3x + b */
@@ -594,8 +569,7 @@ int compress_y_point(ecc_point *pt, int idx, int *result)
    res = CRYPT_OK;
    goto done;
 error:
-   res = CRYPT_ERROR;
-   crypt_error = "Out of memory in compress_y_point().";
+   res = CRYPT_MEM;
 done:
    mp_clear_multi(&p, &tmp, &tmp2, NULL);
    return res;
@@ -609,8 +583,7 @@ int expand_y_point(ecc_point *pt, int idx, int result)
    _ARGCHK(pt != NULL);
  
    if (mp_init_multi(&tmp, &tmp2, &p, NULL) != MP_OKAY) {
-      crypt_error = "Out of memory in expand_y_point().";
-      return CRYPT_ERROR;
+      return CRYPT_MEM;
    }
 
    /* get x^3 - 3x + b */
@@ -638,8 +611,7 @@ int expand_y_point(ecc_point *pt, int idx, int result)
    res = CRYPT_OK;
    goto done;
 error:
-   res = CRYPT_ERROR;
-   crypt_error = "Out of memory in expand_y_point().";
+   res = CRYPT_MEM;
 done:
    mp_clear_multi(&p, &tmp, &tmp2, NULL);
    return res;
@@ -663,13 +635,11 @@ done:
                                                                  \
      /* sanity check... */                                       \
      if (x > 1024) {                                             \
-        crypt_error = "Invalid size of data in ecc_import().";   \
         goto error;                                              \
      }                                                           \
                                                                  \
      /* load it */                                               \
      if (mp_read_raw(num, (unsigned char *)in+y, x) != MP_OKAY) {\
-        crypt_error = "Out of memory in ecc_import().";          \
         goto error;                                              \
      }                                                           \
      y += x;                                                     \
@@ -678,7 +648,7 @@ done:
 int ecc_export(unsigned char *out, unsigned long *outlen, int type, ecc_key *key)
 {
    unsigned long y, z;
-   int res;
+   int res, errno;
    unsigned char buf2[512];
 
    _ARGCHK(out != NULL);
@@ -687,8 +657,7 @@ int ecc_export(unsigned char *out, unsigned long *outlen, int type, ecc_key *key
 
    /* type valid? */
    if (key->type != PK_PRIVATE && type == PK_PRIVATE) { 
-      crypt_error = "Invalid key type in ecc_export()."; 
-      return CRYPT_ERROR; 
+      return CRYPT_PK_TYPE_MISMATCH; 
    }
 
    /* output type and magic byte */
@@ -700,8 +669,8 @@ int ecc_export(unsigned char *out, unsigned long *outlen, int type, ecc_key *key
    OUTPUT_BIGNUM(&(key->pubkey.x), buf2, y, z);
 
    /* compress y and output it  */
-   if (compress_y_point(&key->pubkey, key->idx, &res) != CRYPT_OK) {
-      return CRYPT_ERROR;
+   if ((errno = compress_y_point(&key->pubkey, key->idx, &res)) != CRYPT_OK) {
+      return errno;
    }
    buf2[y++] = res;
 
@@ -711,8 +680,7 @@ int ecc_export(unsigned char *out, unsigned long *outlen, int type, ecc_key *key
 
    /* check size */
    if (*outlen < y) { 
-      crypt_error = "Buffer overrun in ecc_export()."; 
-      return CRYPT_ERROR; 
+      return CRYPT_BUFFER_OVERFLOW;
    }
 
    /* store header */
@@ -730,20 +698,19 @@ int ecc_export(unsigned char *out, unsigned long *outlen, int type, ecc_key *key
 int ecc_import(const unsigned char *in, ecc_key *key)
 {
    unsigned long x, y;
-   int res;
+   int res, errno;
 
    _ARGCHK(in != NULL);
    _ARGCHK(key != NULL);
 
    /* check type */
-   if (packet_valid_header((unsigned char *)in, PACKET_SECT_ECC, PACKET_SUB_KEY) != CRYPT_OK) { 
-      return CRYPT_ERROR;
+   if ((errno = packet_valid_header((unsigned char *)in, PACKET_SECT_ECC, PACKET_SUB_KEY)) != CRYPT_OK) { 
+      return errno;
    }
 
    /* init key */
    if (mp_init_multi(&key->pubkey.x, &key->pubkey.y, &key->k, NULL) != MP_OKAY) {
-      crypt_error = "Out of memory in ecc_import().";
-      return CRYPT_ERROR;
+      return CRYPT_MEM;
    }
 
    y = PACKET_SIZE;
@@ -752,14 +719,14 @@ int ecc_import(const unsigned char *in, ecc_key *key)
 
    /* type check both values */
    if ((key->type != PK_PUBLIC) && (key->type != PK_PRIVATE))  {
-      crypt_error = "Invalid type of key as input for ecc_import().";
-      goto error;
+      res = CRYPT_INVALID_PACKET;
+      goto error2;
    }
 
    /* is the key idx valid? */
    if (!is_valid_idx(key->idx)) {
-      crypt_error = "Invalid key idx found in input for ecc_import().";
-      goto error;
+      res = CRYPT_INVALID_PACKET;
+      goto error2;
    }
 
    /* load x coordinate */
@@ -767,7 +734,7 @@ int ecc_import(const unsigned char *in, ecc_key *key)
   
    /* load y */
    x = in[y++];
-   if (expand_y_point(&key->pubkey, key->idx, x) != CRYPT_OK) { goto error; }
+   if ((errno = expand_y_point(&key->pubkey, key->idx, x)) != CRYPT_OK) { res = errno; goto error2; }
 
    if (key->type == PK_PRIVATE) {
       /* load private key */
@@ -776,7 +743,8 @@ int ecc_import(const unsigned char *in, ecc_key *key)
    res = CRYPT_OK;
    goto done;
 error:
-   res = CRYPT_ERROR;
+   res = CRYPT_MEM;
+error2:
    mp_clear_multi(&key->pubkey.x, &key->pubkey.y, &key->k, NULL);
 done:
    return res;
@@ -788,7 +756,7 @@ int ecc_shared_secret(ecc_key *private_key, ecc_key *public_key,
    unsigned long x, y;
    ecc_point *result;
    mp_int prime;
-   int res;
+   int res, errno;
    unsigned char buf[256];
 
    _ARGCHK(private_key != NULL);
@@ -798,30 +766,26 @@ int ecc_shared_secret(ecc_key *private_key, ecc_key *public_key,
 
    /* type valid? */
    if (private_key->type != PK_PRIVATE) {
-      crypt_error = "Invalid type for private key in ecc_shared_secret()";
-      return CRYPT_ERROR;
+      return CRYPT_PK_NOT_PRIVATE;
    }
 
    if (private_key->idx != public_key->idx) {
-      crypt_error = "Two keys are not same class in ecc_shared_secret()";
-      return CRYPT_ERROR;
+      return CRYPT_PK_TYPE_MISMATCH;
    }
 
    /* make new point */
    result = new_point();
    if (result == NULL) { 
-      crypt_error = "Out of memory in ecc_shared_secret().";
-      return CRYPT_ERROR;
+      return CRYPT_MEM;
    }
 
    if (mp_init(&prime) != MP_OKAY) { 
-      crypt_error = "Out of memory in ecc_shared_secret().";
       del_point(result);
-      return CRYPT_ERROR;
+      return CRYPT_MEM;
    }
 
    if (mp_read_radix(&prime, sets[private_key->idx].prime, 10) != MP_OKAY) { goto error; }
-   if (ecc_mulmod(&private_key->k, &public_key->pubkey, result, &prime) != CRYPT_OK) { goto error; }
+   if ((errno = ecc_mulmod(&private_key->k, &public_key->pubkey, result, &prime)) != CRYPT_OK) { res = errno; goto done1; }
 
    x = mp_raw_size(&result->x);
    mp_toraw(&result->x, buf);
@@ -829,8 +793,7 @@ int ecc_shared_secret(ecc_key *private_key, ecc_key *public_key,
    mp_toraw(&result->y, buf+x);
 
    if (*outlen < (x+y)) {
-      crypt_error = "Buffer overrun in ecc_shared_secret().";
-      res = CRYPT_ERROR;
+      res = CRYPT_BUFFER_OVERFLOW;
       goto done1;
    }
    *outlen = x+y;
@@ -838,13 +801,13 @@ int ecc_shared_secret(ecc_key *private_key, ecc_key *public_key,
    res = CRYPT_OK;
    goto done1;
 error:
-   res = CRYPT_ERROR;
+   res = CRYPT_MEM;
 done1:
    mp_clear(&prime);
    del_point(result);
-   #ifdef CLEAN_STACK
-       zeromem(buf, sizeof(buf));
-   #endif
+#ifdef CLEAN_STACK
+   zeromem(buf, sizeof(buf));
+#endif
    return res;
 }
 

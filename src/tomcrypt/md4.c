@@ -130,10 +130,10 @@ static void md4_compress(hash_state *md)
     
 
     /* Update our state */
-    md->md4.state[0] = (md->md4.state[0] + a) & 0xFFFFFFFFUL;
-    md->md4.state[1] = (md->md4.state[1] + b) & 0xFFFFFFFFUL;
-    md->md4.state[2] = (md->md4.state[2] + c) & 0xFFFFFFFFUL;
-    md->md4.state[3] = (md->md4.state[3] + d) & 0xFFFFFFFFUL;
+    md->md4.state[0] = md->md4.state[0] + a;
+    md->md4.state[1] = md->md4.state[1] + b;
+    md->md4.state[2] = md->md4.state[2] + c;
+    md->md4.state[3] = md->md4.state[3] + d;
 }
 
 #ifdef CLEAN_STACK
@@ -262,7 +262,7 @@ int md4_test(void)
         if(memcmp(digest, cases[i].digest, 16) != 0) {
 #if 0
             int j;
-            printf("\nMD4 test #%d failed; %s\n", cases[i].num, crypt_error);
+            printf("\nMD4 test #%d failed\n", cases[i].num);
             printf(  "Result:  0x"); 
             for(j=0; j < 16; j++) {
                printf("%2x", digest[j]);
@@ -273,7 +273,6 @@ int md4_test(void)
             }
             printf("\n");
 #endif 
-            crypt_error = "MD4 hash code did not match test vector.";
             failed++;
         } else {
 /*            printf("MD4 test #%d succeeded.\n", cases[i].num); */
@@ -281,7 +280,7 @@ int md4_test(void)
     }
 
     if (failed) {
-        return CRYPT_ERROR;
+        return CRYPT_FAIL_TESTVECTOR;
     }
 
     return CRYPT_OK;

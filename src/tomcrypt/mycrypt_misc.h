@@ -11,6 +11,6 @@ extern int base64_decode(const unsigned char *in,  unsigned long len,
 extern void zeromem(void *dst, unsigned long len);
 extern void burn_stack(unsigned long len);
 
-extern char *error_to_string(int errno);
+extern const char *error_to_string(int errno);
 
 extern const char *crypt_build_settings;

@@ -21,13 +21,11 @@ int xtea_setup(const unsigned char *key, int keylen, int num_rounds, symmetric_k
 
    /* check arguments */
    if (keylen != 16) {
-      crypt_error = "Invalid key length for xtea.";
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_KEYSIZE;
    }
 
    if (num_rounds != 0 && num_rounds != 32) {
-      crypt_error = "Invalid number of rounds for xtea.";
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_ROUNDS;
    }
 
    /* load key */
@@ -91,20 +89,16 @@ int xtea_test(void)
       { 0x75, 0xd7, 0xc5, 0xbf, 0xcf, 0x58, 0xc9, 0x3f };
    unsigned char tmp[2][8];
    symmetric_key skey;
+   int errno;
 
-   if (xtea_setup(key, 16, 0, &skey) != CRYPT_OK) 
-      return CRYPT_ERROR;
+   if ((errno = xtea_setup(key, 16, 0, &skey)) != CRYPT_OK)  {
+      return errno;
+   }
    xtea_ecb_encrypt(pt, tmp[0], &skey);
    xtea_ecb_decrypt(tmp[0], tmp[1], &skey);
 
-   if (memcmp(tmp[0], ct, 8)) { 
-      crypt_error = "XTEA did not encrypt properly.";
-      return CRYPT_ERROR; 
-   }
-   
-   if (memcmp(tmp[1], pt, 8)) { 
-      crypt_error = "XTEA did not decrypt properly."; 
-      return CRYPT_ERROR; 
+   if (memcmp(tmp[0], ct, 8) || memcmp(tmp[1], pt, 8)) { 
+      return CRYPT_FAIL_TESTVECTOR;
    }
 
    return CRYPT_OK;
@@ -113,8 +107,9 @@ int xtea_test(void)
 int xtea_keysize(int *desired_keysize)
 {
    _ARGCHK(desired_keysize);
-   if (*desired_keysize < 16)
-      return CRYPT_ERROR;
+   if (*desired_keysize < 16) {
+      return CRYPT_INVALID_KEYSIZE; 
+   }
    *desired_keysize = 16;
    return CRYPT_OK;
 }

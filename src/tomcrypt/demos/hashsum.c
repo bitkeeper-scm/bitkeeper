@@ -9,6 +9,8 @@
 
 #include <mycrypt.h>
 
+int errno;
+
 void register_algs();
 
 int main(int argc, char **argv)
@@ -49,8 +51,8 @@ int main(int argc, char **argv)
    } else {
       for (z = 2; z < argc; z++) {
          w = sizeof(hash_buffer);
-         if (hash_file(idx,argv[z],hash_buffer,&w) != CRYPT_OK) {
-            printf("File hash error: %s\n", crypt_error);
+         if ((errno = hash_file(idx,argv[z],hash_buffer,&w)) != CRYPT_OK) {
+            printf("File hash error: %s\n", error_to_string(errno));
          } else {
              for (x = 0; x < (int)hash_descriptor[idx].hashsize; x++) {
                  printf("%02x",hash_buffer[x]);
@@ -71,4 +73,5 @@ void register_algs(void)
    register_hash(&md5_desc);
    register_hash(&md4_desc);
    register_hash(&tiger_desc);
+   register_hash(&md2_desc);
 }

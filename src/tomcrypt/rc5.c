@@ -31,14 +31,12 @@ int rc5_setup(const unsigned char *key, int keylen, int num_rounds, symmetric_ke
     }
 
     if (num_rounds < 12 || num_rounds > 24) { 
-       crypt_error = "Invalid number of rounds for RC5.";
-       return CRYPT_ERROR;
+       return CRYPT_INVALID_ROUNDS;
     }
 
     /* key must be between 64 and 1024 bits */
     if (keylen < 8 || keylen > 128) {
-       crypt_error = "Invalid key size for RC5.";
-       return CRYPT_ERROR;
+       return CRYPT_INVALID_KEYSIZE;
     }
 
     /* copy the key into the L array */
@@ -177,13 +175,13 @@ int rc5_test(void)
    }
    };
    unsigned char buf[2][8];
-   int x, failed;
+   int x, failed, errno;
    symmetric_key key;
 
    for (x = failed = 0; x < (int)(sizeof(tests) / sizeof(tests[0])); x++) {
       /* setup key */
-      if (rc5_setup(tests[x].key, 16, 12, &key) != CRYPT_OK) {
-         return CRYPT_ERROR;
+      if ((errno = rc5_setup(tests[x].key, 16, 12, &key)) != CRYPT_OK) {
+         return errno;
       }
 
       /* encrypt and decrypt */
@@ -213,8 +211,7 @@ int rc5_test(void)
    }
 
    if (failed == 1) {
-      crypt_error = "RC5 did not encrypt/decrypt to test vectors.";
-      return CRYPT_ERROR;
+      return CRYPT_FAIL_TESTVECTOR;
    } else {
       return CRYPT_OK;
    }
@@ -224,7 +221,7 @@ int rc5_keysize(int *desired_keysize)
 {
    _ARGCHK(desired_keysize != NULL);
    if (*desired_keysize < 8) {
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_KEYSIZE;
    } else if (*desired_keysize > 128) {
       *desired_keysize = 128;
    }

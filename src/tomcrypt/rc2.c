@@ -63,13 +63,11 @@ int rc2_setup(const unsigned char *key, int keylen, int rounds, symmetric_key *s
    _ARGCHK(skey != NULL);
 
    if (keylen < 8 || keylen > 128) {
-      crypt_error = "Invalid key size for RC2.";
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_KEYSIZE;
    }
 
    if (rounds && rounds != 16) {
-      crypt_error = "Invalid number of rounds for RC2.";
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_ROUNDS;
    }
 
    for (i = 0; i < keylen; i++) {
@@ -260,16 +258,15 @@ int rc2_test(void)
      { 0x22, 0x69, 0x55, 0x2a, 0xb0, 0xf8, 0x5c, 0xa6 }
    }
   };
-    int x, failed;
+    int x, failed, errno;
     symmetric_key skey;
     unsigned char buf[2][8];
 
     failed = 0;
     for (x = 0; x < (int)(sizeof(tests) / sizeof(tests[0])); x++) {
         zeromem(buf, sizeof(buf));
-        if (rc2_setup(tests[x].key, tests[x].keylen, 0, &skey) != CRYPT_OK) {
-           crypt_error = "Error initializing RC2 in self test.";
-           return CRYPT_ERROR;
+        if ((errno = rc2_setup(tests[x].key, tests[x].keylen, 0, &skey)) != CRYPT_OK) {
+           return errno;
         }
         
         rc2_ecb_encrypt(tests[x].pt, buf[0], &skey);
@@ -301,8 +298,7 @@ int rc2_test(void)
     }
     
     if (failed == 1) {
-        crypt_error = "RC2 failed to match test vectors.";
-        return CRYPT_ERROR;
+        return CRYPT_FAIL_TESTVECTOR;
     } else {
         return CRYPT_OK;
     }
@@ -312,7 +308,7 @@ int rc2_keysize(int *keysize)
 {
    _ARGCHK(keysize != NULL);
    if (*keysize < 8) {
-       return CRYPT_ERROR;
+       return CRYPT_INVALID_KEYSIZE;
    } else if (*keysize > 128) {
        *keysize = 128;
    }

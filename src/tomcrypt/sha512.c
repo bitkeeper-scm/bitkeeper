@@ -108,8 +108,9 @@ static void sha512_compress(hash_state * md)
     }
 
     /* feedback */
-    for (i = 0; i < 8; i++)
-        md->sha512.state[i] = (md->sha512.state[i] + S[i]) & CONST64(0xFFFFFFFFFFFFFFFF);
+    for (i = 0; i < 8; i++) {
+        md->sha512.state[i] = md->sha512.state[i] + S[i];
+    }
 }
 
 /* compress 1024-bits */
@@ -255,8 +256,7 @@ int  sha512_test(void)
       }
   }
   if (failed == 1) {
-     crypt_error = "SHA-512 failed to hash to test vectors.";
-     return CRYPT_ERROR;
+     return CRYPT_FAIL_TESTVECTOR;
   } else {
      return CRYPT_OK;
   }

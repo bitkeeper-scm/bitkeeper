@@ -94,13 +94,11 @@ int rijndael_setup(const unsigned char *key, int keylen, int numrounds, symmetri
        numrounds = 10 + (2 * ((keylen/8)-2));
 
     if (keylen != 16 && keylen != 24 && keylen != 32) {
-       crypt_error = "Invalid key size for Rijndael.";
-       return CRYPT_ERROR;
+       return CRYPT_INVALID_KEYSIZE;
     }
 
     if (numrounds != (10 + (2 * ((keylen/8)-2)))) {
-       crypt_error = "Invalid number of rounds for Rijndael.";
-       return CRYPT_ERROR;
+       return CRYPT_INVALID_ROUNDS;
     }
 
     k_len = keylen / 4;
@@ -279,6 +277,8 @@ void rijndael_ecb_decrypt(const unsigned char *ct, unsigned char *pt, symmetric_
 
 int rijndael_test(void)
 {
+ int errno;
+
  static const unsigned char pt128[16] = {
      0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
      0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff };
@@ -308,50 +308,43 @@ int rijndael_test(void)
  symmetric_key key;
  unsigned char tmp[2][16];
 
- if (rijndael_setup(key128, 16, 0, &key) != CRYPT_OK) { 
-    return CRYPT_ERROR; 
+ if ((errno = rijndael_setup(key128, 16, 0, &key)) != CRYPT_OK) { 
+    return errno;
  }
 
  rijndael_ecb_encrypt(pt128, tmp[0], &key);
  rijndael_ecb_decrypt(tmp[0], tmp[1], &key);
  if (memcmp(tmp[0], ct128, 16)) { 
-    crypt_error = "Rijndael-128 failed to encrypt properly.";
-    return CRYPT_ERROR; 
+    return CRYPT_FAIL_TESTVECTOR;
  }
  if (memcmp(tmp[1], pt128, 16)) { 
-    crypt_error = "Rijndael-128 failed to decrypt properly.";
-    return CRYPT_ERROR; 
+    return CRYPT_FAIL_TESTVECTOR;
  }
 
- if (rijndael_setup(key192, 24, 0, &key) != CRYPT_OK) { 
-    return CRYPT_ERROR; 
+ if ((errno = rijndael_setup(key192, 24, 0, &key)) != CRYPT_OK) { 
+    return errno; 
  }
 
  rijndael_ecb_encrypt(pt128, tmp[0], &key);
  rijndael_ecb_decrypt(tmp[0], tmp[1], &key);
  if (memcmp(tmp[0], ct192, 16)) { 
-    crypt_error = "Rijndael-192 failed to encrypt properly.";
-    return CRYPT_ERROR; 
+    return CRYPT_FAIL_TESTVECTOR;
  }
  if (memcmp(tmp[1], pt128, 16)) { 
-    crypt_error = "Rijndael-192 failed to decrypt properly.";
-    return CRYPT_ERROR; 
+    return CRYPT_FAIL_TESTVECTOR;
  }
 
- if (rijndael_setup(key256, 32, 0, &key) != CRYPT_OK) {
-    return CRYPT_ERROR; 
+ if ((errno = rijndael_setup(key256, 32, 0, &key)) != CRYPT_OK) {
+    return errno; 
  }
  rijndael_ecb_encrypt(pt128, tmp[0], &key);
  rijndael_ecb_decrypt(tmp[0], tmp[1], &key);
  if (memcmp(tmp[0], ct256, 16)) { 
-    crypt_error = "Rijndael-256 failed to encrypt properly.";
-    return CRYPT_ERROR; 
+    return CRYPT_FAIL_TESTVECTOR;
  }
  if (memcmp(tmp[1], pt128, 16)) { 
-    crypt_error = "Rijndael-256 failed to decrypt properly.";
-    return CRYPT_ERROR; 
+    return CRYPT_FAIL_TESTVECTOR;
  }
-
  return CRYPT_OK;
 }
 
@@ -360,7 +353,7 @@ int rijndael_keysize(int *desired_keysize)
    _ARGCHK(desired_keysize != NULL);
 
    if (*desired_keysize < 16)
-      return CRYPT_ERROR;
+      return CRYPT_INVALID_KEYSIZE;
    if (*desired_keysize < 24) {
       *desired_keysize = 16;
       return CRYPT_OK;

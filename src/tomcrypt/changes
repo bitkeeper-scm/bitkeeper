@@ -1,3 +1,43 @@
+Nov 19th, 2002
+v0.71  -- HELP TOM.  I need tuition for the January semester.  Now I don't want to force donations [nor will I ever]
+          but I really need the help!  See my website http://tom.iahu.ca/help_tom.html for more details.  Please help
+          if you can! 
+       --------------------------------------------------------------------------------------------------------------
+       -- Officially the library is no longer supported in GCC 3.2 in windows [cygwin].
+          In windows you can either use GCC 2.95.3 or try your luck with 3.2  It seems that
+          "-fomit-frame-pointer" is broken in the windows build [but not the linux x86 build???]
+          If you simply must use 3.2 then I suggest you limit the optimizations to simply "-O2"
+       -- Started new error handling API.  Similar to the previous except there are more error codes than just
+          CRYPT_ERROR
+       -- Added my implementation of the MD2 hash function [despite the errors in the RFC I managed to get it right!]
+       -- Merged in more changes from Sky Schulz.  I have to make mention here that he has been a tremendous help in 
+          getting me motivated to make some much needed updates to the library!
+       -- Fixed one of the many mistakes in the manual as pointed out by Daniel Richards
+       -- Fixed a bug in the RC4 code [wasn't setting up the key correctly]
+       -- Added my implementation of the CAST5 [aka CAST-128] block cipher (conforms...)
+       -- Fixed numerous bugs in the PK code.  Essentially I was "freeing" keys when the import failed.  This is neither
+          required nor a good a idea [double free].  
+       -- Tom needs a job.
+       -- Fixed up the test harness as requested by Sky Schulz.  Also modifed the timing routines to run for X seconds
+          and count # of ops performed.  This is more suitable than say encrypting 10 million blocks on a slow processor
+          where it could take minutes!
+       -- Modified test programs hashsum/encrypt to use the new algorithms and error handling syntax
+       -- Removed the PKCS code since it was incomplete.  In the future I plan on writing a "add-on" library that
+          provides PKCS support... 
+       -- updated the config system so the #defines are in the makefiles instead of mycrypt_cfg.h  
+       -- Willing to work on an hourly basis for 15$ CDN per hour.
+       -- updated the test program to not test ciphers not included
+       -- updated the makefile to make "rsa_sys.c" a dependency of rsa.o [helps develop the code...]
+       -- fixed numerous failures to detect buffer overflows [minor] in the PK code.
+       -- fixed the safer [64-bit block version] test routines which didn't check the returns of the setup
+          function
+       -- check out my CV at http://tom.iahu.ca/cv.html
+       -- removed the GBA makefile and code from demos/test.c [not a particularly useful demo...]
+       -- merged in rudimentary [for testing] PS2 RNG from Sky Schulz
+       -- merged in PS2 timer code [only shell included due to NDA reasons...]
+       -- updated HMAC code to return errors where possible
+       -- Thanks go to Sky Schulz who bought me a RegCode for TextPad [the official editor of libtomcrypt]
+
 Nov 12th, 2002
 v0.70  -- Updated so you can swap out the default malloc/calloc/free routines at build time with others. (Sky Schulz)
        -- Sky Schulz contributed some code towards autodetecting the PS2 in mycrypt_cfg.h
