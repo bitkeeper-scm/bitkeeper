@@ -38,30 +38,26 @@ echo OK
 cd $HERE
 tar cf TAR project copy
 
-echo $N Pull, should union the data and delete one file .............$NL
+echo $N Pull, should union the data and leave one file ..............$NL
 cd $HERE/copy
 bk pull -t $Q
-if [ ! -f BitKeeper/deleted/SCCS/s..del-logging_ok ]
-then	echo failed to delete file
-	ls -R BitKeeper
-	exit 1
-fi
 bk get $Q BitKeeper/etc/logging_ok
 if [ ! -f BitKeeper/etc/logging_ok ]
 then	echo 'Where oh where did my little file go?'
 	exit 1
 fi
-cat <<EOF  > X
+cat <<EOF  > WANT
 awc@etp3.bitmover.com
 beth@work.bitmover.com
 lm@bitmover.com
 lm@lm.bitmover.com
 lm@work.bitmover.com
 EOF
-diff X BitKeeper/etc/logging_ok > DIFFS
+diff WANT BitKeeper/etc/logging_ok > DIFFS
 if [ `wc -l < DIFFS` -ne 0 ]
 then	echo failed to union the data in the file
-	cat DIFFS
+	echo WANT vs GOT
+	sdiff -w80 WANT BitKeeper/etc/logging_ok
 	exit 1
 fi
 echo OK
@@ -72,11 +68,6 @@ rm -rf project copy
 tar xf TAR
 cd $HERE/project
 bk pull -t $Q ../copy
-if [ ! -f BitKeeper/deleted/SCCS/s..del-logging_ok ]
-then	echo failed to delete file
-	ls -R BitKeeper
-	exit 1
-fi
 bk get $Q BitKeeper/etc/logging_ok
 if [ ! -f BitKeeper/etc/logging_ok ]
 then	echo 'Where oh where did my little file go?'
@@ -101,11 +92,6 @@ echo $N Paranoid - make sure the push works .........................$NL
 cd $HERE/project
 bk push -t $Q ../copy
 cd $HERE/copy
-if [ ! -f BitKeeper/deleted/SCCS/s..del-logging_ok ]
-then	echo failed to delete file
-	ls -R BitKeeper
-	exit 1
-fi
 bk get $Q BitKeeper/etc/logging_ok
 if [ ! -f BitKeeper/etc/logging_ok ]
 then	echo 'Where oh where did my little file go?'
@@ -161,6 +147,7 @@ diff X BitKeeper/etc/logging_ok > DIFFS
 if [ `wc -l < DIFFS` -ne 0 ]
 then	echo failed to union the data in the file
 	cat DIFFS
+	bk prs -h '-d:I: :KEY:\n' BitKeeper/etc/logging_ok
 	exit 1
 fi
 echo OK

@@ -44,7 +44,7 @@ OBJ	= abort.o adler32.o admin.o annotate.o \
 	  help.o host.o isascii.o \
 	  key2rev.o keysort.o lib_tcp.o libcommit.o libdiff.o librange.o \
 	  libsfiles.o libusers.o lines.o localtm.o locking.o \
-	  lod.o log.o logging.o merge.o migrate.o mkdir.o mklock.o mmap.o \
+	  lod.o log.o logging.o merge.o converge.o mkdir.o mklock.o mmap.o \
 	  mtime.o names.o newrev.o parent.o pending.o popen.o \
 	  port/executable.o port/findprog.o port/fullname.o \
 	  port/gethomedir.o port/gethost.o port/getinput.o \

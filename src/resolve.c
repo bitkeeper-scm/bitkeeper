@@ -30,7 +30,6 @@ extern	char	*bin;
 private	void	commit(opts *opts);
 private	void	conflict(opts *opts, char *rfile);
 private	int	create(resolve *rs);
-private	int	create(resolve *rs);
 private	void	edit_tip(resolve *rs, char *sf, delta *d, char *rf, int which);
 private	void	freeStuff(opts *opts);
 private	int	nameOK(opts *opts, sccs *s);
@@ -47,7 +46,6 @@ private	void	rename_delta(resolve *rs, char *sf, delta *d, char *rf, int w);
 private	int	rename_file(resolve *rs);
 private	int	rename_file(resolve *rs);
 private	void	restore(opts *o);
-private void	merge_loggingok(resolve *rs);
 private void	unapply(FILE *f);
 private int	copyAndGet(char *from, char *to, project *proj);
 private int	writeCheck(sccs *s, MDBM *db);
@@ -169,8 +167,6 @@ passes(opts *opts)
 	opts->local_proj = proj_init(0);
 	chdir(ROOT2RESYNC);
 	opts->resync_proj = proj_init(0);
-
-	chdir(ROOT2RESYNC);
 	unless (opts->quiet) {
 		fprintf(stderr,
 		    "Verifying consistency of the RESYNC tree...\n");
@@ -1837,11 +1833,6 @@ err:		resolve_free(rs);
 		return;
 	}
 
-	if (streq(LOGGING_OK, rs->s->sfile)) {
-		merge_loggingok(rs);
-		resolve_free(rs);
-		return;
-	}
 	if (opts->automerge) {
 		automerge(rs, 0);
 		resolve_free(rs);
@@ -1963,47 +1954,6 @@ automerge(resolve *rs, names *n)
 }
 
 /*
- * Merge the logging_ok files, we just union the data.
- */
-private void
-merge_loggingok(resolve *rs)
-{
-	char	left[MAXPATH];
-	char	right[MAXPATH];
-	char	cmd[MAXPATH*3];
-
-	/*
-	 * save the contents before we start moving stuff around.
-	 */
-	gettemp(left, "left");
-	gettemp(right, "right");
-	sprintf(cmd, "bk _get -qp %s/%s > %s", RESYNC2ROOT, GLOGGING_OK, left);
-	if (sys(cmd, rs->opts) ||
-	    sccs_get(rs->s, 0, 0, 0, 0, SILENT|PRINT, right)) {
-		fprintf(stderr, "get failed, can't merge.\n");
-err:		unlink(left);
-		unlink(right);
-		rs->opts->errors = 1;
-		return;
-	}
-	if (edit(rs)) goto err;
-	sprintf(cmd, "cat %s %s | sort -u > %s", left, right, GLOGGING_OK);
-	if (sys(cmd, rs->opts)) {
-		perror(cmd);
-		goto err;
-	}
-	unlink(left);
-	unlink(right);
-	sccs_close(rs->s); /* for win32 */
-	sprintf(cmd, "bk delta -Py'Auto merged' %s %s",
-	    rs->opts->quiet ? "-q" : "", GLOGGING_OK);
-	if (sys(cmd, rs->opts)) {
-		perror(cmd);
-		goto err;
-	}
-}
-
-/*
  * Figure out which delta is the branch one and merge it in.
  */
 int
@@ -2110,8 +2060,6 @@ pendingEdits()
 
 /*
  * Commit the changeset.
- *
- * XXX - need to check logging.
  */
 private	void
 commit(opts *opts)
@@ -2298,7 +2246,6 @@ pass4_apply(opts *opts)
 	/*
 	 * Pass 4b.
 	 * Save the list of files and then remove them.
-	 * XXX - need to be positive that fflush works.
 	 */
 	if (size(BACKUP_LIST) > 0) {
 		if (system("bk sfio -omq < " BACKUP_LIST " > " BACKUP_SFIO)) {

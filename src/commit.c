@@ -115,7 +115,7 @@ commit_main(int ac, char **av)
 		system(buf);
 	}
 	do_clean(s_cset, SILENT);
-	if (doit) return(do_commit(opts, sym, pendingFiles, commentFile));
+	if (doit) return (do_commit(opts, sym, pendingFiles, commentFile));
 
 	while (1) {
 		printf("\n-------------------------------------------------\n");
@@ -224,10 +224,7 @@ do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 	delta	*d;
 	FILE 	*f;
 
-	
-
-
-	l =  logging(0, 0, 0);
+	l = logging(0, 0, 0);
 	unless (ok_commit(l, opts.alreadyAsked)) {
 		if (commentFile) unlink(commentFile);
 		if (pendingFiles) unlink(pendingFiles);

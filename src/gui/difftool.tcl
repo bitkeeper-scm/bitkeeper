@@ -605,7 +605,7 @@ proc usage {} \
 	puts "usage:\tbk difftool file"
 	puts "\tbk difftool -r<rev> file"
 	puts "\tbk difftool -r<rev> -r<rev2> file"
-	puts "\tbk difftool file 2"
+	puts "\tbk difftool file file2"
 	exit
 }
 

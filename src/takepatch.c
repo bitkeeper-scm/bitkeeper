@@ -53,7 +53,7 @@ private	void	goneError(char *key);
 private	void	freePatchList();
 private	void	fileCopy2(char *from, char *to);
 private	void	badpath(sccs *s, delta *tot);
-private void	get_configs();
+private void	merge(char *gfile);
 
 private	int	isLogPatch = 0;	/* is a logging patch */
 private	int	echo = 0;	/* verbose level, more means more diagnostics */
@@ -61,7 +61,8 @@ private	int	mkpatch = 0;	/* act like makepatch verbose */
 private	int	line;		/* line number in the patch file */
 private	int	fileNum;	/* counter for the Nth init/diff file */
 private	patch	*patchList = 0;	/* patches for a file, list len == fileNum */
-private	int	conflicts;	/* number of conflicts over all files */
+private	int	conflicts;	/* number of conflicts over all user files */
+private	int	csetConflict;	/* true if ChangeSet has conflict */
 private	int	newProject;	/* command line opt to create a new repo */
 private	int	saveDirs;	/* save directories even if errors */
 private	MDBM	*idDB;		/* key to pathname db, set by init or rebuilt */
@@ -184,10 +185,23 @@ usage:		system("bk help -s takepatch");
 		fclose(f);
 	}
 
-	if (remote) {
-		get_configs();
-	} else {
-		cleanup(CLEAN_RESYNC | CLEAN_PENDING);
+	unless (remote) cleanup(CLEAN_RESYNC | CLEAN_PENDING);
+
+	getConfig();	/* bk mv needs this, called by converge. */
+
+	/*
+	 * The ideas here are to (a) automerge any hash-like files which
+	 * we maintain, and (b) converge on the oldest inode for a
+	 * particular file.  The converge code will make sure all of the
+	 * inodes are present.
+	 */
+	if (csetConflict) {	/* converge iff we are going to commit */
+		chdir(ROOT2RESYNC);
+		merge("BitKeeper/etc/gone");
+		merge("BitKeeper/etc/ignore");
+		merge("BitKeeper/etc/logging_ok");
+		system("bk _converge -R");
+		chdir(RESYNC2ROOT);
 	}
 	if (resolve) {
 		char 	*resolve[7] = {"bk", "resolve", "-q", 0, 0, 0, 0};
@@ -207,71 +221,61 @@ usage:		system("bk help -s takepatch");
 }
 
 /*
- * Copy any needed config files into the RESYNC tree.
- *	logging_ok
- *	config
- *	gone
- *	ignore
+ * It's probably an error to move the config file, but just in case
+ * they did, if there is no config file, use the contents of the
+ * enclosing repository.
+ */
+getConfig()
+{
+	chdir(ROOT2RESYNC);
+	unless (exists("BitKeeper/etc/SCCS/s.config")) {
+		assert(exists(RESYNC2ROOT "/BitKeeper/etc/SCCS/s.config"));
+		system("bk get -kqp " RESYNC2ROOT
+		    "/BitKeeper/etc/SCCS/s.config > BitKeeper/etc/config");
+	}
+	chdir(RESYNC2ROOT);
+}
+
+/*
+ * Automerge any updates before converging the inodes.
  */
 private void
-get_configs()
+merge(char *gfile)
 {
-	unless (exists("RESYNC/BitKeeper/etc/SCCS/s.config")) {
-		assert(exists("BitKeeper/etc/SCCS/s.config"));
-		mkdirp("RESYNC/BitKeeper/etc/SCCS");
-		system("cp BitKeeper/etc/SCCS/s.config "
-		    "RESYNC/BitKeeper/etc/SCCS/s.config");
-		assert(exists("RESYNC/BitKeeper/etc/SCCS/s.config"));
-	}
-	if (exists("BitKeeper/etc/SCCS/s.logging_ok") &&
-	    !exists("RESYNC/BitKeeper/etc/SCCS/s.logging_ok")) {
-		system("cp BitKeeper/etc/SCCS/s.logging_ok "
-		    "RESYNC/BitKeeper/etc/SCCS/s.logging_ok");
-		assert(exists("RESYNC/BitKeeper/etc/SCCS/s.logging_ok"));
-	}
-	if (exists("BitKeeper/etc/SCCS/s.ignore") &&
-	    !exists("RESYNC/BitKeeper/etc/SCCS/s.ignore")) {
-		system("cp BitKeeper/etc/SCCS/s.ignore "
-		    "RESYNC/BitKeeper/etc/SCCS/s.ignore");
-		assert(exists("RESYNC/BitKeeper/etc/SCCS/s.ignore"));
-	}
-	/* XXX - if this is edited, we don't get those changes */
-	if (exists("BitKeeper/etc/SCCS/s.gone")) {
-		unless (exists("RESYNC/BitKeeper/etc/SCCS/s.gone")) {
-			system("cp BitKeeper/etc/SCCS/s.gone "
-			    "RESYNC/BitKeeper/etc/SCCS/s.gone");
-		} else if (exists("RESYNC/BitKeeper/etc/SCCS/r.gone")) {
-			char	*s, l[200], g[200], r[200];
-			char	buf[MAXPATH];
-			FILE	*f;
+	char	*sfile = name2sccs(gfile);
+	char	*rfile = name2sccs(gfile);
+	char	*t = strrchr(rfile, '/');
 
-			/*
-			 * Both remote and local have updated the gone file.
-			 * We automerge here so we have the updated keys.
-			 */
-			f = fopen("RESYNC/BitKeeper/etc/SCCS/r.gone", "r");
-			fscanf(f, "merge deltas %s %s %s", l, g, r);
-			fclose(f);
-			sprintf(buf,
-			    "bk get -qpr%s RESYNC/BitKeeper/etc/gone > %s",
-			    l, "RESYNC/BitKeeper/tmp/gone");
-			system(buf);
-			sprintf(buf,
-			    "bk get -qpr%s RESYNC/BitKeeper/etc/gone >> %s",
-			    r, "RESYNC/BitKeeper/tmp/gone");
-			system(buf);
-			s = strchr(l, '.'); s++;
-			s = strchr(s, '.');
-			sprintf(buf, "bk get -eqgM%s %s",
-			    s ? l : r, "RESYNC/BitKeeper/etc/gone");
-			system(buf);
-			system("sort -u RESYNC/BitKeeper/tmp/gone > "
-			    "RESYNC/BitKeeper/etc/gone");
-			system(
-			    "bk ci -qPyauto-merge RESYNC/BitKeeper/etc/gone");
-			unlink("RESYNC/BitKeeper/etc/SCCS/r.gone");
-		} /* else remote update only */
-    	}
+	t[1] = 'r';
+	if (exists(rfile)) {
+		char	*s, l[200], g[200], r[200];
+		char	buf[MAXPATH];
+		FILE	*f;
+
+		/*
+		 * Both remote and local have updated the file.
+		 * We automerge here, saves trouble later.
+		 */
+		f = fopen(rfile, "r");
+		fscanf(f, "merge deltas %s %s %s", l, g, r);
+		fclose(f);
+#define	TMP	"BitKeeper/tmp/CONTENTS"
+		sprintf(buf, "bk get -qpr%s %s > %s", l, gfile, TMP);
+		system(buf);
+		sprintf(buf, "bk get -qpr%s %s >> %s", r, gfile, TMP);
+		system(buf);
+		s = strchr(l, '.'); s++;
+		s = strchr(s, '.');
+		sprintf(buf, "bk get -eqgM%s %s", s ? l : r, gfile);
+		system(buf);
+		sprintf(buf, "sort -u < %s > %s", TMP, gfile);
+		system(buf);
+		sprintf(buf, "bk ci -qPyauto-union %s", gfile);
+		system(buf);
+		unlink(rfile);
+	} /* else remote update only */
+	free(sfile);
+	free(rfile);
 }
 
 private	delta *
@@ -1081,10 +1085,13 @@ apply:
 		return (-1);
 	}
 
-	/* Conflicts in ChangeSet don't count.  */
-	if (confThisFile &&
-	    !streq(s->sfile + strlen(s->sfile) - 9, "ChangeSet")) {
-		conflicts += confThisFile;
+	/* Conflicts in ChangeSet don't count in conflicts */
+	if (confThisFile) {
+		if (streq(s->sfile + strlen(s->sfile) - 9, "ChangeSet")) {
+			csetConflict = 1;
+		} else {
+			conflicts += confThisFile;
+		}
 	}
 
 	s->proj = 0; sccs_free(s);
