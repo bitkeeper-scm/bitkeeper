@@ -626,10 +626,9 @@ csetlist(sccs *cset)
 	char	*csetid;
 	pid_t	pid = -1;
 	int	status;
+	delta	*d;
 
 	if (dash) {
-		delta	*d;
-
 		while(fgets(buf, sizeof(buf), stdin)) {
 			chop(buf);
 			unless (d = findrev(cset, buf)) {
@@ -652,13 +651,28 @@ csetlist(sccs *cset)
 	gettemp(cat, "/tmp/cat1XXXXXX");
 	gettemp(csort, "/tmp/csortXXXXXX");
 
+	/*
+	 * Add in all the ChangeSet keys
+	 */
+
+	unless (list = fopen(csort, "w")) {
+		perror("open csort");
+		goto fail;
+	}
+	for (d = cset->table; d; d = d->next) {
+		if (d->flags & D_SET) {
+			sccs_sdelta(cset, d, buf);
+			fprintf(list, "%s %s\n", csetid, buf);
+		}
+	}
+	fclose(list);
+	
+	/* add in all the other keys */
 	if (sccs_cat(cset, PRINT, cat)) {
 		sccs_whynot("cset", cset);
 		goto fail;
 	}
 	sprintf(buf, "sort %s -o %s", cat, cat);
-	if (system(buf)) goto fail;
-	sprintf(buf, "grep '^%s' %s > %s", csetid, cat, csort);
 	if (system(buf)) goto fail;
 	sprintf(buf, "grep -v '^%s' %s >> %s", csetid, cat, csort);
 	if (system(buf)) goto fail;
@@ -932,10 +946,12 @@ mkChangeSet(sccs *cset)
 		d->dateFudge = (cset->table->date - d->date) + 1;
 		d->date += d->dateFudge;
 	}
+	/*
+	 * Remove the ChangeSet entry from the list
+	 */
 	sccs_sdelta(cset, sccs_ino(cset), key);
-	sccs_sdelta(cset, d, buf);
-	if (mdbm_store_str(csDB, key, buf, MDBM_REPLACE)) {
-		perror("cset MDBM store in csDB");
+	if (mdbm_delete_str(csDB, key) == -1) {
+		perror("cset MDBM delete in csDB");
 		system("bk clean -u ChangeSet");
 		exit(1);
 	}

@@ -4792,13 +4792,17 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 } 
 
 /* Get the checksum of the last non null delta */
+/* XXX include and exclude may be benign.  Want a way to
+ * know if check sum is different from parent
+ */
 
 private	sum_t
 getCksumDelta(sccs *s, delta *d)
 {
 	delta	*t;
 	for (t = d; t; t = t->parent) {
-		if (t->added || t->deleted) return (t->sum);
+		if (t->include || t->exclude || t->added || t->deleted)
+			return (t->sum);
 	}
 	return (0);
 }
@@ -9257,7 +9261,8 @@ end(sccs *s, delta *n, FILE *out, int flags, int add, int del, int same)
 			}
 		}
 		unless (n->flags & D_ICKSUM) {
-			if (!add && !del) {
+			/* XXX: would like "if cksum is same as parent" */
+			if (!add && !del && !n->include && !n->exclude) {
 				n->sum = almostUnique(0);
 			} else {
 				n->sum = s->dsum;
@@ -11012,10 +11017,8 @@ sccs_findKey(sccs *s, char *key)
 		cksump = &cksum;
 	};
 	random = parts[5];
-	if (s->random) {
-		unless (random && streq(s->random, random)) return (0);
-	} else if (random) {
-		return (0);
+	if (random) { /* then sfile must have random and it must match */
+		unless (s->random && streq(s->random, random)) return (0);
 	}
 	if (samekey(s->tree, user, host, path, date, cksump))
 		return (s->tree);
@@ -11297,30 +11300,30 @@ csetIds(sccs *s, char *rev, int all)
 	FILE	*f;
 	MDBM	*db;
 	char	name[MAXPATH];
+	char	key[MAXPATH];
+	delta	*d;
 
 	sprintf(name, "/tmp/cs%d", getpid());
-	if (all) {
-all:		if (sccs_get(s, rev, 0, 0, 0, SILENT|PRINT, name)) {
-			sccs_whynot("get", s);
-			exit(1);
-		}
-	} else {
-		delta	*d;
+	assert(all);
 
-		unless (d = findrev(s, rev)) {
-			perror(rev);
-			exit(1);
-		}
-		unless (d->parent) goto all;
-		f = fopen(name, "wt");
-		if (sccs_diffs(s, d->parent->rev, rev, SILENT, DF_RCS, f)) {
-			sccs_whynot("get", s);
-			exit(1);
-		}
-		fclose(f);
+	unless (d = findrev(s, rev)) {
+		perror(rev);
+		exit(1);
+	}
+
+	if (sccs_get(s, rev, 0, 0, 0, SILENT|PRINT, name)) {
+		sccs_whynot("get", s);
+		exit(1);
 	}
 	db = loadDB(name, findpipe);
 	unlink(name);
+	/* add cset key , val */
+	sccs_sdelta(s, sccs_ino(s), key);
+	sccs_sdelta(s, d, name);
+	if (mdbm_store_str(db, key, name, MDBM_REPLACE) == -1) {
+		perror("mdbm_store_str");
+		exit(1);
+	}
 	return (db);
 }
 
