@@ -49,7 +49,7 @@ nowrap gui-nowrap:
 
 images: $(IMAGES)
 	test -d images || mkdir images
-	cp $(IMAGES) images	
+	cp -f $(IMAGES) images	
 
 ../tclwrap:
 	@cd .. && $(MAKE) tclwrap

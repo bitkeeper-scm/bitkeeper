@@ -43,7 +43,7 @@ rcsparse_main(int ac, char **av)
 		    case 'g': graph = 1; break;
 		    case 't': listtags = 1; break;
 		    default:
-			system("bk help -s rcsparse");
+ usage:			system("bk help -s rcsparse");
 			return (1);
 		}
 	}
@@ -67,7 +67,7 @@ rcsparse_main(int ac, char **av)
 				rcs_free(r);
 			}
 		}
-	} else {
+	} else if (av[optind]) {
 		for (i = optind; av[i]; ++i) {
 			RCS	*r;
 			r = rcs_init(av[i], cvsbranch);
@@ -76,6 +76,8 @@ rcsparse_main(int ac, char **av)
 				rcs_free(r);
 			}
 		}
+	} else {
+		goto usage;
 	}
 	if (listtags) {
 		kvpair	kv;
@@ -1124,7 +1126,13 @@ err:		fprintf(stderr, "EOF in log? file=%s\n", rcs->rcsfile);
 	 * find the delta
 	 */
 	for (d = rcs->table; d && !streq(d->rev, buf); d = d->next);
-	assert(d);
+	unless (d) {
+		fprintf(stderr, "rcsparse: The RCS file %s appears\n"
+		    "to be corrupted.  The deltatext for rev %s cannot be\n"
+		    "found, but is described in the delta table.\n",
+		    rcs->rcsfile, buf);
+		exit(1);
+	}
 
 	skip_white(m);
 	unless (p = mwhere(m)) goto err;
