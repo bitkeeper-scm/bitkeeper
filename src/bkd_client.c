@@ -298,6 +298,7 @@ remote_free(remote *r)
 	if (r->user) free(r->user);
 	if (r->host) free(r->host);
 	if (r->path) free(r->path);
+	if (r->cred) free(r->cred);
 	free(r);
 }
 
