@@ -148,9 +148,13 @@ process(char *root, char *start, char *end,
 	}
 	if (end && *end) {
 		d2 = sccs_findKey(s, end);
-		rev2 = d2->rev;
-		path2 = d2->pathname;
-		if (opts.isDot) rev2 = ".";
+		if (opts.isDot) {
+			rev2 = ".";
+			path2 = s->gfile; /* in case of un-delta'ed rename */
+		} else {
+			rev2 = d2->rev;
+			path2 = d2->pathname;
+		}
 	} else {
 		/* XXX - this is weird */
 		rev2 = "1.0";
