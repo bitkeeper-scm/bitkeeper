@@ -266,7 +266,7 @@ navbutton(int active, int tag, char *start, char *end)
 		if (arguments[ct-1] == '|') --ct;
 
 		sprintf(buf, "href=\"%.*s?%.*s\">",
-		    sep-start, start, ct, arguments);
+		    (int)(sep-start), start, ct, arguments);
 	} else {
 		sprintf(buf, "href=\"%.*s\">", sep-start,start);
 	}
@@ -275,7 +275,7 @@ navbutton(int active, int tag, char *start, char *end)
 		   : "<font size=2 color=yellow>");
 
 	if (sep < end) {
-		sprintf(buf, "%.*s", end-sep, sep);
+		sprintf(buf, "%.*s", (int)(end-sep), sep);
 		out(buf);
 		start = 0;
 	} else if (strneq(start,"ChangeSet", 9)) {
@@ -347,7 +347,7 @@ navbutton(int active, int tag, char *start, char *end)
 		}
 	}
 	if (start) {
-		sprintf(buf, "%.*s", sep-start, start);
+		sprintf(buf, "%.*s", (int)(sep-start), start);
 		out(buf);
 	}
 	out("</font></a>\n");

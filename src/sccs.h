@@ -853,6 +853,7 @@ int	fileType(mode_t m);
 char	chop(char *s);
 void	chomp(char *s);
 int	atoi_p(char **p);
+char	*p2str(void *p);
 int	sccs_filetype(char *name);
 void	concat_path(char *, char *, char *);
 void	cleanPath(char *path, char cleanPath[]);

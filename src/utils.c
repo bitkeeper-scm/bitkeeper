@@ -1315,3 +1315,37 @@ run_check(char *partial, int fix, int quiet)
 	}
 	return (ret);
 }
+
+/*
+ * Portable way to print a pointer.  Results are returned in a static buffer
+ * and you may use up to N of these in one call to printf() or whatever
+ * before you start stomping on yourself.
+ */
+char *
+p2str(void *p)
+{
+#define N	10
+#define PTRLEN	((sizeof(void *) / 4) + 3)
+	static	char bufs[N][PTRLEN];
+	static	int w = 0;
+	char	*b;
+
+	w = (w + 1) % N;
+	b = bufs[w];
+	if (sizeof(void *) == sizeof(int)) {
+		int	n = sizeof(int) * 2;
+
+		sprintf(b, "0x%.*x", n, (unsigned)p);
+	} else if (sizeof(void *) == sizeof(u64)) {
+		u64	a = (u64)p;
+		u32	top, bot;
+
+		top = (u32)(a >> 32);
+		bot = a & 0xffffffff;
+		sprintf(b, "0x%8x%8x", top, bot);
+	} else {
+		assert("Pointers are too big" == 0);
+	}
+	return (b);
+#undef N
+}

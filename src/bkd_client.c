@@ -294,7 +294,7 @@ void
 remote_print(remote *r, FILE *f)
 {
 	unless (r) return;
-	fprintf(f, "R=0x%x ", (unsigned int)r);
+	fprintf(f, "R=%s ", p2str(r));
 	if (r->user) fprintf(f, "USER=%s ", r->user);
 	if (r->host) fprintf(f, "HOST=%s ", r->host);
 	if (r->port) fprintf(f, "PORT=%u ", r->port);

@@ -1073,7 +1073,7 @@ walk_dflg(char *file, struct stat *sb, void *data)
 	char	*s;
 	int	n;
 	int	has_sccs;
-	int	dflg = (int)data;
+	int	dflg = p2int(data);
 
 	unless (S_ISDIR(sb->st_mode)) return (0);
 	if ((file[0] == '.') && (file[1] == '/')) file += 2;
@@ -1120,11 +1120,11 @@ handle_dflg(int ac, char **av, int dflg)
 	int	i;
 
 	if (!av[0]) {
-		walkdir(".", walk_dflg, (void *)dflg);
+		walkdir(".", walk_dflg, int2p(dflg));
 	} else {
 		for (i = 0; i < ac; ++i) {
 			localName2bkName(av[i], av[i]);
-			walkdir(av[i], walk_dflg, (void *)dflg);
+			walkdir(av[i], walk_dflg, int2p(dflg));
 		}
 	}
 }

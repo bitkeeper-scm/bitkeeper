@@ -204,7 +204,7 @@ static	char	**seqlist = 0;
 void
 smerge_saveseq(u32 seq)
 {
-	seqlist = addLine(seqlist, (char *)seq);
+	seqlist = addLine(seqlist, int2p(seq));
 }
 
 /*
@@ -266,7 +266,7 @@ file_init(char *file, char *rev, char *anno, file_t *f)
 	f->n = nLines(seqlist);
 	f->lines = calloc(f->n+1, sizeof(ld_t));
 	EACH (seqlist) {
-		f->lines[i-1].seq = (u32)seqlist[i];
+		f->lines[i-1].seq = p2int(seqlist[i]);
 		seqlist[i] = 0;
 	}
 	freeLines(seqlist, 0);

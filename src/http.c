@@ -459,7 +459,7 @@ err:		if (header) free(header);
 		if (r->trace) {
 			fprintf(stderr,
 				"Send failed, wanted %d, got %d\n",
-				mlen, start);
+				(int)mlen, start);
 		}
 		goto err;
 	}

@@ -209,7 +209,7 @@ usage:		system("bk help -s takepatch");
 		unless (strncmp(buf, "== ", 3) == 0) {
 			if (echo > 7) {
 				fprintf(stderr, "skipping: %*s",
-				    strchr(buf, '\n') - buf, buf);
+				    (int)(strchr(buf, '\n') - buf), buf);
 			}
 			continue;
 		}
