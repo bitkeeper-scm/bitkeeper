@@ -68,9 +68,8 @@ echo $N Trying to compress uuencoded data ...........$NL
 admin -Z uuencode
 co -r1.1 $Q uuencode 
 cmp -s ${binary_data} uuencode
-if [ $? -ne 0 ]; then echo Failed \(known bug\); else echo OK; fi
-#if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
-#echo OK 
+if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
+echo OK 
 echo $N Trying to check in some gzipped+uu data .....$NL
 cp ${binary_data} data
 admin $Q -idata -g gzipuu

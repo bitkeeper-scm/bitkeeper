@@ -165,7 +165,7 @@ tags: srcs
 TAGS: srcs
 	etags $(SRCS) $(HDRS)
 
-check test: 
+test: 
 	cd t && make
 
 # This uses bk-prefixed commands so it works even if you haven't

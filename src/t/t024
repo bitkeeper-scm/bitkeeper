@@ -116,7 +116,7 @@ echo OK
 echo $N Test sccsrm \& empty directory ...............$NL
 HERE=`pwd`
 cd D
-sccsrm -d file5
+sccsrm -d file5 || { echo failed.; exit 1; }
 if [ -d SCCS ]; then echo fail to remove empty SCCS; exit 1; fi
 cd $HERE
 if [ -d D ]; then echo fail to remove empty dir; ls -R .; exit 1; fi

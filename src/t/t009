@@ -275,11 +275,10 @@ done
 echo $N Range test -c87..87 on multiple files .......$NL
 for i in FILE FILE1 FILE2 FILE3 FILE4
 do	prs -c87..87 $i >> PRS
-	if [ $i != FILE4 ]; then ${ECHO} "" >> PRS; fi
 done
 prs -c87..87 FILE FILE1 FILE2 FILE3 FILE4 > PRS2
 cmp -s PRS PRS2
-if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+if [ $? -ne 0 ]; then echo Failed.; diff PRS PRS2; exit 1; fi
 echo OK
 
 echo ---------- Misc date tests ------------
