@@ -41,7 +41,7 @@ XTRA=
 UWTLIB	=
 UWT_H	=
 WIN_TMP	=*.idb *.pdb *.ilk *.exe *~bkp
-BINS	= $(BK)
+BINS	= $(BK) mailsplit diffsplit
 RESOURCE=
 
 # Override Solaris make.rules
@@ -106,7 +106,7 @@ ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
       zlib/gzio.o zlib/infblock.o zlib/infcodes.o zlib/inffast.o \
       zlib/inflate.o zlib/inftrees.o zlib/infutil.o zlib/trees.o \
       zlib/uncompr.o zlib/zutil.o
-SCRIPTS	= bk.script import resync uuwrap unuuwrap pmerge \
+SCRIPTS	= applypatch bk.script import resync uuwrap unuuwrap pmerge \
       revtool citool helptool difftool csettool fmtool fm3tool msg \
       renametool setuptool gzip_uuwrap ungzip_uuwrap bugform
 LOCALSCR= testfast build crank
@@ -407,6 +407,10 @@ import: import.sh port/$(SYS)_platform.sh substvars
 	./substvars port/$(SYS)_platform.sh import.sh > import.T
 	chmod +x import.T
 	mv -f import.T import
+
+applypatch: applypatch.sh 
+	cp applypatch.sh applypatch
+	chmod +x applypatch
 
 pmerge: pmerge.perl port/$(SYS)_platform.perl
 	cat pmerge.perl port/$(SYS)_platform.perl > pmerge

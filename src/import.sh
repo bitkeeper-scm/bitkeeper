@@ -58,10 +58,26 @@ import() {
 		exit 1
 	}
 	shift `expr $OPTIND - 1`
+	gettype $TYPE
+	if [ $TYPE = email ]
+	then	# bk import -temail [repo] < MAILBOX
+		test "X$1" != X && {
+			cd "$1" || {
+				echo Unable to cd to "$1"
+				exit 1
+			}
+		}
+		test -d BitKeeper/etc || {
+			echo "Not at a repository root"
+			exit 1
+		}
+		mailsplit diffsplit applypatch NAME DOMAIN SUBJECT EXPLANATION
+		exit $?
+	fi
+
 	if [ X"$1" = X -o X"$2" = X -o X"$3" != X ]
 	then	bk help -s import; exit 1;
 	fi
-	gettype $TYPE
 	if [ $TYPE = patch ]
 	then	if [ ! -f "$1" ]
 		then	echo import: "$1" is not a patch file
@@ -75,10 +91,12 @@ import() {
 		then	echo import: no include/excludes allowed with patch files
 			exit 1
 		fi
+		export BK_PATCH_IMPORT=YES
 	else	if [ ! -d "$1" ]
 		then	echo import: "$1" is not a directory
 			exit 1
 		fi
+		unset BK_PATCH_IMPORT
 	fi
 	if [ ! -d "$2" ]
 	then	echo import: "$2" is not a directory, run setup first
@@ -138,7 +156,7 @@ import() {
 			fi
 			eval "$cmd" > ${TMP}import$$
 			if [ X$QUIET = X ]; then echo OK; fi
-		else	echo "" > ${TMP}import$$
+		else	touch ${TMP}import$$
 		fi
 	fi
 	if [ $TYPE != patch ]
@@ -211,6 +229,7 @@ gettype() {
 	then	case "$1" in
 		    plain)	type=text;;
 		    patch)	type=patch;;
+		    mail|email)	type=email;;
 		    RCS|CVS)	type=RCS;;
 		    SCCS)	type=SCCS;;
 		esac
@@ -298,9 +317,6 @@ transfer() {
 import_patch() {
 	PATCH=$1
 	PNAME=`basename $PATCH`
-	SAVE=$USER
-	USER=patch
-	export USER
 	Q=$QUIET
 	cd "$2"
 
@@ -427,7 +443,6 @@ EOF
 	if [ $COMMIT = NO ]
 	then	Done 0
 	fi
-	USER=$SAVE
 	# Ask about logging before commit, commit reads stdin.
 	bk _loggingask
 	if [ $? -eq 1 ]

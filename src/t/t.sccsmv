@@ -194,6 +194,9 @@ if [ ${REV}X != "1.7"X ]; then echo failed; exit 1; fi
 DPATH=`bk prs -hr+ -d:DPN: ${DDIR}/SCCS/$SFILE`
 SFILE2=`bk _g2sccs $DPATH`
 if [ ${SFILE2}X != "${DDIR}/SCCS/$SFILE"X ]; then echo failed; exit 1; fi
+bk sfiles -l ${SFILE2} | grep -q ${SFILE2}
+if [ $? -eq 0 ]; then echo failed; exit 1; fi
+if [ -f $DPATH ]; then echo failed; exit 1; fi
 echo OK
 echo $N Test sccsrm \& empty directory ...............................$NL
 cd D
@@ -364,6 +367,7 @@ echo $N Make sure we can force the removal of BitKeeper files .......$NL
 cd $HERE/src/BitKeeper/etc
 bk rm -f config 2> OUT || {
 	echo failed to let us remove the file
+	cat OUT
 	exit 1
 }
 test -f SCCS/s.config && {
