@@ -94,6 +94,21 @@ _extras() {
 	fi
 }
 
+_idcache() {
+	__cd2root
+	while getopts f opt
+	do	case "$opt" in
+		f) rm -f BitKeeper/etc/SCCS/z.id_cache;;
+		esac
+	done
+	bk sfiles -r
+}
+
+_keycache() {
+	bk sfiles -k
+}
+
+
 _jove() {
 	bk get -qe "$@" 2> /dev/null
 	exec jove $@

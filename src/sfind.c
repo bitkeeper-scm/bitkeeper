@@ -180,7 +180,7 @@ parse_select(char *sets)
 int
 sfind_main(int ac, char **av)
 {
-        int     c, i; 
+        int     c, i, sfiles_compat = 0; 
 	char	*root, *path, buf[MAXPATH];
 
 	if ((ac > 1) && streq("--help", av[1])) {
@@ -188,18 +188,23 @@ usage:		fprintf(stderr, "%s", sfind_usage);
 		return (0);
 	}                
 
-	while ((c = getopt(ac, av, "aACeEgo:s:Sv")) != -1) {
+	while ((c = getopt(ac, av, "aAcCdDeEgklo:pPrRs:Suvx")) != -1) {
 		switch (c) {
 		    case 'a':	opts.aflg = 1; break;
-		    case 'A':	opts.Aflg = 1; break;
+		    case 'A':	opts.s3_pflg = opts.Aflg = 1; break;
+		    case 'c':	opts.s2_cflg = 1; break;
 		    case 'g':	opts.gflg = 1; break;
+		    case 'k':	sfiles_compat = 1; break;
+		    case 'l':   opts.s1_lflg = 1; break;
 		    case 'o':	unless (opts.out = fopen(optarg, "w")) {
 		    			perror(optarg);
 					exit(1);
 				}
 				opts.progress = 1;
 				break;
-		    case 'C':	opts.Cflg = 1; break;
+		    case 'C':	opts.s3_pflg = opts.Cflg = 1; break;
+		    case 'd':	sfiles_compat = 1; break;
+		    case 'D':	sfiles_compat = 1; break;
 		    case 'v':	opts.show_markers = 1; break;
 		    case 'E':	opts.s2_cflg = 1;
 				opts.s2_nflg = 1;
@@ -211,12 +216,24 @@ usage:		fprintf(stderr, "%s", sfind_usage);
 				opts.s1_lflg = 1;
 				opts.s1_uflg = 1;
 				break;
+		    case 'p':	sfiles_compat = 1; break;
+		    case 'P':	sfiles_compat = 1; break;
+		    case 'r':	sfiles_compat = 1; break;
+		    case 'R':	sfiles_compat = 1; break;
 		    case 's':	parse_select(optarg);
 				break;
 		    case 'S':	opts.Sflg = 1; break; /* summarize output */	
+		    case 'u':	opts.s1_uflg = 1; break;
+		    case 'x':	opts.s1_xflg = opts.s1_jflg = 1; break;
 		    default: 	goto usage;
 		}
 	}
+	
+	if (sfiles_compat) {
+		getoptReset(); 
+		return (sfiles_main(ac, av));
+	}
+
 	unless (opts.out) opts.out = stdout;
 	c_count = p_count = d_count = s_count = x_count = 0;
 
