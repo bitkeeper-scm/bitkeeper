@@ -4372,7 +4372,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	s->nextserial = 1;
 	s->fd = -1;
 	s->mmap = (caddr_t)-1;
-	sccs_open(s);
+	sccs_open(s, &sbuf);
 
 	if (flags & INIT_SAVEPROJ) s->state |= S_SAVEPROJ;
 
@@ -4436,42 +4436,25 @@ sccs*
 sccs_restart(sccs *s)
 {
 	struct	stat sbuf;
+	char	*buf;
 
 	assert(s);
 	if (check_gfile(s, 0)) {
 bad:		sccs_free(s);
 		return (0);
 	}
+	bzero(&sbuf, sizeof(sbuf));	/* file may not be there */
 	if (fast_lstat(s->sfile, &sbuf, 1) == 0) {
 		if (!S_ISREG(sbuf.st_mode)) goto bad;
 		if (sbuf.st_size == 0) goto bad;
 		s->state |= S_SFILE;
 	}
-	if ((s->fd == -1) || (s->size != sbuf.st_size)) {
-		char	*buf;
-
-		if (s->fd == -1) {
-			s->fd = open(s->sfile, 0, 0);
-		}
-		if (s->mmap != (caddr_t)-1L) munmap(s->mmap, s->size);
-		s->size = sbuf.st_size;
-		s->mmap = (s->fd == -1) ? (caddr_t)-1L :
-			    mmap(0, s->size, PROT_READ, MAP_SHARED, s->fd, 0);
-		if (s->fd != -1) {
-			assert(s->mmap != (caddr_t)-1L);
-			assert((s->state & S_SOPEN) == 0);
-		}
-		if (s->mmap != (caddr_t)-1L) {
-			s->state |= S_SOPEN;
-#if	defined(linux) && defined(sparc)
-		flushDcache();
-#endif
-			seekto(s, 0);
-			while(buf = fastnext(s)) {
-				if (strneq(buf, "\001T\n", 3)) break;
-			}
-			s->data = sccstell(s);
-		}
+	unless ((s->state & S_SOPEN) && (s->size == sbuf.st_size)) {
+		sccs_close(s);
+		if (sccs_open(s, &sbuf)) return (s);
+		seekto(s, 0);
+		while(buf = fastnext(s)) if (strneq(buf, "\001T\n", 3)) break;
+		s->data = sccstell(s);
 	}
 	if (isreg(s->pfile)) {
 		s->state |= S_PFILE;
@@ -4513,18 +4496,29 @@ sccs_reopen(sccs *s)
  * open & mmap the file.
  * Use this after an sccs_close() to reopen,
  * use sccs_reopen() if you need to reread the graph.
+ * Note: this is used under windows via win32_open().
  */
 int
-sccs_open(sccs *s)
+sccs_open(sccs *s, struct stat *sp)
 {
 	assert(s);
 	if (s->state & S_SOPEN) {
 		assert(s->fd != -1);
 		assert(s->mmap != (caddr_t)-1L);
 		return (0);
+	} else {
+		assert(s->fd == -1);
+		assert(s->mmap == (caddr_t)-1);
 	}
-	if (s->fd == -1) s->fd = open(s->sfile, O_RDONLY, 0);
-	if (s->fd == -1) return (-1);
+	if ((s->fd = open(s->sfile, O_RDONLY, 0)) == -1) return (-1);
+	if (sp) {
+		s->size = sp->st_size;
+	} else {
+		struct	stat sbuf;
+
+		fstat(s->fd, &sbuf);
+		s->size = sbuf.st_size;
+	}
 	s->mmap = mmap(0, s->size, PROT_READ, MAP_SHARED, s->fd, 0);
 #if     defined(hpux)
 	if (s->mmap == (caddr_t)-1) {
@@ -4538,7 +4532,7 @@ sccs_open(sccs *s)
 		s->state |= S_MAPPRIVATE;
 	}
 #endif
-	if (s->mmap == (caddr_t) -1) {
+	if (s->mmap == (caddr_t)-1) {
 		close(s->fd);
 		s->fd = -1;
 		return (-1);
@@ -4559,6 +4553,7 @@ sccs_open(sccs *s)
 
 /*
  * close all open file stuff associated with an sccs structure.
+ * Note: this is used under windows via win32_close().
  */
 void
 sccs_close(sccs *s)
@@ -4569,8 +4564,8 @@ sccs_close(sccs *s)
 	} else {
 		assert(s->fd == -1);
 		assert(s->mmap == (caddr_t)-1L);
+		return;
 	}
-	unless (s->state & S_SOPEN) return;
 	munmap(s->mmap, s->size);
 #if	defined(linux) && defined(sparc)
 	flushDcache();
