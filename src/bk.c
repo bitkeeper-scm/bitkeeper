@@ -310,6 +310,7 @@ main(int ac, char **av)
 	    streq(av[0], "fm3") ||
 	    streq(av[0], "citool") ||
 	    streq(av[0], "sccstool") ||
+	    streq(av[0], "setuptool") ||
 	    streq(av[0], "fmtool") ||
 	    streq(av[0], "fm3tool") ||
 	    streq(av[0], "difftool") ||

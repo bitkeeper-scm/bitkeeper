@@ -772,7 +772,7 @@ char	*getlog(char *u, int q);
 int	setlog(char *u);
 int	checkLog(int quiet, int resync);
 int	get(char *path, int flags, char *output);
-int	gethelp(char *help_name, char *bkarg, FILE *f);
+int	gethelp(char *help_name, char *bkarg, char *prefix, FILE *f);
 int	is_open_logging(char *logaddr);
 void	status(int verbose, FILE *out);
 void	notify();

@@ -16,27 +16,19 @@
 #
 #	Ask Larry about normalizing the config file for easy parsing
 #
+# Arguments:
+#
+#
 
-if { [file type $argv0] == "link" } {
-	set rootDir [file dirname [file readlink $argv0]]
-} else {
-	set rootDir [file dirname $argv0]
-	puts "rootDir: $rootDir"
+set debug 0
+
+catch {exec bk bin} bin
+set image [file join $bin "bklogo.gif"]
+if {[file exists $image]} {
+        #set bklogo [image create photo -file $image]
+        image create photo bklogo -file $image
+        #label $w.logo -image $bklogo -bd 0
 }
-
-# Read descriptions for the config options
-set st_messages [file join $rootDir setup_messages.tcl]
-source $st_messages
-
-set msg1 "You are about create a new repository.  You may do this exactly once
-for each project stored in BitKeeper.  If there already is a 
-BitKeeper repository for this project, you should do
-
-    bk clone project_dir my_project_dir
-
-If you create a new project rather than resyncing a copy, you 
-will not be able to exchange work between the two projects."
-
 
 proc dialog_position { dlg width len } \
 {
@@ -223,7 +215,7 @@ proc save_config_info {} \
 
 proc read_bkrc {} \
 {
-	global env st_cinfo
+	global env st_cinfo debug
 
 	set bkrc [file join $env(HOME) .bkrc]
 	set fid [open $bkrc "r"]
@@ -252,7 +244,7 @@ proc read_bkrc {} \
 
 proc create_repo {} \
 {
-	global st_cinfo env st_repo_name
+	global st_cinfo env st_repo_name tmp_dir
 
 	regsub -all {\ } $st_cinfo(des) {\\ }  escaped_des
 
@@ -260,17 +252,26 @@ proc create_repo {} \
 	save_config_info
 
 	# write out config file from user-entered data
-	set cfid [open "/tmp/cfile.$$" w]
+	set pid [pid]
+	set cfile [file join $tmp_dir "config.$pid"]
+	set cfid [open "$cfile" w]
 
-	set cfile "/tmp/config"
+	foreach el [array names st_cinfo] {
+		puts $cfid "${el}: $st_cinfo($el)"
+		#puts "${el}: $st_cinfo($el)"
+	}
 	
-	#puts "=========>Repo Name: ($st_repo_name) Description: ($des)"
+	# puts "===>Repo Name: ($st_cinfo(repository)) Desc: ($st_cinfo(des))"
 	# XXX wrap with catch and return valid return code
 	# probably should be an exec?!?
-	set fid [open "|bk setup -f -c$cfile -n'$escaped_des' $st_repo_name" w]
+	set fid [open "|bk setup -f -c$cfile -n'$escaped_des'  \
+	    $st_cinfo(repository)" w]
 
 	close $fid 
 	close $cfid
+
+	# clean up configfile
+	# file delete $cfile
 
 	return 0
 }
@@ -297,7 +298,7 @@ proc get_config_info {} \
 
 proc get_repo_name { w } \
 {
-        global msg1 st_repo_name
+        global st_bk_cfg st_repo_name
 
 	set bcolor #ffffff
 
@@ -306,7 +307,7 @@ proc get_repo_name { w } \
 	frame $w -bg $bcolor
         frame $w.t1 -bd 2 -relief raised -bg $bcolor
 
-        message $w.t1.m1 -width 600 -text $msg1 -bg $bcolor
+        message $w.t1.m1 -width 600 -text $st_bk_cfg(msg1) -bg $bcolor
 
         label $w.t1.l -text "Repository Name: " -bg $bcolor
         entry $w.t1.e -width 30 -relief sunken -bd 2 -bg $bcolor \
@@ -337,7 +338,10 @@ proc get_repo_name { w } \
 proc create_config { w } \
 {
 
-	global st_cinfo st_bk_cfg rootDir st_dlg_button
+	global st_cinfo st_bk_cfg rootDir st_dlg_button logo
+
+	# set the default to openlogging.org
+	set st_cinfo(logging) "logging@openlogging.org"
 
 	set bcolor #ffffff
 	set mcolor #deeaf4	;# color for mandatory fields
@@ -349,42 +353,37 @@ proc create_config { w } \
 	wm geometry . +$x+$y
 
 	frame $w -bg $bcolor
+	    frame $w.t -bd 2 -relief raised -bg $bcolor
+		label $w.t.label -text "Configuration Info" -bg $bcolor
+		frame $w.t.l -bg $bcolor
+		frame $w.t.e -bg $bcolor
+		frame $w.t.info -bg $bcolor
+		message $w.t.info.msg -width 200 -bg $bcolor  \
+		    -text "The items on the right that are highlited are \
+		           mandatory fields"
+		#image create photo bklogo -data $logo
+		#label $w.t.info.l -image bklogo
+		#pack $w.t.info.l -side top -pady 10
 
-	frame $w.t -bd 2 -relief raised -bg $bcolor
+		pack $w.t.info.msg -side bottom  -pady 10
 
-	label $w.t.lable -text "Configuration Info" -bg $bcolor
-
-	frame $w.t.l -bg $bcolor
-	frame $w.t.e -bg $bcolor
-	frame $w.t.info -bg $bcolor
-	
-	message $w.t.info.msg -width 200 -bg $bcolor  \
-            -text "The items on the right that are highlited are mandatory \
-                   fields"
-
-	set logo [file join $rootDir bklogo.gif]
-	image create photo bklogo -file $logo
-	label $w.t.info.l -image bklogo
-
-	pack $w.t.info.l -side top -pady 10
-	pack $w.t.info.msg -side bottom  -pady 10
-
-	# create button bar on bottom
-	frame $w.t.bb -bg $bcolor
-
-	button $w.t.bb.b1 -text "Create Repository" -bg $bcolor \
-		-command "global st_dlg_button; set st_dlg_button 0"
-	pack $w.t.bb.b1 -side left -expand 1 -padx 20 -pady 10
-	button $w.t.bb.b2 -text "Exit" -bg $bcolor \
-		-command "global st_dlg_button; set st_dlg_button 1"
-	pack $w.t.bb.b2 -side left -expand 1 -padx 20 -pady 10
+		# create button bar on bottom
+		frame $w.t.bb -bg $bcolor
+		    button $w.t.bb.b1 -text "Create Repository" -bg $bcolor \
+			-command "global st_dlg_button; set st_dlg_button 0" \
+			-state normal
+		    pack $w.t.bb.b1 -side left -expand 1 -padx 20 -pady 10
+		    label $w.t.bb.l -image bklogo
+		    pack $w.t.bb.l -side left -expand 1 -padx 20 -pady 10
+		    button $w.t.bb.b2 -text "Exit" -bg $bcolor \
+			-command "global st_dlg_button; set st_dlg_button 1"
+		    pack $w.t.bb.b2 -side left -expand 1 -padx 20 -pady 10
 
 	# text widget to contain info about config options
 	frame $w.t.t -bg $bcolor
-	text $w.t.t.t -width 80 -height 10 -wrap word -background $mcolor \
-	    -yscrollcommand " $w.t.t.scrl set " 
-
-	scrollbar $w.t.t.scrl -bg $bcolor \
+	    text $w.t.t.t -width 80 -height 10 -wrap word -background $mcolor \
+		-yscrollcommand " $w.t.t.scrl set " 
+	    scrollbar $w.t.t.scrl -bg $bcolor \
 	    -command "$w.t.t.t yview"
 
 	pack $w.t.t.t -fill both -side left -expand 1
@@ -398,17 +397,17 @@ proc create_config { w } \
 	pack $w.t.info -side right -fill both -expand yes -ipady 10 -ipadx 10
 
 	foreach { description var } {
+		"Repository Name:" repository 
 		"description:" des 
-		"logging OK (yes or no):" logging_ok
 		"open logging server:" logging 
-		"Number of Seats:" seats
-		"Security:" security 
 		"Contact Name:" contact 
 		"Email:" email
-		"Street:" street "City:" city 
+		"Street:" street 
+                "City:" city 
 		"Zip/Postal Code:" postal
 		"Country:" country 
-		"Phone:" phone "Pager:" pager 
+		"Phone:" phone 
+                "Pager:" pager 
 		"Cell:" cell
 		"Business Hours:" business_hours } {\
 
@@ -423,26 +422,34 @@ proc create_config { w } \
 		    grid $w.t.e.$var 
 		    grid $w.t.l.$var  -pady 1 -sticky e -ipadx 3
 		    bind $w.t.e.$var <FocusIn> \
-			"$w.t.t.t delete 1.0 end;\
-			$w.t.t.t insert insert \$st_bk_cfg($var)"
+			"$w.t.t.t configure -state normal;\ 
+			$w.t.t.t delete 1.0 end;\
+			$w.t.t.t insert insert \$st_bk_cfg($var);\
+			$w.t.t.t configure -state disabled "
 	}
 
 	# Mandatory fields are highlighted
+	$w.t.e.repository config -bg $mcolor
 	$w.t.e.des config -bg $mcolor
-	$w.t.e.seats config -bg $mcolor
 	$w.t.e.logging config -bg $mcolor
 
 	$w.t config -background black
 	bind $w.t.e <Tab> {tk_focusNext %W}
 	bind $w.t.e <Shift-Tab> {tk_focusPrev %W}
+	bind $w.t.e <Control-n> {tk_focusNext %W}
 
-	focus $w.t.e.des
+	focus $w.t.e.repository
 
 	#bind $w.t1.e <FocusIn> " $w.t.b1 config -bd 3 -relief groove "
 	#bind $w.t1.e <KeyPress-Return> " $w.t.b1 flash; $w.t.b1 invoke "
 
 	pack $w.t
 	pack $w
+
+	if { [$w.t.e.repository selection present] == 1 } {
+		puts "Repository selected"
+	}
+	#$w.t.e.repository get
 
 	tkwait variable st_dlg_button
 
@@ -465,7 +472,6 @@ proc main {} \
 
 	license_check
 
-
 	set swidth [winfo screenwidth .]
 	set sheight [winfo screenheight .]
 
@@ -475,7 +481,7 @@ proc main {} \
 	#wm geometry . ${width}x${len}+$x+$y
 	wm geometry . +$x+$y
 
-	get_repo_name .repo
+	#get_repo_name .repo
 	get_config_info
 	create_config .cconfig
 
@@ -487,4 +493,46 @@ proc main {} \
 	}
 }
 
-main;
+#
+# Ideally, the text should be gotten out of the config file
+#
+proc getMessages {} \
+{
+	global st_bk_cfg
+
+	set st_bk_cfg(des) { Descriptive name for your project. }
+
+	set st_bk_cfg(repository) { You are about create a new repository.  \
+ You may do this exactly once for each project stored in BitKeeper.  If a \
+ BitKeeper repository for this project exists, do the following:
+
+    bk clone project_dir my_project_dir
+
+ If you create a new project rather than resyncing a copy, you will not be \
+ able to exchange work between the two projects. }
+
+	set fid [open "|bk gethelp config_template" "r"]
+
+	while { [ gets $fid topic ] != -1 } {
+		set found 0
+		set cfg_topic ""
+		set topic [string trim $topic]
+		append cfg_topic "config_" $topic
+		set hfid [open "|bk gethelp $cfg_topic" "r"]
+		while { [ gets $hfid help ] != -1 } {
+			set found 1
+			#puts "$topic: $help"
+			append st_bk_cfg($topic) $help " "
+		}
+		if { $found == 0 } {
+			set st_bk_cfg($topic) ""
+		}	
+	}
+
+	close $fid
+	close $hfid
+}
+
+bk_init
+getMessages
+main

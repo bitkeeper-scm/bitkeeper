@@ -54,13 +54,14 @@ if [ ! -f BitKeeper/etc/logging_ok ]
 then	echo 'Where oh where did my little file go?'
 	exit 1
 fi
-cat <<EOF | diff - BitKeeper/etc/logging_ok > DIFFS
+cat <<EOF  > X
 awc@etp3.bitmover.com
 beth@work.bitmover.com
 lm@bitmover.com
 lm@lm.bitmover.com
 lm@work.bitmover.com
 EOF
+diff X BitKeeper/etc/logging_ok > DIFFS
 if [ `wc -l < DIFFS` -ne 0 ]
 then	echo failed to union the data in the file
 	cat DIFFS
@@ -84,13 +85,14 @@ if [ ! -f BitKeeper/etc/logging_ok ]
 then	echo 'Where oh where did my little file go?'
 	exit 1
 fi
-cat <<EOF | diff - BitKeeper/etc/logging_ok > DIFFS
+cat <<EOF > X 
 awc@etp3.bitmover.com
 beth@work.bitmover.com
 lm@bitmover.com
 lm@lm.bitmover.com
 lm@work.bitmover.com
 EOF
+diff X BitKeeper/etc/logging_ok > DIFFS
 if [ `wc -l < DIFFS` -ne 0 ]
 then	echo failed to union the data in the file
 	cat DIFFS
@@ -112,13 +114,14 @@ if [ ! -f BitKeeper/etc/logging_ok ]
 then	echo 'Where oh where did my little file go?'
 	exit 1
 fi
-cat <<EOF | diff - BitKeeper/etc/logging_ok > DIFFS
+cat <<EOF  > X
 awc@etp3.bitmover.com
 beth@work.bitmover.com
 lm@bitmover.com
 lm@lm.bitmover.com
 lm@work.bitmover.com
 EOF
+diff X BitKeeper/etc/logging_ok > DIFFS
 if [ `wc -l < DIFFS` -ne 0 ]
 then	echo failed to union the data in the file
 	cat DIFFS
@@ -148,7 +151,7 @@ if [ ! -f BitKeeper/etc/logging_ok ]
 then	echo 'Where oh where did my little file go?'
 	exit 1
 fi
-cat <<EOF | diff - BitKeeper/etc/logging_ok > DIFFS
+cat <<EOF > X
 awc@etp3.bitmover.com
 beth@work.bitmover.com
 copy@foo.com
@@ -157,6 +160,7 @@ lm@lm.bitmover.com
 lm@work.bitmover.com
 project@foo.com
 EOF
+diff X BitKeeper/etc/logging_ok > DIFFS
 if [ `wc -l < DIFFS` -ne 0 ]
 then	echo failed to union the data in the file
 	cat DIFFS

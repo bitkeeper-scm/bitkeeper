@@ -37,7 +37,7 @@ header(FILE *f)
 	char	buf[MAXPATH];
 	char	*p;
 
-	gethelp("version", 0, f);
+	gethelp("version", 0, 0, f);
 	fprintf(f, "Repository %s:%s\n",
 	    sccs_gethost(), fullname(".", 0));
 	sprintf(parent_file, "%slog/parent", BitKeeper);
@@ -156,7 +156,7 @@ void
 remark(int quiet)
 {
 	if (exists("BitKeeper/etc/SCCS/x.marked")) return;
-	unless (quiet) gethelp("consistency_check", "", stdout);
+	unless (quiet) gethelp("consistency_check", "", 0, stdout);
 	system("bk cset -M1.0..");
 	close(open("BitKeeper/etc/SCCS/x.marked", O_CREAT|O_TRUNC, 0664));
 	unless(quiet) {
@@ -172,7 +172,7 @@ status(int verbose, FILE *f)
 	FILE	*f1;
 
 	fprintf(f, "Status for BitKeeper repository %s\n", fullname(".", 0));
-	gethelp("version", 0, f);
+	gethelp("version", 0, 0, f);
 	sprintf(parent_file, "%slog/parent", BitKeeper);
 	if (exists(parent_file)) {
 		fprintf(f, "Parent repository is ");
@@ -253,7 +253,7 @@ status(int verbose, FILE *f)
 }
 
 int
-gethelp(char *help_name, char *bkarg, FILE *outf)
+gethelp(char *help_name, char *bkarg, char *prefix, FILE *outf)
 {
 	char	buf[MAXLINE], pattern[MAXLINE];
 	FILE	*f;
@@ -280,6 +280,7 @@ gethelp(char *help_name, char *bkarg, FILE *outf)
 		if (first && (buf[0] == '#')) continue;
 		first = 0;
 		if (streq("$\n", buf)) break;
+		if (prefix) fputs(prefix, outf);
 		p = strstr(buf, "#BKARG#");
 		if (p) {
 			*p = 0;
@@ -292,4 +293,42 @@ gethelp(char *help_name, char *bkarg, FILE *outf)
 	}
 	fclose(f);
 	return (found);
+}
+
+int
+mkconfig(FILE *out)
+{
+	FILE	*in;
+	int	found = 0;
+	int	first = 1;
+	char	buf[200], pattern[200];
+
+	sprintf(buf, "%s/bkhelp.txt", bin);
+	unless (in = fopen(buf, "rt")) {
+		fprintf(stderr, "Unable to locate help file %s\n", buf);
+		return (-1);
+	}
+	gethelp("config_preamble", 0, "# ", out);
+	fputs("\n", out);
+	while (fgets(buf, sizeof(buf), in)) {
+		if (streq("#config_template\n", buf)) {
+			found = 1;
+			break;
+		}
+	}
+	unless (found) {
+		fclose(in);
+		return (-1);
+	}
+	while (fgets(buf, sizeof(buf), in)) {
+		if (first && (buf[0] == '#')) continue;
+		first = 0;
+		if (streq("$\n", buf)) break;
+		chop(buf);
+		sprintf(pattern, "config_%s", buf);
+		gethelp(pattern, 0, "# ", out);
+		fprintf(out, "%s: \n", buf);
+	}
+	fclose(in);
+	return (0);
 }

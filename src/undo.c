@@ -53,7 +53,7 @@ undo_main(int ac,  char **av)
 	cmd = malloc(strlen(rev) + strlen(undo_list) + 200);
 	sprintf(cmd, "bk stripdel -Ccr%s ChangeSet 2> %s", rev, undo_list);
 	if (system(cmd) != 0) {
-		gethelp("undo_error", bin, stdout);
+		gethelp("undo_error", bin, 0, stdout);
 		cat(undo_list);
 err:		if (undo_list[0]) unlink(undo_list);
 		unlink(rev_list);

@@ -25,7 +25,7 @@ sendbug_main(int ac,  char **av)
 	}
 	sprintf(bug, "%s/bk_bug%d", TMP_PATH, getpid());
 	f = fopen(bug, "wb");
-	gethelp("bugtemplate", 0, f);
+	gethelp("bugtemplate", 0, 0, f);
 	fclose(f);
 	sprintf(buf, "%s %s", editor, bug);
 	system(buf);

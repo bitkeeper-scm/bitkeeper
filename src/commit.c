@@ -85,7 +85,7 @@ commit_main(int ac, char **av)
 	if (system(buf) != 0) {
 		unlink(pendingDeltas);
 		unlink(commentFile);
-		gethelp("duplicate_IDs", "", stdout);
+		gethelp("duplicate_IDs", "", 0, stdout);
 		exit(1);
 	}
 	if ((force == 0) && (size(pendingDeltas) == 0)) {
@@ -142,7 +142,7 @@ notice(char *key)
 {
 	printf(
 	    "==============================================================\n");
-	gethelp(key, 0, stdout);
+	gethelp(key, "", 0, stdout);
 	printf(
 	    "==============================================================\n");
 }
