@@ -62,29 +62,92 @@ SCRSRCS	= rcs2sccs.perl testfast.perl regression.sh bk.sh import.sh \
 
 all: $(ALL)
 
-# The "install" target does not build things first.
-install: install.sh FORCE
-	./install.sh
+# This is the same as the default CFLAGS, but explicit.
+purify:
+	$(MAKE) CFLAGS="-g -DPURIFY -DPURIFY_FILES" all
 
-# This would be called "clean" but that's a command name.
-cclean: FORCE
+gprof:
+	$(MAKE) CFLAGS="-g -pg -O2" all
+
+# Recent gcc only profiles libc if you do it this way.
+# Note - profiling libc is incompatible with use of system zlib.
+gproflib:
+	$(MAKE) CFLAGS="-g -profile -O2" LZLIB="-Lzlib -lz" all
+
+# Debugging...
+d:
+	$(MAKE) CFLAGS="-g -DDEBUG" all
+dp debug:
+	$(MAKE) CFLAGS="-g -DPURIFY -DDEBUG" all
+dp2 debug2:
+	$(MAKE) CFLAGS="-g -DPURIFY -DDEBUG2" all
+
+# Linting...
+# N.B. -DLINT is no longer needed when compiling with gcc.
+ansi:
+	$(MAKE) CFLAGS="-g -Wall -ansi -pedantic -DANSIC" all
+
+# -Wno-parentheses shuts up "suggest parentheses around assignment ...".
+# Unfortunately it also turns off dangling else warnings.
+Wall:
+	$(MAKE) CFLAGS="-g -Wall -Wno-parentheses -DPURIFY" all
+
+WWall:
+	$(MAKE) CFLAGS="-g -W -Wall -Wstrict-prototypes -Wmissing-prototypes -Wwrite-strings -DPURIFY" all
+
+fullwarn:
+	$(MAKE) CFLAGS="-g -fullwarn -DLINT -DPURIFY" all
+
+# production builds
+
+p:
+	$(MAKE) CFLAGS="-O2 -fomit-frame-pointer" all
+gO:
+	$(MAKE) CFLAGS="-g -O"
+
+# production must be last so the optimized binaries are the defaults.
+production_all:
+	$(MAKE) production_g libexecdir=$(prefix)/bitkeeper/g
+	$(MAKE) production_debug libexecdir=$(prefix)/bitkeeper/debug
+	$(MAKE) production_purify libexecdir=$(prefix)/bitkeeper/purify
+	$(MAKE) production libexecdir=$(prefix)/bitkeeper
+
+production: rebuild p install
+production_g: rebuild gO install
+production_debug: rebuild debug install
+production_purify: rebuild purify install
+
+# Cleanup targets.
+clean-obj: FORCE
 	-/bin/rm -f $(SCCSOBJ)
 	-/bin/rm -f $(MDBMOBJ)
 	-/bin/rm -f $(ZLIBOBJ)
 	-/bin/rm -f $(BINOBJ)
+	-/bin/rm -f $(LIBS)
+	-/bin/rm -f a.out core
+
+clean-bin: FORCE
+	-/bin/rm -f $(BINS) $(SCRIPTS)
+	-/bin/rm -f $(GUIBIN) $(GUISCR)
+
+clean-cfg: FORCE
+	-/bin/rm -f config.h stamp-h substvars install.sh config.status
+	-/bin/rm -f config.cache config.log
+
+clean-src: FORCE
 	bk clean
 	bk clean gui
 	bk clean mdbm
 	bk clean zlib
 
-clobber: cclean
-	-/bin/rm -f $(ALL)
-	-/bin/rm -f a.out core
-	-/bin/rm -f config.h stamp-h substvars install.sh config.status
-	-/bin/rm -f config.cache config.log
-	-/bin/rm -f tags TAGS
+# This would be called "clean" but that's a command name.
+cclean sccsclean nice: clean-obj clean-src
 
-srcs: FORCE
+clobber distclean: clean-obj clean-bin clean-cfg clean-src
+
+rebuild: clean-obj clean-bin clean-cfg
+
+srcs src: FORCE
 	-get -s $(SRCS) $(HDRS) $(SCRSRCS)
 
 get-e: FORCE
@@ -93,9 +156,9 @@ get-e: FORCE
 log: FORCE
 	bk sccslog $(SRCS) $(HDRS) | more
 
-tags: $(SRCS) $(HDRS)
+tags: srcs
 	ctags -nm $(SRCS) $(HDRS)
-TAGS: $(SRCS) $(HDRS)
+TAGS: srcs
 	etags $(SRCS) $(HDRS)
 
 check test: regression #testfast SFILES
@@ -279,7 +342,7 @@ gui/mkindex: gui/mkindex.tcl substvars
 # several times.
 
 prefix=/usr
-libexecdir=$(prefix)
+libexecdir=$(prefix)/bitkeeper
 config.status: configure
 	./configure --no-create --prefix=$(prefix) --libexecdir=$(libexecdir)
 
@@ -296,6 +359,10 @@ install.sh: install.in config.status
 	CONFIG_HEADERS= CONFIG_FILES=install.sh:install.in ./config.status
 	chmod +x install.sh
 
+# The "install" target does not build things first.
+install: install.sh FORCE
+	./install.sh $(prefix)
+
 # The default .c.o rule is broken with some Makes.
 .c.o:
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
@@ -303,74 +370,74 @@ install.sh: install.in config.status
 # .o: .c .h dependencies.
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
-slib.o: system.h purify.h mdbm/mdbm.h sccs.h zgets.h
-range.o: system.h purify.h mdbm/mdbm.h sccs.h range.h
-newrev.o: system.h purify.h mdbm/mdbm.h sccs.h
-getopt.o: system.h purify.h mdbm/mdbm.h sccs.h
-popen.o: system.h purify.h mdbm/mdbm.h sccs.h
-libdiff.o: system.h purify.h mdbm/mdbm.h sccs.h
-sfiles.o: system.h purify.h mdbm/mdbm.h sccs.h
-platforminit.o: system.h purify.h mdbm/mdbm.h sccs.h
-purify.o: system.h purify.h mdbm/mdbm.h
-zgets.o: zlib/zlib.h zlib/zconf.h zgets.h
-disksp.o: system.h purify.h mdbm/mdbm.h config.h
-dirname.o: config.h
-mdbm/mdbm.o: mdbm/common.h mdbm/tune.h mdbm/mdbm.h
-mdbm/hash.o: mdbm/mdbm.h
-mdbm/debug.o: mdbm/common.h mdbm/tune.h mdbm/mdbm.h
-zlib/adler32.o: zlib/zlib.h zlib/zconf.h
-zlib/compress.o: zlib/zlib.h zlib/zconf.h
-zlib/crc32.o: zlib/zlib.h zlib/zconf.h
-zlib/gzio.o: zlib/zutil.h zlib/zlib.h zlib/zconf.h
-zlib/uncompr.o: zlib/zlib.h zlib/zconf.h
-zlib/deflate.o: zlib/deflate.h zlib/zutil.h zlib/zlib.h zlib/zconf.h
-zlib/trees.o: zlib/deflate.h zlib/zutil.h zlib/zlib.h zlib/zconf.h
+slib.o: slib.c system.h purify.h mdbm/mdbm.h sccs.h zgets.h
+range.o: range.c system.h purify.h mdbm/mdbm.h sccs.h range.h
+newrev.o: newrev.c system.h purify.h mdbm/mdbm.h sccs.h
+getopt.o: getopt.c system.h purify.h mdbm/mdbm.h sccs.h
+popen.o: popen.c system.h purify.h mdbm/mdbm.h sccs.h
+libdiff.o: libdiff.c system.h purify.h mdbm/mdbm.h sccs.h
+sfiles.o: sfiles.c system.h purify.h mdbm/mdbm.h sccs.h
+platforminit.o: platforminit.c system.h purify.h mdbm/mdbm.h sccs.h
+purify.o: purify.c system.h purify.h mdbm/mdbm.h
+zgets.o: zgets.c zlib/zlib.h zlib/zconf.h zgets.h
+disksp.o: disksp.c system.h purify.h mdbm/mdbm.h config.h
+dirname.o: dirname.c config.h
+mdbm/mdbm.o: mdbm/mdbm.c mdbm/common.h mdbm/tune.h mdbm/mdbm.h
+mdbm/hash.o: mdbm/hash.c mdbm/mdbm.h
+mdbm/debug.o: mdbm/debug.c mdbm/common.h mdbm/tune.h mdbm/mdbm.h
+zlib/adler32.o: zlib/adler32.c zlib/zlib.h zlib/zconf.h
+zlib/compress.o: zlib/compress.c zlib/zlib.h zlib/zconf.h
+zlib/crc32.o: zlib/crc32.c zlib/zlib.h zlib/zconf.h
+zlib/gzio.o: zlib/gzio.c zlib/zutil.h zlib/zlib.h zlib/zconf.h
+zlib/uncompr.o: zlib/uncompr.c zlib/zlib.h zlib/zconf.h
+zlib/deflate.o: zlib/deflate.c zlib/deflate.h zlib/zutil.h zlib/zlib.h zlib/zconf.h
+zlib/trees.o: zlib/trees.c zlib/deflate.h zlib/zutil.h zlib/zlib.h zlib/zconf.h
 zlib/trees.o: zlib/trees.h
-zlib/zutil.o: zlib/zutil.h zlib/zlib.h zlib/zconf.h
-zlib/inflate.o: zlib/zutil.h zlib/zlib.h zlib/zconf.h zlib/infblock.h
-zlib/infblock.o: zlib/zutil.h zlib/zlib.h zlib/zconf.h zlib/infblock.h
-zlib/infblock.o: zlib/inftrees.h zlib/infcodes.h zlib/infutil.h
-zlib/inftrees.o: zlib/zutil.h zlib/zlib.h zlib/zconf.h zlib/inftrees.h
+zlib/zutil.o: zlib/zutil.c zlib/zutil.h zlib/zlib.h zlib/zconf.h
+zlib/inflate.o: zlib/inflate.c zlib/zutil.h zlib/zlib.h zlib/zconf.h zlib/infblock.h
+zlib/infblock.o: zlib/infblock.c zlib/zutil.h zlib/zlib.h zlib/zconf.h zlib/infblock.h
+zlib/infblock.o: zlib/infblock.c zlib/inftrees.h zlib/infcodes.h zlib/infutil.h
+zlib/inftrees.o: zlib/inftrees.c zlib/zutil.h zlib/zlib.h zlib/zconf.h zlib/inftrees.h
 zlib/inftrees.o: zlib/inffixed.h
-zlib/infcodes.o: zlib/zutil.h zlib/zlib.h zlib/zconf.h zlib/inftrees.h
+zlib/infcodes.o: zlib/infcodes.c zlib/zutil.h zlib/zlib.h zlib/zconf.h zlib/inftrees.h
 zlib/infcodes.o: zlib/infblock.h zlib/infcodes.h zlib/infutil.h
 zlib/infcodes.o: zlib/inffast.h
-zlib/infutil.o: zlib/zutil.h zlib/zlib.h zlib/zconf.h zlib/infblock.h
+zlib/infutil.o: zlib/infutil.c zlib/zutil.h zlib/zlib.h zlib/zconf.h zlib/infblock.h
 zlib/infutil.o: zlib/inftrees.h zlib/infcodes.h zlib/infutil.h
-zlib/inffast.o: zlib/zutil.h zlib/zlib.h zlib/zconf.h zlib/inftrees.h
+zlib/inffast.o: zlib/inffast.c zlib/zutil.h zlib/zlib.h zlib/zconf.h zlib/inftrees.h
 zlib/inffast.o: zlib/infblock.h zlib/infcodes.h zlib/infutil.h zlib/inffast.h
-delta.o: system.h purify.h mdbm/mdbm.h sccs.h comments.c
-get.o: system.h purify.h mdbm/mdbm.h sccs.h
-ci.o: system.h purify.h mdbm/mdbm.h sccs.h comments.c
-co.o: system.h purify.h mdbm/mdbm.h sccs.h
-admin.o: system.h purify.h mdbm/mdbm.h sccs.h
-diffs.o: system.h purify.h mdbm/mdbm.h sccs.h range.h
-clean.o: system.h purify.h mdbm/mdbm.h sccs.h
-prs.o: system.h purify.h mdbm/mdbm.h sccs.h range.h
-what.o: system.h purify.h mdbm/mdbm.h sccs.h
-sinfo.o: system.h purify.h mdbm/mdbm.h sccs.h
-sccssh.o: system.h purify.h mdbm/mdbm.h sccs.h get.c delta.c comments.c
-sccssh.o: admin.c
-sids.o: system.h purify.h mdbm/mdbm.h sccs.h
-smoosh.o: system.h purify.h mdbm/mdbm.h sccs.h
-sccslog.o: system.h purify.h mdbm/mdbm.h sccs.h range.h
-sfind.o: system.h purify.h mdbm/mdbm.h sccs.h
-renumber.o: system.h purify.h mdbm/mdbm.h sccs.h
-lines.o: system.h purify.h mdbm/mdbm.h sccs.h
-rmdel.o: system.h purify.h mdbm/mdbm.h sccs.h
-makepatch.o: system.h purify.h mdbm/mdbm.h sccs.h
-takepatch.o: system.h purify.h mdbm/mdbm.h sccs.h
-cset.o: system.h purify.h mdbm/mdbm.h sccs.h range.h comments.c host.c user.c
-g2sccs.o: system.h purify.h mdbm/mdbm.h sccs.h
-rangemain.o: system.h purify.h mdbm/mdbm.h sccs.h range.h
-zone.o: system.h purify.h mdbm/mdbm.h
-rechksum.o: system.h purify.h mdbm/mdbm.h sccs.h
-cset_todo.o: mdbm/mdbm.h
-sccs_mv.o: system.h purify.h mdbm/mdbm.h sccs.h comments.c
-sccsmv.o: system.h purify.h mdbm/mdbm.h sccs.h
-sccsrm.o: system.h purify.h mdbm/mdbm.h sccs.h comments.c
-sccscat.o: system.h purify.h mdbm/mdbm.h sccs.h range.h
-csetmark.o: system.h purify.h mdbm/mdbm.h sccs.h range.h
-key2rev.o: system.h purify.h mdbm/mdbm.h sccs.h
-rcs.o: system.h purify.h mdbm/mdbm.h sccs.h
-localtm.o: config.h system.h purify.h mdbm/mdbm.h
+delta.o: delta.c system.h purify.h mdbm/mdbm.h sccs.h comments.c
+get.o: get.c system.h purify.h mdbm/mdbm.h sccs.h
+ci.o: ci.c system.h purify.h mdbm/mdbm.h sccs.h comments.c
+co.o: co.c system.h purify.h mdbm/mdbm.h sccs.h
+admin.o: admin.c system.h purify.h mdbm/mdbm.h sccs.h
+diffs.o: diffs.c system.h purify.h mdbm/mdbm.h sccs.h range.h
+clean.o: clean.c system.h purify.h mdbm/mdbm.h sccs.h
+prs.o: prs.c system.h purify.h mdbm/mdbm.h sccs.h range.h
+what.o: what.c system.h purify.h mdbm/mdbm.h sccs.h
+sinfo.o: sinfo.c system.h purify.h mdbm/mdbm.h sccs.h
+sccssh.o: sccssh.c system.h purify.h mdbm/mdbm.h sccs.h get.c delta.c comments.c
+sccssh.o: sccssh.c admin.c
+sids.o: sids.c system.h purify.h mdbm/mdbm.h sccs.h
+smoosh.o: smoosh.c system.h purify.h mdbm/mdbm.h sccs.h
+sccslog.o: sccslog.c system.h purify.h mdbm/mdbm.h sccs.h range.h
+sfind.o: sfind.c system.h purify.h mdbm/mdbm.h sccs.h
+renumber.o: renumber.c system.h purify.h mdbm/mdbm.h sccs.h
+lines.o: lines.c system.h purify.h mdbm/mdbm.h sccs.h
+rmdel.o: rmdel.c system.h purify.h mdbm/mdbm.h sccs.h
+makepatch.o: makepatch.c system.h purify.h mdbm/mdbm.h sccs.h
+takepatch.o: takepatch.c system.h purify.h mdbm/mdbm.h sccs.h
+cset.o: cset.c system.h purify.h mdbm/mdbm.h sccs.h range.h comments.c host.c user.c
+g2sccs.o: g2sccs.c system.h purify.h mdbm/mdbm.h sccs.h
+rangemain.o: rangemain.c system.h purify.h mdbm/mdbm.h sccs.h range.h
+zone.o: zone.c system.h purify.h mdbm/mdbm.h
+rechksum.o: rechksum.c system.h purify.h mdbm/mdbm.h sccs.h
+cset_todo.o: cset_todo.c mdbm/mdbm.h
+sccs_mv.o: sccs_mv.c system.h purify.h mdbm/mdbm.h sccs.h comments.c
+sccsmv.o: sccsmv.c system.h purify.h mdbm/mdbm.h sccs.h
+sccsrm.o: sccsrm.c system.h purify.h mdbm/mdbm.h sccs.h comments.c
+sccscat.o: sccscat.c system.h purify.h mdbm/mdbm.h sccs.h range.h
+csetmark.o: csetmark.c system.h purify.h mdbm/mdbm.h sccs.h range.h
+key2rev.o: key2rev.c system.h purify.h mdbm/mdbm.h sccs.h
+rcs.o: rcs.c system.h purify.h mdbm/mdbm.h sccs.h
+localtm.o: localtm.c config.h system.h purify.h mdbm/mdbm.h
