@@ -4,9 +4,20 @@
 #
 # %W%
 #
-# Is there an environment variable so we know how to get files from teh
-# bk gui directory? Need to read in setup_messages.tcl and the bklogo.gif
 #
+# TODO: 
+#
+# 	Is there an environment variable so we know how to get files from the
+# 	bk gui directory? Need to read in setup_messages.tcl and the bklogo.gif
+#
+#	Add error checking for:
+#		ensure repository name does not have spaces
+#		validate all fields in entry widgets
+#
+#	Add check for .bkaccpted to augment the BK_ACCEPTED environment
+#	variable
+#
+
 
 # Read descriptions for the config options
 source setup_messages.tcl
@@ -115,8 +126,6 @@ proc license_check {}  \
 	    -height 24 \
 	    -width 80 \
 	    -wrap none
-	    #-width 300 \
-	    #-wrap none
 
 	scrollbar .lic.t.text.scrl \
 	    -command ".lic.t.text yview"
@@ -126,9 +135,11 @@ proc license_check {}  \
 	    -orient horizontal
 
 	set fid [open "|bk help bkl" "r"]
+
 	#while { [ gets $fid line ] >= 0 } {
 	#	.lic.t.text insert end $line
 	#}
+
 	.lic.t.text delete 1.0 end
 	while { ! [ eof $fid ]} {
 		.lic.t.text insert end [ read $fid 1000 ]
@@ -142,11 +153,6 @@ proc license_check {}  \
 
 	pack .lic.t -fill both -expand 1 
 
-	#pack .lic.t.text -side top -fill x
-
-	#pack .lic -side top -fill x
-
-	
 	dialog_bottom .lic Agree "Don't Agree"
 
 
@@ -216,7 +222,7 @@ proc create_repo {} \
 {
 	global st_cinfo env st_repo_name
 
-	set des "\'$st_cinfo(des)\'"
+	regsub -all {\ } $st_cinfo(des) {\\ }  escaped_des
 
 	# save config info back to users .bkrc file
 	save_config_info
@@ -226,10 +232,13 @@ proc create_repo {} \
 
 	set cfile "/tmp/config"
 	
+	#puts "=========>Repo Name: ($st_repo_name) Description: ($des)"
 	# XXX wrap with catch and return valid return code
-	set fid [open "|bk setup -f -c$cfile -n$des $st_repo_name" w]
+	set fid [open "|bk setup -f -c$cfile -n'$escaped_des' $st_repo_name" w]
 
-	close $fid $cfid
+	close $fid 
+	close $cfid
+
 	return 0
 }
 
