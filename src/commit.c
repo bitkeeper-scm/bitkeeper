@@ -632,6 +632,7 @@ config(FILE *f)
 	pclose(f1);
 	fputs("\n", f);
 
+	fprintf(f, "%-10s %s\n", "Time_t:", bk_time);
 	fprintf(f, "%-10s %s", "User:", sccs_getuser());
 	fprintf(f, "\n%-10s %s", "Host:", sccs_gethost());
 	p = sccs_root(0);

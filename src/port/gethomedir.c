@@ -14,7 +14,10 @@ getHomeDir()
 	int	len = MAXPATH;
 #define KEY "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders"
 
-	if (!getReg(KEY, "AppData", home_buf, &len)) return (NULL);
+	if (!getReg(HKEY_CURRENT_USER,
+				KEY, "AppData", home_buf, &len)) {
+		return (NULL);
+	}
 	GetShortPathName(home_buf, tmp, MAXPATH);
 	localName2bkName(home_buf, home_buf);
 	concat_path(tmp, tmp, "BitKeeper");

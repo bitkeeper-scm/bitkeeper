@@ -15,7 +15,10 @@ globalroot()
 #define KEY "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders"
 
 	if (globalRoot) return (globalRoot);	/* cached */
-	if (!getReg(KEY, "Common AppData", buf, &len)) return (NULL);
+	if (!getReg(HKEY_LOCAL_MACHINE,
+				KEY, "Common AppData", buf, &len)) {
+		return (NULL);
+	}
 	GetShortPathName(buf, tmp, MAXPATH);
 	localName2bkName(tmp, tmp);
         globalRoot = strdup(tmp);

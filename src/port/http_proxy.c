@@ -259,14 +259,14 @@ get_http_proxy()
 
 #else /* WIN32 */
 int
-getReg(char *key, char *valname, char *valbuf, int *buflen)
+getReg(HKEY hive, char *key, char *valname, char *valbuf, int *buflen)
 {
         int rc;
         HKEY    hKey;
         DWORD   valType = REG_SZ;
 
 	valbuf[0] = 0;
-        rc = RegOpenKeyEx(HKEY_CURRENT_USER, key, 0, KEY_QUERY_VALUE, &hKey);
+        rc = RegOpenKeyEx(hive, key, 0, KEY_QUERY_VALUE, &hKey);
         if (rc != ERROR_SUCCESS) return (0);
 
         rc = RegQueryValueEx(hKey,valname, NULL, &valType, valbuf, buflen);
@@ -314,12 +314,15 @@ get_http_proxy()
 	int proxy_port, len = sizeof(buf);
 	char **proxies = NULL;
 
-	getReg(KEY, "AutoConfigURL", buf, &len);
+	getReg(HKEY_CURRENT_USER, KEY, "AutoConfigURL", buf, &len);
 	if (buf[0]) {
 		proxies = get_config(buf, proxies);
 	} else {
 		len = sizeof(buf);  /* important */
-		if (getReg(KEY, "ProxyServer", buf, &len) == 0) return NULL;
+		if (getReg(HKEY_CURRENT_USER,
+					KEY, "ProxyServer", buf, &len) == 0) {
+			return NULL;
+		}
 		/*
 		 * We support 3 froms:
 		 * 1) host:port
