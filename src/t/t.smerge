@@ -519,7 +519,7 @@ bk delta $Q -ynone fdiffm
 bk smerge -Im -f fdiffm 1.1 1.1.1.1 > fdiffm_R
 bk smerge $D3 -Im -f fdiffm 1.1 1.1.1.1 > fdiffm_RD3
 cat <<EOF > fdiffm_D
-M 0
+M
  1.1.1.1       | branch
 L
  1.1           | a
@@ -527,16 +527,16 @@ s
 R
 -1.1           | a
 +1.1.1.1       | branch
-E 4
+E
  1.1           | b
  1.1           | c
-M 5
+M
  1.1.1.1       | branch end
 L
 s
 R
 +1.1.1.1       | branch end
-E -1
+E
 EOF
 cmp -s fdiffm_R fdiffm_D || {
 	echo failed
