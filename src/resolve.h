@@ -49,7 +49,6 @@ typedef struct {
 	int	hadConflicts;	/* conflicts during automerge */
 	int	pass;		/* which pass are we in now */
 	char	*comment;	/* checkin comment for commit */
-	char	*mergeprog;	/* program to merge with */
 	int	renames;	/* count of renames processed in pass 1 */
 	int	renames2;	/* count of renames processed in pass 2 */
 	int	resolved;	/* count of files resolved in pass 3 */

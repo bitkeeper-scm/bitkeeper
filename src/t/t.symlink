@@ -48,7 +48,7 @@ echo OK
 rm -f symlink
 echo $N Check checkout of symlink ...................................$NL
 bk co $Q symlink
-if [ ! -h symlink ]; then echo failed; fi
+if [ ! -h symlink ]; then echo failed; exit 1; fi
 mv file.tmp file
 cmp -s symlink file
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
@@ -80,7 +80,7 @@ bk prs -h -d':I:\n' symlink > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 bk co $Q symlink
-if [ ! -h symlink ]; then echo failed; fi
+if [ ! -h symlink ]; then echo failed; exit 1; fi
 mv file2.tmp file2
 cmp -s symlink file2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
@@ -123,7 +123,7 @@ if [ $? -ne 0 ]; then echo Failed - got `cat CMP2`; exit 1; fi
 bk ci $Q -y symlink
 rm -f symlink
 bk co $Q symlink
-if [ ! -h symlink ]; then echo failed; fi
+if [ ! -h symlink ]; then echo failed; exit 1; fi
 cmp -s symlink file3
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
@@ -207,7 +207,7 @@ if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N Test sfile -c on symlink ....................................$NL
 bk co $Q -l symlink
-if [ ! -h symlink ]; then echo failed; fi
+if [ ! -h symlink ]; then echo failed; exit 1; fi
 CNT=`bk sfiles -c symlink | wc -l`
 if [ $CNT != 0 ]; then echo failed; exit 1; fi
 rm -f symlink

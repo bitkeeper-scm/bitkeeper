@@ -77,9 +77,9 @@ For detailed help on the merge process, see
 Run only pass 1; similarly for 2 3 and 4.
 .tp
 .B \-a
-Automerge.  This will run a diff3\-based merge of
-all non\-overlapping lines.  If there are overlapping
-lines in merged files, the merge will fail and the files
+Automerge.  This will run 'bk smerge -ac' to attempt to automerge
+the file.  If any changes failed to successfully automerge, 
+the merge will fail and the files
 will not be resolved; you have to run resolve again
 without the 
 .B \-a
@@ -111,16 +111,6 @@ Log operations to
 This option is to provide for audit trails; support is not
 yet complete.
 .tp
-.OPTreq \-m merge
-Use 
-.ARG merge
-as the merge program called when you press "m"
-in the content resolver.  The merge program takes four file
-arguments: the local version of the file, the ancestor
-version of the file, the remote version of the file,
-and the merged file.  It is the job of the merge program
-to merge the changes into the merge file. 
-.tp
 .B \-q
 Be quiet.
 .tp
@@ -147,9 +137,9 @@ is not present, resolve will prompt for one
 at commit time.
 .SH "SEE ALSO"
 .SA csets 1
-.SA merge 1
 .SA pull 1
 .SA push 1
 .SA resync 1
+.SA smerge 1
 .SH CATEGORY
 .B Repository

@@ -67,7 +67,7 @@ resolve_main(int ac, char **av)
 	setmode(0, _O_TEXT);
 	unless (localDB) localDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	unless (resyncDB) resyncDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
-	while ((c = getopt(ac, av, "l|y|m;aAcdFqrtv1234")) != -1) {
+	while ((c = getopt(ac, av, "l|y|aAcdFqrtv1234")) != -1) {
 		switch (c) {
 		    case 'a': opts.automerge = 1; break;	/* doc 2.0 */
 		    case 'A': opts.advance = 1; break;		/* doc 2.0 */
@@ -82,7 +82,6 @@ resolve_main(int ac, char **av)
 				opts.log = stderr;
 			}
 			break;
-		    case 'm': opts.mergeprog = optarg; break;	/* doc 2.0 */
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
 		    case 'r': opts.remerge = 1; break;		/* doc 2.0 */
 		    case 't': opts.textOnly = 1; break;		/* doc 2.0 */
@@ -98,7 +97,6 @@ resolve_main(int ac, char **av)
 			exit(1);
 		}
     	}
-	unless (opts.mergeprog) opts.mergeprog = "smerge";
 	if ((av[optind] != 0) && isdir(av[optind])) chdir(av[optind]);
 
 	if (opts.pass3 && !opts.textOnly && !hasGUIsupport()) {
@@ -1833,7 +1831,7 @@ automerge(resolve *rs)
 	 * and the program must return as follows:
 	 * 0 for no overlaps, 1 for some overlaps, 2 for errors.
 	 */
-	ret = sysio(0, rs->s->gfile, 0, "bk", rs->opts->mergeprog, "-a",
+	ret = sysio(0, rs->s->gfile, 0, "bk", "smerge", "-ac",
 		    rs->revs->local, rs->revs->gca, rs->revs->remote, 
 		    rs->s->gfile, SYS);
 	if (ret == 0) {

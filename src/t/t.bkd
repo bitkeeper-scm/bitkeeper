@@ -115,7 +115,7 @@ bk ci $Q -i aoo.c
 bk commit $Q -ycset1
 bk push $Q -z6 bk://localhost:$P
 cd $HERE/copy/src
-if [ ! -f SCCS/s.aoo.c ]; then echo failed; fi
+if [ ! -f SCCS/s.aoo.c ]; then echo failed; exit 1; fi
 echo OK
 echo $N clone a tree via bkd ........................................$NL
 cd $HERE/project
@@ -127,7 +127,7 @@ do	P=`expr $P + 1`
 done
 bk clone $Q bk://localhost:$P $HERE/copy2
 cd $HERE/copy2/src
-if [ ! -f SCCS/s.aoo.c ]; then echo failed; fi
+if [ ! -f SCCS/s.aoo.c ]; then echo failed; exit 1; fi
 echo OK
 echo $N "pull a new changeset via bkd -xcd -xpush " ...................$NL
 cd $HERE/project/src

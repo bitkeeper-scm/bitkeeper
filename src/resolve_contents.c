@@ -126,12 +126,12 @@ c_merge(resolve *rs)
 	char	*args = "-a";
 	
 	if (rs->args) args = rs->args;
-	ret = sysio(0, rs->s->gfile, 0, "bk", rs->opts->mergeprog, args,
+	ret = sysio(0, rs->s->gfile, 0, "bk", "smerge", args,
 		    n->local, n->gca, n->remote, 
 		    rs->s->gfile, SYS);
 	sccs_restart(rs->s);
 	unless (WIFEXITED(ret)) {
-	    	fprintf(stderr, "Cannot execute '%s'\n", rs->opts->mergeprog);
+	    	fprintf(stderr, "Cannot execute 'bk smerge'\n");
 		rs->opts->errors = 1;
 		return (0);
 	}

@@ -8,9 +8,9 @@ private void
 mkgfile(sccs *s, char *rev, char *path, char *tmpdir, char *tag,
 					int fix_mod_time, MDBM *db)
 {
-	char *p, tmp_path[MAXPATH];
-	delta *d;
-	int flags = SILENT;
+	char	tmp_path[MAXPATH];
+	delta	*d;
+	int	flags = SILENT;
 
 	sprintf(tmp_path, "%s/%s/%s", tmpdir, tag, path);
 	if (isNullFile(rev, path))  return;
@@ -144,7 +144,6 @@ print_entry(char *path1, char *rev1, char *path2, char *rev2)
 private void
 print_cset_log(char *cset1, char *cset2)
 {
-	char buf[MAXLINE];
 	char revs[50], xrev[50];
 	char *dspec =
 "-d# :D:\t:P:@:HT:\t:I:\n$each(:C:){# (:C:)\n}# --------------------------------------------\n";
@@ -166,6 +165,7 @@ done:	printf("#\n");
 	fflush(stdout);
 }
 
+int
 gnupatch_main(int ac, char **av)
 {
 	char buf[MAXPATH * 3];
@@ -174,7 +174,7 @@ gnupatch_main(int ac, char **av)
 	char *cset1 = 0,  *cset2 = 0;
 	char *diff_style = 0;
 	char diff_opts[50] ;
-	char *diff_av[] = { "diff", diff_opts, "a", "b", 0 };
+	char *diff_av[] = { "diff", "--minimal", diff_opts, "a", "b", 0 };
 	char *clean_av[] = { "rm", "-rf", tmpdir, 0 };
 	int  c, rfd, header = 1, fix_mod_time = 0, got_start_header = 0;
 	FILE *pipe;

@@ -15,7 +15,7 @@ LD	=cc
 CC_DEBUG=-g
 CC_FAST_DEBUG=-g -O2
 CC_FAST	=$(CC_FAST_DEBUG)
-CC_WALL=-g -DWALL -DLINT -Wall -Wno-parentheses -Wno-char-subscripts
+CC_WALL=-g -DLINT -Wall -Wno-parentheses -Wno-char-subscripts
 INSTALL=install
 XTRA=
 #UWTLIB is used on win32 only - passed in from build.sh
