@@ -126,7 +126,7 @@ usage:			fprintf(stderr, "get: usage error, try get --help\n");
 			}
 		}
 		if (!s->tree) {
-			if (!(s->state & SFILE)) {
+			if (!(s->state & S_SFILE)) {
 				fprintf(stderr, "co: %s doesn't exist.\n",
 				    s->sfile);
 			} else {
@@ -136,7 +136,7 @@ usage:			fprintf(stderr, "get: usage error, try get --help\n");
 			continue;
 		}
 		if (cdate) {
-			s->state |= RANGE2;
+			s->state |= S_RANGE2;
 			d = sccs_getrev(s, 0, cdate, ROUNDUP);
 			if (!d) {
 				fprintf(stderr,

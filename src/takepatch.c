@@ -188,7 +188,7 @@ sccs	*sccs_getperfile(FILE *, int *);
 			    "takepatch: %s is edited\n", name);
 			cleanup(CLEAN_RESYNC);
 		}
-		if (s->state & PFILE) {
+		if (s->state & S_PFILE) {
 			fprintf(stderr, 
 			    "takepatch: %s is locked.\n", s->sfile);
 			exit(1);
@@ -421,7 +421,7 @@ applyPatch(int flags)
 		exit(1);
 	}
 	if (!s->tree) {
-		if (!(s->state & SFILE)) {
+		if (!(s->state & S_SFILE)) {
 			fprintf(stderr,
 			    "takepatch: no s.file %s\n", p->resyncFile);
 		} else {
@@ -483,13 +483,17 @@ apply:
 				iF = fopen(p->initFile, "r");
 				dF = fopen(p->diffFile, "r");
 				newflags = (echo > 2) ?
-				    NOCKSUM|FORCE|BRANCHOK|PATCH :
-				    NOCKSUM|FORCE|BRANCHOK|PATCH|SILENT;
+				    //NOCKSUM|FORCE|BRANCHOK|PATCH :
+				    NOCKSUM|FORCE|PATCH :
+				    //NOCKSUM|FORCE|BRANCHOK|PATCH|SILENT;
+				    NOCKSUM|FORCE|PATCH|SILENT;
 				if (sccs_delta(s, newflags, 0, iF, dF)) {
 					perror("delta");
 					exit(1);
 				}
-				if (s->state & BAD_DSUM) cleanup(CLEAN_RESYNC);
+				if (s->state & S_BAD_DSUM) {
+					cleanup(CLEAN_RESYNC);
+				}
 				fclose(iF);	/* dF done by delta() */
 			}
 		} else {
@@ -506,19 +510,21 @@ apply:
 			dF = fopen(p->diffFile, "r");
 			d = 0;
 			newflags = (echo > 2) ?
-			    NOCKSUM|NEWFILE|FORCE|BRANCHOK|PATCH :
-			    NOCKSUM|NEWFILE|FORCE|BRANCHOK|PATCH|SILENT;
+			    //NOCKSUM|NEWFILE|FORCE|BRANCHOK|PATCH :
+			    NOCKSUM|NEWFILE|FORCE|PATCH :
+			    //NOCKSUM|NEWFILE|FORCE|BRANCHOK|PATCH|SILENT;
+			    NOCKSUM|NEWFILE|FORCE|PATCH|SILENT;
 			if (newProject &&
 			    streq("RESYNC/SCCS/s.ChangeSet", p->resyncFile)) {
 				d = calloc(1, sizeof(*d));
 				d->rev = strdup("1.0");
-				s->state |= ONE_ZERO;
+				s->state |= S_ONE_ZERO;
 			}
 			if (sccs_delta(s, newflags, d, iF, dF)) {
 				perror("delta");
 				exit(1);
 			}
-			if (s->state & BAD_DSUM) cleanup(CLEAN_RESYNC);
+			if (s->state & S_BAD_DSUM) cleanup(CLEAN_RESYNC);
 			fclose(iF);	/* dF done by delta() */
 			sccs_free(s);
 			s = sccs_init(p->resyncFile, 0);

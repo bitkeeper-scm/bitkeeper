@@ -36,7 +36,8 @@ int
 main(int ac, char **av)
 {
 	sccs	*s;
-	int	flags = FORCE|BRANCHOK;
+	//int	flags = FORCE|BRANCHOK;
+	int	flags = FORCE;
 	int	c;
 	char	*initFile = 0;
 	char	*diffsFile = 0;

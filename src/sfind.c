@@ -355,7 +355,7 @@ caches(const char *filename, const struct stat *sb, int flag)
 	}
 
 	/* find the leaf of the current LOD and check it */
-	sc->state |= RANGE2;
+	sc->state |= S_RANGE2;
 	unless (d = sccs_getrev(sc, 0, 0, 0)) {
 		sccs_free(sc);
 		return (0);
