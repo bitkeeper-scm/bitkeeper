@@ -1,0 +1,305 @@
+.\" @(#) %K%
+.so .bitmacros
+.TH RESOLVE 5 "May 1998" "BitMover, Inc." BitSCCS
+.SH NAME
+resolve \- layout of a conflict resolution directory, and related issues
+.SH DESCRIPTION
+A
+.B RESOLVE
+directory is created by
+.XR takepatch 1
+or any of the higher level commands that use it (e.g.
+.XR resync 1 ).
+It contains all the information that
+.XR resolve 1
+needs to resolve conflicting changes and apply the patch to the
+repository atomically.
+.PP
+.B RESOLVE
+appears at the top level of a \*(BS repository when a patch has been
+received and fully extracted.  (See
+.BR LOCKING ,
+below.)  It contains a subset of the
+.BR s. files
+in the repository.  (If files are created by the patch, it will not be
+a proper subset.)  The
+.I ChangeSet
+file is always modified by a patch, and therefore always appears in
+the
+.B RESOLVE
+directory.
+.PP
+If a file has been modified only in the patch,
+.B takepatch
+will apply all the changes to that file and leave a well-formed
+.BR s. file
+in the
+.B RESOLVE
+directory.  If the file has been renamed by the patch, it will appear
+in its new location.  If a file is not modified at all by a patch, it
+will not appear in the
+.B RESOLVE
+directory.
+.PP
+If a file has been modified both in a patch and in the repository to
+which the patch is applied,
+.B takepatch
+will create an
+.BR r. file
+in addition to the
+.BR s. file.
+The
+.BR s. file
+will contain both sets of changes, but the changes made by the patch
+will be placed on a branch.  This branch is
+.I not
+a line of development; it is a low level \*S branch.  The
+.BR s. file
+is therefore ill-formed.
+.B resolve
+must merge the changes together and add a new delta to the file which
+records the merge.  If the changes do not conflict in the sense of
+overlapping text, the merge may be as simple as including the branch
+into the new delta and marking the branch as merged.  Or it may not.
+Human inspection is generally required.
+.PP
+The
+.BR r. file
+contains information which
+.B resolve
+uses to determine how to merge the changes.  It contains a single line
+of text:
+.DS
+\f(CWmerge deltas \fIleft gca right\fR
+.DE
+where
+.IR left ", " gca ", and " right
+are revision numbers.
+.IR left " and  right
+are the two revs that must be merged.
+.I gca
+is their greatest common ancestor.  (This may be the result of a
+previous merge between two parallel lines of development.)  It is
+the diffs between
+.IR gca " and " left ,
+and
+.IR gca " and " right
+that must be reconciled.  Note that either
+.IR left " or " right
+may be the branch depending on timing.  The left revision is always
+the older,
+.\" XXX is that true?
+but the changes introduced by the patch are always on the branch.
+.PP
+When
+.B resolve
+is done reconciling the differences between the
+.IR left " and " right
+revs, it checks in the result as a new delta in the
+.BR s. file
+and deletes the
+.BR r. file.
+.PP
+Files which have been renamed on one side and modified on the other,
+or renamed on both sides, are somewhat more complicated to deal with.
+.B takepatch
+creates the same
+.BR r. file
+and
+.BR s. file
+as it would for a content merge.  It also creates an
+.BR m. file
+whose format is
+.DS
+\f(CWrename \fIleft gca right\fR
+.DE
+Here
+.IR left ", " gca ", and " right
+are path names.  They correspond to the
+.IR left ", " gca ", and " right
+revision numbers found in the 
+.BR r. file.
+.PP
+All rename conflicts must be processed before any content conflicts
+can be examined.  This is because the additional delta created by
+conflict resolution will record the wrong pathname otherwise.  To
+process a rename conflict,
+.B resolve
+chooses (with help from the user) one of the two possible locations
+for the file.  It then renames the
+.BR s. file,
+not directly to its final location, but to an
+.BR x. file
+located and named identically to the final
+.BR s. file
+except for the
+.BR x .
+The
+.BR r. file
+is likewise renamed, to an
+.BR w. file
+residing next to the
+.BR x. file.
+The
+.BR m. file
+is then deleted.
+The purpose of this extra layer of indirection is to ensure that
+.B resolve
+does not attempt to rename one file on top of another.  Once all of
+the renames have been processed,
+.B resolve
+renames each
+.BR x. file
+to an
+.BR s. file
+and each
+.BR w. file
+to an
+.BR r. file.
+At this stage, it is a constraint that for each
+.BR x. file,
+no
+.BR s. file
+with the same name shall exist.  Content conflicts are now processed
+just as they would have been if there were no rename to worry about.
+.\" XXX what about metadata change conflicts?
+.PP
+The eventual result of all this processing is a
+.B RESOLVE
+directory that contains no
+.B r.
+or
+.BR m. files.
+All of the changes induced by the merge process are now committed as a
+new change set.  Finally,
+.B resolve
+renames each
+.BR s. file
+out of the
+.B RESOLVE
+directory into its normal location.
+.SH LOCKING
+There are several different places in the
+.B takepatch
+and
+.B resolve
+sequence where it is necessary to ensure that only one process is
+modifying a directory tree.  First, only one
+.B takepatch
+process may be creating a
+.B RESOLVE
+tree at any given time.  Second, no
+.B resolve
+process may operate on a tree which is still being constructed by
+.BR takepatch .
+Third, only one
+.B resolve
+process may operate on a
+.B RESOLVE
+tree at any given time.  Fourth, no operations other than
+.B resolve
+can be
+permitted on a repository which contains a
+.B RESOLVE
+tree.  It is especially bad if there are pending changes in the
+``outer'' repository when it comes time to insert merged
+.BR s. files
+into the tree.
+.PP
+.B takepatch
+initially creates a
+.B RESOLVE
+tree in a directory named
+.BR RESYNC .
+Only when the tree is complete is it renamed to
+.BR RESOLVE .
+This prevents
+.B resolve
+from beginning operations until all the preliminary work is done.
+.B takepatch
+prevents concurrent attempts to create the
+.B RESYNC
+tree by relying on the exclusivity of the
+.XR mkdir 2
+operation: if two processes attempt to create the same directory
+simultaneously, only one will succeed.  The loser of the race simply
+deposits the patch it would like to apply in the
+.B PENDING
+directory and exits.
+.PP
+The third lock is similar to the second.  It is guaranteed that a
+.B RESOLVE
+directory contains the subdirectory BitKeeper/tmp.
+.B resolve
+creates a file in that directory containing its PID.  File creation
+is also exclusive (when this is requested), so only one resolve
+process will get into the directory.  If
+.B resolve
+does not complete operations for whatever reason (short of kill -9),
+it will delete the pidfile so that other processes may attempt the
+merge.
+.PP
+The fourth lock is more elaborate.  When
+.B resolve
+is ready to begin moving files out of the
+.B RESOLVE
+directory, it first obtains write locks
+.RB ( p. files)
+on all of the
+.BR s. files 
+it will replace.  If it cannot acquire all of these locks, it abandons
+operations.  It then inspects each modified
+.BR s. file.
+If any is found to contain changes which are not in the merged
+sources, again it aborts operations.  The set of locked files is
+guaranteed to include the 
+.I ChangeSet 
+file, since that file is modified
+by all merge operations.  (The
+.BR p. lock
+on 
+.I ChangeSet
+is acquired last.)
+Once all the files are locked and verified,
+.B resolve
+renames each of the old
+.BR s. files
+out of the way (to
+.BR b. file)
+and moves its replacement into place.  If an error
+occurs at any point, the entire operation is unwound.  Finally,
+.B resolve
+deletes all of the backup files and releases the
+.BR p. locks.
+The very last operation is to remove the
+.B RESOLVE
+tree.
+.SH FILES
+.TP 20
+.PD 0
+.BR s. file
+SCCS history file
+.TP
+.BR r. file
+file recording a content conflict
+.TP
+.BR m. file
+file recording a rename conflict
+.TP
+.BR x. "file, " w. file
+temporary names
+.TP
+.BR p. file
+write lock
+.TP
+.BR b. file
+backup file
+.PD
+.SH "SEE ALSO"
+.nh
+.na
+.XR bitsccs 1 ,
+.XR resolve 1 ,
+.XR takepatch 1 ,
+.XR resync 1 ,
+.XR sccsfile 5
