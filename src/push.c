@@ -41,9 +41,9 @@ push_main(int ac, char **av)
 		switch (c) {
 		    case 'a': opts.autopull = 1; break;	/* doc 2.0 */
 		    case 'c': try = atoi(optarg); break;	/* doc 2.0 */
-		    case 'd': opts.debug = 1; break;	/* undoc? 2.0 */
-		    case 'e': opts.metaOnly = 1; break;	/* undoc? 2.0 */
-		    case 'E': 	/* undoc? 2.0 */
+		    case 'd': opts.debug = 1; break;	/* undoc 2.0 */
+		    case 'e': opts.metaOnly = 1; break;	/* undoc 2.0 */
+		    case 'E': 	/* doc 2.0 */
 				envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'i': opts.forceInit = 1; break;	/* undoc? 2.0 */
 		    case 'l': opts.list++; break;	/* doc 2.0 */

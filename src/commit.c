@@ -40,13 +40,13 @@ commit_main(int ac, char **av)
 		switch (c) {
 		    case 'a':	opts.alreadyAsked = 1; break;	/* doc 2.0 */
 		    case 'd': 	doit = 1; break;	/* doc 2.0 */
-		    case 'f':	strcpy(pendingFiles, optarg); break;	/* undoc? 2.0 */
+		    case 'f':	strcpy(pendingFiles, optarg); break;	/* undoc 2.0 */
 		    case 'F':	force = 1; break;	/* doc 2.0 */
-		    case 'L':	opts.lod = 1; break;	/* undoc? 2.0 */
+		    case 'L':	opts.lod = 1; break;	/* undoc 2.0 - lod related */
 		    case 'R':	BitKeeper = "../BitKeeper/";	/* doc 2.0 */
 				opts.resync = 1;
 				break;
-		    case 's':	/* fall thru  */	/* internal */	/* undoc? 2.0 */
+		    case 's':	/* fall thru  */	/* internal */	/* undoc 2.0 */
 		    case 'q':	opts.quiet = 1; break;	/* doc 2.0 */
 		    case 'S':	sym = optarg; break;	/* doc 2.0 */
 		    case 'y':	doit = 1; getcomment = 0;	/* doc 2.0 */

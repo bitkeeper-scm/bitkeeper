@@ -21,7 +21,7 @@ lock_main(int ac, char **av)
 	while ((c = getopt(ac, av, "lqrsw")) != -1) {
 		switch (c) {
 		    case 'q': /* fall thru */	/* doc 2.0 */
-		    case 's': silent = 1; break;	/* undoc? 2.0 */
+		    case 's': silent = 1; break;	/* undoc 2.0 */
 		    case 'l':	/* doc 2.0 */
 		    case 'r':	/* doc 2.0 */
 		    case 'w':	/* doc 2.0 */

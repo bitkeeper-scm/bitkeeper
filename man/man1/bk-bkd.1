@@ -12,6 +12,8 @@ bk bkd \- the \*(BK daemon
 .Bc ] [
 .OPTreq \-p psrt
 .Bc ] [
+.OPTreq \-s dir
+.Bc ] [
 .OPTreq \-t num
 .Bc ] [
 .OPTreq \-u uid
@@ -207,6 +209,12 @@ Write the pid of daemon process into this file at startup.
 Specify an alternative port.  The default port is currently
 0x3962 (aka 14690) but that will change once we get a
 reserved port. 
+.tp
+.B \-R
+Shutdown the bkd.  
+.tp
+.OPTreq \-s dir
+Specify the start directory of the bkd.
 .tp
 .OPTreq \-t num
 Exit after 

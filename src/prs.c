@@ -44,7 +44,7 @@ prs_main(int ac, char **av)
 		    case 'o': opposite = 1; doheader = 0; break;	/* doc 2.0 */
 		    case 'x': xrev = optarg; break;	/* doc 2.0 */
 		    case 'v': noisy = 1; break;	/* doc 2.0 */
-		    case 'Y': year4 = strdup("BK_YEAR4=1");	/* undoc? 2.0 */
+		    case 'Y': year4 = strdup("BK_YEAR4=1");	/* undoc 2.0 */
 			      putenv(year4);
 			      break;
 		    RANGE_OPTS('c', 'r');	/* doc 2.0 */

@@ -5,6 +5,8 @@
 bk clone \- create a new copy of a package
 .SH SYNOPSIS
 .Bc bk clone [\-q] [ 
+.OPTequal E envvar val
+.BC ] [
 .OPTreq \-r rev
 .Bc ] [
 .OPTopt \-z 0\-9
@@ -43,6 +45,13 @@ from the child before the clone completes.
 .TP \w'\-r<rev>\ 'u
 .B \-q
 Run quietly.
+.tp
+.OPTequal E envvar val
+Export environment variable,
+.ARG envvar
+with value,
+.ARG val
+to remote site.
 .tp
 .OPTreq \-r rev
 Clone the repository up to and including cset 

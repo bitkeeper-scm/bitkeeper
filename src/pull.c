@@ -44,9 +44,9 @@ pull_main(int ac, char **av)
 		    case 'q': opts.quiet = 1; break;	/* doc 2.0 */
 		    case 'r': opts.noresolve = 1; break;	/* doc 2.0 */
 		    case 't': opts.textOnly = 1; break;	/* doc 2.0 */
-		    case 'd': opts.debug = 1; break;	/* undoc? 2.0 */
-		    case 'e': opts.metaOnly = 1; break;	/* undoc? 2.0 */
-		    case 'E': 	/* undoc? 2.0 */
+		    case 'd': opts.debug = 1; break;	/* undoc 2.0 */
+		    case 'e': opts.metaOnly = 1; break;	/* undoc 2.0 */
+		    case 'E': 	/* doc 2.0 */
 				envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'c': try = atoi(optarg); break;	/* doc 2.0 */
 		    case 'z':	/* doc 2.0 */

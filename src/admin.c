@@ -63,7 +63,7 @@ admin_main(int ac, char **av)
 		    case 'f':	/* doc 2.0 */
 				OP(f, optarg, A_ADD); new_delta = 1; break; 
 		    case 'F':	/* doc 2.0 */
-		    case 'd':	/* undoc? 2.0 */	
+		    case 'd':	/* doc 2.0; same as -F asked awc */	
 				OP(f, optarg, A_DEL); new_delta = 1; break; 
 		/* new file options */
 		    case 'i':	newfile = optarg ? optarg : "-";	/* doc 2.0 */

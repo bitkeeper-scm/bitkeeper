@@ -107,7 +107,7 @@ takepatch_main(int ac, char **av)
 	debug_main(av);
 	while ((c = getopt(ac, av, "acFf:imqsStv")) != -1) {
 		switch (c) {
-		    case 'q':	/* undoc? 2.0 */
+		    case 'q':	/* undoc 2.0 */
 		    case 's':	/* undoc 2.0 */
 			/* undoc, Ignored for option consistency.  */
 			break;

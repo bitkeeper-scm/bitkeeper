@@ -33,7 +33,7 @@ export_main(int ac,  char **av)
 		    case 'h':	hflag = 1; break; /*disbale patch header*/ /* doc 2.0 */
 		    case 'k':	kflag = 1; break;	/* doc 2.0 */
 		    case 'r':	rev = optarg; break;	/* doc 2.0 */
-		    case 't':	if (type) goto usage;	/* undoc? 2.0 */
+		    case 't':	if (type) goto usage;	/* doc 2.0 */
 				type = optarg; 
 				if (!streq(type, "patch") &&
 				    !streq(type, "plain")) {

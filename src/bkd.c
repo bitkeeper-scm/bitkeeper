@@ -38,7 +38,7 @@ bkd_main(int ac, char **av)
 
 	while ((c = getopt(ac, av, "c:dDeE:hHil|L:p:P:qRs:St:u:x:")) != -1) {
 		switch (c) {
-		    case 'c': Opts.count = atoi(optarg); break;	/* undoc? 2.0 */
+		    case 'c': Opts.count = atoi(optarg); break;	/* doc 2.0 */
 		    case 'd': Opts.daemon = 1; break;	/* doc 2.0 */
 		    case 'D': Opts.debug = 1; break;	/* doc 2.0 */
 		    case 'e': Opts.errors_exit = 1; break;	/* doc 2.0 */
@@ -55,10 +55,10 @@ bkd_main(int ac, char **av)
 		    case 'P': Opts.pidfile = optarg; break;	/* doc 2.0 */
 		    case 'q': Opts.quiet = 1; break; /* undoc? 2.0 */
 #ifdef WIN32
-		    case 'E': putenv((strdup)(optarg)); break;	/* undoc? 2.0 */
-		    case 's': Opts.startDir = optarg; break;	/* undoc? 2.0 */
-		    case 'S': Opts.start = 1; Opts.daemon = 1; break;	/* undoc? 2.0 */
-		    case 'R': Opts.remove = 1; Opts.daemon = 1; break;	/* undoc? 2.0 */
+		    case 'E': putenv((strdup)(optarg)); break;	/* undoc 2.0 */
+		    case 's': Opts.startDir = optarg; break;	/* doc 2.0 */
+		    case 'S': Opts.start = 1; Opts.daemon = 1; break;	/* undoc 2.0 */
+		    case 'R': Opts.remove = 1; Opts.daemon = 1; break;	/* doc 2.0 */
 #endif
 		    case 't': Opts.alarm = atoi(optarg); break;	/* doc 2.0 */
 		    case 'u': uid = optarg; break;	/* doc 2.0 */

@@ -46,8 +46,8 @@ clone_main(int ac, char **av)
 	opts.gzip = 6;
 	while ((c = getopt(ac, av, "dE:qr;z|")) != -1) {
 		switch (c) {
-		    case 'd': opts.debug = 1; break;	/* undoc? 2.0 */
-		    case 'E': 	/* undoc? 2.0 */
+		    case 'd': opts.debug = 1; break;	/* undoc 2.0 */
+		    case 'E': 	/* doc 2.0 */
 				envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'q': opts.quiet = 1; break;	/* doc 2.0 */
 		    case 'r': opts.rev = optarg; break;	/* doc 2.0 */

@@ -104,7 +104,7 @@ comment:		comments_save(optarg);
 			    goto usage;
 
 		    /* LM flags */
-		    case '1': iflags |= INIT_ONEROOT; break;	/* undoc? 2.0 */
+		    case '1': iflags |= INIT_ONEROOT; break;	/* undoc 2.0 */
 		    case 'a':	/* doc 2.0 */
 		    	dflags |= DELTA_AUTO;
 			dflags &= ~DELTA_FORCE;
@@ -126,7 +126,7 @@ comment:		comments_save(optarg);
 		    case 'h': dflags |= DELTA_HASH; break; /* doc 2.0 */
 		    case 'I': initFile = optarg; break; /* doc 2.0 */
 		    case 'M': mode = optarg; break; /* doc 2.0 */
-		    case 'P': ignorePreference = 1;  break;	/* undoc? 2.0 */
+		    case 'P': ignorePreference = 1;  break;	/* undoc 2.0 */
 		    case 'R': dflags |= DELTA_PATCH; break;	/* undoc? 2.0 */
 		    case 'Y': dflags |= DELTA_DONTASK; break; /* doc 2.0 */
 		    case 'Z': compp = optarg ? optarg : "gzip"; break; /* doc 2.0 */
