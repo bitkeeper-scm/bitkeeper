@@ -314,6 +314,7 @@ extern	char *strdup(char *s);
 #define	D_MODE		0x02000000	/* permissions in d->mode are valid */
 #define	D_SET		0x04000000	/* range.c: marked as part of a set */
 #define	D_CSET		0x08000000	/* this delta is marked in cset file */
+#define D_DUPLINK	0x10000000	/* this symlink pointer is shared */
 
 /*
  * Signal handling.
@@ -390,7 +391,7 @@ typedef struct delta {
 	sum_t	sum;			/* checksum of gfile */
 	time_t	dateFudge;		/* make dates go forward */
 	mode_t	mode;			/* 0777 style modes */
-	char 	*glink;			/* sym link target */
+	char 	*symlink;		/* sym link target */
 	/* In memory only stuff */
 	u16	r[4];			/* 1.2.3 -> 1, 2, 3, 0 */
 	u16	lodr[3];		/* Same as above for LODs */
@@ -520,7 +521,7 @@ typedef	struct sccs {
 	char	*pfile;		/* SCCS/p.foo.c */
 	char	*zfile;		/* SCCS/z.foo.c */
 	char	*gfile;		/* foo.c */
-	char	*glink;		/* if gfile is a sym link, the destination */
+	char	*symlink;	/* if gfile is a sym link, the destination */
 	char	*root;		/* to the root of the project; optional */
 	char	**usersgroups;	/* lm, beth, staff, etc */
 	int	encoding;	/* ascii, uuencode, gzip, etc. */

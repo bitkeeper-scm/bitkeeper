@@ -1,3 +1,6 @@
+When getting a new branch off of 1.0, the revs should not be a branch of 
+1.0, like 1.0.1.1, it should be a new "release".  
+
 make the range stuff take lists of rev,rev,rev..rev and mark
 the sccs* with D_VISITED (actually, maybe D_SET), and make the
 sccs* with S_SET.

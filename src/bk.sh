@@ -1210,6 +1210,7 @@ or email sales@bitmover.com and ask for BitKeeperPro.
 Thank you for using Bitkeeper.
 EOF
 		 	/bin/rm -f /tmp/comments$$
+			bk clean BitKeeper/etc/config
 			exit 1
 			esac
 			

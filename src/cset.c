@@ -235,7 +235,6 @@ csetInit(sccs *cset, int flags, char *sym)
 	unless(d = getHostName(d)) goto intr;
 	unless(d = getUserName(d)) goto intr;
 
-	unless (d = sccs_parseArg(d, 'R', "1.0", 0)) goto intr;
 	cset->state |= S_CSET;
 	if (sym) {
 		if (!d) d = calloc(1, sizeof(*d));

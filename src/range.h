@@ -44,8 +44,14 @@
 	} \
 	if (expand) { \
 		unless (things) { \
-			s->rstart = s->tree; \
-			s->rstop = s->table; \
+			if (s->tree && streq(s->tree->rev, "1.0")) { \
+				if (s->rstart = s->tree->kid) { \
+					s->rstop = s->table; \
+				} \
+			} else { \
+				s->rstart = s->tree; \
+				s->rstop = s->table; \
+			} \
 		} \
 		unless (s->rstart) s->rstart = s->rstop; \
 		unless (s->rstop) s->rstop = s->rstart; \
