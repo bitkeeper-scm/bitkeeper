@@ -64,5 +64,12 @@ out:
 		host[0] = 0;
 		return (0);
 	}
+
+	/*
+	 * XXX - if we don't have a domain name but there is a line
+	 * in resolve.conf like "search foo.com", we could assume that
+	 * is the domain.
+	 */
+
 	return (host);
 }

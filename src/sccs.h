@@ -493,6 +493,16 @@ typedef struct patch {
 } patch;
 
 /*
+ * How to go from the RESYNC dir to the root dir and back again.
+ * Lots of code does not use these but should so we can move
+ * RESYNC to BitKeeper/RESYNC and not pollute the namespace.
+ */
+#define	RESYNC2ROOT	".."	  /* chdir(RESYNC2ROOT) gets you to root */
+#define	ROOT2RESYNC	"RESYNC"  /* chdir(ROOT2RESYNC) gets you back */
+#define	PENDING2ROOT	".."	  /* chdir(PENDING2ROOT) gets you to root */
+#define	ROOT2PENDING	"PENDING" /* chdir(ROOT2PENDING) gets you back */
+
+/*
  * Patch file format strings.
  */
 #define PATCH_CURRENT	"# Patch vers:\t0.7\n"
@@ -656,6 +666,9 @@ char	*_relativeName(char *gName,
 	    int isDir, int withsccs, int mustHaveRmarker, char *root);
 void	rcs(char *cmd, int argc, char **argv);
 char	*findBin();
+project	*sccs_initProject(sccs *s);
+void	sccs_freeProject(project *p);
+char	*sccs_Xfile(sccs *s, char type);
 int	uniq_lock(void);
 int	uniq_unlock(void);
 int	uniq_open(void);

@@ -35,6 +35,7 @@ usage: takepatch [-cFiv] [-f file]\n\n\
     -F		(fast) do rebuild id cache when creating files\n\
     -f<file>	take the patch from <file> and do not save it\n\
     -i		initial patch, create a new repository\n\
+    -m		list deltas as they are read in the patch\n\
     -S		save RESYNC and or PENDING directories even if errors\n\
     -v		verbose level, more is more verbose, -vv is suggested.\n\n";
 
@@ -44,6 +45,9 @@ usage: takepatch [-cFiv] [-f file]\n\n\
 	fputs("===================== ERROR ========================\n", stderr);
 #define	SHOUT2() \
 	fputs("====================================================\n", stderr);
+#define	NOTICE() \
+	fputs("------------------------------------------------------\n",\
+	stderr);
 
 delta	*getRecord(MMAP *f);
 int	extractPatch(char *name, MMAP *p, int flags, int fast, project *proj);
@@ -63,6 +67,7 @@ void	fileCopy2(char *from, char *to);
 void	badpath(sccs *s, delta *tot);
 
 int	echo = 0;	/* verbose level, higher means more diagnostics */
+int	mkpatch = 0;	/* act like makepatch verbose */
 int	line;		/* line number in the patch file */
 int	fileNum;	/* counter for the Nth init/diff file */
 patch	*patchList = 0;	/* list of patches for a file, list len == fileNum */
@@ -75,7 +80,7 @@ delta	*tableGCA;	/* predecessor to the oldest delta found in the patch */
 int	noConflicts;	/* if set, abort on conflicts */
 char	pendingFile[MAXPATH];
 char	*input;		/* input file name, either "-" or a patch file */
-
+char	*spin = "|/-\\";
 
 int
 main(int ac, char **av)
@@ -96,7 +101,7 @@ main(int ac, char **av)
 	platformSpecificInit(NULL);
 	input = "-";
 	debug_main(av);
-	while ((c = getopt(ac, av, "acFf:iqsSv")) != -1) {
+	while ((c = getopt(ac, av, "acFf:imqsSv")) != -1) {
 		switch (c) {
 		    case 'q':
 		    case 's':
@@ -109,6 +114,7 @@ main(int ac, char **av)
 			    input = optarg;
 			    break;
 		    case 'i': newProject++; break;
+		    case 'm': mkpatch++; break;
 		    case 'S': saveDirs++; break;
 		    case 'v': echo++; flags &= ~SILENT; break;
 		    default: goto usage;
@@ -291,8 +297,10 @@ cleanup:		if (perfile) sccs_free(perfile);
 			if (sccs_clean(s, SILENT)) {
 				SHOUT();
 				fprintf(stderr,
-				    "takepatch: %s is edited and modified\n",
+				    "takepatch: %s is edited and modified.\n",
 				    name);
+				fprintf(stderr,
+			    "takepatch: will not overwrite modified files.\n");
 				goto cleanup;
 			} else {
 				sccs_restart(s);
@@ -348,7 +356,7 @@ cleanup:		if (perfile) sccs_free(perfile);
 	}
 	gfile = sccs2name(name);
 	if (echo>1) {
-		fprintf(stderr, "takepatch: %3d new in %s ", nfound, gfile);
+		fprintf(stderr, "Applying %3d revisions to %s ", nfound, gfile);
 		if (echo != 2) fprintf(stderr, "\n");
 	}
 	if (patchList && tableGCA) getLocals(s, tableGCA, name);
@@ -680,7 +688,6 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 	delta	*d = 0;
 	int	newflags;
 	char	*now();
-	static	char *spin = "|/-\\";
 	int	n = 0;
 	char	lodkey[MAXPATH];
 	int	lodbranch = 1;	/* true if LOD is branch; false if revision */
@@ -699,12 +706,6 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 		char	*t;
 
 		mkdirf(p->resyncFile);
-		/*
-		 * Abort the patch if there is a file in the same name.
-		 */
-		if (exists(&p->resyncFile[7])) {
-			overwriteAbort(&p->resyncFile[7]);
-		}
 		goto apply;
 	}
 	fileCopy2(localPath, p->resyncFile);
@@ -1109,6 +1110,23 @@ init(char *inputFile, int flags, project **pp)
 	MMAP	*m;
 	uLong	sumC = 0, sumR = 0;
 	project	*p = 0;
+	int	line = 0, first = 1, j = 0;
+
+	/*
+	 * If we are reading from stdin and we get ERROR/Nothing,
+	 * then bail out before creating any state.
+	 */
+	if (streq(inputFile, "-")) {
+		if (fnext(buf, stdin)) {
+			if (streq(buf, "ERROR\n")) exit(1);
+			if (streq(buf, "Nothing to resync.\n")) {
+				if (echo) fprintf(stderr, buf);
+				exit(0);
+			}
+		} else {
+			nothingtodo();
+		}
+	}
 
 	if (newProject) {
 		initProject();
@@ -1240,10 +1258,7 @@ init(char *inputFile, int flags, project **pp)
 		fprintf(g, "%s\n", pendingFile);
 		fclose(g);
 
-		/*
-		 * Save patch first, making sure it is on disk.
-		 */
-		while (fnext(buf, stdin)) {
+		do {
 			if (!started) {
 				if (streq(buf, PATCH_CURRENT)) {
 					havexsum = 1;
@@ -1266,20 +1281,49 @@ init(char *inputFile, int flags, project **pp)
 
 				len = strlen(buf);
 				sumC = adler32(sumC, buf, len);
+				/*
+				 * Status.
+				 */
+				unless (mkpatch) continue;
+#define	DIVIDER	"------------------------------------------------\n"
+				if (strneq("== ", buf, 3)) {
+					char	*t = strchr(&buf[3], ' ');
+
+					*t = 0;
+					unless (first) {
+						fprintf(stderr,
+						    "\b: %d deltas\n", j);
+						j = 0;
+					} else {
+						first = 0;
+					}
+					fprintf(stderr,
+					    "%s ", &buf[3]);
+				} else if (streq(DIVIDER, buf)) {
+					line = 1;
+				} else if ((line == 1) && streq("\n", buf)) {
+					fprintf(stderr, "%c\b", spin[j++ % 4]);
+				} else {
+					line = 0;
+				}
 			} else {
 				if (echo > 4) {
 					fprintf(stderr, "Discard: %s", buf);
 				}
 			}
-		}
+		} while (fnext(buf, stdin));
 		unless (started) nothingtodo();
+		if (mkpatch) fprintf(stderr, "\b: %d deltas\n", j);
 		if (fclose(f)) {
 			perror("fclose on patch");
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 		}
 		unless (flags & SILENT) {
+			NOTICE();
 			fprintf(stderr,
-			    "takepatch: saved patch in %s\n", pendingFile);
+			    "takepatch: saved entire patch in %s\n",
+			    pendingFile);
+			NOTICE();
 		}
 		unless (m = mopen(pendingFile, "b")) {
 			perror(pendingFile);
@@ -1290,6 +1334,13 @@ init(char *inputFile, int flags, project **pp)
 			perror(inputFile);
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 		}
+		unless (g = fopen("RESYNC/BitKeeper/tmp/patch", "wb")) {
+			perror("RESYNC/BitKeeper/tmp/patch");
+			exit(1);
+		}
+		fprintf(g, "%s\n", inputFile);
+		fclose(g);
+
 		i = 0;
 		while (t = mnext(m)) {
 			if (strneq(t, PATCH_CURRENT, strsz(PATCH_CURRENT))) {
@@ -1353,10 +1404,20 @@ fileCopy2(char *from, char *to)
 void
 rebuild_id(char *id)
 {
+	char	*s;
+
 	if (echo > 0) {
+
+		s = strchr(id, '|');
+		assert(s);
+		s = strchr(++s, '|');
+		assert(s);
+		s = strchr(++s, '|');
+		assert(s);
+		*s = 0;
 		fprintf(stderr,
-"takepatch: miss in idcache\n\tfor %s,\n\
-\trebuilding (this can take a while)...", id);
+"takepatch: miss in idcache while looking for\n\t     \"%s\",\n\
+\t     rebuilding (this can take a while)...", id);
 	}
 	sccs_reCache();
 	if (idDB) mdbm_close(idDB);
@@ -1364,7 +1425,10 @@ rebuild_id(char *id)
 		perror("SCCS/x.id_cache");
 		exit(1);
 	}
-	if (echo > 0) fprintf(stderr, "done\n");
+	if (echo > 0) {
+		*s = '|';
+		fprintf(stderr, "done\n");
+	}
 }
 
 void

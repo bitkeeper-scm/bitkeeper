@@ -9,25 +9,26 @@ BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  get gethost getuser key2rev lines lod prs range rechksum renumber \
 	  rmdel sccscat sccslog sccsmv sccsrm sccssh sfiles sfio sids	 \
 	  sinfo stripdel smoosh takepatch undos what gca mtime zone	 \
-	  isascii resyncwrap r2c rename setlog getlog setup commit status \
-	  bkusers gethelp logaddr sendconfig logchangeset version
-SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
+	  bkd commit getlog isascii names push r2c resolve setlog setup \
+	  status bkusers gethelp logaddr sendconfig logchangeset version
+SCRIPTS	= rcs2sccs testfast bk import oldresync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 mkindex \
-	  renametool mkdiffs lodset build gzip_uuwrap ungzip_uuwrap
+	  renametool mkdiffs lodset build pull clone resync oldresolve merge \
+	  gzip_uuwrap ungzip_uuwrap
 PSCR	= t/doit
-LIBS	= zlib/libz.a mdbm/libmdbm.a libsccs.a
+LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a
 LINKS	= ci co edit unedit unget
-GNU	= gnu
 DATA	= bitkeeper.config bkhelp.txt
 
 LINKTO	= ci delta co get edit get unedit clean unget clean fmtool fm \
 	  fm3tool fm3
 BINLINKS= bk admin get delta unget rmdel prs
 
-ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LINKS) $(PSCR) $(DATA) $(GNU)
+ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LINKS) $(PSCR) $(DATA) gnu
 
+	  # FASTPURIFY does not do overrun/underrun checking at each alloc/free
 CFLAGS	= -g -O -Wall -Wno-parentheses -Wno-char-subscripts \
-	  -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM
+	  -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM -DFASTPURIFY
 CPPFLAGS= -Izlib
 LINK	= $(LSCCS) $(LMDBM) $(LZLIB) $(XLIBS)
 LSCCS	= -L. -lsccs
@@ -50,24 +51,30 @@ ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/gzio.o \
 	  zlib/uncompr.o zlib/deflate.o zlib/trees.o zlib/zutil.o \
 	  zlib/inflate.o zlib/infblock.o zlib/inftrees.o zlib/infcodes.o \
 	  zlib/infutil.o zlib/inffast.o
+RESOBJ =  resolve.o resolve_create.o resolve_contents.o resolve_generic.o \
+	  resolve_renames.o utils.o
+BKDOBJ	= bkd_misc.o bkd_root.o bkd_pull.o bkd_clone.o bkd_push.o bkd_status.o \
+	  utils.o bkd_cmdtab.o lib_tcp.o bkd.o
 BINOBJ	= $(BINS:=.o)
-
+BKDSRCS	= $(BKDOBJ:.o=.c)
 SRCS	= $(PORTOBJ:.o=.c) $(SCCSOBJ:.o=.c) $(MDBMOBJ:.o=.c) \
-	  $(ZLIBOBJ:.o=.c) $(BINOBJ:.o=.c)
+	  $(ZLIBOBJ:.o=.c) $(BINOBJ:.o=.c) $(BKDOBJ:.o=.c) \
+	  $(RESOBJ:.o=.c)
+
 HDRS	= sccs.h purify.h range.h system.h mdbm/common.h mdbm/mdbm.h \
 	  mdbm/tune.h zlib/zlib.h zlib/zutil.h zlib/zconf.h zlib/deflate.h \
 	  zlib/infblock.h zlib/infcodes.h zlib/inffast.h zlib/inffixed.h \
 	  zlib/inftrees.h zlib/infutil.h zlib/trees.h zgets.h unix.h mmap.h \
-	  comments.c host.c user.c
+	  comments.c host.c user.c resolve.h
 SCRSRCS	= rcs2sccs.perl testfast.perl bk.sh import.sh \
 	  resolve.perl gui/sccstool.tcl gui/citool.tcl gui/difftool.tcl \
 	  gui/vitool.tcl gui/fm.tcl gui/fm3.tcl \
-	  gui/helptool.tcl gui/mkindex.tcl resync.perl uuwrap.sh \
+	  gui/helptool.tcl gui/mkindex.tcl oldresync.perl uuwrap.sh \
 	  unuuwrap.sh port/unix_platform.sh port/unix_platform.tcl \
 	  port/unix_platform.perl pmerge.perl gui/csettool.tcl \
 	  port/win32_platform.perl port/win32_platform.tcl \
-	  port/win32_platform.sh gui/renametool.tcl gzip_uuwrap.sh \
-	  ungzip_uuwrap.sh
+	  port/win32_platform.sh gui/renametool.tcl merge.sh \
+	  gzip_uuwrap.sh ungzip_uuwrap.sh
 MISC	= bkhelp.doc config.h.in configure substvars.in bitkeeper.config \
 	  t/doit.sh
 
@@ -148,12 +155,12 @@ solaris:
 # Cleanup targets.
 clean-obj: FORCE
 	-/bin/rm -f $(PORTOBJ) $(SCCSOBJ) $(MDBMOBJ) $(ZLIBOBJ) $(BINOBJ) \
-		$(LIBS) bkhelp.txt a.out core
+	    $(BKDOBJ) $(RESOBJ) $(LIBS) bkhelp.txt a.out core
 	-cd gnu && $(MAKE) clean-obj
 
 clean-bin: FORCE
 	-/bin/rm -f $(BINS) $(SCRIPTS) $(PSCR) $(LINKS) MANIFEST
-	-cd gnu && $(MAKE) clean
+	cd gnu && $(MAKE) clean
 
 clean-cfg: FORCE
 	-/bin/rm -f config.h stamp-h substvars config.status \
@@ -171,13 +178,13 @@ clobber distclean: clean-obj clean-bin clean-cfg clean-src
 rebuild: clean-obj clean-bin
 
 srcs src: FORCE
-	-get -s $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
+	-get -s $(HDRS) $(SRCS) $(SCRSRCS) $(MISC)
 
-wc: $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
+wc: $(HDRS) $(SRCS) $(SCRSRCS) $(MISC)
 	wc -l $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
 
 get-e: FORCE
-	-@get -se $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
+	-@get -es $(HDRS) $(SRCS) $(SCRSRCS) $(MISC)
 
 log: FORCE
 	bk sccslog $(SRCS) $(HDRS) | more
@@ -214,6 +221,9 @@ t/doit: t/doit.sh substvars
 
 FORCE:
 
+bkd: $(BKDOBJ)
+	$(CC) $(CFLAGS) $(BKDOBJ) $(LIBS) -o bkd
+
 gnu: FORCE
 	cd gnu && $(MAKE) BK_BIN=$(BK_BIN)
 
@@ -242,8 +252,10 @@ rechksum: rechksum.o $(LIBS)
 	$(CC) $(CFLAGS) rechksum.o $(LINK) -o rechksum
 cset: cset.o $(LIBS)
 	$(CC) $(CFLAGS) cset.o $(LINK) -o cset
-rename: rename.o $(LIBS)
-	$(CC) $(CFLAGS) rename.o $(LINK) -o rename
+names: names.o $(LIBS)
+	$(CC) $(CFLAGS) names.o $(LINK) -o names
+resolve: $(RESOBJ) $(LIBS)
+	$(CC) $(CFLAGS) $(RESOBJ) $(LINK) -o resolve
 lod: lod.o $(LIBS)
 	$(CC) $(CFLAGS) lod.o $(LINK) -o lod
 rmdel: rmdel.o $(LIBS)
@@ -308,6 +320,8 @@ chksum: chksum.o
 	$(CC) $(CFLAGS) chksum.o -o chksum
 mtime: mtime.o
 	$(CC) $(CFLAGS) mtime.o -o mtime
+push: push.o lib_tcp.o utils.o
+	$(CC) $(CFLAGS) push.o lib_tcp.o utils.o $(LIBS) -o push
 logaddr: logaddr.o $(LIBS)
 	$(CC) $(CFLAGS) logaddr.o $(LINK) -o logaddr
 setlog: setlog.o $(LIBS)
@@ -417,20 +431,44 @@ pmerge: pmerge.perl port/unix_platform.perl substvars
 	chmod +x pmerge.T
 	mv -f pmerge.T pmerge
 
-resolve: resolve.perl port/unix_platform.perl substvars
-	./substvars resolve.perl port/unix_platform.perl > resolve.T
-	chmod +x resolve.T
-	mv -f resolve.T resolve
+oldresolve: resolve.perl port/unix_platform.perl substvars
+	./substvars resolve.perl port/unix_platform.perl > oldresolve.T
+	chmod +x oldresolve.T
+	mv -f oldresolve.T oldresolve
 
-resync: resync.perl port/unix_platform.perl substvars
-	./substvars resync.perl port/unix_platform.perl > resync.T
-	chmod +x resync.T
-	mv -f resync.T resync
+oldresync: oldresync.perl port/unix_platform.perl substvars
+	./substvars oldresync.perl port/unix_platform.perl > oldresync.T
+	chmod +x oldresync.T
+	mv -f oldresync.T oldresync
 
 mkdiffs: mkdiffs.perl port/unix_platform.perl substvars
 	./substvars mkdiffs.perl port/unix_platform.perl > mkdiffs.T
 	chmod +x mkdiffs.T
 	mv -f mkdiffs.T mkdiffs
+
+merge: merge.sh
+	rm -f merge
+	cp merge.sh merge
+	chmod +x merge
+	chmod -w merge
+
+clone: clone.sh
+	rm -f clone
+	cp clone.sh clone
+	chmod +x clone
+	chmod -w clone
+
+resync: resync.sh
+	rm -f resync
+	cp resync.sh resync
+	chmod +x resync
+	chmod -w resync
+
+pull: pull.sh
+	rm -f pull
+	cp pull.sh pull
+	chmod +x pull
+	chmod -w pull
 
 bk_users: bk_users.perl aliases.perl port/unix_platform.perl substvars
 	-rm -f bk_users
@@ -594,13 +632,11 @@ getuser.o:	getuser.c
 isascii.o:	isascii.c
 key2rev.o:	key2rev.c $(sccsdeps)
 lines.o:	lines.c $(sccsdeps)
-rename.o:	rename.c $(sccsdeps) range.h comments.c host.c user.c
 mtime.o:	mtime.c
 prs.o:		prs.c $(sccsdeps) range.h
 range.o:	range.c $(sccsdeps) range.h
 rechksum.o:	rechksum.c $(sccsdeps)
 renumber.o:	renumber.c $(sccsdeps)
-resyncwrap.o:	resyncwrap.c $(commondeps)
 rmdel.o:	rmdel.c $(sccsdeps) range.h
 stripdel.o:	stripdel.c $(sccsdeps) range.h
 sccscat.o:	sccscat.c $(sccsdeps) range.h
@@ -637,6 +673,10 @@ purify.o:	purify.c $(commondeps)
 rcs.o:		rcs.c $(sccsdeps)
 sccs_mv.o:	sccs_mv.c $(sccsdeps)
 zgets.o:	zgets.c zgets.h zlib/zlib.h zlib/zconf.h
+
+$(BKDOBJ):	$(commondeps) bkd.h lib_tcp.h
+
+$(RESOBJ):	resolve.h $(commondeps)
 
 # libsccs, port/ directory
 port/disksp.o:		port/disksp.c $(commondeps)

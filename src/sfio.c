@@ -74,6 +74,8 @@ main(int ac, char **av)
 			goto usage;
 		}
 	}
+	/* ignore "-" it makes bk -r sfio -o work */
+	if (av[optind] && streq(av[optind], "-")) optind++;
 	if (optind != ac) goto usage;
 
 	if      (mode == M_OUT)  return (sfio_out());

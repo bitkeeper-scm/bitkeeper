@@ -10,6 +10,7 @@ WHATSTR("@(#)%K%");
 char	*check_help = "\n\
 usage: check [-av]\n\n\
     -a		warn if the files listed are a subset of the repository\n\
+    -f		fix any fixable errors\n\
     -c		check file checksum\n\
     -v		list each file which is OK\n\n";
 
@@ -25,6 +26,8 @@ void	listCsetRevs(char *key);
 
 int	verbose;
 int	all;		/* if set, check every darn entry in the ChangeSet */
+int	fix;		/* if set, fix up anything we can */
+int	names;		/* if set, we need to fix names */
 int	mixed;
 char	csetFile[] = CHANGESET;
 project	*proj;
@@ -50,9 +53,10 @@ usage:		fprintf(stderr, "%s", check_help);
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "acv")) != -1) {
+	while ((c = getopt(ac, av, "acfv")) != -1) {
 		switch (c) {
 		    case 'a': all++; break;
+		    case 'f': fix++; break;
 		    case 'c': flags = INIT_SAVEPROJ; break;
 		    case 'v': verbose++; break;
 		    default:
@@ -138,6 +142,13 @@ usage:		fprintf(stderr, "%s", check_help);
 	mdbm_close(marks);
 	if (proj) sccs_freeProject(proj);
 	purify_list();
+	if (errors && fix) {
+		if (names) {
+			fprintf(stderr, "check: trying to fix names...\n");
+			system("bk -r names; bk sfiles -r");
+			return (2);
+		}
+	}
 	return (errors ? 1 : 0);
 }
 
@@ -145,8 +156,6 @@ usage:		fprintf(stderr, "%s", check_help);
  * Look at the list handed in and make sure that we checked everything that
  * is in the ChangeSet file.  This will always fail if you are doing a partial
  * check.
- *
- * Also check that all files are where they are supposed to be.
  */
 int
 checkAll(MDBM *db)
@@ -198,21 +207,6 @@ checkAll(MDBM *db)
 				errors++;
 			}
 			continue;
-		}
-		s->state |= S_RANGE2;
-		unless (d = sccs_getrev(s, 0, 0, 0)) {
-			fprintf(stderr, "check: can't get TOT in %s\n",
-			    s->sfile);
-			errors++;
-			continue;
-		}
-		/*
-		 * The location recorded and the location found should match.
-		 */
-		if (!streq(s->gfile, d->pathname)) {
-			fprintf(stderr, "check: %s should be %s\n",
-				s->sfile, d->pathname);
-			errors++;
 		}
 		sccs_free(s);
 	}
@@ -418,6 +412,8 @@ getRev(char *root, char *key, MDBM *idDB)
 
 	3) for each tip, all but one need to be marked as in the ChangeSet
 	   file and that one - if it exists - must be top of trunk.
+	
+	4) check that the file is in the recorded location
 */
 int
 check(sccs *s, MDBM *db, MDBM *marks)
@@ -459,6 +455,19 @@ check(sccs *s, MDBM *db, MDBM *marks)
 			fprintf(stderr, "%s: found %s in ChangeSet\n",
 			    s->sfile, buf);
 		}
+	}
+
+	/*
+	 * The location recorded and the location found should match.
+	 */
+	unless (d = sccs_getrev(s, "+", 0, 0)) {
+		fprintf(stderr, "check: can't get TOT in %s\n", s->sfile);
+		errors++;
+	} else if (!streq(s->gfile, d->pathname)) {
+		fprintf(stderr,
+		    "check: %s should be %s\n", s->gfile, d->pathname);
+		errors++;
+		names = 1;
 	}
 
 	/* Make sure that we think we have cset marks */

@@ -78,9 +78,9 @@ if [ "$MODE" != "100740" ]
 then	echo "failed (Known bug)"  
 	${RM} -rf $HERE/copy/PENDING $HERE/copy/RESYNC
 	cd $HERE/project/src
-	bk undo -f -q 1.4
+	bk undo -f -q -r1.4
 	cd $HERE/copy/src
-	bk undo -f -q 1.4
+	bk undo -f -q -r1.4
 else	echo OK;
 fi
 echo $N Check propagation of symbol .................................$NL

@@ -920,9 +920,26 @@ a2tm(struct tm *tp, char *asctime, char *z, int roundup)
 		tp->tm_hour = 23;
 		tp->tm_min = tp->tm_sec = 59;
 	}
-	/* Adjust for year 2000 problems */
-	gettime(tm_year); if (tp->tm_year < 69) tp->tm_year += 100;
-	unless (*asctime) goto correct;
+
+	/*
+	 * At the request of Matthias Urlichs, we are allowing 4 digit years
+	 * if the format is \d\d\d\d[^\d]\d ....
+	 */
+	if ((strlen(asctime) >= 6) &&
+	    isdigit(asctime[0]) && 	/* 1 */
+	    isdigit(asctime[1]) && 	/* 9 */
+	    isdigit(asctime[2]) && 	/* 9 */
+	    isdigit(asctime[3]) && 	/* 9 */
+	    !isdigit(asctime[4]) && 	/* - */
+	    isdigit(asctime[5])) { 	/* 1 */
+		tp->tm_year = atoi(asctime) - 1900;
+		asctime = &asctime[5];
+	} else {
+		gettime(tm_year); 
+	 	/* Adjust for year 2000 problems */
+		if (tp->tm_year < 69) tp->tm_year += 100;
+		unless (*asctime) goto correct;
+	}
 
 	/* tm_mon counts 0..11; ASCII is 1..12 */
 	gettime(tm_mon); tp->tm_mon--; unless (*asctime) goto correct;
@@ -3086,7 +3103,7 @@ sccs_initProject(sccs *s)
 	project	*p;
 	char	path[MAXPATH];
 
-	assert(s->proj == 0);
+	assert((s == 0) || (s->proj == 0));
 
 	/* XXX - should set a flag that says NO project if this fails */
 	unless (root = sccs_root(s)) return (0);
@@ -3123,23 +3140,61 @@ reader_locked(project *p)
 	return (p && (p->flags & PROJ_READER));
 }
 
-private inline int
-locked(project *p)
+int
+sccs_locked(project *p)
 {
-	return (resync_locked(p) || reader_locked(p));
+	return ((resync_locked(p) || reader_locked(p)) &&
+	    (getenv("BK_IGNORELOCK") == 0));
 }
 
 /* used to tell us who is blocking the lock */
-private void
-lockers(project *p)
+void
+sccs_lockers(project *p)
 {
 	unless (p) return;
-	if (locked(p)) {
+	if (sccs_locked(p)) {
 		fprintf(stderr, "Entire repository is locked");
 		if (resync_locked(p)) fprintf(stderr, " by RESYNC directory");
 		if (reader_locked(p)) fprintf(stderr, " by READER lock");
 		fprintf(stderr, ".\n");
 	}
+}
+
+/*
+ * Try and get a read lock for the whole repository.
+ * Return true if it worked.
+ */
+repository_rdlock()
+{
+	char	path[MAXPATH];
+
+	unless (exists("BitKeeper/etc")) return(-1);
+
+	/*
+	 * We go ahead and create the lock and then see if there is a
+	 * write lock.  If there is, we lost the race and we back off.
+	 */
+	unless (exists(READER_LOCK_DIR)) mkdir(READER_LOCK_DIR, 0777);
+	sprintf(path, "%s/%d@%s", READER_LOCK_DIR, getpid(), sccs_gethost());
+	close(creat(path, 0666));
+	unless (exists(path)) return (-1);
+	if (exists(ROOT2RESYNC)) {
+		unlink(path);
+		return (-1);
+	}
+	return (0);
+}
+
+int
+repository_rdunlock()
+{
+	char	path[MAXPATH];
+
+	unless (exists("BitKeeper/etc")) return(-1);
+
+	sprintf(path, "%s/%d@%s", READER_LOCK_DIR, getpid(), sccs_gethost());
+	unlink(path);
+	return (0);
 }
 
 /*
@@ -3197,7 +3252,6 @@ sccs_init(char *name, u32 flags, project *proj)
 	s->zfile = strdup(sccsXfile(s, 'z'));
 	if (isreg(s->pfile)) s->state |= S_PFILE;
 	if (isreg(s->zfile)) s->state |= S_ZFILE;
-	if (locked(s->proj)) s->state |= S_READ_ONLY;
 	debug((stderr, "init(%s) -> %s, %s\n", name, s->sfile, s->gfile));
 	s->nextserial = 1;
 	s->fd = -1;
@@ -3247,7 +3301,15 @@ sccs_init(char *name, u32 flags, project *proj)
 			/* Not an error if the file doesn't exist yet.  */
 			debug((stderr, "%s doesn't exist\n", s->sfile));
 			s->cksumok = -1;
-			s->proj = proj ? proj : sccs_initProject(s);
+			/*
+			 * This is a little bogus - we are looking for a
+			 * a project when there may not be one.
+			 */
+			if (s->proj = proj ? proj : sccs_initProject(s)) {
+				if (sccs_locked(s->proj)) {
+					s->state |= S_READ_ONLY;
+				}
+			}
 			return (s);
 		} else {
 			fputs("sccs_init: ", stderr);
@@ -3279,7 +3341,10 @@ sccs_init(char *name, u32 flags, project *proj)
 	/*
 	 * Don't go look for BK root if not a BK file.
 	 */
-	if (s->state & S_BITKEEPER) s->proj = proj ? proj : sccs_initProject(s);
+	if (s->state & S_BITKEEPER) {
+		s->proj = proj ? proj : sccs_initProject(s);
+		if (sccs_locked(s->proj)) s->state |= S_READ_ONLY;
+	}
 
 	/*
 	 * Let them force YEAR4
@@ -3416,6 +3481,7 @@ sccs_free(sccs *s)
 	if (s->random) free(s->random);
 	if (s->symlink) free(s->symlink);
 	if (s->mdbm) mdbm_close(s->mdbm);
+	bzero(s, sizeof(*s));
 	free(s);
 #ifdef	ANSIC
 	signal(SIGINT, SIG_DFL);
@@ -3630,6 +3696,12 @@ sccsXfile(sccs *sccs, char type)
 	t = rindex(s, '/') + 1;
 	*t = type;
 	return (s);
+}
+
+char	*
+sccs_Xfile(sccs *s, char type)
+{
+	return (sccsXfile(s, type));
 }
 
 /*
@@ -4529,7 +4601,7 @@ write_pfile(sccs *s, int flags, delta *d,
 	}
 	unless (sccs_lock(s, 'z')) {
 		fprintf(stderr, "get: can't zlock %s\n", s->gfile);
-		lockers(s->proj);
+		sccs_lockers(s->proj);
 		return (-1);
 	}
 	unless (sccs_lock(s, 'p')) {
@@ -5141,6 +5213,14 @@ skip_get:
 	}
 	if (!(flags&SILENT)) {
 		fprintf(stderr, "%s %s", s->gfile, d->rev);
+		if (i2) {
+			fprintf(stderr, " inc: %s", i2);
+		} else if (iLst) {
+			fprintf(stderr, " inc: %s", iLst);
+		}
+		if (xLst) {
+			fprintf(stderr, " exc: %s", xLst);
+		}
 		if (flags & GET_EDIT) {
 			fprintf(stderr, " -> %s", rev);
 		}
@@ -9519,7 +9599,7 @@ sccs_delta(sccs *s, u32 flags, delta *prefilled, MMAP *init, MMAP *diffs, char *
 	unless(locked = sccs_lock(s, 'z')) {
 		fprintf(stderr,
 		    "delta: can't get write lock on %s\n", s->sfile);
-		lockers(s->proj);
+		sccs_lockers(s->proj);
 		error = -1; s->state |= S_WARNED;
 out:
 		if (prefilled) sccs_freetree(prefilled);
@@ -11136,6 +11216,24 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
+	if (streq(kw, "TIP")) {
+		unless (morekids(d, 1) || (d->flags & D_MERGED)) {
+			fs(d->rev);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "LODKEY")) {
+		while (d && d->r[2]) d = d->parent;
+		while (d && (d->r[1] != 1)) d = d->parent;
+		if (d) {
+			if (out) sccs_pdelta(s, d, out);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
 	if (streq(kw, "SIBLINGS")) {
 		if (d = d->siblings) {
 			fs(d->rev);
@@ -11642,8 +11740,6 @@ $if(:C:){$each(:C:){C (:C:)}\n}\
 			if (d == s->rstart) break;
 		}
 	}
-	if (flags & PRS_ALL) sccs_markMeta(s);
-
 	if (reverse) prs_reverse(s, s->table, flags, dspec, out);
 	else prs_forward(s, s->table, flags, dspec, out);
 	return (0);
@@ -12590,48 +12686,6 @@ debug_main(char **av)
 	fprintf(stderr, " >>>===\n");
 }
 #endif
-
-/*
- * Return an alloced copy of the name of the sfile after the removed deltas
- * are gone.
- * Note that s->gfile may not be the same as s->table->pathname because we
- * may be operating on RESYNC/foo/SCCS/s.bar.c instead of foo/SCCS/s.bar.c
- *
- * XXX - I'm using s->table to mean TOT.
- */
-char	*
-currentName(sccs *s)
-{
-	delta	*d;
-	char	*t;
-	int	len;
-	char	path[MAXPATH];
-
-	/*
-	 * LODXXX - needs to restrict this to the current LOD.
-	 */
-	for (d = s->table; d && (d->flags & D_GONE); d = d->next);
-	assert(d);
-
-	/* If the current and old name are the same, use what we have */
-	if (streq(d->pathname, s->table->pathname)) return (strdup(s->sfile));
-
-	/* If we have no prefix, just convert to an s.file */
-	if (streq(s->gfile, s->table->pathname)) 
-	return (name2sccs(d->pathname));
-
-	/*
-	 * Figure out how much space we need
-	 */
-	t = strstr(s->table->pathname, s->gfile);
-	assert(t);
-	len = t - s->gfile;
-	strncpy(path, s->gfile, len);
-	path[len] = 0;
-	strcat(path, d->pathname);
-	fprintf(stderr, "RMDEL %s\n", path);
-	return (name2sccs(path));
-}
 
 /*
  * Given an SCCS structure with a list of marked deltas, strip them from
