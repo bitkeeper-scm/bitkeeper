@@ -35,7 +35,7 @@ OBJ	= abort.o adler32.o admin.o annotate.o \
 	  bkd.o bkd_cd.o bkd_client.o bkd_clone.o bkd_cmdtab.o \
 	  bkd_http.o bkd_misc.o bkd_pull.o \
 	  bkd_push.o bkd_pwd.o bkd_rootkey.o bkd_status.o \
-	  bkd_version.o bk.o bkusers.o changes.o check.o chksum.o \
+	  bkd_version.o bk.o bkusers.o cat.o changes.o check.o chksum.o \
 	  clean.o clone.o comments.o commit.o compress.o converge.o \
 	  cset.o cset_inex.o delta.o diffs.o dirname.o export.o fdiff.o \
 	  filecopy.o find.o fix.o g2sccs.o \

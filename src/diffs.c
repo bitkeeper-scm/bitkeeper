@@ -28,6 +28,7 @@ diffs_main(int ac, char **av)
 {
 	sccs	*s;
 	int	all = 0, flags = DIFF_HEADER|SILENT, verbose = 0, rc, c;
+	int	errors = 0;
 	char	kind;
 	char	*name;
 	project	*proj = 0;
@@ -98,7 +99,9 @@ usage:			system("bk help -s diffs");
 		int	ex = 0;
 		char	*r1 = 0, *r2 = 0;
 
-		unless ((s = sccs_init(name, INIT_SAVEPROJ|flags, proj))) {
+		s = sccs_init(name, INIT_SAVEPROJ|flags, proj);
+		unless (s && s->tree) {
+			errors |= 2;
 			goto next;
 		}
 		unless (proj) proj = s->proj;
@@ -110,6 +113,7 @@ usage:			system("bk help -s diffs");
 			unless (d && d->parent) {
 				fprintf(stderr,
 				    "No rev or parent for %s\n", rev);
+				errors |= 1;
 				goto next;
 			}
 			s->rstart = d->parent;
@@ -181,7 +185,7 @@ next:		if (s) sccs_free(s);
 	}
 	if (proj) proj_free(proj);
 	sfileDone();
-	return (0);
+	return (errors);
 }
 
 cset_boundries(sccs *s, char *rev)
