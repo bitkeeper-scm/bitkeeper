@@ -356,7 +356,7 @@ proc resolved {n} \
 	incr done $n
 	.merge.menu.l configure -text "$done / $diffCount resolved"
 	# prettier as a 'case' stmt? -ask
-	if {($done == 0) && ($diffCount) == 0} { ;# case with no differences
+	if {($done == 0) && ($diffCount == 0)} { ;# case with no differences
 		.merge.menu.save configure -state normal
 		.merge.menu.left configure -state disabled
 		.merge.menu.right configure -state disabled
@@ -364,6 +364,8 @@ proc resolved {n} \
 	} elseif {$done == 0} { ;# not started yet
 		.merge.menu.undo configure -state disabled
 		.merge.menu.redo configure -state disabled
+		.merge.menu.left configure -state normal
+		.merge.menu.right configure -state normal
 	} elseif {$done == $diffCount} { ;# we are done
 		.merge.menu.save configure -state normal
 		.merge.menu.left configure -state disabled
