@@ -1516,6 +1516,10 @@ proc PaneResize {} \
 			set percent [expr {$y1 / double($y)}]
 		}
 
+		# Make sure default graph size is never more than
+		# 40% of the GUI as a whole.
+		if {$percent > .40} {set percent .40}
+
 	}
 
 	# The plan is, the very first time this proc is called should
@@ -1709,8 +1713,7 @@ proc widgets {} \
 		-menu .menus.fmb.menu
 		set gc(fmenu) [menu .menus.fmb.menu]
 		set gc(current) $gc(fmenu).current
-		set gc(recent) $gc(fmenu).recent
-		$gc(fmenu) add command -label "Open new file" \
+		$gc(fmenu) add command -label "Open new file..." \
 		    -command { 
 		    	set fname [selectFile]
 			if {$fname != ""} {
@@ -1726,12 +1729,7 @@ proc widgets {} \
 		$gc(fmenu) add separator
 		$gc(fmenu) add cascade -label "Current ChangeSet" \
 		    -menu $gc(current)
-		$gc(fmenu) add cascade -label "Recently Viewed Files" \
-		    -menu $gc(recent)
-		menu $gc(recent) 
 		menu $gc(current) 
-		$gc(recent) add command -label "$fname" \
-		    -command "revtool $fname"
 	    if {"$fname" == "ChangeSet"} {
 		    #.menus.cset configure -command csettool
 		    pack .menus.quit .menus.help .menus.mb .menus.cset \
@@ -1967,16 +1965,6 @@ proc selectFile {} \
 	if { ([gets $f fname] <= 0)} {
 		set rc [tk_dialog .new "Error" "$file is not under revision control.\nPlease select a revision controled file" "" 0 "Cancel" "Select Another File" "Exit BitKeeper"]
 		if {$rc == 2} {exit} elseif {$rc == 1} { selectFile }
-	} else {
-		#displayMessage "file=($file) err=($err)"
-		# XXX: Need to add in a function so that we can check for
-		# duplicates
-		if {$fname == "ChangeSet"} {
-			#pack forget .menus.difftool
-		} else {
-			$gc(recent) add command -label "$fname" \
-			    -command "revtool $fname"
-		}
 	}
 	catch {close $f}
 	return $fname
@@ -1997,8 +1985,6 @@ proc revtool {lfname {R {}}} \
 	# working on. Need this when menubutton is selected
 	set fname $lfname
 	
-	recentFile $fname 
-
 	busy 1
 	$w(graph) delete all
 	if {[info exists revX]} { unset revX }
@@ -2232,11 +2218,9 @@ proc startup {} \
 	global file merge diffpair dfile
 	global State percent preferredGraphSize
 
-	if {[info exists State(geometry)]} {
-		after idle [list wm geometry . $State(geometry)]
-	}
-	if {[info exists State(pane)]} {
-		set preferredGraphSize $State(pane)
+	set res [winfo screenwidth .]x[winfo screenheight .]
+	if {[info exists State(geometry@$res)]} {
+		after idle [list wm geometry . $State(geometry@$res)]
 	}
 
 	if {$gca != ""} {
@@ -2299,30 +2283,21 @@ proc loadState {} \
 
 	catch {::appState load rev State}
 
-	# State(recent) is stored as a multiline value; convert it
-	# to a list so it's easier to manipulate
-	if {[info exists State(recent)]} {
-		set State(recent) [split $State(recent) \n]
-	} else {
-		set State(recent) {}
-	}
 }
 
 proc saveState {} \
 {
-	global State percent preferredGraphSize
+	global State
 
-	if {[info exists preferredGraphSize]} {
-		set State(pane)      $preferredGraphSize
-	}
-
-	# we want to save the recent files as a multiline item,
-	# so we must convert the list to a string of newline
-	# separated items. Not that we do the reverse when loading
-	# the state...
+	# Copy state to a temporary variable, the re-load in the
+	# state file in case some other process has updated it
+	# (for example, setting the geometry for a different
+	# resolution). Then add in the geometry information unique
+	# to this instance.
 	array set tmp [array get State]
-	set tmp(geometry) [wm geometry .]
-	set tmp(recent)   [join $State(recent) \n]
+	catch {::appState load rev tmp}
+	set res [winfo screenwidth .]x[winfo screenheight .]
+	set tmp(geometry@$res) [wm geometry .]
 
 	# Generally speaking, errors at this point are no big
 	# deal. It's annoying we can't save state, but it's no 
@@ -2335,32 +2310,6 @@ proc saveState {} \
 	}
 }
 
-# (potentially) add a recent file to the list, and update the
-# recent file menu
-proc recentFile {{filename {}}} \
-{
-	global State gc
-
-	if {$filename != ""} {
-		# attempt to normalize the filename
-		set filename [lindex [exec bk prs -hr+ -d:PATH: $filename] 1]
-		if {$filename == ""} return
-
-		if {![info exists State(recent)]} {
-			set State(recent) [list $filename]
-		} elseif {[lsearch -exact $State(recent) $filename] == -1} {
-			set State(recent) \
-			    [linsert $State(recent) 0 $filename]
-		}
-	}
-	set State(recent) [lrange $State(recent) 0 7]
-	$gc(recent) delete 0 end
-	foreach file $State(recent) {
-		$gc(recent) add command -label "$file" \
-		    -command "cd2root; revtool $file"
-	}
-
-}
 
 init
 arguments
