@@ -25,10 +25,11 @@ import() {
 	VERBOSE=-q
 	CUTOFF=
 	UNDOS=
-	while getopts c:efHij:l:rS:t:uvq opt
+	while getopts c:efHij:l:rS:t:uvxq opt
 	do	case "$opt" in
 		c) CUTOFF=-c$OPTARG;;	# /* doc 2.0 */
-		e) EX=YES;;				# /* doc 2.0 */
+		e) EX=YES;;			# /* doc 2.0 */
+		x) EX=YES;;			# /* same as -e, needs doc */
 		f) FORCE=YES;;			# /* doc 2.0 */
 		H) VERIFY=;;			# /* doc 2.0 */
 		i) INC=YES;;			# /* doc 2.0 */
