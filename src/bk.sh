@@ -200,6 +200,7 @@ _send() {
 	WRAPPER=cat
 	REV=1.0..
 	FORCE=NO
+	DASH=
 	while getopts dfqr:w: opt
 	do	case "$opt" in
 		    d) D=-d;;
@@ -207,15 +208,20 @@ _send() {
 		    q) V=;;
 		    r) REV=$OPTARG;;
 		    w) WRAPPER="$OPTARG";;
+		    \?) exit 1;;
+		    *) DASH="-";;	# SGI's getopts eats a blank "-".
 		esac
 	done
 	shift `expr $OPTIND - 1`
-	if [ X$1 = X -o X$2 != X ]
+	if [ X$DASH = "X-" -a "X$1" = "X" ]
+	then	TO=-
+	else	TO=$1
+	fi
+	if [ X$TO = X -o X$2 != X ]
 	then	echo "usage: bk send [-dq] [-wWrapper] [-rCsetRevs] user@host|-"
 		exit 1
 	fi
 	_cd2root
-	TO=$1
 	if [ X$TO != X- ]
 	then	if [ $FORCE = NO ]
 		then	REV=`_sendlog $TO $REV`
