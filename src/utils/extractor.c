@@ -168,8 +168,8 @@ main(int ac, char **av)
 		chdir("..");
 		fprintf(stderr,
 		    "Cleaning up temp files in %s%u ...\n", TMP, pid);
-		sprintf(buf, "%s %s%u", RMDIR, TMP, pid);
-		system(buf);	/* careful */
+		sprintf(buf, "%s%u", TMP, pid);
+		rmTree(buf); /* careful */
 	}
 
 	/*
@@ -277,3 +277,28 @@ isdir(char *path)
 	if (stat(path, &sbuf)) return (0);
 	return (S_ISDIR(sbuf.st_mode));
 }
+
+#ifdef	WIN32
+void
+rmTree(char *dir)
+{
+	char cmd[MAXPATH + 12];
+
+	if (isWin98()) {
+		sprintf(cmd, "deltree /Y %s", dir);
+	} else {
+		sprintf(cmd, "rmdir /s /q %s", dir);
+	}
+	system(cmd);
+}
+
+#else
+void
+rmTree(char *dir)
+{
+	char cmd[MAXPATH + 11];
+
+	sprintf(cmd, "/bin/rm -rf %s", dir);
+	system(cmd);
+}
+#endif
