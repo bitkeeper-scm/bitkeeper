@@ -315,7 +315,6 @@ push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 		    (atoi(getenv("BKD_LEVEL")) < getlevel())) {
 			fprintf(opts.out,
 			    "push: cannot push to lower level repository\n");
-			disconnect(r, 2);
 			return (-1);
 		}
 		getline2(r, buf, sizeof(buf));
@@ -655,6 +654,11 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar)
 		send_end_msg(r, "@CONFLICT@\n", rev_list, envVar);
 		if (opts.autopull) do_pull = 1;
 		done = 1;
+	} else if (ret == -1) {
+		putenv("BK_STATUS=FAILED");
+		send_end_msg(r, "@ABORT@\n", rev_list, envVar);
+		rc = 1;
+		done = 1;
 	} else {
 		/*
 		 * We are about to request the patch, fire pre trigger
@@ -796,7 +800,7 @@ push(char **av, remote *r, char **envVar)
 		fprintf(opts.out, "lcsets=%d rcsets=%d rtags=%d\n",
 		    opts.lcsets, opts.rcsets, opts.rtags);
 	}
-	if (ret < 0) {
+	if (ret <= -2) { /* -1 => send abort message */
 		if (rev_list[0]) unlink(rev_list);
 		return (ret); /* failed */
 	}
