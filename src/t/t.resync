@@ -483,14 +483,18 @@ cat > merge.c << EOF
 222
 333
 EOF
-echo "To be deleted" > delete.c
-bk ci $Q -i merge.c delete.c
+mkdir sub
+echo "To be deleted" > sub/delete.c
+bk ci $Q -i merge.c sub/delete.c
 bk commit $S -y"abc"
 cd $HERE/project/src
 bk resync $Q $HERE/project $HERE/copy
 bk resolve -t $L $Q $HERE/copy
-bk sccsrm delete.c
-if [ ! -f "SCCS/s..del-delete.c" ]; then echo failed; exit 1; fi
+if [ ! -f $HERE/copy/src/sub/SCCS/s.delete.c ]; then echo failed; exit 1; fi
+bk rm sub/delete.c
+if [ ! -f "$HERE/project/BitKeeper/deleted/SCCS/s..del-delete.c" ]
+then echo failed; exit 1;
+fi
 bk co $Q -l merge.c
 sed -e"s/111/111-new/" merge.c > merge.tmp
 mv merge.tmp merge.c
@@ -504,12 +508,13 @@ bk ci $Q -y merge.c
 bk commit $S -y"abc"
 bk resync $Q $HERE/project $HERE/copy
 bk resolve $L $Q -a -t $HERE/copy
-if [ ! -f "SCCS/s..del-delete.c" ]
+if [ ! -f "$HERE/copy/BitKeeper/deleted/SCCS/s..del-delete.c" ]
 then	echo failed to delete delete.c;
 	pwd
 	bk _find .| grep "delete" 
 	exit 1
 fi
+if [ -d $HERE/copy/src/sub ]; then echo failed rmdir; exit 1; fi
 bk co $Q merge.c
 cat > X <<EOF
 111-new

@@ -2148,6 +2148,30 @@ bk_check()
 }
 
 /*
+ * Remove a sfile, if it's parent is empty, remove them too
+ */
+private void
+rm_sfile(char *sfile)
+{
+	char *p, *q;
+
+	assert(!IsFullPath(sfile));
+	if (unlink(sfile)) {
+		perror(sfile);
+		return;
+	}
+	p = strrchr(sfile, '/');
+	unless (p) return;
+	for (;;) {
+		*p-- = 0;
+		if (isdir(sfile) && emptyDir(sfile)) rmdir(sfile); /* careful */
+		while ((p > sfile) && (*p != '/')) p--;
+		if (p >= sfile) continue;
+		break;
+	}
+}
+
+/*
  * Make sure there are no edited files, no RENAMES, and {r,m}.files and
  * apply all files.
  */
@@ -2240,7 +2264,7 @@ pass4_apply(opts *opts)
 		while (fnext(buf, save)) {
 			chop(buf);
 			if (opts->log) fprintf(stdlog, "unlink(%s)\n", buf);
-			unlink(buf);	// XXX - FIXME -> rm_sfile()
+			rm_sfile(buf);
 		}
 		fclose(save);
 	}
