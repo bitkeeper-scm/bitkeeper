@@ -192,11 +192,6 @@
 #define	D_VISITED	0x00008000	/* and had a nice cup of tea */
 #define	D_CKSUM		0x00010000	/* delta has checksum */
 #define	D_MERGED	0x00020000	/* set on branch tip which is merged */
-#define	D_LODZERO	0x00040000	/* a .0 delta of an LOD */
-#define	D_LODHEAD	0x00080000	/* a .1 delta of an LOD */
-#define	D_LODCONT	0x00100000	/* LOD continuation down a branch */
-#define	D_DUPLOD	0x00200000	/* shared ->lod */
-#define	D_LODSTR	0x00400000	/* lod pointer is a string: getInit() */
 #define	D_GONE		0x00800000	/* this delta is gone, don't print */
 #define D_ICKSUM	0x01000000	/* use checksum from init file */
 #define	D_MODE		0x02000000	/* permissions in d->mode are valid */
@@ -297,10 +292,8 @@ typedef struct delta {
 	char 	*symlink;		/* sym link target */
 	/* In memory only stuff */
 	u16	r[4];			/* 1.2.3 -> 1, 2, 3, 0 */
-	u16	lodr[3];		/* Same as above for LODs */
 	time_t	date;			/* date - conversion from sdate/zone */
 	char	*sym;			/* used only for getInit(), see above */
-	struct	lod *lod;		/* used for getInit() and later */
 	struct	delta *parent;		/* parent delta above me */
 	struct	delta *kid;		/* next delta on this branch */
 	struct	delta *siblings;	/* pointer to other branches */
@@ -320,39 +313,7 @@ typedef struct delta {
  * The sym/lod fields in the delta are for initialization and are extracted
  * and put into the appropriate lists once the delta is entered in the graph.
  * 
- * Lod update:
- * If the delta has D_LODZERO set then it is a parent LOD, i.e., it is the .0
- * node for an LOD.  There can be multiple LOD's rooted at one parent, so
- * we have to search the lod list if we need to find them.  The d* in the lod
- * points at this delta if there are no deltas in the LOD yet.
- * If the delta has D_LODHEAD set, it is the first delta in the LOD and the
- * lod pointer is valid.  The d* in the lod points at this delta.
- * If the delta has D_LODCONT set, it is a continuation of the LOD which has
- * gone around a branch.  The lod pointer is valid but is a dup.
- * If the delta has D_DUPLOD set, it is some delta in the LOD, not the head
- * delta.  The lod pointer is valid, but it is a dup.
- *
- * Takepatch implications: this means that all deltas in a LOD need to print
- * out their LOD name so that the right thing happens when we smoosh.  And
- * in dinsert() if the lod is set, we need to make sure that it isn't a dup
- * and if so make it be set up like a dup.
  */
-
-/*
- * Symbolic lines of development.
- * Like symbols only they apply to an indefinite number of revisions.
- * The same LOD name can occur multiple times, once per each branch in the
- * LOD.  To get to the tip of an LOD, walk this list, take the last LOD
- * which matches, and go to the top of that.
- * This means that the LODS are in the list oldest .. newest.
- */
-typedef	struct lod {		
-	struct	lod	*next;		/* list of all heads of LODs, this
-					 * list is unique in the name field. */
-	char	*name;			/* the LOD name */
-	ser_t	*heads;			/* the .1 ser and each branch head */
-	delta	*d;			/* the .0 rev of the LOD */
-} lod;
 
 /*
  * Symbolic names for revisions.
@@ -409,7 +370,6 @@ typedef	struct sccs {
 	delta	*meta;		/* deltas in the meta data list */
 	symbol	*symbols;	/* symbolic tags sorted most recent to least */
 	symbol	*symTail;	/* last symbol, for tail inserts */
-	lod	*lods;		/* all lines of development */
 	char	*defbranch;	/* defbranch, if set */
 	int	numdeltas;	/* number of entries in the graph */
 	int	nextserial;	/* next unused serial # */
@@ -460,7 +420,6 @@ typedef struct {
 	char	oldrev[MAXREV];		/* XXX - needs to be malloced */
 	char	newrev[MAXREV];		/* XXX - needs to be malloced */
 	char	sccsrev[MAXREV];
-	lod	*l;			/* if set, this the lod for new d */
 	char	*user;			/* malloced - caller frees */
 	char	date[20];
 	char	*iLst;			/* malloced - caller frees */

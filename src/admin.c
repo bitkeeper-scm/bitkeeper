@@ -23,7 +23,6 @@ usage: admin options [- | file file file...]\n\
 \n\
     -m<mode>		set the mode of the file\n\
     -M<merge>		Merge branch <merge> into TOT or <rev>\n\
-    -L<lod>:<rev>	create a new LOD parented at <rev>\n\
     -S<sym>:<rev>	associate <sym> with <rev>\n\
     -p<path>:<rev>	set/change path of <rev> to <path>\n\
     -P<rev>		revert to default path for <rev>\n\
@@ -68,7 +67,7 @@ main(int ac, char **av)
 	int	init_flags = 0;
 	char	*rev = 0;
 	int	c;
-	admin	f[A_SZ], l[A_SZ], u[A_SZ], s[A_SZ];
+	admin	f[A_SZ], u[A_SZ], s[A_SZ];
 	int	nextf = 0, nextl = 0, nextu = 0, nexts = 0, nextp = 0;
 	char	*comment = 0, *text = 0, *newfile = 0;
 	char	*path = 0, *merge = 0;
@@ -88,7 +87,6 @@ main(int ac, char **av)
 	bzero(f, sizeof(f));
 	bzero(u, sizeof(u));
 	bzero(s, sizeof(s));
-	bzero(l, sizeof(l));
 	while ((c =
 	    getopt(ac, av, "a;e;f;F;d;i|nr;y|M;m;p|PZ|E;L|S;t|TBChHsquz"))
 	       != -1) {
@@ -135,8 +133,6 @@ main(int ac, char **av)
 				touchGfile++;
 				break;
 		    case 'E':	encp = optarg; break;
-		/* LOD's */
-		    case 'L':	OP(l, optarg, A_ADD); break;
 		/* symbols */
 		    case 'S':	OP(s, optarg, A_ADD); break;
 		/* text */
@@ -256,7 +252,7 @@ main(int ac, char **av)
 				goto next;
 			}
 		}
-		if (sccs_admin(sc, flags, encp, compp, f, l, u, s, text)) {
+		if (sccs_admin(sc, flags, encp, compp, f, 0, u, s, text)) {
 			sccs_whynot("admin", sc);
 			error = 1;
 		}

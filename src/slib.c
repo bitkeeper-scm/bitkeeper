@@ -45,7 +45,6 @@ delta*	modeArg(delta *d, char *arg);
 private delta*	mergeArg(delta *d, char *arg);
 private delta*	sumArg(delta *d, char *arg);
 private	void	symArg(sccs *s, delta *d, char *name);
-private void	lodArg(sccs *s, delta *d, char *name);
 private int	delta_rm(sccs *s, delta *d, FILE *sfile, int flags);
 private int	delta_rmchk(sccs *s, delta *d);
 private int	delta_destroy(sccs *s, delta *d, int flags);
@@ -54,7 +53,6 @@ private time_t	getDate(delta *d);
 private	void	unlinkGfile(sccs *s);
 private time_t	date2time(char *asctime, char *z, int roundup);
 private	char	*sccsrev(delta *d);
-private int	addLod(char *name, sccs *sc, int flags, admin *l, int *ep);
 private int	addSym(char *name, sccs *sc, int flags, admin *l, int *ep);
 private void	updatePending(sccs *s, delta *d);
 private int	fix_lf(char *gfile);
@@ -553,95 +551,6 @@ sccs_freetable(delta *t)
 
 		u = t->next;
 		free(t);
-	}
-}
-
-
-/*
- * Generate the rev numbers for the lod.
- * Also sets d->lod to the lod to which this delta belongs.
- */
-void
-lodrevs(delta *d, delta *zero)
-{
-	assert(d);
-	if (d->flags & D_DUPLOD) return;
-	d->flags |= D_DUPLOD;
-	unless (d->flags & D_LODHEAD) {
-		lodrevs(d->parent, zero);
-		memcpy(d->lodr, d->parent->lodr, sizeof(d->lodr));
-		d->lodr[0]++;
-	} else {
-		d->lodr[0] = 1;
-		d->lodr[1] = d->lodr[2] = 0;
-	}
-	/* Head lod pointers are already set, these are the kids */
-	unless (d->lod) {
-		d->lod = d->parent->lod;
-	}
-	debug((stderr, "LOD %s.%d\n", d->lod->name, d->lodr[0]));
-	free(d->rev);
-	if (d->lodr[2]) {
-		d->rev = malloc(strlen(d->lod->name) + 20);
-		sprintf(d->rev, "%s.%d.%d.%d", 
-		    d->lod->name, d->lodr[0], d->lodr[1], d->lodr[2]);
-	} else {
-		d->rev = malloc(strlen(d->lod->name) + 7);
-		sprintf(d->rev, "%s.%d", d->lod->name, d->lodr[0]);
-	}
-}
-
-/*
- * Set up the LOD numbering.  This is a little complicated because the
- * numbering is inherited but stops when you run into the next LOD. 
- * So the first thing we do is tag all the heads/branches in each LOD.
- */
-void
-lods(sccs *s)
-{
-	lod	*l;
-	int	i;
-	delta	*h;
-	ser_t	ser;
-	int	top = 0;
-
-	for (l = s->lods; l; l = l->next) {
-		debug((stderr, "LODZERO %s %s\n", l->d->rev, l->name));
-		EACH(l->heads) {
-			h = sfind(s, l->heads[i]);
-			assert(h);
-			if (i == 1) {
-				h->flags |= D_LODHEAD;
-				debug((stderr,
-				    "HEAD %s %s\n", h->rev, l->name));
-			} else {
-				h->flags |= D_LODCONT;
-				debug((stderr,
-				    "CONT %s %s\n", h->rev, l->name));
-			}
-			h->lod = l;
-		}
-	}
-	for (l = s->lods; l; l = l->next) {
-		ser = 0;
-		EACH(l->heads) ser = l->heads[i];
-		unless (ser) continue;
-		h = sfind(s, ser);
-		debug((stderr, "HEAD %s %s\n", h->rev, l->name));
-		assert(h);
-		if (h->serial == 1) {
-			top = 1;
-		}
-
-		/*
-		 * XXX - does not handle LOD branches.
-		 * It seems like a recursive 
-		 */
-		while (h->kid && !(h->kid->flags & (D_LODHEAD|D_LODCONT)) &&
-		    samebranch(h, h->kid)) {
-		    	h = h->kid;
-		}
-		lodrevs(h, top ? 0 : l->d);
 	}
 }
 
@@ -1167,15 +1076,7 @@ explode_rev(delta *d)
 private char *
 sccsrev(delta *d)
 {
-	static	char buf[MAXREV];
-
-	unless (d->lod) return (d->rev);
-	if (d->r[2]) {
-		sprintf(buf, "%d.%d.%d.%d", d->r[0], d->r[1], d->r[2], d->r[3]);
-	} else {
-		sprintf(buf, "%d.%d", d->r[0], d->r[1]);
-	}
-	return (buf);
+	return (d->rev);
 }
 
 /*
@@ -1201,17 +1102,6 @@ samebranch_bk(delta *a, delta *b, int bk_mode)
 	return ((a->r[0] == b->r[0]) &&
 		(a->r[1] == b->r[1]) &&
 		(a->r[2] == b->r[2]));
-}
-
-/*
- * This one assumes SCCS style branch numbering, i.e., x.y.z.d
- */
-private int
-sameLODbranch(delta *a, delta *b)
-{
-	if (a->lod != b->lod) return (0);
-	if (!a->lodr[1] && !b->lodr[1]) return (1);
-	return ((a->lodr[0] == b->lodr[0]) && (a->lodr[1] == b->lodr[1]));
 }
 
 private char *
@@ -1621,37 +1511,6 @@ again:
 	return (-1);
 }
 
-/*
- * Take an LOD of any form and return the lod * and the numbers.
- */
-private inline lod *
-lod2rev(sccs *s, char *rev, u16 revs[3])
-{
-	lod	*l;
-	char	*t;
-	u16	junk;
-
-	revs[0] = revs[1] = revs[2] = 0;
-	if (!rev) return (0);
-	if (isdigit(rev[0])) return (0);
-	if (t = strchr(rev, '.')) *t++ = 0;
-
-	debug((stderr, "lod2rev(rev=%s t=%s)\n", rev, t));
-	for (l = s->lods; l; l = l->next) {
-		if (streq(rev, l->name)) break;
-	}
-	unless (l) {
-		if (t) t[-1] = '.';
-		return (0);
-	}
-	if (t && *t) {
-		scanrev(t, &revs[0], &revs[1], &revs[2], &junk);
-	}
-	debug((stderr, "lod2rev(rev=%s t=%s) = %d %d %d\n",
-	    rev, t, revs[0], revs[1], revs[2]));
-	return (l);
-}
-
 private delta *
 sym2delta(sccs *s, char *sym)
 {
@@ -1692,51 +1551,6 @@ _rfind(delta *d)
 	return (0);
 }
 
-private inline delta *
-nextlod(delta *d)
-{
-	delta	*k = d->kid;
-
-	unless (k) return (0);
-	for ( ; k; k = k->siblings) {
-		if (sameLODbranch(d, k)) return (k);
-	}
-	return (0);
-}
-
-/*
- * This will work if and only if we put all heads of branches in the heads list.
- */
-private delta *
-lfind(sccs *s, char *rev)
-{
-	lod	*l;
-	delta	*d;
-	delta	revs;
-	int	i;
-
-	debug((stderr, "lfind(%s, %s)\n", s->gfile, rev));
-	bzero(&revs, sizeof(revs));
-	unless (l = lod2rev(s, rev, revs.lodr)) return (0);
-	revs.lod = l;
-	debug((stderr, "lfind got lod %s\n", l->name));
-	EACH(l->heads) {
-		d = sfind(s, l->heads[i]);
-		debug((stderr, "lfind search %s\n", d->rev));
-		unless (sameLODbranch(d, &revs)) continue;
-		while (d) {
-			debug((stderr, "lfind search2 %s\n", d->rev));
-			if ((d->lodr[0] == revs.lodr[0]) &&
-			    (d->lodr[1] == revs.lodr[1]) &&
-			    (d->lodr[2] == revs.lodr[2])) {
-				return (d);
-			}
-			d = nextlod(d);
-		}
-	}
-	return (0);
-}
-
 /*
  * Find the delta referenced by rev.  It must be an exact match.
  */
@@ -1747,7 +1561,6 @@ rfind(sccs *s, char *rev)
 
 	debug((stderr, "rfind(%s) ", rev));
 	name2rev(s, &rev);
-	if (d = lfind(s, rev)) return (d);
 	R[0] = R[1] = R[2] = R[3] = 0;
 	scanrev(rev, &R[0], &R[1], &R[2], &R[3]);
 	debug((stderr, "aka %d.%d.%d.%d\n", R[0], R[1], R[2], R[3]));
@@ -1760,55 +1573,8 @@ private char *
 defbranch(sccs *s)
 {
 	if (s->defbranch) return (s->defbranch);
-	if (s->tree->lod) return (s->tree->lod->name);
 	if (s->state & S_BITKEEPER) return ("1");
 	return ("100000");
-}
-
-/*
- * Find the specified delta.  The rev must be
- *	LOD		get top of trunk for that LOD
- *	LOD.d		get that revision or error if not there
- *	LOD.d.d		get top of branch that matches those three digits
- *	LOD.d.d.d	get that revision or error if not there.
- */
-delta *
-findlod(sccs *s, char *rev)
-{
-	delta	*d, *e;
-	u16	revs[3];
-	lod	*l;
-	int	n;
-
-	if (!s->tree) return (0);
-	if (!rev || !*rev) rev = defbranch(s);
-	if (isdigit(rev[0])) return (0);
-	unless (l = lod2rev(s, rev, revs)) return (0);
-	n = 0;
-	if (revs[0]) n++;
-	if (revs[1]) n++;
-	if (revs[2]) n++;
-	debug((stderr, "findlod: %s n=%d\n", l->name, n));
-	unless (l->heads) return (n == 0 ? l->d : 0);
-	if (n > 1) assert("LOD BRANCHES NOT DONE" == 0);
-	switch (n) {
-	    case 0:	/* LOD */
-		for (d = sfind(s, l->heads[1]); e = nextlod(d); d = e);
-		debug((stderr, "findlod(%s) = %s\n", rev, d->rev));
-		return (d ? d : l->d);
-	    case 1:	/* LOD.3 */
-		debug((stderr, "findlod: %s wants %d\n", l->name, revs[0]));
-		for (d = sfind(s, l->heads[1]); d; d = nextlod(d)) {
-			debug((stderr, "%s %d\n", d->rev, d->lodr[0]));
-			if (d->lodr[0] == revs[0]) {
-				debug((stderr, "findlod(%s) =  %s\n",
-				    rev, d->rev));
-				return (d);
-			}
-		}
-		return (0);
-	}
-	return (0);	/* NOTREACHED: gcc -Wall */
 }
 
 /*
@@ -1826,7 +1592,6 @@ findrev(sccs *s, char *rev)
 	u16	max = 0;
 	delta	*e = 0, *f = 0;
 	char	buf[20];
-	lod	*l;
 
 	debug((stderr,
 	    "findrev(%s in %s def=%s)\n",
@@ -1834,7 +1599,6 @@ findrev(sccs *s, char *rev)
 	if (!s->tree) return (0);
 	if (!rev || !*rev) rev = defbranch(s);
 
-	if (e = findlod(s, rev)) return (e);
 	if (name2rev(s, &rev)) return (0);
 	switch (scanrev(rev, &a, &b, &c, &d)) {
 	    case 1:
@@ -2027,13 +1791,13 @@ morekids(delta *d, int bk_mode)
  * Get the delta that is the basis for this edit.
  * Get the revision name of the new delta.
  */
+/* XXX: RBS: LOD: Change IF to remove lrev */
 private delta *
 getedit(sccs *s, char **revp, char **lrev, int branch)
 {
 	char	*rev = *revp;
 	u16	a = 0, b = 0, c = 0, d = 0;
 	delta	*e, *t;
-	lod	*l = 0;
 	static	char buf[MAXREV];
 	static	char lbuf[MAXREV];
 
@@ -2042,23 +1806,8 @@ getedit(sccs *s, char **revp, char **lrev, int branch)
 	/*
 	 * use the findrev logic to get to the delta.
 	 */
-	unless (e = findrev(s, rev)) {
-		/*
-		 * If that didn't work, see if we are starting a new LOD.
-		 */
-		if (!rev || !*rev) rev = defbranch(s);
-		unless (isdigit(rev[0])) {
-			debug((stderr, "Look for %s\n", rev));
-			for (l = s->lods; l; l = l->next) {
-				if (streq(rev, l->name)) break;
-			}
-			if (l) {
-				debug((stderr, "Found LOD %s\n", l->name));
-				e = l->d;
-			}
-		}
-	}
-	debug((stderr, "getedit(e=%s, l=%s)\n", e?e->rev:"", l?l->name:""));
+	e = findrev(s, rev);
+	debug((stderr, "getedit(e=%s)\n", e?e->rev:""));
 
 	unless (e) {
 		/*
@@ -2100,48 +1849,26 @@ ok:
 		}
 		debug((stderr, "getedit1(%s) -> %s\n", notnull(rev), buf));
 		*revp = buf;
-		goto lod;
+	}
+	else {
+		/*
+		 * For whatever reason (they asked, or there is a kid in
+		 * the way), we need a branch.  Branches are all based,
+		 * in their /name/, off of the closest trunk node.  Go
+		 * backwards up the tree until we hit the trunk and then
+		 * use that rev as a basis.  Because all branches are
+		 * below that trunk node, we don't have to search the
+		 * whole tree. 
+		 */
+
+		for (t = e; isbranch(t); t = t->parent);
+		R[0] = t->r[0]; R[1] = t->r[1]; R[2] = 1; R[3] = 1;
+		while (_rfind(t)) R[2]++;
+		sprintf(buf, "%d.%d.%d.%d", R[0], R[1], R[2], R[3]);
+		debug((stderr, "getedit2(%s) -> %s\n", notnull(rev), buf));
+		*revp = buf;
 	}
 
-	/*
-	 * For whatever reason (they asked, or there is a kid in the way),
-	 * we need a branch.
-	 * Branches are all based, in their /name/, off of the closest
-	 * trunk node.	Go backwards up the tree until we hit the trunk
-	 * and then use that rev as a basis.
-	 * Because all branches are below that trunk node, we don't have
-	 * to search the whole tree.
-	 */
-	for (t = e; isbranch(t); t = t->parent);
-	R[0] = t->r[0]; R[1] = t->r[1]; R[2] = 1; R[3] = 1;
-	while (_rfind(t)) R[2]++;
-	sprintf(buf, "%d.%d.%d.%d", R[0], R[1], R[2], R[3]);
-	debug((stderr, "getedit2(%s) -> %s\n", notnull(rev), buf));
-	*revp = buf;
-
-lod:
-	/*
-	 * We use different logic for LOD's than the other stuff.
-	 */
-	if (l) {	/* this is the first node in the LOD */
-		assert(!branch);
-		/* XXXXXXXXXXX */
-		assert(sizeof(lbuf) > (strlen(l->name) + 5));
-		sprintf(lbuf, "%s.1", l->name);
-		debug((stderr, "getedit(%s) -> %s & %s\n", rev, buf, lbuf));
-		*lrev = lbuf;
-		return (l->d);
-	}
-	
-	if (e->lod) {
-		/* XXXXXXXXXXX */
-		assert(sizeof(buf) > (strlen(e->rev) + 5));
-		sprintf(lbuf, "%s.%d", e->lod->name, e->lodr[0]+1);
-		debug((stderr, "getedit(%s) -> %s & %s\n", rev, buf, lbuf));
-		*lrev = lbuf;
-		return (e);
-		//XXX - doesn't handle branches
-	}
 	return (e);
 }
 
@@ -2655,9 +2382,6 @@ meta(sccs *s, delta *d, char *buf)
 	    case 'H':
 		hostArg(d, &buf[3]);
 		break;
-	    case 'L':
-		lodArg(s, d, &buf[3]);
-		break;
 	    case 'M':
 		mergeArg(d, &buf[3]);
 		break;
@@ -2903,11 +2627,6 @@ done:		;	/* CSTYLED */
 	 */
 	metaSyms(s);
 	
-	/*
-	 * Go build the lod numbering.
-	 */
-	lods(s);
-
 	/*
 	 * The very first (1.1) delta has a landing pad in it for fast file
 	 * rewrites.  We strip that out if it is here.
@@ -3259,7 +2978,6 @@ sccs_init(char *name, u32 flags, char *root)
 	unless (t && (t >= s->sfile + 4) && strneq(t - 4, "SCCS/s.", 7)) {
 		s->state |= S_NOSCCSDIR;
 	}
-	if (t = getenv("BK_LOD")) s->defbranch = strdup(t);
 	unless (check_gfile(s, flags)) return (0);
 	if (lstat(s->sfile, &sbuf) == 0) {
 		if (!S_ISREG(sbuf.st_mode)) {
@@ -3448,7 +3166,6 @@ void
 sccs_free(sccs *s)
 {
 	symbol	*sym, *t;
-	lod	*l, *l2;
 
 	assert(s);
 	assert(s->sfile);
@@ -3490,11 +3207,6 @@ sccs_free(sccs *s)
 	freeLines(s->usersgroups);
 	freeLines(s->flags);
 	freeLines(s->text);
-	for (l = s->lods; l; l = l2) {
-		l2 = l->next;
-		free(l->name);
-		free(l);
-	}
 	if ((s->root) && ((s->state & S_CACHEROOT) == 0)) free(s->root);
 	if (s->random) free(s->random);
 	if (s->symlink) free(s->symlink);
@@ -3949,21 +3661,6 @@ getserlist(sccs *sc, int isSer, char *s, int *ep)
  */
 private void
 putserlist(sccs *sc, ser_t *s, FILE *out)
-{
-	int	first = 1, i;
-	char	buf[20];
-
-	if (!s) return;
-	EACH(s) {
-		sertoa(buf, s[i]);
-		if (!first) fputmeta(sc, " ", out);
-		fputmeta(sc, buf, out);
-		first = 0;
-	}
-}
-
-private void
-putlodlist(sccs *sc, ser_t *s, FILE *out)
 {
 	int	first = 1, i;
 	char	buf[20];
@@ -5775,21 +5472,6 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 			}
 		}
 		first = 0;
-		if (d->flags & D_LODZERO) {
-			lod	*l;
-
-			for (l = s->lods; l; l = l->next) {
-				unless (l->d == d) continue;
-				fputmeta(s, "\001cL", out);
-				fputmeta(s, l->name, out);
-				if (l->heads) {
-					fputmeta(s, " ", out);
-					putlodlist(s, l->heads, out);
-				}
-				fputmeta(s, "\n", out);
-				/* No break, there can be more than one */
-			}
-		}
 		if (d->merge) {
 			p = fmts(buf, "\001cM");
 			p = fmtd(p, d->merge);
@@ -6925,19 +6607,6 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, MMAP *diffs)
 		fprintf(stderr, "checkin: bad revision: %s for %s\n",
 		    n->rev, s->sfile);
 		return (-1);
-	}
-	if (t = getenv("BK_LOD")) {
-		unless (n->flags & D_LODSTR) {
-			n->flags |= D_LODSTR;
-			n->lod = (lod *)t;
-		}
-	}
-	if (n->flags & D_LODSTR) {
-		l[1].flags = 0;
-		l[0].flags = A_ADD;
-		l[0].thing = (char *)n->lod;
-		n->lod = 0;
-		n->flags &= ~D_LODSTR;
 	} else {
 		l[0].flags = 0;
 	}
@@ -7516,53 +7185,6 @@ symArg(sccs *s, delta *d, char *name)
 	return;
 }
 
-private void
-lodArg(sccs *s, delta *d, char *name)
-{
-	lod	*l = calloc(1, sizeof(*l));
-	lod	*m;
-	char	*t;
-
-	assert(d);
-	l->name = strnonldup(name);
-
-	/*
-	 * Extract all the serial numbers of all the heads, if any.
-	 */
-	for (t = l->name; *t; t++) {
-		if (*t == ' ') {
-			*t++ = 0;
-			l->heads = getserlist(s, 1, t, 0);
-			debug((stderr, "LOD head: %d ...\n", l->heads[1]));
-			break;
-		}
-	}
-	l->d = d;
-	l->next = s->lods;
-	s->lods = l;
-	d->flags |= D_LODZERO;
-	/*
-	 * Special case for rev 1.1.  It can be in an LOD, the LOD points
-	 * to itself.
-	 */
-	if ((d->r[0] == 1) && (d->r[1] == 1) && !d->r[2] && 
-	    l->heads && (l->heads[1] == d->serial)) {
-	    	d->flags |= D_LODHEAD;
-		d->lod = l;
-	}
-
-	/* There should be no duplicates */
-	for (m = s->lods; m; m = m->next) {
-		if (m == l) continue;
-		if (streq(m->name, l->name)) assert("duplicate LOD" == 0);
-	}
-
-	/* We do not set the other D_* flags here, we haven't finished the
-	 * graph yet.
-	 */
-	return;
-}
-
 private delta *
 zoneArg(delta *d, char *arg)
 {
@@ -7662,19 +7284,6 @@ dupSym(symbol *symbols, char *s, char *rev)
 	/* If rev isn't set, then any name match is enough */
 	if (sym && !rev) return (1);
 	return (sym && streq(sym->rev, rev));
-}
-
-/*
- * Return true iff the LOD already exists.
- */
-private int
-dupLod(lod *lods, char *s)
-{
-	while (lods) {
-		if (streq(lods->name, s)) return (1);
-		lods = lods->next;
-	}
-	return (0);
 }
 
 #ifndef	USE_STDIO
@@ -7783,124 +7392,6 @@ norev:			verbose((stderr, "admin: can't find rev %s in %s\n",
 #endif
 
 private int
-addLod(char *me, sccs *sc, int flags, admin *l, int *ep)
-{
-	int	added = 0, i, error = 0;
-
-	/*
-	 * "lod" means TOT.
-	 * "lod:" means TOT.
-	 * "lod:1.2" means that rev.
-	 * "lod:1" or "sym:1.2.1" means TOT of that branch.
-	 *
-	 * lod= is like lod: except it also says set the default branch.
-	 *
-	 * Special case for 1.1.  If setting a symbol, also set the first
-	 * serial to 1.1.
-	 */
-	for (i = 0; l && l[i].flags; ++i) {
-		char	*rev;
-		char	*name = strdup(l[i].thing);
-		lod	*lp;
-		delta	*d;
-		int	setDefault = 0;
-
-		if ((rev = strrchr(name, ':'))) {
-			*rev++ = 0;
-		} else if ((rev = strrchr(name, '='))) {
-			*rev++ = 0;
-			setDefault = 1;
-		}
-
-		d = findrev(sc, rev);
-		/*
-		 * If we find nothing, see if we are an empty LOD, in which
-		 * case add the LOD to our parent.
-		 */
-		unless (d || (rev && isdigit(rev[0]))) {
-			debug((stderr, "addLod(rev=%s)\n", rev));
-			if (!rev &&
-			    sc->defbranch && !isdigit(sc->defbranch[0])) {
-				unless (rev = sc->defbranch) {
-					if (sc->tree && sc->tree->lod) {
-						rev = sc->tree->lod->name;
-					}
-				}
-			}
-			if (rev) {
-				lod	*lp;
-				char	*t;
-
-				if (t = strchr(rev, '.')) *t = 0;
-				debug((stderr, "addLod2(rev=%s)\n", rev));
-				for (lp = sc->lods; lp; lp = lp->next) {
-					if (streq(lp->name, rev)) break;
-				}
-				if (t) *t = '.';
-				if (lp) {
-					d = lp->d;
-					debug((stderr, "parent=%s", d->rev));
-				}
-			}
-		}
-		unless (d) {
-			fprintf(stderr,
-			    "%s: can't find %s in %s\n", me, rev, sc->sfile);
-lod_err:		error = 1; sc->state |= S_WARNED;
-			free(name);
-			continue;
-		}
-		if (!rev || !*rev) rev = d->rev;
-		if (isdigit(name[0])) {
-			fprintf(stderr,
-			    "%s: %s: can't start with a digit.\n", me, name);
-			goto lod_err;
-		}
-		if (strchr(name, '.') ||
-		    strchr(name, '(') ||
-		    strchr(name, ')') ||
-		    strchr(name, '{') ||
-		    strchr(name, '}')) {
-			fprintf(stderr,
-			    "%s: can't have [{}().] in ``%s''\n", me, name);
-			goto lod_err;
-		}
-		if (dupLod(sc->lods, name)) {
-			fprintf(stderr, "%s: LOD %s already exists in %s\n",
-			    me, name, sc->sfile);
-			goto lod_err;
-		}
-		if (dupSym(sc->symbols, name, 0)) {
-			fprintf(stderr,
-			    "%s: LOD %s already exists as a symbol\n",
-			    me, name);
-			goto lod_err;
-		}
-		lp = calloc(1, sizeof(lod));
-		lp->name = name;
-		lp->d = d;
-		lp->next = sc->lods;
-		sc->lods = lp;
-		d->flags |= D_LODZERO;
-		if (flags & NEWFILE) lp->heads = addSerial(0, 1);
-		if (setDefault) {
-		    	if (sc->defbranch) free(sc->defbranch);
-			sc->defbranch = strdup(name);
-			verbose((stderr,
-			    "%s: add default LOD %s.0->%s in %s\n",
-			    me, name, rev, sc->sfile));
-		} else {
-			verbose((stderr,
-			    "%s: add LOD %s.0->%s in %s\n",
-			    me, name, rev, sc->sfile));
-		}
-		added++;
-	}
-	if (ep) *ep = error;
-	return (added);
-}
-
-private int
 addSym(char *me, sccs *sc, int flags, admin *s, int *ep)
 {
 	int	added = 0, i, error = 0;
@@ -7939,11 +7430,6 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 		if (dupSym(sc->symbols, sym, rev)) {
 			verbose((stderr,
 			    "%s: symbol %s exists on %s\n", me, sym, rev));
-			goto sym_err;
-		}
-		if (dupLod(sc->lods, rev)) {
-			fprintf(stderr, "%s: LOD %s already exists in %s\n",
-			    me, rev, sc->sfile);
 			goto sym_err;
 		}
 		n = calloc(1, sizeof(delta));
@@ -8026,12 +7512,14 @@ sccs_encoding(sccs *sc, char *encp, char *compp)
  */
 int
 sccs_admin(sccs *sc, u32 flags, char *new_encp, char *new_compp,
-	admin *f, admin *l, admin *u, admin *s, char *text)
+	admin *f, admin *z, admin *u, admin *s, char *text)
 {
 	FILE	*sfile = 0;
 	int	new_enc, error = 0, locked = 0, i, old_enc = 0;
 	char	*t;
 	char	*buf;
+
+	assert(!z); /* XXX used to be LOD item */
 
 	new_enc = sccs_encoding(sc, new_encp, new_compp);
 	if (new_enc == -1) return -1;
@@ -8078,7 +7566,6 @@ out:
 	}
 	if (flags & (ADMIN_BK|ADMIN_FORMAT)) goto out;
 
-	if (addLod("admin", sc, flags, l, &error)) flags |= NEWCKSUM;
 	if (addSym("admin", sc, flags, s, &error)) flags |= NEWCKSUM;
 
 	if (text) {
@@ -8749,13 +8236,6 @@ skip:
 		d->flags |= D_ICKSUM;
 	}
 
-	/* lods are optional */
-	if (WANT('L')) {
-		d->lod = (lod *)strdup(&buf[2]);
-		d->flags |= D_LODSTR;
-		unless (buf = mkline(mnext(f))) goto out; lines++;
-	}
-
 	/* merge deltas are optional */
 	if (WANT('M')) {
 		if (sc) {
@@ -8869,28 +8349,7 @@ read_pfile(char *who, sccs *s, pfile *pf)
 	strcat(pf->date, " ");
 	strcat(pf->date, time);
 	fclose(tmp);
-	/*
-	 * Symbolic revs are of the form "LOD.1(1.2.34)"
-	 */
 	pf->sccsrev[0] = 0;
-	if (t = strchr(pf->newrev, '(')) {
-		lod	*l;
-
-		*t++ = 0;
-		strcpy(pf->sccsrev, t);
-		t = strchr(pf->sccsrev, ')');
-		assert(t);
-		*t = 0;
-		t = strchr(pf->newrev, '.');
-		assert(t);
-		*t = 0;
-		for (l = s->lods; l; l = l->next) {
-			if (streq(pf->newrev, l->name)) break;
-		}
-		pf->l = l;
-		assert(l);
-		*t = '.';
-	}
 
 	/*
 	 * mRev always means there is at least an include - 
@@ -9023,7 +8482,6 @@ sccs_meta(sccs *s, delta *parent, MMAP *iF)
 		free(m->sym);
 		m->sym = 0;
 	}
-	assert(!m->lod);
 
 	/*
 	 * Do the delta table & misc.
@@ -9076,7 +8534,7 @@ getnextlod(sccs *s)
 	delta	*d;
 
 	for (d = s->table; d; d = d->next) {
-		if (d->r[0] > lod) lod = d->r[0];
+		if (d->type == 'D' && d->r[0] > lod) lod = d->r[0];
 	}
 	if (lod) lod++; /* leave lod 0 == 0 meaning error */
 	return (lod);
@@ -9337,13 +8795,6 @@ out:
 		 * XXX - andrew make sure host/user is correct right here.
 		 */
 		if (sccs_getComments(s->gfile, pf.newrev, n)) OUT;
-	}
-	if (pf.l) {
-		n->lod = pf.l;
-		n->flags |= D_DUPLOD;
-		if ((d->lod != pf.l) || !samebranch(d, n)) {
-			pf.l->heads = addSerial(pf.l->heads, n->serial);
-		}
 	}
 	dinsert(s, flags, n);
 	s->numdeltas++;
@@ -10238,14 +9689,6 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "LOD")) {
-		if (d->lod) {
-			fs(d->lod->name);
-			return (strVal);
-		}
-		return (nullVal);
-	}
-
 	if (streq(kw, "KEY")) {
 		if (out) sccs_pdelta(s, d, out);
 		return (strVal);
@@ -10853,8 +10296,6 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 		fprintf(out, "\n");
 	}
 	if (start->flags & D_CKSUM) fprintf(out, "K %u\n", start->sum);
-	/* XXX - D_DUPLOD??? */
-	if (start->flags & D_DUPLOD) fprintf(out, "L %s\n", start->lod->name);
 	if (start->merge) {
 		delta	*d = sfind(s, start->merge);
 		assert(d);
@@ -10923,12 +10364,6 @@ $if(:DPN:){P :DPN:\n}$each(:C:){C (:C:)}\n\
 	/* print metadata if they asked */
 	if (flags & PRS_META) {
 		symbol	*sym;
-		lod	*l;
-
-		for (l = s->lods; l; l = l->next) {
-			fprintf(out, "L %s, parent is %s\n",
-			    l->name, sccsrev(l->d));
-		}
 		for (sym = s->symbols; sym; sym = sym->next) {
 			fprintf(out, "S %s %s\n", sym->name, sym->rev);
 		}
@@ -11304,27 +10739,13 @@ samelod(sccs *s, delta *a, delta *b)
 	return (a->r[0] == b->r[0]);
 }
 
-private u16
-sccs_nextlod(sccs *s)
-{
-	delta	*d;
-	u16	next = 0;
-
-	for (d = s->table; d; d = d->next) {
-		if (d->type == 'D' && d->r[0] > next)
-			next = d->r[0];
-	}
-	next++;
-	return (next);
-}
-
 private delta **
 sccs_lodmap(sccs *s)
 {
 	delta	**lodmap;
 	delta	*d;
 	u16	next;
-	next = sccs_nextlod(s);
+	next = getnextlod(s);
 	/* next now equals one more than greatest that exists
 	 * make room for having a lodmap[next] slot by extending it by one
 	 */

@@ -3,7 +3,7 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 char	*delta_help = "\n\
-usage: delta [-iluYpq] [-S<sym>] [-L<lod>] [-Z<alg>] [-y<c>] [files...]\n\n\
+usage: delta [-iluYpq] [-S<sym>] [-Z<alg>] [-y<c>] [files...]\n\n\
    -a		check in new work automatically\n\
    -c		don't verify file checksum\n\
    -D<file>	take diffs from <file>\n\
@@ -14,7 +14,6 @@ usage: delta [-iluYpq] [-S<sym>] [-L<lod>] [-Z<alg>] [-y<c>] [files...]\n\n\
    -i		initial checkin, create a new revision history\n\
    -I<file>	use init file\n\
    -l		follow checkin with a locked checkout like ``get -e''\n\
-   -L<lod>	delta is the lod.1, i.e., creates a new line of development\n\
    -m		(delta) obsolete, SCCS compat;  (ci) same as -y\n\
    -n		preserve gfile, kill pfile; SCCS compat\n\
    -p		print differences before prompting for comments.\n\
@@ -50,7 +49,6 @@ main(int ac, char **av)
 	char	*diffsFile = 0;
 	char	*name;
 	char	*sym = 0;
-	char	*lod = 0;
 	char	*compp = 0, *encp = 0;
 	MMAP	*diffs = 0;
 	MMAP	*init = 0;
@@ -72,7 +70,7 @@ help:		fputs(delta_help, stderr);
 		return (1);
 	}
 	while ((c = getopt(ac, av,
-			   "acD:E|fg;GhI;ilL;m|npqRrS;suy|YZ|")) != -1) {
+			   "acD:E|fg;GhI;ilm|npqRrS;suy|YZ|")) != -1) {
 		switch (c) {
 		    /* SCCS flags */
 		    case 'n': dflags |= DELTA_SAVEGFILE; break;
@@ -122,7 +120,6 @@ help:		fputs(delta_help, stderr);
 		    case 'G': iflags |= INIT_GTIME; break;
 		    case 'h': dflags |= DELTA_HASH; break;
 		    case 'I': initFile = optarg; break;
-		    case 'L': lod = optarg; break;
 		    case 'R': dflags |= DELTA_PATCH; break;
 		    case 'S': sym = optarg; break;
 		    case 'Y': dflags |= DELTA_DONTASK; break;
@@ -151,10 +148,6 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 	if (initFile && (dflags & DELTA_DONTASK)) {
 		fprintf(stderr,
 		    "%s: only init file or comment, not both.\n", av[0]);
-		goto usage;
-	}
-	if (lod && !(dflags & NEWFILE)) {
-		fprintf(stderr, "%s: -L requires -i.\n", av[0]);
 		goto usage;
 	}
 	if ((gflags & GET_EXPAND) && (gflags & GET_EDIT)) {
@@ -196,11 +189,6 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 		if (sym) {
 			if (!d) d = calloc(1, sizeof(*d));
 			d->sym = strdup(sym);
-		}
-		if (lod) {
-			if (!d) d = calloc(1, sizeof(*d));
-			d->lod = (struct lod *)strdup(lod);
-			d->flags |= D_LODSTR;
 		}
 		nrev = NULL;
 		unless (dflags & NEWFILE) {
