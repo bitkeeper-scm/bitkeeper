@@ -3,10 +3,10 @@
 WHATSTR("@(#)%K%");
 
 /*
- * files - find regular files and symbolic links
+ * _find - find regular files and symbolic links
  */
 private	char *files_usage = "\n\
-usage: files [-name glob_patten] [dir...] \n\
+usage: _find [-name bk_glob_pattern] [dir...] \n\
 \n";
 private	void	walk(char *path);
 private	void	files(char *p);
