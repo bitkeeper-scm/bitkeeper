@@ -118,16 +118,59 @@ done
 bk -r check -a || { echo failed; exit 1; }
 echo OK
 
+TRIGGERS=0
+# create a trigger to use for logging tests
+# this code is careful to not disturb regressions that another
+# user might be running on the same machine.  
+# It does currently assume only one regression per user
+file=post-incoming-regression-$USER
+cat <<EOF 2> /dev/null > /etc/BitKeeper/triggers/.incoming.$file
+#!/bin/sh
+
+if [ "X$USER" != "X\$USER" ]
+then	exit 0
+fi
+set | egrep '^_?BK' > $HERE/post-incoming.out
+echo PWD=\`pwd\` >> $HERE/post-incoming.out
+EOF
+
+if [ $? -eq 0 ]
+then	TRIGGERS=1
+	chmod +x /etc/BitKeeper/triggers/.incoming.$file
+	mv /etc/BitKeeper/triggers/.incoming.$file \
+	   /etc/BitKeeper/triggers/$file
+fi
+
 echo $N Make sure we reject logging patch in a regular repository ...$NL
 bk clone $Q -r1.1 $HERE/project $HERE/copy
 cd $HERE/copy
-bk takepatch -aL < $HERE/patch || exit 1
+rm -f $HERE/post-incoming.out
+BK_TRIGGER_PATH=/etc bk takepatch -aL < $HERE/patch || exit 1
 while [ -f PENDING/2*[0-9] -o -f PENDING/lock ]
 do	sleep 1
 done
 grep -q "can't apply a logging patch to a regular file" PENDING/BAD.*.log
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
+
+if [ $TRIGGERS -eq 1 ]; then
+echo $N A failed logging patch should still call the triggers,.......$NL
+test -f $HERE/post-incoming.out || {
+	echo trigger never ran
+	exit 1
+}
+sed 's/^/TT_/' < $HERE/post-incoming.out > $HERE/post-incoming.vars
+. $HERE/post-incoming.vars
+if [ $TT_BK_STATUS != FAILED ]
+then	echo trigger should indicate failure
+	exit 1
+fi
+if [ $TT_BK_PATCH.log != PENDING/BAD.*.log ]
+then	echo did not report patchname
+	exit 1
+fi
+echo OK
+fi
 
 echo $N Make sure we reject regular patch in a logging repository ...$NL
 cd $HERE/project
