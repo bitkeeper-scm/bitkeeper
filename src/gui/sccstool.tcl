@@ -41,11 +41,13 @@ proc highlight {id type {rev ""}} \
 {
 	global gc w
 
+	# Added two pixels in height to fix lm complaint that the bbox 
+	# was touching the characters -- might want to increase more
 	set bb [$w(cvs) bbox $id]
 	set x1 [lindex $bb 0]
-	set y1 [lindex $bb 1]
+	set y1 [expr [lindex $bb 1] - 1]
 	set x2 [lindex $bb 2]
-	set y2 [lindex $bb 3]
+	set y2 [expr [lindex $bb 3] + 1]
 
 	#puts "highlight: REV ($rev)"
 	switch $type {
@@ -187,9 +189,13 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 	    {^(.*)[ \t]+([0-9]+\.[0-9.]+).*\|} $line match filename rev]} {
 		set annotated 1
 		$w(ap) configure -height 15
-		pack configure $w(cframe) -fill both -expand true \
-		    -anchor s -before .p.b.p
-		$w(ctext) configure -height 5
+		#.p.b configure -background green
+		$w(ctext) configure -height $gc(sccs.commentHeight) 
+		$w(ap) configure -height 50
+		pack configure $w(cframe) -fill x -expand true \
+		    -anchor n -before $w(apframe)
+		pack configure $w(apframe) -fill both -expand true \
+		    -anchor n
 		set prs [open "| bk prs {$dspec} -hr$rev \"$file\" 2>$dev_null"]
 		filltext $w(ctext) $prs 1
 	} else {
@@ -1137,11 +1143,11 @@ proc widgets {} \
 			-troughcolor $gc(sccs.troughColor)
 		# change comment window
 		frame .p.b.c
-		    text .p.b.c.t -width 80 -height 30 \
+		    text .p.b.c.t -width 80 -height $gc(sccs.commentHeight) \
 			-font $gc(sccs.fixedFont) \
 			-xscrollcommand { .p.b.c.xscroll set } \
 			-yscrollcommand { .p.b.c.yscroll set } \
-			-bg $gc(sccs.textBG) -fg $gc(sccs.textFG) -wrap none 
+			-bg $gc(sccs.commentBG) -fg $gc(sccs.textFG) -wrap none 
 		    scrollbar .p.b.c.xscroll -orient horizontal \
 			-wid $gc(sccs.scrollWidth) -command { .p.b.c.t xview } \
 			-background $gc(sccs.scrollColor) \
