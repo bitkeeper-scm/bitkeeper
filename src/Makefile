@@ -536,7 +536,8 @@ install-nolinks: all
 	done
 	@if uname -s | grep _NT; \
 	then cd gnu && $(MAKE) install BINDIR=$(BINDIR) DIFF_BINS= DIRS=patch ;\
-	else cd gnu && $(MAKE) install BINDIR=$(BINDIR) ;\
+	else (cd gnu && $(MAKE) install BINDIR=$(BINDIR)) ;\
+	     cd ../man && $(MAKE) install BINDIR=$(BINDIR) ;\
 	fi
 	@if uname -s | grep _NT; \
 	then cd win32 && $(MAKE) BINDIR=$(BINDIR) install; \
