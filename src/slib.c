@@ -7547,21 +7547,36 @@ count_lines(delta *d)
 	return (count_lines(d->parent) + d->added - d->deleted);
 }
 
-/*
- * Check the file for binary data.
+/* Look for files containing binary data that BitKeeper cannot handle.
+ * This consists of (a) NULs, (b) \n followed by \001.
  */
 int
-ascii(FILE *f)
+ascii(char *file)
 {
-	char	buf[4096];
-	int	n, i;
+	MMAP	*m = mopen(file, "b");
+	u8	*p, *end;
+	int	beginning = 1;
 
-	if (!f) return (1);
-	n = fread(buf, 1, sizeof(buf), f);
-	rewind(f);
-	for (i = 0; i < n; ++i) {
-		unless (isAscii(buf[i])) return (0);
+	if (!m) return (2);
+	for (p = (u8*)m->where, end = (u8*)m->end; p < end; p++) {
+		switch (*p) {
+		    case '\0':	
+			mclose(m);
+			return (0);
+		    case '\n':	
+			beginning = 1;
+			break;
+		    case '\001':
+			if (beginning) {
+				mclose(m);
+				return (0);
+			}
+			/* FALLTHRU */
+		    default:
+			beginning = 0;
+		}
 	}
+	mclose(m);
 	return (1);
 }
 
@@ -7595,7 +7610,7 @@ openInput(sccs *s, int flags, FILE **inp)
 			return (0);
 		}
 		*inp = fopen(file, mode);
-		if (((s->encoding & E_DATAENC)== E_ASCII) && ascii(*inp)) {
+		if (((s->encoding & E_DATAENC)== E_ASCII) && ascii(file)) {
 #ifdef WIN32
 			/* read text file in text mode */
 			setmode(fileno(*inp), _O_TEXT);
