@@ -208,7 +208,7 @@ cmd_push_part1(int ac, char **av)
 		fprintf(l, "%s\n", buf);
 		if (streq("@END PROBE@", buf)) break;
 	}
-	if (pclose(l)) {
+	if (pclose(l) > 1) {
 		perror(cmd);
 		out("@END@\n"); /* just in case list key did not send one */
 		out("ERROR-listkey failed\n");

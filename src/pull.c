@@ -207,7 +207,7 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 		fprintf(stderr,
 		    "You are trying to pull from an unrelated package.\n"
 		    "Please check the pathnames and try again.\n");
-		    break;
+		break;
 	    default:
 		unlink(msg_file);
 		return (-1);
@@ -298,7 +298,6 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	}
 
 	if (opts.dont) {
-		unlink(probe_list);
 		rc = 0;
 		if (!opts.quiet && streq(buf, "@NOTHING TO SEND@")) {
 			char	*p = remote_unparse(r);

@@ -367,6 +367,7 @@ cmd_pull_part2(int ac, char **av)
 	assert(s && s->tree);
 	if (prunekey(s, &r, fd, 1, &local, &rem, 0) < 0) {
 		sccs_free(s);
+		close(fd);
 		rc = 1;
 		goto done;
 	}

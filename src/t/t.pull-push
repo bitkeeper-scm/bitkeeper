@@ -246,6 +246,25 @@ bk pull $Q -t $HERE/project
 if [ ! -f src2/src3/SCCS/s.bar.c ]; then echo failed; exit 1; fi
 if [ ! -f src2/src3/SCCS/s.h.h ]; then echo failed; exit 1; fi
 echo OK
+echo $N push to unrelated project should error ......................$NL
+cd $HERE
+no_logging unrelated
+cd $HERE/project
+bk push -nl $HERE/unrelated 2> push.out
+grep -q "trying to push to an unrelated" push.out
+if [ $? -ne 0 ]; then echo failed; fi
+cd $HERE/unrelated
+waitForUnlock $HERE/unrelated
+echo OK
+echo $N pull from unrelated project should error ....................$NL
+cd $HERE/project
+bk pull -nl $HERE/unrelated 2> pull.out
+grep -q "trying to pull from an unrelated" pull.out
+if [ $? -ne 0 ]; then echo failed; fi
+cd $HERE/unrelated
+waitForUnlock $HERE/unrelated
+echo OK
+
 
 # XXX TODO need test case for push/pull -n
 # XXX TODO need test case for push/pull to unrelated project

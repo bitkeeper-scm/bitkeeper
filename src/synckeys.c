@@ -267,7 +267,10 @@ prunekey(sccs *s, remote *r, int outfd,
 		}
 		return (-1);
 	}
-	if (streq(key, "@NO MATCH@")) return (-2);
+	if (streq(key, "@NO MATCH@")) {
+		getline2(r, key, sizeof(key)); /* eat @END@ */
+		return (-2);
+	}
 	if (strneq(key, "@FAIL@-", 7)) {
 		unless (quiet) fprintf(stderr, "%s\n", &key[7]);
 		return (-1);

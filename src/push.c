@@ -329,7 +329,10 @@ push_part1(opts opts, remote *r, char rev_list[MAXPATH], char **envVar)
 		    case -2:	fprintf(stderr,
 "You are trying to push to an unrelated package. The root keys for the\n\
 ChangeSet file do not match.  Please check the pathnames and try again.\n");
-				break;
+				close(fd);
+				unlink(rev_list);
+				sccs_free(s);
+				return (1); /* needed to force bkd unlock */
 		    case -3:	unless  (opts.forceInit) {
 					fprintf(stderr,
 					    "You are pushing to an a empty "
@@ -339,6 +342,7 @@ ChangeSet file do not match.  Please check the pathnames and try again.\n");
 				}
 				break;
 		}
+		close(fd);
 		unlink(rev_list);
 		disconnect(r, 2);
 		sccs_free(s);
