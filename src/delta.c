@@ -57,13 +57,16 @@ main(int ac, char **av)
 	pfile	pf;
 
 	debug_main(av);
-	if (streq(av[0], "ci")) {
+	name = strrchr(av[0], '/');
+	if (name) name++;
+	else name = av[0];
+	if (streq(name, "ci")) {
 		if (!isdir("SCCS") && isdir("RCS")) {
 			rcs("ci", ac, av);
 			/* NOTREACHED */
 		}
 		isci = 1;
-	} else if (streq(av[0], "delta")) {
+	} else if (streq(name, "delta")) {
 		dflags = DELTA_FORCE;
 	}
 	

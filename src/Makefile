@@ -3,8 +3,8 @@
 BINS	= delta get admin diffs clean prs what sinfo sccssh sids \
 	  smoosh sccslog sfiles renumber lines rmdel takepatch \
 	  cset g2sccs range undos chksum rechksum \
-	  sccsmv sccsrm sccscat key2rev check fdiff adler32
-PRIVATE	= nextsecond mtime gethost zone install.sh
+	  sccsmv sccsrm sccscat key2rev check fdiff adler32 gethost
+PRIVATE	= nextsecond mtime zone install.sh
 SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
 	  sccstool citool vitool fm fm3 bithelp mkindex
 LIBS	= zlib/libz.a mdbm/libmdbm.a libsccs.a
