@@ -1083,11 +1083,7 @@ apply:
 		assert(d);
 		d->flags |= (p->flags & PATCH_LOCAL) ? D_LOCAL : D_REMOTE;
 		if (s->state & S_CSET) continue;
-		if (sccs_isleaf(s, d) && !(d->flags & D_CSET)) {
-			fprintf(stderr,
-			    "No cset mark on %s:%s\n", s->gfile, d->rev);
-			pending++;
-		}
+		if (sccs_isleaf(s, d) && !(d->flags & D_CSET)) pending++;
 	}
 	/* Must check pending before fixing the lod, or we get the wrong
 	 * delta as TOL.

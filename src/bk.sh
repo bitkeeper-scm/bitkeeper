@@ -23,6 +23,11 @@ __cd2root() {
 	done
 }
 
+# shorthand
+_inode() {
+	bk prs -hr+ -d':ROOTKEY:\n' "$@"
+}
+
 # Run csettool on the list of csets, if any
 _csets() {
 	if [ X$1 = X"--help" ]; then bk help csets; exit 0; fi

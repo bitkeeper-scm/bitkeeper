@@ -3,9 +3,9 @@
  */
 #include "resolve.h"
 
-int	do_diff(resolve *rs, char *left, char *right);
-int	do_sdiff(resolve *rs, char *left, char *right);
-int	do_difftool(resolve *rs, char *left, char *right);
+int	do_diff(resolve *rs, char *left, char *right, int w);
+int	do_sdiff(resolve *rs, char *left, char *right, int w);
+int	do_difftool(resolve *rs, char *left, char *right, int w);
 int	prs_common(resolve *rs, sccs *s, char *a, char *b);
 private void getFileConflict(char *gfile, char *path);
 
@@ -57,7 +57,7 @@ int
 res_diffCommon(resolve *rs, rfunc differ)
 {
 	if (rs->tnames) {
-		differ(rs, rs->tnames->local, rs->tnames->remote);
+		differ(rs, rs->tnames->local, rs->tnames->remote, 0);
 		return (0);
 	}
 	if (rs->res_gcreate) {
@@ -69,7 +69,7 @@ res_diffCommon(resolve *rs, rfunc differ)
 			return (0);
 		}
 		chdir(RESYNC2ROOT);
-		differ(rs->dname, right);
+		differ(rs, rs->d->pathname, right, 1);
 		chdir(ROOT2RESYNC);
 		unlink(right);
 		return (0);
@@ -87,7 +87,7 @@ res_diffCommon(resolve *rs, rfunc differ)
 			unlink(left);
 			return (0);
 		}
-		differ(rs, left, right);
+		differ(rs, left, right, 1);
 		unlink(left);
 		unlink(right);
 		return (0);
@@ -97,7 +97,7 @@ res_diffCommon(resolve *rs, rfunc differ)
 }
 
 int
-do_diff(resolve *rs, char *left, char *right)
+do_diff(resolve *rs, char *left, char *right, int wait)
 {
 	char	cmd[MAXPATH*3];
 
@@ -107,7 +107,7 @@ do_diff(resolve *rs, char *left, char *right)
 }
 
 int
-do_sdiff(resolve *rs, char *left, char *right)
+do_sdiff(resolve *rs, char *left, char *right, int wait)
 {
 	char	cmd[MAXPATH*3];
 	FILE	*p = popen("tput cols", "r");
@@ -122,7 +122,7 @@ do_sdiff(resolve *rs, char *left, char *right)
 }
 
 int
-do_difftool(resolve *rs, char *left, char *right)
+do_difftool(resolve *rs, char *left, char *right, int wait)
 {
 	char	*av[10];
 
@@ -131,7 +131,7 @@ do_difftool(resolve *rs, char *left, char *right)
 	av[2] = left;
 	av[3] = right;
 	av[4] = 0;
-	spawnvp_ex(_P_NOWAIT, "bk", av);
+	spawnvp_ex(wait ? _P_WAIT : _P_NOWAIT, "bk", av);
 	return (0);
 }
 
@@ -208,7 +208,7 @@ res_vl(resolve *rs)
 	}
 	if (rs->res_gcreate) {
 		chdir(RESYNC2ROOT);
-		more(rs, rs->dname);
+		more(rs, rs->d->pathname);
 		chdir(ROOT2RESYNC);
 		return (0);
 	}
@@ -933,6 +933,9 @@ rfuncs	gc_funcs[] = {
     { "?", "help", "print this help", gc_help },
     { "a", "abort", "abort the patch, DISCARDING all merges", res_abort },
     { "d", "diff", "diff the local file against the remote file", res_diff },
+    { "D", "difftool",
+	"graphical diff of the local file against the remote file",
+	res_difftool },
     { "hr", "hist remote", "revision history of the remote file", res_hr },
     { "ml", "move local", "move the local file to someplace else", gc_ml },
     { "mr", "move remote", "move the remote file to someplace else", res_mr },
@@ -964,6 +967,9 @@ rfuncs	sc_funcs[] = {
     { "?", "help", "print this help", sc_help },
     { "a", "abort", "abort the patch, DISCARDING all merges", res_abort },
     { "d", "diff", "diff the local file against the remote file", res_diff },
+    { "D", "difftool",
+	"graphical diff of the local file against the remote file",
+	res_difftool },
     { "hl", "hist local", "revision history of the local file", res_hl },
     { "hr", "hist remote", "revision history of the remote file", res_hr },
     /* XXX - should have a move local to RENAMES and come back to it */
