@@ -2,6 +2,7 @@
 #include "sccs.h" 
 
 extern char *editor, *pager, *bin; 
+int is_command(char *file);
 
 main(int ac,  char **av)
 {
@@ -51,7 +52,7 @@ int
 is_command(char *file)
 {
 #ifdef WIN32
-	retun (exists(file));
+	return (exists(file));
 #else
 	return(executable(file));
 #endif
