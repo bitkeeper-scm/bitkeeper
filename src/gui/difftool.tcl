@@ -551,7 +551,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 # Set up keyboard accelerators.
 proc keyboard_bindings {} \
 {
-	global	search gc
+	global	search gc tcl_platform
 
 	bind all <Prior> { if {[Page "yview" -1 0] == 1} { break } }
 	bind all <Next> { if {[Page "yview" 1 0] == 1} { break } }
