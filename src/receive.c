@@ -8,11 +8,6 @@ receive_main(int ac,  char **av)
 	char	buf[MAXLINE], opts[MAXLINE] = "";
 	char	*path;
 
-	if (bk_mode() == BK_BASIC) {
-		fprintf(stderr, upgrade_msg);
-		exit(1);
-	}
-
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help receive");
 		return (0);
@@ -32,6 +27,7 @@ receive_main(int ac,  char **av)
 			exit(1);
 		}
 	}
+
 	unless (av[optind]) {
 		if (sccs_cd2root(0, 0)) {
 usage:			fprintf(stderr,
@@ -47,6 +43,12 @@ usage:			fprintf(stderr,
 			exit(1);
 		}
 	}
+
+	if (!new && bk_mode() == BK_BASIC) {
+		fprintf(stderr, upgrade_msg);
+		exit(1);
+	}
+
 	sprintf(buf, "bk unwrap | bk takepatch %s", opts);
 	return (system(buf));
 }
