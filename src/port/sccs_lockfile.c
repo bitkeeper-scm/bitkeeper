@@ -33,50 +33,54 @@ sccs_lockfile(char *lockfile, int tries)
 /*
  * Create a file with a unique name,
  * try and link it to the lock file,
- * if the link worked and our link count == 2, we won.
- * If tries is set, try that many times, otherwise try forever.
- *
+ * if our link count == 2, we won.
+ * If seconds is set, wait for the lock that many seconds
+ * before giving up.
+ * Note: certain client side NFS implementations take a long time to time
+ * out the attributes so calling this with a low value (under 120 or so)
+ * for the seconds arg is not suggested.
  */
 int
-sccs_lockfile(char *lockfile, int tries)
+sccs_lockfile(char *lockfile, int seconds)
 {
-	char	*s;
-	char	path[MAXPATH];
+	char	*uniq;
+	int	n;
+	int	uslp = 1000, waited = 0;
 	struct	stat sb;
-	int	slp = 1;
-	static	int uniq;
+	static	int jic;
 
-	if (s = strrchr(lockfile, '/')) {
-		char	buf[MAXPATH];
-
-		strcpy(buf, lockfile);
-		s = strrchr(buf, '/');
-		*s = 0;
-		sprintf(path,
-		    "%s/%s%d%d", buf, sccs_gethost(), uniq++, getpid());
-	} else {
-		sprintf(path, "%s%d%d", sccs_gethost(), uniq++, getpid());
+	uniq = aprintf("%s_%s.%d%d", lockfile, sccs_gethost(), jic++, getpid());
+	unlink(uniq);
+	n = creat(uniq, 0600);
+	unless (n >= 0) {
+		fprintf(stderr, "Can't create lockfile %s\n", uniq);
+		free(uniq);
+		return (-1);
 	}
+	close(n);
 	for ( ;; ) {
-		if (close(creat(path, GROUP_MODE))) {
-			perror(path);
-			return (-1);
-		}
-		if ((link(path, lockfile) == 0) && 
-		    (stat(path, &sb) == 0) && (sb.st_nlink == 2)) {
-		    	unlink(path);
+		link(uniq, lockfile);
+		if ((stat(uniq, &sb) == 0) && (sb.st_nlink == 2)) {
+			unlink(uniq);
+			free(uniq);
 			return (0);
 		}
-		unlink(path);	/* less likely to leave turds */
-		if (tries && (--tries == 0)) {
-			fprintf(stderr, "timed out waiting for %s\n", lockfile);
+		if (seconds && ((waited / 1000000) >= seconds)) {
+			fprintf(stderr, "Timed out waiting for %s\n", lockfile);
+			unlink(uniq);
+			free(uniq);
 			return (-1);
 		}
-		if (slp >= 3) {
+		waited += uslp;
+		if (uslp < 1000000) uslp <<= 1;
+		/* usleep() doesn't appear to work on NetBSD.  Sigh. */
+		if (uslp < 1000000) {
+			usleep(uslp);
+		} else {
 			fprintf(stderr, "Waiting for lock %s\n", lockfile);
+			sleep(1);
 		}
-		sleep(slp);
-		if (slp < 60) slp += 1;
 	}
+	/* NOTREACHED */
 }
 #endif
