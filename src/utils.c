@@ -386,7 +386,7 @@ err:		system("bk help -s prompt");
 		if (system(cmd)) goto err;
 		free(cmd);
 	}
-	if (gui_haveDisplay() && !nogui) {
+	if (gui_useDisplay() && !nogui) {
 		char	*nav[19];
 
 		nav[i=0] = "bk";

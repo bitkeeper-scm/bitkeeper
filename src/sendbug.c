@@ -46,7 +46,7 @@ sendbug_main(int ac,  char **av)
 		email = addLine(0, "bitkeeper-bugs@bitmover.com");
 	}
 
-	if (!textmode && gui_haveDisplay()) {
+	if (!textmode && gui_useDisplay()) {
 		sprintf(buf, "%sform", key);
 		return (launch_wish(buf, &av[optind]));
 	}
