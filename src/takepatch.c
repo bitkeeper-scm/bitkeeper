@@ -965,6 +965,8 @@ init(FILE *p, int flags, char **resyncRootp)
 			perror("PENDING");
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 		}
+		/* Force this group writable */
+		(void)chmod("PENDING", 0775);
 		for (i = 1; ; i++) {				/* CSTYLED */
 			struct	tm *tm;
 			time_t	now = time(0);
