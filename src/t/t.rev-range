@@ -2,8 +2,9 @@
 # Copright (c) 1999 Larry McVoy
 # %K%
 
+# The optional datefudge line is excluded from $BASE2
 BASE=37
-BASE2=`expr $BASE + 71`
+BASE2=`expr $BASE + 70`
 ${RM} -rf foo SCCS A
 mkdir SCCS; cset -i -s .
 ${CAT} > SAVE <<EOF
@@ -29,26 +30,24 @@ admin $Q -n empty 2> ERR
 if [ $? -eq 0 ]; then echo Bad exit code 0.; exit 1; fi
 echo OK
 ${RM} -f ERR
-# Note: this test could fail on slow/busy system
-# due to the optional date fudge entry
 echo $N Creating a file from foo ....................................$NL
 cp SAVE foo
 admin $Q -ifoo foo
 if [ ! -f SCCS/s.foo ]; then echo Failed.; exit 1; fi
 if [ ! -f foo ]; then echo Failed - gfile was removed.; exit 1; fi
-set `wc -w SCCS/s.foo`
+set `grep -v "^.cF" SCCS/s.foo | wc -w`
 if [ $1 -ne $BASE2 ]; then echo Failed - wrong size.; exit 1; fi
 echo OK
 echo $N Creating an empty file from /dev/null .......................$NL
 admin $Q -i${DEV_NULL} empty2
 if [ ! -f SCCS/s.empty2 ]; then echo Failed.; exit 1; fi
-set `wc -w SCCS/s.empty2`
-if [ $1 -ne `expr $BASE + 17` ]; then echo Failed - wrong size.; exit 1; fi
+set `grep -v "^.cF" SCCS/s.empty2 | wc -w`
+if [ $1 -ne `expr $BASE + 16` ]; then echo Failed - wrong size.; exit 1; fi
 echo OK
 echo $N Creating a file from stdin ..................................$NL
 admin $Q -i stdin < SAVE
 if [ ! -f SCCS/s.stdin ]; then echo Failed.; exit 1; fi
-set `wc -w SCCS/s.stdin`
+set `grep -v "^.cF" SCCS/s.stdin | wc -w`
 if [ $1 -ne $BASE2 ]; then echo Failed - wrong size.; exit 1; fi
 echo OK
 ${RM} -rf foo SCCS
@@ -93,20 +92,19 @@ grep -q "`cat D`" SCCS/s.foo
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
 echo $N Removing description ........................................$NL
-nextsecond
-cp SCCS/s.foo SCCS/s.bar
+admin $Q -n -tD bar
 admin $Q -t foo
 admin $Q -T bar
-set `wc -w SCCS/s.foo`
+set `grep -v "^.cF" SCCS/s.foo | wc -w`
 if [ $1 -ne `expr $BASE + 26` ]; then echo Failed - wrong size $1 ; exit 1; fi
-set `wc -w SCCS/s.bar`
-if [ $1 -ne `expr $BASE + 27` ]; then echo Failed - wrong size $1 ; exit 1; fi
+set `grep -v "^.cF" SCCS/s.bar | wc -w`
+if [ $1 -ne `expr $BASE + 26` ]; then echo Failed - wrong size $1 ; exit 1; fi
 echo OK
 echo $N And putting it back .........................................$NL
 nextsecond
 admin $Q -tD bar
-set `wc -w SCCS/s.bar`
-if [ $1 -ne `expr $BASE + 52` ]; then echo Failed - wrong size.; exit 1; fi
+set `grep -v "^.cF" SCCS/s.bar | wc -w`
+if [ $1 -ne `expr $BASE + 51` ]; then echo Failed - wrong size.; exit 1; fi
 echo OK
 echo $N One last text test ..........................................$NL
 admin $Q -n -t junk 2>ERR
