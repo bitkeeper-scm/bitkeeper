@@ -4,7 +4,7 @@
 #include <time.h>
 
 
-extern char	*editor, *pager, *bin;
+extern char	*editor, *bin;
 extern char	*BitKeeper;
 
 void
@@ -97,7 +97,7 @@ status(int verbose, FILE *f)
 
 	if (verbose) {
 		bktmp(tmp_file, "status");
-		f1 = fopen(tmp_file, "wb");
+		f1 = fopen(tmp_file, "w");
 		assert(f1);
 		bkusers(0, 0, f1);
 		fclose(f1);

@@ -672,7 +672,7 @@ checkAll(HASH *db)
 			goto full;
 		}
 		sprintf(buf,
-		    "bk sccscat -h %s/ChangeSet | bk _keysort", RESYNC2ROOT);
+		    "bk sccscat -h %s/ChangeSet | bk _sort", RESYNC2ROOT);
 		f = popen(buf, "r");
 		while (fgets(buf, sizeof(buf), f)) {
 			unless (hash_alloc(local, buf, 0, 0)) {
@@ -741,7 +741,7 @@ init_idcache()
 		perror("bktmp_local");
 		exit(1);
 	}
-	unless (idcache = fopen(id_tmp, "wb")) {
+	unless (idcache = fopen(id_tmp, "w")) {
 		perror(id_tmp);
 		exit(1);
 	}
@@ -780,6 +780,7 @@ buildKeys(MDBM *idDB)
 	char	*s, *t = 0, *r;
 	int	n = 0;
 	int	e = 0;
+	int	status;
 	int	fd, sz;
 	char	buf[MAXPATH*3];
 	char	key[MAXPATH*2];
@@ -791,15 +792,16 @@ buildKeys(MDBM *idDB)
 	}
 	unless (cset && HASGRAPH(cset)) {
 		fprintf(stderr, "check: ChangeSet file not inited\n");
-		exit (1);
+		exit(1);
 	}
 	unless (bktmp(ctmp, "check")) {
 		fprintf(stderr, "bktmp failed to get temp file\n");
 		exit(1);
 	}
-	sprintf(buf, "bk sccscat -h ChangeSet | bk _keysort > %s", ctmp);
-	system(buf);
-	unless ((sz = size(ctmp)) > 0) {
+	sprintf(buf, "bk sccscat -h ChangeSet | bk _sort > %s", ctmp);
+	status = system(buf);
+	unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0) &&
+		((sz = size(ctmp)) > 0)) {
 		fprintf(stderr, "Unable to create %s\n", ctmp);
 		exit(1);
 	}

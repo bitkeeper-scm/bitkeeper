@@ -20,6 +20,7 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 #include "system.h"
 #include <stdio.h>
 #include <regex.h>
+#include <assert.h>
 
 #define TAB_WIDTH 8
 

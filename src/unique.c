@@ -53,7 +53,7 @@ lockHome()
 	char	path[MAXPATH];
 
 	if (lockFile) return (lockFile);
-	sprintf(path, "%s/.bk_kl%s", TMP_PATH, sccs_getuser());
+	sprintf(path, "%s/.bk_kl%s", TMP_PATH, sccs_realuser());
 	return (lockFile = (strdup)(path));
 }
 
@@ -86,7 +86,6 @@ private int
 atomic_create(char *noused, char *lock, int me)
 {
 	int	fd, flags = O_EXCL|O_CREAT|O_WRONLY;
-	FILE 	*f;
 	char	buf[100];
 
 	fd = open(lock, flags, 0666);

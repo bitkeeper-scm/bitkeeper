@@ -359,13 +359,13 @@ echo OK
 
 echo $N Test sccs get with foo.c -Gbar.c ............................$NL
 mkdir bin
-BK=`bk bin`/bk
+BK="`bk bin`"/bk
 SCCS=bin/sccs
-test -f ${BK}.exe && {
-	BK=${BK}.exe
+test -f "${BK}.exe" && {
+	BK="${BK}.exe"
 	SCCS=bin/sccs.exe
 }
-cp $BK $SCCS
+cp "$BK" $SCCS
 rm -rf subdir T
 ./bin/sccs clean
 ./bin/sccs get $Q foo.c -Gbar.c || {

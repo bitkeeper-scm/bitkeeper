@@ -28,7 +28,7 @@ USA.  */
 #endif
 
 #undef __ptr_t
-#if defined (__cplusplus) || (defined (__STDC__) && __STDC__)
+#if defined(WIN32) || defined (__cplusplus) || (defined (__STDC__) && __STDC__)
 # define __ptr_t void *
 #else /* Not C++ or ANSI C.  */
 # define __ptr_t char *

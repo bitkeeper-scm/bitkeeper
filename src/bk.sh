@@ -157,7 +157,7 @@ _superset() {
 	 bk sfiles -xa BitKeeper/triggers
 	 bk sfiles -xa BitKeeper/etc |
 	    egrep -v 'etc/SCCS|etc/csets-out|etc/csets-in|etc/level'
-	) | sort > $TMP2
+	) | bk _sort > $TMP2
 	test -s $TMP2 && {
 		test $LIST = NO && {
 			rm -f $TMP $TMP2
@@ -383,36 +383,43 @@ _editor() {
 		exit 1
 	fi
 	bk get -Sqe "$@" 2> /dev/null
+	PATH="$BK_OLDPATH"
 	exec $EDITOR "$@"
 }
 
 _jove() {
 	bk get -qe "$@" 2> /dev/null
+	PATH="$BK_OLDPATH"
 	exec jove "$@"
 }
 
 _joe() {
 	bk get -qe "$@" 2> /dev/null
+	PATH="$BK_OLDPATH"
 	exec joe "$@"
 }
 
 _jed() {
 	bk get -qe "$@" 2> /dev/null
+	PATH="$BK_OLDPATH"
 	exec jed "$@"
 }
 
 _vim() {
 	bk get -qe "$@" 2> /dev/null
+	PATH="$BK_OLDPATH":`bk bin`/gnu/bin
 	exec vim "$@"
 }
 
 _gvim() {
 	bk get -qe "$@" 2> /dev/null
+	PATH="$BK_OLDPATH"
 	exec gvim "$@"
 }
 
 _vi() {
 	bk get -qe "$@" 2> /dev/null
+	PATH="$BK_OLDPATH":`bk bin`/gnu/bin
 	exec vi "$@"
 }
 
@@ -448,11 +455,11 @@ _unrm () {
 
 	# Find all the possible files, sort with most recent delete first.
 	bk -r. prs -Dhnr+ -d':TIME_T:|:GFILE' | \
-		sort -r -n | cut -d'|' -f2 | \
+		bk _sort -r -n | awk -F'|' '{print $2}' | \
 		bk prs -Dhnpr+ -d':GFILE:|:DPN:' - | \
 		grep '^.*|.*'"$rpath"'.*' >$LIST
 
-	NUM=`wc -l $LIST | sed -e's/ *//' | cut -d' ' -f1`
+	NUM=`wc -l $LIST | sed -e's/ *//' | awk -F' ' '{print $1}'`
 	if [ "$NUM" -eq 0 ]
 	then
 		echo "------------------------"
@@ -471,8 +478,8 @@ _unrm () {
 	while read n
 	do
 		echo $n > $TMPFILE
-		GFILE=`cut -d'|' -f1 $TMPFILE`
-		RPATH=`cut -d'|' -f2 $TMPFILE`
+		GFILE=`awk -F'|' '{print $1}' $TMPFILE`
+		RPATH=`awk -F'|' '{print $2}' $TMPFILE`
 
 		# If there is only one match, and it is a exact match,
 		# don't ask for confirmation.
@@ -578,7 +585,7 @@ _rmdir() {		# /* doc 2.0 */
 		exit 1
 	fi
 	bk sfiles "$1" | bk clean -q -
-	bk sfiles "$1" | sort | bk sccsrm -d -
+	bk sfiles "$1" | bk _sort | bk sccsrm -d -
 	SNUM=`bk sfiles "$1" | wc -l`
 	if [ "$SNUM" -ne 0 ]; 
 	then
@@ -704,12 +711,23 @@ _links() {		# /* undoc? 2.0 - what is this for? */
 		echo "Typical usage is bk links /usr/libexec/bitkeeper /usr/bin"
 		exit 1
 	fi
-	test -x "$1/bk" || { echo Can not find bin directory; exit 1; }
+	test -x "$1/bk" || {
+		echo ==========================================================
+		echo Can not find bin directory
+		echo ==========================================================
+		exit 0
+	}
 	BK="$1"
 	if [ "X$2" != X ]
 	then	BIN="$2"
 	else	BIN=/usr/bin
 	fi
+	test -w "$BIN" || {
+		echo ==========================================================
+		echo "bk links: can't write to ${BIN}, no links made."
+		echo ==========================================================
+		exit 0
+	}
 	for i in admin get delta unget rmdel prs bk
 	do	test -f "$BIN/$i" && {
 			echo Saving "$BIN/$i" in "$BIN/${i}.ORIG"
@@ -860,7 +878,7 @@ _meta_union() {
 	__cd2root
 	for d in etc etc/union conflicts deleted
 	do	test -d BitKeeper/$d/SCCS || continue
-		ls -1 BitKeeper/$d/SCCS/s.${1}* 2>/dev/null
+		bk _find BitKeeper/$d/SCCS -name "s.${1}*"
 	done | bk prs -hr1.0 -nd'$if(:DPN:=BitKeeper/etc/'$1'){:GFILE:}' - |
 		bk sccscat - | bk _sort -u
 }
@@ -1085,9 +1103,104 @@ EOF
 		done
 }
 
+# XXX the old 'bk _keysort' has been removed, but we keep this just
+# in case someone calls _keysort after some merge or something.
+__keysort()
+{
+    bk _sort "$@"
+}
+
+# usage: install dir
+# installs bitkeeper in directory <dir> such that the new
+# bk will be located at <dir>/bk
+# Any existing 'bk' directory will be deleted.
+_install()
+{
+	test "X$BK_DEBUG" = X || {
+		echo "INSTALL: $@"
+		set -x
+	}
+	FORCE=0
+	while getopts f opt
+	do
+		case "$opt" in
+		f) FORCE=1;;	# force
+		*) echo "usage: bk install [-f] <destdir>"
+	 	   exit 1;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	test X"$1" = X -o X"$2" != X && {
+		echo "usage: bk install [-f] <destdir>"
+		exit 1
+	}
+	DEST="$1"
+	SRC=`bk bin`
+
+	test -d "$DEST" && {
+		DEST=`cd "$DEST"; bk pwd`	
+		test "$DEST" = "$SRC" && {
+			echo "bk install: destination == souce"
+			exit 1
+		}
+		test $FORCE -eq 0 && {
+			echo "bk install: destination exists, failed (add -f to force)"
+			exit 1
+		}
+		# uninstall can be missing
+		"$DEST"/bk which -i uninstall >/dev/null 2>&1 && {
+			"$DEST"/bk uninstall 2> /dev/null
+		}
+		chmod -R +w "$DEST" 2> /dev/null
+		rm -rf "$DEST"/* || {
+		    echo "bk install: failed to remove $DEST"
+		    exit 1
+		}
+	}
+	mkdir -p "$DEST" || {
+		echo "bk install: Unable to mkdir $DEST, failed"
+		exit 1
+	}
+	test -d "$DEST" -a -w "$DEST" || {
+		echo "bk install: Unable to write to $DEST, failed"
+		exit 1
+	}
+	# copy data
+	(cd "$SRC"; tar cf - .) | (cd "$DEST"; tar -xf -)
+	
+	# binlinks
+	if [ "X$OSTYPE" = "Xmsys" ]
+	then	TARG=bklink.exe
+		EXT=.exe
+	else	TARG=bk
+		EXT=
+	fi
+	# This does the right thing on Windows (msys)
+	for prog in admin get delta unget rmdel prs; do
+		ln "$DEST"/$TARG "$DEST"/$prog$EXT
+	done
+	# permissions
+	cd "$DEST"
+	(find . | xargs chown root) 2> /dev/null
+	(find . | xargs chgrp root) 2> /dev/null
+	find . | xargs chmod -w
+}
+
+_uninstall()
+{
+	exit 0
+}
+
 # ------------- main ----------------------
 __platformInit
 __init
+
+# On Windows convert the original Windows PATH variable to
+# something that will map the same in the shell.
+test "X$OSTYPE" = "Xmsys" && {
+	BK_OLDPATH=$(echo $BK_OLDPATH | \
+		sed -e 's,\(.\):,/\1,g' -e 's,;,:,g' -e 's,\\,/,g')
+}
 
 if type "_$1" >/dev/null 2>&1
 then	cmd=_$1
@@ -1098,6 +1211,7 @@ fi
 cmd=$1
 shift
 
+PATH="$BK_OLDPATH"
 if type "$cmd" > /dev/null 2>&1
 then
 	exec $cmd "$@"
@@ -1105,4 +1219,3 @@ else
 	echo "$cmd: command not found" 1>&2
 	exit 1
 fi
-				

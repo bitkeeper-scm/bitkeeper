@@ -138,7 +138,7 @@ check_rsh(char *remsh)
 {
 	char *t;
 
-	if (!(t = prog2path(remsh)) || strstr(t, "system32/rsh")) {
+	if (!(t = whichp(remsh, 0, 1)) || strstr(t, "system32/rsh")) {
 		getMsg("missing_rsh", remsh, 0, '=', stderr);
 		return (-1);
 	}

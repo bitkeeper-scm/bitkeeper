@@ -62,6 +62,7 @@
 
 #include <partime.h>
 #include <maketime.h>
+#include <assert.h>
 
 char const maket_id[] =
   "$Id: maketime.c,v 5.17 1999/08/29 11:12:37 eggert Exp $";
@@ -124,8 +125,10 @@ time2tm (unixtime, localzone)
   if (!TZ && !(TZ = getenv ("TZ")))
     TZ_is_unset ("The TZ environment variable is not set; please set it to your timezone");
 #endif
-  if (localzone || !(tm = gmtime (&unixtime)))
+  if (localzone || !(tm = gmtime (&unixtime))) {
     tm = localtime (&unixtime);
+  }
+  assert(tm); /* Windows gmtime()/localtime() reject negative time_t */
   return tm;
 }
 

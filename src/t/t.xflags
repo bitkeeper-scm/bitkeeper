@@ -194,3 +194,30 @@ if [ -s OUT ]; then
 	exit 1
 fi
 echo OK
+echo $N Check that flags use the correct _same_ value ...............$NL
+# Bug which was fixed: same was p->added + p->same - p->deleted
+# which could mean same is now less than zero
+# same should be and with this change is: p->added + p->same
+# Test: set same to 3, then delete 2 lines, then alter flag.
+# With bug, same was -1 in sfile, and 0 by prs, since it stopped at the '-'
+# With fix, same == 1
+bk edit $Q foo
+cat - <<EOF > foo
+1
+2
+3
+EOF
+bk delta $Q -y"5 new lines" foo
+bk edit $Q foo
+cat - <<EOF > foo
+1
+EOF
+bk delta $Q -y"5 new lines" foo
+bk admin -fEXPAND1 foo 2> OUT || exit 1
+same=`bk prs -r+ -hnd:LU: foo`
+test "$same" -eq 1 || {
+	echo Fail
+	echo Expected _same_ to be "'1'" and it was "'$same'"
+	exit 1
+}
+echo OK

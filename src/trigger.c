@@ -214,10 +214,14 @@ runit(char *file, char *what, char *output)
 {
 	int	status, rc;
 	char	*root = streq(what, "resolve") ? RESYNC2ROOT : ".";
+	char	*path = strdup(getenv("PATH"));
 
 	safe_putenv("BK_TRIGGER=%s", basenm(file));
 	write_log(root, "cmd_log", 0, "Running trigger %s", file);
+	safe_putenv("PATH=%s", getenv("BK_OLDPATH"));
 	status = sysio(0, output, 0, file, SYS);
+	safe_putenv("PATH=%s", path);
+	free(path);
 	if (WIFEXITED(status)) {
 		rc = WEXITSTATUS(status);
 	} else {

@@ -488,7 +488,7 @@ save_log_markers(void)
 		FILE	*f;
 		char	key[MAXKEY];
 		valid_marker[i] = 0;
-		f = fopen(markfile[i], "rb");
+		f = fopen(markfile[i], "r");
 		if (f) {
 			if (fnext(key, f)) {
 				chomp(key);
@@ -513,7 +513,7 @@ update_log_markers(int verbose)
 		char	key[MAXKEY];
 		
 		unless (valid_marker[i]) continue;
-		f = fopen(markfile[i], "rb");
+		f = fopen(markfile[i], "r");
 		if (f) {
 			if (fnext(key, f)) {
 				chomp(key);

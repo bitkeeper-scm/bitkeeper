@@ -275,7 +275,7 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 		}
 		close(fd);
 		unlink(rev_list);
-		disconnect(r, 2);
+		if (r->type == ADDR_HTTP) disconnect(r, 2);
 		sccs_free(s);
 		return (-1);
 	}
@@ -411,7 +411,7 @@ send_end_msg(remote *r, char *msg, char *rev_list, char **envVar)
 	gzip = r->port ? opts.gzip : 0;
 
 	bktmp(msgfile, "push_send_end");
-	f = fopen(msgfile, "wb");
+	f = fopen(msgfile, "w");
 	assert(f);
 	sendEnv(f, envVar, r, 0);
 
@@ -452,7 +452,7 @@ send_patch_msg(remote *r, char rev_list[], int ret, char **envVar)
 	gzip = r->port ? opts.gzip : 0;
 
 	bktmp(msgfile, "pullmsg2");
-	f = fopen(msgfile, "wb");
+	f = fopen(msgfile, "w");
 	assert(f);
 	sendEnv(f, envVar, r, 0);
 

@@ -13,9 +13,9 @@ bk export \- checks out clear-text version of all \*(BK files
 .B ]
 .OPTreq \-r rev
 .Bc \ [
-.ARGc source
+.ARGc from
 .B ]
-.ARG dest
+.ARG to
 .SH DESCRIPTION
 .LP
 The
@@ -24,7 +24,7 @@ command generates a directory tree alongside the \*(BK
 repository which contains checked-out copies of all the files under
 \*(BK control.  It can also generate traditional
 .RB ( diff
-.BR \-urN )
+.BR \-Nur )
 patches between any two revisions of the source tree.
 By default, bk export only exports user files.  Files under
 the BitKeeper directory are not exported.  This behavior can be
@@ -62,7 +62,7 @@ Disable patch header.
 .OPTreq \-i pat
 Export only pathnames matching 
 .ARG pat
-pattern.
+pattern (see below).
 .tp 
 .B \-k
 Do not expand keywords (default is to expand keywords).
@@ -123,16 +123,33 @@ Make files writable (default is read-only).
 .OPTreq \-x pat
 Export all pathnames not matching 
 .ARG pat
-pattern.
+pattern (see below).
+.SH
+INCLUDE/EXCLUDE PROCESSING
 .LP
-Note that
-.B \-i
-and
-.B \-x
-take a file glob the same as used by
-.B bk ignore
-which is matched against the partial pathname from the root.
+Include and/or exclude patterns may be used to control which
+files are  exported.
+There may be multiple include and/or exclude patterns.
+The patterns are a file glob the same as used by 
+.B bk ignore.
+Patterns are matched against the partial pathname from the root
+of the repository.
+If the partial pathname matches any of the exclude patterns then
+the file is skipped.
+If there are one or more include patterns but the partial
+pathname does not match any of the include patterns then the
+file is skipped.
+Exclude processing takes precendence over include processing.
 .LP
+When exporting patches there can be ambguity as to which name is used 
+for include/exclude processing because some files may have been moved 
+in the changes implied by the exported patch.
+The include/exclude processing always applies to any of file names
+contained in the changes implied by the patch.
+For example, suppose you have a file that is currently deleted but
+at the time of the patch was in \f(CWsrc/foo.c\fP.
+If you told the system to export \f(CWsrc/*\fP then the file will
+be in the set.
 .SH SEE ALSO
 .BR diff (1)
 .br

@@ -1,0 +1,11 @@
+#!/bin/sh
+
+test -x $BINDIR/bk || {
+	echo NO_BINDIR
+	exit 1
+}
+set `$BINDIR/bk version`
+case X$4 in
+    Xbk*)	echo $4;;
+    *)		echo bk-$4;;
+esac

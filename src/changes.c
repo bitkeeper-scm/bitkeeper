@@ -958,7 +958,7 @@ send_end_msg(remote *r, char *msg)
 	int	rc;
 
 	bktmp(msgfile, "changes_end");
-	f = fopen(msgfile, "wb");
+	f = fopen(msgfile, "w");
 	assert(f);
 	sendEnv(f, NULL, r, !opts.remote);
 
@@ -986,7 +986,7 @@ send_part2_msg(remote *r, char **av, char *key_list)
 	FILE	*f;
 
 	bktmp(msgfile, "changes_msg");
-	f = fopen(msgfile, "wb");
+	f = fopen(msgfile, "w");
 	assert(f);
 	sendEnv(f, NULL, r, !opts.remote);
 

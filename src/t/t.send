@@ -15,7 +15,7 @@
 
 if [ "$PLATFORM" = "WIN32" ]
 then
-	echo "This feature is not yet available on win32"
+	echo "For non win32 only ..........................................skipped"
 	exit 0
 fi
 

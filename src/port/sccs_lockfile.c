@@ -1,6 +1,11 @@
 #include "../system.h"
 #include "../sccs.h"
 
+#ifdef	WIN32
+#define	link(f, t)	win32link(f, t)
+private int	win32link(const char *from, const char *to);
+#endif
+
 private	char	*uniqfile(const char *file);
 private	int	linkcount(const char *file);
 private int	share_open(const char *file);
@@ -23,6 +28,7 @@ sccs_lockfile(const char *file, int waitsecs, int quiet)
 	char	*p, *uniq;
 	int	fd;
 	int	uslp = 1000, waited = 0;
+	extern	int fsync(int);
 
 	uniq = uniqfile(file);
 	unlink(uniq);
@@ -167,7 +173,6 @@ sccs_readlockf(const char *file, pid_t *pidp, char **hostp, time_t *tp)
 	int	i, n;
 
 	unless ((fd = share_open(file)) >= 0) return (-1);
-	setmode(fd, _O_BINARY);
 	bzero(buf, sizeof(buf));
 	if ((flen = fsize(fd)) < 0) {
 		perror("fsize");
@@ -258,7 +263,7 @@ uniqfile(const char *file)
  * link() as a "fast copy" interface.
  */
 private int
-link(const char *from, const char *to)
+win32link(const char *from, const char *to)
 {
 	errno = EPERM;
 	return (-1);
@@ -303,7 +308,7 @@ share_open(const char *file)
 		    (err != ERROR_PATH_NOT_FOUND) &&
 		    (err != ERROR_FILE_NOT_FOUND)) {
 			fprintf(stderr,
-			    "sccs_readlock: cannot open %s, win32 err %d\n",
+			    "sccs_readlock: cannot open %s, win32 err %lu\n",
 			    file, GetLastError());
 			return (-1);
 		}

@@ -9,7 +9,7 @@
 char *
 getHomeDir(void)
 {
-        char	*homeDir, *t;
+        char	*homeDir;
 	char	home_buf[MAXPATH], tmp[MAXPATH];
 	int	len = MAXPATH;
 #define KEY "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders"
@@ -19,7 +19,7 @@ getHomeDir(void)
 		return (NULL);
 	}
 	GetShortPathName(home_buf, tmp, MAXPATH);
-	localName2bkName(home_buf, home_buf);
+	localName2bkName(tmp, tmp);
 	concat_path(tmp, tmp, "BitKeeper");
 	unless (exists(tmp)) mkdir(tmp, 0640);
 	homeDir = strdup(tmp);
@@ -53,6 +53,14 @@ getBkDir(void)
 
 	if (dir) return (dir);
 
+	if (t = getenv("BK_BKDIR")) {
+		unless (isdir(t)) {
+			fprintf(stderr, "BKDIR (%s) doesn't exist.\n", t);
+			exit(1);
+		}
+		dir = strdup(t);
+		return (dir);
+	}
 	if (t = getHomeDir()) {
 		dir = aprintf("%s/%s", t, bkdir);
 		free(t);

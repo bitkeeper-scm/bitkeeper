@@ -81,7 +81,7 @@ loadfile(char *file, int *size)
 	char	*ret;
 	int	len;
 
-	f = fopen(file, "rb");
+	f = fopen(file, "r");
 	unless (f) return (0);
 
 	if (fstat(fileno(f), &statbuf)) {
@@ -382,7 +382,6 @@ prompt_main(int ac, char **av)
 	FILE	*in;
 	char	msgtmp[MAXPATH];
 	char	buf[1024];
-	extern	char *pager;
 	char	**lines = 0;
 
 	while ((c = getopt(ac, av, "cegGiowxf:n:p:t:y:")) != -1) {
@@ -499,7 +498,8 @@ err:		system("bk help -s prompt");
 	} else {
 		FILE	*out;
 
-		sprintf(buf, "%s 1>&2", pager);
+		signal(SIGPIPE, SIG_IGN);
+		sprintf(buf, "%s 1>&2", pager());
 		out = popen(buf, "w");
 		EACH(lines) {
 			fprintf(out, "%s", lines[i]);
@@ -1135,7 +1135,7 @@ savefile(char *dir, char *prefix, char *pathname)
 		if (fd == -1) {
 			if (errno == EEXIST) continue;	/* name taken */
 			if (errno == ENOENT &&
-			    ((mkdir)(dir, 0777) == 0)) {
+			    (realmkdir(dir, 0777) == 0)) {
 				/* dir missing, applyall race? */
 				continue;
 			}
@@ -1178,6 +1178,34 @@ spawn_cmd(int flag, char **av)
 	return (WEXITSTATUS(ret));
 }
 
+char *
+pager(void)
+{
+	char	*pagers[3] = {"more", "less", 0};
+	static	char	*pg;
+	int	i;
+
+	if (pg) return (pg); /* already cached */
+
+	unless (pg = getenv("BK_PAGER")) pg = getenv("PAGER");
+
+	/* env can be PAGER="less -E" */
+	if (pg) {
+		char	**cmds = shellSplit(pg);
+
+		unless (cmds && cmds[1] && which(cmds[1], 0, 1)) pg = 0;
+		freeLines(cmds, free);
+	}
+	if (pg) return (strdup(pg));	/* don't trust env to not change */
+
+	for (i = 0; pagers[i]; i++) {
+		if (which(pagers[i], 0, 1)) {
+			pg = pagers[i];
+			return (pg);
+		}
+	}
+	return (pg = "bk more");
+}
 
 #define	MAXARGS	100
 /*
@@ -1190,18 +1218,18 @@ mkpager()
 	pid_t	pid;
 	char	*pager_av[MAXARGS];
 	char	*cmd;
-	extern 	char *pager;
+	char	*pg = pager();
 
 	/* win32 treats "nul" as a tty, in this case we don't care */
 	unless (isatty(1)) return (0);
 
 	/* "cat" is a no-op pager used in bkd */
-	if (streq("cat", pager)) return (0);
+	if (streq("cat", pg)) return (0);
 
 	fflush(stdout);
 	signal(SIGPIPE, SIG_IGN);
-	cmd = strdup(pager); /* line2av stomp */
-	line2av(cmd, pager_av); /* win32 pager is "less -X -E" */
+	cmd = strdup(pg); /* line2av stomp */
+	line2av(cmd, pager_av); /* some user uses "less -X -E" */
 	pid = spawnvp_wPipe(pager_av, &pfd, 0);
 	dup2(pfd, 1);
 	close(pfd);

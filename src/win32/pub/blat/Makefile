@@ -1,30 +1,22 @@
-LIBS=ws2_32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib \
-	advapi32.lib 
-CC=cl
-LD=link
-CFLAGS=-O2 -G3 -Og -Oi -nologo
 CPPFLAGS=-DGENSOCK_STATIC_LINK -IGENSOCK
-OBJS=blat.o blatcgi.o gensock.o
-AR=../win32/util/mklib
-OUT=-Fo
-H=GENSOCK/gensock.h
-ALL=../../../blat.exe
+CFLAGS=-O2 -g $(CPPFLAGS)
+OBJS=blat.o blatcgi.o GENSOCK/gensock.o
+override CC=g++
+LDLIBS=-lws2_32
 
-all: $(ALL)
+all:  blat
+	cp blat.exe ../../../
 
 clean clean-obj:
 	-rm -f $(OBJS) *.idb *.pdb *.~bkp
 
-../../../blat.exe: $(OBJS)
-	$(LD) $(LDFLAGS) -out:$@ $(OBJS)  $(LIBS)
+blat: $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) $(LDLIBS) -o $@
 
-blat.o: blat.cpp $(H)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< $(OUT)$@
-blatcgi.o: blatcgi.cpp $(H)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< $(OUT)$@
-gensock.o: GENSOCK/gensock.cpp $(H)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< $(OUT)$@
+$(OBJS): GENSOCK/gensock.h
+
+$(OBJS): GENSOCK/gensock.h
 
 install:
 	@if [ X$(BINDIR) = X ]; then echo Must set BINDIR; exit 1; fi
-	cp $(ALL) $(BINDIR)
+	cp blat.exe $(BINDIR)

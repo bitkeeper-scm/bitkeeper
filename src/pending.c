@@ -3,8 +3,6 @@
 #define V_QUIET		-2
 #define V_COUNT		-1
 
-extern char *pager;
-
 typedef struct {
 	u32	cset:1;
 	u32	patch:1;

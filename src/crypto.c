@@ -134,7 +134,7 @@ make_keypair(int bits, char *secret, char *public)
 	}
 	size = sizeof(out);
 	if (rsa_export(out, &size, PK_PRIVATE_OPTIMIZED, &key)) goto err;
-	f = fopen(secret, "wb");
+	f = fopen(secret, "w");
 	unless (f) {
 		fprintf(stderr, "crypto: can open %s for writing\n", secret);
 		return(2);
@@ -143,7 +143,7 @@ make_keypair(int bits, char *secret, char *public)
 	fclose(f);
 	size = sizeof(out);
 	if (rsa_export(out, &size, PK_PUBLIC, &key)) goto err;
-	f = fopen(public, "wb");
+	f = fopen(public, "w");
 	unless (f) {
 		fprintf(stderr, "crypto: can open %s for writing\n", public);
 		return(2);
@@ -432,6 +432,7 @@ base64_main(int ac, char **av)
 	}
 
 	if (unpack) {
+		setmode(fileno(stdout), _O_BINARY);
 		while (fgets(buf, sizeof(buf), stdin)) {
 			len = strlen(buf);
 			outlen = sizeof(out);
@@ -442,6 +443,7 @@ base64_main(int ac, char **av)
 			fwrite(out, 1, outlen, stdout);
 		}
 	} else {
+		setmode(fileno(stdin), _O_BINARY);
 		while (len = fread(buf, 1, 48, stdin)) {
 			outlen = sizeof(out);
 			if (base64_encode(buf, len, out, &outlen)) goto err;
@@ -486,7 +488,11 @@ hashstr(char *str)
 	char	md5[32];
 	char	b64[32];
 
-	if (hash_memory(hash, str, strlen(str), md5)) return (0);
+	if (streq(str, "-")) {
+		if (hash_filehandle(hash, stdin, md5)) return (0);
+	} else {
+		if (hash_memory(hash, str, strlen(str), md5)) return (0);
+	}
 	b64len = sizeof(b64);
 	md5len = hash_descriptor[hash].hashsize;
 	if (base64_encode(md5, md5len, b64, &b64len)) return (0);

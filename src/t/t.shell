@@ -22,7 +22,7 @@
 #
 if [ X$PLATFORM = X"WIN32" ]
 then
-	echo "This test is not supported on WIN32"
+	echo "For non win32 only ..........................................skipped"
 	exit 0;
 fi
 
@@ -68,7 +68,7 @@ do	cd $HERE/$i
 	bk commit -y$i $Q
 done
 cd $HERE/copy
-bk resync $Q
+bk pull -R -t $Q
 cd ..
 tar cf TAR copy
 cd copy
@@ -125,7 +125,7 @@ do	cd $HERE/$i
 	bk commit -y$i $Q
 done
 cd $HERE/copy
-bk resync $Q
+bk pull -t -R $Q
 cd ..
 tar cf TAR copy
 cd copy

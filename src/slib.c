@@ -1127,6 +1127,12 @@ a2tm(struct tm *tp, char *asctime, char *z, int roundup)
 	if (((asctime[-1] == '-') || (asctime[-1] == '+')) && !z) z = --asctime;
 
 correct:
+	/* Correct for dates parsed as pre-epoch because of missing tz */
+	if (tp->tm_year == 69) {
+		bzero(tp, sizeof(*tp));
+		z = 0;
+	}
+	
 	/*
 	 * Truncate down oversized fields.
 	 */
@@ -3098,6 +3104,66 @@ checktags(sccs *s, delta *leaf, int flags)
 	return (1);
 }
 
+private int
+badTag(char *me, char *tag, int flags)
+{
+	char	*p;
+
+	if (isdigit(*tag)) {
+		verbose((stderr,
+		    "%s: %s: tags can't start with a digit.\n", me, tag));
+		return (1);
+	}
+	switch (*tag) {
+	    case '=':
+	    case '-':
+	    case '.':
+		verbose((stderr,
+		    "%s: %s: tags can't start with a '%c'.\n", me, tag, *tag));
+		return (1);
+	}
+	if (streq(tag, "+")) {
+		verbose((stderr,
+		    "%s: tag cannot be '+', that means most recent rev.\n",
+		    me));
+		return (1);
+	}
+	if (strstr(tag, "..")) {
+		verbose((stderr,
+		    "%s: tag %s cannot contain '..'\n", me, tag));
+		return (1);
+	}			
+	if (strstr(tag, ".,")) {
+		verbose((stderr,
+		    "%s: tag %s cannot contain '.,'\n", me, tag));
+		return (1);
+	}			
+	if (strstr(tag, ",.")) {
+		verbose((stderr,
+		    "%s: tag %s cannot contain ',.'\n", me, tag));
+		return (1);
+	}			
+	if (strstr(tag, ",,")) {
+		verbose((stderr,
+		    "%s: tag %s cannot contain ',,'\n", me, tag));
+		return (1);
+	}			
+	p = tag;
+	while (*p) {
+		switch (*p++) {
+		    case '\001':
+		    case '|':
+		    case '\n':
+		    case '\r':
+			verbose((stderr,
+			    "%s: tag %s cannot contain \"^A,|\\n\\r\"\n",
+			    me, tag));
+			return (1);
+		}
+	}
+	return (0);
+}
+
 /*
  * Check tag graph integrity.
  */
@@ -3105,9 +3171,22 @@ private int
 checkTags(sccs *s, int flags)
 {
 	delta	*l1 = 0, *l2 = 0;
+	symbol	*sym;
+	int	bad = 0;
+
+	/* Nobody else has tags */
+	unless (CSET(s)) return (0);
 
 	/* Allow open tag branch for logging repository */
 	if (LOGS_ONLY(s)) return (0);
+
+	/* Make sure that tags don't contain weird characters */
+	for (sym = s->symbols; sym; sym = sym->next) {
+		unless (sym->symname) continue;
+		/* XXX - not really "check" all the time */
+		if (badTag("check", sym->symname, flags)) bad = 1;
+	}
+	if (bad) return (128);
 
 	if (sccs_tagleaves(s, &l1, &l2)) return (128);
 	if (checktags(s, l1, flags) || checktags(s, l2, flags)) return (128);
@@ -4019,7 +4098,7 @@ sccs_init(char *name, u32 flags)
 		if (bad) {
 			fprintf(stderr,
 "Unable to proceed.  ChangeSet file corrupted.  error=57\n"
-"Please contact support@bitmover.com for help.\n");
+"Please run 'bk support' to request assistance.\n");
 			goto err;
 		}
 	}
@@ -6559,15 +6638,22 @@ out:			if (slist) free(slist);
 
 #ifdef X_SHELL
 	if (SHELL(s) && ((flags & PRINT) == 0)) {
-		char cmd[MAXPATH], *t;
+		char	*path = strdup(getenv("PATH"));
+		char	*t;
+		char	cmd[MAXPATH];
 
+		safe_putenv("PATH=%s", getenv("BK_OLDPATH"));
 		t = strrchr(s->gfile, '/');
 		if (t) {
 			*t = 0;
 			sprintf(cmd, "cd %s; sh %s -o", s->gfile, &t[1]);
 			*t = '/';
-		} else  sprintf(cmd, "sh %s -o", s->gfile);
+		} else {
+			sprintf(cmd, "sh %s -o", s->gfile);
+		}
 		system(cmd);
+		safe_putenv("PATH=%s", path);
+		free(path);
 	}
 #endif
 	*ln = lines;
@@ -7023,7 +7109,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		unlink(tmpfile);
 		goto done2;
 	}
-	unless (lbuf = fopen(tmpfile, "w+b")) {
+	unless (lbuf = fopen(tmpfile, "w+")) {
 		perror(tmpfile);
 		fprintf(stderr, "getdiffs: couldn't open %s\n", tmpfile);
 		s->state |= S_WARNED;
@@ -10126,24 +10212,7 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 			continue;
 		}
 		if (!rev || !*rev) rev = d->rev;
-		if (isdigit(s[i].thing[0])) {
-			fprintf(stderr,
-			    "%s: %s: can't start with a digit.\n",
-			    me, sym);
-			goto sym_err;
-		}
-		if (strchr(sym, ',')) {
-			verbose((stderr,
-				    "%s: symbol %s cannot contain ','\n",
-				    me, sym));
-			goto sym_err;
-		}
-		if (strstr(sym, "..")) {
-			verbose((stderr,
-				    "%s: symbol %s cannot contain '..'\n",
-				    me, sym));
-			goto sym_err;
-		}			
+		if (badTag(me, s[i].thing, flags)) goto sym_err;
 		if (dupSym(sc->symbols, sym, rev)) {
 			verbose((stderr,
 			    "%s: symbol %s exists on %s\n", me, sym, rev));
@@ -10220,7 +10289,7 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
 	sc->numdeltas++;
 	if (isNullDelta) {
 		n->added = n->deleted = 0;
-		n->same = p->same + p->added - p->deleted;
+		n->same = p->same + p->added;
 		n->sum = (unsigned short) almostUnique(0);
 		n->flags |= D_CKSUM;
 	}
@@ -15238,7 +15307,7 @@ sccs_resolveFiles(sccs *s)
 	if (s->defbranch) {
 		fprintf(stderr, "resolveFiles: defbranch set.  "
 			"LODs are no longer supported.\n"
-			"Please contact support@bitmover.com for "
+			"Please run 'bk support' to request "
 			"assistance.\n");
 err:
 		return (retcode);
@@ -15260,8 +15329,8 @@ err:
 				fprintf(stderr, "resolveFiles: Found tips on "
 				 	"different LODs.\n"
 					"LODs are no longer supported.\n"
-					"Please contact support@bitmover.com "
-					"for assistance.\n");
+					"Please run 'bk support' to "
+					"request assistance.\n");
 				goto err;
 			}
 			/* Could break but I like the error checking */
@@ -16248,8 +16317,8 @@ smartRename(char *old, char *new)
 int
 smartMkdir(char *dir, mode_t mode)
 {
-	if (isdir(dir)) return 0;
-	return ((mkdir)(dir, mode));
+	if (isdir(dir)) return (0);
+	return (realmkdir(dir, mode));
 }
 
 /* TIMESTAMP HANDLING */

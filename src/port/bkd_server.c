@@ -209,14 +209,14 @@ bkd_server(int ac, char **av)
 static SERVICE_STATUS		srvStatus;
 static SERVICE_STATUS_HANDLE	statusHandle;
 static HANDLE			hServerStopEvent = NULL;
-static int			err_num = 0;
 static char			err[256];
 int				bkd_quit = 0; /* global */
 
 static void WINAPI bkd_service_ctrl(DWORD dwCtrlCode);
 static char *getError(char *buf, int len);
 void reportStatus(SERVICE_STATUS_HANDLE, int, int, int);
-void bkd_remove_service();
+void bkd_remove_service(int verbose);
+void bkd_install_service(bkdopts *opts, int ac, char **av);
 void bkd_install_service(bkdopts *opts, int ac, char **av);
 void bkd_start_service(void (*service_func)(int, char**));
 void logMsg(char *msg);
@@ -289,7 +289,7 @@ void
 bkd_service_loop(int ac, char **av)
 {
 	SOCKET	sock = 0;
-	int	c, i, j, n, err = 0;
+	int	c, n;
 	char	pipe_size[50], socket_handle[20];
 	char	*nav[100] = {
 		"bk", "_socket2pipe",
@@ -298,7 +298,7 @@ bkd_service_loop(int ac, char **av)
 		"bk", "bkd", "-z",	/* bkd command */
 		0};
 	extern	int bkd_quit; /* This is set by the helper thread */
-	extern	int bkd_register_ctrl();
+	extern	int bkd_register_ctrl(void);
 	extern	void reportStatus(SERVICE_STATUS_HANDLE, int, int, int);
 	extern	void logMsg(char *);
 	SERVICE_STATUS_HANDLE   sHandle;
@@ -403,6 +403,26 @@ bkd_server(int ac, char **av)
 	}
 }
 
+static int
+envSize(char *envVar)
+{
+	char *e;
+
+	unless (e = getenv(envVar)) return (0);
+	return (strlen(envVar) + 1 + strlen(e));
+}
+
+/* e.g. append "-E \"BK_BKDIR=path\"" */
+static void
+addEnvVar(char *cmd, char *envVar)
+{
+	char	*p, *v;
+
+	unless (v = getenv(envVar)) return;
+	p = &cmd[strlen(cmd)];
+	sprintf(p, "-E \"%s=%s\"", envVar, v);
+}
+
 /*
  * Install and start bkd service
  */
@@ -413,9 +433,10 @@ bkd_install_service(bkdopts *opts, int ac, char **av)
 	SC_HANDLE   schSCManager = 0;
 	SERVICE_STATUS serviceStatus;
 	char	path[1024], here[1024];
-	char	*start_dir, *cmd, *p, *q;
+	char	*start_dir, *cmd, *p;
 	char	**nav;
-	int	i, j, len, try = 0;
+	char	*eVars[3] = {"BK_REGRESION", "BK_BKDIR", 0};
+	int	i, len, try = 0;
 
 	if (GetModuleFileName(NULL, path, sizeof(path)) == 0) {
 		fprintf(stderr, "Unable to install %s - %s\n",
@@ -433,14 +454,14 @@ bkd_install_service(bkdopts *opts, int ac, char **av)
 	p = aprintf("\"%s\"  bkd -S -p %d -c %d \"-s%s\" -E \"PATH=%s\"",
 		path, opts->port, opts->count, start_dir, getenv("PATH"));
 	len = strlen(p) + 1;
-	if (getenv("BK_REGRESSION")) len += 30;
+	for (i = 0; eVars[i]; i++) len += envSize(eVars[i]);
 	nav = malloc((ac + 1) * sizeof(char *));
 	argv_save(ac, av, nav, 0);
 	len += argv_size(nav);
 	cmd = malloc(len);
 	strcpy(cmd, p);
 	free(p);
-	if (getenv("BK_REGRESSION")) strcat(cmd, " -E \"BK_REGRESSION=YES\"");
+	for (i = 0; eVars[i]; i++) addEnvVar(cmd, eVars[i]);
 	for (i = 0; nav[i]; i++) {
 		strcat(cmd, " \"");
 		strcat(cmd, nav[i]);
@@ -486,7 +507,7 @@ out:		if (cmd) free(cmd);
 	/*
 	 * Here is where we enter the bkd_service_loop()
 	 */
-	if (StartService(schService, --ac, ++av) == 0) {
+	if (StartService(schService, --ac, (LPCTSTR *)++av) == 0) {
 		fprintf(stderr, "%s cannot start service. %s\n",
 		    SERVICEDISPLAYNAME, getError(err, 256));
 		goto out;
@@ -617,7 +638,7 @@ helper(LPVOID param)
 }
 
 int
-bkd_register_ctrl()
+bkd_register_ctrl(void)
 {
 	DWORD threadId;
 	/*
@@ -690,7 +711,7 @@ getError(char *buf, int len)
        		buf[0] = 0;
     	} else {
         	buf1[lstrlen(buf1)-2] = 0;
-        	sprintf(buf, "%s (0x%x)", buf1, GetLastError());
+        	sprintf(buf, "%s (0x%lx)", buf1, GetLastError());
     	}
     	if (buf1) LocalFree((HLOCAL) buf1);
 	return buf;
@@ -734,7 +755,8 @@ logMsg(char *msg)
 	HANDLE	evtSrc = RegisterEventSource(NULL, SERVICENAME);
 
 	unless (evtSrc) return;
-	ReportEvent(evtSrc, EVENTLOG_ERROR_TYPE, 0, 0, NULL, 1, 0, &msg, NULL);
+	ReportEvent(evtSrc, EVENTLOG_ERROR_TYPE, 0, 0, NULL, 1, 0,
+		(LPCTSTR *)&msg, NULL);
 	DeregisterEventSource(evtSrc);
 }
 #endif
