@@ -11,18 +11,26 @@ bk clone \- create a new copy of a package
 .Bc ] [
 .OPTopt \-z d
 .B ]
-.ARG source
-.ARG destination
+.ARG from
+.Bc [
+.ARG to
+.B ]
 .SH DESCRIPTION
 .LP
-The clone command copies from the source repository and creates a
-copy at the destination.  See 
+The clone command copies from the 
+.ARG from
+repository and creates a
+copy at
+.ARG to .
+If 
+.ARG to 
+is not specified then the basename of the
+.ARG from
+is the implied destination.  This works for fully and partially specified
+pathnames as well as BK URLs.
+See 
 .B bk help parent
-for information on
-the syntax of
-.ARG source
-and
-.ARG destination .
+for further naming information.
 .LP
 If 
 .ARG rev
@@ -31,7 +39,9 @@ changesets up to and including
 .ARG rev .
 .LP
 The cloned repository remembers from which repository it was cloned.
-The source repository is known as the "parent", while the newly cloned
+The 
+.ARG from
+repository is known as the "parent", while the newly cloned
 repository is known as the "child".
 .LP
 Subsequent updates to the child can be done by running 
@@ -47,7 +57,7 @@ from the child before the clone completes.
 Run quietly.
 .tp
 .OPTequal \-E env val
-Export environment variable to remote site.
+Export an environment variable to remote site.
 .tp
 .OPTreq \-r rev
 Clone the repository up to and including cset 

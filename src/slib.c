@@ -306,6 +306,16 @@ chop(register char *s)
 	return (c);
 }
 
+/* chop if there is a trailing slash */
+void
+chopslash(register char *s)
+{
+	char	c;
+
+	while (*s++);
+	if (s[-2] == '/') s[-2] = 0;
+}
+
 /*
  * Keys are like u@h|path|date|.... whatever
  * We want to skip over any spaces in the path part.
