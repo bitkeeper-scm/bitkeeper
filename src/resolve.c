@@ -779,7 +779,12 @@ rename_file(resolve *rs)
 		    rs->gnames->local, rs->gnames->gca, rs->gnames->remote);
 	}
 
-	assert(!streq(rs->gnames->local, rs->gnames->remote));
+	/* XXX: resolve across LODs can have this assert fail 
+	 * remote: new lod, then rename, then commit
+	 * pull back in, sfile has new name, but in this lod has no rename
+	 * used to have:
+	 * -> assert(!streq(rs->gnames->local, rs->gnames->remote));
+	 */
 
 	/*
 	 * See if we can just slide the file into place.

@@ -2012,8 +2012,12 @@ getedit(sccs *s, char **revp, int branch)
 		return (0);
 	}
 ok:
-	/* if BK, and no rev and default is x.x or x.x.x.x, then newlod */
-	if ((s->state & S_BITKEEPER) && !rev && defIsVer(s)) {
+	/* if BK, and no rev (or rev == def) and def is x.x or x.x.x.x,
+	 * then newlod
+	 */
+	if ((s->state & S_BITKEEPER)
+	    && (!rev || (s->defbranch && streq(rev, s->defbranch)))
+	    && defIsVer(s)) {
 		unless (a = sccs_nextlod(s)) {
 			fprintf(stderr, "getedit: out of lods\n");
 			return (0);
@@ -8993,6 +8997,14 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
 		n->flags |= D_CKSUM;
 	}
 	dinsert(sc, 0, n, 1);
+	/* XXX: distributing LOD information.  encapusate it! */
+	/* When starting a new LOD, clear defbranch */
+	if ((sc->state & S_BITKEEPER)
+	    && (sc->defbranch && streq(sc->defbranch, p->rev))
+	    && defIsVer(sc)) {
+		free(sc->defbranch);
+		sc->defbranch = 0;
+	}
 	return (n);
 }
 
