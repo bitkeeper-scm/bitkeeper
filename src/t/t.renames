@@ -12,8 +12,7 @@
 # and the resync run in the other direction.
 
 # The entire set of tests is disabled until resolve catches up.
-if false
-then
+if true; then exit 0; fi
 
 cat >tests <<'^D'
 #t name of test
@@ -226,5 +225,3 @@ x() { cd $HERE/s; _inspect "$@"; }
 . $HERE/tests
 
 trap '' 0
-
-fi
