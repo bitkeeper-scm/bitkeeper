@@ -196,12 +196,14 @@ init_main_loop()
 # -t	set Test Directory
 # -v 	turn on verbose mode
 # -x	trace command execution
+# -r	use rsh instead of ssh
 #
 get_options()
 {
 	Q=-q; S=-s;
 	while true
 	do	case $1 in
+		    -r) export PREFER_RSH=YES;;
 		    -t) if [ X$2 = X ]
 			then	echo "-t option requires one argument";
 				exit 1;
