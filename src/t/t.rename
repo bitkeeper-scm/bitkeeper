@@ -99,7 +99,7 @@ echo OK
 cd $HERE
 tar cf chkpt.tar a b
 echo $N resync a to b ...............................................$NL
-bk resync $Q a b
+bk resync -t $Q a b
 cd b
 bk resolve $Q -t >resolve.out 2>&1 <<EOF
 m
@@ -120,7 +120,7 @@ cd ..
 rm -rf a b
 tar xf chkpt.tar
 echo $N resync b to a ...............................................$NL
-bk resync $Q b a
+bk resync -t $Q b a
 cd a
 ${CAT} > R <<EOF
 m

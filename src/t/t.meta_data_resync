@@ -44,7 +44,7 @@ echo OK
 cores
 echo $N Create a copy of the project ................................$NL
 cd $HERE
-bk resync $Q project copy
+bk resync -t $Q project copy
 if [ ! -d copy ]; then echo failed to make top level directory; exit 1; fi
 cd copy
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
@@ -54,7 +54,7 @@ echo $N Check propagation of permission .............................$NL
 cd $HERE/project/src
 bk admin -m-rwx------ foo.c
 bk commit $S -yperm1
-bk resync $Q $HERE/project $HERE/copy
+bk resync -t $Q $HERE/project $HERE/copy
 bk resolve -t $Q $HERE/copy
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.foo.c  $HERE/copy/src/SCCS/s.foo.c
@@ -67,7 +67,7 @@ bk commit $S -yperm2
 cd $HERE/copy/src
 bk admin -m-rwx-w---- foo.c
 bk commit $S -yperm3
-bk resync $Q $HERE/project $HERE/copy
+bk resync -t $Q $HERE/project $HERE/copy
 bk resolve -t $Q $HERE/copy 2>/dev/null 1>&2 <<EOF
 r
 u
@@ -91,7 +91,7 @@ bk clone $Q $HERE/project $HERE/copy
 cd $HERE/project/src
 bk admin $Q -fEXPAND1 -fRCS -fYEAR4 bar.c
 bk commit $Q -yabc
-bk resync $Q $HERE/project $HERE/copy
+bk resync -t $Q $HERE/project $HERE/copy
 bk resolve -t $Q $HERE/copy
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.bar.c  $HERE/copy/src/SCCS/s.bar.c
@@ -99,7 +99,7 @@ if [ $? -ne 0 ]; then echo failed; exit 1; fi
 cd $HERE/project/src
 bk admin $Q -FRCS -FYEAR4 bar.c
 bk commit $Q -yabc
-bk resync $Q $HERE/project $HERE/copy
+bk resync -t $Q $HERE/project $HERE/copy
 bk resolve -t $Q $HERE/copy
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.bar.c  $HERE/copy/src/SCCS/s.bar.c
@@ -109,7 +109,7 @@ echo $N Check propagation of flags \& permission .....................$NL
 cd $HERE/project/src
 bk admin $Q -fRCS -m-rwx-r--r-- bar.c
 bk commit $Q -yabc
-bk resync $Q $HERE/project $HERE/copy
+bk resync -t $Q $HERE/project $HERE/copy
 bk resolve -t $Q $HERE/copy
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.bar.c  $HERE/copy/src/SCCS/s.bar.c
@@ -121,7 +121,7 @@ echo "this is a text entry line 1" > text
 echo "this is a text entry line 2" >> text
 bk admin -ttext h.h
 bk commit $Q -yabc
-bk resync $Q $HERE/project $HERE/copy
+bk resync -t $Q $HERE/project $HERE/copy
 bk resolve -t $Q $HERE/copy
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.h.h  $HERE/copy/src/SCCS/s.h.h
@@ -129,7 +129,7 @@ if [ $? -ne 0 ]; then echo failed; exit 1; fi
 cd $HERE/project/src
 bk admin -T h.h
 bk commit $Q -yabc
-bk resync $Q $HERE/project $HERE/copy
+bk resync -t $Q $HERE/project $HERE/copy
 bk resolve -t $Q $HERE/copy
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.h.h  $HERE/copy/src/SCCS/s.h.h
@@ -139,7 +139,7 @@ echo $N Check propagation of text, flags \& permission ...............$NL
 cd $HERE/project/src
 bk admin -ttext -fYEAR4 -m-rwx-w--w- h.h
 bk commit $Q -yabc
-bk resync $Q $HERE/project $HERE/copy
+bk resync -t $Q $HERE/project $HERE/copy
 bk resolve -t $Q $HERE/copy
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.h.h  $HERE/copy/src/SCCS/s.h.h
@@ -160,7 +160,7 @@ bk commit $S -yperm2
 cd $HERE/copy/src
 bk admin $Q -fEXPAND1 foo.c
 bk commit $S -yperm3
-bk resync $Q $HERE/project $HERE/copy
+bk resync -t $Q $HERE/project $HERE/copy
 bk resolve -t $Q $HERE/copy 2>/dev/null 1>&2 <<EOF
 r
 u

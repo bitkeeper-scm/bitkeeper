@@ -94,7 +94,7 @@ echo "No conflicts" > no_conflicts
 bk new $Q no_conflicts
 bk commit $Q -ywhatever
 cd $HERE
-bk resync $Q -at project copy
+bk resync -t $Q -at project copy
 cd copy
 if [ ! -f SCCS/s.no_conflicts ]
 then	echo failed to propogate no_conflicts; exit 1
@@ -112,7 +112,7 @@ bk new $Q no_conflicts
 bk mv no_conflicts renamed
 bk commit $Q -ywhatever2
 cd $HERE
-bk resync $Q -at project copy
+bk resync -t $Q -at project copy
 cd copy
 if [ ! -f SCCS/s.renamed ]
 then	echo failed to propogate renamed; exit 1
@@ -133,7 +133,7 @@ bk commit $Q -ywhatever
 cd $HERE/copy
 echo "I am the copy file" > CONFLICT
 cd $HERE
-bk resync $Q project copy
+bk resync -t $Q project copy
 tar cf SAVE.copy copy
 echo OK
 echo $N '  resolve by removing local file ............................'$NL
@@ -393,7 +393,7 @@ bk commit $Q -ywhatever
 cd $HERE/copy
 echo "I am the copy file" > CONFLICT
 cd $HERE
-bk resync $Q project copy
+bk resync -t $Q project copy
 tar cf SAVE.copy copy
 echo OK
 echo $N '  resolve by removing local file ............................'$NL
@@ -597,7 +597,7 @@ bk new $Q CONFLICT
 # Remote this to make it the pending deltas case
 bk commit $Q -ywhatever
 cd $HERE
-bk resync $Q project copy
+bk resync -t $Q project copy
 tar cf SAVE.copy copy
 echo OK
 
@@ -818,7 +818,7 @@ cd $HERE/copy
 echo "I am the copy file" > CONFLICT
 bk new $Q CONFLICT
 cd $HERE
-bk resync $Q project copy
+bk resync -t $Q project copy
 tar cf SAVE.copy copy
 echo OK
 
@@ -887,7 +887,7 @@ echo "I am the copy file" > CONFLICT
 bk new $Q CONFLICT
 bk commit $Q -ywhatever
 cd $HERE
-bk resync $Q project copy
+bk resync -t $Q project copy
 tar cf SAVE.copy copy
 echo OK
 
@@ -1097,7 +1097,7 @@ touch A
 bk new $Q A
 bk commit $Q -ywhatever
 cd $HERE
-bk resync $Q project copy
+bk resync -t $Q project copy
 # Rework the patch to be in the order we want.  We want A first and MOVED 2nd.
 cd copy/PENDING
 FILE=`echo *`
@@ -1163,7 +1163,7 @@ echo Hi there, I am a conflict file > CONFLICT
 bk new $Q CONFLICT
 bk commit $Q -ywhatever
 cd $HERE
-bk resync $Q project copy
+bk resync -t $Q project copy
 tar cf SAVE.copy copy
 echo OK
 
@@ -1330,7 +1330,7 @@ cd project
 bk sccsmv A Z
 bk commit $S -f -y'A->Z'
 cd ..
-bk resync $Q project copy
+bk resync -t $Q project copy
 cd copy
 BK_IGNORELOCK=YES bk get -e $Q A
 echo modified >> A
@@ -1405,7 +1405,7 @@ bk get $Q -e A
 echo same data >> A
 bk ci $Q -y'change as A'
 bk commit $S -f -y'change as A'
-bk resync $Q $HERE/project $HERE/copy
+bk resync -t $Q $HERE/project $HERE/copy
 if [ ! -f RESYNC/SCCS/r.Z ]
 then	echo failed to create conflict for Z; exit 1
 fi

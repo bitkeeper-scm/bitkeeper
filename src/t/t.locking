@@ -103,7 +103,7 @@ bk new $Q C
 bk commit $Q -ywhatever
 bk repo -w
 cd $HERE/clone
-bk pull $Q 2>/dev/null
+bk pull -t $Q 2>/dev/null
 if [ $? != 1 ]; then echo pull failed to exit with error; exit 1; fi
 echo OK
 echo $N Make sure pull works with existing read lock in source ......$NL
@@ -112,13 +112,13 @@ bk repo -W
 bk repo -r
 mv BitKeeper/readers/* BitKeeper/readers/1234@nowhere.nowhere
 cd $HERE/clone
-bk pull $Q -r 2>/dev/null
+bk pull -t $Q -r 2>/dev/null
 if [ ! -d RESYNC ]; then echo pull failed; exit 1; fi
 bk resolve -t $Q
 echo OK
 echo $N Make sure pull works with existing read lock in source \#2 ...$NL
 cd $HERE/clone2
-bk pull $Q -r  2>/dev/null
+bk pull -t $Q -r  2>/dev/null
 if [ ! -d RESYNC ]; then echo pull failed; exit 1; fi
 bk resolve -t $Q
 echo OK
@@ -145,7 +145,7 @@ cd $HERE/clone
 bk push $Q
 if [ $? != 0 ]; then echo push exited with an error; exit 1; fi
 cd $HERE/project
-bk pull $HERE/clone > OUT 2>&1
+bk pull -t $HERE/clone > OUT 2>&1
 if [ "`cat OUT`" != "Nothing to pull." ]
 then	echo failed - bad status message
 	cat OUT
