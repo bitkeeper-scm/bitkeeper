@@ -412,6 +412,7 @@ cset_resum(sccs *s, int diags, int fix, int spinners)
 	/* the above is very fast, no need to optimize further */
 
 	/* foreach delta */
+	slist = 0;
 	for (d = s->table; d; d = d->next) {
 		unless (d->type == 'D') continue;
 		unless (d->added || d->include || d->exclude) continue;
@@ -420,14 +421,16 @@ cset_resum(sccs *s, int diags, int fix, int spinners)
 			continue;
 		}
 
-		slist = sccs_set(s, d, 0, 0); /* slow */
-		if (spinners) {
-			static	int sometimes;
-
-			if (++sometimes == 10) {
-				fprintf(stderr, "%c\b", spin[n++ % 4]);
-				sometimes = 0;
-			}
+		/* Is this serialmap a simple extension of the last one? */
+		if (slist && (slist[0] == d->serial+1)) {
+			slist[0] = d->serial;
+			slist[d->serial+1] = 0;
+		} else {
+			if (slist) free(slist);
+			slist = sccs_set(s, d, 0, 0); /* slow */
+		}
+		if (spinners && (((++n) & 0xf) == 0)) {
+			fprintf(stderr, "%c\b", spin[(n>>4) & 0x3]);
 		}
 		sum = 0;
 		added = 0;
@@ -446,7 +449,12 @@ cset_resum(sccs *s, int diags, int fix, int spinners)
 				ser = sse->ser;
 			}
 		}
-		free(slist);
+		/* save serialmap if parent is easy to compute from it */
+		if (d->merge || d->include || d->exclude ||
+		    (d->pserial+1 != d->serial)) {
+			free(slist);
+			slist = 0;
+		}
 
 		if ((d->added != added) || d->deleted || (d->same != 1)) {
 			/*
@@ -481,6 +489,7 @@ cset_resum(sccs *s, int diags, int fix, int spinners)
 			++found;
 		}
 	}
+	if (slist) free(slist);
 	s->state &= ~S_SET;	/* if set, then done with it: clean up */
 	for (i = 0; i < cnt; i++) free(map[i]);
 	free(map);
