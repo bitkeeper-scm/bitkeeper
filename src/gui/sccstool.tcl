@@ -529,7 +529,7 @@ proc filltext {f clear} \
 	catch {close $f} ignore
 	.p.bottom.t configure -state disabled
 	searchreset
-	set search(text) "Welcome"
+	set search(prompt) "Welcome"
 	if {$clear == 1 } { busy 0 }
 }
 
@@ -543,7 +543,7 @@ proc prs {} \
 		set prs [open "| bk prs {$dspec} -r$rev1 \"$file\" 2>$dev_null"]
 		filltext $prs 1
 	} else {
-		set search(text) "Click on a revision"
+		set search(prompt) "Click on a revision"
 	}
 }
 
@@ -742,76 +742,6 @@ proc done {} \
 	exit
 }
 
-proc search {dir} \
-{
-	global	search
-
-	set search(dir) $dir
-	set search(text) "Search for:"
-	.cmd.t delete 1.0 end
-	focus .cmd.t
-}
-
-proc searchreset {} \
-{
-	global	search
-
-	if {$search(dir) == "/"} {
-		set search(start) "1.0"
-	} else {
-		set search(start) "end"
-	}
-}
-
-proc searchstring {} \
-{
-	global	search
-
-	set string [.cmd.t get 1.0 "end - 1 char"]
-	if {"$string" == ""} {
-		if {[info exists search(string)] == 0} {
-			set search(text) "No search string"
-			focus .p.top.c
-			return
-		}
-	} else {
-		set search(string) $string
-		searchreset
-	}
-	searchnext
-}
-
-proc searchnext {} \
-{
-	global	search
-
-	if {$search(dir) == "/"} {
-		set w \
-		    [.p.bottom.t search -- $search(string) $search(start) "end"]
-		set where "bottom"
-	} else {
-		set i ""
-		catch { set i [.p.bottom.t index search.first] }
-		if {"$i" != ""} { set search(start) $i }
-		set w [.p.bottom.t \
-		    search -backwards -- $search(string) $search(start) "1.0"]
-		set where "top"
-	}
-	if {"$w" == ""} {
-		set search(text) "Search hit $where, $search(string) not found"
-		focus .p.top.c
-		return
-	}
-	set search(text) "Found $search(string) at $w"
-	set l [string length $search(string)]
-	.p.bottom.t see $w
-	set search(start) [.p.bottom.t index "$w + $l chars"]
-	.p.bottom.t tag remove search 1.0 end
-	.p.bottom.t tag add search $w "$w + $l chars"
-	.p.bottom.t tag raise search
-	focus .p.top.c
-}
-
 # All of the pane code is from Brent Welch.  He rocks.
 proc PaneCreate {} \
 {
@@ -951,8 +881,11 @@ proc widgets {} \
 	set getOpts "-aum"
 	set lineOpts "-u -t"
 	set yspace 20
-	set search(text) ""
+	set search(prompt) ""
 	set search(dir) ""
+	set search(text) .cmd.t
+	set search(focus) .p.top.c
+	set search(widget) .p.bottom.t
 	set stacked 1
 
 	if {$tcl_platform(platform) == "windows"} {
@@ -1032,7 +965,7 @@ proc widgets {} \
 		text .p.bottom.t -width 80 -height 30 -font $font(plain) \
 		    -xscrollcommand { .p.bottom.xscroll set } \
 		    -yscrollcommand { .p.bottom.yscroll set } \
-		    -wrap none 
+		    -bg white -wrap none 
 		scrollbar .p.bottom.xscroll -orient horizontal \
 		    -wid $swid -command { .p.bottom.t xview }
 		scrollbar .p.bottom.yscroll -orient vertical -wid $swid \
@@ -1047,9 +980,9 @@ proc widgets {} \
 	}
 
 	frame .cmd -borderwidth 2 -relief ridge
-		text .cmd.t -height 1 -width 30 -font $font(button)
+		text $search(text) -height 1 -width 30 -font $font(button)
 		label .cmd.l -font $font(button) -width 30 -relief groove \
-		    -textvariable search(text)
+		    -textvariable search(prompt)
 		grid .cmd.l -row 0 -column 0 -sticky ew
 		grid .cmd.t -row 0 -column 1 -sticky ew
 
@@ -1102,8 +1035,8 @@ proc widgets {} \
 	bind .p.top.c <question> "search ?"
 	bind .p.top.c <n> "searchnext"
 	bind .cmd.t <Return> "searchstring"
-	.p.bottom.t tag configure search \
-	    -background lightblue -relief groove -borderwid 2
+	$search(widget) tag configure search \
+	    -background yellow -relief groove -borderwid 0
 
 	# highlighting.
 	.p.bottom.t tag configure "newTag" -background $color(new)
@@ -1157,7 +1090,7 @@ proc sccstool {name} \
 	dateSeparate
 
 	history
-	set search(text) "Welcome"
+	set search(prompt) "Welcome"
 	focus .p.top.c
 	busy 0
 }

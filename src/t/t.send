@@ -59,7 +59,6 @@ cd $HERE
 rmdir project/BitKeeper/etc/.master
 rm -f project/BitKeeper/etc/SCCS/x.dfile
 rm -f project/BitKeeper/etc/SCCS/x.id_cache
-rm -f project/BitKeeper/etc/SCCS/d.config
 rm -f copy/BitKeeper/etc/SCCS/x.id_cache
 rm -f project/BitKeeper/etc/SCCS/x.marked
 rm -f copy/BitKeeper/etc/SCCS/x.marked

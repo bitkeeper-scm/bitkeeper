@@ -104,7 +104,7 @@ SCRSRCS	= testfast.perl bk.sh import.sh clone.sh \
 	  gui/sccstool.tcl gui/citool.tcl gui/difftool.tcl \
 	  gui/vitool.tcl gui/fmtool.tcl gui/fm3tool.tcl \
 	  gui/helptool.tcl uuwrap.sh gui/setuptool.tcl \
-	  gui/_citool.tcl gui/progress.tcl \
+	  gui/_citool.tcl gui/progress.tcl gui/search.tcl \
 	  unuuwrap.sh port/unix_platform.sh port/unix_platform.tcl \
 	  port/unix_platform.perl pmerge.perl gui/csettool.tcl \
 	  port/win32_platform.perl port/win32_platform.tcl \
@@ -357,8 +357,9 @@ bkdsubstr: bkd.h
 	rm _bkdvers
 	chmod +x bkdsubstr
 
-sccstool: gui/sccstool.tcl gui/common.tcl port/$(SYS)_platform.tcl
-	cat port/$(SYS)_platform.tcl gui/common.tcl gui/sccstool.tcl > sccstool
+sccstool: gui/search.tcl gui/sccstool.tcl gui/common.tcl port/$(SYS)_platform.tcl
+	cat port/$(SYS)_platform.tcl gui/common.tcl \
+	    gui/search.tcl gui/sccstool.tcl > sccstool
 
 citool: gui/citool.tcl gui/common.tcl gui/progress.tcl port/$(SYS)_platform.tcl
 	cat port/$(SYS)_platform.tcl gui/common.tcl gui/progress.tcl \
