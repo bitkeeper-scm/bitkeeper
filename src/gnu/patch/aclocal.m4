@@ -182,11 +182,20 @@ changequote([, ])dnl
 	     if test "$GCC" != yes; then
 	       ac_cv_sys_largefile_CFLAGS=-n32
 	     fi
-	     ac_save_CC="$CC"
-	     CC="$CC $ac_cv_sys_largefile_CFLAGS"
-	     AC_TRY_LINK(, , , ac_cv_sys_largefile_CFLAGS=no)
-	     CC="$ac_save_CC"
-	   esac])
+           ;;
+	   # HP/UX 10.20 and later, with GCC, require -D__STDC_EXT__.
+changequote(, )dnl
+	   hpux10.[2-9][0-9]* | hpux1[1-9]* | hpux[2-9][0-9]*)
+changequote([, ])dnl
+	     if test "$GCC" != yes; then
+	       ac_cv_sys_largefile_CFLAGS=-D__STDC_EXT__
+	     fi
+	   ;; 
+	   esac
+	   ac_save_CC="$CC"
+	   CC="$CC $ac_cv_sys_largefile_CFLAGS"
+	   AC_TRY_LINK(, , , ac_cv_sys_largefile_CFLAGS=no)
+	   CC="$ac_save_CC"])
       }])])
 
 dnl Internal subroutine of AC_SYS_LARGEFILE.

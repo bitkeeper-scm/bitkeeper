@@ -131,6 +131,9 @@
 /* Define if you have the <varargs.h> header file.  */
 #undef HAVE_VARARGS_H
 
+/* Define if compiler has function prototypes */
+#undef PROTOTYPES
+
 /* Number of bits in a file offset, on hosts where this is settable. */
 #undef _FILE_OFFSET_BITS
 
@@ -139,9 +142,6 @@
 
 /* Define for large files, on AIX-style hosts. */
 #undef _LARGE_FILES
-
-/* Define if compiler has function prototypes */
-#undef PROTOTYPES
 
 /* Define if <inttypes.h> exists, doesn't clash with <sys/types.h>,
    and declares uintmax_t.  */
