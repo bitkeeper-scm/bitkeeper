@@ -1122,6 +1122,7 @@ int	comments_readcfile(sccs *s, int prompt, delta *d);
 int	comments_prompt(char *file);
 int	run_check(char *partial);
 char	*key2path(char *key, MDBM *idDB);
+int	write_log(char *root, char *file, int rotate, char *format, ...);
 
 extern char *bk_vers;
 extern char *bk_utc;
