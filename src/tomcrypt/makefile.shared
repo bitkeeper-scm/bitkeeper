@@ -4,28 +4,26 @@
 # Modified by Clay Culver
 
 # The version
-VERSION=0.99
+VERSION=0:99
 
 # Compiler and Linker Names
-#CC=gcc
-#LD=ld
+CC=libtool --mode=compile gcc
 
 # Archiver [makes .a files]
-#AR=ar
-#ARFLAGS=r
+AR=libtool --mode=link 
 
 # Compilation flags. Note the += does not write over the user's CFLAGS!
 CFLAGS += -c -I./ -Wall -Wsign-compare -W -Wshadow 
 # -Werror
 
 # optimize for SPEED
-#CFLAGS += -O3 -funroll-all-loops
+CFLAGS += -O3 -funroll-all-loops
 
 #add -fomit-frame-pointer.  hinders debugging!
-#CFLAGS += -fomit-frame-pointer
+CFLAGS += -fomit-frame-pointer
 
 # optimize for SIZE
-CFLAGS += -Os -DSMALL_CODE
+#CFLAGS += -Os
 
 # compile for DEBUGING (required for ccmalloc checking!!!)
 #CFLAGS += -g3
@@ -33,7 +31,7 @@ CFLAGS += -Os -DSMALL_CODE
 #These flags control how the library gets built.
 
 #Output filenames for various targets.
-LIBNAME=libtomcrypt.a
+LIBNAME=libtomcrypt.la
 HASH=hashsum
 CRYPT=encrypt
 SMALL=small
@@ -52,6 +50,9 @@ DATAPATH=/usr/share/doc/libtomcrypt/pdf
 
 #Leave MPI built-in or force developer to link against libtommath?
 MPIOBJECT=mpi.o
+
+#If you don't want mpi.o then add this
+#MPISHARED=$(LIBPATH)/libtommath.la
 
 OBJECTS=error_to_string.o mpi_to_ltc_error.o base64_encode.o base64_decode.o \
 \
@@ -160,90 +161,26 @@ sha256.o: sha256.c sha224.c
 library: $(LIBNAME)
 
 $(LIBNAME): $(OBJECTS)
-	$(AR) $(ARFLAGS) $@ $(OBJECTS) 
+	libtool --mode=link gcc $(CFLAGS) *.lo -o libtomcrypt.la -rpath $(LIBPATH) -version-info $(VERSION)
+	libtool --mode=link gcc $(CFLAGS) *.o  -o libtomcrypt.a
+	libtool --mode=install install -c libtomcrypt.la $(LIBPATH)/libtomcrypt.la
+	install -d -g root -o root $(DESTDIR)$(INCPATH)
+	install -g root -o root $(HEADERS) $(DESTDIR)$(INCPATH)
 
 #This rule makes the hash program included with libtomcrypt
-hashsum: library $(HASHOBJECTS)
-	$(CC) $(HASHOBJECTS) $(LIBNAME) -o $(HASH) $(WARN)
+hashsum: library
+	gcc $(CFLAGS) demos/hashsum.c -o hashsum.o
+	libtool --mode=link gcc -o hashsum hashsum.o -ltomcrypt $(MPISHARED)
 
 #makes the crypt program
-crypt: library $(CRYPTOBJECTS)
-	$(CC) $(CRYPTOBJECTS) $(LIBNAME) -o $(CRYPT) $(WARN)
+crypt: library 
+	gcc $(CFLAGS) demos/encrypt.c -o encrypt.o
+	libtool --mode=link gcc -o crypt encrypt.o -ltomcrypt $(MPISHARED)
 
-#makes the small program
-small: library $(SMALLOBJECTS)
-	$(CC) $(SMALLOBJECTS) $(LIBNAME) -o $(SMALL) $(WARN)
-	
-x86_prof: library $(PROFS)
-	$(CC) $(PROFS) $(LIBNAME) $(EXTRALIBS) -o $(PROF)
+x86_prof: library
+	gcc $(CFLAGS) demos/x86_prof.c -o x86_prof.o
+	libtool --mode=link gcc -o x86_prof x86_prof.o -ltomcrypt $(MPISHARED) $(EXTRALIBS)
 
 tv_gen: library $(TVS)
-	$(CC) $(TVS) $(LIBNAME) $(EXTRALIBS) -o $(TV)
-
-#This rule installs the library and the header files. This must be run
-#as root in order to have a high enough permission to write to the correct
-#directories and to set the owner and group to root.
-install: library docs
-	install -d -g root -o root $(DESTDIR)$(LIBPATH)
-	install -d -g root -o root $(DESTDIR)$(INCPATH)
-	install -d -g root -o root $(DESTDIR)$(DATAPATH)
-	install -g root -o root $(LIBNAME) $(DESTDIR)$(LIBPATH)
-	install -g root -o root $(HEADERS) $(DESTDIR)$(INCPATH)
-	install -g root -o root doc/crypt.pdf $(DESTDIR)$(DATAPATH)
-
-install_lib: library
-	install -d -g root -o root $(DESTDIR)$(LIBPATH)
-	install -d -g root -o root $(DESTDIR)$(INCPATH)
-	install -g root -o root $(LIBNAME) $(DESTDIR)$(LIBPATH)
-	install -g root -o root $(HEADERS) $(DESTDIR)$(INCPATH)
-
-#This rule cleans the source tree of all compiled code, not including the pdf
-#documentation.
-clean:
-	rm -f $(OBJECTS) $(TESTOBJECTS) $(HASHOBJECTS) $(CRYPTOBJECTS) $(SMALLOBJECTS) $(LEFTOVERS) $(LIBNAME)
-	rm -f $(TEST) $(HASH) $(COMPRESSED) $(PROFS) $(PROF) $(TVS) $(TV)
-	rm -f *.la *.lo *.o *.a *.dll *stackdump *.lib *.exe *.obj demos/*.obj demos/*.o *.bat *.txt *.il *.da demos/*.il demos/*.da *.dyn *.dpi \
-	*.gcda *.gcno demos/*.gcno demos/*.gcda *~ doc/*
-	cd demos/test ; make clean   
-	rm -rf .libs demos/.libs demos/test/.libs
-	
-#This builds the crypt.pdf file. Note that the rm -f *.pdf has been removed
-#from the clean command! This is because most people would like to keep the
-#nice pre-compiled crypt.pdf that comes with libtomcrypt! We only need to
-#delete it if we are rebuilding it.
-docs: crypt.tex
-	rm -f doc/crypt.pdf $(LEFTOVERS)
-	echo "hello" > crypt.ind
-	latex crypt > /dev/null
-	latex crypt > /dev/null
-	makeindex crypt.idx > /dev/null
-	latex crypt > /dev/null
-	dvipdf crypt
-	mv -ivf crypt.pdf doc/crypt.pdf
-	rm -f $(LEFTOVERS)
-
-docdvi: crypt.tex
-	echo hello > crypt.ind
-	latex crypt > /dev/null
-	latex crypt > /dev/null
-	makeindex crypt.idx
-	latex crypt > /dev/null
-
-#pretty build
-pretty:
-	perl pretty.build
-
-#for GCC 3.4+
-profiled:
-	make clean
-	make CFLAGS="$(CFLAGS) -fprofile-generate" EXTRALIBS=-lgcov x86_prof
-	./x86_prof
-	rm *.o *.a x86_prof
-	make CFLAGS="$(CFLAGS) -fprofile-use" EXTRALIBS=-lgcov x86_prof
-
-#zipup the project (take that!)
-zipup: clean docs
-	cd .. ; rm -rf crypt* libtomcrypt-$(VERSION) ; mkdir libtomcrypt-$(VERSION) ; \
-	cp -R ./libtomcrypt/* ./libtomcrypt-$(VERSION)/ ; tar -c libtomcrypt-$(VERSION)/* > crypt-$(VERSION).tar ; \
-	bzip2 -9vv crypt-$(VERSION).tar ; zip -9 -r crypt-$(VERSION).zip libtomcrypt-$(VERSION)/* ; \
-	gpg -b -a crypt-$(VERSION).tar.bz2 ; gpg -b -a crypt-$(VERSION).zip
+	gcc $(CFLAGS) demos/tv_gen.c -o tv_gen.o
+	libtool --mode=link gcc -o tv_gen tv_gen.o -ltomcrypt $(MPISHARED)
