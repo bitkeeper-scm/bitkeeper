@@ -15,10 +15,10 @@
 SAVE=`bk getuser`
 BK_USER=bk
 export BK_USER
-${RM} -rf bar SCCS
+rm -rf bar SCCS
 bk cset -i -s .
-${ECHO} Hallo > date
-bk admin $Q -n -idate date; ${RM} date
+echo Hallo > date
+bk admin $Q -n -idate date; rm date
 echo $N Check for path in initial checkin ...........................$NL
 grep -q '^.cP.*date$' SCCS/s.date
 if [ $? -ne 0 ]; then echo No path found.; exit 1; fi
@@ -27,8 +27,8 @@ if [ $? -ne 0 ]; then echo Wrong path found.; exit 1; fi
 echo OK
 mkdir -p aa/bb/cc/dd
 cd aa/bb/cc/dd
-${ECHO} Hallo > date
-bk admin $Q -n -idate date; ${RM} date
+echo Hallo > date
+bk admin $Q -n -idate date; rm date
 echo $N Check for path in sub dir1 ..................................$NL
 grep -q '^.cP.*date$' SCCS/s.date
 if [ $? -ne 0 ]; then echo No path found.; exit 1; fi
@@ -36,8 +36,8 @@ grep -q '^.cPaa/bb/cc/dd/date$' SCCS/s.date
 if [ $? -ne 0 ]; then echo Wrong path found.; exit 1; fi
 echo OK
 cd ../../../..
-${ECHO} Hallo > aa/bb/cc/dd/date2
-bk admin $Q -n -iaa/bb/cc/dd/date2 aa/bb/cc/dd/date2; ${RM} aa/bb/cc/dd/date2
+echo Hallo > aa/bb/cc/dd/date2
+bk admin $Q -n -iaa/bb/cc/dd/date2 aa/bb/cc/dd/date2; rm aa/bb/cc/dd/date2
 echo $N Check for path in sub dir2 ..................................$NL
 grep -q '^.cP.*date2$' aa/bb/cc/dd/SCCS/s.date2
 if [ $? -ne 0 ]; then echo No path found.; exit 1; fi
@@ -45,10 +45,10 @@ grep -q '^.cPaa/bb/cc/dd/date2$' aa/bb/cc/dd/SCCS/s.date2
 if [ $? -ne 0 ]; then echo Wrong path found.; exit 1; fi
 echo OK
 bk co $Q -l date
-${ECHO} Hi >> date
+echo Hi >> date
 bk ci $Q -y date
 bk co $Q -l date
-${ECHO} Hi >> date
+echo Hi >> date
 bk ci $Q -y date
 echo $N Make sure -Gname works ......................................$NL
 bk get $S -GA -r1.1 date
@@ -66,7 +66,7 @@ if [ $? -ne 0 ]; then echo Bad data in B.; exit 1; fi
 grep -q Hi B
 if [ $? -ne 0 ]; then echo Bad data in B.; exit 1; fi
 echo OK
-${RM} -f A B
+rm -f A B
 echo $N Make sure -Ga/b/c/name works ................................$NL
 mkdir -p a/b/c
 bk get $S -Ga/b/c/A -r1.1 date
@@ -154,7 +154,7 @@ if [ "$X" = "`wc date`" ]; then echo Failed - wrong size.; exit 1; fi
 echo OK
 echo $N RCS keywords should fail w/o -fRCS ..........................$NL
 bk get $S -e date
-${ECHO} '$Id$' > date
+echo '$Id$' > date
 bk ci $S -y date
 bk get $S date
 if writable date; then echo date is writable and should not be; exit 1; fi
@@ -176,7 +176,7 @@ if [ -f "date" ]; then echo failed, did not remove file; exit 1; fi
 if writable date; then echo failed, added writable file; exit 1; fi
 echo OK
 echo $N Make sure get -n works ......................................$NL
-${ECHO} HI > T
+echo HI > T
 bk ci $Q -i T
 if [ "`bk get $S -pn T`" != "T	HI" ]; then echo Failed.; exit 1; fi
 echo OK
@@ -188,7 +188,7 @@ if [ "`bk get $S -pu T`" != "bk	HI" ]; then echo Failed.; exit 1; fi
 echo OK
 BK_USER=$SAVE
 echo $N Make sure get -na works .....................................$NL
-${ECHO} HI > T
+echo HI > T
 if [ "`bk get $S -pan T`" != "T     | HI" ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N Make sure get -m works ......................................$NL

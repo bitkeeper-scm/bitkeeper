@@ -71,7 +71,7 @@ while bk lock; do true; done
 mv BitKeeper/readers/* BitKeeper/readers/1234@nowhere.nowhere
 bk edit $Q A
 #if [ ! -w A ]; then echo failed to lock A; fi
-isWritable A || { echo failed to lock A; }
+writable A || { echo failed to lock A; }
 echo OK
 echo $N Make sure delta fails with existing read lock ...............$NL
 bk delta $Q -yXXX A 2> /dev/null

@@ -13,7 +13,7 @@ echo $N Setup .......................................................$NL
 set -e
 trap 'echo failed' 0
 bk cset $Q -i .
-${ECHO} "logging: none" > BitKeeper/etc/config
+echo "logging: none" > BitKeeper/etc/config
 bk ci -i $Q BitKeeper/etc/config
 bk sfiles -C | bk cset $Q -yInitial
 mkdir bar

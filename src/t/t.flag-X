@@ -35,7 +35,7 @@ echo "xx" > symfile
 ln -s symfile symlink
 ls -l | awk '/^l/ { print "ln -s", $11, $9 }' > make_sym.sh
 bk ci $Q -i make_sym.sh
-${RM} -f symlink
+rm -f symlink
 bk admin $Q -fSHELL make_sym.sh
 bk co $Q make_sym.sh
 if [ ! -h symlink ]; then echo failed; exit 1; fi;

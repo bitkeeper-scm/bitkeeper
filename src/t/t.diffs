@@ -12,23 +12,23 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
-${ECHO} 1.1 > Mydiffs
+echo 1.1 > Mydiffs
 bk admin -q -n -iMydiffs Mydiffs
-${RM} -f Mydiffs
+rm -f Mydiffs
 # D 1.2 93/03/11 00:50:40.000 butthead 2 1  9/2/44
 # C added 4.x etc targets
 for i in 2 3 4 5 6 7 8 9 10
 do	bk co $Q -l Mydiffs
-	${ECHO} 1.$i >> Mydiffs
-	${ECHO} "D 1.$i 20/03/11 00:00:0$i butthead a b c/d/e" | sed s/010/10/ | ${CAT} > Init
-	${ECHO} "c Rev $i" >> Init
-	${ECHO} "------------------------------------------------" >> Init
+	echo 1.$i >> Mydiffs
+	echo "D 1.$i 20/03/11 00:00:0$i butthead a b c/d/e" | sed s/010/10/ | cat > Init
+	echo "c Rev $i" >> Init
+	echo "------------------------------------------------" >> Init
 	bk delta $Q -IInit Mydiffs
 done
 echo $N Checking diffs against readonly file ........................$NL
 bk co $Q -r1.9 Mydiffs
 bk diffs Mydiffs > D
-${CAT} > X << EOF
+cat > X << EOF
 ===== Mydiffs 1.10 vs ? =====
 10d9
 < 1.10
@@ -39,9 +39,9 @@ if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
 echo $N Checking diff against edited file ...........................$NL
 bk co $Q -l Mydiffs
-${ECHO} foo >> Mydiffs
+echo foo >> Mydiffs
 bk diffs Mydiffs > D
-${CAT} > X <<EOF
+cat > X <<EOF
 ===== Mydiffs 1.10 vs edited =====
 10a11
 > foo
@@ -52,7 +52,7 @@ if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
 echo $N Checking diff -r1.8 against edited file .....................$NL
 bk diffs -r1.8 Mydiffs > D
-${CAT} > X <<EOF
+cat > X <<EOF
 ===== Mydiffs 1.8 vs edited =====
 8a9,11
 > 1.9
@@ -66,7 +66,7 @@ echo OK
 echo $N Checking diff -r1.8 w/ no file ..............................$NL
 bk unedit Mydiffs
 bk diffs -r1.8 Mydiffs > D
-${CAT} > X <<EOF
+cat > X <<EOF
 ===== Mydiffs 1.8 vs 1.10 =====
 8a9,10
 > 1.9
@@ -78,7 +78,7 @@ if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
 echo $N Checking diff -r1.8 -r1.9 ...................................$NL
 bk diffs -r1.8 -r1.9 Mydiffs > D
-${CAT} > X <<EOF
+cat > X <<EOF
 ===== Mydiffs 1.8 vs 1.9 =====
 8a9
 > 1.9
@@ -90,7 +90,7 @@ echo OK
 echo $N Checking diff -dSSS -r1.9 ...................................$NL
 bk admin $Q -SSSS:1.7 Mydiffs
 bk diffs -dSSS -r1.9 Mydiffs > D
-${CAT} > X <<EOF
+cat > X <<EOF
 ===== Mydiffs 1.7 vs 1.9 =====
 7a8,9
 > 1.8
@@ -102,7 +102,7 @@ if [ $? -ne 0 ]; then echo Failed to get correct diffs.; diff D W; exit 1; fi
 echo OK
 echo $N Checking diff -dSSS .........................................$NL
 bk diffs -dSSS Mydiffs > D
-${CAT} > X <<EOF
+cat > X <<EOF
 ===== Mydiffs 1.7 vs 1.10 =====
 7a8,10
 > 1.8

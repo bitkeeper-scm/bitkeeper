@@ -16,8 +16,8 @@
 
 echo $N Create initial repository ...................................$NL
 HERE=`${CWD}`
-${ECHO} "logging: none" > $HERE/c
-${ECHO} "seats: 1" >>$HERE/c
+echo "logging: none" > $HERE/c
+echo "seats: 1" >>$HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
 if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
 cd project
@@ -44,7 +44,7 @@ bk admin -eawc foo.c 2> admin.out
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 grep -q "not supported" admin.out
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
-$RM admin.out
+rm admin.out
 echo OK
 echo $N check disabling of adding null delta to ChangeSet file ......$NL
 cd $HERE/project
@@ -54,4 +54,4 @@ if [ $? -eq 0 ]; then echo failed; exit 1; fi
 grep -q "Can not create null delta in ChangeSet file" admin.out 
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
-$RM admin.out
+rm admin.out

@@ -12,7 +12,7 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
-${CAT} > foo <<EOF
+cat > foo <<EOF
 Hi there, this is file foo.
 Hi there, this is file foo.
 Hi there, this is file foo.
@@ -35,7 +35,7 @@ do	case "$D" in
 	   ;;
 	esac
 	if [ X$D != X ]; then mkdir -p $D; fi
-	${RM} -rf SCCS ${D}foo ${D}SCCS ${D}s.foo
+	rm -rf SCCS ${D}foo ${D}SCCS ${D}s.foo
 	echo $N Create initial changeset ....................................$NL
 	bk cset -si .
 	if [ ! -f SCCS/s.ChangeSet ]; then echo failed; exit 1; fi
@@ -70,7 +70,7 @@ do	case "$D" in
 	then
 	    # OK, now try it with s.names, no SCCS/
 	    echo $N checkin with ${D}s.foo ${DOTS}..................................$NL
-	    ${RM} -rf ${D}foo ${D}SCCS
+	    rm -rf ${D}foo ${D}SCCS
 	    cp SAVE ${D}foo
 	    bk ci $Q -i ${D}s.foo
 	    if [ ! -f ${D}s.foo ]; then echo Failed to create s.foo.; exit 1; fi
@@ -92,7 +92,7 @@ do	case "$D" in
 	if writable ${D}foo; then echo foo is writable; exit 1; fi
 	echo OK
 done
-${RM} -rf foo SCCS A
+rm -rf foo SCCS A
 
 echo $N Check in files named s.something ............................$NL
 mkdir -p bar/blech

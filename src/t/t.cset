@@ -28,7 +28,7 @@ mkdir hard
 cd hard
 echo $N Create initial repository using setup .......................$NL
 HERE=`${CWD}`
-${ECHO} "logging: none" > $HERE/c
+echo "logging: none" > $HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
 if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
 cd project

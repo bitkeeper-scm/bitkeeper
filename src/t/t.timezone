@@ -57,5 +57,5 @@ EOF
 fi
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
-echo OK
 unset TZ
+echo OK

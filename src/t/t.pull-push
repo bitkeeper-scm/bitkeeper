@@ -9,10 +9,19 @@
 #    constitutes your permission for BitMover, Inc. to distribute  the
 #    modifications under any license.
 
+if [ X$PLATFORM = X"WIN32" ]
+then
+        # It is unlikely in that ssh/rsh to localhost will work on NT.
+        # We let the user tell us otherwise.
+        if [ -z "$DO_REMOTE" ]; then DO_REMOTE=NO; fi
+else
+	if [ -z "$DO_REMOTE" ]; then DO_REMOTE=YES; fi
+fi
+
 # Tests for pull, push, and clone.
 echo $N Create initial repository ...................................$NL
 HERE=`${CWD}`
-${ECHO} "logging: none" > $HERE/c
+echo "logging: none" > $HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
 if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
 cd project
@@ -77,6 +86,7 @@ else
 fi
 echo $N Pull with explicit local parent .............................$NL
 cd $HERE/copy
+HOSTNAME=`bk gethost`
 bk pull -t $Q $HOSTNAME:$HERE/project || { echo failed; exit 1; }
 revs=`bk prs -hd:I: src/foo.c | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }

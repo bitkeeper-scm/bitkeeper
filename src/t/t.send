@@ -21,7 +21,7 @@ fi
 
 echo $N Create initial repository ...................................$NL
 HERE=`${CWD}`
-${ECHO} "logging: none" > $HERE/c
+echo "logging: none" > $HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
 if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
 cd project
@@ -60,12 +60,12 @@ if [ ! -f ../copy/src/SCCS/s.h.h ]; then echo failed to receive; exit 1; fi
 cd $HERE/project; bk -r clean
 cd $HERE/copy; bk -r clean
 cd $HERE
-${RM} -f project/BitKeeper/etc/SCCS/x.id_cache
-${RM} -f copy/BitKeeper/etc/SCCS/x.id_cache
-${RM} -f project/BitKeeper/etc/SCCS/x.marked
-${RM} -f copy/BitKeeper/etc/SCCS/x.marked
-${RM} -f project/BitKeeper/log/cmd copy/BitKeeper/log/cmd
-${RM} -f copy/BitKeeper/etc/csets
+rm -f project/BitKeeper/etc/SCCS/x.id_cache
+rm -f copy/BitKeeper/etc/SCCS/x.id_cache
+rm -f project/BitKeeper/etc/SCCS/x.marked
+rm -f copy/BitKeeper/etc/SCCS/x.marked
+rm -f project/BitKeeper/log/cmd copy/BitKeeper/log/cmd
+rm -f copy/BitKeeper/etc/csets
 diff -r project copy > diff$$
 if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
 echo OK
@@ -82,7 +82,7 @@ done ) > p1
 bk send $Q -  | bk unwrap > p2
 diff p1 p2
 if [ $? != 0 ]; then echo Failed because of diffs; exit 1; fi
-${RM} -f p1 p2
+rm -f p1 p2
 echo OK
 echo $N Create copy using send / receive and wrappers ...............$NL
 cd $HERE/project
@@ -91,12 +91,12 @@ if [ ! -d ../uu/BitKeeper ]; then echo failed to receive; exit 1; fi
 cd $HERE/project; bk -r clean
 cd $HERE/uu; bk -r clean
 cd $HERE
-${RM} -f project/BitKeeper/etc/SCCS/x.id_cache
-${RM} -f uu/BitKeeper/etc/SCCS/x.id_cache
-${RM} -f project/BitKeeper/etc/SCCS/x.marked
-${RM} -f uu/BitKeeper/etc/SCCS/x.marked
-${RM} -f project/BitKeeper/log/cmd uu/BitKeeper/log/cmd
-${RM} -f uu/BitKeeper/etc/csets
+rm -f project/BitKeeper/etc/SCCS/x.id_cache
+rm -f uu/BitKeeper/etc/SCCS/x.id_cache
+rm -f project/BitKeeper/etc/SCCS/x.marked
+rm -f uu/BitKeeper/etc/SCCS/x.marked
+rm -f project/BitKeeper/log/cmd uu/BitKeeper/log/cmd
+rm -f uu/BitKeeper/etc/csets
 diff -r project uu > diff$$
 if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
 echo OK
@@ -110,12 +110,12 @@ done
 cd $HERE/project; bk -r clean
 cd $HERE/csets; bk -r clean
 cd $HERE
-${RM} -f project/BitKeeper/etc/SCCS/x.id_cache
-${RM} -f csets/BitKeeper/etc/SCCS/x.id_cache
-${RM} -f project/BitKeeper/etc/SCCS/x.marked
-${RM} -f csets/BitKeeper/etc/SCCS/x.marked
-${RM} -f project/BitKeeper/log/cmd csets/BitKeeper/log/cmd
-${RM} -f csets/BitKeeper/etc/csets
+rm -f project/BitKeeper/etc/SCCS/x.id_cache
+rm -f csets/BitKeeper/etc/SCCS/x.id_cache
+rm -f project/BitKeeper/etc/SCCS/x.marked
+rm -f csets/BitKeeper/etc/SCCS/x.marked
+rm -f project/BitKeeper/log/cmd csets/BitKeeper/log/cmd
+rm -f csets/BitKeeper/etc/csets
 diff -r project csets > diff$$
 if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
 echo OK

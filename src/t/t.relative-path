@@ -13,7 +13,7 @@
 # %K%
 
 echo $N checking pathname w/o cset file .............................$NL
-${RM} -rf BitKeeper SCCS/s.ChangeSet
+rm -rf BitKeeper SCCS/s.ChangeSet
 echo "1234" > path
 bk ci $Q -l -i path
 P=`bk prs -h -d':DPN:' path`

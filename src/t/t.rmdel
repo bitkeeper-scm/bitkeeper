@@ -14,10 +14,10 @@
 
 HERE=`pwd`
 bk cset -i -s .
-${RM} -rf FILE SCCS
+rm -rf FILE SCCS
 R=1
 for D in '87/05/28 23:49:57' '97/05/28 23:49:57' '97/05/30 01:34:11' '97/06/23 01:33:45+06:30' '98/01/30 17:45:17-05:00'
-do	${CAT} > INITX <<EOF
+do	cat > INITX <<EOF
 D 1.$R $D $USER 0 0 0/0/0
 c This is revision 1.$R of $D
 c This the second comment of 1.$R
@@ -100,7 +100,7 @@ cd $HERE
 mkdir resync
 cd resync
 HERE=$HERE/resync
-${ECHO} "logging: none" > $HERE/c
+echo "logging: none" > $HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
 cd project
 echo foo > foo.c

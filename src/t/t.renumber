@@ -98,7 +98,7 @@ echo OK
 rm -fr SCCS
 rm -f *
 HERE=`${CWD}`
-${ECHO} "logging: none" > $HERE/c
+echo "logging: none" > $HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c proj
 cd proj
 echo $N Create lod collision and see if renumber does nothing .......$NL

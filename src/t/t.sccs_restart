@@ -13,11 +13,11 @@
 # %K%
 
 bk cset -i -s .
-${RM} -rf FILE SCCS
+rm -rf FILE SCCS
 echo $N Check ci -i -l ..............................................$NL
 echo HHHH > FILE
 bk ci $Q -i -l FILE
-isWritable FILE || { echo Failed; exit 1; }
+writable FILE || { echo Failed; exit 1; }
 cat > X << EOF
 ======== FILE 1.1 ========
 1.1
@@ -36,7 +36,7 @@ cat > X << EOF
 1.1
 EOF
 bk undos X > CMP1
-isWritable FILE || { echo Failed; exit 1; }
+writable FILE || { echo Failed; exit 1; }
 bk prs -r1.1.. -d":I:" FILE  > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi

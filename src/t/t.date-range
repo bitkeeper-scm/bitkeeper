@@ -15,12 +15,12 @@
 echo $N Building up file with dates .................................$NL
 R=1
 for D in '87/05/28 23:49:57' '97/05/28 23:49:57' '97/05/30 01:34:11' '97/06/23 01:33:45' '98/01/30 17:45:17'
-do	${CAT} > INITX <<EOF
+do	cat > INITX <<EOF
 D 1.$R $D $USER 0 0 0/0/0
 c This is revision 1.$R of $D
 ------------------------------------------------
 EOF
-	${ECHO} 1.$R >> FILE
+	echo 1.$R >> FILE
 	if [ $R -eq 1 ]
 	then	bk delta $Q -i -IINITX FILE
 	else	bk delta $Q -IINITX FILE
@@ -341,7 +341,7 @@ if [ -f FILE ]; then echo Failed - found a delta that is not there.; exit 1; fi
 echo OK
 echo $N Adding dates after 2000 .....................................$NL
 for D in '00/05/28 23:49:57' '01/05/28 23:49:57' '02/05/30 01:34:11'
-do	${CAT} > INITX <<EOF
+do	cat > INITX <<EOF
 D 1.$R $D $USER 0 0 0/0/0
 c This is revision 1.$R of $D
 ------------------------------------------------
@@ -450,7 +450,7 @@ echo OK
 echo $N Checking Y2K date expansion w -fY ...........................$NL
 bk admin $Q -fYEAR4 YEAR4
 bk get $Q -e YEAR4
-${CAT} > INITX <<EOF
+cat > INITX <<EOF
 D 1.5 01/02/22 10:10:10  $USER 0 0 0/0/0
 c This is revision 1.5
 ------------------------------------------------

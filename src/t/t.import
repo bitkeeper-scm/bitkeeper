@@ -14,7 +14,7 @@
 
 echo $N Test import of a plain file .................................$NL
 HERE=`pwd`
-${ECHO} "logging: none" > $HERE/c
+echo "logging: none" > $HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
 mkdir -p import_dir/src
 echo foo > X
@@ -38,10 +38,10 @@ then
 #----------------------------------------------------
 echo $N Test import of a symbolic link ..............................$NL
 cd $HERE
-${ECHO} "logging: none" > $HERE/c
+echo "logging: none" > $HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c symlink
 mkdir -p symlink/src
-${ECHO} foo > import_dir/src/foo.c
+echo foo > import_dir/src/foo.c
 touch import_dir/src/boo.c
 cd import_dir/src
 ln -s foo.c link
@@ -103,9 +103,9 @@ echo $N Test import of an sccs file .................................$NL
 cd $HERE
 mkdir -p import_sccs/src
 cd $HERE/import_sccs/src
-${ECHO} bar > bar.c
+echo bar > bar.c
 bk ci $Q -i -l bar.c
-${ECHO} "bar-new" > bar.c
+echo "bar-new" > bar.c
 bk ci $Q -y bar.c
 cd $HERE
 ( echo SCCS; echo no ) | bk import import_sccs project  > import.out 2>&1

@@ -80,7 +80,7 @@ do
 	COUNT=`expr $COUNT + 1`
 	if [ $COUNT -ge 40 ]; then break; fi
 done
-${ECHO} 12345678901234567890123456789012345678901234567890 >> long2
+echo 12345678901234567890123456789012345678901234567890 >> long2
 sed -e's/\$RCSfile\$/\$RCSfile: s.long2 \$/g' < long2 > X
 bk undos X > long2.ref 
 bk ci $Q -i long2
