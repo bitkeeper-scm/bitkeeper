@@ -14,19 +14,19 @@ SUM=	\
 all: roff helptxt
 
 roff: man2help.pl bk-macros
-	@make links
+	@$(MAKE) links
 	./man2help.pl -debug bk-macros bk- $(SRC)
 
 helptxt: FRC
-	@make roff
+	@$(MAKE) roff
 	-@for i in $(SUM); do test -f $$i && cat $$i; done > helptxt
 	-@cat `ls -1 *.fmt | grep -v sum.fmt` >> helptxt
 
 install:
-	@make links
-	@make clean
-	@make all
-	@make cp
+	@$(MAKE) links
+	@$(MAKE) clean
+	@$(MAKE) all
+	@$(MAKE) cp
 
 cp:
 	cp helptxt /usr/libexec/bitkeeper/bkhelp.txt

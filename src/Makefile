@@ -292,8 +292,8 @@ bkmsg.txt: bkmsg.doc bk.ver Makefile
 bkhelp.txt: ../man/man2help/helptxt
 	cp ../man/man2help/helptxt bkhelp.txt
 
-../man/man2help/helptxt:
-	cd ../man/man2help && make helptxt
+../man/man2help/helptxt: build
+	cd ../man/man2help && ../../src/build helptxt
 
 # XXX Must be changed when ChangeSet moves to BitKeeper/etc.
 # It is structured like this so that rebuilding prs doesn't
