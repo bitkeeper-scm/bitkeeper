@@ -3,21 +3,14 @@
 int
 cmd_chg_part1(int ac, char **av)
 {
-	int	c, keysync = 0;
+	int	c;
 	int 	rfd, i, j;
 	char 	buf[MAXLINE];
 	char	*new_av[100];
 	FILE 	*f;
 	pid_t	pid;
 
-	while ((c = getopt(ac, av, "K")) != -1) {
-		switch (c) {
-		    case 'K': keysync= 1; break;
-		}
-	}
-
-	if (keysync) return (cmd_synckeys(ac, av));
-
+	if (ac == 2 && streq(av[1], "-K")) return (cmd_synckeys(ac, av));
 
 	setmode(0, _O_BINARY);
 	sendServerInfoBlock(0);
