@@ -271,8 +271,9 @@ prompt(char *msg, char *buf)
 
 	caught = 0;
 	sig_catch(abort_prompt);
-	write(2, msg, strlen(msg));
-	write(2, " ", 1);
+	fflush(stdout);
+	write(1, msg, strlen(msg));
+	write(1, " ", 1);
 	ret = getline(0, buf, MAXPATH) > 1;
 	if (caught) {
 		fprintf(stderr, "\n(interrupted)\n");
@@ -311,7 +312,6 @@ prompt_main(int ac, char **av)
 	int	i, c, ret, ask = 1, nogui = 0;
 	char	*prog = 0, *file = 0, *no = "NO", *yes = "OK", *title = 0;
 	char	*type = 0;
-	pid_t	pid;
 
 	while ((c = getopt(ac, av, "cegiwxf:n:p:t:y:")) != -1) {
 		switch (c) {
@@ -376,37 +376,45 @@ err:		system("bk help -s prompt");
 		    case 'I': type = "Info"; break;
 		    case 'W': type = "Warning"; break;
 		}
-		len = strlen(type) + 2;
-		half = (80 - len) / 2;
+		len = strlen(type) + 4;
+		half = (76 - len) / 2;
 		for (i = 0; i < half; ++i) fputc('=', stdout);
+		fputc(' ', stdout);
 		fputc(' ', stdout);
 		fputs(type, stdout);
 		fputc(' ', stdout);
+		fputc(' ', stdout);
+		if (len & 1) fputc(' ', stdout);
 		for (i = 0; i < half; ++i) fputc('=', stdout);
 		fputc('\n', stdout);
+		fflush(stdout);
 	}
 	if (file || prog) {
-		FILE	*f;
+		FILE	*in, *out;
 		char	buf[1024];
+		extern	char *pager;
 
-		pid = mkpager();
 		if (file) {
-			unless (f = fopen(file, "r")) goto err;
+			unless (in = fopen(file, "r")) goto err;
 		} else {
 			putenv("PAGER=cat");
-			unless (f = popen(prog, "r")) goto err;
+			unless (in = popen(prog, "r")) goto err;
 		}
-		while (fnext(buf, f)) {
-			fputs(buf, stdout);
+		out = popen(pager, "w");
+		while (fnext(buf, in)) {
+			fputs(buf, out);
 		}
-		fflush(stdout);
-		if (file) fclose(stdout);
-		if (prog) pclose(stdout);
-		waitpid(pid, 0, 0);
+		if (file) fclose(in);
+		if (prog) pclose(in);
+		pclose(out);
 	} else if (streq(av[optind], "-")) {
 		goto err;
 	} else {
 		fputs(av[optind], stdout);
+		fputc('\n', stdout);
+	}
+	if (type) {
+		for (i = 0; i < 76; ++i) fputc('=', stdout);
 		fputc('\n', stdout);
 	}
 	/* No exit status if no prompt */
