@@ -23,7 +23,7 @@ echo OK
 rm -f symlink
 echo $N Check checkout of symlink ...................................$NL
 co $Q symlink
-if [ ! -h symlink ]; then echo failed; fi 
+if [ ! -h symlink ]; then echo failed; fi
 mv file.tmp file
 cmp -s symlink file
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
@@ -55,7 +55,7 @@ prs -h -d":I:" symlink > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 co $Q symlink
-if [ ! -h symlink ]; then echo failed; fi 
+if [ ! -h symlink ]; then echo failed; fi
 mv file2.tmp file2
 cmp -s symlink file2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
@@ -63,7 +63,7 @@ echo OK
 echo $N Symlink to real file conversion .............................$NL
 co $Q -l symlink
 rm -f symlink
-${ECHO} "this is a real file" > symlink 
+${ECHO} "this is a real file" > symlink
 cp symlink symlink.ref
 ${CAT} > CMP1 << EOF
 ===== symlink (file type) 1.2 vs edited =====
@@ -79,7 +79,7 @@ rm -f symlink
 co $Q symlink
 cmp -s symlink.ref symlink
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
-echo OK     
+echo OK
 echo $N Check change text file into a symlink........................$NL
 co $Q -l symlink
 rm -f symlink
@@ -94,10 +94,10 @@ if [ $? -ne 0 ]; then echo Failed - got `cat CMP2`; exit 1; fi
 ci $Q -y symlink
 rm -f symlink
 co $Q symlink
-if [ ! -h symlink ]; then echo failed; fi 
+if [ ! -h symlink ]; then echo failed; fi
 cmp -s symlink file3
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
-echo OK     
+echo OK
 rm -f symlink
 echo $N Check symlink to a directory ................................$NL
 mkdir dir1
@@ -131,15 +131,15 @@ echo $N Make sure text data is preserved.............................$NL
 co $Q -r1.3 symlink
 cmp -s symlink.ref symlink
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
-echo OK     
+echo OK
 echo $N Check print option for symlink ..............................$NL
 ${CAT} > CMP1 << EOF
 SYMLINK -> dir1
 EOF
-get $Q -p symlink > CMP2 
+get $Q -p symlink > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
-echo OK     
+echo OK
 echo $N Check diff option for text/symlink ..........................$NL
 ${CAT} > CMP1 << EOF
 ===== symlink 1.3 vs 1.4 =====
@@ -151,7 +151,7 @@ EOF
 diffs -r1.3 -r1.4 symlink > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
-echo OK     
+echo OK
 echo $N Check diff option for symlink/text ..........................$NL
 ${CAT} > CMP1 << EOF
 ===== symlink 1.2 vs 1.3 =====
@@ -163,7 +163,7 @@ EOF
 diffs -r1.2 -r1.3 symlink > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
-echo OK     
+echo OK
 echo $N Check diff option for symlink/symlink .......................$NL
 ${CAT} > CMP1 << EOF
 ===== symlink 1.1 vs 1.2 =====
@@ -175,10 +175,10 @@ EOF
 diffs -r1.1 -r1.2 symlink > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
-echo OK     
+echo OK
 echo $N Test sfile -c on symlink ....................................$NL
 co $Q -l symlink
-if [ ! -h symlink ]; then echo failed; fi 
+if [ ! -h symlink ]; then echo failed; fi
 CNT=`sfiles -c symlink | wc -l`
 if [ $CNT != 0 ]; then echo failed; exit 1; fi
 rm -f symlink
@@ -196,7 +196,7 @@ echo OK
 echo $N Test clean on symlink .......................................$NL
 clean -u symlink
 co $Q -l symlink
-clean 
+clean
 if [ -f SCCS/p.symlink ]; then echo failed; exit 1; fi;
 echo OK
 ${RM} -rf symlink symfile newlink file file1 file2 file3 dir1 SCCS

@@ -59,7 +59,7 @@ echo $N Make sure delta -I works w/ blank comments ..................$NL
 ${CAT} > INITX <<EOF
 D 1.2 97/05/28 23:49:57 joe_user@joes_hostname 0 0 0/0/0
 c This is revision 1.2
-c 
+c
 c This is the line after the blank line.
 ------------------------------------------------
 EOF
@@ -138,7 +138,7 @@ else	TOUCH=YES
 fi
 if [ $TOUCH = YES ]
 then	delta $Q -i -G init3
-	echo "89/01/02 03:04:00" > CMP1 
+	echo "89/01/02 03:04:00" > CMP1
 	prs -h -d":D: :T:" init3 > CMP2
 	# on NT, cygwin added 02 seconds
 	case X`uname -s` in
@@ -151,7 +151,7 @@ then	delta $Q -i -G init3
 	#
 	# XXX - commented out until awc fixes this to be portable.
 	#get $Q -T init3
-	# There is a bug in cygwin (version B20) ls/timezone code; 
+	# There is a bug in cygwin (version B20) ls/timezone code;
 	# It is off by one hour when we are in daylight saving time.
 	#ls -l --full-time init3 | awk '{print $9}' > CMP1
 	#prs -hr1.1 -d:T: init3 > CMP2

@@ -161,7 +161,7 @@ usage:			fprintf(stderr, "%s: usage error, try get --help\n",
 		fprintf(stderr, "%s: -D and prefixes not supported\n", av[0]);
 		return(1);
 	}
-		
+
 	for (; name; name = sfileNext()) {
 		unless (s = sccs_init(name, iflags, 0)) continue;
 		if (Gname) {

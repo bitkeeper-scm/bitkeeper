@@ -5,7 +5,7 @@
 # This can be removed when we go to long keys
 SLEEP="sleep 0"
 
-# The purpose of this test is to demonstrate a rename bug.  
+# The purpose of this test is to demonstrate a rename bug.
 # Suppose we have a file which starts out being named A.
 # In one repository,
 echo $N Test rename with changes in both ............................$NL

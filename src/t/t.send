@@ -33,7 +33,7 @@ P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
 for i in 2 3 4 5 6
-do	
+do
 	bk edit $Q foo.c bar.c
 	date >> foo.c
 	date >> bar.c
@@ -45,7 +45,7 @@ if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 echo OK
 echo $N Create a copy of the project using send / receive ...........$NL
 cd $HERE/project
-bk send $Q -  | bk receive -ia ../copy 
+bk send $Q -  | bk receive -ia ../copy
 if [ ! -d ../copy/BitKeeper ]; then echo failed to receive; exit 1; fi
 if [ ! -f ../copy/src/SCCS/s.h.h ]; then echo failed to receive; exit 1; fi
 cd $HERE/project; bk -r clean

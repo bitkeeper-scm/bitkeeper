@@ -19,7 +19,7 @@ _cd2root() {
 	done
 }
 
-_setup() { 
+_setup() {
 	CONFIG=
 	NAME=
 	FORCE=NO
@@ -63,7 +63,7 @@ _setup() {
 			cp Description D.save
 			echo $N "Editor to use [$EDITOR] " $NL
 			read editor
-			echo 
+			echo
 			if [ X$editor != X ]
 			then	$editor Description
 			else	$EDITOR Description
@@ -93,7 +93,7 @@ _setup() {
 		while true
 		do	echo $N "Editor to use [$EDITOR] " $NL
 			read editor
-			echo 
+			echo
 			if [ X$editor != X ]
 			then	$editor config
 			else	$EDITOR config
@@ -213,8 +213,8 @@ _send() {
 	  echo "$REV" | sed 's/,/ /g';
 	  if [ "X$WRAPPER" != Xcat ]
 	  then	echo ""; echo "## Wrapped with $WRAPPER ##"; echo "";
-	  	${BIN}cset $D -m$REV $V | bk ${WRAPPER}wrap 
-	  else ${BIN}cset $D -m$REV $V 
+	  	${BIN}cset $D -m$REV $V | bk ${WRAPPER}wrap
+	  else ${BIN}cset $D -m$REV $V
 	  fi
 	) | $MAIL
 }
@@ -416,13 +416,13 @@ __status() {
 	fi
 	# List counts or file states
 	if [ $V = YES ]
-	then	
+	then
 		_users | sed 's/^/User:		/'
 		( ${BIN}sfiles -x | sed 's/^/Extra:		/'
 		  ${BIN}sfiles -cg | sed 's/^/Modified:	/'
 		  ${BIN}sfiles -Cg | sed 's/^/Uncommitted:	/'
 		) | sort
-	else	
+	else
 		echo "`_users | wc -l` people have made deltas."
 		echo "`${BIN}sfiles | wc -l` files under revision control."
 		echo "`${BIN}sfiles -x | wc -l` files not under revision control."
@@ -517,7 +517,7 @@ _undo() {
 	fi
 	if [ $ASK = YES ]
 	then	echo ---------------------------------------------------------
-		cat ${TMP}rmdel$$ 
+		cat ${TMP}rmdel$$
 		echo ---------------------------------------------------------
 		echo $N "Remove these [y/n]? "$NL
 		read x
@@ -548,7 +548,7 @@ _chkConfig() {
 	if [ -f ${BK_ETC}config ]
 	then	${BIN}clean ${BK_ETC}config
 	fi
-	${BIN}get -q ${BK_ETC}config 
+	${BIN}get -q ${BK_ETC}config
 	cmp -s ${BK_ETC}config ${BIN}bitkeeper.config
 	if [ $? -eq 0 ]
 	then	_gethelp chkconfig_inaccurate $BIN
@@ -620,8 +620,8 @@ _mail() {
 }
 
 _logAddr() {
-	LOG=`grep "^logging:" ${BK_ETC}config | tr -d '[\t, ]'`	
-	case X${LOG} in 
+	LOG=`grep "^logging:" ${BK_ETC}config | tr -d '[\t, ]'`
+	case X${LOG} in
 	Xlogging:*)
 		;;
 	*)	echo "Bad config file, can not find logging entry"
@@ -632,7 +632,7 @@ _logAddr() {
 		LOG=changesets@openlogging.org
 		;;
 	esac
-	echo ${LOG#*:} 
+	echo ${LOG#*:}
 	return 0
 }
 
@@ -676,7 +676,7 @@ _checkLog() {
 		echo $N "OK [y/n]? "$NL
 		read x
 		case X$x in
-	    	    X[Yy]*) 
+	    	    X[Yy]*)
 			${BIN}clean ${BK_ETC}config
 			${BIN}get -seg {BK_ETC}config
 			${BIN}get -kps {BK_ETC}config |
@@ -722,7 +722,7 @@ _logChangeSet() {
 	  ${BIN}sccslog -r$REV ChangeSet
 	  ${BIN}cset -r+ | ${BIN}sccslog -
 	  echo ---------------------------------
-	  ${BIN}cset -c -r$R ) | _mail $LOGADDR "BitKeeper log: $P" 
+	  ${BIN}cset -c -r$R ) | _mail $LOGADDR "BitKeeper log: $P"
 }
 
 _remark() {
@@ -770,7 +770,7 @@ _commit() {
 		exit 1
 	fi
 	if [ $GETCOMMENTS = YES ]
-	then	
+	then
 		if [ $FORCE = NO -a ! -s ${TMP}list$$ ]
 		then	echo Nothing to commit
 			${RM} -f ${TMP}list$$ ${TMP}commit$$
@@ -797,7 +797,7 @@ _commit() {
 		_chkConfig && LOGADDR=`_logAddr` ||
 		    { ${RM} -f ${TMP}list$$ ${TMP}commit$$; exit 1; }
 		export LOGADDR
-		nusers=`_users | wc -l` || 
+		nusers=`_users | wc -l` ||
 		    { ${RM} -f ${TMP}list$$ ${TMP}commit$$; exit 1; }
 		if [ $nusers -gt 1 ]
 		then $CHECKLOG
@@ -805,7 +805,7 @@ _commit() {
 		${BIN}sfiles -C |
 		    ${BIN}cset "$COMMENTS" ${SYM:+"$SYM"} $COPTS $@ -
 		EXIT=$?
-		${RM} -f ${TMP}commit$$ ${TMP}list$$ 
+		${RM} -f ${TMP}commit$$ ${TMP}list$$
 		# Assume top of trunk is the right rev
 		# XXX TODO: Needs to account for LOD when it is implemented
 		REV=`${BIN}prs -hr+ -d:I: ChangeSet`
@@ -815,7 +815,7 @@ _commit() {
 		exit $EXIT;
 	fi
 	while true
-	do	
+	do
 		echo ""
 		echo "---------$L"
 		cat ${TMP}commit$$
@@ -824,14 +824,14 @@ _commit() {
 		echo $N "Use these comments (e)dit, (a)bort, (u)se? "$NL
 		read x
 		case X$x in
-		    X[uy]*) 
+		    X[uy]*)
 			if [ -s ${TMP}commit$$ ]
 			then	COMMENTS="-Y${TMP}commit$$"
 			fi
-			_chkConfig && LOGADDR=`_logAddr` || 
+			_chkConfig && LOGADDR=`_logAddr` ||
 			    { ${RM} -f ${TMP}list$$ ${TMP}commit$$; exit 1; }
 			export LOGADDR
-			nusers=`_users | wc -l` || 
+			nusers=`_users | wc -l` ||
 			    { ${RM} -f ${TMP}list$$ ${TMP}commit$$; exit 1; }
 			if [ $nusers -gt 1 ]
 			then $CHECKLOG
@@ -841,7 +841,7 @@ _commit() {
 			EXIT=$?
 			${RM} -f ${TMP}commit$$ ${TMP}list$$
 			# Assume top of trunk is the right rev
-			# XXX TODO: Needs to account for LOD 
+			# XXX TODO: Needs to account for LOD
 			REV=`${BIN}prs -hr+ -d:I: ChangeSet`
 			if [ $nusers -gt 1 ]
 			then _logChangeSet $REV
@@ -851,7 +851,7 @@ _commit() {
 		    Xe*)
 			$EDITOR ${TMP}commit$$
 			;;
-		    Xa*) 
+		    Xa*)
 			echo Commit aborted.
 			${RM} -f ${TMP}commit$$ ${TMP}list$$
 			exit 0
@@ -937,7 +937,7 @@ _commandHelp() {
 		exit 0
 	fi
 
-	for i in $* 
+	for i in $*
 	do	case $i in
 		citool|sccstool|vitool|fm|fm3)
 			_gethelp help_gui $BIN | $PAGER
@@ -1039,7 +1039,7 @@ _export() {
 _init() {
 	BK_ETC="BitKeeper/etc/"
 
-	if [ '-n foo' = "`echo -n foo`" ] 
+	if [ '-n foo' = "`echo -n foo`" ]
 	then    NL='\c'
 	        N=
 	else    NL=
@@ -1068,7 +1068,7 @@ _platformPath() {
 		return
 	fi
 	# The following  path  list only works in unix, on win32 we must find it
-	# in @libexecdir@/bitkeeper 
+	# in @libexecdir@/bitkeeper
 	for i in @libexecdir@/bitkeeper /usr/bitkeeper /usr/bitsccs \
 	    /usr/local/bitkeeper /usr/local/bin/bitkeeper /usr/bin/bitkeeper \
 	    /usr/bin
@@ -1154,14 +1154,14 @@ shift
 # win32 note: we test for the tcl script first, because it has .tcl suffix
 for w in citool sccstool vitool fm fm3
 do	if [ $cmd = $w ]
-	then	
+	then
 		# pick up our own wish shell if it exists
 		PATH=$BIN:$PATH exec $wish -f ${GUI_BIN}${cmd}${tcl} "$@"
 	fi
 done
 
 if [ -x ${BIN}$cmd${ext} -a ! -d ${BIN}$cmd ]
-then	
+then
 	exec ${BIN}$cmd "$@"
 else	exec $cmd "$@"
 fi

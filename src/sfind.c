@@ -165,7 +165,7 @@ file(const char *f, lftw_func func)
 		func(f, (sb.st_mode & S_IFMT));
 	}
 	unless (g) return;
-	
+
 	if (lstat(g, &sb)) {
 		if (errno != ENOENT) perror(g);
 	} else {

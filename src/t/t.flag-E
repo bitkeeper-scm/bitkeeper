@@ -16,7 +16,7 @@ echo OK
 admin $Q -FEXPAND1 test.c
 echo $N Test delete E flag ..........................................$NL
 get $Q test.c
-${CAT}  << EOF > ref.c 
+${CAT}  << EOF > ref.c
 XX@(#)test.c 1.1YY
 YY@(#)test.c 1.1ZZ
 EOF

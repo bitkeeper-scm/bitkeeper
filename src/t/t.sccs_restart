@@ -7,7 +7,7 @@ ${RM} -rf FILE SCCS
 echo $N Check ci -i -l ..............................................$NL
 echo HHHH > FILE
 ci $Q -i -l FILE
-if [ ! -w FILE ]; then echo Failed; exit 1; fi 
+if [ ! -w FILE ]; then echo Failed; exit 1; fi
 ${CAT} > CMP1 << EOF
 ======== FILE 1.1 ========
 1.1
@@ -24,7 +24,7 @@ ${CAT} > CMP1 << EOF
 1.2
 1.1
 EOF
-if [ ! -w FILE ]; then echo Failed; exit 1; fi 
+if [ ! -w FILE ]; then echo Failed; exit 1; fi
 prs -r1.1.. -d":I:" FILE  > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi

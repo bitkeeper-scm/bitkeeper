@@ -51,7 +51,7 @@ if [ ! -f SCCS/s.stdin ]; then echo Failed.; exit 1; fi
 set `wc -w SCCS/s.stdin`
 if [ $1 -ne $BASE2 ]; then echo Failed - wrong size.; exit 1; fi
 echo OK
-${RM} -rf foo SCCS 
+${RM} -rf foo SCCS
 mkdir SCCS; cset -is .
 echo $N Creating an empty file with rel 3.1 .........................$NL
 admin $Q -r3.1 -n empty
@@ -60,7 +60,7 @@ if [ ! -f SCCS/s.empty ]; then echo Failed.; exit 1; fi
 grep -q 'd D 3.1 ' SCCS/s.empty
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
-${RM} -rf SCCS 
+${RM} -rf SCCS
 mkdir SCCS; cset -is .
 echo $N Creating an empty file with rel 1.2.3.4 .....................$NL
 admin $Q -r1.2.3.4 -n empty
@@ -69,19 +69,19 @@ if [ ! -f SCCS/s.empty ]; then echo Failed.; exit 1; fi
 grep -q 'd D 1.2.3.4 ' SCCS/s.empty
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
-${RM} -rf SCCS 
+${RM} -rf SCCS
 mkdir SCCS; cset -is .
 echo $N Attempting bad create with rel 1.2.3 ........................$NL
 admin $Q -r1.2.3 -n empty 2> ERR
 if [ $? -eq 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
-${RM} -rf SCCS 
+${RM} -rf SCCS
 mkdir SCCS; cset -is .
 echo $N Attempting bad create with rel 1.2.3.4.9999 .................$NL
 admin $Q -r1.2.3.4.9999 -n empty 2> ERR
 if [ $? -eq 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
-${RM} -rf SCCS 
+${RM} -rf SCCS
 mkdir SCCS; cset -is .
 echo This is the description. > D
 echo $N Creating a file with description ............................$NL
@@ -150,7 +150,7 @@ grep -q '^.cSSYMBOL$' SCCS/s.foo
 if [ $? -ne 0 ]; then echo Lost symbol.; exit 1; fi
 echo OK
 echo $N Add same symbol to rev 1.3 ..................................$NL
-admin $Q -SSYMBOL:1.3 foo 
+admin $Q -SSYMBOL:1.3 foo
 X=`grep -c '^.cSSYMBOL$' SCCS/s.foo`
 if [ $X -ne 2 ]; then echo failed.; exit 1; fi
 echo OK
@@ -175,7 +175,7 @@ X=`grep -c '^.cSTOT$' SCCS/s.foo`
 if [ $X -ne 3 ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N Trying symbol \'the symbol\' ..................................$NL
-admin $Q -S'the symbol':1.2 foo 
+admin $Q -S'the symbol':1.2 foo
 grep -q '^.cSthe symbol$' SCCS/s.foo
 if [ $? -ne 0 ]; then echo Failed to add symbol properly.; exit 1; fi
 admin -h foo 2> ERR

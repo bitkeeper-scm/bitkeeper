@@ -16,7 +16,7 @@ main(int ac, char **av)
 		exit(1);
 	}
 	f = fopen(av[1], "r");
-	if (!f) { 
+	if (!f) {
 		perror(av[1]);
 		exit(1);
 	}
@@ -29,7 +29,7 @@ main(int ac, char **av)
 }
 
 /* kill the newline and the \r */
-void 
+void
 undos(register char *s)
 {
 	if (!s[0]) return;

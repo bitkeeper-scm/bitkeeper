@@ -11,7 +11,7 @@ c This is revision 1.$R of $D
 ------------------------------------------------
 EOF
 	${ECHO} 1.$R >> FILE
-	if [ $R -eq 1 ] 
+	if [ $R -eq 1 ]
 	then	delta $Q -i -IINITX FILE
 	else	delta $Q -R -IINITX FILE
 	fi

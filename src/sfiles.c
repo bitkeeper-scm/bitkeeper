@@ -76,7 +76,7 @@ again:
 		debug((stderr, "sfiles::FILE got %s\n", buf));
 	} else if (d) {
 		while ((e = readdir(d))) {
-			/* 
+			/*
 			 * readdir returns the base name only, must re-construct
 			 * the relative path. Otherwise oksccs will be checking
 			 * the wrong file.
@@ -114,7 +114,7 @@ again:
 		 */
 		flags &= ~SF_GFILE;
 	}
-norev:	
+norev:
 	unless (sccs_filetype(buf) == 's') {
 #ifdef	ATT_SCCS
 		fprintf(stderr, "Not an SCCS file: %s\n", buf);
@@ -187,7 +187,7 @@ sfileFirst(char *cmd, char **Av, int Flags)
 			concat_path(prefix, Av[0], "SCCS");
 			unless (d = opendir(sPath(prefix, 1))) {
 				/*
-				 * trim off the "SCCS" part 
+				 * trim off the "SCCS" part
 				 * and try again
 				 */
 				prefix[strlen(prefix) - 4] = 0;
@@ -212,7 +212,7 @@ sfileFirst(char *cmd, char **Av, int Flags)
 	}
 	if (!d) {
 		/*
-		 * trim off the "SCCS" part 
+		 * trim off the "SCCS" part
 		 * and try again
 		 */
 		prefix[0] = 0;

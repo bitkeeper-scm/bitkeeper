@@ -20,7 +20,7 @@ sccs_gethost(void)
 		assert(strlen(h) <= 256);
 		strcpy(host, h);
 		return(host);
-	}	
+	}
 	/*
 	 * Some system (e.g. win32)
 	 * reuires loading a library
@@ -48,7 +48,7 @@ sccs_gethost(void)
 		}
 	} else if (hp) strcpy(host, hp->h_name);
 
-out:	
+out:
 #ifdef WIN32
 	unless (host[0]) {
 		int len = sizeof(host);

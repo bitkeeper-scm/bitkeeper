@@ -3,7 +3,7 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
-char *clean_help = 
+char *clean_help =
 "usage: clean [-punv] [files...]\n\
     -p	print, i.e., show diffs of modified files\n\
     -q	quiet operation, do not complain about nonexistant files\n\

@@ -1,14 +1,14 @@
-/* Copyright (c) 1999 Andrew Chang */  
+/* Copyright (c) 1999 Andrew Chang */
 #include "system.h"
 #include "sccs.h"
-WHATSTR("%W%");   
+WHATSTR("%W%");
 
 #include "comments.c"
 
 char *getRelativeName(char *);
 void rmDir(char *);
 int mv(char *, char *);
-			
+
 int
 sccs_mv(char *name, char *dest, int isDir, int isDelete)
 {
@@ -18,7 +18,7 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 	sccs	*s;
 	delta	*d;
 	int	error = 0;
-	int	flags = SILENT|DELTA_FORCE; 
+	int	flags = SILENT|DELTA_FORCE;
 
 	unless (s = sccs_init(name, INIT_NOCKSUM, 0)) return (1);
 	unless (HAS_SFILE(s)) {
@@ -49,12 +49,12 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 	sccs_close(s); /* close the file before we move it - win32 restriction */
 	oldpath = getRelativeName(name);
 	if (isDelete) {
-		sprintf(commentBuf, "Delete: %s", oldpath); 
+		sprintf(commentBuf, "Delete: %s", oldpath);
 	} else {
 		char *newpath;
 
 		newpath = getRelativeName(destfile);
-		sprintf(commentBuf, "Rename: %s -> %s", oldpath, newpath); 
+		sprintf(commentBuf, "Rename: %s -> %s", oldpath, newpath);
 		free(newpath);
 	}
 	free(oldpath);
@@ -91,12 +91,12 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 	}
 
 	/*
-	 * XXX TODO: we should store the rename comment 
+	 * XXX TODO: we should store the rename comment
 	 * somewhere, such as a .comment file ?
 	 */
 	if (HAS_PFILE(s) && !isDelete) goto out;
 	sccs_free(s);
-	/* For split root config; We recompute sfile here */  
+	/* For split root config; We recompute sfile here */
 	/* we do'nt want the sPath() adjustment		  */
 	free(sfile);
 	sfile = name2sccs(destfile);
@@ -118,7 +118,7 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 
 	if (sccs_delta(s, flags, d, 0, 0) == -1) error = 1;
 out:	if (s) sccs_free(s);
-	free(destfile); free(sfile); free(gfile); 
+	free(destfile); free(sfile); free(gfile);
 	if (gotComment) commentsDone(saved);
 	return (error);
 }

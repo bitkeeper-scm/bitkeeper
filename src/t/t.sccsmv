@@ -62,7 +62,7 @@ REV=`prs -hr+ -d:I: B/.del-file1`
 if [ ${REV}X != "1.7"X ]; then echo failed 3 $REV; exit 1; fi
 echo OK
 echo $N Test sccsrm w non p-locked file .............................$NL
-sccsrm C/file3 
+sccsrm C/file3
 if [ -f C/SCCS/p..del-file3 ]; then echo failed; exit 1; fi
 if [ ! -f C/SCCS/s..del-file3 ]; then echo failed; exit 1; fi
 DPATH=`prs -hr+ -d:DPN: C/.del-file3`
@@ -86,7 +86,7 @@ echo $N Test sccsrm w/ -d option ....................................$NL
 # this directory should be created by "bk setup"
 mkdir -p BitKeeper/deleted/SCCS
 clean A
-sccsrm -d A/file3 
+sccsrm -d A/file3
 DDIR=BitKeeper/deleted
 if [ ! -f ${DDIR}/SCCS/s..del-file3 ]; then echo failed; exit 1; fi
 if [ -f ${DDIR}/SCCS/p..del-file3 ]; then echo failed; exit 1; fi
@@ -96,7 +96,7 @@ echo OK
 echo $N Test sccsrm w/ -d \& p locked file ...........................$NL
 get $Q -e A/file4
 REV=`prs -hr+ -d:I: A/file4`
-sccsrm -d A/file4 
+sccsrm -d A/file4
 if [ ! -f ${DDIR}/SCCS/s..del-file4 ]; then echo failed; exit 1; fi
 if [ -f ${DDIR}/SCCS/p..del-file4 ]; then echo failed; exit 1; fi
 REV=`prs -hr+ -d:I: ${DDIR}/.del-file4`

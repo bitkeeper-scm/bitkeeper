@@ -65,10 +65,10 @@ if [ $A -ne $B ]; then echo Failed - chksums $A $B differ.; exit 1; fi
 echo OK
 echo $N Trying to compress uuencoded data ...........................$NL
 admin -Z uuencode
-co -r1.1 $Q uuencode 
+co -r1.1 $Q uuencode
 cmp -s ${binary_data} uuencode
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
-echo OK 
+echo OK
 echo $N Trying to check in some gzipped+uu data .....................$NL
 cp ${binary_data} data
 admin $Q -idata -Euugzip gzipuu

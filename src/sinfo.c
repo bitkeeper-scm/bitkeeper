@@ -22,7 +22,7 @@ usage:		fprintf(stderr, "usage: %s [-f] [files...]\n", av[0]);
 	while ((c = getopt(ac, av, "aft")) != -1) {
 		switch (c) {
 		    /*report new & unedited files */
-		    case 'a': sf_flags &= ~SF_GFILE; break; 
+		    case 'a': sf_flags &= ~SF_GFILE; break;
 		    case 'f': fast = 1; break;
 		    case 't': flags |= SINFO_TERSE; break;
 		    default: goto usage;

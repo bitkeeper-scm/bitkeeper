@@ -11,7 +11,7 @@ c This is revision 1.$R of $D
 ------------------------------------------------
 EOF
 	${ECHO} 1.$R >> FILE
-	if [ $R -eq 1 ] 
+	if [ $R -eq 1 ]
 	then	delta $Q -i -IINITX FILE
 	else	delta $Q -IINITX FILE
 	fi
@@ -326,7 +326,7 @@ get $S -c72 FILE 2>${DEV_NULL}
 if [ -f FILE ]; then echo Failed - found a delta that is not there.; exit 1; fi
 echo OK
 echo $N Adding dates after 2000 .....................................$NL
-for D in '00/05/28 23:49:57' '01/05/28 23:49:57' '02/05/30 01:34:11' 
+for D in '00/05/28 23:49:57' '01/05/28 23:49:57' '02/05/30 01:34:11'
 do	${CAT} > INITX <<EOF
 D 1.$R $D $USER 0 0 0/0/0
 c This is revision 1.$R of $D
@@ -388,18 +388,18 @@ cmp -s F FILE
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Getting a range from 98..01 with -c .........................$NL
-prs -c98..01 FILE | awk '{print $1, $2, $3}'| ${CAT} > CMP1
+prs -c98..01 FILE | awk '{print $1, $2, $3}' | sed 's/  *$//' > CMP1
 ${CAT} > CMP2 <<EOF
 ======== FILE 1.5..1.7
 D 1.7 01/05/28
 C This is
-------------------------------------------------  
+------------------------------------------------
 D 1.6 00/05/28
 C This is
-------------------------------------------------  
+------------------------------------------------
 D 1.5 98/01/30
 C This is
-------------------------------------------------  
+------------------------------------------------
 EOF
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
@@ -412,7 +412,7 @@ c This is revision 1.$R of $D
 ------------------------------------------------
 EOF
 	echo '%''G%' > YEAR4
-	if [ $R -eq 1 ] 
+	if [ $R -eq 1 ]
 	then	delta $Q -i -IINITX YEAR4
 	else	delta $Q -IINITX YEAR4
 	fi

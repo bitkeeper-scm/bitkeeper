@@ -13,7 +13,7 @@ P this/is/the/pathname.$R
 ------------------------------------------------
 EOF
 	echo 1.$R >> FILE
-	if [ $R -eq 1 ] 
+	if [ $R -eq 1 ]
 	then	delta $Q -i -IINITX FILE
 	else	delta $Q -IINITX FILE
 	fi

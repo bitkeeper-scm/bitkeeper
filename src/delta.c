@@ -67,7 +67,7 @@ main(int ac, char **av)
 	} else if (streq(name, "delta")) {
 		dflags = DELTA_FORCE;
 	}
-	
+
 	if (ac > 1 && streq("--help", av[1])) {
 help:		fputs(delta_help, stderr);
 		return (1);
@@ -85,7 +85,7 @@ help:		fputs(delta_help, stderr);
 			dflags |= DELTA_DONTASK;
 			break;
 		    case 's': /* fall through */
-			
+
 		    /* RCS flags */
 		    case 'q': dflags |= SILENT; gflags |= SILENT; break;
 		    case 'f': dflags |= DELTA_FORCE; break;
@@ -99,7 +99,7 @@ help:		fputs(delta_help, stderr);
 		    case 'u': gflags |= GET_EXPAND;
 			      checkout = 1;
 			      break;
-			    
+
 		    /* flags with different meaning in RCS and SCCS */
 		    case 'm':
 			    if (isci) goto comment;

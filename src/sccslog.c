@@ -70,7 +70,7 @@ again:		unless (s = sccs_init(name, INIT_NOCKSUM|flags, 0)) {
 		}
 		if (!s->tree) {
 			/*
-			 * XXX - what this should do is try opening 
+			 * XXX - what this should do is try opening
 			 * root/name and only switch to root if that
 			 * works.
 			 */

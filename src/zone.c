@@ -13,7 +13,7 @@ main(void)
 
 	platformSpecificInit(NULL);
 	offset = localtimez(tt, &tm);
-	
+
 	strftime(tmp, sizeof(tmp), "%y/%m/%d %H:%M:%S", &tm);
 
 	/*

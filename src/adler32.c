@@ -51,4 +51,4 @@ do_checksum(void)
 		if (feof(stdin)) break;
 	}
 	printf("# Patch checksum=%.8lx\n", sum);
-}	
+}

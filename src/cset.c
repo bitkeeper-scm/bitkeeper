@@ -118,9 +118,9 @@ usage:		fprintf(stderr, "%s", cset_help);
 		    	cs.range++;
 		    	/* fall through */
 		    case 'l':
-			if (c == 'l') cs.listeach++; 
+			if (c == 'l') cs.listeach++;
 		    	/* fall through */
-		    case 'd': 
+		    case 'd':
 			if (c == 'd') cs.doDiffs++;
 		    	/* fall through */
 		    case 'c':
@@ -310,7 +310,7 @@ do_checksum(void)
 		fputs(buf, stdout);
 	}
 	printf("# Patch checksum=%.8lx\n", sum);
-}	
+}
 #endif
 
 /*
@@ -354,7 +354,7 @@ spawn_checksum_child(void)
 	pid = spawnvp_ex(_P_NOWAIT, cmd, av );
 	if (pid == -1) return -1;
 
-	/* 
+	/*
 	 * for Parent
 	 * restore fd0
 	 * set stdout to write end of the pipe
@@ -516,7 +516,7 @@ header(sccs *cset, int diffs)
 # This is a BitKeeper patch.  What follows are the unified diffs for the\n\
 # set of deltas contained in the patch.  The rest of the patch, the part\n\
 # that BitKeeper cares about, is below these diffs.\n");
-	} 
+	}
 	cset->rstart = cset->rstop = cset->tree;
 	cset->state &= ~S_SET;
 	sccs_prs(cset, 0, 0, dspec, stdout);
@@ -945,7 +945,7 @@ doMarks(cset_t *cs, sccs *s)
 	if (cs->remark) {
 		for (d = s->table; d; d = d->next) d->flags &= ~D_CSET;
 	}
-	
+
 	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_SET) {
 			if (cs->force || !(d->flags & D_CSET)) {
@@ -1090,10 +1090,10 @@ mkChangeSet(sccs *cset, FILE *diffs)
 	}
 	d = sccs_dInit(0, 'D', cset, 0);
 	/*
-	 * XXX we need to insist d->hostname is non-null here, 
+	 * XXX we need to insist d->hostname is non-null here,
 	 * otherwise it will inherit hostname from its ancestor
-	 * which will cause cset -i/-L to fail since 
-	 * the signiture do not match 
+	 * which will cause cset -i/-L to fail since
+	 * the signiture do not match
 	 */
 	assert(d->hostname && d->hostname[0]);
 
@@ -1158,7 +1158,7 @@ updateIdCacheEntry(sccs *sc, const char *filename)
  * XXX TODO
  * the locking code need to handle intr
  * It need to leave the lock in a clean state after a interrupt
- * 
+ *
  * should hanlde lock fail with re-try
  */
 void
@@ -1207,7 +1207,7 @@ csetCreate(sccs *cset, int flags, char *sym)
 		unlink(filename);
 		exit(1);
 	}
-	
+
 	date = d->date;
 	unless (cset = sccs_init(csetFile, flags, 0)) {
 		perror("init");

@@ -7,7 +7,7 @@
 
 proc wid {id} \
 {
-	set bb [.p.top.c bbox $id] 
+	set bb [.p.top.c bbox $id]
 	set x1 [lindex $bb 0]
 	set x2 [lindex $bb 2]
 	return [expr $x2 - $x1]
@@ -15,7 +15,7 @@ proc wid {id} \
 
 proc ht {id} \
 {
-	set bb [.p.top.c bbox $id] 
+	set bb [.p.top.c bbox $id]
 	set y1 [lindex $bb 1]
 	set y2 [lindex $bb 3]
 	return [expr $y2 - $y1]
@@ -74,7 +74,7 @@ proc addline {x y xspace ht l} \
 			.p.top.c create line $a $ly $b $ly \
 			    -arrowshape {4 4 2} -width 1 \
 			    -fill $arrow -arrow last
-		} 
+		}
 		# Figure out if we have another parent.
 		set m 0
 		if {[regexp {([^:]*):(.*)} $rev dummy rev1 rev2] == 1} {
@@ -108,7 +108,7 @@ proc addline {x y xspace ht l} \
 	}
 }
 
-# print the line of revisions in the graph.  
+# print the line of revisions in the graph.
 # Each node is anchored with its sw corner at x/y
 # The saved locations in rev{X,Y} are the southwest corner.
 # All nodes use up the same amount of space, $w.
@@ -119,7 +119,7 @@ proc line {s w ht} \
 	# space for node and arrow
 	set xspace [expr $w + 12]
 	set l [split $s]
-		
+
 	# Figure out the length of the whole list
 	# The length is the width past in plus the spacing, for each node.
 	set len 0
@@ -156,10 +156,10 @@ proc line {s w ht} \
 	while {1 == 1} {
 		set yspace 4
 
-		# Try below.  
+		# Try below.
 		if {"$prev" != "above"} {
 			set y1 [expr $py + $y + $yspace]
-			set x2 [expr $x1 + $len] 
+			set x2 [expr $x1 + $len]
 			set y2 [expr $y1 + $ht]
 			if {[chkSpace $x1 $y1 $x2 $y2] == {}} {
 				set where($trunk) "below"
@@ -167,10 +167,10 @@ proc line {s w ht} \
 			}
 		}
 
-		# Try above. 
+		# Try above.
 		if {"$prev" != "below"} {
 			set y1 [expr $py - $ht - $y - $yspace]
-			set x2 [expr $x1 + $len] 
+			set x2 [expr $x1 + $len]
 			set y2 [expr $y1 + $ht]
 			if {[chkSpace $x1 $y1 $x2 $y2] == {}} {
 				set where($trunk) "above"
@@ -195,7 +195,7 @@ proc line {s w ht} \
 proc mergeArrow {m ht} \
 {
 	global	bad bfont lineOpts merges parent
-	global	wid revX revY arrow 
+	global	wid revX revY arrow
 
 	set b $parent($m)
 	set px $revX($b)
@@ -229,7 +229,7 @@ proc listRevs {file} \
 
 	# Put something in the corner so we get our padding.
 	# XXX - should do it in all corners.
-	.p.top.c create text 0 0 -anchor nw -text " " 
+	.p.top.c create text 0 0 -anchor nw -text " "
 
 	# Figure out the biggest size of any node.
 	# XXX - this could be done on a per column basis.  Probably not
@@ -245,7 +245,7 @@ proc listRevs {file} \
 				set rev $rev1
 			}
 			set l [string length $rev]
-			if {([regexp -- "-BAD" $rev] == 0) && ($l > $len)} { 
+			if {([regexp -- "-BAD" $rev] == 0) && ($l > $len)} {
 				set len $l
 				set big $rev
 			}
@@ -266,7 +266,7 @@ proc listRevs {file} \
 	if {$bad != 0} {
 		.info.l configure -text "$file -- $bad bad revs"
 	}
-	set bb [.p.top.c bbox all] 
+	set bb [.p.top.c bbox all]
 	set x1 [expr [lindex $bb 0] - 10]
 	set y1 [expr [lindex $bb 1] - 10]
 	set x2 [expr [lindex $bb 2] + 10]
@@ -275,7 +275,7 @@ proc listRevs {file} \
 	.p.top.c create text $x1 $y2 -anchor sw -text " "
 	.p.top.c create text $x2 $y1 -anchor ne -text " "
 	.p.top.c create text $x2 $y2 -anchor se -text " "
-	set bb [.p.top.c bbox all] 
+	set bb [.p.top.c bbox all]
 	.p.top.c configure -scrollregion $bb
 	.p.top.c xview moveto 1
 	.p.top.c yview moveto 0
@@ -484,7 +484,7 @@ proc PaneCreate {} \
 {
 	global	percent swid
 
-	# Figure out the sizes of the two windows and set the 
+	# Figure out the sizes of the two windows and set the
 	# master's size and calculate the percent.
 	set x1 [winfo reqwidth .p.top]
 	set x2 [winfo reqwidth .p.bottom]
@@ -506,12 +506,12 @@ proc PaneCreate {} \
 	place .p.sash -in .p -relx .5 -rely $percent -relwidth 1 -anchor c
 	frame .p.grip -background grey \
 		-width 13 -height 13 -bd 2 -relief raised -cursor double_arrow
-	place .p.grip -in .p -relx 1 -x -50 -rely $percent -anchor c 
+	place .p.grip -in .p -relx 1 -x -50 -rely $percent -anchor c
 	place .p.top -in .p -x 0 -rely 0.0 -anchor nw -relwidth 1.0 -height -2
 	place .p.bottom -in .p -x 0 -rely 1.0 -anchor sw \
 	    -relwidth 1.0 -height -2
 
-	# Set up bindings for resize, <Configure>, and 
+	# Set up bindings for resize, <Configure>, and
 	# for dragging the grip.
 	bind .p <Configure> PaneResize
 	bind .p.grip <ButtonPress-1> "PaneDrag %Y"
@@ -521,7 +521,7 @@ proc PaneCreate {} \
 	PaneGeometry
 }
 
-# When we get an resize event, don't resize the top canvas if it is 
+# When we get an resize event, don't resize the top canvas if it is
 # currently fitting in the window.
 proc PaneResize {} \
 {
@@ -540,7 +540,7 @@ proc PaneResize {} \
 		set y1 $ht
 		set percent [expr $y1 / double($y)]
 	}
-	PaneGeometry 
+	PaneGeometry
 }
 
 proc PaneGeometry {} \
@@ -560,7 +560,7 @@ proc PaneGeometry {} \
 
 proc PaneDrag {D} \
 {
-	global	lastD percent psize 
+	global	lastD percent psize
 
 	if [info exists lastD] {
 		set delta [expr double($lastD - $D) / $psize]
@@ -584,14 +584,14 @@ proc PaneStop {} \
 {
 	global	lastD
 
-	PaneGeometry 
+	PaneGeometry
 	catch {unset lastD}
 }
 
 
 proc widgets {} \
 {
-	global	font bfont arrow background cmd_text swid diffOpts getOpts 
+	global	font bfont arrow background cmd_text swid diffOpts getOpts
 	global	lineOpts dspec dspecnonl wish bithelp
 
 	set dspec \
@@ -617,7 +617,7 @@ proc widgets {} \
 		wm geometry . $geometry
 	}
 	wm title . "SCCS Tool"
-	frame .menus 
+	frame .menus
 	    button .menus.quit -font $bfont -width 7 -relief raised \
 		-pady $pady -text "Quit" -command done
 	    button .menus.help -font $bfont -width 7 -relief raised \
@@ -635,7 +635,7 @@ proc widgets {} \
 	    label .info.l -pady $pady -font $bfont -width 73 -relief groove
 	    pack .info.l -expand yes -fill x
 
-	frame .p 
+	frame .p
 	    frame .p.top -borderwidth 2 -relief sunken
 		scrollbar .p.top.xscroll -wid $swid -orient horiz \
 		    -command ".p.top.c xview"
@@ -660,16 +660,16 @@ proc widgets {} \
 		pack .p.bottom.t -expand true -fill both
 
 	after idle {
-	    PaneCreate 
+	    PaneCreate
 	}
 
 	frame .cmd -borderwidth 2 -relief ridge
-		text .cmd.t -height 1 -width 20 -font $bfont 
+		text .cmd.t -height 1 -width 20 -font $bfont
 		label .cmd.l -font $bfont -width 20 -relief groove \
 		    -textvariable cmd_text
 		pack .cmd.l -side left -fill x
 		pack .cmd.t -side left -fill x -expand true
-	
+
 	pack .menus -side top -fill x
 	pack .info -side top -fill x
 	pack .p -side top -expand true -fill both
@@ -757,8 +757,8 @@ proc sccstool {name} \
 	set bad 0
 	set file [exec $bk_sfiles $name 2>$dev_null]
 	.info.l configure -text $file
-	listRevs $file 
-	history 
+	listRevs $file
+	history
 	set cmd_text "Welcome"
 	focus .p.top.c
 }
@@ -788,7 +788,7 @@ proc init {} \
 {
 	global bin bk_prs bk_cset bk_get bk_renumber bk_sfiles
 	global bk_lines
-	
+
 	set bk_prs [file join $bin prs]
 	set bk_cset [file join $bin cset]
 	set bk_get [file join $bin get]

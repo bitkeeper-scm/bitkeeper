@@ -137,7 +137,7 @@ oldest(delta *d)
 
 /*
  * Return the leaf node for the trunk, making sure that it is the oldest branch.
- * XXX - the oldest idea does not work because the branches may have been 
+ * XXX - the oldest idea does not work because the branches may have been
  * continued after the trunk.
  */
 delta *

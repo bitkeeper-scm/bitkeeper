@@ -126,18 +126,18 @@ EOF
 		eval "$cmd" | sed 's/^..//' > /tmp/import$$
 		echo OK
 	fi
-	echo Checking to make sure there are no files 
+	echo Checking to make sure there are no files
 	echo already in $TO
 	cd $TO
-	while read x 
+	while read x
 	do	if [ -e $x ]
 		then	echo import: $x exists, entire import aborted
 			rm -f /tmp/import$$
 			exit 1
 		fi
 	done < /tmp/import$$
-	bk g2sccs < /tmp/import$$ > /tmp/sccs$$ 
-	while read x 
+	bk g2sccs < /tmp/import$$ > /tmp/sccs$$
+	while read x
 	do	if [ -e $x ]
 		then	echo import: $x exists, entire import aborted
 			rm -f /tmp/sccs$$ /tmp/import$$
@@ -183,7 +183,7 @@ import_finish () {
 	    Xy*)
 		echo $N "Editor to use [$EDITOR] " $NL
 		read editor
-		echo 
+		echo
 		if [ X$editor != X ]
 		then	eval $editor /tmp/import$$
 		else	eval $EDITOR /tmp/import$$
@@ -266,7 +266,7 @@ import_SCCS () {
 	grep 'SCCS/s\.' /tmp/import$$ | bk prs -hr -d':PN: :TYPE:' - | grep ' BitKeeper' > /tmp/reparent$$
 	if [ -s /tmp/reparent$$ ]
 	then	cat <<EOF
-	
+
 You are trying to import BitKeeper files into a BitKeeper project.
 We can do this, but it means that you are goint to "reparent" these
 files under a new ChangeSet file.  In general, that's not a good idea,
@@ -302,7 +302,7 @@ EOF
 	grep -v 'SCCS/s\.' /tmp/import$$ > /tmp/notsccs$$
 	if [ -s /tmp/sccs$$ -a -s /tmp/notsccs$$ ]
 	then	NOT=`wc -l < /tmp/notsccs$$ | sed 's/ //g'`
-		echo 
+		echo
 		echo Skipping $NOT non-SCCS files
 		echo $N "Do you want to see this list of files? [No] " $NL
 		read x
@@ -331,7 +331,7 @@ import_text () {
 }
 
 init () {
-	if [ '-n foo' = "`echo -n foo`" ] 
+	if [ '-n foo' = "`echo -n foo`" ]
 	then    NL='\c'
 	        N=
 	else    NL=

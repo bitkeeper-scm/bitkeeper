@@ -3,15 +3,15 @@
 # Copright (c) 1999 Larry McVoy
 # %K%
 
-# We need this because cygwin "exec" can not handle "drive:/path" format 
+# We need this because cygwin "exec" can not handle "drive:/path" format
 win2cygPath()
 {
 	case "$1" in
 	*:\\*)	# convert c:\path to //c/path format
-		cygPath="//${1%:\\*}/${1#*:\\}"			
+		cygPath="//${1%:\\*}/${1#*:\\}"
 		;;
 	*:/*)	# convert c:/path to //c/path format
-		cygPath="//${1%:/*}/${1#*:/}"	
+		cygPath="//${1%:/*}/${1#*:/}"
 		;;
 	*)	cygPath=$1
 		;;
@@ -27,7 +27,7 @@ then
 	win2cygPath $BK_BIN; _BK_BIN=$cygPath;
 	TST_DIR=$TEMP
 	TMP=$TEMP
-	USR_TMP=C:/usr/tmp 
+	USR_TMP=C:/usr/tmp
 	if [ ! -d $USR_TMP ]; then mkdir -p $USR_TMP 2> nul; fi
 	CAT="bin_mode_cat"
 	ECHO="bin_mode_echo"
@@ -37,7 +37,7 @@ then
 	CWD="$BK_BIN/pwd.exe"
 	data="data"
 	uuencode="uuencode"
-	if [ X$OSTYPE = Xuwin ] 
+	if [ X$OSTYPE = Xuwin ]
 	then
 		# we are running under the uwin ksh
 		# /dev/null in uwin does not always work
@@ -58,7 +58,7 @@ then
 else
 	# we are on a unix box
 	PLATFORM="UNIX"
-	ECHO="echo" 
+	ECHO="echo"
 	CAT="cat"
 	CWD="/bin/pwd"
 	if [ -x force_rm.sh ]
@@ -126,7 +126,7 @@ then	Q=
 else	Q=-q
 	S=-s
 fi
-if [ '-n foo' = "`echo -n foo`" ] 
+if [ '-n foo' = "`echo -n foo`" ]
 then	NL='\c'
 	N=
 else	NL=
@@ -148,4 +148,4 @@ cd $REGRESSION || exit 1
 if [ -d SCCS ]; then echo "There should be no SCCS directory here."; exit 1; fi
 # save the list of file cuurently in $TMP
 # check it when again when we are in clean up
-ls -a $TMP > ${USR_TMP}/T.${USER}-$$ 
+ls -a $TMP > ${USR_TMP}/T.${USER}-$$

@@ -389,7 +389,7 @@ sccs_getUserName(char *file, char *rev, delta *n)
 		    case '\n':
 			*p = 0;
 			break;
-		    case ' ': 
+		    case ' ':
 			*p = '.'; /* convert space to dot */
 			break;
 		    case BACKSPACE:

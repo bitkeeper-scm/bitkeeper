@@ -289,7 +289,7 @@ buildKeys()
 				} else {
 					a = getFile(root, idDB);
 					b = getFile(buf, idDB);
-					fprintf(stderr, 
+					fprintf(stderr,
 					    "\tIn different files %s and %s\n",
 					    a, b);
 					free(a);
@@ -318,7 +318,7 @@ buildKeys()
 			if (errno == EEXIST) {
 				char	*root = mdbm_fetch_str(db, t);
 				unless (streq(root, key)) {
-					fprintf(stderr, 
+					fprintf(stderr,
 			    "check: key %s replicated in ChangeSet: %s %s\n",
 			    		    buf, key, root);
 				}
@@ -406,14 +406,14 @@ getRev(char *root, char *key, MDBM *idDB)
 /*
 	1) for each key in the changeset file, we need to make sure the
 	   key is in the source file and is marked.
-	
+
 	2) for each delta marked as recorded in the ChangeSet file, we
 	   need to make sure it actually is in the ChangeSet file.
-	
+
 	3) for each tip, all but one need to be marked as in the ChangeSet
 	   file and that one - if it exists - must be top of trunk.
 */
-int	
+int
 check(sccs *s, MDBM *db, MDBM *marks)
 {
 	delta	*d;
@@ -454,7 +454,7 @@ check(sccs *s, MDBM *db, MDBM *marks)
 			    s->sfile, buf);
 		}
 	}
-	
+
 	/* Make sure that we think we have cset marks */
 	unless (s->state & S_CSETMARKED) {
 		mdbm_store_str(marks, s->sfile, "", 0);
@@ -530,7 +530,7 @@ csetFind(char *key)
 	sprintf(buf, "bk sccscat -hm ChangeSet");
 	unless (p = popen(buf, "r")) return (strdup("[popen failed]"));
 	while (fnext(buf, p)) {
-		if (r) continue; 
+		if (r) continue;
 		chop(buf);				/* remove '\n' */
 		for (s = buf; *s && !isspace(*s); s++); /* skip rev */
 		for (k = s; *k && isspace(*k); k++);	/* skip space */

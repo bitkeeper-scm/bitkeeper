@@ -39,7 +39,7 @@ sub exitStatus
 
 sub doExec
 {
-	local ($bin) = "";	
+	local ($bin) = "";
 
 	exec @_ if (-x "$_[0]");
 	foreach (split(/:/, $ENV{'PATH'})) {
@@ -63,4 +63,4 @@ sub doExec
 sub localName2bkName
 {
         return $_[0];
-}        
+}

@@ -9,7 +9,7 @@ int
 gettemp(char *buf, const char *tmpl)
 {
 	int	fd;
-	
+
 	assert(tmpl[0] != '/');
 	sprintf(buf, "%s/%sXXXXXX", TMP_PATH, tmpl);
 	fd = mkstemp(buf);

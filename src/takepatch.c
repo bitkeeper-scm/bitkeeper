@@ -18,7 +18,7 @@ WHATSTR("@(#)%K%");
  *
  * D 1.159 99/02/06 16:57:48 lm 160/55/6481
  * ....
- * 
+ *
  * diffs
  *
  * Repeats.
@@ -83,10 +83,10 @@ main(int ac, char **av)
 	char	*resyncRoot, *t;
 	int	remote = 0;
 	int	resolve = 0;
-	int	fast = 0;	/* undocumented switch for scripts, 
+	int	fast = 0;	/* undocumented switch for scripts,
 				 * skips cache rebuilds on file creates */
 
-	platformSpecificInit(NULL); 
+	platformSpecificInit(NULL);
 	input = "-";
 	debug_main(av);
 	while ((c = getopt(ac, av, "acFf:iqsSv")) != -1) {
@@ -207,10 +207,10 @@ extractPatch(char *name, MMAP *p, int flags, int fast, char *root)
 	 * etc.
 	 *
 	 * Patch format for new file:
-	 * == filename == 
+	 * == filename ==
 	 * New file: filename as of creation time
 	 * perfile information (encoding, etc)
-	 * 
+	 *
 	 * lm||19970518232929
 	 * D 1.1 99/02/23 00:29:01-08:00 lm@lm.bitmover.com +128 -0
 	 * etc.
@@ -283,7 +283,7 @@ cleanup:			if (perfile) free(perfile);
 		}
 		if (s->state & S_PFILE) {
 			SHOUT();
-			fprintf(stderr, 
+			fprintf(stderr,
 			    "takepatch: %s is locked w/o gfile?\n", s->sfile);
 			goto cleanup;
 		}
@@ -707,7 +707,7 @@ apply:
 					char	buf[MAXPATH];
 
 					sprintf(buf,
-			"echo --- %s ---; cat %s; echo --- %s ---; cat %s", 
+			"echo --- %s ---; cat %s; echo --- %s ---; cat %s",
 			p->initFile, p->initFile, p->diffFile, p->diffFile);
 					system(buf);
 				}
@@ -900,7 +900,7 @@ earlier(patch *a, patch *b)
 
 	if (a->order < b->order) return 1;
 	if (a->order > b->order) return 0;
-	ret = strcmp(a->me, b->me); 
+	ret = strcmp(a->me, b->me);
 	if (ret < 0)   return 1;
 	if (ret > 0)   return 0;
 	assert("Can't figure out the order of deltas\n" == 0);
@@ -1131,7 +1131,7 @@ init(char *inputFile, int flags, char **resyncRootp)
 					oldformat();
 				}
 			}
-			    
+
 			if (started) {
 				if (fputs(buf, f) == EOF) {
 					perror("fputs on patch");
@@ -1141,7 +1141,7 @@ init(char *inputFile, int flags, char **resyncRootp)
 					sumR = strtoul(buf+17, 0, 16);
 					break;
 				}
-				
+
 				len = strlen(buf);
 				sumC = adler32(sumC, buf, len);
 			} else {

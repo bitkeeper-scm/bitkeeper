@@ -46,11 +46,11 @@ if [ -w B ]; then echo B is writable; exit 1; fi
 if [ -f date ]; then echo Created date and it should not have; exit 1; fi
 grep -q Hallo A
 if [ $? -ne 0 ]; then echo Bad data in A.; exit 1; fi
-grep -q HI A 
+grep -q HI A
 if [ $? -ne 1 ]; then echo Bad data in A.; exit 1; fi
 grep -q Hallo B
 if [ $? -ne 0 ]; then echo Bad data in B.; exit 1; fi
-grep -q Hi B 
+grep -q Hi B
 if [ $? -ne 0 ]; then echo Bad data in B.; exit 1; fi
 echo OK
 ${RM} -f A B
@@ -99,13 +99,13 @@ grep -q '^.cP.*moved$' SCCS/s.moved
 if [ $? -ne 0 ]; then echo Did not add new path.; exit 1; fi
 echo OK
 echo $N Make sure get -b works w/ no -b flag ........................$NL
-get $S -eb date 
+get $S -eb date
 grep -q '1.3 1.4 ' SCCS/p.date
 if [ $? -ne 0 ]; then echo Failed, bad rev.; exit 1; fi
 clean date
 echo OK
 echo $N Make sure get -r1.1 works w/ no b flag ......................$NL
-get $S -er1.1 date 
+get $S -er1.1 date
 if [ ! -f SCCS/p.date ]; then echo Failed, did not edit file.; exit 1; fi
 grep -q '1.1 1.1.1.1 ' SCCS/p.date
 if [ $? -ne 0 ]; then echo Failed, bad rev.; exit 1; fi
@@ -113,17 +113,17 @@ clean date
 echo OK
 echo $N Make sure get -b works with -b flag .........................$NL
 admin $Q -fb date
-get $S -eb date 
+get $S -eb date
 grep -q '1.3 1.3.1.1 ' SCCS/p.date
 if [ $? -ne 0 ]; then echo Failed, bad rev.; exit 1; fi
 clean date
 echo OK
 echo $N Make sure get -g does not get file ..........................$NL
-get $S -g date 
+get $S -g date
 if [ -f date ]; then echo Failed, got file.; exit 1; fi
 echo OK
 echo $N Make sure get -k does not expand keywords ...................$NL
-get $S -e date 
+get $S -e date
 if [ -f core ]; then echo core dumped; exit 1; fi
 echo '@A@ @B@ @D@ @E@ @F@ @G@ @H@ @I@ @L@ @M@ @P@ @R@ @S@ @T@ @U@ @W@ @Y@ @Z@ @@@' | sed s/@/%/g > date
 X=`wc date`

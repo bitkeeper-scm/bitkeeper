@@ -164,7 +164,7 @@ main(int ac, char **av)
 	}
 	if ((merge) &&
 	    ((flags & ~(ADMIN_FORMAT|ADMIN_ASCII|ADMIN_TIME|SILENT|NEWCKSUM)) ||
-	    nextf || nextu || nexts || nextp || comment || path || 
+	    nextf || nextu || nexts || nextp || comment || path ||
 	    rmCset || rmPath || doDates)) {
 		fprintf(stderr, "admin: -M option must be alone or with -r\n");
 		goto usage;
@@ -226,7 +226,7 @@ main(int ac, char **av)
 		    	rc = sccs_addSym(sc, flags, s[0].thing);
 			if (rc == -1) error = 1;
 			if (rc != EAGAIN) goto next;
-			
+
 		}
 #endif
 		if (dopath) {
@@ -234,7 +234,7 @@ main(int ac, char **av)
 				verbose((stderr,
 				    "%s has a path already.\n", sc->sfile));
 			} else {
-				sc->tree->pathname = 
+				sc->tree->pathname =
 				    strdup(path ? path : sc->gfile);
 			}
 		}
@@ -243,7 +243,7 @@ main(int ac, char **av)
 		if (doDates) sccs_fixDates(sc);
 		if (m) {
 			delta	*d;
-			
+
 			sc->state |= S_RANGE2;
 			if (d = sccs_getrev(sc, rev, 0, 0)) d = modeArg(d, m);
 		}
@@ -427,7 +427,7 @@ setMerge(sccs *sc, char *merge, char *rev)
 }
 
 void
-touch(sccs *s) 
+touch(sccs *s)
 {
 	struct utimbuf ut;
 

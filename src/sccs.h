@@ -256,7 +256,7 @@ typedef	unsigned char	u8;
  *
  * Note: we don't implement MRs - should we?
  * Fri Apr  9 1999:  this has grown to 124 bytes.  We might want to think
- * about reducing the size.  That means a 5K delta file takes 620K in 
+ * about reducing the size.  That means a 5K delta file takes 620K in
  * memory just for the graph.
  *
  * Something else we ought to do: our own allocator/deallocator which allocates
@@ -306,13 +306,13 @@ typedef struct delta {
  * Rap on lod/symbols wrt deltas.
  * Both symbols can occur exactly once per delta where delta is a node in
  * the graph.  When a delta is created, it might get a symbol and/or a lod.
- * Later, it might get another one.  These later ones are implemented as 
+ * Later, it might get another one.  These later ones are implemented as
  * metadata deltas (aka removed deltas) which point up to the real delta.
  * So it is an invariant: one node in the graph, one symbol and/or one lod.
  *
  * The sym/lod fields in the delta are for initialization and are extracted
  * and put into the appropriate lists once the delta is entered in the graph.
- * 
+ *
  */
 
 /*
@@ -350,7 +350,7 @@ typedef struct {
  * Rap on project roots.  In BitKeeper, lots of stuff wants to know
  * where the project root is relative to where we are.  We need to
  * use the ->root field for this, remembering to null it whenever
- * we change directories.  
+ * we change directories.
  *
  * We also need to wack commands that work in loops to reuse the root
  * pointer across sccs_init()s.  This means that loops should extract
@@ -430,7 +430,7 @@ typedef struct {
 /*
  * RESYNC directory layout.
  *
- * This directory is created at the same level as the working directory 
+ * This directory is created at the same level as the working directory
  * where the ChangeSet file lives.
  * It is a sparse copy of the destination, containing only files which have
  * been patched.
@@ -438,7 +438,7 @@ typedef struct {
  * level as the RESYNC directory.
  * Inside the RESYNC directory is a subdirectory, BitKeeper.  In that, we
  * find:
- * RESYNC/BitKeeper/patch - a file containing the pathname to the 
+ * RESYNC/BitKeeper/patch - a file containing the pathname to the
  *	patch file in PENDING
  * RESYNC/BitKeeper/pid - the process id of the tkpatch or resolve program.
  * RESYNC/BitKeeper/init-%d - the init file for one delta of the patch
@@ -473,7 +473,7 @@ typedef struct patch {
  * Patch file format strings.
  */
 #define PATCH_CURRENT	"# Patch vers:\t0.7\n"
-#define PATCH_NOSUM	"# Patch vers:\t0.5\n" 
+#define PATCH_NOSUM	"# Patch vers:\t0.5\n"
 
 /*
  * Internal to takepatch
@@ -522,7 +522,7 @@ int	sccs_sdelta(sccs *s, delta *, char *);
 void	sccs_perfile(sccs *, FILE *);
 sccs	*sccs_getperfile(MMAP *, int *);
 char	*sccs_gethost(void);
-int	sccs_getComments(char *, char *, delta *); 
+int	sccs_getComments(char *, char *, delta *);
 int	sccs_getHostName(char *, char *, delta *);
 int	sccs_getUserName(char *, char *, delta *);
 void	sfileUnget(void);
@@ -542,7 +542,7 @@ char	*getuser(void);
 delta	*modeArg(delta *d, char *arg);
 FILE	*fastPopen(const char*, const char*);
 int	fastPclose(FILE*);
-char    *fullname(char *, int); 
+char    *fullname(char *, int);
 char	chop(register char *s);
 int	sccs_filetype(char *name);
 void	concat_path(char *, char *, char *);
@@ -568,7 +568,7 @@ void	platformSpecificInit(char *);
 MDBM	*loadDB(char *file, int (*want)(char *), int style);
 #ifndef ANSIC
 int     sig(int, int);
-#endif                                 
+#endif
 int	csetIds(sccs *cset, char *rev);
 void	sccs_fixDates(sccs *);
 void	sccs_mkroot(char *root);

@@ -26,7 +26,7 @@ main(int ac, char **av)
 			    "usage: %s [-d] file1 file2 ...\n", av[0]);
                         return (1);
                 }
-        }                    
+        }
 	if (ac < 2) {
 		fprintf(stderr, "usage: %s [-d] file1 file2 ...\n", av[0]);
 		exit(1);

@@ -100,7 +100,7 @@ resum(sccs *s, delta *d, int flags, int old7bit, int dont)
 	}
 
 	//fprintf(stderr, "%s:%s\n", s->sfile, d->rev);
-	
+
 	/* expand the file in the form that we checksum it */
 	if ((s->encoding == E_UUENCODE) || (s->encoding == E_UUGZIP)) {
 		s->encoding = E_ASCII;

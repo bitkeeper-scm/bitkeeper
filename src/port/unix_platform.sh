@@ -46,7 +46,7 @@ _logCommand() {
 			fi
 			if [ ! -w ${LDIR}/cmd ]
 			then	mv ${LDIR}/cmd ${LDIR}/ocmd
-				cp ${LDIR}/ocmd ${LDIR}/cmd 
+				cp ${LDIR}/ocmd ${LDIR}/cmd
 				chmod 666 ${LDIR}/cmd
 				rm ${LDIR}/ocmd
 			fi

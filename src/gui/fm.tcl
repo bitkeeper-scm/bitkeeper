@@ -14,13 +14,13 @@
 #	to notice that the thing we are adding is actually nothing.
 #	Think "foo <    "  and we select right.
 #
-# We walk forward (and backward) through rBoth, looking at the 
+# We walk forward (and backward) through rBoth, looking at the
 # current position in each of rDiff and rSame to figure out who
 # is next.
 # At the end (start) of all functions, either
-#	$rDiff[$nextDiff] == $rBoth[$nextBoth]	
+#	$rDiff[$nextDiff] == $rBoth[$nextBoth]
 # OR	$rSame[$nextSame] == $rBoth[$nextBoth]
-# 
+#
 # == MARKS ==
 # As we add stuff to the merge window, each insertion is marked.  The
 # marks are named $something$count where count is the sequence number of
@@ -87,7 +87,7 @@ proc next {} \
 	global rBoth rDiff rSame nextBoth nextDiff nextSame
 	global maxBoth maxDiff maxSame
 
-	if {$nextBoth > $maxBoth} { 
+	if {$nextBoth > $maxBoth} {
 		return
 	}
 	set Same [lindex $rSame $nextSame]
@@ -101,7 +101,7 @@ proc next {} \
 
 	# If that was it, we're outta here.
 	if {$nextBoth > $maxBoth} { return }
-	
+
 	# OK, there is a diff, slide down to it.
 	scrollDiffs [currentLine rDiff nextDiff]
 }
@@ -239,16 +239,16 @@ proc selectFiles {} \
 {
 	global lfile rfile outputFile dev_null
 
-	set lfile [tk_getOpenFile -title "Select Left File"] ; 
+	set lfile [tk_getOpenFile -title "Select Left File"] ;
 	if {("$lfile" == "")} return;
  	set t [clock format [file mtime $lfile] -format "%r %D"]
 	.diffs.l configure -text "$lfile ($t)"
 	.diffs.left configure -state normal
 	set fd [open $lfile r]
-	.diffs.left insert end  [read $fd] 
+	.diffs.left insert end  [read $fd]
 	.diffs.left configure -state disabled
 	close $fd
-	set rfile [tk_getOpenFile -title "Select Right File"]; 
+	set rfile [tk_getOpenFile -title "Select Right File"];
 	if {("$rfile" == "")} return;
 	readFiles $lfile $rfile $outputFile
 	resolved 0
@@ -259,7 +259,7 @@ proc selectOutFile {} \
 {
 	global outputFile
 
-	set outputFile [tk_getSaveFile -title "Select Output File" ] 
+	set outputFile [tk_getSaveFile -title "Select Output File" ]
 	.merge.l config -text "$outputFile"
 }
 
@@ -281,7 +281,7 @@ proc highlightDiffs {} \
 	.diffs.right tag delete d
 	foreach {Diff End} $rDiff {
 		.diffs.left tag add d $Diff $End
-		.diffs.right tag add d $Diff $End 
+		.diffs.right tag add d $Diff $End
 	}
 	.diffs.left tag configure d -foreground black -font $boldFont
 	.diffs.right tag configure d -foreground black -font $boldFont
@@ -326,10 +326,10 @@ proc scrollDiffs {where} \
 	}
 
 	# Highlight the diff in question so that we can see it.
-	.diffs.left tag delete highLight 
-	.diffs.right tag delete highLight 
+	.diffs.left tag delete highLight
+	.diffs.right tag delete highLight
 	.diffs.left tag add highLight $Diff $End
-	.diffs.right tag add highLight $Diff $End 
+	.diffs.right tag add highLight $Diff $End
 	.diffs.left tag configure highLight -font $boldFont \
 	    -foreground black -background lightyellow
 	.diffs.right tag configure highLight -font $boldFont \
@@ -355,7 +355,7 @@ proc resolved {n} \
 		.merge.menu.right configure -state normal
 		.merge.menu.skip configure -state normal
 	}
-	if {$n > 0} { 
+	if {$n > 0} {
 		.merge.menu.undo configure -state normal
 	}
 }
@@ -363,7 +363,7 @@ proc resolved {n} \
 proc cmd_done {} \
 {
 	global done diffcount saved
-	
+
 	if {$done == 0} { exit }
 	if {$done < $diffcount} {
 		confirm "Only $done out of $diffcount merged" "Keep merging"
@@ -411,7 +411,7 @@ proc same {r l n} \
 		incr n -1
 	}
 	set l [join $lines "\n"]
-	.diffs.left insert end "$l\n" 
+	.diffs.left insert end "$l\n"
 	.diffs.right insert end "$l\n";
 }
 
@@ -428,8 +428,8 @@ proc changed {r l n} \
 	}
 	set lc [join $llines "\n"]
 	set rc [join $rlines "\n"]
-	.diffs.left insert end "$lc\n" 
-	.diffs.right insert end "$rc\n" 
+	.diffs.left insert end "$lc\n"
+	.diffs.right insert end "$rc\n"
 }
 
 proc left {r l n} \
@@ -471,7 +471,7 @@ proc save {} \
 		return
 	}
 	.merge.menu.save configure -state disabled
-	if {("$outputFile" == "")} selectOutFile 
+	if {("$outputFile" == "")} selectOutFile
 	while {("$outputFile" == "")} {
 		set ans [tk_messageBox -icon warning -type yesno -default no \
 			-message "No output file selected\nQuit without save?"]
@@ -489,7 +489,7 @@ proc restart {} \
 {
 	global argv0 argv argc
 
-	if {$argc != 3} { 
+	if {$argc != 3} {
 		puts "usage: $argv0 left right output"
 		exit
 	}
@@ -572,7 +572,7 @@ proc readFiles {L R O} \
 	set r [open $R r]
 	set d [sdiff $L $R]
 	set outputFile $O
-	
+
 	gets $d last
 	if {$last == "" || $last == " "} { set last "S" }
 	set diffcount 0
@@ -786,9 +786,9 @@ proc widgets {L R O} \
 	keyboard_bindings
 	wm title . "File Merge"
 
-	frame .diffs 
+	frame .diffs
 	    label .diffs.l -background $leftColor \
-		-font $buttonFont 
+		-font $buttonFont
 	    label .diffs.r -background $rightColor \
 		-font $buttonFont
 	    text .diffs.left -width $diffWidth -height $diffHeight \
@@ -796,7 +796,7 @@ proc widgets {L R O} \
 		-xscrollcommand { .diffs.xscroll set } \
 		-yscrollcommand { .diffs.yscroll set }
 	    text .diffs.right -width $diffWidth -height $diffHeight \
-		-state disabled -wrap none -font $diffFont 
+		-state disabled -wrap none -font $diffFont
 	    scrollbar .diffs.xscroll -wid $swid -troughcolor $tcolor \
 		-orient horizontal -command { xscroll }
 	    scrollbar .diffs.yscroll -wid $swid -troughcolor $tcolor \
@@ -820,7 +820,7 @@ proc widgets {L R O} \
 		-orient horizontal -command { .merge.t xview }
 	    scrollbar .merge.yscroll -wid $swid -troughcolor $tcolor \
 		-orient vertical -command { .merge.t yview }
-	    frame .merge.menu 
+	    frame .merge.menu
 		button .merge.menu.open -width 7 -bg grey \
 		    -font $buttonFont -text "Open" \
 		    -command selectFiles
@@ -846,16 +846,16 @@ proc widgets {L R O} \
 		button .merge.menu.quit -font $buttonFont -bg grey \
 		    -text "Quit" -width 7 -command cmd_done
 		grid .merge.menu.l -row 0 -column 0 -columnspan 2 -sticky ew
-		grid .merge.menu.open -row 1 
+		grid .merge.menu.open -row 1
 		grid .merge.menu.restart -row 1 -column 1
 		grid .merge.menu.undo -row 2 -column 0
 		grid .merge.menu.redo -row 2 -column 1
-		grid .merge.menu.skip -row 3 -column 0 
-		grid .merge.menu.save -row 3 -column 1 
+		grid .merge.menu.skip -row 3 -column 0
+		grid .merge.menu.save -row 3 -column 1
 		grid .merge.menu.left -row 4 -column 0
 		grid .merge.menu.right -row 4 -column 1
-		grid .merge.menu.help -row 5 -column 0 
-		grid .merge.menu.quit -row 5 -column 1 
+		grid .merge.menu.help -row 5 -column 0
+		grid .merge.menu.quit -row 5 -column 1
 	    grid .merge.l -row 0 -column 0 -columnspan 2 -sticky ew
 	    grid .merge.t -row 1 -column 0 -sticky nsew
 	    grid .merge.yscroll -row 1 -column 1 -sticky ns
@@ -885,48 +885,48 @@ proc widgets {L R O} \
 
 	bind .merge <Configure> { computeHeight "merge" }
 	bind .diffs <Configure> { computeHeight "diffs" }
-	bind .merge.menu.open <Enter> { 
+	bind .merge.menu.open <Enter> {
 		.status configure -text \
 		"Open Left and Right Files"
 	}
 	bind .merge.menu.open <Leave> { .status configure -text "" }
-	bind .merge.menu.restart <Enter> { 
+	bind .merge.menu.restart <Enter> {
 		.status configure -text \
 		"(Alt-r)  Restart, discarding any resolves so far"
 	}
 	bind .merge.menu.restart <Leave> { .status configure -text "" }
-	bind .merge.menu.undo <Enter> { 
+	bind .merge.menu.undo <Enter> {
 		.status configure -text "(Alt-u)  Undo last resolve"
 	}
 	bind .merge.menu.undo <Leave> { .status configure -text "" }
-	bind .merge.menu.redo <Enter> { 
+	bind .merge.menu.redo <Enter> {
 		.status configure -text "(Alt-a)  Redo last undo"
 	}
 	bind .merge.menu.redo <Leave> { .status configure -text "" }
-	bind .merge.menu.skip <Enter> { 
+	bind .merge.menu.skip <Enter> {
 		.status configure -text \
 		"(Alt-s)  Skip this diff, adding neither left nor right changes"
 	}
 	bind .merge.menu.skip <Leave> { .status configure -text "" }
-	bind .merge.menu.save <Enter> { 
+	bind .merge.menu.save <Enter> {
 		.status configure -text "(Control-s)  Save merged file"
 	}
 	bind .merge.menu.save <Leave> { .status configure -text "" }
-	bind .merge.menu.left <Enter> { 
+	bind .merge.menu.left <Enter> {
 		.status configure -text \
 		"(Alt-l)  Use the highlighted change from the left"
 	}
 	bind .merge.menu.left <Leave> { .status configure -text "" }
-	bind .merge.menu.right <Enter> { 
+	bind .merge.menu.right <Enter> {
 		.status configure -text \
 		"(Alt-r)  Use the highlighted change from the right"
 	}
 	bind .merge.menu.right <Leave> { .status configure -text "" }
-	bind .merge.menu.quit <Enter> { 
+	bind .merge.menu.quit <Enter> {
 		.status configure -text "(Alt-q)  Quit filemerge"
 	}
 	bind .merge.menu.quit <Leave> { .status configure -text "" }
-	bind .merge.menu.l <Enter> { 
+	bind .merge.menu.l <Enter> {
 		.status configure -text "Shows how much more work you have left"
 	}
 	bind .merge.menu.l <Leave> { .status configure -text "" }
@@ -988,7 +988,7 @@ proc confirm {msg l} \
 proc platformPath {} \
 {
 	global bin env
-	
+
 	if {[info exists env(BK_BIN)]} {
 		set bin $env(BK_BIN)
 	} else {
@@ -1013,7 +1013,7 @@ proc main {} \
 {
 	global argv0 argv argc bin dev_null done lfile rfile outputFile
 
-	if {(($argc != 0) && ($argc != 3))} { 
+	if {(($argc != 0) && ($argc != 3))} {
 		puts "usage: $argv0 left right output\n\or\n$argv0"
 		exit
 	}
@@ -1023,7 +1023,7 @@ proc main {} \
 	set rfile ""
 	set outputFile ""
 	set done 0
-	if {$argc == 3} { 
+	if {$argc == 3} {
 		set a [split $argv " "]
 		set lfile [lindex $argv 0]
 		set rfile [lindex $argv 1]

@@ -43,7 +43,7 @@ localtimez(time_t tt, struct tm *tmz)
 	tm = gmtime(&tt);
 	offset -= (tm->tm_hour*60 + tm->tm_min)*60 + tm->tm_sec;
 #endif
-	
+
 	/* Normalize offset to (-43200, 43200].  */
 	while (offset <= -43200) offset += 86400;
 	while (offset > 43200) offset -= 86400;

@@ -486,7 +486,7 @@ running this command with a hand generated list of deltas.\n\
 Please check the list and try again.\n");
 			return (-1);
 		}
-		unless (sccs_restart(s)) { perror("restart"); exit(1); } 
+		unless (sccs_restart(s)) { perror("restart"); exit(1); }
 		e = sccs_getInit(s, 0, init, 1, &error, 0);
 		unless (e && !error) {
 			unless (BEEN_WARNED(s)) {
@@ -560,7 +560,7 @@ apply()
 {
 	/*
 	 * Yes this multi pass approach is slow but I want everything
-	 * checked before doing anything.  
+	 * checked before doing anything.
 	 */
 	unless (chdir("UNDO") == 0) {
 		perror("chdir UNDO");
@@ -607,8 +607,8 @@ done(int pass)
 	char	*t;
 	sccs	*s;
 	delta	*d;
-	char	buf[MAXPATH]; 
-	
+	char	buf[MAXPATH];
+
 	f = popen("bk sfiles .", "r");
 	buf[0] = buf[1] = '.'; buf[2] = '/';
 	while (fgets(&buf[3], MAXPATH-3, f)) {
@@ -641,7 +641,7 @@ done(int pass)
 				goto un;
 			}
 
-			/* 
+			/*
 			 * Move the file to where it was as of TOT after the
 			 * other stuff was removed.
 			 * Make sure that there isn't anyone else in that
