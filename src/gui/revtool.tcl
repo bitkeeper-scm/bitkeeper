@@ -304,7 +304,7 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 		    -expand true \
 		    -anchor n
 		set prs [open "| bk prs {$dspec} -hr$rev \"$file\" 2>$dev_null"]
-		filltext $w(ctext) $prs 1 "ctext"
+		filltext $w(ctext) $prs 1 "ctext" annotated
 		set wht [winfo height $w(cframe)]
 		set cht [font metrics $gc(rev.fixedFont) -linespace]
 		set adjust [expr {int($wht) / $cht}]
@@ -1082,11 +1082,12 @@ proc getRev {type {id {}} } \
 # msg -- optional argument -- use msg to pass in text to print
 # if file handle f returns no data
 #
-proc filltext {win f clear {msg {}}} \
+proc filltext {win f clear msg style} \
 {
 	global search w file
 	#puts stderr "filltext win=($win) f=($f) clear=($clear) msg=($msg)"
 
+	setTabs $win $style
 	$win configure -state normal
 	if {$clear == 1} { $win delete 1.0 end }
 	while { [gets $f str] >= 0 } {
@@ -1122,7 +1123,7 @@ proc prs {} \
 			set ttype "file_prs"
 		}
 		set prs [open $cmd]
-		filltext $w(aptext) $prs 1 "prs output"
+		filltext $w(aptext) $prs 1 "prs output" raw
 	} else {
 		set search(prompt) "Click on a revision"
 	}
@@ -1157,11 +1158,11 @@ proc history {{opt {}}} \
 "-d\$if(:TAG:){:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)}\n\$each(:TAG:){  TAG: (:TAG:)\n}\n}"
 		set f [open "| bk prs -h {$tags} \"$file\" 2>$dev_null"]
 		set ttype "file_prs"
-		filltext $w(aptext) $f 1 "There are no tags for $file"
+		filltext $w(aptext) $f 1 "There are no tags for $file" raw
 	} else {
 		set f [open "| bk prs -h {$dspec} $opt \"$file\" 2>$dev_null"]
 		set ttype "file_prs"
-		filltext $w(aptext) $f 1 "There is no history"
+		filltext $w(aptext) $f 1 "There is no history" raw
 	}
 }
 
@@ -1180,7 +1181,7 @@ proc sfile {} \
 	}
 	set f [open "$sfile" "r"]
 	set ttype "sccs"
-	filltext $w(aptext) $f 1 "No sfile data"
+	filltext $w(aptext) $f 1 "No sfile data" raw
 }
 
 #
@@ -1193,7 +1194,7 @@ proc sccscat {} \
 	busy 1
 	set fd [open "| bk sccscat $gc(rev.sccscat) \"$file\"" r]
 	set ttype "annotated"
-	filltext $w(aptext) $fd 1 "No sccscat data"
+	filltext $w(aptext) $fd 1 "No sccscat data" sccscat
 }
 
 
@@ -1222,7 +1223,7 @@ proc selectNode { type {val {}}} \
 		set get \
 		    [open "| bk get $Opts(get) -Pr$rev1 \"$file\" 2>$dev_null"]
 		set ttype "annotated"
-		filltext $w(aptext) $get 1 "No annotation"
+		filltext $w(aptext) $get 1 "No annotation" annotated
 		return
 	}
 	set rev2 $rev1
@@ -1358,7 +1359,7 @@ proc csetdiff2 {{rev {}}} \
 	$w(aptext) insert end "ChangeSet history for $rev1..$rev2\n\n"
 
 	set revs [open "|bk changes -fv -er$rev1..$rev2"]
-	filltext $w(aptext) $revs 0 "sccslog for files"
+	filltext $w(aptext) $revs 0 "sccslog for files" raw
 	set ttype "cset_prs"
 	catch {close $revs}
 	busy 0
@@ -1422,9 +1423,11 @@ proc diffs {diffs l} \
 		set rexp {^-}
 		gets $diffs str
 		gets $diffs str
+		setTabs $w(aptext) "udiff"
 	} else {
 		set lexp {^>}
 		set rexp {^<}
+		setTabs $w(aptext) "diff"
 	}
 	while { [gets $diffs str] >= 0 } {
 		$w(aptext) insert end "$str\n"
@@ -2270,6 +2273,34 @@ proc printCanvas {} \
 	#    -width $width -height $h]
 	catch { close $fd } err
 	exit
+}
+
+#-----------------------------------------------------------------------
+# setTabs
+#
+# sets the tabs for the given widget based on the type of data to be 
+# displayed. Hackish, but it works. The purpose is to make sure the
+# first tab takes into consideration the text that prefixes the real
+# data for various types of output
+#
+# usage: setTabs pathName type
+# 
+
+proc setTabs {pathName type} \
+{
+	global gc
+
+	set offset 0
+	switch -exact -- $type {
+		diff 		{set offset 26}
+		udiff 		{set offset 25}
+		sccscat		{set offset 24}
+		annotated	{set offset 24}
+	}
+
+	set tab1 [expr {$gc(rev.tabstops) + $offset}]
+	set tab2 [expr {$tab1 + $gc(rev.tabstops)}]
+	$pathName configure -tabs [tabstops $pathName $tab1 $tab2]
 }
 
 init
