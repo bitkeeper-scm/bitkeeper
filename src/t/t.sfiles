@@ -405,4 +405,20 @@ EOF
 bk sfiles -i | sort > $HERE/sfiles.out || { echo failed 1; exit 1; }
 cmp -s $HERE/sfiles.ref $HERE/sfiles.out || { echo failed 2; diff -u $HERE/sfiles.ref $HERE/sfiles.out; exit 1; }
 echo OK
+echo $N Test sfile -U ...............................................$NL
+cd bar
+echo "This is not the real ChangeSet file" > ChangeSet
+bk new $Q -y"fake changeset file" ChangeSet
+mkdir BitKeeper
+echo "This is not the real config file" > BitKeeper/config
+bk new $Q -y"fake config file" BitKeeper/config
+bk sfiles -U -g | sort > SFILES
+sort <<EOF > LIST
+BitKeeper/config
+blech/s.foo
+ChangeSet
+s.foo
+EOF
+cmp -s SFILES LIST || { echo failed; exit 1; }
+echo OK
 set +e

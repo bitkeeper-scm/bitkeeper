@@ -796,18 +796,33 @@ isTagFile(char *file)
 	return (pathneq("BitKeeper/etc/SCCS/x.", gfile, 21));
 }
 
+private int
+isBkFile(char *gfile)
+{
+	char    *rpath;
+
+	/*
+	 * Calling _relativeName() can be expensive, luckily
+	 * We cached PWD in fullName.c. It should be fast enough.
+	 */
+	rpath = _relativeName(gfile, 0, 0, 0, 0);
+	if (!rpath) return (0);
+	if (patheq(rpath, "ChangeSet")) return (1);
+	if ((strlen(rpath) > 10) && pathneq(rpath, "BitKeeper/", 10)) {
+		return (1);
+	}
+	return (0);
+}
+
+
 private void
 print_it(char state[5], char *file, char *rev)
 {
 	char *sfile, *gfile;
 
 	gfile =  strneq("./",  file, 2) ? &file[2] : file;
-	if (opts.useronly) {
-		if (streq(gfile, "ChangeSet") ||
-		    (strlen(gfile) > 10) && pathneq(gfile, "BitKeeper/", 10)) {
-			return;
-		}
-	}
+	if ((opts.useronly) && isBkFile(gfile)) return;
+
 	if (opts.show_markers) {
 		if (state[CSTATE] == 'j') {
 			assert(streq(state, " j "));
