@@ -3,12 +3,10 @@
 .SH NAME
 bk makepatch \- creates \*(BK patches
 .SH SYNOPSIS
-.Bc bk makepatch [\-v] [
+.Bc bk makepatch [\-vd] [
 .OPTreq \-c range
 .Bc ] [
 .OPTreq \-e range
-.Bc ] [
-.OPTreq \-d range
 .Bc ] [
 .OPTreq \-r range
 .Bc ] [-
@@ -22,24 +20,21 @@ The makepatch command is a low level command used to generate \*(BK patches.
 .B \-c
 Like \-r, except generate only ChangeSet diffs.  Used for logging only.
 .tp
+.B \-d
+Add a header with the unified diffs to the top of the \*(BK patch.
+.tp
 .OPTreq \-e range
 Like \-r, except generate only metadata diffs.  Used for logging only.
 .tp
-.OPTreq \-d range
-Do unified diffs for 
-.ARG range .
-.tp
 .OPTreq \-r range
-Generate a \*(BK patch patch of the changes in
+Generate a \*(BK patch of the changes in
 .ARG range .
 .tp
 .B \-v
 Be more verbose for each instance.
-.SH FUTURE DIRECTIONS
-The
-.B bk makepatch
-command will be evolved to send empty patches which just contain comments
-for logging purposes.
+.SH NOTES
+The supported interface for creating \*(BK patches is bk send.  And 
+bk export -tpatch should be used to create GNU patches.
 .SH SEE ALSO
 .SA cset 1
 .SA export 1
