@@ -767,10 +767,12 @@ EOF
 	echo ${UNAME_MACHINE}-unknown-linux
 	exit 0 ;;
     mips:Linux:*:*)
-	case `sed -n '/^byte/s/^.*: \(.*\) endian/\1/p' < /proc/cpuinfo` in
-	  big)    echo mips-unknown-linux && exit 0 ;;
-	  little) echo mipsel-unknown-linux && exit 0 ;;
-	esac
+	grep -q byteorder /proc/cpuinfo && {
+		case "`grep byteorder /proc/cpuinfo`" in
+		    *big*)        echo mips-unknown-linux && exit 0 ;;
+		    *little*)     echo mipsel-unknown-linux && exit 0 ;;
+		esac
+	}
 	;;
     ppc:Linux:*:*)
 	echo powerpc-unknown-linux
