@@ -89,7 +89,7 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		ftw(".", func, 15);
 	} else {
 		for (i = optind; i < ac; ++i) {
-			if (isdir(av[i])) {
+			if (isRealDir(av[i])) {
 				ftw(av[i], func, 15);
 			} else {
 				file(av[i], func, 15);

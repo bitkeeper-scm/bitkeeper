@@ -39,7 +39,6 @@ static	char rev[MAXREV+1];	/* 1.1.1.1 - see HASREVS */
 private	int oksccs(char *s, int flags, int complain);
 void concat_path(char *buf, char *first, char *second);
 
-
 /*
  * Get the next file and munge it into an s.file name.
  */
@@ -143,7 +142,7 @@ sfileFirst(char *cmd, char **Av, int Flags)
 			flist = stdin;
 			return (sfileNext());
 		}
-		if (isdir(Av[0])) {
+		if (isRealDir(Av[0])) {
 			if (flags & NOEXPAND) return (0);
 			if (Av[1]) {
 				fprintf(stderr,

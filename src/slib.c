@@ -78,6 +78,15 @@ isdir(char *s)
 }
 
 int
+isRealDir(char *s)
+{
+	struct	stat sbuf;
+
+	if (lstat(s, &sbuf) == -1) return 0;
+	return (S_ISDIR(sbuf.st_mode));
+}
+
+int
 isreg(char *s)
 {
 	struct	stat sbuf;
@@ -168,6 +177,16 @@ mode2a(mode_t m)
 	*s++ = (m & S_IXOTH) ? 'x' : '-';
 	*s = 0;
 	return (mode);
+}
+
+/*
+ * extract the file type bits from the mode
+ */
+int
+fileType (mode_t m)
+{
+	// XXX this code may not be portable
+	return (m & 0170000);
 }
 
 int
@@ -4298,7 +4317,7 @@ err:		if (slist) free(slist);
 		}
 		if (flags & SKIPGET) goto skip_get;
 		unlinkGfile(s);
-		if (!S_ISLNK(d->mode))  {
+		unless (S_ISLNK(d->mode))  {
 			popened = openOutput(encoding, s->gfile, &out);
 			if (!out) {
 				fprintf(stderr, "Can't open %s for writing\n",
@@ -4310,9 +4329,11 @@ err:		if (slist) free(slist);
 		}
 	} else if (flags&SKIPGET) {
 		goto skip_get;
-	} else if (S_ISLNK(d->mode) && !(flags & PRINT)) {
+	} else if (flags & PRINT) {
+		popened = openOutput(encoding, printOut, &out);
+	} else if (S_ISLNK(d->mode)) {
 		unlinkGfile(s);
-	} else if (!(flags & PRINT)) {
+	} else {
 		if (IS_WRITABLE(s)) {
 			fprintf(stderr,
 				"Writeable %s exists\n", s->gfile);
@@ -4321,8 +4342,6 @@ err:		if (slist) free(slist);
 		}
 		unlinkGfile(s);
 		popened = openOutput(encoding, s->gfile, &out);
-	} else {
-		popened = openOutput(encoding, printOut, &out);
 	}
 	if ((s->state & RCS) && (flags & EXPAND)) flags |= RCSEXPAND;
 	if ((s->state & BITKEEPER) && d->sum && !iLst && !xLst && !i2) {
@@ -4334,7 +4353,7 @@ err:		if (slist) free(slist);
 	}
 	state = allocstate(0, 0, s->nextserial);
 	if (flags & MODNAME) base = basenm(s->gfile);
-	if (S_ISLNK(d->mode))  goto skip_data;
+	unless (out)  goto skip_data;
 	seekto(s, s->data);
 	sum = 0;
 	while (next(buf, s)) {
@@ -4399,39 +4418,26 @@ err:		if (slist) free(slist);
 		    d->sum, sum, d->rev, s->sfile);
 	}
 	debug((stderr, "GET done\n"));
-skip_data:
 	if (popened) {
 		pclose(out);
 	} else if (flags & PRINT) {
 		unless (streq("-", printOut)) fclose(out);
-	} else if (out) {
-		fclose(out);
-	}
-	if ((S_ISLNK(d->mode)) && !(flags & PRINT)){
-		if (symlink(d->glink, s->gfile) == -1) {
-			perror(s->gfile);
+	} else fclose(out);
+
+	if (flags&EDIT) {
+		if (d->mode) {
+			chmod(s->gfile, UMASK(d->mode));
+		} else {
+			chmod(s->gfile, UMASK(0666));
+		}
+	} else if (!(flags&PRINT)) {
+		if (d->mode) {
+			chmod(s->gfile, UMASK(d->mode & ~0222));
+		} else {
+			chmod(s->gfile, UMASK(0444));
 		}
 	}
-	/*
-	 * Do'nt do chmod() on a sym-link
-	 * It change the mode on the target file (not the sym link)
-	 * This not what we want..
-	 */
-	if (!S_ISLNK(d->mode)) {
-		if (flags&EDIT) {
-			if (d->mode) {
-				chmod(s->gfile, UMASK(d->mode));
-			} else {
-				chmod(s->gfile, UMASK(0666));
-			}
-		} else if (!(flags&PRINT)) {
-			if (d->mode) {
-				chmod(s->gfile, UMASK(d->mode & ~0222));
-			} else {
-				chmod(s->gfile, UMASK(0444));
-			}
-		}
-	}
+
 #ifdef ISSHELL
 	if ((s->state & ISSHELL) && ((flags & PRINT) == 0)) {
 		char cmd[1024], *t;
@@ -4445,6 +4451,14 @@ skip_data:
 		system(cmd);
 	}
 #endif
+skip_data:
+	if ((S_ISLNK(d->mode)) && !(flags & PRINT)){
+		unless (symlink(d->glink, s->gfile) == 0 ) {
+			perror(s->gfile);
+			if (flags&EDIT) unlock(s, 'z');
+			goto err;
+		}
+	}
 skip_get:
 	if (flags&EDIT) {
 		unlock(s, 'z');
@@ -5015,6 +5029,13 @@ sccs_hasDiffs(sccs *s, int flags)
 		verbose((stderr, "can't find %s in %s\n", rev, s->gfile));
 		RET(-1);
 	}
+
+	/* If the file type changed, it is a diff */
+	if (d->flags & D_MODE) {
+		if (fileType(s->mode) != fileType(d->mode)) return 1;
+		if (S_ISLNK(s->mode)) return (!streq(s->glink, d->glink));
+	}
+
 	unless (tmp = fopen(s->gfile, "r")) {
 		verbose((stderr, "can't open %s\n", s->gfile));
 		RET(-1);
@@ -5152,6 +5173,7 @@ diff_gfile(sccs *s, pfile *pf, char *tmpfile)
 	char	old[100];	/* the version from the s.file */
 	char	new[100];	/* the new file, usually s->gfile */
 	int	ret;
+	delta *d;
 
 	debug((stderr, "diff_gfile(%s, %s)\n", pf->oldrev, s->gfile));
 	if (s->encoding > E_ASCII) {
@@ -5186,7 +5208,11 @@ diff_gfile(sccs *s, pfile *pf, char *tmpfile)
 	unlink(old);
 	unless (streq(new, s->gfile)) unlink(new);	/* careful */
 	switch (ret) {
-	    case 0:	/* no diffs */
+	    case 0:	/* diff return no diffs, now check file type changes */
+		d = findrev(s, pf->oldrev);
+		unless (d->flags & D_MODE) return 1;
+		if (fileType(s->mode) != fileType(d->mode)) return 0;
+		if (S_ISLNK(s->mode)) return streq(s->glink, d->glink);	
 		return (1);
 	    case 1:	/* diffs */
 		return (0);
@@ -5484,7 +5510,6 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 			 * auto update the mode if new delte is a sym-link
 			 */
 			if (s->state & GFILE) {
-				//d->mode = S_IFLNK;
 				d->mode = s->mode;
 				d->glink = s->glink;
 				s->glink = 0;
@@ -6833,7 +6858,6 @@ delta_body(sccs *s, delta *n, FILE *diffs, FILE *out, int *ap, int *dp, int *up)
 	s->dsum = 0;
 	assert(s->state & SOPEN);
 	state = allocstate(0, 0, s->nextserial);
-	if (S_ISLNK(n->mode)) goto skip_diff;
 	while (fnext(buf2, diffs)) {
 		int	where;
 		char	what;
@@ -6910,7 +6934,6 @@ newcmd:
 		}
 		ctrl("\001E ", n->serial);
 	}
-skip_diff:
 	while (!eof(s)) {
 		nextline(unchanged);
 	}
@@ -7645,12 +7668,9 @@ out:
 	debug((stderr, "delta found rev\n"));
 	if (diffs) {
 		debug((stderr, "delta using diffs passed in\n"));
-	} else if (S_ISLNK(s->mode) && S_ISLNK(d->mode)) {
-		debug((stderr, "sym link, skipping diff\n"));
 	} else {
 		switch (diff_gfile(s, &pf, tmpfile)) {
 		    case 1:		/* no diffs */
-			if (S_ISLNK(s->mode) || S_ISLNK(d->mode)) break;
 						    /* CSTYLED */
 			if (flags & FORCE) break;     /* forced 0 sized delta */
 			if (!(flags & SILENT))
@@ -7713,11 +7733,10 @@ out:
 	}
 	if (error) OUT;
 	n = sccs_dInit(n, 'D', s, init != 0);
-	if (S_ISLNK(d->mode) && !S_ISLNK(s->mode)) {
-		/* 
-		 * Our parent is a symlink but the new delta is not,
-		 * so update the mode.
-		 */
+	/*
+	 * if file type changed, force a mode update
+	 */
+	if (fileType(d->mode) != fileType(s->mode)) {
 		n->mode = s->mode;
 		n->flags |= D_MODE;
 	}
@@ -8351,6 +8370,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		/* branch flag */
 		/* Bitkeeper does not have a branch flag */
 		/* but we can derive the value		 */
+		// re-check this when LOD is done
 		if (d->rev) {
 			int i;
 			/* count the number of dot */
