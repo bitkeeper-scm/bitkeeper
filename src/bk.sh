@@ -28,10 +28,51 @@ _inode() {		# /* undoc? 2.0 */
 	bk prs -hr+ -d':ROOTKEY:\n' "$@"
 }
 
-# This removes the tag graph
+# This removes the tag graph.  Use with care.
 _striptags() {
 	__cd2root
 	_BK_STRIPTAGS=Y bk admin -z ChangeSet
+}
+
+# Hard link based clone.
+# Usage: lclone from [to]
+_lclone() {
+	HERE=`pwd`
+	if [ "X$1" = X ]
+	then	echo Usage: $0 from to
+		exit 1
+	else	cd $1 || exit 1
+		FROM=`pwd`
+		cd $HERE
+	fi
+	if [ "X$2" = X ]
+	then	TO=`basename $FROM`
+	else	if [ "X$3" != X ]; then	echo Usage: $0 from to; exit 1; fi
+		TO="$2"
+	fi
+	test -d "$TO" && { echo $2 exists; exit 1; }
+	cd $FROM
+	echo Finding SCCS directories...
+	bk sfiles -d > /tmp/dirs$$
+	cd $HERE
+	mkdir $TO
+	cd $TO
+	while read x
+	do	echo Linking $x ...
+		mkdir -p $x/SCCS
+		ln $FROM/$x/SCCS/s.* $x/SCCS
+	done < /tmp/dirs$$
+	bk sane
+	echo Looking for and removing any uncommitted deltas
+	bk sfiles -pA | bk stripdel -
+	echo Running a sanity check
+	bk -r check -ac || {
+		echo lclone failed
+		exit 1
+	}
+	bk parent $FROM
+	rm -f /tmp/dir$$
+	exit 0
 }
 
 # Show what would be sent
