@@ -7,7 +7,6 @@ export_main(int ac,  char **av)
 	int	c, count;
 	int	vflag = 0, kflag = 0, tflag = 0, wflag = 0;
 	char	*rev = NULL;
-	char	s_cset[MAXPATH] = CHANGESET;
 	char	file_rev[MAXPATH];
 	char	buf[MAXLINE], buf1[MAXPATH];
 	char	include[MAXLINE] = "", exclude[MAXLINE] =  "";

@@ -1,10 +1,11 @@
 #include "system.h"
 #include "sccs.h"
 
+int
 fix_main(int ac,  char **av)
 {
 	int	c, i;
-	char	buf[MAXLINE], opts[MAXLINE] = "";
+	char	buf[MAXLINE];
 	char	fix_file[MAXPATH];
 	char	*qflag = "-q", *p;
 	sccs	*s;

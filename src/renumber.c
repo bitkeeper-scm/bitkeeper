@@ -245,7 +245,6 @@ renumber(sccs *s, MDBM *lodDb, int flags)
 			s->defbranch = 0;
 		}
 	}
-ret:
 	mdbm_close(db);
 }
 

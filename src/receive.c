@@ -1,6 +1,7 @@
 #include "system.h"
 #include "sccs.h" 
 
+int
 receive_main(int ac,  char **av)
 {
 	int	c, new = 0;

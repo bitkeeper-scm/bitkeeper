@@ -20,10 +20,8 @@ cmd_pull(int ac, char **av)
 	int	doit = 1, verbose = 1;
 	int	gzip = 0;
 	kvpair	kv;
-	datum	d;
-	char	*t;
 	int	c;
-	sccs	*s;
+	sccs	*s = 0;
 
 	if (!exists("BitKeeper/etc")) {
 		out("ERROR-Not at project root\n");

@@ -5,7 +5,7 @@ int
 gethelp_main(int ac, char **av)
 {
 	unless (av[1]) {
-usage:		fprintf(stderr, "usage: gethelp help_name bkarg\n");
+		fprintf(stderr, "usage: gethelp help_name bkarg\n");
 		exit(1);
 	}
 	return (gethelp(av[1], av[2], stdout) == 0);

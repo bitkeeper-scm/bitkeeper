@@ -61,6 +61,7 @@ Your choices are to either choose the local or remote type.\n\
 }
 
 /* make the remote take the local file type */
+int
 ft_local(resolve *rs)
 {
 	delta	*l = sccs_getrev(rs->s, rs->revs->local, 0, 0);
@@ -71,6 +72,7 @@ ft_local(resolve *rs)
 }
 
 /* make the local take the remote file type */
+int
 ft_remote(resolve *rs)
 {
 	delta	*l = sccs_getrev(rs->s, rs->revs->local, 0, 0);

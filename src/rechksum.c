@@ -35,7 +35,7 @@ rechksum_main(int ac, char **av)
 	int	dont = 0;
 	int	verbose = 0;
 	int	c;
-	project	*p;
+	project	*p = 0;
 
 	if (ac > 1 && streq("--help", av[1])) {
 usage:		fprintf(stderr, "%s", sum_help);

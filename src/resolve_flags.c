@@ -102,6 +102,7 @@ finish the resolve, and then do a \"bk admin -f<FLAG> file\".\n\
 }
 
 /* add the local modes to the remote file */
+int
 f_local(resolve *rs)
 {
 	delta	*l = sccs_getrev(rs->s, rs->revs->local, 0, 0);
@@ -113,6 +114,7 @@ f_local(resolve *rs)
 }
 
 /* add the remote modes to the local file */
+int
 f_remote(resolve *rs)
 {
 	delta	*l = sccs_getrev(rs->s, rs->revs->local, 0, 0);

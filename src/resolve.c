@@ -32,7 +32,7 @@ private	int	create(resolve *rs);
 private	void	edit_tip(resolve *rs, char *sf, delta *d, char *rf, int which);
 private	void	freeStuff(opts *opts);
 private	int	nameOK(opts *opts, sccs *s);
-private int	open_and_delta(opts *opts, char *sfile);
+private void	open_and_delta(opts *opts, char *sfile);
 private	void	pass1_renames(opts *opts, sccs *s);
 private	int	pass2_renames(opts *opts);
 private	int	pass3_resolve(opts *opts);
@@ -1337,7 +1337,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	return (0);
 }
 
-private int
+private void
 open_and_delta(opts *opts, char *sfile)
 {
 	sccs	*s = sccs_init(sfile, INIT, opts->resync_proj);
@@ -1345,7 +1345,7 @@ open_and_delta(opts *opts, char *sfile)
 	do_delta(opts, s);
 }
 
-int
+void
 do_delta(opts *opts, sccs *s)
 {
 	int	flags = DELTA_FORCE;
@@ -1633,7 +1633,6 @@ pendingRenames()
 private	int
 pending()
 {
-	char	buf[MAXPATH];
 	FILE	*f;
 	int	ret;
 
@@ -1705,6 +1704,7 @@ commit(opts *opts)
  * for all of them, we'll come back and remove these.
  * Otherwise, we put these back.
  */
+int
 backup(opts *opts, char *sfile, MDBM *backups, FILE *save)
 {
 	char	buf[MAXPATH];

@@ -1,6 +1,8 @@
 #include <stdio.h>
 #ifdef	WIN32
 #include <stdlib.h>
+#else
+#include <string.h>
 #endif
 #define	private	static
 

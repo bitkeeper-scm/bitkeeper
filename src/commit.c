@@ -12,10 +12,13 @@ private	char *sym = 0;
 private	void	make_comment(char *cmt);
 private int	do_commit();
 private	int	checkConfig();
+extern	int	do_clean(char *, int);
+void	cat(char *file);
 
+int
 commit_main(int ac, char **av)
 {
-	int	rc, c, doit = 0, resync = 0, quiet = 0;
+	int	c, doit = 0, resync = 0, quiet = 0;
 	char	buf[MAXLINE], s_cset[MAXPATH] = CHANGESET;
 
 	sprintf(commit_file, "%s/bk_commit%d", TMP_PATH, getpid());
@@ -91,6 +94,7 @@ Abort:			printf("Commit aborted.\n");
 	}
 }
 
+void
 cat(char *file)
 {
 	MMAP	*m = mopen(file, "r");

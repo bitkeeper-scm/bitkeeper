@@ -4,6 +4,7 @@
 extern char *editor, *pager, *bin;
 private	int is_command(char *file);
 
+int
 help_main(int ac,  char **av)
 {
 	char	buf[MAXLINE];

@@ -8,7 +8,9 @@ char	*BitKeeper = "BitKeeper/";	/* XXX - reset this? */
 
 char	*find_wish();
 char	*find_perl5();
+extern	void getoptReset();
 private void platformInit(char **av);
+private int sfiles(int ac, char **av);
 
 int unedit_main(int, char **);
 int unlock_main(int, char **);
@@ -162,6 +164,7 @@ struct command cmdtbl[100] = {
 	{0, 0},
 };
 
+int
 usage()
 {
 	fprintf(stderr, "usage bk [-r[dir]] | -R command [options] [args]\n");
@@ -169,12 +172,12 @@ usage()
 	exit(1);
 }
 
+int
 main(int ac, char **av)
 {
 	int	i, j;
 	char	cmd_path[MAXPATH];
 	char	*argv[100];
-	char	*p;
 	int	c;
 	int	dashr = 0;
 	char	*prog;
@@ -343,6 +346,7 @@ main(int ac, char **av)
 	return (spawnvp_ex(_P_WAIT, argv[0], argv));
 }
 
+private int
 sfiles(int ac, char **av)
 {
 	pid_t	pid;
@@ -518,7 +522,7 @@ next:		p = ++s;
 private void
 platformInit(char **av)
 {
-	char	*b, *p, *t, *s;
+	char	*p, *t, *s;
 	char	buf[MAXPATH];
 
 	if (editor) return;

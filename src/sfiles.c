@@ -39,8 +39,6 @@ usage: sfiles [-aAcCdglpPrx] [directories]\n\n\
  */
 private	int	aFlg, cFlg, Cflg, dFlg, gFlg, lFlg, pFlg, Pflg, rFlg, vFlg;
 private	int	Dflg, Aflg, Rflg, kFlg, xFlg, uFlg;
-private	int	error;
-private	FILE	*pending_cache;
 private	FILE	*id_cache;
 private	void	keys(char *file);
 private	MDBM	*idDB;
