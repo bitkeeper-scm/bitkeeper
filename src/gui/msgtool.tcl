@@ -1,13 +1,14 @@
 set usage "Usage: bk msgtool ?-T title? ?-Y YES-label? ?-N NO-label? message"
 
-proc main {} {
+proc main {} \
+{
 	init
 	widgets
 }
 
-proc init {} {
-	global argv
-	global options
+proc init {} \
+{
+	global argv options env
 
 	# These are defaults; note that if the -no option
 	# is null, no no button will be shown. 
@@ -24,6 +25,11 @@ proc init {} {
 		switch -exact -- $key {
 			-F {
 				set f [open [pop argv]]
+			}
+			-P {
+				set env(PAGER) cat
+				set prog [pop argv]
+				set f [open "|$prog" "r"]
 			}
 			-N {
 				set value [pop argv]
@@ -54,11 +60,16 @@ proc init {} {
 
 	if {!$error} {
 		if {[string match "-" $message]} {
-			set options(-message) [read $f]
+			set options(-message) ""
+			while {1} {
+				set buf [read $f]
+				append options(-message) $buf
+				if {[eof $f]} { break }
+			}
+			close $f
 		} else {
 			set options(-message) $message
 		}
-
 
 		# this block of code attempts to determine
 		# an optimum width for the text widget without the
@@ -89,8 +100,9 @@ proc init {} {
 # This program hard-codes the toplevel to ".", but ultimately, most
 # of this code should be in a library so that it can be used by other
 # apps without having to do an exec to display a message
-proc widgets {} {
-	global options widgets env
+proc widgets {} \
+{
+	global options widgets env tcl_platform
 
 	set widgets(toplevel) .
 	set w ""
@@ -170,21 +182,25 @@ proc widgets {} {
 		    -borderwidth 1 \
 		    -relief sunken \
 		    -background #f8f8f8 
+		if {$tcl_platform(platform) == "windows"} {
+			set font {{Courier New} 8 normal}
+		} else {
+			set width [winfo screenwidth .]
+			if {$width <= 1024} {
+				set font 6x12
+			} else {
+				set font 7x13
+			}
+		}
 		text $widgets(text) \
 		    -highlightthickness 0 \
 		    -borderwidth 0 \
 		    -width $options(-textWidth) \
 		    -height $height \
 		    -wrap none \
+		    -font $font \
 		    -borderwidth 0 \
 		    -background #f8f8f8 
-
-		# this little bit of shenanigans attempts to set
-		# the font family to Courier, but keep all the other
-		# defaults, such as font size.
-		array set font [font actual [$widgets(text) cget -font]]
-		set font(-family) Courier
-		$widgets(text) configure -font [array get font]
 
 		scrollbar $widgets(sby) \
 		    -command [list $widgets(text) yview] \

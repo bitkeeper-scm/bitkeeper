@@ -243,7 +243,7 @@ rebuild:
 	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(LINKS) MANIFEST
 	-@cd gnu && $(MAKE) clean clean-obj
 	-@cd win32 && $(MAKE) clean clean-obj
-	-@cd doc && $(MAKE) clean clean-obj
+	-@cd ../doc && $(MAKE) clean clean-obj
 	cd t && rm -f doit
 
 srcs src: FORCE

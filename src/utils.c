@@ -306,33 +306,34 @@ confirm(char *msg)
 }
 
 /*
- * Usage: bk prompt [-n NO] [-y YES] [-t TITLE] msg | -f FILE
+ * Usage: bk prompt [-n NO] [-y YES] [-t TITLE] msg | -f FILE | -p program
  */
 int
 prompt_main(int ac, char **av)
 {
 	int	c;
-	char	*file = 0, *no = "NO", *yes = "OK", *title = 0;
+	char	*prog = 0, *file = 0, *no = "NO", *yes = "OK", *title = 0;
 	pid_t	pid;
 	int	ret;
 
-	while ((c = getopt(ac, av, "f:n:t:y:")) != -1) {
+	while ((c = getopt(ac, av, "f:n:p:t:y:")) != -1) {
 		switch (c) {
 		    case 'f': file = optarg; break;
 		    case 'n': no = optarg; break;
+		    case 'p': prog = optarg; break;
 		    case 't': title = optarg; break;	/* Only for GUI */
 		    case 'y': yes = optarg; break;
 		}
 	}
-	if ((file && av[optind]) ||
-	    (!file && !av[optind]) ||
-	    (av[optind] && av[optind+1])) {
+	if (((file || prog) && av[optind]) ||
+	    (!(file || prog) && !av[optind]) ||
+	    (av[optind] && av[optind+1]) || (file && prog)) {
 err:		system("bk help -s prompt");
 		exit(1);
 	}
 	if (getenv("BK_GUI")) {
 		int	i;
-		char	*nav[16];
+		char	*nav[18];
 
 		nav[i=0] = "bk";
 		nav[++i] = "msgtool";
@@ -349,6 +350,9 @@ err:		system("bk help -s prompt");
 		if (file) {
 			nav[++i] = "-F";
 			nav[++i] = file;
+		} else if (prog) {
+			nav[++i] = "-P";
+			nav[++i] = prog;
 		} else {
 			nav[++i] = av[optind];
 		}
@@ -359,17 +363,23 @@ err:		system("bk help -s prompt");
 		exit(2);
 	}
 
-	if (file) {
-		FILE	*f = fopen(file, "r");
+	if (file || prog) {
+		FILE	*f;
 		char	buf[1024];
 
-		unless (f = fopen(file, "r")) goto err;
 		pid = mkpager();
+		if (file) {
+			unless (f = fopen(file, "r")) goto err;
+		} else {
+			putenv("PAGER=cat");
+			unless (f = popen(prog, "r")) goto err;
+		}
 		while (fnext(buf, f)) {
 			fputs(buf, stdout);
 		}
 		fflush(stdout);
-		fclose(stdout);
+		if (file) fclose(stdout);
+		if (prog) pclose(stdout);
 		waitpid(pid, 0, 0);
 	} else if (streq(av[optind], "-")) {
 		goto err;

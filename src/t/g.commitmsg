@@ -107,8 +107,7 @@ echo OK
 echo $N Attempt citool which has interactive positive response ......$NL
 cd $HERE/interactive
 echo '#!/bin/sh
-PAGER=cat bk help bkl > BitKeeper/tmp/msg
-bk prompt -t "ACCEPT" -n "Do not accept" -y Accept -f BitKeeper/tmp/msg &&
+bk prompt -t "ACCEPT" -n "Do not accept" -y Accept -p "bk help bkl" &&
     exit 0
 echo This changeset has not completed because
 echo you did not accept the license.
