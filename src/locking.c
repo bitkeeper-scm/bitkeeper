@@ -151,7 +151,8 @@ repository_locked(project *p)
 			return (0);
 		}
 		ret = repository_hasLocks(p->root, WRITER_LOCK_DIR);
-		unless (ret) {
+		sprintf(path, "%s/%s", p->root, WRITER_LOCK);
+		unless (ret && exists(path)) {
 			sprintf(path, "%s/%s", p->root, ROOT2RESYNC);
 			ret = exists(path);
 		}
@@ -187,9 +188,9 @@ repository_lockers(project *p)
 	sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
 	lines = lockers(path);
 	EACH(lines) {
+		sprintf(path, "%s/%s/%s", p->root, WRITER_LOCK_DIR, lines[i]);
 		if (sccs_stalelock(path, 1)) continue;
 		unless (n) fprintf(stderr, "Entire repository is locked by:\n");
-		sprintf(path, "%s/%s/%s", p->root, WRITER_LOCK_DIR, lines[i]);
 		fprintf(stderr, "\tWrite locker: %s\n", lines[i]);
 		n++;
 	}
@@ -198,9 +199,9 @@ repository_lockers(project *p)
 	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
 	lines = lockers(path);
 	EACH(lines) {
+		sprintf(path, "%s/%s/%s", p->root, READER_LOCK_DIR, lines[i]);
 		if (sccs_stalelock(path, 1)) continue;
 		unless (n) fprintf(stderr, "Entire repository is locked by:\n");
-		sprintf(path, "%s/%s/%s", p->root, READER_LOCK_DIR, lines[i]);
 		fprintf(stderr, "\tRead  locker: %s\n", lines[i]);
 		n++;
 	}
