@@ -127,6 +127,8 @@ again:		flush_fd0(); /* for Win/98 and Win/ME */
 		fprintf(stderr, "No config file found\n");
 		exit(1);
 	}
+	bk_proj = proj_init(0);
+	checkSingle();
 	unless (licenseAccept(2)) exit(1);
 	unless (mdbm_fetch_str(m, "description")) {
 		fprintf(stderr, "Setup: must provide a description.\n");

@@ -852,8 +852,10 @@ delta	*sccs_findMD5(sccs *s, char *md5);
 delta	*sccs_dInit(delta *, char, sccs *, int);
 char	*sccs_getuser(void);
 void	sccs_resetuser(void);
+void	sccs_resethost(void);
 char	*sccs_realuser(void);
 char	*sccs_user(void);
+void	checkSingle(void);
 int	sccs_markMeta(sccs *);
 
 delta	*modeArg(delta *d, char *arg);
