@@ -233,7 +233,7 @@ file_init(file_t *f, char *filename)
 	 */
 	f->n = f->m->size / 20;
 	if (!f->n) f->n = 20;
-	f->lines = malloc(f->n * sizeof(ld_t));
+	f->lines = calloc(f->n, sizeof(ld_t));
 
 	l = 0;
 	p = f->m->where;
@@ -244,7 +244,7 @@ file_init(file_t *f, char *filename)
 			ld_t	*tmp;
 
 			f->n *= 2;
-			tmp = malloc(f->n * sizeof(ld_t));
+			tmp = calloc(f->n, sizeof(ld_t));
 			assert(tmp);
 			memcpy(tmp, f->lines, l * sizeof(ld_t));
 			free(f->lines);
@@ -969,13 +969,22 @@ fagets(FILE *fh)
 
 /*
  * Define of set of autoresolve function for processing a
- * conflict. Each function takes conflict regresion and looks at it to
+ * conflict. Each function takes conflict regression and looks at it to
  * determine if a merge is possible.  If a merge is possible then the
  * ->merged array is initialized with the lines in the merged output
- * and 1 is returned.  The conflict can be split into to adjectent
+ * and 1 is returned.  The conflict can be split into to adjacent
  * conflicts that exactly cover the original conflict region.  (use
  * split_conflict() to make this split) If a split occurs then a 1 is
  * returns.  If the function changes nothing then 0 is returned.
+ *
+ * The ->merged array is a malloced array of ld_t's that have line data. 
+ * Most merge functions will just fill this with copies of ld_t's from
+ * one of the two sides.  When a function is written that starts to
+ * generate merged lines that didn't exist on either side (like
+ * character merging) then the lines themselves will need to be
+ * included in same memory block.  Also don't forget that annotations
+ * need to be faked.  Perhaps this will be ugly enough to warrant
+ * rewriting this interface...
  *
  * The numbers used below, once shipped, must always mean the same thing.
  * If you evolve this code, use new numbers.
@@ -1256,7 +1265,7 @@ user_conflict_fdiff(conflct *c)
 		break;
 	    case MODE_2WAY:
 		/* fake a diff output */
-		left = malloc((c->end[LEFT] - c->start[LEFT] + 1) *
+		left = calloc(c->end[LEFT] - c->start[LEFT] + 1,
 		    sizeof(diffln));
 		p = &body[LEFT].lines[c->start[LEFT]];
 		end = &body[LEFT].lines[c->end[LEFT]];
@@ -1267,7 +1276,7 @@ user_conflict_fdiff(conflct *c)
 			i++;
 		}
 		left[i].ld = 0;
-		right = malloc((c->end[RIGHT] - c->start[RIGHT] + 1) *
+		right = calloc(c->end[RIGHT] - c->start[RIGHT] + 1,
 		    sizeof(diffln));
 		p = &body[RIGHT].lines[c->start[RIGHT]];
 		end = &body[RIGHT].lines[c->end[RIGHT]];
@@ -1282,7 +1291,7 @@ user_conflict_fdiff(conflct *c)
 	    case MODE_NEWONLY:
 		diffs = unidiff(c, GCA, LEFT);
 		for (i = 0; diffs[i].ld; i++);
-		left = malloc((i+1) * sizeof(diffln));
+		left = calloc(i+1, sizeof(diffln));
 		j = 0;
 		for (i = 0; diffs[i].ld; i++) {
 			if (diffs[i].c != '-') {
@@ -1293,7 +1302,7 @@ user_conflict_fdiff(conflct *c)
 		free(diffs);
 		diffs = unidiff(c, GCA, RIGHT);
 		for (i = 0; diffs[i].ld; i++);
-		right = malloc((i+1) * sizeof(diffln));
+		right = calloc(i+1, sizeof(diffln));
 		j = 0;
 		for (i = 0; diffs[i].ld; i++) {
 			if (diffs[i].c != '-') {
@@ -1323,11 +1332,12 @@ user_conflict_fdiff(conflct *c)
 	i = 0;
 	for (diffs = left; diffs->ld; diffs++) i++;
 	for (diffs = right; diffs->ld; diffs++) i++;
-	rightbuf = malloc((i+1) * sizeof(diffln));
+	rightbuf = calloc(i+1, sizeof(diffln));
 
 	blankline.line = "\n";
 	blankline.len = 1;
 	blankline.seq = 0;
+	blankline.anno = 0;
 
 	fputs("L", outf);
 	unless (c->merged) fprintf(outf, " %d", c->start_seq);
@@ -1639,7 +1649,7 @@ merge_same_changes(conflct *c)
 
 	if (samedata(c, LEFT, RIGHT)) {
 		int	len = c->end[LEFT] - c->start[LEFT];
-		c->merged = malloc((len + 1) * sizeof(ld_t));
+		c->merged = calloc(len + 1, sizeof(ld_t));
 		for (i = 0; i < len; i++) {
 			c->merged[i] = body[LEFT].lines[c->start[LEFT] + i];
 		}
@@ -1659,7 +1669,7 @@ merge_only_one(conflct *c)
 
 	if (samedata(c, GCA, LEFT)) {
 		int	len = c->end[RIGHT] - c->start[RIGHT];
-		c->merged = malloc((len + 1) * sizeof(ld_t));
+		c->merged = calloc(len + 1, sizeof(ld_t));
 		for (i = 0; i < len; i++) {
 			c->merged[i] = body[RIGHT].lines[c->start[RIGHT] + i];
 		}
@@ -1668,7 +1678,7 @@ merge_only_one(conflct *c)
 	}
 	if (samedata(c, GCA, RIGHT)) {
 		int	len = c->end[LEFT] - c->start[LEFT];
-		c->merged = malloc((len + 1) * sizeof(ld_t));
+		c->merged = calloc(len + 1, sizeof(ld_t));
 		for (i = 0; i < len; i++) {
 			c->merged[i] = body[LEFT].lines[c->start[LEFT] + i];
 		}
@@ -1696,7 +1706,7 @@ lines_modified(diffln *diff)
 	/* count number of deleted lines */
 	i = 0;
 	for (p = diff; p->ld; ++p) if (p->c == '-') ++i;
-	out = malloc((i+1) * sizeof(u32));
+	out = calloc(i+1, sizeof(u32));
 
 	/* same seq of deleted lines and require right pattern */
 	op = out;
@@ -1782,9 +1792,9 @@ merge_content(conflct *c)
 	 * Allocate room for merged lines.  Worst case we need room for all
 	 * the left and right lines in the output, plus a null
 	 */
-	c->merged = malloc(
+	c->merged = calloc(
 	    (c->end[LEFT] - c->start[LEFT] +
-	     c->end[RIGHT] - c->start[RIGHT] + 1) * sizeof(ld_t));
+	     c->end[RIGHT] - c->start[RIGHT] + 1), sizeof(ld_t));
 
 	/* we are good to go, do merge */
 	i = 0;
