@@ -186,6 +186,7 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 		perror(file);
 		return (1);
 	}
+	setmode(fd, _O_BINARY);
 	sprintf(len, "%010u", (unsigned int)sp->st_size);
 	n = writen(1, len, 10);
 	*byte_count += n;
@@ -231,6 +232,7 @@ out_file_compat(char *file, struct stat *sp, off_t *byte_count)
 		perror(file);
 		return (1);
 	}
+	setmode(fd, _O_BINARY);
 	sprintf(len, "%010u", (unsigned int)sp->st_size);
 	n = writen(1, len, 10);
 	*byte_count += n;
@@ -599,6 +601,7 @@ file);
 		return (-1);
 	}
 again:	fd = open(file, O_CREAT|O_EXCL|O_WRONLY, 0666);
+	setmode(fd, _O_BINARY);
 	if (fd != -1) return (fd);
 	if (errno == EINVAL) goto bad_name;
 	if (errno == EEXIST) {

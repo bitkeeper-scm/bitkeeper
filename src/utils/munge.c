@@ -7,12 +7,7 @@
  * %K%
  * Copyright (c) 1999 Larry McVoy
  */
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include "../unix.h"
+#include "../system.h"
 
 #define	uchar	unsigned char
 #define	OUTPUT	"_data.c"
@@ -120,28 +115,38 @@ main(int ac, char **av)
 		return (1);
 	}
 
-	if ((sfio = open(av[1], O_RDONLY)) < 0) {
+	if ((sfio = open(av[1], O_RDONLY, 0)) < 0) {
 		perror(av[1]);
 		return (1);
 	}
+	setmode(sfio, _O_BINARY);
 
-	if ((data = open(av[2], O_RDONLY)) < 0) {
+	if ((data = open(av[2], O_RDONLY, 0)) < 0) {
 		perror(av[2]);
 		return (1);
 	}
+	setmode(data, _O_BINARY);
 
 	if ((out = open(OUTPUT, O_CREAT|O_WRONLY|O_TRUNC, 0666)) < 0) {
 		perror(OUTPUT);
 		return (1);
 	}
+	setmode(out, _O_BINARY);
 	sf_size = setup(out, "sfio", sfio);
 	d_size = setup(out, "data", data);
 	close(out);
 
+#ifdef WIN32
+	sprintf(buf,
+	    "cl -c -W0 -O2 -G3 -Og -Oi -Oy -DWIN32 -D_WIN32 "
+	    "-D_MT -D_DLL -MD %s -Fo%s", OUTPUT, OBJ); 
+#else
 	if (!(cc = getenv("CC"))) cc = "cc";
 	sprintf(buf, "%s -c %s", cc, OUTPUT);
+#endif
 	system(buf);
-	out = open(OBJ, 2);
+	out = open(OBJ, 2, 0);
+	setmode(out, _O_BINARY);
 	if (fstat(out, &asb) == -1) {
 		perror("fstat of object file");
 		return (1);

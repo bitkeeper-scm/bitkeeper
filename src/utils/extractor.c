@@ -2,13 +2,7 @@
  * %K%
  * Copyright (c) 1999 Larry McVoy
  */
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <string.h>
-#include <errno.h>
+#include "../system.h"
 
 #ifndef MAXPATH
 #define	MAXPATH	1024
@@ -19,36 +13,38 @@ extern unsigned char sfio_data[];
 extern unsigned int data_size;
 extern unsigned char data_data[];
 
-char * extract(char *, char *, unsigned int, char *);
+void	extract(char *, char *, unsigned int, char *);
 
 main(int ac, char **av)
 {
-	char	*sfio_name;
-	char	*data_name;
+	char	*sfio;
 	char	install_tmp[MAXPATH];
 	char	cmd[4096];
 	int	i, fd;
 	pid_t	pid = getpid();
+	char	*tmp = "C:/WINDOWS/Temp";
 
 	fprintf(stderr, "Please wait while we unpack the installer...");
 
-	sprintf(install_tmp, "/tmp/bk_install%-u", pid);
-	if (mkdir(install_tmp, 0700) && (errno != EEXIST)) {
+	sprintf(install_tmp, "%s/bk_install%-u", tmp, pid);
+	if (mkdir(install_tmp, 0700)) {
 		perror(install_tmp);
 		exit(1);
 	}
-	chdir(install_tmp);
+	if (chdir(install_tmp)) {
+		perror(install_tmp);
+		exit(1);
+	}
 
-	sfio_name = extract("sfio", sfio_data, sfio_size, install_tmp);
-	data_name = extract("data", data_data, data_size, install_tmp);
+	/* sfio.exe should work on all platforms */
+	extract("sfio.exe", sfio_data, sfio_size, install_tmp);
+	extract("data", data_data, data_size, install_tmp);
 
 	/*
 	 * Unpack the sfio file, this creates ./bitkeeper/
 	 */
-	sprintf(cmd, "%s -iqm < %s", sfio_name, data_name);
-	system(cmd);
-	if (chdir("bitkeeper")) {
-		perror("bitkeeper");
+	if (system("./sfio.exe -im < data")) {
+		perror(cmd);
 		exit(1);
 	}
 	fprintf(stderr, "done.\n");
@@ -56,12 +52,13 @@ main(int ac, char **av)
 	/*
 	 * Run the installer.
 	 */
-	sprintf(cmd, "./bk installtool");
+	sprintf(cmd, "./bitkeeper/bk installtool");
 	for (i = 1; av[i]; i++) {
 		strcat(cmd, " ");
 		strcat(cmd, av[i]);
 	}
 	av[i] = 0;
+	fprintf(stderr, "Running %s\n", cmd);
 	system(cmd);
 
 	/*
@@ -78,7 +75,7 @@ main(int ac, char **av)
 	exit(0);
 }
 
-char *
+void
 extract(char *name, char *x_data, unsigned int x_size, char *install_tmp)
 {
 	int	fd;
@@ -92,6 +89,7 @@ extract(char *name, char *x_data, unsigned int x_size, char *install_tmp)
 		perror(path);
 		exit(1);
 	}
+	setmode(fd, _O_BINARY);
 	if (write(fd, x_data, x_size) != x_size) {
 		perror("write");
 		unlink(path);

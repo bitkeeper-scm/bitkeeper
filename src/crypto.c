@@ -432,6 +432,7 @@ base64_main(int ac, char **av)
 	}
 
 	if (unpack) {
+		setmode(fileno(stdout), _O_BINARY);
 		while (fgets(buf, sizeof(buf), stdin)) {
 			len = strlen(buf);
 			outlen = sizeof(out);
@@ -442,6 +443,7 @@ base64_main(int ac, char **av)
 			fwrite(out, 1, outlen, stdout);
 		}
 	} else {
+		setmode(fileno(stdin), _O_BINARY);
 		while (len = fread(buf, 1, 48, stdin)) {
 			outlen = sizeof(out);
 			if (base64_encode(buf, len, out, &outlen)) goto err;
