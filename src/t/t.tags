@@ -59,12 +59,15 @@ bk tag $Q -- -1234 && {
 }
 echo OK
 
+# SGI's getopts doesn't like "+".
+test `uname` = IRIX64 || {
 echo $N "Tags may not be just a  +  ..................................$NL"
 bk tag $Q + && {
 	echo Should have failed
 	exit 1
 }
 echo OK
+}
 
 for s in .. ., ,. ,,
 do

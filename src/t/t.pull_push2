@@ -111,7 +111,7 @@ bk lock -U
 bk pull $HERE/project > /dev/null 2>&1 &
 PULL_PID=$!
 sleep 1
-ps alx  | grep ${PULL_PID} | grep -q "defunc"
+ps alx 2>/dev/null  | grep ${PULL_PID} | grep -q "defunc"
 if [ $? -eq 0 ]; then echo failed; kill -9 ${LOCKPID} ${PULL_PID}; exit 1; fi
 bk unlock -w $HERE/project
 waitForUnlock $HERE/project

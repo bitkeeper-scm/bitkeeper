@@ -159,7 +159,11 @@ test -f $HERE/post-incoming.out || {
 	echo trigger never ran
 	exit 1
 }
-sed 's/^/TT_/' < $HERE/post-incoming.out > $HERE/post-incoming.vars
+perl -ne "
+	chop;
+	@_ = split(/[='\\$]+/, \$_);
+	print \"TT_\$_[0]='\$_[1]'\n\";
+	" < $HERE/post-incoming.out > $HERE/post-incoming.vars
 . $HERE/post-incoming.vars
 if [ $TT_BK_STATUS != FAILED ]
 then	echo trigger should indicate failure
