@@ -76,13 +76,11 @@ supported triggers are as follows:
 .EV pre-commit
 called before a changeset is committed.
 .LI
-typically used for integrity checks.
+exit 0 allows the commit.
 .LI
-exit 0 allows the commit
+exit 1 fails the commit.
 .LI
-exit 1 is an error from the commit command and aborts the commit
-.LI
-exit 2 Reserved for future use and should not be used
+exit 2 Reserved for future use (see pre-delta) and should not be used.
 .LI
 exit 3 indicates that citool should try the commit again. Useful when
 the trigger requires the user to modify a changeset comment. See example
@@ -305,12 +303,13 @@ When a post trigger is called, the repository is read locked.  A read
 lock will allow the trigger to do outgoing events, such as a push,
 but will prevent incoming events.  Pre-incoming and pre-commit triggers
 will be called with a write locked repository.
-.SH EXAMPLE
+.SH "EXAMPLE 1"
 .DS
 .ft CW
-Trigger that displays info about incoming and outgoing csets
 .LP
 #!/bin/sh
+
+# Display info about incoming and outgoing csets.
 
 if [ X$BK_STATUS = XDRYRUN -o X$BK_STATUS = XNOTHING ]
 then	exit 0
@@ -369,18 +368,19 @@ then	(
 	) | sed 's/^/    /'
 fi
 ) | mail -s "$BK_EVENT in ${H}:${R}" notify@bitmover.com
-
-
-==================================================================
-EXAMPLE 2: Using pre-commit trigger to verify changeset comment
-==================================================================
-
+.ft
+.DE
+.SH "EXAMPLE 2"
+.DS
+.ft CW
+.LP
 #!/bin/sh
 #
+# Using pre-commit trigger to verify changeset comment
 # BitKeeper/trigger/pre-commit.cset_comments
 #
 
-egrep 'BUGID:.*' $BK_COMMENTFILE > /dev/null 2>&1 && exit 0
+grep -q 'BUGID:' $BK_COMMENTFILE && exit 0
 
 msg="
 ===================================================
@@ -399,13 +399,9 @@ bk prompt -o -y"Retry" "$msg"
 # from within citool.
 
 exit 3
-
 .ft
 .DE
 .SH SEE ALSO
 .SA prompt 1
-.SH AVAILABILITY
-Pull, push, resolve, and apply triggers are available
-with \*(BK Professional only.
 .SH CATEGORY
 .B Repository
