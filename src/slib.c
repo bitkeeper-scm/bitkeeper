@@ -2761,6 +2761,7 @@ sccs_whynot(char *who, sccs *s)
  * Set this symbol's leaf flag and clear the parent's.
  * XXX - need to do this per lod.
  */
+void
 symGraph(sccs *s, delta *d)
 {
 	delta	*p;
@@ -2849,11 +2850,12 @@ sccs_tagleaves(sccs *s, delta **l1, delta **l2)
 			    "Unmerged tag tips:\n"
 			    "\t%-16s %s\n\t%-16s %s\n\t%-16s %s\n",
 			    arev, aname, brev, bname,
-			    sym->metad->rev, sym->symname);
+			    d->rev, sym ? sym->symname : "<tag merge>");
 		    	first = 0;
 		} else {
 			fprintf(stderr,
-			    "\t%-16s %s\n", d->rev, sym ? sym->symname : "?");
+			    "\t%-16s %s\n",
+			    d->rev, sym ? sym->symname : "<tag merge>");
 		}
 	}
 	return (!first);	/* first == 1 means no errors */
@@ -2862,14 +2864,15 @@ sccs_tagleaves(sccs *s, delta **l1, delta **l2)
 /*
  * Add a merge delta which closes the tag graph.
  */
+void
 sccs_tagMerge(sccs *s, delta *d, char *tag)
 {
 	delta	*l1 = 0, *l2 = 0;
-	delta	*a, *b;
-	char	buf[3*MAXKEY];
+	char	*buf;
 	char	k1[MAXKEY], k2[MAXKEY];
 	char	*zone = sccs_zone();
 	MMAP	*m;
+	int	len;
 
 	if (sccs_tagleaves(s, &l1, &l2)) assert("too many tag leaves" == 0);
 	assert(l1 && l2);
@@ -2882,6 +2885,9 @@ sccs_tagMerge(sccs *s, delta *d, char *tag)
 	}
 	sccs_sdelta(s, l1, k1);
 	sccs_sdelta(s, l2, k2);
+	len = strlen(k1) + strlen(k1) + 2000;
+	if (tag) len += strlen(tag);
+	buf = malloc(len);
 	sprintf(buf,
 	    "M 0.0 %s%s %s@%s 0 0 0/0/0\n%s%s%ss g\ns l\ns %s\ns %s\n%s\n",
 	    now(), zone, sccs_getuser(), sccs_gethost(),
@@ -2890,10 +2896,49 @@ sccs_tagMerge(sccs *s, delta *d, char *tag)
 	    tag ? "\n" : "",
 	    k1, k2,
 	    "------------------------------------------------");
+
+	assert(strlen(buf) < len);
 	free(zone);
 	m = mrange(buf, buf + strlen(buf), "");
 	/* note: this rewrites the s.file, no pointers make sense after it */
 	sccs_meta(s, d, m, 1);
+}
+
+/*
+ * Add another tag entry to the delta but do not close the graph, this
+ * is what we call when we have multiple tags, the last tag calls the
+ * tagMerge.
+ */
+void
+sccs_tagLeaf(sccs *s, delta *d, delta *md, char *tag)
+{
+	char	*buf;
+	char	k1[MAXKEY];
+	char	*zone = sccs_zone();
+	MMAP	*m;
+	delta	*e, *l1 = 0, *l2 = 0;
+
+	if (sccs_tagleaves(s, &l1, &l2)) assert("too many tag leaves" == 0);
+	for (e = s->table; e; e = e->next) e->flags &= ~D_RED;
+	sccs_tagcolor(s, l1);
+	if (md->flags & D_RED) {
+		md = l1;
+	} else {
+		md = l2;
+	}
+	assert(md);
+	sccs_sdelta(s, md, k1);
+	assert(tag);
+	buf = aprintf("M 0.0 %s%s %s@%s 0 0 0/0/0\nS %s\ns g\ns l\ns %s\n%s\n",
+	    now(), zone, sccs_getuser(), sccs_gethost(),
+	    tag,
+	    k1,
+	    "------------------------------------------------");
+	free(zone);
+	m = mrange(buf, buf + strlen(buf), "");
+	/* note: this rewrites the s.file, no pointers make sense after it */
+	sccs_meta(s, d, m, 1);
+	free(buf);
 }
 
 /*
@@ -2904,10 +2949,8 @@ MDBM	*
 sccs_tagConflicts(sccs *s)
 {
 	MDBM	*db = 0;
-	delta	*d = sccs_top(s);
 	delta	*l1 = 0, *l2 = 0;
 	char	buf[MAXREV*3];
-	char	*t;
 	symbol	*sy1, *sy2;
 
 	if (sccs_tagleaves(s, &l1, &l2)) assert("too many tag leaves" == 0);
@@ -3014,31 +3057,19 @@ checktags(sccs *s, delta *leaf, int flags)
 }
 
 /*
- * Make sure that the tag graph has one open tip per lod.
+ * Check tag graph integrity.
  */
 private int
-checkSymGraph(sccs *s, int flags)
+checkTags(sccs *s, int flags)
 {
 	delta	*l1 = 0, *l2 = 0;
-	symbol	*s1, *s2;
 
 	/* Allow open tag branch for logging repository */
 	if (LOGS_ONLY(s)) return (0);
 
 	if (sccs_tagleaves(s, &l1, &l2)) return (128);
 	if (checktags(s, l1, flags) || checktags(s, l2, flags)) return (128);
-	unless (l1 && l2) return (0);
-	if ((l1->flags & D_GONE) || (l2->flags & D_GONE)) return (0);
-	for (s1 = s->symbols; s1; s1 = s1->next) {
-		if (s1->metad == l1) break;
-	}
-	for (s2 = s->symbols; s2; s2 = s2->next) {
-		if (s2->metad == l2) break;
-	}
-	assert(s1 && s2);
-	verbose((stderr, "%s: unmerged tags %s/%s and %s/%s\n",
-	    s->gfile, s1->rev, s1->symname, s2->rev, s2->symname));
-	return (128);
+    	return (0);
 }
 
 /*
@@ -3943,7 +3974,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	if (strchr(name, '\n') || strchr(name, '\r')) {
 		fprintf(stderr,
 		   "bad file name, file name must not contain LF or CR "
-		   "charcter\n", name);
+		   "character\n");
 		return (0);
 	}
 	localName2bkName(name, name);
@@ -9019,7 +9050,7 @@ checkInvariants(sccs *s, int flags)
 	delta	*d;
 
 	error |= checkOpenBranch(s, flags);
-	error |= checkSymGraph(s, flags);
+	error |= checkTags(s, flags);
 	for (d = s->table; d; d = d->next) {
 		if ((d->type == 'D') && !(d->flags & D_CKSUM)) {
 			verbose((stderr,

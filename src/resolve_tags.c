@@ -1,7 +1,7 @@
 /*
  * resolve_tags.c - resolver for file tags
  *
- * (c) 2000 Larry McVoy
+ * (c) 2000-2001 Larry McVoy
  */
 #include "resolve.h"
 
@@ -12,6 +12,7 @@ typedef struct	tags {
 	delta	*remote;	/* delta associated with the tag */
 	delta	*mremote;	/* metadata delta for the tag */
 } tags;
+private	int	n;		/* number of tags still to resolve */
 
 int
 t_help(resolve *rs)
@@ -20,8 +21,15 @@ t_help(resolve *rs)
 	int	i;
 
 	fprintf(stderr, "Tag ``%s'' was added to two changesets.\n", t->name);
-	fprintf(stderr,
-	    "\tLocal:  %s\n\tRemote: %s\n", t->local->rev, t->remote->rev);
+	fprintf(stderr, "\nLocal:  ChangeSet %s\n", t->local->rev);
+	EACH(t->local->comments) {
+		fprintf(stderr, "\t%s\n", t->local->comments[i]);
+	}
+	fprintf(stderr, "Remote: ChangeSet %s\n", t->remote->rev);
+	EACH(t->remote->comments) {
+		fprintf(stderr, "\t%s\n", t->remote->comments[i]);
+	}
+	fprintf(stderr, "\n");
 	for (i = 0; rs->funcs[i].spec; i++) {
 		fprintf(stderr, "  %-4s - %s\n", 
 		    rs->funcs[i].spec, rs->funcs[i].help);
@@ -38,6 +46,8 @@ t_explain(resolve *rs)
 The file has a tag conflict.  This means that both the local\n\
 and remote have attached the same tag to different changesets.\n\
 You need to resolve this by picking a changeset for this tag.\n\
+You can move the tag to either of the existing locations or\n\
+to the merge changeset.\n\
 ----------------------------------------------------------------------\n\n");
 	return (0);
 }
@@ -47,7 +57,17 @@ t_local(resolve *rs)
 {
 	tags	*t = (tags *)rs->opaque;
 
-	sccs_tagMerge(rs->s, t->local, t->name);
+	if (n == 1) {
+		sccs_tagMerge(rs->s, t->local, t->name);
+	} else {
+		/*
+		 * If the "right" one is later, that's what will be hit in
+		 * the symbol table anyway, don't add another node.
+		 */
+		if (t->mlocal->serial < t->mremote->serial) {
+			sccs_tagLeaf(rs->s, t->local, t->mlocal, t->name);
+		}
+	}
 	return (1);
 }
 
@@ -56,7 +76,14 @@ t_remote(resolve *rs)
 {
 	tags	*t = (tags *)rs->opaque;
 
-	sccs_tagMerge(rs->s, t->remote, t->name);
+	if (n == 1) {
+		sccs_tagMerge(rs->s, t->remote, t->name);
+	} else {
+		/* see t_local */
+		if (t->mlocal->serial > t->mremote->serial) {
+			sccs_tagLeaf(rs->s, t->remote, t->mremote, t->name);
+		}
+	}
 	return (1);
 }
 
@@ -157,11 +184,38 @@ resolve_tags(opts *opts)
 	local = sccs_init(s_cset, 0, 0);
 	chdir(ROOT2RESYNC);
 	rs = resolve_init(opts, s);
-	rs->prompt = "Tag conflict";
 	rs->opaque = (void*)&t;
+	fprintf(stderr, "\nTag conflicts from this pull:\n");
+	fprintf(stderr, "                        Local"
+	    "                             Remote\n");
+	fprintf(stderr, "           --------------------------------  "
+	    "--------------------------------\n");
+	fprintf(stderr, "%-10s %-12s %-7s %-11s  %-12s %-7s %s\n",
+	    "Tag", "Rev", "User", "Date", "Rev", "User", "Date");
+	for (n = 0, kv = mdbm_first(m); kv.key.dsize; kv = mdbm_next(m)) {
+		delta	*l, *r;
+
+		sscanf(kv.val.dptr, "%d %d", &a, &b);
+		d = sfind(s, a);
+		sccs_sdelta(s, d, key);
+		if (sccs_findKey(local, key)) {
+			l = d;
+			r = sfind(s, b);
+		} else {
+			r = d;
+			l = sfind(s, b);
+		}
+		fprintf(stderr,
+		    "%-10.10s %-12s %-7.7s %-11.11s  %-12s %-7.7s %11.11s\n",
+		    kv.key.dptr, l->rev, l->user, l->sdate + 3,
+		    r->rev, r->user, r->sdate + 3);
+		n++;
+	}
+	fprintf(stderr, "\n");
 	for (kv = mdbm_first(m); kv.key.dsize; kv = mdbm_next(m)) {
 		bzero(&t, sizeof(t));
 		t.name = kv.key.dptr;
+		rs->prompt = aprintf("\"%s\"", t.name);
 		sscanf(kv.val.dptr, "%d %d", &a, &b);
 		d = sfind(s, a);
 		assert(d);
@@ -178,11 +232,17 @@ resolve_tags(opts *opts)
 		t.local = d;
 		for (d = t.mremote; d->type == 'R'; d = d->parent);
 		t.remote = d;
+
 		if (rs->opts->debug) {
 			fprintf(stderr, "resolve_tags: ");
 			resolve_dump(rs);
 		}
 		while (!resolve_loop("tag conflict", rs, t_funcs));
+		sccs_free(s);
+		s = sccs_init(s_cset, 0, 0);
+		rs->s = s;
+		free(rs->prompt);
+		n--;
 	}
 	sccs_free(local);
 	resolve_free(rs);
