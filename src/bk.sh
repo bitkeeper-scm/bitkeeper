@@ -23,14 +23,6 @@ __cd2root() {
 	done
 }
 
-# This will go find the root if we aren't at the top
-_changes() {
-	__cd2root
-	echo ChangeSet |
-	BK_YEAR4=1 bk prs -h \
-		'-d:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\n$each(:C:){  (:C:)}\n$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}' $@ - | $PAGER
-}
-
 # Run csettool on the list of csets, if any
 _csets() {
 	__cd2root

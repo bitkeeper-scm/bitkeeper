@@ -6,7 +6,6 @@ private char	*getrev(char *);
 private MDBM	*mk_list(char *, char *);
 private int	clean_file(MDBM *);
 private int	do_rename(MDBM *, char *);
-extern	void	cat(char *);
 private void	checkRev(char *);
 
 int

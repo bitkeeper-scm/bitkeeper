@@ -34,7 +34,7 @@ BINS	= $(BK) $(BKMERGE)
 OBJ	= abort.o adler32.o admin.o bkd.o bkd_cd.o bkd_client.o \
 	  bkd_clone.o bkd_cmdtab.o bkd_misc.o bkd_pull.o \
 	  bkd_push.o bkd_pwd.o bkd_rootkey.o bkd_status.o \
-	  bkd_version.o bk.o bkusers.o check.o chksum.o \
+	  bkd_version.o bk.o bkusers.o changes.o check.o chksum.o \
 	  clean.o clone.o comments.o commit.o compress.o \
 	  cset.o cset_inex.o delta.o diffs.o dirname.o export.o fdiff.o \
 	  filecopy.o find.o fix.o g2sccs.o \
@@ -489,6 +489,7 @@ bkd_rootkey.o:	bkd_rootkey.c $(B) $(H) $(Z)
 bkd_status.o:	bkd_status.c $(B) $(H) $(Z)
 bkd_version.o:	bkd_version.c $(B) $(H) $(Z)
 bkusers.o:	bkusers.c $(H)
+changes.o:	changes.c $(H)
 check.o:	check.c $(H) range.h
 chksum.o:	chksum.c
 clean.o:	clean.c $(H)

@@ -23,6 +23,7 @@ int abort_main(int, char **);
 int adler32_main(int, char **);
 int admin_main(int, char **);
 int bkd_main(int, char **);
+int changes_main(int, char **);
 int check_main(int, char **);
 int chksum_main(int, char **);
 int clean_main(int, char **);
@@ -113,6 +114,7 @@ struct command cmdtbl[] = {
 	{"adler32", adler32_main},
 	{"admin", admin_main},
 	{"bkd", bkd_main },
+	{"changes", changes_main},
 	{"check", check_main},
 	{"chksum", chksum_main},
 	{"ci", delta_main},
