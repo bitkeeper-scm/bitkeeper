@@ -29,6 +29,14 @@ to each of the specified files.  There are options to restrict the set if
 revisions to print, a very commonly used one is
 .OPTreq -r + ,
 \ which restricts the set to the most recent revision.
+.LP
+With no options prs output defaults to giving information on all revisions
+of all files in the present directory that are under \*(BK control.  
+Output is given as follows: the name of the file and range of revisions
+is followed by a detailed account of each revision.  Revision number, 
+revision date and time, user who made that revision, what the relative
+path from root of repository is to that file, the comments that go
+with that revision, and documents if the file has been renamed.
 .SH OPTIONS
 .if t .TP .7i
 .if n .TP 1i

@@ -32,9 +32,9 @@ the BitKeeper directory are not exported.  This behaviour can be
 changed with the -i and -x options.
 .LP
 If you are trying the export a patch for a sub-directory, and
-some of the files in that directory have been moved in/out of the
+some of the files in that directory have been moved out of the
 directory. You want to make sure the out-of-view file looks
-like deteled file. This is done by replacing the @rev part of 
+like deleted file. This is done by replacing the @rev part of 
 the out-of-view file to @1.0. You can do this using the following command:
 .DS
 bk rset -rA,B | your_script | bk gnupatch 
