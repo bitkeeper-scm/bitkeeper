@@ -10,7 +10,7 @@ typedef	struct {
 	char	*repository;		/* -r<rname> repository name */
 } opts;
 
-private void usage();
+private void usage(void);
 
 /* For bugfixes tree only */
 char	*

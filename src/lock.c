@@ -88,7 +88,7 @@ usage:			system("bk help -s lock");
 }
 
 void
-repo_main()
+repo_main(int ac, char **av)
 {
 	fprintf(stderr, "The repo command has been replaced.\n");
 	fprintf(stderr, "To lock use bk lock.\n");

@@ -4,7 +4,7 @@
 #include "system.h"
 #include "sccs.h"
 
-private int listParkFile();
+private int listParkFile(void);
 private int purgeParkFile(int id);
 
 int

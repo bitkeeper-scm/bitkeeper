@@ -53,7 +53,7 @@ private	void	cleanup(int what);
 private	void	changesetExists(void);
 private	void	notfirst(void);
 private	void	goneError(char *key);
-private	void	freePatchList();
+private	void	freePatchList(void);
 private	void	fileCopy2(char *from, char *to);
 private	void	badpath(sccs *s, delta *tot);
 private void	merge(char *gfile);

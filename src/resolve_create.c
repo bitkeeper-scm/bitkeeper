@@ -3,11 +3,8 @@
  */
 #include "resolve.h"
 
-int	do_diff(resolve *rs, char *left, char *right, int w);
-int	do_sdiff(resolve *rs, char *left, char *right, int w);
-int	do_difftool(resolve *rs, char *left, char *right, int w);
-int	prs_common(resolve *rs, sccs *s, char *a, char *b);
-private void getFileConflict(char *gfile, char *path);
+private	int	prs_common(resolve *rs, sccs *s, char *a, char *b);
+private	void	getFileConflict(char *gfile, char *path);
 
 int
 res_abort(resolve *rs)
@@ -53,8 +50,9 @@ res_getlocal(char *gfile)
 /*
  * Diff the local against the remote;
  */
-int
-res_diffCommon(resolve *rs, rfunc differ)
+private int
+res_diffCommon(resolve *rs, 
+    int (*differ)(resolve *rs, char *left, char *right, int wait))
 {
 	if (rs->tnames) {
 		differ(rs, rs->tnames->local, rs->tnames->remote, 0);
@@ -347,7 +345,7 @@ res_hr(resolve *rs)
 	return (0);
 }
 
-int
+private int
 prs_common(resolve *rs, sccs *s, char *a, char *b)
 {
 	char	tmp[MAXPATH];

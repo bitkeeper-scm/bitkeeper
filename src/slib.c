@@ -44,7 +44,6 @@ private delta*	hostArg(delta *d, char *arg);
 private delta*	pathArg(delta *d, char *arg);
 private delta*	randomArg(delta *d, char *arg);
 private delta*	zoneArg(delta *d, char *arg);
-delta*	modeArg(delta *d, char *arg);
 private delta*	mergeArg(delta *d, char *arg);
 private delta*	sumArg(delta *d, char *arg);
 private	void	symArg(sccs *s, delta *d, char *name);
@@ -451,6 +450,7 @@ joinLines(char *sep, char **space)
 	return (buf);
 }
 
+#if 0
 /*
  * Compare up to and including the newline.  Both have to be on \n to match.
  */
@@ -463,7 +463,7 @@ strnleq(register char *s, register char *t)
 	}
 	return (0);
 }
-
+#endif
 
 /*
  * Convert a serial to an ascii string.
@@ -7282,7 +7282,7 @@ badcksum(sccs *s, int flags)
 }
 
 inline int
-isAscii(c)
+isAscii(int c)
 {
 	if (c & 0x60) return (1);
 	return (c == '\f') ||

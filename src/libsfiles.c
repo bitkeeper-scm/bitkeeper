@@ -36,7 +36,6 @@ private	char *prog;		/* av[0], sort of */
 private	char rev[MAXREV+1];	/* 1.1.1.1 - see HASREVS */
 
 private	int oksccs(char *s, int flags, int complain);
-void concat_path(char *buf, char *first, char *second);
 
 private int
 isDelete(char *s)

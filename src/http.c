@@ -122,7 +122,6 @@ host2ip(char *host, int trace)
 {
 	struct	hostent *hostp;
 	struct	sockaddr_in inaddr;
-	extern	int errno;
 
 	if ((host == NULL) || (*host == '\0')) {
 		if (trace) fprintf(stderr, "host2ip: bad args\n");

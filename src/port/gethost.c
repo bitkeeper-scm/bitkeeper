@@ -141,8 +141,6 @@ out:
 	 * 	different Unix platform, need to handle that.
 	 */
 	if (!host[0] || !strchr(host, '.')) {
-		extern char *getHomeDir();
-
  		p = getHomeDir();
         	assert(p);
         	sprintf(buf, "%s/.netscape/preferences.js", p);

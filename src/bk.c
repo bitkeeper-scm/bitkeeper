@@ -17,17 +17,16 @@ private char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
 #define	LOGVER	0
 
 
-char	*find_wish();
-char	*find_perl5();
+char	*find_wish(void);
+char	*find_perl5(void);
 void	cmdlog_exit(void);
 int	cmdlog_repo;
 private	void	cmdlog_dump(int, char **);
 private int	run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av);
+private int	usage(void);
 
-extern	void	getoptReset();
 extern	void	platformInit(char **av);
 extern	int	proj_cd2root(project *p);
-extern	int	spawn_cmd(int flag, char **av);
 
 /* KEEP THIS SORTED! */
 int	_createlod_main(int, char **);
@@ -142,7 +141,6 @@ int	send_main(int, char **);
 int	sendbug_main(int, char **);
 int	set_main(int, char **);
 int	setlod_main(int, char **);
-int	setup_main(int, char **);
 int	setup_main(int, char **);
 int	sfiles_main(int, char **);
 int	sfind_main(int, char **);
@@ -346,7 +344,7 @@ struct	command cmdtbl[] = {
 	{0, 0},
 };
 
-int
+private int
 usage()
 {
 	system("bk help -s bk");

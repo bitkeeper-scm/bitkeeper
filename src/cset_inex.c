@@ -9,7 +9,7 @@ private int	doit(int flags, char *file, char *op, char *revs);
 private int	commit(int quiet, delta *d);
 private	delta	*getComments(char *op, char *revs);
 private void	clean(char *file);
-private void	unedit();
+private void	unedit(void);
 
 /*
  * cset_inex.c - changeset include/exclude processing.

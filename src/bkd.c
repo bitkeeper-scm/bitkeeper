@@ -4,7 +4,7 @@ private	void	exclude(char *cmd);
 private	int	findcmd(int ac, char **av);
 private	int	getav(int *acp, char ***avp, int *httpMode);
 private	void	log_cmd(int i, int ac, char **av);
-private	void	usage();
+private	void	usage(void);
 private	char	**xcmds = 0;		/* excluded command */
 
 char 		*logRoot, *vRootPrefix;

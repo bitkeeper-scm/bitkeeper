@@ -29,12 +29,12 @@ private void	http_tags(char *path);
 private void	title(char *title, char *desc, char *color);
 private void	pwd_title(char *t, char *color);
 private void	header(char *path, char *color, char *title, char *header, ...);
-private void	printnavbar();
+private void	printnavbar(void);
 private char	*parseurl(char *);
 private void	trailer(char *path);
 private char	*units(char *t);
 private char	*findRoot(char *name);
-private int	has_temp_license();
+private int	has_temp_license(void);
 private int	include(char *path, char *file);
 private void	expand(char *s);
 

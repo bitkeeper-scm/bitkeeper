@@ -1,5 +1,4 @@
 #include "bkd.h"
-extern char *logRoot;
 
 /*
  * Convert rootkey to a path name
@@ -50,7 +49,6 @@ cmd_cd(int ac, char **av)
 {
 	char *p = av[1];
 	char *rootkey, cleanedPath[MAXPATH], buf[MAXPATH];
-	extern int errno;
 
 	unless (p) {
 		out("ERROR-cd command must have path arugment\n");

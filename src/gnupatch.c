@@ -2,6 +2,8 @@
 #include "system.h"
 #include "sccs.h"
 
+private	void	print_title(void);
+
 private project *proj;
 private	int	expandkeywords;
 

@@ -2,7 +2,7 @@
 #include "logging.h"
 
 private	char *cmd[] = { "bk", "-r", "sfio", "-o", "-q", 0 };
-private int uncompressed();
+private int uncompressed(void);
 private int compressed(int, int);
 
 /*
