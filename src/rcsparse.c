@@ -441,6 +441,7 @@ eatlog(RCS *rcs, MMAP *m)
 	rdelta	*d;
 	char	*p, *t;
 	char	buf[32<<10];
+	int	l = 0;
 
 	skip_white(m);
 	unless (p = mwhere(m)) return (0);
@@ -474,10 +475,14 @@ err:		perror("EOF in log?");
 			d->comments = strdup(buf);
 			m->where = p + 1;
 			break;
-		} else {
-			*t++ = *p;
-			if (*p == '@') p++;	/* unquote it */
-		}
+		} 
+		if (++l < 1024) *t++ = *p;
+		if (*p == '@') p++;	/* unquote it */
+	}
+	if (l >= 1024) {
+		fprintf(stderr,
+		    "%s: Truncated log message line to 1024 bytes\n",
+		    rcs->file);
 	}
 
 	unless (advance(m, '@')) goto err;

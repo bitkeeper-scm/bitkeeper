@@ -329,8 +329,10 @@ newDelta(RCS *rcs, rdelta *d, sccs *s, int rev, int flags)
 	char	*t, *q;
 	sym	*sy;
 	pid_t	pid;
-	char	buf[16<<10];
+	static	char *buf = 0;
+	static	int buflen;
 
+	unless (buf) buf = malloc(buflen = 64<<10);
 #ifdef	WIN32
 	sprintf(buf, "co -q -p -kk -r%s %s > %s", d->rev, rcs->file, s->gfile);
 	if (system(buf) != 0) {
@@ -372,6 +374,7 @@ newDelta(RCS *rcs, rdelta *d, sccs *s, int rev, int flags)
 	}
 	sccs_restart(s);
 
+again:
 	sprintf(buf, "D 1.%d %s-0:00 %s \n", rev, d->sdate, d->author);
 	if (d->comments) {
 		q = strchr(buf, '\n');
@@ -383,6 +386,14 @@ newDelta(RCS *rcs, rdelta *d, sccs *s, int rev, int flags)
 				*q++ = 'c';
 				*q++ = ' ';
 			}
+			if (q >= &buf[buflen / 2]) {
+realloc:			
+				fprintf(stderr, "Buffer overflow, realloc.\n");
+				free(buf);
+				buflen <<= 1;
+				buf = malloc(buflen);
+				goto again;
+			}
 		}
 		*q = 0;
 	} else {
@@ -393,9 +404,11 @@ newDelta(RCS *rcs, rdelta *d, sccs *s, int rev, int flags)
 		q = strchr(q, '\n'); assert(q && !q[1]); q++;
 	}
 	sprintf(q, "P %s\n", s->gfile);
+	if (q >= &buf[buflen / 2]) goto realloc;
 	q = strchr(q, '\n'); assert(q && !q[1]); q++;
 	for (sy = rcs->symbols; sy; sy = sy->next) {
 		unless (streq(sy->rev, d->rev)) continue;
+		if (q >= &buf[buflen / 2]) goto realloc;
 		sprintf(q, "S %s\n", sy->name);
 		q = strchr(q, '\n'); assert(q && !q[1]); q++;
 	}
