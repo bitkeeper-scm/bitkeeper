@@ -58,3 +58,13 @@ if [ `cat fff` != "SCCS/s.fff" ]; then
 	exit 1
 fi
 echo OK
+
+echo $N "Check expansion of '% %Z%%M%' ...............................$NL"
+echo '% %Z%%M%' > gil
+bk new $Q gil || exit 1
+str=`cat gil`
+test "X$str" != 'X% @(#)gil' && {
+	echo wrong expansion
+	exit 1
+}
+echo OK

@@ -2643,11 +2643,9 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 			t += strlen(d->user);
 			break;
 
-		    default:	t[0] = l[0];
-				t[1] = l[1];
-				t[2] = l[2];
-				t += 3;
-				break;
+		    default:
+			*t++ = *l++;
+			continue;
 		}
 		l += 3;
 	}
