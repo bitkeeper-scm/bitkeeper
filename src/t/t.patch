@@ -49,7 +49,7 @@ cat > PATCH << EOF
 +Hi Mom!
 
 EOF
-export USER=torvalds BK_USER=trini BK_HOST=butthead.com
+export LOGNAME=torvalds BK_USER=trini BK_HOST=butthead.com
 bk import $Q -Cftpatch PATCH proj
 cd proj
 export BK_IMPORTER=`bk getuser -r`
@@ -74,7 +74,7 @@ echo OK
 
 echo $N Test import of a patch file, look for user name .............$NL
 cd $HERE
-export USER=lm BK_USER=trini BK_HOST=headbutt.com
+export LOGNAME=lm BK_USER=trini BK_HOST=headbutt.com
 bk import $Q -Cftpatch PATCH child
 cd child
 export BK_IMPORTER=`bk getuser -r`

@@ -776,11 +776,6 @@ cmdlog_start(char **av, int httpMode)
 			if (strneq("remote ", av[0], 7)) drain();
 			exit(1);
 		}
-		if (try > 1) {
-			fprintf(stderr, "%s(%d): got lock on try %d.\n",
-			    av[0], getpid(), try);
-			fflush(stderr);
-		}
 	}
 	if (cmdlog_flags & CMD_RDLOCK) {
 		if (i = repository_rdlock()) {

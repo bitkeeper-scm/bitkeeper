@@ -10324,7 +10324,7 @@ addSym(char *me, sccs *sc, int flags, admin *s, int *ep)
 			*rev++ = 0;
 		}
 
-		unless (d = sccs_getrev(sc, rev, 0, 0)) {
+		unless (d = sccs_getrev(sc, rev ? rev : "+", 0, 0)) {
 			verbose((stderr,
 			    "%s: can't find %s in %s\n",
 			    me, rev, sc->sfile));
