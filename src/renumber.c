@@ -19,20 +19,17 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
-private	MDBM	*lodDb_load(MMAP *lodmap);
-private MDBM	*lodDb_create(sccs *cset, int flags);
-private void	renumber(sccs *s, MDBM *lodDb, int flags);
 private void	newRev(sccs *s, int flags, MDBM *db, delta *d);
 private void	remember(MDBM *db, delta *d);
 private int	taken(MDBM *db, delta *d);
 private int	redo(sccs *s, delta *d, MDBM *db, int flags, u16 release,
 		    MDBM *lodDb, ser_t *map);
+private u16	whichlod(sccs *s, delta *d, MDBM *lodDb);
 
 private	char	*renumber_help = "\n\
 usage: renumber [-nqs] files (or -)\n\n\
     -n		Do nothing.  Just talk about it\n\
     -q		Run silently\n\
-    -s		Run silently\n\n\
     Useful idioms:\n\t\
     bk -r renumber\n\n";
 
@@ -41,18 +38,16 @@ renumber_main(int ac, char **av)
 {
 	sccs	*s = 0;
 	char	*name;
-	int	c, fixlod = 0, dont = 0, quiet = 0, flags = 0;
+	int	c, dont = 0, quiet = 0, flags = 0;
 	delta	*leaf(delta *tree);
-	MDBM	*lodDb = 0;
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
 usage:		fputs(renumber_help, stderr);
 		return (1);
 	}
-	while ((c = getopt(ac, av, "lnqs")) != -1) {
+	while ((c = getopt(ac, av, "nqs")) != -1) {
 		switch (c) {
-		    case 'l': fixlod++; break;
 		    case 'n': dont = 1; break;
 		    case 's':
 		    case 'q': quiet++; flags |= SILENT; break;
@@ -60,56 +55,17 @@ usage:		fputs(renumber_help, stderr);
 			goto usage;
 		}
 	}
-	if (fixlod) {
-		sccs	*cset;
-
-		unless (cset = sccs_csetInit(flags, 0)) {
-			fprintf(stderr,
-				"%s: can't init ChangeSet file\n", av[0]);
-			exit(1);
-		}
-		renumber(cset, 0, flags);
-		if (dont) {
-			unless (quiet) {
-				fprintf(stderr, "%s: not writing %s\n",
-					av[0], cset->sfile);
-			}
-		}
-		else if (sccs_admin(cset, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0))
-		{
-			unless (BEEN_WARNED(s)) {
-				fprintf(stderr,
-				    "admin -z of %s failed.\n", cset->sfile);
-			}
-			exit(1);
-		}
-		unless (cset = sccs_restart(cset)) {
-			fprintf(stderr,
-				"%s: can't restart ChangeSet file\n", av[0]);
-			exit(1);
-		}
-		unless (lodDb = lodDb_create(cset, flags)) {
-			fprintf(stderr,
-				"%s: can't init lodDb mdbm\n", av[0]);
-			exit(1);
-		}
-		sccs_free(cset);
-	}
 	for (name = sfileFirst("renumber", &av[optind], 0);
 	    name; name = sfileNext()) {
 		s = sccs_init(name, flags, 0);
 		if (!s) continue;
-		if (fixlod && s->state & S_CSET) { /* did cset file already */
-			sccs_free(s);
-			continue;
-		}
 		unless (s->tree) {
 			fprintf(stderr, "%s: can't read SCCS info in \"%s\".\n",
 			    av[0], s->sfile);
 			sfileDone();
 			return (1);
 		}
-		renumber(s, lodDb, flags);
+		sccs_renumber(s, 0, flags);
 		if (dont) {
 			unless (quiet) {
 				fprintf(stderr,
@@ -128,94 +84,15 @@ usage:		fputs(renumber_help, stderr);
 	return (0);
 }
 
-private	MDBM	*
-lodDb_load(MMAP *lodmap)
-{
-	char	deltakey[MAXKEY];
-	char	*t, *r, *d;
-	u16	release;
-	datum	key, val;
-	MDBM	*lodDb = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
-
-	/* ($rev, $file, $delta) = /^(\S+)\t(\S+) (\S+)/; */
-
-	while (t = mnext(lodmap)) {
-		r = t;
-		while (*t != '\t' && *t != '\n')  t++;
-		assert(*t == '\t');
-		t++;
-
-		/* XXX: use a stronger key like "inode delta" */
-		/* uses deltakey as a unique key currently */
-
-		while (*t != ' ' && *t != '\n')  t++;
-		assert(*t == ' ');
-		t++;
-		for (d = deltakey; *t != '\n'; *d++ = *t++) {
-			/* null body */;
-		}
-		*d = '\0';
-		assert(deltakey[0]);
-		assert(isdigit(*r));
-		release = atoi(r); /* strip off release digit */
-
-		debug((stderr, "renumber: add lodDb: %s -> %u\n",
-			deltakey, release));
-
-		key.dptr = deltakey;
-		key.dsize = strlen(deltakey) + 1;
-		val.dptr = (void *)&release;
-		val.dsize = sizeof(release);
-		if (mdbm_store(lodDb, key, val, MDBM_INSERT)) {
-			fprintf(stderr, "renumber: insert duplicate %s\n",
-				deltakey);
-			exit (1);
-		}
-	}
-	return (lodDb);
-}
-
-private MDBM *
-lodDb_create(sccs *cset, int flags)
-{
-	delta	*d;
-	MMAP	*lodmap = 0;
-	char	cscat[40];
-	MDBM	*lodDb = 0;
-
-	cscat[0] = '\0';
-	gettemp(cscat, "cscat");
-
-	for (d = cset->table; d; d = d->next) {
-		unless (d->type == 'D') continue;
-		d->flags |= D_SET;
-	}
-	if (sccs_cat(cset, PRINT|GET_NOHASH|GET_REVNUMS, cscat)) {
-		fprintf(stderr, "renumber: sccscat of ChangeSet failed.\n");
-		goto ret;
-	}
-	unless (lodmap = mopen(cscat, "b")) {
-		perror(cscat);
-		goto ret;
-	}
-	debug((stderr, "renumber: mmapped changeset in '%s'\n", cscat));
-
-	/* we now have an mmaped version of sccscat of ChangeSet */
-	/* make it into an mdbm */
-
-	lodDb = lodDb_load(lodmap);
-	
-ret:
-	if (lodmap) mclose(lodmap);
-	if (cscat[0]) unlink(cscat);
-	return (lodDb);
-}
-
 /*
  * Work through all the serial numbers, oldest to newest.
+ * Takes an optional database which is  delta_key_name => lod number
+ * Not used in this file, but used by lods to add some extra mapping
+ * to fix up the output of takepatch.
  */
-private void
-renumber(sccs *s, MDBM *lodDb, int flags)
+
+void
+sccs_renumber(sccs *s, MDBM *lodDb, u32 flags)
 {
 	delta	*d;
 	ser_t	i;
@@ -324,19 +201,38 @@ taken(MDBM *db, delta *d)
 	return (val.dsize == 1);
 }
 
-u16
-cset_rel(sccs *s, delta *d, MDBM *lodDb)
+private u16
+whichlod(sccs *s, delta *d, MDBM *lodDb)
 {
 	char	keystr[MAXPATH];
 	datum	key, val;
 	delta	*e;
-	u16	csrel = 0;
+	delta	*f;
+	u16	lod = 0;
 
 	assert(s && d && lodDb);
 
 	/* find delta that names changeset this delta is in */
 	for (e = d; e; e = e->kid) {
+		unless (e->type == 'D') continue;
+		f = e;	/* save lineage of 'D' */
 		if (e->type == 'D' && e->flags & D_CSET) break;
+	}
+	assert(f);
+	unless (e) {
+		unless (f->flags&D_MERGED) {
+			fprintf(stderr,
+			    "renumber: in %s, delta %s has no kid and no "
+			    "merge pointer.\n", s->sfile, f->rev);
+			fprintf(stderr,
+			    "renumber: Looking for cset in which delta "
+			    "%s belongs\n", d->rev);
+			exit(1);
+		}
+		/* XXX: could not find a canned routine for this */
+		for (e = s->table; e; e = e->next) {
+			if (e->merge == f->serial) break;
+		}
 	}
 	assert(e);
 
@@ -363,15 +259,12 @@ cset_rel(sccs *s, delta *d, MDBM *lodDb)
 		}
 		debug((stderr, "renumber: succeed with short key\n"));
 	}
-	assert(val.dsize == sizeof(csrel));
-	memcpy(&csrel, val.dptr, val.dsize);
-	debug((stderr, "renumber: cset release == %u\n", csrel));
-	return (csrel);
+	assert(val.dsize == sizeof(lod));
+	memcpy(&lod, val.dptr, val.dsize);
+	debug((stderr, "renumber: cset release == %u\n", lod));
+	return (lod);
 }
 
-/*
- * XXX - does not yet handle default branch
- */
 private	int
 redo(sccs *s, delta *d, MDBM *db, int flags, u16 release, MDBM *lodDb,
     ser_t *map)
@@ -396,9 +289,19 @@ redo(sccs *s, delta *d, MDBM *db, int flags, u16 release, MDBM *lodDb,
 	 */
 	if ((!d->r[2] && d->r[1] == 1) || (!d->r[1] && d->r[3] == 1)) {
 		if (lodDb) {
-			u16	csrel;
-
-			if (csrel = cset_rel(s, d, lodDb))  d->r[0] = csrel;
+			u16	lod;
+			unless (lod = whichlod(s, d, lodDb)) {
+				/* XXX: how to communicate error? for
+				 * now stick it on a new lod?
+				 */
+				d->r[0] = ++release;
+				fprintf(stderr,
+				    "renumber: whichlod returned 0, so "
+				    "starting a new lod %u\n", release);
+			}
+			else {
+				d->r[0] = lod;
+			}
 		}
 		unless (map[d->r[0]]) {
 			map[d->r[0]] = ++release;

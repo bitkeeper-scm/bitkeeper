@@ -80,6 +80,7 @@ private	delta	*tableGCA;	/* predecessor to the oldest delta found
 				 * in the patch */
 private	int	noConflicts;	/* if set, abort on conflicts */
 private	char	pendingFile[MAXPATH];
+private lod_t	*lodstruct = 0;	/* used for fixing lod after smooshing */
 private	char	*input;		/* input file name,
 				 * either "-" or a patch file */
 private	char	*spin = "|/-\\";
@@ -168,6 +169,7 @@ usage:		fprintf(stderr, takepatch_help);
 	proj_free(proj);
 	if (idDB) { mdbm_close(idDB); idDB = 0; }
 	if (goneDB) { mdbm_close(goneDB); goneDB = 0; }
+	if (lodstruct) lod_free(lodstruct);
 	if (error < 0) {
 		/* XXX: Save?  Purge? */
 		cleanup(0);
@@ -670,6 +672,30 @@ setlod(sccs *s, delta *d, int branch)
 	sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
 }
 
+/* two kind of fix ups to do: rejoin separated lods, and get
+ * all files pointed to the same lod
+ */
+
+private int
+fixLod(sccs *s)
+{
+	u32	flags = SILENT;
+	u32	lodflags = LOD_NORENAME|LOD_CHECK|LOD_RENUMBER;
+
+	if (s->state & S_CSET) {
+		assert(!lodstruct);
+		lodstruct = lod_init(s, 0, flags|lodflags);
+		return (lodstruct ? 0 : -1);
+	}
+
+	unless (lodstruct) {
+		fprintf(stderr, "takepatch: fixLod with no lodstruct\n");
+		return (-1);
+	}
+
+	return (lod_setlod(lodstruct, s, flags));
+}
+
 /*
  * If the destination file does not exist, just apply the patches to create
  * the new file.
@@ -890,6 +916,7 @@ apply:
 			return (-1);
 		}
 		setlod(s, d, lodbranch);
+		unless (sccs_restart(s)) { perror("restart"); exit(1); }
 	}
 	for (d = 0, p = patchList; p; p = p->next) {
 		assert(p->me);
@@ -897,6 +924,12 @@ apply:
 		assert(d);
 		d->flags |= (p->flags & PATCH_LOCAL) ? D_LOCAL : D_REMOTE;
 	}
+#ifdef FIXLOD
+	if (fixLod(s)) {
+		s->proj = 0; sccs_free(s);
+		return (-1);
+	}
+#endif
 	if ((confThisFile = sccs_resolveFiles(s)) < 0) {
 		s->proj = 0; sccs_free(s);
 		return (-1);

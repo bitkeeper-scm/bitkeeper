@@ -91,6 +91,7 @@
 #define LOD_NEW		0x10000000	/* Setup a new LOD */
 #define LOD_CHECK	0x20000000	/* Check and fix all LOD settings */
 #define LOD_NORENAME	0x40000000	/* Skip the renaming part */
+#define LOD_RENUMBER	0x80000000	/* Fix possible lod renumber errors */
 
 /*
  * flags passed to sfileFirst
@@ -677,6 +678,7 @@ delta	*sfind(sccs *s, ser_t ser);
 int	sccs_lock(sccs *, char);
 int	sccs_unlock(sccs *, char);
 int	sccs_setlod(char *rev, u32 flags);
+void	sccs_renumber(sccs *s, MDBM *lodDb, u32 flags);
 char 	*sccs_iskeylong(char *key);
 #ifdef	PURIFY_FILES
 MMAP	*purify_mopen(char *file, char *mode, char *, int);
@@ -773,6 +775,14 @@ delta	*host_get(delta *);
 
 void	user_done();
 delta	*user_get(delta *);
+
+/* lod.c */
+struct lod;
+typedef struct lod lod_t;
+
+lod_t	*lod_init(sccs *cset, char *lodname, u32 flags);
+void	lod_free(lod_t *l);
+int	lod_setlod(lod_t *l, sccs *s, u32 flags);
 
 /* names.c */
 void	names_init(void);
