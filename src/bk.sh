@@ -381,21 +381,17 @@ _diffr() {
 	DOPTS=
 	CMD=${BIN}sccslog
 	ALL=NO
-	LEFTONLY=NO
-	RIGHTONLY=NO
 	while getopts acdDflMprsuU opt
 	do	case "$opt" in
 		a) ALL=YES;;
-		c) DODIFFS=YES; DOPTS="-c $DOPTS";;
+		c) DODIFFS=YES; DOPTS="-ch $DOPTS";;
 		d) DODIFFS=YES;;
 		D) DODIFFS=YES; DOPTS="-D $DOPTS";;
 		f) DODIFFS=YES; DOPTS="-f $DOPTS";;
-		l) LEFTONLY=YES;;
 		M) DODIFFS=YES; DOPTS="-M $DOPTS";;
 		p) DODIFFS=YES; DOPTS="-p $DOPTS";;
-		r) RIGHTONLY=YES;;
 		s) DODIFFS=YES; DOPTS="-s $DOPTS";;
-		u) DODIFFS=YES; DOPTS="-u $DOPTS";;
+		u) DODIFFS=YES; DOPTS="-uh $DOPTS";;
 		U) DODIFFS=YES; DOPTS="-U $DOPTS";;
 		esac
 	done
@@ -415,56 +411,17 @@ _diffr() {
 	fi
 	HERE=`pwd`
 	cd $1
-	LEFT=`pwd`
+	OLD=`pwd`
 	cd $HERE
 	cd $2
-	RIGHT=`pwd`
-	if [ $LEFTONLY = YES ]
-	then	RREVS=
-	else	RREVS=`perl ${BIN}resync -n $RIGHT $LEFT 2>&1 | grep '[0-9]'`
-	fi
-	if [ $RIGHTONLY = YES ]
-	then	LREVS=
-	else	LREVS=`perl ${BIN}resync -n $LEFT $RIGHT 2>&1 | grep '[0-9]'`
-	fi
-	if [ $ALL = NO -a "X$LREVS" = X -a "X$RREVS" = X ]
-	then	echo $1 and $2 have the same changesets.
+	NEW=`pwd`
+	RREVS=`perl ${BIN}resync -n -Q $NEW $OLD 2>&1 | grep '[0-9]'`
+	if [ $ALL = NO -a "X$RREVS" = X ]
+	then	echo $1 is up to date with $2
 		exit 0
 	fi
+	cd $NEW
 	(
-		cd $LEFT
-	    (
-		if [ $DODIFFS = NO -a $ALL = YES ]
-		then	${BIN}sfiles -cg | while read x
-			do	echo $x
-				echo "  modified and not checked in."
-				echo ""
-			done
-		fi
-		(
-		if [ $ALL = YES ]
-		then	if [ $DODIFFS = YES ]
-			then	${BIN}sfiles -c
-			fi
-			${BIN}sfiles -CRA
-		fi
-		for i in $LREVS
-		do	if [ $DODIFFS = YES ]
-			then	${BIN}cset -R${i}..$i
-				else	echo "ChangeSet:$i"
-			fi
-		done ) | $CMD -
-	    )	> ${TMP}left$$
-		if [ -s ${TMP}left$$ ]
-		then
-			echo "Changes only in $LEFT"
-			echo --------------------------------------------------
-			cat ${TMP}left$$
-		fi
-		${RM} -f ${TMP}left$$
-		
-		cd $RIGHT
-	    (
 		if [ $DODIFFS = NO -a $ALL = YES ]
 		then	${BIN}sfiles -cg | while read x
 			do	echo $x
@@ -481,19 +438,14 @@ _diffr() {
 		fi
 		for i in $RREVS
 		do	if [ $DODIFFS = YES ]
-			then	${BIN}cset -R${i}..$i
-			else	echo "$RIGHT/ChangeSet:$i"
+			then	p=`${BIN}prs -hr$i -d:PARENT:`
+				if [ X$p != X ]
+				then	${BIN}cset -R${p}..$i
+				fi
+			else	echo "$NEW/ChangeSet:$i"
 			fi
 		done 
 		) | $CMD -
-	    )	> ${TMP}right$$
-		if [ -s ${TMP}right$$ ]
-		then
-			echo "Changes only in $RIGHT"
-			echo --------------------------------------------------
-			cat ${TMP}right$$
-		fi
-
 	) | $PAGER
 }
 

@@ -20,10 +20,8 @@ usage: cset [opts]\n\n\
     -m<range>	Generate a patch of the changes in <range>\n\
     -M<range>	Mark the files included in the range of csets\n\
     -p		print the list of deltas being added to the cset\n\
-    -r<range>	List the filenames:rev..rev which match <range>\n\
-    		ChangeSet is not included in the listing\n\
-    -R<range>	Like -r but start on rev farther back (for diffs)\n\
-    		ChangeSet is not included in the listing\n\
+    -r<range>	List the filenames:rev..rev which are included in  <range>\n\
+    -R<A>,<B>	List the differences between cset A and B, for diffs\n\
     -s		Run silently\n\
     -S<sym>	Set <sym> to be a symbolic tag for this revision\n\
     -t<rev>	List the filenames:revisions of the repository as of rev\n\
@@ -32,7 +30,7 @@ usage: cset [opts]\n\n\
     \nRanges of revisions may be specified with the -l or the -r options.\n\
     -l1.3..1.5 does 1.3, 1.4, and 1.5\n\n\
     Useful idioms:\n\t\
-    bk cset -Ralpha..beta | bk diffs -\n\t\
+    bk cset -Ralpha,beta | bk diffs -\n\t\
     bk cset -ralpha..beta | bk sccslog -\n\n";
 
 typedef	struct cset {
@@ -50,8 +48,9 @@ typedef	struct cset {
 
 	/* numbers */
 	int	verbose;
-	int	range;		/* if set, list file:rev..rev */
-				/* if set to 2, then list parent..rev */
+	int	range;	
+#define		RANGE_INCLUSIVE	1
+#define		RANGE_ENDPOINTS	2
 	int	ndeltas;
 	int	nfiles;
 	pid_t	pid;		/* adler32 process id */
@@ -74,6 +73,7 @@ delta	*mkChangeSet(sccs *cset, FILE *diffs);
 void	explodeKey(char *key, char *parts[4]);
 char	*file2str(char *f);
 void	doRange(cset_t *cs, sccs *sc);
+void	doEndpoints(cset_t *cs, sccs *sc);
 void	doSet(sccs *sc);
 void	doMarks(cset_t *cs, sccs *sc);
 void	doDiff(sccs *sc, int kind);
@@ -87,7 +87,7 @@ MDBM	*idDB = 0;
 char	csetFile[] = CHANGESET; /* for win32, need writable	*/
 				/* buffer for name convertion	*/
 
-cset_t	cs1;		/* an easy way to create a local that is zeroed */
+cset_t	copts;		/* an easy way to create a local that is zeroed */
 char	*spin = "|/-\\";
 
 /*
@@ -111,7 +111,7 @@ main(int ac, char **av)
 usage:		fprintf(stderr, "%s", cset_help);
 		return (1);
 	}
-	if (streq(av[0], "makepatch")) cs1.makepatch++;
+	if (streq(av[0], "makepatch")) copts.makepatch++;
 
 	while ((c = getopt(ac, av, "c|Cd|Dfi|l|Lm|M|pqr|R|sS;t;vy|Y|")) != -1) {
 		switch (c) {
@@ -120,30 +120,30 @@ usage:		fprintf(stderr, "%s", cset_help);
 			flags |= DELTA_EMPTY|NEWFILE;
 			text = optarg;
 			break;
-		    case 'f': cs1.force++; break;
+		    case 'f': copts.force++; break;
 		    case 'R':
-			cs1.range++;
+			copts.range++;
 			/* fall through */
 		    case 'r':
-		    	cs1.range++;
+		    	copts.range++;
 		    	/* fall through */
 		    case 'l':
-			if (c == 'l') cs1.listeach++;
+			if (c == 'l') copts.listeach++;
 		    	/* fall through */
 		    case 'd':
-			if (c == 'd') cs1.doDiffs++;
+			if (c == 'd') copts.doDiffs++;
 		    	/* fall through */
 		    case 'c':
 			if (c == 'c') {
-				cs1.csetOnly++;
-				cs1.makepatch++;
+				copts.csetOnly++;
+				copts.makepatch++;
 			}
 			/* fall through */
 		    case 'M':
-			if (c == 'M') cs1.mark++;
+			if (c == 'M') copts.mark++;
 			/* fall through */
 		    case 'm':
-			if (c == 'm') cs1.makepatch++;
+			if (c == 'm') copts.makepatch++;
 		    	list |= 1;
 			if (optarg) {
 				r[rd++] = notnull(optarg);
@@ -153,9 +153,9 @@ usage:		fprintf(stderr, "%s", cset_help);
 		    case 'C':
 			/* XXX - this stomps on everyone else */
 		    	list |= 1;
-			cs1.mark++;
-			cs1.remark++;
-			cs1.force++;
+			copts.mark++;
+			copts.remark++;
+			copts.force++;
 			r[0] = allRevs;
 			rd = 1;
 			things = tokens(notnull(optarg));
@@ -168,7 +168,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 		    case 'p': flags |= PRINT; break;
 		    case 'q':
 		    case 's': flags |= SILENT; break;
-		    case 'v': cs1.verbose++; break;
+		    case 'v': copts.verbose++; break;
 		    case 'y':
 			comment = optarg;
 			gotComment = 1;
@@ -188,9 +188,9 @@ usage:		fprintf(stderr, "%s", cset_help);
 		}
 	}
 
-	if (cs1.doDiffs && cs1.csetOnly) {
+	if (copts.doDiffs && copts.csetOnly) {
 		fprintf(stderr, "Warning: ignoring -d option\n");
-		cs1.doDiffs = 0;
+		copts.doDiffs = 0;
 	}
 	if (list == 3) {
 		fprintf(stderr,
@@ -203,7 +203,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 	}
 	if (av[optind] && streq(av[optind], "-")) {
 		optind++;
-		cs1.dash++;
+		copts.dash++;
 	}
 	if (av[optind]) {
 		unless (isdir(av[optind])) {
@@ -225,7 +225,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 	}
 	cset = sccs_init(csetFile, flags, 0);
 	if (!cset) return (101);
-	cs1.mixed = !(cset->state & S_KEY2);
+	copts.mixed = !(cset->state & S_KEY2);
 
 	/*
 	 * If we are initializing, then go create the file.
@@ -248,7 +248,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 #endif
 	}
 
-	if (list && (things < 1) && !cs1.dash) {
+	if (list && (things < 1) && !copts.dash) {
 		fprintf(stderr, "cset: must specify a revision.\n");
 		sccs_free(cset);
 		purify_list();
@@ -256,8 +256,21 @@ usage:		fprintf(stderr, "%s", cset_help);
 	}
 	switch (list) {
 	    case 1:
-		RANGE("cset", cset, cs1.dash ? 0 : 2, 1);
-		csetlist(&cs1, cset);
+		RANGE("cset", cset, copts.dash ? 0 : 2, 1);
+		if (copts.range == RANGE_ENDPOINTS) {
+			if (things != 2) {
+				fprintf(stderr,
+				    "\n%s: -R requires two revs.\n", av[0]);
+				goto usage;
+			}
+			if (cset->rstart == cset->rstop) {
+				fprintf(stderr,
+				    "\n%s: -R requires two different revs.\n",
+				    av[0]);
+				goto usage;
+			}
+		}
+		csetlist(&copts, cset);
 next:		sccs_free(cset);
 		if (cFile) free(comment);
 		purify_list();
@@ -285,9 +298,9 @@ next:		sccs_free(cset);
 void
 cset_exit(int n)
 {
-	if (cs1.pid) {
+	if (copts.pid) {
 		fprintf(stderr, "cset: failed to wait for adler32\n");
-		waitpid(cs1.pid, 0, 0);
+		waitpid(copts.pid, 0, 0);
 	}
 	fflush(stdout);
 	_exit(n);
@@ -493,8 +506,10 @@ doit(cset_t *cs, sccs *sc)
 		}
 	} else if (cs->mark) {
 		doMarks(cs, sc);
-	} else if (cs->range && !cs->listeach) {
+	} else if ((cs->range == RANGE_INCLUSIVE) && !cs->listeach) {
 		doRange(cs, sc);
+	} else if (cs->range == RANGE_ENDPOINTS) {
+		doEndpoints(cs, sc);
 	} else {
 		doSet(sc);
 	}
@@ -532,7 +547,7 @@ header(sccs *cset, int diffs)
 void
 markThisCset(cset_t *cs, sccs *s, delta *d)
 {
-	if (cs->mark) {
+	if (cs->mark || (cs->range == RANGE_ENDPOINTS)) {
 		d->flags |= D_SET;
 		return;
 	}
@@ -937,7 +952,6 @@ doRange(cset_t *cs, sccs *sc)
 		if (d->flags & D_SET) e = d;
 	}
 	unless (e) return;
-	if ((cs->range == 2) && e->parent) e = e->parent;
 	printf("%s%c%s..", sc->gfile, BK_FS, e->rev);
 	for (d = sc->table; d; d = d->next) {
 		if (d->flags & D_SET) {
@@ -945,6 +959,35 @@ doRange(cset_t *cs, sccs *sc)
 			return;
 		}
 	}
+}
+
+/*
+ * Print a range suitable for diffs.
+ * XXX - does not make sure that they are both on the trunk.
+ */
+void
+doEndpoints(cset_t *cs, sccs *sc)
+{
+	delta	*d, *e = 0, *f = 0;
+
+	if (sc->state & S_CSET) return;
+	for (d = sc->table; d; d = d->next) {
+		unless (d->flags & D_SET) continue;
+		unless (e) {
+			e = d;
+		} else {
+			f = d;
+		}
+	}
+	assert(e);
+	if (!f) {
+		f = e;
+		/*
+		 * XXX - FIXME - need to deal with 1.0 issues.
+		 */
+		if (e->parent) e = e->parent;
+	}
+	printf("%s%c%s..%s\n", sc->gfile, BK_FS, e->rev, f->rev);
 }
 
 private void
