@@ -642,6 +642,7 @@ int	uniq_lock(void);
 int	uniq_unlock(void);
 int	uniq_open(void);
 time_t	uniq_time(char *key);
+time_t	uniq_drift();
 int	uniq_update(char *key, time_t t);
 int	uniq_root(char *key);
 int	uniq_close(void);

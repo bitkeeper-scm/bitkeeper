@@ -143,7 +143,7 @@ proc widgets {} \
 	} else {
 		set swid 12
 		set font {fixed 12 roman}
-		set buttonFont {times 12 roman bold}
+		set buttonFont {Times 12 roman bold}
 		set py 1
 	}
 	set bcolor #d0d0d0
@@ -207,8 +207,8 @@ proc widgets {} \
 	bind .ctrl.topics <ButtonPress> { doPixSelect %x %y }
 	bind . <Control-e>	".text.help yview scroll 1 units; break"
 	bind . <Control-y>	".text.help yview scroll -1 units; break"
-	bind . <Down>		"doNext 1"
-	bind . <Up>		"doNext -1"
+	bind . <Down>		".text.help yview scroll 1 units; break"
+	bind . <Up>		".text.help yview scroll -1 units; break"
 	bind . <Left>		"doNextSection -1"
 	bind . <Right>		"doNextSection 1"
 	bind . <Prior>		{ scroll -1 }

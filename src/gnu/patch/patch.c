@@ -399,13 +399,13 @@ main (int argc, char **argv)
 		      struct utimbuf utimbuf;
 		      utimbuf.actime = utimbuf.modtime = t;
 
-		      if (! force && ! inerrno
+		      if (! force && ! inerrno && ! forcetime
 			  && pch_says_nonexistent (reverse) != 2
 			  && (t = pch_timestamp (reverse)) != (time_t) -1
 			  && t != instat.st_mtime)
 			say ("Not setting time of file %s (time mismatch)\n",
 			     quotearg (outname));
-		      else if (! force && (mismatch | failed))
+		      else if (! force && ! forcetime && (mismatch | failed))
 			say ("Not setting time of file %s (contents mismatch)\n",
 			     quotearg (outname));
 		      else if (utime (outname, &utimbuf) != 0)
@@ -531,6 +531,7 @@ static struct option const longopts[] =
   {"posix", no_argument, NULL, CHAR_MAX + 7},
   {"quoting-style", required_argument, NULL, CHAR_MAX + 8},
   {"lognames", no_argument, NULL, CHAR_MAX + 9},
+  {"forcetime", no_argument, NULL, CHAR_MAX + 10},
   {NULL, no_argument, NULL, 0}
 };
 
@@ -589,6 +590,8 @@ static char const *const option_help[] =
 "  --verbose  Output extra information about the work being done.",
 "  --dry-run  Do not actually change any files; just print what would happen.",
 "  --posix  Conform to the POSIX standard.",
+"  --lognames  Log the creation and/or deletion of files.",
+"  --forcetime  Force the time stamps, ignore mismatches.",
 "",
 "  -d DIR  --directory=DIR  Change the working directory to DIR first.",
 #if HAVE_SETMODE
@@ -790,6 +793,9 @@ get_some_switches (void)
 		break;
 	    case CHAR_MAX + 9:
 		log_names = 1;
+		break;
+	    case CHAR_MAX + 10:
+		forcetime = 1;
 		break;
 	    default:
 		usage (stderr, 2);

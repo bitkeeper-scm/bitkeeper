@@ -581,8 +581,8 @@ proc widgets {} \
 	set rightColor yellow
 	set listHt 12
 	set geometry ""
-	if {[file readable ~/.difftoolrc]} {
-		source ~/.difftoolrc
+	if {[file readable ~/.csettoolrc]} {
+		source ~/.csettoolrc
 	}
 	set g [wm geometry .]
 	if {("$g" == "1x1+0+0") && ("$geometry" != "")} {

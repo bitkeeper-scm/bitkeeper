@@ -35,7 +35,10 @@ _setup() {
 	FORCE=NO
 	while getopts c:fn: opt
 	do	case "$opt" in
-		    c) CONFIG=$OPTARG;;
+		    c) case X$OPTARG in
+			  X/*) CONFIG=$OPTARG;;
+			  *) CONFIG=$PWD/$OPTARG;;
+		       esac;;
 		    f) FORCE=YES;;
 		    n) NAME=$OPTARG;;
 		esac

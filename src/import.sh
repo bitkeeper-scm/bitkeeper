@@ -22,14 +22,18 @@ import() {
 	TYPE=
 	NEWLOD=
 	RENAMES=YES
-	while getopts eil:Lrt: opt
+	QUIET=-q
+	SYMBOL=
+	while getopts eil:LrS:t:v opt
 	do	case "$opt" in
 		e) EX=YES;;
 		i) INC=YES;;
 		l) LIST=$OPTARG;;
 		L) NEWLOD=-L;;
+		S) SYMBOL=-S$OPTARG;;
 		r) RENAMES=NO;;
 		t) TYPE=$OPTARG;;
+		v) QUIET=;;
 		esac
 	done
 	shift `expr $OPTIND - 1`
@@ -247,15 +251,18 @@ transfer() {
 
 import_patch() {
 
-	Q=-q
+	PATCH=$1
+	PNAME=`basename $PATCH`
+	SAVE=$USER
+	USER=patch
+	Q=$QUIET
 	cd $2
 	echo Locking files in `pwd` ...
 	bk -r get -eq
 	echo Patching...
-	# XXX - I want to use -Z here and -G on the ci to pick up the timestamps
-	# but it screws up the printouts for some reason.
-	(cd $HERE && cat $1) |
-	    bk patch -p1 -E -z '=-PaTcH_BaCkUp!' -s --lognames > ${TMP}plog$$ 2>&1
+	(cd $HERE && cat $PATCH) |
+	    bk patch -p1 -ZsE -z '=-PaTcH_BaCkUp!' --forcetime --lognames > \
+		${TMP}plog$$ 2>&1
 	bk sfiles -x | grep '=-PaTcH_BaCkUp!$' | xargs rm -f
 	REJECTS=NO
 	find .  -name '*.rej' -print > ${TMP}rejects$$
@@ -272,8 +279,6 @@ import_patch() {
 	    sed 's/Removing file //' > ${TMP}deletes$$
 	if [ $RENAMES = YES ]
 	then	echo Checking for potential renames in `pwd` ...
-		SAVE=$USER
-		USER=anon
 		# Go look for renames
 		if [ -s ${TMP}deletes$$ -a -s ${TMP}creates$$ ]
 		then	(
@@ -286,25 +291,26 @@ import_patch() {
 	    		fi ) | bk renametool
 		fi
 
+		echo Checking in new or modified files in `pwd` ...
 		# Do the deletes automatically
 		if [ -s ${TMP}deletes$$ -a ! -s ${TMP}creates$$ ]
 		then	bk rm -d - < ${TMP}deletes$$
 		fi
 		# Do the creates automatically
 		if [ ! -s ${TMP}deletes$$ -a -s ${TMP}creates$$ ]
-		then	bk new $Q - < ${TMP}creates$$
+		then	bk new $Q -G -y"Import patch $PNAME" - < ${TMP}creates$$
 		fi
 	else	# Just delete and create
+		echo Checking in new or modified files in `pwd` ...
 		bk rm -d - < ${TMP}deletes$$
-		bk new $Q - < ${TMP}creates$$
+		bk new $Q -G -y"Import patch $PNAME" - < ${TMP}creates$$
 	fi
 	rm -f ${TMP}creates$$ ${TMP}deletes$$
 
-	echo Checking in modified files in `pwd` ...
-	bk -r ci $Q -y"Patch"
-
-	echo Cleaning all other files `pwd` ...
-	bk -r clean
+	if [ X$Q = X ]
+	then	bk -r clean -q
+	fi
+	bk -r ci $Q -G -y"Import patch $PNAME"
 
 	bk sfiles -x | grep -v '^BitKeeper/' > ${TMP}extras$$
 	if [ -s ${TMP}extras$$ ]
@@ -316,8 +322,8 @@ import_patch() {
     	fi
 
 	USER=$SAVE
-	echo Creating changeset for $1 in `pwd` ...
-	bk sfiles -C | bk cset $NEWLOD -y"$1" -
+	echo Creating changeset for $PNAME in `pwd` ...
+	bk sfiles -C | bk cset $SYMBOL $NEWLOD -y"`basename $PNAME`" -
 	echo Done.
 	Done 0
 }
@@ -394,7 +400,7 @@ import_finish () {
 	rm -f ${TMP}import$$ ${TMP}admin$$
 	sfiles -r
 	echo "Creating initial changeset (should have $NFILES + 1 lines)"
-	bk commit -f -y'Import changeset'
+	bk commit -f $SYMBOL -y'Import changeset'
 }
 
 validate_SCCS () {
