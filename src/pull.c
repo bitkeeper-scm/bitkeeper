@@ -4,8 +4,8 @@
 #include "bkd.h"
 
 typedef	struct {
+	int	list;			/* -l: long listing */
 	u32	automerge:1;		/* -i: turn off automerge */
-	u32	list:1;			/* -l: long listing */
 	u32	dont:1;			/* -n: do not actually do it */
 	u32	quiet:1;		/* -q: shut up */
 	u32	metaOnly:1;		/* -e empty patch */
@@ -39,7 +39,7 @@ pull_main(int ac, char **av)
 	while ((c = getopt(ac, av, "c:deE:ilnqrtz|")) != -1) {
 		switch (c) {
 		    case 'i': opts.automerge = 0; break;
-		    case 'l': opts.list = 1; break;
+		    case 'l': opts.list++; break;
 		    case 'n': opts.dont = 1; break;
 		    case 'q': opts.quiet = 1; break;
 		    case 'r': opts.noresolve = 1; break;
@@ -103,7 +103,7 @@ send_part1_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	if (opts.gzip) fprintf(f, " -z%d", opts.gzip);
 	if (opts.metaOnly) fprintf(f, " -e");
 	if (opts.dont) fprintf(f, " -n");
-	if (opts.list) fprintf(f, " -l");
+	for (rc = opts.list; rc--; ) fprintf(f, " -l");
 	if (opts.quiet) fprintf(f, " -q");
 	if (opts.debug) fprintf(f, " -d");
 	fputs("\n", f);
@@ -171,7 +171,7 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	if (opts.gzip) fprintf(f, " -z%d", opts.gzip);
 	if (opts.metaOnly) fprintf(f, " -e");
 	if (opts.dont) fprintf(f, " -n");
-	if (opts.list) fprintf(f, " -l");
+	for (rc = opts.list; rc--; ) fprintf(f, " -l");
 	if (opts.quiet) fprintf(f, " -q");
 	if (opts.debug) fprintf(f, " -d");
 	fputs("\n", f);
@@ -225,8 +225,8 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	 * Read the verbose status if we asked for it
 	 */
 	getline2(r, buf, sizeof(buf));
+	i = n = 0;
 	if (streq(buf, "@REV LIST@")) {
-		i = n = 0;
 		while (getline2(r, buf, sizeof(buf)) > 0) {
 			if (streq(buf, "@END@")) break;
 			unless (i++) {
@@ -245,8 +245,6 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		if (i) {
 			fprintf(stderr, "%s\n",
 "----------------------------------------------------------------------------");
-		} else {
-			fprintf(stderr, "Nothing to pull.\n");
 		}
 	}
 
@@ -288,6 +286,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		rc = 0;
 		putenv("BK_INCOMING=OK");
 	}  else if (streq(buf, "@NOTHING TO SEND@")) {
+		unless (opts.quiet) fprintf(stderr, "Nothing to pull.\n");
 		putenv("BK_INCOMING=NOTHING");
 		rc = 0;
 	} else {

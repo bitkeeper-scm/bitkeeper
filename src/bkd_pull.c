@@ -2,7 +2,7 @@
 
 private	void	listIt(sccs *s);
 private	void	listrev(delta *d);
-private	void	listIt2(sccs *s);
+private	void	listIt2(sccs *s, int list);
 private	void	listrev2(delta *d);
 private int	uncompressed(char *tmpfile);
 private int	compressed(int gzip, char *tmpfile);
@@ -259,59 +259,31 @@ listrev(delta *d)
 	}
 	fclose(f);
 }
+#endif /* OPULL */
 
 private void
-listIt2(sccs *s)
+listIt2(sccs *s, int list)
 {
-	delta   *d;
-	int	first = 1;
+	char	buf[MAXPATH];
+	char	cmd[MAXPATH + 20];
+	FILE	*f;
+	delta	*d;
 
+	gettemp(buf, "cs");
+	sprintf(cmd, "bk changes %s - > %s", list > 1 ? "-v" : "", buf);
+	f = popen(cmd, "w");
 	for (d = s->table; d; d = d->next) {
 		unless (d->type == 'D') continue;
 		if (d->flags & D_VISITED) continue;
-		if (first) {
-			first = 0;
-		} else {
-			printf("%c\n", BKD_DATA);
-		}
-		listrev2(d);
+		fprintf(f, "%s\n", d->rev);
 	}
-}
-#endif /* OPULL */
-
-
-private void
-listrev2(delta *d)
-{
-	char	*t;
-	int	i;
-	char	buf[100];
-
-	assert(d);
-	printf("%cChangeSet@%s, ", BKD_DATA, d->rev);
-	if (atoi(d->sdate) <= 68) {
-		strcpy(buf, "20");
-		strcat(buf, d->sdate);
-	} else if (atoi(d->sdate) > 99) {	/* must be 4 digit years */
-		strcpy(buf, d->sdate);
-	} else {
-		strcpy(buf, "19");
-		strcat(buf, d->sdate);
+	pclose(f);
+	f = fopen(buf, "r");
+	while (fnext(cmd, f)) {
+		printf("%c%s", BKD_DATA, cmd);
 	}
-	for (t = buf; *t != '/'; t++); *t++ = '-';
-	for (; *t != '/'; t++); *t = '-';
-	fputs(buf, stdout);
-	if (d->zone) {
-		printf("-%s", d->zone);
-	}
-	printf(", %s", d->user);
-	if (d->hostname) {
-		printf("@%s", d->hostname);
-	}
-	printf("\n");
-	EACH(d->comments) {
-		printf("%c  %s\n", BKD_DATA, d->comments[i]);
-	}
+	fclose(f);
+	unlink(buf);
 }
 
 int
@@ -395,7 +367,7 @@ cmd_pull_part2(int ac, char **av)
 			break;
 		    case 'd': debug = 1; break;
 		    case 'e': metaOnly = 1; break;
-		    case 'l': list = 1; break;
+		    case 'l': list++; break;
 		    case 'n': dont = 1; break;
 		    case 'q': verbose = 0; break;
 		    default: break;
@@ -426,7 +398,7 @@ cmd_pull_part2(int ac, char **av)
 	if (local_count && (verbose || list)) {
 		printf("@REV LIST@\n");
 		if (list) {
-			listIt2(s);
+			listIt2(s, list);
 		} else {
 			for (d = s->table; d; d = d->next) {
 				if (d->flags & D_VISITED) continue;

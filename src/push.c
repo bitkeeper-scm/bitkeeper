@@ -8,7 +8,7 @@ typedef	struct {
 	u32	verbose:1;
 	u32	textOnly:1;
 	u32	autopull:1;
-	u32	list:1;
+	int	list;
 	u32	metaOnly:1;
 	u32	forceInit:1;
 	u32	debug:1;
@@ -18,8 +18,7 @@ typedef	struct {
 
 private	int	push(char **av, opts opts, remote *r, char **envVar);
 private	void	pull(opts opts, remote *r);
-private	void	listIt(sccs *s);
-private	void	listrev(delta *d);
+private	void	listIt(sccs *s, int list);
 
 int
 push_main(int ac, char **av)
@@ -46,7 +45,7 @@ push_main(int ac, char **av)
 		    case 'e': opts.metaOnly = 1; break;
 		    case 'E': envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'i': opts.forceInit = 1; break;
-		    case 'l': opts.list = 1; break;
+		    case 'l': opts.list++; break;
 		    case 'n': opts.doit = 0; break;
 		    case 'q': opts.verbose = 0; break;
 		    case 't': opts.textOnly = 1; break;
@@ -307,7 +306,7 @@ ChangeSet file do not match.  Please check the pathnames and try again.\n");
 "---------------------- Would send the following csets ---------------------\n")
 			;
 			if (opts.list) {
-				listIt(s);
+				listIt(s, opts.list);
 			} else {
 				n = 0;
 				for (d = s->table; d; d = d->next) {
@@ -646,42 +645,16 @@ pull(opts opts, remote *r)
 }
 
 private	void
-listIt(sccs *s)
+listIt(sccs *s, int list)
 {
 	delta	*d;
+	FILE	*f = popen(list > 1 ? "bk changes -v -" : "bk changes -", "w");
 
-	s->state |= S_READ_ONLY;	/* just in case, see listrev() */
+	assert(f);
 	for (d = s->table; d; d = d->next) {
 		unless (d->type == 'D') continue;
 		if (d->flags & D_VISITED) continue;
-		listrev(d);
+		fprintf(f, "%s\n", d->rev);
 	}
-}
-
-private	void
-listrev(delta *d)
-{
-	char	*t;
-	int	i;
-	int	y;
-	char	cmd[200];
-
-	assert(d);
-	printf("ChangeSet@%s, ", d->rev);
-	y = atoi(d->sdate);
-	/* Yeah, we're stomping on the delta but we aren't writing it back */
-	for (t = d->sdate; *t != '/'; t++); *t++ = '-';
-	for (; *t != '/'; t++); *t = '-';
-	if (y <= 68) {
-		printf("20%s", d->sdate);
-	} else if (y > 99) {			/* must be 4 digit years */
-		printf(d->sdate);
-	} else {
-		printf("19%s", d->sdate);
-	}
-	if (d->zone) printf("%s", d->zone);
-	printf(", %s", d->user);
-	if (d->hostname) printf("@%s", d->hostname);
-	printf("\n");
-	EACH(d->comments) printf("  %s\n", d->comments[i]);
+	pclose(f);
 }
