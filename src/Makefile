@@ -361,7 +361,7 @@ bkdsubstr: bkd.h
 	chmod +x bkdsubstr
 
 histtool: gui/search.tcl gui/config.tcl gui/histtool.tcl gui/common.tcl \
-    	port/$(SYS)_platform.tcl
+	port/$(SYS)_platform.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
 	    gui/search.tcl gui/histtool.tcl > histtool
 
@@ -389,9 +389,9 @@ difftool: gui/search.tcl gui/config.tcl gui/difftool.tcl \
 	    gui/common.tcl gui/difftool.tcl > difftool
 
 csettool: gui/csettool.tcl gui/config.tcl gui/common.tcl \
-	port/$(SYS)_platform.tcl
-	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	    gui/csettool.tcl > csettool
+	port/$(SYS)_platform.tcl gui/search.tcl
+	cat gui/search.tcl port/$(SYS)_platform.tcl gui/config.tcl \
+	    gui/common.tcl gui/csettool.tcl > csettool
 
 renametool: gui/renametool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
 	gui/common.tcl
