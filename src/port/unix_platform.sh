@@ -41,8 +41,7 @@ __logCommand() {
 				chmod 666 ${LDIR}/cmd
 			fi
 		       if [ ! -w ${LDIR} -a -f ${LDIR}/cmd -a ! -w ${LDIR}/cmd ]
-		    	then	echo No write permission on BitKeeper/log/cmd
-				return
+		    	then	return
 			fi
 			if [ ! -w ${LDIR}/cmd ]
 			then	mv ${LDIR}/cmd ${LDIR}/ocmd
