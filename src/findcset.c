@@ -155,7 +155,7 @@ next:		sccs_free(s);
 
 	/* update rootkey embedded in files */
 	unlink("BitKeeper/tmp/ROOTKEY");
-	cmd = aprintf("bk -r admin -C'%s'", proj_csetrootkey(0));
+	cmd = aprintf("bk -r admin -C'%s'", proj_rootkey(0));
 	system(cmd);
 	free(cmd);
 	return (0);
