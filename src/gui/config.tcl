@@ -213,8 +213,8 @@ proc initFonts-unix {app var} \
 
 	if {$width == 800} { 
 		if {$singleWide} {
-			set _d(fixedFont) 6x12
-			set _d(fixedBoldFont) 6x12bold
+			set _d(fixedFont) 6x13
+			set _d(fixedBoldFont) 6x13bold
 		} else {
 			set _d(fixedFont) {lucidatypewriter 10}
 			set _d(fixedBoldFont) {lucidatypewriter 10 bold}
@@ -222,8 +222,8 @@ proc initFonts-unix {app var} \
 	}   
 	if {$width == 1024} { 
 		if {$singleWide} {
-			set _d(fixedFont) 6x12
-			set _d(fixedBoldFont) 6x12bold
+			set _d(fixedFont) 6x13
+			set _d(fixedBoldFont) 6x13bold
 		} else {
 			set _d(fixedFont) {courier 12}
 			set _d(fixedBoldFont) {courier 12 bold}
