@@ -24,7 +24,7 @@ char	*
 res_getlocal(char *gfile)
 {
 	char	buf[MAXPATH];
-	char	cmd[MAXPATH*2];
+	char	tmp[MAXPATH*2];
 	char	*sfile;
 
 	sprintf(buf, "%s/%s", RESYNC2ROOT, gfile);
@@ -37,15 +37,15 @@ res_getlocal(char *gfile)
 	unless (exists(sfile)) {
 		free(sfile);
 		gettemp(buf, "local");
-		sprintf(cmd, "cp %s/%s %s", RESYNC2ROOT, gfile, buf);
-		system(cmd);
+		sprintf(tmp, "%s/%s", RESYNC2ROOT, gfile);
+		sys("cp", tmp, buf, SYS);
 		unless (exists(buf)) return (0);
 		return (strdup(buf));
 	}
 	free(sfile);
 
-	sprintf(cmd, "bk get -ksp %s/%s > %s", RESYNC2ROOT, gfile, buf);
-	system(cmd);
+	sprintf(tmp, "%s/%s", RESYNC2ROOT, gfile);
+	sysio(NULL, buf, NULL, "bk", "get", "-ksp", tmp, SYS);
 	unless (exists(buf)) return (0);
 	return (strdup(buf));
 }

@@ -1966,15 +1966,6 @@ automerge(resolve *rs, names *n)
 		unlink(sccs_Xfile(rs->s, 'r'));
 		return;
 	}
-#ifdef WIN32
-#error "lm -> awc: look carefully at the return value out of sys"
-	if (ret == 0xff00) {
-	    	fprintf(stderr, "Cannot execute '%s'\n", cmd);
-		rs->opts->errors = 1;
-		unlink(rs->s->gfile);
-		return;
-	}
-#endif
 	unless (WIFEXITED(ret)) {
 		fprintf(stderr, "Unknown merge status: 0x%x\n", ret);
 		rs->opts->errors = 1;

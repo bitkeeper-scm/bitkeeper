@@ -27,11 +27,11 @@ P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 mkdir src
 cd src
-echo foo > 'F!O#O$ B%A	^R&R*R(R)R{R}'
+echo foo > 'F!O#O$ B%A^R&RR(R)RR'
 echo bar > bar.c
 echo h > h.h
-bk ci $Q -i 'F!O#O$ B%A	^R&R*R(R)R{R}' bar.c h.h
-if [ ! -f SCCS/s.'F!O#O$ B%A	^R&R*R(R)R{R}' ]; then echo failed to create history; exit 1; fi
+bk ci $Q -i 'F!O#O$ B%A^R&RR(R)RR' bar.c h.h
+if [ ! -f SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ]; then echo failed to create history; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 bk commit $S -a -yCset
@@ -42,7 +42,7 @@ cores
 echo $N Clone repository ............................................$NL
 cd $HERE
 bk clone $Q $HERE/project $HERE/copy || { echo failed; exit 1; }
-[ -f copy/src/SCCS/s.'F!O#O$ B%A	^R&R*R(R)R{R}' ] || { echo failed; exit 1; }
+[ -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
 [ -f copy/BitKeeper/log/parent ] || { echo no parent; exit 1; }
 parent=`cat copy/BitKeeper/log/parent`
 host=`bk gethost`
@@ -51,13 +51,13 @@ cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
 echo OK
 echo $N Pull with no changes in child ...............................$NL
 cd $HERE/project/src
-bk get $Q -e 'F!O#O$ B%A	^R&R*R(R)R{R}'
-echo delta two >> 'F!O#O$ B%A	^R&R*R(R)R{R}'
-bk delta $Q -y2 'F!O#O$ B%A	^R&R*R(R)R{R}'
+bk get $Q -e 'F!O#O$ B%A^R&RR(R)RR'
+echo delta two >> 'F!O#O$ B%A^R&RR(R)RR'
+bk delta $Q -y2 'F!O#O$ B%A^R&RR(R)RR'
 bk commit $Q -y2
 cd $HERE/copy
 bk pull -t $Q || { echo failed; exit 1; }
-revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A	^R&R*R(R)R{R}' | wc -l`
+revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
 cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
 echo OK
@@ -65,14 +65,14 @@ if [ $DO_REMOTE = YES ]; then
  cd $HERE/copy
  echo $N Pull with explicit remote parent ............................$NL
  bk pull -t $Q localhost:$HERE/project || { echo failed; exit 1; }
- revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A	^R&R*R(R)R{R}' | wc -l`
+ revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
  [ $revs -eq 2 ] || { echo failed; exit 1; }
  cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
  echo OK
  echo $N Pull with explicit remote parent and username ...............$NL
  cd $HERE/copy
  bk pull -t $Q $USER@localhost:$HERE/project || { echo failed; exit 1; }
- revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A	^R&R*R(R)R{R}' | wc -l`
+ revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
  [ $revs -eq 2 ] || { echo failed; exit 1; }
  cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
  echo OK
@@ -84,19 +84,19 @@ echo $N Pull with explicit local parent .............................$NL
 cd $HERE/copy
 HOSTNAME=`bk gethost`
 bk pull -t $Q $HOSTNAME:$HERE/project || { echo failed; exit 1; }
-revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A	^R&R*R(R)R{R}' | wc -l`
+revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
 cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
 echo OK
 echo $N Pull with explicit local parent and username ................$NL
 bk pull -t $Q $USER@$HOSTNAME:$HERE/project || { echo failed; exit 1; }
-revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A	^R&R*R(R)R{R}' | wc -l`
+revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
 echo OK
 echo $N Pull from subdirectory of repository ........................$NL
 cd src
 bk pull -t $Q || { echo failed; exit 1; }
-revs=`bk prs -hd':I:\n' 'F!O#O$ B%A	^R&R*R(R)R{R}' | wc -l`
+revs=`bk prs -hd':I:\n' 'F!O#O$ B%A^R&RR(R)RR' | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
 echo OK
 echo $N Pull with mergeable changes in child ........................$NL
@@ -213,15 +213,15 @@ else
 fi
 echo $N Push with conflict in uncomitted remote delta ...............$NL
 cd $HERE/copy/src
-bk get $Q -e 'F!O#O$ B%A	^R&R*R(R)R{R}'
-sed 's/delta two/delta two-local/' 'F!O#O$ B%A	^R&R*R(R)R{R}'  > x
-mv x 'F!O#O$ B%A	^R&R*R(R)R{R}'
-bk delta $Q -y 'F!O#O$ B%A	^R&R*R(R)R{R}'
+bk get $Q -e 'F!O#O$ B%A^R&RR(R)RR'
+sed 's/delta two/delta two-local/' 'F!O#O$ B%A^R&RR(R)RR'  > x
+mv x 'F!O#O$ B%A^R&RR(R)RR'
+bk delta $Q -y 'F!O#O$ B%A^R&RR(R)RR'
 cd $HERE/project/src
-bk get $Q -e 'F!O#O$ B%A	^R&R*R(R)R{R}'
-sed 's/delta two/delta two-remote/' 'F!O#O$ B%A	^R&R*R(R)R{R}'  > x
-mv x 'F!O#O$ B%A	^R&R*R(R)R{R}'
-bk delta $Q -y 'F!O#O$ B%A	^R&R*R(R)R{R}'
+bk get $Q -e 'F!O#O$ B%A^R&RR(R)RR'
+sed 's/delta two/delta two-remote/' 'F!O#O$ B%A^R&RR(R)RR'  > x
+mv x 'F!O#O$ B%A^R&RR(R)RR'
+bk delta $Q -y 'F!O#O$ B%A^R&RR(R)RR'
 bk commit $Q -ytest
 bk push $HERE/copy > push.out 2>&1
 grep -q "has uncommitted changes" push.out
@@ -230,12 +230,12 @@ echo OK
 echo $N pull with a delete event ....................................$NL
 bk clone $Q $HERE/project $HERE/copy2
 cd $HERE/project/src
-bk rm 'F!O#O$ B%A	^R&R*R(R)R{R}'
+bk rm 'F!O#O$ B%A^R&RR(R)RR'
 bk commit $Q -ydelete
 cd $HERE/copy2/src
-bk get $Q 'F!O#O$ B%A	^R&R*R(R)R{R}'
+bk get $Q 'F!O#O$ B%A^R&RR(R)RR'
 bk pull -t $Q $HERE/project
-if [ -f 'F!O#O$ B%A	^R&R*R(R)R{R}' ]; then echo failed to delete gfile; exit 1; fi
+if [ -f 'F!O#O$ B%A^R&RR(R)RR' ]; then echo failed to delete gfile; exit 1; fi
 echo OK
 echo $N pull with a mvdir event .....................................$NL
 cd $HERE/project
