@@ -228,20 +228,17 @@ setup_env()
 	export BK_GEOM
 
 	unset BK_BIN _BK_GMODE_DEBUG
-	BK_REGRESSION=`bk _cleanpath $TST_DIR/.regression-$USER`
-	HERE=`cd $TST_DIR; bk pwd -s`/.regression-$USER
-	BK_TMP=$BK_REGRESSION/.tmp
-	BK_DOTBK=$BK_REGRESSION/.bk
+	BK_REGRESSION=`cd $TST_DIR; bk pwd -s`/.regression-$USER
+	BK_CACHE="$BK_REGRESSION/cache"
+	HERE=`cd $TST_DIR; bk pwd -s`/.regression-$USER/sandbox
+	BK_TMP=$HERE/.tmp
+	BK_DOTBK=$HERE/.bk
 	export BK_DOTBK
 	TMPDIR=/build/.tmp-$USER
 	BKL_P=BKL54316b5003d71c9000001200ffffe
 	BKL_P1=YgAAAo0AAAADgAAAANeWSrorfi5t/kX5twCWkrDJukboDouPS+LG/MTHyQDR1dBJ
 	BKL_P2=ChDM6mO3QoKrhaUcxTtI8avce6YnEUhSzH/CVhYqPPrqX1QONT9S4qn2d3L/FufL
 	BKL_P3=St9lVeCrJaxJNni3VlR2znLbXWhIqy69VawOvBWuYE1eMSq4b96N+Vkt6ZIu
-	BKL_B=BKL53f52d2503d719ed00001100ffffe
-	BKL_B1=YgAAAo4AAAADgQAAAAFh6k0m5PVc4sDTeRu+SHHlRYu/J/S1JQC1uOWZ2d5W/uWF
-	BKL_B2=q+HaT/OgbdCyjQ0vTY65SVvgDml4U2q9yp3dxDJ58MZCarZiIyBcnFnxSddc2jeW
-	BKL_B3=N9x7KzPDZelK6EAgbEc9/TzJQOtPLQ7burrdqTGdA4lF3CPu56G73iP3jIp4yw==
 	BKL_EX=BKL53b174b80393618000001200ffffe
 	BKL_EX1=YgAAAo4AAAADgQAAAAFQoPDeRRdpqjJLu30dIZFxdyKx9/rKDuF5WLctEEQzXfcM
 	BKL_EX2=7C4OKLdN/zrNavYbU24iyPR362lgpT6X4A4CvZBLc3cqGtDhX0tO/PWRlb3xr1nN
@@ -293,14 +290,14 @@ clean_up()
 
 	for i in 1 2 3 4 5 6 7 8 9 0
 	do	
-		rm -rf $BK_REGRESSION 2>/dev/null
-		test -d $BK_REGRESSION || break
+		rm -rf $HERE 2>/dev/null
+		test -d $HERE || break
 		sleep 1
 	done
-	rm -rf $BK_REGRESSION
+	rm -rf $HERE
 
-	test -d $BK_REGRESSION && {
-		echo "cleanup: failed to rm $BK_REGRESSION"
+	test -d $HERE && {
+		echo "cleanup: failed to rm $HERE"
 		exit 1
 	}
 }
@@ -316,13 +313,14 @@ init_main_loop()
 	BK_PATH=$PATH
 	export PATH BK_PATH PLATFORM DEV_NULL TST_DIR CWD
 	export USER BK_FS BK_REGRESSION HERE BK_TMP TMPDIR NL N Q S CORES
+	export BK_CACHE
 	export RM
 	export NXL NX
 	export BKL_P BKL_EX BKL_B
 	export BKL_P1 BKL_P2 BKL_P3
-	export BKL_B1 BKL_B2 BKL_B3
 	export BKL_EX1 BKL_EX2 BKL_EX3
 	export BK_GLOB_TRANSLATE_EQUAL
+	mkdir -p $BK_CACHE
 }
 
 #
@@ -405,6 +403,7 @@ echo ''
 	printf " %s test " ${i#t.}
 	printf "%.${LEN}s\n" "================================================"
 
+	mkdir -p $HERE || exit 1
 	mkdir -p $BK_TMP || exit 1
 	mkdir -p $BK_DOTBK || exit 1
 
@@ -481,6 +480,7 @@ I hope your testing experience was positive! :-)
 	fi
 	clean_up
 done
+rm -rf $BK_REGRESSION
 rm -f $TMPDIR/T.${USER} $TMPDIR/T.${USER}-new
 test $BK_LIMITPATH && rm -rf $BK_LIMITPATH
 test $PLATFORM = WIN32 && bk bkd -R

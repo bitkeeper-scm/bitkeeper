@@ -280,6 +280,7 @@ uniq_close()
 	}
 	unlink(tmp);
 	unless (f = fopen(tmp, "w")) {
+		fprintf(stderr, "unique_close: fopen %s failed\n", tmp);
 		perror(tmp);
 		return (-1);
 	}

@@ -37,7 +37,7 @@ echo OK
 
 echo $N Test import of a patch into a tree with edited BK files .....$NL
 cd $HERE
-no_logging EDIT
+commercial EDIT
 cat > foo <<EOF
 A
 B
@@ -258,43 +258,6 @@ echo $N Test import of an email patch ...............................$NL
 cd $HERE
 rm -rf EDIT
 tar xmf TAR
-cd EDIT/BitKeeper/etc
-bk edit $Q config
-echo "license: $BKL_P" > config
-echo "licsign1: $BKL_P1" >> config
-echo "licsign2: $BKL_P2" >> config
-echo "licsign3: $BKL_P3" >> config
-echo "logging: none" >> config
-echo "logging_ask: no" >> config
-bk lease flush
-bk delta $Q -yprivate
-bk commit $Q -yprivate 2> OUT && {
-	echo should have failed
-	cat OUT
-	exit 1
-}
-grep -q "Please read 'bk help multiuser'" OUT || {
-	echo wrong error message
-	exit 1
-}
-bk multiuser 2> OUT || {
-	echo failed
-	cat OUT
-	exit 1
-}
-bk commit $Q -yprivate
-test `wc -l < OUT` -eq 1 || {
-	echo errors from multiuser
-	cat OUT
-	exit 1
-}
-grep -q "^ChangeSet revision" OUT || {
-	echo wrong output
-	cat OUT
-	exit 1
-}
-cd $HERE
-tar cf MULTI EDIT
 cd EDIT
 bk edit $Q foo bar
 cat >> foo <<EOF
@@ -882,7 +845,8 @@ bk cat data | grep -q 'This should fail!' && {
 echo OK
 
 echo $N Catch read only destinations ................................$NL
-bk setup -f -c$HERE/c $HERE/dest
+cd $HERE
+no_logging dest
 chmod 555 $HERE/dest
 mkdir $HERE/data
 cd $HERE/data
