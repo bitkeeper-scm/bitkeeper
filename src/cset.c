@@ -1236,13 +1236,21 @@ sccs_patch(sccs *s, cset_t *cs)
 		if (sccs_prs(s, prs_flags, 0, NULL, stdout)) cset_exit(1);
 		printf("\n");
 		if (d->type == 'D') {
+			int	rc = 0;
+
 			if (s->state & S_CSET) {
 				if (d->added) {
-					sccs_getdiffs(s,
+					rc = sccs_getdiffs(s,
 					    d->rev, GET_HASHDIFFS, "-");
 				}
 			} else unless (empty) {
-				sccs_getdiffs(s, d->rev, GET_BKDIFFS, "-");
+				rc = sccs_getdiffs(s, d->rev, GET_BKDIFFS, "-");
+			}
+			if (rc) { /* sccs_getdiffs errored */
+				fprintf(stderr,
+				    "Patch aborted, sccs_getdiffs %s failed\n",
+				    s->sfile);
+				cset_exit(1);
 			}
 		}
 		printf("\n");

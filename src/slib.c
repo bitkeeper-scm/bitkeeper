@@ -6993,8 +6993,16 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 done:	if (s->encoding & E_GZIP) zgets_done();
 done2:	/* for GET_HASHDIFFS, the encoding has been handled in getRegBody() */
 	if (lbuf) {
+		if (flushFILE(lbuf)) {
+			s->io_error = 1;
+			ret = -1; /* i/o error: no disk space ? */
+		}
 		fclose(lbuf);
 done3:		unlink(tmpfile);
+	}
+	if (flushFILE(out)) {
+		s->io_error = 1;
+		ret = -1; /* i/o error: no disk space ? */
 	}
 	if (popened) {
 		pclose(out);
