@@ -260,7 +260,7 @@ fagets(FILE *fh)
 			return 0;
 		}
 		len += strlen(ret + len);
-		if (len + 1 < size) break;
+		if (ret[len-1] == '\n') break;  /* stop on complete line */
 		size <<= 1;
 #ifdef	HAVE_REALLOC
 		ret = realloc(ret, size);
