@@ -15456,8 +15456,12 @@ sccs_findKey(sccs *s, char *key)
 	user = parts[0];
 	host = parts[1];
 	path = parts[2];
+	/*
+	 * We allow date2time to return 0 because of old Teamware deltas we
+	 * did not fudge in the 3pardata import.
+	 */
 	date = date2time(&parts[3][2], 0, EXACT);
-	if (date == 0) return (0); /* date == 0 => bad key */
+	if (!date && !streq(&parts[3][2], "700101000000")) return (0);
 	if (parts[4]) {
 		cksum = atoi(parts[4]);
 		cksump = &cksum;
