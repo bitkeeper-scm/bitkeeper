@@ -687,7 +687,7 @@ if [ $? -ne 0 ]
 then	echo Failed to update aaa.c
 	exit 1
 fi
-rm aaa.p aaa.c
+rm -f aaa.p aaa.c
 echo OK
 echo $N Check resolve w/ auto merge and overlap change ..............$NL
 cd $HERE/project/src

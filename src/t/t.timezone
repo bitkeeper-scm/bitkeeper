@@ -41,22 +41,22 @@ echo OK
 echo $N Checking Delta in 'GMT(UTC)' Time zone ........................$NL
 bk get $S -e TIME
 echo "more data" >> TIME
-TZ=UTC bk delta $S -y"" TIME
+TZ=UTC+0 bk delta $S -y"" TIME
 cat > X <<EOF
 ======== TIME 1.3 ========
 +00:00
 EOF
-bk undos X > CMP1
-bk prs -d':TZ:\n' -r1.3 TIME  > CMP2
-cmp -s CMP1 CMP2
-if [ $? -ne 0 ]
-then	cat > X <<EOF
+bk undos X > WANT1
+bk prs -d':TZ:\n' -r1.3 TIME  | bk undos > GOT
+cat > X <<EOF
 ======== TIME 1.3 ========
 -00:00
 EOF
-	bk undos X > CMP1
-fi
-cmp -s CMP1 CMP2
-if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+bk undos X > WANT2
+cmp -s GOT WANT1 || cmp -s GOT WANT2 || {
+	echo Failed
+	diff GOT WANT
+	exit 1
+}
 unset TZ
 echo OK
