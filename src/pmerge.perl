@@ -1,4 +1,4 @@
-#! @PERL@ -w
+#! /usr/bin/perl -w
 
 # @(#) %K%
 # Copyright (c) 1999 Andrew Chang

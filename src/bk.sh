@@ -3,13 +3,23 @@
 # bk.sh - front end to BitKeeper commands
 # @(#)%K%
 
-_usage() {
+# Functions intended to be accessed as bk whatever by the user are
+# named _whatever.  Functions for internal use only are named
+# __whatever.  Don't name any functions without leading underscores,
+# they can clash with commands or shell builtins.
+
+# PORTABILITY NOTE: Never use shift or getopt inside a function that
+# might be called from inside another function that uses shift or
+# getopt.  Every shell I've tried except AT&T ksh gets it wrong.  Most
+# people don't have AT&T ksh.
+
+__usage() {
 	echo usage $0 command '[options]' '[args]'
 	echo Try $0 help for help.
 	exit 0
 }
 
-_cd2root() {
+__cd2root() {
 	while [ ! -d "BitKeeper/etc" ]
 	do	cd ..
 		if [ `pwd` = "/" ]
@@ -40,7 +50,7 @@ _setup() {
 	then	echo bk: "$1" exists already, setup fails.; exit 1
 	fi
 	if [ $FORCE = NO ]
-	then	_gethelp setup_1
+	then	__gethelp setup_1
 		echo $N "Create new project? [no] " $NL
 		read ans
 		case X$ans in
@@ -56,7 +66,7 @@ _setup() {
 	cd $1 || exit 1
 	mkdir -p BitKeeper/etc
 	if [ "X$NAME" = X ]
-	then	_gethelp setup_2
+	then	__gethelp setup_2
 		while :
 		do	echo "Replace this with your project description" \
 			    > Description
@@ -86,7 +96,7 @@ _setup() {
 	${RM} -f Description D.save
 	cd BitKeeper/etc
 	if [ "X$CONFIG" = X ]
-	then	_gethelp setup_3
+	then	__gethelp setup_3
 		cp ${BIN}/bitkeeper.config config
 		chmod u+w config
 		while true
@@ -108,7 +118,7 @@ _setup() {
 	${BIN}ci -qi config
 	if [ $logsetup = YES ]
 	then	${BIN}get -s config
-		_sendConfig setups@openlogging.org
+		__sendConfig setups@openlogging.org
 	fi
 	# Check in the initial changeset.
 	${BIN}sfiles -C | ${BIN}cset -s -y"Initial repository create" -
@@ -122,7 +132,7 @@ _changes() {
 
 # Run csettool on the list of csets, if any
 _csets() {
-	_cd2root
+	__cd2root
 	if [ -f RESYNC/BitKeeper/etc/csets ]
 	then	echo Viewing RESYNC/BitKeeper/etc/csets
 		cd RESYNC
@@ -140,7 +150,7 @@ _csets() {
 # Figure out what we have sent and only send the new stuff.  If we are
 # sending to stdout, we don't log anything, and we send exactly what they
 # asked for.
-_sendlog() {
+__sendlog() {
 	T=$1
 	R=$2
 	if [ X$T = X- ]
@@ -206,10 +216,10 @@ _send() {
 	then	echo "usage: bk send [-dq] [-wWrapper] [-rCsetRevs] user@host|-"
 		exit 1
 	fi
-	_cd2root
+	__cd2root
 	if [ X$TO != X- ]
 	then	if [ $FORCE = NO ]
-		then	REV=`_sendlog $TO $REV`
+		then	REV=`__sendlog $TO $REV`
 			if [ X$REV = X ]
 			then	echo Nothing to send to $TO, use -f to force.
 				exit 0
@@ -222,7 +232,7 @@ _send() {
 	    Xhoser@nevdull.com)
 		MAIL=cat
 		;;
-	    *)	MAIL="_mail $TO 'BitKeeper patch'"
+	    *)	MAIL="__mail $TO 'BitKeeper patch'"
 	    	;;
 	esac
 	( echo "This BitKeeper patch contains the following changesets:";
@@ -306,7 +316,7 @@ _clone() {
 
 # Manually set the parent pointer for a repository.
 _parent() {
-	_cd2root
+	__cd2root
 	case "X$1" in
 	    *:*)
 	    	$RM -f BitKeeper/log/parent
@@ -336,14 +346,14 @@ _parent() {
 # switches you like.  Default is auto-resolve stopping only for overlapped
 # changes (like cvs update).
 _pull() {
-	_cd2root
+	__cd2root
 	exec ${BIN}resync -A "$@"
 }
 
 # Push: send changes back to parent.  If parent is ahead of you, this
 # pulls down those changes and stops; you have to merge and try again.
 _push() {
-	_cd2root
+	__cd2root
 	exec ${BIN}resync -Ab "$@"
 }
 
@@ -479,7 +489,7 @@ _save() {
 		exit 1
 	fi
 	if [ X$2 = X ]
-	then	_cd2root
+	then	__cd2root
 		REV=`${BIN}prs -hr+ -d:I: ChangeSet`
 		OUTPUT=$1
 	else	REV=$1
@@ -506,7 +516,7 @@ __status() {
 	done
 	shift `expr $OPTIND - 1`
 	if [ "X$1" != X -a -d "$1" ]; then cd $1; fi
-	_cd2root
+	__cd2root
 	echo Status for BitKeeper repository `pwd`
 	_version
 	if [ -f BitKeeper/log/parent ]
@@ -527,7 +537,7 @@ __status() {
 		  ${BIN}sfiles -Cg | sed 's/^/Uncommitted:	/'
 		) | sort
 	else
-		echo "`_users | wc -l` people have made deltas."
+		echo "`__nusers` people have made deltas."
 		echo "`${BIN}sfiles | wc -l` files under revision control."
 		echo "`${BIN}sfiles -x | wc -l` files not under revision control."
 		echo "`${BIN}sfiles -c | wc -l` files modified and not checked in."
@@ -576,7 +586,7 @@ _sdiffs() {
 
 # usage: tag [r<rev>] symbol
 _tag() {
-	_cd2root
+	__cd2root
 	REV=
 	while getopts r: opt
 	do	case "$opt" in
@@ -592,13 +602,13 @@ _tag() {
 }
 
 _keys() {
-	_cd2root
+	__cd2root
 	${BIN}sfiles -k
 }
 
 # usage: gone key [key ...]
 _gone() {
-	_cd2root
+	__cd2root
 	if [ ! -d BitKeeper/etc ]
 	then	echo No BitKeeper/etc
 		exit 1
@@ -625,7 +635,7 @@ _gone() {
 # XXX Open issue: should BK/etc/ignore be revisioned?
 # Can make case either way.  Currently it's not.
 _ignore() {
-	_cd2root
+	__cd2root
 	if [ ! -d BitKeeper/etc ]
 	then	echo No BitKeeper/etc
 		exit 1
@@ -708,7 +718,7 @@ _undo() {
 		esac
 	done
 	shift `expr $OPTIND - 1`
-	_cd2root
+	__cd2root
 	if [ X"$1" = X ]
 	then	echo usage bk undo cset-revision
 		exit 1
@@ -730,7 +740,7 @@ _undo() {
 
 	${BIN}stripdel -Ccr$1 ChangeSet 2> ${TMP}undo$$
 	if [ $? != 0 ]
-	then	_gethelp undo_error $BIN
+	then	__gethelp undo_error $BIN
 		cat ${TMP}undo$$
 		$RM ${TMP}undo$$
 		exit 1
@@ -835,10 +845,10 @@ _pending() {
 	exec ${BIN}sfiles -CA | ${BIN}sccslog - | $PAGER
 }
 
-_chkConfig() {
+__chkConfig() {
 	if [ ! -f  ${BK_ETC}SCCS/s.config ]
 	then
-		_gethelp chkconfig_missing $BIN
+		__gethelp chkconfig_missing $BIN
 		return 1
 	fi
 	if [ -f ${BK_ETC}config ]
@@ -847,7 +857,7 @@ _chkConfig() {
 	${BIN}get -q ${BK_ETC}config
 	cmp -s ${BK_ETC}config ${BIN}bitkeeper.config
 	if [ $? -eq 0 ]
-	then	_gethelp chkconfig_inaccurate $BIN
+	then	__gethelp chkconfig_inaccurate $BIN
 		return 1
 	fi
 	return 0
@@ -856,11 +866,11 @@ _chkConfig() {
 # Send configuration information for those sites which have disabled logging.
 # This information is not to be publicly disclosed but because it travels
 # over email, we can't leak any sensitive information.
-_sendConfig() {
+__sendConfig() {
 	if [ X$1 = X ]
 	then	return		# error, should never happen
 	fi
-	_cd2root
+	__cd2root
 	P=`${BIN}prs -hr1.0 -d:FD: ChangeSet | head -1`
 	( __status
 	  ${BIN}prs -hr1.0 \
@@ -871,13 +881,13 @@ _sendConfig() {
 	  echo "Date:		`date`"
 	  ${BIN}get -ps ${BK_ETC}config | \
 	    grep -v '^#' ${BK_ETC}config | grep -v '^$'
-	) | _mail $1 "BitKeeper config: $P"
+	) | __mail $1 "BitKeeper config: $P"
 }
 
-# usage: _mail to subject
+# usage: __mail to subject
 # XXX - probably needs to be in port/mailto.sh and included.
 # DO NOT change how this works, IRIX is sensitive.
-_mail() {
+__mail() {
 	TO=$1
 	shift
 	SUBJ="$@"
@@ -915,7 +925,7 @@ _mail() {
 	exit 1
 }
 
-_logAddr() {
+__logAddr() {
 	LOG=`grep "^logging:" ${BK_ETC}config | tr -d '[\t, ]'`
 	case X${LOG} in
 	Xlogging:*)
@@ -939,27 +949,37 @@ _users() {
 	OP=
 	case "$1" in
 	    -a) SPEC=:P:@:HOST:; shift;;
-	    -c) OP=COUNT; shift;;
 	esac
 	if [ "X$1" != X -a -d "$1" ]; then cd $1; fi
-	_cd2root
+	__cd2root
 	${BIN}prs -hd$SPEC ChangeSet > ${TMP}users$$
 	if [ $? -ne 0 ]
 	then	rm -f ${TMP}users$$
 		exit 1
 	fi
-	if [ x$OP = xCOUNT ]
-	then	sort -u ${TMP}users$$ | wc -l
-	else	sort -u ${TMP}users$$
-	fi
+	sort -u ${TMP}users$$
 	${RM} -f ${TMP}users$$
 }
+
+# This is duplicated to avoid the shift/getopt bug (see top of file).
+__nusers() {
+	if [ "X$1" != X -a -d "$1" ]; then cd $1; fi
+	__cd2root
+	${BIN}prs -hd:P:@:DOMAIN: ChangeSet > ${TMP}users$$
+	if [ $? -ne 0 ]
+	then	rm -f ${TMP}users$$
+		exit 1
+	fi
+	sort -u ${TMP}users$$ | wc -l
+	${RM} -f ${TMP}users$$
+}
+	
 
 # Log the changeset to openlogging.org or wherever they said to send it.
 # If they agree to the logging, record that fact in the config file.
 # If they have agreed, then don't keep asking the question.
 # XXX - should probably ask once for each user.
-_checkLog() {
+__checkLog() {
 	# If we have a logging_ok message, then we are done.
 	if [ `grep "^logging_ok:" ${BK_ETC}config | wc -l` -gt 0 ]
 	then	${BIN}clean ${BK_ETC}config
@@ -969,7 +989,7 @@ _checkLog() {
 	# If we are sending to openlogging.org, then ask if OK first.
 	if [ `echo $LOGADDR | grep '@openlogging.org$' | wc -l` -gt 0 ]
 	then
-		_gethelp log_query $LOGADDR
+		__gethelp log_query $LOGADDR
 		echo $N "OK [y/n]? "$NL
 		read x
 		case X$x in
@@ -983,15 +1003,15 @@ logging_ok:	to '$LOGADDR > ${BK_ETC}config
 			return
 			;;
 		esac
-		_gethelp log_abort
+		__gethelp log_abort
 		${BIN}clean ${BK_ETC}config
 		exit 1
 	else
-		_sendConfig config@openlogging.org
+		__sendConfig config@openlogging.org
 	fi
 }
 
-_logChangeSet() {
+__logChangeSet() {
 	# Determine if this is the first rev where logging is active.
 	key=`${BIN}cset -c -r$REV | grep BitKeeper/etc/config |cut -d' ' -f2`
 	if [ x$key != x ]
@@ -1019,13 +1039,13 @@ _logChangeSet() {
 	  ${BIN}sccslog -r$REV ChangeSet
 	  ${BIN}cset -r+ | ${BIN}sccslog -
 	  echo ---------------------------------
-	  ${BIN}cset -c -r$R ) | _mail $LOGADDR "BitKeeper log: $P"
+	  ${BIN}cset -c -r$R ) | __mail $LOGADDR "BitKeeper log: $P"
 }
 
-_remark() {
+__remark() {
 	if [ -f "BitKeeper/etc/SCCS/x.marked" ]; then return; fi
 	if [ "X$1" != XYES ]
-	then	_gethelp consistency_check
+	then	__gethelp consistency_check
 	fi
 	${BIN}cset -M1.0..
 	touch "BitKeeper/etc/SCCS/x.marked"
@@ -1039,7 +1059,7 @@ _commit() {
 	DOIT=NO
 	GETCOMMENTS=YES
 	COPTS=
-	CHECKLOG=_checkLog
+	CHECKLOG=__checkLog
 	FORCE=NO
 	LOD=NO
 	RESYNC=NO
@@ -1060,12 +1080,12 @@ _commit() {
 		esac
 	done
 	shift `expr $OPTIND - 1`
-	_cd2root
-	if [ $RESYNC = "NO" ]; then _remark $QUIET; fi
+	__cd2root
+	if [ $RESYNC = "NO" ]; then __remark $QUIET; fi
 	${BIN}sfiles -CA > ${TMP}list$$
 	if [ $? != 0 ]
 	then	${RM} -f ${TMP}list$$ ${TMP}commit$$
-		_gethelp duplicate_IDs
+		__gethelp duplicate_IDs
 		exit 1
 	fi
 	if [ $GETCOMMENTS = YES ]
@@ -1093,10 +1113,10 @@ _commit() {
 	then	if [ -f ${TMP}commit$$ ]
 		then	COMMENTS="-Y${TMP}commit$$"
 		fi
-		_chkConfig && LOGADDR=`_logAddr` ||
+		__chkConfig && LOGADDR=`__logAddr` ||
 		    { ${RM} -f ${TMP}list$$ ${TMP}commit$$; exit 1; }
 		export LOGADDR
-		nusers=`_users -c` ||
+		nusers=`__nusers` ||
 		    { ${RM} -f ${TMP}list$$ ${TMP}commit$$; exit 1; }
 		if [ $nusers -gt 1 ]
 		then $CHECKLOG
@@ -1109,7 +1129,7 @@ _commit() {
 		# XXX TODO: Needs to account for LOD when it is implemented
 		REV=`${BIN}prs -hr+ -d:I: ChangeSet`
 		if [ $nusers -gt 1 ]
-		then _logChangeSet $REV
+		then __logChangeSet $REV
 		fi
 		exit $EXIT;
 	fi
@@ -1127,10 +1147,10 @@ _commit() {
 			if [ -s ${TMP}commit$$ ]
 			then	COMMENTS="-Y${TMP}commit$$"
 			fi
-			_chkConfig && LOGADDR=`_logAddr` ||
+			__chkConfig && LOGADDR=`__logAddr` ||
 			    { ${RM} -f ${TMP}list$$ ${TMP}commit$$; exit 1; }
 			export LOGADDR
-			nusers=`_users -c` ||
+			nusers=`__nusers` ||
 			    { ${RM} -f ${TMP}list$$ ${TMP}commit$$; exit 1; }
 			if [ $nusers -gt 1 ]
 			then $CHECKLOG
@@ -1143,7 +1163,7 @@ _commit() {
 			# XXX TODO: Needs to account for LOD
 			REV=`${BIN}prs -hr+ -d:I: ChangeSet`
 			if [ $nusers -gt 1 ]
-			then _logChangeSet $REV
+			then __logChangeSet $REV
 			fi
 	    	 	exit $EXIT;
 		 	;;
@@ -1180,20 +1200,20 @@ _root() {
 		exit 1
 	fi
 	cd `dirname $1`
-	_cd2root
+	__cd2root
 	pwd
 	exit 0
 }
 
 _sendbug() {
-	_gethelp bugtemplate >${TMP}bug$$
+	__gethelp bugtemplate >${TMP}bug$$
 	$EDITOR ${TMP}bug$$
 	while true
 	do	echo $N "(s)end, (e)dit, (q)uit? "$NL
 		read x
 		case X$x in
 		    Xs*) cat ${TMP}bug$$ |
-			    _mail bitkeeper-bugs@bitmover.com "BK Bug"
+			    __mail bitkeeper-bugs@bitmover.com "BK Bug"
 		 	 ${RM} -f ${TMP}bug$$
 			 echo Your bug has been sent, thank you.
 	    	 	 exit 0;
@@ -1223,14 +1243,14 @@ _regression() {
 #
 # text may not contain a line which begins with a hash or dollar sign.
 # text may contain occurrences of ## (double hashes) which are
-# replaced by the second argument to _gethelp, if any.  This text may
+# replaced by the second argument to __gethelp, if any.  This text may
 # not contain a hash either.  For command help texts, the second arg
 # is $BIN.  The tags must be unique and nonempty, and may not contain
 # spaces or shell or regexp metachars.
 #
 # We also use this file for error messages so the format is that all
 # help tags are of the form help_whatever
-_gethelp() {
+__gethelp() {
 	sed -n  -e '/^#'$1'$/,/^\$$/{' \
 		-e '/^#/d; /^\$/d; s|#BKARG#|'"$2"'|; p' \
 		-e '}' ${BIN}bkhelp.txt
@@ -1239,12 +1259,12 @@ _gethelp() {
 # List all help and command topics, it's the combo of what is in bin and
 # what is in the help file.  This is used for helptool.
 _topics() {
-	_gethelp help_topiclist
+	__gethelp help_topiclist
 }
 
-_commandHelp() {
+_help() {
 	if [ $# -eq 0 ]
-	then	_gethelp help | $PAGER
+	then	__gethelp help | $PAGER
 		exit 0
 	fi
 
@@ -1252,7 +1272,7 @@ _commandHelp() {
 	for i in $*
 	do
 		if grep -q "^#help_$i" ${BIN}bkhelp.txt
-		then	_gethelp help_$i $BIN
+		then	__gethelp help_$i $BIN
 		elif [ -x "${BIN}$i" -a -x "${BIN}$i" ]
 		then	echo "                -------------- $i help ---------------"
 			echo
@@ -1309,7 +1329,7 @@ _export() {
 	DST=`pwd`
 	cd $HERE
 	cd $SRC
-	_cd2root
+	__cd2root
 
 	# XXX: cset -t+ should work.
 	(${BIN}cset -t`${BIN}prs $R -hd:I: ChangeSet`) \
@@ -1318,7 +1338,8 @@ _export() {
 	do
 		PN=`bk prs -r$rev -hd:DPN: $SRC/$file`
 		if ${BIN}get $K $Q -r$rev -G$DST/$PN $SRC/$file
-		then	DIR=`dirname $DST/$$PN`
+		then :
+		else	DIR=`dirname $DST/$$PN`
 			mkdir -p $DIR || exit 1
 			${BIN}get $K $Q -r$rev -G$DST/$PN $SRC/$file
 		fi
@@ -1329,7 +1350,7 @@ _export() {
 	fi
 }
 
-_init() {
+__init() {
 	BK_ETC="BitKeeper/etc/"
 
 	if [ '-n foo' = "`echo -n foo`" ]
@@ -1342,7 +1363,7 @@ _init() {
 	VERSION=unknown
 }
 
-_platformPath() {
+__platformPath() {
 	# We find the internal binaries like this:  If BK_BIN is set
 	# and points at a directory containing an `sccslog' executable,
 	# use it.  Otherwise, look through a list of places where the
@@ -1378,80 +1399,55 @@ _platformPath() {
 }
 
 # ------------- main ----------------------
-_platformPath
-_platformInit
-_init
-_logCommand "$@"
+__platformPath
+__platformInit
+__init
+__logCommand "$@"
 
 if [ X"$1" = X ]
-then	_usage
-fi
-case "$1" in
-    setup|changes|pending|commit|sendbug|send|receive|\
-    mv|edit|unedit|unlock|man|undo|save|rm|new|version|\
-    root|status|export|users|sdiffs|unwrap|clone|\
-    pull|push|parent|diffr|fix|info|vi|r2c|rev2cset|\
-    topics|chmod|gone|tag|ignore|regression|keys|csets)
-	cmd=$1
-    	shift
-	_$cmd "$@"
+then	__usage
+elif [ X"$1" = X-h ]
+then	shift
+	_help "$@"
 	exit $?
-	;;
-    g|debug)
-    	DBIN="${BIN}$1/"
-	shift
-	if [ -x "$DBIN$1" ]
-	then	cmd=$1
-		shift
-		echo Running $DBIN$cmd "$@"
-		exec $DBIN$cmd "$@"
-	else	echo No debugging for $1, running normally.
-		exec bk "$@"
-	fi
-	;;
-    -h*|help)
-	shift
-    	_commandHelp $*
-	exit $?
-	;;
-esac
-
-SFILES=NO
-if [ X$1 = X-r ]
+elif [ X"$1" = X-r ]
 then	if [ X$2 != X -a -d $2 ]
 	then	cd $2
 		shift
-	else	_cd2root
+	else	__cd2root
 	fi
 	shift
-	# Allow "bk -r sfiles -c" strangeness.
+	if [ X$1 = X-R ]
+	then	__cd2root
+		shift
+	fi
+	# bk -r sfiles -c == bk sfiles -c.
 	if [ "X$1" != Xsfiles ]
-	then	SFILES=YES
+	then	${BIN}sfiles | ${BIN}bk "$@" -
+		exit $?
 	fi
 fi
 if [ X$1 = X-R ]
-then	_cd2root
+then	__cd2root
 	shift
 fi
-if [ $SFILES = YES ]
-then	${BIN}sfiles | bk "$@" -
+
+PATH=${BIN%/}:$PATH
+export PATH
+
+if type "_$1" >/dev/null 2>&1
+then	cmd=_$1
+	shift
+	$cmd "$@"
 	exit $?
 fi
 cmd=$1
 shift
 
-# Run our stuff first if we can find it.
-# win32 note: we test for the tcl script first, because it has .tcl suffix
-for w in citool sccstool vitool fm fmtool fm3 fm3tool difftool helptool csettool
-do	if [ $cmd = $w ]
-	then
-		# pick up our own wish shell if it exists
-		PATH=$BIN:$PATH exec $wish -f ${GUI_BIN}${cmd}${tcl} "$@"
-	fi
-done
-
-if [ -x ${BIN}$cmd${ext} -a ! -d ${BIN}$cmd ]
-then
-	exec ${BIN}$cmd "$@"
-else	exec $cmd "$@"
-fi
+case $cmd in
+    resync|resolve)
+	exec perl ${BIN}$cmd "$@";;
+    citool|sccstool|vitool|fm|fmtool|fm3|fm3tool|difftool|helptool|csettool)
+	exec $wish -f ${BIN}${cmd}${tcl} "$@";;
+    *)	exec $cmd "$@";;	# will be found in $BIN by path search.
+esac

@@ -7468,7 +7468,6 @@ dupSym(symbol *symbols, char *s, char *rev)
 	return (sym && streq(sym->rev, rev));
 }
 
-#ifndef	USE_STDIO
 /*
  * Try and stuff the symbol into the landing pad,
  * return 1 if it fails.
@@ -7571,7 +7570,6 @@ norev:			verbose((stderr, "admin: can't find rev %s in %s\n",
 	sccs_unlock(sc, 'z');
 	return (0);
 }
-#endif
 
 private int
 addSym(char *me, sccs *sc, int flags, admin *s, int *ep)

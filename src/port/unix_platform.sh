@@ -3,7 +3,7 @@
 # %W%  Copyright (c) Andrew Chang
 # platform specific stuff for bk.sh
 #
-_platformInit()
+__platformInit()
 {
 	# Unix specific stuff
 	GUI_BIN=$BIN
@@ -27,7 +27,7 @@ _platformInit()
 
 
 # Log whatever they wanted to run in the logfile if we can find the root
-_logCommand() {
+__logCommand() {
 	DIR="BitKeeper/etc"
 	PREFIX=""
 	for i in 1 2 3 4 5 6 7 8 9 0
@@ -56,4 +56,3 @@ _logCommand() {
 		PREFIX="../$PREFIX"
 	done
 }
-

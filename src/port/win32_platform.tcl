@@ -1,4 +1,4 @@
-#! @WISH@
+#! /usr/bin/wish -f
 
 # Platform specific setup for tcl scripts
 # Copyright (c) 1999 Andrew Chang
@@ -18,7 +18,7 @@ proc bk_init {} \
 	}
 	set sdiffw [list "diff" "-W" "1" "-y" "--" ]
 	set dev_null "nul"
-	set wish "@WISH@.exe"
+	set wish "wish.exe"
 	set bithelp [file join $bin bithelp.tcl]
 	set difftool [file join $bin difftool.tcl]
 	set helptool [file join $bin helptool.tcl]
