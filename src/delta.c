@@ -169,6 +169,8 @@ usage:			sprintf(buf, "bk help -s %s", name);
 		goto usage;
 	}
 
+	if (chk_host() || chk_user()) return (1);
+
 	enc = sccs_encoding(0, encp, compp);
 	if (enc == -1) goto usage;
 

@@ -8,8 +8,6 @@
 #include "system.h"
 #include "sccs.h"
 
-private	int	chk_host(void);
-private	int	chk_user(void);
 private	int	chk_permissions(void);
 private	int	chk_idcache(void);
 
@@ -49,7 +47,7 @@ sane_main(int ac, char **av)
 }
 
 /* insist on a valid host */
-private int
+int
 chk_host(void)
 {
 	char	*host = sccs_gethost();
@@ -64,23 +62,38 @@ chk_host(void)
 		host);
 	}
 
-	if (host && 
+	unless (host && 
 	    strchr(host, '.') && 
-	    !strneq(host, "localhost", 9) &&
-	    !strchr(host, '@')) {
-		return (0);
-	}
-	fprintf(stderr,
+	    !strneq(host, "localhost", 9)) {
+		fprintf(stderr,
 "================================================================\n"
 "sane: bad host name: \"%s\".\n"
 "BitKeeper requires a fully qualified hostname.\n"
 "Names such as \"localhost.*\" are also illegal.\n"
 "================================================================\n",
-	host ? host : "<empty>");
-	return (1);
+		    host ? host : "<empty>");
+		return (1);
+	}
+	for (p = host; *p; p++) {
+		unless (isalnum(*p) || 
+		    *p == '.' ||
+		    *p == '-' ||
+		    *p == '_') { /* _ is NOT legal, but... */
+			fprintf(stderr,
+"================================================================\n"
+"sane: bad host name: \"%s\".\n"
+"BitKeeper requires a vaild hostname.\n"
+"These consist of [a-z0-9-]+ seperated by '.'.\n"
+"See http://www.ietf.org/rfc/rfc952.txt\n"
+"================================================================\n",
+		    host ? host : "<empty>");
+			return (1);
+		}
+	}
+	return (0);
 }
 
-private int
+int
 chk_user(void)
 {
 	char	*user = sccs_getuser();
@@ -93,7 +106,8 @@ chk_user(void)
 		return (0);
 	}
 	if (strchr(user, '@')) {
-		fprintf(stderr, "User name may not contain an @ sign.\n");
+		fprintf(stderr, 
+"User name (\"%s\") may not contain an @ sign.\n", user);
 		fprintf(stderr, 
 		    "Set the BK_USER environment variable to your real user name.\n");
 		return (1);

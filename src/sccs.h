@@ -1126,7 +1126,8 @@ int	runable(char *file);
 int	uuencode(FILE *in, FILE *out);
 int	uudecode(FILE *in, FILE *out);
 void	sccs_unmkroot(char *path);
-
+int	chk_host(void);
+int	chk_user(void);
 
 extern char *bk_vers;
 extern char *bk_utc;
