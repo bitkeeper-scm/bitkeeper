@@ -42,7 +42,7 @@ mail(char *to, char *subject, char *file)
 	}
 
 	fd0  = dup(0); close(0);
-	fd = open(file, O_RDONLY);
+	fd = open(file, O_RDONLY, 0);
 	assert(fd == 0);
 	mail = exists("/usr/bin/mailx") ? "/usr/bin/mailx" : "mail";
 	/* `mail -s subject" form doesn't work on IRIX */

@@ -50,7 +50,7 @@ lockHome()
 
 	if (lockFile) return (lockFile);
 	sprintf(path, "%s/.bk_kl%s", TMP_PATH, sccs_getuser());
-	return (lockFile = strdup(path));
+	return (lockFile = (strdup)(path));
 }
 
 char *
@@ -89,20 +89,20 @@ keysHome()
 	if (keysFile) return (keysFile);
 	if ((t = getenv("BK_TMP")) && isdir(t)) {
 		sprintf(path, "%s/.bk_keys", t);
-		return (keysFile = strdup(path));
+		return (keysFile = (strdup)(path));
 	}
 	t = getHomeDir();
 	if (t) {
 		sprintf(path, "%s/.bk_keys", t);
-		return (keysFile = strdup(path));
+		return (keysFile = (strdup)(path));
 	}
 #ifndef WIN32
 	if (exists("/var/bitkeeper/keys")) {
-		return (keysFile = strdup("/var/bitkeeper/keys"));
+		return (keysFile = (strdup)("/var/bitkeeper/keys"));
 	}
 #endif
 	sprintf(path, "%s/.bk_keys", TMP_PATH);
-	return (lockFile = strdup(path));
+	return (keysFile = (strdup)(path));
 }
 
 /*

@@ -234,7 +234,7 @@ admin_main(int ac, char **av)
 		}
 		sc = sccs_init(name, init_flags, proj);
 		unless (sc) { name = sfileNext(); continue; }
-		if (!proj && (flags & INIT_SAVEPROJ)) proj = sc->proj;
+		if (!proj && (init_flags & INIT_SAVEPROJ)) proj = sc->proj;
 		unless (sc->tree) {
 			fprintf(stderr,
 				"admin: can't read delta table in %s\n",
@@ -266,14 +266,17 @@ admin_main(int ac, char **av)
 			flags |= NEWCKSUM;
 		}
 		if (fastSym && sc->landingpad) {
-			int rc = sccs_addSym(sc, flags, s[0].thing);
+			int	rc = sccs_addSym(sc, flags, s[0].thing);
+
 			if (rc == -1) error = 1;
 			if (rc != EAGAIN) goto next;
 		}
 		if (dopath) {
 			delta	*top = findrev(sc, 0);
 
-			if (top->pathname && !(top->flags & D_DUPPATH)) free(top->pathname);
+			if (top->pathname && !(top->flags & D_DUPPATH)) {
+				free(top->pathname);
+			}
 			top->flags &= ~(D_NOPATH|D_DUPPATH);
 			top->pathname = strdup(path ? path : sc->gfile);
 		}
@@ -309,7 +312,7 @@ admin_main(int ac, char **av)
 		 * re init so sccs_get would work
 		 */
 		sccs_free(sc);
-		sc = sccs_init(name, init_flags, 0);
+		sc = sccs_init(name, init_flags, proj);
 		if (new_delta && was_edited) {
 			int gflags = SILENT|GET_SKIPGET|GET_EDIT;
 			char *nrev;

@@ -25,7 +25,7 @@ usage:		fprintf(stderr, "%s", files_usage);
 	}
 	if ((ac > 2) && streq("-name", av[1])) {
 		if (av[2] == NULL) goto usage;
-		globs = addLine(0, av[2]);
+		globs = addLine(0, strdup(av[2]));
 		optind = 3;
 	}
 	unless (av[optind]) {
@@ -35,6 +35,7 @@ usage:		fprintf(stderr, "%s", files_usage);
 			files(av[i]);
 		}
 	}
+	if (globs) freeLines(globs);
 	purify_list();
 	exit(0);
 }
