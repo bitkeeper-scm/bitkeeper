@@ -99,6 +99,13 @@ usage:			system("bk help -s push");
 				"push: remote locked, trying again...\n");
 		}
 		disconnect(r, 2); /* close fd before we retry */
+		/*
+		 * if we are sendng via the pipe, reap the child
+		 */
+		if (r->pid)  {
+			waitpid(r->pid, NULL, 0);	
+			r->pid = 0;
+		}
 		sleep(min((i++ * 2), 10)); /* auto back off */
 	}
 	if (rc == -2) rc = 1; /* if retry failed, reset exit code to 1 */
