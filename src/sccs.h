@@ -1005,7 +1005,7 @@ void	sortLines(char **);
 #define	SYS	(char*)0, 0xdeadbeef
 int	sys(char *first, ...);
 int	sysio(char *in, char *out, char *err, char *first, ...);
-char	*sccs_zone();
+char	*sccs_zone(time_t tt);
 MDBM	*sccs_tagConflicts(sccs *s);
 void	sccs_tagMerge(sccs *s, delta *d, char *tag);
 int	sccs_tagleaves(sccs *, delta **, delta **);

@@ -76,7 +76,8 @@ OBJ =	abort.o adler32.o admin.o annotate.o approve.o \
 	sccslog.o sccsmv.o sccsrm.o send.o sendbug.o \
 	setup.o sfiles.o sfind.o sfio.o shrink.o sinfo.o \
 	slib.o status.o stripdel.o synckeys.o sys.o \
-	tagmerge.o takepatch.o trigger.o unbk.o undo.o undos.o unedit.o \
+	tagmerge.o takepatch.o testdates.o trigger.o \
+	unbk.o undo.o undos.o unedit.o \
 	unique.o unlink.o unlock.o unpull.o unwrap.o \
 	user.o utils.o uu.o version.o what.o xflags.o zgets.o \
 	zone.o

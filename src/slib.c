@@ -53,6 +53,7 @@ private	int	unlinkGfile(sccs *s);
 private int	write_pfile(sccs *s, int flags, delta *d,
 		    char *rev, char *iLst, char *i2, char *xLst, char *mRev);
 private time_t	date2time(char *asctime, char *z, int roundup);
+private char	*time2date(time_t tt);
 private	char	*sccsrev(delta *d);
 private int	addSym(char *name, sccs *sc, int flags, admin *l, int *ep);
 private void	updatePending(sccs *s);
@@ -73,11 +74,9 @@ private int	compressmap(sccs *s, delta *d, ser_t *set, char **i, char **e);
 private	void	uniqDelta(sccs *s);
 private	void	uniqRoot(sccs *s);
 private int	checkGone(sccs *s, int bit, char *who);
-char		*now();
 private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
 private void	singleUser(sccs *s, MDBM *m);
 private	int	parseConfig(char *buf);
-
 
 int
 emptyDir(char *dir)
@@ -2883,7 +2882,7 @@ sccs_tagMerge(sccs *s, delta *d, char *tag)
 	delta	*l1 = 0, *l2 = 0;
 	char	*buf;
 	char	k1[MAXKEY], k2[MAXKEY];
-	char	*zone = sccs_zone();
+	time_t	tt = time(0);
 	MMAP	*m;
 	int	len;
 
@@ -2903,7 +2902,7 @@ sccs_tagMerge(sccs *s, delta *d, char *tag)
 	buf = malloc(len);
 	sprintf(buf,
 	    "M 0.0 %s%s %s@%s 0 0 0/0/0\n%s%s%ss g\ns l\ns %s\ns %s\n%s\n",
-	    now(), zone, sccs_getuser(), sccs_gethost(),
+	    time2date(tt), sccs_zone(tt), sccs_getuser(), sccs_gethost(),
 	    tag ? "S " : "",
 	    tag ? tag : "",
 	    tag ? "\n" : "",
@@ -2911,7 +2910,6 @@ sccs_tagMerge(sccs *s, delta *d, char *tag)
 	    "------------------------------------------------");
 
 	assert(strlen(buf) < len);
-	free(zone);
 	m = mrange(buf, buf + strlen(buf), "");
 	/* note: this rewrites the s.file, no pointers make sense after it */
 	sccs_meta(s, d, m, 1);
@@ -2927,7 +2925,7 @@ sccs_tagLeaf(sccs *s, delta *d, delta *md, char *tag)
 {
 	char	*buf;
 	char	k1[MAXKEY];
-	char	*zone = sccs_zone();
+	time_t	tt = time(0);
 	MMAP	*m;
 	delta	*e, *l1 = 0, *l2 = 0;
 
@@ -2943,11 +2941,10 @@ sccs_tagLeaf(sccs *s, delta *d, delta *md, char *tag)
 	sccs_sdelta(s, md, k1);
 	assert(tag);
 	buf = aprintf("M 0.0 %s%s %s@%s 0 0 0/0/0\nS %s\ns g\ns l\ns %s\n%s\n",
-	    now(), zone, sccs_getuser(), sccs_gethost(),
+	    time2date(tt), sccs_zone(tt), sccs_getuser(), sccs_gethost(),
 	    tag,
 	    k1,
 	    "------------------------------------------------");
-	free(zone);
 	m = mrange(buf, buf + strlen(buf), "");
 	/* note: this rewrites the s.file, no pointers make sense after it */
 	sccs_meta(s, d, m, 1);
@@ -4645,27 +4642,9 @@ sccs_Xfile(sccs *s, char type)
 private void
 date(delta *d, time_t tt)
 {
-	struct	tm *tm;
-	char	tmp[50];
-	long   	seast;
-	int	mwest, hwest;
-	char	sign = '+';
+	d->sdate = strdup(time2date(tt));
+	zoneArg(d, sccs_zone(tt));
 
-	// XXX - fix this before release 1.0 - make it be 4 digits
-	tm = localtimez(&tt, &seast);
-	strftime(tmp, sizeof(tmp), "%y/%m/%d %H:%M:%S", tm);
-	d->sdate = strdup(tmp);
-
-	if (seast < 0) {
-		sign = '-';
-		seast = -seast;  /* now swest */
-	}
-	hwest = seast / 3600;
-	mwest = (seast % 3600) / 60;
-	assert(seast - hwest * 3600 - mwest * 60 == 0);
-	sprintf(tmp, "%c%02d:%02d", sign, hwest, mwest);
-
-	zoneArg(d, tmp);
 	getDate(d);
 	if (d->date != tt) {
 		fprintf(stderr, "Date=[%s%s] d->date=%u tt=%u\n",
@@ -4680,23 +4659,10 @@ char	*
 testdate(time_t t)
 {
 	static char	date[50];
-	struct	tm *tm;
 	char	zone[50];
-	long   	seast;
-	int	mwest, hwest;
-	char	sign = '+';
 
-	// XXX - fix this before release 1.0 - make it be 4 digits
-	tm = localtimez(&t, &seast);
-	strftime(date, sizeof(date), "%y/%m/%d %H:%M:%S", tm);
-
-	if (seast < 0) {
-		sign = '-';
-		seast = -seast;  /* now swest */
-	}
-	hwest = seast / 3600;
-	mwest = (seast % 3600) / 60;
-	sprintf(zone, "%c%02d:%02d", sign, hwest, mwest);
+	strcpy(date, time2date(t));
+	strcpy(zone, sccs_zone(t));
 
 	if (date2time(date, zone, EXACT) != t) {
 		fprintf(stderr, "Internal error on dates, aborting.\n");
@@ -4707,19 +4673,19 @@ testdate(time_t t)
 	return (date);
 }
 
-
-/* XXX - make this private once tkpatch is part of slib.c */
-char *
-now()
+/*
+ * Returns a date string like 01/08/16 13:54:42 in the current
+ * timezone for a time_t.  Should be used with sccs_zone(tt) to
+ * get the full time string.
+ * Return value is in a staticly allocated buffer.
+ */
+private char *
+time2date(time_t tt)
 {
-	struct	tm *tm;
-	time_t	tt = time(0);
 	static	char	tmp[50];
 
-	tm = localtimez(&tt, 0);
-	bzero(tmp, sizeof(tmp));
-	/* XXX - timezone correction? */
-	strftime(tmp, sizeof(tmp), "%y/%m/%d %H:%M:%S", tm);
+	strftime(tmp, sizeof(tmp), "%y/%m/%d %H:%M:%S",
+		 localtimez(&tt, 0));
 	return (tmp);
 }
 
@@ -5782,7 +5748,7 @@ write_pfile(sccs *s, int flags, delta *d,
 		sccs_unlock(s, 'z');
 		return (-1);
 	}
-	tmp2 = now();
+	tmp2 = time2date(time(0));
 	assert(sccs_getuser() != 0);
 	len = strlen(d->rev)
 	    + MAXREV + 2
@@ -8465,7 +8431,7 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 			date(d, s->gtime);
 
 			/*
-			 * If gtime is from the pass, fudge the date
+			 * If gtime is from the past, fudge the date
 			 * to current, so the unique() code don't cut us off
 			 * too early. This is important for getting unique
 			 * root key.
@@ -13305,7 +13271,6 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 
 	if (streq(kw, "UTC")) {
 		char	*utcTime;
-		char	*sccs_utctime();
 		if (utcTime = sccs_utctime(d)) {
 			fs(utcTime);
 			return (strVal);
@@ -13315,7 +13280,6 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 
 	if (streq(kw, "UTC-FUDGE")) {
 		char	*utcTime;
-		char	*sccs_utctime();
 
 		getDate(d);
 		d->date -= d->dateFudge;
@@ -14477,10 +14441,10 @@ sccs_resolveFiles(sccs *s)
 	 */
 	if (a->flags & D_LOCAL) {
 		fprintf(f, "merge deltas %s %s %s %s %s\n",
-			a->rev, g->rev, b->rev, sccs_getuser(), now());
+			a->rev, g->rev, b->rev, sccs_getuser(), time2date(time(0)));
 	} else {
 		fprintf(f, "merge deltas %s %s %s %s %s\n",
-			b->rev, g->rev, a->rev, sccs_getuser(), now());
+			b->rev, g->rev, a->rev, sccs_getuser(), time2date(time(0)));
 	}
 	fclose(f);
 	unless (streq(g->pathname, a->pathname) &&

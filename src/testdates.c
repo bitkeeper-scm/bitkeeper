@@ -6,7 +6,8 @@
 #define	MONTH	(WEEK*4)
 #define	YEAR	(DAY*365)
 
-main()
+void
+testdates_main(int argc, char **argv)
 {
 	time_t	m, y, start, t;
 

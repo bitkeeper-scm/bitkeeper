@@ -153,6 +153,7 @@ int	stripdel_main(int, char **);
 int	strings_main(int, char **);
 int	tagmerge_main(int, char **);
 int	takepatch_main(int, char **);
+int	testdates_main(int, char **);
 int	unbk_main(int, char **);
 int	undo_main(int, char **);
 int	undos_main(int, char **);
@@ -309,6 +310,7 @@ struct	command cmdtbl[] = {
 	{"stripdel", stripdel_main},		/* doc 2.0 */
 	{"tagmerge", tagmerge_main},		/* */
 	{"takepatch", takepatch_main},		/* doc 2.0 */
+	{"testdates", testdates_main},		/* undoc 2.0 */
 	{"unbk", unbk_main},			/* undoc? 2.0 */
 	{"undo", undo_main},			/* doc 2.0 */
 	{"undos", undos_main},			/* doc 2.0 */

@@ -919,7 +919,6 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 	delta	*d = 0;
 	int	newflags;
 	int	pending = 0;
-	char	*now();
 	int	n = 0;
 	char	lodkey[MAXKEY];
 	int	lodbranch = 1;	/* true if LOD is branch; false if revision */
