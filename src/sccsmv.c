@@ -51,6 +51,11 @@ usage:		system("bk help -s mv");
 		dest = sccs2name(dest);
 		dofree++;
 	}
+	if (strchr(dest, BK_FS)) {
+		fprintf(stderr, "%c is not allowed in pathname\n", BK_FS);
+		return (1);
+	}
+
 	/*
 	 * If they specified a directory as the first arg,
 	 * or if there is more than one file,

@@ -19,6 +19,7 @@ win32_common_setup()
 	DEV_NULL="nul"
 	TMP=`../bk _nativepath $TEMP`
 	if [ -z "$TST_DIR" ]; then TST_DIR=`../bk _nativepath /tmp`; fi
+	BK_FS=
 	BK_BIN=`cd .. && ./bk pwd -s`
 	CWD="$BK_BIN/bk pwd"
 	touch $TMP/BitKeeper_nul
@@ -36,6 +37,7 @@ unix_common_setup()
 	if [ -z "$TST_DIR" ]; then TST_DIR="/tmp"; fi
 	CWD="/bin/pwd"
 	if [ -d /usr/xpg4/bin ]; then PATH=/usr/xpg4/bin:$PATH; fi
+	BK_FS="|"
 	BK_BIN="`cd .. && pwd`"
 	PATH=$BK_BIN:$BK_BIN/gnu/bin:$PATH:/usr/local/bin:/usr/freeware/bin
 	unset CDPATH
@@ -123,7 +125,6 @@ setup_env()
 	check_w
 
 	unset BK_BIN
-	BK_FS=
 	BK_LICENSE=ACCEPTED
 	BK_REGRESSION=$TST_DIR/.regression-$USER
 	BK_TMP=$BK_REGRESSION/.tmp

@@ -25,7 +25,7 @@ export_main(int ac,  char **av)
 	}
 
 	sprintf(exclude,
-		 "| egrep -v '.*%cBitKeeper/[^%c]*%c[^%c]*$' ",
+		 "| egrep -v '.*\\%cBitKeeper/[^%c]*\\%c[^%c]*$' ",
 		 BK_FS, BK_FS, BK_FS, BK_FS);
 
 	while ((c = getopt(ac, av, "d:hkt:Twvi|x|r:")) != -1) {
