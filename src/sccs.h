@@ -227,7 +227,6 @@
 #define	PENDING		"SCCS/x.pending_cache"	/* Ditto */
 #define	IDCACHE		"SCCS/x.id_cache"	/* Ditto */
 
-#define	ROOT_USER	"root"
 #define	UNKNOWN_USER	"anon"
 
 #define	isData(buf) (buf[0] != '\001')
@@ -550,6 +549,10 @@ delta	*sccs_key2delta(sccs *sc, char *key);
 char	*sccs_impliedList(sccs *s, char *who, char *base, char *rev);
 int	sccs_sdelta(sccs *s, delta *, char *);
 sccs	*sccs_getperfile(FILE *, int *);
+char	*sccs_gethost(void);
+int	sccs_getComments(char *, char *, delta *); 
+int	sccs_getHostName(char *, char *, delta *);
+int	sccs_getUserName(char *, char *, delta *);
 void	sfileUnget(void);
 char	*sfileNext(void);
 char	*sfileRev(void);
@@ -562,16 +565,24 @@ delta	*findrev(sccs *, char *);
 delta	*sccs_findKey(sccs *, char *);
 delta	*sccs_dInit(delta *, char, sccs *, int);
 char	*sccs_gethost(void);
+char	*sccs_root(sccs *, char *);
 char	*getuser(void);
 
 delta	*modeArg(delta *d, char *arg);
 FILE	*fastPopen(const char*, const char*);
 int	fastPclose(FILE*);
+char    *fullname(char *, int); 
 char	chop(register char *s);
+void	concat_path(char *, char *, char *);
+void	cleanPath(char *path, char cleanPath[]);
 int	is_sccs(char *name);
 int	isdir(char *s);
 int	isreg(char *s);
+int	isValidHost(char *h);
+int	isValidUser(char *u);
 int	readable(char *f);
+void 	randomBits(char *);
+int	samepath(char *a, char *b);
 int	writable(char *f);
 int	executable(char *f);
 char	*basenm(char *);

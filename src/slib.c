@@ -1205,17 +1205,6 @@ basenm(char *s)
 	return (t);
 }
 
-private inline int
-samefile(char *a, char *b)
-{
-	struct	stat sa, sb;
-
-	if (lstat(a, &sa) == -1) return 0;
-	if (lstat(b, &sb) == -1) return 0;
-	return ((sa.st_dev == sb.st_dev) && (sa.st_ino == sb.st_ino));
-}
-
-
 /*
  * clean up ".." and "." in a path name
  */
@@ -1277,57 +1266,6 @@ cleanPath(char *path, char cleanPath[])
 }
 
 /*
- * Translate SCCS/s.foo.c to /u/lm/smt/sccs/SCCS/s.foo.c
- */
-char	*
-fullname(char *gfile, int withsccs)
-{
-	static	char new[MAXPATH];
-	static	char pwd[MAXPATH];
-	char	*t;
-
-	if (IsFullPath(gfile)) {
-		/*
-		 * If they have a full path name, then just use that.
-		 * It's quicker than calling getcwd.
-		 */
-		strcpy(new, gfile);
-	} else if  (pwd[0] && samefile(".", pwd)) {
-		concat_path(new, pwd, gfile);
-	} else if  ((t = getenv("PWD")) && samefile(".", t)) {
-		/*
-		 * If we have a relative name and $PWD points to where
-		 * we are, then use that.  Again, quicker.
-		 */ 
-		concat_path(new, t, gfile);
-	} else {
-		/*
-		 * We can not use putenv() here because god damn IRIX
-		 * doesn't malloc space for it, they use the buffer you
-		 * pass in.  So we might as well save the call to putenv
-		 * and getenv.
-		 */
-		pwd[0] = 0;
-		getcwd(pwd, sizeof(pwd));
-		assert(IsFullPath(pwd));
-		/*
-		 * TODO we should store the PWD info
-		 * in the project stuct or some here
-		 * so it will be faster on the next call
-		 */
-		concat_path(new, pwd, gfile);
-	}
-
-	cleanPath(new, new);
-	if (withsccs)  {
-		char	*sfile = name2sccs(new);
-		strcpy(new, sfile);
-		free(sfile);
-	}
-	return (new);
-}
-
-/*
  * XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
  * All of this pathname/changeset shit needs to be reworked.
  * XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -1348,73 +1286,6 @@ sccs_cd2root(sccs *s, char *root)
 		return (0);
 	}
 	return (-1);
-}
-
-/*
- * Only works for SCCS/s.* layout
- */
-char	*
-sccs_root(sccs *s, char *root)
-{
-	static	char buf[MAXPATH];
-	char	file[MAXPATH];
-	ino_t	slash = 0;
-	struct	stat sb;
-	int	i, j;
-	char	*t;
-
-	if (s && (s->state & S_NOSCCSDIR)) return (0);
-	if (root) return (root);
-	if (s && s->root) return (s->root);
-
-	if (stat("/", &sb)) {
-		perror("stat of /");
-		return (0);
-	}
-	slash = sb.st_ino;
-
-	/*
-	 * Now work backwards up the tree until we find a BKROOT or /
-	 *
-	 * Note: this is a little weird because the s->sfile pathname could
-	 * be /foo/bar/blech/SCCS/s.file.c
-	 * which means we want to start our search in /foo/bar/blech,
-	 * not in ".".
-	 *
-	 * Note: can't use s->gfile, admin stomps on that.
-	 */
-	for (i = 0; ; i++) {		/* CSTYLED */
-		if (s) {
-			strcpy(buf, s->sfile);
-			t = strrchr(buf, '/');	/* SCCS/s.foo.c */
-			*t = 0;
-			debug((stderr, "sccs_root %s ", buf));
-			if (t = strrchr(buf, '/')) {
-				*t = 0;
-			} else {
-				buf[0] = 0;
-			}
-		} else {
-			buf[0] = 0;
-		}
-		unless (buf[0]) strcpy(buf, ".");
-		for (j = 0; j < i; ++j) strcat(buf, "/..");
-		sprintf(file, "%s/%s", buf, BKROOT);
-		debug((stderr, "%s\n", file));
-		if (exists(file)) {
-			unless (buf[0]) strcpy(buf, ".");
-			unless (isdir(buf)) return (0);
-			if (s) s->root = strdup(buf);
-			debug((stderr, "sccs_root() -> %s\n", buf));
-			return (s ? s->root : buf);
-		}
-		if (lstat(buf, &sb) == -1) {
-			perror(buf);
-			return (0);
-		}
-		if (sb.st_ino == slash) return (0);
-	}
-	/* NOTREACHED */
 }
 
 void
@@ -3815,38 +3686,6 @@ almostUnique(int harder)
 	return (val);
 }
 
-/*
- * Dig out more information to make the file unique and stuff it in buf.
- * Use /dev/urandom, /dev/random if present.  Otherwise use anything else
- * we can find.
- */
-void
-randomBits(char *buf)
-{
-	int	fd;
-    	u32	a, b;
-
-	if (((fd = open("/dev/urandom", 0, 0)) >= 0) ||
-	    ((fd = open("/dev/random", 0, 0)) >= 0)) {
-		read(fd, &a, 4);
-		read(fd, &b, 4);
-		close(fd);
-	} else {
-		/* XXX This is not nearly as random as it should be.  */
-		struct timeval tv;
-		u32 x, y;
-
-		gettimeofday(&tv, NULL);
-		x = (u32)sbrk(0) ^ (u32)&a;
-		y = ((u32)getpid() << 16) + (u32)getuid();
-		y ^= tv.tv_usec;
-
-		a = (x & 0xAAAAAAAA) + (y & 0x55555555);
-		b = (y & 0xAAAAAAAA) + (x & 0x55555555);
-	}
-	sprintf(buf, "%x%x", a, b);
-}
-
 /* XXX - make this private once tkpatch is part of slib.c */
 char *
 now()
@@ -3860,56 +3699,6 @@ now()
 	/* XXX - timezone correction? */
 	strftime(tmp, sizeof(tmp), "%y/%m/%d %H:%M:%S", tm);
 	return (tmp);
-}
-
-/* XXX - takes 100 usecs in a hot cache */
-char	*
-sccs_gethost(void)
-{
-	static	char host[257];
-	static	int done = 0;
-	struct	hostent *hp;
-	char 	*h;
-
-	if (done) return (host[0] ? host : 0);
-	done = 1;
-
-	if (h = getenv("BK_HOST")) {
-		assert(strlen(h) <= 256);
-		strcpy(host, h);
-		return(host);
-	}	
-	/*
-	 * Some system (e.g. win32)
-	 * reuires loading a library
-	 * before we call gethostbyname()
-	 */
-	loadNetLib();
-	if (gethostname(host, sizeof(host)) == -1) {
-		unLoadNetLib();
-		return (0);
-	}
-	unless (hp = gethostbyname(host)) {
-		unLoadNetLib();
-		return (0);
-	}
-	unLoadNetLib();
-	unless (hp->h_name) goto out;
-	unless (strchr(hp->h_name, '.')) {
-		int	i;
-
-		for (i = 0; hp->h_aliases && hp->h_aliases[i]; ++i) {
-			if (strchr(hp->h_aliases[i], '.')) {
-				strcpy(host, hp->h_aliases[i]);
-				break;
-			}
-		}
-	} else if (hp) strcpy(host, hp->h_name);
-out:	if (streq(host, "localhost") || streq(host, "localhost.localdomain")) {
-		host[0] = 0;
-		return (0);
-	}
-	return (host);
 }
 
 /*

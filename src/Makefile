@@ -25,9 +25,11 @@ XLIBS	=
 RANLIB	= ranlib
 
 
+PORTOBJ = port/getinput.o port/gethost.o port/fullname.o \
+	  port/sccs_root.o port/randomBits.o port/spawn.o port/samepath.o 
 SCCSOBJ	= slib.o range.o newrev.o getopt.o popen.o libdiff.o \
 	  sfiles.o platforminit.o purify.o zgets.o disksp.o  \
-	  dirname.o localtm.o
+	  dirname.o localtm.o ${PORTOBJ}
 MDBMOBJ	= mdbm/mdbm.o mdbm/hash.o mdbm/debug.o
 ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/gzio.o \
 	  zlib/uncompr.o zlib/deflate.o zlib/trees.o zlib/zutil.o \
