@@ -616,12 +616,12 @@ fi
 if [ `bk prs -hr+ -d:I: CONFLICT` != "1.1" ]
 then	echo 'Added new rev to CONFLICT?'; exit 1
 fi
-if [ ! -f BitKeeper/deleted/SCCS/s..del-2 ]
+if [ ! -f BitKeeper/deleted/SCCS/s..del-CONFLICT ]
 then	echo Deleted file missing
 	bk _find .
 	exit 1
 fi
-if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-2`" != "I am the copy file" ]
+if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-CONFLICT`" != "I am the copy file" ]
 then	echo bad data in deleted file; exit 1
 fi
 if [ `bk prs -hr+ -d:I: ChangeSet` != "1.4" ]
@@ -649,12 +649,12 @@ then	echo Failed to leave old file in place
 	cat CONFLICT
 	exit 1
 fi
-if [ ! -f BitKeeper/deleted/SCCS/s..del-1 ]
+if [ ! -f BitKeeper/deleted/SCCS/s..del-CONFLICT ]
 then	echo Deleted file missing
 	bk _find .
 	exit 1
 fi
-if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-1`" != "I am the project file" ]
+if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-CONFLICT`" != "I am the project file" ]
 then	echo bad data in deleted file, should be project; exit 1
 fi
 if [ `bk prs -hr+ -d:I: ChangeSet` != "1.4" ]
@@ -870,12 +870,12 @@ fi
 if [ `bk prs -hr+ -d:I: CONFLICT` != "1.1" ]
 then	echo 'Added new rev to CONFLICT?'; exit 1
 fi
-if [ ! -f BitKeeper/deleted/SCCS/s..del-2 ]
+if [ ! -f BitKeeper/deleted/SCCS/s..del-CONFLICT ]
 then	echo Deleted file missing
 	bk _find .
 	exit 1
 fi
-if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-2`" != "I am the copy file" ]
+if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-CONFLICT`" != "I am the copy file" ]
 then	echo bad data in deleted file; exit 1
 fi
 echo OK
@@ -939,12 +939,12 @@ fi
 if [ `bk prs -hr+ -d:I: CONFLICT` != "1.2" ]
 then	echo 'Added new rev to CONFLICT?'; exit 1
 fi
-if [ ! -f BitKeeper/deleted/SCCS/s..del-2 ]
+if [ ! -f BitKeeper/deleted/SCCS/s..del-CONFLICT ]
 then	echo Deleted file missing
 	bk _find .
 	exit 1
 fi
-if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-2`" != "I am the copy file" ]
+if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-CONFLICT`" != "I am the copy file" ]
 then	echo bad data in deleted file; exit 1
 fi
 echo OK
