@@ -155,8 +155,8 @@ status(int verbose, FILE *f)
 		}
 	}
 
-	sprintf(tmp_file, "%s/bk_tmp%d", TMP_PATH, getpid());
 	if (verbose) {
+		sprintf(tmp_file, "%s/bk_tmp%d", TMP_PATH, getpid());
 		f1 = fopen(tmp_file, "wb");
 		assert(f1);
 		bkusers(0, 0, 0, f1);
@@ -166,60 +166,37 @@ status(int verbose, FILE *f)
 			fprintf(f, "User:\t%s", buf);
 		}
 		fclose(f1);
-		sprintf(buf, "bk sfiles -x > %s", tmp_file);
+		sprintf(buf, "bk sfind -x > %s", tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) {
 			fprintf(f, "Extra:\t%s", buf);
 		}
 		fclose(f1);
-		sprintf(buf, "bk sfiles -cg > %s", tmp_file);
+		sprintf(buf, "bk sfind -cg > %s", tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) {
 			fprintf(f, "Modified:\t%s", buf);
 		}
 		fclose(f1);
-		sprintf(buf, "bk sfiles -Cg > %s", tmp_file);
+		sprintf(buf, "bk sfind -pCg > %s", tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) {
 			fprintf(f, "Uncommitted:\t%s", buf);
 		}
 		fclose(f1);
+		unlink(tmp_file);
 	} else {
 		int i;
 
 		fprintf(f,
 		    "%6d people have made deltas.\n", bkusers(1, 0, 0, 0));
-		sprintf(buf, "bk sfiles > %s", tmp_file);
-		system(buf);
-		f1 = fopen(tmp_file, "rt");
-		for (i = 0; fgets(buf, sizeof (buf), f1); i++);
-		fclose(f1);
-		fprintf(f, "%6d files under revision control.\n", i);
-		sprintf(buf, "bk sfiles -x > %s", tmp_file);
-		system(buf);
-		f1 = fopen(tmp_file, "rt");
-		for (i = 0;  fgets(buf, sizeof (buf), f1); i++);
-		fclose(f1);
-		fprintf(f, "%6d files not under revision control.\n", i);
-		sprintf(buf, "bk sfiles -c > %s", tmp_file);
-		system(buf);
-		f1 = fopen(tmp_file, "rt");
-		for (i = 0;  fgets(buf, sizeof (buf), f1); i++);
-		fclose(f1);
-		fprintf(f, "%6d files modified and not checked in.\n", i);
-		sprintf(buf, "bk sfiles -C > %s", tmp_file);
-		system(buf);
-		f1 = fopen(tmp_file, "rt");
-		for (i = 0;  fgets(buf, sizeof (buf), f1); i++);
-		fclose(f1);
-		fprintf(f,
-		    "%6d files with checked in, but not committed, deltas.\n",
-		    i);
+		f1 = popen("bk sfind -Scpx", "r");
+		while (fgets(buf, sizeof (buf), f1)) fputs(buf, f);
+		pclose(f1);
 	}
-	unlink(tmp_file);
 }
 
 

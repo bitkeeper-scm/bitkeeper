@@ -17,6 +17,7 @@ usage: sfiles [-aAcCeEgjlmpux] [directories]\n\n\
     -C		list leaves which are not in a changeset as file:1.3\n\
     -e		list everything in quick scan mode\n\
     -E		list everything in detail scan mode\n\
+    -f<file>	send the file list to <file>, and progress info to stdout
     -j		list junk files under the SCCC directory\n\
     -g		list the gfile name, not the sfile name\n\
     -l		list locked files (p.file and/or z.file)\n\
@@ -24,6 +25,7 @@ usage: sfiles [-aAcCeEgjlmpux] [directories]\n\n\
     -n		list unchanged (no-change) files\n\
     -u		list unlocked files\n\
     -p		list files with pending delta(s)\n\
+    -S		summarize output\n\
     -x		list files which have no revision control files\n\
 		Note 1: files in BitKeeper/log/ are ignored\n\
     		Note 2: revision control files must look like SCCS/s.*,\n\
@@ -48,6 +50,8 @@ typedef struct {
 	u32     splitRoot:1;   		/* split root mode	*/
 	u32     dfile:1;   		/* use d.file to find 	*/
 					/* pending delta	*/
+	u32     fflg:1;     		/* redirect file list  	*/
+	u32     Sflg:1;     		/* summarize output  	*/
 } options;
 
 typedef struct _q_item {
@@ -63,6 +67,9 @@ typedef struct {
 private project *proj;
 private options	opts;
 private globv	ignore; 
+private FILE	*output;
+private unsigned int s_count, x_count, j_count; /* progress counter */
+private unsigned int c_count, p_count;
 
 private void do_print(char state[4], char *file, char *rev);
 private void walk(char *dir, int level);
@@ -137,18 +144,19 @@ int
 sfind_main(int ac, char **av)
 {
         int     c, i; 
-	char	*root, *path, buf[MAXPATH];
+	char	*root, *path, buf[MAXPATH], *fname;
 
 	if ((ac > 1) && streq("--help", av[1])) {
 usage:		fprintf(stderr, "%s", sfind_usage);
 		return (0);
 	}                
 
-	while ((c = getopt(ac, av, "aAcCeEgjlmpux")) != -1) {
+	while ((c = getopt(ac, av, "aAcCeEf:gjlmSpux")) != -1) {
 		switch (c) {
 		    case 'a':	opts.aflg = 1; break;
 		    case 'A':	opts.Aflg = 1; break;
 		    case 'c':	opts.cflg = 1; break;
+		    case 'f':	opts.fflg = 1; fname=optarg; break;
 		    case 'g':	opts.gflg = 1; break;
 		    case 'j':	opts.jflg = 1; break;
 		    case 'l':	opts.lflg = 1; break;
@@ -168,9 +176,21 @@ usage:		fprintf(stderr, "%s", sfind_usage);
 				opts.nflg = 1;
 				opts.xflg = 1;
 				break;
+		    case 'S':	opts.Sflg = 1; break; /* summarize output */	
 		    default: 	goto usage;
 		}
 	}
+
+	if (opts.fflg) {
+		output = fopen(fname, "wb");
+		unless (output) {
+			perror(fname);
+			return(1);
+		}
+	} else {
+		output = stdout;
+	}
+	
 
 	/*
 	 * If user did not select any option,
@@ -208,6 +228,7 @@ usage:		fprintf(stderr, "%s", sfind_usage);
                         }
                 }
 	}
+	if (opts.fflg) fclose(output);
 	return (0);
 }
 
@@ -406,6 +427,25 @@ file(char *f)
 	if (sc) sccs_close(sc);
 }
 
+private void
+print_summary()
+{
+	fprintf(output, "%6d files under revision control.\n", s_count);
+	if (opts.xflg) {
+		fprintf(output, "%6d files not under revision control.\n", x_count);
+	}
+	if (opts.jflg) {
+		fprintf(output, "%6d junk files under the SCCS directory.\n", j_count);
+	}
+	if (opts.cflg) {
+		fprintf(output, "%6d files modified and not checked in.\n", c_count);
+	}
+	if (opts.pflg) {
+		fprintf(output,
+			"%6d files with checked in, but not committed, deltas.\n", p_count);
+	}
+}
+
 
 
 /*
@@ -455,6 +495,11 @@ walk(char *dir, int level)
 			opts.aflg = 1;
 		}
 		assert(proj == 0);
+
+		/*
+		 * XXX TODO: should we reset the progress counter ?
+		 */
+		s_count = x_count = j_count = 0;
 	}
 
 	concat_path(buf, dir, "SCCS");
@@ -504,6 +549,7 @@ walk(char *dir, int level)
 done:	if (level == 0) {
 		if (ignore) free_globs(ignore);  ignore = 0;
 		if (proj) proj_free(proj); proj = 0;
+		if (opts.Sflg) print_summary();
 	}
 }
 
@@ -572,9 +618,9 @@ print_it(char state[4], char *file, char *rev)
 	char *sfile, *gfile;
 
 	gfile =  strneq("./",  file, 2) ? &file[2] : file;
-	if (opts.show_markers) printf("%s ", state);
+	if (opts.show_markers) fprintf(output, "%s ", state);
 	if (opts.gflg || (state[CSTATE] == 'x') || (state[CSTATE] == 'j'))  {
-		fputs(gfile, stdout);	/* print gfile name */
+		fputs(gfile, output);	/* print gfile name */
 	} else {
 		sfile = name2sccs(gfile);
 		/*
@@ -582,17 +628,51 @@ print_it(char state[4], char *file, char *rev)
 		 * we should be able to better optimized the sPath() code
 		 * e.g. we could pass project struct into sPath()
 		 */
-		fputs(opts.splitRoot ? sPath(sfile, 0) : sfile, stdout);
+		fputs(opts.splitRoot ? sPath(sfile, 0) : sfile, output);
 		free(sfile);
 	}
-	if (rev) printf("@%s", rev);
-	fputs("\n", stdout);
+	if (rev) fprintf(output, "@%s", rev);
+	fputs("\n", output);
+}
+
+private void
+upd_progress_counter(char state[4], char *file)
+{
+#define UPD_FREQUENCY 10
+
+	if (state[PSTATE] == 'p') p_count++;
+
+	switch (state[CSTATE]) {
+	    case 'j':	if (isTagFile(file)) return;
+			j_count++;
+			unless (opts.fflg) return;
+			unless (j_count % UPD_FREQUENCY) {
+				if (opts.fflg) printf("j %d\n", j_count);
+			}
+			break;
+	    case 'x':	if (isIgnored(file)) return;
+			x_count++;
+			unless (opts.fflg) return;
+			unless (x_count % UPD_FREQUENCY) {
+				printf("x %d\n", j_count);
+			}
+	    case 'c':	c_count++;
+			/* fall thru */
+	    default:	s_count++;
+			unless (opts.fflg) return;
+			unless (s_count % UPD_FREQUENCY) {
+				printf("s %d\n", s_count);
+			}
+			break;
+	}
 }
 
 private void
 do_print(char state[4], char *file, char *rev)
 {
 
+	upd_progress_counter(state, file);
+	if (opts.Sflg) return; /* user wants summary only, skip the detail */
 	if ((state[PSTATE] == 'p') && opts.pflg) goto print;
 
 	switch (state[LSTATE]) {
