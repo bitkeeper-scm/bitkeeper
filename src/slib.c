@@ -6153,14 +6153,12 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 
 	if (fixDate) fixNewDate(s);
 	
-	/* If the 1.0 delta is a fake, skip it */
-	if (s->state & S_FAKE_1_0) {
-		assert(streq(s->table->rev, "1.0"));
-		d = s->table->next;
-	} else {
-		d = s->table;
-	}
-	for (; d; d = d->next) {
+	for (d = s->table; d; d = d->next) {
+		if ((d->next == NULL) && (s->state & S_FAKE_1_0)) {
+			/* If the 1.0 delta is a fake, skip it */
+			assert(streq(s->table->rev, "1.0"));
+			break;
+		}
 		if (d->flags & D_GONE) {
 			/* This delta has been deleted - it is not to be
 			 * written out at all.
