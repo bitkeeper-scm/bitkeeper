@@ -472,15 +472,16 @@ proc restart {} \
 # Get the sdiff, making sure it has no \r's from fucking dos in it.
 proc sdiff {L R} \
 {
-	global	rmList
+	global	rmList sdiffw bin
 
 	set rmList ""
+	set undos [file join $bin undos]
 	set a [open "| grep {\r$} $L" r]
 	set b [open "| grep {\r$} $R" r]
 	if { ([gets $a dummy] < 0) && ([gets $b dummy] < 0)} {
 		catch { close $a }
 		catch { close $b }
-		return [open "| sdiff -w1 $L $R" r]
+		return [open "| $sdiffw $L $R" r]
 	}
 	catch { close $a }
 	catch { close $b }
@@ -491,7 +492,7 @@ proc sdiff {L R} \
 		set tail [file tail $L]
 		set dotL [file join $dir .$tail]
 	}
-	exec bk undos $L > $dotL
+	exec $undos $L > $dotL
 	set dir [file dirname $R]
 	if {"$dir" == ""} {
 		set dotR .$R
@@ -499,9 +500,9 @@ proc sdiff {L R} \
 		set tail [file tail $R]
 		set dotR [file join $dir .$tail]
 	}
-	exec bk undos $R > $dotR
+	exec $undos $R > $dotR
 	set rmList [list $dotL $dotR]
-	return [open "| sdiff -w1 $dotL $dotR"]
+	return [open "| $sdiffw $dotL $dotR"]
 }
 
 proc readFiles {L R O} \
@@ -709,7 +710,7 @@ proc computeHeight {w} \
 proc widgets {L R O} \
 {
 	global	leftColor rightColor scroll boldFont diffHeight mergeHeight
-	global	buttonFont
+	global	buttonFont wish bithelp
 
 	set diffFont {clean 12 roman}
 	set diffWidth 55
@@ -796,7 +797,7 @@ proc widgets {L R O} \
 		    -text "Done" -width 7 -command save -state disabled
 		button .merge.menu.help -width 7 -bg grey \
 		    -font $buttonFont -text "Help" \
-		    -command { exec bk bithelp fm & }
+		    -command { exec $wish -f $bithelp fm & }
 		grid .merge.menu.l -row 0 -column 0 -columnspan 2 -sticky ew
 		grid .merge.menu.quit -row 1 
 		grid .merge.menu.restart -row 1 -column 1
@@ -930,15 +931,38 @@ proc confirm {msg l} \
 	wm transient .c .
 }
 
+
+proc platformPath {} \
+{
+	global bin env
+	
+	set bin $env(BKBIN)
+
+	#XXX TODO: make bk_tagfile a config variable
+	#XXX       for NT, it should be "sccslog.exe"
+	set bk_tagfile "sccslog"
+
+	set tmp [file join $bin $bk_tagfile]
+	if  [ file executable $tmp ] {
+		return
+	} else {
+		puts "Installation problem: $tmp does not exist or not executable"
+		exit
+	}
+}
+
 # --------------- main ------------------
 proc main {} \
 {
-	global argv0 argv argc
+	global argv0 argv argc bin
 
 	if {$argc != 3} { 
 		puts "usage: $argv0 left right output"
 		exit
 	}
+	platformPath
+	set platformfile [file join $bin platform.tcl]
+	source $platformfile
 	set a [split $argv " "]
 	set A [lindex $argv 0]
 	set B [lindex $argv 1]

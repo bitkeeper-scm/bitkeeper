@@ -227,7 +227,7 @@ proc mergeArrow {m ht} \
 
 proc listRevs {file} \
 {
-	global	bad bfont lineOpts merges 
+	global	bad bfont lineOpts merges dev_null bk_lines
 
 	# Put something in the corner so we get our padding.
 	# XXX - should do it in all corners.
@@ -236,7 +236,7 @@ proc listRevs {file} \
 	# Figure out the biggest size of any node.
 	# XXX - this could be done on a per column basis.  Probably not
 	# worth it until we do LOD names.
-	set d [open "| bk lines $lineOpts $file 2>/dev/null" "r"]
+	set d [open "| $bk_lines $lineOpts $file 2>$dev_null" "r"]
 	set len 0
 	set big ""
 	while {[gets $d s] >= 0} {
@@ -295,14 +295,14 @@ proc getRev {type} \
 
 proc prs {} \
 {
-	global file rev1 dspec
+	global file rev1 dspec dev_null bk_prs
 
 	.p.top.c delete yellow
 	.p.top.c delete orange
 	set rev1 [getRev 2]
 	.p.bottom.t configure -state normal; .p.bottom.t delete 1.0 end
 	if {"$rev1" != ""} {
-		set prs [open "| bk prs {$dspec} -r$rev1 $file 2>/dev/null"]
+		set prs [open "| $bk_prs {$dspec} -r$rev1 $file 2>$dev_null"]
 		while { [gets $prs str] >= 0 } {
 			.p.bottom.t insert end "$str\n"
 		}
@@ -313,9 +313,9 @@ proc prs {} \
 
 proc history {} \
 {
-	global	file dspec
+	global	file dspec dev_null bk_prs
 
-	set prs [open "| bk prs -m {$dspec} $file 2>/dev/null"]
+	set prs [open "| $bk_prs -m {$dspec} $file 2>$dev_null"]
 	.p.bottom.t configure -state normal; .p.bottom.t delete 1.0 end
 	while { [gets $prs str] >= 0 } {
 		.p.bottom.t insert end "$str\n"
@@ -326,11 +326,11 @@ proc history {} \
 
 proc renumber {} \
 {
-	global	file
+	global	file tmp_dir bk_renumber
 
-	#set prs [open "| bk renumber -n $file 2>&1" "r"]
-	exec bk renumber -n $file 2>/tmp/renumber
-	set prs [open "/tmp/renumber" "r"]
+	set tmpfile [file join $tmp_dir renumber]
+	exec $bk_renumber -n $file 2> $tmpfile
+	set prs [open $tmpfile "r"]
 	.p.bottom.t configure -state normal; .p.bottom.t delete 1.0 end
 	while { [gets $prs str] >= 0 } {
 		.p.bottom.t insert end "$str\n"
@@ -354,7 +354,7 @@ proc sfile {} \
 
 proc get {} \
 {
-	global file
+	global file dev_null bk_cset bk_get
 	global rev1
 
 	.p.top.c delete yellow
@@ -362,9 +362,9 @@ proc get {} \
 	set rev1 [getRev 2]; if {"$rev1" == ""} { return }
 	set base [file tail $file]
 	if {$base == "s.ChangeSet"} {
-		set get [open "| bk cset -r$rev1 | bk sccslog - 2>/dev/null"]
+		set get [open "| $bk_cset -r$rev1 | sccslog - 2>$dev_null"]
 	} else {
-		set get [open "| bk get -mudPr$rev1 $file 2>/dev/null"]
+		set get [open "| $bk_get -mudPr$rev1 $file 2>$dev_null"]
 	}
 	.p.bottom.t configure -state normal; .p.bottom.t delete 1.0 end
 	while { [gets $get str] >= 0 } {
@@ -377,7 +377,8 @@ proc get {} \
 
 proc diff2 {} \
 {
-	global file rev1 rev2 diffOpts getOpts dspecnonl
+	global file rev1 rev2 diffOpts getOpts dspecnonl dev_null
+	global bk_cset tmp_dir
 
 	if {[info exists rev1] != 1} { return }
 	.p.top.c delete yellow
@@ -385,16 +386,16 @@ proc diff2 {} \
 	if {"$rev2" == ""} { return }
 	set base [file tail $file]
 	if {$base == "s.ChangeSet"} {
-		set diffs [open "| bk cset -r$rev1..$rev2 | sort | bk -R prs {$dspecnonl} -"]
+		set diffs [open "| $bk_cset -r$rev1..$rev2 | sort | bk -R prs {$dspecnonl} -"]
 		set lexp {^!@XXX!@FOO$}
 		set rexp {^!@XXX!@FOO$}
 	} else {
 		# XXX file names
-		set a [open "| bk get $getOpts -kPr$rev1 $file >/tmp/$rev1 2>/dev/null" "w"]
-		set b [open "| bk get $getOpts -kPr$rev2 $file >/tmp/$rev2 2>/dev/null" "w"]
+		set a [open "| get $getOpts -kPr$rev1 $file >$tmp_dir/$rev1 2>$dev_null" "w"]
+		set b [open "| get $getOpts -kPr$rev2 $file >$tmp_dir/$rev2 2>$dev_null" "w"]
 		catch { close $a; }
 		catch { close $b; }
-		set diffs [open "| diff $diffOpts /tmp/$rev1 /tmp/$rev2"]
+		set diffs [open "| diff $diffOpts $tmp_dir/$rev1 $tmp_dir/$rev2"]
 		if {"$diffOpts" == "-u"} {
 			set lexp {^\+}
 			set rexp {^-}
@@ -425,7 +426,7 @@ proc diff2 {} \
 	}
 	catch { close $diffs; }
 	.p.bottom.t configure -state disabled
-	file delete -force /tmp/$rev1 /tmp/$rev2
+	file delete -force $tmp_dir/$rev1 $tmp_dir/$rev2
 }
 
 proc done {} \
@@ -593,7 +594,7 @@ proc PaneStop {} \
 proc widgets {} \
 {
 	global	font bfont arrow background cmd_text swid diffOpts getOpts 
-	global	lineOpts dspec dspecnonl
+	global	lineOpts dspec dspecnonl wish bithelp
 
 	set dspec \
 "-d:I:\t:D: :T::TZ: :P:\$if(:HT:){@:HT:}\$if(:PN:){  :PN:}\n\$each(:C:){\t(:C:)}\n"
@@ -622,7 +623,7 @@ proc widgets {} \
 	    button .menus.quit -font $bfont -width 7 -relief raised \
 		-pady $pady -text "Quit" -command done
 	    button .menus.help -font $bfont -width 7 -relief raised \
-		-pady $pady -text "Help" -command { exec bk bithelp sccs & }
+		-pady $pady -text "Help" -command { exec $wish -f $bithelp sccs & }
 #	    button .menus.new -font $bfont -width 7 -relief raised \
 #		-pady $pady -text "Open" -command openFile
 #	    button .menus.prev -font $bfont -width 7 -relief raised \
@@ -684,10 +685,10 @@ proc widgets {} \
 
 	bind .p.top.c <1> { prs; break }
 	bind .p.top.c <3> "diff2; break"
-	bind .p.top.c <Alt-h> { exec bk bithelp sccs & }
+	bind .p.top.c <Alt-h> { exec $wish -f $bithelp sccs & }
 	bind .p.top.c <Control-e> ".p.bottom.t yview scroll 1 units"
 	bind .p.top.c <Control-f> ".p.bottom.t yview scroll 1 pages"
-	bind .p.top.c <Control-h> { exec bk bithelp sccs & }
+	bind .p.top.c <Control-h> { exec $wish -f $bithelp sccs & }
 	bind .p.top.c <Control-q> done
 	bind .p.top.c <Control-u> ".p.bottom.t yview scroll -1 pages"
 	bind .p.top.c <Control-y> ".p.bottom.t yview scroll -1 units"
@@ -750,13 +751,13 @@ proc next {inc} \
 
 proc sccstool {name} \
 {
-	global	file bad revX revY cmd_text
+	global	file bad revX revY cmd_text dev_null bk_sfiles
 
 	.p.top.c delete all
 	if {[info exists revX]} { unset revX }
 	if {[info exists revY]} { unset revY }
 	set bad 0
-	set file [exec bk sfiles $name 2>/dev/null]
+	set file [exec $bk_sfiles $name 2>$dev_null]
 	.info.l configure -text $file
 	listRevs $file 
 	history 
@@ -764,6 +765,44 @@ proc sccstool {name} \
 	focus .p.top.c
 }
 
+
+
+proc platformPath {} \
+{
+	global bin env
+	# BKBIN is set by bk.sh
+	set bin $env(BKBIN)
+
+	#XXX TODO: make bk_tagfile a config variable
+	#XXX       for NT, it should be "sccslog.exe"
+	set bk_tagfile "sccslog"
+
+	set tmp [file join $bin $bk_tagfile]
+	if  [ file executable $tmp ] {
+		return
+	} else {
+		puts "Installation problem: $tmp does not exist or not executable"
+		exit
+	}
+}
+
+proc init {} \
+{
+	global bin bk_prs bk_cset bk_get bk_renumber bk_sfiles
+	global bk_lines
+	
+	set bk_prs [file join $bin prs]
+	set bk_cset [file join $bin cset]
+	set bk_get [file join $bin get]
+	set bk_renumber [file join $bin renumber]
+	set bk_sfiles [file join $bin sfiles]
+	set bk_lines [file join $bin lines]
+}
+
+platformPath
+set platformfile [join [list $bin platform.tcl ] "/" ]
+source $platformfile
+init
 widgets
 if {"$argv" != ""} {
 	set next 0
