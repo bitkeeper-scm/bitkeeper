@@ -9130,8 +9130,8 @@ sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, char kind, FILE *out)
 
 		for (i = 0; i < c/2 - 18; ) spaces[i++] = '=';
 		spaces[i] = 0;
-		sprintf(buf, "%s -w%s %s %s", SDIFF, columns, leftf, rightf);
-		diffs = fastPopen(buf, "rt");
+		sprintf(buf, "sdiff -w%s %s %s", columns, leftf, rightf);
+		diffs = popen(buf, "rt");
 		if (!diffs) {
 			unlink(tmpfile);
 			if (tmp2[0]) unlink(tmp2);
@@ -9177,7 +9177,7 @@ sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, char kind, FILE *out)
 		fputs(buf, out);
 	}
 	if (kind == DF_SDIFF) {
-		fastPclose(diffs);
+		pclose(diffs);
 	} else {
 		fclose(diffs);
 	}
