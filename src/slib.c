@@ -8745,7 +8745,7 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 		}
 	}
 	EACH(start->exclude) {
-		d = sfind(s, start->exclude[i]);
+		delta	*d = sfind(s, start->exclude[i]);
 		assert(d);
 		fprintf(out, "x ");
 		sccs_pdelta(d, out);
