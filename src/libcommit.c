@@ -66,12 +66,21 @@ done:	fclose(f1);
 void
 sendConfig(char *to, int quiet, int quota)
 {
-	char	*dspec;
+	char	*dspec, subject[MAXLINE];
 	char	config_log[MAXPATH], buf[MAXLINE];
 	char	config[MAXPATH], aliases[MAXPATH];
 	char	s_cset[MAXPATH] = CHANGESET;
 	FILE *f, *f1;
 	time_t tm;
+	char 	*av[] = {
+		"bk",
+		"log",
+		"http://www.bitkeeper.com/cgi-bin/logit",
+		to,
+		subject, 
+		config_log,
+		0
+	};
 
 	if (bkusers(1, 1, 0) <= quota) return;
 	sprintf(config_log, "%s/bk_config_log%d", TMP_PATH, getpid());
@@ -127,9 +136,8 @@ sendConfig(char *to, int quiet, int quota)
 	if (getenv("BK_TRACE_LOG") && streq(getenv("BK_TRACE_LOG"), "YES")) {
 		printf("sending config file...\n");
 	}
-	sprintf(buf, "BitKeeper config: %s", project_name());
-	sendit("http://www.bitkeeper.com/cgi-bin/logit", to, buf, config_log);
-	unlink(config_log);
+	sprintf(subject, "BitKeeper config: %s", project_name());
+	spawnvp_ex(_P_NOWAIT, av[0], av);
 }
 
 private void
@@ -515,19 +523,13 @@ checkLog(int quiet, int resync)
 		printf("OK [y/n]? ");
 		fgets(ans, sizeof(ans), stdin);
 		if ((ans[0] == 'Y') || (ans[0] == 'y')) setlog(&buf[18]);
-		r_opt = resync ? "-R" : "";
-		sprintf(buf,
-		    "bk sendconfig %s -Q1 config@openlogging.org &", r_opt);
-		system(buf);
+		sendConfig("config@openlogging.org", 1, 1);
 		return (0);
 	} else if (streq("need_seats", buf)) {
 		gethelp("seat_info", "", stdout);
 		return (1);
 	} else if (streq("commit_and_mailcfg", buf)) {
-		r_opt = resync ? "-R" : "";
-		sprintf(buf,
-		    "bk sendconfig %s -Q1 config@openlogging.org &", r_opt);
-		system(buf);
+		sendConfig("config@openlogging.org", 1, 1);
 		return (0);
 	} else if (streq("commit_and_maillog", buf)) {
 		return (0);

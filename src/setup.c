@@ -126,6 +126,10 @@ setup_main(int ac, char **av)
 	    "bk cset -q -y\"Initial repository create\" -  < %s", setup_files);
 	system(buf);
 	unlink(setup_files);
-	system("bk sendconfig -Q0 setups@openlogging.org &");
+ 	if (sccs_cd2root(0, 0) == -1) {
+                fprintf(stderr, "sendconfig: can not find project root.\n");
+                exit(1);
+        }                           
+	sendConfig("setups@openlogging.org", 1, 0);
 	return (0);
 }

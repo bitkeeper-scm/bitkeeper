@@ -81,6 +81,7 @@ int push_main(int, char **);
 int names_main(int, char **);
 int repo_main(int, char **);
 int pull_main(int, char **);
+int log_main(int, char **);
 
 struct command cmdtbl[100] = {
 	{"unlock", unlock_main },
@@ -161,6 +162,7 @@ struct command cmdtbl[100] = {
 	{"names", names_main},
 	{"repo", repo_main},
 	{"pull", pull_main},
+	{"log", log_main},
 	{0, 0},
 };
 
