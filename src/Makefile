@@ -6,7 +6,7 @@ URL     := $(shell echo bk://work/`bk root` | sed s,/home/bk/,,)
 LOG	:= $(shell echo LOG-`bk getuser`)
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
 
-ifeq "$(OSTYPE)" "cygwin"
+ifeq "$(OSTYPE)" "msys"
 	SYS=win32
 	EXE=.exe
 	XTRA=win32
@@ -257,7 +257,7 @@ rebuild:
 	-@rm -f $(LIBS) bkdsubstr bkhelp.txt bkmsg.txt a.out
 	-@rm -f core bkver.c tclwrap tclwrap.o blowfish.o $(WIN_TMP)
 	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR)
-	-@rm -rf tmp
+	-@rm -rf tmp/bitkeeper
 	-@for i in ../doc ../man gnu gui utils win32 mdbm zlib tomcrypt; \
 	do	cd $(HERE)/$$i && $(MAKE) clobber; \
 	done

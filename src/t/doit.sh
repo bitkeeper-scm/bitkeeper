@@ -19,11 +19,12 @@ win32_common_setup()
 	RM=rm
 	PLATFORM="WIN32"
 	DEV_NULL="nul"
-	if [ -z "$TST_DIR" ]; then TST_DIR=`cygpath -m /tmp | tr A-Z a-z`; fi
+	if [ -z "$TST_DIR" ]
+	then	TST_DIR=`mount | sed -n 's, on /tmp.*,,p' | tr A-Z a-z`; fi
 	BK_FS="|"
 	BK_BIN=`cd .. && ./bk pwd -s`
 	CWD="$BK_BIN/bk pwd"
-	touch `cygpath -m $TEMP | tr A-Z a-z`/BitKeeper_null
+	touch $TST_DIR/BitKeeper_null
 	BK_USER=`bk getuser`
 	# Admin user is special, remap to a differnt user before we run the test
 	if [ X$BK_USER = XAdministrator ]; then BK_USER=Administrator-test; fi
@@ -39,12 +40,6 @@ win32_common_setup()
 	BIN2="`bk bin`/diff.exe"
 	BIN3="`bk bin`/diff3.exe"
 	export BIN1 BIN2 BIN3
-
-	# We need this only on NTFS, not needed on FAT/FAT32 file system
-	# This setting only affect the process started _after_ it is set.
-	# i.e. It has no effect on the "doit" process itself.
-	CYGWIN=nontsec
-	export CYGWIN
 }
 
 unix_common_setup()
@@ -59,7 +54,7 @@ unix_common_setup()
 	if [ -d /usr/xpg4/bin ]; then PATH=/usr/xpg4/bin:$PATH; fi
 	BK_FS="|"
 	BK_BIN="`cd .. && pwd`"
-	PATH=$BK_BIN:$BK_BIN/gnu/bin:$PATH:/usr/local/bin:/usr/freeware/bin:/usr/gnu/bin
+	PATH=$BK_BIN:$PATH:/usr/local/bin:/usr/freeware/bin:/usr/gnu/bin
 	unset CDPATH PAGER
 	if [ X$USER = X ]; then USER=`bk getuser`; fi
 	# root user is special, remap to a differnt user before we run the test
@@ -197,10 +192,10 @@ setup_env()
 {
 	test "X$OSTYPE" = X && OSTYPE=`uname -s`
 	case X$OSTYPE in
-	    Xcygwin|Xcygwin32|XCYGWIN*)
-		BK_BIN=`cd .. && ./bk pwd -s`
-		BK_BIN=`cygpath $BK_BIN`
-		PATH=/bin:$BK_BIN:$PATH
+	    Xcygwin|Xcygwin32|XCYGWIN*|Xmsys)
+		BK_BIN=`cd .. && ./bk pwd -s | \
+		    sed -e 's,\(.\):,/\1,' -e 's,\\\\,/,g'`
+		PATH=$BK_BIN:/bin:$PATH
 		win32_common_setup
 		check_mount_mode
 		check_path
@@ -222,7 +217,7 @@ setup_env()
 	unset BK_BIN _BK_GMODE_DEBUG
 	BK_LICENSE=ACCEPTED
 	BK_REGRESSION=`bk _cleanpath $TST_DIR/.regression-$USER`
-	HERE=$BK_REGRESSION
+	HERE=`echo $BK_REGRESSION | sed -e 's,\(.\):,/\1,' -e 's,\\\\,/,g'`
 	BK_TMP=$BK_REGRESSION/.tmp
 	TMPDIR=/build/.tmp-$USER
 	BKL_P=BKL5413557503d719ed00001200ffffe

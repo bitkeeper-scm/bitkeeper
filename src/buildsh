@@ -1,0 +1,63 @@
+#/bin/sh
+
+# This is a script that creates a bootstrap MSYS environment that
+# can be used when building bk.
+#
+# It is assumed to be run like this:
+#    `bk bin`/gnu/bin/sh buildsh
+#
+# so it get executed by the MSYS shell from an existing bk installation.
+# We can't assume that that MSYS shell is the correct version so the first
+# this we do a build a current MSYS environment in tmp/build and then
+# spawn a new windows that is running the new MSYS shell.  BK can then
+# be built and tested in that shell
+
+D=tmp/build
+rm -rf $D || {
+	echo can remove $D
+	exit 1
+}
+
+# restrict path do only things of interest
+# XXX  need to extra offical windows directory name
+PATH=/bin:/c/WINNT/system32:/c/WINNT
+# Add bk to end of PATH
+BK_PATH=$(mount | tr 'A-Z' 'a-z' | sed -ne 's,\(.\):,/\1,' -e 's,\\,/,g' -e 's,/gnu/bin,,' -e 's, on /bin type.*,,p') 
+PATH=$PATH:$BK_PATH
+
+# build and install new msys
+(cd win32; make MSYSBIN=../$D msys)
+
+test -d win32tools || bk clone bk://data.bitmover.com/win32tools win32tools
+bk sfiles -Ug win32tools | bk get -S -
+
+# build mingw
+echo extracting MinGW
+mkdir $D/mingw
+tar -C$D/mingw -xzf win32tools/binutils-2.13.90-20030111-1.tar.gz
+tar -C$D/mingw -xzf win32tools/mingw-runtime-3.2.tar.gz
+tar -C$D/mingw -xzf win32tools/gcc-core-3.3.1-20030804-1.tar.gz
+tar -C$D/mingw -xzf win32tools/w32api-2.5.tar.gz
+
+echo extract perl
+tar -C$D -xzf win32tools/perl.tar.gz
+
+echo extract groff
+tar -C$D -xzf win32tools/cygwin.tar.gz
+
+# create custom startup scripts with fixed PATH
+rm -f $D/etc/profile
+echo PATH=/bin:/mingw/bin:$BK_PATH:/perl/bin:/cygwin/bin:/c/WINNT/system32:/c/WINNT > $D/etc/profile
+
+# setup mountpoints
+mkdir -p $D/build
+mkdir -p /c/build
+echo "c:/build /build" >> $D/etc/fstab
+
+echo PS1=\'BUILD \\W \\$ \' >> $D/etc/profile
+cp $D/bin/sh.exe $D/bin/bash.exe
+
+# start new cmd shell window with new shell
+#   XXX probably fails on win98
+cmd //c start $D/bin/sh --login
+
