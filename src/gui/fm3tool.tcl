@@ -1624,8 +1624,13 @@ proc doprs {text revs tag} \
 		incr len -2
 		set prs [string range $revs 0 $len]
 		set F [open "|bk prs -b -hr$prs {$DSPEC} $filename" "r"]
+		if {$tag == "old"} {
+			set lead "- "
+		} else {
+			set lead "+ "
+		}
 		while {[gets $F buf] >= 0} {
-			$text insert end "$buf\n" $tag
+			$text insert end "$lead$buf\n" $tag
 		}
 		catch { close $F }
 	}
