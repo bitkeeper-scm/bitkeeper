@@ -15,11 +15,11 @@ proc bk_init {} \
 	set keytmp "/var/bitkeeper"
 
 	# Stuff related to the bk field seperator: ^A
-	set bk_fs 
-	set file_rev {(.*)([0-9].*)}
-	set file_start_stop {(.*)(.*)\.\.(.*)}
-	set file_stop {(.*)([0-9.]+$)}
-	set file_old_new "(.*)(.*)(.*)"
-	set line_rev {([^]*)(.*)}
-}
+	set bk_fs |
+	set file_old_new {(.*)\|(.*)\|(.*)}
+	set line_rev {([^\|]*)\|(.*)}
 
+	set file_start_stop {(.*)@(.*)\.\.(.*)}
+	set file_stop {(.*)@([0-9.]+$)}
+	set file_rev {(.*)@([0-9].*)}
+}
