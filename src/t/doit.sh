@@ -95,7 +95,9 @@ unix_common_setup()
 	do	p=`bk which -e $f`
 		if [ $? -eq 0 ]
 		then	ln -s $p $BK_LIMITPATH/$f
-		else	echo WARNING: could not find a $f binary.
+		else	:
+			# Too noisy
+			# echo WARNING: could not find a $f binary.
 		fi
 	done
 	export BK_LIMITPATH
@@ -274,7 +276,7 @@ clean_up()
 
 	# Make sure there are no stale files in $TMPDIR
 	ls -a $TMPDIR > $TMPDIR/T.${USER}-new
-	$DIFF $TMPDIR/T.${USER}-new $TMPDIR/T.${USER}
+	( cd $TMPDIR && $DIFF T.${USER}-new T.${USER} )
 
 	for i in 1 2 3 4 5 6 7 8 9 0
 	do	

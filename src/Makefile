@@ -17,7 +17,7 @@ endif
 # have an installed BitKeeper.
 BINDIR	= /usr/libexec/bitkeeper
 
-GET=	bk get
+GET=	bk get -s
 BK=	bk 
 CC_OUT	=-o $@
 LD_OUT	=-o $@
@@ -140,7 +140,7 @@ LINKTO	= fm fmtool fm3 fm3tool
 BINLINKS= admin$(EXE) get$(EXE) delta$(EXE) unget$(EXE) rmdel$(EXE) prs$(EXE)
 # Note: $(XTRA) must be listed after "gnu"
 ALL	= $(LIBS) $(BINS) GUI $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) \
-	  gnu $(XTRA) tcltk
+	  gnu $(XTRA)
 
 # FASTPURIFY does not do overrun/underrun checking at each alloc/free
 CFLAGS	= $(CC_FAST_DEBUG) $(CC_WALL) \
@@ -248,10 +248,12 @@ clean-obj: FORCE
 	-@rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
 	-@rm -f $(LIBS) bkdsubstr bkmsg.txt bkhelp.txt a.out
 	-@rm -f core $(WIN_TMP)
-	-@cd gnu && $(MAKE) clean-obj
-	-@cd win32 && $(MAKE) clean-obj
-	-@cd tcltk && $(MAKE) clean-obj
 	-@cd ../doc && $(MAKE) clean-obj
+	-@cd ../man && $(MAKE) clean
+	-@cd gnu && $(MAKE) clean 
+	-@cd gui && $(MAKE) clean 
+	-@cd utils && $(MAKE) clean clean-obj
+	-@cd win32 && $(MAKE) clean
 	-@$(MAKE) clean-gcov
 
 clean-gcov: FORCE
@@ -259,10 +261,12 @@ clean-gcov: FORCE
 
 clean-bin: FORCE
 	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(LINKS)
-	-@cd gnu && $(MAKE) clean 
-	-@cd win32 && $(MAKE) clean
-	-@cd tcltk && $(MAKE) clean
+	-@cd ../doc && $(MAKE) clean-obj
 	-@cd ../man && $(MAKE) clean
+	-@cd gnu && $(MAKE) clean 
+	-@cd gui && $(MAKE) clean 
+	-@cd utils && $(MAKE) clean clean-obj
+	-@cd win32 && $(MAKE) clean
 
 clean clobber distclean: rebuild FORCE
 	-@bk -r clean
@@ -277,13 +281,12 @@ rebuild:
 	-@rm -f core bkver.c tclwrap tclwrap.o blowfish.o $(WIN_TMP)
 	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(LINKS)
 	-@rm -rf tmp
-	-@cd gnu && $(MAKE) clean clean-obj
-	-@cd win32 && $(MAKE) clean clean-obj
-	-@cd tcltk && $(MAKE) clean clean-obj
-	-@cd ../doc && $(MAKE) clean clean-obj
-	-@cd ../man && $(MAKE) clean clean-obj
-	-@cd gui && $(MAKE) clean
+	-@cd ../doc && $(MAKE) clean-obj
+	-@cd ../man && $(MAKE) clean
+	-@cd gnu && $(MAKE) clean 
+	-@cd gui && $(MAKE) clean 
 	-@cd utils && $(MAKE) clean clean-obj
+	-@cd win32 && $(MAKE) clean
 
 srcs src: FORCE
 	-bk get -s $(HDRS) $(SRCS) $(SCRSRCS) $(MISC)
@@ -335,14 +338,6 @@ gnu: $(BK) FORCE
 	then cd gnu && cmd /c $(MAKE) BINDIR=$(BINDIR) DIFF_BINS= DIRS=patch ;\
 	else cd gnu && $(MAKE) BINDIR=$(BINDIR) ;\
 	fi
-
-tcltk: tcltk/build FORCE
-	cd tcltk && ./build
-
-tcltk/build: tcltk/build.sh
-	rm -f tcltk/build
-	cp tcltk/build.sh tcltk/build
-	chmod +x tcltk/build
 
 win32: FORCE
 	cd win32 && $(MAKE) BINDIR=$(BINDIR)
@@ -540,10 +535,10 @@ install-nolinks: $(BINLINKS)
 	@test -d $(BINDIR) || mkdir -p $(BINDIR)
 	tar cf - $(BINS) $(SCRIPTS) | (cd $(BINDIR) && tar xf -)
 	cp $(DATA) $(BINDIR)
-	test -x tcltk/bin/bkgui || exit 1
-	@rm -rf $(BINDIR)/tcltk
-	mkdir $(BINDIR)/tcltk
-	@cp -rp tcltk/bin tcltk/lib $(BINDIR)/tcltk
+	test -x gui/bin/bkgui || exit 1
+	@rm -rf $(BINDIR)/gui
+	mkdir $(BINDIR)/gui
+	@cp -rp gui/bin gui/lib $(BINDIR)/gui
 	@-rm -rf $(BINDIR)/t
 	@set `echo $(LINKTO)`; \
 	while [ "X$$1" != X ]; \

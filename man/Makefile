@@ -48,5 +48,5 @@ clean clean-obj:
 
 clobber:
 	@make clean
-	/bin/rm -f PS PS2 PS4
+	/bin/rm -f PS PS2 PS4 ALL
 	rm -rf bk-man

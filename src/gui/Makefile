@@ -9,6 +9,7 @@ else
 endif
 
 REPO   := $(shell basename `bk root`)
+LIBDIR	= lib
 GUIS	= revtool citool helptool difftool csettool fmtool fm3tool \
 	  msgtool renametool setuptool bugform
 TCLWRAP	= ../tclwrap
@@ -25,17 +26,25 @@ SRC	= appState.tcl bugform.tcl buglib.tcl ciedit.tcl citool.tcl \
 default: notes/BUILD
 	@cat notes/BUILD
 
-gui:  ../tclwrap $(GUIS) 
+gui guis:  ../tclwrap lib
+	@cd tcltk && $(MAKE)
+	@$(MAKE) $(GUIS)
 	@echo GUIs are up-to-date
 
+lib:
+	test -d lib || mkdir lib
+
 nowrap gui-nowrap: 
-	$(MAKE) clean
+	$(MAKE) clean-here
 	$(MAKE) TCLWRAP=cat gui
 
 ../tclwrap:
 	@cd .. && $(MAKE) tclwrap
 
-test: $(GUIS) $(DOIT)
+tcltk: FORCE
+	cd tcltk && $(MAKE)
+
+test: lib $(GUIS) $(DOIT)
 	(@cd ../t && \
 	 ../bk get SCCS/g.* && \
 	 ./doit g.*)
@@ -43,10 +52,15 @@ test: $(GUIS) $(DOIT)
 $(DOIT):
 	@cd ../t && $(MAKE) doit
 
-clean clobber: FORCE
-	-@rm $(GUIS)
-	-@rm -f TAGS
+clean-here clobber-here: FORCE
+	-rm -f $(GUIS) TAGS
+	-rm -rf bin lib
+	-bk -r. clean
 
+clean clobber: FORCE
+	-rm -f $(GUIS) TAGS
+	-rm -rf bin lib
+	-cd tcltk && $(MAKE) $@
 
 install: $(GUIS)
 	echo "no installation required."
@@ -66,35 +80,35 @@ wc: $(SRC)
 FORCE:
 
 bugform: $(COMMON) search.tcl appState.tcl buglib.tcl bugform.tcl
-	(echo 'wm withdraw .' ;  cat $^) | $(TCLWRAP) > bugform
+	(echo 'wm withdraw .' ;  cat $^) | $(TCLWRAP) > $(LIBDIR)/bugform
 
 citool: $(COMMON) search.tcl appState.tcl progress.tcl ciedit.tcl citool.tcl
-	(echo 'wm withdraw .' ; cat $^) |  $(TCLWRAP) > citool
+	(echo 'wm withdraw .' ; cat $^) |  $(TCLWRAP) > $(LIBDIR)/citool
 
 csettool: $(COMMON) search.tcl appState.tcl difflib.tcl csettool.tcl
-	(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > csettool
+	(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/csettool
 
 difftool: $(COMMON) search.tcl appState.tcl difflib.tcl difftool.tcl
-	(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > difftool
+	(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/difftool
 
 fmtool: $(COMMON) appState.tcl difflib.tcl fmtool.tcl
-	(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > fmtool
+	(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/fmtool
 
 fm3tool: $(COMMON) appState.tcl fm3tool.tcl
-	(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > fm3tool
+	(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/fm3tool
 
 helptool: $(COMMON) appState.tcl helptool.tcl
-	(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > helptool
+	(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/helptool
 
 msgtool: msgtool.tcl
-	(echo "wm withdraw ."; cat $^) | $(TCLWRAP) > msgtool
+	(echo "wm withdraw ."; cat $^) | $(TCLWRAP) > $(LIBDIR)/msgtool
 
 renametool: $(COMMON) appState.tcl renametool.tcl
-	(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > renametool
+	(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/renametool
 
 revtool: $(COMMON) search.tcl appState.tcl revtool.tcl
-	(echo 'wm withdraw .' ; cat $^) |  $(TCLWRAP) > revtool
+	(echo 'wm withdraw .' ; cat $^) |  $(TCLWRAP) > $(LIBDIR)/revtool
 
-setuptool: $(COMMON) lib/tkwizard.tcl setuptool.tcl
-	(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > setuptool
+setuptool: $(COMMON) tkwizard.tcl setuptool.tcl
+	(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/setuptool
 

@@ -596,6 +596,9 @@ run:	getoptReset();
 	exit(ret);
 }
 
+/*
+ * The commands here needed to be spawned, not execed, so command logging works.
+ */
 private int
 run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 {
@@ -628,7 +631,7 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 		prog = guis[i].prog;
 		sig_catch(SIG_IGN);
 		argv[0] = find_wish();
-		sprintf(cmd_path, "%s/gui/%s", bin, prog);
+		sprintf(cmd_path, "%s/gui/lib/%s", bin, prog);
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) {
 			if (i >= (MAXARGS-10)) {
@@ -642,9 +645,11 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 	}
 
 	/*
-	 * Handle shell script
+	 * Handle shell scripts.
 	 */
-	if (streq(prog, "import")) {
+	if (streq(prog, "applypatch") ||
+	    streq(prog, "import") ||
+	    streq(prog, "resync")) {
 		argv[0] = shell();
 		sprintf(cmd_path, "%s/%s", bin, prog);
 		argv[1] = cmd_path;
@@ -1160,7 +1165,7 @@ find_wish(void)
 	/* If they set this, they can set TCL_LIB/TK_LIB as well */
 	if ((path = getenv("BK_WISH")) && executable(path)) return (path);
 
-	path = aprintf("%s/tcltk/bin/bkgui", bin);
+	path = aprintf("%s/gui/bin/bkgui", bin);
 	if (executable(path)) {
 		safe_putenv("TCL_LIBRARY=%s/tcltk/lib/tcl8.4", bin);
 		safe_putenv("TK_LIBRARY=%s/tcltk/lib/tk8.4", bin);
