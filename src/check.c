@@ -28,7 +28,6 @@ private int	writable_gfile(sccs *s);
 private int	readonly_gfile(sccs *s);
 private int	no_gfile(sccs *s);
 private int	chk_eoln(sccs *s, int eoln_unix);
-private void	progress(int n, int err);
 private int	chk_merges(sccs *s);
 private sccs*	fix_merges(sccs *s);
 private	int	update_idcache(MDBM *idDB, MDBM *keys);
@@ -175,7 +174,7 @@ check_main(int ac, char **av)
 			errors |= 1;
 			continue;
 		}
-		if (all && (verbose == 1))  progress(n, 0);
+		if (all && (verbose == 1))  progressbar(n, nfiles, 0);
 		unless (s->cksumok == 1) {
 			fprintf(stderr,
 			    "%s: bad file checksum, corrupted file?\n",
@@ -326,11 +325,11 @@ check_main(int ac, char **av)
 	} else {
 		if (sys("bk", "sane", SYS)) errors |= 0x80;
 	}
-	if (verbose == 1) progress(nfiles+1, errors);
+	if (verbose == 1) progressbar(nfiles, nfiles, errors ? "FAILED":"OK");
 	if (all && !errors && !(flags & INIT_NOCKSUM)) {
 		unlink(CHECKED);
 		touch(CHECKED, 0666);
-	} 
+	}
 	return (errors);
 }
 
@@ -345,41 +344,6 @@ fix_merges(sccs *s)
 	assert(tmp);
 	sccs_free(s);
 	return (tmp);
-}
-
-/*
- * Use 65 columns for the progress bar.
- * %3u% |================================ \r
- */
-private void
-progress(int n, int err)
-{
-	static	int last = 0;
-	int	percent = (n * 100) / nfiles;
-	int	i, want;
-	char	buf[81];
-
-	unless ((n > nfiles) || (percent > last)) return;
-	/* just in case, split root screwed up the count */
-	if (percent > 100) percent = 100;
-	last = percent;
-	want = percent * 65;
-	want /= 100;
-	buf[0] = '|';
-	for (i = 1; i <= want; ++i) buf[i] = '=';
-	while (i <= 65) buf[i++] = ' ';
-	buf[i++] = '|';
-	if (n > nfiles) {
-		if (err) {
-			strcpy(&buf[i], " FAILED\n");
-		} else {
-			strcpy(&buf[i], " OK\n");
-		}
-	} else {
-		buf[i++] = '\r';
-		buf[i] = 0;
-	}
-	fprintf(stderr, "%3u%% %s", percent, buf);
 }
 
 private int

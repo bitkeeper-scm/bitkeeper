@@ -1,9 +1,10 @@
 /*
  * Copyright (c) 2000, Andrew Chang
- */    
+ */
 #include "system.h"
 #include "sccs.h"
 #include "bkd.h"
+#include "tomcrypt/mycrypt.h"
 
 #define	SEND_SUCCESS	0
 #define	SEND_FAILURE	1
@@ -43,41 +44,18 @@ struct	socks_reply {
 private char *
 str2base64(const char *s)
 {
-	int	i, len, len2;
+	long	len, len2;
 	char	*buf;
 	unsigned char *p;
-	static char tbl[64] = {
-		'A','B','C','D','E','F','G','H',
-		'I','J','K','L','M','N','O','P',
-		'Q','R','S','T','U','V','W','X',
-		'Y','Z','a','b','c','d','e','f',
-		'g','h','i','j','k','l','m','n',
-		'o','p','q','r','s','t','u','v',
-		'w','x','y','z','0','1','2','3',
-		'4','5','6','7','8','9','+','/'
-	};
 
 	len = strlen(s);
-	len2 = (4 * ((len + 2) / 3));
-	buf = p = malloc(1 + len2);
-
-	for (i = 0; i < len; i += 3)
-	{
-		*p++ = tbl[s[0] >> 2];
-		*p++ = tbl[((s[0] & 3) << 4) + (s[1] >> 4)];
-		*p++ = tbl[((s[1] & 0xf) << 2) + (s[2] >> 6)];
-		*p++ = tbl[s[2] & 0x3f];
-		s += 3;
+	len2 = (4 * ((len + 2) / 3)) + 1;
+	buf = p = malloc(len2);
+	if (base64_encode(s, len, buf, &len2)) {
+		fprintf(stderr, "%s", crypt_error);
+		exit(1);
 	}
-
-	/* Pad it if necessary...  */
-	if (i == len + 1) {
-		*(p - 1) = '=';
-	} else if (i == len + 2) {
-    		*(p - 1) = *(p - 2) = '=';
-	}
-  	*p = '\0';
-	return (buf);
+  	return (buf);
 }
 
 /*
@@ -355,6 +333,7 @@ http_connect(remote *r)
 		r->rfd =
 		    http_connect_srv(r, proxy_type, proxy_host, proxy_port);
 		r->wfd = r->rfd;
+		r->isSocket = 1;
 		if (r->rfd >= 0) {
 			if (r->trace) fprintf(stderr, "connected\n");
 			if (r->cred) {
@@ -378,6 +357,7 @@ http_connect(remote *r)
 		fflush(stderr);
 	}
 	r->wfd = r->rfd = connect_srv(r->host, r->port, r->trace);
+	r->isSocket = 1;
 	if (r->rfd >= 0) {
 		if (r->trace) fprintf(stderr, "Connected\n");
 		return (0);
@@ -463,19 +443,20 @@ err:		if (header) free(header);
 }
 
 int
-http_fetch_direct(char *url, char *file)
+http_fetch(remote *r, char *url, char *file)
 {
-	remote	*r;
 	char	*header = 0;
-	int	len;
+	int	got, len, i;
 	int	rc = -1;
+	int	binary = 0;
 	FILE	*f;
 	char	buf[MAXLINE];
 
-	r = remote_parse(url);
-	r->rfd = r->wfd = connect_srv(r->host, r->port, r->trace);
-	if (r->rfd < 0) goto out;
-	r->isSocket = 1;
+#ifndef	WIN32
+	/* This requires the win32-socket code ... */
+	r->rf = fdopen(r->rfd, "r");
+	assert(r->rf);
+#endif
 
 	header = aprintf(
 	    "GET %s HTTP/1.0\r\n"
@@ -484,18 +465,47 @@ http_fetch_direct(char *url, char *file)
 	    "Host: %s:%d\r\n"
 	    "\r\n",
 	    url, r->host, r->port);
-	
+
 	if (r->trace) fprintf(stderr, "Sending http header:\n%s", header);
 	len = strlen(header);
 	if (write_blk(r, header, len) != len) {
 		if (r->trace) fprintf(stderr, "Send failed\n");
 		goto out;
 	}
-	skip_http_hdr(r);
+	/* skip http header */
+	buf[0] = 0;
+	getline2(r, buf, sizeof(buf));
+	if (r->trace) fprintf(stderr, "-> %s\n", buf);
+	if ((sscanf(buf, "HTTP/%*s %d", &i) != 1) || (i != 200)) goto out;
+	len = 0;
+	while (getline2(r, buf, sizeof(buf)) >= 0) {
+		if (r->trace) fprintf(stderr, "-> %s\n", buf);
+		sscanf(buf, "Content-Length: %d", &len);
+		if (streq(buf, "Content-Type: application/octet-stream")) {
+			binary = 1;
+		}
+		if (buf[0] == 0) break; /*ok */
+	}
 	if (f = fopen(file, "w")) {
-		while (getline2(r, buf, sizeof(buf)) > 0) {
-			if (r->trace) fprintf(stderr, "-> %s\n", buf);
-			fprintf(f, "%s\n", buf);
+		if (binary && len) {
+			got = 0;
+			while (got < len) {
+				i = min(sizeof(buf), len);
+				i = read_blk(r, buf, sizeof(buf));
+				if (i <= 0) break;
+				fwrite(buf, 1, i, f);
+				got += i;
+				if (r->progressbar) progressbar(got, len, 0);
+			}
+			if (r->progressbar) {
+				progressbar(got, len,
+				    (got<len) ? "failed" : "OK");
+			}
+		} else {
+			while (getline2(r, buf, sizeof(buf)) > 0) {
+				if (r->trace) fprintf(stderr, "-> %s\n", buf);
+				fprintf(f, "%s\n", buf);
+			}
 		}
 		fclose(f);
 		rc = 0;

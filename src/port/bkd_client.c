@@ -54,9 +54,9 @@ bkd_tcp_connect(remote *r)
 			if (i == -2) r->badhost = 1;
 		} else {
 			r->rfd = r->wfd = i;
+			r->isSocket = 1;
 		}
 	}
-	r->isSocket = 1;
 	return ((pid_t)0);
 }
 #else

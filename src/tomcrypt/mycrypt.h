@@ -702,7 +702,7 @@ extern int rsa_encrypt_key(const unsigned char *inkey, unsigned long inlen,
                                  unsigned char *outkey, unsigned long *outlen,
                                  prng_state *prng, int wprng, rsa_key *key);
 
-extern int rsa_decrypt_key(const unsigned char *in,  unsigned long len, 
+extern int rsa_decrypt_key(const unsigned char *in,  unsigned long *len,
                                  unsigned char *outkey, unsigned long *keylen,
                                  rsa_key *key);
 
@@ -897,6 +897,8 @@ extern void hmac_done(hmac_state *hmac, unsigned char *hash);
 extern int hmac_test(void);
 extern int hmac_memory(int hash, const unsigned char *key, unsigned long keylen,
                        const unsigned char *data, unsigned long len, unsigned char *dst);
+extern int hmac_filehandle(int hash, FILE *in, const unsigned char *key,
+                           unsigned long keylen, unsigned char *dst);
 extern int hmac_file(int hash, const char *fname, const unsigned char *key,
                      unsigned long keylen, unsigned char *dst);
 #endif

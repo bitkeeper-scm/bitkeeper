@@ -746,6 +746,7 @@ typedef struct {
 	u16	type:3;		/* address type, nfs/bk/http/file/ssh/rsh */
 	u16	loginshell:1;	/* if set, login shell is the bkd */
 	u16	trace:1;	/* for debug, trace send/recv msg */
+	u16	progressbar:1;	/* display progressbar for large transfers */
 	u16	isSocket:1;	/* if set, rfd and wfd are sockets */
 	u16	badhost:1;	/* if set, hostname lookup failed */
 	int	rfd;		/* read fd for the remote channel */
@@ -1071,7 +1072,7 @@ ser_t	*sccs_set(sccs *, delta *, char *iLst, char *xLst);
 
 int     http_connect(remote *r);
 int     http_send(remote *, char *, size_t, size_t, char *, char *); 
-int	http_fetch_direct(char *url, char *file);
+int	http_fetch(remote *r, char *url, char *file);
 char *	user_preference(char *what);
 char	*bktmp(char *buf, const char *template);
 void	bktmpenv(void);
@@ -1194,6 +1195,7 @@ int	sfiles_skipdir(char *dir);
 void	bkversion(FILE *f);
 int	sane(int, int);
 int	global_locked(void);
+void	progressbar(int n, int max, char *msg);
 
 void	align_diffs(u8 *vec, int n, int (*compare)(int a, int b),
     int (*is_whitespace)(int i));
