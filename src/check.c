@@ -431,7 +431,7 @@ check(sccs *s, MDBM *db, MDBM *marks)
 	 */
 	for (d = s->table; d; d = d->next) {
 		if (verbose > 2) {
-			fprintf(stderr, "Check %s:%s\n", s->sfile, d->rev);
+			fprintf(stderr, "Check %s%c%s\n", s->sfile, BK_FS, d->rev);
 		}
 		unless (d->flags & D_CSET) continue;
 		marked++;
@@ -482,8 +482,8 @@ check(sccs *s, MDBM *db, MDBM *marks)
 		    	errors++;
 		} else unless (d->flags & D_CSET) {
 			fprintf(stderr,
-			    "%s:%s is in ChangeSet but not marked\n",
-			   s->gfile, d->rev);
+			    "%s%c%s is in ChangeSet but not marked\n",
+			   s->gfile, BK_FS, d->rev);
 		    	errors++;
 		} else if (verbose > 1) {
 			fprintf(stderr, "%s: found %s from ChangeSet\n",

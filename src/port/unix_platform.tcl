@@ -6,7 +6,7 @@ proc bk_init {} \
 {
 	global	tcl_platform env dev_null tmp_dir wish auto_path unix_bin bin
 	global	bithelp difftool helptool sccstool sdiffw getDir file_rev
-	global	file_start_stop file_stop bk_fs
+	global	file_start_stop file_stop line_rev bk_fs
 	global	bk_prs bk_get bk_cset bk_sfiles bk_r2c
 
 	# init for Unix env
@@ -43,10 +43,11 @@ proc bk_init {} \
 	set bk_cset [file join $bin cset]
 	set bk_r2c [file join $bin r2c]
 	set tmp_dir  "/tmp"
-	set auto_path "$bin $auto_path"
-	set file_rev {(.*):([0-9].*)}
-        set file_start_stop {(.*):(.*)\.\.(.*)}
-        set file_stop {(.*):([0-9.]+$)}
-        set bk_fs :                                           
+	set auto_path "$bin $auto_path"                                          
+	set file_rev {(.*)@([0-9].*)}
+	set file_start_stop {(.*)@(.*)\.\.(.*)}
+	set file_stop {(.*)@([0-9.]+$)}
+	set line_rev {([^@]*)@(.*)}
+        set bk_fs @                                           
 }
 

@@ -557,8 +557,8 @@ void
 badpath(sccs *s, delta *tot)
 {
 	SHOUT();
-	fprintf(stderr, "takepatch: file %s:%s has %s as recorded pathname\n",
-	    s->gfile, tot->rev, tot->pathname);
+	fprintf(stderr, "takepatch: file %s%c%s has %s as recorded pathname\n",
+	    s->gfile, BK_FS, tot->rev, tot->pathname);
 	fputs(
 "This file is not where BitKeeper thinks it should be.  If the file is in\n\
 what you consider to be the right place, update it's name with the following\n\

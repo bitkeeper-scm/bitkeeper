@@ -11,7 +11,7 @@ sub platformInit
 	$pager = $ENV{'PAGER'} || "more";
 	$editor = $ENV{'EDITOR'} || "vi";
 	$exe = "";   # win3 has ".exe" extension for executable, unix does'nt
-	$bk_fs = ":";
+	$bk_fs = "\@";
 
 	# needed for -w mode
 	if (0) {

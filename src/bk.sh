@@ -722,7 +722,7 @@ _undo() {
 		exit 0
 	fi
 	# FIX BK_FS
-	sed 's/[:@].*$//' < ${TMP}rmlist$$ | ${BIN}clean - || {
+	sed 's/@.*$//' < ${TMP}rmlist$$ | ${BIN}clean - || {
 		echo Undo aborted.
 		$RM -f ${TMP}rmlist$$
 		exit 1
@@ -760,7 +760,7 @@ _undo() {
 		exit 1
 	fi
 	# XXX Colon can not be a BK_FS on win32
-	sed 's/[:@]/ /' < ${TMP}rmlist$$ | while read f r
+	sed 's/@/ /' < ${TMP}rmlist$$ | while read f r
 	do	echo $f
 		${BIN}stripdel $Q -Cr$r $f
 		if [ $? != 0 ]

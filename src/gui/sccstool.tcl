@@ -63,7 +63,7 @@ proc chkSpace {x1 y1 x2 y2} \
 # Add the revs starting at location x/y.
 proc addline {x y xspace ht l} \
 {
-	global	bad bfont font wid revX revY arrow merges parent
+	global	bad bfont font wid revX revY arrow merges parent line_rev
 
 	set last -1
 	set ly [expr $y - [expr $ht / 2]]
@@ -77,7 +77,7 @@ proc addline {x y xspace ht l} \
 		}
 		# Figure out if we have another parent.
 		set m 0
-		if {[regexp {([^:]*):(.*)} $rev dummy rev1 rev2] == 1} {
+		if {[regexp $line_rev $rev dummy rev1 rev2] == 1} {
 			set rev $rev1
 			set parent($rev) $rev2
 			lappend merges $rev
@@ -114,7 +114,7 @@ proc addline {x y xspace ht l} \
 # All nodes use up the same amount of space, $w.
 proc line {s w ht} \
 {
-	global	bfont wid revX revY arrow where yspace
+	global	bfont wid revX revY arrow where yspace line_rev
 
 	# space for node and arrow
 	set xspace [expr $w + 12]
@@ -127,7 +127,7 @@ proc line {s w ht} \
 
 	# Now figure out where we can put the list.
 	set rev [lindex $l 0]
-	if {[regexp {([^:]*):(.*)} $rev dummy rev1 rev2] == 1} {
+	if {[regexp $line_rev $rev dummy rev1 rev2] == 1} {
 		set rev $rev1
 	}
 	set px [lindex [array get revX $rev] 1]
@@ -223,7 +223,7 @@ proc mergeArrow {m ht} \
 
 proc listRevs {file} \
 {
-	global	bad bfont lineOpts merges dev_null bk_lines
+	global	bad bfont lineOpts merges dev_null bk_lines line_rev
 
 	# Put something in the corner so we get our padding.
 	# XXX - should do it in all corners.
@@ -239,7 +239,7 @@ proc listRevs {file} \
 		lappend lines $s
 		foreach rev [split $s] {
 			# Figure out if we have another parent.
-			if {[regexp {([^:]*):(.*)} $rev dummy rev1 rev2] == 1} {
+			if {[regexp $line_rev $rev dummy rev1 rev2] == 1} {
 				set rev $rev1
 			}
 			set l [string length $rev]

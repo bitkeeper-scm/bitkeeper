@@ -65,7 +65,7 @@ usage:		fprintf(stderr, stripdel_help);
 
 	if (respectCset && (e = checkCset(s))) {
 		fprintf(stderr,
-		    "stripdel: can't remove committed delta %s:%s\n",
+		    "stripdel: can't remove committed delta %s@%s\n",
 		    s->gfile, e->rev);
 		sccs_free(s);
 		return (1);

@@ -1122,7 +1122,7 @@ doSet(sccs *sc)
 	delta	*d;
 	int	first = 1;
 
-	printf("%s:", sc->gfile);
+	printf("%s%c", sc->gfile, BK_FS);
 	for (d = sc->table; d; d = d->next) {
 		if (d->flags & D_SET) {
 			if (first) {

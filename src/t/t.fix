@@ -24,7 +24,7 @@ echo OK
 echo $N Make sure that we can not fix a committed delta .............$NL
 ci $Q -y'OK' FILE
 bk commit $Q -y'commit'
-${ECHO} "stripdel: can't remove committed delta FILE:1.2" > CMP1
+${ECHO} "stripdel: can't remove committed delta FILE@1.2" > CMP1
 bk fix $Q FILE 2> CMP2
 cmp -s CMP1 CMP2
 if [ $? != 0 ]; then echo failed to fail stripdel; diff CMP1 CMP2; exit 1; fi

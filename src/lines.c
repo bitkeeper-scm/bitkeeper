@@ -72,7 +72,7 @@ pd(char *prefix, delta *d)
 		delta	*p = sfind(s, d->merge);
 
 		assert(p);
-		printf(":%s", p->rev);
+		printf("%c%s", BK_FS, p->rev);
 		if (flags & GET_USER) printf("-%s", p->user);
 	}
 }

@@ -454,8 +454,8 @@ proc getFiles {revs} \
 			set line2File($line) $fileCount
 			set Files($fileCount) $line
 			set done 0
-			if {[regexp {(.*) (.*)([:@].*)$} \
-			    $buf dummy oldName newName revs]} {
+			set pattern "(.*) (.*)($bk_fs.*)\$"
+			if {[regexp $pattern $buf dummy oldName newName revs]} {
 				set RealFiles($fileCount) "  $newName$revs"
 				set buf "$oldName$revs"
 				set done 1

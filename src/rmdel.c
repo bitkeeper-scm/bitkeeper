@@ -55,7 +55,7 @@ rmdel_main(int ac, char **av, char *out)
 	
 	name = rev ? rev : sfileRev();
 	unless (d = sccs_getrev(s, name, 0, 0)) {
-		fprintf(stderr, "rmdel: can't find %s:%s\n", s->gfile, name);
+		fprintf(stderr, "rmdel: can't find %s%c%s\n", s->gfile, BK_FS, name);
 err:		sccs_free(s);
 		sfileDone();
 		purify_list();

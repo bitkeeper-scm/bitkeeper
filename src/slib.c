@@ -11618,7 +11618,7 @@ mkpatch(sccs *s, delta *a)
 			i++;
 			continue;
 		}
-		printf("%s:%s\n", left->gfile, alist[i++]->rev);
+		printf("%s%c%s\n", left->gfile, BK_FS, alist[i++]->rev);
 	}
 	free(alist);
 }
