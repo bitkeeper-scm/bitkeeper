@@ -797,8 +797,10 @@ csetlist(cset_t *cs, sccs *cset)
 	}
 again:	/* doDiffs can make it two pass */
 	if (!cs->doDiffs && cs->makepatch) {
-		fputs("\n", stdout);
-		fputs(PATCH_PATCH, stdout);
+		unless (cs->csetOnly) {
+			fputs("\n", stdout);
+			fputs(PATCH_PATCH, stdout);
+		}
 		fputs(PATCH_CURRENT, stdout);
 		fputs("\n", stdout);
 	}
