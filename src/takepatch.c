@@ -1120,7 +1120,7 @@ apply:
 
 		d = sccs_findKey(s, p->me);
 		assert(d);
-		fprintf(csets, "%s\n", d->rev);
+		unless (p->meta) fprintf(csets, "%s\n", d->rev);
 		mclose(p->diffMmap); /* win32: must mclose after cset_write */
 		p = p->next;
 	}
