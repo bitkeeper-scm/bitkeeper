@@ -577,6 +577,34 @@ echo 4 >> foo.c
 bk delta $Q -y2 foo.c
 bk commit $Q -y"cset comment for 1.4" > /dev/null 2>&1
 bk push >push.out 2>&1 || { echo failed; cat push.out; exit 1; }
+echo OK
+
+echo $N Check BK_STATUS in push and push -n and pull -n .............$NL
+cd $HERE/project/BitKeeper/triggers
+rm -f *
+echo 'set | grep BK_STATUS' > pre-incoming
+echo 'set | grep BK_STATUS' > pre-outgoing
+chmod +x pre*
+cd $HERE/copy
+rm -f BitKeeper/triggers/*
+bk push -n >push.out 2>&1 || { echo failed; cat push.out; exit 1; }
+grep -q BK_STATUS=DRYRUN push.out || {
+	echo Failed
+	cat push.out
+	exit 1
+}
+bk push >push.out 2>&1 || { echo failed; cat push.out; exit 1; }
+grep -q BK_STATUS=DRYRUN push.out && {
+	echo Failed
+	cat push.out
+	exit 1
+}
+bk pull -n >pull.out 2>&1 || { echo failed; cat pull.out; exit 1; }
+grep -q BK_STATUS=DRYRUN pull.out || {
+	echo Failed
+	cat push.out
+	exit 1
+}
 cd $HERE/project/BitKeeper/triggers
 rm -f *
 echo OK

@@ -280,6 +280,7 @@ send_part1_msg(opts opts, remote *r, char rev_list[], char **envVar)
 	if (gzip) fprintf(f, " -z%d", opts.gzip);
 	if (opts.debug) fprintf(f, " -d");
 	if (opts.metaOnly) fprintf(f, " -e");
+	unless (opts.doit) fprintf(f, " -n");
 	fputs("\n", f);
 	fclose(f);
 
@@ -490,6 +491,7 @@ send_end_msg(opts opts, remote *r, char *msg, char *rev_list, char **envVar)
 	fprintf(f, "push_part2");
 	if (gzip) fprintf(f, " -z%d", opts.gzip);
 	if (opts.metaOnly) fprintf(f, " -e");
+	unless (opts.doit) fprintf(f, " -n");
 	fputs("\n", f);
 
 	fputs(msg, f);
@@ -543,6 +545,7 @@ send_patch_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
 			fprintf(f, " -G");
 		}
 	}
+	unless (opts.doit) fprintf(f, " -n");
 	fputs("\n", f);
 	fprintf(f, "@PATCH@\n");
 	fclose(f);
@@ -768,9 +771,7 @@ push(char **av, opts opts, remote *r, char **envVar)
 		fprintf(stderr, "push: cannot find package root.\n");
 		exit(1);
 	}
-	if (opts.debug) {
-		fprintf(stderr, "Root Key = \"%s\"\n", rootkey(buf));
-	}
+	if (opts.debug) fprintf(stderr, "Root Key = \"%s\"\n", rootkey(buf));
 
 	if ((bk_mode() == BK_BASIC) && !opts.metaOnly &&
 	    !isLocalHost(r->host) && exists(BKMASTER)) {
@@ -779,6 +780,7 @@ push(char **av, opts opts, remote *r, char **envVar)
 		exit(1);
 	}
 	ret = push_part1(opts, r, rev_list, envVar);
+	if (opts.debug) fprintf(stderr, "part1 returns %d\n", ret);
 	if (ret < 0) {
 		unlink(rev_list);
 		return (ret); /* failed */

@@ -252,6 +252,31 @@ bk pull $Q -t $HERE/project
 if [ ! -f src2/src3/SCCS/s.bar.c ]; then echo failed; exit 1; fi
 if [ ! -f src2/src3/SCCS/s.h.h ]; then echo failed; exit 1; fi
 echo OK
+echo $N push -n to a read locked repository should work .............$NL
+cd $HERE/copy2
+date > newfile
+bk new $Q newfile
+bk commit $Q -ywhatever
+cd $HERE/project
+bk lock -r &
+KILLME=$!
+cd $HERE/copy2
+bk push -c1 -n $HERE/project > OUT 2>&1
+grep -q 'Would send' OUT || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+echo $N push to a read locked repository should fail ................$NL
+bk push -c0 $HERE/project > OUT 2>&1
+grep -q 'Unable to lock repository for update' OUT || {
+	echo failed
+	cat OUT
+	exit 1
+}
+kill $KILLME
+echo OK
 echo $N push to unrelated project should error ......................$NL
 cd $HERE
 no_logging unrelated
@@ -271,7 +296,4 @@ cd $HERE/unrelated
 waitForUnlock $HERE/unrelated
 echo OK
 
-
-# XXX TODO need test case for push/pull -n
-# XXX TODO need test case for push/pull to unrelated project
 # XXX TODO need test case for pull/pull/clone to/from space in pathname
