@@ -166,7 +166,7 @@ write:	sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
 			unlink(path);
 			continue;
 		}
-		if (repository_stale(path, 1, verbose) == 0) {
+		unless (repository_stale(path, 1, verbose)) {
 			left++;
 		}
 	}
@@ -368,7 +368,8 @@ repository_stale(char *path, int discard, int verbose)
 	if (!verbose) flags |= SILENT;
 	host[0] = 0;
 	if (s) s++; else s = path;
-	sscanf(s, "%d@%s", &pid, host);
+	/* if the lock is not in the pid@host format, then not a real lock */
+	if (sscanf(s, "%d@%s", &pid, host) != 2) return (1);
 	if (streq(host, thisHost) &&
 	    (kill((pid_t)pid, 0) != 0) && (errno == ESRCH)) {
 		if (discard) {

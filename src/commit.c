@@ -2,43 +2,70 @@
 #include "sccs.h"
 #include <time.h>
 
-extern char *editor, *pager, *bin, *BitKeeper;
+/*
+ * commit options
+ */
+typedef struct {
+	u32	checklog:1;
+	u32	quiet:1;
+	u32	lod:1;
+} c_opts;
 
-private	char commit_file[MAXPATH], list[MAXPATH];
-private	int force = 0, lod = 0;
-private	int checklog = 1, getcomment = 1;
-private	char *sym = 0;
-
-private	void	make_comment(char *cmt);
-private int	do_commit();
-private	int	checkConfig();
+extern	char	*editor, *bin, *BitKeeper;
 extern	int	do_clean(char *, int);
+
+private	void	make_comment(char *cmt, char *commentFile);
+private int	do_commit(c_opts opts, char *sym, char *commentFile);
+private	int	checkConfig();
 void	cat(char *file);
+
+/*
+ *  Note: -f -s are internal options, do not document.
+ *  XXX	-L is part of the lod work, not done yet.
+ */
+private char    *commit_help = "\n\
+usage: commit  [-dFRqS:y:Y:]\n\n\
+    -d		don't run interactively, just do the commit with the \n\
+		default comment\n\
+    -F		force a commit even if no pending deltas\n\
+    -R		this tells commit that it is processing the resync directory\n\
+    -q		run quietly\n\
+    -S<sym>	set the symbol to <sym> for the new changeset\n\
+    -y<comment>	set the changeset comment to <comment>\n\
+    -Y<file>	set the changeset comment to the content of <file>\n";
 
 int
 commit_main(int ac, char **av)
 {
-	int	c, doit = 0, resync = 0, quiet = 0;
+	int	c, doit = 0, force = 0, resync = 0, getcomment = 1;
 	char	buf[MAXLINE], s_cset[MAXPATH] = CHANGESET;
+	char	commentFile[MAXPATH], pendingDeltas[MAXPATH];
+	char	*sym = 0;
+	c_opts	opts  = {1, 0 , 0};
 
-	sprintf(commit_file, "%s/bk_commit%d", TMP_PATH, getpid());
+	if (ac > 1 && streq("--help", av[1])) {
+		fputs(commit_help, stderr);
+		return (1);
+	}
+
+	sprintf(commentFile, "%s/bk_commit%d", TMP_PATH, getpid());
 	while ((c = getopt(ac, av, "dfFLRqsS:y:Y:")) != -1) {
 		switch (c) {
 		    case 'd': 	doit = 1; break;
-		    case 'f':	checklog = 0; break;
+		    case 'f':	opts.checklog = 0; break;
 		    case 'F':	force = 1; break;
-		    case 'L':	lod = 1; break;
+		    case 'L':	opts.lod = 1; break;
 		    case 'R':	BitKeeper = "../BitKeeper/";
 				resync = 1;
 				break;
-		    case 's':	/* fall thru  */
-		    case 'q':	quiet = 1; break;
+		    case 's':	/* fall thru  */ 	/* internal option */
+		    case 'q':	opts.quiet = 1; break;
 		    case 'S':	sym = optarg; break;
 		    case 'y':	doit = 1; getcomment = 0;
-				make_comment(optarg);
+				make_comment(optarg, commentFile);
 				break;
 		    case 'Y':	doit = 1; getcomment = 0;
-				strcpy(commit_file, optarg);
+				strcpy(commentFile, optarg);
 				break;
 		}
 	}
@@ -46,33 +73,34 @@ commit_main(int ac, char **av)
 		printf("Can not find root directory\n");
 		exit(1);
 	}
-	unless(resync) remark(quiet);
-	sprintf(list, "%s/bk_list%d", TMP_PATH, getpid());
-	sprintf(buf, "bk sfiles -CA > %s", list);
+	unless(resync) remark(opts.quiet);
+	sprintf(pendingDeltas, "%s/bk_list%d", TMP_PATH, getpid());
+	sprintf(buf, "bk sfiles -CA > %s", pendingDeltas);
 	if (system(buf) != 0) {
-		unlink(list);
-		unlink(commit_file);
+		unlink(pendingDeltas);
+		unlink(commentFile);
 		gethelp("duplicate_IDs", "", stdout);
 		exit(1);
 	}
-	if ((force == 0) && (size(list) == 0)) {
-		unless (quiet) fprintf(stderr, "Nothing to commit\n");
-		unlink(list);
-		unlink(commit_file);
+	if ((force == 0) && (size(pendingDeltas) == 0)) {
+		unless (opts.quiet) fprintf(stderr, "Nothing to commit\n");
+		unlink(pendingDeltas);
+		unlink(commentFile);
 		exit(0);
 	}
 	if (getcomment) {
 		sprintf(buf,
-			"bk sccslog -C - < %s > %s", list, commit_file);
+		    "bk sccslog -C - < %s > %s", pendingDeltas, commentFile);
 		system(buf);
 	}
-	unlink(list);
+	unlink(pendingDeltas);
 	do_clean(s_cset, SILENT);
-	if (doit) exit(do_commit(quiet));
+	//if (doit) exit(do_commit(quiet, checklog, lod, sym, commentFile));
+	if (doit) exit(do_commit(opts, sym, commentFile));
 
 	while (1) {
 		printf("\n-------------------------------------------------\n");
-		cat(commit_file);
+		cat(commentFile);
 		printf("-------------------------------------------------\n");
 		printf("Use these comments (e)dit, (a)bort, (u)se? ");
 		fflush(stdout);
@@ -80,15 +108,17 @@ commit_main(int ac, char **av)
 		switch (buf[0]) {
 		    case 'y':  /* fall thru */
 		    case 'u':
-			exit(do_commit(quiet)); break;
+			//exit(do_commit(quiet, checklog, lod, sym, commentFile));
+			exit(do_commit(opts, sym, commentFile));
+			break;
 		    case 'e':
-			sprintf(buf, "%s %s", editor, commit_file);
+			sprintf(buf, "%s %s", editor, commentFile);
 			system(buf);
 			break;
 		    case 'a':
 Abort:			printf("Commit aborted.\n");
-			unlink(list);
-			unlink(commit_file);
+			unlink(pendingDeltas);
+			unlink(commentFile);
 			exit(1);
 		}
 	}
@@ -104,9 +134,9 @@ cat(char *file)
 }
 
 private int
-do_commit(int quiet)
+do_commit(c_opts opts, char *sym, char *commentFile)
 {
-	int	hasComment =  (exists(commit_file) && (size(commit_file) > 0));
+	int	hasComment =  (exists(commentFile) && (size(commentFile) > 0));
 	int	rc;
 	char	buf[MAXLINE], sym_opt[MAXLINE] = "";
 	char	s_cset[MAXPATH] = CHANGESET;
@@ -115,13 +145,12 @@ do_commit(int quiet)
 	delta	*d;
 
 	if (checkConfig() != 0) {
-		unlink(list);
-		unlink(commit_file);
+		unlink(commentFile);
 		exit(1);
 	}
-	if (checklog) {
-		if (checkLog(quiet) != 0) {
-			unlink(commit_file);
+	if (opts.checklog) {
+		if (checkLog(opts.quiet) != 0) {
+			unlink(commentFile);
 			exit(1);
 		}
 	}
@@ -130,17 +159,16 @@ do_commit(int quiet)
 	sprintf(buf, "bk sfiles -C > %s", commit_list);
 	system(buf);
 	sprintf(buf, "bk cset %s %s %s %s%s < %s",
-		lod ? "-L": "", quiet ? "-q" : "", sym_opt,
-		hasComment? "-Y" : "", hasComment ? commit_file : "",
+		opts.lod ? "-L": "", opts.quiet ? "-q" : "", sym_opt,
+		hasComment? "-Y" : "", hasComment ? commentFile : "",
 		commit_list);
 	rc = system(buf);
-	unlink(list);
-	unlink(commit_file);
+	unlink(commentFile);
 	unlink(commit_list);
 	notify();
 	s = sccs_init(s_cset, 0, 0);
 	d = findrev(s, 0);
-	logChangeSet(d->rev, quiet);
+	logChangeSet(d->rev, opts.quiet);
 	sccs_free(s);
 	return (rc);
 }
@@ -167,11 +195,11 @@ checkConfig()
 }
 
 private	void
-make_comment(char *cmt)
+make_comment(char *cmt, char *commentFile)
 {
 	int fd;
 
-	if ((fd = open(commit_file, O_CREAT|O_TRUNC|O_WRONLY, 0664)) == -1)  {
+	if ((fd = open(commentFile, O_CREAT|O_TRUNC|O_WRONLY, 0664)) == -1)  {
 		perror("commit");
 		exit(1);
 	}
