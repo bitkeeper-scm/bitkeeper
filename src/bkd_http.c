@@ -1,21 +1,22 @@
 #include "bkd.h"
-typedef void (*vfn)(char *, int);
+typedef void (*vfn)(char *);
 
 char		*http_time(void);
 private	char	*type(char *name);
 private void	httphdr(char *file);
 private	char	*url(char *path);
 private void	http_error(int status, char *fmt, ...);
+private void	http_page(char *page, vfn content, char *argument);
 private void	http_file(char *file);
-private void	http_index(char *page, int embedded);
-private void	http_changes(char *rev, int embedded);
-private void	http_cset(char *rev, int embedded);
-private void	http_anno(char *pathrev, int embedded);
-private void	http_both(char *pathrev, int embedded);
-private void	http_diffs(char *pathrev, int embedded);
-private void	http_src(char *pathrev, int embedded);
-private void	http_hist(char *pathrev, int embedded);
-private void	http_patch(char *rev, int embedded);
+private void	http_index(char *page);
+private void	http_changes(char *rev);
+private void	http_cset(char *rev);
+private void	http_anno(char *pathrev);
+private void	http_both(char *pathrev);
+private void	http_diffs(char *pathrev);
+private void	http_src(char *pathrev);
+private void	http_hist(char *pathrev);
+private void	http_patch(char *rev);
 private void	http_gif(char *path);
 private void	title(char *title, char *desc, char *color);
 private void	pwd_title(char *t, char *color);
@@ -25,7 +26,9 @@ private void	learn();
 private void	trailer(char *path);
 private char	*units(char *t);
 private char	*findRoot(char *name);
+private int	has_temp_license();
 private	char	*root;
+private int	embedded = 0;
 
 #define	COLOR_TOP	"lightblue"	/* index.html */
 #define	COLOR_CHANGES	"lightblue"	/* ChangeSet */
@@ -120,11 +123,9 @@ cmd_httpget(int ac, char **av)
 		}
 	} else root = url(0);
 
-#if 0
-	unless (bk_options()&BKOPT_WEB) {
+	unless (bk_options()&BKOPT_WEB || has_temp_license()) {
 		http_error(503, "bkWeb option is disabled: %s", upgrade_msg);
 	}
-#endif
 
 	unless (av[1]) {
 		http_error(404, "get what?\n");
@@ -398,7 +399,7 @@ http_file(char *file)
 }
 
 private void
-http_changes(char *rev, int embedded)
+http_changes(char *rev)
 {
 	char	*av[100];
 	int	i;
@@ -455,7 +456,7 @@ http_changes(char *rev, int embedded)
 }
 
 private void
-http_cset(char *rev, int embedded)
+http_cset(char *rev)
 {
 	char	buf[2048];
 	char	path[MAXPATH];
@@ -666,7 +667,7 @@ htmlify(char *from, char *html, int n)
 
 /* pathname[@rev] */
 private void
-http_hist(char *pathrev, int embedded)
+http_hist(char *pathrev)
 {
 	char	buf[16<<10];
 	char	*s, *d;
@@ -722,7 +723,7 @@ http_hist(char *pathrev, int embedded)
 
 /* pathname */
 private void
-http_src(char *path, int embedded)
+http_src(char *path)
 {
 	char	buf[32<<10], abuf[30];
 	char	html[MAXPATH];
@@ -831,7 +832,7 @@ http_src(char *path, int embedded)
 }
 
 private void
-http_anno(char *pathrev, int embedded)
+http_anno(char *pathrev)
 {
 	FILE	*f;
 	char	buf[4096];
@@ -878,7 +879,7 @@ http_anno(char *pathrev, int embedded)
 }
 
 private void
-http_both(char *pathrev, int embedded)
+http_both(char *pathrev)
 {
 	if (embedded) {
 		out("Not implemented yet, check back soon");
@@ -928,7 +929,7 @@ color(char c)
 }
 
 private void
-http_diffs(char *pathrev, int embedded)
+http_diffs(char *pathrev)
 {
 	FILE	*f;
 	char	buf[16<<10];
@@ -998,7 +999,7 @@ http_diffs(char *pathrev, int embedded)
 }
 
 private void
-http_patch(char *rev, int embedded)
+http_patch(char *rev)
 {
 	FILE	*f;
 	char	buf[16<<10];
@@ -1087,7 +1088,7 @@ units(char *t)
 }
 
 private void
-http_index(char *page, int embedded)
+http_index(char *page)
 {
 	sccs	*s = sccs_init(CHANGESET, INIT_NOCKSUM|INIT_NOSTAT, 0);
 	delta	*d;
@@ -1274,31 +1275,40 @@ http_error(int status, char *fmt, ...)
 	int     size;
 	int     ct;
 
-        sprintf(buf,
-            "HTTP/1.0 %d Error\r\n"
-            "%s\r\n"
-            "Server: bkhttp/%s\r\n"
-            "Content-Type: text/html\r\n"
-            "\r\n",
-            status, http_time(), BKWEB_SERVER_VERSION);
-        out(buf);
+	if (embedded) {
+		buf[0] = 0;
+	} else {
+		sprintf(buf,
+		    "HTTP/1.0 %d Error\r\n"
+		    "%s\r\n"
+		    "Server: bkhttp/%s\r\n"
+		    "Content-Type: text/html\r\n"
+		    "\r\n",
+		    status, http_time(), BKWEB_SERVER_VERSION);
+		out(buf);
 
-	strcpy(buf, "<html><head><title>Error!</title></head>\n"
-		    "<body alink=black link=black bgcolor=white>\n"
-		    "<h2><center>\n");
-	sprintf(buf+strlen(buf), "Error %d</h2>\n", status);
+		strcpy(buf, "<html><head><title>Error!</title></head>\n"
+			    "<body alink=black link=black bgcolor=white>\n"
+			    "<center>\n");
+	}
+	sprintf(buf+strlen(buf), "<h2>Error %d</h2>\n", status);
 	size = strlen(buf);
 
 	va_start(ptr,fmt);
-	ct = vsnprintf(buf+size, sizeof buf-size, fmt, ptr);
+	ct = vsnprintf(buf+size, sizeof buf-size-1, fmt, ptr);
 	va_end(ptr);
 
-	if (ct == -1)	/* message overflow -- just print the error code */
+	if (ct == -1) {
+		/* buffer overflow -- we didn't really need that message */
 		buf[size] = 0;
-
+	} else {
+		strcat(buf, "\n");
+	}
 	out(buf);
-	out("\n"
-	    "</center>\n"
+
+	if (embedded) return;
+
+	out("</center>\n"
 	    "<hr>\n"
 	    "<table width=100%>\n"
 	    "<tr>\n"
@@ -1313,6 +1323,7 @@ http_error(int status, char *fmt, ...)
 	out("</body>\n");
 	exit(1);
 }
+
 
 private char *
 url(char *path)
@@ -1341,16 +1352,24 @@ http_page(char *page, vfn content, char *argument)
     i = snprintf(buf, sizeof buf, "BitKeeper/html/%s", page);
 
     if (i != -1 && isreg(buf) && (f = fopen(buf, "r")) != 0) {
+	    embedded = 1;
 	    httphdr(".html");
 	    while (fgets(buf, sizeof buf, f)) {
 		    if (strncmp(buf, ".CONTENT.", 9) == 0) {
-			    (*content)(argument, 1);
+			    (*content)(argument);
 		    } else {
 			    out(buf);
 		    }
 	    }
 	    fclose(f);
     } else {
-	    (*content)(argument, 0);
+	    embedded = 0;
+	    (*content)(argument);
     }
+}
+
+private int
+has_temp_license()
+{
+    return 1;
 }
