@@ -3,17 +3,6 @@
 # Copright (c) 1999 Larry McVoy
 # %K%
 
-if [ X$1 = X-o ] 
-then	shift
-	OSTYPE=$1
-	shift
-fi
-
-# default to ATT UWIN environment
-if [ X${OSTYPE} = X ]
-then	OSTYPE=uwin
-fi
-
 # check which platform we are running on
 # -w => windows
 if [ X${OSTYPE} = Xcygwin32 -o X${OSTYPE} = Xuwin ]

@@ -79,7 +79,7 @@ main(int ac, char **av, char **ev)
 	char	*encp = 0, *compp = 0;
 	int	error = 0;
 	int	bigpad = 0;
-	int	fastSym, dopath = 0, rmCset = 0, rmPath = 0;
+	int	fastSym = 0, dopath = 0, rmCset = 0, rmPath = 0;
 	int	doDates = 0, touchGfile = 0;
 	char	*m = 0;
 
