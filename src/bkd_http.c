@@ -21,6 +21,7 @@ private void	http_gif(char *path);
 private void	http_stats(char *path);
 private void	http_related(char *path);
 private void	http_license(char *path);
+private void	http_tags(char *path);
 private void	title(char *title, char *desc, char *color);
 private void	pwd_title(char *t, char *color);
 private void	header(char *path, char *color, char *title, char *header, ...);
@@ -82,6 +83,7 @@ private struct pageref {
     { http_stats,   "stats",     "stats",  0, HAS_ARG, 0 },
     { http_related, "related",   "related/", 8 },
     { http_license, 0,           "license" },
+    { http_tags,    "tags",      "tags" },
     { 0 },
 };
 
@@ -266,11 +268,21 @@ navbutton(int active, int tag, char *start, char *end)
 			out("All ChangeSets");
 		} else if (start[10] == '+') {
 			out("Latest ChangeSet");
-		} else {
+		} else if (start[10] == '-') {
 			ct = atoi(start+11);
 			sprintf(buf,
 			    "Changesets in the last %d %s",
 			    ct, units(start+11));
+			out(buf);
+		} else if (start[10] == '.') {
+			sprintf(buf, "Changesets before %s", start+12);
+			out(buf);
+		} else {
+			int slen= strlen(start);
+
+			if (start[slen-1] == '.' && start[slen-2] == '.')
+				start[slen-2] = 0;
+			sprintf(buf, "Changesets after %s", start+10);
 			out(buf);
 		}
 		if (user[0] && !shiftroot) {
@@ -493,16 +505,19 @@ http_changes(char *rev)
 		whoami("ChangeSet");
 	}
 
-	i = snprintf(dspec, sizeof dspec, "-d%s<tr bgcolor=white>\n"
+	i = snprintf(dspec, sizeof dspec, "-d%s"
+			"$if(:Li: -gt 0){<tr bgcolor=white>\n"
 			" <td align=right>:HTML_AGE:</td>\n"
 			" <td align=center>:USER:</td>\n"
 			" <td align=center"
 			"$if(:TAG:){ bgcolor=yellow}>"
 			"<a href=cset@:I:%s>:I:</a>"
-			"$if(:TAG:){$each(:TAG:){<br>(:TAG:)}}"
+			"$if(:TAG:){<br>:TAG:}"
+//			"$if(:TAG:){$each(:TAG:){<br>(:TAG:)}}"
 			"</td>\n"
 			" <td>:HTML_C:</td>\n"
-			"</tr>\n%s", prefix, navbar, suffix);
+			"</tr>\n"
+			"}%s", prefix, navbar, suffix);
 
 	if (i == -1) {
 		http_error(500, "buffer overflow in http_changes");
@@ -569,7 +584,8 @@ http_cset(char *rev)
 	      "<font size=2 color=darkblue>diffs</font></a>\n"
 	    "}"
 	    "</td></tr>\n"
-	    "$each(:TAG:){<tr bgcolor=yellow><td>(:TAG:)</td></tr>\n}"
+//	    "$each(:TAG:){<tr bgcolor=yellow><td>(:TAG:)</td></tr>\n}"
+	    "$if(:TAG:){<tr bgcolor=yellow>\n  <td>:TAG:</td>\n</tr>\n}"
 	    "<tr bgcolor=white>\n"
 	    "<td>:HTML_C:</td></tr>\n"
 	    "%s",
@@ -1215,7 +1231,7 @@ http_stats(char *page)
 	char	buf[200];
 	FILE	*p;
 
-	unless (p = popen("bk prs -h -d':USER: :AGE:\n' ChangeSet | bk _sort", "r"))
+	unless (p = popen("bk prs -h -d'$if(:Li: -gt 0){:USER: :AGE:\n}' ChangeSet | bk _sort", "r"))
 		http_error(500, "bk prs failed: %s", strerror(errno));
 
 	c_user[0] = 0;
@@ -1325,6 +1341,7 @@ http_index(char *page)
 	t2y = now - (2*365*24*60*60);
 	t3y = now - (3*365*24*60*60);
 	for (d = s->table; d; d = d->next) {
+		unless (d->added > 0) continue;
 		if (user[0] && !streq(user, d->user)) continue;
 		unless (d->type == 'D') continue;
 		if (d->date >= t1h) c1h++;
@@ -1449,13 +1466,21 @@ http_index(char *page)
 	out(buf);
 	out("<td>&nbsp;</td></tr>");
 	unless (user[0]) {
-		out("<tr><td>&nbsp;</td>");
+		out("<tr>\n"
+		    "  <td>&nbsp;</td>\n");
 		sprintf(buf,
-		    "<td><a href=stats%s>User statistics</a></td>",
+		    "  <td><a href=stats%s>User statistics</a></td>\n",
 		    navbar);
 		out(buf);
-		out("<td>&nbsp;</td></tr>");
+		out("  <td>&nbsp;</td>\n"
+		    "</tr>\n");
 	}
+	out("<tr>\n"
+	    "  <td></td>\n");
+	sprintf(buf, "  <td><a href=tags%s>Tags</a></td>\n", navbar);
+	out(buf);
+	out("  <td>&nbsp;</td>\n"
+	    "</tr>\n");
 	out("</table>\n");
 	if (!embedded) trailer(0);
 }
@@ -1837,4 +1862,55 @@ http_license(char *page)
 		write(licenseServer[0], arg, 4);
 	}
 	exit(0);
+}
+
+
+private void
+http_tags(char *page)
+{
+	char	*av[100];
+	int	i;
+	char    dspec[MAXPATH];
+
+	whoami("tags");
+
+	i = snprintf(dspec, sizeof dspec, "-d%s$if(:TAG:!=''){"
+	    "<tr bgcolor=white>\n"
+	    "  <td align=right>:HTML_AGE:</td>\n"
+	    "  <td align=center bgcolor=yellow>\n"
+	    "      <a href=\"cset@:REV:%s\">:TAG:</a></td>\n"
+	    "  <td><a href=\"ChangeSet@:REV:..%s\">later CSets</a></td>\n"
+	    "  <td><a href=\"ChangeSet@..:REV:%s\">earlier CSets</a></td>\n"
+	    "  <td>:HTML_C:</td>\n"
+	    "</tr>}%s", prefix, navbar, navbar, navbar, suffix);
+
+	if (i == -1)
+		http_error(500, "buffer overflow in http_tags");
+
+	if (!embedded) {
+		httphdr(".html");
+		header(0, COLOR_CHANGES, "Tags", 0);
+	}
+
+	out(OUTER_TABLE INNER_TABLE
+	    "<tr bgcolor=#d0d0d0>\n"
+	    "  <th>Age</th>\n"
+	    "  <th>Tag</th>\n"
+	    "  <th>&nbsp;</th>\n"
+	    "  <th>&nbsp;</th>\n"
+	    "  <th align=left>&nbsp;Comments</th>\n"
+	    "</tr>\n");
+
+	av[i=0] = "bk";
+	av[++i] = "prs";
+	av[++i] = "-h";
+	av[++i] = dspec;
+	av[++i] = CHANGESET;
+	av[++i] = 0;
+
+	spawnvp_ex(_P_WAIT, "bk", av);
+
+	out(INNER_END OUTER_END);
+
+	if (!embedded) trailer("tags");
 }
