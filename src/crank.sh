@@ -1,7 +1,7 @@
 #!/bin/sh
 
 USER=`bk getuser`
-exec > /tmp/LOG-$USER 2>&1
+exec > /build/LOG-$USER 2>&1
 set -x
 
 # We start in the src subdir
