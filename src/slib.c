@@ -8201,7 +8201,7 @@ out:
 			fprintf(stderr,
 			    "delta: diffs or gfile, but not both.\n");
 			s->state |= S_WARNED;
-			goto out;
+			OUT;
 		}
 	} else unless (diffs) {
 		goto out;
