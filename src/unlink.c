@@ -8,13 +8,68 @@ unlink_main(int ac, char **av)
 	int	errors = 0;
 	char	buf[MAXPATH];
 
-	while (fgets(buf, sizeof(buf), stdin)) {
+	while (fnext(buf, stdin)) {
 		unless ((c = chop(buf)) == '\n') {
 			fprintf(stderr, "Bad filename '%s%c'\n", buf, c);
 			errors = 1;
 			continue;
 		}
 		if (unlink(buf)) errors = 1;
+	}
+	return (errors);
+}
+
+int
+sccs_keyunlink(char *key, project *proj, MDBM *idDB, MDBM *dirs)
+{
+	sccs	*s;
+	int	ret;
+	char	*t;
+
+	unless (s = sccs_keyinit(key, INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB)) {
+		fprintf(stderr, "Cannot init key %s\n", key);
+		return (1);
+	}
+	if (sccs_clean(s, SILENT)) {
+		fprintf(stderr, "Bad clean of %s\n", s->sfile);
+		return (2);
+	}
+	sccs_close(s);
+	ret = unlink(s->sfile) ? 4 : 0;
+	if (dirs) {
+		if (t = strrchr(s->sfile, '/')) {
+			*t = 0;
+			mdbm_store_str(dirs, s->sfile, "", MDBM_INSERT);
+			*t = '/';
+		}
+	}
+	sccs_free(s);
+	return (ret);
+}
+
+int
+keyunlink_main(int ac, char **av)
+{
+	char	c;
+	int	errors = 0;
+	char	buf[MAXKEY];
+	project	*proj;
+	MDBM	*idDB;
+
+	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
+		perror("idcache");
+		exit(1);
+	}
+	sccs_cd2root(0, 0);
+	proj = proj_init(0);
+	while (fnext(buf, stdin)) {
+		unless ((c = chop(buf)) == '\n') {
+			fprintf(stderr, "Bad key '%s%c'\n", buf, c);
+			errors |= 1;
+			continue;
+		}
+		/* XXX - empty dirs, see csetprune.c:rmKeys */
+		errors |= sccs_keyunlink(buf, proj, idDB, 0);
 	}
 	return (errors);
 }
