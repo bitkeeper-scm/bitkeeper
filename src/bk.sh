@@ -259,7 +259,7 @@ _lclone() {
 	done
 	bk lock -r &
 	LOCKPID="$!"
-	LOCK="${LOCKPID}@`bk gethost`"
+	LOCK="${LOCKPID}@`bk gethost`.lock"
 	sleep 1
 	test -f BitKeeper/readers/$LOCK || {
 		echo Lost read lock race, please retry again later.
@@ -288,6 +288,9 @@ _lclone() {
 		find "$FROM/$x/SCCS" -type f -name 's.*' -print |
 		    bk _link "$x/SCCS"
 	done < /tmp/dirs$$
+	for file in $FROM/BitKeeper/etc/SCCS/x.*mark; do
+	    cp "$file" BitKeeper/etc/SCCS
+	done
 	while [ -d "$FROM/BitKeeper/readers" ]
 	do	kill $LOCKPID 2>/dev/null
 		kill -0 $LOCKPID 2>/dev/null || {
@@ -309,10 +312,15 @@ _lclone() {
 		bk undo -fs $Q -a$REV
 	fi
 	qecho Running a sanity check
-	bk -r check -ac || {
+	bk -r check -acf
+	if [ $? -eq 2 ]; then
+		qecho Running consistency check again ...
+		bk -r check -acf
+	fi
+	if [ $? -ne 0 ]; then
 		echo lclone failed
 		exit 1
-	}
+	fi
 	bk parent $Q "$FROM"
 	rm -f /tmp/dirs$$
 	exit 0

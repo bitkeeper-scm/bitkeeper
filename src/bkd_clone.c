@@ -1,4 +1,5 @@
 #include "bkd.h"
+#include "logging.h"
 
 private	char *cmd[] = { "bk", "-r", "sfio", "-o", "-q", 0 };
 private int uncompressed();
@@ -133,13 +134,29 @@ uncompressed()
 private int
 compressed(int level, int hflag)
 {
-	pid_t	pid;
-	int	rfd, status;
+	int	status;
+	char	*tmpf;
+	FILE	*fh;
+	char	*sfiocmd;
+	char	*cmd;
 
+	tmpf = bktmpfile();
+	fh = fopen(tmpf, "w");
+	if (exists(LMARK)) fprintf(fh, LMARK "\n");
+	if (exists(CMARK)) fprintf(fh, CMARK "\n");
+	fclose(fh);
+	cmd = aprintf("bk sfiles >> %s", tmpf);
+	status = system(cmd);
+	free(cmd);
+	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) return (1);
+	
+	sfiocmd = aprintf("bk sfio -oq < %s", tmpf);
 	signal(SIGCHLD, SIG_DFL);
-	pid = spawnvp_rPipe(cmd, &rfd, BIG_PIPE);
-	if (pid == -1) return (1);
-	gzipAll2fd(rfd, 1, level, 0, 0, hflag, 0);
-	waitpid(pid, &status, 0);
+	fh = popen(sfiocmd, "r");
+	free(sfiocmd);
+	gzipAll2fd(fileno(fh), 1, level, 0, 0, hflag, 0);
+	status = pclose(fh);
+	unlink(tmpf);
+	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) return (1);
 	return (0);
 }

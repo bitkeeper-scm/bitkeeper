@@ -209,9 +209,9 @@ set_meta(sccs *s, int stripBranches, int *count)
 	delta	 *e, *leaf = 0;
 	FILE 	*f;
 	
-	l = logging(0, 0, 0);
-	f = fopen((l&LOG_OPEN) ? LMARK : CMARK, "rb");
-	logmarker_ptype = (l&LOG_OPEN) ? 0 : 1;
+	l = logging(0);
+	logmarker_ptype = is_openlogging(l) ? 0 : 1;
+	f = fopen(logmarker_ptype ? CMARK : LMARK, "rb");
 
 	if (f) {
 		char    key[MAXKEY];
@@ -250,17 +250,9 @@ set_meta(sccs *s, int stripBranches, int *count)
 				sfind(s, e->merge)->flags &= ~D_MERGED;
 				redo_merge = 1;
 			}
-#ifdef OLD
-			if (CSET(s) && e->published) {
-				logmarker_needed = 1;
-				logmarker_ptype = e->ptype;
-			}
-#else
 			if (CSET(s) && e->flags & D_BLUE) {
 				logmarker_needed = 1;
 			}
-			
-#endif
 			continue;
 		}
 		left++;

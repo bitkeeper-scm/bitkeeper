@@ -5874,7 +5874,6 @@ sccs_adjustSet(sccs *sc, sccs *scb, delta *d)
 	ser_t	*slist;
 	delta	*n;
 	char	*inc, *exc;
-	int	i;
 
 	errp = 0;
 	n = sfind(scb, d->serial);	/* get 'd' from backup */
@@ -10683,7 +10682,6 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 #endif
 	sccs_close(sc), fclose(sfile), sfile = NULL;
 	if (old_enc & E_GZIP) zgets_done();
-	unlink(sc->sfile);		/* Careful. */
 	t = sccsXfile(sc, 'x');
 	if (rename(t, sc->sfile)) {
 		fprintf(stderr,
@@ -10801,7 +10799,6 @@ out:
 	fprintf(sfile, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
 	sccs_close(s), fclose(sfile), sfile = NULL;
 	if (s->encoding & E_GZIP) zgets_done();
-	unlink(s->sfile);		/* Careful. */
 	t = sccsXfile(s, 'x');
 	if (rename(t, s->sfile)) {
 		fprintf(stderr,
@@ -11706,7 +11703,6 @@ abort:		fclose(sfile);
 	fseek(sfile, 0L, SEEK_SET);
 	fprintf(sfile, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
 	sccs_close(s); fclose(sfile); sfile = NULL;
-	unlink(s->sfile);		/* Careful. */
 	t = sccsXfile(s, 'x');
 	if (rename(t, s->sfile)) {
 		fprintf(stderr,
@@ -12133,7 +12129,6 @@ out:
 			OUT;
 		}
 	}
-	unlink(s->sfile);					/* Careful. */
 	t = sccsXfile(s, 'x');
 	if (rename(t, s->sfile)) {
 		fprintf(stderr,
@@ -15418,7 +15413,6 @@ stripDeltas(sccs *s, FILE *out)
 	fprintf(out, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
 	sccs_close(s);
 	fclose(out);
-	unlink(s->sfile);		/* Careful. */
 	buf = sccsXfile(s, 'x');
 	if (rename(buf, s->sfile)) {
 		fprintf(stderr,
