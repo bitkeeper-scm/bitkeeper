@@ -14,6 +14,7 @@ repository_locked(project *p)
 {
 	int	freeit = 0;
 	int	ret = 0;
+	int	first = 1;
 	char	path[MAXPATH];
 
 	unless (p) {
@@ -24,7 +25,7 @@ repository_locked(project *p)
 		if (freeit) proj_free(p);
 		return (ret);
 	}
-	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
+again:	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
 	ret = exists(path) && !emptyDir(path);
 	unless (ret) {
 		sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
@@ -34,8 +35,16 @@ repository_locked(project *p)
 			ret = exists(path) && !emptyDir(path);
 		}
 	}
+	if (ret && getenv("BK_IGNORELOCK")) {
+    		if (freeit) proj_free(p);
+		return (0);
+	}
+	if (ret && first) {
+		repository_cleanLocks(p, 1, 1, 0, 0);
+		first = 0;
+		goto again;
+	}
     	if (freeit) proj_free(p);
-	if (ret && getenv("BK_IGNORELOCK")) return (0);
 	return (ret);
 }
 
