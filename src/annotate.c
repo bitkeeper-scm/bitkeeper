@@ -69,7 +69,7 @@ usage:			fprintf(stderr, "%s: usage error, try get --help\n",
 		}
 	}
 	if (flags == BASE_FLAGS) flags |= GET_REVNUMS|GET_USER;
-	name = sfileFirst("get", &av[optind], 0);
+	name = sfileFirst("get", &av[optind], SF_HASREVS);
 	for (; name; name = sfileNext()) {
 		unless (s = sccs_init(name, iflags, proj)) continue;
 		unless (proj) proj = s->proj;
@@ -88,6 +88,8 @@ usage:			fprintf(stderr, "%s: usage error, try get --help\n",
 				continue;
 			}
 			rev = d->rev;
+		} else unless (rev) {
+			rev = sfileRev();
 		}
 		if (sccs_get(s, rev, 0, 0, 0, flags, "-")) {
 			unless (BEEN_WARNED(s)) {

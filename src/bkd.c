@@ -20,10 +20,11 @@ bkd_main(int ac, char **av)
 	char	*uid = 0;
 
 	loadNetLib();
-	while ((c = getopt(ac, av, "c:deE:il|p:P:Rs:St:u:x:")) != -1) {
+	while ((c = getopt(ac, av, "c:dDeE:il|p:P:Rs:St:u:x:")) != -1) {
 		switch (c) {
 		    case 'c': Opts.count = atoi(optarg); break;
 		    case 'd': Opts.daemon = 1; break;
+		    case 'D': Opts.debug = 1; break;
 		    case 'e': Opts.errors_exit = 1; break;
 		    case 'i': Opts.interactive = 1; break;
 		    case 'l':
@@ -100,9 +101,10 @@ bkd_server()
 	int	sock = tcp_server(Opts.port ? Opts.port : BK_PORT);
 
 	
-	if (fork()) exit(0);
-	setsid();	/* lose the controlling tty */
+	unless (Opts.debug) if (fork()) exit(0);
+	unless (Opts.debug) setsid();	/* lose the controlling tty */
 	signal(SIGCHLD, reap);
+	signal(SIGPIPE, SIG_IGN);
 	if (Opts.alarm) {
 		signal(SIGALRM, exit);
 		alarm(Opts.alarm);
@@ -423,9 +425,12 @@ getav(int *acp, char ***avp)
 
 	if (Opts.interactive) out("BK> ");
 	for (ac = i = 0; in(&buf[i], 1) == 1; i++) {
-		if (buf[i] == '\n') {
+		if ((buf[i] == '\r') || (buf[i] == '\n')) {
 			buf[i] = 0;
 			av[ac] = 0;
+			if ((ac > 2) && strneq("HTTP/1", av[2], 6)) {
+				av[0] = "httpget";
+			}
 			*acp = ac;
 			*avp = av;
 			return (1);
