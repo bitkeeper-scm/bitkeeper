@@ -119,7 +119,7 @@ KEY2="`bk prs -hd:LONGKEY: -r+ $HERE/project/ChangeSet`"
 [ "$KEY" = "$KEY2" ] || { echo bad push; exit 1; }
 echo OK
 echo $N Resolve by hand and push again ..............................$NL
-EDITOR=ed bk resolve $Q -f - <<EOF >/dev/null 2>&1
+EDITOR=ed bk resolve $Q -f - <<EOF 2>resolve.out
 m
 e
 g/^[<>=]/d
@@ -127,7 +127,7 @@ w
 q
 C
 EOF
-[ $? -eq 0 ] || { echo resolve failed; exit 1; }
+[ $? -eq 0 ] || { echo resolve failed; cat resolve.out; exit 1; }
 L=`get $Q -p src/h.h | wc -l`
 [ $L -eq 2 ] || { echo merge failed; exit 1; }
 KEY="`bk prs -hd:LONGKEY: -r+ ChangeSet`"

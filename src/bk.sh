@@ -1169,6 +1169,10 @@ _sendbug() {
 	done
 }
 
+_regression() {
+	cd ${BIN}t && exec ./doit "$@"
+}
+
 # bkhelp.txt is a series of blocks formatted like this:
 # #tag1
 # text...
@@ -1344,15 +1348,11 @@ if [ X"$1" = X ]
 then	_usage
 fi
 case "$1" in
-    regression)
-	echo Running regression is currently broken
-	exit 1
-	;;
     setup|changes|pending|commit|sendbug|send|receive|\
     mv|edit|unedit|unlock|man|undo|save|rm|new|version|\
     root|status|export|users|sdiffs|unwrap|clone|\
     pull|push|parent|diffr|fix|info|vi|r2c|rev2cset|\
-    topics|chmod|gone|tag|ignore)
+    topics|chmod|gone|tag|ignore|regression)
 	cmd=$1
     	shift
 	_$cmd "$@"

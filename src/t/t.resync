@@ -174,7 +174,7 @@ bk commit $S -yrename
 cd  $HERE
 bk resync $Q -r1.4 $HERE/project $HERE/copy
 cd  $HERE/copy/src
-bk resolve $Q -f - << EOF > /dev/null 2> resolve.out
+bk resolve $Q -f - << EOF 2> resolve.out
 l
 m
 C
@@ -216,7 +216,7 @@ bk commit $S -yrename
 cd  $HERE
 bk resync -r1.4 $Q $HERE/project $HERE/copy
 cd  $HERE/copy/src
-bk resolve $Q -f - << EOF > /dev/null 2>&1
+bk resolve $Q -f - << EOF 2>resolve.out
 l
 m
 C
@@ -227,7 +227,7 @@ l
 m
 C
 EOF
-if [ $? -ne 1 ]; then echo failed; exit 1; fi
+if [ $? -ne 1 ]; then echo failed; cat resolve.out; exit 1; fi
 echo OK
 echo $N Check name conflict caused by rename ........................$NL
 cd $HERE/project/src
@@ -251,12 +251,13 @@ ci $Q -i p.c
 bk mv p.c r.c
 bk commit $S -yrename
 bk resync $Q $HERE/project $HERE/copy
-bk resolve $Q -f - << EOF  > /dev/null 2>&1
+bk resolve $Q -f - << EOF 2> resolve.out
 r
 m
 C
 EOF
-if [ $? -eq 0 ]; then echo failed - fail to detect conflict; else echo OK; fi
+if [ $? -eq 0 ]; then echo failed; cat resolve.out; exit 1; fi
+echo OK
 
 echo $N resync w/ pending rename in target tree .....................$NL
 cd  $HERE
@@ -513,7 +514,7 @@ echo $N Resync project to copy, check for no disappear ..............$NL
 cd $HERE
 bk resync $Q project copy 
 cd $HERE/copy
-bk resolve $Q -f - > /dev/null << EOF
+bk resolve $Q -f - << EOF
 m
 C
 EOF
@@ -563,7 +564,7 @@ nextsecond
 bk ci $Q -y overlap.c
 bk commit $S -y"abc"
 bk resync $Q $HERE/project $HERE/copy
-bk resolve $Q -a -f - $HERE/copy >/dev/null 2> resolve.out
+bk resolve $Q -a $HERE/copy 2> resolve.out
 grep -q "Overlap change detected" resolve.out
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
+if [ $? -ne 0 ]; then echo failed; cat resolve.out; exit 1; fi
 echo OK

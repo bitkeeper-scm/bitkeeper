@@ -80,7 +80,7 @@ echo $N Check propagation of symbol .................................$NL
 cd $HERE/project/src
 admin $Q -SBASE_LINE:1.1 bar.c
 P=`bk pending | wc -l`
-if [ $P -eq 0 ]; then echo "failed (Knwon bug)"; else echo OK; fi
+if [ $P -eq 0 ]; then echo "failed (Known bug)"; else echo OK; fi
 echo $N Check propagation of flags ..................................$NL
 cd $HERE
 ${RM} -rf $HERE/copy

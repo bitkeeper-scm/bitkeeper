@@ -1,0 +1,192 @@
+.so .bitmacros
+.TH RESYNC 5 "October 1999" "BitMover, Inc." BitSCCS
+.SH NAME
+resync \- the wire protocol used to synchronize repositories
+.SH DESCRIPTION
+.XR resync 1
+can be used to synchronize two repositories on different machines,
+provided that it's possible to establish an
+.XR ssh 1
+or
+.XR rsh 1
+connection between the two machines.  The protocol used has changed
+repeatedly and will probably change again, but we hope to maintain
+backward compatibility to some extent from now on.
+.PP
+First, understand that resync's internal structure is geared such that
+the same code can be used for both local and remote resyncs.  It is
+also necessary to support Windows, which lacks the
+.XR fork 2
+primitive.  
+.PP
+The initial setup sequence is hairy, but its eventual
+effect is to create two processes (henceforth referred to as the
+.I source
+and
+.I dest
+processes) with a bidirectional pipe between them.
+.IR source 's
+stdout is connected to
+.IR dest 's
+stdin, and vice versa.  The pipe may or may not extend over the
+network.  You can imagine that this works like this:
+.Vb 1
+\&	$ bk resync --source \fIargs...\fP <--> bk resync --dest \fIargs...\fP
+.Ve
+\&\(emif you could write a bidirectional pipe in shell, which you
+can't, and if there really was a new process invoked for each
+side, which there isn't; we recycle the original process for the
+destination side.
+.SS "Command line arguments"
+A fair amount of sideband information is carried in the command line
+arguments to the
+.I source
+and
+.I dest
+processes.  Operating modes, the repositories being operated on, the
+range of revs to examine, and the active line of development are all
+communicated this way.  This scheme simplifies the inband protocol but
+makes forward compatibility almost impossible, since a new option will
+be rejected by old option parsers.
+.SS "Protocol overview"
+The protocol was originally designed to be transactional, but this is
+violated in several ways and was a mistake anyway.  It should be
+conversational, like SMTP.
+.PP
+Anyway, the way it goes is that
+.I dest
+transmits to
+.I source
+a header line followed by a list of all the keys in its
+.I ChangeSet
+file.
+.I source
+calculates the set of all keys in its repository but not in the
+destination.  If that set is empty, it then calculates the set of all
+keys in the destination repository but not in the source.  If that set
+is empty too, it immediately breaks the connection.
+.PP
+If either set is nonempty,
+.I source
+transmits a header, a format tag, and then one of three different
+sorts of data.  If the destination had no keys whatsoever and the
+source repository is in a stable state,
+.XR sfio 1
+is invoked to copy all the
+.BR s. files
+to the destination.  If the destination was missing some keys present
+in the source, then
+.XR cset 1
+is invoked to generate a patch which will bring the destination up to
+date.  If the destination has all the keys in the source and some more
+besides, then a list of all the keys the source doesn't have is sent
+back.  The destination might then turn around and send the source a patch.
+.SS "Protocol headers"
+There are two protocol headers.  First is a version number.  For the
+current version of resync, the version headers are
+.Vb 2
+\&	RESYNC: source version 1
+\&	RESYNC: destination version 1
+.Ve
+These are the first lines transmitted by 
+.I source 
+and 
+.IR dest , 
+respectively.  The second header is the format tag.  This may be
+.IR PTCH , 
+.IR SFIO ", or"
+.IR LIST ,
+corresponding to
+.B cset -m 
+format patch,
+.B sfio
+format archive, and key listing respectively.  The format header is
+transmitted for all source to dest communications, and for all dest to
+source communications
+.I except
+the initial listing of keys.  That is a historical wart which will go
+away in the next protocol revision.
+.PP
+Note that if there is nothing to transfer in either direction, the
+.I source
+process sends nothing at all to the destination, not even the protocol
+version.  That too is a historical wart.
+.SS "Data transfer"
+As described above, there are three sorts of data packets that might
+be transmitted from one side to the other: a patch, a sfio archive, or
+a list of keys.  If a patch or an archive is transmitted, that is the
+end of the dialogue.  The connection will be broken immediately after
+the data transfer completes, and no reply is anticipated from the
+target.  An archive is only ever sent from source to destination; a
+patch might go in either direction.
+.PP
+A list of keys is simply that: the output of
+.Vb 1
+\&	bk prs -haM -r1.0.. -d:LONGKEY: ChangeSet
+.Ve
+piped over the network.  A typical key is
+.Vb 1
+\&	zack@zack.bitmover.com|ChangeSet|19991014205337|54440-54440
+.Ve
+This means there's a minimum data transfer requirement of
+approximately 50 bytes per changeset in the destination repository.
+See below for some ideas to reduce this requirement.
+.PP
+Unlike the patch and archive packets, a list of keys has an explicit
+in-band terminator.  This is the string
+.I ##EOF##
+on a line by itself.  Furthermore, the data connection is not broken
+at this point, because a list always anticipates a response: another
+data packet.  That data packet might be empty, e.g. when changesets
+could be sent from dest to source but a bidirectional resync wasn't
+requested by the user.  If it is empty, it'll be nothing at all, just
+like nothing at all is sent from source to dest when there's nothing
+to resync in either direction.
+.SH BUGS
+There is no attempt to negotiate protocols.  The
+.I source
+process commits suicide if it gets anything other than the protocol
+version number it expects.  It should send back an error.  This makes
+it difficult to improve the protocol while preserving back compatibility.
+.PP
+Too much information is carried via command line arguments.  That
+should go in an ``envelope'' dialogue before the data transfer.
+Again, the current tactic makes protocol improvements difficult.
+.PP
+There is no mechanism for anonymous resync.  This will probably wind
+up being implemented in a different program using HTTP.
+.PP
+If a 
+.B resync
+process that understands metadata resync talks to another
+.B resync
+that doesn't, too much data will be transmitted.  This is harmless,
+.XR takepatch 1
+discards the excess.  It is, however, irritatingly slow.
+.PP
+If a key ever has a percent sign (%) in it, resync will be unable to
+parse it correctly.  This
+.B probably
+can't happen with any of the keys resync inspects.
+.SH "FUTURE PLANS"
+Number one is to reduce the amount of network overhead.  We already
+compress it, but we could do better than that.  One possibility is to
+send only the date stamps initially, as hexadecimal time_t values.
+There can't be collisions within one repository on these.  If there
+are collisions between the repositories being resynced, we send the
+collision list back for verification.
+.PP
+Another possibility is to remember the last key received from the
+source repository, and start the list there.  This improves matters
+dramatically for the common case of resyncing back and forth with a
+``parent'' repository all the time.
+.PP
+A more robust protocol would also come with these.
+.SH "SEE ALSO"
+.na
+.XR bitsccs 1 ,
+.XR resync 1 ,
+.XR cset 1 ,
+.XR takepatch 1 ,
+.XR sfio 1 ,
+.XR prs 1
