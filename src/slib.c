@@ -7880,8 +7880,8 @@ checkin(sccs *s,
 		n0->serial = s->nextserial++;
 		n0->next = 0;
 		s->table = n0;
-		n0->flags |= D_CKSUM;
 		n0->sum = (unsigned short) almostUnique(1);
+		n0->flags |= D_CKSUM;
 		dinsert(s, flags, n0, !(flags & DELTA_PATCH));
 		n = prefilled ? prefilled : calloc(1, sizeof(*n));
 		n->pserial = n0->serial;
@@ -7961,7 +7961,7 @@ checkin(sccs *s,
 		if (s->state & S_CSET) {
 			unless (first->csetFile) {
 				first->sum = (unsigned short) almostUnique(1);
-				first->flags |= D_ICKSUM;
+				first->flags |= D_CKSUM;
 				sccs_sdelta(s, first, buf);
 				first->csetFile = strdup(buf);
 			}
@@ -8614,8 +8614,8 @@ private delta *
 sumArg(delta *d, char *arg)
 {
 	if (!d) d = (delta *)calloc(1, sizeof(*d));
-	d->flags |= D_CKSUM;
 	d->sum = atoi(arg);
+	d->flags |= D_CKSUM;
 	return (d);
 }
 
@@ -8815,6 +8815,7 @@ norev:			verbose((stderr, "admin: can't find rev %s in %s\n",
 	 */
 	n = sccs_dInit(0, 'R', sc, 0);
 	n->sum = (unsigned short) almostUnique(1);
+	n->flags |= D_CKSUM;
 	if (n->date <= sc->table->date) {
 		time_t	tdiff;
 		tdiff = sc->table->date - n->date + 1;
@@ -8932,6 +8933,7 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 			sc->table = n;
 			n = sccs_dInit(n, 'R', sc, 0);
 			n->sum = (unsigned short) almostUnique(1);
+			n->flags |= D_CKSUM;
 			n->rev = strdup(d->rev);
 			explode_rev(n);
 			n->pserial = d->serial;
@@ -9215,6 +9217,7 @@ insert_1_0(sccs *s)
 		d->date = t->date - 1;
 		d->sum = (unsigned short) almostUnique(1);
 	}
+	d->flags |= D_CKSUM;
 	date(d, d->date);
 	d = sccs_dInit(d, 'D', s, 0);
 }
@@ -10968,6 +10971,7 @@ end(sccs *s, delta *n, FILE *out, int flags, int add, int del, int same)
 			} else {
 				n->sum = (unsigned short) almostUnique(0);
 			}
+			n->flags |= D_CKSUM;
 #if 0
 
 Fucks up citool
@@ -13415,36 +13419,32 @@ void
 sccs_pdelta(sccs *s, delta *d, FILE *out)
 {
 	assert(d);
-	fprintf(out, "%s%s%s|%s|%s|%05u",
+	fprintf(out, "%s%s%s|%s|%s",
 	    d->user,
 	    d->hostname ? "@" : "",
 	    d->hostname ? d->hostname : "",
 	    d->pathname ? d->pathname : "",
-	    sccs_utctime(d),
-	    d->sum);
+	    sccs_utctime(d));
+	if (d->flags & D_CKSUM) fprintf(out, "|%05u", d->sum);
 	if (d->random) fprintf(out, "|%s", d->random);
 }
-
-/* Get the checksum of the 5 digit checksum */
 
 int
 sccs_sdelta(sccs *s, delta *d, char *buf)
 {
-	char	*tail;
 	int	len;
 
 	assert(d);
-	len = sprintf(buf, "%s%s%s|%s|%s|%05u",
+	len = sprintf(buf, "%s%s%s|%s|%s",
 	    d->user,
 	    d->hostname ? "@" : "",
 	    d->hostname ? d->hostname : "",
 	    d->pathname ? d->pathname : "",
-	    sccs_utctime(d),
-	    d->sum);
+	    sccs_utctime(d));
 	assert(len);
+	if (d->flags & D_CKSUM) len += sprintf(&buf[len], "|%05u", d->sum);
 	unless (d->random) return (len);
-	for (tail = buf; *tail; tail++);
-	len += sprintf(tail, "|%s", d->random);
+	len += sprintf(&buf[len], "|%s", d->random);
 	return (len);
 }
 

@@ -998,6 +998,11 @@ getLocals(sccs *s, delta *g, char *name)
 		    s->gfile, g->rev, name);
 	}
 	for (d = s->table; d != g; d = d->next) {
+		/*
+		 * Silently discard removed deltas, we don't support them.
+		 */
+		if ((d->type == 'R') && !(d->flags & D_META)) continue;
+
 		assert(d);
 		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-init", ++fileNum);
 		unless (t = fopen(tmpf, "wb")) {
