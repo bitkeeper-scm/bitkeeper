@@ -17,7 +17,7 @@ mkgfile(sccs *s, char *rev, char *path, char *tmpdir, char *tag,
 
 	sprintf(tmp_path, "%s/%s/%s", tmpdir, tag, path);
 	if (isNullFile(rev, path))  return;
-	d = findrev(s, rev);
+	d = sccs_findrev(s, rev);
 	assert(d);
 	unless ((d->mode == 0) || S_ISREG(d->mode)) {
 		fprintf(stderr,

@@ -333,7 +333,7 @@ rangeList(sccs *sc, char *rev)
 			}
 			rangeReset(sc);
 		} else {
-			unless (d = findrev(sc, t)) {
+			unless (d = sccs_findrev(sc, t)) {
 				if (s) *s = ',';
 				return (-1);
 			}

@@ -63,8 +63,8 @@ finish the resolve, and then do a \"bk chmod <mode> file\".\n\
 int
 m_local(resolve *rs)
 {
-	delta	*l = sccs_getrev(rs->s, rs->revs->local, 0, 0);
-	delta	*r = sccs_getrev(rs->s, rs->revs->remote, 0, 0);
+	delta	*l = sccs_findrev(rs->s, rs->revs->local);
+	delta	*r = sccs_findrev(rs->s, rs->revs->remote);
 
 	sccs_close(rs->s); /* for win32 */
 	mode_delta(rs,
@@ -76,8 +76,8 @@ m_local(resolve *rs)
 int
 m_remote(resolve *rs)
 {
-	delta	*l = sccs_getrev(rs->s, rs->revs->local, 0, 0);
-	delta	*r = sccs_getrev(rs->s, rs->revs->remote, 0, 0);
+	delta	*l = sccs_findrev(rs->s, rs->revs->local);
+	delta	*r = sccs_findrev(rs->s, rs->revs->remote);
 
 	sccs_close(rs->s); /* for win32 */
 	mode_delta(rs, rs->s->sfile, l, r->mode, sccs_Xfile(rs->s, 'r'), LOCAL);

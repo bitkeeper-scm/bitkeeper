@@ -16,7 +16,7 @@ do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out)
 	s = sccs_init(file, INIT_NOCKSUM, NULL);
 	assert(s);
 	s->state &= ~S_SET;
-	d = findrev(s, rev);
+	d = sccs_findrev(s, rev);
 	sccs_prsdelta(s, d, flags, dspec, out);
 	sccs_free(s);
 }

@@ -238,7 +238,7 @@ write_editfile(FILE *f, char **files, int to_stdout)
 		
 		unless (s = sccs_init(name, 0, 0)) continue;
 		unless (HASGRAPH(s)) goto next;
-		unless (d = sccs_getrev(s, t, 0, 0)) {
+		unless (d = sccs_findrev(s, t)) {
 			fprintf(stderr, "%s|%s not found\n", s->gfile, t);
 			goto next;
 		}
@@ -273,7 +273,7 @@ change_comments(char *file, char *rev, char **comments)
 	sfile = name2sccs(file);
 	unless (s = sccs_init(sfile, 0, 0)) goto err;
 	unless (HASGRAPH(s)) goto err;
-	unless (d = sccs_getrev(s, rev, 0, 0)) {
+	unless (d = sccs_findrev(s, rev)) {
 		fprintf(stderr, "%s|%s not found\n", s->gfile, rev);
 		goto err;
 	}

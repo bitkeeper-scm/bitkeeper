@@ -296,7 +296,7 @@ sccs_parent_revs(sccs *s, char *rev, char **revP, char **revM)
 {
 	delta *d, *p, *m;
 
-	d = findrev(s, rev);
+	d = sccs_findrev(s, rev);
 	unless (d) {
 		fprintf(stderr, "diffs: cannot find rev %s\n", rev);
 		return (-1);
@@ -322,7 +322,7 @@ fix_rev(sccs *s, char **rev, char rev_buf[])
 {
 	delta *d;
 
-	d = sccs_getrev(s, (*rev && **rev) ? *rev : "+", 0, 0);
+	d = sccs_findrev(s, (*rev && **rev) ? *rev : "+");
 	unless (d) {
 		fprintf(stderr, "Cannot find revision \"%s\"\n", 
 				(*rev && **rev) ? *rev : "+");

@@ -285,7 +285,7 @@ next:		if (s) {
 private int
 cset_boundries(sccs *s, char *rev)
 {
-	delta	*d = sccs_getrev(s, rev, 0, 0);
+	delta	*d = sccs_findrev(s, rev);
 
 	unless (d) {
 		fprintf(stderr, "No delta %s in %s\n", rev, s->gfile);

@@ -372,13 +372,13 @@ find_gca(char *file, char *left, char *right)
 		perror(file);
 		exit(2);
 	}
-	dl = sccs_getrev(s, left, 0, 0);
+	dl = sccs_findrev(s, left);
 	unless (dl) {
 		fprintf(stderr, "ERROR: couldn't find %s in %s\n", left, file);
 		sccs_free(s);
 		exit(2);
 	}
-	dr = sccs_getrev(s, right, 0, 0);
+	dr = sccs_findrev(s, right);
 	unless (dr) {
 		fprintf(stderr, "ERROR: couldn't find %s in %s\n", right, file);
 		sccs_free(s);

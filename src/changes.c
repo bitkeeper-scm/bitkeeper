@@ -278,7 +278,7 @@ doit(int dash)
 			/* ignore blank lines and comments */
 			if ((*cmd == '#') || (*cmd == '\n')) continue;
 			chomp(cmd);
-			e = sccs_getrev(s, cmd, 0, 0);
+			e = sccs_findrev(s, cmd);
 			unless (e) {
 				fprintf(stderr,
 				    "changes: can't find key: %s\n", cmd);

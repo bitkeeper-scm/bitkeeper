@@ -129,7 +129,7 @@ usage:			system("bk help -s export");
 		q = strchr(p, BK_FS); 
 		assert(q);
 		*q++ = '\0';
-		d = findrev(s, q);
+		d = sccs_findrev(s, q);
 		assert(d);
 		p_sav = p;
 		for (i = 0; i < trim; i++) {

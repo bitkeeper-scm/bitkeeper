@@ -49,8 +49,8 @@ usage:			system("bk help -s gca");
 		perror(name);
 		exit(1);
 	}
-	d1 = sccs_getrev(s, r1, 0, 0);
-	d2 = sccs_getrev(s, r2, 0, 0);
+	d1 = sccs_findrev(s, r1);
+	d2 = sccs_findrev(s, r2);
 	unless (d1 && d2) {
 		sccs_free(s);
 		fprintf(stderr, "gca: could not find '%s' or '%s'\n", r1, r2);

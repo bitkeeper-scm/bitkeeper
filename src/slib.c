@@ -1872,7 +1872,7 @@ defbranch(sccs *s)
  *	d.d.d	get top of branch that matches those three digits
  *	d.d.d.d get that revision or error if not there.
  */
-delta *
+private delta *
 findrev(sccs *s, char *rev)
 {
 	u16	a = 0, b = 0, c = 0, d = 0;
@@ -1957,6 +1957,29 @@ delta	*
 sccs_top(sccs *s)
 {
 	return (findrev(s,0));
+}
+
+delta	*
+sccs_findrev(sccs *s, char *rev)
+{
+	delta	*d;
+
+	unless (rev && *rev) return (findrev(s, 0));
+again:	if (rev[0] == '@') {
+		if (rev[1] == '@') {
+			d = 0;
+		} else if (CSET(s)) {
+			++rev;
+			goto again;
+		} else {
+			d = cset2rev(s, rev+1);
+		}
+	} else if (isKey(rev)) {
+		d = sccs_findKey(s, rev);
+	} else {
+		d = findrev(s, rev);
+	}
+	return (d);
 }
 
 /*
@@ -2098,24 +2121,7 @@ sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
 	/*
 	 * If it's a revision, go find it and use it.
 	 */
-	if (rev) {
-	again:
-		if (s[0] == '@') {
-			if (s[1] == '@') {
-				d = 0;
-			} else if (CSET(sc)) {
-				++s;
-				goto again;
-			} else {
-				d = cset2rev(sc, s+1);
-			}
-		} else if (isKey(s)) {
-			d = sccs_findKey(sc, s);
-		} else {
-			d = findrev(sc, s);
-		}
-		return (d);
-	}
+	if (rev) return (sccs_findrev(sc, s));
 
 	/*
 	 * If it is a symbol, then just go get that delta and return it.
@@ -6902,7 +6908,7 @@ err:		if (i2) free(i2);
 			d = 0;
 		}
 	} else {
-		d = sccs_getrev(s, rev ? rev : "+", 0, 0);
+		d = sccs_findrev(s, rev ? rev : "+");
 		unless (d) {
 			verbose((stderr,
 			    "get: can't find revision like %s in %s\n",
@@ -10735,7 +10741,7 @@ out:
 		flags |= NEWCKSUM;
 	}
 	if (mode) {
-		delta *n = sccs_getrev(sc, "+", 0, 0);
+		delta *n = sccs_top(sc);
 
 		assert(n);
 		if ((n->flags & D_MODE) && n->symlink) {

@@ -63,7 +63,7 @@ usage:			fprintf(stderr,
 			e->merge = 0;
 			prevs(e);
 		} else if (rev) {
-			e = sccs_getrev(s, rev, 0, 0);
+			e = sccs_findrev(s, rev);
 			unless (e) {
 				fprintf(stderr, "bad rev %s\n", rev);
 				rc = 1;

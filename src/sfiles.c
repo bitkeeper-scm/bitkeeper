@@ -579,7 +579,7 @@ caches(const char *filename, int mode)
 	unless (Cflg) goto out;
 
 	/* find the leaf of the current LOD and check it */
-	unless (d = sccs_getrev(sc, "+", 0, 0)) goto out;
+	unless (d = sccs_top(sc)) goto out;
 
 	/*
 	 * If it's marked, we're done.

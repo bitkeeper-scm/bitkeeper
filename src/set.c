@@ -180,7 +180,7 @@ stdin_set(sccs *s)
 	map = calloc(s->nextserial, sizeof(ser_t));
 	while (fnext(buf, stdin)) {
 		chop(buf);
-		unless (d = sccs_getrev(s, buf, 0, 0)) {
+		unless (d = sccs_findrev(s, buf)) {
 			fprintf(stderr,
 			    "set: cannot find %s in %s\n", buf, s->gfile);
 			sccs_free(s);
@@ -200,7 +200,7 @@ getset(sccs *s, char *rev)
 
 	unless (rev) return (stdin_set(s));
 
-	unless (d = sccs_getrev(s, rev, 0, 0)) {
+	unless (d = sccs_findrev(s, rev)) {
 		fprintf(stderr, "set: cannot find %s in %s\n", rev, s->gfile);
 		sccs_free(s);
 		exit(1);
@@ -305,7 +305,7 @@ set_member(sccs *s, char *rev, ser_t *map)
 {
 	delta	*d;
 
-	unless (d = sccs_getrev(s, rev, 0, 0)) {
+	unless (d = sccs_findrev(s, rev)) {
 		fprintf(stderr, "set: cannot find %s in %s\n", rev, s->gfile);
 		sccs_free(s);
 		exit(1);
@@ -326,7 +326,7 @@ set_list(sccs *s, char *rev)
 	delta	*d, *e;
 	ser_t	*map;
 
-	unless (d = sccs_getrev(s, rev, 0, 0)) {
+	unless (d = sccs_findrev(s, rev)) {
 		fprintf(stderr, "set: cannot find %s in %s\n", rev, s->gfile);
 		sccs_free(s);
 		exit(1);
@@ -357,7 +357,7 @@ set_set(sccs *s, char *rev)
 	ser_t	*map;
 	int	i;
 
-	unless (d = sccs_getrev(s, rev, 0, 0)) {
+	unless (d = sccs_findrev(s, rev)) {
 		fprintf(stderr, "set: cannot find %s in %s\n", rev, s->gfile);
 		sccs_free(s);
 		exit(1);

@@ -411,7 +411,7 @@ chk_pending(sccs *s, char *gfile, char state[5], MDBM *sDB, MDBM *gDB)
 	 * check for pending deltas
 	 */                                    
 	state[PSTATE] = ' ';
-	unless (d = sccs_getrev(s, "+", 0, 0))  goto out;	
+	unless (d = sccs_top(s))  goto out;	
 	if (d->flags & D_CSET) goto out;
 
 	/*

@@ -656,7 +656,7 @@ http_cset(char *rev)
 	if (lines) {
 		char	changeset[] = CHANGESET;
 		sccs	*cset = sccs_init(changeset, 0, 0);
-		delta	*d = findrev(cset, rev);
+		delta	*d = sccs_findrev(cset, rev);
 
 		cset->rstart = cset->rstop = d;
 		sccs_prs(cset, 0, 0, &dspec[2], stdout);

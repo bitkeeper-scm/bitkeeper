@@ -65,7 +65,7 @@ cmd_clone(int ac, char **av)
 	if (rev) {
 		sccs	*s = sccs_csetInit(SILENT, 0);
 		if (s) {
-			delta	*d = sccs_getrev(s, rev, 0, 0);
+			delta	*d = sccs_findrev(s, rev);
 			sccs_free(s);
 			unless (d) {
 				out("ERROR-rev ");

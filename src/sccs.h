@@ -838,7 +838,7 @@ char	*sfileRev(void);
 char	*sfileFirst(char *cmd, char **Av, int Flags);
 void	sfileDone(void);
 int	tokens(char *s);
-delta	*findrev(sccs *, char *);
+delta	*sccs_findrev(sccs *, char *);
 delta	*sccs_top(sccs *);
 delta	*sccs_findKey(sccs *, char *);
 MDBM	*sccs_findKeyDB(sccs *, u32);

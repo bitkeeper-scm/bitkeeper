@@ -345,7 +345,7 @@ usage:			sprintf(buf, "bk help -s %s", name);
 				errors |= 2;
 				goto next;
 			}
-			if (co && (gf & GET_EDIT)) nrev = pf.newrev;
+			nrev = pf.newrev;
 		}
 
 		if (fire) {
@@ -378,16 +378,13 @@ usage:			sprintf(buf, "bk help -s %s", name);
 		}
 
 		if (dangling) {
-			delta	*d = sccs_getrev(s, nrev, 0, 0);
-			char	key[MAXKEY];
-
-			assert(d);
-			sccs_sdelta(s, d, key);
 			sccs_free(s);
 			strip_danglers(name, dflags);
 			s = sccs_init(name, iflags, proj);
-			d = sccs_findKey(s, key);
+			assert(s);
+			d = s->table;
 			assert(d);
+			assert(d->type == 'D');
 			nrev = d->rev;
 		} else {
 			s = sccs_restart(s);
@@ -415,12 +412,14 @@ usage:			sprintf(buf, "bk help -s %s", name);
 		}
 
 		if (co == 1) {
+			// XXX - what if we are dangling?
+			// The pf.oldrev is definitely wrong.
 			if (rc == -3) nrev = pf.oldrev;
 			if (sccs_get(s, nrev, 0, 0, 0, gf, "-")) {
 				unless (BEEN_WARNED(s)) {
 					fprintf(stderr,
-					"get of %s failed, skipping it.\n",
-					name);
+					    "get of %s failed, skipping it.\n",
+					    name);
 				}
 			}
 		}

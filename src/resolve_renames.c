@@ -214,15 +214,15 @@ resolve_renames(resolve *rs)
 	}
 	if (rs->revs) {
 		n = calloc(1, sizeof(*n));
-		d = sccs_getrev(rs->s, rs->revs->local, 0, 0);
+		d = sccs_findrev(rs->s, rs->revs->local);
 		assert(d);
 		sprintf(buf, "BitKeeper/tmp/%s_%s@%s", nm, d->user, d->rev);
 		n->local = strdup(buf);
-		d = sccs_getrev(rs->s, rs->revs->gca, 0, 0);
+		d = sccs_findrev(rs->s, rs->revs->gca);
 		assert(d);
 		sprintf(buf, "BitKeeper/tmp/%s_%s@%s", nm, d->user, d->rev);
 		n->gca = strdup(buf);
-		d = sccs_getrev(rs->s, rs->revs->remote, 0, 0);
+		d = sccs_findrev(rs->s, rs->revs->remote);
 		assert(d);
 		sprintf(buf, "BitKeeper/tmp/%s_%s@%s", nm, d->user, d->rev);
 		n->remote = strdup(buf);

@@ -67,8 +67,8 @@ Your choices are to either choose the local or remote type.\n\
 int
 ft_local(resolve *rs)
 {
-	delta	*l = sccs_getrev(rs->s, rs->revs->local, 0, 0);
-	delta	*r = sccs_getrev(rs->s, rs->revs->remote, 0, 0);
+	delta	*l = sccs_findrev(rs->s, rs->revs->local);
+	delta	*r = sccs_findrev(rs->s, rs->revs->remote);
 
 	type_delta(rs, rs->s->sfile, l, r, sccs_Xfile(rs->s, 'r'), LOCAL);
 	return (1);
@@ -78,8 +78,8 @@ ft_local(resolve *rs)
 int
 ft_remote(resolve *rs)
 {
-	delta	*l = sccs_getrev(rs->s, rs->revs->local, 0, 0);
-	delta	*r = sccs_getrev(rs->s, rs->revs->remote, 0, 0);
+	delta	*l = sccs_findrev(rs->s, rs->revs->local);
+	delta	*r = sccs_findrev(rs->s, rs->revs->remote);
 
 	type_delta(rs, rs->s->sfile, l, r, sccs_Xfile(rs->s, 'r'), REMOTE);
 	return (1);

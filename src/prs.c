@@ -67,7 +67,7 @@ usage:			system("bk help -s prs");
 		unless (proj) proj = s->proj;
 		unless (HASGRAPH(s)) goto next;
 		if (cset) {
-			delta	*d = sccs_getrev(s, cset, 0, 0);
+			delta	*d = sccs_findrev(s, cset);
 
 			if (!d) {
 				rc = 1;
@@ -121,7 +121,7 @@ usage:			system("bk help -s prs");
 				if (streq(xrev, "1st")) {
 					s->rstart->flags &= ~D_SET;
 				} else {
-					e = findrev(s, xrev);
+					e = sccs_findrev(s, xrev);
 					if (e) e->flags &= ~D_SET;
 				}
 			}

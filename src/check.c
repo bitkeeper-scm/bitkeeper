@@ -386,7 +386,7 @@ chk_dfile(sccs *s)
 	delta	*d;
 	char	*p;
 
-	d = sccs_getrev(s, "+", 0, 0);
+	d = sccs_top(s);
 	unless (d) return (0);
 
        /*
