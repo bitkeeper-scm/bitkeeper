@@ -16,11 +16,15 @@ bk import \- import files or changes into a \*(BK package
 .ARG directory
 .ARG destination
 .br
-.B bk import -tRCS\ \  [OPTIONS]
+.B bk import -tCVS\ \  [OPTIONS]
 .ARG directory
 .ARG destination
 .br
-.B bk import -tCVS\ \  [OPTIONS]
+.B bk import -tMKS\ \  [OPTIONS]
+.ARG directory
+.ARG destination
+.br
+.B bk import -tRCS\ \  [OPTIONS]
 .ARG directory
 .ARG destination
 .br
@@ -31,19 +35,16 @@ bk import \- import files or changes into a \*(BK package
 .LP
 Use bk import to put plain text files, patches (diff -Nur),
 patches and comments in the form of email messages, SCCS files, and 
-RCS/CVS files (in this document RCS will mean both RCS AND CVS)
+RCS/CVS files (in this document RCS will mean CVS, MKS and RCS)
 into a \*(BK package.  For file (text, SCCS, RCS, etc) imports,
 bk import does its work outside of your original tree
 thus leaving the original files intact while importing them into a 
 \*(BK package.
 .LP
-In the case of RCS and SCCS files,
-import should only be invoked once into a destination package.
-It can be used repeatedly if you are importing 
-traditional patches (diff -Nur) into a repository over time.  
+Patch and email imports are the only type of import which may be done
+repeatedly in the same destination package.
 .LP
-A more detailed explanation of importing the different types of files
-can be found below.
+See below for information specific types of imports.
 .\"You can import files by specifying the directory
 .\"containing files for import (Note: All files under the directory will
 .\"be imported.  If a subset is desired, specify using a list or run 
@@ -134,6 +135,20 @@ Import RCS files
 .B CVS
 Import CVS files. The only difference from -tRCS is that Attic directories
 are processed and deleted files are detected.
+All RCS options may be used with CVS imports.
+.tp
+.B MKS
+Import MKS Source Integrity files.  The files are stripped of the 
+.I ext
+field, moved from 
+.I rcs
+directories to
+.I RCS
+directories,
+a
+.I ,v
+suffix is added and then the normal RCS processing is applied.
+All RCS options may be used with MKS imports.
 .tp
 .B SCCS
 Import SCCS files
@@ -206,20 +221,16 @@ via the :IMPORTER: key word, see bk help prs for more information.
 .LP
 This part of import makes use of code copyrighted by Linus Torvalds
 and is used with permission.
-.SH "IMPORTING RCS FILES"
+.SH "IMPORTING RCS (AND CVS OR MKS) FILES"
 .LP
 The default branch of the RCS tree is the one that will be imported.
-All other branches are discarded. 
-.\" which is okay because
-.\" XXX - Ask lm why.  I'm not sure why this is okay.
-Metadata from the ,v files is preserved upon import.  Thus saving
-the history of your files.
+No other branches are imported, branch imports are on a consulting basis
+only.
+All metadata, such as dates, times, user names, checkin comments, and
+symbolic tags are preserved on import.
 .LP
-This is a one time only import.  Importing to a clone of the destination 
-package is advised in case the import fails, the package won't get
-corrupted.  
-.LP
-The type of import requires RCS 5.6 or later.
+This type of import requires RCS 5.6 or later to be installed on the importing
+system.
 .SH "IMPORTING PLAIN TEXT"
 .LP
 Importing a plain text file into a \*(BK package can only be done once.

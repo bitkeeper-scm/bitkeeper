@@ -35,8 +35,7 @@ import() {
 	GAP=10
 	TAGS=YES
 	SKIP_OPT=""
-	MKS=
-	while getopts Ab:c:CefFg:hH:ij:kl:MqRrS:t:Tuvxy: opt
+	while getopts Ab:c:CefFg:hH:ij:kl:qRrS:t:Tuvxy: opt
 	do	case "$opt" in
 		A) ;;				# undoc 2.0 - old
 		b) BRANCH=-b$OPTARG;;		# undoc 3.0
@@ -54,7 +53,6 @@ import() {
 		j) PARALLEL=$OPTARG;;		# doc 2.0
 		k) SKIP_OPT="-k";;
 		l) LIST=$OPTARG;;		# doc 2.0
-		M) MKS=YES;;
 		S) SYMBOL=-S$OPTARG;;		# doc 2.0
 		r) RENAMES=NO;;			# doc 2.0
 		R) REJECTS=NO;;
@@ -119,10 +117,16 @@ import() {
 		fi
 		unset BK_IMPORTER
 	fi
-	if [ $TYPE = RCS -a "X$BK_HOST" = X ]
-	then	echo Must set host with "-H<hostname>" when importing RCS/CVS files
-		Done 1
-	fi
+
+	case $TYPE in
+	    SCCS|RCS|CVS|MKS)
+		test "$BK_HOST" || {
+			echo Must set host with "-H<hostname>" when importing
+			Done 1
+		}
+		;;
+	esac
+
 	# disable checkout:edit mode
 	if [ X"$BK_CONFIG" != X ]
 	then	BK_CONFIG="$BK_CONFIG;checkout:none"
@@ -192,6 +196,7 @@ import() {
 			if [ X"$EXCLUDE" != X ]
 			then	cmd="$cmd | egrep -v '$EXCLUDE'"
 			fi
+			test $TYPE = MKS && cmd="$cmd | grep /rcs/"
 			eval "$cmd" > ${TMP}import$$
 			if [ X$QUIET = X ]; then echo OK; fi
 		else	touch ${TMP}import$$
@@ -222,6 +227,7 @@ import() {
 	mycd "$TO"
 	eval validate_$TYPE \"$FROM\" \"$TO\"
 	transfer_$TYPE "$FROM" "$TO" "$TYPE"
+	test $TYPE = MKS && TYPE=RCS
 	eval import_$TYPE \"$FROM\" \"$TO\"
 	import_finish "$TO"
 }
@@ -269,6 +275,7 @@ gettype() {
 		    patch)	type=patch;;
 		    mail|email)	type=email;;
 		    CVS)	type=CVS;;
+		    MKS)	type=MKS;;
 		    RCS)	type=RCS;;
 		    SCCS)	type=SCCS;;
 		esac
@@ -287,6 +294,7 @@ BitKeeper can currently handle the following types of imports:
     SCCS	- SCCS files which are not presently under BitKeeper
     RCS		- files controlled by RCS
     CVS		- files controlled by CVS
+    MKS		- files controlled by MKS Source Integrity
 
 If the files you wish to import do not match any of these forms, you will
 have to write your own conversion scripts.  See the rcs2sccs program for
@@ -314,13 +322,22 @@ EOF
 }
 
 
-transfer_RCS() {
-	transfer "$@";
-	test "$MKS" || return
-	cd "$2" || exit 1
-	pwd > /dev/tty
-	find . -type f -print | grep RCS/ > /dev/tty
-	find . -type f -print | grep RCS/ |
+transfer_RCS() { transfer "$@"; }
+
+transfer_MKS () {
+	transfer "$@"
+	mycd "$2" || exit 1
+	find . -type d -name rcs -print | while read x
+	do	DIR=`echo "$x" | sed 's,/rcs$,/RCS,'`
+		mv "$x" "$DIR"
+	done
+	find . -type d -name RCS | while read DIR
+	do	find "$DIR" -maxdepth 1 -type f | while read x
+		do
+			mv "$x" "${x},v"
+		done
+	done
+	find . -type f -name '*,v' -print | grep /RCS/ |
 	    xargs perl -w -i -e '$sym = 0; while(<>) {
 		$sym = 1 if /^symbols\s/;
 		$sym = 0 if /^locks\s*;/;
@@ -330,10 +347,10 @@ transfer_RCS() {
 			next;
 		}
 		while (<>) {
-			# warn "SKIP $_";
 			last if /^\@$/;
 		}
 	}'
+	bk _find | grep RCS/ > ${TMP}import$$
 }
 
 transfer_SCCS() { transfer "$@"; }
@@ -613,11 +630,11 @@ import_RCS () {
 	then	msg Moving RCS files out of RCS directories
 		HERE=`pwd`
 		find . -type d | grep 'RCS$' | while read x
-		do	cd $x
+		do	mycd $x
 			mv *,v ..
-			cd ..
+			mycd ..
 			rmdir RCS
-			cd $HERE
+			mycd $HERE
 		done
 		mv ${TMP}import$$ ${TMP}rcs$$
 		sed 's!RCS/!!' < ${TMP}rcs$$ > ${TMP}import$$
@@ -810,6 +827,10 @@ validate_RCS () {
 	fi
 	mv ${TMP}rcs$$ ${TMP}import$$
 	/bin/rm -f ${TMP}notrcs$$
+}
+
+validate_MKS () {
+	return
 }
 
 validate_text () {
