@@ -68,10 +68,10 @@ proc edit_widgets {} \
 		button .edit.menus.save -width $bwid \
 		    -pady $y -font $gc(ci.buttonFont) -text "Save" \
 		    -command edit_save
-		button .edit.menus.next -width 8 \
+		button .edit.menus.next -width 12 \
 		    -pady $y -font $gc(ci.buttonFont) -text "Next change" \
 		    -command {edit_next 1}
-		button .edit.menus.prev -width 14 \
+		button .edit.menus.prev -width 15 \
 		    -pady $y -font $gc(ci.buttonFont) -text "Previous change" \
 		    -command {edit_next -1}
 		pack .edit.menus.prev -side left
@@ -260,14 +260,9 @@ proc edit_file {} \
 
 	.edit.t.t configure -state normal
 	.edit.t.t delete 1.0 end
-	set from [open "| bk get -qkp \"$filename\"" "r"]
 	set old [file join $tmp_dir old[pid]]
-	set to [open $old "w"]
-	while { ![eof $from] } {
-		puts -nonewline $to  [read $from 1000]
-	}
-	catch {close $to} err
-	catch {close $from} err
+	catch {exec bk get -qkp "$filename" > $old} err
+	#displayMessage "$sdiffw ($old) ($filename) err=($err)"
 	set d [open "| $sdiffw \"$old\" \"$filename\"" "r"]
 	set f [open $filename "r"]
 	set start 1

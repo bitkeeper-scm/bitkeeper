@@ -17,7 +17,7 @@ proc getConfig {prog} \
 		set _d(help.scrollWidth) 20	;# helptool scrollbar width
 		set _d(fm.activeOldFont) {{Lucida Console} 9 bold}
 		set _d(fm.activeNewFont) {{Lucida Console} 9 bold}
-
+		set _d(ci.filesHeight) 10
 	} else {
 		set _d(fixedFont) {fixed 12 roman}
 		set _d(fixedBoldFont) {fixed 12 roman bold}
@@ -28,6 +28,7 @@ proc getConfig {prog} \
 		set _d(help.scrollWidth) 14	;# helptool scrollbar width
 		set _d(fm.activeOldFont) {fixed 12 roman bold}
 		set _d(fm.activeNewFont) {fixed 12 roman bold}
+		set _d(ci.filesHeight) 8	;# num files to show in top win
 	}
 
 	set _d(BG) #f0f0f0		;# default background
@@ -59,7 +60,6 @@ proc getConfig {prog} \
 	set _d(ci.excludeColor) red	;# color of the exclude X
 	set _d(ci.editor) ciedit	;# editor: ciedit=builtin, else in xterm
 	set _d(ci.display_bytes) 8192	;# number of bytes to show in new files
-	set _d(ci.filesHeight) 8	;# number of files to show in top win
 	set _d(ci.commentsHeight) 6	;# height of comment window
 	set _d(ci.diffHeight) 30	;# number of lines in the diff window
 	set _d(ci.rescan) 0		;# Do a second scan to see if anything

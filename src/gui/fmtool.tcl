@@ -717,12 +717,12 @@ proc startup {{buildwidgets {}}} \
 		set rfile [lindex $argv 1]
 		set outputFile [lindex $argv 2]
 		if {![file exists $lfile] && ![file readable $lfile]} {
-			puts stderr \
+			displayMessage \
 			    "File \"$lfile\" does not exist or is not readable"
 			exit 1
 		}
 		if {![file exists $rfile] && ![file readable $rfile]} {
-			puts stderr \
+			displayMessage \
 			    "File \"$rfile\" does not exist or is not readable"
 			exit 1
 		}
