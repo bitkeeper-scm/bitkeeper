@@ -57,7 +57,7 @@ private u32	c_count, n_count, p_count;
 private void	do_print(char state[5], char *file, char *rev);
 private void	walk(char *dir, int level);
 private void	file(char *f);
-private void	sccsdir(char *dir, int level, DIR *sccs_dh, char buf[MAXPATH]);
+private void	sccsdir(char *dir, int level, char **sdh, char buf[MAXPATH]);
 private void	progress(int force);
 private int	chk_diffs(sccs *s);
 
@@ -560,11 +560,12 @@ private void
 walk(char *dir, int level)
 {
 	struct dirent   *e;
-	DIR	*dh, *sccs_dh;
+	char	**dh, **sdh;
+	int	i;
 	char	buf[MAXPATH], *p;
 	fifo	dlist = {0, 0};
 #ifndef WIN32	/* Linux 2.3.x NFS bug, skip repeats. */
-        ino_t	lastInode = 0;
+	char	*lastEntry = 0;
 #endif                                 
 
 	/*
@@ -616,40 +617,40 @@ walk(char *dir, int level)
 	 * TODO: for better performance in split root mode,
 	 * we should be able to better optimized the sPath() code
 	 */
-	sccs_dh =  opendir(opts.splitRoot ? sPath(buf, 1) : buf);
-	unless (sccs_dh) {
+	sdh = getdir(opts.splitRoot ? sPath(buf, 1) : buf);
+	unless (sdh) {
 		/*
 		 * TODO: we need to check for the caes where
 		 * the pwd is a SCCS dir
 		 * This can fool the current code into wronly treating them
 		 * as xtras.
 		 */
-		if ((dh = opendir(dir)) == NULL) {
+		if ((dh = getdir(dir)) == NULL) {
 			perror(dir);
 			goto done;
 		}
-		while ((e = readdir(dh)) != NULL) { 
+		EACH (dh) {
 #ifndef WIN32		/* Linux 2.3.x NFS bug, skip repeats. */
-			if (lastInode == e->d_ino) continue;
-			lastInode = e->d_ino;
+			if (lastEntry && streq(lastEntry, dh[i])) continue;
+			lastEntry = dh[i];
 #endif
-			if (streq(e->d_name, ".") || streq(e->d_name, "..")) {
+			if (streq(dh[i], ".") || streq(dh[i], "..")) {
 				continue;
 			}
-			concat_path(buf, dir, e->d_name);
+			concat_path(buf, dir, dh[i]);
 			unless (isdir(buf)) {
 				do_print("xxxx", buf, 0);
 			} else {
 				enqueue(&dlist, buf);
 			}
 		}
-		closedir(dh);
+		freeLines(dh);
 		while (p = dequeue(&dlist)) {
 			walk(p, level + 1);
 			free(p);
 		}
 	} else {
-		sccsdir(dir, level, sccs_dh, buf);
+		sccsdir(dir, level, sdh, buf);
 	}
 
 done:	if (level == 0) {
@@ -869,48 +870,50 @@ append_rev(MDBM *db, char *name, char *rev, char *buf)
  * Called for each directory that has an SCCS subdirectory
  */
 private void
-sccsdir(char *dir, int level, DIR *sccs_dh, char buf[MAXPATH])
+sccsdir(char *dir, int level, char **sdh, char buf[MAXPATH])
 {
 	MDBM	*gDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	MDBM	*sDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	fifo	dlist = {0, 0};
 	fifo	slist = {0, 0};
 	struct dirent   *e;
-	DIR	*dh; /* dir handle */
+	char	**dh;
 	int 	dir_len = strlen(dir);
 	char	*p, *gfile;
 	datum	k;
 	sccs	*s = 0;
-	q_item	*i;
+	q_item	*item;
+	int	i;
 #ifndef WIN32	/* Linux 2.3.x NFS bug, skip repeats. */
-        ino_t	lastInode = 0;
+	char	*lastEntry = 0;
 #endif                                 
 
 	/*
 	 * Get all the SCCS/?.files
 	 */
-	while (e = readdir(sccs_dh)) {
+	lastEntry = 0;
+	EACH (sdh) {
 #ifndef WIN32	/* Linux 2.3.x NFS bug, skip repeats. */
-		if (lastInode == e->d_ino) continue;
-		lastInode = e->d_ino;
+		if (lastEntry && streq(lastEntry, sdh[i])) continue;
+		lastEntry = sdh[i];
 #endif
-		if (streq(e->d_name, ".") || streq(e->d_name, "..")) continue;
+		if (streq(sdh[i], ".") || streq(sdh[i], "..")) continue;
 		/*
 		 * Skip files with paths that are too long
 		 * pad = "/SCCS/" = 6
 		 */
-		if ((dir_len + 6 + strlen(e->d_name)) >= MAXPATH) {
+		if ((dir_len + 6 + strlen(sdh[i])) >= MAXPATH) {
 			fprintf(stderr,
 			    "Warning: %s/%s name too long, skipped\n",
-			    dir, e->d_name);
+			    dir, sdh[i]);
 			continue;
 		}
 
-		if (strneq("s.", e->d_name, 2)) {
-			enqueue(&slist, e->d_name);
+		if (strneq("s.", sdh[i], 2)) {
+			enqueue(&slist, sdh[i]);
 		} else {
-			if (strneq("c.", e->d_name, 2) &&
-			    (p = strrchr(e->d_name, '@'))) {
+			if (strneq("c.", sdh[i], 2) &&
+			    (p = strrchr(sdh[i], '@'))) {
 				/*
 				 * Special handling for c.file@rev entry
 				 * append the @rev part to the value field
@@ -918,39 +921,39 @@ sccsdir(char *dir, int level, DIR *sccs_dh, char buf[MAXPATH])
 				 * name if it turns out to be a junk file. 
 				 */
 				*p++ = 0;
-				p = append_rev(sDB, e->d_name, p, buf);
+				p = append_rev(sDB, sdh[i], p, buf);
 			} else {
 				p = "";
 			} 
-			mdbm_store_str(sDB, e->d_name, p, MDBM_REPLACE);
+			mdbm_store_str(sDB, sdh[i], p, MDBM_REPLACE);
 		}
 	}
-	closedir(sccs_dh);
+	freeLines(sdh);
 
 	/*
 	 * Get all the gfiles
 	 */
-	dh = opendir(dir);
-	while (e = readdir(dh)) {
+	dh = getdir(dir);
+	EACH (dh) {
 #ifndef WIN32	/* Linux 2.3.x NFS bug, skip repeats. */
-		if (lastInode == e->d_ino) continue;
-		lastInode = e->d_ino;
+		if (lastEntry && streq(lastEntry, dh[i])) continue;
+		lastEntry = dh[i];
 #endif
-		if (streq(e->d_name, ".") || streq(e->d_name, "..")) continue;
-		if (patheq(e->d_name, "SCCS")) continue;
+		if (streq(dh[i], ".") || streq(dh[i], "..")) continue;
+		if (patheq(dh[i], "SCCS")) continue;
 
 		/*
 		 * Allow people to prune their tree with ".bk_skip".
 		 */
-		if (streq(".bk_skip", e->d_name)) goto skip;
+		if (streq(".bk_skip", dh[i])) goto skip;
 
 		/*
 		 * Do not descend into another project root. e.g RESYNC
 		 */
-		if ((level > 0)  && patheq(e->d_name, "BitKeeper")) {
+		if ((level > 0)  && patheq(dh[i], "BitKeeper")) {
 skip:			mdbm_close(gDB);
 			mdbm_close(sDB);
-			closedir(dh);
+			freeLines(dh);
 			return;
 		}
 
@@ -958,21 +961,21 @@ skip:			mdbm_close(gDB);
 		 * Skip files with paths that are too long
 		 * pad = "/SCCS/s." = 8
 		 */
-		if ((dir_len + 8 + strlen(e->d_name)) >= MAXPATH) {
+		if ((dir_len + 8 + strlen(dh[i])) >= MAXPATH) {
 			fprintf(stderr,
 			    "Warning: %s/%s name too long, skipped\n",
-			    dir, e->d_name);
+			    dir, dh[i]);
 			continue;
 		}
 
-		concat_path(buf, dir, e->d_name);
+		concat_path(buf, dir, dh[i]);
 		if (isdir(buf)) {
-			enqueue(&dlist, e->d_name);
+			enqueue(&dlist, dh[i]);
 		} else {
-			mdbm_store_str(gDB, e->d_name, "", MDBM_INSERT);
+			mdbm_store_str(gDB, dh[i], "", MDBM_INSERT);
 		}
 	}
-	closedir(dh);
+	freeLines(dh);
 	d_count++;
 	if (opts.progress) progress(1);
 
@@ -1114,10 +1117,10 @@ skip:			mdbm_close(gDB);
 	 * Make sure the directory in the gdir does not have a s.file
 	 */
 	strcpy(buf, "s.");
-	for (i = dlist.first; i; i = i->next) {
-		strcpy(&buf[2], i->path);
+	for (item = dlist.first; item; item = item->next) {
+		strcpy(&buf[2], item->path);
 		if (mdbm_fetch_str(sDB, buf)) {
-			concat_path(buf, dir, i->path);
+			concat_path(buf, dir, item->path);
 			fprintf(stderr,
 			"Warning: %s should not be a directory\n", buf);
 		}

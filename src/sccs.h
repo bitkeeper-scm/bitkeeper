@@ -1063,6 +1063,7 @@ int	spawn_cmd(int flag, char **av);
 int	getRealName(char *path, MDBM *db, char *realname);
 int	addsym(sccs *s, delta *d, delta *metad, int, char*, char*);
 int	delta_table(sccs *s, FILE *out, int willfix);
+char	**getdir(char *); 
 delta	*getSymlnkCksumDelta(sccs *s, delta *d);
 struct tm
         *utc2tm(time_t t);

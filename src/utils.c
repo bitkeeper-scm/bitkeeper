@@ -907,3 +907,41 @@ cset_unlock()
 	assert(exists(BKTMP "/csetlock"));
 	unlink(BKTMP "/csetlock");
 }
+
+
+char	**
+getdir(char *dir)
+{
+	char	**lines = 0;
+	DIR	*d;
+	struct	dirent   *e;
+	struct  stat sb1, sb2;
+
+
+again:	if (lstat(dir, &sb1)) {
+		if (errno == ENOENT) return (NULL);
+		perror(dir);
+		return(NULL);
+	}
+	if ((d = opendir(dir)) == NULL)  {
+		perror(dir);
+		return(NULL);
+	}
+	while (e = readdir(d)) {
+		lines = addLine(lines, strdup(e->d_name));
+	}
+	if (lstat(dir, &sb2)) {
+		perror(dir);
+		return(NULL);
+	}
+	if ((sb1.st_mtime != sb2.st_mtime) || 
+	    (sb1.st_size != sb2.st_size)) {
+		fprintf(stderr,
+		    "Directory change while doing readdir(), restarting...\n");
+		freeLines(lines);
+		lines = 0;
+		goto again;
+	}
+	sortLines(lines);
+	return (lines);
+}
