@@ -61,7 +61,7 @@ makepatch_main(int ac, char **av)
 	char	*range = 0;
 
 	if (ac == 2 && streq("--help", av[1])) {
-usage:		system("bk help makepatch");
+usage:		system("bk help -s makepatch");
 		return (0);
 	}
 	dash = streq(av[ac-1], "-");
