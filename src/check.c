@@ -200,6 +200,7 @@ check_main(int ac, char **av)
 		 */
 		unless (flags & INIT_NOCKSUM) {
 			if (sccs_resum(s, 0, 0, 0)) errors |= 0x04;
+			if (s->has_nonl && chk_nlbug(s)) errors |= 0x04;
 		}
 		if (chk_gfile(s)) errors |= 0x08;
 		if (no_gfile(s)) errors |= 0x08;

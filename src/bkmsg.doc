@@ -97,6 +97,14 @@ You can restart the resolve with a
 
 after fixing the permissions.
 $
+#saw_blanknonl
+The file #BKARG# is corrupted because of a bug in
+BitKeeper version 3.0.1 and eariler.  It was caused by a 
+file on Windows that has a carrage return as the last 
+character of the file without a following newline.
+Please contact BitMover at support@bitmover.com for
+help in repairing this file.
+$
 #setup_1
 
 You are about create a new repository.  You may do this exactly once

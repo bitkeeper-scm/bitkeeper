@@ -604,6 +604,7 @@ typedef	struct sccs {
 	u32	prs_odd:1;	/* for :ODD: :EVEN: in dspecs */
 	u32	unblock:1;	/* sccs_free: only if set */
 	u32	hasgone:1;	/* this graph has D_GONE deltas */
+	u32	has_nonl:1;	/* set by getRegBody() if a no-NL is seen */
 } sccs;
 
 typedef struct {
@@ -1139,6 +1140,7 @@ void	sccs_reDup(sccs *s);
 void	sccs_adjustSet(sccs *sc, sccs *scb, delta *d);
 int	chk_host(void);
 int	chk_user(void);
+int	chk_nlbug(sccs *s);
 int	fix_gmode(sccs *s, int gflags);
 int	do_checkout(sccs *s);
 int	unsafe_path(char *s);
