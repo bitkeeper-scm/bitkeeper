@@ -481,7 +481,7 @@ cweave_chk(sccs *s, delta *d)
 		char	string[20];	/* two checksums and a ':' */
 
 		sprintf(string, "%u:%u", d->sum, sum);
-		getMsg("takepatch-chksum", string, 0, '=', stderr);
+		getMsg("takepatch-chksum", string, '=', stderr);
 		goto done;
 	}
 	ret = 0;

@@ -484,7 +484,7 @@ cset_fixLinuxKernelChecksum(sccs *s)
 	unless (d = sccs_findMD5(s, BADKEY)) return (s);
 
 	if (sccs_findMD5(s, GOODKEY)) {
-		getMsg("bad-linux-kern-tree", 0, 0, 0, stderr);
+		getMsg("bad-linux-kern-tree", 0, 0, stderr);
 		return (0);
 	}
 	unless (sccs_resum(s, d, 0, 1)) {
