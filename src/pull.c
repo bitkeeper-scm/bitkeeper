@@ -229,7 +229,10 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		return (1);
 	}
 	if (opts.dont) putenv("BK_STATUS=DRYRUN");
-	if (!opts.metaOnly && trigger(av[0], "pre")) return (1);
+	if (!opts.metaOnly && trigger(av[0], "pre")) {
+		disconnect(r, 2);
+		return (1);
+	}
 	bktmp(probe_list, "pullprobe");
 	fd = open(probe_list, O_CREAT|O_WRONLY, 0644);
 	assert(fd >= 0);

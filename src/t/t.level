@@ -101,6 +101,3 @@ grep -q 'cannot pull to lower level repository (remote level == 100)' OUT || {
 	exit 1
 }
 echo OK
-
-bk lock -U $HERE/project
-bk lock -U $HERE/copy

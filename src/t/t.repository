@@ -127,7 +127,7 @@ file=post-incoming-regression-$USER
 cat <<EOF 2> /dev/null > /etc/BitKeeper/triggers/.incoming.$file
 #!/bin/sh
 
-if [ "X$USER" != "X\$USER" ]
+if [ "X$USER" != "X\$USER" ] || [ "X`bk id`" != "X\`bk id\`" ]
 then	exit 0
 fi
 set | egrep '^_?BK' > $HERE/post-incoming.out
@@ -154,7 +154,7 @@ if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 
 if [ $TRIGGERS -eq 1 ]; then
-echo $N A failed logging patch should still call the triggers,.......$NL
+echo $N A failed logging patch should still call the triggers........$NL
 test -f $HERE/post-incoming.out || {
 	echo trigger never ran
 	exit 1
