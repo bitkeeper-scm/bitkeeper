@@ -13,8 +13,7 @@ bk clone \- create a new copy of a package
 .B ]
 .ARG from
 .Bc [
-.ARG to
-.B ]
+.ARG to ]
 .SH DESCRIPTION
 .LP
 The clone command copies from the 
@@ -29,7 +28,7 @@ is not specified then the basename of the
 is the implied destination.  This works for fully and partially specified
 pathnames as well as BK URLs.
 See 
-.B bk help parent
+.B bk help url
 for further naming information.
 .LP
 If 
@@ -75,6 +74,7 @@ but not with rsh.
 .SA pull 1
 .SA push 1
 .SA triggers 1
+.SA url 1
 .SH CATEGORY
 .B Repository
 .br
