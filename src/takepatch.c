@@ -196,6 +196,8 @@ usage:		system("bk help -s takepatch");
 	 * inodes are present.
 	 *
 	 * Converge iff we are going to commit 
+	 * 
+	 * Note: BK_NO_CONVERGE is for used in regression test only
 	 */
 	if (csetConflict && !getenv("BK_NO_CONVERGE")) {
 		char key[MAXKEY], gfile[MAXPATH];
