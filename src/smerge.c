@@ -475,40 +475,40 @@ user_conflict(region *r)
 	switch (mode) {
 	    case MODE_GCA:
 		unless (sameLines(r->left, r->gca)) {
-			printf("<<< local %s %s vs %s\n", 
+			printf("<<<<<<< local %s %s vs %s\n", 
 			       file, revs[GCA], revs[LEFT]);
 			diffs = unidiff(r->gca, r->left);
 			EACH(diffs) printline(diffs[i], 1);
 			freeLines(diffs);
 		}
 		unless (sameLines(r->right, r->gca)) {
-			printf("<<< remote %s %s vs %s\n", 
+			printf("<<<<<<< remote %s %s vs %s\n", 
 			       file, revs[GCA], revs[RIGHT]);
 			diffs = unidiff(r->gca, r->right);
 			EACH(diffs) printline(diffs[i], 1);
 			freeLines(diffs);
 		}
-		printf(">>>\n");
+		printf(">>>>>>>\n");
 		break;
 	    case MODE_2WAY:
-		printf("<<< local %s %s\n", file, revs[LEFT]);
+		printf("<<<<<<< local %s %s\n", file, revs[LEFT]);
 		EACH(r->left) printline(r->left[i], 0);
-		printf("<<< remote %s %s\n", file, revs[RIGHT]);
+		printf("<<<<<<< remote %s %s\n", file, revs[RIGHT]);
 		EACH(r->right) printline(r->right[i], 0);
-		printf(">>>\n");
+		printf(">>>>>>>\n");
 		break;
 	    case MODE_3WAY:
-		printf("<<< gca %s %s\n", file, revs[GCA]);
+		printf("<<<<<<< gca %s %s\n", file, revs[GCA]);
 		EACH(r->gca) printline(r->gca[i], 0);
-		printf("<<< local %s %s\n", file, revs[LEFT]);
+		printf("<<<<<<< local %s %s\n", file, revs[LEFT]);
 		EACH(r->left) printline(r->left[i], 0);
-		printf("<<< remote %s %s\n", file, revs[RIGHT]);
+		printf("<<<<<<< remote %s %s\n", file, revs[RIGHT]);
 		EACH(r->right) printline(r->right[i], 0);
-		printf(">>>\n");
+		printf(">>>>>>>\n");
 		break;
 	    case MODE_NEWONLY:
 		unless (sameLines(r->left, r->gca)) {
-			printf("<<< local %s %s vs %s\n", 
+			printf("<<<<<<< local %s %s vs %s\n", 
 			       file, revs[GCA], revs[LEFT]);
 			diffs = unidiff(r->gca, r->left);
 			EACH(diffs) {
@@ -519,7 +519,7 @@ user_conflict(region *r)
 			freeLines(diffs);
 		}
 		unless (sameLines(r->right, r->gca)) {
-			printf("<<< remote %s %s vs %s\n", 
+			printf("<<<<<<< remote %s %s vs %s\n", 
 			       file, revs[GCA], revs[RIGHT]);
 			diffs = unidiff(r->gca, r->right);
 			EACH(diffs) {
@@ -529,7 +529,7 @@ user_conflict(region *r)
 			}
 			freeLines(diffs);
 		}
-		printf(">>>\n");
+		printf(">>>>>>>\n");
 		break;
 	}
 }
@@ -734,56 +734,56 @@ show_examples(void)
 {
 	fputs(
 "Summary of bk smerge output formats\n\
- default\n\
-    <<< local slib.c 1.642.1.6 vs 1.645\n\
+default\n\
+    <<<<<<< local slib.c 1.642.1.6 vs 1.645\n\
     		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);\n\
     -             assert(sc->tree);\n\
     -             sccs_sdelta(sc, sc->tree, file);\n\
     +             assert(HASGRAPH(sc));\n\
     +             sccs_sdelta(sc, sccs_ino(sc), file);\n\
-    <<< remote slib.c 1.642.1.6 vs 1.642.2.1\n\
+    <<<<<<< remote slib.c 1.642.1.6 vs 1.642.2.1\n\
     -             sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);\n\
     +             sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, p);\n\
     		  assert(sc->tree);\n\
     		  sccs_sdelta(sc, sc->tree, file);\n\
-    >>>\n\
+    >>>>>>>\n\
 \n\
- -2  (2 way format (like diff3))\n\
-    <<< local slib.c 1.645\n\
+-2	(2 way format (like diff3))\n\
+    <<<<<<< local slib.c 1.645\n\
     		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);\n\
     		  assert(HASGRAPH(sc));\n\
     		  sccs_sdelta(sc, sccs_ino(sc), file);\n\
-    <<< remote slib.c 1.642.2.1\n\
+    <<<<<<< remote slib.c 1.642.2.1\n\
     		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, p);\n\
     		  assert(sc->tree);\n\
     		  sccs_sdelta(sc, sc->tree, file);\n\
-    >>>\n\
+    >>>>>>>\n\
 \n\
- -3  (3 way format (shows gca)\n\
-    <<< gca slib.c 1.642.1.6\n\
+-3	(3 way format (shows gca))\n\
+    <<<<<<< gca slib.c 1.642.1.6\n\
     		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);\n\
     		  assert(sc->tree);\n\
     		  sccs_sdelta(sc, sc->tree, file);\n\
-    <<< local slib.c 1.645\n\
+    <<<<<<< local slib.c 1.645\n\
     		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);\n\
     		  assert(HASGRAPH(sc));\n\
     		  sccs_sdelta(sc, sccs_ino(sc), file);\n\
-    <<< remote slib.c 1.642.2.1\n\
+    <<<<<<< remote slib.c 1.642.2.1\n\
     		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, p);\n\
     		  assert(sc->tree);\n\
     		  sccs_sdelta(sc, sc->tree, file);\n\
-    >>>\n\
+    >>>>>>>\n\
 \n\
- -n  ( newonly (like -2 except marks added lines))\n\
-    <<< local slib.c 1.642.1.6 vs 1.645\n\
+-n	(newonly (like -2 except marks added lines))\n\
+    <<<<<<< local slib.c 1.642.1.6 vs 1.645\n\
     		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);\n\
     +             assert(HASGRAPH(sc));\n\
     +             sccs_sdelta(sc, sccs_ino(sc), file);\n\
-    <<< remote slib.c 1.642.1.6 vs 1.642.2.1\n\
+    <<<<<<< remote slib.c 1.642.1.6 vs 1.642.2.1\n\
     +             sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, p);\n\
     		  assert(sc->tree);\n\
     		  sccs_sdelta(sc, sc->tree, file);\n\
-    >>>\n\
+    >>>>>>>\n\
 ", stdout);
 }
 

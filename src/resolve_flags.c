@@ -31,6 +31,7 @@ flags(int bits)
 		if (comma) fs(","); fs("SHELL"); comma = 1;
 	}
 #endif
+	unless (buf[0]) strcat(buf, "<none>");
 	assert(strlen(buf) < sizeof buf);
 	return (buf);
 }

@@ -252,7 +252,7 @@ c_vm(resolve *rs)
 	return (0);
 }
 
-int
+private int
 needs_merge(resolve *rs)
 {
 	MMAP	*m;
@@ -279,13 +279,13 @@ needs_merge(resolve *rs)
 "\nThe file has unresolved conflicts.  These conflicts are marked in the\n\
 file like so\n\
 \n\
-	<<<<<<< BitKeeper/tmp/bk.sh_lm@1.191\n\
-	changes made by user lm in revision 1.191 of bk.sh\n\
-	some more changes by lm\n\
-	=======\n\
-	changes made by user awc in revision 1.189.1.5 of bk.sh\n\
-	more changes by awc\n\
-	>>>>>>> BitKeeper/tmp/bk.sh_awc@1.189.1.5\n\
+	<<<<<<< local src/bk.sh 1.189.1.1 vs 1.191\n\
+	-old version of file\n\
+	+changes made in revision 1.191 of src/bk.sh\n\
+	<<<<<<< remote src/bk.sh 1.189.1.1 vs 1.189.1.5 \n\
+	-old version of file\n\
+	+changes made in revision 1.189.1.5 of src/bk.sh\n\
+	>>>>>>>\n\
 \n\
 Use 'e' to edit the file and resolve these conflicts.\n\
 Alternatively, you use 'f' to try the graphical filemerge.\n\n");
