@@ -1040,7 +1040,7 @@ int	after(int quiet, char *rev);
 int	lod(int quiet, char *rev);
 int	logs_pending(int ptype, int skipRecentCset, int grace); 
 int	diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile);
-
+int	spawn_cmd(int flag, char **av);
 extern char *bk_vers;
 extern char *bk_utc;
 extern char *bk_time;

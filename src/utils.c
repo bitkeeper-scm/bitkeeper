@@ -857,7 +857,25 @@ savefile(char *dir, char *prefix, char *pathname)
 void
 has_proj(char *who)
 {
-        if (bk_proj && bk_proj->root) return;
+	if (bk_proj && bk_proj->root) return;
 	fprintf(stderr, "%s: cannot find package root\n", who);
 	exit(1);
+}
+
+int
+spawn_cmd(int flag, char **av)
+{
+	int ret;
+
+	ret = spawnvp_ex(flag, av[0], av); 
+	if (WIFSIGNALED(ret)) {
+		unless (WTERMSIG(ret) == SIGPIPE) {
+			fprintf(stderr,
+			    "%s died from %d\n", av[0], WTERMSIG(ret));
+		}
+	} else unless (WIFEXITED(ret)) {
+		fprintf(stderr, "bk: cannot spawn %s\n", av[0]);
+		return (127);
+	}
+	return (WEXITSTATUS(ret));
 }

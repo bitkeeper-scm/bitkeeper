@@ -1,14 +1,20 @@
 #include "bkd.h"
 
 extern char *editor;
+extern char *find_wish();
+extern char *bin;
 private int do_email(char *bug);
 private int do_webmail(char *bug);
+extern int spawn_cmd(int flag, char **av);
+
+#define	MAXARGS 1024
 
 int
 sendbug_main(int ac,  char **av)
 {
-	char	buf[MAXLINE], bug[MAXPATH];
-	int	c, rc, webmail;
+	char	buf[MAXLINE], bug[MAXPATH], cmd_path[MAXPATH];
+	char	*argv[MAXARGS];
+	int	i, j, c, rc, webmail, textmode = 0;
 	FILE	*f;
 	remote	*r;
 	MMAP	*m;
@@ -17,7 +23,7 @@ sendbug_main(int ac,  char **av)
 	 * On windows webmail is the default
 	 * On Unix  email is the default
 	 */
-#ifdef WIN32
+#ifdef	WIN32
 	webmail = 1;
 #else
 	webmail = 0;
@@ -28,13 +34,28 @@ sendbug_main(int ac,  char **av)
 		return (0);
 	}
 
-	while ((c = getopt(ac, av, "we")) != -1) {
+	while ((c = getopt(ac, av, "twe")) != -1) {
 		switch (c) {
 		    case 'w':   webmail = 1; break;
 		    case 'e':   webmail = 0; break;
+		    case 't':   textmode = 1; break;
 		    default:    fprintf(stderr, "usage: bk _logConfig [-d]\n");
 				return (1);
 		}
+	}
+
+	unless ((textmode == 1) || ((getenv("DISPLAY") == NULL) ||
+	    streq(getenv("DISPLAY"), ""))) {
+		argv[0] = find_wish();
+		sprintf(cmd_path, "%s/bugform", bin);
+		argv[1] = cmd_path;
+		if (av[optind]) {
+			argv[2] = av[optind];
+			argv[3] = 0;
+		} else {
+			argv[2] = 0;
+		}
+		return (spawn_cmd(_P_WAIT, argv));
 	}
 
 	sprintf(bug, "%s/bk_bug%d", TMP_PATH, getpid());
@@ -83,8 +104,7 @@ do_email(char *bug)
 	pid_t	pid;
 	int	status;
 
-	pid = 
-	    mail("bitkeeper-bugs@bitmover.com", "BK Bug", bug);
+	pid = mail("bitkeeper-bugs@bitmover.com", "BK Bug", bug);
 	if (pid == (pid_t) -1) {
 		fprintf(stderr, "cannot start mailer\n");
 		unlink(bug);
