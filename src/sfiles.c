@@ -107,7 +107,6 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 			return (1);
 		}
 		rebuild();
-		if (proj) proj_free(proj);
 		return (dups ? 1 : 0);
 	}
 	if (!av[optind]) {
@@ -382,6 +381,22 @@ keys(char *file)
 }
 
 /*
+ * Long term, this is all that will be left of sfiles.
+ */
+int
+idcache_main(int ac, char **av)
+{
+	fprintf(stderr, "Rebuilding idcache\n");
+
+	/* perror is in sccs_root, don't do it twice */
+	unless (sccs_cd2root(0, 0) == 0) {
+		return (1);
+	}
+	rebuild();
+	return (dups ? 1 : 0);
+}
+
+/*
  * rebuild the caches.
  */
 private	void
@@ -443,6 +458,7 @@ c:	lftw(".", caches);
 	}
 	sccs_free(cset);
 	mdbm_close(idDB);
+	if (proj) proj_free(proj);
 }
 
 private	void

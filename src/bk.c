@@ -58,6 +58,7 @@ int gone_main(int, char **);
 int help_main(int, char **);
 int helpsearch_main(int, char **);
 int helptopics_main(int, char **);
+int idcache_main(int, char **);
 int isascii_main(int, char **);
 int key2rev_main(int, char **);
 int keysort_main(int, char **);
@@ -171,6 +172,7 @@ struct command cmdtbl[] = {
 	{"helpsearch", helpsearch_main},
 	{"helptopics", helptopics_main},
 	{"info", sinfo_main},
+	{"idcache", idcache_main},
 	{"isascii", isascii_main},
 	{"key2rev", key2rev_main},
 	{"lock", lock_main},
