@@ -44,7 +44,7 @@ SCCSOBJ	= dirname.o filecopy.o getopt.o gettemp.o glob.o libdiff.o librange.o \
 	  libusers.o utils.o locking.o
 PORTOBJ = port/getinput.o port/gethost.o port/fullname.o port/platforminit.o \
 	  port/sccs_root.o port/randomBits.o port/spawn.o port/samepath.o \
-	  port/disksp.o
+	  port/disksp.o port/findprog.o
 MDBMOBJ	= mdbm/mdbm.o mdbm/hash.o mdbm/debug.o
 ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/gzio.o \
 	  zlib/uncompr.o zlib/deflate.o zlib/trees.o zlib/zutil.o \

@@ -75,7 +75,10 @@ private unsigned int u_mask = 0x5eadbeef;
 int
 executable(char *f)
 {
-	return (access(f, X_OK) == 0);
+	struct	stat sbuf;
+
+	if (lstat(f, &sbuf) == -1) return 0;
+	return (S_ISREG(sbuf.st_mode) && (sbuf.st_mode & 0111));
 }
 
 int
