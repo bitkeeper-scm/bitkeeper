@@ -39,7 +39,7 @@ cd $HERE/project
 bk export -T -k -r1.2 $HERE/a
 bk export -T -k -r1.3 $HERE/b
 cd $HERE
-diff --minimal -Nru a b > $HERE/CMP2
+diff -Nru a b > $HERE/CMP2
 diff -c CMP1 CMP2
 if [ $? -ne 0 ]; then echo failed; exit 1; else echo OK; fi
 rm -rf $HERE/a $HERE/b

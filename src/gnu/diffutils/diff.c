@@ -54,7 +54,7 @@ static int recursive;
 
 /* For debugging: don't do discard_confusing_lines.  */
 
-int no_discards = 1;
+int no_discards;
 
 #if HAVE_SETMODE
 /* I/O mode: nonzero only if using binary input/output.  */
@@ -222,7 +222,6 @@ static struct option const longopts[] =
   {"help", 0, 0, 141},
   {"binary", 0, 0, 142},
   {"ignore-trailing-cr", 0, 0, 143},
-  {"nominimal", 0, 0, 144},
   {0, 0, 0, 0}
 };
 
@@ -311,7 +310,6 @@ main (argc, argv)
 	case 'd':
 	  /* Don't discard lines.  This makes things slower (sometimes much
 	     slower) but will find a guaranteed minimal set of changes.  */
-	  /* BKCHANGE:  This is now the default */
 	  no_discards = 1;
 	  break;
 
@@ -568,11 +566,6 @@ main (argc, argv)
 	  ignore_trailing_cr_flag = 1;
 	  ignore_some_changes = 1;
 	  ignore_some_line_changes = 1;
-	  break;
-
-	case 144:
-	  /* --nominimal */
-	  no_discards = 0;
 	  break;
 
 	default:

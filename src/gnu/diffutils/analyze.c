@@ -946,7 +946,14 @@ diff_2_files (filevec, depth)
 	   i != 0; i >>= 2)
 	too_expensive <<= 1;
       too_expensive = max (256, too_expensive);
-
+      {
+	      char	*env = getenv("GDIFF_TOO_EXPENSIVE");
+	      if (env) {
+		      too_expensive = atoi(env);
+	      } else {
+		      too_expensive = 10000;
+	      }
+      }
       files[0] = filevec[0];
       files[1] = filevec[1];
 
