@@ -30,6 +30,9 @@ private	char	*root;
 #define	COLOR_DIFFS	"lightblue"	/* diffs */
 #define	COLOR_PATCH	"lightblue"	/* patch */
 
+char arguments[MAXPATH];
+char nav[MAXPATH];
+
 /*
  */
 int
@@ -60,6 +63,23 @@ cmd_httpget(int ac, char **av)
 		}
 	}
 
+	if (s = strchr(name, '?')) {
+		*s++ = 0;
+		strcpy(arguments, s);
+		sprintf(nav, "%s:", arguments);
+
+		/* arguments:  ?nav=url+key:url+key:url+key:url+key:url+key
+			key is the path, so a source search will be
+			src/.../dir/file?nav=url+name:url+name:...
+			and it will show up on the html as
+
+			(home) >> (src) >> (...)
+		 */
+	} else {
+		arguments[0] = 0;
+		strcpy(nav, "nav=");
+	}
+
 	unless (*name) name = "index.html";
 	if ((strlen(name) + sizeof("BitKeeper/html") + 2) >= MAXPATH) exit(1);
 
@@ -74,7 +94,7 @@ cmd_httpget(int ac, char **av)
 			exit(1);
 		}
 	} else {
-		static	char url[1000];
+		static char url[MAXPATH];
 
 		if (Opts.port) {
 			sprintf(url, "http://%s:%d", sccs_gethost(), Opts.port);
@@ -84,11 +104,13 @@ cmd_httpget(int ac, char **av)
 		root = url;
 	}
 
+#if 0
 	unless (bk_options()&BKOPT_WEB) {
 		sprintf(buf, "ERROR-bkWeb option is disabled: %s", upgrade_msg);
 		out(buf);
 		exit(1);
 	}
+#endif
 
 	unless (av[1]) {
 		out("ERROR-get what?\n");
@@ -132,6 +154,7 @@ header(char *path, char *color, char *titlestr, char *headerstr, ...)
 	MDBM *m;
 	char *t;
 	char *fmt = 0;
+	char *s;
 
 	out("<html>");
 
@@ -154,12 +177,33 @@ header(char *path, char *color, char *titlestr, char *headerstr, ...)
 	}
 
 	out("<body alink=black link=black bgcolor=white>\n");
-
 	if (root && !streq(root, "")) {
 		out("<base href=");
 		out(root);
 		out("/>\n");
 	}
+
+	/* put in a navigation bar */
+	out("<a href=\"index.html\">home</a>");
+	if (strneq(arguments, "nav=", 4)) {
+		for (s = arguments+4; *s; ) {
+			for (t = s; *t && *t != ':' && *t != '+'; ++t)
+				;
+			if (*t == '+') {
+				sprintf(buf, "&nbsp;&gt;&gt;&nbsp;<a href=\"%.*s?%.*s\">",
+				    t-s, s, s-arguments, arguments);
+				out(buf);
+				for (s=++t; *t && *t != ':'; ++t)
+					;
+				sprintf(buf, "%.*s</a>", t-s, s);
+				out(buf);
+				s = *t ? (1+t) : t;
+			}
+			else break;
+		}
+	}
+	out("<br><hr>\n");
+
 	unless (include(path, "header.txt")) {
 		m = loadConfig(".", 0);
 		if (m && (t = mdbm_fetch_str(m, "description")) && strlen(t) < 2000) {
@@ -182,7 +226,7 @@ findRoot(char *name)
 	char	*s, *t;
 	char	path[MAXPATH];
 	int	tries = 256;
-	static	char url[MAXPATH*2];
+	static	char url[MAXPATH+2];
 
 	s = name + strlen(name) + 1;
 
@@ -247,18 +291,25 @@ http_changes(char *rev)
 	char	*av[100];
 	int	i;
 	char	buf[2048];
+	char    dspec[MAXPATH];
 	MDBM	*m;
 	char	*d;
-	char	*dspec = "-d<tr>\n"
+
+	if (rev) {
+		sprintf(nav+strlen(nav), "ChangeSet@%s+%s", rev, rev);
+	} else {
+		strcat(nav, "ChangeSet+all&#020;changesets");
+	}
+	sprintf(dspec,  "-d<tr>\n"
 			" <td align=right>:HTML_AGE:</td>\n"
 			" <td align=center>:USER:</td>\n"
 			" <td align=center"
 			"$if(:TAG:){ bgcolor=yellow}>"
-			"<a href=cset@:I:>:I:</a>"
+			"<a href=cset@:I:?%s>:I:</a>"
 			"$if(:TAG:){$each(:TAG:){<br>(:TAG:)}}"
 			"</td>\n"
 			" <td>:HTML_C:</td>\n"
-			"</tr>\n";
+			"</tr>\n", nav);
 
 	httphdr(".html");
 	header(0, COLOR_CHANGES, "ChangeSet Summaries", 0);
@@ -293,20 +344,24 @@ http_cset(char *rev)
 	MDBM	*m;
 	int	i;
 	char	*d, **lines = 0;
-	char	*dspec = 
+	char	dspec[MAXPATH*2];
+
+	sprintf(nav+strlen(nav), "cset@%s+%s", rev, rev);
+
+	sprintf(dspec,
 	    "<tr bgcolor=#d8d8f0><td>&nbsp;"
 	    ":GFILE:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:"
 	    "$if(:DOMAIN:){@:DOMAIN:}"
 	    "$if(:GFILE:=ChangeSet){"
-	      "&nbsp;&nbsp;<a href=patch@:REV:>"
+	      "&nbsp;&nbsp;<a href=patch@:REV:?%s>"
 	      "<font color=darkblue>[all diffs]</font></a>"
 	    "}"
 	    "$if(:GFILE:!=ChangeSet){"
-	      "&nbsp;&nbsp;<a href=hist/:GFILE:>"
+	      "&nbsp;&nbsp;<a href=hist/:GFILE:?%s>"
 	      "<font color=darkblue>[history]</font></a>"
-	      "&nbsp;&nbsp;<a href=anno/:GFILE:@:REV:>"
+	      "&nbsp;&nbsp;<a href=anno/:GFILE:@:REV:?%s>"
 	      "<font color=darkblue>[annotate]</font></a>"
-	      "&nbsp;&nbsp;<a href=diffs/:GFILE:@:REV:>"
+	      "&nbsp;&nbsp;<a href=diffs/:GFILE:@:REV:?%s>"
 	      "<font color=darkblue>[diffs]</font></a>"
 	    "}"
 	    "</td>"
@@ -317,7 +372,7 @@ http_cset(char *rev)
 	    "$each(:C:){"
 	      "<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)</td></tr>"
 	    "}"
-	    "<tr><td>&nbsp;</td></tr>\n";
+	    "<tr><td>&nbsp;</td></tr>\n", nav, nav, nav, nav);
 
 	httphdr("cset.html");
 
@@ -478,17 +533,21 @@ http_hist(char *pathrev)
 	char	*s, *d;
 	FILE	*f;
 	MDBM	*m;
-	char	*dspec =
+	char	dspec[MAXPATH*2];
+
+	sprintf(nav+strlen(nav), "hist/%s+%s", pathrev, pathrev);
+
+	sprintf(dspec,
 		"<tr>\n"
 		" <td align=right>:HTML_AGE:</td>\n"
 		" <td align=center>:USER:</td>\n"
 		" <td align=center"
 		"$if(:TAG:){ bgcolor=yellow}"
 		"$if(:RENAME:){$if(:I:!=1.1){ bgcolor=orange}}>"
-		"<a href=diffs/:GFILE:@:I:>:I:</a>"
+		"<a href=diffs/:GFILE:@:I:?%s>:I:</a>"
 		"$if(:TAG:){$each(:TAG:){<br>(:TAG:)}}"
 		"</td>\n <td>:HTML_C:</td>\n"
-		"</tr>\n";
+		"</tr>\n", nav);
 
 	httphdr(".html");
 	header("hist", COLOR_HIST, "Revision history for %s", 0, pathrev);
@@ -530,21 +589,25 @@ http_src(char *path)
 	struct	stat sbuf;
 	struct	dirent *e;
 	time_t	now;
-	char	*dspec = 
+	char 	dspec[MAXPATH*2];
+
+	sprintf(nav+strlen(nav), "src/%s+%s", path, streq(path, ".") ? "sources" : path);
+	sprintf(dspec, 
 	    "<tr bgcolor=lightyellow>"
 	    " <td><img src=file.gif></td>"
 	    " <td>"
-	      "$if(:GFILE:=ChangeSet){<a href=ChangeSet@+>&nbsp;:G:</a>}"
-	      "$if(:GFILE:!=ChangeSet){<a href=hist/:GFILE:>&nbsp;:G:</a>}"
+	      "$if(:GFILE:=ChangeSet){<a href=ChangeSet@+?%s>&nbsp;:G:</a>}"
+	      "$if(:GFILE:!=ChangeSet){<a href=hist/:GFILE:?%s>&nbsp;:G:</a>}"
 	    "</td>"
 	    " <td align=center>"
-	      "$if(:GFILE:=ChangeSet){<a href=cset@:REV:>&nbsp;:REV:</a>}"
-	      "$if(:GFILE:!=ChangeSet){<a href=anno/:GFILE:@:REV:>:REV:</a>}"
+	      "$if(:GFILE:=ChangeSet){<a href=cset@:REV:?%s>&nbsp;:REV:</a>}"
+	      "$if(:GFILE:!=ChangeSet){<a href=anno/:GFILE:@:REV:?%s>:REV:</a>}"
 	    "</td>"
 	    " <td align=right><font size=2>:HTML_AGE:</font></td>"
 	    " <td align=center>:USER:</td>"
 	    " <td>:HTML_C:&nbsp;</td>"
-	    "</tr>\n";
+	    "</tr>\n", nav, nav, nav, nav);
+
 
 	if (!path || !*path) path = ".";
 	unless (d = opendir(path)) {
@@ -574,9 +637,9 @@ http_src(char *path)
 		}
 		if (lstat(buf, &sbuf) == -1) continue;
 		if (path[1]) {
-			sprintf(buf, "<a href=src/%s/%s>", path, e->d_name);
+			sprintf(buf, "<a href=src/%s/%s?%s>", path, e->d_name, nav);
 		} else {
-			sprintf(buf, "<a href=src/%s>", e->d_name);
+			sprintf(buf, "<a href=src/%s?%s>", e->d_name, nav);
 		}
 		//s = age(now - sbuf.st_mtime, "&nbsp;");
 		if (S_ISDIR(sbuf.st_mode)) {
@@ -710,14 +773,17 @@ http_diffs(char *pathrev)
 	char	*s;
 	MDBM	*m;
 	int	n;
-	char	*dspec =
+	char	dspec[MAXPATH*2];
+
+
+	sprintf(nav+strlen(nav), "diffs/%s+%s", pathrev, pathrev);
+	sprintf(dspec,
 		"<tr>\n"
 		" <td align=right>:HTML_AGE:</td>\n"
 		" <td align=center>:USER:$if(:DOMAIN:){@:DOMAIN:}</td>\n"
-		" <td align=center><a href=/anno/:GFILE:@:I:>:I:</a></td>\n"
+		" <td align=center><a href=/anno/:GFILE:@:I:?%s>:I:</a></td>\n"
 		" <td>:HTML_C:</td>\n"
-		"</tr>\n";
-
+		"</tr>\n", nav);
 
 	httphdr(".html");
 	header("diffs", COLOR_DIFFS, "Changes for %s", 0, pathrev);
