@@ -686,6 +686,7 @@ setlod(sccs *s, delta *d, int branch)
 	unless (branch) {
 		assert(d->rev);
 		s->defbranch = strdup(d->rev);
+		sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
 		return;
 	}
 
@@ -785,6 +786,8 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 				unless (*ptr == '.') continue;
 				lodbranch = 1 - lodbranch;
 			}
+			free(s->defbranch);
+			s->defbranch = 0;
 		}
 	}
 	unless (tableGCA) goto apply;
