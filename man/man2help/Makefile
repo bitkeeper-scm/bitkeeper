@@ -3,8 +3,8 @@
 SUM=All General Basics Repository GUI-tools File Admin Licensing Compat Utility 
 
 helptxt: FRC
-	@make pages
-	@make summaries
+	@$(MAKE) pages
+	@$(MAKE) summaries
 
 pages: ../bk-macros man2help.pl
 	@bk get -STq ../man1
