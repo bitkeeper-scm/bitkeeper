@@ -521,6 +521,10 @@ out:		chdir(from);
 		repository_rdunlock(0);
 		remote_free(r);
 		putenv("BK_STATUS=FAILED");
+		sprintf(from, "_BK_HOST=%s", sccs_gethost());
+		putenv(from);
+		sprintf(dest, "_BK_USER=%s", sccs_getuser());
+		putenv(dest);
 		trigger(av, "post");
 		exit(1);
 	}
@@ -568,6 +572,10 @@ out:		chdir(from);
 	}
 	chdir(from);
 	putenv("BK_STATUS=OK");
+	sprintf(from, "_BK_HOST=%s", sccs_gethost());
+	putenv(from);
+	sprintf(dest, "_BK_USER=%s", sccs_getuser());
+	putenv(dest);
 	trigger(av, "post");
 	exit(0);
 }
