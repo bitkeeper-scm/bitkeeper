@@ -262,7 +262,7 @@ diff -Nru a/data b/data
 +This should fail!
  D
 EOF
-bk import -tpatch $HERE/patch . < /dev/null > $HERE/OUT 2>&1 && {
+bk import -R -tpatch $HERE/patch . < /dev/null > $HERE/OUT 2>&1 && {
 	echo failed to exit with an error
 	cat $HERE/OUT
 	exit 1

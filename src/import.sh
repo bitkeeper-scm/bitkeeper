@@ -156,7 +156,7 @@ import() {
 			fi
 			eval "$cmd" > ${TMP}import$$
 			if [ X$QUIET = X ]; then echo OK; fi
-		else	echo "" > ${TMP}import$$
+		else	touch ${TMP}import$$
 		fi
 	fi
 	if [ $TYPE != patch ]
