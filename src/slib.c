@@ -375,7 +375,7 @@ freeLines(char **space)
 	addLine_lastp = 0;
 }
 
-private int
+int
 removeLine(char **space, char *s)
 {
 	int	i, found, n = 0;
@@ -397,6 +397,22 @@ removeLine(char **space, char *s)
 		}
 	} while (found);
 	return (n > 0);
+}
+
+void
+removeLineN(char **space, int rm)
+{
+	int	i;
+
+	assert(rm < (int)(long)space[0]);
+	assert(rm > 0);
+	free(space[rm]);
+	space[rm] = 0;
+	for (i = rm; (++i < (int)(long)space[0]) && space[i]; ) {
+		space[i-1] = space[i];
+		space[i] = 0;
+	}
+	addLine_lastp = 0;
 }
 
 /*
@@ -3031,10 +3047,25 @@ sccs_tagConflicts(sccs *s)
 	return (db);
 }
 
+private void
+unvisit(sccs *s, delta *d)
+{
+	unless (d) return;
+	unless (d->flags & D_BLUE) return;
+	d->flags &= ~D_BLUE;
+
+	if (d->ptag) unvisit(s, sfind(s, d->ptag));
+	if (d->mtag) unvisit(s, sfind(s, d->mtag));
+}
+
 private delta *
 tagwalk(sccs *s, delta *d)
 {
 	unless (d) return ((delta*)1);	/* this is an error case */
+
+	if (d->flags & D_BLUE) return(0);
+	d->flags |= D_BLUE;
+
 	if (d->ptag) if (tagwalk(s, sfind(s, d->ptag))) return (d);
 	if (d->mtag) if (tagwalk(s, sfind(s, d->mtag))) return (d);
 	return (0);
@@ -3046,7 +3077,10 @@ checktags(sccs *s, delta *leaf, int flags)
 	delta	*d, *e;
 
 	unless (leaf) return(0);
-	unless (d = tagwalk(s, leaf)) return (0);
+	unless (d = tagwalk(s, leaf)) {
+		unvisit(s, leaf);
+		return (0);
+	}
 	if (d == (delta*)1) {
 		verbose((stderr,
 		    "Corrupted tag graph in %s\n", s->gfile));
@@ -3078,7 +3112,8 @@ checkTags(sccs *s, int flags)
 
 	if (sccs_tagleaves(s, &l1, &l2)) return (128);
 	if (checktags(s, l1, flags) || checktags(s, l2, flags)) return (128);
-    	return (0);
+
+	return (0);
 }
 
 /*
@@ -7693,6 +7728,7 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
 	while (fbuf = nextdata(s)) {
 		if (isData(fbuf)) {
+			if (fbuf[0] == CNTLA_ESCAPE) fbuf++;
 			if (!print) {
 				/* if we are skipping data from pending block */
 				if (lf_pend &&

@@ -8,7 +8,7 @@ bk grep \- search some/all revisions for a pattern
 .Bc ] | [
 .OPTreq \-r rev
 .Bc ] | [
-.OPTreq \-R rev
+.OPTopt \-R rev
 ]
 .ARG pattern
 .BKARGS
@@ -22,10 +22,8 @@ command to do that.
 .LP
 By default,
 .B bk grep
-uses
-.B bk sccscat
-to show the concatenation of all
-lines in all versions of a file.  The listing can be annotated with dates,
+searches only the most recent version of each file.
+The listing can be annotated with dates,
 revision numbers, file names, and/or user names.  
 .LP
 If no annotations are
@@ -46,14 +44,6 @@ then
 is used to get the changes made by that range of revisions.
 .B Note:
 just the additions made by the selected versions are annotated in this case.
-.LP
-If you are looking to see if a pattern occurs anywhere in the most recent
-version of the tree, you want 
-.BR \-r+ ;
-If you are looking to see if a pattern was added in the changes made
-by the most recent
-version of the tree, you want
-.BR \-R+ .
 .LP
 The output found is passed through the native
 .BR grep (1)
@@ -92,38 +82,47 @@ Prefix each line with the line number.
 .OPTreq \-r rev
 Only look in revision
 .ARG rev
-for the pattern.  A common revision is "+" which means the most recent
-revision.
+for the pattern.  
 .tp
-.OPTreq \-R rev
+.OPTopt \-R rev
 Only look in range of revisions
 .ARG rev
-for the pattern.  A common revision is "+" which means the most recent
-revision.  The difference between this option and the previous option
-is that in this case, a "+" means look in the lines 
+for the pattern.  If
+.ARG rev
+is not specified, that implies all versions of the file[s].
+The difference between this option and the previous option
+is that in this case
+.B "bk grep"
+looks in the lines 
 .B added
-by the most recent revision, but in the 
+by the specified revision, but in the 
 .B \-r
-case, the entire contents of the most recent version is searched.
+case, the entire contents of the specified version is searched.
 .tp
 .B \-u
 Prefix each line with the user who last modified it.
 .SH EXAMPLES
 To see if 
 .ARG pattern
-occurs anywhere in your tree, you can try:
+occurs anywhere in any version of any file of your tree:
+.DS
+$ bk -r grep -R pattern
+.DE
+To see if it occurs anywhere
+in the most recent version of of any file of your tree:
 .DS
 $ bk -r grep pattern
 .DE
-To see if it occurs in the most recent version of your tree:
-.DS
-$ bk -r grep -r+ pattern
-.DE
-To see if it was added in the most recent delta made in any file:
+To see if it was added by the most recent delta
+made in of any file of your tree:
 .DS
 $ bk -r grep -R+ pattern
 .DE
 .SH BUGS
+The ways of specifying which versions to search are non-obvious.  You
+need to read the examples carefully.  We made the default be the most
+useful/common one.
+.LP
 There really ought to be a way to grep changes made by a changeset
 or range of changesets.
 .LP

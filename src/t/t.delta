@@ -207,13 +207,17 @@ bk sfiles A | bk delta $Q -l -a -y"changed file" -
 REV=`bk prs -r+ -hd:I: A/data`
 if [ ${REV}X != "1.2"X ]; then echo failed $REV; exit 1; fi
 echo OK
+if [ "$PLATFORM" = "UNIX" ]
+then #-----------------------------------------------------------------
 echo $N Make sure delta -a symlink dir works ........................$NL
 mkdir A/dir
 ln -s A/dir A/symdir
 bk sfiles -x A | bk delta $Q -a -l -y"new symlink dir" -
+cat SCCS/s.symdir
 REV=`bk prs -r+ -hd:I: A/symdir`
 if [ ${REV}X != "1.1"X ]; then echo failed; exit 1; fi
 echo OK
+fi #--------------------------------------------------------------------
 echo $N Make sure delta -i does not check in ........................$NL
 mkdir garbage; cd garbage; touch a b c d e s.c s.f
 bk delta $Q -i

@@ -87,9 +87,11 @@ probekey_main(int ac, char **av)
 void
 sccs_tagcolor(sccs *s, delta *d)
 {
-        if (d->ptag) sccs_tagcolor(s, sfind(s, d->ptag));
-        if (d->mtag) sccs_tagcolor(s, sfind(s, d->mtag));
-        d->flags |= D_RED;
+	if (d->flags & D_BLUE) return;
+	d->flags |= D_BLUE;
+	if (d->ptag) sccs_tagcolor(s, sfind(s, d->ptag));
+	if (d->mtag) sccs_tagcolor(s, sfind(s, d->mtag));
+	d->flags |= D_RED;
 }                 
 
 private void

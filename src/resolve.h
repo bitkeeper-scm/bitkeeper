@@ -49,6 +49,7 @@ typedef struct {
 	int	hadConflicts;	/* conflicts during automerge */
 	int	pass;		/* which pass are we in now */
 	char	*comment;	/* checkin comment for commit */
+	char	*mergeprog;	/* program to merge with */
 	int	renames;	/* count of renames processed in pass 1 */
 	int	renames2;	/* count of renames processed in pass 2 */
 	int	resolved;	/* count of files resolved in pass 3 */
@@ -107,7 +108,6 @@ typedef	struct resolve {
 	char	*prompt;	/* whatever should be the prompt */
 	char	*pager;		/* $PAGER or more */
 	char	*editor;	/* $EDITOR or vi */
-	char	*args;		/* arguments to pass to command */
 	rfuncs	*funcs;		/* the ops vector */
 	void	*opaque;	/* a pointer on which to hang state */
 	char	*shell;		/* shell command, if ! */
@@ -125,8 +125,9 @@ char	*mode2a(mode_t m);
 int	more(resolve *rs, char *file);
 char	*res_getlocal(char *gfile);
 resolve	*resolve_init(opts *opts, sccs *s);
-void	automerge(resolve *rs);
+void	automerge(resolve *rs, names *n);
 int	c_revtool(resolve *rs);
+int	c_merge(resolve *rs);
 int	confirm(char *msg);
 void 	flags_delta(resolve *,char *, delta *, int, char *, int);
 int	edit(resolve *rs);
@@ -167,7 +168,3 @@ void	saveKey(opts *opts, char *key, char *file);
 int	slotTaken(opts *opts, char *slot);
 void	do_delta(opts *opts, sccs *s, char *comment);
 int	oldsys(char *cmd, opts *o);
-int	do_diff(resolve *rs, char *left, char *right, int wait);
-int	resolve_binary(resolve *rs);
-void	resolve_dump(resolve *rs);
-int	resolve_tags(opts *opts);

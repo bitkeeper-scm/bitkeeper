@@ -887,3 +887,79 @@ spawn_cmd(int flag, char **av)
 	}
 	return (WEXITSTATUS(ret));
 }
+
+int
+cset_lock()
+{
+	/*
+	 * I wanted to assert that there is a cset file here but we can't
+	 * count on that.  There are very short windows where there is not
+	 * one, when we do the unlink and rename x.ChangeSet to s.ChangeSet.
+	 */
+	assert(exists(BKTMP));
+	return (sccs_lockfile(BKTMP "/csetlock", 0));
+}
+
+void
+cset_unlock()
+{
+	assert(exists(CHANGESET));
+	assert(exists(BKTMP "/csetlock"));
+	unlink(BKTMP "/csetlock");
+}
+
+
+/*
+ * The semantics of this interface is that it must return a NON-NULL list
+ * even if the list is empty.  The NULL return value is reserved for errors.
+ * This removes all duplicates, ".", and "..".
+ * It also checks for updates to the dir and retries if it sees one.
+ */
+char	**
+getdir(char *dir)
+{
+	char	**lines = 0;
+	DIR	*d;
+	struct	dirent   *e;
+	struct  stat sb1, sb2;
+	int	i;
+
+again:	if (lstat(dir, &sb1)) {
+		if (errno == ENOENT) return (NULL);
+		perror(dir);
+		return(NULL);
+	}
+	if ((d = opendir(dir)) == NULL)  {
+		perror(dir);
+		return(NULL);
+	}
+	lines = addLine(lines, strdup("f"));
+	assert(streq("f", lines[1]));
+	removeLineN(lines, 1);
+	while (e = readdir(d)) {
+		unless (streq(e->d_name, ".") || streq(e->d_name, "..")) {
+			lines = addLine(lines, strdup(e->d_name));
+		}
+	}
+	closedir(d);
+	if (lstat(dir, &sb2)) {
+		perror(dir);
+		freeLines(lines);
+		return(NULL);
+	}
+	if ((sb1.st_mtime != sb2.st_mtime) || 
+	    (sb1.st_size != sb2.st_size)) {
+		freeLines(lines);
+		lines = 0;
+		goto again;
+	}
+	sortLines(lines);
+
+	/* Remove duplicate files that can result on some filesystems.  */
+	EACH(lines) {
+		while ((i > 1) && streq(lines[i-1], lines[i])) {
+			removeLineN(lines, i);
+		}
+	}
+	return (lines);
+}

@@ -67,8 +67,7 @@ keysort_main(int ac, char **av)
 		mem->left -= i;
 		if (next == size) {
 			lines = addLine(lines, p);
-			assert((int)(long)lines[0] == (size*2));
-			size *= 2;
+			size = (int)(long)lines[0];
 			next++;
 		} else {
 			lines[next++] = p;

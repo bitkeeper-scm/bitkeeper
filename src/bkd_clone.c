@@ -32,7 +32,11 @@ cmd_clone(int ac, char **av)
 	}
 	if ((bk_mode() == BK_BASIC) && !exists(BKMASTER)) {
 		out("ERROR-bkd std cannot access non-master repository\n");
-		exit(1);
+		return (1); /*
+			     * XXX Must "return()", "exit()" does not
+			     * clear repo lock, becuase the longjmp()
+			     * does have flags info.
+			     */
 	}
 
 	while ((c = getopt(ac, av, "qr|w|z|")) != -1) {
