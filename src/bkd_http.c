@@ -226,7 +226,7 @@ navbutton(int active, int tag, char *start, char *end)
 	    out(buf);
 	}
 	out("</a></font>\n");
-	unless (active) out("<font color=white>&gt;&gt;</font>\n");
+	unless (active) out("<img src=arrow.gif>\n");
 }
 
 
@@ -973,6 +973,8 @@ http_gif(char *name)
 	extern	int dir_len;
 	extern	char back_gif[];
 	extern	int back_len;
+	extern	char arrow_gif[];
+	extern	int arrow_len;
 
 	if (*name == '/')  name++;
 	if (streq(name, "bkpowered.gif") || streq(name, "trailer.gif")) {
@@ -987,6 +989,9 @@ http_gif(char *name)
 	} else if (streq(name, "back.gif")) {
 		httphdr("BK.gif");
 		writen(1, back_gif, back_len);
+	} else if (streq(name, "arrow.gif")) {
+		httphdr("BK.gif");
+		writen(1, arrow_gif, arrow_len);
 	}
 }
 
