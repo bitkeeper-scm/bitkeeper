@@ -7,17 +7,23 @@ int
 unwrap_main(int ac,  char **av)
 {
 	char	buf[MAXLINE];
+	int	n;
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help unwrap");
 		return (0);
 	}
-	while (fgets(buf, sizeof(buf), stdin)) {
+
+	/* Has to be a getline because we don't want stdin eating part of
+	 * the input that we (may) want to send to the unwrap child.
+	 */
+	while (getline(0, buf, sizeof(buf)) > 0) {
 		if (strneq(buf, "# Patch vers:", 13)) {
-			fputs("\n", stdout);
-			fputs(buf, stdout);
-			while (fgets(buf, sizeof(buf), stdin)) {
-				fputs(buf, stdout);
+			out("\n");
+			out(buf);
+			out("\n");
+			while ((n = read(0, buf, sizeof(buf))) > 0) {
+				writen(1, buf, n);
 			}
 			return (0);
 		} else if (strneq(buf, "## Wrapped with", 15)) {
