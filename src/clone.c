@@ -252,8 +252,6 @@ done:	if (rc) {
 private	int
 clone2(opts opts, remote *r)
 {
-	char	*p;
-
 	/*
 	 * We have a clean tree, enable the "fast scan" mode for pending file
 	 */
@@ -281,12 +279,6 @@ clone2(opts opts, remote *r)
 	 */
 	if (bk_proj) proj_free(bk_proj);
 	bk_proj = proj_init(0);
-	p = user_preference("checkout");
-	if (strieq(p, "edit")) {
-		sys("bk", "-Ur", "edit", "-q", SYS);
-	} else if (strieq(p, "get")) {
-		sys("bk", "-Ur", "get", "-q", SYS);
-	}
 	return (0);
 }
 
