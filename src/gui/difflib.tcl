@@ -248,6 +248,8 @@ does not exist"
 	}
 	.diffs.left configure -state normal
 	.diffs.right configure -state normal
+	# append time to filename when called by csettool
+	# XXX: Probably OK to use same code for both difftool and csettool???
 	if {$Ln != ""} {
 		set t [clock format [file mtime $L] -format "%r %D"]
 		set t [clock format [file mtime $R] -format "%r %D"]
@@ -300,13 +302,16 @@ does not exist"
 	    ">"	{ incr diffCount 1; right $r $l $n }
 	}
 	# XXX: Might have to be changed for csettool vs. difftool
-	if {$diffCount == 0} { puts "No differences"; exit }
+	if {$diffCount == 0} { 
+		#puts "No differences"
+		return
+	}
 	close $r
 	close $l
 	catch { close $d }
 	if {"$rmList" != ""} {
 		foreach rm $rmList {
-			file delete $rm
+			catch {file delete $rm}
 		}
 	}
 	.diffs.left configure -state disabled
@@ -403,4 +408,37 @@ proc clearOrRecall {} \
 proc searchsee {location} \
 {
 	scrollDiffs $location $location
+}
+
+proc search_keyboard_bindings {} \
+{
+	global search
+
+	bind all                <g>             "search g"
+	bind all                <colon>         "search :"
+	bind all                <slash>         "search /"
+	bind all                <question>      "search ?"
+	bind all                <Control-u>     searchreset
+	bind all                <Control-r>     searchrecall
+	bind $search(text)      <Return>        searchstring
+	bind $search(text)      <Control-u>     searchreset
+}
+
+proc search_init {} \
+{
+	global search app gc
+
+	set search(prompt) "Search for:"
+	set search(plabel) .menu.prompt
+	set search(dir) "/"
+	set search(text) .menu.search
+	set search(widget) .diffs.right
+	set search(next) .menu.searchNext
+	set search(prev) .menu.searchPrev
+	set search(focus) .
+	set search(clear) .menu.searchClear
+	set search(recall) .menu.searchClear
+	set search(status) .menu.info
+	#$search(widget) tag configure search \
+	#    -background $gc($app.searchColor) -font $gc($app.fixedBoldFont)
 }

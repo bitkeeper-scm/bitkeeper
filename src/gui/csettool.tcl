@@ -142,7 +142,7 @@ proc dotFile {} \
 	catch { exec bk get -qkpr$parent "$file" > $l}
 	catch { exec bk get -qkpr$stop "$file" > $r}
 	readFiles $l $r
-	file delete $l $r
+	catch {file delete $l $r}
 
 	set buf ""
 	set line [lindex [split $line "."] 0]
@@ -297,17 +297,7 @@ proc widgets {} \
 	}
 	wm title . "Cset Tool"
 
-	set search(prompt) "Search for:"
-	set search(plabel) .menu.prompt
-	set search(dir) "/"
-	set search(text) .menu.search
-	set search(widget) .diffs.right
-	set search(next) .menu.searchNext
-	set search(prev) .menu.searchPrev
-	set search(focus) .
-	set search(clear) .menu.searchClear
-	set search(recall) .menu.searchClear
-	set search(status) .menu.info
+	search_init
 
 	frame .l
 	frame .l.filelist -background $gc(BG)
@@ -542,6 +532,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	$search(widget) tag configure search \
 	    -background $gc(cset.searchColor) -font $gc(cset.fixedBoldFont)
 	keyboard_bindings
+	search_keyboard_bindings
 	searchreset
 	foreach w {.diffs.left .diffs.right} {
 		bindtags $w {all Text .}
@@ -601,14 +592,6 @@ proc keyboard_bindings {} \
 	bind all <period>	dot
 	bind all <N>		nextFile
 	bind all <P>		prevFile
-	bind all                <g>             "search g"
-	bind all                <colon>         "search :"
-	bind all                <slash>         "search /"
-	bind all                <question>      "search ?"
-	bind all                <Control-u>     searchreset
-	bind all                <Control-r>     searchrecall
-	bind $search(text)      <Return>        searchstring
-	bind $search(text)      <Control-u>     searchreset
 
 	if {$tcl_platform(platform) == "windows"} {
 		bind all <MouseWheel> {

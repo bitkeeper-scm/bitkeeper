@@ -11,17 +11,7 @@ proc widgets {} \
 	# Set global app var so that difflib knows which global config
 	# vars to read
 	set app "diff"
-	set search(prompt) "Search for:"
-	set search(plabel) .menu.prompt
-	set search(dir) "/"
-	set search(text) .menu.search
-	set search(widget) .diffs.right
-	set search(next) .menu.searchNext
-	set search(prev) .menu.searchPrev
-	set search(focus) .
-	set search(clear) .menu.searchClear
-	set search(recall) .menu.searchClear
-	set search(status) .menu.info
+	search_init
 	if {$tcl_platform(platform) == "windows"} {
 		set py -2; set px 1; set bw 2
 	} else {
@@ -182,6 +172,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	    -background $gc(diff.searchColor) -font $gc(diff.fixedBoldFont)
 
 	keyboard_bindings
+	search_keyboard_bindings
 	searchreset
 	. configure -background $gc(BG)
 }
@@ -218,14 +209,6 @@ proc keyboard_bindings {} \
 	bind all		<space>		next
 	bind all		<p>		prev
 	bind all		<period>	dot
-	bind all		<g>		"search g"
-	bind all		<colon>		"search :"
-	bind all		<slash>		"search /"
-	bind all		<question>	"search ?"
-	bind all		<Control-u>	searchreset
-	bind all		<Control-r>	searchrecall
-	bind $search(text)	<Return>	searchstring
-	bind $search(text)	<Control-u>	searchreset
 	if {$tcl_platform(platform) == "windows"} {
 		bind all <MouseWheel> {
 		    if {%D < 0} { next } else { prev }
