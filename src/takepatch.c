@@ -1,3 +1,8 @@
+/*
+sccs_resolveFile() - the gcapath is s->gfile.  And the error check is that
+left||right->path == s->gfile.
+*/
+
 /* Copyright (c) 1999 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
@@ -30,7 +35,6 @@ usage: takepatch [-cFiv] [-f file]\n\n\
     -F		(fast) do rebuild id cache when creating files\n\
     -f<file>	take the patch from <file> and do not save it\n\
     -i		initial patch, create a new repository\n\
-    -r		do not create the resolve file\n\
     -S		save RESYNC and or PENDING directories even if errors\n\
     -v		verbose level, more is more verbose, -vv is suggested.\n\n";
 
@@ -44,8 +48,7 @@ usage: takepatch [-cFiv] [-f file]\n\n\
 delta	*getRecord(MMAP *f);
 int	extractPatch(char *name, MMAP *p, int flags, int fast, char *root);
 int	extractDelta(char *name, sccs *s, int newFile, MMAP *f, int, int*);
-int	applyPatch(
-	    char *local, char *remote, int flags, sccs *perfile, char *root);
+int	applyPatch(char *local, int flags, sccs *perfile, char *root);
 int	getLocals(sccs *s, delta *d, char *name);
 void	insertPatch(patch *p);
 void	initProject(void);
@@ -57,6 +60,7 @@ void	notfirst(void);
 void	goneError(char *key);
 void	freePatchList();
 void	fileCopy2(char *from, char *to);
+void	badpath(sccs *s, delta *tot);
 
 int	echo = 0;	/* verbose level, higher means more diagnostics */
 int	line;		/* line number in the patch file */
@@ -67,11 +71,10 @@ int	newProject;	/* command line option to create a new repository */
 int	saveDirs;	/* save directories even if errors */
 MDBM	*idDB;		/* key to pathname database, set by init or rebuilt */
 MDBM	*goneDB;	/* key to gone database */
-delta	*gca;		/* The oldest parent found in the patch */
+delta	*tableGCA;	/* predecessor to the oldest delta found in the patch */
 int	noConflicts;	/* if set, abort on conflicts */
 char	pendingFile[MAXPATH];
 char	*input;		/* input file name, either "-" or a patch file */
-int	noRfile;	/* if set, we are redoing an undo - no r.files */
 
 
 int
@@ -92,7 +95,7 @@ main(int ac, char **av)
 	platformSpecificInit(NULL);
 	input = "-";
 	debug_main(av);
-	while ((c = getopt(ac, av, "acFf:iqrsSv")) != -1) {
+	while ((c = getopt(ac, av, "acFf:iqsSv")) != -1) {
 		switch (c) {
 		    case 'q':
 		    case 's':
@@ -105,7 +108,6 @@ main(int ac, char **av)
 			    input = optarg;
 			    break;
 		    case 'i': newProject++; break;
-		    case 'r': noRfile++; break;
 		    case 'S': saveDirs++; break;
 		    case 'v': echo++; flags &= ~SILENT; break;
 		    default: goto usage;
@@ -263,7 +265,7 @@ again:	s = sccs_keyinit(t, INIT_NOCKSUM, idDB);
 			SHOUT();
 			fprintf(stderr,
 			   "takepatch: can't find key '%s' in id cache\n", t);
-cleanup:			if (perfile) free(perfile);
+cleanup:		if (perfile) free(perfile);
 			if (gfile) free(gfile);
 			if (s) sccs_free(s);
 			free(name);
@@ -301,6 +303,12 @@ cleanup:			if (perfile) free(perfile);
 			    "takepatch: %s is locked w/o gfile?\n", s->sfile);
 			goto cleanup;
 		}
+		tmp = sccs_getrev(s, "+", 0, 0);
+		assert(tmp);
+		unless (streq(tmp->pathname, s->gfile)) {
+			badpath(s, tmp);
+			goto cleanup;
+		}
 		unless (tmp = sccs_findKey(s, t)) {
 			SHOUT();
 			fprintf(stderr,
@@ -333,7 +341,7 @@ cleanup:			if (perfile) free(perfile);
 			    "takepatch: new file %s\n", t);
 		}
 	}
-	gca = 0;
+	tableGCA = 0;
 	while (extractDelta(name, s, newFile, p, flags, &nfound)) {
 		if (newFile) newFile = 2;
 	}
@@ -342,22 +350,14 @@ cleanup:			if (perfile) free(perfile);
 		fprintf(stderr, "takepatch: %3d new in %s ", nfound, gfile);
 		if (echo != 2) fprintf(stderr, "\n");
 	}
-	if (patchList && gca) getLocals(s, gca, name);
-	rc = applyPatch(s ? s->sfile : 0, name, flags, perfile, root);
+	if (patchList && tableGCA) getLocals(s, tableGCA, name);
+	rc = applyPatch(s ? s->sfile : 0, flags, perfile, root);
 	if (echo == 2) fprintf(stderr, " \n");
 	if (perfile) free(perfile);
 	free(gfile);
 	free(name);
 	if (s) sccs_free(s);
-	if (rc < 0) {
-#ifdef CRAZY_WOW
-		free(root);
-		mclose(p);
-		/* if (rc == -2) cleanup(CLEAN_RESYNC|CLEAN_PENDING); */
-		cleanup(CLEAN_RESYNC);
-#endif
-		return (rc);
-	}
+	if (rc < 0) return (rc);
 	return (nfound);
 }
 
@@ -406,20 +406,9 @@ extractDelta(char *name, sccs *s, int newFile, MMAP *f, int flags, int *np)
 	pid = strdup(b);
 	/*
 	 * This code assumes that the patch order is 1.1..1.100
+	 * We stash away the parent of the earliest delta as a "GCA".
 	 */
-	if (parent = sccs_findKey(s, b)) {
-		unless (gca) {
-			gca = parent;
-			/*
-			 * This could be the continuation of something which
-			 * is a branch in this repository (but the trunk in
-			 * the other repository).  So work you way back up
-			 * until you are on the trunk.
-			 * LOD-XXX - this will need to get reworked for LODs.
-			 */
-			while (gca->r[2]) gca = gca->parent;
-		}
-	}
+	if ((parent = sccs_findKey(s, b)) && !tableGCA) tableGCA = parent;
 
 	/* go get the delta table entry for this delta */
 delta1:	off = mtell(f);
@@ -561,6 +550,20 @@ and get a patch that is based on a common ancestor.\n", stderr);
 }
 
 void
+badpath(sccs *s, delta *tot)
+{
+	SHOUT();
+	fprintf(stderr, "takepatch: file %s:%s has %s as recorded pathname\n",
+	    s->gfile, tot->rev, tot->pathname);
+	fputs(
+"This file is not where BitKeeper thinks it should be.  If the file is in\n\
+what you consider to be the right place, update it's name with the following\n\
+command:\n\tbk path <filename>\n\n\
+and retry the patch.  The patch has been saved in the PENDING directory\n",
+stderr);
+}
+
+void
 nothingtodo(void)
 {
 	SHOUT();
@@ -647,8 +650,7 @@ setlod(sccs *s, delta *d, int branch)
  * the list.
  */
 int
-applyPatch(
-    char *localPath, char *remotePath, int flags, sccs *perfile, char *root)
+applyPatch(char *localPath, int flags, sccs *perfile, char *root)
 {
 	patch	*p = patchList;
 	MMAP	*iF;
@@ -658,7 +660,6 @@ applyPatch(
 	int	newflags;
 	char	*getuser(), *now();
 	static	char *spin = "|/-\\";
-	char	*gcaPath = 0;
 	int	n = 0;
 	char	lodkey[MAXPATH];
 	int	lodbranch = 1;	/* true if LOD is branch; false if revision */
@@ -706,17 +707,18 @@ applyPatch(
 			}
 		}
 	}
-	unless (gca) goto apply;
+	unless (tableGCA) goto apply;
 	/*
-	 * Note that gca is NOT a valid pointer into the sccs tree "s".
+	 * Note that tableGCA is NOT a valid pointer into the sccs tree "s".
 	 */
-	assert(gca);
-	assert(gca->rev);
-	assert(gca->pathname);
+	assert(tableGCA);
+	assert(tableGCA->rev);
+	assert(tableGCA->pathname);
 	if (echo > 5) {
-		fprintf(stderr, "stripdel %s from %s\n", gca->rev, s->sfile);
+		fprintf(stderr,
+		    "stripdel %s from %s\n", tableGCA->rev, s->sfile);
 	}
-	if (d = sccs_next(s, sccs_getrev(s, gca->rev, 0, 0))) {
+	if (d = sccs_next(s, sccs_getrev(s, tableGCA->rev, 0, 0))) {
 		delta	*e;
 
 		for (e = s->table; e; e = e->next) {
@@ -772,14 +774,6 @@ apply:
 					return -1;
 				}
 				sccs_restart(s);
-				if (echo > 6) {
-					char	buf[MAXPATH];
-
-					sprintf(buf,
-			"echo --- %s ---; cat %s; echo --- %s ---; cat %s",
-			p->initFile, p->initFile, p->diffFile, p->diffFile);
-					system(buf);
-				}
 				if (p->initFile) {
 					iF = mopen(p->initFile);
 				} else {
@@ -871,38 +865,20 @@ apply:
 		}
 		setlod(s, d, lodbranch);
 	}
-	gcaPath = gca ? name2sccs(gca->pathname) : 0;
-	/* 2 of the clauses below need this and it's cheap so... */
 	for (d = 0, p = patchList; p; p = p->next) {
-		unless (p->flags & PATCH_LOCAL) continue;
 		assert(p->me);
 		d = sccs_findKey(s, p->me);
 		assert(d);
-		d->flags |= D_LOCAL;
+		d->flags |= (p->flags & PATCH_LOCAL) ? D_LOCAL : D_REMOTE;
 	}
-	unless (localPath) {
-		/* must be new file */
-		confThisFile = sccs_resolveFile(s, noRfile, 0, 0, 0);
-	} else if (streq(localPath, remotePath)) {
-		/* no name changes, life is good */
-		confThisFile = sccs_resolveFile(s, noRfile, 0, 0, 0);
-	} else {
-		debug((stderr, "L=%s\nR=%s\nG=%s (%s)\n",
-		    localPath, remotePath, gcaPath, gca ? gca->rev : ""));
-		/* local != remote */
-		assert(gcaPath);
-		confThisFile =
-		    sccs_resolveFile(s,
-			noRfile, localPath, gcaPath, remotePath);
-	}
-	if (confThisFile < 0) {
+	if ((confThisFile = sccs_resolveFiles(s)) < 0) {
 		sccs_free(s);
-		if (gcaPath) free(gcaPath);
 		return (-1);
 	}
+
 	/* Conflicts in ChangeSet don't count.  */
-	if (confThisFile && !streq(s->sfile + strlen(s->sfile) - 9,
-				   "ChangeSet")) {
+	if (confThisFile &&
+	    !streq(s->sfile + strlen(s->sfile) - 9, "ChangeSet")) {
 		conflicts += confThisFile;
 	}
 	if (confThisFile && !(s->state & S_CSET)) {
@@ -910,7 +886,6 @@ apply:
 		unless (d->flags & D_CSET) {
 			fprintf(stderr, "No csetmark on %s\n", d->rev);
 			sccs_free(s);
-			if (gcaPath) free(gcaPath);
 			uncommitted(localPath);
 			return -1;
 		}
@@ -920,12 +895,11 @@ apply:
 	freePatchList();
 	patchList = 0;
 	fileNum = 0;
-	if (gcaPath) free(gcaPath);
 	return (0);
 }
 
 /*
- * Include up to but not including gca in the list.
+ * Include up to but not including tableGCA in the list.
  */
 int
 getLocals(sccs *s, delta *g, char *name)

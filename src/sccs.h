@@ -182,9 +182,7 @@
 #define	D_DUPHOST	0x00000020	/* this host pointer is shared */
 #define	D_DUPPATH	0x00000040	/* this path pointer is shared */
 #define	D_DUPZONE	0x00000080	/* this zone pointer is shared */
-#define	D_BRANCH	0x00000100	/* this delta wants to be the root
-					 * of a branch, not a child of the
-					 * parent's LOD.  */
+#define	D_REMOTE	0x00000100	/* for resolve; from remote repos. */
 #define	D_BADFORM	0x00000200	/* poorly formed rev */
 #define	D_BADREV	0x00000400	/* bad parent/child relationship */
 #define	D_STEAL		0x00000800	/* sccslog is stealing this rev */
@@ -202,7 +200,7 @@
 #define D_DUPLINK	0x10000000	/* this symlink pointer is shared */
 #define	D_LOCAL		0x20000000	/* for resolve; this is a local delta */
 #define D_XFLAGS	0x40000000	/* delta has updated file flags */
-#define D_TEXT		0x80000000	/* delta has updated text	*/
+#define D_TEXT		0x80000000	/* delta has updated text */
 
 /*
  * Signal handling.
@@ -552,7 +550,7 @@ delta	*sccs_findKey(sccs *, char *);
 delta	*sccs_dInit(delta *, char, sccs *, int);
 char	*sccs_gethost(void);
 char	*getuser(void);
-int	sccs_addmeta(sccs *);
+int	sccs_markMeta(sccs *);
 
 delta	*modeArg(delta *d, char *arg);
 FILE	*fastPopen(const char*, const char*);
@@ -590,7 +588,7 @@ void	sccs_mkroot(char *root);
 char	*sPath(char *name, int isDir);
 delta	*sccs_next(sccs *s, delta *d);
 int	sccs_meta(sccs *s, delta *parent, MMAP *initFile);
-int	sccs_resolveFile(sccs *s, int, char *lpath, char *gpath, char *rpath);
+int	sccs_resolveFiles(sccs *s);
 sccs	*sccs_keyinit(char *key, u32 flags, MDBM *idDB);
 delta	*sfind(sccs *s, ser_t ser);
 int	sccs_lock(sccs *, char);

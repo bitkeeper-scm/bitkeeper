@@ -122,6 +122,7 @@ bk ci $Q -i c.c
 bk commit $S -yrename
 cd  $HERE
 bk resync -c -r1.5 $Q $HERE/project $HERE/copy
+if [ $? -ne 0 ]; then	echo Failed; exit 1; fi
 cd  $HERE/copy/src
 bk resolve $Q
 bk get $Q a.c b.c c.c d.c

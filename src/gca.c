@@ -13,10 +13,11 @@ main(int ac, char **av)
 	sccs	*s;
 	char	*name, *r1 = 0, *r2 = 0;
 	delta	*d1, *d2;
-	int	c;
+	int	trunk = 0, c;
 
-	while ((c = getopt(ac, av, "r|")) != -1) {
+	while ((c = getopt(ac, av, "r|t")) != -1) {
 		switch (c) {
+		    case 't': trunk++; break;
 		    case 'r':
 			unless (r1) {
 				r1 = optarg;
@@ -47,10 +48,10 @@ usage:			fprintf(stderr, "usage gca -rRev -rRev file\n");
 	d2 = sccs_getrev(s, r2, 0, 0);
 	unless (d1 && d2) {
 		sccs_free(s);
-		fprintf(stderr, "gca: could not find '%s' or '%s'\n", d1, d2);
+		fprintf(stderr, "gca: could not find '%s' or '%s'\n", r1, r2);
 		return (1);
 	}
-	d1 = sccs_gca(s, d1, d2, 1);
+	d1 = sccs_gca(s, d1, d2, trunk ? 0 : 1);
 	printf("%s\n", d1->rev);
 	sfileDone();
 	sccs_free(s);

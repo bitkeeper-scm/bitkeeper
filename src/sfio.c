@@ -21,7 +21,7 @@
 #undef	unlink		/* I know the files are writable, I created them */
 WHATSTR("@(#)%K%");
 
-#define	SFIO_VERS	"SFIO v 1.2"
+#define	SFIO_VERS	"SFIO v 1.2"	/* must be 10 bytes exactly */
 #define	u32		unsigned int
 
 int	sfio_out(void);
@@ -191,7 +191,6 @@ in(char *file, int todo, int extract)
 	char	buf[1024];
 	int	n;
 	int	fd = -1;
-	int	mode;
 	u32	sum = 0, sum2 = 0;
 
 	unless (todo) {
