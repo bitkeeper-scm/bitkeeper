@@ -256,3 +256,21 @@ test X$revs != X1.5 && {
 	exit 1
 }
 echo OK
+
+echo $N Verify changes -L works with tags ...........................$NL
+cd $HERE/clone
+bk tag $Q -r1.2 bar
+bk changes -L -nd':REV: :COMMENTS: :SYMBOL:' > chgs
+cat <<EOF > expect
+1.2  bar
+1.5 C clone
+ 
+EOF
+diff -u expect chgs || {
+	echo changes returned wrong data
+	exit 1
+}
+echo OK
+
+# wait for bkd locks
+bk lock -U $HERE/project
