@@ -372,7 +372,7 @@ private int
 csetInit(sccs *cset, int flags, char *text)
 {
 	delta	*d = 0;
-	char	*sym[2];
+	char	**syms = 0;
 
 	/*
 	 * Create BitKeeper root.
@@ -388,10 +388,9 @@ csetInit(sccs *cset, int flags, char *text)
 		cset_exit(1);
 	}
 	if (flags & DELTA_DONTASK) unless (d = comments_get(d)) goto intr;
-	unless(d = host_get(d)) goto intr;
-	unless(d = user_get(d)) goto intr;
-	sym[0] = (char *)1ul;
-	sym[1] = strdup(KEY_FORMAT2);
+	unless (d = host_get(d)) goto intr;
+	unless (d = user_get(d)) goto intr;
+	syms = addLine(0, KEY_FORMAT2);
 	cset->state |= S_CSET|S_KEY2;
 	if (text) {
 		FILE    *desc; 
@@ -408,14 +407,14 @@ csetInit(sccs *cset, int flags, char *text)
 		}
 		fclose(desc);
 	}
-	if (sccs_delta(cset, flags, d, 0, 0, sym) == -1) {
+	if (sccs_delta(cset, flags, d, 0, 0, syms) == -1) {
 intr:		sccs_whynot("cset", cset);
 error:		sccs_free(cset);
 		sfileDone();
 		comments_done();
 		host_done();
 		user_done();
-		free(sym[1]);
+		freeLines(syms);
 		purify_list();
 		return (1);
 	}
@@ -425,7 +424,6 @@ error:		sccs_free(cset);
 	host_done();
 	user_done();
 	sfileDone();
-	free(sym[1]);
 	purify_list();
 	return (0);
 }
