@@ -18,7 +18,7 @@ mtime_main(int ac, char **av)
 		fprintf(stderr, "usage: %s file\n", av[0]);
 		return (1);
 	}
-	if (stat(av[1], &st)) {
+	if (fast_lstat(av[1], &st)) {
 		perror(av[1]);
 		return (2);
 	}
