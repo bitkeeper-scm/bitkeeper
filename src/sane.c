@@ -227,6 +227,10 @@ chk_id(void)
 	if (exists(REPO_ID)) return;	/* validate existing ID?? */
 	unless (f = fopen(REPO_ID, "w")) return;	/* no write perms? */
 
+	/*date*/
+	strftime(buf, sizeof(buf), "%Y%m%d%H%M%S", localtimez(&t, 0));
+	fprintf(f, "%s%s|", buf, sccs_zone(time(0)));
+
 	/*host*/
 	fprintf(f, "%s|", sccs_gethost());
 
@@ -237,10 +241,6 @@ chk_id(void)
 
 	/*user*/
 	fprintf(f, "%s|", sccs_getuser());
-
-	/*date*/
-	strftime(buf, sizeof(buf), "%Y-%m-%d@%H:%M:%S", localtimez(&t, 0));
-	fprintf(f, "%s%s|", buf, sccs_zone(time(0)));
 
 	/*randbits*/
 	if (rng_get_bytes(buf, 3, 0) != 3) {
