@@ -9949,13 +9949,40 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "HT")) {
+	if (streq(kw, "HT") || streq(kw, "HOST")) {
 		/* host */
 		if (d->hostname) {
 			fs(d->hostname);
 			return (strVal);
 		}
 		return (nullVal);
+	}
+
+	if (streq(kw, "DOMAIN")) {
+		/* domain: the truncated domain name.
+		 * Counting from the right, we keep zero or more
+		 * two-letter components, then zero or one three
+		 * letter component, then one more component
+		 * irrespective of length; anything after that is
+		 * nonsignificant.  If we run out of hostname before
+		 * we run out of short components, the entire name is
+		 * significant.  This heuristic is not always right
+		 * (consider .to) but works most of the time.
+		 */
+		char *p, *q;
+		int i;
+		
+		if (!d->hostname) return (nullVal);
+		q = d->hostname;
+		p = &q[strlen(q)];
+		do {
+			i = 0;
+			while (*--p != '.' && p != q) i++;
+		} while (i == 2);
+		if (i == 3) while (*--p != '.' && p != q);
+		if (*p == '.') p++;
+		fs(p);
+		return (strVal);
 	}
 
 	if (streq(kw, "TZ")) {

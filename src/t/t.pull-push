@@ -102,6 +102,8 @@ KEY2="`bk prs -hd:LONGKEY: -r+ ChangeSet`"
 [ "$KEY" = "$KEY2" ] || { echo bad push; exit 1; }
 echo OK
 echo $N Push with a conflicting upstream delta ......................$NL
+nextsecond
+nextsecond
 cd src
 get $Q -e h.h
 sed 's/h/yuhjklbn/' <h.h >h.x
@@ -111,8 +113,8 @@ cd ..
 bk commit $Q -yrogue
 KEY="`bk prs -hd:LONGKEY: -r+ ChangeSet`"
 cd $HERE/copy
-bk push $Q 2> resolve.out || { echo failed; exit 1; }
-grep -q 'Overlap change' resolve.out || { echo no conflict; exit 1; }
+bk push $Q 2> resolve.out || { echo failed; cat resolve.out; exit 1; }
+grep -q 'Overlap change' resolve.out || { echo no conflict; cat resolve.out; exit 1; }
 KEY2="`bk prs -hd:LONGKEY: -r+ $HERE/project/ChangeSet`"
 [ "$KEY" = "$KEY2" ] || { echo bad push; exit 1; }
 echo OK

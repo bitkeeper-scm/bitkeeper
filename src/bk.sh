@@ -893,31 +893,26 @@ _logAddr() {
 	return 0
 }
 
-# The rule is: for any user@host.dom.ain, if the last component is 3 letters,
-# then the last two components are significant; if the last components are
-# two letters, then the last three are.
-# This is not always right (consider .to) but works most of the time.
-# We are fascist about the letters allowed on the RHS of an address.
+# :HOST: is the full hostname.  :DOMAIN: is just the organizational domain,
+# as best we can determine; see slib.c (kw2val, DOMAIN case).
 _users() {
-	if [ "X$1" = "X-a" ]
-	then WHAT=ALL; shift
-	elif [ "X$1" = "X-c" ]
-	then WHAT="sort -u | wc -l"; shift
-	else WHAT="sort -u"
-	fi
-	if [ X$1 != X -a -d "$1" ]; then cd $1; fi
+	SPEC=:P:@:DOMAIN:
+	OP=
+	case "$1" in
+	    -a) SPEC=:P:@:HOST:; shift;;
+	    -c) OP=COUNT; shift;;
+	esac
+	if [ "X$1" != X -a -d "$1" ]; then cd $1; fi
 	_cd2root
-	${BIN}prs -hd':P:@:HT:' ChangeSet > ${TMP}users$$
-	if [ $? -ne 0 ]; then exit 1; fi
-	if [ "$WHAT" = ALL ]
-	then	sort -u ${TMP}users$$
-		${RM} ${TMP}users$$
-		return
+	${BIN}prs -hd$SPEC ChangeSet > ${TMP}users$$
+	if [ $? -ne 0 ]
+	then	rm -f ${TMP}users$$
+		exit 1
 	fi
-	tr A-Z a-z < ${TMP}users$$ | sed '
-s/@[a-z0-9.-]*\.\([a-z0-9-]*\)\.\([a-z0-9-][a-z0-9-][a-z0-9-]\)$/@\1.\2/
-s/@[a-z0-9.-]*\.\([a-z0-9-]*\.[a-z0-9-][a-z0-9-]\)\.\([a-z0-9-][a-z0-9-]\)$/@\1.\2/
-' | eval $WHAT
+	if [ x$OP = xCOUNT ]
+	then	sort -u ${TMP}users$$ | wc -l
+	else	sort -u ${TMP}users$$
+	fi
 	${RM} -f ${TMP}users$$
 }
 
