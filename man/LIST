@@ -1,0 +1,39 @@
+Do docs in this order:
+
+bk		- front end for all commands
+admin		- administer BitKeeper files
+ci		- RCS command line compatible check in
+delta		- like ci, SCCS version with more features
+co		- RCS command line compatible check out
+get		- like co, SCCS version with more features
+edit		- alias for get -e / co -l
+diffs		- show differences
+clean		- clean up files
+unedit		- alias for clean -u (dangerous)
+prs		- print revision history
+sccslog		- print time sorted revision history across multiple files
+cset		- create and manipulate changesets
+import		- import files into a repository
+makepatch	- create a patch of changesets
+takepatch	- take and apply the output of makepatch
+resolve		- resolve the results of a resync or takepatch
+rmdel		- remove deltas
+sfiles		- generate lists of SCCS files
+sinfo		- show what is modified
+smoosh		- internal program used for merging
+what		- look for SCCS keywords
+commit		- commit deltas to a changeset
+pending		- show what would be committed
+resync		- does makepatch | takepatch
+sendbug		- duh
+
+GUI stuff
+citool
+fm	- file merge
+fm3
+sccstool
+
+Less important
+range		- demonstrate the date/symbol/revision range specifications
+renumber
+rcs2sccs	- unsupported RCS to SCCS conversion (out of date)
