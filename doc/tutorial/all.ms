@@ -20,6 +20,9 @@
 .	ft
 .	DE
 ..
+.de LI
+.       IP \(bu 2
+..
 .H 1
 Getting started with BitKeeper
 .H 2
@@ -98,7 +101,7 @@ Repositories may be configured to run in ``locked'' or ``unlocked''
 mode, the default (in BK 2.x) being unlocked.  Running with the default mode,
 which has somewhat higher performance, requires you to lock files
 before making changes, the files are readonly unless they are locked.
-To learn more about configuring the behaviour of your repositories,
+To learn more about configuring the behavior of your repositories,
 run:
 .CS
 bk helptool config-etc
@@ -175,11 +178,73 @@ using \f(CW^N/^P\fP to move through the list.  The middle pane is
 for typing in comments, and the lower pane shows the changes in 
 each file (if it is a revision controlled file) or the file contents
 (if it is not a revision controlled file).
+.LP
+XXX - need to talk about committing a changeset.
+.H 2
+Updating the Master
+.\".LP
+.\"XXX - talk about pushing changes, why this is needed, and that it may 
+.\"not work if there are new changes in the parent.
+.LP
+When you are ready to share your work you will probably want to update
+the Shared Repository, or Master, with your changes.
+.so push.pic
+.FG Updating the Master
+.LP
+In BitKeeper this is done explicitly using
+.CS
+bk push
+.CE
+.LP
+If your repository is not a superset of the Master repository (ie., someone
+else pushed new work into the Master before you) you must update your
+workspace first (see the next section, "Updating the personal workspace")
+and then try the push again.
 .H 2
 Updating the personal workspace
+.\".LP
+.\"XXX - talk about the non-conflicting update, point them at merging 
+.\"XXX - non-conflicting update, auto-merging updates, merging
 .LP
+To get changes from the Master to your personal workspace, you must update
+your personal workspace.
 .so pull.pic
-.H 2
-Updating the master
+.FG Updating your workspace
+You can do this by running
+.CS
+bk pull
+.CE
+There are three types of updates:
+.LI
+non-conflicting updates 
+.LI
+conflicting updates that can be auto-merged
+.LI
+conflicting updates that must be merged manually
 .LP
-.so push.pic
+First, a file conflict is defined as two deltas made in parallel in different
+repositories.  A non-conflicting update or a conflicting update that
+can be automerged will be pulled successfully, by default.  You can turn
+off the automerge by using the \-i option with bk pull.
+.LP
+A pull will not add data to your repository if there is a conflict that
+must be resolved manually.
+Those conflicts that touch the same regions of a file or rename the
+same file require a manual merge.  The pulled data will be saved in a RESYNC
+directory until you resolve the conflicts or abort the pull 
+.CS
+bk resolve
+.CE
+or
+.CS
+bk abort
+.CE
+For more information on merging, see the next section, "Merging Conflicts" and
+.CS
+bk help merging
+bk helptool merging
+.CE
+.H 2
+Merging conflicts
+.LP
+Rip off the merging man page

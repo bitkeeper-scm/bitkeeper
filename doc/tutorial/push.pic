@@ -2,11 +2,17 @@
 .ps 11
 .vs 12
 .PS
-define files {
+define two {
 	w = .15
 	h = .2
 	box thick .5 wid w ht h 
 	box fill 0 thick .5 wid w ht h with .c at last box.c + .05,-.05
+}
+define files {
+        [
+	[two]
+	[two] with .w at last [].e + .2,0
+	]
 }
 	scale = 1.3
 	drop = .06
@@ -25,9 +31,8 @@ W: [
 arrowwid = .13
 arrowht = .15
 linethick = 1
-arc <- from R.sw to W.A.nw
-"bk push\ \ \ \ \ # Update Master with new work from Jill" ljust at last arc.c 
-[files] with .c at last arc.w - .3,0
+arc dashed <- from R.sw to W.A.nw
+[files] with .c at last arc.w - .5,0
 .PE
 .ps
 .vs
