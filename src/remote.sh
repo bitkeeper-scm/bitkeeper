@@ -43,6 +43,7 @@ case $CMD in
 	test "X$DOTBK" != X && rm -f "$DOTBK/lease/`bk gethost -r`"
 
 	cd $BKDIR/src
+	bk get Makefile build.sh
 	make build || failed
 	./build p $IMAGE install test || failed
 
@@ -56,7 +57,8 @@ case $CMD in
 	}
 
 	# Leave the directory there only if they asked for a saved build
-	test $CMD = save || {
+	# Leave them there for Windows too, Andrew needs to make the image.
+	test $CMD = save -o -d c: || {
 		cd /build	# windows won't remove .
 		rm -rf /build/$BKDIR
 	}
