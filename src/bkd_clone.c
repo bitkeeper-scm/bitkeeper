@@ -156,7 +156,6 @@ compressed(int level, int hflag)
 	fh = popen(sfiocmd, "r");
 	free(sfiocmd);
 	fd = fileno(fh);
-	setmode(fd, _O_BINARY); /* for win32 */
 	gzipAll2fd(fd, 1, level, 0, 0, hflag, 0);
 	status = pclose(fh);
 	rc = 0;

@@ -98,7 +98,7 @@ commit_main(int ac, char **av)
 			}
 			bktmp(pendingFiles, "list");
 			setmode(0, _O_TEXT);
-			f = fopen(pendingFiles, "wb");
+			f = fopen(pendingFiles, "w");
 			assert(f);
 			while (fgets(buf, sizeof(buf), stdin)) {
 				fputs(buf, f);
@@ -212,8 +212,8 @@ out:		if (pendingFiles) unlink(pendingFiles);
 		 * it in write mode
 		 */
 		bktmp(pendingFiles2, "bk_pending2");
-		f = fopen(pendingFiles, "rb");
-		f2 = fopen(pendingFiles2, "wb");
+		f = fopen(pendingFiles, "r");
+		f2 = fopen(pendingFiles2, "w");
 		assert(f); assert(f2);
 		while (fnext(buf, f)) {
 			/*

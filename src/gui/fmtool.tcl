@@ -766,6 +766,7 @@ proc fmtool {} \
 	restoreGeometry fm
 
 	after idle [list wm deiconify .]
+	after idle [list focus -force .]
 	update idletasks
 
 	bind . <Destroy> {

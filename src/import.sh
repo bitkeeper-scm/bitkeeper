@@ -218,20 +218,20 @@ import() {
 		mycd "$TO"
 		x=`bk _exists < ${TMP}import$$` && {
 			echo "import: $x exists, entire import aborted"
-			/bin/rm -f ${TMP}import$$
+			$RM -f ${TMP}import$$
 			Done 1
 		}
 		if [ $TYPE != SCCS ]
 		then	bk _g2sccs < ${TMP}import$$ > ${TMP}sccs$$
 			x=`bk _exists < ${TMP}sccs$$` && {
 				echo "import: $x exists, entire import aborted"
-				/bin/rm -f .x ${TMP}sccs$$ ${TMP}import$$
+				$RM -f .x ${TMP}sccs$$ ${TMP}import$$
 				Done 1
 			}
 			if [ X$QUIET = X ]; then echo OK; fi
 		fi
 	fi
-	/bin/rm -f ${TMP}sccs$$
+	$RM -f ${TMP}sccs$$
 	mycd "$TO"
 	eval validate_$TYPE \"$FROM\" \"$TO\"
 	transfer_$TYPE "$FROM" "$TO" "$TYPE"
@@ -337,14 +337,14 @@ transfer_MKS () {
 	mycd "$2" || exit 1
 	# Double check we are in the BK tree.
 	test -f "BitKeeper/etc/SCCS/s.config" || exit 1
-	find . -type f | perl -w -e '
+	bk _find . -type f | perl -w -e '
 		while (<>) {
 			next if m|/SCCS/|i;
 			next if m|^./BitKeeper/|i;
 			chop;
 			unlink $_ unless m|/rcs/|i;
 		}'
-	find . -type f | perl -w -e '
+	bk _find . -type f | perl -w -e '
 		while ($old = <>) {
 			$old =~ s|^\./||;
 			next if $old =~ m|/SCCS/|i;
@@ -414,7 +414,7 @@ transfer() {
 }
 
 patch_undo() {
-	test -s ${TMP}rejects$$ && /bin/rm -f `cat ${TMP}rejects$$`
+	test -s ${TMP}rejects$$ && $RM -f `cat ${TMP}rejects$$`
 	test -s ${TMP}plist$$ && bk unedit `cat ${TMP}plist$$`
 	Done 1
 }
@@ -448,7 +448,7 @@ import_patch() {
 	    sed -e 's/Removing file //' \
 		-e 's/Creating file //' \
 		-e 's/Patching file //' | \
-	    			sort -u  > ${TMP}plist$$
+	    			bk _sort -u  > ${TMP}plist$$
 	CONFLICT=NO
 	MCNT=`bk sfiles -c - < ${TMP}plist$$ | wc -l`
 	if [ $MCNT -ne 0 ]
@@ -492,7 +492,7 @@ import_patch() {
 	# We need to "sort -u" beacuse patchfile created by "interdiff"
 	# can patch the same target file multiple time!!
 	grep '^Patching file ' ${TMP}plog$$ |
-	    sed 's/Patching file //' | sort -u > ${TMP}patching$$
+	    sed 's/Patching file //' | bk _sort -u > ${TMP}patching$$
 
 	bk sfiles -x | grep '=-PaTcH_BaCkUp!$' | bk _unlink -
 	while read x
@@ -523,7 +523,7 @@ import_patch() {
 	done
 	test -s ${TMP}rejects$$ && {
 		echo Giving up, too many tries to clean up.
-		/bin/rm -f `cat ${TMP}rejects$$`
+		$RM -f `cat ${TMP}rejects$$`
 		patch_undo
 		Done 1
 	}
@@ -599,7 +599,7 @@ import_patch() {
 	msg Creating changeset for $PNAME in `pwd` ...
 	bk _key2path < ${TMP}keys$$ > ${TMP}patching$$
 	cat ${TMP}creates$$ ${TMP}patching$$ |
-	    sort -u | bk sfiles -C - > ${TMP}commit$$
+	    bk _sort -u | bk sfiles -C - > ${TMP}commit$$
 	BK_NO_REPO_LOCK=YES bk commit \
 	    $QUIET $SYMBOL -a -y"`basename $PNAME`" - < ${TMP}commit$$
 
@@ -620,7 +620,7 @@ import_text () {
 }
 
 mvup() {
-	find . -type f | perl -w -e '
+	bk _find . -type f | perl -w -e '
 		while (<STDIN>) {
 			next unless m|,v$|;
 			chop;
@@ -655,13 +655,13 @@ import_RCS () {
 			Done 1
 		}
 		mv ${TMP}import$$ ${TMP}Attic$$
-		sed 's|Attic/||' < ${TMP}Attic$$ | sort -u > ${TMP}import$$
-		/bin/rm -f ${TMP}Attic$$
+		sed 's|Attic/||' < ${TMP}Attic$$ | bk _sort -u > ${TMP}import$$
+		$RM -f ${TMP}Attic$$
 	fi
 	if [ $TYPE = RCS ]
 	then	msg Moving RCS files out of any RCS subdirectories
 		HERE=`pwd`
-		find . -type d | grep 'RCS$' | while read x
+		bk _find . -type d -name RCS | while read x
 		do	mycd $x
 			mvup error_if_conflict
 			mycd ..
@@ -670,7 +670,7 @@ import_RCS () {
 		done
 		mv ${TMP}import$$ ${TMP}rcs$$
 		sed 's!RCS/!!' < ${TMP}rcs$$ > ${TMP}import$$
-		/bin/rm -f ${TMP}rcs$$
+		$RM -f ${TMP}rcs$$
 	fi
 	msg Converting RCS files.
 	if [ "X$BRANCH" != "X" ]
@@ -689,7 +689,7 @@ import_RCS () {
 		rm -f ${TAGFILE}.raw
 		Done 1
 	}
-	sort +1n < ${TAGFILE}.raw | grep -v 'X$' > $TAGFILE
+	bk _sort -k2 -n < ${TAGFILE}.raw | grep -v 'X$' > $TAGFILE
 	rm -f ${TAGFILE}.raw
 	
 	if [ "X$BRANCH" != "X" ]
@@ -733,8 +733,8 @@ explain_tag_problem ()
     	bk rcsparse -d -t $BRANCH - < ${TMP}import$$ |
 		grep "^-${B}_BASE " > ${TMP}tagdbg$$
 
-	file1=`sort +1nr < ${TMP}tagdbg$$ | head -1 | sed -e 's/.*|//'`
-	file2=`sort +2n < ${TMP}tagdbg$$ | head -1 | sed -e 's/.*|//'`
+	file1=`bk _sort -k2 -nr < ${TMP}tagdbg$$ | sed -n '1{p;q}' | sed -e 's/.*|//'`
+	file2=`bk _sort -k3 -n < ${TMP}tagdbg$$ | sed -n '1{p;q}' | sed -e 's/.*|//'`
 	echo "       The files $file1 and $file2 don't agree when"
 	echo "       the branch $B was created!"
 	rm -f ${TMP}tagdbg$$
@@ -746,7 +746,7 @@ import_SCCS () {
 	bk sccs2bk $QUIET $VERIFY `test X$VERBOSE = X && echo -v` \
 	    -c`bk prs -hr+ -nd:ROOTKEY: ChangeSet` - < ${TMP}import$$ ||
 	    Done 1
-	/bin/rm -f ${TMP}cmp$$
+	$RM -f ${TMP}cmp$$
 	test -f SCCS/FAILED && Done 1
 }
 
@@ -762,7 +762,7 @@ import_finish () {
 	fi
 	if [ X$QUIET = X ]; then echo OK; fi
 	
-	/bin/rm -f ${TMP}import$$ ${TMP}admin$$
+	$RM -f ${TMP}import$$ ${TMP}admin$$
 	bk idcache -q
 	# So it doesn't run consistency check.
 	touch BitKeeper/etc/SCCS/x.marked
@@ -809,7 +809,7 @@ validate_SCCS () {
 		esac
 		mv ${TMP}sccs$$ ${TMP}import$$
 	fi
-	/bin/rm -f ${TMP}notsccs$$ ${TMP}sccs$$
+	$RM -f ${TMP}notsccs$$ ${TMP}sccs$$
 	if [ X$QUIET = X ]
 	then	echo Looking for BitKeeper files, please wait...
 	fi
@@ -848,19 +848,19 @@ EOF
 		read x
 		case "$x" in
 		y*)	;;
-		*)	/bin/rm -f ${TMP}sccs$$ ${TMP}import$$ ${TMP}reparent$$
+		*)	$RM -f ${TMP}sccs$$ ${TMP}import$$ ${TMP}reparent$$
 			Done 1
 		esac
 		echo $N "Are you sure? [No] " $NL
 		read x
 		case "$x" in
 		y*)	;;
-		*)	/bin/rm -f ${TMP}sccs$$ ${TMP}import$$
+		*)	$RM -f ${TMP}sccs$$ ${TMP}import$$
 			Done 1
 		esac
 		echo OK
 	fi
-	/bin/rm -f ${TMP}reparent$$
+	$RM -f ${TMP}reparent$$
 }
 
 validate_RCS () {
@@ -878,7 +878,7 @@ validate_RCS () {
 		esac
 	fi
 	mv ${TMP}rcs$$ ${TMP}import$$
-	/bin/rm -f ${TMP}notrcs$$
+	$RM -f ${TMP}notrcs$$
 }
 
 validate_MKS () {
@@ -901,9 +901,9 @@ validate_text () {
 		y*)	sed 's/^/	/' < ${TMP}nottext$$ | more ;;
 		esac
 		mv ${TMP}text$$ ${TMP}import$$
-		/bin/rm -f ${TMP}nottext$$
+		$RM -f ${TMP}nottext$$
 	fi
-	/bin/rm -f ${TMP}nottext$$ ${TMP}text$$
+	$RM -f ${TMP}nottext$$ ${TMP}text$$
 }
 
 # Make sure there are no locked/extra files
@@ -914,7 +914,7 @@ validate_patch() {
 Done() {
 	for i in patch rejects plog locked import sccs patching \
 		plist creates deletes keys commit
-	do	/bin/rm -f ${TMP}${i}$$
+	do	$RM -f ${TMP}${i}$$
 	done
 	test X$LOCKPID != X && {
 		# Win32 note: Do not use cygwin "kill" to kill a non-cygwin

@@ -114,12 +114,13 @@ resolve_main(int ac, char **av)
 	unless (opts.mergeprog) opts.mergeprog = getenv("BK_RESOLVE_MERGEPROG");
 	if ((av[optind] != 0) && isdir(av[optind])) chdir(av[optind]);
 
-	if (opts.pass3 && !opts.textOnly && !hasGUIsupport()) {
+	if (opts.pass3 && !opts.textOnly && !gui_haveDisplay()) {
 		opts.textOnly = 1; 
 	}
-	if (opts.pass3 && !opts.textOnly && !opts.quiet && hasGUIsupport()) {
+	if (opts.pass3 &&
+	    !opts.textOnly && !opts.quiet && !win32() && gui_haveDisplay()) {
 		fprintf(stderr,
-		    "Using %s as graphical display\n", GUI_display());
+		    "Using %s as graphical display\n", gui_displayName());
 	}
 
 	if (opts.automerge) {
@@ -2622,7 +2623,8 @@ csets_in(opts *opts)
 			while (fnext(buf, in)) {
 				unless (streq(buf, "\n")) fputs(buf, out);
 			}
-			fprintf(out, "%s\n", d->rev);
+			sccs_sdelta(s, d, buf);
+			fprintf(out, "%s\n", buf);
 			fclose(out);
 		}
 		fclose(in);
@@ -2654,7 +2656,7 @@ resolve_cleanup(opts *opts, int what)
 	 * Get the patch file name from RESYNC before deleting RESYNC.
 	 */
 	sprintf(buf, "%s/%s", ROOT2RESYNC, "BitKeeper/tmp/patch");
-	unless (f = fopen(buf, "rb")) {
+	unless (f = fopen(buf, "r")) {
 		fprintf(stderr, "Warning: no BitKeeper/tmp/patch\n");
 		pendingFile[0] = 0;
 	} else {

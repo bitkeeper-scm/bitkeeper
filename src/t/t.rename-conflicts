@@ -48,14 +48,14 @@ cd $HERE/project
 bk mv src/foo.c CONFLICT
 bk commit $Q -ywhatever 
 cd $HERE/copy
-bk resync $Q
+bk pull -t -R $Q
 cd $HERE
 tar cf TAR copy 2> /dev/null
 echo OK
 echo $N Resolve by removing local conflict ..........................$NL
 cd $HERE
 rm -rf copy
-tar xf TAR 2> /dev/null
+tar xmf TAR
 cd copy
 cat > CMDS <<EOF
 rl
@@ -87,7 +87,7 @@ echo OK
 echo $N Resolve by moving local conflict ............................$NL
 cd $HERE
 rm -rf copy
-tar xf TAR 2> /dev/null
+tar xmf TAR
 cd copy
 cat > CMDS <<EOF
 ml
@@ -129,14 +129,14 @@ cd $HERE/project
 bk mv src/bar.c DIRECTORY
 bk commit $Q -ywhatever 
 cd $HERE/copy
-bk resync $Q
+bk pull -t -R $Q
 cd $HERE
 tar cf TAR copy 2> /dev/null
 echo OK
 echo $N Resolve by removing local conflict ..........................$NL
 cd $HERE
 rm -rf copy
-tar xf TAR 2> /dev/null
+tar xmf TAR
 cd copy
 cat > CMDS <<EOF
 rl
@@ -168,7 +168,7 @@ echo OK
 echo $N Resolve by moving local conflict ............................$NL
 cd $HERE
 rm -rf copy
-tar xf TAR 2> /dev/null
+tar xmf TAR
 cd copy
 cat > CMDS <<EOF
 ml

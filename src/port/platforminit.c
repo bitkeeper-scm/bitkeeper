@@ -6,113 +6,39 @@ WHATSTR("@(#)%K%");
  * Copyright (c) 2001 Andrew Chang       All rights reserved.
  */
 
-#ifdef WIN32
+extern	char    *editor, *bin;
+
+#ifdef	WIN32
 /*
  * For better performance, do not use getRealCwd(), use the
  * raw nt_getcwd() interface instead
  */
 #undef getcwd
 #define getcwd(a, b)	nt_getcwd(a, b)
-
-
-private char *
-cygwinPath()
-{
-	static	char	*cygwinPath = NULL;
-	char	buf[MAXPATH], tmp[MAXPATH];
-	int	len = MAXPATH;
-#define CYG_KEY "Software\\Cygnus Solutions\\Cygwin\\mounts v2\\/usr/bin"
-
-	if (cygwinPath) return (cygwinPath);
-	if (!getReg(HKEY_CURRENT_USER, CYG_KEY, "native", buf, &len)) {
-		if (!getReg(HKEY_LOCAL_MACHINE, CYG_KEY, "native", buf, &len)) {
-			return ("");
-		}
-	}
-	GetShortPathName(buf, tmp, MAXPATH);
-	localName2bkName(tmp, tmp);
-	cygwinPath = strdup(tmp);
-	return (cygwinPath);
-	
-}
-
-private char *
-tclPath()
-{
-	static	char	*path;
-	extern	char	*bin;
-
-	if (path) return (path);
-	path = aprintf("%s/tk/bin", bin);
-	return (path);
-}
-
-private int
-insertTclCygwinPath(char *bkpath, char *pathList)
-{
-	char	*p, *q, *r, *t, *anchor, *tcl_cygwin;
-	int	offset;
-
-	/*
-	 * Force everything to lower case for easier compare
-	 */
-	for (t = pathList; *t; t++) *t = tolower(*t);
-	for (t = bkpath; *t; t++) *t = tolower(*t);
-
-	/*
-	 * Insert tcl & cygwin path after bk path
-	 * If there is a gnu/bin path, insert cygwin path after that.
-	 * The gnu/bin processsing is mainly for the regression test environment
-	 */
-	anchor = aprintf("%s;%s/gnu/bin", bkpath, bkpath);
-	offset = strlen(anchor);
-	p = strstr(pathList, anchor);
-	unless (p) {
-		p = strstr(pathList, bkpath);
-		offset = strlen(bkpath);
-	}
-	free(anchor);
-	if (p) {
-		t = &p[offset];
-		if (*t) {
-			*t++ = '\0';
-		} else {
-			t = "";
-		}
-		tcl_cygwin = aprintf("%s;%s", tclPath(), cygwinPath());
-		if (streq(t, tcl_cygwin)) {
-			return(0); /* already got it */
-		}
-		safe_putenv("PATH=%s;%s;%s",
-					pathList, tcl_cygwin, t);
-		free(tcl_cygwin);
-		return (0);
-	}
-	return (-1);
-}
 #endif
 
 void
 platformInit(char **av)
 {
-	char	*p, *t, *s;
 	static	char buf[MAXPATH];
-	char	link[MAXPATH];
-	int	add2path = 1;
+	char	*p, *t, *s;
+	MDBM	*uniq;
+	char	**newpath;
 	int	n;
 	int	flags = SILENT;	/* for debugging */
 	mode_t	m;
-	extern char    *editor, *pager, *bin;
-
+	char    *paths[] = {"", "/gnu/bin", "/gui/bin", 0};
+	char	buf2[MAXPATH];
 
 	if (bin) return;
 	unless (editor || (editor = getenv("EDITOR"))) editor = EDITOR;
-	if (p = getenv("BK_PAGER")) safe_putenv("PAGER=%s", p);
-	unless (pager || (pager = getenv("PAGER"))) pager = PAGER;
 	m = umask(0) & 002;
 	umask(m);
 
 	unless (p = getenv("PATH")) return;	/* and pray */
+
+	/* save original path before the toplevel bk */
+	unless (getenv("BK_OLDPATH")) safe_putenv("BK_OLDPATH=%s", p);
 
 #ifndef	WIN32
 	signal(SIGHUP, SIG_IGN);
@@ -122,6 +48,11 @@ platformInit(char **av)
 	 * Force mkstemp() in uwtlib to use dir argument
 	 */
 	putenv("TMP=");
+
+	/*
+	 * If we don't have a /tmp on Windows, try and make one.
+	 */
+	unless (exists("/tmp")) mkdir("/tmp", 0777);
 
  	/*
 	 * Default to binary mode on all files
@@ -138,6 +69,7 @@ platformInit(char **av)
 	/*
 	 * Convert to lower case: because W98 gives us upper case av
 	 */
+	for (t = p; *t; t++) *t = tolower(*t);
 	for (t = av[0]; *t; t++) *t = tolower(*t);
 
 	/*
@@ -160,114 +92,103 @@ platformInit(char **av)
 	if (IsFullPath(av[0]) && executable(av[0])) {
 		verbose((stderr, "USING fullpath %s\n", av[0]));
 		strcpy(buf, av[0]);
-gotit:		
-		if ((n = readlink(buf, link, sizeof(link))) != -1) {
-			add2path = 1;
-			link[n] = 0;
-			verbose((stderr, "LINK %s->%s\n", buf, link));
-			if  (IsFullPath(link)) {
-				strcpy(buf, link);
-			} else {
-				fprintf(stderr,
-			  "Error, link \"%s -> %s\" must be a full path name\n",
-				    buf, link);
-				exit (1);
-			
+	} else {
+		/*
+		 * Partially specified paths are respected
+		 */
+		verbose((stderr, "av[0]='%s'\n", av[0]));
+		if (t = strchr(av[0], '/')) {
+			verbose((stderr, "USING partial %s\n", av[0]));
+			strcpy(buf, av[0]);
+		} else {
+			s = p;
+			verbose((stderr, "p='%s'\n", p));
+			while (1) {
+				if (t = strchr(s, PATH_DELIM)) *t = 0;
+				sprintf(buf, "%s/%s", s, av[0]);
+				if (t) *t = PATH_DELIM;
+				if (executable(buf)) break;
+				unless (t) {
+					verbose((stderr,
+						    "Can't find bk on PATH, "
+						    "bail and pray.\n"));
+					return;
+				}
+				s = t + 1;
 			}
 		}
-		
-		t = strrchr(buf, '/');
-		*t = 0;
-
-		/*
-		 * For win32:
-		 * Convert to short path name, because the shell 
-		 * cannot handle space in path name.
-		 */
-		GetShortPathName(buf, buf, sizeof(buf));
-
-		localName2bkName(buf, buf);
-		bin = buf; /* buf is static */
-
-#ifdef WIN32
-		/*
-		 * Needed by win32 Dos prompt environment; force tcl & cygwin
-		 * path after the bk path. If gnu/bin is in the path, tcl & 
-		 * cygwin path must be added after the gnu/bin path, so that
-		 * we pick up the correct diff and patch binary
-		 * Note also that tcl path must be in fornt of cygwin path
-		 * because we do not want to pick up the cygwin port of tcl.
-		 */
-		if (add2path) {
-			safe_putenv("PATH=%s%c%s/gnu/bin%c%s%c%s%c%s",
-			    		buf, PATH_DELIM,
-					buf, PATH_DELIM,
-					tclPath(), PATH_DELIM,
-					cygwinPath(), PATH_DELIM,
-					p);
-		} else {
-			insertTclCygwinPath(buf, p);
+		unless (IsFullPath(buf)) {
+			strcpy(buf2, buf);
+			getcwd(buf, sizeof(buf));
+			strcat(buf, "/");
+			strcat(buf, buf2);
 		}
-#else
-		if (add2path) {
-			safe_putenv("PATH=%s%c%s/gnu/bin%c%s",
-			    		buf, PATH_DELIM, buf, PATH_DELIM, p);
-		}
-#endif
-		return;
-	}
-
-	/*
-	 * Partially specified paths are respected
-	 */
-	if (t = strchr(av[0], '/')) {
-		verbose((stderr, "USING partial %s\n", av[0]));
-		getcwd(buf, sizeof(buf));
-		strcat(buf, "/");
-		strcat(buf, av[0]);
-		goto gotit;
-	}
-	
-	/*
-	 * Win32 note: TODO: We need to handle both ':' and ';'
-	 * as path delimiter, becuase we get different delimiter
-	 * from bash shell and cmd.exe.
-	 */
-	for (t = s = p; *s;) {
-		t = strchr(s, PATH_DELIM);
-		if (t) *t = 0;
-		sprintf(buf, "%s/%s", s, av[0]);
-		if (executable(buf)) {
 		verbose((stderr, "USING PATH %s\n", buf));
-			unless (IsFullPath(s)) {
-				getcwd(buf, sizeof(buf));
-				strcat(buf, "/");
-				strcat(buf, s);
-				strcat(buf, "/");
-				strcat(buf, av[0]);
-			} else {
-				/*
-				 * If the BitKeeper path is not
-				 * the first path , add it to the fornt.
-				 * This ensure we pick up the correct binary
-				 * such as "patch" and "diff"
-				 */
-				int len = strlen(buf);
-				add2path = (strncmp(s, p, len) != 0);
-			}
-			if (t) *t = PATH_DELIM;
-			goto gotit;
-			
-		}
-		if (t) {
-			*t = PATH_DELIM;
-			s = t + 1;
-		} else {
-			break;
-		}
-		
 	}
-	return;
+	if ((n = readlink(buf, buf2, sizeof(buf2))) != -1) {
+		buf2[n] = 0;
+		verbose((stderr, "LINK %s->%s\n", buf, buf2));
+		if  (IsFullPath(buf2)) {
+			strcpy(buf, buf2);
+		} else {
+			fprintf(stderr,
+			    "Error, link \"%s->%s\" must be a full path name\n",
+			    buf, buf2);
+			exit (1);
+		}
+	}
+
+	/* Now 'buf' contains the full pathname to the bk executable */
+	t = strrchr(buf, '/');
+	*t = 0;
+
+	/*
+	 * For win32: Convert to short path name, because the shell
+	 * cannot handle space in path name.
+	 * WHS: Is this really true?  It is ugly.
+	 */
+	GetShortPathName(buf, buf, sizeof(buf));
+
+	localName2bkName(buf, buf);
+	cleanPath(buf, buf);	/* sanitize pathname */
+	bin = buf; /* buf is static */
+
+	/* process path, so each dir only appears once. */
+	uniq = mdbm_mem();
+	newpath = 0;
+
+	for (n = 0; paths[n]; n++) {
+		sprintf(buf2, "%s%s", bin, paths[n]);
+		unless (mdbm_store_str(uniq, buf2, "", MDBM_INSERT)) {
+			newpath = addLine(newpath, strdup(buf2));
+		}
+	}
+	/*
+	 * The regressions set this variable when they want to
+	 * limit which programs can be run from within bk.
+	 */
+	if (t = getenv("BK_LIMITPATH")) p = t;
+
+	/* Make a string with the : or ; for strcspn() and joinLines() */
+	buf2[0] = PATH_DELIM;
+	buf2[1] = 0;
+
+	/* process dirs in existing PATH */
+	while (*p) {
+		t = p + strcspn(p, buf2);
+		if (*t) *t++ = 0;
+		unless (mdbm_store_str(uniq, p, "", MDBM_INSERT)) {
+			newpath = addLine(newpath, strdup(p));
+		}
+		p = t;
+	}
+	mdbm_close(uniq);
+
+	p = joinLines(buf2, newpath);
+	freeLines(newpath, free);
+	safe_putenv("PATH=%s", p);
+	free(p);
+	safe_putenv("BK_BIN=%s", bin);
 }
 
 #ifdef WIN32
@@ -331,4 +252,14 @@ platform(void)
 	p = bk_platform;
 #endif
 	return(p);
+}
+
+int
+win32()
+{
+#ifdef	WIN32
+	return (1);
+#else
+	return (0);
+#endif
 }

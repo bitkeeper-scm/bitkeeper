@@ -157,7 +157,7 @@ _superset() {
 	 bk sfiles -xa BitKeeper/triggers
 	 bk sfiles -xa BitKeeper/etc |
 	    egrep -v 'etc/SCCS|etc/csets-out|etc/csets-in|etc/level'
-	) | sort > $TMP2
+	) | bk _sort > $TMP2
 	test -s $TMP2 && {
 		test $LIST = NO && {
 			rm -f $TMP $TMP2
@@ -348,11 +348,13 @@ _csets() {		# /* doc 2.0 */
 	if [ -f RESYNC/BitKeeper/etc/csets-in ]
 	then	echo Viewing RESYNC/BitKeeper/etc/csets-in
 		cd RESYNC
-		exec bk csettool "$@" - < BitKeeper/etc/csets-in
+		bk changes -nd:I: - < BitKeeper/etc/csets-in |
+		    exec bk csettool "$@" -
 	fi
 	if [ -f BitKeeper/etc/csets-in ]
 	then	echo Viewing BitKeeper/etc/csets-in
-		exec bk csettool "$@" - < BitKeeper/etc/csets-in
+		bk changes -nd:I: - < BitKeeper/etc/csets-in |
+		    exec bk csettool "$@" -
 	fi
 	echo "Can not find csets to view."
 	exit 1
@@ -383,36 +385,43 @@ _editor() {
 		exit 1
 	fi
 	bk get -Sqe "$@" 2> /dev/null
+	PATH="$BK_OLDPATH"
 	exec $EDITOR "$@"
 }
 
 _jove() {
 	bk get -qe "$@" 2> /dev/null
+	PATH="$BK_OLDPATH"
 	exec jove "$@"
 }
 
 _joe() {
 	bk get -qe "$@" 2> /dev/null
+	PATH="$BK_OLDPATH"
 	exec joe "$@"
 }
 
 _jed() {
 	bk get -qe "$@" 2> /dev/null
+	PATH="$BK_OLDPATH"
 	exec jed "$@"
 }
 
 _vim() {
 	bk get -qe "$@" 2> /dev/null
+	PATH="$BK_OLDPATH":`bk bin`/gnu/bin
 	exec vim "$@"
 }
 
 _gvim() {
 	bk get -qe "$@" 2> /dev/null
+	PATH="$BK_OLDPATH"
 	exec gvim "$@"
 }
 
 _vi() {
 	bk get -qe "$@" 2> /dev/null
+	PATH="$BK_OLDPATH":`bk bin`/gnu/bin
 	exec vi "$@"
 }
 
@@ -448,11 +457,11 @@ _unrm () {
 
 	# Find all the possible files, sort with most recent delete first.
 	bk -r. prs -Dhnr+ -d':TIME_T:|:GFILE' | \
-		sort -r -n | cut -d'|' -f2 | \
+		bk _sort -r -n | awk -F'|' '{print $2}' | \
 		bk prs -Dhnpr+ -d':GFILE:|:DPN:' - | \
 		grep '^.*|.*'"$rpath"'.*' >$LIST
 
-	NUM=`wc -l $LIST | sed -e's/ *//' | cut -d' ' -f1`
+	NUM=`wc -l $LIST | sed -e's/ *//' | awk -F' ' '{print $1}'`
 	if [ "$NUM" -eq 0 ]
 	then
 		echo "------------------------"
@@ -471,8 +480,8 @@ _unrm () {
 	while read n
 	do
 		echo $n > $TMPFILE
-		GFILE=`cut -d'|' -f1 $TMPFILE`
-		RPATH=`cut -d'|' -f2 $TMPFILE`
+		GFILE=`awk -F'|' '{print $1}' $TMPFILE`
+		RPATH=`awk -F'|' '{print $2}' $TMPFILE`
 
 		# If there is only one match, and it is a exact match,
 		# don't ask for confirmation.
@@ -578,7 +587,7 @@ _rmdir() {		# /* doc 2.0 */
 		exit 1
 	fi
 	bk sfiles "$1" | bk clean -q -
-	bk sfiles "$1" | sort | bk sccsrm -d -
+	bk sfiles "$1" | bk _sort | bk sccsrm -d -
 	SNUM=`bk sfiles "$1" | wc -l`
 	if [ "$SNUM" -ne 0 ]; 
 	then
@@ -704,12 +713,23 @@ _links() {		# /* undoc? 2.0 - what is this for? */
 		echo "Typical usage is bk links /usr/libexec/bitkeeper /usr/bin"
 		exit 1
 	fi
-	test -x "$1/bk" || { echo Can not find bin directory; exit 1; }
+	test -x "$1/bk" || {
+		echo ==========================================================
+		echo Can not find bin directory
+		echo ==========================================================
+		exit 0
+	}
 	BK="$1"
 	if [ "X$2" != X ]
 	then	BIN="$2"
 	else	BIN=/usr/bin
 	fi
+	test -w "$BIN" || {
+		echo ==========================================================
+		echo "bk links: can't write to ${BIN}, no links made."
+		echo ==========================================================
+		exit 0
+	}
 	for i in admin get delta unget rmdel prs bk
 	do	test -f "$BIN/$i" && {
 			echo Saving "$BIN/$i" in "$BIN/${i}.ORIG"
@@ -841,26 +861,13 @@ _rmgone() {
 	}' | xargs -n 1 $CMD
 }
 
-# return the latest rev in this tree that also exists in the
-# remote tree.
-_repogca() {
-	if [ "X$1" = "X" ]; then
-	    remote=`bk parent -1il`
-	else
-	    remote=$1
-	fi
-	bk -R changes -e -L -nd:REV: "$remote" > /tmp/LOCAL.$$
-	bk -R prs -hnd:REV: ChangeSet | fgrep -v -f/tmp/LOCAL.$$ | head -1
-	rm -f /tmp/LOCAL.$$
-}
-
 # Union the contents of all meta files which match the base name.
 # Optimized to not look in any files which do not match the base name.
 _meta_union() {
 	__cd2root
 	for d in etc etc/union conflicts deleted
 	do	test -d BitKeeper/$d/SCCS || continue
-		ls -1 BitKeeper/$d/SCCS/s.${1}* 2>/dev/null
+		bk _find BitKeeper/$d/SCCS -name "s.${1}*"
 	done | bk prs -hr1.0 -nd'$if(:DPN:=BitKeeper/etc/'$1'){:GFILE:}' - |
 		bk sccscat - | bk _sort -u
 }
@@ -1085,9 +1092,183 @@ EOF
 		done
 }
 
+# XXX the old 'bk _keysort' has been removed, but we keep this just
+# in case someone calls _keysort after some merge or something.
+__keysort()
+{
+    bk _sort "$@"
+}
+
+__findRegsvr32()
+{
+	REGSVR32=""
+	if [ X$SYSTEMROOT != X ]
+	then
+		SYS=`bk pwd "$SYSTEMROOT"`
+		for i in system32 system
+		do
+			REGSVR32="$SYS/$i/regsvr32.exe" 
+			if [ -e "$REGSVR32" ]
+			then echo "$REGSVR32";
+			     return;
+			fi
+		done
+	fi
+
+	for drv in c d e f g h i j k l m n o p q r s t vu v w x y z
+	do
+		for dir in WINDOWS/system32 WINDOWS/system WINNT/system32
+		do
+			if [ -f "$drv:/$dir/regsvr32.exe" ]
+			then
+				REGSVR32="$drv:/$dir/regsvr32.exe"
+				break;
+			fi
+		done
+		test X"$REGSVR32" != X && break; 
+	done
+	echo "$REGSVR32";
+}
+
+__register_dll()
+{
+	REGSVR32=`__findRegsvr32`
+	test X"$REGSVR32" = X && return; 
+
+	"$REGSVR32" -s "$1"
+}
+
+# usage: install dir
+# installs bitkeeper in directory <dir> such that the new
+# bk will be located at <dir>/bk
+# Any existing 'bk' directory will be deleted.
+_install()
+{
+	test "X$BK_DEBUG" = X || {
+		echo "INSTALL: $@"
+		set -x
+	}
+	FORCE=0
+	CHMOD=YES
+	VERBOSE=NO
+	DLLOPTS=""
+	while getopts dfvlns opt
+	do
+		case "$opt" in
+		l) DLLOPTS="-l $DLLOPTS";; # enable bkshellx for local drives
+		n) DLLOPTS="-n $DLLOPTS";; # enable bkshellx for network drives
+		s) DLLOPTS="-s $DLLOPTS";; # enable bkscc dll
+		d) CHMOD=NO;;	# do not change permissions, dev install
+		f) FORCE=1;;	# force
+		v) VERBOSE=YES;;
+		*) echo "usage: bk install [-dfv] <destdir>"
+	 	   exit 1;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	test X"$1" = X -o X"$2" != X && {
+		echo "usage: bk install [-dfv] <destdir>"
+		exit 1
+	}
+	DEST="$1"
+	SRC=`bk bin`
+
+	test -d "$DEST" && {
+		DEST=`cd "$DEST"; bk pwd`	
+		test "$DEST" = "$SRC" && {
+			echo "bk install: destination == souce"
+			exit 1
+		}
+		test $FORCE -eq 0 && {
+			echo "bk install: destination exists, failed (add -f to force)"
+			exit 1
+		}
+		test $VERBOSE = YES && echo Uninstalling $DEST
+		chmod -R +w "$DEST" 2> /dev/null
+		if [ "X$OSTYPE" = "Xmsys" ]
+		then
+			OBK="$DEST.old$$"
+			ODLL="$OBK/BkShellX.dll"
+			mv "$DEST" "$OBK"
+			rm -rf "$OBK" 2> /dev/null
+			if [ -f "$ODLL" ]
+			then "$SRC/gui/bin/tclsh" "$SRC/runonce.tcl" \
+			     "BitKeeper" \
+			     "\"$DEST/bkuninstall.exe\" -R \"$ODLL\" \"$OBK\""
+			fi
+		else
+			rm -rf "$DEST"/* || {
+			    echo "bk install: failed to remove $DEST"
+			    exit 1
+			}
+		fi
+	}
+	mkdir -p "$DEST" || {
+		echo "bk install: Unable to mkdir $DEST, failed"
+		exit 1
+	}
+	test -d "$DEST" -a -w "$DEST" || {
+		echo "bk install: Unable to write to $DEST, failed"
+		exit 1
+	}
+	# copy data
+	V=
+	test $VERBOSE = YES && {
+		V=v
+		echo Installing data in "$DEST" ...
+	}
+	(cd "$SRC"; tar cf - .) | (cd "$DEST"; tar x${V}f -)
+	
+	# binlinks
+	if [ "X$OSTYPE" = "Xmsys" ]
+	then	EXE=.exe
+	else	EXE=
+	fi
+	# This does the right thing on Windows (msys)
+	for prog in admin get delta unget rmdel prs
+	do
+		test $VERBOSE = YES && echo ln "$DEST"/bk$EXE "$DEST"/$prog$EXE
+		ln "$DEST"/bk$EXE "$DEST"/$prog$EXE
+	done
+
+	if [ "X$OSTYPE" = "Xmsys" ]
+	then
+		# On Windows we want a install.log file
+		INSTALL_LOG="$DEST"/install.log
+		echo "Installdir=\"$DEST\"" > "$INSTALL_LOG"
+		(cd "$SRC"; find .) >> "$INSTALL_LOG";
+		for prog in admin get delta unget rmdel prs
+		do
+			echo $prog$EXE >> "$INSTALL_LOG"
+		done
+
+	fi
+
+	# permissions
+	cd "$DEST"
+	test $CHMOD = YES && {
+		(find . | xargs chown root) 2> /dev/null
+		(find . | xargs chgrp root) 2> /dev/null
+		find . | xargs chmod -w
+	}
+	# registry
+	if [ "X$OSTYPE" = "Xmsys" ]
+	then
+		test $VERBOSE = YES && echo "updating registry..."
+		gui/bin/tclsh gui/lib/registry.tcl $DLLOPTS "$DEST" 
+		test -z "$DLLOPTS" || __register_dll "$DEST"/BkShellX.dll
+	fi
+	exit 0
+}
+
+
 # ------------- main ----------------------
 __platformInit
 __init
+
+# On Windows convert the original Windows PATH variable to
+# something that will map the same in the shell.
+test "X$OSTYPE" = "Xmsys" && BK_OLDPATH=$(win2msys "$BK_OLDPATH")
 
 if type "_$1" >/dev/null 2>&1
 then	cmd=_$1
@@ -1098,6 +1279,7 @@ fi
 cmd=$1
 shift
 
+test "X$BK_USEMSYS" = "X" && PATH="$BK_OLDPATH"
 if type "$cmd" > /dev/null 2>&1
 then
 	exec $cmd "$@"
@@ -1105,4 +1287,3 @@ else
 	echo "$cmd: command not found" 1>&2
 	exit 1
 fi
-				

@@ -1,7 +1,7 @@
 #include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <iostream.h>
+#include <ctype.h>
 #include <time.h>
 /* generic socket DLL support */
 #include "gensock\gensock.h"
@@ -146,7 +146,7 @@ char *usage[]=
     "RFC 821 MAIL FROM statement will be defaulted to use the installation-defined ",
     "default sender address"
 };
-const NMLINES=63;
+const int NMLINES=63;
 
 void
 gensock_error (char * function, int retval)

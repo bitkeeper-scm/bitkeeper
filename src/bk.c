@@ -8,7 +8,7 @@
 extern	int	test_release;
 extern	unsigned build_timet;
 
-char	*editor = 0, *pager = 0, *bin = 0;
+char	*editor = 0, *bin = 0;
 char	*BitKeeper = "BitKeeper/";	/* XXX - reset this? */
 char	**bk_environ;
 jmp_buf	exit_buf;
@@ -91,7 +91,6 @@ int	isascii_main(int, char **);
 int	key2path_main(int, char **);
 int	key2rev_main(int, char **);
 int	keycache_main(int, char **);
-int	keysort_main(int, char **);
 int	keyunlink_main(int, char **);
 int	lconfig_main(int, char **);
 int	level_main(int, char **);
@@ -113,6 +112,7 @@ int	makepatch_main(int, char **);
 int	mdiff_main(int, char **);
 int	merge_main(int, char **);
 int	mklock_main(int, char **);
+int	more_main(int, char **);
 int	mtime_main(int, char **);
 int	multiuser_main(int, char **);
 int	mv_main(int, char **);
@@ -140,6 +140,7 @@ int	rclone_main(int, char **);
 int	rcs2sccs_main(int, char **);
 int	rcsparse_main(int, char **);
 int	receive_main(int, char **);
+int	repogca_main(int, char **);
 int	relink_main(int, char **);
 int	renumber_main(int, char **);
 int	repo_main(int, char **);
@@ -157,6 +158,7 @@ int	sccslog_main(int, char **);
 int	scompress_main(int, char **);
 int	send_main(int, char **);
 int	sendbug_main(int, char **);
+int	support_main(int, char **);
 int	set_main(int, char **);
 int	setup_main(int, char **);
 int	sfiles_main(int, char **);
@@ -191,6 +193,7 @@ int	uuencode_main(int, char **);
 int	val_main(int, char **);
 int	version_main(int, char **);
 int	what_main(int, char **);
+int	which_main(int, char **);
 int	xflags_main(int, char **);
 int	zone_main(int, char **);
 
@@ -205,7 +208,6 @@ struct	command cmdtbl[] = {
 	{"_g2sccs", _g2sccs_main},
 	{"_get", get_main},
 	{"_gzip", gzip_main }, 
-	{"_keysort", keysort_main},
 	{"_key2path", key2path_main},
 	{"_keyunlink", keyunlink_main },
 	{"_lconfig", lconfig_main},	
@@ -299,6 +301,7 @@ struct	command cmdtbl[] = {
 	{"mdiff", mdiff_main},
 	{"merge", merge_main},			/* doc 2.0 */
 	{"mklock", mklock_main},	/* regression test */ /* undoc 2.0 */
+	{"more", more_main},
 	{"mtime", mtime_main},		/* regression test */ /* undoc 2.0 */
 	{"mv", mv_main},			/* doc 2.0 */
 	{"mvdir", mvdir_main},			/* doc 2.0 */
@@ -327,6 +330,7 @@ struct	command cmdtbl[] = {
 	{"relink", relink_main},
 	{"renumber", renumber_main},		/* doc 2.0 */
 	{"repo", repo_main},	/* obsolete */ 	/* undoc 2.0 */
+	{"repogca", repogca_main},
 	{"resolve", resolve_main},		/* doc 2.0 */
 	{"restore", restore_main},
 	{"rev2cset", r2c_main},	/* alias */	/* doc 2.0 as r2c */
@@ -343,6 +347,7 @@ struct	command cmdtbl[] = {
 	{"sccsrm", rm_main},	/* alias */	/* doc 2.0 as mv */
 	{"send", send_main},			/* doc 2.0 */
 	{"sendbug", sendbug_main},		/* doc 2.0 */
+	{"support", support_main},	/* doc 3.0 */
 	{"set", set_main},
 	{"setup", setup_main },			/* doc 2.0 */
 	{"shrink", shrink_main}, 		/* undoc? 2.0 */
@@ -374,10 +379,32 @@ struct	command cmdtbl[] = {
 	{"val", val_main},			/* doc 2.0 */
 	{"version", version_main},		/* doc 2.0 */
 	{"what", what_main},			/* doc 2.0 */
+	{"which", which_main },
 	{"xflags", xflags_main},		/* doc 2.0 */
 	{"zone", zone_main},			/* doc 2.0 */
 
 	{0, 0},
+};
+
+/* Keep this sorted too */
+struct tool guis[] = {
+	{ "citool", 0 },
+	{ "csettool", "csetool" },
+	{ "difftool", 0 },
+	{ "newdifftool", 0 },
+	{ "fm3tool", "fm3" },
+	{ "fmtool", "fm" },
+	{ "fmtool", "fm2tool" },
+	{ "helptool", 0 },
+	{ "installtool", 0 },
+	{ "msgtool", 0 },
+	{ "renametool", 0 },
+	{ "revtool", "histool" },
+	{ "revtool", "histtool" },
+	{ "revtool", "sccstool" },
+	{ "setuptool", 0 },
+
+	{ 0, 0 }
 };
 
 private int
@@ -581,6 +608,9 @@ run:	getoptReset();
 	exit(ret);
 }
 
+/*
+ * The commands here needed to be spawned, not execed, so command logging works.
+ */
 private int
 run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 {
@@ -602,36 +632,18 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 		return (1);
 	}
 
-
 	/*
 	 * Handle Gui script
 	 */
-	if (streq(prog, "fm") ||
-	    streq(prog, "fm3") ||
-	    streq(prog, "citool") ||
-	    streq(prog, "_citool") ||
-	    streq(prog, "sccstool") ||
-	    streq(prog, "histtool") ||
-	    streq(prog, "revtool") ||
-	    streq(prog, "histool") ||
-	    streq(prog, "setuptool") ||
-	    streq(prog, "fmtool") ||
-	    streq(prog, "fm2tool") ||
-	    streq(prog, "fm3tool") ||
-	    streq(prog, "difftool") ||
-	    streq(prog, "newdifftool") ||
-	    streq(prog, "helptool") ||
-	    streq(prog, "csettool") ||
-	    streq(prog, "renametool") ||
-	    streq(prog, "msgtool")) {
+	for (i = 0; guis[i].prog; i++) {
+		unless (streq(guis[i].prog, prog) ||
+		    (guis[i].alias && streq(guis[i].alias, prog))) {
+			continue;
+		}
+		prog = guis[i].prog;
 		sig_catch(SIG_IGN);
 		argv[0] = find_wish();
-		if (streq(prog, "fm2tool")) prog = "fmtool";
-		if (streq(prog, "sccstool")) prog = "revtool";
-		if (streq(prog, "histool")) prog = "revtool";
-		if (streq(prog, "histtool")) prog = "revtool";
-		if (streq(prog, "revtool")) prog = "revtool";
-		sprintf(cmd_path, "%s/%s", bin, prog);
+		sprintf(cmd_path, "%s/gui/lib/%s", bin, prog);
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) {
 			if (i >= (MAXARGS-10)) {
@@ -645,9 +657,11 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 	}
 
 	/*
-	 * Handle shell script
+	 * Handle shell scripts.
 	 */
-	if (streq(prog, "resync") || streq(prog, "import")) {
+	if (streq(prog, "applypatch") ||
+	    streq(prog, "import") ||
+	    streq(prog, "resync")) {
 		argv[0] = shell();
 		sprintf(cmd_path, "%s/%s", bin, prog);
 		argv[1] = cmd_path;
@@ -666,8 +680,28 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 	 * Is it a known C program ?
 	 */
 	if (streq(prog, "patch") ||
-	    streq(prog, "diff3")) {
+	    streq(prog, "cmp") ||
+	    streq(prog, "diff") ||
+	    streq(prog, "diff3") ||
+	    streq(prog, "sdiff")) {
 		return (spawn_cmd(_P_WAIT, av));
+	}
+
+	/* Handle GUI test */
+	if (streq(prog, "guitest")) {
+		sig_catch(SIG_IGN);
+		argv[0] = find_wish();
+		sprintf(cmd_path, "%s/t/guitest.tcl", bin);
+		argv[1] = cmd_path;
+		for (i = 2, j = 1; av[j]; i++, j++) {
+			if (i >= (MAXARGS-10)) {
+				fprintf(stderr, "bk: too many args\n");
+				exit(1);
+			}
+			argv[i] = av[j];
+		}
+		argv[i] = 0;
+		return (spawn_cmd(_P_WAIT, argv));
 	}
 
 	/*
@@ -1165,25 +1199,13 @@ find_wish(void)
 	/* If they set this, they can set TCL_LIB/TK_LIB as well */
 	if ((path = getenv("BK_WISH")) && executable(path)) return (path);
 
-	path = aprintf("%s/tk/bin/bkgui", bin);
+	path = aprintf("%s/gui/bin/bkgui", bin);
 	if (executable(path)) {
-		safe_putenv("TCL_LIBRARY=%s/tk/lib/tcl8.3", bin);
-		safe_putenv("TK_LIBRARY=%s/tk/lib/tk8.3", bin);
+		safe_putenv("TCL_LIBRARY=%s/tcltk/lib/tcl8.4", bin);
+		safe_putenv("TK_LIBRARY=%s/tcltk/lib/tk8.4", bin);
 		return (path);
 	}
 	free(path);
-	path = "/build/.wish/tk/bin/bkgui";
-	if (executable(path)) {
-		putenv("TCL_LIBRARY=/build/.wish/tk/lib/tcl8.3");
-		putenv("TK_LIBRARY=/build/.wish/tk/lib/tk8.3");
-		return (path);
-	}
-	path = "c:/cygwin/build/.wish/tk/bin/bkgui";
-	if (executable(path)) {
-		putenv("TCL_LIBRARY=/build/.wish/tk/lib/tcl8.3");
-		putenv("TK_LIBRARY=/build/.wish/tk/lib/tk8.3");
-		return (path);
-	}
 	fprintf(stderr, "Cannot find the graphical interpreter\n");
 	exit(1);
 }
@@ -1193,9 +1215,11 @@ shell(void)
 {
 	char	*sh;
 
+#ifndef	WIN32
 	if (sh = getenv("BK_SHELL")) return (sh);
 	if (sh = find_prog("bash")) return (sh);
 	if (sh = find_prog("ksh")) return (sh);
+#endif
 	if (sh = find_prog("sh")) return (sh);
 	assert("No shell" == 0);
 	return (0);	/* Windows warns otherwise */

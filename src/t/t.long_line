@@ -97,7 +97,7 @@ echo OK
 cores
 echo $N Create a copy of the project ................................$NL
 cd $HERE
-bk resync $Q project copy
+bk clone $Q project copy
 if [ ! -d copy ]; then echo failed to make top level directory; exit 1; fi
 cd copy
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi

@@ -38,10 +38,10 @@ test -f $BK_TMP/.bk_keys -a ! -z $BK_TMP/.bk_keys || {
 echo OK
 
 echo $N Make sure we generated the right keys in single user mode ...$NL
-bk sort < $BK_TMP/.bk_keys | while read k junk
+bk _sort < $BK_TMP/.bk_keys | while read k junk
 do echo "$k"
 done > GOT
-bk -r prs -c90.. -hnd:SHORTKEY: | sort > WANT
+bk -r prs -c90.. -hnd:SHORTKEY: | bk _sort > WANT
 cmp -s WANT GOT || {
 	echo failed to regenerate the same keycache
 	diff WANT GOT
@@ -51,14 +51,14 @@ cmp -s WANT GOT || {
 echo OK
 
 echo $N Make sure we can regenerate the keycache ....................$NL
-bk sort < $BK_TMP/.bk_keys > WANT
+bk _sort < $BK_TMP/.bk_keys > WANT
 rm -f $BK_TMP/.bk_keys
 bk keycache > $BK_TMP/.bk_keys
 test -z $BK_TMP/.bk_keys && {
 	echo failed to add keys to .bk_keys
 	exit 1
 }
-bk sort < $BK_TMP/.bk_keys > GOT
+bk _sort < $BK_TMP/.bk_keys > GOT
 cmp -s WANT GOT || {
 	echo failed to regenerate the same keycache
 	diff WANT GOT

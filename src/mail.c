@@ -19,7 +19,7 @@ mail_main(int ac, char **av)
 	unless (wishConsoleVisible()) {
 		fclose(stdout); /* close stdout, so citool do'nt wait for us */
 		usleep(0); /* release cpu, so citool can exit */
-		fopen(DEV_TTY, "wb");
+		fopen(DEV_TTY, "w");
 	}
 
 	if (ac != 4) {

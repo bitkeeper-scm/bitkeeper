@@ -722,6 +722,12 @@ struct command
         int (*func)(int, char **);
 };      
 
+struct tool
+{
+	char	*prog;	/* fm3tool */
+	char	*alias;	/* fm3 or 0 */
+};
+
 /*
  * BK "URL" formats are:
  *	bk://user@host:port/pathname
@@ -904,7 +910,6 @@ int	sccs_lockfile(const char *lockfile, int wait, int quiet);
 int	sccs_stalelock(const char *lockfile, int discard);
 int	sccs_unlockfile(const char *file);
 int	sccs_mylock(const char *lockf);
-int	sccs_readlockf(const char *file, pid_t *pidp, char **hostp, time_t *tp);
 
 sccs	*sccs_unzip(sccs *s);
 sccs	*sccs_gzip(sccs *s);
@@ -981,7 +986,8 @@ char	*match_globs(char *string, globv globs, int ignorecase);
 void	free_globs(globv globs);
 int	searchMatch(char *s, search search);
 search	searchParse(char *str);
-char	*prog2path(char *prog);
+char	*whichp(char *prog, int internal, int external);
+int	which(char *prog, int internal, int external);
 int	readn(int from, char *buf, int size);
 void	send_request(int fd, char * request, int len);
 int	writen(int to, char *buf, int size);
@@ -1062,8 +1068,8 @@ char	*strdup_tochar(const char *s, int c);
 void	ttyprintf(char *fmt, ...);
 void	enableFastPendingScan(void);
 char	*isHostColonPath(char *);
-int	hasGUIsupport(void);
-char	*GUI_display(void);
+int	gui_haveDisplay(void);
+char	*gui_displayName(void);
 char	*savefile(char *dir, char *prefix, char *pathname);
 void	has_proj(char *who);
 int	mv(char*, char *);
@@ -1170,6 +1176,8 @@ void	fromTo(char *op, remote *r, remote *l);
 u32	adler32_file(char *filename);
 char	*findDotFile(char *old, char *new, char *buf);
 char	*platform(void);
+char	*find_prog(char *);
+char	*pager(void);
 void	set_timestamps(char *sfile);
 
 void	align_diffs(u8 *vec, int n, int (*compare)(int a, int b),

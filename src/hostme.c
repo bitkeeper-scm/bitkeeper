@@ -67,7 +67,7 @@ hostme_main(int ac, char **av)
 		fprintf(stderr, "Can't allocate temp file\n");
 		usage();
 	}
-	unless (f = fopen(hostme_info, "wb")) return (1);
+	unless (f = fopen(hostme_info, "w")) return (1);
 
 	fprintf(f, "project=%s\n", opts.project);
 	fprintf(f, "repository=%s\n", opts.repository);
@@ -99,7 +99,8 @@ hostme_main(int ac, char **av)
 		"Try logging\ninto the administrative shell using the "
 		"following:\n\n"
 		"\tssh %s.admin@%s\n\n"
-		"If that does not work, please contact support@bitmover.com. "
+		"If that does not work, please run 'bk support' to "
+		"request assistance. "
 		"Enjoy!\n\n", opts.project, host);
 	}
 	return (rc);

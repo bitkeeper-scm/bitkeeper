@@ -155,7 +155,7 @@ echo $N Check conflict within a patch + circular rename..............$NL
 # XXX - what conflict?
 cd  $HERE
 rm -rf $HERE/copy
-tar xf chkpoint.tar
+tar xmf chkpoint.tar
 cd  $HERE/copy/src
 bk pull $Q -R $HERE/project
 bk resolve -t $L $Q
@@ -181,7 +181,7 @@ cores
 echo $N Check circular rename in two work spaces ....................$NL
 cd  $HERE
 rm -rf $HERE/copy
-tar xf chkpoint.tar
+tar xmf chkpoint.tar
 # $HERE/project already has circular rename w/ clockwise rotation
 # a.c = File 3
 # b.c = File 1
@@ -272,7 +272,7 @@ cores
 echo $N Check circular rename in two work spaces - alternate ........$NL
 cd  $HERE
 rm -rf $HERE/copy
-tar xf chkpoint.tar
+tar xmf chkpoint.tar
 # $HERE/project already has circular rename w/ clockwise rotation
 # a.c = File 3
 # b.c = File 1
@@ -356,7 +356,7 @@ bk ci $Q -i g.c
 bk commit $S -yrename
 cd  $HERE
 rm -rf $HERE/copy
-tar xf chkpoint.tar
+tar xmf chkpoint.tar
 cd $HERE/copy
 bk pull $Q -R $HERE/project
 bk resolve -t $L $Q $HERE/copy
@@ -381,7 +381,7 @@ echo OK
 echo $N resync w/ pending rename in target tree .....................$NL
 cd  $HERE
 rm -rf $HERE/copy
-tar xf chkpoint.tar
+tar xmf chkpoint.tar
 bk clean $HERE/copy/src
 cd $HERE/copy/src
 bk get $Q -p a.c >ref.c
@@ -400,7 +400,7 @@ mv SCCS/s.a.c SCCS/s.f.c
 mv SCCS/p.a.c SCCS/p.f.c
 cd  $HERE
 rm -rf $HERE/copy
-tar xf chkpoint.tar
+tar xmf chkpoint.tar
 bk clean $HERE/copy/src
 cd $HERE/copy/src
 bk pull $Q -R $HERE/project
@@ -446,7 +446,7 @@ rm -f $HERE/project/src/SCCS/s.dup.c $HERE/copy/src/SCCS/s.dup.c
 echo $N Check resync with binary file ...............................$NL
 cd  $HERE
 rm -rf $HERE/copy
-tar xf chkpoint.tar
+tar xmf chkpoint.tar
 cd $HERE/project/src
 cp $BIN1 data
 bk admin $Q -idata -Ebinary bdata
@@ -702,7 +702,7 @@ bk commit $S -y"abc"
 # argument
 cd $HERE/copy
 bk parent $Q -sn junk
-bk pull $Q -R file://$HERE/project || {
+bk pull $Q -R $HERE/project || {
 	echo failed resync with url
 	exit 1
 }

@@ -168,7 +168,7 @@ usage:		system("bk help -s takepatch");
 			mdbm_close(goneDB);
 			mdbm_close(idDB);
 
-			spawnvp_ex(_P_NOWAIT, "bk", applyall);
+			spawnvp(_P_DETACH, "bk", applyall);
 			return(0);
 		}
 	}
@@ -703,7 +703,7 @@ metaUnionFile(char *file, char *cmd)
 	}
 	unless (ok) {
 		unlink(file);
-		w = fopen(file, "wb");
+		w = fopen(file, "w");
 		assert(w);
 		fputs(METAUNIONHEAD, w);
 		f = popen(cmd, "r");
@@ -735,8 +735,7 @@ metaUnionResyncFile(char *from, char *to)
 	unless (exists(from)) return;
 
 	unless (exists(to)) {
-		sprintf(buf, "cp %s %s", from, to);
-		system(buf);
+		fileCopy(from, to);
 		chmod(to, 0444);
 		return;
 	}
@@ -744,7 +743,7 @@ metaUnionResyncFile(char *from, char *to)
 	sprintf(temp, "%s.cp", to);
 	unlink(temp);
 	sprintf(buf, "cat %s %s | bk _sort -u", from, to);
-	w = fopen(temp, "wb");
+	w = fopen(temp, "w");
 	f = popen(buf, "r");
 	fputs(METAUNIONHEAD, w);
 	while (fnext(buf, f)) {
@@ -755,8 +754,7 @@ metaUnionResyncFile(char *from, char *to)
 	fclose(w);
 	chmod(temp, 0444);
 	unlink(to);
-	sprintf(buf, "cp %s %s", temp, to);
-	system(buf);
+	fileCopy(temp, to);
 }
 
 private void
@@ -1673,7 +1671,7 @@ getLocals(sccs *s, delta *g, char *name)
 			
 		assert(d);
 		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-init", ++fileNum);
-		unless (t = fopen(tmpf, "wb")) {
+		unless (t = fopen(tmpf, "w")) {
 			perror(tmpf);
 			exit(1);
 		}
@@ -1855,7 +1853,7 @@ resync_lock(void)
 	 * Note: we need the real mkdir, not the so called smart one, we need
 	 * to fail if it exists.
 	 */
-	if ((mkdir)("RESYNC", 0777)) {
+	if (realmkdir("RESYNC", 0777)) {
 		fprintf(stderr, "takepatch: cannot create RESYNC dir.\n");
 		repository_lockers(0);
 		cleanup(0);
@@ -2228,7 +2226,7 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			close(creat(t, 0666));
 		}
 		unless (isLogPatch && !newProject) {
-			unless (g = fopen("RESYNC/BitKeeper/tmp/patch", "wb")) {
+			unless (g = fopen("RESYNC/BitKeeper/tmp/patch", "w")) {
 				perror("RESYNC/BitKeeper/tmp/patch");
 				exit(1);
 			}
@@ -2241,7 +2239,7 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			perror(inputFile);
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 		}
-		unless (g = fopen("RESYNC/BitKeeper/tmp/patch", "wb")) {
+		unless (g = fopen("RESYNC/BitKeeper/tmp/patch", "w")) {
 			perror("RESYNC/BitKeeper/tmp/patch");
 			exit(1);
 		}

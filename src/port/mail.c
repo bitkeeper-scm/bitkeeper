@@ -68,7 +68,6 @@ mail(char *to, char *subject, char *file)
 pid_t
 mail(char *to, char *subject, char *file)
 {
-	int	i = -1;
 	char	buf[MAXLINE];
 	pid_t	pid;
 	extern	char *bin;
@@ -109,7 +108,7 @@ mail(char *to, char *subject, char *file)
 		pid = spawnvp_ex(_P_NOWAIT, av[0], av);
 		if (pid != -1) return (pid);
 	}
-	getMsg("no_mailer", 0, 0, '=', stderr);
+	getMsg("no_mailer", 0, '=', stderr);
 	return (-1);
 }
 #endif

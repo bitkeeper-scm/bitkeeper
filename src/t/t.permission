@@ -14,7 +14,7 @@
 
 if [ "$PLATFORM" = "WIN32" ]
 then
-	echo "Not supported on win32, test skipped"
+	echo "For non win32 only ..........................................skipped"
 	exit 0;
 fi
 

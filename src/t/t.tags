@@ -30,6 +30,72 @@ P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 echo OK
 cores
+
+echo $N Tags may not start with a digit .............................$NL
+bk tag $Q 1234 && {
+	echo Should have failed
+	exit 1
+}
+echo OK
+
+echo $N "Tags may not start with a  =  ...............................$NL"
+bk tag $Q =1234 && {
+	echo Should have failed
+	exit 1
+}
+echo OK
+
+echo $N "Tags may not start with a  .  ...............................$NL"
+bk tag $Q .1234 && {
+	echo Should have failed
+	exit 1
+}
+echo OK
+
+echo $N "Tags may not start with a  -  ...............................$NL"
+bk tag $Q -- -1234 && {
+	echo Should have failed
+	exit 1
+}
+echo OK
+
+# SGI's getopts doesn't like "+".
+test `uname` = IRIX64 || {
+echo $N "Tags may not be just a  +  ..................................$NL"
+bk tag $Q + && {
+	echo Should have failed
+	exit 1
+}
+echo OK
+}
+
+for s in .. ., ,. ,,
+do
+echo $N "Tags may not contain a  $s  .................................$NL"
+bk tag $Q foo${s}bar && {
+	echo Should have failed
+	exit 1
+}
+echo OK
+done
+
+echo $N "Tags may not contain a  |  ..................................$NL"
+bk tag $Q 'foo|bar' && {
+	echo Should have failed
+	exit 1
+}
+echo OK
+
+test $PLATFORM != "WIN32" && {
+echo $N "Tags may not contain a newline ..............................$NL"
+bk tag $Q 'foo
+bar' && {
+	echo Should have failed
+	exit 1
+}
+echo OK
+}
+
 echo $N Add old style tags ..........................................$NL
 cd $HERE
 cp -rp project tags
@@ -47,6 +113,7 @@ grep -q '^.cS[0-9]' SCCS/s.ChangeSet && {
 }
 bk admin -hhhq || exit 1
 echo OK
+
 echo $N Add new style tags ..........................................$NL
 bk tag $Q NEW
 grep -q '^.cS0' SCCS/s.ChangeSet || {
@@ -106,6 +173,7 @@ host=`bk gethost`
 					{ echo wrong parent $parent; exit 1; }
 cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
 echo OK
+
 echo $N Create a changeset in compat mode with a tag ................$NL
 cd $HERE/project/src
 bk get $Q -e 'F!O#O$ B%A^R&RR(R)RR'
@@ -126,6 +194,7 @@ grep -q '^.cS[0-9]' SCCS/s.ChangeSet && {
 	exit 1
 }
 echo OK
+
 echo $N Pull a new changeset with an old tag using pull .............$NL
 cd $HERE/copy2
 bk pull -t $Q || { echo failed; exit 1; }
@@ -375,7 +444,7 @@ echo OK
 echo $N Test propogation of a tag added with a commit, pick merge ...$NL
 cd $HERE
 rm -rf tagchild
-tar xf tagchild.TAR
+tar xmf tagchild.TAR
 cd $HERE/tagchild
 echo m | bk pull $Q 2>/dev/null
 test -d RESYNC && {
@@ -441,6 +510,7 @@ bk delta $Q -yfoo foo
 bk commit $Q -Sfoo -yfoo
 bk pull $Q $HERE/mergemain
 echo OK
+
 echo $N Merge tag where history contains same name on L1 branch .....$NL
 cd $HERE/mergemain
 bk edit $Q foo
@@ -464,3 +534,51 @@ echo OK
 #bk delta $Q -yopush_cset 'F!O#O$ B%A^R&RR(R)RR'
 #bk commit $Q -yopush_cset -STAG2
 #echo OK
+
+test -x /usr/bin/ruby && {
+echo $N Test ruby script to archive tagged csets ....................$NL
+cd $HERE
+bk clone $Q -r1.2 project tagexport || exit 1
+mkdir tagexport/BitKeeper/triggers
+cat > tagexport/BitKeeper/triggers/post-incoming.release <<'EOF'
+#!/usr/bin/ruby -w
+
+exit 0 if ENV['BK_EVENT'] != "incoming push"
+exit 0 if ENV['BK_STATUS'] != "OK"
+
+tags = {}
+IO.popen("bk changes -d'$if(:TAG:){$each(:TAG:){(:TAG:)\n}}' - " +
+	 "< #{ENV['BK_CSETLIST']}") {|f|
+	f.each {|tag| tags[tag.chomp] = 1 }
+}
+exit 0 if tags.empty?
+
+RELEASEDIR="../release"
+
+tags.each_key {|tag|
+	puts "Making release archive for #{tag}"
+	base = File.expand_path("#{RELEASEDIR}/prog-#{tag}")
+	file = base + ".tar.gz"
+	File.unlink(file) if File.exists? file
+
+	system("bk export -r#{tag} -tplain . #{base}") or raise
+	system("tar -C#{base} -czf #{file} .") or raise
+	system("rm -rf #{base}") or raise
+}
+exit 0
+EOF
+chmod +x tagexport/BitKeeper/triggers/post-incoming.release || exit 1
+cd project
+echo "I love ruby" > language
+bk new $Q language
+bk commit $Q -yruby || exit 1
+bk tag $Q ruby
+mkdir ../release
+bk push $Q ../tagexport 2> OUT || exit 1
+test -f ../release/prog-ruby.tar.gz || exit 1
+bk tag $Q newstuff
+bk push $Q ../tagexport 2> OUT || exit 1
+test -f ../release/prog-newstuff.tar.gz || exit 1
+echo OK
+}
+exit 0

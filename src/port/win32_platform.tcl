@@ -27,6 +27,7 @@ proc bk_init {} \
 	set file_stop {(.*)@([0-9.]+$)}
 	set file_rev {(.*)@([0-9].*)}
 	set env(BK_GUI) "YES"
+	catch { unset env(BK_NO_GUI_PROMPT) }
 	set env(BK_YEAR4) "YES"
 
 	# turn off pager in bk commands
@@ -39,12 +40,11 @@ proc bk_init {} \
 	# we can't find the icon, don't set the global variable. This
 	# way code that needs the icon can check for the existence of
 	# the variable rather than checking the filesystem.
-	set f [file join [exec bk bin] bk.ico]
+	set f "$env(BK_BIN)/gui/images/bk16.ico"
 	if {[file exists $f]} {
 		set ::wmicon $f
-		# N.B. on windows, wm iconbitmap supports a -default option
-		# that is not available on unix. Bummer. 
-		catch {wm iconbitmap . -default $::wmicon}
+		catch {wm iconbitmap . -default $f}
+		catch {wm iconbitmap . $f}
 	}
 }
 

@@ -150,3 +150,41 @@ cd $HERE/copy2
 echo hj > hh
 (echo rr; echo y) | bk pull $Q 2> ERRS || exit 1
 echo OK
+
+echo $N Check vr when remote is on a branch .........................$NL
+cd $HERE/proj
+echo VERSION 1 > foo
+bk new $Q foo
+bk commit $Q -yfoo
+cd ..
+bk clone $Q proj vrcopy
+cd proj
+bk edit $Q foo
+echo VERSION 2 > foo
+bk delta $Q -y2 foo
+bk commit $Q -yfoo
+cd ../vrcopy
+bk edit $Q foo
+bk delta $Q -y2 foo  
+bk commit $Q -yfoo
+cd ../proj
+bk pull $Q ../vrcopy  
+cd ../vrcopy
+bk edit $Q foo
+echo VERSION 3 > foo
+bk delta $Q -y2 foo
+bk commit $Q -yfoo
+cd ../proj
+bk pull $Q -R ../vrcopy
+bk resolve -t <<EOF > VR 2>&1
+vr
+q
+EOF
+# When failing, gave VERSION 2
+grep -q "VERSION 3" VR || {
+	echo Fail
+	echo Expecting to contain the string "'VERSION 3'" and resolve gave
+	cat VR
+	exit 1
+}
+echo OK

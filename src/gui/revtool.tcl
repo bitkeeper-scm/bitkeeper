@@ -31,6 +31,7 @@ proc main {} \
 
 	restoreGeometry "rev" 
 	after idle [list wm deiconify .]
+	after idle [list focus -force .]
 
 	startup
 }

@@ -35,7 +35,7 @@ cmd_push_part1(int ac, char **av)
 		char	lockf[MAXPATH];
 
 		unless (getcwd(lockf, sizeof(lockf))) {
-	lock:		out(LOCK_RD_BUSY "\n");
+ lock:			out(LOCK_RD_BUSY "\n");
 			drain();
 			return (1);
 		}
@@ -110,6 +110,7 @@ cmd_push_part1(int ac, char **av)
 	status = pclose(l);
 	if (!WIFEXITED(status) || (WEXITSTATUS(status) > 1)) {
 		perror(cmd);
+ badlistkey:
 		out("@END@\n"); /* just in case list key did not send one */
 		out("ERROR-listkey failed\n");
 		return (1);
@@ -117,6 +118,10 @@ cmd_push_part1(int ac, char **av)
 
 	out("@OK@\n");
 	m = mopen(lktmp, "r");
+	unless (m && msize(m)) {
+		if (m) mclose(m);
+		goto badlistkey;
+	}
 	if (debug) {
 		fprintf(stderr, "cmd_push_part1: sending key list\n");
 		write(2, m->where,  msize(m));

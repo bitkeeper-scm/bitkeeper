@@ -45,7 +45,7 @@ deledit_main(int ac, char **av)
 	nav[1] = "-l";
         nav[2] = "-Y";
 	i = 1;
-	while (nav[i+2] = av[i++]);
+	while (nav[i+2] = av[i]) i++;
 	return (delta_main(ac + 2, nav));
 }
 
@@ -59,7 +59,7 @@ delget_main(int ac, char **av)
 	nav[1] = "-u";
 	nav[2] = "-Y";
 	i = 1;
-	while (nav[i+2] = av[i++]);
+	while (nav[i+2] = av[i]) i++;
 	return (delta_main(ac + 2, nav));
 }
 
@@ -72,6 +72,6 @@ val_main(int ac, char **av)
 	nav[0] = "admin";
 	nav[1] = "-hhh";
 	i = 1;
-	while (nav[i+1] = av[i++]);
+	while (nav[i+1] = av[i]) i++;
 	return (admin_main(ac + 1, nav));
 }

@@ -1,9 +1,7 @@
 #include "system.h"
 #include "sccs.h"
 
-private int included(char *, char *);
-private int excluded(char *, char *);
-private int export_patch(char *, char *, char *, char *, int, int);
+private int export_patch(char *, char *, char **, char **, int, int);
 
 int
 export_main(int ac,  char **av)
@@ -13,8 +11,8 @@ export_main(int ac,  char **av)
 	char	*rev = NULL, *diff_style = NULL;
 	char	file_rev[MAXPATH];
 	char	buf[MAXLINE], buf1[MAXPATH];
-	char	include[MAXLINE] = "";
-	char	exclude[MAXLINE] = "";
+	char	**includes = 0;
+	char	**excludes = 0;
 	char	*src, *dst;
 	char	*p, *q, *p_sav;
 	char	src_path[MAXPATH], dst_path[MAXPATH];
@@ -57,18 +55,12 @@ export_main(int ac,  char **av)
 				break;
 		    case 'T':	tflag = 1; break;		/* doc 2.0 */
 		    case 'w':	wflag = 1; break;		/* doc 2.0 */
-		    case 'i':	if (optarg && *optarg) {	/* doc 2.0 */
-					strcpy(include, optarg);
-				} else {
-					include[0] = 0;
-				}
-				break;
-		    case 'x':	if (optarg && *optarg) {	/* doc 2.0 */
-					strcpy(exclude, optarg);
-				} else {
-					exclude[0] = 0;
-				}
-				break;
+		    case 'i':					/* doc 3.0 */
+			includes = addLine(includes, strdup(optarg));
+			break;
+		    case 'x':					/* doc 3.0 */
+			excludes = addLine(excludes, strdup(optarg));
+			break;
 		    default :
 usage:			system("bk help -s export");
 			exit(1);
@@ -82,7 +74,7 @@ usage:			system("bk help -s export");
 			exit(1);
 		}
 		return (export_patch(diff_style,
-		    rev, include, exclude, hflag, tflag));
+		    rev, includes, excludes, hflag, tflag));
 	}
 
 	count =  ac - optind;
@@ -90,6 +82,11 @@ usage:			system("bk help -s export");
 	    case 1: src = "."; dst = av[optind]; break;
 	    case 2: src = av[optind++]; dst = av[optind]; break;
 	    default: goto usage;
+	}
+
+	unless (isdir(src)) {
+		fprintf(stderr, "export: %s does not exist.\n", src);
+		exit(1);
 	}
 
 	if (mkdirp(dst) != 0) {
@@ -114,8 +111,10 @@ usage:			system("bk help -s export");
 		f = popen("bk sfiles -luxg", "r");
 		while (fnext(buf, f)) {
 			chomp(buf);
-			unless (included(buf, include)) continue;
-			if (excluded(buf, exclude)) continue;
+			if ((excludes && match_globs(buf, excludes, 0)) ||
+			    (includes && !match_globs(buf, includes, 0))) {
+				continue;
+			}
 			if (!sysfiles && strneq(buf, "BitKeeper/", 10)) {
 				continue;
 			}
@@ -143,12 +142,15 @@ usage:			system("bk help -s export");
 		int	flags = 0;
 		struct	stat sb;
 
+		/* trim off |1.5\n */
 		chop(buf);
-		unless (included(buf, include)) continue;
-		if (excluded(buf, exclude)) continue;
 		p = strchr(buf, BK_FS);
 		assert(p);
 		*p++ = '\0';
+
+		if (excludes && match_globs(buf, excludes, 0)) continue;
+		if (includes && !match_globs(buf, includes, 0)) continue;
+
 		/* skip BitKeeper and deleted files */
 		if (!sysfiles && strneq(p, "BitKeeper/", 10)) continue;
 		if (streq(buf, "ChangeSet")) continue;
@@ -204,7 +206,7 @@ next:		;
 
 private int
 export_patch(char *diff_style,
-	char	*rev, char *include, char *exclude, int hflag, int tflag)
+	char *rev, char **includes, char **excludes, int hflag, int tflag)
 {
 	FILE	*f, *f1;
 	char	buf[MAXLINE], file_rev[MAXPATH];
@@ -236,8 +238,30 @@ export_patch(char *diff_style,
 		char	*fstart, *fend;
 
 		chop(buf);
-		unless (included(buf, include)) continue;
-		if (excluded(buf, exclude)) continue;
+		/*
+		 * We want to match on any of the names and rset gives us
+		 * <current>|<start>|<srev>|<end>|<erev>
+		 */
+		if (includes || excludes) {
+			char	**names = splitLine(buf, "|", 0);
+			int	skip = 0;
+
+			if (excludes && (    /* any of the 3 below */
+			    match_globs(names[1], excludes, 0) ||
+			    match_globs(names[2], excludes, 0) ||
+			    match_globs(names[4], excludes, 0))) {
+				skip = 1;
+			}
+			if (includes && (    /* any of the 3 below */
+			    !match_globs(names[1], includes, 1) ||
+			    !match_globs(names[2], includes, 1) ||
+			    !match_globs(names[4], includes, 1))) {
+				skip = 1;
+			}
+			freeLines(names, free);
+			if (skip) continue;
+		}
+
 		/*
 		 * Skip BitKeeper/ files (but pass deletes..)
 	  	 *
@@ -259,18 +283,4 @@ export_patch(char *diff_style,
 	fclose(f);
 	unlink(file_rev);
 	return (pclose(f1));
-}
-
-private int
-included(char *fname, char *include)
-{
-	unless (include && include[0]) return (1);
-	return (match_one(fname, include, 0));
-}
-
-private int
-excluded(char *fname, char *exclude)
-{
-	unless (exclude && exclude[0]) return (0);
-	return (match_one(fname, exclude, 0));
 }

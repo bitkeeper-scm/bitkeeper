@@ -3,6 +3,8 @@
 .\"    ====================== BitKeeper tags ======================
 .SH NAME
 bk tag \- tag the \*(BK repository with a symbolic name
+.br
+bk tags \- list tagged changesets
 .SH SYNOPSIS
 .Bc bk tag [
 .OPTreq \-r rev
@@ -10,7 +12,7 @@ bk tag \- tag the \*(BK repository with a symbolic name
 .ARG symbol
 .SH DESCRIPTION
 .LP
-Symbols (aka tags or labels) are used when you want to record the state of 
+Tags (aka symbols or labels) are used when you want to record the state of 
 a tree.  It is quite common to ``tag the tree'' with a release name when 
 shipping a product to customers.  
 .LP
@@ -20,11 +22,19 @@ be checked in and/or committed to a changeset. Tag the tree by typing:
 .DS
 $ bk tag Alpha
 .DE
-The Alpha symbol will be set on the most recent changeset.  Or you
+The Alpha tag will be set on the most recent changeset.  Or you
 can commit a changeset and tag the tree at the same time with the \-S
 option to commit:
 .DS
 $ bk commit \-SAlpha
+.DE
+To see all the tagged changesets run
+.DS
+$ bk tags
+.DE
+which is just an alias for 
+.DS
+$ bk changes -t
 .DE
 If you want to recover the state of the world as of a tag, do this:
 .DS
@@ -51,14 +61,17 @@ command again.  If there are multiple tags
 with the same name, \*(BK takes the most recently applied tag (which
 means you can move a tag backwards by specifying an older revision of
 the cset file).
-.LP
-Tagging individual files, while possible with the admin command, is
-generally unnecessary.  However, if you want to tag all the files,
-you can do so like this:
-.DS
-$ bk \-r admin \-SAlpha
-.DE
-That will put the Alpha tag on top of trunk on all files.
+.SH LEGAL TAGS
+Certain characters are not allowed in tags because they conflict with
+other parts of the \*(BK revision, date, and/or range namespaces.
+Tags may not start with digits, an equal sign "=", a hyphen "-", or a dot
+".".
+A tag may not be the plus sign "+" since that is used to mean the most
+recent revision.
+A tag may not contain the strings "..", ".,", ",.", or ",,"
+since those are used to specify ranges.
+Tags may not contain any of the following characters: Control-A "^A",
+vertical bar "|", newline "\\n", or carriage return "\\r".
 .SH BUGS
 .LP
 Need a way of setting a tag in citool.

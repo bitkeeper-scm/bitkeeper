@@ -110,17 +110,19 @@ _get_socks_proxy(char **proxies)
 
 #ifdef WIN32
 int
-getReg(HKEY hive, char *key, char *valname, char *valbuf, int *buflen)
+getReg(HKEY hive, char *key, char *valname, char *valbuf, int *lenp)
 {
         int	rc;
         HKEY    hKey;
         DWORD   valType = REG_SZ;
+	DWORD	len = *lenp;
 
 	valbuf[0] = 0;
         rc = RegOpenKeyEx(hive, key, 0, KEY_QUERY_VALUE, &hKey);
         if (rc != ERROR_SUCCESS) return (0);
 
-        rc = RegQueryValueEx(hKey,valname, NULL, &valType, valbuf, buflen);
+        rc = RegQueryValueEx(hKey,valname, NULL, &valType, valbuf, &len);
+	*lenp = len;
         if (rc != ERROR_SUCCESS) return (0);
         RegCloseKey(hKey);
         return (1);
@@ -132,7 +134,7 @@ getRegDWord(HKEY hive, char *key, char *valname, DWORD *val)
         int	rc;
         HKEY    hKey;
         DWORD   valType = REG_DWORD;
-	int	buflen = sizeof (DWORD);
+	DWORD	buflen = sizeof (DWORD);
 
         rc = RegOpenKeyEx(hive, key, 0, KEY_QUERY_VALUE, &hKey);
         if (rc != ERROR_SUCCESS) return (0);
@@ -153,7 +155,7 @@ addProxy(char *type, char *line, char **proxies)
 	unless (line) return proxies;
 	q = strchr(line, ':');
 	unless (q) {
-		getMsg("unknown_proxy", line, 0, '=', stderr);
+		getMsg("unknown_proxy", line, '=', stderr);
 		return (proxies);
 	}
 	*q = 0;
@@ -174,12 +176,12 @@ char **
 _get_http_proxy_reg(char **proxies)
 {
 #define KEY "Software\\Microsoft\\Windows\\CurrentVersion\\internet Settings"
-	char	*p, *q, *type, buf[MAXLINE] = "", proxy_host[MAXPATH];
-	int	proxy_port, len = sizeof(buf);
+	char	*p, *q, buf[MAXLINE] = "";
+	int	len = sizeof(buf);
 	int	proxyEnable = 0;
 
 	if (getRegDWord(HKEY_CURRENT_USER,
-			KEY, "ProxyEnable", &proxyEnable) == 0) {
+			KEY, "ProxyEnable", (DWORD *)&proxyEnable) == 0) {
 		goto done;
 	}
 	if (proxyEnable == 0) goto done;

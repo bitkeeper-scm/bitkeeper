@@ -26,7 +26,7 @@ dotest()
 	len=`echo "$line" | wc -c`
 	len=`expr 62 - $len`
 	fill=`printf "%${len}s\n" "" | sed -e 's/ /./g' 2> /dev/null`
-	echo $N "$line$fill" $NL
+	echo $N "$line$fill"$NL
 	bk _shellSplit_test "$1" > BK
 	eval shellsplit "$1" > SH
  	diff SH BK > DIFFS || {
