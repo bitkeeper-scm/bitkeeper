@@ -2,11 +2,15 @@
 .TH "bk import" 1 20%E% "\*(BC" "\*(UM"
 .\"    ================= Importing files into BitKeeper =================
 .SH NAME
-bk import \- import a set of files into a \*(BK package
+bk import \- import files or changes into a \*(BK package
 .SH SYNOPSIS
 .B bk import -tpatch [OPTIONS] 
 .ARG patch
 .ARG destination
+.br
+.B bk import -temail
+.OPT destination
+< mbox
 .br
 .B bk import -tplain [OPTIONS]
 .ARG directory
@@ -25,9 +29,11 @@ bk import \- import a set of files into a \*(BK package
 .ARG destination
 .SH DESCRIPTION
 .LP
-Use bk import to put plain text files, patches (diff -Nur), SCCS files, and 
-RCS and CVS files (in this document RCS will mean both RCS AND CVS)
-into a \*(BK package.  bk import does its work outside of your original tree
+Use bk import to put plain text files, patches (diff -Nur),
+patches and comments in the form of email messages, SCCS files, and 
+RCS/CVS files (in this document RCS will mean both RCS AND CVS)
+into a \*(BK package.  For file (text, SCCS, RCS, etc) imports,
+bk import does its work outside of your original tree
 thus leaving the original files intact while importing them into a 
 \*(BK package.
 .LP
@@ -177,6 +183,24 @@ A rename in a patch is viewed as the deletion of one file and the
 creation of another file, so to track these, bk import will launch 
 bk renametool which is the graphical tool used to manually 
 match the deleted files with the newly created files.
+.SH "IMPORTING EMAILS"
+.LP
+\*(BK can import patches contained in email messages.  This style of import
+is an additional layer over the normal patch import.  The usage for this
+version of bk import is
+.DS
+bk import -temail repo < mailbox
+.DE
+where 
+.I mailbox
+may contain multiple messages, each containing a patch.  The user and
+hostname are taken from the email header
+and the subject line 
+is used as the checkin comment for each file, as well as the first
+line of the changeset comment.  If there is any preamble above the patch,
+that is used as the rest of the changeset comments.
+.LP
+This part of import was written by Linus Torvalds and is used with permission.
 .SH "IMPORTING RCS FILES"
 .LP
 The default branch of the RCS tree is the one that will be imported.
