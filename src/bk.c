@@ -475,6 +475,7 @@ run_cmd(char *prog, int is_bk, int ac, char **av)
 		argv[0] = find_wish();
 		if (streq(prog, "sccstool")) prog = "revtool";
 		if (streq(prog, "histool")) prog = "revtool";
+		if (streq(prog, "histtool")) prog = "revtool";
 		if (streq(prog, "revtool")) prog = "revtool";
 		sprintf(cmd_path, "%s/%s", bin, prog);
 		argv[1] = cmd_path;
