@@ -45,11 +45,12 @@ pull_main(int ac, char **av)
 	bzero(&opts, sizeof(opts));
 	opts.gzip = 6;
 	opts.automerge = 1;
-	while ((c = getopt(ac, av, "c:deE:GilnqRtw|z|")) != -1) {
+	while ((c = getopt(ac, av, "c:deE:Gil|nqRtw|z|")) != -1) {
 		switch (c) {
 		    case 'G': opts.nospin = 1; break;
 		    case 'i': opts.automerge = 0; break;	/* doc 2.0 */
-		    case 'l': opts.list++; break;		/* doc 2.0 */
+		    case 'l': opts.list = listType(optarg);	/* doc 2.0 */
+			      break;
 		    case 'n': opts.dont = 1; break;		/* doc 2.0 */
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
 		    case 'R': opts.noresolve = 1; break;	/* doc 2.0 */
@@ -68,6 +69,12 @@ pull_main(int ac, char **av)
 			    usage();
 			    return(1);
 		}
+	}
+
+	if (opts.list == LISTKEY) {
+		return (sys("bk", "synckeys", "-rk", av[optind], SYS));
+	} else  if (opts.list == LISTREV) {
+		return (sys("bk", "synckeys", "-rr", av[optind], SYS));
 	}
 
 	loadNetLib();

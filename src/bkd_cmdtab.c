@@ -37,5 +37,8 @@ struct cmd cmds[] = {
   { "rclone_part2", "rclone_1.3_part2", 
     "clone local repository to remote repository",
     cmd_rclone_part2 },
+  { "synckeys", "synckeys_1.3", 
+    "sync keys in local repository to remote repository",
+    cmd_synckeys },
   { 0, 0, 0 }
 };

@@ -154,6 +154,7 @@ int	sortmerge_main(int, char **);
 int	status_main(int, char **);
 int	stripdel_main(int, char **);
 int	strings_main(int, char **);
+int	synckeys_main(int, char **);
 int	tagmerge_main(int, char **);
 int	takepatch_main(int, char **);
 int	testdates_main(int, char **);
@@ -314,6 +315,7 @@ struct	command cmdtbl[] = {
 	{"smerge", smerge_main},		/* doc needed 2.0 */
 	{"status", status_main},		/* doc 2.0 */
 	{"stripdel", stripdel_main},		/* doc 2.0 */
+	{"synckeys", synckeys_main},
 	{"tagmerge", tagmerge_main},		/* */
 	{"takepatch", takepatch_main},		/* doc 2.0 */
 	{"testdates", testdates_main},		/* undoc 2.0 */
