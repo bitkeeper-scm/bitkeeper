@@ -11,7 +11,8 @@ ifeq "$(OSTYPE)" "cygwin"
 	EXE=.exe
 	XTRA=win32
 	BKLINK=bklink.exe
-	UWTLIB=win32/uwtlib/libuwt.a
+	UWT=win32/uwtlib
+	UWTLIB=$(UWT)/libuwt.a
 	W32LIBS=-lws2_32 -lole32
 else
 	SYS=unix
@@ -57,7 +58,9 @@ CC_FAST_DEBUG=$G -O2 $(WARNINGS)
 CC_FAST	=$(CC_FAST_DEBUG)
 CC_WALL=$G -DLINT $(WARNINGS)
 INSTALL=install
-UWT_H	=
+UWT_H	= $(UWT)/sys/wait.h $(UWT)/misc.h $(UWT)/stat.h $(UWT)/mman.h \
+	$(UWT)/times.h $(UWT)/dirent.h $(UWT)/utsname.h $(UWT)/re_map_decl.h \
+	$(UWT)/re_map.h
 WIN_TMP	=*.idb *.pdb *.ilk *.exe *~bkp
 BINS	= $(BK)
 RESOURCE=
@@ -135,7 +138,7 @@ SCRIPTS	= applypatch bk.script import resync \
 	b64wrap unb64wrap gzip_b64wrap ungzip_b64wrap
 LOCALSCR= build
 PSCR	= t/doit
-UWTOBJ	= win32/uwtlib/wapi_intf.o win32/uwtlib/wcrt_intf.o
+UWTOBJ	= $(UWT)/wapi_intf.o $(UWT)/wcrt_intf.o
 LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a tomcrypt/libtomcrypt.a $(UWTLIB)
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt bklogo.gif \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf
@@ -336,8 +339,8 @@ gnu: $(BK) FORCE
 
 win32: FORCE
 	cd win32 && $(MAKE) BINDIR=$(BINDIR)
-win32/uwtlib/libuwt.a: FORCE
-	cd win32/uwtlib && $(MAKE) 
+$(UWT)/libuwt.a: FORCE
+	cd $(UWT) && $(MAKE) 
 zlib/libz.a: $(ZLIBOBJ)
 	rm -f $@
 	$(AR) cr zlib/libz.a $(ZLIBOBJ)
@@ -362,7 +365,8 @@ bk.res: win32/data/bk.rc win32/data/bk.ico
 	rc.exe -fo bk.res -r win32/data/bk.rc
 
 bklink.exe: bklink.c
-	$(CC) bklink.c
+	$(CC) $(CFLAGS) -c bklink.c
+	$(LD) $(LDFLAGS) $(LD_OUT) bklink.o $(W32LIBS)
 
 $(BK): bk.o $(LIBS) $(RESOURCE)
 	$(LD) $(LDFLAGS) $(LD_OUT) bk.o $(LIBS) $(W32LIBS) $(RESOURCE)
