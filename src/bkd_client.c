@@ -79,8 +79,7 @@ nfs_parse(char *p)
 		*s = 0; r->user = strdup(p); p = s + 1; *s = '@';
 	}
 	/* just path */
-#ifdef WIN32
-	/* Account for Dos path e.g c:/path */
+#ifdef WIN32 /* Account for Dos path e.g c:/path */
 	unless ((s = strchr(p, ':')) && (s != &p[1])) {
 #else
 	unless (s = strchr(p, ':')) {
@@ -217,26 +216,6 @@ remote_print(remote *r, FILE *f)
 	fprintf(f, "\n");
 }
 
-#ifdef WIN32
-pid_t
-tcp_pipe(remote *r)
-{
-	char	port[50], pipe_size[50];
-	char	*av[9] = {"bk", "_socket2pipe"};
-	int	i = 2;
-
-	sprintf(port, "%d", r->port);
-	sprintf(pipe_size, "%d", BIG_PIPE);
-	if (r->trace) av[i++] = "-d";
-	if (r->httpd) av[i++] = "-h";
-	av[i++] = "-p";
-	av[i++] = pipe_size;
-	av[i++] = r->host;
-	av[i++] = port;
-	av[i] = 0;
-	return spawnvp_rwPipe(av, &(r->rfd), &(r->wfd), BIG_PIPE);
-}
-#endif
 
 
 /*
@@ -257,29 +236,7 @@ bkd(int compress, remote *r)
 
 	if (r->port) {
 		assert(r->host);
-#ifdef WIN32
-		p = tcp_pipe(r);
-		if (p == ((pid_t) -1)) {
-			fprintf(stderr, "cannot create socket_helper\n");
-			return (-1);
-		}
-		r->isSocket = 0;
-		return (p);
-#else
-		if (r->httpd) {
-			http_connect(r, WEB_BKD_CGI);
-		} else {
-			i = tcp_connect(r->host, r->port);
-			if (i < 0) {
-				r->rfd = r->wfd = -1;
-				if (i == -2) r->badhost = 1;
-			} else {
-				r->rfd = r->wfd = i;
-			}
-		}
-		r->isSocket = 1;
-		return ((pid_t)0);
-#endif
+		return (bkd_tcp_connect(r));
 	}
 	t = sccs_gethost();
 	if (r->host && (!t || !streq(t, r->host))) { 
@@ -290,23 +247,7 @@ bkd(int compress, remote *r)
 #else
 			remsh = "rsh";
 #endif
-#ifdef WIN32
-			if (!(t = prog2path(remsh)) ||
-			    strstr(t, "system32/rsh")) {
-				fprintf(stderr, "Cannot find %s.\n", remsh);
-				fprintf(stderr,
-"=========================================================================\n\
-The programs rsh/ssh are not bundled with the BitKeeper distribution.\n\
-The recommended way for transfering BitKeeper files on Windows is via\n\
-the bkd daemon. (If you have a bkd daemon configured on the remote host,\n\
-try \"bk push/pull bk://HOST:PORT\".), If you prefer to transfer BitKeeper\n\
-files via a rsh/ssh connection, you can install the rsh/ssh programs\n\
-seperately. Please Note that the rsh command bundled with Windows NT is\n\
-not compatible with Unix rshd.\n\
-=========================================================================\n");
-				return (-1);
-			}
-#endif
+			if (check_rsh(remsh)) return (-1);
 			remopts = 0;
 		}
 		if (t = getenv("BK_RSH")) {
@@ -366,39 +307,8 @@ not compatible with Unix rshd.\n\
 		}
 	}
 
-#ifndef WIN32
 	signal(SIGCHLD, SIG_DFL);
-#endif
 	p = spawnvp_rwPipe(cmd, &(r->rfd), &(r->wfd), BIG_PIPE);
 	if (freeme) free(freeme);
 	return (p);
-}
-
-
-void
-bkd_reap(pid_t resync, int r_pipe, int w_pipe)
-{
-	close(w_pipe);
-	close(r_pipe);
-	if (resync > 0) {
-	/*
-	 * win32 does not support the WNOHANG options
-	 */
-#ifndef WIN32
-		int	i;
-
-		/* give it a bit for the protocol to close */
-		for (i = 0; i < 20; ++i) {
-			if (waitpid(resync, 0, WNOHANG) == resync) return;
-			usleep(10000);
-		}
-		kill(resync, SIGTERM);
-		for (i = 0; i < 20; ++i) {
-			if (waitpid(resync, 0, WNOHANG) == resync) return;
-			usleep(10000);
-		}
-		kill(resync, SIGKILL);
-#endif
-		waitpid(resync, 0, 0);
-	}
 }

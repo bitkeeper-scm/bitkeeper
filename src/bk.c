@@ -135,9 +135,7 @@ int	sfind_main(int, char **);
 int	sfio_main(int, char **);
 int	shrink_main(int, char **);
 int	sinfo_main(int, char **);
-#ifdef WIN32
 int	socket2pipe_main(int, char **);
-#endif
 int	sort_main(int, char **);
 int	sortmerge_main(int, char **);
 int	status_main(int, char **);
@@ -181,9 +179,7 @@ struct command cmdtbl[] = {
 	{"_mail", mail_main},
 	{"_probekey", probekey_main},
 	{"_prunekey", prunekey_main},
-#ifdef WIN32
-	{"_socket2pipe", socket2pipe_main},
-#endif
+	{"_socket2pipe", socket2pipe_main},	/* for win32 only */
 	{"_sort", sort_main},
 	{"_sortmerge", sortmerge_main},
 	{"_unlink", unlink_main },
@@ -338,16 +334,15 @@ main(int ac, char **av)
 		printf("%s\n", getenv("PATH"));
 		exit(0);
 	}
-#ifdef WIN32
+	/* bk _realpath is mainly for win32 */
 	if (av[1] && streq(av[1], "_realpath") && !av[2]) {
 		char buf[MAXPATH], real[MAXPATH];
 
-		nt_getcwd(buf, sizeof(buf));
+		getcwd(buf, sizeof(buf));
 		getRealName(buf, NULL, real);
 		printf("%s => %s\n", buf, real);
 		exit(0);
 	}
-#endif
 	if (av[1] && streq(av[1], "--help") && !av[2]) {
 		system("bk help bk");
 		exit(0);
@@ -431,9 +426,7 @@ main(int ac, char **av)
 		if (dashr) {
 			unless (streq(prog, "sfiles") || streq(prog, "sfind")) {
 				getoptReset();
-#ifndef WIN32
-				signal(SIGPIPE, SIG_IGN);
-#endif
+				signal(SIGPIPE, SIG_IGN); /* no-op on win32 */
 				return (bk_sfiles(si > 1 ? sopts : 0, ac, av));
 			}
 		}
@@ -459,10 +452,6 @@ spawn_cmd(int flag, char **av)
 	int ret;
 
 	ret = spawnvp_ex(flag, av[0], av); 
-#ifndef WIN32
-	/*
-	 * This test always failed with bash in cygwin1.1.6, why ?
-	 */
 	if (WIFSIGNALED(ret)) {
 		unless (WTERMSIG(ret) == SIGPIPE) {
 			fprintf(stderr,
@@ -472,7 +461,6 @@ spawn_cmd(int flag, char **av)
 		fprintf(stderr, "bk: cannot spawn %s\n", av[0]);
 		return (127);
 	}
-#endif
 	return (WEXITSTATUS(ret));
 }
 
@@ -535,9 +523,7 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 	    streq(prog, "csettool") ||
 	    streq(prog, "renametool")) {
 		signal(SIGINT, SIG_IGN);
-#ifndef WIN32
 		signal(SIGQUIT, SIG_IGN);
-#endif
 		signal(SIGTERM, SIG_IGN);
 		argv[0] = find_wish();
 		if (streq(prog, "sccstool")) prog = "revtool";
@@ -907,7 +893,6 @@ bk_sfiles(char *opts, int ac, char **av)
 		cmdlog_end(WEXITSTATUS(status), 0);
 		exit(WEXITSTATUS(status));
 	}
-#ifndef WIN32
 	if (WIFSIGNALED(status)) {
 		fprintf(stderr,
 		    "Child was signaled with %d\n",
@@ -915,7 +900,6 @@ bk_sfiles(char *opts, int ac, char **av)
 		cmdlog_end(WTERMSIG(status), 0);
 		exit(WTERMSIG(status));
 	}
-#endif
 	cmdlog_end(100, 0);
 	exit(100);
 }
@@ -940,11 +924,7 @@ find_prog(char *prog)
 		for (s = p; (*s != PATH_DELIM) && (*s != '\0');  s++);
 		if (*s == '\0') more = 0;
 		*s = '\0';
-#ifdef WIN32
-		sprintf(prog_path, "%s/%s.exe", p, prog);
-#else
-		sprintf(prog_path, "%s/%s", p, prog);
-#endif
+		sprintf(prog_path, "%s/%s%s", p, prog, EXE);
 		if (exists(prog_path)) return (prog_path);
 		p = ++s;
 	}
@@ -971,21 +951,16 @@ find_wish()
 		for (s = p; (*s != PATH_DELIM) && (*s != '\0');  s++);
 		if (*s == '\0') more = 0;
 		*s = '\0';
-#ifdef WIN32
-		sprintf(wish_path, "%s/wish83.exe", p);
+		sprintf(wish_path, "%s/wish%s", p, EXE);
 		if (exists(wish_path)) return (wish_path);
-		sprintf(wish_path, "%s/wish82.exe", p);
+		sprintf(wish_path, "%s/wish83%s", p, EXE);
 		if (exists(wish_path)) return (wish_path);
-		sprintf(wish_path, "%s/wish81.exe", p);
+		sprintf(wish_path, "%s/wish82%s", p, EXE);
 		if (exists(wish_path)) return (wish_path);
-#else
-		sprintf(wish_path, "%s/wish8.2", p);
+		sprintf(wish_path, "%s/wish81%s", p, EXE);
 		if (exists(wish_path)) return (wish_path);
-		sprintf(wish_path, "%s/wish8.0", p);
+		sprintf(wish_path, "%s/wish80%s", p, EXE);
 		if (exists(wish_path)) return (wish_path);
-		sprintf(wish_path, "%s/wish", p);
-		if (exists(wish_path)) return (wish_path);
-#endif
 		p = ++s;
 	}
 	fprintf(stderr, "Cannot find wish to run\n");

@@ -447,9 +447,7 @@ takepatch(opts opts, int gzip, remote *r)
 		    (double)opts.out/opts.in);
 	}
 	if (WIFEXITED(status)) return (WEXITSTATUS(status));
-#ifndef	WIN32
 	if (WIFSIGNALED(status)) return (-WTERMSIG(status));
-#endif
 	return (100);
 }
 

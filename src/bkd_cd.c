@@ -56,8 +56,7 @@ cmd_cd(int ac, char **av)
 		out("ERROR-cd command must have path arugment\n");
 		return (1);
 	}
-#ifdef WIN32
-	/* convert /c:path => c:path */
+#ifdef WIN32 /* convert /c:path => c:path */
 	if ((p[0] == '/') && isalpha(p[1]) && (p[2] == ':')) p++;
 #endif
 	if ((strlen(p) >= 14) && strneq("///LOG_ROOT///", p, 14)) {

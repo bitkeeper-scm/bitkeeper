@@ -168,9 +168,7 @@ compressed(int gzip, char *csets_out)
 	int	rfd, status;
 	char	buf[8192];
 
-#ifndef	WIN32
 	signal(SIGCHLD, SIG_DFL);
-#endif
 	fd0 = dup(0); close(0);
 	fd = open(csets_out, 0,  0);
 	pid = spawnvp_rPipe(cset, &rfd, BIG_PIPE);
@@ -313,9 +311,7 @@ cmd_pull_part1(int ac, char **av)
 		return (1);
 	}
 
-#ifndef	WIN32
 	signal(SIGCHLD, SIG_DFL); /* hpux */
-#endif
 	fputs("@OK@\n", stdout);
 	pid = spawnvp_rPipe(probekey_av, &rfd, 0);
 	f = fdopen(rfd, "r");

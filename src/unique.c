@@ -73,7 +73,7 @@ keysHome()
 		free(t);
 		return (keysFile = (strdup)(path));
 	}
-#ifndef WIN32
+#ifndef WIN32 /* win32 have no /var directory */
 	if (exists("/var/bitkeeper/keys")) {
 		return (keysFile = (strdup)("/var/bitkeeper/keys"));
 	}

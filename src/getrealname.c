@@ -92,7 +92,7 @@ getRealName(char *path, MDBM *db, char *realname)
 	q = mypath;
 	r = realname;
 	
-#ifdef WIN32
+#ifdef WIN32 /* dos colon handling */
 	if (q[1] == ':') {
 		q[0] = toupper(q[0]); /* store drive letter in upper case */
 		assert(!islower(q[0]));
@@ -138,20 +138,4 @@ getRealName(char *path, MDBM *db, char *realname)
 	return (1);
 err:	fprintf(stderr, "getRealName failed: mypath=%s\n", mypath);
 	return (0);
-}
-
-char *
-getRealCwd(char *buf, size_t len)
-{
-	char *tmp;
-
-	tmp = (char *) malloc(len);
-#undef getcwd
-#ifdef WIN32
-	unless (nt_getcwd(tmp, len)) return (NULL);
-#else
-	unless (getcwd(tmp, len)) return (NULL);
-#endif
-	getRealName(tmp, NULL, buf);
-	return (buf);
 }

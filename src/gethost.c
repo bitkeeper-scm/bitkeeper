@@ -1,9 +1,5 @@
-#include <stdio.h>
-#ifdef WIN32
-#include <io.h>
-#include <fcntl.h>
-#endif
-#define	unless(e)	if (!(e))
+#include "system.h"
+#include "sccs.h"
 
 int
 gethost_main(int ac, char **av)
@@ -11,9 +7,6 @@ gethost_main(int ac, char **av)
 	extern	char	*sccs_gethost();
 	char 	*host;
 
-#ifdef WIN32
-	setmode(1, _O_BINARY);
-#endif
 	if (ac == 2 && !strcmp("--help", av[1])) {
 		system("bk help gethost");
 		return (1);

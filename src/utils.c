@@ -171,7 +171,7 @@ wait_eof(remote *r, int verbose)
  * as a line terminator, `\r' is striped if it is followed by the `\n`
  * character.
  * This version uses the read_blk() instead of read() interface
- * On WIN32, read() does not work a socket.
+ * On WIN32, read() does not work on a socket.
  * TODO: This function should be merged with the getline() function above
  */
 int

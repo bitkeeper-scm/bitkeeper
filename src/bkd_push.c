@@ -39,9 +39,7 @@ cmd_push(int ac, char **av)
 		}
 	}
 
-#ifndef	WIN32
 	signal(SIGCHLD, SIG_DFL);
-#endif
 
 #define	OUT	{ error = 1; goto out; }
 	pid = spawnvp_ex(_P_NOWAIT, prs[0], prs);
@@ -63,9 +61,7 @@ cmd_push(int ac, char **av)
 	 */
 	bzero(buf, sizeof(buf));
 	if (((got = in(buf, 8)) == 8) && streq(buf, "@PATCH@\n")) {
-#ifndef	WIN32
 		signal(SIGCHLD, SIG_DFL);
-#endif
 		unless (verbose) tp[3] = 0;
 		if (gzip) {
 			/* Arrange to have stderr go to stdout */
@@ -204,9 +200,7 @@ cmd_push_part1(int ac, char **av)
 		return (1);
 	}
 
-#ifndef	WIN32
 	signal(SIGCHLD, SIG_DFL); /* for free bsd */
-#endif
 	if (debug) fprintf(stderr, "cmd_push_part1: calling listkey\n");
 	sprintf(cmd, "bk _listkey > BitKeeper/tmp/lk%d", getpid());
 	l = popen(cmd, "w");
@@ -253,9 +247,7 @@ cmd_push_part2(int ac, char **av)
 	static	char *takepatch[] = { "bk", "takepatch", "-vv", "-c", 0};
 	static	char *resolve[7] = { "bk", "resolve", "-t", "-c", 0, 0, 0};
 
-#ifndef	WIN32
 	signal(SIGCHLD, SIG_DFL);
-#endif
 	while ((c = getopt(ac, av, "denz|")) != -1) {
 		switch (c) {
 		    case 'z':

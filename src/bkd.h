@@ -1,12 +1,9 @@
 #ifndef _BKD_H
 #define	_BKD_H
 
-#include <stdio.h>
-#include <string.h>
-#include <ctype.h>
-#include "lib_tcp.h"
 #include "system.h"
 #include "sccs.h"
+#include "lib_tcp.h"
 #include "zlib/zlib.h"
 
 /*
@@ -88,6 +85,7 @@ extern	bkdopts Opts;
 extern	char cmdlog_buffer[];
 extern	char *logRoot;
 
+void	bkd_server();
 remote	*remote_parse(char *url, int is_clone);
 char	*remote_unparse(remote *r);
 pid_t	bkd(int compress, remote *r);
@@ -136,4 +134,5 @@ int	flushSocket(int fd);
 void	try_clone1_2(int quiet, int gzip,
 				char *rev, remote *r, char *local, char *msg);
 int	remote_lock_fail(char *buf, int verbose);
+unsigned long ns_sock_host2ip(char, int);
 #endif

@@ -291,9 +291,7 @@ sfio(opts opts, int gzip, remote *r)
 		fprintf(stderr, "Cannot spawn %s %s\n", cmds[0], cmds[1]);
 		return(1);
 	}
-#ifndef WIN32
 	signal(SIGCHLD, SIG_DFL);
-#endif
 	gunzipAll2fd(r->rfd, pfd, gzip, &(opts.in), &(opts.out));
 	close(pfd);
 	waitpid(pid, &status, 0);

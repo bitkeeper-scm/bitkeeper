@@ -475,7 +475,7 @@ sccs_getuser(void)
 	if (s) return (s);
 	unless (s = getenv("BK_USER")) s = getenv("USER");
 	unless (s && s[0]) s = getlogin();
-#ifndef WIN32
+#ifndef WIN32 /* win32 have no getpwuid() */
 	unless (s && s[0]) {
 		struct	passwd	*p = getpwuid(getuid());
 
@@ -4066,9 +4066,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	unless (_YEAR4) _YEAR4 = getenv("BK_YEAR4") ? 1 : -1;
 	if (_YEAR4 == 1) s->xflags |= X_YEAR4;
 
-#ifndef WIN32
 	signal(SIGPIPE, SIG_IGN); /* win32 platform does not have sigpipe */
-#endif
 	if (sig_ignore() == 0) s->unblock = 1;
 	return (s);
 }
@@ -5501,7 +5499,7 @@ openOutput(sccs *s, int encode, char *file, FILE **op)
 			}
 		}
 #endif
-#ifdef WIN32
+#ifdef WIN32	/* EOLN flag have no effect on Unix */
 		/*
 		 * Note: This has no effect when we print to stdout
 		 * We want this becuase we want diff_gfile() to
@@ -8251,10 +8249,8 @@ openInput(sccs *s, int flags, FILE **inp)
 		}
 		*inp = fopen(file, mode);
 		if (((s->encoding & E_DATAENC)== E_ASCII) && ascii(file)) {
-#ifdef WIN32
 			/* read text file in text mode */
 			setmode(fileno(*inp), _O_TEXT);
-#endif
 			return (0);
 		}
 		s->encoding = compress | E_UUENCODE;
@@ -11046,11 +11042,7 @@ int
 isValidUser(char *u)
 {
 	if (!u || !(*u)) return 0;
-#ifdef WIN32
-	if (!stricmp(u, ROOT_USER) || streq(u, UNKNOWN_USER)) return 0;
-#else
-	if (streq(u, ROOT_USER) || streq(u, UNKNOWN_USER)) return 0;
-#endif
+	if (sameuser(u, ROOT_USER) || sameuser(u, UNKNOWN_USER)) return 0;
 	/*
 	 * XXX TODO:
 	 * 	a) should we disallow "Guest/guest" as user name ??
@@ -11381,7 +11373,7 @@ out:
 		OUT;
 	}
 
-#ifdef WIN32
+#ifdef WIN32 /* check file busy */
 	/*
 	 * Win32 note: If gfile is in use, we cannot delete
 	 * it when we are done. It is better to bail now
@@ -14876,7 +14868,7 @@ stripChecks(sccs *s, delta *d, char *who)
 	return (0);
 }
 
-#ifndef WIN32
+#ifndef WIN32 /* smart unlink */
 int
 smartUnlink(char *file)
 {

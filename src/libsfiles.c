@@ -1,8 +1,5 @@
 #include "system.h"
 #include "sccs.h"
-#ifndef WIN32
-#include <dirent.h>
-#endif
 WHATSTR("@(#)%K%");
 
 /*

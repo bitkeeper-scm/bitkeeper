@@ -1,8 +1,5 @@
-#include <stdio.h>
-#ifdef WIN32
-#include <io.h>
-#include <fcntl.h>
-#endif
+#include "system.h"
+#include "sccs.h"
 
 int
 getuser_main(int ac, char **av)
@@ -10,9 +7,6 @@ getuser_main(int ac, char **av)
 	extern	char	*sccs_getuser();
 	char *user;
 
-#ifdef WIN32
-	setmode(1, _O_BINARY);
-#endif
 	if (ac == 2 && !strcmp("--help", av[1])) {
 		system("bk help getuser");
 		return (1);

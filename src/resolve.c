@@ -100,7 +100,7 @@ resolve_main(int ac, char **av)
 	unless (opts.mergeprog) opts.mergeprog = "merge";
 	if ((av[optind] != 0) && isdir(av[optind])) chdir(av[optind]);
 
-#ifndef WIN32
+#ifndef WIN32 /* check DISPLAY */
 	if (opts.pass3 && !opts.textOnly && !getenv("DISPLAY")) {
 		opts.textOnly = 1; 
 	}

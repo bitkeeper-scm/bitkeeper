@@ -48,9 +48,11 @@ OBJ	= abort.o adler32.o admin.o approve.o annotate.o \
 	  libsfiles.o libusers.o lines.o localtm.o locking.o \
 	  lod.o logflags.o logging.o mail.o merge.o mkdir.o mklock.o mmap.o \
 	  mtime.o multiuser.o names.o newrev.o oclone.o opull.o opush.o \
-	  park.o parent.o pending.o popen.o \
+	  park.o parent.o pending.o \
+	  port/bkd_client.o port/lock.o port/mnext.o port/popen.o \
 	  port/executable.o port/findprog.o port/fullname.o port/flushsocket.o \
 	  port/gethomedir.o port/gethost.o port/getinput.o \
+	  port/getrealcwd.o port/ns_sock_host2ip.o \
 	  port/mail.o port/platforminit.o port/randomBits.o port/rlimit.o \
 	  port/samepath.o port/sccs_lockfile.o \
 	  port/sccs_root.o port/sig.o port/socket2pipe.o port/spawn.o \

@@ -112,9 +112,7 @@ sort_main(int ac, char **av)
 		}
 	}
 
-#ifdef WIN32
-	setmode(0, _O_TEXT); 
-#endif
+	setmode(0, _O_TEXT);  /* no-op on unix */
 	while (fgets(buf, sizeof(buf), stdin)) {
 		chop(buf);
 		lines = addLine(lines, strdup(buf));

@@ -1,13 +1,5 @@
-#include <stdio.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#ifdef WIN32
-#include <io.h>
-#else
-#include <unistd.h>
-#endif
-#define	streq(a,b)	!strcmp(a,b)
-#define	private		static
+#include "system.h"
+#include "sccs.h"
 
 private int	do_chksum(int fd, int off, int *sump);
 
@@ -22,9 +14,6 @@ chksum_main(int ac, char **av)
 	int	sum, fd, i;
 	int	off = 0;
 
-#ifdef WIN32
-	setmode(1, _O_BINARY);
-#endif
 	if (av[1] && streq(av[1], "--help")) {
 		system("bk help chksum");
 		return (1);
@@ -44,7 +33,7 @@ chksum_main(int ac, char **av)
 		if (do_chksum(0, off, &sum)) return (1);
 		printf("%d\n", sum);
 	} else for (i = 1; i < ac; ++i) {
-		fd = open(av[i], 0);
+		fd = open(av[i], 0, 0);
 		if (fd == -1) {
 			perror(av[i]);
 		} else {

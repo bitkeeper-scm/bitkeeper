@@ -44,8 +44,7 @@ parent_main(int ac,  char **av)
 		exit(0);
 	}
 
-#ifdef WIN32
-	/* account for dos path */
+#ifdef WIN32 /* account for dos path */
 	if (av[optind] && strchr(av[optind], ':') && av[optind][1] != ':') {
 #else
 	if (av[optind] && strchr(av[optind], ':')) {

@@ -310,17 +310,12 @@ mv(char *src, char *dest)
 
 		/* try making the dir and see if that helps */
 		mkdirf(dest);
-#ifdef WIN32
-		/* win32 rename works across devices */
-		if (rename(src, dest)) return (1);
-#else
 		if (rename(src, dest)) { 	/* try mv(1) */
 			char	cmd[MAXPATH*2 + 5];
 			int	status;
 			status = sys("/bin/mv", src, dest, SYS);
 			if (WEXITSTATUS(status)) return (1);
 		}
-#endif
 	}
 	return (0);
 }
