@@ -21,7 +21,7 @@ cmd_push(int ac, char **av)
 		out("ERROR-Not at package root\n");
 		exit(1);
 	}
-	if ((bk_mode() == BK_STD) && !exists("BitKeeper/etc/.master")) {
+	if ((bk_mode() == BK_BASIC) && !exists("BitKeeper/etc/.master")) {
 		out("ERROR-bkd std cannot access non-master repository\n");
 		exit(1);
 	}

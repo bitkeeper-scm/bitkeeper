@@ -123,8 +123,8 @@ _mvdir() {
 	# XXX TODO: Make sure resolve clean up empty dir
 	# XXX       after applying mvdir cset
 	case `bk version` in
-	*Standard*)
-		echo "bk mvdir is not supported in this BitKeeper Standard"
+	*Basic*)
+		echo "bk mvdir is not supported in this BitKeeper Basic"
 		exit 1;
 		;;
 	esac

@@ -289,7 +289,7 @@ import_patch() {
 
 	# This must be done after we cd to $2
 	case `bk version` in
-	*Standard*)	RENAMES=NO
+	*Basic*)	RENAMES=NO
 			;;
 	esac
 	

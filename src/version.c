@@ -9,6 +9,6 @@ version_main()
 		return (0);
 	}
 	gethelp("version",
-			bk_mode() ? " Professional " : " Standard ", 0, stdout);
+			bk_mode() ? " Professional " : " Basic ", 0, stdout);
 	return (0);
 }

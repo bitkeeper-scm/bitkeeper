@@ -235,7 +235,9 @@ please contact sales@bitmover.com\n\
 		old_path = name2sccs(d->pathname);
 		sccs_free(s);
 		unless (streq(sfile, old_path)) {
-			if (bk_mode() == BK_STD) {
+			if (!strneq(sfile, "BitKeeper/deleted/SCCS/", 23) &&
+			    !strneq(old_path, "BitKeeper/deleted/SCCS/", 23) &&
+			    bk_mode() == BK_BASIC) {
 				if (++warned == 1) fputs(msg, stderr);
 				continue;
 			}
