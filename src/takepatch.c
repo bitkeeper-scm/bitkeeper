@@ -53,7 +53,7 @@ usage: takepatch [-acFimStv] [-f file]\n\n\
 private	delta	*getRecord(MMAP *f);
 private	int	extractPatch(char *name, MMAP *p, int flags, int fast, project *proj);
 private	int	extractDelta(char *name, sccs *s, int newFile, MMAP *f, int, int*);
-private	int	applyPatch(char *local, int flags, sccs *perfile, project *proj);
+private	int	applyPatch(char *local, int flags, sccs *perfile, project *p);
 private	int	getLocals(sccs *s, delta *d, char *name);
 private	void	insertPatch(patch *p);
 private	void	initProject(void);
@@ -249,6 +249,11 @@ extractPatch(char *name, MMAP *p, int flags, int fast, project *proj)
 	 * lm||19970518232929
 	 * D 1.1 99/02/23 00:29:01-08:00 lm@lm.bitmover.com +128 -0
 	 * etc.
+	 *
+	 * Tue Mar 28 2000
+	 * == filename ==
+	 * Grafted file: filename as of creation time
+	 * {same as above, no perfile.}
 	 */
 	t = mkline(mnext(p));
 	line++;
@@ -256,6 +261,10 @@ extractPatch(char *name, MMAP *p, int flags, int fast, project *proj)
 	if (strneq("New file: ", t, 10)) {
 		reallyNew = newFile = 1;
 		perfile = sccs_getperfile(p, &line);
+		t = mkline(mnext(p));
+		line++;
+	}
+	if (strneq("Grafted file: ", t, 14)) {
 		t = mkline(mnext(p));
 		line++;
 	}
@@ -400,10 +409,6 @@ sccscopy(sccs *to, sccs *from)
 	unless (to->text) {
 		to->text = from->text;
 		from->text = 0;
-	}
-	unless (to->random || !from->random) {
-		to->random = from->random;
-		from->random = 0;
 	}
 	return (0);
 }
@@ -639,12 +644,6 @@ uncommitted(char *file)
 "takepatch: %s has uncommitted changes\n\
 Please commit pending changes with `bk commit' and reapply the patch.\n",
 		file);
-}
-
-private	void
-oldformat(void)
-{
-	fputs("takepatch: warning: patch is in obsolete format\n", stderr);
 }
 
 private	void
@@ -1265,9 +1264,6 @@ init(char *inputFile, int flags, project **pp)
 				if (streq(buf, PATCH_CURRENT)) {
 					havexsum = 1;
 					started = 1;
-				} else if (streq(buf, PATCH_NOSUM)) {
-					havexsum = 0;
-					oldformat();
 				} else {
 					if (strneq("# Patch vers:", buf, 13)) {
 						fprintf(stderr,
@@ -1357,12 +1353,6 @@ init(char *inputFile, int flags, project **pp)
 		while (t = mnext(m)) {
 			if (strneq(t, PATCH_CURRENT, strsz(PATCH_CURRENT))) {
 				havexsum = 1;
-				i++;
-				break;
-			} else
-			    if (strneq(buf, PATCH_NOSUM, strsz(PATCH_NOSUM))) {
-				havexsum = 0;
-				oldformat();
 				i++;
 				break;
 			}

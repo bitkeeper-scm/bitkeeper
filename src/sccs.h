@@ -81,6 +81,7 @@
 #define	PRS_SYMBOLIC	0x20000000	/* show revs as beta1, etc. Not done */
 #define	PRS_PATCH	0x40000000	/* print in patch format */
 #define PRS_ALL		0x80000000	/* scan all revs, not just type D */
+#define	PRS_GRAFT	0x01000000	/* put the perfile in the patch */
 
 #define SINFO_TERSE	0x10000000	/* print in terse format: sinfo -t */
 
@@ -307,11 +308,11 @@ typedef struct delta {
 	u32	added;			/* lines added by this delta (u32!) */
 	u32	deleted;		/* and deleted */
 	u32	same;			/* and unchanged */
-	char	type;			/* Delta or removed delta */
 	char	*rev;			/* revision number */
 	char	*sdate;			/* ascii date in local time, i.e.,
 					 * 93/07/25 21:14:11 */
 	char	*user;			/* user name of delta owner */
+	char	type;			/* Delta or removed delta */
 	ser_t	serial;			/* serial number of this delta */
 	ser_t	pserial;		/* serial number of parent */
 	ser_t	*include;		/* include serial #'s */
@@ -325,6 +326,7 @@ typedef struct delta {
 	char	*pathname;		/* pathname to the file */
 	char	*zone;			/* 08:00 is time relative to GMT */
 	char	*csetFile;		/* id for ChangeSet file */
+	char	*random;		/* random bits for file ID */
 	ser_t	merge;			/* serial number merged into here */
 	sum_t	sum;			/* checksum of gfile */
 	time_t	dateFudge;		/* make dates go forward */
@@ -410,9 +412,12 @@ typedef struct {
 #define	WRITER_LOCK	"BitKeeper/writer/lock"
 
 /*
- * Bumped whenever we change any file format
+ * Bumped whenever we change any file format.
+ * XXX - this isn't timesafe.  It's not clear it wants to be, it's a file
+ * format thing, not a repository thing.  It makes for BK itself, that's all.
  *
  * 2 - bumped to invalidate old binaries with bad date code.
+ * 3 - because random bits can now be on a per delta basis.
  */
 #define	SCCS_VERSION	2
 
@@ -448,7 +453,6 @@ typedef	struct sccs {
 	char	**flags;	/* flags in the middle that we didn't grok */
 	char	**text;		/* descriptive text */
 	int	state;		/* GFILE/SFILE etc */
-	char	*random;	/* random bits for file ID */
 	mode_t	mode;		/* mode of the gfile */
 	off_t	data;		/* offset to data in file */
 	delta	*rstart;	/* start of a range (1.1 - oldest) */
@@ -544,9 +548,10 @@ typedef struct patch {
  *
  * 0.8 = 0x flags and V version.
  * 0.9 = Positive termination.
+ * 1.0 = Changed random bits to be per delta;
+ *	 Add grafted file support.
  */
-#define PATCH_CURRENT	"# Patch vers:\t0.9\n"
-#define PATCH_NOSUM	"# Patch vers:\t0.5\n"
+#define PATCH_CURRENT	"# Patch vers:\t1.0\n"
 #define	PATCH_ABORT	"# Patch abort\n"
 #define	PATCH_OK	"# Patch OK\n"
 

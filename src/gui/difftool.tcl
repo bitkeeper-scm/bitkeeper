@@ -466,21 +466,45 @@ proc keyboard_bindings {} \
 	bind all <period>	dot
 }
 
-
 proc main {} \
 {
-	global argv0 argv argc dev_null lfile rfile
+	global argv0 argv argc dev_null lfile rfile tmp_dir
 
-	if {$argc < 2 || $argc > 3} {
-		puts "usage: $argv0 left right \[done\]"
+	if {$argc < 1 || $argc > 3} {
+		puts "usage: $argv0 left [right \[done\]]"
 		exit
 	}
 	bk_init
 	set lfile ""
 	set rfile ""
 	set a [split $argv " "]
-	set lfile [lindex $argv 0]
-	set rfile [lindex $argv 1]
+	if {$argc > 1} {
+		set lfile [lindex $argv 0]
+		set rfile [lindex $argv 1]
+	} else {
+		set rfile [lindex $argv 0]
+		set gfile ""
+		set f [open "| bk sfiles -g $rfile" r]
+		if { ([gets $f dummy] <= 0)} {
+			puts "$rfile is not under revision control."
+			exit 1
+		}
+		close $f
+		set f [open "| bk sfiles -gc $rfile" r]
+		if { ([gets $f dummy] <= 0)} {
+			puts "$rfile is the same as the checked in version."
+			exit 1
+		}
+		close $f
+		set tmp [file join $tmp_dir [file tail $rfile]]
+		set pid [pid]
+		set tmp "$tmp-$pid"
+		if {[catch {exec bk get -qkTG$tmp $rfile} msg]} {
+			puts "$msg"
+			exit 1
+		}
+		set lfile $tmp
+	}
 	widgets $lfile $rfile
 	readFiles $lfile $rfile 
 	if {$argc == 3} {
@@ -488,6 +512,10 @@ proc main {} \
 		catch {
 			close [open $marker w]
 		} dummy
+	}
+	if {$argc == 1} {
+		# Done this way so we don't delete the gfile by mistake.
+		file delete $tmp
 	}
 }
 

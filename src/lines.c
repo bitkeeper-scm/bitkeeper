@@ -89,7 +89,7 @@ private void
 branches(delta *d)
 {
 	if (!d) return;
-	if (((d->r[3] == 1) || ((d->r[1] == 1) && !d->r[2])) &&
+	if (((d->r[3] <= 1) || ((d->r[1] <= 1) && !d->r[2])) &&
 	    (d->type != 'R') && !(d->flags & D_VISITED)) {
 		p(d);
 	}
