@@ -11,30 +11,30 @@ bk revtool \- \*(BK graphical history browser
 .B ]
 .SH DESCRIPTION
 .LP
-revtool is one of the primary tools for doing code reviews, when tracking 
-down bugs, and when following the progress of a project.
+revtool is one of the primary tools used when doing code reviews,
+tracking down bugs, and when following the progress of a project.
 .LP
-The revtool program shows checkin comments and the graph of a project
-or file.  Histtool may be used to view any file under revision control,
+revtool shows checkin comments and the graph history of a project
+or file.  Revtool may be used to view any revision controled file,
 including the ChangeSet file. When no filename is given, the entire
 package history is shown.
 .LP
-There are two windows displayed when revtool is started. The top
-window is used to display the graph of revision history and the bottom
-window is used to show the history or differences between versions.
+Revtool has an upper window which shows the graph of revision history
+and a lower window which can show either the checkin comments or
+differences between versions.
 
 .SH "HISTORY AND DIFFERENCES"
 .LP
-Upon startup, the bottom window contains the last month's revision
+Upon startup, the bottom window displays the last month's revision
 history for the file or project.
 .LP
-To view the history for just one revision, left click once on that
+To view the comments for just one revision, left click once on that
 revision in the graph.
 .LP
-To see the differences between two revisions, left click once on the older
-revision and right click once on the newer revision.  The differences
-will be displayed in the text window.  You can right click on another
-revision and diff again.  The default diff format is
+To see the differences between two revisions, left click the older
+revision and right click on the newer revision.  The differences
+will be displayed in the lower text window.  You can right click on
+another revision and diff again.  The default diff format is
 .B \-u
 (unified diffs).
 .LP
