@@ -9,7 +9,6 @@ typedef struct {
 	u32	hide_cset:1;	/* hide ChangeSet file from file list */
 	u32	rflg:1;		/* diff two rset */
 	u32	lflg:1;		/* list a rset */
-	u32	useGfile:1;	/* we got a rev  = "=" */
 } options;
 
 private int mixed; /* if set, handle long and short keys */
@@ -119,8 +118,7 @@ process(char	*root,
 	char	*rev1, *rev2, *path1, *path2;
 	char	c = BK_FS; /* field seperator */
 
-	if (is_same(start, end) && !opts.useGfile) return;
-
+	if (is_same(start, end)) return;
 	unless (s = sccs_keyinit(root, INIT_NOGCHK|INIT_NOCKSUM, idDB)) {
 		unless (*goneDB) {
 			*goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
@@ -128,9 +126,6 @@ process(char	*root,
 		if (gone(root, *goneDB)) return;
 		fprintf(stderr, "Cannot keyinit %s\n", root);
 		return;
-	}
-	if (opts.useGfile && is_same(start, end) && !sccs_hasDiffs(s, 0, 0)) {
-		goto done;
 	}
 
 	if (start && *start) {
@@ -149,21 +144,16 @@ process(char	*root,
 		path1 = s->tree->pathname;
 	}
 	if (end && *end) {
-		if (opts.useGfile) {
-			rev2 = ".";
-			path2 = s->gfile; /* in case of un-delta'ed rename */
-		} else {
-			d2 = sccs_findKey(s, end);
-			unless (d2) {
-				fprintf(stderr,
-				    "ERROR: rset: Can't find key '%s'\n"
-				    "\tin %s, run 'bk -r check -a'\n",
-				    end, s->sfile);
-				exit (1);
-			}
-			rev2 = d2->rev;
-			path2 = d2->pathname;
+		d2 = sccs_findKey(s, end);
+		unless (d2) {
+			fprintf(stderr,
+			    "ERROR: rset: Can't find key '%s'\n"
+			    "\tin %s, run 'bk -r check -a'\n",
+			    end, s->sfile);
+			exit (1);
 		}
+		rev2 = d2->rev;
+		path2 = d2->pathname;
 	} else {
 		/* XXX - this is weird */
 		rev2 = "1.0";
@@ -242,8 +232,10 @@ rel_diffs(MDBM	*db1, MDBM *db2,
 		start_key = kv.val.dptr;
 		strcpy(root_key2, root_key); /* because find_key stomps */
 		end_key = find_key(db2, root_key2, &short2long);
-		process(root_key, start_key, end_key, idDB, &goneDB, opts);
-
+		unless (is_same(start_key, end_key))  {
+			process(root_key, start_key, end_key,
+						    idDB, &goneDB, opts);
+		}
 		/*
 		 * Delete the entry from db2, so we don't 
 		 * re-process it in the next loop
@@ -266,24 +258,6 @@ rel_diffs(MDBM	*db1, MDBM *db2,
 	mdbm_close(idDB);
 	if (short2long) mdbm_close(short2long);
 	if (goneDB) mdbm_close(goneDB);
-	if (opts.useGfile) {
-		//XX TODO list the extra files...
-		FILE	*f;
-		char	buf[MAXPATH];
-		char	c = BK_FS;
-
-		f = popen("bk -R sfiles -xg", "r");
-		while (fnext(buf, f)) {
-			chomp(buf);
-			unless (opts.show_path) {
-				printf("%s%c1.0...\n", buf, c);
-			} else {
-				printf("%s%c%s%c%s%c%s%c%s\n",
-			     buf, c, buf, c, "1.0", c, buf, c, ".");
-			}
-		}
-		pclose(f);
-	}
 }
 
 private void
@@ -374,11 +348,7 @@ parse_rev(sccs	*s,
 		if (*p == '.') *p++ = 0;
 		*p++ = 0;
 		*rev2 = p;
-		if (streq(".", p)) {
-			strcpy(rev_buf, p);
-		} else {
-			if (fix_rev(s, rev2, rev_buf)) return (1); /* failed */
-		}
+		if (fix_rev(s, rev2, rev_buf)) return (1); /* failed */
 	} else {
 		*rev2 = args;
 		if (fix_rev(s, rev2, rev_buf)) return (1); /* failed */
@@ -455,15 +425,7 @@ usage:				system("bk help -s rset");
 	db1 = s->mdbm; s->mdbm = NULL;
 	assert(db1);
 	if (rev2) {
-		char 	*r;
-
-		if (streq(".", rev2)) {
-			r = "+";
-			opts.useGfile = 1;
-		} else {
-			r = rev2;
-		}
-		if (csetIds(s, r)) {
+		if (csetIds(s, rev2)) {
 			fprintf(stderr,
 			    "Cannot get ChangeSet for revision %s\n", rev2);
 			return (1);
