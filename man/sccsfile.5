@@ -1,9 +1,9 @@
 .so .bitmacros
 .TH SCCSFILE 5 "February 1999" "BitMover, Inc." "BitKeeper Manual"
 .SH NAME
-sccsfile \- format of a \*[BKS] history file
+sccsfile \- format of a \*(BS history file
 .SH DESCRIPTION
-An \*[S] file consists of six logical parts:
+An \*S file consists of six logical parts:
 .TP 13
 checksum:
 16 bit unsigned additive checksum over the file
@@ -14,7 +14,7 @@ information about each revision to the file
 .TP
 usernames:
 login names and/or group \s-1ID\s0s of users who may add deltas
-(not implemented in \*[BKS])
+(not implemented in \*(BS)
 .TP
 flags:
 definitions of internal keywords
@@ -27,14 +27,14 @@ the various versions of the files stored in a compact form
 .LP
 Each section is described in detail below.
 .SS Conventions
-Throughout an \*[S] file there are lines which begin with a \fB^A\fP
-(control-A).  These lines make up the \*[S] file meta information.
+Throughout an \*S file there are lines which begin with a \fB^A\fP
+(control-A).  These lines make up the \*S file meta information.
 .LP
 Entries of the form
 .I ddddd
 represent a five digit decimal string (a number between 00000 and 99999).
 .SS Checksum
-The first line of a \*[S] file is the checksum.  The form of the line is
+The first line of a \*S file is the checksum.  The form of the line is
 .LP
 .RS 4
 ^A \fBh\fIddddd\fR
@@ -69,8 +69,8 @@ The delta table consists of a variable number of entries of the form:
 .fi
 .RE
 .LP
-Those lines marked with \fB(*)\fP are new in \*[BKS] and not present unless
-the \*[BKS] flag is turned on (see flags section below).
+Those lines marked with \fB(*)\fP are new in \*(BS and not present unless
+the \*(BS flag is turned on (see flags section below).
 .LP
 Those lines marked with \fB(+)\fP are inherited fields, i.e., they apply 
 to all deltas which are descendents of the delta with the field, up to
@@ -111,15 +111,15 @@ when this delta is extracted.
 .TP
 .RB ^A m
 optional lines which each contain one MR number associated with the delta.
-These are not used but are preserved by \*[BKS].
+These are not used but are preserved by \*(BS.
 .TP
 .RB ^A c
 an optional set of lines which contain comments associated with the delta.
 .TP
 .RB ^A B
-\*[BK] introduces the concept of a \fIchange set\fP to \*[S].  This field is
-a pointer to the ChangeSet file which owns a set of files in a \*[BK] project.
-This field is typically only found once in an \*[S] file but may be found
+\*(BK introduces the concept of a \fIchange set\fP to \*S.  This field is
+a pointer to the ChangeSet file which owns a set of files in a \*(BK project.
+This field is typically only found once in an \*S file but may be found
 multiple times.  Each occurrence of the field indicates that the file has
 been moved to a new project with a new ChangeSet file.
 See 
@@ -151,7 +151,7 @@ if all deltas where made on the same machine, only the 1.1 delta would have
 this field.
 .TP
 .RB ^A I
-This is another form of include list.  Unlike the traditional \*[S] include
+This is another form of include list.  Unlike the traditional \*S include
 list, each serial number in this list is a short hand for the list of
 serials starting with the named serial number and working up to the 
 greatest common ancestor of the delta being extracted and the delta referred
@@ -167,7 +167,7 @@ size is 0, then the sum is the bottom 5 digits of the microsecond portion
 of the time of day.
 .TP
 .RB ^A L
-\*[BK] introduces the concept of a \fIline of development\fP (LOD) to \*[S]. 
+\*(BK introduces the concept of a \fIline of development\fP (LOD) to \*S. 
 This field is is the marker which names the start of an LOD.  The symbol is
 placed on the \fB.0\fR version of the LOD, in other words, the LOD symbol
 is placed on the last node before the start of the LOD.   If there are 
@@ -182,7 +182,7 @@ LOD serial numbers are always in lowest to highest (oldest to most recent)
 order.
 See
 .BR lod.ps
-in the \*[BK] DocSet for more details on lines of development.
+in the \*(BK DocSet for more details on lines of development.
 .TP
 .RB ^A M
 The serial number of the delta which was merged into this delta.  When
@@ -201,7 +201,7 @@ inherited like hostnames.
 A symbolic name for the delta.
 See
 .BR tags (5)
-for more details on symbolic names in \*[BKS].
+for more details on symbolic names in \*(BS.
 .TP
 .RB ^A U
 An optional field, typically only used in the ChangeSet file, which records
@@ -225,8 +225,8 @@ ends the delta table entry.
 .LP
 The list of user-names and/or numerical group \s-1ID\s0s
 of users who may add deltas to the file, one per line.
-This section of the file is for compatibility with \*[ATT] and is not
-used by \*[BKS] but is preserved.  Anyone is allowed to make a delta,
+This section of the file is for compatibility with \*(AT and is not
+used by \*(BS but is preserved.  Anyone is allowed to make a delta,
 provided they have write access to the file.
 .br
 These lines are bracketed by
@@ -242,15 +242,15 @@ for more information on their use).  Each flag line takes the form:
 ^A\fBf \fIflag optional text\fR
 .RE
 .LP
-\*[BKS] will pass through any flag which it doesn't know about, which means it
-won't respect it but it won't lose it either.  The flags which \*[BKS] supports
+\*(BS will pass through any flag which it doesn't know about, which means it
+won't respect it but it won't lose it either.  The flags which \*(BS supports
 are:
 .TP 9
 .RB ^A f " b"
 allows branching when the \fB-b\fP option is used with the 
 .B get
 command.
-Not respected when in \*[BK] mode.
+Not respected when in \*(BK mode.
 .TP
 .RB ^A f " d " \fIdefault-branch\fR
 The
@@ -291,7 +291,7 @@ flag allows files that contain binary data to be checked in.
 .RB ^A f " x " n
 The 
 .B x
-flag encodes a number of \*[BKS] specific options.  The 
+flag encodes a number of \*(BS specific options.  The 
 .B n
 is a decimal number in ASCII.  Individual bits in the number and their
 meanings are:  
@@ -305,11 +305,11 @@ When expanding keywords, expand the year as a 4 digit field, not a two digit
 field.
 .TP
 .B 0x04
-Indicates that this file is in \*[BK] mode, not \*[S] mode.  This bit is
-always set if the file is a \*[BK] file.  If the file is an \*[S] file,
+Indicates that this file is in \*(BK mode, not \*S mode.  This bit is
+always set if the file is a \*(BK file.  If the file is an \*S file,
 then the flag is not present,
-the file format is strictly \*[S] compatible,
-and the \*[BK] features are disabled.
+the file format is strictly \*S compatible,
+and the \*(BK features are disabled.
 .TP
 .B 0x08
 Indicates that the file is recording time stamps in microseconds, see the
@@ -325,7 +325,7 @@ Arbitrary text surrounded by the bracketing lines
 and
 .RB ^A T .
 This section typically will contain a description of the file's purpose.
-In \*[BKS], this section is always in use for ChangeSet files, and contains
+In \*(BS, this section is always in use for ChangeSet files, and contains
 the name of the project which the ChangeSet file owns, i.e., 
 .I BitKeeper source management system
 or 

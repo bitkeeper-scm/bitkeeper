@@ -12,12 +12,12 @@ get \- retrieve a version of an SCCS file
 [\fB-x\fIrevs\fR]
 [\fIs.file \|.\|.\|.]
 .SH DESCRIPTION
-This command is part of \*[BS], the \*[BM] version of \*[SCCS].  For an 
+This command is part of \*(BS, the \*(BM version of \*S.  For an 
 introduction, please see
 .BR bitsccs (1).
 .LP
 .B get
-retrieves a particular working copy from the \*[SCCS] revision control file.
+retrieves a particular working copy from the \*S revision control file.
 With no options, 
 .B get
 retrieves the most recent version of the file on the current branch.
@@ -33,9 +33,9 @@ revision in which the line was most recently added.  This feature is
 quite useful for tracking down bugs.
 .LP
 .B get
-supports both \*[RCS] and \*[SCCS] keyword expansion so that you may place
+supports both \*R and \*S keyword expansion so that you may place
 the version number, name, date, user, etc., in the file as part of its 
-contents.  \*[RCS] keyword expansion is not on by default, see 
+contents.  \*R keyword expansion is not on by default, see 
 .BR admin (1) 
 for information how to turn it on.
 .LP
@@ -86,10 +86,10 @@ at a time. No one else may check in changes to the file while you have it locked
 .B -g
 Just see if you could get the specified revision, without actually getting the 
 file.  Used to verify a particular revision and/or in scripts that are 
-converting \*[RCS] to \*[SCCS] files.
+converting \*R to \*S files.
 .TP
 .B -k
-Suppress expansion of both \*[SCCS] and \*[RCS] keywords.
+Suppress expansion of both \*S and \*R keywords.
 .B -k
 is implied by the
 .BR -e .
@@ -234,7 +234,7 @@ and you omit the revision,
 .B get
 retrieves the default version indicated by that flag.
 .IP
-The \*[SCCS] revision numbering scheme is a tad non-intuitive; there are
+The \*S revision numbering scheme is a tad non-intuitive; there are
 never more than 4 numbers.  Most revisions take the form 
 .IR dddd.dddd ,
 i.e., 
@@ -292,25 +292,25 @@ branch.  Suppose we need to create a new revision which is a child of
 and we already have a 
 .B 1.20.1.2 
 revision in place.  The system has to create a new branch, so what is it
-called?  If the naming system was logical, it would work like \*[RCS]
+called?  If the naming system was logical, it would work like \*R
 and the new branch would be called
 .BR 1.20.1.1.1.1 .
 That make sense, it is just the same approach applied to branches as was
 applied to the trunk.
 .IP
-\*[ATT] did not want to do it that way, they wanted to have all revisions
+\*(AT did not want to do it that way, they wanted to have all revisions
 be numbered with at most 4 numbers.  So if we create a branch off of a
 branch, the numbering scheme is the same as if it were on the trunk.
-In the case where \*[RCS] would give us 
+In the case where \*R would give us 
 .BR 1.20.1.1.1.1 ,
-\*[ATT] gives us
+\*(AT gives us
 .BR 1.20.3.1 .
 The drawback of this approach is that you can't tell if a branch is 
-directly off the trunk with \*[ATT].  The drawback of \*[RCS] is that
+directly off the trunk with \*(AT.  The drawback of \*R is that
 the numbering scheme gets arbitrarily large, which is a bit cumbersome.
 .IP
-Neither approach is reasonable.  \*[BS] release 2 will provide 
-both standard \*[ATT] numbering and symbolic numbering.  With
+Neither approach is reasonable.  \*(BS release 2 will provide 
+both standard \*(AT numbering and symbolic numbering.  With
 symbolic numbering, the branch versus trunk schemes all go away.
 Revision names become
 .B research.1
@@ -329,7 +329,7 @@ separator instead of a comma, between two revisions in the list.
 Symbolic tags may be used in place of the revisions if and only if the
 tags do not contain a
 .RB ` - '.
-.SH \*[BS] keywords
+.SH \*(BS keywords
 In the absence of
 .B \-e
 or
@@ -368,7 +368,7 @@ If the
 flag is set, then print the year as 4 digits.
 .TP
 .B %\&F%
-The \*[SCCS]
+The \*S
 .BR s. file
 name
 .TP
@@ -418,7 +418,7 @@ Shorthand notation for a line with data for
 recognized by
 .BR what .
 .PD
-.SH \*[RCS] keywords
+.SH \*R keywords
 In the absence of 
 .B -e
 or 
@@ -427,7 +427,7 @@ and if the
 .B R
 flag is set in the file, then
 .B get
-will also expand the following list of \*[RCS] keywords:
+will also expand the following list of \*R keywords:
 .TP 15
 .I Keyword
 .I Value

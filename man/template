@@ -1,25 +1,5 @@
 .\" %A% %G% %@%
-.de DS
-.br
-.ne 10
-.if t .ft CW
-.if n .sp
-.if t .sp .5
-.nf
-.RS
-..
-.de DE
-.if n .sp
-.if t .sp .5
-.RE
-.fi
-.if t .ft P
-..
-.de SP
-.if n .sp
-.if t .sp .5
-..
-.fam H
+.so .bitmacros
 .TH ADMIN 1 "April 1998" "BitMover, Inc."
 .SH NAME
 admin, admin \- create and administer SCCS history files

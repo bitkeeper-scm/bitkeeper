@@ -1,18 +1,18 @@
 .so .bitmacros
 .TH SCCSRANGE 5 "May, 1998" "BitMover, Inc." BitSCCS
 .SH NAME
-sccsrange \- \*[BS] date, symbol, revision ranges and formats
+sccsrange \- \*(BS date, symbol, revision ranges and formats
 .SH DESCRIPTION
-This information is part of \*[BS], the \*[BM] version of \*[SCCS].  For an 
+This information is part of \*(BS, the \*(BM version of \*S.  For an 
 introduction, please see
 .BR bitsccs (1).
 .LP
-Various commands in \*[BS] take ranges as arguments.  The range may be
+Various commands in \*(BS take ranges as arguments.  The range may be
 composed of some combination of dates, symbols, and/or revisions.
 Revisions are treated separately from symbols & dates because both
 revisions and dates are numeric.
 .LP
-A range, in \*[BS], is some sort of notation which defines a set of 
+A range, in \*(BS, is some sort of notation which defines a set of 
 revisions.  It can be as simple as \f(CW1.1..1.5\fP or as complex as
 \f(CWAlpha1,.980621\fP.  
 .SS "Inclusive vs. Exclusive"
@@ -125,11 +125,11 @@ diffs -d98 -d99,
 which says to take 1999, round it down, and don't include the resulting date,
 so you end up with the last second before the first second in 1999.  
 .SS "Year 2K Problems"
-\*[BS] takes the approach that years in the 70-99 range are 1970-1999.
+\*(BS takes the approach that years in the 70-99 range are 1970-1999.
 Years in the 00-69 range are 2000-2069.  At some point in the future,
-if \*[BS] becomes the dominant SCCS implementation, we will extend the
-file format to allow 4 digit years (\*[ATT] breaks if we do this today
-and there is a lot of \*[ATT] files in existence today).
+if \*(BS becomes the dominant SCCS implementation, we will extend the
+file format to allow 4 digit years (\*(AT breaks if we do this today
+and there is a lot of \*(AT files in existence today).
 .SS Symbols
 Anywhere a date may be used, a symbol may be substituted instead.  The
 delta associated with the symbol is found and the implied date is the
@@ -145,7 +145,7 @@ with revisions, a symbol may be substituted for a revision.  The delta
 associated with the symbol is found and the implied revision is the 
 revision of that delta.
 .SH BUGS
-The dates may not be accurate.  \*[BS] is at the mercy of the system
+The dates may not be accurate.  \*(BS is at the mercy of the system
 clock and misconfigured systems can make time appear to march backwards.
 To avoid confusion (a) keep your clocks as accurate as possible,
 and (2) use symbols (or revisions) whenever possible.
