@@ -1104,7 +1104,7 @@ add(FILE *diffs, char *buf)
 	char	*rev;
 	delta	*d;
 
-	unless ((chop(buf) == '\n') && (rev = strrchr(buf, ':'))) {
+	unless ((chop(buf) == '\n') && (rev = strrchr(buf, BK_FS))) {
 		fprintf(stderr, "cset: bad file:rev format: %s\n", buf);
 		system("bk clean -u ChangeSet");
 		cset_exit(1);

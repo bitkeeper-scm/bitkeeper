@@ -749,7 +749,7 @@ _undo() {
 		fi
 		${BIN}renumber $b
 	done 
-	/bin/rm -f ${TMP}mv$$ ${TMP}rmlist$$ ${TMP}undo$$
+	$RM -f ${TMP}mv$$ ${TMP}rmlist$$ ${TMP}undo$$
 	if [ X$Q = X ]
 	then	echo Patch containing these undone deltas left in $UNDO,
 		echo running consistency check...

@@ -224,7 +224,7 @@ in(char *file, int todo, int extract)
 		goto err;
 	}
 	if (extract) close(fd);
-	unless (qflag) fprintf(stderr, "%s\n", file);
+	unless (quiet) fprintf(stderr, "%s\n", file);
 	return (0);
 
 err:	
