@@ -990,7 +990,7 @@ int	names_rename(char *old_spath, char *new_spath, u32 flags);
 void	names_cleanup(u32 flags);
 int	bk_sfiles(char *opts, int ac, char **av);
 int	outc(char c);
-MDBM	*loadConfig(char *root, int convert);
+MDBM	*loadConfig(char *root);
 int	ascii(char *file);
 char	*sccs_rmName(sccs *s, int useCommonDir);
 int	sccs_rm(char *name, char *del_name, int useCommonDir);

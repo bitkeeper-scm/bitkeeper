@@ -27,6 +27,7 @@ import() {
 	UNDOS=
 	VERBOSE=-q
 	VERIFY=-h
+	CLOCK_DRIFT=1
 	while getopts ACc:efHij:l:rS:t:uvxq opt
 	do	case "$opt" in
 		A) FIX_ATTIC=YES;;		# doc 2.0
@@ -65,6 +66,7 @@ import() {
 		then	echo import: no include/excludes allowed with patch files
 			exit 1
 		fi
+		unset CLOCK_DRIFT
 	else	if [ ! -d "$1" ]
 		then	echo import: "$1" is not a directory
 			exit 1
@@ -417,7 +419,7 @@ import_text () {
 
 	cd "$2"
 	if [ X$QUIET = X ]; then msg Checking in plain text files...; fi
-	CLOCK_DRIFT=1 bk ci -1i $VERBOSE - < ${TMP}import$$ || exit 1
+	bk ci -1i $VERBOSE - < ${TMP}import$$ || exit 1
 }
 
 import_RCS () {

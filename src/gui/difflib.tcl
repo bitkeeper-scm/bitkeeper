@@ -443,7 +443,6 @@ proc displayInfo {lfile rfile {parent {}} {stop {}}} \
 			    "Not a BitKeeper revision controlled file"
 			set bkfile($side) 0
 		} else {
-			#set ltext "$lfile"
 			if {$r != "1.0"} {
 				set p [open "| bk prs -hr$r $dspec1 \"$f\""]
 			} else {

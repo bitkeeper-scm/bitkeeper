@@ -88,7 +88,10 @@ usage:			system("bk help -s stripdel");
 	sfileDone();
 done:   
 	if (!opts.checkOnly && logmarker_needed) {
-		updLogMarker(logmarker_ptype, !opts.quiet, stderr);
+		unless (cset_lock()) {
+			updLogMarker(logmarker_ptype, !opts.quiet, stderr);
+			cset_unlock();
+		}
 	}
 	return (rc);
 next:	return (1);

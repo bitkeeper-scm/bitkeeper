@@ -39,3 +39,19 @@ bk push $HERE/copy > push.out 2>&1
 grep -q "pathname is used" push.out
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
+echo $N test rename of file into directory of same name..............$NL
+cd $HERE
+rm -rf copy
+bk clone $Q project copy
+cd project/src
+bk mv bar.c tmp.c || exit 1
+mkdir bar.c
+bk mv tmp.c bar.c/bar.c || exit 1
+bk commit $S -yCset2 || exit 1
+cd $HERE/copy/src
+bk get $Q bar.c
+bk pull $Q || exit 1
+echo OK
+echo $N test undoing file to directory rename .......................$NL
+bk undo $Q -arename -f || exit 1
+echo OK

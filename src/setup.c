@@ -120,7 +120,7 @@ again:		printf("Editor to use [%s] ", editor);
 		fclose(f1);
 	}
 
-	unless (m = loadConfig(".", 0)) {
+	unless (m = loadConfig(".")) {
 		fprintf(stderr, "No config file found\n");
 		exit(1);
 	}
