@@ -14,6 +14,9 @@ sendbug_main(int ac,  char **av)
 	char	*url = "http://bitmover.com/cgi-bin/bkdmail";
 	char	*key, **email;
 
+	/* we want to default to GUI tools, and let -t or no DISPLAY override that */
+	putenv("BK_GUI=YES");
+	
 	if (name = strrchr(av[0], '/')) {
 		name++;
 	} else {

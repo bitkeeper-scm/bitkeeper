@@ -47,7 +47,6 @@ private	int	uniq_regen(void);
 private	int	dirty;			/* set if we updated the db */
 private	MDBM	*db;
 private	char	*lockFile;		/* cache it */
-private	char	*keysFile;		/* cache it */
 
 private char	*
 lockHome()
@@ -65,14 +64,11 @@ lockHome()
 private char	*
 keysHome(void)
 {
+	static	char	*keysFile = 0;
 	char	*t;
 	char	path[MAXPATH];
 
 	if (keysFile) return (keysFile);
-	if ((t = getenv("BK_TMP")) && isdir(t)) {
-		concat_path(path, t, ".bk_keys");
-		return (keysFile = (strdup)(path));
-	}
 	keysFile = strdup(findDotFile(".bk_keys", "bk_keys", path));
 	return (keysFile);
 }

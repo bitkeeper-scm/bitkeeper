@@ -42,7 +42,7 @@ getHomeDir(void)
 #endif
 
 char *
-getBkDir(void)
+getDotBk(void)
 {
 	static	char	*dir;
 	char	*t;
@@ -57,9 +57,9 @@ getBkDir(void)
 
 	if (dir) return (dir);
 
-	if (t = getenv("BK_BKDIR")) {
+	if (t = getenv("BK_DOTBK")) {
 		unless (isdir(t)) {
-			fprintf(stderr, "BKDIR (%s) doesn't exist.\n", t);
+			fprintf(stderr, "DOTBK (%s) doesn't exist.\n", t);
 			exit(1);
 		}
 		dir = strdup(t);

@@ -134,12 +134,15 @@ smtpmail(char **to, char *subject, char *file)
 		av = addLine(av,
 		    strdup(getenv("BK_MAIL_DEBUG")  ? "-debug" : "-q"));
 		av = addLine(av, 0);
+		goto out;
 	}
+ err:
+	getMsg("win32-mailer-error", 0, '=', stderr);
+	return (-1);
  out:
 	pid = spawnvp_ex(_P_NOWAIT, av[1], av + 1);
 	freeLines(av, free);
-	if (pid != -1) return (pid);
-	getMsg("win32-mailer-error", 0, '=', stderr);
-	return (-1);
+	if (pid < 0) goto err;
+	return (pid);
 }
 #endif

@@ -232,6 +232,8 @@ err:			unlink("BitKeeper/etc/config");
 	sccs_free(s);
 	defaultIgnore();
 
+	unless (ok_commit(0)) return (1);
+
 	status = sys("bk", "commit", "-qFyInitial repository create", SYS);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
 		fprintf(stderr, "setup: bk commit failed.\n");
