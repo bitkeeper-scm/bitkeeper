@@ -3191,7 +3191,6 @@ misc(sccs *s)
 			switch (atoi(&buf[5])) {
 			    case E_ASCII:
 			    case E_UUENCODE:
-			    case E_UUGZIP:
 			    case E_GZIP:
 			    case E_GZIP|E_UUENCODE:
 				s->encoding = atoi(&buf[5]);
@@ -5301,21 +5300,13 @@ openOutput(int encode, char *file, FILE **op)
 #endif
 		*op = toStdout ? stdout : fopen(file, "w");
 		break;
-	    case E_UUGZIP:
-		if (toStdout) {
-			*op = popen("gzip -d", M_WRITE_B);
-		} else {
-			sprintf(buf, "gzip -d > %s", file);
-			*op = popen(buf, M_WRITE_B);
-		}
-		break;
 	    default:
 		*op = NULL;
 		debug((stderr, "openOutput = %x\n", *op));
 		return (-1);
 	}
 	debug((stderr, "openOutput = %x\n", *op));
-	return (encode == E_UUGZIP);
+	return (0);
 }
 
 /*
@@ -5694,7 +5685,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 
 	if ((s->state & S_RCS) && (flags & GET_EXPAND)) flags |= GET_RCSEXPAND;
 	/* Think carefully before changing this */
-	if ((s->encoding != E_ASCII) || hash) {
+	if (((s->encoding != E_ASCII) && (s->encoding != E_GZIP)) || hash) {
 		flags &= ~(GET_EXPAND|GET_RCSEXPAND|GET_PREFIX);
 	}
 	unless (s->state & S_SCCS) flags &= ~(GET_EXPAND);
@@ -5844,8 +5835,7 @@ out:			if (slist) free(slist);
 
 			switch (encoding) {
 			    case E_GZIP|E_UUENCODE:
-			    case E_UUENCODE:
-			    case E_UUGZIP: {
+			    case E_UUENCODE: {
 				uchar	obuf[50];
 				int	n = uudecode1(e, obuf);
 
@@ -7059,7 +7049,9 @@ expandnleq(sccs *s, delta *d, MMAP *gbuf, char *fbuf, int *flags)
 	char	*e = fbuf, *e1 = 0, *e2 = 0;
 	int sccs_expanded = 0 , rcs_expanded = 0, rc;
 
-	if (s->encoding != E_ASCII) return (MCMP_DIFF);
+	if ((s->encoding != E_ASCII) && (s->encoding != E_GZIP)) {
+		return (MCMP_DIFF);
+	}
 	if (!(*flags & (GET_EXPAND|GET_RCSEXPAND))) return (MCMP_DIFF);
 	if (*flags & GET_EXPAND) {
 		e = e1 = expand(s, d, e, &sccs_expanded);
@@ -7338,13 +7330,6 @@ deflate_gfile(sccs *s, char *tmpfile)
 		in = fopen(s->gfile, "r");
 		n = uuencode(in, out);
 		fclose(in);
-		fclose(out);
-		break;
-	    case E_UUGZIP:
-		sprintf(cmd, "gzip -nq4 < %s", s->gfile);
-		in = popen(cmd, M_READ_B);
-		uuencode(in, out);
-		pclose(in);
 		fclose(out);
 		break;
 	    default:
@@ -7770,7 +7755,7 @@ sccs_clean(sccs *s, u32 flags)
 	}
 
 	unless (IS_EDITED(s)) { 
-		if (s->encoding == E_ASCII) {
+		if ((s->encoding == E_ASCII) || (s->encoding == E_GZIP)) {
 			flags |= GET_EXPAND;
 			if (s->state & S_RCS) flags |= GET_RCSEXPAND;
 		}
@@ -7984,20 +7969,6 @@ openInput(sccs *s, int flags, FILE **inp)
 		}
 		s->encoding = compress | E_UUENCODE;
 		return (0);
-	    case E_UUGZIP:
-		/* we do'nt support compressed E_UUGZIP yet */
-		assert((compress & E_GZIP) == 0);
-		/*
-		 * Some very seat of the pants testing showed that -4 was
-		 * the best time/space tradeoff.
-		 */
-		if (streq("-", file)) {
-			*inp = popen("gzip -nq4", M_READ_B);
-		} else {
-			sprintf(buf, "gzip -nq4 < %s", file);
-			*inp = popen(buf, M_READ_B);
-		}
-		return (1);
 	}
 }
 
@@ -9548,7 +9519,6 @@ sccs_encoding(sccs *sc, char *encp, char *compp)
 		if (streq(encp, "text")) enc = E_ASCII;
 		else if (streq(encp, "ascii")) enc = E_ASCII;
 		else if (streq(encp, "binary")) enc = E_UUENCODE;
-		else if (streq(encp, "uugzip")) enc = E_UUGZIP;
 		else {
 			fprintf(stderr,	"admin: unknown encoding format %s\n",
 				encp);
@@ -9561,9 +9531,11 @@ sccs_encoding(sccs *sc, char *encp, char *compp)
 	}
 
 	if (compp) {
-		if (streq(compp, "gzip")) comp = E_GZIP;
-		else if (streq(compp, "none")) comp = 0;
-		else {
+		if (streq(compp, "gzip")) {
+			comp = E_GZIP;
+		} else if (streq(compp, "none")) {
+			comp = 0;
+		} else {
 			fprintf(stderr, "admin: unknown compression format %s\n",
 				compp);
 			return (-1);
@@ -9658,12 +9630,6 @@ sccs_admin(sccs *sc, delta *p, u32 flags, char *new_encp, char *new_compp,
 	if (new_enc == -1) return -1;
 
 	debug((stderr, "new_enc is %d\n", new_enc));
-	if (new_enc == (E_GZIP|E_UUGZIP)) {
-		fprintf(stderr,
-			"can't compress a file with E_UUGZIP encoding\n");
-		error = -1; sc->state |= S_WARNED;
-		return (error);
-	}
 	GOODSCCS(sc);
 	unless (flags & (ADMIN_BK|ADMIN_FORMAT|ADMIN_GONE)) {
 		unless (locked = sccs_lock(sc, 'z')) {
@@ -11023,7 +10989,7 @@ out:
 #ifdef WIN32
 	/*
 	 * Win32 note: If gfile is in use, we cannot delete
-	 * it when we are done.It is better to bail now
+	 * it when we are done. It is better to bail now
 	 */
 	if (HAS_GFILE(s) &&
 	    !(flags & DELTA_SAVEGFILE) && fileBusy(s->gfile)) {
@@ -12264,13 +12230,21 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	if (streq(kw, "ENC")) {
-		switch (s->encoding) {
+		switch (s->encoding & E_DATAENC) {
 		    case E_ASCII:
 			fs("ascii"); return (strVal);
 		    case E_UUENCODE:
 			fs("binary"); return (strVal);
-		    case E_UUGZIP:
-			fs("uugzip"); return (strVal);
+		}
+		return nullVal;
+	}
+
+	if (streq(kw, "COMPRESSION")) {
+		switch (s->encoding & E_COMP) {
+		    case 0: 
+			fs("none"); return (strVal);
+		    case E_GZIP:
+			fs("gzip"); return (strVal);
 		}
 		return nullVal;
 	}

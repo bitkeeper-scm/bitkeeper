@@ -16,6 +16,7 @@
 HERE=`bk pwd`
 echo $N Create initial repository ...................................$NL
 no_logging project
+bk admin -Z
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -75,13 +76,35 @@ cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo failed; cat CMP2; exit 1; fi
 echo OK
 
+echo $N Try to commit via -f ........................................$NL
+cd $HERE/project/src
+bk co $Q -l h.h
+echo new-stuff > h.h
+bk ci $Q -ytest_cmt1 h.h
+date > q.c
+bk ci $Q -ytest_cmt2 -i q.c
+bk -R sfiles -C > $HERE/flist
+bk commit $Q -ycmt4 -f$HERE/flist 
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo wrong pending result $P; bk pending; exit 1; fi
+cat > X <<EOF
+ChangeSet@ChangeSet@1.3@ChangeSet@1.4
+src/h.h@src/h.h@1.2@src/h.h@1.3
+src/q.c@src/q.c@1.0@src/q.c@1.1
+EOF
+bk undos X > CMP1
+bk -R rset -hr1.3,1.4 > CMP2
+diff -u CMP1 CMP2 
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]; then echo failed; cat CMP2; exit 1; fi
+echo OK
+
 echo $N Try to send a logging patch .................................$NL
 cd $HERE/project
 bk makepatch $Q -e -r1.0..1.2 > $HERE/patch
 mkdir -p $HERE/proj_log
 cd $HERE/proj_log
 bk takepatch  -a < $HERE/patch
-#cat $HERE/patch
 grep -q "^.cE " SCCS/s.ChangeSet
 if [ $? -eq 0 ]; then echo failed; exit; fi
 grep -q "^.cE " BitKeeper/etc/SCCS/s.config
@@ -93,7 +116,7 @@ cd $HERE/project
 bk push $Q -e $HERE/proj_log
 cd $HERE/proj_log
 X=`grep "^.cE " src/SCCS/s.h.h | wc -l`
-if [ "$X" -ne 3 ]; then echo failed; exit 1; fi
+if [ "$X" -ne 4 ]; then echo failed; exit 1; fi
 bk -r check -a || { echo failed; exit 1; }
 echo OK
 echo $N Make sure we reject logging patch in a regular repository ...$NL

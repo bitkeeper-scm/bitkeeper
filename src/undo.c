@@ -107,7 +107,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 		    BK_UNDO);
 	}
 	if (streq(qflag, "")) printf("Running consistency check...\n");
-	if ((rc = system("bk -r check -a")) == 2) { /* 2 mean try again */
+	if ((rc = system("bk -r check -af")) == 2) { /* 2 mean try again */
 		if (streq(qflag, "")) {
 			printf("Running consistency check again ...\n");
 		}
