@@ -5,20 +5,20 @@
 .SCCS_GET:
 	bk get -q $@
 
-all image: munge mkbk extractor.c bitkeeper.sh gnu-os os installer.tcl
+all image: munge mkbk extractor.c bitkeeper.sh gnu-os os setup.tcl \
 	./mkbk
 
-installer.tcl: install.tcl ../gui/tkwizard.tcl ../gui/common.tcl \
+setup.tcl: setupmain.tcl ../gui/tkwizard.tcl ../gui/common.tcl \
 	../bklogo.gif
-	(cat install.tcl ../gui/common.tcl ../gui/tkwizard.tcl; \
+	(cat setupmain.tcl ../gui/common.tcl ../gui/tkwizard.tcl; \
 	 echo "image create photo bklogo -data {`bk base64 < ../bklogo.gif`}";\
 	 echo "main"\
-	) > installer.tcl
+	) > setup.tcl
 
 munge: munge.c ../unix.h
 	$(CC) -O munge.c -o munge
 
 clobber clean clean-obj:
 	/bin/rm -f _data _data.c _data.o a.out munge testdata testdata.tar \
-	    core testdata.bin bk-*.bin bk-*.tgz installer.tcl
+	    core testdata.bin bk-*.bin bk-*.tgz setup.tcl
 	bk -r. clean
