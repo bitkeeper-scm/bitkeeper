@@ -2139,10 +2139,12 @@ bk_check()
 }
 
 /*
- * Remove a sfile, if it's parent is empty, remove them too
+ * Remove a sfile, if its parent is empty, remove them too.
+ * We leave stuff in place if we are being called from apply;
+ * if we are called from unapply, we try and clean up everything.
  */
 private void
-rm_sfile(char *sfile)
+rm_sfile(char *sfile, int leavedirs)
 {
 	char	*p;
 
@@ -2156,7 +2158,15 @@ rm_sfile(char *sfile)
 	unless (p) return;
 	for (;;) {
 		*p-- = 0;
-		if (isdir(sfile) && emptyDir(sfile)) rmdir(sfile); /* careful */
+		if (isdir(sfile)) {
+			char	rdir[MAXPATH];
+
+			if (leavedirs) {
+				sprintf(rdir, "%s/%s", ROOT2RESYNC, sfile);
+				if (isdir(rdir)) break;
+			}
+			if (emptyDir(sfile)) rmdir(sfile); /* careful */
+		}
 		while ((p > sfile) && (*p != '/')) p--;
 		if (p >= sfile) continue;
 		break;
@@ -2275,7 +2285,7 @@ pass4_apply(opts *opts)
 		while (fnext(buf, save)) {
 			chop(buf);
 			if (opts->log) fprintf(stdlog, "unlink(%s)\n", buf);
-			rm_sfile(buf);
+			rm_sfile(buf, 1);
 		}
 		fclose(save);
 	}
@@ -2463,7 +2473,7 @@ unapply(FILE *f)
 	rewind(f);
 	while (fnext(buf, f)) {
 		chop(buf);
-		rm_sfile(buf);
+		rm_sfile(buf, 0);
 	}
 	fclose(f);
 }
