@@ -35,7 +35,7 @@ main(int ac, char **av)
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
-usage:		fprintf(stderr, "usage: %s [-nq] [files...]\n", av[0]);
+usage:		fprintf(stderr, "usage: renumber [-nq] [files...]\n");
 		return (1);
 	}
 	while ((c = getopt(ac, av, "nq")) != -1) {
