@@ -3,12 +3,23 @@
 # usage: bk setuptool ?options? ?reponame?
 #
 # options:
-# -e 			Undocumented; passed through to "bk setup"
-# -F name:value		Forces config option 'name' to 'value'; user will
-# 			not be able to modify this value interactively.
-#			Only some config options are supported.
-# -S name:value		Sets config option 'name' to 'value'; user will
-#			be able to modify the value interactively
+# -e                    Undocumented; passed through to "bk setup"
+# -F                    force reponame to be read-only. Requires a
+#                       repository on the command line
+# -R name:value         Sets a config option and marks it as Readonly.
+#                       The user will not be able to modify this value.
+#                       Only some config options are presently supported.
+# -S name:value         Sets config option 'name' to 'value'; user will
+#                       be able to modify the value interactively
+#
+# Note that the following two are synonymous, the latter being supported
+# for bacward compatibility
+# 
+#    bk setuptool -R repository:/foo
+#    bk setuptool -F /foo
+#
+# At this time, -R and -S cannot be used to add arbitrary additional
+# keywords to the config file. Unsupported keys are silently ignored.
 
 proc main {} \
 {
@@ -180,6 +191,7 @@ proc app_init {} \
 	# from some other process (such as an IDE).
 	array set readonly {}
 	set eflag 0
+	set Fflag 0
 	while {[string match {-*} [lindex $argv 0]]} {
 		set arg [lindex $argv 0]
 		set argv [lrange $argv 1 end]
@@ -187,15 +199,17 @@ proc app_init {} \
 		switch -- $arg {
 			-- { break }
 			-e {set eflag 1}
-			-F {
+			-F {set readonly(repository) 1; set Fflag 1}
+			-R {
 				set tmp [lindex $argv 0]
 				set argv [lrange $argv 1 end]
+				set name ""; set value ""
 				regexp {^([^:]+):(.*)} $tmp -> name value
 				if {[lsearch -exact $allowedRO $name] == -1} {
 					popupMessage -I \
 					    "Only the following variables may\
 					     be specified\nwith the $arg\
-					     option:\n\n[join $allowedRO ,\ ]\n"
+					     option:\n\n[join $allowedRO ,\ ]"
 					exit 1
 				}
 				set wizData($name) $value
@@ -204,25 +218,29 @@ proc app_init {} \
 			-S {
 				set tmp [lindex $argv 0]
 				set argv [lrange $argv 1 end]
+				set name ""; set value ""
 				regexp {^([^:]+):(.*)} $tmp -> name value
 				set wizData($name) $value
 			}
 			default {
-				popupMessage -W "Unknown option \"$arg\"\n"
+				popupMessage -W "Unknown option \"$arg\""
 				exit 1
 			}
 		}
 	}
 
 	set argc [llength $argv]
-	if {$argc == 1} {
-		set wizData(repository) [lindex $argv 0]
+	if {$argc == 0 && $Fflag} {
+		popupMessage -I "You must designate a repository with -F"
+		exit 1
 
 	} elseif {$argc > 1} {
-		# This is lame; what should we do here? We need to
-		# standardize this type of stuff
-		popupMessage -W "Unknown option \"[lindex $argv 0]\""
+		popupMessage -W "wrong # args: $argv"
 		exit 1
+
+	} elseif {$argc == 1} {
+		set wizData(repository) [lindex $argv 0]
+
 	}
 
 	computeSize width height
@@ -1211,6 +1229,9 @@ proc popupMessage {args} \
 		set y [expr {[winfo rooty .] + 40}]
 		set ::env(BK_MSG_GEOM) "+${x}+${y}"
 	}
+
+	# Messages look better with a little whitespace attached
+	append message \n
 
 	# hopefully someday we'll turn the msgtool code into a library
 	# so we don't have to exec. For now, though, exec works just fine.
