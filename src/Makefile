@@ -266,6 +266,8 @@ rebuild:
 
 srcs src: FORCE
 	-@bk get -s $(HDRS) $(SRCS) $(SCRSRCS) $(MISC)
+	-@bk -rlibc get -s
+	-@bk -rutils get -s
 
 wc: $(HDRS) $(SRCS) $(SCRSRCS) $(MISC)
 	wc -l $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
@@ -278,9 +280,11 @@ tags: FORCE
 	@for i in $(SRCS) $(HDRS) $(SCRSRCS) $(MISC); \
 	do	if [ ! -f $$i ]; then bk get -s $$i; fi; \
 	done
-	@ctags --file-tags=yes --c-types=d+f+s+t $(SRCS) $(HDRS)
+	@bk -rlibc get -S -s
+	@bk -rutils get -S -s
+	@ctags --file-tags=yes --c-types=d+f+s+t \
+	    $(SRCS) $(HDRS) libc/*.c libc/string/*.c utils/*.c
 	@echo ctags completed
-
 
 TAGS: srcs
 	@for i in $(SRCS) $(HDRS) $(SCRSRCS) $(MISC); \

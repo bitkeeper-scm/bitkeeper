@@ -10437,9 +10437,7 @@ addSym(char *me, sccs *sc, int flags, admin *s, int *ep)
 	 */
 	for (i = 0; s && s[i].flags; ++i) {
 		sym = strdup(s[i].thing);
-		if ((rev = strrchr(sym, '|')) || (rev = strrchr(sym, ':'))) {
-			*rev++ = 0;
-		}
+		if (rev = strrchr(sym, '|')) *rev++ = 0;
 		/* Note: rev is set or null from above test */
 		unless (d = findrev(sc, rev)) {
 			verbose((stderr,

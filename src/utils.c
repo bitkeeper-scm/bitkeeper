@@ -1387,6 +1387,7 @@ progressbar(int n, int max, char *msg)
 	int	percent = max ? (n * 100) / max : 100;
 	int	i, want;
 	int	barlen = 65;
+	char	*p;
 	struct	timeval tv;
 
 	if (percent > 100) percent = 100;
@@ -1395,12 +1396,15 @@ progressbar(int n, int max, char *msg)
 		start.tv_sec = 0;
 		lastup = 0.0;
 	}
-	unless (percent > last) return;
+	unless ((percent > last) || msg) return;
 	gettimeofday(&tv, 0);
 	unless (start.tv_sec) start = tv;
-	elapsed = (tv.tv_sec - start.tv_sec) +
-		(tv.tv_usec - start.tv_usec) / 1.0e6;
-	if (!msg && (elapsed - lastup < 0.25)) return; /* 4 updates/sec max */
+	elapsed =
+	    (tv.tv_sec - start.tv_sec) + (tv.tv_usec - start.tv_usec) / 1.0e6;
+	/* This wacky expression is to try and smooth the drawing */
+	if (!msg && ((elapsed - lastup) < 0.25) && ((percent - last) <= 2)) {
+		return;
+	}
 	last = percent;
 	lastup = elapsed;
 
@@ -1408,14 +1412,17 @@ progressbar(int n, int max, char *msg)
 	if ((elapsed > 10.0) && (n < max)) {
 		int	remain = elapsed * (((float)max/n) - 1.0);
 
-		barlen -= fprintf(stderr, "%dm%02ds ", remain/60, remain%60);
+		p = aprintf("%dm%02ds ", remain/60, remain%60);
+		barlen -= strlen(p);
+		fputs(p, stderr);
+		free(p);
 	}
 	fputc('|', stderr);
 	want = (percent * barlen) / 100;
 	for (i = 1; i <= want; ++i) fputc('=', stderr);
-	for (; i <= barlen; ++i) fputc(' ', stderr);
+	if (i <= barlen) fprintf(stderr, "%*s", barlen - i + 1, "");
 	if (msg) {
-		fprintf(stderr, "| %-20s\n", msg);
+		fprintf(stderr, "| %s\n", msg);
 	} else {
 		fprintf(stderr, "|\r");
 	}
