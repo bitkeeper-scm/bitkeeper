@@ -74,7 +74,7 @@ usage:			system("bk help -s undo");
 	rev = 0;  /* don't use wrong value */
 	gettemp(rev_list, "bk_rev_list");
 	fileList = mk_list(rev_list, csetrev_list);
-	if (!fileList || clean_file(fileList)) goto err;
+	unless (fileList) goto err;
 
 	gettemp(undo_list, "bk_undo_list");
 	cmd = aprintf("bk stripdel -Cc - 2> %s", undo_list);
@@ -151,6 +151,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 		}
 	}
 	freeLines(csetrev_list);
+	if (clean_file(fileList)) goto err;
 	sig_ignore();
 
 	/*
