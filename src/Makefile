@@ -282,14 +282,14 @@ bk.script: bk.sh port/$(SYS)_platform.sh substvars
 	./substvars port/$(SYS)_platform.sh bk.sh > bk.script
 	chmod +x bk.script 
 
-bkhelp.txt: bkhelp.doc bk.ver helpcheck.pl
+bkhelp.txt: bkhelp.doc bk.ver helpcheck.pl Makefile
 	sed "s/@version@/`cat bk.ver`/" bkhelp.doc | \
 	sed "s?@builder@?`./bk getuser`@`./bk gethost`?" | \
 	sed "s/@built_date@/`date`/" > bkhelp.txt
 	perl helpcheck.pl
 
-bkmsg.txt: bkmsg.doc bk.ver
-	sed "s/@version@/`cat bk.ver`/" bkhelp.doc | \
+bkmsg.txt: bkmsg.doc bk.ver Makefile
+	sed "s/@version@/`cat bk.ver`/" bkmsg.doc | \
 	sed "s?@builder@?`./bk getuser`@`./bk gethost`?" | \
 	sed "s/@built_date@/`date`/" > bkmsg.txt
 

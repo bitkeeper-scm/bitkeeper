@@ -32,7 +32,7 @@ Remote: %s\n\
 int
 c_explain(resolve *rs)
 {
-	system("bk getmsg help_merge");
+	system("bk help merge");
 	return (0);
 }
 
