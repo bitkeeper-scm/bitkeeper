@@ -1086,9 +1086,8 @@ sccs_patch(sccs *s)
 		if (e->flags & D_SET) n++;
 		unless (e->flags & D_META) continue;
 		for (d = e->parent; d && (d->type != 'D'); d = d->parent);
-		unless (d && (d->flags & D_SET)) continue;
-		for (d = e->parent; d && (d->type != 'D'); d = d->parent) {
-			d->flags |= D_SET;
+		if (d && (d->flags & D_SET)) {
+			e->flags |= D_SET;
 			n++;
 		}
 	}
