@@ -14,7 +14,7 @@ case "X`uname -s`" in
 	;;
 esac
 case "X`uname -s`" in
-	XSunOS)	XLIBS="-lnsl -lsocket"
+	XSunOS)	XLIBS="-lnsl -lsocket -lresolv"
 		export XLIBS
 		MAKE="make -e"
 		export MAKE

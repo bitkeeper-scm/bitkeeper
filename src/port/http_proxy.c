@@ -5,6 +5,41 @@
 #include "../sccs.h"
 #ifndef WIN32
 
+#define CACHED_PROXY "BitKeeper/etc/.cached_proxy"
+
+void
+save_cached_proxy(char *proxy)
+{
+	char *p = sccs_root(0);
+	char cached_proxy[MAXPATH];
+	FILE *f;
+	
+	unless (p) return;
+	sprintf(cached_proxy, "%s/%s", p, CACHED_PROXY);
+	f = fopen(cached_proxy, "wb");
+fprintf(stderr, "saving proxy:<%s>\n", proxy);
+	fputs(proxy, f);
+	fclose(f);
+}
+
+char **
+get_cached_proxy(char **proxies)
+{
+	char *p = sccs_root(0);
+	char buf[MAXPATH];
+	FILE *f;
+
+	unless (p) return NULL;
+	sprintf(buf, "%s/%s", p, CACHED_PROXY);
+	f = fopen(buf, "rb");
+	unless (f) return NULL;
+	buf[0] = 0;
+	fgets(buf, sizeof(buf), f);
+	fclose(f);
+	unless (buf[0]) return NULL;
+	return (addLine(proxies, strdup(buf)));
+}
+
 char **
 extract(char *buf, char *type, char **proxies)
 {
@@ -24,12 +59,11 @@ extract(char *buf, char *type, char **proxies)
 }
 
 char **
-http_get_file(char *host, char *path)
+http_get_file(char *host, char *path, char **proxies)
 {
 	int fd, rc, i;
 	char header[1024];
 	char buf[4096], *p, *q;
-	char **proxies = NULL;
 
 	fd = connect_srv(host, 80);
 	if (fd < 0) {
@@ -42,21 +76,23 @@ User-Agent: BitKeeper\n\
 Accept: text/html\n\n",
 path);
 	send_request(fd, header, strlen(header));
-	rc = get_reply(fd, buf, sizeof(buf));
+	while (recv(fd, buf, sizeof(buf), 0)) {
+fprintf(stderr, "auto config file =<%s>\n", buf);
+		proxies = extract(buf, "\"PROXY ", proxies);
+		proxies = extract(buf, "\"SOCKS ", proxies);
+	}
 	close(fd);
-	proxies = extract(buf, "\"PROXY ", proxies);
-	proxies = extract(buf, "\"SOCKS ", proxies);
 	return proxies;
 }
 
 char **
-get_config(char *url)
+get_config(char *url, char **proxies)
 {
 	char host[MAXPATH], path[MAXPATH];
 
 	if (strneq(url, "http://", 7)) {
 		parse_url(url, host, path);
-		return (http_get_file(host, path));
+		return (http_get_file(host, path, proxies));
 	} else {
 		fprintf(stderr, "unsupported url %s\n", url);
 		return;
@@ -69,7 +105,8 @@ get_http_proxy()
 {
 	char *p, *q, buf[MAXLINE], autoconfig[MAXPATH] = "";
 	char proxy_host[MAXPATH], socks_server[MAXPATH];
-	int proxy_port = -1, proxy_type = 0, socks_port = 1080;
+	char **proxies = NULL;
+	int proxy_port = -1, proxy_type = -1, socks_port = 1080;
 	FILE *f;
 	extern char *getHomeDir();
 	
@@ -77,7 +114,7 @@ get_http_proxy()
 	assert(p);
 	sprintf(buf, "%s/.netscape/preferences.js", p);
 	f = fopen(buf, "rt");
-	if (f == NULL) return;
+	if (f == NULL) goto done;
 	while (fgets(buf, sizeof(buf), f)) {
 		if (strneq("user_pref(\"network.proxy.http\",", buf, 31)) {
 			p = &buf[33];
@@ -89,7 +126,7 @@ get_http_proxy()
 		} else if (strneq("user_pref(\"network.proxy.http_port\",", buf, 36)) {
 			p = &buf[37];
 			proxy_port = atoi(p);
-			assert(proxy_port > 0);
+			assert(proxy_port >= 0);
 		} else if (strneq("user_pref(\"network.proxy.type\",", buf, 30)) {
 			p = &buf[31];
 			proxy_type = atoi(p);
@@ -108,14 +145,14 @@ get_http_proxy()
 		} else if (strneq("user_pref(\"network.hosts.socks_serverport\",", buf, 43)) {
 			p = &buf[44];
 			socks_port = atoi(p);
-			assert(socks_port > 0);
+			assert(socks_port >= 0);
 		}
 	}
 	fclose(f);
+	proxies = get_cached_proxy(proxies);
 	if (proxy_type == 2) {
-		return (get_config(autoconfig));
+		proxies = get_config(autoconfig, proxies);
 	} else {
-		char **proxies = NULL;
 
 		if (proxy_host[0] && (proxy_port != -1)) {
 			sprintf(buf, "PROXY %s:%d\n", proxy_host, proxy_port);
@@ -125,8 +162,19 @@ get_http_proxy()
 			sprintf(buf, "SOCKS %s:%d\n", socks_server, socks_port);
 			proxies = addLine(proxies, strdup(buf));
 		}
-		return (proxies);
 	}
+done:	q = getenv("SOCKS_PORT");
+	p = getenv("SOCKS_HOST"); 
+	if (p && *p) {
+		sprintf(buf, "SOCKS %s:%s\n", p, q ? q : "1080");
+		proxies = addLine(proxies, strdup(buf));
+	}
+	p = getenv("SOCKS_SERVER");
+	if (p && *p) {
+		sprintf(buf, "SOCKS %s:%s\n", p, q ? q : "1080");
+		proxies = addLine(proxies, strdup(buf));
+	}
+	return (proxies);
 }
 
 #else /* WIN32 */
