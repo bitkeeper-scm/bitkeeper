@@ -9456,6 +9456,15 @@ out:
 		flags |= NEWCKSUM;
 	}
 	if (mode) {
+		delta *n = sccs_getrev(sc, "+", 0, 0);
+
+		assert(n);
+		if ((n->flags & D_MODE) && n->symlink) {
+			fprintf(stderr,
+				"admin: %s: chmod on symlink is illegal\n",
+				sc->gfile);
+			OUT;
+		} 
 		ALLOC_D();
 		addMode("admin", sc, d, mode);
 		flags |= NEWCKSUM;
