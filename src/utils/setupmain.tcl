@@ -987,7 +987,7 @@ Installation of
 
 is completed. Enjoy BitKeeper and send support@bitmover.com
 any questions. Don't forget to try the quick and informative
-demo at http://www.bitkeeper.com/Test-Drive.html
+demo at http://www.bitkeeper.com/Test.html
 
 The BitKeeper Team
 }

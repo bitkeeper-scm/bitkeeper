@@ -98,6 +98,7 @@ proc startmenu_install {dest {group "BitKeeper"}} \
 	progman AddItem "$dest\\bk_refcard.pdf,Quick Reference,,,,,,,1"
 	progman AddItem "$dest\\gnu\\msys.bat,Msys Shell,,,,,,,1"
 	progman AddItem "http://www.bitkeeper.com,BitKeeper on the Web,,,,,,,1"
+	progman AddItem "http://www.bitkeeper.com/Test.html,BitKeeper Test Drive,,,,,,,1"
 }
 # use dde to talk to the program manager
 proc progman {command details} \
