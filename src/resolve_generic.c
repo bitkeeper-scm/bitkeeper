@@ -97,6 +97,14 @@ resolve_loop(char *name, resolve *rs, rfuncs *rf)
 		fprintf(stderr, "\tsccs: %s\n", rs->s->gfile);
 		fprintf(stderr, "\ttot: %s@%s\n", rs->d->pathname, rs->d->rev);
 	}
+
+	if (rs->opts->noconflicts) {
+		fprintf(stderr,
+	    	"Cannot resolve %s for %s in a push\n",
+		name, rs->d->pathname);
+		return (1);
+	}
+
 	rs->n = 0;
 	for (i = 0; rf[i].spec && !streq(rf[i].spec, "!"); i++);
 	if (rf[i].spec) bang = i;

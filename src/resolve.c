@@ -322,7 +322,13 @@ that will work too, it just gets another patch.\n");
 			fprintf(stderr,
 			    "Did not resolve %d renames, "
 			    "no conflicts causing abort.\n", n);
-			listPendingRenames();
+			/*
+			 * Call it again to get the error messages.
+			 * This means that all the code that is called
+			 * below this has to respect noconflicts.
+			 */
+			opts->resolveNames = 1;
+			pass2_renames(opts);
 			resolve_cleanup(opts, CLEAN_RESYNC|CLEAN_PENDING);
 		}
 
@@ -330,7 +336,8 @@ that will work too, it just gets another patch.\n");
 			SHOUT();
 			fprintf(stderr,
 			   "BitKeeper/Basic should not have rename conflict\n");
-			listPendingRenames();
+			opts->resolveNames = 1;
+			pass2_renames(opts);
 			resolve_cleanup(opts, CLEAN_RESYNC|CLEAN_PENDING);
 		}
 

@@ -1,0 +1,41 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+
+# Copyright (c) 1999 Andrew Chang?
+# %K%
+
+echo $N Create initial repository ...................................$NL
+no_logging project
+bk clone $Q $HERE/project $HERE/copy
+echo OK
+echo $N test rename conflict w unchecked file .......................$NL
+mkdir src
+cd src
+echo foo > foo.c
+echo bar > bar.c
+echo h > h.h
+bk ci $Q -i foo.c bar.c h.h
+bk commit $S -a -yCset -S"new"
+bk clean foo.c
+bk mv foo.c zoo.c
+bk commit $S -a -yCset -S"rename"
+cd $HERE/copy
+mkdir src
+cd src
+echo foo > foo.c
+echo bar > bar.c
+echo h > h.h
+cd $HERE/project
+bk push $HERE/copy > push.out 2>&1
+grep -q "pathname is used" push.out
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
