@@ -224,8 +224,8 @@ mv x foo.c
 bk delta $Q -y foo.c
 bk commit $Q -ytest
 bk push $HERE/copy > push.out 2>&1
-grep -q "not to accept conflicts" push.out
-if [ $? -ne 0 ]; then echo failed; fi
+grep -q "has uncommitted changes" push.out
+if [ $? -ne 0 ]; then echo failed; cat push.out; exit 1; fi
 echo OK
 echo $N pull with a delete event ....................................$NL
 bk clone $Q $HERE/project $HERE/copy2
