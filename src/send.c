@@ -11,19 +11,18 @@
 private	char *
 getNewRevs(char *to, char *rev)
 {
-	char	x_sendlog[MAXPATH], here[MAXPATH], has[MAXPATH];
+	char	x_sendlog[MAXPATH], here[MAXPATH];
 	char	buf[MAXLINE];
-	char	revbuf[MAXLINE] = "";
 	static	char revsFile[MAXPATH];
 	FILE	*f;
-	int	first = 1;
+	FILE	*fprs;
+	int	empty = 1;
 
 	assert(!streq(to, "-"));
 
 	unless (isdir(BK_LOG)) mkdirp(BK_LOG);
 	sprintf(x_sendlog, "%s/send-%s", BK_LOG, to);
-	sprintf(here, "%s/bk_here%d", TMP_PATH, getpid());
-	sprintf(has, "%s/bk_has%d", TMP_PATH, getpid());
+	gettemp(here, "bk_here");
 	sprintf(revsFile, "%s/bk_revs%d", TMP_PATH, getpid());
 	close(open(x_sendlog, O_CREAT, 0660));
 
@@ -35,34 +34,28 @@ getNewRevs(char *to, char *rev)
 		    rev, here);
 	}
 	system(buf);
-	sprintf(buf, "bk _sort -u < %s > %s", x_sendlog, has);
+	sprintf(buf, "bk _sort -u < %s | comm -23 %s - | bk key2rev ChangeSet > %s",
+		x_sendlog, here, revsFile);
 	system(buf);
-	sprintf(buf, "comm -23 %s %s | bk key2rev ChangeSet > %s",
-							here, has, revsFile);
-	system(buf);
-	f = fopen(revsFile, "rt");
-	while (fgets(buf, sizeof(buf), f)) {
-		chop(buf);
-		if (first) {
-			first  = 0;
-		} else {
-			strcat(revbuf, ",");
-		}
-		strcat(revbuf, buf);
-	}
-	fclose(f);
-	unlink(has);  unlink(here);
-	if (revbuf[0] == '\0') {
-		unlink(revsFile);
-		return 0;
-	}
 	sprintf(buf, "cp %s %s", x_sendlog, here);
 	system(buf);
-	sprintf(buf, "bk prs -hd':KEY:\n' -r%s ChangeSet >> %s", revbuf, here);
-	system(buf);
+	f = fopen(revsFile, "rt");
+	sprintf(buf, "bk prs -hd':KEY:\n' - >> %s", here);
+	fprs = popen(buf, "w");
+	while (fgets(buf, sizeof(buf), f)) {
+		chop(buf);
+		fprintf(fprs, "ChangeSet|%s\n", buf);
+		empty = 0;
+	}
+	fclose(f);
+	pclose(fprs);
 	sprintf(buf, "bk _sort -u < %s > %s", here, x_sendlog);
 	system(buf);
 	unlink(here);
+	if (empty) {
+		unlink(revsFile);
+		return (0);
+	}
 	return (revsFile);
 }
 
