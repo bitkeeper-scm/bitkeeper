@@ -84,13 +84,11 @@ cmd_httpget(int ac, char **av)
 		root = url;
 	}
 
-#if 0
 	unless (bk_options()&BKOPT_WEB) {
 		sprintf(buf, "ERROR-bkWeb option is disabled: %s", upgrade_msg);
 		out(buf);
 		exit(1);
 	}
-#endif
 
 	unless (av[1]) {
 		out("ERROR-get what?\n");
