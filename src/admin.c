@@ -15,7 +15,6 @@ WHATSTR("@(#)%K%");
 private	int	do_checkin(char *nm, char *ep, char *cp, int fl,
 		   char *rev, char *newf, char *com);
 private	void	clearCsets(sccs *s, int flags);
-private	void	sccs_touch(sccs *s);
 private	int	setMerge(sccs *sc, char *merge, char *rev);
 extern	int     newrev(sccs *s, pfile *pf); 
 
@@ -449,7 +448,10 @@ setMerge(sccs *sc, char *merge, char *rev)
 	return 0;
 }
 
-private	void
+/*
+ * XXX TODO move this to slib.c
+ */
+void
 sccs_touch(sccs *s)
 {
 	struct utimbuf ut;

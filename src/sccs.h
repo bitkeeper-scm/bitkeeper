@@ -1007,6 +1007,7 @@ int	mv(char*, char *);
 char	*rootkey(char *buf);
 int	isEvalLicense();
 char	*globalroot();
+void	sccs_touch(sccs *s);
 
 extern char *bk_vers;
 extern char *bk_utc;

@@ -11655,6 +11655,7 @@ out:
 	}
 	Chmod(s->sfile, 0444);
 	unlink(s->pfile);
+	if ((flags & DELTA_SAVEGFILE) && HAS_GFILE(s)) sccs_touch(s);
 	if (BITKEEPER(s) && !(flags & DELTA_NOPENDING)) {
 		 updatePending(s);
 	}
