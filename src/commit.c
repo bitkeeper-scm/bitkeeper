@@ -180,7 +180,6 @@ do_commit(char **av,
 	c_opts opts, char *sym, char *pendingFiles, int dflags)
 {
 	int	rc, i;
-	int	fd, fd0;
 	char	buf[MAXLINE], *p;
 	char	pendingFiles2[MAXPATH] = "";
 	char    s_logging_ok[] = LOGGING_OK;
@@ -249,11 +248,7 @@ out:		if (pendingFiles) unlink(pendingFiles);
 		unlink("SCCS/t.ChangeSet");
 	}
 	cset = sccs_csetInit(0,0);
-	fd0 = dup(0); close(0);
-	fd = open(p, O_RDONLY, 0);
-	assert(fd == 0);
-	rc = csetCreate(cset, dflags, syms);
-	close(0); dup2(fd0, 0); close(fd0);
+	rc = csetCreate(cset, dflags, p, syms);
 
 	putenv("BK_STATUS=OK");
 	if (rc) putenv("BK_STATUS=FAILED");

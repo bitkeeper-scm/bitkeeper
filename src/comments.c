@@ -2,6 +2,8 @@
 #include "system.h"
 #include "sccs.h"
 
+#define	MAXCMT	1020
+
 private	char	**saved;	/* saved copy of comments across files */
 private	char	*comment;	/* a placed to parse the comment from */
 private	int	gotComment;	/* seems redundant but it isn't, this is
@@ -11,24 +13,53 @@ private	int	gotComment;	/* seems redundant but it isn't, this is
 void
 comments_save(char *s)
 {
-	comment = s;
-	gotComment = 1;
+	char	*p, **split;
+	int	i, len;
+
+	unless (s) {
+		comment = 0;
+		goto out;
+	}
+
+	if (saved) freeLines(saved, free);
+	saved = 0;
+	split = splitLine(s, "\n", 0);
+	EACH(split) {
+		len = strlen(split[i]);
+		if (len <= MAXCMT) {
+			saved = addLine(saved, strdup(split[i]));
+		} else {
+			for (p = split[i]; len > MAXCMT; len -= MAXCMT) {
+				saved = addLine(saved, strndup(p, MAXCMT));
+				p += MAXCMT;
+				fprintf(stderr,
+				    "Splitting comment line \"%.50s\"...\n", p);
+			}
+			saved = addLine(saved, strdup(p));
+		}
+	}
+	freeLines(split, free);
+out:	gotComment = 1;
 }
 
 void
 comments_savefile(char *s)
 {
 	FILE	*f = fopen(s, "r");
-	char	buf[MAXLINE];
+	char	*last;
+	char	buf[MAXCMT];
 
 	unless (f) return;
 	gotComment = 1;
 	comment = "";
 	while (fnext(buf, f)) {
-		char *last = buf;
-		while (*last != 0 && *last != '\n') ++last;
-		unless (*last) fprintf(stderr, "Truncating comment line.\n");
-		*last = 0;	/* strip trailing NL */
+		last = buf;
+		while (*last && (*last != '\n')) last++;
+		if ((last == &buf[MAXCMT - 1]) && !*last) {
+			fprintf(stderr,
+			    "Splitting comment line \"%.50s\"...\n", buf);
+		}
+		*last = 0;	/* strip any trailing NL */
 		saved = addLine(saved, strdup(buf));
 	}
 	if (saved) comment = 0;

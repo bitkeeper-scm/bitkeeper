@@ -37,7 +37,7 @@ typedef	struct cset {
 private	void	csetlist(cset_t *cs, sccs *cset);
 private	int	marklist(char *file);
 private	void	csetDeltas(cset_t *cs, sccs *sc, delta *start, delta *d);
-private	delta	*mkChangeSet(sccs *cset, FILE *diffs);
+private	delta	*mkChangeSet(sccs *cset, char *files, FILE *diffs);
 private	void	doSet(sccs *sc);
 private	void	doMarks(cset_t *cs, sccs *sc);
 private	void	doDiff(sccs *sc, char kind);
@@ -989,9 +989,10 @@ add(FILE *diffs, char *buf)
  * Close the cset sccs* when done.
  */
 private delta	*
-mkChangeSet(sccs *cset, FILE *diffs)
+mkChangeSet(sccs *cset, char *files, FILE *diffs)
 {
 	delta	*d;
+	FILE	*f = fopen(files, "r");
 	char	buf[MAXPATH];
 
 	/*
@@ -1021,14 +1022,26 @@ mkChangeSet(sccs *cset, FILE *diffs)
 	fprintf(diffs, "0a0\n"); /* fake diff header */
 
 	/*
-	 * Read each file:rev from stdin and add that to the cset.
+	 * Read each file:rev from files and add that to the cset.
 	 * add() will ignore the ChangeSet entry itself.
 	 */
-	while (fgets(buf, sizeof(buf), stdin)) {
+	assert(f && files);
+	while (fgets(buf, sizeof(buf), f)) {
 		add(diffs, buf);
 	}
+	fclose(f);
 
 #ifdef CRAZY_WOW
+	Actually, this isn't so crazy wow.  I don't know what problem this
+	caused but I believe the idea was that we wanted time increasing
+	across all deltas in all files.  Sometimes the ChangeSet timestamp
+	is behind the deltas in that changeset which is clearly wrong.
+
+	Proposed fix is to record the highest fudged timestamp in global
+	file in the repo and make sure the cset file is always >= that one.
+	Should be done in the proj struct and written out when we free it
+	if it changed.
+
 	/*
 	 * Adjust the date of the new rev, scripts can make this be in the
 	 * same second.  It's OK that we adjust it here, we are going to use
@@ -1048,7 +1061,7 @@ mkChangeSet(sccs *cset, FILE *diffs)
 }
 
 int
-csetCreate(sccs *cset, int flags, char **syms)
+csetCreate(sccs *cset, int flags, char *files, char **syms)
 {
 	delta	*d;
 	int	error = 0;
@@ -1063,7 +1076,7 @@ csetCreate(sccs *cset, int flags, char **syms)
 		cset_exit(1);
 	}
 
-	d = mkChangeSet(cset, fdiffs); /* write change set to diffs */
+	d = mkChangeSet(cset, files, fdiffs); /* write change set to diffs */
 
 	fclose(fdiffs);
 	unless (diffs = mopen(filename, "b")) {
