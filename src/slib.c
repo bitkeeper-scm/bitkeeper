@@ -8019,8 +8019,6 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 
 #define	RET(x)	{ different = x; goto out; }
 
-	unless (HAS_GFILE(s) && HAS_PFILE(s)) return (0);
-
 	if (inex && (pf->mRev || pf->iLst || pf->xLst)) RET(2);
 	/* A questionable feature for diffs */
 	if ((flags & GET_DIFFTOT) && (d != findrev(s, 0))) RET(1);
@@ -8226,6 +8224,8 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 	pfile	pf;
 	int	ret;
 	delta	*d;
+
+	unless (HAS_GFILE(s) && HAS_PFILE(s)) return (0);
 
 	bzero(&pf, sizeof(pf));
 	if (sccs_read_pfile("hasDiffs", s, &pf)) return (-1);

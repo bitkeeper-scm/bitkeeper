@@ -6,9 +6,9 @@ echo $N Test base64 encoder/decoder .................................$NL
 bin=`bk bin`
 for f in $bin/t/t.[a-f]*
 do	test -f $f || continue
-	bk undos < $f > $f.undos
-	f=$f.undos
 	b=`basename $f`
+	bk undos < $f > $b.undos
+	f=$b.undos
 	bk base64 < $f > $b.64 || exit 1
 	test $openssl -eq 1 && {
 		openssl base64 -in $f > $b.o
