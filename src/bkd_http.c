@@ -870,10 +870,9 @@ http_src(char *path)
 	char	html[MAXPATH];
 	char	**names = 0;
 	int	i;
-	DIR	*d;
+	char	**d;
 	FILE	*f;
 	struct	stat sbuf;
-	struct	dirent *e;
 	time_t	now;
 	char 	dspec[MAXPATH*2];
 
@@ -907,7 +906,7 @@ http_src(char *path)
 	}
 
 	if (!path || !*path) path = ".";
-	unless (d = opendir(path)) {
+	unless (d = getdir(path)) {
 		http_error(500, "%s: %s", path, strerror(errno));
 	}
 
@@ -928,18 +927,18 @@ http_src(char *path)
 	    "</tr>\n");
 
 	now = time(0);
-	while (e = readdir(d)) {
-		if (streq(".", e->d_name) || streq("SCCS", e->d_name) || streq("..", e->d_name)) continue;
+	EACH (d) {
+		if (streq("SCCS", d[i])) continue;
 		if (path[1]) {
-			sprintf(buf, "%s/%s", path, e->d_name);
+			sprintf(buf, "%s/%s", path, d[i]);
 		} else {
-			strcpy(buf, e->d_name);
+			strcpy(buf, d[i]);
 		}
 		if (lstat(buf, &sbuf) == -1) continue;
 		if (path[1]) {
-			sprintf(buf, "<a href=src/%s/%s%s>", path, e->d_name, navbar);
+			sprintf(buf, "<a href=src/%s/%s%s>", path, d[i], navbar);
 		} else {
-			sprintf(buf, "<a href=src/%s%s>", e->d_name, navbar);
+			sprintf(buf, "<a href=src/%s%s>", d[i], navbar);
 		}
 		//s = age(now - sbuf.st_mtime, "&nbsp;");
 		if (S_ISDIR(sbuf.st_mode)) {
@@ -953,11 +952,11 @@ http_src(char *path)
 			  "<td>&nbsp;</td></tr>\n",		/* comments */
 			  "dir.gif",
 			  buf,
-			  e->d_name);
+			  d[i]);
 			names = addLine(names, strdup(html));
 		}
 	}
-	closedir(d);
+	freeLines(d, free);
 
 	sprintf(buf,
 	    "env BK_YEAR4=1 bk prs -hr+ -d'%s' %s", dspec, path[1] ? path : "");

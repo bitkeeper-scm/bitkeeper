@@ -77,48 +77,17 @@ private	int	parseConfig(char *buf, char **k, char **v);
 private	delta	*cset2rev(sccs *s, char *rev);
 private	void	taguncolor(sccs *s, delta *d);
 
-#ifndef WIN32
 int
 emptyDir(char *dir)
 {
-	DIR *d;
-	struct dirent *e;
+	char	**d;
+	int	i, n = 0;
 
-	d = opendir(dir);
-	unless (d) return (0);
-
-	while (e = readdir(d)) {
-		if (streq(e->d_name, ".") || streq(e->d_name, "..")) continue;
-		closedir(d);
-		return (0);
-	}
-	closedir(d);
-	return (1);
+	unless (d = getdir(dir)) return (0);
+	EACH (d) n++;
+	freeLines(d, free);
+	return (n == 0);
 }
-#else
-int
-emptyDir(char *dir)
-{
-
-	struct  _finddata_t found_file;
-	char	*file = found_file.name;
-	char	buf[MAXPATH];
-	long	dh;
-
-	bm2ntfname(dir, buf);
-	strcat(buf, "\\*.*");
-	if ((dh =  _findfirst(buf, &found_file)) == -1L) return (0);
-
-	do {
-		if (streq(file, ".") || streq(file, "..")) continue;
-		_findclose(dh);
-		return (0);
-	} while (_findnext(dh, &found_file) == 0);
-	_findclose(dh);
-	return (1);
-
-}
-#endif
 
 /*
  * Convert lrwxrwxrwx -> 0120777, etc.

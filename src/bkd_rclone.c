@@ -49,26 +49,22 @@ rclone_common(int ac, char **av, opts *opts)
 	return (strdup(av[optind]));
 }
 
-
 private int
 isEmptyDir(char *dir)
 {
-	DIR *d;
-	struct dirent *e;
+	int	i;
+	char	**d;
 
-	d = opendir(dir);
-	unless (d) return (0);
-
-	while (e = readdir(d)) {
-		if (streq(e->d_name, ".") || streq(e->d_name, "..")) continue;
+	unless (d = getdir(dir)) return (0);
+	EACH (d) {
 		/*
 		 * Ignore .ssh directory, for the "hostme" environment
 		 */
-		if (streq(e->d_name, ".ssh")) continue;
-		closedir(d);
+		if (streq(d[i], ".ssh")) continue;
+		freeLines(d, free);
 		return (0);
 	}
-	closedir(d);
+	freeLines(d, free);
 	return (1);
 }
 
