@@ -5686,6 +5686,11 @@ getKey(MDBM *DB, char *buf, int flags, char *root)
 	}
 }
 
+getKvBody(sccs *s, char *printOut, int flags, delta *d,
+		int *ln, char *iLst, char *xLst)
+{
+}
+
 private int
 getRegBody(sccs *s, char *printOut, int flags, delta *d,
 		int *ln, char *iLst, char *xLst)
@@ -9604,6 +9609,8 @@ name2xflg(char *fl)
 		return X_SCCS;
 	} else if (streq(fl, "EOLN_NATIVE")) {
 		return X_EOLN_NATIVE;
+	} else if (streq(fl, "KV")) {
+		return X_KV;
 	}
 	return (0);			/* lint */
 }
@@ -11885,6 +11892,37 @@ show_s(sccs *s, delta *d, FILE *out, char *vbuf, char *str) {
 	}
 }
 
+/*
+ * XXX TODO We should load it directly from the weave
+ *     without generating the gfile.
+ */
+void
+sccs_loadkv(sccs *s)
+{
+	char x_kv[MAXPATH];
+	extern MDBM *loadkv(char *file);
+
+	gettemp(x_kv, "bk_kv");
+	sccs_get(s, 0, 0, 0, 0, SILENT|PRINT, x_kv);
+	s->mdbm = loadkv(x_kv);
+	unlink(x_kv);
+}
+
+/*
+ * Given key return the value.
+ * The mdbm is loaded on demand
+ * XXX TODO need a state to remember the previous load failed, so we do
+ *     not try to re-load.
+ */
+private char *
+key2val(sccs *s, const char *key)
+{
+	unless (KV(s))  return (NULL);
+	unless (s->mdbm) sccs_loadkv(s);
+	unless (s->mdbm) return (NULL);
+	return (mdbm_fetch_str(s->mdbm, key));
+}
+
 #define	notKeyword -1
 #define	nullVal    0
 #define	strVal	   1
@@ -11914,6 +11952,14 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 #define	fx(n)	show_d(s, d, out, vbuf, "0x%x", n)
 #define	f5d(n)	show_d(s, d, out, vbuf, "%05d", n)
 #define	fs(str)	show_s(s, d, out, vbuf, str)
+
+	if (kw[0] == '%') {
+		p = key2val(s, &kw[1]);
+		//unless (p) return (nullVal);
+		unless (p) return (notKeyword);
+		fs(p);
+		return (strVal);
+	}
 
 	if (streq(kw, "Dt")) {
 		/* :Dt: = :DT::I::D::T::P::DS::DP: */
@@ -12637,6 +12683,9 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		}
 		if (flags & X_LONGKEY) {
 			if (comma) fs(","); fs("LONGKEY"); comma = 1;
+		}
+		if (flags & X_KV) {
+			if (comma) fs(","); fs("KV"); comma = 1;
 		}
 		return (strVal);
 	}
@@ -13634,6 +13683,11 @@ sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out)
 		 prs_reverse(s, s->table, flags, dspec, out);
 	} else {
 		 prs_forward(s, s->table, flags, dspec, out);
+	}
+
+	if (KV(s) && s->mdbm) {
+		mdbm_close(s->mdbm);
+		s->mdbm = 0;
 	}
 	return (0);
 }

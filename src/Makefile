@@ -43,7 +43,7 @@ OBJ	= abort.o adler32.o admin.o approve.o annotate.o \
 	  gca.o get.o gethelp.o gethost.o getopt.o \
 	  gettemp.o getuser.o glob.o gnupatch.o graft.o grep.o \
 	  help.o http.o host.o isascii.o \
-	  key2rev.o keysort.o \
+	  key2rev.o keysort.o kvfile.o \
 	  level.o lib_tcp.o libcommit.o libdiff.o librange.o \
 	  libsfiles.o libusers.o lines.o localtm.o locking.o \
 	  lock.o lod.o logflags.o logging.o \

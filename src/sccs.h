@@ -92,6 +92,7 @@
 #define	PRS_LF		0x02000000	/* terminate non-empty output with LF */
 #define	PRS_LOGGING	0x04000000	/* add logging bit to xflags */
 #define	PRS_COMPAT	0x08000000	/* for makepatch -C, send old tags */
+#define	PRS_KV		0x08000000	/* load  kv file */
 
 #define SINFO_TERSE	0x10000000	/* print in terse format: sinfo -t */
 
@@ -183,8 +184,9 @@
 #define	X_LOGS_ONLY	0x00000400	/* this is a logging repository */
 #define	X_EOLN_NATIVE	0x00000800	/* use eoln native to this OS */
 #define	X_LONGKEY	0x00001000	/* all keys are long format */
+#define	X_KV		0x00002000	/* key value file */
 					/* flags which can be changed */
-#define	X_MAYCHANGE	(X_RCS|X_YEAR4|X_SHELL|X_EXPAND1|X_SCCS|X_EOLN_NATIVE)
+#define	X_MAYCHANGE	(X_RCS|X_YEAR4|X_SHELL|X_EXPAND1|X_SCCS|X_EOLN_NATIVE|X_KV)
 					/* default set of flags */
 #define	X_DEFAULT	(X_BITKEEPER|X_EXPAND1|X_CSETMARKED|X_SCCS)
 #define	X_REQUIRED	(X_BITKEEPER|X_CSETMARKED)
@@ -233,8 +235,9 @@
 #define	SCCS(s)		(s->xflags & X_SCCS)
 #define	SINGLE(s)	(s->xflags & X_SINGLE)
 #define	LOGS_ONLY(s)	(s->xflags & X_LOGS_ONLY)
-#define	EOLN_ONLY(s)	(s->xflags & X_EOLN_ONLY)
+#define	EOLN_NATIVE(s)	(s->xflags & X_EOLN_NATIVE)
 #define	LONGKEY(s)	(s->xflags & X_LONGKEY)
+#define	KV(s)		(s->xflags & X_KV)
 
 /*
  * Flags (d->flags) that indicate some state on the delta.
