@@ -30,15 +30,26 @@ bk parent -iq || exit 1
 bk parent -oq || exit 1
 bk parent -q || exit 1
 PARENT=$PREFIX/project
-test "$PARENT" = "`bk parent -il`" || exit 1
-test "$PARENT" = "`bk parent -ol`" || exit 1
-test "$PARENT" = "`bk parent -l`" || exit 1
+IL_PARENT="`bk parent -il`"
+OL_PARENT="`bk parent -ol`"
+L_PARENT="`bk parent -l`"
+test "$PLATFORM" = "WIN32" && {
+	PARENT="`echo $PARENT | tr '[a-z]' '[A-Z]'`"
+	IL_PARENT="`echo $IL_PARENT | tr '[a-z]' '[A-Z]'`"
+	OL_PARENT="`echo $OL_PARENT | tr '[a-z]' '[A-Z]'`"
+	L_PARENT="`echo $L_PARENT | tr '[a-z]' '[A-Z]'`"
+}
+test "$PARENT" = "$IL_PARENT" || exit 1
+test "$PARENT" = "$OL_PARENT" || exit 1
+test "$PARENT" = "$L_PARENT" || exit 1
 echo OK
 
 echo $N Make sure we have the compat single parent pointer ..........$NL
 cd $HERE/clone
 test -f BitKeeper/log/parent || exit 1
-test "$PARENT" = "`cat BitKeeper/log/parent`" || exit 1
+FILE="`cat BitKeeper/log/parent`"
+test "$PLATFORM" = "WIN32" && FILE="`echo $FILE | tr '[a-z]' '[A-Z]'`"
+test "$PARENT" = "$FILE" || exit 1
 echo OK
 
 echo $N Test backwards compat way of setting parent pointer .........$NL
@@ -523,9 +534,18 @@ echo OK
 echo $N Make sure we normalize parent pointers by default ...........$NL
 bk parent -q ../project || exit 1
 PARENT=$PREFIX/project
-test "$PARENT" = "`bk parent -il`" || exit 1
-test "$PARENT" = "`bk parent -ol`" || exit 1
-test "$PARENT" = "`bk parent -l`" || exit 1
+IL_PARENT="`bk parent -il`"
+OL_PARENT="`bk parent -ol`"
+L_PARENT="`bk parent -l`"
+test "$PLATFORM" = "WIN32" && {
+	PARENT="`echo $PARENT | tr '[a-z]' '[A-Z]'`"
+	IL_PARENT="`echo $IL_PARENT | tr '[a-z]' '[A-Z]'`"
+	OL_PARENT="`echo $OL_PARENT | tr '[a-z]' '[A-Z]'`"
+	L_PARENT="`echo $L_PARENT | tr '[a-z]' '[A-Z]'`"
+}
+test "$PARENT" = "$IL_PARENT" || exit 1
+test "$PARENT" = "$OL_PARENT" || exit 1
+test "$PARENT" = "$L_PARENT" || exit 1
 test -f BitKeeper/log/parent || exit 1
 echo OK
 
@@ -546,6 +566,12 @@ cat > WANT <<EOF
 $PREFIX/project
 EOF
 bk parent -l > GOT
+test "$PLATFORM" = "WIN32" && {
+	tr '[a-z]' '[A-Z]' < WANT > WANT$$
+	mv -f WANT$$ WANT
+	tr '[a-z]' '[A-Z]' < GOT > GOT$$
+	mv -f GOT$$ GOT
+}
 cmp -s WANT GOT || {
 	echo failed short listing
 	cat GOT
@@ -556,6 +582,12 @@ Push/pull parent: ../project
 Push/pull parent: $PREFIX/project
 EOF
 bk parent > GOT
+test "$PLATFORM" = "WIN32" && {
+	tr '[a-z]' '[A-Z]' < WANT > WANT$$
+	mv -f WANT$$ WANT
+	tr '[a-z]' '[A-Z]' < GOT > GOT$$
+	mv -f GOT$$ GOT
+}
 cmp -s WANT GOT || {
 	echo failed annotated listing
 	cat GOT

@@ -207,9 +207,22 @@ echo OK
 # checkfiles OUT expected
 # echo OK
 
-echo 'exactly 2*C lines between matches, must not print "--"' > s1.reason
+GREP=grep
+$GREP --version > VERS 2>/dev/null
+grep -q 'grep .GNU grep. 2.[456789]' VERS || {
+	test -x /usr/local/bin/grep && GREP=/usr/local/bin/grep
+}
+$GREP --version > VERS 2>/dev/null
+grep -q 'grep .GNU grep. 2.[456789]' VERS || {
+	echo This system has a grep which cannot run this test
+	echo please install GNU grep 2.4 or later
+	cat VERS
+	exit 1
+}
+
+echo $N 'exactly 2*C lines between matches, must not print "--" ......'$NL
 echo ' -nC2' > s1.cmd
-cat <<EOF > s1
+cat <<EOF > DATA
 match
 foo
 foo
@@ -217,9 +230,13 @@ foo
 foo
 match
 EOF
-echo 'Two matches with overlapping context' > s2.reason
-echo ' -nC3' > s2.cmd
-cat <<EOF > s2
+bk grep -nC2 match DATA > GOT
+$GREP -nC2 match DATA > WANT
+checkfiles WANT GOT
+echo OK
+
+echo $N 'Two matches with overlapping context ........................'$NL
+cat <<EOF > DATA
 foo
 foo
 foo
@@ -230,9 +247,13 @@ match
 bar
 bar
 EOF
-echo 'Two matches with adjacent context' > s3.reason
-echo ' -C2' > s3.cmd
-cat <<EOF > s3
+bk grep -nC3 match DATA > GOT
+$GREP -nC3 match DATA > WANT
+checkfiles WANT GOT
+echo OK
+
+echo $N 'Two matches with adjacent context ...........................'$NL
+cat <<EOF > DATA
 foo
 foo
 foo
@@ -243,9 +264,13 @@ bar
 bar
 match
 EOF
-echo 'Two matches with one non-printed line between contexts' > s4.reason
-echo ' -C2' > s4.cmd
-cat <<EOF > s4
+bk grep -nC2 match DATA > GOT
+$GREP -nC2 match DATA > WANT
+checkfiles WANT GOT
+echo OK
+
+echo $N 'Two matches with one non-printed line between contexts ......'$NL
+cat <<EOF > DATA
 foo
 foo
 match
@@ -256,62 +281,72 @@ bar
 bar
 match
 EOF
-echo 'First line of file matches' > s5.reason
-echo ' -C3' > s5.cmd
-cat <<EOF > s5
-match
-foo
-foo
-foo
-bar
-EOF
-echo 'Third line of file matches' > s6.reason
-echo ' -C3' > s6.cmd
-cat <<EOF > s6
-foo
-foo
-match
-foo
-foo
-foo
-bar
-EOF
-echo 'Last line of file matches' > s7.reason
-echo ' -C3' > s7.cmd
-cat <<EOF > s7
-bar
-bar
-bar
-foo
-foo
-foo
-match
-EOF
-r=0
-echo 'Two matching lines within C' > s8.reason
-echo ' -C3' > s8.cmd
-cat <<EOF > s8
-bar
-foo
-foo
-foo
-match
-bar
-match
-foo
-foo
-foo
-bar
-EOF
+bk grep -nC2 match DATA > GOT
+$GREP -nC2 match DATA > WANT
+checkfiles WANT GOT
+echo OK
 
-for i in s1 s2 s3 s4 s5 s6 s7 s8
-do	printf %-61s "`sed 's/ /~/g;s/$/~/' $i.reason`" | sed 's/ /./g;s/~/ /g'
-	bk grep `cat $i.cmd` match $i > $i.bk.out || exit 1
-	   grep `cat $i.cmd` match $i > $i.gnu.out || exit 1
-	checkfiles $i.bk.out $i.gnu.out
-	rm $i $i.cmd $i.reason $i.bk.out $i.gnu.out
-	echo OK
-done
+echo $N 'First line of file matches ..................................'$NL
+cat <<EOF > DATA
+match
+foo
+foo
+foo
+bar
+EOF
+bk grep -nC3 match DATA > GOT
+$GREP -nC3 match DATA > WANT
+checkfiles WANT GOT
+echo OK
+
+echo $N 'Third line of file matches ..................................'$NL
+cat <<EOF > DATA
+foo
+foo
+match
+foo
+foo
+foo
+bar
+EOF
+bk grep -nC3 match DATA > GOT
+$GREP -nC3 match DATA > WANT
+checkfiles WANT GOT
+echo OK
+
+echo $N 'Last line of file matches ...................................'$NL
+cat <<EOF > DATA
+bar
+bar
+bar
+foo
+foo
+foo
+match
+EOF
+bk grep -nC3 match DATA > GOT
+$GREP -nC3 match DATA > WANT
+checkfiles WANT GOT
+echo OK
+
+echo $N 'Two matching lines within C .................................'$NL
+cat <<EOF > DATA
+bar
+foo
+foo
+foo
+match
+bar
+match
+foo
+foo
+foo
+bar
+EOF
+bk grep -nC3 match DATA > GOT
+$GREP -nC3 match DATA > WANT
+checkfiles WANT GOT
+echo OK
 
 echo $N diff -C matches last line of file 1, do not print file 2 ....$NL
 cat <<EOF > f1
@@ -320,14 +355,12 @@ foo
 foo
 match
 EOF
-
 cat <<EOF > f2
 bar
 baz
 quux
 EOF
-
 bk grep -C3 match f1 f2 > OUT
-   grep -C3 match f1 f2 > expected
-checkfiles OUT expected
+$GREP -C3 match f1 f2 > WANT
+checkfiles OUT WANT
 echo OK

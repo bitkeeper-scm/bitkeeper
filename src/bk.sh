@@ -1500,6 +1500,18 @@ _conflicts() {
 	done
 }
 
+__fmt() {
+	LEN=$1
+	shift
+	SPACE=""
+	STRLEN=`echo "$*" | wc -c`
+	while [ $STRLEN -le $LEN ]
+	do	SPACE=" $SPACE"
+		STRLEN=`expr $STRLEN + 1`
+	done
+	echo "$*$SPACE"
+}
+
 __conflict() {
 	LINES=`bk smerge "$GFILE" $LOCAL $REMOTE | grep '^<<<<<<< gca' | wc -l`
 	CONFLICTS=`expr $LINES + 0`
@@ -1513,11 +1525,12 @@ __conflict() {
 	do	USERS="$i $USERS"
 	done
 	rm -f /tmp/u$$
-	printf "%-20s $CONFLICTS conflicts by $USERS\n" "$GFILE"
+	FMT="`__fmt 20 $GFILE`"
+	echo "$FMT $CONFLICTS conflicts by $USERS"
 	test "$GFILE" = "$LPN" -a "$GFILE" = "$RPN" || {
-		printf "    %-16s %s\n" "GCA path:" "$GPN"
-		printf "    %-16s %s\n" "Local path:" "$LPN"
-		printf "    %-16s %s\n" "Remote path:" "$RPN"
+		echo "    GCA path:        $GPN"
+		echo "    Local path:      $LPN"
+		echo "    Remote path:     $RPN"
 	}
 }
 

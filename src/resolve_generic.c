@@ -20,13 +20,13 @@ resolve_init(opts *opts, sccs *s)
 	assert(rs->d);	/* XXX: not all files have a 1.0 .  What to do? */
 	rs->dname = sccs_setpathname(s);
 	s->spathname = 0;  /* storing name in dname, so free this */
-	if (rs->snames = getnames(sccs_Xfile(rs->s, 'm'), 'm')) {
+	if (rs->snames = res_getnames(sccs_Xfile(rs->s, 'm'), 'm')) {
 		rs->gnames         = calloc(1, sizeof(names));
 		rs->gnames->local  = sccs2name(rs->snames->local);
 		rs->gnames->gca    = sccs2name(rs->snames->gca);
 		rs->gnames->remote = sccs2name(rs->snames->remote);
 	}
-	rs->revs = getnames(sccs_Xfile(rs->s, 'r'), 'r');
+	rs->revs = res_getnames(sccs_Xfile(rs->s, 'r'), 'r');
 	rs->pager = pager();
 	unless (rs->editor = getenv("EDITOR")) rs->editor = EDITOR;
 	if (opts->debug) {

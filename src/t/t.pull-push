@@ -362,7 +362,15 @@ echo OK
 
 echo $N make sure pull normalize file url ...........................$NL
 bk pull ../././project > $HERE/pull.out 2> /dev/null
-grep -q "$PREFIX/project" $HERE/pull.out || {
+grep -q "$PREFIX/project" $HERE/pull.out 
+STATUS=$?
+test $STATUS = 0 || {
+	test "$PLATFORM" = "WIN32" && {
+		grep -q -i "$PREFIX/project" $HERE/pull.out
+		STATUS=$?
+	}
+}
+test $STATUS = 0 || {
 	echo failed;
 	exit 1;
 }
