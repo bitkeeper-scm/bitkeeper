@@ -34,7 +34,7 @@ do	bk co $Q -l a/b/c/Data
 	bk delta $Q -IInit a/b/c/Data
 done
 echo $N Checking sccslog with -p option .............................$NL
-cat > CMP1 <<EOF
+bk undos > CMP1 <<EOF
 Data 1.10 20/03/11 00:00:10 butthead${HOST} +1 -0
   Rev 10
 
@@ -65,7 +65,7 @@ Data 1.2 20/03/11 00:00:02 butthead${HOST} +1 -0
 
 
 EOF
-bk sccslog -p a/b/c/Data | grep -v '^Data 1.[01] ' | grep -v 'BitKeeper file' | cat > CMP2
+bk sccslog -p a/b/c/Data | grep -v '^Data 1.[01] ' | grep -v 'BitKeeper file' | bk undos > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2;
 bk sccslog -p a/b/c/Data
