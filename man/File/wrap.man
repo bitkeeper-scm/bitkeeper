@@ -30,9 +30,16 @@ These programs must be placed the BitKeeper
 .I bin
 directory and have names of the form:
 .sp
+.if t \{\
 .IB type wrap
 .br
 .BI un type wrap
+\}
+.if n \{\
+<type>wrap
+.br
+un<type>wrap
+\}
 .sp
 i.e.,
 .B uuwrap

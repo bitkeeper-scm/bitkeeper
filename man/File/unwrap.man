@@ -10,7 +10,9 @@ bk unwrap \- unwrap patches
 .SH DESCRIPTION
 .LP
 Normally you do not use this command as it is invoked automatically
-as part of the bk receive command.   However, you may want to use this
+as part of the
+.B bk receive
+command.   However, you may want to use this
 command to peek inside a wrapped patch.
 .SH SEE ALSO
 .B bk help receive

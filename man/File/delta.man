@@ -4,7 +4,8 @@
 .SH NAME
 bk delta \- check in modified files
 .SH SYNOPSIS
-.B delta [\-iluYpqfach] [\-S
+.if t \{\
+.B bk delta [\-iluYpqfach] [\-S
 .IB sym ] 
 .B [\-Z
 .IB alg ] 
@@ -12,6 +13,10 @@ bk delta \- check in modified files
 .IB c ] 
 .BI [ files...
 .B ]
+\}
+.if n \{\ 
+bk delta [-iluYpqfach] [-S<sym>] [-Z<alg>] [-y<c>] [files...]
+\}
 .SH DESCRIPTION
 .LP
 Saves editing changes in a Source Code Control System (SCCS) file.

@@ -3,9 +3,14 @@
 .SH NAME
 bk \- BitKeeper shell
 .SH SYNOPSIS
+.if t \{\
 .B bk
 .OA r Dir
 .OA R Cmd
+.BI command \ [options]
+.\}
+.if n
+bk [-r<dir>] [-R <cmd>] command [options]
 .SH OPTIONS
 .TP
 .AS    -R cmd

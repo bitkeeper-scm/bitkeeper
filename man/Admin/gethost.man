@@ -7,4 +7,6 @@ bk gethost \- display machine name
 .SH DESCRIPTION
 .LP
 Outputs the fully-qualified name of the machine. Used primarily
-when doing bk scripting.
+when doing
+.B bk
+scripting.

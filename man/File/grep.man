@@ -5,15 +5,21 @@
 bk grep \- search all revisions for a pattern
 .SH SYNOPSIS
 .B bk grep [\-dimnu] 
-.IB pattern [
-.IB files... | 
+.IB pattern \ [
+.IB files... \ | 
 .IB \- ]
 .SH DESCRIPTION
 .LP
 If you need to find a string which you know was present in some version
-of some file, you can use the "bk grep" command to do that.
+of some file, you can use the 
+.B bk grep
+command to do that.
 .LP
-The bk grep command uses bk sccscat to show the concatenation of all
+The 
+.B bk grep
+command uses
+.B bk sccscat
+to show the concatenation of all
 lines in all versions of a file.  The listing can be annotated with dates,
 revision numbers, file names, and/or user names.  If no annotations are
 selected, the default is to do "-mn".

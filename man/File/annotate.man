@@ -3,6 +3,7 @@
 .SH NAME
 bk annotate \- provide annotated listing of source files
 .SH SYNOPSIS
+.if t \{\
 .B bk annotate [-adkmNnu]
 .OA c date
 .OA r rev
@@ -14,6 +15,12 @@ bk annotate \- provide annotated listing of source files
 .BI [ files...
 .BI |\ -
 .B ]
+\}
+.if n \{\
+bk annotate [-adkmNnu] [-c<date>] [-r<rev>] [files... | -]
+.br
+bk sccscat [-dmnu] [files... | -]
+\}
 .SH DESCRIPTION
 .LP
 Annotated listings are useful for deeper understanding of your source

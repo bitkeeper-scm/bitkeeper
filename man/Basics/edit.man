@@ -27,7 +27,7 @@ run quietly
 .SH NOTE
 .B edit
 is actually an alias for
-.B get -e
+.B bk get -e
 .SH SEE ALSO
 .B bk help co
 .br

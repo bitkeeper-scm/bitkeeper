@@ -4,6 +4,7 @@
 bk version \- print BitKeeper version
 .SH SYNOPSIS
 .B bk version
+.SH DESCRIPTION
 The 
 .B version
 command shows what version of BitKeeper you are running.

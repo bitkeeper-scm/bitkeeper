@@ -4,12 +4,17 @@
 .SH NAME
 bk get \- check out BitKeeper files
 .SH SYNOPSIS
+.if t \{\
 .B bk get [\-qkepdmunN] [\-r
 .IB rev | 
 .BI \-c date
 .B ] [
 .IB files... | 
 .IB \- ]
+\}
+.if n \{\ 
+bk get [-qkepdmunN] [-r<rev> | -c<date>] [files... | -]
+\}
 .SH DESCRIPTION
 .LP
 get is used to check out files for viewing or building. By default,

@@ -3,12 +3,17 @@
 .SH NAME 
 bk sccslog \- like prs, except it sorts deltas by date across all files
 .SH SYNOPSIS
-.B sccslog [-Cpv]
+.if t \{\
+.B bk sccslog [-Cpv]
 .OA c d
 .OA r r
 .BI [ file list... ] |
 .BI [ - ] |
 .B [ ]
+\}
+.if n \{\ 
+bk sccslog [-Cpv] [-c<d>] [-r<r>] [file list...] | [-] | [] 
+\}
 .SH DESCRIPTION
 .LP
 .B sccslog

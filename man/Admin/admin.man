@@ -90,13 +90,16 @@ into TOT or
 .TP
 .AL \-S sym rev
 associate 
-.I sym
+.if t .I sym
+.if n <sym>
 with 
-.I rev
+.if t .I rev
+.if n <rev>
 .TP
 .AN \-p path
 set path of the most recent delta to 
-.I path
+.if t .I path
+.if n <path>
 .TP
 .B \-B
 make the landing pad bigger

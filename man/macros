@@ -55,31 +55,54 @@
 .\" Amy & Beth stuff starts here
 .de AS
 .\" Bold Italic for option arg with space (option arg)
+.if t
 .	BI \\$1 \ \\$2
+.if n
+.	B \\$1 \ <\\$2>
 ..
 .de AN
 .\" Bold Italic for option arg no space (optionarg)
+.if t
 .	BI \\$1 \\$2
+.if n
+.	B \\$1<\\$2>
 ..
 .de AP
 .\" Bold Italic for option arg with | (option|arg)
+.if t
 .	BI \\$1 \\$2|\\$3
+.if n
+.	B \\$1 <\\$2>|<\\$3>
 ..
 .de AB
 .\" Bold Italic for option arg with [] (option[arg])
+.if t
 .	BI \\$1 [\\$2]
+.if n
+.	B \\$1 [<\\$2>]
 ..
 .de DB
 .\" Bold Italic for option arg with double [] (option[arg] [arg])
-.	BI \\$1 [\\$2] [\\$3]
+.if t
+\fB\\$1\fP \fI\\$2 [\\$3] [\\$4] 
+.if n
+.	B \\$1 \\$2 [<\\$3>] [<\\$4>]
 ..
 .de AC
 .\" Bold Italic for option arg with [,] (option[,arg])
+.if t
 .	BI \\$1 \\$2[,\\$3]
+.if n
+.	B \\$1 <\\$2[,\\$3]>
 ..
 .de AL
 .\" Bold Italic for option arg:arg
+.if t \{\
 .	BI \\$1 \\$2:\\$3
+\}
+.if n \{\ 
+.	B \\$1 <\\$2>:<\\$3>
+\}
 ..
 .de AX
 .\" For onscreen text examples (input/output)

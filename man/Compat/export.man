@@ -3,22 +3,33 @@
 .SH NAME 
 bk export\- checks out clear-text version of all BitKeeper files
 .SH SYNOPSIS
+.if t \{\
 .B bk export
 .OA t plain
 .BI [ -kTvw ]
-.OA i pat
-.OA x pat
-.AN -r rev
+.B [
+.BI -i pat ]
+.B [
+.BI -x pat ]
+.BI -r rev
 .BI [ source ]
 .I dest
 .br
 or
 .br
 .B bk export
-.AN -t patch
+.BI -t patch 
 .BI [ -hT ]
 .BI [-d u|c ]
-.AN -r rev1,rev2
+.BI \ \-r rev1,rev2
+\}
+.if n \{\
+bk export [-tplain] [-kTvw] [-i<pat>] [-x<pat>] -r<rev>  [source] dest
+.br
+or
+.br
+bk export -tpatch [-hT] [-d u|c] -rrev1,rev2
+\}
 .SH DESCRIPTION
 .LP
 The

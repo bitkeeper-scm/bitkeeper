@@ -4,8 +4,8 @@
 .SH NAME
 bk sfiles \- generates lists of revision control files
 .SH SYNOPSIS
-.B sfiles [\-aAcCdDglkpPRrux] [
-.IB directories ]
+.B sfiles [\-aAcCdDglkpPRrux] 
+.BI [ directories ]
 .SH OPTIONS
 .TP
 .B \-A

@@ -3,8 +3,12 @@
 .SH NAME 
 bk mv \- move file[s]
 .SH SYNOPSIS
+.if t \{\
 .B bk mv
 .I source destination
+\}
+.if n
+bk mv <source> <destination>
 .SH DESCRIPTION
 .LP
 To move a file from

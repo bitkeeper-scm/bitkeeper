@@ -4,10 +4,9 @@
 .SH NAME
 bk send \- send a BitKeeper patch
 .SH SYNOPSIS
-.B bk send [\-dq] [\-w
-.IB Wrapper ] 
-.B [\-r
-.IB revs ] 
+.B bk send [\-dq]
+.BI [\-w Wrapper ] 
+.BI [\-r Revs ]
 .B user@host.com
 .SH DESCRIPTION
 .LP
@@ -71,7 +70,7 @@ Be quiet.
 .AN \-r revs
 Specify the list of changesets to send.
 .TP
-.B \-w Wrapper
+.AN \-w Wrapper
 Wrap the patch with 
 .I Wrapper 
 before sending it.
