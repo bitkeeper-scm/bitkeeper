@@ -8,7 +8,7 @@ bk mv \- rename file[s]
 .ARG "destination file or directory"
 .SH DESCRIPTION
 .LP
-To rename a file from
+To rename a file/directory from
 .ARG A
 to
 .ARG B
@@ -30,12 +30,15 @@ Renames propagate just like content changes,
 i.e., they happen automatically when you pull changes into your 
 repository from another repository unless you have also renamed the file.
 In that case, the resolver will prompt you to choose a name.
-.SH NOTES
 .LP
-.B bk mv
-will not rename directories, please use
-.B bk mvdir
-for that. 
+If the last argument is an existing directory, `bk mv' moves each
+other given file into a file with the same name in that directory.
+Otherwise, if only two files are given, it renames the first as the
+second.  It is an error if the last argument is not a directory and
+more than two files are given. In summary, `bk mv' behaves like a 
+a regular Unix `mv' command, execpt that it knows about the additional
+BitKeeper files.
+.SH NOTES
 .LP
 .B bk mv
 will refuse to move BitKeeper metafiles without the 
@@ -43,7 +46,6 @@ will refuse to move BitKeeper metafiles without the
 option (use of which is not recommended).
 .SH SEE ALSO
 .SA commit 1
-.SA mvdir 1
 .SA names 1
 .SA pull 1
 .SA push 1

@@ -81,11 +81,12 @@ sccs_mv(char *name,
 	char *dest, int isDir, int isDelete, int isUnDelete, int force)
 {
 	char 	*q, *t, *destfile, *oldpath, *newpath;
-	char	*gfile, *sfile;
+	char	*sname = 0;
+	char	*gfile = 0, *sfile = 0;
 	char	buf[1024], commentBuf[MAXPATH*2];
 	char	*ogfile, *osfile;
 	char	**xlist = NULL;
-	sccs	*s;
+	sccs	*s = 0;
 	delta	*d;
 	int	error = 0, was_edited = 0;
 	int	flags = SILENT|DELTA_FORCE;
@@ -94,24 +95,29 @@ sccs_mv(char *name,
 	time_t	gtime;
 
 //ttyprintf("sccs_mv(%s, %s, %d, %d, %d)\n", name, dest, isDir, isDelete,force);
-	unless (s = sccs_init(name, INIT_NOCKSUM|INIT_FIXSTIME, 0)) return (1);
+	sname = name2sccs(name);
+	unless (s = sccs_init(sname, INIT_NOCKSUM|INIT_FIXSTIME, 0)) {
+err:		if (sname) free(sname);
+		if (sfile) free(sfile);
+		if (gfile) free(gfile);
+		if (s) sccs_free(s);
+		return (1);
+	}
 	unless (HAS_SFILE(s)) {
 		fprintf(stderr, "sccsmv: not an SCCS file: %s\n", name);
-		sccs_free(s);
-		return (1);
+		goto err;
 	}
 
 	if (!HAS_PFILE(s) && S_ISREG(s->mode) && IS_WRITABLE(s)) {
 		fprintf(stderr,
 		    "sccsmv: %s is writable but not edited\n",
 		    s->gfile);
-		return (1);
+		goto err;
 	}
 	if (CSET(s) ||
 	    (strneq("BitKeeper/", s->tree->pathname, 10) && !force)) {
 		fprintf(stderr, "Will not move BitKeeper file %s\n", name);
-		sccs_free(s);
-		return (1);
+		goto err;
 	}
 
 	/* XXX - shouldn't this call sccs_clean()? */
@@ -121,7 +127,7 @@ sccs_mv(char *name,
 	}
 
 	if (isDir) {
-		sprintf(buf, "%s/%s", dest, basenm(s->gfile));
+		concat_path(buf, dest, s->gfile);
 	} else {
 		strcpy(buf, dest);
 	}
@@ -133,15 +139,15 @@ sccs_mv(char *name,
 
 	if (exists(sfile)) {
 		fprintf(stderr, "sccsmv: destination %s exists\n", sfile);
-		return (1);
+		goto err;
 	}
 	if (exists(gfile)) {
 		fprintf(stderr, "sccsmv: destination %s exists\n", gfile);
-		return (1);
+		goto err;
 	}
 	/* close the file before we move it - win32 restriction */
 	sccs_close(s);
-	oldpath = getRelativeName(name, s->proj);
+	oldpath = getRelativeName(sname, s->proj);
 	newpath = getRelativeName(destfile, s->proj);
 	if (isDelete) {
 		sprintf(commentBuf, "Delete: %s", oldpath);
@@ -257,6 +263,7 @@ out:	if (s) sccs_free(s);
 	free(ogfile);
 	free(osfile);
 	free(destfile); free(sfile); free(gfile);
+	free(sname);
 	return (error);
 }
 
