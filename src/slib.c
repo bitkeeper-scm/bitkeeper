@@ -5405,7 +5405,7 @@ private ser_t *
 serialmap(sccs *s, delta *d, char *iLst, char *xLst, int *errp)
 {
 	ser_t	*slist;
-	delta	*t;
+	delta	*t, *start = d;
 	int	i;
 
 	assert(d);
@@ -5421,6 +5421,7 @@ serialmap(sccs *s, delta *d, char *iLst, char *xLst, int *errp)
 			debug((stderr, " %s", t->rev));
 			assert(t->serial <= s->nextserial);
 			slist[t->serial] = S_INC;
+			if (t->serial > start->serial) start = t;
  		}
 		debug((stderr, "\n"));
 		if (*errp) goto bad;
@@ -5437,6 +5438,7 @@ serialmap(sccs *s, delta *d, char *iLst, char *xLst, int *errp)
 			else {
 				slist[t->serial] = S_EXCL;
 			}
+			if (t->serial > start->serial) start = t;
  		}
 		debug((stderr, "\n"));
 		if (*errp) goto bad;
@@ -5455,7 +5457,7 @@ serialmap(sccs *s, delta *d, char *iLst, char *xLst, int *errp)
 	/* Seed the graph thread */
 	slist[d->serial] |= S_PAR;
 
-	for (t = s->table; t; t = t->next) {
+	for (t = start; t; t = t->next) {
 		if (t->type != 'D') continue;
 
  		assert(t->serial <= s->nextserial);
