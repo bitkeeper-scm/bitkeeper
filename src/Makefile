@@ -4,7 +4,7 @@
 BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  get gethost key2rev lines prs range rechksum renumber rmdel	 \
 	  sccscat sccslog sccsmv sccsrm sccssh sfiles sfio sids sinfo	 \
-	  smoosh takepatch undos what
+	  stripdel smoosh takepatch undos what
 PRIVATE	= nextsecond mtime zone
 SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
 	  sccstool citool vitool fm fm3 bithelp mkindex
@@ -138,6 +138,7 @@ clean-src: FORCE
 	bk clean mdbm
 	bk clean zlib
 	bk clean t
+	/bin/rm -f tags
 
 # This would be called "clean" but that's a command name.
 cclean sccsclean nice: clean-obj clean-src
@@ -155,13 +156,22 @@ get-e: FORCE
 log: FORCE
 	bk sccslog $(SRCS) $(HDRS) | more
 
-tags: srcs
-	ctags -nm $(SRCS) $(HDRS)
+tags: FORCE
+	@for i in $(SRCS) $(HDRS) $(SCRSRCS) $(MISC); \
+	do	if [ ! -f $$i ]; then get -s $$i; fi; \
+	done
+	@ctags -nm $(SRCS) $(HDRS)
+	@echo ctags completed
+
 
 TAGS: srcs
-	etags $(SRCS) $(HDRS)
+	@for i in $(SRCS) $(HDRS) $(SCRSRCS) $(MISC); \
+	do	if [ ! -f $$i ]; then get -s $$i; fi; \
+	done
+	@etags $(SRCS) $(HDRS)
+	@echo etags completed
 
-test tests: $(ALL)
+test tests: $(ALL) t/doit
 	-get -q t/SCCS/s.t.* t/setup t/cleanup
 	cd t && ./doit
 
@@ -199,6 +209,8 @@ cset: cset.o $(LIBS)
 	$(CC) $(CFLAGS) cset.o $(LINK) -o cset
 rmdel: rmdel.o $(LIBS)
 	$(CC) $(CFLAGS) rmdel.o $(LINK) -o rmdel
+stripdel: stripdel.o $(LIBS)
+	$(CC) $(CFLAGS) stripdel.o $(LINK) -o stripdel
 gethost: gethost.o $(LIBS)
 	$(CC) $(CFLAGS) gethost.o $(LINK) -o gethost
 takepatch: takepatch.o $(LIBS)
@@ -440,6 +452,7 @@ range.o:	range.c $(sccsdeps) range.h
 rechksum.o:	rechksum.c $(sccsdeps)
 renumber.o:	renumber.c $(sccsdeps)
 rmdel.o:	rmdel.c $(sccsdeps) range.h
+stripdel.o:	stripdel.c $(sccsdeps) range.h
 sccscat.o:	sccscat.c $(sccsdeps) range.h
 sccslog.o:	sccslog.c $(sccsdeps) range.h
 sccsmv.o:	sccsmv.c $(sccsdeps)

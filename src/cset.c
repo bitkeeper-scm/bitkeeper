@@ -19,17 +19,17 @@ usage: cset [opts]\n\n\
     -l<range>	List each rev in range as file:rev,rev,rev (set format)\n\
     -m<range>	Generate a patch of the changes in <range>\n\
     -M<range>	Mark the files included in the range of csets\n\
+    -p		print the list of deltas being added to the cset\n\
     -r<range>	List the filenames:rev..rev which match <range>\n\
     		ChangeSet is not included in the listing\n\
     -R<range>	Like -r but start on rev farther back (for diffs)\n\
     		ChangeSet is not included in the listing\n\
+    -s		Run silently\n\
+    -S<sym>	Set <sym> to be a symbolic tag for this revision\n\
     -t<rev>	List the filenames:revisions of the repository as of rev\n\
-    -p		print the list of deltas being added to the cset\n\
     -y<msg>	Sets the changeset comment to <msg>\n\
     -Y<file>	Sets the changeset comment to the contents of <file>\n\
-    -S<sym>	Set <sym> to be a symbolic tag for this revision\n\
-    -s		Run silently\n\n\
-    Ranges of revisions may be specified with the -l or the -r options.\n\
+    \nRanges of revisions may be specified with the -l or the -r options.\n\
     -l1.3..1.5 does 1.3, 1.4, and 1.5\n\n\
     Useful idioms:\n\t\
     bk cset -Ralpha..beta | bk diffs -\n\t\
@@ -43,7 +43,7 @@ typedef	struct cset {
 	int	listeach;	/* if set, like -r except list revs 1/line */
 	int	mark;		/* act like csetmark used to act */
 	int	doDiffs;	/* prefix with unified diffs */
-	int	force;		/* if set, then force marks when used w/ -M */
+	int	force;		/* if set, then force past errors */
 	int	remark;		/* clear & redo all the ChangeSet marks */
 	int	dash;
 	int	newlod;
@@ -54,7 +54,7 @@ typedef	struct cset {
 				/* if set to 2, then list parent..rev */
 	int	ndeltas;
 	int	nfiles;
-
+	pid_t	pid;		/* adler32 process id */
 	/* hashes */
 	MDBM	*tot;
 	MDBM	*base;
@@ -282,45 +282,16 @@ next:		sccs_free(cset);
 	return (c);
 }
 
-#ifdef CRAZY_WOW /* routine not accessed in code base? */
-/*
- * Compute a checksum over the interesting part of the output.
- * This is from the PATCH_VERSION line (inclusive) all the way to the end.
- * The "# Patch checksum=..." line is not checksummed.
- *
- * If there are human readable diffs above PATCH_VERSION, they get their
- * own checksum.
- *
- * adler32() is in zlib.
- */
 void
-do_checksum(void)
+exit(int n)
 {
-	char buf[2*MAXPATH];
-	int len;
-	int doXsum = 0;
-	uLong sum = 0;
-
-	while (fnext(buf, stdin)) {
-		if (streq(buf, PATCH_CURRENT)) {
-			if (!doXsum) doXsum = 1;
-			else {
-				printf("# Human readable diff checksum=%.8lx\n", sum);
-				sum = 0;
-			}
-		} else if (streq(buf,
-		 "# that BitKeeper cares about, is below these diffs.\n")) {
-			doXsum = 1;
-		}
-		if (doXsum) {
-			len = strlen(buf);
-			sum = adler32(sum, buf, len);
-		}
-		fputs(buf, stdout);
+	if (cs.pid) {
+		fprintf(stderr, "cset: failed to wait for adler32\n");
+		waitpid(cs.pid, 0, 0);
 	}
-	printf("# Patch checksum=%.8lx\n", sum);
+	fflush(stdout);
+	_exit(n);
 }
-#endif
 
 /*
  * Spin off a subprocess and rejigger stdout to feed into its stdin.
@@ -332,10 +303,10 @@ do_checksum(void)
 pid_t
 spawn_checksum_child(void)
 {
-	int p[2], fd0, rc;
-	pid_t pid;
-	char cmd[MAXPATH];
-	char *av[2] = {cmd, 0};
+	int	p[2], fd0, rc;
+	pid_t	pid;
+	char	cmd[MAXPATH];
+	char	*av[2] = {cmd, 0};
 
 	/* the strange syntax is to hide the call from purify */
 	if ((pipe)(p)) {
@@ -663,7 +634,10 @@ retry:	sc = sccs_keyinit(lastkey, INIT_NOCKSUM, idDB);
 			}
 			goto retry;
 		}
-		fprintf(stderr, "cset: missing id %s, sfile removed?\n", key);
+		if (cs->force < 2) {
+			fprintf(stderr,
+			    "cset: missing id %s, sfile removed?\n", key);
+		}
 		free(lastkey);
 		lastkey = 0;
 		return (cs->force ? 0 : -1);
@@ -697,7 +671,11 @@ Please stand by.\n\n", stderr);
 		doneFullRemark++;
 		goto retry;
 	}
-	unless (d = sccs_findKey(sc, val)) return (-1);
+	unless (d = sccs_findKey(sc, val)) {
+		fprintf(stderr,
+		    "cset: failed to find %s in %s\n", val, sc->sfile);
+		return (-1);
+	}
 	markThisCset(cs, sc, d);
 	return (0);
 }
@@ -817,8 +795,8 @@ csetlist(cset_t *cs, sccs *cset)
 
 	/* checksum the output */
 	if (cs->makepatch) {
-		pid = spawn_checksum_child();
-		if (pid == -1) goto fail;
+		cs->pid = spawn_checksum_child();
+		if (cs->pid == -1) goto fail;
 	}
 	if (cs->makepatch || cs->doDiffs) header(cset, cs->doDiffs);
 again:	/* doDiffs can make it two pass */
@@ -860,7 +838,7 @@ again:	/* doDiffs can make it two pass */
 		fprintf(stderr,
 		    "makepatch: patch contains %d revisions from %d files\n",
 		    cs->ndeltas, cs->nfiles);
-	} else if (cs->verbose && cs->mark) {
+	} else if (cs->verbose && cs->mark && cs->ndeltas) {
 		fprintf(stderr,
 		    "cset: marked %d revisions in %d files\n",
 		    cs->ndeltas, cs->nfiles);
@@ -870,7 +848,7 @@ again:	/* doDiffs can make it two pass */
 
 		fputs(eot, stdout);	/* send  EOF indicator */
 		fclose(stdout);
-		if (waitpid(pid, &status, 0) != pid) {
+		if (waitpid(cs->pid, &status, 0) != cs->pid) {
 			perror("waitpid");
 		}
 		if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
@@ -878,6 +856,7 @@ again:	/* doDiffs can make it two pass */
 		  "makepatch: checksum process exited abnormally, status %d\n",
 				status);
 		}
+		cs->pid = 0;
 	}
 	unlink(csort);
 	free(csetid);
@@ -885,6 +864,12 @@ again:	/* doDiffs can make it two pass */
 	return;
 
 fail:
+	if (cs->makepatch) {
+		char eot[3] = { '\004', '\n', 0 };
+
+		fputs(eot, stdout);	/* send  EOF indicator */
+		fclose(stdout);
+	}
 	unlink(csort);
 	free(csetid);
 	if (goneDB) mdbm_close(goneDB);

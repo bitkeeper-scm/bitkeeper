@@ -400,7 +400,7 @@ _diffr() {
 		then	if [ $D = YES ]
 			then	${BIN}sfiles -c
 			fi
-			${BIN}sfiles -CRa
+			${BIN}sfiles -CRA
 		fi
 		for i in $LREVS
 		do	if [ $D = YES ]
@@ -431,7 +431,7 @@ _diffr() {
 		then	if [ $D = YES ]
 			then	${BIN}sfiles -c
 			fi
-			${BIN}sfiles -CRa
+			${BIN}sfiles -CRA
 		fi
 		for i in $RREVS
 		do	if [ $D = YES ]
@@ -524,6 +524,11 @@ _new() {
 	${BIN}ci -i "$@"
 }
 
+_vi() {
+	${BIN}get -qe "$@" 2> /dev/null
+	vi $@
+}
+
 _edit() {
 	${BIN}get -e "$@"
 }
@@ -563,8 +568,7 @@ _fix() {
 	done
 	shift `expr $OPTIND - 1`
 	for f in $*
-	do	# XXX - need to make sure they are not in a cset already
-		if [ -w $f ]
+	do	if [ -w $f ]
 		then	echo $f is already edited
 			continue
 		fi
@@ -574,56 +578,145 @@ _fix() {
 		fi
 		${BIN}get $Q -kp $f > "${f}-.fix"
 		REV=`${BIN}prs -hr+ -d:REV: $f`
-		${BIN}rmdel $Q -D$REV $f
-		${BIN}get $Q -eg $f
-		mv "${f}-.fix" $f
+		${BIN}stripdel $Q -r$REV $f
+		if [ $? -eq 0 ]
+		then	${BIN}get $Q -eg $f
+			mv "${f}-.fix" $f
+		else	$RM "${f}-.fix"
+		fi
 	done
 }
 
-# Usage: undo cset,cset,cset
+# Usage: undo cset-list
 _undo() {
 	ASK=YES
-	V=
-	while getopts fv opt
+	Q=
+	V=-v
+	while getopts fq opt
 	do	case "$opt" in
 		f) ASK=NO;;
-		v) V="v$V";;
+		q) V=; Q=-q;;
 		esac
 	done
 	shift `expr $OPTIND - 1`
-	if [ X$V != X ]; then V="-$V"; fi
 	_cd2root
-	if [ X"$@" = X ]
+	if [ X"$1" = X ]
 	then	echo usage bk undo cset-revision
 		exit 1
 	fi
-	${BIN}cset -lr"$@" > ${TMP}rmdel$$
-	if [ ! -s ${TMP}rmdel$$ ]
-	then	echo undo: nothing to undo in "$@"
+	if [ $# != 1 ]
+	then	echo undo: specify multiple changesets as a set, like 1.2,1.3
+		exit 1
+	fi
+	${BIN}cset -ffl$1 > ${TMP}rmlist$$
+	if [ ! -s ${TMP}rmlist$$ ]
+	then	echo undo: nothing to undo in "$1"
 		exit 0
+	fi
+
+	${BIN}stripdel -Ccr$1 ChangeSet 2> ${TMP}undo$$
+	if [ $? != 0 ]
+	then	_gethelp undo_error $BIN
+		cat ${TMP}undo$$
+		$RM ${TMP}undo$$
+		exit 1
 	fi
 	if [ $ASK = YES ]
 	then	echo ---------------------------------------------------------
-		cat ${TMP}rmdel$$
+		cat ${TMP}rmlist$$
 		echo ---------------------------------------------------------
 		echo $N "Remove these [y/n]? "$NL
 		read x
 		case X"$x" in
 		    Xy*)	;;
-		    *)		${RM} -f ${TMP}rmdel$$
+		    *)		${RM} -f ${TMP}rmlist$$
 		    		exit 0;;
 		esac
 	fi
-	${BIN}rmdel -S $V - < ${TMP}rmdel$$
-	if [ $? != 0 ]
-	then	echo Undo of "$@" failed
-	else	echo Undo of "$@" succeeded
+
+	if [ ! -d BitKeeper/tmp ]
+	then	mkdir BitKeeper/tmp
+		chmod 777 BitKeeper/tmp
 	fi
-	${RM} -f ${TMP}rmdel$$
+	UNDO=BitKeeper/tmp/undo
+	if [ -f $UNDO ]; then $RM -f $UNDO; fi
+	${BIN}cset $V -ffm$1 > $UNDO
+	if [ ! -s $UNDO ]
+	then	echo Failed to create undo backup $UNDO
+		exit 1
+	fi
+	sed 's/[:@]/ /' < ${TMP}rmlist$$ | while read f r
+	do	echo $f
+		${BIN}stripdel $Q -Cr$r $f
+		if [ $? != 0 ]
+		then	echo Undo of "$@" failed 1>&2
+			exit 1
+		fi
+	done > /tmp/mv$$
+	if [ $? != 0 ]; then /bin/rm -f /tmp/mv$$; exit 1; fi
+
+	# Handle any renames.  Done outside of stripdel because names only
+	# make sense at cset boundries.
+	${BIN}prs -hr+ -d':PN: :SPN:' - < /tmp/mv$$ | while read a b
+	do	if [ $a != $b ]
+		then	if [ -f $b ]
+			then	echo Unable to mv $a $b, $b exists
+			else	d=`dirname $b`
+				if [ ! -d $d ]
+				then	mkdir -p $d
+				fi
+				if [ X$Q = X ]
+				then	echo mv $a $b
+				fi
+				mv $a $b
+			fi
+		fi
+		${BIN}renumber $b
+	done 
+	if [ X$Q = X ]
+	then	echo Patch containing these undone deltas left in $UNDO,
+		echo running consistency check...
+	fi
+	${BIN}sfiles -r
+	bk -r check -a
+}
+
+# Usage: r2c file rev
+_r2c() {
+	if [ "X$1" = X -o "X$2" = X -o "X$3" != X ]
+	then	echo usage r2c file rev
+		exit 1
+	fi
+	FILE=$1
+	REV=`${BIN}prs -hr$2 -d:CSETREV: $FILE`
+	if [ "X$REV" = X ]
+	then	echo can not find cset marker at or below $2
+		exit 1
+	fi
+	KEY=`${BIN}prs -hr$REV -d:KEY:`
+	bk -R sccscat -hm ChangeSet | grep "$KEY" > /tmp/r2c$$
+	if [ ! -s /tmp/r2c$$ ]
+	then	SKEY=`${BIN}prs -hr$REV -d:SHORTKEY:`
+		bk -R sccscat -hm ChangeSet | grep "$SKEY" > /tmp/r2c$$
+	fi
+	if [ ! -s /tmp/r2c$$ ]
+	then	echo Can not find "$KEY" or "$SKEY" in ChangeSet file
+		$RM /tmp/r2c$$
+		exit 1
+	fi
+	set `cat /tmp/r2c$$`
+	$RM /tmp/r2c$$
+	if [ "X$1" != X ]
+	then	echo $1
+	fi
+}
+
+_rev2cset() {
+	_r2c "$@"
 }
 
 _pending() {
-	exec ${BIN}sfiles -Ca | ${BIN}sccslog - | $PAGER
+	exec ${BIN}sfiles -CA | ${BIN}sccslog - | $PAGER
 }
 
 _chkConfig() {
@@ -850,7 +943,7 @@ _commit() {
 	shift `expr $OPTIND - 1`
 	_cd2root
 	if [ $RESYNC = "NO" ]; then _remark $QUIET; fi
-	${BIN}sfiles -Ca > ${TMP}list$$
+	${BIN}sfiles -CA > ${TMP}list$$
 	if [ $? != 0 ]
 	then	${RM} -f ${TMP}list$$ ${TMP}commit$$
 		_gethelp duplicate_IDs
@@ -1188,7 +1281,7 @@ case "$1" in
     setup|changes|pending|commit|sendbug|send|receive|\
     mv|edit|unedit|unlock|man|undo|save|rm|new|version|\
     root|status|export|users|sdiffs|unwrap|clone|\
-    pull|push|parent|diffr|fix|info)
+    pull|push|parent|diffr|fix|info|vi|r2c|rev2cset)
 	cmd=$1
     	shift
 	_$cmd "$@"

@@ -14,6 +14,7 @@ usage: admin options [- | file file file...]\n\
     -t[<file>]		read description from <file>\n\
     -T			clear description\n\
     -h			check s.file structure\n\
+    -hh			check s.file structure for BitKeeper structure\n\
     -H			same as -h, plus check file contents are ASCII\n\
     -z			recalculate file checksum\n\
 \n\
@@ -142,7 +143,12 @@ main(int ac, char **av)
 		/* singletons */
 		    case 'B':	bigpad++; break;
 		    case 'C':	rmCset++; flags |= NEWCKSUM; break;
-		    case 'h':	flags |= ADMIN_FORMAT; break;
+		    case 'h':	if (flags & ADMIN_FORMAT) {
+		    			flags |= ADMIN_BK;
+				} else {
+		    			flags |= ADMIN_FORMAT;
+				}
+				break;
 		    case 'H':	flags |= ADMIN_FORMAT|ADMIN_ASCII|ADMIN_TIME;
 				break;
 		    case 's':
@@ -157,11 +163,12 @@ main(int ac, char **av)
 		}
 	}
 	if ((flags & ADMIN_FORMAT) &&
-	    ((flags & ~(ADMIN_FORMAT|ADMIN_ASCII|ADMIN_TIME|SILENT)) ||
+	    ((flags & ~(ADMIN_FORMAT|ADMIN_BK|ADMIN_ASCII|ADMIN_TIME|SILENT)) ||
 	    nextf || nextu || nexts || nextp || rev)) {
 		fprintf(stderr, "admin: -h option must be alone.\n");
 		goto usage;
 	}
+	/* XXX ADMIN_BK? */
 	if ((merge) &&
 	    ((flags & ~(ADMIN_FORMAT|ADMIN_ASCII|ADMIN_TIME|SILENT|NEWCKSUM)) ||
 	    nextf || nextu || nexts || nextp || comment || path ||

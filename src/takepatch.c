@@ -30,6 +30,7 @@ usage: takepatch [-cFiv] [-f file]\n\n\
     -F		(fast) do rebuild id cache when creating files\n\
     -f<file>	take the patch from <file> and do not save it\n\
     -i		initial patch, create a new repository\n\
+    -r		do not create the resolve file\n\
     -S		save RESYNC and or PENDING directories even if errors\n\
     -v		verbose level, more is more verbose, -vv is suggested.\n\n";
 
@@ -70,6 +71,7 @@ delta	*gca;		/* The oldest parent found in the patch */
 int	noConflicts;	/* if set, abort on conflicts */
 char	pendingFile[MAXPATH];
 char	*input;		/* input file name, either "-" or a patch file */
+int	noRfile;	/* if set, we are redoing an undo - no r.files */
 
 
 int
@@ -89,7 +91,7 @@ main(int ac, char **av)
 	platformSpecificInit(NULL);
 	input = "-";
 	debug_main(av);
-	while ((c = getopt(ac, av, "acFf:iqsSv")) != -1) {
+	while ((c = getopt(ac, av, "acFf:iqrsSv")) != -1) {
 		switch (c) {
 		    case 'q':
 		    case 's':
@@ -102,6 +104,7 @@ main(int ac, char **av)
 			    input = optarg;
 			    break;
 		    case 'i': newProject++; break;
+		    case 'r': noRfile++; break;
 		    case 'S': saveDirs++; break;
 		    case 'v': echo++; flags &= ~SILENT; break;
 		    default: goto usage;
@@ -652,13 +655,21 @@ applyPatch(
 	assert(gca);
 	assert(gca->rev);
 	assert(gca->pathname);
-	if (echo > 5) fprintf(stderr, "rmdel %s from %s\n", gca->rev, s->sfile);
+	if (echo > 5) {
+		fprintf(stderr, "stripdel %s from %s\n", gca->rev, s->sfile);
+	}
 	if (d = sccs_next(s, sccs_getrev(s, gca->rev, 0, 0))) {
-		if (sccs_rmdel(s, d, 1, (echo > 4) ? 0 : SILENT)) {
+		delta	*e;
+
+		for (e = s->table; e; e = e->next) {
+			e->flags |= D_SET|D_GONE;
+			if (e == d) break;
+		}
+		if (sccs_stripdel(s, "takepatch")) {
 			SHOUT();
 			unless (BEEN_WARNED(s)) {
 				fprintf(stderr,
-				    "rmdel of %s failed.\n", p->resyncFile);
+				    "stripdel of %s failed.\n", p->resyncFile);
 			}
 			return -1;
 		}
@@ -778,7 +789,7 @@ apply:
 	assert(s);
 	gcaPath = gca ? name2sccs(gca->pathname) : 0;
 	/* 2 of the clauses below need this and it's cheap so... */
-	for (p = patchList; p; p = p->next) {
+	for (d = 0, p = patchList; p; p = p->next) {
 		unless (p->flags & PATCH_LOCAL) continue;
 		assert(p->me);
 		d = sccs_findKey(s, p->me);
@@ -787,22 +798,24 @@ apply:
 	}
 	unless (localPath) {
 		/* must be new file */
-		confThisFile = sccs_resolveFile(s, 0, 0, 0);
+		confThisFile = sccs_resolveFile(s, noRfile, 0, 0, 0);
 	} else if (streq(localPath, remotePath)) {
 		/* no name changes, life is good */
-		confThisFile = sccs_resolveFile(s, 0, 0, 0);
+		confThisFile = sccs_resolveFile(s, noRfile, 0, 0, 0);
 	} else {
 		debug((stderr, "L=%s\nR=%s\nG=%s (%s)\n",
 		    localPath, remotePath, gcaPath, gca ? gca->rev : ""));
 		/* local != remote */
 		assert(gcaPath);
 		confThisFile =
-		    sccs_resolveFile(s, localPath, gcaPath, remotePath);
+		    sccs_resolveFile(s,
+			noRfile, localPath, gcaPath, remotePath);
 	}
 	conflicts += confThisFile;
 	if (confThisFile && !(s->state & S_CSET)) {
 		assert(d);
 		unless (d->flags & D_CSET) {
+			fprintf(stderr, "No csetmark on %s\n", d->rev);
 			sccs_free(s);
 			if (gcaPath) free(gcaPath);
 			uncommitted(localPath);

@@ -1,62 +1,29 @@
-/* Copyright (c) 1998 L.W.McVoy */
+/*
+ * The invariants in numbering are this:
+ *	1.0, if it exists, must be the first serial.
+ *
+ *	x.1 is sacrosanct - the .1 must stay the same.  However, the x
+ *	can and should be renumbered in BK mode to the lowest unused
+ *	value.
+ *
+ *	When renumbering, remember to reset the default branch.
+ *
+ *	Default branch choices
+ *		a
+ *		a.b
+ *		a.b.c.d
+ *
+ * Copyright (c) 1998-1999 L.W.McVoy
+ */
 #include "system.h"
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
-#ifdef	PROFILE
-#define	private static
-#endif
-
-#define	DDONE		0x10000000
-#define	DDONELEAF	0x20000000
-int	rewrote;
-MDBM	*db;		/* XXX - global */
-void	renumber(delta *d, int flags);
-void	down(delta *d, int flags);
-
-void
-db_init(sccs *s)
-{
-	db = mdbm_open(NULL, O_RDWR, 0, 0);
-}
-
-int
-db_mine(delta *d)
-{
-	datum	k, v;
-
-	if (d->type == 'R') return (0);
-	k.dptr = (void*)d->r;
-	k.dsize = sizeof(d->r);
-	v.dptr = (void*)&d->serial;
-	v.dsize = sizeof(ser_t);
-	if (mdbm_store(db, k, v, MDBM_INSERT)) {
-		v = mdbm_fetch(db, k);
-		/* fprintf(stderr, "%s in use by serial %d and %d.\n",
-		    d->rev, d->serial, *(ser_t*)v.dptr); */
-		assert("Should never happen");
-		return (1);
-	}
-	return (0);
-}
-
-int
-db_taken(delta *d)
-{
-	datum	k, v;
-
-	k.dptr = (void*)d->r;
-	k.dsize = sizeof(d->r);
-	v.dsize = 0;
-	v = mdbm_fetch(db, k);
-	return (v.dsize != 0);
-}
-
-void
-db_done(sccs *s)
-{
-	mdbm_close(db);
-}
+void	renumber(sccs *s, int flags);
+void	newRev(sccs *s, int flags, MDBM *db, delta *d);
+void	remember(MDBM *db, delta *d);
+int	taken(MDBM *db, delta *d);
+int	redo(sccs *s, delta *d, MDBM *db, int flags, int release);
 
 int
 main(int ac, char **av)
@@ -68,7 +35,7 @@ main(int ac, char **av)
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
-usage:		fprintf(stderr, "usage: %s [-n] [files...]\n", av[0]);
+usage:		fprintf(stderr, "usage: %s [-nq] [files...]\n", av[0]);
 		return (1);
 	}
 	while ((c = getopt(ac, av, "nq")) != -1) {
@@ -81,7 +48,6 @@ usage:		fprintf(stderr, "usage: %s [-n] [files...]\n", av[0]);
 	}
 	for (name = sfileFirst("renumber", &av[optind], 0);
 	    name; name = sfileNext()) {
-		rewrote = 0;
 		s = sccs_init(name, flags, 0);
 		if (!s) continue;
 		unless (s->tree) {
@@ -90,28 +56,18 @@ usage:		fprintf(stderr, "usage: %s [-n] [files...]\n", av[0]);
 			sfileDone();
 			return (1);
 		}
-		unless (s->state & S_BADREVS) {
-			sccs_free(s);
-			continue;
-		}
-		db_init(s);
-		renumber(leaf(s->table), flags);
-		down(s->tree, flags);
-		if (rewrote) {
-			if (dont) {
-				unless (quiet) {
-					fprintf(stderr, "%s: not writing %s\n",
-					    av[0], s->sfile);
-				}
-			} else if (sccs_admin(s, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0)) {
-				unless (BEEN_WARNED(s)) {
-					fprintf(stderr,
-					    "admin -z of %s failed.\n",
-					    s->sfile);
-				}
+		renumber(s, flags);
+		if (dont) {
+			unless (quiet) {
+				fprintf(stderr,
+				    "%s: not writing %s\n", av[0], s->sfile);
+			}
+		} else if (sccs_admin(s, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0)) {
+			unless (BEEN_WARNED(s)) {
+				fprintf(stderr,
+				    "admin -z of %s failed.\n", s->sfile);
 			}
 		}
-		db_done(s);
 		sccs_free(s);
 	}
 	sfileDone();
@@ -119,220 +75,152 @@ usage:		fprintf(stderr, "usage: %s [-n] [files...]\n", av[0]);
 	return (0);
 }
 
-void
-oldest(delta *d)
-{
-	delta	*e;
-
-	for (e = d->parent->kid; e; e = e->siblings) {
-		if (e == d) continue;
-		if (e->date < d->date) {
-			fprintf(stderr,
-			    "Trunk %s is younger than branch %s\n",
-			    d->rev, e->rev);
-			exit(1);
-		}
-	}
-}
-
 /*
- * Return the leaf node for the trunk, making sure that it is the oldest branch.
- * XXX - the oldest idea does not work because the branches may have been
- * continued after the trunk.
+ * Work through all the serial numbers, oldest to newest.
  */
-delta *
-leaf(delta *tree)
+void
+renumber(sccs *s, int flags)
 {
 	delta	*d;
+	int	i, release = 0;
+	MDBM	*db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 
-	for (d = tree; d; d = d->next) {
-		if ((d->type == 'D') && !d->r[2] &&
-		    (!d->kid || d->kid->type == 'R')) {
-			break;
+	for (i = 1; i < s->nextserial; i++) {
+		unless (d = sfind(s, i)) {
+			/*
+			 * We don't complain about this, because we cause
+			 * these gaps when we strip.  They'll go away when
+			 * we resync.
+			 */
+			continue;
 		}
+		release = redo(s, d, db, flags, release);
 	}
-	assert(d);
-	return (d);
 }
 
-/*
- * This one assumes SCCS style branch numbering, i.e., x.y.z.d
- */
-private int
-samebranch(delta *a, delta *b)
+void
+newRev(sccs *s, int flags, MDBM *db, delta *d)
 {
-	if (!a->r[2] && !b->r[2]) return (1);
-	return ((a->r[0] == b->r[0]) &&
-		(a->r[1] == b->r[1]) &&
-		(a->r[2] == b->r[2]));
+	char	buf[100];
+
+	if (d->r[2]) {
+		sprintf(buf, "%d.%d.%d.%d", d->r[0], d->r[1], d->r[2], d->r[3]);
+	} else {
+		sprintf(buf, "%d.%d", d->r[0], d->r[1]);
+	}
+	unless (streq(buf, d->rev)) {
+		verbose((stderr, "%s:%s -> %s\n", s->gfile, d->rev, buf));
+		free(d->rev);
+		d->rev = strdup(buf);
+	}
+	remember(db, d);
 }
 
-private int
-onlyChild(delta *d)
+void
+remember(MDBM *db, delta *d)
 {
-	int	n;
+	datum	key, val;
 
-	for (n = 0, d = d->parent->kid; d; d = d->siblings) {
-		if (d->type == 'D') n++;
-	}
-	return (n == 1);
+	key.dptr = (void *)d->r;
+	key.dsize = sizeof(d->r);
+	val.dptr = "1";
+	val.dsize = 1;
+	mdbm_store(db, key, val, 0);
 }
 
 int
-okparent(delta *d)
+taken(MDBM *db, delta *d)
 {
-	/*
-	 * Two checks here.
-	 * If they are on the same branch, is the sequence numbering
-	 * correct?  Handle 1.9 -> 2.1 properly.
-	 */
-	if (!d->parent) return (1);
-	/* If a x.y.z.q release, then it's trunk node should be x.y */
-	if (d->r[2]) {
-		delta	*p;
+	datum	key, val;
 
-		for (p = d->parent; p && p->r[3]; p = p->parent);
-		if (!p) return (0);
-		if ((p->r[0] != d->r[0]) || (p->r[1] != d->r[1])) {
-			return (0);
-		}
-		/* if it's a x.y.z.q and not a .1, then check parent */
-		if ((d->r[3] > 1) && (d->parent->r[3] != d->r[3]-1)) {
-			return (0);
-		}
-		/* if there is a parent, and the parent is a x.y.z.q, and
-		 * this is an only child,
-		 * then insist that the revs are on the same branch.
-		 */
-		if (d->parent && d->parent->r[2] &&
-		    onlyChild(d) && !samebranch(d, d->parent)) {
-			return (0);
-		}
-		return (1);
-	}
-	/* If on the trunk and release numbers are the same,
-	 * then the revisions should be in sequence.
-	 */
-	if (d->r[0] == d->parent->r[0]) {
-		if (d->r[1] != d->parent->r[1]+1) {
-			return (0);
-		}
-	}
-	return (1);
+	key.dptr = (void *)d->r;
+	key.dsize = sizeof(d->r);
+	val = mdbm_fetch(db, key);
+	return (val.dsize == 1);
 }
 
 /*
- * recurse all the way up to the top, redoing the trunk as we unravel.
+ * XXX - does not yet handle default branch
  */
-void
-renumber(delta *d, int flags)
+int
+redo(sccs *s, delta *d, MDBM *db, int flags, int release)
 {
 	delta	*p;
-	char	buf[100];
 
-	if (!d) return;
-	if (!d->parent) {
-		db_mine(d);
-		d->flags |= DDONE;
-		return;
+	unless (p = d->parent) {
+		remember(db, d);
+		return (release);
 	}
-	unless (d->parent->flags & DDONE) renumber(d->parent, flags);
-	p = d->parent;
-	assert(p->flags & DDONE);
-	assert(!p->r[2]);
+
+	if (d->flags & D_META) {
+		for (p = d->parent; p->flags & D_META; p = p->parent);
+		memcpy(d->r, p->r, sizeof(d->r));
+		newRev(s, flags, db, d);
+		return (release);
+	}
+
 	/*
-	 * If on trunk && (right sequence || new release)
+	 * New release, not OK to rewrite these.
 	 */
-	if (!d->r[2] &&
-	    ((d->r[1] == p->r[1]+1) ||
-	    ((d->r[0] == p->r[0]+1) && (d->r[1] == 1)))) {
-		d->flags |= DDONE;
-		db_mine(d);
-		return;
+	if (!d->r[2] && (d->r[1] == 1)) {
+		if (++release == d->r[0]) {
+			remember(db, d);
+			return (release);
+		}
+		d->r[0] = release;
+		newRev(s, flags, db, d);
+		return (release);
 	}
+
 	/*
-	 * Continue it down the trunk.  Since we're rewriting, make sure
-	 * noone else at this level has this rev.
+	 * Everything else we can rewrite.
+	 */
+	bzero(d->r, sizeof(d->r));
+
+	/*
+	 * My parent is a trunk node, I'm either continuing the trunk
+	 * or starting a new branch.
+	 */
+	unless (p->r[2]) {
+		d->r[0] = p->r[0];
+		d->r[1] = p->r[1] + 1;
+		unless (taken(db, d)) {
+			newRev(s, flags, db, d);
+			return (release);
+		}
+		d->r[1] = p->r[1];
+		d->r[2] = 0;
+		d->r[3] = 1;
+		do {
+			d->r[2]++;
+		} while (taken(db, d));
+		assert(d->r[2] < 65535);
+		newRev(s, flags, db, d);
+		return (release);
+	}
+	
+	/*
+	 * My parent is not a trunk node, I'm either continuing the branch or
+	 * starting a new branch.
+	 * Yes, this code is essentially the same as the above code but it is
+	 * more clear to leave it like this.
 	 */
 	d->r[0] = p->r[0];
-	d->r[1] = p->r[1]+1;
-	d->r[2] = d->r[3] = 0;
-	sprintf(buf, "%d.%d", d->r[0], d->r[1]);
-	verbose((stderr, "\trewrite %s -> %s\n", d->rev, buf));
-	free(d->rev);
-	d->rev = strdup(buf);
-	d->flags |= DDONE;
-	db_mine(d);
-	/*
-	 * One weird thought - the d->parent->kid pointer isnt necessarily d.
-	 * We just changed the numbering scheme.
-	 */
-	return;
-}
-
-/*
- * Figure out which delta we can use.
- * Try the continuation of the parent
- * and then search through the branches.
- */
-void
-wack(delta *d, int flags)
-{
-	delta	*p;
-	char	buf[100];
-
-	/* printf("wack(%s, %s)\n", d->parent->rev, d->rev); */
-	assert(d->type == 'D');
-	p = d->parent;
-	memcpy(d->r, p->r, sizeof(d->r));
-	if (p->r[2]) {		/* parent is on a branch, can we cont? */
-		d->r[3]++;
-		if (!db_taken(d) && okparent(d)) goto gotit;
+	d->r[1] = p->r[1];
+	d->r[2] = p->r[2];
+	d->r[3] = p->r[3] + 1;
+	if (!taken(db, d)) {
+		newRev(s, flags, db, d);
+		return (release);
 	}
-	for (d->r[3] = 1, d->r[2]++; db_taken(d) || !okparent(d); d->r[2]++);
-gotit: sprintf(buf, "%d.%d.%d.%d", d->r[0], d->r[1], d->r[2], d->r[3]);
-	rewrote++;
-	verbose((stderr, "\trewack %s -> %s\n", d->rev, buf));
-	free(d->rev);
-	d->rev = strdup(buf);
-	d->flags |= DDONE;
-}
 
-/*
- * Consider all the kids of this delta and make sure they are numbered right.
- * If each of these is a legit kid, then don't touch, otherwise renumber.
- * Always do the earliest delta first.
- */
-void
-down(delta *d, int flags)
-{
-	delta	*e, *youngest;
-
-	/* if (d->parent) printf("down(%s->%s)\n", d->parent->rev, d->rev); */
+	/* Try a new branch */
+	d->r[2] = p->r[2];
+	d->r[3] = 1;
 	do {
-		youngest = 0;
-		for (e = d->kid; e; e = e->siblings) {
-			/* printf("%s->%s %c %s\n",
-			    d->rev, e->rev, e->type,
-			    e->flags & DDONE ? "done" : "not done");
-			 */
-			if (e->flags & DDONE) continue;
-			if (e->type == 'R') continue;
-			if (!youngest || (youngest->date > e->date)) {
-				youngest = e;
-			}
-		}
-		if (youngest) {
-			if (!okparent(youngest)) {
-				wack(youngest, flags);
-			}
-			while (db_taken(youngest)) {
-				wack(youngest, flags);
-			}
-			db_mine(youngest);
-			youngest->flags |= DDONE;
-		}
-	} while (youngest);
-	if (d->kid) down(d->kid, flags);
-	if (d->siblings) down(d->siblings, flags);
+		d->r[2]++;
+	} while (taken(db, d));
+	assert(d->r[2] < 65535);
+	newRev(s, flags, db, d);
+	return (release);
 }
