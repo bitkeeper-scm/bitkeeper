@@ -261,7 +261,7 @@ spawn_checksum_child(void)
 {
 	pid_t	pid;
 	int	pfd;
-	char	*av[3] = {"bk", "adler32", 0};
+	char	*av[3] = {"bk", "_adler32", 0};
 
 	/*
 	 * spawn a child with a write pipe
@@ -625,7 +625,7 @@ csetlist(cset_t *cs, sccs *cset)
 			unlink(cat);
 			goto fail;
 		}
-		sprintf(buf, "bk keysort < %s > %s", cat, csort);
+		sprintf(buf, "bk _keysort < %s > %s", cat, csort);
 		if (system(buf)) {
 			unlink(cat);
 			goto fail;

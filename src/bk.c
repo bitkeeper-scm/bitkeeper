@@ -124,15 +124,16 @@ int zone_main(int, char **);
 
 /* do not change the next line, it's parsed in helpcheck.pl */
 struct command cmdtbl[] = {
+	{"_adler32", adler32_main},
 	{"_createlod", _createlod_main},
 	{"_find", find_main }, /* internal helper function */
+	{"_keysort", keysort_main},
 	{"_logging", logging_main},
 	{"_loggingaccepted", loggingaccepted_main},
 	{"_loggingask", loggingask_main},
 	{"_loggingto", loggingto_main},
 	{"_get", get_main},
 	{"abort", abort_main},
-	{"adler32", adler32_main},
 	{"admin", admin_main},
 	{"annotate", annotate_main},
 	{"bkd", bkd_main },
@@ -171,7 +172,6 @@ struct command cmdtbl[] = {
 	{"info", sinfo_main},	/* aliases */
 	{"isascii", isascii_main},
 	{"key2rev", key2rev_main},
-	{"keysort", keysort_main},
 	{"lines", lines_main},
 	{"lock", lock_main},
 	{"lod", lod_main},
