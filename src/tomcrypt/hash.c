@@ -35,6 +35,7 @@ int hash_filehandle(int hash, FILE *in, unsigned char *dst, unsigned long *outle
 
     _ARGCHK(dst != NULL);
     _ARGCHK(outlen != NULL);
+    _ARGCHK(in != NULL);
 
     if ((errno = hash_is_valid(hash)) != CRYPT_OK) {
         return errno;
@@ -45,9 +46,6 @@ int hash_filehandle(int hash, FILE *in, unsigned char *dst, unsigned long *outle
     }
     *outlen = hash_descriptor[hash].hashsize;
 
-    if (in == NULL) { 
-       return CRYPT_INVALID_ARG;
-    }
     hash_descriptor[hash].init(&md);
     do {
         x = fread(buf, 1, sizeof(buf), in);
@@ -84,6 +82,7 @@ int hash_file(int hash, const char *fname, unsigned char *dst, unsigned long *ou
     }
 
     if ((errno = hash_filehandle(hash, in, dst, outlen)) != CRYPT_OK) {
+       fclose(in);
        return errno;
     }
     fclose(in);

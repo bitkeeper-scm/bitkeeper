@@ -15,7 +15,7 @@ const struct _hash_descriptor md2_desc =
     &md2_test
 };
 
-const static unsigned char PI_SUBST[256] = {
+static const unsigned char PI_SUBST[256] = {
   41, 46, 67, 201, 162, 216, 124, 1, 61, 54, 84, 161, 236, 240, 6,
   19, 98, 167, 5, 243, 192, 199, 115, 140, 152, 147, 43, 217, 188,
   76, 130, 202, 30, 155, 87, 60, 253, 212, 224, 22, 103, 66, 111, 24,

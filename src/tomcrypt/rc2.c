@@ -239,7 +239,7 @@ void rc2_ecb_decrypt( const unsigned char *cipher,
 
 int rc2_test(void)
 {
-   const static struct {
+   static const struct {
         int keylen;
         unsigned char key[16], pt[8], ct[8];
    } tests[] = {

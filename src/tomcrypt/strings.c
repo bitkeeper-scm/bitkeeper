@@ -1,7 +1,7 @@
 /* Future releases will make use of this */
 #include "mycrypt.h"
 
-const static char *err_2_str[] =
+static const char *err_2_str[] =
 {
    "CRYPT_OK",
    "CRYPT_ERROR",

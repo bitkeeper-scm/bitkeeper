@@ -167,7 +167,7 @@ extern int hash_file(int hash, const char *fname, unsigned char *dst, unsigned l
 typedef struct Hmac_state {
      hash_state md;
      int hash;
-     unsigned long hashsize; // here for your reference
+     unsigned long hashsize; /* here for your reference */
      hash_state hashstate;
      unsigned char key[MAXBLOCKSIZE];
 } hmac_state;

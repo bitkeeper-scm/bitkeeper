@@ -700,7 +700,7 @@ int ecc_sign_hash(const unsigned char *in,  unsigned long inlen,
       ecc_free(&pubkey);
       return CRYPT_MEM;
    }
-   if (mp_read_radix(&p, sets[key->idx].order, 10) != MP_OKAY)            { goto error; }
+   if (mp_read_radix(&p, (unsigned char *)sets[key->idx].order, 10) != MP_OKAY)            { goto error; }
    if (mp_read_raw(&b, md, 1+MIN(sizeof(md)-1,inlen)) != MP_OKAY)         { goto error; }
 
    /* find b = (m - x)/k */
@@ -827,18 +827,18 @@ int ecc_verify_hash(const unsigned char *sig, const unsigned char *hash,
    if (mp_read_raw(&m, md, 1+MIN(sizeof(md)-1,inlen)) != MP_OKAY)                  { goto error; }
    
    /* load prime */
-   if (mp_read_radix(&p, sets[key->idx].prime, 10) != MP_OKAY)                     { goto error; }
+   if (mp_read_radix(&p, (unsigned char *)sets[key->idx].prime, 10) != MP_OKAY)    { goto error; }
 
    /* get bA */
-   if (ecc_mulmod(&b, &pubkey.pubkey, &pubkey.pubkey, &p, key->idx) != CRYPT_OK)             { goto error; }
+   if (ecc_mulmod(&b, &pubkey.pubkey, &pubkey.pubkey, &p, key->idx) != CRYPT_OK)   { goto error; }
    
    /* get bA + Y */
    if (add_point(&pubkey.pubkey, &key->pubkey, &pubkey.pubkey, &p) != CRYPT_OK)    { goto error; }
 
    /* get mG */
-   if (mp_read_radix(&mG->x, sets[key->idx].Gx, 16) != MP_OKAY)                    { goto error; }
-   if (mp_read_radix(&mG->y, sets[key->idx].Gy, 16) != MP_OKAY)                    { goto error; }
-   if (ecc_mulmod(&m, mG, mG, &p, key->idx) != CRYPT_OK)                                     { goto error; }
+   if (mp_read_radix(&mG->x, (unsigned char *)sets[key->idx].Gx, 16) != MP_OKAY)   { goto error; }
+   if (mp_read_radix(&mG->y, (unsigned char *)sets[key->idx].Gy, 16) != MP_OKAY)   { goto error; }
+   if (ecc_mulmod(&m, mG, mG, &p, key->idx) != CRYPT_OK)                           { goto error; }
 
    /* compare mG to bA + Y */
    if (!mp_cmp(&mG->x, &pubkey.pubkey.x) && !mp_cmp(&mG->y, &pubkey.pubkey.y)) {

@@ -221,7 +221,7 @@ void md4_done(hash_state * md, unsigned char *hash)
 
 int md4_test(void)
 {
-    const static struct md4_test_case {
+    static const struct md4_test_case {
         int num;
         unsigned char input[128];
         int inputlen;
@@ -248,14 +248,13 @@ int md4_test(void)
         { 7, "12345678901234567890123456789012345678901234567890123456789012345678901234567890", 80, 
           {0xe3, 0x3b, 0x4d, 0xdc, 0x9c, 0x38, 0xf2, 0x19, 
            0x9c, 0x3e, 0x7b, 0x16, 0x4f, 0xcc, 0x05, 0x36} },
-        {0}
     };
     int i, failed;
     hash_state md;
     unsigned char digest[16];
 
     failed = 0;
-    for(i = 0; cases[i].num; i++) {
+    for(i = 0; i < (int)(sizeof(cases) / sizeof(cases[0])); i++) {
         md4_init(&md);
         md4_process(&md, cases[i].input, cases[i].inputlen);
         md4_done(&md, digest);

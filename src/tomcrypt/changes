@@ -1,3 +1,10 @@
+Nov 24th, 2002
+v0.75  -- Fixed a flaw in hash_filehandle, it should ARGCHK that the filehandle is not NULL
+       -- Fixed a bug where in hash_file if the call to hash_filehandle failed the open file would 
+          not be closed.
+       -- Added more strict rules to build process, starting to weed out "oh this works in GCC" style code
+          In the next release "-Wconversion" will be enabled which will deal with all implicit casts.
+
 Nov 22nd, 2002 [later in the day]
 v0.74  -- Wrote a small variant of SAFER+ which shaved 50KB off the size of the library on x86 platforms
        -- Wrote a build option to remove the PK packet functions [keeps the encrypt_key/sign_hash functions]

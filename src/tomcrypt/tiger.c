@@ -21,7 +21,7 @@ const struct _hash_descriptor tiger_desc =
 
 #define save_abc  aa = a; bb = b; cc = c;
 
-const static ulong64 table[4*256] = {
+static const ulong64 table[4*256] = {
     CONST64(0x02AAB17CF7E90C5E) /*    0 */, CONST64(0xAC424B03E243A8EC) /*    1 */,
     CONST64(0x72CD5BE30DD5FCD3) /*    2 */, CONST64(0x6D019B93F6F97F3A) /*    3 */,
     CONST64(0xCD9978FFD21F9193) /*    4 */, CONST64(0x7573A1C9708029E2) /*    5 */,
@@ -718,7 +718,7 @@ int  tiger_test(void)
        0x58, 0x48, 0xa7, 0xe0, 0xae, 0x6a, 0xac, 0x76,
        0xe4, 0xff, 0x59, 0x0a, 0xe7, 0x15, 0xfd, 0x25 }
     },
-    { NULL }
+    { NULL, { 0 }}
   };
 
   int failed, i;

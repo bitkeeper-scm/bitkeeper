@@ -44,7 +44,7 @@
 \def\gap{\vspace{0.5ex}}
 \makeindex
 \begin{document}
-\title{A Tiny Crypto Library, \\ LibTomCrypt \\ Version 0.74}
+\title{A Tiny Crypto Library, \\ LibTomCrypt \\ Version 0.75}
 \author{Tom St Denis \\
 Algonquin College \\
 \\
@@ -374,12 +374,6 @@ return {\bf CRYPT\_OK} if the key size specified is acceptable.  For example:
 int main(void)
 {
    int keysize, errno;
-
-   /* first register twofish */
-   if (register_cipher(&twofish_desc) == -1) {
-      printf("Error registering Twofish.\n");
-      return -1;
-   }
 
    /* now given a 20 byte key what keysize does Twofish want to use? */
    keysize = 20;

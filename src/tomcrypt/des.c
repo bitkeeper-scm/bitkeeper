@@ -587,7 +587,7 @@ int des_test(void)
                     { 0x0D, 0x9F, 0x27, 0x9B, 0xA5, 0xD8, 0x72, 0x60 } }, 
         {10, 0,     { 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01 },
                     { 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
-                    { 0xD9, 0x03, 0x1B, 0x02, 0x71, 0xBD, 0x5A, 0x0A } },
+                    { 0xD9, 0x03, 0x1B, 0x02, 0x71, 0xBD, 0x5A, 0x0A } }
 
         /*** more test cases you could add if you are not convinced (the above test cases aren't really too good):
 
@@ -629,14 +629,12 @@ int des_test(void)
 
             http://www.ecs.soton.ac.uk/~prw99r/ez438/vectors.txt
         ***/
-
-        {0}
     };
     int i, failed=0;
     unsigned char out[8];
     symmetric_key des;
 
-    for(i=0; cases[i].num; i++)
+    for(i=0; i < (int)(sizeof(cases)/sizeof(cases[0])); i++)
     {
         if ((errno = des_setup(cases[i].key, 8, 0, &des)) != CRYPT_OK) {
            return errno;

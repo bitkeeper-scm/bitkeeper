@@ -432,13 +432,12 @@ Key First"
              0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa}, 80,
             "Test Using Larger Than Block-Size Key and Larger Than One Block-Size Data", 73,
             {0x6f, 0x63, 0x0f, 0xad, 0x67, 0xcd, 0xa0, 0xee,
-             0x1f, 0xb1, 0xf5, 0x62, 0xdb, 0x3a, 0xa5, 0x3e} },
-        {0}
+             0x1f, 0xb1, 0xf5, 0x62, 0xdb, 0x3a, 0xa5, 0x3e} }
     };
 
     int errno;
     int failed=0;
-    for(i=0; cases[i].num; i++) {
+    for(i=0; i < (int)(sizeof(cases) / sizeof(cases[0])); i++) {
         int hash = find_hash(cases[i].algo);
         if((errno = hmac_memory(hash, cases[i].key, cases[i].keylen, cases[i].data, cases[i].datalen, digest)) != CRYPT_OK) {
 #if 0

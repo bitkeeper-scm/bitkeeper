@@ -9,7 +9,7 @@
 # a build. This is easy to remedy though, for those that have problems.
 
 # The version
-VERSION=0.74
+VERSION=0.75
 
 #Compiler and Linker Names
 CC=gcc
@@ -29,9 +29,9 @@ XCLOCK=clock
 XCLOCKS_PER_SEC=CLOCKS_PER_SEC
 
 #Compilation flags. Note the += does not write over the user's CFLAGS!
-CFLAGS += -c -I./ -Wall -Wsign-compare -DXMALLOC=$(XMALLOC) -DXCALLOC=$(XCALLOC) \
-          -DXFREE=$(XFREE) -DXCLOCK=$(XCLOCK) -DXCLOCKS_PER_SEC=$(XCLOCKS_PER_SEC)
-
+CFLAGS += -c -I./ -Wall -Wsign-compare -W -Wno-unused -Werror  \
+   -DXMALLOC=$(XMALLOC) -DXCALLOC=$(XCALLOC) -DXFREE=$(XFREE) -DXCLOCK=$(XCLOCK) \
+   -DXCLOCKS_PER_SEC=$(XCLOCKS_PER_SEC)
 
 #optimize for SPEED (comment out SIZE/DEBUG line as well)
 #CFLAGS += -O3 -fomit-frame-pointer -funroll-loops

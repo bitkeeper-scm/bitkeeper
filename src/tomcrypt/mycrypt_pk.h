@@ -52,6 +52,8 @@ extern int rsa_signdepad(const unsigned char *in,  unsigned long inlen,
 
 extern void rsa_free(rsa_key *key);
 
+#ifdef PK_PACKET
+
 extern int rsa_encrypt(const unsigned char *in,  unsigned long len, 
                              unsigned char *out, unsigned long *outlen,
                              prng_state *prng, int wprng, int cipher, 
@@ -68,6 +70,8 @@ extern int rsa_sign(const unsigned char *in, unsigned long inlen,
 extern int rsa_verify(const unsigned char *sig, const unsigned char *msg, 
                             unsigned long inlen, int *stat, 
                             rsa_key *key);
+                            
+#endif                            
 
 extern int rsa_encrypt_key(const unsigned char *inkey, unsigned long inlen,
                                  unsigned char *outkey, unsigned long *outlen,
@@ -108,6 +112,8 @@ extern int dh_import(const unsigned char *in, dh_key *key);
 extern int dh_shared_secret(dh_key *private_key, dh_key *public_key,
                             unsigned char *out, unsigned long *outlen);
 
+#ifdef PK_PACKET
+
 extern int dh_encrypt(const unsigned char *in,  unsigned long len, 
                             unsigned char *out, unsigned long *outlen,
                             prng_state *prng, int wprng, int cipher, int hash, 
@@ -125,6 +131,8 @@ extern int dh_sign(const unsigned char *in,  unsigned long inlen,
 extern int dh_verify(const unsigned char *sig, const unsigned char *msg, 
                            unsigned long inlen, int *stat, 
                            dh_key *key);
+                           
+#endif                           
 
 extern int dh_encrypt_key(const unsigned char *inkey, unsigned long keylen,
                                 unsigned char *out,  unsigned long *len, 
@@ -170,6 +178,8 @@ extern int ecc_import(const unsigned char *in, ecc_key *key);
 extern int ecc_shared_secret(ecc_key *private_key, ecc_key *public_key, 
                              unsigned char *out, unsigned long *outlen);
 
+#ifdef PK_PACKET
+
 extern int ecc_encrypt(const unsigned char *in,  unsigned long len, 
                              unsigned char *out, unsigned long *outlen,
                              prng_state *prng, int wprng, int cipher, int hash, 
@@ -187,6 +197,8 @@ extern int ecc_sign(const unsigned char *in, unsigned long inlen,
 extern int ecc_verify(const unsigned char *sig, const unsigned char *msg, 
                             unsigned long inlen, int *stat, 
                             ecc_key *key);
+                            
+#endif                            
 
 extern int ecc_encrypt_key(const unsigned char *inkey, unsigned long keylen,
                                  unsigned char *out,  unsigned long *len, 

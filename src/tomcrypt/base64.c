@@ -3,10 +3,10 @@
 
 #ifdef BASE64
 
-const static unsigned char *codes = 
+static const char *codes = 
 "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-const static unsigned char map[256] = {
+static const unsigned char map[256] = {
 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
