@@ -266,12 +266,20 @@ echo "licsign3: $BKL_P3" >> config
 echo "logging: none" >> config
 echo "logging_ask: no" >> config
 bk delta $Q -yprivate
-bk commit $Q -yprivate
+bk commit $Q -yprivate 2> OUT && {
+	echo should have failed
+	exit 1
+}
+grep -q "Please read 'bk help multiuser'" OUT || {
+	echo wrong error message
+	exit 1
+}
 bk multiuser 2> OUT || {
 	echo failed
 	cat OUT
 	exit 1
 }
+bk commit $Q -yprivate
 test `wc -l < OUT` -eq 1 || {
 	echo errors from multiuser
 	cat OUT

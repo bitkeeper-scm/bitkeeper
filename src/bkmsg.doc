@@ -354,9 +354,15 @@ and make sure logs are being transmitted properly. You can test your log
 transmission with the command "bk log -d".
 $
 #single-file-max
-Error: Single user repositories are limited to #BKARG# files. If you need more
-files than that in one repository, you need to buy a commercial license or
-turn on open logging.
+Error: The BitKeeper free use license limits the total number of files
+in all of your single user repositories to 1000 files.  You will need
+to buy a commercial license or turn on openlogging to continue.
+$
+#single-config-mismatch
+Error: This repository was orignially configured as a single user repository
+but the configuration has been updated to not have this restriction.
+This repository must be turned into a multiuser repository before it can
+be used.  Please read 'bk help multiuser' to do this.
 $
 #eval-max
 Error: Evaluation license are limited to #BKARG# changesets.  You are over 
