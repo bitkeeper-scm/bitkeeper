@@ -42,7 +42,7 @@ unpull(int force, int quiet)
 	char	cset[] = CHANGESET;
 	MMAP	*m;
 	char	*t, *r;
-	char	*av[6];
+	char	*av[10];
 	int	i;
 	int	status;
 
@@ -76,6 +76,7 @@ unpull(int force, int quiet)
 	sccs_free(s);
 	av[i=0] = "bk";
 	av[++i] = "undo";
+	av[++i] = "-s";
 	if (force) av[++i] = "-f";
 	if (quiet) av[++i] = "-q";
 	t -= 2;

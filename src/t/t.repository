@@ -22,6 +22,7 @@ if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
+
 echo $N Create some data ............................................$NL
 mkdir src
 cd src
@@ -48,6 +49,7 @@ then	echo failed
 	exit 1
 fi
 echo OK
+
 echo $N Try to commit an empty cset .................................$NL
 cd $HERE/project
 bk edit $Q ChangeSet
@@ -55,6 +57,7 @@ bk commit $Q
 # make sure "bk commit" did not change the mode of the ChangeSet file
 writable ChangeSet || { echo failed; exit 1; }
 echo OK
+
 echo $N Try to commit via stdin .....................................$NL
 cd $HERE/project/src
 bk co $Q -l h.h
@@ -104,21 +107,23 @@ cd $HERE/project
 bk makepatch $Q -e1.0..1.2 > $HERE/patch
 mkdir -p $HERE/proj_log
 cd $HERE/proj_log
-bk takepatch  -a < $HERE/patch
+bk takepatch -aL < $HERE/patch
 bk -r check -a || { echo failed; exit 1; }
 cd $HERE/project
 bk push $Q -e $HERE/proj_log
 cd $HERE/proj_log
 bk -r check -a || { echo failed; exit 1; }
 echo OK
+
 echo $N Make sure we reject logging patch in a regular repository ...$NL
 bk clone $Q -r1.1 $HERE/project $HERE/copy
 cd $HERE/copy
-bk takepatch -a < $HERE/patch 2> tk.out
+bk takepatch -aL < $HERE/patch 2> tk.out
 if [ $? -eq 0 ]; then echo faile; exit 1; fi
 grep -q "can't apply a logging patch to a regular file" tk.out
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N Make sure we reject regular patch in a logging repository ...$NL
 cd $HERE/project
 bk makepatch $Q -r1.0..1.2 > $HERE/patch
@@ -129,6 +134,7 @@ if [ $? -eq 0 ]; then echo failed; exit 1; fi
 grep -q "can't apply a regular patch to a logging file" tk.out
 if [ $? -ne 0 ]; then echo faile; exit 1; fi
 echo OK
+
 echo $N Make sure we do not auto merge logging patch ................$NL
 cd $HERE/proj_log; bk undo $Q -f -r1.2..
 bk clone $Q -r1.2 $HERE/project $HERE/copy1
@@ -149,6 +155,7 @@ bk takepatch  $Q -a < $HERE/patch
 cd $HERE/proj_log
 bk -r check -a
 echo OK
+
 #echo $N Test for path conflict ......................................$NL
 #cd $HERE/proj_log
 #bk undo $Q -f -r1.2.1.1,1.3
@@ -166,6 +173,7 @@ echo OK
 #bk takepatch $Q < $HERE/patch
 #bk resolve -d -t -c
 #echo SKIPPED
+
 echo $N Try to resolve into a tree with no write permission .........$NL
 cd $HERE
 rm -rf copy
@@ -185,6 +193,7 @@ grep -q 'No write permission: src' OUT || {
 }
 chmod +w src
 echo OK
+
 echo $N Try a commit -Yfile .........................................$NL
 cd $HERE/project
 echo arg > foo
@@ -201,6 +210,7 @@ EOF
 cmp -s C1 C2
 if [ $? -ne 0 ]; then echo Failed to set correct comments.; exit 1; fi
 echo OK
+
 echo $N Try a commit -Ymissingfile ..................................$NL
 cd $HERE/project
 bk edit $Q foo || exit
