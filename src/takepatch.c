@@ -663,6 +663,8 @@ applyPatch(
 	char	lodkey[MAXPATH];
 	int	lodbranch = 1;	/* true if LOD is branch; false if revision */
 	int	confThisFile;
+#define	CSETS	"RESYNC/BitKeeper/etc/csets"
+	FILE	*csets = 0;
 
 	unless (p) return (0);
 	lodkey[0] = 0;
@@ -801,6 +803,20 @@ apply:
 					return -1;
 				}
 				mclose(iF);
+				if ((s->state & S_CSET) && 
+				    !(p->flags & PATCH_LOCAL))  {
+					static	int first = 1;
+					delta	*d = sccs_findKey(s, p->me);
+
+					assert(d);
+					unless (csets) {
+						csets = fopen(CSETS, "w");
+						assert(csets);
+					}
+					unless (first) fprintf(csets, ",");
+					first = 0;
+					fprintf(csets, "%s", d->rev);
+				}
 			}
 		} else {
 			assert(s == 0);
@@ -840,6 +856,10 @@ apply:
 		p = p->next;
 	}
 
+	if (csets) {
+		fprintf(csets, "\n");
+		fclose(csets);
+	}
 	sccs_free(s);
 	s = sccs_init(patchList->resyncFile, 0, root);
 	assert(s);
