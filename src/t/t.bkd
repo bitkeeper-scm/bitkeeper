@@ -97,7 +97,6 @@ bk pull -t $Q bk://localhost:$P
 if [ ! -f SCCS/s.boo.c ]; then echo failed; exit 1; fi
 echo OK
 
-rm -f d:/projects/bugfixes/src/trace
 echo $N "pull via bkd -xpull" .........................................$NL
 cd $HERE/project
 P=50000

@@ -193,7 +193,7 @@ setup_env()
 	test "X$OSTYPE" = X && OSTYPE=`uname -s`
 	case X$OSTYPE in
 	    Xcygwin|Xcygwin32|XCYGWIN*|Xmsys)
-		BK_BIN=$(msys2win $(cd .. && ./bk pwd -s))
+		BK_BIN=$(win2msys $(cd .. && ./bk pwd -s))
 		PATH=$BK_BIN:/bin:$PATH
 		win32_common_setup
 		check_mount_mode
@@ -216,7 +216,7 @@ setup_env()
 	unset BK_BIN _BK_GMODE_DEBUG
 	BK_LICENSE=ACCEPTED
 	BK_REGRESSION=`bk _cleanpath $TST_DIR/.regression-$USER`
-	HERE=`win2msys $BK_REGRESSION`
+	HERE=`echo $BK_REGRESSION | sed -e 's,\\\\,/,g'`
 	BK_TMP=$BK_REGRESSION/.tmp
 	TMPDIR=/build/.tmp-$USER
 	BKL_P=BKL5413557503d719ed00001200ffffe
