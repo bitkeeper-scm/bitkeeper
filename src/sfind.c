@@ -1,4 +1,5 @@
 #include "sccs.h"
+#include <dirent.h>
 #ifdef WIN32
 #include "uwtlib/ftw.h"
 #else
@@ -90,7 +91,7 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 	} else {
 		for (i = optind; i < ac; ++i) {
 			if (isRealDir(av[i])) {
-				ftw(av[i], func, 15);
+				lftw(av[i], func, 15);
 			} else {
 				file(av[i], func, 15);
 			}
@@ -261,7 +262,7 @@ rebuild()
 	idDB = mdbm_open(NULL, 0, 0, 4096);
 	assert(idDB);
 	mdbm_pre_split(idDB, 1<<10);
-c:	ftw(".", caches, 15);
+c:	lftw(".", caches, 15);
 	if (rFlg) {
 		fclose(id_cache);
 		unlink("SCCS/z.id_cache");
@@ -393,3 +394,81 @@ caches(const char *filename, const struct stat *sb, int flag)
 	sccs_free(sc);
 	return (0);
 }
+
+
+
+
+_ftw_get_flag(const char *dir, struct stat *sb)
+{
+
+	if (lstat(dir, sb) != 0) return FTW_NS;
+	if ((S_ISDIR(sb->st_mode))) return FTW_D;
+
+	/* everything else is considered a file */
+	return FTW_F;
+}
+
+
+/*
+ * Walk a directory tree recusivly, 
+ * A tree pointed to by a sym-link is ignored
+ * TODO: handle the "depth" parameter
+ */
+int
+lftw(const char *dir,
+	int(*func)(const char *file, struct stat *sb, int flag),
+	int depth)
+{
+#define NBUF_SIZE 1024
+	DIR	*d;
+	struct	dirent *e;
+	struct	stat sbuf;
+	char	tmp_buf[NBUF_SIZE];
+	char	*slash ="/";
+
+	int flag, rc = 0, first_time = 1;
+
+	flag = _ftw_get_flag(dir, &sbuf);
+
+	if ((rc = (*func)(dir, &sbuf, flag)) != 0) return rc;
+
+	if (flag != FTW_D) return 0;
+
+	/*
+	 * if we get here, the top level node is a directory
+	 * now we process its children
+	 */
+	/* CSTYLED */
+	for (;;) {
+		if (first_time) {
+			int len = strlen(dir);
+			first_time = 0;
+			if ((len > 1) && (dir[len -1] == '/')) slash = "";
+			if ((d = opendir(dir)) == NULL) {
+				perror(dir);
+				goto done;
+			}
+		}
+		e = readdir(d);
+		if (e == NULL) goto done;
+		if ((strcmp(e->d_name, ".") == 0) ||
+		    (strcmp(e->d_name, "..") == 0))
+			continue;  /* skip "." && ".." */
+
+		/* now we do the real work */
+		sprintf(tmp_buf, "%s%s%s", dir, slash, e->d_name);
+		if (isRealDir(tmp_buf)) {
+			lftw(tmp_buf, func, 0);
+		} else {
+			flag = _ftw_get_flag(tmp_buf, &sbuf);
+			if ((rc = (*func)(tmp_buf, &sbuf, flag)) != 0) {
+				goto done;
+			}
+		}
+
+	}
+done:
+	closedir(d);
+	return rc;
+}
+
