@@ -62,7 +62,7 @@ bk commit $Q -y0
 cd $HERE/copy
 bk pull $Q || { echo failed; exit 1; }
 cd src
-cat >ref-bar.c <<EOF
+${CAT} >ref-bar.c <<EOF
 line zero
 bar
 line three
@@ -117,6 +117,11 @@ KEY2="`bk prs -hd:LONGKEY: -r+ $HERE/project/ChangeSet`"
 [ "$KEY" = "$KEY2" ] || { echo bad push; exit 1; }
 echo OK
 echo $N Resolve by hand and push again ..............................$NL
+if [ "$PLATFORM" = "WIN32" ]
+then
+	echo "test skip. \"ed\" command not yet avaliable on NT"
+else
+# ------------------------------------------------
 EDITOR=ed bk resolve $Q -f - <<EOF >/dev/null 2>&1
 m
 e
@@ -134,3 +139,5 @@ cd $HERE/project
 KEY2="`bk prs -hd:LONGKEY: -r+ ChangeSet`"
 [ "$KEY" = "$KEY2" ] || { echo no push; exit 1; }
 echo OK
+# ------------------------------------------------
+fi
