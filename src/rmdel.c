@@ -13,6 +13,9 @@ usage: rmdel [-DqsS] [-r<rev>] file\n\n\
     -s		run quietly\n\
     -v		run more noisily (use with -S)\n\n";
 
+void	rmcaches(void);
+int	undo_main(int dont, int verbose);
+
 /*
  * The weird setup is so that I can #include this file into sccssh.c
  */
@@ -128,6 +131,7 @@ next:		sccs_free(s);
 	return (errors);
 }
 
+void
 rmcaches()
 {
 	// XXX - needs to be updated when we move the cache to BitKeeper/caches
@@ -154,16 +158,21 @@ main(int ac, char **av)
  */
 int	undo_dont = 0;
 int	undo_v = 0;
+
 sccs	*copy(sccs *s);
+void	init(void);
+int	undo(sccs *s);
+void	cleanup(void) NORETURN;
+void	apply(void) NORETURN;
+void	getfiles(sccs *s, char *rev);
+int	applyfiles(char *file, char *lastrev);
+void	done(int pass);
 
 int
 undo_main(int dont, int verbose)
 {
 	sccs	*s;
 	char	*name;
-	int	inroot = 0;
-	char	*rev;
-	int	c;
 	char	*Av[2];
 	int	flags = SILENT;
 	RANGE_DECL;
@@ -190,7 +199,8 @@ next:		sccs_free(s);
 	return (0);
 }
 
-init()
+void
+init(void)
 {
 	if (sccs_cd2root(0, 0)) {
 		fprintf(stderr, "undo: can't find BitKeeper root.\n");
@@ -208,7 +218,7 @@ init()
 int
 undo(sccs *s)
 {
-	delta	*d, *e, *f;
+	delta	*d, *e = 0, *f;
 
 	/* Figure out the "GCA". */
 	for (d = s->table; d; d = d->next) {
@@ -279,8 +289,8 @@ undo(sccs *s)
 		sccs_unlock(s, 'z');
 		cleanup();
 	}
-	if (getfiles(s, e->rev) ||
-	    applyfiles(s->sfile, e->rev)) {
+	getfiles(s, e->rev);
+	if (applyfiles(s->sfile, e->rev)) {
 		sccs_free(s);
 		cleanup();
 	}
@@ -291,6 +301,7 @@ undo(sccs *s)
 /*
  * get all the init and diffs files.
  */
+void
 getfiles(sccs *s, char *rev)
 {
 	FILE	*f;
@@ -311,7 +322,7 @@ getfiles(sccs *s, char *rev)
 	for (n = 0, d = s->table; d != e; d = d->next) {
 		unless (d->flags & D_SET) n++;
 	}
-	if (n == 0) return (0);
+	if (n == 0) return;
 	list = calloc(n, sizeof(delta *));
 	for (n = 0, d = s->table; d != e; d = d->next) {
 		unless (d->flags & D_SET) {
@@ -354,7 +365,6 @@ getfiles(sccs *s, char *rev)
 			close(creat(path, 0664));
 		}
 	}
-	return (0);
 }
 
 /*
@@ -383,6 +393,7 @@ copy(sccs *s)
  * delete everything after the last rev,
  * and apply the saved deltas.
  */
+int
 applyfiles(char *file, char *lastrev)
 {
 	sccs	*s;
@@ -543,6 +554,7 @@ fileCopy(char *from, char *to)
  * For each file in the UNDO tree, unlock the corresponding file.
  * Then blow away the UNDO tree.
  */
+void
 cleanup()
 {
 	unless (chdir("UNDO") == 0) {
@@ -553,11 +565,13 @@ cleanup()
 	exit(1);
 }
 
+void
 check()
 {
 	system("bk sfiles -P . | bk check -");
 }
 
+void
 apply()
 {
 	/*
@@ -574,6 +588,7 @@ apply()
 	exit(0);
 }
 
+void
 Rename(char *old, char *new)
 {
 	mkdirp(new);
@@ -595,12 +610,13 @@ Rename(char *old, char *new)
 	 */
 	if (fileCopy(old, new) == 0) {
 		unlink(old);
-		return (0);
+		return;
 	}
 	fprintf(stderr, "Unable to rename(%s, %s)\n", old, new);
 	cleanup();
 }
 
+void
 done(int pass)
 {
 	FILE	*f;

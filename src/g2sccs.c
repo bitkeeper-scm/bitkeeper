@@ -2,6 +2,8 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
+void	doit(char *);
+
 /*
  * g2sccs - convert gfile names to sfile names
  */
@@ -25,6 +27,7 @@ main(int ac, char **av)
 	return (0);
 }
 
+void
 doit(char *name)
 {
 	name = name2sccs(name);

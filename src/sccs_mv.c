@@ -13,12 +13,11 @@ int
 sccs_mv(char *name, char *dest, int isDir, int isDelete)
 {
 	char 	*p, *q, *t, *destfile, *oldpath;
-	char	*gfile, *sfile, *nrev = 0;
+	char	*gfile, *sfile;
 	char	buf[1024], commentBuf[MAXPATH*2];
 	sccs	*s;
 	delta	*d;
-	int	error = 0, wasEdited = 0;
-	pfile	pf;
+	int	error = 0;
 	int	flags = SILENT|DELTA_FORCE; 
 
 	unless (s = sccs_init(name, INIT_NOCKSUM, 0)) return (1);

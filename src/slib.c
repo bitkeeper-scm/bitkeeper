@@ -2149,7 +2149,7 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 	char	*t = buf;
 	char	*tmp, *g;
 	time_t	now = 0;
-	struct	tm *tm;
+	struct	tm *tm = 0;
 	u16	a[4];
 	int	expn = 0;
 
@@ -4665,11 +4665,11 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 {
 	serlist *state = 0;
 	ser_t	*slist = 0;
-	int	lines = 0, print = 0, popened, error = 0;
+	int	lines = 0, print = 0, popened = 0, error = 0;
 	int	encoding = (flags&GET_ASCII) ? E_ASCII : s->encoding;
 	unsigned int sum;
 	FILE 	*out;
-	char	*buf, *base, *f;
+	char	*buf, *base = 0, *f;
 	MDBM	*DB = 0;
 	int	hash = 0;
 
@@ -5054,7 +5054,9 @@ err:		if (i2) free(i2);
 		error = getLinkBody(s, printOut, flags, d, &lines);
 		break;
 	    default:
-		assert("unsupported file type" == 0);
+		fprintf(stderr, "get unsupported file type %d\n",
+			fileType(d->mode));
+		error = 1;
 	}
 	if (error) goto err;
 	debug((stderr, "GET done\n"));
@@ -6790,7 +6792,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 	FILE	*sfile, *gfile = 0;
 	delta	*n0 = 0, *n, *first;
 	int	added = 0;
-	int	popened, len;
+	int	popened = 0, len;
 	char	*t;
 	char	buf[MAXLINE];
 	admin	l[2];
@@ -7998,7 +8000,7 @@ sccs_admin(sccs *sc, u32 flags, char *new_encp, char *new_compp,
 	admin *f, admin *l, admin *u, admin *s, char *text)
 {
 	FILE	*sfile = 0;
-	int	new_enc, error = 0, locked, i, old_enc = 0;
+	int	new_enc, error = 0, locked = 0, i, old_enc = 0;
 	char	*t;
 	BUF	(buf);
 
@@ -8578,7 +8580,7 @@ sccs_getInit(sccs *sc, delta *d, FILE *f, int patch, int *errorp, int *linesp)
 	int	nocomments = d && d->comments;
 	int	error = 0;
 	int	lines = 0;
-	char	type;
+	char	type = '?';
 
 	unless (f) {
 		if (errorp) *errorp = 0;
@@ -9460,7 +9462,7 @@ sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, char kind, FILE *out)
 	char	*leftf, *rightf;
 	char	tmpfile[MAXPATH];
 	char	diffFile[MAXPATH];
-	char	*columns;
+	char	*columns = 0;
 	char	tmp2[MAXPATH];
 	char	buf[MAXLINE];
 	pfile	pf;

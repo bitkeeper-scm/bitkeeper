@@ -26,7 +26,7 @@ main(int ac, char **av)
                 }
         }                    
 	if (ac < 2) {
-usage:		fprintf(stderr, "usage: %s [-d] file1 file2 ...\n", av[0]);
+		fprintf(stderr, "usage: %s [-d] file1 file2 ...\n", av[0]);
 		exit(1);
 	}
 	for (name = sfileFirst("sccsrm",&av[optind], 0);
@@ -38,15 +38,11 @@ usage:		fprintf(stderr, "usage: %s [-d] file1 file2 ...\n", av[0]);
 	return (errors);
 }
 
-#include "comments.c"
-			
 int
 sccs_rm(char *name, int useCommonDir)
 {
-	char	path[MAXPATH], cmd[MAXPATH], root[MAXPATH], commonDir[MAXPATH];
-	char	*gfile, *sfile, *lazy;
-	sccs	*s;
-	delta	*d;
+	char	path[MAXPATH], root[MAXPATH];
+	char	*sfile;
 	char	*t, *b;
 	int	try = 0;
 	int	error = 0;
@@ -78,6 +74,6 @@ sccs_rm(char *name, int useCommonDir)
 		unless (exists(path)) break;
 	}
 	error |= sccs_mv(sfile, path, 0, 1);
-out:	free(sfile);
+	free(sfile);
 	return (error);
 }

@@ -184,7 +184,7 @@ usage:			fprintf(stderr, "delta: usage error, try --help.\n");
 			}
 			nrev = pf.newrev;
 		}
-		s->encoding = enc;
+		s->encoding = sccs_encoding (s, encp, compp);
 		rc = sccs_delta(s, dflags, d, init, diffs);
 		if (rc == -2) goto next; /* no diff in file */
 		if (rc == -1) {

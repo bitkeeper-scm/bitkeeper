@@ -12,7 +12,7 @@ WHATSTR("@(#)%K%");
 int
 main(int ac, char **av)
 {
-	char	*name, *dest, c;
+	char	*name, *dest;
 	int	isDir;
 	int	errors = 0;
 	int	dofree = 0;
