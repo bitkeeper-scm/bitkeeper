@@ -205,16 +205,25 @@ rm -f $HERE/B/foo
 bk diff -Nur A B > $HERE/patch
 cd $HERE/EDIT
 bk get $Q -r+ -p foo > foo.ref
-bk import $Q -tpatch  $HERE/patch  $HERE/EDIT > BitKeeper/tmp/PLOG
-if [ $? -eq 0 ]; then echo failed to reject bad patch; exit 1; fi
-grep -q 'hunk FAILED -- saving rejects to file bar.rej' BitKeeper/tmp/PLOG
-if [ $? -ne 0 ]; then echo failed to reject bad patch; exit 1; fi
+bk import $Q -tpatch -R $HERE/patch $HERE/EDIT \
+    > BitKeeper/tmp/PLOG 2>&1 < /dev/null
+test $? -eq 0 && {
+	echo failed to reject bad patch
+	cat BitKeeper/tmp/PLOG
+	exit 1
+}
+grep -q 'hunk FAILED -- saving rejects to file bar.rej' BitKeeper/tmp/PLOG || {
+	echo failed to reject bad patch, no hunk FAILED
+	cat BitKeeper/tmp/PLOG
+	exit 1
+}
 bk get $Q -r+ -p foo > foo.now
 cmp -s foo.now foo.ref || { echo failed; exit 1; }
 rm -f foo.now foo.ref bar.ref
 if [ -f bar ]; then echo failed; exit 1; fi
 if [ -f SCCS/p.foo ]; then echo failed to unlock foo; exit 1; fi
 echo OK
+
 rm -rf $HERE/A $HERE/B $HERE/EDIT/*.rej
 echo $N Make sure we allow a file to be patched multiple times ......$NL
 # make a patch
@@ -314,6 +323,7 @@ bk import -temail < BitKeeper/tmp/E > BitKeeper/tmp/PLOG 2>&1 || {
 bk get $Q foo
 grep -q G foo || {
 	echo failed to apply patch
+	cat BitKeeper/tmp/PLOG
 	exit 1
 }
 U=akushner@bitmover.com+`bk getuser -r`
