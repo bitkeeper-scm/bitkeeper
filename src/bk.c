@@ -51,6 +51,7 @@ int gethelp_main(int, char **);
 int gethost_main(int, char **);
 int getuser_main(int, char **);
 int graft_main(int, char **);
+int gone_main(int, char **);
 int help_main(int, char **);
 int isascii_main(int, char **);
 int key2rev_main(int, char **);
@@ -144,6 +145,7 @@ struct command cmdtbl[] = {
 	{"gethost", gethost_main},
 	{"getuser", getuser_main},
 	{"graft", graft_main},
+	{"gone", gone_main},
 	{"help", help_main},
 	{"info", sinfo_main},	/* aliases */
 	{"isascii", isascii_main},
@@ -473,7 +475,7 @@ cmdlog_start(char **av)
 	if (cmdlog_repo) {
 		int ret ;
 
-		if ((bk_mode() == BK_STD)  && !streq("commit", av[0])) return;
+		if ((bk_mode() == BK_BASIC)  && !streq("commit", av[0])) return;
 		ret = trigger(cmdlog_buffer, "pre", 0);
 
 		unless (ret == 0) exit(ret);
@@ -729,7 +731,7 @@ bk_mode()
 	root = sccs_root(0);
 	unless (root) {
 		fprintf(stderr, "bk_mode: cannot find project root\n");
-		return (BK_STD);
+		return (BK_BASIC);
 	}
 	sprintf(s_config, "%s/BitKeeper/etc/SCCS/s.config", root);
 	sprintf(g_config, "%s/BitKeeper/etc/config", root);
@@ -742,12 +744,12 @@ bk_mode()
 		assert(s);
 		if (gettemp(x_config, "bk_config")) {
 			fprintf(stderr, "Cannot create temp file\n");
-			return BK_STD;
+			return BK_BASIC;
 		}
 		if (sccs_get(s, 0, 0, 0, 0, SILENT|PRINT, x_config)) {
 			fprintf(stderr, "Cannot print to %s\n", x_config);
 			sccs_free(s);
-			return (BK_STD);
+			return (BK_BASIC);
 		}
 		f = fopen(x_config, "rt");
 	}
@@ -764,7 +766,7 @@ bk_mode()
 	 * This is a stub, pending the license key extraction code from Larry
 	 */
 	sprintf(buf, "%s/bk_std", sccs_root(0));
-	mode = (exists(buf) == 1) ? BK_STD : BK_PRO; 
+	mode = (exists(buf) == 1) ? BK_BASIC : BK_PRO; 
 #else
 	/* XXXX under construction */
 #endif

@@ -282,8 +282,8 @@
 #define	UNKNOWN_USER	"anon"
 #define	UNKNOWN_HOST	"nowhere"
 
-#define BK_STD 0
-#define BK_PRO 1
+#define BK_BASIC	0
+#define BK_PRO		1
 
 #define	isData(buf)	(buf[0] != '\001')
 #define	seekto(s,o)	s->where = (s->mmap + o)

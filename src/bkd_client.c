@@ -41,7 +41,7 @@ remote_parse(char *p, int is_clone)
 	if (strneq("bk://", p, 5)) {
 		r = url_parse(p + 5);
 	} else {
-		if (!is_clone && (bk_mode() == BK_STD)) {
+		if (!is_clone && (bk_mode() == BK_BASIC)) {
 			fprintf(stderr,
 				"Non-url address detected: %s\n", upgrade_msg);
 			r = NULL;

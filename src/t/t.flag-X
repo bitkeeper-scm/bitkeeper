@@ -33,15 +33,15 @@ echo OK
 echo $N Test symlink create .........................................$NL
 echo "xx" > symfile
 ln -s symfile symlink
-ls -l | awk '/^l/ { print "ln -s", $11, $9 }' > make_sym.sh
+echo "ln -s symfile symlink" > make_sym.sh
 bk ci $Q -i make_sym.sh
 rm -f symlink
 bk admin $Q -fSHELL make_sym.sh
 bk co $Q make_sym.sh
 if [ ! -h symlink ]; then echo failed; exit 1; fi;
-ls -l | awk '/^l/ { print "ln -s", $11, $9 }' > X
-bk undos X > make_sym.ref
-cmp -s make_sym.sh make_sym.ref
+echo "yy" > symfile
+cat symlink > file
+diff symfile file > /dev/null
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 rm -rf file symfile symlink SCCS

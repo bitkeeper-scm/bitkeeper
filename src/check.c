@@ -12,6 +12,7 @@ usage: check [-acfRv]\n\n\
     -a		warn if the files listed are a subset of the repository\n\
     -c		check file checksum\n\
     -f		fix any fixable errors\n\
+    -g		list gone keys only\n\
     -p		list deltas which are in more than one cset\n\
     -R		only do checks which make sense in the RESYNC dir\n\
     -v		list each file which is OK\n\n";
@@ -33,6 +34,7 @@ private	int	verbose;
 private	int	all;	/* if set, check every darn entry in the ChangeSet */
 private	int	resync;	/* called in resync dir */
 private	int	fix;	/* if set, fix up anything we can */
+private	int	goneKey;/* if set, list gone key only */
 private	int	names;	/* if set, we need to fix names */
 private	int	mixed;	/* mixed short/long keys */
 private	project	*proj;
@@ -83,10 +85,11 @@ usage:		fprintf(stderr, "%s", check_help);
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "acfpRv")) != -1) {
+	while ((c = getopt(ac, av, "acfgpRv")) != -1) {
 		switch (c) {
 		    case 'a': all++; break;
 		    case 'f': fix++; break;
+		    case 'g': goneKey++; break;
 		    case 'c': flags &= ~INIT_NOCKSUM; break;
 		    case 'p': polyList++; break;
 		    case 'R': resync++; break;
@@ -305,6 +308,14 @@ private void
 listFound(MDBM *db)
 {
 	kvpair	kv;
+
+	if (goneKey) { /* -g option => key only, no header */
+		for (kv = mdbm_first(db); kv.key.dsize != 0;
+							kv = mdbm_next(db)) {
+			printf("%s\n", kv.key.dptr);
+		}
+		return;
+	}
 
 	if (resync) {
 		fprintf(stderr,

@@ -8,7 +8,7 @@ receive_main(int ac,  char **av)
 	char	buf[MAXLINE], opts[MAXLINE] = "";
 	char	*path;
 
-	if (bk_mode() == BK_STD) {
+	if (bk_mode() == BK_BASIC) {
 		fprintf(stderr, upgrade_msg);
 		exit(1);
 	}

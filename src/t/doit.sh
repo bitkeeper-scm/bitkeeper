@@ -18,7 +18,7 @@ win32_common_setup()
 	PLATFORM="WIN32"
 	DEV_NULL="nul"
 	TMP=`../pwd -sf $TEMP`
-	TST_DIR="$TMP"
+	if [ -z "$TST_DIR" ]; then TST_DIR="$TMP"; fi
 	BK_BIN=`cd .. && ./pwd.exe -sf`
 	CWD="$BK_BIN/pwd.exe"
 	touch $TMP/BitKeeper_nul
@@ -32,7 +32,7 @@ unix_common_setup()
 	PLATFORM="UNIX"
 	DEV_NULL="/dev/null"
 	TMP="/tmp"
-	TST_DIR="/tmp"
+	if [ -z "$TST_DIR" ]; then TST_DIR="/tmp"; fi
 	CWD="/bin/pwd"
 	if [ -d /usr/xpg4/bin ]; then PATH=/usr/xpg4/bin:$PATH; fi
 	BK_BIN="`cd .. && pwd`"
@@ -178,8 +178,8 @@ get_options()
 
 
 
-setup_env 
 get_options $@
+setup_env 
 init_main_loop
 # Main Loop #
 for i in $list

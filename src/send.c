@@ -71,7 +71,7 @@ send_main(int ac,  char **av)
 	char	patch[MAXPATH], out[MAXPATH];
 	FILE	*f;
 
-	if (bk_mode() == BK_STD) {
+	if (bk_mode() == BK_BASIC) {
 		fprintf(stderr, upgrade_msg);
 		exit(1);
 	}
