@@ -307,8 +307,11 @@ ChangeSet file do not match.  Please check the pathnames and try again.\n");
 	if (opts.verbose || opts.list) {
 		if (rcsets && !opts.metaOnly) {
 			fprintf(stderr,
-			    "Not pushing because of %d csets only in %s\n",
-			    rcsets, remote_unparse(r));
+			    "\nUnable to push to %s\n", remote_unparse(r));
+			fprintf(stderr,
+"The repository that you are pushing to is %d changesets\n\
+ahead of your repository. Please do a \"bk pull\" to get \n\
+these changes or do a \"bk pull -nl\" to see what they are.\n", rcsets);
 		} else if (rtags && !opts.metaOnly) {
 			fprintf(stderr,
 			    "Not pushing because of %d tags only in %s\n",
