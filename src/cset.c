@@ -288,7 +288,7 @@ csetList(sccs *cset, char *rev, int ignoreDeleted)
 	}
 	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
 		t = kv.key.dptr;
-		unless (sc = sccs_keyinit(t, NOCKSUM, idDB)) {
+		unless (sc = sccs_keyinit(t, INIT_NOCKSUM, idDB)) {
 			fprintf(stderr, "cset: init of %s failed\n", t);
 			exit(1);
 		}

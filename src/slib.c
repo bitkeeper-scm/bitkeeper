@@ -5021,7 +5021,7 @@ skip_get:
  * cat the delta body formatted according to flags.
  */
 int
-sccs_cat(sccs *s, int flags, char *printOut)
+sccs_cat(sccs *s, u32 flags, char *printOut)
 {
 	int	lines = 0, locked = 0, error;
 
@@ -5039,7 +5039,7 @@ err:		return (-1);
 		fprintf(stderr, "sccscat: no/bad delta tree in %s\n", s->sfile);
 		goto err;
 	}
-	if ((s->state & S_BADREVS) && !(flags & FORCE)) {
+	if ((s->state & S_BADREVS) && !(flags & GET_FORCE)) {
 		fprintf(stderr,
 		    "get: bad revisions, run renumber on %s\n", s->sfile);
 		s->state |= S_WARNED;

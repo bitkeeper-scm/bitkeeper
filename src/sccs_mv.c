@@ -1,4 +1,4 @@
-/* Copyright (c) 1997 L.W.McVoy */  
+/* Copyright (c) 1999 Andrew Chang */  
 #include "sccs.h"
 #include "dirent.h"
 WHATSTR("%W%");   
@@ -16,9 +16,9 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 	delta	*d;
 	int	error = 0, wasEdited = 0;
 	pfile	pf;
-	int	flags = SILENT|FORCE;; 
+	int	flags = SILENT|DELTA_FORCE; 
 
-	s = sccs_init(name, NOCKSUM);
+	s = sccs_init(name, INIT_NOCKSUM);
 	unless (HAS_SFILE(s)) {
 		fprintf(stderr, "sccsmv: not an SCCS file: %s\n", name);
 		sccs_free(s);
@@ -86,7 +86,7 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 	sfile = name2sccs(dest);
 	unless (s = sccs_init(sfile, 0)) { error++; goto out; }
 	unless (HAS_PFILE(s)) {
-		if (sccs_get(s, 0, 0, 0, 0, SILENT|EDIT, "-")) {
+		if (sccs_get(s, 0, 0, 0, 0, SILENT|GET_EDIT, "-")) {
 			error = 1;
 			goto out;
 		}
