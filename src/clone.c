@@ -217,6 +217,11 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	}
 
 	if (clone2(opts, r)) goto done;
+	/* set timestamps */
+	unless (opts.quiet) {
+		fprintf(stderr, "Updating file timestamps...\n");
+	}
+	sys("bk", "-r", "_timestamp", SYS);
 
 	rc  = 0;
 done:	if (rc) {
@@ -294,6 +299,12 @@ clone2(opts opts, remote *r)
 	unlink(checkfiles);
 	free(checkfiles);
 
+	p = user_preference("checkout");
+	if (strieq(p, "edit")) {
+		sys("bk", "-Ur", "edit", "-q", SYS);
+	} else if (strieq(p, "get")) {
+		sys("bk", "-Ur", "get", "-q", SYS);
+	}
 	return (0);
 }
 
@@ -317,20 +328,25 @@ initProject(char *root)
 private int
 sfio(opts opts, int gzip, remote *r)
 {
-	int	status;
-	char	*cmd;
-	FILE	*fh;
+	int	n, status;
+	pid_t	pid;
+	int	pfd;
+	char	*cmds[10];
 
-	cmd = aprintf("bk sfio -ie%s | bk _clonedo %s -", 
-	    opts.quiet ? "q" : "",
-	    opts.quiet ? "-q" : "");
-	
-	fh = popen(cmd, "w");
-	free(cmd);
-	unless (fh) return(101);
+	cmds[n = 0] = "bk";
+	cmds[++n] = "sfio";
+	cmds[++n] = "-i";
+	if (opts.quiet) cmds[++n] = "-q";
+	cmds[++n] = 0;
+	pid = spawnvp_wPipe(cmds, &pfd, BIG_PIPE);
+	if (pid == -1) {
+		fprintf(stderr, "Cannot spawn %s %s\n", cmds[0], cmds[1]);
+		return(1);
+	}
 	signal(SIGCHLD, SIG_DFL);
-	gunzipAll2fd(r->rfd, fileno(fh), gzip, &(opts.in), &(opts.out));
-	status = pclose(fh);
+	gunzipAll2fd(r->rfd, pfd, gzip, &(opts.in), &(opts.out));
+	close(pfd);
+	waitpid(pid, &status, 0);
 	if (gzip && !opts.quiet) {
 		fprintf(stderr,
 		    "%u bytes uncompressed to %u, ", opts.in, opts.out);
@@ -580,9 +596,6 @@ out:		chdir(from);
 	repository_rdunlock(0);
 	chdir(dest);
 	rmdir("RESYNC");		/* undo wants it gone */
-	p = aprintf("bk sfiles | bk _clonedo %s -", opts.quiet ? "-q" : "");
-	system(p);
-	free(p);
 	if (clone2(opts, r)) {
 		mkdir("RESYNC", 0777);
 		in_trigger("BK_STATUS=FAILED", opts.rev, from);
@@ -817,142 +830,5 @@ relink(char *a, char *b)
 		unlink(buf);
 		return (1);
 	}
-	return (0);
-}
-
-private	int	clonedo_quiet;
-
-/*
- * Do any work that needs to be done for every file as the file
- * gets unpacked from the sfio.  This prevents trashing the diskcache.
- */
-private int
-perfile_work(char *sfile)
-{
-	sccs	*s;
-	delta	*d;
-	static	int	checkout_mode = -1;
-	int	gflags = SILENT;
-
- again:
-	s = sccs_init(sfile, 0, 0);
-	unless (s && HASGRAPH(s)) return (0);
-
-	/* check for pending deltas */
-	d = sccs_getrev(s, "+", 0, 0);
-	if (d && !(d->flags & D_CSET)) {
-		/* need to strip delta */
-		int	status;
-		char	*cmds[10];
-		char	rev[MAXREV];
-		int	i;
-
-		cmds[i = 0] = "bk";
-		cmds[++i] = "stripdel";
-		if (clonedo_quiet) cmds[++i] = "-q";
-		sprintf(rev, "-r%s", d->rev);
-		cmds[++i] = rev;
-		cmds[++i] = sfile;
-		cmds[++i] = 0;
-
-		sccs_free(s);
-		
-		status = spawnvp_ex(_P_WAIT, "bk", cmds);
-		if (!WIFEXITED(status) || WEXITSTATUS(status)) {
-			int	i;
-			fprintf(stderr, "Failed:");
-			for (i = 0; cmds[i]; i++) {
-				fprintf(stderr, " %s", cmds[i]);
-			}
-			fprintf(stderr, "\n");
-			/* XXX what now? */
-		} else {
-			goto again;
-		}
-	}
-
-	/* get gfile if needed */
-	if (checkout_mode == -1) {
-		char	*p = user_preference("checkout");
-		if (strieq(p, "edit")) {
-			checkout_mode = 2;
-		} else if (strieq(p, "get")) {
-			checkout_mode = 1;
-		} else {
-			checkout_mode = 0;
-		}
-	}
-	if (checkout_mode == 2) {
-		gflags |= GET_EDIT;
-	} else if (checkout_mode == 1) {
-		gflags |= GET_EXPAND;
-	}
-	if (checkout_mode) sccs_get(s, 0, 0, 0, 0, gflags, "-");
-	
-	/* fixup timestamps */
-	set_timestamps(s);
-	sccs_free(s);
-	return (1);
-}
-
-int
-clonedo_main(int ac, char **av)
-{
-	char	*name;
-	char	**list = 0;
-	int	ok = 0;		/* +1 for cset +1 for BitKeeper */
-	int	inbk = 0;
-	int	c;
-	int	i;
-
-	while ((c = getopt(ac, av, "q")) != -1) {
-		switch (c) {
-		    case 'q': clonedo_quiet = 1; break;
-		    default:
-			fprintf(stderr, "ERROR: bad options\n");
-			exit(3);
-		}
-	}
-
-	/*
-	 * This loop is intended to start the file processing
-	 * after the ChangeSet file and the BitKeeper/ subdirectory
-	 * has been transfered. It also feed files to 'check' but
-	 * that has been disabled since check cannot run incrementally.  
-	 * (building idcache)
-	 */
-	for (name = sfileFirst("clonedo", &av[optind], 0);
-	     name; name = sfileNext()) {
-		if (ok >= 2) {
-			perfile_work(name);
-		} else {
-			list = addLine(list, strdup(name));
-			if (streq(name, CHANGESET)) ++ok;
-			if (strneq(name, "BitKeeper/", 10)) {
-				inbk = 1;
-			} else {
-				if (inbk) {
-					++ok;
-					inbk = 0;
-				}
-			}
-			if (ok >= 2) {
-				EACH(list) perfile_work(list[i]);
-				freeLines(list);
-				list = 0;
-			}
-		}
-	}
-	/* if BitKeeper dir was last */
-	if (ok == 1 && inbk) {
-		EACH(list) perfile_work(list[i]);
-		freeLines(list);
-		list = 0;
-	} else if (ok < 2) {
-		fprintf(stderr, 
-		    "clonedo ERROR: never saw ChangeSet and BitKeeper dir\n");
-		exit(4);
-	}
-	sfileDone();
 	return (0);
 }

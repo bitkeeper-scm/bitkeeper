@@ -177,6 +177,8 @@ cmd_rclone_part2(int ac, char **av)
 		fflush(stdout);
 		goto done;
 	}
+	/* remove any uncommited stuff */
+	sccs_rmUncommitted(!opts.verbose, 0);
 
 	/*
 	 * XXX TODO: set up parent pointer
@@ -213,14 +215,20 @@ done:
 private int
 getsfio(int verbose, int gzip)
 {
-	int	status;
-	FILE	*fh;
-	
-	fh = popen("bk sfio -ieq | bk _clonedo -q -", "w");
-	unless (fh) return(101);
+	int	status, pfd;
+	u32	in, out;
+	char	*cmds[10] = {"bk", "sfio", "-i", "-q", 0};
+	pid_t	pid;
+
+	pid = spawnvp_wPipe(cmds, &pfd, BIG_PIPE);
+	if (pid == -1) {
+		fprintf(stderr, "Cannot spawn %s %s\n", cmds[0], cmds[1]);
+		return (1);
+	}
 	signal(SIGCHLD, SIG_DFL);
-	gunzipAll2fd(0, fileno(fh), gzip, 0, 0);
-	status = pclose(fh);
+	gunzipAll2fd(0, pfd, gzip, &in, &out);
+	close(pfd);
+	waitpid(pid, &status, 0);
 	if (WIFEXITED(status)) {
 		return (WEXITSTATUS(status));
 	}

@@ -1166,7 +1166,7 @@ void	notice(char *key, char *arg, char *type);
 pid_t	findpid(pid_t pid);
 void	save_log_markers(void);
 void	update_log_markers(int verbose);
-void	set_timestamps(sccs *s);
+void	set_timestamps(char *sfile);
 
 extern char *bk_vers;
 extern char *bk_utc;

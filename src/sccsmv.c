@@ -3,22 +3,6 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
-private	int	isMasterTree(void);
-
-
-/*
- * Returm true if Master repository
- */
-private int
-isMasterTree()
-{
-	char root[MAXPATH];
-	
-	unless (bk_proj->root) return (0);
-	concat_path(root, bk_proj->root, BKMASTER);
-	return (exists(root));
-}
-
 /*
  * Emulate mv(1)
  *
