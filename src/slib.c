@@ -10442,7 +10442,7 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
 	sc->numdeltas++;
 	if (isNullDelta) {
 		n->added = n->deleted = 0;
-		n->same = p->same + p->added - p->deleted;
+		n->same = p->same + p->added;
 		n->sum = (unsigned short) almostUnique(0);
 		n->flags |= D_CKSUM;
 	}
