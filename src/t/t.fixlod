@@ -45,13 +45,13 @@ bk edit $Q d1/a || exit 1
 bk delta $Q -y'new lod' d1/a || exit 1
 bk commit $S -a -yCset || exit 1
 rev=`bk prs -r+ -hnd:I: ChangeSet`
-perl -pe "s/ D $rev / D 2.1 /" SCCS/s.ChangeSet > tmp
+perl -pe "binmode(STDOUT); s/ D $rev / D 2.1 /" SCCS/s.ChangeSet > tmp
 mv SCCS/s.ChangeSet old-s.ChangeSet
 chmod 444 tmp
 mv tmp SCCS/s.ChangeSet
 bk admin -z SCCS/s.ChangeSet
 rev=`bk prs -r+ -hnd:I: d1/a`
-perl -pe "s/ D $rev / D 2.1 /" d1/SCCS/s.a > tmp
+perl -pe "binmode(STDOUT); s/ D $rev / D 2.1 /" d1/SCCS/s.a > tmp
 mv d1/SCCS/s.a old-d1-s.a
 chmod 444 tmp
 mv tmp d1/SCCS/s.a

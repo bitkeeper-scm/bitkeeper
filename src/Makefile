@@ -14,6 +14,7 @@ LD_OUT	=-o $@
 LD	=cc
 G	=-g
 TRIAL	=0
+TCLWRAP	=./tclwrap
 
 # -Wno-parentheses shuts up "suggest parentheses around assignment ...".
 #  Unfortunately it also turns off dangling else warnings.
@@ -486,73 +487,76 @@ bkdsubstr: bkd.h
 # Quick and dirty target so we can make all the gui tools without the rest
 Gui GUI: $(GUI)
 
+gui-nowrap GUI-nowrap:
+	rm -f $(GUI)
+	$(MAKE) TCLWRAP=cat GUI
+
 revtool: tclwrap gui/search.tcl gui/config.tcl gui/revtool.tcl gui/common.tcl \
 	port/$(SYS)_platform.tcl gui/appState.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
 	    gui/search.tcl gui/appState.tcl gui/revtool.tcl \
-	    | ./tclwrap > revtool
+	    | $(TCLWRAP) > revtool
 
 citool: tclwrap gui/citool.tcl gui/config.tcl gui/common.tcl gui/search.tcl \
 	gui/progress.tcl port/$(SYS)_platform.tcl gui/ciedit.tcl \
 	gui/appState.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
 	    gui/progress.tcl gui/search.tcl gui/ciedit.tcl \
-	    gui/appState.tcl gui/citool.tcl | ./tclwrap > citool
+	    gui/appState.tcl gui/citool.tcl | $(TCLWRAP) > citool
 
 setuptool: tclwrap gui/setuptool.tcl gui/lib/tkwizard.tcl \
-	   port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	   bkmsg.txt
+	   port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl \
 	   gui/common.tcl gui/lib/tkwizard.tcl gui/setuptool.tcl \
-	   | ./tclwrap > setuptool
+	   | $(TCLWRAP) > setuptool
 
 helptool: tclwrap gui/helptool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
 	gui/common.tcl gui/appState.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
 	    gui/appState.tcl \
-	    gui/helptool.tcl | ./tclwrap > helptool
+	    gui/helptool.tcl | $(TCLWRAP) > helptool
 
 difftool: tclwrap gui/search.tcl gui/config.tcl gui/difftool.tcl \
 	port/$(SYS)_platform.tcl gui/common.tcl gui/difflib.tcl \
 	gui/appState.tcl
 	cat gui/search.tcl port/$(SYS)_platform.tcl gui/config.tcl \
 	    gui/common.tcl gui/difflib.tcl gui/appState.tcl  \
-	    gui/difftool.tcl | ./tclwrap > difftool
+	    gui/difftool.tcl | $(TCLWRAP) > difftool
 
 bugform: tclwrap gui/search.tcl gui/config.tcl gui/bugform.tcl \
 	port/$(SYS)_platform.tcl gui/common.tcl gui/buglib.tcl \
 	gui/appState.tcl 
 	cat gui/search.tcl port/$(SYS)_platform.tcl gui/config.tcl \
 	    gui/common.tcl gui/buglib.tcl gui/appState.tcl \
-	    gui/bugform.tcl | ./tclwrap > bugform
+	    gui/bugform.tcl | $(TCLWRAP) > bugform
 
 csettool: tclwrap gui/csettool.tcl gui/config.tcl gui/common.tcl \
 	port/$(SYS)_platform.tcl gui/search.tcl gui/difflib.tcl \
 	gui/appState.tcl
 	cat gui/search.tcl port/$(SYS)_platform.tcl gui/config.tcl \
 	    gui/common.tcl gui/difflib.tcl gui/appState.tcl \
-	    gui/csettool.tcl | ./tclwrap > csettool
+	    gui/csettool.tcl | $(TCLWRAP) > csettool
 
 renametool: tclwrap \
 	gui/renametool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
 	gui/common.tcl gui/appState.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
 	    gui/appState.tcl gui/renametool.tcl | \
-	    ./tclwrap > renametool
+	    $(TCLWRAP) > renametool
 
 fmtool: tclwrap gui/fmtool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
 	gui/common.tcl gui/difflib.tcl gui/appState.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
 	    gui/appState.tcl gui/difflib.tcl gui/fmtool.tcl | \
-	    ./tclwrap > fmtool
+	    $(TCLWRAP) > fmtool
 
 fm3tool: tclwrap gui/fm3tool.tcl gui/config.tcl gui/common.tcl \
 	port/$(SYS)_platform.tcl gui/appState.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	    gui/appState.tcl gui/fm3tool.tcl | ./tclwrap > fm3tool
+	    gui/appState.tcl gui/fm3tool.tcl | $(TCLWRAP) > fm3tool
 
-msgtool: tclwrap gui/msgtool.tcl
-	./tclwrap <  gui/msgtool.tcl > msgtool
+msgtool: gui/msgtool.tcl
+	cp gui/msgtool.tcl msgtool
 
 #rpm:	bk.spec production
 #	rpm -bb bk.spec
@@ -602,7 +606,8 @@ install-nolinks:
 	@test -d $(BINDIR) || mkdir -p $(BINDIR)
 	cp -f $(BINS) $(SCRIPTS) $(DATA) $(BINDIR)
 	test -x /build/.wish/tk/bin/bkgui || exit 1
-	cp -rp /build/.wish/tk $(BINDIR)
+	@rm -rf $(BINDIR)/tk
+	@cp -rp /build/.wish/tk $(BINDIR)
 	@-rm -rf $(BINDIR)/t
 	@set `echo $(LINKTO)`; \
 	while [ "X$$1" != X ]; \
