@@ -722,7 +722,11 @@ Done() {
 	do	rm -f ${TMP}${i}$$
 	done
 	test X$LOCKPID != X && {
-		kill $LOCKPID || exit 100
+		# Win32 note: Do not use cygwin "kill" to kill a non-cygwin
+		# process such as "bk lock -w". It does not work,
+		# you will get "Operation not permitted".
+		bk unlock -w 
+		wait $LOCKPID # for win32
 		trap '' 0 2 3 15
 	}
 	exit $1
