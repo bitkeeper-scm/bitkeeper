@@ -24,6 +24,7 @@ clean_main(int ac, char **av)
 	int	c;
 	int	ret = 0;
 	char	*name;
+	project	*proj = 0;
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
@@ -43,13 +44,16 @@ usage:		fputs(clean_help, stderr);
 
 	name = sfileFirst("clean", &av[optind], SF_DELETES|sflags);
 	while (name) {
-		if ((s = sccs_init(name, SILENT|INIT_NOCKSUM, 0))) {
+		s = sccs_init(name, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, proj);
+		if (s) {
 			if (sccs_clean(s, flags)) ret = 1;
+			unless (proj) proj = s->proj;
 			sccs_free(s);
 		}
 		name = sfileNext();
 	}
 	sfileDone();
+	if (proj) proj_free(proj);
 	purify_list();
 	return (ret);
 }

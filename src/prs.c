@@ -30,7 +30,7 @@ prs_main(int ac, char **av)
 	sccs	*s;
 	delta	*e;
 	int	reverse = 0, doheader = 1;
-	int	init_flags = INIT_NOCKSUM;
+	int	init_flags = INIT_NOCKSUM|INIT_SAVEPROJ;
 	int	flags = 0;
 	int	opposite = 0;
 	int	c;
@@ -39,6 +39,7 @@ prs_main(int ac, char **av)
 	int	noisy = 0;
 	int	expand = 1;
 	char	*dspec = NULL;
+	project	*proj = 0;
 	RANGE_DECL;
 
 	debug_main(av);
@@ -73,8 +74,9 @@ usage:			fprintf(stderr, "prs: usage error, try --help\n");
 	}
 	for (name = sfileFirst("prs", &av[optind], 0);
 	    name; name = sfileNext()) {
-		unless (s = sccs_init(name, init_flags, 0)) continue;
-		if (!s->tree) goto next;
+		unless (s = sccs_init(name, init_flags, proj)) continue;
+		unless (proj) proj = s->proj;
+		unless (s->tree) goto next;
 		if (cset) {
 			delta	*d = sccs_getrev(s, cset, 0, 0);
 
@@ -107,6 +109,7 @@ usage:			fprintf(stderr, "prs: usage error, try --help\n");
 next:		sccs_free(s);
 	}
 	sfileDone();
+	if (proj) proj_free(proj);
 	purify_list();
 	return (0);
 }

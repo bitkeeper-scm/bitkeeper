@@ -33,9 +33,10 @@ renumber_main(int ac, char **av)
 {
 	sccs	*s = 0;
 	char	*name;
-	int	c, dont = 0, quiet = 0, flags = 0;
+	int	c, dont = 0, quiet = 0, flags = INIT_SAVEPROJ;
 	delta	*leaf(delta *tree);
 	MDBM	*lodDb = 0;
+	project	*proj = 0;
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
@@ -52,8 +53,9 @@ usage:		fprintf(stderr, "usage: renumber [-nq] [files...]\n");
 	}
 	for (name = sfileFirst("renumber", &av[optind], 0);
 	    name; name = sfileNext()) {
-		s = sccs_init(name, flags, 0);
-		if (!s) continue;
+		s = sccs_init(name, flags, proj);
+		unless (s) continue;
+		unless (proj) proj = s->proj;
 		if ((s->state & S_BITKEEPER) && !lodDb) {
 			unless (s->state & S_CSET)  lodDb = lodDb_create();
 		}
@@ -78,6 +80,7 @@ usage:		fprintf(stderr, "usage: renumber [-nq] [files...]\n");
 		sccs_free(s);
 	}
 	sfileDone();
+	if (proj) proj_free(proj);
 	purify_list();
 	return (0);
 }

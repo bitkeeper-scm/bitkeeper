@@ -40,7 +40,8 @@ sccslog_main(int ac, char **av)
 {
 	sccs	*s;
 	char	*name;
-	int	save, c, flags = SILENT;
+	int	save, c, flags = INIT_SAVEPROJ|SILENT;
+	project	*proj = 0;
 	RANGE_DECL;
 
 #ifdef WIN32
@@ -65,9 +66,10 @@ usage:			fprintf(stderr, "sccslog: usage error, try --help.\n");
 
 	for (name = sfileFirst("sccslog", &av[optind], 0);
 	    name; name = sfileNext()) {
-		unless (s = sccs_init(name, INIT_NOCKSUM|flags, 0)) {
+		unless (s = sccs_init(name, INIT_NOCKSUM|flags, proj)) {
 			continue;
 		}
+		unless (proj) proj = s->proj;
 		unless (s->tree) goto next;
 		RANGE("sccslog", s, 1, 0);
 		save = n;
@@ -76,6 +78,7 @@ usage:			fprintf(stderr, "sccslog: usage error, try --help.\n");
 next:		sccs_free(s);
 	}
 	sfileDone();
+	if (proj) proj_free(proj);
 	verbose((stderr, "Total %d deltas\n", n));
 	if (n) {
 		sortlog(flags);

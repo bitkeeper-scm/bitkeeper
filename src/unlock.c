@@ -26,6 +26,7 @@ unlock_main(int ac, char **av)
 	char	*name;
 	int	c, force = 0, flags = 0;
 	sccs	*s = 0;
+	project	*proj = 0;
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
@@ -70,7 +71,9 @@ usage:		fputs(unlock_help, stderr);
 	}
 	c = 0;
 	while (name) {
-		if ((s = sccs_init(name, SILENT|INIT_NOCKSUM, 0))) {
+		s = sccs_init(name, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, proj);
+		if (s) {
+			unless (proj) proj = s->proj;
 			if (flags & BLOCK) c |= doit(s, 'b');
 			if (flags & PLOCK) {
 				if (!force && HAS_GFILE(s)) {
@@ -89,6 +92,7 @@ usage:		fputs(unlock_help, stderr);
 		name = sfileNext();
 	}
 	sfileDone();
+	if (proj) proj_free(proj);
 	purify_list();
 	return (c);
 }

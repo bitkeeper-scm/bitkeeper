@@ -183,7 +183,7 @@ usage:			fprintf(stderr, "diffs: usage error, try --help\n");
 next:		if (s) sccs_free(s);
 		name = sfileNext();
 	}
-	proj_free(proj);
+	if (proj) proj_free(proj);
 	sfileDone();
 	purify_list();
 	return (0);

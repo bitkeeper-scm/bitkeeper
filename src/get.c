@@ -42,7 +42,7 @@ int
 _get_main(int ac, char **av, char *out)
 {
 	sccs	*s;
-	int	iflags = 0, flags = GET_EXPAND, c, errors = 0;
+	int	iflags = INIT_SAVEPROJ, flags = GET_EXPAND, c, errors = 0;
 	char	*iLst = 0, *xLst = 0, *name, *rev = 0, *cdate = 0, *Gname = 0;
 	char	*mRev = 0;
 	delta	*d;
@@ -50,6 +50,7 @@ _get_main(int ac, char **av, char *out)
 	int	getdiff = 0;
 	int	hasrevs = 0;
 	int	dohash = 0;
+	project	*proj = 0;
 
 	debug_main(av);
 	name = strrchr(av[0], '/');
@@ -165,7 +166,8 @@ usage:			fprintf(stderr, "%s: usage error, try get --help\n",
 	}
 
 	for (; name; name = sfileNext()) {
-		unless (s = sccs_init(name, iflags, 0)) continue;
+		unless (s = sccs_init(name, iflags, proj)) continue;
+		unless (proj) proj = s->proj;
 		if (Gname) {
 			if (gdir) {
 				char	buf[1024];
@@ -223,6 +225,7 @@ usage:			fprintf(stderr, "%s: usage error, try get --help\n",
 		sccs_free(s);
 	}
 	sfileDone();
+	if (proj) proj_free(proj);
 #ifndef	NOPURIFY
 	purify_list();
 #endif

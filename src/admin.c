@@ -84,6 +84,7 @@ admin_main(int ac, char **av)
 	delta	*d = 0;
 	int 	was_edited = 0, new_delta = 0;
 	pfile	pf;
+	project	*proj = 0;
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
@@ -213,6 +214,8 @@ admin_main(int ac, char **av)
 		fprintf(stderr, "admin: Only one file with -i/-n\n");
 		goto usage;
 	}
+	unless (flags & NEWFILE) init_flags |= INIT_SAVEPROJ;
+
 	/*
 	 * If we are adding exactly one symbol, do it quickly.
 	 */
@@ -229,8 +232,9 @@ admin_main(int ac, char **av)
 				continue;
 			}
 		}
-		sc = sccs_init(name, init_flags, 0);
+		sc = sccs_init(name, init_flags, proj);
 		unless (sc) { name = sfileNext(); continue; }
+		if (!proj && (flags & INIT_SAVEPROJ)) proj = sc->proj;
 		unless (sc->tree) {
 			fprintf(stderr,
 				"admin: can't read delta table in %s\n",
@@ -319,6 +323,7 @@ next:		sccs_free(sc);
 		name = sfileNext();
 	}
 	sfileDone();
+	if (proj) proj_free(proj);
 	purify_list();
 	return (error);
 usage:	fprintf(stderr, "admin: usage error, try `admin --help' for info.\n");

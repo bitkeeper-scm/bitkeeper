@@ -48,7 +48,8 @@ usage:		fprintf(stderr, stripdel_help);
 		    RANGE_OPTS('!', 'r');
 		    default:
 			fprintf(stderr,
-			    "stripdel: <%c> usage error, try stripdel --help\n", c);
+			    "%s -%c usage error, try %s --help\n",
+			    av[0], c, av[0]);
 			return (1);
 		}
 	}
@@ -187,8 +188,8 @@ strip_list(s_opts opts)
 	project *proj = 0;
 	int 	rc = 1;
 
-	for (name = sfileFirst("stripdel", av, SF_HASREVS); name;
-							name = sfileNext()) {
+	for (name = sfileFirst("stripdel", av, SF_HASREVS);
+	    name; name = sfileNext()) {
 		if (!s || !streq(s->sfile, name)) {
 			if (s && doit(s, opts)) goto fail;
 			if (s) sccs_free(s);
@@ -198,7 +199,7 @@ strip_list(s_opts opts)
 					    "stripdel: can't init %s\n", name);
 				goto fail;
 			}
-			unless(proj) proj = s->proj;
+			unless (proj) proj = s->proj;
 		}
 		rev = sfileRev(); assert(rev);
 		d = findrev(s, rev); 
