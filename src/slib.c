@@ -3497,10 +3497,9 @@ comment:		switch (buf[1]) {
 			    case 'e': goto done;
 			    case 'c':
 				/* XXX - stdio support */
-				if (buf[2] == '_') {
-					s->landingpad = &buf[2];
-				} else if (strneq(&buf[3], "&__", 3)) {
-					s->landingpad = &buf[3];
+				if (buf[2] == '_' || 
+				    strneq(&buf[3], "&__", 3)) {
+					/* ignore landing pad  */
 				} else if (buf[2] != ' ') {
 					meta(s, d, buf);
 				} else {
@@ -3550,6 +3549,7 @@ done:		if (CSET(s) && (d->type == 'R') &&
 	/*
 	 * The very first (1.1) delta has a landing pad in it for fast file
 	 * rewrites.  We strip that out if it is here.
+	 * Old code, but here just in case...
 	 */
 	d = s->tree;
 	EACH(d->comments) {
@@ -7743,21 +7743,6 @@ delta_table(sccs *s, FILE *out, int willfix)
 			*p   = '\0';
 			fputmeta(s, buf, out);
 		}
-		if (!d->next) {
-#if LPAD_SIZE > 0
-			/* Landing pad for fast rewrites */
-			fputmeta(s, "\001c", out);
-			for (i = 0; i < LPAD_SIZE; i += 10) {
-				fputmeta(s, "__________", out);
-			}
-			if (s->state & S_BIGPAD) {
-				for (i = 0; i < 10*LPAD_SIZE; i += 10) {
-					fputmeta(s, "__________", out);
-				}
-			}
-			fputmeta(s, "\n", out);
-#endif
-		}
 SCCS:
 		first = 0;
 		fputmeta(s, "\001e\n", out);
@@ -10012,20 +9997,6 @@ dupSym(symbol *symbols, char *s, char *rev)
 	/* If rev isn't set, then any name match is enough */
 	if (sym && !rev) return (1);
 	return (sym && streq(sym->rev, rev));
-}
-
-/*
- * Try and stuff the symbol into the landing pad,
- * return 1 if it fails.
- * XXX - needs to insist on a revision.
- */
-int
-sccs_addSym(sccs *sc, u32 flags, char *s)
-{
-	/*
-	 * Until we make this participate in the tag graph, we can't use it.
-	 */
-	return (EAGAIN);
 }
 
 private int

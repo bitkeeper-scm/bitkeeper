@@ -134,7 +134,6 @@
 #define	S_WARNED	0x00000020	/* error message already sent */
 #define	S_CHMOD		0x00000040	/* change the file back to 0444 mode */
 #define	S_BADREVS	0x00000080	/* has corrupted revisions */
-#define	S_BIGPAD	0x00000100	/* admin -B: make the landing pad big */
 #define	S_CSET		0x00000200	/* this is a changeset file */
 #define S_MAPPRIVATE	0x00000400	/* hack for Samba */
 #define S_READ_ONLY	0x00000800	/* force read only mode */
@@ -554,7 +553,6 @@ typedef	struct sccs {
 	char	*mmap;		/* mapped file */
 	char	*where;		/* where we are in the mapped file */
 	off_t	size;		/* size of mapping */
-	char	*landingpad;	/* some space for symbols */
 	int	fd;		/* cached copy of the file descriptor */
 	char	*sfile;		/* SCCS/s.foo.c */
 	char	*pfile;		/* SCCS/p.foo.c */
@@ -802,7 +800,6 @@ ser_t	sccs_nextlod(sccs *s);
 int	sccs_smoosh(char *left, char *right);
 delta	*sccs_parseArg(delta *d, char what, char *arg, int defaults);
 void	sccs_whynot(char *who, sccs *s);
-int	sccs_addSym(sccs *, u32 flags, char *);
 void	sccs_ids(sccs *s, u32 flags, FILE *out);
 int	sccs_hasDiffs(sccs *s, u32 flags, int inex);
 void	sccs_print(delta *d);

@@ -33,8 +33,7 @@ admin_main(int ac, char **av)
 	char	*name, *ckopts;
 	char	*encp = 0, *compp = 0;
 	int	error = 0;
-	int	bigpad = 0;
-	int	fastSym = 0, dopath = 0, rmCsets = 0, newCset = 0;
+	int	dopath = 0, rmCsets = 0, newCset = 0;
 	int	doDates = 0, touchGfile = 0;
 	char	*m = 0;
 	char	*csetFile = 0;
@@ -110,7 +109,7 @@ admin_main(int ac, char **av)
 		/* singletons */
 		    case '0':					/* doc 2.0 */
 			flags |= ADMIN_ADD1_0|NEWCKSUM; break;
-		    case 'B':	bigpad++; break;		/* doc 2.0 */
+		    case 'B':	 break;		/* ignored */	/* doc 2.0 */
 		    case 'C':					/* doc 2.0 */
 			csetFile = optarg; newCset++; flags |= NEWCKSUM; break;
 		    case 'D':					/* doc 2.0 */
@@ -197,12 +196,6 @@ admin_main(int ac, char **av)
 		init_flags |= INIT_FIXSTIME;
 	}
 
-	/*
-	 * If we are adding exactly one symbol, do it quickly.
-	 */
-	fastSym = !(flags & ~(SILENT|NEWCKSUM)) && !nextf && !nextu && !nextp &&
-	    !rev && nexts && (s[0].flags == A_ADD) && !s[1].flags;
-	if (fastSym) init_flags |= (INIT_MAPWRITE|INIT_NOCKSUM);
 	while (name) {
 		if (flags & NEWFILE) {
 			if (do_checkin(name, encp, compp,
@@ -242,16 +235,6 @@ admin_main(int ac, char **av)
 			sccs_free(sc);
 			name = sfileNext();
 			continue;
-		}
-		if (bigpad) {
-			sc->state |= S_BIGPAD;
-			flags |= NEWCKSUM;
-		}
-		if (fastSym && sc->landingpad) {
-			int	rc = sccs_addSym(sc, flags, s[0].thing);
-
-			if (rc == -1) error = 1;
-			if (rc != EAGAIN) goto next;
 		}
 		if (dopath) {
 			delta	*top = findrev(sc, 0);
