@@ -822,15 +822,31 @@ fixLod(sccs *s)
 private int
 chkEmpty(sccs *s, MMAP *dF)
 {
-	delta	*e;
+	char 	*p, bk_etc[MAXPATH];
 	int	len;
 
-	len = strlen(BKROOT);
-	e = s->tree; /* we want the root path */
-	if ((dF->size > 0) &&
-	    !(s->state & S_CSET) &&
-	    (strlen(e->pathname) > len) &&
-	    !strneq(e->pathname, BKROOT, len)) {
+	
+	unless (dF->size > 0) return (0);
+	if (s->state & S_CSET) return (0);
+
+	/*
+	 * Two special case:
+	 * a) s->tree is null. This happen when we get a brand new file.
+	 * b) In some old repository, (e.g the BitKeeper tree), 
+	 *    pathname is not recorded in some old delta; 
+	 *    i.e. s->tree->patname is null. This should not happen in new tree.
+	 */
+	if (s->tree && s->tree->pathname) {
+		strcpy(bk_etc, BKROOT);
+		p = s->tree->pathname; /* we want the root path */
+	} else {
+		sprintf(bk_etc, "RESYNC/%s", BKROOT);
+		assert(s->sfile);
+		p = s->sfile;
+	}
+
+	len = strlen(bk_etc);
+	if ((strlen(p) > len) && !strneq(p, bk_etc, len)) {
 		fprintf(stderr,
 			"Logging patch should not have source content\n");
 		return (1); /* failed */
