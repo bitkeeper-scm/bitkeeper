@@ -62,12 +62,31 @@ bkd_tcp_connect(remote *r)
 }
 #else
 
+private void
+get_http_proxy_cred(remote *r)
+{
+	char	buf[MAXLINE];
+
+	if (getline2(r, buf, sizeof(buf)) <= 0) {
+err:		fprintf(stderr, "cannot get proxy info block\n");
+		return;
+	}
+	unless (streq(buf, "@PROXY INFO@")) goto err;
+	if (getline2(r, buf, sizeof(buf)) <= 0) goto err;
+	if (streq(buf, "@END@")) return; /* no proxy cred */
+	if (r->cred) free(r->cred);
+	r->cred = strdup(buf);
+	if (getline2(r, buf, sizeof(buf)) <= 0) goto err;
+	unless (streq(buf, "@END@")) goto err;
+}
+
 pid_t
 tcp_pipe(remote *r)
 {
 	char	port[50], pipe_size[50];
 	char	*av[9] = {"bk", "_socket2pipe"};
 	int	i = 2;
+	pid_t 	pid;
 
 	sprintf(port, "%d", r->port);
 	sprintf(pipe_size, "%d", BIG_PIPE);
@@ -78,20 +97,24 @@ tcp_pipe(remote *r)
 	av[i++] = r->host;
 	av[i++] = port;
 	av[i] = 0;
-	return spawnvp_rwPipe(av, &(r->rfd), &(r->wfd), BIG_PIPE);
+	pid = spawnvp_rwPipe(av, &(r->rfd), &(r->wfd), BIG_PIPE);
+	if (pid == -1) return (pid);
+	if (r->type == ADDR_HTTP) get_http_proxy_cred(r);
+	return (pid);
 }
 
 pid_t
 bkd_tcp_connect(remote *r)
 {
 	pid_t	p;
-		p = tcp_pipe(r);
-		if (p == ((pid_t) -1)) {
-			fprintf(stderr, "cannot create socket_helper\n");
-			return (-1);
-		}
-		r->isSocket = 0;
-		return (p);
+
+	p = tcp_pipe(r);
+	if (p == ((pid_t) -1)) {
+		fprintf(stderr, "cannot create socket_helper\n");
+		return (-1);
+	}
+	r->isSocket = 0;
+	return (p);
 }
 #endif
 

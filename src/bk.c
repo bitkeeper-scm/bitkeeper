@@ -553,6 +553,7 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 	    streq(prog, "histool") ||
 	    streq(prog, "setuptool") ||
 	    streq(prog, "fmtool") ||
+	    streq(prog, "fm2tool") ||
 	    streq(prog, "fm3tool") ||
 	    streq(prog, "difftool") ||
 	    streq(prog, "helptool") ||
@@ -561,6 +562,7 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 	    streq(prog, "msg")) {
 		sig_catch(SIG_IGN);
 		argv[0] = find_wish();
+		if (streq(prog, "fm2tool")) prog = "fmtool";
 		if (streq(prog, "sccstool")) prog = "revtool";
 		if (streq(prog, "histool")) prog = "revtool";
 		if (streq(prog, "histtool")) prog = "revtool";

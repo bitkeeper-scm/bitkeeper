@@ -28,6 +28,8 @@ private int	readonly_gfile(sccs *s);
 private int	no_gfile(sccs *s);
 private int	chk_eoln(sccs *s, int eoln_unix);
 private void	progress(int n, int err);
+private int	chk_merges(sccs *s);
+private sccs*	fix_merges(sccs *s);
 
 private	int	nfiles;		/* for progress bar */
 private	int	verbose;
@@ -173,20 +175,26 @@ check_main(int ac, char **av)
 			sccs_free(s);
 			continue;
 		}
-		errors |= sccs_resum(s, 0, 0, 0);
-		errors |= chk_gfile(s);
-		errors |= no_gfile(s);
-		errors |= readonly_gfile(s);
-		errors |= writable_gfile(s);
-		errors |= chk_csetpointer(s);
-		
-		if (want_dfile) errors |= chk_dfile(s);
-		if (check_eoln) errors |= chk_eoln(s, eoln_native);
+		/*
+		 * exit code 2 means try again, all other errors should be
+		 * distint.
+		 */
+		if (sccs_resum(s, 0, 0, 0)) errors |= 0x04;
+		if (chk_gfile(s)) errors |= 0x08;
+		if (no_gfile(s)) errors |= 0x08;
+		if (readonly_gfile(s)) errors |= 0x08;
+		if (writable_gfile(s)) errors |= 0x08;
+		if (chk_csetpointer(s)) errors |= 0x10;
+		if (want_dfile && chk_dfile(s)) errors |= 0x10;
+		if (check_eoln && chk_eoln(s, eoln_native)) errors |= 0x10;
+		if (chk_merges(s)) {
+			if (fix) s = fix_merges(s);
+			errors |= 0x20;
+		}
 
 		/*
 		 * Store the full length key and only if we are in mixed mode,
-		 * also store the short key.  We want all of them to be
-		 * unique.
+		 * also store the short key.  We want all of them to be unique.
 		 */
 		sccs_sdelta(s, sccs_ino(s), buf);
 		if (mdbm_store_str(keys, buf, s->gfile, MDBM_INSERT)) {
@@ -197,7 +205,7 @@ check_main(int ac, char **av)
 			} else {
 				perror("mdbm_store_str");
 			}
-			errors = 1;
+			errors |= 1;
 		}
 		if (mixed) {
 			t = sccs_iskeylong(buf);
@@ -212,12 +220,12 @@ check_main(int ac, char **av)
 				} else {
 					perror("mdbm_store_str");
 				}
-				errors = 1;
+				errors |= 1;
 			}
 		}
 
 		if (e = check(s, db)) {
-			errors |= 4;		/* 2 is reserved */
+			errors |= 0x40;
 		} else {
 			if (verbose>1) fprintf(stderr, "%s is OK\n", s->sfile);
 		}
@@ -240,7 +248,7 @@ check_main(int ac, char **av)
 			chmod(IDCACHE, GROUP_MODE);
 		}
 	}
-	if ((all || resync) && checkAll(keys)) errors |= 8;
+	if ((all || resync) && checkAll(keys)) errors |= 0x40;
 	assert(strneq(ctmp, "BitKeeper/tmp/bk", 16));
 	unlink(ctmp);
 	mdbm_close(db);
@@ -286,13 +294,27 @@ check_main(int ac, char **av)
 	if (poly) warnPoly();
 	if (resync) {
 		chdir(RESYNC2ROOT);
-		if (sys("bk", "sane", SYS)) errors |= 16;
+		if (sys("bk", "sane", SYS)) errors |= 0x80;
 		chdir(ROOT2RESYNC);
 	} else {
-		if (sys("bk", "sane", SYS)) errors |= 16;
+		if (sys("bk", "sane", SYS)) errors |= 0x80;
 	}
 	if (verbose == 1) progress(nfiles+1, errors);
 	return (errors);
+}
+
+private sccs *
+fix_merges(sccs *s)
+{
+	sccs	*tmp;
+
+	/* sccs_renumber(s, 0, 0, 0, 0, (verbose) ? 0 : SILENT); */
+	sccs_renumber(s, 0, 0, 0, 0, 0);
+	sccs_newchksum(s);
+	tmp = sccs_init(s->sfile, 0, 0);
+	assert(tmp);
+	sccs_free(s);
+	return (tmp);
 }
 
 /*
@@ -1192,6 +1214,28 @@ check(sccs *s, MDBM *db)
 		}
 	}
 	return (errors);
+}
+
+private int
+chk_merges(sccs *s)
+{
+	delta	*p, *m, *d;
+
+	for (d = s->table; d; d = d->next) {
+		unless (d->merge) continue;
+		p = d->parent;
+		assert(p);
+		m = sfind(s, d->merge);
+		assert(m);
+		if (sccs_needSwap(p, m)) {
+			if (fix) return (1);
+			fprintf(stderr,
+			    "%s|%s: %s/%s need to be swapped, run with -f.\n",
+			    s->gfile, d->rev, p->rev, m->rev);
+			return (1);
+		}
+	}
+	return (0);
 }
 
 private int

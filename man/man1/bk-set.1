@@ -2,7 +2,7 @@
 .SH NAME
 bk set \- set operations
 .SH SYNOPSIS
-.B bk set [\-adeklnox] [
+.B bk set [\-adeklnosx] [
 .OPTreq \-r rev
 .Bc ] [
 .OPTopt \-t type
@@ -104,6 +104,13 @@ It is typically used to see if a bug
 fix is in a particular release.  If the changeset has been excluded from
 a later changeset, the later changeset and its' descendants will not be
 listed.
+.SS SET
+.B bk set \-s
+.OPTreq \-r rev
+[file]
+.LP
+The set operator treats the specified revision as a set,
+and lists all elements of that set.
 .SH EXAMPLES
 A good use of this command is the generation of release notes.  To do
 so, pick the starting and ending points and do this:

@@ -1,9 +1,21 @@
 # -------------------------- Editor module -----------------------------------
 # ciedit - a tool for editing files during checkin.
 
+proc eat {fd} \
+{
+	global	edit_busy
+
+	if {[gets $fd buf] >= 0} {
+		puts $buf
+	} elseif {[eof $fd]} {
+		set edit_busy 0
+		close $fd
+	}
+}
+
 proc cmd_edit {} \
 {
-	global	curLine edit_busy gc filename w
+	global	curLine edit_busy gc filename w tmp_dir
 
 	# If comments are in the comments window, save them before invoking 
 	# the editor
@@ -11,20 +23,29 @@ proc cmd_edit {} \
 	if {$cmts != ""} {
 		saveComments $filename $cmts
 	}
+	if {$edit_busy == 1} { return }
+	set edit_busy 1
 	if {[file writable $filename]} {
 		if {$gc(ci.editor) == "ciedit"} {
-			if {$edit_busy == 1} {
-				# XXX - should be a dialog that says I'm busy.
-				return
-			}
-			set edit_busy 1
 			edit_widgets
 			edit_file
+		} elseif {$gc(ci.editor) == "fm2tool"} {
+			set old [file join $tmp_dir old[pid]]
+			exec bk get -qkp $filename >$old
+			set merge [file join $tmp_dir merge[pid]]
+			set fd [open "| bk fmtool $old $filename $merge" r]
+			fileevent $fd readable "eat $fd"
+			vwait edit_busy
+			if {[file readable $merge]} {
+				catch {file rename -force $merge $filename}
+			} 
+			catch {file delete $old $merge}
 		} else {
 			set geom "$gc(ci.editHeight)x$gc(editWidth)-1-1"
 			catch {exec xterm -g $geom -e $gc(ci.editor) $filename}
 		}
 	}
+	cmd_refresh 1
 }
 
 proc edit_widgets {} \

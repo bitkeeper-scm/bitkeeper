@@ -140,8 +140,9 @@ repo(u32 flags)
 	}
 
 	if (flags & STALE) {
-		repository_rdunlock(0);
-		repository_wrunlock(0);
+		/* these remove stale locks */
+		(void)repository_hasLocks(0, WRITER_LOCK_DIR);
+		(void)repository_hasLocks(0, READER_LOCK_DIR);
 	}
 
 	return (error);
