@@ -47,6 +47,24 @@ checkLocks() {
 	fi
 }
 
+# Usage: waitForUnlock <root>
+waitForUnlock() {
+	for i in 1 2 3 4 5 6 7 8 9 0
+	do      test -d $1/BitKeeper/writer && sleep 1
+	done
+	test -d $1/BitKeeper/writer && {
+        	echo failed to clean up writer directory
+        	exit 1
+	}
+	for i in 1 2 3 4 5 6 7 8 9 0
+	do      test -d $1/BitKeeper/readers && sleep 1
+	done
+	test -d $1/BitKeeper/readers && {
+        	echo failed to clean up writer directory
+        	exit 1
+	}
+}
+
 no_logging() {
 	echo "logging: none" > c
 	echo "single_user: bk" >> c

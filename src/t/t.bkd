@@ -181,6 +181,7 @@ cd $HERE/copy2
 bk pull -c0 bk://localhost:$P$HERE/copy 2> bk.out2
 grep -q "bkd std cannot access non-master" bk.out2
 if [ $? -ne 0 ]; then echo failed 2; cat bk.out1 bk.out2; exit 1; fi
+waitForUnlock $HERE/copy
 bk push -c0 bk://localhost:$P$HERE/copy 2> bk.out3
 grep -q "bkd std cannot access non-master" bk.out3
 if [ $? -ne 0 ]; then echo failed 3; cat bk.out2 bk.out3; exit 1; fi
