@@ -1021,7 +1021,7 @@ scandiff(char *s, int *where, char *what, int *howmany)
 			*what = 'i';
 		else if (*s == 'd')
 			*what = 'x';
-		else unless (*s == 'D' || *s == 'I')
+		else unless (*s == 'D' || *s == 'I' || *s == 'N')
 			return (-1);
 		s++;
 		*where = atoi2(&s);
