@@ -33,10 +33,11 @@ private sccs*	fix_merges(sccs *s);
 
 private	int	nfiles;		/* for progress bar */
 private	int	verbose;
+private	int	details;	/* if set, show more information */
 private	int	all;		/* if set, check every entry in the ChangeSet */
 private	int	resync;		/* called in resync dir */
 private	int	fix;		/* if set, fix up anything we can */
-private	int	goneKey;	/* if set, list gone key only */
+private	int	goneKey;	/* 1: list files, 2: list deltas, 3: both */
 private	int	badWritable;	/* if set, list bad writable file only */
 private	int	names;		/* if set, we need to fix names */
 private	int	csetpointer;	/* if set, we need to fix cset pointers */
@@ -94,13 +95,14 @@ check_main(int ac, char **av)
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "acefgpRvw")) != -1) {
+	while ((c = getopt(ac, av, "acdefgpRvw")) != -1) {
 		switch (c) {
 		    case 'a': all++; break;			/* doc 2.0 */
+		    case 'c': flags &= ~INIT_NOCKSUM; break;	/* doc 2.0 */
+		    case 'd': details++; break;
+		    case 'e': check_eoln++; break;
 		    case 'f': fix++; break;			/* doc 2.0 */
 		    case 'g': goneKey++; break;			/* doc 2.0 */
-		    case 'c': flags &= ~INIT_NOCKSUM; break;	/* doc 2.0 */
-		    case 'e': check_eoln++; break;
 		    case 'p': polyList++; break;		/* doc 2.0 */
 		    case 'R': resync++; break;			/* doc 2.0 */
 		    case 'v': verbose++; break;			/* doc 2.0 */
@@ -147,6 +149,7 @@ check_main(int ac, char **av)
 	}
 	unless (fix) {
 		if (t = user_preference("autofix")) {
+			/* Note: this sets it to 1, not 2. */
 			fix = streq(t, "yes") || streq(t, "on");
 		}
 	}
@@ -163,7 +166,7 @@ check_main(int ac, char **av)
 		unless (s->cksumok == 1) {
 			fprintf(stderr,
 			    "%s: bad file checksum, corrupted file?\n",
-			    s->sfile);
+			    s->gfile);
 			sccs_free(s);
 			errors |= 1;
 			continue;
@@ -173,7 +176,7 @@ check_main(int ac, char **av)
 				fprintf(stderr, "check: %s doesn't exist.\n",
 				    s->sfile);
 			} else {
-				perror(s->sfile);
+				perror(s->gfile);
 			}
 			sccs_free(s);
 			errors |= 1;
@@ -233,7 +236,7 @@ check_main(int ac, char **av)
 		if (e = check(s, db)) {
 			errors |= 0x40;
 		} else {
-			if (verbose>1) fprintf(stderr, "%s is OK\n", s->sfile);
+			if (verbose>1) fprintf(stderr, "%s is OK\n", s->gfile);
 		}
 		sccs_free(s);
 	}
@@ -282,8 +285,8 @@ check_main(int ac, char **av)
 			sprintf(buf, "bk -r admin -C'%s'", csetkey);
 			system(buf);
 		}
-		if (lod) {
-			fprintf(stderr, "check: trying to fix lods...\n");
+		if (lod && (fix > 1)) {
+			fprintf(stderr, "check: trying to remove lods...\n");
 			system("bk _fix_lod1");
 		}
 		if (names || xflags_failed || csetpointer || lod) return (2);
@@ -323,7 +326,6 @@ fix_merges(sccs *s)
 {
 	sccs	*tmp;
 
-	/* sccs_renumber(s, (verbose) ? 0 : SILENT); */
 	sccs_renumber(s, 0);
 	sccs_newchksum(s);
 	tmp = sccs_init(s->sfile, 0, 0);
@@ -645,7 +647,7 @@ chk_eoln(sccs *s, int eoln_native)
 private void
 warnPoly(void)
 {
-	getMsg("warn_poly", 0, 0, stdout);
+	getMsg("warn_poly", 0, 0, 0, stdout);
 	touch(POLY, 0664);
 }
 
@@ -735,30 +737,19 @@ listFound(MDBM *db)
 {
 	kvpair	kv;
 
-	if (goneKey) { /* -g option => key only, no header */
+	if (goneKey & 1) { /* -g option => key only, no header */
 		for (kv = mdbm_first(db); kv.key.dsize; kv = mdbm_next(db)) {
 			printf("%s\n", kv.key.dptr);
 		}
 		return;
 	}
 
-	if (resync) {
-		fprintf(stderr,
-		    "ERROR: missing or corrupted file[s] in RESYNC:\n");
-	} else {
-		fprintf(stderr,
-		    "Check: found in ChangeSet but not found in repository:\n");
-	}
+	/* -gg, don't want file keys, just delta keys */
+	if (goneKey) return;
+
 	for (kv = mdbm_first(db); kv.key.dsize; kv = mdbm_next(db)) {
-		fprintf(stderr, "    %s\n", kv.key.dptr);
+		fprintf(stderr, "Missing file (chk3) %s\n", kv.key.dptr);
 	}
-	if (resync) return;
-	fprintf(stderr,
-"===========================================================================\n\
-Add keys to BitKeeper/etc/gone if the files are gone for good.\n\
-To add all missing key to the gone file, use the following command:\n\
-\t\"bk -r check -ag | bk gone -\"\n\
-===========================================================================\n");
 }
 
 private void
@@ -1083,17 +1074,15 @@ check(sccs *s, MDBM *db)
 	 */
 	for (d = s->table; d; d = d->next) {
 		if (verbose > 3) {
-			fprintf(stderr, "Check %s@%s\n", s->sfile, d->rev);
+			fprintf(stderr, "Check %s@%s\n", s->gfile, d->rev);
 		}
 		/* check for V1 LOD */
 		if (d->r[0] != 1) {
 			lod = 1;	/* global tag */
 			errors++;
-			unless (fix) {
+			unless ((fix & 2) || goneKey) {
 				fprintf(stderr,
-		    		    "%s|%s: has deltas outside primary LOD.  "
-		    		    "To fix, run check with -f: "
-				    "bk -r check -af\n",
+				    "Obsolete LOD data (chk4): %s|%s\n",
 		    		    s->gfile, d->rev);
 			}
 		}
@@ -1111,13 +1100,13 @@ check(sccs *s, MDBM *db)
 		unless (t) {
 			fprintf(stderr,
 		    "%s: marked delta %s should be in ChangeSet but is not.\n",
-			    s->sfile, d->rev);
+			    s->gfile, d->rev);
 			sccs_sdelta(s, d, buf);
 			fprintf(stderr, "\t%s -> %s\n", d->rev, buf);
 			errors++;
 		} else if (verbose > 2) {
 			fprintf(stderr, "%s: found %s in ChangeSet\n",
-			    s->sfile, buf);
+			    s->gfile, buf);
 		}
 	}
 
@@ -1125,15 +1114,15 @@ check(sccs *s, MDBM *db)
 	 * The location recorded and the location found should match.
 	 */
 	unless (d = sccs_top(s)) {
-		fprintf(stderr, "check: can't get TOT in %s\n", s->sfile);
+		fprintf(stderr, "check: can't get TOT in %s\n", s->gfile);
 		errors++;
 	} else unless (sccs_setpathname(s)) {
-		fprintf(stderr, "check: can't get spathname in %s\n", s->sfile);
+		fprintf(stderr, "check: can't get spathname in %s\n", s->gfile);
 		errors++;
 	} else unless (resync ||
 	    streq(s->sfile, s->spathname) || LOGS_ONLY(s)) {
 		fprintf(stderr,
-		    "check: %s should be %s\n", s->sfile, s->spathname);
+		    "check: %s should be %s\n", s->gfile, s->spathname);
 		errors++;
 		names = 1;
 	}
@@ -1307,24 +1296,47 @@ checkKeys(sccs *s, char *root)
 		k.dsize = strlen(csetKeys.deltas[i]) + 1;
 		v = mdbm_fetch(findkey, k);
 		if (v.dsize) bcopy(v.dptr, &d, sizeof(d));
+
+		/*
+		 * We should find the delta key in the s.file if it is
+		 * in the ChangeSet file.
+		 */
 		unless (v.dsize) {
+			/* skip if the delta is marked as being OK to be gone */
 			if (isGone(s, csetKeys.deltas[i])) continue;
-			a = csetFind(csetKeys.deltas[i]);
-			if (isGone(s, 0)) fprintf(stderr, "Warning: ");
-			fprintf(stderr,
-			    "key %s is in\n\tChangeSet|%s\n\tbut not in %s\n",
-			    csetKeys.deltas[i], a, s->sfile);
-			free(a);
+
+			/* Spit out key to be gone-ed */
+			if (goneKey & 2) {
+				printf("%s\n", k.dptr);
+				continue;
+			}
+
+			/* don't want noisy messages in this mode */
+			if (goneKey) continue;
+
+			/* let them know if they need to delete the file */
 			if (isGone(s, 0)) {
 				fprintf(stderr,
-"This file: %s\n\
-was probably deleted in another repository, perhaps your parent.\n\
-It is marked as gone but exists in your repository, missing some deltas.\n\
-You may want to delete the file as well to be consistent with your parent.\n",
-				    s->sfile);
+				    "Marked gone (chk1): %s\n", s->gfile);
+				continue;
 			} else {
 		    		errors++;
 			}
+
+
+			/*
+			 * If we get here we have the key in the ChangeSet
+			 * file, we have the s.file, it's not marked gone,
+			 * so complain about it.
+			 */
+			fprintf(stderr,
+			    "Missing delta (chk2) in %s\n", s->gfile);
+			unless (details) continue;
+			a = csetFind(csetKeys.deltas[i]);
+			fprintf(stderr,
+			    "\tkey: %s in ChangeSet|%s\n",
+			    csetKeys.deltas[i], a);
+			free(a);
 		} else unless (d->flags & D_CSET) {
 			fprintf(stderr,
 			    "%s@%s is in ChangeSet but not marked\n",
@@ -1332,7 +1344,7 @@ You may want to delete the file as well to be consistent with your parent.\n",
 		    	errors++;
 		} else if (verbose > 2) {
 			fprintf(stderr, "%s: found %s from ChangeSet\n",
-			    s->sfile, d->rev);
+			    s->gfile, d->rev);
 		}
 	} while (csetKeys.deltas[++i] != (char*)1);
 
@@ -1421,7 +1433,7 @@ chk_csetpointer(sccs *s)
 "Extra file: %s\n\
      belongs to: %s\n\
      should be:  %s\n",
-			s->sfile,
+			s->gfile,
 			s->tree->csetFile == NULL ? "NULL" : s->tree->csetFile,
 			csetkey);
 		csetpointer++;

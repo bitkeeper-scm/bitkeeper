@@ -1232,7 +1232,7 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 		if (mkdirf(p->resyncFile) == -1) {
 			if (errno == EINVAL) {
 				getMsg(
-				    "reserved_name", p->resyncFile, 0, stderr);
+				    "reserved", p->resyncFile, 0, '=', stderr);
 				return (-1);
 			}
 		}

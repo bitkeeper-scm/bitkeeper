@@ -4,7 +4,7 @@
 .SH NAME
 bk check \- check repository for consistency
 .SH SYNOPSIS
-.B bk \-r check [\-acefgpRvw]
+.B bk \-r check [\-acdefgpRvw]
 .SH DESCRIPTION
 .LP
 Check is used to make sure that a repository is in a consistent state.
@@ -42,7 +42,7 @@ While you can specify a list of files instead of using
 .B bk \-r
 to get all of them, this is not recommended.
 .SH OPTIONS
-.TP .4i
+.TP .5i
 .B \-a
 Ensures that the ChangeSet file and the repository
 agree on what files are in the repository.
@@ -52,10 +52,13 @@ Check file and the per delta checksums.  Note that only the most recent
 delta's checksum is checked, see bk help checksum to check all of the
 checksums.
 .tp
+.B \-d
+Provide more details about what is wrong.  Mainly for debugging.
+.tp
 .B \-e
 Check for end of line (eoln) inconsistencies in text files.  
 Typically used with the -a option.  This will check to make sure that:
-.RS .41i
+.RS .51i
 .tp .3i
 \*(BU
 the state of the EOLN_NATIVE flag in each sfile is consistent with 
@@ -80,13 +83,37 @@ Warnings will occur if any of the above do not check out cleanly.
 .RE
 .tp
 .B \-f
-Fix any fixable errors.
-.\" XXX like what?
+Fix any fixable errors.  This option will
+renumber incorrectly numbered revisions,
+put incorrectly located files where they belong,
+reconstruct corrupted xflags metadata,
+and
+add missing changeset backpointers.
+This option is on by default if the auto_fix config option is set.
+.tp
+.B \-ff
+Fix any fixable errors which have destructive fixes.
+This option will
+remove any old LOD information except the 1.x LOD.
 .tp
 .B \-g
-List gone keys only, useful for feeding into the 
-.B BitKeeper/etc/gone
-file.
+List each missing file as the file's identifier (root key), but do
+not produce any other output.  Typically used as input to the 
+This option is not on by default if the auto_fix config option is set.
+.B "bk gone"
+command.
+.tp
+.B \-gg
+List each missing delta key, but do
+not produce any other output.  Typically used as input to the 
+.B "bk gone"
+command.
+.tp
+.B \-ggg
+List both missing files and missing deltas.
+Typically used as input to the 
+.B "bk gone"
+command.
 .tp
 .B \-p
 List deltas which are in more than one cset.

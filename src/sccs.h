@@ -1127,5 +1127,5 @@ extern char *bk_vers;
 extern char *bk_utc;
 extern char *bk_time;
 
-int	getMsg(char *msg_name, char *bkarg, char *prefix, FILE *outf);
+int	getMsg(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf);
 #endif	/* _SCCS_H_ */

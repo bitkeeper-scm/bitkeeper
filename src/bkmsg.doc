@@ -1,5 +1,83 @@
+#chk1
+A file is marked as gone (in BitKeeper/etc/gone) but is present in your
+repository, possibly missing some deltas.  This can happen if a different 
+repository had lost the file, marked it as gone so that "bk -r check -a" 
+would pass, and then your repository was updated with that information.
+Since your repository still has the file, it may be possible to restore
+it in the other repository if you wish.
+
+The other case is that someone is trying to destroy all instances of the
+file's revision history.  Suppose a large file were added by mistake,
+perhaps a derived (compiled) file or binary.  
+
+Examine the files listed and if it is clear the file is obsolete, remove
+the revision history from your repository to be consistent with your parent.
+
+If it is clear that the file is valuable then you should have the
+owner of the other repository restore the file from your repository.
+After the file is restored, remove the file identifier (root key) from
+the BitKeeper/etc/gone file.  If you have only part of the revision
+history then remove the root key from the BitKeeper/etc/gone but add
+the missing keys with a
+
+	bk -r check -aggg | bk gone -
+
+$
+#chk2
+A pointer to a delta was found in the ChangeSet file but the delta was
+not found in the corresponding file.  This should only happen if one or
+more files have been lost in a repository, copied from another repository,
+but they were incomplete.
+
+To get the list of missing deltas, run "bk -r check -agg".
+
+To see if any of the deltas exist in another repository, use "bk findkey".
+
+If the deltas exist in another repository it is possible to migrate them
+into your repository.  The process is to generate the list of changesets
+which contain the missing deltas, make a patch, and apply the patch.
+You should probably contact BitMover for help with this the first time
+you try this process.
+
+If the deltas cannot be found in any other repository, then you will
+not be able to completely reproduce that changeset.  You can make
+BitKeeper stop complaining about the problem by running
+
+	bk -r check -agg | bk gone -
+
+and then committing the changeset.
+$
+#chk3
+One or more files are recorded as existing by the ChangeSet file but were
+not found in the repository.  This can happen if the files were deleted,
+either accidentally or on purpose.
+
+If the files exist in another repository it is possible to add them back
+to your repository.  The process is to find the files, copy them into
+your repository, and strip off any extra deltas which should not be part
+of your repository.  You should probably contact BitMover for help with
+this the first time you try this process.
+
+If the files cannot be found, or if the files were delibrately removed,
+then the file identifiers (root keys) need to be added to the gone file.
+Do this by running
+
+	bk -r check -ag | bk gone -
+
+and then committing the changeset.
+$
+#chk4
+One or more files has LOD data in it.  The first approach we took to
+LODs was not a good one and we are trying to remove all vestiages of
+that approach.  Other than the MySQL repository, we know of no examples
+of LOD usage at the current time.  If this is the MySQL tree, you may
+safely run
+
+	bk -r check -aff
+
+to fix up your repository.  If it is not, contact BitMover.
+$
 #write_perms
-=========================================================================
 One or more directories which need updating do not have write permission.
 Please examine the list and fix the permissions.
 
@@ -8,10 +86,8 @@ You can restart the resolve with a
     bk resolve
 
 after fixing the permissions.
-=========================================================================
 $
 #setup_1
-----------------------------------------------------------------------
 
 You are about create a new repository.  You may do this exactly once
 for each package stored in BitKeeper.  If there already is a BitKeeper
@@ -22,10 +98,8 @@ repository for this package, you should do
 If you create a new package rather than resyncing a copy, you will not
 be able to exchange work between the two packages.
 
-----------------------------------------------------------------------
 $
 #setup_2
---------------------------------------------------------
 Please create a description of this package.  A brief description is
 probably best. For example:
 
@@ -35,13 +109,10 @@ or
 
 If you are using a word processor to edit the package description,
 please save the file as a plain text document.
---------------------------------------------------------
 $
 #setup_3
---------------------------------------------------------
 Please fill out the configuration template in your editor.
 This is used for support purposes as well as licensing.
---------------------------------------------------------
 $
 #chkconfig_missing
 
@@ -389,8 +460,7 @@ This happens if a repository with uncommitted deltas is copied
 and then committed in both copies.
 Please use only 'bk clone <from> <to>' to copy a repository.
 $
-#reserved_name
-======================================================================
+#reserved
 BitKeeper is unable to create a file with the following path name:
         #BKARG#
 This usually happens if your path name contains a reserved name used on
@@ -399,7 +469,6 @@ file system are as follows:
         "aux", "con", "prn", "nul", "lpt?", "?:"
 Please rename the file and retry (see also "bk helptool mv")
 Note: You must do the rename in the sending repository.
-======================================================================
 $
 #setup_categories
 amusements/games
