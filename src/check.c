@@ -163,7 +163,7 @@ check_main(int ac, char **av)
 		if (mdbm_store_str(keys, buf, s->gfile, MDBM_INSERT)) {
 			if (errno == EEXIST) {
 				fprintf(stderr,
-				    "Same key %s used by %s and %s\n",
+				    "Same key %s used by\n\t%s\n\t%s\n",
 				    buf, s->gfile, mdbm_fetch_str(keys, buf));
 			} else {
 				perror("mdbm_store_str");
@@ -177,7 +177,7 @@ check_main(int ac, char **av)
 			if (mdbm_store_str(keys, buf, s->gfile, MDBM_INSERT)) {
 				if (errno == EEXIST) {
 					fprintf(stderr,
-					    "Same key %s used by %s and %s\n",
+					    "Same key %s used by\n\t%s\n\t%s\n",
 					    buf, s->gfile,
 					    mdbm_fetch_str(keys, buf));
 				} else {

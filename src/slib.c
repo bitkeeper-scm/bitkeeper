@@ -7871,6 +7871,7 @@ diff_g(sccs *s, pfile *pf, char **tmpfile)
 	    case 3:		/* path changed */
 	    case 1:		/* file type changed */
 		*tmpfile  = tmpnam(0);
+		assert(*tmpfile);
 		if (diff_gfile(s, pf, *tmpfile) == -1) return (-1);
 		return 0;
 	    default:

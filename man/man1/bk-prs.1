@@ -25,7 +25,7 @@ The
 .B bk prs
 command is used to extract revision history and or metadata from a file or
 set of files.  The default behavior is to print a summary of each revision
-to each of the specified files.  There are options to restrict the set if
+to each of the specified files.  There are options to restrict the set of
 revisions to print, a very commonly used one is
 .OPTreq -r + ,
 \ which restricts the set to the most recent revision.
@@ -258,9 +258,9 @@ on both sides of the operator.
 .SS ITERATIVE OUTPUT
 .ad b
 Some fields, such as comments or tags, may be multi-line.  To print a prefix
-in front of each of these files, the idiom is:
+in front of each of these lines, the idiom is:
 .DS
-.B bk prs -d'$if(:C:){$each(:C:){C\ \ (:C:)\en}' \c
+.B bk prs -d'$if(:C:){$each(:C:){C\ \ (:C:)\en}}' \c
 foo.c
 .DE
 The

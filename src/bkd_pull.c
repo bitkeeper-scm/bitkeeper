@@ -450,7 +450,7 @@ cmd_pull_part2(int ac, char **av)
 	dup2(fd0, 0); close(fd0);
 	gzipAll2fd(rfd, 1, gzip, 0, 0, 1, 0);
 	close(rfd);
-	waitpid(pid, &status, 0);
+	if (waitpid(pid, &status, 0) != pid) perror("waitpid for makepatch");
 	if (!WIFEXITED(status)) {
 		fprintf(stderr, "cmd_pull_part2: makepatch interrupted\n");
 	} else if (n = WEXITSTATUS(status)) {
