@@ -7450,7 +7450,6 @@ openInput(sccs *s, int flags, FILE **inp)
 	switch (s->encoding & E_DATAENC) {
 	    default:
 	    case E_ASCII:
-		mode = "rt"; /* read in text mode */
 		/* fall through, check if we are really ascii */
 	    case E_UUENCODE:
 		if (streq("-", file)) {
@@ -7458,8 +7457,13 @@ openInput(sccs *s, int flags, FILE **inp)
 			return (0);
 		}
 		*inp = fopen(file, mode);
-		if (((s->encoding & E_DATAENC)== E_ASCII) && ascii(*inp))
+		if (((s->encoding & E_DATAENC)== E_ASCII) && ascii(*inp)) {
+#ifdef WIN32
+			/* read text file in text mode */
+			setmode(fileno(*inp), _O_TEXT);
+#endif
 			return (0);
+		}
 		s->encoding = compress | E_UUENCODE;
 		return (0);
 	    case E_UUGZIP:
