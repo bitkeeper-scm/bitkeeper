@@ -619,6 +619,8 @@ check(sccs *s, MDBM *db, MDBM *marks)
 			fprintf(stderr,
 		    "%s: marked delta %s should be in ChangeSet but is not.\n",
 			    s->sfile, d->rev);
+			sccs_sdelta(s, d, buf);
+			fprintf(stderr, "\t%s -> %s\n", d->rev, buf);
 			errors++;
 		} else if (verbose > 1) {
 			fprintf(stderr, "%s: found %s in ChangeSet\n",

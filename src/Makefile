@@ -397,9 +397,6 @@ install: install-nolinks
 			ln -s $(BINDIR)/$$file /usr/bin/$$file; \
 		done; \
 	fi; \
-	if [ $$LN = ln -a ! -d /var/bitkeeper ]; \
-	then	mkdir /var/bitkeeper; chmod 777 /var/bitkeeper; \
-	fi
 
 install-nolinks: all
 	@test -d $(BINDIR) || mkdir -p $(BINDIR)
