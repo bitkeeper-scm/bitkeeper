@@ -42,13 +42,12 @@ usage: takepatch [-acFimStv] [-f file]\n\n\
 
 #define	CLEAN_RESYNC	1	/* blow away the RESYNC dir */
 #define	CLEAN_PENDING	2	/* blow away the PENDING dir */
-#define	SHOUT() \
-	fputs("\n==================== ERROR =======================\n", stderr);
-#define	SHOUT2() \
-	fputs("==================================================\n\n", stderr);
-#define	NOTICE() \
-	fputs("------------------------------------------------------\n",\
-	stderr);
+#define	SHOUT() fputs("\n=================================== "\
+		    "ERROR ====================================\n", stderr);
+#define	SHOUT2() fputs("======================================="\
+		    "=======================================\n\n", stderr);
+#define	NOTICE() fputs("------------------------------------"\
+		    "---------------------------------------\n", stderr);
 
 private	delta	*getRecord(MMAP *f);
 private	int	extractPatch(char *name, MMAP *p, int flags, int fast, project *proj);
@@ -356,7 +355,8 @@ cleanup:		if (perfile) sccs_free(perfile);
 		if (s->state & S_PFILE) {
 			SHOUT();
 			fprintf(stderr,
-			    "takepatch: %s is locked w/o gfile?\n", s->sfile);
+			    "takepatch: %s is locked w/o writeable gfile?\n",
+			    s->sfile);
 			goto cleanup;
 		}
 		tmp = sccs_getrev(s, "+", 0, 0);
@@ -737,6 +737,7 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 	sccs	*s = 0;
 	delta	*d = 0;
 	int	newflags;
+	int	pending = 0;
 	char	*now();
 	int	n = 0;
 	char	lodkey[MAXPATH];
@@ -949,6 +950,20 @@ apply:
 		d = sccs_findKey(s, p->me);
 		assert(d);
 		d->flags |= (p->flags & PATCH_LOCAL) ? D_LOCAL : D_REMOTE;
+		if (s->state & S_CSET) continue;
+		if (sccs_isleaf(s, d) && !(d->flags & D_CSET)) {
+			fprintf(stderr,
+			    "No cset mark on %s:%s\n", s->gfile, d->rev);
+			pending++;
+		}
+	}
+	/* Must check pending before fixing the lod, or we get the wrong
+	 * delta as TOL.
+	 */
+	if (pending) {
+		s->proj = 0; sccs_free(s);
+		uncommitted(localPath);
+		return -1;
 	}
 	if (fixLod(s)) {
 		s->proj = 0; sccs_free(s);
@@ -964,15 +979,7 @@ apply:
 	    !streq(s->sfile + strlen(s->sfile) - 9, "ChangeSet")) {
 		conflicts += confThisFile;
 	}
-	if (confThisFile && !(s->state & S_CSET)) {
-		assert(d);
-		unless (d->flags & D_CSET) {
-			fprintf(stderr, "No csetmark on %s\n", d->rev);
-			s->proj = 0; sccs_free(s);
-			uncommitted(localPath);
-			return -1;
-		}
-	}
+
 	s->proj = 0; sccs_free(s);
 	if (noConflicts && conflicts) noconflicts();
 	freePatchList();
