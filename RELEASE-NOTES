@@ -1,4 +1,38 @@
 ===============================================================================
+Release notes for BitKeeper version 3.2.1.   These release notes cover
+the following topics:
+
+. Upgrade Notes
+. New Features
+. Noteworthy bug fixes
+
+Upgrade notes
+----------------------------------------------------------------------------
+
+None.  This version is fully compatible with older versions.
+
+New Features
+----------------------------------------------------------------------------
+
+none
+
+Noteworthy Bug Fixes
+----------------------------------------------------------------------------
+
+2003-03-27-001: receive shouldn't complain on duplicate patches
+2003-11-26-005: bk help, bk helptool fails silently when /tmp full
+
+Fix a minor race condition where a bk command could exit before all repository
+locks have been released.
+
+Fix performance problem where files under $HOME/.bk are accessed too often.
+
+Under Windows: when reading proxy information from Internet Explorer BitKeeper
+now also obeys the list of hosts not to send to the proxy.
+
+The bk installer will no longer happily delete whole directories.
+
+===============================================================================
 Release notes for BitKeeper version 3.2.0.   These release notes cover
 the following topics:
 
