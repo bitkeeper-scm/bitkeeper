@@ -334,10 +334,12 @@ _diffr() {
 	D=NO
 	DOPTS=
 	CMD=${BIN}sccslog
+	ALL=NO
 	LEFTONLY=NO
 	RIGHTONLY=NO
-	while getopts cdDflMprsuU opt
+	while getopts acdDflMprsuU opt
 	do	case "$opt" in
+		a) ALL=YES;;
 		c) D=YES; DOPTS="-c $DOPTS";;
 		d) D=YES;;
 		D) D=YES; DOPTS="-D $DOPTS";;
@@ -371,34 +373,73 @@ _diffr() {
 	then	LREVS=
 	else	LREVS=`${BIN}resync -n $LEFT $RIGHT 2>&1 | grep '[0-9]'`
 	fi
-	if [ "X$LREVS" = X -a "X$RREVS" = X ]
+	if [ $ALL = NO -a "X$LREVS" = X -a "X$RREVS" = X ]
 	then	echo $1 and $2 have the same changesets.
 		exit 0
 	fi
-	export LREVS RREVS LEFT RIGHT
 	(
-	if [ "X$LREVS" != X ]
-	then
-		echo "Changes only in $LEFT"
-		echo ----------------------------------------------------------
+		cd $LEFT
+	    (
+		if [ $D = NO ]
+		then	${BIN}sfiles -cg | while read x
+			do	echo $x
+				echo "  modified and not checked in."
+				echo ""
+			done
+		fi
+		(
+		if [ $ALL = YES ]
+		then	if [ $D = YES ]
+			then	${BIN}sfiles -c
+			fi
+			${BIN}sfiles -CRa
+		fi
 		for i in $LREVS
 		do	if [ $D = YES ]
-			then	(cd $LEFT && ${BIN}cset -R${i}..$i)
-			else	echo "ChangeSet:$i"
+			then	${BIN}cset -R${i}..$i
+				else	echo "ChangeSet:$i"
 			fi
-		done | (cd $LEFT && $CMD -)
-	fi
-	if [ "X$RREVS" != X ]
-	then
-		echo "Changes only in $RIGHT"
-		echo ----------------------------------------------------------
+		done ) | $CMD -
+	    )	> ${TMP}left$$
+		if [ -s ${TMP}left$$ ]
+		then
+			echo "Changes only in $LEFT"
+			echo --------------------------------------------------
+			cat ${TMP}left$$
+		fi
+		${RM} -f ${TMP}left$$
+		
+		cd $RIGHT
+	    (
+		if [ $D = NO ]
+		then	${BIN}sfiles -cg | while read x
+			do	echo $x
+				echo "  modified and not checked in."
+				echo ""
+			done
+		fi
+		(
+		if [ $ALL = YES ]
+		then	if [ $D = YES ]
+			then	${BIN}sfiles -c
+			fi
+			${BIN}sfiles -CRa
+		fi
 		for i in $RREVS
 		do	if [ $D = YES ]
-			then	(cd $RIGHT && ${BIN}cset -R${i}..$i)
+			then	${BIN}cset -R${i}..$i
 			else	echo "$RIGHT/ChangeSet:$i"
 			fi
-		done | (cd $RIGHT && $CMD -)
-	fi
+		done 
+		) | $CMD -
+	    )	> ${TMP}right$$
+		if [ -s ${TMP}right$$ ]
+		then
+			echo "Changes only in $RIGHT"
+			echo --------------------------------------------------
+			cat ${TMP}right$$
+		fi
+
 	) | $PAGER
 }
 

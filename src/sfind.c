@@ -21,6 +21,7 @@ usage: sfiles [-aAcCdglpPrx] [directories]\n\n\
 		but only if the pathname to the file is not ../SCCS/s.*\n\
     -P		(paranoid) opens each file to make sure it is an SCCS file\n\
     -r		rebuild the id to pathname cache\n\
+    -R		when used with -C, list files as foo.c:1.3..1.5\n\
     -u		list only unlocked files\n\
     -x		list files which have no revision control files\n\
 		Note 1: files in BitKeeper/log/ are ignored\n\
@@ -31,8 +32,12 @@ usage: sfiles [-aAcCdglpPrx] [directories]\n\n\
     directories.\n\
 \n";
 
+/*
+ * XXX - what should be done here is all the flags should be a bitmask
+ * and then we can easily check for the combinations we accept.
+ */
 int	aFlg, cFlg, Cflg, dFlg, gFlg, lFlg, pFlg, Pflg, rFlg, vFlg, xFlg, uFlg;
-int	Dflg, Aflg;
+int	Dflg, Aflg, Rflg;
 int	error;
 FILE	*pending_cache;
 FILE	*id_cache;
@@ -46,7 +51,7 @@ char	*name(char *);
 sccs	*cset;
 
 typedef	void (*lftw_func)(const char *path, int mode);
-void	file(const char *f, lftw_func func);
+void	file(char *f, lftw_func func);
 void	lftw(const char *dir, lftw_func func);
 void	process(const char *filename, int mode);
 void	caches(const char *filename, int mode);
@@ -62,7 +67,7 @@ main(int ac, char **av)
 usage:		fprintf(stderr, "%s", sfiles_usage);
 		exit(0);
 	}
-	while ((c = getopt(ac, av, "aAcCdDglpPruvx")) != -1) {
+	while ((c = getopt(ac, av, "aAcCdDglpPrRuvx")) != -1) {
 		switch (c) {
 		    case 'a': aFlg++; break;
 		    case 'A': Aflg++; break;
@@ -75,6 +80,7 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		    case 'p': pFlg++; break;
 		    case 'P': Pflg++; break;
 		    case 'r': rFlg++; break;
+		    case 'R': Rflg++; break;
 		    case 'v': vFlg++; break;
 		    case 'u': uFlg++; break;
 		    case 'x': xFlg++; break;
@@ -147,7 +153,7 @@ xfile(char *file)
  * Handle a single file.
  */
 void
-file(const char *f, lftw_func func)
+file(char *f, lftw_func func)
 {
 	struct	stat sb;
 	char	*g = 0;
@@ -384,6 +390,15 @@ save(sccs *sc, MDBM *idDB, char *buf)
 }
 
 void
+pr(sccs *sc, delta *d)
+{
+	if (!d || !d->parent) return;
+	unless (d->parent->flags & D_CSET) pr(sc, d->parent);
+	printf("%s:%s..%s\n",
+	    gFlg ? sc->gfile : sc->sfile, d->parent->rev, d->rev);
+}
+
+void
 caches(const char *filename, int mode)
 {
 	char	*file = (char *)filename;
@@ -423,32 +438,40 @@ caches(const char *filename, int mode)
 	}
 
 	/* XXX - should this be (Cflg && !(sc->state & S_CSET)) ? */
-	unless (Cflg) {
-		sccs_free(sc);
-		return;
-	}
+	unless (Cflg) goto out;
 
 	/* find the leaf of the current LOD and check it */
 	sc->state |= S_RANGE2;
-	unless (d = sccs_getrev(sc, 0, 0, 0)) {
-		sccs_free(sc);
-		return;
-	}
+	unless (d = sccs_getrev(sc, 0, 0, 0)) goto out;
 
 	/*
 	 * If it's marked, we're done.
 	 */
-	if (d->flags & D_CSET) {
-		sccs_free(sc);
-		return;
+	if (d->flags & D_CSET) goto out;
+
+	/*
+	 * If we are looking for diff output and not -a style,
+	 * go find the previous cset.
+	 */
+	if (Rflg && !aFlg) {
+		delta	*p;
+
+		printf("%s:", gFlg ? sc->gfile : sc->sfile);
+		for (p = d->parent; p && !(p->flags & D_CSET); p = p->parent);
+		printf("%s..%s\n", p ? p->rev : sc->tree->rev, d->rev);
+		goto out;
+	}
+	if (Rflg) {
+		pr(sc, d);
+		goto out;
 	}
 
-	printf("%s:%s\n", gFlg ? sc->gfile : sc->sfile, d->rev);
-	while (aFlg && d->parent && !(d->parent->flags & D_CSET)) {
-		d = d->parent;
+	do {
 		printf("%s:%s\n", gFlg ? sc->gfile : sc->sfile, d->rev);
-	}
+		d = d->parent;
+	} while (aFlg && d && !(d->flags & D_CSET));
 
+out:
 	sccs_free(sc);
 }
 
