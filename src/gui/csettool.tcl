@@ -307,57 +307,7 @@ proc widgets {} \
 	    grid columnconfigure .l.sccslog.t 0 -weight 1
 	    grid columnconfigure .l.sccslog 0 -weight 1
 
-	frame .diffs -background $gc(BG)
-	    frame .diffs.status
-		label .diffs.status.l -background $gc(cset.oldColor) \
-		    -font $gc(cset.fixedFont) \
-		    -relief sunken -borderwid 2
-		label .diffs.status.middle -background $gc(cset.statusColor) \
-		    -font $gc(cset.fixedFont) -wid 26 \
-		    -relief sunken -borderwid 2
-		label .diffs.status.r -background $gc(cset.newColor) \
-		    -font $gc(cset.fixedFont) -relief sunken -borderwid 2
-		grid .diffs.status.l -row 0 -column 0 -sticky ew
-		grid .diffs.status.middle -row 0 -column 1
-		grid .diffs.status.r -row 0 -column 2 -sticky ew
-	    text .diffs.left -width $gc(cset.diffWidth) \
-		-height $gc(cset.diffHeight) \
-		-state disabled -wrap none -font $gc(cset.fixedFont) \
-		-setgrid 1 \
-		-xscrollcommand { .diffs.xscroll set } \
-		-yscrollcommand { .diffs.yscroll set } \
-		-background $gc(cset.textBG) -foreground $gc(cset.textFG)
-	    text .diffs.right -width $gc(cset.diffWidth) \
-		-height $gc(cset.diffHeight) \
-		-setgrid 1 \
-		-state disabled -wrap none -font $gc(cset.fixedFont) \
-		-background $gc(cset.textBG) -foreground $gc(cset.textFG)
-	    scrollbar .diffs.xscroll -wid $gc(cset.scrollWidth) \
-		-troughcolor $gc(cset.troughColor) \
-		-background $gc(cset.scrollColor) \
-		-orient horizontal -command { xscroll }
-	    scrollbar .diffs.yscroll -wid $gc(cset.scrollWidth) \
-		-troughcolor $gc(cset.troughColor) \
-		-background $gc(cset.scrollColor) \
-		-orient vertical -command { yscroll }
-	    grid .diffs.status -row 0 -column 0 -columnspan 3 -stick ew
-	    grid .diffs.left -row 1 -column 0 -sticky nsew
-	    grid .diffs.yscroll -row 1 -column 1 -sticky ns
-	    grid .diffs.right -row 1 -column 2 -sticky nsew
-	    grid .diffs.xscroll -row 2 -column 0 -sticky ew
-	    grid .diffs.xscroll -columnspan 3
-	    grid columnconfigure .diffs 0 -weight 1
-	    grid columnconfigure .diffs 2 -weight 1
-
-	    grid columnconfigure .diffs.yscroll 1 -weight 0
-	    grid columnconfigure .diffs.status 0 -weight 1
-	    grid columnconfigure .diffs.status 2 -weight 1
-
-	    grid rowconfigure .diffs 0 -weight 0
-	    grid rowconfigure .diffs 1 -weight 1
-	    grid rowconfigure .diffs.left 1 -weight 1
-	    grid rowconfigure .diffs.right 1 -weight 1
-	    grid rowconfigure .diffs 2 -weight 0
+	    createDiffWidgets .diffs
 
 image create photo prevImage \
     -format gif -data {
@@ -464,7 +414,6 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	grid columnconfigure .l.sccslog 1 -weight 1
 	grid columnconfigure .diffs 0 -weight 1
 
-	bind .diffs <Configure> { computeHeight "diffs" }
 	#$search(widget) tag configure search \
 	#    -background $gc(cset.searchColor) -font $gc(cset.fixedBoldFont)
 	keyboard_bindings
@@ -475,8 +424,6 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	}
 	computeHeight "diffs"
 
-	.diffs.left tag configure diff -background $gc(cset.oldColor)
-	.diffs.right tag configure diff -background $gc(cset.newColor)
 	.l.filelist.t tag configure select -background $gc(cset.selectColor) \
 	    -relief groove -borderwid 1
 	.l.filelist.t tag configure cset \

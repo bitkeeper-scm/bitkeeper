@@ -2,6 +2,111 @@
 # Copyright (c) 1999-2000 by Larry McVoy; All rights reserved
 # %A% %@%
 
+proc createDiffWidgets {w} \
+{
+	global gc app
+
+	# XXX: Need to redo all of the widgets so that we can start being
+	# more flexible (show/unshow line numbers, mapbar, statusbar, etc)
+	#set w(diffwin) .diffwin
+	#set w(leftDiff) $w(diffwin).left.text
+	#set w(RightDiff) $w(diffwin).right.text
+	frame .diffs
+	    frame .diffs.status
+		frame .diffs.status.lstat
+		frame .diffs.status.llnum
+		frame .diffs.status.mstat
+		frame .diffs.status.rstat
+		frame .diffs.status.rlnum
+
+		label .diffs.status.l \
+		    -background $gc($app.oldColor) \
+		    -font $gc($app.fixedFont) \
+		    -relief sunken -borderwid 2
+		label .diffs.status.l_lnum \
+		    -background $gc($app.oldColor) \
+		    -font $gc($app.fixedFont) \
+		    -relief sunken -borderwid 2
+		label .diffs.status.r \
+		    -background $gc($app.newColor) \
+		    -font $gc($app.fixedFont) \
+		    -relief sunken -borderwid 2
+		label .diffs.status.r_lnum \
+		    -background $gc($app.oldColor) \
+		    -font $gc($app.fixedFont) \
+		    -relief sunken -borderwid 2
+		label .diffs.status.middle \
+		    -foreground black \
+		    -background $gc($app.statusColor) \
+		    -font $gc($app.fixedFont) \
+		    -wid 15 \
+		    -relief sunken -borderwid 2
+		pack .diffs.status \
+		    .diffs.status.lstat \
+		    .diffs.status.mstat \
+		    .diffs.status.rstat \
+		    -side left -expand true -fill x
+		pack configure .diffs.status.lstat -anchor w
+		pack configure .diffs.status.rstat -anchor e
+		pack .diffs.status.l -in .diffs.status.lstat \
+		    -expand 1 -fill x -anchor w
+		pack .diffs.status.middle -in .diffs.status.mstat \
+		    -expand 1 -fill x
+		pack .diffs.status.r -in .diffs.status.rstat \
+		    -expand 1 -fill x -anchor e
+		pack propagate .diffs.status.lstat 0
+		pack propagate .diffs.status.rstat 0
+
+	    text .diffs.left \
+		-width $gc($app.diffWidth) \
+		-height $gc($app.diffHeight) \
+		-bg $gc($app.textBG) \
+		-fg $gc($app.textFG) \
+		-state disabled \
+		-borderwidth 0\
+		-wrap none \
+		-font $gc($app.fixedFont) \
+		-xscrollcommand { .diffs.xscroll set } \
+		-yscrollcommand { .diffs.yscroll set }
+	    text .diffs.right \
+		-width $gc($app.diffWidth) \
+		-height $gc($app.diffHeight) \
+		-bg $gc($app.textBG) \
+		-fg $gc($app.textFG) \
+		-state disabled \
+		-borderwidth 0 \
+		-wrap none \
+		-font $gc($app.fixedFont)
+	    scrollbar .diffs.xscroll \
+		-wid $gc($app.scrollWidth) \
+		-troughcolor $gc($app.troughColor) \
+		-background $gc($app.scrollColor) \
+		-orient horizontal \
+		-command { xscroll }
+	    scrollbar .diffs.yscroll \
+		-wid $gc($app.scrollWidth) \
+		-troughcolor $gc($app.troughColor) \
+		-background $gc($app.scrollColor) \
+		-orient vertical \
+		-command { yscroll }
+
+	    grid .diffs.status -row 0 -column 0 -columnspan 5 -stick ew
+	    grid .diffs.left -row 1 -column 0 -sticky nsew
+	    grid .diffs.yscroll -row 1 -column 1 -sticky ns
+	    grid .diffs.right -row 1 -column 2 -sticky nsew
+	    grid .diffs.xscroll -row 2 -column 0 -sticky ew
+	    grid .diffs.xscroll -columnspan 5
+	    grid columnconfigure .diffs.status 0 -weight 1
+	    grid columnconfigure .diffs.status 2 -weight 1
+	    grid columnconfigure .diffs 0 -weight 1
+	    grid columnconfigure .diffs 2 -weight 1
+
+	    .diffs.left tag configure diff -background $gc($app.oldColor)
+	    .diffs.right tag configure diff -background $gc($app.newColor)
+	    bind .diffs <Configure> { computeHeight "diffs" }
+	    bind .diffs.status <Configure> { reconfigureStatus }
+}
+
 proc next {} \
 {
 	global	diffCount lastDiff DiffsEnd search
@@ -674,7 +779,14 @@ proc balloon_aux {w msg} {
 	catch {destroy $t}
 	toplevel $t
 	wm overrideredirect $t 1
-	pack [label $t.l -text $msg -relief groove -bd 1 -bg gold] -fill both
+	label $t.l \
+	    -text $msg \
+	    -relief solid \
+	    -padx 5 -pady 2 \
+	    -borderwidth 1 \
+	    -justify left \
+	    -background lightyellow 
+	pack $t.l -fill both
 	set x [expr [winfo rootx $w]+6+[winfo width $w]/2]
 	set y [expr [winfo rooty $w]+6+[winfo height $w]/2]
 	wm geometry $t +$x\+$y

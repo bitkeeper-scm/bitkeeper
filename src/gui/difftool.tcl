@@ -26,75 +26,7 @@ proc widgets {} \
 		# of the widgets are correctly sized. Fixes irritating 
 		# behaviour on ctwm.
 	}
-
-	# XXX: Need to redo all of the widgets so that we can start being
-	# more flexible (show/unshow line numbers, mapbar, statusbar, etc)
-	#set w(diffwin) .diffwin
-	#set w(leftDiff) $w(diffwin).left.text
-	#set w(RightDiff) $w(diffwin).right.text
-	frame .diffs
-	    frame .diffs.status
-		frame .diffs.status.lstat
-		frame .diffs.status.llnum
-		frame .diffs.status.mstat
-		frame .diffs.status.rstat
-		frame .diffs.status.rlnum
-
-		label .diffs.status.l -background $gc(diff.oldColor) \
-		    -font $gc(diff.fixedFont) -relief sunken -borderwid 2
-		label .diffs.status.l_lnum -background $gc(diff.oldColor) \
-		    -font $gc(diff.fixedFont) -relief sunken -borderwid 2
-		label .diffs.status.r -background $gc(diff.newColor) \
-		    -font $gc(diff.fixedFont) -relief sunken -borderwid 2
-		label .diffs.status.r_lnum -background $gc(diff.oldColor) \
-		    -font $gc(diff.fixedFont) -relief sunken -borderwid 2
-		label .diffs.status.middle \
-		    -foreground black -background $gc(diff.statusColor) \
-		    -font $gc(diff.fixedFont) -wid 15 \
-		    -relief sunken -borderwid 2
-		pack .diffs.status \
-		    .diffs.status.lstat \
-		    .diffs.status.mstat \
-		    .diffs.status.rstat \
-		    -side left -expand true -fill x
-		pack configure .diffs.status.lstat -anchor w
-		pack configure .diffs.status.rstat -anchor e
-		pack .diffs.status.l -in .diffs.status.lstat \
-		    -expand 1 -fill x -anchor w
-		pack .diffs.status.middle -in .diffs.status.mstat \
-		    -expand 1 -fill x
-		pack .diffs.status.r -in .diffs.status.rstat \
-		    -expand 1 -fill x -anchor e
-		pack propagate .diffs.status.lstat 0
-		#pack propagate .diffs.status.mstat 0
-		pack propagate .diffs.status.rstat 0
-	    text .diffs.left -width $gc(diff.diffWidth) \
-		-height $gc(diff.diffHeight) \
-		-bg $gc(diff.textBG) -fg $gc(diff.textFG) -state disabled \
-		-borderwidth 0\
-		-wrap none -font $gc(diff.fixedFont) \
-		-xscrollcommand { .diffs.xscroll set } \
-		-yscrollcommand { .diffs.yscroll set }
-	    text .diffs.right -bg $gc(diff.textBG) -fg $gc(diff.textFG) \
-		-height $gc(diff.diffHeight) \
-		-width $gc(diff.diffWidth) \
-		-borderwidth 0 \
-		-state disabled -wrap none -font $gc(diff.fixedFont)
-	    scrollbar .diffs.xscroll -wid $gc(diff.scrollWidth) \
-		-troughcolor $gc(diff.troughColor) \
-		-background $gc(diff.scrollColor) \
-		-orient horizontal -command { xscroll }
-	    scrollbar .diffs.yscroll -wid $gc(diff.scrollWidth) \
-		-troughcolor $gc(diff.troughColor) \
-		-background $gc(diff.scrollColor) \
-		-orient vertical -command { yscroll }
-
-	    grid .diffs.status -row 0 -column 0 -columnspan 5 -stick ew
-	    grid .diffs.left -row 1 -column 0 -sticky nsew
-	    grid .diffs.yscroll -row 1 -column 1 -sticky ns
-	    grid .diffs.right -row 1 -column 2 -sticky nsew
-	    grid .diffs.xscroll -row 2 -column 0 -sticky ew
-	    grid .diffs.xscroll -columnspan 5
+	createDiffWidgets .diffs
 
 image create photo prevImage \
     -format gif -data {
@@ -178,10 +110,6 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	grid rowconfigure . 0 -weight 0
 	grid rowconfigure . 1 -weight 1
 	#grid rowconfigure . 2 -weight 0
-	grid columnconfigure .diffs.status 0 -weight 1
-	grid columnconfigure .diffs.status 2 -weight 1
-	grid columnconfigure .diffs 0 -weight 1
-	grid columnconfigure .diffs 2 -weight 1
 	grid columnconfigure . 0 -weight 1
 
 	# smaller than this doesn't look good.
@@ -189,7 +117,6 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 
 	.diffs.status.middle configure -text "Welcome to difftool!"
 
-	bind .diffs <Configure> { computeHeight "diffs" }
 	#bind .diffs.left <Button-1> {stackedDiff %W %x %y "B1"; break}
 	#bind .diffs.right <Button-1> {stackedDiff %W %x %y "B1"; break}
 	foreach w {.diffs.left .diffs.right} {
@@ -197,8 +124,6 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	}
 	computeHeight "diffs"
 
-	.diffs.left tag configure diff -background $gc(diff.oldColor)
-	.diffs.right tag configure diff -background $gc(diff.newColor)
 	$search(widget) tag configure search \
 	    -background $gc(diff.searchColor) -font $gc(diff.fixedBoldFont)
 
@@ -209,7 +134,6 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	if {("$g" == "1x1+0+0") && ("$gc(diff.geometry)" != "")} {
 		wm geometry . $gc(diff.geometry)
 	}
-	bind .diffs.status <Configure> { reconfigureStatus }
 }
 
 # Set up keyboard accelerators.
