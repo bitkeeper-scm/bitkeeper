@@ -5,12 +5,18 @@ bk triggers \- using \*(BK event triggers
 .SH DESCRIPTION
 .LP
 \*(BK supports a variety of trigger types. Triggers are 
-arbitrary commands, usually a shellscript, which run before or after
-a repository level command.  These triggers can be used for event notification 
+arbitrary commands, compiled into an executable shellscript, 
+which run before or after a repository level command.  These 
+triggers can be used for event notification 
 and/or to implement control over the events.
 .LP
-Triggers can be structured to run in all copies of a project 
-and/or in a specific instance of a project.
+When a trigger is called, it is called at the root of the
+repository.  When an event occurs, if there exists a 
+file BitKeeper/triggers/
+.ARG event_class
+in the repository root that corresponds to the event, 
+\*(BK will execute that trigger.
+.LP
 There are three event classes which activate triggers: incoming
 events, outgoing events, and commits, and they can be set up to
 trigger before, or after, those events.   The difference between
@@ -111,9 +117,9 @@ RESYNC tree in PENDING/RESYNC-<date>.
 .\"     EOF
 .\" .DE
 .LP
-When a trigger is called, it is called at the root of the
-repository.  Triggers are easily customized on a per repository
-basis, for example:
+Triggers can be structured to run in all copies of a project 
+and/or in a specific instance of a project.  
+An example on how to customize for a particular repository is as follows:
 .DS
 #!/bin/sh
 
@@ -121,6 +127,7 @@ if [ $BK_LOCAL_ROOT = /home/bk/stable ]
 then	echo whatever | mail \-s 'event in stable' lm
 fi
 .DE
+
 Trigger status is stored environment variables, which are available
 as follows:
 .LP
@@ -199,7 +206,6 @@ Set the the trigger class (but not instance).  I.e., pre-incoming.
 .\" help://Repository/notification
 .\" help://Repository/notify
 .SH AVAILABILITY
-.\" XXX not sure how to word this one. - amy
 Pull and push triggers available
 with \*(BK Professional only.
 .SH CATEGORY
