@@ -2040,6 +2040,11 @@ sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
 	 * If it's a revision, go find it and use it.
 	 */
 	if (rev) {
+		if (streq("_BK_TOP", s)) {
+			for (d = sc->table; d && TAG(d); d = d->next);
+			assert(d && !TAG(d));
+			return (d);
+		}
 		unless (d = findrev(sc, s)) return (0);
 		return (d);
 	}

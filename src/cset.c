@@ -1159,7 +1159,7 @@ sccs_patch(sccs *s, cset_t *cs)
 {
 	delta	*d;
 	int	deltas = 0, prs_flags = (PRS_PATCH|SILENT);
-	int	i, n, newfile, mk_placeholder; 
+	int	i, n, newfile, empty; 
 	delta	**list;
 
         if (sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0, 0)) {
@@ -1233,14 +1233,14 @@ sccs_patch(sccs *s, cset_t *cs)
 		 * TODO  move the test out side this loop. This would
 		 * be a little faster.
 		 */
-		mk_placeholder = 0;
+		empty = 0;
 		if (cs->metaOnly) {
 			int len1 = strlen(s->tree->pathname);
-			int len2 = strlen(BKROOT);
+			int len2 = strlen("BitKeeper/");
 			unless ((s->state & S_CSET) ||
 			    ((len1 > len2) &&
-			    strneq(s->tree->pathname, BKROOT, len2))) {
-				mk_placeholder = 1;
+			    strneq(s->tree->pathname, "BitKeeper/", len2))) {
+				empty = 1;
 			}
 			prs_flags |= PRS_LOGGING;
 		}
@@ -1252,7 +1252,7 @@ sccs_patch(sccs *s, cset_t *cs)
 					sccs_getdiffs(s,
 					    d->rev, GET_HASHDIFFS, "-");
 				}
-			} else if (!mk_placeholder) {
+			} else unless (empty) {
 				sccs_getdiffs(s, d->rev, GET_BKDIFFS, "-");
 			}
 		}
