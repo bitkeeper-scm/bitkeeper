@@ -1048,8 +1048,15 @@ proc highlightAncestry {rev1} \
 	if {$rev1 == ""} return
 
 	set dspec {-dKIDS\n:KIDS:\nKID\n:KID:\nMPD\n:MPARENT:\n}
-	catch {exec bk prs -hr$rev1 $dspec $fname} tmp
-	array set attrs [split $tmp \n]
+	if {[catch {exec bk prs -hr$rev1 $dspec $fname} tmp]} {
+		return 
+	}
+	# the result of the split should always be an even number of
+	# elements, but doing the foreach rather than an "array set"
+	# is more forgiving if that's not the case.
+	foreach {name value} [split $tmp \n] {
+		set attrs($name) $value
+	}
 
 	# Highlight the kids
 	foreach r [split $attrs(KIDS)] {
@@ -1931,18 +1938,9 @@ proc widgets {} \
 		set gc(fmenu) [menu .menus.fmb.menu]
 		set gc(current) $gc(fmenu).current
 		$gc(fmenu) add command -label "Open new file..." \
-		    -command { 
-		    	set fname [selectFile]
-			if {$fname != ""} {
-				revtool $fname
-			}
-		    }
+		    -command openNewFile
 		$gc(fmenu) add command -label "Changeset History" \
-		    -command {
-			cd2root
-			set fname ChangeSet
-		    	revtool ChangeSet
-		    }
+		    -command openChangesetHistory
 		$gc(fmenu) add separator
 		$gc(fmenu) add cascade -label "Current Changeset" \
 		    -menu $gc(current)
@@ -2276,6 +2274,31 @@ proc selectFile {} \
 	}
 	catch {close $f}
 	return $fname
+}
+
+proc openChangesetHistory {} \
+{
+	global diffpair
+
+	# diffpair isn't unset by the 'revtool' proc (and
+	# making it do so is a non-trivial change to a bunch
+	# of startup logic) but it needs to be reset before
+	# calling that proc or it might try to diff
+	# non-existent revs in the selected file.
+	if {[info exists diffpair]} {unset diffpair}
+	cd2root
+	revtool ChangeSet
+}
+
+proc openNewFile {} \
+{
+	global diffpair
+
+	set fname [selectFile]
+	if {$fname != ""} {
+		if {[info exists diffpair]} {unset diffpair}
+		revtool $fname
+	}
 }
 
 # Arguments:
