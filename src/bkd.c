@@ -43,13 +43,13 @@ bkd_main(int ac, char **av)
 		    case 'D': Opts.debug = 1; break;	/* doc 2.0 */
 		    case 'e': Opts.errors_exit = 1; break;	/* doc 2.0 */
 		    case 'i': Opts.interactive = 1; break;	/* doc 2.0 */
-		    case 'h': Opts.http_hdr_out = 1; break;	/* undoc? 2.0 */
-		    case 'H': 	/* undoc? 2.0 */
+		    case 'h': Opts.http_hdr_out = 1; break;	/* doc 2.0 */
+		    case 'H': 	/* doc 2.0 */
 				Opts.http_hdr_out = Opts.http_hdr_in = 1; break;
 		    case 'l':	/* doc 2.0 */
 			Opts.log = optarg ? fopen(optarg, "a") : stderr;
 			break;
-		    case 'L':	/* undoc? 2.0 */
+		    case 'L':	/* doc 2.0 */
 			logRoot = strdup(optarg); break;
 		    case 'p': Opts.port = atoi(optarg); break;	/* doc 2.0 */
 		    case 'P': Opts.pidfile = optarg; break;	/* doc 2.0 */
