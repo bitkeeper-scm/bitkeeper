@@ -129,18 +129,19 @@ usage()
 	exit(1);
 }
 
-
 void
 drain()
 {
 	char	buf[1024];
 	int	i = 0;
 
+	signal(SIGALRM, exit);
+	alarm(20);
 	shutdown(1, 1); /* We need this for local bkd */
 	close(1); /* in case remote is waiting for input */
 	while (getline(0, buf, sizeof(buf))) {
 		if (streq("@END@", buf)) break;
-		if (i++ > 20) break; /* just in case */
+		if (i++ > 200) break; /* just in case */
 	}
 }
 
@@ -220,19 +221,7 @@ do_cmds()
 			flags = cmdlog_end(ret, flags);
 
 			if (flags & CMD_FAST_EXIT) {
-				/*
-				 * Force server side EOF
-				 * XXX This is optional due to recent client
-				 * side change. We can remove this after people
-				 * have upgraded to the new client.
-				 */
-				shutdown(1, 1); /* For daemon mode */
-				close(1);	/* For non-daemon mode */
-				close(2);	/* For non-daemon mode */
-
-				signal(SIGALRM, exit);
-				alarm(10);
-				read(0, &i, 1); /* wait for client side eof */
+				drain();
 				exit(ret);
 			}
 			if (ret != 0) {
@@ -242,14 +231,7 @@ do_cmds()
 				if (Opts.errors_exit) {
 					out("ERROR-exiting\n");
 
-					/*
-					 * On some system such as redhat 5.2
-					 * we need the shutdown call to flush
-					 * the error in the buffer
-					 */
-					shutdown(1, 1); /* For daemon mode */
-					close(1);	/* For non-daemon mode*/
-					close(2);	/* For non-daemon mode*/
+					drain();
 					exit(ret);
 				}
 			}
