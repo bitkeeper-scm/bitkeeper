@@ -143,3 +143,16 @@ cmp -s $h1 $h2 && {
 }
 cmp $h2 $h3 || exit 1
 echo OK
+#BUG: 2003-03-04-003
+echo $N Clone with links and bad rev does not create dir ............$NL
+bk clone -lrfoo project empty > OUT 2> ERR && {
+	echo Fail
+	echo No foo -- clone should fail
+	exit 1
+}
+test -d empty && {
+	echo Fail
+	echo dir created
+	# exit 1
+}
+echo OK

@@ -158,6 +158,15 @@ Scroll the graph up or down.
 .TP
 .B s
 Show the raw SCCS file.
+.tp
+.B a
+Show an annotated listing of the selected node.
+.tp
+.B C
+Run csettool. If the selected node in the graph is for a changeset,
+that changeset will be displayed. If the selected node is a file, the
+changeset that introduces the selected version of the file will be
+displayed. If no node is selected this will do nothing.
 .TP
 .B c
 Show an annotated listing of all versions of the file.

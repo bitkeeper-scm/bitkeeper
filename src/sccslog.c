@@ -79,11 +79,12 @@ usage:			system("bk help -s sccslog");
 	}
 
 	for (name = sfileFirst("sccslog", &av[optind], 0); name; ) {
-		unless (s = sccs_init(name, INIT_NOCKSUM|flags)) {
+		unless ((s = sccs_init(name, INIT_NOCKSUM|flags)) &&
+		    HASGRAPH(s)) {
+			sccs_free(s);
 			name = sfileNext();
 			continue;
 		}
-		unless (HASGRAPH(s)) goto next;
 		do {
 			if (opts.uncommitted) {
 				delta *d = sccs_top(s);

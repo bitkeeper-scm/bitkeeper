@@ -120,6 +120,13 @@ if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
 echo OK
 rm -rf $HERE/a $HERE/b
 
+echo $N Test patch with csetkeys instead of revs ....................$NL
+k14=`bk prs -hnd:KEY: -r1.4`
+k15=`bk prs -hnd:KEY: -r1.5`
+bk export -hT -tpatch -r"$k15,$k14" > patch2
+checkfiles patch patch2
+echo OK
+
 echo $N Test non-adjacent ChangeSet .................................$NL
 cd $HERE/project
 bk export -T -k -r1.1 $HERE/a

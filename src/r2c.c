@@ -37,7 +37,7 @@ r2c_main(int ac, char **av)
 		perror(name);
 		exit(1);
 	}
-	if (proj_cd2root()) {
+	if (chdir(proj_root(s->proj))) {
 		fprintf(stderr, "r2c: cannot find package root.\n");
 		exit(1);
 	}

@@ -393,14 +393,23 @@ printComments(char *parkfile)
 {
 	FILE	*f;
 	char	buf[MAXLINE];
-	char	*commentHdr;
+	char	*commentHdr, *p;
 	int	compat_mode = 0;
 
 	f = fopen(parkfile, "rb");
 	assert(f);
 	fnext(buf, f);
+	chomp(buf);
 
-	switch (check_compat(buf)) {
+	/*
+	 * Parkfile is a sfio file, so we need to account for sfio header.
+	 * Look first char in parkfile header;
+	 * It should look like:
+	 * <sfio header># BITKEEPER PARKFILE VERSION: 2.1
+	 */
+	p = strrchr(buf, '#');
+
+	switch (check_compat(p)) {
 	    case -1:
 		fprintf(stderr, "Bad park file, version mismatch?\n");
 		return;
