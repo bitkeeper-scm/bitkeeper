@@ -414,7 +414,7 @@ findcmd(int ac, char **av)
 
 	if (ac == 0) return (-1);
 	for (i = 0; cmds[i].name; ++i) {
-		if (strcmp(av[0], cmds[i].name) == 0) {
+		if (strcasecmp(av[0], cmds[i].name) == 0) {
 			if (streq(av[0], "pull")) av[0] = "remote pull";
 			if (streq(av[0], "push")) av[0] = "remote push";
 			if (streq(av[0], "clone")) av[0] = "remote clone";

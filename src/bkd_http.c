@@ -41,22 +41,25 @@ cmd_httpget(int ac, char **av)
 	char	*s;
 
 	/*
-	 * Ignore the rest of the http header, we don't care.
+	 * Ignore the rest of the http header (if any), we don't care.
 	 */
-	while (read(0, buf, 1) == 1) {
-		if (buf[0] == '\r') {
-			switch (state) {
-			    case 0: case 2: state++; break;
-			    default: state = 0;
-		    	}
-		} else if (buf[0] == '\n') {
-			if (state == 1) state++;
-			else if (state == 3) break;
-			else state = 0;
-		} else {
-			state = 0;
-	    	}
+	if (ac > 2) {
+		while (read(0, buf, 1) == 1) {
+			if (buf[0] == '\r') {
+				switch (state) {
+				    case 0: case 2: state++; break;
+				    default: state = 0;
+				}
+			} else if (buf[0] == '\n') {
+				if (state == 1) state++;
+				else if (state == 3) break;
+				else state = 0;
+			} else {
+				state = 0;
+			}
+		}
 	}
+
 	unless (*name) name = "index.html";
 	if ((strlen(name) + sizeof("BitKeeper/html") + 2) >= MAXPATH) exit(1);
 
@@ -423,14 +426,26 @@ trailer(char *path)
 {
 	include(path, "trailer.txt");
 
-	out("<hr>\n"
-	    "<p align=right>\n"
-	    "<a href=http://www.bitkeeper.com>\n"
-	    "<font color=black size=-2>\n"
-	    "<img src=trailer.gif alt=\"Learn more about BitKeeper\"></a>\n"
-	    "</font>\n"
-	    "</p>");
-	out("</body></html>\n");
+	if (isreg("BitKeeper/html/logo.gif")) {
+		out("<hr>\n"
+		    "<font color=black size=-2>\n"
+		    "<table border=0 bgcolor=white width=100%>\n"
+		    "<tr>\n"
+		    "<td align=left><img src=\"logo.gif\" alt=\"\"></img></td>\n"
+		    "<td align=right><a><img src=trailer.gif alt=\"Learn more about BitKeeper\"></a></td>\n"
+		    "</tr>\n"
+		    "</table>\n"
+		    "</font>\n");
+	} else {
+		out("<hr>\n"
+		    "<p align=center>\n"
+		    "<a href=http://www.bitkeeper.com>\n"
+		    "<font color=black size=-2>\n"
+		    "<img src=trailer.gif alt=\"Learn more about BitKeeper\"></a>\n"
+		    "</font>\n"
+		    "</p>");
+		out("</body></html>\n");
+	}
 }
 
 int
