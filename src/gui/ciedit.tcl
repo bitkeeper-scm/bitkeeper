@@ -17,12 +17,7 @@ proc cmd_edit {which} \
 {
 	global	curLine edit_busy gc filename w tmp_dir env
 
-	# If comments are in the comments window, save them before invoking 
-	# the editor
-	set cmts [$w(c_comments) get 1.0 "end - 1 char"]
-	if {$cmts != ""} {
-		saveComments $filename $cmts
-	}
+	saveComments
 	if {$edit_busy == 1} { return }
 	set edit_busy 1
 	if {[file writable $filename]} {

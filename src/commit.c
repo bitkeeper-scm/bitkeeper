@@ -80,7 +80,6 @@ commit_main(int ac, char **av)
 	 */
 	proj_license(0);
 
-	unless(opts.resync) remark(opts.quiet);
 	if (pendingFiles[0]) {
 		if (av[optind] && streq("-", av[optind])) {
 			fprintf(stderr,

@@ -412,16 +412,6 @@ $
 You have two files with the same ID.  You must determine why,
 and correct that situation before this ChangeSet can be created.
 $
-#consistency_check
-
-BitKeeper is running a consistency check on your system because it
-has noticed that this check has not yet been run on this repository.
-This check is a one time event, but takes quite a while on large
-repositories (approximately one minute per 1000 files).  
-
-Please stand by and let the process finish (i.e. do not kill this process).
-
-$
 #undo_error
 
 BitKeeper is unable to undo the requested changeset[s].  This is

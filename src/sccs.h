@@ -982,7 +982,6 @@ void	free_globs(globv globs);
 int	searchMatch(char *s, search search);
 search	searchParse(char *str);
 char	*prog2path(char *prog);
-void	remark(int quiet);
 int	readn(int from, char *buf, int size);
 void	send_request(int fd, char * request, int len);
 int	writen(int to, char *buf, int size);
