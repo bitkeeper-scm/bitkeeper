@@ -35,7 +35,7 @@ ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/gzio.o \
 	  zlib/uncompr.o zlib/deflate.o zlib/trees.o zlib/zutil.o \
 	  zlib/inflate.o zlib/infblock.o zlib/inftrees.o zlib/infcodes.o \
 	  zlib/infutil.o zlib/inffast.o
-BINOBJ  = admin.o csetmark.o key2rev.o rechksum.o sccsmv.o smoosh.o \
+BINOBJ  = admin.o key2rev.o rechksum.o sccsmv.o smoosh.o \
 	  delta.o lines.o renumber.o sccsrm.o takepatch.o clean.o \
 	  diffs.o rmdel.o sccssh.o what.o g2sccs.o \
 	  prs.o sccs_mv.o sfind.o zone.o cset.o get.o rangemain.o \
@@ -57,7 +57,7 @@ SRCS	= slib.c range.c newrev.c getopt.c popen.c libdiff.c \
 	  renumber.c lines.c rmdel.c takepatch.c \
 	  cset.c g2sccs.c rangemain.c zone.c gethost.c undos.c chksum.c \
 	  rechksum.c sccs_mv.c sccsmv.c sccsrm.c sccscat.c \
-	  csetmark.c key2rev.c rcs.c comments.c user.c host.c localtm.c \
+	  key2rev.c rcs.c comments.c user.c host.c localtm.c \
 	  check.c bkhelp.txt config.h.in configure substvars.in \
 	  bitkeeper.config install.in
 HDRS	= sccs.h purify.h range.h system.h mdbm/common.h mdbm/mdbm.h \
@@ -214,8 +214,6 @@ rechksum: rechksum.o $(LIBS)
 	$(CC) $(CFLAGS) rechksum.o $(LINK) -o rechksum
 cset: cset.o $(LIBS)
 	$(CC) $(CFLAGS) cset.o $(LINK) -o cset
-csetmark: csetmark.o $(LIBS)
-	$(CC) $(CFLAGS) csetmark.o $(LINK) -o csetmark
 rmdel: rmdel.o $(LIBS)
 	$(CC) $(CFLAGS) rmdel.o $(LINK) -o rmdel
 gethost: gethost.o $(LIBS)
@@ -463,7 +461,6 @@ sccs_mv.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h comments.c
 sccsmv.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
 sccsrm.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h comments.c
 sccscat.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h range.h
-csetmark.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h range.h
 key2rev.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
 rcs.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
 localtm.o: system.h unix.h purify.h mdbm/mdbm.h config.h

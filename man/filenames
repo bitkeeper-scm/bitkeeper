@@ -1,6 +1,9 @@
-.LP
 File names may be specified as the working file name (with an implied
-\*[SCCS]/\fBs.\fPfile), as the \fBs.\fPfile (with an implied gfile of
-\fBfile\fP), as nothing (with the implied list being \fB\*[SCCS]/s.*\fP
-if the \*[SCCS] directory exists, else \fBs.*\fP), or as "\fB-\fP"
-and the file list comes from \fIstdin\fP.
+\*S/\fBs.\fPfile), as the \fBs.\fPfile (with an implied \fBg\fPfile of
+\fBfile\fP), as nothing (with the implied list being \fB\*S/s.*\fP),
+or as a single "\fB-\fP" which means to read the file list from
+\fIstdin\fP.
+.PP
+Unlike in \*(AT, \fBs.\fPfiles cannot be located in the same directory
+as their corresponding \fBg\fPfiles; they must be placed in an \*S
+subdir.
