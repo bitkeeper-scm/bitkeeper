@@ -122,7 +122,7 @@ TOMCRYPTOBJ = tomcrypt/rsa.o tomcrypt/rsa_sys.o tomcrypt/mpi.o \
 	tomcrypt/sprng.o tomcrypt/bits.o tomcrypt/crypt.o tomcrypt/base64.o \
 	tomcrypt/yarrow.o tomcrypt/demos/test.o tomcrypt/hmac.o
 GUI	= revtool citool helptool difftool csettool fmtool fm3tool msgtool \
-	  renametool setuptool 
+	  renametool setuptool newdifftool
 SCRIPTS	= applypatch bk.script import resync $(GUI) bugform \
 	uuwrap unuuwrap gzip_uuwrap ungzip_uuwrap \
 	b64wrap unb64wrap gzip_b64wrap ungzip_b64wrap \
@@ -535,6 +535,17 @@ helptool: tclwrap gui/helptool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
 	     gui/appState.tcl \
 	     gui/helptool.tcl)\
 	 | $(TCLWRAP) > helptool
+
+newdifftool: tclwrap gui/config.tcl gui/common.tcl port/$(SYS)_platform.tcl \
+	gui/lib/newdifflib.tcl gui/lib/bktalk.tcl gui/lib/comm.tcl \
+	gui/lib/tooltip.tcl gui/lib/actions.tcl gui/newdifftool.tcl \
+	gui/appState.tcl gui/lib/newsearchlib.tcl 
+	(echo "wm withdraw ." ; \
+	 cat gui/config.tcl gui/common.tcl port/$(SYS)_platform.tcl \
+	 gui/lib/newdifflib.tcl gui/lib/comm.tcl gui/lib/bktalk.tcl \
+	 gui/lib/actions.tcl gui/lib/tooltip.tcl gui/appState.tcl \
+	 gui/lib/newsearchlib.tcl gui/newdifftool.tcl) \
+	| $(TCLWRAP) > newdifftool
 
 difftool: tclwrap gui/search.tcl gui/config.tcl gui/difftool.tcl \
 	port/$(SYS)_platform.tcl gui/common.tcl gui/difflib.tcl \

@@ -609,6 +609,7 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 	    streq(prog, "fm2tool") ||
 	    streq(prog, "fm3tool") ||
 	    streq(prog, "difftool") ||
+	    streq(prog, "newdifftool") ||
 	    streq(prog, "helptool") ||
 	    streq(prog, "csettool") ||
 	    streq(prog, "renametool") ||
