@@ -149,7 +149,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	} else {
 #ifdef BKD_VERSION1_2
 		/* try bkd 1.2 protocol */
-		try_clone1_2(opts.quiet, gzip, opts.rev, r, local);
+		try_clone1_2(opts.quiet, gzip, opts.rev, r, local, buf);
 #endif
 	}
 	if (get_ok(r, buf, !opts.quiet)) {

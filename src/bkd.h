@@ -133,6 +133,7 @@ void	sendEnv(FILE *f, char **envVar);
 void	wait_eof(remote *r, int verbose);
 void	flush2remote(remote *r);
 int	flushSocket(int fd);
-void	try_clone1_2(int quiet, int gzip, char *rev, remote *r, char *local);
+void	try_clone1_2(int quiet, int gzip,
+				char *rev, remote *r, char *local, char *msg);
 int	remote_lock_fail(char *buf, int verbose);
 #endif
