@@ -7373,7 +7373,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			fputmeta(s, "\001cK", out);
 			s->sumOff = ftell(out);
 			fputs("XXXXX", out);
-			if (d->published) fputs(t, out);
+			if (d->published) fputmeta(s, t, out);
 			fputmeta(s, "\n", out);
 		} else if (d->flags & D_CKSUM) {
 			/*
