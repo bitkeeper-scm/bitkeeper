@@ -202,7 +202,8 @@ doit(char *file, char *revs, char *qflag, char *force)
 			int gflags = SILENT|GET_SKIPGET|GET_EDIT;
 			s = sccs_init(p, SILENT, 0);
 			assert(s);
-			if (sccs_get(s, 0, 0, 0, 0, gflags, "-")) {
+			if (!IS_EDITED(s) &&
+			    sccs_get(s, 0, 0, 0, 0, gflags, "-")) {
 				fprintf(stderr, "cannot lock %s\n", file);
 			}
 			sccs_free(s);

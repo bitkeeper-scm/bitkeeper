@@ -346,6 +346,7 @@ doit(int flags, char *file, char *op, char *revs)
 		sccs_free(s);
 		return (1);
 	}
+	do_checkout(s);
 ok:	sccs_free(s);
 	return (0);
 }
