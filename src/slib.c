@@ -4407,12 +4407,23 @@ private sum_t
 fputdata(sccs *s, u8 *buf, FILE *out)
 {
 	sum_t	sum = 0;
-	u8	*p, c;
+	u8	*p, *q, c;
+	static	u8 block[8192];
+	static	u8 *next = block;
 
 	if (!buf) {	/* flush */
 		if (s->encoding & E_GZIP) {
+			if (next != block) {
+				zputs((void *)s, out, block, next - block,
+				      gzip_sum);
+			}
 			zputs_done((void *)s, out, gzip_sum);
+		} else {
+			if (next != block) {
+				fwrite(block, next - block, 1, out);
+			}
 		}
+		next = block;
 		debug((stderr, "SUM2 %u\n", s->cksum));
 		if (ferror(out) || fflush(out)) return (-1);
 		return (0);
@@ -4422,19 +4433,26 @@ fputdata(sccs *s, u8 *buf, FILE *out)
 	 * or the end of the string.
 	 */
 	p = buf;
+	q = next;
 	for (;;) {
-	    c = *p;
-	    if (c == '\0') break;
-	    p++;
-	    sum += c;
-	    if (c == '\n') break;
+		for (;;) {
+			c = *p++;
+			if (c == '\0') goto done;
+			sum += c;
+			*q++ = c;
+			if (q == &block[8192]) break;
+			if (c == '\n') goto done;
+		}
+		if (s->encoding & E_GZIP) {
+			zputs((void *)s, out, block, 8192, gzip_sum);
+		} else {
+			fwrite(block, 8192, 1, out);
+		}
+		q = block;
+		if (c == '\n') break;
 	}
-	if (s->encoding & E_GZIP) {
-		zputs((void *)s, out, buf, p - buf, gzip_sum);
-	} else {
-		fwrite(buf, p - buf, 1, out);
-		s->cksum += sum;
-	}
+done:	next = q;
+	unless (s->encoding & E_GZIP) s->cksum += sum;
 	return (sum);
 }
 
