@@ -59,7 +59,7 @@ usage:		fprintf(stderr, "%s", sum_help);
 			continue;
 		}
 		for (doit = 0, d = s->table; d; d = d->next) {
-			if (d->type == 'D') {
+			if ((d->type == 'D') && (d->added || d->deleted)) {
 				doit += resum(s, d, flags, old, dont);
 			}
 		}
