@@ -212,6 +212,8 @@ proc keyboard_bindings {} \
 	bind all		$gc(diff.quit)	cleanup
 	bind all		<N>		nextFile
 	bind all		<P>		prevFile
+	bind all		<Control-n>	nextFile
+	bind all		<Control-p>	prevFile
 	bind all		<n>		next
 	bind all		<space>		next
 	bind all		<p>		prev
