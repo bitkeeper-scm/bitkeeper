@@ -9,11 +9,11 @@ undo_main(int ac,  char **av)
 {
 	int	c, rc;
 	int	force = 0, save = 1;
-	char	buf[MAXLINE], rmlist[MAXPATH], cleanlist[MAXPATH];
+	char	buf[MAXLINE], rmlist[MAXPATH];
 	char	mvlist[MAXPATH], renamelist[MAXPATH], undolist[MAXPATH];
 	char	*qflag = "", *vflag = "-v";
 	char	*p, *rev = 0;
-	FILE	*f, *f1;
+	FILE	*f, *f1, *renum;
 #define	LINE "---------------------------------------------------------\n"
 #define	BK_TMP  "BitKeeper/tmp"
 #define	BK_UNDO "BitKeeper/tmp/undo"
@@ -109,15 +109,16 @@ undo_main(int ac,  char **av)
 	/*
 	 * Handle any renames.  Done outside of stripdel because names only
 	 * make sense at cset boundries.
+	 * Also, run all files through renumber.
 	 */
 	sprintf(renamelist, "%s/bk_renaemlist%d",  TMP_PATH, getpid());
 	sprintf(buf, "%sbk prs -hr+ -d':PN: :SPN:' - < %s > %s",
 						bin, mvlist, renamelist);
 	system(buf);
 	f = fopen(renamelist, "rt");
+	sprintf(buf, "bk renumber %s -", qflag);
+	renum = popen(buf, "w");
 	while (fgets(buf, sizeof(buf), f)) {
-		char	buf1[MAXLINE];
-
 		chop(buf);
 		p = strchr(buf, ' ');
 		assert(p);
@@ -137,10 +138,11 @@ undo_main(int ac,  char **av)
 				}
 			}
 		}
-		sprintf(buf1, "%sbk renumber %s", bin, p);
-		system(buf1);
+		/* must be AFTER the move */
+		fprintf(renum, "%s\n", p);
 	}
 	unlink(mvlist); unlink(rmlist); unlink(undolist); unlink(renamelist);
+	pclose(renum);
 	if (streq(qflag, "") && save) {
 		printf("Patch containing these undone deltas left in %s",
 		    BK_UNDO);
@@ -170,7 +172,7 @@ getrev(char *top_rev)
 		"bk -R prs -ohMa -r1.0..%s -d\":REV:,\\c\" ChangeSet > %s",
 		top_rev, tmpfile);
 	system(buf);
-	fd = open(tmpfile, O_RDONLY);
+	fd = open(tmpfile, O_RDONLY, 0);
 	assert(sizeof(buf) >=  size(tmpfile));
 	if ((len = read(fd, buf, sizeof(buf))) < 0) {
 		perror(tmpfile);
@@ -181,7 +183,6 @@ getrev(char *top_rev)
 	buf[len] = 0;
 	return (buf);
 }
-
 
 private void
 clean_file(char *rmlist, char *rev)
