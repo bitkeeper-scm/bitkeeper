@@ -617,7 +617,8 @@ changes_part2(remote *r, char **av, char *key_list, int ret)
 	if (pid > 0) waitpid(pid, 0, 0);
 
 done:	unlink(key_list);
-	disconnect(r, 2);
+	disconnect(r, 1);
+	wait_eof(r, 0);
 	return (rc);
 }
 
