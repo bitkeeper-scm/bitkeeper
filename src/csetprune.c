@@ -300,6 +300,7 @@ moveTags(delta *d)
 	symbol	*sym;
 
 	for (sym = sc->symbols; sym; sym = sym->next) {
+		unless (sym->metad->type == 'R') continue;
 		unless (sym->d == d) continue;
 		unless (d->parent) {
 			sym->d = 0;
