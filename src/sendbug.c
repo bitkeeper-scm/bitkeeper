@@ -1,7 +1,7 @@
 #include "bkd.h"
 
 extern char *editor;
-extern char *find_wish(void);
+extern	int launch_wish(char *script, char **av);
 extern char *bin;
 private int do_email(char *bug);
 private int do_webmail(char *bug);
@@ -11,8 +11,7 @@ private int do_webmail(char *bug);
 int
 sendbug_main(int ac,  char **av)
 {
-	char	buf[MAXLINE], bug[MAXPATH], cmd_path[MAXPATH];
-	char	*argv[MAXARGS];
+	char	buf[MAXLINE], bug[MAXPATH];
 	char	*display;
 	int	c, rc, webmail, mswin = 0, textmode = 0;
 	FILE	*f;
@@ -45,16 +44,7 @@ sendbug_main(int ac,  char **av)
 
 	display = getenv("DISPLAY");
 	if (!textmode && ((display && !streq(display, "")) || mswin)) {
-		argv[0] = find_wish();
-		sprintf(cmd_path, "%s/gui/lib/bugform", bin);
-		argv[1] = cmd_path;
-		if (av[optind]) {
-			argv[2] = av[optind];
-			argv[3] = 0;
-		} else {
-			argv[2] = 0;
-		}
-		return (spawn_cmd(_P_WAIT, argv));
+		return (launch_wish("bugform", &av[optind]));
 	}
 
 	sprintf(bug, "%s/bk_bug%u", TMP_PATH, getpid());
