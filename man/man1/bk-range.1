@@ -90,13 +90,14 @@ Dates can also be in the form of symbolic tags (ChangeSet file only).
 If you tagged a changeset with Alpha and another changeset with Beta,
 you can type:
 .DS
-bk prs \-cAlpha..Beta 
+bk changes \-cAlpha..Beta
+bk prs -r@Alpha..@Beta foo.c
 .DE
 .LP
 Ranges need not include both endpoints.  If you wanted to see everything
 from Beta forward, you could type:
 .DS
-bk prs \-cBeta..
+bk changes \-cBeta..
 .DE
 .LP
 A single \-r, because it is the first revision seen, rounds down and means
