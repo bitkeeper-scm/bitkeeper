@@ -280,7 +280,7 @@ done:		mdbm_close(vals);
 			winner = 0;
 			sprintf(key, "bk get -qeg %s", gfile);
 			_sys(key);
-			sprintf(key, "sort -u < %s > %s", CTMP, gfile);
+			sprintf(key, "bk _sort -u < %s > %s", CTMP, gfile);
 			_sys(key);
 			sprintf(key, "bk ci -qy'Auto converge' %s", gfile);
 			_sys(key);
@@ -293,7 +293,7 @@ done:		mdbm_close(vals);
 				sprintf(key, "bk rm %s", gfile);
 				_sys(key);
 			}
-			sprintf(key, "sort -u < %s > %s", CTMP, gfile);
+			sprintf(key, "bk _sort -u < %s > %s", CTMP, gfile);
 			_sys(key);
 			sprintf(key,
 			    "bk delta -qiy'Auto converge/create' %s", gfile);

@@ -1039,7 +1039,7 @@ proc csetdiff2 {{rev {}}} \
 	while {[gets $revs r] >= 0} {
 		set c [open "| bk sccslog -r$r ChangeSet" r]
 		filltext $w(aptext) $c 0
-		set log [open "| bk cset -Hr$r | sort | bk sccslog -" r]
+		set log [open "| bk cset -Hr$r | bk _sort | bk sccslog -" r]
 		filltext $w(aptext) $log 0
 	}
 	busy 0

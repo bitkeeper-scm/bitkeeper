@@ -295,7 +295,7 @@ merge(char *gfile)
 		system(buf);
 		sprintf(buf, "bk get -qpr%s %s >> %s", r, gfile, TMP);
 		system(buf);
-		sprintf(buf, "sort -u < %s > %s", TMP, gfile);
+		sprintf(buf, "bk _sort -u < %s > %s", TMP, gfile);
 		system(buf);
 		sprintf(buf, "bk ci -qdPyauto-union %s", gfile);
 		system(buf);

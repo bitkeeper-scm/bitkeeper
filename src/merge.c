@@ -60,7 +60,7 @@ sortmerge_main(int ac, char **av)
 	}
 
 	/* GCA is ignored */
-	sprintf(cmd, "cat %s %s | sort -u > %s", av[1], av[3], av[4]);
+	sprintf(cmd, "cat %s %s | bk _sort -u > %s", av[1], av[3], av[4]);
 	unless (system(cmd)) return (0); /* ok */
 	return (2); /* error */
 }
