@@ -281,8 +281,15 @@ proc getFiles {} \
 			}
 		} else { ;# bk difftool file
 			set rfile [lindex $argv 0]
+
+			# Fix Dos path, convert backward slash to forward slash
+			if {$tcl_platform(platform) == "windows"} {
+				regsub -all "\\\\" $rfile "/" rfile
+			}
+
 			set lfile [getRev $rfile "+" 1]
 			set rev1 "+"
+
 			if {[checkFiles $lfile $rfile]} {
 				set t "{$lfile} {$rfile} {$rfile} + checked_out"
 				lappend files $t
@@ -311,6 +318,13 @@ proc getFiles {} \
 		} else { ;# bk difftool file file2"
 			set lfile [lindex $argv 0]
 			set rfile [lindex $argv 1]
+
+			# Fix Dos path, convert backward slash to forward slash
+			if {$tcl_platform(platform) == "windows"} {
+				regsub -all "\\\\" $rfile "/" rfile
+				regsub -all "\\\\" $lfile "/" lfile
+			}
+
 			if {[file isdirectory $rfile]} {
 				set tfile [file tail $lfile]
 				#set rfile [file join $rfile $lfile]

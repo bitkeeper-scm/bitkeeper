@@ -19,7 +19,7 @@ proc bk_init {} \
 	# XXX keytmp should match findTmp() in finddir.c
 	set keytmp "$tmp_dir"
 
-	# Stuff related to the bk field seperator: ^A 
+	# Stuff related to the bk field seperator: 
 	set bk_fs |
 	set file_old_new {(.*)\|(.*)\|(.*)} 
 	set line_rev {([^\|]*)\|(.*)}
