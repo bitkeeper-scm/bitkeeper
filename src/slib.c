@@ -3313,7 +3313,6 @@ sccs_init(char *name, u32 flags, char *root)
 			free(s->sfile);
 			free(s->gfile);
 			free(s->pfile);
-			free(s->sfile);
 			free(s);
 			return (0);
 		}
