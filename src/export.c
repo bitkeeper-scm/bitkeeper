@@ -40,7 +40,15 @@ export_main(int ac,  char **av)
 		    case 'k':	kflag = 1; break;		/* doc 2.0 */
 		    case 'p':	trim = atoi(optarg); break;
 		    case 'S':   sysfiles = 1; break;		/* undoc 2.2 */
-		    case 'r':	rev = optarg; break;		/* doc 2.0 */
+		    case 'r':	if (!rev) {			/* doc 2.0 */
+					rev  = optarg;
+				} else {
+					fprintf(stderr,
+					    "bk export: You can only specifies "
+					    "the  -r option once.\n");
+					goto usage;
+				}
+				break;
 		    case 't':	if (type) goto usage;		/* doc 2.0 */
 				type = optarg; 
 				if (!streq(type, "patch") &&
