@@ -156,7 +156,7 @@ proc widgets {} \
 	    button .ctrl.done -text "Dismiss" -font 7x13bold -borderwid 1 \
 		-pady 1 -background grey -command { exit }
 	    text .ctrl.topics -spacing1 1 -spacing3 1 -wrap none \
-		-background #c0c0c0 -font $font -width 14 \
+		-font $font -width 14 \
 		-yscrollcommand { .ctrl.topicscroll set }
 	    scrollbar .ctrl.topicscroll -width $swid \
 		-command ".ctrl.topics yview"
@@ -172,7 +172,6 @@ proc widgets {} \
 	frame .text -borderwidth 0 -relief flat
 	    text .text.help -wrap none -font $font \
 		-width 78 -height $height -padx 4 \
-		-background #c0c0c0 \
 		-xscrollcommand { .text.x2scroll set } \
 		-yscrollcommand { .text.y2scroll set }
 	    scrollbar .text.x2scroll -orient horiz \
