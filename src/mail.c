@@ -43,6 +43,13 @@ lconfig_main(int ac, char **av)
 		return (1);
 	}
 
+	if (logs_pending(1, 0) == 0) {
+		if (debug) {
+			fprintf(stderr, "There are no pending config logs\n");
+		}
+		return (0);
+	}
+
 	sprintf(from, "%s@%s", sccs_getuser(), sccs_gethost());
 	sprintf(subject, "BitKeeper config: %u",
 			    adler32(0, package_name(), strlen(package_name())));

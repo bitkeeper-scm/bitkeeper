@@ -211,7 +211,7 @@ err:			unlink("BitKeeper/etc/config");
         }                           
 	mkdir(BKMASTER, 0775);
 	enableFastPendingScan();
-	sendConfig("setups@openlogging.org", "1.0");
+	sendConfig("setups@openlogging.org");
 	return (0);
 }
 

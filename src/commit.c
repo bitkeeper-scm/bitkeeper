@@ -549,7 +549,7 @@ logChangeSet(int l, char *rev, int quiet)
 		sccs_free(s);
 	}
 
-	unless (l & LOG_OPEN) sendConfig("config@openlogging.org", rev);
+	unless (l & LOG_OPEN) sendConfig("config@openlogging.org");
 	if (streq("none", to)) return;
 	if (getenv("BK_TRACE_LOG") && streq(getenv("BK_TRACE_LOG"), "YES")) {
 		printf("Sending ChangeSet to %s...\n", logAddr());
@@ -627,6 +627,60 @@ printConfig(FILE *f, char *root, char *header)
 	mdbm_close(db);
 }
 
+/*
+ * Print the user list associated with the new delats in a cset
+ */
+int
+cset_user(FILE *f, sccs *s, delta *d1, char *keylist)
+{
+	kvpair	kv;
+	MDBM	*uDB;
+	char	*cmd, *p, *q;
+	char	buf[MAXLINE];
+	FILE 	*f1;
+	int	i = 0;
+	
+	/*
+	 * Do a "bk sccs_cat -h -rrev ChangeSet > keylist" to extract
+	 * key list for the new delta in this cset.
+	 * We don't want to spawn a child process here, it is too slow.
+	 * So we do this via the internal interface.
+	 */
+	d1->flags |= D_SET;
+	sccs_cat(s, SILENT|PRINT|GET_NOHASH, keylist);
+	d1->flags &= ~D_SET;
+
+	/*
+	 * Extract user@host from the delta key
+	 * Input looks like this: root_key delta_key
+	 */
+	uDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
+	f1 = fopen(keylist,  "rt");
+	while (fnext(buf, f1)) {
+		p = separator(buf); /* skip root key */
+		assert(p);
+		p++;
+		q = strchr(p, '|');
+		assert(q);
+		*q = 0;
+		mdbm_store_str(uDB,  p, "", MDBM_INSERT);
+	}
+	fclose(f1);
+
+	/*
+	 * Subpress user@host if same as user@host in cset key
+	 */
+	p = aprintf("%s@%s", d1->user, d1->hostname);
+	for (kv = mdbm_first(uDB); kv.key.dsize; kv = mdbm_next(uDB)) {
+		if (streq(p, kv.key.dptr)) continue;
+		fprintf(f, "\t%s\n", kv.key.dptr);
+		i++;
+	}
+	free(p);
+next:	mdbm_close(uDB);
+	return (i);
+}
+
 void
 config(FILE *f)
 {
@@ -634,52 +688,71 @@ config(FILE *f)
 	time_t	tm;
 	FILE	*f1;
 	MDBM	*db;
-	char	buf[MAXLINE], aliases[MAXPATH];
-	char	s_cset[MAXPATH] = CHANGESET;
+	char	buf[MAXLINE], tmpfile[MAXPATH];
+	char	s_cset[] = CHANGESET;
 	char	*p, *dspec;
 	sccs	*s;
 	delta	*d;
 
+	fprintf(f, "Time_t:\t%s\n", bk_time);
 	getMsg("version", bk_model(buf, sizeof(buf)), 0, f);
 	fprintf(f,
 	   "%6d people have made deltas.\n", bkusers(1, 0, 0, 0));
 	f1 = popen("bk sfind -S -sx,c,p,n", "r");
 	while (fgets(buf, sizeof (buf), f1)) fputs(buf, f);
 	pclose(f1);
-	fputs("\n", f);
 
-	fprintf(f, "%-10s %s\n", "Time_t:", bk_time);
-	fprintf(f, "%-10s %s", "User:", sccs_getuser());
-	fprintf(f, "\n%-10s %s", "Host:", sccs_gethost());
+	tm = time(0);
+	fprintf(f, "Date:\t%s", ctime(&tm));
+	fprintf(f, "User:\t%s\n", sccs_getuser());
+	fprintf(f, "Host:\t%s\n", sccs_gethost());
 	p = sccs_root(0);
-	fprintf(f, "\n%-10s %u\n", "Root:", adler32(0, p, strlen(p)));
+	fprintf(f, "Root:\t%u\n", adler32(0, p, strlen(p)));
 	free(p);
 	sprintf(buf, "%slog/parent", BitKeeper);
 	if (exists(buf)) {
 		f1 = fopen(buf, "rt");
 		if (fgets(buf, sizeof(buf), f1)) {
 			chop(buf);
-			fprintf(f, "%-10s %u\n",
-				    "Parent:", adler32(0, buf, strlen(buf)));
+			fprintf(f, "Parent:\t%u\n",
+						adler32(0, buf, strlen(buf)));
 		}
 		fclose(f1);
 	}
  	s = sccs_init(s_cset, INIT_NOCKSUM, NULL);
 	assert(s && s->tree);
-	s->state &= ~S_SET;
-	d = sccs_top(s);
-	fprintf(f, "%-10s ", "ID:");
+	fprintf(f, "ID:\t");
 	sccs_pdelta(s, sccs_ino(s), f);
 	fputs("\n", f);
-	fprintf(f, "%-10s %s\n", "Revision:", d->rev);
-	fprintf(f, "%-10s ", "Cset:");
-	sccs_pdelta(s, d, f);
-	fputs("\n", f);
+
+
+	/*
+	 * Mark all the cset which have been logged
+	 */
+	for (d = sccs_top(s); d; d = d->next) {
+		if (d->published && (d->ptype == 1)) sccs_color(s, d);
+	}
+
+	/*
+	 * Send info for unlogged cset
+	 */
+	gettemp(tmpfile, "bk_keylist");
+	for (d = s->table; d; d = d->next) {
+		if (d->type != 'D') continue; 
+		if (d->flags & D_RED) continue; 
+		fprintf(f, "Cset:\t");
+		sccs_pdelta(s, d, f);
+		fprintf(f," %u", d->dateFudge);
+		fputs("\n", f);
+		cset_user(f, s, d, tmpfile);
+		f1 = fopen(tmpfile,  "w"); /* truncate it */
+		fclose(f1);
+	}
 	sccs_free(s);
-	tm = time(0);
-	fprintf(f, "%-10s %s", "Date:", ctime(&tm));
+	unlink(tmpfile);
 	fputs("\n", f);
-	printConfig(f, globalroot(), "== Global config ==\n");
+
+	printConfig(f, globalroot(), "== Global Config ==\n");
 	printConfig(f, ".", "== Local Config ==\n");
 	fputs("\n", f);
 	if (db = loadOK()) {
@@ -695,16 +768,16 @@ config(FILE *f)
 	sprintf(buf, "%setc/SCCS/s.aliases", BitKeeper);
 	if (exists(buf)) {
 		fprintf(f, "Alias  List:\n");
-		gettemp(aliases, "bk_aliases");
+		gettemp(tmpfile, "bk_aliases");
 		sprintf(buf, "%setc/SCCS/s.aliases", BitKeeper);
-		get(buf, SILENT|PRINT, aliases);
-		f1 = fopen(aliases, "r");
+		get(buf, SILENT|PRINT, tmpfile);
+		f1 = fopen(tmpfile, "r");
 		while (fgets(buf, sizeof(buf), f1)) {
 			if ((buf[0] == '#') || (buf[0] == '\n')) continue;
 			fprintf(f, "\t%s", buf);
 		}
 		fclose(f1);
-		unlink(aliases);
+		unlink(tmpfile);
 	}
 }
 
@@ -724,7 +797,7 @@ config_main(int ac, char **av)
 }
 
 void
-sendConfig(char *to, char *rev)
+sendConfig(char *to)
 {
 	char 	*av[] = { "bk", "_lconfig", 0 };
 

@@ -311,7 +311,7 @@ int
 http_send(remote *r, char *msg,
 	size_t mlen, size_t extra, char *user_agent, char *cgi_script)
 {
-	unsigned int start, len;
+	unsigned int start, len, l;
 	int	n = 0;
 	char	bk_url[MAXPATH], *header = 0;
 	char	*spin = "|/-\\";
@@ -342,12 +342,17 @@ err:		if (header) free(header);
 	}
 	if (r->trace) fprintf(stderr, "Sending data file ");
 
-	for (start = 0; start < mlen; start += 4096) {
+	for (start = 0; start < mlen; ) {
 		len = mlen - start;
 
 		if (len > 4096) len = 4096;
 
-		unless (write_blk(r, msg + start, len) == len) break;
+		l = write_blk(r, msg + start, len);
+		if (l <= 0) {
+			perror("http_send");
+			break;
+		}
+		start += l;
 		if (r->trace) fprintf(stderr, "%c\b", spin[n++ % 4]);
 	}
 	if (r->trace) fputs(" \n", stderr);

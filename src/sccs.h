@@ -915,7 +915,7 @@ void	free_globs(globv globs);
 char	*prog2path(char *prog);
 void	remark(int quiet);
 int	readn(int from, char *buf, int size);
-void	sendConfig(char *addr, char *rev);
+void	sendConfig(char *addr);
 void	send_request(int fd, char * request, int len);
 int	writen(int to, char *buf, int size);
 char	chop(register char *s);
