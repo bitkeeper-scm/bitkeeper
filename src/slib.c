@@ -3739,7 +3739,7 @@ parseConfig(char *buf)
  * Load config file into a MDBM DB
  */
 MDBM *
-loadConfig(char *root, int convert)
+loadRepoConfig(char *root, int convert)
 {
 	MDBM	*DB = 0;
 	char 	*t, *config;
@@ -3790,9 +3790,49 @@ out:		free(config);
 check:	if (convert && (t = mdbm_fetch_str(DB, "CONVERT")) &&
 	    streq("ME PLEASE", t) && (config2logging(root) == 0)) {
 		mdbm_close(DB);
-		return (loadConfig(root, 1));
+		return (loadRepoConfig(root, 1));
 	}
 	return (DB);
+}
+
+/*
+ * "Append" Global config to local config.
+ * I.e local field have priority over global field.
+ * If local field exist, it mask out its global counter part.
+ */
+MDBM *
+loadGlobalConfig(MDBM *db)
+{
+	char 	*config, *p, buf[MAXLINE];
+	FILE	*f;
+
+	assert(db);
+	config = aprintf("%s/BitKeeper/etc/config", globalroot());
+	if (f = fopen(config, "rt")) {
+		while (fnext(buf, f)) {
+			parseConfig(buf);
+			p = strchr(buf, ' ');
+			assert(p);
+			*p++ = 0;
+			mdbm_store_str(db, buf, p, MDBM_INSERT);
+		}
+		fclose(f);
+	}
+	free(config);
+	return(db);
+}
+ 
+/*
+ * Load both local and global config
+ */
+MDBM *
+loadConfig(char *root, int convert)
+{
+	MDBM *db;
+
+	db = loadRepoConfig(root, convert);
+	unless (db) return (NULL);
+	return (loadGlobalConfig(db));
 }
 
 /*
