@@ -26,7 +26,7 @@
 #endif
 
 #ifndef MP_LOGTAB
-#define MP_LOGTAB     0  /* use table of logs instead of log()? */
+#define MP_LOGTAB     1  /* use table of logs instead of log()? */
 #endif
 
 #ifndef MP_MEMSET
