@@ -579,6 +579,10 @@ _treediff() {
 }
 
 _rmgone() {
+	N="";
+	P="";
+	Q="";
+
 	while getopts npq opt
 	do
 		case "$opt" in
