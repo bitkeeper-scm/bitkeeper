@@ -131,6 +131,10 @@ check_main(int ac, char **av)
 		return (1);
 	}
 	if (sane_main(0, 0)) return (1);
+	unless (exists(s_cset)) {
+		fprintf(stderr, "ERROR: %s is missing, aborting.\n", s_cset);
+		exit(1);
+	}
 retry:	unless (cset = sccs_init(s_cset, flags)) {
 		fprintf(stderr, "Can't init ChangeSet\n");
 		exit(1);
