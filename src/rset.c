@@ -7,6 +7,8 @@ typedef struct {
 	u32	show_diffs:1;	/* output in rev diff format */
 	u32	show_path:1;	/* show d->pathname */
 	u32	hide_cset:1;	/* hide ChangeSet file from file list */
+	u32	rflg:1;		/* diff two rset */
+	u32	lflg:1;		/* list a rset */
 } options;
 
 private project *proj;
@@ -270,6 +272,47 @@ rel_list(MDBM *db, MDBM *idDB, char *rev, options opts)
 	if (goneDB) mdbm_close(goneDB);
 }
 
+private char *
+parent_delta(sccs *s, char *rev)
+{
+	delta *d, *p;
+
+	d = findrev(s, rev);
+	unless (d) {
+		fprintf(stderr, "Cannot find rev %s\n", rev);
+		return (NULL);
+	}
+	/*
+	 * XXX TODO: Could we get meta delta in cset?, should we skip them?
+	 */
+	p = d->parent;
+	assert(p->type != 'R'); /* parent should not be a meta delta */
+	return (p ? strdup(p->rev) : NULL);
+}
+
+
+private int
+parse_rev(sccs *s, char *args, char **rev1, char **rev2)
+{
+	char *p;
+
+	unless (args) return;
+	p = strchr(args, ',');
+	if (p) {
+		*rev1 = args;
+		*p++ = 0;
+		*rev2 = p;
+	} else {
+		*rev2 = args;
+		*rev1 = parent_delta(s, *rev2);
+		unless (rev1) {
+			fprintf(stderr, "rev %s has no parent delta\n");
+			return (1); /* failed */
+		}
+	}
+	return (0); /* ok */
+}
+
 
 int
 rset_main(int ac, char **av)
@@ -277,7 +320,7 @@ rset_main(int ac, char **av)
 	int	c, show_all = 0;
 	char	*rev1 = 0, *rev2 = 0 , tmpf1[MAXPATH], tmpf2[MAXPATH];
 	char	*root_key, *start_key, *end_key, s_cset[] = CHANGESET;
-	sccs	*s;
+	sccs	*s = 0;
 	MDBM	*db1, *db2, *idDB, *goneDB = 0, *short2long = 0;
 	kvpair	kv;
 	datum	k;
@@ -287,8 +330,10 @@ rset_main(int ac, char **av)
 		fprintf(stderr, "mkrev: cannot find package root.\n");
 		exit(1);
 	} 
+	s = sccs_init(s_cset, SILENT|INIT_SAVEPROJ, 0);
+	assert(s);
 
-	while ((c = getopt(ac, av, "ahHr:")) != -1) {
+	while ((c = getopt(ac, av, "ahHl:r:")) != -1) {
 		switch (c) {
 		case 'a':	opts.show_all = 1;  /* show deleted files */
 				break;
@@ -296,24 +341,29 @@ rset_main(int ac, char **av)
 				break;
 		case 'H':	opts.hide_cset = 1; /* hide ChangeSet file */
 				break;
-		case 'r':	rev1 = optarg;
-				rev2 = strchr(rev1, ',');
-				if (rev2) *rev2++ = 0;
+		case 'l':	opts.lflg = 1;
+				rev1 = optarg;
+				break;
+		case 'r':	opts.rflg = 1;
+				if (parse_rev(s, optarg, &rev1, &rev2)) {
+					return (1); /* parse failed */
+				}
 				break;
 		default:
 usage:				fprintf(stderr,
 				"Usage: rset [-a] [-h] [-H] -rrev1[,rev2]\n");
+				if (s) sccs_close(s);
 				return (1);
 		}
 	}
 
 	unless (rev1) goto usage;
 
+	if (opts.rflg) opts.show_diffs = 1;
+
 	/*
 	 * load the two ChangeSet 
 	 */
-	s = sccs_init(s_cset, SILENT|INIT_SAVEPROJ, 0);
-	assert(s);
 	if (csetIds(s, rev1)) {
 		fprintf(stderr,
 			"Cannot get ChangeSet for revision %s\n", rev1);
@@ -337,7 +387,7 @@ usage:				fprintf(stderr,
 
 	idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS);
 	assert(idDB);
-	if (rev1 && rev2) {
+	if (rev2) {
 		rel_diffs(db1, db2, idDB, rev1, rev2, opts);
 	} else {
 		rel_list(db1, idDB, rev1, opts);

@@ -77,10 +77,10 @@ usage:			fprintf(stderr,
 
 	sprintf(file_rev, "%s/bk_file_rev%d", TMP_PATH, getpid());
 	if (rev) {
-		sprintf(buf, "bk rset -hr%s %s %s > %s",
+		sprintf(buf, "bk rset -hl%s %s %s > %s",
 					rev, include, exclude, file_rev);
 	} else {
-		sprintf(buf, "bk rset -hr+  %s %s> %s",
+		sprintf(buf, "bk rset -hl+  %s %s> %s",
 						include, exclude, file_rev);
 	}
 	system(buf);
