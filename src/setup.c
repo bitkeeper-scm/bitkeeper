@@ -237,7 +237,6 @@ err:		perror("write");
 		return;
 	}
 	if (write(fd, "PENDING/*\n", 10) != 10) goto err;
-	if (write(fd, "Desktop.ini\n", 12) != 12) goto err; /* for win32 */
 	close(fd);
 	system("bk new -Pq BitKeeper/etc/ignore");
 }
