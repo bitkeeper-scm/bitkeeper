@@ -43,7 +43,7 @@ err:		drain();
 		return (1);
 	}
 	unless (p = strchr(vhost, '.')) {
-		out("ERROR-BK_VHOST should have more then one token\n");
+		out("ERROR-BK_VHOST should have more than one token\n");
 		goto err;
 	}
 	*p = 0;

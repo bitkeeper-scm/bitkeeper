@@ -223,7 +223,7 @@ bk -r check -a > OUT 2>&1 && {
 	cat OUT
 	exit 1
 }
-grep -q 'file/directory conflict' OUT || {
+grep -q 'File/directory conflict: d1/sub1/a' OUT || {
 	echo bad error message
 	cat OUT
 	exit 1

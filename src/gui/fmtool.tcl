@@ -441,7 +441,7 @@ proc save {} \
 	if {("$outputFile" == "")} selectOutFile
 	while {("$outputFile" == "")} {
 		set ans [tk_messageBox -icon warning -type yesno -default no \
-			-message "No output file selected\nQuit without save?"]
+		    -message "No output file selected\nQuit without saving?"]
 		if {("$ans" == "yes")} {exit 0}
 		selectOutFile
 	}

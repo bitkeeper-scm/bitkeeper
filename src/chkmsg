@@ -1,0 +1,36 @@
+#!/usr/bin/perl -w
+
+# notice("index", ....
+# getMsg("index", ....
+# getMsg2("index", ....
+# getMsgv("index", ....
+# errorMsg("index", ...
+
+open(M, "egrep '^#[a-zA-Z_0-9]+\$' bkmsg.doc |");
+while (<M>) {
+	chop;
+	s/^#//;
+	$keys{$_} = 1;
+}
+close(M);
+open(E, "egrep 'notice\\(\"|getMsg\\(\"|getMsg2\\(\"|getMsgv\\(\"|errorMsg\\(\"' *.[ch] port/*.[ch] |");
+while (<E>) {
+	s/:/ /;
+	@_ = split;
+	$file = shift(@_);
+	/"([^"]+)"/;
+	if (defined($keys{$1})) {
+		$keys{$1}++;
+	} else {
+		print "$file $1\n";
+	}
+}
+close(E);
+@u = ();
+foreach $i (keys %keys) {
+	next if $keys{$i} > 1;
+	push(@u, $i);
+}
+foreach $i (sort @u) {
+	print "Appears to be unused: $i\n";
+}

@@ -109,22 +109,7 @@ mail(char *to, char *subject, char *file)
 		pid = spawnvp_ex(_P_NOWAIT, av[0], av);
 		if (pid != -1) return (pid);
 	}
-	fprintf(stderr, "\n\
-===========================================================================\n\
-Can not find a working mailer.\n\n\
-If you have access to a SMTP server, you can install the \"blat\" mailer\n\
-with the following command:\n\n\
-	blat -install <smtp_server_address> <your email address>\n\
-\n\
-If you have a non-standard connection, you can supply\n\
-a bk_mail.bat file to connect Bitkeeper to your mail server; the bk_mail.bat \n\
-file should accept the three auguments, as follows:\n\n\
-	bk_mail.bat file recipient subject\n\
-\n\
-You should put the bk_mail.bat file in the BitKeeper directory.\n\
-The bk_mail.bat command should exit with status zero when the mail is \n\
-sent sucessfully.\n\
-===========================================================================\n");
+	getMsg("no_mailer", 0, 0, '=', stderr);
 	return (-1);
 }
 #endif

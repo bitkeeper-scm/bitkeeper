@@ -486,7 +486,7 @@ out:		if (cmd) free(cmd);
 	 * Here is where we enter the bkd_service_loop()
 	 */
 	if (StartService(schService, --ac, ++av) == 0) {
-		fprintf(stderr, "%s can not start service. %s\n",
+		fprintf(stderr, "%s cannot start service. %s\n",
 		    SERVICEDISPLAYNAME, getError(err, 256));
 		goto out;
 	}
@@ -604,9 +604,9 @@ bkd_register_ctrl()
 	DWORD threadId;
 	/*
 	 * Create a mini helper thread to handle the stop request.
-	 * We need the helper thread becuase we can not raise SIGINT in the 
+	 * We need the helper thread becuase we cannot raise SIGINT in the 
 	 * context of the service manager.
-	 * We can not use event object directly becuase we can not wait
+	 * We cannot use event object directly becuase we cannot wait
 	 * for a socket event and a regular event together
 	 * with the WaitForMultipleObject() interface.
 	 */
@@ -620,7 +620,7 @@ bkd_register_ctrl()
 	if (statusHandle == 0) {
 		char msg[2048];
 
-            	sprintf(msg, "bkd_register_ctrl: can not get statusHandle, %s",
+            	sprintf(msg, "bkd_register_ctrl: cannot get statusHandle, %s",
 		    getError(err, 256));
             	logMsg(msg);
 	}
@@ -704,7 +704,7 @@ reportStatus(SERVICE_STATUS_HANDLE sHandle,
 		char msg[2048];
 	
 		sprintf(msg,
-		    "bkd: can not set service status; %s", getError(err, 256));
+		    "bkd: cannot set service status; %s", getError(err, 256));
 		logMsg(msg);
 		exit(1);
         }

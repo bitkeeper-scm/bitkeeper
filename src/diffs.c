@@ -77,7 +77,7 @@ diffs_main(int ac, char **av)
 		    case 'b': kind |= DF_GNUb; break;		/* doc 2.0 */
 		    case 'B': kind |= DF_GNUB; break;		/* doc 2.0 */
 		    case 'c': kind |= DF_CONTEXT; break;	/* doc 2.0 */
-		    case 'C': getMsg("diffs-C", 0, 0, 0, stdout); exit(0);
+		    case 'C': getMsg("diffs_C", 0, 0, stdout); exit(0);
 		    case 'D': flags |= GET_PREFIXDATE; break;	/* doc 2.0 */
 		    case 'e': empty = 1; break;
 		    case 'f': flags |= GET_MODNAME; break;	/* doc 2.0 */

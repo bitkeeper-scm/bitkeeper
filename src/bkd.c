@@ -386,7 +386,7 @@ getav(int *acp, char ***avp, int *httpMode)
 			return (0);
 		}
 		if (ac >= MAX_AV - 1) {
-			out("ERROR-too many argument\n");
+			out("ERROR-too many arguments\n");
 			return (0);
 		}
 		if (inQuote) {

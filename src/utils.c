@@ -953,12 +953,7 @@ drainErrorMsg(remote *r, char *buf, int bsize)
 
 	while (1) {
 		if (strneq("ERROR-BAD CMD: pull_part1", buf, 25)) {
-			fprintf(stderr,
-			    "Remote dose not understand \"pull_part1\""
-			    "command\n"
-			    "There are two possibilities:\n"
-			    "a) Remote bkd has disabled \"pull\" command.\n"
-			    "b) We are talking to a old 1.x bkd.\n");
+			getMsg("no_pull_part1", 0, 0, stderr);
 			break;
 		}
 		if (strneq("ERROR-BAD CMD: @END", buf, 19)) break; /*for push*/
@@ -983,10 +978,7 @@ next:		if (getline2(r, buf, bsize) <= 0) break;
 		lines = addLine(lines, strdup(buf));
 	}
 
-	if (bkd_msg) {
-		fprintf(stderr,
-		    "Remote seems to be running a older BitKeeper release\n");
-	}
+	if (bkd_msg) getMsg("upgrade_remote", 0, 0, stderr);
 	freeLines(lines, free);
 	return;
 }

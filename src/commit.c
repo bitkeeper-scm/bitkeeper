@@ -110,7 +110,7 @@ commit_main(int ac, char **av)
 			if (sysio(0, pendingFiles, 0,
 				"bk", "sfind", "-s,,p", "-C", SYS)) {
 				unlink(pendingFiles);
-				getMsg("duplicate_IDs", 0, 0, 0, stdout);
+				getMsg("duplicate_IDs", 0, 0, stdout);
 				return (1);
 			}
 		}

@@ -263,14 +263,23 @@ int
 getmsg_main(int ac, char **av)
 {
 	char	b = 0;
+	char	*tag;
+	char	**args = 0;
 
 	unless (av[1]) {
-		fprintf(stderr, "usage: getmsg msg_name bkarg\n");
+		fprintf(stderr,
+		    "usage: getmsg [-=] msg_name bkarg [bkarg2 ...]\n");
 		exit(1);
 	}
-	if (streq(av[1], "-=")) {
-		b = '=';
+	if (av[1][0] && av[1][1] && !av[1][2]) {
+		b = av[1][1];
 		av++;
 	}
-	return (getMsg(av[1], av[2], 0, b, stdout) == 0);
+	tag = av[1];
+	av++;
+	while (av[1]) {
+		args = addLine(args, av[1]);
+		av++;
+	}
+	return (getMsgv(tag, args, 0, b, stdout) == 0);
 }

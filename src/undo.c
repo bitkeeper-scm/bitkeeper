@@ -84,28 +84,8 @@ usage:			system("bk help -s undo");
 err:		if (undo_list[0]) unlink(undo_list);
 		unlink(rev_list);
 		freeLines(fileList, free);
-		if (size(BACKUP_SFIO) > 0) {
-			if (sysio(BACKUP_SFIO, 0, 0,
-						"bk", "sfio", "-im", SYS)) {
-				fprintf(stderr,
-"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
-"Your repository is only partially restored.   This is an error.  Please\n"
-"examine the list of failures above and find out why they were not restored.\n"
-"You must restore them place by hand before the repository is usable.\n"
-"\n"
-"A backup sfio is in %s\n"
-"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
-				BACKUP_SFIO);
-				exit(1);
-			}
-			fprintf(stderr,
-"Your repository should be back to where it was before undo started\n"
-"We are running a consistency check to verify this.\n");
-			if (sys("bk", "-r", "check", "-a", SYS)) {
-				fprintf(stderr, "check FAILED\n");
-				exit(1);
-			}
-			fprintf(stderr, "check passed\n");
+		if ((size(BACKUP_SFIO) > 0) && restore_backup(BACKUP_SFIO)) {
+			exit(1);
 		}
 		unlink(BACKUP_SFIO);
 		sys(RM, "-rf", "RESYNC", SYS);
@@ -116,7 +96,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 	}
 	status = pclose(f);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
-		getMsg("undo_error", bin, 0, 0, stdout);
+		getMsg("undo_error", bin, 0, stdout);
 		cat(undo_list);
 		goto err;
 	}

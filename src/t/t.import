@@ -501,7 +501,7 @@ rm -rf SAVE
 cp -rp project SAVE
 unset BK_GUI
 echo no | bk import $Q -tpatch P project > OUT 2>&1
-grep -q 'Bitkeeper is aborting this commit' OUT || {
+grep -q 'BitKeeper is aborting this commit' OUT || {
 	echo failed to produce error message
 	cat OUT
 	exit 1

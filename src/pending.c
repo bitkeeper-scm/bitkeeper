@@ -313,14 +313,12 @@ pending_part1(options *opts, remote *r, char *key_list)
 	if (rc < 0) {
 		switch (rc) {
 		    case -2:
-			printf(
-"You are trying to sync to an unrelated package. The root keys for the\n\
-ChangeSet file do not match.  Please check the pathnames and try again.\n");
+			getMsg("unrelated_repos", 0, '=', stderr);
 			close(fd);
 			sccs_free(s);
 			return (-1); /* needed to force bkd unlock */
 		    case -3:
-			printf("You are syncing to an empty directory\n");
+			getMsg("no_repo", 0, '=', stderr);
 			sccs_free(s);
 			return (-1); /* empty dir */
 			break;

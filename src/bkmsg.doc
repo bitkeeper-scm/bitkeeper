@@ -1,4 +1,4 @@
-#diffs-C
+#diffs_C
 The diffs -C option has been replaced with the -r@rev syntax.  To get the
 same effect as
 
@@ -28,7 +28,7 @@ The other case is that someone is trying to destroy all instances of the
 file's revision history.  Suppose a large file were added by mistake,
 perhaps a derived (compiled) file or binary.  
 
-Examine the files listed and if it is clear the file is obsolete, remove
+Examine the files listed and if it is clear that the file is obsolete, remove
 the revision history from your repository to be consistent with your parent.
 
 If it is clear that the file is valuable then you should have the
@@ -44,7 +44,7 @@ $
 #chk2
 A pointer to a delta was found in the ChangeSet file but the delta was
 not found in the corresponding file.  This should only happen if one or
-more files have been lost in a repository, copied from another repository,
+more files have been lost in a repository, or copied from another repository,
 but they were incomplete.
 
 To get the list of missing deltas, run "bk -r check -agg".
@@ -52,10 +52,10 @@ To get the list of missing deltas, run "bk -r check -agg".
 To see if any of the deltas exist in another repository, use "bk findkey".
 
 If the deltas exist in another repository it is possible to migrate them
-into your repository.  The process is to generate the list of changesets
-which contain the missing deltas, make a patch, and apply the patch.
-You should probably contact BitMover for help with this the first time
-you try this process.
+into your repository.  The process to do this is to generate the list of 
+changesets which contain the missing deltas, make a patch, and apply the
+patch.  You should probably contact BitMover for help with this the first
+time you try this process.
 
 If the deltas cannot be found in any other repository, then you will
 not be able to completely reproduce that changeset.  You can make
@@ -76,7 +76,7 @@ your repository, and strip off any extra deltas which should not be part
 of your repository.  You should probably contact BitMover for help with
 this the first time you try this process.
 
-If the files cannot be found, or if the files were delibrately removed,
+If the files cannot be found, or if the files were deliberately removed,
 then the file identifiers (root keys) need to be added to the gone file.
 Do this by running
 
@@ -86,14 +86,15 @@ and then committing the changeset.
 $
 #chk4
 One or more files has LOD data in it.  The first approach we took to
-LODs was not a good one and we are trying to remove all vestiages of
+LODs was not a good one, and we are trying to remove all vestiges of
 that approach.  Other than the MySQL repository, we know of no examples
 of LOD usage at the current time.  If this is the MySQL tree, you may
 safely run
 
 	bk -r check -aff
 
-to fix up your repository.  If it is not, contact BitMover.
+to fix up your repository.  If it is somewhere other than the MySQL 
+tree, contact BitMover.
 $
 #write_perms
 One or more directories which need updating do not have write permission.
@@ -107,9 +108,9 @@ after fixing the permissions.
 $
 #saw_blanknonl
 The file #BKARG# is corrupted because of a bug in
-BitKeeper version 3.0.1 and eariler.  It was caused by a 
-file on Windows that has a carrage return as the last 
-character of the file without a following newline.
+BitKeeper version 3.0.1 and earlier.  It was caused by a 
+file on Windows that has a carriage return as the last 
+character of the file without a following new line.
 Please contact BitMover at support@bitmover.com for
 help in repairing this file.
 $
@@ -121,7 +122,7 @@ repository for this package, you should do
 
     bk clone package_dir my_package_dir
 
-If you create a new package rather than resyncing a copy, you will not
+If you create a new package rather than re-syncing a copy, you will not
 be able to exchange work between the two packages.
 
 $
@@ -154,60 +155,59 @@ by doing the following:
     vi BitKeeper/etc/config
     bk new BitKeeper/etc/config
 
-and then try this command again.
+and then try your command again.
 
 $
 #chkconfig_inaccurate
 
 Your config file, BitKeeper/etc/config, does not reflect your site.
-Please check it out ("bk edit BitKeeper/etc/config"), modify it to
-reflect your site, check it in, and try this command again.
+Please check it out ("bk edit BitKeeper/etc/config"), modify the file
+to reflect your site, check it in, and then try your command again.
 
 $
 #license_grace
 Your license for BitKeeper has expired but you are still
 within the grace period.  This changeset will be created
-as normal, but you need to contact BitMover and purchase an
+as normal, but you need to contact BitMover to purchase an
 updated license.
 
-BitMover can be reached in the United States at 415-401-8808
+BitMover can be reached in the United States at 888-401-8808
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
 #license_almost
 Your evaluation license for BitKeeper is less than one week away from
 expiring.  This changeset will be created as normal, but you need to
-contact BitMover and purchase a commercial license.
+contact BitMover to purchase a commercial license.
 
-BitMover can be reached in the United States at 415-401-8808
+BitMover can be reached in the United States at 888-401-8808
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
 #license_expired
 Your license for BitKeeper has expired.  You are beyond the
 grace period and you may not create any changesets until you
-have contacted BitMover to purchase a license.
+have contacted BitMover to purchase a new license.
 
 For more information, please run "bk helptool license"
 
-BitMover can be reached in the United States at 415-401-8808
+BitMover can be reached in the United States at 888-401-8808
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
 #config_license
 #license_none
-
-You do not have a license for BitKeeper and the logging field in the
-BitKeeper/etc/config file is not set to "logging@openlogging.org".
+You do not have a valid license for BitKeeper and the logging field
+in the BitKeeper/etc/config file is not set to "logging@openlogging.org".
 You either need a commercial license (to run without open logging),
 or you need to convert your package to single user, or you need to
 configure your package to use openlogging.  Until you have done one of
-those, you may not create any changesets.
+these things, you may not create any changesets.
 
 You can get a temporary license by sending a mail request
 to sales@bitmover.com.  
 
-BitMover can be reached in the United States at 415-401-8808
+BitMover can be reached in the United States at 888-401-8808
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
@@ -216,7 +216,7 @@ This repository is configured to send changeset summaries to
 	#BKARG#
 so others can follow your work.  This is called Open Logging.
 
-We need to get an OK from each user that it is OK to publish the
+We need to get an OK from each user that it is OK to publish your
 change logs.  You should say no if you are working on proprietary
 and/or sensitive information that you or your employer would not
 want made public.  If you are working on an Open Source project,
@@ -227,7 +227,7 @@ Saying no means the changeset will neither be logged nor be
 created, which means a loss of the distributed functionality
 of BitKeeper.  If it is important that you keep the information
 private, you can contact BitMover for a closed use license.
-BitMover can be reached in the United States at 415-401-8808
+BitMover can be reached in the United States at 888-401-8808
 during business hours (PST) or via email at sales@bitmover.com.
 
 Saying yes will send the changeset comments and per file comments.
@@ -236,30 +236,28 @@ Saying yes also means that you are accepting the terms of the BKL,
 the license under which you obtained this software.  You can read
 that license by saying "bk help license" in another window.
 
-If you have been asked before it is because we ask once per host.
+If you have been asked this before, it is because we ask once for
+each new host.
 $
 #log_abort
-Bitkeeper is aborting this commit.
+BitKeeper is aborting this commit.
 
-This repository is for projects which wish to publish their progress via
-Open Logging.  To purchase a copy of Bitkeeper without the Open Logging
+This repository is for projects that wish to publish their progress via
+Open Logging.  To purchase a copy of BitKeeper without the Open Logging
 feature, please contact sales@bitmover.com.  Thank you.
 $
 #seat_info
-Your user count have exceeded the number of purchased licenses.
+Your user count has exceeded the number of purchased licenses.
 To purchase more seats, please email sales@bitmover.com.  Thank you.
 
 $
-#logging+commercial
+#logging_commercial
 Open logging is not allowed on a commercial repository.
 $
-#testing-lic
-The 'testing' license requires openlogging as well.
-$
-#no-accept-no-cset
+#no_accept_no_cset
 Changeset not created due to license rejection.
 $
-#config-pending
+#config_pending
 Warning:  You have unsent config logs which are more than 2 weeks old.
 
 bk commit will try to send the pending logs automatically before it exits.
@@ -268,12 +266,12 @@ a count of the pending logs: use the following command:
 
 	bk _lconfig -p
 
-If pending count is still non-zero after bk commit is done, please run
+If the pending count is still non-zero after bk commit is done, please run
 the following command and email its output to support@bitmover.com:
 
 	bk _lconfig -d
 $
-#config-max
+#config_max
 Error: Max pending config messages exceeded, commit aborted.
 
 This error indicates that the BitKeeper program was unable to contact
@@ -281,14 +279,14 @@ www.bitkeeper.com to send the configuration log.
 
 There are two possible causes for this error:
 
-a) Network connectivity problems
+a) Network connectivity problems such as firewall/proxy configuration.
 b) Problems with the server at www.bitkeeper.com
 
 Please run the following command and email its output to support@bitmover.com:
 
 	bk _lconfig -d
 $
-#unlogged-max
+#unlogged_max
 Error: Max pending log exceeded, commit aborted.
 
 This error indicates that the BitKeeper program is unable to contact
@@ -296,39 +294,49 @@ www.openlogging.org to send the ChangeSet log[s]. The number of unlogged
 changesets have exceeded the allowed threshold of #BKARG# changesets.
 
 There are two possible causes for this error:
-a) Network connectivity problems
+a) Network connectivity problems such as firewall/proxy configuration.
 b) Problems in the logging tree at www.openlogging.org
 
 Please run the logging command in debug mode to see what the problem is:
 	bk log -d
-If you have ruled out a network connectivity problem at your local network,
-please email the following information to support@bitmover.com:
+After you have ruled out a network connectivity problem and configuration
+problems at your site, please email the following information to
+support@bitmover.com:
+
 a) Output of the above logging command
-b) Root key of your project using the following command:
-	bk identity
+b) Output of the "bk identity" command
 $
 #unlogged
 Warning: BitKeeper allows a limited number of offline commits.  Your quota
 is currently #BKARG# changesets and you will not be able to commit once
 your quota is down to zero. Please check your network configuration
-and make sure logs are being transmitted properly. You can test your log
-transmission with the command "bk log -d".
+and make sure your logs are being transmitted properly. You can test your
+log transmission with the command "bk log -d".
 $
-#single-file-max
+#single_file_max
 Error: Single user repositories are limited to #BKARG# files. If you need more
 files than that in one repository, you need to buy a commercial license or
 turn on open logging.
+BitMover can be reached in the United States at 888-401-8808
+during business hours (PST) or via email at sales@bitmover.com.
+Thanks!
 $
-#eval-max
+#eval_max
 Error: Evaluation license are limited to #BKARG# changesets.  You are over 
-that limit and you will need to purchase a commercial license to make any
+that limit and you will need to get a commercial license to make any
 more changesets.
+BitMover can be reached in the United States at 888-401-8808
+during business hours (PST) or via email at sales@bitmover.com.
+Thanks!
 $
-#eval-warn
+#eval_warn
 Warning: Evaluation licenses have a limited number of changesets. Your
 changeset quota is now down to #BKARG# which is less than 50 changesets
 away from the limit.  You will not be able to commit any more changesets
-when the quota reaches zero.  Please upgrade to a commercial license.
+when the quota reaches zero.  Please contact BitMover.
+BitMover can be reached in the United States at 888-401-8808
+during business hours (PST) or via email at sales@bitmover.com.
+Thanks!
 $
 
 #bugtemplate
@@ -345,7 +353,7 @@ The Description, Suggestions, and Contact sections can be multi line.
 ------------------------------------------------------------------------------
 
 Bug/RFE:
-	[bug is obvious, RFE is request for enhancement]
+	[a bug is obvious, RFE is a request for enhancement]
 
 Severity:
 	[5 - no big deal, 1 - can't use BitKeeper until this is fixed]
@@ -353,9 +361,8 @@ Severity:
 Priority:
 	[5 - fix whenever, 1 - fix RIGHT NOW]
 
-
 Program:
-	[cset, co, delta, etc.  If you know which caused the problem]
+	[cset, co, delta, etc.  If you know which one caused the problem]
 
 Release:
 	#BKEXEC# bk version | head -1
@@ -372,7 +379,7 @@ Description:
 	- what happened
 	- can you make it happen again, if so, how?
 	- what you think went wrong
-	- machine / OS / etc on which the bug occurred
+	- machine / OS / etc. on which the bug occurred
 	- anything else that you think might be useful
 	Take as much space as you need, but leave a blank line
 	between this and the next field.
@@ -396,7 +403,7 @@ Contact info:
 ------------------------------------------------------------------------------
 $
 #duplicate_IDs
-You need to figure out why you have two files with the same ID
+You have two files with the same ID.  You must determine why,
 and correct that situation before this ChangeSet can be created.
 $
 #consistency_check
@@ -418,21 +425,21 @@ and try to find a set of ChangeSets which will work.  The typical
 problems are:
 
     - Removing a delta in the middle of the history which leaves
-      a parentless child delta.
+      a parent-less child delta.
     - The merge delta and a portion of a branch is deleted which
       leaves two open branches in the ChangeSet file.
     - Removing a delta which is included by another delta.
 
-It is frequently helpful to look at the ChangeSet file with sccstool to
+It is frequently helpful to look at the ChangeSet file using sccstool to
 get a feel for which changesets must be undone together to leave a clean
 tree.
 
 The error caused by this undo is:
 $
 #version
-BitKeeper#BKARG#version is @version@
-Built by: @builder@
-Built on: @built_date@
+BitKeeper#BKARG#version is 20030923175951 for x86-glibc22-linux
+Built by: lm@demo.bitmover.com in /home/lm/bk-3.1.x-merge/src
+Built on: Tue Sep 23 11:00:15 PDT 2003
 $
 #config_preamble
 This is the BitKeeper configuration for this package.
@@ -469,17 +476,17 @@ Name of the project, such as "BitKeeper" or "The GNU C compiler".
 $
 #config_category
 
-What (RedHat package) category this project fits into, if any.
+What (Red Hat package) category this project fits into, if any.
 
 $
 #config_logging
 
 Open Logging server.  This site is where users go to see the
-ChangeSet comments for all instances of this repository.  This must
-be logging@openlogging.org for usage under the terms of the BKL,
-"bk help bkl" will show you the default licensing terms.  If this
-repository is commercial it can be an internal email address or "none"
-to disable logging.
+ChangeSet comments for all instances of this repository.  If using
+BitMover's free use license(BKL), this must be logging@openlogging.org.
+The BKL terms require openlogging. "bk help bkl" will show you the
+default licensing terms.  If this repository is for use with a commercial
+license, it can be an internal email address or "none" to disable logging.
 
 $
 #config_contact
@@ -507,7 +514,7 @@ Add your street address if you like, it is optional.
 $
 #config_hours
 
-Business Hours when we can contact you if you left a phone number.
+Business Hours when we can contact you via phone.
 
 $
 #config_single_user
@@ -567,7 +574,7 @@ This happens if a repository with uncommitted deltas is copied
 and then committed in both copies.
 Please use only 'bk clone <from> <to>' to copy a repository.
 $
-#reserved
+#reserved_name
 BitKeeper is unable to create a file with the following path name:
         #BKARG#
 This usually happens if your path name contains a reserved name used on
@@ -575,7 +582,7 @@ the destination file system.  Known reserved names for FAT/NTFS/Samba/CIFS
 file system are as follows:
         "aux", "con", "prn", "nul", "lpt?", "?:"
 Please rename the file and retry (see also "bk helptool mv")
-Note: You must do the rename in the sending repository.
+Note: You must perform the rename in the sending repository.
 $
 #setup_categories
 amusements/games
@@ -662,17 +669,16 @@ Please take a moment to read the license agreement now. If you accept
 the terms below, click "I Agree", then "Next". Otherwise click Cancel.
 $
 #setuptool_step_LicenseType
-BitKeeper provides three types of licensing. If you have received a bitkeeper
+BitKeeper provides three types of licensing. If you have received a BitKeeper
 license key from BitMover, select "Commercial" and you will be prompted to
 enter the key.
 
-If you wish to use BitKeeper for free you must choose one of the other 
-options. If you are a single user on a single host you may choose the
-"Single User / Single Host" option in which case you will be prompted 
-for a username and hostname. 
-
-If you choose "Open Logging" you will not have to enter any data for the 
-license, and all changes to the repository will be posted to openlogging.org
+If you wish to use BitKeeper for free you must choose one of two options:
+single user or Open Logging. If you are a single user on a single host you
+may choose the "Single User / Single Host" option in which case you will
+be prompted for a username and hostname. If you choose "Open Logging"
+you will not have to enter any data for the license, and all checkin
+comments made in your repository will be posted at www.openlogging.org.
 $
 #setuptool_step_LicenseKey
 Please enter the license key exactly as it was given to you. If this is a 
@@ -680,7 +686,7 @@ version 5 license key you must also enter the key signatures.
 
 If the license keys are in a file, click the "From file..." button and the 
 values will be extracted from the file. This should work even if the file 
-has mail headers or other text, and is the easiest way to insure the keys 
+has mail headers or other text, and it is the easiest way to ensure the keys 
 are entered properly.
 $
 #setuptool_step_UserHostInfo
@@ -701,11 +707,11 @@ $
 #setuptool_step_Finish
 There is now enough information to create the repository. Please review the 
 following information. If it is correct, press the Finish button to create 
-the repository.
+your repository.
 
 The config file that is created will be saved as a standard revision controlled
 file at BitKeeper/etc/config; it can be edited later to make changes. See the
-config-etc manpage for detailed information on the format and options that
+config-etc man page for detailed information on the format and options that
 are supported. 
 $
 #setuptool_step_KeywordExpansion
@@ -721,18 +727,19 @@ keywords. This helps avoid conflicts with printf statements or other
 code that may contain strings that look like keywords.
 $
 #setuptool_step_CheckoutMode
-By default, gfiles will be visible in a repository unless they are checked
-out. You can modify this behavior by defining the checkout mode.
+By default, working files will not be visible in a repository until they
+are checked out by you.  You can modify this behavior by defining the
+checkout mode.
 
-A value of "get" will cause a "bk get <file>" command to be executed 
-automatically after a "bk delta", causing the file to be checked out 
-in read-only mode. 
+A value of "get" will cause a "bk get <file>" command to be executed
+automatically after each checkin, causing the file to be checked out in
+read-only mode.
 
-A value of "edit" will prevent a checkin from removing the editable 
-version of the file so that there is always an editable version of the 
-file. 
+A value of "edit" will prevent a checkin from removing the editable
+version of the file so that there is always an editable version of
+the file.
 
-A value of "none" will clear the gfile from the repository after a 
+A value of "none" will clear the working file from the repository after a
 "bk delta". This is the default behavior.
 $
 #setuptool_step_Compression
@@ -819,7 +826,7 @@ esac
 exit 0
 $
 #bkl_new_preamble
-In order to use BitKeeper in this repository, you need to accept the 
+In order to use BitKeeper in this repository, you must accept the 
 BitKeeper license.  The BitKeeper license is what grants you the right
 to use BitKeeper on this repository.  Please read the license carefully,
 it is a contract and you must abide by the terms.  Your acceptance will be
@@ -863,26 +870,31 @@ $
 #lic_alwaysOK
 If you do not want to be prompted about license questions in the future,
 set the environment variable BK_LICENSE to the value ACCEPTED.  Doing so
-means that you are agreeing to any future versions of any license associated
+means that you are agreeing to all future versions of any license associated
 with this repository.
 $
-#missing-key-signature
+#missing_key_sig
 This repository is configured to use a commercial license 
-(#BKARG#), but does not contain a license key
-signature in the BitKeeper config key: licsign1.
-Please contact sales@bitmover.com to get a valid license signature.
+	#BKARG#
+but does not contain a license key signature in
+the BitKeeper config key: licsign1.
+Please contact BitMover to get a valid license signature.
+
+BitMover can be reached in the United States at 888-401-8808
+during business hours (PST) or via email at sales@bitmover.com.
+Thanks!
 $
-#invalid-key-signature
-The configured license key signature for for the current repository
+#invalid_key_sig
+The configured license key signature for the current repository
 doesn't match the current license key: #BKARG#
 $
-#bad-key-signature
+#bad_key_sig
 When validating the license key signature for the current repository
-an error occured.  The current operation cannot be completed.
+an error occurred.  The current operation cannot be completed.
 The error was:
    #BKARG#
 $
-#lease-nonet
+#lease_nonet
 Unable to obtain permission to use this version of BitKeeper (#BKARG#) 
 from lease.openlogging.org.  That server issues certificates to use BK
 for openlogging for 30 days at a time.  The bk binary needs to be able
@@ -890,22 +902,303 @@ to make a http connection to lease.openlogging.org at least once a month.
 
 Look at 'bk help url' if you need to tell 'bk' about a proxy.
 $
-#lease-unsupported-version
-The version of BK that you are currently using (#BKARG#) is no longer
-supported by Bitmover.  Since you are using BitKeeper with in 
-openlogging mode, you must upgrade to the current version before
-continuing.
-Goto http://www.bitkeeper.com for the latest version.
+#lease_unsupported_version
+The version of BK that you are currently using (#BKARG#) is no
+longer supported by BitMover because it contains bugs which have been
+fixed.  Since you are using BitKeeper in openlogging mode, you must
+upgrade to the current version before continuing.  Please download the
+latest version at http://www.bitkeeper.com.
 $
-#lease-other-error
+#lease_other_error
 BitKeeper was unable to validate this version of BitKeeper.
 The error code returned from BitMover was:
 	#BKARG#
 Contact support@bitmover.com for assistance.
 $
-#lease-timesync
-Unable to obtain a permission to use this version of BitKeeper from
+#lease_timesync
+Unable to obtain a lease for this version of BitKeeper from
 lease.openlogging.org because the local clock on this computer is off
-by more than 24 hours.  Please verify the time on your computer and
-that the timezone is set correctly and try again.
+by more than 24 hours.  Please verify the time on your computer and that
+the timezone is set correctly and try again.
+$
+#unrelated_repos
+You are trying to synchronize with an unrelated package.
+Please check the names and try again.
+$
+#no_repo
+You are trying to synchronize with directory that does not contain a
+BitKeeper repository, it is empty.  Please check the names and try again.
+$
+#missing_dfile
+check: %s has pending deltas but no d.file, please fix by running
+
+    "bk -R sfiles -P"
+
+$
+#missing_rsh
+Cannot find #BKARG#.
+
+The programs rsh/ssh are not bundled with the BitKeeper distribution.
+The recommended way for transferring BitKeeper files on Windows is via the
+bkd daemon.  If you have a bkd daemon configured on the remote host, try
+
+    bk push/pull bk://HOST:PORT
+
+If you prefer to transfer BitKeeper files via a rsh/ssh connection,
+you can install the rsh/ssh programs separately.  Please note that the
+rsh command bundled with Windows NT is not compatible with Unix.
+$
+#unknown_proxy
+Unknown proxy entry: "#BKARG"
+If this is a legal proxy entry please file a bug report.
+$
+#no_mailer
+Cannot find a working mailer.  If you have access to an SMTP server,
+you can install the "blat" mailer with the following command:
+
+        blat -install <smtp_server_address> <your email address>
+
+If you have a non-standard connection, you can supply a bk_mail.bat file
+to connect BitKeeper to your mail server; the bk_mail.bat file should
+accept the three arguments, as follows:
+
+        bk_mail.bat file recipient subject
+
+You should put the bk_mail.bat file in the BitKeeper directory.
+The bk_mail.bat command should exit with status zero when the mail is
+sent successfully.
+$
+#http_delay
+Note: since httpd batches a large block of output together before it
+sends back a reply, this can take a while, please wait...
+$
+#win_trailing_dot
+#BKARG#:
+warning: trailing dot in file name will be stripped by the Windows
+file system.
+$
+#file_dir_conflict
+File/directory conflict: #BKARG#1#
+The name above is both a #BKARG#2# and a revision controlled file.
+The revision controlled file can not be checked out because the #BKARG#2#
+is where the file wants to be.  To correct this, either 
+    move the #BKARG#2# to a different name
+or
+    remove the revision controlled file #BKARG#1# with "bk rm"
+or
+    move the revision controlled file to someplace else with "bk mv".
+$
+#case_conflict
+Sfio has detected a name conflict between the following files:
+    #BKARG#1#
+    #BKARG#2#
+This usually happens when you transfer a file from a case-sensitive file
+system (e.g. Unix) to a case insensitive file system (e.g FAT, NTFS)
+Please rename one of the files and retry (see also "bk helptool mv")
+Note: You must do the rename (bk mv) in the sending repository.
+$
+#read_locked
+WARNING: process #BKARG#1# is exiting and it has left the repository at
+#BKARG#2# read locked.
+This is the result of a process that has been killed or is a bug.
+The stale lock will be removed.
+$
+#write_locked
+ERROR: process #BKARG#1# is exiting and it has left the repository at
+#BKARG#2# write locked.
+This is the result of a process that has been killed or is a bug.
+$
+#symlink
+You are attempting to create this symlink on a win32 file system:
+#BKARG#
+This file type is not supported on this platform.
+$
+#smerge_examples
+Summary of bk smerge output formats
+default		(3 way format (shows gca))
+    <<<<<<< gca slib.c 1.642.1.6
+    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);
+    		  assert(sc->tree);
+    		  sccs_sdelta(sc, sc->tree, file);
+    <<<<<<< local slib.c 1.645
+    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);
+    		  assert(HASGRAPH(sc));
+    		  sccs_sdelta(sc, sccs_ino(sc), file);
+    <<<<<<< remote slib.c 1.642.2.1
+    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, p);
+    		  assert(sc->tree);
+    		  sccs_sdelta(sc, sc->tree, file);
+    >>>>>>>
+
+-g	(Shows local and remove files as a diff from the GCA)
+    <<<<<<< local slib.c 1.642.1.6 vs 1.645
+    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);
+    -             assert(sc->tree);
+    -             sccs_sdelta(sc, sc->tree, file);
+    +             assert(HASGRAPH(sc));
+    +             sccs_sdelta(sc, sccs_ino(sc), file);
+    <<<<<<< remote slib.c 1.642.1.6 vs 1.642.2.1
+    -             sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);
+    +             sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, p);
+    		  assert(sc->tree);
+    		  sccs_sdelta(sc, sc->tree, file);
+    >>>>>>>
+
+-2	(2 way format (like diff3))
+    <<<<<<< local slib.c 1.645
+    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);
+    		  assert(HASGRAPH(sc));
+    		  sccs_sdelta(sc, sccs_ino(sc), file);
+    <<<<<<< remote slib.c 1.642.2.1
+    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, p);
+    		  assert(sc->tree);
+    		  sccs_sdelta(sc, sc->tree, file);
+    >>>>>>>
+
+-n	(newonly (like -2 except marks added lines))
+    <<<<<<< local slib.c 1.642.1.6 vs 1.645
+    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);
+    +             assert(HASGRAPH(sc));
+    +             sccs_sdelta(sc, sccs_ino(sc), file);
+    <<<<<<< remote slib.c 1.642.1.6 vs 1.642.2.1
+    +             sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, p);
+    		  assert(sc->tree);
+    		  sccs_sdelta(sc, sc->tree, file);
+    >>>>>>>
+$
+#tp_changeset_exists
+You are trying to create a ChangeSet file in a repository which already
+has one.  This usually means you are trying to apply a patch intended
+for a different repository.  You can find the correct repository by
+running the following command at the top of each repository until you
+get a match with the changeset ID at the top of the patch:
+
+    bk -R prs -hr1.0 -nd':KEY:' ChangeSet
+
+$
+#tp_gone_error
+File #BKARG#
+is marked as gone in this repository and therefor cannot accept updates.
+The fact that you are getting updates indicates that the file is not gone
+in the other repository and could be restored in this repository.
+if you want to "un-gone" the file(s) using the s.file from a remote
+repository, try "bk repair <remote repository>"
+$
+#tp_noconflicts
+takepatch was instructed not to accept conflicts into this tree.
+Please make sure all pending deltas are committed in this tree,
+resync in the opposite direction and then reapply this patch.
+$
+#tp_notfirst
+takepatch: when creating a package, as you are currently doing, you need a
+patch which includes all of the history.  Please try again, with one of
+
+	bk makepatch -r1.0.. 
+or
+	bk send -r1.0.. user@host.com
+
+takepatch has not cleaned up your destination, you need to do that.
+$
+#tp_ahead
+takepatch: can't find parent ID
+	#BKARG#1#
+	in #BKARG#2#
+This patch is ahead of your tree, you need to get an earlier patch first.
+Look at your tree with a "bk changes" and do the same on the other tree,
+and get a patch that is based on a common ancestor.
+$
+#tp_badpath
+The location vs recorded location don't match.  The file is currently
+here	"#BKARG#"
+but has	"#BKARG#2#"
+as its recorded pathname.  If the file is where you want it to be,
+then update its name with the following command:
+
+    bk edit #BKARG#
+    bk delta -yRename #BKARG#
+
+If the file should be in the other location then restore it to that
+location by running 
+
+    bk names #BKARG#
+
+The patch has been saved in the PENDING directory and may be reapplied
+after you fix the name problem.
+
+$
+#tp_nothingtodo
+takepatch: nothing to do in patch, which probably means a patch version
+mismatch.  You need to make sure that the software generating the patch is
+the same as the software accepting the patch.  This typically means you 
+need to upgrade the sending or receiving BitKeeper software.
+$
+#tp_noversline
+takepatch: the version line in #BKARG# is missing
+or does not match the format understood by this program.  You need to
+make sure that the software generating the patch is the same as the
+software accepting the patch.  This typically means you need to upgrade
+the sending or receiving BitKeeper software.
+$
+#tp_badXsum
+takepatch: patch checksum is invalid#BKARG#.
+The patch was probably corrupted in transit, sometimes mailers do this.
+Please get a new copy and try again.
+$
+#tp_uncommitted
+takepatch: #BKARG# has uncommitted changes.
+Please commit pending changes with "bk commit" and reapply the patch.
+$
+#no_pull_part1
+Remote does not understand "pull_part1" command.  There are two
+possible causes:
+    a) Remote bkd has disabled "pull" command.
+    b) We are talking to an old 1.x bkd.
+If it is the former, talk to whoever owns that repository.
+If it is the latter, upgrade to a more recent version of BitKeeper.
+$
+#upgrade_remote
+You need to upgrade the version of BitKeeper in the remote repository, it
+is so old it is no longer supported.
+$
+#restore_failed
+Unable to complete the restore of your repository.  Please examine the 
+list of errors above and figure out why it was not restored.  Once you
+have corrected those errors, you may finish the restore by running 
+
+    bk restore #BKARG#
+
+$
+#restore_checking
+Your repository should be restored to its previous state.
+We are running a full consistency check to verify this, please wait.
+$
+#restore_check_failed
+The integrity check failed after the backup was restored.
+This almost always means that the repository had a problem before
+the previous operation (i.e., clone -r, undo, pull, resolve) started.
+Please examine the error messages produced by check and see if you can
+fix them.  If not, contact BitMover for technical support.
+$
+#case_folding
+BitKeeper has detected a "Case-Folding file system". e.g. FAT and NTFS.
+What this means is that your file system ignores case differences when it
+looks for directories and files.  This also means that it is not possible
+to rename a path correctly if there exists a similar path with only
+upper/lower case differences.
+
+BitKeeper wants update this file:
+    #BKARG#
+Your file system is changing the name as follows:
+    #BKARG# -> #BKARG#2#
+BitKeeper considers this an error, since this may not be what you have
+intended.  The recommended work around for this problem is as follows:
+a) Exit from this resolve session.
+b) Run "bk mv" to move the directory or file with upper/lower case
+   changes to a temporary location.
+c) Run "bk mv" again to move from the temporary location to
+   #BKARG#
+d) Run "bk commit" to record the new location in a changeset.
+e) Run "bk resolve" or "bk pull" again.
+f) You should also inform owners of other repositories to avoid using 
+   similar names.
 $

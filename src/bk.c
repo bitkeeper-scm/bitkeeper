@@ -14,9 +14,6 @@ char	**bk_environ;
 jmp_buf	exit_buf;
 char	cmdlog_buffer[MAXPATH*4];
 int	cmdlog_flags;
-char 	*upgrade_msg =
-"This feature is not available in this version of BitKeeper, to upgrade\n\
-please contact sales@bitmover.com\n"; 
 
 private char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
 #define	LOGVER	0
@@ -145,6 +142,7 @@ int	renumber_main(int, char **);
 int	relink_main(int, char **);
 int	repo_main(int, char **);
 int	resolve_main(int, char **);
+int	restore_main(int, char **);
 int	rm_main(int, char **);
 int	rmdel_main(int, char **);
 int	root_main(int, char **);
@@ -324,6 +322,7 @@ struct	command cmdtbl[] = {
 	{"renumber", renumber_main},		/* doc 2.0 */
 	{"repo", repo_main},	/* obsolete */ 	/* undoc 2.0 */
 	{"resolve", resolve_main},		/* doc 2.0 */
+	{"restore", restore_main},
 	{"rev2cset", r2c_main},	/* alias */	/* doc 2.0 as r2c */
 	{"root", root_main},			/* doc 2.0 */
 	{"rset", rset_main},			/* doc 2.0 */

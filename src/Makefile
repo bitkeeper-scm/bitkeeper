@@ -102,7 +102,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	resolve_binaries.o resolve_contents.o \
 	resolve_create.o resolve_filetypes.o \
 	resolve_flags.o resolve_generic.o resolve_modes.o \
-	resolve_renames.o resolve_tags.o review.o rmdel.o \
+	resolve_renames.o resolve_tags.o restore.o review.o rmdel.o \
 	root.o rset.o scompress.o sane.o sccs.o sccs_mv.o sccs2bk.o sccscat.o \
 	sccslog.o sccsmv.o sccsrm.o send.o sendbug.o \
 	set.o setup.o sfiles.o sfio.o shrink.o sinfo.o \
@@ -297,17 +297,19 @@ get-e: FORCE
 	$(MAKE) tags
 
 tags: FORCE
-	@for i in $(SRCS) $(HDRS) $(SCRSRCS) $(MISC); \
-	do	if [ ! -f $$i ]; then bk get -s $$i; fi; \
-	done
+	-@bk get -qST $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
 	@ctags --file-tags=yes --c-types=d+f+s+t $(SRCS) $(HDRS)
+	@mv -f tags .tags
+	@bk cat bkmsg.doc | egrep '^#[a-zA-Z_0-9]+$$' | sed 's/#//' | \
+	while read x; \
+	do	echo "$$x	bkmsg.doc	/^#$$x$$/;\"	f"; \
+	done >> .tags
+	@sort < .tags > tags
+	@rm -f .tags
 	@echo ctags completed
 
-
-TAGS: srcs
-	@for i in $(SRCS) $(HDRS) $(SCRSRCS) $(MISC); \
-	do	if [ ! -f $$i ]; then bk get -s $$i; fi; \
-	done
+TAGS: FORCE
+	-@bk get -qST $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
 	@etags $(SRCS) $(HDRS)
 	@echo etags completed
 
