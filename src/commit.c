@@ -89,7 +89,7 @@ commit_main(int ac, char **av)
 	if (system(buf) != 0) {
 		unlink(pendingDeltas);
 		unlink(commentFile);
-		gethelp("duplicate_IDs", "", stdout);
+		gethelp("duplicate_IDs", "", 0, stdout);
 		exit(1);
 	}
 	if ((force == 0) && (size(pendingDeltas) == 0)) {
@@ -202,14 +202,14 @@ checkConfig()
 	sprintf(s_config, "%setc/SCCS/s.config", BitKeeper);
 	sprintf(g_config, "%setc/config", BitKeeper);
 	unless (exists(s_config)) {
-		gethelp("chkconfig_missing", bin, stdout);
+		gethelp("chkconfig_missing", bin, 0, stdout);
 		return (1);
 	}
 	if (exists(g_config)) do_clean(s_config, SILENT);
 	get(s_config, SILENT, 0);
 	sprintf(buf, "cmp -s %setc/config %s/bitkeeper.config", BitKeeper, bin);
 	if (system(buf) == 0) {
-		gethelp("chkconfig_inaccurate", bin, stdout);
+		gethelp("chkconfig_inaccurate", bin, 0, stdout);
 		return (1);
 	}
 	return (0);

@@ -148,7 +148,7 @@ header(FILE *f)
 	char	buf[MAXPATH];
 	char	*p;
 
-	gethelp("version", 0, f);
+	gethelp("version", 0, 0, f);
 	fprintf(f, "Repository %s:%s\n",
 	    sccs_gethost(), fullname(".", 0));
 	sprintf(parent_file, "%slog/parent", BitKeeper);
@@ -349,7 +349,7 @@ void
 remark(int quiet)
 {
 	if (exists("BitKeeper/etc/SCCS/x.marked")) return;
-	unless (quiet) gethelp("consistency_check", "", stdout);
+	unless (quiet) gethelp("consistency_check", "", 0, stdout);
 	system("bk cset -M1.0..");
 	close(open("BitKeeper/etc/SCCS/x.marked", O_CREAT|O_TRUNC, 0664));
 	unless(quiet) {
@@ -365,7 +365,7 @@ status(int verbose, FILE *f)
 	FILE	*f1;
 
 	fprintf(f, "Status for BitKeeper repository %s\n", fullname(".", 0));
-	gethelp("version", 0, f);
+	gethelp("version", 0, 0, f);
 	sprintf(parent_file, "%slog/parent", BitKeeper);
 	if (exists(parent_file)) {
 		fprintf(f, "Parent repository is ");
@@ -446,7 +446,7 @@ status(int verbose, FILE *f)
 }
 
 int
-gethelp(char *help_name, char *bkarg, FILE *outf)
+gethelp(char *help_name, char *bkarg, char *prefix, FILE *outf)
 {
 	char	buf[MAXLINE], pattern[MAXLINE];
 	FILE	*f;
@@ -473,6 +473,7 @@ gethelp(char *help_name, char *bkarg, FILE *outf)
 		if (first && (buf[0] == '#')) continue;
 		first = 0;
 		if (streq("$\n", buf)) break;
+		if (prefix) fputs(prefix, outf);
 		p = strstr(buf, "#BKARG#");
 		if (p) {
 			*p = 0;
@@ -488,20 +489,58 @@ gethelp(char *help_name, char *bkarg, FILE *outf)
 }
 
 int
+mkconfig(FILE *out)
+{
+	FILE	*in;
+	int	found = 0;
+	int	first = 1;
+	char	buf[200], pattern[200];
+
+	sprintf(buf, "%s/bkhelp.txt", bin);
+	unless (in = fopen(buf, "rt")) {
+		fprintf(stderr, "Unable to locate help file %s\n", buf);
+		return (-1);
+	}
+	gethelp("config_preamble", 0, "# ", out);
+	fputs("\n", out);
+	while (fgets(buf, sizeof(buf), in)) {
+		if (streq("#help_config_template", buf)) {
+			found = 1;
+			break;
+		}
+	}
+	unless (found) {
+		fclose(in);
+		return (-1);
+	}
+	while (fgets(buf, sizeof(buf), in)) {
+		if (first && (buf[0] == '#')) continue;
+		first = 0;
+		if (streq("$\n", buf)) break;
+		chop(buf);
+		sprintf(pattern, "config_%s", buf);
+		gethelp(pattern, 0, "# ", out);
+		fprintf(out, "\n%s:\t\n\n", buf);
+	}
+	fclose(in);
+	return (0);
+}
+
+int
 checkLog(int quiet, int resync)
 {
 	char	ans[MAXLINE], buf[MAXLINE];
 
 	strcpy(buf, getlog(NULL, quiet));
 	if (strneq("ask_open_logging:", buf, 17)) {
-		gethelp("open_log_query", logAddr(), stdout);
+		gethelp("open_log_query", logAddr(), 0, stdout);
 		printf("OK [y/n]? ");
 		fgets(ans, sizeof(ans), stdin);
 		if ((ans[0] == 'Y') || (ans[0] == 'y')) {
 			setlog(&buf[17]);
 			return (0);
 		} else {
-			gethelp("log_abort", logAddr(), stdout);
+			gethelp("log_abort", logAddr(), 0, stdout);
 			return (1);
 		}
 	} else if (strneq("ask_close_logging:", buf, 18)) {
@@ -511,7 +550,7 @@ checkLog(int quiet, int resync)
 		if ((ans[0] == 'Y') || (ans[0] == 'y')) setlog(&buf[18]);
 		return (0);
 	} else if (streq("need_seats", buf)) {
-		gethelp("seat_info", "", stdout);
+		gethelp("seat_info", "", 0, stdout);
 		return (1);
 	} else if (streq("commit_and_mailcfg", buf)) {
 		return (0);

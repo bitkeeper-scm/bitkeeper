@@ -45,7 +45,7 @@ setup_main(int ac, char **av)
 	}
 	license();
 	unless(force) {
-		gethelp("setup_1", "", stdout);
+		gethelp("setup_1", "", 0, stdout);
 		printf("Create new package? [no] ");
 		if (fgets(buf, sizeof(buf), stdin) == NULL) buf[0] = 'n';
 		if ((buf[0] != 'y') && (buf[0] != 'Y')) exit (0);
@@ -53,7 +53,7 @@ setup_main(int ac, char **av)
 	mkdirp(package_path);
 	if (chdir(package_path) != 0) exit(1);
 	unless(package_name) {
-		gethelp("setup_2", "", stdout);
+		gethelp("setup_2", "", 0, stdout);
 		while (1) {
 			/*
 			 * win32 note: notepate.exe wants text mode
@@ -97,7 +97,7 @@ setup_main(int ac, char **av)
 		exit (1);
 	}
 	if (config_path == NULL) {
-		gethelp("setup_3", "", stdout);
+		gethelp("setup_3", "", 0, stdout);
 		sprintf(buf, "%s/bitkeeper.config", bin);
 		f = fopen(buf, "rt");
 		assert(f);
