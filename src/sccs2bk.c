@@ -140,7 +140,6 @@ regen(sccs *s, char *key)
 {
 	delta	*d;
 	delta	**table = malloc(s->nextserial * sizeof(delta*));
-	pid_t	pid = getpid();
 	int	n = 0;
 	int	i;
 	char	*sfile = s->sfile;

@@ -1049,3 +1049,23 @@ $
 Please attach any files that may help in understanding and fixing
 the problem.
 $
+#win32-mailer-error
+Can not find a working mailer.
+
+If you have access to a SMTP server, you can install the "blat" mailer
+with the following command:
+
+	blat -install <smtp_server_address> <your email address>
+
+If you have a non-standard connection, you can supply a bk_mail.bat
+file to connect BitKeeper to your mail server; the bk_mail.bat file
+should accept the three auguments, as follows:
+
+	bk_mail.bat file recipient subject
+
+(recipient is a comma seperated list if there is more than one)
+
+You should put the bk_mail.bat file in the BitKeeper directory.
+The bk_mail.bat command should exit with status zero when the mail is
+sent sucessfully.
+$

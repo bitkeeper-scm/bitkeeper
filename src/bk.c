@@ -155,7 +155,6 @@ int	sccslog_main(int, char **);
 int	scompress_main(int, char **);
 int	send_main(int, char **);
 int	sendbug_main(int, char **);
-int	support_main(int, char **);
 int	set_main(int, char **);
 int	setup_main(int, char **);
 int	sfiles_main(int, char **);
@@ -288,6 +287,7 @@ struct	command cmdtbl[] = {
 	{"lock", lock_main},			/* doc 2.0 */
 	{"lod", lod_main},	/* XXX - doc 2.0 - says doesn't work yet */
 	{"log", log_main},
+ 	{"mail", mail_main},
 	{"mailsplit", mailsplit_main},
 	{"makepatch", makepatch_main},		/* doc 2.0 */
 	{"merge", merge_main},			/* doc 2.0 */
@@ -336,7 +336,7 @@ struct	command cmdtbl[] = {
 	{"sccsrm", rm_main},	/* alias */	/* doc 2.0 as mv */
 	{"send", send_main},			/* doc 2.0 */
 	{"sendbug", sendbug_main},		/* doc 2.0 */
-	{"support", support_main},	/* doc 3.0 */
+	{"support", sendbug_main},		/* doc 3.0 */
 	{"set", set_main},
 	{"setup", setup_main },			/* doc 2.0 */
 	{"shrink", shrink_main}, 		/* undoc? 2.0 */

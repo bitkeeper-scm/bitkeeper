@@ -172,7 +172,7 @@ readlockf(const char *file, pid_t *pidp, char **hostp, time_t *tp)
 	char	*host, *p;
 	int	i, n;
 
-again:	unless ((fd = open(file, O_RDONLY, 0)) >= 0) return (-1);
+	unless ((fd = open(file, O_RDONLY, 0)) >= 0) return (-1);
 
 	bzero(buf, sizeof(buf));
 	if ((flen = fsize(fd)) < 0) {

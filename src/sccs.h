@@ -985,7 +985,7 @@ int	uniq_update(char *key, time_t t);
 int	uniq_close(void);
 time_t	sccs_date2time(char *date, char *zone);
 void	cd2root(void);
-pid_t	mail(char *to, char *subject, char *file);
+pid_t	smtpmail(char **to, char *subject, char *file);
 int	connect_srv(char *srv, int port, int trace);
 int	get(char *path, int flags, char *output);
 int	gethelp(char *helptxt, char *help_name, char *bkarg, char *prefix, FILE *f);
@@ -1187,6 +1187,7 @@ char	*findDotFile(char *old, char *new, char *buf);
 char	*platform(void);
 char	*find_prog(char *);
 char	*pager(void);
+int	bkmail(char *url, char **to, char *subject, char *file);
 
 void	align_diffs(u8 *vec, int n, int (*compare)(int a, int b),
     int (*is_whitespace)(int i));
