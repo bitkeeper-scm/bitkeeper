@@ -130,7 +130,6 @@ print_title(char *r1, char *r2)
 		     "$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n";
 	char	buf[BUFSIZ];
 
-	putenv("BK_YEAR4=1");
 	printf("# This is a BitKeeper generated diff -Nru style patch.\n#\n");
 	p = aprintf("bk set -d -r%s -r%s | bk changes -vd'%s' -", r1, r2, d);
 	f = popen(p, "r");

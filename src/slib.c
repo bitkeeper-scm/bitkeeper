@@ -4163,7 +4163,7 @@ sccs_init(char *name, u32 flags)
 	/*
 	 * Let them force YEAR4
 	 */
-	unless (_YEAR4) _YEAR4 = getenv("BK_YEAR4") ? 1 : -1;
+	unless (_YEAR4) _YEAR4 = getenv("BK_YEAR2") ? -1 : 1;
 	if (_YEAR4 == 1) s->xflags |= X_YEAR4;
 
 	signal(SIGPIPE, SIG_IGN); /* win32 platform does not have sigpipe */

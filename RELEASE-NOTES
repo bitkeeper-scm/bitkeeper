@@ -1,6 +1,10 @@
 ===============================================================================
 Interface changes in 3.3.x
 
+In commands which produce date output, such as prs, changes, sccslog,
+the old default was YY/MM/DD or YY-MM-DD but you could force it into
+4 digits with BK_YEAR4=1.  The 4 digit years are now the default.
+
 GLOB PROCESSING
 ---------------
 
