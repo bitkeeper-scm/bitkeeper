@@ -119,7 +119,7 @@ echo $N Make sure we reject logging patch in a regular repository ...$NL
 bk clone $Q -r1.1 $HERE/project $HERE/copy
 cd $HERE/copy
 bk takepatch -aL < $HERE/patch || exit 1
-while [ -f PENDING/2* -o -f PENDING/lock ]
+while [ -f PENDING/2*[0-9] -o -f PENDING/lock ]
 do	sleep 1
 done
 grep -q "can't apply a logging patch to a regular file" PENDING/BAD.*.log

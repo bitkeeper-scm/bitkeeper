@@ -1756,6 +1756,7 @@ resync_lock(void)
 		unless (errno == EEXIST) break;
 		if (slept > (20*60)) break;
 		sleep(s);
+		slept += s;
 		s += 15;
 		errno = 0;
 	}
