@@ -1098,7 +1098,7 @@ http_index(char *page)
 	int	c1w=0, c2w=0, c3w=0, c4w=0, c8w=0, c12w=0, c6m=0, c9m=0;
 	int	c1y=0, c2y=0, c3y=0, c=0;
 	char	buf[MAXPATH*2];
-	char	*t;
+	char	*email, *desc, *contact, *category;
 	MDBM	*m;
 
 	time(&now);
@@ -1140,20 +1140,25 @@ http_index(char *page)
 	}
 	sccs_free(s);
 
-	if (m = loadConfig(".", 0)) {
-		t = mdbm_fetch_str(m, "description");
-		mdbm_close(m);
-	}
-
 	whoami("index.html");
 
-	if (!embedded) {
+	if (embedded) {
+	    out("<!-- ["); out(navbar); out("] -->\n");
+	}
+	else {
 		httphdr(".html");
 		/* don't use header() here; this is one place where the regular
 		 * header.txt is not needed
 		 */
+		if (m = loadConfig(".", 0)) {
+			desc = mdbm_fetch_str(m, "description");
+			contact = mdbm_fetch_str(m, "contact");
+			email = mdbm_fetch_str(m, "email");
+			category = mdbm_fetch_str(m, "category");
+		}
+
 		out("<html><head><title>\n");
-		out(t ? t : "ChangeSet activity");
+		out(desc ? desc : "ChangeSet activity");
 		out("\n"
 		    "</title></head>\n"
 		    "<body alink=black link=black bgcolor=white>\n");
@@ -1165,12 +1170,24 @@ http_index(char *page)
 		printnavbar();
 
 		unless (include(0, "homepage.txt")) {
-			if (t) {
-				title("ChangeSet activity", t, COLOR_TOP);
+			if (desc && strlen(desc) < MAXPATH) {
+				sprintf(buf, "%s<br>", desc);
 			} else {
-				pwd_title("ChangeSet activity", COLOR_TOP);
+				getcwd(buf, sizeof buf);
+				strcat(buf, "<br>");
 			}
+			if (category && strlen(category) < MAXPATH) {
+				sprintf(buf+strlen(buf), "(%s)<br>", category);
+			}
+			if (email && contact) {
+				sprintf(buf+strlen(buf),
+					"<a href=\"mailto:%s\">%s</a>",
+					email, contact);
+			}
+
+			title("ChangeSet activity", buf, COLOR_TOP);
 		}
+		if (m) mdbm_close(m);
 	}
 
 
@@ -1346,6 +1363,7 @@ private void
 http_page(char *page, vfn content, char *argument)
 {
     static char buf[MAXPATH];
+    int arglen = strlen(arguments), navlen = strlen(navbar);
     int i;
     FILE *f;
 
@@ -1356,6 +1374,8 @@ http_page(char *page, vfn content, char *argument)
 	    httphdr(".html");
 	    while (fgets(buf, sizeof buf, f)) {
 		    if (strncmp(buf, ".CONTENT.", 9) == 0) {
+			    arguments[arglen] = 0;
+			    navbar[navlen] = 0;
 			    (*content)(argument);
 		    } else {
 			    out(buf);
