@@ -172,7 +172,7 @@ main(int ac, char **av)
 #endif
 	if (dest) {
 		fprintf(stderr, "Installing BitKeeper in %s\n", dest);
-		sprintf(buf, "bk install -f \"%s\"", dest);
+		sprintf(buf, "bk install -Sf \"%s\"", dest);
 		system(buf);
 		p = getenv("BK_OLDPATH");
 		tmp = malloc(strlen(p) + MAXPATH);

@@ -60,9 +60,9 @@ sfio_utils.o: sfio_utils.c
 sfio$(EXE): $(SFIO_OBJS)
 	$(LD) $(LFLAGS) $(SFIO_OBJS) $(LIBS) ../zlib/libz.a -o $@
 
-installtool: setupmain.tcl ../gui/tkwizard.tcl ../gui/common.tcl \
+installtool: installtool.tcl ../gui/tkwizard.tcl ../gui/common.tcl \
 	../gui/imgsrc/bklogo.gif ../bk
-	(cat setupmain.tcl ../gui/common.tcl ../gui/tkwizard.tcl; \
+	(cat installtool.tcl ../gui/common.tcl ../gui/tkwizard.tcl; \
 	 echo "image create photo bklogo -data {`../bk base64<../gui/imgsrc/bklogo.gif`}";\
 	 echo "main"\
 	) > installtool

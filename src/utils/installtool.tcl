@@ -86,10 +86,14 @@ proc initGlobals {} \
 		set i 0
 	}
 	set ::runtime(destination) [lindex $runtime(places) $i]
-	set ::runtime(hasAdminPrivs) [hasAdminPrivs]
+	if {$tcl_platform(platform) eq "windows"} {
+		set ::runtime(hasWinAdminPrivs) [hasWinAdminPrivs]
+	} else {
+		set ::runtime(hasWinAdminPrivs) 0
+	}
 }
 
-proc hasAdminPrivs {} \
+proc hasWinAdminPrivs {} \
 {
 	set key "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet"
 	append key "\\Control\\Session Manager\\Environment"
@@ -111,11 +115,13 @@ proc install {} \
 	set installfrom [pwd]
 
 	set command [list doCommand bk install -vf]
-	if {$runtime(hasAdminPrivs)} {
+	if {$runtime(hasWinAdminPrivs)} {
 		if {$runtime(enableSccDLL)}	   {lappend command -s}
 		if {$runtime(enableShellxLocal)}   {lappend command -l}
 		if {$runtime(enableShellxNetwork)} {lappend command -n}
 	}
+	if {$runtime(doSymlinks)} {lappend command -S}
+
 	# destination must be normalized, otherwise we run into a 
 	# bug in the msys shell where mkdir -p won't work with 
 	# DOS-style (backward-slash) filenames.
@@ -347,7 +353,7 @@ proc widgets {} \
 		    set w [$this info workarea]
 		    set bk [file join $::runtime(destination)/bk]
 
-		    if {$runtime(hasAdminPrivs)} {
+		    if {$runtime(hasWinAdminPrivs)} {
 			    $this stepconfigure InstallDLLs \
 				-description [unwrap $::strings(InstallDLLs)]
 			    checkbutton $w.shellx-local \

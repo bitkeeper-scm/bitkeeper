@@ -748,10 +748,8 @@ _links() {		# /* undoc? 2.0 - what is this for? */
 		exit 1
 	fi
 	test -x "$1/bk" || {
-		echo ==========================================================
-		echo Can not find bin directory
-		echo ==========================================================
-		exit 0
+		echo "bk links: cannot find executable bk in $1; links not created"
+		exit 2
 	}
 	BK="$1"
 	if [ "X$2" != X ]
@@ -759,10 +757,8 @@ _links() {		# /* undoc? 2.0 - what is this for? */
 	else	BIN=/usr/bin
 	fi
 	test -w "$BIN" || {
-		echo ==========================================================
-		echo "bk links: can't write to ${BIN}, no links made."
-		echo ==========================================================
-		exit 0
+		echo "bk links: cannot write to ${BIN}; links not created"
+		exit 2
 	}
 	for i in admin get delta unget rmdel prs bk
 	do	test -f "$BIN/$i" && {
@@ -1284,7 +1280,8 @@ _install()
 	CRANKTURN=NO
 	VERBOSE=NO
 	DLLOPTS=""
-	while getopts dfvlns opt
+	DOSYMLINKS=NO
+	while getopts dfvlnsS opt
 	do
 		case "$opt" in
 		l) DLLOPTS="-l $DLLOPTS";; # enable bkshellx for local drives
@@ -1292,14 +1289,15 @@ _install()
 		s) DLLOPTS="-s $DLLOPTS";; # enable bkscc dll
 		d) CRANKTURN=YES;;# do not change permissions, dev install
 		f) FORCE=1;;	# force
+		S) DOSYMLINKS=YES;;
 		v) VERBOSE=YES;;
-		*) echo "usage: bk install [-dfv] <destdir>"
+		*) echo "usage: bk install [-dfvS] <destdir>"
 	 	   exit 1;;
 		esac
 	done
 	shift `expr $OPTIND - 1`
 	test X"$1" = X -o X"$2" != X && {
-		echo "usage: bk install [-dfv] <destdir>"
+		echo "usage: bk install [-dfSv] <destdir>"
 		exit 1
 	}
 	DEST="$1"
@@ -1309,7 +1307,7 @@ _install()
 	test -d "$DEST" && {
 		DEST=`bk pwd "$DEST"`
 		test "$DEST" = "$SRC" && {
-			echo "bk install: destination == souce"
+			echo "bk install: destination == source"
 			exit 1
 		}
 		test $FORCE -eq 0 && {
@@ -1361,6 +1359,13 @@ _install()
 		test $VERBOSE = YES && echo ln "$DEST"/bk$EXE "$DEST"/$prog$EXE
 		ln "$DEST"/bk$EXE "$DEST"/$prog$EXE
 	done
+
+	# symlinks to /usr/bin
+	if [ "$DOSYMLINKS" = "YES" ]
+	then
+	        test $VERBOSE = YES && echo bk links "$DEST" /usr/bin
+		bk links "$DEST" /usr/bin
+	fi
 
 	if [ "X$OSTYPE" = "Xmsys" ]
 	then
