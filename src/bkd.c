@@ -192,7 +192,9 @@ do_cmds()
 	char	**av;
 	int	i, ret, httpMode;
 	int	debug = getenv("BK_DEBUG") != 0;
+	char	*peer = 0;
 
+	if (issock(1)) peer = peeraddr(1);
 	httpMode = Opts.http_hdr_out;
 	while (getav(&ac, &av, &httpMode)) {
 		if (debug) {
@@ -216,6 +218,11 @@ do_cmds()
 			 * Do the real work
 			 */
 			ret = cmds[i].cmd(ac, av);
+			if (peer) {
+				/* first command records peername */
+				cmdlog_addnote("peer", peer);
+				peer = 0;
+			}
 			if (debug) ttyprintf("cmds[%d] = %d\n", i, ret);
 
 			if (cmdlog_end(ret) & CMD_FAST_EXIT) {

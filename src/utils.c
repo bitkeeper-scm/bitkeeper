@@ -571,7 +571,7 @@ send_file(remote *r, char *file, int extra, int gzip)
 	return (rc);
 }
 
-int 
+int
 skip_http_hdr(remote *r)
 {
 	char	buf[1024];
@@ -743,6 +743,7 @@ sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 {
 	int	i;
 	char	*root, *user, *host, *repo;
+	char	*lic;
 
 	if (r->host)
 		fprintf(f, "putenv BK_VHOST=%s\n", r->host);
@@ -760,6 +761,12 @@ sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 		fprintf(f, "putenv BK_REPO_ID=%s\n", repo);
 		free(repo);
 	}
+	lic = licenses_accepted();
+	fprintf(f, "putenv BK_ACCEPTED=%s\n", lic);
+	free(lic);
+	fprintf(f, "putenv BK_REALUSER=%s\n", sccs_realuser());
+	fprintf(f, "putenv BK_REALHOST=%s\n", sccs_realhost());
+	fprintf(f, "putenv BK_PLATFORM=%s\n", bk_platform);
 
 	/*
 	 * We have no Package root when we clone, so skip root related variables
@@ -841,12 +848,18 @@ sendServerInfoBlock(int is_rclone)
 	out(sccs_getuser());
 	out("\nHOST=");
 	out(sccs_gethost());
+	out("\nREALUSER=");
+	out(sccs_realuser());
+	out("\nREALHOST=");
+	out(sccs_realhost());
+	out("\nPLATFORM=");
+	out(bk_platform);
 	if (repoid = repo_id()) {
 		sprintf(buf, "\nREPO_ID=%s", repoid);
 		out(buf);
 	}
 	out("\n@END@\n");
-} 
+}
 
 void
 http_hdr(int full)
