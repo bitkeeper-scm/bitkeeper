@@ -327,12 +327,12 @@ addLine(char **space, char *line)
 		space = calloc(32, sizeof(char *));
 		assert(space);
 		space[0] = (char *)32;
-	} else if (space[(int)(long)space[0]-2]) {	/* full up, dude */
+	} else if (space[(int)(long)space[0]-1]) {	/* full up, dude */
 		int	size = (int)(long)space[0];
 		char	**tmp = calloc(size*4, sizeof(char*));
 
 		assert(tmp);
-		memcpy(tmp, space, size*sizeof(char*));
+		bcopy(space, tmp, size*sizeof(char*));
 		tmp[0] = (char *)(long)(size * 4);
 		free(space);
 		space = tmp;
@@ -385,7 +385,7 @@ removeLine(char **space, char *s)
 		EACH(space) {
 			if (streq(space[i], s)) {
 				free(space[i]);
-				while (space[++i]) {
+				while ((++i< (int)(long)space[0]) && space[i]) {
 					space[i-1] = space[i];
 					space[i] = 0;
 				}
@@ -4752,16 +4752,21 @@ addSerial(ser_t *space, ser_t s)
 	}
 
 	size = (int) space[0];
-	if (space[size -2]) {	/* full up, dude */
+	if (space[size -1]) {	/* full up, dude */
 		tmp = calloc(size*2, sizeof(ser_t));
 		assert(tmp);
-		/* insert s while we copy */
-		j = 1;
-		EACH(space) {
-			if (space[i] > s) tmp[j++] = s;
-			tmp[j++] = space[i];
+		if (space[size - 1] < s)  {
+			/* s is the largest, stick it at the end */
+			memcpy(tmp, space, size * sizeof(ser_t));
+			tmp[size] = s;
+		} else {
+			/* s is not the largest, insert it while we copy */
+			for (i = j = 1; i < size;) {
+				if (space[i] > s)  { tmp[j++] = s; break; }
+				tmp[j++] = space[i++];
+			}
+			memcpy(&tmp[j], &space[i], (size - i) * sizeof(ser_t));
 		}
-		if (i == j) tmp[j++] = s;
 		tmp[0] = (ser_t)(size * 2);
 		free(space);
 		return (tmp);
