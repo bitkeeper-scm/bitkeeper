@@ -75,6 +75,7 @@ int	fix_main(int, char **);
 int	fixlod_main(int, char **);
 int	gca_main(int, char **);
 int	get_main(int, char **);
+int	getbkdir_main(int, char **);
 int	gethelp_main(int, char **);
 int	gethost_main(int, char **);
 int	getmsg_main(int, char **);
@@ -200,6 +201,7 @@ struct	command cmdtbl[] = {
 	{"_find", find_main },
 	{"_g2sccs", _g2sccs_main},
 	{"_get", get_main},
+	{"_getbkdir", getbkdir_main},
 	{"_gzip", gzip_main }, 
 	{"_keysort", keysort_main},
 	{"_key2path", key2path_main},

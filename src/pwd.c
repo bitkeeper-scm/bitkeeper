@@ -54,3 +54,11 @@ pwd_main(int ac, char **av)
 	printf("%s\n", bk_rpath ? _relativeName(p, 1, 0, 1, 1, 0, 0): p);
 	return (0);
 }
+
+
+int
+getbkdir_main(int ac, char **av)
+{
+	printf("%s\n", getBkDir());
+	return (0);
+}
