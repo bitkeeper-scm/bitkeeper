@@ -1,0 +1,50 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+
+# Copyright (c) 2000 Andrew Chang
+# %K%
+
+echo $N Create initial repository ...................................$NL
+echo "logging: none" > $HERE/c
+echo "single_user: bk" >> $HERE/c
+echo "single_host: free.bk" >> $HERE/c
+echo "description: BitKeeper Test repository" >> $HERE/c
+echo "email:		nobody@nowhere.bk" >> $HERE/c
+echo "keyword: rcs, expand1" >> $HERE/c
+bk setup -f -c$HERE/c project
+touch project/BitKeeper/etc/SCCS/x.marked
+cd project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo OK
+echo $N Check creat flags with RCS default ..........................$NL
+echo data > data
+bk  ci $Q -i data
+FLAGS=`bk prs -hr+ -d:FLAGS: data`
+if [ X"$FLAGS" != "XBITKEEPER,RCS,EXPAND1,CSETMARKED,SINGLE,EOLN_NATIVE" ]
+then echo faied; exit 1;
+fi
+echo OK
+echo $N Check creat flags wiith SCCS default ........................$NL
+bk edit $Q BitKeeper/etc/config
+grep -v keyword BitKeeper/etc/config > X
+echo keyword: sccs >> X
+mv X BitKeeper/etc/config
+echo data2 > data2
+bk new $Q data2
+FLAGS=`bk prs -hr+ -d:FLAGS: data2`
+if [ X"$FLAGS" != "XBITKEEPER,CSETMARKED,SCCS,SINGLE,EOLN_NATIVE" ]
+then echo faied; exit 1;
+fi
+echo OK

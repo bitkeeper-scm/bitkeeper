@@ -8759,6 +8759,18 @@ out:		sccs_unlock(s, 'z');
 					if (p && streq("unix", p)) {
 						s->xflags &= ~X_EOLN_NATIVE;
 					}
+
+					if (p = mdbm_fetch_str(db, "keyword")) {
+						if (strstr(p, "sccs")) {
+							s->xflags |= X_SCCS;
+						}
+						if (strstr(p, "rcs")) {
+							s->xflags |= X_RCS;
+						}
+						if (strstr(p, "expand1")) {
+							s->xflags |= X_EXPAND1;
+						}
+					}
 				}
 			}
 		}

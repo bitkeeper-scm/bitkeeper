@@ -190,8 +190,7 @@
 					/* flags which can be changed */
 #define	X_MAYCHANGE	(X_RCS|X_YEAR4|X_SHELL|X_EXPAND1|X_SCCS|X_EOLN_NATIVE|X_KV)
 					/* default set of flags */
-#define	X_DEFAULT	(X_BITKEEPER|X_EXPAND1|\
-					X_CSETMARKED|X_SCCS|X_EOLN_NATIVE)
+#define	X_DEFAULT	(X_BITKEEPER|X_CSETMARKED|X_EOLN_NATIVE)
 #define	X_REQUIRED	(X_BITKEEPER|X_CSETMARKED)
 
 /* bits for the xflags checker - lovely having legacy files, eh? */

@@ -1,0 +1,69 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+echo $N Create initial repository ...................................$NL
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+mkdir src
+cd src
+echo foo > 'F!O#O$ B%A^R&RR(R)RR'
+echo bar > bar.c
+echo h > h.h
+bk ci $Q -i 'F!O#O$ B%A^R&RR(R)RR' bar.c h.h
+if [ ! -f SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ]; then echo failed to create history; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
+bk commit $S -a -yCset
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
+bk level 3
+echo OK
+cores
+
+# In this test we call the rclone code via the bk clone interface
+echo $N rcheck via bk:// ............................................$NL
+cd $HERE
+rm -rf copy copy2
+P=50000
+bk bkd -q -p$P -c9
+while [ $? -eq 2 ]
+do      P=`expr $P + 1`
+        bk bkd -q -p$P -c9
+done 
+bk clone $Q $HERE/project bk://localhost:$P/$HERE/copy
+[ -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
+cd $HERE/project
+bk rcheck bk://localhost:$P/$HERE/copy || { echo failed; exit 1; }
+# force a error
+rm $HERE/copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR'
+cd $HERE/project
+bk rcheck bk://localhost:$P/$HERE/copy | grep "not found" > /dev/null
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+bk rcheck bk://localhost:$P/$HERE/copy > /dev/null
+if [ $? -eq 0 ]; then echo failed; exit 1; fi
+echo OK
+echo $N rcheck via http:// ..........................................$NL
+cd $HERE
+bk clone $Q $HERE/project http://localhost:$P/$HERE/copy2
+[ -f copy2/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
+cd $HERE/project
+bk rcheck bk://localhost:$P/$HERE/copy2 || { echo failed; exit 1; }
+# force a error
+rm $HERE/copy2/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR'
+bk rcheck bk://localhost:$P/$HERE/copy2 | grep "not found" > /dev/null
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+bk rcheck bk://localhost:$P/$HERE/copy2 > /dev/null
+if [ $? -eq 0 ]; then echo failed; exit 1; fi
+echo OK
+# TODO test virtual host/root support

@@ -76,6 +76,7 @@ no_logging() {
 	echo "description: BitKeeper Test repository" >> c
 	echo "email: nobody@nowhere.bk" >> c
 	echo "eoln: unix" >> c
+	echo "keyword: sccs" >> c
 	bk setup -f -cc $1
 	cd $1
 }
