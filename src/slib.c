@@ -4574,21 +4574,27 @@ openOutput(int encode, char *file, FILE **op)
 char *
 sccs_impliedList(sccs *s, char *who, char *base, char *rev)
 {
-	delta	*baseRev, *d, *mRev;
-	int	len  = 0;
-	char	*tmp;
+	delta	*baseRev, *t, *mRev;
+	delta	*baseThread, *mThread;
+	int	active;
+	char	*inc = 0, *exc = 0;
+	ser_t	*slist = 0;
+	int	i;
+
+	// like serialmap with 2 parents.
+	// build a set, then compress the set relative to base
+	// can I guarentee there will be no exclude?
+	// I'm thinking yes, and will work on a formal proof of logic.
 
 	unless (baseRev = findrev(s, base)) {
 		fprintf(stderr,
 		    "%s: can not find base rev %s in %s\n",
 		    who, base, s->sfile);
 err:		s->state |= S_WARNED;
+		if (inc) free(inc);
+		if (exc) free(exc);
+		if (slist) free(slist);
 		return (0);
-	}
-	for (d = baseRev; d; d = d->parent) {
-		/* we should be the only user or other users should also tidy */
-		assert(!(d->flags & D_VISITED));
-		d->flags |= D_VISITED;
 	}
 	unless (mRev = findrev(s, rev)) {
 		fprintf(stderr,
@@ -4596,23 +4602,53 @@ err:		s->state |= S_WARNED;
 		    who, rev, s->sfile);
 		goto err;
 	}
-	if (mRev->flags & D_VISITED) {
-		fprintf(stderr, "%s: %s already part of %s in %s\n",
-		    who, mRev->rev, baseRev->rev, s->sfile);
+
+	slist = calloc(s->nextserial, sizeof(ser_t));
+
+	baseThread = baseRev;
+	mThread = mRev;
+
+	for (t = s->table; t; t = t->next) {
+		if (t->type != 'D') continue;
+
+ 		assert(t->serial < s->nextserial);
+
+		/* if an ancestor and not excluded, or if included */
+		active = (((t == baseThread || t == mThread)
+				&& slist[t->serial] != S_EXCL)
+			|| slist[t->serial] == S_INC);
+
+		/* at some point, these become equal.  No need to optimize */
+		if (t == baseThread)  baseThread = t->parent;
+		if (t == mThread)  mThread = t->parent;
+
+		unless (active) {
+			slist[t->serial] = 0;
+			continue;
+		}
+		slist[t->serial] = 1;
+
+		EACH(t->include) {
+			unless(slist[t->include[i]])
+				slist[t->include[i]] = S_INC;
+		}
+		EACH(t->exclude) {
+			unless(slist[t->exclude[i]])
+				slist[t->exclude[i]] = S_EXCL;
+		}
+	}
+	if (compressmap(s, baseRev, slist, &inc, &exc)) {
+		fprintf(stderr, "%s: can not compress merged set\n", who);
 		goto err;
 	}
-	for (d = mRev; d && !(d->flags & D_VISITED); d = d->parent) {
-		len += strlen(d->rev) + 1;
+	if (exc) {
+		fprintf(stderr,
+		    "%s: compressed map caused exclude list: %s\n",
+		    who, exc);
+		goto err;
 	}
-	assert(d);
-	tmp = malloc(len + 1);
-	tmp[0] = 0;
-	for (d = mRev; d && !(d->flags & D_VISITED); d = d->parent) {
-		if (tmp[0]) strcat(tmp, ",");
-		strcat(tmp, d->rev);
-	}
-	for (d = baseRev; d; d = d->parent) d->flags &= ~D_VISITED;
-	return (tmp);
+	if (slist) free(slist);
+	return (inc);
 }
 
 /*
@@ -4668,7 +4704,14 @@ write_pfile(sccs *s, int flags, delta *d,
 	if (i2) {
 		len += strlen(i2) + 3;
 	} else {
+#ifdef CRAZY_WOW
+		// XXX: this used to be here, and was removed because
+		// mRev can be set with no i2 list because of the
+		// elements in the merge, while on another branch,
+		// might have been previously included with -i.
+		// see the t.merge file for an example of this.
 		assert(!mRev);
+#endif
 		len += (iLst ? strlen(iLst) + 3 : 0);
 	}
 	tmp = malloc(len);
@@ -5181,9 +5224,15 @@ err:		if (i2) free(i2);
 		char *tmp;
 
 		tmp = sccs_impliedList(s, "get", rev, mRev);
+#ifdef  CRAZY_WOW
+		// XXX: why was this here?  Should revisions that are
+		// inline (get -e -R1.7 -M1.5 foo) be an error?
+		// Needed to take this out because valid merge set
+		// could be empty (see t.merge for example)
 		unless (tmp) goto err;
+#endif
 		i2 = strconcat(tmp, iLst, ",");
-		if (i2 != tmp) free(tmp);
+		if (tmp && i2 != tmp) free(tmp);
 	}
 	if (rev && streq(rev, "+")) rev = 0;
 	if (flags & GET_EDIT) {
@@ -9410,29 +9459,39 @@ read_pfile(char *who, sccs *s, pfile *pf)
 		free(xLst); xLst = 0;
 		free(mRev); mRev = 0;
 		break;
-	    case 7:		/* figure out if it was -i or -x */
-		if (c1 == 'x') {
-			free(xLst);
+	    case 7:		/* figure out if it was -i or -x or -m */
+		free(xLst); xLst = 0;
+		free(mRev); mRev = 0;
+		if (c1 == 'i') {
+			/* do nothing */
+		} else if (c1 == 'x') {
 			xLst = iLst;
 			iLst = 0;
 		} else {
-			assert(c1 == 'i');
-			free(xLst);
-			xLst = 0;
+			assert(c1 == 'm');
+			mRev = iLst;
+			iLst = 0;
 		}
-		free(mRev);
-		mRev = 0;
 		break;
-	    case 9:		/* Could be -i -x or -i -m but not -x -m */
-		assert(c1 != 'x');
-		assert(c1 == 'i');
+	    case 9:		/* Could be -i -x or -i -m  or -x -m */
+		assert(c1 != 'm');
+		assert(c1 == 'i' || c1 == 'x');
 		free(mRev);
 		mRev = 0;
-		if (c2 == 'm') {
+		if (c1 == 'x') {
+			assert(c2 == 'm');
 			mRev = xLst;
-			xLst = 0;
-		} else {
-			assert(c2 == 'x');
+			xLst = iLst;
+			iLst = 0;
+		}
+		else {
+			assert(c1 == 'i');
+			if (c2 == 'm') {
+				mRev = xLst;
+				xLst = 0;
+			} else {
+				assert(c2 == 'x');
+			}
 		}
 		break;
 	    case 11:		/* has to be -i -x -m */
