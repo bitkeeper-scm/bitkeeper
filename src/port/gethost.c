@@ -40,6 +40,7 @@ sccs_gethost(void)
 	unless (strchr(hp->h_name, '.') &&
 	    !streq(hp->h_name, "localhost.localdomain")) {
 		int	i;
+		char	domain[257];
 
 		for (i = 0; hp->h_aliases && hp->h_aliases[i]; ++i) {
 			if (strchr(hp->h_aliases[i], '.') &&
@@ -48,6 +49,17 @@ sccs_gethost(void)
 				break;
 			}
 		}
+#ifdef sun
+		if (getdomainname(domain, sizeof(domain)) == 0) {
+			/*
+			 * Sun's convention, strip off the first component
+			 */
+			p = strchr(domain, '.');
+			p = p ? ++p : domain;
+			unless (*p == '.') strcat(host, ".");
+			strcat(host, p);
+		}
+#endif
 	} else if (hp) strcpy(host, hp->h_name);
 
 out:
@@ -80,11 +92,12 @@ out:
 	/*
 	 * Still no fully qualified hostname ?
 	 * Try extracting it from sendmail.cf
-	 * XXX FIXME: the location of sendmail.cf is different
+	 * XXX FIXME: the location of sendmail.cf is different on
 	 * 	different Unix platform, need to handle that.
 	 */
 	if (!host[0] || !strchr(host, '.')) {
 		f = fopen("/etc/sendmail.cf", "r") ;
+		unless (f) f = fopen("/etc/mail/sendmail.cf", "r") ;
 		if (f) {
 			while (fgets(buf, sizeof(buf), f)) {
 				if (strneq("DM", buf, 2)) {
@@ -99,7 +112,7 @@ out:
 	/*
 	 * Still no fully qualified hostname ?
 	 * Try extracting it from netscape config file
-	 * XXX FIXME: the location of sendmail.cf is different
+	 * XXX FIXME: the location of netscape config file is different on
 	 * 	different Unix platform, need to handle that.
 	 */
 	if (!host[0] || !strchr(host, '.')) {
