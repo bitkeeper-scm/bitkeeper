@@ -1551,7 +1551,7 @@ missing:
 	/* OK if this returns NULL */
 	goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
 
-	unless (idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
+	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
 		perror("SCCS/x.id_cache");
 		exit(1);
 	}
@@ -1584,7 +1584,7 @@ rebuild_id(char *id)
 	}
 	sccs_reCache();
 	if (idDB) mdbm_close(idDB);
-	unless (idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
+	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
 		perror("SCCS/x.id_cache");
 		exit(1);
 	}

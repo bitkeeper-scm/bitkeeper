@@ -238,8 +238,9 @@ uniq_open()
 	db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	unless (f = fopen(tmp, "r")) return (0);
 	while (fnext(buf, f)) {
-		for (pipes = 0, s = buf; *s && (*s != ' '); s++) {
+		for (pipes = 0, s = buf; *s; s++) {
 			if (*s == '|') pipes++;
+			if ((*s == ' ') && (pipes == 2)) break;
 		}
 		unless ((pipes == 2) &&
 		    s && isdigit(s[1]) && (chop(buf) == '\n')) {

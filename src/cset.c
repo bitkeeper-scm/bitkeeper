@@ -13,7 +13,7 @@ usage: cset [opts]\n\n\
     -C		clear and remark all ChangeSet boundries\n\
     -h		With -r listing, if the file name as of the cset is not the\n\
     		same as the current file name, list as\n\
-		<old name> <current name>@rev\n\
+		<old name>/->/<current name>@rev\n\
     -i<list>	create a new cset on TOT that includes the csets in <list>\n\
     -l<range>	List each rev in range as file@rev (may be multiline per file)\n\
     -m<range>	Generate a patch of the changes in <range>\n\
@@ -378,13 +378,13 @@ csetList(sccs *cset, char *rev, int ignoreDeleted)
 		cset_exit(1);
 	}
 
-	unless (idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
+	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
 		if (sccs_reCache()) {
 			fprintf(stderr, "cset: can not build %s\n", IDCACHE);
 			cset_exit(1);
 		}
 		doneFullRebuild = 1;
-		unless (idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
+		unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
 			perror("idcache");
 			cset_exit(1);
 		}
@@ -583,7 +583,7 @@ doKey(cset_t *cs, char *key, char *val)
 	/*
 	 * Set up the new file.
 	 */
-	unless (idDB || (idDB = loadDB(IDCACHE, 0, DB_NODUPS))) {
+	unless (idDB || (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS))) {
 		perror("idcache");
 	}
 	lastkey = strdup(key);
@@ -598,7 +598,8 @@ retry:	sc = sccs_keyinit(lastkey, INIT_NOCKSUM, 0, idDB);
 				    "cset: can not build %s\n", IDCACHE);
 			}
 			doneFullRebuild = 1;
-			unless (idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
+			unless (idDB =
+			    loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
 				perror("idcache");
 			}
 			goto retry;
@@ -681,7 +682,8 @@ marklist(char *file)
 	 */
 	while (fnext(buf, list)) {
 		chop(buf);
-		for (t = &buf[2]; *t != ' '; t++);
+		t = separator(&buf[2]);
+		assert(t);
 		*t++ = 0;
 		if (doKey(&cs, &buf[2], t)) {
 			fclose(list);
@@ -794,8 +796,7 @@ again:	/* doDiffs can make it two pass */
 	 */
 	while (fnext(buf, list)) {
 		chop(buf);
-		for (t = buf; *t != ' '; t++);
-		*t++ = 0;
+		t = separator(buf); *t++ = 0;
 		if (sameFile(cs, csetid, buf)) continue;
 		if (gone(buf, goneDB)) continue;
 		if (doKey(cs, buf, t)) goto fail;
@@ -897,7 +898,7 @@ doRange(cset_t *cs, sccs *sc)
 	}
 	unless (e) return;
 	if (cs->historic && !streq(sc->gfile, e->pathname)) {
-		printf("%s ", e->pathname);
+		printf("%s/->/", e->pathname);
 	}
 	printf("%s%c%s..", sc->gfile, BK_FS, e->rev);
 	for (d = sc->table; d; d = d->next) {

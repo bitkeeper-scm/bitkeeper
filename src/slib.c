@@ -296,6 +296,21 @@ chop(register char *s)
 }
 
 /*
+ * Keys are like u@h|path|date|.... whatever
+ * We want to skip over any spaces in the path part.
+ */
+char	*
+separator(char *s)
+{
+	while (s && (*s != '|') && *s) s++;
+	unless (s && (*s == '|')) return (0);
+	s++;
+	while ((*s != '|') && *s) s++;
+	unless (*s == '|') return (0);
+	return (strchr(s, ' '));
+}
+
+/*
  * Convert the pointer into something we can write.
  * We trim the newline since most of the time that's what we want anyway.
  * This pointer points into a readonly mmapping.
@@ -1311,7 +1326,10 @@ sccs_cd2root(sccs *s, char *root)
 		perror(BKROOT);
 		return (-1);
 	}
-
+	if (bk_proj && bk_proj->root) {
+		free(bk_proj->root);
+		bk_proj->root = strdup(".");
+	}
 	return (0);
 }
 
@@ -5329,8 +5347,13 @@ getKey(MDBM *DB, char *buf, int flags)
 	assert(len < MAXLINE);
 	if (len) strncpy(data, buf, len);
 	data[len] = 0;
-	unless (e = strchr(data, ' ')) {
-		fprintf(stderr, "get hash: no space char in line\n");
+	if (flags & DB_KEYFORMAT) {
+		e = separator(data);
+	} else {
+		e = strchr(data, ' ');
+	}
+	unless (e) {
+		fprintf(stderr, "get hash: no separator in line\n");
 		return (-1);
 	}
 	*e++ = 0;
@@ -5357,6 +5380,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	char	*buf, *base = 0, *f = 0;
 	MDBM	*DB = 0;
 	int	hash = 0;
+	int	hashFlags = 0;
 	int sccs_expanded, rcs_expanded;
 	int	lf_pend = 0;
 	ser_t	serial;
@@ -5391,6 +5415,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	}
 	if ((s->state & S_HASH) && !(flags & GET_NOHASH)) {
 		hash = 1;
+		if (s->state & S_CSET) hashFlags = DB_KEYFORMAT;
 		unless ((encoding == E_ASCII) || (encoding == E_GZIP)) {
 			fprintf(stderr, "get: has files must be ascii.\n");
 			s->state |= S_WARNED;
@@ -5468,7 +5493,7 @@ out:			if (slist) free(slist);
 				continue;
 			}
 			if (hash) {
-				if (getKey(DB, buf, flags) == 1) {
+				if (getKey(DB, buf, hashFlags|flags) == 1) {
 					unless (flags & GET_HASHONLY) {
 						fnlputs(buf, out);
 					}
@@ -6858,7 +6883,9 @@ sccs_hasDiffs(sccs *s, u32 flags)
 		name = strdup(s->gfile);
 	}
 	if (s->state & S_HASH) {
-		ghash = loadDB(name, 0, DB_USEFIRST);
+		int	flags = (s->state & S_CSET) ? DB_KEYFORMAT : 0;
+
+		ghash = loadDB(name, 0, flags|DB_USEFIRST);
 		shash = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	}
 	else unless (tmp = mopen(name, mode)) {
@@ -7147,8 +7174,9 @@ int
 diffMDBM(sccs *s, char *old, char *new, char *tmpfile)
 {
 	FILE	*f = fopen(tmpfile, "w");
-	MDBM	*o = loadDB(old, 0, DB_USEFIRST);
-	MDBM	*n = loadDB(new, 0, DB_USEFIRST);
+	int	flags = (s->state & S_CSET) ? DB_KEYFORMAT : 0;
+	MDBM	*o = loadDB(old, 0, flags|DB_USEFIRST);
+	MDBM	*n = loadDB(new, 0, flags|DB_USEFIRST);
 	/* 'p' is not used as hash, but has simple storage */
 	MDBM	*p = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	kvpair	kv;
@@ -13648,9 +13676,12 @@ out:		if (f) fclose(f);
 		if (style & DB_KEYSONLY) {
 			v = "";
 		} else {
-			unless (v = strchr(buf, ' ')) {
-				if (style & DB_NOBLANKS) continue;
+			if (style & DB_KEYFORMAT) {
+				v = separator(buf);
+			} else {
+				v = strchr(buf, ' ');
 			}
+			if (!v && (style & DB_NOBLANKS)) continue;
 			assert(v);
 			*v++ = 0;
 		}

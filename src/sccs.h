@@ -260,6 +260,7 @@
 #define DB_USELAST      0x04		/* use the last key found */
 #define	DB_KEYSONLY	0x08		/* boolean hashes */
 #define	DB_NOBLANKS	0x10		/* keys must have values or skip */
+#define	DB_KEYFORMAT	0x20		/* key/value are u@h|path|date|cksum */
 
 #define	MAXREV	24	/* 99999.99999.99999.99999 */
 
@@ -416,6 +417,9 @@ typedef struct {
 } project;
 
 extern	project	*bk_proj;	/* bk.c sets this up */
+extern	jmp_buf	exit_buf;
+
+#define	exit(e)	longjmp(exit_buf, e + 1000)
 
 #define	READER_LOCK_DIR	"BitKeeper/readers"
 #define	WRITER_LOCK_DIR	"BitKeeper/writer"
@@ -843,5 +847,7 @@ MDBM *	loadOK();
 void	config(char *rev, FILE *f);
 int	ok_commit(int l, int alreadyAsked);
 int	cset_setup(int flags);
+off_t	fsize(int fd);
+char	*separator(char *);
 
 #endif	/* _SCCS_H_ */

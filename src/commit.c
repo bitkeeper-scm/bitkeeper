@@ -18,7 +18,6 @@ extern	int	do_clean(char *, int);
 extern	int	loggingask_main(int, char**);
 private	void	make_comment(char *cmt, char *commentFile);
 private int	do_commit(c_opts opts, char *sym, char *commentFile);
-void		cat(char *file);
 
 private char    *commit_help = "\n\
 usage: commit  [-adFRqS:y:Y:]\n\n\
@@ -129,13 +128,17 @@ Abort:			printf("Commit aborted.\n");
 	}
 }
 
-void
 cat(char *file)
 {
 	MMAP	*m = mopen(file, "r");
 
-	write(1, m->mmap, m->size);
+	unless (m) return (-1);
+	unless (write(1, m->mmap, m->size) == m->size) {
+		mclose(m);
+		return (-1);
+	}
 	mclose(m);
+	return (0);
 }
 
 private void
@@ -230,7 +233,7 @@ do_commit(c_opts opts, char *sym, char *commentFile)
 	strcpy(buf, d->rev);
 	sccs_free(s);
 	logChangeSet(l, buf, opts.quiet);
-	return (rc);
+	return (rc ? 1 : 0);
 }
 
 private	void

@@ -274,21 +274,29 @@ do_cmds()
 {
 	int	ac;
 	char	**av;
-	int	i;
+	int	i, ret;
 
 	while (getav(&ac, &av)) {
 		getoptReset();
 		if ((i = findcmd(ac, av)) != -1) {
 			if (Opts.log) log_cmd(i, ac, av);
-			if (cmds[i].cmd(ac, av) != 0) {
+			if (!bk_proj ||
+			    !bk_proj->root || !isdir(bk_proj->root)) {
+				if (bk_proj) proj_free(bk_proj);
+				bk_proj = proj_init(0);
+			}
+			cmdlog_start(av);
+			if ((ret = cmds[i].cmd(ac, av)) != 0) {
 				if (Opts.interactive) {
 					out("ERROR-CMD FAILED\n");
 				}
 				if (Opts.errors_exit) {
 					out("ERROR-exiting\n");
 					drain(0);
-					exit(1);
+					exit(ret);
 				}
+			} else {
+				cmdlog_end(0);
 			}
 		} else if (av[0]) {
 			out("ERROR-BAD CMD: ");
@@ -349,7 +357,12 @@ findcmd(int ac, char **av)
 
 	if (ac == 0) return (-1);
 	for (i = 0; cmds[i].name; ++i) {
-		if (strcmp(av[0], cmds[i].name) == 0) return (i);
+		if (strcmp(av[0], cmds[i].name) == 0) {
+			if (streq(av[0], "pull")) av[0] = "remote pull";
+			if (streq(av[0], "push")) av[0] = "remote push";
+			if (streq(av[0], "clone")) av[0] = "remote clone";
+			return (i);
+		}
 	}
 	return (-1);
 }

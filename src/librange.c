@@ -18,6 +18,8 @@ WHATSTR("@(#)%K%");
  *	..d2	-> 1.1 to d2
  *	d1..d2	-> d1 to d2
  *	*d1	-> transitive closure from d1 to root w/include/exlude
+ *	-n{s,m,h,d,w,m,y}
+ *		-> go back 1 second, minute, hour, day, week, month, year
  *
  * These can be specified in a list of revisions (but not dates) as well:
  *	d1,d2,d3
@@ -50,6 +52,27 @@ rangeReset(sccs *sc)
 {
 	sc->rstart = sc->rstop = 0;
 	sc->state &= ~(S_RANGE2|S_SET);
+}
+
+private time_t
+backDate(char *spec)
+{
+	double	mult = atof(spec);
+	int	units = 1;
+
+	while (*spec && (isdigit(*spec) || (*spec == '.'))) spec++;
+	switch (*spec) {
+	    case 0: case 's': break;
+	    case 'm': units = 60; break;
+	    case 'h': units = 60*60; break;
+	    case 'd': units = 60*60*24; break;
+	    case 'M': units = 60*60*31; break;
+	    case 'Y': units = 60*60*365; break;
+	    default:
+	    	fprintf(stderr, "bad unit '%c', assuming seconds\n", *spec);
+		break;
+	}
+	return (time(0) - (mult * units));
 }
 
 /*
@@ -85,6 +108,16 @@ rangeAdd(sccs *sc, char *rev, char *date)
 		if (rev) rev++;
 		if (date) date++;
 		prune = 1;
+	}
+
+	if (s && (*s == '-') && !(sc->state & S_RANGE2)) {
+		time_t	cutoff = backDate(s+1);
+
+		for (tmp = sc->table; tmp; tmp = tmp->next) {
+			if (tmp->date >= cutoff) tmp->flags |= D_SET;
+		}
+		sc->state |= S_SET;
+		return (0);
 	}
 
 	/*

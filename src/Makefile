@@ -9,7 +9,6 @@ BINDIR	= /usr/libexec/bitkeeper
 # These default values are for unix
 SYS	=unix
 BK=	bk 
-BKMERGE=bkmerge
 CC_OUT	=-o $@
 LD_OUT	=-o $@
 LD	=cc
@@ -35,7 +34,7 @@ BINS	= $(BK) $(BKMERGE)
 OBJ	= abort.o adler32.o admin.o bkd.o bkd_cd.o bkd_client.o \
 	  bkd_clone.o bkd_cmdtab.o bkd_misc.o bkd_pull.o \
 	  bkd_push.o bkd_pwd.o bkd_rootkey.o bkd_status.o \
-	  bkd_version.o bk.o bkusers.o check.o chksum.o \
+	  bkd_version.o bk.o bkusers.o changes.o check.o chksum.o \
 	  clean.o clone.o comments.o commit.o compress.o \
 	  cset.o cset_inex.o delta.o diffs.o dirname.o export.o fdiff.o \
 	  filecopy.o find.o fix.o g2sccs.o \
@@ -43,7 +42,7 @@ OBJ	= abort.o adler32.o admin.o bkd.o bkd_cd.o bkd_client.o \
 	  gettemp.o getuser.o glob.o graft.o help.o host.o isascii.o \
 	  key2rev.o keysort.o lib_tcp.o libcommit.o libdiff.o librange.o \
 	  libsfiles.o libusers.o lines.o localtm.o locking.o \
-	  lod.o log.o logging.o mkdir.o mklock.o mmap.o \
+	  lod.o log.o logging.o merge.o mkdir.o mklock.o mmap.o \
 	  mtime.o names.o newrev.o parent.o pending.o popen.o \
 	  port/executable.o port/findprog.o port/fullname.o \
 	  port/gethost.o port/getinput.o port/mail.o port/platforminit.o \
@@ -58,7 +57,7 @@ OBJ	= abort.o adler32.o admin.o bkd.o bkd_cd.o bkd_client.o \
 	  send.o sendbug.o setup.o \
 	  sfiles.o sfio.o sids.o sinfo.o slib.o smoosh.o \
 	  status.o stripdel.o takepatch.o undo.o undos.o \
-	  unique.o unedit.o unlock.o unwrap.o user.o utils.o \
+	  unique.o unedit.o unlink.o unlock.o unwrap.o user.o utils.o \
 	  version.o what.o zgets.o zone.o license.o
 
 MDBMOBJ	= mdbm/mdbm.o mdbm/hash.o mdbm/debug.o mdbm/byte_order.o
@@ -105,7 +104,7 @@ SCRSRCS	= testfast.perl bk.sh import.sh clone.sh \
 	  unuuwrap.sh port/unix_platform.sh port/unix_platform.tcl \
 	  port/unix_platform.perl pmerge.perl gui/csettool.tcl \
 	  port/win32_platform.perl port/win32_platform.tcl \
-	  port/win32_platform.sh gui/renametool.tcl bkmerge.sh \
+	  port/win32_platform.sh gui/renametool.tcl \
 	  gzip_uuwrap.sh ungzip_uuwrap.sh resync.sh substvars.sh
 MISC	= bkhelp.doc bitkeeper.config t/doit.sh
 
@@ -174,7 +173,7 @@ production_image: rebuild p image
 
 # Cleanup targets.
 clean clean-obj: FORCE
-	-rm -f bk.o bkmerge.o shell.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) 
+	-rm -f bk.o shell.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) 
 	-rm -f $(LIBS) shell.c bkdsubstr bkhelp.txt a.out core $(WIN_TMP)
 	-cd gnu && $(MAKE) clean-obj
 	-cd win32 && $(MAKE) clean-obj
@@ -267,8 +266,6 @@ libsccs.a: $(OBJ) shell.o
 	-$(RANLIB) libsccs.a
 $(BK): bk.o $(LIBS)
 	$(LD) $(LDFLAGS) $(LD_OUT) bk.o $(LINK_LIB)
-$(BKMERGE): bkmerge.o $(LIBS)
-	$(LD) $(LDFLAGS) $(LD_OUT) bkmerge.o $(LINK_LIB)
 
 testfast: testfast.perl
 	rm -f testfast
@@ -492,6 +489,7 @@ bkd_rootkey.o:	bkd_rootkey.c $(B) $(H) $(Z)
 bkd_status.o:	bkd_status.c $(B) $(H) $(Z)
 bkd_version.o:	bkd_version.c $(B) $(H) $(Z)
 bkusers.o:	bkusers.c $(H)
+changes.o:	changes.c $(H)
 check.o:	check.c $(H) range.h
 chksum.o:	chksum.c
 clean.o:	clean.c $(H)
@@ -542,6 +540,7 @@ log.o:		log.c $(H)
 logging.o:	logging.c $(H)
 lod.o:		lod.c $(H) range.h $(Z)
 logaddr.o:	logaddr.c $(H)
+merge.o:	merge.c $(H)
 mkdir.o:	mkdir.c $(H)
 mmap.o:		mmap.c $(H)
 mtime.o:	mtime.c
@@ -605,6 +604,7 @@ undo.o:		undo.c $(H)
 undos.o:	undos.c
 unedit.o:	unedit.c $(H)
 unique.o:	unique.c $(H)
+unlink.o:	unlink.c $(H)
 unlock.o:	unlock.c $(H)
 unwrap.o:	unwrap.c $(H)
 user.o:		user.c $(H)

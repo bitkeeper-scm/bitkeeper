@@ -277,14 +277,14 @@ full:		keys = fopen(CTMP, "rt");
 		perror("checkAll");
 		exit(1);
 	}
-	unless (idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
+	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
 		perror("idcache");
 		exit(1);
 	}
 	/* This can legitimately return NULL */
 	goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
 	while (fnext(buf, keys)) {
-		t = strchr(buf, ' ');
+		t = separator(buf);
 		assert(t);
 		*t = 0;
 		if (mdbm_fetch_str(db, buf)) continue;
@@ -365,7 +365,7 @@ buildKeys()
 		perror("buildkeys");
 		exit(1);
 	}
-	unless (idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
+	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
 		perror("idcache");
 		exit(1);
 	}
@@ -406,9 +406,9 @@ buildKeys()
 	buf[0] = 0;
 	csetKeys.n = 0;
 	for (s = csetKeys.malloc; s < csetKeys.malloc + sz; ) {
-		t = strchr(s, ' ');
-		*t++ = 0;
+		t = separator(s);
 		assert(t);
+		*t++ = 0;
 		r = strchr(t, '\n');
 #ifdef WIN32
 		if (r[-1] == '\r') r[-1] = 0; /* remove DOS '\r' */
@@ -523,7 +523,7 @@ listCsetRevs(char *key)
 			goto out;
 		}
 		//fprintf(stderr, "BUF %s\n", buf);
-		t = strrchr(buf, ' '); assert(t); *t++ = 0;
+		t = separator(buf); assert(t); *t++ = 0;
 		unless (streq(t, key)) continue;
 		for (t = buf; *t && !isspace(*t); t++);
 		assert(isspace(*t));
