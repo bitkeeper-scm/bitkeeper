@@ -7981,6 +7981,7 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 	int	lf_pend = 0;
 	u32	eflags = flags; /* copy because expandnleq destroys bits */
 	int	error = 0, serial;
+	int	in_zgets = 0;
 
 #define	RET(x)	{ different = x; goto out; }
 
@@ -8041,7 +8042,10 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 	assert(!error);
 	state = allocstate(0, 0, s->nextserial);
 	seekto(s, s->data);
-	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
+	if (s->encoding & E_GZIP) {
+		zgets_init(s->where, s->size - s->data);
+		in_zgets = 1;
+	}
 	while (fbuf = nextdata(s)) {
 		if (isData(fbuf)) {
 			if (fbuf[0] == CNTLA_ESCAPE) fbuf++;
@@ -8175,7 +8179,7 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 	debug((stderr, "diff because EOF on sfile\n"));
 	RET(1);
 out:
-	if (s->encoding & E_GZIP) zgets_done();
+	if (in_zgets) zgets_done();
 	if (gfile) mclose(gfile); /* must close before we unlink */
 	if (ghash) mdbm_close(ghash);
 	if (shash) mdbm_close(shash);
@@ -10566,7 +10570,7 @@ remove_comments(sccs *s)
  * Reverse sort it, we want the ^A's, if any, at the end.
  */
 private int
-c_compar(void *a, void *b)
+c_compar(const void *a, const void *b)
 {
 	return (*(char*)b - *(char*)a);
 }
