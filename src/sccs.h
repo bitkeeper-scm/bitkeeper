@@ -1116,6 +1116,7 @@ void	sccs_adjustSet(sccs *sc, sccs *scb, delta *d);
 int	chk_host(void);
 int	chk_user(void);
 int	fix_gmode(sccs *s, int gflags);
+int	do_checkout(sccs *s);
 
 extern char *bk_vers;
 extern char *bk_utc;

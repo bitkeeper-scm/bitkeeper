@@ -18,7 +18,6 @@ private	int	Flags;
 private	project	*proj;
 private	char	*co_prog;
 private	char	*cutoff;
-private	int	getFlags;
 
 int
 rcs2sccs_main(int ac, char **av)
@@ -49,8 +48,6 @@ rcs2sccs_main(int ac, char **av)
     "rcs2sccs needs the RCS program co, which was not found in your PATH.\n");
     		exit(1);
 	}
-	if (strieq("edit", user_preference("checkout"))) getFlags = GET_EDIT;
-	if (strieq("get",  user_preference("checkout"))) getFlags = GET_EXPAND;
 
 	if (av[optind] && streq("-", av[optind]) && !av[optind+1]) {
 		while (fgets(buf, sizeof(buf), stdin)) {
@@ -136,6 +133,7 @@ rcs2sccs(RCS *rcs, char *sfile)
 	sccs	*s;
 	int	len = 0, rev = 1;
 	char	*g = sccs2name(sfile);
+	int	ret;
 
 	/*
 	 * If we are only doing a partial, make sure the tag is here,
@@ -226,14 +224,10 @@ rcs2sccs(RCS *rcs, char *sfile)
 		printf("%s %d converted and verified\n", g, rev-1);
 	}
 	free(g);
-	if (getFlags) {
-		if (sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-")) {
-			sccs_free(s);
-			return (1);
-		}
-	}
+	ret = 0;
+	if (do_checkout(s)) ret = 1;
 	sccs_free(s);
-	return (0);
+	return (ret);
 }
 
 private int

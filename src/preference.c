@@ -44,3 +44,26 @@ user_preference(char *what)
 	unless (p) p = "";
 	return (p);
 }
+
+int
+do_checkout(sccs *s)
+{
+	MDBM	*config = proj_config(s->proj);
+	int	getFlags = 0;
+	char	*co;
+
+	unless (config) return (0);
+
+	if ((co = mdbm_fetch_str(config, "checkout"))) {
+		if (strieq(co, "get")) getFlags = GET_EXPAND;
+		if (strieq(co, "edit")) getFlags = GET_EDIT;
+	}
+	if (getFlags) {
+		s = sccs_restart(s);
+		unless (s) return (-1);
+		if (sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-")) {
+			return (-1);
+		}
+	}
+	return (0);
+}

@@ -538,15 +538,10 @@ readonly_gfile(sccs *s)
 {
 	if ((HAS_PFILE(s) && exists(s->gfile) && !writable(s->gfile))) {
 		if (gfile_unchanged(s)) {
-			char	*p;
-
 			unlink(s->pfile);
 			s->state &= ~S_PFILE;
 			if (resync) return (0);
-			p = user_preference("checkout");
-			if (streq(p, "edit") || streq(p, "EDIT")) {
-				sccs_get(s, 0, 0, 0, 0, SILENT|GET_EDIT, "-");
-			}
+			do_checkout(s);
 			return (0);
 		} else {
 			fprintf(stderr,
