@@ -534,6 +534,7 @@ echo OK
 
 echo $N Check diff of edited symlinks ...............................$NL
 bk diffs link || exit 1
+rm -f link
 ln -sf foobar link
 cat > CMP1 << EOF
 ===== link 1.2 vs edited =====
