@@ -1405,7 +1405,7 @@ __platformPath() {
         bk_tagfile="sccslog"
 
 	BIN=
-	if [ X$BK_BIN != X -a -x ${BK_BIN}sccslog ]
+	if [ X$BK_BIN != X -a -x ${BK_BIN}$bk_tagfile ]
 	then	BIN="$BK_BIN"
 		export BK_BIN
 		return
