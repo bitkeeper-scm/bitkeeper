@@ -14,7 +14,7 @@ cmd_clone(int ac, char **av)
 	int	gzip = 0;
 
 	if (!exists("BitKeeper/etc")) {
-		out("ERROR-Not at project root\n");
+		out("ERROR-Not at package root\n");
 		exit(1);
 	}
 	cmd[4] = 0;

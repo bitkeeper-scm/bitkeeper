@@ -156,7 +156,7 @@ update_idcache(sccs *s, char *old, char *new)
 
 	unless ((p = s->proj) || (p = proj_init(s))) {
 		fprintf(stderr,
-		    "can't find project root, idcache not updated\n");
+		    "can't find package root, idcache not updated\n");
 		s->proj = p;
 		return (1);
 	}

@@ -15,7 +15,7 @@ cmd_push(int ac, char **av)
 				    /* see verbose below    ^^ */
 
 	if (!exists("BitKeeper/etc")) {
-		out("ERROR-Not at project root\n");
+		out("ERROR-Not at package root\n");
 		exit(1);
 	}
 

@@ -17,7 +17,7 @@ __cd2root() {
 	while [ ! -d "BitKeeper/etc" ]
 	do	cd ..
 		if [ `pwd` = "/" ]
-		then	echo "bk: can not find project root."
+		then	echo "bk: can not find package root."
 			exit 1
 		fi
 	done

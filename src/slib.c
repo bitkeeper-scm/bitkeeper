@@ -1281,7 +1281,7 @@ cleanPath(char *path, char cleanPath[])
  */
 
 /*
- * Change directories to the project root or return -1.  If the second
+ * Change directories to the package root or return -1.  If the second
  * arg is non-null, then that's the root, and we aren't to call
  * sccs_root to find it.  The only place that does that is
  * takepatch.c, and it probably shouldn't.

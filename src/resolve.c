@@ -133,7 +133,7 @@ passes(opts *opts)
 	 */
 	unless (exists("BitKeeper/etc")) sccs_cd2root(0, 0);
 	unless (exists("BitKeeper/etc")) {
-		fprintf(stderr, "resolve: can't find project root.\n");
+		fprintf(stderr, "resolve: can't find package root.\n");
 		exit(1);
 	}
 	unless (exists(ROOT2RESYNC)) {

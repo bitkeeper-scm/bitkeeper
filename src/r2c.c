@@ -33,7 +33,7 @@ r2c_main(int ac, char **av)
 		exit(1);
 	}
 	if (sccs_cd2root(s, 0)) {
-		fprintf(stderr, "r2c: can not find project root.\n");
+		fprintf(stderr, "r2c: can not find package root.\n");
 		exit(1);
 	}
 	unless (e = sccs_getrev(s, &av[1][2], 0, 0)) {

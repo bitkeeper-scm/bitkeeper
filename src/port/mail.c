@@ -20,7 +20,7 @@ mail(char *to, char *subject, char *file)
 		0
 	};
 
-	if (strstr(project_name(), "BitKeeper Test repo") &&
+	if (strstr(package_name(), "BitKeeper Test repo") &&
 	    (bkusers(1, 1, 0) <= 5)) {
 		/* TODO : make sure our root dir is /tmp/.regression... */
 		return (-9);
@@ -73,7 +73,7 @@ mail(char *to, char *subject, char *file)
 	pid_t	pid;
 	extern	char *bin;
 
-	if (strstr(project_name(), "BitKeeper Test repo") &&
+	if (strstr(package_name(), "BitKeeper Test repo") &&
 	    (bkusers(1, 1, 0) <= 5)) {
 		/* TODO : make sure our root dir is /tmp/.regression... */
 		return (-9);

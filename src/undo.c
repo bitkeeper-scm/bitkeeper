@@ -37,7 +37,7 @@ undo_main(int ac,  char **av)
 		}
 	}
 	if (sccs_cd2root(0, 0) == -1) {
-		fprintf(stderr, "undo: can not find project root.\n");
+		fprintf(stderr, "undo: can not find package root.\n");
 		exit(1);
 	}
 	unless (rev) {

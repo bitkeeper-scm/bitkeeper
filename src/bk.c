@@ -233,7 +233,7 @@ main(int ac, char **av)
 					optind++;
 				} else if (sccs_cd2root(0, 0) == -1) {
 					fprintf(stderr, 
-					    "bk: Can not find project root.\n");
+					    "bk: Can not find package root.\n");
 					return(1);
 				}
 				dashr++;
@@ -241,7 +241,7 @@ main(int ac, char **av)
 			    case 'R':
 				if (sccs_cd2root(0, 0) == -1) {
 					fprintf(stderr, 
-					    "bk: Can not find project root.\n");
+					    "bk: Can not find package root.\n");
 					return(1);
 				}
 				break;

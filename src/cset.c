@@ -210,10 +210,10 @@ usage:		fprintf(stderr, "%s", cset_help);
 			return (1);
 		}
 	} else if (flags & NEWFILE) {
-		fprintf(stderr, "cset: must specify project root.\n");
+		fprintf(stderr, "cset: must specify package root.\n");
 		return (1);
 	} else if (sccs_cd2root(0, 0)) {
-		fprintf(stderr, "cset: can not find project root.\n");
+		fprintf(stderr, "cset: can not find package root.\n");
 		return (1);
 	}
 	cset = sccs_init(csetFile, flags & SILENT, 0);

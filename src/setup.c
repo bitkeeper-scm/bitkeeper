@@ -7,7 +7,7 @@ int
 setup_main(int ac, char **av)
 {
 	int	force = 0, c;
-	char	*project_name = 0, *project_path = 0, *config_path = 0;
+	char	*package_name = 0, *package_path = 0, *config_path = 0;
 	char	buf[MAXLINE], my_editor[1024], setup_files[MAXPATH];
 	char 	s_config[MAXPATH] = "SCCS/s.config";
 	FILE	*f, *f1;
@@ -30,29 +30,29 @@ setup_main(int ac, char **av)
 			force = 1;
 			break;
 		    case 'n':
-			project_name = optarg;
+			package_name = optarg;
 			break;
 		}
 	}
-	unless (project_path = av[optind]) {
+	unless (package_path = av[optind]) {
 		printf(
-	"Usage: bk setup [-c<config file>] [-n <project name>] directory\n");
+	"Usage: bk setup [-c<config file>] [-n <package name>] directory\n");
 		exit (0);
 	}
-	if (exists(project_path)) {
-		printf("bk: %s exists already, setup fails.\n", project_path);
+	if (exists(package_path)) {
+		printf("bk: %s exists already, setup fails.\n", package_path);
 		exit (1);
 	}
 	license();
 	unless(force) {
 		gethelp("setup_1", "", stdout);
-		printf("Create new project? [no] ");
+		printf("Create new package? [no] ");
 		if (fgets(buf, sizeof(buf), stdin) == NULL) buf[0] = 'n';
 		if ((buf[0] != 'y') && (buf[0] != 'Y')) exit (0);
 	}
-	mkdirp(project_path);
-	if (chdir(project_path) != 0) exit(1);
-	unless(project_name) {
+	mkdirp(package_path);
+	if (chdir(package_path) != 0) exit(1);
+	unless(package_name) {
 		gethelp("setup_2", "", stdout);
 		while (1) {
 			/*
@@ -60,11 +60,11 @@ setup_main(int ac, char **av)
 			 */
 			f = fopen("Description", "wt");
 			fprintf(f,
-				"Replace this with your project description\n");
+				"Replace this with your package description\n");
 			fclose(f);
 			f = fopen("D.save", "wb");
 			fprintf(f,
-				"Replace this with your project description\n");
+				"Replace this with your package description\n");
 			fclose(f);
 			printf("Editor to use [%s] ", editor);
 			unless (fgets(my_editor, sizeof(my_editor), stdin)) {
@@ -83,7 +83,7 @@ setup_main(int ac, char **av)
 		}
 	} else {
 		f = fopen("Description", "wb");
-		fputs(project_name, f);
+		fputs(package_name, f);
 		fclose(f);
 	}
 	system("bk cset -siDescription .");
@@ -147,7 +147,7 @@ setup_main(int ac, char **av)
 	system(buf);
 	unlink(setup_files);
  	if (sccs_cd2root(0, 0) == -1) {
-                fprintf(stderr, "sendconfig: can not find project root.\n");
+                fprintf(stderr, "sendconfig: can not find package root.\n");
                 exit(1);
         }                           
 	sendConfig("setups@openlogging.org", 1, 0);

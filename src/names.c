@@ -22,9 +22,9 @@ names_main(int ac, char **av)
 	int	todo = 0;
 	int	error = 0;
 
-	/* this should be redundant, we should always be at the project root */
+	/* this should be redundant, we should always be at the package root */
 	if (sccs_cd2root(0, 0)) {
-		fprintf(stderr, "names: can not find project root.\n");
+		fprintf(stderr, "names: can not find package root.\n");
 		return (1);
 	}
 

@@ -11,7 +11,7 @@ cmd_rootkey(int ac, char **av)
 	sccs	*s;
 		
 	unless (exists("BitKeeper/etc")) {
-		out("ERROR-not at a project root\n");
+		out("ERROR-not at a package root\n");
 		return (-1);
 	}
 	unless (s = sccs_init(s_cset, INIT_NOCKSUM, 0)) {

@@ -85,7 +85,7 @@ import() {
 		exit 1
 	fi
 	if [ ! -d "$2/BitKeeper" ]
-	then	echo "$2 is not a BitKeeper project"; exit 1
+	then	echo "$2 is not a BitKeeper package"; exit 1
 	fi
 	HERE=`pwd`
 	if [ $TYPE != patch ]
@@ -391,7 +391,7 @@ import_SCCS () {
 	echo Checking for and fixing Teamware corruption...
 	bk sfiles | bk renumber -q -
 	if [ -s ${TMP}reparent$$ ]
-	then	echo Reparenting files from some other BitKeeper project...
+	then	echo Reparenting files from some other BitKeeper package...
 		sed 's/ BitKeeper$//' < ${TMP}reparent$$ | \
 		while read x
 		do	if [ -f $x ]
@@ -460,7 +460,7 @@ validate_SCCS () {
 	if [ -s ${TMP}reparent$$ ]
 	then	cat <<EOF
 
-You are trying to import BitKeeper files into a BitKeeper project.
+You are trying to import BitKeeper files into a BitKeeper package.
 We can do this, but it means that you are goint to "reparent" these
 files under a new ChangeSet file.  In general, that's not a good idea,
 because you will lose all the old ChangeSet history in the copied files.

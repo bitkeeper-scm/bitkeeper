@@ -94,7 +94,7 @@ usage:		fprintf(stderr, "%s", check_help);
 		return (1);
 	}
 	if (sccs_cd2root(0, 0)) {
-		fprintf(stderr, "check: can not find project root.\n");
+		fprintf(stderr, "check: can not find package root.\n");
 		return (1);
 	}
 	unless (s = sccs_init(csetFile, flags, 0)) {
