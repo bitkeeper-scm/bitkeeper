@@ -582,3 +582,32 @@ case "$1" in
 esac
 exit 0
 $
+#bkl_new_preamble
+1
+$
+#bkl_upgrade_preamble
+2
+$
+#bkcl_new_preamble
+3
+$
+#bkcl_upgrade_preamble
+4
+$
+#repo_new_preamble
+5
+$
+#repo_upgrade_preamble
+6
+$
+#lic_acceptable
+
+You can avoid seeing this message in the future by adding the following
+to your .profile:
+
+	BK_LICENSE=ACCEPTED
+
+or, if you use csh
+	setenv BK_LICENSE ACCEPTED
+$
+
