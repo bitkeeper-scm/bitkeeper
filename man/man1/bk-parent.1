@@ -64,6 +64,36 @@ is found then falls back to
 .BR rsh.
 .head
 \fBbk\fR://\c
+.ARGc user @
+.ARG host 
+.br
+Connects to
+.ARG host
+using 
+.BR ssh ,
+assumes that 
+.B bkd
+is the login shell.
+The home directory of 
+.ARG user
+must be the root of the repository.
+.head
+\fBbk\fR://\c
+.ARGc user @
+.ARGc host :
+.ARG pathname
+.br
+Connects to
+.ARG host
+using 
+.BR ssh ,
+assumes that 
+.B bkd
+is the login shell.
+Changes directories to the specified pathname, which may be relative to the
+home directory or absolute.
+.head
+\fBbk\fR://\c
 .ARG host
 .br
 Connects to an existing 
@@ -108,35 +138,52 @@ changes to
 .ARG pathname ,
 then runs command.
 .head
-\fBbk\fR://\c
-.ARGc user @
-.ARG host 
-.br
-Connects to
-.ARG host
-using 
-.BR ssh ,
-assumes that 
-.B bkd
-is the login shell.
-The home directory of 
-.ARG user
-must be the root of the repository.
-.head
-\fBbk\fR://\c
-.ARGc user @
+\fBhttp\fR://\c
 .ARGc host :
+.ARGc port /
 .ARG pathname
 .br
-Connects to
-.ARG host
-using 
-.BR ssh ,
-assumes that 
-.B bkd
-is the login shell.
-Changes directories to the specified pathname, which may be relative to the
-home directory or absolute.
+Connects to the specified port via the hypertext transfer protocol, changes
+to pathname, then runs the command.
+.head
+\fBhttp\fR://\c
+.ARGc host :
+.ARGc port 
+.br
+Same as above, except that it assumes that the pwd of the bkd is the root
+of the source repository.
+.SS PROXIES
+\*(BK supports http proxy via environment variables on Unix systems and
+via the registry on win32 systems.
+.LP
+The following are the Unix environment variable options available for use.  
+.LP
+.RS .4i
+.Bc HTTP_PROXY_HOST=
+.ARG host_name
+.br
+.Bc HTTP_PROXY_PORT=
+.ARG port_number
+.LP
+.Bc http_proxy= 
+.ARGc host :
+.ARG port
+.LP
+.Bc SOCKS_HOST
+.ARG host_name
+.br
+.Bc SOCKS_PORT
+.ARG port_number
+.LP
+.Bc SOCKS_SERVER
+.ARGc host :
+.ARG port .
+.RE
+.LP
+Note: if HTTP_PROXY_HOST is set, HTTP_PROXY_PORT must also be set.  Likewise
+for SOCKS_HOST and SOCKS_PORT.
+If you are not sure if you should set environment variables, please consult
+your system administrator.
 .SH OPTIONS
 .TP
 .B \-q
