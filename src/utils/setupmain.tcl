@@ -343,14 +343,14 @@ proc widgets {} \
 
 		    checkbutton $w.shellx-local \
 			-anchor w \
-			-text "Enable shell extensions on LOCAL drives" \
+			-text "Enable Explorer integration on LOCAL drives" \
 			-borderwidth 1 \
 			-variable ::runtime(enableShellxLocal) \
 			-onvalue 1 \
 			-offvalue 0 
 		    checkbutton $w.shellx-remote \
 			-anchor w \
-			-text "Enable shell extensions on NETWORK drives" \
+			-text "Enable Explorer integration on NETWORK drives" \
 			-borderwidth 1 \
 			-variable ::runtime(enableShellxNetwork) \
 			-onvalue 1 \

@@ -2,7 +2,7 @@
 # @(#) %K%
 
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
-ifeq "$(OSTYPE)" "cygwin"
+ifeq "$(OSTYPE)" "msys"
 	SYS=win32
 	ICONS=../win32/data/bk.ico ../win32/data/bk16.ico
 else
