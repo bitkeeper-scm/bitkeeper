@@ -21,7 +21,7 @@ int
 main(int ac, char **av)
 {
 	sccs	*s = 0;
-	int	flags = SILENT|NOCKSUM;
+	int	flags = SILENT;
 	int	c;
 	char	*name;
 
@@ -31,12 +31,12 @@ usage:		fprintf(stderr, clean_help);
 		return (1);
 	}
 	if (streq("unedit", av[0])) {
-		flags |= UNEDIT;
+		flags |= CLEAN_UNEDIT;
 	}
 	while ((c = getopt(ac, av, "puv")) != -1) {
 		switch (c) {
 		    case 'p': flags |= PRINT; break;
-		    case 'u': flags |= UNEDIT; break;
+		    case 'u': flags |= CLEAN_UNEDIT; break;
 		    case 'v': flags &= ~SILENT; break;
 		    default:
 			goto usage;
@@ -46,7 +46,7 @@ usage:		fprintf(stderr, clean_help);
 	 * Too dangerous to unedit everything automagically,
 	 * make 'em spell it out.
 	 */
-	if (flags & UNEDIT) {
+	if (flags & CLEAN_UNEDIT) {
 		unless (name =
 		    sfileFirst("clean",
 				&av[optind], SF_GFILE|SF_NODIREXPAND)) {
@@ -59,7 +59,7 @@ usage:		fprintf(stderr, clean_help);
 		name = sfileFirst("clean", &av[optind], SF_GFILE);
 	}
 	while (name) {
-		if ((s = sccs_init(name, flags))) {
+		if ((s = sccs_init(name, INIT_NOCKSUM))) {
 			(void)sccs_clean(s, flags);
 			sccs_free(s);
 		}

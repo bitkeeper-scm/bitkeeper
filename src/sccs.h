@@ -136,40 +136,60 @@ extern	char *strdup(char *s);
 
 /*
  * Flags that modify some operation (passed to sccs_*).
+ *
+ * There are two ranges of values, 0x00000fff and 0xfffff000.
+ * The first is for flags which may be meaningful to all functions.
+ * The second is for flags which are function specific.
+ * Be VERY CAREFUL to not mix and match.  If I see a DELTA_ in sccs_get()
+ * I will be coming after you with a blowtorch.
  */
 #define	SILENT		0x00000001	/* do work quietly */
-#define	EDIT		0x00000002	/* get -e: get for editting */
-#define	EXPAND		0x00000004	/* expand keywords */
-#define	REVNUMS		0x00000008	/* get -m: prefix each line with rev */
-#define	PRINT		0x00000010	/* get/delta -p: [diffs] to stdout */
-#define USER		0x00000020	/* get -u: prefix with user name */
-#define SKIPGET		0x00000040	/* get -g: don't get the file */
-#define	FORCE		0x00000080	/* delta -f: force a delta */
-#define	SAVEGFILE	0x00000100	/* delta -n: save edited gfile */
-#define	UNEDIT		0x00000200	/* clean -u: unedit - discard changes */
-#define	NEWFILE		0x00000400	/* delta -i: create initial file */
-#define	AUTO_CHECKIN	0x00000800	/* delta -a: auto check-in mode */
-#define	PATCH		0x00001000	/* mk/tkpatch, delta -R */
-#define	NOCKSUM		0x00002000	/* don't do the checksum */
-#define	FORCEBRANCH	0x00004000	/* force a branch when creating delta */
-#define	CHECKFILE	0x00008000	/* check file format (admin) */
-#define	NEWCKSUM	0x00010000	/* Redo checksum */
-#define	RCSEXPAND	0x00020000	/* do RCS keywords */
-#define	GZIP		0x00040000	/* turn the file into a gzipped file */
-#define	TOP		0x00080000	/* use the top rev (also mkpatch) */
-#define	EMPTY		0x00100000	/* initialize with empty file */
-#define	DONTASK		0x00200000	/* don't ask for comments */
-#define	FORCEASCII	0x00400000	/* Do not gunzip/uudecode */
-#define	MAP_WRITE	0x00800000	/* map the file read/write */
-#define	MODNAME		0x01000000	/* get -n: prefix with %M */
-#define	PREFIXDATE	0x02000000	/* get -d: show date */
-#define	CHECKASCII	0x04000000	/* check file format (admin) */
-#define	LINENUM		0x08000000	/* get -N: show line numbers */
-#define	VERBOSE		0x10000000	/* when !SILENT isn't enough */
-#define SHUTUP		0x20000000	/* when SILENT isn't enough */
-#define GTIME		0x40000000	/* use g file mod time as time stamp */
-#define DELTA_PATH	0x80000000	/* use delta (orignal) path */
+#define	PRINT		0x00000002	/* get/delta/clean [diffs] to stdout */
+#define	NEWFILE		0x00000008	/* delta -i: create initial file */
+#define	NEWCKSUM	0x00000010	/* Redo checksum */
 
+#define	INIT_MAPWRITE	0x10000000	/* map the file read/write */
+#define	INIT_NOCKSUM	0x20000000	/* don't do the checksum */
+#define INIT_GTIME	0x40000000	/* use g file mod time as time stamp */
+
+/* shared across get/diffs/getdiffs */
+#define	GET_EDIT	0x10000000	/* get -e: get for editting */
+#define	GET_EXPAND	0x20000000	/* expand keywords */
+#define	GET_REVNUMS	0x40000000	/* get -m: prefix each line with rev */
+#define GET_USER	0x80000000	/* get -u: prefix with user name */
+#define GET_SKIPGET	0x01000000	/* get -g: don't get the file */
+#define	GET_RCSEXPAND	0x02000000	/* do RCS keywords */
+#define	GET_ASCII	0x04000000	/* Do not gunzip/uudecode */
+#define	GET_LINENUM	0x08000000	/* get -N: show line numbers */
+#define	GET_MODNAME	0x00100000	/* get -n: prefix with %M */
+#define	GET_PREFIXDATE	0x00200000	/* get -d: show date */
+#define GET_PATH	0x00400000	/* use delta (original) path */
+#define	GET_SHUTUP	0x00800000	/* quiet on certain errors */
+#define	GET_BRANCH	0x00010000	/* force a branch when creating delta */
+#define	GET_FORCE	0x00020000	/* do it even with errors */
+#define	GET_HEADER	0x00040000	/* diff: print header */
+#define	DIFF_HEADER	GET_HEADER
+#define	GET_PREFIX	\
+	    (GET_REVNUMS|GET_USER|GET_LINENUM|GET_MODNAME|GET_PREFIXDATE)
+
+#define	CLEAN_UNEDIT	0x10000000	/* clean -u: unedit - discard changes */
+
+#define	DELTA_AUTO	0x10000000	/* delta -a: auto check-in mode */
+#define	DELTA_SAVEGFILE	0x20000000	/* delta -n: save edited gfile */
+#define	DELTA_DONTASK	0x40000000	/* don't ask for comments */
+#define	DELTA_PATCH	0x80000000	/* delta -R: respect rev */
+#define	DELTA_EMPTY	0x01000000	/* initialize with empty file */
+#define	DELTA_FORCE	0x02000000	/* delta -f: force a delta */
+
+#define	ADMIN_FORMAT	0x10000000	/* check file format (admin) */
+#define	ADMIN_ASCII	0x20000000	/* check file format (admin) */
+#define	ADMIN_TIME	0x40000000	/* warn about time going backwards */
+#define	ADMIN_SHUTUP	0x80000000	/* don't be noisy about bad revs */
+
+
+#define	PRS_META	0x10000000	/* show metadata */
+#define	PRS_SYMBOLIC	0x20000000	/* show revs as beta1, etc. Not done */
+#define	PRS_PATCH	0x40000000	/* print in patch format */
 /*
  * flags passd to sfileFirst
  */
@@ -322,6 +342,7 @@ extern	char *strdup(char *s);
 
 typedef	unsigned short	ser_t;
 typedef	unsigned short	sum_t;
+typedef	unsigned int	u32;
 typedef	unsigned short	u16;
 typedef	unsigned char	u8;
 
@@ -600,19 +621,19 @@ extern	int	optopt;
 extern	char	*optarg;
 int	getopt(int ac, char **av, char *opts);
 
-int	sccs_admin(sccs *sc, int flgs, int *encoding,
+int	sccs_admin(sccs *sc, u32 flgs, int *encoding,
 	    admin *f, admin *l, admin *u, admin *s, char *txt);
-int	sccs_checkin(sccs *s, int flags, delta *d);
-int	sccs_delta(sccs *s, int flags, delta *d, FILE *init, FILE *diffs);
-int	sccs_diffs(sccs *s, char *r1, char *r2, int flags, char kind, FILE *);
+int	sccs_checkin(sccs *s, u32 flags, delta *d);
+int	sccs_delta(sccs *s, u32 flags, delta *d, FILE *init, FILE *diffs);
+int	sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, char kind, FILE *);
 int	sccs_get(sccs *s,
-	    char *rev, char *mRev, char *i, char *x, int flags, char *out);
-int	sccs_clean(sccs *s, int flags);
-int	sccs_info(sccs *s, int flags);
-int	sccs_prs(sccs *s, int flags, int reverse, char *dspec, FILE *out);
+	    char *rev, char *mRev, char *i, char *x, u32 flags, char *out);
+int	sccs_clean(sccs *s, u32 flags);
+int	sccs_info(sccs *s, u32 flags);
+int	sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out);
 delta	*sccs_getrev(sccs *s, char *rev, char *date, int roundup);
 delta	*sccs_findDelta(sccs *s, delta *d);
-sccs	*sccs_init(char *filename, int flags);
+sccs	*sccs_init(char *filename, u32 flags);
 sccs	*sccs_restart(sccs *s);
 void	sccs_free(sccs *);
 void	sccs_freetree(delta *);
@@ -621,15 +642,15 @@ void	sccs_freefiles();
 int	sccs_smoosh(char *left, char *right);
 delta	*sccs_parseArg(delta *d, char what, char *arg, int defaults);
 void	sccs_whynot(char *who, sccs *s);
-int	sccs_addSym(sccs *, int, char *);
-void	sccs_ids(sccs *s, int flags, FILE *out);
-int	sccs_hasDiffs(sccs *s, int flags);
+int	sccs_addSym(sccs *, u32 flags, char *);
+void	sccs_ids(sccs *s, u32 flags, FILE *out);
+int	sccs_hasDiffs(sccs *s, u32 flags);
 void	sccs_print(delta *d);
 delta	*sccs_getInit(sccs *s,
 		delta *d, FILE *f, int patch, int *errorp, int *linesp);
 delta	*sccs_ino(sccs *);
-int	sccs_rmdel(sccs *s, delta *d, int destroy, int flags);
-int	sccs_getdiffs(sccs *s, char *rev, int flags, char *printOut);
+int	sccs_rmdel(sccs *s, delta *d, int destroy, u32 flags);
+int	sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut);
 void	sccs_pdelta(delta *d, FILE *out);
 char	*sccs_root(sccs *, char *optional_root);
 int	sccs_cd2root(sccs *, char *optional_root);
@@ -679,7 +700,7 @@ char	*sPath(char *name, int isDir);
 delta	*sccs_next(sccs *s, delta *d);
 int	sccs_meta(sccs *s, delta *parent, char *initFile);
 int	sccs_resolveFile(sccs *s, char *lpath, char *gpath, char *rpath);
-sccs	*sccs_keyinit(char *key,int flags, MDBM *idDB);
+sccs	*sccs_keyinit(char *key, u32 flags, MDBM *idDB);
 int	zgets_init(char *map, int len);
 int	zcat(char *map, int len);
 int	zeof(void);

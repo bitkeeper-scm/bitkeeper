@@ -47,10 +47,9 @@ int
 main(int ac, char **av)
 {
 	sccs	*s;
-	int	all = 0, flags = SILENT, c;
+	int	all = 0, flags = DIFF_HEADER|SILENT, c;
 	char	kind;
 	char	*name;
-	int	headers = 1;
 	RANGE_DECL;
 
 	debug_main(av);
@@ -67,15 +66,15 @@ main(int ac, char **av)
 	while ((c = getopt(ac, av, "acd;DhMnpr|suUv")) != -1) {
 		switch (c) {
 		    case 'a': all = 1; break;
-		    case 'h': headers = 0; break;
+		    case 'h': flags &= ~DIFF_HEADER; break;
 		    case 'c': kind = DF_CONTEXT; break;
-		    case 'D': flags |= PREFIXDATE; break;
-		    case 'M': flags |= REVNUMS; break;
+		    case 'D': flags |= GET_PREFIXDATE; break;
+		    case 'M': flags |= GET_REVNUMS; break;
 		    case 'p': kind = DF_PDIFF; break;
 		    case 'n': kind = DF_RCS; break;
 		    case 's': kind = DF_SDIFF; break;
 		    case 'u': kind = DF_UNIFIED; break;
-		    case 'U': flags |= USER; break;
+		    case 'U': flags |= GET_USER; break;
 		    RANGE_OPTS('d', 'r');
 		    default:
 usage:			fprintf(stderr, "diffs: usage error, try --help\n");
@@ -89,7 +88,7 @@ usage:			fprintf(stderr, "diffs: usage error, try --help\n");
 	 * do TOT if it isn't there.
 	 * If we specified no revs then there must be a gfile.
 	 */
-	if ((flags&(PREFIXDATE|USER|REVNUMS)) && (things != 2)) {
+	if ((flags & GET_PREFIX) && (things != 2)) {
 		fprintf(stderr,
 		    "%s: must have both revisions with -d|u|m\n", av[0]);
 		return (1);
@@ -119,8 +118,7 @@ usage:			fprintf(stderr, "diffs: usage error, try --help\n");
 				r1 = s->rstart->rev;
 			}
 		}
-		if (HAS_GFILE(s) && !IS_WRITABLE(s)) ex = EXPAND;
-		if (headers) ex |= VERBOSE;
+		if (HAS_GFILE(s) && !IS_WRITABLE(s)) ex = GET_EXPAND;
 
 		/*
 		 * Errors come back as -1/-2/-3/0

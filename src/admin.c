@@ -57,6 +57,7 @@ main(int ac, char **av, char **ev)
 {
 	sccs	*sc;
 	int	flags = 0;
+	int	init_flags = 0;
 	char	*rev = 0;
 	int	c;
 	admin	f[A_SZ], l[A_SZ], u[A_SZ], s[A_SZ];
@@ -114,7 +115,7 @@ main(int ac, char **av, char **ev)
 				break;
 		/* pathname */
 		    case 'p':	path = optarg;
-		    		flags |= SHUTUP|NEWCKSUM;
+		    		flags |= ADMIN_SHUTUP|NEWCKSUM;
 				dopath++;
 				break;
 		/* Changeset info */
@@ -132,9 +133,8 @@ main(int ac, char **av, char **ev)
 		    case 'B':	bigpad++; break;
 		    case 'b':	encp = &encoding, encoding = E_UUENCODE; break;
 		    case 'g':	encp = &encoding, encoding = E_UUGZIP; break;
-		    case 'h':	flags |= VERBOSE|CHECKFILE; break;
-		    case 'H':
-				flags |= VERBOSE|CHECKASCII|CHECKFILE;
+		    case 'h':	flags |= ADMIN_FORMAT; break;
+		    case 'H':	flags |= ADMIN_FORMAT|ADMIN_ASCII|ADMIN_TIME;
 				break;
 		    case 'S':	fastSymOK = 0; break;
 		    case 'q':	flags |= SILENT; break;
@@ -143,7 +143,9 @@ main(int ac, char **av, char **ev)
 		    		encoding = E_ASCII;
 				flags |= NEWCKSUM;
 				break;
-		    case 'z':	flags |= NOCKSUM|NEWCKSUM; break;
+		    case 'z':	init_flags |= INIT_NOCKSUM;
+		    		flags |= NEWCKSUM;
+				break;
 		    case 'Z':	encoding = E_GZIP;
 		    		encp = &encoding;
 		   		flags |= NEWCKSUM;
@@ -152,14 +154,14 @@ main(int ac, char **av, char **ev)
 				goto usage;
 		}
 	}
-	if ((flags & CHECKFILE) &&
-	    ((flags & ~(CHECKASCII|CHECKFILE|VERBOSE|SILENT)) ||
+	if ((flags & ADMIN_FORMAT) &&
+	    ((flags & ~(ADMIN_FORMAT|ADMIN_ASCII|ADMIN_TIME|SILENT)) ||
 	    nextf || nextu || nexts || nextp || rev)) {
 		fprintf(stderr, "admin: -h option must be alone.\n");
 		goto usage;
 	}
 	if ((merge) &&
-	    ((flags & ~(CHECKASCII|CHECKFILE|VERBOSE|SILENT|NEWCKSUM)) ||
+	    ((flags & ~(ADMIN_FORMAT|ADMIN_ASCII|ADMIN_TIME|SILENT|NEWCKSUM)) ||
 	    nextf || nextu || nexts || nextp || comment || path || 
 	    rmCset || rmPath || doDates)) {
 		fprintf(stderr, "admin: -M option must be alone or with -r\n");
@@ -192,7 +194,7 @@ main(int ac, char **av, char **ev)
 	fastSym = !(flags & ~SILENT) && !nextf && !nextu && !nextp &&
 	    !rev && nexts && (s[0].flags == A_ADD) && !s[1].flags &&
 	    fastSymOK;
-	if (fastSym) flags |= (MAP_WRITE|NOCKSUM);
+	if (fastSym) init_flags |= (INIT_MAPWRITE|INIT_NOCKSUM);
 	while (name) {
 		if (flags & NEWFILE) {
 			if (do_checkin(name, encp, flags&(SILENT|NEWFILE),
@@ -202,7 +204,7 @@ main(int ac, char **av, char **ev)
 				continue;
 			}
 		}
-		sc = sccs_init(name, flags);
+		sc = sccs_init(name, init_flags);
 		unless (sc) { name = sfileNext(); continue; }
 		unless (sc->tree) {
 			fprintf(stderr, "admin: can't read delta table in %s\n",
@@ -247,7 +249,7 @@ main(int ac, char **av, char **ev)
 			}
 		}
 		if (sccs_admin(sc, flags, encp, f, l, u, s, text)) {
-			sccs_whynot("admin", s);
+			sccs_whynot("admin", sc);
 			error = 1;
 		}
 next:		sccs_free(sc);
@@ -390,11 +392,11 @@ do_checkin(char *name, int *encp,
 		free(s->gfile);
 		s->gfile = strdup(newfile);
 	} else {
-		flags |= EMPTY;
+		flags |= DELTA_EMPTY;
 	}
 	s->state |= S_GFILE;
 	if (comment) { d = sccs_parseArg(d, 'C', comment, 0); }
-	if ((error = sccs_delta(s, flags|SAVEGFILE, d, 0, 0))) {
+	if ((error = sccs_delta(s, flags|DELTA_SAVEGFILE, d, 0, 0))) {
 		unless (BEEN_WARNED(s)) {
 			fprintf(stderr, "admin: failed to check in %s.\n",
 			    s->sfile);

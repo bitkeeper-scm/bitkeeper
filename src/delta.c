@@ -38,7 +38,9 @@ int
 main(int ac, char **av)
 {
 	sccs	*s;
-	int	flags = FORCE;
+	int	iflags = 0;
+	int	dflags = DELTA_FORCE;
+	int	gflags = 0;
 	int	sflags = SF_GFILE|SF_WRITE_OK;
 	int	c, rc;
 	char	*initFile = 0;
@@ -62,30 +64,35 @@ help:		fprintf(stderr, delta_help);
 			    goto help;
 		    case 'm': fprintf(stderr, "-m Not implemented.\n");
 			    goto help;
-		    case 'n': flags |= SAVEGFILE; break;
-		    case 'p': flags |= PRINT; break;
+		    case 'n': dflags |= DELTA_SAVEGFILE; break;
+		    case 'p': dflags |= PRINT; break;
 		    case 'r': fprintf(stderr, "-r Not implemented.\n");
 			    goto help;
-		    case 's': flags |= SILENT; break;
+		    case 's': dflags |= SILENT; gflags |= SILENT; break;
 		    case 'y':
 			comment = optarg;
 			gotComment = 1;
-			flags |= DONTASK;
+			dflags |= DELTA_DONTASK;
 			break;
 
 		    /* LM flags */
-		    case 'a': flags |= AUTO_CHECKIN; flags &= ~FORCE; break;
-		    case 'c': flags |= NOCKSUM; break;
+		    case 'a':
+		    	dflags |= DELTA_AUTO;
+			dflags &= ~DELTA_FORCE;
+			break;
+		    case 'c': iflags |= INIT_NOCKSUM; break;
 		    case 'D': diffsFile = optarg; sflags &= ~SF_GFILE; break;
-		    case 'G': flags |= GTIME; break;
+		    case 'G': iflags |= INIT_GTIME; break;
 		    case 'I': initFile = optarg; break;
-		    case 'i': flags |= NEWFILE; sflags |= SF_NODIREXPAND; break;
-		    case 'l': flags |= SKIPGET|SAVEGFILE|EDIT; break;
+		    case 'i': dflags |= NEWFILE; sflags |= SF_NODIREXPAND; break;
+		    case 'l': gflags |= GET_SKIPGET|GET_EDIT;
+		    	      dflags |= DELTA_SAVEGFILE;
+			      break;
 		    case 'L': lod = optarg; break;
-		    case 'q': flags |= SILENT; break;
-		    case 'R': flags |= PATCH; break;
+		    case 'q': dflags |= SILENT; gflags |= SILENT; break;
+		    case 'R': dflags |= DELTA_PATCH; break;
 		    case 'S': sym = optarg; break;
-		    case 'Y': flags |= DONTASK; break;
+		    case 'Y': dflags |= DELTA_DONTASK; break;
 
 		    default:
 usage:			fprintf(stderr, "delta: usage error, try --help.\n");
@@ -103,7 +110,7 @@ usage:			fprintf(stderr, "delta: usage error, try --help.\n");
 		    "may be specified with init or diffs file.\n");
 		goto usage;
 	}
-	if (initFile && (flags & DONTASK)) {
+	if (initFile && (dflags & DELTA_DONTASK)) {
 		fprintf(stderr,
 		    "delta: only init file or comment, not both.\n");
 		goto usage;
@@ -118,7 +125,7 @@ usage:			fprintf(stderr, "delta: usage error, try --help.\n");
 		    "delta: Can't open init file '%s'.\n", initFile);
 		goto usage;
 	}
-	if (lod && !(flags & NEWFILE)) {
+	if (lod && !(dflags & NEWFILE)) {
 		fprintf(stderr, "delta: -L requires -i.\n");
 		goto usage;
 	}
@@ -127,17 +134,19 @@ usage:			fprintf(stderr, "delta: usage error, try --help.\n");
 		delta	*d = 0;
 		char	*nrev;
 
-		if (flags & DONTASK) unless (d = getComments(0)) goto usage;
-		unless (s = sccs_init(name, flags)) {
+		if (dflags & DELTA_DONTASK) {
+			unless (d = getComments(0)) goto usage;
+		}
+		unless (s = sccs_init(name, iflags)) {
 			if (d) sccs_freetree(d);
 			name = sfileNext();
 			continue;
 		}
-		if (flags & AUTO_CHECKIN) {
+		if (dflags & DELTA_AUTO) {
 			if (HAS_SFILE(s)) {
-				flags &= ~NEWFILE;
+				dflags &= ~NEWFILE;
 			} else {
-				flags |= NEWFILE;
+				dflags |= NEWFILE;
 			}
 		}
 
@@ -151,13 +160,13 @@ usage:			fprintf(stderr, "delta: usage error, try --help.\n");
 			d->flags |= D_LODSTR;
 		}
 		nrev = NULL;
-		unless (flags & NEWFILE) {
-			if ((flags & EDIT) && (newrev(s, &pf) == -1)) {
+		unless (dflags & NEWFILE) {
+			if ((gflags & GET_EDIT) && (newrev(s, &pf) == -1)) {
 				goto next;
 			}
 			nrev = pf.newrev;
 		}
-		rc = sccs_delta(s, flags, d, init, diffs);
+		rc = sccs_delta(s, dflags, d, init, diffs);
 		if (rc == -2) goto next; /* no diff in file */
 		if (rc == -1) {
 			sccs_whynot("delta", s);
@@ -169,9 +178,7 @@ usage:			fprintf(stderr, "delta: usage error, try --help.\n");
 			purify_list();
 			return (1);
 		}
-		if (flags & EDIT) {
-			int	f = flags & (EDIT|SKIPGET|SILENT);
-
+		if (gflags & GET_EDIT) {
 			s = sccs_restart(s);
 			unless (s) {
 				fprintf(stderr,
@@ -179,7 +186,7 @@ usage:			fprintf(stderr, "delta: usage error, try --help.\n");
 				goto next;
 			}
 
-			if (sccs_get(s, nrev, 0, 0, 0, f, "-")) {
+			if (sccs_get(s, nrev, 0, 0, 0, gflags, "-")) {
 				unless (BEEN_WARNED(s)) {
 					fprintf(stderr,
 					"get of %s failed, skipping it.\n",

@@ -73,7 +73,7 @@ usage:		fprintf(stderr, "usage: %s [-n] [files...]\n", av[0]);
 	while ((c = getopt(ac, av, "nq")) != -1) {
 		switch (c) {
 		    case 'n': dont = 1; break;
-		    case 'q': quiet++; flags |= SHUTUP|SILENT; break;
+		    case 'q': quiet++; flags |= SILENT; break;
 		    default:
 			goto usage;
 		}

@@ -24,7 +24,8 @@ main(int ac, char **av)
 {
 	sccs	*s;
 	int	reverse = 0, doheader = 1, didone = 0;
-	int	flags = NOCKSUM|SILENT|SHUTUP;
+	int	init_flags = INIT_NOCKSUM;
+	int	flags = 0;
 	int	c;
 	char	*name;
 	int	noisy = 0;
@@ -45,7 +46,7 @@ main(int ac, char **av)
 		    case 'h':
 			doheader = 0;
 			break;
-		    case 'm': flags &= ~SILENT; break;
+		    case 'm': flags |= PRS_META; break;
 		    case 'v': noisy = 1; break;
 		    RANGE_OPTS('c', 'r');
 		    default:
@@ -55,7 +56,7 @@ usage:			fprintf(stderr, "prs: usage error, try --help\n");
 	}
 	for (name = sfileFirst("prs", &av[optind], 0);
 	    name; name = sfileNext()) {
-		unless (s = sccs_init(name, flags)) continue;
+		unless (s = sccs_init(name, init_flags)) continue;
 		if (!s->tree) goto next;
 		RANGE("prs", s, 1, noisy);
 		assert(s->rstart);

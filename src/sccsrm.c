@@ -49,7 +49,7 @@ sccs_rm(char *name, char *dest)
 	int	try = 0;
 	int	error = 0;
 
-	s = sccs_init(name, NOCKSUM);
+	s = sccs_init(name, INIT_NOCKSUM);
 	unless (HAS_SFILE(s)) {
 		fprintf(stderr, "sccsrm: not an SCCS file: %s\n", name);
 		sccs_free(s);

@@ -60,9 +60,9 @@ sccs_mv(char *name, char *dest, int isDir, int createDelta)
 	delta	*d;
 	int	error = 0, wasEdited = 0;
 	pfile	pf;
-	int	flags = SILENT|FORCE;; 
+	int	flags = SILENT|DELTA_FORCE;; 
 
-	s = sccs_init(name, NOCKSUM);
+	s = sccs_init(name, INIT_NOCKSUM);
 	unless (HAS_SFILE(s)) {
 		fprintf(stderr, "sccsmv: not an SCCS file: %s\n", name);
 		sccs_free(s);
@@ -108,12 +108,12 @@ sccs_mv(char *name, char *dest, int isDir, int createDelta)
 		unless (s = sccs_init(sfile, 0)) { error++; goto out; }
 		newrev(s, &pf);
 		nrev = pf.newrev;
-		flags |= SAVEGFILE;
+		flags |= DELTA_SAVEGFILE;
 		wasEdited = 1;
 	} else {
 		sccs_free(s);
 		unless (s = sccs_init(sfile, 0)) { error++; goto out; }
-		if (sccs_get(s, 0, 0, 0, 0, SILENT|EDIT, "-")) {
+		if (sccs_get(s, 0, 0, 0, 0, SILENT|GET_EDIT, "-")) {
 			error = 1;
 			goto out;
 		}
@@ -128,7 +128,7 @@ sccs_mv(char *name, char *dest, int isDir, int createDelta)
 	}
 	if (sccs_delta(s, flags, d, 0, 0) == -1) error = 1;
 	if (wasEdited) {
-		int flag = EDIT|SKIPGET|SILENT;
+		int flag = GET_EDIT|GET_SKIPGET|SILENT;
 
 		unless (s = sccs_restart(s)) {
 			error = 1;
