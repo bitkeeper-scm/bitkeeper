@@ -741,21 +741,27 @@ _man() {
 }
 
 # Make links in /usr/bin (or wherever they say).
-_links() {		# /* undoc? 2.0 - what is this for? */
+_links() {		# /* doc 3.0 */
 	if [ X"$1" = X ]
-	then	echo "usage: bk links bk-bin-dir [public-dir]"
-		echo "Typical is bk links /usr/libexec/bitkeeper /usr/bin"
+	then	echo "usage: bk links public-dir"
+		echo "Typical is bk links /usr/bin"
 		exit 1
 	fi
-	test -x "$1/bk" || {
-		echo "bk links: cannot find executable bk in $1; links not created"
+	# The old usage had two arguments so we adjust for that here
+	if [ "X$2" != X ]
+	then	BK="$1"
+		BIN="$2"
+	else	BK="`bk bin`"
+		BIN="$1"
+	fi
+	test -f "$BK/bkhelp.txt" || {
+		echo "bk links: bitkeeper not installed at $BK"
 		exit 2
 	}
-	BK="$1"
-	if [ "X$2" != X ]
-	then	BIN="$2"
-	else	BIN=/usr/bin
-	fi
+	test -f "$BIN/bkhelp.txt" && {
+		echo "bk links: destination can't be a bk tree ($BIN)"
+		exit 2
+	}
 	test -w "$BIN" || {
 		echo "bk links: cannot write to ${BIN}; links not created"
 		exit 2
@@ -1363,8 +1369,8 @@ _install()
 	# symlinks to /usr/bin
 	if [ "$DOSYMLINKS" = "YES" ]
 	then
-	        test $VERBOSE = YES && echo bk links "$DEST" /usr/bin
-		bk links "$DEST" /usr/bin
+	        test $VERBOSE = YES && echo "$DEST"/bk links /usr/bin
+		"$DEST"/bk links /usr/bin
 	fi
 
 	if [ "X$OSTYPE" = "Xmsys" ]

@@ -110,7 +110,7 @@ proc hasWinAdminPrivs {} \
 # this is where the actual install takes place
 proc install {} \
 {
-	global message tcl_platform runtime
+	global tcl_platform runtime
 
 	set installfrom [pwd]
 
@@ -487,6 +487,7 @@ proc widgets {} \
 			    }
 		    }
 
+		    # symlinkDir == "" on Windows so this is always false
 		    if {[file writable $::runtime(symlinkDir)]} {
 			    set runtime(doSymlinks) 1
 		    } else {
@@ -875,40 +876,6 @@ proc usage {} \
 {
 	set image "\[installer\]"
 	puts stderr "usage: $image ?directory?"
-}
-
-
-set message(CANT_CD) {cannot cd to %s}
-set message(PLEASE_WAIT) {Installing in %s, please wait...}
-set message(LINK_ERROR) {We were unable to create links in /usr/bin}
-set message(NO_LINKS) {
-----------------------------------------------------------------------------
-You have no write permission on /usr/bin, so no links will be created there.
-You need to add the bitkeeper directory to your path (not recommended), 
-or symlink bk into some public bin directory.  You can do that by running
-
-	%s/bk links %s [destination-dir]
-i.e.,
-	%s/bk links %s /usr/bin
-----------------------------------------------------------------------------
-}
-set message(NO_WRITE_PERM) {You have no write permission on %s
-Perhaps you want to run this as root?}
-set message(SUCCESS) {
-----------------------------------------------------------------------------
-		    Installation was successful.
-
-For more information, you can go to http://www.bitkeeper.com.  We strongly
-urge you to go to the web site and take the "Test drive", it answers 90%
-of new users' questions.
-
-For help
-	bk help
-    or
-	bk helptool
-
-			      Enjoy!
-----------------------------------------------------------------------------
 }
 
 # these strings will be reformatted; the newlines and leading spaces

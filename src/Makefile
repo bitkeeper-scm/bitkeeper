@@ -466,7 +466,7 @@ gui-nowrap GUI-nowrap:
 
 install: installdir
 	tmp/bitkeeper/bk install -d -f $(BINDIR)
-	-$(BINDIR)/bk links $(BINDIR) /usr/bin
+	-$(BINDIR)/bk links /usr/bin
 
 installdir: utils/registry.tcl
 	rm -rf $(IMGDIR)

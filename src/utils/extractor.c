@@ -47,6 +47,7 @@ main(int ac, char **av)
 	int	rc = 0;
 	pid_t	pid = getpid();
 	FILE	*f;
+	int	dolinks = 0;
 	char	tmpdir[MAXPATH];
 	char	buf[MAXPATH];
 
@@ -94,7 +95,14 @@ main(int ac, char **av)
 		} else {
 			dest = av[1];
 		}
-	} else if (av[1]) {
+#ifndef	WIN32
+		unless (getenv("BK_NOLINKS")) dolinks = 1;
+#endif
+	} else if (av[1]
+#ifndef WIN32
+		   || !getenv("DISPLAY")
+#endif
+		   ) {
 		fprintf(stderr, "usage: %s [-u || <directory>]\n", av[0]);
 		fprintf(stderr,
 "Installs BitKeeper on the system.\n"
@@ -118,14 +126,15 @@ main(int ac, char **av)
 #else
 "Normally symlinks are created in /usr/bin for 'bk' and common SCCS\n"
 "tools.  If the user doesn't have permissions to write in /usr/bin\n"
-"then this step will be skipped.\n"
+"or BK_NOLINKS is set then this step will be skipped.\n"
 "\n"
-"If DISPLAY is not set in the environment, then a text-based\n"
-"installer will be started instead of the graphical one.\n"
+"If DISPLAY is not set in the environment, then the destination must\n"
+"be set on the command line.\n"
 #endif
 			);
 		exit(1);
 	}
+	/* dest =~ s,\,/,g */
 	if (dest) for (p = dest; *p; p++) if (*p == '\\') *p = '/';
 
 	sprintf(tmpdir, "%s/%s%u", tmp, TMP, pid);
@@ -172,7 +181,9 @@ main(int ac, char **av)
 #endif
 	if (dest) {
 		fprintf(stderr, "Installing BitKeeper in %s\n", dest);
-		sprintf(buf, "bk install -Sf \"%s\"", dest);
+		sprintf(buf, "bk install -f%s \"%s\"",
+			dolinks ? "S" : "",
+			dest);
 		system(buf);
 		p = getenv("BK_OLDPATH");
 		tmp = malloc(strlen(p) + MAXPATH);
