@@ -18,6 +18,7 @@ Usage: import [-efirv] [-j<n>] [-l<list>] [-t<type] from_dir to_dir
     -l<l>	list of files to import is in <l>
     -t<t>	type of imported files is <t> where t is plain|patch|RCS|CVS
     -r		do not do renames when doing patch imports
+    -q		be less verbose
     -v		be more verbose
 EOF
 	exit 0
