@@ -5194,8 +5194,10 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 			ret = -1;
 			goto done2;
 		}
-		fprintf(out, "I0 %u\n", lines);
+		/* XXX: NOT YET fprintf(out, "I0 %u\n", lines); */
+		fprintf(out, "0a0\n");
 		while (fnext(b, lbuf)) {
+			fputs("> ", out);
 			fputs(b, out);
 		}
 		goto done2;
@@ -6107,8 +6109,10 @@ diffMDBM(sccs *s, char *old, char *new, char *tmpfile)
 		items++;
 	}
 	if (items) {
-		fprintf(f, "I0 %u\n", items);
+		/* XXX NOT YET: fprintf(f, "I0 %u\n", items); */
+		fprintf(f, "0a0\n");
 		for (kv = mdbm_first(p); kv.key.dsize; kv = mdbm_next(p)) {
+			fputs("> ", f);
 			fputs(kv.key.dptr, f);
 			fputc(' ', f);
 			fputs(kv.val.dptr, f);
