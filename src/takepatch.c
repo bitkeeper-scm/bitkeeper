@@ -2109,6 +2109,7 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			perror("PENDING");
 			cleanup(CLEAN_RESYNC);
 		}
+		if (isLogPatch) saveEnviroment(pendingFile);
 		rename(incoming, pendingFile);
 		unless (flags & SILENT) {
 			NOTICE();

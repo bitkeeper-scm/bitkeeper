@@ -1132,6 +1132,8 @@ char	**getTriggers(char *dir, char *prefix);
 void	comments_cleancfile(char *file);
 int	comments_readcfile(sccs *s, int prompt, delta *d);
 int	comments_prompt(char *file);
+void	saveEnviroment(char *patch);
+void	restoreEnviroment(char *patch);
 
 extern char *bk_vers;
 extern char *bk_utc;
