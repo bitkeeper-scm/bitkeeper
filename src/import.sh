@@ -1,4 +1,4 @@
-#! @SH@
+#! @FEATURE_SH@
 
 # import.sh - import various sorts of files into BitKeeper
 # TODO

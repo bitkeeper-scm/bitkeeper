@@ -1,4 +1,4 @@
-#! @SH@
+#! @FEATURE_SH@
 
 # bk.sh - BitKeeper scripts
 # @(#)%K%
