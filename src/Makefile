@@ -49,20 +49,21 @@ ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/gzio.o \
 	  zlib/uncompr.o zlib/deflate.o zlib/trees.o zlib/zutil.o \
 	  zlib/inflate.o zlib/infblock.o zlib/inftrees.o zlib/infcodes.o \
 	  zlib/infutil.o zlib/inffast.o
-RESOLVE = resolve.o resolve_create.o utils.o
+RESOBJ =  resolve.o resolve_create.o resolve_contents.o resolve_generic.o \
+	  resolve_renames.o utils.o
 BKDOBJ	= bkd_misc.o bkd_root.o bkd_pull.o bkd_clone.o bkd_push.o bkd_status.o \
 	  utils.o bkd_cmdtab.o lib_tcp.o bkd.o
 BINOBJ	= $(BINS:=.o)
 BKDSRCS	= $(BKDOBJ:.o=.c)
 SRCS	= $(PORTOBJ:.o=.c) $(SCCSOBJ:.o=.c) $(MDBMOBJ:.o=.c) \
 	  $(ZLIBOBJ:.o=.c) $(BINOBJ:.o=.c) $(BKDOBJ:.o=.c) \
-	  $(RESOLVE:.o=.c)
+	  $(RESOBJ:.o=.c)
 
 HDRS	= sccs.h purify.h range.h system.h mdbm/common.h mdbm/mdbm.h \
 	  mdbm/tune.h zlib/zlib.h zlib/zutil.h zlib/zconf.h zlib/deflate.h \
 	  zlib/infblock.h zlib/infcodes.h zlib/inffast.h zlib/inffixed.h \
 	  zlib/inftrees.h zlib/infutil.h zlib/trees.h zgets.h unix.h mmap.h \
-	  comments.c host.c user.c
+	  comments.c host.c user.c resolve.h
 SCRSRCS	= rcs2sccs.perl testfast.perl bk.sh import.sh \
 	  resolve.perl gui/sccstool.tcl gui/citool.tcl gui/difftool.tcl \
 	  gui/vitool.tcl gui/fm.tcl gui/fm3.tcl \
@@ -151,7 +152,7 @@ solaris:
 # Cleanup targets.
 clean-obj: FORCE
 	-/bin/rm -f $(PORTOBJ) $(SCCSOBJ) $(MDBMOBJ) $(ZLIBOBJ) $(BINOBJ) \
-		$(BKDOBJ) $(LIBS) a.out core
+		$(BKDOBJ) $(RESOBJ) $(LIBS) a.out core
 	cd gnu && $(MAKE) clean
 
 clean-bin: FORCE
@@ -250,8 +251,8 @@ cset: cset.o $(LIBS)
 	$(CC) $(CFLAGS) cset.o $(LINK) -o cset
 names: names.o $(LIBS)
 	$(CC) $(CFLAGS) names.o $(LINK) -o names
-resolve: $(RESOLVE) $(LIBS)
-	$(CC) $(CFLAGS) $(RESOLVE) $(LINK) -o resolve
+resolve: $(RESOBJ) $(LIBS)
+	$(CC) $(CFLAGS) $(RESOBJ) $(LINK) -o resolve
 lod: lod.o $(LIBS)
 	$(CC) $(CFLAGS) lod.o $(LINK) -o lod
 rmdel: rmdel.o $(LIBS)
@@ -640,7 +641,9 @@ rcs.o:		rcs.c $(sccsdeps)
 sccs_mv.o:	sccs_mv.c $(sccsdeps)
 zgets.o:	zgets.c zgets.h zlib/zlib.h zlib/zconf.h
 
-$(BKDOBJ):	bkd.h lib_tcp.h
+$(BKDOBJ):	$(commondeps) bkd.h lib_tcp.h
+
+$(RESOBJ):	resolve.h $(commondeps)
 
 # libsccs, port/ directory
 port/disksp.o:		port/disksp.c $(commondeps)

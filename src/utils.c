@@ -55,6 +55,7 @@ getline(int in, char *buf, int size)
  * Prompt the user and get an answer.
  * The buffer has to be MAXPATH bytes long.
  */
+int
 prompt(char *msg, char *buf)
 {
 	write(2, msg, strlen(msg));
@@ -63,6 +64,7 @@ prompt(char *msg, char *buf)
 	return (0);
 }
 
+int
 confirm(char *msg)
 {
 	char	buf[100];

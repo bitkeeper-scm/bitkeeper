@@ -1,3 +1,28 @@
+Cases
+-----
+
+    This is supposedly a list of all cases and how we handle them, it's
+    probably incomplete.  In all cases which have an sfile on both sides,
+    it's implied that they are different root inodes.
+
+    local repo			remote repo		action
+    ----------			-----------		------
+    no file			create			autocreate
+    no file			rename			autorename
+    gfile, no sfile		create			interactive resolve
+    gfile, no sfile		rename			interactive resolve
+    sfile			create			interactive resolve
+    sfile			rename			interactive resolve
+    rename			sfile			interactive resolve
+    rename			no file			copy to RESYNC
+
+    create			create			interactive resolve
+    create			rename			interactive resolve
+    rename			create			interactive resolve
+    rename			rename			interactive resolve
+
+-----------------------------------------------------------------------------
+
 One way of dealing with some of the complexity is to divide up the space
 into:
 
