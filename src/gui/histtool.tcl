@@ -1331,41 +1331,42 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		-text "Select Range" -width 15 -state normal \
 		-menu .menus.mb.menu
 		set m [menu .menus.mb.menu]
-		$m add command -label "Last Day" -command {histtool $fname -1D}
+		$m add command -label "Last Day" \
+		    -command {set srev ""; histtool $fname -1D}
 		$m add command -label "Last 2 Days" \
-		    -command {histtool $fname -2D}
+		    -command {set srev ""; histtool $fname -2D}
 		$m add command -label "Last 3 Days" \
-		    -command {histtool $fname -3D}
+		    -command {set srev ""; histtool $fname -3D}
 		$m add command -label "Last 4 Days" \
-		    -command {histtool $fname -4D}
+		    -command {set srev ""; histtool $fname -4D}
 		$m add command -label "Last 5 Days" \
-		    -command {histtool $fname -5D}
+		    -command {set srev ""; histtool $fname -5D}
 		$m add command -label "Last 6 Days" \
-		    -command {histtool $fname -6D}
+		    -command {set srev ""; histtool $fname -6D}
 		$m add command -label "Last Week" \
-		    -command {histtool $fname -W}
+		    -command {set srev ""; histtool $fname -W}
 		$m add command -label "Last 2 Weeks" \
-		    -command {histtool $fname -2W}
+		    -command {set srev ""; histtool $fname -2W}
 		$m add command -label "Last 3 Weeks" \
-		    -command {histtool $fname -3W}
+		    -command {set srev ""; histtool $fname -3W}
 		$m add command -label "Last 4 Weeks" \
-		    -command {histtool $fname -4W}
+		    -command {set srev ""; histtool $fname -4W}
 		$m add command -label "Last 5 Weeks" \
-		    -command {histtool $fname -5W}
+		    -command {set srev ""; histtool $fname -5W}
 		$m add command -label "Last 6 Weeks" \
-		    -command {histtool $fname -6W}
+		    -command {set srev ""; histtool $fname -6W}
 		$m add command -label "Last 2 Months" \
-		    -command {histtool $fname -2M}
+		    -command {set srev ""; histtool $fname -2M}
 		$m add command -label "Last 3 Months" \
-		    -command {histtool $fname -3M}
+		    -command {set srev ""; histtool $fname -3M}
 		$m add command -label "Last 6 Months" \
-		    -command {histtool $fname -6M}
+		    -command {set srev ""; histtool $fname -6M}
 		$m add command -label "Last 9 Months" \
-		    -command {histtool $fname -9M}
+		    -command {set srev ""; histtool $fname -9M}
 		$m add command -label "Last Year" \
-		    -command {histtool $fname -1Y}
+		    -command {set srev ""; histtool $fname -1Y}
 		$m add command -label "All Changes" \
-		    -command {histtool $fname 1.1..}
+		    -command {set srev ""; histtool $fname 1.1..}
 	    button .menus.cset -font $gc(hist.buttonFont) -relief raised \
 		-bg $gc(hist.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
