@@ -11,13 +11,20 @@ WHATSTR("%W%");
 int
 main(int ac, char **av)
 {
-	char	*name;
-	char	*dest;
-	int	isDir;
+	char	*name, *dest, c;
+	int	isDir, createDelta = 1;
 	int	errors = 0;
 	int	dofree = 0;
 
 	debug_main(av);
+	while ((c = getopt(ac, av, "z")) != -1) {   
+		switch (c) {
+		    case 'z': createDelta = 0; break;
+		    default: 
+			fprintf(stderr, "delta: usage error\n");
+			return (1);
+		}
+	}
 	if (ac < 3) {
 usage:		fprintf(stderr, "usage: %s from to\n", av[0]);
 		exit(1);
@@ -29,10 +36,11 @@ usage:		fprintf(stderr, "usage: %s from to\n", av[0]);
 		dofree++;
 	}
 	isDir = isdir(dest);
-	unless (isDir || (ac == 3)) goto usage;
+	unless (isDir || ((ac - optind) == 2)) goto usage;
 	av[ac-1] = 0;
-	for (name = sfileFirst("sccsmv",&av[1], 0); name; name = sfileNext()) {
-		errors |= sccs_mv(name, dest, isDir);
+	for (name =
+	    sfileFirst("sccsmv",&av[optind], 0); name; name = sfileNext()) {
+		errors |= sccs_mv(name, dest, isDir, createDelta);
 	}
 	if (dofree) free(dest);
 	sfileDone();
@@ -43,28 +51,20 @@ usage:		fprintf(stderr, "usage: %s from to\n", av[0]);
 #include "comments.c"
 			
 int
-sccs_mv(char *name, char *dest, int isDir)
+sccs_mv(char *name, char *dest, int isDir, int createDelta)
 {
 	char	path[MAXPATH];
 	char	path2[MAXPATH];
-	char	*gfile, *sfile;
+	char	*gfile, *sfile, *nrev = 0;
 	sccs	*s;
 	delta	*d;
-	int	error = 0;
+	int	error = 0, wasEdited = 0;
+	pfile	pf;
+	int	flags = SILENT|FORCE;; 
 
 	s = sccs_init(name, NOCKSUM);
 	unless (HAS_SFILE(s)) {
 		fprintf(stderr, "sccsmv: not an SCCS file: %s\n", name);
-		sccs_free(s);
-		return (1);
-	}
-	if (IS_EDITED(s)) {
-		fprintf(stderr, "sccsmv: refusing to move edited %s\n", name);
-		sccs_free(s);
-		return (1);
-	}
-	if (access(s->gfile, W_OK) == 0) {
-		fprintf(stderr, "sccsmv: writable but not edited %s?\n", name);
 		sccs_free(s);
 		return (1);
 	}
@@ -74,7 +74,10 @@ sccs_mv(char *name, char *dest, int isDir)
 		sprintf(path2, "%s/%s", dest, basenm(s->gfile));
 		gfile = path2;
 	} else {
-		sfile = name2sccs(dest);
+		char *t;
+		t = name2sccs(dest);
+		sfile = strdup(sPath(t, isDir));
+		free(t);
 		gfile = dest;
 	}
 	if (exists(sfile)) {
@@ -87,22 +90,56 @@ sccs_mv(char *name, char *dest, int isDir)
 	}
 	error |= mv(s->sfile, sfile);
 	if (!error && exists(s->gfile)) error = mv(s->gfile, gfile);
-	unless (isDir) free(sfile);
-	sccs_free(s);
-	if (error) return (error);
-	unless (s = sccs_init(sfile, 0)) return (1);
-	if (sccs_get(s, 0, 0, 0, 0, SILENT|EDIT, "-")) {
-		error = 1;
-		goto out;
+	if (IS_EDITED(s) && !error) {
+		char *p;
+		p = strrchr(sfile, '/');
+		p = p ? &p[1]: sfile;
+		assert(*p == 's');
+		*p = 'p';
+		error = mv(s->pfile, sfile);
+		*p = 's';
+	}
+	if (error) goto out;
+	if (IS_EDITED(s)) {
+		sccs_free(s);
+		if (!createDelta) goto out;
+		/* extract the branch/LOD info */
+		unless (s = sccs_init(sfile, 0)) { error++; goto out; }
+		newrev(s, &pf);
+		nrev = pf.newrev;
+		flags |= SAVEGFILE;
+		wasEdited = 1;
+	} else {
+		sccs_free(s);
+		unless (s = sccs_init(sfile, 0)) { error++; goto out; }
+		if (sccs_get(s, 0, 0, 0, 0, SILENT|EDIT, "-")) {
+			error = 1;
+			goto out;
+		}
+		if (!createDelta) goto out;
+		s = sccs_restart(s);
 	}
 	comment = "Renamed by sccsmv";
 	gotComment = 1;
-	unless ((s = sccs_restart(s)) && (d = getComments(0))) {
+	unless (s && (d = getComments(0))) {
 		error = 1;
 		goto out;
 	}
-	if (sccs_delta(s, SILENT|FORCE, d, 0, 0) == -1) error = 1;
-out:	sccs_free(s);
+	if (sccs_delta(s, flags, d, 0, 0) == -1) error = 1;
+	if (wasEdited) {
+		int flag = EDIT|SKIPGET|SILENT;
+
+		unless (s = sccs_restart(s)) {
+			error = 1;
+			goto out;
+		}
+		if (sccs_get(s, nrev, 0, 0, 0, flag, "-")) { 
+			fprintf(stderr,
+				"get of %s failed, skipping it.\n", name); 
+		}
+	}
+out:	if (s) sccs_free(s);
+	unless (isDir) free(sfile);
 	if (gotComment) commentsDone(saved);
 	return (error);
 }

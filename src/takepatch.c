@@ -917,7 +917,7 @@ fileCopy(char *from, char *to)
 	struct	stat sb;
 
 	mkdirp(to);
-	if ((from_fd = open(from, 0)) == -1) {
+	if ((from_fd = open(from, 0, 0)) == -1) {
 		perror(from);
 		cleanup(CLEAN_RESYNC);
 	}
