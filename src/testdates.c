@@ -3,11 +3,6 @@
 #include "system.h"
 #include "sccs.h"
 
-#define	DAY	(60*60*24)
-#define	WEEK	(DAY*7)
-#define	MONTH	(WEEK*4)
-#define	YEAR	(DAY*365)
-
 void
 testdates_main(int argc, char **argv)
 {

@@ -1343,7 +1343,7 @@ unsafe_path(char *s)
 	/*NOTREACHED*/
 }
 
-#define	STALE	(24*60*60)
+#define	STALE	DAY
 
 /*
  * If they hand us a partial list use that if we can.

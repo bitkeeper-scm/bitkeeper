@@ -61,15 +61,15 @@ rangeCutOff(char *spec)
 	while (*spec && (isdigit(*spec) || (*spec == '.'))) spec++;
 	switch (*spec) {
 	    case 0: case 's': break;
-	    case 'm': units = 60; break;
-	    case 'h': units = 60*60; break;
+	    case 'm': units = MINUTE; break;
+	    case 'h': units = HOUR; break;
 	    case 'D':
-	    case 'd': units = 60*60*24; break;
+	    case 'd': units = DAY; break;
 	    case 'w':
-	    case 'W': units = 60*60*24*7; break;
-	    case 'M': units = 60*60*24*31; break;
+	    case 'W': units = WEEK; break;
+	    case 'M': units = MONTH; break;
 	    case 'y':
-	    case 'Y': units = 60*60*24*365; break;
+	    case 'Y': units = YEAR; break;
 	    default:
 	    	fprintf(stderr, "bad unit '%c', assuming seconds\n", *spec);
 		break;

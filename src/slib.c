@@ -960,13 +960,6 @@ age(time_t when, char *space)
 	int	i;
 	static	char buf[100];
 
-#define	MINUTE	60
-#define	HOUR	(60*MINUTE)
-#define	DAY	(24*HOUR)
-#define	WEEK	(7*DAY)
-#define	MONTH	2628000		/* average */
-#define	YEAR	31536000
-#define	DECADE	315360000
 #define	DOIT(SMALL, BIG, UNITS) \
 	if (when <= 3*BIG) {		/* first 3 BIG as SMALL */	\
 		for (i = 0; i <= 3*BIG; i += SMALL) {			\
