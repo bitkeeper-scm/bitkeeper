@@ -36,5 +36,5 @@ if [ $# -gt 0 ]; then
     eval $*
 else
     ./build production image
-    ./bk regression 
+    ./bk regression -r
 fi

@@ -356,7 +356,15 @@ prunekey(sccs *s, remote *r, int outfd, int flags,
 		if (key[0] == '@') break;
 		k = get_key(key, flags);
 		d = sccs_findKey(s, k);
-		assert(d);
+		/*
+	 	 * If there is garbage on the wire,
+		 * it is ok to drop a key, this just means we
+		 * we send more csets then we need, not a big deal.
+		 */
+		unless (d) {
+			fprintf(stderr, "prunekey: bad key: %s\n", key);
+			continue;
+		}
 		sccs_color(s, d);
 	}
 
