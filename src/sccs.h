@@ -274,6 +274,7 @@
 #define	GROUP_MODE	0664
 
 #define	UNKNOWN_USER	"anon"
+#define	UNKNOWN_HOST	"nowhere"
 #define	BK_FREEUSER	"bk"
 #define	BK_FREEHOST	"free.bk"
 
