@@ -27,12 +27,13 @@ ms_env()
 	BINDIR="C:/Progra~1/BitKeeper"
 	INSTALL=installdir
 	RESOURCE=bkres.o
+	CC="gcc -pipe"
 
-	export SYS BK BINDIR INSTALL RESOURCE
+	export SYS BK BINDIR INSTALL RESOURCE CC
 }
 
 test "X$G" = X && G=-g
-test "X$CC" = X && CC="gcc -pipe"
+test "X$CC" = X && CC=gcc
 test "X$LD" = X && LD=$CC
 test "X$WARN" = X && WARN=YES  
 
