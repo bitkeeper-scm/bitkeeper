@@ -573,7 +573,7 @@ delta	*modeArg(delta *d, char *arg);
 FILE	*fastPopen(const char*, const char*);
 int	fastPclose(FILE*);
 char	chop(register char *s);
-int	is_sccs(char *name);
+int	sccs_filetype(char *name);
 int	isdir(char *s);
 int	isreg(char *s);
 int	readable(char *f);

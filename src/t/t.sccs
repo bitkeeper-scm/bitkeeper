@@ -1,0 +1,27 @@
+
+# Copright (c) 1999 Larry McVoy
+# %K%
+
+echo $N Allow bad dates if in SCCS mode .............$NL
+R=1
+for D in '87/05/28 23:49:57' '97/05/28 23:49:57' '97/05/27 01:34:11' '97/06/23 01:33:45' '98/01/30 17:45:17'
+do	${CAT} > INITX <<EOF
+D 1.$R $D $USER 0 0 0/0/0
+c This is revision 1.$R of $D
+------------------------------------------------
+EOF
+	${ECHO} 1.$R >> FILE
+	if [ $R -eq 1 ] 
+	then	delta $Q -i -IINITX FILE
+	else	delta $Q -R -IINITX FILE
+	fi
+	if [ -f core ]; then echo CORE; exit 1; fi
+	R=`expr $R + 1`
+	co $Q -l FILE
+done
+ci $Q FILE	# clean it
+admin -qh FILE 2> $DEV_NULL
+if [ $? != 0 ]; then echo admin -h failed; admin -h FILE; echo $?; exit 1; fi
+admin -qH FILE 2> $DEV_NULL
+if [ $? != 1 ]; then echo admin -H failed to error; admin -H FILE; exit 1; fi
+echo OK

@@ -228,14 +228,20 @@ import_finish () {
 			done | bk admin -C -
 			echo OK
 		fi
-		echo Making sure all files have pathnames
+		echo Making sure all files have pathnames, proper dates, and checksums
 		bk sfiles -g | while read x
-		do	bk admin -q -p$x $x
+		do	bk admin -q -u -p$x $x
+			bk rechksum -f $x
 		done
 		echo OK
 		echo Validating all SCCS files
-		bk sfiles | bk admin -qh -
-		echo OK
+		bk sfiles | bk admin -qH - > /tmp/admin$$
+		if [ -z /tmp/admin$$ ]
+		then	echo OK
+		else	echo Import failed because
+			cat /tmp/admin$$
+			exit 1
+		fi
 	fi
 	rm -f /tmp/sccs$$ /tmp/import$$ /tmp/notsccs$$ /tmp/reparent$$ /tmp/rep$$
 	bk sfiles -r
@@ -257,7 +263,7 @@ import_SCCS () {
 		exit 1
 	fi
 	rm -f /tmp/changed$$
-	grep 'SCCS/s\.' /tmp/import$$ | prs -hr -d':PN: :TYPE:' - | grep ' BitKeeper' > /tmp/reparent$$
+	grep 'SCCS/s\.' /tmp/import$$ | bk prs -hr -d':PN: :TYPE:' - | grep ' BitKeeper' > /tmp/reparent$$
 	if [ -s /tmp/reparent$$ ]
 	then	cat <<EOF
 	

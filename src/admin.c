@@ -6,10 +6,7 @@ WHATSTR("@(#)%K%");
 static const char help[] = "\n\
 usage: admin options [- | file file file...]\n\
 \n\
-    A useful thing to note is that\n\
-	    bk sfiles | bk admin -what -ever -\n\
-    will apply -what -ever to every file in the source tree.\n\
-    -q, -s		run quietly\n\
+    -q			run quietly\n\
     -r<rev>		revision to add or modify\n\
     -y<comment>		comment for change\n\
     -n			create new SCCS history file\n\
@@ -17,7 +14,7 @@ usage: admin options [- | file file file...]\n\
     -t[<file>]		read description from <file>\n\
     -T			clear description\n\
     -h			check s.file structure\n\
-    -H			same as -h, plus check file contents are 7-bit ASCII\n\
+    -H			same as -h, plus check file contents are ASCII\n\
     -z			recalculate file checksum\n\
 \n\
     -f<f><val>		set flag (value is optional)\n\

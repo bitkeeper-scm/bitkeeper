@@ -38,7 +38,7 @@ usage:		fputs(clean_help, stderr);
 		switch (c) {
 		    case 'p': flags |= PRINT; break;
 		    case 'u': flags |= CLEAN_UNEDIT; sflags &= ~SF_GFILE; break;
-		    case 'n': flags |= CLEAN_UNLOCK; break;
+		    case 'n': flags |= CLEAN_UNLOCK; sflags &= ~SF_GFILE; break;
 		    case 'v': flags &= ~SILENT; break;
 
 		    case 'r':
@@ -55,7 +55,7 @@ usage:		fputs(clean_help, stderr);
 	 * make 'em spell it out.
 	 */
 
-	if (flags & CLEAN_UNEDIT) {
+	if (flags & (CLEAN_UNEDIT|CLEAN_UNLOCK)) {
 		unless (name =
 		    sfileFirst("clean",
 				&av[optind], sflags|SF_NODIREXPAND)) {

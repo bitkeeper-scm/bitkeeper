@@ -123,7 +123,16 @@ int
 file(char *f, int (*func)())
 {
 	struct	stat sb;
-	char	*sfile, *gfile;
+	char	*s, *sfile, *gfile;
+
+	/*
+	 * This catches garbage like SCCS/OLD-junk.
+	 */
+	s = rindex(f, '/');
+	if ((s >= f + 4) && strneq(s - 4, "SCCS/", 5) && !sccs_filetype(f)) {
+		if (xFlg) printf("%s\n", f);
+		return (0);
+	}
 
 	sfile = name2sccs(f);
 	gfile = sccs2name(sfile);
@@ -179,16 +188,23 @@ func(const char *filename, const struct stat *sb, int flag)
 	}
 	if (S_ISDIR(sb->st_mode)) return (0);
 	if (xFlg) {
-		sfile = name2sccs(file);
-		gfile = sccs2name(sfile);
-		if (streq(gfile, file) && !exists(sfile)) {
-			printf("%s\n", gfile);
+		unless (sccs_filetype(file)) {
+			printf("%s\n", file);
+		} else {
+			sfile = name2sccs(file);
+			gfile = sccs2name(sfile);
+			unless (gfile && sfile) {
+				printf("%s\n", file);
+			}
+			if (streq(gfile, file) && !exists(sfile)) {
+				printf("%s\n", gfile);
+			}
+			if (sfile) free(sfile);
+			if (gfile) free(gfile);
 		}
-		free(sfile);
-		free(gfile);
 		return (0);
 	}
-	unless (is_sccs(file)) return 0;
+	unless (sccs_filetype(file) == 's') return 0;
 	s = strrchr(file, '/');
 	assert(s);
 	s++;
@@ -355,7 +371,7 @@ caches(const char *filename, const struct stat *sb, int flag)
 
 	if (S_ISDIR(sb->st_mode)) return (0);
 	if ((file[0] == '.') && (file[1] == '/')) file += 2;
-	unless (is_sccs(file)) return (0);
+	unless (sccs_filetype(file) == 's') return (0);
 	unless (sc = sccs_init(file, INIT_NOCKSUM, 0)) return (0);
 	unless (HAS_SFILE(sc) && sc->cksumok) {
 		sccs_free(sc);

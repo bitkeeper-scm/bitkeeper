@@ -375,7 +375,7 @@ _unedit() {
 }
 
 _unlock() {
-	${BIN}clean -u "$@"
+	${BIN}clean -n "$@"
 }
 
 _mv() {
@@ -936,7 +936,7 @@ case "$1" in
 	exit 1
 	;;
     setup|changes|pending|commit|sendbug|send|\
-    mv|oldresync|edit|unedit|man|undo|save|docs|rm|new|version|\
+    mv|oldresync|edit|unedit|unlock|man|undo|save|docs|rm|new|version|\
     root|status|export|users)
 	cmd=$1
     	shift

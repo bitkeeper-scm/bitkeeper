@@ -3333,7 +3333,7 @@ sccs_init(char *name, u32 flags, char *root)
 		u_mask = ~umask(0);
 		umask(~u_mask);
 	}
-	if (is_sccs(name)) {
+	if (sccs_filetype(name) == 's') {
 		s->sfile = strdup(sPath(name, 0));
 		s->gfile = sccs2name(name);
 	} else {
@@ -3582,27 +3582,42 @@ sccs_free(sccs *s)
  * We insist on SCCS/s. unless in ATT compat mode.
  * XXX ATT compat mode sucks - it's really hard to operate on a
  * gfile named s.file .
+ *
+ * This returns the following:
+ *	'm'	this is an SCCS pathname (whatever/SCCS/m.whatever)
+ *	'p'	this is an SCCS pathname (whatever/SCCS/p.whatever)
+ *	'r'	this is an SCCS pathname (whatever/SCCS/r.whatever)
+ *	's'	this is an SCCS pathname (whatever/SCCS/s.whatever)
+ *	'x'	this is an SCCS pathname (whatever/SCCS/x.whatever)
+ *	'z'	this is an SCCS pathname (whatever/SCCS/z.whatever)
+ *	0	none of the above
  */
 int
-is_sccs(char *name)
+sccs_filetype(char *name)
 {
 	char	*s = rindex(name, '/');
 
 	if (!s) {
 #ifdef	ATT_SCCS
-		if (name[0] == 's' && name[1] == '.') return (1);
+		if (name[0] == 's' && name[1] == '.') return ((int)'s');
 #endif
 		return (0);
 	}
-	if (s[1] == 's' && s[2] == '.') {
-#ifdef	ATT_SCCS
-		return (1);
-#endif
-		/* SCCS/s.c
-		   4321012
-		 */
-		if ((name <= &s[-4]) && strneq("SCCS", &s[-4], 4)) return (1);
+	unless (s[1] && (s[2] == '.')) return (0);
+	switch (s[1]) {
+	    case 'm':	/* merge files */
+	    case 'p':	/* lock files */
+	    case 'r':	/* resolve files */
+	    case 's':	/* sccs file */
+	    case 'x':	/* temp file, about to be s.file */
+	    case 'z':	/* lock file */
+	    	break;
+	    default:  return (0);
 	}
+#ifdef	ATT_SCCS
+	return ((int)s[1]);
+#endif
+	if ((name <= &s[-4]) && strneq("SCCS", &s[-4], 4)) return ((int)s[1]);
 	return (0);
 }
 
@@ -3672,23 +3687,14 @@ name2sccs(char *name)
 	/* maybe it has the SCCS in it already */
 	s = rindex(name, '/');
 	if ((s >= name + 4) && strneq(s - 4, "SCCS/", 5)) {
-		if ((s[1] != 's') && (s[2] == '.')) {
-			switch (s[1]) {
-			    case 'p':
-			    case 'r':
-			    case 'x':
-			    case 'z':
-			    	break;
-			    default:
-				assert(name == "Bad name");
-			}
-			name = strdup(name);
-			s = strrchr(name, '/');
-			s[1] = 's';
-			return (name);
-		} else {
-			return (strdup(name));
+		unless (sccs_filetype(name)) {
+			fprintf(stderr, "Bad name: %s\n", name);
+			assert("Garbage in SCCS dir" == 0);
 		}
+		name = strdup(name);
+		s = strrchr(name, '/');
+		s[1] = 's';
+		return (name);
 	}
 	newname = malloc(len + 8);
 	assert(newname);
@@ -5656,14 +5662,13 @@ badchars(sccs *s)
 		    s->sfile);
 		return (1);
 	}
-	t += 8;
-	for (t = s->mmap; t < end; t++) {
+	for (t = s->mmap + 8; t < end; t++) {
 		unless (isAscii(*t) || ((*t == '\001') && (t[-1] == '\n'))) {
 			char	*r = t;
 
 			while ((r > s->mmap) && (r[-1] != '\n')) r--;
 			fprintf(stderr,
-			    "admin: bad line in %s follows\n%.*s",
+			    "admin: bad line in %s follows:\n%.*s",
 			    s->sfile, linelen(r), r);
 			return (1);
 		}
@@ -5747,7 +5752,6 @@ fmtd(char *p, int d)
 	return fmtu(p, d);
 }
 
-private char *
 fmt05u(char *p, unsigned int u)
 {
 	char tmp[10];
@@ -5762,17 +5766,6 @@ fmt05u(char *p, unsigned int u)
 
 	memcpy(p, x, 10 - (x - tmp));
 	return p + 10 - (x - tmp);
-}
-
-private char *
-fmt05d(char *p, int d)
-{
-	if (d < 0) {
-		*p++ = '-';
-		d = -d;
-	}
-
-	return fmt05u(p, d);
 }
 
 private char *
@@ -5844,27 +5837,25 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 		}
 		    
 		assert(d->date);
-		if (d->parent) assert(d->date > d->parent->date);
+		if (d->parent && (s->state & S_BITKEEPER) && 
+		    (d->date <= d->parent->date)) {
+		    	s->state |= S_READ_ONLY;
+			fprintf(stderr,
+			    "%s@%s: dates do not increase\n", s->sfile, d->rev);
+			return (-1);
+		}
 
-#ifdef CRAZY_FUCKED_UP
-		p = fmts(buf, "\001s ");
-		p = fmt05u(p, d->added);
-		*p++ = '/';
-		p = fmt05u(p, d->deleted);
-		*p++ = '/';
-		p = fmt05u(p, d->same);
-		*p++ = '\n';
-		*p = '\0';
-#else
-		sprintf(buf, "\001s %05d/%05d/%05d\n", d->added, d->deleted, d->same);
+		/* Do not change this */
+		sprintf(buf, "\001s %05d/%05d/%05d\n",
+		    d->added, d->deleted, d->same);
 		if (strlen(buf) > 21) {
 			unless (s->state & S_BITKEEPER) {
-				fprintf(stderr, "%s: file too large\n", s->gfile);
-				exit(1);
+				fprintf(stderr,
+				    "%s: file too large\n", s->gfile);
+				return (-1);
 			}
 			fitCounters(buf, d->added, d->deleted, d->same);
 		}
-#endif
 		if (first)
 			fputs(buf, out);
 		else
@@ -6586,6 +6577,15 @@ sccs_clean(sccs *s, u32 flags)
 		return (0);
 	}
 	unless (s->tree) return (-1);
+
+	/* clean up lock files but not gfile */
+	if (flags & CLEAN_UNLOCK) {
+		unlink(s->pfile);
+		sccs_unlock(s, 'z');
+		sccs_unlock(s, 'x');
+		return (0);
+	}
+
 	unless (HAS_PFILE(s)) {
 		unless (WRITABLE(s)) {
 			verbose((stderr, "Clean %s\n", s->gfile));
@@ -6600,6 +6600,7 @@ sccs_clean(sccs *s, u32 flags)
 		unless (flags & CLEAN_UNLOCK) unlinkGfile(s);
 		return (0);
 	}
+
 	unless (HAS_GFILE(s)) {
 		verbose((stderr, "%s not checked out\n", s->gfile));
 		return (0);
@@ -7394,8 +7395,8 @@ time:	if (d->parent && (d->date < d->parent->date)) {
 			fprintf(stderr, "\t%s: %s    %s: %s -> %d seconds\n",
 			    d->rev, d->sdate, d->parent->rev, d->parent->sdate,
 			    (int)(d->date - d->parent->date));
+			error |= 2;
 		}
-		error |= 2;
 	}
 	/* If the dates are identical, check that the keys are sorted */
 	if (d->parent && (d->date == d->parent->date)) {
