@@ -4,36 +4,31 @@
 WHATSTR("@(#)%K%");
 char	*delta_help = "\n\
 usage: delta [-iluYpq] [-S<sym>] [-L<lod>] [-Z<alg>] [-y<c>] [files...]\n\n\
-Only the most useful options are mentioned:\n\
-    -i		Initial checkin, create a new revision history\n\
-    -l		Follow checkin with a locked checkout like ``get -e''\n\
-    -u		Follow checkin with an unlocked checkout like ``get''\n\
-    -y<comment>	Sets the revision comment to <comment>.\n\
-    -Y		prompt for one comment, then use it for all the files.\n\n\
-    -p		Print differences before prompting for comments.\n\
-    -q		Run silently.\n\
-    -S<sym>	Set the symbol <sym> to be the revision created\n\
-    -L<lod>	Delta is the lod.1, i.e., creates a new line of development\n\
-    -Z, -Z<alg>	compress stored s.file with <alg>, which may be:\n\
+   -a		check in new work automatically\n\
+   -c		don't verify file checksum
+   -D<file>	take diffs from <file>\n\
+   -E		set file encoding (like admin)\n\
+   -f		force ci of null delta - default when invoked as delta\n\
+   -g		obsolete, SCCS compat\n\
+   -h		invert sense of file's hash flag\n\
+   -i		initial checkin, create a new revision history\n\
+   -I<file>	use init file\n\
+   -l		follow checkin with a locked checkout like ``get -e''\n\
+   -L<lod>	delta is the lod.1, i.e., creates a new line of development\n\
+   -m		(delta) obsolete, SCCS compat;  (ci) same as -y\n\
+   -n		preserve gfile, kill pfile; SCCS compat\n\
+   -p		print differences before prompting for comments.\n\
+   -q		run silently.\n\
+   -r		obsolete, SCCS compat\n\
+   -R		respect rev (?)\n\
+   -s		same as -q\n\
+   -S<sym>	set the symbol <sym> to be the revision created\n\
+   -u		follow checkin with an unlocked checkout like ``get''\n\
+   -Y		prompt for one comment, then use it for all the files.\n\n\
+   -y<comment>	sets the revision comment to <comment>.\n\
+   -Z, -Z<alg>	compress stored s.file with <alg>, which may be:\n\
 		gzip	like gzip(1) (default)\n\
 		none	no compression\n";
-/*
- * Undocumented options:
- * acDEfgGhImnRr
- * -a	auto mode (DELTA_AUTO & ~DELTA_FORCE; precise semantics?)
- * -c	INIT_NOCKSUM
- * -D	take diffs from file
- * -E	set file encoding (like admin)
- * -f	force ci of null delta - default on unless invoked as ci
- * -g	obsolete, SCCS compat
- * -h	DELTA_HASH
- * -I	use init file (implies -i?)
- * -m	(delta) obsolete, SCCS compat;  (ci) as -y
- * -n	preserve gfile, kill pfile; SCCS compat
- * -R	DELTA_PATCH (?)
- * -r	obsolete, SCCS compat
- * -s	same as -q
- */
 
 #include "comments.c"
 int	newrev(sccs *s, pfile *pf);

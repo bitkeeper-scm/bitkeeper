@@ -4,40 +4,35 @@
 WHATSTR("@(#)%K%");
 const char get_help[] = "\
 usage: get [-qkepdmunN] [-r<rev> | -c<date>] [files... | -]\n\
-Only the most useful options are documented.\n\
-   -q		run quietly\n\
-   -k		don't expand keywords\n\
-   -e		get file for editing\n\
-   -p		write file to standard output\n\
+   -b		force branch\n\
+   -c<date>	get the latest revision before the date\n\
    -d		prefix each line with the date it was last modified\n\
+   -D		output a diff\n\
+   -DD		output cset diffs\n\
+   -DDD 	output hash diffs\n\
+   -e		get file for editing\n\
+   -F		don't verify the file checksum\n\
+   -g		just do locking, don't get the file\n\
+   -G<name>	use <name> for the gfile\n\
+   -h		invert sense of file's hash flag\n\
+   -H		put file in its historic location\n\
+   -i<list>	include revs in <list>\n\
+   -k		don't expand keywords\n\
+   -l   	same as -e\n\
    -m		prefix each line with the rev it was last modified in\n\
-   -u		prefix each line with the user who last modified it\n\
-   -n		prefix each line with the filename\n\
+   -M<rev>	merge with <rev>\n\
    -N		prefix each line with its line number\n\
-\n\
+   -n		prefix each line with the filename\n\
+   -p		write file to standard output\n\
+   -P		write to stdout, force get\n\
+   -q		run quietly\n\
+   -R		rev is part of pathname\n\
    -r<rev>	get this revision\n\
-   -c<date>	get the latest revision before the date\n";
-
-/* Undocumented options:
- * -b	force branch
- * -D	output a diff
- * -DD	output cset diffs
- * -DDD output hash diffs
- * -l   get for editing
- * -F	INIT_NOCKSUM
- * -g	just do locking, don't get the file
- * -G	put the gfile here
- * -h	file is a hash
- * -H	GET_PATH (?)
- * -i	include list
- * -M	merge with <rev>
- * -P	write to stdout, force get
- * -R	rev is part of pathname
- * -s	quiet
- * -t	ignored SCCS compat
- * -T	set gfile modtime to delta create time
- * -x	exclude list
- */
+   -s		same as -q\n\
+   -t		ignored, SCCS compat\n\
+   -T		set the gfile's mod time to the delta's creation time\n\
+   -u		prefix each line with the user who last modified it\n\
+   -x<list>	exclude revs in <list>\n";
 
 extern void rcs(char *cmd, int ac, char **av) NORETURN;
 
