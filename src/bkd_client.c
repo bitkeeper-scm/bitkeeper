@@ -10,7 +10,6 @@ private	remote	*url_parse(char *p, int default_port);
  *	bk://user@host:port/pathname	<- rsh host -l user
  * or	user@host:pathname		<- rsh host bkd -e
  * into a struct remote.
- * If nothing is passed in, use `bk parent`.
  */
 remote *
 remote_parse(const char *url, int skip_checks)
@@ -21,15 +20,12 @@ remote_parse(const char *url, int skip_checks)
 	remote	*r;
 	char	*p;
 
+	unless (url) return (0);
+	assert(*url);
+
 	if (echo == -1) echo = getenv("BK_REMOTE_PARSE") != 0;
 
-	unless (url && *url) {
-		unless (freeme = getParent()) return (0);
-		append = 1;
-		p = freeme;
-	} else {
-		freeme = p = strdup(url);
-	}
+	freeme = p = strdup(url);
 	unless (p) {
 		if (freeme) free(freeme);
 		return (0);

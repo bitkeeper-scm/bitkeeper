@@ -33,11 +33,12 @@ usage(void)
 int
 pull_main(int ac, char **av)
 {
-	int	c, rc, i = 1;
+	int	c, i, j = 1;
 	int	try = -1; /* retry forever */
+	int	rc = 0;
 	opts	opts;
 	remote	*r;
-	char	**envVar = 0;
+	char	**envVar = 0, **pList = 0;
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help pull");
@@ -75,42 +76,70 @@ pull_main(int ac, char **av)
 
 	loadNetLib();
 	has_proj("pull");
-	r = remote_parse(av[optind], 0);
-	unless (r) {
+
+	/*
+	 * Get pull parent(s)
+	 */
+	if (av[optind]) {
+		while (av[optind]) {
+			pList = addLine(pList, strdup(av[optind++]));
+		}
+	} else {
+		pList = getParentList(PARENT, pList);
+		pList = getParentList(PULL_PARENT, pList);
+	}
+
+	unless (pList) {
+err:		freeLines(envVar);
 		usage();
-		return 1;
+		return (1);
 	}
-	if (opts.debug) r->trace = 1;
-	for (;;) {
-		rc = pull(av, opts, r, envVar);
-		if (rc != -2) break;
-		if (try == 0) break;
-		if (bk_mode() == BK_BASIC) {
-			if (try > 0) {
-				fprintf(stderr,
-				    "pull: retry request detected: %s",
-				    upgrade_msg);
-			}
-			break;
-		}
-		if (try != -1) --try;
-		unless(opts.quiet) {
-			fprintf(stderr,
-			    "pull: remote locked, trying again...\n");
-		}
-		disconnect(r, 2);
+
+	/*
+	 * pull from each parent
+	 */
+	EACH (pList) {
+		r = remote_parse(pList[i], 0);
+		unless (r) goto err;
+		if (opts.debug) r->trace = 1;
+
 		/*
-		 * if we are sending via the pipe, reap the child
+		 * retry if parent is locked
 		 */
-		if (r->pid)  {
-			waitpid(r->pid, NULL, 0);	
-			r->pid = 0; /* just in case */
+		for (;;) {
+			rc = pull(av, opts, r, envVar);
+			if (rc != -2) break;
+			if (try == 0) break;
+			if (bk_mode() == BK_BASIC) {
+				if (try > 0) {
+					fprintf(stderr,
+					    "pull: retry request detected: %s",
+					    upgrade_msg);
+				}
+				break;
+			}
+			if (try != -1) --try;
+			unless(opts.quiet) {
+				fprintf(stderr,
+				    "pull: remote locked, trying again...\n");
+			}
+			disconnect(r, 2);
+			/*
+			 * if we are sending via the pipe, reap the child
+			 */
+			if (r->pid)  {
+				waitpid(r->pid, NULL, 0);	
+				r->pid = 0; /* just in case */
+			}
+			sleep(min((j++ * 2), 10));
 		}
-		sleep(min((i++ * 2), 10));
+		remote_free(r);
+		if (rc == -2) rc = 1; /* if retry failed, set exit code to 1 */
+		if (rc) break;
 	}
-	if (rc == -2) rc = 1; /* if retry failed, rest exit code to 1 */
-	remote_free(r);
+	
 	freeLines(envVar);
+	freeLines(pList);
 	return (rc);
 }
 
