@@ -11544,13 +11544,14 @@ done:	free_pfile(&pf);
 }
 
 private void
-show_d(FILE *out, char *vbuf, char *format, int d)
+show_d(delta *d, FILE *out, char *vbuf, char *format, int num)
 {
-	if (out) fprintf(out, format, d);
+	d->flags |= D_SET; /* for PRS_LF or PRS_LFLF */
+	if (out) fprintf(out, format, num);
 	if (vbuf) {
 		char	dbuf[512];
 
-		sprintf(dbuf, format, d);
+		sprintf(dbuf, format, num);
 		assert(strlen(dbuf) < 512);
 		strcat(vbuf, dbuf);
 		assert(strlen(vbuf) < 1024);
@@ -11558,11 +11559,12 @@ show_d(FILE *out, char *vbuf, char *format, int d)
 }
 
 private void
-show_s(FILE *out, char *vbuf, char *s) {
+show_s(delta *d, FILE *out, char *vbuf, char *str) {
 
-	if (out) fputs(s, out);
+	d->flags |= D_SET; /* for PRS_LF or PRS_LFLF */
+	if (out) fputs(str, out);
 	if (vbuf) {
-		strcat(vbuf, s);
+		strcat(vbuf, str);
 		assert(strlen(vbuf) < 1024);
 	}
 }
@@ -11587,10 +11589,10 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 {
 	char	*p, *q;
 #define	KW(x)	kw2val(out, vbuf, "", 0, x, "", 0, s, d)
-#define	fc(c)	show_d(out, vbuf, "%c", c)
-#define	fd(d)	show_d(out, vbuf, "%d", d)
-#define	f5d(d)	show_d(out, vbuf, "%05d", d)
-#define	fs(s)	show_s(out, vbuf, s)
+#define	fc(c)	show_d(d, out, vbuf, "%c", c)
+#define	fd(n)	show_d(d, out, vbuf, "%d", n)
+#define	f5d(n)	show_d(d, out, vbuf, "%05d", n)
+#define	fs(str)	show_s(d, out, vbuf, str)
 
 	if (streq(kw, "Dt")) {
 		/* :Dt: = :DT::I::D::T::P::DS::DP: */
@@ -12771,7 +12773,7 @@ fprintDelta(FILE *out, char *vbuf,
 	const char *b, *t, *q = dspec;
 	char	kwbuf[KWSIZE], rightVal[VSIZE], leftVal[VSIZE];
 	char	op;
-	int	len, printLF = 1;
+	int	len, printed = 0;
 
 	while (q <= end) {
 		if (*q == '\\') {
@@ -12779,11 +12781,6 @@ fprintDelta(FILE *out, char *vbuf,
 			    case 'n': fc('\n'); q += 2; break;
 			    case 't': fc('\t'); q += 2; break;
 			    case '$': fc('$'); q += 2; break;
-			    case 'c': if (q == &end[-1]) {
-					printLF = 0;
-					q += 2;
-					break;
-				      } /* else fall thru */
 			    default:  fc('\\'); q++; break;
 			}
 		} else if (*q == ':') {		/* keyword expansion */
@@ -12799,15 +12796,15 @@ fprintDelta(FILE *out, char *vbuf,
 			}
 		} else if ((*q == '$') && strneq(q, "$unless(:", 9)) {
 			len = extractKeyword(&q[9], end, ":", kwbuf);
-			if (len < 0) { return (printLF); } /* error */
+			if (len < 0) { return (0); } /* error */
 			leftVal[0] = 0;
 			t = extractOp(&q[10 + len], end, rightVal, &op); 
-			unless (t) return(printLF); /* error */
+			unless (t) return(0); /* error */
 			if (t[1] != '{') {
 				/* syntax error */
 				fprintf(stderr,
 				    "must have '{' in conditional string\n");
-				return (printLF);
+				return (0);
 			}
 			if (len && (len < KWSIZE) &&
 			    (kw2val(NULL, op ? leftVal: NULL, "",
@@ -12819,15 +12816,15 @@ fprintDelta(FILE *out, char *vbuf,
 			}
 		} else if ((*q == '$') && strneq(q, "$if(:", 5)) {
 			len = extractKeyword(&q[5], end, ":", kwbuf);
-			if (len < 0) { return (printLF); } /* error */
+			if (len < 0) { return (0); } /* error */
 			leftVal[0] = 0;
 			t = extractOp(&q[6 + len], end, rightVal, &op); 
-			unless (t) return(printLF); /* error */
+			unless (t) return(0); /* error */
 			if (t[1] != '{') {
 				/* syntax error */
 				fprintf(stderr,
 				    "must have '{' in conditional string\n");
-				return (printLF);
+				return (0);
 			}
 			if (len && (len < KWSIZE) &&
 			    (kw2val(NULL, op ? leftVal: NULL, "",
@@ -12838,7 +12835,7 @@ fprintDelta(FILE *out, char *vbuf,
 
 doit:				cb = b = &t[2];
 				clen = extractStatement(b, end);
-				if (clen < 0) { return (printLF); } /* error */
+				if (clen < 0) { return (0); } /* error */
 				fprintDelta(out, vbuf, cb, &cb[clen -1], s, d);
 				q = &b[clen + 1];
 			} else {
@@ -12856,7 +12853,7 @@ dont:				for (bcount = 1, t = &t[2]; bcount > 0 ; t++) {
 					/* syntax error */
 					fprintf(stderr,
 					    "unbalanced '{' in dspec string\n");
-					return (printLF);
+					return (0);
 				}
 				q = &t[1];
 			}
@@ -12867,12 +12864,12 @@ dont:				for (bcount = 1, t = &t[2]; bcount > 0 ; t++) {
 			int	plen, klen, slen;
 			b = &q[7];
 			klen = extractKeyword(b, end, ":", kwbuf);
-			if (klen < 0) { return (printLF); } /* error */
+			if (klen < 0) { return (0); } /* error */
 			if ((b[klen + 1] != ')') && (b[klen + 2] != '{')) {
 				/* syntax error */
 				fprintf(stderr,
 	    "must have '((:keyword:){..}{' in conditional prefix/suffix\n");
-				return (printLF);
+				return (0);
 			}
 			prefix = &b[klen + 3];
 			plen = extractPrefix(prefix, end, kwbuf);
@@ -12883,23 +12880,30 @@ dont:				for (bcount = 1, t = &t[2]; bcount > 0 ; t++) {
 			q = &suffix[slen + 1];
 		} else {
 			fc(*q++);
+			printed  = 1;
 		}
 	}
-	return (printLF);
+	return (0);
 }
 
-void
+int
 sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out)
 {
-	const char *end;
+	const	char *end;
 
-	if (d->type != 'D' && !(flags & PRS_ALL)) return;
-	if ((s->state & S_SET) && !(d->flags & D_SET)) return;
-	if (fprintDelta(out, NULL,
-	    dspec, end = &dspec[strlen(dspec) - 1], s, d)) {
-	    	//fputc('\n', out);
+	if (d->type != 'D' && !(flags & PRS_ALL)) return (0);
+	if ((s->state & S_SET) && !(d->flags & D_SET)) return (0);
+	end = &dspec[strlen(dspec) - 1];
+	d->flags &= ~D_SET; /* clear the D_SET flag */
+	fprintDelta(out, NULL, dspec, end, s, d);
+	if (d->flags&D_SET) { /* re-check D_SET after fprinDelta return */
+		if (flags&PRS_LFLF) fputc('\n', out);
+		return (1);
 	}
+	d->flags |= D_SET; /* restore old D_SET value, just in case */
+	return (0);
 }
+
 
 /*
  * Order is
@@ -13087,25 +13091,35 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 	fprintf(out, "------------------------------------------------\n");
 }
 
-private void
+private int
 prs_reverse(sccs *s, delta *d, int flags, char *dspec, FILE *out)
 {
-	if (d->next) prs_reverse(s, d->next, flags, dspec, out);
-	if (d->flags & D_SET) sccs_prsdelta(s, d, flags, dspec, out);
+	int non_empty = 0;
+
+	if (d->next) non_empty = prs_reverse(s, d->next, flags, dspec, out);
+	if (d->flags & D_SET) {
+		non_empty |= sccs_prsdelta(s, d, flags, dspec, out);
+	}
+	return (non_empty);
 }
 
-private void
+private int
 prs_forward(sccs *s, delta *d, int flags, char *dspec, FILE *out)
 {
+	int non_empty = 0;
 	for (; d; d = d->next) {
-		if (d->flags & D_SET) sccs_prsdelta(s, d, flags, dspec, out);
+		if (d->flags & D_SET) {
+			non_empty |= sccs_prsdelta(s, d, flags, dspec, out);
+		}
 	}
+	return (non_empty);
 }
 
 int
 sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out)
 {
 	delta	*d;
+	int	i;
 
 	if (!dspec) dspec = ":DEFAULT:";
 	GOODSCCS(s);
@@ -13128,8 +13142,13 @@ sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out)
 			if (d == s->rstart) break;
 		}
 	}
-	if (reverse) prs_reverse(s, s->table, flags, dspec, out);
-	else prs_forward(s, s->table, flags, dspec, out);
+	if (reverse) {
+		 i = prs_reverse(s, s->table, flags, dspec, out);
+	} else {
+		 i = prs_forward(s, s->table, flags, dspec, out);
+	}
+	/* i is ture if there is at least one non-empty record */
+	if (i && (flags& PRS_LF)) putc('\n', out);
 	return (0);
 }
 

@@ -11,7 +11,7 @@ prs_main(int ac, char **av)
 	delta	*e;
 	int	reverse = 0, doheader = 1;
 	int	init_flags = INIT_NOCKSUM|INIT_SAVEPROJ;
-	int	flags = 0;
+	int	flags = 0, nflag = 0;
 	int	opposite = 0;
 	int	rc = 0, c;
 	char	*name, *xrev = 0;
@@ -27,7 +27,7 @@ prs_main(int ac, char **av)
 		system("bk help prs");
 		return (1);
 	}
-	while ((c = getopt(ac, av, "abc;C;d:hmMor|x:vY")) != -1) {
+	while ((c = getopt(ac, av, "abc;C;d:hmMnor|x:vY")) != -1) {
 		switch (c) {
 		    case 'a':
 			/* think: -Ma, the -M set expand already */
@@ -40,6 +40,7 @@ prs_main(int ac, char **av)
 		    case 'h': doheader = 0; break;
 		    case 'm': flags |= PRS_META; break;
 		    case 'M': expand = 3; break;
+		    case 'n': nflag++; break;
 		    case 'o': opposite = 1; doheader = 0; break;
 		    case 'x': xrev = optarg; break;
 		    case 'v': noisy = 1; break;
@@ -53,6 +54,14 @@ usage:			system("bk help -s prs");
 			return (1);
 		}
 	}
+
+	switch (nflag) {
+	    case 0: break; /* no op */
+	    case 1: flags = PRS_LF; break;
+	    case 2: flags = PRS_LFLF; break;
+	    default: goto usage;
+	}
+
 	if (things && cset) {
 		fprintf(stderr, "prs: -r or -C but not both.\n");
 		exit(1);
