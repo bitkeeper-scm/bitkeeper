@@ -98,15 +98,17 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 	if (S_ISLNK(d->mode)) {
 		u8	*t;
 		sum_t	sum = 0;
+		delta	*e;
 
 		/* don't complain about these, old BK binaries did this */
-		if (!fix && !d->sum) return (0);
+		e = getSymlnkCksumDelta(s, d);
+		if (!fix && !e->sum) return (0);
 
 		for (t = d->symlink; *t; sum += *t++);
-		if ((d->flags & D_CKSUM) && (d->sum == sum)) return (0);
+		if ((e->flags & D_CKSUM) && (e->sum == sum)) return (0);
 		unless (fix) {
 			fprintf(stderr, "Bad symlink checksum %d:%d in %s|%s\n",
-			    d->sum, sum, s->gfile, d->rev);
+			    e->sum, sum, s->gfile, d->rev);
 			return (2);
 		} else {
 			if (diags > 1) {

@@ -1,0 +1,52 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 1999 Larry McVoy
+# wscott@wscott1.homeip.net|src/t/t.symlink|20010906193942|61331
+
+if [ "$PLATFORM" = "WIN32" ]
+then
+	echo "Symlink is not supported on win32, test skipped"
+	exit 0
+fi
+
+echo $N symlink checksum in null delta ..............................$NL
+umask 0
+no_logging project
+echo whatever > testfile
+ln -s testfile ./link.to.testfile
+bk new $Q link.to.testfile
+bk commit $S -yxxx
+bk clone $Q $HERE/project $HERE/copy
+bk -r check || exit 1
+bk admin -fEXPAND1 link.to.testfile
+bk -r check || exit 1
+bk edit $Q link.to.testfile
+rm -f ./link.to.testfile
+ln -s target1 ./link.to.testfile
+bk delta $Q -yxxx link.to.testfile
+bk commit $S -ytarget1 ...........$NL
+echo OK
+
+echo $N processing of symlink target conflict .......................$NL
+cd $HERE/copy
+bk edit $Q link.to.testfile
+rm -f ./link.to.testfile
+ln -s target2 ./link.to.testfile
+bk delta $Q -yxxx link.to.testfile
+bk -r check || exit 1
+bk commit $S -ytarget2
+# We should get a merge conflict here
+bk pull $Q $HERE/project 
+if [ $? -eq 0 ]; then echo failed \(known bug\); exit 0; fi
+# Make sure we do not get a checksum bug on the merged node
+bk get $Q link.to.testfile || { echo exit failed; exit 1; }
+echo OK

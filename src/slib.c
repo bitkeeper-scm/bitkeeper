@@ -5916,6 +5916,38 @@ getCksumDelta(sccs *s, delta *d)
 	return (0);
 }
 
+/*
+ * Get the checksum of the first delta found with a real checksum, not
+ * a made up one from almostUnique().
+ * That would be the earliest delta that has the same symlink value as
+ * d->symlink. if none exists, the checksum delta is d itself.
+ * 
+ * Note : A symlink merge node must have its own checksum,
+ * because:
+ * a) One of the parent delta has became the merge parent. This means we
+ *    may not find the right checksum by following the parent pointer.
+ *    Recomputing of checksum should be done in the resolver.
+ *    The resolver does not have a symlink resolver yet, we
+ *    need to re-test this after the symlink resolve is implemented.
+ * b) It also possible that conflict is resolved by creating third symlink
+ *    target.
+ */
+delta *
+getSymlnkCksumDelta(sccs *s, delta *d)
+{
+	delta	*t, *p;
+
+	assert(d->symlink);
+	if (d->merge) return (d);
+	for (t = d; t; t = t->parent) {
+		p = t->parent;
+		unless (p->symlink) return (t);
+		unless (streq(p->symlink, d->symlink)) return (t);
+		if (p->merge && streq(p->symlink, d->symlink)) return (p);
+	}
+	return (d);
+}
+
 private sum_t
 getKey(MDBM *DB, char *buf, int flags, char *root)
 {
@@ -6365,6 +6397,7 @@ getLinkBody(sccs *s,
 	char *f = setupOutput(s, printOut, flags, d);
 	u8 *t;
 	u16 dsum = 0;
+	delta	*e;
 
 	unless (f) return 1;
 	
@@ -6375,10 +6408,11 @@ getLinkBody(sccs *s,
 	 * b) It is 1.1.* delta (the 1.1 delta got moved after a merge)
 	 * c) The recorded checsum is zero.
 	 */
-	if ((d->flags & D_CKSUM) && (d->sum != 0) &&
-	     !streq(d->rev, "1.1") && !strneq(d->rev, "1.1.", 4)) {
+	e = getSymlnkCksumDelta(s, d);
+	if ((e->flags & D_CKSUM) && (e->sum != 0) &&
+	     !streq(e->rev, "1.1") && !strneq(e->rev, "1.1.", 4)) {
 		for (t = d->symlink; *t; t++) dsum += *t;
-		if (d->sum != dsum) {
+		if (e->sum != dsum) {
 			fprintf(stderr,
 				"get: bad delta cksum %u:%d for %s in %s, %s\n",
 				dsum, d->sum, d->rev, s->sfile,
