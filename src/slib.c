@@ -1899,7 +1899,7 @@ findrev(sccs *s, char *rev)
 	    "findrev(%s in %s def=%s)\n",
 	    notnull(rev), s->sfile, defbranch(s)));
 	unless (HASGRAPH(s)) return (0);
-	if (!rev || !*rev) {
+	if (!rev || !*rev || streq("+", rev)) {
 		if (LOGS_ONLY(s)) {
 			/* XXX - works only for 1 LOD trees */
 			for (e = s->table; e && TAG(e); e = e->next);

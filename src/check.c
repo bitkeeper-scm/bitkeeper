@@ -14,7 +14,6 @@ private	char	*csetFind(char *key);
 private	int	check(sccs *s, MDBM *db);
 private	char	*getRev(char *root, char *key, MDBM *idDB);
 private	char	*getFile(char *root, MDBM *idDB);
-private	void	listMarks(MDBM *db);
 private	int	checkAll(MDBM *db);
 private	void	listFound(MDBM *db);
 private	void	listCsetRevs(char *key);
@@ -357,36 +356,60 @@ is where the file wants to be.  To correct this:\n\
 	/* NOTREACHED */
 }
 
+/*
+ * Doesn't need to be fast, should be a rare event
+ */
+private int
+keywords(sccs *s)
+{
+	char	*a = bktmpfile();
+	char	*b = bktmpfile();
+	int	same;
+
+	assert(a && b);
+	sysio(0, a, 0, "bk", "get", "-qp", s->gfile, SYS);
+	sysio(0, b, 0, "bk", "get", "-qkp", s->gfile, SYS);
+	same = sameFiles(a, b);
+	unlink(a);
+	unlink(b);
+	return (!same);
+}
+
 private int
 writable_gfile(sccs *s)
 {
-	pfile pf = { "+", "?", "?", NULL, "?", NULL, NULL, NULL };
-
 	if (!HAS_PFILE(s) && S_ISREG(s->mode) && IS_WRITABLE(s)) {
+		pfile pf = { "+", "?", "?", NULL, "?", NULL, NULL, NULL };
+
 		if (badWritable) {
 			printf("%s\n", s->gfile);
-		} else {
-			/*
-			 * If the file flag say SCCS or RCS flag is "on", and
-			 * keyword is expanded, re-get the file with keyword
-			 * un-expanded. (because we want to be in edit mode.)
-			 */
-			if ((s->xflags & (X_RCS|X_SCCS)) &&
-			    (diff_gfile(s, &pf, 1, DEV_NULL) == 1)) {
-				unlink(s->gfile);
-				s->state &= ~S_GFILE;
+			return (0);
+		}
+
+		/*
+		 * See if diffing against the gfile with or without keywords
+		 * expanded results in no diffs, if so, just re-edit the file.
+		 * If that doesn't work, get the file with and without keywords
+		 * expanded, compare them, and if there are no differences then
+		 * there are no keywords and we can edit the file.  Otherwise
+		 * we have to warn them that they need save the diffs and 
+		 * patch them in minus the keyword expansion.
+		 */
+		if (s->xflags & (X_RCS|X_SCCS)) {
+			if ((diff_gfile(s, &pf, 1, DEV_NULL) == 1) ||
+			    (diff_gfile(s, &pf, 0, DEV_NULL) == 1)) {
+				if (unlink(s->gfile)) return (1);
+				sys("bk", "edit", "-q", s->gfile, SYS);
+				return (0);
+			}
+			if (keywords(s)) {
 				fprintf(stderr,
-	     "check: %s writable but not checked out, forcing a bk edit..\n",
+				    "%s: unlocked, modified, with keywords.\n",
 				    s->gfile);
-				sys("bk", "edit", s->gfile, SYS);
-			} else {
-				fprintf(stderr,
-	     "check: %s writable but not checked out, forcing a bk edit -g..\n",
-			     	    s->gfile);
-				sys("bk", "edit", "-g", s->gfile, SYS);
+				return (1);
 			}
 		}
-		return (0);
+		sys("bk", "edit", "-q", "-g", s->gfile, SYS);
 	}
 	return (0);
 }
@@ -395,15 +418,8 @@ private int
 no_gfile(sccs *s)
 {
 	if (HAS_PFILE(s) && !exists(s->gfile)) {
-		if (fix) {
-			unlink(sccs_Xfile(s, 'p'));
-		} else {
-			fprintf(stderr,
-"check: %s is locked but not checked out,\nremoving staled lock\n",
-				s->gfile);
-			unlink(sccs_Xfile(s, 'p'));
-			s->state &= ~S_PFILE;
-		}
+		if (unlink(sccs_Xfile(s, 'p'))) return (1);
+		s->state &= ~S_PFILE;
 	}
 	return (0);
 }
@@ -432,7 +448,7 @@ readonly_gfile(sccs *s)
 {
 	if ((HAS_PFILE(s) && exists(s->gfile) && !writable(s->gfile))) {
 		if (gfile_unchanged(s)) {
-			char	*p, buf[MAXLINE];
+			char	*p;
 
 			unlink(s->pfile);
 			s->state &= ~S_PFILE;
@@ -502,7 +518,7 @@ vrfy_eoln(sccs *s, int want_cr)
 	return (256);
 }
 
-private
+private int
 chk_eoln(sccs *s, int eoln_native)
 {
 	/*
@@ -702,7 +718,6 @@ buildKeys()
 	char	*s, *t = 0, *r;
 	int	n = 0;
 	int	e = 0;
-	int	first = 1;
 	int	fd, sz;
 	char	buf[MAXPATH*3];
 	char	key[MAXPATH*2];
@@ -971,7 +986,6 @@ check(sccs *s, MDBM *db)
 {
 	delta	*d, *ino;
 	int	errors = 0;
-	int	missing = 0;
 	int	i;
 	char	*t;
 	char	buf[MAXKEY];
@@ -1112,6 +1126,7 @@ check(sccs *s, MDBM *db)
 	return (errors);
 }
 
+private int
 isGone(sccs *s)
 {
 	char	buf[MAXKEY];
@@ -1193,9 +1208,7 @@ dump(int key)
 		}
 	}
 }
-#endif
 
-private void
 listMarks(MDBM *db)
 {
 	kvpair	kv;
@@ -1210,6 +1223,7 @@ listMarks(MDBM *db)
 		fprintf(stderr, "   run ``bk cset -fvM1.0..'' to correct.\n");
 	}
 }
+#endif
 
 private char	*
 csetFind(char *key)

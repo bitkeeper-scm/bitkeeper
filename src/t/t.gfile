@@ -1,0 +1,178 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+
+# Copyright (c) 2001 Larry McVoy
+# %K%
+
+echo $N Create initial repository and some data .....................$NL
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+echo '%M%' > keywords
+echo '%M%' > none
+echo flagsonly > flagsonly
+bk new $Q keywords none flagsonly
+bk admin $Q -fSCCS keywords flagsonly
+bk admin $Q -FSCCS none
+bk clean
+bk get $Q
+test keywords = `cat keywords` || {
+	echo failed to expand keywords in get
+	cat keywords
+	exit 1
+}
+test '%M%' = `cat none` || {
+	echo should not have expanded keywords in none
+	cat none
+	exit 1
+}
+echo OK
+
+echo $N Check missing gfile case ....................................$NL
+bk edit $Q
+/bin/rm -f keywords none flagsonly
+bk -r check -a || exit 1
+for i in keywords none flagsonly
+do	test -f SCCS/p.$i && { echo p.$i; exit 1; }
+done
+echo OK
+
+echo $N Check missing pfile case 1, i.e., chmod +w ..................$NL
+bk get $Q
+chmod +w keywords none flagsonly
+bk -r check -a || exit 1
+for i in keywords none
+do	test -w $i || exit 1
+	test '%M%' = `cat $i` || {
+		echo bad contents in $i
+		cat $i
+		exit 1
+	}
+done
+test -w flagsonly || exit 1
+bk unedit keywords none flagsonly
+echo OK
+
+echo $N Check missing pfile case 2, i.e., rm SCCS/p.whatever ........$NL
+bk edit $Q
+for i in keywords none flagsonly
+do	/bin/rm -f SCCS/p.$i
+done
+bk -r check -a || exit 1
+for i in keywords none
+do	test -w $i || exit 1
+	test '%M%' = `cat $i` || {
+		echo bad contents in $i
+		cat $i
+		exit 1
+	}
+done
+test -w flagsonly || exit 1
+bk unedit keywords none flagsonly
+echo OK
+
+echo $N Check missing pfile case 3, i.e., chmod +w and changed ......$NL
+bk get $Q
+chmod +w keywords none flagsonly
+test keywords = `cat keywords` || {
+	echo failed to expand keywords in get
+	echo ======= contents ========
+	cat keywords
+	echo ======= flags ========
+	bk flags keywords
+	echo ======= sfile ========
+	cat SCCS/s.keywords
+	exit 1
+}
+test '%M%' = `cat none` || {
+	echo should not have expanded keywords in none
+	cat none
+	exit 1
+}
+for i in keywords none flagsonly
+do	echo more >> $i
+	cp $i $i.cmp
+done
+# This should not change any files,
+# should create p.files for the two files w/o keywords,
+# should issue a warning about the file with keywords and diffs.
+bk -r check -a 2> OUT
+grep -q 'unlocked, modified, with keywords.' OUT || {
+	echo Incorrect or different error message in check
+	cat OUT
+	exit 1
+}
+test -f SCCS/p.none || {
+	echo Could have fixed \"none\" and did not
+	exit 1
+}
+test -f SCCS/p.flagsonly || {
+	echo Could have fixed \"flagsonly\" and did not
+	exit 1
+}
+for i in keywords none flagsonly
+do	test -w $i || exit 1
+	cmp -s $i $i.cmp || {
+		echo bad contents in $i
+		diff $i $i.cmp
+		exit 1
+	}
+done
+/bin/rm keywords
+bk unedit none flagsonly
+echo OK
+
+echo $N Check missing pfile case 4, i.e., rm SCCS/p.xx and changed ..$NL
+bk edit $Q
+test '%M%' = `cat keywords` || {
+	echo failed to expand keywords in get
+	cat keywords
+	exit 1
+}
+test '%M%' = `cat none` || {
+	echo should not have expanded keywords in none
+	cat none
+	exit 1
+}
+for i in keywords none flagsonly
+do	/bin/rm -f SCCS/p.$i
+	echo more >> $i
+	cp $i $i.cmp
+done
+# This should not change any files,
+# should create p.files for the two files w/o keywords,
+# should issue a warning about the file with keywords and diffs.
+bk -r check -a 2>OUT
+grep -q 'unlocked, modified, with keywords.' OUT || {
+	echo Incorrect or different error message in check
+	cat OUT
+	exit 1
+}
+test -f SCCS/p.none || {
+	echo Could have fixed \"none\" and did not
+	exit 1
+}
+test -f SCCS/p.flagsonly || {
+	echo Could have fixed \"flagsonly\" and did not
+	exit 1
+}
+for i in keywords none flagsonly
+do	test -w $i || exit 1
+	cmp -s $i $i.cmp || {
+		echo bad contents in $i
+		diff $i $i.cmp
+		exit 1
+	}
+done
+/bin/rm keywords
+bk unedit none flagsonly
+echo OK
