@@ -11151,8 +11151,7 @@ mkDiffHdr(char kind, char tag[], char *buf, FILE *out)
 {
 	char	*marker, *date;
 
-	unless ((kind == DF_GNU_PATCH) ||
-			(kind == DF_UNIFIED) || (kind == DF_CONTEXT)) {
+	unless ((kind == DF_UNIFIED) || (kind == DF_CONTEXT)) {
 		fputs(buf, out);
 		return; 
 	}
@@ -11163,19 +11162,10 @@ mkDiffHdr(char kind, char tag[], char *buf, FILE *out)
 	 * For bk diff, the file name should be 
 	 * +++ bk.sh 1.34  Thu Jun 10 21:22:08 1999
 	 *
-	 * For gnu patch, the file name should be:
-	 * +++ 1.34/bk.sh  Thu Jun 10 21:22:08 1999
-	 * or
-	 * +++ <label>/bk.sh Thu Jun 10 21:22:08 1999
-	 *
 	 */
 	if (strneq(buf, "+++ ", 4) || strneq(buf, "--- ", 4)) {
 		date = strchr(buf, '\t'); assert(date);
 		buf[3] = 0; marker = buf;
-		if (kind == DF_GNU_PATCH) {
-#define			EPOCH "\tWed Dec 31 16:00:00 1969\n"
-			if (streq(tag, "/dev/null")) date = EPOCH;
-		}
 		fprintf(out, "%s %s%s", marker, tag, date);
 	} else	fputs(buf, out);
 }
@@ -11210,10 +11200,7 @@ doDiff(sccs *s, u32 flags, char kind, char *leftf, char *rightf,
 	}
 	while (fnext(buf, diffs)) {
 		if (first) {
-			if (kind == DF_GNU_PATCH) {
-				fprintf(out, "diff -Nru %s %s\n",
-					ltag, rtag);
-			} else if (flags & DIFF_HEADER) {
+			if (flags & DIFF_HEADER) {
 				fprintf(out, "%s %s %s vs %s %s\n",
 					spaces, s->gfile, lrev, rrev, spaces);
 			} else {
@@ -11318,102 +11305,13 @@ mkDiffTarget(sccs *s, char *rev, char kind,
 		return (-1);
 	} else if (
 		(streq(rev, "edited") || streq(rev, "?")) && !findrev(s, rev)){
-		assert(kind != DF_GNU_PATCH);
 		assert(HAS_GFILE(s));
 		strcpy(target, s->gfile);
-	} else  if (kind == DF_GNU_PATCH) {
-		/*
-		 * If we are making a GNU patch file,
-		 * ignore symlink and other non-text file.
-		 * GNU patch does not handle it anyway.
-		 */
-		if (!isTextDelta(s, rev)) {
-			printf("##\n");
-			printf("## %s: is not a text file, ignored.\n",
-			    			    getHistoricPath(s, rev));
-			printf("##\n");
-			return (-1);
-		}
-		if (sccs_get(s, rev, pf ? pf->mRev : 0, pf ? pf->iLst : 0,
-		    pf ? pf->xLst : 0, flags|SILENT|PRINT|GET_DTIME, target)) {
-			return (-1);
-		}
 	} else if (sccs_get(s, rev, pf ? pf->mRev : 0, pf ? pf->iLst : 0,
 		    pf ? pf->xLst : 0, flags|SILENT|PRINT|GET_DTIME, target)) {
 		return (-1);
 	}
 	return (0);
-}
-
-private int
-rename_diff(sccs *s, char *lrev, char *rrev, u32 flags, char kind,
-	FILE *out, char *lLabel, char *rLabel, pfile *pf)
-{
-	char	lfile[MAXPATH] = {0},	rfile[MAXPATH] = {0};
-	char	ltag[MAXPATH], rtag[MAXPATH], tmp[MAXPATH];
-	char	*lpath, *rpath, *b;
-	int	here, rc = -1;
-
-	strcpy(tmp, s->gfile);		/* because dirname stomps */
-	sprintf(tmp, "%s", dirname(tmp));
-	here = writable(tmp);
-
-	lpath = getHistoricPath(s, lrev); assert(lpath);
-	rpath = NULL_FILE;
-	b =  basenm(lpath);
-	if (strlen(b) > 5 &&  strneq(".del-", b, 5)) {
-		/*
-		 * This happen when someone move a
-		 * deleted file back to the undeleted state.
-		 * (or in a reverse patch)
-		 */
-		goto create; 
-	}
-
-	/*
-	 * Create the lfile for diff,
-	 * rfile is NULL_FILE
-	 */
-	if (mkDiffTarget(s, lrev, kind, flags, here, lfile, pf)) goto done;
-	/*
-	 * Make the tag string used for labeling the diff output
-	 */
-	mkTag(kind, lLabel, lrev, lpath, ltag);
-	mkTag(kind, rLabel, rrev, rpath, rtag);
-
-	/*
-	 * Now diff the lfile & DEV_NULL
-	 */
-	rc = doDiff( s,
-		flags, kind, lfile, NULL_FILE, out, lrev, rrev, ltag, rtag);
-	if (rc == -1) goto done;
-
-create:	rpath = getHistoricPath(s, rrev); assert(rpath);
-	lpath = NULL_FILE;
-	b =  basenm(rpath);
-	if (strlen(b) > 5 &&  strneq(".del-", b, 5)) {
-		rc = 0; goto done; 
-	}
-	/*
-	 * Create the rfile for diff,
-	 * lfile is NULL_FILE
-	 */
-	if (mkDiffTarget(s, rrev, kind, flags, here, rfile, 0)) goto done;
-	/*
-	 * Make the tag string used for labeling the diff output
-	 */
-	mkTag(kind, lLabel, lrev, lpath, ltag);
-	mkTag(kind, rLabel, rrev, rpath, rtag);
-	/*
-	 * Now diff DEV_NILL_R & rfile
-	 */
-	rc = doDiff(s,
-		flags, kind, NULL_FILE, rfile, out, lrev, rrev, ltag, rtag);
-done:	
-	unless (streq(lfile, "") || streq(lfile, NULL_FILE)) unlink(lfile);
-	unless (streq(rfile, "") || streq(rfile, s->gfile) ||
-					streq(rfile, NULL_FILE)) unlink(rfile);
-	return (rc);
 }
 
 private int
@@ -11455,23 +11353,6 @@ done:	unless (streq(lfile, NULL_FILE)) unlink(lfile);
 	return (rc);
 }
 
-
-private int
-is_gnu_rename(sccs *s, char *lrev, char *rrev, char kind)
-{
-	if (kind == DF_GNU_PATCH) {
-		delta *d1 = findrev(s, lrev);
-		delta *d2 = findrev(s, rrev);
-
-		if (d1 && d1->pathname && d2 && d2->pathname
-					&& !streq(d1->pathname, d2->pathname)) {
-			return (1);
-		}
-	}
-	return (0);
-}
-
-
 /*
  * diffs - diff the gfile or the specified (or implied) rev
  */
@@ -11492,13 +11373,7 @@ sccs_diffs(sccs *s, char *r1,
 	 */
 	if (rc = mapRev(s, flags, r1, r2, &lrev, &rrev, &pf)) goto done;
 
-	if (is_gnu_rename(s, lrev, rrev, kind)) {
-		rc = rename_diff(s, lrev, rrev, flags, kind,
-						out, lLabel, rLabel, &pf);
-	} else {
-		rc = normal_diff(s, lrev, rrev, flags, kind,
-					 	out, lLabel, rLabel, &pf);
-	}
+	rc = normal_diff(s, lrev, rrev, flags, kind, out, lLabel, rLabel, &pf);
 
 done:	free_pfile(&pf);
 	return (rc);

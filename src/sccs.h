@@ -162,7 +162,6 @@
 #define	DF_UNIFIED	'u'
 #define	DF_PDIFF	'p'
 #define	DF_RCS		'n'
-#define	DF_GNU_PATCH	'g'
 
 /*
  * Date handling.
@@ -871,5 +870,6 @@ void	cmdlog_end(int ret);
 int	bk_mode();
 int	cat(char *file);
 char	*bk_model();
+char	*getHomeDir();
 
 #endif	/* _SCCS_H_ */
