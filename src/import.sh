@@ -119,7 +119,7 @@ import() {
 	else	if [ $TYPE != patch ]
 		then	echo Finding files in $FROM
 			cd $FROM
-			cmd="bk files"
+			cmd="bk _find"
 			if [ X"$INCLUDE" != X ]
 			then	cmd="$cmd | egrep '$INCLUDE'"
 			fi
