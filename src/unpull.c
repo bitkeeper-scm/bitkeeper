@@ -65,7 +65,7 @@ unpull(int force, int quiet, char *patch)
 	t = malloc(m->size + 3);
 	*t++ = '-';
 	*t++ = 'r';
-	bcopy(m->where, t, m->size);
+	memcpy(t, m->where, m->size);
 	t[m->size] = 0;
 	for (r = t; *r; r++) if ((*r == '\r') || (*r == '\n')) *r = ',';
 	while ((--r > t) && (*r == ',')) *r = 0;	/* chop */

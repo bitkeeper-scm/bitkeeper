@@ -1271,7 +1271,7 @@ checkKeys(sccs *s, char *root)
 	k.dsize = strlen(root) + 1;
 	v = mdbm_fetch(csetKeys.r2i, k);
 	unless (v.dsize) return (0);
-	bcopy(v.dptr, &i, sizeof(i));
+	memcpy(&i, v.dptr, sizeof(i));
 	assert(i < csetKeys.n);
 	findkey = mdbm_mem();
 	for (d = s->table; d; d = d->next) {
@@ -1303,7 +1303,7 @@ checkKeys(sccs *s, char *root)
 		k.dptr = csetKeys.deltas[i];
 		k.dsize = strlen(csetKeys.deltas[i]) + 1;
 		v = mdbm_fetch(findkey, k);
-		if (v.dsize) bcopy(v.dptr, &d, sizeof(d));
+		if (v.dsize) memcpy(&d, v.dptr, sizeof(d));
 
 		/*
 		 * We should find the delta key in the s.file if it is

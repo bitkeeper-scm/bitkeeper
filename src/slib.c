@@ -12277,7 +12277,7 @@ sccs_meta(sccs *s, delta *parent, MMAP *iF, int fixDate)
 	mclose(iF);
 	if (m->rev) free(m->rev);
 	m->rev = strdup(parent->rev);
-	bcopy(parent->r, m->r, sizeof(m->r));
+	memcpy(m->r, parent->r, sizeof(m->r));
 	m->serial = s->nextserial++;
 	m->pserial = parent->serial;
 	m->next = s->table;
@@ -15691,7 +15691,7 @@ sccs_findKey(sccs *s, char *key)
 		k.dsize = strlen(key) + 1;
 		v = mdbm_fetch(s->findkeydb, k);
 		if (v.dsize) {
-			bcopy(v.dptr, &e, sizeof(e));
+			memcpy(&e, v.dptr, sizeof(e));
 			return (e);
 		}
 	}

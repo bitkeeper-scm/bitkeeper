@@ -90,7 +90,7 @@ fill:	printf("Inserting data ");
 			fprintf(stderr, "Error, writing outside mmap region\n");
 			exit(1);
 		}
-		bcopy(buf, p, n);
+		memcpy(p, buf, n);
 		printf(".");
 		p += n;
 	}
