@@ -11,11 +11,13 @@
 
 # Copyright (c) 2002 Wayne Scott
 
-if [ ! -x "/usr/bin/cvs" ]
-then
-	echo "/usr/bin/cvs not installed on this client: test skipped"
+for i in /usr/bin /usr/gnu/bin
+do	test -x $i/cvs && touch CVS
+done
+test -f CVS || {
+	echo "cvs not installed on this client: test skipped"
 	exit 0
-fi
+}
 
 # build a sample CVS repository with branches and branches of
 # branches.
