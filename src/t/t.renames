@@ -157,12 +157,12 @@ echo OK
 echo $N '  resolve by renaming local file ............................'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-bk resolve -t $Q $L copy 2>/dev/null <<EOF
+bk resolve -t $Q $L copy 2>XXX <<EOF
 ml
 LOCAL
 EOF
 if [ ! -f copy/LOCAL ]
-then	echo Failed to rename local file; exit 1
+then	echo Failed to rename local file; cat XXX; exit 1
 fi
 if [ "`cat copy/LOCAL`" != "I am the copy file" ]
 then	echo Bad data in local file; cat copy/LOCAL; exit 1
@@ -419,12 +419,12 @@ echo OK
 echo $N '  resolve by renaming local file ............................'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-bk resolve -t $Q $L copy 2>/dev/null <<EOF
+bk resolve -t $Q $L copy 2>XXX <<EOF
 ml
 LOCAL
 EOF
 if [ ! -f copy/LOCAL ]
-then	echo Failed to rename local file; exit 1
+then	echo Failed to rename local file; cat XXX; exit 1
 fi
 if [ "`cat copy/LOCAL`" != "I am the copy file" ]
 then	echo Bad data in local file; cat copy/LOCAL; exit 1
@@ -638,13 +638,13 @@ cd $HERE
 /bin/rm -rf copy
 tar xf SAVE.copy
 cd copy
-bk resolve $Q $L -t -yMerge 2>/dev/null <<EOF
+bk resolve $Q $L -t -yMerge 2>XXX <<EOF
 ml
 LOCAL
 q
 EOF
 if [ ! -f LOCAL ]
-then	echo Failed to rename local file; exit 1
+then	echo Failed to rename local file; cat XXX; exit 1
 fi
 if [ "`cat LOCAL`" != "I am the copy file" ]
 then	echo Bad data in local file; cat LOCAL; exit 1
@@ -925,13 +925,13 @@ cd $HERE
 /bin/rm -rf copy
 tar xf SAVE.copy
 cd copy
-bk resolve $Q $L -t -yMerge 2>/dev/null <<EOF
+bk resolve $Q $L -t -yMerge 2>XXX <<EOF
 ml
 LOCAL
 q
 EOF
 if [ ! -f LOCAL ]
-then	echo Failed to rename local file; exit 1
+then	echo Failed to rename local file; cat XXX; exit 1
 fi
 if [ "`cat LOCAL`" != "I am the copy file" ]
 then	echo Bad data in local file; cat LOCAL; exit 1
@@ -1172,13 +1172,13 @@ cd $HERE
 /bin/rm -rf copy
 tar xf SAVE.copy
 cd copy
-bk resolve $Q $L -t -yMerge 2>/dev/null <<EOF
+bk resolve $Q $L -t -yMerge 2>XXX <<EOF
 ml
 LOCAL
 q
 EOF
 if [ ! -f LOCAL ]
-then	echo Failed to rename local file; exit 1
+then	echo Failed to rename local file; cat XXX; exit 1
 fi
 if [ ! -f CONFLICT ]
 then	echo Failed to get CONFLICT file

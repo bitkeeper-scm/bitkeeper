@@ -186,8 +186,6 @@ passes(opts *opts)
 
 		/* If we aren't doing pass 1, just remember the key */
 		unless (opts->pass1) {
-			char	path[MAXKEY];
-
 			sccs_free(s);
 			continue;
 		}
@@ -1385,7 +1383,6 @@ private	void
 conflict(opts *opts, char *sfile)
 {
 	sccs	*s;
-	delta	*l, *r, *g;
 	resolve	*rs;
 	deltas	d;
 	
@@ -1668,7 +1665,6 @@ pendingCheckins()
 {
 	char	buf[MAXPATH];
 	FILE	*f;
-	int	ret;
 
 	sprintf(buf, "%sbk sfiles -c", bin);
 	f = popen(buf, "r");
@@ -1717,6 +1713,36 @@ commit(opts *opts)
 }
 
 /*
+ * Move the file out of the way, saving it, and
+ * make space for the new file.  If this works
+ * for all of them, we'll come back and remove these.
+ * Otherwise, we put these back.
+ */
+backup(opts *opts, char *sfile, MDBM *backups, FILE *save)
+{
+	char	buf[MAXPATH];
+	char	*t;
+
+	strcpy(buf, sfile);
+	t = strrchr(buf, '/');
+	t[1] = 'b';			/* b is for backup */
+	if (exists(buf) && !mdbm_fetch_str(backups, buf)) {
+		fprintf(stderr, "Will not overwrite existing backup %s\n", buf);
+		restore(save);
+		return (1);
+	}
+	if (rename(sfile, buf)) {
+		fprintf(stderr, "Unable to rename(%s->%s)\n", sfile, buf);
+		restore(save);
+		return (1);
+	}
+	mdbm_store_str(backups, buf, "", MDBM_INSERT);
+	if (opts->log) fprintf(stdlog, "backup(%s, %s)\n", sfile, buf);
+	fprintf(save, "%s\n", buf);
+    	return (0);
+}
+
+/*
  * Make sure there are no edited files, no RENAMES, and {r,m}.files and
  * apply all files.
  */
@@ -1735,6 +1761,8 @@ pass4_apply(opts *opts)
 	char	orig[MAXPATH];
 	void	restore(FILE *f);
 	void	unbackup(FILE *f);
+	int	create;
+	MDBM	*backups = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 
 	if (opts->log) fprintf(opts->log, "==== Pass 4 ====\n");
 	opts->pass = 4;
@@ -1794,24 +1822,53 @@ pass4_apply(opts *opts)
 				exit(1);
 			}
 			sccs_close(l);
-			/*
-			 * Move the file out of the way, saving it, and
-			 * make space for the new file.  If this works
-			 * for all of them, we'll come back and remove these.
-			 * Otherwise, we put these back.
-			 */
-			strcpy(buf, l->sfile);
-			t = strrchr(buf, '/');
-			t[1] = 'b';			/* b is for backup */
-			unlink(buf);
-			rename(l->sfile, buf);
-			if (opts->log) {
-				fprintf(stdlog,
-				    "rename(%s, %s)\n", l->sfile, buf);
+			if (backup(opts, l->sfile, backups, save)) {
+				unlink(orig);
+				exit(1);
 			}
-			fprintf(save, "%s\n", buf);
 			sccs_free(l);
+			create = 0;
+		} else {
+			create = 1;
 		}
+
+		/*
+		 * The file we moved above may match in inode but may not
+		 * match in pathname.  If there is an s.file in the path,
+		 * we need to back that up as well.
+		 */
+		if (exists(&buf[offset])) {
+			if (backup(opts, &buf[offset], backups, save)) {
+				unlink(orig);
+				exit(1);
+			}
+			create = 0;
+		}
+
+		/*
+		 * Finally, if this is a file we are creating, mark it as
+		 * such with a zero sized b.file so we can remember to clean
+		 * it up if the resolve fails.
+		 * Create is somewhat misleading, what we really mean is a
+		 * create with no existing file in the same path slot.
+		 */
+		if (create) {
+			strcpy(key, &buf[offset]);
+			t = strrchr(key, '/');
+			t[1] = 'b';			/* b is for backup */
+			if (exists(key) && !mdbm_fetch_str(backups, key)) {
+				fprintf(stderr,
+				"Will not overwrite existing BACKUP %s\n", key);
+				restore(save);
+				unlink(orig);
+				exit(1);
+			}
+			close(creat(key, 0666));
+			fprintf(save, "%s\n", key);
+			mdbm_store_str(backups, key, "", MDBM_INSERT);
+			if (opts->log) fprintf(stdlog, "backup(%s)\n", key);
+		}
+
 		sccs_free(r);
 	}
 	pclose(p);
