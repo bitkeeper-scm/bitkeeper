@@ -89,14 +89,14 @@ default:
 
 all: $(ALL)
 
-purify:
-	$(MAKE) CFLAGS="-g -DPURIFY" all
+purify-mem:
+	$(MAKE) CFLAGS="-g $O -DPURIFY -DPURIFY_FREQ=50" all
 purify+files:
-	$(MAKE) CFLAGS="-g -DPURIFY -DPURIFY_FILES" all
+	$(MAKE) CFLAGS="-g $O -DPURIFY -DPURIFY_FILES -DPURIFY_FREQ=50" all
 purify+mdbm:
-	$(MAKE) CFLAGS="-g -DPURIFY -DPURIFY_MDBM" all
-purify+files+mdbm:
-	$(MAKE) CFLAGS="-g -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM" all
+	$(MAKE) CFLAGS="-g $O -DPURIFY -DPURIFY_MDBM -DPURIFY_FREQ=50" all
+purify:
+	$(MAKE) CFLAGS="-g $O -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM -DPURIFY_FREQ=50" all
 gprof:
 	$(MAKE) CFLAGS="-g -pg -O2" all
 # Recent gcc only profiles libc if you do it this way.
