@@ -1015,7 +1015,7 @@ proc getRev {type {id {}} } \
 proc filltext {win f clear {msg {}}} \
 {
 	global search w file
-	#puts "filltext win=($win) f=($f) clear=($clear) msg=($msg)"
+	#puts stderr "filltext win=($win) f=($f) clear=($clear) msg=($msg)"
 
 	$win configure -state normal
 	if {$clear == 1} { $win delete 1.0 end }
@@ -1101,6 +1101,21 @@ proc sfile {} \
 	set ttype "sccs"
 	filltext $w(aptext) $f 1 "No sfile data"
 }
+
+#
+# Displays the sccscat output in the lower text window. bound to <c>
+#
+proc sccscat {} \
+{
+	global file w ttype gc
+
+	busy 1
+	set fd [open "| bk sccscat $gc(rev.sccscat) \"$file\"" r]
+	set ttype "annotated"
+	filltext $w(aptext) $fd 1 "No sccscat data"
+}
+
+
 
 #
 # Displays annotated file listing or changeset listing in the bottom 
@@ -1727,6 +1742,7 @@ proc widgets {} \
 	bind $w(graph) <Double-2>	{ history tags; break }
 	bind $w(graph) $gc(rev.quit)	"done"
 	bind $w(graph) <s>		"sfile"
+	bind $w(graph) <c>		"sccscat"
 	bind $w(graph) <Prior>		"$w(aptext) yview scroll -1 pages"
 	bind $w(graph) <Next>		"$w(aptext) yview scroll  1 pages"
 	bind $w(graph) <space>		"$w(aptext) yview scroll  1 pages"
