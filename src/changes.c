@@ -243,7 +243,7 @@ doit(int dash)
 	assert(s && s->tree);
 	if (opts.rev) {
 		if (opts.doSearch) {
-			fprintf(stderr, "Warning: -s option ignored\n");
+			fprintf(stderr, "Warning: -/ option ignored\n");
 		}
 
 		r[rd++] = notnull(opts.rev);
@@ -612,7 +612,7 @@ doit_remote(char **av, int optind)
 	r = remote_parse(url, 0);
 	unless (r) {
 		fprintf(stderr, "invalid url: %s\n", url);
-		exit (1);
+		return (1);
 	}
 
 	if (opts.rdiff && opts.rev) {
@@ -623,7 +623,7 @@ doit_remote(char **av, int optind)
 		!isLocalHost(r->host) && exists(BKMASTER)) {
 		fprintf(stderr,
 			"Cannot sync from master repository: %s", upgrade_msg);
-		exit(1);
+		return (1);
 	}
 
 	rc = changes_part1(r, av, optind, key_list);
