@@ -54,12 +54,12 @@ echo OK
 echo $N Merge two files together ....................................$NL
 cd $HERE/copy
 bk pull $Q
-echo $OK
+echo OK
 
 echo $N Verify each side can be recreated ...........................$NL
 cd $HERE
-bk clone -r1.3 copy orig.main
-bk clone -r1.2.1.1 copy orig.copy
+bk clone $Q -r1.3 copy orig.main
+bk clone $Q -r1.2.1.1 copy orig.copy
 if [ "`bk prs -r+ -hnd':REV: :C:' orig.main/file`" != '1.2 main' ]
 then	echo undo failed!
 	exit 1
@@ -77,9 +77,8 @@ echo OK
 
 echo $N Verify that everything is still OK ..........................$NL
 cd $HERE
-bk prs orig.main/ChangeSet
-bk clone -r1.3 orig.main orig2.main
-bk clone -r1.2.1.1 orig.main orig2.copy
+bk clone $Q -r1.3 orig.main orig2.main
+bk clone $Q -r1.2.1.1 orig.main orig2.copy
 if [ "`bk prs -r+ -hnd':REV: :C:' orig2.main/file`" != '1.2 main' ]
 then	echo undo failed!
 	exit 1
