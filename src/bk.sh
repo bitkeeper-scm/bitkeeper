@@ -317,7 +317,7 @@ _clone() {
 	then	echo "clone: $TO exists" >&2
 		exit 1
 	fi
-	exec perl ${BIN}resync -ap "$@"
+	exec `__perl` ${BIN}resync -ap "$@"
 }
 
 # Advertise this repository for remote lookup
@@ -376,14 +376,14 @@ _parent() {
 # changes (like cvs update).
 _pull() {
 	__cd2root
-	exec perl ${BIN}resync -A "$@"
+	exec `__perl` ${BIN}resync -A "$@"
 }
 
 # Push: send changes back to parent.  If parent is ahead of you, this
 # pulls down those changes and stops; you have to merge and try again.
 _push() {
 	__cd2root
-	exec perl ${BIN}resync -Ab "$@"
+	exec `__perl` ${BIN}resync -Ab "$@"
 }
 
 _diffr() {
@@ -425,7 +425,11 @@ _diffr() {
 	cd $HERE
 	cd $2
 	NEW=`pwd`
-	RREVS=`perl ${BIN}resync -n -Q $NEW $OLD 2>&1 | grep '[0-9]'`
+	PERL=`__perl` || {
+		echo $PERL ${BIN}resync
+		exit 1
+	}
+	RREVS=`$PERL ${BIN}resync -n -Q $NEW $OLD 2>&1 | grep '[0-9]'`
 	if [ $ALL = NO -a "X$RREVS" = X ]
 	then	echo $1 is up to date with $2
 		exit 0
@@ -1454,6 +1458,21 @@ __platformPath() {
 	exit 1
 }
 
+# Try to find perl5 if we can.
+__perl() {
+	for i in `echo $PATH | sed 's/:/ /g'` /usr/local/bin
+	do	if [ -x $i/perl ]
+		then	$i/perl -v | grep 'version 5.0' > /dev/null
+			if [ $? = 0 ]
+			then	echo $i/perl
+				return 0
+			fi
+		fi
+	done
+	echo echo Can not find perl5 to run
+	return 1
+}
+
 # ------------- main ----------------------
 __platformPath
 __platformInit
@@ -1502,7 +1521,7 @@ shift
 
 case $cmd in
     resync|resolve|pmerge|rcs2sccs)
-	exec perl ${BIN}$cmd "$@";;
+	exec `__perl` ${BIN}$cmd "$@";;
     fm|fm3|citool|sccstool|fmtool|fm3tool|difftool|helptool|csettool|renametool)
 	exec $wish -f ${BIN}${cmd}${tcl} "$@";;
     *)	exec $cmd "$@";;	# will be found in $BIN by path search.
