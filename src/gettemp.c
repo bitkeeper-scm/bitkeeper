@@ -159,6 +159,6 @@ bktmpcleanup(void)
 		}
 		free(tmpfiles[i]);
 	}
-	free(tmpfiles);
+	freeLines(tmpfiles, 0);
 	tmpfiles = 0;
 }
