@@ -2187,7 +2187,8 @@ pass4_apply(opts *opts)
 	 * Save the list of files and then remove them.
 	 */
 	if (size(BACKUP_LIST) > 0) {
-		if (system("bk sfio -omq < " BACKUP_LIST " > " BACKUP_SFIO)) {
+		if (sysio(BACKUP_LIST, BACKUP_SFIO, 0,
+						"bk", "sfio", "-omq", SYS)) {
 			fprintf(stderr,
 			    "Unable to create backup %s from %s\n",
 			    BACKUP_SFIO, BACKUP_LIST);
@@ -2394,7 +2395,7 @@ unapply(FILE *f)
 private	void
 restore(opts *o)
 {
-	if (system("bk sfio -im < " BACKUP_SFIO)) {
+	if (sysio(BACKUP_SFIO, 0, 0, "bk", "sfio", "-im", SYS)) {
 		fprintf(stderr,
 "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\
 Your repository is only partially restored.   This is an error.  Please \n\

@@ -39,7 +39,7 @@ unpull(int force, int quiet)
 {
 	sccs	*s;
 	delta	*d;
-	char	*cset = CHANGESET;
+	char	cset[] = CHANGESET;
 	MMAP	*m;
 	char	*t, *end;
 	char	*av[6];

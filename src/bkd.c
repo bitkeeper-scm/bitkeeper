@@ -18,6 +18,7 @@ char 		*logRoot;
 int		licenseServer[2];	/* bkweb license pipe */
 time_t		licenseEnd = 0;		/* when a temp bk license expires */
 time_t		requestEnd = 0;
+int		want_eof = 0;		/* if set, bkd wait for client EOF */
 
 #define	Respond(s)	write(licenseServer[1], s, 4)
 
@@ -426,6 +427,17 @@ do_cmds()
 			flags = cmdlog_end(ret, flags);
 
 			if (flags & CMD_FAST_EXIT) {
+				/*
+				 * Force server side EOF
+				 */
+				shutdown(1, 1); /* For daemon mode */
+				close(1);	/* For non-daemon mode */
+				close(2);	/* For non-daemon mode */
+
+				if (want_eof) {
+					read(0, &i, 1); /* wait for eof */
+					want_eof = 0;
+				}
 				exit(ret);
 			}
 			if (ret != 0) {

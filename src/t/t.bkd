@@ -132,12 +132,13 @@ bk pull -t $Q bk://localhost:$P
 if [ ! -f SCCS/s.coo.c ]; then echo failed; exit 1; fi
 echo OK
 echo $N check a push to bkd with a gfile conflict ...................$NL
+if [ "$PLATFORM" = "UNIX" ];then CNT=5; else CNT=2; fi
 P=50000
 cd $HERE/project
-bk bkd -q -d -p$P -xcd -c6 
+bk bkd -q -d -p$P -xcd -c$CNT
 while [ $? -eq 2 ]
 do	P=`expr $P + 1`
-	bk bkd -q -d -p$P -xcd -c6 
+	bk bkd -q -d -p$P -xcd -c$CNT
 done
 cd $HERE/project
 echo data1 > conflict.c
@@ -145,7 +146,7 @@ cd $HERE/copy
 echo data2 > old.c
 bk new $Q old.c
 bk commit $Q -yold.c
-bk push -c1 $Q http://localhost:$P
+bk push -c1 $Q bk://localhost:$P
 cd $HERE/project
 while ! bk lock -s; do true; done
 cd $HERE/copy
@@ -156,6 +157,8 @@ grep -q "Did not resolve 1 renames, no conflicts causing abort." bk.out
 if [ $? -ne 0 ]; then echo failed; cat bk.out; exit 1; fi
 rm -f  $HERE/project/conflict.c
 echo OK
+if [ "$PLATFORM" = "UNIX" ]
+then #-------------------------------------------------------------------------
 echo $N check http pull from bkd ....................................$NL
 waitForUnlock $HERE/project
 cd $HERE/project/src
@@ -172,6 +175,9 @@ cd $HERE
 bk clone $Q http://localhost:$P $HERE/project2
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
+else
+bk bkd -R 2> $DEV_NULL
+fi #---------------------------------------------------------------------------
 
 # Check bk basic mode behaviour
 echo $N Make sure bk/basic limits access to master repository only ..$NL
@@ -215,7 +221,7 @@ bk new $Q JUNK
 (cd $HERE/copy; bk _loggingaccepted; )
 bk commit $Q -ywhatever
 bk push -t bk://localhost:$P$HERE/copy 2> bk.out
-grep -q "6 csets only in" bk.out
+grep -q "csets only in" bk.out
 if [ $? -ne 0 ]; then echo failed; cat bk.out; exit 1; fi
 echo OK
 echo $N Make sure bk/basic allows pull from master repository .......$NL
@@ -223,6 +229,6 @@ cd $HERE/copy
 while ! bk lock -s; do true; done
 cd $HERE/copy2
 bk undo -fqr+
-bk pull -t bk://localhost:$P$HERE/copy 2> pull.out
-if [ $? -ne 0 ]; then echo failed; cat pull.out; exit 1; fi
+bk pull $Q -t bk://localhost:$P$HERE/copy
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK

@@ -11,8 +11,9 @@ int
 cmd_clone(int ac, char **av)
 {
 	int	c, rc;
-	int	gzip = 0, delay = 0;
+	int	gzip = 0, delay = -1;
 	char 	*p, *rev = 0, ebuf[200];
+	extern	int want_eof;
 
 	/*
 	 * If BK_REMOTE_PROTOCOL is not defined,
@@ -92,7 +93,8 @@ cmd_clone(int ac, char **av)
 	 * Give ssh sometime to drain the data
 	 * We should not need this if ssh is working correctly 
 	 */
-	if (delay) sleep(delay);
+	if (delay > 0) sleep(delay);
+	if (delay == 0) want_eof = 1;
 	return (rc);
 }
 	    

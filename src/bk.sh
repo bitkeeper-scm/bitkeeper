@@ -466,7 +466,9 @@ _regression() {		# /* doc 2.0 */
 	done
 	shift `expr $OPTIND - 1`
 	export DO_REMOTE PREFER_RSH
-	cd "`bk bin`/t" && exec time ./doit $V $X "$@"
+
+	# Do not use "exec" to invoke "./doit", it causes problem on cygwin
+	cd "`bk bin`/t" && time ./doit $V $X "$@"
 }
 
 __init() {

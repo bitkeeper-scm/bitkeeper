@@ -185,6 +185,7 @@ runit(char *file, char *output)
 	if (output) {
 		close(1);
 		dup2(fd1, 1);
+		close(fd1);
 	}
 	if (WIFEXITED(status)) {
 		rc = WEXITSTATUS(status);

@@ -1193,6 +1193,7 @@ read_diff (filea, fileb, output_placement)
   char *command = xmalloc (sizeof (diff_program) + 30 + INT_STRLEN_BOUND (int)
 			   + 4 * (strlen (filea) + strlen (fileb)));
   char *p;
+  int  try = 0;
   sprintf (command, "%s -a --horizon-lines=%d -- ",
 	   diff_program, horizon_lines);
   p = command + strlen (command);
@@ -1200,10 +1201,10 @@ read_diff (filea, fileb, output_placement)
   *p++ = ' ';
   SYSTEM_QUOTE_ARG (p, fileb);
   *p = '\0';
+retry:
   fpipe = popen (command, "r");
   if (!fpipe)
     perror_with_exit (command);
-  free (command);
   fd = fileno (fpipe);
 
 #endif /* ! HAVE_FORK */
@@ -1239,6 +1240,19 @@ read_diff (filea, fileb, output_placement)
 #if ! HAVE_FORK
 
   wstatus = pclose (fpipe);
+
+  /*
+   * We need to this retry loop to workaround
+   * what seems to be a cache delay bug in the cygwin environment;
+   * Newly created file is not visible to child process until
+   * some delay.
+   */
+  if ((WEXITSTATUS(wstatus) == 2) && (try++ < 10)) {
+    fprintf(stderr, "diff failed retying ..,\n");
+    usleep(10000);
+    goto retry;
+  }
+  free (command);
 
 #else /* HAVE_FORK */
 

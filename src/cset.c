@@ -703,16 +703,14 @@ csetlist(cset_t *cs, sccs *cset)
 			unlink(cat);
 			goto fail;
 		}
-		sprintf(buf, "bk _keysort < %s > %s", cat, csort);
-		if (system(buf)) {
+		if (sysio(cat, csort, 0, "bk", "_keysort", SYS)) {
 			unlink(cat);
 			goto fail;
 		}
 		chmod(csort, TMP_MODE);		/* in case we don't unlink */
 		unlink(cat);
-		if (cs->verbose > 5) {
-			sprintf(buf, "cat %s", csort);
-			system(buf);
+		if (cs->verbose > 5) {;
+			sys("cat", csort, SYS);
 		}
 		if (exists(SGONE)) {
 			char tmp_gone[MAXPATH];

@@ -333,6 +333,7 @@ cmd_pull_part2(int ac, char **av)
 {
 	int	c, n, rc = 0, fd, fd0, rfd, status, local, rem, debug = 0;
 	int	gzip = 0, metaOnly = 0, dont = 0, verbose = 1, list = 0;
+	int	delay = -1;
 	char	buf[4096], s_cset[] = CHANGESET;
 	char	*revs = bktmpfile();
 	char	*serials = bktmpfile();
@@ -342,8 +343,9 @@ cmd_pull_part2(int ac, char **av)
 	remote	r;
 	FILE	*f;
 	pid_t	pid;
+	extern	int want_eof;
 
-	while ((c = getopt(ac, av, "delnqz|")) != -1) {
+	while ((c = getopt(ac, av, "delnqw|z|")) != -1) {
 		switch (c) {
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
@@ -354,6 +356,7 @@ cmd_pull_part2(int ac, char **av)
 		    case 'l': list++; break;
 		    case 'n': dont = 1; break;
 		    case 'q': verbose = 0; break;
+		    case 'w': delay = atoi(optarg); break;
 		    default: break;
 		}
 	}
@@ -487,5 +490,7 @@ done:	unlink(serials); free(serials);
 	 * Fire up the post-trigger (for non-logging tree only)
 	 */
 	if (!metaOnly) trigger(av, "post");
+	if (delay > 0) sleep(delay);
+	if (delay == 0) want_eof = 1;
 	return (rc);
 }

@@ -13,6 +13,7 @@ typedef	struct {
 	u32	textOnly:1;		/* -t: don't pass -t to resolve */
 	u32	debug:1;		/* -d: debug */
 	int	gzip;			/* -z[level] compression */
+	int	delay;			/* -w<delay> */
 	u32	in, out;		/* stats */
 } opts;
 
@@ -36,7 +37,7 @@ pull_main(int ac, char **av)
 	bzero(&opts, sizeof(opts));
 	opts.gzip = 6;
 	opts.automerge = 1;
-	while ((c = getopt(ac, av, "c:deE:ilnqrtz|")) != -1) {
+	while ((c = getopt(ac, av, "c:deE:ilnqrtw|z|")) != -1) {
 		switch (c) {
 		    case 'i': opts.automerge = 0; break;	/* doc 2.0 */
 		    case 'l': opts.list++; break;	/* doc 2.0 */
@@ -49,6 +50,7 @@ pull_main(int ac, char **av)
 		    case 'E': 	/* doc 2.0 */
 			envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'c': try = atoi(optarg); break;	/* doc 2.0 */
+		    case 'w': opts.delay = atoi(optarg); break;
 		    case 'z':	/* doc 2.0 */
 			opts.gzip = optarg ? atoi(optarg) : 6;
 			if (opts.gzip < 0 || opts.gzip > 9) opts.gzip = 6;
@@ -184,6 +186,7 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	if (opts.dont) fprintf(f, " -n");
 	for (rc = opts.list; rc--; ) fprintf(f, " -l");
 	if (opts.quiet) fprintf(f, " -q");
+	if (opts.delay) fprintf(f, " -w%d", opts.delay);
 	if (opts.debug) fprintf(f, " -d");
 	fputs("\n", f);
 	fclose(f);
@@ -378,7 +381,8 @@ pull(char **av, opts opts, remote *r, char **envVar)
 		fprintf(stderr, "Cannot do pull into locked repository.\n");
 		exit(1);
 	}
-	unless (cset = sccs_init(csetFile, 0, 0)) {
+	cset = sccs_init(csetFile, 0, 0);
+	unless (cset && cset->tree) {
 		fprintf(stderr, "pull: no ChangeSet file found.\n");
 		exit(1);
 	}
