@@ -77,7 +77,7 @@ echo $N Verifying data checksum .....................................$NL
 bk admin $Q -fe0 uuencode
 bk co $Q -kr1.1 uuencode
 bk admin $Q -fe1 uuencode
-A=`bk prs -r1.1 -hd:CHKSUM: uuencode`
+A=`bk prs -r1.1 -hd:DSUM: uuencode`
 B=`bk chksum < uuencode`
 if [ $A -ne $B ]; then echo Failed - chksums $A $B differ.; exit 1; fi
 echo OK
@@ -111,7 +111,7 @@ echo $N Verifying data checksum .....................................$NL
 bk admin $Q -fe0 gzipuu
 bk co $Q -kr1.1 gzipuu
 bk admin $Q -fe1 gzipuu
-A=`bk prs -r1.1 -hd:CHKSUM: gzipuu`
+A=`bk prs -r1.1 -hd:DSUM: gzipuu`
 B=`bk chksum < gzipuu`
 if [ $A -ne $B ]; then echo Failed - chksums $A $B differ.; exit 1; fi
 echo OK
@@ -195,7 +195,7 @@ if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Verifying data checksum .....................................$NL
 bk co $Q -kr1.1 gzipped
-A=`bk prs -r1.1 -hd:CHKSUM: gzipped`
+A=`bk prs -r1.1 -hd:DSUM: gzipped`
 B=`bk chksum < gzipped`
 if [ $A -ne $B ]; then echo Failed - chksums $A $B differ.; exit 1; fi
 echo OK
