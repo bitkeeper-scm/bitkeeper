@@ -19,7 +19,11 @@ cmd_clone(int ac, char **av)
 	 * assumes bkd protocol version 1.2
 	 */
 	p = getenv("BK_REMOTE_PROTOCOL");
-	if (p) sendServerInfoBlock();
+	if (p) {
+		sendServerInfoBlock();
+	} else {
+		cmd[3] = "-co";		/* compat mode for the sfio */
+	}
 
 	if (!exists("BitKeeper/etc")) {
 		out("ERROR-Not at package root\n");
