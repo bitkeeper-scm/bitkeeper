@@ -7045,7 +7045,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 	}
 	assert(!READ_ONLY(s));
 	assert(s->state & S_ZFILE);
-	fputs("\001HXXXXX\n", out);
+	fprintf(out, "\001%cXXXXX\n", BITKEEPER(s) ? 'H' : 'h');
 	s->cksum = 0;
 	assert(sizeof(buf) >= 1024);	/* see comment code */
 
@@ -9542,127 +9542,10 @@ dupSym(symbol *symbols, char *s, char *rev)
 int
 sccs_addSym(sccs *sc, u32 flags, char *s)
 {
-#if 1
 	/*
 	 * Until we make this participate in the tag graph, we can't use it.
 	 */
 	return (EAGAIN);
-#else
-	char	*rev;
-	delta	*n = 0, *d = 0;
-	char	*t, *r;
-	sum_t	sum;
-	int	len;
-	char	buf[1024];
-	char	fudge[30];
-
-	if (!sccs_lock(sc, 'z')) {
-		fprintf(stderr, "sccs_addSym: can't zlock %s\n", sc->gfile);
-		return -1;
-	}
-	assert(!READ_ONLY(sc));
-	assert(sc->state & S_ZFILE);
-	assert(sc->landingpad > sc->mmap);
-	assert(sc->landingpad < sc->mmap + sc->data);
-	s = strdup(s);
-	if ((rev = strrchr(s, ':'))) {
-		*rev++ = 0;
-	} else if ((rev = strrchr(s, '='))) {
-		verbose((stderr,
-		    "admin: SYM=REV form obsolete, using SYM:REV\n"));
-		*rev++ = 0;
-	} else {
-		unless (d = findrev(sc, rev)) {
-norev:			verbose((stderr, "admin: can't find rev %s in %s\n",
-			    rev, sc->sfile));
-			free(s);
-			sccs_unlock(sc, 'z');
-			return (-1);
-		}
-		rev = d->rev;
-	}
-	if (dupSym(sc->symbols, s, rev)) {
-		verbose((stderr,
-		    "admin (fast add): symbol %s exists on %s\n", s, rev));
-		free(s);
-		sccs_unlock(sc, 'z');
-		return (-1);
-	}
-	unless (d || (d = findrev(sc, rev))) goto norev;
-	if (!rev || !*rev) rev = d->rev;
-	/*
-	 * Make a new delta table entry and figure out it's length.
-	 * ^As 00000/00000/00000
-	 * ^Ad R 1.22 98/07/28 18:31:10 lm 22 21
-	 * ^Ac S symbol
-	 * ^Ae
-	 */
-	n = sccs_dInit(0, 'R', sc, 0);
-	n->sum = (unsigned short) almostUnique(1);
-	if (n->date <= sc->table->date) {
-		time_t	tdiff;
-		tdiff = sc->table->date - n->date + 1;
-		n->date += tdiff;
-		n->dateFudge += tdiff;
-	}
-	if (n->dateFudge) {
-		sprintf(fudge, "\001cF%ld\n", (long) n->dateFudge);
-	} else {
-		fudge[0] = 0;
-	}
-	sprintf(buf,
-"\001s 00000/00000/00000\n\
-\001d R %s %s %s %d %d\n\
-%s\
-\001cK%05lu\n\
-\001cS%s\n\
-\001e\n",
-	    rev, n->sdate, n->user, sc->nextserial++, d->serial, 
-	    fudge, almostUnique(1), s);
-	sc->numdeltas++;
-	/* XXX - timezone */
-	len = strlen(buf);
-
-	/*
-	 * figure out how much space we have and see if we fit.
-	 */
-	for (t = sc->landingpad; *t != '\n'; t++);
-	if ((t - sc->landingpad) <= len) {
-		sc->numdeltas--;
-		sc->nextserial--;
-		if (n) freedelta(n);
-		free(s);
-		sccs_unlock(sc, 'z');
-		return (EAGAIN);
-	}
-
-	/*
-	 * Shift it down.  We shift everything, knowing we'll rewrite to
-	 * top.
-	 */
-	sum = atoi(&sc->mmap[2]);
-	r = sc->mmap + 8;
-	t = r + len;
-	memmove(t, r, sc->landingpad - r);
-#define	ADD(c)	{ sum -= '_'; *t++ = c; sum += c; }
-	for (r = buf, t = &sc->mmap[8]; *r; r++) ADD(*r);
-	sprintf(sc->mmap, "\001H%05u", sum);
-	sc->mmap[7] = '\n';	/* overwrite null */
-
-	/*
-	 * SAMBA files only support MAP_PRIVATE
-	 * so we have to write it out here.
-	 */
-	if (sc->state & S_MAPPRIVATE) {
-		lseek(sc->fd, 0, SEEK_SET);
-		write(sc->fd, sc->mmap, sc->landingpad + len + 8 - sc->mmap);
-	}
-	verbose((stderr, "admin: fast add symbol %s->%s in %s\n",
-	    s, rev, sc->sfile));
-	free(s);
-	sccs_unlock(sc, 'z');
-	return (0);
-#endif
 }
 
 private int
@@ -10307,7 +10190,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		goto out;
 	}
 	fseek(sfile, 0L, SEEK_SET);
-	fprintf(sfile, "\001H%05u\n", sc->cksum);
+	fprintf(sfile, "\001%c%05u\n", BITKEEPER(sc) ? 'H' : 'h', sc->cksum);
 #ifdef	DEBUG
 	badcksum(sc, flags);
 #endif
@@ -10419,7 +10302,7 @@ out:
 		goto out;
 	}
 	fseek(sfile, 0L, SEEK_SET);
-	fprintf(sfile, "\001H%05u\n", s->cksum);
+	fprintf(sfile, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
 	sccs_close(s), fclose(sfile), sfile = NULL;
 	if (s->encoding & E_GZIP) zgets_done();
 	unlink(s->sfile);		/* Careful. */
@@ -11333,7 +11216,7 @@ abort:		fclose(sfile);
 	if (fflushdata(s, sfile)) goto abort;
 	if (s->encoding & E_GZIP) zgets_done();
 	fseek(sfile, 0L, SEEK_SET);
-	fprintf(sfile, "\001H%05u\n", s->cksum);
+	fprintf(sfile, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
 	sccs_close(s); fclose(sfile); sfile = NULL;
 	unlink(s->sfile);		/* Careful. */
 	t = sccsXfile(s, 'x');
@@ -11900,7 +11783,7 @@ Breaks up citool
 		fputmeta(s, buf, out);
 	}
 	fseek(out, 0L, SEEK_SET);
-	fprintf(out, "\001H%05u\n", s->cksum);
+	fprintf(out, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
 	if (flushFILE(out)) {
 		perror(s->sfile);
 		s->io_warned = 1;
@@ -15002,7 +14885,7 @@ stripDeltas(sccs *s, FILE *out)
 	if (fflushdata(s, out)) return (1);
 	if (s->encoding & E_GZIP) zgets_done();
 	fseek(out, 0L, SEEK_SET);
-	fprintf(out, "\001H%05u\n", s->cksum);
+	fprintf(out, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
 	sccs_close(s);
 	fclose(out);
 	unlink(s->sfile);		/* Careful. */

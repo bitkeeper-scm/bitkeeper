@@ -109,13 +109,13 @@ sccs_rm(char *name, char *del_name, int useCommonDir)
 	return (error);
 }
 
-private project *proj;
-private char *root;
 int
 gone_main(int ac, char **av)
 {
-	int	c, error = 0;
+	int	c;
 	int	quiet = 0;
+	char	tmpfile[MAXPATH];
+	FILE	*f;
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help gone");
@@ -132,74 +132,58 @@ usage:			      system("bk help -s gone");
 	}
 	unless (av[optind]) goto usage;
 
-	if (streq("-", av[optind])) {
-		char buf[MAXPATH];
-
-		while (fgets(buf, sizeof(buf), stdin)) {
-			chop(buf);
-			if (sccs_gone(buf)) {
-				error = 1;
-			} else unless (quiet) {
-				fprintf(stderr,
-				    "Do not forget to commit the gone file "
-				    "before attempting a pull\n");
-				quiet = 1;
-			}
-		}
-	} else {
-		int	i = optind;
-
-		while (av[i]) {
-			if (sccs_gone(av[i++])) {
-				error = 1;
-			} else unless (quiet) {
-				fprintf(stderr,
-				    "Do not forget to commit the gone file "
-				    "before attempting a pull\n");
-				quiet = 1;
-			}
-		}
+	if (streq("-", av[optind])) exit(sccs_gone(quiet, stdin));
+	if (bktemp(tmpfile)) exit(1);
+	f = fopen(tmpfile, "w");
+	while (av[optind]) fprintf(f, "%s\n", av[optind++]);
+	fclose(f);
+	f = fopen(tmpfile, "r");
+	if (sccs_gone(quiet, f)) {
+		unlink(tmpfile);
+		exit(1);
 	}
-
-	if (proj) proj_free(proj);
-	if (root) free(root);
-	return (error);
+	unlink(tmpfile);
+	exit(0);
 }
 
-
 int
-sccs_gone(char *key)
+sccs_gone(int quiet, FILE *f)
 {
-
-	sccs	*s1;
+	sccs	*s;
 	char	s_gone[MAXPATH], g_gone[MAXPATH];
-	FILE	*f;
+	char	key[MAXKEY];
+	FILE	*gfile;
+	char	*root;
 
-	unless (root) root = proj ? strdup(proj->root) : sccs_root(0);
+	root = sccs_root(0);
 	assert(root);
 	sprintf(s_gone, "%s/BitKeeper/etc/SCCS/s.gone", root);
 	sprintf(g_gone, "%s/BitKeeper/etc/gone", root);
 	comments_save("Gone");
 	if (exists(s_gone)) {
-		s1 = sccs_init(s_gone, SILENT|INIT_SAVEPROJ, proj);
-		assert(s1);
-		unless (IS_EDITED(s1)) {
-			sccs_get(s1, 0, 0, 0, 0, SILENT|GET_EDIT, "-"); 
+		s = sccs_init(s_gone, SILENT|INIT_SAVEPROJ, 0);
+		assert(s);
+		unless (IS_EDITED(s)) {
+			sccs_get(s, 0, 0, 0, 0, SILENT|GET_EDIT, "-"); 
 		}
-		f = fopen(g_gone, "ab");
-		fprintf(f, "%s\n", key);
-		fclose(f);
-		s1 = sccs_restart(s1);
-		sccs_delta(s1, SILENT|DELTA_DONTASK, 0, 0, 0, 0);
+		gfile = fopen(g_gone, "ab");
+		while (fnext(key, f)) fputs(key, gfile);
+		fclose(gfile);
+		s = sccs_restart(s);
+		sccs_delta(s, SILENT|DELTA_DONTASK, 0, 0, 0, 0);
 	} else {
-		f = fopen(g_gone, "wb");
-		fprintf(f, "%s\n", key);
-		fclose(f);
-		s1 = sccs_init(s_gone, SILENT|INIT_SAVEPROJ, proj);
-		assert(s1);
-		sccs_delta(s1, SILENT|NEWFILE|DELTA_DONTASK, 0, 0, 0, 0);
+		gfile = fopen(g_gone, "wb");
+		while (fnext(key, f)) fputs(key, gfile);
+		fclose(gfile);
+		s = sccs_init(s_gone, SILENT|INIT_SAVEPROJ, 0);
+		assert(s);
+		sccs_delta(s, SILENT|NEWFILE|DELTA_DONTASK, 0, 0, 0, 0);
 	}
-	unless (proj) proj = s1->proj;
-	sccs_free(s1);
+	sccs_free(s);
+	unless (quiet) {
+		fprintf(stderr,
+		    "Do not forget to commit the gone file "
+		    "before attempting a pull\n");
+	}
 	return (0);
 }
