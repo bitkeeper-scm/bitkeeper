@@ -601,10 +601,10 @@ fmtool: tclwrap gui/fmtool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
 	| $(TCLWRAP) > fmtool
 
 fm3tool: tclwrap gui/fm3tool.tcl gui/config.tcl gui/common.tcl \
-	port/$(SYS)_platform.tcl gui/appState.tcl
+	port/$(SYS)_platform.tcl gui/appState.tcl gui/lib/tooltip.tcl 
 	(echo 'wm withdraw .';\
 	 cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	     gui/appState.tcl gui/fm3tool.tcl) \
+	     gui/appState.tcl gui/lib/tooltip.tcl gui/fm3tool.tcl) \
 	| $(TCLWRAP) > fm3tool
 
 msgtool: gui/msgtool.tcl

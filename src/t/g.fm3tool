@@ -10,7 +10,7 @@
 #    modifications under any license.
 
 # Copyright (c) 2001 Aaron Kushner
-# %K%
+# akushner@vermin.dsl.snfc21.pacbell.net|src/t/g.fm3tool|20010419203617|62830
 
 # Things that need to be added
 # 
@@ -24,23 +24,100 @@ if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
+
 echo $N Create some data ............................................$NL
 cd $HERE/project/BitKeeper/etc
 mkdir $HERE/project/src
 cd $HERE/project/src
-echo foo > foo
-echo foo > foobar
-echo foo > foobaz
-echo foobaz >> foobaz
-echo foobar >> foobar
+cat >file1 <<EOF
+1: this is file1
+2: this is part of the original file
+3: this is part of the original file
+4: this is part of the original file
+5: this is part of the original file
+6: this is part of the original file
+7: this is part of the original file
+EOF
+cat >file2 <<EOF
+1: this is file2
+2: this is part of the original file
+3: this is part of the original file
+4: this is part of the original file
+5: this is part of the original file
+6: this is part of the original file
+7: this is part of the original file
+EOF
+bk ci $Q -i file1 file2
+bk commit $Q -y"initial checkin"
 
-bk ci $Q -i foo foobar foobaz
-if [ ! -f SCCS/s.foo ]; then echo failed to create history; exit 1; fi
+if [ ! -f SCCS/s.file1 ]; then echo failed to create history; exit 1; fi
 echo OK
-echo "Use Left then Undo"
-echo
-echo $N Check fm3tool for undo problems .............................$NL
-cd $HERE/project/src
-bk co
-bk fm3tool foobar foo foobaz foo_output
+
+echo $N Create clones................................................$NL
+cd $HERE
+bk clone $Q $HERE/project $HERE/remote
+bk clone $Q $HERE/project $HERE/local
 echo OK
+
+echo $N Introduce conflicts..........................................$NL
+cd $HERE/remote/src
+bk get $Q -e file1
+cat >file1 <<EOF
+1: this is file1
+2: this has changed in the remote project
+3: this has changed in the remote project
+4: this is part of the original file
+   this has been added in the remote project
+   this has been added in the remote project
+5: this is part of the original file
+6: this has changed in both the local and remote project
+7: this is part of the original file
+EOF
+bk ci $Q -y"introduced conflicts" file1
+bk commit $Q -y"introduced conflicts in file1"
+cd $HERE/local/src
+bk get $Q -e file1
+cat >file1 <<EOF
+1: this is file1
+2: this has changed in the local project
+3: this is part of the original file
+4: this is part of the original file
+5: this is part of the original file
+6: this has changed in both the local and remote project
+7: this is part of the original file
+EOF
+bk ci $Q -y"introduced conflicts" file1
+bk commit $Q -y"introduced conflicts in file1"
+echo OK
+
+echo $N Pushing remote changes to parent.............................$NL
+cd $HERE/remote
+bk push $Q
+echo OK
+
+echo $N Pulling changes to local.....................................$NL
+cd $HERE/local
+bk pull $Q 2>pull.err
+if [ ! -d RESYNC ]; then echo failed to create RESYNC directory; exit 1; fi
+echo OK
+
+echo $N Running fm3tool..............................................$NL
+cd $HERE/local/RESYNC
+# conf_todo contains conflicts left to resolve (?)
+# diffCount contains total number of diffs
+bk fm3tool -f 1.1.1.1 1.1 1.2 src/file1 &
+bk msgtool -T "fm3tool test" -Y "Success" -N "Failure" <<EOF
+fm3tool should start up momentarily. Check the following, then 
+exit fm3tool before dismissing this dialog:
+
+  * red label in  help area that says "Conflict 1, diff 1/3 (1 unresolved)
+  * window manager title is "BitKeeper FileMerge 1.1.1.1 1.1 1.2 src/file1"
+EOF
+if [ $? -ne 0 ] ; then echo failed. ; exit 1 ; fi
+echo OK
+
+
+
+
+
+
