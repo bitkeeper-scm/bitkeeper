@@ -79,7 +79,7 @@ then echo failed - deleted other lock files; exit 1; fi
 echo OK
 echo $N unlock -x should work .......................................$NL
 touch SCCS/x.X SCCS/z.X SCCS/b.X
-bk unlock -x X 
+bk unlock -x X  2> /dev/null
 if [ ! -f X ]; then echo failed; exit 1; fi
 if [ -f SCCS/x.X ]; then echo failed - left x; exit 1; fi
 if [ ! -f SCCS/b.X -o ! -f SCCS/z.X -o ! -f SCCS/p.X ]

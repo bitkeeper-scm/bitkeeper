@@ -34,10 +34,10 @@ date > $HERE/project/BitKeeper/etc/data
 bk ci $Q -i $HERE/project/BitKeeper/etc/data
 bk commit $S -a -y"This is a \"Change Set\" B"
 cd $HERE/project
-bk export -hT -tpatch -x'^[^@]*@BitKeeper/[^@]*@.*' -r1.2,1.3 > $HERE/CMP1
+bk export -hT -tpatch -r1.2,1.3 > $HERE/CMP1
 cd $HERE/project
-bk export -T -x'^[^@]*BitKeeper/[^@]*@.*' -k -r1.2 $HERE/a
-bk export -T -x'^[^@]*BitKeeper/[^@]*@.*' -k -r1.3 $HERE/b
+bk export -T -k -r1.2 $HERE/a
+bk export -T -k -r1.3 $HERE/b
 cd $HERE
 diff -Nru a b > $HERE/CMP2
 diff -c CMP1 CMP2

@@ -9,7 +9,8 @@ export_main(int ac,  char **av)
 	char	*rev = NULL, *diff_style = NULL;
 	char	file_rev[MAXPATH];
 	char	buf[MAXLINE], buf1[MAXPATH];
-	char	include[MAXLINE] = "", exclude[MAXLINE] =  "";
+	char	include[MAXLINE] = "";
+	char	exclude[MAXLINE] =  "| egrep -v '.*@BitKeeper/[^@]*@[^@]*$' ";
 	char	*src, *dst;
 	char	*p, *q;
 	char	src_path[MAXPATH], dst_path[MAXPATH];
@@ -23,7 +24,7 @@ export_main(int ac,  char **av)
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "d:hkt:Twvi:x:r:")) != -1) {
+	while ((c = getopt(ac, av, "d:hkt:Twvi|x|r:")) != -1) {
 		switch (c) {
 		    case 'v':	vflag = 1; break;
 		    case 'q':	break; /* no op; for interface consistency */
@@ -40,9 +41,19 @@ export_main(int ac,  char **av)
 				break;
 		    case 'T':	tflag = 1; break;
 		    case 'w':	wflag = 1; break;
-		    case 'i':	sprintf(include, "| egrep '%s' ",  optarg);
+		    case 'i':	if (optarg && *optarg) {
+					sprintf(include,
+						    "| egrep '%s' ",  optarg);
+				} else {
+					include[0] = 0;
+				}
 				break;
-		    case 'x':	sprintf(exclude, "| egrep -v '%s' ",  optarg);
+		    case 'x':	if (optarg && *optarg) {
+					sprintf(exclude,
+						    "| egrep -v '%s' ", optarg);
+				} else {
+					exclude[0] = 0;
+				}
 				break;
 		    default :
 usage:			system("bk help -s export");
