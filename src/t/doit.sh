@@ -63,6 +63,9 @@ unix_common_setup()
 	ln -s `cd .. && pwd`/bk $BK_BIN/bk
 	PATH=$BK_BIN:$PATH:/usr/local/bin:/usr/freeware/bin:/usr/gnu/bin
 
+	# clear any stale uniq locks
+	rm -f /tmp/.bk_kl$USER
+
 	unset CDPATH PAGER
 	if [ X$USER = X ]; then USER=`bk getuser`; fi
 	# root user is special, remap to a differnt user before we run the test
