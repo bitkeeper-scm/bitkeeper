@@ -1,9 +1,8 @@
 #include <stdio.h>
 #ifdef	WIN32
 #include <stdlib.h>
-#else
-#include <string.h>
 #endif
+#include <string.h>
 #define	private	static
 
 private	void	undos(char *s);
@@ -14,15 +13,21 @@ undos_main(int ac, char **av)
 {
 	FILE	*f;
 	char	buf[1024];
+	int 	optind = 1;
+	int	auto_new_line = 1;
 
 	platformSpecificInit(NULL);
-	if (ac != 2) {
+	if (strcmp(av[optind], "-n") == 0) {
+		optind++;
+		auto_new_line = 0;
+	}
+	if ((ac - optind) != 1) {
 		printf("usage: %s filename\n", av[0]);
 		exit(1);
 	}
-	f = fopen(av[1], "rb");
+	f = fopen(av[optind], "rb");
 	if (!f) {
-		perror(av[1]);
+		perror(av[optind]);
 		exit(1);
 	}
 	buf[0] = 0;
@@ -30,7 +35,7 @@ undos_main(int ac, char **av)
 		undos(buf);
 		fputs(buf, stdout);
 	}
-	if (!strchr(buf, '\n')) fputc('\n', stdout);
+	if (auto_new_line && !strchr(buf, '\n')) fputc('\n', stdout);
 	return (0);
 }
 

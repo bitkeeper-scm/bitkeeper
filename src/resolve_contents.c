@@ -23,7 +23,7 @@ Remote: %s\n\
 		    rs->funcs[i].spec, rs->funcs[i].help);
 	}
 	fprintf(stderr, "\n");
-	fprintf(stderr, "Typical command sequence: 'm' 'e' 'C';\n");
+	fprintf(stderr, "Typical command sequence: 'e' 'C';\n");
 	fprintf(stderr, "Difficult merges may be helped by 'p'.\n");
 	fprintf(stderr, "\n");
 	return (0);
@@ -92,6 +92,7 @@ c_em(resolve *rs)
 {
 	char	cmd[MAXPATH*2];
 
+	unless (exists(rs->s->gfile)) c_merge(rs);
 	sprintf(cmd, "%s %s", rs->editor, rs->s->gfile);
 	sys(cmd, rs->opts);
 	return (0);
@@ -265,10 +266,10 @@ file like so\n\
 \n\
 	<<<<<<< BitKeeper/tmp/bk.sh_lm@1.191\n\
 	changes made by user lm in revision 1.191 of bk.sh\n\
-	some more changes by lm
+	some more changes by lm\n\
 	=======\n\
 	changes made by user awc in revision 1.189.1.5 of bk.sh\n\
-	more changes by awc
+	more changes by awc\n\
 	>>>>>>> BitKeeper/tmp/bk.sh_awc@1.189.1.5\n\
 \n\
 Use 'e' to edit the file and resolve these conflicts.\n\
@@ -297,7 +298,8 @@ rfuncs	c_funcs[] = {
     { "dr", "diff remote", "diff the GCA vs remote file", c_dgr },
     { "dlm", "diff local merge", "diff the local file vs merge file", c_dlm },
     { "drm", "diff remote merge", "diff the remote file vs merge file", c_drm },
-    { "e", "edit merge", "edit the merge file", c_em },
+    { "e", "edit merge",
+      "automerge (if not yet merged) and then edit the merged file", c_em },
     { "f", "fmtool", "merge with graphical filemerge", c_fmtool },
     { "F", "fm3tool",
       "merge with graphical experimental 3 way filemerge", c_fm3tool },

@@ -76,15 +76,6 @@ private	void	uniqRoot(sccs *s);
 private unsigned int u_mask;
 
 int
-executable(char *f)
-{
-	struct	stat sbuf;
-
-	if (stat(f, &sbuf) == -1) return 0;
-	return (S_ISREG(sbuf.st_mode) && (sbuf.st_mode & 0111));
-}
-
-int
 exists(char *s)
 {
 	struct	stat sbuf;
@@ -847,8 +838,8 @@ sccs_fixDates(sccs *s)
 	fixDates(0, s->table);
 }
 
-private void
-shortKey(sccs *s, delta *d, char *buf)
+void
+sccs_shortKey(sccs *s, delta *d, char *buf)
 {
 	sccs_sdelta(s, d, buf);
 	buf = strchr(buf, '|');
@@ -868,13 +859,13 @@ uniqRoot(sccs *s)
 	assert(!d->dateFudge);
 	unless (d->date) (void)getDate(d);
 
-	uniq_open();
-	shortKey(s, sccs_ino(s), buf);
+	unless (uniq_open() == 0) return;	// XXX - no error?
+	sccs_shortKey(s, sccs_ino(s), buf);
 	while (!unique(buf)) {
 //fprintf(stderr, "COOL: caught a duplicate root: %s\n", buf);
 		d->dateFudge++;
 		d->date++;
-		shortKey(s, d, buf);
+		sccs_shortKey(s, d, buf);
 	}
 	uniq_update(buf, d->date);
 	uniq_close();
@@ -913,18 +904,18 @@ uniqDelta(sccs *s)
 		return;
 	}
 
-	uniq_open();
+	unless (uniq_open() == 0) return;
 	CHKDATE(next);
 	if (d->date <= next->date) {
 		d->dateFudge = (next->date - d->date) + 1;
 		d->date += d->dateFudge;
 	}
-	shortKey(s, d, buf);
+	sccs_shortKey(s, d, buf);
 	while (!unique(buf)) {
 //fprintf(stderr, "COOL: caught a duplicate key: %s\n", buf);
 		d->date++;
 		d->dateFudge++;
-		shortKey(s, d, buf);
+		sccs_shortKey(s, d, buf);
 	}
 	uniq_update(buf, d->date);
 	uniq_close();
@@ -3392,6 +3383,12 @@ sccs_init(char *name, u32 flags, project *proj)
 		int mapmode = (flags & INIT_MAPWRITE)
 			? PROT_READ|PROT_WRITE
 			: PROT_READ;
+#define T_FILE "s.ChangeSet"
+#ifdef FD_DEBUG
+	if (strstr(s->sfile, T_FILE)) {
+		fprintf(stderr, ">>%d: sccs_init(%s), fd=%d\n", getpid(), T_FILE, s->fd); 
+	}
+#endif
 
 		debug((stderr, "Attempting map: %d for %u, %s\n",
 		       s->fd, s->size, (mapmode & PROT_WRITE) ? "rw" : "ro"));
@@ -3499,17 +3496,32 @@ bad:		sccs_free(s);
 
 		if (s->fd == -1) {
 			s->fd = open(s->sfile, 0, 0);
+#ifdef FD_DEBUG
+			if (strstr(s->sfile, T_FILE)) {
+				fprintf(stderr,
+				 ">>%d: sccs_restart(%s)\n", getpid(), T_FILE); 
+			}
+#endif
 		}
 		if (s->mmap != (caddr_t)-1L) munmap(s->mmap, s->size);
 		s->size = sbuf.st_size;
-		s->mmap = mmap(0, s->size, PROT_READ, MAP_SHARED, s->fd, 0);
-		if (s->mmap != (caddr_t)-1L) s->state |= S_SOPEN;
+		s->mmap = (s->fd == -1) ? (caddr_t)-1L :
+			    mmap(0, s->size, PROT_READ, MAP_SHARED, s->fd, 0);
+		if (s->fd != -1) {
+			assert(s->mmap != (caddr_t)-1L);
+			assert((s->state & S_SOPEN) == 0);
+		}
+		if (s->mmap != (caddr_t)-1L) {
+			s->state |= S_SOPEN;
 #if	defined(linux) && defined(sparc)
 		flushDcache();
 #endif
-		seekto(s, 0);
-		for (; (buf = fastnext(s)) && !strneq(buf, "\001T\n", 3); );
-		s->data = sccstell(s);
+			seekto(s, 0);
+			while(buf = fastnext(s)) {
+				if (strneq(buf, "\001T\n", 3)) break;
+			}
+			s->data = sccstell(s);
+		}
 	}
 	if (isreg(s->pfile)) {
 		s->state |= S_PFILE;
@@ -3534,6 +3546,24 @@ bad:		sccs_free(s);
 void
 sccs_close(sccs *s)
 {
+	if (s->state & S_SOPEN) {
+		assert(s->fd != -1);
+		assert(s->mmap != (caddr_t)-1L);
+	} else {
+		assert(s->fd == -1);
+		assert(s->mmap == (caddr_t)-1L);
+	}
+#ifdef FD_DEBUG
+	if (strstr(s->sfile, T_FILE)) {
+		if (s->state & S_SOPEN) { 
+			fprintf(stderr,
+		 "<<%d: sccs_close(%s), fd =%d\n", getpid(), T_FILE, s->fd); 
+		} else {
+			fprintf(stderr,
+			"<<%d: sccs_close(%s), skipped\n", getpid(), T_FILE);
+		}
+	}
+#endif
 	unless (s->state & S_SOPEN) return;
 	munmap(s->mmap, s->size);
 #if	defined(linux) && defined(sparc)
@@ -3570,6 +3600,7 @@ sccs_free(sccs *s)
 		if (sym->rev) free(sym->rev);
 		free(sym);
 	}
+	if (s->state & S_SOPEN) sccs_close(s); /* move this up for trace */
 	if (s->sfile) free(s->sfile);
 	if (s->gfile) free(s->gfile);
 	if (s->zfile) free(s->zfile);
@@ -3586,7 +3617,6 @@ sccs_free(sccs *s)
 #endif
 		}
 	}
-	if (s->state & S_SOPEN) sccs_close(s);
 	if (s->defbranch) free(s->defbranch);
 	if (s->ser2delta) free(s->ser2delta);
 	freeLines(s->usersgroups);
@@ -3938,24 +3968,6 @@ testdate(time_t t)
 	return (date);
 }
 
-/*
- * Return an at most 5 digit !0 integer.
- */
-long
-almostUnique(int harder)
-{
-	struct	timeval tv;
-	int	max = 100;
-	int	val;
-
-	if (harder) max = 1000000;
-	do {
-		gettimeofday(&tv, 0);
-		val = tv.tv_usec / 10;
-	} while (max-- && !val);
-	while (!val) val = time(0) / 10;
-	return (val);
-}
 
 /* XXX - make this private once tkpatch is part of slib.c */
 char *
@@ -8529,7 +8541,7 @@ norev:			verbose((stderr, "admin: can't find rev %s in %s\n",
 	 * ^Ae
 	 */
 	n = sccs_dInit(0, 'R', sc, 0);
-	n->sum = almostUnique(1);
+	n->sum = (unsigned short) almostUnique(1);
 	if (n->date <= sc->table->date) {
 		time_t	tdiff;
 		tdiff = sc->table->date - n->date + 1;
@@ -8646,7 +8658,7 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 			n->next = sc->table;
 			sc->table = n;
 			n = sccs_dInit(n, 'R', sc, 0);
-			n->sum = almostUnique(1);
+			n->sum = (unsigned short) almostUnique(1);
 			n->rev = strdup(d->rev);
 			explode_rev(n);
 			n->pserial = d->serial;
@@ -8687,7 +8699,7 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
 	if ((sc->state & S_CSET) && isNullDelta) {
 		fprintf(stderr,
 			"Can not create null delta in ChangeSet file\n");
-		return 0;
+		return (0);
 	}
 
 	n = calloc(1, sizeof(delta));
@@ -8708,7 +8720,7 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
 		n->flags |= D_CKSUM;
 	}
 	dinsert(sc, 0, n, 1);
-	return n;
+	return (n);
 }
 
 private int 
@@ -9910,7 +9922,7 @@ read_pfile(char *who, sccs *s, pfile *pf)
 		fprintf(stderr, "Empty p.file %s - aborted.\n", s->pfile);
 		return (-1);
 	}
-	unless (tmp = fopen(s->pfile, "r")) {
+	if ((tmp = fopen(s->pfile, "r")) < 0)  {
 		fprintf(stderr, "pfile: can't open %s\n", s->pfile);
 		free(mRev);
 		return (-1);
@@ -10187,7 +10199,7 @@ sccs_delta(sccs *s,
 	debug((stderr, "delta %s %x\n", s->gfile, flags));
 	if (flags & NEWFILE) mksccsdir(s->sfile);
 	bzero(&pf, sizeof(pf));
-	unless(locked = sccs_lock(s, 'z')) {
+	unless (locked = sccs_lock(s, 'z')) {
 		fprintf(stderr,
 		    "delta: can't get write lock on %s\n", s->sfile);
 		repository_lockers(s->proj);

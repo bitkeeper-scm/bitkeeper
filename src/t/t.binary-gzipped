@@ -11,8 +11,17 @@
 
 # Copyright (c) 1999 Larry McVoy
 # %K%
+if [ X$PLATFORM = X"WIN32" ]
+then
+	binary_data="`bk bin`/bk.exe"
+	binary_data2="`bk bin`/bkmerge.exe"
+else 
+	binary_data="/bin/ls"
+	binary_data2="/bin/rm"
+fi
+data="data"
 
-${RM} -rf foo SCCS A
+rm -rf foo SCCS A
 mkdir SCCS; bk cset -i -s .
 echo $N Trying to check in some binary data .........................$NL
 cp ${binary_data} ${data}
@@ -115,11 +124,12 @@ for h in 1 2 3 4 5 6 7 8 9 0
 do for i in q w e r t y u i o p
 do for j in a s d f g h j k l
 do for k in z x c v b n m
-do	${ECHO} $h $i $j $k $i $j $k >>gzipped
+do	echo $h $i $j $k $i $j $k >>X
 done
 done
 done
 done
+bk undos X > gzipped
 cp gzipped data
 bk ci -i $Q gzipped
 cp SCCS/s.gzipped SCCS/s.ref
@@ -150,7 +160,8 @@ grep -q '^.f e 0$' SCCS/s.data
 if [ $? -ne 0 ]; then echo Wrong encoding.; exit 1; fi
 echo OK
 echo $N Trying to change some gzipped data ..........................$NL
-${ECHO} "here is some data" > gzipped
+echo "here is some data" > X
+bk undos X > gzipped
 cp gzipped ll
 bk ci $Q -y gzipped
 bk co $Q gzipped

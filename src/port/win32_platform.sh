@@ -52,7 +52,7 @@ __platformInit()
 		# XXX can not use a win32 native editor
 		# becuase they put themself in backgroud mode
 		if [ X$EDITOR = X ]
-		then EDITOR=${_VIM}/vim.exe
+		then EDITOR=${_VIM}/vi.exe
 		fi
 		if [ X$PAGER = X ]
 		then PAGER=less

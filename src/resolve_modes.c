@@ -27,7 +27,7 @@ m_help(resolve *rs)
 
 	fprintf(stderr,
 "---------------------------------------------------------------------------\n\
-The file has a mode conflict of some type.
+The file has a mode conflict of some type.\n\
 Local:  %s@%s\n\t%s\n\
 Remote: %s@%s\n\t%s\n\
 ---------------------------------------------------------------------------\n",
@@ -64,6 +64,7 @@ m_local(resolve *rs)
 	delta	*l = sccs_getrev(rs->s, rs->revs->local, 0, 0);
 	delta	*r = sccs_getrev(rs->s, rs->revs->remote, 0, 0);
 
+	sccs_close(rs->s); /* for win32 */
 	mode_delta(rs,
 	    rs->s->sfile, r, l->mode, sccs_Xfile(rs->s, 'r'), REMOTE);
 	return (1);
@@ -76,6 +77,7 @@ m_remote(resolve *rs)
 	delta	*l = sccs_getrev(rs->s, rs->revs->local, 0, 0);
 	delta	*r = sccs_getrev(rs->s, rs->revs->remote, 0, 0);
 
+	sccs_close(rs->s); /* for win32 */
 	mode_delta(rs, rs->s->sfile, l, r->mode, sccs_Xfile(rs->s, 'r'), LOCAL);
 	return (1);
 }

@@ -156,7 +156,6 @@ sfileFirst(char *cmd, char **Av, int Flags)
 	prog = cmd;
 	flags = Flags|SF_HASREVS; /* this cause problem with win32 path */
 	if (Av[0]) {
-		localName2bkName(Av[0], Av[0]);
 		if (streq("-", Av[0])) {
 			if (Av[1]) {
 				fprintf(stderr,
@@ -174,6 +173,7 @@ sfileFirst(char *cmd, char **Av, int Flags)
 			flags |= SF_DELETES;
 			return (sfileNext());
 		}
+		localName2bkName(Av[0], Av[0]);
 		if (isdir(Av[0])) {
 			if (flags & SF_NODIREXPAND) return (0);
 			if (Av[1]) {
@@ -316,3 +316,4 @@ main(int ac, char **av)
 	}
 }
 #endif
+

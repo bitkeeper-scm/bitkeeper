@@ -12,11 +12,17 @@
 # Copyright (c) 1999 Andrew Chang
 # %K%
 
+if [ "$PLATFORM" = "WIN32" ]
+then
+	echo "feature is not supported, skipped"
+	exit 0
+fi
+
 echo $N Create initial repository ...................................$NL
 HERE=`${CWD}`
-${ECHO} "logging: none" > $HERE/c
-${ECHO} "seats: 1" >>$HERE/c
-${ECHO} "umask: 077" >>$HERE/c
+echo "logging: none" > $HERE/c
+echo "seats: 1" >>$HERE/c
+echo "umask: 077" >>$HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
 if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
 cd project
@@ -52,9 +58,9 @@ echo OK
 echo $N test uname 000 ..............................................$NL
 cd $HERE/project/BitKeeper/etc
 bk co $Q -l 		  config
-${ECHO} "logging: none" > config
-${ECHO} "seats: 1"      >>condig
-${ECHO} "umask: 000"    >>config
+echo "logging: none" > config
+echo "seats: 1"      >>condig
+echo "umask: 000"    >>config
 bk ci $Q -y config
 cd $HERE/project/src
 echo bar > bar.c

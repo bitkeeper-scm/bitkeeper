@@ -18,15 +18,16 @@ echo 'YY@W@ZZ' | sed s/@/%/g >> test.c
 bk ci $Q -i test.c
 bk admin $Q -fEXPAND1 test.c
 bk get $Q test.c
-${ECHO} "XX@(#)test.c 1.2YY" > ref.c
-${ECHO} 'YY@W@ZZ' | sed s/@/%/g | ${CAT} >> ref.c
+echo "XX@(#)test.c 1.2YY" > X
+echo 'YY@W@ZZ' | sed s/@/%/g >> X
+bk undos X > ref.c
 cmp -s test.c ref.c
 if [ $? -ne 0 ]; then echo Failed; cat test.c; exit 1; fi
 echo OK
 echo $N Test delete E flag ..........................................$NL
 bk admin $Q -FEXPAND1 test.c
 bk get $Q test.c
-${CAT}  << EOF > X
+cat  << EOF > X
 XX@(#)test.c 1.3YY
 YY@(#)test.c 1.3ZZ
 EOF

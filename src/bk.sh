@@ -123,11 +123,6 @@ _tag() {
 	bk admin -S${1}$REV ChangeSet
 }
 
-_keys() {
-	__cd2root
-	bk sfiles -k
-}
-
 # usage: gone key [key ...]
 _gone() {
 	__cd2root
@@ -263,14 +258,19 @@ _links() {
 # usage: regression [-s]
 # -s says use ssh
 # -l says local only (don't do remote).
+# -r says do remote.
+# If neither -r or -l is specified, you
+# get a system dependent default:
+# on unix: the default is -r
+# in win32 the defaule is -l
 _regression() {
-	DO_REMOTE=YES
 	PREFER_RSH=YES
 	V=
 	X=
 	while getopts lsvx OPT
 	do	case $OPT in
 		l)	DO_REMOTE=NO;;
+		r)	DO_REMOTE=YES;;
 		s)	PREFER_RSH=;;
 		v)	V=-v;;
 		x)	X=-x;;
@@ -278,7 +278,7 @@ _regression() {
 	done
 	shift `expr $OPTIND - 1`
 	export DO_REMOTE PREFER_RSH
-	cd `bk bin`/t && exec ./doit $V $X "$@"
+	cd "`bk bin`/t" && exec time ./doit $V $X "$@"
 }
 
 __init() {
@@ -306,4 +306,9 @@ fi
 cmd=$1
 shift
 
-exec $cmd "$@"
+if type "$cmd" > /dev/null 2>&1
+then
+	exec $cmd "$@"
+else
+	echo "$cmd: command not found"
+fi
