@@ -31,6 +31,9 @@ apply the changes.
 .LP
 You can override the default parent by specifying a different one.
 Doing so changes the parent for the duration of this command only.
+.LP
+If you've pulled in error you may use bk unpull to remove the changesets
+introduced by the pull.
 .SH OPTIONS
 .TP
 .OPTreq \-c n
@@ -85,6 +88,7 @@ but not with rsh.
 .SA push 1
 .SA resolve 1
 .SA triggers 1
+.SA unpull 1
 .SH AVAILABILITY
 .\" XXX -lm, how's this?
 .BU

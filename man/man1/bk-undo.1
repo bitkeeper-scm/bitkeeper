@@ -17,6 +17,8 @@ changesets.   There are options to select specific changesets or all
 changesets after some point (which is what
 .B bk clone \-r
 uses.)
+.LP
+To undo a bk pull use bk unpull.
 .SH WARNING
 .LP
 You can not undo an undo.  If the data was only present in your
@@ -52,5 +54,6 @@ must be of the form r1,r2,r3, etc.
 .SA makepatch 1
 .SA stripdel 1
 .SA takepatch 1
+.SA unpull 1
 .SH CATEGORY
 .B Repository
