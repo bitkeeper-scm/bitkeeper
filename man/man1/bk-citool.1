@@ -109,6 +109,19 @@ the differences window (assuming that the differences are larger than
 the window).  While this can be done using the mouse and the scrollbar,
 the following keyboard accelerators will work at all times, even when
 typing in the comments window:
+.SH COMMENT TEMPLATES
+.B citool
+supports the ability to define a system-wide template to be used
+for the ChangeSet comments. This file is documented in the bk
+templates man page. 
+.LP
+If a template exists it will be loaded into the ChangeSet comments
+if there are no pre-existing comments. The comments may be edited as
+usual; if the comments are not modified they will be treated
+as if there are no comments. That is, if the ChangeSet comments are
+identical to the template no changeset will be created, as is the
+case when there are no comments in the window and you press the
+checkin button.
 .SH "KEYBOARD BINDINGS"
 .if t .TP 1.2i
 .if n .TP 1.7i
@@ -265,6 +278,7 @@ should work.
 .SA fmtool 1
 .SA ignore 1
 .SA sfiles 1
+.SA templates 1
 .SH CATEGORY
 .B GUI-tools
 .br
