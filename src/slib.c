@@ -242,12 +242,6 @@ fileTypeOk(mode_t m)
 	return ((S_ISREG(m)) || (S_ISLNK(m)));
 }
 
-private int
-Chmod(char *fname, mode_t mode)
-{
-	return (chmod(fname, mode));
-}
-
 /*
  * Compare up to but not including the newline.
  * They should be newlines or nulls.
@@ -9439,7 +9433,7 @@ out:		sccs_unlock(s, 'z');
 	    HAS_GFILE(s)) {
 		fix_stime(s);
 	}
-	Chmod(s->sfile, 0444);
+	chmod(s->sfile, 0444);
 	if (BITKEEPER(s)) updatePending(s);
 	sccs_unlock(s, 'z');
 	return (0);
@@ -10510,7 +10504,9 @@ sccs_encoding(sccs *sc, char *encp, char *compp)
 		enc = 0;
 	}
 
-	if (compp) {
+	if (CSET(sc)) {
+		comp = 0;	/* never compress ChangeSet file */
+	} if (compp) {
 		if (streq(compp, "gzip")) {
 			comp = E_GZIP;
 		} else if (streq(compp, "none")) {
@@ -11003,7 +10999,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	}
 
 	if (HAS_GFILE(sc) && (sc->initFlags&INIT_FIXSTIME)) fix_stime(sc);
-	Chmod(sc->sfile, 0444);
+	chmod(sc->sfile, 0444);
 	goto out;
 #undef	OUT
 }
@@ -11119,7 +11115,7 @@ out:
 		    t, s->sfile, t);
 		OUT;
 	}
-	Chmod(s->sfile, 0444);
+	chmod(s->sfile, 0444);
 	goto out;
 #undef	OUT
 }
@@ -12175,7 +12171,7 @@ abort:		fclose(sfile);
 		sccs_unlock(s, 'z');
 		exit(1);
 	}
-	Chmod(s->sfile, 0444);
+	chmod(s->sfile, 0444);
 	sccs_unlock(s, 'z');
 	return (0);
 }
@@ -12572,7 +12568,7 @@ out:
 	    HAS_GFILE(s)) {
 		fix_stime(s);
 	}
-	Chmod(s->sfile, 0444);
+	chmod(s->sfile, 0444);
 	if (BITKEEPER(s) && !(flags & DELTA_NOPENDING)) {
 		 updatePending(s);
 	}
@@ -15971,7 +15967,7 @@ stripDeltas(sccs *s, FILE *out)
 		    buf, s->sfile, buf);
 		return (1);
 	}
-	Chmod(s->sfile, 0444);
+	chmod(s->sfile, 0444);
 	return (0);
 }
 
@@ -16094,7 +16090,7 @@ smartUnlink(char *file)
 		errno = save;
 		return (-1);
 	}
-	chmod(file, S_IWRITE);
+	chmod(file, 0700);
 	unless (rc = unlink(file)) return (0);
 	unless (access(file, 0)) {
 		fprintf(stderr, "smartUnlink:cannot unlink %s, errno = %d\n",
@@ -16113,15 +16109,15 @@ smartRename(char *old, char *new)
 #undef	rename
 	unless (rc = rename(old, new)) return (0);
 	save = errno;
-	if (smartUnlink(new)) {
-		debug((stderr, "smartRename: unlink fail for %s, errno=%d\n",
+	if (chmod(new, 0700)) {
+		debug((stderr, "smartRename: chmod failed for %s, errno=%d\n",
 		    new, errno));
-		errno = save;
-		return (rc);
+	} else {
+		unless (rc = rename(old, new)) return (0);
+		fprintf(stderr,
+		    "smartRename: cannot rename from %s to %s, errno=%d\n",
+		    old, new, errno);
 	}
-	unless (rc = rename(old, new)) return (0);
-	fprintf(stderr, "smartRename: cannot rename from %s to %s, errno=%d\n",
-	    old, new, errno);
 	errno = save;
 	return (rc);
 }

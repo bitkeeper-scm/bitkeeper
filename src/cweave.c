@@ -340,5 +340,7 @@ cset_write(sccs *s)
 		perror(s->sfile);
 		return (-1);
 	}
+	/* We don't want ChangeSet files compressed */
+	if (s->encoding & E_GZIP) sccs_unzip(s);
 	return (0);
 }
