@@ -560,6 +560,28 @@ test -d PENDING || {
 }
 echo OK
 
+BK_DEBUGX=yes
+export BK_DEBUGX
+echo $N Do it again to see that it can rename RESYNC twice ..........$NL
+bk pull $Q && {
+	echo failed to exit non zero with failed pre-apply trigger
+	exit 1
+}
+test -d "RESYNC" && {
+	echo failed to rename RESYNC
+	exit 1
+}
+X="RESYNC-*"
+test "$X" || {
+	echo failed to leave RESYNC
+	exit 1
+}
+test -d PENDING || {
+	echo failed to leave PENDING
+	exit 1
+}
+echo OK
+
 echo $N Make sure that pushes do not prompt in pre-apply ............$NL
 cd $HERE/apply
 test -d BitKeeper/triggers || mkdir BitKeeper/triggers
