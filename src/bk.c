@@ -682,6 +682,8 @@ cmdlog_start(char **av, int httpMode)
 
 	if (cflags & CMD_WRLOCK) {
 		if (i = repository_wrlock()) {
+			char junkMsg[MAXLINE];
+
 			if (i == -1) {
 				out(LOCK_WR_BUSY);
 			} else if (i == -2) {
@@ -690,11 +692,21 @@ cmdlog_start(char **av, int httpMode)
 				out(LOCK_UNKNOWN);
 			}
 			out("\n");
+			/*
+			 * Eat message sent by bkd client. (e.g. push_part1) 
+			 * We need this to make the bkd error message show up
+			 * on the client side.
+			 */
+			if (strneq("remote ", av[0], 7)) {
+				read(0, junkMsg, sizeof(junkMsg));
+			}
 			exit(1);
 		}
 	}
 	if (cflags & CMD_RDLOCK) {
 		if (i = repository_rdlock()) {
+			char junkMsg[MAXLINE];
+
 			if (i == -1) {
 				out(LOCK_RD_BUSY);
 			} else if (i == -2) {
@@ -703,6 +715,14 @@ cmdlog_start(char **av, int httpMode)
 				out(LOCK_UNKNOWN);
 			}
 			out("\n");
+			/*
+			 * Eat message sent by bkd client. (e.g. pull_part1) 
+			 * We need this to make the bkd error message show up
+			 * on the client side.
+			 */
+			if (strneq("remote ", av[0], 7)) {
+				read(0, junkMsg, sizeof(junkMsg));
+			}
 			exit(1);
 		}
 	}

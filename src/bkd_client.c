@@ -118,8 +118,14 @@ url_parse(char *p)
 	} else if ((s = strchr(p, ':')) && isdigit(s[1])) { /* host:port[/path] */
 		*s = 0; r->host = strdup(p); p = s + 1; *s = ':';
 		r->port = atoi(p);
-		p = strchr(p, '/');
-		if (p) r->path = strdup(p);
+		/*
+		 * Skip over port number to get to the path part.
+		 * Note that the path may be in drive:path format if the URL
+		 * destinaltion is a Win32 box
+		 */
+		while (isdigit(*p)) p++;
+		if (*p == ':') p++; /* skip optional colon */
+		if (*p) r->path = strdup(p);
 	} else if (s = strchr(p, '/')) {	/* host/path */
 		*s = 0;
 		r->port = BK_PORT;
