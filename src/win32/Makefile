@@ -1,6 +1,7 @@
 all:
 	cd uwtlib && make
 	cd pub/diffutils && unset MAKEFLAGS && make
+	cd pub/patch && unset MAKEFLAGS && make
 	cd pub/winctl && unset MAKEFLAGS && make
 
 clean clean-obj:
@@ -9,6 +10,8 @@ clean clean-obj:
 		cd uwtlib && make $@ && cd ..; \
 		cd pub/blat && make $@ && cd ../../; \
 		cd pub/winctl && make $@ && cd ../../; \
+		cd pub/diffutils && make $@ && cd ../../; \
+		cd pub/patch && make $@ && cd ../../; \
 	fi
 
 FORCE:
@@ -19,9 +22,13 @@ blat: FORCE
 diffutils: FORCE
 	cd pub/diffutils && unset MAKEFLAGS && make
 
+patch: FORCE
+	cd pub/patch && unset MAKEFLAGS && make
+
 install: all blat data/bk.ico
 	cp -f data/bk.ico $(BINDIR)/bk.ico
 	cd pub/blat && make BINDIR=$(BINDIR) install
 	cd pub/diffutils && make BINDIR=$(BINDIR) install
+	cd pub/patch && make BINDIR=$(BINDIR) install
 	cd pub/winctl && make BINDIR=$(BINDIR) install
 	

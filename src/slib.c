@@ -1113,6 +1113,12 @@ a2tm(struct tm *tp, char *asctime, char *z, int roundup)
 	if (((asctime[-1] == '-') || (asctime[-1] == '+')) && !z) z = --asctime;
 
 correct:
+	/* Correct for dates parsed as pre-epoch because of missing tz */
+	if (tp->tm_year == 69) {
+		bzero(tp, sizeof(*tp));
+		z = 0;
+	}
+	
 	/*
 	 * Truncate down oversized fields.
 	 */
