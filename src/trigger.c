@@ -3,6 +3,7 @@
  */
 
 #include "bkd.h"
+#include "bkvers.h"
 private int localTrigger(char **);
 private int remotePreTrigger(char **);
 private int remotePostTrigger(char **);
@@ -22,7 +23,6 @@ trigger(char **av, char *when)
 	int	len, resync, rc = 0;
 	struct	dirent *e;
 	DIR	*dh;
-	extern	char *bk_vers, *bk_utc, *bk_time;
 
 	t = av[0];
 	if (strneq(t, "remote pull", 11)) {

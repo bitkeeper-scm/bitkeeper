@@ -1,5 +1,6 @@
 #include "system.h"
 #include "sccs.h" 
+#include "bkvers.h"
 
 #define BK "bk"
 
@@ -11,6 +12,9 @@ char	cmdlog_buffer[MAXPATH*4];
 char 	*upgrade_msg =
 "This feature is not available in this version of BitKeeper, to upgrade\n\
 please contact sales@bitmover.com\n"; 
+
+private char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
+#define	LOGVER	0
 
 
 char	*find_wish();
@@ -676,11 +680,8 @@ cmdlog_end(int ret, int flags)
 	char	*user, *file;
 	char	path[MAXPATH];
 
-	extern char bk_vers[];
-
 	purify_list();
 	unless (cmdlog_buffer[0] && bk_proj && bk_proj->root) return (flags);
-
 
 	if (cmdlog_repo) {
 		file = "repo_log";
@@ -700,7 +701,8 @@ cmdlog_end(int ret, int flags)
 	}
 
 	user = sccs_getuser();
-	fprintf(f, "%s %lu %s: ",
+	fprintf(f, "%c%s %lu %s: ",
+	    log_versions[LOGVER],
 	    user ? user : "Phantom User", time(0), bk_vers);
 	if (ret == LOG_BADEXIT) {
 		fprintf(f, "%s = ?\n", cmdlog_buffer);
@@ -748,7 +750,10 @@ cmdlog_dump(int ac, char **av)
 	time_t	t;
 	char	*p;
 	char	*version;
-	char	buf[4096];
+	char	*user;
+	char	buf[MAXPATH*3];
+	char	logf[MAXPATH];
+	int	ct = 0;
 
 	
 	if (ac == 2 && streq("--help", av[1])) { 
@@ -758,9 +763,21 @@ cmdlog_dump(int ac, char **av)
 
 	unless (bk_proj && bk_proj->root) return;
 	if (av[1] && streq(av[1], "-a")) {
-		sprintf(buf,
-	    "sort -n +1 %s/BitKeeper/log/repo_log %s/BitKeeper/log/cmd_log", 
-		    bk_proj->root, bk_proj->root);
+		sprintf(buf, "sort -n +1");
+		sprintf(logf, "%s/BitKeeper/log/repo_log", bk_proj->root);
+		if (exists(logf)) {
+			strcat(buf, " ");
+			strcat(buf, logf);
+			ct++;
+		}
+		sprintf(logf, "%s/BitKeeper/log/cmd_log", bk_proj->root);
+		if (exists(logf)) {
+			strcat(buf, " ");
+			strcat(buf, logf);
+			ct++;
+		}
+		unless (ct) return;
+
 		f = popen(buf, "r");
 	} else {
 		sprintf(buf, "%s/BitKeeper/log/repo_log", bk_proj->root);
@@ -768,7 +785,20 @@ cmdlog_dump(int ac, char **av)
 	}
 	unless (f) return;
 	while (fgets(buf, sizeof(buf), f)) {
-		for (p = buf; (*p != ' ') && (*p != '@'); p++);
+		user = buf;
+		for (p = log_versions; *p; ++p)
+			if (*p == buf[0]) {
+				if ((p-log_versions) > LOGVER) {
+					printf("cannot display this "
+					       "log entry; please upgrade\n");
+					goto nextline;
+				}
+				user = buf+1;
+				break;
+			}
+
+
+		for (p = user; (*p != ' ') && (*p != '@'); p++);
 		*p++ = 0;
 		t = strtoul(p, &version, 0);
 		while (isspace(*version)) ++version;
@@ -777,11 +807,24 @@ cmdlog_dump(int ac, char **av)
 			*p = 0;
 			version = 0;
 		} else {
+			char *q;
+
 			unless (p = strchr(p, ':')) continue;
 			*p = 0;
+
+			unless (isalnum(*version)) {
+				version = 0;
+			} else  {
+				for (q = 1+version; *q; ++q)
+					if ( (*q & 0x80) || (*q < ' ') ) {
+						version = 0;
+						break;
+					}
+			}
 		}
-		printf("%s %.19s %14s %s", buf, ctime(&t),
+		printf("%s %.19s %14s %s", user, ctime(&t),
 		    version ? version : "", 1+p);
+    nextline: ;
 	}
 	if (av[1] && streq(av[1], "-a")) {
 		pclose(f);

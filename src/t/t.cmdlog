@@ -1,0 +1,77 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 1999 Andrew Chang
+# Copyright (c) 2000 Larry McVoy
+# Copyright (c) 2000 David Parsons
+# awc@etp3.bitmover.com|src/t/t.logging|20001219191629|42423
+
+MYHOST=`bk gethost`
+MYNAME=`bk getuser`
+ME="${MYNAME}@${MYHOST}"
+NUM=0
+FILE=test$NUM
+
+echo $N Create initial repository ...................................$NL
+echo "logging: logging@openlogging.org" > $HERE/c
+echo "logging_ok: a@b" >> $HERE/c
+echo "logging_ok: b@b" >> $HERE/c
+echo "logging_ok: c@b" >> $HERE/c
+echo "logging_ok: d@b" >> $HERE/c
+echo "description: BitKeeper Test repository" >> $HERE/c
+echo "email:		nobody@nowhere.bk" >> $HERE/c
+BK_HOST=bk_regression.bitkeeper.com bk setup -f -c$HERE/c project
+BK_HOST=$MYHOST
+echo OK
+
+echo $N Check that bk cmdlog works with a missing repo_log ..........$NL
+cd $HERE/project/BitKeeper/log
+bk cmdlog -a > $$ 2>$$.err
+rm -f $$
+
+test -s $$.err && {
+	echo "Failed"
+	rm -f $$.err
+	exit 1
+}
+
+rm -f $$.err
+
+echo OK
+
+echo $N See if cmdlog handles junk lines ............................$NL
+
+cd $HERE/project/BitKeeper/log
+chmod +w cmd_log
+echo "me 1 @@@@ : junk" >> cmd_log
+
+OUT=`bk cmdlog -a | tr -dc '@'`
+
+test "$OUT" && {
+	echo "Failed"
+	exit 1
+}
+
+echo OK
+
+echo $N See if cmdlog handles junk log versions .....................$NL
+
+cd $HERE/project/BitKeeper/log
+
+echo "/me 1 @@@@ : junk" >> cmd_log
+
+OUT=`bk cmdlog -a | grep "cannot display"`
+
+test "$OUT" || { 
+	echo "Failed"
+	exit 1
+}
+echo OK

@@ -503,7 +503,7 @@ crank: crank.sh
 depend: $(SRCS)
 	$(CC) -MM -MG -D_DEPEND $(SRCS) > depends
 
-H=system.h $(SYS).h mdbm/mdbm.h purify.h sccs.h logging.h mmap.h $(UWT_H)
+H=system.h $(SYS).h mdbm/mdbm.h purify.h sccs.h logging.h mmap.h $(UWT_H) bkvers.h
 B=bkd.h lib_tcp.h
 M=mdbm/common.h mdbm/tune.h mdbm/mdbm.h
 Z=zlib/zlib.h zlib/zconf.h

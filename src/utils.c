@@ -1,4 +1,5 @@
 #include "bkd.h"
+#include "bkvers.h"
 
 bkdopts	Opts;	/* has to be declared here, other people use this code */
 
@@ -482,7 +483,6 @@ sendEnv(FILE *f, char **envVar)
 {
 	int	i;
 	char	*root;
-	extern	char *bk_vers, *bk_utc, *bk_time;
 
 	/* for compat with old 2.0 code, remove this line later*/
 	fprintf(f, "putenv BK_CLIENT_PROTOCOL=%s\n", BKD_VERSION);
@@ -535,7 +535,6 @@ void
 sendServerInfoBlock()
 {
 	char	buf[MAXPATH];
-	extern	char *bk_vers, *bk_utc, *bk_time;
 
 	out("@SERVER INFO@\n");
         sprintf(buf, "PROTOCOL=%s\n", BKD_VERSION);	/* protocol version */
