@@ -35,6 +35,7 @@ private	int	all;	/* if set, check every darn entry in the ChangeSet */
 private	int	resync;	/* called in resync dir */
 private	int	fix;	/* if set, fix up anything we can */
 private	int	goneKey;/* if set, list gone key only */
+private	int	badWritable; /* if set, list bad writable file only */
 private	int	names;	/* if set, we need to fix names */
 private	int	mixed;	/* mixed short/long keys */
 private	project	*proj;
@@ -86,7 +87,7 @@ usage:		fprintf(stderr, "%s", check_help);
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "acfgpRv")) != -1) {
+	while ((c = getopt(ac, av, "acfgpRvw")) != -1) {
 		switch (c) {
 		    case 'a': all++; break;
 		    case 'f': fix++; break;
@@ -95,9 +96,15 @@ usage:		fprintf(stderr, "%s", check_help);
 		    case 'p': polyList++; break;
 		    case 'R': resync++; break;
 		    case 'v': verbose++; break;
+		    case 'w': badWritable++; break;
 		    default:
 			goto usage;
 		}
+	}
+
+	if (goneKey && badWritable) {
+		fprintf(stderr, "check: cannot have both -g and -w\n");
+		return (1);
 	}
 
 	if (all && (!av[optind] || !streq("-", av[optind]))) {
@@ -143,13 +150,19 @@ usage:		fprintf(stderr, "%s", check_help);
 
 		unless (HAS_PFILE(s)) {
 			if (S_ISREG(s->mode) && IS_WRITABLE(s)) {
-				fprintf(stderr,
+				if (badWritable) {
+					printf("%s\n", s->gfile);
+				} else {
+					fprintf(stderr,
 "===========================================================================\n\
 check: %s writable but not checked out, this usually means that you have\n\
 modified a file without first doing a \"bk edit\". To fix the problem,\n\
-do a \"bk edit -g %s\" to change the file to checked out status.\n\
+do a \"bk -R edit -g %s\" to change the file to checked out status.\n\
+To fix all bad writable file, use the following command:\n\
+\t\"bk -r check -w | bk -R edit -g -\"\n\
 ===========================================================================\n",
-				    s->gfile, s->gfile);
+				    	s->gfile, s->gfile);
+				}
 				errors |= 32; 
 			}
 		}
@@ -349,7 +362,11 @@ listFound(MDBM *db)
 	}
 	if (resync) return;
 	fprintf(stderr,
-	    "Add keys to BitKeeper/etc/gone if the files are gone for good.\n");
+"===========================================================================\n\
+Add keys to BitKeeper/etc/gone if the files are gone for good.\n\
+To add all missing key to the gone file, use the following command:\n\
+\t\"bk -r check -ag | bk gone -\"\n\
+===========================================================================\n");
 }
 
 private void
