@@ -636,6 +636,7 @@ MMAP	*mopen(char *file, char *mode);
 void	mclose(MMAP *);
 #endif
 char	*mnext(MMAP *);
+int	mcmp(MMAP *, char *);
 int	mpeekc(MMAP *);
 void	mseekto(MMAP *m, off_t off);
 off_t	mtell(MMAP *m);
