@@ -202,7 +202,7 @@ rfuncs	r_funcs[] = {
 int
 resolve_renames(resolve *rs)
 {
-	names	*n;
+	names	*n = 0;
 	delta	*d;
 	char	*nm = basenm(rs->s->gfile);
 	int	ret;

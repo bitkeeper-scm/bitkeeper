@@ -172,7 +172,7 @@ logs_pending(int ptype, int skipRecentCset, int grace)
 	delta	*d;
 	char 	s_cset[] = CHANGESET;
 	int	i = 0;
-	time_t	now;
+	time_t	now = 0;
 	time_t	graceInSeconds;
 
 	graceInSeconds = grace * DAY; 

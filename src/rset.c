@@ -355,7 +355,7 @@ rset_main(int ac, char **av)
 	char	s_cset[] = CHANGESET;
 	char	rbuf[20];
 	sccs	*s = 0;
-	MDBM	*db1, *db2, *idDB;
+	MDBM	*db1, *db2 = 0, *idDB;
 	options	opts = { 0, 0, 0, 0};
 
 	if (ac == 2 && streq("--help", av[1])) {

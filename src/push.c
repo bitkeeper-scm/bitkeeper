@@ -551,7 +551,7 @@ send_patch_msg(remote *r, char rev_list[], int ret, char **envVar)
 	char	msgfile[MAXPATH];
 	FILE	*f;
 	int	rc;
-	u32	extra = 0, m, n;
+	u32	extra = 0, m = 0, n;
 	int	gzip;
 
 	/*

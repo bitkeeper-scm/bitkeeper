@@ -152,6 +152,8 @@ m(sccs *s, delta *l, delta *r)
 	if (seast < 0) {
 		sign = '-';
 		seast = -seast;  /* now swest */
+	} else {
+		sign = '+';
 	}
 	hwest = seast / 3600;
 	mwest = (seast % 3600) / 60;

@@ -2149,7 +2149,7 @@ pass4_apply(opts *opts)
 	int	offset = strlen(ROOT2RESYNC) + 1;	/* RESYNC/ */
 	int	eperm = 0, first = 1, flags, ret;
 	int	getFlags = GET_EXPAND;
-	FILE	*f;
+	FILE	*f = 0;
 	FILE	*save;
 	char	buf[MAXPATH];
 	char	key[MAXKEY];

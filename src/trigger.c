@@ -161,7 +161,7 @@ trigger(char **av, char *when)
 private int
 runit(char *file, char *output)
 {
-	int	status, rc, j = 0, fd1, fd;
+	int	status, rc, j = 0, fd1 = -1, fd;
 	char	*my_av[10];
 	char	trigger[MAXPATH];
 

@@ -311,7 +311,7 @@ private int
 mkinit(sccs *s, delta *d, char *file, char *key)
 {
 	char	randstr[17];
-	int	chksum;
+	int	chksum = 0;
 	FILE	*fh;
 	char	*p;
 	int	size;

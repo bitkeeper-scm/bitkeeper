@@ -51,7 +51,6 @@ private	int	cset_boundries(sccs *s, char *rev);
 int
 diffs_main(int ac, char **av)
 {
-	sccs	*s;
 	int	flags = DIFF_HEADER|SILENT, verbose = 0, rc, c;
 	int	errors = 0;
 	char	kind;
@@ -155,6 +154,7 @@ usage:			system("bk help -s diffs");
 	}
 	while (name) {
 		int	ex = 0;
+		sccs	*s = 0;
 		char	*r1 = 0, *r2 = 0;
 		int	save = things;
 

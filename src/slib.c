@@ -2923,7 +2923,9 @@ sccs_tagleaves(sccs *s, delta **l1, delta **l2)
 	delta	*d;
 	symbol	*sym;
 	int	first = 1;
-	char	*arev, *aname, *brev, *bname;
+	char	*arev = 0;
+	char	*brev = 0;
+	char	*aname, *bname;
 
 	/*
 	 * This code used to walk the symbol table list but that doesn't
@@ -14568,7 +14570,7 @@ sccs_resolveFiles(sccs *s)
 	FILE	*f = 0;
 	delta	*p, *d, *g = 0, *a = 0, *b = 0;
 	char	*n[3];
-	u8	*lodmap;
+	u8	*lodmap = 0;
 	ser_t	next;
 	ser_t	defbranch;
 	int	retcode = -1;

@@ -157,7 +157,7 @@ doit(char *file, char *revs, char *qflag, char *force)
 	char	*p = 0;
 	sccs	*s;
 	delta	*d;
-	mode_t	mode;
+	mode_t	mode = 0;
 	int	cset;
 
 	sprintf(fixfile, "%s-%d", file, getpid());
