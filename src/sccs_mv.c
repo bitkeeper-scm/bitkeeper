@@ -5,11 +5,13 @@
 WHATSTR("%W%");   
 
 #include "comments.c"
+
+char *getRelativeName(char *name);
 			
 int
 sccs_mv(char *name, char *dest, int isDir, int isDelete)
 {
-	char 	buf[1024], *p, *q, *t, destfile[MAXPATH];
+	char 	buf[1024], *p, *q, *t, *destfile, *oldpath;
 	char	*gfile, *sfile, *nrev = 0;
 	sccs	*s;
 	delta	*d;
@@ -24,10 +26,11 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 		return (1);
 	}
 	if (isDir) {
-		sprintf(destfile, "%s/%s", dest, basenm(s->gfile));
+		sprintf(buf, "%s/%s", dest, basenm(s->gfile));
 	} else {
-		strcpy(destfile, dest);
+		strcpy(buf, dest);
 	}
+	destfile = name2sccs(buf);
 
 	t = name2sccs(destfile);
 	sfile = strdup(sPath(t, 0));
@@ -91,22 +94,43 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 		}
 		s = sccs_restart(s);
 	}
+
+	oldpath = getRelativeName(name);
 	if (isDelete) {
-		sprintf(buf, "Delete"); 
+		sprintf(buf, "Delete: %s", oldpath); 
 	} else {
-		sprintf(buf, "Rename: %s -> %s", name, destfile); 
+		char *newpath;
+
+		newpath = getRelativeName(destfile);
+		sprintf(buf, "Rename: %s -> %s", oldpath, newpath); 
+		free(newpath);
+
 	}
+	free(oldpath);
 	comment = buf;
 	gotComment = 1;
 	unless (s && (d = getComments(0))) {
 		error = 1;
 		goto out;
 	}
+
 	if (sccs_delta(s, flags, d, 0, 0) == -1) error = 1;
 out:	if (s) sccs_free(s);
-	free(sfile); free(gfile); 
+	free(destfile); free(sfile); free(gfile); 
 	if (gotComment) commentsDone(saved);
 	return (error);
+}
+
+char *
+getRelativeName(char *name)
+{
+	char	*t, *rpath;
+
+	/* TODO: we should cache the root value for faster lookup */
+	t = sccs2name(name);
+	rpath = strdup((char *) _relativeName(t, 0, 0, 0, 0));
+	free(t);
+	return rpath;
 }
 
 int
