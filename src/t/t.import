@@ -152,8 +152,8 @@ bk commit $Q -ywhatever
 echo OK
 
 echo $N Import a patch which deletes the logging_ok file ............$NL
-bk export $HERE/A
-bk export $HERE/B
+bk export -x $HERE/A
+bk export -x $HERE/B
 cd $HERE
 rm B/BitKeeper/etc/logging_ok
 diff -Nur A B > P
