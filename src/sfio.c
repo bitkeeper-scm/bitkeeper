@@ -243,14 +243,12 @@ in_link(char *file, int pathlen, int extract)
 	u32	sum = 0, sum2 = 0;
 	unsigned int imode;  /* mode_t might be a short */
 
-fprintf(stderr, "LINK(%s)\n", file);
 	unless (pathlen) {
 		fprintf(stderr, "symlink with 0 length?\n");
 		return (1);
 	}
 	if (readn(0, buf, pathlen) != pathlen) return (1);
 	buf[pathlen] = 0;
-fprintf(stderr, "LINK(%s) -> %s\n", file, buf);
 	sum = adler32(0, buf, pathlen);
 	if (extract) {
 		if (symlink(buf, file)) {
