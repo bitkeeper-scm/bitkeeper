@@ -29,6 +29,7 @@ MSYS = MSYS-1.0.10-rc4.tar.gz
 
 MSYSBIN = ../gnu
 msys: ./msysver.sh FORCE
+	mkdir -p $(MSYSBIN)
 	MSYSVER=`./msysver.sh`; \
 	if [ $$? -eq 0 -a -f $$MSYSVER ]; \
 	then	tar -C$(MSYSBIN) -xzf $$MSYSVER; \

@@ -39,6 +39,9 @@ platformInit(char **av)
 
 	unless (p = getenv("PATH")) return;	/* and pray */
 
+	/* save original path before the toplevel bk */
+	unless (getenv("BK_OLDPATH")) safe_putenv("BK_OLDPATH=%s", p);
+
 #ifndef	WIN32
 	signal(SIGHUP, SIG_IGN);
 #endif

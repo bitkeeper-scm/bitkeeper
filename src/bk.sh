@@ -378,36 +378,43 @@ _editor() {
 		exit 1
 	fi
 	bk get -Sqe "$@" 2> /dev/null
+	PATH="$BK_OLDPATH"
 	exec $EDITOR "$@"
 }
 
 _jove() {
 	bk get -qe "$@" 2> /dev/null
+	PATH="$BK_OLDPATH"
 	exec jove "$@"
 }
 
 _joe() {
 	bk get -qe "$@" 2> /dev/null
+	PATH="$BK_OLDPATH"
 	exec joe "$@"
 }
 
 _jed() {
 	bk get -qe "$@" 2> /dev/null
+	PATH="$BK_OLDPATH"
 	exec jed "$@"
 }
 
 _vim() {
 	bk get -qe "$@" 2> /dev/null
+	PATH="$BK_OLDPATH"
 	exec vim "$@"
 }
 
 _gvim() {
 	bk get -qe "$@" 2> /dev/null
+	PATH="$BK_OLDPATH"
 	exec gvim "$@"
 }
 
 _vi() {
 	bk get -qe "$@" 2> /dev/null
+	PATH="$BK_OLDPATH"
 	exec vi "$@"
 }
 
@@ -1140,6 +1147,7 @@ fi
 cmd=$1
 shift
 
+PATH="$BK_OLDPATH"
 if type "$cmd" > /dev/null 2>&1
 then
 	exec $cmd "$@"
@@ -1147,4 +1155,3 @@ else
 	echo "$cmd: command not found"
 	exit 1
 fi
-				

@@ -6852,15 +6852,22 @@ out:			if (slist) free(slist);
 
 #ifdef X_SHELL
 	if (SHELL(s) && ((flags & PRINT) == 0)) {
-		char cmd[MAXPATH], *t;
+		char	*path = strdup(getenv("PATH"));
+		char	*t;
+		char	cmd[MAXPATH];
 
+		safe_putenv("PATH=%s", getenv("BK_OLDPATH"));
 		t = strrchr(s->gfile, '/');
 		if (t) {
 			*t = 0;
 			sprintf(cmd, "cd %s; sh %s -o", s->gfile, &t[1]);
 			*t = '/';
-		} else  sprintf(cmd, "sh %s -o", s->gfile);
+		} else {
+			sprintf(cmd, "sh %s -o", s->gfile);
+		}
 		system(cmd);
+		safe_putenv("PATH=%s", path);
+		free(path);
 	}
 #endif
 	*ln = lines;
