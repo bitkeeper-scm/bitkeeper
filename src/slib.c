@@ -1775,6 +1775,7 @@ findrev(sccs *s, char *rev)
 		}
 		/* get max X.Y that is on same branch or tip of biggest */
 		for (e = s->table; e; e = e->next) {
+			if (e->flags & D_GONE) continue;
 			if (e->type != 'D'
 			    || (e->r[2] != 0)
 			    || (e->r[0] > a))  continue;
@@ -1788,8 +1789,7 @@ findrev(sccs *s, char *rev)
 			}
 		}
 		unless (e) e = f;	/* can't find, use max of lesser */
-		assert(e);
-		debug((stderr, "findrev(%s) =  %s\n", rev, e->rev));
+		debug((stderr, "findrev(%s) =  %s\n", rev, e ? e->rev: ""));
 		return (e);
 	    case 2:
 	    case 4:
@@ -3499,6 +3499,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	struct	stat sbuf;
 	char	*t;
 	static	int YEAR4;
+	delta	*d;
 
 	localName2bkName(name, name);
 	if (sccs_filetype(name) == 's') {
@@ -3642,6 +3643,22 @@ sccs_init(char *name, u32 flags, project *proj)
 		if (misc(s)) {
 			sccs_free(s);
 			return (0);
+		}
+	}
+
+	/*
+	 * Verify xflag implied by s->state is the same as 
+	 * the xflags implied by the top-of-trunk delta.
+	 */
+	d = sccs_getrev(s, "+", 0, 0);
+	if (d) {
+		int x1, x2;
+		x1 = state2xflags(s->state) & X_XFLAGS;
+		x2 = sccs_getxflags(d) & X_XFLAGS;
+		if (x2 && (x1 != x2)) {
+			fprintf(stderr,
+			"sccs_int: %s: warning: inconsistent xflags: %x, %x\n",
+							s->sfile, x1, x2);
 		}
 	}
 
@@ -8024,6 +8041,7 @@ checkin(sccs *s,
 		/* XXX - EXPAND1 too? */
 		s->state |= S_SCCS;		/* default to SCCS keywords */
 	}
+	if (flags & DELTA_HASH) s->state |= S_HASH;
 	s->version = SCCS_VERSION;		/* auto upgrades in patch */
 	n->serial = s->nextserial++;
 	s->table = n;
@@ -8107,7 +8125,6 @@ checkin(sccs *s,
 	}
 
 no_config:
-	if (flags & DELTA_HASH) s->state |= S_HASH;
 	if (delta_table(s, sfile, 1)) {
 		error++;
 		goto abort;
@@ -9116,6 +9133,8 @@ name2xflg(char *fl)
 		return X_YEAR4;
 	} else if (streq(fl, "SINGLE")) {
 		return X_SINGLE;
+	} else if (streq(fl, "SHELL")) {
+		return X_ISSHELL;
 	}
 	assert("bad flag" == 0);
 	return (0);			/* lint */
@@ -9142,7 +9161,6 @@ state2xflags(u32 state)
 {
 	u32	xflags = 0;
 
-	if (state & S_BITKEEPER) xflags |= X_BITKEEPER;
 	if (state & S_RCS) xflags |= X_RCS;
 	if (state & S_SCCS) xflags |= X_SCCS;
 	if (state & S_SINGLE) xflags |= X_SINGLE;
@@ -9151,7 +9169,6 @@ state2xflags(u32 state)
 	if (state & S_ISSHELL) xflags |= X_ISSHELL;
 #endif
 	if (state & S_EXPAND1) xflags |= X_EXPAND1;
-	if (state & S_CSETMARKED) xflags |= X_CSETMARKED;
 	if (state & S_HASH) xflags |= X_HASH;
 	return (xflags);
 }
@@ -9161,7 +9178,6 @@ xflags2state(u32 xflags)
 {
 	u32	state = 0;
 
-	if (xflags & X_BITKEEPER) state |= S_BITKEEPER;
 	if (xflags & X_RCS) state |= S_RCS;
 	if (xflags & X_SCCS) state |= S_SCCS;
 	if (xflags & X_SINGLE) state |= S_SINGLE;
@@ -9170,7 +9186,6 @@ xflags2state(u32 xflags)
 	if (xflags & X_ISSHELL) state |= S_ISSHELL;
 #endif
 	if (xflags & X_EXPAND1) state |= S_EXPAND1;
-	if (xflags & X_CSETMARKED) state |= S_CSETMARKED;
 	if (xflags & X_HASH) state |= S_HASH;
 	return (state);
 }
@@ -9197,7 +9212,7 @@ changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 	if (add) {
 		if (xflags & mask) {
 			verbose((stderr,
-				"admin: %s %s flag is already on, ignored\n",
+				"admin: warning: %s %s flag is already on\n",
 				sc->sfile, flag));
 			return;
 		} 
@@ -9205,7 +9220,7 @@ changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 	} else {
 		unless (xflags & mask) {
 			verbose((stderr,
-				"admin: %s %s flag is already off, ignored \n",
+				"admin: warning: %s %s flag is already off\n",
 				sc->sfile, flag));
 			return;
 		}
@@ -9224,7 +9239,8 @@ sccs_getxflags(delta *d)
 	unless (d) return (0);
 	if (d->flags & D_XFLAGS) return (d->xflags);
 	if (d->parent) return (sccs_getxflags(d->parent));
-	return (X_DEFAULTS);
+	//return (X_DEFAULTS);
+	return (0); /* old sfile, xflags values unknown */
 }                    
 
 /*
@@ -9529,6 +9545,15 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 					sc->state |= S_SINGLE;
 				else
 					sc->state &= ~S_SINGLE;
+#ifdef S_ISSHELL
+			} else if (streq(fl, "SHELL")) {
+				if (v) goto noval;
+				changeXFlag(sc, d, flags, add, fl);
+				if (add)
+					sc->state |= S_ISSHELL;
+				else
+					sc->state &= ~S_ISSHELL;
+#endif
 			/* Flags below are non propagated */
 			} else if (streq(fl, "BK") || streq(fl, "BITKEEPER")) {
 				if (v) goto noval;
@@ -9536,14 +9561,6 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 					sc->state |= S_BITKEEPER;
 				else
 					sc->state &= ~S_BITKEEPER;
-#ifdef S_ISSHELL
-			} else if (streq(fl, "SHELL")) {
-				if (v) goto noval;
-				if (add)
-					sc->state |= S_ISSHELL;
-				else
-					sc->state &= ~S_ISSHELL;
-#endif
 			} else if (streq(fl, "BRANCHOK")) {
 				if (v) goto noval;
 				if (add)
@@ -10642,6 +10659,7 @@ sccs_delta(sccs *s,
 	int	added, deleted, unchanged;
 	int	locked;
 	pfile	pf;
+	int	xbits;
 
 	assert(s);
 	debug((stderr, "delta %s %x\n", s->gfile, flags));
@@ -10694,40 +10712,6 @@ out:
 			    streq(prefilled->pathname, "ChangeSet")) {
 				s->state |= S_CSET;
 		    	}
-			if (prefilled->flags & D_XFLAGS) {
-				/*  XXX this code will be affected by LOD */
-				u32 bits = prefilled->xflags;
-				if (bits & X_BITKEEPER) {
-					s->state |= S_BITKEEPER;
-				} else {
-					s->state &= ~S_BITKEEPER;
-				}
-				if (bits & X_YEAR4) {
-					s->state |= S_YEAR4;
-				} else {
-					s->state &= ~S_YEAR4;
-				}
-				if (bits & X_RCS) {
-					s->state |= S_RCS;
-				} else {
-					s->state &= ~S_RCS;
-				}
-				if (bits & X_SCCS) {
-					s->state |= S_SCCS;
-				} else {
-					s->state &= ~S_SCCS;
-				}
-				if (bits & X_SINGLE) {
-					s->state |= S_SINGLE;
-				} else {
-					s->state &= ~S_SINGLE;
-				}
-				if (bits & X_EXPAND1) {
-					s->state |= S_EXPAND1;
-				} else {
-					s->state &= ~S_EXPAND1;
-				}
-			}
 			if (prefilled->flags & D_TEXT) {
 				if (s->text) {
 					freeLines(s->text);
@@ -10961,6 +10945,20 @@ out:
 		fprintf(stderr, "delta: can't create %s: ", sccsXfile(s, 'x'));
 		perror("");
 		OUT;
+	}
+
+	/*
+	 * If the new delta is a top-of-trunk, update the xflags
+	 * This is needed to maintain the xflags invariant:
+	 * s->state should always match sccs_getxflag(tot);
+	 * where "tot" is the top-of-trunk delta in the
+	 * current LOD
+ 	 */
+	if (init && (flags&DELTA_PATCH) && (n->flags & D_XFLAGS)) {
+		if (n == sccs_getrev(s, "+", 0, 0)) {
+			s->state &= ~(S_XFLAGS);
+			s->state |= xflags2state(sccs_getxflags(n)) & S_XFLAGS;
+		}
 	}
 
 	if (delta_table(s, sfile, 1)) {
@@ -13969,6 +13967,7 @@ sccs_stripdel(sccs *s, char *who)
 	FILE	*sfile = 0;
 	int	error = 0;
 	int	locked;
+	delta	*e;
 
 	assert(s && s->tree && !HAS_PFILE(s));
 	debug((stderr, "stripdel %s %s\n", s->gfile, who));
@@ -13993,6 +13992,15 @@ out:
 		perror("");
 		OUT;
 	}
+
+	/*
+	 * find the new top-of-trunk
+	 * XXX Is this good enough ??
+	 */
+	e = sccs_getrev(s, "+", 0, 0);
+	assert(e);
+	s->state &= ~(S_RCS|S_YEAR4|S_ISSHELL|S_EXPAND1|S_HASH|S_SINGLE);
+	s->state |= xflags2state(sccs_getxflags(e));
 
 	/* write out upper half */
 	if (delta_table(s, sfile, 0)) {  /* 0 means as-is, so chksum works */
