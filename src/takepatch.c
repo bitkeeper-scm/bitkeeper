@@ -424,7 +424,6 @@ apply:
 				fclose(iF);	/* dF done by delta() */
 			}
 		} else {
-			/* XXX - has this been done already? */
 			assert(s == 0);
 			unless (s = sccs_init(p->resyncFile, NEWFILE)) {
 				fprintf(stderr,
@@ -434,10 +433,17 @@ apply:
 			}
 			iF = fopen(p->initFile, "r");
 			dF = fopen(p->diffFile, "r");
+			d = 0;
 			newflags = (echo > 2) ?
 			    NOCKSUM|NEWFILE|FORCE|BRANCHOK|PATCH :
 			    NOCKSUM|NEWFILE|FORCE|BRANCHOK|PATCH|SILENT;
-			if (sccs_delta(s, newflags, 0, iF, dF)) {
+			if (newProject &&
+			    streq("RESYNC/SCCS/s.ChangeSet", p->resyncFile)) {
+				d = calloc(1, sizeof(*d));
+				d->rev = strdup("1.0");
+				s->state |= ONE_ZERO;
+			}
+			if (sccs_delta(s, newflags, d, iF, dF)) {
 				perror("delta");
 				exit(1);
 			}

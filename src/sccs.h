@@ -200,6 +200,7 @@ extern	char *strdup(char *s);
 #define	CSET		0x00100000	/* this is a changeset file */
 #define	NOSCCSDIR	0x00200000	/* this is a s.foo not SCCS/s.foo */
 #define MAPPRIVATE	0x00400000	/* Some winblows hack */
+#define	ONE_ZERO	0x00800000	/* initial rev, make it be 1.0 */
 
 /*
  * Options to sccs_diffs()

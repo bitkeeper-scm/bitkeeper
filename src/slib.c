@@ -6363,7 +6363,7 @@ out:
 			goto out;
 		}
 		debug((stderr, "delta got prefilled %s\n", prefilled->rev));
-		if (flags & PATCH) {
+		if ((flags & PATCH) && !(s->state & ONE_ZERO)) {
 			free(prefilled->rev);
 			prefilled->rev = 0;
 		}
