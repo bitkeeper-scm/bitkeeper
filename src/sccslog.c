@@ -85,7 +85,6 @@ next:		sccs_free(s);
 		printlog();
 		freelog();
 	}
-	purify_list();
 	return (0);
 }
 

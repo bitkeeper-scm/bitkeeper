@@ -40,6 +40,10 @@ do	P=`expr $P + 1`
 	bk bkd -d -p$P -c1 2>/dev/null
 done
 echo OK
+# Win32 note: If bkd binary is on a network drive
+# NT will refuse to start the bkd service. (permission denied)
+# Please make sure the bk binary is on a local disk
+# before you run this test.
 echo $N "push a new changeset via bkd (no compression)" ...............$NL
 cd $HERE/project/src
 echo woo > woo.c

@@ -260,9 +260,11 @@ commit(int quiet, delta *d)
 	cmds[++i] = comment;
 	cmds[++i] = 0;
 	if (i = spawnvp_ex(_P_WAIT, "bk", cmds)) {
+		free(comment);
 		fprintf(stderr, "Commit says %d\n", i);
 		return (1);
 	}
+	free(comment);
 	return (0);
 }
 
@@ -370,6 +372,7 @@ doit(int flags, char *file, char *op, char *revs, delta *d)
 		sccs_free(s);
 		return (1);
 	}
+	if (flags & GET_SKIPGET) goto ok;
 	if (d) {
 		copy = calloc(1, sizeof(delta));
 		EACH(d->comments) {
@@ -377,7 +380,6 @@ doit(int flags, char *file, char *op, char *revs, delta *d)
 			    addLine(copy->comments, strdup(d->comments[i]));
 		}
 	}
-	if (flags & GET_SKIPGET) goto ok;
 	sccs_restart(s);
 	if (sccs_delta(s, SILENT|DELTA_FORCE, copy, 0, 0, 0)) {
 		fprintf(stderr, "Could not delta %s\n", s->gfile);

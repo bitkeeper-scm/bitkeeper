@@ -58,7 +58,6 @@ names_main(int ac, char **av)
 	}
 	sfileDone();
 	names_cleanup(flags);
-	purify_list();
 	return (error);
 }
 

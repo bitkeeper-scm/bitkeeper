@@ -10,7 +10,6 @@
 int
 trigger(char *action, char *when, int status)
 {
-	int	ret = 0;
 	char	*what;
 	char	*var;
 	char	*t;
@@ -37,24 +36,28 @@ trigger(char *action, char *when, int status)
 
 	sprintf(file, "%s/%s/%s-%s", bk_proj->root, TRIGGERS, when, what);
 	get(file, SILENT, "-");
+#ifdef WIN32
+	if (exists(file)) {
+#else
 	if (access(file, X_OK) == 0) {
-		char	env[200];
+#endif
 		char	cmd[MAXPATH*4];
 
 		if (status) {
-			sprintf(env, "%s='ERROR %d'", var, status);
-		} else if (t = getenv(var)) {
-			sprintf(env, "%s=%s", var, t);
-		} else {
-			sprintf(env, "%s=OK", var);
+			sprintf(cmd, "%s=ERROR %d", var, status);
+			putenv((strdup)(cmd));
+		} else unless (t = getenv(var)) {
+			sprintf(cmd, "%s=OK", var);
+			putenv((strdup)(cmd));
 		}
-		if (streq(when, "post")) {
-			sprintf(cmd, "cd %s; env %s %s %s %s",
-			    bk_proj->root, env, file, when, action, status);
-		} else {
-			sprintf(cmd, "cd %s; env %s %s %s %s",
-			    bk_proj->root, env, file, when, action);
-		}
+		sprintf(file, "%s/%s-%s", TRIGGERS, when, what);
+#ifdef WIN32
+		sprintf(cmd,
+		    "bash -c \"cd %s; %s %s %s\"", bk_proj->root, file, when, action);
+#else
+		sprintf(cmd,
+		    "cd %s; %s %s %s", bk_proj->root, file, when, action);
+#endif
 		if (system(cmd)) return (1);
 	}
 	return (0);

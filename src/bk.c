@@ -18,6 +18,8 @@ int	cmdlog_repo;
 private	void	cmdlog_dump(int, char **);
 
 extern	void	getoptReset();
+extern	void	platformInit(char **av);
+extern	int proj_cd2root(project *p);
 int _createlod_main(int, char **);
 int abort_main(int, char **);
 int adler32_main(int, char **);
@@ -418,6 +420,7 @@ main(int ac, char **av)
 void
 cmdlog_exit(void)
 {
+	purify_list();
 	if (cmdlog_buffer[0]) cmdlog_end(LOG_BADEXIT);
 }
 
@@ -475,10 +478,10 @@ void
 cmdlog_end(int ret)
 {
 	FILE	*f;
-	int	i, repo = 0;
 	char	*user, *file;
 	char	path[MAXPATH];
 
+	purify_list();
 	unless (cmdlog_buffer[0] && bk_proj && bk_proj->root) return;
 	if (cmdlog_repo) {
 		file = "repo_log";
@@ -495,7 +498,7 @@ cmdlog_end(int ret)
 	}
 	if (cmdlog_repo) trigger(cmdlog_buffer, "post", ret);
 	user = sccs_getuser();
-	fprintf(f, "%s %u: ", user ? user : "Phantom User", time(0));
+	fprintf(f, "%s %lu: ", user ? user : "Phantom User", time(0));
 	if (ret == LOG_BADEXIT) {
 		fprintf(f, "%s = ?\n", cmdlog_buffer);
 	} else {

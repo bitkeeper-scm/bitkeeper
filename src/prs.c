@@ -110,6 +110,5 @@ next:		sccs_free(s);
 	}
 	sfileDone();
 	if (proj) proj_free(proj);
-	purify_list();
 	return (0);
 }

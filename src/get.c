@@ -226,9 +226,6 @@ usage:			fprintf(stderr, "%s: usage error, try get --help\n",
 	}
 	sfileDone();
 	if (proj) proj_free(proj);
-#ifndef	NOPURIFY
-	purify_list();
-#endif
 	return (errors);
 }
 

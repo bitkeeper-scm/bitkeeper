@@ -38,6 +38,9 @@ case "X`uname -s`" in
 		CC_WALL="-W3"
 		CC_OUT='-Fo$@'
 		LD_OUT='-out:$@'
+		INCLUDE="C:\\Program Files\\Microsoft Visual Studio\\VC98\\Include"
+		LIB="C:\\Program Files\\Microsoft Visual Studio\\VC98\\Lib"
+		
 		# make ranlib a no-op
 		RANLIB="true"
 		U=win32/uwtlib
@@ -53,7 +56,6 @@ case "X`uname -s`" in
 		LINK_LIB="libsccs.a mdbm/libmdbm.a zlib/libz.a $UWTLIB"
 		LINK_LIB="$LINK_LIB $WIN32_LIBS"
 		BK="bk.exe"
-		BKMERGE="bkmerge.exe"
 		LDFLAGS="-nologo -debug"
 		AR=`pwd`/win32/util/mklib
 		# BINDIR should really be :C:/Program Files/BitKeeper
@@ -69,8 +71,39 @@ case "X`uname -s`" in
 		XTRA=win32
 		INSTALL=install-nolinks
 		export SYS CFLAGS CC_OUT LD_OUT LD AR RANLIB UWTLIB LDFLAGS
-		export CC_FAST CC_DEBUG CC_NOFRAME CC_WALL LINK_LIB
-		export BK BKMERGE UWT_H WIN_UTIL BINDIR XTRA INSTALL
+		export INCLUDE LIB CC_FAST CC_DEBUG CC_NOFRAME CC_WALL LINK_LIB
+		export BK UWT_H WIN_UTIL BINDIR XTRA INSTALL
+		;;
+	*)
+		CHECK=1
 		;;
 esac
-$MAKE "CC=$CC" "LD=$LD" "XLIBS=$XLIBS" "$@"
+
+if [ "$CHECK" ]; then
+	# check to see if the system we're building on has dirname, tm_gmtoff,
+	# or altzone/localzone
+	#
+
+	# first dirname -- if the thing compiles, dirname() exists in libc
+	#
+	echo "main() { extern char *dirname();  dirname("a/b"); }" > $$.c
+	$CC -o $$ $$.c 1>/dev/null 2>/dev/null && CCXTRA="-DHAVE_DIRNAME"
+
+	# then look for tm_gmtoff, and if that doesn't exist, altzone/localzone
+	#
+	echo "#include <time.h>" 	                   > $$.c
+	echo "main() { struct tm *now; now->tm_gmtoff; }" >> $$.c
+
+	if $CC -o $$ $$.c 1>/dev/null 2>/dev/null; then
+		CCXTRA="$CCXTRA -DHAVE_GMTOFF"
+	else
+		echo "main() { extern int localzone, altzone;"  > $$.c
+		echo "         localzone; altzone; }"          >> $$.c
+		if $CC -o $$ $$.c 1>/dev/null 2>/dev/null; then
+			CCXTRA="$CCXTRA -DHAVE_LOCALZONE"
+		fi
+    fi
+    rm -f $$ $$.c
+fi
+
+$MAKE "CC=$CC $CCXTRA" "LD=$LD" "XLIBS=$XLIBS" "$@"

@@ -220,7 +220,6 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 			comments_done();
 			sfileDone();
 			freeLines(syms);
-			purify_list();
 			return (1);
 		}
 		if (checkout) {
@@ -251,7 +250,6 @@ next:		if (init) mclose(init);
 	comments_done();
 	freeLines(syms);
 	if (proj) proj_free(proj);
-	purify_list();
 	return (0);
 }
 

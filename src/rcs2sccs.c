@@ -57,7 +57,6 @@ rcs2sccs_main(int ac, char **av)
 		}
 	}
 	if (proj) proj_free(proj);
-	purify_list();
 	return (0);
 }
 

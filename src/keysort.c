@@ -24,6 +24,7 @@ moreMem(mem_t *m)
  * Sort the keys in the changeset file.
  * All we are trying to do is to group the same files together.
  */
+int
 keysort_main(int ac, char **av)
 {
 	char	buf[MAXKEY*2];
@@ -75,6 +76,7 @@ keysort_main(int ac, char **av)
 	for (mem = memlist; mem; ) {
 		memlist = mem->next;
 		free(mem->data);
+		free(mem);
 		mem = memlist;
 	}
 	return (0);

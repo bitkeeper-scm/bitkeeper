@@ -38,7 +38,7 @@ commit_main(int ac, char **av)
 	char	buf[MAXLINE], s_cset[MAXPATH] = CHANGESET;
 	char	commentFile[MAXPATH], pendingDeltas[MAXPATH];
 	char	*sym = 0;
-	c_opts	opts  = {0, 0 , 0, 0};
+	c_opts	opts  = {0, 0, 0, 0};
 
 	if (ac > 1 && streq("--help", av[1])) {
 		fputs(commit_help, stderr);
@@ -128,6 +128,7 @@ Abort:			printf("Commit aborted.\n");
 	}
 }
 
+int
 cat(char *file)
 {
 	MMAP	*m = mopen(file, "r");
@@ -240,8 +241,12 @@ private	void
 make_comment(char *cmt, char *commentFile)
 {
 	int fd;
+	int flags = O_CREAT|O_TRUNC|O_WRONLY;
 
-	if ((fd = open(commentFile, O_CREAT|O_TRUNC|O_WRONLY, 0664)) == -1)  {
+#ifdef WIN32
+	flags |= _O_TEXT;
+#endif
+	if ((fd = open(commentFile, flags, 0664)) == -1)  {
 		perror("commit");
 		exit(1);
 	}

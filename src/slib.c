@@ -3394,7 +3394,7 @@ check:	if (convert && (t = mdbm_fetch_str(DB, "CONVERT")) &&
  * Seems to me that the check for locking should be at delta time.
  */
 project	*
-proj_init(sccs *s)
+chk_proj_init(sccs *s, char *file, int line)
 {
 	char	*root;
 	project	*p;
@@ -3402,7 +3402,7 @@ proj_init(sccs *s)
 	assert((s == 0) || (s->proj == 0));
 
 	unless (root = sccs_root(s)) return (0);
-	p = calloc(1, sizeof(*p));
+	p = chk_calloc(1, sizeof(*p), file, line);
 	p->root = root;
 #ifdef	NOT_USED
 	p->config = loadConfig(root);
@@ -13304,7 +13304,30 @@ sccs_resolveFiles(sccs *s)
 		goto err;
 	}
 
-	defbranch = (s->defbranch) ? atoi(s->defbranch) : (next - 1);
+	/*
+	 * if defbranch is 2 or 4 digit, then defbranch is really
+	 * next lod which hasn't been created yet, so assign it
+	 * to next so that this code will make sure all other
+	 * lods have only one open tip
+	 */
+
+	defbranch = next - 1;
+	if (s->defbranch) {
+		int	branch = 1;
+		char	*ptr;
+
+		for (ptr = s->defbranch; *ptr; ptr++) {
+			if (*ptr != '.') continue;
+			branch = 1 - branch;
+		}
+		if (branch) {
+			defbranch = atoi(s->defbranch);
+		} else {
+			/* defbranch doesn't exist, so preload 'a' */
+			defbranch = next;
+			a = sccs_top(s);
+		}
+	}
 
 	/*
 	 * b is that branch which needs to be merged.
@@ -13336,11 +13359,15 @@ sccs_resolveFiles(sccs *s)
 	 * What we want to compare is whatever the tip path is with the
 	 * whatever the path is in the most recent delta in this LOD.
 	 * XXX - Rick, I don't do the lod stuff yet.
+	 * XXX - Larry, I think I handle the lod stuff for this case.
 	 */
 	unless (b) {
-		for (p = s->table;
-		    p && ((p->type == 'R') || (p->flags & D_REMOTE));
-		    p = p->next);
+		for (p = s->table; p; p = p->next) {
+			if ((p->type == 'D') && !(p->flags & D_REMOTE)
+			    && (p->r[0] == defbranch)) {
+				break;
+			}
+		}
 		if (!p || streq(p->pathname, a->pathname)) {
 			free(lodmap);
 			return (0);
@@ -14029,6 +14056,7 @@ stripChecks(sccs *s, delta *d, char *who)
 	return (0);
 }
 
+#ifndef WIN32
 int
 smartUnlink(char *file)
 {
@@ -14079,6 +14107,14 @@ smartRename(char *old, char *new)
 	errno = save;
 	return (rc);
 }
+
+int
+smartMkdir(char *dir, int mode)
+{
+	if (isdir(dir)) return 0;
+	return ((mkdir)(dir, mode));
+}
+#endif
 
 #if	defined(linux) && defined(sparc)
 #undef	fclose

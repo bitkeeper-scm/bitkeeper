@@ -153,7 +153,7 @@ getrev(char *top_rev)
 	if (buf) free(buf);
 	sz = size(tmpfile);
 	if (sz) {
-		buf = malloc(sz + 1);
+		buf = (malloc)(sz + 1);
 		if ((len = read(fd, buf, sz)) < 0) {
 			perror(tmpfile);
 			exit(1);

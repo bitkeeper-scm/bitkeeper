@@ -115,6 +115,7 @@ out:
 	 * This could screw up if takepatch errored but left the RESYNC dir.
 	 * The write lock code respects the RESYNC dir, so that's OK.
 	 */
+	cmdlog_end(0);
 	if (error) repository_wrunlock(0);
 	exit(error);
 }

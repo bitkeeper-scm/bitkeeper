@@ -176,7 +176,6 @@ usage:		fprintf(stderr, takepatch_help);
 		/* XXX: Save?  Purge? */
 		cleanup(0);
 	}
-	purify_list();
 	if (echo) {
 		fprintf(stderr,
 		    "takepatch: %d new revision%s, %d conflicts in %d files\n",
@@ -686,6 +685,7 @@ setlod(sccs *s, delta *d, int branch)
 	unless (branch) {
 		assert(d->rev);
 		s->defbranch = strdup(d->rev);
+		sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
 		return;
 	}
 
@@ -784,6 +784,13 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 			for (ptr = s->defbranch; *ptr; ptr++) {
 				unless (*ptr == '.') continue;
 				lodbranch = 1 - lodbranch;
+			}
+			free(s->defbranch);
+			s->defbranch = 0;
+			sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
+			unless (sccs_restart(s)) {
+				perror("restart");
+				exit(1);
 			}
 		}
 	}
@@ -965,6 +972,7 @@ apply:
 		uncommitted(localPath);
 		return -1;
 	}
+	/* must have restored defbranch (setlod above) before fixing */
 	if (fixLod(s)) {
 		s->proj = 0; sccs_free(s);
 		return (-1);
@@ -1600,7 +1608,6 @@ cleanup(int what)
 	if (patchList) freePatchList();
 	if (idDB) mdbm_close(idDB);
 	if (goneDB) mdbm_close(goneDB);
-	purify_list(); /* win32 note: if we get here, all fd must be closed */
 	if (saveDirs) {
 		fprintf(stderr, "takepatch: neither directory removed.\n");
 		SHOUT2();

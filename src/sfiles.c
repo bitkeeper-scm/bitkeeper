@@ -103,12 +103,10 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		}
 		/* perror is in sccs_root, don't do it twice */
 		unless (sccs_cd2root(0, 0) == 0) {
-			purify_list();
 			return (1);
 		}
 		rebuild();
 		if (proj) proj_free(proj);
-		purify_list();
 		return (dups ? 1 : 0);
 	}
 	if (!av[optind]) {
@@ -141,7 +139,6 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		}
 	}
 	if (proj) proj_free(proj);
-	purify_list();
 	return (0);
 }
 

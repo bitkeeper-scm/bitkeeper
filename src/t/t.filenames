@@ -49,11 +49,12 @@ echo $N Make some changes and check the diffs .......................$NL
 bk edit $Q 'I am foo.c'
 echo DIFFS >> 'I am foo.c'
 bk diffs 'I am foo.c' > DIFFS
-cat >WANT <<EOF
+cat >X <<EOF
 ===== I am foo.c 1.1 vs edited =====
 1a2
 > DIFFS
 EOF
+bk undos X > WANT
 cmp -s DIFFS WANT || { echo failed; diff WANT DIFFS; exit 1; }
 echo OK
 if [ X$BK_TESTGUI != X ]
@@ -87,11 +88,12 @@ writable 'I am foo.c' && { echo file is still writable; ls -l; exit 1; }
 echo OK
 echo $N Check the cset -r1.2 output .................................$NL
 bk cset -hr1.2 > GOT
-cat > WANT <<EOF
+cat > X <<EOF
 src/I am foo.c@1.0..1.1
 src/bar.c@1.0..1.1
 src/h.h@1.0..1.1
 EOF
+bk undos X > WANT
 cmp -s GOT WANT || { echo failed; diff WANT GOT; exit 1; }
 echo OK
 if [ X$BK_TESTGUI != X ]

@@ -68,7 +68,7 @@ usage:			fprintf(stderr,
 	assert(f);
 	while (fgets(buf, sizeof(buf), f)) {
 		char	output[MAXPATH];
-		int	flags = PRINT;
+		int	flags = 0;
 
 		chop(buf);
 		p = strchr(buf, '@');
@@ -87,7 +87,13 @@ usage:			fprintf(stderr,
 		unless (kflag) flags |= GET_EXPAND;
 		if (tflag) flags |= GET_DTIME;
 		mkdirf(output);
-		if (sccs_get(s, p, 0, 0, 0, flags, output)) {
+		/*
+		 * This is stolen from the get -G code
+		 * XXX - why do we have output then?
+		 */
+		free(s->gfile);
+		s->gfile = strdup(output);
+		if (sccs_get(s, p, 0, 0, 0, flags, "-")) {
 			fprintf(stderr, "can not export to %s\n", output);
 		}
 		sccs_free(s);

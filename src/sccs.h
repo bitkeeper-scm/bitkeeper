@@ -722,7 +722,8 @@ delta	*sfind(sccs *s, ser_t ser);
 int	sccs_lock(sccs *, char);
 int	sccs_unlock(sccs *, char);
 int	sccs_setlod(char *rev, u32 flags);
-void	sccs_renumber(sccs *s, u16 nextlod, MDBM *lodDb, u32 flags);
+void	sccs_renumber(sccs *s, ser_t nextlod, ser_t thislod, MDBM *lodDb,
+	    char *base, u32 flags);
 char 	*sccs_iskeylong(char *key);
 #ifdef	PURIFY_FILES
 MMAP	*purify_mopen(char *file, char *mode, char *, int);
@@ -766,7 +767,7 @@ char	*_relativeName(char *gName,
 	    int isDir, int withsccs, int mustHaveRmarker, char *root);
 void	rcs(char *cmd, int argc, char **argv);
 char	*findBin();
-project	*proj_init(sccs *s);
+project	*chk_proj_init(sccs *s, char *file, int line);
 void	proj_free(project *p);
 int 	prompt(char *msg, char *buf);
 void	parse_url(char *url, char *host, char *path);
@@ -852,5 +853,8 @@ int	cset_setup(int flags);
 off_t	fsize(int fd);
 char	*separator(char *);
 int	trigger(char *action, char *when, int status);
+void	cmdlog_start(char **av);
+void	cmdlog_end(int ret);
+int	cat(char *file);
 
 #endif	/* _SCCS_H_ */

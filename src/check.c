@@ -207,7 +207,6 @@ usage:		fprintf(stderr, "%s", check_help);
 	}
 	if (csetKeys.deltas) free(csetKeys.deltas);
 	if (poly) warnPoly();
-	purify_list();
 	return (errors);
 }
 

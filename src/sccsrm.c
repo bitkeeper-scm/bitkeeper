@@ -37,7 +37,6 @@ rm_main(int ac, char **av)
 		errors |= sccs_rm(name, useCommonDir);
 	}
 	sfileDone();
-	purify_list();
 	return (errors);
 }
 

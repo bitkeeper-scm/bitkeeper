@@ -35,7 +35,6 @@ find_main(int ac, char **av)
 		}
 	}
 	if (globs) freeLines(globs);
-	purify_list();
 	exit(0);
 }
 

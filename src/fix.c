@@ -50,6 +50,7 @@ fix_main(int ac,  char **av)
 			if (sccs_get(s, 0, 0, 0, 0, gflags, "-")) {
 				fprintf(stderr, "can not lock %s\n", av[i]);
 			}
+			sccs_free(s);
 			unlink(av[i]);
 			if (rename(fix_file, av[i]) == -1) {
 				perror(av[i]);
