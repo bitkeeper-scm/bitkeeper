@@ -73,4 +73,10 @@ void	proj_reset(project *p);
 
 project *proj_fakenew(void);
 
+/*
+ * return the license for the current project.
+ *
+ * (this function is implemented in lease.c)
+ */
+char	*proj_license(project *p);
 #endif

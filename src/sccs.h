@@ -949,9 +949,6 @@ char	*_relativeName(char *gName, int isDir, int withsccs,
 	    int mustHaveRmarker, int wantRealName, project *proj);
 void	rcs(char *cmd, int argc, char **argv);
 char	*findBin(void);
-project	*chk_proj_init(sccs *s, char *file, int line);
-MDBM	*proj_config(project *p);
-void	proj_free(project *p);
 int 	prompt(char *msg, char *buf);
 void	parse_url(char *url, char *host, char *path);
 char	*sccs_Xfile(sccs *s, char type);

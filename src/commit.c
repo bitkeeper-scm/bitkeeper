@@ -78,7 +78,7 @@ commit_main(int ac, char **av)
 	 * of subprocesses.  This process will need the result anyway so
 	 * this isn't any slower.
 	 */
-	lease_check(0);
+	lease_check(0, 0);
 
 	unless(opts.resync) remark(opts.quiet);
 	if (pendingFiles[0]) {
