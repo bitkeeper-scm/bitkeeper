@@ -951,7 +951,10 @@ init(FILE *p, int flags, char **resyncRootp)
 			/* If we are invoked in an empty directory,
 			 * assume they meant -i.
 			 */
-			fputs("takepatch: creating new project.\n", stderr);
+			if (echo > 0) {
+				fputs("takepatch: creating new project.\n",
+				      stderr);
+			}
 			initProject();
 			*resyncRootp = strdup("RESYNC");
 			newProject = 1;

@@ -78,6 +78,12 @@ _setup() {
 	fi
 	${BIN}cset -si .
 	${BIN}admin -qtDescription ChangeSet
+	# This descr is used by the regression tests.  Don't spam the
+	# setups alias.
+	if [ "`cat Description`" = "BitKeeper Test repository" ]
+	then logsetup=
+	else logsetup=yes
+	fi
 	/bin/rm -f Description D.save
 	cd BitKeeper/etc
 	if [ "X$CONFIG" = X ]
@@ -101,8 +107,16 @@ _setup() {
 	else	cp $CONFIG config
 	fi
 	${BIN}ci -qi config
-	${BIN}get -s config
-	_sendConfig setups@openlogging.org
+	if [ x$logsetup = xyes ]
+	then	${BIN}get -s config
+		_sendConfig setups@openlogging.org
+	fi
+	# Check in the initial changeset.
+	${BIN}sfiles -C | ${BIN}cset -s -y"Initial repository create" -
+	EXIT=$?
+	/bin/rm -f /tmp/comments$$
+	${BIN}csetmark -r+
+	exit $EXIT
 }
 
 # This will go find the root if we aren't at the top
