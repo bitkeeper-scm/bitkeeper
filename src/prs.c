@@ -4,7 +4,8 @@
 #include "range.h"
 WHATSTR("@(#)%K%");
 char	*prs_help = "\n\
-usage: prs [-bhmv] [-c<d>] [-r<r>] [files...]\n\n\
+usage: prs [-abhmMv] [-c<date>] [-C<rev>] [-r<rev>] [files...]\n\n\
+    -a		print info on all deltas, not just data deltas\n\
     -b		reverse the order of the printed deltas\n\
     -c<date>	Cut off dates.  See sccsrange(1) for details.\n\
     -C<rev>	make the range be all revs that are the same cset as this\n\
@@ -42,8 +43,9 @@ main(int ac, char **av)
 		fprintf(stderr, prs_help);
 		return (1);
 	}
-	while ((c = getopt(ac, av, "bc;C;d:hmMr|v")) != -1) {
+	while ((c = getopt(ac, av, "abc;C;d:hmMr|v")) != -1) {
 		switch (c) {
+		    case 'a': flags |= PRS_ALL; break;
 		    case 'b': reverse++; break;
 		    case 'C': cset = optarg; break;
 		    case 'd': dspec = optarg; break;

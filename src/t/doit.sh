@@ -7,7 +7,7 @@ for arg
 do	case $arg in
 	    -x) dashx=-x;;
 	    -v) dashv=-v;;
-	    *) list="$arg $list";;
+	    *) list="$list $arg";;
 	esac
 done
 if [ -z "$list" ]

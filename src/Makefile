@@ -140,7 +140,7 @@ clean-src: FORCE
 	bk clean mdbm
 	bk clean zlib
 	bk clean t
-	/bin/rm -f tags
+	-/bin/rm -f tags TAGS
 
 # This would be called "clean" but that's a command name.
 cclean sccsclean nice: clean-obj clean-src

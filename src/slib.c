@@ -3525,6 +3525,37 @@ now()
 }
 
 /*
+ * Expand the set of deltas already tagged with D_SET to include all
+ * metadata children of those deltas.
+ * This is subtle.  You might think that the inner loop was unnecessary,
+ * but it isn't: we want to tag only meta deltas whose _data_ parent is
+ * already tagged.  If more than one meta delta is hanging off a data delta,
+ * just checking d->parent won't work.
+ *
+ * Returns the total number of deltas with D_SET on.
+ */
+int
+sccs_addmeta(sccs *s)
+{
+	int	n;
+	delta	*d, *e;
+	
+	for (n = 0, e = s->table; e; e = e->next) {
+		if (e->flags & D_SET) n++;
+		unless (e->flags & D_META) continue;
+		for (d = e->parent; d && (d->type != 'D'); d = d->parent);
+		if (d && (d->flags & D_SET)) {
+			unless (e->flags & D_SET) {
+				e->flags |= D_SET;
+				n++;
+			}
+		}
+	}
+	return (n);
+}
+
+
+/*
  * Save a serial in an array.  If the array is out of space, reallocate it.
  * The size of the array is in array[0].
  * The serial number is stored in ascending order.
@@ -6984,7 +7015,7 @@ checkRev(sccs *s, char *file, delta *d, int flags)
 			}
 			error = 1;
 		}
-#ifdef	crazy_wow
+#ifdef	CRAZY_WOW
 		XXX - this should be an option to admin.
 
 		/* if there is a parent, and the parent is a x.y.z.q, and
@@ -8333,7 +8364,7 @@ newcmd:
 /*
  * Initialize as much as possible from the file.
  * Don't override any information which is already set.
- * XXX - this needs to track do_prs/do_patch closely.
+ * XXX - this needs to track sccs_prsdelta/do_patch closely.
  */
 delta *
 sccs_getInit(sccs *sc, delta *d, MMAP *f, int patch, int *errorp, int *linesp)
@@ -10470,12 +10501,12 @@ fprintDelta(FILE *out, char *vbuf,
 	return (printLF);
 }
 
-private void
-do_prs(sccs *s, delta *d, int flags, const char *dspec, FILE *out)
+void
+sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out)
 {
 	const char *end;
 
-	if (d->type != 'D') return;
+	if (d->type != 'D' && !(flags & PRS_ALL)) return;
 	if ((s->state & S_SET) && !(d->flags & D_SET)) return;
 	if (fprintDelta(out, NULL,
 	    dspec, end = &dspec[strlen(dspec) - 1], s, d)) {
@@ -10671,10 +10702,16 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 private void
 prs_reverse(sccs *s, delta *d, int flags, char *dspec, FILE *out)
 {
-	if (d->next && ((s->state & S_SET) || (d != s->rstart))) {
-		prs_reverse(s, d->next, flags, dspec, out);
+	if (d->next) prs_reverse(s, d->next, flags, dspec, out);
+	if (d->flags & D_SET) sccs_prsdelta(s, d, flags, dspec, out);
+}
+
+private void
+prs_forward(sccs *s, delta *d, int flags, char *dspec, FILE *out)
+{
+	for (; d; d = d->next) {
+		if (d->flags & D_SET) sccs_prsdelta(s, d, flags, dspec, out);
 	}
-	do_prs(s, d, flags, dspec, out);
 }
 
 int
@@ -10682,8 +10719,9 @@ sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out)
 {
 	delta	*d;
 #define	DEFAULT_DSPEC \
-"D :I: :D: :T::TZ: :P:$if(:HT:){@:HT:} :DS: :DP: :Li:/:Ld:/:Lu:\n\
-$if(:DPN:){P :DPN:\n}$each(:C:){C (:C:)}\n\
+":DT: :I: :D: :T::TZ: :P:$if(:HT:){@:HT:} :DS: :DP: :Li:/:Ld:/:Lu:\n\
+$if(:DPN:){P :DPN:\n}$each(:SYMBOL:){S (:SYMBOL:)\n}\
+$if(:C:){$each(:C:){C (:C:)}\n}\
 ------------------------------------------------"
 
 	if (!dspec) dspec = DEFAULT_DSPEC;
@@ -10691,7 +10729,7 @@ $if(:DPN:){P :DPN:\n}$each(:C:){C (:C:)}\n\
 	if (flags & PRS_PATCH) {
 		do_patch(s,
 		    s->rstart ? s->rstart : s->tree,
-		    s->rstop ? s->rstop : 0, flags, out);
+		    s->rstop, flags, out);
 		return (0);
 	}
 	/* print metadata if they asked */
@@ -10701,17 +10739,16 @@ $if(:DPN:){P :DPN:\n}$each(:C:){C (:C:)}\n\
 			fprintf(out, "S %s %s\n", sym->name, sym->rev);
 		}
 	}
-
-	if (reverse) {
-		prs_reverse(s, s->rstop, flags, dspec, out);
-	} else for (d = s->rstop; d; d = d->next) {
-		do_prs(s, d, flags, dspec, out);
-#ifdef	CRAZY_WOW
-		if (d == s->rstart) break;
-#else
-		if (!(s->state & S_SET) && (d == s->rstart)) break;
-#endif
+	unless (s->state & S_SET) {
+		for (d = s->rstop; d; d = d->next) {
+			d->flags |= D_SET;
+			if (d == s->rstart) break;
+		}
 	}
+	if (flags & PRS_ALL) sccs_addmeta(s);
+
+	if (reverse) prs_reverse(s, s->table, flags, dspec, out);
+	else prs_forward(s, s->table, flags, dspec, out);
 	return (0);
 }
 

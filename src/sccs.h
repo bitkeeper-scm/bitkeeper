@@ -71,6 +71,7 @@
 #define	PRS_META	0x10000000	/* show metadata */
 #define	PRS_SYMBOLIC	0x20000000	/* show revs as beta1, etc. Not done */
 #define	PRS_PATCH	0x40000000	/* print in patch format */
+#define PRS_ALL		0x80000000	/* scan all revs, not just type D */
 
 #define SINFO_TERSE	0x10000000	/* print in terse format: sinfo -t */
 
@@ -496,6 +497,7 @@ int	sccs_get(sccs *s,
 int	sccs_clean(sccs *s, u32 flags);
 int	sccs_info(sccs *s, u32 flags);
 int	sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out);
+void	sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out);
 delta	*sccs_getrev(sccs *s, char *rev, char *date, int roundup);
 delta	*sccs_findDelta(sccs *s, delta *d);
 sccs	*sccs_init(char *filename, u32 flags, char *root);
@@ -543,6 +545,7 @@ delta	*sccs_findKey(sccs *, char *);
 delta	*sccs_dInit(delta *, char, sccs *, int);
 char	*sccs_gethost(void);
 char	*getuser(void);
+int	sccs_addmeta(sccs *);
 
 delta	*modeArg(delta *d, char *arg);
 FILE	*fastPopen(const char*, const char*);

@@ -500,9 +500,7 @@ header(sccs *cset, int diffs)
 # set of deltas contained in the patch.  The rest of the patch, the part\n\
 # that BitKeeper cares about, is below these diffs.\n");
 	}
-	cset->rstart = cset->rstop = cset->tree;
-	cset->state &= ~S_SET;
-	sccs_prs(cset, 0, 0, dspec, stdout);
+	sccs_prsdelta(cset, cset->tree, 0, dspec, stdout);
 	printf("# User:\t\t%s\n", getuser());
 	printf("# Host:\t\t%s\n", sccs_gethost() ? sccs_gethost() : "?");
 	getcwd(pwd, sizeof(pwd));
@@ -742,7 +740,6 @@ csetlist(cset_t *cs, sccs *cset)
 	char	buf[MAXPATH*2];
 	char	cat[30], csort[30];
 	char	*csetid;
-	pid_t	pid = -1;
 	int	status;
 	delta	*d;
 	MDBM	*goneDB = 0;
@@ -1416,28 +1413,13 @@ file2str(char *f)
 void
 sccs_patch(sccs *s, cset_t *cs)
 {
-	delta	*d, *e;
+	delta	*d;
 	int	deltas = 0;
 	int	i, n, newfile;
 	delta	**list;
 
 	if (cs->verbose>1) fprintf(stderr, "makepatch: %s ", s->gfile);
-	/*
-	 * This is a hack which picks up metadata deltas.
-	 * This is sorta OK because we know the graph parent is
-	 * there.
-	 */
-	for (n = 0, e = s->table; e; e = e->next) {
-		if (e->flags & D_SET) n++;
-		unless (e->flags & D_META) continue;
-		for (d = e->parent; d && (d->type != 'D'); d = d->parent);
-		if (d && (d->flags & D_SET)) {
-			unless (e->flags & D_SET) {
-				e->flags |= D_SET;
-				n++;
-			}
-		}
-	}
+	n = sccs_addmeta(s);
 
 	/*
 	 * Build a list of the deltas we're sending
