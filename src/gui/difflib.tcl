@@ -29,6 +29,7 @@ proc prev {} \
 	incr lastDiff -1
 	dot
 }
+
 proc visible {index} \
 {
 	if {[llength [.diffs.right bbox $index]] > 0} {
@@ -248,6 +249,8 @@ does not exist"
 	}
 	.diffs.left configure -state normal
 	.diffs.right configure -state normal
+	# append time to filename when called by csettool
+	# XXX: Probably OK to use same code for both difftool and csettool???
 	if {$Ln != ""} {
 		set t [clock format [file mtime $L] -format "%r %D"]
 		set t [clock format [file mtime $R] -format "%r %D"]
@@ -300,13 +303,16 @@ does not exist"
 	    ">"	{ incr diffCount 1; right $r $l $n }
 	}
 	# XXX: Might have to be changed for csettool vs. difftool
-	if {$diffCount == 0} { puts "No differences"; exit }
+	if {$diffCount == 0} { 
+		#puts "No differences"
+		return
+	}
 	close $r
 	close $l
 	catch { close $d }
 	if {"$rmList" != ""} {
 		foreach rm $rmList {
-			file delete $rm
+			catch {file delete $rm}
 		}
 	}
 	.diffs.left configure -state disabled
@@ -387,20 +393,4 @@ proc computeHeight {} \
 	set f [fontHeight [.diffs.left cget -font]]
 	set p [winfo height .diffs.left]
 	set gc($app.diffHeight) [expr {$p / $f}]
-}
-
-proc clearOrRecall {} \
-{
-	set which [.menu.searchClear cget -text]
-	if {$which == "Recall search"} {
-		searchrecall
-	} else {
-		searchreset
-	}
-}
-
-# Override searchsee definition so we scroll both windows
-proc searchsee {location} \
-{
-	scrollDiffs $location $location
 }

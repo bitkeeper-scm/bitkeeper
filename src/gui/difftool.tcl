@@ -11,21 +11,10 @@ proc widgets {} \
 	# Set global app var so that difflib knows which global config
 	# vars to read
 	set app "diff"
-	set search(prompt) "Search for:"
-	set search(plabel) .menu.prompt
-	set search(dir) "/"
-	set search(text) .menu.search
-	set search(widget) .diffs.right
-	set search(next) .menu.searchNext
-	set search(prev) .menu.searchPrev
-	set search(focus) .
-	set search(clear) .menu.searchClear
-	set search(recall) .menu.searchClear
-	set search(status) .menu.info
 	if {$tcl_platform(platform) == "windows"} {
-		set py -2; set px 1; set bw 2
+		set gc(py) -2; set gc(px) 1; set gc(bw) 2
 	} else {
-		set py 1; set px 4; set bw 2
+		set gc(py) 1; set gc(px) 4; set gc(bw) 2
 	}
 	getConfig "diff"
 	option add *background $gc(BG)
@@ -88,71 +77,42 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	frame .menu
 	    button .menu.prev -font $gc(diff.buttonFont) \
 		-bg $gc(diff.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-image prevImage -state disabled -command {
 			searchreset
 			prev
 		}
 	    button .menu.next -font $gc(diff.buttonFont) \
 		-bg $gc(diff.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-image nextImage -state disabled -command {
 			searchreset
 			next
 		}
 	    button .menu.quit -font $gc(diff.buttonFont) \
 		-bg $gc(diff.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "Quit" -command exit 
 	    button .menu.reread -font $gc(diff.buttonFont) \
 		-bg $gc(diff.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "Reread" -command getFiles 
 	    button .menu.help -bg $gc(diff.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-font $gc(diff.buttonFont) -text "Help" \
 		-command { exec bk helptool difftool & }
 	    button .menu.dot -bg $gc(diff.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-font $gc(diff.buttonFont) -text "Current diff" \
-		-command dot
-	    label $search(plabel) -font $gc(diff.buttonFont) -width 11 \
-		-relief flat \
-		-textvariable search(prompt)
-	    entry $search(text) -width 20 -font $gc(diff.buttonFont)
-	    button .menu.searchPrev -font $gc(diff.buttonFont) \
-		-bg $gc(diff.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
-		-image prevImage \
-		-state disabled -command {
-			searchdir ?
-			searchnext
-		}
-	    button .menu.searchNext -font $gc(diff.buttonFont) \
-		-bg $gc(diff.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
-		-image nextImage \
-		-state disabled -command {
-			searchdir /
-			searchnext
-		}
-	    button .menu.searchClear -font $gc(diff.buttonFont) \
-		-bg $gc(diff.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
-		-text "Clear search" -state disabled -command { clearOrRecall }
-	    label $search(status) -width 20 -font $gc(diff.buttonFont) -relief flat
+		-width 15 -command dot
 	    pack .menu.quit -side left
 	    pack .menu.help -side left
 	    pack .menu.reread -side left
 	    pack .menu.prev -side left -fill y 
 	    pack .menu.dot -side left
 	    pack .menu.next -side left -fill y
-	    pack .menu.prompt -side left
-	    pack $search(text) -side left
-	    pack .menu.searchPrev -side left -fill y
-	    pack .menu.searchClear -side left
-	    pack .menu.searchNext -side left -fill y
-	    pack $search(status) -side left -expand 1 -fill x
+
+	    search_widgets .menu .diffs.right
 
 	grid .menu -row 0 -column 0 -sticky ew
 	grid .diffs -row 1 -column 0 -sticky nsew
@@ -182,8 +142,10 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	    -background $gc(diff.searchColor) -font $gc(diff.fixedBoldFont)
 
 	keyboard_bindings
+	search_keyboard_bindings
 	searchreset
 	. configure -background $gc(BG)
+	wm deiconify .
 }
 
 # Set up keyboard accelerators.
@@ -218,14 +180,6 @@ proc keyboard_bindings {} \
 	bind all		<space>		next
 	bind all		<p>		prev
 	bind all		<period>	dot
-	bind all		<g>		"search g"
-	bind all		<colon>		"search :"
-	bind all		<slash>		"search /"
-	bind all		<question>	"search ?"
-	bind all		<Control-u>	searchreset
-	bind all		<Control-r>	searchrecall
-	bind $search(text)	<Return>	searchstring
-	bind $search(text)	<Control-u>	searchreset
 	if {$tcl_platform(platform) == "windows"} {
 		bind all <MouseWheel> {
 		    if {%D < 0} { next } else { prev }

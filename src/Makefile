@@ -371,9 +371,10 @@ citool: gui/citool.tcl gui/common.tcl gui/progress.tcl port/$(SYS)_platform.tcl
 	cat port/$(SYS)_platform.tcl gui/common.tcl gui/progress.tcl \
 	    gui/citool.tcl > citool
 
-_citool: gui/_citool.tcl gui/config.tcl gui/common.tcl port/$(SYS)_platform.tcl
+_citool: gui/_citool.tcl gui/config.tcl gui/common.tcl gui/search.tcl \
+	port/$(SYS)_platform.tcl gui/ciedit.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	    gui/_citool.tcl > _citool
+	    gui/search.tcl gui/ciedit.tcl gui/_citool.tcl > _citool
 
 setuptool: gui/setuptool.tcl gui/config.tcl gui/common.tcl \
 	port/$(SYS)_platform.tcl

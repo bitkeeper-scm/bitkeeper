@@ -142,7 +142,7 @@ proc dotFile {} \
 	catch { exec bk get -qkpr$parent "$file" > $l}
 	catch { exec bk get -qkpr$stop "$file" > $r}
 	readFiles $l $r
-	file delete $l $r
+	catch {file delete $l $r}
 
 	set buf ""
 	set line [lindex [split $line "."] 0]
@@ -286,9 +286,9 @@ proc widgets {} \
 	getConfig "cset"
 	option add *background $gc(BG)
 	if {$tcl_platform(platform) == "windows"} {
-		set py 0; set px 1; set bw 2
+		set gc(py) 0; set gc(px) 1; set gc(bw) 2
 	} else {
-		set py 1; set px 4; set bw 2
+		set gc(py) 1; set gc(px) 4; set gc(bw) 2
 	}
 
 	set g [wm geometry .]
@@ -296,18 +296,6 @@ proc widgets {} \
 		wm geometry . $gc(cset.geometry)
 	}
 	wm title . "Cset Tool"
-
-	set search(prompt) "Search for:"
-	set search(plabel) .menu.prompt
-	set search(dir) "/"
-	set search(text) .menu.search
-	set search(widget) .diffs.right
-	set search(next) .menu.searchNext
-	set search(prev) .menu.searchPrev
-	set search(focus) .
-	set search(clear) .menu.searchClear
-	set search(recall) .menu.searchClear
-	set search(status) .menu.info
 
 	frame .l
 	frame .l.filelist -background $gc(BG)
@@ -422,23 +410,23 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	frame .menu -background $gc(BG)
 	    button .menu.prevCset -font $gc(cset.buttonFont) \
 		-bg $gc(cset.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "<< Cset" -command prevCset
 	    button .menu.nextCset -font $gc(cset.buttonFont) \
 		-bg $gc(cset.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text ">> Cset" -command nextCset
 	    button .menu.prevFile -font $gc(cset.buttonFont) \
 		-bg $gc(cset.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "<< File" -command prevFile
 	    button .menu.nextFile -font $gc(cset.buttonFont) \
 		-bg $gc(cset.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text ">> File" -command nextFile
 	    button .menu.prev -font $gc(cset.buttonFont) \
 		-bg $gc(cset.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-image prevImage -state disabled \
 		-command {
 			searchreset
@@ -446,14 +434,15 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		}
 	    button .menu.next -font $gc(cset.buttonFont) \
 		-bg $gc(cset.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-image nextImage -state disabled \
 		-command {
 			searchreset
 			next
 		}
 	    menubutton .menu.mb -font $gc(cset.buttonFont) -relief raised \
-		-bg $gc(cset.buttonColor) -pady $py -padx $px -borderwid $bw \
+		-bg $gc(cset.buttonColor) \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "History" -width 8 -state normal \
 		-menu .menu.mb.menu
 		set m [menu .menu.mb.menu]
@@ -463,42 +452,16 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		    -command file_history
 	    button .menu.quit -font $gc(cset.buttonFont) \
 		-bg $gc(cset.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "Quit" -command exit 
 	    button .menu.help -bg $gc(cset.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-font $gc(cset.buttonFont) -text "Help" \
 		-command { exec bk helptool csettool & }
 	    button .menu.dot -bg $gc(cset.buttonColor) \
-		-pady $py -padx $px -borderwid $bw -width 15\
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) -width 15\
 		-font $gc(cset.buttonFont) -text "Current diff" \
 		-command dot
-	    label $search(plabel) -font $gc(cset.buttonFont) -width 11 \
-		-relief flat \
-		-textvariable search(prompt)
-	    entry $search(text) -width 20 -font $gc(cset.buttonFont)
-	    button .menu.searchPrev -font $gc(cset.buttonFont) \
-		-bg $gc(cset.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
-		-image prevImage \
-		-state disabled -command {
-			searchdir ?
-			searchnext
-		}
-	    button .menu.searchNext -font $gc(cset.buttonFont) \
-		-bg $gc(cset.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
-		-image nextImage \
-		-state disabled -command {
-			searchdir /
-			searchnext
-		}
-	    button .menu.searchClear -font $gc(cset.buttonFont) \
-		-bg $gc(cset.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
-		-text "Clear search" -state disabled -command { clearOrRecall }
-	    label $search(status) -width 10 -font $gc(cset.buttonFont) \
-		-relief flat
 
 	    pack .menu.quit -side left
 	    pack .menu.help -side left
@@ -508,12 +471,8 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	    pack .menu.dot -side left
 	    pack .menu.next -side left -fill y
 	    pack .menu.mb -side left -fill y
-	    pack .menu.prompt -side left
-	    pack $search(text) -side left
-	    pack .menu.searchPrev -side left -fill y
-	    pack .menu.searchClear -side left
-	    pack .menu.searchNext -side left -fill y
-	    pack $search(status) -side left -expand 1 -fill x
+	    # Add the search widgets to the menu bar
+	    search_widgets .menu .diffs.right
 
 	# smaller than this doesn't look good.
 	#wm minsize . $x 400
@@ -542,6 +501,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	$search(widget) tag configure search \
 	    -background $gc(cset.searchColor) -font $gc(cset.fixedBoldFont)
 	keyboard_bindings
+	search_keyboard_bindings
 	searchreset
 	foreach w {.diffs.left .diffs.right} {
 		bindtags $w {all Text .}
@@ -563,6 +523,8 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	.diffs.left configure -cursor left_ptr
 	.diffs.right configure -cursor left_ptr
 	. configure -background $gc(BG)
+	wm deiconify .
+	focus .l.filelist
 }
 
 # Set up keyboard accelerators.
@@ -601,14 +563,6 @@ proc keyboard_bindings {} \
 	bind all <period>	dot
 	bind all <N>		nextFile
 	bind all <P>		prevFile
-	bind all                <g>             "search g"
-	bind all                <colon>         "search :"
-	bind all                <slash>         "search /"
-	bind all                <question>      "search ?"
-	bind all                <Control-u>     searchreset
-	bind all                <Control-r>     searchrecall
-	bind $search(text)      <Return>        searchstring
-	bind $search(text)      <Control-u>     searchreset
 
 	if {$tcl_platform(platform) == "windows"} {
 		bind all <MouseWheel> {
