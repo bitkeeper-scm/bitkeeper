@@ -31,6 +31,7 @@ proc getConfig {prog} \
 		set _d(ci.filesHeight) 8	;# num files to show in top win
 	}
 
+	set _d(balloonTime) 1000	;# XXX: NOTDOC
 	set _d(BG) #f0f0f0		;# default background
 	set _d(buttonColor) #d0d0d0	;# menu buttons
 	set _d(diffHeight) 30		;# height of a diff window

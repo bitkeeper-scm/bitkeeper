@@ -411,15 +411,19 @@ proc readFiles {L R {O {}}} \
 	# append time to filename when called by csettool
 	# XXX: Probably OK to use same code for difftool, fmtool and csettool???
 	if {[info exists lname] && ($lname != "")} {
-		set t [clock format [file mtime $L] -format "%r %D"]
-		set t [clock format [file mtime $R] -format "%r %D"]
-		.diffs.status.l configure -text "$lname ($t)"
-		.diffs.status.r configure -text "$rname ($t)"
+		set lt [clock format [file mtime $L] -format "%r %D"]
+		set rt [clock format [file mtime $R] -format "%r %D"]
+		.diffs.status.l configure -text "$lname ($lt)"
+		.diffs.status.r configure -text "$rname ($rt)"
+		balloon_help .diffs.status.l "$lname\n($lt)"
+		balloon_help .diffs.status.r "$rname\n($rt)"
 		.diffs.status.middle configure -text "... Diffing ..."
 	} else {
 		set f [file tail $L]
 		.diffs.status.l configure -text "$f"
+		balloon_help .diffs.status.l "$f"
 		set f [file tail $R]
+		balloon_help .diffs.status.r "$f"
 		.diffs.status.r configure -text "$f"
 		.diffs.status.middle configure -text "... Diffing ..."
 	}
@@ -607,18 +611,73 @@ proc fontHeight {f} \
 	return [expr {[font metrics $f -ascent] + [font metrics $f -descent]}]
 }
 
+proc reconfigureStatus {} \
+{
+	global gc app
+
+	set w [winfo width .diffs.status]
+	set mw [winfo width .diffs.status.mstat]
+	set w [expr {$w - $mw}]
+	set linfo [expr $w * .45]
+	set rinfo [expr $w * .45]
+	set minfo [expr $w * .10]
+	set fh [expr [fontHeight [.diffs.status.l cget -font]] + 6]
+	#puts stderr "mw=($mw) w=$w linfo=($linfo) rinfo=$rinfo minfo=($minfo)"
+	#puts [pack info .diffs.status.lstat]
+	.diffs.status.lstat configure -width $linfo -height $fh
+	#.diffs.status.mstat configure $minfo -height 20
+	.diffs.status.rstat configure -width $rinfo -height $fh
+}
+
 proc computeHeight {w} \
 {
 	global gc app
 
 	update
 	if {$w == "diffs"} {
-		set f [fontHeight [.diffs.left cget -font]]
+		set fh [fontHeight [.diffs.left cget -font]]
 		set p [winfo height .diffs.left]
-		set gc($app.diffHeight) [expr {$p / $f}]
+		set w [winfo width .]
+		set gc($app.diffHeight) [expr {$p / $fh}]
 	} else {
-		set f [fontHeight [.merge.t cget -font]]
+		set fh [fontHeight [.merge.t cget -font]]
 		set p [winfo height .merge.t]
-		set gc($app.mergeHeight) [expr {$p / $f}]
+		set gc($app.mergeHeight) [expr {$p / $fh}]
 	}
+	return
+}
+
+# The balloon stuff was taken from the tcl wiki pages and modified by
+# ask so that it can take a command pipe to display
+proc balloon_help {w msg {cmd {}}} {
+
+	global gc app
+
+	set tmp ""
+	if {$cmd != ""} {
+		set msg ""
+		set fid [open "|$cmd" r]
+		while {[gets $fid tmp] >= 0} {
+		#	lappend msg $tmp
+			set msg "$msg\n$tmp"
+		}
+	}
+	bind $w <Enter> \
+	    "after $gc($app.balloonTime) \"balloon_aux %W [list $msg]\""
+	bind $w <Leave> \
+	    "after cancel \"balloon_aux %W [list $msg]\"
+	    after 100 {catch {destroy .balloon_help}}"
+    }
+
+proc balloon_aux {w msg} {
+	set t .balloon_help
+	catch {destroy $t}
+	toplevel $t
+	wm overrideredirect $t 1
+	pack [label $t.l -text $msg -relief groove -bd 1 -bg gold] -fill both
+	set x [expr [winfo rootx $w]+6+[winfo width $w]/2]
+	set y [expr [winfo rooty $w]+6+[winfo height $w]/2]
+	wm geometry $t +$x\+$y
+	bind $t <Enter> {after cancel {catch {destroy .balloon_help}}}
+	bind $t <Leave> "catch {destroy .balloon_help}"
 }

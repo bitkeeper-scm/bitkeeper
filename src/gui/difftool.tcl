@@ -26,19 +26,48 @@ proc widgets {} \
 		# of the widgets are correctly sized. Fixes irritating 
 		# behaviour on ctwm.
 	}
+
+	# XXX: Need to redo all of the widgets so that we can start being
+	# more flexible (show/unshow line numbers, mapbar, statusbar, etc)
+	#set w(diffwin) .diffwin
+	#set w(leftDiff) $w(diffwin).left.text
+	#set w(RightDiff) $w(diffwin).right.text
 	frame .diffs
 	    frame .diffs.status
+		frame .diffs.status.lstat
+		frame .diffs.status.llnum
+		frame .diffs.status.mstat
+		frame .diffs.status.rstat
+		frame .diffs.status.rlnum
+
 		label .diffs.status.l -background $gc(diff.oldColor) \
+		    -font $gc(diff.fixedFont) -relief sunken -borderwid 2
+		label .diffs.status.l_lnum -background $gc(diff.oldColor) \
 		    -font $gc(diff.fixedFont) -relief sunken -borderwid 2
 		label .diffs.status.r -background $gc(diff.newColor) \
 		    -font $gc(diff.fixedFont) -relief sunken -borderwid 2
+		label .diffs.status.r_lnum -background $gc(diff.oldColor) \
+		    -font $gc(diff.fixedFont) -relief sunken -borderwid 2
 		label .diffs.status.middle \
 		    -foreground black -background $gc(diff.statusColor) \
-		    -font $gc(diff.fixedFont) -wid 20 \
+		    -font $gc(diff.fixedFont) -wid 15 \
 		    -relief sunken -borderwid 2
-		grid .diffs.status.l -row 0 -column 0 -sticky ew
-		grid .diffs.status.middle -row 0 -column 1
-		grid .diffs.status.r -row 0 -column 2 -sticky ew
+		pack .diffs.status \
+		    .diffs.status.lstat \
+		    .diffs.status.mstat \
+		    .diffs.status.rstat \
+		    -side left -expand true -fill x
+		pack configure .diffs.status.lstat -anchor w
+		pack configure .diffs.status.rstat -anchor e
+		pack .diffs.status.l -in .diffs.status.lstat \
+		    -expand 1 -fill x -anchor w
+		pack .diffs.status.middle -in .diffs.status.mstat \
+		    -expand 1 -fill x
+		pack .diffs.status.r -in .diffs.status.rstat \
+		    -expand 1 -fill x -anchor e
+		pack propagate .diffs.status.lstat 0
+		#pack propagate .diffs.status.mstat 0
+		pack propagate .diffs.status.rstat 0
 	    text .diffs.left -width $gc(diff.diffWidth) \
 		-height $gc(diff.diffHeight) \
 		-bg $gc(diff.textBG) -fg $gc(diff.textFG) -state disabled \
@@ -180,6 +209,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	if {("$g" == "1x1+0+0") && ("$gc(diff.geometry)" != "")} {
 		wm geometry . $gc(diff.geometry)
 	}
+	bind .diffs.status <Configure> { reconfigureStatus }
 }
 
 # Set up keyboard accelerators.
