@@ -1091,37 +1091,6 @@ proc readConfig {type {filename {}}} \
 	return [array get result]
 }
 
-# this removes hardcoded newlines from paragraphs so that the paragraphs
-# will wrap when placed in a widget that wraps (such as the description
-# of a step)
-proc wrap {text} \
-{
-	if {$::tcl_version >= 8.2} {
-		set text [string map [list \n\n \001 \n { }] $text]
-		set text [string map [list \001 \n\n] $text]
-	} else {
-		regsub -all "\n\n" $text \001 text
-		regsub -all "\n" $text { } text
-		regsub -all "\001" $text \n\n text
-	}
-	return $text
-}
-
-proc getmsg {key args} \
-{
-	# do we want to return something like "lookup failed for xxx"
-	# if the lookup fails? What we really need is something more
-	# like real message catalogs, where I can supply messages that
-	# have defaults.
-	set data ""
-	set cmd [list bk getmsg $key]
-	if {[llength $args] > 0} {
-		lappend cmd [lindex $args 0]
-	}
-	set err [catch {set data [eval exec $cmd]}]
-	return $data
-}
-
 # The purpose of this proc is to take the wizard data and format it
 # into a valid config file. This will *not* add the "repository"
 # key, since that is done by setup

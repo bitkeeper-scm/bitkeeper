@@ -108,8 +108,8 @@ The file #BKARG# is corrupted because of a bug in
 BitKeeper version 3.0.1 and eariler.  It was caused by a 
 file on Windows that has a carrage return as the last 
 character of the file without a following newline.
-Please contact BitMover at support@bitmover.com for
-help in repairing this file.
+Please contact BitMover by running 'bk support'
+to request help in repairing this file.
 $
 #setup_1
 
@@ -288,7 +288,8 @@ a count of the pending logs: use the following command:
 	bk _lconfig -p
 
 If pending count is still non-zero after bk commit is done, please run
-the following command and email its output to support@bitmover.com:
+the following command and attach/include its output in the form
+presented by running 'bk support'.
 
 	bk _lconfig -d
 $
@@ -303,7 +304,8 @@ There are two possible causes for this error:
 a) Network connectivity problems
 b) Problems with the server at www.bitkeeper.com
 
-Please run the following command and email its output to support@bitmover.com:
+Please run the following command and attach/include its output in the form
+presented by running 'bk support'.
 
 	bk _lconfig -d
 $
@@ -321,7 +323,7 @@ b) Problems in the logging tree at www.openlogging.org
 Please run the logging command in debug mode to see what the problem is:
 	bk log -d
 If you have ruled out a network connectivity problem at your local network,
-please email the following information to support@bitmover.com:
+please include the following information when running 'bk support':
 a) Output of the above logging command
 b) Root key of your project using the following command:
 	bk identity
@@ -349,7 +351,6 @@ changeset quota is now down to #BKARG# which is less than 50 changesets
 away from the limit.  You will not be able to commit any more changesets
 when the quota reaches zero.  Please upgrade to a commercial license.
 $
-
 #bugtemplate
 BitKeeper Bug Report
 --------------------
@@ -367,10 +368,10 @@ Bug/RFE:
 	[bug is obvious, RFE is request for enhancement]
 
 Severity:
-	[5 - no big deal, 1 - can't use BitKeeper until this is fixed]
+	[5 - annoying, 1 - cannot use BitKeeper until this is fixed]
 
 Priority:
-	[5 - fix whenever, 1 - fix RIGHT NOW]
+	[5 - fix sometime, 1 - fix RIGHT NOW]
 
 
 Program:
@@ -398,6 +399,56 @@ Description:
 
 Suggestions:
 	Any suggested fix is most welcome.
+	Take as much space as you need, but leave a blank line
+	between this and the next field.
+
+Interest list:
+	[emails of others who care about this like so: a@foo.com,b@foo.com]
+
+Contact info:
+	Your contact information here.
+	A phone number and a time to call is useful if we need more
+	information.
+	You can also specify a preferred email address.
+	Take as much space as you need, but leave a blank line between
+	this and the ----- below.
+
+------------------------------------------------------------------------------
+$
+#supporttemplate
+BitKeeper Support Request
+-------------------------
+
+Please fill in the fields below as much as possible.  We parse this
+automatically, so please follow the format guidelines.
+
+Fields marked with [whatever] are single line fields.
+
+The Description, Suggestions, and Contact sections can be multi line.
+
+------------------------------------------------------------------------------
+
+Program:
+	[cset, co, delta, etc.  If you know which caused the problem]
+
+Release:
+	#BKEXEC# bk version | head -1
+
+OS:
+	#BKEXEC# uname -a
+
+Synopsis:
+	[one line: i.e., sfiles dumps core when running on CP/M]
+
+Description:
+	Please tell us what support you would like.
+	In general, this is what helps us help you:
+	- what you were doing
+	- what happened
+	- can you make it happen again, if so, how?
+	- what you think went wrong
+	- machine / OS / etc on which the bug occurred
+	- anything else that you think might be useful
 	Take as much space as you need, but leave a blank line
 	between this and the next field.
 
@@ -910,11 +961,82 @@ $
 BitKeeper was unable to validate this version of BitKeeper.
 The error code returned from BitMover was:
 	#BKARG#
-Contact support@bitmover.com for assistance.
+Please run 'bk support' to request assistance.
 $
 #lease-timesync
 Unable to obtain a permission to use this version of BitKeeper from
 lease.openlogging.org because the local clock on this computer is off
 by more than 24 hours.  Please verify the time on your computer and
 that the timezone is set correctly and try again.
+$
+#gui-support-submitter
+Please enter your contact information here, possibly including
+a phone number and a time to call in case more information is
+needed. You can also specify your preferred email address.
+$
+#gui-support-summary
+One line: i.e., "sfiles dumps core when running on CP/M"
+$
+#gui-support-program
+cset, co, delta, etc -- if you are having problems with a specific one
+$
+#gui-support-os
+On what operating system did the problem occur?
+$
+#gui-support-release
+What release of bitkeeper do you have installed?
+$
+#gui-support-description
+Please tell us:
+    - What you were doing.
+    - What happened.
+    - Can you make it happen again. If so, how?
+    - What you think went wrong.
+    - Anything else that you think might be useful
+$
+#gui-support-interest
+Email addresses of others who care about this problem.
+If more than one, then as a comma separated list, such as:
+user1@mywork.com,user2@mywork.com
+$
+#gui-support-attachment
+Please attach any files that may help responding to your request.
+$
+#gui-support-projemail
+Email address where to send this support request.
+$
+#gui-support-project
+For what project is support being requested?
+$
+#gui-support-help
+Please fill in all the fields that you can. You may use the TAB key
+to move between fields. As you move to each field this help window
+will change to describe what it is that you should put in the field.
+Some fields are automatically filled in and may not be editable, but
+are displayed so you can see what will be sent to BitMover.
+Required fields may appear with a different background color.
+$
+#gui-bug-type
+The two choices are: Bug or Request for Enhancement
+$
+#gui-bug-severity
+5 - annoying. 1 - cannot use BK until this is fixed
+$
+#gui-bug-priority
+5 - fix sometime. 1 - fix RIGHT NOW
+$
+#gui-bug-program
+cset, co, delta, etc. If you know which cause the problem
+$
+#gui-bug-suggestion
+Any suggested fix is most welcome. Take as much space as you need.
+$
+#gui-bug-projemail
+Email address where to send this bug submission.
+#gui-bug-project
+For what project is this bug being submitted?
+$
+#gui-bug-attachment
+Please attach any files that may help in understanding and fixing
+the problem.
 $

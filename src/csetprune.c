@@ -478,7 +478,7 @@ fixTags(sccs *s)
 				    "csetprune: Tag (%s) on pruned revision "
 				    "(%s) will be removed,\nbecause the "
 				    "revision has no parent to receive the "
-				    "tag.\nPlease write support@bitmover.com "
+				    "tag.\nPlease run 'bk support' "
 				    "describing what you did to get this "
 				    "message.\nThis is a warning message, "
 				    "not a failure.\n", sym->symname, d->rev);
@@ -534,7 +534,7 @@ fixTags(sccs *s)
 				    "revision "
 				    "(%s) will be removed,\nbecause the "
 				    "revision has no parent to receive the "
-				    "tag.\nPlease write support@bitmover.com "
+				    "tag.\nPlease run 'bk support' "
 				    "describing what you did to get this "
 				    "message.\nThis is a warning message, "
 				    "not a failure.\n",

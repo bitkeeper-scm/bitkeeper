@@ -11,6 +11,9 @@ proc getConfig {prog} \
 	option add *Label.borderWidth 1 100
 	option add *Button.borderWidth 1 100
 	option add *Menubutton.borderWidth 1 100
+	option add *Menu.borderWidth 1 widgetDefault
+	option add *Menu.highlightThickness 1 widgetDefault
+	option add *Menu.activeBorderWidth 1 widgetDefault
 
 	initFonts $app _d
 
@@ -67,6 +70,7 @@ proc getConfig {prog} \
 	set _d(quit)	Control-q	;# binding to exit tool
 
 	set _d(bug.popupBG) $BLUE
+	set _d(support.popupBG) $BLUE
 	set _d(ci.iconBG) $BKPALEOLIVE	;# background of some icons
 	set _d(ci.csetIconBG) $BKBLUE1	;# background of some icons
 	set _d(ci.quitSaveBG) $BKSLATEBLUE1	;# "quit but save" button
@@ -160,6 +164,7 @@ proc getConfig {prog} \
 	set _d(setup.stripeColor) $BLUE ;# color of horizontal separator
 	set _d(setup.mandatoryColor) $BKSLATEGRAY1 ;# mandatory fields
 	set _d(bug.mandatoryColor) $BKSLATEGRAY1 ;# mandatory fields
+	set _d(support.mandatoryColor) $BKSLATEGRAY1 ;# mandatory fields
 	set _d(entryColor) $WHITE	   ;# Color of input fields
 
 	# N.B. 'bk dotbk' has the side effect that it will move an
