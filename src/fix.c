@@ -42,7 +42,11 @@ fix_main(int ac,  char **av)
 		}
 		get(p, SILENT|PRINT, fix_file);
 		s = sccs_init(p, SILENT, 0);
-		assert(s);
+		unless (s && s->tree) {
+			fprintf(stderr, "%s does not exists\n", s->sfile);
+			sccs_free(s);
+			return (1);
+		}
 		d = findrev(s, NULL);
 		assert(d);
 		sprintf(buf, "bk stripdel %s -r%s %s", qflag, d->rev, av[i]);
