@@ -42,8 +42,26 @@ trigger_env(char *prefix, char *event, char *what)
 	put_trigger_env(prefix, "REALUSER", sccs_realuser());
 	put_trigger_env(prefix, "REALHOST", sccs_realhost());
 	put_trigger_env(prefix, "PLATFORM", platform());
-}
+	if (streq(event, "resolve")) {
+		char    pwd[MAXPATH];
+		FILE    *f = fopen("BitKeeper/tmp/patch", "r");
+		char    *p;
 
+		if (f) {
+			buf[0] = 0;
+			fnext(buf, f);
+			fclose(f);
+			assert(buf[0]);
+			chomp(buf);
+			chdir(RESYNC2ROOT);
+			getcwd(pwd, sizeof(pwd));
+			chdir(ROOT2RESYNC);
+			p = aprintf("%s/%s", pwd, buf);
+			put_trigger_env("BK", "PATCH", p);
+			free(p);
+		}
+	}
+}
 
 /*
  * trigger:  Fire triggers before and/or after repository level commands.

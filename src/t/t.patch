@@ -52,15 +52,16 @@ cat > PATCH << EOF
 +Hi Mom!
 
 EOF
-export LOGNAME=torvalds BK_USER=trini BK_HOST=butthead.com
+export BK_USER=trini BK_HOST=butthead.com
+ME=`bk getuser -r`
 bk import $Q -Cftpatch PATCH proj
 cd proj
 export BK_IMPORTER=`bk getuser -r`
 bk commit $Q -y'Should be trini@butthead.com[torvalds]'
 bk changes -vr+ -nd':HOST:[:IMPORTER:]' | bk undos > GOT
 bk undos > ../WANT <<EOF
-butthead.com[torvalds]
-butthead.com[torvalds]
+butthead.com[$ME]
+butthead.com[$ME]
 EOF
 cmp -s GOT ../WANT || {
 	echo failed to set the hostname properly
@@ -77,15 +78,15 @@ echo OK
 
 echo $N Test import of a patch file, look for user name .............$NL
 cd $HERE
-export LOGNAME=lm BK_USER=trini BK_HOST=headbutt.com
+export BK_USER=trini BK_HOST=headbutt.com
 bk import $Q -Cftpatch PATCH child
 cd child
 export BK_IMPORTER=`bk getuser -r`
 bk commit $Q -y'Should be trini@headbutt.com[lm]'
 bk changes -vr+ -nd':HOST:[:IMPORTER:]' | bk undos > GOT
 bk undos > ../WANT <<EOF
-headbutt.com[lm]
-headbutt.com[lm]
+headbutt.com[$ME]
+headbutt.com[$ME]
 EOF
 cmp -s GOT ../WANT || {
 	echo failed to set the hostname properly

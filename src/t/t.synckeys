@@ -32,22 +32,26 @@ bk changes -Lk $HERE/project | bk _keysort > GOT
 bk -R prs -hand:KEY: ChangeSet | head -2 | bk _keysort > WANT
 cmp -s WANT GOT || { echo failed; diff -u WANT GOT; exit 1; }
 echo OK
+
 echo $N List local changes as rev and type ..........................$NL
 bk changes -afLnd'$if(:DT:=T){:TAG:}$if(:DT:=D){:I:}' $HERE/project > WANT
 bk -R prs -hafnd'$if(:DT:=T){:TAG:}$if(:DT:=D){:I:}' | tail -2 > GOT
 cmp -s WANT GOT || { echo failed; diff WANT GOT; exit 1; }
 echo OK
+
 echo $N List keys which are remote only, changes -Rk ................$NL
 bk changes -Rk $HERE/project | bk _keysort > GOT
 ( cd $HERE/project && 
   bk -R prs -hand:KEY: ChangeSet | head -2 | bk _keysort ) > WANT
 cmp -s WANT GOT || { echo failed; diff WANT GOT; exit 1; }
 echo OK
+
 echo $N List remote changes as rev and type .........................$NL
 bk changes -afRnd'$if(:DT:=T){:TAG:}$if(:DT:=D){:I:}' $HERE/project |
     bk _keysort > GOT
 ( cd $HERE/project && 
-  bk -R prs -hafnd'$if(:DT:=T){:TAG:}$if(:DT:=D){:I:}' | tail -2 ) > GOT
+  bk -R prs -hafnd'$if(:DT:=T){:TAG:}$if(:DT:=D){:I:}' | tail -2 ) > WANT
+cmp -s WANT GOT || { echo failed; diff WANT GOT; exit 1; }
 echo OK
 
 echo $N make sure bk send xfers tags correctly ......................$NL

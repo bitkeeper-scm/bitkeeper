@@ -144,6 +144,7 @@ fromTo(char *op, remote *f, remote *t)
 {
 	char	*from, *to;
 	remote	*tmp;
+	int	width;
 
 	assert(f || t);
 	if (f) {
@@ -160,7 +161,9 @@ fromTo(char *op, remote *f, remote *t)
 		to = remote_unparse(tmp);
 		remote_free(tmp);
 	}
-	printf("%s %s -> %s\n", op, from, to);
+	width = strlen(op) - 3;
+	if (width < 0) width = 0;
+	printf("%s %s\n%*s -> %s\n", op, from, width, "", to);
 	free(from);
 	free(to);
 }

@@ -1096,7 +1096,6 @@ check(sccs *s, MDBM *db)
 			}
 		}
 		unless (t) {
-			if (MONOTONIC(s) && d->dangling) continue;
 			fprintf(stderr,
 		    "%s: marked delta %s should be in ChangeSet but is not.\n",
 			    s->gfile, d->rev);

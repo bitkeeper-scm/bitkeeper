@@ -242,8 +242,7 @@ usage:			system("bk help -s diffs");
 		 * IS_EDITED() doesn't work because they could have chmod +w
 		 * the file.
 		 */
-		if (!things && IS_WRITABLE(s) && HAS_PFILE(s) &&
-		    !MONOTONIC(s) && !Rev &&
+		if (!things && !Rev && IS_WRITABLE(s) && HAS_PFILE(s) &&
 		    !sccs_hasDiffs(s, GET_DIFFTOT|flags|ex, 1)) {
 			goto next;
 		}

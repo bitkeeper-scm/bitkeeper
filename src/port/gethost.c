@@ -29,6 +29,19 @@ sccs_realhost(void)
 	return (host[0] ? host : "127.0.0.1");
 }
 
+char *
+sccs_host()
+{
+	char	*r = sccs_realhost();
+	char	*e = sccs_gethost();
+	static	char *ret = 0;
+
+	if ((r == e) || streq(r, e)) return (e);
+	if (ret) free(ret);
+	ret = aprintf("%s/%s", e, r);
+	return (ret);
+}
+
 private void
 gethost(char *host, int hlen, int envOK)
 {

@@ -153,6 +153,7 @@ private int
 clone(char **av, opts opts, remote *r, char *local, char **envVar)
 {
 	char	*p, buf[MAXPATH];
+	char	*lic;
 	int	gzip, rc = 2;
 
 	gzip = r->port ? opts.gzip : 0;
@@ -197,6 +198,12 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		disconnect(r, 2);
 		goto done;
 	}
+	if ((lic = getenv("BKD_LICTYPE")) && !licenseAcceptOne(1, lic)) {
+		fprintf(stderr, "clone: failed to accept license '%s'\n", getenv("BKD_LICTYPE"));
+		disconnect(r, 2);
+		goto done;
+	}
+
 	unless (opts.quiet) {
 		remote	*l = remote_parse(local, 0);
 
@@ -262,7 +269,7 @@ private	int
 clone2(opts opts, remote *r)
 {
 	char	*p;
-	char	*checkfiles = bktmp(0, "clone2");
+	char	*checkfiles;
 	FILE	*f;
 	int	rc;
 
@@ -272,6 +279,13 @@ clone2(opts opts, remote *r)
 	if (bk_proj) proj_free(bk_proj);
 	bk_proj = proj_init(0);
 
+	unless (licenseAccept(1)) {
+		fprintf(stderr, "clone failed license accept check\n");
+		unlink("SCCS/s.ChangeSet");
+		return (-1);
+	}
+
+	checkfiles = bktmp(0, "clone2");
 	f = fopen(checkfiles, "w");
 	assert(f);
 	sccs_rmUncommitted(opts.quiet, f);
@@ -388,7 +402,7 @@ sccs_rmUncommitted(int quiet, FILE *f)
 		perror("popen of bk sfiles -pAC");
 		exit(1);
 	}
-	sprintf(buf, "bk stripdel -d %s -", (quiet ? "-q" : ""));
+	sprintf(buf, "bk stripdel %s -", (quiet ? "-q" : ""));
 	unless (out = popen(buf, "w")) {
 		perror("popen(bk stripdel -, w)");
 		exit(1);
@@ -610,7 +624,7 @@ out:		chdir(from);
 	chdir(from);
 	repository_rdunlock(0);
 	fromid = repo_id();
-	chdir(dest);
+	if (chdir(dest)) goto out;
 	rmdir("RESYNC");		/* undo wants it gone */
 	if (clone2(opts, r)) {
 		mkdir("RESYNC", 0777);

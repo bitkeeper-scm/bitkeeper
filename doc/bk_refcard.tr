@@ -1,4 +1,4 @@
-.\" File: bk_refcard %K%
+.\" File: bk_refcard amy@lioness.bitmover.com|doc/bk_refcard.tr|20030623210852|47231
 .\" groff bk_refcard
 .nr HM 0.25i      \" Header Margin
 .nr FM 0.25i      \" Footer Margin
@@ -150,7 +150,7 @@ Repository-Level Commands
 .H2
 bk abort
 .LP
-Abort a failed pull, push, or resync
+Abort a failed pull or push
 .\" # 
 .\" # Changes
 .\" # 
@@ -159,15 +159,19 @@ bk changes
 .LP
 List changesets in this repository.  See also 
 \fBbk revtool\fP.
+.IP -L
+List changes in local that are not in remote
+.IP -R
+List changes in remote that are not in local
 .\" # 
 .\" # Check
 .\" # 
 .H2
-bk -r check -a [\fIoptions\fP]
+bk -r check -acv [\fIoptions\fP]
 .LP
 Run a consistency check (like fsck).
-.IP -w
-List writable files without lock files.
+.IP -f
+Fix any fixable errors found during check.
 .\" # 
 .\" # Clone
 .\" # 
@@ -177,6 +181,8 @@ bk clone [\fIoptions\fP] \fIsource \fIdestination\fP
 Make a copy of a repository
 .IP -r\fIrev|tag\fP
 clone backwards to the changeset specified by \fIrev\fP or \fItag\fP.
+.IP -l
+Make a hard linked clone (Unix only).
 .H2
 .\" # 
 .\" # Commit
@@ -187,10 +193,10 @@ bk commit [\fIoptions\fP]
 Group checked in changes into a changeset
 .\" .IP -Smsg
 .\" Tag tree with \fImsg\fP when committing
-.IP -yx
-Set check-in comment to \fIx\fP
-.\" .IP -Yx
-.\" Get check-in comment from file \fIx\fP
+.IP -yC
+Set check-in comment to \fIC\fP
+.IP -YC
+Get check-in comment from file \fIC\fP
 .LP
 See also \fBbk citool\fP.
 .\" # 
@@ -210,6 +216,15 @@ Export the tree as of revision \fIrev\fP.
 Export the specified revision[s] as a traditional patch.
 .IP -x\fIpat\fP    
 Export all pathnames not matching pattern \fIpat\fP.
+.sp 1.3
+.B2
+.B1
+.H1
+Repository-Level Commands...
+.sp .5
+.\" #
+.\" # Import
+.\" #
 .H2
 bk import [\fIoptions\fP] \fIsource\fP \fIdest\fP
 .LP
@@ -218,12 +233,6 @@ Import external changes into a BK repository.
 Import a patch (can be done repeatedly).
 .IP -t\fICVS\fP
 Import a CVS (one time only).
-.sp 1.1
-.B2
-.B1
-.H1
-Repository-Level Commands...
-.sp .5
 .\" # 
 .\" # Parents
 .\" # 
@@ -234,11 +243,11 @@ Show or set the repository from which we pull or to which we push
 .\" # 
 .\" # Pending
 .\" # 
-.H2
-bk pending 
-.LP
-Show checkins made to files in this repository which have not been
-committed to a changeset.
+.\" .H2
+.\" bk pending 
+.\" .LP
+.\" Show checkins made to files in this repository which have not been
+.\" committed to a changeset.
 .\" # 
 .\" # Pull
 .\" # 
@@ -248,10 +257,6 @@ bk pull [\fIoptions\fP] [\fIsource\fP]
 Pulls changes from the parent or source to this repository
 .IP -i
 Turn off automerge
-.IP -l
-Verbose listing of changesets to be pulled
-.IP -n
-Dry run, list changes (-l for verbose listing)
 .\" # 
 .\" # Push
 .\" # 
@@ -261,19 +266,6 @@ bk push [\fIoptions\fP] [\fIdestination\fP]
 Push changes from this repository to the parent or dest
 .IP -a
 Automatically do a pull if the push has conflicts
-.IP -l
-Verbose listing of changesets to be pushed
-.IP -n
-Dry run, list changes (-l for verbose listing)
-.\" # 
-.\" # Receive
-.\" # 
-.H2
-bk receive [\fItakepatch_options\fP] [\fIrepository\fP]
-.LP
-Apply patches received via email (see also bk send)
-.IP -a
-Call resolve to apply the changes
 .\" # 
 .\" # Resolve
 .\" # 
@@ -283,38 +275,24 @@ bk resolve [\fIoptions\fP] [\fIproject_root\fP]
 Merge conflicts created by a pull
 .IP -a
 Automerge if possible
-.IP -l
-Show more status on stderr
 .IP -t
 Text-only mode, use no GUI tools.
 .IP -y[\fImsg\fP]
 Use \fImsg\fP as the check-in message
 .\" # 
-.\" # Send
-.\" # 
-.sp .5
-.H2
-bk send [\fIoptions\fP] email_address
-.LP
-Synchronize repositories using email as the transport.
-.IP -d
-Prepend the patch with unified diffs.
-.IP -w\fIcmd\fP
-Wrap the patch with \fIcmd\fP before sending it.
-.IP -r\fIrevs\fP
-Specify the list of changesets to send.
-.\" # 
 .\" # Setup
 .\" # 
 .H2
-bk setup [\fIoptions\fP] [\fIdirectory\fP]
+bk setup [\fIoptions\fP] \fIdirectory\fP
 .LP
-Create a new BitKeeper package
+Create a new BitKeeper package in \fIdirectory\fP.
 .IP -c\fIfile\fP
 Use \fIfile\fP as the configuration file
 .LP
 Use \fBbk clone\fP to create copies, \fBbk setup\fP
 is for the creation of a new package.
+.LP
+See also \fBbk setuptool\fP.
 .\" # 
 .\" # Status
 .\" # 
@@ -336,6 +314,14 @@ Tag \fIrev\fP instead of most recent changeset.
 .LP
 See also \fBbk clone -r\fP.
 .H2
+.\" #
+.\" # Unpull
+.\" #
+bk unpull
+.LP
+Remove changesets added by the most recent bk pull.  Also \fBremoves the
+merge\fP if any.
+.H2
 .\" # 
 .\" # Version
 .\" # 
@@ -343,7 +329,7 @@ See also \fBbk clone -r\fP.
 bk version
 .LP
 Shows BitKeeper software version.
-.sp .5
+.sp 5.1
 .B2
 .B1
 .\" ############################
@@ -356,13 +342,13 @@ File-Level Commands
 .H2
 Specifying file argument lists
 .LP
-\fBbk\fP \fIcmd\fP - invokes \fIcmd\fP on \fI./SCCS/s.*\fP
+\fBbk\fP \fIcmd\fP - invokes \fIcmd\fP on all files in this directory only
 .LP
-\fBbk\fP \fIcmd *.c\fP - invokes \fIcmd\fP on \fI./SCCS/s.*.c\fP
+\fBbk\fP \fIcmd *.c\fP - invokes \fIcmd\fP on \fI*.c\fP
 .LP
 \fBbk -r\fP \fIcmd\fP - invokes \fIcmd\fP on all revision controlled files
 .LP
-\fBbk -r\fP\fIdir cmd\fP - as above, starts at \fIdir\fP instead of repository
+\fBbk -r\fP\fIdir cmd\fP - starts at \fIdir\fP instead of repository
 root
 .LP
 \fBbk -c -r\fP \fIcmd\fP - invokes \fIcmd\fP on all modified files
@@ -406,22 +392,23 @@ Check out files
 bk diffs [\fIoptions\fP] [\fIfiles\fP]
 .LP
 Show differences in revision controlled files
-.IP -c
-Do context diffs
-.IP -D
-Prefix diffs with dates (2 revisions only)
-.IP -f
-Prefix lines with file names
-.IP -M
-Prefix lines with revision numbers
 .IP -r\fIrev\fP
 Diff working file against revision \fIrev\fP
 .IP -r\fIr1..r2\fP
 Diff revision \fIr1\fP against revision \fIr2\fP
-.IP -U
-Prefix lines with user names
+.IP -r@\fIcset\fP
+Diff working file against version in changeset \fIcset\fP
 .IP -u
 Do unified diffs
+.\" #
+.\" # Fix
+.\" #
+.H2
+bk fix [\fIfile.c\fP]
+.LP
+Re-edit a checked in, but uncommitted, delta
+.IP \-c
+Re-edit the most recent changeset (use with caution).
 .\" # 
 .\" # Edit
 .\" # 
@@ -435,14 +422,7 @@ Checks out and locks files for editing.
 .H2
 bk mv \fIsource\fP \fIdestination\fP
 .LP
-move file, recording the move
-.\" # 
-.\" # Mvdir
-.\" # 
-.H2
-bk mvdir \fIsource\fP \fIdestination\fP
-.LP
-move directory, recording the move for all files
+move file or directory, recording the move for all files
 .\" # 
 .\" # New
 .\" # 
@@ -473,8 +453,9 @@ bk rm \fIfiles\fP
 .LP
 Remove a file in a recoverable way
 .B2
-.B1
-.sp .5
+.B1 
+.H1
+File-Level Commands...
 .\" # 
 .\" # Sccslog
 .\" # 
@@ -522,8 +503,8 @@ bk what \fIfiles\fP
 .LP
 Shows SCCS keywords embedded within a file
 .B2
+.sp .1
 .B1
-.sp .5
 .\" ############################
 .\" #
 .\" # Files
@@ -549,19 +530,18 @@ x.file - temporary file containing s.file underway
 .\" #
 .\" ############################
 .B1
-.sp .5
 .H1
 Common operations
 .H2
 Get a working copy of a tree
 .LP
-\fBbk clone bitmover.com:/home/bk/bugfixes\fP
+\fBbk clone bk://linux.bkbits.net/linux-2.5\fP
 .H2
 Edit some files
 .LP
-\fBcd bugfixes/src
+\fBcd linux-25\fP
 .br
-\fBbk vi sccs.h slib.c\fP
+\fBbk vi Maintainers\fP
 .H2
 Check in the files, creating a changeset
 .LP
@@ -587,7 +567,6 @@ Graphically browse a project's history
 .\"# Graphical Tools
 .\"# 
 .B1
-.sp .5
 .H1
 Graphical Tools
 .sp .25
@@ -597,8 +576,6 @@ bk citool [\fIdir or file list\fP]
 Graphical checkin tool, shows all modified files and all files not
 under revision control.  Click on a modified file and the differences
 are shown and a comment window is available for checkin comments.
-Can pop up an editor tool to walk through changes; can pop up
-revtool to view history.  Integration with the bug database is coming.
 .H2
 bk csettool [-r\fIrevs\fP]
 .LP
@@ -611,19 +588,19 @@ bk difftool \fIleft\fP \fIright\fP
 Side-by-side file difference viewer.  If \fIright\fP is a directory the
 implied name is \fIright/left\fP, like diff(1).
 .H2
+bk fm3tool \fIlocal gca remote file\fP
+.LP
+3-way side-by-side merge tool for resolving differences.  Walks through each
+change, allows you to select either, places the selection in a merge
+window which can then be edited directly.  Typically called from resolve.
+.H2
 bk fmtool \fIlocal\fP \fIremote\fP \fImerge\fP
 .LP
-Side-by-side merge tool for resolving differences.  Walks through each
-change, allows you to select either, places the selection in a merge
-window which can then be edited directly.
+2-way side-by-side merge tool for resolving differences.  
 .H2
 bk helptool [\fItopic\fP]
 .LP
 Online help system with search facility.
-.H2
-bk repotool
-.LP
-Graphical tool to manage projects and bug database
 .H2
 bk revtool [\fIfilename\fP]
 .LP
@@ -635,13 +612,21 @@ a node to get an annotated listing of that version of the file.  Hit
 on any line in an annotated listing to jump to that node of the revision
 history.  Click "View Changeset" to see all other files changed at the
 same time as the selected line.
+.H2
+bk setuptool [\fIpackage\fP]
+.LP
+Graphical tool to setup a new package.
+.H2
+bk sendbug [-t]
+.LP
+Graphical tool (or text based with -t) tool to report a bug.
 .B2
 .\" ############################
 .\" #
 .\" # Ranges and Dates
 .\" #
 .\" ############################
-.sp 2.1
+.sp .7
 .B1
 .H1
 Range and Date Syntax
@@ -720,7 +705,7 @@ facilities described below for a complete listing.
 bk helptool [\fIcmd\fP]
 .LP
 Graphical, hyperlinked, searchable help tool.  Shows all man pages,
-can search on words, page views stack like Netscape.
+can search on words, page views stack like web browsers.
 .H2
 bk help \fIcmd\fP
 .LP
@@ -736,7 +721,7 @@ To report a bug or request a feature.
 .H2
 mail support@bitmover.com
 .LP
-For support from the development team.
+For support from BitMover.
 .H2
 +1-415-401-8808
 .LP

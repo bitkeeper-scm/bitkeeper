@@ -43,7 +43,7 @@ undo_main(int ac,  char **av)
 		fprintf(stderr, "undo: cannot find package root.\n");
 		exit(1);
 	}
-	
+
 	while ((c = getopt(ac, av, "a:fqsr:")) != -1) {
 		switch (c) {
 		    case 'a': aflg = 1;				/* doc 2.0 */
@@ -242,25 +242,6 @@ bad:		mclose(m);
 	return (0);
 }
 
-private void
-checkRev(char *rev)
-{
-	char	file[MAXPATH] = CHANGESET;
-	sccs	*s = sccs_init(file, 0, 0);
-	delta	*d;
-
-	unless (s) {
-		fprintf(stderr, "Can't init %s\n", file);
-		exit(1);
-	}
-	d = sccs_getrev(s, rev, 0, 0);
-	sccs_free(s);
-	unless (d) {
-		fprintf(stderr, "No such rev '%s' in ChangeSet\n", rev);
-		exit(1);
-	}
-}
-
 private char **
 getrev(char *top_rev, int aflg)
 {
@@ -270,7 +251,6 @@ getrev(char *top_rev, int aflg)
 	FILE	*f;
 	char	revline[MAXREV+1];
 
-	checkRev(top_rev);
 	if (aflg) {
 		cmd = aprintf("bk -R prs -ohnMa -r'1.0..%s' -d:REV: ChangeSet",
 		    top_rev);
@@ -286,7 +266,7 @@ getrev(char *top_rev, int aflg)
 	}
 	status = pclose(f);
 	if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-		fprintf(stderr, "undo: prs failed\n");
+		fprintf(stderr, "No such rev '%s' in ChangeSet\n", top_rev);
 		exit(1);
 	}
 	return (list);
