@@ -152,6 +152,15 @@ DOS style end of lines to Unix style end of lines.
 .tp
 .B \-r
 Do not do rename processing when doing patch imports.
+.tp
+.B \-R
+If a patch fails to apply cleanly, back out the entire operation
+and exit with a failure.
+.tp
+.OPTreq \-y comment
+Set the message for the delta comments for all files to
+.B <comment>
+rather than "Import patch PATCHNAME".
 .SH "IMPORTING PATCHES"
 .LP
 \*(BK can be used to track external work by importing patches (diff -Nur)

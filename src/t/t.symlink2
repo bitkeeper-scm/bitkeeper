@@ -46,7 +46,10 @@ bk -r check || exit 1
 bk commit $S -ytarget2
 # We should get a merge conflict here
 bk pull $Q $HERE/project 
-if [ $? -eq 0 ]; then echo failed \(known bug\); exit 0; fi
+status=$?
 # Make sure we do not get a checksum bug on the merged node
 bk get $Q link.to.testfile || { echo exit failed; exit 1; }
-echo OK
+if [ $status -eq 0 ]
+then	echo failed \(bug 2002-02-08-007\)
+else	echo 'bug 2002-02-08-007 passing! update testcase.'; exit 1
+fi

@@ -237,7 +237,6 @@ err:		perror("write");
 		return;
 	}
 	if (write(fd, "PENDING/*\n", 10) != 10) goto err;
-	if (write(fd, "Desktop.ini\n", 12) != 12) goto err; /* for win32 */
 	close(fd);
 	system("bk new -Pq BitKeeper/etc/ignore");
 }
@@ -321,7 +320,7 @@ mkconfig(FILE *out, MDBM *flist)
 	int	found = 0;
 	int	first = 1;
 	char	confTemplate[MAXPATH], buf[200], pattern[200];
-	char	*val;
+	char	*val = NULL;
 	kvpair	kv;
 
 
@@ -355,6 +354,13 @@ mkconfig(FILE *out, MDBM *flist)
 	unless (found) {
 		fclose(in);
 		return (-1);
+	}
+
+	if (flist) val = mdbm_fetch_str(flist, "compression");
+	/* force "compression to default on */
+	unless (val && *val) {
+		char fld[] =  "compression=gzip";
+		flist = addField(flist, fld);
 	}
 
 	/*

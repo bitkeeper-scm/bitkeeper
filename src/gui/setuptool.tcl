@@ -347,6 +347,7 @@ proc create_config {widget} \
 	wm geometry . +10+10; # Fix and make a configurable option
 
 	set st_cinfo(logging) "logging@openlogging.org"
+	set st_cinfo(compression) "gzip"
 
 	set w(main)      $widget
 	set w(buttonbar) $w(main).t.bb

@@ -747,6 +747,7 @@ typedef struct {
 	char	*host;		/* remote host if set */
 	char	*path;		/* pathname (must be set) */
 	int	contentlen;	/* len from http header (recieve only) */
+	pid_t	pid;		/* if pipe, pid of the child */
 } remote;
 
 #define	ADDR_NFS	0x000	/* host:/path */

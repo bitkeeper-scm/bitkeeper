@@ -34,10 +34,16 @@ bkd_main(int ac, char **av)
 	 * Unix note: -E/-s/-S/-R options have no effect on Unix;
 	 * 	 These option are used by the win32 bkd service as internal
 	 *	 interface.
+	 * XXX Win32 note: WARNING: If you add a new optoin,  you _must_
+	 * XXX propagate the option in  bkd_install_service() and 
+	 * XXX bkd_service_loop(). The NT service is a 3 level spwaning
+	 * XXX architechture!! (The above function are in port/bkd_server.c)
 	 */
-	while ((c = getopt(ac, av, "c:dDeE:g:hil|L:p:P:qRs:St:u:V:x:")) != -1) {
+	while ((c = getopt(ac, av,
+			"c:CdDeE:g:hil|L:p:P:qRs:St:u:V:x:")) != -1) {
 		switch (c) {
 		    case 'c': Opts.count = atoi(optarg); break;
+		    case 'C': Opts.safe_cd = 1; break;
 		    case 'd': Opts.daemon = 1; break;		/* doc 2.0 */
 		    case 'D': Opts.debug = 1; break;		/* doc 2.0 */
 		    case 'e': Opts.errors_exit = 1; break;	/* doc 2.0 */
@@ -235,6 +241,15 @@ do_cmds()
 				}
 				if (Opts.errors_exit) {
 					out("ERROR-exiting\n");
+
+					/*
+					 * On some system such as redhat 5.2
+					 * we need the shutdown call to flush
+					 * the error in the buffer
+					 */
+					shutdown(1, 1); /* For daemon mode */
+					close(1);	/* For non-daemon mode*/
+					close(2);	/* For non-daemon mode*/
 					exit(ret);
 				}
 			}

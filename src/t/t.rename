@@ -129,8 +129,9 @@ EOF
 bk prs -hr+ src/t/SCCS/s.regression.sh | grep '^P ' | cat > PRS2
 cmp -s PRS PRS2
 if [ $? -ne 0 ]; then 
-	echo 'failed (known bug)'; diff PRS PRS2
-else
-	echo OK
+	echo 'failed'
+	diff PRS PRS2
+	exit 1
 fi
+echo OK
 set +e

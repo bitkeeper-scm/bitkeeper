@@ -1,5 +1,5 @@
 .so bk-macros
-.TH "bk config-etc" 1 20%E% "\*(BC" "\*(UM"
+.TH "bk config-etc" 1 2002/02/05 "\*(BC" "\*(UM"
 .SH NAME 
 bk config-etc \- configuring \*(BK per repository
 .SH DESCRIPTION
@@ -240,6 +240,30 @@ to reget the file.
 Clear the gfile after doing a bk delta
 .ARG file .
 (This is the default.)
+.SS Compression
+.br
+By default, when you setup a repository the compression algorithm
+will be set to gzip in the BitKeeper/etc/config file with a line
+as follows:
+.DS
+compression:gzip
+.DE
+This results in the compression of stored
+s.files.  In other words, when you run
+.DS
+bk new
+.DE
+what really happens is
+.DS
+bk new -Zgzip
+.DE
+To make the repository use no compression by default, 
+change the compression line in the BitKeeper/etc/config
+file to be:
+.DS
+compression:none
+.DE
+See bk help delta for more information about the -Z option for compression.
 .SS BKWEB PREFERENCES
 .LP
 BKWeb preferences can be specified in the BitKeeper/etc/config file.

@@ -204,10 +204,21 @@ usage:			system("bk help -s diffs");
 				r1 = s->rstart->rev;
 			}
 		}
-		/* XXX - probably busted in split root */
+#if	0
+		/* 
+		 * The ONLY time keyword expansion should be enabled
+		 * is for 'bk diffs -r+ file' where there is an unlocked
+		 * gfile.  This is where the user wants to verify that
+		 * the gfile actually matches the TOT.  All other times
+		 * we are comparing committed versions to each other or an 
+		 * editted gfile.
+		 * XXX  The case above is currently broken, so I just 
+		 * disabled keywork expansion entirely.
+		 */
 		if (HAS_GFILE(s) && !IS_WRITABLE(s) && (things <= 1)) {
 			ex = GET_EXPAND;
 		}
+#endif
 
 		/*
 		 * Optimize out the case where we we are readonly and diffing

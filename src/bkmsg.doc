@@ -353,6 +353,12 @@ $
 If this field is set, all checkins will appear to be made on this host.
 
 $
+#config_compression
+
+Default compression algorithm for stored s.files is gzip.
+If you want no compression, set this to "none".
+
+$
 #config_template
 description
 category
@@ -371,6 +377,7 @@ cell
 pager
 hours
 license
+compression
 $
 #warn_poly
 Warning: this repository has been found to have deltas which

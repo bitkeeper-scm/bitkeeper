@@ -265,17 +265,9 @@ bk new $Q f
 bk edit $Q f
 date >> f
 bk mv f newf
-bk pull $Q 2> OUT
-if [ $? -ne 0 ]; then
-	if [ "X$Q" = "X" ]; then cat OUT; fi
-	echo 'failed (bug 2001-07-09-001)'
-else
-    if [ ! -f SCCS/s.qqq ]; then
-	    echo failed
-	    exit 1
-    fi
-    echo OK
-fi
+bk pull $Q || exit 1
+if [ ! -f SCCS/s.qqq ]; then echo failed; exit 1; fi
+echo OK
 echo $N Test mv of directory ........................................$NL
 cd $HERE
 no_logging src
@@ -289,8 +281,5 @@ echo sub > sub
 bk new $Q sub || exit 1
 cd ../..
 bk mvdir foo foo2 || exit 1
-if [ -f foo/sub1/SCCS/s.sub ]; then
-	echo 'failed (bug 2001-06-15-002)'
-else
-	echo OK
-fi
+if [ -f foo/sub1/SCCS/s.sub ]; then echo failed; exit 1; fi
+echo OK
