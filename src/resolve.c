@@ -133,6 +133,11 @@ resolve_post(int c)
 {
 	char	*av[] = { "resolve", 0 };
 
+	/*
+	 * It is the responsibility of the calling code to set this env
+	 * var to indicate that we were not run standalone, we are called
+	 * from a higher level and they will run the triggers.
+	 */
 	if (getenv("POST_INCOMING_TRIGGER") &&
 	    streq(getenv("POST_INCOMING_TRIGGER"), "NO")) {
 	    	return;
