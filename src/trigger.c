@@ -171,12 +171,11 @@ runit(char *file, char *output)
 		assert(fd == 1);
 	}
 #ifdef	WIN32
-	p = strrchr(file, '.');
 	/*
 	 * If no suffix, assumes it is a shell script
 	 * so feed it to the bash shell
 	 */
-	unless (p) {
+	unless (strrchr(basenm(file), '.')) {
 		my_av[j++] = "bash";
 		my_av[j++] = "-c";
 	}
