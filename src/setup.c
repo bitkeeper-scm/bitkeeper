@@ -306,8 +306,9 @@ mkconfig(FILE *out, MDBM *flist)
 
 	/*
 	 * If there is a local config file template, use that
+	 * Win32 note: This path does not work on win32
 	 */
-	if (in = fopen("/etc/BitKeeper/config", "rt")) {
+	if (in = fopen(GLOBAL_ROOT "BitKeepet/etc/config.template", "rt")) {
 		while (fnext(buf, in))	printField(out, flist, buf);
 		fclose(in);
 		return (0);
