@@ -23,6 +23,7 @@ proc load_defaults {} \
 	set _d(ci,oldColor) orange
 	set _d(ci,newColor) yellow
 	set _d(ci,highlightColor) yellow
+	set _d(ci,excludeColor) red
 	set _d(ci,editor) ciedit
 	set _d(ci,geometry) ""
 	set _d(ci,display_bytes) 512
