@@ -87,8 +87,9 @@ _extra() {
 
 _extras() {
 	if [ "X$1" != X -a -d "$1" ]
-	then	shift
-		cd $1 && bk sfiles -x "$@"
+	then	cd $1
+		shift
+		bk sfiles -x "$@"
 	else	bk -R sfiles -x "$@"
 	fi
 }
