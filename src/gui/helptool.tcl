@@ -173,7 +173,7 @@ proc embedded_tag {line} \
 	while {$line != ""} {
 		set start [string first "bk " $line]
 		if {$start == -1} { break }
-		set end [expr $start + 7]
+		set end [expr {$start + 7}]
 		set t [string range $line $start $end]
 		#puts "  big?=$t"
 		if {$t == "bk help "} { incr start 5 }
@@ -233,7 +233,7 @@ proc search {} \
 	set last ""
 	while {[gets $f line] >= 0} {
 		set tab [string first "\t" $line"]
-		set key [string range $line 0 [expr $tab - 1]]
+		set key [string range $line 0 [expr {$tab - 1}]]
 		incr tab
 		set sentence [string range $line $tab end]
 		set sentence [string trim $sentence]
@@ -279,8 +279,8 @@ proc scroll {what dir} \
 	} elseif {$dir == -1 && $a == 0 && $line > 1.0} {
 		doNext -1
 	} elseif {$what == "page"} {
-		set x [expr $gc(help,height) - 1]
-		set x [expr $x * $dir]
+		set x [expr {$gc(help,height) - 1}]
+		set x [expr {$x * $dir}]
 		.text.help yview scroll $x units
 	} else {
 		.text.help yview scroll $dir units
@@ -422,6 +422,8 @@ proc widgets {} \
 	bind . <Home>		 ".text.help yview -pickplace 1.0"
 	bind . <End>		 ".text.help yview -pickplace end"
 	bind . <Escape>		{ exit }
+	bind . <Button-4> { scroll "page" -1 }
+	bind . <Button-5> { scroll "page" 1 }
 	bind .menu.entry <Return> { search }
 	bind .text.help <Configure> {
 		global	gc pixelsPerLine firstConfig
@@ -430,10 +432,10 @@ proc widgets {} \
 		# This gets executed once, when we know how big the text is
 		if {$firstConfig == 1} {
 			set h [winfo height .text.help]
-			set pixelsPerLine [expr $h / $gc(help,height)]
+			set pixelsPerLine [expr {$h / $gc(help,height)}]
 			set firstConfig 0
 		}
-		set x [expr $x / $pixelsPerLine]
+		set x [expr {$x / $pixelsPerLine}]
 		set gc(help,height) $x
 	}
 	.ctrl.topics tag configure "select" -background $gc(help,sColor) \

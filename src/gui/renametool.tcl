@@ -84,12 +84,12 @@ proc scrollDiffs {start stop} \
 	# center the diff in the window (if it is smaller than the window).
 	set Diff [lindex [split $start .] 0]
 	set End [lindex [split $stop .] 0]
-	set size [expr $End - $Diff]
+	set size [expr {$End - $Diff}]
 	# Center it.
 	if {$size < $gc(rename,diffHeight)} {
-		set j [expr $gc(rename,diffHeight) - $size]
-		set j [expr $j / 2]
-		set i [expr $Diff - $j]
+		set j [expr {$gc(rename,diffHeight) - $size}]
+		set j [expr {$j / 2}]
+		set i [expr {$Diff - $j}]
 		if {$i < 0} {
 			set want 1
 		} else {
@@ -100,7 +100,7 @@ proc scrollDiffs {start stop} \
 	}
 
 	set top [topLine]
-	set move [expr $want - $top]
+	set move [expr {$want - $top}]
 	.diffs.l yview scroll $move units
 	.diffs.r yview scroll $move units
 }
@@ -346,7 +346,7 @@ proc getFiles {} \
 		set ht $rightCount
 	}
 	if {$ht > 12} { set ht 12 }
-	set diff [expr $gc(rename,listHeight) - $ht]
+	set diff [expr {$gc(rename,listHeight) - $ht}]
 	incr gc(rename,diffHeight) $gc(rename,listHeight)
 	incr gc(rename,listHeight) -$diff
 	.diffs.l configure -height $gc(rename,diffHeight)
@@ -563,7 +563,7 @@ proc Guess {} \
 	set left [file tail $leftFile]
 
 	# Try an exact basename match
-	set l [expr $guessNext + 1]
+	set l [expr {$guessNext + 1}]
 	set file [.files.r get "$l.0" "$l.0 lineend"]
 	while {$file != ""} {
 		set right [file tail $file]
@@ -578,7 +578,7 @@ proc Guess {} \
 	}
 
 	# Try a partial basename match, ignoring case
-	set l [expr $guessNext + 1]
+	set l [expr {$guessNext + 1}]
 	set file [.files.r get "$l.0" "$l.0 lineend"]
 	while {$file != ""} {
 		set right [file tail $file]
@@ -761,13 +761,13 @@ proc page {w xy dir one} \
 	global	gc
 
 	if {$xy == "yview"} {
-		set lines [expr $dir * $gc(rename,diffHeight)]
+		set lines [expr {$dir * $gc(rename,diffHeight)}]
 	} else {
 		# XXX - should be width.
 		set lines 16
 	}
 	if {$one == 1} {
-		set lines [expr $dir * 1]
+		set lines [expr {$dir * 1}]
 	} else {
 		incr lines -1
 	}
@@ -777,7 +777,7 @@ proc page {w xy dir one} \
 
 proc fontHeight {f} \
 {
-	return [expr [font metrics $f -ascent] + [font metrics $f -descent]]
+	return [expr {[font metrics $f -ascent] + [font metrics $f -descent]}]
 }
 
 proc computeHeight {} \
@@ -787,7 +787,7 @@ proc computeHeight {} \
 	update
 	set f [fontHeight [.diffs.l cget -font]]
 	set p [winfo height .diffs.l]
-	set gc(rename,diffHeight) [expr $p / $f]
+	set gc(rename,diffHeight) [expr {$p / $f}]
 }
 
 proc adjustHeight {diff list} \
@@ -875,7 +875,7 @@ proc widgets {} \
 	    button .menu.create -font $gc(rename,BFont) -bg $gc(rename,BColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Create" -state disabled -command "Create 1"
-	    button .menu.createAll -font $gc(rename,BFont) 
+	    button .menu.createAll -font $gc(rename,BFont) \
 		-bg $gc(rename,BColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Create All" -command CreateAll

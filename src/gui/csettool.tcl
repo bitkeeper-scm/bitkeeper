@@ -102,12 +102,12 @@ proc scrollDiffs {start stop} \
 	# center the diff in the window (if it is smaller than the window).
 	set Diff [lindex [split $start .] 0]
 	set End [lindex [split $stop .] 0]
-	set size [expr $End - $Diff]
+	set size [expr {$End - $Diff}]
 	# Center it.
 	if {$size < $gc(cset,diffHeight)} {
-		set j [expr $gc(cset,diffHeight) - $size]
-		set j [expr $j / 2]
-		set i [expr $Diff - $j]
+		set j [expr {$gc(cset,diffHeight) - $size}]
+		set j [expr {$j / 2}]
+		set i [expr {$Diff - $j}]
 		if {$i < 0} {
 			set want 1
 		} else {
@@ -118,7 +118,7 @@ proc scrollDiffs {start stop} \
 	}
 
 	set top [topLine]
-	set move [expr $want - $top]
+	set move [expr {$want - $top}]
 	.diffs.left yview scroll $move units
 	.diffs.right yview scroll $move units
 }
@@ -129,7 +129,7 @@ proc chunks {n} \
 
 	set l [.diffs.left index "end - 1 char linestart"]
 	set Diffs($nextDiff) $l
-	set e [expr $n + [lindex [split $l .] 0]]
+	set e [expr {$n + [lindex [split $l .] 0]}]
 	set DiffsEnd($nextDiff) "$e.0"
 	incr nextDiff
 }
@@ -520,13 +520,13 @@ proc page {w xy dir one} \
 	global	gc
 
 	if {$xy == "yview"} {
-		set lines [expr $dir * $gc(cset,diffHeight)]
+		set lines [expr {$dir * $gc(cset,diffHeight)}]
 	} else {
 		# XXX - should be width.
 		set lines 16
 	}
 	if {$one == 1} {
-		set lines [expr $dir * 1]
+		set lines [expr {$dir * 1}]
 	} else {
 		incr lines -1
 	}
@@ -536,7 +536,7 @@ proc page {w xy dir one} \
 
 proc fontHeight {f} \
 {
-	return [expr [font metrics $f -ascent] + [font metrics $f -descent]]
+	return [expr {[font metrics $f -ascent] + [font metrics $f -descent]}]
 }
 
 proc computeHeight {} \
@@ -546,7 +546,7 @@ proc computeHeight {} \
 	update
 	set f [fontHeight [.diffs.left cget -font]]
 	set p [winfo height .diffs.left]
-	set gc(cset,diffHeight) [expr $p / $f]
+	set gc(cset,diffHeight) [expr {$p / $f}]
 }
 
 proc adjustHeight {diff list} \

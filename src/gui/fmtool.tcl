@@ -116,7 +116,7 @@ proc dumpLists {A B} {
 	puts "$A S($nextSame): $Same D($nextDiff): $Diff B($nextBoth): $Both -> $B"
 	puts -nonewline "B: "
 	for {set i $nextBoth} {$i <= $maxBoth} {incr i 2} {
-		set j [expr $i + 1]
+		set j [expr {$i + 1}]
 		set a [lindex $rBoth $i]
 		set b [lindex $rBoth $j]
 		puts -nonewline "$a,$b "
@@ -124,7 +124,7 @@ proc dumpLists {A B} {
 	puts ""
 	puts -nonewline "S: "
 	for {set i $nextSame} {$i <= $maxSame} {incr i 2} {
-		set j [expr $i + 1]
+		set j [expr {$i + 1}]
 		set a [lindex $rSame $i]
 		set b [lindex $rSame $j]
 		puts -nonewline "$a,$b "
@@ -132,7 +132,7 @@ proc dumpLists {A B} {
 	puts ""
 	puts -nonewline "D: "
 	for {set i $nextDiff} {$i <= $maxDiff} {incr i 2} {
-		set j [expr $i + 1]
+		set j [expr {$i + 1}]
 		set a [lindex $rDiff $i]
 		set b [lindex $rDiff $j]
 		puts -nonewline "$a,$b "
@@ -167,7 +167,7 @@ proc useDiff {which color} \
 	.merge.menu.redo configure -state disabled
 
 	# See if it is an empty diff; if so, just call skip and return.
-	set type [expr $nextBoth / 2]
+	set type [expr {$nextBoth / 2}]
 	set type [lindex $types $type]
 	if {$which == "left"} {
 		if {$type == ">"} { skip; return }
@@ -198,9 +198,9 @@ proc useDiff {which color} \
 	# What I want is to have the first line of the new stuff at the top
 	# of the merge window.
 	.merge.t see $Here
-	set Here [expr [lindex [split $Here .] 0] - 1]
+	set Here [expr {[lindex [split $Here .] 0] - 1}]
 	set top [lindex [split [.merge.t index @1,1] .] 0]
-	.merge.t yview scroll [expr $Here - $top] units
+	.merge.t yview scroll [expr {$Here - $top}] units
 }
 
 # Skip the current diff.  Isn't this easy?
@@ -304,16 +304,16 @@ proc scrollDiffs {where} \
 	# too big to fit or fits exactly) or
 	# center the diff in the window (if it is smaller than the window).
 	set Diff [lindex $rDiff $nextDiff]
-	set End [lindex $rDiff [expr 1 + $nextDiff]]
-	set size [lindex [split [expr $End - $Diff] "."] 0]
+	set End [lindex $rDiff [expr {1 + $nextDiff}]]
+	set size [lindex [split [expr {$End - $Diff}] "."] 0]
 	if {$size >= $gc(fm,diffHeight)} {
 		set i $where
 	} else {
 		# Center it.
-		set j [expr $gc(fm,diffHeight) - $size]
-		set j [expr $j / 2]
+		set j [expr {$gc(fm,diffHeight) - $size}]
+		set j [expr {$j / 2}]
 		if {$j > 0} { incr j -1 }
-		set i [expr $where - $j]
+		set i [expr {$where - $j}]
 	}
 	set l [topLine]
 	while {($l < $i) && ($i > $gc(fm,diffHeight))} {
@@ -480,7 +480,7 @@ proc save {} \
 	}
 	set o [open $outputFile w]
 	set Text [.merge.t get 1.0 "end - 1 char"]
-	set len [expr [string length $Text] - 1]
+	set len [expr {[string length $Text] - 1}]
 	set last [string index $Text $len]
 	if {"$last" == "\n"} {
 		puts -nonewline $o $Text
@@ -618,7 +618,7 @@ proc readFiles {L R O} \
 			lappend types $last
 			# rBoth is built up this way because the tags stuff
 			# collapses adjacent tags together.
-			set start [expr $lineNo - $n]
+			set start [expr {$lineNo - $n}]
 			lappend rBoth "$start.0" "$lineNo.0"
 			# Ditto for diffs
 			if {$last != "S"} {
@@ -640,7 +640,7 @@ proc readFiles {L R O} \
 	incr lineNo 1
 	# rBoth is built up this way because the tags stuff
 	# collapses adjacent tags together.
-	set start [expr $lineNo - $n]
+	set start [expr {$lineNo - $n}]
 	lappend rBoth "$start.0" "$lineNo.0"
 	# Ditto for diffs
 	if {$last != "S"} {
@@ -663,9 +663,9 @@ proc readFiles {L R O} \
 	set nextSame 0
 	set nextDiff 0
 	set nextBoth 0
-	set maxSame [expr [llength $rSame] - 2]
-	set maxDiff [expr [llength $rDiff] - 2]
-	set maxBoth [expr [llength $rBoth] - 2]
+	set maxSame [expr {[llength $rSame] - 2}]
+	set maxDiff [expr {[llength $rDiff] - 2}]
+	set maxBoth [expr {[llength $rBoth] - 2}]
 	.diffs.left configure -state disabled
 	.diffs.right configure -state disabled
 	. configure -cursor left_ptr
@@ -707,21 +707,21 @@ proc page {w xy dir one} \
 
 	if {$w == ".diffs"} {
 		if {$xy == "yview"} {
-			set lines [expr $dir * $gc(fm,diffHeight)]
+			set lines [expr {$dir * $gc(fm,diffHeight)}]
 		} else {
 			# XXX - should be width.
 			set lines 16
 		}
 	} else {
 		if {$xy == "yview"} {
-			set lines [expr $dir * $gc(fm,mergeHeight)]
+			set lines [expr {$dir * $gc(fm,mergeHeight)}]
 		} else {
 			# XXX - should be width.
 			set lines 16
 		}
 	}
 	if {$one == 1} {
-		set lines [expr $dir * 1]
+		set lines [expr {$dir * 1}]
 	} else {
 		incr lines -1
 	}
@@ -759,7 +759,7 @@ proc height {w} \
 
 proc fontHeight {f} \
 {
-	return [expr [font metrics $f -ascent] + [font metrics $f -descent]]
+	return [expr {[font metrics $f -ascent] + [font metrics $f -descent]}]
 }
 
 proc computeHeight {w} \
@@ -770,11 +770,11 @@ proc computeHeight {w} \
 	if {$w == "diffs"} {
 		set f [fontHeight [.diffs.left cget -font]]
 		set p [winfo height .diffs.left]
-		set gc(fm,diffHeight) [expr $p / $f]
+		set gc(fm,diffHeight) [expr {$p / $f}]
 	} else {
 		set f [fontHeight [.merge.t cget -font]]
 		set p [winfo height .merge.t]
-		set gc(fm,mergeHeight) [expr $p / $f]
+		set gc(fm,mergeHeight) [expr {$p / $f}]
 	}
 }
 
@@ -846,7 +846,7 @@ proc widgets {L R O} \
 	    grid .diffs.xscroll -columnspan 3
 
 	frame .merge
-	    label .merge.l -background slategrey \
+	    label .merge.l -background $gc(fm,bColor) \
 		-font $gc(fm,bFont)
 	    text .merge.t -width $gc(fm,mergeWidth) -height $gc(fm,mergeHeight) \
 		-background $gc(fm,bColor) \
@@ -984,8 +984,8 @@ proc confirm {msg l} \
 	    pack .c.top -padx 8 -pady 8
 	    pack .c.sep -fill x -pady 4
 	    pack .c.controls -pady 4
-	set x [expr [winfo rootx .merge.menu]-150]
-	set y [expr [winfo rooty .merge.menu]-60]
+	set x [expr {[winfo rootx .merge.menu] - 150}]
+	set y [expr {[winfo rooty .merge.menu] - 60}]
 	wm geometry .c "+$x+$y"
 	wm transient .c .
 }

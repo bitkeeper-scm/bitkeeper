@@ -9,7 +9,7 @@ proc wid {id} \
 	set bb [.p.top.c bbox $id]
 	set x1 [lindex $bb 0]
 	set x2 [lindex $bb 2]
-	return [expr $x2 - $x1]
+	return [expr {$x2 - $x1}]
 }
 
 # Return height of text widget
@@ -18,7 +18,7 @@ proc ht {id} \
 	set bb [.p.top.c bbox $id]
 	set y1 [lindex $bb 1]
 	set y2 [lindex $bb 3]
-	return [expr $y2 - $y1]
+	return [expr {$y2 - $y1}]
 }
 
 #
@@ -131,14 +131,14 @@ proc dateSeparate { } { \
 
 	# Adjust height of screen by adding text height
 	# so date string is not so scrunched in
-        set miny [expr $screen(miny) - $ht]
-        set maxy [expr $screen(maxy) + $ht]
+        set miny [expr {$screen(miny) - $ht}]
+        set maxy [expr {$screen(maxy) + $ht}]
 
 	# Try to compensate for date text size when canvas is small
-	if { $maxy < 50 } { set maxy [expr $maxy + 15] }
+	if { $maxy < 50 } { set maxy [expr {$maxy + 15}] }
 
 	# set y-position of text
-	set ty [expr $maxy - $ht]
+	set ty [expr {$maxy - $ht}]
 
         foreach ser [lsort -integer [array names serial2rev]] {
 
@@ -160,12 +160,12 @@ proc dateSeparate { } { \
 			set date "$day/$mon\n$yr"
 
                         # place vertical line short dx behind revision bbox
-                        set lx [ expr $x - 15 ]
+                        set lx [ expr {$x - 15}]
                         .p.top.c create line $lx $miny $lx $maxy -width 1 \
 			    -fill "lightblue"
 
                        # Attempt to center datestring between verticals
-                        set tx [expr $x - (($x - $lastx)/2) - 13]
+                        set tx [expr {$x - (($x - $lastx)/2) - 13}]
                         .p.top.c create text $tx $ty -fill $gc(sccs,date) \
 			    -justify center \
 			    -anchor n -text "$date" -font $gc(sccs,dFont)
@@ -181,7 +181,7 @@ proc dateSeparate { } { \
 	set yr [lindex $date_array 0]
 	set date "$day/$mon\n$yr"
 
-	set tx [expr $screen(maxx) - (($screen(maxx) - $x)/2) + 20]
+	set tx [expr {$screen(maxx) - (($screen(maxx) - $x)/2) + 20}]
 	.p.top.c create text $tx $ty -fill $gc(sccs,date) -anchor n \
 		-text "$date" -font $gc(sccs,dFont)
 }
@@ -194,7 +194,7 @@ proc addline {y xspace ht l} \
 	global  stacked
 
 	set last -1
-	set ly [expr $y - [expr $ht / 2]]
+	set ly [expr {$y - [expr {$ht / 2}]}]
 
 	#puts "y: $y  xspace: $xspace ht: $ht l: $l"
 
@@ -213,7 +213,7 @@ proc addline {y xspace ht l} \
 		}
 
 		# make revision two lines
-		if ($stacked) {
+		if {$stacked} {
 			set jnk [split $rev "-"]
 			set jnk_user [lindex $jnk 1]
 			set jnk_rev [lindex $jnk 0]
@@ -223,10 +223,10 @@ proc addline {y xspace ht l} \
 			set txt $rev
 		}
 
-		set x [expr $xspace * $serial]
-		set b [expr $x - 2]
+		set x [expr {$xspace * $serial}]
+		set b [expr {$x - 2}]
 		if {$last > 0} {
-			set a [expr $last + 2]
+			set a [expr {$last + 2}]
 			.p.top.c create line $a $ly $b $ly \
 			    -arrowshape {4 4 2} -width 1 \
 			    -fill $gc(sccs,arrow) -arrow last
@@ -259,7 +259,7 @@ proc addline {y xspace ht l} \
 		set revY($rev) $y
 		set lastwid [wid $id]
 		set wid($rev) $lastwid
-		set last [expr $x + $lastwid]
+		set last [expr {$x + $lastwid}]
 	}
 	if {[info exists merges] != 1} {
 		set merges {}
@@ -275,7 +275,7 @@ proc line {s w ht} \
 	global	wid revX revY gc where yspace line_rev screen
 
 	# space for node and arrow
-	set xspace [expr $w + 8]
+	set xspace [expr {$w + 8}]
 	set l [split $s]
 
 	# Figure out the length of the whole list
@@ -283,12 +283,12 @@ proc line {s w ht} \
 	set word [lindex $l 1]
 	if {[regexp $line_rev $word dummy a] == 1} { set word $a }
 	regexp {(.*)-([^-]*)} $word dummy head first
-	set word [lindex $l [expr [llength $l] - 1]]
+	set word [lindex $l [expr {[llength $l] - 1}]]
 	if {[regexp $line_rev $word dummy a] == 1} { set word $a }
 	regexp {(.*)-([^-]*)} $word dummy rev last
-	set diff [expr $last - $first]
+	set diff [expr {$last - $first}]
 	incr diff
-	set len [expr $xspace * $diff]
+	set len [expr {$xspace * $diff}]
 
 	# Now figure out where we can put the list.
 	set word [lindex $l 0]
@@ -305,7 +305,7 @@ proc line {s w ht} \
 	# px/py are the sw of the parent; x/y are the sw of the new branch.
 	set px $revX($rev)
 	set py $revY($rev)
-	set pmid [expr $wid($rev) / 2]
+	set pmid [expr {$wid($rev) / 2}]
 
 	# Figure out if we have placed any related branches to either side.
 	# If so, limit the search to that side.
@@ -318,14 +318,14 @@ proc line {s w ht} \
 	}
 
 	# Go look for a space to put the branch.
-	set x1 [expr $first * $xspace]
+	set x1 [expr {$first * $xspace}]
 	set y 0
 	while {1 == 1} {
 		# Try below.
 		if {"$prev" != "above"} {
-			set y1 [expr $py + $y + $yspace]
-			set x2 [expr $x1 + $len]
-			set y2 [expr $y1 + $ht]
+			set y1 [expr {$py + $y + $yspace}]
+			set x2 [expr {$x1 + $len}]
+			set y2 [expr {$y1 + $ht}]
 			if {[chkSpace $x1 $y1 $x2 $y2] == {}} {
 				set where($trunk) "below"
 				break
@@ -334,9 +334,9 @@ proc line {s w ht} \
 
 		# Try above.
 		if {"$prev" != "below"} {
-			set y1 [expr $py - $ht - $y - $yspace]
-			set x2 [expr $x1 + $len]
-			set y2 [expr $y1 + $ht]
+			set y1 [expr {$py - $ht - $y - $yspace}]
+			set x2 [expr {$x1 + $len}]
+			set y2 [expr {$y1 + $ht}]
 			if {[chkSpace $x1 $y1 $x2 $y2] == {}} {
 				set where($trunk) "above"
 				incr py -$ht
@@ -346,13 +346,13 @@ proc line {s w ht} \
 		incr y $yspace
 	}
 
-	set x [expr $first * $xspace]
+	set x [expr {$first * $xspace}]
 	set y $y2
 	addline $y $xspace $ht [lrange $l 1 end ]
 	incr px $pmid
 	set x $revX($head)
 	set y $revY($head)
-	incr y [expr $ht / -2]
+	incr y [expr {$ht / -2}]
 	incr x -4
 	set id [.p.top.c create line $px $py $x $y -arrowshape {4 4 4} \
 	    -width 1 -fill $gc(sccs,branchArrow) -arrow last]
@@ -379,7 +379,7 @@ proc mergeArrow {m ht} \
 
 	# If we are pointing backwards, then point at .s
 	if {$x < $px} {
-		incr x [expr $wid($m) / 2]
+		incr x [expr {$wid($m) / 2}]
 	} elseif {$px < $x} {
 		incr px $wid($b)
 	} else {
@@ -425,7 +425,7 @@ proc listRevs {file} \
 			set revlen [string length $rev]
 			set namelen [string length $programmer]
 
-			if ($stacked) {
+			if {$stacked} {
 				if {$revlen > $namelen} { 
 					set txt $rev
 					set l $revlen
@@ -449,8 +449,8 @@ proc listRevs {file} \
 	set ht [font metrics $gc(sccs,bFont) -ascent]
 	incr ht [font metrics $gc(sccs,bFont) -descent]
 
-	set ht [expr $ht * 2]
-	set len [expr $len + 10]
+	set ht [expr {$ht * 2}]
+	set len [expr {$len + 10}]
 
 	#puts "big: ($big) len: ($len) ht: ($ht)"
 	set bad 0
@@ -465,10 +465,10 @@ proc listRevs {file} \
 		wm title . "sccstool: $file -- $bad bad revs"
 	}
 	set bb [.p.top.c bbox all]
-	set x1 [expr [lindex $bb 0] - 10]
-	set y1 [expr [lindex $bb 1] - 10]
-	set x2 [expr [lindex $bb 2] + 10]
-	set y2 [expr [lindex $bb 3] + 10]
+	set x1 [expr {[lindex $bb 0] - 10}]
+	set y1 [expr {[lindex $bb 1] - 10}]
+	set x2 [expr {[lindex $bb 2] + 10}]
+	set y2 [expr {[lindex $bb 3] + 10}]
 	.p.top.c create text $x1 $y1 -anchor nw -text " "
 	.p.top.c create text $x1 $y2 -anchor sw -text " "
 	.p.top.c create text $x2 $y1 -anchor ne -text " "
@@ -585,8 +585,8 @@ proc get {} \
 
 proc difftool {file r1 r2} \
 {
-	set x [expr [winfo rootx .]+150]
-	set y [expr [winfo rooty .]+50]
+	set x [expr {[winfo rootx .]+150}]
+	set y [expr {[winfo rooty .]+50}]
 	exec bk difftool -geometry +$x+$y -r$r1 -r$r2 $file &
 	busy 0
 }
@@ -756,8 +756,8 @@ proc PaneCreate {} \
 	} else {
 		set xsize $x2
 	}
-	set ysize [expr [winfo reqheight .p.top] + [winfo reqheight .p.bottom]]
-	set percent [expr [winfo reqheight .p.bottom] / double($ysize)]
+	set ysize [expr {[winfo reqheight .p.top] + [winfo reqheight .p.bottom]}]
+	set percent [expr {[winfo reqheight .p.bottom] / double($ysize)}]
 	.p configure -height $ysize -width $xsize -background black
 	frame .p.fakesb -height $swid -background grey \
 	    -borderwid 1.25 -relief sunken
@@ -766,10 +766,12 @@ proc PaneCreate {} \
 	place .p.fakesb -in .p -relx .5 -rely $percent -y -2 \
 	    -relwidth 1 -anchor s
 	frame .p.sash -height 2 -background black
-	place .p.sash -in .p -relx .5 -rely $percent -relwidth 1 -anchor c
+	place .p.sash -in .p -relx .5 -rely $percent -relwidth 1 \
+	    -anchor center
 	frame .p.grip -background grey \
 		-width 13 -height 13 -bd 2 -relief raised -cursor double_arrow
-	place .p.grip -in .p -relx 1 -x -50 -rely $percent -anchor c
+	place .p.grip -in .p -relx 1 -x -50 -rely $percent \
+	    -anchor center
 	place .p.top -in .p -x 0 -rely 0.0 -anchor nw -relwidth 1.0 -height -2
 	place .p.bottom -in .p -x 0 -rely 1.0 -anchor sw \
 	    -relwidth 1.0 -height -2
@@ -791,18 +793,18 @@ proc PaneResize {} \
 {
 	global	percent
 
-	set ht [expr [ht all] + 30]
+	set ht [expr {[ht all] + 30}]
 	incr ht -1
 	set y [winfo height .p]
 	set y1 [winfo height .p.top]
 	set y2 [winfo height .p.bottom]
 	if {$y1 >= $ht} {
 		set y1 $ht
-		set percent [expr $y1 / double($y)]
+		set percent [expr {$y1 / double($y)}]
 	}
 	if {$y > $ht && $y1 < $ht} {
 		set y1 $ht
-		set percent [expr $y1 / double($y)]
+		set percent [expr {$y1 / double($y)}]
 	}
 	PaneGeometry
 }
@@ -812,7 +814,7 @@ proc PaneGeometry {} \
 	global	percent psize
 
 	place .p.top -relheight $percent
-	place .p.bottom -relheight [expr 1.0 - $percent]
+	place .p.bottom -relheight [expr {1.0 - $percent}]
 	place .p.grip -rely $percent
 	place .p.fakesb -rely $percent -y -2
 	place .p.sash -rely $percent
@@ -826,9 +828,9 @@ proc PaneDrag {D} \
 {
 	global	lastD percent psize
 
-	if [info exists lastD] {
-		set delta [expr double($lastD - $D) / $psize]
-		set percent [expr $percent - $delta]
+	if {[info exists lastD]} {
+		set delta [expr {double($lastD - $D) / $psize}]
+		set percent [expr {$percent - $delta}]
 		if {$percent < 0.0} {
 			set percent 0.0
 		} elseif {$percent > 1.0} {
