@@ -35,17 +35,15 @@ echo $N Check basic park/unpark cycle ...............................$NL
 bk edit $Q foo.c bar.c
 echo foo-new > foo.c
 echo bar-new >> bar.c
-bk undos foo.c > foo.sav
-bk undos bar.c > bar.sav
+cp foo.c foo.sav
+cp bar.c bar.sav
 bk park 2> /dev/null
 NUM=`bk sfiles -c | wc -l`
 if [ $NUM -ne 0 ]; then echo failed; exit 1; fi;
 bk unpark 2> /dev/null 1>&2
-bk undos foo.c > X
-cmp -s X foo.sav
+cmp -s foo.c foo.sav
 if [ $? -ne 0 ]; then echo failed 1; exit 1; fi
-bk undos bar.c > X
-cmp -s X bar.sav 
+cmp -s bar.c bar.sav 
 if [ $? -ne 0 ]; then echo failed 2; od -c bar.c; od -c bar.sav; exit 1; fi
 echo OK
 echo $N Check basic park/unpark with reject file ....................$NL
@@ -68,12 +66,11 @@ bk fix $Q foo.c
 echo foo-new4 > foo.c
 bk get $Q -p -r1.1 foo.c >> foo.c
 bk unpark 2>/dev/null 1>&2
-bk undos foo.c > CMP1
 bk undos > CMP2 <<EOF
 foo-new4
 foo-new2
 EOF
-cmp -s CMP1 CMP2
+cmp -s foo.c CMP2
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 if [ "$PLATFORM" = "WIN32" ]

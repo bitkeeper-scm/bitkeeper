@@ -1076,10 +1076,15 @@ compare_files (dir0, name0, dir1, name1, depth)
 	  }
 
 #if HAVE_SETMODE
-      if (binary_I_O)
+      if (binary_I_O) {
 	for (i = 0; i <= 1; i++)
 	  if (0 <= inf[i].desc)
 	    setmode (inf[i].desc, O_BINARY);
+      } else {
+	for (i = 0; i <= 1; i++)
+	  if (0 <= inf[i].desc)
+	    setmode (inf[i].desc, O_TEXT);
+      }
 #endif
 
       /* Compare the files, if no error was found.  */

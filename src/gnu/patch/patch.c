@@ -610,7 +610,7 @@ static char const *const option_help[] =
 "",
 "  -d DIR  --directory=DIR  Change the working directory to DIR first.",
 #if HAVE_SETMODE
-"  --binary  Read and write data in binary mode.",
+"  --binary  Output in binary mode (overridden by BitKeeper EOLN_NATIVE flag).",
 #else
 "  --binary  Read and write data in binary mode (no effect on this platform).",
 #endif

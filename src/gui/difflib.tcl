@@ -238,9 +238,22 @@ proc right {r l n} \
 # Get the sdiff output. Make sure it contains no \r's from fucking DOS.
 proc sdiff {L R} \
 {
-	global	rmList sdiffw
+	global	rmList sdiffw tcl_platform
 
 	set rmList ""
+
+	# On windows, our diff always read in text mode
+	# (and write in binary mode). So no need to call bk undos
+	# and no need to incure the overhead of calling "grep".
+	# cygwin "grep" seems to run in text mode, so it cannot
+	# detect CRLF sequence in file anyway.
+	#
+	# XXX For some reason, Larry's diff --ignore-trailing-cr option
+	# XXX have no effect when used in sdiff, need to figure out why.
+	if {$tcl_platform(platform) == "windows"} {
+		return [open "| $sdiffw \"$L\" \"$R\"" r]
+	}
+
 	set a [open "| grep {\r$} \"$L\"" r]
 	set b [open "| grep {\r$} \"$R\"" r]
 	if { ([gets $a dummy] < 0) && ([gets $b dummy] < 0)} {
