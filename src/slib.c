@@ -1864,7 +1864,9 @@ ok:
 			int	release = rev ? atoi(rev) : 1;
 
 			if (release > a) {
-				a = release;
+				a = (s->state & S_BITKEEPER) 
+				    ? sccs_nextlod(s)
+				    : release;
 				b = 1;
 			} else {
 				b++;
