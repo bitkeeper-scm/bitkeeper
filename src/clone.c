@@ -688,7 +688,7 @@ relink_main(int ac, char **av)
 
 	if (av[1] && streq("-q", av[1])) quiet++, av++, ac--;
 
-	unless (av[2]) {
+	unless (ac >= 3) {
 err:		system("bk help -s relink");
 		exit(1);
 	}

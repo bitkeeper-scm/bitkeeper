@@ -2089,7 +2089,7 @@ findrev(sccs *s, char *rev)
 		return (e);
 	    default:
 		fprintf(stderr, "Malformed revision: %s\n", rev);
-		debug((stderr, " BAD\n", e->rev));
+		debug((stderr, " BAD %s\n", e->rev));
 		return (0);
 	}
 }
@@ -4227,8 +4227,8 @@ sccs_init(char *name, u32 flags, project *proj)
 			return (0);
 		}
 	}
-	debug((stderr, "mapped %s for %d at 0x%x\n",
-	    s->sfile, s->size, s->mmap));
+	debug((stderr, "mapped %s for %d at 0x%p\n",
+	    s->sfile, (int)s->size, s->mmap));
 	if (((flags&INIT_NOCKSUM) == 0) && badcksum(s, flags)) {
 		return (s);
 	} else {
@@ -5816,7 +5816,7 @@ openOutput(sccs *s, int encode, char *file, FILE **op)
 	int	toStdout = streq(file, "-");
 
 	assert(op);
-	debug((stderr, "openOutput(%x, %s, %x)\n", encode, file, op));
+	debug((stderr, "openOutput(%x, %s, %p)\n", encode, file, op));
 	switch (encode) {
 	    case E_ASCII:
 	    case E_UUENCODE:
@@ -5848,10 +5848,10 @@ openOutput(sccs *s, int encode, char *file, FILE **op)
 		break;
 	    default:
 		*op = NULL;
-		debug((stderr, "openOutput = %x\n", *op));
+		debug((stderr, "openOutput = %p\n", *op));
 		return (-1);
 	}
-	debug((stderr, "openOutput = %x\n", *op));
+	debug((stderr, "openOutput = %p\n", *op));
 	return (0);
 }
 
@@ -7275,7 +7275,7 @@ signed_badcksum(sccs *s, int flags)
 	register unsigned int sum = 0;
 	int	filesum;
 
-	debug((stderr, "Checking sum from %x to %x (%d)\n",
+	debug((stderr, "Checking sum from %p to %p (%d)\n",
 	    s->mmap + 8, end, (char*)end - s->mmap - 8));
 	assert(s);
 	seekto(s, 0);
@@ -7316,7 +7316,7 @@ badcksum(sccs *s, int flags)
 #ifdef	PURIFY
 	assert(size(s->sfile) == s->size);
 #endif
-	debug((stderr, "Checking sum from %x to %x (%d)\n",
+	debug((stderr, "Checking sum from %p to %p (%d)\n",
 	    s->mmap + 8, end, (char*)end - s->mmap - 8));
 	assert(s);
 	seekto(s, 0);
@@ -10828,7 +10828,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	}
 	assert(sc->state & S_SOPEN);
 	seekto(sc, sc->data);
-	debug((stderr, "seek to %d\n", sc->data));
+	debug((stderr, "seek to %d\n", (int)sc->data));
 	if ((old_enc & E_GZIP) && (flags & ADMIN_OBSCURE)) {
 		fprintf(stderr, "admin: cannot obscure gzipped data.\n");
 		OUT;
@@ -10978,7 +10978,7 @@ out:
 	}
 	assert(s->state & S_SOPEN);
 	seekto(s, s->data);
-	debug((stderr, "seek to %d\n", s->data));
+	debug((stderr, "seek to %d\n", (int)s->data));
 	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
 	if (s->encoding & E_GZIP) zputs_init();
 	while (buf = nextdata(s)) {
@@ -11042,6 +11042,9 @@ finish(sccs *s, int *ip, int *pp, FILE *out, register serlist *state,
 		debug2((stderr, "G> %.*s", linelen(buf), buf));
 		sum = fputdata(s, buf, out);
 		if (isData(buf)) {
+			/* CNTLA_ESCAPE is not part of the check sum */
+			if (buf[0] == CNTLA_ESCAPE) sum -= CNTLA_ESCAPE;
+
 			if (!print) {
 				/* if we are skipping data from pending block */
 				if (lf_pend &&
@@ -14828,8 +14831,8 @@ samekey(delta *d, char *user, char *host, char *path, time_t date,
 	DATE(d);
 	if (d->date != date) {
 		debug((stderr, "samekey: No date match %s: %d (%s%s) vs %d\n",
-		    d->rev, d->date, d->sdate,
-		    d->zone ?  d->zone : "", date));
+		    d->rev, (u32)d->date, d->sdate,
+		    d->zone ?  d->zone : "", (u32)date));
 		return (0);
 	}
 	debug((stderr, "samekey: DATE matches\n"));
@@ -15603,6 +15606,7 @@ sccs_color(sccs *s, delta *d)
 }                 
 
 #ifdef	DEBUG
+int
 debug_main(char **av)
 {
 	fprintf(stderr, "===<<<");
@@ -15611,6 +15615,7 @@ debug_main(char **av)
 		av++;
 	} while (av[0]);
 	fprintf(stderr, " >>>===\n");
+	return (0);
 }
 #endif
 
