@@ -1024,6 +1024,7 @@ off_t	fsize(int fd);
 char	*separator(char *);
 int	trigger(char *cmd, char *when);
 void	cmdlog_start(char **av, int want_http_hdr);
+void	cmdlog_addnote(char *note);
 int	cmdlog_end(int ret);
 off_t	get_byte_count(void);
 void	save_byte_count(unsigned int byte_count);

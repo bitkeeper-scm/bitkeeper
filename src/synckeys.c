@@ -158,6 +158,8 @@ listkey_main(int ac, char **av)
 	char	s_cset[] = CHANGESET;
 	char	**lines = 0;
 	char	*tag;
+	int	sum;
+	char	*note;
 
 #define OUT(s)  unless(ForceFullPatch) out(s)
 
@@ -203,13 +205,19 @@ listkey_main(int ac, char **av)
 	 * We need two passes because we need to know if the root key
 	 * matched.
 	 */
+	sum = i = 0;
 	while (getline(0, key, sizeof(key)) > 0) {
 		lines = addLine(lines, strdup(key));
+		++i;
+		sum += strlen(key);
 		if (streq("@END PROBE@", key) || streq("@TAG PROBE@", key)) {
 			break;
 		}
 	}
 	unless (lines && lines[1]) goto mismatch;	/* sort of */
+	note = aprintf("keysin=%u(%u)", sum, i);
+	cmdlog_addnote(note);
+	free(note);
 
 	/*
 	 * Make sure that one of the keys match the root key and that the
@@ -288,6 +296,7 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 	/*
 	 * Phase 2, send the non marked keys.
 	 */
+	sum = i = 0;
 	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_RED) continue;
 		/*
@@ -314,9 +323,14 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 		sccs_sdelta(s, d, key);
 		OUT(key);
 		OUT("\n");
+		++i;
+		sum += strlen(key);
 	}
 	out("@END@\n");
 	sccs_free(s);
+	note = aprintf("keysout=%u(%u)", sum, i);
+	cmdlog_addnote(note);
+	free(note);
 	return (0);
 }
 

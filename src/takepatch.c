@@ -1829,6 +1829,7 @@ init(char *inputFile, int flags, project **pp)
 		u32	diffsblank:1;	/* previous line was \n after diffs */
 	}	st;
 	int	line = 0, j = 0;
+	char	*note;
 	char	incoming[MAXPATH];
 
 	bzero(&st, sizeof(st));
@@ -2127,6 +2128,9 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			cleanup(CLEAN_RESYNC);
 		}
 		if (isLogPatch) saveEnviroment(pendingFile);
+		note = aprintf("psize=%u", size(incoming));
+		cmdlog_addnote(note);
+		free(note);
 		rename(incoming, pendingFile);
 		unless (flags & SILENT) {
 			NOTICE();

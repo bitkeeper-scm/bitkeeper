@@ -777,6 +777,14 @@ cmdlog_start(char **av, int httpMode)
 	if (cmdlog_flags & CMD_BYTES) save_byte_count(0); /* init to zero */
 }
 
+private	char	**notes = 0;
+
+void
+cmdlog_addnote(char *note)
+{
+	notes = addLine(notes, strdup(note));
+}
+
 int
 cmdlog_end(int ret)
 {
@@ -814,10 +822,16 @@ cmdlog_end(int ret)
 	if (ret == LOG_BADEXIT) {
 		fprintf(f, "%s = ?\n", cmdlog_buffer);
 	} else {
+		int	i;
+
 		fprintf(f, "%s = %d", cmdlog_buffer, ret);
 		if (cmdlog_flags&CMD_BYTES) {
 			fprintf(f, " xfered=%u", (u32)get_byte_count());
 		}
+		EACH (notes) {
+			fprintf(f, " %s", notes[i]);
+		}
+		freeLines(notes);
 		fputs("\n", f);
 	}
 	if (!cmdlog_repo && (fsize(fileno(f)) > LOG_MAXSIZE)) {
