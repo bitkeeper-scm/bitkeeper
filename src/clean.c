@@ -38,7 +38,7 @@ usage:		fputs(clean_help, stderr);
 	while ((c = getopt(ac, av, "npQqr:suv")) != -1) {
 		switch (c) {
 		    case 'p': flags |= PRINT; break;
-		    case 'Q': flags |= CLEAN_SHUTUP; break;
+		    case 'Q': flags |= CLEAN_SHUTUP; sflags |= SF_SILENT; break;
 		    case 'u': flags |= CLEAN_UNEDIT; sflags &= ~SF_GFILE; break;
 		    case 'n': flags |= CLEAN_UNLOCK; break;
 		    case 'v': flags &= ~SILENT; break;
@@ -56,7 +56,6 @@ usage:		fputs(clean_help, stderr);
 	 * Too dangerous to unedit everything automagically,
 	 * make 'em spell it out.
 	 */
-
 	if (flags & CLEAN_UNEDIT) {
 		unless (name =
 		    sfileFirst("clean",
