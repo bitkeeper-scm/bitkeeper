@@ -31,26 +31,12 @@ __winExec()
 __platformInit()
 {
 		# WIN32 specific stuff
-		__win2cygPath $BK_BIN; _BK_BIN=$cygPath;
-		__win2cygPath $UNIX_BIN; _UNIX_BIN=$cygPath;
-		__win2cygPath $TCL_BIN; _TCL_BIN=$cygPath;
-		__win2cygPath $VIM; _VIM=$cygPath;
-		# must set up unix path
-		# used by resolve & GUI(tcl) scripts
-		PATH=$_BK_BIN:$_UNIX_BIN:$_TCL_BIN:$PATH
-		export PATH BK_BIN UNIX_BIN
-		BIN=$BK_BIN
-		RM=rm.exe
-		TMP=`bk pwd -sf "$TEMP"`
+		TMP=/tmp
 		DEV_NULL=nul
-		ECHO=${BIN}/bin_mode_echo.exe
-		MAIL_CMD=${BIN}/mail.exe
 		wish=${_TCL_BIN}/wish83.exe
 		ext=".exe"
 		tcl=".tcl"
 
-		# XXX can not use a win32 native editor
-		# becuase they put themself in backgroud mode
 		if [ X$EDITOR = X ]
 		then EDITOR=notepad.exe
 		fi

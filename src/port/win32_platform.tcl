@@ -16,7 +16,7 @@ proc bk_init {} \
 	# TODO: get the wish shell name from registry
 	set wish "wish83.exe"
 	set tmp_dir $env(TEMP)
-	# XXX keytmp should much findTmp() in finddir.c
+	# XXX keytmp should match findTmp() in finddir.c
 	set keytmp "$tmp_dir"
 	set file_rev {(.*)@([0-9].*)}
 	set file_start_stop {(.*)@(.*)\.\.(.*)}

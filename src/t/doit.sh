@@ -17,7 +17,7 @@ win32_common_setup()
 {
 	PLATFORM="WIN32"
 	DEV_NULL="nul"
-	TMP=`../bk pwd -sf $TEMP`
+	TMP="/tmp"
 	if [ -z "$TST_DIR" ]; then TST_DIR="$TMP"; fi
 	BK_BIN=`cd .. && ./bk pwd -sf`
 	CWD="$BK_BIN/bk pwd"
@@ -165,7 +165,7 @@ clean_up()
 
 	# Make sure there are no stale files in $TMP
 	ls -a $TMP  > $TMP/T.${USER}-new
-	diff $TMP/T.${USER}-new $TMP/T.${USER}
+	/usr/bin/diff $TMP/T.${USER}-new $TMP/T.${USER}
 }
 
 init_main_loop()

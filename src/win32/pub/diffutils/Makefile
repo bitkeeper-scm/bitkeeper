@@ -28,7 +28,7 @@ distfiles = $(srcs) README INSTALL NEWS diagmeet.note Makefile.in \
 	stamp-h.in config.hin configure configure.in COPYING ChangeLog \
 	diff.texi install-sh mkinstalldirs
 
-PROGRAMS = cmp.exe diff.exe diff3.exe sdiff.exe
+PROGRAMS = diff.exe diff3.exe sdiff.exe
 
 all: $(PROGRAMS)
 	cp ${PROGRAMS} ../../..

@@ -19,7 +19,8 @@ then
 	exit 0
 fi
 
-# Note: This test assumes the shell "echo" comamnd output in text mode
+
+# Note: This test assumes the shell "echo" comamnd output in binary mode
 echo $N Create initial repository ...................................$NL
 no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
@@ -28,9 +29,8 @@ P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
 echo $N Check ci co in EOLN_NATIVE mode .............................$NL
-#cp d:/projects/bk_install/Bitkeeper.wse data
 # create a file with line terminated with CRLF 
-echo "data" > data
+echo -e 'data\r' > data
 cp data data.ref
 bk  ci $Q -i data
 bk admin $Q -fEOLN_NATIVE data
