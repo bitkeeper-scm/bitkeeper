@@ -64,6 +64,7 @@ setup_main(int ac, char **av)
 	}
 	unless(force) {
 		getMsg("setup_1", 0, 0, '-', stdout);
+		flush_fd0(); /* for Win/98 and Win/ME */
 		printf("Create new package? [no] ");
 		if (fgets(buf, sizeof(buf), stdin) == NULL) buf[0] = 'n';
 		if ((buf[0] != 'y') && (buf[0] != 'Y')) exit (0);
@@ -96,7 +97,8 @@ setup_main(int ac, char **av)
 		fclose(f);
 		if (flist) mdbm_close(flist);
 		chmod("BitKeeper/etc/config", 0664);
-again:		printf("Editor to use [%s] ", editor);
+again:		flush_fd0(); /* for Win/98 and Win/ME */
+		printf("Editor to use [%s] ", editor);
 		unless (fgets(my_editor, sizeof(my_editor), stdin)) {
 			my_editor[0] = '\0';
 		}
@@ -187,6 +189,7 @@ err:			unlink("BitKeeper/etc/config");
 
 			if (cat) {
 				unless (mdbm_fetch_str(cat, t)) {
+					flush_fd0(); /* for Win98 and Win/ME */
 					fprintf(stderr, "<%s> is not a known project category; use anyway[y/N]? ", t);
 					unless (fgets(buf, sizeof buf, stdin)) buf[0] = 0;
 				}
