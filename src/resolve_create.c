@@ -103,7 +103,7 @@ do_diff(resolve *rs, char *left, char *right, int wait)
 
 	bktemp(tmp);
 	sysio(0, tmp, 0, "bk", "diff", left, right, SYS);
-	sysio(tmp, 0, 0, rs->pager, SYS);
+	more(rs, tmp);
 	unlink(tmp);
 	return (0);
 }
@@ -123,7 +123,7 @@ do_sdiff(resolve *rs, char *left, char *right, int wait)
 	if (p) pclose(p);
 	bktemp(tmp);
 	sysio(0, tmp, 0, "bk", "sdiff", "-w", cols, left, right, SYS);
-	sysio(tmp, 0, 0, rs->pager, SYS);
+	more(rs, tmp);
 	unlink(tmp);
 	return (0);
 }
@@ -199,7 +199,14 @@ res_mr(resolve *rs)
 int
 more(resolve *rs, char *file)
 {
-	sys(rs->pager, file, SYS);
+	char *cmd;
+
+	/*
+	 * must use system(), _not_ sysio()
+	 * because on win32, pager may have arguments
+	 */
+	cmd = aprintf("%s < %s", rs->pager, file);
+	system(cmd);
 	return (0);
 }
 
@@ -240,7 +247,7 @@ res_vr(resolve *rs)
 
 	bktemp(tmp);
 	sysio(0, tmp, 0, "bk", "get", "-qkp", rs->s->gfile, SYS);
-	sysio(tmp, 0, 0, rs->pager, SYS);
+	more(rs, tmp);
 	unlink(tmp);
 	return (0);
 }
@@ -297,7 +304,7 @@ res_h(resolve *rs)
 	}
 	bktemp(tmp);
 	sysio(0, tmp, 0, "bk", "prs", s->gfile, SYS);
-	sysio(tmp, 0, 0, rs->pager, SYS);
+	more(rs, tmp);
 	unlink(tmp);
 	return (0);
 }
@@ -337,7 +344,7 @@ prs_common(resolve *rs, sccs *s, char *a, char *b)
 	sprintf(l2, "-r%s", list);
 	bktemp(tmp);
 	sysio(0, tmp, 0, "bk", "prs", l2, rs->s->gfile, SYS);
-	sysio(tmp, 0, 0, rs->pager, SYS);
+	more(rs, tmp);
 	unlink(tmp);
 	free(list);
 	free(l2);

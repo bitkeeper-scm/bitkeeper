@@ -27,7 +27,7 @@ resolve_init(opts *opts, sccs *s)
 		rs->gnames->remote = sccs2name(rs->snames->remote);
 	}
 	rs->revs = getnames(sccs_Xfile(rs->s, 'r'), 'r');
-	unless (rs->pager = getenv("PAGER")) rs->pager = "more";
+	unless (rs->pager = getenv("PAGER")) rs->pager = PAGER;
 	unless (rs->editor = getenv("EDITOR")) rs->editor = "vi";
 	if (opts->debug) {
 		fprintf(stderr, "rs_init(%s)", rs->d->pathname);
