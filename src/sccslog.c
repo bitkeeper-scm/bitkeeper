@@ -27,7 +27,7 @@ private	int	compar(const void *a, const void *b);
 private	void	sortlog(int flags);
 private	void	printlog(void);
 private	void	sccslog(sccs *s);
-private	void	stealTree(delta *d, delta *stop);
+private	void	reallocDelta(delta *d);
 private	void	freelog(void);
 
 private	delta	*list, **sorted;
@@ -71,7 +71,7 @@ usage:			fprintf(stderr, "sccslog: usage error, try --help.\n");
 		}
 		unless (proj) proj = s->proj;
 		unless (s->tree) goto next;
-		RANGE("sccslog", s, 1, 0);
+		RANGE("sccslog", s, 2, 0);
 		save = n;
 		sccslog(s);
 		verbose((stderr, "%s: %d deltas\n", s->sfile, n - save));
@@ -169,10 +169,16 @@ private	void
 sccslog(sccs *s)
 {
 	delta	*d, *e;
-	delta	*start = s->rstart;
-	delta	*stop = s->rstop;
+	int	partial = 0;
 
-	if (!start && !stop) {
+	for (d = s->table; d; d = d->next) {
+		/* XXX - need to screan out meta/removed? */
+		unless (d->flags & D_SET) {
+			partial = 1;
+			break;
+		}
+	}
+	unless (partial) {
 		for (d = s->table, n++; d && d->next; n++, d = d->next) {
 			if (d->zone) {
 				assert(d->zone[0]);
@@ -192,11 +198,10 @@ sccslog(sccs *s)
 		s->table = s->tree = 0;
 		return;
 	}
-	start->siblings = 0;
-	stealTree(start, stop);
 	for (d = s->table; d; ) {
 		d->kid = d->siblings = 0;
-		if (d->flags & D_VISITED) {
+		if (d->flags & D_SET) {
+			reallocDelta(d);
 			e = d->next;
 			d->next = list;
 			list = d;
@@ -216,7 +221,7 @@ sccslog(sccs *s)
  * Put them on the list (destroying the delta table list).
  */
 private	void
-stealTree(delta *d, delta *stop)
+reallocDelta(delta *d)
 {
 	if (d->zone) {
 		if (d->flags & D_DUPZONE) {
@@ -232,10 +237,6 @@ stealTree(delta *d, delta *stop)
 		d->flags &= ~D_DUPHOST;
 		d->hostname = strdup(d->hostname);
 	}
-	d->flags |= D_VISITED;
-	if (d == stop) return;
-	if (d->kid) stealTree(d->kid, stop);
-	if (d->siblings) stealTree(d->siblings, stop);
 }
 
 private	void
