@@ -524,8 +524,10 @@ platformInit(char **av)
 {
 	char	*p, *t, *s;
 	char	buf[MAXPATH];
+	char	link[MAXPATH];
+	int	add2path = 1;
 
-	if (editor) return;
+	if (bin) return;
 #ifdef	WIN32
 	setmode(1, _O_BINARY);
 	setmode(2, _O_BINARY);
@@ -535,13 +537,17 @@ platformInit(char **av)
 
 	unless (p = getenv("PATH")) return;	/* and pray */
 
-	/* fully specified paths are respected */
+	/*
+	 * Find the program and if it is a symlink, then add where it
+	 * points to the path.
+	 * Otherwise, set the bin dir to whereever we found the program.
+	 */
 	if (IsFullPath(av[0])) {
-		t = strchr(av[0], '/');
-		*t = 0;
 		strcpy(buf, av[0]);
-		*t = '/';
 gotit:		
+		if (readlink(buf, link, sizeof(link)) != -1) strcpy(buf, link);
+		t = strrchr(buf, '/');
+		*t = 0;
 		s = malloc(strlen(buf) + strlen(p) + 10);
 		sprintf(s, "PATH=%s:%s", buf, p);
 		putenv(s);
@@ -550,41 +556,31 @@ gotit:
 	}
 
 	/* partially specified paths are respected */
-	if ((t = strchr(av[0], '/')) || exists(av[0])) {
+	if (t = strchr(av[0], '/')) {
 		getcwd(buf, sizeof(buf));
-		if (t && ((t-1) > av[0])) {
-			*t = 0;
-			strcat(buf, "/");
-			strcat(buf, av[0]);
-			*t = '/';
-		}
+		strcat(buf, "/");
+		*t++ = 0;
+		strcat(buf, t);
+		t[-1] = '/';
 		goto gotit;
 	}
 	
-	/*
-	 * Find the program and if it is a symlink, then add where it
-	 * points to the path.
-	 * Otherwise, set the bin dir to whereever we found the program.
-	 */
 	for (t = s = p; t = strchr(s, ':'); s = t + 1) {
 		*t = 0;
 		sprintf(buf, "%s/%s", s, av[0]);
-		if (readlink(buf, buf, sizeof(buf)) != -1) {
-			*t = ':';
-			unless (t = strrchr(buf, '/')) return;
-			*t = 0;
-			goto gotit;
-		} else if (exists(buf)) {
+		if (exists(buf)) {
 			unless (IsFullPath(s)) {
 				getcwd(buf, sizeof(buf));
 				strcat(buf, "/");
 				strcat(buf, s);
-				bin = strdup(buf);
+				strcat(buf, "/");
+				strcat(buf, av[0]);
 			} else {
-				bin = strdup(s);
+				add2path = 0;
 			}
 			*t = ':';
-			return;
+			goto gotit;
+			
 		}
 		*t = ':';
 	}
