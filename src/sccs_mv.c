@@ -127,7 +127,7 @@ err:		if (sname) free(sname);
 	}
 
 	if (isDir) {
-		concat_path(buf, dest, s->gfile);
+		concat_path(buf, dest, basenm(s->gfile));
 	} else {
 		strcpy(buf, dest);
 	}
