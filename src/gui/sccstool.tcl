@@ -180,12 +180,12 @@ proc showTags {} \
 		    -relief raised \
 		    -bg $gc(sccs.buttonColor) \
 		    -pady 3 -padx 3 -borderwid 3 \
-		    -text "Next" -command {selectTag 0 0 1}
+		    -text "Next" -command {selectTag .tw.top.t 0 0 1}
 		button .tw.bottom.prev -font $gc(sccs.buttonFont) \
 		    -relief raised \
 		    -bg $gc(sccs.buttonColor) \
 		    -pady 3 -padx 3 -borderwid 3 \
-		    -text "Prev" -command {selectTag 0 0 -1}
+		    -text "Prev" -command {selectTag .tw.top.t 0 0 -1}
 
 	pack .tw.top.yscroll -side right -fill y
 	pack .tw.top.xscroll -side bottom -fill x
@@ -194,32 +194,32 @@ proc showTags {} \
 	    -side left -expand true -fill both
 	pack .tw.top .tw.bottom -side top -fill both
 
-	bind .tw.top.t <Button-1> { selectTag %x %y }
+	bind .tw.top.t <Button-1> { selectTag %W %x %y "" }
 	.tw.top.t tag configure "select" -background $gc(sccs.selectColor)
 	foreach tag [lsort [array names tag2rev]] {
 		#puts "tag=($tag) val=($tag2rev($tag))"
 		.tw.top.t insert end "$tag\n"
 	}
 	bindtags .tw.top.t {.tw.top.t . all}
-
 	# Now set the selection to the first tag
-	selectTag 0 0
+	selectTag .tw.top.t 0 0 ""
 }
 
 # 
 # Center the selected bitkeeper tag in the middle of the canvas
 #
-# If called from the mouse <B1> binding, the x and y value are set
-# If called from the next/previous buttons, only the line variable
-# is set
+# When called from the mouse <B1> binding, the x and y value are set
+# When called from the mouse <B2> binding, the doubleclick var is set to 1
+# When called from the next/previous buttons, only the line variable is set
 #
-proc selectTag {{x {}} {y {}} {line {}}} \
+proc selectTag { w {x {}} {y {}} {line {}} {doubleclick {}}} \
 {
-	global tag2rev curLine dimension gc file dev_null dspec
+	global tag2rev curLine dimension gc file dev_null dspec rev2rev_name
+	global rev1
 
 	if {($line == -1) || ($line == 1)} {
 		set top [expr {$curLine - 3}]
-		set numLines [.tw.top.t index "end -1 chars linestart" ]
+		set numLines [$w index "end -1 chars linestart" ]
 		if {($line == 1) && ($curLine < ($numLines - 1))} {
 			set curLine [expr $curLine + 1.0]
 		} elseif {($line == -1) && ($curLine >= 1.0)} {
@@ -227,40 +227,62 @@ proc selectTag {{x {}} {y {}} {line {}}} \
 		}
 		if {$top >= 0} {
 			set frac [expr {$top / $numLines}]
-			.tw.top.t yview moveto $frac
+			$w yview moveto $frac
 		}
 	} else {
-		set curLine [.tw.top.t index "@$x,$y linestart"]
+		set curLine [$w index "@$x,$y linestart"]
 	}
-	#puts "curLine=($curLine) line=($line)"
-	set name [.tw.top.t get $curLine "$curLine lineend"]
+	set line [$w get $curLine "$curLine lineend"]
+
+	if {[regexp {^(.*)\s+([0-9]+\.[0-9.]+).*\|} $line match filename rev]} {
+		# Larry says this is cute...
+	} else {
+		regexp {^(.*)@([0-9]+\.[0-9.]+),.*} $line match filename rev
+		while {![info exists rev]} {
+			set curLine [expr $curLine - 1.0]
+			if {$curLine == "0.0"} {
+				# This pops when trying to select the cset
+				# comments for the ChangeSet file
+				#puts "Error: curLine=$curLine"
+				return
+			}
+			set line [$w get $curLine "$curLine lineend"]
+			regexp {^(.*)@([0-9]+\.[0-9.]+),.*} \
+			       $line match filename rev
+		}
+	}
+	set name [$w get $curLine "$curLine lineend"]
 	if {$name == ""} { puts "Error: name=($name)"; return }
-	.tw.top.t tag remove "select" 1.0 end
-	.tw.top.t tag add "select" "$curLine" "$curLine lineend + 1 char"
+	$w tag remove "select" 1.0 end
+	$w tag add "select" "$curLine" "$curLine lineend + 1 char"
 
 	if {[info exists tag2rev($name)]} {
+		set revname $tag2rev($name)
+	} else {
+		set revname $rev2rev_name($rev)
+	}
+	#puts "revname=($revname) rev=($rev) filename=($filename)"
+
+	if {$revname != ""} {
 		.p.top.c delete tag
-		set rev $tag2rev($name)
-		set x1 [lindex [.p.top.c coords $rev] 0]
-		set y1 [lindex [.p.top.c coords $rev] 1]
-		set x2 [lindex [.p.top.c coords $rev] 2]
-		set y2 [lindex [.p.top.c coords $rev] 3]
-		set bg [.p.top.c create rectangle $x1 $y1 $x2 $y2 \
-		    -outline $gc(sccs.revOutline) -fill $gc(sccs.tagColor) \
-		    -tags tag]
-		.p.top.c raise revtext
+		set x2 [lindex [.p.top.c coords $revname] 2]
 		set width [.p.top.c cget -width]
 		set xdiff [expr $width / 2]
-		set xfract [expr ($x2 - $width) / $dimension(right)]
+		set xfract [expr ($x2 - $xdiff) / $dimension(right)]
 		.p.top.c xview moveto $xfract
-		#puts "($curLine) name=($name) rev=($tag2rev($name))"
-		#puts "$x $dimension(right) $xfract"
-		regsub -- {-.*} $rev "" id
-		set prs [open "| bk prs {$dspec} -r$id \"$file\" 2>$dev_null"]
-		filltext $prs 1
+		set id [.p.top.c gettag $revname]
+		getLeftRev $id
+		#puts "($curLine) line=($line) revname=($tag2rev($line))"
 	} else {
-		puts "Error: tag not found ($name)"
+		#puts "Error: tag not found ($line)"
 		return
+	}
+	if {$doubleclick == 1} {
+		if {"$file" == "ChangeSet"} {
+	    		csettool
+		} else {
+			r2c
+		}
 	}
 	return
 }
@@ -343,7 +365,7 @@ proc dateSeparate { } { \
 proc addline {y xspace ht l} \
 {
 	global	bad wid revX revY gc merges parent line_rev screen
-	global  stacked
+	global  stacked rev2rev_name
 
 	set last -1
 	set ly [expr {$y - [expr {$ht / 2}]}]
@@ -366,10 +388,12 @@ proc addline {y xspace ht l} \
 
 		# make revision two lines
 		if {$stacked} {
+# XXX: Need to move this outside of this if
 			set jnk [split $rev "-"]
-			set jnk_user [lindex $jnk 1]
-			set jnk_rev [lindex $jnk 0]
-			set txt "$jnk_user\n$jnk_rev"
+			set tuser [lindex $jnk 1]
+			set trev [lindex $jnk 0]
+			set txt "$tuser\n$trev"
+			set rev2rev_name($trev) $rev
 			#set txt join [lindex $jnk 1] "\n" [lindex $jnk 0] 
 		} else {
 			set txt $rev
@@ -636,7 +660,7 @@ proc listRevs {file} \
 	.p.top.c yview moveto .3
 }
 
-proc getLeftRev {} \
+proc getLeftRev { {id {}} } \
 {
 	global	rev1 rev2
 
@@ -644,7 +668,7 @@ proc getLeftRev {} \
 	.p.top.c delete old
 	.menus.cset configure -state disabled -text "View changeset "
 	.menus.difftool configure -state disabled
-	set rev1 [getRev "old"]
+	set rev1 [getRev "old" $id]
 	if {[info exists rev2]} { unset rev2 }
 	if {$rev1 != ""} { .menus.cset configure -state normal }
 }
@@ -654,7 +678,7 @@ proc getRightRev {} \
 	global	rev2 file
 
 	.p.top.c delete new
-	set rev2 [getRev "new" ]
+	set rev2 [getRev "new"]
 	if {$rev2 != ""} {
 		.menus.difftool configure -state normal
 		.menus.cset configure -text "View changesets"
@@ -662,9 +686,11 @@ proc getRightRev {} \
 }
 
 # Returns the revision number (without the -username portion)
-proc getRev {type} \
+proc getRev {type {id {}} } \
 {
-	set id [.p.top.c gettags current]
+	if {$id == ""} {
+		set id [.p.top.c gettags current]
+	}
 	#puts "ID (all) is $id"
 	set id [lindex $id 0]
 	if {("$id" == "current") || ("$id" == "")} { return "" }
@@ -682,6 +708,7 @@ proc filltext {f clear} \
 	if {$clear == 1} { .p.bottom.t delete 1.0 end }
 	while { [gets $f str] >= 0 } {
 		.p.bottom.t insert end "$str\n"
+		#puts "str=($str)"
 	}
 	catch {close $f} ignore
 	.p.bottom.t configure -state disabled
@@ -704,12 +731,18 @@ proc prs {} \
 	}
 }
 
-proc history {} \
+proc history {{opt {}}} \
 {
 	global file dspec dev_null
 
 	busy 1
-	set f [open "| bk prs -h {$dspec} \"$file\" 2>$dev_null"]
+	if {$opt == "tags"} {
+		set tags \
+"-d\$if(:TAG:){:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)}\n\$each(:TAG:){  TAG: (:TAG:)\n}\n}\\c"
+		set f [open "| bk prs -h {$tags} \"$file\" 2>$dev_null"]
+	} else {
+		set f [open "| bk prs -h {$dspec} \"$file\" 2>$dev_null"]
+	}
 	filltext $f 1
 }
 
@@ -811,6 +844,7 @@ proc csetdiff2 {doDiffs} \
 	busy 0
 }
 
+# XXX: Is this dead code -- ask
 proc cset {} \
 {
 	global file rev1 rev2 dspec
@@ -847,6 +881,7 @@ proc r2c {} \
 	busy 1
 	set csets ""
 	if {[info exists rev2]} {
+		puts "rev2  file=($file)"
 		set revs [open "| bk prs -hbMr$rev1..$rev2 -d:I: \"$file\""]
 		while {[gets $revs r] >= 0} {
 			set c [exec bk r2c -r$r "$file"]
@@ -1147,6 +1182,7 @@ proc widgets {} \
 	bind .p.top.c <3>		"diff2 0; break"
 	bind .p.top.c <Double-1>	"get; break"
 	bind .p.top.c <h>		"history"
+	bind .p.top.c <t>		"history tags"
 	bind .p.top.c $gc(quit)		"exit"
 	bind .p.top.c <s>		"sfile"
 
@@ -1178,7 +1214,9 @@ proc widgets {} \
         bind . <Control-Button-5> ".p.top.c yview scroll 1 units"
         bind . <Button-4> ".p.bottom.t yview scroll -5 units"
         bind . <Button-5> ".p.bottom.t yview scroll 5 units"
-	bind .p.top.c <t>		"showTags"
+	#bind .p.top.c <Control-T>	"showTags"
+	bind .p.bottom.t <Button-1> { selectTag %W %x %y "" 0 }
+	bind .p.bottom.t <Double-1> { selectTag %W %x %y "" 1 }
 
 	# Command window bindings.
 	bind .p.top.c <slash> "search /"
@@ -1191,6 +1229,9 @@ proc widgets {} \
 	# highlighting.
 	.p.bottom.t tag configure "newTag" -background $gc(sccs.newColor)
 	.p.bottom.t tag configure "oldTag" -background $gc(sccs.oldColor)
+	.p.bottom.t tag configure "select" -background $gc(sccs.selectColor)
+
+	bindtags .p.bottom.t {.p.bottom.t . all}
 
 	focus .p.top.c
 	. configure -background $gc(BG)
