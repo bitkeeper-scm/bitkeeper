@@ -1822,7 +1822,7 @@ err:		resolve_free(rs);
 	}
 
 	if (opts->automerge) {
-		automerge(rs, 0);
+		automerge(rs, 0, 0);
 		resolve_free(rs);
 		return;
 	}
@@ -1855,7 +1855,7 @@ get_revs(resolve *rs, names *n)
  * Try to automerge.
  */
 void
-automerge(resolve *rs, names *n)
+automerge(resolve *rs, names *n, int identical)
 {
 	char	cmd[MAXPATH*4];
 	int	ret;
@@ -1865,17 +1865,6 @@ automerge(resolve *rs, names *n)
 	int	flags;
 	
 	if (rs->opts->debug) fprintf(stderr, "automerge %s\n", name);
-
-	if (rs->s->encoding & E_BINARY) {
-		unless (rs->opts->quiet) {
-			fprintf(stderr,
-			    "Not automerging binary '%s'\n", rs->s->gfile);
-		}
-nomerge:	rs->opts->hadConflicts++;
-		unlink(rs->s->gfile);
-		return;
-	}
-	if (NOMERGE(rs->s)) goto nomerge;
 
 	unless (n) {
 		sprintf(cmd, "BitKeeper/tmp/%s@%s", name, rs->revs->local);
@@ -1892,6 +1881,23 @@ nomerge:	rs->opts->hadConflicts++;
 		n = &tmp;
 		do_free = 1;
 	}
+
+	if (identical || sameFiles(n->local, n->remote)) {
+		assert(n);
+		sys("cp", n->local, rs->s->gfile, SYS);
+		goto same;
+	}
+
+	if (rs->s->encoding & E_BINARY) {
+		unless (rs->opts->quiet) {
+			fprintf(stderr,
+			    "Not automerging binary '%s'\n", rs->s->gfile);
+		}
+nomerge:	rs->opts->hadConflicts++;
+		unlink(rs->s->gfile);
+		return;
+	}
+	if (NOMERGE(rs->s)) goto nomerge;
 
 	/*
 	 * The interface to the merge program is
@@ -1920,7 +1926,7 @@ nomerge:	rs->opts->hadConflicts++;
 			fprintf(stderr,
 			    "Content merge of %s OK\n", rs->s->gfile);
 		}
-		if (!IS_LOCKED(rs->s) && edit(rs)) return;
+same:		if (!IS_LOCKED(rs->s) && edit(rs)) return;
 		comments_save("Auto merged");
 		d = comments_get(0);
 		sccs_restart(rs->s);
