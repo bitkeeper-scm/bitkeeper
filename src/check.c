@@ -1,7 +1,9 @@
 /*
  * ChangeSet fsck - make sure that the key pointers work in both directions.
+ * It's slowly grown to include checks for many of the problems our users
+ * have encountered.
  */
-/* Copyright (c) 1999 Larry McVoy */
+/* Copyright (c) 1999-2000 Larry McVoy */
 #include "system.h"
 #include "sccs.h"
 #include "range.h"
@@ -19,25 +21,29 @@ private	void	listCsetRevs(char *key);
 private void	init_idcache();
 private int	checkKeys(sccs *s, char *root);
 private void	warnPoly(void);
+private int	chk_gfile(sccs *s);
+private int	writable_gfile(sccs *s);
+private int	readonly_gfile(sccs *s);
+private int	no_gfile(sccs *s);
 
 private	int	verbose;
-private	int	all;	/* if set, check every darn entry in the ChangeSet */
-private	int	resync;	/* called in resync dir */
-private	int	fix;	/* if set, fix up anything we can */
-private	int	goneKey;/* if set, list gone key only */
-private	int	badWritable; /* if set, list bad writable file only */
-private	int	names;	/* if set, we need to fix names */
-private	int	mixed;	/* mixed short/long keys */
+private	int	all;		/* if set, check every entry in the ChangeSet */
+private	int	resync;		/* called in resync dir */
+private	int	fix;		/* if set, fix up anything we can */
+private	int	goneKey;	/* if set, list gone key only */
+private	int	badWritable;	/* if set, list bad writable file only */
+private	int	names;		/* if set, we need to fix names */
+private	int	mixed;		/* mixed short/long keys */
 private	project	*proj;
-private	sccs	*cset;	/* the initialized cset file */
-private int	flags = SILENT|INIT_SAVEPROJ|INIT_NOCKSUM;
+private	sccs	*cset;		/* the initialized cset file */
+private int	flags = SILENT|INIT_SAVEPROJ|INIT_NOGCHK|INIT_NOCKSUM;
 private	FILE	*idcache;
 private	u32	id_sum;
-private char	id_tmp[100]; /* BitKeeper/tmp/bkXXXXXX */
+private char	id_tmp[100]; 	/* BitKeeper/tmp/bkXXXXXX */
 private	int	poly;
 private	int	polyList;
 private	MDBM	*goneDB;
-private	char	ctmp[100];  /* BitKeeper/tmp/bkXXXXXX */
+private	char	ctmp[100];  	/* BitKeeper/tmp/bkXXXXXX */
 
 #define	POLY	"BitKeeper/etc/SCCS/x.poly"
 
@@ -81,14 +87,14 @@ check_main(int ac, char **av)
 
 	while ((c = getopt(ac, av, "acfgpRvw")) != -1) {
 		switch (c) {
-		    case 'a': all++; break;	/* doc 2.0 */
-		    case 'f': fix++; break;	/* doc 2.0 */
-		    case 'g': goneKey++; break;	/* doc 2.0 */
+		    case 'a': all++; break;			/* doc 2.0 */
+		    case 'f': fix++; break;			/* doc 2.0 */
+		    case 'g': goneKey++; break;			/* doc 2.0 */
 		    case 'c': flags &= ~INIT_NOCKSUM; break;	/* doc 2.0 */
-		    case 'p': polyList++; break;	/* doc 2.0 */
-		    case 'R': resync++; break;	/* doc 2.0 */
-		    case 'v': verbose++; break;	/* doc 2.0 */
-		    case 'w': badWritable++; break;	/* doc 2.0 */
+		    case 'p': polyList++; break;		/* doc 2.0 */
+		    case 'R': resync++; break;			/* doc 2.0 */
+		    case 'v': verbose++; break;			/* doc 2.0 */
+		    case 'w': badWritable++; break;		/* doc 2.0 */
 		    default:
 			system("bk help -s check");
 			return (1);
@@ -123,7 +129,10 @@ check_main(int ac, char **av)
 	goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
 	for (name = sfileFirst("check", &av[optind], 0);
 	    name; name = sfileNext()) {
-		unless (s = sccs_init(name, flags, proj)) continue;
+		unless (s = sccs_init(name, flags, proj)) {
+			if (all) fprintf(stderr, "%s init failed.\n", name);
+			continue;
+		}
 		unless (s->cksumok == 1) {
 			fprintf(stderr,
 			    "%s: bad file checksum, corrupted file?\n",
@@ -141,25 +150,10 @@ check_main(int ac, char **av)
 			sccs_free(s);
 			continue;
 		}
-
-		unless (HAS_PFILE(s)) {
-			if (S_ISREG(s->mode) && IS_WRITABLE(s)) {
-				if (badWritable) {
-					printf("%s\n", s->gfile);
-				} else {
-					fprintf(stderr,
-"===========================================================================\n\
-check: %s writable but not checked out, this usually means that you have\n\
-modified a file without first doing a \"bk edit\". To fix the problem,\n\
-do a \"bk -R edit -g %s\" to change the file to checked out status.\n\
-To fix all bad writable file, use the following command:\n\
-\t\"bk -r check -w | bk -R edit -g -\"\n\
-===========================================================================\n",
-				    	s->gfile, s->gfile);
-				}
-				errors |= 32; 
-			}
-		}
+		errors |= chk_gfile(s);
+		errors |= no_gfile(s);
+		errors |= readonly_gfile(s);
+		errors |= writable_gfile(s);
 
 		/*
 		 * Store the full length key and only if we are in mixed mode,
@@ -255,6 +249,95 @@ To fix all bad writable file, use the following command:\n\
 		if (system("bk sane")) errors |= 16;
 	}
 	return (errors);
+}
+
+private int
+chk_gfile(sccs *s)
+{
+	char	*type;
+
+	unless (exists(s->gfile)) return (0);
+	if (isreg(s->gfile) || isSymlnk(s->gfile)) return (0);
+	if (isdir(s->gfile)) {
+		type = "directory";
+err:		fprintf(stderr,
+"===========================================================================\n\
+file/directory conflict: %s\n\
+The name above is both a %s and a revision controlled file.\n\
+The revision controlled file can not be checked out because the directory\n\
+is where the file wants to be.  To correct this:\n\
+1) Move the %s to a different name;\n\
+2) Check out the file \"bk get %s\"
+3) If you want to get rid of the file, then use bk rm to get rid of it\n\
+===========================================================================\n",
+		    s->gfile, type, type, s->gfile);
+		return (1);
+	} else {
+		type = "unknown-file-type";
+		goto err;
+	}
+	/* NOTREACHED */
+}
+
+private int
+writable_gfile(sccs *s)
+{
+	if (!HAS_PFILE(s) && S_ISREG(s->mode) && IS_WRITABLE(s)) {
+		if (badWritable) {
+			printf("%s\n", s->gfile);
+		} else {
+			fprintf(stderr,
+"===========================================================================\n\
+check: %s writable but not checked out, which usually means that you have\n\
+modified a file without first doing a \"bk edit\". To fix the problem,\n\
+do a \"bk -R edit -g %s\" to change the file to checked out status.\n\
+To fix all bad writable file, use the following command:\n\
+\t\"bk -r check -w | bk -R edit -g -\"\n\
+===========================================================================\n",
+			    s->gfile, s->gfile);
+			return (32);
+		}
+	}
+	return (0);
+}
+
+private int
+no_gfile(sccs *s)
+{
+	if (HAS_PFILE(s) && !exists(s->gfile)) {
+		if (fix) {
+			unlink(sccs_Xfile(s, 'p'));
+		} else {
+			fprintf(stderr,
+"===========================================================================\n\
+check: %s is locked but not checked out,\n\
+which usually means that a file was locked (via a \"bk edit\")\n\
+and then removed without being unlocked.\n\
+===========================================================================\n",
+			    s->gfile);
+			return (64);
+		}
+	}
+	return (0);
+}
+
+private int
+readonly_gfile(sccs *s)
+{
+	if ((HAS_PFILE(s) && exists(s->gfile) && !writable(s->gfile))) {
+		fprintf(stderr,
+"===========================================================================\n\
+check: %s is locked but not writable.\n\
+You need to go look at the file to see why it is read-only;\n\
+just changing it back to read-write may not be the\n\
+right answer as it may contain expanded keywords.\n\
+It may also contain changes to the file which you may want.\n\
+If the file is unneeded, a \"bk unedit %s\" will fix the problem.\n\
+===========================================================================\n",
+		    s->gfile, s->gfile);
+		return (128);
+	}
+	return (0);
 }
 
 private void
