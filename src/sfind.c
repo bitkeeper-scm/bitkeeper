@@ -20,6 +20,7 @@ usage: sfiles [-acCdglpPx] [-r[root]] [directories]\n\n\
     -C		list leaves which are not in a changeset as file:1.3\n\
     -d		list directories under SCCS control (have SCCS subdir)\n\
     -g		list the gfile name, not the sfile name\n\
+    -G		list the SCCS files without a gfile\n\
     -l		list only locked files\n\
     -p		(paranoid) opens each file to make sure it is an SCCS file\n\
 		but only if the pathname to the file is not ../SCCS/s.*\n\
@@ -35,8 +36,9 @@ usage: sfiles [-acCdglpPx] [-r[root]] [directories]\n\n\
     directories.\n\
 \n";
 
-int	aFlg, cFlg, Cflg, dFlg, gFlg, lFlg, pFlg, PFlg, rFlg, vFlg, xFlg, XFlg, uFlg;
-int	hasOutputFilter = 0, error;
+int	aFlg, cFlg, Cflg, dFlg, gFlg, GFlg, lFlg;
+int	pFlg, PFlg, rFlg, vFlg, xFlg, XFlg, uFlg;
+int	error;
 FILE	*pending_cache;
 FILE	*id_cache;
 MDBM	*idDB;
@@ -60,13 +62,14 @@ main(int ac, char **av)
 usage:		fprintf(stderr, "%s", sfiles_usage);
 		exit(0);
 	}
-	while ((c = getopt(ac, av, "acCdglpPr|uvxX")) != -1) {
+	while ((c = getopt(ac, av, "acCdgGlpPr|uvxX")) != -1) {
 		switch (c) {
 		    case 'a': aFlg++; break;
 		    case 'c': cFlg++; break;
 		    case 'C': Cflg++; rFlg++; break;
 		    case 'd': dFlg++; break;
 		    case 'g': gFlg++; break;
+		    case 'G': GFlg++; break;
 		    case 'l': lFlg++; break;
 		    case 'p': pFlg++; break;
 		    case 'P': PFlg++; break;
@@ -100,48 +103,16 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		purify_list();
 		exit(dups ? 1 : 0);
 	}
-	if (xFlg || XFlg || lFlg || cFlg || dFlg || PFlg || pFlg) {
-		hasOutputFilter = 1;
-	}
 
 	if (!av[optind]) {
 		lftw(".", func, 15);
 	} else {
 		for (i = optind; i < ac; ++i) {
-			if (isdir(av[i])) {
-				lftw(av[i], func, 15);
-			} else {
-				file(av[i], func);
-			}
+			lftw(av[i], func, 15);
 		}
 	}
 	purify_list();
 	exit(0);
-}
-
-/*
- * Handle a single file.
- * Convert to s.file first, if possible.
- * XXX - this is incomplete.
- */
-int
-file(char *f, int (*func)())
-{
-	struct	stat sb;
-	char	*sfile, *gfile;
-
-	sfile = name2sccs(f);
-	gfile = sccs2name(sfile);
-	if (lstat(sfile, &sb) == -1) {
-		if ((lstat(gfile, &sb) == 0) && xFlg) {
-			printf("%s\n", f);
-		}
-	} else if (!xFlg) {
-		func(sfile, &sb);
-	}
-	free(sfile);
-	free(gfile);
-	return (0);
 }
 
 int
@@ -151,7 +122,6 @@ func(const char *filename, const struct stat *sb, int flag)
 	register char *s;
 	char	*sfile, *gfile;
 
-	//if (S_ISDIR(sb->st_mode)) return (0);
 	if ((file[0] == '.') && (file[1] == '/')) file += 2;
 	if (dFlg) {
 		if (S_ISDIR(sb->st_mode)) {
@@ -199,56 +169,38 @@ func(const char *filename, const struct stat *sb, int flag)
 		free(gfile);
 		/* fall thru, in case they also want -l or -c */
 	}
-#ifdef SPLIT_ROOT
 	if (S_ISDIR(sb->st_mode)) return (0);
-	// TODO: next a way to detect the following event
-	// a) the removal of a existing empty directory
-	// b) the transition from a empty directory to a non-empty directory
-	if (cFlg) {
-		char *s, *p, *t = name2sccs(file);
-		char *sfile = sPath(t, 0);
+	if (lFlg || cFlg || uFlg) {
+		char *s, *p, t[1024], *sfile;
 		
-		for (p = file; *p; p++);
-		for ( ; p > file; p--) if (p[-1] == '/') break; /* CSTYLED */
-		if (p && (p[1] == '.') && strchr("spxzt", *p)) {
-			free(t);
-			return (0);
+		if (p = strrchr(file, '/')) {
+			*p = 0;
+			sprintf(t, "%s/SCCS/s.%s", file, &p[1]);
+			*p = '/';
+		} else {
+			sprintf(t, "SCCS/s.%s", file);
 		}
+		sfile = sPath(t, 0); 
 		for (s = sfile; *s; s++);
 		for ( ; s > sfile; s--) if (s[-1] == '/') break; /* CSTYLED */
 		assert((s[0] == 's') && (s[1] == '.'));
 		*s = 'p';
 		if (exists(sfile)) { /* check for p file */
 			*s = 's';
-			if (hasDiffs(t)) {
+			if (lFlg || (cFlg && hasDiffs(t))) {
+				printf("%s\n", name(t));
+			} else if (uFlg) {
 				printf("%s\n", name(t));
 			}
 		}
 		*s = 's';
-		free(t);
 		return (0);
 	}
-#else
-	if (S_ISDIR(sb->st_mode)) return (0);
-	for (s = file; *s; s++);
-	for ( ; s > file; s--) if (s[-1] == '/') break;		/* CSTYLED */
-	if (!s || (s[0] != 's') || (s[1] != '.')) return (0);
-	if (lFlg || cFlg || uFlg) {
-		*s = 'p';
-		if (exists(file)) {
-			*s = 's';
-			if (uFlg) return(0);
-			if (lFlg || (cFlg && hasDiffs(file))) {
-				printf("%s\n", name(file));
-			}
-		} else if (uFlg) {
-			*s = 's';
-			printf("%s\n", name(file));
-		}
-		*s = 's';
-		return (0);
-	}
-#endif
+
+	/* XXX TODO: make this code work under split root config */
+        for (s = file; *s; s++);
+        for ( ; s > file; s--) if (s[-1] == '/') break;         /* CSTYLED */
+        if (!s || (s[0] != 's') || (s[1] != '.')) return (0);
 	/* XXX - this should be first. */
 	if (PFlg) {
 		if (!isSccs(file)) return (0);
@@ -258,7 +210,12 @@ func(const char *filename, const struct stat *sb, int flag)
 			if (!isSccs(file)) return (0);
 		}
 	}
-	unless (hasOutputFilter) printf("%s\n", name(file));
+	if (GFlg) {
+		gfile = sccs2name(file);
+		if (!exists(gfile)) printf("%s\n", name(file));
+		return 0;
+	}
+	unless (xFlg) printf("%s\n", name(file));
 	return (0);
 }
 
