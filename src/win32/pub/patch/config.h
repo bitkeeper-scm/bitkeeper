@@ -39,6 +39,7 @@
 #define	CLOSEDIR_VOID	1
 #define	HAVE_TMPNAM	1
 #define	RETSIGTYPE	void
+#define	NULL_DEVICE	"nul"
 
 #define PARAMS(args)	args
 #define popen(c, m)	safe_popen(c, m)
