@@ -175,20 +175,20 @@ import() {
 		cd "$TO"
 		x=`bk _exists < ${TMP}import$$` && {
 			echo "import: $x exists, entire import aborted"
-			rm -f ${TMP}import$$
+			/bin/rm -f ${TMP}import$$
 			Done 1
 		}
 		if [ $TYPE != SCCS ]
 		then	bk _g2sccs < ${TMP}import$$ > ${TMP}sccs$$
 			x=`bk _exists < ${TMP}sccs$$` && {
 				echo "import: $x exists, entire import aborted"
-				rm -f .x ${TMP}sccs$$ ${TMP}import$$
+				/bin/rm -f .x ${TMP}sccs$$ ${TMP}import$$
 				Done 1
 			}
 			if [ X$QUIET = X ]; then echo OK; fi
 		fi
 	fi
-	rm -f ${TMP}sccs$$
+	/bin/rm -f ${TMP}sccs$$
 	cd "$TO"
 	eval validate_$type \"$FROM\" \"$TO\"
 	transfer_$type "$FROM" "$TO" "$TYPE"
@@ -324,7 +324,7 @@ transfer() {
 }
 
 patch_undo() {
-	test -s ${TMP}rejects$$ && rm -f `cat ${TMP}rejects$$`
+	test -s ${TMP}rejects$$ && /bin/rm -f `cat ${TMP}rejects$$`
 	egrep 'Creating file|Patching file' ${TMP}plog$$ |
 	    sed -e 's/Creating file //' -e 's/Patching file//' > ${TMP}rm$$
 	test -s ${TMP}rm$$ && bk unedit `cat ${TMP}rm$$`
@@ -435,7 +435,7 @@ import_patch() {
 	done
 	test -s ${TMP}rejects$$ && {
 		echo Giving up, too many tries to clean up.
-		rm -f `cat ${TMP}rejects$$`
+		/bin/rm -f `cat ${TMP}rejects$$`
 		patch_undo
 		Done 1
 	}
@@ -537,7 +537,7 @@ import_RCS () {
 			# If there is a name conflict, do NOT use the Attic file
 			find . -name '*,v' -print | while read i
 			do	if [ -e "../$i" ] 
-				then	rm "$i"
+				then	/bin/rm -f "$i"
 				else	mv "$i" ..
 				fi
 			done
@@ -551,7 +551,7 @@ import_RCS () {
 		}
 		mv ${TMP}import$$ ${TMP}Attic$$
 		sed 's|Attic/||' < ${TMP}Attic$$ | sort -u > ${TMP}import$$
-		rm ${TMP}Attic$$
+		/bin/rm -f ${TMP}Attic$$
 	fi
 	if [ $TYPE = RCS ]
 	then	msg Moving RCS files out of RCS directories
@@ -565,7 +565,7 @@ import_RCS () {
 		done
 		mv ${TMP}import$$ ${TMP}rcs$$
 		sed 's!RCS/!!' < ${TMP}rcs$$ > ${TMP}import$$
-		rm ${TMP}rcs$$
+		/bin/rm -f ${TMP}rcs$$
 	fi
 	msg Converting RCS files.
 	msg WARNING: Branches will be discarded.
@@ -577,6 +577,7 @@ import_RCS () {
 	fi
 	LINES=`wc -l < ${TMP}import$$`
 	LINES=`expr $LINES / $PARALLEL`
+	test $LINES -eq 0 && LINES=1
 	split -$LINES ${TMP}import$$ ${TMP}split$$
 	for i in ${TMP}split$$*
 	do	bk rcs2sccs $UNDOS $CUTOFF $VERIFY $QUIET -q - < $i &
@@ -590,7 +591,7 @@ import_SCCS () {
 	msg Converting SCCS files...
 	bk sccs2bk $VERIFY -c`bk prs -hr+ -nd:ROOTKEY: ChangeSet` - < ${TMP}import$$ ||
 	    Done 1
-	rm -f ${TMP}cmp$$
+	/bin/rm -f ${TMP}cmp$$
 }
 
 import_finish () {
@@ -605,7 +606,7 @@ import_finish () {
 	fi
 	if [ X$QUIET = X ]; then echo OK; fi
 	
-	rm -f ${TMP}import$$ ${TMP}admin$$
+	/bin/rm -f ${TMP}import$$ ${TMP}admin$$
 	bk idcache -q
 	# So it doesn't run consistency check.
 	touch BitKeeper/etc/SCCS/x.marked
@@ -637,7 +638,7 @@ validate_SCCS () {
 		esac
 		mv ${TMP}sccs$$ ${TMP}import$$
 	fi
-	rm -f ${TMP}notsccs$$ ${TMP}sccs$$
+	/bin/rm -f ${TMP}notsccs$$ ${TMP}sccs$$
 	echo Looking for BitKeeper files, please wait...
 	grep 'SCCS/s\.' ${TMP}import$$ | prs -hr -nd':PN: :TYPE:' - | grep ' BitKeeper' > ${TMP}reparent$$
 	if [ -s ${TMP}reparent$$ ]
@@ -657,19 +658,19 @@ EOF
 		read x
 		case "$x" in
 		y*)	;;
-		*)	rm -f ${TMP}sccs$$ ${TMP}import$$ ${TMP}reparent$$
+		*)	/bin/rm -f ${TMP}sccs$$ ${TMP}import$$ ${TMP}reparent$$
 			Done 1
 		esac
 		echo $N "Are you sure? [No] " $NL
 		read x
 		case "$x" in
 		y*)	;;
-		*)	rm -f ${TMP}sccs$$ ${TMP}import$$
+		*)	/bin/rm -f ${TMP}sccs$$ ${TMP}import$$
 			Done 1
 		esac
 		echo OK
 	fi
-	rm -f ${TMP}reparent$$
+	/bin/rm -f ${TMP}reparent$$
 }
 
 validate_RCS () {
@@ -687,7 +688,7 @@ validate_RCS () {
 		esac
 	fi
 	mv ${TMP}rcs$$ ${TMP}import$$
-	rm -f ${TMP}notrcs$$
+	/bin/rm -f ${TMP}notrcs$$
 }
 
 validate_text () {
@@ -706,9 +707,9 @@ validate_text () {
 		y*)	sed 's/^/	/' < ${TMP}nottext$$ | more ;;
 		esac
 		mv ${TMP}text$$ ${TMP}import$$
-		rm -f ${TMP}nottext$$
+		/bin/rm -f ${TMP}nottext$$
 	fi
-	rm -f ${TMP}nottext$$ ${TMP}text$$
+	/bin/rm -f ${TMP}nottext$$ ${TMP}text$$
 }
 
 # Make sure there are no locked/extra files
@@ -719,7 +720,7 @@ validate_patch() {
 Done() {
 	for i in patch rejects plog locked import sccs rm patching \
 		plist creates deletes keys commit
-	do	rm -f ${TMP}${i}$$
+	do	/bin/rm -f ${TMP}${i}$$
 	done
 	test X$LOCKPID != X && {
 		# Win32 note: Do not use cygwin "kill" to kill a non-cygwin

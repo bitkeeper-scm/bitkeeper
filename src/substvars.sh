@@ -16,7 +16,11 @@ case "X`uname -s`" in
 		;;
     XOSF1)	exec sed -es,@FEATURE_SH@,/bin/ksh,g \
 			-es,@FAST_SH@,/bin/sh,g \
-			-es,@TEST_SH@,/bin/sh,g $@
+			-es,@TEST_SH@,/bin/ksh,g $@
+		;;
+    XSCO_SV)	exec sed -es,@FEATURE_SH@,/bin/ksh,g \
+			-es,@FAST_SH@,/bin/sh,g \
+			-es,@TEST_SH@,/bin/ksh,g $@
 		;;
     *)		exec sed -es,@FEATURE_SH@,/bin/sh,g \
 			 -es,@FAST_SH@,/bin/sh,g \

@@ -301,7 +301,8 @@ chk_sfile(char *name, char state[5])
 			if (opts.names && sc) {
 				delta	*d = sccs_top(sc);
 
-				unless (patheq(sc->gfile, d->pathname)) {
+				unless (d->pathname &&
+					patheq(sc->gfile, d->pathname)) {
 					state[NSTATE] = 'n';
 				}
 			}
@@ -317,7 +318,8 @@ chk_sfile(char *name, char state[5])
 			    (sc = init(name, INIT_NOCKSUM, 0, 0))) {
 				delta	*d = sccs_top(sc);
 
-				unless (patheq(sc->gfile, d->pathname)) {
+				unless (d->pathname &&
+					patheq(sc->gfile, d->pathname)) {
 					state[NSTATE] = 'n';
 				}
 				sccs_free(sc);
@@ -972,7 +974,8 @@ sccsdir(winfo *wi)
 			    (s = init(buf, INIT_NOCKSUM, sDB, gDB))) {
 				delta	*d = sccs_top(s);
 
-				unless (patheq(s->gfile, d->pathname)) {
+				unless (d->pathname &&
+				    patheq(s->gfile, d->pathname)) {
 					state[NSTATE] = 'n';
 				}
 				sccs_free(s);

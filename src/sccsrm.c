@@ -162,48 +162,62 @@ usage:			      system("bk help -s gone");
 private int
 sccs_gone(int quiet, FILE *f)
 {
+	int	i;
 	sccs	*s;
-	char	s_gone[MAXPATH], g_gone[MAXPATH];
-	char	key[MAXKEY];
-	FILE	*gfile;
+	FILE	*g;
 	char	*root;
-	char	*tmpfile;
+	kvpair	kv;
 	int	dflags = SILENT|DELTA_DONTASK;
+	MDBM	*db = mdbm_mem();
+	char	**lines = 0;
+	char	s_gone[MAXPATH], g_gone[MAXPATH], key[MAXKEY];
+
+
+	/* eat the keys first because check will complain if we edit the file */
+	while (fnext(key, f)) mdbm_store_str(db, key, "", MDBM_INSERT);
 
 	root = sccs_root(0);
 	assert(root);
 	sprintf(s_gone, "%s/BitKeeper/etc/SCCS/s.gone", root);
 	sprintf(g_gone, "%s/BitKeeper/etc/gone", root);
 	free(root);
-	comments_save("Gone");
+
+	s = sccs_init(s_gone, SILENT, 0);
+	assert(s);
 	if (exists(s_gone)) {
-		s = sccs_init(s_gone, SILENT, 0);
-		assert(s);
 		unless (IS_EDITED(s)) {
 			sccs_get(s, 0, 0, 0, 0, SILENT|GET_EDIT, "-"); 
 		}
-		gfile = fopen(g_gone, "ab");
-		while (fnext(key, f)) fputs(key, gfile);
-		fclose(gfile);
+		g = fopen(g_gone, "rb");
+		while (fnext(key, g)) mdbm_store_str(db, key, "", MDBM_INSERT);
+		fclose(g);
 		s = sccs_restart(s);
 	} else {
-		gfile = fopen(g_gone, "wb");
-		while (fnext(key, f)) fputs(key, gfile);
-		fclose(gfile);
-		s = sccs_init(s_gone, SILENT, 0);
-		assert(s);
 		dflags |= NEWFILE;
 	}
-	tmpfile = aprintf("%s.tmp", g_gone);
-	sysio(g_gone, tmpfile, 0, "bk", "_sort", "-u", SYS);
-	rename(tmpfile, g_gone);
-	free(tmpfile);
-	sccs_delta(s, dflags, 0, 0, 0, 0);
+	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
+		lines = addLine(lines, kv.key.dptr);
+	}
+	/* do not close the mdbm yet, we are using that memory */
+	sortLines(lines, 0);
+	unless (g = fopen(g_gone, "wb")) {
+		perror(g_gone);
+		exit(1);
+	}
+	EACH(lines) fputs(lines[i], g);
+	fclose(g);
+	mdbm_close(db);
+	comments_save("Be gone, sir, you annoy me.");
+	sccs_restart(s);
+	if (sccs_delta(s, dflags, 0, 0, 0, 0)) {
+		perror("delta on gone file");
+		exit(1);
+	}
 	sccs_free(s);
 	unless (quiet) {
 		fprintf(stderr,
 		    "Do not forget to commit the gone file "
-		    "before attempting a pull\n");
+		    "before attempting a pull.\n");
 	}
 	return (0);
 }

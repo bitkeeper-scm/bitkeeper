@@ -1,7 +1,7 @@
 /* Copyright (c) 2001 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
-private int	newroot(int single);
+private int	newroot(int single, char *ranbits);
 WHATSTR("@(#)%K%");
 
 /*
@@ -15,18 +15,41 @@ multiuser_main(int ac, char **av)
 		system("bk help -s multiuser");
 		return (1);
 	}
-	exit(newroot(1));
+	exit(newroot(1, 0));
 }
 
 int
 newroot_main(int ac, char **av)
 {
-	if (((ac == 2) && streq("--help", av[1])) || (ac != 1)) {
-		close(0);
-		system("bk help -s newroot");
+	int	c;
+	char	*ranbits = 0;
+
+	debug_main(av);
+	if (ac > 1 && streq("--help", av[1])) {
+usage:		system("bk help -s newroot");
 		return (1);
 	}
-	exit(newroot(0));
+	while ((c = getopt(ac, av, "k:")) != -1) {
+		switch (c) {
+		    case 'k': ranbits = optarg; break;
+		    default: goto usage;
+		}
+	}
+	if (ranbits) {
+		u8	*p;
+		if (strlen(ranbits) != 16) {
+k_err:			fprintf(stderr,
+			    "ERROR: -k option must have 16 lower case "
+			    "hex digits\n");
+			goto usage;
+		}
+		for (p = ranbits; *p; p++) {
+			unless (isxdigit(*p)) break;
+			if (isupper(*p)) break;
+		}
+		if (*p) goto k_err;
+	}
+	exit(newroot(0, ranbits));
 }
 
 /*
@@ -38,7 +61,7 @@ newroot_main(int ac, char **av)
  * Create a changeset (single case).
  */
 private int
-newroot(int single)
+newroot(int single, char *ranbits)
 {
 	sccs	*s;
 	delta	*d;
@@ -61,9 +84,22 @@ newroot(int single)
 		fprintf(stderr, "Already converted.\n");
 		exit(0);
 	}
-	randomBits(buf);
+	if (ranbits) {
+		if (strlen(ranbits) > MAXPATH - 1) {
+			fprintf(stderr, "Rootkey too long\n");
+			exit(1);
+		}
+		strcpy(buf, ranbits);
+	}
+	else {
+		randomBits(buf);
+	}
 	if (s->tree->random) {
-		assert(!streq(buf, s->tree->random));
+		if (streq(buf, s->tree->random)) {
+			fprintf(stderr,
+			    "newroot: error: new key matches old\n");
+			exit (1);
+		}
 		free(s->tree->random);
 	}
 	s->tree->random = strdup(buf);

@@ -42,6 +42,7 @@ mv_main(int ac, char **av)
 		return (1);
 	}
 	dest = av[ac-1];
+	localName2bkName(dest, dest);
 	cleanPath(dest, dest);
 	if ((name = strrchr(dest, '/')) &&
 	    (name >= dest + 4) && strneq(name - 4, "SCCS/s.", 7)) {
@@ -70,6 +71,7 @@ mv_main(int ac, char **av)
 	 * 5) Dir -> Existing Dir
 	 */
 	for (i = optind; i < (ac - 1); i++) {
+		localName2bkName(av[i], av[i]);
 		if (isdir(av[i])) {
 			/*
 			 * TODO: "bk mvdir" is a shell script,

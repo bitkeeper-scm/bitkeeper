@@ -331,10 +331,12 @@ bkd(int compress, remote *r)
 		    (r->type == ADDR_NFS &&
 			(t = getenv("PREFER_RSH")) && streq(t, "YES")) ||
 		    !findprog("ssh")) {
+			remsh = "rsh";
 #ifdef	hpux
 			remsh = "remsh";
-#else
-			remsh = "rsh";
+#endif
+#ifdef	_SCO_XPG_VERS
+			remsh = "rcmd";
 #endif
 			if (check_rsh(remsh)) return (-1);
 			remopts = 0;

@@ -258,7 +258,7 @@ bk commit $Q -yq
 cd $HERE/p
 bk commit $Q -ya
 cd $HERE/c2
-bk pull $Q
+bk pull $Q || exit 1
 files=`bk changes -r1.1.1.1,1.2 -v -d:DPN:`
 if [ "$files" != "ChangeSetfoofooChangeSetbarbar" ]
 then	echo failed; exit 1;

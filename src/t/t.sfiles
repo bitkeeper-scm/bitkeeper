@@ -323,6 +323,7 @@ EOF
 bk sfiles -x | sort > SFILES
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
+rm -f bar/lib
 echo OK
 #----------------------------------------------------------- 
 fi
@@ -383,4 +384,21 @@ cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
 fi
+echo $N Test sfile -i with s.file w no pathname .....................$NL
+# create a s.file which has no pathname
+grep -v '^.cP' SCCS/s.foo  > SCCS/s.bad
+bk admin -z  SCCS/s.bad
+rm -f SCCS/?.impostor
+sort > $HERE/sfiles.ref <<EOF
+jjjj SCCS/OLD-s.foo
+jjjj SCCS/c.gone
+jjjj SCCS/c.gone@1.1
+jjjj SCCS/c.gone@1.2
+xxxx SFILES
+lc   BitKeeper/etc/SCCS/s.ignore
+u  n SCCS/s.bad
+EOF
+bk sfiles -i | sort > $HERE/sfiles.out || { echo failed 1; exit 1; }
+cmp -s $HERE/sfiles.ref $HERE/sfiles.out || { echo failed 2; diff -u $HERE/sfiles.ref $HERE/sfiles.out; exit 1; }
+echo OK
 set +e

@@ -73,3 +73,64 @@ test -f SCCS/p.file || {
 	exit 1
 }
 echo OK
+
+echo $N Test permission problems in resolve .........................$NL
+cd $HERE/proj
+mkdir dir1
+echo ff > dir1/ff
+mkdir dir2
+echo gg > dir2/gg
+bk new $Q dir1/ff dir2/gg || exit 1
+bk commit $Q -ystart || exit 1
+mkdir dir3
+chmod -w dir3
+bk -r check -ac || exit 1
+cd ..
+bk clone $Q proj copy2 || exit 1
+cd copy2
+bk edit $Q dir1/ff dir2/gg || exit 1
+echo ff2 >> dir1/ff
+echo gg2 >> dir2/gg
+bk delta $Q -yappend dir1/ff dir2/gg || exit 1
+mkdir dir3
+mkdir dir3/dir33
+echo hh > dir3/dir33/hh
+bk new $Q dir3/dir33/hh || exit 1
+bk commit $Q -yappend
+bk push > OUT 2>&1
+status=$?
+chmod -R +w $HERE
+test $status != 0 || {
+	echo push shouldn\'t have worked
+	cat OUT
+	exit 1
+}
+grep 'No write permission: dir3' OUT > /dev/null || {
+	echo wrong error message
+	cat OUT
+	exit 1
+}
+cd $HERE/proj
+bk abort -f
+bk -r check -acf || exit 1
+echo OK
+
+echo $N What if you don\'t have permisisons to delete a file..........$NL
+chmod -w dir2/SCCS
+cd $HERE/copy2
+bk mv dir2/gg dir3/gg || exit 1
+bk commit -ymv $Q || exit 1
+bk push > OUT 2>&1
+status=$?
+chmod -R +w $HERE
+test $status != 0 || {
+	echo push shouldn\'t have worked
+	cat OUT
+	exit 1
+}
+grep 'No write permission: dir2' OUT > /dev/null || {
+	echo wrong error message
+	cat OUT
+	exit 1
+}
+echo OK

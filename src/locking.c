@@ -293,7 +293,7 @@ wrlock(void)
 		mkdir(path, 0777);
 		chmod(path, 0777);	/* kill their umask */
 	}
-	unless (writable(path)) {
+	unless (access(path, W_OK) == 0) {
 		proj_free(p);
 		return (LOCKERR_PERM);
 	}
