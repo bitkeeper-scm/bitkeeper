@@ -200,6 +200,7 @@ find_and_hash_each_line (current)
   char const **linbuf = current->linbuf;
   int alloc_lines = current->alloc_lines;
   int line = 0;
+  int cnt;
   int linbuf_base = current->linbuf_base;
   int *cureqs = (int *) xmalloc (alloc_lines * sizeof (int));
   struct equivclass *eqs = equivs;
@@ -247,11 +248,14 @@ find_and_hash_each_line (current)
 	  else if (ignore_trailing_cr_flag)
 	    while ((c = *p++) != '\n')
 	      {
-		if ((c == '\r') && (*p == '\n'))
+		if (c == '\r')
 		  {
-			p++;
-			goto hashing_done;
-		   }
+		    for (cnt = 1; (c = *p++) == '\r'; cnt++);
+		    if (c == '\n')
+		      goto hashing_done;
+		    while (cnt--)
+		      h = HASH (h, ((unsigned char)'\r'));
+		  }
 		h = HASH (h, ISUPPER (c) ? tolower (c) : c);
 	      }
 	  else
@@ -287,11 +291,14 @@ find_and_hash_each_line (current)
 	  else if (ignore_trailing_cr_flag)
 	    while ((c = *p++) != '\n')
 	      {
-		if ((c == '\r') && (*p == '\n'))
+		if (c == '\r')
 		  {
-			p++;
-			goto hashing_done;
-		   }
+		    for (cnt = 1; (c = *p++) == '\r'; cnt++);
+		    if (c == '\n')
+		      goto hashing_done;
+		    while (cnt--)
+		      h = HASH (h, ((unsigned char)'\r'));
+		  }
 		h = HASH (h, c);
 	      }
 	  else
