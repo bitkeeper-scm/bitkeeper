@@ -94,7 +94,7 @@ http_file(char *file)
 	int	fd, n;
 	char	buf[BUFSIZ];
 
-	unless ((fd = open(file, 0)) >= 0) return;
+	unless ((fd = open(file, 0, 0)) >= 0) return;
 	httphdr(file);
 	while ((n = read(fd, buf, sizeof(buf))) > 0) {
 		writen(1, buf, n);
@@ -165,7 +165,7 @@ http_cset(char *rev)
 	char	*dspec = "\
 <tr bgcolor=#d8d8f0><td><font size=-1>\
 &nbsp;:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\
-$if(:DPN:=ChangeSet){
+$if(:DPN:=ChangeSet){\
 &nbsp;&nbsp;<a href=patch@:REV:><font color=red>[all diffs]</font></a>}\
 $if(:DPN:!=ChangeSet){\
 &nbsp;&nbsp;<a href=anno/:DPN:@:REV:><font color=red>[annotate]</font></a>\
