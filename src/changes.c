@@ -66,6 +66,7 @@ changes_main(int ac, char **av)
 		system("bk help changes");
 		return (1);
 	}
+	putenv("BK_YEAR4=1");	/* 4-digit years only */
 
 	bzero(&opts, sizeof(opts));
 	opts.urls = opts.noempty = 1;
@@ -400,7 +401,6 @@ doit(int dash)
 		    "<tr><td>\n", stdout);
 		fflush(stdout);
 	}
-	s->xflags |= X_YEAR4;
 	if (opts.verbose) {
 		cset(s, stderr, spec);
 	} else {
