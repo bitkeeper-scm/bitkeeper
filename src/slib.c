@@ -3318,6 +3318,78 @@ err:			free(s->gfile);
 	return (0);
 }
 
+/* [user][@host][:path] */
+private	remote *
+pref_parse(char *buf)
+{
+	remote	*r;
+	char	*p;
+	int 	want_path = 0, want_host = 0;
+	
+	new(r);
+	unless (*buf) return (r);
+	/* user */
+	if (p = strchr(buf, '@')) {
+		if (buf != p) {
+			*p = 0; r->user = strdup(buf);
+		}
+		buf = p + 1;
+		want_host = 1;
+	}
+	/* host */
+	if (p = strchr(buf, ':')) {
+		if (buf != p) {
+			if (r->user || want_host) {
+				*p = 0; r->host = strdup(buf);
+				want_host = 0;
+			} else {
+				*p = 0; r->user = strdup(buf);
+			}
+		}
+		buf = p + 1;
+		want_path = 1;
+	}
+	if (*buf) {
+		if (want_path) {
+			r->path = strdup(buf);
+		} else if (want_host) {
+			r->host = strdup(buf);
+		} else {
+			assert(r->user == NULL);
+			r->user = strdup(buf);
+		}
+	}
+	return (r);
+}
+
+int
+pmatch(char *buf)
+{
+	remote *r;
+	char *h;
+
+	r = pref_parse(buf);
+	if ((r->user) && !streq(r->user, sccs_getuser())) {
+nup:		remote_free(r);
+		return (0);
+	}
+
+	h = sccs_gethost();
+	unless (h) h = "";
+	if ((r->host) && !streq(r->host, h)) goto nup;
+
+	unless (IsFullPath(bk_proj->root)) {
+		char *t = fullname(bk_proj->root, 0);
+
+		assert(t);
+		free(bk_proj->root);
+		bk_proj->root = strdup(t);
+	}
+	if ((r->path) && !streq(r->path, bk_proj->root)) goto nup;
+	remote_free(r);
+	return (1);
+}
+
 /*
  * Parse a line from the config file
  * a) reject all lines without a ':' character
@@ -3328,11 +3400,41 @@ err:			free(s->gfile);
 int
 parseConfig(char *buf)
 {
-	char *p, *q;
+	char *p, *q = 0;
 	
-	p = strchr(buf, ':');
+	/*
+	 * if it is a preference line, we scan backward
+	 */
+	if (*buf == '[') {
+		q = strchr(buf, ']');
+		unless (q) return 0;
+		p = strchr(&q[1], ':');
+	} else {
+		p = strchr(buf, ':');
+	}
+
 	unless (p) return 0;
-	*p++ = ' ';
+
+	/*
+	 * Handle the [user][@host][:path]/pref_key: vale syntax
+	 */
+	*p = 0;
+	if (q) {
+		*q++ = 0;
+		/*
+		 * Ignore the line if not match 
+		 * for per user/host/path perference
+		 */
+		unless (pmatch(&buf[1])) return (0); 
+		*p++ = ' ';
+		memmove(buf, q, strlen(q) + 1);
+		p  = (p - (q - buf)); /* adjust  p to account for memmove */
+		assert(p[-1] == ' ');
+	} else {
+		*p++ = ' ';
+		if (*buf == '[') memmove(buf, &buf[1], strlen(&buf[1]) + 1);
+	}
+
 	if (strneq(buf, "logging_ok ", 11)) {
 		strcpy(buf, "CONVERT ME PLEASE\n");
 		return (1);
@@ -3377,7 +3479,7 @@ loadConfig(char *root, int convert)
 	 * Otherwise, check it out.
 	 */
 	if (exists(g_config)) {
-		DB = loadDB(g_config, parseConfig, DB_NOBLANKS|DB_USELAST);
+		DB = loadDB(g_config, parseConfig, DB_NOBLANKS|DB_USEFIRST);
 		goto check;
 	}
 	unless (exists(s_config)) return 0;
@@ -3402,7 +3504,7 @@ loadConfig(char *root, int convert)
 		sccs_free(s1);
 		return (0);
 	}
-	DB = loadDB(x_config, parseConfig, DB_NOBLANKS|DB_USELAST);
+	DB = loadDB(x_config, parseConfig, DB_NOBLANKS|DB_USEFIRST);
 	unlink(x_config);
 	sccs_free(s1);
 check:	if (convert && (t = mdbm_fetch_str(DB, "CONVERT")) &&
@@ -8112,20 +8214,7 @@ checkin(sccs *s,
 		s->state |= S_SINGLE;
 		first->xflags |= X_SINGLE;
 
-multi_user:	always_edit = mdbm_fetch_str(m, "always_edit");
-		if (always_edit) {
-			if (streq(always_edit, "true")) {
-				if (user_file) {
-					s->state |= S_ALWAYS_EDIT;
-					first->xflags |= X_ALWAYS_EDIT;
-				}
-			} else unless (streq(always_edit, "false")) {
-				fprintf(stderr,
-"Warning: config file: unknown setting \"%s\" for always_edit entry, ignored\n",
-					always_edit);
-			}
-		}
-		mdbm_close(m);
+multi_user:	mdbm_close(m);
 	}
 
 no_config:
@@ -9141,8 +9230,6 @@ name2xflg(char *fl)
 		return X_SINGLE;
 	} else if (streq(fl, "SHELL")) {
 		return X_ISSHELL;
-	} else if (streq(fl, "ALWAYS_EDIT")) {
-		return X_ALWAYS_EDIT;
 	}
 	return (0);			/* lint */
 }
@@ -9177,7 +9264,6 @@ state2xflags(u32 state)
 #endif
 	if (state & S_EXPAND1) xflags |= X_EXPAND1;
 	if (state & S_HASH) xflags |= X_HASH;
-	if (state & S_ALWAYS_EDIT) xflags |= X_ALWAYS_EDIT;
 	return (xflags);
 }
 
@@ -9195,7 +9281,6 @@ xflags2state(u32 xflags)
 #endif
 	if (xflags & X_EXPAND1) state |= S_EXPAND1;
 	if (xflags & X_HASH) state |= S_HASH;
-	if (xflags & X_ALWAYS_EDIT) state |= S_ALWAYS_EDIT;
 	return (state);
 }
 
@@ -9208,16 +9293,6 @@ changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 	assert(flag);
 
 	mask = name2xflg(flag);
-	if (mask & X_ALWAYS_EDIT) {
-		if ((sc->state & S_CSET) || 
-		    (strlen(sc->gfile) > 10) &&
-		     strneq("BitKeeper/", sc->gfile, 10)) {
-			fprintf(stderr,
-	  "admin: warning: %s: ALWAYS_EDIT is illegal in BitKeeper system file,"
-			" ignored\n", sc->gfile);
-			return;
-		}
-	}
 	/*
 	 * If this is the first time we touch n->xflags,
 	 * initialize it from sc->state.
@@ -11905,9 +11980,6 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 			if (comma) fs(","); fs("ISSHELL"); comma = 1;
 		}
 #endif
-		if (flags & X_ALWAYS_EDIT) {
-			if (comma) fs(","); fs("ALWAYS_EDIT"); comma = 1;
-		}
 		return (strVal);
 	}
 

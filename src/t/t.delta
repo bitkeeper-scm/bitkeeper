@@ -241,30 +241,56 @@ echo OK
 fi #---------------------------------------------------------------
 cd ..
 rm -rf A garbage
-echo $N Make sure delta works with ALWAYS_EDIT flags ................$NL
+echo $N Make sure delta works with checkout:edit preference .........$NL
 HERE=`bk pwd`
 no_logging project
+BK_USER=one; BK_HOST=one.com
+export BK_USER BK_HOST
 cd $HERE/project
 echo hi > hi.c
 bk ci $Q -i hi.c
 if [ -f SCCS/p.hi.c ]; then echo failed; exit 1; fi
-bk admin $Q -fALWAYS_EDIT hi.c
+bk edit $Q BitKeeper/etc/config
+cp BitKeeper/etc/config config.sav
 bk co $Q -l hi.c
-echo hello > hi.c
-bk ci $Q -yhello hi.c
-if [ ! -f SCCS/p.hi.c ]; then echo failed; exit 1; fi
-if [ ! -f hi.c ]; then echo failed; exit 1; fi
-writable hi.c || { echo failed; exit 1; }
+for i in "" "one" "one@one.com" "one@one.com:$HERE/project" \
+	"@one.com" "@one.com:$HERE/project" \
+	":$HERE/project" "one:$HERE/project" 
+do
+	cp config.sav BitKeeper/etc/config
+	echo "[${i}]checkout:edit" >> BitKeeper/etc/config
+	echo hello > hi.c
+	bk delta $Q -yhello hi.c
+	if [ $? -ne 0 ]; then echo failed; exit 1; fi
+	if [ ! -f SCCS/p.hi.c ]; then echo failed; exit 1; fi
+	if [ ! -f hi.c ]; then echo failed; exit 1; fi
+	writable hi.c || { echo failed; exit 1; }
+done
 echo OK
-echo $N Make sure delta works with always_edit in config file .......$NL
-cd $HERE/project/BitKeeper/etc
-bk edit $Q config
-echo "always_edit: true" >> config
-bk delta $Q -yalways_edit config
-cd $HERE/project
+echo $N Make sure ci -i works with checkout:edit preference .........$NL
+cp config.sav BitKeeper/etc/config
+echo "checkout:edit" >> BitKeeper/etc/config
 echo lo > lo.c
 bk ci $Q -i lo.c
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
 if [ ! -f SCCS/p.lo.c ]; then echo failed; exit 1; fi
 if [ ! -f lo.c ]; then echo failed; exit 1; fi
 writable lo.c || { echo failed; exit 1; }
+echo OK
+echo $N Make sure ci -i works with checkout:get preference ..........$NL
+cp config.sav BitKeeper/etc/config
+echo "checkout:get" >> BitKeeper/etc/config
+echo mid > mid.c
+bk ci $Q -i -ymid mid.c
+if [ ! -f mid.c ]; then echo failed; exit 1; fi
+if [ -f SCCS/p.mid.c ]; then echo failed; exit 1; fi
+if writable mid.c; then echo failed; exit 1; fi
+echo OK
+echo $N Make sure ci works with checkout:get preference .............$NL
+bk edit $Q mid.c
+echo mid2 > mid.c
+bk ci $Q -ymid2 mid.c
+if [ ! -f mid.c ]; then echo failed; exit 1; fi
+if [ -f SCCS/p.mid.c ]; then echo failed; exit 1; fi
+if writable mid.c; then echo failed; exit 1; fi
 echo OK

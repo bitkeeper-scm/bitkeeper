@@ -66,19 +66,6 @@ typedef struct {
 } bkdopts;
 
 /*
- * BK "URL" formats are:
- *	bk://user@host:port/pathname
- *	user@host:pathname
- * In most cases, everything except the pathname is optional.
- */
-typedef struct {
-	u16	port;		/* remote port if set */
-	char	*user;		/* remote user if set */
-	char	*host;		/* remote host if set */
-	char	*path;		/* pathname (must be set) */
-} remote;
-
-/*
  * Default BitKeeper port.
  * This is will change when we get a reserved port number.
  */
