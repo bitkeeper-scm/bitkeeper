@@ -1637,7 +1637,7 @@ proc r2c {} \
 	}
 	# XXX: When called from "View Changeset", rev1 has the name appended
 	#      need to track down the reason -- this is a hack
-	splitRev $rev1 rev1 programmer serial tagged
+	set rev1 [lindex [split $rev1 "-"] 0]
 	if {[info exists rev2]} {
 		set revs [open "| bk prs -hbMr$rev1..$rev2 {-d:I:\n} \"$file\""]
 		while {[gets $revs r] >= 0} {
