@@ -2300,7 +2300,7 @@ morekids(delta *d, int bk_mode)
  * Get the revision name of the new delta.
  * Sep 2000 - removed branch, we don't support it.
  */
-private delta *
+delta *
 getedit(sccs *s, char **revp)
 {
 	char	*rev = *revp;
@@ -10416,6 +10416,7 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
 	rev = p->rev;
 	getedit(sc, &rev);
 	n->rev = strdup(rev);
+	explode_rev(n);
 	n->pserial = p->serial;
 	n->serial = sc->nextserial++;
 	sc->numdeltas++;
@@ -10943,6 +10944,23 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		insert_1_0(sc);
 	} else if (flags & ADMIN_RM1_0) {
 		unless (remove_1_0(sc)) flags &= ~ADMIN_RM1_0;
+	}
+
+	if (flags & ADMIN_NEWPATH) {
+		ALLOC_D(); /* We pick up the new path when we init the delta */
+		assert(d->pathname);
+		d->comments = addLine(d->comments,
+				aprintf("Rename: %s -> %s",
+					d->parent->pathname, d->pathname));
+		flags |= NEWCKSUM;
+	}
+
+	if (flags & ADMIN_DELETE) {
+		ALLOC_D(); /* We pick up the new path when we init the delta */
+		assert(d->pathname);
+		d->comments = addLine(d->comments,
+				aprintf("Delete: %s", d->parent->pathname));
+		flags |= NEWCKSUM;
 	}
 
 	if ((flags & NEWCKSUM) == 0) {

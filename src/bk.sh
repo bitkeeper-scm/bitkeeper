@@ -552,40 +552,6 @@ __bkfiles() {
 	rm ${TMP}/bk$$
 }
 
-_mvdir() {		# /* doc 2.0 */
-
-	case `bk version` in
-	*Basic*)
-		echo "bk mvdir is not supported in this BitKeeper Basic"
-		exit 1;
-		;;
-	esac
-	if [ X"$1" = X"--help" ]; then bk help mvdir; exit 0; fi
-	if [ X"$2" = X ]; then bk help -s mvdir; exit 1; fi
-	if [ X"$3" != X ]; then bk help -s mvdir; exit 1; fi
-	if [ ! -d "$1" ]; then echo "$1" is not a directory; exit 1; fi
-	if [ -f "$2" ]; then echo "$2" is a file; exit 1; fi
-	if [ -d "$2" ]
-	then
-		bk mvdir "$1" "$2/`basename $1`"
-		return $?
-	fi
-
-	__bkfiles "$1" "Moving"
-	
-	bk -r check -a || exit 1;
-	# Win32 note: must use relative path or drive:/path
-	# because cygwin mv interpret /path relative to the mount tables.
-	# XXX TODO we should move this code to a C function
-	mkdir -p "$2"
-	rmdir "$2"
-	mv "$1" "$2"
-	cd "$2"
-	bk sfiles -u | bk edit -q -
-	bk sfiles | bk delta -q -ymvdir -
-	bk idcache -q
-}
-
 _rmdir() {		# /* doc 2.0 */
 	if [ X"$1" = X"--help" ]; then bk help rmdir; exit 0; fi
 	if [ X"$1" = X ]; then bk help -s rmdir; exit 1; fi

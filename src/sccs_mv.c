@@ -8,19 +8,6 @@ private	void	rmDir(char *);
 private	int	update_idcache(sccs *s, char *old, char *new);
 private char	**xfileList(char *sfile);
 
-private char *
-mkXfile(char *sfile, char type)
-{
-	char *p, *tmp;
-
-	tmp = strdup(sfile);
-	p = strrchr(tmp, '/');
-	p = p ? &p[1]: sfile;
-	assert(*p == 's');
-	*p = type;
-	return (tmp);
-}
-
 /*
  * Return TRUE if s has cset derived root key
  */
@@ -80,19 +67,16 @@ int
 sccs_mv(char *name,
 	char *dest, int isDir, int isDelete, int isUnDelete, int force)
 {
-	char 	*q, *t, *destfile, *oldpath, *newpath;
-	char	*sname = 0;
-	char	*gfile = 0, *sfile = 0;
-	char	buf[1024], commentBuf[MAXPATH*2];
-	char	*ogfile, *osfile;
+	char 	*t, *destfile, *oldpath, *newpath, *rev;
+	char	*sname = 0, *gfile = 0, *sfile = 0, *ogfile = 0, *osfile = 0;
 	char	**xlist = NULL;
+	char	buf[1024];
 	sccs	*s = 0;
-	delta	*d;
-	int	error = 0, was_edited = 0;
+	int	error = 0, was_edited = 0, has_diffs = 0;
 	int	flags = SILENT|DELTA_FORCE;
 	int	i;
-	MMAP	*nulldiff = NULL;
 	time_t	gtime;
+	pfile   pf;
 
 //ttyprintf("sccs_mv(%s, %s, %d, %d, %d)\n", name, dest, isDir, isDelete,force);
 	sname = name2sccs(name);
@@ -145,16 +129,21 @@ err:		if (sname) free(sname);
 		fprintf(stderr, "sccsmv: destination %s exists\n", gfile);
 		goto err;
 	}
-	/* close the file before we move it - win32 restriction */
-	sccs_close(s);
 	oldpath = getRelativeName(sname, s->proj);
 	newpath = getRelativeName(destfile, s->proj);
-	if (isDelete) {
-		sprintf(commentBuf, "Delete: %s", oldpath);
-	} else {
-		sprintf(commentBuf, "Rename: %s -> %s", oldpath, newpath);
+
+	if (HAS_PFILE(s)) {
+		was_edited = 1;
+		has_diffs = sccs_hasDiffs(s, flags, 1);
+		if (sccs_read_pfile("mvdir", s, &pf)) {
+			error |= 1;
+			fprintf(stderr, "%s: bad pfile\n", s->gfile);
+			goto out;
+		}
 	}
 
+	/* close the file before we move it - win32 restriction */
+	sccs_close(s);
 	error = mv(s->sfile, sfile);
 
 	ogfile = strdup(s->gfile);
@@ -163,13 +152,6 @@ err:		if (sname) free(sname);
 	if (!error && (error = update_idcache(s, oldpath, newpath))) {
 		fprintf(stderr, "Idcache failure\n");
 		goto out;
-	}
-	if (HAS_PFILE(s) && !error) {
-		if (isDelete) {
-		}
-		was_edited = 1;
-		error = mv(s->pfile, q = mkXfile(sfile, 'p'));
-		free(q);
 	}
 	if (error) goto out;
 	gtime = s->gtime; /* save this, we need it later */
@@ -180,60 +162,13 @@ err:		if (sname) free(sname);
 	sfile = name2sccs(destfile);
 	unless (s = sccs_init(sfile, 0, 0)) { error++; goto out; }
 
-	/*
-	 * If not in edit state, make it so
-	 */
-	unless (HAS_PFILE(s)) {
-		if (sccs_get(s, 0, 0, 0, 0, SILENT|GET_SKIPGET|GET_EDIT, "-")) {
-			error = 1;
-			goto out;
-		}
-		s = sccs_restart(s);
-	}
-
-	d = sccs_parseArg(0, 'C', commentBuf, 0);
-	unless (s && d) {
-		error = 1;
-		goto out;
-	}
-
-	if (isDelete && exists(ogfile)) {
-		/*
-		 * For delete: delta any content change with the path change
-		 */
-		if (was_edited) {
-			mv(ogfile, gfile);
-			s = sccs_restart(s); /* re-stat gfile */
-		} else {
-			unlink(ogfile);
-			nulldiff = mopen(NULL_FILE, "r");
-		}
-	} else {
-		/*
-		 * Setup a null diffs,  because we do not want to check in the
-		 * content changes when we "bk mv"
-		 */
-		nulldiff = mopen(NULL_FILE, "r");
-	}
-	if (sccs_delta(s, flags, d, 0, nulldiff, 0) == -1) {
-		error = 1;
-		goto out;
-	}
-	if (!error && exists(ogfile)) error = mv(ogfile, gfile);
-	if (!isDelete && was_edited) {
-		s = sccs_restart(s);
-		if (sccs_get(s, 0, 0, 0, 0, SILENT|GET_SKIPGET|GET_EDIT, "-")) {
-			error = 1;
-			goto out;
-		}
-	}
-	s->gtime = gtime;
-	fix_stime(s);
+	if (exists(ogfile)) error = mv(ogfile, gfile);
 	
 	/*
 	 * Clean up or move the helper file
 	 * a) c.file[@rev] 
 	 * b) d.file
+	 * c) p.file
 	 */
 	xlist = xfileList(osfile);
 	EACH(xlist) {
@@ -244,7 +179,7 @@ err:		if (sname) free(sname);
 		obase = basenm(xlist[i]);
 		prefix =obase[0];
 		/* Warn if not a c.file or a d.file */
-		unless (strchr("cd", prefix)) {
+		unless (strchr("cdp", prefix)) {
 			fprintf(stderr,
 			    "Warning: unexpected helper file: %s, skipped\n",
 			    xlist[i]);
@@ -270,13 +205,46 @@ err:		if (sname) free(sname);
 		}
 	}
 	freeLines(xlist, free);
+
+	if (isDelete && was_edited) {
+		if (has_diffs) {
+			if (sccs_delta(s, flags, 0, 0, 0, 0) == -1) {
+				sccs_whynot("mv", s);
+				sccs_free(s);
+				return (1);
+			}
+		}
+		unlink(s->gfile);
+		unlink(s->pfile);
+		was_edited = 0;
+	}
+	flags = isDelete ? ADMIN_DELETE : ADMIN_NEWPATH;
+	if (sccs_admin(s, 0, flags, 0, 0, 0, 0, 0, 0, 0, 0)) {
+		sccs_whynot("mv", s);
+		sccs_free(s);
+		return (1);
+	}
+	if (was_edited) {
+
+		/*
+		 * Update the p.file, make sure we preserve -i -x
+		 */
+		strcpy(pf.oldrev, pf.newrev);
+		rev = NULL; /* Next rev will be relative to TOT */
+		getedit(s, &rev);
+		strcpy(pf.newrev, rev);
+		sccs_rewrite_pfile(s, &pf);
+		free_pfile(&pf);
+	}
+	s->gtime = gtime;
+	fix_stime(s);
 	unless (isUnDelete) sccs_rmEmptyDirs(osfile);
 
 out:	if (s) sccs_free(s);
+	if (ogfile) free(ogfile);
+	if (osfile) free(osfile);
 	free(newpath);
 	free(oldpath);
-	free(ogfile);
-	free(osfile);
 	free(destfile); free(sfile); free(gfile);
 	free(sname);
 	return (error);
