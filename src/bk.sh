@@ -586,6 +586,27 @@ _gone() {
 	fi
 }
 
+# usage: ignore glob [glob ...]
+#    or: ignore
+# XXX Open issue: should BK/etc/ignore be revisioned?
+# Can make case either way.  Currently it's not.
+_ignore() {
+	_cd2root
+	if [ ! -d BitKeeper/etc ]
+	then	echo No BitKeeper/etc
+		exit 1
+	fi
+	if [ "x$1" = x ]
+	then	if [ -f BitKeeper/etc/ignore ]
+		then cat BitKeeper/etc/ignore
+		fi
+		exit 0
+	fi
+	for i
+	do	echo "$i" >> BitKeeper/etc/ignore
+	done
+}	
+
 # usage: chmod mode file [file ...]
 _chmod() {
 	if [ "X$1" = X -o "X$2" = X ]
@@ -1187,26 +1208,20 @@ _commandHelp() {
 		exit 0
 	fi
 
+	(
 	for i in $*
-	do	case $i in
-		    RCS|backups|basics|changes|changesets|check|clone|commit|\
-		    debug|differences|diffr|export|fix|gui|history|import|\
-		    info|merge|mv|overview|parent|path|pending|pull|push|\
-		    ranges|receive|regression|renames|resync|rm|root|save|\
-		    sccsmv|sccsrm|sdiffs|send|sendbug|setup|sinfo|status|\
-		    tags|terms|undo|unedit|unlock|unwrap|users|version|wrap|\
-		    citool|sccstool|helptool|fmtool|fm|topics|new|edit|\
-		    csettool|difftool|merging|tag|gone|chmod)
-			_gethelp help_$i $BIN | $PAGER
-			;;
-		    *)
-			if [ -x "${BIN}$i" -a -f "${BIN}$i" ]
-			then	echo "                -------------- $i help ---------------"
-				${BIN}$i --help 2>&1
-			else	echo No help for "$i", check spelling.
-			fi
-		esac
+	do
+		if grep -q "^#help_$i" ${BIN}bkhelp.txt
+		then	_gethelp help_$i $BIN
+		elif [ -x "${BIN}$i" -a -x "${BIN}$i" ]
+		then	echo "                -------------- $i help ---------------"
+			echo
+			${BIN}$i --help 2>&1
+		else
+			echo No help for $i, check spelling.
+		fi
 	done
+	) | $PAGER
 }
 
 _export() {
@@ -1340,7 +1355,7 @@ case "$1" in
     mv|edit|unedit|unlock|man|undo|save|rm|new|version|\
     root|status|export|users|sdiffs|unwrap|clone|\
     pull|push|parent|diffr|fix|info|vi|r2c|rev2cset|\
-    topics|chmod|gone|tag)
+    topics|chmod|gone|tag|ignore)
 	cmd=$1
     	shift
 	_$cmd "$@"
