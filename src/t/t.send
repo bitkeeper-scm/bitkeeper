@@ -74,8 +74,9 @@ cd $HERE/project
 bk send $Q -wuu -  | bk unwrap | ( while read x
 do	case "$x" in
 	    "# Patch vers:"*)
-		echo "$x";
-		exec cat;
+		echo ""
+		echo "$x"
+		exec cat
 		;;
 	esac
 done ) > p1

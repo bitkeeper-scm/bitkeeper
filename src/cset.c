@@ -796,7 +796,7 @@ csetlist(cset_t *cs, sccs *cset)
 	if (cs->makepatch || cs->doDiffs) header(cset, cs->doDiffs);
 again:	/* doDiffs can make it two pass */
 	if (!cs->doDiffs && cs->makepatch) {
-		printf("%s", PATCH_CURRENT);
+		printf("\n%s\n", PATCH_CURRENT);
 	}
 
 	sccs_close(cset); /* for win32 */

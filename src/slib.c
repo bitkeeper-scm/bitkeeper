@@ -838,8 +838,8 @@ sccs_fixDates(sccs *s)
 	fixDates(0, s->table);
 }
 
-private void
-shortKey(sccs *s, delta *d, char *buf)
+void
+sccs_shortKey(sccs *s, delta *d, char *buf)
 {
 	sccs_sdelta(s, d, buf);
 	buf = strchr(buf, '|');
@@ -859,13 +859,13 @@ uniqRoot(sccs *s)
 	assert(!d->dateFudge);
 	unless (d->date) (void)getDate(d);
 
-	uniq_open();
-	shortKey(s, sccs_ino(s), buf);
+	unless (uniq_open() == 0) return;	// XXX - no error?
+	sccs_shortKey(s, sccs_ino(s), buf);
 	while (!unique(buf)) {
 //fprintf(stderr, "COOL: caught a duplicate root: %s\n", buf);
 		d->dateFudge++;
 		d->date++;
-		shortKey(s, d, buf);
+		sccs_shortKey(s, d, buf);
 	}
 	uniq_update(buf, d->date);
 	uniq_close();
@@ -904,18 +904,18 @@ uniqDelta(sccs *s)
 		return;
 	}
 
-	uniq_open();
+	unless (uniq_open() == 0) return;
 	CHKDATE(next);
 	if (d->date <= next->date) {
 		d->dateFudge = (next->date - d->date) + 1;
 		d->date += d->dateFudge;
 	}
-	shortKey(s, d, buf);
+	sccs_shortKey(s, d, buf);
 	while (!unique(buf)) {
 //fprintf(stderr, "COOL: caught a duplicate key: %s\n", buf);
 		d->date++;
 		d->dateFudge++;
-		shortKey(s, d, buf);
+		sccs_shortKey(s, d, buf);
 	}
 	uniq_update(buf, d->date);
 	uniq_close();
@@ -8699,7 +8699,7 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
 	if ((sc->state & S_CSET) && isNullDelta) {
 		fprintf(stderr,
 			"Can not create null delta in ChangeSet file\n");
-		return 0;
+		return (0);
 	}
 
 	n = calloc(1, sizeof(delta));
@@ -8720,7 +8720,7 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
 		n->flags |= D_CKSUM;
 	}
 	dinsert(sc, 0, n, 1);
-	return n;
+	return (n);
 }
 
 private int 
@@ -10199,7 +10199,7 @@ sccs_delta(sccs *s,
 	debug((stderr, "delta %s %x\n", s->gfile, flags));
 	if (flags & NEWFILE) mksccsdir(s->sfile);
 	bzero(&pf, sizeof(pf));
-	unless(locked = sccs_lock(s, 'z')) {
+	unless (locked = sccs_lock(s, 'z')) {
 		fprintf(stderr,
 		    "delta: can't get write lock on %s\n", s->sfile);
 		repository_lockers(s->proj);
