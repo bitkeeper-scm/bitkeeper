@@ -8369,6 +8369,17 @@ fix_crnl(register char *s)
 	}
 }
 
+/*
+ * Escape the control-A character in data buffer
+ */
+private void
+fix_cntl_a(sccs *s, char *buf, FILE *out)
+{
+	char	cntlA_escape[2] = { CNTLA_ESCAPE, 0 };
+
+	if (buf[0] == '\001') fputdata(s, cntlA_escape, out);
+}
+
 private int
 nullCheck(MMAP *m)
 {
@@ -8674,6 +8685,7 @@ no_config:
 		} else if (gfile) {
 			while (fnext(buf, gfile)) {
 				fix_crnl(buf);
+				fix_cntl_a(s, buf, sfile);
 				s->dsum += fputdata(s, buf, sfile);
 				added++;
 			}
@@ -10464,6 +10476,8 @@ nxtline(sccs *s, int *ip, int before, int *lp, int *pp, FILE *out,
 		sum = fputdata(s, buf, out);
 		if (isData(buf)) {
 			if (print) {
+				/* CNTLA_ESCAPE is not part of the check sum */
+				if (buf[0] == CNTLA_ESCAPE) sum -= CNTLA_ESCAPE;
 				s->dsum += sum;
 				incr++; lines++;
 				break;
@@ -10601,7 +10615,7 @@ delta_body(sccs *s, delta *n, MMAP *diffs, FILE *out, int *ap, int *dp, int *up)
 	int	lines = 0;
 	int	added = 0, deleted = 0, unchanged = 0;
 	sum_t	sum;
-	char	*b, cntlA_escape[2] = { CNTLA_ESCAPE, 0 };
+	char	*b;
 	int	no_lf = 0;
 
 	if (nullCheck(diffs)) {
@@ -10690,9 +10704,7 @@ newcmd:
 					ctrl("\001E ", n->serial, "");
 					goto newcmd;
 				}
-				if (b[2] == '\001') {
-					fputdata(s, cntlA_escape, out);
-				}
+				fix_cntl_a(s, &b[2], out);
 				s->dsum += fputdata(s, &b[2], out);
 				debug2((stderr,
 				    "INS %.*s", linelen(&b[2]), &b[2]));
@@ -10707,9 +10719,7 @@ newcmd:
 				/* XXX: not break but error */
 				unless (b = mnext(diffs)) break;
 				/* Need a test case for the following line */
-				if (b[2] == '\001') {
-					fputdata(s, cntlA_escape, out);
-				}
+				fix_cntl_a(s, &b[2], out);
 				if (what != 'i' && b[0] == '\\') {
 					s->dsum += fputdata(s, &b[1], out);
 				} else {
