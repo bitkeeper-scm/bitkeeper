@@ -17,7 +17,7 @@ _get_main(int ac, char **av, char *out)
 	delta	*d;
 	int	gdir = 0;
 	int	getdiff = 0;
-	int	hasrevs = 0;
+	int	sf_flags = 0;
 	int	dohash = 0;
 	int	commitedOnly = 0;
 	int	branch_ok = 0;
@@ -72,7 +72,7 @@ _get_main(int ac, char **av, char *out)
 		    case 'P': flags |= PRINT|GET_FORCE; break;	/* doc 2.0 */
 		    case 'q': flags |= SILENT; break;		/* doc 2.0 */
 		    case 'r': rev = optarg; break;		/* doc 2.0 */
-		    case 'R': hasrevs = SF_HASREVS; break;	/* doc 2.0 */
+		    case 'R': sf_flags |= SF_HASREVS; break;	/* doc 2.0 */
 		    case 's': flags |= SILENT; break;		/* undoc */
 		    case 'S': flags |= GET_NOREGET; break;	/* doc 2.0 */
 		    case 't': break;		/* compat, noop, undoc */
@@ -93,8 +93,11 @@ usage:			sprintf(realname, "bk help -s %s", prog);
 			return(1);
 		}
 	}
-	if (flags & GET_EDIT) flags &= ~GET_EXPAND;
-	name = sfileFirst("get", &av[optind], hasrevs);
+	sf_flags |= SF_NOCSET;	/* prevents auto-expansion */
+	if (flags & GET_EDIT) {
+		flags &= ~GET_EXPAND;
+	}
+	name = sfileFirst("get", &av[optind], sf_flags);
 	gdir = Gname && isdir(Gname);
 	if (((Gname && !gdir) || iLst || xLst) && sfileNext()) {
 onefile:	fprintf(stderr,
@@ -134,7 +137,7 @@ onefile:	fprintf(stderr,
 		    "%s: -C can not be combined with rev/date.\n", av[0]);
 		goto usage;
 	}
-	if ((rev || cdate) && hasrevs) {
+	if ((rev || cdate) && (sf_flags & SF_HASREVS)) {
 		fprintf(stderr,
 		    "%s: can't specify more than one rev.\n", av[0]);
 		goto usage;
@@ -205,7 +208,7 @@ onefile:	fprintf(stderr,
 				s->xflags |= X_HASH;
 			}
 		}
-		if (hasrevs) rev = sfileRev();
+		if (sf_flags & SF_HASREVS) rev = sfileRev();
 		if (commitedOnly) {
 			delta	*d = sccs_top(s);
 

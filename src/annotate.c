@@ -63,6 +63,11 @@ usage:			system("bk help -s annotate");
 			sccs_free(s);
 			continue;
 		}
+		if (s->encoding & E_BINARY) {
+			fprintf(stderr, "Skipping binary file %s\n", s->gfile);
+			sccs_free(s);
+			continue;
+		}
 		if (cdate) {
 			s->state |= S_RANGE2;
 			d = sccs_getrev(s, 0, cdate, ROUNDUP);

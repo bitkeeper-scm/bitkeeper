@@ -2,7 +2,8 @@
 #include "logging.h"
 typedef void (*vfn)(char *);
 
-char		*http_time(void);
+private char	*http_time(void);
+private char	*http_expires(void);
 private	char	*type(char *name);
 private void	httphdr(char *file);
 private	char	*url(char *path);
@@ -430,6 +431,8 @@ findRoot(char *name)
 	if (isdir(path)) {
 		chdir(name);
 		strcpy(root, url(name));
+		if (bk_proj) proj_free(bk_proj);
+		bk_proj = proj_init(0);
 		return ("index.html");
 	}
 	for (s = strrchr(name, '/'); s && (s != name); ) {
@@ -439,6 +442,8 @@ findRoot(char *name)
 		if (isdir(path)) {
 			chdir(name);
 			strcpy(root, url(name));
+			if (bk_proj) proj_free(bk_proj);
+			bk_proj = proj_init(0);
 			return (s + 1);
 		}
 		t = strrchr(name, '/');
@@ -1550,7 +1555,7 @@ http_index(char *page)
  * "Tue, 28 Jan 97 01:20:30 GMT";
  *  012345678901234567890123456
  */
-char	*
+private char	*
 http_time()
 {
 	time_t	tt;
@@ -1578,7 +1583,7 @@ http_time()
  * "Tue, 28 Jan 97 01:20:30 GMT";
  *  012345678901234567890123456
  */
-char	*
+private char	*
 http_expires()
 {
 	time_t	expires;
