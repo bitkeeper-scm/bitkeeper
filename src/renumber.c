@@ -344,11 +344,9 @@ parentSwap(sccs *s, delta *d, delta **pp, delta **mp, int flags)
 	delta	*m = *mp;
 	int	serial;
 
-	unless (flags & SILENT) {
-		fprintf(stderr, "renumber: for delta serial %d"
-			" swapping parent %s with merge %s\n",
-			d->serial, p->rev, m->rev);
-	}
+	verbose((stderr,
+	    "renumber %s@%s swap parent %s and merge %s\n",
+	    s->gfile, d->rev, p->rev, m->rev));
 	/*
 	 * Unset parent, delete d from parent's kid link list
 	 */
@@ -444,7 +442,7 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t *release, MDBM *lodDb,
 		assert(p != m);
 		if (sccs_needSwap(p, m)) {
 			unless (Fix_inex) {
-				Fix_inex = sccs_init(s->sfile, flags, s->proj);
+				Fix_inex = sccs_init(s->sfile, flags, 0);
 				unless (Fix_inex) {
 					fprintf(stderr, "Renumber: Error: "
 					    "Init %s failed in redo()\n",

@@ -29,6 +29,7 @@ private int	no_gfile(sccs *s);
 private int	chk_eoln(sccs *s, int eoln_unix);
 private void	progress(int n, int err);
 private int	chk_merges(sccs *s);
+private sccs*	fix_merges(sccs *s);
 
 private	int	nfiles;		/* for progress bar */
 private	int	verbose;
@@ -186,12 +187,14 @@ check_main(int ac, char **av)
 		if (chk_csetpointer(s)) errors |= 0x10;
 		if (want_dfile && chk_dfile(s)) errors |= 0x10;
 		if (check_eoln && chk_eoln(s, eoln_native)) errors |= 0x10;
-		if (chk_merges(s)) errors |= 0x20;
+		if (chk_merges(s)) {
+			if (fix) s = fix_merges(s);
+			errors |= 0x20;
+		}
 
 		/*
 		 * Store the full length key and only if we are in mixed mode,
-		 * also store the short key.  We want all of them to be
-		 * unique.
+		 * also store the short key.  We want all of them to be unique.
 		 */
 		sccs_sdelta(s, sccs_ino(s), buf);
 		if (mdbm_store_str(keys, buf, s->gfile, MDBM_INSERT)) {
@@ -298,6 +301,20 @@ check_main(int ac, char **av)
 	}
 	if (verbose == 1) progress(nfiles+1, errors);
 	return (errors);
+}
+
+private sccs *
+fix_merges(sccs *s)
+{
+	sccs	*tmp;
+
+	/* sccs_renumber(s, 0, 0, 0, 0, (verbose) ? 0 : SILENT); */
+	sccs_renumber(s, 0, 0, 0, 0, 0);
+	sccs_newchksum(s);
+	tmp = sccs_init(s->sfile, 0, 0);
+	assert(tmp);
+	sccs_free(s);
+	return (tmp);
 }
 
 /*
@@ -1210,7 +1227,13 @@ chk_merges(sccs *s)
 		assert(p);
 		m = sfind(s, d->merge);
 		assert(m);
-		if (sccs_needSwap(p, m)) return (1);
+		if (sccs_needSwap(p, m)) {
+			if (fix) return (1);
+			fprintf(stderr,
+			    "%s|%s: %s/%s need to be swapped, run with -f.\n",
+			    s->gfile, d->rev, p->rev, m->rev);
+			return (1);
+		}
 	}
 	return (0);
 }
