@@ -12,6 +12,7 @@ private int	verifyFiles(sccs *s, RCS *rcs, rdelta *d, char *g);
 private	void	doit(char *file);
 
 private	int	verify;
+private	int	undos;
 private	int	verbose;
 private	int	Flags;
 private	project	*proj;
@@ -33,12 +34,13 @@ rcs2sccs_main(int ac, char **av)
 	// XXX FIXME: We don't call "bk help" now
 	// because the "bk help page is out-of-date
 
-	while ((c = getopt(ac, av, "c;dhq")) != -1) {
+	while ((c = getopt(ac, av, "c;dhqu")) != -1) {
 		switch (c) {
 		    case 'c': cutoff = optarg; break;
 		    case 'd': Flags = 0; break;
 		    case 'q': if (verbose) verbose--; break;
 		    case 'h': verify++; break;
+		    case 'u': undos++; break;
 		    default:
 		    	fprintf(stderr,
 			    "Usage: %s [-hq] [-c<TAG>] files\n", av[0]);
@@ -75,6 +77,14 @@ doit(char *file)
 		fprintf(stderr, "Skipping file %s\n", sfile);
 		free(sfile);
 		return;
+	}
+	if (undos) {
+		char	path[MAXPATH];
+
+		sprintf(path, "%s%d", file, getpid());
+		rename(file, path);
+		sysio(0, file, 0, "bk", "undos", "-n", path, SYS);
+		unlink(path);
 	}
 	unless (r = rcs_init(file)) {
 		fprintf(stderr, "Can't parse %s\n", file);
