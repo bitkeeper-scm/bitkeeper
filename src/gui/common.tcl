@@ -251,7 +251,7 @@ proc tmpfile {name} \
 
 proc restoreGeometry {app {w .} {force 0}} \
 {
-	global State
+	global State gc
 
 	# The presence of the global variable 'geometry' means that the
 	# user specified a geometry on the command line. If that happens
@@ -294,6 +294,17 @@ proc restoreGeometry {app {w .} {force 0}} \
 	# a window might be restored to a virtual desktop that is not 
 	# presently visible).
 	$w configure -width $width -height $height
+
+	# Bzzt.  I like the restore feature.  --lm
+	if {![info exists gc($app.noAutoRestoreXY)]} {
+		# Skip the width by ht stuff
+		set l [expr [string length $width] + [string length $height]]
+		incr l
+		set loc [string range $geometry $l end]
+		if {$loc != ""} {
+			wm geometry $w $loc
+		}
+	}
 }
 
 # usage: bgExec ?options? command ?arg? ?arg ..?
