@@ -24,12 +24,13 @@ private	int	checkAll(MDBM *db);
 private	void	listFound(MDBM *db);
 private	void	listCsetRevs(char *key);
 private void	init_idcache();
+private int	checkKeys(sccs *s, char *root);
 
 private	int	verbose;
 private	int	all;	/* if set, check every darn entry in the ChangeSet */
 private	int	fix;	/* if set, fix up anything we can */
 private	int	names;	/* if set, we need to fix names */
-private	int	mixed;
+private	int	mixed;	/* mixed short/long keys */
 private	project	*proj;
 private char	csetFile[] = CHANGESET;
 private int	flags = INIT_SAVEPROJ|INIT_NOCKSUM;
@@ -494,10 +495,8 @@ check(sccs *s, MDBM *db, MDBM *marks)
 	int	errors = 0;
 	int	marked = 0;
 	int	missing = 0;
-	datum	k, v;
 	int	i;
-	char	*a;
-	char	*val;
+	char	*t;
 	char	buf[MAXKEY];
 
 	/*
@@ -510,15 +509,15 @@ check(sccs *s, MDBM *db, MDBM *marks)
 		unless (d->flags & D_CSET) continue;
 		marked++;
 		sccs_sdelta(s, d, buf);
-		unless (val = mdbm_fetch_str(db, buf)) {
+		unless (t = mdbm_fetch_str(db, buf)) {
 			char	*term;
 
 			if (mixed && (term = sccs_iskeylong(buf))) {
 				*term = 0;
-				val = mdbm_fetch_str(db, buf);
+				t = mdbm_fetch_str(db, buf);
 			}
 		}
-		unless (val) {
+		unless (t) {
 			fprintf(stderr,
 		    "%s: marked delta %s should be in ChangeSet but is not.\n",
 			    s->sfile, d->rev);
@@ -572,18 +571,55 @@ check(sccs *s, MDBM *db, MDBM *marks)
 	 * Go through all the deltas that were foound in the ChangeSet
 	 * hash and belong to this file.
 	 * Make sure we can find the deltas in this file.
+	 *
+	 * If we are in mixed key mode, try all three key styles:
+	 * email|path|date
+	 * email|path|date|chksum
+	 * email|path|date|chksum|randombits
 	 */
-	k.dptr = buf;
-	k.dsize = strlen(buf) + 1;
+	errors += checkKeys(s, buf);
+
+	unless (mixed) return (errors);
+
+	for (i = 0, t = buf; t = strchr(t+1, '|'); i++);
+	if (i == 4) {
+		t = strrchr(buf, '|');
+		*t = 0;
+		errors += checkKeys(s, buf);
+		*t = '|';
+		while (*--t != '|');
+		*t = 0;
+		errors += checkKeys(s, buf);
+		*t = '|';
+	}
+	if (i == 3) {
+		t = strrchr(buf, '|');
+		*t = 0;
+		errors += checkKeys(s, buf);
+		*t = '|';
+	}
+	return (errors);
+}
+
+private int
+checkKeys(sccs *s, char *root)
+{
+	int	errors = 0;
+	int	i;
+	char	*a;
+	delta	*d;
+	datum	k, v;
+
+	k.dptr = root;
+	k.dsize = strlen(root) + 1;
 	v = mdbm_fetch(csetKeys.r2i, k);
-	assert(v.dsize);
+	unless (v.dsize) return (0);
 	bcopy(v.dptr, &i, sizeof(i));
 	assert(i < csetKeys.n);
 	do {
 		assert(csetKeys.deltas[i]);
 		assert(csetKeys.deltas[i] != (char*)1);
 		unless (d = sccs_findKey(s, csetKeys.deltas[i])) {
-			//dump(i);
 			a = csetFind(csetKeys.deltas[i]);
 			fprintf(stderr,
 			    "key %s is in\n\tChangeSet:%s\n\tbut not in %s\n",
@@ -604,6 +640,7 @@ check(sccs *s, MDBM *db, MDBM *marks)
 	return (errors);
 }
 
+#if 0
 dump(int key)
 {
 	int	i;
@@ -616,6 +653,7 @@ dump(int key)
 		}
 	}
 }
+#endif
 
 private void
 listMarks(MDBM *db)
