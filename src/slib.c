@@ -95,6 +95,72 @@ size(char *s)
 	return (sbuf.st_size);
 }
 
+/*
+ * Convert lrwxrwxrwx -> 0120777, etc.
+ */
+mode_t
+a2mode(char *mode)
+{
+	mode_t	m;
+
+	assert(mode && *mode);
+	switch (*mode) {
+	    case '-': m = S_IFREG; break;
+	    case 'd': m = S_IFDIR; break;
+	    case 'l': m = S_IFLNK; break;
+	    default:
+	    	fprintf(stderr, "Unsupported file type: '%c'\n", *mode);
+		return (0);
+	}
+	mode++;
+	/* owner bits - does not handle setuid/setgid */
+	if (*mode++ == 'r') m |= S_IRUSR;
+	if (*mode++ == 'w') m |= S_IWUSR;
+	if (*mode++ == 'x') m |= S_IXUSR;
+
+	/* group - XXX, inherite these on DOS? */
+	if (*mode++ == 'r') m |= S_IRGRP;
+	if (*mode++ == 'w') m |= S_IWGRP;
+	if (*mode++ == 'x') m |= S_IXGRP;
+	
+	/* other */
+	if (*mode++ == 'r') m |= S_IROTH;
+	if (*mode++ == 'w') m |= S_IWOTH;
+	if (*mode++ == 'x') m |= S_IXOTH;
+	
+	return (m);
+}
+
+/* value is overwritten on each call */
+char	*
+mode2a(mode_t m)
+{
+	static	char mode[12];
+	char	*s = mode;
+
+	if (S_ISLNK(m)) {
+		*s++ = 'l';
+	} else if (S_ISDIR(m)) {
+		*s++ = 'd';
+	} else if (S_ISREG(m)) {
+		*s++ = '-';
+	} else {
+	    	fprintf(stderr, "Unsupported mode: '%o'\n", m);
+		return ("<bad mode>");
+	}
+	*s++ = (m & S_IRUSR) ? 'r' : '-';
+	*s++ = (m & S_IWUSR) ? 'w' : '-';
+	*s++ = (m & S_IXUSR) ? 'x' : '-';
+	*s++ = (m & S_IRGRP) ? 'r' : '-';
+	*s++ = (m & S_IWGRP) ? 'w' : '-';
+	*s++ = (m & S_IXGRP) ? 'x' : '-';
+	*s++ = (m & S_IROTH) ? 'r' : '-';
+	*s++ = (m & S_IWOTH) ? 'w' : '-';
+	*s++ = (m & S_IXOTH) ? 'x' : '-';
+	*s = 0;
+	return (mode);
+}
+
 int
 mkexecutable(char *fname)
 {
@@ -4711,7 +4777,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 		}
 		if (d->flags & D_MODE) {
 		    	unless (d->parent && (d->parent->mode == d->mode)) {
-				sprintf(buf, "\001cO%o\n", d->mode);
+				sprintf(buf, "\001cO%s\n", mode2a(d->mode));
 				fputsum(s, buf, out);
 			}
 		}
@@ -5826,13 +5892,21 @@ hostArg(delta *d, char *arg) { ARG(hostname, D_NOHOST, D_DUPHOST); }
 private delta *
 pathArg(delta *d, char *arg) { ARG(pathname, D_NOPATH, D_DUPPATH); }
 
+/*
+ * Handle either 0664 style or -rw-rw-r-- style.
+ */
 private delta *
 modeArg(delta *d, char *arg)
 {
-	unsigned int m;
+	mode_t	m;
 
 	assert(d);
-	for (m = 0; isdigit(*arg); m <<= 3, m |= (*arg - '0'), arg++);
+	if (isdigit(*arg)) {
+		for (m = 0; isdigit(*arg); m <<= 3, m |= (*arg - '0'), arg++);
+		m |= S_IFREG;
+	} else {
+		m = a2mode(arg);
+	}
 	if (d->mode = m) d->flags |= D_MODE;
 	return (d);
 }
@@ -8735,7 +8809,7 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 		sccs_pdelta(d, out);
 		fprintf(out, "\n");
 	}
-	if (start->flags & D_MODE) fprintf(out, "O %o\n", start->mode);
+	if (start->flags & D_MODE) fprintf(out, "O %s\n", mode2a(start->mode));
 	if (s->tree->pathname) assert(start->pathname);
 	if (start->pathname) fprintf(out, "P %s\n", start->pathname);
 	if (start->flags & D_SYMBOLS) {
