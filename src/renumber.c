@@ -19,14 +19,14 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
-private void	renumber(sccs *s, MMAP *lodmap, int flags);
+private	MDBM	*lodDb_load(MMAP *lodmap);
+private MDBM	*lodDb_create(void);
+private void	renumber(sccs *s, MDBM *lodDb, int flags);
 private void	newRev(sccs *s, int flags, MDBM *db, delta *d);
 private void	remember(MDBM *db, delta *d);
 private int	taken(MDBM *db, delta *d);
 private int	redo(sccs *s, delta *d, MDBM *db, int flags, u16 release,
-		    MDBM *mapdb, ser_t *map);
-private MMAP	*map_changeset(char *tfile);
-private void	unmap_changeset(char *tfile, MMAP *lodmap);
+		    MDBM *lodDb, ser_t *map);
 
 int
 renumber_main(int ac, char **av)
@@ -35,8 +35,7 @@ renumber_main(int ac, char **av)
 	char	*name;
 	int	c, dont = 0, quiet = 0, flags = 0;
 	delta	*leaf(delta *tree);
-	char	cscat[40];
-	MMAP	*lodmap = 0;
+	MDBM	*lodDb = 0;
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
@@ -51,15 +50,12 @@ usage:		fprintf(stderr, "usage: renumber [-nq] [files...]\n");
 			goto usage;
 		}
 	}
-	cscat[0] = '\0';
 	for (name = sfileFirst("renumber", &av[optind], 0);
 	    name; name = sfileNext()) {
 		s = sccs_init(name, flags, 0);
 		if (!s) continue;
-		if ((s->state & S_BITKEEPER) && !lodmap) {
-			/* create cscat file such that we can mmap it */
-			gettemp(cscat, "cscat");
-			lodmap = map_changeset(cscat);
+		if ((s->state & S_BITKEEPER) && !lodDb) {
+			unless (s->state & S_CSET)  lodDb = lodDb_create();
 		}
 		unless (s->tree) {
 			fprintf(stderr, "%s: can't read SCCS info in \"%s\".\n",
@@ -67,7 +63,7 @@ usage:		fprintf(stderr, "usage: renumber [-nq] [files...]\n");
 			sfileDone();
 			return (1);
 		}
-		renumber(s, (s->state & S_BITKEEPER) ? lodmap : 0, flags);
+		renumber(s, lodDb, flags);
 		if (dont) {
 			unless (quiet) {
 				fprintf(stderr,
@@ -81,43 +77,30 @@ usage:		fprintf(stderr, "usage: renumber [-nq] [files...]\n");
 		}
 		sccs_free(s);
 	}
-	unmap_changeset(cscat, lodmap);
 	sfileDone();
 	purify_list();
 	return (0);
 }
 
-MDBM *
-mkmap(sccs *s, MMAP *lodmap)
+private	MDBM	*
+lodDb_load(MMAP *lodmap)
 {
-	/* use s to get key name of file
-	 * read lodmap lines in the form: "rev\s+| filekey deltakey
-	 * make hash for this file which is deltakey -> release
-	 * return
-	 */
-	char	filekey[MAXKEY];
 	char	deltakey[MAXKEY];
-	char	*t, *r, *f, *d;
-	int	keylen;
+	char	*t, *r, *d;
 	u16	release;
 	datum	key, val;
-	MDBM	*mapdb = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
+	MDBM	*lodDb = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 
-	sccs_sdelta(s, sccs_ino(s), filekey);
-	keylen = strlen(filekey);
+	/* ($rev, $file, $delta) = /^(\S+)\t(\S+) (\S+)/; */
 
-	/* ($rev, $file, $delta) = /^(\S+)\s+| (\S+) (\S+)/; */
-
-	mseekto(lodmap, 0);
 	while (t = mnext(lodmap)) {
 		r = t;
 		while (*t != '\t' && *t != '\n')  t++;
 		assert(*t == '\t');
 		t++;
-		f = t;
-		unless (strneq(filekey, f, keylen)) continue;
 
-		/* OK, this line is about this file, make hash entry */
+		/* XXX: use a stronger key like "inode delta" */
+		/* uses deltakey as a unique key currently */
 
 		while (*t != ' ' && *t != '\n')  t++;
 		assert(*t == ' ');
@@ -130,44 +113,89 @@ mkmap(sccs *s, MMAP *lodmap)
 		assert(isdigit(*r));
 		release = atoi(r); /* strip off release digit */
 
-		debug((stderr, "renumber: add mapdb: %s -> %u\n",
+		debug((stderr, "renumber: add lodDb: %s -> %u\n",
 			deltakey, release));
 
 		key.dptr = deltakey;
 		key.dsize = strlen(deltakey) + 1;
 		val.dptr = (void *)&release;
 		val.dsize = sizeof(release);
-		if (mdbm_store(mapdb, key, val, MDBM_INSERT)) {
+		if (mdbm_store(lodDb, key, val, MDBM_INSERT)) {
 			fprintf(stderr, "renumber: insert duplicate %s\n",
 				deltakey);
 			exit (1);
 		}
 	}
-	return (mapdb);
+	return (lodDb);
+}
+
+private MDBM *
+lodDb_create(void)
+{
+	sccs	*cset = 0;
+	delta	*d;
+	MMAP	*lodmap = 0;
+	char	*rootpath;
+	char	csetpath[MAXPATH];
+	char	cscat[40];
+	MDBM	*lodDb = 0;
+
+	cscat[0] = '\0';
+	gettemp(cscat, "cscat");
+	unless (rootpath = sccs_root(0)) goto ret;
+	strcpy(csetpath, rootpath);
+	strcat(csetpath, "/" CHANGESET);
+	debug((stderr, "renumber: opening changeset '%s'\n", csetpath));
+	unless (cset = sccs_init(csetpath, 0, 0)) goto ret;
+
+	/* XXX: feeling frustrated, I grunt this by hand.
+	 * Tell sccscat to print everything by setting all D_SET
+	 */
+	for (d = cset->table; d; d = d->next) {
+		unless (d->type == 'D') continue;
+		d->flags |= D_SET;
+	}
+	if (sccs_cat(cset, PRINT|GET_NOHASH|GET_REVNUMS, cscat)) {
+		fprintf(stderr, "renumber: sccscat of ChangeSet failed.\n");
+		goto ret;
+	}
+	unless (lodmap = mopen(cscat, "b")) {
+		perror(cscat);
+		goto ret;
+	}
+	debug((stderr, "renumber: mmapped changeset in '%s'\n", cscat));
+
+	/* we now have an mmaped version of sccscat of ChangeSet */
+	/* make it into an mdbm */
+
+	lodDb = lodDb_load(lodmap);
+	
+ret:
+	if (lodmap) mclose(lodmap);
+	if (cscat[0]) unlink(cscat);
+	if (cset) sccs_free(cset);
+	if (rootpath) free(rootpath);
+	return (lodDb);
 }
 
 /*
  * Work through all the serial numbers, oldest to newest.
  */
 private void
-renumber(sccs *s, MMAP * lodmap, int flags)
+renumber(sccs *s, MDBM *lodDb, int flags)
 {
 	delta	*d;
 	ser_t	i;
 	u16	release = 0;
 	MDBM	*db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
-	MDBM	*mapdb = 0;
 	ser_t	*map = calloc(s->nextserial, sizeof(ser_t));
 	ser_t	defserial = 0;
 	int	defisbranch = 1;
 	u16	maxrel = 0;
 	char	def[20];	/* X.Y.Z each 5 digit plus term = 18 */
 
-	/* If this is the ChangeSet file, ignore map */
-	if (s->state & S_CSET) lodmap = 0;
-
-	/* If lodmap set, then build hash of cset -> lod */
-	if (lodmap) mapdb = mkmap(s, lodmap);
+	/* Ignore lod mapping if this is ChangeSet or file is not BK */
+	if (!(s->state & S_BITKEEPER) || (s->state & S_CSET))  lodDb = 0;
 
 	/* Save current default branch */
 	if (d = findrev(s, "")) {
@@ -192,7 +220,7 @@ renumber(sccs *s, MMAP * lodmap, int flags)
 			 */
 			continue;
 		}
-		release = redo(s, d, db, flags, release, mapdb, map);
+		release = redo(s, d, db, flags, release, lodDb, map);
 		if (maxrel < d->r[0]) maxrel = d->r[0];
 		if (!defserial || defserial != i)  continue;
 		/* Restore default branch */
@@ -219,7 +247,6 @@ renumber(sccs *s, MMAP * lodmap, int flags)
 	}
 ret:
 	mdbm_close(db);
-	if (mapdb) mdbm_close(mapdb);
 }
 
 private	void
@@ -264,61 +291,15 @@ taken(MDBM *db, delta *d)
 	return (val.dsize == 1);
 }
 
-MMAP
-*map_changeset(char *tfile)
-{
-	sccs	*cset = 0;
-	delta	*d;
-	MMAP	*lodmap = 0;
-	char	*rootpath;
-	char	csetpath[MAXPATH];
-
-	unless (rootpath = sccs_root(0)) goto ret;
-	strcpy(csetpath, rootpath);
-	strcat(csetpath, "/" CHANGESET);
-	debug((stderr, "renumber: opening changeset '%s'\n", csetpath));
-	unless (cset = sccs_init(csetpath, 0, 0)) goto ret;
-
-	/* XXX: feeling frustrated, I grunt this by hand.
-	 * Tell sccscat to print everything by setting all D_SET
-	 */
-	for (d = cset->table; d; d = d->next) {
-		unless (d->type == 'D') continue;
-		d->flags |= D_SET;
-	}
-	if (sccs_cat(cset, PRINT|GET_NOHASH|GET_REVNUMS, tfile)) {
-		fprintf(stderr, "renumber: sccscat of ChangeSet failed.\n");
-		goto ret;
-	}
-	unless (lodmap = mopen(tfile, "b")) {
-		perror(tfile);
-		goto ret;
-	}
-	debug((stderr, "renumber: mmapped changeset in '%s'\n", tfile));
-
-ret:	if (cset) sccs_free(cset);
-	if (rootpath) free(rootpath);
-	unless (lodmap) unlink(tfile);
-	return (lodmap);
-}
-
-void
-unmap_changeset(char *tfile, MMAP *lodmap)
-{
-	debug((stderr, "renumber: unmapped changeset '%s'\n", tfile));
-	if (lodmap) mclose(lodmap);
-	unlink(tfile);	/* unlink it after lodmap closed */
-}
-
 u16
-cset_rel(sccs *s, delta *d, MDBM *mapdb)
+cset_rel(sccs *s, delta *d, MDBM *lodDb)
 {
 	char	keystr[MAXPATH];
 	datum	key, val;
 	delta	*e;
 	u16	csrel = 0;
 
-	assert(s && d && mapdb);
+	assert(s && d && lodDb);
 
 	/* find delta that names changeset this delta is in */
 	for (e = d; e; e = e->kid) {
@@ -330,7 +311,25 @@ cset_rel(sccs *s, delta *d, MDBM *mapdb)
 
 	key.dptr = keystr;
 	key.dsize = strlen(keystr) + 1;
-	val = mdbm_fetch(mapdb, key);
+	val = mdbm_fetch(lodDb, key);
+	unless (val.dsize) {
+		char	*p;
+		if (p = sccs_iskeylong(keystr)) {
+			debug((stderr, "renumber: failed on long key, "
+				"trying short key. %s\n", keystr));
+			*p = '\0';
+			key.dptr = keystr;
+			key.dsize = strlen(keystr) + 1;
+			val = mdbm_fetch(lodDb, key);
+			*p = '|';
+		}
+		unless (val.dsize) {
+			fprintf(stderr, "renumber: can't find long or short "
+			    "key in ChangeSet file:\n\t%s\n", keystr);
+			exit (1);
+		}
+		debug((stderr, "renumber: succeed with short key\n"));
+	}
 	assert(val.dsize == sizeof(csrel));
 	memcpy(&csrel, val.dptr, val.dsize);
 	debug((stderr, "renumber: cset release == %u\n", csrel));
@@ -341,7 +340,7 @@ cset_rel(sccs *s, delta *d, MDBM *mapdb)
  * XXX - does not yet handle default branch
  */
 private	int
-redo(sccs *s, delta *d, MDBM *db, int flags, u16 release, MDBM *mapdb,
+redo(sccs *s, delta *d, MDBM *db, int flags, u16 release, MDBM *lodDb,
     ser_t *map)
 {
 	delta	*p;
@@ -363,10 +362,10 @@ redo(sccs *s, delta *d, MDBM *db, int flags, u16 release, MDBM *mapdb,
 	 * Sort so X.1 is printed first.
 	 */
 	if ((!d->r[2] && d->r[1] == 1) || (!d->r[1] && d->r[3] == 1)) {
-		if (mapdb) {
+		if (lodDb) {
 			u16	csrel;
 
-			if (csrel = cset_rel(s, d, mapdb))  d->r[0] = csrel;
+			if (csrel = cset_rel(s, d, lodDb))  d->r[0] = csrel;
 		}
 		unless (map[d->r[0]]) {
 			map[d->r[0]] = ++release;
