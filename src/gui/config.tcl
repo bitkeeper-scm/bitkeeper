@@ -5,8 +5,11 @@ proc getConfig {prog} \
 	set app $prog
 
 	if {$tcl_platform(platform) == "windows"} {
-		set _d(fixedFont) {{Lucida Console} 9}
-		set _d(fixedBoldFont) {{Lucida Console} 9 bold}
+		#set _d(fixedFont) {{Lucida Console} 9}
+		#set _d(fixedBoldFont) {{Lucida Console} 9 bold}
+		set _d(fixedFont) {6x13}
+		set _d(fixedBoldFont) {6x13bold}
+
 		#set _d(fixedBoldFont) {helvetica 9 roman bold}
 		#set _d(fixedFont -misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso8859-1
 		#set _d(fixedBoldFont -misc-fixed-bold-r-semicondensed--13-120-75-75-c-60-iso8859-1
@@ -19,8 +22,10 @@ proc getConfig {prog} \
 		set _d(fm.activeNewFont) {{Lucida Console} 9 bold}
 		set _d(ci.filesHeight) 10
 	} else {
-		set _d(fixedFont) {fixed 12 roman}
-		set _d(fixedBoldFont) {fixed 12 roman bold}
+		#set _d(fixedFont) {fixed 12 roman}
+		#set _d(fixedBoldFont) {fixed 12 roman bold}
+		set _d(fixedFont) {6x13}
+		set _d(fixedBoldFont) {6x13bold}
 		set _d(buttonFont) {times 12 roman bold}
 		set _d(cset.leftWidth) 55
 		set _d(cset.rightWidth) 80
@@ -31,9 +36,16 @@ proc getConfig {prog} \
 		set _d(ci.filesHeight) 8	;# num files to show in top win
 	}
 
+	if {$tcl_platform(platform) == "windows"} {
+		set _d(buttonColor) #d4d0c8	;# menu buttons
+		set _d(BG) #d4d0c8		;# default background
+	} else {
+		set _d(buttonColor) #d0d0d0	;# menu buttons
+		set _d(BG) #d9d9d9		;# default background
+	}
+
 	set _d(backup) ""		;# Make backups in ciedit: XXX NOTDOC 
 	set _d(balloonTime) 1000	;# XXX: NOTDOC
-	set _d(BG) #f0f0f0		;# default background
 	set _d(buttonColor) #d0d0d0	;# menu buttons
 	set _d(diffHeight) 30		;# height of a diff window
 	set _d(diffWidth) 65		;# width of side by side diffs
@@ -108,7 +120,7 @@ proc getConfig {prog} \
 	set _d(setup.mandatoryColor) #deeaf4 ;# Color of mandatory fields
 
 	set _d(bug.mandatoryColor) #deeaf4 ;# Color of mandatory fields
-	set _d(bug.BG) white 		   ;# Color of mandatory fields
+	#set _d(bug.BG) white 		   ;# Color of mandatory fields
 
 	if {$tcl_platform(platform) == "windows"} {
 		package require registry
