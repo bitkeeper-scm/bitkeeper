@@ -1112,11 +1112,7 @@ _setLog()
 	done
 	if [ -f ${BK_ETC}config ]; then ${BIN}clean ${BK_ETC}config; fi
 	${BIN}get -seg ${BK_ETC}config
-	${BIN}get -kps ${BK_ETC}config | `__perl` -e'
-while (<STDIN>) {
-	print $_;
-	print "logging_ok: $ARGV[0]\n" if /^logging:/ ;
-}' $1 >  ${BK_ETC}config
+	${BIN}get -kps ${BK_ETC}config | ${BIN}setlog $1 > ${BK_ETC}config
 	${BIN}delta -q -y"logging_ok: $1" ${BK_ETC}config
 	return 0
 }
