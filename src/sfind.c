@@ -64,7 +64,7 @@ private project *proj;
 private options	opts;
 private globv	ignore; 
 
-private int do_print(char state[4], char *file, char *rev);
+private void do_print(char state[4], char *file, char *rev);
 private void walk(char *dir, int level);
 private void file(char *f);
 private void sccsdir(char *dir, int level, DIR *sccs_dh);
@@ -410,6 +410,15 @@ file(char *f)
 
 
 
+/*
+ * This function returns NULL if it cannot find project root
+ */
+private char *
+find_root(char *dir, char *root)
+{
+	return (_relativeName(dir, 1, 0, 1, 0, root));
+}
+
 private void
 walk(char *dir, int level)
 {
@@ -429,24 +438,27 @@ walk(char *dir, int level)
 		/*
 		 * Find project root and put it in buf
 		 */
-		unless (_relativeName(dir, 1, 0, 1, 0, buf)) {
-			fprintf(stderr,
-				"%s is not a BitKeeper repository\n", dir);
-			return;
-		}
-		opts.splitRoot = hasRootFile(buf, tmp);
-		if (!opts.aflg) {
-			FILE	*ignoref; 
+		if (find_root(dir, buf)) {
+			opts.splitRoot = hasRootFile(buf, tmp);
+			if (!opts.aflg) {
+				FILE	*ignoref; 
 
-			sprintf(tmp, "%s/BitKeeper/etc/ignore", buf);
-			unless (exists(tmp)) get(buf, SILENT, "-");
-			if (ignoref = fopen(tmp, "rt")) {
-				ignore = read_globs(ignoref, 0);
-				fclose(ignoref);
-			}
-		}           
-		sprintf(tmp, "%s/BitKeeper/etc/SCCS/x.dfile", buf);
-		opts.dfile = exists(tmp);
+				sprintf(tmp, "%s/BitKeeper/etc/ignore", buf);
+				unless (exists(tmp)) get(buf, SILENT, "-");
+				if (ignoref = fopen(tmp, "rt")) {
+					ignore = read_globs(ignoref, 0);
+					fclose(ignoref);
+				}
+			}           
+			sprintf(tmp, "%s/BitKeeper/etc/SCCS/x.dfile", buf);
+			opts.dfile = exists(tmp);
+		} else {
+			/*
+			 * Dir is not a BitKeeper repository,
+			 * turn off all BitKeeper specify feature.
+			 */
+			opts.aflg = 1;
+		}
 		assert(proj == 0);
 	}
 
@@ -508,40 +520,34 @@ chk_diffs(sccs *s)
 int
 isIgnored(char *file)
 {
-	char *gfile, *name, tmp[MAXPATH];
-	/*
-	 * For backward compat with "bk sfiles"
-	 * pre-pend "./" before we match against ignore list
-	 */
-	name = file;
-	unless (IsFullPath(file)) {
-		unless (strneq("./", file, 2)) {
-			sprintf(tmp, "./%s", file);
-			name = tmp;
-		} 
-	}
-	if (!opts.aflg && match_globs(name, ignore)) {
-		debug((stderr, "SKIP\t%s\n", file));
-		return (1);
-	}
-	/*
-	 * For backward compat with "bk sfiles"
-	 * trimed "./" and match against ignore list again.
-	 */
+	char *gfile;
+
 	gfile =  strneq("./",  file, 2) ? &file[2] : file;
-	if (!opts.aflg && match_globs(gfile, ignore)) {
-		debug((stderr, "SKIP\t%s\n", gfile));
-		return (1);
+	unless (opts.aflg) {
+		if (match_globs(file, ignore)) {
+			debug((stderr, "SKIP\t%s\n", file));
+			return (1);
+		}
+
+		/*
+		 * For backward compat with "bk sfiles"
+		 * trimed "./" and match against ignore list.
+		 */
+		if (match_globs(gfile, ignore)) {
+			debug((stderr, "SKIP\t%s\n", gfile));
+			return (1);
+		}
+
+		/*
+		 * For backward compat with "bk sfiles"
+		 * match basename against ignore list.
+		 */
+		if (match_globs(basenm(gfile), ignore)) {
+			debug((stderr, "SKIP\t%s\n", gfile));
+			return (1);
+		}
 	}
 
-	/*
-	 * For backward compat with "bk sfiles"
-	 * match basename against ignore list again.
-	 */
-	if (!opts.aflg && match_globs(basenm(gfile), ignore)) {
-		debug((stderr, "SKIP\t%s\n", gfile));
-		return (1);
-	}
 	/*
 	 * HACK to hide stuff in the log directory & BitKeeper/etc/SCCS/x.*
 	 * This assumes the sfind is ran from project root
@@ -571,13 +577,13 @@ print_it(char state[4], char *file, char *rev)
 	if (sfile) free(sfile);
 }
 
-private int
+private void
 do_print(char state[4], char *file, char *rev)
 {
 
 	switch (state[LSTATE]) {
 	    case 'l':	if (opts.lflg) goto chk_ig; break;
-	    case 'u':	if (opts.uflg) goto print; break;
+	    case 'u':	if (opts.uflg) goto chk_ig; break;
 	}
 
 	switch (state[CSTATE]) {
@@ -589,8 +595,8 @@ do_print(char state[4], char *file, char *rev)
 	if ((state[PSTATE] == 'p') && opts.pflg) goto chk_ig;
 	return;
 
-chk_ig: if (isIgnored(file)) return (0);
-print:	print_it(state, file, rev);
+chk_ig: if (isIgnored(file)) return;
+	print_it(state, file, rev);
 }
 
 /*
@@ -630,10 +636,9 @@ sccsdir(char *dir, int level, DIR *sccs_dh)
 		if (patheq(e->d_name, "SCCS")) continue;
 
 		/*
-		 * Do not decent into another project root. e.g RESYNC
+		 * Do not descend into another project root. e.g RESYNC
 		 */
 		if ((level > 0)  && patheq(e->d_name, "BitKeeper")) {
-			fprintf(stderr, "Warning: sub-root %s ignored\n", dir);
 			return;
 		}
 
@@ -643,8 +648,8 @@ sccsdir(char *dir, int level, DIR *sccs_dh)
 		 */
 		if ((dir_len + 8 + strlen(e->d_name)) >= MAXPATH) {
 			fprintf(stderr,
-			    "Warning: %s/%s name too long, skiped\n",
-							    dir, e->d_name);
+			    "Warning: %s/%s name too long, skipped\n",
+			    dir, e->d_name);
 			continue;
 		}
 
@@ -676,7 +681,8 @@ sccsdir(char *dir, int level, DIR *sccs_dh)
 		 */
 		if ((dir_len + 6 + strlen(e->d_name)) >= MAXPATH) {
 			fprintf(stderr,
-			    "Warning: %s name too long, skiped\n", dir);
+			    "Warning: %s/%s name too long, skipped\n",
+			    dir, e->d_name);
 			continue;
 		}
 
@@ -743,12 +749,11 @@ sccsdir(char *dir, int level, DIR *sccs_dh)
 			state[CSTATE] = 'n';
 		}
 
-		/*
-		 * check for pending deltas
-		 * TODO: need to handle LOD
-		 */
 		concat_path(buf, dir, gfile);
 		if (opts.pflg) {
+			/*
+			 * check for pending deltas
+			 */
 			chk_pending(s, buf, state, sDB, gDB);
 		} else {
 			state[PSTATE] = ' ';
@@ -782,14 +787,6 @@ sccsdir(char *dir, int level, DIR *sccs_dh)
 						    k = mdbm_nextkey(sDB)) {
 			char buf1[MAXPATH];
 
-#ifdef LATER
-			if (strneq("d.", k.dptr, 2)) continue;
-			if (strneq("x.", k.dptr, 2)) continue;
-			if (strneq("s.", k.dptr, 2)) continue;
-			if (strneq("c.", k.dptr, 2)) continue;
-			if (strneq("p.", k.dptr, 2)) continue;
-			if (strneq("z.", k.dptr, 2)) continue;
-#endif
 			concat_path(buf1, buf, k.dptr);
 			do_print(" j ", buf1, 0);
 		}
