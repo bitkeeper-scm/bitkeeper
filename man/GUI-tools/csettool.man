@@ -4,8 +4,13 @@
 .SH NAME
 bk csettool \- graphical changeset browser
 .SH SYNOPSIS
-.B bk csettool \-r
-.I revs
+.if t \{\
+.B bk csettool 
+.BI -r revs
+\}
+.if n \{\ 
+bk csettool -r<revs>
+\}
 .SH DESCRIPTION
 .LP
 The csettool command is used to view the detailed information about the

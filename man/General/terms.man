@@ -16,7 +16,9 @@ A file that is checked out, e.g., foo.c
 package
 A package is a logical concept while the repository is 
 the physical instance of that concept. A package is 
-created only once when the "bk setup" program is run.
+created only once when the 
+.B bk setup
+program is run.
 .TP
 repository
 A directory tree that is populated with the revision

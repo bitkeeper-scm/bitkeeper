@@ -4,8 +4,8 @@
 .SH NAME
 bk sccstool \- graphical file and ChangeSet history browser
 .SH SYNOPSIS
-.B bk sccstool [
-.IR filename ]
+.B bk sccstool 
+.BI [ filename ]
 .SH DESCRIPTION
 .LP
 The sccstool command is used to graphically browse file history.
@@ -27,7 +27,9 @@ revision.
 To see differences between two revisions, left click once on the older
 revision and right click once on the newer revision.  The differences
 will be displayed in the text window.  You can right click on another
-revision and diff again.  The default diff format is -u (unified diffs).
+revision and diff again.  The default diff format is
+.B -u
+(unified diffs).
 .LP
 To get a side-by-side view of the differences, select the two revisions
 and click on the "Diff tool" button.
@@ -35,7 +37,9 @@ and click on the "Diff tool" button.
 To see the entire file for a given revision, double click the left
 mouse button on the revision.  The text shown for the file is
 annotated with the user name and revision level for each line. This
-text is generated with the "bk get -ump" command.
+text is generated with the 
+.B bk get -ump
+command.
 .SH CHANGESETS
 .LP
 When operating on the ChangeSet file, the behavior is slightly
@@ -47,7 +51,9 @@ If you click left/right on a range of changesets, you will get the
 history of the entire range of changesets.  To see the history and
 the differences in detail, you can click on the "View changeset"
 button and that will pop up a changeset browser.  Typical usage is to
-browse the ChangeSet file with sccstool and drill down using bk csettool.
+browse the ChangeSet file with sccstool and drill down using
+.B bk
+.BR csettool .
 .SH BINDINGS
 .LP
 The scrollbars can be used to orient the view of either window. 

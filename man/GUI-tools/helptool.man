@@ -4,8 +4,8 @@
 .SH NAME
 bk helptool \- graphical front-end to the help system
 .SH SYNOPSIS
-.B bk helptool [
-.IR topic ]
+.B bk helptool
+.BI [ topic ]
 .SH DESCRIPTION
 .LP
 The helptool command is a graphical interface to the online help system.

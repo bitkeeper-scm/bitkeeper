@@ -2,6 +2,7 @@
 .TH Introduction General %G% "BitMover, Inc." BitKeeper
 .SH NAME 
 Introduction
+.SH DESCRIPTION
 .LP
 BitKeeper is a distributed revision control system.  It is similar to
 RCS and SCCS (it uses an SCCS-compatible file format) with added features

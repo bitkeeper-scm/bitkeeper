@@ -4,7 +4,12 @@
 .SH NAME
 bk fmtool \- side-by-side merge tool
 .SH SYNOPSIS
-.B bk fmtool local remote merge
+.if t \{\
+.B bk fmtool
+.I local remote merge
+\}
+.if n
+bk fmtool <local> <remote> <merge>
 .SH DESCRIPTION
 .LP
 fmtool is a side-by-side merge tool used for resolving differences
@@ -12,7 +17,12 @@ between two different versions of a file.
 .LP
 When the tool is started, there are three main windows, the ``local''
 window on the left, the ``remote'' window on the right, and the ``merge''
-window on the bottom.  When doing a bk resync or a bk pull, your repository
+window on the bottom.  When doing a
+.B bk resync
+or a
+.B bk
+.BR pull ,
+your repository
 is considered local and the other one is considered remote, and BitKeeper
 arranges to have the local version of the file on the left side and the
 remote version on the right.

@@ -4,8 +4,13 @@
 .SH NAME
 bk renametool \- graphical tool for finding renames
 .SH SYNOPSIS
+.if t \{\
 .B bk renametool \< 
 .I filelist
+\}
+.if n \{\ 
+bk rename < <filelist>
+\}
 .SH DESCRIPTION
 .LP
 The renametool command is a graphical interface for finding renames.

@@ -9,7 +9,8 @@ Here are examples on how to setup the initial repository, import from
 plain files, a CVS repository, and/or an RCS repository. 
 .LP
 In order to do an import, the destination repository needs to exist. 
-bk setup is used when creating the first instance of a repository.
+.B bk setup
+is used when creating the first instance of a repository.
 .sp
 .AX
 # Setup initial repository

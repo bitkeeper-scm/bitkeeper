@@ -5,7 +5,7 @@ bk citool \- graphical check-in tool
 .SH SYNOPSIS
 .B bk citool
 .BI [ dir
-.BI or file
+.BI or \ file
 .IB list ]
 .SH DESCRIPTION
 The
