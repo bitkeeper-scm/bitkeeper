@@ -537,7 +537,7 @@ findcmd(int ac, char **av)
 private	int
 getav(int *acp, char ***avp, int *httpMode)
 {
-	static	char buf[2500];		/* room for two keys */
+	static	char buf[MAXKEY * 2];		/* room for two keys */
 	static	char *av[50];
 	static	remote r = { 0, 0, 0, 0, 0, 0, 1, 0, 0 ,0 };
 	int	i, inspace = 1, inQuote = 0;

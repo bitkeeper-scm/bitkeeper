@@ -188,7 +188,7 @@ helptopics_main(int ac, char **av)
 int
 helpsearch_main(int ac, char **av)
 {
-	char	p[500], buf[200], name[200];
+	char	p[500], buf[MAXPATH], name[200];
 	int	substrings = 0, Long = 0, Debug = 0;
 	int	c, len;
 	char	*t, *str, *word;

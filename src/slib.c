@@ -5496,7 +5496,7 @@ uudecode1(register char *from, register uchar *to)
 private int
 openOutput(sccs *s, int encode, char *file, FILE **op)
 {
-	char	buf[100], *mode = "w";
+	char	*mode = "w";
 	int	toStdout = streq(file, "-");
 
 	assert(op);
@@ -6586,7 +6586,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	int	error = 0;
 	int	side, nextside;
 	char	*buf;
-	char	tmpfile[100];
+	char	*tmpfile = 0;
 	FILE	*lbuf = 0;
 	int	no_lf = 0;
 	ser_t	serial;
@@ -6620,7 +6620,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		s->state |= S_WARNED;
 		return (-1);
 	}
-	sprintf(tmpfile, "%s/%s-%s-%d", TMP_PATH, basenm(s->gfile), d->rev, getpid());
+	tmpfile = aprintf("%s/%s-%s-%d", TMP_PATH, basenm(s->gfile), d->rev, getpid());
 	popened = openOutput(s, encoding, printOut, &out);
 	if (type == GET_HASHDIFFS) {
 		int	lines = 0;
@@ -6654,7 +6654,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		perror(tmpfile);
 		fprintf(stderr, "getdiffs: couldn't open %s\n", tmpfile);
 		s->state |= S_WARNED;
-		return (-1);
+		goto done2;
 	}
 	slist = serialmap(s, d, flags, 0, 0, &error);
 	state = allocstate(0, 0, s->nextserial);
@@ -6738,6 +6738,7 @@ done3:		unlink(tmpfile);
 	}
 	if (slist) free(slist);
 	if (state) free(state);
+	if (tmpfile) free(tmpfile);
 	return (ret);
 }
 
@@ -9996,6 +9997,7 @@ out:
 	if (text) {
 		FILE	*desc;
 		char	dbuf[200];
+		char	*c;
 
 		if (!text[0]) {
 			if (sc->text) {
@@ -10004,8 +10006,8 @@ out:
 				flags |= NEWCKSUM;
 			}
 			ALLOC_D();
-			sprintf(dbuf, "Remove Descriptive Text");
-			d->comments = addLine(d->comments, strdup(dbuf));
+			c = "Remove Descriptive Text";
+			d->comments = addLine(d->comments, strdup(c));
 			assert(d->text == 0);
 			d->flags |= D_TEXT;
 			goto user;
@@ -10021,8 +10023,8 @@ out:
 			sc->text = 0;
 		}
 		ALLOC_D();
-		sprintf(dbuf, "Change Descriptive Text");
-		d->comments = addLine(d->comments, strdup(dbuf));
+		c = "Change Descriptive Text";
+		d->comments = addLine(d->comments, strdup(c));
 		d->flags |= D_TEXT;
 		while (fgets(dbuf, sizeof(dbuf), desc)) {
 			sc->text = addLine(sc->text, strnonldup(dbuf));
@@ -10102,7 +10104,8 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			sc->state = S_WARNED;
 		} else {
 			switch (f[i].thing[0]) {
-				char	buf[500];
+				//char	buf[500];
+				char	*buf;
 			    case 'd':
 				if (sc->defbranch) free(sc->defbranch);
 				sc->defbranch = *v ? strdup(v) : 0;
@@ -10117,7 +10120,8 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 				}
 		   		break;
 			    default:
-				sprintf(buf, "%c %s", v[-1], v);
+				//sprintf(buf, "%c %s", v[-1], v);
+				buf = aprintf("%c %s", v[-1], v);
 				if (add) {
 					sc->flags =
 						addLine(sc->flags, strdup(buf));
@@ -10130,6 +10134,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 						sc->state |= S_WARNED;
 					}
 				}
+				free(buf);
 				break;
 			}
 		}

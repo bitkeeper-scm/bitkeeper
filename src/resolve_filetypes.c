@@ -10,24 +10,25 @@ ft_help(resolve *rs)
 {
 	int	i;
 	deltas	*d = (deltas *)rs->opaque;
-	char	l[100], r[100];
+	char	*l, *r;
 
 	if ((fileType(d->gca->mode) == fileType(d->local->mode)) &&
 	    (fileType(d->gca->mode) != fileType(d->remote->mode))) {
-		sprintf(l,
-		    "unchanged type  %s", mode2FileType(d->local->mode));
-		sprintf(r,
-		    "changed type to %s", mode2FileType(d->remote->mode));
+		l = aprintf(
+		    	"unchanged type  %s", mode2FileType(d->local->mode));
+		r = aprintf(
+		    	"changed type to %s", mode2FileType(d->remote->mode));
 	} else if ((fileType(d->gca->mode) != fileType(d->local->mode)) &&
 	    (fileType(d->gca->mode) == fileType(d->remote->mode))) {
-		sprintf(l, "changed type to %s", mode2FileType(d->local->mode));
-		sprintf(r,
-		    "unchanged type  %s", mode2FileType(d->remote->mode));
+		l = aprintf(
+			"changed type to %s", mode2FileType(d->local->mode));
+		r = aprintf(
+		    	"unchanged type  %s", mode2FileType(d->remote->mode));
 	} else {
-		sprintf(l,
-		    "changed type to %s", mode2FileType(d->local->mode));
-		sprintf(r,
-		    "changed type to %s", mode2FileType(d->remote->mode));
+		l = aprintf(
+		    	"changed type to %s", mode2FileType(d->local->mode));
+		r = aprintf(
+		    	"changed type to %s", mode2FileType(d->remote->mode));
 	}
 
 	fprintf(stderr,
@@ -44,6 +45,8 @@ Remote: %s@%s\n\t%s\n\
 		    rs->funcs[i].spec, rs->funcs[i].help);
 	}
 	fprintf(stderr, "\n");
+	free(l);
+	free(r);
 	return (0);
 }
 

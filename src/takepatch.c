@@ -203,10 +203,8 @@ usage:		system("bk help -s takepatch");
 	 * we maintain, and (b) converge on the oldest inode for a
 	 * particular file.  The converge code will make sure all of the
 	 * inodes are present.
-	 * 
-	 * Note: BK_NO_CONVERGE is for used in regression test only
 	 */
-	if (conflicts && !isLogPatch && !getenv("BK_NO_CONVERGE")) {
+	if (conflicts && !isLogPatch) {
 		char key[MAXKEY], gfile[MAXPATH];
 		chdir(ROOT2RESYNC);
 		f = popen("bk sfiles BitKeeper/etc BitKeeper/deleted | "

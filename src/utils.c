@@ -470,25 +470,24 @@ add_cd_command(FILE *f, remote *r)
 void
 put_trigger_env(char *where, char *v, char *value)
 {
-	char env[100];
-	char buf[MAXPATH];
+	char *env;
+	char *buf;
 	char *e;
 
-	sprintf(env, "BK%s_%s", where, v);
+	env = aprintf("BK%s_%s", where, v);
 	if ((e = getenv(env)) && streq(e, value)) return;
-	sprintf(buf, "%s=%s", env, value);
+	buf = aprintf("%s=%s", env, value);
 	putenv(strdup(buf));
+	free(env); free(buf);
 }
 
 void
 putroot(char *where)
 {
 	char	*root = sccs_root(0);
-	char	*e;
-	char	buf[MAXPATH];
-	char	env[100];
+	char	*e, *buf, *env;
 
-	sprintf(env, "BK%s_ROOT", where);
+	env = aprintf("BK%s_ROOT", where);
 
 	if (root) {
 		if (streq(root, ".")) {
@@ -498,16 +497,18 @@ putroot(char *where)
 			if ((e = getenv(env)) && streq(e, pwd)) {
 				return;
 			}
-			sprintf(buf, "%s=%s", env, pwd);
+			buf = aprintf("%s=%s", env, pwd);
 		} else {
 			if ((e = getenv(env)) && streq(e, root)) {
 				return;
 			}
-			sprintf(buf, "%s=%s", env, root);
+			buf = aprintf("%s=%s", env, root);
 		}
-		putenv((strdup)(buf));
+		putenv(buf);
+		buf = 0; /* paranoid */
 		free(root);
 	}
+	free(env);
 }
 
 void

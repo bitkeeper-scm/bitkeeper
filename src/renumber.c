@@ -188,12 +188,13 @@ out:
 private	void
 newRev(sccs *s, int flags, MDBM *db, delta *d)
 {
-	char	buf[100];
+	char	*buf;
 
 	if (d->r[2]) {
-		sprintf(buf, "%d.%d.%d.%d", d->r[0], d->r[1], d->r[2], d->r[3]);
+		buf = aprintf("%d.%d.%d.%d",
+					d->r[0], d->r[1], d->r[2], d->r[3]);
 	} else {
-		sprintf(buf, "%d.%d", d->r[0], d->r[1]);
+		buf = aprintf("%d.%d", d->r[0], d->r[1]);
 	}
 	unless (streq(buf, d->rev)) {
 		verbose((stderr,
@@ -202,6 +203,7 @@ newRev(sccs *s, int flags, MDBM *db, delta *d)
 		d->rev = strdup(buf);
 	}
 	if (d->type == 'D') remember(db, d);
+	free(buf);
 }
 
 private	void

@@ -31,6 +31,7 @@ flags(int bits)
 		if (comma) fs(","); fs("SHELL"); comma = 1;
 	}
 #endif
+	assert(strlen(buf) < sizeof buf);
 	return (buf);
 }
 
@@ -40,21 +41,21 @@ f_help(resolve *rs)
 	int	i;
 	deltas	*d = (deltas *)rs->opaque;
 	int	lf, rf, gf;
-	char	g[512], l[512], r[512];
+	char	*g, *l, *r;
 
 	lf = sccs_xflags(d->local);
 	rf = sccs_xflags(d->remote);
 	gf = sccs_xflags(d->gca);
-	sprintf(g, "original  flags  %s", gf ? flags(gf) : "<none>");
+	g = aprintf("original  flags  %s", gf ? flags(gf) : "<none>");
 	if ((gf == lf) && (gf != rf)) {
-		sprintf(l, "unchanged flags  %s", flags(lf));
-		sprintf(r, "changed flags to %s", flags(rf));
+		l = aprintf("unchanged flags  %s", flags(lf));
+		r = aprintf("changed flags to %s", flags(rf));
 	} else if ((gf != lf) && (gf == rf)) {
-		sprintf(l, "changed flags to %s", flags(lf));
-		sprintf(r, "unchanged flags  %s", flags(rf));
+		l = aprintf("changed flags to %s", flags(lf));
+		r = aprintf("unchanged flags  %s", flags(rf));
 	} else {
-		sprintf(l, "changed flags to %s", flags(lf));
-		sprintf(r, "changed flags to %s", flags(rf));
+		l = aprintf("changed flags to %s", flags(lf));
+		r = aprintf("changed flags to %s", flags(rf));
 	}
 
 	fprintf(stderr,
@@ -73,6 +74,7 @@ Remote: %s@%s\n\t%s\n\
 		    rs->funcs[i].spec, rs->funcs[i].help);
 	}
 	fprintf(stderr, "\n");
+	free(g); free(l); free(r);
 	return (0);
 }
 

@@ -10,19 +10,19 @@ m_help(resolve *rs)
 {
 	int	i;
 	deltas	*d = (deltas *)rs->opaque;
-	char	l[100], r[100];
+	char	*l, *r;
 
 	if ((d->gca->mode == d->local->mode) &&
 	    (d->gca->mode != d->remote->mode)) {
-		sprintf(l, "unchanged mode  %s", mode2a(d->local->mode));
-		sprintf(r, "changed mode to %s", mode2a(d->remote->mode));
+		l = aprintf("unchanged mode  %s", mode2a(d->local->mode));
+		r = aprintf("changed mode to %s", mode2a(d->remote->mode));
 	} else if ((d->gca->mode != d->local->mode) &&
 	    (d->gca->mode == d->remote->mode)) {
-		sprintf(l, "changed mode to %s", mode2a(d->local->mode));
-		sprintf(r, "unchanged mode  %s", mode2a(d->remote->mode));
+		l = aprintf("changed mode to %s", mode2a(d->local->mode));
+		r = aprintf("unchanged mode  %s", mode2a(d->remote->mode));
 	} else {
-		sprintf(l, "changed mode to %s", mode2a(d->local->mode));
-		sprintf(r, "changed mode to %s", mode2a(d->remote->mode));
+		l = aprintf("changed mode to %s", mode2a(d->local->mode));
+		r = aprintf("changed mode to %s", mode2a(d->remote->mode));
 	}
 
 	fprintf(stderr,
@@ -39,6 +39,8 @@ Remote: %s@%s\n\t%s\n\
 		    rs->funcs[i].spec, rs->funcs[i].help);
 	}
 	fprintf(stderr, "\n");
+	free(l);
+	free(r);
 	return (0);
 }
 

@@ -340,7 +340,7 @@ http_send(remote *r, char *msg,
 {
 	unsigned int start, len;
 	int	n = 0;
-	char	bk_url[MAXPATH], header[1024];
+	char	bk_url[MAXPATH], *header = 0;
 	char	*spin = "|/-\\";
 
 
@@ -350,7 +350,7 @@ http_send(remote *r, char *msg,
 	assert(r);
 	assert(r->host);
 	sprintf(bk_url, "http://%s/cgi-bin/%s", r->host, cgi_script);
-	sprintf(header,
+	header = aprintf(
 	    "POST %s HTTP/1.0\n"
 	    "User-Agent: %s\n"
 	    "Accept: text/html\n"
@@ -364,7 +364,8 @@ http_send(remote *r, char *msg,
 	len = strlen(header);
 	if (write_blk(r, header, len) != len) {
 		if (r->trace) fprintf(stderr, "Send failed\n");
-err:		return (-1);
+err:		if (header) free(header);
+		return (-1);
 	}
 	if (r->trace) fprintf(stderr, "Sending data file ");
 
@@ -385,5 +386,6 @@ err:		return (-1);
 		}
 		goto err;
 	}
+	free(header);
 	return 0;
 }

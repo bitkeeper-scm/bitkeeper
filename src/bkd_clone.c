@@ -12,7 +12,7 @@ cmd_clone(int ac, char **av)
 {
 	int	c, rc;
 	int	gzip = 0, delay = -1;
-	char 	*p, *rev = 0, ebuf[200];
+	char 	*p, *rev = 0, *ebuf = 0;
 	extern	int want_eof;
 
 	/*
@@ -70,7 +70,7 @@ cmd_clone(int ac, char **av)
 		exit(1);
 	}
 	if (rev) {
-		sprintf(ebuf, "BK_CSETS=1.0..%s", rev);
+		ebuf = aprintf("BK_CSETS=1.0..%s", rev);
 		putenv(ebuf);
 	} else {
 		putenv("BK_CSETS=1.0..");
@@ -94,6 +94,9 @@ cmd_clone(int ac, char **av)
 	 * We should not need this if ssh is working correctly 
 	 */
 	if (delay > 0) sleep(delay);
+
+	putenv("BK_CSETS=");
+	if (ebuf) free(ebuf);
 	return (rc);
 }
 	    

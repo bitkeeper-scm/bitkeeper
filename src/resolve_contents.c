@@ -150,7 +150,7 @@ c_smerge(resolve *rs)
 {
 	int	ret;
 	char	*branch;
-	char	opt[200];
+	char	*opt;
 
 	branch = strchr(rs->revs->local, '.');
 	assert(branch);
@@ -160,8 +160,9 @@ c_smerge(resolve *rs)
 		branch = rs->revs->remote;
 	}
 	/* bk get -pM{branch} {rs->s->gfile} > {rs->s->gfile} */
-	sprintf(opt, "-pM%s", branch);
+	opt = aprintf("-pM%s", branch);
 	ret = sysio(0, rs->s->gfile, 0, "bk", "get", opt, rs->s->gfile, SYS);
+	free(opt);
 	ret &= 0xffff;
 	/*
 	 * We need to restart even if there are errors, otherwise we think

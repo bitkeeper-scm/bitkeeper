@@ -14,7 +14,7 @@ int
 cmd_pull(int ac, char **av)
 {
 	char	buf[4096];
-	char	csetfile[200] = CHANGESET;
+	char	csetfile[] = CHANGESET;
 	FILE	*f = 0;
 	MDBM	*them = 0, *me = 0;
 	int	list = 0, error = 0, bytes = 0;
@@ -207,7 +207,7 @@ listrev(delta *d)
 {
 	char	*t;
 	int	i;
-	char	buf[100];
+	char	buf[100], *cmd;
 	FILE	*f;
 
 	assert(d);
@@ -248,14 +248,15 @@ listrev(delta *d)
 	 * XXX FIXME: This is slow, we should do this
 	 * without a sub process for each cset
 	 */
-	sprintf(buf, "bk cset -Hr%s", d->rev);
-	f = popen(buf, "r");
+	cmd = aprintf("bk cset -Hr%s", d->rev);
+	f = popen(cmd, "r");
 	assert(f);
 	while (fnext(buf, f)) {
 		out("OK-");
 		out(buf);
 	}
 	fclose(f);
+	free(cmd);
 }
 #endif /* OPULL */
 
