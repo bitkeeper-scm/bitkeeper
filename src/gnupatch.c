@@ -70,12 +70,23 @@ fix_header(char *buf, MDBM *db)
 {
 	char *p, *line;
 
-	assert(buf[3] == ' ');
-	buf[3] = 0;
-	fputs(buf, stdout); fputs(" ", stdout);
+	if (!strneq(buf, "+++ ", 4) &&
+	    !strneq(buf, "--- ", 4) &&
+	    !strneq(buf, "*** ", 4)) {
+		fprintf(stderr, "gnupatch: bad header line:<%s>\n", buf);
+		return;
+	}
 	line = &buf[4];
 	p = strchr(line, '\t');
-	assert(p);
+	unless (p) {
+		fprintf(stderr, "gnupatch: bad header line:<%s>\n", buf);
+		fputs(line, stdout);
+		return;
+		
+	}
+
+	buf[3] = 0;
+	fputs(buf, stdout); fputs(" ", stdout);
 	*p = 0;
 	if (mdbm_fetch_str(db, line)) {
 		/* /dev/null must be printed with EPOC time */
@@ -162,7 +173,7 @@ gnupatch_main(int ac, char **av)
 	char diff_opts[50] ;
 	char *diff_av[] = { "diff", diff_opts, "a", "b", 0 };
 	char *clean_av[] = { "rm", "-rf", tmpdir, 0 };
-	int  c, rfd, header = 1, fix_mod_time = 0;
+	int  c, rfd, header = 1, fix_mod_time = 0, got_start_header = 0;
 	FILE *pipe;
 	MDBM *db;
 
@@ -244,9 +255,17 @@ gnupatch_main(int ac, char **av)
 		p = strrchr(buf, '\r'); 
 		if (p) strcpy(p, "\n"); /* remove '\r' */
 #endif
-		if (strneq("--- ", buf, 4) || strneq("+++ ", buf, 4)) {
+		if (got_start_header) {
+			got_start_header--;
 			fix_header(buf, db);
 			continue;
+		}
+	
+		if (strneq("diff -Nru", buf, 9) ||
+		    strneq("diff -Nrc", buf, 9)) { 
+			got_start_header = 2;
+		} else {
+			got_start_header = 0;
 		}
 		fputs(buf, stdout);
 	}

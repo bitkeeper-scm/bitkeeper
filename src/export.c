@@ -42,7 +42,7 @@ export_main(int ac,  char **av)
 usage:			fprintf(stderr,
 		"usage: bk export [-tplain|patch] [-TDkwv] [-i<pattern>] [-x<pattern>]\n");
 			fprintf(stderr,
-				"\t[-r<rev> | -d<date>] [source] dest\n");
+				"\t[-r<rev> | -d u|c] [source] dest\n");
 			exit(1);
 		}
 	}
