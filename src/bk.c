@@ -169,6 +169,7 @@ struct command cmdtbl[] = {
 	{"admin", admin_main},		/* doc 2.0 */
 	{"annotate", annotate_main},	/* doc 2.0 */
 	{"bkd", bkd_main },		/* doc 2.0 */
+	{"cat", cat_main},		/* doc 2.0 */
 	{"changes", changes_main},	/* doc 2.0 */
 	{"check", check_main},		/* doc 2.0 */
 	{"chksum", chksum_main},	/* doc 2.0 */

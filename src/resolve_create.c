@@ -496,6 +496,32 @@ gc_remove(resolve *rs)
 	return (EAGAIN);
 }
 
+int
+gc_sameFiles(resolve *rs)
+{
+	opts	*opts = rs->opts;
+	char	buf[MAXPATH];
+	int	same;
+
+	gettemp(buf, "right");
+	if (sccs_get(rs->s, 0, 0, 0, 0, SILENT|PRINT, buf)) {
+		fprintf(stderr, "get failed, can't diff.\n");
+		return (0);
+	}
+	chdir(RESYNC2ROOT);
+	same = sameFiles(rs->d->pathname, buf);
+	chdir(ROOT2RESYNC);
+	unlink(buf);
+	if (same) {
+		sprintf(buf, "%s/%s", RESYNC2ROOT, rs->d->pathname);
+		assert(!isdir(buf));
+		unlink(buf);
+		if (opts->log) fprintf(stdlog, "unlink(%s)\n", buf);
+		return (EAGAIN);
+	}
+	return (0);
+}
+
 private void
 getFileConflict(char *gfile, char *path)
 {
@@ -1007,6 +1033,7 @@ resolve_create(resolve *rs, int type)
 	switch (type) {
 	    case GFILE_CONFLICT:
 		if (rs->opts->debug) fprintf(stderr, "GFILE\n");
+		if (ret = gc_sameFiles(rs)) return (ret);
 		rs->prompt = rs->d->pathname;
 		rs->res_gcreate = 1;
 		return (resolve_loop("resolve_create gc", rs, gc_funcs));

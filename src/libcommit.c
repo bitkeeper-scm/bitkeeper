@@ -149,7 +149,7 @@ status(int verbose, FILE *f)
 	} else {
 		fprintf(f,
 		    "%6d people have made deltas.\n", bkusers(1, 0, 0, 0));
-		f1 = popen("bk sfind -S -sx,c,p", "r");
+		f1 = popen("bk sfind -S -sx,c,p,n", "r");
 		while (fgets(buf, sizeof (buf), f1)) fputs(buf, f);
 		pclose(f1);
 	}

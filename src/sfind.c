@@ -160,6 +160,13 @@ parse_select(char *sets)
 		p++;
 	}
 	unless (*p++ == ',') return;
+	while (*p && (*p != ',')) {
+		switch (*p) {
+		    case 'n': opts.names = 1; break;
+		    default: fprintf(stderr, "unknown set 4 flag %c\n", *p);
+		}
+		p++;
+	}
 }
 
 int
