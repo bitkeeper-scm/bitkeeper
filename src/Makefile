@@ -457,10 +457,11 @@ revtool: gui/search.tcl gui/config.tcl gui/revtool.tcl gui/common.tcl \
 	    gui/search.tcl gui/appState.tcl gui/revtool.tcl > revtool
 
 citool: gui/citool.tcl gui/config.tcl gui/common.tcl gui/search.tcl \
-	gui/progress.tcl port/$(SYS)_platform.tcl gui/ciedit.tcl
+	gui/progress.tcl port/$(SYS)_platform.tcl gui/ciedit.tcl \
+	gui/appState.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
 	    gui/progress.tcl gui/search.tcl gui/ciedit.tcl \
-	    gui/citool.tcl > citool
+	    gui/appState.tcl gui/citool.tcl > citool
 
 setuptool: gui/setuptool.tcl gui/lib/tkwizard.tcl \
 	   port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
@@ -482,9 +483,11 @@ difftool: gui/search.tcl gui/config.tcl gui/difftool.tcl \
 	    gui/difftool.tcl> difftool
 
 bugform: gui/search.tcl gui/config.tcl gui/bugform.tcl \
-	port/$(SYS)_platform.tcl gui/common.tcl gui/buglib.tcl
+	port/$(SYS)_platform.tcl gui/common.tcl gui/buglib.tcl \
+	gui/appState.tcl 
 	cat gui/search.tcl port/$(SYS)_platform.tcl gui/config.tcl \
-	    gui/common.tcl gui/buglib.tcl gui/bugform.tcl > bugform
+	    gui/common.tcl gui/buglib.tcl gui/appState.tcl \
+	    gui/bugform.tcl > bugform
 
 csettool: gui/csettool.tcl gui/config.tcl gui/common.tcl \
 	port/$(SYS)_platform.tcl gui/search.tcl gui/difflib.tcl \
@@ -494,18 +497,19 @@ csettool: gui/csettool.tcl gui/config.tcl gui/common.tcl \
 	    gui/csettool.tcl > csettool
 
 renametool: gui/renametool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
-	gui/common.tcl
+	gui/common.tcl gui/appState.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	    gui/renametool.tcl > renametool
+	    gui/appState.tcl gui/renametool.tcl > renametool
 
 fmtool: gui/fmtool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
-	gui/common.tcl gui/difflib.tcl
+	gui/common.tcl gui/difflib.tcl gui/appState.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	    gui/difflib.tcl gui/fmtool.tcl > fmtool
+	    gui/appState.tcl gui/difflib.tcl gui/fmtool.tcl > fmtool
 
-fm3tool: gui/fm3tool.tcl gui/config.tcl gui/common.tcl port/$(SYS)_platform.tcl 
+fm3tool: gui/fm3tool.tcl gui/config.tcl gui/common.tcl \
+	port/$(SYS)_platform.tcl gui/appState.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	    gui/fm3tool.tcl > fm3tool
+	    gui/appState.tcl gui/fm3tool.tcl > fm3tool
 
 msgtool: gui/msgtool.tcl
 	cat gui/msgtool.tcl > msgtool
