@@ -3,13 +3,13 @@
 # bk.sh - front end to BitKeeper commands
 # @(#)%K%
 
-usage() {
+_usage() {
 	echo usage $0 command '[options]' '[args]'
 	echo Try $0 help for help.
 	exit 0
 }
 
-cd2root() {
+_cd2root() {
 	while [ ! -d "BitKeeper/etc" ]
 	do	cd ..
 		if [ `pwd` = "/" ]
@@ -19,7 +19,7 @@ cd2root() {
 	done
 }
 
-setup() { 
+_setup() { 
 	CONFIG=
 	NAME=
 	FORCE=no
@@ -40,7 +40,7 @@ setup() {
 	then	echo bk: "$1" exists already, setup fails.; exit 1
 	fi
 	if [ $FORCE = no ]
-	then	gethelp setup_1
+	then	_gethelp setup_1
 		echo $N "Create new project? [no] " $NL
 		read ans
 		case X$ans in
@@ -56,7 +56,7 @@ setup() {
 	cd $1 || exit 1
 	mkdir -p BitKeeper/etc BitKeeper/bin BitKeeper/caches
 	if [ "X$NAME" = X ]
-	then	gethelp setup_2
+	then	_gethelp setup_2
 		while :
 		do	echo "Replace this with your project description" \
 			    > Description
@@ -82,7 +82,7 @@ setup() {
 	cp ${BIN}/bitkeeper.config BitKeeper/etc/config
 	cd BitKeeper/etc
 	if [ "X$CONFIG" = X ]
-	then	gethelp setup_3
+	then	_gethelp setup_3
 		while true
 		do	echo $N "Editor to use [$EDITOR] " $NL
 			read editor
@@ -101,15 +101,15 @@ setup() {
 	fi
 	${BIN}ci -qi config
 	${BIN}get -s config
-	sendConfig setups@openlogging.org
+	_sendConfig setups@openlogging.org
 }
 
 # This will go find the root if we aren't at the top
-changes() {
+_changes() {
 	echo ChangeSet | ${BIN}sccslog $@ -
 }
 
-send() {
+_send() {
 	V=-vv
 	D=
 	PIPE=cat
@@ -127,7 +127,7 @@ send() {
 	then	echo "usage: bk send [-dq] [-ppipe] [-rcset_revs] user@host|-"
 		exit 1
 	fi
-	cd2root
+	_cd2root
 	if [ ! -d BitKeeper/log ]; then	mkdir BitKeeper/log; fi
 	OUTPUT=$1
 	if [ X$REV = X ]
@@ -180,7 +180,7 @@ send() {
 	  ${BIN}cset $D -m$REV $V | eval $PIPE ) | eval $MAIL
 }
 
-save() {
+_save() {
 	V=-vv
 	case X$1 in
 	X-q)	V=; shift
@@ -191,7 +191,7 @@ save() {
 		exit 1
 	fi
 	if [ X$2 = X ]
-	then	cd2root
+	then	_cd2root
 		REV=`${BIN}prs -hr+ -d:I: ChangeSet`
 		OUTPUT=$1
 	else	REV=$1
@@ -205,7 +205,7 @@ save() {
 }
 
 # Show repository status
-status() {
+_status() {
 	V=no
 	while getopts v opt
 	do	case "$opt" in
@@ -215,7 +215,7 @@ status() {
 	if [ X$1 != X -a -d "$1" ]
 	then	cd $1
 	fi
-	cd2root
+	_cd2root
 	echo Status for BitKeeper repository `pwd`
 	bk version
 	if [ -d RESYNC ]
@@ -236,7 +236,7 @@ status() {
 	fi
 }
 
-resync() {
+_resync() {
 	V=-vv
 	v=
 	REV=1.0..
@@ -344,33 +344,33 @@ resync() {
 }
 
 # XXX - not documented
-new() {
+_new() {
 	${BIN}ci -i "$@"
 }
 
-edit() {
+_edit() {
 	${BIN}get -e "$@"
 }
 
-unedit() {
+_unedit() {
 	${BIN}clean -u "$@"
 }
 
-mv() {
+_mv() {
 	${BIN}sccsmv "$@"
 }
 
-rm() {
+_rm() {
 	${BIN}sccsrm "$@"
 }
 
 # Usage: undo [-f] [-F]
-undo() {
+_undo() {
 	echo Undo is temporarily unsupported while we work out some bugs
 	exit 1
 
 	##############################################
-	cd2root
+	_cd2root
 	ASK=yes
 	FORCE=
 	if [ X$1 = X-f ]
@@ -426,37 +426,37 @@ undo() {
 	fi
 }
 
-pending() {
+_pending() {
 	exec ${BIN}sfiles -Ca | ${BIN}sccslog -p - | $PAGER
 }
 
-chkConfig() {
-	cd2root
+_chkConfig() {
+	_cd2root
 	# We might be inside RESYNC.
 	if [ -d ../RESYNC ]
 	then	cd ..
 	fi
 	if [ ! -f  BitKeeper/etc/SCCS/s.config ]
 	then
-		gethelp chkconfig_missing $BIN
+		_gethelp chkconfig_missing $BIN
 		/bin/rm -f /tmp/comments$$
 		exit 1
 	fi
 	${BIN}get -q BitKeeper/etc/config 
 	cmp -s BitKeeper/etc/config ${BIN}bitkeeper.config
 	if [ $? -eq 0 ]
-	then	gethelp chkconfig_inaccurate $BIN
+	then	_gethelp chkconfig_inaccurate $BIN
 		/bin/rm -f /tmp/comments$$
 		exit 1
 	fi
 }
 
 # Send the config file 
-sendConfig() {
+_sendConfig() {
 	if [ X$1 = X ]
 	then	return		# error, should never happen
 	fi
-	cd2root
+	_cd2root
 	${BIN}get -s BitKeeper/etc/config
 	P=`${BIN}prs -hr1.0 -d:FD: ChangeSet | head -1`
 	( ${BIN}prs -hr1.0 \
@@ -470,8 +470,8 @@ sendConfig() {
 	${BIN}clean BitKeeper/etc/config
 }
 
-logAddr() {
-	chkConfig
+_logAddr() {
+	_chkConfig
 	LOG=`grep "^logging:" BitKeeper/etc/config | tr -d '[\t, ]'`	
 	case X${LOG} in 
 	Xlogging:*)
@@ -489,8 +489,8 @@ logAddr() {
 # If they agree to the logging, record that fact in the config file.
 # If they have agreed, then don't keep asking the question.
 # XXX - should probably ask once for each user.
-doLog() {
-	logAddr
+_doLog() {
+	_logAddr
 
 	grep -q "^logging_ok:" BitKeeper/etc/config
 	if [ $? -eq 0 ]
@@ -500,7 +500,7 @@ doLog() {
 	echo $LOGADDR | grep -q "@openlogging.org$"
 	if [ $? -eq 0 ]
 	then
-		gethelp log_query $LOGADDR
+		_gethelp log_query $LOGADDR
 		echo $N "OK [y/n]? "$NL
 		read x
 		case X$x in
@@ -514,29 +514,29 @@ logging_ok:	to '$LOGADDR > BitKeeper/etc/config
 			return
 			;;
 		esac
-		gethelp log_abort
+		_gethelp log_abort
 	 	/bin/rm -f /tmp/comments$$
 		${BIN}clean BitKeeper/etc/config
 		exit 1
 	else
-		sendConfig config@openlogging.org
+		_sendConfig config@openlogging.org
 	fi
 }
 
-sendLog() {
+_sendLog() {
 	P=`${BIN}prs -hr1.0 -d:FD: ChangeSet | head -1`
 	${BIN}cset -c$REV | mail -s "BitKeeper log: $P" $LOGADDR
 }
 
-commit() {
+_commit() {
 	DOIT=no
 	GETCOMMENTS=yes
 	COPTS=
-	GETLOGADDR=doLog
+	GETLOGADDR=_doLog
 	while getopts dfsS:y:Y: opt
 	do	case "$opt" in
 		d) DOIT=yes;;
-		f) GETLOGADDR=logAddr;;
+		f) GETLOGADDR=_logAddr;;
 		s) COPTS="-s $COPTS";;
 		S) COPTS="-S$OPTARG $COPTS";;
 		y) DOIT=yes; GETCOMMENTS=no; echo "$OPTARG" > /tmp/comments$$;;
@@ -544,16 +544,11 @@ commit() {
 		esac
 	done
 	shift `expr $OPTIND - 1`
-	cd2root
+	_cd2root
 	${BIN}sfiles -Ca > /tmp/list$$
 	if [ $? != 0 ]
 	then	/bin/rm -f /tmp/list$$
-		cat <<EOF
-
-You need to go figure out why have two files with the same ID
-and correct that situation before this ChangeSet can be created.
-
-EOF
+		_gethelp duplicate_IDs
 		exit 1
 	fi
 	if [ $GETCOMMENTS = yes ]
@@ -587,7 +582,7 @@ EOF
 		# Assume top of trunk is the right rev
 		# XXX TODO: Needs to account for LOD when it is implemented
 		REV=`${BIN}prs -hr+ -d:I: ChangeSet`
-		sendLog $REV
+		_sendLog $REV
 		exit $EXIT;
 	fi
 	while true
@@ -614,7 +609,7 @@ EOF
 			# XXX TODO: Needs to account for LOD 
 			REV=`${BIN}prs -hr+ -d:I: ChangeSet`
 			${BIN}csetmark -r+
-			sendLog $REV
+			_sendLog $REV
 	    	 	exit $EXIT;
 		 	;;
 		    Xe*) $EDITOR /tmp/comments$$
@@ -627,7 +622,7 @@ EOF
 	done
 }
 
-man() {
+_man() {
 	export MANPATH=${BIN}man:$MANPATH
 	for i in /usr/bin /bin /usr/local/bin /usr/sbin
 	do	if [ -x /usr/bin/man ]
@@ -638,23 +633,23 @@ man() {
 	exit 1
 }
 
-version() {
+_version() {
 	echo "BitKeeper version is $VERSION"
 }
 
-root() {
+_root() {
 	if [ X$1 = X -o X$1 = X--help ]
 	then	echo usage: root pathname
 		exit 1
 	fi
 	cd `dirname $1`
-	cd2root
+	_cd2root
 	pwd
 	exit 0
 }
 
-sendbug() {
-	gethelp bugtemplate >/tmp/bug$$
+_sendbug() {
+	_gethelp bugtemplate >/tmp/bug$$
 	$EDITOR /tmp/bug$$
 	while true
 	do	echo $N "(s)end, (e)dit, (q)uit? "$NL
@@ -676,7 +671,7 @@ sendbug() {
 	done
 }
 
-docs() {
+_docs() {
 	for i in admin backups basics changes changesets chksum ci clean \
 	    co commit cset cset_todo debug delta differences diffs docs \
 	    edit get gui history import makepatch man merge overview \
@@ -686,7 +681,7 @@ docs() {
 	    undo unedit vitool what
 	do	echo ""
 		echo -------------------------------------------------------
-		bk help $i
+		_commandHelp $i
 		echo -------------------------------------------------------
 	done
 }
@@ -702,27 +697,27 @@ docs() {
 #
 # text may not contain a line which begins with a hash or dollar sign.
 # text may contain occurrences of ## (double hashes) which are
-# replaced by the second argument to gethelp, if any.  This text may
+# replaced by the second argument to _gethelp, if any.  This text may
 # not contain a hash either.  For command help texts, the second arg
 # is $BIN.  The tags must be unique and nonempty, and may not contain
 # spaces or shell or regexp metachars.
 
-gethelp() {
-	sed -n  -e '/^#'$1'/,/^\$/{' \
+_gethelp() {
+	sed -n  -e '/^#'$1'$/,/^\$$/{' \
 		-e '/^#/d; /^\$/d; s#\#\##'"$2"'#; p' \
 		-e '}' ${BIN}bkhelp.txt
 }
 
-commandHelp() {
+_commandHelp() {
 	if [ $# -eq 0 ]
-	then	gethelp help | $PAGER
+	then	_gethelp help | $PAGER
 		exit 0
 	fi
 
 	for i in $* 
 	do	case $i in
 		citool|sccstool|vitool|fm|fm3)
-			gethelp help_gui $BIN | $PAGER
+			_gethelp help_gui $BIN | $PAGER
 			;;
 		*)
 			if [ -x "${BIN}$i" -a -f "${BIN}$i" ]
@@ -734,8 +729,8 @@ commandHelp() {
 				    renames|gui|path|ranges|terms|regression|\
 				    backups|debug|sendbug|commit|pending|send|\
 				    resync|changes|undo|save|docs|RCS|status|\
-				    sccsmv|mv|sccsrm|rm|version|root)
-					gethelp help_$i $BIN | $PAGER
+				    sccsmv|mv|sccsrm|rm|version|root|export)
+					_gethelp help_$i $BIN | $PAGER
 					;;
 				    *)
 					echo No help for "$i", check spelling.
@@ -746,7 +741,64 @@ commandHelp() {
 	done
 }
 
-init() {
+_export() {
+	Q=-q
+	K=
+	R=
+	WRITE=
+	INCLUDE=
+	EXCLUDE=
+	USAGE1="usage: bk export [-D] [-vew] [-i<pattern>] [-x<pattern>]"
+	USAGE2="	[-I <file>] [-X<file>] [-r<rev> | -d<date>] [source] dest"
+	while getopts vewDi:x:I:X:r:d: OPT
+	do	case $OPT in
+		v)	Q=;;
+		e)	K=-k WRITE=t;;
+		w)	WRITE=t;;
+		r|d)	if [ x$R != x ]
+			then	echo "export: use only one -r or -d option"
+				exit 2
+			fi
+			R="-$OPT$OPTARG";;
+		i)	INCLUDE="| egrep -e '$OPTARG'";;
+		x)	EXCLUDE="| egrep -ve '$OPTARG'";;
+		D|I|X)	echo "sorry, option $OPT is not implemented"
+			exit 2;;
+		*)	echo "$USAGE1"
+			echo "$USAGE2"
+			exit 2;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+
+	case $# in
+	1) SRC=.  DST=$1;;
+	2) SRC=$1 DST=$2;;
+	*) echo "$USAGE1"
+	   echo "$USAGE2"
+	   exit 2;;
+	esac
+	if [ x$R = x ]; then R=-r+; fi
+
+	mkdir -p $DST || exit 1
+
+	# XXX: cset -t+ should work.
+	(cd $SRC; ${BIN}cset -t`${BIN}prs $R -hd:I: ChangeSet`) \
+	| eval egrep -v "'^(BitKeeper|ChangeSet)'" $INCLUDE $EXCLUDE \
+	| sed 's/:/ /' | while read file rev
+	do
+		dir=./$file
+		dir=$DST/${dir%/*}
+		[ -d $dir ] || mkdir -p $dir
+		${BIN}get $K $Q -r$rev -G$DST/$file $SRC/$file
+	done
+
+	if [ x$WRITE != x ]
+	then	chmod -R u+w,a+rX $DST
+	fi
+}
+
+_init() {
 	if [ '-n foo' = "`echo -n foo`" ] 
 	then    NL='\c'
 	        N=
@@ -779,10 +831,10 @@ init() {
 }
 
 # ------------- main ----------------------
-init
+_init
 
 if [ X"$1" = X ]
-then	usage
+then	_usage
 fi
 case "$1" in
     regression)
@@ -791,10 +843,10 @@ case "$1" in
 	;;
     setup|changes|pending|commit|sendbug|send|\
     mv|resync|edit|unedit|man|undo|save|docs|rm|new|version|\
-    root|status)
+    root|status|export|import)
 	cmd=$1
     	shift
-	$cmd "$@"
+	_$cmd "$@"
 	exit $?
 	;;
     g|debug)
@@ -811,7 +863,7 @@ case "$1" in
 	;;
     -h*|help)
 	shift
-    	commandHelp $*
+    	_commandHelp $*
 	exit $?
 	;;
 esac
@@ -821,13 +873,13 @@ if [ X$1 = X-r ]
 then	if [ X$2 != X -a -d $2 ]
 	then	cd $2
 		shift
-	else	cd2root
+	else	_cd2root
 	fi
 	shift
 	SFILES=yes
 fi
 if [ X$1 = X-R ]
-then	cd2root
+then	_cd2root
 	shift
 fi
 if [ $SFILES = yes ]
