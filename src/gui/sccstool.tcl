@@ -944,6 +944,10 @@ proc sccstool {name} \
 	if {[info exists revY]} { unset revY }
 	set bad 0
 	set file [exec $bk_sfiles -g $name 2>$dev_null]
+	if {$file == ""} {
+		puts "No such file $name"
+		exit 0
+	}
 	.menus.l configure -text $file
 	listRevs $file
 	history
