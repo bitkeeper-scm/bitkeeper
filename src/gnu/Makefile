@@ -1,4 +1,4 @@
-_OS=`sh os`
+_OS=`cat os`
 DIRS=patch diffutils
 EXE=`sh exe`
 PATCH_BINS=patch/$(_OS)/patch$(EXE)
@@ -40,6 +40,9 @@ install: all
 		(cd $$D && ../../../bk chksum $$F); \
 	done >> $(BINDIR)/MANIFEST; \
 
+os: ../utils/os ../utils/gnu-os
+	(cd ../utils && ./os) > os
+
 # win32, can not clean the current Makefile when we are
 # running this make file
 clean clean-obj: os
@@ -50,9 +53,10 @@ clean clean-obj: os
 	-@rm -rf bin
 	-@bk sfiles | grep -v "^SCCS/s.Makefile" | bk clean -
 clobber: clean clean-obj
-	@for i in $(DIRS); \
+	-@OS=$(_OS); \
+	for i in $(DIRS); \
 	do	(cd $$i && \
 		 rm -rf config.log config.cache config.status \
-		    configure config.h Makefile stamp-h *.exe *.o); \
+		    configure config.h Makefile stamp-h *.exe *.o $$OS); \
 	done
-	@rm -f config.cache
+	@rm -f config.cache os

@@ -102,6 +102,13 @@ case "X`uname -s`" in
 			ms_env;
 		fi
 		;;
+	XDarwin)
+		MAKE=make
+		CC=cc
+		LD=cc
+		export CC LD MAKE
+		CCXTRA="-DHAVE_GMTOFF -no-cpp-precomp"
+		;;
 	*)
 		CHECK=1
 		;;

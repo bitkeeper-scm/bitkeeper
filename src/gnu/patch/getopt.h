@@ -27,6 +27,13 @@
 extern "C" {
 #endif
 
+#define	getopt		gnu_getopt
+#define	getopt_long	gnu_getopt_long
+#define	optind		gnu_optind
+#define	optarg		gnu_oparg
+#define	opterr		gnu_opterr
+#define	optopt		gnu_optopt
+
 /* For communication from `getopt' to the caller.
    When `getopt' finds an option that takes an argument,
    the argument value is returned here.
