@@ -47,6 +47,9 @@ int	cmd_push_part2(int ac, char **av);
 int	cmd_pull_part1(int ac, char **av);
 int	cmd_pull_part2(int ac, char **av);
 
+int	cmd_rclone_part1(int ac, char **av);
+int	cmd_rclone_part2(int ac, char **av);
+
 struct cmd {
 	char	*name;		/* command name */
 	char	*realname;	/* real command name */
@@ -137,4 +140,5 @@ void	try_clone1_2(int quiet, int gzip,
 				char *rev, remote *r, char *local, char *msg);
 int	remote_lock_fail(char *buf, int verbose);
 unsigned long ns_sock_host2ip(char, int);
+void	drainErrorMsg(remote *r, char *buf, int bsize);
 #endif
