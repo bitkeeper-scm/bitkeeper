@@ -878,18 +878,17 @@ init(FILE *p, int flags, char **resyncRootp)
 
 	if (newProject) {
 		initProject();
-		goto tree;
-	}
-
-	root = sccs_root(0, 0);
-	if (sccs_cd2root(0, root)) {
+		*resyncRootp = strdup("RESYNC");
+	} else {
+	    root = sccs_root(0, 0);
+	    if (sccs_cd2root(0, root)) {
 		fprintf(stderr, "takepatch: can't find project root.\n");
 		cleanup(CLEAN_PENDING|CLEAN_RESYNC);
+	    }
+	    *resyncRootp = malloc(strlen(root) + 8);
+	    sprintf(*resyncRootp, "%s%s", root, "/RESYNC");
 	}
-	*resyncRootp = malloc(strlen(root) + 8);
-	sprintf(*resyncRootp, "%s%s", root, "/RESYNC");
 
-tree:
 	/*
 	 * See if we can lock the tree.
 	 */
