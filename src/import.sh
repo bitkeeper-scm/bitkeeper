@@ -472,11 +472,11 @@ import_SCCS () {
 	echo Verifying each rev in each SCCS file, please wait...
 	while read x
 	do	bk prs -hnd:I: $x | while read rev
-		do	bk get -Fqkpr$rev $FROM/$x > ${TMP}cmp$$
-			bk get -qkpr$rev $x | cmp -s ${TMP}cmp$$ - || {
+		do	bk get -Fqkpr$rev "$FROM/$x" > ${TMP}cmp$$
+			bk get -qkpr$rev "$x" | cmp -s ${TMP}cmp$$ - || {
 				echo ============= ERROR ==============
 				echo "Rev $rev in $x has differences"
-				bk get -qkpr$rev $x | diff ${TMP}cmp$$ -
+				bk get -qkpr$rev "$x" | diff ${TMP}cmp$$ -
 				exit 1
 			}
 		done 
