@@ -13,6 +13,7 @@ usage: prs [-abhmMv] [-c<date>] [-C<rev>] [-r<rev>] [files...]\n\n\
     -h		Suppress range header\n\
     -m		print metadata, such as users and symbols.\n\
     -M		do not include branch deltas which are not merged\n\
+    -o		print the set of not specified deltas\n\
     -r<rev>	Specify a revision, or part of a range.\n\
     -v		Complain about SCCS files that do not match the range.\n\n\
     Note that <date> may be a symbol, which implies the date of the\n\
@@ -27,9 +28,11 @@ int
 main(int ac, char **av)
 {
 	sccs	*s;
+	delta	*e;
 	int	reverse = 0, doheader = 1;
 	int	init_flags = INIT_NOCKSUM;
 	int	flags = 0;
+	int	opposite = 0;
 	int	c;
 	char	*name;
 	char	*cset = 0;
@@ -43,7 +46,7 @@ main(int ac, char **av)
 		fprintf(stderr, prs_help);
 		return (1);
 	}
-	while ((c = getopt(ac, av, "abc;C;d:hmMr|v")) != -1) {
+	while ((c = getopt(ac, av, "abc;C;d:hmMor|v")) != -1) {
 		switch (c) {
 		    case 'a': flags |= PRS_ALL; break;
 		    case 'b': reverse++; break;
@@ -52,6 +55,7 @@ main(int ac, char **av)
 		    case 'h': doheader = 0; break;
 		    case 'm': flags |= PRS_META; break;
 		    case 'M': expand = 3; break;
+		    case 'o': opposite = 1; doheader = 0; break;
 		    case 'v': noisy = 1; break;
 		    RANGE_OPTS('c', 'r');
 		    default:
@@ -78,12 +82,22 @@ usage:			fprintf(stderr, "prs: usage error, try --help\n");
 			unless(s->rstart) goto next;
 		}
 		assert(s->rstop);
+		if (flags & PRS_ALL) sccs_markMeta(s);
 		if (doheader) {
 			printf("======== %s %s", s->gfile, s->rstart->rev);
 			if (s->rstop != s->rstart) {
 				printf("..%s", s->rstop->rev);
 			}
 			printf(" ========\n");
+		}
+		if (opposite) {
+			for (e = s->table; e; e = e->next) {
+				if (e->flags & D_SET) {
+					e->flags &= ~D_SET;
+				} else {
+					e->flags |= D_SET;
+				}
+			}
 		}
 		sccs_prs(s, flags, reverse, dspec, stdout);
 next:		sccs_free(s);

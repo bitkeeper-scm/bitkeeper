@@ -84,104 +84,112 @@ echo OK
 cores
 echo $N Check circular rename .......................................$NL
 cd $HERE/project/src
-for i in a b c
-do
-	echo "this is $i.c" > $i.c
-	bk ci $Q -i $i.c
-	${RM} -f $i.c
-done
+echo "File 1" > a.c
+echo "File 2" > b.c
+echo "File 3" > c.c
+bk ci $Q -i a.c b.c c.c
+$RM -f a.c b.c c.c
 bk commit $S -yabc
+cd $HERE/copy
+bk pull $Q $HERE/project
 cd $HERE
-bk resync $Q -r1.3 $HERE/project $HERE/copy
-bk resolve $Q $HERE/copy
 tar cf chkpoint.tar copy
 cd $HERE/project/src
-#do circular renames (clockwise rotation)
+# do circular renames (clockwise rotation)
+# b.c = File 1
+# c.c = File 2
+# a.c = File 3
 sccsmv SCCS/s.c.c SCCS/s.d.c
 sccsmv SCCS/s.b.c SCCS/s.c.c
 sccsmv SCCS/s.a.c SCCS/s.b.c
 sccsmv SCCS/s.d.c SCCS/s.a.c
-bk commit $S -yrename
-bk resync -r1.4 $Q $HERE/project $HERE/copy
+bk commit $S -yclockwise
 cd $HERE/copy
-bk resolve $Q
+bk pull $Q $HERE/project
 cd $HERE/copy/src
 get $Q a.c b.c c.c
-${ECHO} "this is c.c" > ref.c
+${ECHO} "File 3" > ref.c
 cmp -s ref.c a.c
 if [ $? -ne 0 ]; then echo "failed a"; exit 1; fi
-${ECHO} "this is a.c" > ref.c
+${ECHO} "File 1" > ref.c
 cmp -s ref.c b.c
 if [ $? -ne 0 ]; then echo "failed b"; exit 1; fi
-${ECHO} "this is b.c" > ref.c
+${ECHO} "File 2" > ref.c
 cmp -s ref.c c.c
 if [ $? -ne 0 ]; then echo "failed c"; exit 1; fi
 echo OK
 cores
 echo $N Check conflict within a patch ...............................$NL
 cd $HERE/project/src
-get $Q -e c.c
-echo "this is the old c.c" > c.c
-ci $Q -y c.c
+# d.c = File 2
+# c.c = File 4
 sccsmv c.c d.c
-echo "this is the new c.c" > c.c
+echo "File 4" > c.c
 ci $Q -i c.c
-bk commit $S -yrename
-cd  $HERE
-bk resync -c -r1.5 $Q $HERE/project $HERE/copy
-if [ $? -ne 0 ]; then	echo Failed; exit 1; fi
+bk commit $S -y'Add d.c'
 cd  $HERE/copy/src
-bk resolve $Q
+bk pull $Q $HERE/project
+if [ $? -ne 0 ]; then	echo pull failed; exit 1; fi
 get $Q a.c b.c c.c d.c
-${ECHO} "this is c.c" > ref.c
+${ECHO} "File 3" > ref.c
 cmp -s ref.c a.c
-if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
-${ECHO} "this is a.c" > ref.c
+if [ $? -ne 0 ]; then echo "failed a.c"; cat a.c; exit 1; fi
+${ECHO} "File 1" > ref.c
 cmp -s ref.c b.c
-if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
-${ECHO} "this is the new c.c" > ref.c
+if [ $? -ne 0 ]; then echo "failed b.c"; cat b.c; exit 1; fi
+${ECHO} "File 4" > ref.c
 cmp -s ref.c c.c
-if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
-${ECHO} "this is the old c.c" > ref.c
+if [ $? -ne 0 ]; then echo "failed c.c"; cat c.c; exit 1; fi
+${ECHO} "File 2" > ref.c
 cmp -s ref.c d.c
-if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
+if [ $? -ne 0 ]; then echo "failed d.c"; cat d.c; exit 1; fi
 echo OK
 echo $N Check conflict within a patch + circular rename..............$NL
+# XXX - what conflict?
 cd  $HERE
 rm -rf $HERE/copy
 tar xf chkpoint.tar
-bk resync -c -r1.4..1.5 $Q $HERE/project $HERE/copy
+bk resync $Q $HERE/project $HERE/copy
 cd  $HERE/copy/src
 bk resolve $Q
 get $Q a.c b.c c.c d.c
-$ECHO "this is c.c" > ref.c
+$ECHO "File 3" > ref.c
 cmp -s ref.c a.c
-if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
-${ECHO} "this is a.c" > ref.c
+if [ $? -ne 0 ]; then echo "failed a.c"; cat a.c; exit 1; fi
+${ECHO} "File 1" > ref.c
 cmp -s ref.c b.c
-if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
-${ECHO} "this is the new c.c" > ref.c
+if [ $? -ne 0 ]; then echo "failed b.c"; cat b.c; exit 1; fi
+${ECHO} "File 4" > ref.c
 cmp -s ref.c c.c
-if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
-${ECHO} "this is the old c.c" > ref.c
+if [ $? -ne 0 ]; then echo "failed c.c"; cat c.c; exit 1; fi
+${ECHO} "File 2" > ref.c
 cmp -s ref.c d.c
-if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
+if [ $? -ne 0 ]; then echo "failed d.c"; cat d.c; exit 1; fi
 echo OK
 echo $N Check circular rename in two work spaces ....................$NL
 cd  $HERE
 rm -rf $HERE/copy
 tar xf chkpoint.tar
-cd  $HERE/copy/src
-# $HERE/project have circular rename w/ clockwise rotation
+# $HERE/project already has circular rename w/ clockwise rotation
+# a.c = File 3
+# b.c = File 1
+# c.c = File 4
+# d.c = File 2
+
 # For $HERE/copy, we do a circular renames w/ counter clockwise rotation
-sccsmv SCCS/s.a.c SCCS/s.d.c
-sccsmv SCCS/s.b.c SCCS/s.a.c
-sccsmv SCCS/s.c.c SCCS/s.b.c
-sccsmv SCCS/s.d.c SCCS/s.c.c
-bk commit $S -yrename
-cd  $HERE
-bk resync $Q -r1.4 $HERE/project $HERE/copy
 cd  $HERE/copy/src
+# a.c = File 2
+# b.c = File 3
+# c.c = File 1
+sccsmv a.c d.c
+sccsmv b.c a.c
+sccsmv c.c b.c
+sccsmv d.c c.c
+bk commit $S -y'counter clockwise'
+bk resync $HERE/project $HERE/copy
+cp -rp $HERE/copy $HERE/SAVE
+cd  $HERE/copy/src
+# XXX - I think this will prompt you with the original file after you move it.
 bk resolve $Q -f - << EOF 2> resolve.out
 l
 m
@@ -193,16 +201,21 @@ l
 m
 C
 EOF
+cat resolve.out
 get $Q
+for i in a b c
+do	echo ------ $i.c ---------
+	cat $i.c
+done
 ${ECHO} "this is b.c" > ref.c
 cmp -s ref.c a.c
-if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
+if [ $? -ne 0 ]; then echo failed: wanted b.c; cat a.c; exit 1; fi
 ${ECHO} "this is c.c" > ref.c
 cmp -s ref.c b.c
-if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
+if [ $? -ne 0 ]; then echo failed: wanted c.c; cat b.c; exit 1; fi
 ${ECHO} "this is a.c" > ref.c
 cmp -s ref.c c.c
-if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
+if [ $? -ne 0 ]; then echo failed: wanted a.c; cat c.c; exit 1; fi
 if [ -s resolve.out ]; then
     echo "failed (known bug)"
     sed -n '/:/s/^/	/p' resolve.out
@@ -222,7 +235,7 @@ sccsmv SCCS/s.c.c SCCS/s.b.c
 sccsmv SCCS/s.d.c SCCS/s.c.c
 bk commit $S -yrename
 cd  $HERE
-bk resync -r1.4 $Q $HERE/project $HERE/copy
+(cd $HERE/project && bk cset -m1.4) | (cd $HERE/copy && bk takepatch)
 cd  $HERE/copy/src
 bk resolve $Q -f - << EOF 2>resolve.out
 l
@@ -348,26 +361,17 @@ bk resolve $Q
 get $Q bdata
 cmp -s bdata $binary_data2
 if [ $? -ne 0 ]; then echo failed; fi
-bk resync $Q -r..1.8 $HERE/copy $HERE/copy2
-bk resolve $Q $HERE/copy2
+bk clone $Q -r1.8 $HERE/copy $HERE/copy2
 cd $HERE/copy2/src
 get $Q bdata
 cmp -s bdata $binary_data
 if [ $? -ne 0 ]; then echo failed; fi
-bk resync $Q -r1.9 $Q $HERE/copy $HERE/copy2
+(cd $HERE/copy && bk cset -m1.9) | (cd $HERE/copy2 && bk takepatch)
 bk resolve $Q $HERE/copy2
 get $Q bdata
 cmp -s bdata $binary_data2
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
-echo $N Check resync with skipped ChangeSet delta to new tree .......$NL
-cd $HERE
-rm -rf  $HERE/copy2
-bk resync $Q -r1.5 $HERE/copy $HERE/copy2  > resync.out 2>&1
-grep -q "resync from version 1.0 forward" resync.out
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
-echo OK
-rm -f resync.out
 echo $N Check resolve w/ merge and delete event .....................$NL
 cd $HERE/project/src
 cat > merge.c << EOF

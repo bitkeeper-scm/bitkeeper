@@ -440,7 +440,7 @@ _receive() {
 }
 
 # Clone a repository, usage "clone from to"
-_clone() {
+_oldclone() {
 	FROM=
 	TO=
 	for arg in "$@"
@@ -463,25 +463,12 @@ _clone() {
 	then	echo "clone: $TO exists" >&2
 		exit 1
 	fi
-	exec `__perl` ${BIN}resync -ap "$@"
+	exec `__perl` ${BIN}oldresync -ap "$@"
 }
 
-# Advertise this repository for remote lookup
-_advertise() {
-	FILE=${BIN}tmp/advertised
-	while getopts l opt
-	do	case "$opt" in
-		    l) cat $FILE; exit 0;;
-		esac
-	done
-	_cd2root
-	KEY=`${BIN}prs -hr+ -d:ROOTKEY: ChangeSet`
-	if [ ! -f $FILE ]
-	then	echo "$KEY	$PWD" > $FILE
-	else	grep -v "$PWD" $FILE > ${FILE}$$
-		echo "$KEY	$PWD" >> ${FILE}$$
-		mv -f ${FILE}$$ $FILE
-	fi
+_rootkey() {
+	__cd2root
+	${BIN}prs -hd:ROOTKEY: -r+ ChangeSet
 }
 
 # Manually set the parent pointer for a repository.
@@ -517,19 +504,14 @@ _parent() {
 	echo Set parent to $P
 }
 
-# Pull: update from parent repository.  You can feed this any resync
-# switches you like.  Default is auto-resolve stopping only for overlapped
-# changes (like cvs update).
-_pull() {
+_oldpull() {
 	__cd2root
-	exec `__perl` ${BIN}resync -A "$@"
+	exec `__perl` ${BIN}oldresync -A "$@"
 }
 
-# Push: send changes back to parent.  If parent is ahead of you, this
-# pulls down those changes and stops; you have to merge and try again.
-_push() {
+_oldpush() {
 	__cd2root
-	exec `__perl` ${BIN}resync -Ab "$@"
+	exec `__perl` ${BIN}oldresync -Ab "$@"
 }
 
 _diffr() {
@@ -575,7 +557,8 @@ _diffr() {
 		echo $PERL ${BIN}resync
 		exit 1
 	}
-	RREVS=`$PERL ${BIN}resync -n -Q $NEW $OLD 2>&1 | grep '[0-9]'`
+	# XXX - fixme
+	RREVS=`$PERL ${BIN}oldresync -n -Q $NEW $OLD 2>&1 | grep '[0-9]'`
 	if [ $ALL = NO -a "X$RREVS" = X ]
 	then	echo $1 is up to date with $2
 		exit 0
@@ -677,7 +660,24 @@ __status() {
 }
 
 
-# XXX - not documented
+_locked() {
+	V=NO
+	while getopts v opt
+	do	case "$opt" in
+		v) V=YES;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	__cd2root
+	test -d RESYNC && {
+		if [ $V = YES ]
+		then	echo "Repository is locked by RESYNC directory."
+		fi
+		exit 0
+	}
+	exit 1
+}
+
 _new() {
 	${BIN}ci -i "$@"
 }
@@ -837,30 +837,50 @@ _fix() {
 	done
 }
 
+_after() {
+	AFTER=
+	while getopts r: opt
+	do	case "$opt" in
+		    r)	AFTER=$OPTARG
+		    	;;
+		    *)	echo "Usage: after -r<rev>"
+			;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	if [ "X$AFTER" = X ]
+	then	echo "Usage: after -r<rev>"
+	fi
+	bk -R prs -ohMa -r1.0..$AFTER -d':REV:,\c' ChangeSet 
+	echo ""
+	return $?
+}
+
 # Usage: undo cset-list
 _undo() {
 	ASK=YES
+	SAVE=YES
 	Q=
 	V=-v
-	while getopts fq opt
+	while getopts a:fqsr: opt
 	do	case "$opt" in
+		a) REVS=`bk -R prs -ohMa -r1.0..$OPTARG -d':REV:,\c' ChangeSet`
+		   ;;
 		f) ASK=NO;;
 		q) V=; Q=-q;;
+		r) REVS=$OPTARG;;
+		s) SAVE=NO;;
 		esac
 	done
 	shift `expr $OPTIND - 1`
 	__cd2root
-	if [ X"$1" = X ]
-	then	echo usage bk undo cset-revision
+	if [ X"$REVS" = X ]
+	then	echo "usage bk undo [-fqs] -r<cset-revisions>"
 		exit 1
 	fi
-	if [ $# != 1 ]
-	then	echo undo: specify multiple changesets as a set, like 1.2,1.3
-		exit 1
-	fi
-	${BIN}cset -ffl$1 > ${TMP}rmlist$$
+	${BIN}cset -ffl$REVS > ${TMP}rmlist$$
 	if [ ! -s ${TMP}rmlist$$ ]
-	then	echo undo: nothing to undo in "$1"
+	then	echo undo: nothing to undo in "$REVS"
 		exit 0
 	fi
 	# FIX BK_FS
@@ -870,7 +890,7 @@ _undo() {
 		exit 1
 	}
 
-	${BIN}stripdel -Ccr$1 ChangeSet 2> ${TMP}undo$$
+	${BIN}stripdel -Ccr$REVS ChangeSet 2> ${TMP}undo$$
 	if [ $? != 0 ]
 	then	__gethelp undo_error $BIN
 		cat ${TMP}undo$$
@@ -890,17 +910,20 @@ _undo() {
 		esac
 	fi
 
-	if [ ! -d BitKeeper/tmp ]
-	then	mkdir BitKeeper/tmp
-		chmod 777 BitKeeper/tmp
+	if [ $SAVE = YES ]
+	then	if [ ! -d BitKeeper/tmp ]
+		then	mkdir BitKeeper/tmp
+			chmod 777 BitKeeper/tmp
+		fi
+		UNDO=BitKeeper/tmp/undo
+		if [ -f $UNDO ]; then $RM -f $UNDO; fi
+		${BIN}cset $V -ffm$REVS > $UNDO
+		if [ ! -s $UNDO ]
+		then	echo Failed to create undo backup $UNDO
+			exit 1
+		fi
 	fi
-	UNDO=BitKeeper/tmp/undo
-	if [ -f $UNDO ]; then $RM -f $UNDO; fi
-	${BIN}cset $V -ffm$1 > $UNDO
-	if [ ! -s $UNDO ]
-	then	echo Failed to create undo backup $UNDO
-		exit 1
-	fi
+
 	# XXX Colon can not be a BK_FS on win32
 	sed 's/@/ /' < ${TMP}rmlist$$ | while read f r
 	do	echo $f
@@ -914,6 +937,7 @@ _undo() {
 
 	# Handle any renames.  Done outside of stripdel because names only
 	# make sense at cset boundries.
+	# XXX - needs to use renames command
 	${BIN}prs -hr+ -d':PN: :SPN:' - < ${TMP}mv$$ | while read a b
 	do	if [ $a != $b ]
 		then	if [ -f $b ]
@@ -931,9 +955,11 @@ _undo() {
 		${BIN}renumber $b
 	done 
 	$RM -f ${TMP}mv$$ ${TMP}rmlist$$ ${TMP}undo$$
-	if [ X$Q = X ]
+	if [ X$Q = X -a $SAVE = YES ]
 	then	echo Patch containing these undone deltas left in $UNDO
-		echo Running consistency check...
+	fi
+	if [ X$Q = X ]
+	then	echo Running consistency check...
 	fi
 	${BIN}sfiles -r
 	bk -r check -a
@@ -1717,7 +1743,7 @@ cmd=$1
 shift
 
 case $cmd in
-    resolve|pmerge)
+    oldresync|resolve|pmerge|rcs2sccs)
 	exec perl ${BIN}$cmd "$@";;
     rcs2sccs|mkdiffs|resync)	# needs perl 5 - for now.
 	exec `__perl` ${BIN}$cmd "$@";;
