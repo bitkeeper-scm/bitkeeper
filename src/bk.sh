@@ -160,14 +160,14 @@ _rmdir() {
 		bk sfiles -cg $1
 		exit 1
 	fi
-	bk sfiles $1 | bk sccsrm -d -
+	bk sfiles $1 | sort | bk sccsrm -d -
 	SNUM=`bk sfiles $1 | wc -l`
 	if [ "$SNUM" -ne 0 ]; 
 	then
 		echo "Failed to rm the following files:"
 		bk sfiles -g $1
 	fi
-	rmdir $1
+	rm -f "$1"	# careful
 	exit 0
 }
 
