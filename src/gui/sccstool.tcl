@@ -28,14 +28,12 @@ proc ht {id} \
 #
 # Set highlighting on the bounding box containing the revision number
 #
-# Really should be symbolic (i.e. left-right or old-new instead of
-# orange-yellow) Maybe -> old, new, bad, 
-#
+# revision - (default style box) gc(sccs.revOutline)
+# merge -
 # red - do a red rectangle
-# lightblue - do a lightblue rectangle
 # arrow - do a $arrow outline
-# old - do a orange rectangle
-# new - do a yellow rectangle
+# old - do a rectangle in gc(sccs.oldColor)
+# new - do a rectangle in gc(sccs.newColor)
 # black - do a black rectangle
 proc highlight {id type {rev ""}} \
 {
@@ -44,6 +42,7 @@ proc highlight {id type {rev ""}} \
 	# Added a pixel at the top and removed a pixel at the bottom to fix 
 	# lm complaint that the bbox was touching the characters at top
 	# -- lm doesn't mind that the bottoms of the letters touch, though
+	#puts "id=($id)"
 	set bb [$w(cvs) bbox $id]
 	set x1 [lindex $bb 0]
 	set y1 [expr [lindex $bb 1] - 1]
@@ -57,13 +56,13 @@ proc highlight {id type {rev ""}} \
 		set bg [$w(cvs) create rectangle $x1 $y1 $x2 $y2 \
 		    -fill $gc(sccs.revColor) \
 		    -outline $gc(sccs.revOutline) \
-		    -width 1 -tags "$rev" ]}
+		    -width 1 -tags [list $rev revision]]}
 	    merge   {\
 		#puts "highlight: merge ($rev)"
 		set bg [$w(cvs) create rectangle $x1 $y1 $x2 $y2 \
 		    -fill $gc(sccs.revColor) \
 		    -outline $gc(sccs.mergeOutline) \
-		    -width 1 -tags "$rev"]}
+		    -width 1 -tags [list $rev revision]]}
 	    arrow   {\
 		#puts "highlight: arrow ($rev)"
 		set bg [$w(cvs) create rectangle $x1 $y1 $x2 $y2 \
@@ -109,17 +108,17 @@ proc chkSpace {x1 y1 x2 y2} \
 #
 proc revMap {file} \
 {
-        global rev2date serial2rev dev_null
+        global rev2date serial2rev dev_null revX
 
         set dspec "-d:Ds:-:P: :DS: :Dy:/:Dm:/:Dd: :UTC-FUDGE:\n"
         set fid [open "|bk prs -h {$dspec} \"$file\" 2>$dev_null" "r"]
         while {[gets $fid s] >= 0} {
 		set rev [lindex $s 0]
+		if {![info exists revX($rev)]} {continue}
 		set serial [lindex $s 1]
 		set date [lindex $s 2]
 		set utc [lindex $s 3]
 		#puts "rev: ($rev) utc: $utc ser: ($serial) date: ($date)"
-
                 set rev2date($rev) $date
                 set serial2rev($serial) $rev
         }
@@ -162,7 +161,7 @@ proc getTags {} \
 #
 proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 {
-	global tag2rev curLine dimension gc file dev_null dspec rev2rev_name
+	global tag2rev curLine cdim gc file dev_null dspec rev2rev_name
 	global rev1 w
 
 	# Keep track of whether we are in the annotated output
@@ -223,31 +222,62 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 	if {[info exists tag2rev($name)]} {
 		set revname $tag2rev($name)
 	} else {
-		set revname $rev2rev_name($rev)
+		if {[info exists rev2rev_name($rev)]} {
+			set revname $rev2rev_name($rev)
+		} else {
+		    	.menus.view flash
+			$w(cvs) xview moveto 0 
+			if {($annotated == 0) && ($bindtype == "D1")} {
+				get "rev" $rev
+			} elseif {($annotated == 1) && ($bindtype == "D1")} {
+				set rev1 $rev
+				if {"$file" == "ChangeSet"} {
+					csettool
+				} else {
+					r2c
+				}
+			}
+			return
+		}
 	}
 	#puts "revname=($revname) rev=($rev) filename=($filename)"
 
+	# warp to the selected revision
 	if {$revname != ""} {
 		$w(cvs) delete tag
-		set x2 [lindex [$w(cvs) coords $revname] 2]
-		set width [$w(cvs) cget -width]
-		set xdiff [expr $width / 2]
-		set xfract [expr ($x2 - $xdiff) / $dimension(right)]
+		# XXX:
+		# If you go adding tags to the revisions, the index to find
+		# x2 might need to be modified
+		set rev_x2 [lindex [$w(cvs) coords $revname] 0]
+		set cwidth [$w(cvs) cget -width]
+		set xdiff [expr $cwidth / 2]
+		set xfract [expr ($rev_x2 - $cdim(s,x1) - $xdiff) /  \
+		    ($cdim(s,x2) - $cdim(s,x1))]
 		$w(cvs) xview moveto $xfract
+
+		set rev_y2 [lindex [$w(cvs) coords $revname] 1]
+		set cheight [$w(cvs) cget -height]
+		set ydiff [expr $cheight / 2]
+		set yfract [expr ($rev_y2 - $cdim(s,y1) - $ydiff) /  \
+		    ($cdim(s,y2) - $cdim(s,y1))]
+		$w(cvs) yview moveto $yfract
+
 		set id [$w(cvs) gettag $revname]
-			if {$bindtype == "B1"} {
-				getLeftRev $id
-			} elseif {$bindtype == "B3"} {
-				diff2 0 $id
-			}
+		if {$id == ""} { return }
+		if {$bindtype == "B1"} {
+			getLeftRev $id
+		} elseif {$bindtype == "B3"} {
+			diff2 0 $id
+		}
+		if {($bindtype == "D1") && ($annotated == 0)} {
+			get "id" $id
+		}
 		#puts "($curLine) line=($line) revname=($tag2rev($line))"
 	} else {
 		#puts "Error: tag not found ($line)"
 		return
 	}
-	if {($bindtype == "D1") && ($annotated == 0)} {
-		get $id
-	} elseif {($bindtype == "D1") && ($annotated == 1)} {
+	if {($bindtype == "D1") && ($annotated == 1)} {
 		if {"$file" == "ChangeSet"} {
 	    		csettool
 		} else {
@@ -304,14 +334,15 @@ proc dateSeparate { } { \
                         # place vertical line short dx behind revision bbox
                         set lx [ expr {$x - 15}]
                         $w(cvs) create line $lx $miny $lx $maxy -width 1 \
-			    -fill "lightblue"
+			    -fill "lightblue" -tags date_line
 
                        # Attempt to center datestring between verticals
                         set tx [expr {$x - (($x - $lastx)/2) - 13}]
                         $w(cvs) create text $tx $ty \
 			    -fill $gc(sccs.dateColor) \
 			    -justify center \
-			    -anchor n -text "$date" -font $gc(sccs.fixedFont)
+			    -anchor n -text "$date" -font $gc(sccs.fixedFont) \
+			    -tags date_text
 
                         set prevday $curday
                         set lastx $x
@@ -327,9 +358,9 @@ proc dateSeparate { } { \
 	set tx [expr {$screen(maxx) - (($screen(maxx) - $x)/2) + 20}]
 	$w(cvs) create text $tx $ty -anchor n \
 		-fill $gc(sccs.dateColor) \
-		-text "$date" -font $gc(sccs.fixedFont)
+		-text "$date" -font $gc(sccs.fixedFont) \
+		-tags date_text
 }
-
 
 # Add the revs starting at location x/y.
 proc addline {y xspace ht l} \
@@ -508,9 +539,10 @@ proc line {s width ht} \
 # Create a merge arrow, which might have to go below other stuff.
 proc mergeArrow {m ht} \
 {
-	global	bad lineOpts merges parent wid revX revY gc w
+	global	bad merges parent wid revX revY gc w
 
 	set b $parent($m)
+	if {!([info exists revX($b)] && [info exists revY($b)])} {return}
 	set px $revX($b)
 	set py $revY($b)
 	set x $revX($m)
@@ -536,10 +568,45 @@ proc mergeArrow {m ht} \
 	    -width 1 -fill $gc(sccs.arrowColor) \-arrow last]
 }
 
+#
+# Sets the scrollable region so that the lines are revision nodes
+# are viewable
+#
+proc setScrollRegion {} \
+{
+	global cdim w
+
+	set bb [$w(cvs) bbox date_line revision]
+	set x1 [expr {[lindex $bb 0] - 10}]
+	set y1 [expr {[lindex $bb 1] - 10}]
+	set x2 [expr {[lindex $bb 2] + 20}]
+	set y2 [expr {[lindex $bb 3] + 10}]
+
+	$w(cvs) create text $x1 $y1 -anchor nw -text "  " -tags outside
+	$w(cvs) create text $x1 $y2 -anchor sw -text "  " -tags outside
+	$w(cvs) create text $x2 $y1 -anchor ne -text "  " -tags outside
+	$w(cvs) create text $x2 $y2 -anchor se -text "  " -tags outside
+	set bb [$w(cvs) bbox outside]
+	$w(cvs) configure -scrollregion $bb
+	$w(cvs) xview moveto 1
+	$w(cvs) yview moveto .5
+
+	# The cdim array keeps track of the size of the scrollable region
+	# and the entire canvas region
+	set bb_all [$w(cvs) bbox all]
+	set a_x1 [expr {[lindex $bb_all 0] - 10}]
+	set a_y1 [expr {[lindex $bb_all 1] - 10}]
+	set a_x2 [expr {[lindex $bb_all 2] + 20}]
+	set a_y2 [expr {[lindex $bb_all 3] + 10}]
+	set cdim(s,x1) $x1; set cdim(s,x2) $x2
+	set cdim(s,y1) $y1; set cdim(s,y2) $y2
+	set cdim(a,x1) $a_x1; set cdim(a,x2) $a_x2
+	set cdim(a,y1) $a_y1; set cdim(a,y2) $a_y2
+}
+
 proc listRevs {file} \
 {
-	global	bad lineOpts merges dev_null line_rev ht screen stacked gc
-	global  dimension w
+	global	bad Opts merges dev_null ht screen stacked gc w
 
 	set screen(miny) 0
 	set screen(minx) 0
@@ -548,12 +615,12 @@ proc listRevs {file} \
 
 	# Put something in the corner so we get our padding.
 	# XXX - should do it in all corners.
-	$w(cvs) create text 0 0 -anchor nw -text " "
+	#$w(cvs) create text 0 0 -anchor nw -text " "
 
 	# Figure out the biggest node and its length.
 	# XXX - this could be done on a per column basis.  Probably not
 	# worth it until we do LOD names.
-	set d [open "| bk lines $lineOpts \"$file\" 2>$dev_null" "r"]
+	set d [open "| bk lines $Opts(line) $Opts(line_time) \"$file\" 2>$dev_null" "r"]
 	set len 0
 	set big ""
 	while {[gets $d s] >= 0} {
@@ -591,7 +658,7 @@ proc listRevs {file} \
 			}
 		}
 	}
-	close $d
+	catch {close $d} err
 	set len [font measure $gc(sccs.fixedBoldFont) "$big"]
 	set ht [font metrics $gc(sccs.fixedBoldFont) -ascent]
 	incr ht [font metrics $gc(sccs.fixedBoldFont) -descent]
@@ -611,23 +678,7 @@ proc listRevs {file} \
 	if {$bad != 0} {
 		wm title . "sccstool: $file -- $bad bad revs"
 	}
-	set bb [$w(cvs) bbox all]
-	set x1 [expr {[lindex $bb 0] - 10}]
-	set y1 [expr {[lindex $bb 1] - 10}]
-	set x2 [expr {[lindex $bb 2] + 10}]
-	set y2 [expr {[lindex $bb 3] + 10}]
-	set dimension(left) $x1
-	set dimension(right) $x2
-	set dimension(top) $y1
-	set dimension(bottom) $y2
-	$w(cvs) create text $x1 $y1 -anchor nw -text " "
-	$w(cvs) create text $x1 $y2 -anchor sw -text " "
-	$w(cvs) create text $x2 $y1 -anchor ne -text " "
-	$w(cvs) create text $x2 $y2 -anchor se -text " "
-	set bb [$w(cvs) bbox all]
-	$w(cvs) configure -scrollregion $bb
-	$w(cvs) xview moveto 1
-	$w(cvs) yview moveto .3
+
 }
 
 # If called from the bottom selection mechanism, we give getLeftRev a
@@ -723,6 +774,10 @@ proc prs {} \
 	}
 }
 
+# Display history for cset or file in the bottom text panel.
+# If argument opt is tag, only print the history items that have
+#   tags
+#
 proc history {{opt {}}} \
 {
 	global file dspec dev_null w
@@ -753,21 +808,30 @@ proc sfile {} \
 #
 # Displays annotated file listing in the bottom text widget
 #
-proc get { {id {} }} \
+proc get { type {val {}}} \
 {
-	global file dev_null rev1 rev2 getOpts w
+	global file dev_null rev1 rev2 Opts w
 
-	getLeftRev $id
+	if {$type == "id"} {
+		getLeftRev $val
+	} elseif {$type == "rev"} {
+		set rev1 $val
+	}
 	if {"$rev1" == ""} { return }
 	busy 1
 	set base [file tail $file]
 	if {$base != "ChangeSet"} {
-		set get [open "| bk get $getOpts -Pr$rev1 \"$file\" 2>$dev_null"]
+		set get [open "| bk get $Opts(get) -Pr$rev1 \"$file\" 2>$dev_null"]
 		filltext $w(ap) $get 1
 		return
 	}
 	set rev2 $rev1
-	csetdiff2 0
+	if {$type == "id"} {
+		csetdiff2
+	} elseif {$type == "rev"} {
+		csetdiff2 $rev1
+	}
+	    	
 }
 
 proc difftool {file r1 r2} \
@@ -787,15 +851,14 @@ proc csettool {} \
 
 proc diff2 {difftool {id {}} } \
 {
-	global file rev1 rev2 diffOpts getOpts dev_null
-	global bk_cset tmp_dir w
+	global file rev1 rev2 Opts dev_null bk_cset tmp_dir w
 
 	if {![info exists rev1] || ($rev1 == "")} { return }
 	if {$difftool == 0} { getRightRev $id }
 	if {"$rev2" == ""} { return }
 	set base [file tail $file]
 	if {$base == "ChangeSet"} {
-		csetdiff2 0
+		csetdiff2
 		return
 	}
 	busy 1
@@ -805,10 +868,10 @@ proc diff2 {difftool {id {}} } \
 	}
 
 	set r1 [file join $tmp_dir $rev1-[pid]]
-	catch { exec bk get $getOpts -kPr$rev1 $file >$r1}
+	catch { exec bk get $Opts(get) -kPr$rev1 $file >$r1}
 	set r2 [file join $tmp_dir $rev2-[pid]]
-	catch {exec bk get $getOpts -kPr$rev2 $file >$r2}
-	set diffs [open "| diff $diffOpts $r1 $r2"]
+	catch {exec bk get $Opts(get) -kPr$rev2 $file >$r2}
+	set diffs [open "| diff $Opts(diff) $r1 $r2"]
 	set l 3
 	$w(ap) configure -state normal; $w(ap) delete 1.0 end
 	$w(ap) insert end "- $file version $rev1\n"
@@ -822,12 +885,23 @@ proc diff2 {difftool {id {}} } \
 	busy 0
 }
 
-proc csetdiff2 {doDiffs} \
+#
+# Display the comments for the changeset and all of the files that are
+# part of the cset
+#
+# Arguments:
+#   rev  -- Revision number (optional)
+#	    If rev is set, ignores globals rev1 and rev2
+#
+#
+# If rev not set, uses globals rev1 and rev2 that are set by get{Left,Right} 
+#
+proc csetdiff2 {{rev {}}} \
 {
-	global file rev1 rev2 diffOpts dev_null w
+	global file rev1 rev2 Opts dev_null w
 
 	busy 1
-	set l 3
+	if {$rev != ""} { set rev1 $rev; set rev2 $rev }
 	$w(ap) configure -state normal; $w(ap) delete 1.0 end
 	$w(ap) insert end "ChangeSet history for $rev1..$rev2\n\n"
 
@@ -839,36 +913,6 @@ proc csetdiff2 {doDiffs} \
 		filltext $w(ap) $log 0
 	}
 	busy 0
-}
-
-# XXX: Is this dead code -- ask
-proc cset {} \
-{
-	global file rev1 rev2 dspec w
-
-	busy 1
-	set csets ""
-	$w(ap) configure -state normal
-	$w(ap) delete 1.0 end
-	if {[info exists rev2]} {
-		set revs [open "| bk prs -hbMr$rev1..$rev2 {-d:I:\n} \"$file\""]
-		while {[gets $revs r] >= 0} {
-			set c [exec bk r2c -r$r "$file"]
-			set p [format "%s %s ==> cset %s\n" "$file" $r $c]
-    			$w(ap) insert end "$p"
-			update
-			if {$csets == ""} {
-				set csets $c
-			} else {
-				set csets "$csets,$c"
-			}
-		}
-		close $revs
-	} else {
-		set csets [exec bk r2c -r$rev1 "$file"]
-	}
-	set p [open "|bk -R prs {$dspec} -r$csets ChangeSet" r]
-	filltext $w(ap) $p 1
 }
 
 proc r2c {} \
@@ -887,7 +931,7 @@ proc r2c {} \
 				set csets "$csets,$c"
 			}
 		}
-		close $revs
+		catch {close $revs} err
 	} else {
 		set csets [exec bk r2c -r$rev1 "$file"]
 	}
@@ -897,9 +941,9 @@ proc r2c {} \
 
 proc diffs {diffs l} \
 {
-	global	diffOpts w
+	global	Opts w
 
-	if {"$diffOpts" == "-u"} {
+	if {"$Opts(diff)" == "-u"} {
 		set lexp {^\+}
 		set rexp {^-}
 		gets $diffs str
@@ -1058,16 +1102,16 @@ proc busy {busy} \
 	update
 }
 
-proc widgets {} \
+proc widgets {fname} \
 {
-	global	search diffOpts getOpts gc stacked d w
-	global	lineOpts dspec wish yspace paned file tcl_platform 
+	global	search Opts gc stacked d w dspec wish yspace paned 
+	global  tcl_platform 
 
 	set dspec \
 "-d:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)\n}\$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n"
-	set diffOpts "-u"
-	set getOpts "-aum"
-	set lineOpts "-u -t"
+	set Opts(diff) "-u"
+	set Opts(get) "-aum"
+	set Opts(line) "-u -t"
 	set yspace 20
 	# cframe	- comment frame	
 	# apframe	- annotation/prs frame
@@ -1094,6 +1138,7 @@ proc widgets {} \
 	getConfig "sccs"
 	option add *background $gc(BG)
 
+	set Opts(line_time)  "-R-$gc(sccs.showHistory)"
 	if {"$gc(sccs.geometry)" != ""} {
 		wm geometry . $gc(sccs.geometry)
 	}
@@ -1105,18 +1150,23 @@ proc widgets {} \
 	    button .menus.help -font $gc(sccs.buttonFont) -relief raised \
 		-bg $gc(sccs.buttonColor) -pady $py -padx $px -borderwid $bw \
 		-text "Help" -command { exec bk helptool sccstool & }
+	    button .menus.view -font $gc(sccs.buttonFont) -relief raised \
+		-bg $gc(sccs.buttonColor) -pady $py -padx $px -borderwid $bw \
+		-text "Show All" -width 15 -state normal \
+		-command {sccstool $fname 1} 
 	    button .menus.cset -font $gc(sccs.buttonFont) -relief raised \
 		-bg $gc(sccs.buttonColor) -pady $py -padx $px -borderwid $bw \
 		-text "View changeset " -width 15 -command r2c -state disabled
 	    button .menus.difftool -font $gc(sccs.buttonFont) -relief raised \
 		-bg $gc(sccs.buttonColor) -pady $py -padx $px -borderwid $bw \
 		-text "Diff tool" -command "diff2 1" -state disabled
-	    if {"$file" == "ChangeSet"} {
+	    if {"$fname" == "ChangeSet"} {
 		    .menus.cset configure -command csettool
-		    pack .menus.quit .menus.help .menus.cset -side left
-	    } else {
-		    pack .menus.quit .menus.help .menus.difftool .menus.cset \
+		    pack .menus.quit .menus.help .menus.view .menus.cset \
 			-side left
+	    } else {
+		    pack .menus.quit .menus.help .menus.difftool \
+			.menus.view .menus.cset -side left
 	    }
 
 	frame .p
@@ -1211,7 +1261,7 @@ proc widgets {} \
 
 	bind $w(cvs) <1>		{ prs; break }
 	bind $w(cvs) <3>		"diff2 0; break"
-	bind $w(cvs) <Double-1>		"get; break"
+	bind $w(cvs) <Double-1>		{get "id"; break}
 	bind $w(cvs) <h>		"history"
 	bind $w(cvs) <t>		"history tags"
 	bind . <Button-2>		{history}
@@ -1271,9 +1321,10 @@ proc widgets {} \
 	. configure -background $gc(BG)
 }
 
+# XXX: Is this dead code? --ask
 proc openFile {} \
 {
-	sccstool [tk_getOpenFile]
+	sccstool [tk_getOpenFile] 0
 }
 
 proc next {inc} \
@@ -1285,7 +1336,7 @@ proc next {inc} \
 	if {"$f" != ""} {
 		.menus.prev configure -state normal
 		.menus.next configure -state normal
-		sccstool $f
+		sccstool $f 0
 	} else {
 		if {$inc < 0} {
 			.menus.prev configure -state disabled
@@ -1295,18 +1346,30 @@ proc next {inc} \
 	}
 }
 
-proc sccstool {name} \
+#
+# Arguments:
+#   all - boolean (optional) : If set to 1, displays all csets
+#
+# This variable is a placeholder -- I expect that we will put an
+# option/menu in that will allow the user to select last month, week, etc.
+#
+proc sccstool {fname {all {0}}} \
 {
-	global	file bad revX revY search dev_null rev2date serial2rev w
+	global	bad revX revY search dev_null rev2date serial2rev w
+	global  Opts gc file rev2rev_name
 
 	busy 1
 	$w(cvs) delete all
 	if {[info exists revX]} { unset revX }
 	if {[info exists revY]} { unset revY }
+	if {[info exists rev2date]} { unset rev2date }
+	if {[info exists serial2rev]} { unset serial2rev }
+	if {[info exists rev2rev_name]} { unset rev2rev_name }
+
 	set bad 0
-	set file [exec bk sfiles -g $name 2>$dev_null]
+	set file [exec bk sfiles -g $fname 2>$dev_null]
 	if {"$file" == ""} {
-		puts "No such file $name"
+		puts "No such file $fname"
 		exit 0
 	}
 	if {[catch {exec bk root $file} proot]} {
@@ -1314,10 +1377,22 @@ proc sccstool {name} \
 	} else {
 		wm title . "sccstool: $proot: $file"
 	}
-	listRevs "$file"
 
+	if {$all == 1} {
+		set Opts(line_time) "-R1.0.."
+		.menus.view configure  \
+		    -text "Show Last $gc(sccs.showHistory)" \
+		    -command {sccstool $fname 0}
+	} else {
+		set Opts(line_time) "-R-$gc(sccs.showHistory)"
+		.menus.view configure  \
+		    -text "Show All" \
+		    -command {sccstool $fname 1}
+	}
+	listRevs "$file"
 	revMap "$file"
 	dateSeparate
+	setScrollRegion
 
 	history
 	set search(prompt) "Welcome"
@@ -1335,13 +1410,13 @@ proc init {} \
 
 proc arguments {} \
 {
-	global rev1 rev2 argv file gca 
+	global rev1 rev2 argv fname gca 
 
 	set state flag
 	set rev1 ""
 	set rev2 ""
 	set gca ""
-	set file ""
+	set fname ""
 	foreach arg $argv {
 		switch -- $state {
 		    flag {
@@ -1349,7 +1424,7 @@ proc arguments {} \
 			    -G		{ set state gca }
 			    -l		{ set state remote }
 			    -r		{ set state local }
-			    default	{ set file $arg }
+			    default	{ set fname $arg }
 			}
 		    }
 		    gca {
@@ -1370,24 +1445,25 @@ proc arguments {} \
 
 proc lineOpts {rev} \
 {
-	global	lineOpts file
+	global	Opts file
 
 	# Call lines to get this rev in the same format as we are using.
-	set f [open "| bk lines $lineOpts -r$rev \"$file\""]
+	set f [open "| bk lines $Opts(line) $Opts(line_time) -r$rev \"$file\""]
 	gets $f rev
-	close $f
+	cach {close $f} err
 	return $rev
 }
 
 init
 arguments
-if {$file == ""} {
+if {$fname == ""} {
 	cd2root
 	# This should match the CHANGESET path defined in sccs.h
-	set file ChangeSet
+	set fname ChangeSet
 }
-widgets
-sccstool "$file"
+widgets $fname
+sccstool $fname 0
+
 if {$rev1 != ""} {
 	set rev1 [lineOpts $rev1]
 	highlight $rev1 "old"
@@ -1399,5 +1475,5 @@ if {$rev2 != ""} {
 } 
 if {$gca != ""} {
 	set gca [lineOpts $gca]
-	highlight $gca  "black"
+	highlight $gca "black"
 }
