@@ -202,7 +202,7 @@ extern	char *strdup(char *s);
 #define MAPPRIVATE	0x00400000	/* Some winblows hack */
 #define	ONE_ZERO	0x00800000	/* initial rev, make it be 1.0 */
 #define READ_ONLY	0x01000000	/* force read only mode */
-#define Z_LOCKED	0x02000000	/* file is locked */
+/*			0x02000000	AVAILABLE */
 #define	RANGE2		0x04000000	/* second call for date|rev range */
 #define	BAD_DSUM	0x08000000	/* patch checksum mismatch */
 #define ISSHELL		0x10000000	/* this is a shell script */
@@ -250,7 +250,7 @@ extern	char *strdup(char *s);
 #define	BEEN_WARNED(s)	((s)->state & WARNED)
 #define	IS_WRITABLE(s)	((s)->mode & 0200)
 #define IS_EDITED(s)	((((s)->state & EDITED) == EDITED) && IS_WRITABLE(s))
-#define badWriteMode(s)	(IS_WRITABLE(s) && !S_ISLNK(s->mode))
+#define badWriteMode(s)	(IS_WRITABLE(s) && isRegularFile(s->mode))
 
 #define	GOODSCCS(s)	assert(s); unless (s->tree && s->cksumok) return (-1)
 

@@ -3341,7 +3341,7 @@ lock(sccs *sccs, char type)
 	s = sccsXfile(sccs, type);
 	islock = open(s, O_CREAT|O_WRONLY|O_EXCL, type == 'z' ? 0444 : 0644);
 	close(islock);
-	if (islock > 0) sccs->state |= Z_LOCKED;
+	if (islock > 0) sccs->state |= ZFILE;
 	debug((stderr, "lock(%s) = %d\n", sccs->sfile, islock > 0));
 	return (islock > 0);
 }
@@ -3358,7 +3358,7 @@ unlock(sccs *sccs, char type)
 	debug((stderr, "unlock(%s, %c)\n", sccs->sfile, type));
 	s = sccsXfile(sccs, type);
 	failed  = unlink(s);
-	unless (failed) sccs->state &= ~Z_LOCKED;
+	unless (failed) sccs->state &= ~ZFILE;
 	return (failed);
 }
 
@@ -4256,14 +4256,46 @@ write_pfile(sccs *s, int flags, delta *d,
 }
 
 private int
-getRegBody(sccs *s, char *printOut, int flags, delta *d, int *ln, int encoding, ser_t *slist,
-	char *base, serlist *state)
+getRegBody(sccs *s, char *printOut, int flags, delta *d,
+		int *ln, char *iLst, char *xLst)
 {
-	int	lines = 0, print = 0, popened; 
+	serlist *state = 0;
+	ser_t	*slist = 0;
+	int	lines = 0, print = 0, popened, error = 0;
+	int	encoding = (flags&FORCEASCII) ? E_ASCII : s->encoding;
 	sum_t	sum;
 	FILE 	*out;
 	BUF	(buf);
-	char 	*f = (flags & PRINT) ? printOut : s->gfile;
+	char 	*base, *f = (flags & PRINT) ? printOut : s->gfile;
+
+	slist = serialmap(s, d, flags, iLst, xLst, &error);
+	if (error == 1) {
+		assert(!slist);
+		fprintf(stderr,
+		    "Malformed include/exclude list for %s\n",
+		    s->sfile);
+		s->state |= WARNED;
+		return 1;
+	}
+	if (error == 2) {
+		assert(!slist);
+		fprintf(stderr,
+	"Can't find specified rev in include/exclude list for %s\n",
+		    s->sfile);
+		s->state |= WARNED;
+		return 1;
+	}
+
+	if ((s->state & RCS) && (flags & EXPAND)) flags |= RCSEXPAND;
+	if ((s->state & BITKEEPER) && d->sum && !iLst && !xLst) {
+		flags |= NEWCKSUM;
+	}
+	/* Think carefully before changing this */
+	if (s->encoding != E_ASCII) {
+		flags &= ~(REVNUMS|PREFIXDATE|USER|EXPAND|RCSEXPAND|LINENUM);
+	}
+	state = allocstate(0, 0, s->nextserial);
+	if (flags & MODNAME) base = basenm(s->gfile);
 	
 	popened = openOutput(encoding, f, &out);
 	unless (out) {
@@ -4367,19 +4399,26 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d, int *ln, int encoding, 
 	}
 #endif
 	*ln = lines;
+	if (slist) free(slist);
+	if (state) free(state);
 	return 0;
 }
 
 private int
 getLinkBody(sccs *s,
-	char *printOut, int flags, delta *d, int *ln, int encoding)
+	char *printOut, int flags, delta *d, int *ln)
 {
-	int	popened; 
-
 	if (flags & PRINT) {
+		int	popened; 
 		FILE 	*out;
 
-		popened = openOutput(encoding, printOut, &out);
+		popened = openOutput(E_ASCII, printOut, &out);
+		assert(popened == 0);
+		unless (out) {
+			fprintf(stderr,
+				"Can't open %s for writing\n", printOut);
+			return 1;
+		}
 		fprintf(out, "SYMLINK -> %s\n", d->glink);
 		unless (streq("-", printOut)) fclose(out);
 		*ln = 1;
@@ -4402,21 +4441,16 @@ int
 sccs_get(sccs *s, char *rev,
 	char *mRev, char *iLst, char *xLst, int flags, char *printOut)
 {
-	serlist *state = 0;
-	ser_t	*slist = 0;
 	delta	*d;
-	int	lines = 0; int	error = 0;
-	int	encoding = (flags&FORCEASCII) ? E_ASCII : s->encoding;
-	char	*lrev = 0, *tmp, *base, *i2 = 0;
-	BUF	(buf);
+	int	lines = 0, locked = 0, error;
+	char	*lrev = 0, *i2 = 0;
 
 	debug((stderr, "get(%s, %s, %s, %s, %s, %x, %s)\n",
 	    s->sfile, rev, mRev, iLst, xLst, flags, printOut));
 	unless (s->state & SOPEN) {
 		fprintf(stderr, "get: couldn't open %s\n", s->sfile);
-err:		if (slist) free(slist);
-		if (state) free(state);
-		if (i2) free(i2);
+err:		if (i2) free(i2);
+		if (locked) { unlock(s, 'p'); unlock(s, 'z'); }
 		return (-1);
 	}
 	unless (s->cksumok) {
@@ -4435,6 +4469,8 @@ err:		if (slist) free(slist);
 	}
 	/* this has to be above the getedit() - that changes the rev */
 	if (mRev) {
+		char *tmp;
+
 		tmp = sccs_impliedList(s, "get", rev, mRev);
 		unless (tmp) goto err;
 		i2 = strconcat(tmp, iLst, ",");
@@ -4459,35 +4495,12 @@ err:		if (slist) free(slist);
 		}
 	}
 	unless (d) goto err;
-	/* moved this up above the opens so that I can bail easily */
-	unless (flags & SKIPGET) {
-		if (i2) {
-			slist = serialmap(s, d, flags, i2, xLst, &error);
-		} else {
-			slist = serialmap(s, d, flags, iLst, xLst, &error);
-		}
-		if (error == 1) {
-			assert(!slist);
-			fprintf(stderr,
-			    "Malformed include/exclude list for %s\n",
-			    s->sfile);
-			s->state |= WARNED;
-			goto err;
-		}
-		if (error == 2) {
-			assert(!slist);
-			fprintf(stderr,
-		"Can't find specified rev in include/exclude list for %s\n",
-			    s->sfile);
-			s->state |= WARNED;
-			goto err;
-		}
-	}
 
 	if (flags & EDIT) {
 		if (write_pfile(s, flags, d, rev, lrev, iLst, i2, xLst, mRev)) {
 			goto err;
 		}
+		locked = 1;
 	}
 	if (flags&SKIPGET)  goto skip_get;
 	if ((flags & PRINT) == 0) {
@@ -4497,49 +4510,29 @@ err:		if (slist) free(slist);
 			goto err;
 		}
 	}
-	if (!(flags & PRINT)) unlinkGfile(s);
+	unless (flags & PRINT) unlinkGfile(s);
 
-	if ((s->state & RCS) && (flags & EXPAND)) flags |= RCSEXPAND;
-	if ((s->state & BITKEEPER) && d->sum && !iLst && !xLst && !i2) {
-		flags |= NEWCKSUM;
-	}
-	/* Think carefully before changing this */
-	if (s->encoding != E_ASCII) {
-		flags &= ~(REVNUMS|PREFIXDATE|USER|EXPAND|RCSEXPAND|LINENUM);
-	}
-	state = allocstate(0, 0, s->nextserial);
-	if (flags & MODNAME) base = basenm(s->gfile);
 	/*
 	 * Base on the file type,
 	 * we call the appropriate function to get the body
  	 */
 	switch (fileType(d->mode)) {
-		case 0:	      /* uninitialized mode, assume regular file */
-		case S_IFREG: /* regular file */
-		    error = getRegBody(s, printOut,
-					flags, d, &lines, encoding,
-					slist, base, state);
-		    break;
-		case S_IFLNK: /* symlink */
-		    error = getLinkBody(s, printOut,
-					flags, d, &lines, encoding);
-		    break;
-		default:
-			assert("unsupported file type" == 0);
+	    case 0:		/* uninitialized mode, assume regular file */
+	    case S_IFREG:	/* regular file */
+		error = getRegBody(s, printOut,
+					flags, d, &lines, i2? i2: iLst, xLst);
+		break;
+	    case S_IFLNK:	/* symlink */
+		error = getLinkBody(s, printOut, flags, d, &lines);
+		break;
+	    default:
+		assert("unsupported file type" == 0);
 	}
-	if (error) {
-		if (flags & EDIT) {
-			unlock(s, 'p');
-			unlock(s, 'z');
-		}
-		goto err;
-	}
+	if (error) goto err;
 	debug((stderr, "GET done\n"));
 
 skip_get:
-	if (flags&EDIT) {
-		unlock(s, 'z');
-	}
+	if (flags&EDIT) unlock(s, 'z');
 	if (!(flags&SILENT)) {
 		fprintf(stderr, "%s %s", s->gfile, d->rev);
 		if (flags & EDIT) {
@@ -4548,8 +4541,6 @@ skip_get:
 		if (!(flags & SKIPGET)) fprintf(stderr, ": %d lines", lines);
 		fprintf(stderr, "\n");
 	}
-	if (slist) free(slist);
-	if (state) free(state);
 	if (i2) free(i2);
 	return (0);
 }
@@ -4861,7 +4852,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 	int	bits = 0;
 
 	assert((s->state & READ_ONLY) == 0);
-	assert(s->state & Z_LOCKED);
+	assert(s->state & ZFILE);
 	fprintf(out, "\001hXXXXX\n");
 	s->cksum = 0;
 	for (d = s->table; d; d = d->next) {
@@ -5238,21 +5229,29 @@ fix_lf(char *gfile)
 	return 0;
 }
 
+int isRegularFile(mode_t m)
+{
+	return ((m == 0) || S_ISREG(m));
+}
+
 /*
  * Check mode/glink changes
  * Changes in permission are ignored
  * Returns:
  *	0 if no change
- *	1 if glink changed
- *	2 if file type changed 
+ *	1 if file type changed 
+ *	2 if meta mode field changed (e.g. glink)
+ *	
  */
 diff_gmode(sccs *s, pfile *pf, char *tmpfile)
 {
 	delta *d = findrev(s, pf->oldrev);
 
-	unless (sameFileType(s, d)) return (2) ; /* type chaneged */
-	if (S_ISLNK(s->mode)) return (!streq(s->glink, d->glink));
-	return 0;
+	unless (sameFileType(s, d)) return (1) ; /* type chaneged */
+	if (S_ISLNK(s->mode)) {
+		if (!streq(s->glink, d->glink)) return 2; /* mode changed */
+	}
+	return 0; /* no  change */
 }
 
 /*
@@ -5263,7 +5262,7 @@ diff_gmode(sccs *s, pfile *pf, char *tmpfile)
 *
 * 	This function is called to determine the difference 
 *	in the delta body. Note that, by definition, the delta body
-*	of symlink is empty.
+*	of non-regular file is empty.
 */
 private int
 diff_gfile(sccs *s, pfile *pf, char *tmpfile)
@@ -5275,38 +5274,52 @@ diff_gfile(sccs *s, pfile *pf, char *tmpfile)
 
 	debug((stderr, "diff_gfile(%s, %s)\n", pf->oldrev, s->gfile));
 	assert(s->state & GFILE); 
-	d = findrev(s, pf->oldrev);
-	if (s->encoding > E_ASCII) {
-		sprintf(new, "%s/getU%d", TMP_PATH, getpid());
-		if (IS_WRITABLE(s)) {
-			if (deflate(s, new)) {
-				unlink(new);
-				return (-1);
+	/*
+	 * set up the "new" file
+	 */
+	if (isRegularFile(s->mode)) {
+		if (s->encoding > E_ASCII) {
+			sprintf(new, "%s/getU%d", TMP_PATH, getpid());
+			if (IS_WRITABLE(s)) {
+				if (deflate(s, new)) {
+					unlink(new);
+					return (-1);
+				}
+			} else {
+			/* XXX - I'm not sure when this would ever be used. */
+				if (sccs_get(s,
+				    0, 0, 0, 0, FORCEASCII|SILENT|PRINT, new)) {
+					unlink(new);
+					return (-1);
+				}
 			}
 		} else {
-/* XXX - I'm not sure when this would ever be used. */
-			if (sccs_get(s,
-			    0, 0, 0, 0, FORCEASCII|SILENT|PRINT, new)) {
-				unlink(new);
-				return (-1);
-			}
+			if (fix_lf(s->gfile) == -1) return (-1); 
+			strcpy(new, s->gfile);
 		}
-	} else if (S_ISLNK(s->mode)) {
+	} else { /* non regular file, e.g symlink */
 		strcpy(new, DEV_NULL);
-	} else {
-		if (fix_lf(s->gfile) == -1) return (-1); 
-		strcpy(new, s->gfile);
 	}
-	if (S_ISLNK(d->mode)) {
-		strcpy(old, DEV_NULL);
-	} else {
+
+	/*
+	 * set up the "old" file
+	 */
+	d = findrev(s, pf->oldrev);
+	assert(d);
+	if (isRegularFile(d->mode)) {
 		sprintf(old, "%s/get%d", TMP_PATH, getpid());
 		if (sccs_get(s, pf->oldrev, pf->mRev, pf->iLst, pf->xLst,
 		    FORCEASCII|SILENT|PRINT, old)) {
 			unlink(old);
 			return (-1);
 		}
+	} else {
+		strcpy(old, DEV_NULL);
 	}
+
+	/*
+	 * now we do the diff
+	 */
 	ret = diff(old, new, D_DIFF, tmpfile);
 	unless (streq(old, DEV_NULL)) unlink(old);
 	if (!streq(new, s->gfile) && !streq(new, DEV_NULL)){
@@ -5314,8 +5327,7 @@ diff_gfile(sccs *s, pfile *pf, char *tmpfile)
 	}
 
 	switch (ret) {
-	    case 0:	/* diff return no diffs, now check file type changes */
-		unless (sameFileType(s, d)) return 0;
+	    case 0:	/* no diffs */
 		return (1);
 	    case 1:	/* diffs */
 		return (0);
@@ -5328,11 +5340,41 @@ diff_gfile(sccs *s, pfile *pf, char *tmpfile)
 	}
 }
 
+/*
+ * Check mode changes & changes in delta body.
+ * The real work is done in diff_gmode & diff_gfile.
+ * Returns:
+ *	-1 for some already bitched about error
+ *	0 if there were differences
+ *	1 if no differences
+ *	2 if diffs in meta mode field only (no change in delta body)
+ *
+ */
+diff_g(sccs *s, pfile *pf, char *tmpfile)
+{
+	switch (diff_gmode(s, pf, tmpfile)) {
+	    case 0: 		/* no mode change */
+		if (!isRegularFile(s->mode)) return 1;
+		return (diff_gfile(s, pf, tmpfile));
+		break;
+	    case 2:		/* meta mode field changed */
+		return 2;
+	    case 1:		/* file type changed */
+		if (diff_gfile(s, pf, tmpfile) == -1) return (-1);
+		return 0;
+	    default:
+		return -1;
+	}
+}
+
 private void
 unlinkGfile(sccs *s)
 {
 	unlink(s->gfile);	/* Careful */
 	s->mode = 0;
+	if (s->glink) free(s->glink);
+	s->glink = 0;
+	s->state &= ~GFILE;
 }
 
 private void
@@ -5727,7 +5769,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 		if (prefilled) sccs_freetree(prefilled);
 		return (1);
 	}
-	if (!diffs && !S_ISLNK(s->mode)) {
+	if (!diffs && isRegularFile(s->mode)) {
 		popened = openInput(s, flags, &gfile);
 		unless (gfile) {
 			perror(s->gfile);
@@ -5854,7 +5896,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 			fclose(id);
 		}
 	} 
-	if (!diffs && gfile && (gfile != stdin)) {
+	if (gfile && (gfile != stdin)) {
 		if (popened) pclose(gfile); else fclose(gfile);
 	}
 #ifdef	PARANOID
@@ -6459,7 +6501,7 @@ sccs_addSym(sccs *sc, int flags, char *s)
 		return -1;
 	}
 	assert((sc->state & READ_ONLY) == 0);
-	assert(sc->state & Z_LOCKED);
+	assert(sc->state & ZFILE);
 	assert(sc->landingpad > sc->mmap);
 	assert(sc->landingpad < sc->mmap + sc->data);
 	s = strdup(s);
@@ -6997,7 +7039,7 @@ delta_body(sccs *s, delta *n, FILE *diffs, FILE *out, int *ap, int *dp, int *up)
 	char	buf2[1024];
 
 	assert((s->state & READ_ONLY) == 0);
-	assert(s->state & Z_LOCKED);
+	assert(s->state & ZFILE);
 	*ap = *dp = *up = 0;
 	/*
 	 * Do the actual delta.
@@ -7818,25 +7860,7 @@ out:
 	if (diffs) {
 		debug((stderr, "delta using diffs passed in\n"));
 	} else {
-		switch (diff_gmode(s, &pf, tmpfile)) {
-		    case 0: 		/* no mode change */
-			unless (S_ISLNK(s->mode)) break; /* go do diff_gfile */
-			unless (flags & FORCE) {
-				if (!(flags & SILENT))
-					fprintf(stderr,
-					    "Clean %s (no diffs)\n", s->gfile);
-				unedit(s, flags);
-				goto out;
-			} /* fall thru */
-		    case 1:		/* glink changed */
-			tmpfile = DEV_NULL;
-			goto have_diff;
-		    case 2:		/* file type changed */
-			break;		/* go do diff_gfile */
-		    default:
-			assert("diff_gmode failed" == 0);
-		}
-		switch (diff_gfile(s, &pf, tmpfile)) {
+		switch (diff_g(s, &pf, tmpfile)) {
 		    case 1:		/* no diffs */
 						    /* CSTYLED */
 			if (flags & FORCE) break;     /* forced 0 sized delta */
@@ -7845,11 +7869,14 @@ out:
 				    "Clean %s (no diffs)\n", s->gfile);
 			unedit(s, flags);
 			goto out;
+		    case 2:		/* diffs in mode only */
+			tmpfile = DEV_NULL;
+			break;
 		    case 0:		/* diffs */
 			break;
 		    default: OUT;
 		}
-have_diff:	unless (diffs = fopen(tmpfile, "rt")) { /* open in text mode */
+		unless (diffs = fopen(tmpfile, "rt")) { /* open in text mode */
 			fprintf(stderr,
 			    "delta: can't open diff file %s\n", tmpfile);
 			OUT;
