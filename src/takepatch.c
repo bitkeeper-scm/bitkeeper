@@ -449,7 +449,7 @@ extractPatch(char *name, MMAP *p, int flags, project *proj)
 	if (strneq("New file: ", t, 10)) {
 		reallyNew = newFile = 1;
 		perfile = sccs_getperfile(p, &line);
-		if (isLogPatch && perfile->defbranch) {
+		if (isLogPatch && perfile && perfile->defbranch) {
 			free(perfile->defbranch);
 			perfile->defbranch = 0;
 		}
@@ -1276,7 +1276,7 @@ apply:
 			s->bitkeeper = 1;
 		}
 		/* LOD logging tree fix: All on LOD 1, renumber() will fix */
-		if (isLogPatch && !streq(d->rev, "1.0")
+		if (isLogPatch && d && !streq(d->rev, "1.0")
 		    && !streq(d->rev, "1.1")) {
 			free(d->rev);
 			d->rev = strdup("1.2");
