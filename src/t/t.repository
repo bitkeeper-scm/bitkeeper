@@ -89,13 +89,11 @@ X=`grep "^.cE " src/SCCS/s.h.h | wc -l`
 if [ "$X" -ne 2 ]; then echo failed; exit 1; fi
 bk -r check -a || { echo failed; exit 1; }
 cd $HERE/project
-bk makepatch $Q -e -r1.3.. > $HERE/patch
+bk push $Q -e $HERE/proj_log
 cd $HERE/proj_log
-bk takepatch $Q -a < $HERE/patch
 X=`grep "^.cE " src/SCCS/s.h.h | wc -l`
 if [ "$X" -ne 3 ]; then echo failed; exit 1; fi
 bk -r check -a || { echo failed; exit 1; }
-#cat SCCS/s.ChangeSet | grep "^.f x"
 echo OK
 echo $N Make sure we reject logging patch in a regular repository ...$NL
 bk clone $Q -r1.1 $HERE/project $HERE/copy
