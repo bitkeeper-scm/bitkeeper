@@ -130,7 +130,7 @@ production_ndebug: rebuild ndebug install
 production_purify: rebuild purify install
 
 # Platform specific production builds
-irix sgi hpux hp-ux hp:
+freebsd bsd irix sgi hpux hp-ux hp:
 	gmake CC=gcc p install
 
 solaris:
