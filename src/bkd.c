@@ -8,6 +8,7 @@ private	int	getav(int *acp, char ***avp, int *httpMode);
 private	void	log_cmd(int i, int ac, char **av);
 private	void	reap(int sig);
 private	void	usage();
+private	char	**xcmds = 0;		/* excluded command */
 
 char 		*logRoot, *vRootPrefix;
 int		licenseServer[2];	/* bkweb license pipe */
@@ -63,7 +64,11 @@ bkd_main(int ac, char **av)
 			Opts.remove = 1; Opts.daemon = 1; break;
 		    case 't': Opts.alarm = atoi(optarg); break;	/* doc 2.0 */
 		    case 'u': uid = optarg; break;		/* doc 2.0 */
-		    case 'x': exclude(optarg); break;		/* doc 2.0 */
+		    case 'x': exclude(optarg); 
+#ifdef WIN32
+			      xcmds = addLine(xcmds, strdup(optarg));
+#endif
+			      break;		/* doc 2.0 */
 		    default: usage();
 	    	}
 	}
@@ -93,7 +98,7 @@ bkd_main(int ac, char **av)
 	putenv("PAGER=cat");
 	if (Opts.daemon) {
 		if (tcp_pair(licenseServer) == 0) {
-			bkd_server();
+			bkd_server(xcmds);
 		} else {
 			fprintf(stderr,
 			    "bkd: ``%s'' when initializing license server\n",

@@ -87,6 +87,20 @@ cd $HERE/copy/src
 bk pull -t $Q bk://localhost:$P
 if [ ! -f SCCS/s.boo.c ]; then echo failed; exit 1; fi
 echo OK
+rm -f d:/projects/bugfixes/src/trace
+echo $N "pull via bkd -xpull" .........................................$NL
+cd $HERE/project
+P=50000
+bk bkd -q -xpull -p$P -c1 
+while [ $? -eq 2 ]
+do	P=`expr $P + 1`
+	bk bkd -q -xpull -p$P -c1 
+done
+cd $HERE/copy/src
+bk pull -t bk://localhost:$P 2> pull.out 
+grep -q "bkd has disabled" pull.out
+if [ $? -ne 0 ]; then echo failed; cat pull.out; exit 1; fi
+echo OK
 echo $N "push a new changeset via bkd (with compression)" .............$NL
 cd $HERE/copy
 P=50000

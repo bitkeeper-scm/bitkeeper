@@ -709,7 +709,15 @@ drainErrorMsg(remote *r, char *buf, int bsize)
 	}
 
 	while (1) {
-		if (strneq("ERROR-BAD CMD: pull_part1", buf, 25)) break;
+		if (strneq("ERROR-BAD CMD: pull_part1", buf, 25)) {
+			fprintf(stderr,
+			    "Remote dose not understand \"pull_part1\""
+			    "command\n"
+			    "There are two possibilities:\n"
+			    "a) Remote bkd has disabled \"pull\" command.\n"
+			    "b) We are talking to a old 1.x bkd.\n");
+			break;
+		}
 		if (strneq("ERROR-BAD CMD: @END", buf, 19)) break; /*for push*/
 		/*
 		 * Comment the following code out, it is causing problem
