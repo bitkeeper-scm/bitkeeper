@@ -14,22 +14,18 @@
  */
 #include <tommath.h>
 
-/* single digit division (based on routine from MPI) */
+/* divide by three (based on routine from MPI and the GMP manual) */
 int
-mp_div_d (mp_int * a, mp_digit b, mp_int * c, mp_digit * d)
+mp_div_3 (mp_int * a, mp_int *c, mp_digit * d)
 {
-  mp_int  q;
-  mp_word w, t;
-  int     res, ix;
+  mp_int   q;
+  mp_word  w, t;
+  mp_digit b;
+  int      res, ix;
   
-  if (b == 0) {
-     return MP_VAL;
-  }
-  
-  if (b == 3) {
-     return mp_div_3(a, c, d);
-  }
-  
+  /* b = 2**DIGIT_BIT / 3 */
+  b = (((mp_word)1) << ((mp_word)DIGIT_BIT)) / ((mp_word)3);
+
   if ((res = mp_init_size(&q, a->used)) != MP_OKAY) {
      return res;
   }
@@ -40,9 +36,13 @@ mp_div_d (mp_int * a, mp_digit b, mp_int * c, mp_digit * d)
   for (ix = a->used - 1; ix >= 0; ix--) {
      w = (w << ((mp_word)DIGIT_BIT)) | ((mp_word)a->dp[ix]);
      
-     if (w >= b) {
-        t = w / b;
-        w = w % b;
+     if (w >= 3) {
+        t = (w * ((mp_word)b)) >> ((mp_word)DIGIT_BIT);
+        w -= (t << ((mp_word)1)) + t;
+        while (w >= 3) {
+           t += 1;
+           w -= 3;
+        }
       } else {
         t = 0;
       }

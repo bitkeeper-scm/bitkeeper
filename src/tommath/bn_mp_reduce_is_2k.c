@@ -14,26 +14,24 @@
  */
 #include <tommath.h>
 
-/* computes b = a*a */
-int
-mp_sqr (mp_int * a, mp_int * b)
+/* determines if mp_reduce_2k can be used */
+int 
+mp_reduce_is_2k(mp_int *a)
 {
-  int     res;
-  if (a->used >= TOOM_SQR_CUTOFF) {
-    res = mp_toom_sqr(a, b);
-  } else if (a->used >= KARATSUBA_SQR_CUTOFF) {
-    res = mp_karatsuba_sqr (a, b);
-  } else {
-
-    /* can we use the fast multiplier? */
-    if ((a->used * 2 + 1) < MP_WARRAY && 
-         a->used < 
-         (1 << (sizeof(mp_word) * CHAR_BIT - 2*DIGIT_BIT - 1))) {
-      res = fast_s_mp_sqr (a, b);
-    } else {
-      res = s_mp_sqr (a, b);
-    }
-  }
-  b->sign = MP_ZPOS;
-  return res;
+   int ix, iy;
+   
+   if (a->used == 0) {
+      return 0;
+   } else if (a->used == 1) {
+      return 1;
+   } else if (a->used > 1) {
+      iy = mp_count_bits(a);
+      for (ix = DIGIT_BIT; ix < iy; ix++) {
+          if ((a->dp[ix/DIGIT_BIT] & ((mp_digit)1 << (mp_digit)(ix % DIGIT_BIT))) == 0) {
+             return 0;
+          }
+      }
+   }
+   return 1;
 }
+

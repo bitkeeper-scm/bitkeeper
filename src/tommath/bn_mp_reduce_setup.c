@@ -4,7 +4,7 @@
  * integer arithmetic as well as number theoretic functionality.
  *
  * The library is designed directly after the MPI library by
- * Michael Fromberger but has been written from scratch with 
+ * Michael Fromberger but has been written from scratch with
  * additional optimizations in place.
  *
  * The library is free for all purposes without any express
@@ -14,21 +14,16 @@
  */
 #include <tommath.h>
 
-/* init a new bigint */
+/* pre-calculate the value required for Barrett reduction
+ * For a given modulus "b" it calulates the value required in "a"
+ */
 int
-mp_init (mp_int * a)
+mp_reduce_setup (mp_int * a, mp_int * b)
 {
-  /* allocate ram required and clear it */
-  a->dp = OPT_CAST calloc (sizeof (mp_digit), MP_PREC);
-  if (a->dp == NULL) {
-    return MP_MEM;
+  int     res;
+  
+  if ((res = mp_2expt (a, b->used * 2 * DIGIT_BIT)) != MP_OKAY) {
+    return res;
   }
-
-  /* set the used to zero, allocated digits to the default precision
-   * and sign to positive */
-  a->used  = 0;
-  a->alloc = MP_PREC;
-  a->sign  = MP_ZPOS;
-
-  return MP_OKAY;
+  return mp_div (a, b, a, NULL);
 }

@@ -14,26 +14,29 @@
  */
 #include <tommath.h>
 
-/* computes b = a*a */
-int
-mp_sqr (mp_int * a, mp_int * b)
+/* determines the setup value */
+int 
+mp_reduce_2k_setup(mp_int *a, mp_digit *d)
 {
-  int     res;
-  if (a->used >= TOOM_SQR_CUTOFF) {
-    res = mp_toom_sqr(a, b);
-  } else if (a->used >= KARATSUBA_SQR_CUTOFF) {
-    res = mp_karatsuba_sqr (a, b);
-  } else {
-
-    /* can we use the fast multiplier? */
-    if ((a->used * 2 + 1) < MP_WARRAY && 
-         a->used < 
-         (1 << (sizeof(mp_word) * CHAR_BIT - 2*DIGIT_BIT - 1))) {
-      res = fast_s_mp_sqr (a, b);
-    } else {
-      res = s_mp_sqr (a, b);
-    }
-  }
-  b->sign = MP_ZPOS;
-  return res;
+   int res, p;
+   mp_int tmp;
+   
+   if ((res = mp_init(&tmp)) != MP_OKAY) {
+      return res;
+   }
+   
+   p = mp_count_bits(a);
+   if ((res = mp_2expt(&tmp, p)) != MP_OKAY) {
+      mp_clear(&tmp);
+      return res;
+   }
+   
+   if ((res = s_mp_sub(&tmp, a, &tmp)) != MP_OKAY) {
+      mp_clear(&tmp);
+      return res;
+   }
+   
+   *d = tmp.dp[0];
+   mp_clear(&tmp);
+   return MP_OKAY;
 }

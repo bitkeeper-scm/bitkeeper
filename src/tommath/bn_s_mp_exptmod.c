@@ -14,25 +14,12 @@
  */
 #include <tommath.h>
 
-/* computes Y == G^X mod P, HAC pp.616, Algorithm 14.85
- *
- * Uses a left-to-right k-ary sliding window to compute the modular exponentiation.
- * The value of k changes based on the size of the exponent.
- *
- * Uses Montgomery or Diminished Radix reduction [whichever appropriate]
- */
 int
-mp_exptmod_fast (mp_int * G, mp_int * X, mp_int * P, mp_int * Y, int redmode)
+s_mp_exptmod (mp_int * G, mp_int * X, mp_int * P, mp_int * Y)
 {
-  mp_int  M[256], res;
-  mp_digit buf, mp;
+  mp_int  M[256], res, mu;
+  mp_digit buf;
   int     err, bitbuf, bitcpy, bitcnt, mode, digidx, x, y, winsize;
-  
-  /* use a pointer to the reduction algorithm.  This allows us to use
-   * one of many reduction algorithms without modding the guts of
-   * the code with if statements everywhere.  
-   */
-  int     (*redux)(mp_int*,mp_int*,mp_digit);
 
   /* find window size */
   x = mp_count_bits (X);
@@ -53,15 +40,14 @@ mp_exptmod_fast (mp_int * G, mp_int * X, mp_int * P, mp_int * Y, int redmode)
   }
 
 #ifdef MP_LOW_MEM
-  if (winsize > 5) {
-     winsize = 5;
-  }
+    if (winsize > 5) {
+       winsize = 5;
+    }
 #endif
 
-
-  /* init G array */
+  /* init M array */
   for (x = 0; x < (1 << winsize); x++) {
-    if ((err = mp_init (&M[x])) != MP_OKAY) {
+    if ((err = mp_init_size (&M[x], 1)) != MP_OKAY) {
       for (y = 0; y < x; y++) {
         mp_clear (&M[y]);
       }
@@ -69,85 +55,53 @@ mp_exptmod_fast (mp_int * G, mp_int * X, mp_int * P, mp_int * Y, int redmode)
     }
   }
 
-  /* determine and setup reduction code */
-  if (redmode == 0) {
-     /* now setup montgomery  */
-     if ((err = mp_montgomery_setup (P, &mp)) != MP_OKAY) {
-        goto __M;
-     }
-     
-     /* automatically pick the comba one if available (saves quite a few calls/ifs) */
-     if (((P->used * 2 + 1) < MP_WARRAY) &&
-          P->used < (1 << ((CHAR_BIT * sizeof (mp_word)) - (2 * DIGIT_BIT)))) {
-        redux = fast_mp_montgomery_reduce;
-     } else {
-        /* use slower baselien method */
-        redux = mp_montgomery_reduce;
-     }
-  } else if (redmode == 1) {
-     /* setup DR reduction */
-     mp_dr_setup(P, &mp);
-     redux = mp_dr_reduce;
-  } else {
-     /* setup 2k reduction */
-     if ((err = mp_reduce_2k_setup(P, &mp)) != MP_OKAY) {
-        goto __M;
-     }
-     redux = mp_reduce_2k;
+  /* create mu, used for Barrett reduction */
+  if ((err = mp_init (&mu)) != MP_OKAY) {
+    goto __M;
   }
-
-  /* setup result */
-  if ((err = mp_init (&res)) != MP_OKAY) {
-    goto __RES;
+  if ((err = mp_reduce_setup (&mu, P)) != MP_OKAY) {
+    goto __MU;
   }
 
   /* create M table
    *
-   * The M table contains powers of the input base, e.g. M[x] = G^x mod P
+   * The M table contains powers of the input base, e.g. M[x] = G**x mod P
    *
    * The first half of the table is not computed though accept for M[0] and M[1]
    */
-
-  if (redmode == 0) {
-     /* now we need R mod m */
-     if ((err = mp_montgomery_calc_normalization (&res, P)) != MP_OKAY) {
-       goto __RES;
-     }
-
-     /* now set M[1] to G * R mod m */
-     if ((err = mp_mulmod (G, &res, P, &M[1])) != MP_OKAY) {
-       goto __RES;
-     }
-  } else {
-     mp_set(&res, 1);
-     if ((err = mp_mod(G, P, &M[1])) != MP_OKAY) {
-        goto __RES;
-     }
+  if ((err = mp_mod (G, P, &M[1])) != MP_OKAY) {
+    goto __MU;
   }
 
   /* compute the value at M[1<<(winsize-1)] by squaring M[1] (winsize-1) times */
   if ((err = mp_copy (&M[1], &M[1 << (winsize - 1)])) != MP_OKAY) {
-    goto __RES;
+    goto __MU;
   }
 
   for (x = 0; x < (winsize - 1); x++) {
     if ((err = mp_sqr (&M[1 << (winsize - 1)], &M[1 << (winsize - 1)])) != MP_OKAY) {
-      goto __RES;
+      goto __MU;
     }
-    if ((err = redux (&M[1 << (winsize - 1)], P, mp)) != MP_OKAY) {
-      goto __RES;
+    if ((err = mp_reduce (&M[1 << (winsize - 1)], P, &mu)) != MP_OKAY) {
+      goto __MU;
     }
   }
 
   /* create upper table */
   for (x = (1 << (winsize - 1)) + 1; x < (1 << winsize); x++) {
     if ((err = mp_mul (&M[x - 1], &M[1], &M[x])) != MP_OKAY) {
-      goto __RES;
+      goto __MU;
     }
-    if ((err = redux (&M[x], P, mp)) != MP_OKAY) {
-      goto __RES;
+    if ((err = mp_reduce (&M[x], P, &mu)) != MP_OKAY) {
+      goto __MU;
     }
   }
+
+  /* setup result */
+  if ((err = mp_init (&res)) != MP_OKAY) {
+    goto __MU;
+  }
+  mp_set (&res, 1);
 
   /* set initial mode and bit cnt */
   mode   = 0;
@@ -168,7 +122,7 @@ mp_exptmod_fast (mp_int * G, mp_int * X, mp_int * P, mp_int * Y, int redmode)
     }
 
     /* grab the next msb from the exponent */
-    y = (mp_digit)(buf >> (DIGIT_BIT - 1)) & 1;
+    y = (buf >> (mp_digit)(DIGIT_BIT - 1)) & 1;
     buf <<= (mp_digit)1;
 
     /* if the bit is zero and mode == 0 then we ignore it
@@ -176,16 +130,15 @@ mp_exptmod_fast (mp_int * G, mp_int * X, mp_int * P, mp_int * Y, int redmode)
      * in the exponent.  Technically this opt is not required but it
      * does lower the # of trivial squaring/reductions used
      */
-    if (mode == 0 && y == 0) {
+    if (mode == 0 && y == 0)
       continue;
-    }
 
     /* if the bit is zero and mode == 1 then we square */
     if (mode == 1 && y == 0) {
       if ((err = mp_sqr (&res, &res)) != MP_OKAY) {
         goto __RES;
       }
-      if ((err = redux (&res, P, mp)) != MP_OKAY) {
+      if ((err = mp_reduce (&res, P, &mu)) != MP_OKAY) {
         goto __RES;
       }
       continue;
@@ -202,17 +155,17 @@ mp_exptmod_fast (mp_int * G, mp_int * X, mp_int * P, mp_int * Y, int redmode)
         if ((err = mp_sqr (&res, &res)) != MP_OKAY) {
           goto __RES;
         }
-        if ((err = redux (&res, P, mp)) != MP_OKAY) {
+        if ((err = mp_reduce (&res, P, &mu)) != MP_OKAY) {
           goto __RES;
         }
       }
 
       /* then multiply */
       if ((err = mp_mul (&res, &M[bitbuf], &res)) != MP_OKAY) {
-        goto __RES;
+        goto __MU;
       }
-      if ((err = redux (&res, P, mp)) != MP_OKAY) {
-        goto __RES;
+      if ((err = mp_reduce (&res, P, &mu)) != MP_OKAY) {
+        goto __MU;
       }
 
       /* empty window and reset */
@@ -229,7 +182,7 @@ mp_exptmod_fast (mp_int * G, mp_int * X, mp_int * P, mp_int * Y, int redmode)
       if ((err = mp_sqr (&res, &res)) != MP_OKAY) {
         goto __RES;
       }
-      if ((err = redux (&res, P, mp)) != MP_OKAY) {
+      if ((err = mp_reduce (&res, P, &mu)) != MP_OKAY) {
         goto __RES;
       }
 
@@ -239,23 +192,17 @@ mp_exptmod_fast (mp_int * G, mp_int * X, mp_int * P, mp_int * Y, int redmode)
         if ((err = mp_mul (&res, &M[1], &res)) != MP_OKAY) {
           goto __RES;
         }
-        if ((err = redux (&res, P, mp)) != MP_OKAY) {
+        if ((err = mp_reduce (&res, P, &mu)) != MP_OKAY) {
           goto __RES;
         }
       }
     }
   }
 
-  if (redmode == 0) {
-     /* fixup result if Montgomery reduction is used */
-     if ((err = mp_montgomery_reduce (&res, P, mp)) != MP_OKAY) {
-       goto __RES;
-     }
-  }
-
   mp_exch (&res, Y);
   err = MP_OKAY;
 __RES:mp_clear (&res);
+__MU:mp_clear (&mu);
 __M:
   for (x = 0; x < (1 << winsize); x++) {
     mp_clear (&M[x]);
