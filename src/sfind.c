@@ -12,7 +12,7 @@ WHATSTR("@(#)%K%");
  * TODO - make it find only files locked by a particular user
  */
 char *sfiles_usage = "\n\
-usage: sfiles [-acCdglpPx] [-r[root]] [directories]\n\n\
+usage: sfiles [-acCdglpPrx] [directories]\n\n\
     -a		when used with -C, list all revs, not just the tip\n\
     -c		list only changed files (locked and modified)\n\
     -C		list leaves which are not in a changeset as file:1.3\n\
@@ -23,7 +23,7 @@ usage: sfiles [-acCdglpPx] [-r[root]] [directories]\n\n\
     -p		(paranoid) opens each file to make sure it is an SCCS file\n\
 		but only if the pathname to the file is not ../SCCS/s.*\n\
     -P		(paranoid) opens each file to make sure it is an SCCS file\n\
-    -r[root]	rebuild the id to pathname cache\n\
+    -r		rebuild the id to pathname cache\n\
     -u		list only unlocked files\n\
     -x		list files which have no revision control files\n\
     		Note: revision control files must look like SCCS/s.*, not\n\
@@ -41,13 +41,12 @@ FILE	*id_cache;
 MDBM	*idDB;
 int	dups;
 int	mixed;		/* running in mixed long/short mode */
-sccs	*cset;
 int	file(char *f, int (*func)());
-int	func(const char *filename, struct stat *sb, int flag);
+int	func(const char *filename, const struct stat *sb, int flag);
 int	hasDiffs(char *file);
 int	isSccs(char *s);
 void	rebuild(void);
-int	caches(const char *filename, struct stat *sb, int flag);
+int	caches(const char *filename, const struct stat *sb, int flag);
 char	*name(char *);
 sccs	*cset;
 int	lftw(const char *dir,
@@ -57,14 +56,14 @@ int
 main(int ac, char **av)
 {
 	int	c, i;
-	char	*root = 0, *path;
+	char	*path;
 	
 	platformSpecificInit(NULL); 
 	if (ac > 1 && streq("--help", av[1])) {
 usage:		fprintf(stderr, "%s", sfiles_usage);
 		exit(0);
 	}
-	while ((c = getopt(ac, av, "acCdDglpPr|uvx")) != -1) {
+	while ((c = getopt(ac, av, "acCdDglpPruvx")) != -1) {
 		switch (c) {
 		    case 'a': aFlg++; break;
 		    case 'c': cFlg++; break;
@@ -75,7 +74,7 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		    case 'l': lFlg++; break;
 		    case 'p': pFlg++; break;
 		    case 'P': Pflg++; break;
-		    case 'r': rFlg++; root = optarg; break;
+		    case 'r': rFlg++; break;
 		    case 'v': vFlg++; break;
 		    case 'u': uFlg++; break;
 		    case 'x': xFlg++; break;
@@ -128,7 +127,16 @@ int
 file(char *f, int (*func)())
 {
 	struct	stat sb;
-	char	*sfile, *gfile;
+	char	*s, *sfile, *gfile;
+
+	/*
+	 * This catches garbage like SCCS/OLD-junk.
+	 */
+	s = rindex(f, '/');
+	if ((s >= f + 4) && strneq(s - 4, "SCCS/", 5) && !sccs_filetype(f)) {
+		if (xFlg) printf("%s\n", f);
+		return (0);
+	}
 
 	sfile = name2sccs(f);
 	gfile = sccs2name(sfile);
@@ -145,7 +153,7 @@ file(char *f, int (*func)())
 }
 
 int
-func(const char *filename, struct stat *sb, int flag)
+func(const char *filename, const struct stat *sb, int flag)
 {
 	register char *file = (char *)filename;
 	register char *s;
@@ -184,16 +192,23 @@ func(const char *filename, struct stat *sb, int flag)
 	}
 	if (S_ISDIR(sb->st_mode)) return (0);
 	if (xFlg) {
-		sfile = name2sccs(file);
-		gfile = sccs2name(sfile);
-		if (streq(gfile, file) && !exists(sfile)) {
-			printf("%s\n", gfile);
+		unless (sccs_filetype(file)) {
+			printf("%s\n", file);
+		} else {
+			sfile = name2sccs(file);
+			gfile = sccs2name(sfile);
+			unless (gfile && sfile) {
+				printf("%s\n", file);
+			}
+			if (streq(gfile, file) && !exists(sfile)) {
+				printf("%s\n", gfile);
+			}
+			if (sfile) free(sfile);
+			if (gfile) free(gfile);
 		}
-		free(sfile);
-		free(gfile);
 		return (0);
 	}
-	unless (is_sccs(file)) return 0;
+	unless (sccs_filetype(file) == 's') return 0;
 	s = strrchr(file, '/');
 	assert(s);
 	s++;
@@ -301,13 +316,14 @@ rebuild()
 
 	unless (rFlg) goto c;
 
-	unless ((i = open("SCCS/z.id_cache", O_CREAT|O_EXCL, 0600)) > 0) {
+	unless ((i = open(IDCACHE_LOCK, O_CREAT|O_EXCL, GROUP_MODE)) > 0) {
 		fprintf(stderr, "sfiles: can't lock id cache\n");
 		exit(1);
 	}
 	close(i);	/* unlink it when we are done */
-	unless (id_cache = fopen("SCCS/x.id_cache", "w")) {
-		perror("SCCS/x.id_cache");
+	unlink(IDCACHE);
+	unless (id_cache = fopen(IDCACHE, "w")) {
+		perror(IDCACHE);
 		exit(1);
 	}
 	fprintf(id_cache, "\
@@ -319,9 +335,9 @@ rebuild()
 	idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	assert(idDB);
 c:	lftw(".", caches, 15);
-	if (rFlg) {
+	if (id_cache) {
 		fclose(id_cache);
-		unlink("SCCS/z.id_cache");
+		unlink(IDCACHE_LOCK);
 	}
 	sccs_free(cset);
 	mdbm_close(idDB);
@@ -334,41 +350,14 @@ visit(delta *d)
 	if (d->parent) visit(d->parent);
 }
 
-/*
- * Print out everything leading from start to d, not including start.
- * XXX - stolen from cset.c - both copies need to go in slib.c.
- */
-void
-csetDeltas(sccs *sc, delta *start, delta *d)
-{
-	int	i;
-
-	unless (d) return;
-	if ((d == start) || (d->flags & D_VISITED)) return;
-	d->flags |= D_VISITED;
-	/*
-	 * We don't need the merge pointer, it is part of the include list.
-	 * if (d->merge) csetDeltas(sc, start, sfind(sc, d->merge));
-	 */
-	EACH(d->include) {
-		delta	*e = sfind(sc, d->include[i]);
-
-		csetDeltas(sc, e->parent, e);
-	}
-	csetDeltas(sc, start, d->parent);
-	// XXX - fixme - removed deltas not done.
-	// Is this an issue?  I think makepatch handles them.
-	if (d->type == 'D') printf("%s:%s\n", sc->sfile, d->rev);
-}
-
 void
 save(sccs *sc, MDBM *idDB, char *buf)
 {
 	if (mdbm_store_str(idDB, buf, sc->gfile, MDBM_INSERT)) {
 		if (errno == EEXIST) {
 			fprintf(stderr,
-			    "Duplicate id '%s' for %s\n  Used by %s\n",
-			    buf, sc->gfile, buf);
+			    "Duplicate key '%s' for %s\n  Used by %s\n",
+			    buf, sc->gfile, mdbm_fetch_str(idDB, buf));
 			dups++;
 		} else {
 			perror("mdbm_store");
@@ -378,17 +367,18 @@ save(sccs *sc, MDBM *idDB, char *buf)
 }
 
 int
-caches(const char *filename, struct stat *sb, int flag)
+caches(const char *filename, const struct stat *sb, int flag)
 {
-	register char *file = (char *)filename;
+	char	*file = (char *)filename;
 	sccs	*sc;
-	register delta *d, *e;
+	delta	*d, *e;
 	char	buf[MAXPATH*2];
 	char	*t;
+	int	n;
 
 	if (S_ISDIR(sb->st_mode)) return (0);
 	if ((file[0] == '.') && (file[1] == '/')) file += 2;
-	unless (is_sccs(file)) return (0);
+	unless (sccs_filetype(file) == 's') return (0);
 	unless (sc = sccs_init(file, INIT_NOCKSUM, 0)) return (0);
 	unless (HAS_SFILE(sc) && sc->cksumok) {
 		sccs_free(sc);
@@ -399,9 +389,9 @@ caches(const char *filename, struct stat *sb, int flag)
 	if (rFlg) {
 		delta	*ino = sccs_ino(sc);
 
-		sccs_sdelta(sc, sccs_ino(sc), buf);
 		/* update the id cache only if root path != current path. */
 		assert(ino->pathname);
+		sccs_sdelta(sc, ino, buf);
 		unless (streq(ino->pathname, sc->gfile)) {
 			fprintf(id_cache, "%s %s\n", buf, sc->gfile);
 		}
@@ -416,7 +406,8 @@ caches(const char *filename, struct stat *sb, int flag)
 		}
 	}
 
-	unless (Cflg && !(sc->state & S_CSET)) {
+	/* XXX - should this be (Cflg && !(sc->state & S_CSET)) ? */
+	unless (Cflg) {
 		sccs_free(sc);
 		return (0);
 	}
@@ -428,33 +419,20 @@ caches(const char *filename, struct stat *sb, int flag)
 		return (0);
 	}
 
-	/* Go look for long and short versions in the cset */
-	sccs_sdelta(sc, sccs_ino(sc), buf);
-	unless (t = mdbm_fetch_str(cset->mdbm, buf)) {
-		if (t = sccs_iskeylong(buf)) {
-			*t = 0;
-			t = mdbm_fetch_str(cset->mdbm, buf);
-		}
+	/*
+	 * If it's marked, we're done.
+	 */
+	if (d->flags & D_CSET) {
+		sccs_free(sc);
+		return (0);
 	}
-	if (t) {
-		if (e = sccs_findKey(sc, t)) {
-			while (e && (e->type != 'D')) e = e->parent;
-			if (e != d) {
-				if (aFlg) {
-					visit(e);
-					csetDeltas(sc, e, d);
-				} else {
-					printf("%s:%s\n", sc->sfile, d->rev);
-				}
-			}
-		}
-	} else {	/* this is a new file */
-		if (aFlg) {
-			csetDeltas(sc, 0, d);
-		} else {
-			printf("%s:%s\n", sc->sfile, d->rev);
-		}
+
+	printf("%s:%s\n", sc->sfile, d->rev);
+	while (aFlg && d->parent && !(d->parent->flags & D_CSET)) {
+		d = d->parent;
+		printf("%s:%s\n", sc->sfile, d->rev);
 	}
+
 	sccs_free(sc);
 	return (0);
 }
@@ -487,6 +465,7 @@ lftw(const char *dir,
 	char	tmp_buf[MAXPATH];
 	char	*slash = "/";
 	int	flag, rc = 0, len;
+	long	lastInode = 0;
 
 	flag = _ftw_get_flag(dir, &sbuf);
 
@@ -512,6 +491,13 @@ lftw(const char *dir,
 		    (strcmp(e->d_name, "..") == 0))
 			continue;  /* skip "." && ".." */
 
+		/*
+		 * Linux 2.3.x NFS bug, skip repeats.
+		 * lm -> awc will this work on NT?
+		 */
+		if (lastInode == e->d_ino) continue;
+		lastInode = e->d_ino;
+
 		/* now we do the real work */
 		sprintf(tmp_buf, "%s%s%s", dir, slash, e->d_name);
 		flag = _ftw_get_flag(tmp_buf, &sbuf);
@@ -530,7 +516,6 @@ lftw(const char *dir,
 				goto done;
 			}
 		}
-
 	}
 done:
 	closedir(d);

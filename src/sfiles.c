@@ -115,7 +115,7 @@ again:
 		flags &= ~SF_GFILE;
 	}
 norev:	
-	if (!is_sccs(buf)) {
+	unless (sccs_filetype(buf) == 's') {
 #ifdef	ATT_SCCS
 		fprintf(stderr, "Not an SCCS file: %s\n", buf);
 		goto again;
@@ -250,7 +250,7 @@ oksccs(char *sfile, int flags, int complain)
 	int	ok;
 	struct	stat sbuf;
 
-	unless (is_sccs(sfile)) {
+	unless (sccs_filetype(buf) == 's') {
 		if (complain)
 			fprintf(stderr, "%s: not an s.file: %s\n", prog, sfile);
 		return (0);

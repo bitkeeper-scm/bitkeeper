@@ -136,7 +136,7 @@ rmcaches()
 {
 	// XXX - needs to be updated when we move the cache to BitKeeper/caches
 	if (sccs_cd2root(0, 0) == 0) {
-		unlink("SCCS/x.id_cache");
+		unlink(IDCACHE);
 	}
 }
 
@@ -275,9 +275,9 @@ undo(sccs *s)
 			cleanup();
 		}
 		sprintf(zero, "UNDO/%s", s->sfile);
-		fd = creat(zero, 0664);
+		fd = creat(zero, GROUP_MODE);
 		if (fd == -1) mkdirp(zero);
-		close(creat(zero, 0664));
+		close(creat(zero, GROUP_MODE));
 		assert(exists(zero) && (size(zero) == 0));
 		if (undo_v > 1) fprintf(stderr, "%s: remove all\n", s->sfile);
 		if (undo_v > 2) fprintf(stderr, "ZERO: %s\n", zero);
@@ -362,7 +362,7 @@ getfiles(sccs *s, char *rev)
 			sccs_getdiffs(s, d->rev, 0, path);
 		} else {
 			/* make a null file */
-			close(creat(path, 0664));
+			close(creat(path, GROUP_MODE));
 		}
 	}
 }

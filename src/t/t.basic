@@ -157,6 +157,7 @@ sort <<EOF > LIST
 .
 bar
 bar/blech
+BitKeeper/etc
 EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo Failed.; diff SFILES LIST; exit 1; fi

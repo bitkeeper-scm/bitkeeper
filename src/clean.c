@@ -41,7 +41,7 @@ usage:		fputs(clean_help, stderr);
 		    case 's':
 		    case 'q': flags |= CLEAN_SHUTUP; sflags |= SF_SILENT; break;
 		    case 'u': flags |= CLEAN_UNEDIT; sflags &= ~SF_GFILE; break;
-		    case 'n': flags |= CLEAN_UNLOCK; break;
+		    case 'n': flags |= CLEAN_UNLOCK; sflags &= ~SF_GFILE; break;
 		    case 'v': flags &= ~SILENT; break;
 			break;
 		    default:
@@ -53,10 +53,9 @@ usage:		fputs(clean_help, stderr);
 	 * Too dangerous to unedit everything automagically,
 	 * make 'em spell it out.
 	 */
-	if (flags & CLEAN_UNEDIT) {
+	if (flags & (CLEAN_UNEDIT|CLEAN_UNLOCK)) {
 		unless (name =
-		    sfileFirst("clean",
-				&av[optind], sflags|SF_NODIREXPAND)) {
+		    sfileFirst("clean", &av[optind], sflags|SF_NODIREXPAND)) {
 			fprintf(stderr,
 			    "clean: must have explicit list "
 			    "when discarding changes.\n");

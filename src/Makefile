@@ -99,7 +99,7 @@ ansi:
 # -Wno-parentheses shuts up "suggest parentheses around assignment ...".
 # Unfortunately it also turns off dangling else warnings.
 Wall:
-	$(MAKE) CFLAGS="-g -O -DWALL -Wall -Wno-parentheses -DPURIFY" all
+	$(MAKE) CFLAGS="-g -DWALL -DLINT -Wall -Wno-parentheses -DPURIFY" all
 
 WWall:
 	$(MAKE) CFLAGS="-g -O -W -Wall -Wstrict-prototypes -Wmissing-prototypes -Wwrite-strings -DPURIFY" all
@@ -291,7 +291,7 @@ testfast: testfast.perl substvars
 
 bk: bk.sh port/platform.sh substvars prs
 	./prs -hr+ -d'$$if(:SYMBOL:){(:SYMBOL:) }:UTC:' ../ChangeSet >bk.ver
-	./substvars bk.sh | sed "s/VERSION=unknown/VERSION=`cat bk.ver`/" >bk.T
+	./substvars bk.sh | sed "s/VERSION=unknown/VERSION=\"`cat bk.ver`\"/" >bk.T
 	./substvars port/platform.sh > platform.sh.T
 	cat platform.sh.T bk.T > bk.T2
 	chmod +x bk.T2
@@ -453,14 +453,15 @@ rmdel.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
 takepatch.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
 cset.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h range.h comments.c
 cset.o: host.c user.c
-g2sccs.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
-rangemain.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h range.h
-zone.o: system.h unix.h purify.h mdbm/mdbm.h config.h
-rechksum.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
-sccs_mv.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h comments.c
-sccsmv.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
-sccsrm.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h comments.c
-sccscat.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h range.h
-key2rev.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
-rcs.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
-localtm.o: system.h unix.h purify.h mdbm/mdbm.h config.h
+g2sccs.o: system.h purify.h mdbm/mdbm.h config.h sccs.h
+rangemain.o: system.h purify.h mdbm/mdbm.h config.h sccs.h range.h
+zone.o: system.h purify.h mdbm/mdbm.h config.h
+rechksum.o: system.h purify.h mdbm/mdbm.h config.h sccs.h
+cset_todo.o: mdbm/mdbm.h
+sccs_mv.o: system.h purify.h mdbm/mdbm.h config.h sccs.h comments.c
+sccsmv.o: system.h purify.h mdbm/mdbm.h config.h sccs.h
+sccsrm.o: system.h purify.h mdbm/mdbm.h config.h sccs.h comments.c
+sccscat.o: system.h purify.h mdbm/mdbm.h config.h sccs.h range.h
+key2rev.o: system.h purify.h mdbm/mdbm.h config.h sccs.h
+rcs.o: system.h purify.h mdbm/mdbm.h config.h sccs.h
+localtm.o: system.h purify.h mdbm/mdbm.h config.h

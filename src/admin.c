@@ -6,10 +6,7 @@ WHATSTR("@(#)%K%");
 static const char help[] = "\n\
 usage: admin options [- | file file file...]\n\
 \n\
-    A useful thing to note is that\n\
-	    bk sfiles | bk admin -what -ever -\n\
-    will apply -what -ever to every file in the source tree.\n\
-    -q, -s		run quietly\n\
+    -q			run quietly\n\
     -r<rev>		revision to add or modify\n\
     -y<comment>		comment for change\n\
     -n			create new SCCS history file\n\
@@ -17,7 +14,7 @@ usage: admin options [- | file file file...]\n\
     -t[<file>]		read description from <file>\n\
     -T			clear description\n\
     -h			check s.file structure\n\
-    -H			same as -h, plus check file contents are 7-bit ASCII\n\
+    -H			same as -h, plus check file contents are ASCII\n\
     -z			recalculate file checksum\n\
 \n\
     -f<f><val>		set flag (value is optional)\n\
@@ -79,7 +76,7 @@ main(int ac, char **av)
 	char	*encp = 0, *compp = 0;
 	int	error = 0;
 	int	bigpad = 0;
-	int	fastSym, dopath = 0, rmCset = 0, rmPath = 0;
+	int	fastSym = 0, dopath = 0, rmCset = 0, rmPath = 0;
 	int	doDates = 0, touchGfile = 0;
 	char	*m = 0;
 
@@ -199,9 +196,11 @@ main(int ac, char **av)
 	/*
 	 * If we are adding exactly one symbol, do it quickly.
 	 */
+#if 0 /* Broken because of permission checking in init */
 	fastSym = !(flags & ~SILENT) && !nextf && !nextu && !nextp &&
 	    !rev && nexts && (s[0].flags == A_ADD) && !s[1].flags;
 	if (fastSym) init_flags |= (INIT_MAPWRITE|INIT_NOCKSUM);
+#endif
 	while (name) {
 		if (flags & NEWFILE) {
 			if (do_checkin(name, encp, compp,

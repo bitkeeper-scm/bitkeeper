@@ -22,11 +22,11 @@ _cd2root() {
 _setup() { 
 	CONFIG=
 	NAME=
-	FORCE=no
+	FORCE=NO
 	while getopts c:fn: opt
 	do	case "$opt" in
 		    c) CONFIG=$OPTARG;;
-		    f) FORCE=yes;;
+		    f) FORCE=YES;;
 		    n) NAME=$OPTARG;;
 		esac
 	done
@@ -39,7 +39,7 @@ _setup() {
 	if [ -e "$1" ]
 	then	echo bk: "$1" exists already, setup fails.; exit 1
 	fi
-	if [ $FORCE = no ]
+	if [ $FORCE = NO ]
 	then	_gethelp setup_1
 		echo $N "Create new project? [no] " $NL
 		read ans
@@ -82,7 +82,7 @@ _setup() {
 	# setups alias.
 	if [ "`cat Description`" = "BitKeeper Test repository" ]
 	then logsetup=
-	else logsetup=yes
+	else logsetup=YES
 	fi
 	${RM} -f Description D.save
 	cd BitKeeper/etc
@@ -107,7 +107,7 @@ _setup() {
 	else	cp $CONFIG config
 	fi
 	${BIN}ci -qi config
-	if [ x$logsetup = xyes ]
+	if [ x$logsetup = xYES ]
 	then	${BIN}get -s config
 		_sendConfig setups@openlogging.org
 	fi
@@ -151,13 +151,13 @@ _send() {
 			if [ -f $LOG ]
 			then	sort -u < $LOG > ${TMP}has$$
 				${BIN}prs -hd:KEY: ChangeSet| sort > ${TMP}here$$
-				FIRST=yes
+				FIRST=YES
 				comm -23 ${TMP}here$$ ${TMP}has$$ |
 				${BIN}key2rev ChangeSet | while read x
-				do	if [ $FIRST != yes ]
+				do	if [ $FIRST != YES ]
 					then	echo $N ",$x"$NL
 					else	echo $N "$x"$NL
-						FIRST=no
+						FIRST=NO
 					fi
 				done > ${TMP}rev$$
 				REV=`cat ${TMP}rev$$`
@@ -220,18 +220,17 @@ _save() {
 
 # Show repository status
 _status() {
-	V=no
+	V=NO
 	while getopts v opt
 	do	case "$opt" in
-		v) V=yes;;
+		v) V=YES;;
 		esac
 	done
-	if [ X$1 != X -a -d "$1" ]
-	then	cd $1
-	fi
+	shift `expr $OPTIND - 1`
+	if [ "X$1" != X -a -d "$1" ]; then cd $1; fi
 	_cd2root
 	echo Status for BitKeeper repository `pwd`
-	bk version
+	_version
 	if [ -d RESYNC ]
 	then	echo Resync in progress
 	else	if [ -d PENDING ]
@@ -239,24 +238,38 @@ _status() {
 		fi
 	fi
 	# List counts or file states
-	if [ $V = yes ]
-	then	( bk sfiles -x | sed 's/^/Extra:		/'
+	if [ $V = YES ]
+	then	
+		_users | sed 's/^/User:		/'
+		( bk sfiles -x | sed 's/^/Extra:		/'
 		  bk sfiles -cg | sed 's/^/Modified:	/'
 		  bk sfiles -Cg | sed 's/^/Uncommitted:	/'
 		) | sort
-	else	echo `bk sfiles -x | wc -l` files not under revision control.
-		echo `bk sfiles -c | wc -l` files modified and not checked in.
-		echo `bk sfiles -C | wc -l` files with uncommitted deltas.
+	else	
+		echo "`_users | wc -l` people have made deltas."
+		echo "`bk sfiles | wc -l` files under revision control."
+		echo "`bk sfiles -x | wc -l` files not under revision control."
+		echo "`bk sfiles -c | wc -l` files modified and not checked in."
+		echo "`bk sfiles -C | wc -l` files with uncommitted deltas."
 	fi
 }
+
 
 # XXX - not documented
 _new() {
 	${BIN}ci -i "$@"
 }
 
-_unlock() {
+_edit() {
+	${BIN}get -e "$@"
+}
+
+_unedit() {
 	${BIN}clean -u "$@"
+}
+
+_unlock() {
+	${BIN}clean -n "$@"
 }
 
 _mv() {
@@ -334,14 +347,17 @@ _chkConfig() {
 	fi
 }
 
-# Send the config file 
+# Send configuration information for those sites which have disabled logging.
+# This information is not to be publicly disclosed but because it travels
+# over email, we can't leak any sensitive information.
 _sendConfig() {
 	if [ X$1 = X ]
 	then	return		# error, should never happen
 	fi
 	_cd2root
 	P=`${BIN}prs -hr1.0 -d:FD: ChangeSet | head -1`
-	( ${BIN}prs -hr1.0 \
+	( ${BIN}bk status
+	  ${BIN}prs -hr1.0 \
 	-d'$each(:FD:){Project:\t(:FD:)}\nChangeSet ID:\t:LONGKEY:' ChangeSet;
 	  echo "User:		$USER"
 	  echo "Host:		`hostname`"
@@ -367,22 +383,26 @@ _logAddr() {
 	echo ${LOG#*:} 
 }
 
-# Determine if the repo is multiuser.
-# If it isn't, we don't need to log anything.
 # The rule is: for any user@host.dom.ain, if the last component is 3 letters,
 # then the last two components are significant; if the last components are
 # two letters, then the last three are.
 # This is not always right (consider .to) but works most of the time.
 # We are fascist about the letters allowed on the RHS of an address.
-_checkMultiuser() {
-	${BIN}prs -hd:HT: ChangeSet >${TMP}hosts$$
-	${BIN}prs -hd:P: ChangeSet >${TMP}users$$
-	tr A-Z a-z <${TMP}hosts$$ | sed '
-s/^[a-z0-9.-]*\.\([a-z0-9-]*\)\.\([a-z0-9-][a-z0-9-][a-z0-9-]\)$/\1.\2/
-s/^[a-z0-9.-]*\.\([a-z0-9-]*\.[a-z0-9-][a-z0-9-]\)\.\([a-z0-9-][a-z0-9-]\)$/\1.\2/
-' > ${TMP}shosts$$
-	paste -d@ ${TMP}users$$ ${TMP}shosts$$ | sort | uniq | wc -l
-	rm -f ${TMP}hosts$$ ${TMP}users$$ ${TMP}shosts$$
+_users() {
+	if [ "X$1" = "X-a" ]; then ALL=YES; shift; else ALL=NO; fi
+	if [ X$1 != X -a -d "$1" ]; then cd $1; fi
+	_cd2root
+	${BIN}prs -hd':P:@:HT:' ChangeSet | sort -u > ${TMP}users$$
+	if [ $ALL = "YES" ]
+	then	cat ${TMP}users$$
+		/bin/rm ${TMP}users$$
+		return
+	fi
+	tr A-Z a-z < ${TMP}users$$ | sed '
+s/@[a-z0-9.-]*\.\([a-z0-9-]*\)\.\([a-z0-9-][a-z0-9-][a-z0-9-]\)$/@\1.\2/
+s/@[a-z0-9.-]*\.\([a-z0-9-]*\.[a-z0-9-][a-z0-9-]\)\.\([a-z0-9-][a-z0-9-]\)$/\1.\2/
+' | sort -u
+	${RM} -f ${TMP}users$$
 }
 
 # Log the changeset to openlogging.org or wherever they said to send it.
@@ -428,10 +448,10 @@ _sendLog() {
 	then if ${BIN}prs -hd:C: \
 	    -r`echo "$key" | ${BIN}key2rev BitKeeper/etc/config` \
 	    BitKeeper/etc/config | grep 'Logging OK' >/dev/null 2>&1
-	then first=yes
+	then first=YES
 	fi
 	fi
-	if [ x$first = xyes ]
+	if [ x$first = xYES ]
 	then R=1.0..$REV
 	else	case $REV in
 		*.*.*.*)	n=${REV%.*.*}
@@ -448,33 +468,51 @@ _sendLog() {
 	${BIN}cset -c -r$R | ${MAIL_CMD} -s "BitKeeper log: $P" $LOGADDR
 }
 
+_remark() {
+	if [ -f "BitKeeper/etc/SCCS/x.marked" ]; then return; fi
+	cat <<EOF
+
+BitKeeper is running a consistency check on your system because it has
+noticed that this check has not yet been run on this repository.
+This is a one time thing but takes quite a while on large repositories,
+roughly a minute per 1000 files in the repository.
+Please stand by and do not kill this process until it gets done.
+EOF
+	bk cset -M1.0..
+	touch "BitKeeper/etc/SCCS/x.marked"
+	echo "Consistency check completed, thanks for waiting."
+	echo ""
+}
+
 _commit() {
-	DOIT=no
-	GETCOMMENTS=yes
+	DOIT=NO
+	GETCOMMENTS=YES
 	COPTS=
 	CHECKLOG=_checkLog
 	FORCE=NO
+	RESYNC=NO
 	while getopts dfFRsS:y:Y: opt
 	do	case "$opt" in
-		d) DOIT=yes;;
+		d) DOIT=YES;;
 		f) CHECKLOG=:;;
 		F) FORCE=YES;;
-		R) cfgDir="../BitKeeper/etc/";; # called from RESYNC dir
+		R) RESYNC=YES; cfgDir="../BitKeeper/etc/";; # called from RESYNC
 		s) COPTS="-s $COPTS";;
 		S) COPTS="-S$OPTARG $COPTS";;
-		y) DOIT=yes; GETCOMMENTS=no; ${ECHO} "$OPTARG" > ${TMP}comments$$;;
-		Y) DOIT=yes; GETCOMMENTS=no; cp "$OPTARG" ${TMP}comments$$;;
+		y) DOIT=YES; GETCOMMENTS=NO; ${ECHO} "$OPTARG" > ${TMP}comments$$;;
+		Y) DOIT=YES; GETCOMMENTS=NO; cp "$OPTARG" ${TMP}comments$$;;
 		esac
 	done
 	shift `expr $OPTIND - 1`
 	_cd2root
+	if [ $RESYNC = "NO" ]; then _remark; fi
 	${BIN}sfiles -Ca > ${TMP}list$$
 	if [ $? != 0 ]
 	then	${RM} -f ${TMP}list$$
 		_gethelp duplicate_IDs
 		exit 1
 	fi
-	if [ $GETCOMMENTS = yes ]
+	if [ $GETCOMMENTS = YES ]
 	then	
 		if [ $FORCE = NO -a ! -s ${TMP}list$$ ]
 		then	echo Nothing to commit
@@ -494,13 +532,13 @@ _commit() {
 	${RM} -f ${TMP}list$$
 	COMMENTS=
 	L=----------------------------------------------------------------------
-	if [ $DOIT = yes ]
+	if [ $DOIT = YES ]
 	then	if [ -f ${TMP}comments$$ ]
 		then	COMMENTS="-Y${TMP}comments$$"
 		fi
 		LOGADDR=`_logAddr` || exit 1
 		export LOGADDR
-		nusers=`_checkMultiuser` || exit 1
+		nusers=`_users | wc -l` || exit 1
 		if [ $nusers -gt 1 ]
 		then $CHECKLOG
 		fi
@@ -531,7 +569,7 @@ _commit() {
 			fi
 			LOGADDR=`_logAddr` || exit 1
 			export LOGADDR
-			nusers=`_checkMultiuser` || exit 1
+			nusers=`_users | wc -l` || exit 1
 			if [ $nusers -gt 1 ]
 			then $CHECKLOG
 			fi
@@ -656,7 +694,7 @@ _commandHelp() {
 			;;
 		# this is the list of commands which have better help in the
 		# helptext file than --help yields.
-		unlock|unedit|check|sdiffs)
+		unlock|unedit|check|import|sdiffs)
 			_gethelp help_$i $BIN | $PAGER
 			;;
 		*)
@@ -664,12 +702,13 @@ _commandHelp() {
 			then	echo -------------- $i help ---------------
 				${BIN}$i --help
 			else	case $i in
-				    overview|setup|basics|import|differences|\
+				    overview|setup|basics|differences|\
 				    history|tags|changesets|resync|merge|\
 				    renames|gui|path|ranges|terms|regression|\
 				    backups|debug|sendbug|commit|pending|send|\
 				    resync|changes|undo|save|docs|RCS|status|\
-				    sccsmv|mv|sccsrm|rm|version|root|export)
+				    sccsmv|mv|sccsrm|rm|version|root|export|\
+				    users)
 					_gethelp help_$i $BIN | $PAGER
 					;;
 				    *)
@@ -800,8 +839,8 @@ case "$1" in
 	exit 1
 	;;
     setup|changes|pending|commit|sendbug|send|\
-    mv|man|undo|save|docs|rm|new|version|sdiffs|\
-    root|status|export|import)
+    mv|edit|unedit|unlock|man|undo|save|docs|rm|new|version|\
+    root|status|export|users|sdiffs)
 	cmd=$1
     	shift
 	_$cmd "$@"
@@ -826,7 +865,7 @@ case "$1" in
 	;;
 esac
 
-SFILES=no
+SFILES=NO
 if [ X$1 = X-r ]
 then	if [ X$2 != X -a -d $2 ]
 	then	cd $2
@@ -834,13 +873,13 @@ then	if [ X$2 != X -a -d $2 ]
 	else	_cd2root
 	fi
 	shift
-	SFILES=yes
+	SFILES=YES
 fi
 if [ X$1 = X-R ]
 then	_cd2root
 	shift
 fi
-if [ $SFILES = yes ]
+if [ $SFILES = YES ]
 then	${BIN}sfiles | bk "$@" -
 	exit $?
 fi

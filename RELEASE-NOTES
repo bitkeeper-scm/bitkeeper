@@ -1,11 +1,9 @@
+Release notes for BitKeeper version beta10.4.2
 
-Release notes for BitKeeper version beta10.
+We have binary releases for Linux, Irix6, and FreeBSD 2.2.
 
-We have binary releases for Linux, Irix6, and FreeBSD 2.2.  Other
-platforms will follow.  The source code is available only as a
-BitKeeper repository.
-
-* Installation
+Installation
+-----------------------------------------------------------------------------
 
 The binary tarball unpacks into a directory named "bitkeeper".  This
 may be placed in /usr or /usr/local as you see fit.  Several files
@@ -16,81 +14,95 @@ also need to symlink admin, delta, prs, rmdel, and unget.  Do NOT
 symlink ci and co; this will interfere with RCS.  We no longer
 recommend that you place the bitkeeper directory in your PATH.
 
+For you cut and paste fans:
+
+	BK=/usr/bitkeeper	# change this to match your installation
+	cd /usr/bin
+	ln -s $BK/bk .
+	ln -s $BK/get .
+	ln -s $BK/admin .
+	ln -s $BK/delta .
+	ln -s $BK/prs .
+	ln -s $BK/rmdel .
+	ln -s $BK/unget .
+
 You will need Tcl and Tk for the GUI, and Perl for resync and
 resolve.  Recommended versions are Tcl/Tk >=8.0.4, Perl >=5.004.
 If /bin/sh is not POSIX compliant, "bk" won't work.  Try changing the
 #! line to point at ksh or bash if you have problems.
-Resolve needs the "merge" utility, which is part of RCS.  We intend to
-eliminate this dependency in the near future.
 
 Some vendors' versions of diff have bugs which are tickled by
 BitKeeper.  If you have problems, we recommend you install GNU diff.
 
-* Upgrade notes
+Upgrade notes
+-----------------------------------------------------------------------------
 
-The format of the ChangeSet file has changed between beta9 and
-beta10.  It will be automatically converted the first time you commit
-anything.  Once you have done this, you cannot use old tools on that
-repository anymore.
+1) first thing you do is tar up your repositories in case something goes
+   wrong.  This is beta software, and while we have been unable to break
+   it for all of 259,212,152,425,926 nanoseconds, you shouldn't give that
+   any weight.
 
-The network resync protocol has also changed.  You will not be able to
-resync between a host with the old version and a host with the new
-version using "bk resync".  "bk oldresync" MAY work but we don't
-guarantee it.  The good news is, the bandwidth consumed by a resync is
-somewhat reduced, and it only sets up one ssh connection.
+2) in each repository, run
 
-Some obscure command line options to bk admin have changed, and the
-manpage is out of date.  The summary printed by "bk admin --help" is
-correct.
+        bk cset -vfM1.0..
+   
+   This goes through and makes sure that all of your change sets are actually
+   recorded in the various files.  When we add the transaction log we won't
+   need this anymore, but for now...
 
-* Compilation from source
+3) in each repository, make sure that BK is happy by:
 
-You may have problems with non-GNU make, particularly if you expect it
-to extract the sources from SCCS on the fly.  You should be able to
-use any ANSI C compiler, but we only test with gcc.
+        bk -r check -a
 
-Unpack the repository snapshot, change into the src directory, and
-type "make".  This will compile a debugging version of BitKeeper.  Do
-NOT run the configure script directly.
+   This goes through and makes sure that each delta in each file that says it
+   is in a change set actually _is_ in a change set.  Then we do it the other
+   way, for each change set in the ChangeSet file, we make sure that the 
+   change set is marked in the files.  Then we make sure that all the files
+   and deltas that are in the ChangeSet file are in the repository (this will
+   flag any missing files).
 
-Some platforms require you to adjust Make variables.  If you get
-complaints about ranlib, try adding "RANLIB=:" to the make command
-line.  If the linker complains about gethostbyname, try adding
-"XLIBS=-lnsl" to the command line.
+4) If you find any missing files, you have several options.  
+   a) if the files are truly missing in all repositories (this can happen
+      if someone inadvertently checked in a.out and then somebody had the
+      bright idea of removing SCCS/s.a.out), then you can add the key for
+      the file to BitKeeper/etc/gone and check in the gone file with a
+      "bk new gone".  The key should be that nasty looking string that BK
+      spits out when you run check, like
 
-Once you have a debugging version built, run "make test".  This runs
-the regression suite.  It will produce a great deal of output, some of
-which may look a bit frightening.  As long as it finishes by printing
+        lm@lm.bitmover.com|src/undo.c|19990818003019|59393
+      
+      no leading / trailing spaces, please.
 
-------------------------------------------------
-All requested tests passed, must be my lucky day
-------------------------------------------------
+      Note: the gone file doesn't make files be gone, you did that.  All
+      it does is make BK not be upset that they are gone.  If the file 
+      ever reappears, BK will ignore the entry in the gone file.
 
-you are fine.  In particular, don't worry about this:
+   b) if you can find the file somewhere else, try copying it in by hand 
+      and then repeat the 
 
-Check circular rename in two work space ................check: src/SCCS/s.b.c should be src/a.c
-check: src/SCCS/s.c.c should be src/b.c
-check: src/SCCS/s.a.c should be src/c.c
-check failed, resolve was applied.
-Please contact BitMover for help.
-OK
+        bk cset -vfM1.0..
+        bk -r check -a
+    
+      if you get no errors, you're done.
 
-This is a known (and rather nasty) bug which will probably not bite
-you.  See below.
+   c) if the proceeding gave you errors, then your recovered file is either
+      ahead of or behind the repository.  Contact us and we'll help you fix
+    it.
 
-Once you have passed the test suite, do this:
+5) There are some new commands which you may like:
 
-$ make rebuild
-$ make p [extra options to make here]
-$ su
-# make install
+    bk version - shows BK version like so:
+    BitKeeper version is beta10.4.1 19990901010210
 
-This sequence compiles and installs the production version -
-optimized, no debugging.  It will appear in /usr/bitkeeper.  You can
-also try running "make production_all" to compile and install both
-production and debugging versions, but this may not work properly.
+    bk status - shows the status of a tree like so:
+    Status for BitKeeper repository /home/bk/beta10
+    BitKeeper version is beta10.4.1 19990901010210
+    51 files not under revision control.
+    1 files modified and not checked in.
+    0 files with uncommitted deltas.
 
-* Known bugs
+Known bugs
+-----------------------------------------------------------------------------
 
 Resolve has severe problems related to renaming files.  We recommend
 that you avoid attempting to merge conflicts in a file which has been

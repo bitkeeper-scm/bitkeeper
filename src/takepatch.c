@@ -538,7 +538,7 @@ to resync from version 1.0 forward.  Please try again, with a command like\n\
 \n\
 \tbk resync -r1.0.. from to\n\
 or\n\
-\tbk send 1.0.. user@host.com\n\
+\tbk send -r1.0.. user@host.com\n\
 \n\
 takepatch has not cleaned up your destination, you need to do that.\n",
 stderr);
@@ -1276,7 +1276,7 @@ rebuild_id(char *id)
 "takepatch: miss in idcache\n\tfor %s,\n\
 \trebuilding (this can take a while)...", id);
 	}
-	system("bk sfiles -r");
+	(void)system("bk sfiles -r");
 	if (idDB) mdbm_close(idDB);
 	unless (idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
 		perror("SCCS/x.id_cache");
