@@ -237,7 +237,8 @@ proc selectTag { w {x {}} {y {}} {line {}} {bindtype {}}} \
 	}
 	set line [$w get $curLine "$curLine lineend"]
 
-	if {[regexp {^(.*)\s+([0-9]+\.[0-9.]+).*\|} $line match filename rev]} {
+	if {[regexp \
+	    {^(.*)[ \t]+([0-9]+\.[0-9.]+).*\|} $line match filename rev]} {
 		set annotated 1
 	} else {
 		regexp {^(.*)@([0-9]+\.[0-9.]+),.*} $line match filename rev
