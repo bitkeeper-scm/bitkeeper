@@ -715,3 +715,10 @@ aprintf(char *fmt, ...)
 	va_end(ptr);
 	return (buf); /* caller should free */
 }
+
+int
+isLocalHost(char *h)
+{
+	unless (h) return (0);
+	return(streq("localhost", h) || streq("127.0.0.1", h));
+}

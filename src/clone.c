@@ -223,6 +223,10 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	} else if (streq(p, "get")) {
 		sys("bk", "-r", "get", "-q", SYS);
 	}
+
+	if (r->port && isLocalHost(r->host) && (bk_mode() == BK_BASIC)) {
+		mkdir(BKMASTER, 0775);
+	}
 	
 	rc  = 0;
 done:	if (rc) {
