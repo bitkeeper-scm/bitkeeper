@@ -377,7 +377,7 @@ keys(char *file)
 		if (d->hostname && streq(d->hostname, host)) {
 			char	buf[MAXPATH+100];
 
-			sccs_sdelta(s, sccs_ino(s), buf);
+			sccs_shortKey(s, sccs_ino(s), buf);
 			uniq_update(buf, d->date);
 			break;
 		}

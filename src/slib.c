@@ -820,6 +820,12 @@ getDate(delta *d)
 	return (d->date);
 }
 
+time_t
+sccs_date2time(char *date, char *zone)
+{
+	return (date2time(date, zone, EXACT));
+}
+
 /*
  * The prev pointer is a more recent delta than this one,
  * so make sure that the prev date is > that this one.
@@ -848,16 +854,6 @@ sccs_fixDates(sccs *s)
 }
 
 private void
-shortKey(sccs *s, delta *d, char *buf)
-{
-	sccs_sdelta(s, d, buf);
-	buf = strchr(buf, '|');
-	buf = strchr(buf+1, '|');
-	buf = strchr(buf+1, '|');
-	*buf = 0;
-}
-
-private void
 uniqRoot(sccs *s)
 {
 	delta	*d;
@@ -869,12 +865,12 @@ uniqRoot(sccs *s)
 	unless (d->date) (void)getDate(d);
 
 	uniq_open();
-	shortKey(s, sccs_ino(s), buf);
+	sccs_shortKey(s, sccs_ino(s), buf);
 	while (!unique(buf)) {
 //fprintf(stderr, "COOL: caught a duplicate root: %s\n", buf);
 		d->dateFudge++;
 		d->date++;
-		shortKey(s, d, buf);
+		sccs_shortKey(s, d, buf);
 	}
 	uniq_update(buf, d->date);
 	uniq_close();
@@ -919,12 +915,12 @@ uniqDelta(sccs *s)
 		d->dateFudge = (next->date - d->date) + 1;
 		d->date += d->dateFudge;
 	}
-	shortKey(s, d, buf);
+	sccs_shortKey(s, d, buf);
 	while (!unique(buf)) {
 //fprintf(stderr, "COOL: caught a duplicate key: %s\n", buf);
 		d->date++;
 		d->dateFudge++;
-		shortKey(s, d, buf);
+		sccs_shortKey(s, d, buf);
 	}
 	uniq_update(buf, d->date);
 	uniq_close();
@@ -3837,13 +3833,14 @@ sccs_unlock(sccs *sccs, char type)
 private char *
 sccsXfile(sccs *sccs, char type)
 {
-	static	char	*s;
-	static	int	len;
+	static	char	*s = 0;
+	static	int	len = 0;
 	char	*t;
 
 	if (type == 0) {	/* clean up so purify doesn't barf */
 		if (len) free(s);
 		len = 0;
+		s = 0;
 		return (0);
 	}
 	if (!len) {
@@ -3902,6 +3899,8 @@ date(delta *d, time_t tt)
 	zoneArg(d, tmp);
 	getDate(d);
 	if (d->date != tt) {
+		fprintf(stderr, "Date=[%s%s] d->date=%u tt=%u\n",
+		    d->sdate, d->zone, d->date, tt);
 		fprintf(stderr, "Internal error on dates, aborting.\n");
 		assert(d->date == tt);
 	}
@@ -10707,7 +10706,7 @@ doDiff(sccs *s, u32 flags, char kind, char *leftf, char *rightf,
 		c = atoi(columns);
 		for (i = 0; i < c/2 - 18; ) spaces[i++] = '=';
 		spaces[i] = 0;
-		sprintf(buf, "sdiff -w%s %s %s", columns, leftf, rightf);
+		sprintf(buf, "bk sdiff -w%s %s %s", columns, leftf, rightf);
 		diffs = popen(buf, "rt");
 		if (!diffs) return (-1);
 		diffFile[0] = 0;
@@ -13086,6 +13085,18 @@ sccs_sdelta(sccs *s, delta *d, char *buf)
 	for (tail = buf; *tail; tail++);
 	len += sprintf(tail, "|%s", s->random);
 	return (len);
+}
+
+void
+sccs_shortKey(sccs *s, delta *d, char *buf)
+{
+	assert(d);
+	sprintf(buf, "%s%s%s|%s|%s",
+	    d->user,
+	    d->hostname ? "@" : "",
+	    d->hostname ? d->hostname : "",
+	    d->pathname ? d->pathname : "",
+	    sccs_utctime(d));
 }
 
 /*

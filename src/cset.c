@@ -1231,7 +1231,6 @@ mkChangeSet(sccs *cset, FILE *diffs)
  * + The current workspace is based on a specific changeset as opposed
  *   to a LOD: make new changeset start new LOD.
  */
-
 private	int
 csetCreate(sccs *cset, int flags, char **syms, int newlod)
 {
@@ -1241,7 +1240,7 @@ csetCreate(sccs *cset, int flags, char **syms, int newlod)
 	FILE	*fdiffs;
 	MDBM	*totdb = 0;
 	MDBM	*basedb = 0;
-	char	filename[30];
+	char	filename[MAXPATH];
 
 	gettemp(filename, "cdif");
 	unless (fdiffs = fopen(filename, "w+")) {

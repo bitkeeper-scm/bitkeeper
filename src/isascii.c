@@ -3,8 +3,12 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include "mmap.h"
 
-static int	ascii(int);
+#define	u8	unsigned char
+
+static	int	ascii(char *file);
+extern	MMAP	*mopen(char *, char *);
 
 /* Look for files containing binary data that BitKeeper cannot handle.
  * This consists of (a) NULs, (b) \n followed by \001, or (c) a line
@@ -18,28 +22,35 @@ isascii_main(int ac, char **av)
 	if (ac != 2) {
 		fprintf(stderr, "usage: %s filename\n", av[0]);
 	}
-	return (ascii(open(av[1], 0)));
+	return (ascii(av[1]));
 }
 
 static int
-ascii(int fd)
+ascii(char *file)
 {
-	char	buf[8192];
-	int	n, i;
-	int	len = 0, beginning = 1;
+	MMAP	*m = mopen(file, "b");
+	u8	*p, *end;
+	int	beginning = 1;
 
-	if (fd == -1) return (2);
-	while ((n = read(fd, buf, sizeof(buf))) > 0) {
-		for (i = 0; i < n; ++i) {
-			switch (buf[i])	{
-			    case '\0':	 return (1);
-			    case '\n':	 beginning = 1; len = 0; break;
-			    case '\001': if (beginning) return (1);
-				/* FALLTHRU */
-			    default:	 beginning = 0;
+	if (!m) return (2);
+	for (p = (u8*)m->where, end = (u8*)m->end; p < end; p++) {
+		switch (*p) {
+		    case '\0':	
+			mclose(m);
+			return (1);
+		    case '\n':	
+			beginning = 1;
+			break;
+		    case '\001':
+			if (beginning) {
+				mclose(m);
+				return (1);
 			}
-			if (++len > 4000) return (1);
+			/* FALLTHRU */
+		    default:
+			beginning = 0;
 		}
 	}
+	mclose(m);
 	return (0);
 }

@@ -26,3 +26,29 @@ findprog(char *prog)
 	return (0);
 #endif
 }
+
+char	*
+prog2path(char *prog)
+{
+#ifdef WIN32
+	ERROR - awc, you need to do this
+#else
+        char	*path = strdup(getenv("PATH"));
+	char	*s, *t;
+	char	buf[MAXPATH];
+
+	for (s = t = path; *t; t++) {
+		if (*t == ':') {
+			*t = 0;
+			sprintf(buf, "%s/%s", s, prog);
+			if (executable(buf)) {
+				free(path);
+				return (strdup(buf));
+			}
+			s = &t[1];
+		}
+	}
+	free(path);
+	return (0);
+#endif
+}

@@ -25,7 +25,8 @@ OBJ	= abort.o adler32.o admin.o bkd.o bkd_cd.o bkd_client.o \
 	  port/gethost.o port/getinput.o port/platforminit.o \
 	  port/randomBits.o port/samepath.o port/sccs_root.o \
 	  port/spawn.o prs.o pull.o purify.o push.o r2c.o \
-	  range.o rcs.o receive.o rechksum.o renumber.o \
+	  range.o rcs.o rcsparse.o rcs2sccs.o \
+	  receive.o rechksum.o renumber.o \
 	  lock.o resolve.o resolve_contents.o resolve_create.o \
 	  resolve_flags.o resolve_generic.o resolve_modes.o \
 	  resolve_renames.o resolve_filetypes.o rmdel.o \
@@ -41,7 +42,7 @@ ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
 	  zlib/gzio.o zlib/infblock.o zlib/infcodes.o zlib/inffast.o \
 	  zlib/inflate.o zlib/inftrees.o zlib/infutil.o zlib/trees.o \
 	  zlib/uncompr.o zlib/zutil.o
-SCRIPTS	= rcs2sccs bk.script import resync uuwrap unuuwrap pmerge \
+SCRIPTS	= bk.script import resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 \
 	  renametool mkdiffs lodset bkmerge gzip_uuwrap ungzip_uuwrap
 LOCALSCR= testfast mkindex build crank
@@ -71,7 +72,7 @@ HDRS	= bkd.h lib_tcp.h mmap.h purify.h range.h resolve.h sccs.h \
 	  zlib/deflate.h zlib/infblock.h zlib/infcodes.h zlib/inffast.h \
 	  zlib/inffixed.h zlib/inftrees.h zlib/infutil.h zlib/trees.h \
 	  zlib/zconf.h zlib/zlib.h zlib/zutil.h
-SCRSRCS	= rcs2sccs.perl testfast.perl bk.sh import.sh clone.sh \
+SCRSRCS	= testfast.perl bk.sh import.sh clone.sh \
 	  resolve.perl gui/sccstool.tcl gui/citool.tcl gui/difftool.tcl \
 	  gui/vitool.tcl gui/fm.tcl gui/fm3.tcl \
 	  gui/helptool.tcl gui/mkindex.tcl oldresync.perl uuwrap.sh \
@@ -97,6 +98,8 @@ purify+mdbm:
 	$(MAKE) CFLAGS="-g $O -DPURIFY -DPURIFY_MDBM -DPURIFY_FREQ=50" all
 purify:
 	$(MAKE) CFLAGS="-g $O -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM -DPURIFY_FREQ=50" all
+PURIFY:
+	$(MAKE) CFLAGS="-g $O -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM -DPURIFY_FREQ=1" all
 gprof:
 	$(MAKE) CFLAGS="-g -pg -O2" all
 # Recent gcc only profiles libc if you do it this way.
@@ -146,7 +149,7 @@ production_purify: rebuild purify install
 production_image: rebuild p image
 
 # Cleanup targets.
-clean-obj: FORCE
+clean clean-obj: FORCE
 	-/bin/rm -f $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) 
 	-/bin/rm -f $(LIBS) bkdsubstr bkhelp.txt a.out core
 	-cd gnu && $(MAKE) clean-obj
@@ -230,12 +233,6 @@ libsccs.a: $(OBJ)
 bk: $(OBJ) $(LIBS)
 	$(CC) $(CFLAGS) $(LINK) -o bk
 
-# Scripts.
-rcs2sccs: rcs2sccs.perl substvars
-	./substvars rcs2sccs.perl >rcs2sccs.T
-	chmod +x rcs2sccs.T
-	mv -f rcs2sccs.T rcs2sccs
-
 testfast: testfast.perl substvars
 	./substvars testfast.perl >testfast.T
 	chmod +x testfast.T
@@ -271,7 +268,8 @@ stamp-ver:: bk
 
 # Because we need the execute bit on
 utils/os utils/gnu-os: bk
-	./bk get utils/os utils/gnu-os
+	@if [ ! -x utils/os ]; then ./bk get utils/os; fi
+	@if [ ! -x utils/gnu-os ]; then ./bk get utils/gnu-os; fi
 
 uuwrap: uuwrap.sh substvars
 	./substvars uuwrap.sh > uuwrap.T
@@ -580,6 +578,8 @@ push.o:		push.c $(B) $(H) $(Z)
 r2c.o:		r2c.c $(H) range.h
 range.o:	range.c $(H) range.h
 rcs.o:		rcs.c $(H)
+rcsparse.o:	rcsparse.c $(H) rcs.h
+rcs2sccs.o:	rcs2sccs.c $(H) rcs.h
 receive.o:	receive.c $(H)
 rechksum.o:	rechksum.c $(H)
 renumber.o:	renumber.c $(H)
