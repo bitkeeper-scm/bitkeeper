@@ -1254,8 +1254,13 @@ proc ::tkwizard::wizProxy-buttonconfigure {name button args} \
            one of back, cancel, finish or next"
     }
     
-    if {[llength $args] == 1 && [equal [lindex $args 0] -state]} {
-        return $wizState(buttonState,$button)
+    if {[llength $args] == 1} {
+	    if {[equal [lindex $args 0] -state]} {
+		    return $wizState(buttonState,$button)
+	    } else {
+		    set option [lindex $args 0]
+		    return [${name}::~style buttonconfigure $button $option]
+	    }
     } 
 
     set newArgs [list]

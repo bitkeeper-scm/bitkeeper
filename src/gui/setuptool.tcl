@@ -26,6 +26,15 @@ proc main {} \
 	bind . <<WizFinish>> {
 		. configure -state busy
 
+		# If we had previously set the finish button to say
+		# "Done", we only need to exit
+		set finishLabel [lindex [. buttonconfigure finish -text] end]
+		if {$finishLabel == "Done"} {
+			set ::done 1
+			break
+		}
+
+		# Finish  must really mean finish...
 		if {![createRepo errorMessage]} {
 			popupMessage -E $errorMessage
 			# the break is necessary, because tkwidget's
@@ -39,9 +48,20 @@ proc main {} \
 			if {$::wizData(closeOnCreate)} {
 				set ::done 1
 			} else {
+				. buttonconfigure finish -text Done
 				. configure -state normal
 				break
 			}
+		}
+	}
+
+	bind . <<WizBackStep>> {
+		# The Finish step may have reconfigured the finish button
+		# to say "Done". We want to reset that if the user is 
+		# going  back through the wizard to possibly create 
+		# another repo.
+		if {[. cget -step] == "Finish"} {
+			. buttonconfigure finish -text Finish
 		}
 	}
 
@@ -124,10 +144,11 @@ proc app_init {} \
 		pager         ""
 		phone         ""
 		postal        ""
-		single_host   ""
-		single_user   ""
 		state         ""
 	}
+	set wizData(single_user) [exec bk getuser]
+	set wizData(single_host) [exec bk gethost]
+	set wizData(email) ${wizData(single_user)}@$wizData(single_host)
 
 	# Override those with the config.template
 	# If we want to modify this code to not only create repos but
@@ -167,19 +188,38 @@ proc app_init {} \
 		exit 1
 	}
 
-	# we know that if the window was large enough to show 70x28
-	# characters, that would be big enough to show every wizard
-	# step. So, we create a dummy label of that size, ask tk what
-	# that size is, then fix and center the window based on that
-	# size. This appears to be a bit more robust and tolerant of 
-	# font differences than simply hard-coding pixel values.
-	label .bogus -width 70 -height 28
-	set width [winfo reqwidth .bogus]
+	computeSize width height
+	centerWindow . $width $height
+
+}
+
+proc computeSize {wvar hvar} \
+{
+	upvar $wvar width 
+	upvar $hvar height
+
+	global gc
+
+	# we want the GUI wide enough to show 80 characters in a fixed
+	# width font. So, we'll create a dummy widget using that font,
+	# ask TK what size that is, and add a fudge factor for scrollbars
+	# and borders. That will be our width
+	label .bogus -width 80  -height 28 -font $gc(setup.fixedFont)
+	set width [expr {[winfo reqwidth .bogus] + 40}]
+
+	# vertically we need enough space to show 28 or so lines of
+	# text in the label/button font. We'll do the same sort of 
+	# dance again, but with the label/button font
+	.bogus configure -font $gc(setup.noticeFont)
 	set height [winfo reqheight .bogus]
 	destroy .bogus
 
-	centerWindow . $width $height
-
+	# under no circumstances do we make a window bigger than the
+	# screen
+	set maxwidth  [winfo screenwidth .]
+	set maxheight [expr {[winfo screenheight .] * .95}]
+	set width  [expr {$width > $maxwidth? $maxwidth : $width}]
+	set height [expr {$height > $maxheight? $maxheight: $height}]
 }
 
 proc widgets {} \
@@ -227,7 +267,6 @@ proc widgets {} \
 	    -title "BK Setup Wizard" \
 	    -description [wrap [getmsg setuptool_step_Begin]] \
 	    -body {$this configure -defaultbutton next}
-
 
 	#-----------------------------------------------------------------------
 	. add step EndUserLicense \
@@ -420,13 +459,6 @@ proc widgets {} \
 		global gc
 
 		$this configure -defaultbutton next
-
-		if {$wizData(single_user) == ""} {
-			set wizData(single_user) [file tail $::env(HOME)]
-		}
-		if {$wizData(single_host) == ""} {
-			set wizData(single_host) [exec hostname]
-		}
 
 		# running the validate command will set the wizard buttons to 
 		# the proper state
@@ -704,11 +736,17 @@ proc widgets {} \
 		    -offvalue 0 \
 		    -variable wizData(keyword,expand1) \
 		    -command updateKeyword
+		button $w.moreInfoKeywords \
+		    -bd 1 \
+		    -text "More info" \
+		    -command [list moreInfo keywords]
+
 
 		grid $w.keywordLabel       -row 0 -column 0 -sticky e -pady 4
 		grid $w.expand1Checkbutton -row 1 -column 0 -sticky w -padx 16
 		grid $w.rcsCheckbutton     -row 2 -column 0 -sticky w -padx 16
 		grid $w.sccsCheckbutton    -row 3 -column 0 -sticky w -padx 16
+		grid $w.moreInfoKeywords   -row 1 -column 1 -sticky w 
 
 		grid rowconfigure $w 0 -weight 0
 		grid rowconfigure $w 1 -weight 0
@@ -733,6 +771,7 @@ proc widgets {} \
 		label $w.checkoutLabel -text "Checkout Mode:"
 		tk_optionMenu $w.checkoutOptionMenu wizData(checkout) \
 		    "none" "get" "edit"
+		$w.checkoutOptionMenu configure -width 4 -borderwidth 1
 
 		grid $w.checkoutLabel      -row 0 -column 0 -sticky e
 		grid $w.checkoutOptionMenu -row 0 -column 1 -sticky w
@@ -756,6 +795,7 @@ proc widgets {} \
 		label $w.compressionLabel -text "Compression Mode:"
 		tk_optionMenu $w.compressionOptionMenu wizData(compression) \
 		    "none" "gzip"
+		$w.compressionOptionMenu configure -width 4 -borderwidth 1
 
 		grid $w.compressionLabel      -row 0 -column 0 -sticky e
 		grid $w.compressionOptionMenu -row 0 -column 1 -sticky w
@@ -779,14 +819,21 @@ proc widgets {} \
 		label $w.autofixLabel -text "Autofix Mode:"
 		tk_optionMenu $w.autofixOptionMenu wizData(autofix) \
 		    "yes" "no"
+		$w.autofixOptionMenu configure -width 4 -borderwidth 1
+		button $w.moreInfoAutofix \
+		    -bd 1 \
+		    -text "More info" \
+		    -command [list moreInfo autofix]
 
 		grid $w.autofixLabel      -row 0 -column 0 -sticky e
 		grid $w.autofixOptionMenu -row 0 -column 1 -sticky w
+		grid $w.moreInfoAutofix   -row 0 -column 2 -sticky w -padx 4
 
 		grid rowconfigure $w 0 -weight 0
 		grid rowconfigure $w 1 -weight 1
 		grid columnconfigure $w 0 -weight 0
-		grid columnconfigure $w 1 -weight 1
+		grid columnconfigure $w 1 -weight 0
+		grid columnconfigure $w 2 -weight 1
 	}
 
 	#-----------------------------------------------------------------------
@@ -800,6 +847,7 @@ proc widgets {} \
 		global wizData
 
 		$this configure -defaultbutton finish
+		$this buttonconfigure finish -text Finish
 
 		set w [$this info workarea]
 		text $w.text
@@ -1213,6 +1261,8 @@ proc moreInfo {which} {
 		commercial	{set topic licensing}
 		singleuser	{set topic licensing}
 		repoinfo	{set topic config-etc}
+		keywords	{set topic keywords}
+		autofix		{set topic check}
 	}
 
 	exec bk helptool $topic &
