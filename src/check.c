@@ -397,7 +397,7 @@ buildKeys()
 	v.dsize = sizeof(csetKeys.n);
 	mdbm_store(r2i, k, v, MDBM_INSERT);
 	for (d = cset->table; d; d = d->next) {
-		unless (d->type == 'D' && (d->flags & D_CSET)) continue;
+		unless ((d->type == 'D') && (d->flags & D_CSET)) continue;
 		sccs_sdelta(cset, d, buf);
 		if (mdbm_store_str(db, buf, key, MDBM_INSERT)) {
 			if (errno == EEXIST) {
@@ -657,6 +657,17 @@ checkKeys(sccs *s, char *root)
 }
 
 #if 0
+dumpkeys(sccs *s)
+{
+	char	k[MAXKEY];
+	delta	*d;
+
+	for (d = s->table; d; d = d->next) {
+		sccs_sdelta(s, d, k);
+		fprintf(stderr, "%s %s\n", d->rev, k);
+	}
+}
+
 dump(int key)
 {
 	int	i;

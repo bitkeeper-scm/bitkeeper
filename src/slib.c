@@ -772,10 +772,15 @@ utc2tm(time_t t)
 	tm.tm_year = tmp;
 	t -= yearSecs[i];
 	leap = leapYear(1900 + tmp);
+	/* Jan = 0, Feb = 1, ... */
 	for (i = 0; i < 12; ++i) {
+		/* [2] means tmp == end of january */
 		tmp = monthSecs[i+1];
 		if (leap && ((i+1) >= 2)) tmp += DSECS;
+
+		/* if seconds < end of the month */
 		if (t < tmp) {
+			/* 0 = Jan, 1 = Feb, etc */
 			tm.tm_mon = i;
 			tmp = monthSecs[i];
 			if (leap && (i >= 2)) tmp += DSECS;
@@ -961,7 +966,7 @@ correct:
 	 * Truncate down oversized fields.
 	 */
 	if (tp->tm_mon > 11) tp->tm_mon = 11;
-	mday = monthDays(tp->tm_year, tp->tm_mon + 1);
+	mday = monthDays(1900 + tp->tm_year, tp->tm_mon + 1);
 	if (mday < tp->tm_mday) tp->tm_mday = mday;
 	if (tp->tm_hour > 23) tp->tm_hour = 23;
 	if (tp->tm_min > 59) tp->tm_min = 59;
@@ -1004,7 +1009,8 @@ date2time(char *asctime, char *z, int roundup)
 	a2tm(&tm, asctime, z, roundup);
 #if	0
 {	struct  tm tm2 = tm;
-	fprintf(stderr, "%s%s %02d/%02d/%02d %02d:%02d:%02d = %u\n",
+	struct  tm *tp;
+	fprintf(stderr, "%s%s %02d/%02d/%02d %02d:%02d:%02d = %u = ",
 	asctime,
 	z ? z : "",
 	tm.tm_year,
@@ -1014,6 +1020,14 @@ date2time(char *asctime, char *z, int roundup)
 	tm.tm_min,
 	tm.tm_sec,
 	tm2utc(&tm2));
+	tp = utc2tm(tm2utc(&tm2));
+	fprintf(stderr, "%02d/%02d/%02d %02d:%02d:%02d\n",
+	tp->tm_year,
+	tp->tm_mon + 1,
+	tp->tm_mday,
+	tp->tm_hour,
+	tp->tm_min,
+	tp->tm_sec);
 }
 #endif
 	return (tm2utc(&tm));
