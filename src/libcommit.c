@@ -192,9 +192,16 @@ logChangeSet(char *rev)
 
 get(char *path, int flags, char *output)
 {
-	sccs *s = sccs_init(path, SILENT, 0);
+	sccs *s;
 	int ret;
 
+	if (sccs_filetype(path) == 's') {
+		s = sccs_init(path, SILENT, 0);
+	} else {
+		char *p = name2sccs(path);
+		s = sccs_init(p, SILENT, 0);
+		free(p);
+	}
 	unless (s) return (-1);
 	ret = sccs_get(s, 0, 0, 0, 0, flags, output);
 	sccs_free(s);

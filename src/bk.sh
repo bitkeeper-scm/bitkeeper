@@ -544,36 +544,6 @@ _chmod() {
 	done
 }
 
-# Usage: fix file
-_fix() {
-	Q=-q
-	while getopts qv opt
-	do	case "$opt" in
-		q) ;;
-		v) Q=;;
-		esac
-	done
-	shift `expr $OPTIND - 1`
-	for f in $*
-	do	if [ -w $f ]
-		then	echo $f is already edited
-			continue
-		fi
-		if [ -f "${f}-.fix" ]
-		then	echo ${f}-.fix exists, skipping that file
-			continue
-		fi
-		${BIN}get $Q -kp $f > "${f}-.fix"
-		REV=`${BIN}prs -hr+ -d:REV: $f`
-		${BIN}stripdel $Q -r$REV $f
-		if [ $? -eq 0 ]
-		then	${BIN}get $Q -eg $f
-			mv "${f}-.fix" $f
-		else	$RM "${f}-.fix"
-		fi
-	done
-}
-
 # Usage: undo cset-list
 _undo() {
 	ASK=YES

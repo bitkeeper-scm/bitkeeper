@@ -13,7 +13,7 @@ main(int ac,  char **av)
 
 	while ((c = getopt(ac, av, "aciv")) != -1) {
 		switch (c) { 
-		    case 'a': strcat(opts, " -a");break;
+		    case 'a': strcat(opts, " -a"); break;
 		    case 'c': strcat(opts, " -c"); break;
 		    case 'i': strcat(opts, " -i"); new =1; break;
 		    case 'v': strcat(opts, " -v"); break;
