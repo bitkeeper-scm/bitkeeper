@@ -859,19 +859,6 @@ _rmgone() {
 	}' | xargs -n 1 $CMD
 }
 
-# return the latest rev in this tree that also exists in the
-# remote tree.
-_repogca() {
-	if [ "X$1" = "X" ]; then
-	    remote=`bk parent -1il`
-	else
-	    remote=$1
-	fi
-	bk -R changes -e -L -nd:REV: "$remote" > /tmp/LOCAL.$$
-	bk -R prs -hnd:REV: ChangeSet | fgrep -v -f/tmp/LOCAL.$$ | head -1
-	rm -f /tmp/LOCAL.$$
-}
-
 # Union the contents of all meta files which match the base name.
 # Optimized to not look in any files which do not match the base name.
 _meta_union() {
@@ -1121,17 +1108,21 @@ _install()
 		set -x
 	}
 	FORCE=0
-	while getopts f opt
+	CHMOD=YES
+	VERBOSE=NO
+	while getopts dfv opt
 	do
 		case "$opt" in
+		d) CHMOD=NO;;	# do not change permissions, dev install
 		f) FORCE=1;;	# force
-		*) echo "usage: bk install [-f] <destdir>"
+		v) VERBOSE=YES;;
+		*) echo "usage: bk install [-dfv] <destdir>"
 	 	   exit 1;;
 		esac
 	done
 	shift `expr $OPTIND - 1`
 	test X"$1" = X -o X"$2" != X && {
-		echo "usage: bk install [-f] <destdir>"
+		echo "usage: bk install [-dfv] <destdir>"
 		exit 1
 	}
 	DEST="$1"
@@ -1147,6 +1138,7 @@ _install()
 			echo "bk install: destination exists, failed (add -f to force)"
 			exit 1
 		}
+		test $VERBOSE = YES && echo Uninstalling $DEST
 		# uninstall can be missing
 		"$DEST"/bk which -i uninstall >/dev/null 2>&1 && {
 			"$DEST"/bk uninstall 2> /dev/null
@@ -1166,24 +1158,32 @@ _install()
 		exit 1
 	}
 	# copy data
-	(cd "$SRC"; tar cf - .) | (cd "$DEST"; tar -xf -)
+	V=
+	test $VERBOSE = YES && {
+		V=v
+		echo Installing data in "$DEST" ...
+	}
+	(cd "$SRC"; tar cf - .) | (cd "$DEST"; tar x${V}f -)
 	
 	# binlinks
 	if [ "X$OSTYPE" = "Xmsys" ]
-	then	TARG=bklink.exe
-		EXT=.exe
-	else	TARG=bk
-		EXT=
+	then	EXE=.exe
+	else	EXE=
 	fi
 	# This does the right thing on Windows (msys)
-	for prog in admin get delta unget rmdel prs; do
-		ln "$DEST"/$TARG "$DEST"/$prog$EXT
+	for prog in admin get delta unget rmdel prs
+	do
+		test $VERBOSE = YES && echo ln "$DEST"/bk$EXE "$DEST"/$prog$EXE
+		ln "$DEST"/bk$EXE "$DEST"/$prog$EXE
 	done
 	# permissions
 	cd "$DEST"
-	(find . | xargs chown root) 2> /dev/null
-	(find . | xargs chgrp root) 2> /dev/null
-	find . | xargs chmod -w
+	test $CHMOD = YES && {
+		(find . | xargs chown root) 2> /dev/null
+		(find . | xargs chgrp root) 2> /dev/null
+		find . | xargs chmod -w
+	}
+	exit 0
 }
 
 _uninstall()

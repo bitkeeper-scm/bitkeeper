@@ -4,8 +4,10 @@
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
 ifeq "$(OSTYPE)" "cygwin"
 	SYS=win32
+	ICONS=../win32/data/bk.ico ../win32/data/bk16.ico
 else
 	SYS=unix
+	ICONS=
 endif
 
 REPO   := $(shell basename `bk root`)
@@ -14,6 +16,7 @@ GUIS	= revtool citool helptool difftool csettool fmtool fm3tool \
 	  msgtool renametool setuptool bugform supportform newdifftool
 TCLWRAP	= ../tclwrap
 DOIT	= ../t/doit
+GUITEST = ../t/guitest.tcl
 BK	= $(REPO)/src/bk
 T	= $(REPO)/src/t
 COMMON	= ../port/$(SYS)_platform.tcl config.tcl common.tcl 
@@ -23,11 +26,16 @@ SRC	= appState.tcl bugform.tcl buglib.tcl ciedit.tcl citool.tcl \
 	  renametool.tcl revtool.tcl search.tcl setuptool.tcl \
 	  ../port/$(SYS)_platform.tcl supportform.tcl supportlib.tcl \
 	  newdifftool.tcl
+IMAGES  = imgsrc/bklogo.gif \
+	  imgsrc/ci-cset.xbm imgsrc/ci-done.xbm	\
+	  imgsrc/ci-exclude.xbm imgsrc/ci-modified.xbm \
+	  imgsrc/ci-new.xbm \
+	  imgsrc/next.gif imgsrc/previous.gif $(ICONS)
 
 default: notes/BUILD
 	@cat notes/BUILD
 
-gui guis:  ../tclwrap lib
+gui guis:  ../tclwrap lib images
 	@cd tcltk && $(MAKE)
 	@$(MAKE) $(GUIS)
 	@echo GUIs are up-to-date
@@ -39,28 +47,31 @@ nowrap gui-nowrap:
 	$(MAKE) clean-here
 	$(MAKE) TCLWRAP=cat gui
 
+images: $(IMAGES)
+	test -d images || mkdir images
+	cp $(IMAGES) images	
+
 ../tclwrap:
 	@cd .. && $(MAKE) tclwrap
 
 tcltk: FORCE
 	cd tcltk && $(MAKE)
 
-test: lib $(GUIS) $(DOIT)
-	(@cd ../t && \
-	 ../bk get SCCS/g.* && \
-	 ./doit g.*)
+test: lib $(GUIS) $(DOIT) $(GUITEST) ../t/setup ../t/x.chk_env
+	@../bk get -S ../t/SCCS/s.g.* 
+	@(cd ../t && ./doit g.*)
 
 $(DOIT):
-	@cd ../t && $(MAKE) doit
+	@cd .. && $(MAKE) t/doit
 
 clean-here clobber-here: FORCE
 	-rm -f $(GUIS) TAGS
-	-rm -rf bin lib
+	-rm -rf bin lib images
 	-bk -r. clean
 
 clean clobber: FORCE
 	-rm -f $(GUIS) TAGS
-	-rm -rf bin lib
+	-rm -rf bin lib images
 	-bk -r. clean
 	-cd tcltk && $(MAKE) clobber
 

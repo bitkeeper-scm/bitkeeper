@@ -7,7 +7,6 @@ proc getConfig {prog} \
 
 	set app $prog
 
-	option add *Scrollbar.borderWidth 1 100
 	option add *Label.borderWidth 1 100
 	option add *Button.borderWidth 1 100
 	option add *Menubutton.borderWidth 1 100
@@ -20,13 +19,14 @@ proc getConfig {prog} \
 	if {$tcl_platform(platform) == "windows"} {
 		set _d(cset.leftWidth) 40
 		set _d(cset.rightWidth) 80
-		set _d(scrollWidth) 12		;# scrollbar width
-		set _d(help.scrollWidth) 14	;# helptool scrollbar width
 		set _d(ci.filesHeight) 8
 		set _d(ci.commentsHeight) 7	;# height of comment window
 		set _d(buttonColor) $SYSTEMBUTTONFACE	;# menu buttons
 		set _d(BG) $SYSTEMBUTTONFACE		;# default background
 	} else {
+                # windows uses native scrollbars; we don't want to dork
+                # with them
+                option add *Scrollbar.borderWidth 1 100
 		set _d(cset.leftWidth) 55
 		set _d(cset.rightWidth) 80
 		set _d(scrollWidth) 12		;# scrollbar width
@@ -127,7 +127,7 @@ proc getConfig {prog} \
 	set _d(help.linkColor) $BLUE	;# hyperlinks
 	set _d(help.topicsColor) $ORANGE	;# highlight for topic search matches
 	set _d(help.height) 50		;# number of rows to display
-	set _d(help.width) 72		;# number of columns to display
+	set _d(help.width) 79		;# number of columns to display
 	set _d(help.helptext) ""	;# -f<helptextfile> - undocumented
 	set _d(help.exact) 0		;# helpsearch, allows partial matches
 
@@ -211,6 +211,16 @@ proc getConfig {prog} \
 			}
 		}
     	}
+
+        # final pass to exclude some options (for now just on windows)
+        # can be defeated by setting gc(app.useFullGc)
+        if {![info exists gc($app.useFullGC)]} {
+                if {$tcl_platform(platform) eq "windows"} {
+                        scrollbar ._dummy_
+                        set width [._dummy_ cget -width]
+                        set gc($app.scrollWidth) $width
+                }
+        }
 }
 
 proc initFonts {app var} \
@@ -348,7 +358,8 @@ proc defineSymbolicColors {} \
 		# This is used for menubuttons, and is based on the
 		# "SystemButtonFace" on windows. 
 		if {$tcl_platform(platform) == "windows"} {
-			set SYSTEMBUTTONFACE #d4d0c8
+#			set SYSTEMBUTTONFACE #d4d0c8
+                        set SYSTEMBUTTONFACE systembuttonface
 		} else {
 			set SYSTEMBUTTONFACE #d0d0d0
 		}

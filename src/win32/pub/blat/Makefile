@@ -7,7 +7,7 @@ LDLIBS=-lws2_32
 all:  blat
 	cp blat.exe ../../../
 
-clean clean-obj:
+clean clean-obj clobber:
 	-rm -f $(OBJS) *.idb *.pdb *.~bkp
 
 blat: $(OBJS)

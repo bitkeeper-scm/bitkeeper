@@ -910,7 +910,6 @@ int	sccs_lockfile(const char *lockfile, int wait, int quiet);
 int	sccs_stalelock(const char *lockfile, int discard);
 int	sccs_unlockfile(const char *file);
 int	sccs_mylock(const char *lockf);
-int	sccs_readlockf(const char *file, pid_t *pidp, char **hostp, time_t *tp);
 
 sccs	*sccs_unzip(sccs *s);
 sccs	*sccs_gzip(sccs *s);

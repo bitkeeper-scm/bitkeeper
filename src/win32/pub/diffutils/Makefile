@@ -33,7 +33,7 @@ $(L_OBJ): $(H) $(L_SRC)
 
 $(D3_OBJ): $(H) $(D3_SRC)
 
-clean clean-obj:
+clean clean-obj clobber:
 	rm -f *.o $(PROGRAMS) core
 	rm -f *.pdb *.ilk *.exe
 

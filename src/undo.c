@@ -26,6 +26,7 @@ undo_main(int ac,  char **av)
 	FILE	*f;
 	int	i;
 	int	status;
+	int	rmresync = 1;
 	char	**csetrev_list = 0;
 	char	*qflag = "", *vflag = "-v";
 	char	*cmd = 0, *rev = 0;
@@ -88,7 +89,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 			exit(1);
 		}
 		unlink(BACKUP_SFIO);
-		sys(RM, "-rf", "RESYNC", SYS);
+		if (rmresync) sys(RM, "-rf", "RESYNC", SYS);
 		exit(1);
 	}
 	EACH (csetrev_list) {
@@ -136,7 +137,10 @@ err:		if (undo_list[0]) unlink(undo_list);
 	/*
 	 * Move file to RESYNC and save a copy in a sfio backup file
 	 */
-	if (moveAndSave(fileList)) goto err;
+	switch (moveAndSave(fileList)) {
+	    case -2: rmresync = 0; goto err;
+	    case -1: goto err;
+	}
 
 	checkfiles = bktmp(0, "undo_ck");
 	chdir(ROOT2RESYNC);
@@ -356,6 +360,7 @@ clean_file(char **fileList)
 
 /*
  * Move file to RESYNC and save a backup copy in sfio file
+ * Return: 0 on success; -2 if RESYNC directory already exists; -1 on err
  */
 private int
 moveAndSave(char **fileList)
@@ -366,7 +371,7 @@ moveAndSave(char **fileList)
 
 	if (isdir("RESYNC")) {
 		fprintf(stderr, "Repository locked by RESYNC directory\n");
-		return (-1);
+		return (-2);
 	}
 
 	strcpy(tmp, "RESYNC/BitKeeper/etc");

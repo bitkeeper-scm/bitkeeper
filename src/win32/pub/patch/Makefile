@@ -22,7 +22,7 @@ patch: $(OBJS)
 
 $(OBJS): $(H) $(SRCS)
 
-clean clean-obj:
+clean clean-obj clobber:
 	rm -f *.o $(PROGRAMS) core
 	rm -f *.pdb *.ilk *.exp *.exe *.lib *.idb
 

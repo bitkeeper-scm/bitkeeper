@@ -89,7 +89,7 @@ echo OK
 echo $N Converge to repos which each fixed lod ......................$NL
 mkdir $HERE/clone
 cd $HERE/clone
-tar xf ../save.tar
+tar xmf ../save.tar
 bk _fix_lod1 > out1 2> err1 || {
 	echo Failed fix
 	cat err1

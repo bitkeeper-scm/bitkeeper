@@ -9,84 +9,73 @@
 #    constitutes your permission for BitMover, Inc. to distribute  the
 #    modifications under any license.
 
-# Copyright (c) 2001 Aaron Kushner
+# Copyright (c) 2004 Larry McVoy
 # %K%
 
-# Things that need to be added
-# 
-MYHOST=`bk gethost`
+HERE=`${CWD}`
+test -d $HERE/home || mkdir $HERE/home
+export BK_TEST_HOME=$HERE/home
+OUT=$HERE/out
+RC=`bk dotbk`/diff.rc
 
 echo $N Create initial repository ...................................$NL
-HERE=`${CWD}`
 no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
-echo $N Create some data ............................................$NL
-cd $HERE/project/BitKeeper/etc
-mkdir $HERE/project/src
-cd $HERE/project/src
-ed <<EOF >/dev/null 2>&1
-a
-Test File %W%
-stuff
-stuff
-stuff
-stuff
-stuff
-.
-2,\$t.
-2,\$t.
-2,\$t.
-2,\$t.
-2,\$t.
-2,\$t.
-2,\$t.
-w foo
+
+echo $N Simple startup with no args and nothing to diff..............$NL
+    bk guitest difftool >$OUT 2>&1 <<'EOF'
+    test_buttonPress Quit
+    after 5000 [list exit 99] ;# in case the buttonpress didn't work
 EOF
-bk ci $Q -i foo 
-if [ ! -f SCCS/s.foo ]; then echo failed to create history; exit 1; fi
-bk edit $Q foo
-ed foo <<EOF >/dev/null 2>&1
-100,120s/stuff/more stuff/
-200,300s/stuff/more stuff with a really long line/
-400,420s/stuff/yuck/
-w
+err=$?
+expected='There were no files available to diff' 
+grep -q "$expected" $OUT
+if [ $? -ne 0 ]; then 
+    echo failed
+    echo "expected: '$expected'"
+    echo "  actual: '`cat $OUT`'" 
+    exit 1 
+fi
+if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
+echo OK
+
+# this tests that the gui properly creates the rc file.
+# this requires that there's something to diff since the tool doesn't
+# save the prefs unless the GUI fully starts up.
+echo $N Create dotbk/diff.rc ........................................$NL
+test -f $RC && rm -f $RC
+echo "this is file 1" > file1
+echo "this is file 2" > file2
+bk guitest difftool file1 file2 >$OUT 2>&1 <<'EOF'
+    test_buttonPress Quit
+    after 5000 [list exit 99] ;# in case the buttonpress didn't work
 EOF
-bk ci $Q  -y"test of difftool" foo 
-bk commit $Q -y"test of difftool"
-echo OK
-echo $N Check difftool for ASCII diffs .............................$NL
-cd $HERE/project/src
-bk edit $Q
-echo "junk" > text.1
-echo "junk" > text.2
-bk ci $Q -i -y"test of text files" text.1
-bk ci $Q -i -y"test of text files" text.2
-bk edit $Q
-echo "junk1" >> text.1
-echo "junk1" >> text.2
-bk difftool
-bk ci $Q -y"test of text files ci" text.1
-bk ci $Q -y"test of text files ci" text.2
-bk clean
-echo OK
-echo $N Check difftool for binary diffs .............................$NL
-cd $HERE/project/src
-bk edit $Q
-head -1 /bin/ls > binary.1
-head -1 /bin/ls > binary.2
-bk ci $Q -i -y"test of binary files" binary.1
-bk ci $Q -i -y"test of binary files" binary.2
-bk edit $Q
-head -1 /bin/ls >> binary.1
-head -1 /bin/ls >> binary.2
-bk commit $Q -y"adding binary.1 and binary.2"
-bk difftool
-bk csettool -r1.1..1.3
-echo OK
-echo $N Check difftool for no diffs in binary files .................$NL
-bk difftool binary.1 binary.2
-echo OK
+err=$?
+if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
+test -f $RC || (echo ".rc wasn't created" ; exit 1; )
+echo "OK"
+
+echo $N Proper count of diffs and files when there is only 1.........$NL
+bk guitest difftool file1 file2 >$OUT 2>&1 <<'EOF'
+    global diffCount
+    set files [.menu.fmb cget -text]
+    puts "$files diffCount=$diffCount"
+    test_buttonPress Quit
+    after 5000 [list exit 99] ;# in case the buttonpress didn't work
+EOF
+err=$?
+if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
+expected='Files (1) diffCount=1'
+grep -q "$expected" $OUT
+if [ $? -ne 0 ]; then 
+    echo failed
+    echo "expected: '$expected'"
+    echo "  actual: '`cat $OUT`'" 
+    exit 1 
+fi
+echo "OK"
+

@@ -59,12 +59,15 @@ bk tag $Q -- -1234 && {
 }
 echo OK
 
+# SGI's getopts doesn't like "+".
+test `uname` = IRIX64 || {
 echo $N "Tags may not be just a  +  ..................................$NL"
 bk tag $Q + && {
 	echo Should have failed
 	exit 1
 }
 echo OK
+}
 
 for s in .. ., ,. ,,
 do
@@ -84,7 +87,7 @@ bk tag $Q 'foo|bar' && {
 echo OK
 
 test $PLATFORM != "WIN32" && {
-echo $N "Tags may not contain a  \\n  .................................$NL"
+echo $N "Tags may not contain a newline ..............................$NL"
 bk tag $Q 'foo
 bar' && {
 	echo Should have failed
@@ -441,7 +444,7 @@ echo OK
 echo $N Test propogation of a tag added with a commit, pick merge ...$NL
 cd $HERE
 rm -rf tagchild
-tar xf tagchild.TAR
+tar xmf tagchild.TAR
 cd $HERE/tagchild
 echo m | bk pull $Q 2>/dev/null
 test -d RESYNC && {

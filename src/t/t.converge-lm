@@ -216,7 +216,7 @@ echo OK
 echo $N Pull opposite direction, want same result ...................$NL
 cd $HERE
 rm -rf project copy
-tar xf SAVE 
+tar xmf SAVE 
 cd project
 echo n | bk pull $Q -t ../copy >/dev/null 2>&1
 test -d RESYNC && {
@@ -353,7 +353,7 @@ echo OK
 echo $N In clone, rm logging_ok, commit a new one, pull .............$NL
 cd $HERE
 rm -rf project copy
-tar xf TAR
+tar xmf TAR
 cd $HERE/project
 CNT=`bk -r prs -hr1.0 -d'$if(:DPN:=BitKeeper/etc/gone){F\n}' | wc -l`
 if [ $CNT != 1 ]

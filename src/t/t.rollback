@@ -53,7 +53,7 @@ echo OK
 echo $N Check corrupted key in the ChangeSet file w/ new file .......$NL
 cd $HERE
 rm -rf project copy
-tar xf SAVE 2> /dev/null
+tar xmf SAVE
 cd project
 ls > LS
 bk new $Q LS
@@ -74,7 +74,7 @@ echo OK
 echo $N Check for removed file in RESYNC dir ........................$NL
 cd $HERE
 rm -rf project copy
-tar xf SAVE 2> /dev/null
+tar xmf SAVE
 cd project
 ls > LS
 bk new $Q LS
@@ -98,7 +98,7 @@ echo OK
 echo $N Check for corrupted file in RESYNC dir ......................$NL
 cd $HERE
 rm -rf copy
-tar xf copy.tar 2> /dev/null
+tar xmf copy.tar
 cd copy
 chmod +w RESYNC/SCCS/s.LS
 echo foo >> RESYNC/SCCS/s.LS

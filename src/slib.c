@@ -8090,7 +8090,8 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 	bzero(&pf, sizeof(pf));
 	if (sccs_read_pfile("hasDiffs", s, &pf)) return (-1);
 	unless (d = findrev(s, pf.oldrev)) {
-		verbose((stderr, "can't find %s in %s\n", pf.oldrev, s->gfile));
+		verbose((stderr,
+		    "diffs: can't find %s in %s\n", pf.oldrev, s->gfile));
 		free_pfile(&pf);
 		return (-1);
 	}

@@ -10,6 +10,7 @@
 #undef	strdup
 #undef	system
 #undef	unlink
+#undef	fclose
 
 #ifndef MAXPATH
 #define	MAXPATH		1024

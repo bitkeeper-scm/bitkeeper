@@ -30,6 +30,7 @@ proc main {} \
 	bk_init
 	app_init
 	widgets
+	after idle [list focus -force .]
 
 	if {$bkuser == "Administrator" || 
 	    $bkuser == "root"} {
@@ -42,7 +43,7 @@ proc main {} \
 
 	bind . <<WizCancel>> {
 		# This causes the main program to exit
-		set ::done 1
+		exit 1
 	}
 
 	bind . <<WizFinish>> {
@@ -52,8 +53,7 @@ proc main {} \
 		# "Done", we only need to exit
 		set finishLabel [lindex [. buttonconfigure finish -text] end]
 		if {$finishLabel == "Done"} {
-			set ::done 1
-			break
+			exit 0
 		}
 
 		# Finish  must really mean finish...
@@ -69,7 +69,7 @@ proc main {} \
 			    "The repository was successfully created."
 
 			if {$::wizData(closeOnCreate)} {
-				set ::done 1
+				exit 0
 			} else {
 				. buttonconfigure finish -text Done
 				. configure -state normal
@@ -99,9 +99,6 @@ proc main {} \
 			}
 		}
 	}
-
-	vwait ::done
-	exit
 }
 
 proc app_init {} \
@@ -279,13 +276,11 @@ proc computeSize {wvar hvar} \
 
 proc widgets {} \
 {
-	global bkuser
-	global readonly
+	global	bkuser readonly env
 
 	::tkwizard::tkwizard . -title "BK Setup Assistant" -sequential 1 
 
-	catch {exec bk bin} bin
-	set image [file join $bin "bklogo.gif"]
+	set image "$env(BK_BIN)/gui/images/bklogo.gif"
 	if {[file exists $image]} {
 		set bklogo [image create photo -file $image]
 		. configure -icon $bklogo
@@ -1054,40 +1049,14 @@ proc parseLicenseData {type} \
 
 proc readConfig {type {filename {}}} \
 {
-
-	global errorCode
-	global tcl_platform
-
 	array set result {}
-
-	if {$type == "template"} {
-		if {$tcl_platform(platform) == "windows"} {
-			package require registry
-			set key {HKEY_LOCAL_MACHINE\Software\Microsoft\Windows}
-			append key {\CurrentVersion\Explorer\Shell Folders}
-			catch {set appdir \
-				   [registry get "$key" {Common AppData}]
-			}
-
-			if {$errorCode ==  {} } {
-				set filename [file join $appdir \
-						  BitKeeper etc config.template]
-			}
-		} else {
-			set filename "/etc/BitKeeper/etc/config.template"
+	set f [open "|bk setup -p" r]
+	while {[gets $f line] != -1} {
+		if {[regexp {^ *#} $line]} continue
+		if {[regexp {([^:]+) *: *(.*)} $line -> key value]} {
+			set result($key) [string trim $value]
 		}
 	}
-
-	if {[file exists $filename] && [file readable $filename]} {
-		set f [open $filename r]
-		while {[gets $f line] != -1} {
-			if {[regexp {^ *#} $line]} continue
-			if {[regexp {([^:]+) *: *(.*)} $line -> key value]} {
-				set result($key) [string trim $value]
-			}
-		}
-	}
-
 	return [array get result]
 }
 
@@ -1204,7 +1173,12 @@ proc popupMessage {args} \
 
 	# hopefully someday we'll turn the msgtool code into a library
 	# so we don't have to exec. For now, though, exec works just fine.
-	eval exec bk msgtool $option \$message
+	if {[info exists ::env(BK_TEST_HOME)]} {
+		# we are running in test mode; spew to stderr
+		puts stderr $message
+	} else {
+		eval exec bk msgtool $option \$message
+	}
 }
 
 # This not only sets the focus, but attempts to put the cursor in

@@ -18,6 +18,9 @@ proc main {} \
 	}
 
 	widgets
+	if {[file exists bitkeeper/gui/images/bk16.ico]} {
+		catch {wm iconbitmap . bitkeeper/gui/images/bk16.ico}
+	}
 	centerWindow . 500 350
 	. configure -step Welcome
 	. show
@@ -87,9 +90,8 @@ proc install {} \
 
 	set installfrom [pwd]
 
-	log "installing..."
 	set err [catch {
-		doCommand bk install -f $runtime(destination)
+		doCommand bk install -v -f $runtime(destination)
 	} result]
 
 	if {$err == 0} {

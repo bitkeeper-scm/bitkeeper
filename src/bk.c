@@ -140,6 +140,7 @@ int	rclone_main(int, char **);
 int	rcs2sccs_main(int, char **);
 int	rcsparse_main(int, char **);
 int	receive_main(int, char **);
+int	repogca_main(int, char **);
 int	relink_main(int, char **);
 int	renumber_main(int, char **);
 int	repo_main(int, char **);
@@ -329,6 +330,7 @@ struct	command cmdtbl[] = {
 	{"relink", relink_main},
 	{"renumber", renumber_main},		/* doc 2.0 */
 	{"repo", repo_main},	/* obsolete */ 	/* undoc 2.0 */
+	{"repogca", repogca_main},
 	{"resolve", resolve_main},		/* doc 2.0 */
 	{"restore", restore_main},
 	{"rev2cset", r2c_main},	/* alias */	/* doc 2.0 as r2c */
@@ -683,6 +685,23 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 	    streq(prog, "diff3") ||
 	    streq(prog, "sdiff")) {
 		return (spawn_cmd(_P_WAIT, av));
+	}
+
+	/* Handle GUI test */
+	if (streq(prog, "guitest")) {
+		sig_catch(SIG_IGN);
+		argv[0] = find_wish();
+		sprintf(cmd_path, "%s/t/guitest.tcl", bin);
+		argv[1] = cmd_path;
+		for (i = 2, j = 1; av[j]; i++, j++) {
+			if (i >= (MAXARGS-10)) {
+				fprintf(stderr, "bk: too many args\n");
+				exit(1);
+			}
+			argv[i] = av[j];
+		}
+		argv[i] = 0;
+		return (spawn_cmd(_P_WAIT, argv));
 	}
 
 	/*

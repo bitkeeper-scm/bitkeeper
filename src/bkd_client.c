@@ -148,13 +148,16 @@ private	remote *
 url_parse(char *p, int default_port)
 {
 	remote	*r;
-	char	*s;
+	char	*s, *e;
 	char	sav;
 
 	unless (*p) return (0);
 	new(r);
 	r->rfd = r->wfd = -1;
-	if (s = strchr(p, '@')) {		
+
+	/* find end of hostname, start of pathname */
+	unless (e = strchr(p, '/')) e = p + strlen(p);
+	if ((s = strchr(p, '@')) && (s < e)) {
 		/*
 		 * user@host[:path] or
 		 * user@host[/path]
@@ -173,7 +176,7 @@ url_parse(char *p, int default_port)
 		} else {
 			r->host = strdup(p);
 		}
-	} else if ((s = strchr(p, ':')) && isdigit(s[1])) {
+	} else if ((s = strchr(p, ':')) && isdigit(s[1]) && (s < e)) {
 		/*
 		 * host:port[/path]
 		 */
