@@ -1,25 +1,31 @@
 #include "system.h"
 #include "sccs.h"
 
+#define	HELPURL	"help://"
+#define	HSZ	7		/* number of chars, not counting NULL */
+
 extern char     *bin;
 
 int
 gethelp_main(int ac, char **av)
 {
 	unless (av[1]) {
-		fprintf(stderr, "usage: gethelp help_name bkarg\n");
+		fprintf(stderr, "usage: gethelp [section/]topic bkarg\n");
 		exit(1);
 	}
 	return (gethelp(av[1], av[2], 0, stdout) == 0);
 }
 
+/*
+ * Usage: gethelp("[section/]name", arg, prefix, out)
+ */
 int
-gethelp(char *help_name, char *bkarg, char *prefix, FILE *outf)
+gethelp(char *topic, char *bkarg, char *prefix, FILE *outf)
 {
 	char	buf[MAXLINE], pattern[MAXLINE];
 	FILE	*f;
 	int	found = 0;
-	int	first = 1;
+	char	*t;
 
 	if (bkarg == NULL) bkarg = "";
 	sprintf(buf, "%s/bkhelp.txt", bin);
@@ -28,18 +34,35 @@ gethelp(char *help_name, char *bkarg, char *prefix, FILE *outf)
 		fprintf(stderr, "Unable to locate help file %s\n", buf);
 		exit(1);
 	}
-	sprintf(pattern, "#%s\n", help_name);
-	while (fgets(buf, sizeof(buf), f)) {
-		if (streq(pattern, buf)) {
-			found = 1;
-			break;
+	if (strchr(topic, '/')) {
+		sprintf(pattern, "%s%s\n", HELPURL, topic);
+		while (fgets(buf, sizeof(buf), f)) {
+			if (streq(pattern, buf)) {
+				found = 1;
+				break;
+			}
+		}
+	} else {
+		/*
+		 * Take the first one that matches.
+		 * XXX - may be others.
+		 */
+		while (fgets(buf, sizeof(buf), f)) {
+			unless (strneq(HELPURL, buf, HSZ)) continue;
+			t = strrchr(buf, '/');
+			t++;
+			chop(buf);
+			if (streq(t, topic)) {
+				found = 1;
+				break;
+			}
 		}
 	}
+	unless (found) return (0);
 	while (fgets(buf, sizeof(buf), f)) {
 		char	*p;
 
-		if (first && (buf[0] == '#')) continue;
-		first = 0;
+		if (strneq(HELPURL, buf, HSZ)) continue;
 		if (streq("$\n", buf)) break;
 		if (prefix) fputs(prefix, outf);
 		p = strstr(buf, "#BKARG#");
@@ -69,13 +92,13 @@ helpaliases_main(int ac, char **av)
 	}
 	name[0] = 0;
 	while (fgets(buf, sizeof(buf), f)) {
-		unless (strneq("#help_", buf, 6)) {
+		unless (strneq(HELPURL, buf, HSZ)) {
 			name[0] = 0;
 			continue;
 		}
 		chop(buf);
 		if (name[0]) {
-			printf("%s\t%s\n", &buf[6], &name[6]);
+			printf("%s\t%s\n", &buf[HSZ], &name[HSZ]);
 		} else {
 			strcpy(name, buf);
 		}
@@ -86,19 +109,7 @@ helpaliases_main(int ac, char **av)
 
 /*
  * Generate the topic list.
- * Each help topic is preceeded by a #section_section name or it goes in
- * Misc.
- *
- * XXX - need sections for
- * File operations
- * ChangeSet
- * Administrative commands
- * Misc
  */
-int
-helptopiclist_main(int ac, char **av)
-{
-	char	buf[MAXLINE], name[MAXLINE];
 #define	GENERAL		0
 #define	LICENSE		1
 #define	BASIC		2
@@ -110,11 +121,16 @@ helptopiclist_main(int ac, char **av)
 #define	MISC		8
 #define	OBSOLETE	9
 #define	LAST		9
-	char	**sections[LAST+1];
-	int	a = 0, i = -1, j;
+int
+helptopiclist_main(int ac, char **av)
+{
+	char	buf[MAXLINE], name[MAXLINE];
+	char	*t, **sections[LAST+1];
+	int	alias = 0, a = 0, i = -1, j;
 	MDBM	*aliases = mdbm_mem();
 	MDBM	*dups = mdbm_mem();
 	FILE	*f;
+	int	full = (ac > 1) && streq(av[1], "-f");
 	kvpair	kv;
 
 	bzero(sections, sizeof(sections));
@@ -125,86 +141,86 @@ helptopiclist_main(int ac, char **av)
 	}
 	name[0] = 0;
 	while (fgets(buf, sizeof(buf), f)) {
+		unless (strneq(HELPURL, buf, HSZ)) {
+			alias = 0;
+			continue;
+		}
 		chop(buf);
+		t = strrchr(buf, '/');
+		*t = 0;
 #define	streqcase	!strcasecmp
-		if (streqcase("#section General", buf)) {
+		if (streqcase("General", &buf[HSZ])) {
 			i = GENERAL;
-			continue;
-		} else if (streqcase("#section Licensing", buf)) {
+		} else if (streqcase("Licensing", &buf[HSZ])) {
 			i = LICENSE;
-			continue;
-		} else if (streqcase("#section Basic", buf)) {
+		} else if (streqcase("Basics", &buf[HSZ])) {
 			i = BASIC;
-			continue;
-		} else if (streqcase("#section Repository", buf)) {
+		} else if (streqcase("Repository", &buf[HSZ])) {
 			i = REPOSITORY;
-			continue;
-		} else if (streqcase("#section GUI tools", buf)) {
+		} else if (streqcase("GUI-tools", &buf[HSZ])) {
 			i = GUI_TOOLS;
-			continue;
-		} else if (streqcase("#section Compatibility", buf)) {
+		} else if (streqcase("Compat", &buf[HSZ])) {
 			i = COMPATIBILITY;
-			continue;
-		} else if (streqcase("#section File", buf)) {
+		} else if (streqcase("File", &buf[HSZ])) {
 			i = FILES;
-			continue;
-		} else if (streqcase("#section Admin", buf)) {
+		} else if (streqcase("Admin", &buf[HSZ])) {
 			i = ADMIN;
-			continue;
-		} else if (streqcase("#section Obsolete", buf)) {
+		} else if (streqcase("Obsolete", &buf[HSZ])) {
 			i = OBSOLETE;
-			continue;
-		} else if (strneq("#section", buf, 8)) {
+		} else {
 			fprintf(stderr, "WARNING: unknown section %s\n", buf);
 			i = MISC;
-			continue;
 		}
-		unless (strneq("#help_", buf, 6)) {
-			name[0] = 0;
-			i = -1;
-			continue;
+		*t = '/';
+		if (mdbm_store_str(dups, &buf[HSZ], "", MDBM_INSERT)) {
+			fprintf(stderr, "Duplicate key: %s\n", &buf[HSZ]);
 		}
-		if (mdbm_store_str(dups, &buf[6], "", MDBM_INSERT)) {
-			fprintf(stderr, "Duplicate key: %s\n", &buf[6]);
-		}
-		if (name[0]) {
-			mdbm_store_str(aliases, &buf[6], name, 0);
+		if (alias) {
+			mdbm_store_str(aliases, &buf[HSZ], name, 0);
 			a++;
 		} else {
-			strcpy(name, &buf[6]);
-			if (i == -1) i = MISC;
-			sections[i] = addLine(sections[i], strdup(name));
+			strcpy(name, &buf[HSZ]);
+			sections[i] = addLine(sections[i], strdup(t+1));
 		}
+		alias = 1;
 	}
 	fclose(f);
 	for (j = 0; j <= LAST; ++j) {
 		unless (sections[j]) continue;
 		switch (j) {
-		    case GENERAL: printf("General\n"); break;
-		    case LICENSE: printf("License\n"); break;
-		    case BASIC: printf("Basic\n"); break;
-		    case REPOSITORY: printf("Repository\n"); break;
-		    case GUI_TOOLS: printf("GUI tools\n"); break;
-		    case COMPATIBILITY: printf("Compatibility\n"); break;
-		    case FILES: printf("File\n"); break;
-		    case ADMIN: printf("Administration\n"); break;
-		    case MISC: printf("Misc\n"); break;
-		    case OBSOLETE: printf("Obsolete\n"); break;
+		    case GENERAL:	t = "General"; break;
+		    case LICENSE:	t = "Licensing"; break;
+		    case BASIC:		t = "Basics"; break;
+		    case REPOSITORY:	t = "Repository"; break;
+		    case GUI_TOOLS:	t = "GUI-tools"; break;
+		    case COMPATIBILITY: t = "Compat"; break;
+		    case FILES:		t = "File"; break;
+		    case ADMIN: 	t = "Admin"; break;
+		    case MISC: 		t = "Misc"; break;
+		    case OBSOLETE:	t = "Obsolete"; break;
+		    default: 		t = "???"; break;
+		}
+		printf("%s\n", t);
+		if (full) {
+			sprintf(buf, "  %s/", t);
+			t = buf;
+		} else {
+			t = "  ";
 		}
 		sortLines(sections[j]);
 		EACH(sections[j]) {
-			if (isdigit(sections[j][i][0])) {
-				printf("  %s\n", &sections[j][i][1]);
-			} else {
-				printf("  %s\n", sections[j][i]);
-			}
+			unless (streq(sections[j][i], "Introduction")) continue;
+			printf("%s%s\n", t, sections[j][i]);
+		}
+		EACH(sections[j]) {
+			if (streq(sections[j][i], "Introduction")) continue;
+			printf("%s%s\n", t, sections[j][i]);
 		}
 	}
 	if (a) {
 		printf("Aliases\n");
 		for (kv = mdbm_first(aliases);
 		    kv.key.dsize; kv = mdbm_next(aliases)) {
-			if (isdigit(*kv.val.dptr)) kv.val.dptr++;
 			printf("%s\t%s\n", kv.key.dptr, kv.val.dptr);
 		}
 	}
@@ -214,28 +230,25 @@ helptopiclist_main(int ac, char **av)
 int
 helpsearch_main(int ac, char **av)
 {
-	char	p[500], buf[200], name[200], sect[200];
-	int	Help, All, Long, Debug, Sections, Offsets;
-	int	offset = 0, c, len;
-	char	*str, *word;
+	char	p[500], buf[200], name[200];
+	int	All = 0, Long = 0, Debug = 0, Sections = 0;
+	int	c, len;
+	char	*t, *str, *word;
 	FILE	*f;
 	MDBM	*printed = mdbm_mem();
 
-	Help = All = Long = Debug = Sections = Offsets = 0;
-	while ((c = getopt(ac, av, "adhlos")) != -1) {
+	while ((c = getopt(ac, av, "adls")) != -1) {
 		switch (c) {
 		    case 'a': All++; break;
 		    case 'd': Debug++; break;
-		    case 'h': Help++; break;
 		    case 'l': Long++; break;
 		    case 's': Sections++; break;
-		    case 'o': Offsets++; break;
 		    default:
 			goto usage;
 	    	}
 	}
 	unless (word = av[optind]) {
-usage:		fprintf(stderr, "usage: bk helpsearch [-also] word\n");
+usage:		fprintf(stderr, "usage: bk helpsearch [-als] word\n");
 		exit(1);
 	}
 	len = strlen(word);
@@ -247,17 +260,14 @@ usage:		fprintf(stderr, "usage: bk helpsearch [-also] word\n");
 	name[0] = 0;
 	while (fgets(buf, sizeof(buf), f)) {
 		chop(buf);
-		if (strneq("#help_", buf, 6)) {
-			unless (name[0]) strcpy(name, &buf[6]);
-			continue;
-		} else if (strneq("#section ", buf, 9)) {
-			name[0] = 0;
-			offset = 0;
-			strcpy(sect, &buf[9]);
+		if (strneq(HELPURL, buf, HSZ)) {
+			unless (name[0]) strcpy(name, &buf[HSZ]);
 			continue;
 		}
-		if (buf[0] == '#') continue;
-		offset++;
+		if (streq(buf, "$")) {
+			name[0] = 0;
+			continue;
+		}
 		unless (str = strstr(buf, word)) continue;
 		unless (All) {
 			unless ((str == buf) || isspace(str[-1])) {
@@ -271,25 +281,13 @@ usage:		fprintf(stderr, "usage: bk helpsearch [-also] word\n");
 			}
 		}
 		if (Long) {
-			if (Offsets) {
-				sprintf(p,
-				    "%s/%s/%d\t%s\n", sect, name, offset, buf);
-			} else {
-				if (Help) {
-					sprintf(p, "%s\t%s\n", name, buf);
-				} else {
-					sprintf(p,
-					    "%s/%s\t%s\n", sect, name, buf);
-				}
-			}
+			sprintf(p, "%s\t%s\n", name, buf);
 		} else if (Sections) {
-			sprintf(p, "%s\n", sect);
+			t = strchr(name, '/');
+			*t = 0;
+			sprintf(p, "%s\n", name);
 		} else {
-			if (Offsets) {
-				sprintf(p, "%s/%s/%d\n", sect, name, offset);
-			} else {
-				sprintf(p, "%s/%s\n", sect, name);
-			}
+			sprintf(p, "%s\n", name);
 		}
 		if (mdbm_fetch_str(printed, p)) continue;
 		fputs(p, stdout);

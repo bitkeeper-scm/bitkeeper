@@ -40,7 +40,7 @@ help_main(int ac,  char **av)
 	}
 	for (av[i = optind]; av[i]; i++) {
 		sprintf(buf,
-		    "bk gethelp help_%s %s >> %s", av[i], bin, out);
+		    "bk gethelp %s %s >> %s", av[i], bin, out);
 		if (system(buf) != 0) {
 			if (is_command(av[optind])) {
 				f = fopen(out, "ab");
