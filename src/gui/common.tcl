@@ -124,3 +124,34 @@ proc _parray {a {pattern *}} {
 	}
 	return $answer
 }
+
+#-----------------------------------------------------------------------
+# tabstops
+#
+# returns one or more tabstops adjusted for the width of an average
+# character in a text widget
+# 
+# usage: tabstops pathName tabpos ?tabpos ...?
+#
+# arguments:
+#    pathName - widget path; must be a text widget
+#    tabpos   - a tab position expressed as a number of characters
+#               (eg: 4, 8, etc). The last tab position specified
+#               will be used to extrapolate any additional tabstops
+#               that are required (ie: if only the value 4 is given,
+#               tabstops will be at every 4 characters). 
+#
+proc tabstops {pathName args} \
+{
+	set font [font actual [$pathName cget -font]]
+	set emWidth [expr {([font measure $font M]/72.0)/[tk scaling]}]
+	
+	set tabstops [list]
+	foreach n $args {
+		set tabstop [expr {$n * $emWidth}]
+		lappend tabstops "${tabstop}i"
+	}
+	
+	return $tabstops
+
+};# tabstops
