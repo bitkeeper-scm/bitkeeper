@@ -1174,7 +1174,6 @@ int	check_licensesig(char *key, char *sign);
 char	*hashstr(char *str);
 char	*secure_hashstr(char *str, char *key);
 void	delete_cset_cache(char *rootpath, int save);
-int	nFiles(void);
 void	notice(char *key, char *arg, char *type);
 pid_t	findpid(pid_t pid);
 void	save_log_markers(void);
