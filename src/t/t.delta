@@ -20,8 +20,10 @@ if [ ! -f SCCS/s.init ]; then echo Failed to create s.file; exit 1; fi
 echo OK
 echo $N Check delta -i works w/ existing file .......................$NL
 echo hi there again > init
-bk delta $S -i init > ${DEV_NULL} 2>&1
+bk delta -i init 2> delta.out
 if [ $? -eq 0 ]; then echo Failed; exit 1; fi
+grep -q "s.init already exists" delta.out
+if [ $? -ne 0 ]; then echo Failed; exit 1; fi
 if [ -f SCCS/z.init ]; then echo Failed, fail to clean zlock; exit 1; fi
 rm -f init
 echo OK
@@ -332,4 +334,11 @@ grep -q 'big has nulls' OUT || grep -q 'delta is binary' OUT || {
 	cat OUT
 	exit 1
 }
+echo OK
+echo $N Make sure we disallow .bk_skip file  .........................$NL
+touch .bk_skip
+bk new .bk_skip 2> new.out
+if [ $? -eq 0 ]; then echo failed; exit 1; fi
+grep -q "not allowed" new.out
+if [ $? -ne 0 ]; then echo failed 2; exit 1; fi
 echo OK

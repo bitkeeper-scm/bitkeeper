@@ -725,6 +725,13 @@ lftw_inner(char *path, char *base, struct stat *sb,
 			if (exists(path)) continue;
 		}
 
+		/*
+		 * Skip directory containing .bk_skip file
+		 */
+		strcpy(&base[n], "/" BKSKIP);
+		if (exists(path)) continue;
+		
+
 		/* Descend directory.  */
 		base[n] = '\0';
 		debug((stderr, "DIR\t%s\n", e->d_name));

@@ -234,3 +234,4 @@ bk undo -fqr+
 bk pull $Q -t bk://localhost:$P$HERE/copy
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
+if [ "$PLATFORM" = "WIN32" ]; then bk bkd -R 2> $DEV_NULL; fi

@@ -4488,6 +4488,7 @@ sccs_unlock(sccs *sccs, char type)
 	debug((stderr, "unlock(%s, %c)\n", sccs->sfile, type));
 	s = sccsXfile(sccs, type);
 	failed  = unlink(s);
+	// XXX This seems to a bug, we should only reset S_ZFILE if type == 'z'
 	unless (failed) sccs->state &= ~S_ZFILE;
 	return (failed);
 }
@@ -8424,7 +8425,7 @@ private int
 checkin(sccs *s,
 	int flags, delta *prefilled, int nodefault, MMAP *diffs, char **syms)
 {
-	FILE	*sfile, *gfile = 0;
+	FILE	*sfile = 0, *gfile = 0;
 	delta	*n0 = 0, *n, *first;
 	int	added = 0;
 	int	popened = 0, len;
@@ -8443,7 +8444,12 @@ checkin(sccs *s,
 		verbose((stderr,
 		    "%s not checked in, use -i flag.\n", s->gfile));
 out:		sccs_unlock(s, 'z');
+		sccs_unlock(s, 'x');
 		if (prefilled) sccs_freetree(prefilled);
+		if (sfile) fclose(sfile);
+		if (gfile && (gfile != stdin)) {
+			if (popened) pclose(gfile); else fclose(gfile);
+		}
 		s->state |= S_WARNED;
 		return (-1);
 	}
@@ -8458,20 +8464,18 @@ out:		sccs_unlock(s, 'z');
 		popened = openInput(s, flags, &gfile);
 		unless (gfile) {
 			perror(s->gfile);
-			sccs_unlock(s, 'z');
-			if (prefilled) sccs_freetree(prefilled);
-			return (-1);
+			goto out;
 		}
+	}
+
+	if (s->tree) {
+		fprintf(stderr, "delta: %s already exists\n", s->sfile);
+		goto out;
 	}
 	/* This should never happen - the zlock should protect */
 	if (exists(s->sfile)) {
 		fprintf(stderr, "delta: lost checkin race on %s\n", s->sfile);
-		if (prefilled) sccs_freetree(prefilled);
-		if (gfile && (gfile != stdin)) {
-			if (popened) pclose(gfile); else fclose(gfile);
-		}
-		sccs_unlock(s, 'z');
-		return (-1);
+		goto out;
 	}
 	/*
 	 * Disallow BK_FS character in file name.
@@ -8482,10 +8486,16 @@ out:		sccs_unlock(s, 'z');
 		fprintf(stderr,
 			"delta: %s: filename must not contain \"%c\"\n",
 			t, BK_FS);
-		sccs_unlock(s, 'z');
-		if (prefilled) sccs_freetree(prefilled);
-		s->state |= S_WARNED;
-		return (-1);
+		goto out;
+	}
+
+	/*
+	 * Disallow BKSKIP
+	 */
+	if (streq(&t[2], BKSKIP)) {
+		fprintf(stderr, 
+			"delta: checking in %s is not allowed\n", BKSKIP);
+		goto out;
 	}
 
 	buf[0] = 0;
@@ -8551,11 +8561,9 @@ out:		sccs_unlock(s, 'z');
 	n->serial = s->nextserial++;
 	s->table = n;
 	if (n->flags & D_BADFORM) {
-		sccs_unlock(s, 'z');
-		if (prefilled) sccs_freetree(prefilled);
 		fprintf(stderr, "checkin: bad revision: %s for %s\n",
 		    n->rev, s->sfile);
-		return (-1);
+		goto out;
 	} else {
 		l[0].flags = 0;
 	}
@@ -8611,7 +8619,7 @@ out:		sccs_unlock(s, 'z');
 no_config:
 	if (delta_table(s, sfile, 1)) {
 		error++;
-		goto abort;
+		goto out;
 	}
 	buf[0] = 0;
 	if (s->encoding & E_GZIP) zputs_init();
@@ -8678,26 +8686,26 @@ no_config:
 	error = end(s, n, sfile, flags, added, 0, 0);
 	if (gfile && (gfile != stdin)) {
 		if (popened) pclose(gfile); else fclose(gfile);
+		gfile = 0;
 	}
 	if (error) {
-abort:		if (sfile) fclose(sfile);
-		sccs_unlock(s, 'z');
-		sccs_unlock(s, 'x');
-		return (-1);
+		fprintf(stderr, "checkin: cannot construct sfile\n");
+		goto out;
 	}
+
 	t = sccsXfile(s, 'x');
 	if (fclose(sfile)) {
 		fprintf(stderr, "checkin: i/o error\n");
 		perror(t);
 		sfile = 0;
-		goto abort;
+		goto out;
 	}
 	sfile = 0;
 	if (rename(t, s->sfile)) {
 		fprintf(stderr,
 			 "checkin: can't rename(%s, %s) left in %s\n",
 			t, s->sfile, t);
-		goto abort;
+		goto out;
 	}
 	assert(size(s->sfile) > 0);
 	unless (flags & DELTA_SAVEGFILE) unlinkGfile(s);	/* Careful */
