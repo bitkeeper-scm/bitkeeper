@@ -283,11 +283,6 @@ main(int ac, char **av)
 	int	flags, ret;
 	char	*prog, *argv[MAXARGS];
 
-	if (time(0) < 976844429) {
-		unless (getenv("BK_REGRESSION")) putenv("_BK_NO_TAG_GRAPH=YES");
-	} else {
-		fprintf(stderr, "Tell lm to remove the putenv in bk.c\n");
-	}
 	cmdlog_buffer[0] = 0;
 	if (i = setjmp(exit_buf)) {
 		i -= 1000;
