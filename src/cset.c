@@ -325,7 +325,10 @@ spawn_checksum_child(void)
 	} else {
 		/* Child.
 		 * Replace stdin with the read end of the pipe.
+		 * If we read revs from stdin, the FILE will be in
+		 * the wrong state, so reset it.
 		 */
+		if (freopen(DEV_NULL, "r", stdin) == NULL) abort();
 		fd = fileno(stdin);
 		(close)(fd);
 		(dup2)(p[0], fd);
