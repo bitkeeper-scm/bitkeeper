@@ -5,7 +5,7 @@
 	bk get -q $@
 
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
-ifeq "$(OSTYPE)" "cygwin"
+ifeq "$(OSTYPE)" "msys"
         SYS=win32
 	EXE=.exe
 	EXT=exe

@@ -1,12 +1,12 @@
 # Makefile for BitKeeper.
 # @(#) %K%
 HERE    := $(shell pwd)
-REPO    := $(shell basename `bk root`)
+REPO    := $(shell basename "`bk root`")
 URL     := $(shell echo bk://work/`bk root` | sed s,/home/bk/,,)
 LOG	:= $(shell echo LOG-`bk getuser`)
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
 
-ifeq "$(OSTYPE)" "cygwin"
+ifeq "$(OSTYPE)" "msys"
 	SYS=win32
 	EXE=.exe
 	XTRA=win32

@@ -702,7 +702,7 @@ bk commit $S -y"abc"
 # argument
 cd $HERE/copy
 bk parent $Q junk
-bk pull $Q -R file://$HERE/project || {
+bk pull $Q -R $HERE/project || {
 	echo failed resync with url
 	exit 1
 }

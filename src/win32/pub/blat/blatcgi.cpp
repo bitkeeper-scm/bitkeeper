@@ -4,10 +4,8 @@
 #include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <iostream>
+#include <ctype.h>
 #include <time.h>
-
-#define	min(x,y)	(((x) < (y)) ? (x) : (y))
 
 #ifdef WIN32
 	#define __far far
