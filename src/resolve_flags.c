@@ -45,9 +45,6 @@ flags(int bits)
 		if (comma) fs(","); fs("ISSHELL"); comma = 1;
 	}
 #endif
-	if (bits & X_ALWAYS_EDIT) {
-		if (comma) fs(","); fs("ALWAYS_EDIT"); comma = 1;
-	}
 	return (buf);
 }
 

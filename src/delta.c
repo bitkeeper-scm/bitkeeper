@@ -33,6 +33,23 @@ usage: delta [-iluYpq] [-S<sym>] [-Z<alg>] [-y<c>] [files...]\n\n\
 
 int	newrev(sccs *s, pfile *pf);
 
+
+char *
+user_preference(char *what, char buf[MAXPATH])
+{
+	char *p;
+
+	unless (bk_proj) return "";
+	unless (bk_proj->config) {
+		unless (bk_proj->root) return "";
+		bk_proj->config = loadConfig(bk_proj->root, 0);
+		unless (bk_proj->config) return "";
+	}
+	p = mdbm_fetch_str(bk_proj->config, what);
+	unless (p) p = "";
+	return (p);
+}
+
 int
 delta_main(int ac, char **av)
 {
@@ -48,8 +65,8 @@ delta_main(int ac, char **av)
 	char	*diffsFile = 0;
 	char	*name;
 	char	**syms = 0;
-	char	*compp = 0, *encp = 0;
-	char	*mode = 0;
+	char	*compp = 0, *encp = 0, *p;
+	char	*mode = 0, buf[MAXPATH];
 	MMAP	*diffs = 0;
 	MMAP	*init = 0;
 	pfile	pf;
@@ -77,6 +94,7 @@ delta_main(int ac, char **av)
 help:		fputs(delta_help, stderr);
 		return (1);
 	}
+
 	while ((c = getopt(ac, av,
 			   "1acD:E|fg;GhI;ilm|M;npqRrS;suy|YZ|")) != -1) {
 		switch (c) {
@@ -140,6 +158,19 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 			return (1);
 		}
 	}
+
+	unless (checkout) {
+		p = user_preference("checkout", buf);
+		if (streq(p, "edit")) {
+			gflags |= GET_SKIPGET|GET_EDIT;
+			dflags |= DELTA_SAVEGFILE;
+			checkout = 1;
+		} else if (streq(p, "get")) {
+			gflags |= GET_EXPAND;
+			checkout = 1;
+		}
+	}
+
 	enc = sccs_encoding(0, encp, compp);
 	if (enc == -1) goto usage;
 
@@ -186,9 +217,6 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 	while (name) {
 		delta	*d = 0;
 		char	*nrev;
-		int	effective_dflags;
-		int	effective_gflags;
-		int	do_checkout;
 
 		if (dflags & DELTA_DONTASK) {
 			unless (d = comments_get(0)) goto usage;
@@ -208,33 +236,14 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 			}
 		}
 
-		effective_dflags = dflags;
-		do_checkout = checkout;
-		if (s->state & S_ALWAYS_EDIT) {
-			effective_dflags |= DELTA_SAVEGFILE;
-			do_checkout = 1;
-		}
 		nrev = NULL;
-		unless (dflags & NEWFILE) {
-			if (do_checkout && (newrev(s, &pf) == -1)) {
-				goto next;
-			}
-			nrev = pf.newrev;
+		//unless (dflags & NEWFILE) {
+		if (HAS_PFILE(s)) {
+			if (newrev(s, &pf) == -1) goto next;
+			if (checkout && (gflags &GET_EDIT)) nrev = pf.newrev;
 		}
 		s->encoding = sccs_encoding (s, encp, compp);
-		rc = sccs_delta(s, effective_dflags, d, init, diffs, syms);
-		/*
-		 * Check for S_ALWAYS_EDIT again,
-		 * checkin() may have changed it
-		 */
-		effective_gflags = gflags;
-		if (s->state & S_ALWAYS_EDIT) {
-			effective_gflags |= GET_EDIT;
-			if (effective_dflags & DELTA_SAVEGFILE) {
-				effective_gflags |= GET_SKIPGET;
-			}
-			do_checkout = 1;
-		}
+		rc = sccs_delta(s, dflags, d, init, diffs, syms);
 		if (rc == -2) goto next; /* no diff in file */
 		if (rc == -1) {
 			sccs_whynot("delta", s);
@@ -245,8 +254,7 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 			freeLines(syms);
 			return (1);
 		}
-		if (do_checkout) {
-
+		if (checkout) {
 			s = sccs_restart(s);
 			unless (s) {
 				fprintf(stderr,
@@ -254,7 +262,7 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 				goto next;
 			}
 			if (rc == -3) nrev = pf.oldrev;
-			if (sccs_get(s, nrev, 0, 0, 0, effective_gflags, "-")) {
+			if (sccs_get(s, nrev, 0, 0, 0, gflags, "-")) {
 				unless (BEEN_WARNED(s)) {
 					fprintf(stderr,
 					"get of %s failed, skipping it.\n",
