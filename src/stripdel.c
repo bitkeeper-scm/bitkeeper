@@ -214,13 +214,15 @@ set_meta(sccs *s, int stripBranches, int *count)
 	logmarker_ptype = (l&LOG_OPEN) ? 0 : 1;
 
 	if (f) {
-		 char    key[MAXKEY];
-
-		 while (fnext(key, f)) {
+		char    key[MAXKEY];
+		
+		while (fnext(key, f)) {
+			chomp(key);
 			e = sccs_findKey(s, key);
 			unless (e) continue;
 			e->flags |= D_BLUE;
 		}
+		fclose(f);
 	}
 
 	for (n = left = 0, e = s->table; e; e = e->next) {

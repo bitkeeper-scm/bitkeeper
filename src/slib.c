@@ -9714,16 +9714,9 @@ modeArg(delta *d, char *arg)
 private delta *
 sumArg(delta *d, char *arg)
 {
-	char *p;
-
 	if (!d) d = (delta *)calloc(1, sizeof(*d));
 	d->flags |= D_CKSUM;
 	d->sum = atoi(arg);
-	for (p = arg; isdigit(*p); p++);
-#ifdef OLD
-	if (*p == ' ') { d->published = 1; d->ptype = 0; }
-	if (*p == '\t') { d->published = 1; d->ptype = 1; }
-#endif
 	return (d);
 }
 
@@ -14188,16 +14181,7 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 		fprintf(out, "\n");
 	}
 	if (d->flags & D_CKSUM) {
-		fprintf(out, "K %u", d->sum);
-#ifdef OLD
-		if ((flags & PRS_LOGMARK) && d->published) {
-			fputs(d->ptype ? "\t\n" : " \n", out);
-		} else {
-			fputs("\n", out);
-		}
-#else
-		fputs("\n", out);
-#endif
+		fprintf(out, "K %u\n", d->sum);
 	}
 	if (d->merge) {
 		delta	*e = sfind(s, d->merge);

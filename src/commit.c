@@ -188,9 +188,10 @@ logs_pending(int ptype, int skipRecentCset, int grace)
 	s = sccs_init(s_cset, 0, 0);
 	assert(s && HASGRAPH(s));
 	
-	f = fopen(marker, "rt");
+	f = fopen(marker, "rb");
 	if (f) {
 		while (fnext(key, f)) {
+			chomp(key);
 			d = sccs_findKey(s, key);
 			unless (d) continue;
 			sccs_color(s, d);
@@ -856,6 +857,7 @@ config(FILE *f)
 		char	key[MAXKEY];
 
 		while (fnext(key, logf)) {
+			chomp(key);
 			d = sccs_findKey(s, key);
 			unless (d) continue;
 			sccs_color(s, d);
