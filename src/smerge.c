@@ -7,7 +7,8 @@ typedef struct ld	ld_t;
 typedef struct diffln	diffln;
 typedef struct file	file_t;
 
-private	char	*getrevs(int i, char *str);
+private char	*getrev(char *verstr);
+private char	*find_gca(char *file, char *left, char *right);
 private int	do_weave_merge(u32 start, u32 end);
 private conflct	*find_conflicts(void);
 private void	merge_conflicts(conflct *head);
@@ -77,8 +78,6 @@ private	int	mode;
 private	int	show_seq;
 private	int	fdiff;
 private	char	*anno = 0;
-private	int	tostdout = 0;
-private	FILE	*outf = 0;
 
 int
 smerge_main(int ac, char **av)
@@ -117,10 +116,8 @@ smerge_main(int ac, char **av)
 #ifdef	DIFF_MERGE
 		    case 'd':	do_diff3 = 1; break;
 #endif
-		    case 'p':	tostdout = 1; break;
 		    case 'f': /* fdiff output mode */
 			fdiff = 1;
-			tostdout = 1;
 			break;
 		    case 'e': /* show examples */
 			show_examples();
@@ -140,16 +137,19 @@ smerge_main(int ac, char **av)
 			return (2);
 		}
 	}
-	if (ac - optind != 4) {
+	if (ac - optind != 3) {
 		usage();
 		return (2);
 	}
 	if (fdiff && mode == MODE_3WAY) mode = MODE_GCA;
 
-	file = av[optind + 3];
+	file = av[optind];
+	revs[LEFT] = getrev(av[optind + 1]);
+	revs[RIGHT] = getrev(av[optind + 2]);
+	revs[GCA] = find_gca(file, revs[LEFT], revs[RIGHT]);
+	
 	for (i = 0; i < 3; i++) {
 		char	*cmd;
-		revs[i] = getrevs(i, av[optind + i]);
 		gettemp(bodytmp[i], "smerge");
 		cmd = aprintf("bk get %s%s -qkpO -r%s %s > %s",
 		    anno ? "-a" : "",
@@ -182,16 +182,6 @@ smerge_main(int ac, char **av)
 		}
 	}
 
-	if (tostdout) {
-		outf = stdout;
-	} else {
-		outf = fopen(file, "w");
-		unless (outf) {
-			fprintf(stderr, "Can't open %s for writing\n", file);
-			ret = 2;
-			goto err;
-		}
-	}
 	if (do_diff3) {
 #ifdef	DIFF_MERGE
 		ret = do_diff_merge(start, end);
@@ -200,7 +190,6 @@ smerge_main(int ac, char **av)
 		ret = do_weave_merge(start, end);
 	}
  err:
-	if (outf) fclose(outf);
 	for (i = 0; i < 3; i++) {
 		unless (i == RIGHT && identical) {
 			file_free(&body[i]);
@@ -290,21 +279,13 @@ file_free(file_t *f)
  *     to 1.7 -i2.1,2.2 -x1.6
  */
 private char *
-getrevs(int i, char *str)
+getrev(char *verstr)
 {
-	static	const	char	*envnames[] = {
-		"BK_RL",
-		"BK_RG",
-		"BK_RR"
-	};
 	char	*ret = 0;
-	char	*verstr;
 	char	*v;
 	char	*p;
 	int	len;
 
-	verstr = getenv(envnames[i]);
-	unless (verstr) verstr = str;
 	/* Allocate buffer for return string */
 	ret = malloc(strlen(verstr) + 16);
 	p = ret;
@@ -314,6 +295,11 @@ getrevs(int i, char *str)
 	strncpy(p, v, len);
 	p += len;
 	v += len;
+	if (*v == '+' || *v == '-') {
+		fprintf(stderr, 
+"ERROR: Includes and excludes are temporarly disabled in smerge.\n");
+		exit(2);
+	}
 	while (*v == '+' || *v == '-') {
 		p += sprintf(p, " -%c", (*v == '+') ? 'i' : 'x');
 		++v;
@@ -324,7 +310,7 @@ getrevs(int i, char *str)
 		v += len;
 	}
 	if (*v) {
-err:		fprintf(stderr, "Unable to parse version number: %s\n", verstr);
+err:		fprintf(stderr, "ERROR: Unable to parse version number: %s\n", verstr);
 		exit(2);
 	}
 
@@ -332,6 +318,46 @@ err:		fprintf(stderr, "Unable to parse version number: %s\n", verstr);
 	assert(strlen(ret) < strlen(verstr) + 16);
 	return (ret);
 }
+
+private char *
+find_gca(char *file, char *left, char *right)
+{
+	sccs	*s;
+	char	*sfile = name2sccs(file);
+	delta	*dl, *dr, *dg;
+	char	*inc = 0, *exc = 0;
+	char	buf[MAXLINE];
+
+	unless (s = sccs_init(sfile, INIT_NOCKSUM, 0)) {
+		perror(file);
+		exit(2);
+	}
+	dl = sccs_getrev(s, left, 0, 0);
+	unless (dl) {
+		fprintf(stderr, "ERROR: couldn't find %s in %s\n", left, file);
+		exit(2);
+	}
+	dr = sccs_getrev(s, right, 0, 0);
+	unless (dr) {
+		fprintf(stderr, "ERROR: couldn't find %s in %s\n", right, file);
+		exit(2);
+	}
+	dg = sccs_gca(s, dl, dr, &inc, &exc, 1);
+	strcpy(buf, dg->rev);
+	if (inc) {
+		strcat(buf, " -i");
+		strcat(buf, inc);
+		free(inc);
+	}
+	if (exc) {
+		strcat(buf, " -x");
+		strcat(buf, exc);
+		free(exc);
+	}
+	sccs_free(s);
+	free(sfile);
+	return (strdup(buf));
+}	
 
 private void
 usage(void)
@@ -353,13 +379,13 @@ printline(ld_t *ld, char first_char)
 	char	*end = ld->line + ld->len;
 
 	if (fdiff && !first_char) first_char = ' ';
-	if (first_char) putc(first_char, outf);
-	if (show_seq) fprintf(outf, "%6d\t", ld->seq);
+	if (first_char) putchar(first_char);
+	if (show_seq) printf("%6d\t", ld->seq);
 
 	/* Print annotation before line, if present */
-	if (a) while (a < p) putc(*a++, outf);
+	if (a) while (a < p) putchar(*a++);
 	/* Print line */
-	while (p < end) putc(*p++, outf);
+	while (p < end) putchar(*p++);
 }
 
 private void
@@ -367,16 +393,16 @@ printhighlight(int *highlight)
 {
 	int	s, e;
 	
-	putc('h', outf);
+	putchar('h');
 	
 	while (1) {
 		s = highlight[0];
 		e = highlight[1];
 		if (s == 0 && e == 0) break;
-		fprintf(outf, " %d-%d", s, e);
+		printf(" %d-%d", s, e);
 		highlight += 2;
 	}
-	putc('\n', outf);
+	putchar('\n');
 }
 
 struct conflct {
@@ -1099,7 +1125,7 @@ resolve_conflict(conflct *curr)
 	if (curr->merged) {
 		ld_t	*p;
 		/* This region was automerged */
-		if (fdiff) fprintf(outf, "M %d\n", curr->start_seq);
+		if (fdiff) printf("M %d\n", curr->start_seq);
 		for (p = curr->merged; p->line; p++) {
 			printline(p, 0);
 		}
@@ -1117,10 +1143,10 @@ resolve_conflict(conflct *curr)
 		}
 	}
 	if (fdiff) {
-		fputs("E", outf);
+		putchar('E');
 		assert(curr->end_seq);
-		fprintf(outf, " %d", curr->end_seq);
-		fputc('\n', outf);
+		printf(" %d", curr->end_seq);
+		putchar('\n');
 	}
 	return (ret);
 }
@@ -1178,7 +1204,7 @@ user_conflict(conflct *curr)
 		sameleft = samedata(curr, GCA, LEFT);
 		sameright = samedata(curr, GCA, RIGHT);
 		unless (sameleft && !sameright) {
-			fprintf(outf, "<<<<<<< local %s %s vs %s\n",
+			printf("<<<<<<< local %s %s vs %s\n",
 			    file, revs[GCA], revs[LEFT]);
 			diffs = unidiff(curr, GCA, LEFT);
 			for (i = 0; diffs[i].ld; i++) {
@@ -1187,7 +1213,7 @@ user_conflict(conflct *curr)
 			free(diffs);
 		}
 		unless (sameright && !sameleft) {
-			fprintf(outf, "<<<<<<< remote %s %s vs %s\n",
+			printf("<<<<<<< remote %s %s vs %s\n",
 			    file, revs[GCA], revs[RIGHT]);
 			diffs = unidiff(curr, GCA, RIGHT);
 			for (i = 0; diffs[i].ld; i++) {
@@ -1195,38 +1221,38 @@ user_conflict(conflct *curr)
 			}
 			free(diffs);
 		}
-		fprintf(outf, ">>>>>>>\n");
+		printf(">>>>>>>\n");
 		break;
 	    case MODE_2WAY:
 /* #define MATCH_DIFF3 */
 #ifdef MATCH_DIFF3
-		fprintf(outf, "<<<<<<< L\n");
+		printf("<<<<<<< L\n");
 		printlines(curr, LEFT);
-		fprintf(outf, "=======\n");
+		printf("=======\n");
 		printlines(curr, RIGHT);
-		fprintf(outf, ">>>>>>> R\n");
+		printf(">>>>>>> R\n");
 #else
-		fprintf(outf, "<<<<<<< local %s %s\n", file, revs[LEFT]);
+		printf("<<<<<<< local %s %s\n", file, revs[LEFT]);
 		printlines(curr, LEFT);
-		fprintf(outf, "<<<<<<< remote %s %s\n", file, revs[RIGHT]);
+		printf("<<<<<<< remote %s %s\n", file, revs[RIGHT]);
 		printlines(curr, RIGHT);
-		fprintf(outf, ">>>>>>>\n");
+		printf(">>>>>>>\n");
 #endif
 		break;
 	    case MODE_3WAY:
-		fprintf(outf, "<<<<<<< gca %s %s\n", file, revs[GCA]);
+		printf("<<<<<<< gca %s %s\n", file, revs[GCA]);
 		printlines(curr, GCA);
-		fprintf(outf, "<<<<<<< local %s %s\n", file, revs[LEFT]);
+		printf("<<<<<<< local %s %s\n", file, revs[LEFT]);
 		printlines(curr, LEFT);
-		fprintf(outf, "<<<<<<< remote %s %s\n", file, revs[RIGHT]);
+		printf("<<<<<<< remote %s %s\n", file, revs[RIGHT]);
 		printlines(curr, RIGHT);
-		fprintf(outf, ">>>>>>>\n");
+		printf(">>>>>>>\n");
 		break;
 	    case MODE_NEWONLY:
 		sameleft = samedata(curr, GCA, LEFT);
 		sameright = samedata(curr, GCA, RIGHT);
 		unless (sameleft && !sameright) {
-			fprintf(outf, "<<<<<<< local %s %s vs %s\n",
+			printf("<<<<<<< local %s %s vs %s\n",
 			    file, revs[GCA], revs[LEFT]);
 			diffs = unidiff(curr, GCA, LEFT);
 			for (i = 0; diffs[i].ld; i++) {
@@ -1237,7 +1263,7 @@ user_conflict(conflct *curr)
 			free(diffs);
 		}
 		unless (sameright && !sameleft) {
-			fprintf(outf, "<<<<<<< remote %s %s vs %s\n",
+			printf("<<<<<<< remote %s %s vs %s\n",
 			    file, revs[GCA], revs[RIGHT]);
 			diffs = unidiff(curr, GCA, RIGHT);
 			for (i = 0; diffs[i].ld; i++) {
@@ -1247,7 +1273,7 @@ user_conflict(conflct *curr)
 			}
 			free(diffs);
 		}
-		fprintf(outf, ">>>>>>>\n");
+		printf(">>>>>>>\n");
 		break;
 	}
 }
@@ -1347,9 +1373,9 @@ user_conflict_fdiff(conflct *c)
 	blankline.seq = 0;
 	blankline.anno = 0;
 
-	fputs("L", outf);
-	unless (c->merged) fprintf(outf, " %d", c->start_seq);
-	fputs("\n", outf);
+	putchar('L');
+	unless (c->merged) printf(" %d", c->start_seq);
+	putchar('\n');
 	lp = left;
 	rp = right;
 	i = 0;
@@ -1382,7 +1408,7 @@ user_conflict_fdiff(conflct *c)
 		++i;
 	}
 
-	fputs("R\n", outf);
+	fputs("R\n", stdout);
 	for (j = 0; j < i; j++) {
 		printline(rightbuf[j].ld, rightbuf[j].c);
 		if (rightbuf[j].highlight) {
