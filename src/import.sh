@@ -562,7 +562,7 @@ validate_text () {
 	if [ -s ${TMP}text$$ -a -s ${TMP}nottext$$ ]
 	then	NOT=`wc -l < ${TMP}nottext$$ | sed 's/ //g'`
 		echo
-		echo Skipping $NOT non-RCS files
+		echo Skipping $NOT non-text files
 		echo $N "Do you want to see this list of files? [No] " $NL
 		read x
 		case "$x" in

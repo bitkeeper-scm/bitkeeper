@@ -428,6 +428,7 @@ mode(char *file)
         struct  stat sbuf;
 
         if (stat(file, &sbuf) == -1) return 0;
+	sbuf.st_mode |= 0664;
         return (sbuf.st_mode & 0777);
 }
 

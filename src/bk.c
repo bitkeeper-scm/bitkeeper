@@ -125,6 +125,8 @@ int send_main(int, char **);
 int sendbug_main(int, char **);
 int setlod_main(int, char **);
 int setup_main(int, char **);
+int setup_main(int, char **);
+int shrink_main(int, char **);
 int sfiles_main(int, char **);
 int sfind_main(int, char **);
 int sfio_main(int, char **);
@@ -272,6 +274,7 @@ struct command cmdtbl[] = {
 	{"sendbug", sendbug_main},	/* doc 2.0 */
 	{"setlod", setlod_main},	/* doc 2.0 as lod */
 	{"setup", setup_main },		/* doc 2.0 */
+	{"shrink", shrink_main}, 	
 	{"sfiles", sfind_main}, 	/* aliases */ /* doc 2.0 */
 	{"sfind", sfind_main},		/* doc 2.0 as sfiles */
 	{"sfio", sfio_main},		/* doc 2.0 */
