@@ -15275,6 +15275,16 @@ sccs_istagkey(char *key)
  * the d->flags and if non zero, will cache those deltas.
  * This makes it easy to only cache deltas that are tagged
  * cset, D_SET, D_GONE, or whatever is desired.
+ *
+ * WARNING: calling this function with flags set means
+ * that all future calls to sccs_findKey will be limited
+ * to only keys in the list will be found.
+ * If you use this "feature", and you don't call sccs_free(s)
+ * (which erases this cache), then you should:
+ *   if (s->findkeydb) {
+ *      mdbm_close(s->findkeydb);
+ *      s->findkeydb = 0;
+ *   }
  */
 
 MDBM	*

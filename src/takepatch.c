@@ -1823,6 +1823,7 @@ earlier(patch *a, patch *b)
 
 /*
  * Insert the delta in the list in sorted time order.
+ * The global patchList points at the newest/youngest.
  */
 private	void
 insertPatch(patch *p)
@@ -1835,7 +1836,7 @@ insertPatch(patch *p)
 		return;
 	}
 	/*
-	 * We know that t is pointing to a node that is older than us.
+	 * We know that t is pointing to a node that is younger than us.
 	 */
 	for (t = patchList; t->next; t = t->next) {
 		if (earlier(t->next, p)) {
@@ -1846,7 +1847,7 @@ insertPatch(patch *p)
 	}
 
 	/*
-	 * There is no next field and we know that t->order is < date.
+	 * There is no next field and we know that t->order is > date.
 	 */
 	assert(earlier(p, t));
 	t->next = p;
@@ -1854,6 +1855,7 @@ insertPatch(patch *p)
 
 /*
  * Reverse order to optimize reading
+ * patchList will be left pointing at the oldest delta in the patch
  */
 private	void
 reversePatch(void)
