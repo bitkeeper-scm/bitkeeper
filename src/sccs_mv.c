@@ -8,9 +8,7 @@ WHATSTR("%W%");
 int
 sccs_mv(char *name, char *dest, int isDir, int isDelete)
 {
-	char	path[MAXPATH];
-	char	path2[MAXPATH];
-	char 	buf[1024], *p, *q;
+	char 	buf[1024], *p, *q, *t, *destfile[MAXPATH];
 	char	*gfile, *sfile, *nrev = 0;
 	sccs	*s;
 	delta	*d;
@@ -25,17 +23,16 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 		return (1);
 	}
 	if (isDir) {
-		sprintf(path, "%s/SCCS/s.%s", dest, basenm(s->gfile));
-		sfile = path;
-		sprintf(path2, "%s/%s", dest, basenm(s->gfile));
-		gfile = path2;
+		sprintf(destfile, "%s/%s", dest, basenm(s->gfile));
 	} else {
-		char *t;
-		t = name2sccs(dest);
-		sfile = strdup(sPath(t, 0));
-		gfile = sccs2name(t);
-		free(t);
+		strcpy(destfile, dest);
 	}
+
+	t = name2sccs(destfile);
+	sfile = strdup(sPath(t, 0));
+	gfile = sccs2name(t);
+	free(t);
+
 	if (exists(sfile)) {
 		fprintf(stderr, "sccsmv: destination %s exists\n", sfile);
 		return (1);
@@ -82,8 +79,9 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 	if (HAS_PFILE(s) && !isDelete) goto out;
 	sccs_free(s);
 	/* For split root config; We recompute sfile here */  
+	/* we do'nt want the sPath() adjustment		  */
 	free(sfile);
-	sfile = name2sccs(dest);
+	sfile = name2sccs(destfile);
 	unless (s = sccs_init(sfile, 0)) { error++; goto out; }
 	unless (HAS_PFILE(s)) {
 		if (sccs_get(s, 0, 0, 0, 0, SILENT|GET_EDIT, "-")) {
@@ -95,7 +93,7 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 	if (isDelete) {
 		sprintf(buf, "Delete"); 
 	} else {
-		sprintf(buf, "Rename: %s -> %s", name, dest); 
+		sprintf(buf, "Rename: %s -> %s", name, destfile); 
 	}
 	comment = buf;
 	gotComment = 1;
@@ -105,7 +103,7 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 	}
 	if (sccs_delta(s, flags, d, 0, 0) == -1) error = 1;
 out:	if (s) sccs_free(s);
-	unless (isDir) { free(sfile); free(gfile); }
+	free(sfile); free(gfile); 
 	if (gotComment) commentsDone(saved);
 	return (error);
 }
