@@ -71,6 +71,7 @@
 #define	PRS_META	0x10000000	/* show metadata */
 #define	PRS_SYMBOLIC	0x20000000	/* show revs as beta1, etc. Not done */
 #define	PRS_PATCH	0x40000000	/* print in patch format */
+#define PRS_ALL		0x80000000	/* scan all revs, not just type D */
 
 #define SINFO_TERSE	0x10000000	/* print in terse format: sinfo -t */
 
@@ -200,6 +201,7 @@
 #define	D_CSET		0x08000000	/* this delta is marked in cset file */
 #define D_DUPLINK	0x10000000	/* this symlink pointer is shared */
 #define	D_LOCAL		0x20000000	/* for resolve; this is a local delta */
+#define D_XFLAGS	0x40000000	/* delta has updated file flags */
 
 /*
  * Signal handling.
@@ -291,6 +293,7 @@ typedef struct delta {
 	time_t	dateFudge;		/* make dates go forward */
 	mode_t	mode;			/* 0777 style modes */
 	char 	*symlink;		/* sym link target */
+	u32	xflags;			/* x flags */
 	/* In memory only stuff */
 	u16	r[4];			/* 1.2.3 -> 1, 2, 3, 0 */
 	time_t	date;			/* date - conversion from sdate/zone */
@@ -483,7 +486,7 @@ typedef struct patch {
 #define	PATCH_REMOTE	0x0002	/* patch is from remote file */
 #define	PATCH_META	0x0004	/* delta is metadata */
 
-int	sccs_admin(sccs *sc, u32 flgs, char *encoding, char *compress,
+int	sccs_admin(sccs *sc, delta *d, u32 flgs, char *encoding, char *compress,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
 int	sccs_delta(sccs *s, u32 flags, delta *d, MMAP *init, MMAP *diffs);
@@ -494,6 +497,7 @@ int	sccs_get(sccs *s,
 int	sccs_clean(sccs *s, u32 flags);
 int	sccs_info(sccs *s, u32 flags);
 int	sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out);
+void	sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out);
 delta	*sccs_getrev(sccs *s, char *rev, char *date, int roundup);
 delta	*sccs_findDelta(sccs *s, delta *d);
 sccs	*sccs_init(char *filename, u32 flags, char *root);
@@ -541,6 +545,7 @@ delta	*sccs_findKey(sccs *, char *);
 delta	*sccs_dInit(delta *, char, sccs *, int);
 char	*sccs_gethost(void);
 char	*getuser(void);
+int	sccs_addmeta(sccs *);
 
 delta	*modeArg(delta *d, char *arg);
 FILE	*fastPopen(const char*, const char*);

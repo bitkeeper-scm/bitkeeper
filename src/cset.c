@@ -501,9 +501,7 @@ header(sccs *cset, int diffs)
 # set of deltas contained in the patch.  The rest of the patch, the part\n\
 # that BitKeeper cares about, is below these diffs.\n");
 	}
-	cset->rstart = cset->rstop = cset->tree;
-	cset->state &= ~S_SET;
-	sccs_prs(cset, 0, 0, dspec, stdout);
+	sccs_prsdelta(cset, cset->tree, 0, dspec, stdout);
 	printf("# User:\t\t%s\n", getuser());
 	printf("# Host:\t\t%s\n", sccs_gethost() ? sccs_gethost() : "?");
 	getcwd(pwd, sizeof(pwd));
@@ -743,7 +741,6 @@ csetlist(cset_t *cs, sccs *cset)
 	char	buf[MAXPATH*2];
 	char	cat[30], csort[30];
 	char	*csetid;
-	pid_t	pid = -1;
 	int	status;
 	delta	*d;
 	MDBM	*goneDB = 0;
@@ -1034,7 +1031,7 @@ doMarks(cset_t *cs, sccs *s)
 	}
 	if (did || !(s->state & S_CSETMARKED)) {
 		s->state |= S_CSETMARKED;
-		sccs_admin(s, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
+		sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
 		if ((cs->verbose > 1) && did) {
 			fprintf(stderr,
 			    "Marked %d csets in %s\n", did, s->gfile);
@@ -1107,8 +1104,8 @@ add(FILE *diffs, char *buf)
 	char	*rev;
 	delta	*d;
 
-	unless ((chop(buf) == '\n') && (rev = strrchr(buf, BK_FS))) {
-		fprintf(stderr, "cset: bad file%crev format: %s\n", BK_FS, buf);
+	unless ((chop(buf) == '\n') && (rev = strrchr(buf, ':'))) {
+		fprintf(stderr, "cset: bad file:rev format: %s\n", buf);
 		system("bk clean -u ChangeSet");
 		cset_exit(1);
 	}
@@ -1180,6 +1177,7 @@ mkChangeSet(sccs *cset, FILE *diffs)
 		add(diffs, buf);
 	}
 
+#ifdef CRAZY_WOW
 	/*
 	 * Adjust the date of the new rev, scripts can make this be in the
 	 * same second.  It's OK that we adjust it here, we are going to use
@@ -1189,7 +1187,6 @@ mkChangeSet(sccs *cset, FILE *diffs)
 		d->dateFudge = (cset->table->date - d->date) + 1;
 		d->date += d->dateFudge;
 	}
-#ifdef CRAZY_WOW
 	/* Add ChangeSet entry */
 	sccs_sdelta(cset, sccs_ino(cset), buf);
 	fprintf(diffs, "> %s", buf);
@@ -1267,7 +1264,6 @@ csetCreate(sccs *cset, int flags, char *sym, int newlod)
 {
 	delta	*d;
 	int	error = 0;
-	time_t	date;
 	MMAP	*diffs;
 	FILE	*fdiffs;
 	MDBM	*totdb = 0;
@@ -1291,7 +1287,6 @@ csetCreate(sccs *cset, int flags, char *sym, int newlod)
 		cset_exit(1);
 	}
 
-	date = d->date;
 	if (sym) d->sym = strdup(sym);
 	d->flags |= D_CSET;	/* XXX: longrun, don't tag cset file */
 
@@ -1318,7 +1313,6 @@ csetCreate(sccs *cset, int flags, char *sym, int newlod)
 		error = -1;
 		goto out;
 	}
-	assert(d->date == date); /* make sure time stamp did not change */
 
 	/* XXX: can do a re-init?  There is a new delta */
 	sccs_free(cset);
@@ -1420,28 +1414,13 @@ file2str(char *f)
 void
 sccs_patch(sccs *s, cset_t *cs)
 {
-	delta	*d, *e;
+	delta	*d;
 	int	deltas = 0;
 	int	i, n, newfile;
 	delta	**list;
 
 	if (cs->verbose>1) fprintf(stderr, "makepatch: %s ", s->gfile);
-	/*
-	 * This is a hack which picks up metadata deltas.
-	 * This is sorta OK because we know the graph parent is
-	 * there.
-	 */
-	for (n = 0, e = s->table; e; e = e->next) {
-		if (e->flags & D_SET) n++;
-		unless (e->flags & D_META) continue;
-		for (d = e->parent; d && (d->type != 'D'); d = d->parent);
-		if (d && (d->flags & D_SET)) {
-			unless (e->flags & D_SET) {
-				e->flags |= D_SET;
-				n++;
-			}
-		}
-	}
+	n = sccs_addmeta(s);
 
 	/*
 	 * Build a list of the deltas we're sending

@@ -83,6 +83,7 @@ main(int ac, char **av)
 	int	flags = SILENT;
 	int	files = 0;
 	char	*resyncRoot, *t;
+	int	error = 0;
 	int	remote = 0;
 	int	resolve = 0;
 	int	fast = 0;	/* undocumented switch for scripts,
@@ -122,6 +123,7 @@ usage:		fprintf(stderr, takepatch_help);
 	 */
 	while (buf = mnext(p)) {
 		char	*b;
+		int	rc;
 
 		++line;
 		/* we need our own storage , extractPatch calls mkline */
@@ -141,13 +143,22 @@ usage:		fprintf(stderr, takepatch_help);
 		}
 		*t = 0;
 		files++;
-		remote += extractPatch(&b[3], p, flags, fast, resyncRoot);
+		rc = extractPatch(&b[3], p, flags, fast, resyncRoot);
 		free(b);
+		if (rc < 0) {
+			error = rc;
+			break;
+		}
+		remote += rc;
 	}
 	mclose(p);
 	free(resyncRoot);
 	if (idDB) { mdbm_close(idDB); idDB = 0; }
 	if (goneDB) { mdbm_close(goneDB); goneDB = 0; }
+	if (error < 0) {
+		/* XXX: Save?  Purge? */
+		cleanup(0);
+	}
 	purify_list();
 	if (echo) {
 		fprintf(stderr,
@@ -339,10 +350,13 @@ cleanup:			if (perfile) free(perfile);
 	free(name);
 	if (s) sccs_free(s);
 	if (rc < 0) {
+#ifdef CRAZY_WOW
 		free(root);
 		mclose(p);
 		/* if (rc == -2) cleanup(CLEAN_RESYNC|CLEAN_PENDING); */
 		cleanup(CLEAN_RESYNC);
+#endif
+		return (rc);
 	}
 	return (nfound);
 }
@@ -600,6 +614,32 @@ oldformat(void)
 	fputs("takepatch: warning: patch is in obsolete format\n", stderr);
 }
 
+void
+setlod(sccs *s, delta *d, int branch)
+{
+	u16	maxlod;
+	u8	def[MAXPATH];
+
+	if (s->defbranch) free(s->defbranch);
+	s->defbranch=0;
+
+	/* if revision, set it and leave */
+	unless (branch) {
+		assert(d->rev);
+		s->defbranch = strdup(d->rev);
+		return;
+	}
+
+	/* if branch, not needed if latest */
+	maxlod = sccs_nextlod(s);
+	maxlod--;
+	if (maxlod == d->r[0]) return;
+
+	sprintf(def, "%d", d->r[0]);
+	s->defbranch = strdup(def);
+	sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
+}
+
 /*
  * If the destination file does not exist, just apply the patches to create
  * the new file.
@@ -620,9 +660,14 @@ applyPatch(
 	static	char *spin = "|/-\\";
 	char	*gcaPath = 0;
 	int	n = 0;
+	char	lodkey[MAXPATH];
+	int	lodbranch = 1;	/* true if LOD is branch; false if revision */
 	int	confThisFile;
+#define	CSETS	"RESYNC/BitKeeper/etc/csets"
+	FILE	*csets = 0;
 
 	unless (p) return (0);
+	lodkey[0] = 0;
 	if (echo == 2) fprintf(stderr, "%c\b", spin[n++ % 4]);
 	if (echo > 6) {
 		fprintf(stderr, "L=%s\nR=%s\nP=%s\nM=%s\n",
@@ -647,6 +692,19 @@ applyPatch(
 			perror(s->sfile);
 		}
 		return -1;
+	}
+	/* save current LOD setting, as it might change */
+	if (d = findrev(s, "")) {
+		sccs_sdelta(s, d, lodkey);
+		if (s->defbranch) {
+			u8	*ptr;
+			/* XXX: handle symbols? */
+			lodbranch = 1;
+			for (ptr = s->defbranch; *ptr; ptr++) {
+				unless (*ptr == '.') continue;
+				lodbranch = 1 - lodbranch;
+			}
+		}
 	}
 	unless (gca) goto apply;
 	/*
@@ -745,6 +803,20 @@ apply:
 					return -1;
 				}
 				mclose(iF);
+				if ((s->state & S_CSET) && 
+				    !(p->flags & PATCH_LOCAL))  {
+					static	int first = 1;
+					delta	*d = sccs_findKey(s, p->me);
+
+					assert(d);
+					unless (csets) {
+						csets = fopen(CSETS, "w");
+						assert(csets);
+					}
+					unless (first) fprintf(csets, ",");
+					first = 0;
+					fprintf(csets, "%s", d->rev);
+				}
 			}
 		} else {
 			assert(s == 0);
@@ -784,9 +856,21 @@ apply:
 		p = p->next;
 	}
 
+	if (csets) {
+		fprintf(csets, "\n");
+		fclose(csets);
+	}
 	sccs_free(s);
 	s = sccs_init(patchList->resyncFile, 0, root);
 	assert(s);
+	if (lodkey[0]) { /* restore LOD setting */
+		unless (d = sccs_findKey(s, lodkey)) {
+			fprintf(stderr, "takepatch: can't find lod key %s\n",
+				lodkey);
+			return (-1);
+		}
+		setlod(s, d, lodbranch);
+	}
 	gcaPath = gca ? name2sccs(gca->pathname) : 0;
 	/* 2 of the clauses below need this and it's cheap so... */
 	for (d = 0, p = patchList; p; p = p->next) {
@@ -811,7 +895,16 @@ apply:
 		    sccs_resolveFile(s,
 			noRfile, localPath, gcaPath, remotePath);
 	}
-	conflicts += confThisFile;
+	if (confThisFile < 0) {
+		sccs_free(s);
+		if (gcaPath) free(gcaPath);
+		return (-1);
+	}
+	/* Conflicts in ChangeSet don't count.  */
+	if (confThisFile && !streq(s->sfile + strlen(s->sfile) - 9,
+				   "ChangeSet")) {
+		conflicts += confThisFile;
+	}
 	if (confThisFile && !(s->state & S_CSET)) {
 		assert(d);
 		unless (d->flags & D_CSET) {

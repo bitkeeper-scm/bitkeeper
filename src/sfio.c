@@ -35,43 +35,48 @@ int	mkdirf(char *file);
 int	isdir(char *s);
 int	readn(int from, char *buf, int size);
 int	writen(int from, char *buf, int size);
-int	usage(void);
 
-int qflag = 0;
+static const char help[] = "\
+usage:	sfio [-q] -i | -p < archive\n\
+or:	sfio [-q] -o < filelist\n\
+\n\
+  -i	extract archive\n\
+  -p	list contents of archive\n\
+  -o	create archive\n\
+  -q	quiet mode\n";
+
+static int quiet;
+
+#define M_IN	1
+#define M_OUT	2
+#define M_LIST	3
 
 int
 main(int ac, char **av)
 {
-	int c;
-	int op = 0;
+	int	c, mode = 0;
 
-	while ((c = getopt(ac, av, (char *) "iopq")) != -1) {
+	if (ac == 2 && streq(av[1], "--help")) goto usage;
+	while ((c = getopt(ac, av, "iopqs")) != -1) {
 		switch (c) {
-			case 'i': /* fall thru */
-			case 'o': /* fall thru */
-			case 'p': if (op) return (usage()); op = c; break;
-			case 'q': qflag = 1; break;
-			default:  return (usage());
+		    case 'i': if (mode) goto usage; mode = M_IN;   break;
+		    case 'o': if (mode) goto usage; mode = M_OUT;  break;
+		    case 'p': if (mode) goto usage; mode = M_LIST; break;
+		    case 's':
+		    case 'q': quiet = 1; break;
+		default:
+			goto usage;
 		}
 	}
-	if ((ac - optind) != 0) return (usage());
+	if (optind != ac) goto usage;
 
-	switch (op) {
-	    case 'o': return (sfio_out());
-	    case 'i': return (sfio_in(1));
-	    case 'p': return (sfio_in(0));
-	    default:  return (usage());
-	}
-}
+	if      (mode == M_OUT)  return (sfio_out());
+	else if (mode == M_IN)   return (sfio_in(1));
+	else if (mode == M_LIST) return (sfio_in(0));
 
-int
-usage(void)
-{
-	fprintf(stderr, "sfiles | sfio -o\nor\nsfio -i < archive\n");
-	fprintf(stderr, "or\nsfio -p < archive\n");
+usage:	fputs(help, stderr);
 	return (1);
 }
-
 
 int
 sfio_out()
@@ -186,6 +191,7 @@ in(char *file, int todo, int extract)
 	char	buf[1024];
 	int	n;
 	int	fd = -1;
+	int	mode;
 	u32	sum = 0, sum2 = 0;
 
 	unless (todo) {

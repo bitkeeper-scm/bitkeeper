@@ -1,7 +1,12 @@
 #!/bin/sh
-
 # Copyright (c) 1999 Andrew Chang?
 # %K%
+
+# XXX still need to test propagation of:
+# descriptive text
+# permissions
+# LODs
+# per file information (flags, etc.)
 
 echo $N Create initial repository ...................................$NL
 HERE=`${CWD}`
@@ -51,6 +56,23 @@ cd clone
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 if [ ! -f BitKeeper/log/parent ]; then echo failed to record parent; exit 1; fi
+echo OK
+echo $N Should not be able to resync unrelated repositories .........$NL
+cd ..
+bk setup -f -n'BitKeeper Test repo number two' -c$HERE/c project2
+if [ ! -d project2 ]; then echo failed to make top level directory; exit 1; fi
+cd project2
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo "don't stand in the doorway, don't block up the hall" > times
+ci $Q -i -ydylan times
+bk commit $S -f -yCset2
+cd ..
+bk resync $Q -a project project2 2>resync.out
+if [ $? -eq 0 ]; then echo failed; cat resync.out; exit 1; fi
+if [ -d project2/src ]; then echo failed; exit 1; fi
 echo OK
 cores
 echo $N Check circular rename .......................................$NL
@@ -175,7 +197,7 @@ cmp -s ref.c c.c
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
 if [ -s resolve.out ]; then
     echo "failed (known bug)"
-    cat resolve.out
+    sed -n '/:/s/^/	/p' resolve.out
 else
     echo OK
 fi
@@ -329,7 +351,7 @@ bk get $Q bdata
 cmp -s bdata $binary_data2
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
-echo $N Check resync with skiped ChangeSet delta to new tree ........$NL
+echo $N Check resync with skipped ChangeSet delta to new tree .......$NL
 cd $HERE
 rm -rf  $HERE/copy2
 bk resync $Q -r1.5 $HERE/copy $HERE/copy2  > resync.out 2>&1
@@ -380,7 +402,17 @@ EOF
 cmp -s merge.c merge.ref
 if [ $? -ne 0 ]; then echo failed; diff -u merge.c merge.ref; exit 1; fi
 echo OK
-echo $N Test propogation of a symbol on new changeset ...............$NL
+echo $N Merge back up should have no conflicts ......................$NL
+cd $HERE
+bk resync $Q -a copy project 2> resolve.out
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+if [ -s resolve.out ]
+then echo "failed (known bug)"
+     sed -n '/:/s/^/	/p' resolve.out
+else echo OK
+fi
+rm -f resolve.out
+echo $N Test propagation of a symbol on new changeset ...............$NL
 cd $HERE/project/src
 date > symbol_test
 bk new $Q symbol_test
@@ -389,9 +421,9 @@ bk resync $Q -a $HERE/project $HERE/copy
 cd $HERE/copy
 if [ ! -f src/SCCS/s.symbol_test ]; then echo failed to send file; exit 1; fi
 grep -q 'Ssymbol test' SCCS/s.ChangeSet
-if [ $? != 0 ]; then echo failed to send symbol; exit 1; fi
+if [ $? != 0 ]; then echo failed; exit 1; fi
 echo OK
-echo $N Test propogation of a stand alone symbol "(meta delta)" .......$NL
+echo $N Test propagation of a stand alone symbol "(meta delta)" .......$NL
 cd $HERE/project
 date > dummy
 bk new $Q dummy
@@ -400,7 +432,27 @@ bk admin $Q -S'later symbol' SCCS/s.ChangeSet
 bk resync $Q -a $HERE/project $HERE/copy
 cd $HERE/copy
 grep -q 'Slater symbol' SCCS/s.ChangeSet
-if [ $? != 0 ]; then echo failed to send symbol; exit 1; fi
+if [ $? != 0 ]; then echo failed; exit 1; fi
+echo OK
+echo $N Test propagation of a symbol added later and unrelated data..$NL
+cd $HERE/project
+admin $Q -S'additional symbol:1.1' SCCS/s.ChangeSet
+co $Q -l dummy
+date > dummy
+ci $Q -m'additional' dummy
+bk commit $S -y'additional symbol test 2'
+bk resync $Q -a $HERE/project $HERE/copy
+cd $HERE/copy
+grep -q 'Sadditional symbol' SCCS/s.ChangeSet
+if [ $? != 0 ]; then echo failed; exit 1; fi
+echo OK
+echo $N Test propagation of a symbol added later by itself ..........$NL
+cd $HERE/project
+admin $Q -S'YAsymbol:1.5' SCCS/s.ChangeSet
+bk resync $Q -a $HERE/project $HERE/copy
+cd $HERE/copy
+grep -q 'SYAsymbol' SCCS/s.ChangeSet
+if [ $? != 0 ]; then echo failed; exit 1; fi
 echo OK
 cores
 
@@ -425,12 +477,12 @@ EOF
 cp aaa.c bbb.c
 cp aaa.c ccc.c
 bk ci $Q -i aaa.c bbb.c ccc.c
-bk commit $S -f -yCset > /dev/null 2>&1
+bk commit $S -f -yCset
 echo OK
 echo $N Create a copy of the project ................................$NL
 cd $HERE
-bk resync $Q project copy > /dev/null 2>&1
-bk resolve $Q copy > /dev/null 2>&1
+bk resync $Q project copy
+bk resolve $Q copy
 echo OK
 echo $N Commit parallel work ........................................$NL
 cd $HERE/project/src
@@ -440,7 +492,7 @@ do
         echo "this is $i" >> $i
         bk ci $Q -y $i
 done
-bk commit $S -yab << EOF > /dev/null 2>&1
+bk commit $S -yab << EOF
 y
 EOF
 # make sure the time stamp is different
@@ -453,15 +505,15 @@ do
         mv $i.T $i
         bk ci $Q -y $i
 done
-bk commit $S -ybc << EOF > /dev/null 2>&1
+bk commit $S -ybc << EOF
 y
 EOF
 echo OK
 echo $N Resync project to copy, check for no disappear ..............$NL
 cd $HERE
-bk resync $Q project copy > /dev/null 2>&1
+bk resync $Q project copy 
 cd $HERE/copy
-bk resolve $Q -f - << EOF > /dev/null 2>&1
+bk resolve $Q -f - > /dev/null << EOF
 m
 C
 EOF
@@ -488,7 +540,6 @@ then	echo Failed to update aaa.c
 fi
 ${RM} aaa.p aaa.c
 echo OK
-
 echo $N Check resolve w/ auto merge and overlap change ..............$NL
 cd $HERE/project/src
 cat > overlap.c << EOF
@@ -511,20 +562,11 @@ bk co $Q -l overlap.c
 sed -e "s/222/222-right/"  overlap.c > overlap.tmp
 mv overlap.tmp overlap.c
 # make sure time stamp is different
-sleep 1
+nextsecond
 bk ci $Q -y overlap.c
 bk commit $S -y"abc"
 bk resync $Q $HERE/project $HERE/copy
 bk resolve $Q -a -f - $HERE/copy >/dev/null 2> resolve.out
-grep "Overlap change detected" resolve.out > /dev/null
+grep -q "Overlap change detected" resolve.out
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
-rm -f resolve.out
-
-
-#echo XXX - need to have little tests which check each of
-#echo symbols
-#echo descriptive text
-#echo permissions
-#echo LODs
-#echo per file information

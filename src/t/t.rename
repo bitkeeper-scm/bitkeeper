@@ -5,6 +5,8 @@
 # Suppose we have a file which starts out being named A.
 # In one repository,
 echo $N set up ......................................................$NL
+trap 'echo failed' 0
+set -e
 HERE=`pwd`
 mkdir gca; cd gca
 cset -qi .
@@ -22,7 +24,7 @@ P src/regression.sh
 EOF
 delta $Q -i -IINIT regression.sh
 bk commit $S -yBaseline
-bk -r check -a || exit 1
+bk -r check -a
 
 # Now create two repositories with that file.
 cd $HERE
@@ -54,7 +56,7 @@ P src/t/regression.sh
 EOF
 delta $Q -IINIT regression.sh
 bk commit $S -yObsolete
-bk -r check -a || exit 1
+bk -r check -a
 
 # Now add some deltas in the other tree, not moving it.
 cd $HERE
@@ -68,7 +70,7 @@ P src/regression.sh
 EOF
 delta $Q -IINIT regression.sh
 bk commit $S -ywhatever
-bk -r check -a || { echo failed; exit 1; }
+bk -r check -a
 get $S -e regression.sh
 ${CAT} > INIT <<EOF
 D 1.3 99/08/18 01:11:42-07:00 lm@lm.bitmover 0 0 0/0/0
@@ -78,7 +80,9 @@ P src/regression.sh
 EOF
 delta $Q -IINIT regression.sh
 bk commit $S -ywhatever
-bk -r check -a || { echo failed; exit 1; }
+bk -r check -a
+trap '' 0
+set +e
 echo OK
 
 # Now resync them in both directions.
@@ -91,13 +95,13 @@ ${CAT} > R <<EOF
 m
 C
 EOF
-bk resolve $Q -f R > /dev/null 2>resolve.out
+bk resolve $Q -f R > /dev/null 2>&1
 ${CAT} > PRS <<EOF
 P src/t/regression.sh
 EOF
 prs -hr+ src/t/SCCS/s.regression.sh | grep '^P ' | ${CAT} > PRS2
 cmp -s PRS PRS2
-if [ $? != 0 ]; then echo failed; cat resolve.out; diff PRS PRS2; exit 1; fi
+if [ $? != 0 ]; then echo failed; diff PRS PRS2; exit 1; fi
 echo OK
 cd ..
 rm -rf a b
@@ -109,14 +113,14 @@ ${CAT} > R <<EOF
 m
 C
 EOF
-bk resolve $Q -f R > /dev/null 2>resolve.out
+bk resolve $Q -f R > /dev/null 2>&1
 ${CAT} > PRS <<EOF
 P src/t/regression.sh
 EOF
 prs -hr+ src/t/SCCS/s.regression.sh | grep '^P ' | ${CAT} > PRS2
 cmp -s PRS PRS2
 if [ $? != 0 ]; then 
-	echo 'failed (known bug)'; cat resolve.out; diff PRS PRS2
+	echo 'failed (known bug)'; diff PRS PRS2
 else
 	echo OK
 fi

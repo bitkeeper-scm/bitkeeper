@@ -56,6 +56,7 @@ ${RM} -f copy/BitKeeper/etc/SCCS/x.id_cache
 ${RM} -f project/BitKeeper/etc/SCCS/x.marked
 ${RM} -f copy/BitKeeper/etc/SCCS/x.marked
 ${RM} -f project/BitKeeper/log/cmd copy/BitKeeper/log/cmd
+${RM} -f copy/BitKeeper/etc/csets
 diff -r project copy > diff$$
 if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
 echo OK
@@ -86,6 +87,7 @@ ${RM} -f uu/BitKeeper/etc/SCCS/x.id_cache
 ${RM} -f project/BitKeeper/etc/SCCS/x.marked
 ${RM} -f uu/BitKeeper/etc/SCCS/x.marked
 ${RM} -f project/BitKeeper/log/cmd uu/BitKeeper/log/cmd
+${RM} -f uu/BitKeeper/etc/csets
 diff -r project uu > diff$$
 if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
 echo OK
@@ -104,6 +106,7 @@ ${RM} -f csets/BitKeeper/etc/SCCS/x.id_cache
 ${RM} -f project/BitKeeper/etc/SCCS/x.marked
 ${RM} -f csets/BitKeeper/etc/SCCS/x.marked
 ${RM} -f project/BitKeeper/log/cmd csets/BitKeeper/log/cmd
+${RM} -f csets/BitKeeper/etc/csets
 diff -r project csets > diff$$
 if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
 echo OK

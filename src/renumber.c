@@ -62,7 +62,7 @@ usage:		fprintf(stderr, "usage: %s [-nq] [files...]\n", av[0]);
 				fprintf(stderr,
 				    "%s: not writing %s\n", av[0], s->sfile);
 			}
-		} else if (sccs_admin(s, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0)) {
+		} else if (sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0)) {
 			unless (BEEN_WARNED(s)) {
 				fprintf(stderr,
 				    "admin -z of %s failed.\n", s->sfile);
@@ -96,6 +96,7 @@ renumber(sccs *s, int flags)
 		}
 		release = redo(s, d, db, flags, release);
 	}
+	mdbm_close(db);
 }
 
 void

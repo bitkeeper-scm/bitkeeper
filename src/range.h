@@ -6,6 +6,8 @@ int	rangeAdd(sccs *sc, char *rev, char *date);
 int	rangeConnect(sccs *s);
 void	rangeSetExpand(sccs *s);
 int	rangeList(sccs *sc, char *rev);
+int	rangeProcess(char *me, sccs *s, int expand, int noisy,
+		     int things, int rd, char **r, char **d);
 
 #define	RANGE_DECL	int	things = 0, rd = 1; \
 			char	*r[2], *d[2]; \
@@ -26,59 +28,6 @@ int	rangeList(sccs *sc, char *rev);
 	    break
 
 #define	RANGE(me, s, expand, noisy) \
-	debug((stderr, \
-	    "RANGE(%s, %s, %d, %d)\n", me, s->gfile, expand, noisy)); \
-	rangeReset(s); \
-	if (!things) if ((r[0] = sfileRev())) things = tokens(notnull(r[0])); \
-	if (things) { \
-		if (rangeAdd(s, r[0], d[0])) { \
-			if (noisy) { \
-				fprintf(stderr, \
-				    "%s: no such delta ``%s'' in %s\n", \
-				    me, r[0] ? r[0] : d[0], s->sfile); \
-			} \
-			goto next; \
-		} \
-	} \
-	if (things == 2) { \
-		if ((r[1] || d[1]) && (rangeAdd(s, r[1], d[1]) == -1)) { \
-			s->state |= S_RANGE2; \
-			if (noisy) { \
-				fprintf(stderr, \
-				    "%s: no such delta ``%s'' in %s\n", \
-				    me, r[1] ? r[1] : d[1], s->sfile); \
-			} \
-			goto next; \
-		} \
-	} \
-	if (expand) { \
-		unless (things) { \
-			if (s->tree && streq(s->tree->rev, "1.0")) { \
-				if ((s->rstart = s->tree->kid)) { \
-					s->rstop = s->table; \
-				} \
-			} else { \
-				s->rstart = s->tree; \
-				s->rstop = s->table; \
-			} \
-		} \
-		if (s->state & S_SET) { \
-			rangeSetExpand(s); \
-		} else { \
-			unless (s->rstart) s->rstart = s->rstop; \
-			unless (s->rstop) s->rstop = s->rstart; \
-		} \
-	} \
-	/* If they wanted a set and we don't have one... */ \
-	if ((expand == 2) && !(s->state & S_SET)) { \
-		delta   *e; \
-		\
-		for (e = s->rstop; e; e = e->next) { \
-			e->flags |= D_SET; \
-			if (e == s->rstart) break; \
-		} \
-		s->state |= S_SET; \
-	} \
-	if ((expand == 3) && !(s->state & S_SET)) rangeConnect(s);
+	if (rangeProcess(me, s, expand, noisy, things, rd, r, d)) goto next;
 
 #endif

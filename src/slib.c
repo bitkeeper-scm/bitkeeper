@@ -869,6 +869,7 @@ fixNewDate(sccs *s)
 	delta *next, *d;
 
 	d = s->table;
+	assert(!d->dateFudge);
 	unless (d->date) (void)getDate(d);
 	next = d->next;
 	unless (next) return;
@@ -1864,7 +1865,9 @@ ok:
 			int	release = rev ? atoi(rev) : 1;
 
 			if (release > a) {
-				a = release;
+				a = (s->state & S_BITKEEPER) 
+				    ? sccs_nextlod(s)
+				    : release;
 				b = 1;
 			} else {
 				b++;
@@ -2423,6 +2426,11 @@ meta(sccs *s, delta *d, char *buf)
 		break;
 	    case 'S':
 		symArg(s, d, &buf[3]);
+		break;
+	    case 'X':
+		assert(d);
+		d->flags |= D_XFLAGS;
+		d->xflags = atoi(&buf[3]);
 		break;
 	    case 'Z':
 		zoneArg(d, &buf[3]);
@@ -3515,6 +3523,37 @@ now()
 	strftime(tmp, sizeof(tmp), "%y/%m/%d %H:%M:%S", tm);
 	return (tmp);
 }
+
+/*
+ * Expand the set of deltas already tagged with D_SET to include all
+ * metadata children of those deltas.
+ * This is subtle.  You might think that the inner loop was unnecessary,
+ * but it isn't: we want to tag only meta deltas whose _data_ parent is
+ * already tagged.  If more than one meta delta is hanging off a data delta,
+ * just checking d->parent won't work.
+ *
+ * Returns the total number of deltas with D_SET on.
+ */
+int
+sccs_addmeta(sccs *s)
+{
+	int	n;
+	delta	*d, *e;
+	
+	for (n = 0, e = s->table; e; e = e->next) {
+		if (e->flags & D_SET) n++;
+		unless (e->flags & D_META) continue;
+		for (d = e->parent; d && (d->type != 'D'); d = d->parent);
+		if (d && (d->flags & D_SET)) {
+			unless (e->flags & D_SET) {
+				e->flags |= D_SET;
+				n++;
+			}
+		}
+	}
+	return (n);
+}
+
 
 /*
  * Save a serial in an array.  If the array is out of space, reallocate it.
@@ -5539,6 +5578,13 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 				fputmeta(s, buf, out);
 			}
 		}
+		if (d->flags & D_XFLAGS) {
+			p = fmts(buf, "\001cX");
+			p = fmtu(p, d->xflags);
+			*p++ = '\n';
+			*p   = '\0';
+			fputmeta(s, buf, out);
+		}
 		if (d->zone && !(d->flags & D_DUPZONE)) {
 			p = fmts(buf, "\001cZ");
 			p = fmts(p, d->zone);
@@ -6792,7 +6838,8 @@ isleaf(register delta *d)
 	if (d->type != 'D') return (0);
 	for (d = d->kid; d; d = d->siblings) {
 		if (d->flags & D_GONE) continue;
-		if (d->type == 'D') return (0);
+		if (d->type != 'D') continue;
+		if (d->r[0] == 1 || d->r[1] != 1) return (0);
 	}
 	return (1);
 }
@@ -6806,19 +6853,38 @@ checkInvariants(sccs *s)
 {
 	delta	*d;
 	int	tips = 0;
+	u8	*lodmap = 0;
+	u16	next;
+
+	next = sccs_nextlod(s);
+	/* next now equals one more than greatest that exists
+	 * so last entry in array is lodmap[next-1] which is 
+	 * is current max.
+	 */
+	unless (lodmap = calloc(next, sizeof(lodmap))) {
+		perror("calloc lodmap");
+		return (1);
+	}
 
 	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_GONE) continue;
-		if (!(d->flags & D_MERGED) && isleaf(d)) tips++;
+		unless (!(d->flags & D_MERGED) && isleaf(d)) continue;
+		unless (lodmap[d->r[0]]++) continue; /* first leaf OK */
+		tips++;
 	}
-	unless (tips > 1) return (0);
+
+	unless (tips) {
+		if (lodmap) free(lodmap);
+		return (0);
+	}
+
 	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_GONE) continue;
-		if (!(d->flags & D_MERGED) && isleaf(d)) {
-			fprintf(stderr,
-			    "%s: unmerged leaf %s\n", s->sfile, d->rev);
-		}
+		unless (!(d->flags & D_MERGED) && isleaf(d)) continue;
+		unless (lodmap[d->r[0]] > 1) continue;
+		fprintf(stderr, "%s: unmerged leaf %s\n", s->sfile, d->rev);
 	}
+	if (lodmap) free(lodmap);
 	return (1);
 }
 
@@ -6962,7 +7028,7 @@ checkRev(sccs *s, char *file, delta *d, int flags)
 			}
 			error = 1;
 		}
-#ifdef	crazy_wow
+#ifdef	CRAZY_WOW
 		XXX - this should be an option to admin.
 
 		/* if there is a parent, and the parent is a x.y.z.q, and
@@ -7544,30 +7610,113 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 	return (added);
 }
 
-private int
-addMode(char *me, sccs *sc, int flags, char *mode, int *ep)
+
+delta *
+sccs_newDelta(sccs *sc, int isNullDelta)
 {
-	delta	*d, *n;
-	char	*rev, buf[30];
+	delta *p, *n;
+	char	*rev;
 	int 	f = 0;  /* XXX this may be affected by LOD */
 
-	unless (mode) return 0;
-	d = findrev(sc, 0);
+	p = findrev(sc, 0);
 	n = calloc(1, sizeof(delta));
 	n->next = sc->table;
 	sc->table = n;
 	n = sccs_dInit(n, 'D', sc, 0);
-	rev = d->rev;
+	rev = p->rev;
 	getedit(sc, &rev, f);
 	n->rev = strdup(rev);
-	n->pserial = d->serial;
+	n->pserial = p->serial;
 	n->serial = sc->nextserial++;
+	sc->numdeltas++;
+	if (isNullDelta) {
+		n->added = n->deleted = 0;
+		n->same = p->same + p->added - p->deleted;
+		n->sum = (unsigned short) almostUnique(0);
+		n->flags |= D_CKSUM;
+	}
+	dinsert(sc, 0, n);
+	return n;
+}
+
+private int 
+name2xflg(char *fl)
+{
+	if (streq(fl, "EXPAND1")) {
+		return X_EXPAND1;
+	} else if (streq(fl, "RCS")) {
+		return X_RCSEXPAND;
+	} else if (streq(fl, "YEAR4")) {
+		return X_YEAR4;
+	}
+	assert("bad flag" == 0);
+}
+
+private delta *
+addMode(char *me, sccs *sc, delta *n, char *mode, int *fixDate)
+{
+	char	buf[50];
+
+	assert(mode);
+	unless (n) {
+		n = sccs_newDelta(sc, 1);
+		*fixDate = 1;
+	}
 	sprintf(buf, "Change mode to %s", mode);
 	n->comments = addLine(n->comments, strdup(buf));
-	sc->numdeltas++;
 	n = modeArg(n, mode);
-	dinsert(sc, 0, n);
-	return 1;
+	return n;
+}
+
+private delta *
+changeXFlag(char *me, sccs *sc, delta *n, int add, char *flag, int *fixDate)
+{
+	char	buf[50];
+	u32	xflags, mask;
+
+	assert(flag);
+
+	/*
+	 * If this is the first time we touch n->xflags,
+	 * initialize it from sc->state.
+	 */
+	unless (n && (n->flags & D_XFLAGS)) {
+		xflags = 0;
+		if (sc->state & S_EXPAND1) xflags |= X_EXPAND1;
+		if (sc->state & S_RCS) xflags |= X_RCSEXPAND;
+		if (sc->state & S_YEAR4) xflags |= X_YEAR4;
+		/* XXX Do we want to grap other X flags here ??*/
+	} else {
+		xflags = n->xflags;
+	}
+
+	mask = name2xflg(flag);
+	if (add) {
+		if (xflags & mask) {
+			fprintf(stderr,
+				"%s: %s flag is already on, ignored\n",
+				me, flag);
+			return n;
+		} 
+		xflags |= mask;
+	} else {
+		unless (xflags & mask) {
+			fprintf(stderr,
+				"%s: %s flag is already off, ignored \n",
+				me, flag);
+			return n;
+		}
+		xflags &= ~mask;
+	}
+	unless (n) {
+		n = sccs_newDelta(sc, 1);
+		*fixDate = 1; 
+	}
+	n->flags |= D_XFLAGS;
+	n->xflags = xflags;
+	sprintf(buf, "Turn %s %s flag", add ? "on": "off", flag);
+	n->comments = addLine(n->comments, strdup(buf));
+	return n;
 }
 
 /*
@@ -7621,13 +7770,14 @@ sccs_encoding(sccs *sc, char *encp, char *compp)
  * For large files, this is a win.
  */
 int
-sccs_admin(sccs *sc, u32 flags, char *new_encp, char *new_compp,
+sccs_admin(sccs *sc, delta *d, u32 flags, char *new_encp, char *new_compp,
 	admin *f, admin *z, admin *u, admin *s, char *mode, char *text)
 {
 	FILE	*sfile = 0;
 	int	new_enc, error = 0, locked = 0, i, old_enc = 0;
 	char	*t;
 	char	*buf;
+	int	fixDate = 0;
 
 	assert(!z); /* XXX used to be LOD item */
 
@@ -7683,8 +7833,14 @@ out:
 	}
 	if (flags & (ADMIN_BK|ADMIN_FORMAT)) goto out;
 
-	if (addSym("admin", sc, flags, s, &error)) flags |= NEWCKSUM;
-	if (addMode("admin", sc, flags, mode, &error)) flags |= NEWCKSUM;
+	if (addSym("admin", sc, flags, s, &error)) {
+		flags |= NEWCKSUM;
+		fixDate = 1;
+	}
+	if (mode) {
+		d = addMode("admin", sc, d, mode, &fixDate);
+		flags |= NEWCKSUM;
+	}
 
 	if (text) {
 		FILE	*desc;
@@ -7753,34 +7909,43 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 
 			if (streq(fl, "EXPAND1")) {
 				if (v) goto noval;
+				d = changeXFlag(
+					"admin", sc, d, add, fl, &fixDate);
 				if (add)
 					sc->state |= S_EXPAND1;
 				else
 					sc->state &= ~S_EXPAND1;
-			} else if (streq(fl, "BK")) {
-				if (v) goto noval;
-				if (add)
-					sc->state |= S_BITKEEPER;
-				else
-					sc->state &= ~S_BITKEEPER;
 			} else if (streq(fl, "RCS")) {
 				if (v) goto noval;
+				d = changeXFlag(
+					"admin", sc, d, add, fl, &fixDate);
 				if (add)
 					sc->state |= S_RCS;
 				else
 					sc->state &= ~S_RCS;
 			} else if (streq(fl, "YEAR4")) {
 				if (v) goto noval;
+				d = changeXFlag(
+					"admin", sc, d, add, fl, &fixDate);
 				if (add)
 					sc->state |= S_YEAR4;
 				else
 					sc->state &= ~S_YEAR4;
+			/* Flags below are non propagated */
+			} else if (streq(fl, "BK")) {
+				if (v) goto noval;
+				if (add)
+					sc->state |= S_BITKEEPER;
+				else
+					sc->state &= ~S_BITKEEPER;
+#ifdef S_ISSHELL
 			} else if (streq(fl, "SHELL")) {
 				if (v) goto noval;
 				if (add)
 					sc->state |= S_ISSHELL;
 				else
 					sc->state &= ~S_ISSHELL;
+#endif
 			} else if (streq(fl, "BRANCHOK")) {
 				if (v) goto noval;
 				if (add)
@@ -7878,7 +8043,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	}
 	old_enc = sc->encoding;
 	sc->encoding = new_enc;
-	if (delta_table(sc, sfile, 0, 1)) {
+	if (delta_table(sc, sfile, 0, fixDate)) {
 		sccs_unlock(sc, 'x');
 		goto out;	/* we don't know why so let sccs_why do it */
 	}
@@ -8212,7 +8377,7 @@ newcmd:
 /*
  * Initialize as much as possible from the file.
  * Don't override any information which is already set.
- * XXX - this needs to track do_prs/do_patch closely.
+ * XXX - this needs to track sccs_prsdelta/do_patch closely.
  */
 delta *
 sccs_getInit(sccs *sc, delta *d, MMAP *f, int patch, int *errorp, int *linesp)
@@ -8354,8 +8519,8 @@ skip:
 	/* cksums are optional but shouldn't be */
 	if (WANT('K')) {
 		d = sumArg(d, &buf[2]);
-		unless (buf = mkline(mnext(f))) goto out; lines++;
 		d->flags |= D_ICKSUM;
+		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
 	/* merge deltas are optional */
@@ -8409,6 +8574,12 @@ skip:
 				d->exclude = addSerial(d->exclude, e->serial);
 			}
 		}
+		unless (buf = mkline(mnext(f))) goto out; lines++;
+	}
+
+	if (WANT('X')) {
+		d->xflags = atoi(&buf[2]);	
+		d->flags |= D_XFLAGS;
 		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
@@ -8613,7 +8784,7 @@ sccs_meta(sccs *s, delta *parent, MMAP *iF)
 		sccs_unlock(s, 'z');
 		exit(1);
 	}
-	if (delta_table(s, sfile, 0, 1)) {
+	if (delta_table(s, sfile, 0, 0)) {
 abort:		fclose(sfile);
 		sccs_unlock(s, 'x');
 		return (-1);
@@ -8744,6 +8915,25 @@ out:
 			    streq(prefilled->pathname, "ChangeSet")) {
 				s->state |= S_CSET;
 		    	}
+			if (prefilled->flags & D_XFLAGS) {
+				/*  XXX this code will be affected by LOD */
+				u32 bits = prefilled->xflags;
+				if (bits & X_YEAR4) {
+					s->state |= S_YEAR4;
+				} else {
+					s->state &= ~S_YEAR4;
+				}
+				if (bits & X_RCSEXPAND) {
+					s->state |= S_RCS;
+				} else {
+					s->state &= ~S_RCS;
+				}
+				if (bits & X_EXPAND1) {
+					s->state |= S_EXPAND1;
+				} else {
+					s->state &= ~S_EXPAND1;
+				}
+			}
 			unless (flags & NEWFILE) {
 				/* except the very first delta   */
 				/* all rev are subject to rename */
@@ -9842,6 +10032,11 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
+	if (streq(kw, "ROOTKEY")) {
+		if (out) sccs_pdelta(s, sccs_ino(s), out);
+		return (strVal);
+	}
+
 	if (streq(kw, "SHORTKEY")) {
 		char	buf[MAXPATH+200];
 		char	*t;
@@ -10319,12 +10514,12 @@ fprintDelta(FILE *out, char *vbuf,
 	return (printLF);
 }
 
-private void
-do_prs(sccs *s, delta *d, int flags, const char *dspec, FILE *out)
+void
+sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out)
 {
 	const char *end;
 
-	if (d->type != 'D') return;
+	if (d->type != 'D' && !(flags & PRS_ALL)) return;
 	if ((s->state & S_SET) && !(d->flags & D_SET)) return;
 	if (fprintDelta(out, NULL,
 	    dspec, end = &dspec[strlen(dspec) - 1], s, d)) {
@@ -10510,6 +10705,9 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 		sccs_pdelta(s, d, out);
 		fprintf(out, "\n");
 	}
+	if (start->flags & D_XFLAGS) {
+		fprintf(out, "X %u\n", start->xflags);
+	}
 	if (s->tree->zone) assert(start->zone);
 	fprintf(out, "------------------------------------------------\n");
 }
@@ -10517,10 +10715,16 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 private void
 prs_reverse(sccs *s, delta *d, int flags, char *dspec, FILE *out)
 {
-	if (d->next && ((s->state & S_SET) || (d != s->rstart))) {
-		prs_reverse(s, d->next, flags, dspec, out);
+	if (d->next) prs_reverse(s, d->next, flags, dspec, out);
+	if (d->flags & D_SET) sccs_prsdelta(s, d, flags, dspec, out);
+}
+
+private void
+prs_forward(sccs *s, delta *d, int flags, char *dspec, FILE *out)
+{
+	for (; d; d = d->next) {
+		if (d->flags & D_SET) sccs_prsdelta(s, d, flags, dspec, out);
 	}
-	do_prs(s, d, flags, dspec, out);
 }
 
 int
@@ -10528,8 +10732,9 @@ sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out)
 {
 	delta	*d;
 #define	DEFAULT_DSPEC \
-"D :I: :D: :T::TZ: :P:$if(:HT:){@:HT:} :DS: :DP: :Li:/:Ld:/:Lu:\n\
-$if(:DPN:){P :DPN:\n}$each(:C:){C (:C:)}\n\
+":DT: :I: :D: :T::TZ: :P:$if(:HT:){@:HT:} :DS: :DP: :Li:/:Ld:/:Lu:\n\
+$if(:DPN:){P :DPN:\n}$each(:SYMBOL:){S (:SYMBOL:)\n}\
+$if(:C:){$each(:C:){C (:C:)}\n}\
 ------------------------------------------------"
 
 	if (!dspec) dspec = DEFAULT_DSPEC;
@@ -10537,7 +10742,7 @@ $if(:DPN:){P :DPN:\n}$each(:C:){C (:C:)}\n\
 	if (flags & PRS_PATCH) {
 		do_patch(s,
 		    s->rstart ? s->rstart : s->tree,
-		    s->rstop ? s->rstop : 0, flags, out);
+		    s->rstop, flags, out);
 		return (0);
 	}
 	/* print metadata if they asked */
@@ -10547,17 +10752,16 @@ $if(:DPN:){P :DPN:\n}$each(:C:){C (:C:)}\n\
 			fprintf(out, "S %s %s\n", sym->name, sym->rev);
 		}
 	}
-
-	if (reverse) {
-		prs_reverse(s, s->rstop, flags, dspec, out);
-	} else for (d = s->rstop; d; d = d->next) {
-		do_prs(s, d, flags, dspec, out);
-#ifdef	CRAZY_WOW
-		if (d == s->rstart) break;
-#else
-		if (!(s->state & S_SET) && (d == s->rstart)) break;
-#endif
+	unless (s->state & S_SET) {
+		for (d = s->rstop; d; d = d->next) {
+			d->flags |= D_SET;
+			if (d == s->rstart) break;
+		}
 	}
+	if (flags & PRS_ALL) sccs_addmeta(s);
+
+	if (reverse) prs_reverse(s, s->table, flags, dspec, out);
+	else prs_forward(s, s->table, flags, dspec, out);
 	return (0);
 }
 
@@ -10957,8 +11161,25 @@ sccs_resolveFile(sccs *s, int noRfile, char *lpath, char *gpath, char *rpath)
 	FILE	*f = 0;
 	delta	*d, *a = 0, *b = 0;
 	char	*n[3];
+	u8	*lodmap = 0;
+	u16	next;
+	u16	defbranch;
+	int	retcode = -1;
 
+	/* XXX: before or after checking for LOD conflict?? */
 	if (noRfile) goto mfile;
+
+	next = sccs_nextlod(s);
+	/* next now equals one more than greatest that exists
+	 * so last entry in array is lodmap[next-1] which is 
+	 * is current max.
+	 */
+	unless (lodmap = calloc(next, sizeof(lodmap))) {
+		perror("calloc lodmap");
+		goto err;
+	}
+
+	defbranch = (s->defbranch) ? atoi(s->defbranch) : (next - 1);
 
 	/*
 	 * b is that branch which needs to be merged.
@@ -10966,20 +11187,30 @@ sccs_resolveFile(sccs *s, int noRfile, char *lpath, char *gpath, char *rpath)
 	 * LODXXX - can be two if there are LODs.
 	 */
 	for (d = s->table; d; d = d->next) {
+		if (d->type != 'D') continue;
 		if ((d->flags & D_MERGED) || !isleaf(d)) continue;
-		if (!a) {
-			a = d;
-		} else {
-			b = d;
-			/* Could break but I like the error checking */
+		if (d->r[0] == defbranch) {
+			if (!a) {
+				a = d;
+			} else {
+				assert(!b);
+				b = d;
+				/* Could break but I like the error checking */
+			}
+			continue;
 		}
+		unless (lodmap[d->r[0]]++) continue; /* if first leaf */
+
+		fprintf(stderr, "\ntakepatch: ERROR: conflict on lod %d\n",
+			d->r[0]);
+		goto err;
 	}
 	if (b) {
 		d = gca(a, b);
 		assert(d);
 		unless (f = fopen(sccsXfile(s, 'r'), "w")) {
 			perror("r.file");
-			return (-1);
+			goto err;
 		}
 		/*
 		 * Always put the local stuff on the left, if there
@@ -10997,7 +11228,7 @@ sccs_resolveFile(sccs *s, int noRfile, char *lpath, char *gpath, char *rpath)
 mfile:	if (lpath) {
 		unless (f = fopen(sccsXfile(s, 'm'), "w")) {
 			perror("m.file");
-			return (-1);
+			goto err;
 		}
 		n[0] = name2sccs(lpath);
 		n[1] = name2sccs(gpath);
@@ -11008,7 +11239,10 @@ mfile:	if (lpath) {
 		free(n[1]);
 		free(n[2]);
 	}
-	return (b ? 1 : 0);
+	retcode = (b ? 1 : 0);
+err:
+	if (lodmap) free(lodmap);
+	return (retcode);
 }
 
 /*
@@ -11554,7 +11788,7 @@ out:
 	}
 
 	/* write out upper half */
-	if (delta_table(s, sfile, 0, 1)) {  /* 0 means as-is, so chksum works */
+	if (delta_table(s, sfile, 0, 0)) {  /* 0 means as-is, so chksum works */
 		fprintf(stderr,
 		    "%s: can't write delta table for %s\n", who, s->sfile);
 		sccs_unlock(s, 'x');
