@@ -136,7 +136,7 @@ getline(int in, char *buf, int size)
 				buf[i] = 0;
 				if (echo) {
 					fprintf(stderr,
-					    "%d [%s]\n", getpid(), buf);
+					    "%u [%s]\n", getpid(), buf);
 				}
 				return (i + 1);	/* we did read a newline */
 			}
@@ -236,7 +236,7 @@ getline2(remote *r, char *buf, int size)
 				buf[i] = 0;
 				if (echo) {
 					fprintf(stderr,
-					    "%d [%s]\n", getpid(), buf);
+					    "%u [%s]\n", getpid(), buf);
 				}
 				return (i + 1);	/* we did read a newline */
 			}

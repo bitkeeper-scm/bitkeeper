@@ -8,7 +8,7 @@
 #if 1
 #define	ldebug(x)	if (getenv("BK_DBGLOCKS")) {\
 				pwd(); \
-				ttyprintf("[%d]==> ", getpid()); \
+				ttyprintf("[%u]==> ", getpid()); \
 			} \
 			if (getenv("BK_DBGLOCKS")) ttyprintf x
 private void
@@ -83,7 +83,7 @@ rdlockfile(char *root, char *path)
 	assert(root);
 	assert(host);
 	sprintf(path,
-	    "%s/%s/%d@%s.lock", root, READER_LOCK_DIR, getpid(), host);
+	    "%s/%s/%u@%s.lock", root, READER_LOCK_DIR, getpid(), host);
 }
 
 /*
@@ -244,7 +244,7 @@ rdlock(void)
 	rdlockfile(p->root, path);
 	close(creat(path, 0666));
 	unless (exists(path)) {
-		ldebug(("RDLOCK by %d failed, no perms?\n", getpid()));
+		ldebug(("RDLOCK by %u failed, no perms?\n", getpid()));
 		proj_free(p);
 		return (LOCKERR_PERM);
 	}
@@ -253,11 +253,11 @@ rdlock(void)
 		rdlockfile(p->root, path);
 		unlink(path);
 		proj_free(p);
-		ldebug(("RDLOCK by %d failed, write locked\n", getpid()));
+		ldebug(("RDLOCK by %u failed, write locked\n", getpid()));
 		return (LOCKERR_LOST_RACE);
 	}
 	proj_free(p);
-	ldebug(("RDLOCK %d\n", getpid()));
+	ldebug(("RDLOCK %u\n", getpid()));
 	return (0);
 }
 
@@ -300,7 +300,7 @@ wrlock(void)
 	sprintf(lock, "%s/%s", p->root, WRITER_LOCK);
 	if (sccs_lockfile(lock, 0, 0)) {
 		proj_free(p);
-		ldebug(("WRLOCK by %d failed, lockfile failed\n", getpid()));
+		ldebug(("WRLOCK by %u failed, lockfile failed\n", getpid()));
 		return (LOCKERR_LOST_RACE);
 	}
 
@@ -318,7 +318,7 @@ wrlock(void)
 	if (repository_hasLocks(p->root, READER_LOCK_DIR)) {
 		proj_free(p);
 	    	sccs_unlockfile(lock);
-		ldebug(("WRLOCK by %d failed, readers won\n", getpid()));
+		ldebug(("WRLOCK by %u failed, readers won\n", getpid()));
 		return (LOCKERR_LOST_RACE);
 	}
 	proj_free(p);
@@ -326,7 +326,7 @@ wrlock(void)
 	 * like the contents of the lock file.  Then we ignore iff that matches.
 	 */
 	putenv("BK_IGNORELOCK=YES");
-	ldebug(("WRLOCK %d\n", getpid()));
+	ldebug(("WRLOCK %u\n", getpid()));
 	return (0);
 }
 
@@ -405,7 +405,7 @@ repository_rdunlock(int all)
 	/* clean out our lock, if any */
 	rdlockfile(p->root, path);
 	if (unlink(path) == 0) {
-		ldebug(("RDUNLOCK %d\n", getpid()));
+		ldebug(("RDUNLOCK %u\n", getpid()));
 	}
 	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
 	rmdir(path);
@@ -437,11 +437,11 @@ repository_wrunlock(int all)
 	putenv("BK_IGNORELOCK=NO");
 	sprintf(path, "%s/%s", p->root, WRITER_LOCK);
 	if (sccs_mylock(path) && (sccs_unlockfile(path) == 0)) {
-		ldebug(("WRUNLOCK %d\n", getpid()));
+		ldebug(("WRUNLOCK %u\n", getpid()));
 		sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
 		rmdir(path);
 	} else {
-		ldebug(("WRUNLOCK %d FAILED\n", getpid()));
+		ldebug(("WRUNLOCK %u FAILED\n", getpid()));
 		error = -1;
 	}
 	proj_free(p);
@@ -463,7 +463,7 @@ repository_lockcleanup(void)
 
 	if (repository_mine('r')) {
 		ttyprintf(
-"WARNING: process %d is exiting and it has left the repository at\n"
+"WARNING: process %u is exiting and it has left the repository at\n"
 "%s read locked!!  This is the result of a process that has been\n"
 "killed prematurely or is a bug.\n"
 "The stale lock will be removed.\n",
@@ -473,7 +473,7 @@ repository_lockcleanup(void)
 
 	if (repository_mine('w')) {
 		ttyprintf(
-"ERROR: process %d is exiting and it has left the repository at\n"
+"ERROR: process %u is exiting and it has left the repository at\n"
 "%s write locked!!  This is the result of a process that has been\n"
 "killed prematurely or is a bug.\n",
 			getpid(), root);

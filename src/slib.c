@@ -7269,7 +7269,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		s->state |= S_WARNED;
 		return (-1);
 	}
-	tmpfile = aprintf("%s/%s-%s-%d", TMP_PATH, basenm(s->gfile), d->rev, getpid());
+	tmpfile = aprintf("%s/%s-%s-%u", TMP_PATH, basenm(s->gfile), d->rev, getpid());
 	popened = openOutput(s, encoding, printOut, &out);
 	setmode(fileno(out), O_BINARY); /* for win32 EOLN_NATIVE file */
 	if (type == GET_HASHDIFFS) {
@@ -12921,7 +12921,7 @@ mkDiffTarget(sccs *s,
 		return (0);
 	}
 	sprintf(target,
-	    "%s/%s-%s-%d", TMP_PATH, basenm(s->gfile), rev, getpid());
+	    "%s/%s-%s-%u", TMP_PATH, basenm(s->gfile), rev, getpid());
 	if (exists(target)) {
 		return (-1);
 	} else if (

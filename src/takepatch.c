@@ -1929,7 +1929,7 @@ resync_lock(void)
 		perror("RESYNC/BitKeeper/tmp/pid");
 		cleanup(CLEAN_RESYNC);
 	}
-	fprintf(f, "%d\n", getpid());
+	fprintf(f, "%u\n", getpid());
 	fclose(f);
 }
 
