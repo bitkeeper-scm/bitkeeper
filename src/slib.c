@@ -11200,6 +11200,29 @@ newcmd:
 	return (0);
 }
 
+sccs_hashcount(sccs *s)
+{
+	int	n;
+	kvpair	kv;
+
+	unless (HASH(s)) return (0);
+	if (sccs_get(s, "+", 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
+		sccs_whynot("get", s);
+		return (0);
+	}
+	/* count the number of long keys in the *values* since those
+	 * are far more likely to be current.
+	 */
+	for (n = 0, kv = mdbm_first(s->mdbm);
+	    kv.key.dsize; kv = mdbm_next(s->mdbm)) {
+		unless (CSET(s)) {
+			n++;
+			continue;
+		}
+		if (sccs_iskeylong(kv.val.dptr)) n++;
+	}
+	return (n);
+}
 
 /*
  * Initialize as much as possible from the file.
@@ -13468,25 +13491,9 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	if (streq(kw, "HASHCOUNT")) {
-		int	n;
-		kvpair	kv;
+		int	n = sccs_hashcount(s);
 
 		unless (HASH(s)) return (nullVal);
-		if (sccs_get(s, "+", 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
-			sccs_whynot("get", s);
-			return (-1);
-		}
-		/* count the number of long keys in the *values* since those
-		 * are far more likely to be current.
-		 */
-		for (n = 0, kv = mdbm_first(s->mdbm);
-		    kv.key.dsize; kv = mdbm_next(s->mdbm)) {
-			unless (CSET(s)) {
-				n++;
-				continue;
-			}
-			if (sccs_iskeylong(kv.val.dptr)) n++;
-		}
 		fd(n);
 		return (strVal);
 	}

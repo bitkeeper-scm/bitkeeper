@@ -767,6 +767,7 @@ int	sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, char kind, char *opts, FI
 int	sccs_encoding(sccs *s, char *enc, char *comp);
 int	sccs_get(sccs *s,
 	    char *rev, char *mRev, char *i, char *x, u32 flags, char *out);
+int	sccs_hashcount(sccs *s);
 int	sccs_clean(sccs *s, u32 flags);
 int	sccs_info(sccs *s, u32 flags);
 int	sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out);

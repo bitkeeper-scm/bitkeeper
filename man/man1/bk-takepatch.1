@@ -4,7 +4,7 @@
 .SH NAME
 bk takepatch \- apply a \*(BK patch
 .SH SYNOPSIS
-.Bc bk takepatch [\-acFimStv] [\-f[ 
+.Bc bk takepatch [\-acimStv] [\-f[ 
 .ARGc file
 .B ]]
 .SH DESCRIPTION
@@ -27,9 +27,6 @@ Apply the changes (call
 .tp
 .B \-c
 Do not accept conflicts with this patch.
-.tp
-.B \-F
-(Fast) Do rebuild id cache when creating files.
 .tp
 .OPTreq \-f file
 Take the patch from 

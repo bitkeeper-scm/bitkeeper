@@ -39,7 +39,7 @@ WHATSTR("@(#)%K%");
 		    "---------------------------------------\n", stderr);
 
 private	delta	*getRecord(MMAP *f);
-private	int	extractPatch(char *name, MMAP *p, int flags, int fast, project *proj);
+private	int	extractPatch(char *name, MMAP *p, int flags, project *proj);
 private	int	extractDelta(char *name, sccs *s, int newFile, MMAP *f, int, int*);
 private	int	applyPatch(char *local, int flags, sccs *perfile, project *p);
 private	int	applyCsetPatch(char *localPath, int nfound, int flags,
@@ -100,8 +100,6 @@ takepatch_main(int ac, char **av)
 	int	resolve = 0;
 	project	*proj = 0;
 	int	textOnly = 0;
-	int	fast = 0;	/* undocumented switch for scripts,
-				 * skips cache rebuilds on file creates */
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help takepatch");
@@ -119,7 +117,7 @@ takepatch_main(int ac, char **av)
 			break;
 		    case 'a': resolve++; break;			/* doc 2.0 */
 		    case 'c': noConflicts++; break;		/* doc 2.0 */
-		    case 'F': fast++; break;			/* doc 2.0 */
+		    case 'F': break;				/* obsolete */
 		    case 'f':					/* doc 2.0 */
 			    input = optarg;
 			    break;
@@ -164,7 +162,7 @@ usage:		system("bk help -s takepatch");
 		}
 		*t = 0;
 		files++;
-		rc = extractPatch(&b[3], p, flags, fast, proj);
+		rc = extractPatch(&b[3], p, flags, proj);
 		free(b);
 		if (rc < 0) {
 			error = rc;
@@ -364,7 +362,7 @@ shout(void)
  * sent; it might be different than the local name.
  */
 private	int
-extractPatch(char *name, MMAP *p, int flags, int fast, project *proj)
+extractPatch(char *name, MMAP *p, int flags, project *proj)
 {
 	delta	*tmp;
 	sccs	*s = 0;
@@ -426,7 +424,7 @@ again:	s = sccs_keyinit(t, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB);
 	 * b) move the file and send a new file over and make sure it finds
 	 *    it.
 	 */
-	unless (s || newProject || (newFile && fast)) {
+	unless (s || newProject || newFile) {
 		if (gone(t, goneDB)) goneError(t);
 		unless (rebuilt++) {
 			if (rebuild_id(t)) {

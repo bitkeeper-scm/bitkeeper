@@ -95,8 +95,8 @@ commit_main(int ac, char **av)
 		}
 	} else {
 		gettemp(pendingFiles, "bk_pending");
-		if (sysio(0, pendingFiles,  0,
-					"bk", "sfind", "-s,,p", "-C", SYS)) {
+		if (sysio(0,
+		    pendingFiles, 0, "bk", "sfind", "-s,,p", "-C", SYS)) {
 			unlink(pendingFiles);
 			unlink(commentFile);
 			getMsg("duplicate_IDs", 0, 0, stdout);
@@ -108,6 +108,11 @@ commit_main(int ac, char **av)
 		unlink(pendingFiles);
 		unlink(commentFile);
 		return (0);
+	}
+	if (sysio(pendingFiles, 0, 0, "bk", "check", "-c", "-", SYS)) {
+		unlink(pendingFiles);
+		unlink(commentFile);
+		return (1);
 	}
 	if (getcomment) {
 		char	*cmd, *p;
@@ -176,7 +181,6 @@ pending(char *sfile)
 	return (ret);
 }
 
-
 /*
  * Return true if pname is NULL or all blank
  */
@@ -187,7 +191,6 @@ goodPackageName(char *pname)
 	while (*pname) unless (isspace(*pname++)) return (1);
 	return (0);
 }
-
 
 private int
 do_commit(char **av,
