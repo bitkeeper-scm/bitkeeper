@@ -13893,7 +13893,7 @@ sccs_reCache(int quiet)
 		av[2] = 0;
 	}
 	av[3] = 0;
-	return spawnvp_ex(_P_WAIT, av[0], av);
+	return (spawnvp_ex(_P_WAIT, av[0], av));
 }
 
 /*
@@ -13929,7 +13929,7 @@ again:	unless (f = fopen(file, "rt")) {
 recache:		first = 0;
 			sum = 0;
 			if (f) fclose(f);
-			if (DB) mdbm_close(DB);
+			if (DB) mdbm_close(DB), DB = 0;
 			if (sccs_reCache(quiet)) goto out;
 			goto again;
 		}
@@ -13942,7 +13942,7 @@ recache:		first = 0;
 			goto again;
 		}
 out:		if (f) fclose(f);
-		if (DB) mdbm_close(DB);
+		if (DB) mdbm_close(DB), DB = 0;
 		return (0);
 	}
 	DB = mdbm_mem();
@@ -13985,7 +13985,7 @@ out:		if (f) fclose(f);
 				goto recache;
 			}
 			fprintf(stderr, "bad path: <%s> in %s\n", buf, file);
-			mdbm_close(DB);
+			mdbm_close(DB), DB = 0;
 			return (0);
 		}
 		if (style & DB_KEYSONLY) {
@@ -14005,7 +14005,7 @@ out:		if (f) fclose(f);
 					goto recache;
 				}
 				fprintf(stderr, "Corrupted DB %s\n", file);
-				mdbm_close(DB);
+				mdbm_close(DB), DB = 0;
 				return (0);
 			}
 			*v++ = 0;
