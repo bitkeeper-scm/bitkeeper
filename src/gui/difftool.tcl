@@ -255,16 +255,9 @@ proc getRev {file rev checkMods} \
 
 proc reread {} \
 {
-	global lname rname lfile rfile menu
+	global menu
 
-	#puts "$lfile $lname $rfile $rname"
-	# Leaving this here since I would like to pass in lname and rname as
-	# an array
-	if {[info exists lname] && [info exists rname]} {
-		readFiles $lfile $rfile
-	} else {
-		readFiles $lfile $rfile
-	}
+	$menu(widget) invoke $menu(selected)
 }
 
 proc usage {} \
@@ -304,7 +297,7 @@ proc getFiles {} \
 			set rfile $fname
 			set lfile [getRev $rfile "+" 1]
 			lappend tmps $lfile
-			set t "$lfile $rfile $fname + checked_out"
+			set t "{$lfile} {$rfile} {$fname} + checked_out"
 			lappend files $t
 		}
 	} elseif {$argc == 1} {
@@ -316,7 +309,7 @@ proc getFiles {} \
 					set rev1 "+"
 					lappend tmps $lfile
 					if {[checkFiles $lfile $rfile]} {
-						set t "$lfile $rfile $fname + checked_out"
+						set t "{$lfile} {$rfile} {$fname} + checked_out"
 						lappend files $t
 					}
 				}
@@ -326,7 +319,7 @@ proc getFiles {} \
 			set lfile [getRev $rfile "+" 1]
 			set rev1 "+"
 			if {[checkFiles $lfile $rfile]} {
-				set t "$lfile $rfile $rfile + checked_out"
+				set t "{$lfile} {$rfile} {$rfile} + checked_out"
 				lappend files $t
 			}
 			lappend tmps $lfile
@@ -338,14 +331,14 @@ proc getFiles {} \
 			set lfile [getRev $rfile $rev1 0]
 			# If bk file and not checked out, check it out ro
 			#displayMessage "lfile=($lfile) rfile=($rfile)"
-			if {[exec bk sfiles -g $rfile] != ""} {
+			if {[exec bk sfiles -g "$rfile"] != ""} {
 				if {![file exists $rfile]} {
 					#displayMessage "checking out $rfile"
-					catch {exec bk get $rfile} err
+					catch {exec bk get "$rfile"} err
 				}
 			}
 			if {[checkFiles $lfile $rfile]} {
-				set t "$lfile $rfile $rfile $rev1"
+				set t "{$lfile} {$rfile} {$rfile} $rev1"
 				lappend files $t
 			}
 			lappend tmps $lfile
@@ -354,7 +347,7 @@ proc getFiles {} \
 			set lfile [lindex $argv 0]
 			set rfile [lindex $argv 1]
 			if {[checkFiles $lfile $rfile]} {
-				set t "$lfile $rfile $lfile"
+				set t "{$lfile} {$rfile} {$lfile}"
 				lappend files $t
 			}
 		}
@@ -370,28 +363,30 @@ proc getFiles {} \
 		lappend tmps $rfile
 		if {[checkFiles $lfile $rfile]} {
 			#displayMessage "$lfile $rfile $file $rev1 $rev2"
-			set t "$lfile $rfile $file $rev1 $rev2"
+			set t "{$lfile} {$rfile} {$file} $rev1 $rev2"
 			lappend files $t
 		}
 	}
 	# Now add the menubutton items if necessary
 	if {[llength $files] >= 1} {
-		set m [menu .menu.fmb.menu]
+		set menu(widget) [menu .menu.fmb.menu]
 		set item 1
 		foreach e $files {
 			set lf [lindex $e 0]; set rf [lindex $e 1]
 			set fn [lindex $e 2]; set lr [lindex $e 3]
 			set rr [lindex $e 4]
 			#displayMessage "rf=($rf) lf=($lf)"
-			$m add command -label $rf \
-			    -command "pickFile $lf $rf $fn $item $lr $rr"
+			$menu(widget) add command \
+			    -label $rf \
+			    -command \
+				"pickFile \"$lf\" \"$rf\" \"$fn\" $item $lr $rr"
 			incr item
 		}
 		pack configure .menu.filePrev .menu.fmb .menu.fileNext \
 		    -side left -fill y -after .menu.help 
-		set menu(max) [$m index last]
+		set menu(max) [$menu(widget) index last]
 		set menu(selected) 1
-		$m invoke 1
+		$menu(widget) invoke 1
 	} else {
 		# didn't find any valid arguments...
 		cleanup

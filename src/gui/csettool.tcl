@@ -240,7 +240,10 @@ proc getFiles {revs file_rev} \
 		catch { close $c }
 	}
 	catch { close $r }
-	if {$fileCount == 0} { exit }
+	if {$fileCount == 0} {
+		displayMessage "This ChangeSet is a merge ChangeSet and does not contain any files."
+		exit
+	}
 	.l.filelist.t configure -state disabled
 	set lastFile 1
 	if {$found != ""} {
@@ -635,6 +638,15 @@ proc main {} \
 	#puts "revs=$revs file=$file_rev"
 	bk_init
 	cd2root
+	set dspec "-d\$if(:Li: -gt 0){(:I:)\n}"
+	set fd [open "| bk prs -hr$revs {$dspec} ChangeSet" r]
+	# Only need to read the first line to know whether there is content
+	gets $fd prs
+	if {$prs == ""} {
+		displayMessage "This ChangeSet is a merge ChangeSet and does not contain any files."
+		exit
+	}
+	catch {close $fd}
 	widgets
 	getFiles $revs $file_rev
 }

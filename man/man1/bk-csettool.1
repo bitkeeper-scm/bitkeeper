@@ -4,24 +4,27 @@
 .SH NAME
 bk csettool \- \*(BK graphical changeset browser
 .SH SYNOPSIS
-.B bk csettool 
+.Bc bk csettool [
 .OPTreq \-r revs
+.Bc ] [
+.OPTreq \-f file@rev
+.B ]
 .SH DESCRIPTION
 .LP
-The csettool command is used to view the detailed information about the
-specified changeset[s].  The tool displays the list of changes in each
-changeset, the ChangeSet history, and the differences found
-in each file contained in each changeset.
+csettool is used to view detailed information about the specified
+changeset[s].  csettool displays the list of changes in each changeset,
+the ChangeSet history, and the differences found in each file contained
+in each changeset.
 .LP
-Csettool is very useful when tracking down bugs. For example, one might 
-be using
+Csettool is a very useful aide when tracking down bugs. For example,
+when using
 .B histtool
 to view comments for a specific file inorder to track when a change
 was made to the file. Once the desired file is found, the user can
-then click on the "View ChangeSet" button in
+then click on the "View changeSet" button in
 .B histtool
-to see what other files were modified at the same time that the file
-of interest was modified.
+to bring up csettool to see what other files were modified at the
+same time that the file of interest was modified.
 .LP
 To see the changes for a particular file, click on the file name
 in the top left window and you will see:
@@ -44,6 +47,24 @@ hit the space bar, the next diff is brought into view.  If you are
 on the last diff, the tool moves to the next file. The Next (>>)
 buttons and Previous (<<) buttons in the top menu bar will also
 allow you to browse the files and diffs.
+.LP
+The
+.B History
+button in the menu bar can be used to start the graphical history
+browser, histtool, on either the entire project (ChangeSet file)
+or on the file highlighted in the upper-left window.
+.SH OPTIONS
+.TP
+.OPTreq \-r revs
+ChangeSet revision to examine. Can be a single revision or a range of 
+revisions. If no -r option is given, 
+.B csettool
+defaults to -r+, i.e. the most recent changeset.
+.TP
+.OPTreq \-f file@rev
+Given a filename and revision,
+.B csettool
+starts up with the specified file and revision selected.
 .SH BINDINGS
 .TP 16
 .B Home
