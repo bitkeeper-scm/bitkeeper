@@ -153,7 +153,6 @@ SFILE2=`bk _g2sccs $DPATH`
 if [ ${SFILE2}X != "${DDIR}/SCCS/$SFILE"X ]; then echo failed; exit 1; fi
 echo OK
 echo $N Test sccsrm \& empty directory ...............................$NL
-HERE=`bk pwd`
 cd D
 bk sccsrm -d file5 || { echo failed.; exit 1; }
 if [ -d SCCS ]; then echo fail to remove empty SCCS; exit 1; fi
@@ -213,3 +212,25 @@ bk -r check -ag | bk gone -q -
 bk -r check -a
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
+echo $N Test clones of an editted moved file ........................$NL
+cd $HERE
+rm -rf project
+no_logging project
+date > d
+bk delta -i $Q d
+bk commit -q -ywhatever
+bk edit $Q d
+date >> d
+bk mv d newd
+cd $HERE
+# is there a better way to make clone silent when the
+# check pass finds errors?
+if [ "X$Q" = "X-q" ]; then
+	O=' 2> /dev/null'
+else
+	O=
+fi
+eval bk clone $Q project copy $O
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
+
