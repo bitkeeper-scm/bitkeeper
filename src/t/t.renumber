@@ -40,7 +40,7 @@ rm -f SCCS/s.foo.c
 rm -f top
 mv foo.c top
 perl -p -e 's/ D 1\.1\.1\.1 / D 1.5 /;' -e 's/ D 1\.2 / D 1.1.1.1 /;'  \
-	-e 's/ D 1\.5 / D 1.2 /' sfoo > SCCS/X
+	-e 's/ D 1\.5 / D 1.2 /' sfoo | bk undos > SCCS/X
 bk undos SCCS/X > SCCS/s.foo.c 
 bk admin $Q -z foo.c
 cmp -s sfoo SCCS/s.foo.c
@@ -69,7 +69,7 @@ rm -f SCCS/s.foo.c
 rm -f top
 mv foo.c top
 perl -p -e 's/ D 1\.1\.1\.1 / D 2.0.4.1 /; s/ D 1\.2 / D 2.0.7.1 /'  \
-	sfoo > SCCS/X
+	sfoo | bk undos > SCCS/X
  bk undos SCCS/X > SCCS/s.foo.c
 bk admin $Q -z foo.c
 cmp -s sfoo SCCS/s.foo.c

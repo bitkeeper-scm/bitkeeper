@@ -189,7 +189,7 @@ echo y | bk commit $Q -ywhatever2 >/dev/null 2>&1
 JUNK=`bk -R prs -hr1.0 '-dD :I: :D: :T:\n' BitKeeper/etc/logging_ok`
 J_UTC=`bk -R prs -hr1.0 '-d:UTC:\n' BitKeeper/etc/logging_ok`
 mv BitKeeper/etc/SCCS/s.logging_ok OLD
-perl -pe "s|$JUNK BBB |$DATE BBB |" < OLD > BitKeeper/etc/SCCS/s.logging_ok
+perl -pe "s|$JUNK BBB |$DATE BBB |" < OLD | bk undos > BitKeeper/etc/SCCS/s.logging_ok
 bk admin -z BitKeeper/etc/logging_ok
 mv SCCS/s.ChangeSet OLD2
 sed "s?BitKeeper/etc/logging_ok|$J_UTC?BitKeeper/etc/logging_ok|$UTC?" \
@@ -279,7 +279,7 @@ BK_USER=user
 BK_HOST=host.bk
 cd project
 cd BitKeeper/etc
-perl -ne 's,cPChangeSet,cPBitKeeper/etc/logging_ok,; print unless /^.cC$/ || /^.cS/ || /^.cX/ || /^.f x 0x/;' < ../../SCCS/s.ChangeSet > X
+perl -ne 's,cPChangeSet,cPBitKeeper/etc/logging_ok,; print unless /^.cC$/ || /^.cS/ || /^.cX/ || /^.f x 0x/;' < ../../SCCS/s.ChangeSet | bk undos > X
 mv X SCCS/s.logging_ok
 bk admin -z logging_ok
 bk stripdel $Q -r1.1.. logging_ok
