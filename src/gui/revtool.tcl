@@ -1165,7 +1165,7 @@ proc gotoRev {f hrev} \
 
 proc currentMenu {} \
 {
-	global file gc rev1 rev2 dev_null 
+	global file gc rev1 rev2 bk_fs dev_null 
 
 	if {$file != "ChangeSet"} {return}
 	cd2root
@@ -1181,9 +1181,9 @@ proc currentMenu {} \
 	while {[gets $revs r] >= 0} {
 		set log [open "| bk cset -Hr$r" r]
 		while {[gets $log file_rev] >= 0} {
-			set f [lindex [split $file_rev "@"] 0]
-			set rev [lindex [split $file_rev "@"] 1]
-			$gc(current) add command -label "$file_rev" \
+			set f [lindex [split $file_rev $bk_fs] 0]
+			set rev [lindex [split $file_rev $bk_fs] 1]
+			$gc(current) add command -label "${f}@${rev}" \
 			    -command "gotoRev $f $rev"
 		}
 	}
