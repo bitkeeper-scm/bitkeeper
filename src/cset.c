@@ -702,6 +702,7 @@ marklist(char *file)
 	/* eat the first line ... */
 	unless (fnext(buf, list)) {
 		fprintf(stderr, "cset: marking new list: empty file\n");
+		fclose(list);
 		return (-1);
 	}
 	/*
@@ -712,9 +713,13 @@ marklist(char *file)
 		chop(buf);
 		for (t = &buf[2]; *t != ' '; t++);
 		*t++ = 0;
-		if (doKey(&cs, &buf[2], t)) return (-1);
+		if (doKey(&cs, &buf[2], t)) {
+			fclose(list);
+			return (-1);
+		}
 	}
 	doKey(&cs, 0, 0);
+	fclose(list);
 	return (0);
 }
 

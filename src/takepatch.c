@@ -143,8 +143,8 @@ usage:		fprintf(stderr, takepatch_help);
 	}
 	mclose(p);
 	free(resyncRoot);
-	if (idDB) mdbm_close(idDB);
-	if (goneDB) mdbm_close(goneDB);
+	if (idDB) { mdbm_close(idDB); idDB = 0; }
+	if (goneDB) { mdbm_close(goneDB); goneDB = 0; }
 	purify_list();
 	if (echo) {
 		fprintf(stderr,
@@ -460,9 +460,10 @@ delta1:	off = mtell(f);
 		if (d->flags & D_META) {
 			p->flags |= PATCH_META;
 			assert(c == line);
+		} else {
+			p->diffMmap = mrange(start, stop);
 		}
 		line++;
-		p->diffMmap = mrange(start, stop);
 		if (echo>4) fprintf(stderr, "\n");
 		(*np)++;
 		insertPatch(p);
@@ -991,7 +992,7 @@ init(char *inputFile, int flags, char **resyncRootp)
 {
 	char	buf[MAXPATH];
 	char	*root, *t;
-	int	i, len, havexsum;
+	int	i, len, havexsum = 0;	/* XXX - right default? */
 	int	started = 0;
 	FILE	*f, *g;
 	MMAP	*m;

@@ -318,98 +318,6 @@ linelen(char *s)
 	return (t-s);
 }
 
-char *
-mnext(register MMAP *m)
-{
-	register char	*s, *t;
-
-	assert(m);
-	if (m->where >= m->end) return (0);
-	for (s = m->where; (s < m->end) && (*s++ != '\n'); );
-	assert(s[-1] == '\n');		/* XXX - what if no newline? */
-	t = m->where;
-	m->where = s;
-	return (t);
-}
-
-int
-mpeekc(MMAP *m)
-{
-	assert(m);
-	if (m->where >= m->end) return (EOF);
-	return (*m->where);
-}
-
-MMAP	*
-mopen(char *file)
-{
-	MMAP	*m;
-	int	fd;
-	struct	stat st;
-
-	unless ((fd = open(file, 0)) >= 0) {
-		perror(file);
-		return (0);
-	}
-	unless (fstat(fd, &st) == 0) {
-		perror(file);
-		close(fd);
-		return (0);
-	}
-	m = calloc(1, sizeof(*m));
-	/* Allow zero sized mappings */
-	unless (m->size = st.st_size) return (m);
-	m->mmap = mmap(0, m->size, PROT_READ, MAP_SHARED, fd, 0);
-	if (m->mmap == (caddr_t)-1) {
-		perror(file);
-		free(m);
-		close(fd);
-		return (0);
-	}
-	m->flags |= MMAP_OURS;
-	m->where = m->mmap;
-	m->end = m->mmap + m->size;
-	close(fd);
-	return (m);
-}
-
-/*
- * Map somebody else's data.
- */
-MMAP	*
-mrange(char *start, char *stop)
-{
-	MMAP	*m = calloc(1, sizeof(*m));
-
-	if (start == stop) return (m);
-	m->where = m->mmap = start;
-	m->end = stop;
-	m->size = stop - start;
-	return (m);
-}
-
-void
-mclose(MMAP *m)
-{
-	unless (m) return;
-	if ((m->flags & MMAP_OURS) && m->mmap) munmap(m->mmap, m->size);
-	free(m);
-}
-
-void
-mseekto(MMAP *m, off_t off)
-{
-	assert(m);
-	m->where = m->mmap + off;
-}
-
-off_t
-mtell(MMAP *m)
-{
-	assert(m);
-	return (off_t)(m->where - m->mmap);
-}
-
 /*
  * Save a line in an array.  If the array is out of space, reallocate it.
  * The size of the array is in array[0].
@@ -7063,10 +6971,10 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, MMAP *diffs)
 		added = uuencode_sum(s, gfile, sfile);
 	} else {
 		if (diffs) {
-			int	off;
+			int	off = 0;
 			char	*t;
 
-			if (t = mnext(diffs)) off = isdigit(t[0]) ? 2 : 0;
+			if ((t = mnext(diffs)) && isdigit(t[0])) off = 2;
 			while (t = mnext(diffs)) {
 				if ((off == 0) && (t[0] == '\\')) {
 					++t;

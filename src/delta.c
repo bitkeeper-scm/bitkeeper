@@ -215,7 +215,6 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 		if (rc == -1) {
 			sccs_whynot("delta", s);
 			if (init) mclose(init);
-			if (diffs) mclose(diffs);
 			sccs_free(s);
 			commentsDone(saved);
 			sfileDone();

@@ -2,6 +2,8 @@
 #ifndef	_SCCS_H_
 #define	_SCCS_H_
 
+#include "mmap.h"
+
 /*
  * Flags that modify some operation (passed to sccs_*).
  *
@@ -384,18 +386,6 @@ typedef struct {
 } ielist;
 
 /*
- * Diffs are passed in mmap-ed chunks as described below.
- */
-typedef	struct {
-	char	*mmap;			/* diffs start here */
-	size_t	size;			/* go for this much */
-	char	*where;			/* we are here in mapping */
-	char	*end;			/* == map + len */
-	int	flags;
-} MMAP;
-#define	MMAP_OURS		1
-
-/*
  * Rap on project roots.  In BitKeeper, lots of stuff wants to know
  * where the project root is relative to where we are.  We need to
  * use the ->root field for this, remembering to null it whenever
@@ -632,8 +622,13 @@ delta	*sfind(sccs *s, ser_t ser);
 int	sccs_lock(sccs *, char);
 int	sccs_unlock(sccs *, char);
 char 	*sccs_iskeylong(char *key);
+#ifdef	PURIFY_FILES
+MMAP	*purify_mopen(char *file, char *, int);
+void	purify_mclose(MMAP *, char *, int);
+#else
 MMAP	*mopen(char *file);
 void	mclose(MMAP *);
+#endif
 char	*mnext(MMAP *);
 int	mpeekc(MMAP *);
 void	mseekto(MMAP *m, off_t off);

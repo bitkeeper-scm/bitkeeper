@@ -13,7 +13,7 @@ LINKS	= ci co edit unedit unget
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(GUIBIN) $(GUISCR) $(LINKS) \
 	  $(PRIVATE) bitkeeper.config bkhelp.txt install.sh
 
-CFLAGS	= -g -O -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM
+CFLAGS	= -g -O -Wall -Wno-parentheses -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM
 CPPFLAGS= -Izlib
 LINK	= $(LSCCS) $(LMDBM) $(LZLIB) $(XLIBS)
 LSCCS	= -L. -lsccs
@@ -30,7 +30,7 @@ PORTOBJ = port/getinput.o port/gethost.o port/fullname.o port/platforminit.o \
 	  port/disksp.o
 SCCSOBJ	= slib.o range.o newrev.o getopt.o popen.o libdiff.o \
 	  sfiles.o purify.o zgets.o gettemp.o mkdir.o \
-	  filecopy.o dirname.o localtm.o ${PORTOBJ}
+	  filecopy.o dirname.o localtm.o mmap.o ${PORTOBJ}
 MDBMOBJ	= mdbm/mdbm.o mdbm/hash.o mdbm/debug.o
 ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/gzio.o \
 	  zlib/uncompr.o zlib/deflate.o zlib/trees.o zlib/zutil.o \
@@ -60,11 +60,12 @@ SRCS	= slib.c range.c newrev.c getopt.c popen.c libdiff.c \
 	  rechksum.c sccs_mv.c sccsmv.c sccsrm.c sccscat.c \
 	  key2rev.c rcs.c comments.c user.c host.c localtm.c \
 	  check.c bkhelp.txt config.h.in configure substvars.in \
-	  bitkeeper.config install.in nextsecond.c mtime.c filecopy.c
+	  bitkeeper.config install.in nextsecond.c mtime.c filecopy.c \
+	  mmap.c
 HDRS	= sccs.h purify.h range.h system.h mdbm/common.h mdbm/mdbm.h \
 	  mdbm/tune.h zlib/zlib.h zlib/zutil.h zlib/zconf.h zlib/deflate.h \
 	  zlib/infblock.h zlib/infcodes.h zlib/inffast.h zlib/inffixed.h \
-	  zlib/inftrees.h zlib/infutil.h zlib/trees.h zgets.h unix.h
+	  zlib/inftrees.h zlib/infutil.h zlib/trees.h zgets.h unix.h mmap.h
 SCRSRCS	= rcs2sccs.perl testfast.perl bk.sh import.sh \
 	  resolve.perl gui/sccstool.tcl gui/citool.tcl gui/vitool.tcl \
 	  gui/fm.tcl gui/fm3.tcl gui/bithelp.tcl gui/mkindex.tcl \
@@ -192,8 +193,8 @@ libsccs.a: $(SCCSOBJ)
 
 zone: zone.o localtm.o port/platforminit.o
 	$(CC) $(CFLAGS) -o zone zone.o localtm.o port/platforminit.o
-fdiff: fdiff.o getopt.o purify.o
-	$(CC) $(CFLAGS) fdiff.o getopt.o purify.o -o fdiff $(LMDBM)
+fdiff: fdiff.o getopt.o purify.o mmap.o
+	$(CC) $(CFLAGS) fdiff.o getopt.o purify.o mmap.o -o fdiff $(LMDBM)
 
 range: rangemain.o $(LIBS)
 	$(CC) $(CFLAGS) rangemain.o $(LINK) -o range
@@ -409,7 +410,7 @@ install: install.sh all FORCE
 # .o: .c .h dependencies.
 # These were generated with makedepend and then corrected by hand. 
 # There is no auto-update target.  Do not add one.
-commondeps = system.h unix.h config.h mdbm/mdbm.h purify.h
+commondeps = system.h unix.h config.h mdbm/mdbm.h purify.h mmap.h
 sccsdeps   = $(commondeps) sccs.h
 
 adler32.o:	adler32.c $(sccsdeps)
@@ -421,15 +422,16 @@ delta.o:	delta.c $(sccsdeps) comments.c
 diffs.o:	diffs.c $(sccsdeps) range.h
 dirname.o:	dirname.c config.h
 fdiff.o:	fdiff.c $(sccsdeps)
+filecopy.o:	filecopy.c $(sccsdeps)
 g2sccs.o:	g2sccs.c $(sccsdeps)
 get.o:		get.c $(sccsdeps)
 getopt.o:	getopt.c $(sccsdeps)
+gettemp.o:	gettemp.c $(sccsdeps)
 key2rev.o:	key2rev.c $(sccsdeps)
 libdiff.o:	libdiff.c $(sccsdeps)
 lines.o:	lines.c $(sccsdeps)
-gettemp.o:	gettemp.c $(sccsdeps)
-filecopy.o:	filecopy.c $(sccsdeps)
 mkdir.o:	mkdir.c $(sccsdeps)
+mmap.o:		mmap.c $(sccsdeps)
 newrev.o:	newrev.c $(sccsdeps)
 popen.o:	popen.c $(sccsdeps)
 prs.o:		prs.c $(sccsdeps) range.h
