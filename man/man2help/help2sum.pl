@@ -70,6 +70,13 @@ sub summary()
 	} else {
 		print O "the $section category\n";
 	}
+	# amy additions XXX
+	if (-r "$section.description") {
+		open (DESC, "$section.description");
+		print O <DESC>;
+		close(DESC);
+	}
+	# end amy additions XXX
 	print O ".SH COMMANDS\n";
 	print O ".nf\n";
 	open(S, "$section.summaries");
