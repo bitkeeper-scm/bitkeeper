@@ -8,10 +8,13 @@
 int
 findprog(char *prog)
 {
-        char	*path = strdup(getenv("PATH"));
+        char	*path;
 	char	*s, *t;
 	char	buf[MAXPATH];
 
+        path = aprintf("%s%c", getenv("PATH"), PATH_DELIM);
+	s = strrchr(path, PATH_DELIM);
+	if (s[-1] == PATH_DELIM) *s = 0;
 	for (s = t = path; *t; t++) {
 		if (*t == PATH_DELIM) {
 			*t = 0;
@@ -30,10 +33,13 @@ findprog(char *prog)
 char	*
 prog2path(char *prog)
 {
-        char	*path = strdup(getenv("PATH"));
+        char	*path;
 	char	*s, *t;
 	char	buf[MAXPATH];
 
+        path = aprintf("%s%c", getenv("PATH"), PATH_DELIM);
+	s = strrchr(path, PATH_DELIM);
+	if (s[-1] == PATH_DELIM) *s = 0;
 	for (s = t = path; *t; t++) {
 		if (*t == PATH_DELIM) {
 			*t = 0;

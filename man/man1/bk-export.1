@@ -28,15 +28,26 @@ repository which contains checked-out copies of all the files under
 patches between any two revisions of the source tree.
 By default, bk export only exports user files.  Files under
 the BitKeeper directory are not exported.  This behavior can be
-changed with the -i and -x options.
+changed with the 
+.B \-i
+and 
+.B \-x
+options.
 .LP
 If you are trying the export a patch for a sub-directory, and
 some of the files in that directory have been moved out of the
 directory. You want to make sure the out-of-view file looks
-like deleted file. This is done by replacing the @rev part of 
-the out-of-view file to @1.0. You can do this using the following command:
+like deleted file. This is done by replacing the 
+.I |rev 
+part of the out-of-view file to 
+.IR |1.0 . 
+You can do this using the following command:
 .DS
-bk rset -hrA,B | your_script | bk gnupatch 
+.B bk rset \c
+.RI -hr A,B \c
+.B \ | \c
+.I your_script \c
+.B | bk gnupatch 
 .DE
 .SH OPTIONS
 .if t .TP
@@ -87,11 +98,11 @@ Export all pathnames not matching
 pattern.
 .LP
 Note that
-.I \-i
+.B \-i
 and
-.I \-x
+.B \-x
 take a file glob like used by 
-.BR bk ignore
+.B bk ignore
 which is matched against the partial pathname from the root.
 .LP
 .SH SEE ALSO

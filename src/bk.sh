@@ -555,7 +555,7 @@ _mvdir() {		# /* doc 2.0 */
 	if [ -f "$2" ]; then echo "$2" is a file; exit 1; fi
 	if [ -d "$2" ]
 	then
-		bk mvdir "$1" "$2/$1"
+		bk mvdir "$1" "$2/`basename $1`"
 		return $?
 	fi
 
