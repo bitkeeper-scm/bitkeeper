@@ -74,7 +74,7 @@ repository_lockers(project *p)
 		unless (n) fprintf(stderr, "Entire repository is locked by:\n");
 		sprintf(path, "%s/%s/%s", p->root, WRITER_LOCK_DIR, d->d_name);
 		fprintf(stderr, "\tWrite locker: %s%s\n",
-		    d->d_name, repository_stale(path, 0) ? " (stale)" : "");
+		    d->d_name, repository_stale(path, 0, 0) ? " (stale)" : "");
 		n++;
 	}
 	closedir(D);
@@ -89,7 +89,7 @@ rd:	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
 		unless (n) fprintf(stderr, "Entire repository is locked by:\n");
 		sprintf(path, "%s/%s/%s", p->root, READER_LOCK_DIR, d->d_name);
 		fprintf(stderr, "\tRead  locker: %s%s\n",
-		    d->d_name, repository_stale(path, 0) ? " (stale)" : "");
+		    d->d_name, repository_stale(path, 0, 0) ? " (stale)" : "");
 		n++;
 	}
 	closedir(D);
@@ -141,7 +141,7 @@ err:		if (freeit) proj_free(p);
 			unlink(path);
 			continue;
 		}
-		unless (repository_stale(path, 1)) {
+		unless (repository_stale(path, 1, 1)) {
 			left++;
 		}
 	}
@@ -166,7 +166,7 @@ write:	sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
 			unlink(path);
 			continue;
 		}
-		unless (repository_stale(path, 1)) {
+		unless (repository_stale(path, 1, 1)) {
 			left++;
 		}
 	}
@@ -356,7 +356,7 @@ out:	proj_free(p);
 }
 
 int
-repository_stale(char *path, int discard)
+repository_stale(char *path, int discard, int verbose)
 {
 	char	*s = strrchr(path, '/');
 	char	host[256];
@@ -365,6 +365,7 @@ repository_stale(char *path, int discard)
 	u32	pid;
 
 	unless (thisHost) return (0);
+	if (verbose) flags |= SILENT;
 	if (s) s++; else s = path;
 	sscanf(s, "%d@%s", &pid, host);
 	if (streq(host, thisHost) &&
