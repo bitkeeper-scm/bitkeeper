@@ -620,6 +620,17 @@ typedef struct {
 } pfile;
 
 /*
+ * Timestamp record format
+ */
+typedef struct {
+	time_t	gfile_mtime;
+	off_t	gfile_size;
+	mode_t	permissions;
+	time_t	sfile_mtime;
+	off_t	sfile_size;
+} tsrec;
+
+/*
  * RESYNC directory layout.
  *
  * This directory is created at the same level as the working directory
@@ -1067,6 +1078,10 @@ int	addsym(sccs *s, delta *d, delta *metad, int, char*, char*);
 int	delta_table(sccs *s, FILE *out, int willfix);
 char	**getdir(char *); 
 delta	*getSymlnkCksumDelta(sccs *s, delta *d);
+MDBM	*generateTimestampDB(project *p);
+int	timeMatch(char *gfile, char *sfile, MDBM *timestamps);
+void	dumpTimestampDB(project *p, MDBM* db);
+void	updateTimestampDB(char *gfile, char *sfile, MDBM *timestamps, int diff);
 struct tm
         *utc2tm(time_t t);
 

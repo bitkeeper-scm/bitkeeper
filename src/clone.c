@@ -233,7 +233,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	bk_proj = proj_init(0);
 	p = user_preference("checkout");
 	if (strieq(p, "edit")) {
-		sys("bk", "-r", "edit", "-q", SYS);
+		sys("bk", "-r", "edit", "-qT", SYS);
 	} else if (streq(p, "get")) {
 		sys("bk", "-r", "get", "-q", SYS);
 	}
