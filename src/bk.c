@@ -10,7 +10,6 @@ char	*find_wish();
 char	*find_perl5();
 extern	void getoptReset();
 private void platformInit(char **av);
-private int sfiles(int ac, char **av);
 
 int unedit_main(int, char **);
 int unlock_main(int, char **);
@@ -31,6 +30,7 @@ int fix_main(int, char **);
 int undo_main(int, char **);
 int sendbug_main(int, char **);
 int export_main(int, char **);
+int setlod_main(int, char **);
 int setlog_main(int, char **);
 int getlog_main(int, char **);
 int gethelp_main(int, char **);
@@ -101,6 +101,7 @@ struct command cmdtbl[100] = {
 	{"undo", undo_main},
 	{"sendbug", sendbug_main},
 	{"export", export_main},
+	{"setlod", setlod_main},
 	{"setlog", setlog_main},
 	{"getlog", getlog_main},
 	{"gethelp", gethelp_main},
@@ -238,7 +239,7 @@ main(int ac, char **av)
 		if (dashr) {
 			unless (streq(prog, "sfiles")) {
 				getoptReset();
-				return (sfiles(ac, av));
+				return (bk_sfiles(ac, av));
 			}
 		}
 	}
@@ -345,8 +346,8 @@ main(int ac, char **av)
 	return (spawnvp_ex(_P_WAIT, argv[0], argv));
 }
 
-private int
-sfiles(int ac, char **av)
+int
+bk_sfiles(int ac, char **av)
 {
 	pid_t	pid;
 	int	p[2];
