@@ -31,6 +31,7 @@ WHATSTR("@(#)%K%");
  */
 #define	CLEAN_RESYNC	1	/* blow away the RESYNC dir */
 #define	CLEAN_PENDING	2	/* blow away the PENDING dir */
+#define	CLEAN_OK	4	/* but exit 0 anyway */
 #define	SHOUT() fputs("\n=================================== "\
 		    "ERROR ====================================\n", stderr);
 #define	SHOUT2() fputs("======================================="\
@@ -203,7 +204,7 @@ usage:		system("bk help -s takepatch");
 		fclose(f);
 	}
 
-	unless (remote) cleanup(CLEAN_RESYNC | CLEAN_PENDING);
+	unless (remote) cleanup(CLEAN_RESYNC | CLEAN_PENDING | CLEAN_OK);
 
 	getConfig();	/* why do no conflict cases need this?
 			 * They do, t.logging will fail without it,
@@ -2282,13 +2283,14 @@ rebuild_id(char *id)
 private	void
 cleanup(int what)
 {
+	int	rc = 1;
+
 	if (patchList) freePatchList();
 	if (idDB) mdbm_close(idDB);
 	if (goneDB) mdbm_close(goneDB);
 	if (saveDirs) {
 		fprintf(stderr, "takepatch: neither directory removed.\n");
-		SHOUT2();
-		exit(1);
+		goto done;
 	}
 	if (what & CLEAN_RESYNC) {
 		char cmd[1024];
@@ -2298,10 +2300,7 @@ cleanup(int what)
 	} else {
 		fprintf(stderr, "takepatch: RESYNC directory left intact.\n");
 	}
-	unless (streq(input, "-")) {
-		SHOUT2();
-		exit(1);
-	}
+	unless (streq(input, "-")) goto done;
 	if (what & CLEAN_PENDING) {
 		assert(exists("PENDING"));
 		assert(pendingFile);
@@ -2316,6 +2315,8 @@ cleanup(int what)
 			    pendingFile);
 		}
 	}
+ done:
 	SHOUT2();
-	exit(1);
+	if (what & CLEAN_OK) rc = 0;
+	exit(rc);
 }
