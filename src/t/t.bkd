@@ -278,17 +278,14 @@ do	P=`expr $P + 1`
 done
 cd $HERE/copy
 bk pull bk://localhost:$P/$HERE/project 2> pull.out
-grep -q "ERROR-illegal cd command" pull.out
+grep -q "ERROR-cannot cd to" pull.out
 if [ $? -ne 0 ]; then echo failed; cat pull.out; exit 1 ; fi
 bk pull bk://localhost:$P.. 2> pull.out
-grep -q "ERROR-illegal cd command" pull.out
+grep -q "ERROR-cannot cd to" pull.out
 if [ $? -ne 0 ]; then echo failed; cat pull.out; exit 1 ; fi
 bk pull bk://localhost:$P/sub/../../project 2> pull.out
-test -s pull.out && {
-	echo failed.  SHould not have told us the directory does not exist
-	cat pull.out
-	exit 1
-}
+grep -q "ERROR-cannot cd to" pull.out
+if [ $? -ne 0 ]; then echo failed; cat pull.out; exit 1 ; fi
 echo OK
 
 echo $N Make sure bkd logs requests under the remote user name ......$NL

@@ -1066,6 +1066,9 @@ find_wish()
 		if (exists(wish_path)) return (wish_path);
 		p = ++s;
 	}
-	fprintf(stderr, "Cannot find wish to run\n");
+	fprintf(stderr,
+		"Cannot find the \"wish\" interpreter, this usually means\n"
+		"the Tcl/Tk package is not installed on your system or it\n"
+		"is not in your path\n");
 	exit(1);
 }

@@ -18,7 +18,7 @@
 #define	NEWFILE		0x00000004	/* delta -i: create initial file */
 #define	NEWCKSUM	0x00000008	/* Redo checksum */
 
-#define	INIT_MAPWRITE	0x10000000	/* map the file read/write */
+#define	INIT_avail	0x10000000	/* OLD: map the file read/write */
 #define	INIT_NOCKSUM	0x20000000	/* don't do the checksum */
 #define	INIT_FIXDTIME	0x40000000	/* use g file mod time as delat time */
 #define	INIT_SAVEPROJ	0x80000000	/* project is loaned, do not free it */
@@ -135,6 +135,7 @@
 #define	S_WARNED	0x00000020	/* error message already sent */
 #define	S_CHMOD		0x00000040	/* change the file back to 0444 mode */
 #define	S_BADREVS	0x00000080	/* has corrupted revisions */
+#define	S_available	0x00000100	/* OLD: make the landing pad big */
 #define	S_CSET		0x00000200	/* this is a changeset file */
 #define S_MAPPRIVATE	0x00000400	/* hack for Samba */
 #define S_READ_ONLY	0x00000800	/* force read only mode */
@@ -793,6 +794,7 @@ delta	*sccs_findDelta(sccs *s, delta *d);
 sccs	*sccs_init(char *filename, u32 flags, project *proj);
 sccs	*sccs_restart(sccs *s);
 sccs	*sccs_reopen(sccs *s);
+int	sccs_open(sccs *s);
 void	sccs_fitCounters(char *buf, int a, int d, int s);
 void	sccs_free(sccs *);
 void	sccs_freetree(delta *);

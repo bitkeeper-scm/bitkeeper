@@ -3555,11 +3555,7 @@ bad:
 comment:		switch (buf[1]) {
 			    case 'e': goto done;
 			    case 'c':
-				/* XXX - stdio support */
-				if (buf[2] == '_' || 
-				    strneq(&buf[3], "&__", 3)) {
-					/* ignore landing pad  */
-				} else if (buf[2] != ' ') {
+				if (buf[2] != ' ') {
 					meta(s, d, buf);
 				} else {
 					d->comments =
@@ -3604,20 +3600,6 @@ done:		if (CSET(s) && (d->type == 'R') &&
 	 * the real node.
 	 */
 	if (CSET(s)) metaSyms(s);
-
-	/*
-	 * The very first (1.1) delta has a landing pad in it for fast file
-	 * rewrites.  We strip that out if it is here.
-	 * Old code, but here just in case...
-	 */
-	d = s->tree;
-	EACH(d->comments) {
-		if ((d->comments[i][0] == '&') && (d->comments[i][1] == '_')) {
-			free(d->comments[i]);
-			d->comments[i] = 0;
-			assert(d->comments[i+1] == 0);
-		}
-	}
 
 	debug((stderr, "mkgraph() done\n"));
 }
@@ -4227,52 +4209,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	s->nextserial = 1;
 	s->fd = -1;
 	s->mmap = (caddr_t)-1;
-	if (flags & INIT_MAPWRITE) {
-		sbuf.st_mode |= 0200;
-		if (chmod(s->sfile, sbuf.st_mode & 0777) == 0) {
-			s->state |= S_CHMOD;
-			s->fd = open(s->sfile, O_RDWR, 0);
-		} else {
-			/* We might not be allowed to chmod this file, or
-			 * it might not exist yet.  Turn off MAPWRITE.
-			 */
-			sbuf.st_mode &= ~0200;
-			flags &= ~INIT_MAPWRITE;
-			s->fd = open(s->sfile, O_RDONLY, 0);
-		}
-	} else {
-		s->fd = open(s->sfile, O_RDONLY, 0);
-	}
-	if (s->fd >= 0) {
-		int mapmode = (flags & INIT_MAPWRITE)
-			? PROT_READ|PROT_WRITE
-			: PROT_READ;
-		debug((stderr, "Attempting map: %d for %u, %s\n",
-		       s->fd, s->size, (mapmode & PROT_WRITE) ? "rw" : "ro"));
-
-		s->mmap = mmap(0, s->size, mapmode, MAP_SHARED, s->fd, 0);
-		if (s->mmap == (caddr_t)-1) {
-			/* Some file systems don't support shared writable
-			 * maps (smbfs).
-			 * HP-UX won't let you have two to the same file.
-			 */
-			debug((stderr,
-			       "MAP_SHARED failed, trying MAP_PRIVATE\n"));
-			s->mmap =
-			    mmap(0, s->size, mapmode, MAP_PRIVATE, s->fd, 0);
-			s->state |= S_MAPPRIVATE;
-		}
-#if	defined(linux) && defined(sparc)
-		/*
-		 * Sparc linux has an aliasing bug where the data gets
-		 * screwed up.  We can work around it by invalidating the
-		 * dache by stepping through it.
-		 */
-		else {
-			flushDcache();
-		}
-#endif
-	}
+	sccs_open(s);
 
 	if (flags & INIT_SAVEPROJ) s->state |= S_SAVEPROJ;
 
@@ -4294,7 +4231,6 @@ sccs_init(char *name, u32 flags, project *proj)
 	}
 	debug((stderr, "mapped %s for %d at 0x%x\n",
 	    s->sfile, s->size, s->mmap));
-	s->state |= S_SOPEN;
 	if (((flags&INIT_NOCKSUM) == 0) && badcksum(s, flags)) {
 		return (s);
 	} else {
@@ -4426,6 +4362,42 @@ sccs_reopen(sccs *s)
 	assert(s2);
 	sccs_free(s);
 	return (s2);
+}
+
+/*
+ * open & mmap the file.
+ * Use this after an sccs_close() to reopen,
+ * use sccs_reopen() if you need to reread the graph.
+ */
+int
+sccs_open(sccs *s)
+{
+	assert(s);
+	if (s->state & S_SOPEN) {
+		assert(s->fd != -1);
+		assert(s->mmap != (caddr_t)-1L);
+		return (0);
+	}
+	if (s->fd == -1) s->fd = open(s->sfile, O_RDONLY, 0);
+	if (s->fd == -1) return (-1);
+	s->mmap = mmap(0, s->size, PROT_READ, MAP_SHARED, s->fd, 0);
+	if (s->mmap == (caddr_t) -1) {
+		close(s->fd);
+		s->fd = -1;
+		return (-1);
+	}
+#if	defined(linux) && defined(sparc)
+	/*
+	 * Sparc linux has an aliasing bug where the data gets
+	 * screwed up.  We can work around it by invalidating the
+	 * dache by stepping through it.
+	 */
+	else {
+		flushDcache();
+	}
+#endif
+	s->state |= S_SOPEN;
+	return (0);
 }
 
 /*
@@ -7959,6 +7931,7 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 	int	lf_pend = 0;
 	u32	eflags = flags; /* copy because expandnleq destroys bits */
 	int	error = 0, serial;
+	int	in_zgets = 0;
 
 #define	RET(x)	{ different = x; goto out; }
 
@@ -8019,7 +7992,10 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 	assert(!error);
 	state = allocstate(0, 0, s->nextserial);
 	seekto(s, s->data);
-	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
+	if (s->encoding & E_GZIP) {
+		zgets_init(s->where, s->size - s->data);
+		in_zgets = 1;
+	}
 	while (fbuf = nextdata(s)) {
 		if (isData(fbuf)) {
 			if (fbuf[0] == CNTLA_ESCAPE) fbuf++;
@@ -8153,7 +8129,7 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 	debug((stderr, "diff because EOF on sfile\n"));
 	RET(1);
 out:
-	if (s->encoding & E_GZIP) zgets_done();
+	if (in_zgets) zgets_done();
 	if (gfile) mclose(gfile); /* must close before we unlink */
 	if (ghash) mdbm_close(ghash);
 	if (shash) mdbm_close(shash);
@@ -10215,6 +10191,18 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 			    me, sym);
 			goto sym_err;
 		}
+		if (strchr(sym, ',')) {
+			verbose((stderr,
+				    "%s: symbol %s cannot contain ','\n",
+				    me, sym));
+			goto sym_err;
+		}
+		if (strstr(sym, "..")) {
+			verbose((stderr,
+				    "%s: symbol %s cannot contain '..'\n",
+				    me, sym));
+			goto sym_err;
+		}			
 		if (dupSym(sc->symbols, sym, rev)) {
 			verbose((stderr,
 			    "%s: symbol %s exists on %s\n", me, sym, rev));
@@ -10530,7 +10518,7 @@ remove_comments(sccs *s)
  * Reverse sort it, we want the ^A's, if any, at the end.
  */
 private int
-c_compar(void *a, void *b)
+c_compar(const void *a, const void *b)
 {
 	return (*(char*)b - *(char*)a);
 }

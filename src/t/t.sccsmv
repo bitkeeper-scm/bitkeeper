@@ -35,6 +35,8 @@ done
 bk sfiles -l A B | bk clean -
 sleep 1
 bk co $Q -l A/file1
+echo "this is a comment for file1" > A/SCCS/c.file1
+echo "this is a old comment for file1" > A/SCCS/c.file1@1.1
 bk mv A/file1 B/file1
 # We need this on cygwin (dir cache lag?)
 while true
@@ -48,7 +50,9 @@ done
 if [ ! -f B/file1 ]; then echo failed 1; exit 1; fi
 if [ ! -f B/SCCS/s.file1 ]; then echo failed 2; exit 1; fi
 if [ ! -f B/SCCS/p.file1 ]; then echo failed 3; exit 1; fi
-if [ ! -f A/SCCS/s.file3 ]; then echo failed 4; exit 1; fi
+if [ ! -f B/SCCS/c.file1 ]; then echo failed 4; exit 1; fi
+if [ ! -f B/SCCS/c.file1@1.1 ]; then echo failed 4; exit 1; fi
+if [ ! -f A/SCCS/s.file3 ]; then echo failed 5; exit 1; fi
 # XXX - I think this is right but am not sure.
 DPATH=`bk prs -hr1.5 -d:DPN: B/file1`
 if [ ${DPATH}X != "B/file1"X ]; then echo failed 5; exit 1; fi
@@ -152,12 +156,20 @@ if [ ${SFILE2}X != "${DDIR}/SCCS/$SFILE"X ]; then echo failed; exit 1; fi
 echo OK
 echo $N Test sccsrm w/ -d \& p locked file ...........................$NL
 bk get $Q -e A/file4
+echo "This is a comment for file4" > A/SCCS/c.file4
+echo "This is a old comment for file4" > A/SCCS/c.file4@1.1
 REV=`bk prs -hr+ -d:I: A/file4`
 bk rm A/file4
+if [ -f $A/SCCS/s.file4 ]; then echo failed; exit 1; fi
+if [ -f $A/SCCS/c.file4 ]; then echo failed; exit 1; fi
+if [ -f $A/SCCS/c.file4@1.1 ]; then echo failed; exit 1; fi
 SFILE=`ls $DDIR/SCCS | grep "^s..del-file4"`
 if [ ! -f $DDIR/SCCS/$SFILE ]; then echo failed; exit 1; fi
 ls ${DDIR}/SCCS | grep -q "^p..del-file3"
 if [ $? -eq 0 ]; then  echo failed; exit 1; fi
+CFILE=`ls $DDIR/SCCS | grep "^c..del-file4"`
+if [ "$CFILE" != "" ];  then echo failed; exit 1; fi
+if [ ! -f $DDIR/SCCS/$SFILE ]; then echo failed; exit 1; fi
 REV=`bk prs -hr+ -d:I: ${DDIR}/SCCS/$SFILE`
 if [ ${REV}X != "1.5"X ]; then echo failed; exit 1; fi
 DPATH=`bk prs -hr+ -d:DPN: ${DDIR}/SCCS/$SFILE`
@@ -171,9 +183,13 @@ if [ -d SCCS ]; then echo fail to remove empty SCCS; exit 1; fi
 echo OK
 cd ..
 echo $N Test bk unrm ................................................$NL
-bk unrm A/file3 > /dev/null
-if [ ! -f A/SCCS/s.file3 ]; then echo failed; exit; fi
-bk rm A/file3
+bk unrm A/file4 > /dev/null
+if [ ! -f A/SCCS/s.file4 ]; then echo failed; exit; fi
+if [ -f A/SCCS/c.file4 ]; then echo failed; exit; fi
+if [ -f A/SCCS/c.file4@1.1 ]; then echo failed; exit; fi
+XFILES=`bk -R sfiles -x`
+if [ "$XFILES" != "" ]; then echo filed; exit 1; fi
+bk rm A/file4
 echo OK
 echo $N Test sccsmv to directory that does not exist ................$NL
 date > C/file6

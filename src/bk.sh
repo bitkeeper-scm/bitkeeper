@@ -850,7 +850,7 @@ _rmgone() {
 # return the latest rev in this tree that also exists in the
 # remote tree.
 _repogca() {
-	if [ "X$1" == "X" ]; then
+	if [ "X$1" = "X" ]; then
 	    remote=`bk parent -qp`
 	else
 	    remote=$1

@@ -87,6 +87,7 @@ remote_parse(const char *url, int skip_checks)
 	}
 	if (echo && r) fprintf(stderr, "RP[%s]->[%s]\n", p, remote_unparse(r));
 	if (freeme) free(freeme);
+	if (getenv("BK_TRACE_REMOTE")) r->trace = 1;
 	return (r);
 }
 

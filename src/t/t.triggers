@@ -15,6 +15,10 @@ test X`uname -s` = XDarwin && DASHA=-a
 echo $N Check commit trigger environment variables ..................$NL
 cd $HERE
 no_logging project
+bk edit $Q BitKeeper/etc/config
+echo "checkout: get" >> BitKeeper/etc/config
+bk delta $Q -ycheckout BitKeeper/etc/config
+bk commit $Q -ycheckout
 mkdir BitKeeper/triggers
 cat > BitKeeper/triggers/pre-commit <<EOF
 #!/bin/sh
@@ -310,14 +314,18 @@ bk pull $Q && {
 }
 grep -q BK_CSETLIST $HERE/pre-outgoing || {
 	echo failed to put cset list file in the env
+	cat $HERE/pre-outgoing
 	exit 1
 }
-grep -q BK_LOCALCSETS=2 $HERE/pre-outgoing || {
+grep -q BK_LOCALCSETS=2 $HERE/pre-outgoing || 
+grep -q BK_LOCALCSETS=3 $HERE/pre-outgoing || {
 	echo failed to put local csets in the env
+	cat $HERE/pre-outgoing
 	exit 1
 }
 grep -q BK_REMOTECSETS=0 $HERE/pre-outgoing || {
 	echo failed to put remote csets in the env
+	cat $HERE/pre-outgoing
 	exit 1
 }
 test -d RESYNC && {
@@ -403,11 +411,14 @@ grep -q ChangeSet@1.3 $HERE/changes || {
 	echo failed to list the ChangeSet
 	exit 1
 }
-if [ `wc -l < $HERE/csets-out` -ne 2 ]; then
+GOT=`wc -l < $HERE/csets-out`
+if [ $GOT -ne 2 -a $GOT -ne 3 ]; then
 	echo csets-out contains extra junk
+	cat $HERE/csets-out
 	exit 1
 fi
-if [ `grep '^ChangeSet' $HERE/changes | wc -l` -ne 2 ]; then
+GOT=`grep '^ChangeSet' $HERE/changes | wc -l`
+if [ $GOT -ne 2 -a $GOT -ne 3 ]; then
 	echo listed extra changes
 	exit 1
 fi
@@ -734,7 +745,8 @@ test -s $HERE/changes || {
 	echo failed to create change list
 	exit 1
 }
-grep -q ChangeSet@1.5 $HERE/changes || {
+grep -q ChangeSet@1.5 $HERE/changes || 
+grep -q ChangeSet@1.6 $HERE/changes || {
 	echo failed to list the ChangeSet
 	cat $HERE/changes
 	exit 1
@@ -758,7 +770,8 @@ test -s $HERE/changes || {
 	echo failed to create change list
 	exit 1
 }
-grep -q ChangeSet@1.5 $HERE/changes || {
+grep -q ChangeSet@1.5 $HERE/changes || 
+grep -q ChangeSet@1.6 $HERE/changes || {
 	echo failed to list the ChangeSet
 	exit 1
 }
@@ -903,6 +916,33 @@ EOF
     bk citool
     echo OK
 fi
+
+echo $N Test that a pre-delta trigger will work from command line ...$NL
+cd $HERE
+cp -rp delta aaron
+cd $HERE/aaron/BitKeeper/triggers
+cat > pre-delta <<EOF
+#!/bin/sh
+
+echo You bozo, you forgot to cstyle \$BK_FILE
+echo I am letting slide just this once.
+exit 0
+EOF
+cd $HERE/aaron/src
+bk get $Q -e foo.c
+echo bad form, dude >> foo.c
+bk ci -p -ywhatever foo.c > OUT 2>&1
+test -f SCCS/p.foo.c && {
+	echo failed to do the delta
+	cat OUT
+	exit 1
+}
+grep -q 'bad form, dude' OUT || {
+	echo bad diffs
+	cat OUT
+	exit 1
+}
+echo OK
 
 echo $N Test that a pre-delta trigger can delta the file ............$NL
 cd $HERE/delta/BitKeeper/triggers

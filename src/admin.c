@@ -51,7 +51,7 @@ admin_main(int ac, char **av)
 	bzero(u, sizeof(u));
 	bzero(s, sizeof(s));
 	while ((c =
-	    getopt(ac, av, "a;C|d;e;E;f;F;i|M;m;Op|r;S;t|y|Z|0BDhHnqsTuz"))
+	    getopt(ac, av, "a;C|d;e;E;f;F;i|M;m;Op|r;S;t|y|Z|0DhHnqsTuz"))
 	       != -1) {
 		switch (c) {
 		/* user|group */

@@ -330,8 +330,10 @@ int
 http_connect(remote *r, char *cgi_script)
 {
 	int	i, port;
-	char	proxy_host[MAXPATH], type[50], *p, **proxies;
-	char	cred[MAXLINE];
+	char	*p, **proxies;
+	char	*type;
+	char	*proxy_host;
+	char	*cred;
 
 	if (streq(r->host, "localhost") || in_no_proxy(r->host)) goto no_proxy;
 
@@ -344,13 +346,17 @@ http_connect(remote *r, char *cgi_script)
 			fprintf(stderr, "trying %s\n", proxies[i]);
 			fflush(stderr);
 		}
-		p = strchr(proxies[i], ':');
+		type = proxies[i];
+		p = strchr(type, ' ');
 		assert(p);
-		*p = ' ';
-		cred[0] = 0;
-		sscanf(proxies[i], "%s %s %d %s\n",
-			type, proxy_host, &port, cred);
-		*p = ':';
+		*p++ = 0;
+		proxy_host = p;
+		p = strchr(proxy_host, ':');
+		assert(p);
+		*p++ = 0;
+		port = strtol(p, &p, 10);
+		assert(p);
+		cred = *p ? p : 0;
 		r->rfd = http_connect_srv(type, proxy_host,
 						port, cgi_script, r->trace);
 		r->wfd = r->rfd;
@@ -361,7 +367,7 @@ http_connect(remote *r, char *cgi_script)
 				r->cred = 0;
 			}
 			/* Save the credential, needed in http_send() */
-			if (cred[0]) r->cred = strdup(cred);
+			if (cred) r->cred = strdup(cred);
 			freeLines(proxies);
 			return (0);
 		}
