@@ -66,16 +66,91 @@ waitForUnlock() {
 	bk lock -U $1
 }
 
-no_logging() {
-	echo "logging: none" > c
-	echo "single_user: bk" >> c
-	echo "single_host: free.bk" >> c
-	echo "description: BitKeeper Test repository" >> c
-	echo "email: nobody@nowhere.bk" >> c
-	echo "eoln: unix" >> c
-	echo "keyword: sccs" >> c
-	bk setup -f -cc $1 || { echo "Setup failed!"; exit 1; }
+# Make a no_logging config file
+_no_logging_config() {
+	cat <<EOF
+logging: none
+single_user: bk
+single_host: free.bk
+description: BitKeeper Test repository
+email: nobody@nowhere.bk
+eoln: unix
+keyword: sccs
+EOF
+}
+
+# Make a commercial config file
+_commercial_config() {
+	cat <<EOF
+license: $BKL_P
+licsign1: $BKL_P1
+licsign2: $BKL_P2
+licsign3: $BKL_P3
+logging: none
+logging_ask: no
+description: BitKeeper Test repository
+email: nobody@nowhere.bk
+eoln: unix
+keyword: sccs
+EOF
+}
+
+# Usage: make_repo type instance
+_make_repo() {
+	TYPE=$1
+	CF=$2
+	SFIO=$3
+	REPO=$BK_CACHE/${TYPE}
+
+        if [ -d "$REPO" ]; then rm -rf "$REPO"; fi 	# should not happen
+        BK_LICENSE=ACCEPTED bk setup -f -c"$CF" "$REPO" || {
+                echo "Setup failed!"; exit 1;
+        }
+	# Make a cached copy
+        (cd "$REPO" && find . -type f | bk sfio -qm -o > "$SFIO")
+}
+
+# Usage get_cached_repo dir sfio
+_get_cached_repo() {
+	mkdir $1
 	cd $1
+	bk sfio -qm -i < "$2"
+	mkdir -p BitKeeper/tmp 		# because sfio does not copy dir
+	mkdir -p BitKeeper/deleted/SCCS 	
+	mkdir -p BitKeeper/etc/.master
+}
+
+# Get a commercial repo, use cache copy if available
+# Usage: commercial dir
+commercial() {
+	
+	CF="$BK_CACHE"/commercial.config
+	SFIO=$BK_CACHE/commercial.sfio
+	test -f "$SFIO" || {
+		_commercial_config > "$CF"
+		_make_repo commercial "$CF" "$SFIO"
+	}
+	_get_cached_repo "$1" "$SFIO"
+}
+
+# Get a no_logging (single user) repo, use cache copy if available
+# Usage: no_logging [-1|2] dir
+no_logging() {
+	CF="$BK_CACHE"/no_logging.config
+	SFIO=$BK_CACHE/no_logging.sfio
+	test -f "$SFIO"  || {
+		_no_logging_config > "$CF"
+		_make_repo no_logging "$CF" "$SFIO"
+	}
+	_get_cached_repo "$1" "$SFIO"
+}
+
+# Get a brand new no_logging repo. Some test does not want a cached repo
+# Usage: fresh_no_logging dir
+fresh_no_logging() {
+        _no_logging_config > c
+        bk setup -f -cc $1 || { echo "Setup failed!"; exit 1; }
+        cd $1
 }
 
 echon() {
@@ -99,7 +174,7 @@ checkfiles() {
         }
 }
 
-cd "$BK_REGRESSION" || exit 1
+cd "$HERE" || exit 1
 
 # We need this because ksh on Solaris override $PATH from .profile
 PATH=$BK_PATH
