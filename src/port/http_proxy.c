@@ -243,6 +243,9 @@ addProxy(char *type, char *line, char **proxies)
 	strcpy(proxy_host, line);
 	proxy_port = atoi(++q);
 	sprintf(buf, "%s %s:%d", type, proxy_host, proxy_port);
+	if (getenv("BK_HTTP_PROXY_DEBUG")) {
+		fprintf(stderr, "Adding proxy: \"%s\"\n", buf);
+	}
 	return (addLine(proxies, strdup(buf)));
 }
 
@@ -253,7 +256,7 @@ char **
 get_http_proxy()
 {
 #define KEY "Software\\Microsoft\\Windows\\CurrentVersion\\internet Settings"
-	char *p, *q, *type, buf[MAXLINE], proxy_host[MAXPATH];
+	char *p, *q, *type, buf[MAXLINE] = "", proxy_host[MAXPATH];
 	int proxy_port, len = sizeof(buf);
 	char **proxies = NULL;
 
@@ -261,6 +264,7 @@ get_http_proxy()
 	if (buf[0]) {
 		proxies = get_config(buf, proxies);
 	} else {
+		len = sizeof(buf);  /* important */
 		if (getReg(KEY, "ProxyServer", buf, &len) == 0) return NULL;
 		/*
 		 * We support 3 froms:
@@ -270,6 +274,9 @@ get_http_proxy()
 		 * form 1 can only exist in a single field line
 		 * form 2 and 3 can be part of a multi-field line
 		 */
+		if (getenv("BK_HTTP_PROXY_DEBUG")) {
+			fprintf(stderr, "ProxyServer= \"%s\"\n", buf);
+		}
 		if (strchr(buf, ';') == 0) {
 			if (strneq("http://", buf, 7)) {
 				proxies = addProxy("PROXY", &buf[7], proxies);
@@ -281,7 +288,9 @@ get_http_proxy()
 				proxies = addProxy("PROXY", buf, proxies);
 			}
 		} else {
-			q = strtok(buf, ";");
+			q = buf;
+			p = strchr(q, ';'); 
+			if (p) *p++ = 0;
 			while (q) {
 				if (strneq("http://", q, 7)) {
 					proxies =
@@ -292,8 +301,11 @@ get_http_proxy()
 				} else if (strneq("socks=", q, 6)) {
 					proxies =
 					    addProxy("SOCKS", &q[6], proxies);
-				} else {
-					q = strtok(NULL, ";");
+				} 
+				q = p;
+				if (q) {
+					p = strchr(q, ';');
+					if (p) *p++ = 0;
 				}
 			}
 		}
