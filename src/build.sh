@@ -44,7 +44,7 @@ case "X`uname -s`" in
     *)	AR=/usr/ccs/bin
 	GREP=/usr/xpg4/bin:/usr/xpg2/bin
 	GNU=/opt/gnu/bin:/usr/local/bin:/usr/gnu/bin:/usr/freeware/bin
-	PATH=${GREP}:/bin:/usr/bin:/usr/bsd:${GNU}:${AR}
+	PATH=${GREP}:/bin:/usr/bin:/usr/bsd:${GNU}:${AR}:/usr/bin/X11
 	export PATH
 	if [ X$1 = X"-u" ]; then shift; fi; # -u option is ignored on Unix  
 	;;

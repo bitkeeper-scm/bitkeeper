@@ -32,7 +32,7 @@ IMAGE:= $(shell bk get -qS gnu-os os; echo $(VERS)-`./os`.$(EXT) )
 all image: $(BINDIR)/bk$(EXE) sfioball _data.o $(IMAGE) 
 	$(STRIP) $(IMAGE)
 
-sfioball: installtool $(BINDIR)
+sfioball: installtool $(BINDIR) $(BINDIR)/gui/bin/bkgui$(EXE)
 	@echo Creating sfioball from BK in $(BINDIR) ...
 	cp installtool $(BINDIR)/gui/lib/installtool
 	@(cd $(BINDIR)/.. && find `basename $(BINDIR)` -type f | \
