@@ -9,7 +9,7 @@ bk send \- send a \*(BK patch
 .Bc ]] [
 .OPTreq \-r revs
 .B ]
-.ARG user@host.com
+.ARG user@host.com "| \-"
 .SH DESCRIPTION
 .LP
 The bk push/bk pull interface is the easiest 
@@ -58,7 +58,7 @@ We currently support wrapping with uuencode.  The following (contrived)
 command sends a wrapped patch and applies it in /tmp/foo (which must
 exist):
 .DS
-$ bk send \-wuu \-r..1.5 | bk receive /tmp/foo
+$ bk send \-wuu \-r..1.5 - | bk receive /tmp/foo
 .DE
 .SH OPTIONS
 .if t .TP .75i
