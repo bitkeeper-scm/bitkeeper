@@ -2,6 +2,8 @@
 char		*http_time(void);
 private	char	*type(char *name);
 private void	httphdr(char *file);
+private	char	*url(char *path);
+private void	http_error(int status, char *fmt, ...);
 private void	http_file(char *file);
 private void	http_index();
 private void	http_changes(char *rev);
@@ -31,6 +33,8 @@ private	char	*root;
 #define	COLOR_SRC	"lightblue"	/* src */
 #define	COLOR_DIFFS	"lightblue"	/* diffs */
 #define	COLOR_PATCH	"lightblue"	/* patch */
+
+#define BKWEB_SERVER_VERSION	"0.2"
 
 char arguments[MAXPATH] = { 0 };
 char navbar[MAXPATH] = { 0 };
@@ -74,8 +78,8 @@ cmd_httpget(int ac, char **av)
 		arguments[0] = 0;
 	}
 
-	unless (*name) name = "index.html";
 	if ((strlen(name) + sizeof("BitKeeper/html") + 2) >= MAXPATH) exit(1);
+	unless (*name) name = "index.html";
 
 	/*
 	 * Go find the project root.
@@ -83,31 +87,20 @@ cmd_httpget(int ac, char **av)
 	 */
 	if (*name == '/') {
 		unless (name = findRoot(name)) {
-			out("ERROR-can't find project root\n");
-			out(buf);
+			http_error(503, "Can't find project root");
 			exit(1);
 		}
-	} else {
-		static char url[MAXPATH];
-
-		if (Opts.port) {
-			sprintf(url, "http://%s:%d", sccs_gethost(), Opts.port);
-		} else {
-			sprintf(url, "http://%s", sccs_gethost());
-		}
-		root = url;
-	}
+	} else root = url(0);
 
 #if 0
 	unless (bk_options()&BKOPT_WEB) {
-		sprintf(buf, "ERROR-bkWeb option is disabled: %s", upgrade_msg);
-		out(buf);
+		http_error(503, "bkWeb option is disabled: %s", upgrade_msg);
 		exit(1);
 	}
 #endif
 
 	unless (av[1]) {
-		out("ERROR-get what?\n");
+		http_error(404, "get what?\n");
 		exit(1);
 	}
 	sprintf(buf, "BitKeeper/html/%s", name);
@@ -135,6 +128,8 @@ cmd_httpget(int ac, char **av)
 		http_anno(&name[5]);
 	} else if (strneq(name, "diffs/", 6)) {
 		http_diffs(&name[6]);
+	} else {
+		http_error(404, "Page &lt;%s&gt; not found", name);
 	}
 	exit(0);
 }
@@ -150,7 +145,7 @@ whoami(char *fmt, ...)
 	va_end(ptr);
 
 	if (navbar[0]) {
-		strcat(navbar, ":");
+		strcat(navbar, "|");
 		strcat(navbar, thisPage);
 	} else {
 		strcpy(navbar, "nav=");
@@ -162,71 +157,79 @@ whoami(char *fmt, ...)
 private void
 navbutton(int active, int tag, char *start, char *end)
 {
-    char *sep;
-    char buf[MAXPATH];
-    int ct;
+	char *sep;
+	char *p;
+	char buf[MAXPATH];
+	int ct;
 
-    for (sep = start; sep < end && *sep != '|'; ++sep)
-	;
-    if (*sep == '|') {
+	for (sep = start; sep < end && *sep != '#'; ++sep)
+	    ;
 	out("<a style=\"text-decoration: none\" ");
 	if (tag) {
-	    sprintf(buf, "href=\"%.*s?%.*s\">",
-		    sep-start, start, start-arguments, arguments);
+		ct = start-arguments;
+
+		if (arguments[ct-1] == '|') --ct;
+
+		sprintf(buf, "href=\"%.*s?%.*s\">",
+		    sep-start, start, ct, arguments);
 	} else {
-	    sprintf(buf, "href=\"%.*s\">", sep-start,start);
+		sprintf(buf, "href=\"%.*s\">", sep-start,start);
 	}
 	out(buf);
-	out(active ? "<font size=2 color=lightblue>" : "<font size=2 color=yellow>");
-	sep++;
-	if (*sep == '@') {
-	    switch (sep[1]) {
-		case 'C':	/* range of changesets */
-		    if (sep[2] == '*') {
+	out(active ? "<font size=2 color=lightblue>"
+		   : "<font size=2 color=yellow>");
+
+	if (strneq(start,"ChangeSet", 9)) {
+		if (start[9] != '@') {
 			out("All ChangeSets");
-		    } else {
-			ct = atoi(sep+3);
+		} else if (start[10] == '+') {
+			out("Latest ChangeSet");
+		} else {
+			ct = atoi(start+11);
 			sprintf(buf,
-			    "Changesets in the last %d %s", ct, units(sep+3));
+			    "Changesets in the last %d %s",
+			    ct, units(start+11));
 			out(buf);
-		    }
-		    out(active ? "</a>" : " &gt;&gt; </a>");
-		    goto fin;
-		case 'H':
-		    out("Home");
-		    out(active ? "</a>" : " &gt;&gt; </a>");
-		    goto fin;
-		case 'h':	/* history of a file */
-		    out("History of ");
-		    break;
-		case 'a':	/* annotated versions for a file */
-		    out("Annotations for ");
-		    break;
-		case 'd':	/* diffs */
-		    out("Diffs for ");
-		    break;
-		case 'c':	/* a particular changeset */
-		    out("ChangeSet ");
-		    break;
-		case 'p':	/* patch */
-		    out("Patch for ");
-		    break;
-		default:
-		    goto regular;
-	    }
-	    sep += 2;
-	    sprintf(buf, "%.*s", end-sep, sep);
-	    out(buf);
-	    out(active ? "</a>" : " &gt;&gt; </a>");
-	    goto fin;
+		}
+		start = 0;
+	} else if (strneq(start, "index.html", 10)) {
+		out("Home");
+		start = 0;
+	} else if (strneq(start, "hist/", 5)) {
+		out("History of ");
+		start += 5;
+	} else if (strneq(start, "anno/", 5)) {
+		out("Annotations for ");
+		start += 5;
+	} else if (strneq(start, "diffs/", 6)) {
+		out("Diffs for ");
+		start += 6;
+	} else if (strneq(start, "patch@", 6)) {
+		out("All diffs for ");
+		start += 6;
+	} else if (strneq(start, "cset@", 5)) {
+		out("ChangeSet ");
+		start += 5;
+	} else if (strneq(start, "src", 3)) {
+		start += 3;
+		if (sep-start == 2 && strneq(start, "/.", 2)) {
+			out("Sources");
+			start = 0;
+		} else {
+			for (p = sep; p > start && *p != '/'; --p)
+				;
+			start = p;
+			if (*start == '/') ++start;
+		}
 	}
-regular:
-	sprintf(buf, "%.*s", end-sep, sep);
-	out(buf);
-	out(active ? "</a>" : " &gt;&gt; </a>");
-fin:
-        out("</font>\n");
-    }
+	if (start) {
+	    sprintf(buf, "%.*s", sep-start, start);
+	    out(buf);
+	}
+	out("</font></a>\n");
+	unless (active) out("<font size=2 color=white>"
+			    "<img src=arrow.gif alt=&gt;&gt;>"
+			    "</font>\n");
 }
 
 
@@ -242,7 +245,7 @@ printnavbar()
 	    "<tr bgcolor=black><td align=left>\n");
 	if (strneq(navbar, "nav=", 4)) {
 		for (start = arguments+4; *start; ++start) {
-			for (end = start; *end && *end != ':'; ++end)
+			for (end = start; *end && *end != '|'; ++end)
 				;
 			navbutton(0, !first,start,end);
 			start = end;
@@ -306,6 +309,7 @@ header(char *path, char *color, char *titlestr, char *headerstr, ...)
 }
 
 
+
 /*
  * Given a pathname, try and find a BitKeeper/etc below.
  * We want the deepest one possible.
@@ -316,35 +320,28 @@ findRoot(char *name)
 	char	*s, *t;
 	char	path[MAXPATH];
 	int	tries = 256;
-	static	char url[MAXPATH+2];
 
-	s = name + strlen(name) + 1;
-
-	while (s > name) {
-		for (t = s; *t != '/' && t > name; --t)
-			;
-		unless (t > name) break;
-
-		sprintf(path, "%.*s/BitKeeper/etc", t-name, name);
-
-		if (isdir(path)) {
-			sprintf(path, "%.*s", t-name, name);
-			chdir(path);
-			if (Opts.port) {
-				sprintf(url, "http://%s:%d/%s",
-				    sccs_gethost(), Opts.port, path);
-			} else {
-				sprintf(url,
-				    "http://%s/%s", sccs_gethost(), path);
-			}
-			root = url;
-			return (t + 1);
-		}
-		s = t-1;
+	sprintf(path, "%s/BitKeeper/etc", name);
+	if (isdir(path)) {
+		chdir(name);
+		root = url(name);
+		return ("index.html");
 	}
-	return 0;
+	for (s = strrchr(name, '/'); s && (s != name); ) {
+		*s = 0;
+		sprintf(path, "%s/BitKeeper/etc", name);
+		unless (--tries) break;		/* just in case */
+		if (isdir(path)) {
+			chdir(name);
+			root = url(name);
+			return (s + 1);
+		}
+		t = strrchr(name, '/');
+		*s = '/';
+		s = t;
+	}
+	return (0);
 }
-
 
 private void
 httphdr(char *file)
@@ -354,11 +351,13 @@ httphdr(char *file)
 	sprintf(buf,
 	    "HTTP/1.0 200 OK\r\n"
 	    "%s\r\n"
-	    "Server: bkhttp/0.1\r\n"
+	    "Server: bkhttp/%s\r\n"
 	    "Content-Type: %s\r\n"
 	    "Last-Modified: %s\r\n"
 	    "\r\n",
-	    http_time(), type(file), http_time());
+	    http_time(),
+	    BKWEB_SERVER_VERSION,
+	    type(file), http_time());
 	out(buf);
 }
 
@@ -386,9 +385,9 @@ http_changes(char *rev)
 	char	*d;
 
 	if (rev) {
-		whoami("ChangeSet@%s|@C%s", rev, rev);
+		whoami("ChangeSet@%s", rev);
 	} else {
-		whoami("ChangeSet|@C*");
+		whoami("ChangeSet");
 	}
 
 	sprintf(dspec,  "-d<tr>\n"
@@ -437,7 +436,7 @@ http_cset(char *rev)
 	char	*d, **lines = 0;
 	char	dspec[MAXPATH*2];
 
-	whoami("cset@%s|@c%s", rev, rev);
+	whoami("cset@%s", rev);
 
 	sprintf(dspec,
 	    "<tr bgcolor=#d8d8f0><td>&nbsp;"
@@ -575,11 +574,11 @@ trailer(char *path)
 		    "<font color=black size=-2>\n"
 		    "<table border=0 bgcolor=white width=100%>\n"
 		    "<tr>\n"
-		    "<td align=left><img src=\"logo.gif\" alt=\"\"></img></td>\n"
-		    "<td align=right><a><img src=trailer.gif alt=\"Learn more about BitKeeper\"></a></td>\n"
-		    "</tr>\n"
-		    "</table>\n"
-		    "</font>\n");
+		    "<td align=left>"
+		    "<img src=\"logo.gif\" alt=\"\"></img></td>\n"
+		    "<td align=right><a href=http://www.bitkeeper.com>"
+		    "<img src=trailer.gif alt=\"Learn more about BitKeeper\">"
+		    "</a></td></tr></table></font>\n");
 	} else {
 		out("<hr>\n"
 		    "<p align=center>\n"
@@ -626,7 +625,7 @@ http_hist(char *pathrev)
 	MDBM	*m;
 	char	dspec[MAXPATH*2];
 
-	whoami("hist/%s|@h%s", pathrev, pathrev);
+	whoami("hist/%s", pathrev);
 
 	sprintf(dspec,
 		"<tr>\n"
@@ -682,9 +681,7 @@ http_src(char *path)
 	time_t	now;
 	char 	dspec[MAXPATH*2];
 
-	unless (t = strrchr(path, '/')) t = path-1;
-
-	whoami("src/%s|%s", path, t+1);
+	whoami("src/%s", path);
 
 	sprintf(dspec, 
 	    "<tr bgcolor=lightyellow>"
@@ -723,7 +720,7 @@ http_src(char *path)
 
 	now = time(0);
 	while (e = readdir(d)) {
-		if (streq(".", e->d_name) || streq("SCCS", e->d_name)) continue;
+		if (streq(".", e->d_name) || streq("SCCS", e->d_name) || streq("..", e->d_name)) continue;
 		if (path[1]) {
 			sprintf(buf, "%s/%s", path, e->d_name);
 		} else {
@@ -744,12 +741,9 @@ http_src(char *path)
 			  "<td align=right>&nbsp;</td>"
 			  "<td>&nbsp;</td>"			/* user */
 			  "<td>&nbsp;</td></tr>\n",		/* comments */
-			  streq(e->d_name, "..") ?
-			    "back.gif" : "dir.gif",
+			  "dir.gif",
 			  buf,
-			  streq(e->d_name, "..") ?
-			    "Parent directory" : e->d_name	/* file */
-			  );
+			  e->d_name);
 			names = addLine(names, strdup(html));
 		}
 	}
@@ -787,7 +781,7 @@ http_anno(char *pathrev)
 
 	httphdr(".html");
 
-	whoami("anno/%s|@a%s", pathrev, pathrev);
+	whoami("anno/%s", pathrev);
 
 	header("anno", COLOR_ANNO, "Annotated listing of %s", 0, pathrev);
 
@@ -872,7 +866,7 @@ http_diffs(char *pathrev)
 	char	dspec[MAXPATH*2];
 
 
-	whoami("diffs/%s|@d%s", pathrev, pathrev);
+	whoami("diffs/%s", pathrev);
 
 	sprintf(dspec,
 		"<tr>\n"
@@ -933,11 +927,11 @@ http_patch(char *rev)
 
 	httphdr(".html");
 
-	whoami("patch@%s|@p%s", rev, rev);
+	whoami("patch@%s", rev);
 
 	header("rev", COLOR_PATCH,
-	    "Patch for ChangeSet %s",
-	    "<a href=cset@%s?%s>Patch for ChangeSet %s</a>",
+	    "All diffs for ChangeSet %s",
+	    0,
 	    rev, navbar, rev);
 
 	out("<pre><font size=2>");
@@ -970,6 +964,8 @@ http_gif(char *name)
 	extern	int dir_len;
 	extern	char back_gif[];
 	extern	int back_len;
+	extern	char arrow_gif[];
+	extern	int arrow_len;
 
 	if (*name == '/')  name++;
 	if (streq(name, "bkpowered.gif") || streq(name, "trailer.gif")) {
@@ -984,6 +980,9 @@ http_gif(char *name)
 	} else if (streq(name, "back.gif")) {
 		httphdr("BK.gif");
 		writen(1, back_gif, back_len);
+	} else if (streq(name, "arrow.gif")) {
+		httphdr("BK.gif");
+		writen(1, arrow_gif, arrow_len);
 	}
 }
 
@@ -1071,8 +1070,13 @@ http_index()
 	out("\n"
 	    "</title></head>\n"
 	    "<body alink=black link=black bgcolor=white>\n");
+	if (root && !streq(root, "")) {
+		out("<base href=");
+		out(root);
+		out("/>\n");
+	}
 
-	whoami("index.html|@H");
+	whoami("index.html");
 
 	printnavbar();
 
@@ -1174,4 +1178,58 @@ type(char *name)
 		return "text/html";
 	}
 	return "text/plain";
+}
+
+
+private void
+http_error(int status, char *fmt, ...)
+{
+        char    buf[2048];
+	va_list	ptr;
+
+        sprintf(buf,
+            "HTTP/1.0 %d Error\r\n"
+            "%s\r\n"
+            "Server: bkhttp/%s\r\n"
+            "Content-Type: text/html\r\n"
+            "\r\n",
+            status, http_time(), BKWEB_SERVER_VERSION);
+        out(buf);
+
+	strcpy(buf, "<html><head><title>Error!</title></head>\n"
+		    "<body alink=black link=black bgcolor=white>\n"
+		    "<h2><center>\n");
+	va_start(ptr,fmt);
+	vsprintf(buf+strlen(buf), fmt, ptr);
+	va_end(ptr);
+	strcat(buf, "\n</h2></center>\n");
+	out(buf);
+	out("<hr>\n"
+	    "<table width=100%>\n"
+	    "<tr>\n"
+	    "<th valign=top align=left>bkhttp/" BKWEB_SERVER_VERSION " server on ");
+	out(url(0));
+	out("</th>\n"
+	    "<td align=right><a alink=white link=white href=www.bitkeeper.com>\n"
+	    "<img src=/trailer.gif alt=\"Learn more about BitKeeper\">\n"
+	    "</a></td>\n"
+	    "</tr>\n"
+	    "</table>\n");
+	out("</body>\n");
+}
+
+private char *
+url(char *path)
+{
+	static char buf[MAXPATH*2];
+
+	strcpy(buf, "http://");
+	strcat(buf, sccs_gethost());
+	if (Opts.port) sprintf(buf+strlen(buf), ":%d", Opts.port);
+	if (path) {
+		strcat(buf, "/");
+		strcat(buf, path);
+		unless (buf[strlen(buf)-1] == '/') strcat(buf, "/");
+	}
+	return buf;
 }
