@@ -21,7 +21,6 @@ typedef struct {
 	u32     uflg:1;     		/* show unlocked files	*/
 	u32     pflg:1;     		/* show pending files	*/
 	u32     xflg:1;     		/* show xtra files	*/
-	u32     dflg:1;     		/* show empty Dir	*/
 	u32     gflg:1;     		/* print gfile name	*/
 	u32     Cflg:1;     		/* want file@rev format	*/
 } options;
@@ -285,10 +284,14 @@ file(char *f)
 		assert(d);
 		state[PSTATE] = (d->flags & D_CSET) ? ' ' : 'p';
 		if (opts.Aflg) {
-			while (d) {
-				if (d->flags & D_CSET) break;
+			if (d->flags & D_CSET) {
 				do_print(state, buf, d->rev);
-				d = d->parent;
+			} else {
+				while (d) {
+					if (d->flags & D_CSET) break;
+					do_print(state, buf, d->rev);
+					d = d->parent;
+				}
 			}
 		} else {
 			if (opts.Cflg) {
@@ -612,10 +615,14 @@ sccsdir(char *dir, int level)
 			assert(d);
 			state[PSTATE] = (d->flags & D_CSET) ? ' ' : 'p';
 			if (opts.Aflg) {
-				while (d) {
-					if (d->flags & D_CSET) break;
+				if (d->flags & D_CSET) {
 					do_print(state, buf, d->rev);
-					d = d->parent;
+				} else {
+					while (d) {
+						if (d->flags & D_CSET) break;
+						do_print(state, buf, d->rev);
+						d = d->parent;
+					}
 				}
 			} else {
 				if (opts.Cflg) {
