@@ -14,10 +14,12 @@ proc cd2root {} \
 		incr n -1
 	}
 	set dir [pwd]
-	fatalMessage "Unable to find the project root.\nCurrent directory is $dir"
+	displayMessage \
+		"Unable to find the project root.\nCurrent directory is $dir" \
+		1
 }
 
-proc fatalMessage {msg} \
+proc displayMessage {msg {exit {}}} \
 {
 
     global tcl_platform
@@ -25,9 +27,17 @@ proc fatalMessage {msg} \
     if {$tcl_platform(platform) == "windows"} {
         tk_messageBox -title "Error" -type ok -icon error -message $msg
         #error "Fatal"
-	exit 1
+	if {$exit == 1} {
+		exit 1
+	} else {
+		return
+	}
     } else {
         puts stderr $msg
-	exit 1
+	if {$exit == 1} {
+		exit 1
+	} else {
+		return
+	}
     }
 }
