@@ -35,11 +35,31 @@ usage: cset [opts]\n\n\
     bk cset -Ralpha..beta | bk diffs -\n\t\
     bk cset -ralpha..beta | bk sccslog -\n\n";
 
+typedef	struct cset {
+	/* bits */
+	int	mixed;		/* if set, then both long and short keys */
+	int	csetOnly;	/* if set, do logging ChangeSet */
+	int	makepatch;	/* if set, act like makepatch */
+	int	listeach;	/* if set, like -r except list revs 1/line */
+	int	mark;		/* act like csetmark used to act */
+	int	doDiffs;	/* prefix with unified diffs */
+	int	force;		/* if set, then force marks when used w/ -M */
+	int	dash;
+
+	/* numbers */
+	int	verbose;
+	int	range;		/* if set, list file:rev..rev */
+				/* if set to 2, then list parent..rev */
+	int	ndeltas;
+	int	nfiles;
+} cset_t;
+
 int	csetCreate(sccs *cset, int flags, char *sym);
 int	csetInit(sccs *cset, int flags);
-void	csetlist(sccs *cset);
+void	csetlist(cset_t *cs, sccs *cset);
 void	csetList(sccs *cset, char *rev, int ignoreDeleted);
-void	csetDeltas(sccs *sc, delta *start, delta *d);
+int	marklist(char *file);
+void	csetDeltas(cset_t *cs, sccs *sc, delta *start, delta *d);
 void	dump(MDBM *db, FILE *out);
 int	sameState(const char *file, const struct stat *sb);
 void	lock(char *);
@@ -47,27 +67,18 @@ void	unlock(char *);
 delta	*mkChangeSet(sccs *cset, FILE *diffs);
 void	explodeKey(char *key, char *parts[4]);
 char	*file2str(char *f);
-void	doRange(sccs *sc);
+void	doRange(cset_t *cs, sccs *sc);
 void	doSet(sccs *sc);
-void	doMarks(sccs *sc);
+void	doMarks(cset_t *cs, sccs *sc);
 void	doDiff(sccs *sc, int kind);
-void	sccs_patch(sccs *);
+void	sccs_patch(sccs *, cset_t *);
 
 FILE	*id_cache;
 MDBM	*idDB = 0;
 char	csetFile[] = CHANGESET; /* for win32, need writable	*/
 				/* buffer for name convertion	*/
-int	verbose = 0;
-int	mixed;		/* if set, we are doing both long and short keys */
-int	csetOnly;	/* if set, do logging ChangeSet */
-int	makepatch;	/* if set, act like makepatch */
-int	listeach;	/* if set, be like -r except list revs 1 per line */
-int	mark;		/* act like csetmark used to act */
-int	range;		/* if set, list file:rev..rev */
-			/* if set to 2, then list parent..rev */
-int	doDiffs;	/* prefix with unified diffs */
-int	force;		/* if set, then force marks when used with -M */
-int	dash, ndeltas, nfiles;
+
+cset_t	cs;		/* an easy way to create a local that is zeroed */
 char	*spin = "|/-\\";
 
 /*
@@ -89,7 +100,7 @@ main(int ac, char **av)
 usage:		fprintf(stderr, "%s", cset_help);
 		return (1);
 	}
-	if (streq(av[0], "makepatch")) makepatch++;
+	if (streq(av[0], "makepatch")) cs.makepatch++;
 
 	while ((c = getopt(ac, av, "c|d|Dfil|m|M|pqr|R|sS;t;vy|Y|")) != -1) {
 		switch (c) {
@@ -97,30 +108,30 @@ usage:		fprintf(stderr, "%s", cset_help);
 		    case 'i':
 			flags |= DELTA_EMPTY|NEWFILE;
 			break;
-		    case 'f': force++; break;
+		    case 'f': cs.force++; break;
 		    case 'R':
-			range++;
+			cs.range++;
 			/* fall through */
 		    case 'r':
-		    	range++;
+		    	cs.range++;
 		    	/* fall through */
 		    case 'l':
-			if (c == 'l') listeach++; 
+			if (c == 'l') cs.listeach++; 
 		    	/* fall through */
 		    case 'd': 
-			if (c == 'd') doDiffs++;
+			if (c == 'd') cs.doDiffs++;
 		    	/* fall through */
 		    case 'c':
 			if (c == 'c') {
-				csetOnly++;
-				makepatch++;
+				cs.csetOnly++;
+				cs.makepatch++;
 			}
 			/* fall through */
 		    case 'M':
-			if (c == 'M') mark++;
+			if (c == 'M') cs.mark++;
 			/* fall through */
 		    case 'm':
-			if (c == 'm') makepatch++;
+			if (c == 'm') cs.makepatch++;
 		    	list |= 1;
 			if (optarg) {
 				r[rd++] = notnull(optarg);
@@ -135,7 +146,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 		    case 'p': flags |= PRINT; break;
 		    case 'q':
 		    case 's': flags |= SILENT; break;
-		    case 'v': verbose++; break;
+		    case 'v': cs.verbose++; break;
 		    case 'y':
 			comment = optarg;
 			gotComment = 1;
@@ -154,9 +165,9 @@ usage:		fprintf(stderr, "%s", cset_help);
 		}
 	}
 
-	if (doDiffs && csetOnly) {
+	if (cs.doDiffs && cs.csetOnly) {
 		fprintf(stderr, "Warning: ignoring -d option\n");
-		doDiffs = 0;
+		cs.doDiffs = 0;
 	}
 	if (list == 3) {
 		fprintf(stderr,
@@ -169,7 +180,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 	}
 	if (av[optind] && streq(av[optind], "-")) {
 		optind++;
-		dash++;
+		cs.dash++;
 	}
 	if (av[optind]) {
 		unless (isdir(av[optind])) {
@@ -193,7 +204,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 	}
 	cset = sccs_init(csetFile, flags, 0);
 	if (!cset) return (101);
-	mixed = !(cset->state & S_KEY2);
+	cs.mixed = !(cset->state & S_KEY2);
 
 	/*
 	 * If we are initializing, then go create the file.
@@ -216,7 +227,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 #endif
 	}
 
-	if (list && (things < 1) && !dash) {
+	if (list && (things < 1) && !cs.dash) {
 		fprintf(stderr, "cset: must specify a revision.\n");
 		sccs_free(cset);
 		purify_list();
@@ -224,8 +235,8 @@ usage:		fprintf(stderr, "%s", cset_help);
 	}
 	switch (list) {
 	    case 1:
-		RANGE("cset", cset, dash ? 0 : 2, 1);
-		csetlist(cset);
+		RANGE("cset", cset, cs.dash ? 0 : 2, 1);
+		csetlist(&cs, cset);
 next:		sccs_free(cset);
 		if (cFile) free(comment);
 		purify_list();
@@ -250,6 +261,7 @@ next:		sccs_free(cset);
 	return (c);
 }
 
+#ifdef CRAZY_WOW /* routine not accessed in code base? */
 /*
  * Compute a checksum over the interesting part of the output.
  * This is from the PATCH_VERSION line (inclusive) all the way to the end.
@@ -287,6 +299,7 @@ do_checksum(void)
 	}
 	printf("# Patch checksum=%.8lx\n", sum);
 }	
+#endif
 
 /*
  * Spin off a subprocess and rejigger stdout to feed into its stdin.
@@ -452,26 +465,26 @@ csetList(sccs *cset, char *rev, int ignoreDeleted)
  * Do whatever it is they want.
  */
 void
-doit(sccs *sc)
+doit(cset_t *cs, sccs *sc)
 {
 	static	int first = 1;
 
 	unless (sc) {
-		if (doDiffs && makepatch) printf("\n");
+		if (cs->doDiffs && cs->makepatch) printf("\n");
 		first = 1;
 		return;
 	}
-	nfiles++;
-	if (doDiffs) {
+	cs->nfiles++;
+	if (cs->doDiffs) {
 		doDiff(sc, DF_UNIFIED);
-	} else if (makepatch) {
-		if (!csetOnly || (sc->state & S_CSET)) {
-			sccs_patch(sc);
+	} else if (cs->makepatch) {
+		if (!cs->csetOnly || (sc->state & S_CSET)) {
+			sccs_patch(sc, cs);
 		}
-	} else if (mark) {
-		doMarks(sc);
-	} else if (range && !listeach) {
-		doRange(sc);
+	} else if (cs->mark) {
+		doMarks(cs, sc);
+	} else if (cs->range && !cs->listeach) {
+		doRange(cs, sc);
 	} else {
 		doSet(sc);
 	}
@@ -509,9 +522,9 @@ header(sccs *cset, int diffs)
  * just mark the cset boundry.
  */
 void
-markThisCset(sccs *s, delta *d)
+markThisCset(cset_t *cs, sccs *s, delta *d)
 {
-	if (mark) {
+	if (cs->mark) {
 		d->flags |= D_SET;
 		return;
 	}
@@ -521,7 +534,7 @@ markThisCset(sccs *s, delta *d)
 			delta	*e = sfind(s, d->merge);
 
 			assert(e);
-			unless (e->flags & D_CSET) markThisCset(s, e);
+			unless (e->flags & D_CSET) markThisCset(cs, s, e);
 		}
 		d = d->parent;
 	} while (d && !(d->flags & D_CSET));
@@ -533,13 +546,13 @@ markThisCset(sccs *s, delta *d)
  * Otherwise we'll try short versions.
  */
 int
-sameFile(char *key1, char *key2)
+sameFile(cset_t *cs, char *key1, char *key2)
 {
 	char	*a, *b;
 	int	ret;
 
 	if (streq(key1, key2)) return (1);
-	unless (mixed) return (0);
+	unless (cs->mixed) return (0);
 	if (a = sccs_iskeylong(key1)) *a = 0;
 	if (b = sccs_iskeylong(key2)) *b = 0;
 	ret = streq(key1, key2);
@@ -549,7 +562,7 @@ sameFile(char *key1, char *key2)
 }
 
 int
-doKey(char *key, char *val)
+doKey(cset_t *cs, char *key, char *val)
 {
 	static	MDBM *idDB;
 	static	int doneFullRebuild;
@@ -571,13 +584,13 @@ doKey(char *key, char *val)
 			lastkey = 0;
 		}
 		if (sc) {
-			doit(sc);
+			doit(cs, sc);
 			sccs_free(sc);
 			sc = 0;
 		}
 		doneFullRebuild = 0;
 		doneFullRemark = 0;
-		doit(0);
+		doit(cs, 0);
 		return (0);
 	}
 
@@ -587,9 +600,9 @@ doKey(char *key, char *val)
 	 *
 	 * With long/short keys mixed, we have to be a little careful here.
 	 */
-	if (lastkey && sameFile(lastkey, key)) {
+	if (lastkey && sameFile(cs, lastkey, key)) {
 		unless (d = sccs_findKey(sc, val)) return (-1);
-		markThisCset(sc, d);
+		markThisCset(cs, sc, d);
 		return (0);
 	}
 
@@ -597,7 +610,7 @@ doKey(char *key, char *val)
 	 * This would be later - do the last file and clean up.
 	 */
 	if (sc) {
-		doit(sc);
+		doit(cs, sc);
 		sccs_free(sc);
 		free(lastkey);
 		sc = 0;
@@ -616,7 +629,7 @@ retry:	sc = sccs_keyinit(lastkey, INIT_NOCKSUM, idDB);
 		/* cache miss, rebuild cache */
 		unless (doneFullRebuild) {
 			mdbm_close(idDB);
-			if (verbose) fputs("Rebuilding caches...\n", stderr);
+			if (cs->verbose) fputs("Rebuilding caches...\n", stderr);
 			if (system("bk sfiles -r")) {
 				fprintf(stderr,
 				    "cset: can not build %s\n", IDCACHE);
@@ -630,7 +643,7 @@ retry:	sc = sccs_keyinit(lastkey, INIT_NOCKSUM, idDB);
 		fprintf(stderr, "cset: missing id %s, sfile removed?\n", key);
 		free(lastkey);
 		lastkey = 0;
-		return (force ? 0 : -1);
+		return (cs->force ? 0 : -1);
 	}
 
 	/*
@@ -639,7 +652,7 @@ retry:	sc = sccs_keyinit(lastkey, INIT_NOCKSUM, idDB);
 	 * path which does the work also seems to skip them (because it
 	 * is used for other operations which don't want them).
 	 */
-	if (!(sc->state & S_CSET) && !(sc->state & S_CSETMARKED) && !mark) {
+	if (!(sc->state & S_CSET) && !(sc->state & S_CSETMARKED) && !cs->mark) {
 		char	buf[MAXPATH];
 
 		if (doneFullRemark) {
@@ -656,13 +669,13 @@ is being automatically generated and added to all files.  If your repository\n\
 is large, this is going to take a while - it has to rewrite each file.\n\
 This is a one time event to upgrade this repository to the latest format.\n\
 Please stand by.\n\n", stderr);
-		sprintf(buf, "bk cset -M1.0.. %s", verbose ? "-v" : "");
+		sprintf(buf, "bk cset -M1.0.. %s", cs->verbose ? "-v" : "");
 		system(buf);
 		doneFullRemark++;
 		goto retry;
 	}
 	unless (d = sccs_findKey(sc, val)) return (-1);
-	markThisCset(sc, d);
+	markThisCset(cs, sc, d);
 	return (0);
 }
 
@@ -684,11 +697,50 @@ gettemp(char *buf, const char *tmpl)
 }
 
 /*
+ * Mark the deltas listed in the diff file.  Ignore first line.
+ * XXX: change from 0a0 format to I0 0 format
+ */
+int
+marklist(char *file)
+{
+	char	*t;
+	FILE	*list;
+	char	buf[MAXPATH*2];
+	cset_t	cs;
+
+	bzero(&cs, sizeof(cs));
+	cs.mark++;
+
+	unless (list = fopen(file, "r")) {
+		perror(file);
+		return (-1);
+	}
+
+	/* eat the first line ... */
+	unless (fnext(buf, list)) {
+		fprintf(stderr, "cset: marking new list: empty file\n");
+		return (-1);
+	}
+	/*
+	 * Now do the real data.
+	 * XXX: fix when replace 0a0 with I0 0.  &buf[2] => buf
+	 */
+	while (fnext(buf, list)) {
+		chop(buf);
+		for (t = &buf[2]; *t != ' '; t++);
+		*t++ = 0;
+		if (doKey(&cs, &buf[2], t)) return (-1);
+	}
+	doKey(&cs, 0, 0);
+	return (0);
+}
+
+/*
  * List all the revisions which make up a range of changesets.
  * The list is sorted for performance.
  */
 void
-csetlist(sccs *cset)
+csetlist(cset_t *cs, sccs *cset)
 {
 	char	*t;
 	FILE	*list;
@@ -700,7 +752,7 @@ csetlist(sccs *cset)
 	delta	*d;
 	MDBM	*goneDB = 0;
 
-	if (dash) {
+	if (cs->dash) {
 		while(fgets(buf, sizeof(buf), stdin)) {
 			chop(buf);
 			unless (d = findrev(cset, buf)) {
@@ -719,7 +771,7 @@ csetlist(sccs *cset)
 
 	gettemp(cat, "/tmp/catZXXXXXX");
 	gettemp(csort, "/tmp/csortXXXXXX");
-	unless (csetOnly) {
+	unless (cs->csetOnly) {
 		/*
 		 * Get the list of key tuples in a sorted file.
 		 */
@@ -735,7 +787,7 @@ csetlist(sccs *cset)
 		}
 		chmod(csort, TMP_MODE);		/* in case we don't unlink */
 		unlink(cat);
-		if (verbose > 5) {
+		if (cs->verbose > 5) {
 			sprintf(buf, "cat %s", csort);
 			system(buf);
 		}
@@ -750,13 +802,13 @@ csetlist(sccs *cset)
 	}
 
 	/* checksum the output */
-	if (makepatch) {
+	if (cs->makepatch) {
 		pid = spawn_checksum_child();
 		if (pid == -1) goto fail;
 	}
-	if (makepatch || doDiffs) header(cset, doDiffs);
+	if (cs->makepatch || cs->doDiffs) header(cset, cs->doDiffs);
 again:	/* doDiffs can make it two pass */
-	if (!doDiffs && makepatch) {
+	if (!cs->doDiffs && cs->makepatch) {
 		printf("%s", PATCH_CURRENT);
 	}
 
@@ -767,7 +819,7 @@ again:	/* doDiffs can make it two pass */
 	for (d = cset->table; d; d = d->next) {
 		if ((d->flags & D_SET) && (d->type == 'D')) {
 			sccs_sdelta(cset, d, buf);
-			if (doKey(csetid, buf)) goto fail;
+			if (doKey(cs, csetid, buf)) goto fail;
 		}
 	}
 
@@ -778,27 +830,28 @@ again:	/* doDiffs can make it two pass */
 		chop(buf);
 		for (t = buf; *t != ' '; t++);
 		*t++ = 0;
-		if (sameFile(csetid, buf)) continue;
+		if (sameFile(cs, csetid, buf)) continue;
 		if (gone(buf, goneDB)) continue;
-		if (doKey(buf, t)) goto fail;
+		if (doKey(cs, buf, t)) goto fail;
 	}
-	if (doDiffs && makepatch) {
-		doKey(0, 0);
-		doDiffs = 0;
+	if (cs->doDiffs && cs->makepatch) {
+		doKey(cs, 0, 0);
+		cs->doDiffs = 0;
 		rewind(list);
 		goto again;
 	}
 	fclose(list);
-	doKey(0, 0);
-	if (verbose && makepatch) {
+	doKey(cs, 0, 0);
+	if (cs->verbose && cs->makepatch) {
 		fprintf(stderr,
 		    "makepatch: patch contains %d revisions from %d files\n",
-		    ndeltas, nfiles);
-	} else if (verbose && mark) {
+		    cs->ndeltas, cs->nfiles);
+	} else if (cs->verbose && cs->mark) {
 		fprintf(stderr,
-		    "cset: marked %d revisions in %d files\n", ndeltas, nfiles);
+		    "cset: marked %d revisions in %d files\n",
+		    cs->ndeltas, cs->nfiles);
 	}
-	if (makepatch) {
+	if (cs->makepatch) {
 		char eot[3] = { '\004', '\n', 0 };
 
 		fputs(eot, stdout);	/* send  EOF indicator */
@@ -859,7 +912,7 @@ doDiff(sccs *sc, int kind)
  * XXX - does not make sure that they are both on the trunk.
  */
 void
-doRange(sccs *sc)
+doRange(cset_t *cs, sccs *sc)
 {
 	delta	*d, *e = 0;
 
@@ -868,7 +921,7 @@ doRange(sccs *sc)
 		if (d->flags & D_SET) e = d;
 	}
 	unless (e) return;
-	if ((range == 2) && e->parent) e = e->parent;
+	if ((cs->range == 2) && e->parent) e = e->parent;
 	printf("%s:%s..", sc->gfile, e->rev);
 	for (d = sc->table; d; d = d->next) {
 		if (d->flags & D_SET) {
@@ -879,20 +932,20 @@ doRange(sccs *sc)
 }
 
 void
-doMarks(sccs *s)
+doMarks(cset_t *cs, sccs *s)
 {
 	delta	*d;
 	int	did = 0;
 
 	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_SET) {
-			if (force || !(d->flags & D_CSET)) {
-				if (verbose > 2) {
+			if (cs->force || !(d->flags & D_CSET)) {
+				if (cs->verbose > 2) {
 					fprintf(stderr,
 					    "Mark %s:%s\n", s->gfile, d->rev);
 				}
 				d->flags |= D_CSET;
-				ndeltas++;
+				cs->ndeltas++;
 				did++;
 			}
 		}
@@ -900,10 +953,10 @@ doMarks(sccs *s)
 	if (did || !(s->state & S_CSETMARKED)) {
 		s->state |= S_CSETMARKED;
 		sccs_admin(s, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0);
-		if ((verbose > 1) && did) {
+		if ((cs->verbose > 1) && did) {
 			fprintf(stderr,
 			    "Marked %d csets in %s\n", did, s->gfile);
-		} else if (verbose > 1) {
+		} else if (cs->verbose > 1) {
 			fprintf(stderr,
 			    "Set CSETMARKED flag in %s\n", s->sfile);
 		}
@@ -934,7 +987,7 @@ doSet(sccs *sc)
  * Print out everything leading from start to d, not including start.
  */
 void
-csetDeltas(sccs *sc, delta *start, delta *d)
+csetDeltas(cset_t *cs, sccs *sc, delta *start, delta *d)
 {
 	int	i;
 
@@ -942,7 +995,7 @@ csetDeltas(sccs *sc, delta *start, delta *d)
 	debug((stderr, "cD(%s, %s)\n", sc->gfile, d->rev));
 	if ((d == start) || (d->flags & D_SET)) return;
 	d->flags |= D_SET;
-	csetDeltas(sc, start, d->parent);
+	csetDeltas(cs, sc, start, d->parent);
 	/*
 	 * We don't need the merge pointer, it is part of the include list.
 	 * if (d->merge) csetDeltas(sc, start, sfind(sc, d->merge));
@@ -950,11 +1003,11 @@ csetDeltas(sccs *sc, delta *start, delta *d)
 	EACH(d->include) {
 		delta	*e = sfind(sc, d->include[i]);
 
-		csetDeltas(sc, e->parent, e);
+		csetDeltas(cs, sc, e->parent, e);
 	}
 	// XXX - fixme - removed deltas not done.
 	// Is this an issue?  I think makepatch handles them.
-	unless (makepatch || range) {
+	unless (cs->makepatch || cs->range) {
 		if (d->type == 'D') printf("%s:%s\n", sc->gfile, d->rev);
 	}
 }
@@ -1153,6 +1206,7 @@ csetCreate(sccs *cset, int flags, char *sym)
 		goto out;
 	}
 	if (sym) d->sym = strdup(sym);
+	d->flags |= D_CSET;	/* XXX: longrun, don't tag cset file */
 
 	/*
 	 * Make /dev/tty where we get input.
@@ -1169,11 +1223,10 @@ csetCreate(sccs *cset, int flags, char *sym)
 	}
 	assert(d->date == date); /* make sure time stamp did not change */
 
-	/*
-	 * XXX - some day we should do this in this program rather than
-	 * re execing.
-	 */
-	system("bk cset -M+");
+	if (marklist(filename)) {
+		error = -1;
+		goto out;
+	}
 
 out:	sccs_free(cset);
 	unlink(filename);
@@ -1209,14 +1262,14 @@ file2str(char *f)
  * All the deltas we want are marked so print them out.
  */
 void
-sccs_patch(sccs *s)
+sccs_patch(sccs *s, cset_t *cs)
 {
 	delta	*d, *e;
 	int	deltas = 0;
 	int	i, n, newfile;
 	delta	**list;
 
-	if (verbose>1) fprintf(stderr, "makepatch: %s ", s->gfile);
+	if (cs->verbose>1) fprintf(stderr, "makepatch: %s ", s->gfile);
 	/*
 	 * This is a hack which picks up metadata deltas.
 	 * This is sorta OK because we know the graph parent is
@@ -1257,8 +1310,8 @@ sccs_patch(sccs *s)
 	for (i = n - 1; i >= 0; i--) {
 		d = list[i];
 		assert(d);
-		if (verbose > 2) fprintf(stderr, "%s ", d->rev);
-		if (verbose == 2) fprintf(stderr, "%c\b", spin[deltas % 4]);
+		if (cs->verbose > 2) fprintf(stderr, "%s ", d->rev);
+		if (cs->verbose == 2) fprintf(stderr, "%c\b", spin[deltas % 4]);
 		if (i == n - 1) {
 			delta	*top = list[0];
 
@@ -1300,11 +1353,11 @@ sccs_patch(sccs *s)
 		printf("\n");
 		deltas++;
 	}
-	if (verbose == 2) {
+	if (cs->verbose == 2) {
 		fprintf(stderr, "%d revisions\n", deltas);
-	} else if (verbose > 1) {
+	} else if (cs->verbose > 1) {
 		fprintf(stderr, "\n");
 	}
-	ndeltas += deltas;
+	cs->ndeltas += deltas;
 	if (list) free(list);
 }
