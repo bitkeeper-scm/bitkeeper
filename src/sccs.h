@@ -123,7 +123,7 @@
 #define	S_SOPEN		0x00000010	/* s->sfile is open */
 #define	S_WARNED	0x00000020	/* error message already sent */
 #define	S_RCS		0x00000040	/* expand RCS keywords */
-/* AVAILABLE      	0x00000080	*/
+#define	S_EOLN_NATIVE	0x00000080	/* use eoln native to this OS */
 #define	S_EXPAND1	0x00000100	/* expand first line of keyowrds only */
 #define	S_CHMOD		0x00000200	/* change the file back to 0444 mode */
 #define	S_YEAR4		0x00000400	/* print out the year as 4 digits */
@@ -149,7 +149,7 @@
 #define	S_SINGLE	0x40000000	/* inherit user/host */
 #define	S_LOGS_ONLY	0x80000000	/* this is a logging repository */
 #define S_XFLAGS	(S_RCS|S_YEAR4|S_ISSHELL|S_EXPAND1|S_HASH|\
-			 S_SCCS|S_SINGLE)
+			 S_SCCS|S_SINGLE|S_EOLN_NATIVE)
 
 #define	KEY_FORMAT2	"BK key2"	/* sym in csets created w/ long keys */
 
@@ -196,8 +196,9 @@
 #define	X_ALWAYS_EDIT	0x00000200	/* stays in edit mode after delta/ci */
 #endif
 #define	X_LOGS_ONLY	0x00000400	/* this is a logging repository */
+#define	X_EOLN_NATIVE	0x00000800	/* use eoln native to this OS */
 #define X_XFLAGS	(X_RCS|X_YEAR4|X_ISSHELL|X_EXPAND1|X_HASH|\
-			 X_SCCS|X_SINGLE)
+			 X_SCCS|X_SINGLE|X_EOLN_NATIVE)
 
 /*
  * Encoding flags.

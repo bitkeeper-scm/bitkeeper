@@ -77,6 +77,7 @@ private int	compressmap(sccs *s, delta *d, ser_t *set, char **i, char **e);
 private	void	uniqDelta(sccs *s);
 private	void	uniqRoot(sccs *s);
 private int	checkGone(sccs *s, int bit, char *who);
+private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
 
 int
 exists(char *s)
@@ -5277,9 +5278,9 @@ uudecode1(register char *from, register uchar *to)
 }
 
 private int
-openOutput(int encode, char *file, FILE **op)
+openOutput(sccs *s, int encode, char *file, FILE **op)
 {
-	char	buf[100];
+	char	buf[100], *mode = "w";
 	int	toStdout = streq(file, "-");
 
 	assert(op);
@@ -5299,7 +5300,18 @@ openOutput(int encode, char *file, FILE **op)
 			}
 		}
 #endif
-		*op = toStdout ? stdout : fopen(file, "w");
+#ifdef WIN32
+		/*
+		 * Note: This has no effect when we print to stdout
+		 * We want this becuase we want diff_gfile() to
+		 * diffs file with normlized to LF.
+		 */
+		if ((encode == E_ASCII) &&
+		    (s->state&S_EOLN_NATIVE)) {
+			mode = "wt";
+		}
+#endif
+		*op = toStdout ? stdout : fopen(file, mode);
 		break;
 	    case E_UUGZIP:
 		if (toStdout) {
@@ -5732,7 +5744,7 @@ out:			if (slist) free(slist);
 			 */
 			return (f == (char*)-1);
 		}
-		popened = openOutput(encoding, f, &out);
+		popened = openOutput(s, encoding, f, &out);
 		unless (out) {
 			fprintf(stderr,
 			    "getRegBody: Can't open %s for writing\n", f);
@@ -6016,7 +6028,7 @@ getLinkBody(sccs *s,
 		int	popened;
 		FILE 	*out;
 
-		popened = openOutput(E_ASCII, f, &out);
+		popened = openOutput(s, E_ASCII, f, &out);
 		assert(popened == 0);
 		unless (out) {
 			fprintf(stderr,
@@ -6375,7 +6387,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		return (-1);
 	}
 	sprintf(tmpfile, "%s/%s-%s-%d", TMP_PATH, basenm(s->gfile), d->rev, getpid());
-	popened = openOutput(encoding, printOut, &out);
+	popened = openOutput(s, encoding, printOut, &out);
 	if (type == GET_HASHDIFFS) {
 		int	lines = 0;
 		int	f = PRINT;
@@ -9405,6 +9417,8 @@ name2xflg(char *fl)
 		return X_SINGLE;
 	} else if (streq(fl, "SHELL")) {
 		return X_ISSHELL;
+	} else if (streq(fl, "EOLN_NATIVE")) {
+		return X_EOLN_NATIVE;
 	}
 	return (0);			/* lint */
 }
@@ -9461,6 +9475,7 @@ state2xflags(u32 state)
 #endif
 	if (state & S_EXPAND1) xflags |= X_EXPAND1;
 	if (state & S_HASH) xflags |= X_HASH;
+	if (state & S_EOLN_NATIVE) xflags |= X_EOLN_NATIVE;
 	return (xflags);
 }
 
@@ -9478,6 +9493,7 @@ xflags2state(u32 xflags)
 #endif
 	if (xflags & X_EXPAND1) state |= S_EXPAND1;
 	if (xflags & X_HASH) state |= S_HASH;
+	if (xflags & X_EOLN_NATIVE) state |= S_EOLN_NATIVE;
 	return (state);
 }
 
