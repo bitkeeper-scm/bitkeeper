@@ -252,6 +252,17 @@ pending(char *sfile)
 	return (ret);
 }
 
+/*
+ * Return true if pname is NULL or all blank
+ */
+private int
+goodPackageName(char *pname)
+{
+	unless (pname) return (0);
+	while (*pname) unless (isspace(*pname++)) return (1);
+	return (0);
+}
+
 private int
 do_commit(char **av, c_opts opts, char *sym,
 				char *pendingFiles, char *commentFile)
@@ -272,6 +283,22 @@ do_commit(char **av, c_opts opts, char *sym,
 		if (pendingFiles) unlink(pendingFiles);
 		return (1);
 	}
+
+	/*
+	 * If no package_name, nag user to update config file
+	 */
+	if ((l&LOG_OPEN) && !goodPackageName(package_name())) {
+		printf(
+"============================================================================\n"
+"Warning: Package name is Null or Blank. Please add an entry to the \n"
+"\"Description:\" field in the \"BitKeeper/config\" file\n"
+"The entry should be a short statement describing the nature of this package\n"
+"============================================================================\n"
+);
+		sleep(1);
+		
+	}
+
 	/*
 	 * Note: We print to stdout, not stderr, because citool
 	 * 	 monitors our stdout via a pipe.
