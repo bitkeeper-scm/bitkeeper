@@ -1115,7 +1115,13 @@ proc prs {} \
 		set diffpair(left) $rev1
 		set diffpair(right) ""
 		busy 1
-		set prs [open "|bk prs {$dspec} -r$rev1 \"$file\" 2>$dev_null"]
+		set base [file tail $file]
+		if {$base == "ChangeSet"} {
+			set cmd "|bk changes -vr$rev1 2>$dev_null"
+		} else {
+			set cmd "|bk prs {$dspec} -r$rev1 \"$file\" 2>$dev_null"
+		}
+		set prs [open $cmd]
 		set ttype "file_prs"
 		filltext $w(aptext) $prs 1 "prs output"
 	} else {
@@ -1360,18 +1366,10 @@ proc csetdiff2 {{rev {}}} \
 	$w(aptext) configure -state normal; $w(aptext) delete 1.0 end
 	$w(aptext) insert end "ChangeSet history for $rev1..$rev2\n\n"
 
-	set revs [open "| bk -R prs -hbMr$rev1..$rev2 {-d:I:\n} ChangeSet"]
-	while {[gets $revs r] >= 0} {
-		set c [open "| bk sccslog -r$r ChangeSet" r]
-		set ttype "cset_prs"
-		filltext $w(aptext) $c 0 "empty sccslog for cset"
-		set log [open "| bk cset -Hr$r | bk _sort | bk sccslog -" r]
-		filltext $w(aptext) $log 0 "sccslog for files"
-	}
-	busy 0
+	set revs [open "|bk changes -fv -r$rev1..$rev2"]
+	filltext $w(aptext) $revs 0 "sccslog for files"
 	catch {close $revs}
-	catch {close $c}
-	catch {close $log}
+	busy 0
 }
 
 # Bring up csettool for a given set of revisions as selected by the mouse

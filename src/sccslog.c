@@ -1,7 +1,7 @@
 /*
  * sccslog - take a list of s.files and generate a time sorted sccslog.
  *
- * Copyright (c) 1997 L.W.McVoy
+ * Copyright (c) 1997-2001 L.W.McVoy
  */
 #include "system.h"
 #include "sccs.h"
@@ -10,36 +10,45 @@ WHATSTR("@(#)%K%");
 
 private	int	compar(const void *a, const void *b);
 private	void	sortlog(int flags);
-private	void	printlog(int);
+private	void	printConsolidatedLog(FILE *);
+private	void	printSortedLog(FILE *);
+private	void	printlog(FILE *);
+private void	pdelta(delta *d, FILE *f);
+private	void	do_dspec(sccs *s, delta *d);
 private	void	sccslog(sccs *s);
 private	void	reallocDelta(delta *d);
 private	void	freelog(void);
+private	int	isBlank(char *p);
+private	char	**str2line(char **lines, char *prefix, char *str);
+private	char	*line2str(char **comments);
+private	char	**db2line(MDBM *db);
+private	void	saveComment(MDBM *db, char *rrev, char *comment, char *gfile);
+private	void	freeComment(MDBM *db);
 
 private	delta	*list, **sorted;
 private	int	n;
-private	int	pflag;		/* do basenames */
-private	int	Cflg;		/* comment format used by bk resolve */
-private	int	Aflg;		/* select all uncomitted deltas in a file */
-private	int	hflg;		/* more html friendly */
-private	int	fflg;		/*
-				 * factor out common comments from 
-				 * different delta
-				 */
+private	int	ChangeSet;	/* if set, ChangeSet is one of the files */
 
-private int isBlank(char *p);
-private char **str2line(char **lines, char *prefix, char *str);
-private char *line2str(char **comments);
-private char **db2line(MDBM *db);
-private int sameStr(char *s1, char *s2);
-private void saveComment(MDBM *db, char *rev, char *comment_str, char *gfile);
-private void freeComment(MDBM *db);
+private	struct {
+	u32	uncommitted:1;	/* -A: select all uncomitted deltas in a file */
+	u32	changeset:1;	/* -C: comment format used by bk commit */
+	u32	rmdups:1;	/* -D: factor out duplicate comments */
+	char	*dspec;		/* -d: override default format */
+	u32	forwards:1;	/* -f: print in oldest..newest order */
+	int	indent;		/* -i: indent amount */
+	u32	indentOpt:1;	/* 1 if -i was present */
+	u32	newline:1;	/* -n: like prs -n */
+	u32	basenames:1;	/* -p: do basenames */
+	u32	sort:1;		/* -s: time sorted pathname|rev output */
+	char	*dbuf;		/* where to put the formatted dspec */
+} opts;
 
 int
 sccslog_main(int ac, char **av)
 {
 	sccs	*s;
 	char	*name;
-	int	indent = 0, save, c, flags = INIT_SAVEPROJ|SILENT;
+	int	save, c, flags = INIT_SAVEPROJ|SILENT;
 	project	*proj = 0;
 	RANGE_DECL;
 
@@ -49,14 +58,20 @@ sccslog_main(int ac, char **av)
 		system("bk help sccslog");
 		return (0);
 	}
-	while ((c = getopt(ac, av, "ACc;fhi;pr|v")) != -1) {
+	while ((c = getopt(ac, av, "AbCc;d|Dfi;npr|sv")) != -1) {
 		switch (c) {
-		    case 'A': Aflg++; break;			/* doc 2.0 */
-		    case 'C': Cflg++; break;			/* doc 2.0 */
-		    case 'f': fflg++; break;
-		    case 'h': hflg++; break;
-		    case 'i': indent = atoi(optarg); break;	/* doc 2.0 */
-		    case 'p': pflag++; break;			/* doc 2.0 */
+		    case 'A': opts.uncommitted = 1; break;	/* doc 2.0 */
+		    case 'C': opts.changeset = 1; break;	/* doc 2.0 */
+		    case 'D': opts.rmdups = 1; break;
+		    case 'd': opts.dspec = optarg; break;
+		    case 'f': opts.forwards = 1; break;
+		    case 'i':					/* doc 2.0 */
+			opts.indent = atoi(optarg);
+			opts.indentOpt = 1;
+			break;
+		    case 'n': opts.newline = 1; break;
+		    case 'p': opts.basenames = 1; break;	/* doc 2.0 */
+		    case 's': opts.sort = 1; break;		/* doc 2.0 */
 		    case 'v': flags &= ~SILENT; break;		/* doc 2.0 */
 		    RANGE_OPTS('c', 'r');			/* doc 2.0 */
 		    default:
@@ -65,24 +80,28 @@ usage:			system("bk help -s sccslog");
 		}
 	}
 
-	for (name = sfileFirst("sccslog", &av[optind], 0);
-	    name; name = sfileNext()) {
+	for (name = sfileFirst("sccslog", &av[optind], 0); name; ) {
 		unless (s = sccs_init(name, INIT_NOCKSUM|flags, proj)) {
+			name = sfileNext();
 			continue;
 		}
 		unless (proj) proj = s->proj;
 		unless (HASGRAPH(s)) goto next;
-		if (Aflg) {
-			delta *d = sccs_top(s);
+		do {
+			if (opts.uncommitted) {
+				delta *d = sccs_top(s);
 
-			while (d) {
-				if (d->flags & D_CSET) break;
-				d->flags |= D_SET;
-				d = d->parent;
+				while (d) {
+					if (d->flags & D_CSET) break;
+					d->flags |= D_SET;
+					d = d->parent;
+				}
+				s->state |= S_SET;
+			} else if (things || sfileRev()) {
+				s->state |= S_SET;
+				RANGE("sccslog", s, 2, 0);
 			}
-		} else {
-			RANGE("sccslog", s, 2, 0);
-		}
+		} while ((name = sfileNext()) && streq(s->sfile, name));
 		save = n;
 		sccslog(s);
 		verbose((stderr, "%s: %d deltas\n", s->sfile, n - save));
@@ -90,15 +109,28 @@ next:		sccs_free(s);
 	}
 	sfileDone();
 	if (proj) proj_free(proj);
+	if (opts.dbuf) {
+		free(opts.dbuf);
+		opts.dbuf = 0;
+	}
 	verbose((stderr, "Total %d deltas\n", n));
 	if (n) {
+		pid_t	pid;
+
+		pid = mkpager();
+		if (ChangeSet && !opts.indentOpt) opts.indent = 2;
 		sortlog(flags);
-		printlog(indent);
+		printlog(stdout);
+		fclose(stdout);
 		freelog();
+		if (pid > 0) waitpid(pid, 0, 0);
 	}
 	return (0);
 }
 
+/*
+ * Note that these two are identical except for the d1/d2 assignment.
+ */
 private	int
 compar(const void *a, const void *b)
 {
@@ -106,7 +138,25 @@ compar(const void *a, const void *b)
 
 	d1 = *((delta**)a);
 	d2 = *((delta**)b);
-	return (d2->date - d1->date);
+	if (d2->date != d1->date) return (d2->date - d1->date);
+	unless (ChangeSet) return (strcmp(d2->pathname, d1->pathname));
+	if (streq(d1->pathname, GCHANGESET)) return (-1);
+	if (streq(d2->pathname, GCHANGESET)) return (1);
+	return (strcmp(d2->pathname, d1->pathname));
+}
+
+private	int
+forwards(const void *a, const void *b)
+{
+	register	delta *d1, *d2;
+
+	d1 = *((delta**)b);
+	d2 = *((delta**)a);
+	if (d2->date != d1->date) return (d2->date - d1->date);
+	unless (ChangeSet) return (strcmp(d2->pathname, d1->pathname));
+	if (streq(d1->pathname, GCHANGESET)) return (-1);
+	if (streq(d2->pathname, GCHANGESET)) return (1);
+	return (strcmp(d2->pathname, d1->pathname));
 }
 
 private	void
@@ -129,12 +179,12 @@ sortlog(int flags)
 		sorted[--i] = d;
 	}
 	assert(i == 0);
-	qsort(sorted, n, sizeof(sorted), compar);
+	qsort(sorted, n, sizeof(sorted), opts.forwards ? forwards : compar);
 	verbose((stderr, "done.\n"));
 }
 
 private void
-printConsolidatedLog(int indent)
+printConsolidatedLog(FILE *f)
 {
 	int	i, j;
 	delta	*d;
@@ -150,16 +200,16 @@ printConsolidatedLog(int indent)
 	}
 
 	lines = db2line(db);
-	
+
 	EACH (lines) {
-		printf("%s\n", lines[i]);
+		fprintf(f, "%s\n", lines[i]);
 	}
 	freeLines(lines);
 	freeComment(db);
 }
 
 private	void
-printSortedLog(int indent)
+printSortedLog(FILE *f)
 {
 	int	i, j;
 	delta	*d;
@@ -167,49 +217,99 @@ printSortedLog(int indent)
 	for (j = 0; j < n; ++j) {
 		d = sorted[j];
 		unless (d->type == 'D') continue;
-		if (Cflg) {
-			EACH(d->comments) {
-				if (indent) printf("%*s", indent, "");
-				if (d->pathname) {
-					printf("%-8s\t", basenm(d->pathname));
-				}
-				printf("%s\n", d->comments[i]);
-			}
+		unless (opts.forwards && ChangeSet) {
+			pdelta(d, f);
 			continue;
 		}
-		if (indent) printf("%*s", indent, "");
-		if (d->pathname) {
-			unless (pflag) {
-				printf("%s\n  ", d->pathname);
-				if (indent) printf("%*s", indent, "");
-			} else {
-				printf("%s ", basenm(d->pathname));
+		if (streq(GCHANGESET, d->pathname)) {
+			pdelta(d, f);
+			continue;
+		}
+		/*
+		 * We're on a regular file, go find the ChangeSet,
+		 * do that first, then work forward to the ChangeSet.
+		 */
+		for (i = j+1; i < n; ++i) {
+			d = sorted[i];
+			unless (d->type == 'D') continue;
+			if (streq(d->pathname, GCHANGESET)) {
+				pdelta(d, f);
+				break;
 			}
 		}
-		unless (hflg) {
-			printf("%s %s %s", d->rev, d->sdate, d->user);
-			if (d->hostname) printf("@%s", d->hostname);
-			printf(" +%d -%d\n", d->added, d->deleted);
-		} else {
-			printf("<br>\n");
-		}
-		EACH(d->comments) {
-			if (d->comments[i][0] == '\001') continue;
-			if (indent) printf("%*s", indent, "");
-			printf("  %s%s\n", d->comments[i], hflg ? "<br>" : "");
-		}
-		printf("\n");
+		while ((j < i) && (j <n)) pdelta(sorted[j++], f);
 	}
 }
 
-private	void
-printlog(int indent)
+private void
+pdelta(delta *d, FILE *f)
 {
-	if (fflg) {
-		printConsolidatedLog(indent);
-	} else {
-		printSortedLog(indent);
+	int	indent, i;
+
+	if (opts.dspec) {
+		if (d->comments && d->comments[1]) {
+			fputs(d->comments[1], f);
+			if (opts.newline) fputc('\n', f);
+		}
+		return;
 	}
+	if (opts.sort) {
+		fprintf(f, "%s|%s\n", d->pathname, d->rev);
+		return;
+	}
+	if (streq(d->pathname, "ChangeSet")) {
+		indent = 0;
+	} else {
+		indent = opts.indent;
+	}
+	if (opts.changeset) {
+		EACH(d->comments) {
+			if (indent) fprintf(f, "%*s", indent, "");
+			if (d->pathname) {
+				fprintf(f, "%-8s\t", basenm(d->pathname));
+			}
+			fprintf(f, "%s\n", d->comments[i]);
+		}
+		return;
+	}
+	if (indent) fprintf(f, "%*s", indent, "");
+	if (d->pathname) {
+		unless (opts.basenames) {
+			fprintf(f, "%s\n  ", d->pathname);
+			if (indent) fprintf(f, "%*s", indent, "");
+		} else {
+			fprintf(f, "%s ", basenm(d->pathname));
+		}
+	}
+	fprintf(f, "%s %s %s", d->rev, d->sdate, d->user);
+	if (d->hostname) fprintf(f, "@%s", d->hostname);
+	fprintf(f, " +%d -%d\n", d->added, d->deleted);
+	EACH(d->comments) {
+		if (d->comments[i][0] == '\001') continue;
+		if (indent) fprintf(f, "%*s", indent, "");
+		fprintf(f, "  %s\n", d->comments[i]);
+	}
+	fprintf(f, "\n");
+}
+
+private	void
+printlog(FILE *f)
+{
+	if (opts.rmdups) {
+		printConsolidatedLog(f);
+	} else {
+		printSortedLog(f);
+	}
+}
+
+private void
+do_dspec(sccs *s, delta *d)
+{
+	unless (opts.dbuf) opts.dbuf = malloc(16<<10);
+	opts.dbuf[0] = 0;
+	sccs_prsbuf(s, d, PRS_ALL, opts.dspec, opts.dbuf);
+	freeLines(d->comments);
+	d->comments = addLine(0, strdup(opts.dbuf));
 }
 
 /*
@@ -222,17 +322,10 @@ private	void
 sccslog(sccs *s)
 {
 	delta	*d, *e;
-	int	partial = 0;
 
-	for (d = s->table; d; d = d->next) {
-		/* XXX - need to screan out meta/removed? */
-		unless (d->flags & D_SET) {
-			partial = 1;
-			break;
-		}
-	}
-	unless (partial) {
-		for (d = s->table, n++; d && d->next; n++, d = d->next) {
+	unless (SET(s)) {
+		if (CSET(s)) ChangeSet = 1;
+		for (d = s->table, n++; d; n++, d = d->next) {
 			if (d->zone) {
 				assert(d->zone[0]);
 				assert(d->zone[1]);
@@ -242,6 +335,8 @@ sccslog(sccs *s)
 				assert(d->zone[5]);
 				assert(!d->zone[6]);
 			}
+			if (opts.dspec) do_dspec(s, d);
+			unless (d->next) break;
 		}
 		if (list) {
 			assert(d);
@@ -254,6 +349,8 @@ sccslog(sccs *s)
 	for (d = s->table; d; ) {
 		d->kid = d->siblings = 0;
 		if (d->flags & D_SET) {
+			if (CSET(s)) ChangeSet = 1;
+			if (opts.dspec) do_dspec(s, d);
 			reallocDelta(d);
 			e = d->next;
 			d->next = list;
@@ -314,8 +411,8 @@ freelog()
 /*
  * This code below is gotten from findcset.c in the 2.1 dev tree
  */
-#define EACH_KV(d)      for (kv = mdbm_first(d); \
-					 kv.key.dsize; kv = mdbm_next(d))
+#define	EACH_KV(d)	for (kv = mdbm_first(d); \
+			    kv.key.dsize; kv = mdbm_next(d))
 
 /*
  * Return true if blank line
@@ -447,26 +544,6 @@ db2line(MDBM *db)
 	}
 	return (lines);
 }
-
-/*
- * Return TURE if s1 is same as s2
- */
-private int
-sameStr(char *s1, char *s2)
-{
-	if (s1 == NULL) {
-		if (s2 == NULL) return (1);
-		return (0);
-	}
-
-	/* When we get here, s1 != NULL */
-	if (s2 == NULL) return (0);
-
-	/* When we get here, s1 != NULL && s2 != NULL */
-	return (streq(s1, s2));
-}
-
-
 
 /*
  * We dump the comments into a mdbm to factor out repeated comments

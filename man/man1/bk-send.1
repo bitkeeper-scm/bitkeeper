@@ -5,17 +5,19 @@
 bk send \- send a \*(BK patch
 .SH SYNOPSIS
 .Bc bk send [\-dfq] [\-w[
-.ARGc Wrapper
+.ARGc wr
 .Bc ]] [
 .OPTreq \-r revs
+.Bc ] [
+.OPTreq \-u URL
 .B ]
-.ARG user@host.com "| \-"
+.ARG u@h.ca "| \-"
 .SH DESCRIPTION
 .LP
-The bk push/bk pull interface is the easiest 
-way to keep two repositories synchronized, however,
-if your only connection to the remote machine is through
-email, use bk send.
+The send interface may be used to send changes through electronic mail.
+In general, the bk push/bk pull interfaces are the easiest 
+way to keep two repositories synchronized, but bk send requires only 
+an email transport.
 .LP
 To send the whole repository, do:
 .DS
@@ -37,7 +39,7 @@ or
 $ bk send \-r1.10.. user@host.com
 .DE
 .LP
-Send remembers the changesets it has sent in BitKeeper/log/sendlog\-\<address\>
+Send remembers the changesets it has sent in BitKeeper/log/send\-\<address\>
 where \<address\> is like user@host.com.  When you don't specify a list
 of changesets to send, "send" will look in the log file and send only the
 new changesets.  So the easiest thing to do is to always use the same
@@ -49,11 +51,19 @@ $ bk send user@host.com
 If you lose the log file and you want to seed it with the changes you
 know have been sent, the command to do that is:
 .DS
-$ cd to package root
-$ bk prs \-h \-r\<revs\> \-d:KEY: ChangeSet \> BitKeeper/log/send\-user@host.com
+$ cd BitKeeper/log
+$ bk prs \-h \-r\<revs\> \-d:KEY: ChangeSet \> send\-user@host.com
 .DE
 .LP
-You can wrap patches so that they do not get corrupted by mailers.
+An alternative to the log file approach, which may only be used if you
+have connectivity to the remote repository, is to talk to the remote 
+repository to find out what needs to be sent.  The following will send
+all the changes you have that the remote does not have:
+.DS
+$ bk send -ubk://thunk.org:5000 tytso@mit.edu
+.DE
+.LP
+You may wrap patches so that they do not get corrupted by mailers.
 We currently support wrapping with uuencode.  The following (contrived)
 command sends a wrapped patch and applies it in /tmp/foo (which must
 exist):
@@ -76,6 +86,11 @@ Be quiet.
 .tp
 .OPTreq -r revs
 Specify the list of changesets to send.
+.tp
+.OPTreq -u URL
+Instead of consulting the send log, connect to the remote repository 
+specified by the URL, figure out what needs to be sent, and send it
+to the specifed email address.
 .tp
 .OPTreq -w Wrapper
 Wrap the patch with 

@@ -36,7 +36,6 @@ typedef	struct cset {
 
 private int	csetCreate(sccs *cset, int flags, char **syms);
 private	void	csetlist(cset_t *cs, sccs *cset);
-private	void	csetList(sccs *cset, char *rev, int ignoreDeleted);
 private	int	marklist(char *file);
 private	void	csetDeltas(cset_t *cs, sccs *sc, delta *start, delta *d);
 private	delta	*mkChangeSet(sccs *cset, FILE *diffs);
@@ -138,7 +137,7 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 
 	while (
 	    (c =
-	    getopt(ac, av, "c|e|Cd|DfHhi;m|M|pqr|sS;vx;y|Y|")) != -1) {
+	    getopt(ac, av, "c|e|Cd|DfHhi;lm|M|pqr|sS;vx;y|Y|")) != -1) {
 		switch (c) {
 		    case 'D': ignoreDeleted++; break;		/* undoc 2.0 */
 		    case 'f': copts.force++; break;		/* undoc? 2.0 */
@@ -156,6 +155,9 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 			} else {
 				copts.listeach++;
 			}
+		    	/* fall through */
+		    case 'l':
+			if (c == 'l') copts.listeach++;
 		    	/* fall through */
 		    case 'd':					/* undoc? 2.0 */
 			if (c == 'd') copts.doDiffs++;
@@ -410,7 +412,6 @@ header(sccs *cset, int diffs)
 	char	*dspec =
 		"$each(:FD:){# Proj:\t(:FD:)\n}# ID:\t:KEY:\n";
 	int	save = cset->state;
-	time_t	t = time(0);
 	char	pwd[MAXPATH];
 
 	if (diffs) {
@@ -424,7 +425,6 @@ header(sccs *cset, int diffs)
 	printf("# Host:\t%s\n", sccs_gethost() ? sccs_gethost() : "?");
 	getRealCwd(pwd, sizeof(pwd));
 	printf("# Root:\t%s\n", pwd);
-	//printf("# Date:\t%s", ctime(&t)); /* detele this line for http push */
 	cset->state = save;
 }
 

@@ -12444,8 +12444,8 @@ show_d(sccs *s, delta *d, FILE *out, char *vbuf, char *format, int num)
 }
 
 private void
-show_s(sccs *s, delta *d, FILE *out, char *vbuf, char *str) {
-
+show_s(sccs *s, delta *d, FILE *out, char *vbuf, char *str)
+{
 	if (out) {
 		fputs(str, out);
 		s->prs_output = 1;
@@ -13556,6 +13556,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	if (streq(kw, "TYPE")) {
 		if (BITKEEPER(s)) {
 			fs("BitKeeper");
+			if (CSET(s)) fs("|ChangeSet");
 		} else {
 			fs("SCCS");
 		}
@@ -13908,7 +13909,7 @@ fprintDelta(FILE *out, char *vbuf,
 		} else if (*q == ':') {		/* keyword expansion */
 			len = extractKeyword(&q[1], end, ":", kwbuf);
 			if ((len > 0) && (len < KWSIZE) &&
-			    (kw2val(out, NULL, "", 0, kwbuf,
+			    (kw2val(out, vbuf, "", 0, kwbuf,
 				    "", 0, s, d) != notKeyword)) {
 				/* got a keyword */
 				q = &q[len + 2];
@@ -13998,7 +13999,7 @@ dont:				for (bcount = 1, t = &t[2]; bcount > 0 ; t++) {
 			suffix = &prefix[plen + klen + 4];
 			slen = extractSuffix(suffix, end);
 			kw2val(
-			    out, NULL, prefix, plen, kwbuf, suffix, slen, s, d);
+			    out, vbuf, prefix, plen, kwbuf, suffix, slen, s, d);
 			q = &suffix[slen + 1];
 		} else {
 			fc(*q++);
@@ -14020,6 +14021,23 @@ sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out)
 	if (s->prs_output) {
 		s->prs_odd = !s->prs_odd;
 		if (flags & PRS_LF) fputc('\n', out);
+	}
+	return (0);
+}
+
+int
+sccs_prsbuf(sccs *s, delta *d, int flags, const char *dspec, char *buf)
+{
+	const	char *end;
+
+	if (d->type != 'D' && !(flags & PRS_ALL)) return (0);
+	if (SET(s) && !(d->flags & D_SET)) return (0);
+	end = &dspec[strlen(dspec) - 1];
+	s->prs_output = 0;
+	fprintDelta(0, buf, dspec, end, s, d);
+	if (s->prs_output) {
+		s->prs_odd = !s->prs_odd;
+		if (flags & PRS_LF) strcat(buf, "\n");
 	}
 	return (0);
 }
@@ -15411,7 +15429,7 @@ smartRename(char *old, char *new)
 }
 
 int
-smartMkdir(char *dir, int mode)
+smartMkdir(char *dir, mode_t mode)
 {
 	if (isdir(dir)) return 0;
 	return ((mkdir)(dir, mode));

@@ -1,9 +1,9 @@
 .so bk-macros
 .TH "bk sccslog" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME 
-bk sccslog \- like prs, except it sorts deltas by date across all files
+bk sccslog \- list deltas sorted by date across all files
 .SH SYNOPSIS
-.Bc bk sccslog [\-ACpv] [
+.Bc bk sccslog [\-ADfnpsv] [
 .OPTreq \-c dates
 .Bc ] [
 .OPTreq \-i d
@@ -14,7 +14,19 @@ bk sccslog \- like prs, except it sorts deltas by date across all files
 .SH DESCRIPTION
 .LP
 .B sccslog
-displays part or all  of  the  SCCS  file in a user supplied format.
+is used to get a time sorted listing of changes over all of the specified
+or implied files.  It is similar to bk prs, with the difference being
+that prs respects file boundaries, i.e., lists all changes in a file 
+before going on, but sccslog sorts the changes and prints each change
+in time order, ignoring file boundaries.  It is useful to go to a 
+directory and type:
+.DS
+bk sccslog -c-1M
+.DE
+to see what has happened in all of the files there in the last month.
+.LP
+By default, bk sccslog runs the output through your pager, which can
+be controlled with $PAGER.
 .SH OPTIONS
 .if t .TP .6i
 .if n .TP 1i
@@ -25,20 +37,43 @@ Select all uncommited deltas in a file.
 Cut off dates.  See Range Specifications (below) or
 ._SA range 
 for details.
+.\" Undocumented, internal interface.
+.\" .tp
+.\" .B \-C
+.\" Produce comments for a changeset.
 .tp
-.B \-C
-Produce comments for a changeset.
+.B \-D
+factor out duplicate comments and print the results as
+.DS
+libdiff.c, gnupatch.c:
+  add --minimal to calls to diff(1).
+.DE
 .tp
-.OPTreq \-i d
-Indent output by 
-.ARG d
-spaces.
+.OPTreq \-d dspec
+Format output according to the data specification string.  See
+bk prs documentation for information on data specifications.
+.tp
+.B \-f
+print the changes in forwards order (oldest to newest).  The
+default is backwards order.
+.\" Undocumented, internal interface.
+.\" .tp
+.\" .OPTreq \-i d
+.\" Indent output by 
+.\" .ARG d
+.\" spaces.
+.tp
+.B \-n
+add  a newline to each printed record (sometimes useful with -d).
 .tp
 .B \-p
 Show basenames instead of full pathnames.
 .tp
 .OPTreq \-r r
-Specify a revision or a part of a range.
+Specify a revision or a range.
+.tp
+.B \-s
+produce sorted output for post processing in ``filename|rev'' format.
 .tp
 .B \-v
 Be verbose about errors and processing.
@@ -47,7 +82,7 @@ Note that
 .ARG date
 may be a symbol, which implies the date of the delta which matches the symbol.
 .LP
-Range specifications:
+Range or date specifications:
 .if t .TP 1.2i
 .if n .TP 1.5i
 .I \-r+
@@ -56,10 +91,14 @@ prints the most recent delta
 .I \-r1.3..1.6
 prints all deltas 1.3 through 1.6
 .tp
-.I \-d9207..92
+.I \-c9207..92
 prints all deltas from July 1 '92 to Dec 31 '92
 .tp
-.I \-d92..92
+.I \-c92..92
 prints all deltas from Jan 1 '92 to Dec 31 '92
 .SH CATEGORY
 .B File
+.SH SEE ALSO
+.SA changes 1
+.SA prs 1
+.SA range 1

@@ -71,6 +71,11 @@
 .	ARGc file
 \fI\ .\|.\|.\fB]\fR
 ..
+.de OPT
+.\" For synopsis line with bold/italic combo ([Crev] for instance)
+.if t \fB[\fP\fI\\$1\fP\fB]\fP
+.if n \fB[\fP<\\$1>\fB]\fP
+..
 .de OA
 .\" For synopsis line with bold/italic combo ([Crev] for instance)
 .if t \fB[\\$1\fP\fI\\$2\fP\fB]\fP
@@ -85,8 +90,8 @@
 .\" Bold Italic for option arg no space (optionarg)
 .\" option character with a required argument with no space
 .\" -cREQUIRED or -c<REQUIRED>
-.if t \fB\\$1\fP\fI\\$2\fP\c
-.if n \fB\\$1\fP<\\$2>\c
+.if t \fB\\$1\fP\fI\\$2\fP\\$3\c
+.if n \fB\\$1\fP<\\$2>\\$3\c
 ..
 .de OPT_req
 .\" Bold Italic for option arg with space (option arg)

@@ -28,14 +28,15 @@ prs_main(int ac, char **av)
 		system("bk help prs");
 		return (1);
 	}
-	while ((c = getopt(ac, av, "abc;C;d:DhmMnopr|x:vY")) != -1) {
+	while ((c = getopt(ac, av, "abc;C;d:DfhmMnopr|x:vY")) != -1) {
 		switch (c) {
 		    case 'a':					/* doc 2.0 */
 			/* think: -Ma, the -M set expand already */
 			if (expand < 2) expand = 2;
 			flags |= PRS_ALL;
 			break;
-		    case 'b': reverse++; break;			/* doc 2.0 */
+		    case 'f':					/* doc */
+		    case 'b': reverse++; break;			/* undoc */
 		    case 'C': cset = optarg; break;		/* doc 2.0 */
 		    case 'd': dspec = optarg; break;		/* doc 2.0 */
 		    case 'D': sf_flags |= SF_DELETES; break;

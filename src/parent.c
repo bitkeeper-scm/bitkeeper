@@ -2,7 +2,7 @@
 
 #define	PARENT "BitKeeper/log/parent"
 
-char * getParent(char *buf, int len);
+char	*getParent();
 
 int
 parent_main(int ac,  char **av)
@@ -47,15 +47,15 @@ parent_main(int ac,  char **av)
 	}
 	
 	if (av[optind] == NULL) {
-		if (getParent(buf, sizeof buf)) {
+		if (fp = getParent()) {
 			unless (shell) printf("Parent repository is ");
-			printf("%s\n", buf);
+			printf("%s\n", fp);
+			free(fp);
 			return (0);
 		}
 		fprintf(stderr, "This package has no parent\n");
 		return (1);
 	}
-
 
 	r = remote_parse(av[optind], 0);
 	unless (r) {
@@ -93,20 +93,26 @@ parent_main(int ac,  char **av)
 }
 
 
-char *
-getParent(char *buf, int len)
+char	*
+getParent()
 {
 	char	*p;
-	FILE 	*f;
+	int	f, len;
 
 	assert(bk_proj && bk_proj->root);
 	p = aprintf("%s/%s", bk_proj->root, PARENT);
-	f = fopen(p, "rt");
+	f = open(p, 0, 0);
 	free(p);
-	unless (f)  return (NULL);
-	buf[0] = 0;
-	fgets(buf, len, f);
-	chop(buf);
-	fclose(f);
-	return (buf);
+	unless (f) return (0);
+	len = fsize(f);
+	p = calloc(1, len);
+	if (read(f, p, len) != len) {
+		perror("parent");
+		close(f);
+		free(p);
+		return (0);
+	}
+	chomp(p);
+	close(f);
+	return (p);
 }

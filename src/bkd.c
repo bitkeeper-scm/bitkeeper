@@ -1,12 +1,9 @@
 #include "bkd.h"
 
-void	do_cmds();
-void	requestWebLicense();
 private	void	exclude(char *cmd);
 private	int	findcmd(int ac, char **av);
 private	int	getav(int *acp, char ***avp, int *httpMode);
 private	void	log_cmd(int i, int ac, char **av);
-private	void	reap(int sig);
 private	void	usage();
 private	char	**xcmds = 0;		/* excluded command */
 
@@ -187,9 +184,15 @@ do_cmds()
 	char	**av;
 	int	i, ret, httpMode;
 	int	flags = 0;
+	int	debug = getenv("BK_DEBUG") != 0;
 
 	httpMode = Opts.http_hdr_out;
 	while (getav(&ac, &av, &httpMode)) {
+		if (debug) {
+			for (i = 0; av[i]; ++i) {
+				ttyprintf("[%2d] = %s\n", i, av[i]);
+			}
+		}
 		getoptReset();
 		if ((i = findcmd(ac, av)) != -1) {
 			if (Opts.log) log_cmd(i, ac, av);
@@ -206,6 +209,7 @@ do_cmds()
 			 * Do the real work
 			 */
 			ret = cmds[i].cmd(ac, av);
+			if (debug) ttyprintf("cmds[%d] = %d\n", i, ret);
 
 			flags = cmdlog_end(ret, flags);
 
@@ -330,6 +334,7 @@ private	int
 getav(int *acp, char ***avp, int *httpMode)
 {
 #define	MAX_AV	50
+#define	QUOTE(c)	(((c) == '\'') || ((c) == '"'))
 	static	char buf[MAXKEY * 2];		/* room for two keys */
 	static	char *av[MAX_AV];
 	remote	r;
@@ -352,14 +357,14 @@ getav(int *acp, char ***avp, int *httpMode)
 			return (0);
 		}
 		if (inQuote) {
-			if (buf[i] == '\"') {
+			if (QUOTE(buf[i])) {
 				buf[i] = 0;
 				inQuote = 0;
 			}
 			continue;
 		}
-		if (buf[i] == '\"') {
-			assert(buf[i+1] != '\"'); /* no null arg */
+		if (QUOTE(buf[i])) {
+			assert(!QUOTE(buf[i+1])); /* no null args */
 			av[ac++] = &buf[i+1];
 			inQuote = 1;
 			continue;

@@ -748,11 +748,11 @@ typedef struct {
 
 
 /*
- * serach interface
+ * search interface
  */
 typedef struct {
-	char    pattern[512];
-	u8      ignorecase:1;
+	char    *pattern;	/* what we want to find */
+	u8      ignorecase:1;	/* duh */
 } search;
 
 
@@ -769,6 +769,7 @@ int	sccs_clean(sccs *s, u32 flags);
 int	sccs_info(sccs *s, u32 flags);
 int	sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out);
 int	sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out);
+int	sccs_prsbuf(sccs *s, delta *d, int flags, const char *dspec, char *buf);
 delta	*sccs_getrev(sccs *s, char *rev, char *date, int roundup);
 delta	*sccs_findDelta(sccs *s, delta *d);
 sccs	*sccs_init(char *filename, u32 flags, project *proj);
@@ -959,6 +960,8 @@ globv	read_globs(FILE *f, globv oldglobs);
 int	match_one(char *string, char *glob, int ignorecase);
 char	*match_globs(char *string, globv globs, int ignorecase);
 void	free_globs(globv globs);
+int	searchMatch(char *s, search search);
+search	searchParse(char *str);
 char	*prog2path(char *prog);
 void	remark(int quiet);
 int	readn(int from, char *buf, int size);
@@ -1047,6 +1050,7 @@ char	*getRealCwd(char *, size_t);
 int	smallTree(int threshold);
 MDBM	*csetDiff(MDBM *, int);
 char	*aprintf(char *fmt, ...);
+void	ttyprintf(char *fmt, ...);
 void	enableFastPendingScan();
 char	*isHostColonPath(char *);
 int	hasGUIsupport();
@@ -1069,21 +1073,31 @@ int	logs_pending(int ptype, int skipRecentCset, int grace);
 int	diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile);
 char	*getCSetFile(project *p);
 int	spawn_cmd(int flag, char **av);
+pid_t	mkpager(void);
 int	getRealName(char *path, MDBM *db, char *realname);
 int	addsym(sccs *s, delta *d, delta *metad, int, char*, char*);
 int	delta_table(sccs *s, FILE *out, int willfix);
 char	**getdir(char *); 
+char	*getParent(void);
 delta	*getSymlnkCksumDelta(sccs *s, delta *d);
 struct tm
         *utc2tm(time_t t);
 void	fix_stime(sccs *s);
+int	isLocalHost(char *h);
+void	do_cmds();
+void	core();
+void	ids();
+void	requestWebLicense();
+void	http_hdr();
+pid_t	bkd_tcp_connect(remote *r);
+int	check_rsh(char *remsh);
+int	smartMkdir(char *pathname, mode_t mode);
+int	cset_lock(void);
+void	cset_unlock(void);
 
 extern char *bk_vers;
 extern char *bk_utc;
 extern char *bk_time;
 
 int	getMsg(char *msg_name, char *bkarg, char *prefix, FILE *outf);
-
-int	searchMatch(char *s, search search);
-search	searchParse(char *str);
 #endif	/* _SCCS_H_ */

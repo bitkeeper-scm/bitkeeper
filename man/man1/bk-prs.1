@@ -5,7 +5,7 @@
 bk prs \- print revision summary
 .SH SYNOPSIS
 .if n .ll 7.49i
-.Bc bk prs [-abdDhmMopv] [
+.Bc bk prs [-adDfhmMov] [
 .if t .ds d date
 .if n .ds d d
 .if t .ds r rev
@@ -43,9 +43,6 @@ with that revision, and documents if the file has been renamed.
 .B \-a
 Print info on all deltas, not just data deltas.
 .tp
-.B \-b
-Reverse the order of the printed deltas.
-.tp
 .OPTreq \-c date
 Cut-off dates.  See Range Specifications (below) or 
 ._SA range 1
@@ -60,6 +57,9 @@ Override the default output format (see below).
 .tp
 .B \-D
 Do not skip files in the BitKeeper/deleted directory.
+.tp
+.B \-f
+Print the changes in forward (oldest to newest) order.  The default is backward.
 .tp
 .B \-h
 Suppress range header.
@@ -76,9 +76,6 @@ Add a newline to each printed record.
 .B \-o
 Reverse the sense of which deltas to print, i.e., print all unspecified
 deltas.
-.tp
-.B \-p
-Use the parent of selected revisions.
 .tp
 .OPTreq \-r rev
 Specify a revision, or part of a range.

@@ -14,9 +14,9 @@ extern	char	cmdlog_buffer[];
  * If nothing is passed in, use `bk parent`.
  */
 remote *
-remote_parse(char *p, int is_clone)
+remote_parse(char *p, int skip_checks)
 {
-	char	buf[MAXPATH+256];
+	char	*freeme = 0;
 	static	int echo = -1;
 	int	append = 0;
 	remote	*r;
@@ -24,18 +24,21 @@ remote_parse(char *p, int is_clone)
 	if (echo == -1) echo = getenv("BK_REMOTE_PARSE") != 0;
 
 	unless (p && *p) {
-		unless (getParent(buf, sizeof buf)) return (0);
-		p = buf;
+		unless (freeme = getParent()) return (0);
 		append = 1;
+		p = freeme;
 	}
-	unless (p) return (0);
+	unless (p) {
+		if (freeme) free(freeme);
+		return (0);
+	}
 	if (strneq("bk://", p, 5)) {
 		r = url_parse(p + 5, BK_PORT);
 		if (r) {
 			r->type = ADDR_BK;;
 			if (r->user) r->loginshell = 1;
 		}
-	} else if (!is_clone && (bk_mode() == BK_BASIC)) {
+	} else if (!skip_checks && (bk_mode() == BK_BASIC)) {
 		fprintf(stderr,
 		    "Non-bk:// address detected: %s\n", upgrade_msg);
 		r = NULL;
@@ -82,6 +85,7 @@ remote_parse(char *p, int is_clone)
 		free(rem);
 	}
 	if (echo && r) fprintf(stderr, "RP[%s]->[%s]\n", p, remote_unparse(r));
+	if (freeme) free(freeme);
 	return (r);
 }
 

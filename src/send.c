@@ -88,11 +88,8 @@ listCsetRevs(FILE *f, char *revsFile, char *rev)
 	if (revsFile) {
 		f1 = fopen(revsFile, "rt");
 		while (fnext(buf, f1)) {
-			chop(buf);
 			fputs(buf, f);
-			fputs(" ", f);
 		}
-		fputs("\n", f);
 		fclose(f1);
 	} else {
 		fprintf(f, "%s\n", rev);
@@ -116,7 +113,7 @@ int
 send_main(int ac,  char **av)
 {
 	int	c, rc = 0, force = 0;
-	char	*to, *p, *out, *cmd, *dflag = "", *qflag = "-vv";
+	char	*to, *out, *cmd, *dflag = "", *qflag = "-vv";
 	char	*wrapper = 0,*patch = 0, *keysFile = 0, *revArgs = 0;
 	char	*wrapperArgs = "", *rev = "1.0..";
 	char	*url = NULL;

@@ -7,7 +7,7 @@ bk cset \- creates and manipulates changesets
 .Bc bk cset [\-Cpq] [
 .OPTreq \-i list
 .Bc ] [
-.OPTreq \-l range
+.B \-l
 .Bc ] [
 .OPTreq \-M range
 .Bc ] [
@@ -34,10 +34,9 @@ Clear and remark all ChangeSet boundaries.
 create a new cset on TOL that includes the csets in
 .ARG list .
 .tp
-.OPTreq \-l range
-List each rev in 
-.ARG range 
-as file@rev (may be multiline per file).
+.B \-l
+Read changeset revisions or keys from stdin and print the list of deltas in 
+each of the changesets.
 .tp
 .OPTreq \-M range
 Mark the files included in the

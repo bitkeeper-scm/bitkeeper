@@ -10,9 +10,9 @@ cmd_chg_part1(int ac, char **av)
 	FILE 	*f;
 	pid_t	pid;
 
-	while ((c = getopt(ac, av, "k")) != -1) {
+	while ((c = getopt(ac, av, "K")) != -1) {
 		switch (c) {
-		    case 'k': keysync= 1; break;
+		    case 'K': keysync= 1; break;
 		}
 	}
 
@@ -59,7 +59,7 @@ cmd_chg_part2(int ac, char **av)
 {
 	char	*p, buf[MAXKEY], cmd[MAXPATH];
 	char	*new_av[50];
-	int	c, rc, status, fd, fd1, wfd, i, j;
+	int	rc, status, fd, fd1, wfd, i, j;
 	pid_t	pid;
 	FILE	*f;
 

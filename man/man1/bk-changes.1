@@ -3,28 +3,129 @@
 .SH NAME
 bk changes \- show changeset history
 .SH SYNOPSIS
-.Bc bk changes [\-t] [
-.OPTopt \-v num
-.Bc ] [
+.B bk changes [opts]
+.Bc [
 .OPTreq \-r revs
  |\ - \c
 .B ]
+.br
+.B bk changes [opts]
+.Bc [
+.OPTreq \-r revs
+ |\ - \c
+.B ]
+.I repo
+.br
+.B bk changes 
+.B \-L
+.B [opts]
+.OPT repo
+.br
+.B bk changes 
+.B \-R
+.B [opts]
+.OPT repo
+.SH DESCRIPTION
+The changes command is used to get an overview of the changes made to
+a repository.  There are options to search for particular changesets,
+view only tagged changesets, limit the search to a particular user,
+etc.
+.LP
+.LI 4
+The first form shown above shows changes in the local repository.
+.LI
+The second form shown above shows changes in the named repository.
+.LI
+The third form shown above lists changes found in the local repository
+but not in the remote repository.  
+If the remote repository is not
+specified, the parent of the local repository is used.
+.LI
+The fourth form shown above lists changes found in the remote repository
+but not in the local repository.
+If the remote repository is not
+specified, the parent of the local repository is used.
+.LP
+In all but the second form, the changes command must be run from within
+a repository, and that repository is the local repository while the
+named repository is the remote repository.  All the other selection
+options are applied to the list of local or remote only changesets.
+.LP
+The changesets to be listed may be specified as a revision, a range of
+revisions, or a list of revisions on 
+.IR stdin .
+The default is all revisions.
+Specifying revisions is incompatible with the 
+.B \-R/\-L
+options.
 .SH OPTIONS
-.if t .TP
-.if n .TP 1i
+.if t .TP .8i
+.if n .TP 1.4i
+.OPTreq \-/ pat /[i]
+List only those changesets whose comments contain the string
+.ARG pat .
+If there is a trailing "i" then ignore case in the search.
+.tp
+.OPTreq \-c dates
+Specifies the changesets to be listed as a date range, i.e., -c-6W lists
+the last 6 weeks worth of changes.
+.tp
+.OPTreq \-d dspec
+Override the default dspec, allows for arbitrary output formats.
+.tp
+.B \-e
+Show empty merge changesets.  By default, these are not shown.
+.tp
+.B \-f
+print the changes in forward (oldest to newest) order.  The default is
+backward.
+.tp
+.B \-h
+Produce html as output.  May not be combined with
+.BR \-d .
+.tp
+.B \-k
+Produce a list of matching changeset keys, usually for scripts.
+Implies 
+.BR \-e .
+If you really do not want the empty merge keys, a
+.B \-e 
+option 
+.B after 
+this option will turn off the listing of the empty merge keys (the
+.B \-e 
+option is inverted from its previous value each time the option is seen).
+.tp
+.B \-L
+List only those changesets which are unique to the local repository;
+requires a BK url or a valid repository parent.
+.tp
+.B \-m
+Do not show any merge changesets.
+.tp
+.B \-n
+add a newline to each printed record (sometimes useful with -d).
+.tp
 .OPTreq \-r revs
 Specifies the changesets to be listed, i.e., 1.100..
+.tp
+.B \-R
+List only those changesets which are unique to the remote repository;
+requires a BK url or a valid repository parent.
 .tp
 .B \-t
 Only list changesets which are tagged.
 .tp
+.OPTreq \-u user
+Only list changesets created by
+.ARG user .
+.tp
+.OPTreq \-U user
+Only list changesets created by someone other than
+.ARG user .
+.tp
 .B \-v
 Shows individual file change history as well as changeset history.
-.tp
-.OPTreq \-v num
-As above, but indent per file 
-.ARG num
-spaces.
 .SH EXAMPLES
 Sample output:
 .DS
@@ -40,28 +141,14 @@ ChangeSet@1.605, 2000-02-20 01:32:19-08:00, lm@host.com
   Fix a diagnostic in pull.
   An aborted attempt at key compression.
 .DE
-.LP
-We use the following script to generate per user reports which skip
-merge changesets, since there usually isn't interesting content there:
-.DS
-for p in $PROGRAMMERS
-do	echo Generating summary for $p
-	bk prs -hrbk-v1.2.9.. \e
-	    -d'$if(:USER:='$p'){$unless(:MERGE:){:I:\en}}' ChangeSet |
-	    bk changes - > $p.summary
-done
-for p in $PROGRAMMERS
-do	echo Generating details for $p
-	bk prs -hrbk-v1.2.9.. \e
-	    -d'$if(:USER:='$p'){$unless(:MERGE:){:I:\en}}' ChangeSet |
-	    bk changes -v - > $p.details
-done
-.DE
+.SH BUGS
+The -u/-U options should take lists of users.
 .SH "SEE ALSO"
 .SA commit 1
 .SA pending 1
 .SA prs 1
 .SA sccslog 1
+.SA set 1
 .SA revtool 1
 .SH CATEGORY
 .B Repository

@@ -108,8 +108,8 @@ commit_main(int ac, char **av)
 		char	*cmd, *p;
 		FILE	*f, *f1;
 
-		cmd = aprintf("bk _sort -u | bk sccslog -fA - > %s",
-								commentFile);
+		cmd = aprintf("bk _sort -u | "
+			"bk sccslog -DA - > %s", commentFile);
 		f = popen(cmd, "w");
 		f1 = fopen(pendingFiles, "rt");
 		assert(f); assert (f1);
@@ -198,7 +198,7 @@ logs_pending(int ptype, int skipRecentCset, int grace)
 	return (i);
 }
 
-private
+private int
 csetCount()
 {
 	sccs 	*s;
@@ -368,7 +368,7 @@ private int
 enforceCsetLog()
 {
 #define	MAX_PENDING_LOG 40
-	int l, ptype;
+	int	ptype;
 	int	max_pending = MAX_PENDING_LOG, log_quota;
 
 	if (getenv("BK_NEEDMORECSETS")) max_pending += 10;
@@ -468,7 +468,7 @@ do_commit(char **av,
 {
 	int	hasComment = (exists(commentFile) && (size(commentFile) > 0));
 	int	status, rc, i;
-	int	l, ptype, fd, fd0;
+	int	l, fd, fd0;
 	char	buf[MAXLINE], sym_opt[MAXLINE] = "", cmt_opt[MAXPATH + 3], *p;
 	char	pendingFiles2[MAXPATH] = "";
 	char    s_logging_ok[] = LOGGING_OK;
@@ -725,7 +725,7 @@ cset_user(FILE *f, sccs *s, delta *d1, char *keylist)
 {
 	kvpair	kv;
 	MDBM	*uDB;
-	char	*cmd, *p, *q;
+	char	*p, *q;
 	char	buf[MAXLINE];
 	FILE 	*f1;
 	int	i = 0;
@@ -780,7 +780,7 @@ config(FILE *f)
 	MDBM	*db;
 	char	buf[MAXLINE], tmpfile[MAXPATH];
 	char	s_cset[] = CHANGESET;
-	char	*p, *dspec, *license;
+	char	*p, *license;
 	sccs	*s;
 	delta	*d;
 

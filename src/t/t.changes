@@ -1,0 +1,201 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+
+# Copyright (c) 2002 lm
+# %K%
+
+echo $N Create initial repository ...................................$NL
+cat > c <<EOF
+logging: none
+license: $BK_LIC_P
+description: BitKeeper Test repository
+email: nobody@nowhere.bk
+EOF
+BK_HOST=bk_regression.bitkeeper.com
+export BK_HOST
+bk setup -f -cc project
+cd project
+echo foo > f
+BK_USER=adam bk delta $Q -i -y'Initial checkin' f
+BK_USER=adam bk commit $Q -y'Initial checkin'
+bk edit $Q f
+BK_USER=second bk delta $Q -y'Second checkin' f
+BK_USER=second bk commit $Q -Ssecond -y'Second checkin'
+bk edit $Q f
+BK_USER=third bk delta $Q -y'Third checkin' f
+BK_USER=third bk commit $Q -Sthird -y'Third checkin'
+echo OK
+
+echo $N Check that -/search/ works ..................................$NL
+bk changes -/Second/ > XXX
+grep -q ChangeSet@1.3 XXX || {
+	echo failed to match the 1.3 changeset
+	cat XXX
+	exit 1
+}
+for r in 1.1 1.2 1.4
+do	
+	grep -q ChangeSet@$r XXX && {
+		echo matched the $r changeset
+		cat XXX
+		exit 1
+	}
+done
+bk changes -/second/i > YYY
+cmp -s XXX YYY || {
+	echo Failed to match when ignoring case
+	exit 1
+}
+echo OK
+
+echo $N Check that dspecs work ......................................$NL
+cat > WANT <<EOF
+1.4
+1.3
+1.2
+1.1
+1.0
+EOF
+bk changes -nd:I: > XXX
+cmp -s XXX WANT || {
+	echo backward dpsec failed
+	cat XXX
+	exit 1
+}
+
+cat > WANT <<EOF
+1.0
+1.1
+1.2
+1.3
+1.4
+EOF
+bk changes -fnd:I: > XXX
+cmp -s XXX WANT || {
+	echo forward dpsec failed
+	cat XXX
+	exit 1
+}
+echo OK
+
+echo $N Check that keys work . ......................................$NL
+bk prs -hr1.0.. -nd:KEY: ChangeSet | sort > WANT
+bk changes -k | sort > GOT
+cmp -s WANT GOT || {
+	echo wrong keys
+	diff WANT GOT
+	exit 1
+}
+echo OK
+
+echo $N Check that user restrictions work ...........................$NL
+bk changes -usecond > GOT
+bk changes -rsecond > WANT
+cmp -s WANT GOT || {
+	echo wrong answer
+	diff WANT GOT
+	exit 1
+}
+bk changes -Usecond > GOT
+bk changes -r1.4,1.2,1.1,1.0 > WANT
+cmp -s WANT GOT || {
+	echo wrong answer
+	diff WANT GOT
+	exit 1
+}
+echo OK
+
+echo $N Check tag listing ...........................................$NL
+bk changes -t > GOT
+bk changes -rthird > WANT
+bk changes -rsecond >> WANT
+cmp -s WANT GOT || {
+	echo wrong answer
+	diff WANT GOT
+	exit 1
+}
+echo OK
+
+echo $N Check remote/local listings .................................$NL
+cd $HERE
+bk clone $Q project clone
+cd project
+ls > LS
+bk new $Q LS
+BK_USER=joe bk commit $Q -yproject
+cd $HERE/clone
+echo hi mom > mommy
+bk new $Q mommy
+BK_USER=jane bk commit $Q -yclone
+bk changes -L -nd':I: :P: :C:' > GOT
+echo 1.5 jane clone > WANT
+cmp -s WANT GOT || {
+	echo local only listing failed, got 
+	cat GOT
+	exit 1
+}
+bk changes -R -nd':I: :P: :C:' > GOT
+echo 1.5 joe project > WANT
+cmp -s WANT GOT || {
+	echo remote only listing failed, got 
+	cat GOT
+	exit 1
+}
+echo OK
+
+echo $N Check remote dspec listing ..................................$NL
+cd $HERE/clone
+bk changes -nd':I: :P: :C:' > WANT
+cd $HERE
+bk changes -nd':I: :P: :C:' $HERE/clone > GOT
+cmp -s clone/WANT GOT || {
+	echo wrong answer
+	diff WANT GOT
+	exit 1
+}
+echo OK
+
+echo $N Check remote search combined with dspec .....................$NL
+# The /dev/null is because we exit so fast that the bkd can't update the
+# logs, at least that is my theory.
+cd $HERE/clone
+bk changes -/Second/ -nd':I: :P: :C:' ../project > GOT 2>/dev/null
+echo 1.3 second Second checkin > WANT
+cmp -s WANT GOT || {
+	echo remote only listing failed, got 
+	cat GOT
+	exit 1
+}
+echo OK
+
+echo $N Check remote key listing ....................................$NL
+bk prs -hr1.0.. -nd:KEY: ChangeSet | sort > WANT
+cd $HERE
+bk changes -k $HERE/clone | sort > GOT
+cmp -s clone/WANT GOT || {
+	echo wrong keys
+	diff WANT GOT
+	exit 1
+}
+echo OK
+
+echo $N Check remote verbose listing ................................$NL
+cd $HERE/clone
+bk changes -vr+ > WANT
+cd $HERE
+bk changes -vr+ $HERE/clone > GOT
+cmp -s clone/WANT GOT || {
+	echo wrong answer
+	diff WANT GOT
+	exit 1
+}
+echo OK

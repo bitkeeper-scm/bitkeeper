@@ -23,6 +23,14 @@ You may specify both end-points at once like so:
 bk prs \-r1.1..1.5
 .DE
 .LP
+Revision ranges have a way to say "after" or "before".  You may say
+.DS
+-r1.3..1.7 to mean 1.3, 1.4, 1.5, 1.6, 1.7
+-r1.3,.1.7 to mean 1.4, 1.5, 1.6, 1.7
+-r1.3,,1.7 to mean 1.4, 1.5, 1.6
+.DE
+The "," operator means "after" or "before" the specified revision.
+.LP
 You may specify dates instead of revisions like so
 .sp
 .DS
@@ -37,6 +45,8 @@ the rounding is context sensitive.  If the date is the first date i.e.,
 the starting point, then the date is rounded down.  If it is the second
 date in the range, then it is rounded up.  So 98..98 is the same as
 980101000000 ..  981231235959.
+.LP
+Note: the mixing of dates and revisions is deprecated.
 .LP
 If there is only one date specified, without a revision, then a 
 very useful form of the date is to specify a recent period of time, 
@@ -65,12 +75,12 @@ fractions, i.e., to get the last 6 months worth, try
 .DS
 bk prs \-c\-.5Y
 .DE
-.LP
-You can mix and match revisions and date.  If you want everything in
-98, but not past revision 1.5, you would type:
-.DS
-bk prs \-c98 \-r1.5
-.DE
+.\" .LP
+.\" You can mix and match revisions and date.  If you want everything in
+.\" 98, but not past revision 1.5, you would type:
+.\" .DS
+.\" bk prs \-c98 \-r1.5
+.\" .DE
 .LP
 Dates can also be in the form of symbolic tags (ChangeSet file only).  
 If you tagged a changeset with Alpha and another changeset with Beta,

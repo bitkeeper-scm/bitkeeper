@@ -21,6 +21,7 @@ private int	sfio(opts opts, int gz, remote *r);
 private void	usage(void);
 private int	initProject(char *root);
 private void	usage(void);
+extern	int	rclone_main(int ac, char **av);
 
 int
 clone_main(int ac, char **av)
@@ -28,7 +29,6 @@ clone_main(int ac, char **av)
 	int	c, rc;
 	opts	opts;
 	char	**envVar = 0;
-	char	*getParent(char *);
 	remote 	*r = 0,  *l = 0;
 
 	if (ac == 2 && streq("--help", av[1])) {
@@ -131,7 +131,7 @@ send_clone_msg(opts opts, int gzip, remote *r, char **envVar)
 private int
 clone(char **av, opts opts, remote *r, char *local, char **envVar)
 {
-	char	*p, *freeme = 0 , buf[MAXPATH];
+	char	*p, buf[MAXPATH];
 	int	gzip, rc = 1;
 
 	gzip = r->port ? opts.gzip : 0;

@@ -5,7 +5,7 @@
 int
 range_main(int ac, char **av)
 {
-	sccs	*s;
+	sccs	*s = 0;
 	delta	*e;
 	char	*name;
 	int	expand = 1;
@@ -26,10 +26,20 @@ usage:			fprintf(stderr,
 	}
 	for (name = sfileFirst("range", &av[optind], 0);
 	    name; name = sfileNext()) {
-	    	unless (s = sccs_init(name, INIT_NOCKSUM, 0)) {
+		if (s && (streq(s->gfile, name) || streq(s->sfile, name))) {
+			for (e = s->table; e; e = e->next) {
+				e->flags &= ~(D_SET|D_RED|D_BLUE);
+			}
+		} else {
+			if (s) sccs_free(s);
+			unless (s = sccs_init(name, INIT_NOCKSUM, 0)) {
+				continue;
+			}
+		}
+		unless (HASGRAPH(s)) {
+			sccs_free(s);
 			continue;
 		}
-		unless (HASGRAPH(s)) goto next;
 		RANGE("range", s, expand, !quiet);
 		if (s->state & S_SET) {
 			printf("%s set:", s->gfile);
@@ -49,8 +59,9 @@ usage:			fprintf(stderr,
 			}
 		}
 		printf("\n");
-next:		sccs_free(s);
+next:		;
 	}
+	if (s) sccs_free(s);
 	return (0);
 }
 

@@ -45,6 +45,8 @@ WHATSTR("@(#)%K%");
  *	rangeAdd(sccs *sc, char *rev, char *date) - add rev or date (symbol)
  */
 
+#define	SEP(c)	(((c) == '.') || ((c) == ','))
+
 private int	rangePrune(sccs *s, delta *d);
 
 void
@@ -87,6 +89,8 @@ int
 rangeAdd(sccs *sc, char *rev, char *date)
 {
 	char	*s = rev ? rev : date;
+	char	save;
+	char	*p;
 	int	prune = 0;
 	delta	*tmp;
 
@@ -130,7 +134,7 @@ rangeAdd(sccs *sc, char *rev, char *date)
 	/*
 	 * If we are doing a list, handle that in the list code.
 	 */
-	if (rev && strchr(rev, ',')) {
+	if (rev && (p = strchr(rev, ',')) && !(SEP(p[-1]) || SEP(p[1]))) {
 		if (date) {
 			fprintf(stderr,
 			    "range: can't have lists of revs and dates\n");
@@ -149,7 +153,11 @@ rangeAdd(sccs *sc, char *rev, char *date)
 	 * and then call ourselves recursively.
 	 */
 	for (; s && *s; s++) {
-		if (strneq(s, "..", 2)) break;
+		unless (SEP(*s)) continue;
+		s++;
+		unless (SEP(*s)) continue;
+		s--;
+		break;
 	}
 	if (s && *s) {
 		if (prune) {
@@ -157,19 +165,26 @@ rangeAdd(sccs *sc, char *rev, char *date)
 			    "range: can't have range of pruning\n");
 			return (-1);
 		}
+		save = *s;
 		*s = 0;
 		if (rangeAdd(sc, rev, date)) {
-			*s = '.';
+			*s = save;
 			return (-1);
 		}
+		*s = save;
 		sc->state |= S_RANGE2;
-		*s = '.';
 		if (rev) {
 			rev = &s[2];
 		} else {
 			date = &s[2];
 		}
 		if (rangeAdd(sc, rev, date)) return (-1);
+		if ((save == ',') && sc->rstart->kid) {
+			sc->rstart = sc->rstart->kid;
+		}
+		if ((s[1] == ',') && sc->rstop->parent) {
+			sc->rstop = sc->rstop->parent;
+		}
 		return (0);
 	}
 	tmp = sccs_getrev(sc, rev, date, sc->rstart ? ROUNDUP: ROUNDDOWN);
@@ -676,7 +691,7 @@ out:
 int
 tokens(char *s)
 {
-	for (; s && *s; s++) if (strneq(s, "..", 2)) return (2);
+	for (; s && *s; s++) if (SEP(s[0]) && SEP(s[1])) return (2);
 	return (1);
 }
 
@@ -688,7 +703,7 @@ int
 closedRange(char *s)
 {
 	unless (s && s[0]) return (-1);
-	for (; s && *s; s++) if (strneq(s, "..", 2) && s[2]) return (1);
+	for (; s && *s; s++) if (SEP(s[0]) && SEP(s[1]) && s[2]) return (1);
 	return (0);
 }
 
