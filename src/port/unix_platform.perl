@@ -41,13 +41,17 @@ sub doExec
 {
 	local ($bin) = "";	
 
+	exec @_ if (-x "$_[0]");
 	foreach (split(/:/, $ENV{'PATH'})) {
 		if (-x "$_/$_[0]") {
 			$bin = "$_/$_[0]";
 			last;
 		}
 	}
-	return -2 if ($bin eq "");
+	if ($bin eq "") {
+		warn "Could not find $_[0]\n";
+		return -2;
+	}
 	exec @_;
 	# I'd like to return -1 here but perl doesn't like that.
 }

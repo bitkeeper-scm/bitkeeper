@@ -53,6 +53,8 @@ sub doExec
 	local ($cmd) = "";	
 	local ($bin) = "";	
 
+	foreach (@_) {$cmd = "$cmd $_" };
+	exit(system("$cmd")) if -x $_[0];
 	foreach (split(/;/, $ENV{'PATH'})) {
 		if (-x "$_/$_[0]") {
 			$bin = "$_/$_[0]";
@@ -60,7 +62,6 @@ sub doExec
 		}
 	}
 	return -2 if ($bin eq "");
-	foreach (@_) {$cmd = "$cmd $_" };
 	exit(system($cmd));
 }
 
