@@ -944,7 +944,7 @@ int	lod_setlod(lod_t *l, sccs *s, u32 flags);
 void	names_init(void);
 int	names_rename(char *old_spath, char *new_spath, u32 flags);
 void	names_cleanup(u32 flags);
-int	bk_sfiles(int ac, char **av);
+int	bk_sfiles(char *opts, int ac, char **av);
 int	outc(char c);
 MDBM	*loadConfig(char *root, int convert);
 int	ascii(char *file);

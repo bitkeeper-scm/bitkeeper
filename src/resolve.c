@@ -2532,8 +2532,8 @@ resolve_cleanup(opts *opts, int what)
 	} else {
 		fnext(pendingFile, f);
 		chop(pendingFile);
+		fclose(f);
 	}
-	fclose(f);
 
 	/*
 	 * If we are done, save the csets file.

@@ -18,7 +18,7 @@ char	*find_perl5();
 void	cmdlog_exit(void);
 int	cmdlog_repo;
 private	void	cmdlog_dump(int, char **);
-private int	run_cmd(char *prog, int is_bk, int ac, char **av);
+private int	run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av);
 
 extern	void	getoptReset();
 extern	void	platformInit(char **av);
@@ -279,9 +279,10 @@ usage()
 int
 main(int ac, char **av)
 {
-	int	i, c, is_bk = 0, dashr = 0;
+	int	i, c, si, is_bk = 0, dashr = 0;
 	int	flags, ret;
 	char	*prog, *argv[MAXARGS];
+	char	sopts[30];
 
 	cmdlog_buffer[0] = 0;
 	if (i = setjmp(exit_buf)) {
@@ -325,23 +326,31 @@ main(int ac, char **av)
 
 	/*
 	 * Parse our options if called as "bk".
+	 * We support most of the sfiles options.
 	 */
+	sopts[si = 0] = '-';
 	prog = basenm(av[0]);
 	if (streq(prog, "bk")) {
 		is_bk = 1;
-		while ((c = getopt(ac, av, "hrR")) != -1) {
+		while ((c = getopt(ac, av, "acdDeEgijlnpr|RSuUvx")) != -1) {
 			switch (c) {
+			    case 'a': case 'c': case 'd': case 'D':
+			    case 'e': case 'E': case 'g': case 'i':
+			    case 'j': case 'l': case 'n': case 'p':
+			    case 'S': case 'u': case 'U': case 'v':
+			    case 'x':
+				sopts[++si] = c;
+				break;
 			    case 'h':
 				return (help_main(1, argv));
 			    case 'r':
-				if (av[optind] && isdir(av[optind])) {
-					unless (chdir(av[optind]) == 0) {
-						perror(av[optind]);
+				if (optarg) {
+					unless (chdir(optarg) == 0) {
+						perror(optarg);
 						return (1);
 					}
 					proj_free(bk_proj);
 					bk_proj = proj_init(0);
-					optind++;
 				} else unless (proj_cd2root(bk_proj)) {
 					fprintf(stderr, 
 					    "bk: Cannot find package root.\n");
@@ -360,6 +369,24 @@ main(int ac, char **av)
 				usage();
 			}
 		}
+
+		/*
+		 * Allow "bk [-sfiles_opts] -r" as an alias for
+		 * cd2root
+		 * bk sfiles [-sfiles_opts]
+		 */
+		sopts[++si] = 0;
+		if (dashr && !av[optind]) {
+			prog = av[0] = "sfiles";
+			if (si > 1) {
+				av[1] = sopts;
+				av[ac = 2] = 0;
+			} else {
+				av[ac = 1] = 0;
+			}
+			goto run;
+		}
+
 		unless (prog = av[optind]) usage();
 		av = &av[optind];
 		for (ac = 0; av[ac]; ac++);
@@ -369,12 +396,13 @@ main(int ac, char **av)
 #ifndef WIN32
 				signal(SIGPIPE, SIG_IGN);
 #endif
-				return (bk_sfiles(ac, av));
+				return (bk_sfiles(si > 1 ? sopts : 0, ac, av));
 			}
 		}
 		prog = av[0];
 	}
-	getoptReset();
+
+run:	getoptReset();
 
 	if (streq(prog, "cmdlog")) {
 		cmdlog_dump(ac, av);
@@ -382,7 +410,7 @@ main(int ac, char **av)
 	}
 
 	flags = cmdlog_start(av, 0);
-	ret = run_cmd(prog, is_bk, ac, av);
+	ret = run_cmd(prog, is_bk, si > 1 ? sopts : 0, ac, av);
 	cmdlog_end(ret, flags);
 	exit(ret);
 }
@@ -407,15 +435,11 @@ spawn_cmd(int flag, char **av)
 
 
 private int
-run_cmd(char *prog, int is_bk, int ac, char **av)
+run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 {
 	int	i, j, ret;
 	char	cmd_path[MAXPATH];
 	char	*argv[MAXARGS];
-	static	int trace = -1;
-
-	if (trace == -1) trace = getenv("BK_TRACE") != 0;
-	if (trace) fprintf(stderr, "RUN bk %s\n", prog);
 
 	/*
 	 * look up the internal command 
@@ -609,6 +633,7 @@ cmdlog_start(char **av, int httpMode)
 			strcpy(cmdlog_buffer, av[i]);
 		}
 	}
+	if (getenv("BK_TRACE")) fprintf(stderr, "%s\n", cmdlog_buffer);
 
 	if (cflags & CMD_WRLOCK) {
 		if (i = repository_wrlock()) {
@@ -763,13 +788,14 @@ cmdlog_dump(int ac, char **av)
 }
 
 int
-bk_sfiles(int ac, char **av)
+bk_sfiles(char *opts, int ac, char **av)
 {
 	pid_t	pid;
 	int	i;
 	int	j, pfd;
 	int	status;
-	char	*sav[2] = {"sfind", 0};
+	int	sac = 1;
+	char	*sav[3] = {"sfind", 0, 0};
 	char	*cmds[100] = {"bk"};
 
 	assert(ac < 95);
@@ -780,9 +806,13 @@ bk_sfiles(int ac, char **av)
 		fprintf(stderr, "cannot spawn %s %s\n", cmds[0], cmds[1]);
 		return(1);
 	} 
+	if (opts) {
+		sav[1] = opts;
+		sac++;
+	}
 	cmdlog_start(sav, 0);
 	close(1); dup(pfd); close(pfd);
-	if (status = sfind_main(1, sav)) {
+	if (status = sfind_main(sac, sav)) {
 		kill(pid, SIGTERM);
 		waitpid(pid, 0, 0);
 		cmdlog_end(status, 0);

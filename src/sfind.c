@@ -5,6 +5,7 @@
 #define LSTATE	0	/* lock state: l,u,j,x */
 #define CSTATE	1	/* change state: c,' ' */
 #define PSTATE	2	/* pending state: p,' ' */
+#define NSTATE	3	/* name state: n,' ' */
  
 WHATSTR("@(#)%K%");
 
@@ -17,7 +18,8 @@ typedef struct {
 	u32	junk:1;			/* -j: list junk in SCCS dirs */
 	u32	extras:1;		/* -x: list extra files */
 	u32	modified:1;		/* -c: list changed files */
-	u32	nflg:1;			/* -n: list unchanged files */
+	u32	names:1;		/* -n: list files in wrong path */
+	u32	nflg:1;			/* -sn: list unchanged files */
 					/* XXX -  seems wrong */
 	u32	pending:1;		/* -p: list pending files */
 	u32     gfile:1;     		/* print gfile name	*/
@@ -47,16 +49,16 @@ private	jmp_buf	sfind_exit;
 private project *proj;
 private options	opts;
 private globv	ignore; 
-private u32	 d_count, s_count, x_count; /* progress counter */
-private u32	 s_last, x_last; /* progress counter */
-private u32	 c_count, p_count;
+private u32	d_count, s_count, x_count; /* progress counter */
+private u32	s_last, x_last; /* progress counter */
+private u32	c_count, n_count, p_count;
 
-private void do_print(char state[5], char *file, char *rev);
-private void walk(char *dir, int level);
-private void file(char *f);
-private void sccsdir(char *dir, int level, DIR *sccs_dh, char buf[MAXPATH]);
-private void progress(int force);
-private int chk_diffs(sccs *s);
+private void	do_print(char state[5], char *file, char *rev);
+private void	walk(char *dir, int level);
+private void	file(char *f);
+private void	sccsdir(char *dir, int level, DIR *sccs_dh, char buf[MAXPATH]);
+private void	progress(int force);
+private int	chk_diffs(sccs *s);
 
 
 private void
@@ -115,6 +117,7 @@ init(char *name, int flags, MDBM *sDB, MDBM *gDB)
 		*p = 's'; /* because hasfile() stomps */
 	}
 	unless (opts.splitRoot) flags |= INIT_ONEROOT;
+	if (strneq(name, "./", 2)) name += 2;
 	s = sccs_init(name, flags|INIT_SAVEPROJ, proj);
         if (s && !proj) proj = s->proj;
         return (s);
@@ -172,7 +175,7 @@ sfind_main(int ac, char **av)
 		return (0);
 	}                
 
-	while ((c = getopt(ac, av, "aAcCdDeEgijklo:p|rRs:SuUvx")) != -1) {
+	while ((c = getopt(ac, av, "aAcCdDeEgijklno:p|rRs:SuUvx")) != -1) {
 		switch (c) {
 		    case 'a':	opts.all = 1; break;
 		    case 'A':	opts.pending = opts.Aflg = 1; break;
@@ -183,6 +186,7 @@ sfind_main(int ac, char **av)
 		    case 'i':	/* see below */
 		    case 'E':	opts.modified = 1;
 				opts.nflg = 1;
+				opts.names = 1;
 				opts.pending = 1;
 				/* fall thru */
 		    case 'e':	opts.junk = 1;
@@ -195,6 +199,7 @@ sfind_main(int ac, char **av)
 		    case 'j':	opts.junk = 1; break;
 		    case 'k':	sfiles_compat = 1; break;
 		    case 'l':   opts.locked = 1; break;
+		    case 'n':   opts.names = 1; break;
 		    case 'o':	unless (opts.out = fopen(optarg, "w")) {
 		    			perror(optarg);
 					exit(1);
@@ -238,13 +243,18 @@ usage:				system("bk help -s sfiles");
 	 * setup a default mode for them
 	 */
 	if (!opts.unlocked && !opts.locked && !opts.junk && !opts.extras &&
-	    !opts.modified && !opts.nflg && !opts.pending) {
+	    !opts.modified && !opts.nflg && !opts.pending && !opts.names) {
 		opts.unlocked = 1;
 		opts.locked = 1;
 	}
 
 	if (!av[optind]) {
 		path = ".";
+		if (opts.names && !exists(BKROOT)) {
+			fprintf(stderr,
+			    "sfiles -n must be run at project root.\n");
+			exit(1);
+		}
 		walk(path, 0);
 	} else if (streq("-", av[optind])) {
 		setmode(0, _O_TEXT); /* read file list in text mode */
@@ -258,6 +268,11 @@ usage:				system("bk help -s sfiles");
 			}
 		}
 	} else {
+		if (opts.names && !exists(BKROOT)) {
+			fprintf(stderr,
+			    "sfiles -n must be run at project root.\n");
+			exit(1);
+		}
                 for (i = optind; i < ac; ++i) {
                         localName2bkName(av[i], av[i]);
                         if (isdir(av[i])) {
@@ -287,10 +302,18 @@ chk_sfile(char *name, char state[5])
 		if (exists(name)) {
 			state[LSTATE] = 'l';
 			s[1] = 's';
-			if (opts.modified && 
-			    (sc = init(name, INIT_NOCKSUM, 0, 0)) &&
-			    chk_diffs(sc)) { 
+			if (opts.modified || opts.names) {
+			    sc = init(name, INIT_NOCKSUM, 0, 0);
+			}
+			if (opts.modified && sc && chk_diffs(sc)) { 
 				state[CSTATE] = 'c';
+			}
+			if (opts.names && sc) {
+				delta	*d = sccs_top(sc);
+
+				unless (streq(sc->gfile, d->pathname)) {
+					state[NSTATE] = 'n';
+				}
 			}
 		} else {
 			s[1] = 'z';
@@ -300,6 +323,16 @@ chk_sfile(char *name, char state[5])
 				state[LSTATE] = 'u';
 			}
 			s[1] = 's';
+			if (opts.names && 
+			    (sc = init(name, INIT_NOCKSUM, 0, 0))) {
+				delta	*d = sccs_top(sc);
+
+				unless (streq(sc->gfile, d->pathname)) {
+					state[NSTATE] = 'n';
+				}
+				sccs_free(sc);
+				sc = 0;
+			}
 		}
 	}
 	return (sc);
@@ -489,6 +522,10 @@ print_summary()
 		    "%6d files with checked in, but not committed, deltas.\n",
 		    p_count);
 	}
+	if (opts.names) {
+		fprintf(opts.out,
+		    "%6d files in incorrect locations.\n", n_count);
+	}
 }
 
 
@@ -512,6 +549,10 @@ walk(char *dir, int level)
 #ifndef WIN32
         ino_t	lastInode = 0;
 #endif                                 
+
+	sprintf(buf, "%s/.bk_skip", dir);
+	if (exists(buf)) return;
+
 	if (level == 0) {
 		char tmp[MAXPATH];
 
@@ -756,6 +797,7 @@ do_print(char state[5], char *file, char *rev)
 {
 
 	if (state[PSTATE] == 'p') p_count++;
+	if (state[NSTATE] == 'n') n_count++;
 	switch (state[CSTATE]) {
 	    case 'j': break;
 	    case 'x': unless (isIgnored(file)) x_count++; break;
@@ -781,6 +823,8 @@ do_print(char state[5], char *file, char *rev)
 	    case 'j':	if (opts.junk && !isTagFile(file)) goto print; break;
 	    case 'x':	if (opts.extras && !isIgnored(file)) goto print; break;
 	}
+
+	if ((state[NSTATE] == 'n') && opts.names) goto print;
 	return;
 
 print:	print_it(state, file, rev);
@@ -952,6 +996,19 @@ skip:			mdbm_close(gDB);
 				state[LSTATE] = 'l';
 			} else {
 				state[LSTATE] = 'u';
+			}
+			file[0] = 's';
+			concat_path(buf, dir, "SCCS");
+			concat_path(buf, buf, file);
+			if (opts.names &&
+			    (s = init(buf, INIT_NOCKSUM, sDB, gDB))) {
+				delta	*d = sccs_top(s);
+
+				unless (streq(s->gfile, d->pathname)) {
+					state[NSTATE] = 'n';
+				}
+				sccs_free(s);
+				s = 0;
 			}
 		}
 

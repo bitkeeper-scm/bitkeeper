@@ -45,7 +45,7 @@ cores
 echo $N Clone repository ............................................$NL
 cd $HERE
 bk clone $Q $HERE/project $HERE/copy || { echo failed; exit 1; }
-bk -r $HERE/copy  admin -Z 
+bk -r$HERE/copy  admin -Z 
 [ -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
 [ -f copy/BitKeeper/log/parent ] || { echo no parent; exit 1; }
 parent=`cat copy/BitKeeper/log/parent`
@@ -233,7 +233,7 @@ if [ $? -ne 0 ]; then echo failed; cat push.out; exit 1; fi
 echo OK
 echo $N pull with a delete event ....................................$NL
 bk clone $Q $HERE/project $HERE/copy2
-bk -r $HERE/copy2 admin -Z 
+bk -r$HERE/copy2 admin -Z 
 cd $HERE/project/src
 bk rm 'F!O#O$ B%A^R&RR(R)RR'
 bk commit $Q -ydelete
