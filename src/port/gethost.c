@@ -52,6 +52,10 @@ gethost(char *host, int hlen, int envOK)
 {
 	struct	hostent *hp;
 	char 	*h, *p;
+#ifndef	WIN32
+	char	*q, buf[MAXPATH], domain[MAXPATH];
+	FILE	*f;
+#endif
 
 	host[0] = 0;
 	if (envOK && (h = getenv("BK_HOST")) && !getenv("BK_EVENT")) {
