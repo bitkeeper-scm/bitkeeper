@@ -251,12 +251,22 @@ do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 	if (pending(LOGGING_OK)) {
 		int	len = strlen(LOGGING_OK);
 
-		f = fopen(pendingFiles, "rt+");
+		/*
+		 * Redhat 5.2 cannot handle opening a file
+		 * in both read and write mode fopen(file, "rt+") at the
+		 * same time. Win32 is likely to have same problem too
+		 * So we open the file in read mode close it and re-open
+		 * it in write mode
+		 */
+		f = fopen(pendingFiles, "rt");
+		assert(f);
 		while (fnext(buf, f)) {
 			if (strneq(LOGGING_OK, buf, len) && buf[len] == '@') {
 				goto out;
 			}
 		}
+		fclose (f);
+		f = fopen(pendingFiles, "at");
 		fprintf(f, "%s@+\n", LOGGING_OK);
 out:		fclose(f);
 	}
