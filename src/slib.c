@@ -12,6 +12,7 @@
 #include "zgets.h"
 #include "bkd.h"
 #include "logging.h"
+#include "tomcrypt/mycrypt.h"
 WHATSTR("@(#)%K%");
 
 private delta	*rfind(sccs *s, char *rev);
@@ -2116,7 +2117,7 @@ sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
 			} else {
 				d = cset2rev(sc, s+1);
 			}
-		} else if (strchr(s, '|')) {
+		} else if (strchr(s, '|') || isMD5key(s)) {
 			d = sccs_findKey(sc, s);
 		} else {
 			d = findrev(sc, s);
@@ -13823,8 +13824,17 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
+	if (streq(kw, "MD5KEY")) {
+		char	b64[32];
+
+		sccs_md5delta(s, d, b64);
+		fs(b64);
+		return (strVal);
+	}
+
 	if (streq(kw, "KEY")) {
-		char key[MAXKEY];
+		char	key[MAXKEY];
+
 		sccs_sdelta(s, d, key);
 		fs(key);
 		return (strVal);
@@ -15227,7 +15237,41 @@ sccs_findKeyDB(sccs *s, u32 flags)
 }
 
 /*
+ * Find an MD5 based key.  This is slow, it has to walk the whole table.
+ * We walk in newest..oldest order hoping for something recent.
+ */
+delta	*
+sccs_findMD5(sccs *s, char *md5)
+{
+	char	buf[32];
+	u32	date;
+	delta	*d;
+
+	sscanf(md5, "%08x", &date);
+	if (s->tree->date > date) return (0);
+	if (date > s->table->date) return (0);
+	sccs_md5delta(s, s->tree, buf);
+	if (streq(buf, md5)) return (s->tree);
+	for (d = s->table; d; d = d->next) {
+		unless (d->date == date) continue;
+		sccs_md5delta(s, d, buf);
+		if (streq(buf, md5)) return (d);
+	}
+	return (0);
+}
+
+int
+isMD5key(char *key)
+{
+	return (isxdigit(key[0]) && (strlen(key) == 30));
+}
+
+/*
  * Take a key like sccs_sdelta makes and find it in the tree.
+ *
+ * XXX - the findkeydb should be indexed by date and yield the
+ * first delta table entry which matches that date.  Then we
+ * could use it here and in sccs_findMD5().
  */
 delta *
 sccs_findKey(sccs *s, char *key)
@@ -15242,6 +15286,7 @@ sccs_findKey(sccs *s, char *key)
 
 	unless (s && HASGRAPH(s)) return (0);
 	debug((stderr, "findkey(%s)\n", key));
+	if (isMD5key(key)) return (sccs_findMD5(s, key));
 	if (s->findkeydb) {	/* if cached by calling sccs_findKeyDB() */
 		datum	k, v;
 		k.dptr = key;
@@ -15350,6 +15395,36 @@ sccs_sdelta(sccs *s, delta *d, char *buf)
 	for (tail = buf; *tail; tail++);
 	len += sprintf(tail, "|%s", d->random);
 	return (len);
+}
+
+/*
+ * This is really not an md5, it is <date><md5> so we can find the key fast.
+ */
+void
+sccs_md5delta(sccs *s, delta *d, char *b64)
+{
+	char	key[MAXKEY+16];
+	char	md5[32];
+	int	hash = register_hash(&md5_desc);
+#define	ul	unsigned long	/* XXX - tomcrypt api sucks */
+	ul	md5len, b64len;
+	char	*p;
+
+	sccs_sdelta(s, d, key);
+	if (s->tree->random) strcat(key, s->tree->random);
+	hash_memory(hash, key, strlen(key), md5);
+	b64len = 30;
+	md5len = hash_descriptor[hash].hashsize;
+	base64_encode(md5, md5len, key, &b64len);
+	for (p = key; *p; p++) {
+		if (*p == '/') *p = '-';	/* dash */
+		if (*p == '+') *p = '_';	/* underscore */
+		if (*p == '=') {
+			*p = 0;
+			break;
+		}
+	}
+	sprintf(b64, "%08x%s", (u32)d->date, key);
 }
 
 void
