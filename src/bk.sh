@@ -26,14 +26,14 @@ __cd2root() {
 # Run csettool on the list of csets, if any
 _csets() {
 	__cd2root
-	if [ -f RESYNC/BitKeeper/etc/csets ]
-	then	echo Viewing RESYNC/BitKeeper/etc/csets
+	if [ -f RESYNC/BitKeeper/etc/csets-in ]
+	then	echo Viewing RESYNC/BitKeeper/etc/csets-in
 		cd RESYNC
-		exec bk csettool "$@" -r`cat BitKeeper/etc/csets`
+		exec bk csettool "$@" -r`cat BitKeeper/etc/csets-in`
 	fi
-	if [ -f BitKeeper/etc/csets ]
-	then	echo Viewing BitKeeper/etc/csets
-		exec bk csettool "$@" -r`cat BitKeeper/etc/csets`
+	if [ -f BitKeeper/etc/csets-in ]
+	then	echo Viewing BitKeeper/etc/csets-in
+		exec bk csettool "$@" -r`cat BitKeeper/etc/csets-in`
 	fi
 	echo "Can not find csets to view."
 	exit 1
