@@ -201,8 +201,10 @@ usage:		fprintf(stderr, takepatch_help);
 }
 
 /*
- * If either of the logging_ok or config files are not present, copy them
- * into the tree.
+ * Copy any needed config files into the RESYNC tree.
+ *	logging_ok
+ *	config
+ *	gone
  */
 private void
 get_configs()
@@ -220,6 +222,11 @@ get_configs()
 		    "RESYNC/BitKeeper/etc/SCCS/s.logging_ok");
 		assert(exists("RESYNC/BitKeeper/etc/SCCS/s.logging_ok"));
 	}
+	/* XXX - if this is edited, we don't get those changes */
+	if (exists("BitKeeper/etc/SCCS/s.gone")) {
+		system("cp BitKeeper/etc/SCCS/s.gone "
+		    "RESYNC/BitKeeper/etc/SCCS/s.gone");
+    	}
 }
 
 private	delta *
