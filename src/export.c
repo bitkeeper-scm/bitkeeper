@@ -51,8 +51,9 @@ usage:			fprintf(stderr,
 	unless (type) type = "plain";
 	if (streq(type, "patch")) {
 		unless (diff_style) diff_style = "u";
-		sprintf(buf, "bk rset -hr%s | bk gnupatch -d%c %s %s",
-		    rev, diff_style[0], hflag ? "-h" : "", tflag ? "-T" : "");
+		sprintf(buf, "bk rset -hr%s %s %s | bk gnupatch -d%c %s %s",
+		    rev, include, exclude,
+		    diff_style[0], hflag ? "-h" : "", tflag ? "-T" : "");
 		return (system(buf));
 	}
 
@@ -106,14 +107,6 @@ usage:			fprintf(stderr,
 		*q++ = '\0';
 		d = findrev(s, q);
 		assert(d);
-		/*
-		 * Do not export file under the BitKeeper directory
-		 */
-		if ((strlen(p) >= 10) &&
-		    strneq("BitKeeper/", p, 10)) {
-			sccs_free(s);
-			continue;
-		}
 		sprintf(output, "%s/%s", dst_path, p);
 		unless (vflag) flags |= SILENT;
 		unless (kflag) flags |= GET_EXPAND;

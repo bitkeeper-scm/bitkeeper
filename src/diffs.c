@@ -26,7 +26,7 @@ private	char	*diffs_help = "\n\
 usage: diffs [-acDMsuU] [-d<d>] [-r<r>] [files...]\n\n\
     -a		do diffs on all sfiles\n\
     -c		do context diffs\n\
-    -C<r>	show all changes made by cset containing rev <r>\n
+    -C<r>	show all changes made by cset containing rev <r>\n\
     -d<dates>	diff using date or symbol\n\
     -D		prefix lines with dates\n\
     -f		prefix lines with file names\n\
@@ -36,7 +36,7 @@ usage: diffs [-acDMsuU] [-d<d>] [-r<r>] [files...]\n\n\
     -p		procedural diffs, like diff -p\n\
     -P		produce patch diffs, similar to diff -Nur\n\
     -r<r>	diff revision <r>\n\
-    -R<r>	diffs between parent of <r> and <r>\n
+    -R<r>	diffs between parent of <r> and <r>\n\
     -s		do side-by-side\n\
     -u		do unified diffs\n\
     -U		prefix lines with user names\n\
