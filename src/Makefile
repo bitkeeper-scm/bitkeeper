@@ -15,7 +15,7 @@ LD	=cc
 CC_DEBUG=-g
 CC_FAST_DEBUG=-g -O2
 CC_FAST	=$(CC_FAST_DEBUG)
-CC_WALL=-Wall -Wno-parentheses -Wno-char-subscripts
+CC_WALL=-g -DWALL -DLINT -Wall -Wno-parentheses -Wno-char-subscripts
 INSTALL=install
 XTRA=
 #UWTLIB is used on win32 only - passed in from build.sh
@@ -166,8 +166,8 @@ dp2 debug2:
 # -Wno-char-subscripts shuts up "subscript has type char", which comes
 # up all the time with broken <ctype.h> implementations.  (To be turned
 # back on for 1.1 or so.)
-Wall:
-	$(MAKE) CFLAGS="-g -DWALL -DLINT -Wall -Wno-parentheses -Wno-char-subscripts -DPURIFY" all
+gWall Wall:
+	$(MAKE) CFLAGS="$(CC_WALL)" all
 
 # production builds
 p:

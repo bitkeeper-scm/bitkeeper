@@ -841,8 +841,9 @@ fixDates(delta *prev, delta *d)
 	unless (prev) return;
 
 	if (prev->date <= d->date) {
-		prev->dateFudge = (d->date - prev->date) + 1;
-		prev->date += prev->dateFudge;
+		int	f = (d->date - prev->date) + 1;
+		prev->dateFudge += f;
+		prev->date += f;
 	}
 }
 
@@ -6967,8 +6968,6 @@ badcksum(sccs *s, int flags)
 			    "Bad checksum for %s, got %d, wanted %d\n",
 			    s->sfile, (sum_t)sum, filesum));
 		} else {
-			verbose((stderr,
-			    "Accepting old 7 bit checksum for %s\n", s->sfile));
 			return (0);
 		}
 	}
