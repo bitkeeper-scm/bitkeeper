@@ -2189,7 +2189,7 @@ nextdata(sccs *s)
  * %@%	user@host
  */
 private char *
-expand(sccs *s, delta *d, char *l)
+expand(sccs *s, delta *d, char *l, int *expanded)
 {
 	static	char buf[MAXLINE];
 	char	*t = buf;
@@ -2197,6 +2197,7 @@ expand(sccs *s, delta *d, char *l)
 	time_t	now = 0;
 	struct	tm *tm;
 	u16	a[4];
+	int	expn = 0;
 
 	while (*l != '\n') {
 		if (l[0] != '%' || l[1] == '\n' || l[2] != '%') {
@@ -2211,14 +2212,18 @@ expand(sccs *s, delta *d, char *l)
 			strcpy(t, tmp); t += strlen(tmp); *t++ = ' ';
 			strcpy(t, d->rev); t += strlen(d->rev);
 			strcpy(t, "@(#)"); t += 4;
+			expn = 1;
 			break;
 
 		    case 'B':	/* branch name: XXX */
 			tmp = branchname(d); strcpy(t, tmp); t += strlen(tmp);
+			expn = 1;
 			break;
 
 		    case 'C':	/* line number - XXX */
-			*t++ = '%'; *t++ = 'C'; *t++ = '%'; break;
+			*t++ = '%'; *t++ = 'C'; *t++ = '%';
+			expn = 1;
+			break;
 
 		    case 'D':	/* today: 97/06/22 */
 			if (!now) { time(&now); tm = localtime(&now); }
@@ -2235,6 +2240,7 @@ expand(sccs *s, delta *d, char *l)
 				    tm->tm_year, tm->tm_mon+1, tm->tm_mday);
 				t += 8;
 			}
+			expn = 1;
 			break;
 
 		    case 'E':	/* most recent delta: 97/06/22 */
@@ -2246,12 +2252,14 @@ expand(sccs *s, delta *d, char *l)
 				}
 			}
 			strncpy(t, d->sdate, 8); t += 8;
+			expn = 1;
 			break;
 
 		    case 'F':	/* s.file name */
 			strcpy(t, "SCCS/"); t += 5;
 			tmp = basenm(s->sfile);
 			strcpy(t, tmp); t += strlen(tmp);
+			expn = 1;
 			break;
 
 		    case 'G':	/* most recent delta: 06/22/97 */
@@ -2265,6 +2273,7 @@ expand(sccs *s, delta *d, char *l)
 				}
 			}
 			*t++ = d->sdate[0]; *t++ = d->sdate[1];
+			expn = 1;
 			break;
 
 		    case 'H':	/* today: 06/22/97 */
@@ -2284,24 +2293,29 @@ expand(sccs *s, delta *d, char *l)
 				    tm->tm_mon+1, tm->tm_mday, tm->tm_year);
 				t += 8;
 			}
+			expn = 1;
 			break;
 
 		    case 'I':	/* name of revision: 1.1 or 1.1.1.1 */
 			strcpy(t, d->rev); t += strlen(d->rev);
+			expn = 1;
 			break;
 
 		    case 'K':	/* BitKeeper Key */
 		    	t += sccs_sdelta(t, d);
+			expn = 1;
 			break;
 
 		    case 'L':	/* 1.2.3.4 -> 2 */
 			scanrev(d->rev, &a[0], &a[1], 0, 0);
 			sprintf(t, "%d", a[1]); t += strlen(t);
+			expn = 1;
 			break;
 
 		    case 'M':	/* mflag or filename: slib.c */
 			tmp = basenm(s->gfile);
 			strcpy(t, tmp); t += strlen(tmp);
+			expn = 1;
 			break;
 
 		    case 'P':	/* full: /u/lm/smt/sccs/SCCS/s.slib.c */
@@ -2309,20 +2323,25 @@ expand(sccs *s, delta *d, char *l)
 			tmp = fullname(g, 1);
 			free(g);
 			strcpy(t, tmp); t += strlen(tmp);
+			expn = 1;
 			break;
 
 		    case 'Q':	/* qflag */
-			*t++ = '%'; *t++ = 'Q'; *t++ = '%'; break;
+			*t++ = '%'; *t++ = 'Q'; *t++ = '%';
+			expn = 1;
+			break;
 
 		    case 'R':	/* release 1.2.3.4 -> 1 */
 			scanrev(d->rev, &a[0], 0, 0, 0);
 			sprintf(t, "%d", a[0]); t += strlen(t);
+			expn = 1;
 			break;
 
 		    case 'S':	/* rev number: 1.2.3.4 -> 4 */
 			a[3] = 0;
 			scanrev(d->rev, &a[0], &a[1], &a[2], &a[3]);
 			sprintf(t, "%d", a[3]); t += strlen(t);
+			expn = 1;
 			break;
 
 		    case 'T':	/* time: 23:04:04 */
@@ -2331,10 +2350,12 @@ expand(sccs *s, delta *d, char *l)
 			sprintf(t, "%02d:%02d:%02d",
 			    tm->tm_hour, tm->tm_min, tm->tm_sec);
 			t += 8;
+			expn = 1;
 			break;
 
 		    case 'U':	/* newest delta: 23:04:04 */
 			strcpy(t, &d->sdate[9]); t += 8;
+			expn = 1;
 			break;
 
 		    case 'W':	/* @(#)%M% %I%: @(#)slib.c 1.1 */
@@ -2342,13 +2363,18 @@ expand(sccs *s, delta *d, char *l)
 			tmp = basenm(s->gfile);
 			strcpy(t, tmp); t += strlen(tmp); *t++ = ' ';
 			strcpy(t, d->rev); t += strlen(d->rev);
+			expn = 1;
 			break;
 
 		    case 'Y':	/* tflag */
-			*t++ = '%'; *t++ = 'Y'; *t++ = '%'; break;
+			*t++ = '%'; *t++ = 'Y'; *t++ = '%';
+			expn = 1;
+			break;
 
 		    case 'Z':	/* @(#) */
-			strcpy(t, "@(#)"); t += 4; break;
+			strcpy(t, "@(#)"); t += 4;
+			expn = 1;
+			break;
 
 		    case '@':	/* user@host */
 			strcpy(t, d->user);
@@ -2358,6 +2384,7 @@ expand(sccs *s, delta *d, char *l)
 				strcpy(t, d->hostname);
 				t += strlen(d->hostname);
 			}
+			expn = 1;
 			break;
 
 		    default:	t[0] = l[0];
@@ -2369,6 +2396,7 @@ expand(sccs *s, delta *d, char *l)
 		l += 3;
 	}
 	*t++ = '\n'; *t = 0;
+	if (expanded) *expanded = expn;
 	return (buf);
 }
 
@@ -2388,12 +2416,13 @@ expand(sccs *s, delta *d, char *l)
  *	$State$
  */
 private char *
-rcsexpand(sccs *s, delta *d, char *l)
+rcsexpand(sccs *s, delta *d, char *l, int *expanded)
 {
 	static	char buf[MAXLINE];
 	char	*t = buf;
 	char	*tmp, *g;
 	delta	*h;
+	int	expn = 0;
 
 	while (*l != '\n') {
 		if (l[0] != '$') {
@@ -2413,6 +2442,7 @@ rcsexpand(sccs *s, delta *d, char *l)
 			*t++ = ' ';
 			*t++ = '$';
 			l += 8;
+			expn = 1;
 		} else if (strneq("$Date$", l, 6)) {
 			strcpy(t, "$Date: "); t += 7;
 			strncpy(t, d->sdate, 17); t += 17;
@@ -2424,6 +2454,7 @@ rcsexpand(sccs *s, delta *d, char *l)
 			*t++ = ' ';
 			*t++ = '$';
 			l += 6;
+			expn = 1;
 		} else if (strneq("$Header$", l, 8)) {
 			strcpy(t, "$Header: "); t += 9;
 			tmp = s->sfile;
@@ -2448,6 +2479,7 @@ rcsexpand(sccs *s, delta *d, char *l)
 			*t++ = ' ';
 			*t++ = '$';
 			l += 8;
+			expn = 1;
 		} else if (strneq("$Id$", l, 4)) {
 			strcpy(t, "$Id: "); t += 5;
 			tmp = basenm(s->sfile);
@@ -2472,27 +2504,33 @@ rcsexpand(sccs *s, delta *d, char *l)
 			*t++ = ' ';
 			*t++ = '$';
 			l += 4;
+			expn = 1;
 		} else if (strneq("$Locker$", l, 8)) {
 			strcpy(t, "$Locker: <Not implemented> $"); t += 28;
 			l += 8;
+			expn = 1;
 		} else if (strneq("$Log$", l, 5)) {
 			strcpy(t, "$Log: <Not implemented> $"); t += 25;
 			l += 5;
+			expn = 1;
 		} else if (strneq("$Name$", l, 6)) {
 			strcpy(t, "$Name: <Not implemented> $"); t += 26;
 			l += 6;
+			expn = 1;
 		} else if (strneq("$RCSfile$", l, 9)) {
 			strcpy(t, "$RCSfile: "); t += 10;
 			tmp = basenm(s->sfile);
 			strcpy(t, tmp); t += strlen(tmp);
 			*t++ = ' '; *t++ = '$';
 			l += 9;
+			expn = 1;
 		} else if (strneq("$Revision$", l, 10)) {
 			strcpy(t, "$Revision: "); t += 11;
 			strcpy(t, d->rev); t += strlen(d->rev);
 			*t++ = ' ';
 			*t++ = '$';
 			l += 10;
+			expn = 1;
 		} else if (strneq("$Source$", l, 8)) {
 			strcpy(t, "$Source: "); t += 9;
 			g = sccs2name(s->sfile);
@@ -2501,6 +2539,7 @@ rcsexpand(sccs *s, delta *d, char *l)
 			strcpy(t, tmp); t += strlen(tmp);
 			*t++ = ' '; *t++ = '$';
 			l += 8;
+			expn = 1;
 		} else if (strneq("$State$", l, 7)) {
 			strcpy(t, "$State: "); t += 8;
 			*t++ = ' ';
@@ -2508,11 +2547,13 @@ rcsexpand(sccs *s, delta *d, char *l)
 			t += 9;
 			*t++ = ' '; *t++ = '$';
 			l += 7;
+			expn = 1;
 		} else {
 			*t++ = *l++;
 		}
 	}
 	*t++ = '\n'; *t = 0;
+	if (expanded) *expanded = expn;
 	return (buf);
 }
 
@@ -2914,6 +2955,7 @@ misc(sccs *s)
 			if (bits & X_BITKEEPER) s->state |= S_BITKEEPER;
 			if (bits & X_YEAR4) s->state |= S_YEAR4;
 			if (bits & X_RCSEXPAND) s->state |= S_RCS;
+			if (bits & X_EXPAND1) s->state |= S_EXPAND1;
 #ifdef S_ISSHELL
 			if (bits & X_ISSHELL) s->state |= S_ISSHELL;
 #endif
@@ -4627,13 +4669,15 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	if (flags & MODNAME) base = basenm(s->gfile);
 	
 	f = setupOutput(s, printOut, flags, d);
-	unless (f) return 1;
+	unless (f) {
+out:		if (slist) free(slist);
+		if (state) free(state);
+		return 1;
+	}
 	popened = openOutput(encoding, f, &out);
 	unless (out) {
 		fprintf(stderr, "Can't open %s for writing\n", f);
-		if (slist) free(slist);
-		if (state) free(state);
-		return 1;
+		goto out;
 	}
 	seekto(s, s->data);
 	if (s->encoding == E_GZIP) zgets_init(s->where, s->size - s->data);
@@ -4666,7 +4710,11 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 			if (flags & EXPAND) {
 				for (e = buf; *e != '%' && *e != '\n'; e++);
 				if (*e == '%') {
-					e = expand(s, d, buf);
+					int didit;
+					e = expand(s, d, buf, &didit);
+					if (didit && (s->state & S_EXPAND1)) {
+						flags &= ~EXPAND;
+					}
 				} else {
 					e = buf;
 				}
@@ -4676,7 +4724,11 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 
 				for (t = buf; *t != '$' && *t != '\n'; t++);
 				if (*t == '$') {
-					e = rcsexpand(s, d, e);
+					int didit;
+					e = rcsexpand(s, d, e, &didit);
+					if (didit && (s->state & S_EXPAND1)) {
+						flags &= ~RCSEXPAND;
+					}
 				}
 			}
 			switch (encoding) {
@@ -5178,7 +5230,8 @@ inline int
 isAscii(c)
 {
 	if (c & 0x60) return (1);
-	return (c == '\n') || (c == '\b') || (c == '\r') || (c == '\t');
+	return (c == '\n') || (c == '\b') ||
+		(c == '\r') || (c == '\t') || (c == '\f');
 }
 
 /*
@@ -5420,6 +5473,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 	if (s->state & S_BITKEEPER) bits |= X_BITKEEPER;
 	if (s->state & S_YEAR4) bits |= X_YEAR4;
 	if (s->state & S_RCS) bits |= X_RCSEXPAND;
+	if (s->state & S_EXPAND1) bits |= X_EXPAND1;
 #ifdef S_ISSHELL
 	if (s->state & S_ISSHELL) bits |= X_ISSHELL;
 #endif
@@ -5459,10 +5513,10 @@ expandnleq(sccs *s, delta *d, char *fbuf, char *sbuf, int flags)
 	if (s->encoding != E_ASCII) return (0);
 	if (!(flags & (EXPAND|RCSEXPAND))) return 0;
 	if (flags & EXPAND) {
-		e = expand(s, d, e);
+		e = expand(s, d, e, 0);
 	}
 	if (flags & RCSEXPAND) {
-		e = rcsexpand(s, d, e);
+		e = rcsexpand(s, d, e, 0);
 	}
 	return strnleq(e, sbuf);
 }
@@ -6238,7 +6292,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 		    "%s not checked in, use -i flag.\n", s->gfile));
 		unlock(s, 'z');
 		if (prefilled) sccs_freetree(prefilled);
-		return (1);
+		return (-1);
 	}
 	if (!diffs && isRegularFile(s->mode)) {
 		popened = openInput(s, flags, &gfile);
@@ -6246,7 +6300,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 			perror(s->gfile);
 			unlock(s, 'z');
 			if (prefilled) sccs_freetree(prefilled);
-			return (1);
+			return (-1);
 		}
 	}
 	/* This should never happen - the zlock should protect */
@@ -6256,7 +6310,8 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 		if (gfile && (gfile != stdin)) {
 			if (popened) pclose(gfile); else fclose(gfile);
 		}
-		return (1);
+		unlock(s, 'z');
+		return (-1);
 	}
 	sfile = fopen(s->sfile, "wb"); /* open in binary mode */
 	if (prefilled) {
@@ -6295,7 +6350,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 		if (prefilled) sccs_freetree(prefilled);
 		fprintf(stderr, "checkin: bad revision: %s for %s\n",
 		    n->rev, s->sfile);
-		return (1);
+		return (-1);
 	}
 	unless (hasComments(n)) {
 		sprintf(buf, "%s created on %s by %s",
@@ -7384,6 +7439,11 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		    case 'e':	if (*v) new_enc = atoi(v);
 				verbose((stderr, "New encoding %d\n", new_enc));
 		   		break;
+		    case 'E':	if (add)
+					sc->state |= S_EXPAND1;
+				else
+					sc->state &= ~S_EXPAND1;
+				break;
 		    case 'B':	if (add)
 					sc->state |= S_BITKEEPER;
 				else
@@ -8399,7 +8459,8 @@ out:
 			OUT;
 		}
 	} else unless (diffs) {
-		goto out;
+		fprintf(stderr, "delta: must have diffs or gfile\n");
+		OUT;
 	}
 	unless (IS_WRITABLE(s) || diffs) {
 		unless (HAS_PFILE(s)) {
@@ -8697,7 +8758,7 @@ sccs_diffs(sccs *s, char *r1, char *r2, int flags, char kind, FILE *out)
 	char	tmpfile[MAXPATH];
 	char	diffFile[30];
 	char	*columns;
-	char	tmp2[32];
+	char	tmp2[MAXPATH];
 	char	buf[MAXLINE];
 	pfile	pf;
 	int	first = 1;
@@ -9727,6 +9788,7 @@ sccs_perfile(sccs *s, FILE *out)
 	if (s->encoding) fprintf(out, "f e %d\n", s->encoding);
 	if (s->state & S_YEAR4) i |= X_YEAR4;
 	if (s->state & S_RCS) i |= X_RCSEXPAND;
+	if (s->state & S_EXPAND1) i |= X_EXPAND1;
 	if (i) fprintf(out, "f x %u\n", i);
 	EACH(s->text) fprintf(out, "T %s\n", s->text[i]);
 	fprintf(out, "\n");
@@ -9772,6 +9834,7 @@ err:			fprintf(stderr,
 		unused = 0;
 		if (bits & X_YEAR4) s->state |= S_YEAR4;
 		if (bits & X_RCSEXPAND) s->state |= S_RCS;
+		if (bits & X_EXPAND1) s->state |= S_EXPAND1;
 		unused = 0;
 		unless (fnext(buf, in)) goto err; chop(buf); (*lp)++;
 	}
@@ -10511,7 +10574,11 @@ sccs_keyinit(char *key,int flags, MDBM *idDB)
 	}
 	s = sccs_init(p, flags);
 	free(p);
-	unless (s && HAS_SFILE(s)) return (0);
+	unless (s) return (0);
+	unless (HAS_SFILE(s)) {
+		sccs_free(s);
+		return (0);
+	}
 	sccs_sdelta(buf, sccs_ino(s));
 	unless (streq(buf, key)) {
 		sccs_free(s);

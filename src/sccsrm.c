@@ -10,26 +10,26 @@ WHATSTR("%W%");
 int
 main(int ac, char **av)
 {
-	char	*name;
-	char	*dest;
+	char	*name, c;
 	int	errors = 0;
-	int	dofree = 0;
+	int 	useCommonDir = 0;
 
 	debug_main(av);
+        while ((c = getopt(ac, av, "d")) != -1) {
+                switch (c) {
+                    case 'd': useCommonDir++; break;
+                    default:
+                        fprintf(stderr, "delta: usage error\n");
+                        return (1);
+                }
+        }                    
 	if (ac < 2) {
 usage:		fprintf(stderr, "usage: %s file1 file2 ...\n", av[0]);
 		exit(1);
 	}
-	dest = av[ac-1];
-	if ((name = strrchr(dest, '/')) &&
-	    (name >= dest + 4) && strneq(name - 4, "SCCS/s.", 7)) {
-		dest = sccs2name(dest);
-		dofree++;
+	for (name = sfileFirst("sccsrm",&av[optind], 0); name; name = sfileNext()) {
+		errors |= sccs_rm(name, useCommonDir);
 	}
-	for (name = sfileFirst("sccsrm",&av[1], 0); name; name = sfileNext()) {
-		errors |= sccs_rm(name, dest);
-	}
-	if (dofree) free(dest);
 	sfileDone();
 	purify_list();
 	return (errors);
@@ -38,48 +38,43 @@ usage:		fprintf(stderr, "usage: %s file1 file2 ...\n", av[0]);
 #include "comments.c"
 			
 int
-sccs_rm(char *name, char *dest)
+sccs_rm(char *name, int useCommonDir)
 {
-	char	path[MAXPATH];
-	char	cmd[MAXPATH];
-	char	*gfile, *sfile;
+	char	path[MAXPATH], cmd[MAXPATH], root[MAXPATH], commonDir[MAXPATH];
+	char	*gfile, *sfile, *lazy;
 	sccs	*s;
 	delta	*d;
 	char	*t, *b;
 	int	try = 0;
 	int	error = 0;
+	extern	char *_relativeName();
 
-	s = sccs_init(name, NOCKSUM);
-	unless (HAS_SFILE(s)) {
-		fprintf(stderr, "sccsrm: not an SCCS file: %s\n", name);
-		sccs_free(s);
-		return (1);
+	sfile = name2sccs(name);
+	b = basenm(sfile);
+	if (useCommonDir) {
+		_relativeName(&b[2], 0, 0, 1, root);
+		unless(root[0]) {
+			fprintf(stderr, "sccsrm: can not find root?\n");
+			return (1);
+		}
+		sprintf(path, "%s/BitKeeper/deleted/SCCS", sPath(root, 1));
+		t = &path[strlen(path)];
+		*t++ = '/';
+	} else {
+		strcpy(path, sfile);
+		t = strrchr(path, '/');
+		assert(t);
+		t++;
 	}
-	if (IS_EDITED(s)) {
-		fprintf(stderr, "sccsrm: refusing to move edited %s\n", name);
-		sccs_free(s);
-		return (1);
-	}
-	if (access(s->gfile, W_OK) == 0) {
-		fprintf(stderr, "sccsrm: writable but not edited %s?\n", name);
-		sccs_free(s);
-		return (1);
-	}
-	strcpy(path, s->sfile);
-	t = strrchr(path, '/');
-	assert(t);
-	t++;
-	b = basenm(s->sfile);
 	for (try = 0; ; try++) {
 		if (try) {
-			sprintf(t, "s..del-%s~%d", b, try);
+			sprintf(t, "s..del-%s~%d", &b[2], try);
 		} else {
-			sprintf(t, "s..del-%s", b);
+			sprintf(t, "s..del-%s", &b[2]);
 		}
 		unless (exists(path)) break;
 	}
-	sprintf(cmd, "bk sccsmv %s %s\n", s->sfile, path);
-	error = system(cmd);
-out:	sccs_free(s);
+	error |= sccs_mv(sfile, path, 0, 1);
+out:	free(sfile);
 	return (error);
 }

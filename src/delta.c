@@ -131,6 +131,18 @@ usage:			fprintf(stderr, "delta: usage error, try --help.\n");
 			name = sfileNext();
 			continue;
 		}
+
+		if ((av[optind] == NULL) && !IS_EDITED(s)){
+			/*
+			 * If user did not specified any files, 
+			 * take only p-locked file in this directory.
+			 */
+			if (d) sccs_freetree(d);
+			sccs_free(s);
+			name = sfileNext();
+			continue;
+		}
+
 		if (flags & AUTO_CHECKIN) {
 			if (HAS_SFILE(s)) {
 				flags &= ~NEWFILE;

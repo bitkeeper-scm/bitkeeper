@@ -1,5 +1,4 @@
 #include "sccs.h"
-#include <dirent.h>
 #ifdef WIN32
 #include "uwtlib/ftw.h"
 #else
@@ -189,7 +188,10 @@ func(const char *filename, const struct stat *sb, int flag)
 			*s = 's';
 			if (lFlg || (cFlg && hasDiffs(t))) {
 				printf("%s\n", name(t));
-			} else if (uFlg) {
+			}
+		} else if (uFlg) {
+			*s = 's';
+			if (exists(sfile)) { /* check for s file */
 				printf("%s\n", name(t));
 			}
 		}
@@ -200,6 +202,7 @@ func(const char *filename, const struct stat *sb, int flag)
 	/* XXX TODO: make this code work under split root config */
         for (s = file; *s; s++);
         for ( ; s > file; s--) if (s[-1] == '/') break;         /* CSTYLED */
+	if (s == file) return (0);
         if (!s || (s[0] != 's') || (s[1] != '.')) return (0);
 	/* XXX - this should be first. */
 	if (PFlg) {

@@ -858,6 +858,7 @@ EOF
 	mkdir -p "$1"
 	cd $1 || exit 1
 	mkdir -p BitKeeper/etc BitKeeper/bin BitKeeper/caches
+	mkdir -p BitKeeper/deleted/SCCS
 	cat <<EOF
 
 --------------------------------------------------------
@@ -1158,7 +1159,7 @@ function commit {
 	do	case "$opt" in
 		d) DOIT=yes;;
 		s) COPTS="-s $COPTS";;
-		S) COPTS="-S'$OPTARG' $COPTS";;
+		S) COPTS="-S$OPTARG $COPTS";;
 		y) DOIT=yes; GETIT=no; echo "$OPTARG" > /tmp/comments$$;;
 		Y) DOIT=yes; GETIT=no; cp "$OPTARG" /tmp/comments$$;;
 		esac

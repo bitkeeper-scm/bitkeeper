@@ -16,6 +16,7 @@
 #include <strings.h>
 #include <stdlib.h>
 #include <time.h>
+#include <utime.h>
 #include <unistd.h>
 #include <setjmp.h>
 #include <sys/time.h>
@@ -195,7 +196,7 @@ extern	char *strdup(char *s);
 #define S_EDITED	(S_SFILE|S_PFILE|S_GFILE)
 #define	S_RCS		0x00000400	/* expand RCS keywords */
 #define	S_BRANCHOK	0x00000800	/* branching allowed */
-/*			0x00001000	AVAILABLE */
+#define	S_EXPAND1	0x00001000	/* expand first line of keyowrds only */
 #define	S_CHMOD		0x00002000	/* change the file back to 0444 mode */
 #define	S_YEAR4		0x00004000	/* print out the year as 4 digits */
 #define	S_BADREVS	0x00008000	/* has corrupted revisions */
@@ -240,7 +241,8 @@ extern	char *strdup(char *s);
 #define	X_BITKEEPER	0x00000001	/* BitKeeper file, not SCCS */
 #define	X_RCSEXPAND	0x00000002	/* RCS keywords */
 #define	X_YEAR4		0x00000004	/* 4 digit years */
-#define	X_ISSHELL	0x00000008	/* this is shell script */
+#define	X_ISSHELL	0x00000008	/* This is a shell script */
+#define	X_EXPAND1	0x00000010	/* Expand first line of keywords only */
 
 /*
  * Encoding flags.

@@ -67,7 +67,7 @@ main(int ac, char **av, char **ev)
 	int	encoding = E_ASCII, error = 0;
 	int	bigpad = 0;
 	int	fastSymOK = 1, fastSym, dopath = 0, rmCset = 0, rmPath = 0;
-	int	doDates = 0;
+	int	doDates = 0, touchGfile = 0;
 	char	*m = 0;
 
 	debug_main(av);
@@ -140,8 +140,10 @@ main(int ac, char **av, char **ev)
 		    case 'q':	flags |= SILENT; break;
 		    case 'u':	doDates = 1; flags |= NEWCKSUM; break;
 		    case 'U':	encoding = E_ASCII; flags |= NEWCKSUM; break;
-		    case 'z':	flags |= NOCKSUM|NEWCKSUM; break;
-		    case 'Z':	encoding = E_GZIP; flags |= NEWCKSUM; break;
+		    case 'z':	flags |= NOCKSUM|NEWCKSUM; touchGfile++; break;
+		    case 'Z':	encoding = E_GZIP; flags |= NEWCKSUM;
+				touchGfile++;
+				break;
 		    default:	fprintf(stderr, "admin: bad option %c.\n", c);
 				goto usage;
 		}
@@ -248,6 +250,7 @@ main(int ac, char **av, char **ev)
 			}
 			error = 1;
 		}
+		if (touchGfile) touch(sc);
 next:		sccs_free(sc);
 		name = sfileNext();
 	}
@@ -419,4 +422,14 @@ setMerge(sccs *sc, char *merge, char *rev)
 	}
 	d->merge = p->serial;
 	return 0;
+}
+
+touch(sccs *s) 
+{
+	struct utimbuf ut;
+
+	/* TODO: We need to handle split root config here */
+	unless(s->gfile && exists(s->gfile)) return;
+	ut.actime = ut.modtime = time(0);
+	utime(s->gfile, &ut);
 }
