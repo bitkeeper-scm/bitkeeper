@@ -88,12 +88,15 @@ usage:			fprintf(stderr, "diffs: usage error, try --help\n");
 	 * do TOT if it isn't there.
 	 * If we specified no revs then there must be a gfile.
 	 */
-	if ((flags & GET_PREFIX) && (things != 2)) {
+	if ((flags & GET_PREFIX) && (things != 2) && !streq("-", av[ac-1])) {
 		fprintf(stderr,
 		    "%s: must have both revisions with -d|u|m\n", av[0]);
 		return (1);
 	}
 
+	/* XXX - if we are doing cset | diffs then we don't need the GFILE.
+	 * Currently turned off in sfiles.
+	 */
 	if (all || things) {
 		name = sfileFirst("diffs", &av[optind], 0);
 	} else {
