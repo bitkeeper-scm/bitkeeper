@@ -58,7 +58,8 @@ rechksum_main(int ac, char **av)
 		}
 		for (doit = 0, d = s->table; d; d = d->next) {
 			if ((d->type == 'D') && 
-			    ((s->state & S_CSET) || (d->added || d->deleted))) {
+			    ((s->state & S_CSET) || d->added ||
+			    d->deleted || d->include || d->exclude)) {
 				doit += resum(s, d, verbose, flags, old, dont);
 			}
 		}
@@ -91,12 +92,19 @@ resum(sccs *s, delta *d, int verbose, int flags, int old7bit, int dont)
 {
 	int	old, new;
 	int	encoding = s->encoding;
+	char	path[MAXPATH];
 
-	unless (sccs_restart(s)) { perror("restart"); exit(1); }
+	unless (s = sccs_restart(s)) {
+		perror("restart");
+		exit(1);
+	}
 
 	if (S_ISLNK(d->mode)) {
 		u8	*t;
 		u16	sum = 0;
+
+		/* don't complain about these, old BK binaries did this */
+		if (dont && !d->sum) return (0);
 
 		for (t = d->symlink; *t; sum += *t++);
 		if (sum == d->sum) return (0);
@@ -112,19 +120,14 @@ resum(sccs *s, delta *d, int verbose, int flags, int old7bit, int dont)
 		}
 	}
 
-	if (sccs_clean(s, SILENT)) {
-		fprintf(stderr,
-		    "Can't do checksums on unclean file %s\n", s->sfile);
-		return (0);
-	}
-
 	if (verbose>1) fprintf(stderr, "%s:%s\n", s->sfile, d->rev);
 
 	/* expand the file in the form that we checksum it */
 	if (s->encoding == E_UUENCODE) s->encoding = E_ASCII;
 
 	/* flags can't have EXPAND in them */
-	if (sccs_get(s, d->rev, 0, 0, 0, GET_SHUTUP|SILENT, "-")) {
+	gettemp(path, "resum");
+	if (sccs_get(s, d->rev, 0, 0, 0, GET_SHUTUP|SILENT|PRINT, path)) {
 		unless (BEEN_WARNED(s)) {
 			fprintf(stderr,
 			    "co of %s:%s failed, skipping it.\n",
@@ -136,11 +139,11 @@ resum(sccs *s, delta *d, int verbose, int flags, int old7bit, int dont)
 
 	s->encoding = encoding;
 
-	if (sumit(s->gfile, &old, &new, old7bit)) {
-		sccs_clean(s, SILENT);
+	if (sumit(path, &old, &new, old7bit)) {
+		unlink(path);
 		return (0);
 	}
-	sccs_clean(s, SILENT);
+	unlink(path);
 
 	if (d->sum == new) return (0);
 	if (dont) {
