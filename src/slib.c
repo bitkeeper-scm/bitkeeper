@@ -3738,6 +3738,7 @@ loadConfig(char *root, int convert)
 		return 0;
 	}
 	if (sccs_get(s1, 0, 0, 0, 0, SILENT|PRINT, x_config)) {
+		unlink(x_config);
 		sccs_free(s1);
 		return (0);
 	}
