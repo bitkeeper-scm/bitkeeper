@@ -10,6 +10,7 @@ typedef	struct {
 	u32	quiet:1;		/* -q: shut up */
 	u32	nospin:1;		/* -Q: no spin for the GUI */
 	u32	metaOnly:1;		/* -e empty patch */
+	u32	fullPatch:1;		/* -F force fullpatch */
 	u32	noresolve:1;		/* -R: don't run resolve at all */
 	u32	textOnly:1;		/* -t: don't pass -t to resolve */
 	u32	debug:1;		/* -d: debug */
@@ -45,7 +46,7 @@ pull_main(int ac, char **av)
 	bzero(&opts, sizeof(opts));
 	opts.gzip = 6;
 	opts.automerge = 1;
-	while ((c = getopt(ac, av, "c:deE:GilnqRtw|z|")) != -1) {
+	while ((c = getopt(ac, av, "c:deE:GFilnqRtw|z|")) != -1) {
 		switch (c) {
 		    case 'G': opts.nospin = 1; break;
 		    case 'i': opts.automerge = 0; break;	/* doc 2.0 */
@@ -57,6 +58,7 @@ pull_main(int ac, char **av)
 		    case 't': opts.textOnly = 1; break;		/* doc 2.0 */
 		    case 'd': opts.debug = 1; break;		/* undoc 2.0 */
 		    case 'e': opts.metaOnly = 1; break;		/* undoc 2.0 */
+		    case 'F': opts.fullPatch = 1; break;	/* undoc 2.0 */
 		    case 'E': 					/* doc 2.0 */
 			envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'c': try = atoi(optarg); break;	/* doc 2.0 */
@@ -214,7 +216,8 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	fputs("\n", f);
 	fclose(f);
 
-	sprintf(buf, "bk _listkey -q < %s >> %s", probe_list, msg_file);
+	sprintf(buf, "bk _listkey %s -q < %s >> %s",
+		opts.fullPatch ? "-F" : "", probe_list, msg_file);
 	status = system(buf); 
 	rc = WEXITSTATUS(status);
 	if (opts.debug) fprintf(stderr, "listkey returned %d\n", rc);
