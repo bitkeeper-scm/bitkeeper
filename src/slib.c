@@ -476,7 +476,7 @@ sccs_freetree(delta *tree)
 	if (!tree) return;
 
 	debug((stderr, "freetree(%s %s %d)\n",
-	    tree->rev, tree->sdate, tree->serial));
+	    notnull(tree->rev), notnull(tree->sdate), tree->serial));
 	sccs_freetree(tree->siblings);
 	sccs_freetree(tree->kid);
 	if (tree->comments) {
@@ -1800,7 +1800,8 @@ findrev(sccs *s, char *rev)
 	lod	*l;
 
 	debug((stderr,
-	    "findrev(%s in %s def=%s)\n", rev, s->sfile, defbranch(s)));
+	    "findrev(%s in %s def=%s)\n",
+	    notnull(rev), s->sfile, defbranch(s)));
 	if (!s->tree) return (0);
 	if (!rev || !*rev) rev = defbranch(s);
 
@@ -1992,7 +1993,8 @@ getedit(sccs *s, char **revp, char **lrev, int branch)
 	static	char buf[MAXREV];
 	static	char lbuf[MAXREV];
 
-	debug((stderr, "getedit(%s, %s, b=%d)\n", s->gfile, *revp, branch));
+	debug((stderr,
+	    "getedit(%s, %s, b=%d)\n", s->gfile, notnull(*revp), branch));
 	/*
 	 * use the findrev logic to get to the delta.
 	 */
@@ -2052,7 +2054,7 @@ ok:
 		} else {
 			sprintf(buf, "%d.%d.%d.%d", a, b, c, d+1);
 		}
-		debug((stderr, "getedit1(%s) -> %s\n", rev, buf));
+		debug((stderr, "getedit1(%s) -> %s\n", notnull(rev), buf));
 		*revp = buf;
 		goto lod;
 	}
@@ -2070,7 +2072,7 @@ ok:
 	R[0] = t->r[0]; R[1] = t->r[1]; R[2] = 1; R[3] = 1;
 	while (_rfind(t)) R[2]++;
 	sprintf(buf, "%d.%d.%d.%d", R[0], R[1], R[2], R[3]);
-	debug((stderr, "getedit2(%s) -> %s\n", rev, buf));
+	debug((stderr, "getedit2(%s) -> %s\n", notnull(rev), buf));
 	*revp = buf;
 
 lod:
@@ -3553,7 +3555,7 @@ mksccsdir(char *sfile)
 	    s[-1] == 'S' && s[-2] == 'C' && s[-3] == 'C' && s[-4] == 'S') {
 		*s = 0;
 #if defined(SPLIT_ROOT)
-		unless (exists(sfile)) mkDir(sfile);
+		unless (exists(sfile)) mkdir_p(sfile);
 #else
 		mkdir(sfile, 0775);
 #endif
@@ -4428,6 +4430,7 @@ openOutput(int encode, char *file, FILE **op)
 	int	toStdout = streq(file, "-");
 
 	assert(op);
+	debug((stderr, "openOutput(%x, %s, %x)\n", encode, file, op));
 	switch (encode) {
 	    case E_ASCII:
 	    case E_UUENCODE:
@@ -4438,7 +4441,7 @@ openOutput(int encode, char *file, FILE **op)
 			char *s = rindex(file, '/');
 			if (s) {
 				*s = 0; /* split off the file part */
-				unless (exists(file)) mkDir(file);
+				unless (exists(file)) mkdir_p(file);
 				*s = '/';
 			}                                          
 		}
@@ -4455,8 +4458,10 @@ openOutput(int encode, char *file, FILE **op)
 		break;
 	    default:
 		*op = NULL;
+		debug((stderr, "openOutput = %x\n", *op));
 		return (-1);
 	}
+	debug((stderr, "openOutput = %x\n", *op));
 	return (encode == E_UUGZIP);
 }
 
@@ -4626,7 +4631,7 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 		//unlinkGfile(s);
 		if (p) { /* if parent dir does not exist, creat it */
 			*p = 0; /* split off the file part */
-			unless (exists(f)) mkDir(f);
+			unless (exists(f)) mkdir_p(f);
 			*p = '/';
 		}                                          
 	}
@@ -4982,7 +4987,8 @@ sccs_get(sccs *s, char *rev,
 	char	*lrev = 0, *i2 = 0;
 
 	debug((stderr, "get(%s, %s, %s, %s, %s, %x, %s)\n",
-	    s->sfile, rev, mRev, iLst, xLst, flags, printOut));
+	    s->sfile, notnull(rev), notnull(mRev),
+	    notnull(iLst), notnull(xLst), flags, printOut));
 	unless (s->state & S_SOPEN) {
 		fprintf(stderr, "get: couldn't open %s\n", s->sfile);
 err:		if (i2) free(i2);
@@ -5023,7 +5029,7 @@ err:		if (i2) free(i2);
 		d = getedit(s, &rev, &lrev, f);
 		if (!d) {
 			fprintf(stderr, "get: can't find revision %s in %s\n",
-			    rev, s->sfile);
+			    notnull(rev), s->sfile);
 			s->state |= S_WARNED;
 		}
 		if (flags & PRINT) {
@@ -8954,7 +8960,7 @@ read_pfile(char *who, sccs *s, pfile *pf)
 	pf->mRev = mRev;
 	debug((stderr, "pfile(%s, %s, %s, %s, %s, %s, %s)\n",
     	    pf->oldrev, pf->newrev, user, pf->date,
-	    pf->iLst, pf->xLst, pf->mRev));
+	    notnull(pf->iLst), notnull(pf->xLst), notnull(pf->mRev)));
 	return (0);
 }
 

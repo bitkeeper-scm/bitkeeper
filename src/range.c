@@ -59,7 +59,8 @@ rangeAdd(sccs *sc, char *rev, char *date)
 	delta	*tmp;
 
 	assert(sc);
-	debug((stderr, "rangeAdd(%s, %s, %s)\n", sc->gfile, rev, date));
+	debug((stderr,
+	    "rangeAdd(%s, %s, %s)\n", sc->gfile, notnull(rev), notnull(date)));
 
 	if (sc->rstart && sc->rstop) return (-1);
 
