@@ -52,18 +52,18 @@ bk delta $Q -y2 foo.c
 bk commit $Q -y2
 cd $HERE/copy
 bk pull -t $Q || { echo failed; exit 1; }
-revs=`prs -hd:I: src/foo.c | wc -l`
+revs=`bk prs -hd:I: src/foo.c | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
 echo OK
 if [ $DO_REMOTE = YES ]; then
  echo $N Pull with explicit remote parent ............................$NL
  bk pull $Q localhost:$HERE/project || { echo failed; exit 1; }
- revs=`prs -hd:I: src/foo.c | wc -l`
+ revs=`bk prs -hd:I: src/foo.c | wc -l`
  [ $revs -eq 2 ] || { echo failed; exit 1; }
  echo OK
  echo $N Pull with explicit remote parent and username ...............$NL
  bk pull $Q $USER@localhost:$HERE/project || { echo failed; exit 1; }
- revs=`prs -hd:I: src/foo.c | wc -l`
+ revs=`bk prs -hd:I: src/foo.c | wc -l`
  [ $revs -eq 2 ] || { echo failed; exit 1; }
  echo OK
 else
@@ -72,18 +72,18 @@ else
 fi
 echo $N Pull with explicit local parent .............................$NL
 bk pull $Q $HOSTNAME:$HERE/project || { echo failed; exit 1; }
-revs=`prs -hd:I: src/foo.c | wc -l`
+revs=`bk prs -hd:I: src/foo.c | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
 echo OK
 echo $N Pull with explicit local parent and username ................$NL
 bk pull $Q $USER@$HOSTNAME:$HERE/project || { echo failed; exit 1; }
-revs=`prs -hd:I: src/foo.c | wc -l`
+revs=`bk prs -hd:I: src/foo.c | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
 echo OK
 echo $N Pull from subdirectory of repository ........................$NL
 cd src
 bk pull $Q || { echo failed; exit 1; }
-revs=`prs -hd:I: foo.c | wc -l`
+revs=`bk prs -hd:I: foo.c | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
 echo OK
 echo $N Pull with mergeable changes in child ........................$NL
@@ -165,7 +165,7 @@ whatever
 u
 EOF
 [ $? -eq 0 ] || { echo resolve failed; cat resolve.out; exit 1; }
-L=`get $Q -p src/h.h | wc -l`
+L=`bk get $Q -p src/h.h | wc -l`
 [ $L -eq 5 ] || { echo merge failed; exit 1; }
 cd $HERE
 cp -rp project project2

@@ -72,9 +72,9 @@ echo 2 > B
 echo 3 > C
 echo 4 > D
 echo 5 > E
-ci $Q -i A B C D E
+bk ci $Q -i A B C D E
 if [ ! -f SCCS/s.A ]; then echo failed to create history; exit 1; fi
-commit $S -f -y"This is a \"Change Set\""
+bk commit $S -f -y"This is a \"Change Set\""
 echo OK
 cores
 bk -r check -a
@@ -92,9 +92,9 @@ cp -rp project copy
 cd project
 echo "No conflicts" > no_conflicts
 bk new $Q no_conflicts
-commit $Q -ywhatever
+bk commit $Q -ywhatever
 cd $HERE
-resync $Q -at project copy
+bk resync $Q -at project copy
 cd copy
 if [ ! -f SCCS/s.no_conflicts ]
 then	echo failed to propogate no_conflicts; exit 1
@@ -110,9 +110,9 @@ cd project
 echo foo > no_conflicts
 bk new $Q no_conflicts
 bk mv no_conflicts renamed
-commit $Q -ywhatever2
+bk commit $Q -ywhatever2
 cd $HERE
-resync $Q -at project copy
+bk resync $Q -at project copy
 cd copy
 if [ ! -f SCCS/s.renamed ]
 then	echo failed to propogate renamed; exit 1
@@ -149,7 +149,7 @@ fi
 if [ "`cat copy/CONFLICT`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `prs -hr+ -d:I: copy/CONFLICT` != "1.1" ]
+if [ `bk prs -hr+ -d:I: copy/CONFLICT` != "1.1" ]
 then	echo 'Added new rev to CONFLICT?'; exit 1
 fi
 echo OK
@@ -175,7 +175,7 @@ fi
 if [ "`cat copy/CONFLICT`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `prs -hr+ -d:I: copy/CONFLICT` != "1.1" ]
+if [ `bk prs -hr+ -d:I: copy/CONFLICT` != "1.1" ]
 then	echo 'Added new rev to CONFLICT?'; exit 1
 fi
 echo OK
@@ -183,7 +183,7 @@ echo OK
 echo $N '  try to rename local to existing sfile in repository .......'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $Q $L copy 2>ERRORS <<EOF
 ml
 C
 q
@@ -201,7 +201,7 @@ echo $N '  try to rename local to existing gfile in repository .......'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
-resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $Q $L copy 2>ERRORS <<EOF
 ml
 GFILE
 q
@@ -218,7 +218,7 @@ echo OK
 echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
 ChangeSet
 q
@@ -236,7 +236,7 @@ echo OK
 echo $N '  resolve by renaming remote file but abort commit ..........'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-resolve -t $Q $L -t copy >/dev/null 2>&1 <<EOF
+bk resolve -t $Q $L -t copy >/dev/null 2>&1 <<EOF
 mr
 REMOTE
 a
@@ -261,7 +261,7 @@ echo OK
 echo $N '  resolve by renaming remote file using default comments ....'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-resolve -t $Q $L -t copy >/dev/null 2>&1 <<EOF
+bk resolve -t $Q $L -t copy >/dev/null 2>&1 <<EOF
 mr
 REMOTE
 u
@@ -280,10 +280,10 @@ fi
 if [ "`cat copy/REMOTE`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `prs -hr+ -d:I: copy/REMOTE` != "1.2" ]
+if [ `bk prs -hr+ -d:I: copy/REMOTE` != "1.2" ]
 then	echo 'Failed to add rename rev to REMOTE?'; exit 1
 fi
-if [ `prs -hr+ -d:I: copy/ChangeSet` != "1.4" ]
+if [ `bk prs -hr+ -d:I: copy/ChangeSet` != "1.4" ]
 then	echo 'Failed to add changeset for remote rename'; exit 1
 fi
 echo OK
@@ -292,7 +292,7 @@ echo OK
 echo $N '  resolve by renaming remote file passing in comments .......'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-resolve $Q $L -t -yMerge copy >/dev/null 2>&1 <<EOF
+bk resolve $Q $L -t -yMerge copy >/dev/null 2>&1 <<EOF
 mr
 REMOTE
 EOF
@@ -310,10 +310,10 @@ fi
 if [ "`cat copy/REMOTE`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `prs -hr+ -d:I: copy/REMOTE` != "1.2" ]
+if [ `bk prs -hr+ -d:I: copy/REMOTE` != "1.2" ]
 then	echo 'Failed to add rename rev to REMOTE?'; exit 1
 fi
-if [ `prs -hr+ -d:I: copy/ChangeSet` != "1.4" ]
+if [ `bk prs -hr+ -d:I: copy/ChangeSet` != "1.4" ]
 then	echo 'Failed to add changeset for remote rename'; exit 1
 fi
 echo OK
@@ -321,7 +321,7 @@ echo OK
 echo $N '  try to rename remote to existing local sfile ..............'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
 C
 q
@@ -338,7 +338,7 @@ echo OK
 echo $N '  try to rename remote to existing local sfile in RESYNC ....'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
 ChangeSet
 q
@@ -383,7 +383,7 @@ cd project
 echo "I am the project file" > OLDNAME
 bk new $Q OLDNAME
 bk mv OLDNAME CONFLICT
-commit $Q -ywhatever
+bk commit $Q -ywhatever
 cd $HERE/copy
 echo "I am the copy file" > CONFLICT
 cd $HERE
@@ -403,9 +403,9 @@ fi
 if [ "`cat copy/CONFLICT`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `prs -hr+ -d:I: copy/CONFLICT` != "1.2" ]
+if [ `bk prs -hr+ -d:I: copy/CONFLICT` != "1.2" ]
 then	echo 'Added new rev to CONFLICT?'
-	prs -h -d'REV :I:' copy/CONFLICT
+	bk prs -h -d'REV :I:' copy/CONFLICT
 	exit 1
 fi
 echo OK
@@ -413,7 +413,7 @@ echo OK
 echo $N '  resolve by renaming local file ............................'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-resolve -t $Q $L copy 2>/dev/null <<EOF
+bk resolve -t $Q $L copy 2>/dev/null <<EOF
 ml
 LOCAL
 EOF
@@ -431,9 +431,9 @@ fi
 if [ "`cat copy/CONFLICT`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `prs -hr+ -d:I: copy/CONFLICT` != "1.2" ]
+if [ `bk prs -hr+ -d:I: copy/CONFLICT` != "1.2" ]
 then	echo 'Added new rev to CONFLICT?'
-	prs -h -d'REV :I:' copy/CONFLICT
+	bk prs -h -d'REV :I:' copy/CONFLICT
 	exit 1
 fi
 echo OK
@@ -441,7 +441,7 @@ echo OK
 echo $N '  try to rename local to existing sfile in repository .......'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $Q $L copy 2>ERRORS <<EOF
 ml
 C
 q
@@ -459,7 +459,7 @@ echo $N '  try to rename local to existing gfile in repository .......'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
-resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $Q $L copy 2>ERRORS <<EOF
 ml
 GFILE
 q
@@ -476,7 +476,7 @@ echo OK
 echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
 ChangeSet
 q
@@ -494,7 +494,7 @@ echo OK
 echo $N '  resolve by renaming remote file ...........................'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-resolve $Q $L -t -yMerge copy >/dev/null 2>&1 <<EOF
+bk resolve $Q $L -t -yMerge copy >/dev/null 2>&1 <<EOF
 mr
 REMOTE
 EOF
@@ -512,10 +512,10 @@ fi
 if [ "`cat copy/REMOTE`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `prs -hr+ -d:I: copy/REMOTE` != "1.3" ]
+if [ `bk prs -hr+ -d:I: copy/REMOTE` != "1.3" ]
 then	echo 'Failed to add rename rev to REMOTE?'; exit 1
 fi
-if [ `prs -hr+ -d:I: copy/ChangeSet` != "1.4" ]
+if [ `bk prs -hr+ -d:I: copy/ChangeSet` != "1.4" ]
 then	echo 'Failed to add rename cset to ChangeSet'; exit 1
 fi
 echo OK
@@ -523,7 +523,7 @@ echo OK
 echo $N '  try to rename remote to existing local sfile ..............'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
 C
 q
@@ -540,7 +540,7 @@ echo OK
 echo $N '  try to rename remote to existing local sfile in RESYNC ....'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
 ChangeSet
 q
@@ -558,7 +558,7 @@ echo $N '  try to rename remote to existing local gfile ..............'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
-resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
 GFILE
 q
@@ -584,14 +584,14 @@ cp -rp project copy
 cd project
 echo "I am the project file" > CONFLICT
 bk new $Q CONFLICT
-commit $Q -ywhatever
+bk commit $Q -ywhatever
 cd $HERE/copy
 echo "I am the copy file" > CONFLICT
 bk new $Q CONFLICT
 # Remote this to make it the pending deltas case
-commit $Q -ywhatever
+bk commit $Q -ywhatever
 cd $HERE
-resync $Q project copy
+bk resync $Q project copy
 tar cf SAVE.copy copy
 echo OK
 
@@ -622,7 +622,7 @@ fi
 if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-2`" != "I am the copy file" ]
 then	echo bad data in deleted file; exit 1
 fi
-if [ `prs -hr+ -d:I: ChangeSet` != "1.4" ]
+if [ `bk prs -hr+ -d:I: ChangeSet` != "1.4" ]
 then	echo 'Failed to add rm cset to ChangeSet'; exit 1
 fi
 echo OK
@@ -632,7 +632,7 @@ cd $HERE
 /bin/rm -rf copy
 tar xf SAVE.copy
 cd copy
-resolve $Q $L -t -yMerge 2>/dev/null <<EOF
+bk resolve $Q $L -t -yMerge 2>/dev/null <<EOF
 ml
 LOCAL
 q
@@ -651,10 +651,10 @@ fi
 if [ "`cat CONFLICT`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `prs -hr+ -d:I: CONFLICT` != "1.1" ]
+if [ `bk prs -hr+ -d:I: CONFLICT` != "1.1" ]
 then	echo 'Added new rev to CONFLICT?'; exit 1
 fi
-if [ `prs -hr+ -d:I: ChangeSet` != "1.4" ]
+if [ `bk prs -hr+ -d:I: ChangeSet` != "1.4" ]
 then	echo 'Failed to add rm cset to ChangeSet'; exit 1
 fi
 echo OK
@@ -663,7 +663,7 @@ echo $N '  try to rename local to existing sfile in repository .......'$NL
 cd $HERE
 /bin/rm -rf copy
 tar xf SAVE.copy
-resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $Q $L copy 2>ERRORS <<EOF
 ml
 C
 q
@@ -682,7 +682,7 @@ cd $HERE
 /bin/rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
-resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $Q $L copy 2>ERRORS <<EOF
 ml
 GFILE
 q
@@ -700,7 +700,7 @@ echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
 cd $HERE
 /bin/rm -rf copy
 tar xf SAVE.copy
-resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
 ChangeSet
 q
@@ -718,8 +718,8 @@ echo $N '  resolve by renaming remote file ...........................'$NL
 cd $HERE
 /bin/rm -rf copy
 tar xf SAVE.copy
-get -q copy/CONFLICT
-resolve -t $Q $L -t -yMerge copy 2>/dev/null <<EOF
+bk get -q copy/CONFLICT
+bk resolve -t $Q $L -t -yMerge copy 2>/dev/null <<EOF
 mr
 REMOTE
 EOF
@@ -737,10 +737,10 @@ fi
 if [ "`cat copy/REMOTE`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `prs -hr+ -d:I: copy/REMOTE` != "1.2" ]
+if [ `bk prs -hr+ -d:I: copy/REMOTE` != "1.2" ]
 then	echo 'Failed to add rename rev to REMOTE?'; exit 1
 fi
-if [ `prs -hr+ -d:I: copy/ChangeSet` != "1.4" ]
+if [ `bk prs -hr+ -d:I: copy/ChangeSet` != "1.4" ]
 then	echo 'Failed to add rm cset to ChangeSet'; exit 1
 fi
 echo OK
@@ -748,7 +748,7 @@ echo OK
 echo $N '  try to rename to an existing sfile in local repository ....'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
 C
 q
@@ -765,7 +765,7 @@ echo OK
 echo $N '  try to rename to an existing sfile in RESYNC tree .........'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
 ChangeSet
 q
@@ -783,7 +783,7 @@ echo $N '  try to rename to an existing gfile in local repository ....'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
-resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
 GFILE
 q
@@ -807,7 +807,7 @@ cp -rp project copy
 cd project
 echo "I am the project file" > CONFLICT
 bk new $Q CONFLICT
-commit $Q -ywhatever
+bk commit $Q -ywhatever
 cd $HERE/copy
 echo "I am the copy file" > CONFLICT
 bk new $Q CONFLICT
@@ -832,7 +832,7 @@ fi
 if [ "`cat CONFLICT`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `prs -hr+ -d:I: CONFLICT` != "1.1" ]
+if [ `bk prs -hr+ -d:I: CONFLICT` != "1.1" ]
 then	echo 'Added new rev to CONFLICT?'; exit 1
 fi
 if [ ! -f BitKeeper/deleted/SCCS/s..del-2 ]
@@ -850,7 +850,7 @@ cd $HERE
 /bin/rm -rf copy
 tar xf SAVE.copy
 cd copy
-resolve -t $Q $L 2>ERRORS <<EOF
+bk resolve -t $Q $L 2>ERRORS <<EOF
 ml
 LOCAL
 q
@@ -919,7 +919,7 @@ cd $HERE
 /bin/rm -rf copy
 tar xf SAVE.copy
 cd copy
-resolve $Q $L -t -yMerge 2>/dev/null <<EOF
+bk resolve $Q $L -t -yMerge 2>/dev/null <<EOF
 ml
 LOCAL
 q
@@ -947,7 +947,7 @@ echo $N '  try to rename local to existing sfile in repository .......'$NL
 cd $HERE
 /bin/rm -rf copy
 tar xf SAVE.copy
-resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $Q $L copy 2>ERRORS <<EOF
 ml
 C
 q
@@ -966,7 +966,7 @@ cd $HERE
 /bin/rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
-resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $Q $L copy 2>ERRORS <<EOF
 ml
 GFILE
 q
@@ -984,7 +984,7 @@ echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
 cd $HERE
 /bin/rm -rf copy
 tar xf SAVE.copy
-resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
 ChangeSet
 q
@@ -1002,8 +1002,8 @@ echo $N '  resolve by renaming remote file ...........................'$NL
 cd $HERE
 /bin/rm -rf copy
 tar xf SAVE.copy
-get -q copy/CONFLICT
-resolve $Q $L -t -yMerge copy 2>/dev/null <<EOF
+bk get -q copy/CONFLICT
+bk resolve $Q $L -t -yMerge copy 2>/dev/null <<EOF
 mr
 REMOTE
 EOF
@@ -1021,7 +1021,7 @@ fi
 if [ "`cat copy/REMOTE`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `prs -hr+ -d:I: copy/REMOTE` != "1.3" ]
+if [ `bk prs -hr+ -d:I: copy/REMOTE` != "1.3" ]
 then	echo 'Failed to add rename rev to REMOTE?'; exit 1
 fi
 echo OK
@@ -1046,7 +1046,7 @@ echo OK
 echo $N '  try to rename to an existing sfile in RESYNC tree .........'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
 ChangeSet
 q
@@ -1064,7 +1064,7 @@ echo $N '  try to rename to an existing gfile in local repository ....'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
-resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
 GFILE
 q
@@ -1091,7 +1091,7 @@ touch A
 bk new $Q A
 bk commit $Q -ywhatever
 cd $HERE
-resync $Q project copy
+bk resync $Q project copy
 # Rework the patch to be in the order we want.  We want A first and MOVED 2nd.
 cd copy/PENDING
 FILE=`echo *`
@@ -1110,7 +1110,7 @@ FILE=`echo *`
 		echo "$x"
 	done
 )
-cat TOP A MOVED | adler32 > PATCH
+cat TOP A MOVED | bk adler32 > PATCH
 cd ..
 rm -rf RESYNC
 VV=
@@ -1179,7 +1179,7 @@ then	echo Failed to get CONFLICT file
 	find . -type f -print
 	exit 1
 fi
-if [ `prs -hr+ -d:I: CONFLICT` != "1.1" ]
+if [ `bk prs -hr+ -d:I: CONFLICT` != "1.1" ]
 then	echo 'Added new rev to CONFLICT?'; exit 1
 fi
 echo OK
@@ -1188,7 +1188,7 @@ echo $N '  try to rename local to existing sfile in repository .......'$NL
 cd $HERE
 /bin/rm -rf copy
 tar xf SAVE.copy
-resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $Q $L copy 2>ERRORS <<EOF
 ml
 C
 q
@@ -1207,7 +1207,7 @@ cd $HERE
 /bin/rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
-resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $Q $L copy 2>ERRORS <<EOF
 ml
 GFILE
 q
@@ -1225,7 +1225,7 @@ echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
 cd $HERE
 /bin/rm -rf copy
 tar xf SAVE.copy
-resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
 ChangeSet
 q
@@ -1243,8 +1243,8 @@ echo $N '  resolve by renaming remote file ...........................'$NL
 cd $HERE
 /bin/rm -rf copy
 tar xf SAVE.copy
-get -q copy/CONFLICT
-resolve $Q $L -t -yMerge copy 2>/dev/null <<EOF
+bk get -q copy/CONFLICT
+bk resolve $Q $L -t -yMerge copy 2>/dev/null <<EOF
 mr
 REMOTE
 EOF
@@ -1256,7 +1256,7 @@ then	echo Failed to get REMOTE file
 	find copy -type f -print
 	exit 1
 fi
-if [ `prs -hr+ -d:I: copy/REMOTE` != "1.2" ]
+if [ `bk prs -hr+ -d:I: copy/REMOTE` != "1.2" ]
 then	echo 'Failed to add rename rev to REMOTE?'; exit 1
 fi
 echo OK
@@ -1264,7 +1264,7 @@ echo OK
 echo $N '  try to rename to an existing sfile in local repository ....'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
 C
 q
@@ -1281,7 +1281,7 @@ echo OK
 echo $N '  try to rename to an existing sfile in RESYNC tree .........'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
 ChangeSet
 q
@@ -1299,7 +1299,7 @@ echo $N '  try to rename to an existing gfile in local repository ....'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
-resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
 GFILE
 q
@@ -1326,7 +1326,7 @@ bk commit $S -f -y'A->Z'
 cd ..
 bk resync $Q project copy
 cd copy
-BK_IGNORELOCK=YES get -e $Q A
+BK_IGNORELOCK=YES bk get -e $Q A
 echo modified >> A
 bk resolve -t -q 2>../ERR
 if [ $? != 1 ]
@@ -1387,16 +1387,16 @@ fi
 echo OK
 echo $N Do some work in Z/A and resync ..............................$NL
 cd $HERE/project
-get $Q -e Z
+bk get $Q -e Z
 echo same data >> Z
-ci $Q -y'change as Z'
-commit $S -f -y'change as Z'
+bk ci $Q -y'change as Z'
+bk commit $S -f -y'change as Z'
 cd $HERE/copy
-get $Q -e A
+bk get $Q -e A
 echo same data >> A
-ci $Q -y'change as A'
-commit $S -f -y'change as A'
-resync $Q $HERE/project $HERE/copy
+bk ci $Q -y'change as A'
+bk commit $S -f -y'change as A'
+bk resync $Q $HERE/project $HERE/copy
 if [ ! -f RESYNC/SCCS/r.Z ]
 then	echo failed to create conflict for Z; exit 1
 fi

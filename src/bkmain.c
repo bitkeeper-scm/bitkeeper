@@ -14,12 +14,11 @@ int version_main(int, char **);
 int help_main(int, char **);
 int users_main(int, char **);
 int parent_main(int, char **);
-int clone_main(int, char **);
 int send_main(int, char **);
 int unwrap_main(int, char **);
 int receive_main(int, char **);
 int fix_main(int, char **);
-int undo_main(int, char **);
+//int undo_main(int, char **);
 int sendbug_main(int, char **);
 int export_main(int, char **);
 int setlog_main(int, char **);
@@ -65,10 +64,11 @@ int gca_main(int, char **);
 int mtime_main(int, char **);
 int zone_main(int, char **);
 int isascii_main(int, char **);
-int resyncwrap_main(int, char **);	/* XXX do we need this ? */
 int r2c_main(int, char **);
-int rename_main(int, char **);		/* XXX do we need this ? */
 int pending_main(int, char **);
+int resolve_main(int, char **);
+int push_main(int, char **);
+int names_main(int, char **);
 
 struct command cmdtbl[100] = {
 	{"setup", setup_main },
@@ -78,12 +78,12 @@ struct command cmdtbl[100] = {
 	{"help", help_main},
 	{"users", users_main},
 	{"parent", parent_main},
-	{"clone", clone_main},
+//	{"clone", clone_main},
 	{"send", send_main},
 	{"unwrap", unwrap_main},
 	{"receive", receive_main},
 	{"fix", fix_main},
-	{"undo", undo_main},
+//	{"undo", undo_main},
 	{"sendbug", sendbug_main},
 	{"export", export_main},
 	{"setlog", setlog_main},
@@ -139,18 +139,24 @@ struct command cmdtbl[100] = {
 	{"mtime", mtime_main},
 	{"zone", zone_main},
 	{"isascii", isascii_main},
-	{"resyncwrap", resyncwrap_main}, 
 	{"r2c", r2c_main},
 	{"rev2cset", r2c_main},
-	{"rename", rename_main},
 	{"pending", pending_main},
+	{"resolve", resolve_main},
+	{"push", push_main},
+	{"names", push_main},
 	0
 };
 
 main(int ac, char **av)
 {
 	int i, j, rc;
+	char cmd_path[MAXPATH];
+	char *argv[100];
 
+	/*
+	 * XXX TODO: implement "__logCommand"
+	 */
 	platformInit(); 
 	av[0] = basenm(av[0]);
 	if (streq(av[0], BK)) {
@@ -208,6 +214,7 @@ main(int ac, char **av)
 		char path[MAXLINE];
 		int last = strlen(bin) -1;
 
+		assert(bin[last] == '/');
 		bin[last] = 0; /* trim tailing slash */
 		sprintf(path, "PATH=%s:%s", bin, getenv("PATH"));
 		bin[last] = '/'; /* restore tailing slash */
@@ -227,23 +234,8 @@ main(int ac, char **av)
 	/*
 	 * Is it is a perl 4 script ?
 	 */
-	if (streq(av[0], "resolve") || streq(av[0], "pmerge")) {
-		char *argv[100] ={ "perl", 0};
-
-		for (i = 1, j = 0; av[j]; i++, j++) argv[i] = av[j];
-		return (spawnvp_ex(_P_WAIT, av[0], av));;
-	}
-
-	/*
-	 * Is it is a perl 5 script ?
-	 */
-	if (streq(av[0], "resync") ||
-	    streq(av[0], "mkdiffs") ||
-	    streq(av[0], "rcs2sccs")) {
-		char cmd_path[MAXPATH];
-		char *argv[100];
-
-		argv[0] = find_perl5();
+	if (streq(av[0], "pmerge")) {
+		argv[0] = "perl"; 
 		sprintf(cmd_path, "%s%s", bin, av[0]);
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
@@ -251,23 +243,14 @@ main(int ac, char **av)
 	}
 
 	/*
-	 * Perl scrilpt aliases 
-	 * This should be in pull_main()  & push_main()
+	 * Is it is a perl 5 script ?
 	 */
-	if (streq(av[0], "pull") ||
-	    streq(av[0], "push")) {
-		char *argv[100];
-		char resync_path[MAXPATH];
-		extern char *find_perl5();
+	if (streq(av[0], "mkdiffs") ||
+	    streq(av[0], "rcs2sccs")) {
 		argv[0] = find_perl5();
-		sprintf(resync_path, "%sresync", bin);
-		argv[1] = resync_path;
-		argv[2] = streq(av[0], "pull") ? "-A" : "-Ab";
-		
-		for (i = 3, j = 1; av[j]; i++, j++) {
-			argv[i] = av[j];
-		}
-		cd2root();
+		sprintf(cmd_path, "%s%s", bin, av[0]);
+		argv[1] = cmd_path;
+		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
 		return (spawnvp_ex(_P_WAIT, argv[0], argv));;
 	}
 
@@ -284,24 +267,45 @@ main(int ac, char **av)
 	    streq(av[0], "helptool") ||
 	    streq(av[0], "csettool") ||
 	    streq(av[0], "renametool")) {
-		char cmd_path[MAXPATH];
-		char *argv[100];
-
 		argv[0] = find_wish();
 		sprintf(cmd_path, "%s%s", bin, av[0]);
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
-		return (spawnvp_ex(_P_WAIT, argv[0], argv));;
+		return (spawnvp_ex(_P_WAIT, argv[0], argv));
 	}
-	
+
 	/*
-	 * Try external command
+	 * Handle shell script
 	 */
-	rc = spawnvp_ex(_P_WAIT, av[0], av);
-	if (rc != 0) {
-		fprintf(stderr, "Cammnad %s failed; rc=%d\n", av[0], rc);
+	if (streq(av[0], "resync") ||
+	    streq(av[0], "clone") ||
+	    streq(av[0], "pull")) {
+		argv[0] = "sh";
+		sprintf(cmd_path, "%s%s", bin, av[0]);
+		argv[1] = cmd_path;
+		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
+		return (spawnvp_ex(_P_WAIT, argv[0], argv));
 	}
-	return (rc);
+
+	/*
+	 * Is it a known C program ?
+	 */
+	if (streq(av[0], "bkd")) {
+		return (spawnvp_ex(_P_WAIT, av[0], av));
+	}
+
+	/*
+	 * If we get here, it is a 
+	 * a) bk shell function
+	 *    or
+	 * b) external program/script
+	 * XXX This is slow because we are going thru the shell
+	 */
+	argv[0] = "sh";
+	sprintf(cmd_path, "%sbk.script", bin);
+	argv[1] = cmd_path;
+	for (i = 2, j = 0; av[j]; i++, j++) argv[i] = av[j];
+	return (spawnvp_ex(_P_WAIT, argv[0], argv));
 }
 
 char *

@@ -93,7 +93,7 @@ char	csetFile[] = CHANGESET; /* for win32, need writable	*/
 				/* buffer for name convertion	*/
 
 cset_t	copts;		/* an easy way to create a local that is zeroed */
-char	*spin = "|/-\\";
+private char	*spin = "|/-\\";
 
 /*
  * cset.c - changeset command
@@ -532,7 +532,7 @@ doit(cset_t *cs, sccs *sc)
 	}
 }
 
-void
+private void
 header(sccs *cset, int diffs)
 {
 	char	*dspec =

@@ -4,14 +4,18 @@
 # You can set this to anywhere you like and do a "make production" and you'll
 # have an installed BitKeeper.
 BK_BIN	= /usr/libexec/bitkeeper
-BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
-	  get gethost getuser key2rev lines lod prs range rechksum renumber \
-	  rmdel sccscat sccslog sccsmv sccsrm sccssh sfiles sfio sids	 \
-	  sinfo stripdel smoosh takepatch undos what gca mtime zone	 \
-	  bkd bkusers clone commit fix gethelp getlog help isascii logaddr \
-	  logchangeset names parent push r2c receive resolve \
-	  send sendconfig setlog setup status unwrap version
-SCRIPTS	= rcs2sccs testfast bk import resync uuwrap unuuwrap pmerge \
+BINS 	= bk bkd sccssh
+BK_SUBS	= adler32.o admin.o check.o chksum.o clean.o cset.o delta.o diffs.o \
+	  fdiff.o g2sccs.o get.o gethost.o getuser.o key2rev.o lines.o lod.o \
+	  prs.o range.o rechksum.o renumber.o rmdel.o sccscat.o sccslog.o \
+	  sccsmv.o sccsrm.o sfiles.o sfio.o sids.o sinfo.o stripdel.o \
+	  smoosh.o takepatch.o undos.o what.o gca.o mtime.o zone.o	 \
+	  bkusers.o commit.o fix.o gethelp.o getlog.o help.o \
+	  isascii.o logaddr.o logchangeset.o parent.o r2c.o \
+	  receive.o send.o sendconfig.o setlog.o setup.o status.o unwrap.o \
+	  version.o undo.o sendbug.o export.o pending.o push.o lib_tcp.o \
+	  names.o
+SCRIPTS	= rcs2sccs testfast bk.script import resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 mkindex \
 	  renametool mkdiffs lodset build crank pull clone resync merge \
 	  gzip_uuwrap ungzip_uuwrap
@@ -22,7 +26,7 @@ DATA	= bitkeeper.config bkhelp.txt
 
 LINKTO	= fmtool fm fm3tool fm3
 BINLINKS= bk admin get delta unget rmdel prs
-ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LINKS) $(PSCR) $(DATA) gnu
+ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(PSCR) $(DATA) gnu
 
 	  # FASTPURIFY does not do overrun/underrun checking at each alloc/free
 CFLAGS	= -g -O -Wall -Wno-parentheses -Wno-char-subscripts \
@@ -76,7 +80,7 @@ MISC	= bkhelp.doc config.h.in configure substvars.in bitkeeper.config \
 	  t/doit.sh
 
 default:
-	@get -s HEADER LICENSE BUILD
+	@bk get -s HEADER LICENSE BUILD
 	@cat HEADER LICENSE BUILD | more
 
 all: $(ALL)
@@ -217,6 +221,9 @@ mdbm/libmdbm.a: $(MDBMOBJ)
 libsccs.a: $(SCCSOBJ) $(PORTOBJ)
 	$(AR) cr libsccs.a $(SCCSOBJ) $(PORTOBJ)
 	-$(RANLIB) libsccs.a
+
+bk: bkmain.o ${BK_SUBS} ${RESOBJ}
+	$(CC) $(CFLAGS) bkmain.o ${BK_SUBS} ${RESOBJ} $(LINK) -o bk
 
 zone: zone.o localtm.o port/platforminit.o
 	$(CC) $(CFLAGS) -o zone zone.o localtm.o port/platforminit.o
@@ -366,6 +373,10 @@ testfast: testfast.perl substvars
 	chmod +x testfast.T
 	mv -f testfast.T testfast
 
+bk.script: bk.sh port/unix_platform.sh substvars
+	./substvars port/unix_platform.sh bk.sh > bk.script
+	chmod +x bk.script 
+
 bkhelp.txt: bkhelp.doc bk.ver
 	sed "s/@version@/`cat bk.ver`/" bkhelp.doc | \
 	sed "s?@builder@?`./bk getuser`@`./bk gethost`?" | \
@@ -392,7 +403,7 @@ stamp-ver:: bk
 
 # Because we need the execute bit on
 utils/os utils/gnu-os: bk
-	./get utils/os utils/gnu-os
+	./bk get utils/os utils/gnu-os
 
 uuwrap: uuwrap.sh substvars
 	./substvars uuwrap.sh > uuwrap.T

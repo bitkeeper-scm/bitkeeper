@@ -110,7 +110,7 @@ bk commit $S -yclockwise
 cd $HERE/copy
 bk pull -t $Q $HERE/project
 cd $HERE/copy/src
-get $Q a.c b.c c.c
+bk get $Q a.c b.c c.c
 ${ECHO} "File 3" > ref.c
 cmp -s ref.c a.c
 if [ $? -ne 0 ]; then echo "failed a"; exit 1; fi
@@ -204,10 +204,10 @@ bk sccsmv tmp c.c
 if [ "`bk get -qp a.c`" != "File 2" ]
 then	echo a.c is not File 2; exit 1
 fi
-if [ "`get -qp b.c`" != "File 3" ]
+if [ "`bk get -qp b.c`" != "File 3" ]
 then	echo b.c is not File 3; exit 1
 fi
-if [ "`get -qp c.c`" != "File 1" ]
+if [ "`bk get -qp c.c`" != "File 1" ]
 then	echo c.c is not File 1; exit 1
 fi
 bk commit $S -y'counter clockwise'
@@ -237,7 +237,7 @@ cd  $HERE/copy
 # This is completely dependent on the ordering of file processing in resolve
 # If this doesn't work, check that the files are processed in this order:
 # File 1, File 2, File 3, File 4
-bk resolve $L $Q -t -yMerge << EOF 2> resolve.out
+bk resolve -d $L $Q -t -yMerge << EOF 2> resolve.out
 r
 r
 r

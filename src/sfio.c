@@ -35,8 +35,8 @@ int	mkfile(char *file);
 int	mkdirp(char *dir);
 int	mkdirf(char *file);
 int	isdir(char *s);
-int	readn(int from, char *buf, int size);
-int	writen(int from, char *buf, int size);
+private int	readn(int from, char *buf, int size);
+private int	writen(int from, char *buf, int size);
 extern	void platformSpecificInit(char *name);
 
 static const char help[] = "\
@@ -342,7 +342,7 @@ isdir(char *s)
 }
 #endif
 
-int
+private int
 readn(int from, char *buf, int size)
 {
 	int	done;
@@ -358,7 +358,7 @@ readn(int from, char *buf, int size)
 	return (done);
 }
 
-int
+private int
 writen(int from, char *buf, int size)
 {
 	int	done;

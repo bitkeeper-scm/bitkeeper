@@ -19,7 +19,7 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
-void	renumber(sccs *s, int flags);
+private void	renumber(sccs *s, int flags);
 void	newRev(sccs *s, int flags, MDBM *db, delta *d);
 void	remember(MDBM *db, delta *d);
 int	taken(MDBM *db, delta *d);
@@ -78,7 +78,7 @@ usage:		fprintf(stderr, "usage: renumber [-nq] [files...]\n");
 /*
  * Work through all the serial numbers, oldest to newest.
  */
-void
+private void
 renumber(sccs *s, int flags)
 {
 	delta	*d;

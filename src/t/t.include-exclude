@@ -109,7 +109,7 @@ ${ECHO} 1.1 > i
 bk admin $Q -n -ii i
 ${RM} i
 for i in 2 3 4
-do	get -s -e i
+do	bk get -s -e i
 	${ECHO} 1.$i >> i
 	bk delta -s -y'' i
 done

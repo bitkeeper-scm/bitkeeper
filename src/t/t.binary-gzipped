@@ -143,7 +143,7 @@ grep -q '^.f e 4$' SCCS/s.data
 if [ $? -ne 0 ]; then echo Wrong encoding.; exit 1; fi
 echo OK
 echo $N Uncompress and modify in one operation.......................$NL
-get $Q -e data
+bk get $Q -e data
 echo '! @ # $ % ^ & * ( )' >>data
 bk delta $Q -Znone -y data
 grep -q '^.f e 0$' SCCS/s.data

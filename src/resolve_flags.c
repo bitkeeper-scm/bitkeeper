@@ -6,7 +6,7 @@
 #include "resolve.h"
 
 char	*
-flags(int bits)
+x_flags(int bits)
 {
 	int	comma = 0;
 	static 	char buf[512];
@@ -55,7 +55,7 @@ f_help(resolve *rs)
 	lf = sccs_getxflags(d->local);
 	rf = sccs_getxflags(d->remote);
 	gf = sccs_getxflags(d->gca);
-	sprintf(g, "original  flags  %s", gf ? flags(gf) : "<none>");
+	sprintf(g, "original  flags  %s", gf ? x_flags(gf) : "<none>");
 	if ((gf == lf) && (gf != rf)) {
 		sprintf(l, "unchanged flags  %s", flags(lf));
 		sprintf(r, "changed flags to %s", flags(rf));

@@ -26,7 +26,7 @@ do	bk co $Q -l a/b/c/Data
 	${ECHO} "D 1.$i 20/03/11 00:00:0$i butthead a b c/d/e" > Init
 	${ECHO} "c Rev $i" >> Init
 	${ECHO} "------------------------------------------------" >> Init
-	delta $Q -IInit a/b/c/Data
+	bk delta $Q -IInit a/b/c/Data
 done
 echo $N Checking sccslog with -p option .............................$NL
 HOST=`bk gethost`

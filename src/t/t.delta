@@ -91,7 +91,7 @@ echo OK
 echo $N Make sure delta prompts for comments ........................$NL
 ${RM} -f T
 bk get $S -e T
-echo "I am the comment" | delta $S T 2> ${DEV_NULL}
+echo "I am the comment" | bk delta $S T 2> ${DEV_NULL}
 grep -q '^.c I am the comment$' SCCS/s.T
 if [ $? -ne 0 ]; then echo Failed to add comment; exit 1; fi
 echo OK
@@ -99,7 +99,7 @@ echo $N Make sure delta prompts once with -Y ........................$NL
 bk get $S -e T
 bk get $S -e init
 (echo "first comment"; echo ".";
-echo "second comment"; echo ".") | delta $S -Y 2>${DEV_NULL}
+echo "second comment"; echo ".") | bk delta $S -Y 2>${DEV_NULL}
 grep -q '^.c first comment$' SCCS/s.T
 if [ $? -ne 0 ]; then echo Failed to add first comment to T; exit 1; fi
 grep -q '^.c first comment$' SCCS/s.init

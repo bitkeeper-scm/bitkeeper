@@ -46,12 +46,12 @@ do	bk get $Q -e project/foo clone/foo
 	bk delta $Q -y$i project/foo
 	bk delta $Q -y$i clone/foo
 done
-prs -r1.2.. -hd':I: :KEY:' project/foo | while read rev key
+bk prs -r1.2.. -hd':I: :KEY:' project/foo | while read rev key
 do	echo "$key" > A.$rev
-	K=`prs -hr$rev -d:KEY: clone/foo`
+	K=`bk prs -hr$rev -d:KEY: clone/foo`
 	echo "$K" > B.$rev
 done
-for i in `prs -r1.2.. -hd:I: project/foo`
+for i in `bk prs -r1.2.. -hd:I: project/foo`
 do	cmp -s A.$i B.$i
 	if [ $? -eq 0 ]
 	then	echo failed on $i; exit 1
@@ -65,8 +65,8 @@ cd ../clone
 touch BitKeeper/etc/SCCS/x.marked
 bk commit $Q -ywhatever
 cd ..
-A=`prs -hr+ -d:KEY: project/ChangeSet`
-B=`prs -hr+ -d:KEY: clone/ChangeSet`
+A=`bk prs -hr+ -d:KEY: project/ChangeSet`
+B=`bk prs -hr+ -d:KEY: clone/ChangeSet`
 if [ "$A" = "$B" ]
 then	echo failed to create different keys; exit 1
 fi

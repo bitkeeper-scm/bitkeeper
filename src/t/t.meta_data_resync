@@ -72,10 +72,10 @@ bk resolve -t $Q $HERE/copy 2>/dev/null 1>&2 <<EOF
 r
 u
 EOF
-MODE=`prs -h -r1.4 -d":MODE:" foo.c`
+MODE=`bk prs -h -r1.4 -d":MODE:" foo.c`
 if [ "$MODE" != "100740" ]
 then	echo failed with mode $MODE
-	prs -h -d':REV: :MODE:' foo.c
+	bk prs -h -d':REV: :MODE:' foo.c
 	exit 1
 fi
 echo OK
@@ -155,20 +155,20 @@ if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N Check flags conflict ........................................$NL
 cd $HERE/project/src
-admin $Q -fEXPAND1 -fRCS -fYEAR4 foo.c
+bk admin $Q -fEXPAND1 -fRCS -fYEAR4 foo.c
 bk commit $S -yperm2
 cd $HERE/copy/src
-admin $Q -fEXPAND1 foo.c
+bk admin $Q -fEXPAND1 foo.c
 bk commit $S -yperm3
 bk resync $Q $HERE/project $HERE/copy
 bk resolve -t $Q $HERE/copy 2>/dev/null 1>&2 <<EOF
 r
 u
 EOF
-FLAGS=`prs -h -r1.4 -d:FLAGS: foo.c`
+FLAGS=`bk prs -h -r1.4 -d:FLAGS: foo.c`
 if [ "$FLAGS" != "BITKEEPER,YEAR4,RCS,SCCS,EXPAND1,CSETMARKED" ]
 then	echo failed with mode $FLAGS
-	prs -h -d':REV:\t:FLAGS:' foo.c
+	bk prs -h -d':REV:\t:FLAGS:' foo.c
 	#cat SCCS/s.foo.c
 	exit 1
 fi

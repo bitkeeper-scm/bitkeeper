@@ -10,7 +10,7 @@
 #include "sccs.h"
 
 int
-main(int ac, char **av)
+names_main(int ac, char **av)
 {
 	sccs	*s;
 	delta	*d;

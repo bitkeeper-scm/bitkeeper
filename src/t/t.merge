@@ -92,16 +92,16 @@ echo OK
 #   Build on FILE with branches where elements get -x , then do -M
 #   -x elements should not reappear.
 echo $N Merge with delta on branch excluded on branch ...............$NL
-get $Q -e -r1.3.1 FILE
+bk get $Q -e -r1.3.1 FILE
 echo DISAPPEAR >> FILE
-delta $Q -y1.3.1.3 FILE
-get $Q -e -r1.3.1 -x1.3.1.3 FILE
-delta $Q -y1.3.1.4 FILE
-get $Q -e -M1.3.1.4 FILE
+bk delta $Q -y1.3.1.3 FILE
+bk get $Q -e -r1.3.1 -x1.3.1.3 FILE
+bk delta $Q -y1.3.1.4 FILE
+bk get $Q -e -M1.3.1.4 FILE
 grep -q DISAPPEAR FILE
 if [ $? -eq 0 ]; then echo Failed locked; exit 1; fi
-delta $Q -y FILE
-get $Q FILE
+bk delta $Q -y FILE
+bk get $Q FILE
 grep -q DISAPPEAR FILE
 if [ $? -eq 0 ]; then echo Failed unlocked; exit 1; fi
 echo OK
@@ -110,30 +110,30 @@ echo OK
 # as when we get to the merge stuff.  Need to handle this case.
 echo $N Merge a graph with some weird pathalogical -i and -x ........$NL
 echo 1.1 > bar.c
-ci $Q -i bar.c
+bk ci $Q -i bar.c
 if [ ! -f SCCS/s.bar.c ]; then echo failed to create history; exit 1; fi
-get $Q -e bar.c
+bk get $Q -e bar.c
 echo 1.2 >> bar.c
-delta $Q -y1.2 bar.c
+bk delta $Q -y1.2 bar.c
 # make 2 new branches and include trunk 1.2 into each
-get $Q -e -i1.2 -r1.1 bar.c
+bk get $Q -e -i1.2 -r1.1 bar.c
 echo 1.1.1.1 >> bar.c
-delta $Q -y1.1.1.1 bar.c
-get $Q -e -i1.2 -r1.1 bar.c
+bk delta $Q -y1.1.1.1 bar.c
+bk get $Q -e -i1.2 -r1.1 bar.c
 echo 1.1.2.1 >> bar.c
-delta $Q -y1.1.2.1 bar.c
+bk delta $Q -y1.1.2.1 bar.c
 # add to branch, excluding something from the other side
-get $Q -e -x1.1.2.1 -r1.1.1 bar.c
+bk get $Q -e -x1.1.2.1 -r1.1.1 bar.c
 echo 1.1.1.2 >> bar.c
-delta $Q -y1.1.1.2 bar.c
-get $Q -e -x1.1.1.1 -r1.1.2 bar.c
+bk delta $Q -y1.1.1.2 bar.c
+bk get $Q -e -x1.1.1.1 -r1.1.2 bar.c
 echo 1.1.2.2 >> bar.c
-delta $Q -y1.1.2.2 bar.c
+bk delta $Q -y1.1.2.2 bar.c
 # do a merge of 1.1.1 and 1.1.2 branches, see what happens
-get $Q -e -r1.1.1.2 -M1.1.2.2 bar.c
+bk get $Q -e -r1.1.1.2 -M1.1.2.2 bar.c
 echo 1.1.1.3 >> bar.c
-delta $Q -y1.1.1.3 bar.c
-get $Q -r1.1.1 bar.c
+bk delta $Q -y1.1.1.3 bar.c
+bk get $Q -r1.1.1 bar.c
 cat - <<EOF > CMP1
 1.1
 1.1.2.2

@@ -32,8 +32,8 @@ EOF
 	fi
 	echo 1.$R >> FILE
 	if [ $R -eq 1 ]
-	then	delta $Q -i -IINITX FILE
-	else	delta $Q -IINITX FILE
+	then	bk delta $Q -i -IINITX FILE
+	else	bk delta $Q -IINITX FILE
 	fi
 	R=`expr $R + 1`
 done

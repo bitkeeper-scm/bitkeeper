@@ -22,7 +22,7 @@ touch foo
 touch s.foo
 touch bar/s.foo
 touch bar/blech/s.foo
-delta $Q -i foo s.foo bar/s.foo bar/blech/s.foo
+bk delta $Q -i foo s.foo bar/s.foo bar/blech/s.foo
 trap '' 0
 set +e
 echo OK

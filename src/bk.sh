@@ -1,6 +1,6 @@
 #! @SH@
 
-# bk.sh - front end to BitKeeper commands
+# bk.sh - BitKeeper scripts
 # @(#)%K%
 
 # Functions intended to be accessed as bk whatever by the user are
@@ -88,9 +88,9 @@ __track_setup() {
 	else	tar xp${V}f $TDIR/$TAR
 	fi
 	if [ -n "$V" ]; then echo Checking in files...; fi
-	${BIN}sfiles -x |grep -v '^BitKeeper/' | ${BIN}ci $Q -Gi -
+	${BIN}bk sfiles -x |grep -v '^BitKeeper/' | ${BIN}bk ci $Q -Gi -
 
-	${BIN}sfiles -x | grep -v '^BitKeeper/' > ${TMP}extras$$
+	${BIN}bk sfiles -x | grep -v '^BitKeeper/' > ${TMP}extras$$
 	if [ -s ${TMP}extras$$ ]
 	then	echo "There were extra files, here is the list"
 		cat ${TMP}extras$$
@@ -102,9 +102,9 @@ __track_setup() {
 	rm -f ${TMP}extras$$
 
 	if [ -n "$V" ]; then echo Creating changeset for $TAR...; fi
-	${BIN}sfiles -C | ${BIN}cset $Q $SYMBOL -y"Import $TAR" -
+	${BIN}bk sfiles -C | ${BIN}bk cset $Q $SYMBOL -y"Import $TAR" -
 	if [ -n "$V" ]; then echo Marking changeset in s.files...; fi
-	${BIN}cset -M1.0..
+	${BIN}bk cset -M1.0..
 	touch "BitKeeper/etc/SCCS/x.marked"
 
 	if [ -n "$V" ]; then echo Copying pristine to shared...; fi
@@ -122,7 +122,7 @@ __track_setup() {
 
 __track_update() {
 	cd $PRJ/pristine
-	${BIN}sfiles | egrep -v '^(BitKeeper|ChangeSet)' | ${BIN}get $Q -eg -
+	${BIN}bk sfiles | egrep -v '^(BitKeeper|ChangeSet)' | ${BIN}bk get $Q -eg -
 	if [ -n "$V" ]; then echo Extracting files...; fi
 	if [ -n "$ZCAT" ]
 	then	$ZCAT $TDIR/$TAR | tar xp${V}f -
@@ -139,7 +139,7 @@ __track_update() {
 	done
 
 	if [ -n "$V" ]; then echo Checking in modified files...; fi
-	${BIN}ci $Q -G -y"Import tarball $TAR" - <BitKeeper/log/mod$$
+	${BIN}bk ci $Q -G -y"Import tarball $TAR" - <BitKeeper/log/mod$$
 	rm -f BitKeeper/log/mod$$
 	bk sfiles -x |grep -v BitKeeper >BitKeeper/log/cre$$
 
@@ -149,14 +149,14 @@ __track_update() {
 		cat BitKeeper/log/cre$$ ) | bk renametool
 	else	if [ -n "$V" ]; then echo Executing creates and deletes...; fi
 		find . -name 'p.*' |grep SCCS |xargs rm
-		${BIN}sccsrm $Q -d - <BitKeeper/log/del$$
-		${BIN}ci $Q -Gi <BitKeeper/log/cre$$
+		${BIN}bk sccsrm $Q -d - <BitKeeper/log/del$$
+		${BIN}bk ci $Q -Gi <BitKeeper/log/cre$$
 	fi
 	rm -f BitKeeper/log/del$$
 	rm -f BitKeeper/log/cre$$
 
 	if [ -n "$V" ]; then echo Creating changeset for $TAR...; fi
-	${BIN}sfiles -C | ${BIN}cset $Q $SYMBOL -y"Import $TAR" -
+	${BIN}bk sfiles -C | ${BIN}bk cset $Q $SYMBOL -y"Import $TAR" -
 
 	cd ..
 	if [ -n "$V" ]; then echo Creating merge area...; fi
@@ -178,7 +178,7 @@ __track_update() {
 _fix_deletes() {
 	__cd2root
 	DIDONE=NO
-	${BIN}sfiles | grep 'SCCS/s\.\.del-' | grep -v BitKeeper/deleted/SCCS |
+	${BIN}bk sfiles | grep 'SCCS/s\.\.del-' | grep -v BitKeeper/deleted/SCCS |
 	while read FILE
 	do	BASE=`basename $FILE`
 		SUFFIX=
@@ -216,7 +216,7 @@ _fix_deletes() {
 _changes() {
 	__cd2root
 	echo ChangeSet |
-	BK_YEAR4=1 ${BIN}prs -h \
+	BK_YEAR4=1 ${BIN}bk prs -h \
 		'-d:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\n$each(:C:){  (:C:)}\n$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}' $@ - | $PAGER
 }
 
@@ -239,84 +239,10 @@ _csets() {
 }
 
 
-# usage: __mail to subject
-# XXX - probably needs to be in port/mailto.sh and included.
-# DO NOT change how this works, IRIX is sensitive.
-__mail() {
-	TO=$1
-	shift
-	SUBJ="$@"
-	
-	if [ X$BK_TRACE_LOG = XYES ]; then cat > $DEV_NULL; return; fi
-	# Try to find sendmail, it works better, especially on IRIX.
-	for i in /usr/bin /usr/sbin /usr/lib /usr/etc /etc /bin
-	do	if [ -x "$i/sendmail" ]
-		then	(
-			echo "To: $TO"
-			if [ "X$SUBJ" != X ]
-			then	echo "Subject: $SUBJ"
-			fi
-			echo ""
-			cat
-			) | $i/sendmail -i $TO
-			return
-		fi
-	done
-
-	# We know that the ``mail -s "$SUBJ"'' form doesn't work on IRIX
-	case "`uname -s`" in
-	    *IRIX*)
-		if [ -x /usr/bin/mailx ]
-		then	mailx $TO
-		else	mail $TO
-		fi
-		return
-		;;
-	esac
-
-	if [ -x /usr/bin/mailx ]
-	then	mailx -s "$SUBJ" $TO
-	else	mail -s "$SUBJ" $TO
-	fi
-}
-
-# Manually set the parent pointer for a repository.
-# With no args, print the parent pointer.
-_parent() {
-	__cd2root
-	case "X$1" in
-	    *:*)
-	    	$RM -f BitKeeper/log/parent
-	    	echo $1 > BitKeeper/log/parent
-		echo Set parent to $1
-		exit 0
-		;;
-	esac
-	if [ "X$1" = X ]
-	then	if [ -f BitKeeper/log/parent ]
-		then	echo Parent repository is `cat BitKeeper/log/parent`
-			exit 0
-		fi
-		echo "Must specify parent root directory"
-		exit 1
-	fi
-	if [ ! -d "$1/BitKeeper/etc" ]
-	then	echo "$1 is not a BitKeeper project root"
-		exit 1
-	fi
-	HERE=`pwd`
-	cd $1 || { echo Can not find $1; exit 1; }
-	P=`${BIN}gethost`:`pwd`
-	cd $HERE
-	$RM -f BitKeeper/log/parent
-	echo $P > BitKeeper/log/parent
-	echo Set parent to $P
-}
-
 _diffr() {
 	DODIFFS=NO
 	DOPTS=
-	CMD=${BIN}sccslog
+	CMD="${BIN}bk sccslog"
 	ALL=NO
 	while getopts acdDflMprsuU opt
 	do	case "$opt" in
@@ -382,7 +308,7 @@ _diffr() {
 		do	if [ $DODIFFS = YES ]
 			then	p=`${BIN}prs -hr$i -d:PARENT:`
 				if [ X$p != X ]
-				then	${BIN}cset -R${p}..$i
+				then	${BIN}bk cset -R${p}..$i
 				fi
 			else	echo "$NEW/ChangeSet:$i"
 			fi
@@ -403,7 +329,7 @@ _save() {
 	fi
 	if [ X$2 = X ]
 	then	__cd2root
-		REV=`${BIN}prs -hr+ -d:I: ChangeSet`
+		REV=`${BIN}bk prs -hr+ -d:I: ChangeSet`
 		OUTPUT=$1
 	else	REV=$1
 		OUTPUT=$2
@@ -411,7 +337,7 @@ _save() {
 	if [ X$V != X ]
 	then	echo "Saving ChangeSet $REV in $OUTPUT"
 	fi
-	${BIN}cset -m$REV $V > $OUTPUT
+	${BIN}bk cset -m$REV $V > $OUTPUT
 	exit $?
 }
 
@@ -434,48 +360,20 @@ _locked() {
 }
 
 _extra() {
-	${BIN}sfiles -x
+	${BIN}bk sfiles -x
 }
 
 _extras() {
-	${BIN}sfiles -x
-}
-
-_new() {
-	${BIN}ci -i "$@"
+	${BIN}bk sfiles -x
 }
 
 _vi() {
-	${BIN}get -qe "$@" 2> /dev/null
+	${BIN}bk get -qe "$@" 2> /dev/null
 	vi $@
 }
 
-_edit() {
-	${BIN}get -e "$@"
-}
-
-_unedit() {
-	${BIN}clean -u "$@"
-}
-
-_unlock() {
-	${BIN}clean -n "$@"
-}
-
-_mv() {
-	${BIN}sccsmv "$@"
-}
-
-_rm() {
-	${BIN}sccsrm -d "$@"
-}
-
-_info() {
-	${BIN}sinfo "$@"
-}
-
 _sdiffs() {
-	${BIN}diffs -s "$@"
+	${BIN}bk diffs -s "$@"
 }
 
 # usage: tag [r<rev>] symbol
@@ -492,12 +390,12 @@ _tag() {
 	then	echo "Usage: tag [-r<rev>] tag_name"
 		exit 1
 	fi
-	${BIN}admin -S${1}$REV ChangeSet
+	${BIN}bk admin -S${1}$REV ChangeSet
 }
 
 _keys() {
 	__cd2root
-	${BIN}sfiles -k
+	${BIN}bk sfiles -k
 }
 
 # usage: gone key [key ...]
@@ -513,14 +411,14 @@ _gone() {
 		exit 1
 	fi
 	if [ -f SCCS/s.gone ]
-	then	${BIN}get -eq gone
+	then	${BIN}bk get -eq gone
 	fi
 	for i
 	do	echo "$i" >> gone
 	done
 	if [ -f SCCS/s.gone ]
-	then	${BIN}delta -yGone gone
-	else	${BIN}delta -i gone
+	then	${BIN}bk delta -yGone gone
+	else	${BIN}bk delta -i gone
 	fi
 }
 
@@ -558,15 +456,15 @@ _chmod() {
 		then 	echo $i is edited, skipping it
 			continue
 		fi
-		${BIN}get -qe $i
+		${BIN}bk get -qe $i
 		omode=`ls -l $i | sed 's/[ \t].*//'`
 		chmod $MODE $i
 		mode=`ls -l $i | sed 's/[ \t].*//'`
-		${BIN}clean $i
+		${BIN}bk clean $i
 		if [ $omode = $mode ]
 		then	continue
 		fi
-		${BIN}admin -m$mode $i
+		${BIN}bk admin -m$mode $i
 	done
 }
 
@@ -611,21 +509,21 @@ _undo() {
 	then	echo "usage bk undo [-fqs] -r<cset-revisions>"
 		exit 1
 	fi
-	${BIN}cset -ffl$REVS > ${TMP}rmlist$$
+	${BIN}bk cset -ffl$REVS > ${TMP}rmlist$$
 	if [ ! -s ${TMP}rmlist$$ ]
 	then	echo undo: nothing to undo in "$REVS"
 		exit 0
 	fi
 	# FIX BK_FS
-	sed 's/@.*$//' < ${TMP}rmlist$$ | ${BIN}clean - || {
+	sed 's/@.*$//' < ${TMP}rmlist$$ | ${BIN}bk clean - || {
 		echo Undo aborted.
 		$RM -f ${TMP}rmlist$$
 		exit 1
 	}
 
-	${BIN}stripdel -Ccr$REVS ChangeSet 2> ${TMP}undo$$
+	${BIN}bk stripdel -Ccr$REVS ChangeSet 2> ${TMP}undo$$
 	if [ $? != 0 ]
-	then	${BIN}gethelp undo_error $BIN
+	then	${BIN}bk gethelp undo_error $BIN
 		cat ${TMP}undo$$
 		$RM ${TMP}undo$$
 		exit 1
@@ -650,7 +548,7 @@ _undo() {
 		fi
 		UNDO=BitKeeper/tmp/undo
 		if [ -f $UNDO ]; then $RM -f $UNDO; fi
-		${BIN}cset $V -ffm$REVS > $UNDO
+		${BIN}bk cset $V -ffm$REVS > $UNDO
 		if [ ! -s $UNDO ]
 		then	echo Failed to create undo backup $UNDO
 			exit 1
@@ -660,7 +558,7 @@ _undo() {
 	# XXX Colon can not be a BK_FS on win32
 	sed 's/@/ /' < ${TMP}rmlist$$ | while read f r
 	do	echo $f
-		${BIN}stripdel $Q -Cr$r $f
+		${BIN}bk stripdel $Q -Cr$r $f
 		if [ $? != 0 ]
 		then	echo Undo of "$@" failed 1>&2
 			exit 1
@@ -671,7 +569,7 @@ _undo() {
 	# Handle any renames.  Done outside of stripdel because names only
 	# make sense at cset boundries.
 	# XXX - needs to use renames command
-	${BIN}prs -hr+ -d':PN: :SPN:' - < ${TMP}mv$$ | while read a b
+	${BIN}bk prs -hr+ -d':PN: :SPN:' - < ${TMP}mv$$ | while read a b
 	do	if [ $a != $b ]
 		then	if [ -f $b ]
 			then	echo Unable to mv $a $b, $b exists
@@ -685,7 +583,7 @@ _undo() {
 				mv $a $b
 			fi
 		fi
-		${BIN}renumber $b
+		${BIN}bk renumber $b
 	done 
 	$RM -f ${TMP}mv$$ ${TMP}rmlist$$ ${TMP}undo$$
 	if [ X$Q = X -a $SAVE = YES ]
@@ -694,7 +592,7 @@ _undo() {
 	if [ X$Q = X ]
 	then	echo Running consistency check...
 	fi
-	${BIN}sfiles -r
+	${BIN}bk sfiles -r
 	bk -r check -a -f 
 	EXIT=$?
 	if [ $EXIT = 2 ]	# means try again.
@@ -705,21 +603,6 @@ _undo() {
 		EXIT=$?
 	fi
 	exit $EXIT
-}
-
-_rev2cset() {
-	${BIN}r2c "$@"
-}
-
-_pending() {
-	__cd2root
-	exec ${BIN}sfiles -CA | 
-	BK_YEAR4=1 ${BIN}prs -h \
-'-d:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\n$each(:C:){  (:C:)}\n$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}' - | $PAGER
-}
-
-_users() {
-	${BIN}bkusers "$@"
 }
 
 _man() {
@@ -744,32 +627,10 @@ _root() {
 	exit 0
 }
 
-_sendbug() {
-	${BIN}gethelp bugtemplate >${TMP}bug$$
-	$EDITOR ${TMP}bug$$
-	while true
-	do	echo $N "(s)end, (e)dit, (q)uit? "$NL
-		read x
-		case X$x in
-		    Xs*) cat ${TMP}bug$$ |
-			    __mail bitkeeper-bugs@bitmover.com "BK Bug"
-		 	 ${RM} -f ${TMP}bug$$
-			 echo Your bug has been sent, thank you.
-	    	 	 exit 0;
-		 	 ;;
-		    Xe*) $EDITOR ${TMP}bug$$
-			 ;;
-		    Xq*) ${RM} -f ${TMP}bug$$
-			 echo No bug sent.
-			 exit 0
-			 ;;
-		esac
-	done
-}
 
 # Make links in /usr/bin (or wherever they say).
 _links() {
-	test -x ${BK_BIN}sccslog || { echo Can not find bin directory; exit 1; }
+	test -x ${BK_BIN}bk || { echo Can not find bin directory; exit 1; }
 	if [ "X$1" != X ]
 	then	DIR=$1
 	else	DIR=/usr/bin
@@ -798,104 +659,6 @@ _regression() {
 	cd ${BIN}t && exec ./doit "$@"
 }
 
-# bkhelp.txt is a series of blocks formatted like this:
-# #tag1
-# text...
-# ...
-# $
-# #tag2
-# text...
-# $
-#
-# text may not contain a line which begins with a hash or dollar sign.
-# text may contain occurrences of ## (double hashes) which are
-# replaced by the second argument to gethelp, if any.  This text may
-# not contain a hash either.  For command help texts, the second arg
-# is $BIN.  The tags must be unique and nonempty, and may not contain
-# spaces or shell or regexp metachars.
-#
-# We also use this file for error messages so the format is that all
-# help tags are of the form help_whatever
-#
-# List all help and command topics, it's the combo of what is in bin and
-# what is in the help file.  This is used for helptool.
-_topics() {
-	${BIN}gethelp help_topiclist
-}
-
-_export() {
-	Q=-q
-	K=
-	R=
-	T=
-	WRITE=NO
-	INCLUDE=
-	EXCLUDE=
-	USAGE1="usage: bk export [-tDkwv] [-i<pattern>] [-x<pattern>]"
-	USAGE2="	[-r<rev> | -d<date>] [source] dest"
-	while getopts Dktwvi:x:r:d: OPT
-	do	case $OPT in
-		v)	Q=;;
-		k)	K=-k;;
-		t)	T=-T;;
-		w)	WRITE=YES;;
-		r|d)	if [ x$R != x ]
-			then	echo "export: use only one -r or -d option"
-				exit 2
-			fi
-			R="-$OPT$OPTARG";;
-		i)	INCLUDE="| egrep -e '$OPTARG'";;
-		x)	EXCLUDE="| egrep -ve '$OPTARG'";;
-		*)	echo "$USAGE1"
-			echo "$USAGE2"
-			exit 2;;
-		esac
-	done
-	shift `expr $OPTIND - 1`
-
-	case $# in
-	1) SRC=.  DST=$1;;
-	2) SRC=$1 DST=$2;;
-	*) echo "$USAGE1"
-	   echo "$USAGE2"
-	   exit 2;;
-	esac
-	if [ x$R = x ]; then R=-r+; fi
-
-	mkdir -p $DST || exit 1
-	HERE=`pwd`
-	cd $DST
-	DST=`pwd`
-	cd $HERE
-	cd $SRC
-	__cd2root
-
-	# XXX: cset -t+ should work.
-	CREV=`${BIN}prs $R -hd:I: ChangeSet`
-	if [ X$CREV = X ]
-	then	echo "export: unable to find revision $R in ChangeSet"
-		rmdir $DST
-		exit 1
-	fi
-	
-	${BIN}cset -D -t`${BIN}prs $R -hd:I: ChangeSet` \
-	| eval egrep -v "'^ChangeSet'" $INCLUDE $EXCLUDE \
-	| sed 's/[@]/ /' | while read file rev
-	do
-		PN=`${BIN}prs -r$rev -hd:DPN: $SRC/$file`
-		if ${BIN}get $T $K $Q -r$rev -G$DST/$PN $SRC/$file
-		then :
-		else	DIR=`dirname $DST/$PN`
-			mkdir -p $DIR || exit 1
-			${BIN}get $K $Q -r$rev -G$DST/$PN $SRC/$file
-		fi
-	done
-
-	if [ $WRITE = YES ]
-	then	chmod -R u+w,a+rX $DST
-	fi
-}
-
 __init() {
 	BK_ETC="BitKeeper/etc/"
 
@@ -917,7 +680,7 @@ __platformPath() {
 
 	# XXX TODO bk_tagfile should be a config varibale
 	#     On NT, bk_tagfile should be "sccslog.exe"
-        bk_tagfile="sccslog"
+        bk_tagfile="bk"
 
 	BIN=
 	if [ X$BK_BIN != X -a -x ${BK_BIN}$bk_tagfile ]
@@ -972,34 +735,6 @@ __platformInit
 __init
 __logCommand "$@"
 
-if [ X"$1" = X ]
-then	__usage
-elif [ X"$1" = X-h ]
-then	shift
-	${BIN}help "$@"
-	exit $?
-elif [ X"$1" = X-r ]
-then	if [ X$2 != X -a -d $2 ]
-	then	cd $2
-		shift
-	else	__cd2root
-	fi
-	shift
-	if [ X$1 = X-R ]
-	then	__cd2root
-		shift
-	fi
-	# bk -r sfiles -c == bk sfiles -c.
-	if [ "X$1" != Xsfiles -a "X$1" != "Xextras" -a "X$1" != "Xextra" ]
-	then	${BIN}sfiles | ${BIN}bk "$@" -
-		exit $?
-	fi
-fi
-if [ X$1 = X-R ]
-then	__cd2root
-	shift
-fi
-
 PATH=${BIN%/}:$PATH
 export PATH
 
@@ -1012,12 +747,4 @@ fi
 cmd=$1
 shift
 
-case $cmd in
-    pmerge)
-	exec perl ${BIN}$cmd "$@";;
-    rcs2sccs|mkdiffs)	# needs perl 5 - for now.
-	exec `__perl` ${BIN}$cmd "$@";;
-    fm|fm3|citool|sccstool|fmtool|fm3tool|difftool|helptool|csettool|renametool)
-	exec $wish -f ${BIN}${cmd}${tcl} "$@";;
-    *)	exec $cmd "$@";;	# will be found in $BIN by path search.
-esac
+exec $cmd "$@";	# will be found in $BIN by path search.

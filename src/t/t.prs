@@ -388,7 +388,7 @@ echo OK
 echo $N checking descriptive text :FD: ..............................$NL
 ${ECHO} dtext1 > dtext
 ${ECHO} dtext2 >> dtext
-admin -tdtext FILE
+bk admin -tdtext FILE
 ${CAT} > CMP1 <<EOF
 <dtext1>
 <dtext2>

@@ -61,7 +61,7 @@ commit_main(int ac, char **av)
 	}
 	if (getcomment) {
 		sprintf(buf,
-			"%ssccslog -C - < %s > %s", bin, list, commit_file);
+			"%sbk sccslog -C - < %s > %s", bin, list, commit_file);
 		system(buf);
 	}
 	unlink(list);

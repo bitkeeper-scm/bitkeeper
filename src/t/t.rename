@@ -112,7 +112,7 @@ fi
 ${CAT} > PRS <<EOF
 P src/t/regression.sh
 EOF
-prs -hr+ src/t/SCCS/s.regression.sh | grep '^P ' | ${CAT} > PRS2
+bk prs -hr+ src/t/SCCS/s.regression.sh | grep '^P ' | ${CAT} > PRS2
 cmp -s PRS PRS2
 if [ $? -ne 0 ]; then echo failed; cat resolve.out; diff PRS PRS2; exit 1; fi
 echo OK
@@ -130,7 +130,7 @@ bk resolve $Q -f R >resolve.out 2>&1 #|| { echo failed; cat resolve.out; exit 1;
 ${CAT} > PRS <<EOF
 P src/t/regression.sh
 EOF
-prs -hr+ src/t/SCCS/s.regression.sh | grep '^P ' | ${CAT} > PRS2
+bk prs -hr+ src/t/SCCS/s.regression.sh | grep '^P ' | ${CAT} > PRS2
 cmp -s PRS PRS2
 if [ $? -ne 0 ]; then 
 	echo 'failed (known bug)'; diff PRS PRS2
