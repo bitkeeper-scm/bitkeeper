@@ -35,12 +35,16 @@ int	isdir(char*);
 
 main(int ac, char **av)
 {
-	char	*sfio, *dest = 0, *tmp = findtmp();
+	char	*p, *sfio, *dest = 0, *tmp = findtmp();
 	int	i, fd;
 	pid_t	pid = getpid();
 	FILE	*f;
-	char	instdir[MAXPATH];
+	char	tmpdir[MAXPATH];
 	char	buf[MAXPATH];
+
+	/* rxvt bugs */
+	setbuf(stderr, 0);
+	setbuf(stdout, 0);
 
 	/*
 	 * If they want to upgrade, go find that dir before we fix the path.
@@ -66,34 +70,51 @@ main(int ac, char **av)
 		sprintf(buf, "bindir%u", pid);
 		unlink(buf);
 	} else if (av[1] && (av[1][0] != '-')) {
-		dest = av[1];
+#ifdef	WIN32
+		unless ((av[1][1] ==':') || (av[1][0] == '/')) {
+#else
+		unless (av[1][0] == '/') {
+#endif
+			getcwd(buf, sizeof(buf));
+			strcat(buf, "/");
+			strcat(buf, av[1]);
+			dest = strdup(buf);
+		} else {
+			dest = av[1];
+		}
 	} else if (av[1]) {
 		fprintf(stderr, "usage: %s [-u || <directory>]\n", av[0]);
 		exit(1);
 	}
+	if (dest) for (p = dest; *p; p++) if (*p == '\\') *p = '/';
 
-	sprintf(instdir, "%s/%s%u", tmp, TMP, pid);
-	fprintf(stderr, "Please wait while we unpack in %s ...\n", instdir);
-	if (mkdir(instdir, 0700)) {
-		perror(instdir);
+	sprintf(tmpdir, "%s/%s%u", tmp, TMP, pid);
+	fprintf(stderr, "Please wait while we unpack in %s ...\n", tmpdir);
+	if (mkdir(tmpdir, 0700)) {
+		perror(tmpdir);
 		exit(1);
 	}
-	if (chdir(instdir)) {
-		perror(instdir);
+	if (chdir(tmpdir)) {
+		perror(tmpdir);
 		exit(1);
 	}
 
 	/*
 	 * Add this directory and BK directory to the path.
+	 * Save the old path first, subprocesses need it.
 	 */
-	tmp = malloc(strlen(getenv("PATH")) + 3 * strlen(instdir));
+	tmp = malloc(strlen(getenv("PATH")) + 20);
+	sprintf(tmp, "BK_OLDPATH=%s", getenv("PATH"));
+	putenv(tmp);
+
+	tmp = malloc(strlen(getenv("PATH")) + 3*MAXPATH);
 	sprintf(tmp, "PATH=%s%c%s/bitkeeper%c%s",
-	    instdir, PATH_DELIM, instdir, PATH_DELIM, getenv("PATH"));
+	    tmpdir, PATH_DELIM, tmpdir, PATH_DELIM, getenv("PATH"));
 	putenv(tmp);
 	
 	/* The name "sfio.exe" should work on all platforms */
-	extract("sfio.exe", sfio_data, sfio_size, instdir);
-	extract("sfioball", data_data, data_size, instdir);
+	extract("sfio.exe", sfio_data, sfio_size, tmpdir);
+	extract("sfioball", data_data, data_size, tmpdir);
 
 	/* Unpack the sfio file, this creates ./bitkeeper/ */
 #ifdef	WIN32
@@ -106,13 +127,22 @@ main(int ac, char **av)
 		exit(1);
 	}
 	
+#ifdef	WIN32
+	mkdir("bitkeeper/gnu/tmp", 0777);
+#endif
 	if (dest) {
 		// XXX - what about spaces in dest?
 		fprintf(stderr, "Installing BitKeeper in %s\n", dest);
-		sprintf(buf, "bk install -f %s", dest);
+		sprintf(buf, "bk install -f \"%s\"", dest);
 		system(buf);
+		tmp = malloc(strlen(getenv("PATH")) + MAXPATH);
+		sprintf(tmp, "PATH=%s%c%s", dest, PATH_DELIM, getenv("PATH"));
+		putenv(tmp);
 		fprintf(stderr, "\nInstalled version information:\n\n");
-		sprintf(buf, "%s/bk version", dest);
+		sprintf(buf, "bk version", dest);
+		system(buf);
+		fprintf(stderr, "\nInstallation directory: ");
+		sprintf(buf, "bk bin", dest);
 		system(buf);
 		fprintf(stderr, "\n");
 	} else {

@@ -511,12 +511,11 @@ installdir: $(BKLINK)
 		(cd $(IMGDIR) && tar xf -)
 	cp $(DATA) $(IMGDIR)
 	@if [ $(SYS) = unix ]; \
-	then (cd gnu && $(MAKE) install BINDIR=$(IMGDIR)) ;\
-	     bk get -S ../man/Makefile; \
-	     cd ../man && $(MAKE) install BINDIR=$(IMGDIR) ;\
-	fi
-	@if [ $(SYS) = win32 ]; \
-	then cd win32 && $(MAKE) BINDIR=$(IMGDIR) install; \
+	then	(cd gnu && $(MAKE) install BINDIR=$(IMGDIR)) ;\
+		bk get -S ../man/Makefile; \
+		cd ../man && $(MAKE) install BINDIR=$(IMGDIR) ;\
+	else \
+		cd win32 && $(MAKE) BINDIR=$(IMGDIR) install; \
 	fi
 	@true
 

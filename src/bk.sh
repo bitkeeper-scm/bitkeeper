@@ -1151,6 +1151,10 @@ __keysort()
 # Any existing 'bk' directory will be deleted.
 _install()
 {
+	test "X$BK_DEBUG" = X || {
+		echo "INSTALL: $@"
+		set -x
+	}
 	FORCE=0
 	while getopts f opt
 	do
