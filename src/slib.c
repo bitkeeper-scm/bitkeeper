@@ -10504,9 +10504,9 @@ sccs_encoding(sccs *sc, char *encp, char *compp)
 		enc = 0;
 	}
 
-	if (CSET(sc)) {
-		comp = 0;	/* never compress ChangeSet file */
-	} if (compp) {
+	if (sc && CSET(sc)) comp = 0;	/* never compress ChangeSet file */
+
+	if (compp) {
 		if (streq(compp, "gzip")) {
 			comp = E_GZIP;
 		} else if (streq(compp, "none")) {
