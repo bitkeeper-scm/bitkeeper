@@ -664,23 +664,6 @@ setlod(sccs *s, delta *d, int branch)
 	sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
 }
 
-overwriteAbort(char *file)
-{
-	fputs("\n", stderr);
-	SHOUT();
-	fprintf(stderr,
-"takepatch:\n\
-	%s\n\
-exists as a new file in the patch but as a different file in the local\n\
-repository.  You have to move that file out of the way with either\n\
-\n\
-	bk rm %s\n\
-or\n\
-	bk mv %s <somewhere_else>\n\
-\n\
-before we can apply this patch.\n", file, file, file);
-	cleanup(CLEAN_RESYNC);
-}
 /*
  * If the destination file does not exist, just apply the patches to create
  * the new file.

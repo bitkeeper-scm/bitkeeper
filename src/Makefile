@@ -4,7 +4,6 @@
 # You can set this to anywhere you like and do a "make production" and you'll
 # have an installed BitKeeper.
 BK_BIN	= /usr/libexec/bitkeeper
-
 BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  get gethost getuser key2rev lines lod prs range rechksum renumber \
 	  rmdel sccscat sccslog sccsmv sccsrm sccssh sfiles sfio sids	 \
@@ -24,19 +23,18 @@ DATA	= bitkeeper.config bkhelp.txt
 LINKTO	= ci delta co get edit get unedit clean unget clean fmtool fm \
 	  fm3tool fm3
 BINLINKS= bk admin get delta unget rmdel prs
-
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LINKS) $(PSCR) $(DATA) gnu
 
 	  # FASTPURIFY does not do overrun/underrun checking at each alloc/free
 CFLAGS	= -g -O -Wall -Wno-parentheses -Wno-char-subscripts \
 	  -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM -DFASTPURIFY
 CPPFLAGS= -Izlib
-LINK	= $(LSCCS) $(LMDBM) $(LZLIB) $(XLIBS)
+# For extra libraries required by the system, e.g. libnsl.
+XLIBS	=
+LINK	= $(XLIBS) $(LSCCS) $(LMDBM) $(LZLIB)
 LSCCS	= -L. -lsccs
 LMDBM	= -Lmdbm -lmdbm
 LZLIB	= -Lzlib -lz
-# For extra libraries required by the system, e.g. libnsl.
-XLIBS	=
 # Override this if you don't have it.
 RANLIB	= ranlib
 
@@ -61,7 +59,6 @@ BKDSRCS	= $(BKDOBJ:.o=.c)
 SRCS	= $(PORTOBJ:.o=.c) $(SCCSOBJ:.o=.c) $(MDBMOBJ:.o=.c) \
 	  $(ZLIBOBJ:.o=.c) $(BINOBJ:.o=.c) $(BKDOBJ:.o=.c) \
 	  $(RESOBJ:.o=.c)
-
 HDRS	= sccs.h purify.h range.h system.h mdbm/common.h mdbm/mdbm.h \
 	  mdbm/tune.h zlib/zlib.h zlib/zutil.h zlib/zconf.h zlib/deflate.h \
 	  zlib/infblock.h zlib/infcodes.h zlib/inffast.h zlib/inffixed.h \
@@ -88,10 +85,8 @@ all: $(ALL)
 # This is the same as the default CFLAGS, but explicit.
 purify:
 	$(MAKE) CFLAGS="-g -DPURIFY -DPURIFY_FILES" all
-
 gprof:
 	$(MAKE) CFLAGS="-g -pg -O2" all
-
 # Recent gcc only profiles libc if you do it this way.
 # Note - profiling libc is incompatible with use of system zlib.
 gproflib:
@@ -105,11 +100,6 @@ dp debug:
 dp2 debug2:
 	$(MAKE) CFLAGS="-g -DPURIFY -DDEBUG2" all
 
-# Linting...
-# N.B. -DLINT is no longer needed when compiling with gcc.
-ansi:
-	$(MAKE) CFLAGS="-g -O -Wall -ansi -pedantic -DANSIC" all
-
 # -Wno-parentheses shuts up "suggest parentheses around assignment ...".
 # Unfortunately it also turns off dangling else warnings.
 # -Wno-char-subscripts shuts up "subscript has type char", which comes
@@ -117,12 +107,6 @@ ansi:
 # back on for 1.1 or so.)
 Wall:
 	$(MAKE) CFLAGS="-g -DWALL -DLINT -Wall -Wno-parentheses -Wno-char-subscripts -DPURIFY" all
-
-WWall:
-	$(MAKE) CFLAGS="-g -O -W -Wall -Wstrict-prototypes -Wmissing-prototypes -Wwrite-strings -DPURIFY" all
-
-fullwarn:
-	$(MAKE) CFLAGS="-g -fullwarn -DLINT -DPURIFY" all
 
 # production builds
 p:
@@ -134,7 +118,7 @@ stats:
 g:
 	$(MAKE) CFLAGS="-g" all
 gO:
-	$(MAKE) CFLAGS="-g -O"
+	$(MAKE) CFLAGS="-g -O" all
 
 production_all:
 	$(MAKE) production_g prefix=$(BK_BIN)/g
@@ -147,15 +131,7 @@ production_g: rebuild gO install
 production_debug: rebuild debug install
 production_ndebug: rebuild ndebug install
 production_purify: rebuild purify install
-
 production_image: rebuild p image
-
-# Platform specific production builds
-freebsd bsd irix sgi hpux hp-ux hp:
-	gmake CC=gcc p install
-
-solaris:
-	$(MAKE) -e CC=gcc XLIBS=-lnsl p install
 
 # Cleanup targets.
 clean-obj: FORCE
@@ -326,8 +302,8 @@ chksum: chksum.o
 	$(CC) $(CFLAGS) chksum.o -o chksum
 mtime: mtime.o
 	$(CC) $(CFLAGS) mtime.o -o mtime
-push: push.o lib_tcp.o 
-	$(CC) $(CFLAGS) push.o lib_tcp.o $(LIBS) -o push
+push: push.o lib_tcp.o $(LIBS)
+	$(CC) $(CFLAGS) push.o lib_tcp.o $(LINK) -o push
 logaddr: logaddr.o $(LIBS)
 	$(CC) $(CFLAGS) logaddr.o $(LINK) -o logaddr
 setlog: setlog.o $(LIBS)
@@ -418,6 +394,10 @@ stamp-ver:: ../SCCS/s.ChangeSet utils/os utils/gnu-os
 	touch stamp-ver
 stamp-ver:: prs
 	touch stamp-ver
+
+# Because we need the execute bit on
+utils/os utils/gnu-os: get
+	./get utils/os utils/gnu-os
 
 uuwrap: uuwrap.sh substvars
 	./substvars uuwrap.sh > uuwrap.T
@@ -579,6 +559,7 @@ install: install-nolinks
 install-nolinks: all
 	test -d $(BK_BIN) || mkdir -p $(BK_BIN)
 	cp -f $(BINS) $(SCRIPTS) $(DATA) $(BK_BIN)
+	-rm -rf $(BK_BIN)/t/t.*
 	if [ ! -d $(BK_BIN)/t ]; \
 	then	mkdir $(BK_BIN)/t; \
 	fi
