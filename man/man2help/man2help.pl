@@ -4,7 +4,6 @@ eval "exec perl -Ssw $0 $@"
 
 sub main
 {
-	$ENV{'GROFF_NO_SGR'} = "no";
 	$debug = 0 if 0;
 	$m = shift(@ARGV);
 	open(FD, $m);
@@ -16,7 +15,8 @@ sub main
 	}
 	$ENV{'GROFF_NO_SGR'} = 1;
 	$MAN = "-man";
-	unless (system("echo | groff -mgan >/dev/null 2>/dev/null")) {
+	unless (($^O eq "MSWin32") ||
+		system("echo | groff -mgan >/dev/null 2>/dev/null")) {
 		$MAN = "-mgan";
 	}
 
