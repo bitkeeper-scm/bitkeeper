@@ -78,7 +78,7 @@ E
 G
 EOF
 bk get $Q foo
-diff -ruN foo BitKeeper/tmp/foo > BitKeeper/tmp/P
+bk diff -ruN foo BitKeeper/tmp/foo > BitKeeper/tmp/P
 bk import $Q -tpatch -p0 BitKeeper/tmp/P . || exit 1
 echo OK
 
