@@ -235,7 +235,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	unless (opts.quiet) {
 		fprintf(stderr, "Updating file timestamps...\n");
 	}
-	sys("bk", "-r", "_timestamp", SYS);
+	sys("bk", "-r", "timestamp", SYS);
 
 	rc  = 0;
 done:	if (rc) {

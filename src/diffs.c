@@ -124,9 +124,10 @@ usage:			system("bk help -s diffs");
 	 * If we specified no revs then there must be a gfile.
 	 */
 	if (boundaries) things = 2;
-	if ((flags & GET_PREFIX) && (things != 2) && !streq("-", av[ac-1])) {
+	if ((flags & GET_PREFIX) &&
+	    !Rev && (things != 2) && !streq("-", av[ac-1])) {
 		fprintf(stderr,
-		    "%s: must have both revisions with -d|u|m|s\n", av[0]);
+		    "%s: must have both revisions with -A|U|M|O\n", av[0]);
 		return (1);
 	}
 
@@ -184,9 +185,9 @@ usage:			system("bk help -s diffs");
 			/*
 			 * XXX - if there are other commands which want the
 			 * edited file as an arg, we should make this code
-			 * be a function.
+			 * be a function.  export/rset/gnupatch use it.
 			 */
-			if (r[0] && (things == 1) && streq(r[0], "=")) {
+			if (r[0] && (things == 1) && streq(r[0], ".")) {
 				restore = 1;
 				if (HAS_GFILE(s) && IS_WRITABLE(s)) {
 					things = 0;
@@ -200,7 +201,7 @@ usage:			system("bk help -s diffs");
 				unless (empty) goto next;
 				s->rstart = s->tree;
 			}
-			if (restore) r[0] = "=";
+			if (restore) r[0] = ".";
 		}
 		if (things) {
 			unless (s->rstart && (r1 = s->rstart->rev)) goto next;

@@ -20,20 +20,16 @@ named according to the access method (see bk help url for more information).
 .SH OPTIONS
 .TP
 .B \-l
-Literal; i.e. disable the auto-subsitution of "localhost" with the
-real host name when we store the parent pointer. This also disable
-the auto-subsitution of relative path to absolute path.
-This is used by advance user for setting up ssh port forwarding
-from a localhost port. It is probably a "bad" idea to use this option
-on a repository shared over a network file system such as NFS or SAMBA.
-"localhost" may point to different parent repositories on different
-host.
+Use the specified parent URL literally.
+Without this option, the URL is normalized, i.e.,
+"localhost" is changed to the real hostname, relative paths are
+changed to absolute paths, etc.  
 .tp
 .B \-q
 Run quietly.
 .tp
 .B \-p
-Just print parent without other text. (for scripts)
+Just print parent without other text, useful for scripts.
 .tp
 .B \-r
 Remove the parent pointer.

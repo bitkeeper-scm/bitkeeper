@@ -848,7 +848,6 @@ char	*sccs_realuser(void);
 char	*sccs_user(void);
 int	sccs_markMeta(sccs *);
 
-int	newrev(sccs *s, pfile *pf);
 delta	*modeArg(delta *d, char *arg);
 char    *fullname(char *, int);
 int	fileType(mode_t m);

@@ -217,7 +217,7 @@ check_main(int ac, char **av)
 		 * also store the short key.  We want all of them to be unique.
 		 */
 		sccs_sdelta(s, sccs_ino(s), buf);
-		if (hash_store_str(keys, buf, s->gfile)) {
+		if (hash_storeStr(keys, buf, s->gfile)) {
 			fprintf(stderr, "Same key %s used by\n\t%s\n\t%s\n",
 			    buf, s->gfile, (char *)hash_fetch(keys, buf, 0, 0));
 			errors |= 1;
@@ -226,7 +226,7 @@ check_main(int ac, char **av)
 			t = sccs_iskeylong(buf);
 			assert(t);
 			*t = 0;
-			if (hash_store_str(keys, buf, s->gfile)) {
+			if (hash_storeStr(keys, buf, s->gfile)) {
 				fprintf(stderr,
 				    "Same key %s used by\n\t%s\n\t%s\n",
 				    buf, s->gfile,
@@ -695,7 +695,7 @@ checkAll(HASH *db)
 		sprintf(buf, "%s.p", ctmp);
 		keys = fopen(buf, "w");
 		while (fgets(buf, sizeof(buf), f)) {
-			unless (hash_fetch_str(local, buf)) fputs(buf, keys);
+			unless (hash_fetchStr(local, buf)) fputs(buf, keys);
 		}
 		fclose(f);
 		fclose(keys);
@@ -713,7 +713,7 @@ full:		keys = fopen(ctmp, "rt");
 		t = separator(buf);
 		assert(t);
 		*t = 0;
-		if (hash_fetch_str(db, buf)) continue;
+		if (hash_fetchStr(db, buf)) continue;
 		if (mdbm_fetch_str(goneDB, buf)) continue;
 		hash_alloc(warned, buf, 0, 0);
 		found++;
@@ -732,16 +732,14 @@ listFound(HASH *db)
 	kvpair	kv;
 
 	if (goneKey & 1) { /* -g option => key only, no header */
-		for (kv = hash_first(db); kv.key.dsize; kv = hash_next(db)) {
-			printf("%s\n", kv.key.dptr);
-		}
+		EACH_HASH(db) printf("%s\n", kv.key.dptr);
 		return;
 	}
 
 	/* -gg, don't want file keys, just delta keys */
 	if (goneKey) return;
 
-	for (kv = hash_first(db); kv.key.dsize; kv = hash_next(db)) {
+	EACH_HASH(db) {
 		fprintf(stderr, "Missing file (chk3) %s\n", kv.key.dptr);
 	}
 }
@@ -846,9 +844,9 @@ buildKeys(MDBM *idDB)
 		r = strchr(t, '\n');
 		*r++ = 0;
 		assert(t);
-		if (hash_store_str(db, t, s)) {
+		if (hash_storeStr(db, t, s)) {
 			char	*a, *b;
-			char	*root = hash_fetch_str(db, t);
+			char	*root = hash_fetchStr(db, t);
 
 			fprintf(stderr,
 			    "Duplicate delta found in ChangeSet\n");
@@ -891,7 +889,7 @@ buildKeys(MDBM *idDB)
 	for (d = cset->table; d; d = d->next) {
 		unless ((d->type == 'D') && (d->flags & D_CSET)) continue;
 		sccs_sdelta(cset, d, buf);
-		if (hash_store_str(db, buf, key)) {
+		if (hash_storeStr(db, buf, key)) {
 			char	*root = hash_fetch(db, t, 0, 0);
 			unless (streq(root, key)) {
 				fprintf(stderr,
@@ -1056,7 +1054,7 @@ check(sccs *s, HASH *db)
 
 		unless (d->flags & D_CSET) continue;
 		sccs_sdelta(s, d, buf);
-		unless (t = hash_fetch_str(db, buf)) {
+		unless (t = hash_fetchStr(db, buf)) {
 			char	*term;
 
 			if (mixed && (term = sccs_iskeylong(buf))) {
@@ -1239,12 +1237,10 @@ checkKeys(sccs *s, char *root)
 	for (d = s->table; d; d = d->next) {
 		unless (d->flags & D_CSET) continue;
 		sccs_sdelta(s, d, key);
-		*(delta **)hash_fetch_alloc(findkey, key, 0,
-		    sizeof(delta *)) = d;
+		*(delta**)hash_fetchAlloc(findkey, key, 0, sizeof(delta *)) = d;
 		unless (mixed) continue;
 		*strrchr(key, '|') = 0;
-		*(delta **)hash_fetch_alloc(findkey, key, 0,
-		    sizeof(delta *)) = d;
+		*(delta**)hash_fetchAlloc(findkey, key, 0, sizeof(delta *)) = d;
 	}
 	do {
 		assert(csetKeys.deltas[i]);
@@ -1336,14 +1332,12 @@ listMarks(HASH *db)
 	kvpair	kv;
 	int	n = 0;
 
-	for (kv = hash_first(db); kv.key.dsize != 0; kv = hash_next(db)) {
+	EACH_HASH(db) {
 		n++;
 		fprintf(stderr,
 		    "check: %s is missing cset marks,\n", kv.key.dptr);
 	}
-	if (n) {
-		fprintf(stderr, "   run ``bk cset -fvM1.0..'' to correct.\n");
-	}
+	if (n) fprintf(stderr, "   run ``bk cset -fvM1.0..'' to correct.\n");
 }
 #endif
 
@@ -1419,7 +1413,7 @@ update_idcache(MDBM *idDB, HASH *keys)
 	char	*found;		/* where we found the gfile */
 	int	inkeyloc;	/* is gfile in inode location? */
 
-	for (kv = hash_first(keys); kv.key.dsize != 0; kv = hash_next(keys)) {
+	EACH_HASH(keys) {
 		p = strchr(kv.key.dptr, '|');
 		assert(p);
 		p++;

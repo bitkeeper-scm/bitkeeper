@@ -38,7 +38,8 @@ mkgfile(sccs *s, char *rev, char *path, char *tmpdir, char *tag,
 		assert(d);
 		unless ((d->mode == 0) || S_ISREG(d->mode)) {
 			fprintf(stderr,
-	    "%s is not regular file, converted to empty file\n", d->pathname);
+			    "%s is not a regular file, using empty file.\n",
+			    d->pathname);
 			return;
 		}
 
@@ -50,8 +51,7 @@ mkgfile(sccs *s, char *rev, char *path, char *tmpdir, char *tag,
 		if (expandkeywords) flags |= GET_EXPAND;
 		if (sccs_get(s, r, 0, 0, 0, flags, "-")) {
 			free(ogfile);
-			fprintf(stderr, "Cannot get %s, rev %s\n",
-								s->sfile, r);
+			fprintf(stderr, "Cannot get %s|%s\n", s->sfile, r);
 			exit(1);
 		}
 		free(s->gfile);

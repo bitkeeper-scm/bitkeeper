@@ -36,13 +36,13 @@ If the last argument is an existing directory,
 moves all listed files into that directory.
 Otherwise, if only two files are given, it renames the first as the
 second.  It is an error if more than two files are listed and the last
-argument is not a directory.  In summary,
+argument is not a directory.
+The intent is that
 .B bk mv
-behaves like a 
-a regular Unix 
+behaves like the traditional Unix 
 .B mv
-command, execpt that it knows about the additional
-BitKeeper files.
+command, except that it knows about the additional
+BitKeeper files and records the rename event.
 .SH NOTES
 .LP
 .B bk mv
@@ -58,3 +58,4 @@ option (use of which is not recommended).
 .SA rmdir
 .SH CATEGORY
 .B File
+.\" help://mvdir

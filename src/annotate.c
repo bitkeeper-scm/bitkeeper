@@ -13,7 +13,7 @@ int
 annotate_main(int ac, char **av)
 {
 	sccs	*s;
-	int	iflags = 0, flags = BASE_FLAGS;
+	int	flags = BASE_FLAGS;
 	int	c, errors = 0;
 	char	*t, *name, *rev = 0, *cdate = 0;
 	delta	*d;
@@ -56,7 +56,7 @@ annotate_main(int ac, char **av)
 	if (flags == BASE_FLAGS) flags |= GET_REVNUMS|GET_USER;
 	name = sfileFirst("get", &av[optind], SF_HASREVS);
 	for (; name; name = sfileNext()) {
-		unless (s = sccs_init(name, iflags)) continue;
+		unless (s = sccs_init(name, 0)) continue;
 		unless (HASGRAPH(s)) {
 			sccs_free(s);
 			continue;

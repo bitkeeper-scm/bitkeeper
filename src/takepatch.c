@@ -619,8 +619,7 @@ error:			if (perfile) sccs_free(perfile);
 		if ((echo != 2) && (echo != 3)) fprintf(stderr, "\n");
 	}
 	if ((s && CSET(s)) || (!s && streq(name, CHANGESET))) {
-		rc = applyCsetPatch(s ? s->sfile : 0 ,
-						nfound, flags, perfile);
+		rc = applyCsetPatch(s ? s->sfile : 0 , nfound, flags, perfile);
 	} else {
 		if (patchList && tableGCA) getLocals(s, tableGCA, name);
 		rc = applyPatch(s ? s->sfile : 0, flags, perfile);
@@ -638,9 +637,7 @@ error:			if (perfile) sccs_free(perfile);
 	}
 	free(gfile);
 	free(name);
-	if (s) {
-		sccs_free(s);
-	}
+	if (s) sccs_free(s);
 	if (rc < 0) {
 		cleanup(CLEAN_RESYNC);
 		return (rc);
@@ -1182,8 +1179,7 @@ chkEmpty(sccs *s, MMAP *dF)
  * is possible to only write the file once.
  */
 private	int
-applyCsetPatch(char *localPath,
-			int nfound, int flags, sccs *perfile)
+applyCsetPatch(char *localPath, int nfound, int flags, sccs *perfile)
 {
 	patch	*p;
 	MMAP	*iF;
@@ -1284,8 +1280,7 @@ apply:
 			d = cset_insert(s, iF, dF, p->pid);
 		} else {
 			assert(s == 0);
-			unless (s =
-			    sccs_init(p->resyncFile, NEWFILE|SILENT)) {
+			unless (s = sccs_init(p->resyncFile, NEWFILE|SILENT)) {
 				SHOUT();
 				fprintf(stderr,
 				    "takepatch: can't create %s\n",
@@ -1636,8 +1631,7 @@ apply:
 			}
 		} else {
 			assert(s == 0);
-			unless (s =
-			    sccs_init(p->resyncFile, NEWFILE|SILENT)) {
+			unless (s = sccs_init(p->resyncFile, NEWFILE|SILENT)) {
 				SHOUT();
 				fprintf(stderr,
 				    "takepatch: can't create %s\n",
@@ -1740,7 +1734,7 @@ apply:
 		/* yeah, the count is slightly off if there were conflicts */
 	}
 	conflicts += confThisFile;
-	 sccs_free(s);
+	sccs_free(s);
 	if (noConflicts && conflicts) noconflicts();
 	freePatchList();
 	patchList = 0;

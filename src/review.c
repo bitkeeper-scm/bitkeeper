@@ -65,9 +65,9 @@ reviewmerge_main(int ac, char **av)
 		*p++ = 0;
 		line = atoi(p);
 
-		taghash = hash_fetch_alloc(reviews, buf, 0, sizeof(HASH *));
+		taghash = hash_fetchAlloc(reviews, buf, 0, sizeof(HASH *));
 		unless (*taghash) *taghash = hash_new();
-		range = hash_fetch_alloc(*taghash, tag, 0, sizeof(RBtree *));
+		range = hash_fetchAlloc(*taghash, tag, 0, sizeof(RBtree *));
 		unless (*range) *range = intvl_new();
 		intvl_add(*range, line, line);
 	}
@@ -128,7 +128,7 @@ load_existing(char *file)
 		a = strchr(buf, ' ');
 		*a++ = 0;
 
-		taghash = hash_fetch_alloc(reviews, buf, 0, sizeof(HASH *));
+		taghash = hash_fetchAlloc(reviews, buf, 0, sizeof(HASH *));
 		unless (*taghash) *taghash = hash_new();
 
 		/* a points at start of first tag */
@@ -137,7 +137,7 @@ load_existing(char *file)
 			if (b) *b++ = 0; /* b == start of next tag */
 			c = strchr(a, ',');
 			*c++ = 0; /* c = start of range */
-			range = hash_fetch_alloc(*taghash, a, 0,
+			range = hash_fetchAlloc(*taghash, a, 0,
 				sizeof(RBtree *));
 			unless (*range) *range = intvl_new();
 			while (c) {

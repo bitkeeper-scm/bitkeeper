@@ -16216,10 +16216,8 @@ generateTimestampDB(project *p)
 	char	buf[MAXLINE];
 	char	*pref;
 
-	if ((pref = user_preference("trust_window")) &&
-	    streq(pref, "none")) {
-		return (0);
-	}
+	pref = user_preference("clock_skew");
+	if (streq(pref, "off")) return (0);
 
 	tsname = aprintf("%s/BitKeeper/tmp/TIMESTAMPS", proj_root(p));
 
@@ -16335,17 +16333,18 @@ updateTimestampDB(sccs *s, MDBM *timestamps, int different)
 	struct	stat	sb;
 	char	*relpath;
 	const time_t one_week = 7 * 24 * 60 * 60;   /* # of seconds in week */
-	static time_t trust_window = 0;
+	static time_t clock_skew = 0;
 	time_t now;
 
-	if (!trust_window) {
-		char *p = user_preference("trust_window");
+	unless (clock_skew) {
+		char	*p = user_preference("clock_skew");
+
 		if (streq(p, "off")) {
-			trust_window = 2147483647;  /* 2^31 */
+			clock_skew = 2147483647;  /* 2^31 */
 		} else {
-			trust_window = strtoul(p, 0, 0);
+			clock_skew = strtoul(p, 0, 0);
 		}
-		if (!trust_window) trust_window = one_week;
+		unless (clock_skew) clock_skew = one_week;
 	}
 
 	relpath = proj_relpath(s->proj, s->gfile);
@@ -16371,7 +16370,7 @@ updateTimestampDB(sccs *s, MDBM *timestamps, int different)
 	ts.sfile_size = sb.st_size;
 
 	now = time(0);
-	if ((now - ts.gfile_mtime) < trust_window)
+	if ((now - ts.gfile_mtime) < clock_skew)
 		mdbm_delete(timestamps, k);
 	else {
 		v = mdbm_fetch(timestamps, k);

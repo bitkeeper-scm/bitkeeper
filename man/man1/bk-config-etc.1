@@ -30,10 +30,12 @@ However, if a '!' is put at the end of the line in the System config file
 (/etc/BitKeeper/etc/config) then that setting will override any 
 matching key in local config files.  
 .LP
-Also configuration entries can be overridden with the
+Configuration entries may be overridden with the
 .B BK_CONFIG
-environmental variable.  That variable can contain a list of key:value
-pairs seperated by semicolons.  For example:
+environmental variable.
+.B BK_CONFIG 
+may contain a list of key:value pairs seperated by semicolons.
+For example:
 .DS
 .BR BK_CONFIG =\c
 .IR key1 : value2 ; key2 : value2 ; key3 : value3\c
@@ -292,21 +294,21 @@ file:
 autofix:yes
 autofix:no
 .DE
-.SS TRUST_WINDOW
+.SS CLOCK_SKEW
 .br
 When using the 
 .B \-ct
 option to 
 .B bk sfiles
-, file timestamps are compared to a cached list to determine when
-files are unmodified and don't need to be diff'ed again.  The 'trust_window' 
-parameter controls how old a file must be before this
-optimization is used.  Without this restriction clock skew between
-machines using a shared filesystem can cause incorrect results.
+, file timestamps may be compared to a cached list to determine when
+files are unmodified and don't need to be diff'ed again.  The 'clock_skew' 
+parameter controls how old a file must be before file timestamps are to 
+be trusted.  A certain amount of clock skew is strongly advised,
+machines using a shared filesystem can othersie cause incorrect results.
 The time is in seconds and defaults to 604800 (one week).
 .DS
-trust_window: 86400	# one day
-trust_window: off	# disable use of timestamps
+clock_skew: 86400	# one day
+clock_skew: off		# disable trusting of timestamps
 .DE
 .SS BKWEB PREFERENCES
 .LP

@@ -227,7 +227,6 @@ struct	command cmdtbl[] = {
 	{"_sortmerge", sortmerge_main},
 	{"_shellSplit_test", shellSplit_test_main},
 	{"_strings", strings_main},
-	{"_timestamp", timestamp_main},
 	{"_unlink", unlink_main },
 	{"abort", abort_main},			/* doc 2.0 */	
 	{"add", delta_main},			/* doc 2.0 */
@@ -351,6 +350,7 @@ struct	command cmdtbl[] = {
 	{"tagmerge", tagmerge_main},		/* */
 	{"takepatch", takepatch_main},		/* doc 2.0 */
 	{"testdates", testdates_main},		/* undoc 2.0 */
+	{"timestamp", timestamp_main},
 	{"unbk", unbk_main},			/* undoc? 2.0 */
 	{"undo", undo_main},			/* doc 2.0 */
 	{"undos", undos_main},			/* doc 2.0 */
@@ -1145,15 +1145,6 @@ find_wish(void)
 	static char	*path;
 
 	if (path) return (path);
-
-	if (path = getenv("BK_WISH")) {
-		unless (exists(path)) {
-			fprintf(stderr, "bk: bad value for BK_WISH (%s)\n",
-				path);
-			exit(1);
-		}
-		return (path);
-	}
 
 	/* If they set this, they can set TCL_LIB/TK_LIB as well */
 	if ((path = getenv("BK_WISH")) && executable(path)) return (path);
