@@ -14,12 +14,11 @@ usage: cset [opts]\n\n\
     -h		With -r listing, show historic path\n\
     -H		With -r listing, hide Changeset file from file list\n\
     -i<list>	create a new cset on TOT that includes the csets in <list>\n\
-    -l<range>	List each rev in range as file@rev (may be multiline per file)\n\
     -m<range>	Generate a patch of the changes in <range>\n\
     -M<range>	Mark the files included in the range of csets\n\
     -p		print the list of deltas being added to the cset\n\
     -q		Run silently\n\
-    -r<range>	List the filenames:rev..rev which are included in  <range>\n\
+    -r<range>	List each rev in range as file@rev (may be multiline per file)\n\
     -S<sym>	Set <sym> to be a symbolic tag for this revision\n\
     -x<list>	create a new cset on TOT that excludes the csets in <list>\n\
     -y<msg>	Sets the changeset comment to <msg>\n\

@@ -292,7 +292,6 @@ chk_pending(sccs *s, char *gfile, char state[4], MDBM *sDB, MDBM *gDB)
 	 */                                    
 	state[PSTATE] = ' ';
 	unless (d = sccs_getrev(s, "+", 0, 0))  goto out;	
-	assert(d);
 	if (d->flags & D_CSET) goto out;
 
 	/*
@@ -554,7 +553,7 @@ isIgnored(char *file)
 
 	/*
 	 * HACK to hide stuff in the log directory
-	 * This assumes the sfind is ran from project root
+	 * This assumes that sfind is ran from project root
 	 * If you run "bk sfind" under <project root>/BitKeeper directory,
 	 * these file will show up. It is probably OK.
 	 */
