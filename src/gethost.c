@@ -3,6 +3,7 @@
 #include <io.h>
 #include <fcntl.h>
 #endif
+#define	unless(e)	if (!(e))
 
 int
 gethost_main()
@@ -16,7 +17,7 @@ gethost_main()
 	host = sccs_gethost();
 	if ((host == NULL) || (*host == '\0')) return (1);
 	printf("%s\n", host);
-	/* make isure we have a good domain name */
-	if (strchr(host, '.') == NULL) return (1);
+	/* make sure we have a good domain name */
+	unless (strchr(host, '.')) return (1);
 	return (0);
 }
