@@ -40,7 +40,6 @@ int	sameState(const char *file, const struct stat *sb);
 void	lock(char *);
 void	unlock(char *);
 delta	*mkChangeSet(sccs *cset);
-void	explodeKey(char *key, char *parts[4]);
 char	*file2str(char *f);
 void	doRange(sccs *sc);
 void	doList(sccs *sc);
@@ -382,10 +381,10 @@ csetList(sccs *cset, char *rev, int ignoreDeleted)
 		exit(1);
 	}
 
-	unless (idDB = loadDB("SCCS/x.id_cache", 0)) {
+	unless (idDB = loadIdDB()) {
 		system("bk sfiles -r");
 		doneFullRebuild = 1;
-		unless (idDB = loadDB("SCCS/x.id_cache", 0)) {
+		unless (idDB = loadIdDB()) {
 			perror("idcache");
 			exit(1);
 		}
@@ -551,7 +550,7 @@ doKey(char *key, char *val)
 	/*
 	 * Set up the new file.
 	 */
-	unless (idDB || (idDB = loadDB("SCCS/x.id_cache", 0))) {
+	unless (idDB || (idDB = loadIdDB())) {
 		perror("idcache");
 	}
 	lastkey = strdup(key);
@@ -563,7 +562,7 @@ retry:	sc = sccs_keyinit(lastkey, INIT_NOCKSUM, idDB);
 			fprintf(stderr, "Rebuilding caches...\n");
 			system("bk sfiles -r");
 			doneFullRebuild = 1;
-			unless (idDB = loadDB("SCCS/x.id_cache", 0)) {
+			unless (idDB = loadIdDB()) {
 				perror("idcache");
 			}
 			goto retry;
@@ -644,7 +643,7 @@ csetlist(sccs *cset)
 	}
 
 	/* Save away the cset id */
-	sccs_sdelta(buf, sccs_ino(cset));
+	sccs_sdelta(cset, sccs_ino(cset), buf);
 	csetid = strdup(buf);
 
 	/*
@@ -682,6 +681,7 @@ again:	/* doDiffs can make it two pass */
 		printf("%s", PATCH_VERSION);
 	}
 	while (fnext(buf, list)) {
+		chop(buf);
 		for (t = buf; *t != ' '; t++);
 		*t++ = 0;
 		if (doKey(buf, t)) goto fail;
@@ -859,9 +859,9 @@ add(MDBM *csDB, char *buf)
 		system("bk clean -u ChangeSet");
 		exit(1);
 	}
-	sccs_sdelta(key, sccs_ino(s));
+	sccs_sdelta(s, sccs_ino(s), key);
 
-	sccs_sdelta(buf, d);
+	sccs_sdelta(s, d, buf);
 	if (mdbm_store_str(csDB, key, buf, MDBM_REPLACE)) {
 		perror("cset MDBM store in csDB");
 		system("bk clean -u ChangeSet");
@@ -932,8 +932,8 @@ mkChangeSet(sccs *cset)
 		d->dateFudge = (cset->table->date - d->date) + 1;
 		d->date += d->dateFudge;
 	}
-	sccs_sdelta(key, sccs_ino(cset));
-	sccs_sdelta(buf, d);
+	sccs_sdelta(cset, sccs_ino(cset), key);
+	sccs_sdelta(cset, d, buf);
 	if (mdbm_store_str(csDB, key, buf, MDBM_REPLACE)) {
 		perror("cset MDBM store in csDB");
 		system("bk clean -u ChangeSet");
@@ -966,7 +966,7 @@ updateIdCacheEntry(sccs *sc, const char *filename)
 	char	buf[MAXPATH*2];
 
 	/* update the id cache */
-	sccs_sdelta(buf, sccs_ino(sc));
+	sccs_sdelta(sc, sccs_ino(sc), buf);
 	if (sc->tree->pathname && streq(sc->tree->pathname, sc->gfile)) {
 		path = sc->tree->pathname;
 	} else {
@@ -1124,7 +1124,7 @@ sccs_patch(sccs *s)
 				sccs_perfile(s, stdout);
 			}
 			s->rstop = s->rstart = s->tree;
-			sccs_pdelta(s->tree, stdout);
+			sccs_pdelta(s, s->tree, stdout);
 			printf("\n");
 		}
 
@@ -1132,7 +1132,7 @@ sccs_patch(sccs *s)
 		 * For each file, also eject the parent of the rev.
 		 */
 		if (d->parent) {
-			sccs_pdelta(d->parent, stdout);
+			sccs_pdelta(s, d->parent, stdout);
 			printf("\n");
 		}
 		s->rstop = s->rstart = d;
