@@ -28,6 +28,7 @@ usage:		fprintf(stderr, "usage: %s from to\n", av[0]);
 		exit(1);
 	}
 	dest = av[ac-1];
+	cleanPath(dest, dest);
 	if ((name = strrchr(dest, '/')) &&
 	    (name >= dest + 4) && strneq(name - 4, "SCCS/s.", 7)) {
 		dest = sccs2name(dest);
