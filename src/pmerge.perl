@@ -12,7 +12,7 @@
 # -	text deleted from gca
 
 &init;
-doMerge($left, $gca, $right);
+&doMerge($left, $gca, $right);
 
 sub doMerge
 {
@@ -56,24 +56,24 @@ sub mkMerge
 		warn "MARKERS $markers\n" if $debug;
 		if ($markers eq "uu") {
 			# no change on both side
-			doPrint($markers, $ld);
+			&doPrint($markers, $ld);
 		} elsif ($markers eq "is") {
 			# left side inserted a line
-			doPrint($markers, $ld);
+			&doPrint($markers, $ld);
 		} elsif ($markers eq "si") {
 			# right side insert a line
-			doPrint($markers, $rd);
+			&doPrint($markers, $rd);
 		} elsif ($markers eq "du") {
 			# left side deleted a line
-			doPrint($markers, $rd) if $wantGca;
+			&doPrint($markers, $rd) if $wantGca;
 			warn "left delete: $ld" if $debug;
 		} elsif ($markers eq "ud") {
 			# right side deleted a line
-			doPrint($markers, $ld) if $wantGca;
+			&doPrint($markers, $ld) if $wantGca;
 			warn "right delete: $rd" if $debug;
 		} elsif ($markers eq "dd") {
 			# both side deleted the same line
-			doPrint($markers, $rd) if $wantGca;
+			&doPrint($markers, $rd) if $wantGca;
 			warn "both delete: $rd" if $debug;
 		} elsif ($markers eq "<<") {
 			# i.e. We have a overlap.
@@ -122,22 +122,23 @@ sub mkMerge
 sub chkOverlap
 {
 	local($lm, $rm, $lm1, $rm1, $cml, $cmr);
-	local($len, $conflicts, $ltmp, $rtmp) = (0, 0);
+	local($len, $conflicts, $ltmp, $rtmp);
 	local(@lrc, @rrc, @args);
 
 	# Reset global variables, just in case
+	$len = $conflicts = 0;
 	@ldata = @rdata = @lmarker = @rmarker = ();
 	@ldata1 = @rdata1 = @cdata1l = @cdata1r = @cdata2l = @cdata2r = ();
 
 	$lm1 = $rm1 = $cml = $cmr = "";
-	($ltmp, $rtmp) = mkdfile(); # make temp files so we can run diff on it
-	open(DIFF, "diff -u -U $len  ${tmp}pmerge_l$$ ${tmp}pmerge_r$$|")
+	($ltmp, $rtmp) = &mkdfile(); # make temp files so we can run diff on it
+	open(DIFF, "diff -u -U $len $ltmp $rtmp |")
 	    || die "can not popen diff\n";
 	# This is the main loop, all the interesting work is done here !!
 	# We proccess all the unified diffs in this loop.
 	# The code in this loop is a little strange, because
 	# we try to minmize the number of conflict block to
-	# reduce display clutter; Atfer we analyzed the block,
+	# reduce display clutter; After we analyzed the block,
 	# the following could happen:
 	# 	a) A conflict block can sometime turns out to
 	#		be a soft conflict, (e.g. left added stuff,
@@ -148,12 +149,12 @@ sub chkOverlap
 	#		become part of a conflict block). This is done
 	#		so we can combine two near by conflict blocks together.
 	#	Both "a" & "b" can happen in the same cycle.
-	# 	They can also happen in multiple consecutive cycle before
+	# 	They can also happen in multiple consecutive cycles before
 	#	a block can be printed.
 	#
 	($mode, $ln) = &getUdiff();
 	print  OUT "##getcommon 1\n" if ($debug > 4);
-	&getCommon(\@cdata1l, \@cdata1r);
+	&getCommon(*cdata1l, *cdata1r);
 	print  OUT "##get left right\n" if ($debug > 4);
 	@lrc = &getLeft();
 	@rrc = &getRight();
@@ -162,40 +163,40 @@ sub chkOverlap
 		# push winning block back into the comman block and re-start
 		# from top-of-loop.
 		# resolve into common1
-		@args = (@lrc , @rrc, \@cdata1l, \@cdata1r);
-		if (_resolveConflict(@args) && ($mode ne "EOF")) {
-			&getCommon(\@cdata1l, \@cdata1r);
+		if (&resolveConflict(@lrc, @rrc, *cdata1l, *cdata1r)
+						 	&& ($mode ne "EOF")) {
+			&getCommon(*cdata1l, *cdata1r);
 			@lrc = &getLeft();
 			@rrc = &getRight();
 			next;
 		}
 
 		print  OUT "##getcommon2\n" if ($debug > 4);
-		&getCommon(\@cdata2l, \@cdata2r); 	# trailing common block
+		&getCommon(*cdata2l, *cdata2r); 	# trailing common block
 
 		# If leading common block is too "trivial", split & *insert*
 		# into the left right block.
-		splitCommon_i(\@cdata1l, \@cdata1r);
+		&splitCommon_i();
 
 		# When we get here:
 		# If cdata2l is non-empty, then either ldata1 or rdata1
-		# must be non-empty. This is important because we do'nt
+		# must be non-empty. This is important because we don't
 		# want to split a common block into a empty conflict block.
 		# i.e Create a conflict block from nothing = bad idea!!
-		die "Assert Error"
-			if (!empty(\@cdata2l) &&
-			    (empty(\@ldata1) && empty(\@rdata1)));
+		die "pmerge: internal error: creating empty conflict block"
+			if (!&empty(@cdata2l) &&
+			    (&empty(@ldata1) && &empty(@rdata1)));
 		# If trailing common block is too "trivial", split & *append*
 		# into the left right block, repeat until we get a real conflict
-chkCommon:	if (splitCommon_a() && ($mode ne "EOF")) {
+chkCommon:	if (&splitCommon_a() && ($mode ne "EOF")) {
 			print  OUT "##get left right\n" if ($debug > 4);
 			@lrc = &getLeft();
 			@rrc = &getRight();
-			unless (hasConflict(@lrc, @rrc)) {
+			unless (&hasConflict(@lrc, @rrc)) {
 				# resolve into common2
-				@args = (@lrc , @rrc, \@cdata2l, \@cdata2r);
-				_resolveConflict(@args);
-				&getCommon(\@cdata2l, \@cdata2r);
+				&resolveConflict( @lrc, @rrc,
+							*cdata2l, *cdata2r);
+				&getCommon(*cdata1l, *cdata1r);
 				goto chkCommon;
 			}
 		}
@@ -207,22 +208,23 @@ chkCommon:	if (splitCommon_a() && ($mode ne "EOF")) {
 		#
 		if (&isCommon()) {
 			# No hard conflict, print the common block
-			ejectMerge(\@cdata1l, \@cdata1r);
+			&ejectMerge();
 		} else {
 			# It is a hard conflict, print the arrow block
 			$conflicts++;
-			ejectMerge(\@cdata1l, \@cdata1r);
+			&ejectMerge();
 			print OUT "<<<<<<< $lfile\n";
-			ejectList(\@ldata1, 0, !$wantGca, "<");
+			&ejectList(0, !$wantGca, "<", @ldata1);
 			print OUT "=======\n";
-			ejectList(\@rdata1, 0, !$wantGca, ">");
+			&ejectList(0, !$wantGca, ">", @rdata1);
 			print OUT ">>>>>>> $rfile\n";
+			@ldata1 = @rdata1 = (); # empty the list after print
 		}
 
 		# Before we enter top of loop again,
 		# turn the trailing common block
 		# into leading common block.
-		if (empty(\@ldata1_t) && empty(\@rdata1_t)) {
+		if (&empty(@ldata1_t) && &empty(@rdata1_t)) {
 			print  OUT "##common2->common1\n" if ($debug > 4);
 			@cdata1l = @cdata2l; @cdata1r = @cdata2r;
 			@cdata2l = @cdata2r = ();
@@ -230,18 +232,22 @@ chkCommon:	if (splitCommon_a() && ($mode ne "EOF")) {
 			@lrc = &getLeft();
 			@rrc = &getRight();
 		} else {
-			die "cdata2 non-empty"
-				unless (empty(\@cdata2l) && empty(\@cdata2r));
+			die "pmerge: internal error: cdata2 non-empty"
+				unless (&empty(@cdata2l) && &empty(@cdata2r));
 		}
-		last if (($mode eq "EOF") && empty(\@cdata1l) &&
-			  empty(\@ldata1_t) && empty(\@rdata1_t));
+		last if (($mode eq "EOF") && &empty(@cdata1l) &&
+			  &empty(@ldata1_t) && &empty(@rdata1_t));
 	}
 	# If diff tell us that both side are identical, just print it
 	# This happen when both sides added identical lines.
-	close(DIFF); ejectMerge(\@ldata, \@rdata) unless exitStatus($?);
+	close(DIFF); 
+	unless (&exitStatus($?)) {
+		@cdata1l = @ldata; @cdata1r = @rdata;
+		&ejectMerge();
+	}
 
 	# clean up
-	force_unlink($ltmp); force_unlink($rtmp);
+	&force_unlink($ltmp); &force_unlink($rtmp);
 	@ldata = @rdata = @lmarker = @rmarker = ();
 	@ldata1 = @rdata1 = @cdata1l = @cdata1r = @cdata2l = @cdata2r = ();
 	return ($conflicts);
@@ -305,11 +311,10 @@ sub getUdiff
 
 sub ejectList
 {
-	local($mylist, $stripmarker, $skipGca, $mrk) =
-					($_[0], $_[1], $_[2], $_[3]);
+	local($stripmarker, $skipGca, $mrk, @mylist) = @_;
 	local($ln);
 
-	foreach $ln (@$mylist) {
+	foreach $ln (@mylist) {
 		next if (($ln =~ /^s/));
 		next if ($skipGca  && ($ln =~ /^d/));
 		if ($stripmarker || $hideMarker) {
@@ -329,14 +334,12 @@ sub ejectList
 		}
 		print OUT "$ln\n";
 	}
-	@$mylist = (); # empty the list after we print it
 }
 
 sub ejectMerge
 {
-	local($llist, $rlist) = ($_[0], $_[1]);
-	foreach $ln (@$llist) {
-		$rn = shift(@$rlist);
+	foreach $ln (@cdata1l) {
+		$rn = shift(@cdata1r);
 		# Show deleted line only if user ask for it
 		next if (($ln =~ /^d/) && (!$wantGca || !$wantAllMarker));
 		unless ($wantAllMarker) {
@@ -378,26 +381,15 @@ sub ejectMerge
 			}
 		}
 	}
-	@$llist = @$rlist = ();
-}
-
-sub count_ui
-{
-	local($list) = $_[0];
-	local($count) = 0;
-
-	# exclude deleted line from the count
-	foreach (@$list) { $count++ unless /^d/; }
-	return $count;
+	@cdata1l = @cdata1r = ();
 }
 
 sub countChar_ui
 {
-	local($list) = $_[0];
 	local($l_count, $c_count) = (0, 0);
 
 	# exclude deleted line from the count
-	foreach (@$list) {
+	foreach (@_) {
 		unless (/^d/) {
 			$c_count += length $_;
 			$l_count++;
@@ -406,32 +398,11 @@ sub countChar_ui
 	return ($l_count, $c_count);
 }
 
-sub countChg
-{
-	local($list) = $_[0];
-	local($count) = 0;
-
-	# exclude deleted line from the count
-	foreach (@$list) { $count++ unless /^u/; }
-	return $count;
-}
-
-# Return 1 if the block have only 'i' command
-sub isAll_i
-{
-	local($list) = $_[0];
-
-	foreach (@$list) { return 0  unless /^i/; }
-	return 1;
-}
-
-
 sub needCommon
 {
-	local($clist, $llist , $rlist) = ($_[0], $_[1], $_[2]);
 	local($ln_threshold) = 3; # tuneable parameter;
 	local($ch_threshold) = 10; # tuneable parameter;
-	local($ln_count, $ch_count) = &countChar_ui(\@$clist);
+	local($ln_count, $ch_count) = &countChar_ui(@_);
 
 	return 1 if ($ln_count >= $ln_threshold);
 	return 1 if (!$wantBigBlock && ($ch_count >= $ch_threshold));
@@ -451,7 +422,7 @@ sub isCommon
 {
 	local($l_all_i, $l_no_chg, $r_all_i, $r_no_chg);
 
-	return 0 if (!empty(\@ldata1) || !empty(\@rdata1));
+	return 0 if (!&empty(@ldata1) || !&empty(@rdata1));
 	return 1;
 }
 
@@ -467,11 +438,11 @@ sub hasConflict
 
 # If the conflict is resolvable, do it, then return 1
 # else return 0;
-sub _resolveConflict
+sub resolveConflict
 {
 	local($l_all_i, $l_no_chg) = ($_[0], $_[1]);
 	local($r_all_i, $r_no_chg) = ($_[2], $_[3]);
-	local($cdatal, $cdatar)	= ($_[4], $_[5]);
+	local(*cdatal, *cdatar) = ($_[4], $_[5]);
 
 	# We empty the "unchanged" block
 	# becuase the other side must have applied a "delete"
@@ -483,8 +454,8 @@ sub _resolveConflict
 		foreach (@ldata1_t) {
 			print OUT "##resolveConflict_i-L: $_\n"
 							if ($debug > 3);
-			push(@$cdatal, $_);
-			push(@$cdatar, "s");
+			push(@cdatal, $_);
+			push(@cdatar, "s");
 		}
 		@ldata1_t = @rdata1_t = ();
 		return 1;
@@ -495,8 +466,8 @@ sub _resolveConflict
 			# see ejectMerge();
 			print OUT "##resolveConflict_i-R-C1: $_\n"
 							if ($debug > 3);
-			push(@$cdatar, substr($_, 0, 1));
-			s/^./s/; push(@$cdatal, $_);
+			push(@cdatar, substr($_, 0, 1));
+			s/^./s/; push(@cdatal, $_);
 		}
 		@ldata1_t = @rdata1_t = ();
 		return 1;
@@ -530,22 +501,12 @@ sub mkdfile
 		if (&isPrintable($lm)) {
 			push(@lmarker, $lm);
 			push(@ldata, "$lm$ld");
-			if ($lm eq "d") {
-				print(TMPL "$lm$ld\n");
-			} else {
-				#print(TMPL "!$ld\n");
-				print(TMPL "$lm$ld\n");
-			}
+			print(TMPL "$lm$ld\n");
 		}
 		if (&isPrintable($rm)) {
 			push(@rmarker, $rm);
 			push(@rdata, "$rm$rd");
-			if ($rm eq "d") {
-				print(TMPR "$rm$rd\n");
-			} else {
-				#print(TMPR "!$rd\n");
-				print(TMPR "$rm$rd\n");
-			}
+			print(TMPR "$rm$rd\n");
 		}
 	}
 	close(TMPL); close(TMPR);
@@ -558,13 +519,13 @@ sub mkdfile
 
 sub getCommon
 {
-	local($llist, $rlist) = ($_[0], $_[1]);
+	local(*llist, *rlist) = @_;
 
 	while ($mode eq " " ) {
 		$cml = shift(@lmarker);
 		$cmr = shift(@rmarker);
-		push(@$llist, "$cml$ln");
-		push(@$rlist, "$cmr$ln");
+		push(@llist, "$cml$ln");
+		push(@rlist, "$cmr$ln");
 		($mode, $ln) = &getUdiff();
 	}
 }
@@ -599,7 +560,7 @@ sub getRight
 
 sub splitCommon_i
 {
-	unless (&needCommon(\@cdata1l, \@ldata1, \@rdata1)) {
+	unless (&needCommon(@cdata1l)) {
 		foreach (reverse @cdata1l) {
 			print OUT "##splitCommom_i-L: $_\n" if ($debug > 3);
 			unshift(@ldata1, $_);
@@ -614,7 +575,7 @@ sub splitCommon_i
 
 sub splitCommon_a
 {
-	unless (&needCommon(\@cdata2l, \@ldata1, \@rdata1)) {
+	unless (&needCommon(@cdata2l)) {
 		foreach (@cdata2l) {
 			print OUT "##splitCommom_a-L: $_\n" if ($debug > 3);
 			push(@ldata1, $_);
@@ -631,9 +592,7 @@ sub splitCommon_a
 
 sub empty
 {
-	local ($list) = $_[0];
-
-	($#$list == -1);
+	($#_ == -1);
 }
 
 sub force_unlink
@@ -656,7 +615,7 @@ sub force_rename
 
         # for Unix w/ Samba or NT
         # must have write access to perform rename
-        force_unlink($to) if (-f $to);
+        &force_unlink($to) if (-f $to);
         @stat = (stat($from));
         $mode = $stat[2] & 0777 | 0400;
         chmod($mode, $from);
@@ -771,33 +730,18 @@ sub mkdirp
 sub usage
 {
         print <<EOF;
-USAGE
-
-    pmerge [-a] [-b] [-e] [-g] [-m] [-q] [-d] left gca right
-
-DESCRIPTION
-
-	Pmerge perform a 3 way merge in text files.
-	The result of the merge is stored in "left".
-
-OPTIONS
+usage: pmerge [-abegmq] [-d<N>] left gca right
 
     -a		show all markers
-
     -b		show conflict in bigger block
-
     -e		hide equal ("=") markers
-
     -g  	show gca text in conflict block (marked as '-")
-
     -m  	turn off markers
-
     -q  	quiet mode.
-
     -d<level>	debugging. (level can be 0-4, e.g -d2)
 
-    --help	show this help  message.
-
+	Pmerge performs a 3 way merge on text files.
+	The result of the merge is stored in "left".
 EOF
         exit 0;
 }
@@ -846,12 +790,9 @@ sub platformPath
         # bk.sh has probably set BK_BIN for us, but if it isn't,
         # guess at /usr/bitkeeper.  In any case, normalize the number
         # of trailing slashes and make sure BK_BIN is set in %ENV.
-        $BIN = $ENV{BK_BIN} if exists $ENV{BK_BIN};
-        $BIN = '/usr/bitkeeper' unless defined $BIN;
+        $BIN = $ENV{BK_BIN} || '/usr/bitkeeper/';
         $BIN =~ s|/*$|/|;
-        $BIN =~ s|/|\\|g if ($^O eq 'MSWin32'); # WIN32 wants back slash
+        $BIN =~ s|/|\\|g if (&is_windows); # WIN32 wants back slash
         $ENV{BK_BIN} = $BIN;
         return ($BIN);
 }
-
-

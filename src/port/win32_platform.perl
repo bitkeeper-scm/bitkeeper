@@ -104,3 +104,5 @@ sub getAbspath
 		return ($pwd . '/' . $1);
 	}
 }
+
+sub is_windows { 1; }

@@ -21,6 +21,7 @@ sub platformInit
 
 sub cd2root
 {
+	local($dir, $slash);
 	$slash = (stat("/"))[1];
 	$dir = ".";
 	while (! -d "$dir/BitKeeper/etc") {
@@ -76,16 +77,32 @@ sub localName2bkName
 # compute absolute path name
 sub getAbspath
 {
-	my $abspath = `cd $_[0] 2>/dev/null && pwd`;
-
-	chomp ($abspath);
+	local($abspath);
+	$abspath = `cd $_[0] 2>/dev/null && pwd`;
+	chop $abspath;
 	if ($abspath ne "") {
 		return ($abspath);
 	} else {
 		# If we get here,$_[0] is not a existing directory
 		# We construct the full path by hand
-		my $pwd = `pwd`;
-		chomp $pwd;
-		return ($pwd . '/' . $1);
+		$abspath = `pwd`;
+		chop $pwd;
+		return ($pwd . '/' . $_[0]);
 	}
+}
+
+# $^O was only added in perl 5.
+sub is_windows { 0; }
+
+# perl 4 bitches about unused functions.
+sub these_functions_are_not_unused_so_shaddap
+{
+	&cd2root;
+	&bg_system;
+	&exitStatus;
+	&doExec;
+	&localName2bkName;
+	&getAbspath;
+	&is_windows;
+	&these_functions_are_not_unused_so_shaddap;
 }

@@ -1521,7 +1521,9 @@ cmd=$1
 shift
 
 case $cmd in
-    resync|resolve|pmerge|rcs2sccs)
+    mkdiffs|rcs2sccs|resolve|pmerge)
+	exec perl ${BIN}$cmd "$@";;
+    resync)	# needs perl 5 - for now.
 	exec `__perl` ${BIN}$cmd "$@";;
     fm|fm3|citool|sccstool|fmtool|fm3tool|difftool|helptool|csettool|renametool)
 	exec $wish -f ${BIN}${cmd}${tcl} "$@";;
