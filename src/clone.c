@@ -431,8 +431,7 @@ consistency(int quiet)
 	cmds[i = 0] = "bk";
 	cmds[++i] = "-r";
 	cmds[++i] = "check";
-	cmds[++i] = "-a";
-	cmds[++i] = "-f";
+	cmds[++i] = "-acf";
 	cmds[++i] = 0;
 	ret = spawnvp_ex(_P_WAIT, "bk", cmds);
 	unless (WIFEXITED(ret)) return (-1);
