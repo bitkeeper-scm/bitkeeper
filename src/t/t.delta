@@ -40,7 +40,7 @@ if writable T; then :; else echo Failed to leave file writeable; exit 1; fi
 echo OK
 if [ "$PLATFORM" = "UNIX" ]
 then #------------------------------------------------------------------
-echo $N Make sure delta -l works with \"make\" ........................$NL
+echo $N Make sure delta -L works with \"make\" ........................$NL
 bk undos > hello.c <<EOF
 main() { }
 EOF
@@ -54,7 +54,7 @@ main()
 EOF
 cc -c hello.c
 sleep 1
-BK_FORCE_SFILE_MTIME=yes bk delta $Q -l -y"rev1" hello.c
+bk delta $Q -L -y"rev1" hello.c
 make -s hello > /dev/null 
 if [ ! -f hello ]; then echo failed; exit 1; fi
 echo OK

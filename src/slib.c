@@ -11708,8 +11708,8 @@ out:
 	Chmod(s->sfile, 0444);
 	unlink(s->pfile);
 	if ((flags & DELTA_SAVEGFILE) &&
-	    HAS_GFILE(s) &&
-	    getenv("BK_FORCE_SFILE_MTIME")) {
+	    (flags & DELTA_FIXMTIME) &&
+	    HAS_GFILE(s)) {
 		struct	stat	sb;
 		struct	utimbuf	ut;
 
@@ -11723,7 +11723,7 @@ out:
 		 * A potential pitfall would be that it may confuse the backup
 		 * program to skip the sfile when doing a incremental backup.
 		 * This is why we we only do this when the user set the
-		 * BK_FORCE_SFILE_MTIME environment variable.
+		 * DELTA_FIXMTIME flag.
 		 */
 		if (lstat(s->gfile, &sb) == 0) {
 			ut.actime = time(0);
