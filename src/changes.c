@@ -1152,7 +1152,7 @@ _doit_remote(char **av, char *url)
 	remote	*r;
 
 	loadNetLib();
-	r = remote_parse(url, 1);
+	r = remote_parse(url);
 	unless (r) {
 		fprintf(stderr, "invalid url: %s\n", url);
 		return (1);

@@ -262,7 +262,7 @@ localTrigger(char *event, char *what, char **triggers)
 	trigger_env("BK", event, what);
 
 	EACH(triggers) {
-		unless (runable(triggers[i])) continue;
+		unless (executable(triggers[i])) continue;
 		rc = runit(triggers[i], what, 0);
 		if (rc) break;
 	}
@@ -281,7 +281,7 @@ remotePreTrigger(char *event, char *what, char **triggers)
 	bktmp(output, "trigger");
 	unless (lclone) fputs("@TRIGGER INFO@\n", stdout);
 	EACH(triggers) {
-		unless (runable(triggers[i])) continue;
+		unless (executable(triggers[i])) continue;
 		rc = runit(triggers[i], what, output);
 		f = fopen(output, "rt");
 		assert(f);
@@ -350,7 +350,7 @@ remotePostTrigger(char *event, char *what, char **triggers)
 	fd1 = dup(1); assert(fd1 > 0);
 	if (dup2(2, 1) < 0) perror("trigger: dup2");
 	EACH(triggers) {
-		unless (runable(triggers[i])) continue;
+		unless (executable(triggers[i])) continue;
 		rc = runit(triggers[i], what, 0);
 		if (rc) break;
 	}

@@ -109,9 +109,9 @@ err:		freeLines(envVar, free);
 		if (opts.out && (opts.out != stderr)) fclose(opts.out);
 		return (1);
 	}
-	
+
 	EACH (urls) {
-		r = remote_parse(urls[i], 0);
+		r = remote_parse(urls[i]);
 		unless (r) goto err;
 		if (opts.debug) r->trace = 1;
 		opts.lcsets = opts.rcsets = opts.rtags = 0;

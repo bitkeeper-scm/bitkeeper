@@ -25,10 +25,11 @@ void
 do_clean(char *file, int flags)
 {
 	sccs *s;
-	s = sccs_init(file, INIT_NOCKSUM);
-	assert(s);
-	sccs_clean(s, flags);
-	sccs_free(s);
+
+	if (s = sccs_init(file, INIT_NOCKSUM)) {
+		if (HASGRAPH(s)) sccs_clean(s, flags);
+		sccs_free(s);
+	}
 }
 
 int

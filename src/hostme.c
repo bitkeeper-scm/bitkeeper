@@ -79,11 +79,11 @@ hostme_main(int ac, char **av)
 	}
 	sprintf(buf, "http://%s:80", host);
 	url = buf;
-	r = remote_parse(url, 0);
+	r = remote_parse(url);
 	if (opts.debug) r->trace = 1;
 	assert(r);
 	loadNetLib();
-	http_connect(r, HOSTME_CGI);
+	http_connect(r);
 	r->isSocket = 1;
 	m = mopen(hostme_info, "r");
 	assert(m);

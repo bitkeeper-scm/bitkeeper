@@ -153,9 +153,9 @@ platformInit(char **av)
 	/* save original path before the toplevel bk */
 	unless (getenv("BK_OLDPATH")) {
 #ifdef	WIN32
-		safe_putenv("BK_OLDPATH=%s;%s/gnu/bin", p, bin);
+		safe_putenv("BK_OLDPATH=%s;%s;%s/gnu/bin", bin, p, bin);
 #else
-		safe_putenv("BK_OLDPATH=%s", p);
+		safe_putenv("BK_OLDPATH=%s:%s", bin, p);
 #endif
 	}
 

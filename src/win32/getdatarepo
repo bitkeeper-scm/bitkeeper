@@ -13,10 +13,10 @@ key=`tail -1 $keyfile`
 
 if [ -d $repo ]; then
 	cd $repo
-	if [ `bk prs -hnd:MD5KEY: -r+ ChangeSet` != $key ]; then
+	if [ "`bk prs -hnd:KEY: -r+ ChangeSet`" != "$key" ]; then
 		bk pull $url || exit 1
-		bk undo -fa$key || exit 1
+		bk undo -fa"$key" || exit 1
 	fi
 else
-	bk clone -r$key $url $repo || exit 1
+	bk clone -r"$key" $url $repo || exit 1
 fi

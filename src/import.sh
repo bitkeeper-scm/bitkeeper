@@ -478,7 +478,12 @@ import_patch() {
 	
 
 	bk patch -g1 -f $PATCHARG -ZsE -z '=-PaTcH_BaCkUp!' \
-	    --forcetime --lognames < ${TMP}patch$$ > ${TMP}plog$$ 2>&1 || {
+	    --forcetime --lognames < ${TMP}patch$$ > ${TMP}plog$$ 2>&1
+    	
+	# patch exits with 0 if no rejects
+	#       1 if some rejects (handled below)
+	#       2 if errors
+	test $? -gt 1 -o \( $? -eq 1 -a $REJECTS = NO \) && {
 		echo 'Patch failed.  **** patch log follows ****'
 		cat ${TMP}plog$$
 	    	patch_undo
@@ -500,10 +505,13 @@ import_patch() {
 	while read x
 	do	test -f "$x".rej && echo "$x".rej
 	done < ${TMP}patching$$ > ${TMP}rejects$$
+	# XXX - this should be unneeded
 	if [ $REJECTS = NO -a -s ${TMP}rejects$$ ]
-	then	patch_undo
+	then	echo "import: this should not happen, tell support@bitmover.com"
+		patch_undo
 	fi
 	TRIES=0
+	test -z "$SHELL" && SHELL=/bin/sh
 	while [ -s ${TMP}rejects$$ -a $TRIES -lt 5 ]
 	do 	
 		echo ======================================================
@@ -517,7 +525,7 @@ import_patch() {
 		echo 
 		echo ======================================================
 		echo 
-		sh -i
+		$SHELL -i
 		while read x
 		do	test -f "$x".rej && echo "$x".rej
 		done < ${TMP}patching$$ > ${TMP}rejects$$

@@ -91,7 +91,7 @@ bkmail(char *url, char **to, char *subject, char *file)
 		return (status);
 	}
 
-	r = remote_parse(url, 0);
+	r = remote_parse(url);
 	assert(r);
 	loadNetLib();
 	if (bkd_connect(r, 0, 1)) return (1);

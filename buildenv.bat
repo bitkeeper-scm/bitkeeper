@@ -30,7 +30,7 @@ if "%1" == "MSYS" set MSYSTEM=MSYS
 if NOT "x%DISPLAY%" == "x" set DISPLAY=
 set BK_USEMSYS=1
 rem  just in case bk is not already on our PATH
-PATH="%PATH%;C:\Program Files\BitKeeper"
+rem PATH="%PATH%;C:\Program Files\BitKeeper"
 cd src
 bk get -S ./update_buildenv
 bk sh ./update_buildenv

@@ -216,6 +216,7 @@ done:	if (dont) {
 			chmod(CSETS_OUT, 0666);
 			putenv("BK_CSETLIST=" CSETS_OUT);
 		}
+		unlink(keys);	/* if we copied because they were in /tmp */
 	}
 	/*
 	 * Fire up the post-trigger (for non-logging tree only)

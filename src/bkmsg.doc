@@ -339,9 +339,18 @@ and make sure your logs are being transmitted properly. You can test your
 log transmission with the command "bk log -d".
 $
 #single_file_max
-Error: Single user repositories are limited to #BKARG# files. If you need more
-files than that in one repository, you need to buy a commercial license or
-turn on open logging.
+Error: The BitKeeper free use license limits the total number of files
+in all of your single user repositories to 1000 files.  You will need
+to buy a commercial license or turn on openlogging to continue.
+BitMover can be reached in the United States at 888-401-8808
+during business hours (PST) or via email at sales@bitmover.com.
+Thanks!
+$
+#single_config_mismatch
+Error: This repository was orignially configured as a single user repository
+but the configuration has been updated to not have this restriction.
+This repository must be turned into a multiuser repository before it can
+be used.  Please read 'bk help multiuser' to do this.
 BitMover can be reached in the United States at 888-401-8808
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!

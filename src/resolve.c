@@ -2519,6 +2519,9 @@ writeCheck(sccs *s, MDBM *db)
 	return (0);
 }
 
+/*
+ * Do NOT assert in this function, return -1 instead so we clean up.
+ */
 private int
 copyAndGet(opts *opts, char *from, char *to)
 {
@@ -2560,9 +2563,8 @@ copyAndGet(opts *opts, char *from, char *to)
 		} else if (co[0] == 'n') {
 			getFlags = 0;
 		} else {
-			fprintf(stderr, "Illegal value of co (== %s)\n",
-			    co);
-			exit(1);
+			fprintf(stderr, "Illegal value of co (== %s)\n", co);
+			return (-1);
 		}
 		mdbm_delete_str(opts->checkoutDB, key);
 	} else {
@@ -2571,12 +2573,12 @@ copyAndGet(opts *opts, char *from, char *to)
 	}
 	if (opts->logging) {
 		unless (strneq(to, "BitKeeper/etc/SCCS", 18)) {
-			assert(!HAS_GFILE(s));
+			if (HAS_GFILE(s) && sccs_clean(s, SILENT)) return (-1);
 		}
 	} else if (getFlags) {
 		sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-");
 	} else {
-		assert(!HAS_GFILE(s));
+		if (HAS_GFILE(s) && sccs_clean(s, SILENT)) return (-1);
 	}
 	sccs_free(s);
 	return (0);

@@ -248,3 +248,79 @@ echo orderind first >> orderind
 bk clean $Q orderind
 if [ $? -ne 0 ] ; then echo failed; fail=yes; else echo OK; fi
 if [ $fail = yes ] ; then exit 1; fi
+
+echo $N Check cleaning of a chmod +w sccs keywords file .............$NL
+bk clean sccsexp || exit 1
+bk get $Q sccsexp
+chmod +w sccsexp
+bk clean sccsexp || {
+	echo failed to clean sccsexp
+	exit 1
+}
+test -f sccsexp && {
+	echo failed to clean sccsexp
+	exit 1
+}
+echo OK
+
+echo $N Check cleaning of a chmod +w sccs keywords file with changes.$NL
+bk clean sccsexp || exit 1
+bk get $Q sccsexp
+chmod +w sccsexp
+echo foo >> sccsexp
+bk clean sccsexp 2>/dev/null && {
+	echo should not have cleaned sccsexp
+	exit 1
+}
+test -f sccsexp || {
+	echo should not have cleaned sccsexp
+	exit 1
+}
+echo OK
+
+echo $N Check cleaning of a chmod +w rcs keywords file ..............$NL
+bk clean rcsexp || exit 1
+bk get $Q rcsexp
+chmod +w rcsexp
+bk clean rcsexp || {
+	echo failed to clean rcsexp
+	exit 1
+}
+test -f rcsexp && {
+	echo failed to clean rcsexp
+	exit 1
+}
+echo OK
+
+echo $N Check cleaning of a chmod +w rcs keywords file with changes .$NL
+bk clean rcsexp || exit 1
+bk get $Q rcsexp
+chmod +w rcsexp
+echo foo >> rcsexp
+bk clean rcsexp 2>/dev/null && {
+	echo should not have cleaned rcsexp
+	exit 1
+}
+test -f rcsexp || {
+	echo should not have cleaned rcsexp
+	exit 1
+}
+echo OK
+
+test "$PLATFORM" != "WIN32" && {
+echo $N Check cleaning of a changed symlink .........................$NL
+ln -s some_dir symlink
+bk new $Q symlink
+ln -s some__other_dir symlink
+bk clean -v symlink 2>/dev/null && {
+	echo should not have cleaned symlink
+	exit 1
+}
+test -h symlink || {
+	echo should not have removed symlink
+	exit 1
+}
+echo OK
+}
+
+exit 0
