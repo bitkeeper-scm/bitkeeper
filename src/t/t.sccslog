@@ -195,7 +195,7 @@ echo OK
 echo $N Checking sccslog with -f option .............................$NL
 bk undos > CMP1 <<EOF
 ChangeSet
-  BitKeeper file /tmp/.regression-${USER}/project/ChangeSet
+  BitKeeper file ${BK_REGRESSION}/project/ChangeSet
 
 ChangeSet
   Initial repository create
@@ -207,7 +207,7 @@ if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 
 bk undos > CMP1 <<EOF
 a/b/c/Data
-  BitKeeper file /tmp/.regression-${USER}/project/a/b/c/Data
+  BitKeeper file ${BK_REGRESSION}/project/a/b/c/Data
 
 a/b/c/Data
 

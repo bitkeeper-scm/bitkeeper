@@ -527,7 +527,7 @@ changes_part1(remote *r, char **av, char *key_list)
 	bktemp(key_list);
 	fd = open(key_list, O_CREAT|O_WRONLY, 0644);
 	s = sccs_init(s_cset, 0, 0);
-	flags |= PK_REVPREFIX|PK_RKEY;
+	flags = PK_REVPREFIX|PK_RKEY;
 	rc = prunekey(s, r, fd, flags, 0, NULL, &rcsets, &rtags);
 	if (rc < 0) {
 		switch (rc) {
