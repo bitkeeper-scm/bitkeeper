@@ -3890,6 +3890,7 @@ loadGlobalConfig(MDBM *db)
 			p = strchr(buf, ' ');
 			assert(p);
 			*p++ = 0;
+			chomp(p);
 			mdbm_store_str(db, buf, p, MDBM_INSERT);
 		}
 		fclose(f);
