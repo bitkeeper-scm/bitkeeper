@@ -52,13 +52,13 @@ proc getConfig {prog} \
 	set _d(listBG) #e8e8e8		;# topics / lists background
 	set _d(mergeHeight) 24		;# height of a merge window
 	set _d(mergeWidth) 80		;# width of a merge window
-	set _d(newColor) lightblue     	;# color of new revision/diff
+	set _d(newColor) #a8d8e0	;# color of new revision/diff
 	set _d(noticeColor) #b0b0e0	;# messages, warnings
-	set _d(oldColor) #d070ff     	;# color of old revision/diff
-	set _d(mergeColor) lightblue	;# color of merge region
+	set _d(oldColor) #b48cff	;# color of old revision/diff
 	set _d(searchColor) yellow	;# highlight for search matches
 	set _d(selectColor) lightblue	;# current file/item/topic
 	set _d(statusColor) lightblue	;# various status windows
+
 	#XXX: Not documented yet
 	set _d(infoColor) powderblue	;# color of info line in difflib
 	set _d(textBG) white		;# text background
@@ -87,14 +87,19 @@ proc getConfig {prog} \
 	# fmtool fonts: See operating specific section above
 	set _d(fm.activeLeftColor) orange  ;# Color of active left region
 	set _d(fm.activeRightColor) yellow ;# Color of active right region
-	set _d(fm3.comments) 1		;# show comments window
 	set _d(fm3.annotate) 1		;# show annotations
-	set _d(fm3.firstdiff) -
-	set _d(fm3.lastdiff) +
-	set _d(fm3.nextdiff) bracketright
-	set _d(fm3.prevdiff) bracketleft
-	set _d(fm3.nextconflict) braceright
-	set _d(fm3.prevconflict) braceleft
+	set _d(fm3.charColor) orange	;# color of changes in a line
+	set _d(fm3.comments) 1		;# show comments window
+	set _d(fm3.firstDiff) minus
+	set _d(fm3.lastDiff) plus
+	set _d(fm3.mergeColor) lightblue;# color of merge choices in merge win
+	set _d(fm3.handColor) lightyellow ;# color of hand merged choices
+	set _d(fm3.nextConflict) braceright
+	set _d(fm3.nextDiff) bracketright
+	set _d(fm3.prevConflict) braceleft
+	set _d(fm3.prevDiff) bracketleft
+	set _d(fm3.sameColor) #1cc7d0     ;# color of unchanged line
+	set _d(fm3.spaceColor) black	  ;# color of spacer lines
 	set _d(fm3.undo) u
 
 	set _d(help.linkColor) blue	;# hyperlinks

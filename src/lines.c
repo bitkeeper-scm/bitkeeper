@@ -52,13 +52,16 @@ usage:			fprintf(stderr,
 	if (name && (s = sccs_init(name, INIT_NOCKSUM, 0))) {
 		ser = 0;
 		renumber(s->table);
-		if (things) {
+		if (n) {
+			for (c = n, e = sccs_top(s); e && c--; e = e->parent);
+			if (e) e = ancestor(s, e);
+			prevs(e ? e : s->tree);
+		} else if (things) {
 			RANGE_ERR("lines", s, 1, 1, rc);
 			unless (s->rstart) goto next;
 			e = ancestor(s, s->rstart);
 			e->merge = 0;
-			for (c = n; e && c; c--, e = e->parent);  
-			prevs(e ? e : s->tree);
+			prevs(e);
 		} else if (rev) {
 			e = sccs_getrev(s, rev, 0, 0);
 			unless (e) {
