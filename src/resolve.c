@@ -74,7 +74,7 @@ resolve_main(int ac, char **av)
 	setmode(0, _O_TEXT);
 	unless (localDB) localDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	unless (resyncDB) resyncDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
-	while ((c = getopt(ac, av, "l|y|m;aAcdFqrtv1234")) != -1) {
+	while ((c = getopt(ac, av, "l|y|m;aAcdFO;qrtvX;1234")) != -1) {
 		switch (c) {
 		    case 'a': opts.automerge = 1; break;	/* doc 2.0 */
 		    case 'A': opts.advance = 1; break;		/* doc 2.0 */
@@ -90,9 +90,15 @@ resolve_main(int ac, char **av)
 			}
 			break;
 		    case 'm': opts.mergeprog = optarg; break;	/* doc 2.0 */
+		    case 'O':
+			opts.only = addLine(opts.only, strdup(optarg));
+			break;
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
 		    case 'r': opts.remerge = 1; break;		/* doc 2.0 */
 		    case 't': opts.textOnly = 1; break;		/* doc 2.0 */
+		    case 'X':
+			opts.excludes = addLine(opts.excludes, strdup(optarg));
+			break;
 		    case 'y': 					/* doc 2.0 */
 			opts.comment = optarg; comment = 1; break;
 		    case '1': opts.pass1 = 0; break;		/* doc 2.0 */
@@ -1557,6 +1563,12 @@ can be resolved.  Please rerun resolve and fix these first.\n", n);
 			if (exists(buf)) continue;
 			t[1] = 's';
 		}
+		if ((opts->only && !match_globs(buf, opts->only, 0)) ||
+		    (opts->excludes && match_globs(buf, opts->excludes, 0))) {
+			++opts->hadConflicts;
+			continue;
+		}
+
 		if (opts->logging) {
 			t[1] = 'r';
 			unlink(buf);

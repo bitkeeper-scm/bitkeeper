@@ -62,6 +62,8 @@ typedef struct {
 	project	*local_proj;	/* for the local repository, not RESYNC */
 	project	*resync_proj;	/* for RESYNC project */
 	FILE	*log;		/* if set, log to here */
+	char	**only;
+	char	**excludes;
 } opts;
 
 /*

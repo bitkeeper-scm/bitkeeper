@@ -373,6 +373,13 @@ c_ur(resolve *rs)
 	return (0);
 }
 
+private int
+c_skip(resolve *rs)
+{
+	++rs->opts->hadConflicts;
+	return (1);
+}
+
 rfuncs	c_funcs[] = {
     { "?", "help", "print this help", c_help },
     { "!", "shell", "escape to an interactive shell", c_shell },
@@ -405,6 +412,7 @@ rfuncs	c_funcs[] = {
     { "v", "view merge", "view the merged file", c_vm },
     { "vl", "view local", "view the local file", res_vl },
     { "vr", "view remote", "view the remote file", res_vr },
+    { "S", "skip file", "skip this file and resolve it later", c_skip },
     { "x", "explain", "explain the choices", c_explain },
     { 0, 0, 0, 0 }
 };
