@@ -49,7 +49,7 @@ doit(int verbose, char *rev, int dash)
 	dashfile[0] = 0;
 	if (rev) {
 		sprintf(cmd,
-		    "BK_YEAR4=1 bk prs -hd'%s' -r%s ChangeSet", DSPEC, rev);
+		    "bk prs -Yhd'%s' -r%s ChangeSet", DSPEC, rev);
 	} else if (dash) {
 		gettemp(dashfile, "dash");
 		f = fopen(dashfile, "w");
@@ -58,9 +58,9 @@ doit(int verbose, char *rev, int dash)
 		}
 		fclose(f);
 		sprintf(cmd,
-		    "BK_YEAR4=1 bk prs -hd'%s' - < %s", DSPEC, dashfile);
+		    "bk prs -Yhd'%s' - < %s", DSPEC, dashfile);
 	} else {
-		sprintf(cmd, "BK_YEAR4=1 bk prs -hd'%s' ChangeSet", DSPEC);
+		sprintf(cmd, "bk prs -Yhd'%s' ChangeSet", DSPEC);
 	}
 	unless (verbose) {
 		strcat(cmd, " | ");
