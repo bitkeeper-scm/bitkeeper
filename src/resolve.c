@@ -48,6 +48,7 @@ private	int	rename_file(resolve *rs);
 private	int	rename_file(resolve *rs);
 private	void	restore(opts *o);
 private void	merge_loggingok(resolve *rs);
+private void	unapply(FILE *f);
 #ifdef WIN32_FILE_SYSTEM
 private MDBM	*localDB;		/* real name cache for local tree */
 private MDBM	*resyncDB;	/* real name cache for resyn tree */
@@ -2224,7 +2225,7 @@ pass4_apply(opts *opts)
 	 * Save the list of files and then remove them.
 	 * XXX - need to be positive that fflush works.
 	 */
-	fflush(save);
+	fclose(save);
 	if (size(BACKUP_LIST) > 0) {
 		if (system("bk sfio -omq < " BACKUP_LIST " > " BACKUP_SFIO)) {
 			fprintf(stderr,
@@ -2234,14 +2235,15 @@ pass4_apply(opts *opts)
 			freeStuff(opts);
 			exit(1);
 		}
-		rewind(save);
+		save = fopen(BACKUP_LIST, "rt");
+		assert(save);
 		while (fnext(buf, save)) {
 			chop(buf);
 			if (opts->log) fprintf(stdlog, "unlink(%s)\n", buf);
 			unlink(buf);	// XXX - FIXME -> rm_sfile()
 		}
+		fclose(save);
 	}
-	fclose(save);
 
 	/*
 	 * Pass 4c - apply the files.
@@ -2387,6 +2389,7 @@ copyAndGet(char *from, char *to, FILE *p)
 /*
  * Unlink all the things we successfully applied.
  */
+private void
 unapply(FILE *f)
 {
 	char	buf[MAXPATH];
