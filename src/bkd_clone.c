@@ -144,6 +144,12 @@ compressed(int level, int hflag)
 	char	*cmd;
 	int	rc = 1;
 
+	/* 
+	 * Generate list of sfiles and log markers to transfer to
+	 * remote site.  It is important that the markers appear in
+	 * sorted order so that the other end knows when the entire
+	 * BitKeeper directory is finished unpacking.
+	 */
 	tmpf1 = bktmpfile();
 	tmpf2 = bktmpfile();
 	fh = fopen(tmpf1, "w");
@@ -155,7 +161,7 @@ compressed(int level, int hflag)
 	free(cmd);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) goto out;
 	
-	sfiocmd = aprintf("cat %s %s | bk sfio -oq", tmpf1, tmpf2);
+	sfiocmd = aprintf("cat %s %s | bk sort | bk sfio -oq", tmpf1, tmpf2);
 	signal(SIGCHLD, SIG_DFL);
 	fh = popen(sfiocmd, "r");
 	free(sfiocmd);
