@@ -2196,16 +2196,20 @@ rm_sfile(char *sfile, int leavedirs)
 /*
  * Return true if we detected a case folding File system
  */
-private int
-isCaseFoldingFS(void)
+int
+isCaseFoldingFS(char *root)
 {
 	char	s_cset[] = CHANGESET;
-	char	*p;
+	char	*p, *q;
+	int	rc;
 
 	p = strrchr(s_cset, '/');
 	assert(p && (p[1] == 's'));
 	p[1] = 'S';  /* change to upper case */
-	return (exists(s_cset));
+	q = aprintf("%s/%s", root, s_cset);
+	rc = exists(q);
+	free(q);
+	return (rc);
 }
 
 /*
@@ -2448,7 +2452,7 @@ err:			unapply(save);
 	 * If case folding file system , make sure file name
 	 * did not change case after we copied it
 	 */
-	if (isCaseFoldingFS() && chkCaseChg(save)) goto err;
+	if (isCaseFoldingFS(".") && chkCaseChg(save)) goto err;
 
 	if (opts->logging) { /* hard-coded logging tree trigger */
 		metaUnionResync2();
