@@ -12491,15 +12491,6 @@ getHistoricPath(sccs *s, char *rev)
 }
 
 private int
-isTextDelta(sccs *s, char *rev)
-{
-	delta *d = findrev(s, rev);
-
-	unless(d) return (0);
-	return (isRegularFile(d->mode));
-}
-
-private int
 mkDiffTarget(sccs *s,
 	char *rev, char *revM, char kind, u32 flags, char *target , pfile *pf)
 {

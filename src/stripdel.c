@@ -11,14 +11,6 @@ typedef struct {
 	u32	quiet:1;
 } s_opts;
 
-private	char	*stripdel_help = "\n\
-usage: stripdel [-bcq] -r<rev> filename\n\n\
-    -b		strip all branch deltas\n\
-    -c		checks if the specified rev[s] can be stripped\n\
-    -C		do not respect cset boundries\n\
-    -q		run quietly\n\
-    -r<rev>	set of revisions to be removed\n\n";
-
 private	delta	*checkCset(sccs *s);
 private int set_meta(sccs *s, int stripBranches, int *count);
 private int doit(sccs *, s_opts);

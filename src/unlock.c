@@ -14,10 +14,6 @@ WHATSTR("@(#)%K%");
 
 #define	REPO	(RLOCK|STALE|WLOCK)
 
-private char	*unlock_help = 
-"\nusage: unlock [-bfpxz] files...\n\
-or\n\
-	unlock [-frsw]\n";
 private	int	doit(sccs *s, char which);
 private int	repo(u32 flags);
 private void	dont(sccs *s, char c);

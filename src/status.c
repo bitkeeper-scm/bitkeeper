@@ -1,12 +1,6 @@
 #include "system.h"
 #include "sccs.h"
 
-private char    *status_help = "\n\
-usage: status [-v] [repository]\n\n\
-	-v  Verbose listing.  Lists users, files not under\
-	    revision control, files modified and not checked in, and\
-	    files with checked in, but not committed deltas, one per line.\n\n";
-
 int
 status_main(int ac, char **av)
 {
