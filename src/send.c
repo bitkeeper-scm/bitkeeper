@@ -116,7 +116,8 @@ send_main(int ac,  char **av)
 	for (p = rev; *p; p++) if (*p == ',') *p = ' ';
 	fputs(rev, f); fputs("\n", f);
 	for (p = rev; *p; p++) if (*p == ' ') *p = ',';
-	if (wrapper) fprintf(f, "\n## Wrapped with %s ##\n\n", wrapper);
+	if (wrapper) fprintf(f, "## Wrapped with %s ##\n\n", wrapper);
+	fprintf(f, "\n");
 	fflush(f);
 	unless (use_stdout) fclose(f);
 	unless (wrapper) {

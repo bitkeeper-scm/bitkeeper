@@ -135,7 +135,6 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 			}
 		}
 	}
-	if (kFlg) uniq_close();
 	if (proj) proj_free(proj);
 	purify_list();
 	return (0);
@@ -351,13 +350,12 @@ isSccs(char *s)
 private	void
 keys(char *file)
 {
-	sccs	*s = init(file, INIT_NOCKSUM);
+	sccs	*s;
 	delta	*d;
 	static	time_t	cutoff;
 	static	char *host;
-	static	int first = 1;
 
-	unless (s) return;
+	unless (s = init(file, SILENT|INIT_NOCKSUM)) return;
 	unless (s->table) {
 		sccs_free(s);
 		return;
@@ -368,17 +366,14 @@ keys(char *file)
 		fprintf(stderr, "sfiles: can not figure out host name\n");
 		exit(1);
 	}
-	if (first) {
-		if (uniq_open()) exit(0);
-		first = 0;
-	}
 	for (d = s->table; d; d = d->next) {
 		if (d->date < cutoff) break;
 		if (d->hostname && streq(d->hostname, host)) {
-			char	buf[MAXPATH+100];
+			u8	*p;
+			u8	buf[MAXPATH+100];
 
-			sccs_sdelta(s, sccs_ino(s), buf);
-			uniq_update(buf, d->date);
+			sccs_shortKey(s, sccs_ino(s), buf);
+			printf("%s %lu\n", buf, d->date);
 			break;
 		}
 	}

@@ -10,7 +10,7 @@ unwrap_main(int ac,  char **av)
 
 	while (getline(0, buf, sizeof(buf)) > 0) {
 		if (strneq(buf, "# Patch vers:", 13)) {
-			fprintf(stdout, "%s\n", buf);
+			fprintf(stdout, "\n%s\n", buf);
 			while (getline(0, buf, sizeof(buf)) > 0) {
 				fprintf(stdout, "%s\n", buf);
 			}
