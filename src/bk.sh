@@ -317,8 +317,7 @@ _clone() {
 }
 
 # Advertise this repository for remote lookup
-_advertise()
-{
+_advertise() {
 	FILE=${BIN}tmp/advertised
 	while getopts l opt
 	do	case "$opt" in
@@ -856,26 +855,25 @@ __mail() {
 			echo ""
 			cat
 			) | $i/sendmail -i $TO
-			exit 0
+			return
 		fi
 	done
 
 	# We know that the ``mail -s "$SUBJ"'' form doesn't work on IRIX
-	# Like lots of other things don't work on IRIX.
 	case "`uname -s`" in
 	    *IRIX*)
 		if [ -x /usr/bin/mailx ]
-		then	exec mailx $TO
-		else	exec mail $TO
+		then	mailx $TO
+		else	mail $TO
 		fi
+		return
 		;;
 	esac
 
 	if [ -x /usr/bin/mailx ]
-	then	exec mailx -s "$SUBJ" $TO
-	else	exec mail -s "$SUBJ" $TO
+	then	mailx -s "$SUBJ" $TO
+	else	mail -s "$SUBJ" $TO
 	fi
-	exit 1
 }
 
 __logAddr() {
