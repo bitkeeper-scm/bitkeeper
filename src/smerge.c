@@ -35,6 +35,7 @@ private int	merge_content(conflct *r);
 private int	merge_common_header(conflct *r);
 private int	merge_common_footer(conflct *r);
 private	int	merge_common_deletes(conflct *r);
+private int	merge_added_oneside(conflct *r);
 
 enum {
 	MODE_GCA,
@@ -1078,6 +1079,8 @@ struct mergefcns {
 	"Merge adjacent non-overlapping modifications on both sides"},
 	{"4",	1, merge_common_header,
 	"Merge identical changes at the start of a conflict"},
+	{"7",	1, merge_added_oneside,
+	"Split one side add from conflict"},
 	{"5",	1, merge_common_footer,
 	"Merge identical changes at the end of a conflict"},
 	{"6",	1, merge_common_deletes,
@@ -1968,8 +1971,8 @@ merge_common_header(conflct *c)
 	int	len[3];
 	int	minlen;
 	int	splitidx[3];
-	int	i;
-	u32	seq;
+	int	i, j;
+	int	chkgca;
 
 	for (i = 0; i < 3; i++) {
 		start[i] = &body[i].lines[c->start[i]];
@@ -1977,22 +1980,22 @@ merge_common_header(conflct *c)
 	}
 	minlen = min(len[LEFT], len[RIGHT]);
 
-	for (i = 0; i < minlen; i++) {
+	chkgca = 1;
+	for (i = j = 0; i < minlen; i++) {
 		unless (sameline(&start[LEFT][i], &start[RIGHT][i])) break;
+		if (chkgca && (i < len[GCA]) &&
+		    sameline(&start[LEFT][i], &start[GCA][i])) {
+			j++;
+		} else {
+			chkgca = 0;
+		}
 	}
 	/* i == number of matching lines at start */
 	if (i == 0 || i == len[LEFT] && i == len[RIGHT]) return (0);
 
 	splitidx[LEFT] = i;
 	splitidx[RIGHT] = i;
-
-	seq = start[LEFT][i-1].seq;
-	if (start[RIGHT][i-1].seq < seq) seq = start[RIGHT][i-1].seq;
-
-	for (i = 0; i < len[GCA]; i++) {
-		if (start[GCA][i].seq > seq) break;
-	}
-	splitidx[GCA] = i;
+	splitidx[GCA] = j;
 
 	split_conflict(c, splitidx);
 
@@ -2010,8 +2013,8 @@ merge_common_footer(conflct *c)
 	int	len[3];
 	int	minlen;
 	int	splitidx[3];
-	int	i;
-	u32	seq;
+	int	i, j;
+	int	chkgca;
 
 	for (i = 0; i < 3; i++) {
 		start[i] = &body[i].lines[c->start[i]];
@@ -2019,24 +2022,25 @@ merge_common_footer(conflct *c)
 	}
 	minlen = min(len[LEFT], len[RIGHT]);
 
-	for (i = 0; i < minlen; i++) {
+	chkgca = 1;
+	for (i = j = 0; i < minlen; i++) {
 		unless (sameline(&start[LEFT][len[LEFT] - i - 1],
 			    &start[RIGHT][len[RIGHT] - i - 1])) break;
+		if (chkgca && (i < len[GCA]) &&
+		    sameline(&start[LEFT][len[LEFT] - i - 1],
+			&start[GCA][len[GCA] - i - 1])) {
+			j++;
+		} else {
+			chkgca = 0;
+		}
 	}
 	/* i == number of matching lines at end */
+	/* j == number of GCA matching lines at end */
 	if (i == 0 || i == len[LEFT] && i == len[RIGHT]) return (0);
 
 	splitidx[LEFT] = len[LEFT] - i;
 	splitidx[RIGHT] = len[RIGHT] - i;
-
-	seq = start[LEFT][splitidx[LEFT]].seq;
-	i = start[RIGHT][splitidx[RIGHT]].seq;
-	if (i < seq) seq = i;
-
-	for (i = 0; i < len[GCA]; i++) {
-		if (start[GCA][i].seq > seq) break;
-	}
-	splitidx[GCA] = i;
+	splitidx[GCA] = len[GCA] - j;
 
 	split_conflict(c, splitidx);
 
@@ -2100,3 +2104,47 @@ merge_common_deletes(conflct *c)
 	return (ret);
 }
 
+/*
+ * Split a conflict if one side adds new code between identical
+ * seq of other side and GCA.
+ * Only need seq numbers for this.
+ */
+private int
+merge_added_oneside(conflct *c)
+{
+	ld_t	*start[3];
+	int	maxlen;
+	int	splitidx[3];
+	int	i, side;
+	u32	seq;
+
+	/* Each need to have some lines for this case to make sense */
+	for (i = 0; i < 3; i++) {
+		unless (c->end[i] != c->start[i]) return (0);
+	}
+
+	for (i = 0; i < 3; i++) {
+		start[i] = &body[i].lines[c->start[i]];
+		splitidx[i] = 0;
+	}
+
+	seq = start[GCA][0].seq;
+	if ((start[LEFT][0].seq == seq) && (start[RIGHT][0].seq < seq)) {
+		side = RIGHT;
+	} else if ((start[RIGHT][0].seq == seq) && (start[LEFT][0].seq < seq)) {
+		side = LEFT;
+	} else {
+		return (0);
+	}
+	maxlen = c->end[side] - c->start[side];
+
+	for (i = 0; i < maxlen; i++) {
+		unless (start[side][i].seq < seq) break;
+	}
+
+	splitidx[side] = i;
+
+	split_conflict(c, splitidx);
+
+	return (1);
+}
