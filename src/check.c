@@ -20,6 +20,7 @@ private	void	listFound(MDBM *db);
 private	void	listCsetRevs(char *key);
 private void	init_idcache();
 private int	checkKeys(sccs *s, char *root);
+private	int	chk_csetpointer(sccs *s);
 private void	warnPoly(void);
 private int	chk_gfile(sccs *s);
 private int	chk_dfile(sccs *s);
@@ -35,6 +36,7 @@ private	int	fix;		/* if set, fix up anything we can */
 private	int	goneKey;	/* if set, list gone key only */
 private	int	badWritable;	/* if set, list bad writable file only */
 private	int	names;		/* if set, we need to fix names */
+private	int	csetpointer;	/* if set, we need to fix cset pointers */
 private	int	mixed;		/* mixed short/long keys */
 private	int	check_eoln;
 private	project	*proj;
@@ -165,6 +167,8 @@ check_main(int ac, char **av)
 		errors |= no_gfile(s);
 		errors |= readonly_gfile(s);
 		errors |= writable_gfile(s);
+		errors |= chk_csetpointer(s);
+		
 		if (want_dfile) errors |= chk_dfile(s);
 		if (check_eoln) errors |= chk_eoln(s, eoln_native);
 
@@ -241,6 +245,14 @@ check_main(int ac, char **av)
 		if (xflags_failed) {
 			fprintf(stderr, "check: trying to fix xflags...\n");
 			system("bk -r xflags");
+		}
+		if (csetpointer) {
+			char	buf[MAXKEY + 20];
+			char	*csetkey = getCSetFile(bk_proj);
+			fprintf(stderr, "check: fixing %d incorrect cset file pointers...\n",
+				csetpointer);
+			sprintf(buf, "bk -r admin -C'%s'", csetkey);
+			system(buf);
 		}
 		if (names || xflags_failed) return (2);
 	}
@@ -1217,4 +1229,21 @@ csetFind(char *key)
 	pclose(p);
 	unless (r) return (strdup("[not found]"));
 	return (r);
+}
+
+private int
+chk_csetpointer(sccs *s)
+{
+	char	*csetkey = getCSetFile(s->proj);
+	
+	unless (streq(csetkey, s->tree->csetFile)) {
+		fprintf(stderr, 
+"Extra file: %s\n\
+     belongs to: %s\n\
+     should be:  %s\n",
+			s->sfile, s->tree->csetFile, csetkey);
+		csetpointer++;
+		return (1);
+	}
+	return (0);
 }

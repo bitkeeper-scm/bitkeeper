@@ -1456,23 +1456,23 @@ sccs_unmkroot(char *path)
  * Return the ChangeSet file id.
  */
 char	*
-getCSetFile(sccs *s)
+getCSetFile(project *p)
 {
 	char	file[MAXPATH];
 	sccs	*sc;
 
-	unless (s->proj && s->proj->root) return (0);
+	unless (p && p->root) return (0);
 	/*
 	 * Use cacched copy if available
 	 */
-	if (s->proj->csetFile) return (strdup(s->proj->csetFile));
-	sprintf(file, "%s/%s", s->proj->root, CHANGESET);
+	if (p->csetFile) return (strdup(p->csetFile));
+	sprintf(file, "%s/%s", p->root, CHANGESET);
 	if (exists(file)) {
-		sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);
+		sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, p);
 		assert(sc->tree);
 		sccs_sdelta(sc, sc->tree, file);
 		sccs_free(sc);
-		s->proj->csetFile = strdup(file);
+		p->csetFile = strdup(file);
 		return (strdup(file));
 	}
 	return (0);
@@ -8839,7 +8839,7 @@ out:		sccs_unlock(s, 'z');
 			first->flags |= D_CKSUM;
 		} else {
 			unless (first->csetFile) {
-				first->csetFile = getCSetFile(s);
+				first->csetFile = getCSetFile(s->proj);
 			}
 		}
 		singleUser(s, db);
