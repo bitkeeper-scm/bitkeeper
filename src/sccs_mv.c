@@ -51,18 +51,19 @@ sccs_hasCsetDerivedKey(sccs *s)
 /*
  * Give a pathname to a file or a dir, remove the SCCS dir, the parent,
  * etc, up to the root of the repository.
- * TODO: do not remove under BitKeeper/deleted
  */
 void
 sccs_rmEmptyDirs(char *path)
 {
 	char	*p = 0;
 	char	*q;
-
+	
 	unless (isdir(path)) p = strrchr(path, '/');
 	do {
 		if (p) *p = 0;
-		if (emptyDir(path)) {
+		if (!streq(path, "BitKeeper/etc") &&
+		    !streq(path, "BitKeeper/deleted") &&
+		    emptyDir(path)) {
 			rmDir(path);
 		} else {
 			if (p) *p = '/';

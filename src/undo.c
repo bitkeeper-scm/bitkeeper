@@ -184,6 +184,12 @@ doit(char **fileList, char *rev_list, char *qflag)
 	}
 
 	/*
+	 * Make sure stripdel
+	 * did not delete BitKeeper/etc when removing empty dir
+	 */
+	assert(exists(BKROOT));
+
+	/*
 	 * Handle any renames.  Done outside of stripdel because names only
 	 * make sense at cset boundries.
 	 * Also, run all files through renumber.
