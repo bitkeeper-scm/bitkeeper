@@ -139,25 +139,21 @@ Typically these files are accessed by the user supplied trigger scripts.
 This mean your trigger scripts must be updated when you upgrade to
 BitKeeper 2.0.
 
-b) bk export now exports all files except the ChangeSet file.
-   (In 1.x, the files under the BitKeeper directory are not exported)
-   User can select files for export by using the export -x/-i options.
-
-c) bk mkdiffs command has been removed in 2.x.  It is replaced by
+b) bk mkdiffs command has been removed in 2.x.  It is replaced by
    bk export -tpatch, which is much faster.
 
-d) The new default option of "bk lock" is the -l option (verbose mode).
+c) The new default option of "bk lock" is the -l option (verbose mode).
    To get the silent mode, use the "bk lock -q" option.
 
-e) prs -d option now supports the -gt -lt -eq -ne -ge -le operators.
+d) prs -d option now supports the -gt -lt -eq -ne -ge -le operators.
 
-f) prs -d option no longer prints a line feed by default at the end of each
+e) prs -d option no longer prints a line feed by default at the end of each
    delta record.
 
-g) cset -t option has been moved to rset -l.
+f) cset -t option has been moved to rset -l.
    cset -R option has been moved to rset -rA,B.
 
-h) In release 1.x, the ignore filter will ignore a directory even if it has
+g) In release 1.x, the ignore filter will ignore a directory even if it has
    files under SCCS control. This is bad, since citool may miss files that
    need to be checked-in/committed.  In relesae 2.0, the ignore filter
    applies _only_ to g-files not under sccs control -- it does not ignore
