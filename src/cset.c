@@ -905,11 +905,11 @@ doMarks(cset_t *cs, sccs *s)
 	}
 
 	for (d = s->table; d; d = d->next) {
-		if (d->flags & D_SET) {
+		if ((d->type == 'D') && (d->flags & D_SET)) {
 			if (cs->force || !(d->flags & D_CSET)) {
 				if (cs->verbose > 2) {
-					fprintf(stderr,
-					    "Mark %s%c%s\n", s->gfile, BK_FS, d->rev);
+					fprintf(stderr, "Mark %s%c%s\n",
+					    s->gfile, BK_FS, d->rev);
 				}
 				d->flags |= D_CSET;
 				cs->ndeltas++;

@@ -7033,6 +7033,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			fputmeta(s, buf, out);
 		}
 		if (d->flags & D_CSET) {
+			assert(d->type == 'D');
 			fputmeta(s, "\001cC\n", out);
 		}
 		/*
