@@ -26,7 +26,7 @@ remote_parse(char *p, int is_clone)
 		FILE	*f = popen("bk parent", "r");
 
 		if (fgets(buf, sizeof(buf), f)) {
-			if (strneq(buf, "Must specify parent", 19)) {
+			if (strneq(buf, "This package has no parent", 26)) {
 				fclose(f);
 				return (0);
 			}

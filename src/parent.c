@@ -68,6 +68,12 @@ parent_main(int ac,  char **av)
 			fclose(f);
 			exit(0);
 		}
+
+		/*
+		 * Warning:
+		 * Do not change the following message string
+		 * We look for it in remote_parse()
+		 */
 		printf("This package has no parent\n");
 		exit(1);
 	}
