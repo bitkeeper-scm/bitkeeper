@@ -134,6 +134,8 @@ _mvdir() {
 	
 	# Win32 note: must use relative path or drive:/path
 	# because cygwin mv interprete /path relative to mount tables.
+	mkdir -p $2
+	rmdir $2
 	mv $1 $2
 	cd $2
 	bk sfiles | bk edit -q -

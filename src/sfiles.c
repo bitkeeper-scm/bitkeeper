@@ -365,7 +365,7 @@ keys(char *file)
 	unless (cutoff) cutoff = time(0) - uniq_drift();
 	unless (host) host = sccs_gethost();
 	unless (host) {
-		fprintf(stderr, "sfiles: can not figure out host name\n");
+		fprintf(stderr, "sfiles: cannot figure out host name\n");
 		exit(1);
 	}
 	for (d = s->table; d; d = d->next) {

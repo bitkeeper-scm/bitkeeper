@@ -50,6 +50,7 @@ int get_main(int, char **);
 int gethelp_main(int, char **);
 int gethost_main(int, char **);
 int getuser_main(int, char **);
+int gnupatch_main(int, char **);
 int graft_main(int, char **);
 int gone_main(int, char **);
 int help_main(int, char **);
@@ -66,6 +67,7 @@ int loggingask_main(int ac, char **av);
 int loggingto_main(int, char **);
 int merge_main(int, char **);
 int mklock_main(int, char **);
+int mkrev_main(int, char **);
 int mtime_main(int, char **);
 int mv_main(int, char **);
 int names_main(int, char **);
@@ -145,6 +147,7 @@ struct command cmdtbl[] = {
 	{"gethost", gethost_main},
 	{"getuser", getuser_main},
 	{"graft", graft_main},
+	{"gnupatch", gnupatch_main},
 	{"gone", gone_main},
 	{"help", help_main},
 	{"info", sinfo_main},	/* aliases */
@@ -157,6 +160,7 @@ struct command cmdtbl[] = {
 	{"log", log_main},
 	{"merge", merge_main},
 	{"mklock", mklock_main}, /* for regression test only */
+	{"mkrev", mkrev_main},
 	{"mtime", mtime_main},
 	{"mv", mv_main},
 	{"names", names_main},
@@ -271,7 +275,7 @@ main(int ac, char **av)
 					optind++;
 				} else unless (proj_cd2root(bk_proj)) {
 					fprintf(stderr, 
-					    "bk: Can not find package root.\n");
+					    "bk: Cannot find package root.\n");
 					return(1);
 				}
 				dashr++;
@@ -279,7 +283,7 @@ main(int ac, char **av)
 			    case 'R':
 				unless (proj_cd2root(bk_proj)) {
 					fprintf(stderr, 
-					    "bk: Can not find package root.\n");
+					    "bk: Cannot find package root.\n");
 					return(1);
 				}
 				break;
@@ -575,7 +579,7 @@ bk_sfiles(int ac, char **av)
 	cmds[i++] = "-";
 	cmds[i] = 0;
 	if ((pid = spawnvp_wPipe(cmds, &pfd)) == -1) {
-		fprintf(stderr, "can not spawn %s %s\n", cmds[0], cmds[1]);
+		fprintf(stderr, "cannot spawn %s %s\n", cmds[0], cmds[1]);
 		return(1);
 	} 
 	cmdlog_start(sav);
@@ -674,7 +678,7 @@ find_wish()
 #endif
 		p = ++s;
 	}
-	fprintf(stderr, "Can not find wish to run\n");
+	fprintf(stderr, "Cannot find wish to run\n");
 	exit(1);
 }
 
@@ -712,7 +716,7 @@ find_perl5()
 		if (system(buf) == 0)	return(perl_path);
 next:		p = ++s;
 	}
-	fprintf(stderr, "Can not find perl5 to run\n");
+	fprintf(stderr, "Cannot find perl5 to run\n");
 	exit(1);
 }
 

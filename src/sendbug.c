@@ -39,7 +39,7 @@ sendbug_main(int ac,  char **av)
 			pid = 
 			    mail("bitkeeper-bugs@bitmover.com", "BK Bug", bug);
 			if (pid == (pid_t) -1) {
-				fprintf(stderr, "can not start mailer\n");
+				fprintf(stderr, "cannot start mailer\n");
 				unlink(bug);
 				exit(1);
 			}

@@ -101,6 +101,13 @@ isreg(char *s)
 	return (S_ISREG(sbuf.st_mode));
 }
 
+int isSymlnk(char *s)
+{
+	struct	stat sbuf;
+	if (lstat(s, &sbuf) == -1) return 0;
+	return (S_ISLNK(sbuf.st_mode));
+}
+
 inline int
 writable(char *s)
 {
@@ -1422,14 +1429,32 @@ getCSetFile(sccs *s)
  * I need to cache changeset lookups.
  */
 char	*
-_relativeName(char *gName,
-	    int isDir, int withsccs, int mustHaveRmarker, char *root)
+_relativeName(char *gName, int isDir,
+		int withsccs, int mustHaveRmarker, project *proj, char *root)
 {
-	char	*t, *s, *top;
+	char	*t, *s, *top, tmp[MAXPATH];
 	int	i, j;
 	static	char buf[MAXPATH];
 
-	t = fullname(gName, 0);
+	strcpy(tmp, fullname(gName, 0));
+	t = tmp;
+
+	if (proj && proj->root) {
+		int len;
+		
+		if (!IsFullPath(proj->root)) {
+			s = strdup(fullname(proj->root, 0));
+			free(proj->root);
+			proj->root = s;
+		}
+		len = strlen(proj->root);
+		if (strneq(proj->root, t, len)) {
+			s = &t[len];
+			assert((*s == '\0') || (*s == '/'));
+			goto got_root;
+		}
+	}
+
 	strcpy(buf, t); top = buf;
 	if (buf[0] && buf[1] == ':') top = &buf[2]; /* for WIN32 path */
 	assert(top[0] == '/');
@@ -1474,6 +1499,8 @@ _relativeName(char *gName,
 	for (j = 1; j <= i; ++j) {
 		for (--s; (*s != '/') && (s > t); s--);
 	}
+
+got_root:
 	if (root) {
 		int len = s - t;
 		strncpy(root, t, len); root[len] = 0;
@@ -1502,7 +1529,7 @@ relativeName(sccs *sc, int withsccs, int mustHaveRmarker)
 	char	*s, *g;
 
 	g = sccs2name(sc->sfile);
-	s = _relativeName(g, 0, withsccs, mustHaveRmarker, NULL);
+	s = _relativeName(g, 0, withsccs, mustHaveRmarker, sc->proj, NULL);
 	free(g);
 
 	unless (s) return (0);
@@ -1582,7 +1609,7 @@ sPath(char *name, int isDir)
 	}
 	free(path);
 
-	path = _relativeName(name, isDir, 0, 0, gRoot);
+	path = _relativeName(name, isDir, 0, 0, 0, gRoot);
 	if (IsFullPath(path)) return path; /* no root marker */
 	if (hasRootFile(gRoot, sRoot)) {
 		concat_path(buf, sRoot, path);
@@ -3277,7 +3304,7 @@ err:			free(s->gfile);
 				s->symlink = strdup(link);
 			} else {
 				verbose((stderr,
-				    "can not read sym link: %s\n", s->gfile));
+				    "cannot read sym link: %s\n", s->gfile));
 				goto err;
 			}
 		}
@@ -3364,7 +3391,7 @@ loadConfig(char *root, int convert)
 		return 0;
 	}
 	if (gettemp(x_config, "bk_config")) {
-		fprintf(stderr, "Can not create temp file\n");
+		fprintf(stderr, "Cannot create temp file\n");
 		sccs_free(s1);
 		return 0;
 	}
@@ -5074,7 +5101,7 @@ sccs_impliedList(sccs *s, char *who, char *base, char *rev)
 
 	unless (baseRev = findrev(s, base)) {
 		fprintf(stderr,
-		    "%s: can not find base rev %s in %s\n",
+		    "%s: cannot find base rev %s in %s\n",
 		    who, base, s->sfile);
 err:		s->state |= S_WARNED;
 		if (inc) free(inc);
@@ -5084,7 +5111,7 @@ err:		s->state |= S_WARNED;
 	}
 	unless (mRev = findrev(s, rev)) {
 		fprintf(stderr,
-		    "%s: can not find merge rev %s in %s\n",
+		    "%s: cannot find merge rev %s in %s\n",
 		    who, rev, s->sfile);
 		goto err;
 	}
@@ -5126,7 +5153,7 @@ err:		s->state |= S_WARNED;
 		}
 	}
 	if (compressmap(s, baseRev, slist, &inc, &exc)) {
-		fprintf(stderr, "%s: can not compress merged set\n", who);
+		fprintf(stderr, "%s: cannot compress merged set\n", who);
 		goto err;
 	}
 	if (exc) {
@@ -5283,7 +5310,7 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 	} else if (flags & GET_PATH) {
 		/* put the file in its historic location */
 		assert(d->pathname);
-		_relativeName(".", 1 , 0, 0, path); /* get groot */
+		_relativeName(".", 1 , 0, 0, s->proj, path); /* get groot */
 		concat_path(path, path, d->pathname);
 		f = path;
 		unlink(f);
@@ -5672,7 +5699,7 @@ out:			if (slist) free(slist);
 		if (!streq(fname, "-") && (utime(fname, &ut) != 0)) {
 			char msg[1024];
 
-			sprintf(msg, "%s: Can not set modificatime; ", fname);
+			sprintf(msg, "%s: Cannot set modificatime; ", fname);
 			perror(msg);
 			s->state |= S_WARNED;
 			goto out;
@@ -6859,12 +6886,12 @@ sccs_hasDiffs(sccs *s, u32 flags)
 
 	/* If the path changed, it is a diff */
 	if (d->pathname) {
-		char *r = _relativeName(s->gfile, 0, 0, 1, 0);
+		char *r = _relativeName(s->gfile, 0, 0, 1, s->proj, 0);
 		if (r && !patheq(d->pathname, r)) RET(1);
 	}
 
 	/*
-	 * Can not enforce this assert here, gfile may be ready only
+	 * Cannot enforce this assert here, gfile may be ready only
 	 * due to  GET_SKIPGET
 	 * assert(IS_WRITABLE(s));
 	 */
@@ -7151,7 +7178,7 @@ diff_gmode(sccs *s, pfile *pf)
 
 	/* If the path changed, it is a diff */
 	if (d->pathname) {
-		char *r = _relativeName(s->gfile, 0, 0, 1, 0);
+		char *r = _relativeName(s->gfile, 0, 0, 1, s->proj, 0);
 		if (r && !patheq(d->pathname, r)) return (3);
 	}
 
@@ -7746,7 +7773,19 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 		unless (d->hostname && sccs_gethost()) {
 			hostArg(d, sccs_gethost());
 		}
-		unless (d->pathname && s) pathArg(d, relativeName(s, 0, 0));
+		unless (d->pathname && s) {
+			char *p, *q;;
+
+			/*
+			 * Get the relativename of the sfile, _not_ the gfile,
+			 * because we cannot trust the gfile name on
+			 * win32 case-folding file system.
+			 */
+			p = _relativeName(s->sfile, 0, 0, 0, s->proj, NULL);
+			q = sccs2name(p);		
+			pathArg(d, q);
+			free(q);
+		}
 #ifdef	AUTO_MODE
 		assert("no" == 0);
 		unless (d->flags & D_MODE) {
@@ -7802,7 +7841,7 @@ get_sroot(char *sfile, char *sroot)
 	char *g;
 	g = sccs2name(sfile); /* strip SCCS */
 	sroot[0] = 0;
-	_relativeName(g, 0, 0, 1, sroot);
+	_relativeName(g, 0, 0, 1, 0, sroot);
 	free(g);
 }
 
@@ -9021,11 +9060,11 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
 
 	/*
  	 * Until we fix the ChangeSet processing code
-	 * we can not allow null delta in ChangeSet file
+	 * we cannot allow null delta in ChangeSet file
 	 */
 	if ((sc->state & S_CSET) && isNullDelta) {
 		fprintf(stderr,
-			"Can not create null delta in ChangeSet file\n");
+			"Cannot create null delta in ChangeSet file\n");
 		return (0);
 	}
 
@@ -10180,7 +10219,7 @@ skip:
 	}
 
 	/* text are optional */
-	/* Can not be WANT('T'), buf[1] could be null */
+	/* Cannot be WANT('T'), buf[1] could be null */
 	while (buf[0] == 'T') {
 		if (buf[1] == ' ') {
 			d->text = addLine(d->text, strdup(&buf[2]));
@@ -10749,7 +10788,7 @@ out:
 
 #ifdef WIN32
 	/*
-	 * Win32 note: If gfile is in use, we can not delete
+	 * Win32 note: If gfile is in use, we cannot delete
 	 * it when we are done.It is better to bail now
 	 */
 	if (HAS_GFILE(s) &&
@@ -14079,7 +14118,7 @@ smartUnlink(char *file)
 	chmod(file, S_IWRITE);
 	unless (rc = unlink(file)) return (0);
 	unless (access(file, 0)) {
-		fprintf(stderr, "smartUnlink:can not unlink %s, errno = %d\n",
+		fprintf(stderr, "smartUnlink:cannot unlink %s, errno = %d\n",
 		    file, save);
 	}
 	errno = save;
@@ -14102,7 +14141,7 @@ smartRename(char *old, char *new)
 		return (rc);
 	}
 	unless (rc = rename(old, new)) return (0);
-	fprintf(stderr, "smartRename: can not rename from %s to %s, errno=%d\n",
+	fprintf(stderr, "smartRename: cannot rename from %s to %s, errno=%d\n",
 	    old, new, errno);
 	errno = save;
 	return (rc);

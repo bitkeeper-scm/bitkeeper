@@ -216,7 +216,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 		fprintf(stderr, "cset: must specify package root.\n");
 		return (1);
 	} else if (sccs_cd2root(0, 0)) {
-		fprintf(stderr, "cset: can not find package root.\n");
+		fprintf(stderr, "cset: cannot find package root.\n");
 		return (1);
 	}
 
@@ -379,7 +379,7 @@ csetList(sccs *cset, char *rev, int ignoreDeleted)
 
 	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
 		if (sccs_reCache()) {
-			fprintf(stderr, "cset: can not build %s\n", IDCACHE);
+			fprintf(stderr, "cset: cannot build %s\n", IDCACHE);
 			cset_exit(1);
 		}
 		doneFullRebuild = 1;
@@ -594,7 +594,7 @@ retry:	sc = sccs_keyinit(lastkey, INIT_NOCKSUM, 0, idDB);
 			if (cs->verbose) fputs("Rebuilding caches...\n", stderr);
 			if (sccs_reCache()) {
 				fprintf(stderr,
-				    "cset: can not build %s\n", IDCACHE);
+				    "cset: cannot build %s\n", IDCACHE);
 			}
 			doneFullRebuild = 1;
 			unless (idDB =
@@ -642,7 +642,7 @@ Please stand by.\n\n", stderr);
 	}
 	unless (d = sccs_findKey(sc, val)) {
 		fprintf(stderr,
-		    "cset: can not find\n\t%s in\n\t%s\n", val, sc->sfile);
+		    "cset: cannot find\n\t%s in\n\t%s\n", val, sc->sfile);
 		return (-1);
 	}
 	markThisCset(cs, sc, d);

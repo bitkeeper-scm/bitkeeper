@@ -76,7 +76,7 @@ commit_main(int ac, char **av)
 		return(1);
 	}
 	if (sccs_cd2root(0, 0) == -1) {
-		printf("Can not find root directory\n");
+		printf("Cannot find root directory\n");
 		exit(1);
 	}
 	unless(opts.resync) remark(opts.quiet);

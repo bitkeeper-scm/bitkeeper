@@ -193,3 +193,16 @@ echo OK
 echo $N Make sure get -u works ......................................$NL
 if [ "`bk get $S -pau T`" != "bk    | HI" ]; then echo Failed.; exit 1; fi
 echo OK
+if [ $PLATFORM = "WIN32" ]
+then #-------------------------------------------------------------
+echo $N Make sure get creat gfile in real name ......................$NL
+echo "hi" > test.c
+bk ci $Q -i test.c
+bk edit $Q TEST.C
+echo new > test.C
+bk delta $Q -ychk_path  test.C
+DPN=`bk prs -h -r+ -d:DPN: test.C`
+if [ "$DPN" != "test.c" ]; then echo failed; exit 1; fi
+echo OK
+fi #---------------------------------------------------------------
+rm -rf A garbage

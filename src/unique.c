@@ -329,7 +329,7 @@ uniq_close()
 
 	unless (dirty) goto close;
 	unless (tmp = keysHome()) {
-		fprintf(stderr, "uniq_close:  can not find keyHome");
+		fprintf(stderr, "uniq_close:  cannot find keyHome");
 		return (-1);
 	}
 	unlink(tmp);

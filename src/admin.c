@@ -201,7 +201,7 @@ admin_main(int ac, char **av)
 	}
 	if ((flags & NEWFILE) && nextf) {
 		fprintf(stderr,
-		    "admin: can not have -f with -i and/or -n\n");
+		    "admin: cannot have -f with -i and/or -n\n");
 		goto usage;
 	}
 	if ((flags & NEWFILE) && text && !text[0]) {
@@ -294,7 +294,7 @@ admin_main(int ac, char **av)
 				newrev(sc, &pf);
 				if (sccs_clean(sc, SILENT)) {
 					fprintf(stderr,
-					"admin: can not clean %s\n", sc->gfile);
+					"admin: cannot clean %s\n", sc->gfile);
 					goto next;
 				}
 			} else {
@@ -319,7 +319,7 @@ admin_main(int ac, char **av)
 
 			nrev = findrev(sc, pf.newrev) ? pf.newrev: pf.oldrev;
 			if (sccs_get(sc, nrev, 0, 0, 0, gflags, "-")) {
-				fprintf(stderr, "can not adjust p file\n");	
+				fprintf(stderr, "cannot adjust p file\n");	
 			}
 		}
 next:		sccs_free(sc);

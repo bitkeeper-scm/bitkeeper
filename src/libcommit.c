@@ -114,7 +114,7 @@ notify()
 		fflush(stdout); /* needed for citool */
 		waitpid(pid, &ret, 0);
 		if (WEXITSTATUS(ret) != 0) {
-			fprintf(stdout, "can not notify %s\n", buf);
+			fprintf(stdout, "cannot notify %s\n", buf);
 			fflush(stdout); /* needed for citool */
 		}
 	}

@@ -33,7 +33,7 @@ r2c_main(int ac, char **av)
 		exit(1);
 	}
 	if (sccs_cd2root(s, 0)) {
-		fprintf(stderr, "r2c: can not find package root.\n");
+		fprintf(stderr, "r2c: cannot find package root.\n");
 		exit(1);
 	}
 	unless (e = sccs_getrev(s, &av[1][2], 0, 0)) {
@@ -44,7 +44,7 @@ r2c_main(int ac, char **av)
 	while (e && !(e->flags & D_CSET)) e = e->kid;
 	unless (e) {
 		fprintf(stderr,
-		    "r2c: can not find cset marker at or below %s in %s\n",
+		    "r2c: cannot find cset marker at or below %s in %s\n",
 		    &av[1][2], name);
 	    	exit(1);
 	}
@@ -58,7 +58,7 @@ r2c_main(int ac, char **av)
 	}
 	strcpy(buf, CHANGESET);
 	unless (cset = sccs_init(buf, INIT_NOCKSUM, 0)) {
-		fprintf(stderr, "r2c: can not init ChangeSet\n");
+		fprintf(stderr, "r2c: cannot init ChangeSet\n");
 		exit(1);
 	}
 	if (gettemp(tmpfile, "r2c")) {
@@ -89,11 +89,11 @@ r2c_main(int ac, char **av)
 	unless (shortkey) {
 notfound:	if (shortkey) {
 			fprintf(stderr,
-			    "r2c: can not find either of\n\t%s\n\t%s\n",
+			    "r2c: cannot find either of\n\t%s\n\t%s\n",
 			    key, shortkey);
 		} else {
 			fprintf(stderr,
-			    "r2c: can not find\n\t%s\n", key);
+			    "r2c: cannot find\n\t%s\n", key);
 		}
 		fclose(f);
 		unlink(tmpfile);

@@ -1,0 +1,174 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 1999 Andrew Chang
+# %K%
+
+echo $N Create initial repository ...................................$NL
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo OK
+echo $N Create 2 change set \& export ................................$NL
+# commit the config file
+mkdir src
+cd $HERE/project/src
+echo foo > foo.c
+bk admin $Q -r1.1 -ifoo.c  foo.c
+rm foo.c
+bk co $Q -l foo.c
+bk commit $S -a -y"This is \"Change Set\" A"
+echo foo-new >> foo.c
+bk ci $Q -y foo.c
+bk commit $S -a -y"This is a \"Change Set\" B"
+cd $HERE/project
+bk export -hT -tpatch -r1.2,1.3 > $HERE/CMP1
+cd $HERE/project
+bk export -T -k -r1.2 $HERE/a
+bk export -T -k -r1.3 $HERE/b
+cd $HERE
+diff -Nru a b > $HERE/CMP2
+diff -c CMP1 CMP2
+if [ $? -ne 0 ]; then echo failed; else echo OK; fi
+rm -rf $HERE/a $HERE/b
+echo $N Test file w no 1.0 delta ....................................$NL
+cd $HERE/project/src
+echo bar > bar.c
+bk admin $Q -r1.1 -ibar.c  bar.c
+rm bar.c
+echo bar2 > bar2.c
+bk admin $Q -r1.1 -ibar2.c  bar2.c
+rm bar2.c
+bk co $Q -l bar2.c
+echo bar2-new >> bar2.c
+bk ci $Q -y bar2.c
+bk commit $S -a -y"This is a \"Change Set\" C"
+cd $HERE/project
+bk export -T -k -r1.3 $HERE/a
+bk export -hT -tpatch -r1.3,1.4 > patch
+bk patch -sp 1 -d $HERE/a < patch
+bk export -T -k -r1.4 $HERE/b
+diff -r $HERE/a $HERE/b
+if [ $? -ne 0 ]; then echo failed; else echo OK; fi
+rm -rf $HERE/a $HERE/b
+echo $N Test chaining rename ........................................$NL
+cd $HERE/project/src
+bk mv bar.c moo.c
+bk mv foo.c bar.c
+echo >  foo.c
+bk ci $Q -i foo.c
+bk commit $S -a -y"abc"
+cd $HERE/project
+bk export -T -k -r1.4 $HERE/a
+bk export -hT -tpatch -r1.4,1.5 > patch
+bk patch -sp 1 -d $HERE/a < patch
+bk export -T -k -r1.5 $HERE/b
+diff -r $HERE/a $HERE/b
+if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
+echo OK
+rm -rf $HERE/a $HERE/b
+echo $N Test delete .................................................$NL
+cd $HERE/project/src
+bk sccsrm bar.c
+bk commit $S -a -y"abc"
+cd $HERE/project
+bk export -T -k -r1.5 $HERE/a
+bk export -hT -tpatch -r1.5,1.6 > patch 
+bk patch -sp 1 -d $HERE/a < patch
+bk export -T -k -r1.6 $HERE/b
+diff -r $HERE/a $HERE/b
+if [ $? -ne 0 ]; then echo failed; else echo OK; fi
+rm -rf $HERE/a $HERE/b
+echo $N Test reverse patch \& un-delete ..............................$NL
+bk export -T -k -r1.6 $HERE/a
+bk export -hT -tpatch -r1.6,1.5 > patch
+bk patch -sp 1 -d $HERE/a < patch
+bk export -T -k -r1.5 $HERE/b
+diff -r $HERE/a $HERE/b
+if [ $? -ne 0 ]; then echo failed; else echo OK; fi
+rm -rf $HERE/a $HERE/b
+echo $N Test reverse patch \& reverse-rename .........................$NL
+cd $HERE/project
+bk export -T -k -r1.5 $HERE/a
+bk export -hT -tpatch -r1.5,1.4 > patch
+bk patch -sp 1 -d $HERE/a < patch
+bk export -T -k -r1.4 $HERE/b
+diff -r $HERE/a $HERE/b
+if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
+echo OK
+rm -rf $HERE/a $HERE/b
+echo $N Test non-adjacent ChangeSet .................................$NL
+cd $HERE/project
+bk export -T -k -r1.1 $HERE/a
+bk export -hT -tpatch -r1.1,1.6 > patch
+bk patch -sp 1 -d $HERE/a < patch
+bk export -T -k -r1.6 $HERE/b
+diff -r $HERE/a $HERE/b
+if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
+echo OK
+rm -rf $HERE/a $HERE/b
+echo $N Test reverse non-adjacent ChangeSet .........................$NL
+cd $HERE/project
+bk export -T -k -r1.5 $HERE/a
+bk export -hT -tpatch -r1.5,1.1 > patch
+bk patch -sp 1 -d $HERE/a < patch
+bk export -T -k -r1.1 $HERE/b
+diff -r $HERE/a $HERE/b
+if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
+echo OK
+rm -rf $HERE/a $HERE/b
+echo $N Test file transposition .....................................$NL
+cd $HERE/project/src
+bk co $Q -l  foo.c moo.c
+echo "foo-t" >> foo.c
+echo "moo-t" >> moo.c
+bk ci $Q -y foo.c moo.c
+bk mv foo.c tmp
+bk mv moo.c foo.c
+bk mv tmp moo.c
+bk commit $S -a -y"abc"
+cd $HERE/project
+bk export -T -k -r1.6 $HERE/a
+bk export -hT -tpatch -r1.6,1.7 > patch
+bk patch -sp 1 -d $HERE/a < patch
+bk export -T -k -r1.7 $HERE/b
+diff -r $HERE/a $HERE/b
+if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
+echo OK
+rm -rf $HERE/a $HERE/b
+echo $N Create a new file with the same name as a deleted file ......$NL
+cd $HERE/project/src
+echo dup > dup.c
+bk ci $Q -i dup.c
+bk commit $S -a -y"dup"
+bk sccsrm -d dup.c
+# XXX need "sleep 1" to avoid dup key problen
+sleep 1
+echo new-dup > dup.c
+bk ci $Q -i dup.c
+bk commit $S -a -y"new-dup"
+bk co $Q -l moo.c
+echo "moo-update" > moo.c
+bk ci $Q -y moo.c
+bk commit $S -a -y"moo-update"
+bk export -T -k -r1.9 $HERE/a
+bk export -hT -tpatch -r1.9,1.10 > mkdiffs.out
+grep "/dev/null" mkdiffs.out
+if [ $? -eq 0 ]; then echo "failed"; exit 1; fi
+grep "dup.c" mkdiffs.out
+if [ $? -eq 0 ]; then echo "failed"; exit 1; fi
+bk patch -sp 1 -d $HERE/a < mkdiffs.out
+bk export -T -k -r1.10 $HERE/b
+diff -r $HERE/a $HERE/b
+if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
+echo OK

@@ -648,14 +648,14 @@ ok_local(sccs *s, int check_pending)
 	}
 	if ((IS_EDITED(s) || IS_LOCKED(s)) && sccs_clean(s, SILENT)) {
 		fprintf(stderr,
-		    "Can not [re]move modified local file %s\n", s->gfile);
+		    "Cannot [re]move modified local file %s\n", s->gfile);
 		return (0);
 	}
 	unless (check_pending) return (1);
 	d = sccs_getrev(s, "+", 0, 0);
 	unless (d->flags & D_CSET) {
 		fprintf(stderr,
-		    "Can not [re]move uncommitted local file %s\n", s->gfile);
+		    "Cannot [re]move uncommitted local file %s\n", s->gfile);
 		return (0);
 	}
 	return (1);
