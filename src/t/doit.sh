@@ -53,8 +53,14 @@ unix_common_setup()
 	CWD="/bin/pwd"
 	if [ -d /usr/xpg4/bin ]; then PATH=/usr/xpg4/bin:$PATH; fi
 	BK_FS="|"
-	BK_BIN="`cd .. && pwd`"
+
+	# only a symlink to 'bk' appears on PATH
+	BK_BIN=/build/.bkbin-$USER
+	rm -rf $BK_BIN
+	mkdir $BK_BIN
+	ln -s `cd .. && pwd`/bk $BK_BIN/bk
 	PATH=$BK_BIN:$PATH:/usr/local/bin:/usr/freeware/bin:/usr/gnu/bin
+
 	unset CDPATH PAGER
 	if [ X$USER = X ]; then USER=`bk getuser`; fi
 	# root user is special, remap to a differnt user before we run the test

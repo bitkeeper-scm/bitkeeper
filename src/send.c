@@ -1,6 +1,8 @@
 #include "system.h"
 #include "sccs.h"
 
+extern	char	*bin;
+
 #define	BK_LOG "BitKeeper/log"
 
 
@@ -203,7 +205,7 @@ send_main(int ac,  char **av)
 	/*
 	 * Set up wrapper
 	 */
-	if (wrapper) wrapperArgs = aprintf(" | bk %swrap", wrapper);
+	if (wrapper) wrapperArgs = aprintf(" | %s/%swrap", bin, wrapper);
 
 	/*
 	 * Print patch header
