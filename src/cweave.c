@@ -386,6 +386,7 @@ cset_write(sccs *s)
 	fprintf(f, "\001H%05u\n", s->cksum);
 	if (fclose(f)) perror(sccs_Xfile(s, 'x'));
 
+	sccs_close(s);
 	unlink(s->sfile);
 	if (rename(sccs_Xfile(s, 'x'), s->sfile)) {
 		perror(s->sfile);
