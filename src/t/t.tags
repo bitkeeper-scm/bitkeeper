@@ -30,6 +30,74 @@ P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 echo OK
 cores
+
+echo $N Tags may not start with a digit .............................$NL
+bk tag $Q 1234 && {
+	echo Should have failed
+	exit 1
+}
+echo OK
+
+echo $N "Tags may not start with a  =  ...............................$NL"
+bk tag $Q =1234 && {
+	echo Should have failed
+	exit 1
+}
+echo OK
+
+echo $N "Tags may not start with a  .  ...............................$NL"
+bk tag $Q .1234 && {
+	echo Should have failed
+	exit 1
+}
+echo OK
+
+echo $N "Tags may not start with a  -  ...............................$NL"
+bk tag $Q -- -1234 && {
+	echo Should have failed
+	exit 1
+}
+echo OK
+
+echo $N "Tags may not be just a  +  ..................................$NL"
+bk tag $Q + && {
+	echo Should have failed
+	exit 1
+}
+echo OK
+
+for s in .. ., ,. ,,
+do
+echo $N "Tags may not contain a  $s  .................................$NL"
+bk tag $Q foo${s}bar && {
+	echo Should have failed
+	exit 1
+}
+echo OK
+done
+
+echo $N "Tags may not contain a  ^A  .................................$NL"
+bk tag $Q 'foobar' && {
+	echo Should have failed
+	exit 1
+}
+echo OK
+
+echo $N "Tags may not contain a  |  ..................................$NL"
+bk tag $Q 'foo|bar' && {
+	echo Should have failed
+	exit 1
+}
+echo OK
+
+echo $N "Tags may not contain a  \\n  .................................$NL"
+bk tag $Q 'foo
+bar' && {
+	echo Should have failed
+	exit 1
+}
+echo OK
+
 echo $N Add old style tags ..........................................$NL
 cd $HERE
 cp -rp project tags
@@ -47,6 +115,7 @@ grep -q '^.cS[0-9]' SCCS/s.ChangeSet && {
 }
 bk admin -hhhq || exit 1
 echo OK
+
 echo $N Add new style tags ..........................................$NL
 bk tag $Q NEW
 grep -q '^.cS0' SCCS/s.ChangeSet || {
@@ -106,6 +175,7 @@ host=`bk gethost`
 					{ echo wrong parent $parent; exit 1; }
 cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
 echo OK
+
 echo $N Create a changeset in compat mode with a tag ................$NL
 cd $HERE/project/src
 bk get $Q -e 'F!O#O$ B%A^R&RR(R)RR'
@@ -126,6 +196,7 @@ grep -q '^.cS[0-9]' SCCS/s.ChangeSet && {
 	exit 1
 }
 echo OK
+
 echo $N Pull a new changeset with an old tag using pull .............$NL
 cd $HERE/copy2
 bk pull -t $Q || { echo failed; exit 1; }
@@ -441,6 +512,7 @@ bk delta $Q -yfoo foo
 bk commit $Q -Sfoo -yfoo
 bk pull $Q $HERE/mergemain
 echo OK
+
 echo $N Merge tag where history contains same name on L1 branch .....$NL
 cd $HERE/mergemain
 bk edit $Q foo
