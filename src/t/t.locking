@@ -21,6 +21,7 @@ P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 touch BitKeeper/etc/SCCS/x.marked
 echo OK
+
 echo $N Create some data ............................................$NL
 echo 1 > A
 echo 2 > B
@@ -28,6 +29,7 @@ bk ci $Q -i A B
 if [ ! -f SCCS/s.A ]; then echo failed to create history; exit 1; fi
 bk commit $S -a -y"This is a \"Change Set\""
 echo OK
+
 echo $N Make sure zero sized z.locks are respected ..................$NL
 bk edit $Q A
 touch SCCS/z.A
@@ -35,6 +37,7 @@ bk delta $Q -y'should fail' A > /dev/null 2>&1
 if [ ! -f SCCS/z.A ]; then echo failed, removed zlock; exit 1; fi
 if [ ! -w A ]; then echo failed, removed A; exit 1; fi
 echo OK
+
 echo $N Make sure stale zlocks are discarded ........................$NL
 bk mklock > SCCS/z.A 
 #bk delta $Q -y'should work' A > /dev/null 2>&1
@@ -42,6 +45,7 @@ bk delta $Q -y'should work' A
 if [ -f SCCS/z.A ]; then echo failed to remove zlock; exit 1; fi
 if [ -f A ]; then echo failed to remove A; exit 1; fi
 echo OK
+
 echo $N Check edit with existing stale read lock ....................$NL
 bk lock -r &
 LOCKPID=$!
@@ -50,6 +54,7 @@ bk edit $Q A 2> /dev/null
 if [ ! -w A ]; then echo failed to get writable file; exit 1; fi
 bk clean A
 echo OK
+
 echo $N Check edit with existing stale write lock ...................$NL
 bk unlock -r
 waitForUnlock
@@ -62,6 +67,7 @@ bk lock -L
 bk edit $Q A 2> /dev/null
 if [ ! -w A ]; then echo failed to get writable file; exit 1; fi
 echo OK
+
 echo $N Check edit with existing valid read lock ....................$NL
 bk clean A
 bk unlock -w
@@ -73,6 +79,7 @@ mv BitKeeper/readers/* BitKeeper/readers/1234@nowhere.nowhere
 bk edit $Q A
 writable A || { echo failed to lock A; exit 1; }
 echo OK
+
 echo $N Make sure delta fails with existing read lock ...............$NL
 bk delta $Q -yXXX A 2> OUT
 test -w A || {
@@ -86,6 +93,7 @@ echo $N Make sure clean works with existing read lock ...............$NL
 bk clean $Q A 
 if [ -w A ]; then echo failed to clean; exit 1; fi
 echo OK
+
 echo $N Check edit with existing valid write lock ...................$NL
 bk unlock -r
 waitForUnlock
@@ -104,6 +112,7 @@ test -f BitKeeper/writer/1234@nowhere.nowhere.lock || {
 	exit 1
 }
 echo OK
+
 echo $N Make sure delta fails with existing write lock ..............$NL
 bk lock -l > LOCKS 2>&1
 bk delta $Q -yXXX A 2> OUT
@@ -116,11 +125,13 @@ test -w A || {
 	exit 1
 }
 echo OK
+
 echo $N Make sure clone fails with existing write lock in source ....$NL
 cd $HERE
 bk clone $Q project clone 2>/dev/null
 if [ -d clone ]; then echo clone failed to clean up; exit 1; fi
 echo OK
+
 # This test would not work on Win98/WinMe; no bkd support
 if [ "$PLATFORM" = "UNIX" ]
 then #---------------------------------------------------------------------
@@ -142,6 +153,7 @@ cmp -s clone.out ref || {
 }
 if [ -d clone ]; then echo clone failed to clean up; exit 1; fi
 echo OK
+
 fi #------------------------------------------------------------------------
 echo $N Make sure clone works with existing read lock in source .....$NL
 cd $HERE/project
@@ -158,6 +170,7 @@ if [ $EXIT != 0 ]; then echo failed with exit $EXIT; exit 1; fi
 if [ ! -d clone -o ! -f clone/SCCS/s.A ]; then echo clone failed; exit 1; fi
 if [ ! -f clone/BitKeeper/log/parent ]; then echo clone failed to set parent; exit 1; fi
 echo OK
+
 echo $N Make sure clone works with existing read lock in source \#2 ..$NL
 cd $HERE
 #bk clone $Q bk://localhost:$P clone2 2>/dev/null
@@ -167,12 +180,26 @@ if [ $EXIT != 0 ]; then echo failed with exit $EXIT; exit 1; fi
 if [ ! -d clone2 -o ! -f clone2/SCCS/s.A ]; then echo clone2 failed; exit 1; fi
 if [ ! -f clone2/BitKeeper/log/parent ]; then echo clone2 failed to set parent; exit 1; fi
 echo OK
-echo $N Make sure pull fails with existing write lock in source .....$NL
+
+echo $N Make sure pull fails with global write lock .................$NL
 cd $HERE/project
 bk unlock -rw
 waitForUnlock
 ls > C
 bk new $Q C
+bk commit $Q -ywhatever
+touch $HERE/write_lock
+cd $HERE/clone
+BK_WRITE_LOCK=$HERE/write_lock bk pull -t -c0 $Q >/dev/null 2>&1
+if [ $? != 1 ]; then echo pull failed to exit with error; exit 1; fi
+echo OK
+
+echo $N Make sure pull fails with existing write lock in source .....$NL
+cd $HERE/project
+bk unlock -rw
+waitForUnlock
+ls > CC
+bk new $Q CC
 bk commit $Q -ywhatever
 bk lock -w &
 LOCKPID=$!
@@ -181,6 +208,7 @@ cd $HERE/clone
 bk pull -t -c0 $Q 2>/dev/null
 if [ $? != 1 ]; then echo pull failed to exit with error; exit 1; fi
 echo OK
+
 echo $N Make sure pull works with existing read lock in source ......$NL
 cd $HERE/project
 bk unlock -w
@@ -194,12 +222,14 @@ bk pull -t $Q -R 2>/dev/null
 if [ ! -d RESYNC ]; then echo pull failed; exit 1; fi
 bk resolve -t $Q || exit 1
 echo OK
+
 echo $N Make sure pull works with existing read lock in source \#2 ...$NL
 cd $HERE/clone2
 bk pull -t -R  > XXX 2>&1
 if [ ! -d RESYNC ]; then echo pull failed; cat XXX; exit 1; fi
 bk resolve -t $Q
 echo OK
+
 echo $N Make sure push fails with existing read lock in dest ........$NL
 cd $HERE/clone
 ls > D
@@ -207,6 +237,43 @@ bk new $Q D
 bk commit $Q -ywhatever
 bk push -c0 $Q
 if [ $? != 1 ]; then echo push failed to exit with an error; exit 1; fi
+echo OK
+
+echo $N Make sure push fails with global read lock ..................$NL
+cd $HERE/project
+bk unlock -rw
+waitForUnlock
+cd $HERE/clone
+touch $HERE/read_lock
+BK_READ_LOCK=$HERE/read_lock bk push -c0 > OUT 2>&1 && {
+	echo push failed to exit with an error
+	cat OUT
+	kill $LOCKPID
+	exit 1
+}
+grep -q 'ERROR-Unable to lock repository for update.' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure push fails with global write lock .................$NL
+cd $HERE/project
+bk unlock -rw
+waitForUnlock
+cd $HERE/clone
+BK_WRITE_LOCK=$HERE/write_lock bk push -c0 > OUT 2>&1 && {
+	echo push failed to exit with an error
+	cat OUT
+	kill $LOCKPID
+	exit 1
+}
+grep -q 'Global write lock .*/write_lock' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
 echo OK
 
 echo $N Make sure push fails with existing write lock in dest .......$NL
@@ -249,6 +316,46 @@ grep -q 'Nothing to pull' OUT || {
 	exit 1
 }
 echo OK
+
+echo $N Make sure commit respects global read lock ..................$NL
+bk co $Q -l D
+date > D
+bk ci $Q -ynew_styff D
+BK_READ_LOCK=$HERE/read_lock bk commit $Q -y"should-failed" > commit.out 2>&1
+if [ $? -eq 0 ]; then echo failed; exit 1; fi
+grep -q 'ERROR-Unable to lock repository for update.' commit.out || {
+	echo unexpected error message
+	cat commit.out
+	exit 1
+}
+BK_READ_LOCK=$HERE/read_lock bk lock -l > OUT 2>&1
+grep -q 'Global read lock .*/read_lock' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure commit respects global write lock .................$NL
+bk co $Q -l D
+date > D
+bk ci $Q -ynew_styff D
+BK_WRITE_LOCK=$HERE/write_lock bk commit $Q -y"should-failed" > commit.out 2>&1
+if [ $? -eq 0 ]; then echo failed; exit 1; fi
+grep -q 'ERROR-Unable to lock repository for update.' commit.out || {
+	echo unexpected error message
+	cat commit.out
+	exit 1
+}
+BK_WRITE_LOCK=$HERE/write_lock bk lock -l > OUT 2>&1
+grep -q 'Global write lock .*/write_lock' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+echo OK
+
+
 echo $N Make sure commit respects repository lock ...................$NL
 bk co $Q -l D
 date > D
@@ -262,3 +369,4 @@ grep -q 'ERROR-Unable to lock repository for update.' commit.out || {
 	exit 1
 }
 echo OK
+

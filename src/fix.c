@@ -112,15 +112,15 @@ do_cset(char *qflag, int flags, int save)
 		p[-1] = '|';
 	}
 
+	if (trigger("fix", "pre")) exit(1);
+
 	/*
 	 * Saving the patch can fail if the repo is in a screwed up state,
 	 * eg one of the files in the patch is missing and not goned.
 	 */
 	if (save) {
-		int	rc;
-		
-		rc = sysio(0, "BitKeeper/tmp/fix.patch",
-			0, "bk", "makepatch", "-r+", SYS);
+		int	rc = sysio(0, "BitKeeper/tmp/fix.patch",
+			    0, "bk", "makepatch", "-r+", SYS);
 		if (rc) {
 			fprintf(stderr, "fix: unable to save patch, abort.\n");
 			exit(1);
@@ -212,7 +212,7 @@ doit(char *file, char *rev, char *qflag, int flags, char *force)
 			/* make sure this is 1.0->1.1 or just old 1.1 only */
 			assert(d->serial <= 2);
 
-			cfile(s, "1.0");
+			cfile(s, "1.1");
 			sccs_get(s, 0, 0, 0, 0, SILENT, "-");
 			chmod(s->gfile, d->mode);
 

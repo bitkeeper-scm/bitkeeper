@@ -1,0 +1,34 @@
+if [ $DO_REMOTE = YES ]
+then
+ echo $N check this_host:relative_path ...............................$NL
+ no_logging proj
+ # We put "copy" under $HERE/proj becuase the old/buggy code would
+ # have picked it up because it failed to do a chdir to $HOME.
+ bk clone $Q $HERE/proj $HERE/proj/copy
+ touch foo
+ bk new $Q foo
+ bk commit $Q -yfoo
+ BK_HOST=`bk gethost -r`
+ BK_PAGER=cat bk changes -r+ $BK_HOST:copy > ERR 2>&1	# this should fail
+ grep -q "ERROR-cannot cd to copy" ERR || { echo failed; cat ERR; exit 1; }
+ echo OK
+
+ echo $N check localhost:relative_path ...............................$NL
+ BK_PAGER=cat bk changes -r+ localhost:copy > ERR 2>&1	# this should fail
+ grep -q "ERROR-cannot cd to copy" ERR || { echo failed; cat ERR; exit 1; }
+ echo OK
+
+ if grep -q localhost1 /etc/hosts
+ then 
+  echo $N check localhost1:relative_path ..............................$NL
+  BK_PAGER=cat bk changes -r+ localhost1:copy > ERR 2>&1 # this should fail
+  grep -q "ERROR-cannot cd to copy" ERR || { echo failed; cat ERR; exit 1; }
+  echo OK
+ else
+  echo check localhost1:relative_path ..............................skipped
+ fi
+else
+ echo check this_host:relative_path ...............................skipped
+ echo check localhost:relative_path ...............................skipped
+ echo check localhost1:relative_path ..............................skipped
+fi

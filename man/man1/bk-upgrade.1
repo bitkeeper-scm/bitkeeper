@@ -1,0 +1,70 @@
+.so ../bk-macros
+.TH "bk upgrade" 1 %E% "\*(BC" "\*(UM"
+.SH NAME
+bk upgrade \- Check for new versions of BitKeeper
+.SH SYNOPSIS
+.B bk upgrade [\-infq]
+.OPT srcurl
+.SH DESCRIPTION
+.LP
+The
+.B upgrade
+command contacts BitMover's servers using HTTP to see if new versions
+of BitKeeper are available for download.  If a new version is found
+for this platform, then the user is notified.
+.LP
+New versions are fetched from the following location:
+.DS
+http://upgrades.bitkeeper.com/upgrades/
+.DE
+This source URL can be replaced with a different URL or local pathname
+on the command line.  This can be used if BitKeeper cannot make
+external HTTP connections to the upgrades site, for local mirrors, or
+special releases.
+.SH OPTIONS
+.if t .TP .6i
+.if n .TP 1i
+.B \-i
+If a new version of BitKeeper is found for this platform, then
+download it and run the installer.
+.tp
+.B \-n
+Only fetch the installer for a new version of BitKeeper, but don't
+install it.
+.tp
+.B \-f
+If the
+.B upgrade
+command is unable to determine if the currently installed version of
+BitKeeper has been replace by a newly released version, then an
+warning message is printed and the upgrade is aborted.  The
+.B \-f
+option allow the user to force the new version to be used.
+.tp
+.B \-q
+This cause the upgrade program to suppress extra output when running.
+.SH EXAMPLES
+To check for new upgrades:
+.DS
+bk upgrade
+.DE
+To install a new version of bk:
+.DS
+bk upgrade -i
+.DE
+To upgrade a give installation of bk on this machine:
+.DS
+/home/user/bitkeeper/bk upgrade -i
+.DE
+To fetch the latest installer:
+.DS
+bk upgrade -nf
+.DE
+.SH EXIT STATUS
+0 if a new version of BitKeeper is found
+.br
+1 if no updates are available.
+.br
+2 if errors occurred fetching new updates.
+.SH CATEGORY
+.B Utility

@@ -358,37 +358,46 @@ strnonleq(register char *s, register char *t)
 }
 #endif
 
+/* remove last character from string and return it */
 char
-chop(register char *s)
+chop(char *s)
 {
 	char	c;
 
-	while (*s++);
-	c = s[-2];
-	s[-2] = 0;
+	assert(s);
+	unless (*s) return (0);
+	s += strlen(s) - 1;
+	c = *s;
+	*s = 0;
 	return (c);
 }
 
 /*
- * Remove any trailing newline or CR from a string. 
+ * Remove any trailing newline or CR from a string.
+ * Returns true if anything stripped.
  */
 int
-chomp(char *s) 
+chomp(char *s)
 {
 	int	any = 0;
+	char	*p;
 
-	while (*s) ++s;
-	while (s[-1] == '\n' || s[-1] == '\r') --s, any = 1;
-	*s = 0;
+	assert(s);
+	p = s + strlen(s);
+	while ((p > s) && ((p[-1] == '\n') || (p[-1] == '\r'))) --p, any = 1;
+	*p = 0;
+	return (any);
 	return (any);
 }
 
 /* chop if there is a trailing slash */
 void
-chopslash(register char *s)
+chopslash(char *s)
 {
-	while (*s++);
-	if (s[-2] == '/') s[-2] = 0;
+	assert(s);
+	unless (*s) return;
+	s += strlen(s) - 1;
+	if (*s == '/') *s = 0;
 }
 
 /*
@@ -3114,8 +3123,8 @@ checktags(sccs *s, delta *leaf, int flags)
 	return (1);
 }
 
-private int
-badTag(char *me, char *tag, int flags)
+int
+sccs_badTag(char *me, char *tag, int flags)
 {
 	char	*p;
 
@@ -3194,7 +3203,7 @@ checkTags(sccs *s, int flags)
 	for (sym = s->symbols; sym; sym = sym->next) {
 		unless (sym->symname) continue;
 		/* XXX - not really "check" all the time */
-		if (badTag("check", sym->symname, flags)) bad = 1;
+		if (sccs_badTag("check", sym->symname, flags)) bad = 1;
 	}
 	if (bad) return (128);
 
@@ -9380,11 +9389,19 @@ out:		sccs_unlock(s, 'z');
 			randomBits(buf);
 			if (buf[0]) d->random = strdup(buf);
 		}
-
 		unless (hasComments(d)) {
-			sprintf(buf, "BitKeeper file %s",
-			    fullname(s->gfile, 0));
+			sprintf(buf, "BitKeeper file %s",fullname(s->gfile, 0));
 			d->comments = addLine(d->comments, strdup(buf));
+		}
+		if ((d == n0) && !hasComments(n)) {
+			if (comments_readcfile(s, 0, n)) {
+				if (flags & DELTA_CFILE) {
+					fprintf(stderr,
+					    "checkin: no comments for %s\n",
+					    s->sfile);
+					goto out;
+				}
+			}
 		}
 	}
 	if (BITKEEPER(s)) {
@@ -10338,17 +10355,15 @@ addSym(char *me, sccs *sc, int flags, admin *s, int *ep)
 
 	/*
 	 * "sym" means TOT of current LOD.
-	 * "sym:" means TOT of current LOD.
-	 * "sym:1.2" means that rev.
-	 * "sym:1" or "sym:1.2.1" means TOT of that branch.
-	 * "sym;" and the other forms mean do it only if symbol not present.
+	 * "sym|" means TOT of current LOD.
+	 * "sym|1.2" means that rev.
 	 */
 	for (i = 0; s && s[i].flags; ++i) {
 		sym = strdup(s[i].thing);
-		if ((rev = strrchr(sym, ':'))) {
+		if ((rev = strrchr(sym, '|')) || (rev = strrchr(sym, ':'))) {
 			*rev++ = 0;
 		}
-
+		/* Note: rev is set or null from above test */
 		unless (d = sccs_getrev(sc, rev ? rev : "+", 0, 0)) {
 			verbose((stderr,
 			    "%s: can't find %s in %s\n",
@@ -10358,12 +10373,21 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 			continue;
 		}
 		if (!rev || !*rev) rev = d->rev;
-		if (badTag(me, s[i].thing, flags)) goto sym_err;
+		if (sccs_badTag(me, sym, flags)) goto sym_err;
 		if (dupSym(sc->symbols, sym, rev)) {
 			verbose((stderr,
 			    "%s: symbol %s exists on %s\n", me, sym, rev));
 			goto sym_err;
 		}
+
+		// XXX - if anyone calls admin directly with two tags this can
+		// be wrong.  bk tag doesn't.
+		// We should just get rid of the multiple tag thing, it was
+		// over engineered.
+		unless (d == sccs_top(sc)) safe_putenv("BK_TAG_REV=%s", d->rev);
+		safe_putenv("BK_TAG=%s", sym);
+		if (trigger("tag", "pre")) goto sym_err;
+
 		n = calloc(1, sizeof(delta));
 		n->next = sc->table;
 		sc->table = n;

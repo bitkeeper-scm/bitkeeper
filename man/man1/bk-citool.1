@@ -1,5 +1,5 @@
 .so ../bk-macros
-.TH "bk citool" 1 20%E% "\*(BC" "\*(UM"
+.TH "bk citool" 1 %E% "\*(BC" "\*(UM"
 .SH NAME
 bk citool \- \*(BK graphical check-in tool
 .SH SYNOPSIS
@@ -55,7 +55,7 @@ for files that still need to be added to a changeset. This feature is
 useful when modifying files that should be in separate changesets. For
 example, if you modify five files and three of those files form a
 logical unit of work, you can start citool, add the three files to a
-changeset and then commit. After commiting the files to a changeset,
+changeset and then commit. After committing the files to a changeset,
 citool returns so that you can comment the remaining files and add
 them to a new changeset. Basically, this option prevents the user
 from restarting citool multiple times if all files are not added to
@@ -109,6 +109,19 @@ the differences window (assuming that the differences are larger than
 the window).  While this can be done using the mouse and the scrollbar,
 the following keyboard accelerators will work at all times, even when
 typing in the comments window:
+.SH COMMENT TEMPLATES
+.B citool
+supports the ability to define a system-wide template to be used
+for the ChangeSet comments. This file is documented in the bk
+templates man page. 
+.LP
+If a template exists it will be loaded into the ChangeSet comments
+if there are no pre-existing comments. The comments may be edited as
+usual; if the comments are not modified they will be treated
+as if there are no comments. That is, if the ChangeSet comments are
+identical to the template no changeset will be created, as is the
+case when there are no comments in the window and you press the
+checkin button.
 .SH "KEYBOARD BINDINGS"
 .if t .TP 1.2i
 .if n .TP 1.7i
@@ -138,14 +151,14 @@ Scroll the file list window 1 screen
 .if t .TP 1.2i
 .if n .TP 1.7i
 .B Control-c
-Copy the contents of the comments window to the cut buffer.
+Copy the contents of the selection to the clipboard.
 .tp
 .B Control-x
-Delete the contents of the comments window, saving in the cut buffer.
+Delete the contents of the selection, saving them in the clipboard.
 .tp
 .B Control-v
-Paste the contents of the cut buffer into the comments window and
-advance to the next file.
+Paste the contents of the clipboard into the selection, replacing
+the selection.
 .tp
 .B Middle-Button
 On Unix, this will paste the X11 selection buffer into the comments window.
@@ -203,11 +216,12 @@ There are a series of buttons on the right.  They perform the following
 functions:
 .if t .TP 1.2i
 .if n .TP 1.7i
-.B [Cut comments]
-takes the contents of the current comment window and saves them in a buffer.
+.B [Cut all comments]
+takes the contents of the current comment window and saves them in the
+clipboard.
 .tp
-.B [Paste comments]
-pastes comments saved by the previous button, overwriting any existing comments.
+.B [Paste over comments]
+pastes comments from the clipboard, overwriting any existing comments.
 .tp
 .B [Commit]
 displays all comments in the differences window and asks if you want to commit.
@@ -265,6 +279,7 @@ should work.
 .SA fmtool 1
 .SA ignore 1
 .SA sfiles 1
+.SA templates 1
 .SH CATEGORY
 .B GUI-tools
 .br

@@ -86,14 +86,9 @@ case "X`uname -s`" in
 esac
 
 if [ "$CHECK" ]; then
-	# check to see if the system we're building on has dirname, tm_gmtoff,
+	# check to see if the system we're building on has tm_gmtoff,
 	# or altzone/localzone
 	#
-
-	# first dirname -- if the thing compiles, dirname() exists in libc
-	#
-	echo "main() { extern char *dirname();  dirname("a/b"); }" > $$.c
-	$CC -o $$ $$.c 1>/dev/null 2>/dev/null && CCXTRA="-DHAVE_DIRNAME"
 
 	# then look for tm_gmtoff, and if that doesn't exist, altzone/localzone
 	#

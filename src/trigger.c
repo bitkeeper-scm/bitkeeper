@@ -136,6 +136,10 @@ trigger(char *cmd, char *when)
 		strcpy(triggerDir, RESYNC2ROOT "/BitKeeper/triggers");
 	} else if (strneq(cmd, "delta", 5)) {
 		what = event = "delta";
+	} else if (strneq(cmd, "tag", 3)) {
+		what = event = "tag";
+	} else if (strneq(cmd, "fix", 3)) {
+		what = event = "fix";
 	} else {
 		fprintf(stderr,
 		    "Warning: Unknown trigger event: %s, ignored\n", cmd);

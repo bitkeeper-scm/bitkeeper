@@ -42,6 +42,7 @@ grep -q 'Conflicts during automerge of file' OUT || {
 }
 echo ur | bk resolve $Q -t 2>OUT || {
 	echo resolve should work
+	cat OUT
 	exit 1
 }
 bk get $Q file || exit 1
@@ -402,7 +403,13 @@ cd $HERE
 export CLOCK_DRIFT=1
 no_logging p1d
 mkdir src
-touch src/foo
+cat > src/foo <<EOF
+line1
+line2
+line3
+line4
+line5
+EOF
 bk new $Q src/foo
 # 3 long names
 list="alkjlskdjflksjfdjdfskjdflsjfljfd
@@ -435,6 +442,46 @@ bk pull -qR ../p1dtmp
 bk resolve $Q -234 2> ERR || {
 	echo Fail
 	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Make sure that a rename only conflict does partial check ....$NL
+cd $HERE
+no_logging parent
+touch start
+bk new $Q start
+bk commit $Q -ybaseline
+bk clone $Q . ../child
+bk mv start parent
+bk commit $Q -yparent
+cd ../child
+touch parent
+bk new $Q parent
+bk commit $Q -ychild
+bk pull $Q -R
+test -f RESYNC/BitKeeper/etc/RESYNC_TREE || {
+	echo failed to create RESYNC/BitKeeper/etc/RESYNC_TREE
+	exit 1
+}
+BK_DEBUG_CMD=YES
+export BK_DEBUG_CMD
+(
+echo rl
+echo y
+echo q
+) | bk resolve -t >OUT 2>&1 || exit 1
+test -d RESYNC && {
+	echo failed to complete resolve
+	exit 1
+}
+grep -q 'SYSIO {bk} {check} {-c} {-}' OUT || {
+	echo failed to run check
+	cat OUT
+	exit 1
+}
+test -f BitKeeper/etc/RESYNC_TREE && {
+	echo Should not have lifted up BitKeeper/etc/RESYNC_TREE
 	exit 1
 }
 echo OK

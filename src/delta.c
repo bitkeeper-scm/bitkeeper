@@ -125,37 +125,36 @@ delta_main(int ac, char **av)
 	int	c, rc, enc;
 	char	*initFile = 0;
 	char	*diffsFile = 0;
-	char	*name;
+	char	*prog, *name;
 	char	*compp = 0, *encp = 0, *ckopts = "";
 	char	*def_compp;
-	char	*mode = 0, buf[MAXPATH];
+	char	*mode = 0;
 	MMAP	*diffs = 0;
 	MMAP	*init = 0;
 	pfile	pf;
 	int	dash, errors = 0, fire, dangling;
 
 	debug_main(av);
-	name = strrchr(av[0], '/');
-	if (name) name++;
-	else name = av[0];
-	if (streq(name, "ci")) {
+	prog = strrchr(av[0], '/');
+	if (prog) prog++;
+	else prog = av[0];
+	if (streq(prog, "ci")) {
 		if (!isdir("SCCS") && isdir("RCS")) {
 			rcs("ci", ac, av);
 			/* NOTREACHED */
 		}
 		isci = 1;
-	} else if (streq(name, "delta")) {
+	} else if (streq(prog, "delta")) {
 		dflags = DELTA_FORCE;
-	} else if (streq(name, "new") ||
-	    streq(name, "enter") || streq(name, "add")) {
+	} else if (streq(prog, "new") ||
+	    streq(prog, "enter") || streq(prog, "add")) {
 		dflags |= NEWFILE;
 		sflags |= SF_NODIREXPAND;
 		sflags &= ~SF_WRITE_OK;
 	}
 
 	if (ac > 1 && streq("--help", av[1])) {
-		sprintf(buf, "bk help %s", name);
-		system(buf);
+		sys("bk", "help", prog, SYS);
 		return (1);
 	}
 
@@ -202,7 +201,7 @@ comment:		comments_save(optarg);
 			dflags &= ~DELTA_FORCE;
 			break;
 		    case 'b':	/* -b == -Ebinary */		/* doc 2.0 */
-			if (streq(name, "new")) {
+			if (streq(prog, "new")) {
 		    		encp = "binary";
 			} else {
 				goto usage;
@@ -222,7 +221,12 @@ comment:		comments_save(optarg);
 		    case 'P': ignorePreference = 1;  break;	/* undoc 2.0 */
 		    case 'R': dflags |= DELTA_PATCH; break;	/* undoc? 2.0 */
 		    case 'Y':
-			if (optarg) comments_savefile(optarg);
+			if (optarg && comments_savefile(optarg)) {
+				fprintf(stderr,
+					"delta: can't read comments from %s\n",
+					optarg);
+				return (1);
+			}
 			dflags |= DELTA_DONTASK;
 			break; 	/* doc 2.0 */
 		    case 'Z': 					/* doc 2.0 */
@@ -230,8 +234,7 @@ comment:		comments_save(optarg);
 		    case 'E': encp = optarg; break; 		/* doc 2.0 */
 
 		    default:
-usage:			sprintf(buf, "bk help -s %s", name);
-			system(buf);
+usage:			sys("bk", "help", "-s", prog, SYS);
 			return (1);
 		}
 	}

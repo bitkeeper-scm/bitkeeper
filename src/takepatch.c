@@ -9,7 +9,6 @@ left||right->path == s->gfile.
 #include "logging.h"
 #include "zlib/zlib.h"
 #include <time.h>
-WHATSTR("@(#)%K%");
 
 /*
  * takepatch - apply a BitKeeper patch file
@@ -149,9 +148,12 @@ takepatch_main(int ac, char **av)
 usage:		system("bk help -s takepatch");
 		return (1);
 	}
-
 	p = init(input, flags);
-
+	if (newProject) {
+		putenv("BK_NEWPROJECT=YES");
+	} else {
+		if (sane(0, 0)) exit(1);
+	}
 	if (streq(input, "-") && isLogPatch) {
 		if (newProject) {
 			/*
@@ -302,6 +304,7 @@ usage:		system("bk help -s takepatch");
 	 */
 	getGone(isLogPatch); 
 
+	touch(ROOT2RESYNC "/BitKeeper/etc/RESYNC_TREE", 0666);
 	if (resolve) {
 		char 	*resolve[] = {"bk", "resolve", 0, 0, 0, 0, 0};
 		int 	i;

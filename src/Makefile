@@ -6,6 +6,9 @@ URL     := $(shell echo bk://work/`bk root` | sed s,/home/bk/,,)
 LOG	:= $(shell echo LOG-`bk getuser`)
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
 
+# Is this building a commercial-only release of bk
+COMMERCIAL = 0
+
 ifeq "$(OSTYPE)" "msys"
 	SYS=win32
 	EXE=.exe
@@ -71,8 +74,8 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	check.o checksum.o clean.o cleanpath.o clone.o \
 	comment.o comments.o commit.o compress.o converge.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
-	dirs.o delta.o diffs.o diffsplit.o dir_gif.o dirname.o \
-	export.o fdiff.o file_gif.o files.o \
+	dirs.o delta.o diffs.o diffsplit.o dir_gif.o \
+	export.o file_gif.o files.o \
 	find.o findcset.o findkey.o fix.o fixlod.o \
 	g2sccs.o gca.o get.o gethelp.o \
 	gethost.o getopt.o getreg.o gettemp.o getuser.o glob.o \
@@ -114,7 +117,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	slib.o smerge.o sort.o status.o stripdel.o synckeys.o sys.o \
 	tagmerge.o takepatch.o testdates.o timestamp.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \
-	unique.o unlink.o unlock.o unpull.o unwrap.o \
+	unique.o unlink.o unlock.o unpull.o unwrap.o upgrade.o \
 	user.o utils.o uu.o version.o what.o which.o xflags.o zgets.o \
 	zone.o
 SCRIPTS	= applypatch bk.script import resync \
@@ -123,14 +126,14 @@ SCRIPTS	= applypatch bk.script import resync \
 LOCALSCR= build
 PSCR	= t/doit
 # Put UWTLIB first, it checks out files needed by mdbm on winblows.
-LIBS	= $(UWTLIB) zlib/libz.a mdbm/libmdbm.a tomcrypt/libtomcrypt.a \
+LIBS	= libc/libc.a $(UWTLIB) zlib/libz.a mdbm/libmdbm.a tomcrypt/libtomcrypt.a \
 	regex/libregex.a
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA) GUI
 
 CFLAGS	= $(CC_DEBUG)
-CPPFLAGS= -Izlib -Imdbm
+CPPFLAGS= -Ilibc/include -Izlib -Imdbm
 # Override this if you don't have it.
 RANLIB	= ranlib
 SRCS	= bk.c $(OBJ:.o=.c) \
@@ -261,7 +264,7 @@ rebuild:
 	-@rm -f core bkver.c tclwrap tclwrap.o blowfish.o $(WIN_TMP)
 	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR)
 	-@rm -rf tmp
-	-@for i in ../doc ../man gnu gui utils win32 mdbm zlib regex tomcrypt; \
+	-@for i in ../doc ../man gnu gui utils win32 mdbm zlib regex tomcrypt libc; \
 	do	cd $(HERE)/$$i && $(MAKE) clobber; \
 	done
 
@@ -334,6 +337,9 @@ regex/libregex.a: FORCE
 tomcrypt/libtomcrypt.a: FORCE
 	cd tomcrypt && $(MAKE) "CC=$(CC)" "CFLAGS=$(CFLAGS)"
 
+libc/libc.a: FORCE
+	cd libc && $(MAKE)
+
 bkres.o: win32/data/bk.rc bk.ico
 	windres -i win32/data/bk.rc -o bkres.o
 
@@ -389,6 +395,7 @@ bkver.c: FRC
 	echo "char *bk_platform = \""`./utils/os`"\";" >> bk.v
 	echo "unsigned build_timet = "`perl -e "print time"`";" >> bk.v
 	echo "int test_release = "$(TRIAL)";" >> bk.v
+	echo "int bk_commercial = $(COMMERCIAL);" >> bk.v
 	mv -f bk.v bkver.c
 
 bkver.o: bkver.c

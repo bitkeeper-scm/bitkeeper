@@ -654,3 +654,89 @@ cmp -s fdiffm_RD3 fdiffm_D || {
 	exit 1
 }
 echo OK
+
+# Test a fmtool fdiff output with :-Im -f
+echo $N verify an fdiff output format with no newline at the end.....$NL
+cd $HERE/project
+cat <<EOF > nonl.txt
+gca start
+1
+2
+3
+end
+EOF
+bk new $Q nonl.txt
+bk edit $Q nonl.txt
+cat <<EOF > nonl.txt
+local start
+1
+2
+3
+end
+EOF
+bk delta $Q -ylocal nonl.txt
+bk _get $Q -e -r1.1 nonl.txt
+cat <<EOF > nonl.txt
+remote start
+1
+2
+3
+EOF
+echo $NX "end"$NXL >> nonl.txt
+bk delta $Q -yremote nonl.txt
+bk smerge -Im -f nonl.txt 1.1.1.1 1.2 > nonl_R
+cat <<EOF >nonl_D
+L
+-1.1           | gca start
+h 0-3
++1.1.1.1       | remote start
+h 0-6
+s
+R
+-1.1           | gca start
+h 0-3
+s
++1.2           | local start
+h 0-5
+E
+ 1.1           | 1
+ 1.1           | 2
+ 1.1           | 3
+M
+ 1.1.1.1       | end
+L
+-1.1           | end
+h 3-4
++1.1.1.1       | end
+R
+ 1.1           | end
+s
+E
+EOF
+checkfiles nonl_R nonl_D
+cat <<EOF >nonl_D
+<<<<<<< local nonl.txt 1.1 vs 1.1.1.1
+-gca start
++remote start
+<<<<<<< remote nonl.txt 1.1 vs 1.2
+-gca start
++local start
+>>>>>>>
+1
+2
+3
+EOF
+bk smerge -g nonl.txt 1.1.1.1 1.2 > GOT
+cp nonl_D WANT
+echo $NX "end"$NXL >>WANT
+checkfiles GOT WANT
+bk smerge -g -Aall nonl.txt 1.1.1.1 1.2 > GOT
+cp nonl_D WANT
+cat <<EOF >>WANT
+<<<<<<< local nonl.txt 1.1 vs 1.1.1.1
+-end
++end
+>>>>>>>
+EOF
+checkfiles GOT WANT
+echo OK

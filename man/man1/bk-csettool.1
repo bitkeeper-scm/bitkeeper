@@ -1,5 +1,5 @@
 .so ../bk-macros
-.TH "bk csettool" 1 20%E% "\*(BC" "\*(UM"
+.TH "bk csettool" 1 %E% "\*(BC" "\*(UM"
 .\"    =============== BitKeeper Graphical ChangeSet Browser ===============
 .SH NAME
 bk csettool \- \*(BK graphical changeset browser
@@ -127,6 +127,9 @@ Next file
 .B Control-p
 Previous file
 .tp
+.B s
+Export the current ChangeSet as a patch.
+.tp
 .B Double-Clicking
 Double clicking the left mouse button on a file in the file list brings 
 up revtool for the specified file.
@@ -139,6 +142,7 @@ diff
 We plan on having a single screen diff window option where the changes
 are all shown color coded in one window.  
 .SH "SEE ALSO"
+.SA changes 1
 .SA cset 1
 .SA difftool 1
 .SA revtool 1

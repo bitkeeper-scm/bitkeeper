@@ -61,11 +61,17 @@ comments_main(int ac, char **av)
 	}
 	unless (editor = getenv("EDITOR")) editor = EDITOR;
 
-	if (av[optind] && streq(av[optind], "-")) {
+	if (streq(av[ac-1], "-")) {
+		unless (ac-1 == optind) usage();
 		/*
 		 * Is it OK that we broke reading files to edit from
 		 * stdin?
 		 */
+		if (sccs_cd2root(0, 0)) {
+			fprintf(stderr,
+			    "comments: can't find repository root\n");
+			exit(1);
+		}
 		read_editfile(stdin);
 		return (0);
 	}
@@ -139,16 +145,21 @@ comments_main(int ac, char **av)
 		while (cnt = fread(buf, 1, sizeof(buf), tf)) {
 			fwrite(buf, 1, cnt, stdout);
 		}
-		fclose(tf);
-		unlink(tmp);
-		return (0);
+	} else {
+		unless (lines) {
+			if (sccs_cd2root(0, 0)) {
+				fprintf(stderr,
+				    "comments: can't find repository root\n");
+				exit(1);
+			}
+			sys(editor, tmp, SYS);
+		}
+		unless (tf = fopen(tmp, "r")) {
+			perror(tmp);
+			return (1);
+		}
+		read_editfile(tf);
 	}
-	unless (lines) sys(editor, tmp, SYS);
-	unless (tf = fopen(tmp, "r")) {
-		perror(tmp);
-		return (1);
-	}
-	read_editfile(tf);
 	fclose(tf);
 	unlink(tmp);
 	return (0);
@@ -192,7 +203,7 @@ getfiles(char *csetrev)
 	av[++i] = "rset";
 	av[++i] = rev;
 	av[++i] = 0;
-	
+
 	pid = spawnvp_rPipe(av, &pfd, 0);
 	if (pid == -1) {
 		perror("spawnvp_rPipe");
@@ -229,7 +240,7 @@ private void
 write_editfile(FILE *f, char **files, int to_stdout)
 {
 	int	i;
-	
+
 	EACH(files) {
 		sccs	*s;
 		delta	*d;
@@ -240,26 +251,27 @@ write_editfile(FILE *f, char **files, int to_stdout)
 		name = strdup(files[i]);
 		t = strchr(name, BK_FS);
 		*t++ = 0;
-		
-		unless (s = sccs_init(name, 0)) continue;
-		unless (HASGRAPH(s)) goto next;
+
+		s = sccs_init(name, 0);
+		free(name);
+		unless (s && HASGRAPH(s)) goto next;
 		unless (d = sccs_findrev(s, t)) {
 			fprintf(stderr, "%s|%s not found\n", s->gfile, t);
 			goto next;
 		}
+		name = _relativeName(s->gfile, 0, 0, 0, 1, bk_proj, 0);
 		if (to_stdout) {
 			fprintf(f, "### Comments for %s%c%s\n",
-			    s->gfile, BK_FS, d->rev);
+			    name, BK_FS, d->rev);
 		} else {
 			fprintf(f, "### Change the comments to %s%c%s below\n",
-			    s->gfile, BK_FS, d->rev);
+			    name, BK_FS, d->rev);
 		}
 		EACH_INDEX(d->comments, j) {
 			fprintf(f, "%s\n", d->comments[j]);
 		}
 		fprintf(f, "\n");
-next:		sccs_free(s);
-		free(name);
+next:		if (s) sccs_free(s);
 	}
 }
 
@@ -267,19 +279,20 @@ next:		sccs_free(s);
  * Change the comments, automatically trimming trailing blank lines.
  * This will not let them remove comments.
  */
-private void
+private int
 change_comments(char *file, char *rev, char **comments)
 {
 	sccs	*s = 0;
 	delta	*d;
 	char	*sfile = 0;
 	int	i;
-	
+	int	rc = 1;
+
 	sfile = name2sccs(file);
-	unless (s = sccs_init(sfile, 0)) goto err;
-	unless (HASGRAPH(s)) goto err;
-	unless (d = sccs_findrev(s, rev)) {
-		fprintf(stderr, "%s|%s not found\n", s->gfile, rev);
+	s = sccs_init(sfile, 0);
+	unless (s && HASGRAPH(s) && (d = sccs_findrev(s, rev))) {
+		fprintf(stderr, "%s|%s not found, comments not updated\n",
+		    file, rev);
 		goto err;
 	}
 	EACH(comments);
@@ -292,8 +305,10 @@ change_comments(char *file, char *rev, char **comments)
 	freeLines(d->comments, free);
 	d->comments = comments;
 	if (d->comments) sccs_newchksum(s);
+	rc = 0;
  err:	if (s) sccs_free(s);
 	if (sfile) free(sfile);
+	return (rc);
 }
 
 private void
@@ -303,7 +318,7 @@ read_editfile(FILE *f)
 	char	**comments = 0;
 	char	*last_file = 0;
 	char	*last_rev = 0;
-	
+
 	while (fgets(buf, sizeof(buf), f)) {
 		char	file[MAXPATH];
 		char	*rev;
@@ -328,6 +343,10 @@ read_editfile(FILE *f)
 			last_file = strdup(file);
 			last_rev = strdup(rev);
 		} else {
+			unless (last_file) {
+				notice("comments-badfmt", 0, "-e");
+				exit(1);
+			}
 			comments = addLine(comments, strdup(buf));
 		}
 	}

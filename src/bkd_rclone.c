@@ -92,6 +92,11 @@ cmd_rclone_part1(int ac, char **av)
 			return (1);
 		}
 	}
+	if (global_locked()) {
+		out("ERROR-all repositories on this host are locked.\n");
+		drain();
+		return (1);
+	}
 	if (exists(path)) {
 		if (isdir(path)) {
 			if  (!isEmptyDir(path)) {

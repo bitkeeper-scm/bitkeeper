@@ -1387,6 +1387,56 @@ myisatty(int fd)
 #define	isatty	myisatty
 
 /*
+ * Print progress bar.
+ *
+ * Use 65 columns for the progress bar.
+ * %3u% |================================ \r
+ */
+void
+progressbar(int n, int max, char *msg)
+{
+	static	int	last = 0;
+	static	struct	timeval start;
+	static	float	lastup = 0.0;
+	float	elapsed;
+	int	percent = max ? (n * 100) / max : 100;
+	int	i, want;
+	struct	timeval tv;
+
+	if (percent > 100) percent = 100;
+	if (percent < last) {		/* reset */
+		last = 0;
+		start.tv_sec = 0;
+		lastup = 0.0;
+	}
+	unless (percent > last) return;
+	gettimeofday(&tv, 0);
+	unless (start.tv_sec) start = tv;
+	elapsed = (tv.tv_sec - start.tv_sec) +
+		(tv.tv_usec - start.tv_usec) / 1.0e6;
+	if (!msg && (elapsed - lastup < 0.25)) return; /* 4 updates/sec max */
+	last = percent;
+	lastup = elapsed;
+
+	want = (percent * 65) / 100;
+	fprintf(stderr, "%3u%% |", percent);
+	for (i = 1; i <= want; ++i) fputc('=', stderr);
+	for (; i <= 65; ++i) fputc(' ', stderr);
+	fputc('|', stderr);
+	if (msg) {
+		fprintf(stderr, " %-20s\n", msg);
+	} else {
+		if ((elapsed > 10.0) && (n < max)) {
+			int	remain = elapsed * (((float)max/n) - 1.0);
+
+			fprintf(stderr, " %dm%ds remaining",
+			    remain / 60, remain % 60);
+		}
+		fputc('\r', stderr);
+	}
+}
+
+/*
  * Portable way to print a pointer.  Results are returned in a static buffer
  * and you may use up to N of these in one call to printf() or whatever
  * before you start stomping on yourself.

@@ -750,6 +750,7 @@ typedef struct {
 	u16	type:3;		/* address type, nfs/bk/http/file/ssh/rsh */
 	u16	loginshell:1;	/* if set, login shell is the bkd */
 	u16	trace:1;	/* for debug, trace send/recv msg */
+	u16	progressbar:1;	/* display progressbar for large transfers */
 	u16	isSocket:1;	/* if set, rfd and wfd are sockets */
 	u16	badhost:1;	/* if set, hostname lookup failed */
 	int	rfd;		/* read fd for the remote channel */
@@ -848,6 +849,7 @@ char	*sccs_host(void);
 int	sccs_getComments(char *, char *, delta *);
 int	sccs_getHostName(delta *);
 int	sccs_getUserName(delta *);
+int	sccs_badTag(char *, char *, int);
 MDBM    *sccs_keys2mdbm(FILE *f);
 void	sfileUnget(void);
 char	*sfileNext(void);
@@ -1025,7 +1027,7 @@ int	repository_hasLocks(char *root, char *dir);
 void	repository_lockcleanup(void);
 int	repo_nfiles(sccs *cset);
 void	comments_save(char *s);
-void	comments_savefile(char *s);
+int	comments_savefile(char *s);
 int	comments_got(void);
 void	comments_done(void);
 delta	*comments_get(delta *d);
@@ -1077,7 +1079,7 @@ int	sccs_graph(sccs *s, delta *d, ser_t *map, char **inc, char **exc);
 
 int     http_connect(remote *r);
 int     http_send(remote *, char *, size_t, size_t, char *, char *); 
-int	http_fetch_direct(char *url, char *file);
+int	http_fetch(remote *r, char *url, char *file);
 char *	user_preference(char *what);
 char	*bktmp(char *buf, const char *template);
 void	bktmpenv(void);
@@ -1203,6 +1205,11 @@ char	*pager(void);
 int	bkmail(char *url, char **to, char *subject, char *file);
 int	sfiles_skipdir(char *dir);
 void	bkversion(FILE *f);
+int	sane(int, int);
+int	global_locked(void);
+void	progressbar(int n, int max, char *msg);
+char	*signed_loadFile(char *filename);
+int	signed_saveFile(char *filename, char *data);
 void	lockfile_cleanup(void);
 void	set_timestamps(char *sfile);
 

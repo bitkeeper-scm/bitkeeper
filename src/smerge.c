@@ -294,6 +294,7 @@ file_init(char *file, char *rev, char *anno, file_t *f)
 		f->lines[l].line = p;
 		start = p;
 		while (p < end && *p++ != '\n');
+		assert(p > start); /* no empty lines */
 		f->lines[l].len = p - start;
 		if (p == end) p = 0;
 		++l;
@@ -381,7 +382,7 @@ usage(void)
  * Handles the -s (show_seq) knob.
  */
 private void
-printline(ld_t *ld, char first_char)
+printline(ld_t *ld, char first_char, int forcenl)
 {
 	char	*a = ld->anno;
 	char	*p = ld->line;
@@ -397,6 +398,7 @@ printline(ld_t *ld, char first_char)
 	if (a) while (a < p) putchar(*a++);
 	/* Print line */
 	while (p < end) putchar(*p++);
+	if (forcenl && (end[-1] != '\n')) putchar('\n');
 }
 
 private void
@@ -429,14 +431,14 @@ struct conflct {
  * Print a series of lines on one side of a conflict
  */
 private void
-printlines(conflct *curr, int side)
+printlines(conflct *curr, int side, int forcenl)
 {
 	int	len = curr->end[side] - curr->start[side];
 	int	i;
 	int	idx = curr->start[side];
 
 	for (i = 0; i < len; i++) {
-		printline(&body[side].lines[idx++], 0);
+		printline(&body[side].lines[idx++], 0, forcenl);
 	}
 }
 
@@ -485,7 +487,7 @@ do_weave_merge(u32 start, u32 end)
 				}
 				return (ret);
 			}
-			printline(gcaline, 0);
+			printline(gcaline, 0, 0);
 		}
 		if (curr->start_seq >= start) {
 			/* handle conflict */
@@ -511,7 +513,7 @@ do_weave_merge(u32 start, u32 end)
 		    body[RIGHT].lines[mk[RIGHT]+i].seq);
 		if (gcaline->seq <= start) continue;
 		if (gcaline->seq >= end) return (ret);
-		printline(gcaline, 0);
+		printline(gcaline, 0, 0);
 	}
 	return (ret);
 }
@@ -696,9 +698,14 @@ private char *
 readdiff(char *buf, int size, FILE *f)
 {
 	char	*ret;
+	int	c;
 
-	ret = fgets(buf, size, f);
-	if (ret && strneq(buf, "\\ No newline", 12)) ret = fgets(buf, size, f);
+	do {
+		if ((ret = fgets(buf, size, f)) && !strchr(buf, '\n')) {
+			/* skip to next newline */
+			while (((c = getc(f)) != EOF) && (c != '\n'));
+		}
+	} while (ret && strneq(buf, "\\ No newline", 12));
 	return (ret);
 }
 
@@ -709,11 +716,11 @@ readdiff(char *buf, int size, FILE *f)
 private void
 diffwalk_readcmd(difwalk *dw)
 {
-	char	buf[MAXLINE];
 	char	*p;
 	int	start, end;
 	int	cnt;
 	char	cmd;
+	char	buf[64];
 
 	unless (readdiff(buf, sizeof(buf), dw->diff)) {
 		dw->cmd.gcastart = dw->cmd.gcaend = INT_MAX;
@@ -880,7 +887,7 @@ do_diff_merge(void)
 
 		while (gcaline < start) {
 			if (gcaline > body[GCA].n) break;
-			printline(&body[GCA].lines[gcaline-1], 0);
+			printline(&body[GCA].lines[gcaline-1], 0, 0);
 			++gcaline;
 		}
 		if (gcaline < start) break;
@@ -1062,7 +1069,7 @@ resolve_conflict(conflct *curr)
 			putchar('\n');
 		}
 		for (p = curr->merged; p->line; p++) {
-			printline(p, 0);
+			printline(p, 0, (fdiff != 0));
 		}
 		free(curr->merged);
 		if (fdiff) user_conflict_fdiff(curr);
@@ -1145,7 +1152,7 @@ user_conflict(conflct *curr)
 			    file, revs[GCA], revs[LEFT]);
 			diffs = unidiff(curr, GCA, LEFT);
 			for (i = 0; diffs[i].ld; i++) {
-				printline(diffs[i].ld, diffs[i].c);
+				printline(diffs[i].ld, diffs[i].c, 1);
 			}
 			free(diffs);
 		}
@@ -1154,7 +1161,7 @@ user_conflict(conflct *curr)
 			    file, revs[GCA], revs[RIGHT]);
 			diffs = unidiff(curr, GCA, RIGHT);
 			for (i = 0; diffs[i].ld; i++) {
-				printline(diffs[i].ld, diffs[i].c);
+				printline(diffs[i].ld, diffs[i].c, 1);
 			}
 			free(diffs);
 		}
@@ -1164,25 +1171,25 @@ user_conflict(conflct *curr)
 /* #define MATCH_DIFF3 */
 #ifdef MATCH_DIFF3
 		printf("<<<<<<< L\n");
-		printlines(curr, LEFT);
+		printlines(curr, LEFT, 1);
 		printf("=======\n");
-		printlines(curr, RIGHT);
+		printlines(curr, RIGHT, 1);
 		printf(">>>>>>> R\n");
 #else
 		printf("<<<<<<< local %s %s\n", file, revs[LEFT]);
-		printlines(curr, LEFT);
+		printlines(curr, LEFT, 1);
 		printf("<<<<<<< remote %s %s\n", file, revs[RIGHT]);
-		printlines(curr, RIGHT);
+		printlines(curr, RIGHT, 1);
 		printf(">>>>>>>\n");
 #endif
 		break;
 	    case MODE_3WAY:
 		printf("<<<<<<< gca %s %s\n", file, revs[GCA]);
-		printlines(curr, GCA);
+		printlines(curr, GCA, 1);
 		printf("<<<<<<< local %s %s\n", file, revs[LEFT]);
-		printlines(curr, LEFT);
+		printlines(curr, LEFT, 1);
 		printf("<<<<<<< remote %s %s\n", file, revs[RIGHT]);
-		printlines(curr, RIGHT);
+		printlines(curr, RIGHT, 1);
 		printf(">>>>>>>\n");
 		break;
 	    case MODE_NEWONLY:
@@ -1194,7 +1201,7 @@ user_conflict(conflct *curr)
 			diffs = unidiff(curr, GCA, LEFT);
 			for (i = 0; diffs[i].ld; i++) {
 				if (diffs[i].c != '-') {
-					printline(diffs[i].ld, diffs[i].c);
+					printline(diffs[i].ld, diffs[i].c, 1);
 				}
 			}
 			free(diffs);
@@ -1205,7 +1212,7 @@ user_conflict(conflct *curr)
 			diffs = unidiff(curr, GCA, RIGHT);
 			for (i = 0; diffs[i].ld; i++) {
 				if (diffs[i].c != '-') {
-					printline(diffs[i].ld, diffs[i].c);
+					printline(diffs[i].ld, diffs[i].c, 1);
 				}
 			}
 			free(diffs);
@@ -1321,7 +1328,7 @@ user_conflict_fdiff(conflct *c)
 	while (lp->ld || rp->ld) {
 		if (!rp->ld || lp->ld && lp->ld->seq < rp->ld->seq) {
 			/* line on left */
-			printline(lp->ld, lp->c);
+			printline(lp->ld, lp->c, 1);
 			if (lp->highlight) printhighlight(lp->highlight);
 			rightbuf[i].ld = &blankline;
 			rightbuf[i].c = 's';
@@ -1329,14 +1336,14 @@ user_conflict_fdiff(conflct *c)
 			++lp;
 		} else if (!lp->ld || rp->ld->seq < lp->ld->seq) {
 			/* line on right */
-			printline(&blankline, 's');
+			printline(&blankline, 's', 1);
 			rightbuf[i].ld = rp->ld;
 			rightbuf[i].c = rp->c;
 			rightbuf[i].highlight = rp->highlight;
 			++rp;
 		} else {
 			/* matching line */
-			printline(lp->ld, lp->c);
+			printline(lp->ld, lp->c, 1);
 			if (lp->highlight) printhighlight(lp->highlight);
 			rightbuf[i].ld = rp->ld;
 			rightbuf[i].c = rp->c;
@@ -1349,7 +1356,7 @@ user_conflict_fdiff(conflct *c)
 
 	fputs("R\n", stdout);
 	for (j = 0; j < i; j++) {
-		printline(rightbuf[j].ld, rightbuf[j].c);
+		printline(rightbuf[j].ld, rightbuf[j].c, 1);
 		if (rightbuf[j].highlight) {
 			printhighlight(rightbuf[j].highlight);
 		}
@@ -1380,7 +1387,7 @@ user_conflict_fdiff(conflct *c)
  *
  *    diffs = unidiff(curr, GCA, LEFT);
  *    for (i = 0; diffs[i].ld; i++) {
- *	     printline(diffs[i].ld, diffs[i].c);
+ *	     printline(diffs[i].ld, diffs[i].c, 0);
  *    }
  *    free(diffs);
  */

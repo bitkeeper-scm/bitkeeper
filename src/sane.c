@@ -18,29 +18,61 @@ private	void	chk_code(void);
 int
 sane_main(int ac, char **av)
 {
-	int	c, readonly = 0, errors = 0;
+	int	c, readonly = 0, resync = 0;
 	
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help sane");
 		return (0);
 	}
 
-	while ((c = getopt(ac, av, "r")) != -1) {
+	while ((c = getopt(ac, av, "rR")) != -1) {
 		switch (c) {
 		    case 'r':
 			readonly = 1; /* Do not check write access */
 			break;
+		    case 'R':
+			resync = 1;	/* we're in the RESYNC dir */
+		    	break;
 		    default: 
 			system("bk help -s sane");
 			return (1);
 		}
 	}
+	return (sane(readonly, resync));
+}
 
+int
+sane(int readonly, int resync)
+{
+	int	errors = 0;
+
+	/* commits in RESYNC may not have everything, this lets us know */
+	if (exists("BitKeeper/etc/RESYNC_TREE")) resync = 1;
 	if (chk_host()) errors++;
 	if (chk_user()) errors++;
 	if (proj_cd2root() == 0) {
-		if (!readonly && chk_permissions()) errors++;
-		else if (chk_idcache()) errors++;
+		if (!readonly && chk_permissions()) {
+			errors++;
+		} else if (chk_idcache()) {
+			errors++;
+		}
+#define	_exists(f)	(exists(f) || (resync && exists(RESYNC2ROOT "/" f)))
+#define	_size(f)	(size(f) || (resync && size(RESYNC2ROOT "/" f)))
+		unless (getenv("BK_NEWPROJECT")) {
+			unless (_exists(CHANGESET)) {
+				fprintf(stderr,
+				    "sane: missing ChangeSet file!\n");
+				errors++;
+			} else unless (_size(CHANGESET)) {
+				fprintf(stderr,"sane: empty ChangeSet file!\n");
+				errors++;
+			}
+			unless (_exists(BKROOT "/SCCS/s.config")) {
+				fprintf(stderr,
+				    "sane: no BitKeeper/etc/config file.\n");
+				errors++;
+			}
+		}
 	} else {
 		fprintf(stderr, "sane: not in a BitKeeper repository\n");
 		errors++;
@@ -49,7 +81,6 @@ sane_main(int ac, char **av)
 	/* See the port/system.c in this same changeset */
 	assert(sizeof(pid_t) <= sizeof(int));
 
-	//chk_tcl();
 	//chk_ssh();
 	//chk_http();
 	chk_id();

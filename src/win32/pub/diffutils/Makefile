@@ -2,10 +2,9 @@ GET = bk get -s
 SRC = ../../../gnu/diffutils
 VPATH = $(SRC)
 DFLAGS = -DHAVE_CONFIG_H -DDIFF_PROGRAM=\"diff\" -DPR_PROGRAM=\"pr\"
-IFLAGS = -I. -I../../uwtlib -I$(SRC)
-CFLAGS = -O2 -g $(DFLAGS) $(IFLAGS)
-LDLIBS = -lws2_32
-LIBUWT = ../../uwtlib/libuwt.a
+CPPFLAGS = -I../../../libc/include -I. -I../../uwtlib -I$(SRC)
+CFLAGS = -O2 -g $(DFLAGS)
+LDLIBS = ../../uwtlib/libuwt.a ../../../libc/libc.a -lws2_32
 L_OBJ = regex.o alloca.o
 L_SRC = $(patsubst %.o,%.c,$(L_OBJ))
 D_OBJ = diff.o analyze.o cmpbuf.o dir.o io.o util.o \
@@ -23,9 +22,9 @@ PROGRAMS = diff diff3
 all: $(PROGRAMS)
 	cp diff.exe diff3.exe ../../../
 
-diff: $(D_OBJ) $(L_OBJ) $(LIBUWT)
+diff: $(D_OBJ) $(L_OBJ)
 
-diff3: $(D3_OBJ) $(LIBUWT)
+diff3: $(D3_OBJ)
 
 depends: $(D_SRC) $(D3_SRC) $(L_SRC) $(H)
 	gcc -MM $(CFLAGS) $^ > $@

@@ -83,6 +83,7 @@ cmd_putenv(int ac, char **av)
 	 * _BK_, BK_, or BKD_.  Not sure we need the BKD_, but hey.
 	 * Also disable BK_HOST, this screws up the locks.
 	 */
+	if (streq("BK_NO_TRIGGERS", var)) return (1);
 	if (streq("BK_HOST", var)) return (1);
 	unless (strneq("BK_", var, 3) ||
 	    strneq("BKD_", var, 4) || strneq("_BK_", var, 4)) {

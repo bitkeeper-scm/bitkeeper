@@ -225,7 +225,7 @@ cp -rp clone new
 cd new
 ls > NEW
 cp NEW SAVE
-bk new $Q NEW
+bk delta -i -y"New file" $Q NEW
 bk commit $Q -ynew
 bk fix -c $Q || exit 1
 test -f NEW || {
@@ -248,8 +248,10 @@ test -f SCCS/c.NEW || {
 	echo should have left a c.NEW
 	exit 1
 }
-test -s SCCS/c.NEW || {
-	echo should have left a non-empty c.NEW
+echo "New file" > EXPECTED
+cmp SCCS/c.NEW EXPECTED || {
+	echo comments for c.NEW differ
+	diff -u EXPECTED SCCS/c.NEW
 	exit 1
 }
 test -z "$BK_TESTGUI" || {

@@ -46,20 +46,21 @@ commit_main(int ac, char **av)
 				break;
 		    case 's':	/* fall thru  *//* internal */	/* undoc 2.0 */
 		    case 'q':	opts.quiet = 1; break;		/* doc 2.0 */
-		    case 'S':	sym = optarg; break;		/* doc 2.0 */
+		    case 'S':	sym = optarg;
+				if (sccs_badTag("commit", sym, 0)) exit (1);
+				break;		/* doc 2.0 */
 		    case 'y':					/* doc 2.0 */
 			dflags |= DELTA_DONTASK;
 			comments_save(optarg);
 			break;
 		    case 'Y':					/* doc 2.0 */
-			unless (exists(optarg) && (size(optarg) > 0)) {
+			if (comments_savefile(optarg)) {
 				fprintf(stderr,
 				    "commit: can't read comments from %s\n",
 				    optarg);
 				exit(1);
 			}
 			dflags |= DELTA_DONTASK;
-			comments_savefile(optarg);
 			break;
 		    case 'A':	/* internal option for regression test only */
 				/* do not document */		/* undoc 2.0 */
@@ -259,7 +260,6 @@ out:		if (pendingFiles) unlink(pendingFiles);
 	if (rc = trigger(opts.resync ? "merge" : av[0], "pre")) goto done;
 	comments_done();
 	comments_savefile(commentFile);
-	i = 2;
 	if (opts.quiet) dflags |= SILENT;
 	if (sym) syms = addLine(syms, strdup(sym));
 	if (f = fopen("SCCS/t.ChangeSet", "r")) {
@@ -270,6 +270,30 @@ out:		if (pendingFiles) unlink(pendingFiles);
 		fclose(f);
 		unlink("SCCS/t.ChangeSet");
 	}
+
+	/*
+	 * I don't think it makes sense to prevent tags in the RESYNC tree.
+	 * We need them to handle the tag merge.
+	 * If we really want to prevent them then I think we need a way of
+	 * listing them when we are at the pre-resolve stage so that a trigger
+	 * could be written which detects that and fails the resolve.
+	 */
+	unless (opts.resync) {
+		EACH (syms) {
+			safe_putenv("BK_TAG=%s", syms[i]);
+			rc = trigger("tag", "pre");
+			switch (rc) {
+			    case 0: break;
+			    case 2:
+				removeLineN(syms, i, free);
+				/* we left shifted one, go around again */
+				i--;
+				break;
+			    default: goto done;
+			}
+		}
+	}
+
 	cset = sccs_csetInit(0);
 	rc = csetCreate(cset, dflags, p, syms);
 

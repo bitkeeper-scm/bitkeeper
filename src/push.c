@@ -212,6 +212,16 @@ send_part1_msg(remote *r, char rev_list[], char **envVar)
 	unlink(buf);
 }
 
+/*
+ * return
+ *	0     success
+ *	-2    locked
+ *	-3    unable to connect
+ *    other   error
+ *
+ * If the return value is -1 or greater we will reconnect to the bkd
+ * to send an abort message.
+ */
 private int
 push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 {
@@ -220,12 +230,7 @@ push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 	sccs	*s;
 	delta	*d;
 
-	/*
-	 * XXX returning -1 for a failed connect is bogus.  it means
-	 * we call push_part2() to send an abort message and that will
-	 * fail too.
-	 */
-	if (bkd_connect(r, opts.gzip, opts.verbose)) return (-1);
+	if (bkd_connect(r, opts.gzip, opts.verbose)) return (-3);
 	send_part1_msg(r, rev_list, envVar);
 	if (r->rfd < 0) return (-1);
 

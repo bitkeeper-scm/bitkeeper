@@ -83,7 +83,6 @@ hostme_main(int ac, char **av)
 	if (opts.debug) r->trace = 1;
 	assert(r);
 	http_connect(r);
-	r->isSocket = 1;
 	m = mopen(hostme_info, "r");
 	assert(m);
 	rc = http_send(r,

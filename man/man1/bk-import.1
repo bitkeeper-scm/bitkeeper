@@ -1,5 +1,5 @@
 .so ../bk-macros
-.TH "bk import" 1 20%E% "\*(BC" "\*(UM"
+.TH "bk import" 1 %E% "\*(BC" "\*(UM"
 .\"    ================= Importing files into BitKeeper =================
 .SH NAME
 bk import \- import files or changes into a \*(BK package
@@ -192,6 +192,20 @@ and exit with a failure.
 Set the message for the delta comments for all files to
 .B <comment>
 rather than "Import patch PATCHNAME".
+.tp
+.OPTreq \-z fuzz
+Control the acceptance of fuzz by
+.B bk patch
+by passing the argument
+.B \-F
+.ARG fuzz
+to
+.B patch
+rather than the default
+.B \-F0
+, which indicates strict matching.  See the
+.B bk help patch
+manpage for further information. 
 .SH "IMPORTING PATCHES"
 .LP
 \*(BK can be used to track external work by importing patches (diff -Nur)
@@ -245,7 +259,7 @@ file to be imported the import will fail.
 If a package is already
 populated with files use the -i, -x or -l options 
 to avoid trying to import files already in the package.  Because of the
-preceeding constraints, import does not catch renames with plain text files.
+preceding constraints, import does not catch renames with plain text files.
 If a file has been renamed, it can be imported, but the original file will
 still exist in the package so it is necessary to remove the original file
 from the package tree after the import of the renamed file.

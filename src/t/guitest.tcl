@@ -33,10 +33,11 @@ set test_program [file join [exec bk bin] gui lib $test_tool]
 set test_toplevel .
 
 # simulates pressing a button with the given label or pathname
-# This assumes there is only one visible button with a given label at
-# any one time. Label is used as a glob-style pattern.
+# If the button isn't visible, wait until it is.
 proc test_buttonPress {target {button 1}} \
 {
+	global test_done
+
 	if {[string match .* $target]} {
 		# target is a specific widget
 		set widget $target
@@ -45,18 +46,33 @@ proc test_buttonPress {target {button 1}} \
 		# specified label (searching though all commands that
 		# look like a widget is a bit quicker than stepping
 		# through the tree looking at each widget and its children)
-		foreach w [info commands .*] {
-			if {[catch {$w cget -text} label]} continue
-			if {[string match $target $label] && 
-			    [winfo viewable $w]} {
-				set widget $w
-				break
+		# since the button may not yet exist, keep trying for
+		# a few seconds
+		set widget ""
+		set test_done 0
+		after 5000 {set test_done 1}
+		while {!$test_done} {
+			foreach w [info commands .*] {
+				if {[catch {$w cget -text} label]} continue
+				if {[string match $target $label] && 
+				    [winfo viewable $w]} {
+					set widget $w
+					break
+				}
 			}
+			if {$widget ne ""} {
+				after cancel {set test_done 1}
+				break
+			} 
+			update
 		}
-		if {![info exists widget]} {
-			puts "feh! couldn't find a button with the label $target"
+		if {![winfo exists $widget]} {
+			return -code error "can't find button that matches '$target'"
 		}
-		if {![info exists widget]} {return}
+	}
+
+	if {![winfo viewable $widget]} {
+		tkwait visibility $widget
 	}
 	
 	set rootx [winfo rootx $widget]
@@ -94,25 +110,25 @@ proc test_inputString {string {w ""}} \
 	set keysym(\n) Return
 	array set keysym \
 	    [list \
-		\" quotedbl      @ at \
-		\` quoteleft    \' quoteright \
-		\[ bracketleft  \] bracketright \
+		\" quotedbl 	@ at \
+		\` quoteleft	\' quoteright \
+		\[ bracketleft	\] bracketright \
 		\{ braceleft    \} braceright \
-		 ( parenlef      ) parenright \
-		 < less          > greater \
-		 , comma         . period \
-		 = equal         + plus \
-		 - minus         _ underscore \
-		 ! exclam        ~ asciitilde \
-		 $ dollar       \# numbersign \
-		 % percent       ^ asciicircum \
-		 & ampersand     * asterisk \
-		 | bar          \\ backslash \
-		 : colon        \; semicolon \
-		 ? question      / slash \
-		 \n Return      \  space \
-		 \t Tab	      \010 BackSpace \
-		\177 Delete \
+		( parenleft	) parenright \
+		< less		> greater \
+		, comma		. period \
+		= equal		+ plus \
+		- minus		_ underscore \
+		! exclam	~ asciitilde \
+		$ dollar	\#  numbersign \
+		% percent	^ asciicircum \
+		& ampersand	* asterisk \
+		| bar		\\ backslash \
+		: colon		\; semicolon \
+		? question	/ slash \
+		\n Return       \  space \
+		\t Tab		\010 BackSpace \
+	        \177 Delete \
 	]
 
 	# all of this cruft is to make darn sure the requested window
@@ -139,6 +155,8 @@ proc test_inputString {string {w ""}} \
 	update
 }
 
+# args are ignored but required; this may be called via a variable
+# trace which appends data we don't care about...
 proc test_evalScript {args} \
 {
 	global test_script test_toplevel
@@ -147,6 +165,10 @@ proc test_evalScript {args} \
 	# again
 	trace variable test_toplevel w {}
 
+	if {![winfo viewable $test_toplevel]} {
+		tkwait visibility $test_toplevel
+	}
+
 	if {$test_script eq ""} {
 		set script [read stdin]
 	} else {
@@ -154,8 +176,43 @@ proc test_evalScript {args} \
 		set script [read $f]
 		close $f
 	}
-	# run the test script
-	eval $script
+	# run the test script one statement at a time. This is necessary
+	# to enable test_pause to work.
+	set command ""
+	foreach line [split $script \n] {
+		append command $line\n
+		if {[info complete $command]} {
+			eval $command
+			set command ""
+		}
+	}
+	if {[string length $command] > 0} {eval $command}
+}
+
+# call "test_pause" in the middle of a test script to pause evaluation
+# of the script so you can interact with the program. Useful when debugging
+# test scripts
+proc test_pause {} {
+	toplevel .__test
+	wm title .__test "Testing has been paused..."
+	text .__test.text -borderwidth 2 -relief groove \
+	    -wrap word -width 40 -height 4 \
+	    -background \#ffffff -foreground \#000000
+	.__test.text insert 1.0 \
+	    "You may now interact with the running\
+	     program. When you are done, press the resume\
+	     button and the test script will continue running\
+	     from where it left off"
+	.__test.text configure -state disabled
+
+	button .__test.b -text "Resume" -command "destroy .__test"
+	pack .__test.b -pady 4 -side bottom 
+	pack .__test.text -side top -fill x -padx 8 -pady 8 -fill both -expand 1
+	# wait for the window to appear...
+	tkwait visibility .__test
+	bell
+	# now wait for it to be destroyed...
+	catch {tkwait visibility .__test}
 }
 
 # this builds up a global array named test_menuitems. Each element
@@ -224,7 +281,7 @@ proc test_invokeMenu {menu} \
 
 proc bgerror {string} {
 	global errorInfo
-	puts "unexpected error"
+	puts stderr "unexpected error: $string"
 	puts stderr $errorInfo
 	exit 1
 }
@@ -252,14 +309,13 @@ if {$test_tool eq "citool"} {
 # environment is as close as possible to production code
 set argv [lrange $argv 1 end]
 set argc [llength $argv]
+set env(BK_GUITEST) 1
 set test_err [catch {
 	if {$test_tool eq "citool"} {
-		trace variable test_toplevel w {
-			if {![winfo viewable $test_toplevel]} {
-				tkwait visibility $test_toplevel
-			}
-			test_evalScript
-		}
+		# this seems backwards, but citool does a vwait
+		# which will trigger the call to test_evalScript
+		# sometime after the source command happens..
+		trace variable test_toplevel w test_evalScript
 		source $test_program
 	} else {
 		if {$test_tool ne ""} {source $test_program}
