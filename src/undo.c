@@ -207,6 +207,13 @@ do_rename(MDBM *fileList, char *qflag)
 	kvpair  kv;
 	FILE	*f;
 	char	rc, renum_list[MAXPATH], buf[MAXLINE];
+	int 	warned = 0;
+	char	*msg =
+"===========================================================================\n\
+file rename event detected: to reconstruct this tree correctly,\n\
+you need to upgrade to BitKeeper Profeesional, for more info\n\
+please contact sales@bitmover.com\n\
+===========================================================================\n";
 
 	sprintf(renum_list, "%s/bk_renum_list%d",  TMP_PATH, getpid());
 	f = fopen(renum_list, "wb"); assert(f);
@@ -228,6 +235,10 @@ do_rename(MDBM *fileList, char *qflag)
 		old_path = name2sccs(d->pathname);
 		sccs_free(s);
 		unless (streq(sfile, old_path)) {
+			if (bk_mode() == BK_STD) {
+				if (++warned == 1) fputs(msg, stderr);
+				continue;
+			}
 			if (exists(old_path)) {
 				printf("Unable to mv %s %s, %s exists\n",
 						    sfile, old_path, old_path);

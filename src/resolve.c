@@ -439,6 +439,10 @@ pass1_renames(opts *opts, sccs *s)
 		sccs_free(s);
 		return;
 	}
+	if (bk_mode() == BK_STD) {
+		fprintf(stderr, "File rename detected, %s", upgrade_msg);
+		return;
+	}
 
 	unless (filenum) {
 		mkdir("BitKeeper/RENAMES", 0777);

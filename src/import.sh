@@ -286,6 +286,13 @@ import_patch() {
 	export USER
 	Q=$QUIET
 	cd $2
+
+	# This must be done after we cd to $2
+	case `bk version` in
+	*Standard*)	RENAMES=NO
+			;;
+	esac
+	
 	echo Locking files in `pwd` ...
 	bk -r get -eq
 	echo Patching...

@@ -66,8 +66,6 @@ case "X`uname -s`" in
 		# becuase we want diff binary in win32/pub/diffutils
 		# This mean XTRA must be after gnu in the "all" target
 		# in the Makefile.
-		# It is too messy to turn off building diff in guu/diffutiles
-		# so we build them twice.
 		XTRA=win32
 		INSTALL=install-nolinks
 		export SYS CFLAGS CC_OUT LD_OUT LD AR RANLIB UWTLIB LDFLAGS

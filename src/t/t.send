@@ -56,6 +56,7 @@ if [ ! -f ../copy/src/SCCS/s.h.h ]; then echo failed to receive; exit 1; fi
 cd $HERE/project; bk -r clean
 cd $HERE/copy; bk -r clean
 cd $HERE
+rmdir project/BitKeeper/etc/.master
 rm -f project/BitKeeper/etc/SCCS/x.id_cache
 rm -f copy/BitKeeper/etc/SCCS/x.id_cache
 rm -f project/BitKeeper/etc/SCCS/x.marked

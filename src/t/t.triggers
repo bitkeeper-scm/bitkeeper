@@ -131,7 +131,7 @@ fi
 
 echo $N Pull w/failure triggers .....................................$NL
 cd $HERE/copy
-bk pull -t $Q && { echo failed; exit 1; }
+bk pull -t -c0 $Q && { echo failed; exit 1; }
 bk lock || { echo failed; exit 1; }
 cd $HERE/project
 bk lock || { echo failed; exit 1; }
@@ -139,8 +139,30 @@ echo OK
 
 cd $HERE/copy
 echo $N Push w/failure triggers .....................................$NL
-bk push $Q && { echo failed; exit 1; }
+bk push -c0 $Q && { echo failed; exit 1; }
 bk lock || { echo failed; exit 1; }
 cd $HERE/project
 bk lock || { echo failed; exit 1; }
+echo OK
+echo $N auto-mirroring ..............................................$NL
+cd $HERE/project/BitKeeper/triggers
+rm -f *
+bk clone $Q $HERE/project $HERE/backup
+echo "#! /bin/sh"			> post-incoming
+echo "bk push $HERE/backup"	>> post-incoming
+chmod +x post-incoming
+cd $HERE/copy/src
+echo data > car.c
+bk new $Q car.c
+bk commit $Q -y3  
+bk push $Q $HERE/project || { echo failed; exit 1; }
+cd $HERE/backup
+TRY=0
+while [ $TRY -lt 10 ] 
+do
+	if [ -f $HERE/backup/src/SCCS/s.car.c ]; then break; fi
+	sleep 1
+	TRY=`expr $TRY + 1`
+done
+if [ ! -f $HERE/backup/src/SCCS/s.car.c ]; then echo failed; exit 1; fi
 echo OK

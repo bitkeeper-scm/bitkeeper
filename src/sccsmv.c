@@ -17,6 +17,11 @@ mv_main(int ac, char **av)
 	int	errors = 0;
 	int	dofree = 0;
 
+	if (bk_mode() == BK_STD) {
+		fprintf(stderr, upgrade_msg);
+		return(1);
+	}
+
 	debug_main(av);
 	if (ac < 3) {
 usage:		fprintf(stderr, "usage: %s from to\n", av[0]);
