@@ -1,0 +1,25 @@
+Config Logging Algorithm
+=========================
+When user run a "bk commit" command, the enforceLicense() function is
+called. If the reposition is in close logging mode, enforceLicense()
+calls the enforceConfigLog() function. The algorithm of the enforceConfigLog()
+function is  as follows:
+
+If there are more than 10 csets pending for 60 days, it forces a
+foreground "bk _config" process to try to clear the back log. If the
+back log is still not cleared after the foreground "bk _lconfig" terminate,
+It fail the commit with a message. Note that the only time we run
+bk _lconfig in the foreground is when the blocking of "commit" is
+imminent.  If there are any cset pending for more then 7 days,
+it assume there is a temporary connection failure and issue a warning
+message to the user without disabling the "commit" operation.
+
+After the commit finished creating a new cset, it always
+run a "bk _lconfig" process in the background.
+If multiple "bk _lconfig" process move the log marker in the
+ChangeSet file. The last process wins.
+Locking is provided by sccs_admin() which protect the file with
+a 'z' lock.
+
+"bk citool" simply calls "bk commit" and depend on the commit code to
+endforce config logging.

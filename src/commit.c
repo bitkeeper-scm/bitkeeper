@@ -292,10 +292,11 @@ goodPackageName(char *pname)
 private int
 enforceConfigLog(int l)
 {
-	int	ptype;
+	int	ptype, grace1;
 
 	ptype = 1;
-	if (logs_pending(ptype, 1, 7) == 0)  return (0);
+	grace1 = (getenv("_BK_FORCE_CONFIGLOG_FAILURE")) ? 0 : 7;
+	if (logs_pending(ptype, 1, grace1) == 0)  return (0);
 
 	/*
 	 * Try to force and the log and re-check pending log
@@ -627,7 +628,7 @@ logChangeSet(int l, char *rev, int quiet)
 		sccs_free(s);
 	}
 
-	unless (l & LOG_OPEN) sendConfig("config@openlogging.org", 1);
+	unless (l & LOG_OPEN) sendConfig();
 	if (streq("none", to)) return;
 	if (getenv("BK_TRACE_LOG") && streq(getenv("BK_TRACE_LOG"), "YES")) {
 		printf("Sending ChangeSet to %s...\n", logAddr());
@@ -883,16 +884,19 @@ config_main(int ac, char **av)
 	return (0);
 }
 
+/*
+ * Note: must run config log process in background
+ */
 void
-sendConfig(char *to, int shutup)
+sendConfig()
 {
-	char	*out = NULL;
+	char	cmd[1024];
 
 	/*
 	 * Allow up to 20 ChangeSets with $REGRESSION set to not be logged.
 	 */
 	if (getenv("BK_REGRESSION") && (logs_pending(1, 0, 0) < 20)) return;
 
-	if (shutup) out = DEV_NULL; /* redirect all message to /dev/null */
-	sysio(0, out, out, "bk", "_lconfig", SYS);
+	sprintf(cmd, "bk _lconfig 2> %s &", DEV_NULL);
+	system(cmd);
 }

@@ -316,6 +316,7 @@
 #define	HOSTME_CGI	"hostme_cgi"
 #define	WEB_MAIL_CGI	"web_mail"
 #define	BK_CONFIG_URL	"http://www.bitkeeper.com:80"
+#define	BK_CONFIG_BCKUP	"http://backup1.bitkeeper.com:80"
 #define	BK_CONFIG_CGI	"bk_config"
 #define	SCCSTMP		"SCCS/T.SCCSTMP"
 #define	BKTMP		"BitKeeper/tmp"
@@ -952,7 +953,7 @@ void	free_globs(globv globs);
 char	*prog2path(char *prog);
 void	remark(int quiet);
 int	readn(int from, char *buf, int size);
-void	sendConfig(char *addr, int shutup);
+void	sendConfig();
 void	send_request(int fd, char * request, int len);
 int	writen(int to, char *buf, int size);
 char	chop(register char *s);
@@ -1031,7 +1032,7 @@ int     http_send(remote *, char *, size_t, size_t, char *, char *);
 char *	user_preference(char *what);
 int	bktemp(char *buf);
 char	*bktmpfile();	/* return a char* to a just created temp file */
-void	updLogMarker(int ptype, int verbose);
+void	updLogMarker(int ptype, int verbose, FILE *vf);
 char	*getRealCwd(char *, size_t);
 int	smallTree(int threshold);
 MDBM	*csetDiff(MDBM *, int);
