@@ -78,7 +78,7 @@ commit_main(int ac, char **av)
 	 * of subprocesses.  This process will need the result anyway so
 	 * this isn't any slower.
 	 */
-	proj_license(0);
+	lease_writeReq(0);
 
 	if (pendingFiles[0]) {
 		if (av[optind] && streq("-", av[optind])) {
