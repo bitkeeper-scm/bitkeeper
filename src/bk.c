@@ -100,6 +100,7 @@ int rechksum_main(int, char **);
 int renumber_main(int, char **);
 int repo_main(int, char **);
 int resolve_main(int, char **);
+int root_main(int, char **);
 int rset_main(int, char **);
 int rm_main(int, char **);
 int rmdel_main(int, char **);
@@ -225,6 +226,7 @@ struct command cmdtbl[] = {
 	{"repo", repo_main},		/* obsolete, undocumented */
 	{"resolve", resolve_main},
 	{"rev2cset", r2c_main},		/* alias, documented as r2c */
+	{"root", root_main},
 	{"rset", rset_main},
 	{"rm", rm_main},
 	{"rmdel", rmdel_main},
@@ -295,6 +297,7 @@ main(int ac, char **av)
 		system("bk help bk");
 		exit(0);
 	}
+
 	argv[0] = "help";
 	argv[1] = 0;
 
@@ -302,12 +305,6 @@ main(int ac, char **av)
 		bk_proj = proj_init(0);
 	}
 
-	if (av[1] && streq(av[1], "root") && !av[2]) {
-		if (bk_proj && bk_proj->root) {
-			printf("%s\n", fullname(bk_proj->root, 0));
-		}
-		exit(0);
-	}
 
 	/*
 	 * Parse our options if called as "bk".

@@ -139,16 +139,18 @@ void
 wait_eof(remote *r, int verbose)
 {
 	int	i;
-	char	c;
+	char	buf[MAXLINE];
 
 	if (verbose) fprintf(stderr, "Waiting for remote to disconnect\n");
-	i = read_blk(r, &c, 1);
+	i = read_blk(r, buf, sizeof(buf) - 1);
 	if (i <= 0) {
 		if (verbose) fprintf(stderr, "Remote Disconnected\n");
 		return;
 	}
 	fprintf(stderr,
 		"wait_eof: Got %d unexpectied byte(s) from remote\n", i);
+	buf[i] = 0;
+	fprintf(stderr, "buf=\"%s\"\n", buf);
 }
 
 /*
