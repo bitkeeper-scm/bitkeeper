@@ -46,6 +46,7 @@ int	clone_main(int, char **);
 int	commit_main(int, char **);
 int	config_main(int, char **);
 int	converge_main(int, char **);
+int	cp_main(int, char **);
 int	create_main(int, char **);
 int	createlod_main(int, char **);
 int	cset_main(int, char **);
@@ -208,6 +209,7 @@ struct command cmdtbl[] = {
 	{"co", get_main},			/* doc 2.0 */
 	{"commit", commit_main},		/* doc 2.0 */
 	{"config", config_main},		/* doc 2.0 */
+	{"cp", cp_main},
 	{"createlod", createlod_main},		/* undoc? 2.0 */
 	{"create", create_main},		/* doc 2.0 */
 	{"cset", cset_main},			/* doc 2.0 */

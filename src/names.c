@@ -140,6 +140,10 @@ pass2(u32 flags)
 		if (try_rename(path, s->spathname, 0, flags)) {
 			fprintf(stderr, "Can't rename %s -> %s\n",
 			    path, s->spathname);
+			if (exists(s->spathname)) {
+				fprintf(stderr,
+				    "REASON: destination exists.\n");
+			}
 			fprintf(stderr, "ERROR: File left in %s\n", path);
 			sccs_free(s);
 			failed++;
