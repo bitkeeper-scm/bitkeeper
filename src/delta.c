@@ -151,7 +151,7 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 	}
 
 	/* force them to do something sane */
-	if (!comment && dash && name && sfileNext()) {
+	if (!comment && dash && name && !(dflags & NEWFILE) && sfileNext()) {
 		fprintf(stderr,
 "%s: only one file may be specified without a checkin comment\n", av[0]);
 		goto usage;
