@@ -13,7 +13,7 @@ LIBS	= zlib/libz.a mdbm/libmdbm.a libsccs.a
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(GUIBIN) $(GUISCR) \
 	  bitkeeper.config bkhelp.txt install.sh
 
-CFLAGS	= -g -DPURIFY -DPURIFY_FILES
+CFLAGS	= -g -O -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM
 CPPFLAGS= -Izlib
 LINK	= $(LSCCS) $(LMDBM) $(LZLIB) $(XLIBS)
 LSCCS	= -L. -lsccs
@@ -94,7 +94,7 @@ ansi:
 # -Wno-parentheses shuts up "suggest parentheses around assignment ...".
 # Unfortunately it also turns off dangling else warnings.
 Wall:
-	$(MAKE) CFLAGS="-g -Wall -Wno-parentheses -DPURIFY" all
+	$(MAKE) CFLAGS="-g -DWALL -DLINT -Wall -Wno-parentheses -DPURIFY" all
 
 WWall:
 	$(MAKE) CFLAGS="-g -W -Wall -Wstrict-prototypes -Wmissing-prototypes -Wwrite-strings -DPURIFY" all

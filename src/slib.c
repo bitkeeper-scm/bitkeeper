@@ -1437,6 +1437,11 @@ sccs_mkroot(char *path)
 		perror(buf);
 		exit(1);
 	}
+	sprintf(buf, "%s/BitKeeper/etc/SCCS", path);
+	if ((mkdir(buf, 0775) == -1) && (errno != EEXIST)) {
+		perror(buf);
+		exit(1);
+	}
 	sprintf(buf, "%s/BitKeeper/tmp", path);
 	if ((mkdir(buf, 0775) == -1) && (errno != EEXIST)) {
 		perror(buf);
@@ -4926,7 +4931,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 out:			if (slist) free(slist);
 			if (state) free(state);
 			if (DB) mdbm_close(DB);
-			return 1;
+			return (1);
 		}
 		popened = openOutput(encoding, f, &out);
 		unless (out) {
@@ -11600,6 +11605,18 @@ sccs_ino(sccs *s)
 	return (d);
 }
 
+/*
+ * Figure out if the file is gone from the DB.
+ * XXX - currently only works with keys, not filenames.
+ */
+int
+gone(char *key, MDBM *db)
+{
+	unless (strchr(key, '|')) return (0);
+	unless (db) return (0);
+	return (mdbm_fetch_str(db, key) != 0);
+}
+
 MDBM	*
 loadDB(char *file, int (*want)(char *), int style)
 {
@@ -11613,9 +11630,15 @@ loadDB(char *file, int (*want)(char *), int style)
 	// XXX awc->lm: we should check the z lock here
 	// someone could be updating the file...
 again:	unless (f = fopen(file, "rt")) {
-		if (first) {
+		if (first && streq(file, IDCACHE)) {
 			first = 0;
 			system("bk sfiles -r");
+			goto again;
+		}
+		if (first && streq(file, GONE) && exists(SGONE)) {
+			first = 0;
+			sprintf(buf, "bk get -s %s", GONE);
+			system(buf);
 			goto again;
 		}
 out:		if (f) fclose(f);
@@ -11624,7 +11647,7 @@ out:		if (f) fclose(f);
 	}
 	DB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	assert(DB);
-	switch (style) {
+	switch (style & (DB_NODUPS|DB_USEFIRST|DB_USELAST)) {
 	    case DB_NODUPS:	flags = MDBM_INSERT; break;
 	    case DB_USEFIRST:	flags = MDBM_INSERT; break;
 	    case DB_USELAST:	flags = MDBM_REPLACE; break;
@@ -11639,9 +11662,13 @@ out:		if (f) fclose(f);
 			fprintf(stderr, "bad path: <%s> in %s\n", buf, file);
 			return (0);
 		}
-		v = strchr(buf, ' ');
-		assert(v);
-		*v++ = 0;
+		if (style & DB_KEYSONLY) {
+			v = "";
+		} else {
+			v = strchr(buf, ' ');
+			assert(v);
+			*v++ = 0;
+		}
 		switch (mdbm_store_str(DB, buf, v, flags)) {
 		    case 0: break;
 		    case 1:
@@ -11666,27 +11693,19 @@ out:		if (f) fclose(f);
  *
  * Note: does not call sccs_restart, the caller of this sets up "s".
  */
-MDBM	*
-csetIds(sccs *s, char *rev, int all)
+int
+csetIds(sccs *s, char *rev)
 {
-	MDBM	*db;
-
-	assert(all); /* XXX: this can only do all */
 	assert(s->state & S_HASH);
 	if (sccs_get(s, rev, 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
 		sccs_whynot("get", s);
-		exit(1);
+		return (-1);
 	}
 	unless (s->mdbm) {
 		fprintf(stderr, "get: no mdbm found\n");
-		exit(1);
+		return (-1);
 	}
-
-	/* the caller's responsibility to close, not sccs_free */
-	db = s->mdbm;
-	s->mdbm = 0;
-
-	return (db);
+	return (0);
 }
 
 /*

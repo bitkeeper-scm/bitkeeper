@@ -386,7 +386,6 @@ intr:		sccs_whynot("cset", cset);
 void
 csetList(sccs *cset, char *rev, int ignoreDeleted)
 {
-	MDBM	*db = csetIds(cset, rev, 1);	/* db{fileId} = csetId */
 	MDBM	*idDB;				/* db{fileId} = pathname */
 	kvpair	kv;
 	char	*t;
@@ -394,7 +393,7 @@ csetList(sccs *cset, char *rev, int ignoreDeleted)
 	delta	*d;
 	int  	doneFullRebuild = 0;
 
-	if (!db) {
+	if (csetIds(cset, rev)) {
 		fprintf(stderr,
 		    "Can't find changeset %s in %s\n", rev, cset->sfile);
 		exit(1);
@@ -408,7 +407,8 @@ csetList(sccs *cset, char *rev, int ignoreDeleted)
 			exit(1);
 		}
 	}
-	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
+	for (kv = mdbm_first(cset->mdbm);
+	    kv.key.dsize != 0; kv = mdbm_next(cset->mdbm)) {
 		t = kv.key.dptr;
 		unless (sc = sccs_keyinit(t, INIT_NOCKSUM, idDB)) {
 			fprintf(stderr, "cset: init of %s failed\n", t);
@@ -439,7 +439,6 @@ csetList(sccs *cset, char *rev, int ignoreDeleted)
 		sccs_free(sc);
 	}
 	mdbm_close(idDB);
-	mdbm_close(db);
 }
 
 /*
@@ -619,6 +618,8 @@ retry:	sc = sccs_keyinit(lastkey, INIT_NOCKSUM, idDB);
 			goto retry;
 		}
 		fprintf(stderr, "cset: missing id %s, sfile removed?\n", key);
+		free(lastkey);
+		lastkey = 0;
 		return (force ? 0 : -1);
 	}
 
@@ -687,6 +688,7 @@ csetlist(sccs *cset)
 	pid_t	pid = -1;
 	int	status;
 	delta	*d;
+	MDBM	*goneDB = 0;
 
 	if (dash) {
 		while(fgets(buf, sizeof(buf), stdin)) {
@@ -722,6 +724,7 @@ csetlist(sccs *cset)
 			sprintf(buf, "cat %s", csort);
 			system(buf);
 		}
+		goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
 	} else {
 		close(creat(csort, 0666));
 	}
@@ -759,6 +762,7 @@ again:	/* doDiffs can make it two pass */
 		for (t = buf; *t != ' '; t++);
 		*t++ = 0;
 		if (sameFile(csetid, buf)) continue;
+		if (gone(buf, goneDB)) continue;
 		if (doKey(buf, t)) goto fail;
 	}
 	if (doDiffs && makepatch) {
@@ -790,11 +794,13 @@ again:	/* doDiffs can make it two pass */
 	}
 	unlink(csort);
 	free(csetid);
+	if (goneDB) mdbm_close(goneDB);
 	return;
 
 fail:
 	unlink(csort);
 	free(csetid);
+	if (goneDB) mdbm_close(goneDB);
 	exit(1);
 }
 
