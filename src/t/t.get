@@ -12,7 +12,9 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
-export BK_USER=bk
+SAVE=`bk user`
+BK_USER=bk
+export BK_USER
 ${RM} -rf bar SCCS
 cset -i -s .
 ${ECHO} Hallo > date
@@ -184,3 +186,4 @@ echo OK
 echo $N Make sure get -u works ......................................$NL
 if [ "`get $S -pu T`" != "bk    | HI" ]; then echo Failed.; exit 1; fi
 echo OK
+BK_USER=$SAVE
