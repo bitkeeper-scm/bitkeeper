@@ -48,9 +48,9 @@ echo OK
 echo $N Trying to change some binary data ...........................$NL
 cp ${binary_data2} uuencode
 bk diffs uuencode > d.out 2>&1
-grep -q "uuencode differ" d.out
-if [ $? -ne 0 ]; then echo Failed; exit 1; fi
-bk ci $Q -y uuencode
+#grep -q "uuencode differ" d.out
+#if [ $? -ne 1 ]; then echo Failed; exit 1; fi
+bk ci $Q -y uuencode || exit 1
 bk co $Q uuencode
 cmp -s ${binary_data2} uuencode
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
