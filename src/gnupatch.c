@@ -258,11 +258,6 @@ gnupatch_main(int ac, char **av)
 	spawnvp_rPipe(diff_av, &rfd, BIG_PIPE);
 	pipe = fdopen(rfd, "r");
 	while (fgets(buf, sizeof(buf), pipe)) {
-#ifdef WIN32
-		char *p;
-		p = strrchr(buf, '\r'); 
-		if (p) strcpy(p, "\n"); /* remove '\r' */
-#endif
 		if (got_start_header) {
 			got_start_header--;
 			fix_header(buf, db);

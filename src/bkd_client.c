@@ -23,20 +23,9 @@ remote_parse(char *p, int is_clone)
 	if (echo == -1) echo = getenv("BK_REMOTE_PARSE") != 0;
 
 	unless (p && *p) {
-		FILE	*f = popen("bk parent", "r");
-
-		if (fgets(buf, sizeof(buf), f)) {
-			if (strneq(buf, "This package has no parent", 26)) {
-				fclose(f);
-				return (0);
-			}
-				     /* 123456789012345678901 */
-			assert(strncmp("Parent repository is ", buf, 21) == 0);
-			p = &buf[21];
-			chop(p);
-			append = 1;
-		}
-		pclose(f);
+		unless (getParent(buf, sizeof buf)) return (0);
+		p = buf;
+		append = 1;
 	}
 	unless (p) return (0);
 	if (strneq("bk://", p, 5)) {
@@ -78,12 +67,8 @@ nfs_parse(char *p)
 	if (s = strchr(p, '@')) {
 		*s = 0; r->user = strdup(p); p = s + 1; *s = '@';
 	}
-	/* just path */
-#ifdef WIN32 /* Account for Dos path e.g c:/path */
-	unless ((s = strchr(p, ':')) && (s != &p[1])) {
-#else
-	unless (s = strchr(p, ':')) {
-#endif
+	/* just path, no host */
+	unless (s = isHostColonPath(p)) {
 		if (r->user) {
 			remote_free(r);
 			return (0);

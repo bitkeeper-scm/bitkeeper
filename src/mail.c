@@ -58,11 +58,12 @@ lconfig_main(int ac, char **av)
 	 * We therefore have to send it to stdout, which will be read and
 	 * displayed by citool.
 	 */
-#ifndef	WIN32 	/* wish console */
-	fclose(stdout); /* close stdout, so citool do'nt wait for us */
-	usleep(0); /* release cpu, so citool can exit */
-	fopen(DEV_TTY, "wb");
-#endif
+	unless (wishConsoleVisible()) {
+		fclose(stdout); /* close stdout, so citool do'nt wait for us */
+		usleep(0); /* release cpu, so citool can exit */
+		fopen(DEV_TTY, "wb");
+	}
+
 	r = remote_parse(url, 0);
 	if (debug) r->trace = 1;
 	assert(r);
@@ -93,11 +94,12 @@ mail_main(int ac, char **av)
 	 * We therefore have to send it to stdout, which will be read and
 	 * displayed by citool.
 	 */
-#ifndef	WIN32 /* wish console */
-	fclose(stdout); /* close stdout, so citool do'nt wait for us */
-	usleep(0); /* release cpu, so citool can exit */
-	fopen(DEV_TTY, "wb");
-#endif
+	unless (wishConsoleVisible()) {
+		fclose(stdout); /* close stdout, so citool do'nt wait for us */
+		usleep(0); /* release cpu, so citool can exit */
+		fopen(DEV_TTY, "wb");
+	}
+
 	if (ac != 4) {
 		printf("usage: bk mail mailbox subject file\n");
 		return (1);

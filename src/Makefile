@@ -41,7 +41,7 @@ OBJ	= abort.o adler32.o admin.o approve.o annotate.o \
 	  delta.o diffs.o dirname.o export.o fdiff.o \
 	  filecopy.o find.o fix.o g2sccs.o \
 	  gca.o get.o gethelp.o gethost.o getopt.o \
-	  getrealname.o gettemp.o getuser.o glob.o gnupatch.o graft.o grep.o \
+	  gettemp.o getuser.o glob.o gnupatch.o graft.o grep.o \
 	  help.o http.o host.o isascii.o \
 	  key2rev.o keysort.o \
 	  level.o lib_tcp.o libcommit.o libdiff.o librange.o \
@@ -52,11 +52,14 @@ OBJ	= abort.o adler32.o admin.o approve.o annotate.o \
 	  port/bkd_client.o port/lock.o port/mnext.o port/popen.o \
 	  port/executable.o port/findprog.o port/fullname.o port/flushsocket.o \
 	  port/gethomedir.o port/gethost.o port/getinput.o \
-	  port/getrealcwd.o port/ns_sock_host2ip.o \
+	  port/getrealcwd.o port/getrealname.o port/gui.o port/hostColonPath.o \
+	  port/ns_sock_host2ip.o \
 	  port/mail.o port/platforminit.o port/randomBits.o port/rlimit.o \
+	  port/runable.o \
 	  port/samepath.o port/sccs_lockfile.o \
-	  port/sccs_root.o port/sig.o port/socket2pipe.o port/spawn.o \
-	  port/getnull.o port/http_proxy.o port/service.o \
+	  port/sccs_getuser.o port/sccs_root.o port/sig.o port/socket2pipe.o \
+	  port/spawn.o \
+	  port/getnull.o port/http_proxy.o port/bkd_server.o \
 	  prs.o pull.o purify.o push.o pwd.o r2c.o \
 	  range.o rcs.o rcsparse.o rcs2sccs.o receive.o rechksum.o renumber.o \
 	  lock.o resolve.o resolve_contents.o resolve_create.o \
@@ -583,7 +586,6 @@ gethost.o:	gethost.c
 gethost.o:	port/gethost.c $(H)
 getinput.o:	port/getinput.c $(H)
 getopt.o:	getopt.c $(H)
-getrealname.o:	getrealname.c $(H)
 gettemp.o:	gettemp.c $(H)
 getuser.o:	getuser.c
 glob.o:		glob.c $(H)
@@ -624,11 +626,13 @@ port/findprog.o:	port/findprog.c $(H)
 port/flushsocket.o:	port/flushsocket.c $(B) $(H)
 port/fullname.o:	port/fullname.c $(H)
 port/gethost.o:	port/gethost.c $(H)
+port/getrealname.o:	port/getrealname.c $(H)
 port/getinput.o:	port/getinput.c $(H)
 port/platforminit.o:	port/platforminit.c $(H)
 port/randomBits.o:	port/randomBits.c $(H)
 port/samepath.o:	port/samepath.c $(H)
 port/sccs_root.o:	port/sccs_root.c $(H)
+port/sccs_getuser.o:	port/sccs_getuser.c $(H)
 port/spawn.o:	port/spawn.c $(H)
 prs.o:		prs.c $(H) range.h
 pull.o:		pull.c $(B) $(H) $(Z)

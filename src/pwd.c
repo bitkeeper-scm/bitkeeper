@@ -8,7 +8,7 @@ private char *usage = "pwd [-sc] [path]\n";
 
 pwd_main(int ac, char **av)
 {
-	char	buf[1024], *p;
+	char	buf[MAXPATH], *p;
 	int	c, shortname = 0, cygwin = 0;
 
 	setmode(1, _O_BINARY);

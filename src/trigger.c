@@ -152,21 +152,6 @@ trigger(char **av, char *when)
 }
 
 private int
-runable(char *file)
-{
-#ifdef	WIN32 /* assume all win32 file are runnable */
-	return (1);
-#else
-	unless (access(file, X_OK) == 0) {
-		fprintf(stderr, "Warning: %s is not executable, "
-				"skipped\n", file);
-		return (0);
-	}
-	return (1);
-#endif
-}
-
-private int
 runit(char *file, char *output)
 {
 	int	status, rc, j = 0, fd1, fd;
@@ -177,16 +162,7 @@ runit(char *file, char *output)
 		fd = open(output, O_CREAT|O_TRUNC|O_WRONLY, 0666);
 		assert(fd == 1);
 	}
-#ifdef	WIN32 /* no suffix => shell script */
-	/*
-	 * If no suffix, assumes it is a shell script
-	 * so feed it to the bash shell
-	 */
-	unless (strrchr(basenm(file), '.')) {
-		my_av[j++] = "bash";
-		my_av[j++] = "-c";
-	}
-#endif
+
 	my_av[j++] = file;
 	my_av[j] = 0;
 	status = spawnvp_ex(_P_WAIT, my_av[0], my_av);

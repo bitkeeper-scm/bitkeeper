@@ -1,5 +1,5 @@
-#include "system.h"
-#include "sccs.h"
+#include "../system.h"
+#include "../sccs.h"
 
 private int
 scanDir(char *dir, char *name, MDBM *db, char *realname)
