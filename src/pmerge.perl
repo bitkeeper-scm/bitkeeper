@@ -191,7 +191,7 @@ chkCommon:	if (&splitCommon_a() && ($mode ne "EOF")) {
 				# resolve into common2
 				&resolveConflict( @lrc, @rrc,
 							*cdata2l, *cdata2r);
-				&getCommon(*cdata1l, *cdata1r);
+				&getCommon(*cdata2l, *cdata2r);
 				goto chkCommon;
 			}
 		}
