@@ -4,6 +4,9 @@
 # For win32, WIN32_GS_PATH should points to the install directory of Ghost Script
 WIN32_GS_PATH=//c/gs/gs7.00
 
+.SCCS_GET:
+	bk get -q $@
+
 all: bk_refcard.ps bk_refcard.pdf
 
 ps: bk_refcard.ps

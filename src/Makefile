@@ -279,7 +279,7 @@ FORCE:
 gnu: $(BK) FORCE
 	@if uname -s | grep _NT; \
 	then cd gnu && $(MAKE) BINDIR=$(BINDIR) DIFF_BINS= DIRS=patch ;\
-	else cd gnu && $(MAKE) BINDIR=$(BINDIR) ;\
+	else cd gnu && bk get -s Makefile && $(MAKE) BINDIR=$(BINDIR) ;\
 	fi
 
 win32: FORCE
@@ -318,7 +318,7 @@ bkmsg.txt: bkmsg.doc bk.ver Makefile
 	sed "s/@built_date@/`date`/" > bkmsg.txt
 
 bkhelp.txt: build FRC
-	@cd ../man/man2help && ../../src/build -u helptxt
+	@cd ../man/man2help && bk get -S Makefile && ../../src/build -u helptxt
 	@cp ../man/man2help/helptxt bkhelp.txt
 
 ../doc/bk_refcard.pdf: build FRC

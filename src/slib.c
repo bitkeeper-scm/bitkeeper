@@ -3722,6 +3722,7 @@ parseConfig(char *buf)
 		for (q = p; *q && isspace(*q); q++);
 		unless (*q) return (0);		/* garbage */
 		while (*p++ = *q++);		/* leftshift over the spc */
+		*p-- = 0;
 	}
 
 	while (*p) p++;				/* find end of line */
@@ -4185,6 +4186,7 @@ chk_gmode(sccs *s)
 	int	pfileExists, gfileExists, gfileWritable;
 	char 	*gfile;
 
+	unless (getenv("_BK_GMODE_DEBUG")) return;
 	if (!s || !s->tree) return; /* skip new file */
 
 	gfile = sccs2name(s->sfile); /* Don't trust s->gfile, see bk admin -i */
@@ -4198,9 +4200,7 @@ chk_gmode(sccs *s)
 			fprintf(stderr,
 			    "ERROR: %s: writable gfile with no p.file\n",
 			    gfile);
-			if (getenv("_BK_GMODE_DEBUG")) {
-				assert("writable gfile wilth no p.file" == 0);
-			}
+			assert("writable gfile wilth no p.file" == 0);
 		};
 	}
 
@@ -4209,9 +4209,7 @@ chk_gmode(sccs *s)
 			fprintf(stderr,
 			    "ERROR: %s: p.file with read only gfile\n",
 			    gfile);
-			if (getenv("_BK_GMODE_DEBUG")) {
-				assert("p.file with read only gfile" == 0);
-			}
+			assert("p.file with read only gfile" == 0);
 		}
 	}
 	free(gfile);
