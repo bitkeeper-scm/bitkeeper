@@ -23,6 +23,7 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <netdb.h>
+#include <dirent.h>
 #include <fcntl.h>
 #include "purify.h"
 #else

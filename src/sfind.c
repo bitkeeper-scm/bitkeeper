@@ -1,10 +1,8 @@
 #include "sccs.h"
-#include <dirent.h>
 #ifdef WIN32
 #include "uwtlib/ftw.h"
 #else
 #include <ftw.h>
-#include <dirent.h> 
 #endif
 WHATSTR("%W% %@%");
 
@@ -19,15 +17,14 @@ usage: sfiles [-acCdglpPx] [-r[root]] [directories]\n\n\
     -c		list only changed files (locked and modified)\n\
     -C		list leaves which are not in a changeset as file:1.3\n\
     -d		list directories under SCCS control (have SCCS subdir)\n\
+    -D		list directories with no (or empty) SCCS subdirs\n\
     -g		list the gfile name, not the sfile name\n\
-    -G		list the SCCS files without a gfile\n\
     -l		list only locked files\n\
     -p		(paranoid) opens each file to make sure it is an SCCS file\n\
 		but only if the pathname to the file is not ../SCCS/s.*\n\
     -P		(paranoid) opens each file to make sure it is an SCCS file\n\
     -r[root]	rebuild the id to pathname cache\n\
     -u		list only unlocked files\n\
-    -X		list empty directories which have no revision control files\n\
     -x		list files which have no revision control files\n\
     		Note: revision control files must look like SCCS/s.*, not\n\
 		foo/bar/blech/s.*\n\
@@ -36,8 +33,8 @@ usage: sfiles [-acCdglpPx] [-r[root]] [directories]\n\n\
     directories.\n\
 \n";
 
-int	aFlg, cFlg, Cflg, dFlg, gFlg, GFlg, lFlg;
-int	pFlg, PFlg, rFlg, vFlg, xFlg, XFlg, uFlg;
+int	aFlg, cFlg, Cflg, dFlg, gFlg, lFlg, pFlg, Pflg, rFlg, vFlg, xFlg, uFlg;
+int	Dflg;
 int	error;
 FILE	*pending_cache;
 FILE	*id_cache;
@@ -62,24 +59,27 @@ main(int ac, char **av)
 usage:		fprintf(stderr, "%s", sfiles_usage);
 		exit(0);
 	}
-	while ((c = getopt(ac, av, "acCdgGlpPr|uvxX")) != -1) {
+	while ((c = getopt(ac, av, "acCdDglpPr|uvx")) != -1) {
 		switch (c) {
 		    case 'a': aFlg++; break;
 		    case 'c': cFlg++; break;
 		    case 'C': Cflg++; rFlg++; break;
 		    case 'd': dFlg++; break;
+		    case 'D': Dflg++; break;
 		    case 'g': gFlg++; break;
-		    case 'G': GFlg++; break;
 		    case 'l': lFlg++; break;
 		    case 'p': pFlg++; break;
-		    case 'P': PFlg++; break;
+		    case 'P': Pflg++; break;
 		    case 'r': rFlg++; root = optarg; break;
 		    case 'v': vFlg++; break;
 		    case 'u': uFlg++; break;
 		    case 'x': xFlg++; break;
-		    case 'X': XFlg++; break;
 		    default: goto usage;
 		}
+	}
+	if (xFlg && (aFlg|cFlg|Cflg|dFlg|Dflg|lFlg|pFlg|Pflg|uFlg)) {
+		fprintf(stderr, "sfiles: -x must be standalone.\n");
+		exit(1);
 	}
 	if (rFlg || Cflg) {
 		if (av[optind]) {
@@ -91,28 +91,48 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 			purify_list();
 			exit(1);
 		}
-		/* XXX TODO:
-		 * a) If there is a x.pending file, do not rebuild the cache
-		 *    use the pending file instead (for performance)
-	 	 * b) Add a option to unlink x.pending after we consume it
-		 *    (so we don't commit the same delta twice)
-		 * c) When we have multiple LODs, we need to filter
-		 *    out the deltas that are not part the active LOD.
-		 */
 		rebuild();
 		purify_list();
 		exit(dups ? 1 : 0);
 	}
-
 	if (!av[optind]) {
 		lftw(".", func, 15);
 	} else {
 		for (i = optind; i < ac; ++i) {
-			lftw(av[i], func, 15);
+			if (isdir(av[i])) {
+				lftw(av[i], func, 15);
+			} else {
+				file(av[i], func);
+			}
 		}
 	}
 	purify_list();
 	exit(0);
+}
+
+/*
+ * Handle a single file.
+ * Convert to s.file first, if possible.
+ * XXX - this is incomplete.
+ */
+int
+file(char *f, int (*func)())
+{
+	struct	stat sb;
+	char	*sfile, *gfile;
+
+	sfile = name2sccs(f);
+	gfile = sccs2name(sfile);
+	if (lstat(sfile, &sb) == -1) {
+		if ((lstat(gfile, &sb) == 0) && xFlg) {
+			printf("%s\n", f);
+		}
+	} else if (!xFlg) {
+		func(sfile, &sb);
+	}
+	free(sfile);
+	free(gfile);
+	return (0);
 }
 
 int
@@ -123,86 +143,68 @@ func(const char *filename, const struct stat *sb, int flag)
 	char	*sfile, *gfile;
 
 	if ((file[0] == '.') && (file[1] == '/')) file += 2;
-	if (dFlg) {
+	if (dFlg || Dflg) {
 		if (S_ISDIR(sb->st_mode)) {
 			char	buf[MAXPATH];
 
 			sprintf(buf, "%s/SCCS", file);
-			if (exists(buf)) printf("%s\n", file);
+			if (dFlg) {
+				if (exists(buf) && !emptyDir(buf)) {
+					printf("%s\n", file);
+				}
+			} else {
+				/*
+				 * If we are an SCCS directory, we don't count.
+				 */
+				if (streq(file, "SCCS") ||
+				    ((s = strrchr(file, '/')) &&
+				    streq(s, "/SCCS"))) {
+				    	return (0);;
+				}
+
+				/*
+				 * If there is no SCCS directory,
+				 * or if the SCCS dir is empty
+				 */
+				unless (exists(buf) && !emptyDir(buf)) {
+					printf("%s\n", file);
+				}
+			}
 		}
 		return (0);
 	}
-#ifdef	EMPTY_DIRECTORY_SUPPORT
-	/*
-	 * This option only works on the G tree of a split root configuration.
-	 * On a single root tree, the SCCS directory of other
-	 * release will make a normally "empty" directory look non-empty.
-	 */
-	if (XFlg && S_ISDIR(sb->st_mode) && (sb->st_nlink == 2)) {
-		int len = strlen(file);
-
-		/*
-		 * Ignore SCCS directory,
-		 * we should never get this on the G tree anyway.
-		 */
-		if ((len < 4) || !streq("SCCS", &file[len - 4])) {
-			sfile = name2sccs(file);
-			if (isEmptyDir(file) && !exists(sPath(sfile, 0))) {
-				printf("%s\n", file);
-			}
-			free(sfile);
-		}
-		return 0;
-	}
-#endif
 	if (S_ISDIR(sb->st_mode)) return (0);
 	if (xFlg) {
 		sfile = name2sccs(file);
 		gfile = sccs2name(sfile);
-		if (streq(gfile, file) && !exists(sPath(sfile,0))) {
+		if (streq(gfile, file) && !exists(sfile)) {
 			printf("%s\n", gfile);
-			free(sfile);
-			free(gfile);
-			return (0);
 		}
 		free(sfile);
 		free(gfile);
-		/* fall thru, in case they also want -l or -c */
+		return (0);
 	}
-	if (S_ISDIR(sb->st_mode)) return (0);
+	unless (is_sccs(file)) return 0;
+	s = strrchr(file, '/');
+	assert(s);
+	s++;
 	if (lFlg || cFlg || uFlg) {
-		char *s, *p, t[1024], *sfile;
-		
-		if (p = strrchr(file, '/')) {
-			*p = 0;
-			sprintf(t, "%s/SCCS/s.%s", file, &p[1]);
-			*p = '/';
-		} else {
-			sprintf(t, "SCCS/s.%s", file);
-		}
-		sfile = sPath(t, 0); 
-		for (s = sfile; *s; s++);
-		for ( ; s > sfile; s--) if (s[-1] == '/') break; /* CSTYLED */
-		assert((s[0] == 's') && (s[1] == '.'));
 		*s = 'p';
-		if (exists(sfile)) { /* check for p file */
+		if (exists(file)) {
 			*s = 's';
-			if (lFlg || (cFlg && hasDiffs(t))) {
-				printf("%s\n", name(t));
-			} else if (uFlg) {
-				printf("%s\n", name(t));
+			if (uFlg) return(0);
+			if (lFlg || (cFlg && hasDiffs(file))) {
+				printf("%s\n", name(file));
 			}
+		} else if (uFlg) {
+			*s = 's';
+			printf("%s\n", name(file));
 		}
 		*s = 's';
 		return (0);
 	}
-
-	/* XXX TODO: make this code work under split root config */
-        for (s = file; *s; s++);
-        for ( ; s > file; s--) if (s[-1] == '/') break;         /* CSTYLED */
-        if (!s || (s[0] != 's') || (s[1] != '.')) return (0);
 	/* XXX - this should be first. */
-	if (PFlg) {
+	if (Pflg) {
 		if (!isSccs(file)) return (0);
 	} else if (pFlg) {
 		if ((s-file < 5) || (s[-2] != 'S') || (s[-3] != 'C') ||
@@ -210,12 +212,7 @@ func(const char *filename, const struct stat *sb, int flag)
 			if (!isSccs(file)) return (0);
 		}
 	}
-	if (GFlg) {
-		gfile = sccs2name(file);
-		if (!exists(gfile)) printf("%s\n", name(file));
-		return 0;
-	}
-	unless (xFlg) printf("%s\n", name(file));
+	printf("%s\n", name(file));
 	return (0);
 }
 
@@ -527,27 +524,3 @@ done:
 	closedir(d);
 	return rc;
 }
-
-isEmptyDir(char *dir)
-{
-	DIR *d;
-	struct dirent *e;
-
-	d = opendir(dir);
-	unless (d) {
-		perror(dir);
-		return 0;
-	}
-	
-	while ( e = readdir(d)) {
-		if (streq(e->d_name, ".") ||
-		    streq(e->d_name, "..")) {
-			continue;
-		}
-		closedir(d);
-		return 0;
-	}
-	closedir(d);
-	return 1;
-}
-	

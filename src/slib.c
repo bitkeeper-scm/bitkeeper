@@ -114,10 +114,22 @@ size(char *s)
 int
 emptyDir(char *dir)
 {
-	struct	stat sbuf;
+	DIR *d;
+	struct dirent *e;
 
-	if (lstat(dir, &sbuf) == -1) return 0;
-	return (sbuf.st_nlink == 2);	/* . and .. */
+	d = opendir(dir);
+	unless (d) {
+		perror(dir);
+		return (0);
+	}
+	
+	while (e = readdir(d)) {
+		if (streq(e->d_name, ".") || streq(e->d_name, "..")) continue;
+		closedir(d);
+		return (0);
+	}
+	closedir(d);
+	return (1);
 }
 
 /*
@@ -3410,8 +3422,9 @@ sccs_free(sccs *s)
 /*
  * We want SCCS/s.foo or path/to/SCCS/s.foo
  * ATT allows s.foo or path/to/s.foo.
- * Since we do a pretty good job of putting stuff in SCCS/s.*, we skip
- * that check here.
+ * We insist on SCCS/s. unless in ATT compat mode.
+ * XXX ATT compat mode sucks - it's really hard to operate on a
+ * gfile named s.file .
  */
 int
 is_sccs(char *name)
@@ -3419,10 +3432,20 @@ is_sccs(char *name)
 	char	*s = rindex(name, '/');
 
 	if (!s) {
+#ifdef	ATT_SCCS
 		if (name[0] == 's' && name[1] == '.') return (1);
+#endif
 		return (0);
 	}
-	if (s[1] == 's' && s[2] == '.') return (1);
+	if (s[1] == 's' && s[2] == '.') {
+#ifdef	ATT_SCCS
+		return (1);
+#endif
+		/* SCCS/s.c
+		   4321012
+		 */
+		if ((name <= &s[-4]) && strneq("SCCS", &s[-4], 4)) return (1);
+	}
 	return (0);
 }
 
@@ -3469,7 +3492,7 @@ mksccsdir(char *sfile)
 	if ((s >= sfile + 4) &&
 	    s[-1] == 'S' && s[-2] == 'C' && s[-3] == 'C' && s[-4] == 'S') {
 		*s = 0;
-#ifdef SPLIT_ROOT
+#if defined(SPLIT_ROOT)
 		unless (exists(sfile)) mkDir(sfile);
 #else
 		mkdir(sfile, 0775);

@@ -366,6 +366,8 @@ Symbols may also be added as part of a checkin command, i.e.,
     $ ci -SAlpha foo.c
     $ delta -SAlpha foo.c
 
+XXX - need to talk about the cset -R/-r commands and tags.
+
 EOF
 }
 
@@ -393,6 +395,9 @@ before /usr/bin, then things will work properly (BitKeeper figures out
 if you meant the BitKeeper ci or the RCS ci by looking for a RCS sub
 directory and, if it is there, execing /usr/bin/ci instead).
 
+We recommend that you not change your path and just get used to typing
+bk <command> since there are some commands which are only implemented in
+the bk script itself.  
 EOF
 }
 
@@ -416,6 +421,13 @@ You will prompted for comments, please describe the changes that you
 have made.  It's useful to have the output of "bk pending" in another
 window to see what you did.  We realize this is lame, we'll be making this
 part of the citool checkin tool very soon.
+
+OPTIONS
+    -d	  don't run interactively, just do the commit with the default comments
+    -s	  run silently
+    -Sx	  Set symbolic name of changeset to "x"
+    -yx	  Set checkin comment of changeset to "x"
+    -Yx	  Get checkin comment for changeset from file "x"
 
 SEE ALSO
     bk help pending
@@ -601,6 +613,8 @@ To move a file from A to B do this:
 That will move the checked out file (if any) as well as the revision control
 file.  Edited files can not currently be moved with bk mv, check them in first.
 
+SEE ALSO
+    bk help rm
 EOF
 }
 
@@ -623,6 +637,8 @@ and removing each of them.  So be careful about creating files.
 
 Edited files can not currently be removed, check them in first.
 
+SEE ALSO
+    bk help mv
 EOF
 }
 
@@ -1094,6 +1110,10 @@ function rm {
 
 # Usage: undo [-f] [-F]
 function undo {
+	echo Undo is temporarily unsupported while we work out some bugs
+	exit 1
+
+	##############################################
 	cd2root
 	ASK=yes
 	FORCE=
@@ -1247,8 +1267,18 @@ Bug/RFE:
 Severity:
 	[5 - no big deal, 1 - can't use BitKeeper until this is fixed]
 
+Priority:
+	[5 - fix whenever, 1 - fix RIGHT NOW]
+
+
 Program:
 	[cset, co, delta, etc.  If you know which caused the problem]
+
+Release:
+	[BitKeeper release, we are currently at beta9]
+
+OS:
+	[Linux, IRIX, NT, etc]
 
 Synopsis:
 	[one line: i.e., sfiles dumps core when running on CP/M]
@@ -1269,6 +1299,9 @@ Suggestions:
 	Take as much space as you need, but leave a blank line
 	between this and the next field.
 
+Interest list:
+	[emails of others who care about this like so: a@foo.com,b@foo.com]
+
 Contact info:
 	Your contact information here. 
 	A phone number and a time to call is useful if we need more
@@ -1282,7 +1315,7 @@ Contact info:
 EOF
 	$EDITOR /tmp/bug$$
 	while true
-	do	echo $N "(s)end, (e)dit, (q)uit? "
+	do	echo $N "(s)end, (e)dit, (q)uit? "$NL
 		read x
 		case X$x in
 		    Xs*) mail -s "BitKeeper BUG" bitkeeper-bugs@bitmover.com \
@@ -1333,7 +1366,7 @@ function commandHelp {
 				    renames|gui|path|ranges|terms|regression|\
 				    backups|debug|sendbug|commit|pending|send|\
 				    resync|changes|undo|save|docs|\
-				    sccsmv|mv|sccsrm|rm)
+				    sccsmv|mv|sccsrm|rm|RCS)
 					help_$i | $PAGER
 					;;
 				    *)

@@ -2,12 +2,19 @@
 #include "sccs.h"
 WHATSTR("%W%");
 
+char *clean_help = 
+"\nclean - clean up files.\n\
+\n\
+The default behaviour is to clean up all checked out files,\n\
+locked or unlocked.  Files are cleaned if they are unmodified,\n\
+so a \"co -l; clean\" is a null operation.\n\
+\n\
+usage: clean [-puv] [files...]\n\
+    -p	print, i.e., show diffs of modified files\n\
+    -u	clean even modified files, discarding changes (DANGEROUS).\n\
+    -v	list files being cleaned\n\n";
+
 /*
- * clean - clean up files, or unedit them
- *	-p	print (show diffs)
- *	-s	silent
- *	-u	unedit the file, discarding changes.
- *
  * This works even if there isn't a gfile.
  */
 int
@@ -20,10 +27,7 @@ main(int ac, char **av)
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
-usage:		fprintf(stderr, "usage: %s [-puv] [files...]\n", av[0]);
-		fprintf(stderr, "\t-p\tprint changes to the modified files\n"
-				"\t-u\tunedit, discarding changes\n"
-				"\t-v\tlist files being cleaned\n");
+usage:		fprintf(stderr, clean_help);
 		return (1);
 	}
 	if (streq("unedit", av[0])) {
