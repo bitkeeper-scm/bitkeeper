@@ -253,6 +253,15 @@ test -f moved || {
 }
 echo OK
 
+echo $N bk get, then bk edit -S preserve gfile if no keyword ........$NL
+bk admin $Q -FSCCS moved
+touch ref
+sleep 1
+bk edit $Q -S moved
+find . -newer ref | grep -q "^./moved$"
+if [ $? -eq 0 ]; then echo failed; exit 1; fi
+echo OK
+
 if [ $PLATFORM = "WIN32" ]
 then #-------------------------------------------------------------
 echo $N Make sure get creats gfile with real name ...................$NL

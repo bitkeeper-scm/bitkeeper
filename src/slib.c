@@ -5876,7 +5876,16 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 			verbose((stderr, "Writeable %s exists\n", s->gfile));
 			s->state |= S_WARNED;
 			return ((flags & GET_NOREGET) ? 0 : (char*)-1);
-		} else if ((flags & GET_NOREGET) && exists(s->gfile)) {
+		} else if ((flags & GET_NOREGET) &&
+			    exists(s->gfile) &&
+			    (!(flags&GET_EDIT) || !(s->xflags&(X_RCS|X_SCCS)))){
+			if ((flags & GET_EDIT) && !WRITABLE(s)) {
+				s->mode |= 0200;
+				if (chmod(s->gfile, s->mode)) {
+					perror(s->gfile);
+					return ((char*)-1);
+				}
+			}
 			return (0);
 		}
 		f = s->gfile;
