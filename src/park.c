@@ -144,7 +144,7 @@ err:		if (s) sccs_free(s);
 
 	if (force && exists(PARKDIR)) sys(RM, "-rf", PARKDIR, SYS);
 	if (exists(PARKDIR)) {
-		fprintf(stderr, "%s exits, park aborted\n", PARKDIR);
+		fprintf(stderr, "%s exists, park aborted\n", PARKDIR);
 		goto err;
 	}
 
@@ -1054,7 +1054,7 @@ do_unpark(int id, int clean, int force)
 	if (clean && exists(PARKDIR)) sys(RM, "-rf", PARKDIR, SYS);
 
 	if (exists(PARKDIR)) {
-		fprintf(stderr, "%s exits, unpark aborted\n", PARKDIR);
+		fprintf(stderr, "%s exists, unpark aborted\n", PARKDIR);
 err:		if (sfio_list[0]) unlink(sfio_list);
 		if (unpark_list[0]) unlink(unpark_list);
 		if (parkdir_proj) proj_free(parkdir_proj);
