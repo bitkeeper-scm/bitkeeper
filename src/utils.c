@@ -719,6 +719,7 @@ add_cd_command(FILE *f, remote *r)
 void
 put_trigger_env(char *prefix, char *v, char *value)
 {
+	unless (value) value = "";
 	safe_putenv("%s_%s=%s", prefix, v, value);
 }
 
