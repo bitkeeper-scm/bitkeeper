@@ -315,7 +315,9 @@ _fix_deletes() {
 # This will go find the root if we aren't at the top
 _changes() {
 	__cd2root
-	echo ChangeSet | ${BIN}sccslog $@ - | $PAGER
+	echo ChangeSet |
+	BK_YEAR1=1 ${BIN}prs -h \
+		'-d:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\n$each(:C:){  (:C:)}\n$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}' $@ - | $PAGER
 }
 
 # Run csettool on the list of csets, if any

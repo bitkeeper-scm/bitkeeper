@@ -3139,6 +3139,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	sccs	*s;
 	struct	stat sbuf;
 	char	*t;
+	static	int YEAR4;
 
 	platformSpecificInit(name);
 	if (u_mask == 0x5eadbeef) {
@@ -3264,6 +3265,12 @@ sccs_init(char *name, u32 flags, project *proj)
 	 * Don't go look for BK root if not a BK file.
 	 */
 	if (s->state & S_BITKEEPER) s->proj = proj ? proj : sccs_initProject(s);
+
+	/*
+	 * Let them force YEAR4
+	 */
+	unless (YEAR4) YEAR4 = getenv("BK_YEAR4") ? 1 : -1;
+	if (YEAR4 == 1) s->state |= S_YEAR4;
 
 #ifndef WIN32
 	signal(SIGPIPE, SIG_IGN); /* win32 platform does not have sigpipe */
