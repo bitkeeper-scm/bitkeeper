@@ -739,7 +739,9 @@ check(sccs *s, MDBM *db, MDBM *marks)
 	}
 
 	/*
-	 * Make sure we have no open branches
+	 * Check Bitkeeper invariants, such as:
+	 *  - no open branches (unless we are in a logging repository)
+	 *  - xflags implied by s->state matches top-of-trunk delta.
 	 */
 	if (!resync && sccs_admin(s, 0,
 	    SILENT|ADMIN_BK|ADMIN_FORMAT|ADMIN_TIME, 0, 0, 0, 0, 0, 0, 0, 0)) {

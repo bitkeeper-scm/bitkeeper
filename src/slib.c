@@ -3851,22 +3851,6 @@ sccs_init(char *name, u32 flags, project *proj)
 	}
 
 	/*
-	 * Verify xflag implied by s->state is the same as 
-	 * the xflags implied by the top-of-trunk delta.
-	 */
-	d = sccs_getrev(s, "+", 0, 0);
-	if (d) {
-		int x1, x2;
-		x1 = state2xflags(s->state) & X_XFLAGS;
-		x2 = sccs_getxflags(d) & X_XFLAGS;
-		if (x2 && (x1 != x2)) {
-			fprintf(stderr,
-			"sccs_int: %s: warning: inconsistent xflags: %x, %x\n",
-							s->sfile, x1, x2);
-		}
-	}
-
-	/*
 	 * Let them force YEAR4
 	 */
 	unless (YEAR4) YEAR4 = getenv("BK_YEAR4") ? 1 : -1;
@@ -8482,14 +8466,38 @@ sccs_isleaf(sccs *s, delta *d)
 }
 
 /*
- * Check all the BitKeeper specific stuff such as
- *	. no open branches
+ * Verify xflag implied by s->state is the same as 
+ * the xflags implied by the top-of-trunk delta.
  */
 private int
-checkInvariants(sccs *s)
+check_xflags(sccs *s)
 {
 	delta	*d;
-	int	tips = 0;
+	int x1, x2;
+
+	d = sccs_getrev(s, "+", 0, 0);
+	if (d) {
+		x1 = state2xflags(s->state) & X_XFLAGS;
+		x2 = sccs_getxflags(d) & X_XFLAGS;
+		if (x2 && (x1 != x2)) {
+			fprintf(stderr,
+				"sccs_int: %s: inconsistent xflags: "
+				"s->state => %x, d->xflags => %x\n",
+				s->sfile, x1, x2);
+			return (1); /* failed */
+		}
+	}
+	return (0); /* ok */
+}
+
+/*
+ * Check open branch
+ */
+private int
+checkOpenBranch(sccs *s)
+{
+	delta	*d;
+	int	error =0, tips = 0;
 	u8	*lodmap = 0;
 	ser_t	next;
 
@@ -8525,6 +8533,26 @@ checkInvariants(sccs *s)
 	}
 	if (lodmap) free(lodmap);
 	return (1);
+}
+
+
+/*
+ * Check all the BitKeeper specific stuff such as
+ *	. xflags implied by s->state matches xflags implied top-of-trunk delta
+ *	. no open branches
+ */
+private int
+checkInvariants(sccs *s)
+{
+	delta	*d;
+	int	error =0, tips = 0;
+	u8	*lodmap = 0;
+	ser_t	next;
+
+	error |= check_xflags(s);
+	error |= checkOpenBranch(s);
+
+	return (error);
 }
 
 /*
