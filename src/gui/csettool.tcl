@@ -220,7 +220,7 @@ proc sdiff {L R} \
 		set tail [file tail $L]
 		set dotL [file join $dir .$tail]
 	}
-	exec bk undos $L > $dotL
+	catch {exec bk undos $L > $dotL}
 	set dir [file dirname $R]
 	if {"$dir" == ""} {
 		set dotR .$R
@@ -228,7 +228,7 @@ proc sdiff {L R} \
 		set tail [file tail $R]
 		set dotR [file join $dir .$tail]
 	}
-	exec bk undos $R > $dotR
+	catch {exec bk undos $R > $dotR}
 	set rmList [list $dotL $dotR]
 	return [open "| $sdiffw \"$dotL\" \"$dotR\""]
 }
@@ -337,7 +337,7 @@ proc file_history {} \
 		set start $stop
 		set file "$f"
 	}
-	exec bk -R sccstool "$file" &
+	catch {exec bk -R sccstool "$file" &}
 }
 
 proc dotFile {} \
@@ -374,8 +374,8 @@ proc dotFile {} \
 	set tmp [file tail "$file"]
 	set l [file join $tmp_dir $tmp-$parent[pid]]
 	set r [file join $tmp_dir $tmp-$stop[pid]]
-	exec bk get -qkpr$parent "$file" > $l
-	exec bk get -qkpr$stop "$file" > $r
+	catch { exec bk get -qkpr$parent "$file" > $l}
+	catch { exec bk get -qkpr$stop "$file" > $r}
 	readFiles $l $r
 	file delete $l $r
 
