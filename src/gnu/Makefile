@@ -17,7 +17,8 @@ all: os exe
 	for i in $(DIRS); \
 	do	test -d $$i/$$OS || mkdir $$i/$$OS; \
 		( \
-		if [ $${OS} = "BIN-CYGWIN_NT-4.0-x86" ];\
+		if [ $${OS} = "BIN-CYGWIN_NT-4.0-x86" -o \
+		     $${OS} = "BIN-CYGWIN_NT-5.0-x86" ];\
 		then unset MAKEFLAGS CFLAGS LDFLAGS LD; CC=gcc; \
 		fi;\
 		echo $$i; \
