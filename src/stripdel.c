@@ -123,6 +123,7 @@ doit(sccs *s, s_opts opts)
 		verbose((stderr, "stripdel: remove file %s\n", s->sfile));
 		sccs_close(s); /* for win32 */
 		unlink(s->sfile);
+		sccs_rmEmptyDirs(s->sfile);
 		return (0);
 	}
 
