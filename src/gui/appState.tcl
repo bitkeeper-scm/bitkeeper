@@ -77,17 +77,6 @@ proc ::appState::load-1.0 {datavar statevar} \
 	for {set i 0} {$i <= $last} {incr i} {
 		set item [lindex $data $i]
 		if {[regexp {^define ([^ ]+) (.*)} $item -> key value]} {
-			if {[string match "<<END" $value]} {
-				set tmp {}
-				for {incr i} {$i < $last} {incr i} {
-					set item [lindex $data $i]
-					if {[string match "<<END" $item]} {
-						break
-					}
-					lappend tmp $item
-				}
-				set value [join $tmp \n]
-			} 
 			set key [string trim $key]
 			set value [string trim $value]
 			set state($key) $value

@@ -476,9 +476,11 @@ bugform: gui/search.tcl gui/config.tcl gui/bugform.tcl \
 	    gui/common.tcl gui/buglib.tcl gui/bugform.tcl > bugform
 
 csettool: gui/csettool.tcl gui/config.tcl gui/common.tcl \
-	port/$(SYS)_platform.tcl gui/search.tcl gui/difflib.tcl
+	port/$(SYS)_platform.tcl gui/search.tcl gui/difflib.tcl \
+	gui/appState.tcl
 	cat gui/search.tcl port/$(SYS)_platform.tcl gui/config.tcl \
-	    gui/common.tcl gui/difflib.tcl gui/csettool.tcl > csettool
+	    gui/common.tcl gui/difflib.tcl gui/appState.tcl \
+	    gui/csettool.tcl > csettool
 
 renametool: gui/renametool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
 	gui/common.tcl
