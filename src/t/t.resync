@@ -29,7 +29,7 @@ P=`bk pending | wc -l`
 if [ $P -ne 21 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 echo OK
 echo $N Create a change set .........................................$NL
-bk commit $S -f -yCset
+bk commit $S -f -y"This is a \"Change Set\""
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 echo OK
