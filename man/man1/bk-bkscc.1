@@ -33,17 +33,6 @@ a sub-directory of a BitKeeper repository.
 While it is possible to create a different mapping of VC++ concepts to
 BitKeeper concepts, the above mapping is the cleanest and simplest.
 Staying within the above model is strongly recommended.
-.SH NOTES
-.LP
-Some IDEs do not set the current directory consequently \*(BK is unable
-to know which directory is the root directory which keeps it from
-functioning properly.  To remedy this, it is necessary to set
-the current directory to the \*(BK root directory explicitly.
-The method to set the current directory depends on the IDE used.
-.TP 1.3i
-.B CodeWright
-left click on Tools-> Version\ Control-> Maintenance-> Current\ Directory and
-type in the root path of the \*(BK repository.
 .SH RECOMMENDED USAGE
 .LP
 As a consequence of the above model, the workspace file must be created first.
@@ -91,6 +80,17 @@ Edit/compile/debug source code until ready to create a ChangeSet.
 To create a ChangeSet: left click on project->source\ control->BitKeeper.
 This will invoke bk citool.  Add checkin comments
 and push the "commit" button to create a BitKeeper ChangeSet.
+.SH NOTES
+.LP
+Some IDEs do not set the current directory correctly,
+consequently \*(BK is unable to find the repository which keeps it from
+functioning properly.  To remedy this, it is necessary to set
+the current directory to the \*(BK root directory explicitly.
+The method to set the current directory depends on the IDE used.
+.TP 1.3i
+.B CodeWright
+left click on Tools-> Version\ Control-> Maintenance-> Current\ Directory and
+type in the root path of the \*(BK repository.
 .SH BUGS
 .LP
 Closing a workspace file and opening a different one
