@@ -34,7 +34,6 @@ private sum_t	fputdata(sccs *s, u8 *buf, FILE *out);
 private int	fflushdata(sccs *s, FILE *out);
 private void	putserlist(sccs *sc, ser_t *s, FILE *out);
 private ser_t*	getserlist(sccs *sc, int isSer, char *s, int *ep);
-private int	read_pfile(char *who, sccs *s, pfile *pf);
 private int	hasComments(delta *d);
 private int	checkRev(sccs *s, char *file, delta *d, int flags);
 private int	checkrevs(sccs *s, int flags);
@@ -51,6 +50,8 @@ private	void	symArg(sccs *s, delta *d, char *name);
 private int	delta_table(sccs *s, FILE *out, int willfix);
 private time_t	getDate(delta *d);
 private	void	unlinkGfile(sccs *s);
+private int	write_pfile(sccs *s, int flags, delta *d,
+		    char *rev, char *iLst, char *i2, char *xLst, char *mRev);
 private time_t	date2time(char *asctime, char *z, int roundup);
 private	char	*sccsrev(delta *d);
 private int	addSym(char *name, sccs *sc, int flags, admin *l, int *ep);
@@ -1774,7 +1775,9 @@ findDate(delta *d, time_t date)
 }
 
 /*
- * Calculate the Out Of View (OOV) path corresponding to s
+ * Calculate the Not In View (NIV) path corresponding to s
+ * XXX: Change to use timestamp of the x.1 ChangeSet for this
+ *      LOD.
  */
 
 #define	NIVROOT	"BitKeeper/other/"
@@ -1819,7 +1822,7 @@ sccs_nivPath(sccs *s)
 		*p++ = '-';
 		strcpy(p, parts[5]);
 	}
-	name2sccs(path);
+	return (name2sccs(path));
 }
 
 /*
@@ -4376,7 +4379,7 @@ compressmap(sccs *s, delta *d, ser_t *set, char **inc, char **exc)
 	struct	liststr	*inclist = 0, *exclist = 0;
 	int	inclen = 0, exclen = 0;
 	ser_t	*slist;
-	delta	*t, *n = d;
+	delta	*t;
 	int	i;
 	int	active;
 
@@ -4388,36 +4391,42 @@ compressmap(sccs *s, delta *d, ser_t *set, char **inc, char **exc)
 	slist = calloc(s->nextserial, sizeof(ser_t));
 	assert(slist);
 
+	slist[d->serial] = S_PAR;	/* seed the ancestor thread */
+
 	for (t = s->table; t; t = t->next) {
 		if (t->type != 'D') continue;
 
  		assert(t->serial <= s->nextserial);
 
-		/* if an ancestor and not excluded, or if included */
-		active = ((t == n && slist[t->serial] != S_EXCL)
-			|| slist[t->serial] == S_INC);
-
-		if (t == n)  n = t->parent;
-
-		unless (active || set[t->serial])  continue;
-
-		unless (set[t->serial]) {
-			/* it's active and we don't want it set */
-			exclen += insertstr(&exclist, t->rev);
-			continue;
+		/* Set up parent ancestory for this node */
+		if ((slist[t->serial] & S_PAR) && t->parent) {
+			slist[t->parent->serial] |= S_PAR;
+#ifdef MULTIPARENT
+			if (d->merge) slist[d->merge] |= S_PAR;
+#endif
 		}
-		unless (active) {
-			/* not active and we'd like it set */
+
+		/* if a parent and not excluded, or if included */
+		active = (((slist[t->serial] & (S_PAR|S_EXCL)) == S_PAR)
+		     || slist[t->serial] & S_INC);
+
+		/* exclude if active in delta set and not in desired set */
+		if (active && !set[t->serial]) {
+			exclen += insertstr(&exclist, t->rev);
+		}
+		unless (set[t->serial])  continue;
+
+		/* include if not active in delta set and in desired set */
+		if (!active) {
 			inclen += insertstr(&inclist, t->rev);
 		}
-
 		EACH(t->include) {
-			unless(slist[t->include[i]])
-				slist[t->include[i]] = S_INC;
+			unless(slist[t->include[i]] & (S_INC|S_EXCL))
+				slist[t->include[i]] |= S_INC;
 		}
 		EACH(t->exclude) {
-			unless(slist[t->exclude[i]])
-				slist[t->exclude[i]] = S_EXCL;
+			unless(slist[t->exclude[i]] & (S_INC|S_EXCL))
+				slist[t->exclude[i]] |= S_EXCL;
 		}
 	}
 
@@ -4443,7 +4452,7 @@ private ser_t *
 serialmap(sccs *s, delta *d, int flags, char *iLst, char *xLst, int *errp)
 {
 	ser_t	*slist;
-	delta	*t, *n = d;
+	delta	*t;
 	int	i;
 
 	assert(d);
@@ -4482,22 +4491,33 @@ serialmap(sccs *s, delta *d, int flags, char *iLst, char *xLst, int *errp)
 
 	/* Use linear list, newest to oldest, looking only at 'D' */
 
-	/* slist is used as temp storage for S_INC and S_EXC then
+	/* slist is used as temp storage for S_INC and S_EXCL then
 	 * replaced with either a 0 or a 1 depending on if in view
 	 * XXX clean up use of enum values mixed with 0 and 1
 	 * XXX The slist[0] has a ser_t entry ... is it needed?
-	 * XXX slist has (besides slist[0]) only one of 3 to 4 values:
-	 *     0, 1, S_INC, S_EXCL so it doesn't need to be ser_t?
+	 * XXX slist has (besides slist[0]) only one of 5 values:
+	 *     0, 1, S_INC, S_EXCL, S_PAR so it doesn't need to be ser_t?
 	 */
+
+	/* Seed the graph thread */
+	slist[d->serial] |= S_PAR;
 
 	for (t = s->table; t; t = t->next) {
 		if (t->type != 'D') continue;
 
  		assert(t->serial <= s->nextserial);
 
+		/* Set up parent ancestory for this node */
+		if ((slist[t->serial] & S_PAR) && t->parent) {
+			slist[t->parent->serial] |= S_PAR;
+#ifdef MULTIPARENT
+			if (d->merge) slist[d->merge] |= S_PAR;
+#endif
+		}
+
 		/* if an ancestor and not excluded, or if included */
-		if ( (t == n && slist[t->serial] != S_EXCL)
-		     || slist[t->serial] == S_INC) {
+		if ( ((slist[t->serial] & (S_PAR|S_EXCL)) == S_PAR)
+		     || slist[t->serial] & S_INC) {
 
 			/* slist [0] = Max serial that is in slist */
 			unless (slist[0])  slist[0] = t->serial;
@@ -4505,18 +4525,16 @@ serialmap(sccs *s, delta *d, int flags, char *iLst, char *xLst, int *errp)
 			slist[t->serial] = 1;
 			/* alter only if item hasn't been set yet */
 			EACH(t->include) {
-				unless(slist[t->include[i]])
-					slist[t->include[i]] = S_INC;
+				unless(slist[t->include[i]] & (S_INC|S_EXCL))
+					slist[t->include[i]] |= S_INC;
 			}
 			EACH(t->exclude) {
-				unless(slist[t->exclude[i]])
-					slist[t->exclude[i]] = S_EXCL;
+				unless(slist[t->exclude[i]] & (S_INC|S_EXCL))
+					slist[t->exclude[i]] |= S_EXCL;
 			}
 		}
 		else
 			slist[t->serial] = 0;
-
-		if (t == n)  n = t->parent;
 	}
 	return (slist);
 bad:	free(slist);
@@ -4987,16 +5005,13 @@ char *
 sccs_impliedList(sccs *s, char *who, char *base, char *rev)
 {
 	delta	*baseRev, *t, *mRev;
-	delta	*baseThread, *mThread;
 	int	active;
 	char	*inc = 0, *exc = 0;
 	ser_t	*slist = 0;
 	int	i;
 
-	// like serialmap with 2 parents.
-	// build a set, then compress the set relative to base
-	// can I guarentee there will be no exclude?
-	// I'm thinking yes, and will work on a formal proof of logic.
+	/* XXX: This can go away when serialmap does this directly
+	 */
 
 	unless (baseRev = findrev(s, base)) {
 		fprintf(stderr,
@@ -5017,36 +5032,38 @@ err:		s->state |= S_WARNED;
 
 	slist = calloc(s->nextserial, sizeof(ser_t));
 
-	baseThread = baseRev;
-	mThread = mRev;
+	slist[baseRev->serial] = S_PAR;
+	slist[mRev->serial] = S_PAR;
 
 	for (t = s->table; t; t = t->next) {
 		if (t->type != 'D') continue;
 
  		assert(t->serial < s->nextserial);
 
-		/* if an ancestor and not excluded, or if included */
-		active = (((t == baseThread || t == mThread)
-				&& slist[t->serial] != S_EXCL)
-			|| slist[t->serial] == S_INC);
+		/* Set up parent ancestory for this node */
+		if ((slist[t->serial] & S_PAR) && t->parent) {
+			slist[t->parent->serial] |= S_PAR;
+#ifdef MULTIPARENT
+			if (d->merge) slist[d->merge] |= S_PAR;
+#endif
+		}
 
-		/* at some point, these become equal.  No need to optimize */
-		if (t == baseThread)  baseThread = t->parent;
-		if (t == mThread)  mThread = t->parent;
+		/* if a parent and not excluded, or if included */
+		active = (((slist[t->serial] & (S_PAR|S_EXCL)) == S_PAR)
+		     || slist[t->serial] & S_INC);
 
 		unless (active) {
 			slist[t->serial] = 0;
 			continue;
 		}
 		slist[t->serial] = 1;
-
 		EACH(t->include) {
-			unless(slist[t->include[i]])
-				slist[t->include[i]] = S_INC;
+			unless(slist[t->include[i]] & (S_INC|S_EXCL))
+				slist[t->include[i]] |= S_INC;
 		}
 		EACH(t->exclude) {
-			unless(slist[t->exclude[i]])
-				slist[t->exclude[i]] = S_EXCL;
+			unless(slist[t->exclude[i]] & (S_INC|S_EXCL))
+				slist[t->exclude[i]] |= S_EXCL;
 		}
 	}
 	if (compressmap(s, baseRev, slist, &inc, &exc)) {
@@ -5079,7 +5096,7 @@ strconcat(char *a, char *b, char *sep)
 	return (tmp);
 }
 
-int
+private int
 write_pfile(sccs *s, int flags, delta *d,
 	char *rev, char *iLst, char *i2, char *xLst, char *mRev)
 {
@@ -5148,6 +5165,48 @@ write_pfile(sccs *s, int flags, delta *d,
 	close(fd);
 	free(tmp);
 	s->state |= S_PFILE|S_ZFILE;
+	return (0);
+}
+
+int
+sccs_rewrite_pfile(sccs *s, pfile *pf)
+{
+	int	fd, len;
+	char	*tmp;
+
+	/* XXX: Do I need any special locking code? */
+	if ((fd = open(s->pfile, O_WRONLY|O_TRUNC, 0666)) == -1) {
+		perror("open pfile");
+		return (-1);
+	}
+	len = strlen(pf->oldrev)
+	    + MAXREV + 2
+	    + strlen(pf->newrev)
+	    + strlen(pf->user)
+	    + strlen(pf->date)
+	    + (pf->iLst ? strlen(pf->iLst) + 3 : 0)
+	    + (pf->xLst ? strlen(pf->xLst) + 3 : 0)
+	    + (pf->mRev ? strlen(pf->mRev) + 3 : 0)
+	    + 3 + 1 + 1; /* 3 spaces \n NULL */
+	tmp = malloc(len);
+	sprintf(tmp, "%s %s %s %s",
+	    pf->oldrev, pf->newrev, pf->user, pf->date);
+	if (pf->iLst) {
+		strcat(tmp, " -i");
+		strcat(tmp, pf->iLst);
+	}
+	if (pf->xLst) {
+		strcat(tmp, " -x");
+		strcat(tmp, pf->xLst);
+	}
+	if (pf->mRev) {
+		strcat(tmp, " -m");
+		strcat(tmp, pf->mRev);
+	}
+	strcat(tmp, "\n");
+	write(fd, tmp, strlen(tmp));
+	close(fd);
+	free(tmp);
 	return (0);
 }
 
@@ -6705,7 +6764,7 @@ sccs_hasDiffs(sccs *s, u32 flags)
 	unless (HAS_GFILE(s) && HAS_PFILE(s)) return (0);
 
 	bzero(&pf, sizeof(pf));
-	if (read_pfile("hasDiffs", s, &pf)) return (-1);
+	if (sccs_read_pfile("hasDiffs", s, &pf)) return (-1);
 	if (pf.mRev) RET(2);
 	unless (d = findrev(s, pf.oldrev)) {
 		verbose((stderr, "can't find %s in %s\n", pf.oldrev, s->gfile));
@@ -7283,7 +7342,7 @@ sccs_clean(sccs *s, u32 flags)
 		return (0);
 	}
 
-	if (read_pfile("clean", s, &pf)) return (1);
+	if (sccs_read_pfile("clean", s, &pf)) return (1);
 	if (pf.mRev) {
 		fprintf(stderr,
 		    "%s has merge pointer, not cleaned.\n", s->gfile);
@@ -8020,7 +8079,7 @@ checkInvariants(sccs *s)
 	delta	*d;
 	int	tips = 0;
 	u8	*lodmap = 0;
-	u16	next;
+	ser_t	next;
 
 	next = sccs_nextlod(s);
 	/* next now equals one more than greatest that exists
@@ -10034,8 +10093,8 @@ out:	if (d) {
  *
  * Returns 0 if OK, -1 on error.  Warns on all errors.
  */
-private int
-read_pfile(char *who, sccs *s, pfile *pf)
+int
+sccs_read_pfile(char *who, sccs *s, pfile *pf)
 {
 	int	fsize = size(s->pfile);
 	char	*iLst, *xLst;
@@ -10254,10 +10313,10 @@ abort:		fclose(sfile);
 
 /* return the next available lod or 0 if we've exhausted all lods */
 
-u16
+ser_t
 sccs_nextlod(sccs *s)
 {
-	u16	lod = 0;
+	ser_t	lod = 0;
 	delta	*d;
 
 	/* XXX: invariant is first x.1 is greatest, yet I'm checking them all
@@ -10277,7 +10336,7 @@ sccs_nextlod(sccs *s)
 private int
 chknewlod(sccs *s, delta *d)
 {
-	u16	lod;
+	ser_t	lod;
 	char	buf[MAXPATH];
 	delta	*p;
 
@@ -10516,7 +10575,7 @@ out:
 	/*
 	 * OK, checking done, start the delta.
 	 */
-	if (read_pfile("delta", s, &pf)) OUT;
+	if (sccs_read_pfile("delta", s, &pf)) OUT;
 	unless (d = findrev(s, pf.oldrev)) {
 		fprintf(stderr,
 		    "delta: can't find %s in %s\n", pf.oldrev, s->gfile);
@@ -10945,7 +11004,7 @@ mapRev(sccs *s, u32 flags,
 		lrev = r1;
 		rrev = HAS_PFILE(s) ? "edited" : 0;
 	} else if (HAS_PFILE(s)) {
-		if (read_pfile("diffs", s, pf)) return (-1);
+		if (sccs_read_pfile("diffs", s, pf)) return (-1);
 		lrev = pf->oldrev;
 		rrev = "edited";
 	} else {
@@ -13024,8 +13083,8 @@ sccs_resolveFiles(sccs *s)
 	delta	*p, *d, *g = 0, *a = 0, *b = 0;
 	char	*n[3];
 	u8	*lodmap;
-	u16	next;
-	u16	defbranch;
+	ser_t	next;
+	ser_t	defbranch;
 	int	retcode = -1;
 
 	unless (next = sccs_nextlod(s)) {

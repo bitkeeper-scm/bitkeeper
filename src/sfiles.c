@@ -631,9 +631,17 @@ lftw_inner(char *path, char *base, struct stat *sb,
 		/* Do not cross into other project roots (e.g. RESYNC).  */
 		n = strlen(base);
 		strcat(base, "/" BKROOT);
-		if (exists(path)) { /* see if ChangeSet file there */
-			base[n] = '\0';
-			strcat(base, "/" CHANGESET);
+		if (exists(path)) {
+			/* XXX: In the case of not-in-view files, it is
+			 *      possible to have a file in the not-in-view
+			 *      holding area that is BitKeeper/etc .
+			 *      So in this case we are also checking
+			 *      SCCS/s.ChangeSet
+			 *      NOTE: Other places which check for root,
+			 *      like sccs_root(), sccs_cd2root() and
+			 *      _relativeName() only check BitKeeper/etc
+			 */
+			strcpy(&base[n], "/" CHANGESET);
 			if (exists(path)) continue;
 		}
 

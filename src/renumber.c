@@ -22,9 +22,9 @@ WHATSTR("@(#)%K%");
 private void	newRev(sccs *s, int flags, MDBM *db, delta *d);
 private void	remember(MDBM *db, delta *d);
 private int	taken(MDBM *db, delta *d);
-private int	redo(sccs *s, delta *d, MDBM *db, int flags, u16 release,
+private int	redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release,
 		    MDBM *lodDb, ser_t *map);
-private u16	whichlod(sccs *s, delta *d, MDBM *lodDb);
+private ser_t	whichlod(sccs *s, delta *d, MDBM *lodDb);
 
 private	char	*renumber_help = "\n\
 usage: renumber [-nqs] files (or -)\n\n\
@@ -95,17 +95,17 @@ usage:		fputs(renumber_help, stderr);
  */
 
 void
-sccs_renumber(sccs *s, u16 nextlod, MDBM *lodDb, u32 flags)
+sccs_renumber(sccs *s, ser_t nextlod, MDBM *lodDb, u32 flags)
 {
 	delta	*d;
 	ser_t	i;
-	u16	release = 0;
+	ser_t	release = 0;
 	MDBM	*db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
-	u16	size = (nextlod > s->nextserial) ? nextlod : s->nextserial;
+	ser_t	size = (nextlod > s->nextserial) ? nextlod : s->nextserial;
 	ser_t	*map = calloc(size, sizeof(ser_t));
 	ser_t	defserial = 0;
 	int	defisbranch = 1;
-	u16	maxrel = 0;
+	ser_t	maxrel = 0;
 	char	def[20];	/* X.Y.Z each 5 digit plus term = 18 */
 
 	/* Ignore lod mapping if this is ChangeSet or file is not BK */
@@ -205,14 +205,14 @@ taken(MDBM *db, delta *d)
 	return (val.dsize == 1);
 }
 
-private u16
+private ser_t
 whichlod(sccs *s, delta *d, MDBM *lodDb)
 {
 	char	keystr[MAXPATH];
 	datum	key, val;
 	delta	*e;
 	delta	*f;
-	u16	lod = 0;
+	ser_t	lod = 0;
 
 	assert(s && d && lodDb);
 
@@ -270,7 +270,7 @@ whichlod(sccs *s, delta *d, MDBM *lodDb)
 }
 
 private	int
-redo(sccs *s, delta *d, MDBM *db, int flags, u16 release, MDBM *lodDb,
+redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release, MDBM *lodDb,
     ser_t *map)
 {
 	delta	*p;
@@ -293,7 +293,7 @@ redo(sccs *s, delta *d, MDBM *db, int flags, u16 release, MDBM *lodDb,
 	 */
 	if ((!d->r[2] && d->r[1] == 1) || (!d->r[1] && d->r[3] == 1)) {
 		if (lodDb) {
-			u16	lod;
+			ser_t	lod;
 			unless (lod = whichlod(s, d, lodDb)) {
 				/* XXX: how to communicate error? for
 				 * now stick it on a new lod?

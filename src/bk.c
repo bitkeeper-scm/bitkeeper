@@ -66,6 +66,8 @@ int chksum_main(int, char **);
 int fdiff_main(int, char **);
 int adler32_main(int, char **);
 int lod_main(int, char **);
+int createlod_main(int, char **);
+int _createlod_main(int, char **);
 int range_main(int, char **);
 int rechksum_main(int, char **);
 int renumber_main(int, char **);
@@ -153,6 +155,8 @@ struct command cmdtbl[100] = {
 	{"fdiff", fdiff_main},
 	{"adler32", adler32_main},
 	{"lod", lod_main},
+	{"_createlod", _createlod_main},
+	{"createlod", createlod_main},
 	{"range", range_main},
 	{"rechksum", rechksum_main},
 	{"renumber", renumber_main},

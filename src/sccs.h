@@ -88,11 +88,11 @@
 /*
  * flags passed to sccs_lod()
  */
-
-#define LOD_NEW		0x10000000	/* Setup a new LOD */
+#define LOD_NEW		0x10000000	/* Setup a new LOD on any ChangeSet */
 #define LOD_CHECK	0x20000000	/* Check and fix all LOD settings */
 #define LOD_NORENAME	0x40000000	/* Skip the renaming part */
 #define LOD_RENUMBER	0x80000000	/* Fix possible lod renumber errors */
+#define LOD_CREATE	0x01000000	/* Create a new lod on existing */
 
 /*
  * flags passed to sfileFirst
@@ -381,12 +381,13 @@ typedef struct serial {
 	char	type;			/* 'I' or 'E' */
 } serlist;
 
+/*
+ * Map used by things like serial map,
+ * used to calculate from graph to set
+ */
 #define	S_INC	1
 #define	S_EXCL	2
-typedef struct {
-	ser_t	ser;			/* serial number that set ... */
-	short	what;			/* ... this to S_INC|S_EXCL */
-} ielist;
+#define	S_PAR	4
 
 /*
  * Rap on project roots.  In BitKeeper, lots of stuff wants to know
@@ -419,7 +420,7 @@ typedef struct {
  * 2 - bumped to invalidate old binaries with bad date code.
  * 3 - because random bits can now be on a per delta basis.
  */
-#define	SCCS_VERSION	2
+#define	SCCS_VERSION	3
 
 /*
  * struct sccs - the delta tree, the data, and associated junk.
@@ -548,10 +549,11 @@ typedef struct patch {
  *
  * 0.8 = 0x flags and V version.
  * 0.9 = Positive termination.
- * 1.0 = Changed random bits to be per delta;
+ * 1.0 = Support embedded patches
+ * 1.1 = Changed random bits to be per delta;
  *	 Add grafted file support.
  */
-#define PATCH_CURRENT	"# Patch vers:\t1.0\n"
+#define PATCH_CURRENT	"# Patch vers:\t1.1\n"
 #define	PATCH_ABORT	"# Patch abort\n"
 #define	PATCH_OK	"# Patch OK\n"
 
@@ -601,7 +603,7 @@ void	sccs_freetree(delta *);
 void	sccs_close(sccs *);
 sccs	*sccs_csetInit(u32 flags, project *proj);
 char	**sccs_files(char **, int);
-u16	sccs_nextlod(sccs *s);
+ser_t	sccs_nextlod(sccs *s);
 int	sccs_smoosh(char *left, char *right);
 delta	*sccs_parseArg(delta *d, char what, char *arg, int defaults);
 void	sccs_whynot(char *who, sccs *s);
@@ -720,6 +722,8 @@ int	smartUnlink(char *name);
 int	smartRename(char *old, char *new);
 void	concat_path(char *buf, char *first, char *second);
 void	free_pfile(pfile *pf);
+int	sccs_read_pfile(char *who, sccs *s, pfile *pf);
+int	sccs_rewrite_pfile(sccs *s, pfile *pf);
 delta	*sccs_kid(sccs *s, delta *d);  /* In range.c */
 int	sccs_isleaf(delta *d);
 int	exists(char *file);
@@ -797,7 +801,7 @@ delta	*user_get(delta *);
 struct lod;
 typedef struct lod lod_t;
 
-lod_t	*lod_init(sccs *cset, char *lodname, u32 flags);
+lod_t	*lod_init(sccs *cset, char *lodname, u32 flags, char *who);
 void	lod_free(lod_t *l);
 int	lod_setlod(lod_t *l, sccs *s, u32 flags);
 

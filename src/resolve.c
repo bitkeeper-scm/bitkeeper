@@ -685,8 +685,10 @@ again:	if (how = slotTaken(opts, rs->dname)) {
 	 * OK, looking like a real create.
 	 */
 	sccs_close(rs->s);
-	mkdirf(rs->dname);
-	ret = rename(rs->s->sfile, rs->dname);
+	if (ret = rename(rs->s->sfile, rs->dname)) {
+		mkdirf(rs->dname);
+		ret = rename(rs->s->sfile, rs->dname);
+	}
 	if (opts->debug) {
 		fprintf(stderr,
 		    "%s -> %s = %d\n", rs->s->gfile, rs->d->pathname, ret);
@@ -763,8 +765,10 @@ rename_file(resolve *rs)
 	}
 	if (to) {
 		sccs_close(rs->s); /* for win32 */
-		mkdirf(to);
-		if (rename(rs->s->sfile, to)) return (-1);
+		if (rename(rs->s->sfile, to)) {
+			mkdirf(to);
+			if (rename(rs->s->sfile, to)) return (-1);
+		}
 		if (opts->debug) {
 			fprintf(stderr, "rename(%s, %s)\n", rs->s->sfile, to);
 		}

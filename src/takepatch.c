@@ -649,7 +649,7 @@ Please commit pending changes with `bk commit' and reapply the patch.\n",
 private	void
 setlod(sccs *s, delta *d, int branch)
 {
-	u16	maxlod;
+	ser_t	maxlod;
 	u8	def[MAXPATH];
 
 	if (s->defbranch) free(s->defbranch);
@@ -684,7 +684,7 @@ fixLod(sccs *s)
 
 	if (s->state & S_CSET) {
 		assert(!lodstruct);
-		lodstruct = lod_init(s, 0, flags|lodflags);
+		lodstruct = lod_init(s, 0, flags|lodflags, "takepatch");
 		return (lodstruct ? 0 : -1);
 	}
 
