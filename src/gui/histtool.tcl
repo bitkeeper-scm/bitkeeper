@@ -140,13 +140,14 @@ proc revMap {file} \
 proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 {
 	global curLine cdim gc file dev_null dspec rev2rev_name
-	global w rev1 srev errorCode
+	global w rev1 srev errorCode comments_mapped
 
 	if {[info exists fname]} {unset fname}
 
 	# Keep track of whether we are being called from within the 
 	# file annotation text widget
 	set annotated 0
+	$win tag remove "select" 1.0 end
 
 	if {($line == -1) || ($line == 1)} {
 		set top [expr {$curLine - 3}]
@@ -169,34 +170,44 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 	if {$srev != ""} {
 		set line ""
 		set rev $srev
-		catch {exec bk get -r$rev -g $file 2>$dev_null} err
-		if {[lindex $errorCode 2] == 1} {
-			# XXX: Fix
-			#puts "file=($file)"
+		if {[catch {exec bk prs -hr$rev -d:I: $file 2>$dev_null} out]} {
 			puts "Error: ($file) rev ($rev) is not valid"
 			return
 		}
-		set found [$w(ap) search -regexp "$rev," 1.0]
+		set found [$w(aptext) search -regexp "$rev," 1.0]
 		# Move the found line into view
 		if {$found != ""} {
 			set l [lindex [split $found "."] 0]
 			set curLine "$l.0"
-			$w(ap) see $curLine
+			$w(aptext) see $curLine
 		}
-	# Search for version within the annotation output
+		$win see $curLine
+	# Search for annotated file output or annotated diff output
 	} elseif {[regexp \
 	    {^(.*)[ \t]+([0-9]+\.[0-9.]+).*\|} $line match fname rev]} {
 		set annotated 1
-		$w(ap) configure -height 15
+		$w(aptext) configure -height 15
 		#.p.b configure -background green
 		$w(ctext) configure -height $gc(hist.commentHeight) 
-		$w(ap) configure -height 50
+		$w(aptext) configure -height 50
+		if {[winfo ismapped $w(ctext)]} {
+			set comments_mapped 1
+		} else {
+			set comments_mapped 0
+		}
 		pack configure $w(cframe) -fill x -expand true \
 		    -anchor n -before $w(apframe)
 		pack configure $w(apframe) -fill both -expand true \
 		    -anchor n
 		set prs [open "| bk prs {$dspec} -hr$rev \"$file\" 2>$dev_null"]
 		filltext $w(ctext) $prs 1
+		set wht [winfo height $w(cframe)]
+		set cht [font metrics $gc(hist.fixedFont) -linespace]
+		set adjust [expr {int($wht) / $cht}]
+		#puts "cheight=($wht) char_height=($cht) adj=($adjust)"
+		if {($curLine > $adjust) && ($comments_mapped == 0)} {
+			$w(aptext) yview scroll $adjust units
+		}
 	} else {
 		# Fall through and assume we are in prs output and walk 
 		# backwards up the screen until we find a line with a 
@@ -218,10 +229,9 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 			regexp {^\ \ ([0-9]+\.[0-9.]+)\ .*} \
 				$line match rev
 		}
+		$win see $curLine
 	}
-	$win tag remove "select" 1.0 end
 	$win tag add "select" "$curLine" "$curLine lineend + 1 char"
-	$win see $curLine
 
 	# If in cset prs output, get the filename and start a new histtool
 	# on that file.
@@ -707,12 +717,12 @@ proc listRevs {file} \
 # handle to the revision box
 proc getLeftRev { {id {}} } \
 {
-	global	rev1 rev2 w
+	global	rev1 rev2 w comments_mapped
 
 	# tear down comment window if user is using mouse to click on
 	# the canvas
 	if {$id == ""} {
-		catch {pack forget $w(cframe)}
+		catch {pack forget $w(cframe); set comments_mapped 0}
 	}
 	$w(graph) delete new
 	$w(graph) delete old
@@ -792,33 +802,41 @@ proc prs {} \
 	if {"$rev1" != ""} {
 		busy 1
 		set prs [open "| bk prs {$dspec} -r$rev1 \"$file\" 2>$dev_null"]
-		filltext $w(ap) $prs 1
+		filltext $w(aptext) $prs 1
 	} else {
 		set search(prompt) "Click on a revision"
 	}
 }
 
-# Display history for cset or file in the bottom text panel.
-# If argument opt is tag, only print the history items that have
-#   tags
+# Display the history for the changeset or the file in the bottom 
+# text panel.
+#
+# Arguments 
+#   opt     'tag' only print the history items that have tags. 
+#           '-rrev' Print history from this rev onwards
+#
+# XXX: Larry overloaded 'opt' with a revision. Probably not the best...
 #
 proc history {{opt {}}} \
 {
-	global file dspec dev_null w
+	global file dspec dev_null w comments_mapped
 
-	catch {pack forget $w(cframe)}
+	catch {pack forget $w(cframe); set comments_mapped 0}
 	busy 1
 	if {$opt == "tags"} {
 		set tags \
 "-d\$if(:TAG:){:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)}\n\$each(:TAG:){  TAG: (:TAG:)\n}\n}"
 		set f [open "| bk prs -h {$tags} \"$file\" 2>$dev_null"]
-		filltext $w(ap) $f 1 "There are no tags for $file"
+		filltext $w(aptext) $f 1 "There are no tags for $file"
 	} else {
 		set f [open "| bk prs -h {$dspec} $opt \"$file\" 2>$dev_null"]
-		filltext $w(ap) $f 1 "There is no history"
+		filltext $w(aptext) $f 1 "There is no history"
 	}
 }
 
+#
+# Displays the raw SCCS/s. file in the lower text window. bound to <s>
+#
 proc sfile {} \
 {
 	global file w
@@ -826,7 +844,7 @@ proc sfile {} \
 	busy 1
 	set sfile [exec bk sfiles $file]
 	set f [open "$sfile" "r"]
-	filltext $w(ap) $f 1
+	filltext $w(aptext) $f 1
 }
 
 #
@@ -848,7 +866,7 @@ proc get { type {val {}}} \
 	if {$base != "ChangeSet"} {
 		set get \
 		    [open "| bk get $Opts(get) -Pr$rev1 \"$file\" 2>$dev_null"]
-		filltext $w(ap) $get 1
+		filltext $w(aptext) $get 1
 		return
 	}
 	set rev2 $rev1
@@ -896,13 +914,13 @@ proc diff2 {difftool {id {}} } \
 	catch {exec bk get $Opts(get) -kPr$rev2 $file >$r2}
 	set diffs [open "| diff $Opts(diff) $r1 $r2"]
 	set l 3
-	$w(ap) configure -state normal; $w(ap) delete 1.0 end
-	$w(ap) insert end "- $file version $rev1\n"
-	$w(ap) insert end "+ $file version $rev2\n\n"
-	$w(ap) tag add "oldTag" 1.0 "1.0 lineend + 1 char"
-	$w(ap) tag add "newTag" 2.0 "2.0 lineend + 1 char"
+	$w(aptext) configure -state normal; $w(aptext) delete 1.0 end
+	$w(aptext) insert end "- $file version $rev1\n"
+	$w(aptext) insert end "+ $file version $rev2\n\n"
+	$w(aptext) tag add "oldTag" 1.0 "1.0 lineend + 1 char"
+	$w(aptext) tag add "newTag" 2.0 "2.0 lineend + 1 char"
 	diffs $diffs $l
-	$w(ap) configure -state disabled
+	$w(aptext) configure -state disabled
 	searchreset
 	file delete -force $r1 $r2
 	busy 0
@@ -925,15 +943,15 @@ proc csetdiff2 {{rev {}}} \
 
 	busy 1
 	if {$rev != ""} { set rev1 $rev; set rev2 $rev }
-	$w(ap) configure -state normal; $w(ap) delete 1.0 end
-	$w(ap) insert end "ChangeSet history for $rev1..$rev2\n\n"
+	$w(aptext) configure -state normal; $w(aptext) delete 1.0 end
+	$w(aptext) insert end "ChangeSet history for $rev1..$rev2\n\n"
 
 	set revs [open "| bk -R prs -hbMr$rev1..$rev2 {-d:I:\n} ChangeSet"]
 	while {[gets $revs r] >= 0} {
 		set c [open "| bk sccslog -r$r ChangeSet" r]
-		filltext $w(ap) $c 0
+		filltext $w(aptext) $c 0
 		set log [open "| bk cset -Hr$r | sort | bk sccslog -" r]
-		filltext $w(ap) $log 0
+		filltext $w(aptext) $log 0
 	}
 	busy 0
 }
@@ -976,14 +994,14 @@ proc diffs {diffs l} \
 		set rexp {^<}
 	}
 	while { [gets $diffs str] >= 0 } {
-		$w(ap) insert end "$str\n"
+		$w(aptext) insert end "$str\n"
 		incr l
 		if {[regexp $lexp $str]} {
-			$w(ap) tag \
+			$w(aptext) tag \
 			    add "newTag" $l.0 "$l.0 lineend + 1 char"
 		}
 		if {[regexp $rexp $str]} {
-			$w(ap) tag \
+			$w(aptext) tag \
 			    add "oldTag" $l.0 "$l.0 lineend + 1 char"
 		}
 	}
@@ -1113,11 +1131,11 @@ proc busy {busy} \
 	if {$busy == 1} {
 		. configure -cursor watch
 		$w(graph) configure -cursor watch
-		$w(ap) configure -cursor watch
+		$w(aptext) configure -cursor watch
 	} else {
 		. configure -cursor left_ptr
 		$w(graph) configure -cursor left_ptr
-		$w(ap) configure -cursor left_ptr
+		$w(aptext) configure -cursor left_ptr
 	}
 	if {$paned == 0} { return }
 	update
@@ -1137,18 +1155,18 @@ proc widgets {fname} \
 	# cframe	- comment frame	
 	# apframe	- annotation/prs frame
 	# ctext		- comment text window
-	# ap		- annotation and prs text window
+	# aptext	- annotation and prs text window
 	# graph		- graph canvas window
 	set w(cframe) .p.b.c
 	set w(ctext) .p.b.c.t
 	set w(apframe) .p.b.p
-	set w(ap) .p.b.p.t
+	set w(aptext) .p.b.p.t
 	set w(graph) .p.top.c
 	set search(prompt) ""
 	set search(dir) ""
 	set search(text) .cmd.t
 	set search(focus) $w(graph)
-	set search(widget) $w(ap)
+	set search(widget) $w(aptext)
 	set stacked 1
 
 	if {$tcl_platform(platform) == "windows"} {
@@ -1325,17 +1343,17 @@ proc widgets {fname} \
 	bind . <Double-2>		{history tags; break}
 	bind $w(graph) $gc(hist.quit)	"exit"
 	bind $w(graph) <s>		"sfile"
-	bind $w(graph) <Prior>		"$w(ap) yview scroll -1 pages"
-	bind $w(graph) <Next>		"$w(ap) yview scroll  1 pages"
-	bind $w(graph) <space>		"$w(ap) yview scroll  1 pages"
-	bind $w(graph) <Up>		"$w(ap) yview scroll -1 units"
-	bind $w(graph) <Down>		"$w(ap) yview scroll  1 units"
-	bind $w(graph) <Home>		"$w(ap) yview -pickplace 1.0"
-	bind $w(graph) <End>		"$w(ap) yview -pickplace end"
-	bind $w(graph) <Control-b>	"$w(ap) yview scroll -1 pages"
-	bind $w(graph) <Control-f>	"$w(ap) yview scroll  1 pages"
-	bind $w(graph) <Control-e>	"$w(ap) yview scroll  1 units"
-	bind $w(graph) <Control-y>	"$w(ap) yview scroll -1 units"
+	bind $w(graph) <Prior>		"$w(aptext) yview scroll -1 pages"
+	bind $w(graph) <Next>		"$w(aptext) yview scroll  1 pages"
+	bind $w(graph) <space>		"$w(aptext) yview scroll  1 pages"
+	bind $w(graph) <Up>		"$w(aptext) yview scroll -1 units"
+	bind $w(graph) <Down>		"$w(aptext) yview scroll  1 units"
+	bind $w(graph) <Home>		"$w(aptext) yview -pickplace 1.0"
+	bind $w(graph) <End>		"$w(aptext) yview -pickplace end"
+	bind $w(graph) <Control-b>	"$w(aptext) yview scroll -1 pages"
+	bind $w(graph) <Control-f>	"$w(aptext) yview scroll  1 pages"
+	bind $w(graph) <Control-e>	"$w(aptext) yview scroll  1 units"
+	bind $w(graph) <Control-y>	"$w(aptext) yview scroll -1 units"
 
 	bind $w(graph) <Shift-Prior>	"$w(graph) yview scroll -1 pages"
 	bind $w(graph) <Shift-Next>	"$w(graph) yview scroll  1 pages"
@@ -1351,11 +1369,11 @@ proc widgets {fname} \
         bind . <Shift-Button-5> 	"$w(graph) xview scroll 1 pages"
         bind . <Control-Button-4> 	"$w(graph) yview scroll -1 units"
         bind . <Control-Button-5> 	"$w(graph) yview scroll 1 units"
-        bind . <Button-4> 		"$w(ap) yview scroll -5 units"
-        bind . <Button-5>		"$w(ap) yview scroll 5 units"
-	bind $w(ap) <Button-1> { selectTag %W %x %y "" "B1"; break}
-	bind $w(ap) <Button-3> { selectTag %W %x %y "" "B3"; break}
-	bind $w(ap) <Double-1> { selectTag %W %x %y "" "D1"; break }
+        bind . <Button-4> 		"$w(aptext) yview scroll -5 units"
+        bind . <Button-5>		"$w(aptext) yview scroll 5 units"
+	bind $w(aptext) <Button-1> { selectTag %W %x %y "" "B1"; break}
+	bind $w(aptext) <Button-3> { selectTag %W %x %y "" "B3"; break}
+	bind $w(aptext) <Double-1> { selectTag %W %x %y "" "D1"; break }
 
 	# Command window bindings.
 	bind $w(graph) <slash> "search /"
@@ -1366,11 +1384,11 @@ proc widgets {fname} \
 	    -background $gc(hist.searchColor) -relief groove -borderwid 0
 
 	# highlighting.
-	$w(ap) tag configure "newTag" -background $gc(hist.newColor)
-	$w(ap) tag configure "oldTag" -background $gc(hist.oldColor)
-	$w(ap) tag configure "select" -background $gc(hist.selectColor)
+	$w(aptext) tag configure "newTag" -background $gc(hist.newColor)
+	$w(aptext) tag configure "oldTag" -background $gc(hist.oldColor)
+	$w(aptext) tag configure "select" -background $gc(hist.selectColor)
 
-	bindtags $w(ap) {.p.b.p.t . all}
+	bindtags $w(aptext) {.p.b.p.t . all}
 	bindtags $w(ctext) {.p.b.c.t . all}
 
 	focus $w(graph)
@@ -1414,18 +1432,22 @@ proc histtool {fname R} \
 	} else {
 		set Opts(line_time) "-R$R"
 	}
-	# If valid time range give, do the graph
+	# If valid time range given, do the graph
 	if {[listRevs "$file"] == 0} {
 		revMap "$file"
 		dateSeparate
 		setScrollRegion
 		set first [$w(graph) gettags $firstnode]
-		history "-r$R"
+		if {$srev == ""} {
+			history "-r$R"
+		} else {
+			history "-r$srev"
+		}
 	} else {
 		set ago [exec bk prs -hr+ -d:AGE: $fname]
-		# XXX: Highlight this is a different color? Yellow?
-		$w(ap) configure -state normal; $w(ap) delete 1.0 end
-		$w(ap) insert end  "Error: No data within the given time\
+		# XXX: Highlight this in a different color? Yellow?
+		$w(aptext) configure -state normal; $w(aptext) delete 1.0 end
+		$w(aptext) insert end  "Error: No data within the given time\
 period; please choose a longer amount of time.\n
 The file $fname was last modified $ago ago."
 	}
@@ -1495,7 +1517,7 @@ proc lineOpts {rev} \
 	# Call lines to get this rev in the same format as we are using.
 	set f [open "| bk _lines $Opts(line) -r$rev \"$file\""]
 	gets $f rev
-	cach {close $f} err
+	catch {close $f} err
 	return $rev
 }
 
@@ -1524,5 +1546,5 @@ if {$gca != ""} {
 }
 # Warp to the correct revision if we can
 if {$srev != ""} {
-	selectTag $w(ap) 0 0 0 B1
+	selectTag $w(aptext) 0 0 0 B1
 }

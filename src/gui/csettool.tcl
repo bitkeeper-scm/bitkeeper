@@ -337,7 +337,7 @@ proc file_history {} \
 		set start $stop
 		set file "$f"
 	}
-	catch {exec bk -R sccstool "$file" &}
+	catch {exec bk -R histtool -a $stop "$file" &}
 }
 
 proc dotFile {} \
@@ -687,7 +687,7 @@ proc widgets {} \
 	       	-bg $gc(cset.buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "ChangeSet History" \
-		-command "exec bk sccstool &"
+		-command "exec bk histtool &"
 	    button .menu.file_history -font $gc(cset.buttonFont) \
 		-bg $gc(cset.buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
