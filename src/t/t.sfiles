@@ -393,16 +393,42 @@ perl -ne 'print unless /^.cP/' SCCS/s.foo  | bk undos > SCCS/s.bad
 bk admin -z  SCCS/s.bad
 rm -f SCCS/?.impostor
 sort > $HERE/sfiles.ref <<EOF
-jjjj SCCS/OLD-s.foo
-jjjj SCCS/c.gone
-jjjj SCCS/c.gone@1.1
-jjjj SCCS/c.gone@1.2
-xxxx BitKeeper/tmp/ROOTKEY
-xxxx SFILES
-lc   BitKeeper/etc/SCCS/s.ignore
-u  n SCCS/s.bad
+jjjjjj SCCS/OLD-s.foo
+jjjjjj SCCS/c.gone
+jjjjjj SCCS/c.gone@1.1
+jjjjjj SCCS/c.gone@1.2
+xxxxxx BitKeeper/tmp/ROOTKEY
+xxxxxx SFILES
+lc g   BitKeeper/etc/SCCS/s.ignore
+u   n  SCCS/s.bad
 EOF
 bk sfiles -i | sort > $HERE/sfiles.out || { echo failed 1; exit 1; }
+cmp -s $HERE/sfiles.ref $HERE/sfiles.out || { echo failed 2; diff -u $HERE/sfiles.ref $HERE/sfiles.out; exit 1; }
+echo OK
+
+echo $N Test sfile -idD with s.file w no pathname ...................$NL
+sort > $HERE/sfiles.ref <<EOF
+jjjjjj SCCS/OLD-s.foo
+jjjjjj SCCS/c.gone
+jjjjjj SCCS/c.gone@1.1
+jjjjjj SCCS/c.gone@1.2
+xxxxxx BitKeeper/tmp/ROOTKEY
+xxxxxx SFILES
+lc g   BitKeeper/etc/SCCS/s.ignore
+u   n  SCCS/s.bad
+     D BitKeeper
+     D BitKeeper/deleted
+     D BitKeeper/etc/.master
+     D BitKeeper/log
+     D BitKeeper/tmp
+     D bar/not
+     D bar/notquite
+     d .
+     d BitKeeper/etc
+     d bar
+     d bar/blech
+EOF
+bk sfiles -idD | sort > $HERE/sfiles.out || { echo failed 1; exit 1; }
 cmp -s $HERE/sfiles.ref $HERE/sfiles.out || { echo failed 2; diff -u $HERE/sfiles.ref $HERE/sfiles.out; exit 1; }
 echo OK
 set +e

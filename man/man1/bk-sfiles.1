@@ -70,6 +70,9 @@ shorthand for
 .B \-g
 List the gfile name, not the sfile name.
 .tp
+.B \-G
+List files where the gfile has already been fetched. (gotten)
+.tp
 .B \-i
 shorthand for 
 .B \-cjlvxp
@@ -124,28 +127,40 @@ file.
 .tp
 .B \-v
 Prefix the output with information about the state of the s.file.
-The information is in a 4 character field, followed by a space,
+The information is in a 6 character field, followed by a space,
 then followed by the filename.  Each of the columns are described
 below:
 .RS
 .tp
-\f(CBl???\fR
+\f(CBl?????\fR
 the file is locked
 .tp
-\f(CBu???\fR
+\f(CBu?????\fR
 the file is unlocked
 .tp
-\f(CBjjjj\fR
-the file is junk
+\f(CBjjjjjj\fR
+the file is junk (with -j)
 .tp
-\f(CBxxxx\fR
-the file is an extra
+\f(CBxxxxxx\fR
+the file is an extra (with -x)
 .tp
-\f(CB?c??\fR
-the file is modified (changed)
+\f(CB?c????\fR
+the file is modified (changed) (with -c)
 .tp
-\f(CB??p?\fR
-the file has pending deltas
+\f(CB??p???\fR
+the file has pending deltas (with -p)
+.tp
+\f(CB???g??\fR
+the gfile has been fetched
+.tp
+\f(CB????n?\fR
+the sfile is currently in an "incorrect" location (with -n)
+.tp
+\f(CB?????d\fR
+this is a directory with a SCCS subdirectory (with -d)
+.tp
+\f(CB?????D\fR
+this is a directory not under SCCS control (with -D)
 .RE
 .tp
 .B \-x
@@ -161,11 +176,6 @@ Files under BitKeeper/{log,readers,writers}/ are always ignored.
 .LP
 Revision control files must look like SCCS/s.*,
 not foo/bar/blech/s.*
-.SH BUGS
-The 
-.B \-d/\-D
-options do not combine with the other listing options, they are done
-by a different program.  This will be fixed soon.
 .SH "SEE ALSO"
 .SA history 1
 .br

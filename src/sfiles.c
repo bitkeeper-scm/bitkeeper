@@ -2,16 +2,20 @@
 #include "system.h"
 #include "sccs.h"
 
-#define LSTATE	0	/* lock state: l,u,j,x */
-#define CSTATE	1	/* change state: c,' ' */
-#define PSTATE	2	/* pending state: p,' ' */
+#define	LSTATE	0	/* lock state: l,u,j,x */
+#define	CSTATE	1	/* change state: c,' ' */
+#define	PSTATE	2	/* pending state: p,' ' */
 #define	GSTATE	3	/* got state: g, ' ' */
-#define NSTATE	4	/* name state: n,' ' */
+#define	NSTATE	4	/* name state: n,' ' */
+#define	DSTATE	5	/* directory state: d, D, ' ' */
 
 WHATSTR("@(#)%K%");
 
+typedef struct winfo winfo;
+typedef	char	STATE[7];
+
 private	void	print_summary(void);
-private	void	handle_dflg(int ac, char **av, int dflg);
+private void	print_it(STATE state, char *file, char *rev);
 
 typedef struct {
 	u32     show_markers:1;		/* -v: show markers */
@@ -32,6 +36,8 @@ typedef struct {
 	u32     Cflg:1;     		/* want file<BK_FS>rev format	*/
 	u32     dfile:1;   		/* use d.file to find 	*/
 					/* pending delta	*/
+	u32	dflg:1;
+	u32	Dflg:1;
 	u32	fixdfile:1;		/* fix up  the dfile tag */
 	u32	progress:1;		/* if set, send progress to stdout */
 	FILE	*out;			/* send output here */
@@ -39,8 +45,6 @@ typedef struct {
 	u32     useronly:1;     	/* list user file only 	*/
 	u32	timestamps:1;		/* whether to use the timestamp DB */
 } options;
-
-typedef struct winfo winfo;
 
 private	jmp_buf	sfiles_exit;
 private MDBM	*timestamps = 0;
@@ -146,7 +150,6 @@ sfiles_main(int ac, char **av)
 {
         int     c, i;
 	char	*path, *s, buf[MAXPATH];
-	int	dflg = 0, Dflg = 0;
 
 	if (setjmp(sfiles_exit)) return (1); /* error exit */
 
@@ -168,8 +171,8 @@ sfiles_main(int ac, char **av)
 		    case 'c':	opts.modified = 1; break;	/* doc 2.0 */
 		    case 'C':					/* undoc? 2.0 */
 				opts.pending = opts.Cflg = 1; break;
-		    case 'd':	dflg = 1; break;		/* doc 2.0 */
-		    case 'D':	Dflg = 1; break;		/* doc 2.0 */
+		    case 'd':	opts.dflg = 1; break;		/* doc 2.0 */
+		    case 'D':	opts.Dflg = 1; break;		/* doc 2.0 */
 		    case 'i':	/* see below */	/* doc 2.0 */
 		    case 'E':	opts.modified = 1;		/* doc 2.0 */
 				opts.nflg = 1;
@@ -219,11 +222,6 @@ usage:				system("bk help -s sfiles");
 		}
 	}
 
-	if (dflg || Dflg) {
-		handle_dflg(ac - optind, &av[optind], dflg);
-		return (0);
-	}
-
 	unless (opts.out) opts.out = stdout;
 	fflush(opts.out); /* for win32 */
 	c_count = p_count = d_count = s_count = x_count = 0;
@@ -234,7 +232,7 @@ usage:				system("bk help -s sfiles");
 	 */
 	if (!opts.unlocked && !opts.locked && !opts.junk && !opts.extras &&
 	    !opts.modified && !opts.nflg && !opts.pending && !opts.names &&
-	    !opts.got) {
+	    !opts.got && !opts.dflg && !opts.Dflg) {
 		opts.unlocked = 1;
 		opts.locked = 1;
 	}
@@ -282,7 +280,7 @@ usage:				system("bk help -s sfiles");
 }
 
 private sccs *
-chk_sfile(char *name, char state[6])
+chk_sfile(char *name, STATE state)
 {
 	char	*s;
 	sccs	*sc = 0;
@@ -333,7 +331,7 @@ chk_sfile(char *name, char state[6])
 }
 
 private void
-chk_pending(sccs *s, char *gfile, char state[6], MDBM *sDB, MDBM *gDB)
+chk_pending(sccs *s, char *gfile, STATE state, MDBM *sDB, MDBM *gDB)
 {
 	delta	*d;
 	int	local_s = 0, printed = 0;
@@ -439,7 +437,8 @@ private void
 file(char *f)
 {
 	char	name[MAXPATH], buf[MAXPATH];
-	char    *s, *sfile, state[6] = "     ";
+	char    *s, *sfile;
+	STATE	state = "      ";
 	sccs	*sc = 0;
 
 	if (strlen(f) >= sizeof(name)) {
@@ -577,6 +576,7 @@ sfiles_walk(char *file, struct stat *sb, void *data)
 	winfo	*wi = (winfo *)data;
 	char	*p;
 	int	n;
+	int	nonsccs;
 
 	if (S_ISDIR(sb->st_mode)) {
 		n = strlen(file);
@@ -596,12 +596,17 @@ sfiles_walk(char *file, struct stat *sb, void *data)
 		/* if SCCS dir start new processing */
 		p = 0;
 		if ((p = strrchr(file, '/')) && patheq(p+1, "SCCS")) {
-			if (wi->sccsdir) {
-				sccsdir(wi);
-			}
+			if (wi->sccsdir) sccsdir(wi);
 			wi->sccsdir = strdup(file);
 			if (p = strrchr(wi->sccsdir, '/')) *++p = 0;
 			wi->sccsdirlen = strlen(wi->sccsdir);
+		} else {
+			if (opts.Dflg) {
+				strcpy(&file[n], "/SCCS");
+				nonsccs = !exists(file);
+				file[n] = 0;
+				if (nonsccs) print_it("     D", file, 0);
+			}
 		}
 	} else {
 		/* are we in the same SCCS dir? then save */
@@ -788,7 +793,7 @@ isTagFile(char *file)
 }
 
 private void
-print_it(char state[6], char *file, char *rev)
+print_it(STATE state, char *file, char *rev)
 {
 	char *sfile, *gfile;
 
@@ -801,19 +806,20 @@ print_it(char state[6], char *file, char *rev)
 	}
 	if (opts.show_markers) {
 		if (state[CSTATE] == 'j') {
-			assert(streq(state, " j "));
-			if (fprintf(opts.out, "jjjj ") != 5) {
+			assert(streq(state, " j  "));
+			if (fprintf(opts.out, "jjjjjj ") != 7) {
 error:				perror("output error");
 				fflush(stderr);
 				longjmp(sfiles_exit, 1); /* back to sfiles_main */
 			}
 		} else {
-			if (fprintf(opts.out, "%s ", state) != 6) {
+			if (fprintf(opts.out, "%s ", state) != 7) {
 				goto error;
 			}
 		}
 	}
-	if (opts.gfile || (state[CSTATE] == 'x') || (state[CSTATE] == 'j'))  {
+	if (opts.gfile || (state[CSTATE] == 'x') || (state[CSTATE] == 'j') ||
+	    (state[DSTATE] != ' '))  {
 		if (fputs(gfile, opts.out) < 0) goto error;
 	} else {
 		sfile = name2sccs(gfile);
@@ -832,7 +838,7 @@ error:				perror("output error");
 }
 
 private void
-do_print(char state[6], char *file, char *rev)
+do_print(STATE state, char *file, char *rev)
 {
 
 	if (state[PSTATE] == 'p') p_count++;
@@ -905,6 +911,17 @@ sccsdir(winfo *wi)
 	d_count++;
 	if (opts.progress) progress(1);
 
+	if (opts.dflg || opts.Dflg) {
+		strcpy(buf, dir);
+		buf[strlen(buf)-1] = 0;
+		i = nLines(slist);
+		if (i > 0) {
+			if (opts.dflg) print_it("     d", buf, 0);
+		} else {
+			if (opts.Dflg) print_it("     D", buf, 0);
+		}
+	}
+
 	/*
 	 * First eliminate as much as we can from SCCS dir;
 	 * the leftovers in the gDB should be extras.
@@ -916,7 +933,7 @@ sccsdir(winfo *wi)
 	 */
 	EACH (slist) {
 		char 	*file;
-		char	state[6] = "     ";
+		STATE	state = "      ";
 
 		p = slist[i];
 		s = 0;
@@ -1013,7 +1030,7 @@ sccsdir(winfo *wi)
 			}
 			concat_path(buf1, buf, kv.key.dptr);
 			if (kv.val.dsize == 0) {
-				do_print(" j ", buf1, 0);
+				do_print(" j  ", buf1, 0);
 			} else {
 				/*
 				 * We only get here when we get
@@ -1034,7 +1051,7 @@ sccsdir(winfo *wi)
 					} else {
 						t = buf1;
 					}
-					do_print(" j ", t, 0);
+					do_print(" j  ", t, 0);
 					p = q;
 				}
 			}
@@ -1071,68 +1088,6 @@ void
 enableFastPendingScan()
 {
 	touch(DFILE, 0666);
-}
-
-private	int
-walk_dflg(char *file, struct stat *sb, void *data)
-{
-	char	*s;
-	int	n;
-	int	has_sccs;
-	int	dflg = (int)data;
-
-	unless (S_ISDIR(sb->st_mode)) return (0);
-	if ((file[0] == '.') && (file[1] == '/')) file += 2;
-
-	n = strlen(file);
-	strcpy(&file[n], "/SCCS");
-	has_sccs = (exists(file) && !emptyDir(file));
-	file[n] = 0;
-	if (dflg) {
-		if (has_sccs) printf("%s\n", file);
-	} else {
-		/*
-		 * If we are an SCCS directory, we don't count.
-		 */
-		if (patheq(file, "SCCS") ||
-		    ((s = strrchr(file, '/')) &&
-			patheq(s, "/SCCS"))) {
-			return (0);
-		}
-
-		/*
-		 * If there is no SCCS directory,
-		 * or if the SCCS dir is empty
-		 */
-		unless (has_sccs) printf("%s\n", file);
-	}
-	unless (n == 1 && file[0] == '.') {
-		/* Do not cross into other package roots (e.g. RESYNC).  */
-		strcpy(&file[n], "/" BKROOT);
-		if (exists(file)) return (-1);
-
-		/*
-		 * Skip directory containing .bk_skip file
-		 */
-		strcpy(&file[n], "/" BKSKIP);
-		if (exists(file)) return (-1);
-	}
-	return (0);
-}
-
-private void
-handle_dflg(int ac, char **av, int dflg)
-{
-	int	i;
-
-	if (!av[0]) {
-		walkdir(".", walk_dflg, (void *)dflg);
-	} else {
-		for (i = 0; i < ac; ++i) {
-			localName2bkName(av[i], av[i]);
-			walkdir(av[i], walk_dflg, (void *)dflg);
-		}
-	}
 }
 
 typedef struct sinfo sinfo;
