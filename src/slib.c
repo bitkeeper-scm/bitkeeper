@@ -6071,9 +6071,9 @@ out:			if (slist) free(slist);
 	while (buf = nextdata(s)) {
 		register u8 *e, *e1, *e2;
 
-		++seq;
 		e1= e2 = 0;
 		if (isData(buf)) {
+			++seq;
 			if (buf[0] == CNTLA_ESCAPE) {
 				assert((encoding == E_ASCII) ||
 							(encoding == E_GZIP));
