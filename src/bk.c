@@ -133,6 +133,7 @@ int	push_main(int, char **);
 int	pwd_main(int, char **);
 int	r2c_main(int, char **);
 int	range_main(int, char **);
+int	reviewmerge_main(int, char **);
 int	rcheck_main(int, char **);
 int	rclone_main(int, char **);
 int	rcs2sccs_main(int, char **);
@@ -218,6 +219,7 @@ struct	command cmdtbl[] = {
 	{"_probekey", probekey_main},
 	{"_prunekey", prunekey_main},
 	{"_rclone", rclone_main},
+	{"_reviewmerge", reviewmerge_main},
 	{"_scompress", scompress_main},		/* undoc? 2.0 */
 	{"_socket2pipe", socket2pipe_main},	/* for win32 only */
 	{"_sort", sort_main},

@@ -6428,6 +6428,15 @@ out:			if (slist) free(slist);
 					    "%-*s ", s->revLen, tmp->rev);
 				if (flags&GET_LINENUM)
 					fprintf(out, "%6d ", lines);
+				if (flags&GET_LINENAME) {
+					char	*p;
+
+					p = get_lineName(s, print,
+					    namedb, lnum[print], lnamebuf);
+					assert(p &&
+					    strlen(p) < sizeof(lnamebuf));
+					fprintf(out, "%-36s", p);
+				}
 				fprintf(out, align);
 			} else if (flags & GET_PREFIX) {
 				delta *tmp = sfind(s, (ser_t) print);
