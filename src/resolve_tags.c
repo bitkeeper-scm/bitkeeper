@@ -178,7 +178,11 @@ resolve_tags(opts *opts)
 		t.local = d;
 		for (d = t.mremote; d->type == 'R'; d = d->parent);
 		t.remote = d;
-		while (!resolve_loop("resolve_tags", rs, t_funcs));
+		if (rs->opts->debug) {
+			fprintf(stderr, "resolve_tags: ");
+			resolve_dump(rs);
+		}
+		while (!resolve_loop("tag conflict", rs, t_funcs));
 	}
 	sccs_free(local);
 	resolve_free(rs);

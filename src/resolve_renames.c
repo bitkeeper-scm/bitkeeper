@@ -208,6 +208,10 @@ resolve_renames(resolve *rs)
 	int	ret;
 	char	buf[MAXPATH];
 
+	if (rs->opts->debug) {
+		fprintf(stderr, "resolve_renames: ");
+		resolve_dump(rs);
+	}
 	if (rs->revs) {
 		n = calloc(1, sizeof(*n));
 		d = sccs_getrev(rs->s, rs->revs->local, 0, 0);
@@ -230,7 +234,7 @@ resolve_renames(resolve *rs)
 		}
 	}
 	rs->prompt = rs->gnames->local;
-	ret = resolve_loop("resolve_renames", rs, r_funcs);
+	ret = resolve_loop("rename conflict", rs, r_funcs);
 	if (rs->revs) freenames(n, 1);
 	return (ret);
 }

@@ -104,6 +104,10 @@ rfuncs	m_funcs[] = {
 int
 resolve_modes(resolve *rs)
 {
+        if (rs->opts->debug) {
+		fprintf(stderr, "resolve_modes: ");
+		resolve_dump(rs);
+	}
 	rs->prompt = rs->s->gfile;
-	return (resolve_loop("resolve_modes", rs, m_funcs));
+	return (resolve_loop("mode conflict", rs, m_funcs));
 }

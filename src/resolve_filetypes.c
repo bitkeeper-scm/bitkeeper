@@ -105,6 +105,10 @@ rfuncs	ft_funcs[] = {
 int
 resolve_filetypes(resolve *rs)
 {
+        if (rs->opts->debug) {
+		fprintf(stderr, "resolve_filetypes: ");
+		resolve_dump(rs);
+	}
 	rs->prompt = rs->s->gfile;
-	return (resolve_loop("resolve_filetypes", rs, ft_funcs));
+	return (resolve_loop("filetype conflict", rs, ft_funcs));
 }

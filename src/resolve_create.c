@@ -74,7 +74,7 @@ res_diffCommon(resolve *rs, rfunc differ)
 		unlink(right);
 		return (0);
 	}
-	if (rs->res_screate) {
+	if (rs->res_screate || rs->res_resync) {
 		char	left[MAXPATH];
 		char	right[MAXPATH];
 		sccs	*s = (sccs*)rs->opaque;
@@ -213,6 +213,9 @@ more(resolve *rs, char *file)
 int
 res_vl(resolve *rs)
 {
+	char	left[MAXPATH];
+	sccs	*s = (sccs*)rs->opaque;
+
 	if (rs->tnames) {
 		more(rs, rs->tnames->local);
 		return (0);
@@ -223,20 +226,22 @@ res_vl(resolve *rs)
 		chdir(ROOT2RESYNC);
 		return (0);
 	}
-	if (rs->res_screate) {
-		char	left[MAXPATH];
-		sccs	*s = (sccs*)rs->opaque;
-
-		gettemp(left, "left");
-		if (sccs_get(s, 0, 0, 0, 0, SILENT|PRINT, left)) {
-		    	fprintf(stderr, "get failed, can't view.\n");
-			return (0);
-		}
-		more(rs, left);
-		unlink(left);
+	unless (rs->res_screate || rs->res_resync) {
+		fprintf(stderr, "Don't know how to view the file.\n");
 		return (0);
 	}
-	fprintf(stderr, "Don't know how to view the file.\n");
+	if (rs->res_screate) {
+		s = (sccs*)rs->opaque;
+	} else {
+		s = rs->s;
+	}
+	gettemp(left, "left");
+	if (sccs_get(s, 0, 0, 0, 0, SILENT|PRINT, left)) {
+		    fprintf(stderr, "get failed, can't view.\n");
+		return (0);
+	}
+	more(rs, left);
+	unlink(left);
 	return (0);
 }
 
@@ -244,9 +249,11 @@ int
 res_vr(resolve *rs)
 {
 	char	tmp[MAXPATH];
+	char	*name = rs->s->gfile;
 
+	if (rs->res_resync) name = rs->dname;
 	bktemp(tmp);
-	sysio(0, tmp, 0, "bk", "get", "-qkp", rs->s->gfile, SYS);
+	sysio(0, tmp, 0, "bk", "get", "-qkp", name, SYS);
 	more(rs, tmp);
 	unlink(tmp);
 	return (0);
@@ -325,6 +332,16 @@ res_hl(resolve *rs)
 int
 res_hr(resolve *rs)
 {
+	if (rs->res_resync) {
+		char	tmp[MAXPATH];
+		sccs	*s = (sccs*)rs->opaque;
+
+		bktemp(tmp);
+		sysio(0, tmp, 0, "bk", "prs", s->gfile, SYS);
+		more(rs, tmp);
+		unlink(tmp);
+		return (0);
+	}
 	unless (rs->revs) return (res_h(rs));
 	prs_common(rs, rs->s, rs->revs->local, rs->revs->remote);
 	return (0);
@@ -975,6 +992,98 @@ sc_rmr(resolve *rs)
 	return (1);	/* XXX - EAGAIN? */
 }
 
+int
+rc_explain(resolve *rs)
+{
+	fprintf(stderr,
+"Two different files want to occupy the following location:\n\
+\t``%s''\n\
+For the purposes of this resolve, we call the files left and right,\n\
+the left file is the one which wants to be in the specified location,\n\
+and the right file is the one which is already there.\n\
+\nYour choices are:\n\
+a) remove the left file, which will leave you with the remote file.\n\
+b) move the left file to some other pathname.\n\n\
+Both of these choices leave the right file where it is.\n", rs->dname);
+	return (0);
+}
+
+int
+rc_help(resolve *rs)
+{
+	int	i;
+
+	fprintf(stderr,
+"---------------------------------------------------------------------------\n\
+Two files want to be: ``%s''\n\
+---------------------------------------------------------------------------\n",
+	    rs->d->pathname);
+	fprintf(stderr, "Commands are:\n\n");
+	for (i = 0; rs->funcs[i].spec; i++) {
+		fprintf(stderr, "  %-4s - %s\n", 
+		    rs->funcs[i].spec, rs->funcs[i].help);
+	}
+	fprintf(stderr, "\n");
+	return (0);
+}
+
+int
+rc_ml(resolve *rs)
+{
+	char	buf[MAXPATH];
+	char	key[MAXKEY];
+	char	*to, *tmp;
+
+	unless (prompt("Move left file to:", buf)) return (0);
+	if ((buf[0] == '/') || strneq("../", buf, 3)) {
+		fprintf(stderr, "Destination must be in repository.\n");
+		return (0);
+	}
+	if (rs->opts->debug) fprintf(stderr, "%s\n", buf);
+	if (sccs_filetype(buf) != 's') {
+		to = name2sccs(buf);
+	} else {
+		to = strdup(buf);
+	}
+	switch (slotTaken(rs->opts, to)) {
+	    case SFILE_CONFLICT:
+		fprintf(stderr, "%s exists locally already\n", to);
+		return (0);
+	    case GFILE_CONFLICT:
+		tmp = sccs2name(to);
+		fprintf(stderr, "%s exists locally already\n", tmp);
+		free(tmp);
+		return (0);
+	    case RESYNC_CONFLICT:
+		fprintf(stderr, "%s exists in RESYNC already\n", to);
+		return (0);
+	}
+	sccs_sdelta(rs->s, sccs_ino(rs->s), key);
+	mdbm_store_str(rs->opts->rootDB, key, to, MDBM_REPLACE);
+	sccs_close(rs->s);
+	sys("bk", "mv", rs->s->sfile, to, SYS);
+	unlink(sccs_Xfile(rs->s, 'm'));
+	if (rs->opts->resolveNames) rs->opts->renames2++;
+	if (rs->opts->log) {
+		fprintf(rs->opts->log, "rename(%s, %s)\n", rs->s->sfile, to);
+	}
+	free(to);
+	return (1);
+}
+
+int
+rc_rml(resolve *rs)
+{
+	unless (rs->opts->force || confirm("Remove local file?")) return (0);
+	sys("bk", "rm", rs->s->sfile, SYS);
+	unlink(sccs_Xfile(rs->s, 'm'));
+	if (rs->opts->resolveNames) rs->opts->renames2++;
+	if (rs->opts->log) {
+		fprintf(rs->opts->log, "remove(%s)\n", rs->s->sfile);
+	}
+	return (1);
+}
+
 rfuncs	gc_funcs[] = {
     { "?", "help", "print this help", gc_help },
     { "a", "abort", "abort the patch, DISCARDING all merges", res_abort },
@@ -1035,15 +1144,35 @@ rfuncs	sc_funcs[] = {
 };
 
 /*
+ * rs->s is the file that wants to move,
+ * rs->opaque is the file that is in the slot.
+ */
+rfuncs	rc_funcs[] = {
+    { "?", "help", "print this help", rc_help },
+    { "a", "abort", "abort the patch, DISCARDING all merges", res_abort },
+    { "d", "diff", "diff the two files", res_diff },
+    { "D", "difftool", "graphical diff the of two files", res_difftool },
+    { "hl", "hist left", "revision history of the left file", res_hl },
+    { "hr", "hist right", "revision history of the right file", res_hr },
+    { "ml", "move left", "move the left file to someplace else", rc_ml },
+    { "q", "quit", "immediately exit resolve", res_quit },
+    { "rl", "remove left", "remove the left copy of the file", rc_rml },
+    { "x", "explain", "explain the choices", rc_explain },
+    { 0, 0, 0, 0 }
+};
+
+/*
  * Given an SCCS file, resolve the create.
- *	sfile conflicts can be handled by adding the sfile to the patch.
- *	gfile conflicts are not handled yet.
  */
 int
 resolve_create(resolve *rs, int type)
 {
 	int	ret;
 
+        if (rs->opts->debug) {
+		fprintf(stderr, "resolve_create: ");
+		resolve_dump(rs);
+	}
 	if (rs->opts->debug) fprintf(stderr, "TYPE=");
 	switch (type) {
 	    case GFILE_CONFLICT:
@@ -1051,12 +1180,12 @@ resolve_create(resolve *rs, int type)
 		if (ret = gc_sameFiles(rs)) return (ret);
 		rs->prompt = rs->d->pathname;
 		rs->res_gcreate = 1;
-		return (resolve_loop("resolve_create gc", rs, gc_funcs));
+		return (resolve_loop("create/gfile conflict", rs, gc_funcs));
 	    case DIR_CONFLICT:
 		if (rs->opts->debug) fprintf(stderr, "DIR\n");
 		rs->prompt = rs->d->pathname;
 		rs->res_dirfile = 1;
-		return (resolve_loop("resolve_create dc", rs, dc_funcs));
+		return (resolve_loop("create/dir conflict", rs, dc_funcs));
 	    case SFILE_CONFLICT:
 		if (rs->opts->debug) fprintf(stderr, "SFILE\n");
 		rs->prompt = rs->d->pathname;
@@ -1064,7 +1193,7 @@ resolve_create(resolve *rs, int type)
 		chdir(RESYNC2ROOT);
 		rs->opaque = (void*)sccs_init(rs->dname, 0, 0);
 		chdir(ROOT2RESYNC);
-		ret = resolve_loop("resolve_create sc", rs, sc_funcs);
+		ret = resolve_loop("create/sfile conflict", rs, sc_funcs);
 		if (rs->opaque) sccs_free((sccs*)rs->opaque);
 		return (ret);
 	    case LOGGING_OK_CONFLICT:
@@ -1079,9 +1208,12 @@ resolve_create(resolve *rs, int type)
 		return (ret);
 	    case RESYNC_CONFLICT:
 		if (rs->opts->debug) fprintf(stderr, "RESYNC\n");
+		rs->prompt = rs->d->pathname;
 		rs->res_resync = 1;
-	    	fprintf(stderr, "RESYNC sfile conflicts not done.\n");
-		exit(1);
+		rs->opaque = (void*)sccs_init(rs->dname, 0, 0);
+		ret = resolve_loop("create/resync conflict", rs, rc_funcs);
+		if (rs->opaque) sccs_free((sccs*)rs->opaque);
+		return (ret);
 	}
 	return (-1);
 }

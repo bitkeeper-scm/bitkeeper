@@ -38,6 +38,40 @@ resolve_init(opts *opts, sccs *s)
 	return (rs);
 }
 
+private void
+pnames(char *prefix, names *n)
+{
+	if (n->local) printf("%s local: %s\n", prefix, n->local);
+	if (n->gca) printf("%s gca: %s\n", prefix, n->gca);
+	if (n->remote) printf("%s remote: %s\n", prefix, n->remote);
+}
+
+/*
+ * Debugging, dump everything that we can.
+ */
+void
+resolve_dump(resolve *rs)
+{
+	printf("=== resolve dump of 0x%x ===\n", rs);
+	if (rs->prompt) printf("prompt: %s\n", rs->prompt);
+	if (rs->s) printf("sfile: %s\n", rs->s->sfile);
+	if (rs->key) printf("key: %s\n", rs->key);
+	if (rs->d) printf("delta: %s\n", rs->d->rev);
+	if (rs->dname) printf("dname: %s\n", rs->dname);
+	if (rs->revs) pnames("revs", rs->revs);
+	if (rs->rnames) pnames("rnames", rs->rnames);
+	if (rs->gnames) pnames("gnames", rs->gnames);
+	if (rs->snames) pnames("snames", rs->snames);
+	if (rs->tnames) pnames("tnames", rs->tnames);
+	printf("n: %d\n", rs->n);
+	if (rs->opaque) printf("opaque: %x\n", rs->opaque);
+	if (rs->res_gcreate) printf("gcreate conflict\n");
+	if (rs->res_screate) printf("screate conflict\n");
+	if (rs->res_dirfile) printf("dirfile conflict\n");
+	if (rs->res_resync) printf("resync conflict\n");
+	if (rs->res_contents) printf("contents conflict\n");
+}
+
 void
 resolve_free(resolve *rs)
 {
@@ -67,9 +101,17 @@ resolve_loop(char *name, resolve *rs, rfuncs *rf)
 	for (i = 0; rf[i].spec && !streq(rf[i].spec, "!"); i++);
 	if (rf[i].spec) bang = i;
 	while (1) {
-		fprintf(stderr, "%s>> ", rs->prompt);
+		fprintf(stderr, "(%s) %s>> ", name, rs->prompt);
 		getline(0, buf, sizeof(buf));
 		unless (buf[0]) strcpy(buf, "?");
+		if (streq(buf, "dump")) {
+			resolve_dump(rs);
+			continue;
+		}
+		if (streq(buf, "debug")) {
+			rs->opts->debug = !rs->opts->debug;
+			continue;
+		}
 
 again:		/* 100 tries for the same file means we're hosed.  */
 		if (++rs->n == 100) return (ELOOP);

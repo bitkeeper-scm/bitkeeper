@@ -66,7 +66,7 @@ b_ascii(resolve *rs)
 {
 	extern	rfuncs	c_funcs[];
 
-	return (resolve_loop("resolve_contents", rs, c_funcs));
+	return (resolve_loop("content conflict", rs, c_funcs));
 }
 
 /* An alias for !cp $BK_LOCAL $BK_MERGE */
@@ -128,6 +128,10 @@ resolve_binary(resolve *rs)
 	int	ret;
 	char	buf[MAXPATH];
 
+        if (rs->opts->debug) {
+		fprintf(stderr, "resolve_binary: ");
+		resolve_dump(rs);
+	}
 	d = sccs_getrev(rs->s, rs->revs->local, 0, 0);
 	assert(d);
 	sprintf(buf, "BitKeeper/tmp/%s_%s@%s", nm, d->user, d->rev);
@@ -155,7 +159,7 @@ resolve_binary(resolve *rs)
 		automerge(rs, n);
 		ret = 1;
 	} else {
-		ret = resolve_loop("resolve_binaries", rs, b_funcs);
+		ret = resolve_loop("binary conflict", rs, b_funcs);
 	}
 	unlink(n->local);
 	unlink(n->gca);

@@ -140,6 +140,10 @@ rfuncs	f_funcs[] = {
 int
 resolve_flags(resolve *rs)
 {
+        if (rs->opts->debug) {
+		fprintf(stderr, "resolve_flags: ");
+		resolve_dump(rs);
+	}
 	rs->prompt = rs->s->gfile;
-	return (resolve_loop("resolve_flags", rs, f_funcs));
+	return (resolve_loop("flag conflict", rs, f_funcs));
 }

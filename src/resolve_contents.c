@@ -419,6 +419,10 @@ resolve_contents(resolve *rs)
 
 	if (rs->s->encoding & E_BINARY) return (resolve_binary(rs));
 
+        if (rs->opts->debug) {
+		fprintf(stderr, "resolve_contents: ");
+		resolve_dump(rs);
+	}
 	n = calloc(1, sizeof(*n));
 	nm = basenm(rs->s->gfile);
 	d = sccs_getrev(rs->s, rs->revs->local, 0, 0);
@@ -448,7 +452,7 @@ resolve_contents(resolve *rs)
 		automerge(rs, n);
 		ret = 1;
 	} else {
-		ret = resolve_loop("resolve_contents", rs, c_funcs);
+		ret = resolve_loop("content conflict", rs, c_funcs);
 	}
 	unlink(n->local);
 	unlink(n->gca);

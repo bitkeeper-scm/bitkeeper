@@ -957,9 +957,14 @@ again:
 	 * Figure out why we have a conflict, if it is like a create
 	 * conflict, try that.
 	 */
-	if (how && (resolve_create(rs, how) == EAGAIN)) {
-		how = 0;
-		goto again;
+	if (how) {
+		int	ret;
+
+		if ((ret = resolve_create(rs, how)) == EAGAIN) {
+			how = 0;
+			goto again;
+		}
+		return (ret);
 	} else {
 		return (resolve_renames(rs));
 	}
@@ -1038,16 +1043,18 @@ rename_delta(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 	char	buf[MAXPATH+100];
 
 	if (rs->opts->debug) {
-		fprintf(stderr, "rename(%s, %s, %s, %s)\n", sfile,
+		fprintf(stderr, "rename_delta(%s, %s, %s, %s)\n", sfile,
 		    d->rev, d->pathname, which == LOCAL ? "local" : "remote");
 	}
 	edit_tip(rs, sfile, d, rfile, which);
 	t = sccs2name(sfile);
-	sprintf(buf, "bk delta %s -Py'Merge rename: %s -> %s' %s",
-	    rs->opts->log ? "" : "-q", d->pathname, t, sfile);
 	sprintf(buf, "-PyMerge rename: %s -> %s", d->pathname, t);
 	free(t);
-	sys("bk", "delta", rs->opts->log ? "" : "-q", buf, sfile, SYS);
+	if (rs->opts->log) {
+		sys("bk", "delta", buf, sfile, SYS);
+	} else {
+		sys("bk", "delta", "-q", buf, sfile, SYS);
+	}
 }
 
 /*
