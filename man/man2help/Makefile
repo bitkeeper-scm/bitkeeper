@@ -2,11 +2,11 @@
 # Order is important, this is the order they will show up in helptool.
 SUM=All General Basics Repository GUI-tools File Admin Licensing Compat Utility 
 
-all:
+helptxt:
 	@make pages
 	@make summaries
 
-pages: ../bk-macros
+pages: ../bk-macros man2help.pl
 	@bk get -STq ../man1
 	./man2help.pl -debug ../bk-macros bk- `ls ../man1/*.1`
 
@@ -14,7 +14,7 @@ helptxt2:
 	cat *.fmt > helptxt2
 	@make summaries
 
-summaries: helptxt2 ../bk-macros
+summaries: helptxt2 ../bk-macros help2sum.pl
 	./help2sum.pl helptxt2
 	for i in $(SUM); \
 	do	cat $$i.fmt; \
