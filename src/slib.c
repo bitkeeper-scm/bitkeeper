@@ -12280,7 +12280,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 
 	if (streq(kw, "CSETKEY")) {
 		unless (d->flags & D_CSET) return (nullVal);
-		sccs_pdelta(s, d, out);
+		if (out) sccs_pdelta(s, d, out);
 		return (strVal);
 	}
 
