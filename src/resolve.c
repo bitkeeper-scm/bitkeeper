@@ -1826,8 +1826,8 @@ automerge(resolve *rs)
 	if (rs->opts->debug) fprintf(stderr, "automerge %s\n", name);
 
 	/*
-	 * The interface to the merge program is
-	 * "merge left_vers gca_vers right_vers merge_vers"
+	 * The interface to the smerge program is
+	 * "smerge left_ver gca_ver right_ver"
 	 * and the program must return as follows:
 	 * 0 for no overlaps, 1 for some overlaps, 2 for errors.
 	 */

@@ -248,3 +248,21 @@ then	echo failed with mode $FLAGS
 	exit 1
 fi
 echo OK
+echo $N Check flags conflict automerge...............................$NL
+cd $HERE
+rm -rf project copy
+tar xf repo.tar
+cd $HERE/project/src
+bk admin $Q -fEXPAND1 -fRCS -fYEAR4 foo.c
+bk commit $S -yperm2
+cd $HERE/copy/src
+bk admin $Q -fEXPAND1 -FSCCS foo.c
+bk commit $S -yperm3
+bk pull $Q $HERE/project || exit 1
+FLAGS=`bk prs -h -r+ -d:FLAGS: foo.c`
+if [ "$FLAGS" != "BITKEEPER,RCS,YEAR4,EXPAND1,CSETMARKED,SINGLE,EOLN_NATIVE" ]
+then	echo failed with mode $FLAGS
+	bk prs -h -d':REV:\t:FLAGS:\n' foo.c
+	exit 1
+fi
+echo OK
