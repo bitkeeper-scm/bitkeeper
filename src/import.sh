@@ -281,13 +281,15 @@ import_patch() {
 	bk sfiles -x | grep '=-PaTcH_BaCkUp!$' | xargs rm -f
 	REJECTS=NO
 	find .  -name '*.rej' -print > ${TMP}rejects$$
-	if [ -s ${TMP}rejects$$ ]
-	then 	echo Patch rejects:
+	while [ -s ${TMP}rejects$$ ]
+	do 	echo "Patch rejects:"
 		cat ${TMP}rejects$$
 		echo
-		echo "Patch aborted, you need to clean up by hand, XXX"
-		Done 1
-	fi
+		echo Dropping you into a shell to clean these up.
+		echo Please fix up the rejects and we will keep going.
+		sh -i
+		find .  -name '*.rej' -print > ${TMP}rejects$$
+	done
 	grep '^Creating file ' ${TMP}plog$$ |
 	    sed 's/Creating file //' > ${TMP}creates$$
 	grep '^Removing file ' ${TMP}plog$$ |
