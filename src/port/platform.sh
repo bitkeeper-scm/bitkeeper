@@ -5,6 +5,7 @@
 platformInit()
 {
 	# Unix specific stuff
+	GUI_BIN=$BIN
 	RM=/bin/rm
 	ECHO=echo
 	TMP=/tmp/

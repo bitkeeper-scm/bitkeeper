@@ -30,14 +30,17 @@ winExec()
 platformInit()
 {
 		# WIN32 specific stuff
-		win2cygPath $BK_HOME; _BK_HOME=$cygPath;
+		win2cygPath $BK_BIN; _BK_BIN=$cygPath;
 		win2cygPath $UNIX_BIN; _UNIX_BIN=$cygPath;
 		win2cygPath $TCL_BIN; _TCL_BIN=$cygPath;
 		win2cygPath $VIM; _VIM=$cygPath;
 		# must set up unix path
 		# used by resolve & GUI(tcl) scripts
-		PATH=$_BK_HOME:$_UNIX_BIN:$_TCL_BIN:$PATH
-		export PATH BK_HOME UNIX_BIN
+		PATH=$_BK_BIN:$_UNIX_BIN:$_TCL_BIN:$PATH
+		export PATH BK_BIN UNIX_BIN
+		# reset BIN to cynwin style path
+		BIN=$_BK_BIN
+		GUI_BIN=$BK_BIN
 		RM=rm.exe
 		TMP="${TEMP}/"
 		ECHO=${BIN}/bin_mode_echo.exe
