@@ -420,7 +420,7 @@ __status() {
 		echo "`${BIN}sfiles | wc -l` files under revision control."
 		echo "`${BIN}sfiles -x | wc -l` files not under revision control."
 		echo "`${BIN}sfiles -c | wc -l` files modified and not checked in."
-		echo "`${BIN}sfiles -C | wc -l` files with uncommitted deltas."
+		echo "`${BIN}sfiles -C | wc -l` files with checked in, but not committed, deltas."
 	fi
 }
 
@@ -450,8 +450,40 @@ _rm() {
 	${BIN}sccsrm "$@"
 }
 
+_info() {
+	${BIN}sinfo "$@"
+}
+
 _sdiffs() {
 	${BIN}diffs -s "$@"
+}
+
+# Usage: fix file
+_fix() {
+	Q=-q
+	while getopts qv opt
+	do	case "$opt" in
+		q) ;;
+		v) Q=;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	for f in $*
+	do	# XXX - need to make sure they are not in a cset already
+		if [ -w $f ]
+		then	echo $f is already edited
+			continue
+		fi
+		if [ -f "${f}-.fix" ]
+		then	echo ${f}-.fix exists, skipping that file
+			continue
+		fi
+		${BIN}get $Q -kp $f > "${f}-.fix"
+		REV=`${BIN}prs -hr+ -d:REV: $f`
+		${BIN}rmdel $Q -D$REV $f
+		${BIN}get $Q -eg $f
+		mv "${f}-.fix" $f
+	done
 }
 
 # Usage: undo cset,cset,cset
@@ -656,7 +688,7 @@ logging_ok:	to '$LOGADDR > ${cfgDir}config
 	fi
 }
 
-_sendLog() {
+_logChangeSet() {
 	# Determine if this is the first rev where logging is active.
 	key=`${BIN}cset -c -r$REV | grep BitKeeper/etc/config |cut -d' ' -f2`
 	if [ x$key != x ]
@@ -682,6 +714,7 @@ _sendLog() {
 	P=`${BIN}prs -hr1.0 -d:FD: ChangeSet | head -1`
 	( echo ---------------------------------
 	  ${BIN}sccslog -r$REV ChangeSet
+	  ${BIN}cset -r+ | ${BIN}sccslog -
 	  echo ---------------------------------
 	  ${BIN}cset -c -r$R ) | _mail $LOGADDR "BitKeeper log: $P" 
 }
@@ -716,7 +749,8 @@ _commit() {
 		R) RESYNC=YES; cfgDir="../BitKeeper/etc/";; # called from RESYNC
 		s|q) QUIET=YES; COPTS="-s $COPTS";;
 		S) SYM="-S$OPTARG";;
-		y) DOIT=YES; GETCOMMENTS=NO; ${ECHO} "$OPTARG" > ${TMP}commit$$;;
+		y) DOIT=YES; GETCOMMENTS=NO
+		   ${ECHO} "$OPTARG" > ${TMP}commit$$;;
 		Y) DOIT=YES; GETCOMMENTS=NO; cp "$OPTARG" ${TMP}commit$$;;
 		esac
 	done
@@ -770,7 +804,7 @@ _commit() {
 		# XXX TODO: Needs to account for LOD when it is implemented
 		REV=`${BIN}prs -hr+ -d:I: ChangeSet`
 		if [ $nusers -gt 1 ]
-		then _sendLog $REV
+		then _logChangeSet $REV
 		fi
 		exit $EXIT;
 	fi
@@ -804,7 +838,7 @@ _commit() {
 			# XXX TODO: Needs to account for LOD 
 			REV=`${BIN}prs -hr+ -d:I: ChangeSet`
 			if [ $nusers -gt 1 ]
-			then _sendLog $REV
+			then _logChangeSet $REV
 			fi
 	    	 	exit $EXIT;
 		 	;;
@@ -905,7 +939,7 @@ _commandHelp() {
 		# this is the list of commands which have better help in the
 		# helptext file than --help yields.
 		unlock|unedit|check|import|sdiffs|resync|pull|push|parent|\
-		clone)
+		clone|fix|info)
 			_gethelp help_$i $BIN | $PAGER
 			;;
 		*)
@@ -1053,7 +1087,7 @@ case "$1" in
     setup|changes|pending|commit|sendbug|send|receive|\
     mv|edit|unedit|unlock|man|undo|save|rm|new|version|\
     root|status|export|users|sdiffs|unwrap|clone|\
-    pull|push|parent|diffr)
+    pull|push|parent|diffr|fix|info)
 	cmd=$1
     	shift
 	_$cmd "$@"
@@ -1086,7 +1120,10 @@ then	if [ X$2 != X -a -d $2 ]
 	else	_cd2root
 	fi
 	shift
-	SFILES=YES
+	# Allow "bk -r sfiles -c" strangeness.
+	if [ "X$1" != Xsfiles ]
+	then	SFILES=YES
+	fi
 fi
 if [ X$1 = X-R ]
 then	_cd2root
@@ -1099,13 +1136,12 @@ fi
 cmd=$1
 shift
 
-# Run our stuff first if we can find it, else
-# we don't know what it is, try running it and hope it is out there somewhere.
+# Run our stuff first if we can find it.
 # win32 note: we test for the tcl script first, because it has .tcl suffix
 for w in citool sccstool vitool fm fm3
 do	if [ $cmd = $w ]
 	then	
-		# pick up our own wish shell if it exist
+		# pick up our own wish shell if it exists
 		PATH=$BIN:$PATH exec $wish -f ${GUI_BIN}${cmd}${tcl} "$@"
 	fi
 done

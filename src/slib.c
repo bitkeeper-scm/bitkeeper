@@ -6495,15 +6495,18 @@ private void
 _print_pfile(sccs *s)
 {
 	FILE	*f;
-	char	buf[200];
+	char	buf[MAXPATH];
 
-	printf("%-16s", s->gfile);
+	sprintf(buf, "%s:", s->gfile);
+	printf("%-23s ", buf);
 	f = fopen(s->pfile, "r");
 	if (fgets(buf, sizeof(buf), f)) {
 		char	*s;
 		for (s = buf; *s && *s != '\n'; ++s);
 		*s = 0;
 		printf(buf);
+	} else {
+		printf("(can't read pfile)\n");
 	}
 	fclose(f);
 }
@@ -10167,6 +10170,20 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
+	/* print the first rev at/below this which is in a cset */
+	if (streq(kw, "CSETREV")) {
+		while (d && !(d->flags & D_CSET)) d = d->kid;
+		unless (d) return (nullVal);
+		fs(d->rev);
+		return (strVal);
+	}
+
+	if (streq(kw, "CSETKEY")) {
+		unless (d->flags & D_CSET) return (nullVal);
+		sccs_pdelta(s, d, out);
+		return (strVal);
+	}
+
 	if (streq(kw, "LOD")) {
 		if (d->lod) {
 			fs(d->lod->name);
@@ -10371,6 +10388,38 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 
 	if (streq(kw, "GCA2")) {	/* print gca rev if a merge node */
 		if (d->merge && (d = gca2(s, sfind(s, d->merge), d->parent))) {
+			fs(d->rev);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "PREV")) {
+		if (d->next) {
+			fs(d->next->rev);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "NEXT")) {
+		if (d = sccs_next(s, d)) {
+			fs(d->rev);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "KID")) {
+		if (d = d->kid) {
+			fs(d->rev);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "SIBLINGS")) {
+		if (d = d->siblings) {
 			fs(d->rev);
 			return (strVal);
 		}
@@ -11772,7 +11821,7 @@ rmdelout:
 	}
 
 	/* write out upper half */
-	if (delta_table(s, sfile, 0, 1)) {  /* 0 means as-is, so checksum works */
+	if (delta_table(s, sfile, 0, 1)) {  /* 0 means as-is, so chksum works */
 		sccs_unlock(s, 'x');
 		goto rmdelout;
 	}

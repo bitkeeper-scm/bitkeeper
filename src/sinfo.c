@@ -37,7 +37,7 @@ usage:		fprintf(stderr, "usage: %s [-f] [files...]\n", av[0]);
 			char	*s;
 
 			sprintf(buf, "%s:", gfile);
-			printf("%-16s", gfile);
+			printf("%-23s ", gfile);
 			if ((s = rindex(name, '/'))) {
 				s++;
 			} else {

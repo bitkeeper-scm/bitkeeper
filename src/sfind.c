@@ -469,10 +469,10 @@ caches(const char *filename, const struct stat *sb, int flag)
 		return (0);
 	}
 
-	printf("%s:%s\n", sc->sfile, d->rev);
+	printf("%s:%s\n", gFlg ? sc->gfile : sc->sfile, d->rev);
 	while (aFlg && d->parent && !(d->parent->flags & D_CSET)) {
 		d = d->parent;
-		printf("%s:%s\n", sc->sfile, d->rev);
+		printf("%s:%s\n", gFlg ? sc->gfile : sc->sfile, d->rev);
 	}
 
 	sccs_free(sc);
