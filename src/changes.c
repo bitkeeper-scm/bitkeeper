@@ -478,7 +478,7 @@ send_part2_msg(remote *r, char **av, char *key_list)
 	fputs("\n", f);
 	fclose(f);
 
-	rc = send_file(r, msgfile, size(key_list), 0);
+	rc = send_file(r, msgfile, size(key_list) + 17, 0);
 	unlink(msgfile);
 	f = fopen(key_list, "rt");
 	assert(f);
@@ -584,13 +584,13 @@ changes_part2(remote *r, char **av, char *key_list, int ret)
 		return (1);
 	}
 
-	if (r->type == ADDR_HTTP) skip_http_hdr(r);
-
 	if (ret == 0){
 		send_end_msg(r, "@NOTHING TO SEND@\n");
+		/* No handshake?? */
 		goto done;
 	}
 	send_part2_msg(r, av, key_list);
+	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 
 	getline2(r, buf, sizeof(buf));
 	if (rc_lock = remote_lock_fail(buf, 0)) {
