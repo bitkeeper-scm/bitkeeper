@@ -76,15 +76,23 @@ supported triggers are as follows:
 .EV pre-commit
 called before a changeset is committed.
 .LI
-non-zero exit status fails the commit.
-.LI
 typically used for integrity checks.
+.LI
+exit 0 allows the commit
+.LI
+exit 1 is an error from the commit command and aborts the commit
+.LI
+exit 2 Reserved for future use and should not be used
+.LI
+exit 3 indicates that citool should try the commit again. Useful when
+the trigger requires the user to modify a changeset comment. See example
+below.
 .EV post-commit
 called after a changeset is committed or attempted to be committed.
 .LI
 typically used for notification.
 .EV pre-delta
-called before a delta is created.
+called before a delta is created. Can be use for triggers that check code style
 .LI
 exit 0 allows the delta.
 .LI
@@ -201,6 +209,10 @@ pre-resolve, pre-apply, and post-incoming triggers.
 .ip BK_CSETS
 If set, contains the list of changesets being sent.
 Valid only in pre-outgoing and post-outgoing clone events.
+.ip BK_COMMENTFILE
+Location of the comment file for the changeset. Useful when writing
+triggers that need to parse the changeset comments. See example
+below.
 .ip BK_EVENT
 The event from the point of view of the trigger.  The full list of values
 for this variable is
@@ -296,6 +308,8 @@ will be called with a write locked repository.
 .SH EXAMPLE
 .DS
 .ft CW
+Trigger that displays info about incoming and outgoing csets
+.LP
 #!/bin/sh
 
 if [ X$BK_STATUS = XDRYRUN -o X$BK_STATUS = XNOTHING ]
@@ -355,6 +369,37 @@ then	(
 	) | sed 's/^/    /'
 fi
 ) | mail -s "$BK_EVENT in ${H}:${R}" notify@bitmover.com
+
+
+==================================================================
+EXAMPLE 2: Using pre-commit trigger to verify changeset comment
+==================================================================
+
+#!/bin/sh
+#
+# BitKeeper/trigger/pre-commit.cset_comments
+#
+
+egrep 'BUGID:.*' $BK_COMMENTFILE > /dev/null 2>&1 && exit 0
+
+msg="
+===================================================
+A BUGID: field is needed in the checkin comments
+===================================================
+"
+
+# Bring up an external program to browse bugs so that the
+# engineer can add a valid bugid to the changeset comments.
+
+/opt/bugtrack/bin/bugviewer 'http://server.host.com/bugs?status=open' &
+
+bk prompt -o -y"Retry" "$msg"
+
+# returning 3 from trigger will allow user to retry the commit
+# from within citool.
+
+exit 3
+
 .ft
 .DE
 .SH SEE ALSO
