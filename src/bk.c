@@ -843,6 +843,9 @@ write_log(char *root, char *file, int rotate, char *format, ...)
 
 	sprintf(path, "%s/BitKeeper/log/%s", root, file);
 	unless (f = fopen(path, "a")) {
+		sprintf(path, "%s/%s", root, BKROOT);
+		unless (exists(path)) return (1);
+		sprintf(path, "%s/BitKeeper/log/%s", root, file);
 		unless (mkdirf(path)) return (1);
 		unless (f = fopen(path, "a")) {
 			fprintf(stderr, "Cannot open %s\n", path);
@@ -878,7 +881,7 @@ cmdlog_end(int ret)
 	int	flags = cmdlog_flags & CMD_FAST_EXIT;
 	char	*file;
 	int	rotate;
-	char	log[MAXLINE];
+	char	*log;
 
 	purify_list();
 	unless (cmdlog_buffer[0] && bk_proj && bk_proj->root) {
@@ -892,6 +895,7 @@ cmdlog_end(int ret)
 		fprintf(f, " %s = %d\n", cmdlog_buffer, ret);
 		fclose(f);
 	}
+	log = malloc(strlen(cmdlog_buffer) + 100);
 	if (ret == LOG_BADEXIT) {
 		sprintf(log, "%s = ?", cmdlog_buffer);
 	} else {
@@ -911,6 +915,7 @@ cmdlog_end(int ret)
 	if (write_log(bk_proj->root, file, rotate, log)) {
 		return (flags);
 	}
+	free(log);
 
 	/*
 	 * If error and repo command, force unlock, force exit

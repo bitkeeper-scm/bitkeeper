@@ -29,6 +29,8 @@ pwd_main(int ac, char **av)
 	 */
 	if (av[optind]) {
 		if (chdir(av[optind]) != 0) return (1);
+		proj_free(bk_proj);
+		bk_proj = proj_init(0);
 	}
 	p = &buf[3]; /* reserve same space in front, we might need it below */
 	if (getRealCwd(p, sizeof buf -3) == NULL){
