@@ -3461,18 +3461,18 @@ sccs2name(char *sfile)
  * Make the sccs dir if we need one.
  */
 void
-mksccsdir(sccs *sc)
+mksccsdir(char *sfile)
 {
-	char	*s = rindex(sc->sfile, '/');
+	char	*s = rindex(sfile, '/');
 
 	if (!s) return;
-	if ((s >= sc->sfile + 4) &&
+	if ((s >= sfile + 4) &&
 	    s[-1] == 'S' && s[-2] == 'C' && s[-3] == 'C' && s[-4] == 'S') {
 		*s = 0;
 #ifdef SPLIT_ROOT
-		unless (exists(sc->sfile)) mkDir(sc->sfile);
+		unless (exists(sfile)) mkDir(sfile);
 #else
-		mkdir(sc->sfile, 0775);
+		mkdir(sfile, 0775);
 #endif
 		*s = '/';
 	}
@@ -8340,7 +8340,7 @@ sccs_delta(sccs *s, int flags, delta *prefilled, FILE *init, FILE *diffs)
 
 	assert(s);
 	debug((stderr, "delta %s %x\n", s->gfile, flags));
-	if (flags & NEWFILE) mksccsdir(s);
+	if (flags & NEWFILE) mksccsdir(s->sfile);
 	bzero(&pf, sizeof(pf));
 	unless(locked = lock(s, 'z')) {
 		fprintf(stderr, "delta: can't get lock on %s\n", s->sfile);
