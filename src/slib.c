@@ -1610,16 +1610,18 @@ sPath(char *name, int isDir)
 	 *  If there is a local SCCS directory, use it
 	 */
 	cleanPath(name, buf);
-	path = name2sccs(buf);
-	strrchr(path, '/')[0] = 0;
-	assert(streq("SCCS", basenm(path)));
-	if (isdir(path)) {
+	unless (isDir) {
+		path = name2sccs(buf);
+		assert(path);
+		strrchr(path, '/')[0] = 0;
+		assert(streq("SCCS", basenm(path)));
+		if (isdir(path)) {
+			free(path);
+			debug((stderr, "sPath(%s) -> %s\n", name, name));
+			return (name);
+		}
 		free(path);
-		//return (fullname(buf, 0));
-		debug((stderr, "sPath(%s) -> %s\n", name, name));
-		return (name);
 	}
-	free(path);
 
 	path = _relativeName(name, isDir, 0, 0, 0, gRoot);
 	if (IsFullPath(path)) return path; /* no root marker */
@@ -8080,6 +8082,7 @@ checkin(sccs *s,
 		unless (m = loadConfig(s->proj->root, 0)) goto no_config;
 		user = mdbm_fetch_str(m, "single_user");
 		host = mdbm_fetch_str(m, "single_host");
+		mdbm_close(m);
 		unless (user && host) goto no_config;
 		d = s->tree;
 		free(d->user);
@@ -8099,7 +8102,6 @@ checkin(sccs *s,
 		}
 		s->state |= S_SINGLE;
 		first->xflags |= X_SINGLE;
-		mdbm_close(m);
 	}
 
 no_config:
