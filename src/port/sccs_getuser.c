@@ -49,6 +49,11 @@ sccs_getuser(void)
 #ifndef WIN32
 	unless (s && s[0]) s = getenv("USER");
 #endif
+	if (s && streq(s, "root")) {
+		char	*tmp = sccs_realuser();
+
+		if (tmp && !streq(tmp, UNKNOWN_USER)) return (s = tmp);
+	}
 	unless (s && s[0]) return (s = sccs_realuser());
 	return (s = cleanup(s));
 }
