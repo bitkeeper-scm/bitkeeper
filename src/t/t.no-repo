@@ -236,6 +236,7 @@ dotest()
 	len=`expr 62 - $len`
 	fill=`printf "%${len}s\n" "" | sed -e 's/ /./g' 2> /dev/null`
 	echo $N "$line$fill" $NL
+	rm -rf $HERE/*
 	bk "$@" > OUT 2>&1 < /dev/null
 	bk "$@" -r+ > OUT 2>&1 < /dev/null
 	bk "$@" XYZ > OUT 2>&1 < /dev/null

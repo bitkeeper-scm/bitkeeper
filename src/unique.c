@@ -235,6 +235,56 @@ uniq_drift()
 	return (t);
 }
 
+
+typedef struct kcinfo kcinfo;
+struct kcinfo {
+	time_t	cutoff;
+	char	*host;
+};
+
+private	int
+keycache_print(char *file, struct stat *sb, void *data)
+{
+	sccs	*s;
+	delta	*d;
+	kcinfo	*kc = (kcinfo *)data;
+
+	unless (s = sccs_init(file, SILENT|INIT_NOCKSUM)) return (0);
+	unless (HASGRAPH(s)) {
+		sccs_free(s);
+		return (0);
+	}
+	for (d = s->table; d; d = d->next) {
+		if (d->date < kc->cutoff) break;
+		if (d->hostname && streq(d->hostname, kc->host)) {
+			u8	buf[MAXPATH+100];
+
+			sccs_shortKey(s, d, buf);
+			printf("%s %lu\n", buf, d->date);
+		}
+	}
+	sccs_free(s);
+	return (0);
+}
+
+int
+keycache_main(int ac, char **av)
+{
+	kcinfo	kc;
+
+	if (proj_cd2root()) {
+		fprintf(stderr, "keycache: must be called in repo\n");
+		return (1);
+	}
+	checkSingle();
+	kc.cutoff = time(0) - uniq_drift();
+	unless (kc.host = sccs_gethost()) {
+		fprintf(stderr, "keycache: cannot figure out host name\n");
+		return (1);
+	}
+	return (walksfiles(".", keycache_print, &kc));
+}
+
 private	int
 uniq_regen()
 {
@@ -244,7 +294,7 @@ uniq_regen()
 	 * Only called with a locked cache, so we can overwrite it.
 	 */
 	unless (tmp) return (-1);
-	sysio(0, tmp, 0, "bk", "-R", "keycache", SYS);
+	sysio(0, tmp, 0, "bk", "keycache", SYS);
 	uniq_unlock();
 	return (uniq_open());
 }

@@ -38,6 +38,7 @@ usage:			fprintf(stderr,
 		}
 		unless (HASGRAPH(s)) {
 			sccs_free(s);
+			s = 0;
 			continue;
 		}
 		RANGE("range", s, expand, !quiet);

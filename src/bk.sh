@@ -363,11 +363,6 @@ _extras() {		# /* doc 2.0 */
 	fi
 }
 
-_keycache() {	# /* undoc? 2.0 */
-	bk -R sfiles -k
-}
-
-
 _reedit() {
 	bk unedit -q "$@" 2> /dev/null
 	exec bk editor "$@"
