@@ -132,27 +132,27 @@ caches(char *file, struct stat *sb, void *data)
 	FILE	*id_cache = (FILE *)data;
 	sccs	*sc;
 	delta	*ino;
-	char	buf[MAXPATH*2];
 	char	*t;
-	int	n;
+	char	*p = strrchr(file, '/');
+	char	buf[MAXPATH*2];
 
+	unless (p) return (0);
 	if (S_ISDIR(sb->st_mode)) {
-		unless (streq(file, ".")) {
-			n = strlen(file);
+		if (p - file > 1 && patheq(p+1, "BitKeeper")) {
 			/*
 			 * Do not cross into other package roots
 			 * (e.g. RESYNC).
 			 */
-			strcpy(&file[n], "/" BKROOT);
-			if (exists(file)) return (-1);
-
-			/*
-			 * Skip directory containing .bk_skip file
-			 */
-			strcpy(&file[n], "/" BKSKIP);
-			if (exists(file)) return (-1);
+			strcat(file, "/etc");
+			if (exists(file)) return (-2);
 		}
 		return (0);
+	}
+	if (patheq(p+1, BKSKIP)) {
+		/*
+		 * Skip directory containing a .bk_skip file
+		 */
+		return (-2);
 	}
 
 	if ((file[0] == '.') && (file[1] == '/')) file += 2;
