@@ -17,10 +17,9 @@ grep_main(int ac, char **av)
 	pid_t	pid;
 
 	if (ac == 2 && streq("--help", av[1])) {	
-		system("bk help grep");
+usage:		system("bk help -s grep");
 		return (1);
 	}
-	has_proj("grep");
 
 	*s++ = '-';
 	*g++ = '-';
@@ -66,7 +65,7 @@ grep_main(int ac, char **av)
 	 */
 	gav[i=0] = grep;
 	if (g) gav[++i] = grep_opts;
-	gav[++i] = av[optind++];
+	unless (gav[++i] = av[optind++]) goto usage;
 	gav[++i] = 0;
 	if ((pid = spawnvp_wPipe(gav, &fd, BIG_PIPE)) == -1) {
 		fprintf(stderr, "cannot spawn grep\n");
