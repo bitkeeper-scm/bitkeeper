@@ -84,7 +84,6 @@ private char *root;
 int
 gone_main(int ac, char **av)
 {
-	MDBM	*idDB;
 	int	error = 0;
 	int	quiet = 0;
 
@@ -93,14 +92,12 @@ gone_main(int ac, char **av)
 		fprintf(stderr, "usage: bk gone [-q] [-|key...]\n");
 		exit(1);
 	}
-	idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS);
-	assert(idDB);
 	if (streq("-", av[1])) {
 		char buf[MAXPATH];
 
 		while (fgets(buf, sizeof(buf), stdin)) {
 			chop(buf);
-			if (sccs_gone(buf, idDB)) {
+			if (sccs_gone(buf)) {
 				error = 1;
 			} else unless (quiet) {
 				fprintf(stderr,
@@ -113,7 +110,7 @@ gone_main(int ac, char **av)
 		int	i = 1;
 
 		while (av[i]) {
-			if (sccs_gone(av[i++], idDB)) {
+			if (sccs_gone(av[i++])) {
 				error = 1;
 			} else unless (quiet) {
 				fprintf(stderr,
@@ -124,7 +121,6 @@ gone_main(int ac, char **av)
 		}
 	}
 
-	mdbm_close(idDB);
 	if (proj) proj_free(proj);
 	if (root) free(root);
 	return (error);
@@ -132,7 +128,7 @@ gone_main(int ac, char **av)
 
 
 int
-sccs_gone(char *key, MDBM *idDB)
+sccs_gone(char *key)
 {
 
 	sccs	*s1;
