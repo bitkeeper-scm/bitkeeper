@@ -13,11 +13,10 @@ root_main(int ac, char **av)
 			return(1);
 		}
 	}
-	p = sccs_root(0);
-	unless (p) {
+	unless (p = proj_root(0)) {
 		fprintf(stderr, "cannot find package root\n");
 		exit(1);
 	}
-	printf("%s\n", fullname(p, 0));
+	printf("%s\n", p);
 	return(0);
 }

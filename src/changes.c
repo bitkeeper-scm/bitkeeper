@@ -119,7 +119,7 @@ usage:			system("bk help -s changes");
 		opts.remote2 = 1;	/* bk changes url */
 	}
 
-	if (sccs_cd2root(0, 0)) {
+	if (proj_cd2root()) {
 		if (!opts.remote2) {
 			fprintf(stderr, "Can't find package root\n");
 			exit(1);
@@ -313,7 +313,7 @@ doit(int dash)
 	} else {
 		spec = DSPEC;
 	}
-	s = sccs_init(s_cset, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, bk_proj);
+	s = sccs_init(s_cset, SILENT|INIT_NOCKSUM);
 	assert(s && HASGRAPH(s));
 	if (opts.rev || opts.date) {
 		if (opts.rev) {
@@ -956,7 +956,7 @@ changes_part1(remote *r, char **av, char *key_list)
 	 */
 	bktmp(key_list, "keylist");
 	fd = open(key_list, O_CREAT|O_WRONLY, 0644);
-	s = sccs_init(s_cset, 0, 0);
+	s = sccs_init(s_cset, 0);
 	flags = PK_REVPREFIX|PK_RKEY;
 	rc = prunekey(s, r, seen, fd, flags, 0, NULL, &rcsets, &rtags);
 	if (rc < 0) {

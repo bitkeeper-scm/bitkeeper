@@ -37,7 +37,7 @@ sane_main(int ac, char **av)
 
 	if (chk_host()) errors++;
 	if (chk_user()) errors++;
-	if (sccs_cd2root(0, 0) == 0) {
+	if (proj_cd2root() == 0) {
 		if (!readonly && chk_permissions()) errors++;
 		else if (chk_idcache()) errors++;
 	} else {
@@ -135,7 +135,7 @@ chk_user(void)
 	return (0);
 }
 
-int
+private int
 write_chkdir(char *path, int must)
 {
 again:	unless (exists(path) && isdir(path)) {
@@ -158,7 +158,7 @@ again:	unless (exists(path) && isdir(path)) {
 	return (0);
 }
 
-int
+private int
 write_chkfile(char *path, int must)
 {
 again:	unless (exists(path)) {

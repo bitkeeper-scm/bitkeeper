@@ -6,6 +6,8 @@ WHATSTR("@(#)%K%");
 
 private	int	cset_boundries(sccs *s, char *rev);
 
+private int	cset_boundries(sccs *s, char *rev);
+
 /*
  * diffs - show differences of SCCS revisions.
  *
@@ -46,6 +48,8 @@ private	int	cset_boundries(sccs *s, char *rev);
  *  diffs -r<rev1> -r<rev2> file or echo 'file|<rev1>' | bk diffs -r<rev2> -
  *	state of gfile doesn't matter
  *		diff <rev1> <rev2>
+ *
+ *  XXX - need a -N which makes diffs more like diff -Nr, esp. w/ diffs -r@XXX
  */
 
 int
@@ -55,7 +59,6 @@ diffs_main(int ac, char **av)
 	int	errors = 0;
 	char	kind;
 	char	*name;
-	project	*proj = 0;
 	char	*Rev = 0, *cset = 0, *boundaries = 0;
 	char	*opts, optbuf[20];
 	RANGE_DECL;
@@ -145,31 +148,28 @@ usage:			system("bk help -s diffs");
 		free(rev);
 		return (rc);
 	}
-		
-	/* XXX - if we are doing boundaries | diffs
-	 * then we don't need the GFILE.
-	 * Currently turned off in sfiles.
-	 *
-	 * Replace the "optimization" below with SF_WRITE_OK.
-	 * if (!things && !Rev && !IS_WRITABLE(s)) goto next;
-	 */
-	if (things || boundaries || Rev) {
-		name = sfileFirst("diffs", &av[optind], 0);
-	} else {
-		name = sfileFirst("diffs", &av[optind], SF_GFILE|SF_WRITE_OK);
-	}
+	name = sfileFirst("diffs", &av[optind], 0);
 	while (name) {
 		int	ex = 0;
 		sccs	*s = 0;
 		char	*r1 = 0, *r2 = 0;
 		int	save = things;
 
-		s = sccs_init(name, INIT_SAVEPROJ|flags, proj);
+		/* unless we are given endpoints, don't diff */
+		unless (things || boundaries || Rev || sfileRev()) {
+			char	*gfile = sccs2name(name);
+
+			unless (writable(gfile)) {
+				free(gfile);
+				goto next;
+			}
+			free(gfile);
+		}
+		s = sccs_init(name, flags);
 		unless (s && HASGRAPH(s)) {
 			errors |= 2;
 			goto next;
 		}
-		unless (proj) proj = s->proj;
 		if (boundaries) {
 			if (cset_boundries(s, boundaries)) goto next;
 		} else if (Rev) {
@@ -242,7 +242,8 @@ usage:			system("bk help -s diffs");
 		 * IS_EDITED() doesn't work because they could have chmod +w
 		 * the file.
 		 */
-		if (!things && !Rev && IS_WRITABLE(s) && HAS_PFILE(s) &&
+		if (!things && IS_WRITABLE(s) && HAS_PFILE(s) &&
+		    !MONOTONIC(s) && !Rev &&
 		    !sccs_hasDiffs(s, GET_DIFFTOT|flags|ex, 1)) {
 			goto next;
 		}
@@ -267,11 +268,13 @@ usage:			system("bk help -s diffs");
 			fprintf(stderr,
 			    "diffs of %s failed.\n", s->gfile);
 		}
-next:		if (s) sccs_free(s);
+next:		if (s) {
+			sccs_free(s);
+			s = 0;
+		}
 		name = sfileNext();
 		things = save;
 	}
-	if (proj) proj_free(proj);
 	sfileDone();
 	return (errors);
 }

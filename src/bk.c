@@ -11,7 +11,6 @@ extern	unsigned build_timet;
 char	*editor = 0, *pager = 0, *bin = 0;
 char	*BitKeeper = "BitKeeper/";	/* XXX - reset this? */
 char	**bk_environ;
-project	*bk_proj = 0;
 jmp_buf	exit_buf;
 char	cmdlog_buffer[MAXPATH*4];
 int	cmdlog_flags;
@@ -32,7 +31,6 @@ private int	run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av);
 private int	usage(void);
 
 extern	void	platformInit(char **av);
-extern	int	proj_cd2root(project *p);
 
 /* KEEP THIS SORTED! */
 int	_g2sccs_main(int, char **);
@@ -477,10 +475,6 @@ main(int ac, char **av, char **env)
 	argv[0] = "help";
 	argv[1] = 0;
 
-	if (!bk_proj || !bk_proj->root || !isdir(bk_proj->root)) {
-		bk_proj = proj_init(0);
-	}
-
 	/*
 	 * Parse our options if called as "bk".
 	 * We support most of the sfiles options.
@@ -507,9 +501,7 @@ main(int ac, char **av, char **env)
 						perror(optarg);
 						return (1);
 					}
-					proj_free(bk_proj);
-					bk_proj = proj_init(0);
-				} else unless (proj_cd2root(bk_proj)) {
+				} else if (proj_cd2root()) {
 					fprintf(stderr, 
 					    "bk: Cannot find package root.\n");
 					return(1);
@@ -517,7 +509,7 @@ main(int ac, char **av, char **env)
 				dashr++;
 				break;
 			    case 'R':				/* doc 2.0 */
-				unless (proj_cd2root(bk_proj)) {
+				if (proj_cd2root()) {
 					fprintf(stderr, 
 					    "bk: Cannot find package root.\n");
 					return(1);
@@ -714,6 +706,7 @@ private	struct {
 } repolog[] = {
 	{"abort", CMD_FAST_EXIT},
 	{"check", CMD_FAST_EXIT},
+	{"license", CMD_FAST_EXIT},
 	{"pull", CMD_BYTES|CMD_WRLOCK|CMD_WRUNLOCK},
 	{"push", CMD_BYTES|CMD_RDLOCK|CMD_RDUNLOCK},
 	{"commit", CMD_WRLOCK|CMD_WRUNLOCK},
@@ -775,7 +768,7 @@ cmdlog_start(char **av, int httpMode)
 		if (cmdlog_flags & CMD_RDUNLOCK) cmdlog_flags |= CMD_RDLOCK;
 	}
 
-	unless (bk_proj && bk_proj->root) return;
+	unless (proj_root(0)) return;
 
 	for (len = 1, i = 0; av[i]; i++) {
 		len += strlen(av[i]) + 1;
@@ -803,8 +796,8 @@ cmdlog_start(char **av, int httpMode)
 
 	if (do_lock && (cmdlog_flags & CMD_WRLOCK)) {
 		if (i = repository_wrlock()) {
-			unless (strneq("remote ", av[0], 7) || !bk_proj) {
-				repository_lockers(bk_proj);
+			unless (strneq("remote ", av[0], 7) || !proj_root(0)) {
+				repository_lockers(0);
 			}
 			switch (i) {
 			    case LOCKERR_LOST_RACE:
@@ -829,8 +822,8 @@ cmdlog_start(char **av, int httpMode)
 	}
 	if (do_lock && (cmdlog_flags & CMD_RDLOCK)) {
 		if (i = repository_rdlock()) {
-			unless (strneq("remote ", av[0], 7) || !bk_proj) {
-				repository_lockers(bk_proj);
+			unless (strneq("remote ", av[0], 7) || !proj_root(0)) {
+				repository_lockers(0);
 			}
 			switch (i) {
 			    case LOCKERR_LOST_RACE:
@@ -920,7 +913,7 @@ cmdlog_end(int ret)
 
 	purify_list();
 	bktmpcleanup();
-	unless (cmdlog_buffer[0] && bk_proj && bk_proj->root) {
+	unless (cmdlog_buffer[0] && proj_root(0)) {
 		return (flags);
 	}
 
@@ -960,11 +953,11 @@ cmdlog_end(int ret)
 	assert(len < savelen);
 	mdbm_close(notes);
 	notes = 0;
-	if (write_log(bk_proj->root, "cmd_log", 0, "%s", log)) {
+	if (write_log(proj_root(0), "cmd_log", 0, "%s", log)) {
 		return (flags);
 	}
 	if (cmdlog_repo &&
-	    write_log(bk_proj->root, "repo_log", LOG_MAXSIZE, "%s", log)) {
+	    write_log(proj_root(0), "repo_log", LOG_MAXSIZE, "%s", log)) {
 		return (flags);
 	}
 	free(log);
@@ -1001,7 +994,7 @@ cmdlog_dump(int ac, char **av)
 	int	yelled = 0, c, all = 0;
 	RANGE_DECL;
 
-	unless (bk_proj && bk_proj->root) return;
+	unless (proj_root(0)) return;
 	while ((c = getopt(ac, av, "ac;")) != -1) {
 		switch (c) {
 		    case 'a': all = 1; break;
@@ -1012,7 +1005,7 @@ usage:			system("bk help cmdlog");
 		}
 	}
 	if (things && d[0]) cutoff = rangeCutOff(d[0]);
-	sprintf(buf, "%s/BitKeeper/log/%s", bk_proj->root,
+	sprintf(buf, "%s/BitKeeper/log/%s", proj_root(0),
 	    (all ? "cmd_log" : "repo_log"));
 	f = fopen(buf, "r");
 	unless (f) return;

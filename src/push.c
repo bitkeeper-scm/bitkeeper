@@ -244,7 +244,7 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 	bktmp_local(rev_list, "pushrev");
 	fd = open(rev_list, O_CREAT|O_WRONLY, 0644);
 	assert(fd >= 0);
-	s = sccs_init(s_cset, 0, 0);
+	s = sccs_init(s_cset, 0);
 	rc = prunekey(s, r, NULL, fd, PK_LSER,
 		!opts.verbose, &opts.lcsets, &opts.rcsets, &opts.rtags);
 	if (rc < 0) {
@@ -707,7 +707,7 @@ push(char **av, remote *r, char **envVar)
 	char 	buf[MAXKEY];
 
 	gzip = opts.gzip && r->port;
-	if (sccs_cd2root(0, 0)) {
+	if (proj_cd2root()) {
 		fprintf(opts.out, "push: cannot find package root.\n");
 		exit(1);
 	}

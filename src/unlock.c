@@ -22,7 +22,6 @@ unlock_main(int ac, char **av)
 	char	*name;
 	int	c, force = 0, flags = 0;
 	sccs	*s = 0;
-	project	*proj = 0;
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
@@ -57,7 +56,7 @@ usage:			system("bk help -s unlock");
 		if (av[optind]) {
                         chdir(av[optind]);
                 }
-                sccs_cd2root(0, 0);
+                proj_cd2root();
 		return (repo(flags));
 	}
 
@@ -73,9 +72,8 @@ usage:			system("bk help -s unlock");
 	}
 	c = 0;
 	while (name) {
-		s = sccs_init(name, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, proj);
+		s = sccs_init(name, SILENT|INIT_NOCKSUM);
 		if (s) {
-			unless (proj) proj = s->proj;
 			if (flags & PLOCK) {
 				if (!force && HAS_GFILE(s)) {
 					fprintf(stderr,
@@ -93,7 +91,6 @@ usage:			system("bk help -s unlock");
 		name = sfileNext();
 	}
 	sfileDone();
-	if (proj) proj_free(proj);
 	return (c);
 }
 

@@ -13,7 +13,6 @@ unedit_main(int ac, char **av)
 	int	sflags = SF_NODIREXPAND;
 	int	ret = 0;
 	char	*name;
-	project	*proj = 0;
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
@@ -32,15 +31,13 @@ unedit_main(int ac, char **av)
 			return(1);
 	}
 	while (name) {
-		s = sccs_init(name, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, proj);
+		s = sccs_init(name, SILENT|INIT_NOCKSUM);
 		if (s) {
-			unless (proj) proj = s->proj;
 			if (sccs_unedit(s, SILENT)) ret = 1;
 			sccs_free(s);
 		}
 		name = sfileNext();
 	}
 	sfileDone();
-	if (proj) proj_free(proj);
 	return (ret);
 }

@@ -16,7 +16,7 @@ cat_main(int ac, char **av)
 		return (1);
 	}
 	for (name = sfileFirst("cat", &av[1], 0); name; name = sfileNext()) {
-		unless (s = sccs_init(name, INIT_SAVEPROJ, bk_proj)) continue;
+		unless (s = sccs_init(name, 0)) continue;
 		if (access(s->gfile, R_OK) == 0) {
 			errors |= cat(s->gfile);
 			sccs_free(s);

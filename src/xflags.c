@@ -20,7 +20,6 @@ xflags_main(int ac, char **av)
 	sccs	*s = 0;
 	int	c, what = 0, ret = 0;
 	char	*name;
-	project	*proj = 0;
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
@@ -36,9 +35,8 @@ usage:		fprintf(stderr, "usage: %s [-ns] [files...]\n", av[0]);
 	}
 	for (name = sfileFirst("xflags", &av[optind], 0);
 	    name; name = sfileNext()) {
-		s = sccs_init(name, INIT_NOCKSUM|INIT_SAVEPROJ, proj);
+		s = sccs_init(name, INIT_NOCKSUM);
 		unless (s) continue;
-		unless (proj) proj = s->proj;
 		unless (HASGRAPH(s)) goto next;
 		unless (s->bitkeeper) {
 			fprintf(stderr, "Not a BitKeeper file: %s\n", s->sfile);
@@ -53,7 +51,6 @@ usage:		fprintf(stderr, "usage: %s [-ns] [files...]\n", av[0]);
 next:		sccs_free(s);
 	}
 	sfileDone();
-	if (proj) proj_free(proj);
 	return (ret ? 1 : 0);
 }
 
@@ -216,6 +213,9 @@ pflags(u32 flags)
 	if (flags & X_NOMERGE) {
 		if (comma) fs(","); fs("NOMERGE"); comma = 1;
 	}
+	if (flags & X_MONOTONIC) {
+		if (comma) fs(","); fs("MONOTONIC"); comma = 1;
+	}
 	unless (comma) fs("<NONE>");
 }
 
@@ -238,6 +238,7 @@ a2xflag(char *flag)
 	if (streq(flag, "EOLN_NATIVE")) return (X_EOLN_NATIVE);
 	if (streq(flag, "LONGKEY")) return (X_LONGKEY);
 	if (streq(flag, "NOMERGE")) return (X_NOMERGE);
+	if (streq(flag, "MONOTONIC")) return (X_MONOTONIC);
 	fprintf(stderr, "Unknown flag: %s\n", flag);
 	return (0);
 }

@@ -150,20 +150,21 @@ fromTo(char *op, remote *f, remote *t)
 	if (f) {
 		from = remote_unparse(f);
 	} else {
-		tmp = remote_parse(bk_proj->root, 1);
+		tmp = remote_parse(proj_root(0), 1);
 		from = remote_unparse(tmp);
 		remote_free(tmp);
 	}
 	if (t) {
 		to = remote_unparse(t);
 	} else {
-		tmp = remote_parse(bk_proj->root, 1);
+		tmp = remote_parse(proj_root(0), 1);
 		to = remote_unparse(tmp);
 		remote_free(tmp);
 	}
 	width = strlen(op) - 3;
 	if (width < 0) width = 0;
 	printf("%s %s\n%*s -> %s\n", op, from, width, "", to);
+	fflush(stdout);
 	free(from);
 	free(to);
 }
@@ -463,7 +464,7 @@ pull(char **av, opts opts, remote *r, char **envVar)
 		exit(1);
 	}
 	gzip = opts.gzip && r->port;
-	if (sccs_cd2root(0, 0)) {
+	if (proj_cd2root()) {
 		fprintf(stderr, "pull: cannot find package root.\n");
 		exit(1);
 	}

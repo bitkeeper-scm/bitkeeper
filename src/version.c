@@ -15,8 +15,8 @@ version_main(int ac, char **av)
 		system("bk help version");
 		return (0);
 	}
-	lease_check(0);	/* disable lease check */
-	if (sccs_cd2root(0, 0) == -1) {
+	lease_check((project *)-1);	/* disable lease check */
+	if (proj_cd2root()) {
 		getMsg("version", " ", 0, 0, stdout);
 		return (0);
 	}

@@ -13,7 +13,6 @@ sinfo_main(int ac, char **av)
 	int	e = 0;
 	char	*name;
 	int	c, fast = 0, sf_flags = SF_SILENT|SF_GFILE, flags = 0;
-	project	*proj = 0;
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
@@ -59,13 +58,11 @@ done:			if (gfile) free(gfile);
 			printf("\n");
 			continue;
 		}
-		s = sccs_init(name, INIT_NOCKSUM|INIT_SAVEPROJ, proj);
+		s = sccs_init(name, INIT_NOCKSUM);
 		unless (s) continue;
-		unless (proj) proj = s->proj;
 		e |= sccs_info(s, flags);
 		sccs_free(s);
 	}
 	sfileDone();
-	if (proj) proj_free(proj);
 	return (e);
 }

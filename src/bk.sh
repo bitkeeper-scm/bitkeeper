@@ -900,6 +900,10 @@ _clonemod() {
 	bk pull
 }
 
+_leaseflush() {
+	rm -f `bk dotbk`/lease/`bk gethost -r`
+}
+
 # ------------- main ----------------------
 __platformInit
 __init

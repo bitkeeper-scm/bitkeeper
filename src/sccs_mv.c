@@ -22,8 +22,8 @@ sccs_hasCsetDerivedKey(sccs *s)
 	assert(d1);
 	sccs_sdelta(s, d1, buf1);
 
-	sprintf(buf2, "%s/%s", s->proj->root, CHANGESET);
-	sc = sccs_init(buf2, INIT_SAVEPROJ, s->proj);
+	sprintf(buf2, "%s/%s", proj_root(s->proj), CHANGESET);
+	sc = sccs_init(buf2, 0);
 	assert(sc);
 	d2 = findrev(sc, "1.0");
 	assert(d2);
@@ -80,7 +80,7 @@ sccs_mv(char *name,
 
 //ttyprintf("sccs_mv(%s, %s, %d, %d, %d)\n", name, dest, isDir, isDelete,force);
 	sname = name2sccs(name);
-	unless (s = sccs_init(sname, INIT_NOCKSUM|INIT_FIXSTIME, 0)) {
+	unless (s = sccs_init(sname, INIT_NOCKSUM|INIT_FIXSTIME)) {
 err:		if (sname) free(sname);
 		if (sfile) free(sfile);
 		if (gfile) free(gfile);
@@ -160,7 +160,7 @@ err:		if (sname) free(sname);
 	/* we don't want the sPath() adjustment		  */
 	free(sfile);
 	sfile = name2sccs(destfile);
-	unless (s = sccs_init(sfile, 0, 0)) { error++; goto out; }
+	unless (s = sccs_init(sfile, 0)) { error++; goto out; }
 
 	if (exists(ogfile)) error = mv(ogfile, gfile);
 	
@@ -264,7 +264,7 @@ idsum(u8 *s)
 private	int
 update_idcache(sccs *s, char *old, char *new)
 {
-	project	*p;
+	char	*root;
 	char	path[MAXPATH*2];
 	char	path2[MAXPATH];
 	char	key[MAXKEY];
@@ -273,10 +273,9 @@ update_idcache(sccs *s, char *old, char *new)
 	FILE	*f;
 	MDBM	*idDB;
 
-	unless ((p = s->proj) || (p = proj_init(s))) {
+	unless (root = proj_root(s->proj)) {
 		fprintf(stderr,
 		    "can't find package root, idcache not updated\n");
-		s->proj = p;
 		return (1);
 	}
 
@@ -284,7 +283,7 @@ update_idcache(sccs *s, char *old, char *new)
 	 * This code ripped off from sfiles -r.
 	 */
 again:	
-	sprintf(path, "%s/%s", p->root, IDCACHE);
+	sprintf(path, "%s/%s", root, IDCACHE);
 	unless (idDB = loadDB(path, 0, DB_KEYFORMAT|DB_NODUPS)) {
 		fprintf(stderr, "Creating new idcache.\n");
 		idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
@@ -293,7 +292,7 @@ again:
 	if ((t = mdbm_fetch_str(idDB, key)) &&
 	    !streq(t, old) && !streq(t, new)) {
 		t = name2sccs(t);
-		sprintf(path, "%s/%s", p->root, t);
+		sprintf(path, "%s/%s", root, t);
 		unless (exists(path)) {
 			fprintf(stderr,
 			    "Out of date idcache detected, updating...\n");
@@ -306,7 +305,7 @@ again:
 		return (1);
 	}
 	mdbm_store_str(idDB, key, new, MDBM_REPLACE);
-	sprintf(path, "%s/%s.new", p->root, IDCACHE);
+	sprintf(path, "%s/%s.new", root, IDCACHE);
 	unless (f = fopen(path, "w")) {
 		perror(path);
 		mdbm_close(idDB);
@@ -328,20 +327,20 @@ again:
 	mdbm_close(idDB);
 	fprintf(f, "#$sum$ %u\n", id_sum);
 	fclose(f);
-	sprintf(path, "%s/%s", p->root, IDCACHE_LOCK);
+	sprintf(path, "%s/%s", root, IDCACHE_LOCK);
 	if (sccs_lockfile(path, 16, 0)) {
 		fprintf(stderr, "Not updating idcache due to locking.\n");
 		fprintf(stderr, "Run \"bk idcache\" to rebuild it.\n");
 		return (1);
 	}
-	sprintf(path, "%s/%s", p->root, IDCACHE);
+	sprintf(path, "%s/%s", root, IDCACHE);
 	unlink(path);
-	sprintf(path2, "%s/%s.new", p->root, IDCACHE);
-	sprintf(path, "%s/%s", p->root, IDCACHE);
+	sprintf(path2, "%s/%s.new", root, IDCACHE);
+	sprintf(path, "%s/%s", root, IDCACHE);
 	sys("mv", path2, path, SYS);
-	sprintf(path, "%s/%s", p->root, IDCACHE_LOCK);
+	sprintf(path, "%s/%s", root, IDCACHE_LOCK);
 	sccs_unlockfile(path);
-	sprintf(path, "%s/%s", p->root, IDCACHE);
+	sprintf(path, "%s/%s", root, IDCACHE);
 	chmod(path, GROUP_MODE);
 	return (0);
 }
@@ -353,7 +352,7 @@ getRelativeName(char *name, project *proj)
 
 	/* TODO: we should cache the root value for faster lookup */
 	t = sccs2name(name);
-	rpath = strdup(_relativeName(t, 0, 0, 0, 0, proj, 0));
+	rpath = strdup(_relativeName(t, 0, 0, 0, 0, proj));
 	free(t);
 	return rpath;
 }

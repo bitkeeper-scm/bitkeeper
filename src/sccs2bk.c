@@ -4,7 +4,6 @@
 #include "zlib/zlib.h"
 WHATSTR("@(#)%K%");
 
-private	project	*proj = 0;
 private int sccs2bk(sccs *s, char *csetkey);
 private void branchfudge(sccs *s);
 private void regen(sccs *s, char *key);
@@ -40,8 +39,7 @@ usage:		system("bk help sccs2bk");
 
 	for (name = sfileFirst("sccs2bk", &av[optind], 0);
 	    name; name = sfileNext()) {
-		unless (s = sccs_init(name, INIT_SAVEPROJ, proj)) continue;
-		unless (proj) proj = s->proj;
+		unless (s = sccs_init(name, 0)) continue;
 		unless (HASGRAPH(s)) {
 			perror(s->sfile);
 			sccs_free(s);
@@ -53,7 +51,6 @@ usage:		system("bk help sccs2bk");
 		s = 0;	/* freed by sccs2bk */
 	}
 	sfileDone();
-	if (proj) proj_free(proj);
 	fprintf(stderr, "\n");
 	return (errors);
 }

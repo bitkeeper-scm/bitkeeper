@@ -15,7 +15,6 @@ private	int	verify;
 private	int	undos;
 private	int	verbose;
 private	int	Flags;
-private	project	*proj;
 private	char	*co_prog;
 private	char	*cutoff;
 
@@ -28,7 +27,6 @@ rcs2sccs_main(int ac, char **av)
 	Flags = SILENT;
 	verify = 0;
 	verbose = 2;
-	proj = 0;
 	co_prog = cutoff = 0;
 
 	while ((c = getopt(ac, av, "c;dhqu")) != -1) {
@@ -67,7 +65,6 @@ rcs2sccs_main(int ac, char **av)
 			doit(av[i]);
 		}
 	}
-	if (proj) proj_free(proj);
 	return (0);
 }
 
@@ -182,8 +179,7 @@ rcs2sccs(RCS *rcs, char *sfile)
 	}
 
 	for (d = rcs_defbranch(rcs); d && (d != stop); d = d->kid, rev++) {
-		unless (s = sccs_init(sfile, INIT_SAVEPROJ, proj)) return (1);
-		unless (proj) proj = s->proj;
+		unless (s = sccs_init(sfile, 0)) return (1);
 		if (newDelta(rcs, d, s, rev, Flags)) {
 			sccs_free(s);
 			free(g);
@@ -212,7 +208,7 @@ rcs2sccs(RCS *rcs, char *sfile)
 		printf(" converted;  ");
 		len = 0;
 	}
-	unless (s = sccs_init(sfile, INIT_SAVEPROJ, proj)) return (1);
+	unless (s = sccs_init(sfile, 0)) return (1);
 	for (d = rcs_defbranch(rcs); d && (d != stop); d = d->kid) {
 		if (verbose > 1) {
 			while (len--) putchar('\b');
@@ -372,7 +368,7 @@ private	int
 create(char *sfile, int flags, RCS *rcs)
 {
 	static	u16 seq;
-	sccs	*s = sccs_init(sfile, INIT_SAVEPROJ, proj);
+	sccs	*s = sccs_init(sfile, 0);
 	char	*g = sccs2name(sfile);
 	int	enc = encoding(rcs->file);
 	int	expand;
@@ -382,7 +378,6 @@ create(char *sfile, int flags, RCS *rcs)
 	char	*f, *t;
 	char	buf[32<<10];
 
-	unless (proj) proj = s->proj;
 	if (exists(g)) unlink(g);	// DANGER
 	close(creat(g, m));
 	randomBits(r);

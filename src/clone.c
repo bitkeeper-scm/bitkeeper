@@ -246,7 +246,7 @@ done:	if (rc) {
 	/*
 	 * Don't bother to fire trigger if we have no tree.
 	 */
-	if (bk_proj) trigger(av[0], "post");
+	if (proj_root(0)) trigger(av[0], "post");
 
 	/*
 	 * XXX This is a workaround for a csh fd lead:
@@ -272,12 +272,6 @@ clone2(opts opts, remote *r)
 	char	*checkfiles;
 	FILE	*f;
 	int	rc;
-
-	/*
-	 * Invalidate the project cache, we have changed directory
-	 */
-	if (bk_proj) proj_free(bk_proj);
-	bk_proj = proj_init(0);
 
 	unless (licenseAccept(1)) {
 		fprintf(stderr, "clone failed license accept check\n");
@@ -402,7 +396,7 @@ sccs_rmUncommitted(int quiet, FILE *f)
 		perror("popen of bk sfiles -pAC");
 		exit(1);
 	}
-	sprintf(buf, "bk stripdel %s -", (quiet ? "-q" : ""));
+	sprintf(buf, "bk stripdel -d %s -", (quiet ? "-q" : ""));
 	unless (out = popen(buf, "w")) {
 		perror("popen(bk stripdel -, w)");
 		exit(1);
@@ -635,11 +629,7 @@ out:		chdir(from);
 	in_trigger("BK_STATUS=OK", opts.rev, from, fromid);
 	free(fromid);
 	chdir(from);
-	/*
-	 * Invalidate the project cache, we have changed directory
-	 */
-	if (bk_proj) proj_free(bk_proj);
-	bk_proj = proj_init(0);
+
 	putenv("BKD_REPO_ID=");
 	out_trigger("BK_STATUS=OK", opts.rev, "post");
 	remote_free(r);

@@ -145,7 +145,7 @@ send_main(int ac,  char **av)
 		exit(1);
 	}
 
-	if (sccs_cd2root(0, 0) == -1) {
+	if (proj_cd2root()) {
 		fprintf(stderr, "send: cannot find package root.\n");
 		exit(1);
 	}

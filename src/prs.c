@@ -10,7 +10,7 @@ prs_main(int ac, char **av)
 	sccs	*s;
 	delta	*e;
 	int	reverse = 0, doheader = 1;
-	int	init_flags = INIT_NOCKSUM|INIT_SAVEPROJ;
+	int	init_flags = INIT_NOCKSUM;
 	int	flags = 0, sf_flags = 0;
 	int	opposite = 0;
 	int	rc = 0, c;
@@ -20,7 +20,6 @@ prs_main(int ac, char **av)
 	int	expand = 1;
 	int	want_parent = 0;
 	char	*dspec = NULL;
-	project	*proj = 0;
 	RANGE_DECL;
 
 	debug_main(av);
@@ -63,8 +62,7 @@ usage:			system("bk help -s prs");
 	}
 	for (name = sfileFirst("prs", &av[optind], sf_flags);
 	    name; name = sfileNext()) {
-		unless (s = sccs_init(name, init_flags, proj)) continue;
-		unless (proj) proj = s->proj;
+		unless (s = sccs_init(name, init_flags)) continue;
 		unless (HASGRAPH(s)) goto next;
 		if (cset) {
 			delta	*d = sccs_getrev(s, cset, 0, 0);
@@ -162,6 +160,5 @@ next:		rc = 1;
 		sccs_free(s);
 	}
 	sfileDone();
-	if (proj) proj_free(proj);
 	return (rc);
 }

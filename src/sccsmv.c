@@ -12,7 +12,7 @@ WHATSTR("@(#)%K%");
 int
 mv_main(int ac, char **av)
 {
-	char	*name, *dest;
+	char	*dest;
 	int	isDir;
 	int	isUnDelete = 0;
 	int	errors = 0, skip_lock = 0;
@@ -45,8 +45,7 @@ mv_main(int ac, char **av)
 	dest = av[ac-1];
 	localName2bkName(dest, dest);
 	cleanPath(dest, dest);
-	if ((name = strrchr(dest, '/')) &&
-	    (name >= dest + 4) && strneq(name - 4, "SCCS/s.", 7)) {
+	if (sccs_filetype(dest) == 's') {
 		dest = sccs2name(dest);
 		dofree++;
 	}

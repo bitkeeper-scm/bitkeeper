@@ -48,7 +48,7 @@ do_cset(char *qflag)
 	char	lastpath[MAXPATH];
 	FILE	*f = popen("bk cset -r+", "r");
 
-	if (sccs_cd2root(0, 0)) {
+	if (proj_cd2root()) {
 		fprintf(stderr, "fix: can't find repository root\n");
 		exit(1);
 	}
@@ -68,7 +68,7 @@ do_cset(char *qflag)
 		if (lastpath[0] && streq(path, lastpath)) continue;
 		strcpy(lastpath, path);
 		n = name2sccs(path);
-		s = sccs_init(n, 0, 0);
+		s = sccs_init(n, 0);
 		unless (s && HASGRAPH(s)) {
 			fprintf(stderr,
 			    "fix: no graph in %s?\n", s->gfile);
@@ -146,7 +146,7 @@ check(char *path, char *rev)
 	
 	if (p = strchr(rev, ',')) *p = 0;
 	n = name2sccs(path);
-	s = sccs_init(n, 0, 0);
+	s = sccs_init(n, 0);
 	assert(s && HASGRAPH(s));
 	d = sccs_getrev(s, "+", 0, 0);
 	assert(d && streq(rev, d->rev));
@@ -174,7 +174,7 @@ doit(char *file, char *revs, char *qflag, char *force)
 	}
 	assert(sccs_filetype(file) == 0);
 	p = name2sccs(file);
-	s = sccs_init(p, SILENT, 0);
+	s = sccs_init(p, SILENT);
 	unless (s && HASGRAPH(s)) {
 		fprintf(stderr, "%s does not exists\n", s->sfile);
 		sccs_free(s);
@@ -200,7 +200,7 @@ doit(char *file, char *revs, char *qflag, char *force)
 	} else {
 		if (exists(p) && !cset) {
 			int gflags = SILENT|GET_SKIPGET|GET_EDIT;
-			s = sccs_init(p, SILENT, 0);
+			s = sccs_init(p, SILENT);
 			assert(s);
 			if (!IS_EDITED(s) &&
 			    sccs_get(s, 0, 0, 0, 0, gflags, "-")) {

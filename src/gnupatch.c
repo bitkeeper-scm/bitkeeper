@@ -69,10 +69,9 @@ process(char *path0, char *path1, char *rev1,
 	char *t;
 
 	t = name2sccs(path0);
-	s = sccs_init(t, SILENT|INIT_SAVEPROJ, proj);
+	s = sccs_init(t, SILENT);
 	free(t);
 	assert(s);
-	unless (proj) proj = s->proj;
 	unless ((s->encoding == E_ASCII) || (s->encoding == E_GZIP)) {
 		fprintf(stderr, "Warning: %s is not a text file\n", s->sfile);
 	}
@@ -225,10 +224,10 @@ gnupatch_main(int ac, char **av)
 		}
 	}
 
-        if (sccs_cd2root(0, 0)) {
+        if (proj_cd2root()) {
                 fprintf(stderr, "gnupatch: cannot find package root.\n");
                 exit(1);
-        }      
+        }
 
 	sprintf(tmpdir, "%s/bk%u", TMP_PATH, getpid());
 	sprintf(buf, "%s/a", tmpdir);

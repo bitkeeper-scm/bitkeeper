@@ -325,9 +325,7 @@ transfer() {
 
 patch_undo() {
 	test -s ${TMP}rejects$$ && /bin/rm -f `cat ${TMP}rejects$$`
-	egrep 'Creating file|Patching file' ${TMP}plog$$ |
-	    sed -e 's/Creating file //' -e 's/Patching file//' > ${TMP}rm$$
-	test -s ${TMP}rm$$ && bk unedit `cat ${TMP}rm$$`
+	test -s ${TMP}plist$$ && bk unedit `cat ${TMP}plist$$`
 	Done 1
 }
 
@@ -718,7 +716,7 @@ validate_patch() {
 }
 
 Done() {
-	for i in patch rejects plog locked import sccs rm patching \
+	for i in patch rejects plog locked import sccs patching \
 		plist creates deletes keys commit
 	do	/bin/rm -f ${TMP}${i}$$
 	done

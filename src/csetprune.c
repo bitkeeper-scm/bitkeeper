@@ -80,7 +80,7 @@ k_err:			fprintf(stderr,
 		randomBits(buf);
 		ranbits = buf;
 	}
-	if (sccs_cd2root(0, 0)) {
+	if (proj_cd2root()) {
 		fprintf(stderr, "%s: cannot find package root\n", av[0]);
 		exit(1);
 	}
@@ -97,11 +97,11 @@ k_err:			fprintf(stderr,
 		sys("bk", "-r", "check", "-ac", SYS);
 		exit(0);
 	}
-	unless ((s = sccs_init(csetFile, INIT_NOCKSUM, 0)) && s->tree) {
+	unless ((s = sccs_init(csetFile, INIT_NOCKSUM)) && s->tree) {
 		fprintf(stderr, "%s: cannot init ChangeSet file\n", av[0]);
 		exit(1);
 	}
-	unless ((sb = sccs_init(csetFile, INIT_NOCKSUM, 0)) && s->tree) {
+	unless ((sb = sccs_init(csetFile, INIT_NOCKSUM)) && s->tree) {
 		fprintf(stderr, "%s: cannot init ChangeSet backup file\n",
 			av[0]);
 		exit(1);
@@ -111,7 +111,7 @@ k_err:			fprintf(stderr,
 	pruneEmpty(s, sb, m);
 	mdbm_close(m);
 	sccs_free(sb);
-	s = sccs_init(csetFile, ADMIN_SHUTUP|INIT_NOCKSUM, 0);
+	s = sccs_init(csetFile, ADMIN_SHUTUP|INIT_NOCKSUM);
 	unless (s && s->tree) {
 		fprintf(stderr, "Whoops, can't reinit ChangeSet\n");
 		exit(1);	/* leave it locked! */
@@ -120,7 +120,7 @@ k_err:			fprintf(stderr,
 	sccs_renumber(s, SILENT);
 	sccs_newchksum(s);
 	sccs_free(s);
-	unless ((s = sccs_init(csetFile, INIT_NOCKSUM, 0)) && s->tree) {
+	unless ((s = sccs_init(csetFile, INIT_NOCKSUM)) && s->tree) {
 		fprintf(stderr, "Whoops, can't reinit ChangeSet\n");
 		exit(1);	/* leave it locked! */
 	}
@@ -156,7 +156,6 @@ rmKeys(MDBM *s)
 	MDBM	*dirs = mdbm_mem();
 	MDBM	*idDB;
 	kvpair	kv;
-	project	*proj = proj_init(0);
 
 	verbose((stderr, "Reading keys...\n"));
 	if (getKeys(m)) exit(1);
@@ -172,10 +171,9 @@ rmKeys(MDBM *s)
 	for (kv = mdbm_first(m); kv.key.dsize; kv = mdbm_next(m)) {
 		if (flags & PRUNE_JUST_CHANGESET) continue;
 		verbose((stderr, "%d removed\r", ++n));
-		sccs_keyunlink(kv.key.dptr, proj, idDB, dirs);
+		sccs_keyunlink(kv.key.dptr, idDB, dirs);
 	}
 	mdbm_close(idDB);
-	proj_free(proj);
 	verbose((stderr, "\n"));
 
 	verbose((stderr, "Removing directories...\n"));

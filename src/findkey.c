@@ -27,7 +27,6 @@ findkey_main(int ac, char **av)
 {
 	sccs	*s;
 	int	errors = 0, c;
-	project	*proj = 0;
 	look	look;
 	char	*name;
 
@@ -77,8 +76,7 @@ findkey_main(int ac, char **av)
 	}
 	name = sfileFirst("findkey", &av[optind], 0);
 	for (; name; name = sfileNext()) {
-		unless (s = sccs_init(name, INIT_SAVEPROJ, proj)) continue;
-		unless (proj) proj = s->proj;
+		unless (s = sccs_init(name, 0)) continue;
 		unless (HASGRAPH(s)) {
 			sccs_free(s);
 			continue;
@@ -87,7 +85,6 @@ findkey_main(int ac, char **av)
 		sccs_free(s);
 	}
 	sfileDone();
-	if (proj) proj_free(proj);
 	return (errors);
 }
 

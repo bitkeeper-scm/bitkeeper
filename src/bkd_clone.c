@@ -54,7 +54,7 @@ cmd_clone(int ac, char **av)
 	    	}
 	}
 	if (rev) {
-		sccs	*s = sccs_csetInit(SILENT, 0);
+		sccs	*s = sccs_csetInit(SILENT);
 		if (s) {
 			delta	*d = sccs_getrev(s, rev, 0, 0);
 			sccs_free(s);

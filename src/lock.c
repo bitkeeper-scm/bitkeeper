@@ -41,7 +41,7 @@ usage:			system("bk help -s lock");
 	}
 	unless (what) what = 'l';
 	if (av[optind]) chdir(av[optind]);
-	sccs_cd2root(0, 0);
+	proj_cd2root();
 	pid = getpid();
 	sig_catch(abort_lock);
 	switch (what) {

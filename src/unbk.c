@@ -3,8 +3,6 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
-private	project	*proj = 0;
-
 /*
  * Convert a BK file to SCCS format.
  */
@@ -23,8 +21,7 @@ unbk_main(int ac, char **av)
 
 	for (name = sfileFirst("unbk", &av[1], 0);
 	    name; name = sfileNext()) {
-		unless (s = sccs_init(name, INIT_SAVEPROJ, proj)) continue;
-		unless (proj) proj = s->proj;
+		unless (s = sccs_init(name, 0)) continue;
 		unless (HASGRAPH(s)) {
 			perror(s->sfile);
 			sccs_free(s);
@@ -37,6 +34,5 @@ unbk_main(int ac, char **av)
 		sccs_free(s);
 	}
 	sfileDone();
-	if (proj) proj_free(proj);
 	return (errors);
 }

@@ -17,19 +17,6 @@ pwd(void) { char p[MAXPATH]; getRealCwd(p, MAXPATH); ttyprintf("%s ",p); }
 #define	ldebug(x)
 #endif
 
-private	project *
-getproj(void)
-{
-	project	*p;
-
-	unless (p = proj_init(0)) return (0);
-	unless (p->root) {
-		proj_free(p);
-		return (0);
-	}
-	return (p);
-}
-
 /*
  * Return all the lock files which start with a digit, i.e.,
  * 12345@my.host.com
@@ -135,32 +122,27 @@ repository_mine(char type)
 int
 repository_locked(project *p)
 {
-	int	freeit = 0;
 	int	ret = 0;
 	char	*s;
+	char	*root;
 	char	path[MAXPATH];
 
-	unless (p) {
-		unless (p = getproj()) return (0);
-		freeit = 1;
-	}
-	ldebug(("repository_locked(%s)\n", p->root));
-	ret = repository_hasLocks(p->root, READER_LOCK_DIR);
+	unless (root = proj_root(p)) return (0);
+	ldebug(("repository_locked(%s)\n", root));
+	ret = repository_hasLocks(root, READER_LOCK_DIR);
 	unless (ret) {
 		if ((s = getenv("BK_IGNORELOCK")) && streq(s, "YES")) {
-			if (freeit) proj_free(p);
-			ldebug(("repository_locked(%s) = 0\n", p->root));
+			ldebug(("repository_locked(%s) = 0\n", root));
 			return (0);
 		}
-		ret = repository_hasLocks(p->root, WRITER_LOCK_DIR);
-		sprintf(path, "%s/%s", p->root, WRITER_LOCK);
+		ret = repository_hasLocks(root, WRITER_LOCK_DIR);
+		sprintf(path, "%s/%s", root, WRITER_LOCK);
 		unless (ret && exists(path)) {
-			sprintf(path, "%s/%s", p->root, ROOT2RESYNC);
+			sprintf(path, "%s/%s", root, ROOT2RESYNC);
 			ret = exists(path);
 		}
 	}
-	ldebug(("repository_locked(%s) = %d\n", p->root, ret));
-    	if (freeit) proj_free(p);
+	ldebug(("repository_locked(%s) = %d\n", root, ret));
 	return (ret);
 }
 
@@ -172,29 +154,26 @@ repository_lockers(project *p)
 {
 	char	path[MAXPATH];
 	char	**lines;
-	int	freeit = 0;
 	int	i, n = 0;
+	char	*root;
 
-	unless (p) {
-		unless (p = getproj()) return (0);
-		freeit = 1;
-	}
-	ldebug(("repository_lockers(%s)\n", p->root));
+	unless (root = proj_root(p)) return (0);
+	ldebug(("repository_lockers(%s)\n", root));
 
-	sprintf(path, "%s/%s", p->root, ROOT2RESYNC);
+	sprintf(path, "%s/%s", root, ROOT2RESYNC);
 	if (exists(path)) {
 		fprintf(stderr, "Entire repository is locked by:\n");
 		n++;
 		fprintf(stderr, "\tRESYNC directory.\n");
 	}
-	sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
+	sprintf(path, "%s/%s", root, WRITER_LOCK_DIR);
 	lines = lockers(path);
 	EACH(lines) {
-		sprintf(path, "%s/%s/%s", p->root, WRITER_LOCK_DIR, lines[i]);
+		sprintf(path, "%s/%s/%s", root, WRITER_LOCK_DIR, lines[i]);
 		if (sccs_stalelock(path, 0)) {
 			char	lock[MAXPATH];
 
-			sprintf(lock, "%s/%s/lock", p->root, WRITER_LOCK_DIR);
+			sprintf(lock, "%s/%s/lock", root, WRITER_LOCK_DIR);
 			if (sameFiles(path, lock)) unlink(lock);
 			unlink(path);
 			continue;
@@ -205,17 +184,16 @@ repository_lockers(project *p)
 	}
 	freeLines(lines, free);
 
-	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
+	sprintf(path, "%s/%s", root, READER_LOCK_DIR);
 	lines = lockers(path);
 	EACH(lines) {
-		sprintf(path, "%s/%s/%s", p->root, READER_LOCK_DIR, lines[i]);
+		sprintf(path, "%s/%s/%s", root, READER_LOCK_DIR, lines[i]);
 		if (sccs_stalelock(path, 1)) continue;
 		unless (n) fprintf(stderr, "Entire repository is locked by:\n");
 		fprintf(stderr, "\tRead  locker: %s\n", lines[i]);
 		n++;
 	}
 	freeLines(lines, free);
-    	if (freeit) proj_free(p);
 	return (n);
 }
 
@@ -227,37 +205,34 @@ private int
 rdlock(void)
 {
 	char	path[MAXPATH];
-	project	*p;
+	char	*root;
 
-	unless (p = getproj()) return (LOCKERR_NOREPO);
-	ldebug(("repository_rdlock(%s)\n", p->root));
+	unless (root = proj_root(0)) return (LOCKERR_NOREPO);
+	ldebug(("repository_rdlock(%s)\n", root));
 
 	/*
 	 * We go ahead and create the lock and then see if there is a
 	 * write lock.  If there is, we lost the race and we back off.
 	 */
-	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
+	sprintf(path, "%s/%s", root, READER_LOCK_DIR);
 	unless (exists(path)) {
 		mkdir(path, 0777);
 		chmod(path, 0777);	/* kill their umask */
 	}
-	rdlockfile(p->root, path);
+	rdlockfile(root, path);
 	close(creat(path, 0666));
 	unless (exists(path)) {
 		ldebug(("RDLOCK by %u failed, no perms?\n", getpid()));
-		proj_free(p);
 		return (LOCKERR_PERM);
 	}
-	sprintf(path, "%s/%s", p->root, WRITER_LOCK);
+	sprintf(path, "%s/%s", root, WRITER_LOCK);
 	if (exists(path)) {
-		rdlockfile(p->root, path);
+		rdlockfile(root, path);
 		unlink(path);
-		proj_free(p);
 		ldebug(("RDLOCK by %u failed, write locked\n", getpid()));
 		return (LOCKERR_LOST_RACE);
 	}
-	write_log(p->root, "cmd_log", 1, "obtain read lock (%u)", getpid());
-	proj_free(p);
+	write_log(root, "cmd_log", 1, "obtain read lock (%u)", getpid());
 	ldebug(("RDLOCK %u\n", getpid()));
 	return (0);
 }
@@ -283,31 +258,28 @@ wrlock(void)
 {
 	char	path[MAXPATH];
 	char	lock[MAXPATH];
-	project	*p;
+	char	*root;
 
-	unless (p = getproj()) return (LOCKERR_NOREPO);
-	ldebug(("repository_wrlock(%s)\n", p->root));
+	unless (root = proj_root(0)) return (LOCKERR_NOREPO);
+	ldebug(("repository_wrlock(%s)\n", root));
 
-	sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
+	sprintf(path, "%s/%s", root, WRITER_LOCK_DIR);
 	unless (exists(path)) {
 		mkdir(path, 0777);
 		chmod(path, 0777);	/* kill their umask */
 	}
 	unless (access(path, W_OK) == 0) {
-		proj_free(p);
 		return (LOCKERR_PERM);
 	}
 
-	sprintf(lock, "%s/%s", p->root, WRITER_LOCK);
+	sprintf(lock, "%s/%s", root, WRITER_LOCK);
 	if (sccs_lockfile(lock, 0, 0)) {
-		proj_free(p);
 		ldebug(("WRLOCK by %u failed, lockfile failed\n", getpid()));
 		return (LOCKERR_LOST_RACE);
 	}
 
-	sprintf(path, "%s/%s", p->root, ROOT2RESYNC);
+	sprintf(path, "%s/%s", root, ROOT2RESYNC);
 	if (exists(path)) {
-		proj_free(p);
 		sccs_unlockfile(lock);
 		ldebug(("WRLOCK by %d failed, RESYNC won\n"));
 		return (LOCKERR_LOST_RACE);
@@ -316,14 +288,12 @@ wrlock(void)
 	/*
 	 * Make sure no readers sneaked in
 	 */
-	if (repository_hasLocks(p->root, READER_LOCK_DIR)) {
-		proj_free(p);
+	if (repository_hasLocks(root, READER_LOCK_DIR)) {
 	    	sccs_unlockfile(lock);
 		ldebug(("WRLOCK by %u failed, readers won\n", getpid()));
 		return (LOCKERR_LOST_RACE);
 	}
-	write_log(p->root, "cmd_log", 1, "obtain write lock (%u)", getpid());
-	proj_free(p);
+	write_log(root, "cmd_log", 1, "obtain write lock (%u)", getpid());
 	/* XXX - this should really be some sort cookie which we pass through,
 	 * like the contents of the lock file.  Then we ignore iff that matches.
 	 */
@@ -333,7 +303,7 @@ wrlock(void)
 }
 
 int
-repository_wrlock()
+repository_wrlock(void)
 {
 	int	i, ret;
 
@@ -348,34 +318,31 @@ repository_wrlock()
  * If we have a write lock, downgrade it to a read lock.
  */
 int
-repository_downgrade()
+repository_downgrade(void)
 {
 	char	path[MAXPATH];
-	project	*p;
+	char	*root;
 
-	unless (p = getproj()) return (0);
-	ldebug(("repository_downgrade(%s)\n", p->root));
+	unless (root = proj_root(0)) return (0);
+	ldebug(("repository_downgrade(%s)\n", root));
 
-	sprintf(path, "%s/%s", p->root, WRITER_LOCK);
+	sprintf(path, "%s/%s", root, WRITER_LOCK);
 	unless (sccs_mylock(path)) {
-		proj_free(p);
 		return (-1);
 	}
-	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
+	sprintf(path, "%s/%s", root, READER_LOCK_DIR);
 	unless (exists(path)) {
 		mkdir(path, 0777);
 		chmod(path, 0777);	/* kill their umask */
 	}
-	rdlockfile(p->root, path);
+	rdlockfile(root, path);
 	close(creat(path, 0666));
 	unless (exists(path)) {
-		proj_free(p);
 		return (-2); /* possible permission problem */
 	}
 	repository_wrunlock(0);
-	write_log(p->root, "cmd_log", 1,
+	write_log(root, "cmd_log", 1,
 	    "downgrade write lock (%u)", getpid());
-	proj_free(p);
 	return (0);
 }
 
@@ -391,31 +358,29 @@ int
 repository_rdunlock(int all)
 {
 	char	path[MAXPATH];
-	project	*p;
 	char	*didnt;
+	char	*root;
 
 	if ((didnt = getenv("BK_NO_REPO_LOCK")) && streq(didnt, "DIDNT")) {
 		return (0);
 	}
-	unless (p = getproj()) return (0);
-	ldebug(("repository_rdunlock(%s)\n", p->root));
+	unless (root = proj_root(0)) return (0);
+	ldebug(("repository_rdunlock(%s)\n", root));
 	if (all) {
-		sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
+		sprintf(path, "%s/%s", root, READER_LOCK_DIR);
 		cleandir(path);
-		proj_free(p);
 		return (0);
 	}
 
 	/* clean out our lock, if any */
-	rdlockfile(p->root, path);
+	rdlockfile(root, path);
 	if (unlink(path) == 0) {
-		write_log(p->root, "cmd_log", 1, "read unlock (%u)", getpid());
+		write_log(root, "cmd_log", 1, "read unlock (%u)", getpid());
 		ldebug(("RDUNLOCK %u\n", getpid()));
 	}
-	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
+	sprintf(path, "%s/%s", root, READER_LOCK_DIR);
 	rmdir(path);
 
-	proj_free(p);
 	return (0);
 }
 
@@ -423,35 +388,33 @@ int
 repository_wrunlock(int all)
 {
 	char	path[MAXPATH];
-	project	*p;
+	char	*root;
 	int	error = 0;
 	char	*didnt;
 
 	if ((didnt = getenv("BK_NO_REPO_LOCK")) && streq(didnt, "DIDNT")) {
 		return (0);
 	}
-	unless (p = getproj()) return (0);
-	ldebug(("repository_wrunlock(%s)\n", p->root));
+	unless (root = proj_root(0)) return (0);
+	ldebug(("repository_wrunlock(%s)\n", root));
 	if (all) {
-		sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
+		sprintf(path, "%s/%s", root, WRITER_LOCK_DIR);
 		cleandir(path);
-		proj_free(p);
 		return (0);
 	}
 
 	putenv("BK_IGNORELOCK=NO");
-	sprintf(path, "%s/%s", p->root, WRITER_LOCK);
+	sprintf(path, "%s/%s", root, WRITER_LOCK);
 	if (sccs_mylock(path) && (sccs_unlockfile(path) == 0)) {
-		write_log(p->root, "cmd_log", 1,
+		write_log(root, "cmd_log", 1,
 		    "write unlock (%u)", getpid());
 		ldebug(("WRUNLOCK %u\n", getpid()));
-		sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
+		sprintf(path, "%s/%s", root, WRITER_LOCK_DIR);
 		rmdir(path);
 	} else {
 		ldebug(("WRUNLOCK %u FAILED\n", getpid()));
 		error = -1;
 	}
-	proj_free(p);
 	return (error);
 }
 
@@ -463,7 +426,7 @@ repository_wrunlock(int all)
 void
 repository_lockcleanup(void)
 {
-	char	*root = sccs_root(0);
+	char	*root = proj_root(0);
 
 	unless (root) return;
 	chdir(root);
@@ -489,7 +452,6 @@ repository_lockcleanup(void)
 		 */
 		if (isdir(ROOT2RESYNC)) repository_wrunlock(0);
 	}
-	free(root);
 	/*
 	 * Unfortunatly this is run in atexit() so we can't portably change
 	 * the exit status if an error occurs.

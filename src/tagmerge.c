@@ -28,7 +28,7 @@ tagmerge_main(int ac, char **av)
 		//system("bk help tagmerge");
 		return (1);
 	}
-	if (!exists("SCCS/s.ChangeSet") && sccs_cd2root(0, 0)) {
+	if (!exists("SCCS/s.ChangeSet") && proj_cd2root()) {
 		fprintf(stderr, "Cannot find package root\n");
 		return (1);
 	}
@@ -45,7 +45,7 @@ tagmerge()
 	int	i = 0;
 	char	cset[] = CHANGESET;
 
-	unless (s = sccs_init(cset, 0, 0)) {
+	unless (s = sccs_init(cset, 0)) {
 		fprintf(stderr, "Cannot init ChangeSet\n");
 		return (1);
 	}

@@ -38,7 +38,7 @@ names_main(int ac, char **av)
 	
 	names_init();
 	for (n = sfileFirst("names", &av[optind], 0); n; n = sfileNext()) {
-		unless (s = sccs_init(n, 0, 0)) continue;
+		unless (s = sccs_init(n, 0)) continue;
 		unless (sccs_setpathname(s)) {
 			fprintf(stderr,
 			    "names: can't initialize pathname in %s\n",
@@ -72,7 +72,7 @@ names_init(void)
 {
 	/* this should be redundant, we should always be at the project root */
 
-	if (sccs_cd2root(0, 0)) {
+	if (proj_cd2root()) {
 		fprintf(stderr, "names: cannot find project root.\n");
 		exit(1);
 	}
@@ -117,7 +117,7 @@ pass2(u32 flags)
 	unless (filenum) return;
 	for (i = 1; i <= filenum; ++i) {
 		sprintf(path, "BitKeeper/RENAMES/SCCS/s.%d", i);
-		unless (s = sccs_init(path, 0, 0)) {
+		unless (s = sccs_init(path, 0)) {
 			fprintf(stderr, "Unable to init %s\n", path);
 			failed++;
 			continue;
@@ -178,7 +178,7 @@ try_rename(char *spathold, char *spathnew, int dopass1, u32 flags)
 	unless (flags & SILENT) {
 		fprintf(stderr, "names: %s -> %s\n", spathold, spathnew);
 	}
-	s = sccs_init(spathnew, flags|INIT_NOCKSUM, 0);
+	s = sccs_init(spathnew, flags|INIT_NOCKSUM);
 	unless (s) return (1);
 	ret = 0;
 	if (do_checkout(s)) ret = 1;

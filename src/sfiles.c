@@ -42,7 +42,6 @@ typedef struct winfo winfo;
 
 private	jmp_buf	sfiles_exit;
 private MDBM	*timestamps = 0;
-private project *proj;
 private options	opts;
 private char	**ignore, **dont_ignore;
 private u32	d_count, s_count, x_count; /* progress counter */
@@ -83,8 +82,7 @@ init(char *name, int flags, MDBM *sDB, MDBM *gDB)
 		*p = 's'; /* because hasfile() stomps */
 	}
 	if (strneq(name, "./", 2)) name += 2;
-	s = sccs_init(name, flags|INIT_SAVEPROJ, proj);
-        if (s && !proj) proj = s->proj;
+	s = sccs_init(name, flags);
         return (s);
 }
 
@@ -524,17 +522,6 @@ print_summary()
 	}
 }
 
-
-
-/*
- * This function returns NULL if it cannot find project root
- */
-private char *
-find_root(char *dir, char *root)
-{
-	return (_relativeName(dir, 1, 0, 1, 0, 0, root));
-}
-
 struct winfo {
 	char	**sfiles;
 	MDBM	*sDB, *gDB;
@@ -636,18 +623,16 @@ sfiles_walk(char *file, struct stat *sb, void *data)
 private void
 walk(char *dir)
 {
-	char	buf[MAXPATH];
-	char tmp[MAXPATH];
+	project	*proj;
+	char	tmp[MAXPATH];
 	winfo	wi = {0};
 
-	/*
-	 * Find project root and put it in buf
-	 */
-	if (find_root(dir, buf)) {
+	if (proj = proj_init(dir)) {
 		if (!opts.all) {
 			FILE	*ignoref;
 
-			sprintf(tmp, "%s/BitKeeper/etc/ignore", buf);
+			sprintf(tmp, "%s/BitKeeper/etc/ignore",
+			    proj_root(proj));
 			unless (exists(tmp)) get(tmp, SILENT, "-");
 			if (ignoref = fopen(tmp, "rt")) {
 				ignore = read_globs(ignoref, 0);
@@ -659,9 +644,10 @@ walk(char *dir)
 			    strdup("./BitKeeper/etc/gone"));
 		}
 		unless (opts.fixdfile) {
-			sprintf(tmp, "%s/%s", buf, DFILE);
+			sprintf(tmp, "%s/%s", proj_root(proj), DFILE);
 			opts.dfile = exists(tmp);
 		}
+		proj_free(proj);
 	} else {
 		/*
 		 * Dir is not a BitKeeper repository,
@@ -669,7 +655,6 @@ walk(char *dir)
 		 */
 		opts.all = 1;
 	}
-	assert(proj == 0);
 #if 0
 	/*
 	 * XXX TODO: should we reset the progress counter ?
@@ -685,7 +670,6 @@ walk(char *dir)
 	if (opts.timestamps && timestamps && proj) {
 		dumpTimestampDB(proj, timestamps);
 	}
-	if (proj) proj_free(proj); proj = 0;
 	if (opts.summarize) print_summary();
 
 	/*

@@ -26,7 +26,7 @@ status_main(int ac, char **av)
 			return (1); /* failed */
 		}
 	}
-	if (sccs_cd2root(0, 0) == -1) {
+	if (proj_cd2root()) {
 		fprintf(stderr, "status: cannot find root directory\n");
 		return(1);  /* error exit */
 	}

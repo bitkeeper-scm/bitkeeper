@@ -1,0 +1,39 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2003 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2003 BitMover, Inc
+# %K%
+
+
+no_logging project
+echo $N Test commit -y with multiline comments ......................$NL
+echo hi there > file
+bk new $Q file
+bk commit $Q -y'this
+is
+
+a
+
+test
+
+' || exit 1
+bk prs -r+ -hd':COMMENTS:' ChangeSet > GOT
+bk undos <<EOF > WANT
+C this
+C is
+C 
+C a
+C 
+C test
+C 
+EOF
+cmp -s WANT GOT || { echo failed; diff -u WANT GOT; exit 1; }
+echo OK

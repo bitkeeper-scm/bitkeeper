@@ -14,7 +14,7 @@ cmd_rootkey(int ac, char **av)
 		out("ERROR-not at a package root\n");
 		return (-1);
 	}
-	unless (s = sccs_init(s_cset, INIT_NOCKSUM, 0)) {
+	unless (s = sccs_init(s_cset, INIT_NOCKSUM)) {
 		out("ERROR-init of ChangeSet failed\n");
 		return (-1);
 	}

@@ -247,7 +247,7 @@ cmd_push_part2(int ac, char **av)
 		goto done;
 	}
 	if (metaOnly) goto done; /* no need for resolve */
-	unless (bk_proj) bk_proj = proj_init(0);
+	proj_reset(0);
 
 	/*
 	 * Fire up the pre-trigger (for non-logging tree only)

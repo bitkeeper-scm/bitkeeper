@@ -3,7 +3,7 @@
 .SH NAME
 bk stripdel \- strip deltas out of an s.file
 .SH SYNOPSIS
-.Bc bk stripdel [-bCcq] [
+.Bc bk stripdel [-bCcdq] [
 .OPTreq \-r rev
 .B ]
 .ARG filename
@@ -46,6 +46,9 @@ Do not respect cset boundaries, used by
 .tp
 .B -c
 Checks if the specified rev[s] can be stripped but do not strip them.
+.tp
+.B -d
+Strip deltas which are part of a MONOTONIC file.
 .tp
 .B -q
 Run quietly.

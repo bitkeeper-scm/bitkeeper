@@ -29,7 +29,7 @@ proc main {} \
 	widgets
 	loadState
 
-	restoreGeometry "help" 
+	restoreGeometry "rev" 
 	after idle [list wm deiconify .]
 
 	startup

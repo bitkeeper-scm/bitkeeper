@@ -18,8 +18,8 @@ hasCsetDerivedKey(sccs *s)
 	d1 = sccs_ino(s);
         sccs_sdelta(s, d1, buf1);
  
-        sprintf(buf2, "%s/%s", s->proj->root, CHANGESET);
-        sc = sccs_init(buf2, INIT_SAVEPROJ, s->proj);
+        sprintf(buf2, "%s/%s", proj_root(s->proj), CHANGESET);
+        sc = sccs_init(buf2, 0);
         assert(sc);
 	d2 = sccs_ino(sc);
         assert(d2);
@@ -56,7 +56,7 @@ converge_main(int ac, char **av)
                 }
         }  
 
-	if (sccs_cd2root(0, 0) == -1) {
+	if (proj_cd2root()) {
 		fprintf(stderr, "converge: cannot find root directory\n");
 		return (1);
 	}
@@ -86,7 +86,7 @@ list(char *gfile)
 	 * Find the full list of files we need work through - which is the
 	 * specified file plus any others which have the same root path.
 	 */
-	if ((s = sccs_init(sfile, 0, 0)) && HASGRAPH(s)) {
+	if ((s = sccs_init(sfile, 0)) && HASGRAPH(s)) {
 		sccs_sdelta(s, sccs_ino(s), key);
 		mdbm_store_str(vals, key, sfile, 0);
 		sccs_free(s);
@@ -145,10 +145,10 @@ resync_list(char *gfile)
 		}
 
 		sprintf(cmd, "%s/%s", RESYNC2ROOT, kv.val.dptr);
-		s = sccs_init(cmd, 0, 0); assert(s && HASGRAPH(s));
+		s = sccs_init(cmd, 0); assert(s && HASGRAPH(s));
 		/* reset the proj->root to RESYNC root */
-		free(s->proj->root);
-		s->proj->root = strdup(".");
+		proj_free(s->proj);
+		s->proj = proj_init(".");
 		t = sccs_rmName(s, 1);
 		sccs_free(s);
 
@@ -163,7 +163,7 @@ resync_list(char *gfile)
 	mdbm_close(pvals);
 	return (vals);
 }
-	
+
 private int
 converge(char *gfile, int resync)
 {
@@ -187,7 +187,7 @@ done:		mdbm_close(vals);
 	}
 	if (i == 1) {
 		kv = mdbm_first(vals);
-		if ((s = sccs_init(kv.val.dptr, 0, 0)) &&
+		if ((s = sccs_init(kv.val.dptr, 0)) &&
 		    HASGRAPH(s) && !hasCsetDerivedKey(s)) {
 			sccs_free(s);
 			goto done;
@@ -217,7 +217,7 @@ done:		mdbm_close(vals);
 	 * It's OK if there is no winner, we'll create one.
 	 */
 	for (kv = mdbm_first(vals); kv.key.dptr; kv = mdbm_next(vals)) {
-		s = sccs_init(kv.val.dptr, 0, 0);
+		s = sccs_init(kv.val.dptr, 0);
 		if (hasCsetDerivedKey(s)) {
 			sccs_free(s);
 			continue;	/* don't want that one */

@@ -69,7 +69,7 @@ commit_main(int ac, char **av)
 		}
 	}
 
-	if (sccs_cd2root(0, 0) == -1) {
+	if (proj_cd2root()) {
 		fprintf(stderr, "Cannot find root directory\n");
 		return (1);
 	}
@@ -160,7 +160,7 @@ commit_main(int ac, char **av)
 private int
 pending(char *sfile)
 {
-	sccs	*s = sccs_init(sfile, 0, 0);
+	sccs	*s = sccs_init(sfile, 0);
 	delta	*d;
 	int	ret;
 
@@ -247,7 +247,7 @@ out:		if (pendingFiles) unlink(pendingFiles);
 		fclose(f);
 		unlink("SCCS/t.ChangeSet");
 	}
-	cset = sccs_csetInit(0,0);
+	cset = sccs_csetInit(0);
 	rc = csetCreate(cset, dflags, p, syms);
 
 	putenv("BK_STATUS=OK");

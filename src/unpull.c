@@ -46,7 +46,7 @@ unpull(int force, int quiet)
 	int	i;
 	int	status;
 
-	if (sccs_cd2root(0, 0)) {
+	if (proj_cd2root()) {
 		fprintf(stderr, "unpull: can not find package root.\n");
 		exit(1);
 	}
@@ -68,7 +68,7 @@ unpull(int force, int quiet)
 	while ((--r > t) && (*r == ',')) *r = 0;	/* chop */
 	while (--r > t) if (r[-1] == ',') break;
 	assert(r && *r);
-	s = sccs_init(cset, 0, 0);
+	s = sccs_init(cset, 0);
 	assert(s && HASGRAPH(s));
 	d = sccs_top(s);
 	unless (streq(d->rev, r)) {

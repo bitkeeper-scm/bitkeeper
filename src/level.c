@@ -27,13 +27,12 @@ setlevel(int level)
 	FILE	*f;
 
 
-	unless (root = sccs_root(0)) {
+	unless (root = proj_root(0)) {
 		fprintf(stderr, "setlevel: Error: cannot find package root\n");
 		return (1);
 	}
 
 	lfile = aprintf("%s/%s", root, LEVEL);
-	free(root);
 	unless (f = fopen(lfile, "wt")) {
 		perror(lfile);
 		free(lfile);
@@ -51,13 +50,12 @@ getlevel(void)
 {
 	char	*root, *lfile;
 
-	unless (root = sccs_root(0)) {
+	unless (root = proj_root(0)) {
 		fprintf(stderr, "getlevel: Error: cannot find package root\n");
 		return (1); /* should we force a -1 here ? */
 	}
 
 	lfile = aprintf("%s/%s", root, LEVEL);
-	free(root);
 	if (exists(lfile)) {
 		char	buf[200];
 		FILE	*f;

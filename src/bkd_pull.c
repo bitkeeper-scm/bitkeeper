@@ -103,7 +103,7 @@ cmd_pull_part2(int ac, char **av)
 	 */
 	fd = open(serials, O_WRONLY, 0);
 	bzero(&r, sizeof(r));
-	s = sccs_init(s_cset, 0, 0);
+	s = sccs_init(s_cset, 0);
 	assert(s && HASGRAPH(s));
 	if (prunekey(s, &r, NULL, fd, PK_LSER, 1, &local, &rem, 0) < 0) {
 		local = 0;	/* not set on error */

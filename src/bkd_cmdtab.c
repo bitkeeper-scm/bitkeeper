@@ -41,6 +41,7 @@ struct cmd cmds[] = {
   { "chg_part2", "chg_1.3", 
     "get new csets in remote repository",
     cmd_chg_part2 },
+  { "license", "license_1.3", "fetch license keys", cmd_license },
   { "pending_part1", "pending_1.3", 
     "get pending items in remote repository",
     cmd_pending_part1 },

@@ -3,7 +3,7 @@
 private	void	exclude(char *cmd);
 private	int	findcmd(int ac, char **av);
 private	int	getav(int *acp, char ***avp, int *httpMode);
-private	void	log_cmd(int i, int ac, char **av);
+private	void	log_cmd(int ac, char **av);
 private	void	usage(void);
 private	char	**xcmds = 0;		/* excluded command */
 
@@ -155,8 +155,8 @@ get_byte_count()
 	off_t	byte_count = 0;
 	FILE *f = 0;
 
-	unless (bk_proj && bk_proj->root) return (0);
-	sprintf(buf, "%s/BitKeeper/log/byte_count", bk_proj->root);
+	unless (proj_root(0)) return (0);
+	sprintf(buf, "%s/BitKeeper/log/byte_count", proj_root(0));
 	f = fopen(buf, "r");
 	if (f && fgets(buf, sizeof(buf), f)) {
 		if (strlen(buf) > 11) {
@@ -177,8 +177,8 @@ save_byte_count(unsigned int byte_count)
 	FILE	*f;
 	char	buf[MAXPATH];
 
-	unless (bk_proj && bk_proj->root) return;
-	sprintf(buf, "%s/BitKeeper/log/byte_count", bk_proj->root);
+	unless (proj_root(0)) return;
+	sprintf(buf, "%s/BitKeeper/log/byte_count", proj_root(0));
 	f = fopen(buf, "w");
 	if (f) {
 		fprintf(f, "%u\n", byte_count);
@@ -205,12 +205,8 @@ do_cmds()
 		}
 		getoptReset();
 		if ((i = findcmd(ac, av)) != -1) {
-			if (Opts.log) log_cmd(i, ac, av);
-			if (!bk_proj ||
-			    !bk_proj->root || !isdir(bk_proj->root)) {
-				if (bk_proj) proj_free(bk_proj);
-				bk_proj = proj_init(0);
-			}
+			if (Opts.log) log_cmd(ac, av);
+			proj_reset(0); /* XXX needed? */
 
 			if (Opts.http_hdr_out) http_hdr(Opts.daemon);
 			cmdlog_start(av, httpMode);
@@ -252,13 +248,33 @@ do_cmds()
 }
 
 private	void
-log_cmd(int i, int ac, char **av)
+log_cmd(int ac, char **av)
 {
 	time_t	t;
 	struct	tm *tp;
+	int	i;
+	static	char	**putenv;
 
+	if (streq(av[0], "putenv")) {
+		putenv = addLine(putenv, strdup(av[1]));
+		return;
+	}
 	time(&t);
 	tp = localtimez(&t, 0);
+	if (putenv) {
+		fprintf(Opts.log, "%s %.24s ", Opts.remote, asctime(tp));
+		EACH(putenv) {
+			if (strneq("_BK_", putenv[i], 4) ||
+			    strneq("BK_", putenv[i], 3)) {
+			    	fprintf(Opts.log, "%s ", &putenv[i][3]);
+			} else {
+			    	fprintf(Opts.log, "%s ", putenv[i]);
+			}
+		}
+		fprintf(Opts.log, "\n");
+		freeLines(putenv, free);
+		putenv = 0;
+	}
 	fprintf(Opts.log, "%s %.24s ", Opts.remote, asctime(tp));
 	for (i = 0; i < ac; ++i) {
 		fprintf(Opts.log, "%s ", av[i]);

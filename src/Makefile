@@ -60,7 +60,7 @@ STRIP=strip
 OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	arrow_gif.o back_gif.o bk.o bkd.o bkd_cd.o \
 	bkd_changes.o bkd_client.o bkd_clone.o bkd_cmdtab.o bkd_http.o \
-	bkd_misc.o bkd_pending.o bkd_pull.o bkd_push.o bkd_pwd.o \
+	bkd_license.o bkd_misc.o bkd_pending.o bkd_pull.o bkd_push.o bkd_pwd.o \
 	bkd_rclone.o bkd_rootkey.o bkd_status.o bkd_synckeys.o bkd_version.o \
 	bkpowered.o bkusers.o bkver.o cat.o changes.o \
 	check.o checksum.o clean.o cleanpath.o clone.o \
@@ -79,7 +79,8 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	logging.o mail.o merge.o mkdir.o mklock.o \
 	mailsplit.o mmap.o mtime.o multiuser.o names.o newrev.o \
 	opark.o parent.o park.o \
-	pending.o preference.o port/bkd_client.o port/bkd_server.o \
+	pending.o preference.o proj.o \
+	port/bkd_client.o port/bkd_server.o \
 	port/check_gfile.o port/executable.o \
 	port/filecopy.o port/fileinfo.o port/findpid.o \
 	port/findprog.o port/flushsocket.o \
@@ -111,7 +112,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	user.o utils.o uu.o version.o what.o xflags.o zgets.o \
 	zone.o
 
-MDBMOBJ	= mdbm/mdbm.o mdbm/hash.o mdbm/debug.o mdbm/byte_order.o
+MDBMOBJ	= mdbm/mdbm.o mdbm/hash.o mdbm/debug.o mdbm/byte_order.o mdbm/memhash.o
 ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
       zlib/gzio.o zlib/infblock.o zlib/infcodes.o zlib/inffast.o \
       zlib/inflate.o zlib/inftrees.o zlib/infutil.o zlib/trees.o \
@@ -140,8 +141,7 @@ BINLINKS= admin get delta unget rmdel prs
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) gnu $(XTRA)
 
 # FASTPURIFY does not do overrun/underrun checking at each alloc/free
-CFLAGS	= $(CC_FAST_DEBUG) $(CC_WALL) \
-	  -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM -DFASTPURIFY
+CFLAGS	= $(CC_FAST)
 CPPFLAGS= -Izlib -Imdbm
 # For extra libraries required by the system, e.g. libnsl.
 XLIBS	=
@@ -154,7 +154,8 @@ LTOMCRYPT = -Ltomcrypt -ltomcrypt
 RANLIB	= ranlib
 SRCS	= $(OBJ:.o=.c) $(MDBMOBJ:.o=.c) $(ZLIBOBJ:.o=.c) $(TOMCRYPTOBJ:.o=.c)
 HDRS	= $(SYS).h $(UWT_H) bkd.h lib_tcp.h logging.h mdbm/common.h \
-	  mdbm/mdbm.h mdbm/tune.h mmap.h purify.h range.h rcs.h \
+	  mdbm/mdbm.h mdbm/tune.h mdbm/memhash.h mmap.h \
+	  proj.h purify.h range.h rcs.h \
 	  liblines.h resolve.h sccs.h system.h \
 	  tomcrypt/mpi-config.h tomcrypt/mpi.h tomcrypt/mycrypt_cfg.h \
 	  tomcrypt/mpi-types.h tomcrypt/mycrypt.h \

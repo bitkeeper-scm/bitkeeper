@@ -10,14 +10,12 @@ private	int	mixed;		/* running in mixed long/short mode */
 private	void	rebuild(void);
 private	sccs	*cset;
 private	int	caches(char *filename, struct stat *sb, void *data);
-private	project	*proj = 0;
 
 private inline sccs *
 init(char *name, int flags)
 {
-	sccs	*s = sccs_init(name, flags|INIT_SAVEPROJ, proj);
+	sccs	*s = sccs_init(name, flags);
 
-	if (s && !proj) proj = s->proj;
 	return (s);
 }
 
@@ -28,10 +26,7 @@ idcache_main(int ac, char **av)
 		fprintf(stderr, "Rebuilding idcache\n");
 	}
 
-	/* perror is in sccs_root, don't do it twice */
-	unless (sccs_cd2root(0, 0) == 0) {
-		return (1);
-	}
+	if (proj_cd2root()) return (1);
 
 	rebuild();
 	return (dups ? 1 : 0);
@@ -98,7 +93,6 @@ rebuild(void)
 out:	sccs_free(cset);
 	free(id_tmp);
 	mdbm_close(idDB);
-	if (proj) proj_free(proj);
 }
 
 private	void

@@ -12,7 +12,6 @@ typedef struct {
 	u32	isDot:1;	/* we got a rev  = "." */
 } options;
 
-private project *proj;
 private int mixed; /* if set, handle long and short keys */
 
 /*
@@ -50,7 +49,7 @@ upd_s2l(MDBM *s2l,  char *key)
 	}
 }
 
-MDBM *
+private MDBM *
 mk_s2l(MDBM *db)
 {
 	MDBM *short2long;
@@ -125,7 +124,7 @@ process(char *root, char *start, char *end,
 	if (is_same(start, end) && !opts.isDot)  return;
 
 	s = sccs_keyinit(root,
-	    INIT_NOGCHK|INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB);
+	    INIT_NOGCHK|INIT_NOCKSUM, idDB);
 	unless (s) {
 		unless (*goneDB) {
 			*goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
@@ -412,11 +411,11 @@ rset_main(int ac, char **av)
 		return (0);
 	}
 	
-	if (sccs_cd2root(0, 0)) {
+	if (proj_cd2root()) {
 		fprintf(stderr, "mkrev: cannot find package root.\n");
 		exit(1);
 	} 
-	s = sccs_init(s_cset, SILENT|INIT_SAVEPROJ, 0);
+	s = sccs_init(s_cset, SILENT);
 	assert(s);
 
 	while ((c = getopt(ac, av, "ahHl|r|")) != -1) {
@@ -478,7 +477,6 @@ usage:				system("bk help -s rset");
 		assert(db2);
 		opts.show_diffs = 1;
 	}
-	proj = s->proj;
 	mixed = !LONGKEY(s);
 	sccs_free(s);
 
@@ -489,6 +487,5 @@ usage:				system("bk help -s rset");
 	} else {
 		rel_list(db1, idDB, rev1, opts);
 	}
-	if (proj) proj_free(proj);
 	return (0);
 }

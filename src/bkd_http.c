@@ -455,8 +455,6 @@ findRoot(char *name)
 	if (isdir(path)) {
 		chdir(name);
 		strcpy(root, url(name));
-		if (bk_proj) proj_free(bk_proj);
-		bk_proj = proj_init(0);
 		return ("index.html");
 	}
 	for (s = strrchr(name, '/'); s && (s != name); ) {
@@ -466,8 +464,6 @@ findRoot(char *name)
 		if (isdir(path)) {
 			chdir(name);
 			strcpy(root, url(name));
-			if (bk_proj) proj_free(bk_proj);
-			bk_proj = proj_init(0);
 			return (s + 1);
 		}
 		t = strrchr(name, '/');
@@ -664,7 +660,7 @@ http_cset(char *rev)
 
 	if (lines) {
 		char	changeset[] = CHANGESET;
-		sccs	*cset = sccs_init(changeset, 0, 0);
+		sccs	*cset = sccs_init(changeset, 0);
 		delta	*d = findrev(cset, rev);
 
 		cset->rstart = cset->rstop = d;
@@ -1349,7 +1345,7 @@ http_stats(char *page)
 private void
 http_index(char *page)
 {
-	sccs	*s = sccs_init(CHANGESET, INIT_NOCKSUM|INIT_NOSTAT, 0);
+	sccs	*s = sccs_init(CHANGESET, INIT_NOCKSUM|INIT_NOSTAT);
 	delta	*d;
 	time_t	now, t1h, t1d, t2d, t3d, t4d, t1w, t2w, t3w;
 	time_t	t4w, t8w, t12w, t6m, t9m, t1y, t2y, t3y;
@@ -1869,7 +1865,7 @@ http_related(char *file)
 	char    dspec[MAXPATH];
 	FILE	*f;
 	int	count = 0;
-	sccs	*s = sccs_init(CHANGESET, INIT_NOCKSUM|INIT_NOSTAT, 0);
+	sccs	*s = sccs_init(CHANGESET, INIT_NOCKSUM|INIT_NOSTAT);
 
 	whoami("related/%s", file);
 

@@ -1,0 +1,174 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2001 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2001 Wayne Scott
+# %K%
+
+echo $N 'bk new' of two projects from outside any project..............$NL
+no_logging project1
+echo file1 > file1
+cd $HERE
+no_logging project2
+echo file2 > file1
+cd $HERE
+bk new $Q project1/file1 project2/file1 
+if [ $? != 0 ]; then echo Failed - new returned an error; exit 1; fi
+cd $HERE/project1
+if [ -f file1 -o \! -f SCCS/s.file1 ]; then
+	echo file1 should be checked in
+	exit 1
+fi
+if [ `bk cat file1` != "file1" ]; then
+	echo file1 contains wrong stuff
+	exit 1
+fi
+cd $HERE/project2
+if [ -f file1 -o \! -f SCCS/s.file1 ]; then
+	echo file1 should be checked in
+	exit 1
+fi
+if [ `bk cat file1` != "file2" ]; then
+	echo file1 contains wrong stuff
+	exit 1
+fi
+echo OK
+
+echo $N 'bk new' of two projects from a third project..................$NL
+cd $HERE
+rm -rf project1 project2
+no_logging project1
+echo file1 > file1
+cd $HERE
+no_logging project2
+echo file2 > file1
+cd $HERE
+no_logging project3
+echo file3 > file1
+bk new $Q ../project1/file1 ../project2/file1 
+if [ $? != 0 ]; then echo Failed - new returned an error; exit 1; fi
+if [ ! -f file1 -o -f SCCS/s.file1 ]; then
+	echo file1 shouldn\'t be checked in
+	exit 1
+fi
+cd $HERE/project1
+if [ -f file1 -o \! -f SCCS/s.file1 ]; then
+	echo file1 should be checked in
+	exit 1
+fi
+if [ `bk cat file1` != "file1" ]; then
+	echo file1 contains wrong stuff
+	exit 1
+fi
+cd $HERE/project2
+if [ -f file1 -o \! -f SCCS/s.file1 ]; then
+	echo file1 should be checked in
+	exit 1
+fi
+if [ `bk cat file1` != "file2" ]; then
+	echo file1 contains wrong stuff
+	exit 1
+fi
+echo OK
+
+echo $N 'bk prs' of two projects from outside any project..............$NL
+cd $HERE
+bk prs -r+ -nd ':DPN:' project1/file1 project2/file1 > out
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+cat > expected <<EOF
+======== project1/file1 1.1 ========
+file1
+======== project2/file1 1.1 ========
+file1
+EOF
+diff -q out expected || {
+	echo wrong output
+	diff out expected
+	exit 1
+}
+echo OK
+echo $N 'bk prs' of two projects from third project....................$NL
+cd $HERE/project3
+bk new $Q file1
+bk prs -r+ -nd ':DPN:' ../project1/file1 ../project2/file1 > out
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+cat > expected <<EOF
+======== ../project1/file1 1.1 ========
+file1
+======== ../project2/file1 1.1 ========
+file1
+EOF
+diff -q out expected || {
+	echo wrong output
+	diff out expected
+	exit 1
+}
+echo OK
+echo $N 'bk delta' of two projects from outside any project ...........$NL
+cd $HERE
+bk edit $Q project1/file1 project2/file1
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo new1 >> project1/file1
+echo new2 >> project2/file1
+bk delta $Q -ystuff project1/file1 project2/file1
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+cd project1
+if [ -f file1 -o \! -f SCCS/s.file1 ]; then
+	echo file1 should be checked in
+	exit 1
+fi
+if [ "`bk cat file1`" != "file1
+new1" ]; then
+	echo project1/file1 contains wrong stuff
+	exit 1
+fi
+cd $HERE/project2
+if [ -f file1 -o \! -f SCCS/s.file1 ]; then
+	echo file1 should be checked in
+	exit 1
+fi
+if [ "`bk cat file1`" != "file2
+new2" ]; then
+	echo project2/file1 contains wrong stuff
+	exit 1
+fi
+echo OK
+echo $N 'bk delta' of two projects from a third project ...............$NL
+cd $HERE
+bk edit $Q project1/file1 project2/file1
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo morenew1 >> project1/file1
+echo morenew2 >> project2/file1
+cd project3
+bk delta $Q -ystuff2 ../project1/file1 ../project2/file1
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+cd $HERE/project1
+if [ -f file1 -o \! -f SCCS/s.file1 ]; then
+	echo file1 should be checked in
+	exit 1
+fi
+if [ "`bk cat file1`" != "file1
+new1
+morenew1" ]; then
+	echo project1/file1 contains wrong stuff
+	exit 1
+fi
+cd $HERE/project2
+if [ -f file1 -o \! -f SCCS/s.file1 ]; then
+	echo file1 should be checked in
+	exit 1
+fi
+if [ "`bk cat file1`" != "file2
+new2
+morenew2" ]; then
+	echo project2/file1 contains wrong stuff
+	exit 1
+fi
+echo OK

@@ -29,7 +29,7 @@ receive_main(int ac,  char **av)
 	}
 
 	unless (av[optind]) {
-		if (sccs_cd2root(0, 0)) {
+		if (proj_cd2root()) {
 usage:			fprintf(stderr,
 			"usage: bk receive [takepatch options] [pathname]\n");
 			exit(1);

@@ -19,8 +19,6 @@ private	char *name2tname(char *);
 private char *tname2sname(char *);
 char **getParkComment(int *err);
 
-private project *parkdir_proj = 0;
-
 private void
 usage1(void)
 {
@@ -83,7 +81,7 @@ park_main(int ac, char **av)
 
 	sfio_list[0] = parkfile[0] = changedfile[0] = parkedfile[0] = 0;
 
-	p = _relativeName(".", 1, 0, 1, 0, bk_proj, buf);
+	p = _relativeName(".", 1, 0, 1, 0, 0);
 	unless (p) {
 		fprintf(stderr, "Can't find package root\n");
 err:		if (s) sccs_free(s);
@@ -98,8 +96,7 @@ err:		if (s) sccs_free(s);
 		freeLines(ccomments, free);
 		return (1);
 	}
-	if (chdir(buf)) {
-		perror(buf);
+	if (proj_cd2root()) {
 		fprintf(stderr, "Can't chdir to package root\n");
 		goto err;
 	}
@@ -170,7 +167,7 @@ err:		if (s) sccs_free(s);
 		tname = name2tname(tmp);
 		mkdirf(tname);
 
-		s = sccs_init(sname, INIT_SAVEPROJ, bk_proj);
+		s = sccs_init(sname, 0);
 		assert(s);
 		if (!exists(s->gfile)) {
 			fprintf(stderr,
@@ -301,7 +298,7 @@ err:		if (s) sccs_free(s);
 	f = fopen("ChangeSet", "wb");
 	fprintf(f, "%s\n", PARKFILE_VERSION);
 	/* We are in PARKDIR, so bk_proj is wrong, but we don't use it here */
-	s = sccs_init(PARK2ROOT "/" CHANGESET, INIT_SAVEPROJ, bk_proj);
+	s = sccs_init(PARK2ROOT "/" CHANGESET, 0);
 	fputs("# ROOTKEY: ", f);
 	sccs_pdelta(s, sccs_ino(s), f);
 	fputs("\n# DELTKEY: ", f);
@@ -357,7 +354,7 @@ err:		if (s) sccs_free(s);
 
 		chomp(buf);
 		sname = name2sccs(buf);
-		s = sccs_init(sname, INIT_SAVEPROJ, bk_proj);
+		s = sccs_init(sname, 0);
 		if (HAS_SFILE(s)) {
 			sccs_unedit(s, SILENT);
 			cname = sccs_Xfile(s, 'c');
@@ -694,20 +691,6 @@ copyGSPfile(char *oldpath, char *key,
 }
 
 /*
- * We need this to prevent "bk idcache" from decending into PARKDIR
- */
-private void
-mkFakeRoot(void)
-{
-	char p[] = BKROOT;
-	char q[] = CHANGESET;
-
-	mkdirp(p);
-	mkdirf(q);
-	close(open(CHANGESET, O_CREAT|O_WRONLY, 0666));
-}
-
-/*
  * Return true if two file are the same
  */
 private int
@@ -856,7 +839,7 @@ do_file_unpark(MMAP *m, char *path, int force, char *type,
 	sname = tname2sname(path);
 	gname = tname2gname(path);
 
-	s = sccs_init(sname, INIT_SAVEPROJ, parkdir_proj);
+	s = sccs_init(sname, 0);
 	assert(s && HASGRAPH(s));
 	if (!HAS_GFILE(s) && isBaselineKey(s, basekey)) {
 		goto doit;
@@ -917,7 +900,7 @@ do_extra_reg_unpark(MMAP *m, char *path, int force,
 	gname = tname2gname(path);
 
 	if (force) goto doit;
-	s = sccs_init(sname, INIT_SAVEPROJ, parkdir_proj);
+	s = sccs_init(sname, 0);
 	assert(s);
 	if (!HAS_GFILE(s) && !HAS_GFILE(s)) {
 		goto doit; 
@@ -985,7 +968,7 @@ do_symlink_unpark(MMAP *m, char *path, int force,
 	sname = tname2sname(path);
 	gname = tname2gname(path);
 
-	s = sccs_init(sname, INIT_SAVEPROJ, parkdir_proj);
+	s = sccs_init(sname, 0);
 	assert(s && HASGRAPH(s));
 	top = sccs_top(s); /* Do we want to follow a rename s.file ? */
 			   /* if so we need to allow a rename delta  */
@@ -1056,7 +1039,7 @@ do_extra_symlink_unpark(MMAP *m, char *path, int force,
 	gname = tname2gname(path);
 
 	if (force) goto doit;
-	s = sccs_init(sname, INIT_SAVEPROJ, parkdir_proj);
+	s = sccs_init(sname, 0);
 	top = sccs_top(s);
 	assert(s);
 	if (!HAS_GFILE(s) && !HAS_GFILE(s)) {
@@ -1111,7 +1094,6 @@ do_unpark(int id, int clean, int force)
 		fprintf(stderr, "%s exists, unpark aborted\n", PARKDIR);
 err:		if (sfio_list[0]) unlink(sfio_list);
 		if (unpark_list[0]) unlink(unpark_list);
-		if (parkdir_proj) proj_free(parkdir_proj);
 		return (-1);
 	}
 
@@ -1145,8 +1127,10 @@ err:		if (sfio_list[0]) unlink(sfio_list);
 		perror(PARKDIR);
 		goto err;
 	}
-	mkFakeRoot(); /* for bk idcache */
-	parkdir_proj = proj_init(0);
+	/*
+	 * We need this to prevent "bk idcache" from decending into PARKDIR
+	 */
+	close(open(BKSKIP, O_CREAT|O_WRONLY, 0666));
 
 	rc = sysio((id == -1) ? NULL : parkfile,
 				NULL, sfio_list, "bk", "sfio", "-i", SYS);
@@ -1336,7 +1320,7 @@ skip_apply:
 		sccs	*s;
 		delta 	*d;
 
-		s = sccs_init(s_cset, INIT_SAVEPROJ, bk_proj);
+		s = sccs_init(s_cset, 0);
 		d = sccs_findKey(s, cset_key);
 		fprintf(stderr,
 		    "Unpark of parkfile_%d failed. %s not removed.\n"
@@ -1350,7 +1334,6 @@ skip_apply:
 	}
 	unlink(sfio_list);
 	unlink(unpark_list);
-	if (parkdir_proj) proj_free(parkdir_proj);
 	return (error);
 }
 
@@ -1377,7 +1360,7 @@ unpark_main(int ac, char **av)
 	}
 
 
-	if (sccs_cd2root(0, 0) == -1) {
+	if (proj_cd2root()) {
 		fprintf(stderr, "Can't find package root\n");
 		return (0);
 	}

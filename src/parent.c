@@ -20,7 +20,7 @@ parent_main(int ac,  char **av)
 		return (0);
 	}
 
-	if (sccs_cd2root(0, 0) == -1) {
+	if (proj_cd2root()) {
 		fprintf(stderr, "parent: cannot find package root.\n");
 		return (1);
 	}
@@ -133,7 +133,7 @@ empty:		fprintf(stderr, "This package has no %s\n", which);
 		 * b) Some site may be using ssh port forwarding
 		 *    which means the path is not really local.
 		 */
-		if (r->path && !r->port) {
+		if (r->path && IsFullPath(r->path) && !r->port) {
 			sprintf(buf, "%s/BitKeeper/etc", r->path);
 			unless (isdir(buf)) {
 				printf("bk parent: attempting to set parnet "
@@ -143,16 +143,10 @@ empty:		fprintf(stderr, "This package has no %s\n", which);
 				     av[optind], r->path);
 				return (1);
 			}
-			unless (IsFullPath(r->path)) {
-				fp = r->path;
-				r->path = strdup(fullname(r->path, 0));
-				free(fp);
-			}
 		}
 		if (r->host) free(r->host);
 		r->host = strdup(sccs_gethost());
 	}
-
 
 	strcpy(buf, parentFile);
 	mkdirf(buf);
@@ -215,8 +209,8 @@ getParent()
 
 	parentFile = PARENT;
 
-	assert(bk_proj && bk_proj->root);
-	p = aprintf("%s/%s", bk_proj->root, parentFile);
+	assert(proj_root(0));
+	p = aprintf("%s/%s", proj_root(0), parentFile);
 	f = open(p, 0, 0);
 	free(p);
 	unless (f >= 0) return (0);

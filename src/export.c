@@ -78,7 +78,7 @@ usage:			system("bk help -s export");
 
 	unless (type) type = "plain";
 	if (streq(type, "patch")) {
-		if (sccs_cd2root(0, 0) == -1) {
+		if (proj_cd2root()) {
 			fprintf(stderr, "export: can not find package root.\n");
 			exit(1);
 		}
@@ -99,7 +99,7 @@ usage:			system("bk help -s export");
 	}
 	strcpy(dst_path, fullname(dst, 0));
 	chdir(src);
-	if (sccs_cd2root(0, 0) == -1) {
+	if (proj_cd2root()) {
 		fprintf(stderr, "Cannot find package root.\n");
 		exit(1);
 	}
@@ -155,7 +155,7 @@ usage:			system("bk help -s export");
 		if (streq(buf, "ChangeSet")) continue;
 		sprintf(buf1, "%s/%s", src_path, buf);
 		t = name2sccs(buf1);
-		s = sccs_init(t, SILENT, 0);
+		s = sccs_init(t, SILENT);
 		free(t);
 		assert(s && HASGRAPH(s));
 		q = strchr(p, BK_FS); 
