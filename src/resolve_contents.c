@@ -121,6 +121,7 @@ c_merge(resolve *rs)
 	names	*n = rs->tnames;
 	int	ret;
 
+	export_revs(rs);
 	ret = sys("bk", rs->opts->mergeprog,
 	    n->local, n->gca, n->remote, rs->s->gfile, SYS);
 	sccs_restart(rs->s);

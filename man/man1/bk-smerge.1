@@ -28,10 +28,6 @@ the conflict region and at the end of the conflict region.  For each
 region, one or more of the automerge algorithms (see below) are run
 to see if the changes may be merged automatically.
 .LP
-The bk smerge command is typically run automatically from bk resolve.  
-When doing a manual merge in the resolver, the user can pass extra 
-options to smerge by adding them to the 'm' or 'e' resolve commands.
-.LP
 The bk smerge command does not use the traditional diff3 merge.
 There are a number of heuristics in the default enabled merge
 algorithms which help determine regions which are safe to automerge.
@@ -42,11 +38,21 @@ only be run on SCCS files.
 In some scripts users may want to call smerge directly.  If so, an example
 for usage is:
 .DS
-bk smerge -g 1.661 1.660 1.660.1.4 slib.c > slib.c.merged
+bk smerge -gp 1.661 1.660 1.660.1.4 slib.c > slib.c.merged
 .DE
-where 1.661 is the local revision, 1.660 is the rivision of the
+where 1.661 is the local revision, 1.660 is the revision of the
 greatest common ancestor, 1.660.1.4 is the remote revision, slib.c is the
 file name and slib.c.merged is the file to which merge output is redirected.
+.LP
+The string for the local, gca, and remote versions of the file can be
+expressed in the form "rev+includes-excludes" where rev is a normal
+revision number like "1.661" and includes and excludes are a comma
+separated list if revisions to include or exclude from the base
+revision. (The include and/or exclude lists can be omitted if they are
+empty.)  Also if the environmental variables
+MERGE_REVS_{LOCAL,GCA,REMOTE} are set, then those strings are used
+instead of the corresponding strings on the commandline.  This is for
+integration into the BK resolve command.
 .SH "MERGE ALGORITHMS"
 .LP
 Each of the automerge algorithms is described below.  Currently,
@@ -76,7 +82,7 @@ performed.
 .RS 1i
 .sp
 Here is an example of a conflict region (in the -g output format)
-where this algorithm will sucessfully resolve the conflict.
+where this algorithm will successfully resolve the conflict.
 .DS
 <<<<<<< local slib.c 1.642.1.6 vs 1.645
 	sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);
@@ -114,11 +120,11 @@ sides at the end of the conflict region.
 .B 6. Merge identical deletions made by both sides
 If both the local and remote version of a region have deleted the
 same non-zero block of lines at the end of the region, then split the
-region into two with the deletions in a seperate region.  The
+region into two with the deletions in a separate region.  The
 deletions will then get autoresolved.
 .LP
 When a conflict regions is identified, then the enabled algorithms are run
-on the block repeatedly until the block is resolved or no futher
+on the block repeatedly until the block is resolved or no further
 progress is made.
 .LP
 Default merge output format is as follows:
@@ -142,12 +148,16 @@ the form: <<<<<<<
 .ARG label
 .ARG file
 .ARG revision
-follwed by the conflict lines from that file.  The end of the conflict region
+followed by the conflict lines from that file.  The end of the conflict region
 is indicated by ">>>>>>>".
 Examples of merge output can be viewed by using the -e option.
 .SH OPTIONS
 .if t .TP .6i
 .if n .TP 1i
+.B \-p
+Write merged output to stdout instead of overwriting the file
+on the command line.
+.tp
 .B \-2
 Enable the 2 way output format (like diff3)
 .tp
@@ -171,7 +181,7 @@ Enable merge functions
 .ARG n ,
 where 
 .ARG n
-is a comma seperated list of automerge algorithms specified by number.
+is a comma separated list of automerge algorithms specified by number.
 .OPTreq \-a all
 \ will enable all automerge algorithms.   
 Use 'bk smerge -h' to find the algorithms enabled by
@@ -182,7 +192,7 @@ Disable merge functions
 .ARG n ,
 where
 .ARG n
-is a comma seperated list of automerge algorithms specified by number.
+is a comma separated list of automerge algorithms specified by number.
 .OPTreq \-A all
 \ will turn off all automerging.
 .tp

@@ -168,3 +168,4 @@ void	saveKey(opts *opts, char *key, char *file);
 int	slotTaken(opts *opts, char *slot);
 void	do_delta(opts *opts, sccs *s, char *comment);
 int	oldsys(char *cmd, opts *o);
+void	export_revs(resolve *rs);

@@ -2,6 +2,7 @@
 #include "sccs.h"
 #include <string.h>
 
+private	char	*getrevs(int i, char **av);
 private int	do_merge(int start, int end, FILE *inputs[3]);
 private void	usage(void);
 private char	*fagets(FILE *fh);
@@ -47,6 +48,8 @@ private	int	mode;
 private	int	show_seq;
 private	int	fdiff;
 private	char	*anno = 0;
+private	int	tostdout = 0;
+private	FILE	*outf;
 
 int
 smerge_main(int ac, char **av)
@@ -56,10 +59,12 @@ smerge_main(int ac, char **av)
 	char	buf[MAXPATH];
 	FILE	*inputs[3];
 	int	start = 0, end = 0;
-	int	ret;
+	int	ret = 0;
+	int	identical = 1;
+	int	status;
 
 	mode = MODE_3WAY;
-	while ((c = getopt(ac, av, "2A:a:efghnp:r:s")) != -1) {
+	while ((c = getopt(ac, av, "2A:a:efghI:npr:s")) != -1) {
 		switch (c) {
 		    case '2': /* 2 way format (like diff3) */
 			mode = MODE_2WAY;
@@ -70,12 +75,15 @@ smerge_main(int ac, char **av)
 		    case 'n': /* newonly (like -2 except marks added lines) */
 			mode = MODE_NEWONLY;
 			break;
-		    case 'p': /* Add annotations */
+		    case 'I': /* Add annotations (Info) */
 		    	anno = optarg;
 			break;
 		    case 'A':
 		    case 'a':
 			enable_mergefcns(optarg, c == 'a');
+			break;
+		    case 'p':
+			tostdout = 1;
 			break;
 		    case 'f': /* fdiff output mode */
 			fdiff = 1;
@@ -106,28 +114,131 @@ smerge_main(int ac, char **av)
 	if (fdiff) assert(mode != MODE_3WAY);
 
 	file = av[optind + 3];
+	for (i = 0; i < 3; i++) revs[i] = getrevs(i, &av[optind]);
+	
+	/*
+	 * check to see if both local and remote versions are identical.
+	 */
+	sprintf(buf, "bk get -qkp -r%s %s", revs[LEFT], file);
+	inputs[LEFT] = popen(buf, "r");
+	sprintf(buf, "bk get -qkp -r%s %s", revs[RIGHT], file);
+	inputs[RIGHT] = popen(buf, "r");
+	do {
+		int	len;
+		char	buf1[MAXPATH], buf2[MAXPATH];
+		
+		len = fread(buf1, 1, sizeof(buf1), inputs[LEFT]);
+		if (len != fread(buf2, 1, sizeof(buf2), inputs[RIGHT])
+		    || memcmp(buf1, buf2, len) != 0) {
+			identical = 0;
+			break;
+		}
+	} while (!feof(inputs[LEFT]));
+	unless (feof(inputs[RIGHT])) identical = 0;
+	status = pclose(inputs[LEFT]);
+	if (status) {
+		fprintf(stderr, 
+		    "Fetch of revision %s of file %s failed.\n",
+		    revs[LEFT], file);
+		ret = 2;
+	}
+	status = pclose(inputs[RIGHT]);
+	if (status) {
+		fprintf(stderr, 
+		    "Fetch of revision %s of file %s failed.\n",
+		    revs[RIGHT], file);
+		ret = 2;
+	}
+	if (ret) return (ret);
+	if (identical) {
+		free(revs[RIGHT]);
+		revs[RIGHT] = strdup(revs[LEFT]);
+	}
+	
+	
 	for (i = 0; i < 3; i++) {
-		revs[i] = av[optind + i];
-		sprintf(buf, "bk get %s%s -qkpOr%s %s",
+		sprintf(buf, "bk get %s%s -qkpO -r%s %s",
 		    anno ? "-a" : "",
 		    anno ? anno : "",
-		    revs[i], file);
+		    revs[i], 
+		    file);
 		inputs[i] = popen(buf, "r");
 		assert(inputs[i]);
 	}
+	if (tostdout) {
+		outf = stdout;
+	} else {
+		outf = fopen(file, "w");
+		unless (outf) {
+			fprintf(stderr, "Can't open %s for writing\n", file);
+			exit(2);
+		}
+	}
 	ret = do_merge(start, end, inputs);
 	for (i = 0; i < 3; i++) {
-		int	status;
 		status = pclose(inputs[i]);
 		if (status) {
 			fprintf(stderr, 
-				"Fetch of revision %s of file %s failed.\n",
-				revs[i], file);
+			    "Fetch of revision %s of file %s failed.\n",
+			    revs[i], file);
 			ret = 2;
 		}
+		free(revs[i]);
 	}
+	unless (tostdout) fclose(outf);
 	return (ret);
 }
+
+/*
+ * convert the version string for the input fine into arguments that
+ * can be passed to get.
+ *   from 1.7+2.1,2.2-1.6
+ *     to 1.7 -i2.1,2.2 -x1.6
+ */
+private char *
+getrevs(int i, char **av)
+{
+	static	const	char	*envnames[] = {
+		"MERGE_REVS_LOCAL", 
+		"MERGE_REVS_GCA", 
+		"MERGE_REVS_REMOTE"
+	};
+	char	*ret = 0;
+	char	*verstr;
+	char	*v;
+	char	*p;
+	int	len;
+
+	verstr = getenv(envnames[i]);
+	unless (verstr) verstr = av[i];
+	/* Allocate buffer for return string */
+	ret = malloc(strlen(verstr) + 16);
+	p = ret;
+	v = verstr;
+	len = strspn(v, "0123456789.");
+	unless (len) goto err;
+	strncpy(p, v, len);
+	p += len;
+	v += len;
+	while (*v == '+' || *v == '-') {
+		p += sprintf(p, " -%c", (*v == '+') ? 'i' : 'x');
+		++v;
+		len = strspn(v, "0123456789.,");
+		unless (len) goto err;
+		strncpy(p, v, len);
+		p += len;
+		v += len;
+	}
+	if (*v) {
+err:		fprintf(stderr, "Unable to parse version number: %s\n", verstr);
+		exit(2);
+	}
+		
+	*p = 0;
+	assert(strlen(ret) < strlen(verstr) + 16);
+	return (ret);
+}
+	
 
 private void
 usage(void)
@@ -158,12 +269,12 @@ printline(char *line, int preserve_char)
 {
 	if (preserve_char) {
 		assert(!fdiff);
-		fputc(line[0], stdout);
+		fputc(line[0], outf);
 		++line;
 	}
 	unless (show_seq) line = skipseq(line);
-	if (fdiff) fputc(' ', stdout);
-	fputs(line, stdout);
+	if (fdiff) fputc(' ', outf);
+	fputs(line, outf);
 }
 			
 private int
@@ -431,7 +542,7 @@ resolve_conflict(char **lines[3], u32 start, u32 end)
 			/* This region was automerged */
 			if (fdiff) {
 				user_conflict_fdiff(r);
-				fputs("Merge\n", stdout);
+				fputs("Merge\n", outf);
 			} 
 			EACH(r->merged) {
 				printline(r->merged[i], 0);
@@ -449,11 +560,11 @@ resolve_conflict(char **lines[3], u32 start, u32 end)
 			}
 		}
 		if (fdiff) {
+			fputs("End", outf);
 			if (r->end) {
-				printf("End %d\n", r->end);
-			} else {
-				printf("End\n");
+				fprintf(outf, " %d", r->end);
 			}
+			fputc('\n', outf);
 		}
 		freeLines(r->left);
 		freeLines(r->gca);
@@ -472,41 +583,41 @@ user_conflict(region *r)
 	switch (mode) {
 	    case MODE_GCA:
 		unless (sameLines(r->left, r->gca)) {
-			printf("<<<<<<< local %s %s vs %s\n", 
-			       file, revs[GCA], revs[LEFT]);
+			fprintf(outf, "<<<<<<< local %s %s vs %s\n", 
+			    file, revs[GCA], revs[LEFT]);
 			diffs = unidiff(r->gca, r->left);
 			EACH(diffs) printline(diffs[i], 1);
 			freeLines(diffs);
 		}
 		unless (sameLines(r->right, r->gca)) {
-			printf("<<<<<<< remote %s %s vs %s\n", 
-			       file, revs[GCA], revs[RIGHT]);
+			fprintf(outf, "<<<<<<< remote %s %s vs %s\n", 
+			    file, revs[GCA], revs[RIGHT]);
 			diffs = unidiff(r->gca, r->right);
 			EACH(diffs) printline(diffs[i], 1);
 			freeLines(diffs);
 		}
-		printf(">>>>>>>\n");
+		fprintf(outf, ">>>>>>>\n");
 		break;
 	    case MODE_2WAY:
-		printf("<<<<<<< local %s %s\n", file, revs[LEFT]);
+		fprintf(outf, "<<<<<<< local %s %s\n", file, revs[LEFT]);
 		EACH(r->left) printline(r->left[i], 0);
-		printf("<<<<<<< remote %s %s\n", file, revs[RIGHT]);
+		fprintf(outf, "<<<<<<< remote %s %s\n", file, revs[RIGHT]);
 		EACH(r->right) printline(r->right[i], 0);
-		printf(">>>>>>>\n");
+		fprintf(outf, ">>>>>>>\n");
 		break;
 	    case MODE_3WAY:
-		printf("<<<<<<< gca %s %s\n", file, revs[GCA]);
+		fprintf(outf, "<<<<<<< gca %s %s\n", file, revs[GCA]);
 		EACH(r->gca) printline(r->gca[i], 0);
-		printf("<<<<<<< local %s %s\n", file, revs[LEFT]);
+		fprintf(outf, "<<<<<<< local %s %s\n", file, revs[LEFT]);
 		EACH(r->left) printline(r->left[i], 0);
-		printf("<<<<<<< remote %s %s\n", file, revs[RIGHT]);
+		fprintf(outf, "<<<<<<< remote %s %s\n", file, revs[RIGHT]);
 		EACH(r->right) printline(r->right[i], 0);
-		printf(">>>>>>>\n");
+		fprintf(outf, ">>>>>>>\n");
 		break;
 	    case MODE_NEWONLY:
 		unless (sameLines(r->left, r->gca)) {
-			printf("<<<<<<< local %s %s vs %s\n", 
-			       file, revs[GCA], revs[LEFT]);
+			fprintf(outf, "<<<<<<< local %s %s vs %s\n", 
+			    file, revs[GCA], revs[LEFT]);
 			diffs = unidiff(r->gca, r->left);
 			EACH(diffs) {
 				if (diffs[i][0] != '-') {
@@ -516,8 +627,8 @@ user_conflict(region *r)
 			freeLines(diffs);
 		}
 		unless (sameLines(r->right, r->gca)) {
-			printf("<<<<<<< remote %s %s vs %s\n", 
-			       file, revs[GCA], revs[RIGHT]);
+			fprintf(outf, "<<<<<<< remote %s %s vs %s\n", 
+			    file, revs[GCA], revs[RIGHT]);
 			diffs = unidiff(r->gca, r->right);
 			EACH(diffs) {
 				if (diffs[i][0] != '-') {
@@ -526,7 +637,7 @@ user_conflict(region *r)
 			}
 			freeLines(diffs);
 		}
-		printf(">>>>>>>\n");
+		fprintf(outf, ">>>>>>>\n");
 		break;
 	}
 }
@@ -603,24 +714,24 @@ user_conflict_fdiff(region *r)
 		free(diffs);
 		break;
 	}
+	fputs("Left", outf);
 	if (r->start) {
-		printf("Left %d\n", r->start);
-	} else {
-		printf("Left\n");
+		printf(" %d", r->start);
 	}
+	fputc('\n', outf);
 	sl = left ? seq(left[1]) : 0;
 	sr = right ? seq(right[1]) : 0;
 	while (sl && sr) {
 		while (sl < sr) {
 			char	*line = popLine(left);
-			fputs(line, stdout);
+			fputs(line, outf);
 			free(line);
 			out_right = addLine(out_right, strdup("s\n"));
 			sl = seq(left[1]);
 			unless (sl) goto done;
 		}
 		while (sl > sr) {
-			fputs("s\n", stdout);
+			fputs("s\n", outf);
 			out_right = addLine(out_right, popLine(right));
 			sr = seq(right[1]);
 			unless(sr) goto done;
@@ -628,7 +739,7 @@ user_conflict_fdiff(region *r)
 		
 		while (sl == sr) {
 			char	*line = popLine(left);
-			fputs(line, stdout);
+			fputs(line, outf);
 			free(line);
 			out_right = addLine(out_right, popLine(right));
 			sl = seq(left[1]);
@@ -639,18 +750,18 @@ user_conflict_fdiff(region *r)
  done:
 	while (sl) {
 		char	*line = popLine(left);
-		fputs(line, stdout);
+		fputs(line, outf);
 		free(line);
 		out_right = addLine(out_right, strdup("s\n"));
 		sl = seq(left[1]);
 	}
 	while (sr) {
-		fputs("s\n", stdout);
+		fputs("s\n", outf);
 		out_right = addLine(out_right, popLine(right));
 		sr = seq(right[1]);
 	}
-	fputs("Right\n", stdout);
-	EACH (out_right) fputs(out_right[i], stdout);
+	fputs("Right\n", outf);
+	EACH (out_right) fputs(out_right[i], outf);
 	freeLines(out_right);
 	freeLines(left);
 	freeLines(right);
@@ -960,8 +1071,8 @@ merge_content(region *r)
 			/* deleted line, ignore */
 			if (!((left[i][0] == '-' && right[rline][0] == ' ') ||
 			      (left[i][0] == ' ' && right[rline][0] == '-'))) {
-				printf("ERROR:\n\t%s\t%s", 
-				       left[i], right[rline]);
+				fprintf(stderr, "ERROR:\n\t%s\t%s", 
+				    left[i], right[rline]);
 				exit(2);
 			}
 			rline++;

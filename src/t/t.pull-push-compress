@@ -194,7 +194,11 @@ u
 EOF
 [ $? -eq 0 ] || { echo resolve failed; cat resolve.out; exit 1; }
 L=`bk get $Q -p src/h.h | wc -l`
-[ $L -eq 5 ] || { echo merge failed; exit 1; }
+target=5
+if [ "X$BK_RESOLVE_MERGEPROG" = "Xsmerge" ]; then
+	target=7
+fi
+[ $L -eq $target ] || { echo merge failed; exit 1; }
 cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
 cd $HERE
 cp -rp project project2
