@@ -1,6 +1,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "zlib/zlib.h"
+#include "logging.h"
 
 WHATSTR("@(#)%K%");
 
@@ -483,7 +484,8 @@ cset_fixLinuxKernelChecksum(sccs *s)
 	char	key[MAXKEY];
 
 	sccs_sdelta(s, sccs_ino(s), key);
-	unless (streq(key, LINUX_ROOTKEY)) return (s);
+	unless (streq(key, LINUX_ROOTKEY)) return (s); /* linux only */
+	if (exists(LOG_TREE)) return (s); /* don't fix openlogging */
 	unless (d = sccs_findMD5(s, BADKEY)) return (s);
 
 	if (sccs_findMD5(s, GOODKEY)) {
