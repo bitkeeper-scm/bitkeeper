@@ -38,7 +38,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o approve.o \
 	bkd_rclone.o bkd_rootkey.o bkd_status.o bkd_synckeys.o bkd_version.o \
 	bkpowered.o bkusers.o bkver.o cat.o changes.o \
 	check.o checksum.o clean.o cleanpath.o clone.o \
-	comments.o commit.o compress.o converge.o \
+	comment.o comments.o commit.o compress.o converge.o \
 	cp.o cset.o cset_inex.o csets.o cweave.o delta.o diffs.o \
 	dir_gif.o dirname.o export.o fdiff.o file_gif.o \
 	find.o findkey.o fix.o g2sccs.o gca.o get.o gethelp.o \

@@ -1,0 +1,49 @@
+.so bk-macros
+.TH "bk comment" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME 
+bk comment \- change the checkin comment of a file
+.SH SYNOPSIS
+.Bc bk comment [
+.OPTreq \-r rev
+.Bc ] [
+.OPTreq \-y cmt
+.Bc ] [
+.OPTreq \-Y file
+.B ]
+file [file ...]
+.SH DESCRIPTION
+.LP
+The
+.B comment
+command changes the stored comments for a revision controlled file.
+The comments may be specified on the command line, or if they are
+not, you will be placed in your editor to type in the comments.
+.SH OPTIONS
+.if t .TP .8i
+.if n .TP 1.2i
+.OPTreq \-r rev
+Change the comments for the specified revision.  The default is the
+most recent revision.
+.tp
+.OPTreq \-y comment
+Use
+.ARG comment
+as the new comment.
+.tp
+.OPTreq \-Y file
+Use the contents of
+.ARG file
+as the new comment.
+.SH BUGS
+.B Nota bene:
+if the deltas being commented have been committed to a changeset and
+have been pulled out of this repository, the comment changes will not
+propogate on the next bk pull.  It is strongly suggested that you use
+this only on uncommitted deltas which have not  been pulled or cloned.
+In the future, we will add a way of enforcing this.
+.SH SEE ALSO
+.LP
+.SA prs 1
+.SA sccslog 1
+.SH CATEGORY
+.B File
