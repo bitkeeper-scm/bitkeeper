@@ -81,6 +81,30 @@ if [ $? -ne 0 ]; then echo Bad data in a/b/c/B.; exit 1; fi
 grep -q Hi a/b/c/B
 if [ $? -ne 0 ]; then echo Bad data in a/b/c/B.; exit 1; fi
 echo OK
+echo $N Check error if get -r with no -p ............................$NL
+bk get $Q -r1.1 date 2> ERR
+if [ $? -eq 0 ]; then echo Get succeed; exit 1; fi
+grep -q "specify revisions without" ERR
+if [ $? -ne 0 ]; then echo Wrong error msg; exit 1; fi
+echo OK
+echo $N Check error if get -i with no -p ............................$NL
+bk get $Q -i1.1 date 2> ERR
+if [ $? -eq 0 ]; then echo Get succeed; exit 1; fi
+grep -q "specify include/exclude without" ERR
+if [ $? -ne 0 ]; then echo Wrong error msg; exit 1; fi
+echo OK
+echo $N Check error if get -x with no -p ............................$NL
+bk get $Q -x1.1 date 2> ERR
+if [ $? -eq 0 ]; then echo Get succeed; exit 1; fi
+grep -q "specify include/exclude without" ERR
+if [ $? -ne 0 ]; then echo Wrong error msg; exit 1; fi
+echo OK
+echo $N Check error if get -i and -x of same revision ...............$NL
+bk get $Q -p -i1.1 -x1.1 date 2> ERR
+if [ $? -eq 0 ]; then echo Get succeed; exit 1; fi
+grep -q "Same revision appears in both lists" ERR
+if [ $? -ne 0 ]; then echo Wrong error msg; exit 1; fi
+echo OK
 echo $N Check paths in file .........................................$NL
 grep -q '^.cP.*date$' SCCS/s.date
 if [ $? -ne 0 ]; then echo No path found.; exit 1; fi

@@ -6386,19 +6386,31 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 
 	slist = d ? serialmap(s, d, iLst, xLst, &error)
 		  : setmap(s, D_SET, 0);
-	if (error == 1) {
+	if (error) {
 		assert(!slist);
-		fprintf(stderr,
-		    "Malformed include/exclude list for %s\n",
-		    s->sfile);
-		s->state |= S_WARNED;
-		return 1;
-	}
-	if (error == 2) {
-		assert(!slist);
-		fprintf(stderr,
-		    "Can't find specified rev in include/exclude list for %s\n",
-		    s->sfile);
+		switch (error) {
+		    case 1:
+			fprintf(stderr,
+			    "Malformed include/exclude list for %s\n",
+			    s->sfile);
+			break;
+		    case 2:
+			fprintf(stderr,
+			    "Can't find specified rev in include/exclude "
+			    "list for %s\n", s->sfile);
+			break;
+		    case 3:
+			fprintf(stderr,
+			    "Error in include/exclude:\n"
+			    "\tSame revision appears "
+			    "in both lists for %s\n", s->sfile);
+			break;
+		    default:
+			fprintf(stderr,
+			    "Error in converting version plus include/exclude "
+			    "to a set for %s\n", s->sfile);
+			break;
+		}
 		s->state |= S_WARNED;
 		return 1;
 	}
