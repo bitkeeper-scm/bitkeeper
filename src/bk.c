@@ -158,6 +158,7 @@ int	sfio_main(int, char **);
 int	shrink_main(int, char **);
 int	sinfo_main(int, char **);
 int	smerge_main(int, char **);
+int	shellSplit_test_main(int ac, char **av);
 int	socket2pipe_main(int, char **);
 int	sort_main(int, char **);
 int	sortmerge_main(int, char **);
@@ -218,6 +219,7 @@ struct	command cmdtbl[] = {
 	{"_socket2pipe", socket2pipe_main},	/* for win32 only */
 	{"_sort", sort_main},
 	{"_sortmerge", sortmerge_main},
+	{"_shellSplit_test", shellSplit_test_main},
 	{"_strings", strings_main},
 	{"_unlink", unlink_main },
 	{"abort", abort_main},			/* doc 2.0 */	

@@ -502,6 +502,8 @@ lclone(opts opts, remote *r, char *to)
 	char	*p;
 	int	level;
 	struct	stat sb;
+	char	**files;
+	int	i;
 
 	assert(r);
 	unless (r->type == ADDR_FILE) {
@@ -585,11 +587,18 @@ out:		chdir(from);
 	}
 	sprintf(buf, "%s/%s", dest, IDCACHE);
 	link(IDCACHE, buf);	/* linking IDCACHE is safe */
-	chdir("BitKeeper/etc/SCCS");
-	/* the 2 redirect works, we're on Unix */
-	p = aprintf("cp x.* %s/BitKeeper/etc/SCCS 2>/dev/null", dest);
-	system(p);
-	free(p);
+	files = getdir("BitKeeper/etc/SCCS");
+	EACH (files) {
+		if (streq(files[i], "x.id_cache")) continue;
+		if (strneq("x.", files[i], 2)) {
+			p = aprintf("cp '%s/%s' '%s/%s'",
+			    "BitKeeper/etc/SCCS", files[i],
+			    dest, "BitKeeper/etc/SCCS");
+			system(p);
+			free(p);
+		}
+	}
+	freeLines(files, free);
 	chdir(from);
 	repository_rdunlock(0);
 	chdir(dest);

@@ -1142,6 +1142,7 @@ pid_t	findpid(pid_t pid);
 void	save_log_markers(void);
 void	update_log_markers(int verbose);
 int	isCaseFoldingFS(char *root);
+void	line2av(char *cmd, char **av);
 
 extern char *bk_vers;
 extern char *bk_utc;

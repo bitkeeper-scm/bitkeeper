@@ -741,7 +741,7 @@ metaUnionResyncFile(char *from, char *to)
 
 	sprintf(temp, "%s.cp", to);
 	unlink(temp);
-	sprintf(buf, "cat %s %s | bk sort -u", from, to);
+	sprintf(buf, "cat %s %s | bk _sort -u", from, to);
 	w = fopen(temp, "wb");
 	f = popen(buf, "r");
 	fputs(METAUNIONHEAD, w);

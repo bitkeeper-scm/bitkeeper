@@ -81,11 +81,12 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o approve.o \
 	port/hostColonPath.o port/http_proxy.o \
 	port/lock.o port/mail.o port/mnext.o \
 	port/ns_sock_host2ip.o port/platforminit.o \
-	port/popen.o port/randomBits.o \
+	port/randomBits.o \
 	port/rlimit.o port/runable.o port/samepath.o \
 	port/sccs_getuser.o port/sccs_lockfile.o \
 	port/sccs_root.o port/sig.o port/socket2pipe.o \
-	port/spawn.o prs.o pull.o purify.o push.o putenv.o pwd.o \
+	port/spawn.o port/system.o \
+	prs.o pull.o purify.o push.o putenv.o pwd.o \
 	r2c.o range.o rcheck.o rclone.o rcs.o rcs2sccs.o rcsparse.o \
 	receive.o renumber.o resolve.o \
 	resolve_binaries.o resolve_contents.o \

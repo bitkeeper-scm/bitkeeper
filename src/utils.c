@@ -1,7 +1,6 @@
 #include "bkd.h"
 
 bkdopts	Opts;	/* has to be declared here, other people use this code */
-private void	line2av(char *cmd, char **av);
 
 #ifndef WIN32
 int
@@ -1172,7 +1171,7 @@ mkpager()
 /*
  * Convert a command line to a av[] vector
  */
-private void
+void
 line2av(char *cmd, char **av)
 {
 	char	*p, *q, *s;

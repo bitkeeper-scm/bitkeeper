@@ -161,7 +161,7 @@ compressed(int level, int hflag)
 	free(cmd);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) goto out;
 	
-	sfiocmd = aprintf("cat %s %s | bk sort | bk sfio -oq", tmpf1, tmpf2);
+	sfiocmd = aprintf("cat %s %s | bk _sort | bk sfio -oq", tmpf1, tmpf2);
 	signal(SIGCHLD, SIG_DFL);
 	fh = popen(sfiocmd, "r");
 	free(sfiocmd);

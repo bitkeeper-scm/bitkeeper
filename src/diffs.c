@@ -132,7 +132,7 @@ usage:			system("bk help -s diffs");
 			fprintf(stderr, "Cannot find repository root.\n");
 			return (1);
 		}
-		gettemp(rset, "rset");
+		bktmp(rset, "rset");
 		cmd = aprintf("bk rset -l%s > %s", cset, rset);
 		system(cmd);
 		free(cmd);
