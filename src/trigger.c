@@ -188,25 +188,11 @@ getTriggers(char *dir, char *prefix)
 private int
 runit(char *file, char *output)
 {
-	int	status, rc, j = 0, fd1 = -1, fd;
-	char	*my_av[10];
+	int	status, rc;
 
 	safe_putenv("BK_TRIGGER=%s", basenm(file));
-	if (output) {
-		fd1 = dup(1); close(1); 
-		fd = open(output, O_CREAT|O_TRUNC|O_WRONLY, 0666);
-		assert(fd == 1);
-	}
-
-	my_av[j++] = file;
-	my_av[j] = 0;
 	signal(SIGCHLD, SIG_DFL); /* for solaris */
-	status = spawnvp_ex(_P_WAIT, my_av[0], my_av);
-	if (output) {
-		close(1);
-		dup2(fd1, 1);
-		close(fd1);
-	}
+	status = sysio(0, output, 0, file, SYS);
 	if (WIFEXITED(status)) {
 		rc = WEXITSTATUS(status);
 	} else {

@@ -6,4 +6,4 @@ clean clen-obj:
 	rm -f *.exe *.obj *.pdb *.idb
 
 install: Winctl.exe
-	cp WinCtl.exe $(BINDIR)/WinCtl.exe
+	cp WinCtl.exe $(BINDIR)/winctlw.exe

@@ -294,7 +294,12 @@ proc widgets {} \
 	pack $widgets(buttonFrame) -side bottom -fill x
 	pack $w.spacer2 -side bottom -fill x -padx 1 -pady 1
 	pack $widgets(message) -side top -fill both -expand y
-
+	update
+	if {![info exists env(BK_FORCE_TOPMOST)]} { return }
+	if {$env(BK_FORCE_TOPMOST) != "YES"} { return }
+	set widgets(xid) [scan [wm frame .] %x]
+	if {$widgets(xid) == 0} { set widgets(xid) [scan [wm frame .] 0x%x] }
+	after idle { exec winctlw -id $widgets(xid) topmost & }
 }
 
 proc doCommand {command args} {
