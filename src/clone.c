@@ -284,7 +284,7 @@ clone2(opts opts, remote *r)
 		return (-1);
 	}
 
-	checkfiles = bktmp(0, "clone2");
+	checkfiles = bktmp(0, "clonechk");
 	f = fopen(checkfiles, "w");
 	assert(f);
 	sccs_rmUncommitted(opts.quiet, f);
