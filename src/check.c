@@ -380,10 +380,41 @@ and then removed without being unlocked.\n\
 }
 
 private int
+gfile_unchanged(sccs *s)
+{
+	pfile pf;
+
+	if (sccs_read_pfile("check", s, &pf)) {
+		fprintf(stderr, "%s: cannot read pfile\n", s->gfile);
+		return (1);
+	}
+	
+	if (diff_gfile(s, &pf, 0, DEV_NULL) == 1) return (1);
+
+	/*
+	 * If RCS/SCCS keyword enabled, try diff it with keyword expanded
+	 */
+	if (SCCS(s) || RCS(s)) return (diff_gfile(s, &pf, 1, DEV_NULL));
+	return (0); /* changed */
+}
+
+private int
 readonly_gfile(sccs *s)
 {
 	if ((HAS_PFILE(s) && exists(s->gfile) && !writable(s->gfile))) {
-		fprintf(stderr,
+		if (gfile_unchanged(s)) {
+			char	*p, buf[MAXLINE];
+
+			unlink(s->pfile);
+			s->state &= ~S_PFILE;
+			if (resync) return (0);
+			p = user_preference("checkout", buf);
+			if (streq(p, "edit") || streq(p, "EDIT")) {
+				sccs_get(s, 0, 0, 0, 0, SILENT|GET_EDIT, "-");
+			}
+			return (0);
+		} else {
+			fprintf(stderr,
 "===========================================================================\n\
 check: %s is locked but not writable.\n\
 You need to go look at the file to see why it is read-only;\n\
@@ -392,8 +423,9 @@ right answer as it may contain expanded keywords.\n\
 It may also contain changes to the file which you may want.\n\
 If the file is unneeded, a \"bk unedit %s\" will fix the problem.\n\
 ===========================================================================\n",
-		    s->gfile, s->gfile);
-		return (128);
+		    		s->gfile, s->gfile);
+			return (128);
+		}
 	}
 	return (0);
 }
