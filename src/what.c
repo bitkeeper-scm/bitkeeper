@@ -34,6 +34,11 @@ doit(char *file)
 	}
 	if (fstat(fd, &sbuf) == -1) {
 		perror("fstat");
+		close(fd);
+		return (-1);
+	}
+	if (!S_ISREG(sbuf.st_mode) || (sbuf.st_size == 0)) {
+		close(fd);
 		return (-1);
 	}
 	save = p = mmap(0, sbuf.st_size, PROT_READ, MAP_SHARED, fd, 0);
