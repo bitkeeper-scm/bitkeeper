@@ -1,7 +1,7 @@
 #include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <iostream>
+#include <ctype.h>
 #include <time.h>
 /* generic socket DLL support */
 #include "gensock\gensock.h"

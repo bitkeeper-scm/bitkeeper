@@ -37,6 +37,7 @@ mkdir $D/mingw
 tar -C$D/mingw -xzf win32tools/binutils-2.13.90-20030111-1.tar.gz
 tar -C$D/mingw -xzf win32tools/mingw-runtime-3.2.tar.gz
 tar -C$D/mingw -xzf win32tools/gcc-core-3.3.1-20030804-1.tar.gz
+tar -C$D/mingw -xzf win32tools/gcc-g++-3.3.1-20030804-1.tar.gz
 tar -C$D/mingw -xzf win32tools/w32api-2.5.tar.gz
 
 echo extract perl
@@ -52,7 +53,8 @@ echo PATH=/bin:/mingw/bin:$BK_PATH:/perl/bin:/cygwin/bin:/c/WINNT/system32:/c/WI
 # setup mountpoints
 mkdir -p $D/build
 mkdir -p /c/build
-echo "c:/build /build" >> $D/etc/fstab
+rm -f $D/etc/fstab
+echo "c:/build /build" > $D/etc/fstab
 
 echo PS1=\'BUILD \\W \\$ \' >> $D/etc/profile
 cp $D/bin/sh.exe $D/bin/bash.exe
