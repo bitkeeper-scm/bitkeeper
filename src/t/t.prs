@@ -410,3 +410,10 @@ bk prs -h -r+ -d'$each(:FD:){<(:FD:)>\n}' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; sdiff -w80 CMP[12]; exit 1; fi
 echo OK
+echo $N checking that libsfiles.a handles unterminated lines ........$NL
+rev=`echon 'ChangeSet|1.1' | bk -R prs -hn -d:REV: -`
+if [ $rev != "1.1" ]; then
+	echo didn\'t read the right data
+	exit 1
+fi
+echo OK

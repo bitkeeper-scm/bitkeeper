@@ -248,8 +248,12 @@ get_options()
 	if [ '-n foo' = "`echo -n foo`" ]
 	then    NL='\c'
 		N=
+		NXL='\c'
+		NX=
 	else    NL=
 		N=-n
+		NXL=
+		NX=-n
 	fi
 	if [ X$Q = X -o X$dashx = X-x ]
 	then	NL=

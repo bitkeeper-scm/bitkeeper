@@ -80,6 +80,10 @@ no_logging() {
 	cd $1
 }
 
+echon() {
+	echo $NX "$*" $NXL
+}
+
 cd "$BK_REGRESSION" || exit 1
 HERE=`bk pwd`
 

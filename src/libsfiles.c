@@ -70,7 +70,7 @@ again:
 			flist = 0;
 			return (0);
 		}
-		chop(buf);
+		chomp(buf);
 		debug((stderr, "sfiles::FILE got %s\n", buf));
 	} else if (d) {
 		while ((e = readdir(d))) {

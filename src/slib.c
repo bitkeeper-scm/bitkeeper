@@ -246,6 +246,17 @@ chop(register char *s)
 	return (c);
 }
 
+/*
+ * Remove any trailing newline or CR from a string. 
+ */
+void
+chomp(char *s) 
+{
+	while (*s) ++s;
+	while (s[-1] == '\n' || s[-1] == '\r') --s;
+	*s = 0;
+}
+
 /* chop if there is a trailing slash */
 void
 chopslash(register char *s)
