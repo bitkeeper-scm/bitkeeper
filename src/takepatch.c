@@ -246,25 +246,37 @@ get_configs()
 		unless (exists("RESYNC/BitKeeper/etc/SCCS/s.gone")) {
 			system("cp BitKeeper/etc/SCCS/s.gone "
 			    "RESYNC/BitKeeper/etc/SCCS/s.gone");
-		} else {
+		} else if (exists("RESYNC/BitKeeper/etc/SCCS/r.gone")) {
+			char	*s, l[200], g[200], r[200];
+			char	buf[MAXPATH];
+			FILE	*f;
+
 			/*
-			 * Both remote and local have the gone file
-			 * see if we need to merge them together
+			 * Both remote and local have updated the gone file.
+			 * We automerge here so we have the updated keys.
 			 */
-			system("bk get -qe RESYNC/BitKeeper/etc/gone"); 
-			system("bk get -qp BitKeeper/etc/gone >> "
+			f = fopen("RESYNC/BitKeeper/etc/SCCS/r.gone", "r");
+			fscanf(f, "merge deltas %s %s %s", l, g, r);
+			fclose(f);
+			sprintf(buf,
+			    "bk get -qpr%s RESYNC/BitKeeper/etc/gone > %s",
+			    l, "RESYNC/BitKeeper/tmp/gone");
+			system(buf);
+			sprintf(buf,
+			    "bk get -qpr%s RESYNC/BitKeeper/etc/gone >> %s",
+			    r, "RESYNC/BitKeeper/tmp/gone");
+			system(buf);
+			s = strchr(l, '.'); s++;
+			s = strchr(s, '.');
+			sprintf(buf, "bk get -eqgM%s %s",
+			    s ? l : r, "RESYNC/BitKeeper/etc/gone");
+			system(buf);
+			system("sort -u RESYNC/BitKeeper/tmp/gone > "
 			    "RESYNC/BitKeeper/etc/gone");
-			system("sort -u RESYNC/BitKeeper/etc/gone > "
-			    "RESYNC/BitKeeper/etc/SCCS/x.gone");
-			unlink("RESYNC/BitKeeper/etc/gone");
-			system( "mv RESYNC/BitKeeper/etc/SCCS/x.gone "
-			    "RESYNC/BitKeeper/etc/gone");
-			/*
-			 * We use ci here, because we do not want to
-			 * create a new delta if there is no diffs
-			 */
-			system("bk ci -qPyauto-merge RESYNC/BitKeeper/etc/gone");
-		}
+			system(
+			    "bk ci -qPyauto-merge RESYNC/BitKeeper/etc/gone");
+			unlink("RESYNC/BitKeeper/etc/SCCS/r.gone");
+		} /* else remote update only */
     	}
 }
 
