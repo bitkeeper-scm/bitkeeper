@@ -34,25 +34,27 @@ create_main(int ac, char **av)
 deledit_main(int ac, char **av)
 {
 	int	i;
-	char	**nav = malloc((ac + 2) * sizeof(char*));
+	char	**nav = malloc((ac + 3) * sizeof(char*));
 
 	nav[0] = "delta";
 	nav[1] = "-l";
+        nav[2] = "-Y";
 	i = 1;
-	while (nav[i+1] = av[i++]);
-	return (delta_main(ac + 1, nav));
+	while (nav[i+2] = av[i++]);
+	return (delta_main(ac + 2, nav));
 }
 
 delget_main(int ac, char **av)
 {
 	int	i;
-	char	**nav = malloc((ac + 2) * sizeof(char*));
+	char	**nav = malloc((ac + 3) * sizeof(char*));
 
 	nav[0] = "delta";
 	nav[1] = "-u";
+	nav[2] = "-Y";
 	i = 1;
-	while (nav[i+1] = av[i++]);
-	return (delta_main(ac + 1, nav));
+	while (nav[i+2] = av[i++]);
+	return (delta_main(ac + 2, nav));
 }
 
 val_main(int ac, char **av)
