@@ -57,7 +57,11 @@ usage:			fprintf(stderr,
 			prevs(e);
 		} else if (rev) {
 			e = sccs_getrev(s, rev, 0, 0);
-			assert(e);
+			unless (e) {
+				fprintf(stderr, "bad rev %s\n", rev);
+				sccs_free(s);
+				return (1);
+			}
 			printf("%s", e->rev);
 			if (flags & GET_USER) {
 				putchar('-');
