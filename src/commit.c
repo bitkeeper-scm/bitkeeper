@@ -55,8 +55,10 @@ commit_main(int ac, char **av)
 				}
 				break;
 		    case 'Y':	doit = 1; getcomment = 0;	/* doc 2.0 */
-				unlink(commentFile);
-				strcpy(commentFile, optarg);
+				if (fileCopy(optarg, commentFile)) {
+					unlink(commentFile);
+					return (1);
+				}
 				break;
 		    case 'A':	/* internal option for regression test only */
 				/* do not document */		/* undoc 2.0 */
