@@ -52,7 +52,7 @@ do_cset(char *qflag)
 		fprintf(stderr, "fix: can't find repository root\n");
 		exit(1);
 	}
-
+	save_log_markers();
 	/* 
 	 * check to see if there are later deltas.
 	 * XXX - we could try locking the tree with the RESYNC dir.
@@ -134,7 +134,7 @@ new:				revs = strdup(p);
 	check(lastpath, revs);
 	doit(lastpath, revs, qflag, "-C");
 	pclose(f);
-
+	update_log_markers(streq(qflag, ""));
 }
 
 private void

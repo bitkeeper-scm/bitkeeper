@@ -14,8 +14,6 @@ private int	move_file(void);
 private int	do_rename(char **, char *);
 private int	check_patch(void);
 private int	doit(char **fileList, char *rev_list, char *qflag);
-private	void	save_log_markers(void);
-private	void	update_log_markers(int verbose);
 
 private	int	checkout;
 
@@ -531,7 +529,7 @@ move_file()
 private	char	*markfile[] = { LMARK, CMARK };
 private	int	valid_marker[2];
 
-private void
+void
 save_log_markers(void)
 {
 	int	i;
@@ -554,7 +552,7 @@ save_log_markers(void)
 	sccs_free(s);
 }
 
-private void
+void
 update_log_markers(int verbose)
 {
 	int	i;
