@@ -1,6 +1,5 @@
 #include "system.h"
 #include "sccs.h"
-#include <string.h>
 
 typedef struct conflct	conflct;
 typedef struct ld	ld_t;
@@ -19,6 +18,7 @@ private void	show_examples(void);
 private int	sameline(ld_t *left, ld_t *right);
 private	int	file_init(char *file, char *rev, char *anno, file_t *f);
 private	void	file_free(file_t *f);
+private	int	do_diff_merge(void);
 
 private void	highlight_diff(diffln *diff);
 
@@ -115,9 +115,7 @@ smerge_main(int ac, char **av)
 		    case 'a':
 			enable_mergefcns(optarg, c == 'a');
 			break;
-#ifdef	DIFF_MERGE
 		    case 'd':	do_diff3 = 1; break;
-#endif
 		    case 'f': /* fdiff output mode */
 			fdiff = 1;
 			break;
@@ -156,7 +154,7 @@ smerge_main(int ac, char **av)
 	revs[LEFT] = getrev(av[optind + 1]);
 	revs[RIGHT] = getrev(av[optind + 2]);
 	revs[GCA] = find_gca(file, revs[LEFT], revs[RIGHT]);
-	
+
 	for (i = 0; i < 3; i++) {
 		if (file_init(file, revs[i], anno, &body[i])) {
 			goto err;
@@ -178,9 +176,7 @@ smerge_main(int ac, char **av)
 	}
 
 	if (do_diff3) {
-#ifdef	DIFF_MERGE
-		ret = do_diff_merge(start, end);
-#endif
+		ret = do_diff_merge();
 	} else {
 		ret = do_weave_merge(start, end);
 	}
@@ -433,9 +429,8 @@ private void
 printhighlight(int *highlight)
 {
 	int	s, e;
-	
+
 	putchar('h');
-	
 	while (1) {
 		s = highlight[0];
 		e = highlight[1];
@@ -669,7 +664,7 @@ merge_conflicts(conflct *head)
 	while (head) {
 		if (head->next && head->next->start[0] - head->end[0] == 1) {
 			ld_t	*line = &body[0].lines[head->end[0]];
-			
+
 			if (contains_line(head, line) ||
 			    contains_line(head->next, line)) {
 				conflct	*tmp;
@@ -698,27 +693,6 @@ merge_conflicts(conflct *head)
 	}
 }
 
-#ifdef	DIFF_MERGE
-
-private char *
-strdup_afterchar(const char *s, int c)
-{
-        char    *p;
-        char    *ret;
-
-        if (p = strchr(s, c)) {
-                ret = malloc(p - s + 2);
-                p = ret;
-                while (*s != c)
-                        *p++ = *s++;
-		*p++ = c;
-                *p = 0;
-        } else {
-                ret = strdup(s);
-        }
-        return (ret);
-}
-
 /*
  * The structure for a class that creates and then
  * walks the diffs of two files and returns the
@@ -728,12 +702,10 @@ strdup_afterchar(const char *s, int c)
  */
 typedef struct difwalk difwalk;
 struct difwalk {
-	char	**lines;
 	FILE	*diff;
-	int	rline;
-	MMAP	*right;
 	int	offset;		/* difference between gca lineno and right */
 	int	start, end;
+	int	lines;
 	struct {
 		int	gcastart, gcaend;
 		int	lines;
@@ -742,7 +714,7 @@ struct difwalk {
 
 /*
  * Internal function.
- * Read nead command from diff stream
+ * Read next command from diff stream
  */
 private void
 diffwalk_readcmd(difwalk *dw)
@@ -770,7 +742,6 @@ diffwalk_readcmd(difwalk *dw)
 	} else {
 		end = start;
 	}
-
 	dw->cmd.lines = (cmd == 'd') ? 0 : (end - start + 1);
 
 	if (cmd != 'a') {
@@ -800,18 +771,17 @@ diffwalk_readcmd(difwalk *dw)
  * create a new diffwalk struct from two filenames
  */
 private difwalk *
-diffwalk_new(char *left, char *right)
+diffwalk_new(file_t *left, file_t *right)
 {
 	difwalk	*dw;
 	char	*cmd;
 
 	new(dw);
-	cmd = aprintf("bk mydiff -a'\t' %s %s", left, right);
+	cmd = aprintf("bk mydiff %s %s %s", (anno ? "-a\\|" : ""),
+	    left->tmpfile, right->tmpfile);
 	dw->diff = popen(cmd, "r");
 	free(cmd);
 
-	dw->right = mopen(right, "r");
-	dw->rline = 1;
 	diffwalk_readcmd(dw);
 	return (dw);
 }
@@ -833,26 +803,22 @@ diffwalk_nextdiff(difwalk *dw)
 private void
 diffwalk_extend(difwalk *dw, int gcalineno)
 {
-	char	*line;
-
 	if (gcalineno < dw->end) return;
 
 	while (gcalineno > dw->end && dw->end < dw->cmd.gcastart) {
-		line = mnext(dw->right);
-		dw->lines = addLine(dw->lines, strdup_afterchar(line, '\n'));
-		++dw->rline;
 		++dw->end;
 	}
 	if (gcalineno >= dw->cmd.gcastart) {
 		char	buf[MAXLINE];
-		dw->offset += dw->cmd.lines -
-			(dw->cmd.gcaend - dw->cmd.gcastart);
+		int	extra;
+
+		extra = dw->cmd.lines - (dw->cmd.gcaend - dw->cmd.gcastart);
+		dw->lines += extra;
+		dw->offset += extra;
 		while (dw->cmd.lines--) {
 			fgets(buf, sizeof(buf), dw->diff);
 			assert(buf[0] == '>');
 			assert(buf[1] == ' ');
-			line = strdup_afterchar(buf+2, '\n');
-			dw->lines = addLine(dw->lines, line);
 		}
 		dw->end = dw->cmd.gcaend;
 		diffwalk_readcmd(dw);
@@ -867,12 +833,8 @@ private void
 diffwalk_start(difwalk *dw, int gcalineno)
 {
 	assert(gcalineno <= dw->cmd.gcastart);
-	while (dw->rline < gcalineno + dw->offset) {
-		char	*line;
-		line = mnext(dw->right);
-		++dw->rline;
-	}
 	dw->start = dw->end = gcalineno;
+	dw->lines = 0;
 	if (gcalineno == dw->cmd.gcastart) diffwalk_extend(dw, dw->cmd.gcaend);
 }
 
@@ -885,16 +847,11 @@ diffwalk_end(difwalk *dw)
 	return (dw->end);
 }
 
-/*
- * Return the lines on the right of the current diff region
- * and prepare for a new diff
- */
-private char **
-diffwalk_return(difwalk *dw)
+private void
+diffwalk_range(difwalk *dw, int side, conflct *conf)
 {
-	char	**ret = dw->lines;
-	dw->lines = 0;
-	return (ret);
+	conf->start[side] = dw->start + dw->offset - 1 - dw->lines;
+	conf->end[side] = dw->end + dw->offset - 1;
 }
 
 /*
@@ -904,44 +861,21 @@ private void
 diffwalk_free(difwalk *dw)
 {
 	pclose(dw->diff);
-	mclose(dw->right);
-	assert(dw->lines == 0);
 	free(dw);
 }
 
 private int
-do_diff_merge(int start, int end)
+do_diff_merge(void)
 {
-	int	i;
-	char	*cmd;
-	char	files[3][MAXPATH];
-	char	**lines[3];
 	difwalk	*ldiff;
 	difwalk	*rdiff;
-	MMAP	*gcafile;
 	int	gcaline;
 	int	ret = 0;
+	conflct	*c;
+	conflct	conf;
 
-	for (i = 0; i < 3; i++) {
-		int	status;
-		bktmp(files[i], "smerge");
-		cmd = aprintf("bk get %s%s -qkpO -r%s '%s' > '%s'",
-		    anno ? "-a" : "",
-		    anno ? anno : "",
-		    revs[i],
-		    file, files[i]);
-		status = system(cmd);
-		if (status) {
-			fprintf(stderr, "Fetch of revision %s failed!\n",
-			    revs[i]);
-			exit(2);
-		}
-		free(cmd);
-		lines[i] = 0;
-	}
-	gcafile = mopen(files[GCA], "r");
-	ldiff = diffwalk_new(files[GCA], files[LEFT]);
-	rdiff = diffwalk_new(files[GCA], files[RIGHT]);
+	ldiff = diffwalk_new(&body[GCA], &body[LEFT]);
+	rdiff = diffwalk_new(&body[GCA], &body[RIGHT]);
 
 	gcaline = 1;
 	while (1) {
@@ -953,12 +887,8 @@ do_diff_merge(int start, int end)
 		if (tmp < start) start = tmp;
 
 		while (gcaline < start) {
-			char	*line = mnext(gcafile);
-
-			unless (line) break;
-			line = strdup_afterchar(line, '\n');
-			printline(line, 0);
-			free(line);
+			if (gcaline > body[GCA].n) break;
+			printline(&body[GCA].lines[gcaline-1], 0);
 			++gcaline;
 		}
 		if (gcaline < start) break;
@@ -980,68 +910,24 @@ do_diff_merge(int start, int end)
 				break;
 			}
 		}
-		while (gcaline < end) {
-			char	*line = strdup_afterchar(mnext(gcafile), '\n');
-			lines[GCA] = addLine(lines[GCA], line);
-			++gcaline;
+		memset(&conf, 0, sizeof(conf));
+		conf.start[GCA] = start - 1;
+		conf.end[GCA] = end - 1;
+		diffwalk_range(ldiff, LEFT, &conf);
+		diffwalk_range(rdiff, RIGHT, &conf);
+
+		c = &conf;
+		while (c) {
+			if (resolve_conflict(c)) ret = 1;
+			c = c->next;
 		}
-		lines[LEFT] = diffwalk_return(ldiff);
-		lines[RIGHT] = diffwalk_return(rdiff);
-		if (resolve_conflict(lines, start, end)) ret = 1;
-		for (i = 0; i < 3; i++) lines[i] = 0;
+		gcaline = end;
 	}
 
 	diffwalk_free(ldiff);
 	diffwalk_free(rdiff);
-	mclose(gcafile);
-	for (i = 0; i < 3; i++) {
-		unlink(files[i]);
-	}
 	return (ret);
 }
-
-#endif	/* DIFF_MERGE */
-
-#if 0
-private char *
-fagets(FILE *fh)
-{
-	int	size;
-	int	len;
-	char	*ret;
-
-	size = 128;
-	ret = malloc(size);
-	len = 0;
-
-	/*
-	 * Read a line from the file with NO limit on linesize
-	 */
-	while (1) {
-		if (!fgets(ret + len, size - len, fh)) {
-			if (len) return (ret);
-			free(ret);
-			return 0;
-		}
-		len += strlen(ret + len);
-		if (ret[len-1] == '\n') break;  /* stop on complete line */
-		size <<= 1;
-#ifdef	HAVE_REALLOC
-		ret = realloc(ret, size);
-#else
-		{
-			/* cheap realloc()  bah! */
-			char	*new;
-			new = malloc(size);
-			strcpy(new, ret);
-			free(ret);
-			ret = new;
-		}
-#endif
-	}
-	return (ret);
-}
-#endif
 
 /*
  * Define of set of autoresolve function for processing a
