@@ -30,7 +30,10 @@ int rsa_decrypt_key(const unsigned char *in,     unsigned long inlen,
   _ARGCHK(key    != NULL);
   _ARGCHK(res    != NULL);
 
-  /* valid hash ? */
+  /* valid hash/prng ? */
+  if ((err = prng_is_valid(prng_idx)) != CRYPT_OK) {
+     return err;
+  }
   if ((err = hash_is_valid(hash_idx)) != CRYPT_OK) {
      return err;
   }
