@@ -80,9 +80,10 @@ check_tar()
 	mkdir /tmp/tar_tst$$
 	echo data > /tmp/tar_tst$$/file
 	chmod 0444 /tmp/tar_tst$$/file
-	(cd / && tar cf /tmp/tar_tst$$.tar tmp/tar_tst$$)
+	TAR=/tmp/tar_tst$$.tar
+	(cd / && tar cf $TAR tmp/tar_tst$$)
 	rm -rf /tmp/tar_tst$$
-	(cd / && tar xf /tmp/tar_tst$$.tar)
+	(cd / && tar xf $TAR)
 	if [ -w /tmp/tar_tst$$/file ]
 	then
 		T_VER=`tar --version | grep "^tar" | cut -f4 -d' '`
@@ -94,8 +95,12 @@ check_tar()
 		echo "you need to install tar package included in the BitKeeper"
 		echo " install package"
 		echo "========================================================"
+		chmod 0666 /tmp/tar_tst$$/file
+		rm -rf /tmp/tar_tst$$
 		exit 1
 	fi
+	chmod 0666 /tmp/tar_tst$$/file
+	rm -rf $TAR /tmp/tar_tst$$
 }
 
 # Make sure the "if [ -w ... ]" construct works under this id.
