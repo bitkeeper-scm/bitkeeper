@@ -664,8 +664,24 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 private void
 cmdlog_exit(void)
 {
+	/*
+	 * XXX While almost all bkd command call this function on
+	 * exit. (via the atexit() interface), there is one exception:
+	 * on win32, the top level bkd service thread cannot process atexit()
+	 * when the serice shutdown. (XP consider this an error)
+ 	 * Fortuately, the bkd spawn a child process to process each
+	 * new connection. The child process do follow the the normal
+	 * exit path and process atexit().
+	 *  
+	 */
 	purify_list();
 	if (cmdlog_buffer[0]) cmdlog_end(LOG_BADEXIT);
+
+	/*
+	 * XXX TODO: We need to make win32 serivce child process send the
+	 * the error log to via the serive log interface. (Service process
+	 * cannot send messages to tty/desktop without special configuration).
+	 */
 	repository_lockcleanup();
 }
 
