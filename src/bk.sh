@@ -1419,7 +1419,9 @@ _install()
 	fi
 
 	# Log the fact that the installation occurred
-	(bk version
+	PATH="${DEST}:$PATH"
+	(
+	bk version
 	echo USER=`bk getuser`/`bk getuser -r`
 	echo HOST=`bk gethost`/`bk gethost -r`
 	echo UNAME=`uname -a` 2>/dev/null
