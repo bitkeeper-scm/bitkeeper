@@ -337,15 +337,28 @@ validatedata(rsa_key *key, char *signfile)
 }
 
 private char *
-publickey(void)
+publickey(int version)
 {
-	static	char *key;
+	char	*key;
 	unsigned long keylen;
 	int	i, len;
 	int	tmp;
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~h
+	char	*coded;
 
-	if (key) return (key);
+	if (version <= 5) {
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~U
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~0V
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~I
+~~~~~~~~~~t
+	} else {
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~/
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~U
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~4
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~G
+~~~~~~~~~~t
+	}
+
 	coded = strdup(coded);
 	len = strlen(coded);
 	for (i = 0; i < len/2; i++) {
@@ -354,24 +367,27 @@ publickey(void)
 		coded[len-i-1] = tmp;
 	}
 	keylen = len;
-	key = malloc(keylen);
+	key = malloc(len);
 	base64_decode(coded, len, key, &keylen);
 	free(coded);
 	return (key);
 }
 
 int
-check_licensesig(char *key, char *sign)
+check_licensesig(char *key, char *sign, int version)
 {
 	char	signbin[256];
 	unsigned long	outlen;
 	rsa_key	rsakey;
-	char	*pubkey = publickey();
+	char	*pubkey = publickey(version);
+	int	ret;
 	int	stat;
 
 	register_hash(&md5_desc);
 
-	if (rsa_import(pubkey, &rsakey) == CRYPT_ERROR) {
+	ret = rsa_import(pubkey, &rsakey);
+	free(pubkey);
+	if (ret == CRYPT_ERROR) {
 		fprintf(stderr, "crypto rsa_import: %s\n", crypt_error);
 		exit(1);
 	}
@@ -532,7 +548,7 @@ signed_loadFile(char *filename)
 	*p = 0;
 	while ((p > data) && (*p != '\n')) --p;
 	*p++ = 0;
-	hash = secure_hashstr(data, bk_utc);
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~$
 	unless (streq(hash, p)) {
 		free(data);
 		data = 0;
@@ -552,7 +568,7 @@ signed_saveFile(char *filename, char *data)
 	unless (f = fopen(tmpf, "w")) {
 		return (-1);
 	}
-	hash = secure_hashstr(data, bk_utc);
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~$
 	fprintf(f, "%s\n%s\n", data, hash);
 	fclose(f);
 	free(hash);
@@ -646,13 +662,36 @@ err:		fprintf(stderr, "crypto decrypt: %s\n", crypt_error);
 private char *
 upgrade_secretkey(void)
 {
-	static	char *key;
+	char	*key;
 	unsigned long keylen;
 	int	i, len;
 	int	tmp;
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~<
+	/*
+	 * generate like this:
+	 *    bk edit bkupgrade.key
+	 *    ./bk crypto -i 1024 bkupgrade.key.sec bkupgrade.key
+	 *    ./key2code.pl bkupgrade.key.sec
+	 */
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~0]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~0S
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~$
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~t
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~J
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~o
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~0T
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~0k
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~k
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~0
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~z
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~0`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~E
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~0O
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*
+~~~~~~~~~~~~~~~~~~~~~~~~0`
 
-	if (key) return (key);
 	coded = strdup(coded);
 	len = strlen(coded);
 	for (i = 0; i < len/2; i++) {
@@ -672,13 +711,18 @@ upgrade_decrypt(char *infile, char *outfile)
 {
 	FILE	*fin, *fout;
 	rsa_key	rsakey;
+	int	ret;
+	char	*seckey;
 
 	unless (fin = fopen(infile, "r")) return (1);
 	unless (fout = fopen(outfile, "w")) {
 		fclose(fin);
 		return (1);
 	}
-	if (rsa_import(upgrade_secretkey(), &rsakey)) {
+	seckey = upgrade_secretkey();
+	ret = rsa_import(seckey, &rsakey);
+	free(seckey);
+	if (ret) {
 		fprintf(stderr, "crypto rsa_import: %s\n", crypt_error);
 		exit(1);
 	}

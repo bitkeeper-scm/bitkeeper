@@ -324,8 +324,6 @@
 #define	BK_HOSTME_SERVER "hostme.bkbits.net"
 #define	WEB_BKD_CGI	"web_bkd"
 #define	HOSTME_CGI	"hostme_cgi"
-#define	WEB_MAIL_CGI	"web_mail"
-#define	LEASE_CGI	"bk_lease"
 #define	BK_CONFIG_URL	getenv("BK_CONFIG_URL")
 #define	BK_CONFIG_URL2	getenv("BK_CONFIG_URL2")
 #define	BK_CONFIG_CGI	"bk_config"
@@ -1172,7 +1170,7 @@ void	saveEnviroment(char *patch);
 void	restoreEnviroment(char *patch);
 int	run_check(char *partial, int fix, int quiet);
 char	*key2path(char *key, MDBM *idDB);
-int	check_licensesig(char *key, char *sign);
+int	check_licensesig(char *key, char *sign, int version);
 char	*hashstr(char *str);
 char	*secure_hashstr(char *str, char *key);
 void	delete_cset_cache(char *rootpath, int save);

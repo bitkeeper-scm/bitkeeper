@@ -77,7 +77,8 @@ foreach my $release (@releases) {
 	
 	$base = `bk r2c -r1.1 src/upgrade.c 2> /dev/null`;
 	next if $? != 0;  # no upgrade command
-	
+	chomp($base);
+
 	$_ = `bk set -d -r$base -r$version -tt 2> /dev/null`;
 	next if $? != 0;  # version doesn't exist in this release
 	
@@ -93,7 +94,10 @@ foreach (sort keys %obsoletes) {
 }
 print I "\n# checksum\n";
 close(I);
-system "bk crypto -h - 'need key here' < INDEX >> INDEX";
+my $sum = `bk crypto -h - 'WXVTpmDYN1GusoFq5hkAoA' < INDEX`;
+open(I, ">>INDEX") or die;
+print I $sum;
+close(I);
     
     
     
