@@ -20,12 +20,15 @@ Repository level config file (required)
 /etc/BitKeeper/etc/config
 System level config file (optional)
 .LP
-Repository level configuration specifications always take precedence over
-system level specifications, meaning,
+Repository level configuration specifications take precedence over
+system level specifications by default, meaning,
 if both BitKeeper/etc/config and /etc/BitKeeper/etc/config files exist, 
 BitKeeper/etc/config values are augmented by /etc/BitKeeper/etc/config
 values that do not exist in BitKeeper/etc/config.   BitKeeper/etc/config
 values will not be replaced by values in /etc/BitKeeper/etc/config.
+However, if a '!' is put at the end of the line in the System config file 
+(/etc/BitKeeper/etc/config) then that setting will override any 
+matching key in local config files.  
 .LP
 Minimum content requirements for the BitKeeper/etc/config file 
 are the key value pairs for 

@@ -537,6 +537,11 @@ out:		chdir(from);
 	}
 	in_trigger("BK_STATUS=OK", opts.rev, from);
 	chdir(from);
+	/*
+	 * Invalidate the project cache, we have changed directory
+	 */
+	if (bk_proj) proj_free(bk_proj);
+	bk_proj = proj_init(0);
 	out_trigger("BK_STATUS=OK", opts.rev, "post");
 	remote_free(r);
 	return (0);

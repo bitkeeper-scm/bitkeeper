@@ -86,6 +86,7 @@
 #define	ADMIN_GONE	0x02000000	/* check integrity w/o GONE deltas */
 #define	ADMIN_ADD1_0	0x04000000	/* insert a 1.0 delta */
 #define	ADMIN_RM1_0	0x08000000	/* remove a 1.0 delta */
+#define	ADMIN_OBSCURE	0x00100000	/* remove comments, obscure data */
 
 #define	ADMIN_CHECKS	(ADMIN_FORMAT|ADMIN_ASCII|ADMIN_TIME|ADMIN_BK)
 

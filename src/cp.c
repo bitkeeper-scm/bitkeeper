@@ -32,6 +32,7 @@ cp(char *from, char *to)
 	delta	*d;
 	char	buf[100];
 	char	*sfile, *gfile, *tmp;
+	int	err;
 
 	assert(from && to);
 	sfile = name2sccs(from);
@@ -39,6 +40,7 @@ cp(char *from, char *to)
 	unless (HASGRAPH(s) && s->cksumok) return (1);
 	free(sfile);
 	sfile = name2sccs(to);
+	mkdirf(sfile);
 	gfile = sccs2name(sfile);
 	if (exists(sfile)) {
 		fprintf(stderr, "%s: file exists\n", sfile);
@@ -75,9 +77,11 @@ cp(char *from, char *to)
 	s->gfile = gfile;
 	sccs_newchksum(s);
 	sccs_free(s);
-	sys("bk", "edit", "-q", to, SYS);
+	err = sys("bk", "edit", "-q", to, SYS);
+	unless (WIFEXITED(err) && WEXITSTATUS(err) == 0) return (1);
 	tmp = aprintf("-ybk cp %s %s", from, to);
-	sys("bk", "delta", tmp, to, SYS);
+	err = sys("bk", "delta", tmp, to, SYS);
 	free(tmp);
+	unless (WIFEXITED(err) && WEXITSTATUS(err) == 0) return (1);
 	return (0);
 }

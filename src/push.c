@@ -462,7 +462,7 @@ send_patch_msg(remote *r, char rev_list[], int ret, char **envVar)
 		disconnect(r, 2);
 		return (-1);
 	}
-	write_blk(r, "@END@\n", 6);
+	write_blk(r, "@END@\n", 6);	/* important for win32 socket helper */
 	if (getenv("_BK_NO_SHUTDOWN")) {
 		send_flush_block(r); /* ignored by bkd */
 		flush2remote(r);

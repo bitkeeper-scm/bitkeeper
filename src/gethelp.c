@@ -187,7 +187,7 @@ helptopics_main(int ac, char **av)
 int
 helpsearch_main(int ac, char **av)
 {
-	char	p[500], buf[MAXPATH], name[200];
+	char	p[500], lower[MAXPATH], buf[MAXPATH], name[200];
 	int	substrings = 0, Long = 0, Debug = 0;
 	int	c, len;
 	char	*str, *word;
@@ -219,6 +219,7 @@ usage:		fprintf(stderr,
 		fprintf(stderr, "Unable to locate help file %s\n", file);
 		exit(1);
 	}
+	for (c = 0; word[c]; c++) word[c] = tolower(word[c]);
 	name[0] = 0;
 	while (fgets(buf, sizeof(buf), f)) {
 		chop(buf);
@@ -230,7 +231,9 @@ usage:		fprintf(stderr,
 			name[0] = 0;
 			continue;
 		}
-		unless (str = strstr(buf, word)) continue;
+		for (c = 0; buf[c]; c++) lower[c] = tolower(buf[c]);
+		lower[c] = 0;
+		unless (str = strstr(lower, word)) continue;
 		unless (substrings) {	/* otherwise whole words only */
 			unless ((str == buf) || isspace(str[-1])) {
 				if (Debug) printf("SKIP1 %s\n", buf);

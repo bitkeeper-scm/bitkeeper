@@ -3900,15 +3900,14 @@ no_match:	remote_free(r);
 		unless (h && match_one(h, r->host, 1)) goto no_match;
 	}
 
-	if (r->path) {
-		unless (IsFullPath(bk_proj->root)) {
-			char *t = fullname(bk_proj->root, 0);
-
-			assert(t);
-			free(bk_proj->root);
-			bk_proj->root = strdup(t);
+	if (r->path && bk_proj) {
+		char	*root = bk_proj->root;
+		unless (IsFullPath(root)) {
+			root = fullname(root, 0);
+			
+			assert(root);
 		}
-		unless (match_one(bk_proj->root, r->path, !mixedCasePath())) {
+		unless (match_one(root, r->path, !mixedCasePath())) {
 			goto no_match;
 		}
 	}
@@ -3973,9 +3972,16 @@ config2mdbm(MDBM *db, char *config)
 
 	if (f = fopen(config, "rt")) {
 		while (fnext(buf, f)) {
+			int	flags = MDBM_INSERT;
+			char	*p;
 			unless (parseConfig(buf, &k, &v)) continue;
-			chomp(v);
-			mdbm_store_str(db, k, v, MDBM_INSERT);
+			p = v;
+			while (p[1]) ++p;
+			if (*p == '!') {
+				*p = 0;
+				flags = MDBM_REPLACE;
+			}
+			mdbm_store_str(db, k, v, flags);
 		}
 		fclose(f);
 	}
@@ -6620,7 +6626,6 @@ out:			if (slist) free(slist);
 	s->deleted = deleted;
 	s->same = same;
 
-	if (s->encoding & E_GZIP) zgets_done();
 	if (flags & GET_HASHONLY) {
 		error = 0;
 	} else {
@@ -6643,6 +6648,12 @@ out:			if (slist) free(slist);
 			unless (streq("-", printOut)) fclose(out);
 		} else {
 			fclose(out);
+		}
+	}
+	if (s->encoding & E_GZIP) {
+		if (zgets_done()) {
+			error = 1;
+			s->io_error = s->io_warned = 1;
 		}
 	}
 
@@ -7241,7 +7252,13 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		no_lf = 0;
 	}
 	ret = 0;
-done:	if (s->encoding & E_GZIP) zgets_done();
+done:   
+	if (s->encoding & E_GZIP) {
+		if (zgets_done()) {
+			s->io_error = 1;
+			ret = -1; /* compression failure */
+		}
+	}		
 done2:	/* for GET_HASHDIFFS, the encoding has been handled in getRegBody() */
 	if (lbuf) {
 		if (flushFILE(lbuf)) {
@@ -8980,19 +8997,15 @@ private int
 binaryCheck(MMAP *m)
 {
 	u8	*p, *end;
-	int	cnt = 0;
 
-	for (p = m->mmap, end = m->end; p < end; p++) {
-		cnt++;
-		if (*p == 0) return (1);  /* no nulls */
-		if (cnt == 1) {
-			/* GNU diff reports binary files */
-			if (strneq("Binary files ", p, 13)) return (1);
-		}
-		if (*p == '\n') {
-			cnt = 0;
-		}
-	}
+	p = m->mmap;
+	end = m->end;
+	
+	/* GNU diff reports binary files */
+	if (p + 13 < end && strneq("Binary files ", p, 13)) return (1);
+	
+	/* no nulls */
+	while (p < end) if (*p++ == 0) return (1);
 	return (0);
 }
 
@@ -10500,6 +10513,48 @@ sccs_newchksum(sccs *s)
 	return (sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0));
 }
 
+private	void
+remove_comments(sccs *s)
+{
+	delta	*d;
+
+	for (d = s->table; d; d = d->next) {
+		if (d->comments && !(d->flags & D_XFLAGS)) {
+			freeLines(d->comments);
+			d->comments = 0;
+		}
+	}
+}
+
+/*
+ * Reverse sort it, we want the ^A's, if any, at the end.
+ */
+private int
+c_compar(void *a, void *b)
+{
+	return (*(char*)b - *(char*)a);
+}
+
+private	char *
+obscure(int uu, char *buf)
+{
+	int	len;
+	char	*new;
+
+	for (len = 0; buf[len] != '\n'; len++);
+	new = malloc(len+2);
+	strncpy(new, buf, len+1);
+	new[len+1] = 0;
+	if (*new == '\001') return (new);
+	if (uu) {
+		qsort(new+1, len-1, 1, c_compar);
+	} else {
+		qsort(new, len, 1, c_compar);
+	}
+	assert(*new != '\001');
+	return (new);
+}
+
 /*
  * admin the specified file.
  *
@@ -10741,6 +10796,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	if ((flags & NEWCKSUM) == 0) {
 		goto out;
 	}
+	if (flags & ADMIN_OBSCURE) remove_comments(sc);
 
 	/*
 	 * Do the delta table & misc.
@@ -10764,11 +10820,18 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	assert(sc->state & S_SOPEN);
 	seekto(sc, sc->data);
 	debug((stderr, "seek to %d\n", sc->data));
+	if ((old_enc & E_GZIP) && (flags & ADMIN_OBSCURE)) {
+		fprintf(stderr, "admin: cannot obscure gzipped data.\n");
+		OUT;
+	}
 	if (old_enc & E_GZIP) zgets_init(sc->where, sc->size - sc->data);
 	if (new_enc & E_GZIP) zputs_init();
 	/* if old_enc == new_enc, this is slower but handles both cases */
 	sc->encoding = old_enc;
 	while (buf = nextdata(sc)) {
+		if (flags & ADMIN_OBSCURE) {
+			buf = obscure(old_enc & E_UUENCODE, buf);
+		}
 		sc->encoding = new_enc;
 		if (flags & ADMIN_ADD1_0) {
 			fputbumpserial(sc, buf, 1, sfile);
@@ -10785,6 +10848,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			fputdata(sc, buf, sfile);
 		}
 		sc->encoding = old_enc;
+		if (flags & ADMIN_OBSCURE) free(buf);
 	}
 	if (flags & ADMIN_ADD1_0) {
 		sc->encoding = new_enc;
@@ -10806,7 +10870,9 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	badcksum(sc, flags);
 #endif
 	sccs_close(sc), fclose(sfile), sfile = NULL;
-	if (old_enc & E_GZIP) zgets_done();
+	if (old_enc & E_GZIP) {
+		if (zgets_done()) OUT;
+	}
 	t = sccsXfile(sc, 'x');
 	if (rename(t, sc->sfile)) {
 		fprintf(stderr,
@@ -10923,7 +10989,9 @@ out:
 	fseek(sfile, 0L, SEEK_SET);
 	fprintf(sfile, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
 	sccs_close(s), fclose(sfile), sfile = NULL;
-	if (s->encoding & E_GZIP) zgets_done();
+	if (s->encoding & E_GZIP) {
+		if (zgets_done()) OUT;
+	}
 	t = sccsXfile(s, 'x');
 	if (rename(t, s->sfile)) {
 		fprintf(stderr,
@@ -11285,7 +11353,9 @@ newcmd:
 	*up = unchanged;
 	if (state) free(state);
 	if (slist) free(slist);
-	if (s->encoding & E_GZIP) zgets_done();
+	if (s->encoding & E_GZIP) {
+		if (zgets_done()) return (-1);
+	}
 	if (HASH(s) && (getHashSum(s, n, diffs) != 0)) {
 		return (-1);
 	}
@@ -11848,7 +11918,9 @@ abort:		fclose(sfile);
 		fputdata(s, buf, sfile);
 	}
 	if (fflushdata(s, sfile)) goto abort;
-	if (s->encoding & E_GZIP) zgets_done();
+	if (s->encoding & E_GZIP) {
+		if (zgets_done()) goto abort;
+	}
 	fseek(sfile, 0L, SEEK_SET);
 	fprintf(sfile, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
 	sccs_close(s); fclose(sfile); sfile = NULL;
@@ -15563,7 +15635,9 @@ stripDeltas(sccs *s, FILE *out)
 	free(state);
 	free(slist);
 	if (fflushdata(s, out)) return (1);
-	if (s->encoding & E_GZIP) zgets_done();
+	if (s->encoding & E_GZIP) {
+		if (zgets_done()) return (1);
+	}
 	fseek(out, 0L, SEEK_SET);
 	fprintf(out, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
 	sccs_close(s);

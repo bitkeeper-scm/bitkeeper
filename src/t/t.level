@@ -73,6 +73,10 @@ grep -q 'cannot push to lower level repository' OUT || {
 	cat OUT
 	exit 1
 }
+grep -q 'unexpected byte' OUT && {
+	echo "should not display eof debug message"
+	exit 1
+}
 echo OK
 
 echo $N Make sure the destination unlocked ..........................$NL
