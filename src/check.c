@@ -216,7 +216,7 @@ usage:		fprintf(stderr, "%s", check_help);
 private void
 warnPoly(void)
 {
-	gethelp("warn_poly", 0, 0, stdout);
+	getmsg("warn_poly", 0, 0, stdout);
 	close(open(POLY, O_CREAT|O_TRUNC, 0664));
 }
 

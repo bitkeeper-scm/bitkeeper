@@ -298,3 +298,13 @@ usage:		fprintf(stderr, "usage: bk helpsearch [-also] word\n");
 	fclose(f);
 	mdbm_close(printed);
 }
+
+int
+getmsg_main(int ac, char **av)
+{
+	unless (av[1]) {
+		fprintf(stderr, "usage: getmsg msg_name bkarg\n");
+		exit(1);
+	}
+	return (getmsg(av[1], av[2], 0, stdout) == 0);
+}

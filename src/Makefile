@@ -76,7 +76,7 @@ PSCR	= t/doit
 UWTOBJ	= win32/uwtlib/wapi_intf.o win32/uwtlib/wcrt_intf.o
 LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a $(UWTLIB)
 LINKS	= ci co edit unget
-DATA	= bitkeeper.config bkhelp.txt bklogo.gif
+DATA	= bitkeeper.config bkhelp.txt bkmsg.txt bklogo.gif
 LINKTO	= fm fmtool fm3 fm3tool
 BINLINKS= bk admin get delta unget rmdel prs
 # Note: $(XTRA) must be listed after "gnu"
@@ -109,7 +109,7 @@ SCRSRCS	= testfast.perl bk.sh import.sh clone.sh \
 	  port/win32_platform.perl port/win32_platform.tcl \
 	  port/win32_platform.sh gui/renametool.tcl \
 	  gzip_uuwrap.sh ungzip_uuwrap.sh resync.sh substvars.sh
-MISC	= bkhelp.doc bitkeeper.config t/doit.sh
+MISC	= bkhelp.doc bkmsg.doc bitkeeper.config t/doit.sh
 
 default:
 	-if [ `uname -s` = "CYGWIN_NT-4.0" ];\
@@ -180,7 +180,7 @@ production_image: rebuild p image
 clean-obj: FORCE
 	-@rm -f bk.o shell.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) 
 	-@rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
-	-@rm -f $(LIBS) shell.c bkdsubstr bkhelp.txt a.out core $(WIN_TMP)
+	-@rm -f $(LIBS) shell.c bkdsubstr bkhelp.txt bkmsg.txt a.out core $(WIN_TMP)
 	-@cd gnu && $(MAKE) clean-obj
 	-@cd win32 && $(MAKE) clean-obj
 
@@ -197,7 +197,7 @@ clean clobber distclean: rebuild FORCE
 rebuild:
 	-@rm -f bk.o shell.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) 
 	-@rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
-	-@rm -f $(LIBS) shell.c bkdsubstr bkhelp.txt a.out core $(WIN_TMP)
+	-@rm -f $(LIBS) shell.c bkdsubstr bkhelp.txt bkmsg.txt a.out core $(WIN_TMP)
 	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(LINKS) MANIFEST
 	-@cd gnu && $(MAKE) clean clean-obj
 	-@cd win32 && $(MAKE) clean clean-obj
@@ -287,6 +287,11 @@ bkhelp.txt: bkhelp.doc bk.ver helpcheck.pl
 	sed "s?@builder@?`./bk getuser`@`./bk gethost`?" | \
 	sed "s/@built_date@/`date`/" > bkhelp.txt
 	perl helpcheck.pl
+
+bkmsg.txt: bkmsg.doc bk.ver
+	sed "s/@version@/`cat bk.ver`/" bkhelp.doc | \
+	sed "s?@builder@?`./bk getuser`@`./bk gethost`?" | \
+	sed "s/@built_date@/`date`/" > bkmsg.txt
 
 # XXX Must be changed when ChangeSet moves to BitKeeper/etc.
 # It is structured like this so that rebuilding prs doesn't

@@ -1,0 +1,468 @@
+#help_merge
+#help_merging
+    ====================== Merging differences ======================
+
+This section documents the merge process started by the resolve command,
+see "bk help resolve" for details on how to run resolve.
+
+While in resolve, you can hit return to see a summary of the commands.
+
+The resolve command will prompt you on each file that has conflicts.
+A conflict is defined to be two deltas made in parallel in different
+repositories.  The conflict may not have any overlapping lines, in
+other words, it is not the same as what RCS merge calls a conflict,
+it's more conservative.
+
+There are multiple sorts of conflicts, besides the usual file content
+conflicts.  BitKeeper manages file names, permissions, flags, symbols,
+and descriptive text in the same way as it manages file contents.
+That means that you can have a permissions conflict if, for example, one
+person changed the file to 0755 mode and another changed it to 0777 mode.
+
+The resolve process for all conflicts is fairly similar.  You'll be
+prompted for each type of conflict on each file, hit return (or "?" or
+"help") and you'll be given a brief summary of the conflict and list
+of choices.  The choices usually include a more detailed explanation
+of the situation, we try to consistently make this available as the "x"
+command (as in eXplain).
+
+There are commands for diffing the files, viewing file history, several
+different merge tools, etc.  See the command summary for the full list.
+
+VIEW DIFFERENCES AND HISTORY
+
+To see the diffs use the "d" command.  For side-by-side diffs, use the
+"sd" command.  You can also diff one or the other branches against the
+common ancestor using "dr" or "dl".  Type "D" to get a graphical, color
+coded side-by-side diff browser.
+
+There are built in commands to show the history of the file, see "h",
+"hl", "hr".  In addition, "p" starts the the graphical file browser.  You
+can see diffs between versions by clicking the left button on the earlier
+rev and the right button on a later rev.  The bottom of the screen will
+show the diffs.  If you type Return at the prompt, the 3 revisions forming
+the merge are part of the help message.
+
+MERGING CONTENTS
+
+When in resolve, there are four different files for each merge.  They
+are:
+
+    local	- this is the version of the file in the local repository
+    remote	- this is the version of the file in the other repository
+    merge	- this is the merged file
+    GCA		- this is a common ancestor of the local/remote versions
+
+Your goal is to generate the merge file.  There are several ways to
+do this.
+
+The easiest merge (and most popular) is one with no overlapping lines,
+you can merge that using the "m" command.  That command runs a merge
+command which does a three-way diff and merge, warning you if there are
+overlapping lines.  If there are overlaps, you have to edit the merged
+file (use the "e" command), find the markers which look like "<<<<" or
+">>>>", and manually fix the conflicts.  You need to be careful with
+this command; just because lines do not overlap does not mean that the
+merge makes semantic sense.
+
+If the merge looks complicated, a good approach is to start up the
+file browser with "p" and start up a side-by-side filemerge with "f".
+Then you can walk through the diffs, picking and choosing.  If you
+get confused about who added what, you can go to the browser and left
+click on the common ancestor and right click on each of the two tips of
+the trunk/branch to see who added what.  
+
+It is also possible to use a combination of graphical tools and the
+automatic merge.  You can type "p" to run the file browser, "D" to run
+difftool, "m" to do the merge, and then "e" to edit the merged file.
+The file browser is run in background, so you can go look at the various
+changes as described above.  Warning: if you are running your editor
+and the file merge program, then both are working on the same output
+file and whichever one writes it last, overwrites any earlier versions.
+
+There is a three-way file merge but it is not currently supported and we
+don't suggest you use it.  You can take a look by typing "F", it may be
+marginally useful.
+
+You can specify your own merge tool to resolve, see "bk help resolve".
+
+COMMIT
+
+The merge process is not complete until you commit the file with the
+"C" command at the resolve prompt.  This means you can merge repeatedly
+until you are happy with the results.
+
+When you are happy with your merged file, click done in filemerge,
+quit in the file browser, and type "C" at the prompt to commit to
+that file and move on to the next one.
+
+SEE ALSO
+    bk help resolve
+
+$
+#setup_1
+----------------------------------------------------------------------
+
+You are about create a new repository.  You may do this exactly once
+for each package stored in BitKeeper.  If there already is a BitKeeper
+repository for this package, you should do
+
+    bk clone package_dir my_package_dir
+
+If you create a new package rather than resyncing a copy, you will not
+be able to exchange work between the two packages.
+
+----------------------------------------------------------------------
+$
+#setup_2
+--------------------------------------------------------
+Please create a description of this package.  A brief description is
+probably best. For example:
+
+    The Linux Kernel
+or
+    The GNU C compiler
+
+If you are using a word processor to edit the package description,
+please save the file as a plain text document.
+--------------------------------------------------------
+$
+#setup_3
+--------------------------------------------------------
+Please fill out the configuration template in your editor.
+This is used for support purposes as well as licensing.
+--------------------------------------------------------
+$
+#chkconfig_missing
+
+Your BitKeeper package is missing the config file
+
+    BitKeeper/etc/SCCS/s.config
+
+This should not have occurred, but since it did, you can fix it
+by doing the following:
+
+    cp #BKARG#/bitkeeper.config BitKeeper/etc/config
+    # edit it to reflect your site
+    vi BitKeeper/etc/config
+    bk new BitKeeper/etc/config
+
+and then try this command again.
+
+$
+#chkconfig_inaccurate
+
+Your config file, BitKeeper/etc/config, does not reflect your site.
+Please check it out ("bk edit BitKeeper/etc/config"), modify it to
+reflect your site, check it in, and try this command again.
+
+$
+#license_grace
+Your license for BitKeeper has expired but you are still
+within the grace period.  This changeset will be created
+as normal, but you need to contact BitMover and purchase an
+updated license.
+
+BitMover can be reached in the United States at 415-401-8808
+during business hours (PST) or via email at sales@bitmover.com.
+Thanks!
+$
+#license_expired
+Your license for BitKeeper has expired.  You are beyond the
+grace period and you may not create any changesets until you
+have contacted BitMover to purchase a license.
+
+You can get a temporary license by sending a mail request
+to bk_license@bitmover.com.  The response on the license
+will be as fast as the email system can turn it around, the
+system is automated.  For more information, please run
+
+	bk helptool license
+
+BitMover can be reached in the United States at 415-401-8808
+during business hours (PST) or via email at sales@bitmover.com.
+Thanks!
+$
+#license_none
+You do not have a license for BitKeeper and the logging field in the
+BitKeeper/etc/config file is not set to "logging@openlogging.org".
+You either need a commercial license (to run without open logging),
+or you need to convert your package to single user, or you need to
+configure your package to use openlogging.  Until you have done one of
+those, you may not create any changesets.
+
+You can get a temporary license by sending a mail request
+to bk_license@bitmover.com.  The response on the license
+will be as fast as the email system can turn it around, the
+system is automated.  For more information, please run
+
+	bk helptool license
+
+BitMover can be reached in the United States at 415-401-8808
+during business hours (PST) or via email at sales@bitmover.com.
+Thanks!
+$
+#open_log_query
+This repository is configured to send ChangeSet summaries to
+	#BKARG#
+so others can follow your work.  This is called Open Logging.
+
+We need to get an OK from each user that it is OK to publish the
+change logs.  You should say no if you are working on proprietary
+and/or sensitive information that you or your employer would not
+want made public.  If you are working on an Open Source project,
+or any other project whose existence and status can be publicized,
+you can say yes.
+
+Saying no means the changeset will neither be logged nor be
+created, which means a loss of the distributed functionality
+of BitKeeper.  If it is important that you keep the information
+private, you can contact BitMover for a closed use license.
+BitMover can be reached in the United States at 415-401-8808
+during business hours (PST) or via email at sales@bitmover.com.
+
+Saying yes will send the changeset comments.  It will NOT send your
+source code.  Saying yes also means that you are accepting the
+terms of the BKL, the license under which you obtained this
+software.  You can read that license by saying "bk help license"
+in another window.
+
+If you have been asked before it is because we ask once per host.
+$
+#closed_log_query
+This repository is configured to send ChangeSet summaries to
+	#BKARG#
+This address is not an Open Logging server, it is a private 
+server, probably inside your company.  If you don't wish to
+send summaries to that server, change the logging field in the
+BitKeeper/etc/config file.
+
+In order to create this changeset, you need to confirm that it
+is OK to send logs to this host.
+
+If you have been asked before it is because we ask once per host.
+$
+#log_abort
+Bitkeeper is aborting this commit.
+
+This version of Bitkeeper is licensed for projects which wish to publish
+their progress via Open Logging.  To purchase a copy of Bitkeeper without
+the Open Logging feature, please contact sales@bitmover.com.  Thank you.
+$
+#seat_info
+Your user count have exceeded the number of purchased licenses.
+To purchase more seats, please email sales@bitmover.com.  Thank you.
+
+$
+#bugtemplate
+BitKeeper Bug Report
+--------------------
+
+Please fill in the fields below as much as possible.  We parse this
+automatically, so please follow the format guidelines.
+
+Fields marked with [whatever] are single line fields.
+
+The Description, Suggestions, and Contact sections can be multi line.
+
+------------------------------------------------------------------------------
+
+Bug/RFE:
+	[bug is obvious, RFE is request for enhancement]
+
+Severity:
+	[5 - no big deal, 1 - can't use BitKeeper until this is fixed]
+
+Priority:
+	[5 - fix whenever, 1 - fix RIGHT NOW]
+
+
+Program:
+	[cset, co, delta, etc.  If you know which caused the problem]
+
+Release:
+	beta10-pre1
+
+OS:
+	[Linux, IRIX, NT, etc]
+
+Synopsis:
+	[one line: i.e., sfiles dumps core when running on CP/M]
+
+Description:
+	Please tell us:
+	- what you were doing
+	- what happened
+	- can you make it happen again, if so, how?
+	- what you think went wrong
+	- machine / OS / etc on which the bug occurred
+	- anything else that you think might be useful
+	Take as much space as you need, but leave a blank line
+	between this and the next field.
+
+Suggestions:
+	Any suggested fix is most welcome.
+	Take as much space as you need, but leave a blank line
+	between this and the next field.
+
+Interest list:
+	[emails of others who care about this like so: a@foo.com,b@foo.com]
+
+Contact info:
+	Your contact information here.
+	A phone number and a time to call is useful if we need more
+	information.
+	You can also specify a preferred email address.
+	Take as much space as you need, but leave a blank line between
+	this and the ----- below.
+
+------------------------------------------------------------------------------
+$
+#duplicate_IDs
+You need to figure out why you have two files with the same ID
+and correct that situation before this ChangeSet can be created.
+$
+#consistency_check
+
+BitKeeper is running a consistency check on your system because it
+has noticed that this check has not yet been run on this repository.
+This check is a one time event, but takes quite a while on large
+repositories (approximately one minute per 1000 files).  
+
+Please stand by and let the process finish (i.e. do not kill this process).
+
+$
+#undo_error
+
+BitKeeper is unable to undo the requested changeset[s].  This is
+usually because undoing the requested list of changesets would leave the
+repository in an error state.  Please look at the error message below
+and try to find a set of ChangeSets which will work.  The typical
+problems are:
+
+    - Removing a delta in the middle of the history which leaves
+      a parentless child delta.
+    - The merge delta and a portion of a branch is deleted which
+      leaves two open branches in the ChangeSet file.
+    - Removing a delta which is included by another delta.
+
+It is frequently helpful to look at the ChangeSet file with sccstool to
+get a feel for which changesets must be undone together to leave a clean
+tree.
+
+The error caused by this undo is:
+$
+#version
+BitKeeper#BKARG#version is @version@
+Built by: @builder@
+Built on: @built_date@
+$
+#config_preamble
+This is the BitKeeper configuration for this package.
+
+Please take a minute to fill it out carefully, it needs to be accurate.
+
+NOTICE: you really do want to fill this out, if something goes wrong
+with your repository, or if someone changes the logging policy, we
+send mail to the contact listed here for confirmation.
+
+BitKeeper can maintain a log of your change comments (not your source,
+just the comments) on a centralized server.  This is useful as your
+project grows, it gives people a place to go see what is happening on
+a per project basis.  This is especially useful for distributed developers.
+
+$
+#config_setup
+The setup program is used when creating the initial package stored 
+in BitKeeper.  Running this tool will create the master repository.
+You may do this exactly once for each package stored in BitKeeper.  
+
+If this package is already stored somewhere in BitKeeper, get out
+of this tool and do the following:
+
+        bk clone package_dir my_workarea
+
+instead.
+
+$
+#config_description
+
+Name of the project, such as "BitKeeper" or "The GNU C compiler".
+
+$
+#config_logging
+
+Open Logging server.  This site is where users go to see the
+ChangeSet comments for all instances of this repository.  This must
+be logging@openlogging.org for usage under the terms of the BKL,
+"bk help bkl" will show you the default licensing terms.  If this
+repository is commercial it can be an internal email address or "none"
+to disable logging.
+
+$
+#config_contact
+
+Contact person for this project.  This is whoever is the person that
+should be contacted with update information or contacted if BitKeeper
+discovers a problem which requires local intervention.  Please make the
+contact information accurate so we can support you.
+
+$
+#config_email
+
+It is very important that this email address is filled out and accurate.
+If someone converts your repository to open logging (which you may not
+want), we will contact this email address for confirmation that you really
+did want open logging.  If the email address is inaccurate and we get no
+response from anyone else at your location after 90 days, then open logging
+will be implicitly approved.
+
+$
+#config_street
+
+Add your street address if you like, it is optional.
+
+$
+#config_hours
+
+Business Hours when we can contact you if you left a phone number.
+
+$
+#config_single_user
+
+If this field is set, all checkins will appear to be made by this user,
+in effect making this a single user package.  Single user packages are
+free from the logging constraint.  In order for the package to really
+be free, both the single_user and the single_host field need to be set.
+
+$
+#config_single_host
+
+If this field is set, all checkins will appear to be made on this host.
+
+$
+#config_template
+description
+logging
+single_user
+single_host
+contact
+email
+street
+city
+state
+postal
+country
+phone
+cell
+pager
+hours
+$
+#warn_poly
+Warning: this repository has been found to have deltas which
+belong to multiple csets (not an error, but annoying).
+This happens if a repository with uncommitted deltas is copied
+and then committed in both copies.
+Please use only 'bk clone <from> <to>' to copy a repository.
+$
+

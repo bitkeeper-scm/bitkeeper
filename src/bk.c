@@ -50,6 +50,7 @@ int gca_main(int, char **);
 int get_main(int, char **);
 int gethelp_main(int, char **);
 int gethost_main(int, char **);
+int getmsg_main(int, char **);
 int getuser_main(int, char **);
 int gnupatch_main(int, char **);
 int graft_main(int, char **);
@@ -155,6 +156,7 @@ struct command cmdtbl[] = {
 	{"get", get_main},
 	{"gethelp", gethelp_main},
 	{"gethost", gethost_main},
+	{"getmsg", getmsg_main},
 	{"getuser", getuser_main},
 	{"graft", graft_main},
 	{"grep", grep_main},
