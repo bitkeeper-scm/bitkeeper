@@ -1,0 +1,34 @@
+echo $N check bk clone with closed fd0 and fd1 ......................$NL
+no_logging proj
+(bk clone $Q $HERE/proj $HERE/copy 0>&- 1>&-) || {
+	echo failed; exit 1; }
+test -d $HERE/copy || { echo failed; exit 1; }
+cd $HERE/copy
+bk -r check -ac || { echo failed; exit 1; }
+echo OK
+
+echo $N check bk push with closed fd0 and fd1 .......................$NL
+cd $HERE/proj
+touch foo
+bk new $Q foo
+bk commit $Q -yfoo
+(bk push $Q $HERE/copy 0>&- 1>&- ) || {
+	echo failed; exit 1; }
+cd $HERE/copy
+test -f SCCS/s.foo || { echo failed; exit 1; }
+bk -r check -ac || { echo failed; exit 1; }
+echo OK
+
+echo $N check bk pull with closed fd0 and fd1 .......................$NL
+cd $HERE/copy
+touch bar
+bk new $Q bar
+bk commit $Q -ybar
+cd $HERE/proj
+(bk pull $Q $HERE/copy 0>&- 1>&- ) || {
+	echo failed; exit 1; }
+cd $HERE/proj
+test -f SCCS/s.bar || { echo failed; exit 1; }
+bk -r check -ac || { echo failed; exit 1; }
+echo OK
+
