@@ -90,6 +90,8 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 {
 	int	i;
 
+	if (LOGS_ONLY(s)) return (0);
+
 	unless (d) d = sccs_top(s);
 
 	if (S_ISLNK(d->mode)) {
