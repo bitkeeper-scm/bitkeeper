@@ -14,7 +14,7 @@ ifeq "$(OSTYPE)" "msys"
 	UWTLIB=$(UWT)/libuwt.a
 	UWT_H=$(patsubst %,win32/uwtlib/%.h, \
 		dirent misc re_map sys/wait stat utsname ftw \
-	 	mman re_map_decl times)
+	 	mman re_map_decl times NewAPIs)
 else
 	SYS=unix
 	EXE=
