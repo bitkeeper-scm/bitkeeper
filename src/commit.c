@@ -116,7 +116,7 @@ do_commit()
 	sprintf(buf, "%scset %s %s %s %s%s < %s",
 		bin, lod ? "-L": "", quiet ? "-q" : "", sym_opt,
 		hasComment? "-Y" : "", hasComment ? commit_file : "", commit_list);
-	rc = (system)(buf);
+	rc = system(buf);
 	unlink(list);
 	unlink(commit_file);
 	unlink(commit_list);
@@ -131,13 +131,17 @@ do_commit()
 checkLog()
 {
 	char buf[MAXLINE], buf2[MAXLINE];
-	FILE *pipe;
+	char getlog_out[MAXPATH];
+	FILE *f;
 
-	sprintf(buf, "%sgetlog %s", bin, resync ? "-R" : "");
-	pipe = popen(buf, "r");
-	fgets(buf, sizeof(buf), pipe);
+	sprintf(getlog_out, "%s/bk_getlog%d", TMP_PATH, getpid());
+	sprintf(buf, "%sgetlog %s > %s", bin, resync ? "-R" : "", getlog_out);
+	system(buf);
+	f = fopen(getlog_out, "rt");
+	fgets(buf, sizeof(buf), f);
 	chop(buf);
-	pclose(pipe);
+	fclose(f);
+	unlink(getlog_out);
 	if (strneq("ask_open_logging:", buf, 17)) {
 		gethelp("open_log_query", logAddr(), stdout);
 		printf("OK [y/n]? ");

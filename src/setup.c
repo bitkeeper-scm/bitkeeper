@@ -122,6 +122,6 @@ main(int ac, char **av)
 	system(buf);
 	sprintf(buf,
 		"%scset -q -y\"Initial repository create\" -  < %s", bin, setup_files);
-	(system)(buf);
+	system(buf);
 	unlink(setup_files);
 }
