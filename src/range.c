@@ -199,6 +199,18 @@ rangeConnect(sccs *s)
 	return (0);
 }
 
+rangeSetExpand(sccs *s)
+{
+	delta	*d;
+
+	s->rstart = s->rstop = 0;
+	for (d = s->table; d; d = d->next) {
+		unless (d->flags & D_SET) continue;
+		unless (s->rstop) s->rstop = d;
+		s->rstart = d;
+	}
+}
+
 /*
  * Take a list, split it up in the list items, and mark the tree.
  * If there are any ranges, clear the rstart/rstop and call the
@@ -211,6 +223,7 @@ rangeList(sccs *sc, char *rev)
 	char	*r;
 	delta	*d;
 
+	debug((stderr, "rangeList(%s, %s)\n", sc->gfile, rev));
 	/*
 	 * We can have a list like so:
 	 *	rev,rev,rev..rev,..rev,rev..,rev
@@ -242,6 +255,7 @@ rangeList(sccs *sc, char *rev)
 				return (-1);
 			}
 			d->flags |= D_SET;
+			debug((stderr, "rangeList ADD %s\n", d->rev));
 		}
 
 		/*

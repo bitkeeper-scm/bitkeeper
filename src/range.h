@@ -19,6 +19,8 @@
 	    break
 
 #define	RANGE(me, s, expand, noisy) \
+	debug((stderr, \
+	    "RANGE(%s, %s, %d, %d)\n", me, s->gfile, expand, noisy)); \
 	rangeReset(s); \
 	if (!things) if (r[0] = sfileRev()) things++; \
 	if (things) { \
@@ -53,8 +55,12 @@
 				s->rstop = s->table; \
 			} \
 		} \
-		unless (s->rstart) s->rstart = s->rstop; \
-		unless (s->rstop) s->rstop = s->rstart; \
+		if (s->state & S_SET) { \
+			rangeSetExpand(s); \
+		} else { \
+			unless (s->rstart) s->rstart = s->rstop; \
+			unless (s->rstop) s->rstop = s->rstart; \
+		} \
 	} \
 	/* If they wanted a set and we don't have one... */ \
 	if ((expand == 2) && !(s->state & S_SET)) { \
