@@ -79,16 +79,16 @@ proc dotFile {{line {}}} \
 	}
 	set p [open "| bk prs -hr$start {-d:PARENT:\n} \"$file\""]
 	gets $p parent
-	close $p
+	catch { close $p }
 	if {$parent == ""} { set parent "1.0" }
 	set finfo(l) "$file@$parent"
 	set finfo(r) "$file@$stop"
 	set p [open "| bk prs -hr$parent {-d:D: :T:\n} \"$file\""]
 	gets $p finfo(lt)
-	close $p
+	catch { close $p }
 	set p [open "| bk prs -hr$stop {-d:D: :T:\n} \"$file\""]
 	gets $p finfo(rt)
-	close $p
+	catch { close $p }
 	set tmp [file tail "$file"]
 	set l [file join $tmp_dir $tmp-${parent}_[pid]]
 	set r [file join $tmp_dir $tmp-${stop}_[pid]]
@@ -184,7 +184,7 @@ proc getFiles {revs file_rev} \
 			set line2File($line) $fileCount
 			set Files($fileCount) $line
 			regexp  $file_old_new $buf dummy name oname rev
-			set RealFiles($fileCount) "  $name$bk_fs$rev"
+			set RealFiles($fileCount) "  $name@$rev"
 			set buf "$oname@$rev"
 			if {[string first $file_rev $buf] >= 0} {
 				set found $fileCount
@@ -198,7 +198,7 @@ proc getFiles {revs file_rev} \
 	catch { close $r }
 	if {$fileCount == 0} {
 		#displayMessage \ 
-		#  "ChangeSet doesn't contain files since it is a merge ChangeSet."
+		#"ChangeSet doesn't contain files since it is a merge ChangeSet."
 		exit
 	}
 	.l.filelist.t configure -state disabled

@@ -20,10 +20,14 @@ proc bk_init {} \
 	set keytmp "$tmp_dir"
 
 	# Stuff related to the bk field seperator: ^A 
-	set bk_fs 
-	set file_rev {(.*)([0-9].*)}
-	set file_start_stop {(.*)(.*)\.\.(.*)}
-	set file_stop {(.*)([0-9.]+$)}
-	set file_old_new {(.*)(.*)(.*)} 
-	set line_rev {([^]*)(.*)}
+	set bk_fs |
+	set file_old_new {(.*)\|(.*)\|(.*)} 
+	set line_rev {([^\|]*)\|(.*)}
+
+	# Don't change the separator character in these! These are used 
+	# within the gui and do not read the input from bk commands that
+	# use the new separator
+	set file_start_stop {(.*)@(.*)\.\.(.*)}
+	set file_stop {(.*)@([0-9.]+$)}
+	set file_rev {(.*)@([0-9].*)}
 }
