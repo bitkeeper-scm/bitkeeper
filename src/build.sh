@@ -1,6 +1,7 @@
 #!/bin/sh
 
 CC=gcc
+LD=gcc
 MAKE=gmake
 uname -s | grep "_NT"
 if [ $?  != 0 ]
@@ -52,4 +53,4 @@ case `uname -s` in
 		export BK BKMERGE MORE UWT_H
 		;;
 esac
-$MAKE "CC=$CC" "XLIBS=$XLIBS" "$@"
+$MAKE "CC=$CC" "LD=$LD" "XLIBS=$XLIBS" "$@"
