@@ -1210,7 +1210,7 @@ http_error(int status, char *fmt, ...)
 	    "<th valign=top align=left>bkhttp/" BKWEB_SERVER_VERSION " server on ");
 	out(url(0));
 	out("</th>\n"
-	    "<td align=right><a alink=white link=white href=www.bitkeeper.com>\n"
+	    "<td align=right><a href=http://www.bitkeeper.com>\n"
 	    "<img src=/trailer.gif alt=\"Learn more about BitKeeper\">\n"
 	    "</a></td>\n"
 	    "</tr>\n"
