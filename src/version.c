@@ -1,5 +1,6 @@
 #include "system.h"
 #include "sccs.h"
+#include "logging.h"
 
 int
 version_main(int ac, char **av)
