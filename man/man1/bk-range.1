@@ -3,20 +3,27 @@
 .\"    ================= Specifying Dates and Ranges =================
 .SH NAME
 bk range \- demo program to show ranges & dates
+.SH SYNOPSIS
+.Bc bk range [\-q] [
+.OPTreq \-c range 
+.Bc |
+.OPTreq \-r rev
+.B ]
+.BKARGS
 .SH DESCRIPTION
 .LP
 Many commands can take ranges of deltas as an argument.  A range
 is a continuous sequence of deltas, such as 1.1, 1.2, 1.3, and 1.4.
-Deltas may be specified by their revision number (1.2), or a symbol
-(alpha1), or a date (99/07/25).
+Deltas may be specified by their revision number (1.2),  a symbolic
+name (in the case of the ChangeSet file only), or a date (99/07/25).
 .LP
-You can specify both end-points at once like so:
+You may specify both end-points at once like so:
 .sp
 .DS
 bk prs \-r1.1..1.5
 .DE
 .LP
-You can specify dates instead of revisions like so
+You may specify dates instead of revisions like so
 .sp
 .DS
 bk prs \-c98..98
@@ -65,7 +72,8 @@ You can mix and match revisions and date.  If you want everything in
 bk prs \-c98 \-r1.5
 .DE
 .LP
-Dates can also be symbolic tags.  If you tagged a file with Alpha and Beta,
+Dates can also be in the form of symbolic tags (ChangeSet file only).  
+If you tagged a changeset with Alpha and another changeset with Beta,
 you can type:
 .DS
 bk prs \-cAlpha..Beta 
@@ -79,6 +87,16 @@ bk prs \-cBeta..
 .LP
 A single \-r, because it is the first revision seen, rounds down and means
 1.1.  To get the most recent delta, type "\-r+".
+.SH OPTIONS
+.TP 1i
+.OPTreq \-c range
+Specify deltas by a date range
+.tp
+.OPTreq \-r rev
+Specify deltas by revision number
+.tp
+.B \-q
+run quietly; default is to warn about all files which do not match the range
 .SH "SEE ALSO"
 .SA annotate 1
 .SA diffs 1
