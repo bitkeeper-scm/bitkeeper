@@ -56,7 +56,7 @@ pull_main(int ac, char **av)
 			if (opts.gzip < 0 || opts.gzip > 9) opts.gzip = 6;
 			break;
 		    default:
-usage:			system("bk help -s push");
+usage:			system("bk help -s pull");
 			return (1);
 		}
 	}
