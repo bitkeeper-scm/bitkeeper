@@ -12,11 +12,16 @@
 
 # Test cases:
 #	create
-#	create with a file in the location of the new file
-#	create with a file but the file gets moved later
+#	create with a file but the file gets moved later rename in the patch
+#	create with an sfile in the location of the new file
+#	create with a gfile (no sfile) in the location of the new file
 #	rename with no conflict
 #	rename with conflict
 #	rename with conflict that gets moved out of the way
+#
+# In all cases, all files which are affected can not have pending deltas.
+# Well, we could make those pending deltas part of a "merge" or "import"
+# changeset.
 
 if [ X$Q = X ]
 then	L=-l
@@ -47,10 +52,188 @@ if [ ! -f SCCS/s.A ]; then echo failed to create history; exit 1; fi
 bk commit $S -f -y"This is a \"Change Set\""
 echo OK
 cores
-echo $N Clone a copy of it ..........................................$NL
+echo $N Clone a copy of it and save a tarball of it .................$NL
 cd $HERE
+tar cf SAVE project
 resync $Q project copy
 echo OK
+
+echo $N create a file w/ tmp conflict which gets renamed away .......$NL
+cd $HERE
+rm -rf project copy
+tar xf SAVE
+cp -rp project copy
+# project:
+#	A -> moved
+#	create A
+cd project
+bk mv A MOVED
+touch A
+bk new $Q A
+bk commit $Q -ywhatever
+cd $HERE
+bk resync $Q project copy
+# Rework the patch to be in the order we want.  We want A first and MOVED 2nd.
+cd copy/PENDING
+FILE=`echo *`
+# Sometimes there is a fudge in the patch so we have to adjust the line numbers
+LINES=`wc -l < $FILE`
+if [ $LINES -eq 55 ]
+then	sed -e 1,29d -e 55d < $FILE > A
+	sed -e 1,16d -e 30,55d < $FILE > MOVED
+	sed -e 17,55d < $FILE | cat - A MOVED | adler32 > PATCH
+fi
+if [ $LINES -eq 56 ]
+then    sed -e 1,30d -e 56d < $FILE > A
+	sed -e 1,17d -e 31,56d < $FILE > MOVED
+	sed -e 18,56d < $FILE | cat - A MOVED | adler32 > PATCH
+fi
+if [ $LINES -ne 55 -a $LINES -ne 56 ]
+then	echo Do not understand this patch
+    	echo "LINES = '$LINES'"
+    	cat -n $FILE
+	exit 1
+fi
+cd ..
+rm -rf RESYNC
+VV=
+if [ X$Q = X ]; then VV=-vv; fi
+takepatch $VV -f PENDING/PATCH
+if [ $? != 0 ]
+then	echo takepatch failed;
+	cat -n PENDING/$FILE
+	cat -n PENDING/PATCH
+	exit 1
+fi
+cd $HERE
+resolve $Q $L copy
+if [ $? != 0 ]
+then	echo resolved did not exit 0; exit 1
+fi
+get -s copy/MOVED copy/A project/MOVED project/A
+if ! cmp -s copy/MOVED project/MOVED
+then	echo MOVED does not match; exit 1
+fi
+if ! cmp -s copy/A project/A
+then	echo A does not match; exit 1
+fi
+echo OK
+
+echo $N create a file in same pathname slot without s.file ..........$NL
+cd $HERE
+rm -rf project copy
+tar xf SAVE
+cp -rp project copy
+# project:
+#	create CONFLICT
+# copy:
+#	create CONFLICT
+# resync
+cd project
+echo "I am the project file" > CONFLICT
+bk new $Q CONFLICT
+bk commit $Q -ywhatever
+cd $HERE/copy
+echo "I am the copy file" > CONFLICT
+cd $HERE
+bk resync $Q project copy
+tar cf SAVE.copy copy
+echo OK
+echo $N Resolve by removing local file ..............................$NL
+bk resolve $Q $L copy 2>/dev/null <<EOF
+r
+y
+EOF
+if [ ! -f copy/CONFLICT ]
+then	echo Failed to get CONFLICT file
+	find copy -type f -print
+	exit 1
+fi
+if [ "`cat copy/CONFLICT`" != "I am the project file" ]
+then	echo Failed to put new file in place; exit 1
+fi
+if [ `prs -hr+ -d:I: copy/CONFLICT` != "1.1" ]
+then	echo 'Added new rev to CONFLICT?'; exit 1
+fi
+echo OK
+
+echo $N Resolve by renaming local file ..............................$NL
+/bin/rm -rf copy
+tar xf SAVE.copy
+bk resolve $Q $L copy 2>/dev/null <<EOF
+ml
+LOCAL
+EOF
+if [ ! -f copy/LOCAL ]
+then	echo Failed to rename local file; exit 1
+fi
+if [ "`cat copy/LOCAL`" != "I am the copy file" ]
+then	echo Bad data in local file; cat copy/LOCAL; exit 1
+fi
+if [ ! -f copy/CONFLICT ]
+then	echo Failed to get CONFLICT file
+	find copy -type f -print
+	exit 1
+fi
+if [ "`cat copy/CONFLICT`" != "I am the project file" ]
+then	echo Failed to put new file in place; exit 1
+fi
+if [ `prs -hr+ -d:I: copy/CONFLICT` != "1.1" ]
+then	echo 'Added new rev to CONFLICT?'; exit 1
+fi
+echo OK
+
+echo $N Resolve by renaming remote file .............................$NL
+/bin/rm -rf copy
+tar xf SAVE.copy
+bk resolve $Q $L copy 2>/dev/null <<EOF
+mr
+REMOTE
+EOF
+if [ ! -f copy/CONFLICT ]
+then	echo Failed to leave local file; exit 1
+fi
+if [ "`cat copy/CONFLICT`" != "I am the copy file" ]
+then	echo Bad data in local file; cat copy/CONFLICT; exit 1
+fi
+if [ ! -f copy/REMOTE ]
+then	echo Failed to get REMOTE file
+	find copy -type f -print
+	exit 1
+fi
+if [ "`cat copy/REMOTE`" != "I am the project file" ]
+then	echo Failed to put new file in place; exit 1
+fi
+if [ `prs -hr+ -d:I: copy/REMOTE` != "1.2" ]
+then	echo 'Failed to add rename rev to REMOTE?'; exit 1
+fi
+echo OK
+exit 1
+
+
+echo $N create a file in same pathname slot with s.file .............$NL
+cd $HERE
+rm -rf project copy
+tar xf SAVE
+cp -rp project copy
+# project:
+#	create CONFLICT
+# copy:
+#	create CONFLICT
+# resync
+cd project
+touch CONFLICT
+bk new $Q CONFLICT
+bk commit $Q -ywhatever
+cd $HERE/copy
+touch CONFLICT
+bk new $Q CONFLICT
+bk commit $Q -ywhatever
+cd $HERE
+bk resync $Q project copy
+bk resolve $Q -d -l copy
+echo OK
+
 echo $N Rename a file and takepatch, forcing an edit ................$NL
 cd project
 sccsmv A Z

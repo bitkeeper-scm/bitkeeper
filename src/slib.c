@@ -12700,48 +12700,6 @@ debug_main(char **av)
 #endif
 
 /*
- * Return an alloced copy of the name of the sfile after the removed deltas
- * are gone.
- * Note that s->gfile may not be the same as s->table->pathname because we
- * may be operating on RESYNC/foo/SCCS/s.bar.c instead of foo/SCCS/s.bar.c
- *
- * XXX - I'm using s->table to mean TOT.
- */
-char	*
-currentName(sccs *s)
-{
-	delta	*d;
-	char	*t;
-	int	len;
-	char	path[MAXPATH];
-
-	/*
-	 * LODXXX - needs to restrict this to the current LOD.
-	 */
-	for (d = s->table; d && (d->flags & D_GONE); d = d->next);
-	assert(d);
-
-	/* If the current and old name are the same, use what we have */
-	if (streq(d->pathname, s->table->pathname)) return (strdup(s->sfile));
-
-	/* If we have no prefix, just convert to an s.file */
-	if (streq(s->gfile, s->table->pathname)) 
-	return (name2sccs(d->pathname));
-
-	/*
-	 * Figure out how much space we need
-	 */
-	t = strstr(s->table->pathname, s->gfile);
-	assert(t);
-	len = t - s->gfile;
-	strncpy(path, s->gfile, len);
-	path[len] = 0;
-	strcat(path, d->pathname);
-	fprintf(stderr, "RMDEL %s\n", path);
-	return (name2sccs(path));
-}
-
-/*
  * Given an SCCS structure with a list of marked deltas, strip them from
  * the delta table and place the striped body in out
  */

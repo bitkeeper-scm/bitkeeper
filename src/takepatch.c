@@ -706,12 +706,6 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 		char	*t;
 
 		mkdirf(p->resyncFile);
-		/*
-		 * Abort the patch if there is a file in the same name.
-		 */
-		if (exists(&p->resyncFile[7])) {
-			overwriteAbort(&p->resyncFile[7]);
-		}
 		goto apply;
 	}
 	fileCopy2(localPath, p->resyncFile);

@@ -50,3 +50,25 @@ getline(int in, char *buf, int size)
 		}
 	}
 }
+
+/*
+ * Prompt the user and get an answer.
+ * The buffer has to be MAXPATH bytes long.
+ */
+prompt(char *msg, char *buf)
+{
+	write(2, msg, strlen(msg));
+	write(2, " ", 1);
+	if (getline(0, buf, MAXPATH) > 0) return (1);
+	return (0);
+}
+
+confirm(char *msg)
+{
+	char	buf[100];
+
+	write(2, msg, strlen(msg));
+	write(2, " (y/n) ", 7);
+	if (getline(0, buf, sizeof(buf)) <= 0) return (0);
+	return ((buf[0] == 'y') || (buf[0] == 'Y'));
+}

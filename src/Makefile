@@ -9,7 +9,7 @@ BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  get gethost getuser key2rev lines lod prs range rechksum renumber \
 	  rmdel sccscat sccslog sccsmv sccsrm sccssh sfiles sfio sids	 \
 	  sinfo stripdel smoosh takepatch undos what gca mtime zone	 \
-	  isascii r2c rename names bkd setlog push resolve
+	  isascii r2c names bkd setlog push resolve
 SCRIPTS	= rcs2sccs testfast bk import oldresync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 mkindex \
 	  renametool mkdiffs lodset count_user getlog build \
@@ -49,12 +49,15 @@ ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/gzio.o \
 	  zlib/uncompr.o zlib/deflate.o zlib/trees.o zlib/zutil.o \
 	  zlib/inflate.o zlib/infblock.o zlib/inftrees.o zlib/infcodes.o \
 	  zlib/infutil.o zlib/inffast.o
+RESOLVE = resolve.o resolve_create.o utils.o
 BKDOBJ	= bkd_misc.o bkd_root.o bkd_pull.o bkd_clone.o bkd_push.o bkd_status.o \
 	  utils.o bkd_cmdtab.o lib_tcp.o bkd.o
 BINOBJ	= $(BINS:=.o)
 BKDSRCS	= $(BKDOBJ:.o=.c)
 SRCS	= $(PORTOBJ:.o=.c) $(SCCSOBJ:.o=.c) $(MDBMOBJ:.o=.c) \
-	  $(ZLIBOBJ:.o=.c) $(BINOBJ:.o=.c) $(BKDOBJ:.o=.c)
+	  $(ZLIBOBJ:.o=.c) $(BINOBJ:.o=.c) $(BKDOBJ:.o=.c) \
+	  $(RESOLVE:.o=.c)
+
 HDRS	= sccs.h purify.h range.h system.h mdbm/common.h mdbm/mdbm.h \
 	  mdbm/tune.h zlib/zlib.h zlib/zutil.h zlib/zconf.h zlib/deflate.h \
 	  zlib/infblock.h zlib/infcodes.h zlib/inffast.h zlib/inffixed.h \
@@ -114,7 +117,7 @@ fullwarn:
 
 # production builds
 p:
-	$(MAKE) CFLAGS="-O6 -fomit-frame-pointer $(CF)" all
+	$(MAKE) CFLAGS="-O2 -fomit-frame-pointer $(CF)" all
 ndebug:
 	$(MAKE) CFLAGS="-O2 -DNDEBUG -fomit-frame-pointer" all
 stats:
@@ -247,10 +250,8 @@ cset: cset.o $(LIBS)
 	$(CC) $(CFLAGS) cset.o $(LINK) -o cset
 names: names.o $(LIBS)
 	$(CC) $(CFLAGS) names.o $(LINK) -o names
-resolve: resolve.o $(LIBS)
-	$(CC) $(CFLAGS) resolve.o $(LINK) -o resolve
-rename: rename.o $(LIBS)
-	$(CC) $(CFLAGS) rename.o $(LINK) -o rename
+resolve: $(RESOLVE) $(LIBS)
+	$(CC) $(CFLAGS) $(RESOLVE) $(LINK) -o resolve
 lod: lod.o $(LIBS)
 	$(CC) $(CFLAGS) lod.o $(LINK) -o lod
 rmdel: rmdel.o $(LIBS)
@@ -597,7 +598,6 @@ getuser.o:	getuser.c
 isascii.o:	isascii.c
 key2rev.o:	key2rev.c $(sccsdeps)
 lines.o:	lines.c $(sccsdeps)
-rename.o:	rename.c $(sccsdeps) range.h comments.c host.c user.c
 mtime.o:	mtime.c
 prs.o:		prs.c $(sccsdeps) range.h
 range.o:	range.c $(sccsdeps) range.h

@@ -176,8 +176,11 @@ file(char *f, lftw_func func)
 	 * Process this name as both an s.file and a gfile,
 	 * whichever exists.
 	 */
-	if (strstr(f, "SCCS/s.")) g = sccs2name(f);
-	else g = name2sccs(f);
+	if (sccs_filetype(f) == 's') {
+		g = sccs2name(f);
+	} else {
+		g = name2sccs(f);
+	}
 
 	if (lstat(f, &sb)) {
 		if (errno != ENOENT) perror(f);
@@ -510,8 +513,7 @@ caches(const char *filename, int mode)
 	unless (Cflg) goto out;
 
 	/* find the leaf of the current LOD and check it */
-	sc->state |= S_RANGE2;
-	unless (d = sccs_getrev(sc, 0, 0, 0)) goto out;
+	unless (d = sccs_getrev(sc, "+", 0, 0)) goto out;
 
 	/*
 	 * If it's marked, we're done.
