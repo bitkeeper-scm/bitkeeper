@@ -302,9 +302,9 @@
 
 #define	OPENLOG_HOME	"bitmover.com"
 #define	OPENLOG_URL	"http://www.openlogging.org:80////LOG_ROOT///"
-#define	OPENLOG_URLHOST	"www.openlogging.org"
-//#define	OPENLOG_IP	"http://207.181.251.164:80////LOG_ROOT///" 
-//#define	OPENLOG_IPHOST	"207.181.251.164"
+#define	OPENLOG_BACKUP	"http://backup1.openlogging.org:80////LOG_ROOT///"
+#define	OPENLOG_HOST	"www.openlogging.org"
+#define	OPENLOG_HOST1   "backup1.openlogging.org"
 #define	BK_WEBMAIL_URL	"http://www.bitkeeper.com:80"
 #define	BK_HOSTME_URL	"http://hostme.bitkeeper.com:80"
 #define	WEB_BKD_CGI	"web_bkd"
