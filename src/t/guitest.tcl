@@ -92,25 +92,28 @@ proc test_focus {} \
 proc test_inputString {string {w ""}} \
 {
 	set keysym(\n) Return
-	array set keysym {
-		[ bracketleft	] bracketright
-		\{ braceleft    \} braceright
-		( parenleft	) parenright
-		< less		> greater
-		, comma		. period
-		= equal		+ plus
-		- minus		_ underscore
-		! exclam	~ asciitilde
-		` grave		@ at
-		$ dollar	#  numbersign
-		% percent	^ asciicircum
-		& ampersand	* asterisk
-		| bar		\\ backslash
-		: colon		; semicolon
-		? question	/ slash
-		\n Return       \  space
-		\t Tab
-	}
+	array set keysym \
+	    [list \
+		\" quotedbl      @ at \
+		\` quoteleft    \' quoteright \
+		\[ bracketleft  \] bracketright \
+		\{ braceleft    \} braceright \
+		 ( parenlef      ) parenright \
+		 < less          > greater \
+		 , comma         . period \
+		 = equal         + plus \
+		 - minus         _ underscore \
+		 ! exclam        ~ asciitilde \
+		 $ dollar       \# numbersign \
+		 % percent       ^ asciicircum \
+		 & ampersand     * asterisk \
+		 | bar          \\ backslash \
+		 : colon        \; semicolon \
+		 ? question      / slash \
+		 \n Return      \  space \
+		 \t Tab	      \010 BackSpace \
+		\177 Delete \
+	]
 
 	# all of this cruft is to make darn sure the requested window
 	# has the input focus and is visible. Many of the Tk bindings
@@ -123,7 +126,8 @@ proc test_inputString {string {w ""}} \
 		set w [focus]
 	}
 
-	foreach char [split $string {}] {
+	set chars [split [subst -nocommands -novariables $string] {}]
+	foreach char $chars {
 		if {[info exists keysym($char)]} {
 			set k $keysym($char)
 		} else {

@@ -38,6 +38,7 @@ cat >file1 <<EOF
 5: this is part of the original file
 6: this is part of the original file
 7: this is part of the original file
+8: this is part of the original file
 EOF
 cat >file2 <<EOF
 1: this is file2
@@ -47,6 +48,7 @@ cat >file2 <<EOF
 5: this is part of the original file
 6: this is part of the original file
 7: this is part of the original file
+8: this is part of the original file
 EOF
 bk ci $Q -i file1 file2
 bk commit $Q -y"initial checkin"
@@ -60,14 +62,15 @@ cd $HERE/remote/src
 bk get $Q -e file1
 cat >file1 <<EOF
 1: this is file1
-2: this has changed in the remote project
+2: this is part of the original file
 3: this has changed in the remote project
-4: this is part of the original file
-   this has been added in the remote project
-   this has been added in the remote project
+4: this has changed in the remote project
 5: this is part of the original file
-6: this has changed in both the local and remote project
-7: this is part of the original file
+   this has been added in the remote project
+   this has been added in the remote project
+6: this is part of the original file
+7: this has changed in both the local and remote project
+8: this is part of the original file
 EOF
 bk ci $Q -y"introduced conflicts" file1
 bk commit $Q -y"introduced conflicts in file1"
@@ -75,12 +78,13 @@ cd $HERE/local/src
 bk get $Q -e file1
 cat >file1 <<EOF
 1: this is file1
-2: this has changed in the local project
-3: this is part of the original file
+2: this is part of the original file
+3: this has changed in the local project
 4: this is part of the original file
 5: this is part of the original file
-6: this has changed in both the local and remote project
-7: this is part of the original file
+6: this is part of the original file
+7: this has changed in both the local and remote project
+8: this is part of the original file
 EOF
 bk ci $Q -y"introduced conflicts" file1
 bk commit $Q -y"introduced conflicts in file1"
@@ -92,40 +96,41 @@ cd $HERE/local
 bk pull $Q 2>pull.err
 if [ ! -d RESYNC ]; then echo failed to create RESYNC directory; exit 1; fi
 echo OK
-
-echo $N Simple startup and exit......................................$NL
+echo $N Hand-edit that joins block with previous line................$NL
 cd $HERE/local/RESYNC
-bk guitest fm3tool -f 1.1.1.1 1.1 1.2 src/file1 >$OUT 2>&1 <<'EOF'
-    test_invokeMenu File->Quit
-    after 5000 [list exit 99] ;# in case the buttonpress didn't work
-EOF
-err=$?
-test -s $OUT && { echo failed; cat $OUT; exit 1; }
-if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
-echo OK
-
-echo $N Create dotbk/fm3.rc .........................................$NL
-test -f $RC && rm -f $RC
-cd $HERE/local/RESYNC
-bk guitest fm3tool -f 1.1.1.1 1.1 1.2 src/file1 >$OUT 2>&1 <<'EOF'
-    test_invokeMenu File->Quit
-    after 5000 [list exit 99] ;# in case the buttonpress didn't work
-EOF
-test -f $RC || (echo failed; exit 1; )
-echo "OK"
-
-echo $N Proper count of diffs and conflicts..........................$NL
-cd $HERE/local/RESYNC
-bk guitest fm3tool -f 1.1.1.1 1.1 1.2 src/file1 >$OUT 2>&1 <<'EOF'
-    global diffCount conf_todo
-    if {$conf_todo != 1 || $diffCount != 3} {
-	puts "conf_todo is $conf_to; expected 1"
-	puts "diffCount is $diffCount; expected 3"
-	exit 1
-    }
+bk guitest fm3tool -o merge.raw -f 1.1.1.1 1.1 1.2 src/file1 >$OUT 2>&1 <<'EOF'
+    # find beginning of unmerged section, then simulate a button
+    # click there
+    set index [.merge.t index d1]
+    set dline [.merge.t dlineinfo d1]
+    set x [lindex $dline 0]
+    set y [lindex $dline 1]
+    event generate .merge.t <ButtonPress-1> -x $x -y $y 
+    event generate .merge.t <ButtonRelease-1> -x $x -y $y 
+    # we should be at start of merge block; simulate backspace which
+    # causes this line to be joined to the preceeding line
+    test_inputString "\010" .merge.t
+    event generate .merge.t <Escape> -x $x -y $y
+    test_invokeMenu "File->Save"
     exit 0
 EOF
 err=$?
-test -s $OUT && { echo failed; cat $OUT; exit 1; }
-if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
+cat > expected <<EOF
+1: this is file1
+2: this is part of the original file<<<<<<
+UNMERGED
+>>>>>>
+5: this is part of the original file
+   this has been added in the remote project
+   this has been added in the remote project
+6: this is part of the original file
+7: this has changed in both the local and remote project
+8: this is part of the original file
+EOF
+bk undos merge.raw > merge
+cmp -s expected merge || {
+	echo bad merge
+	diff -u expected merge
+	exit 1
+}
 echo OK
