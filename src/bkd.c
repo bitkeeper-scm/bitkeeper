@@ -174,7 +174,14 @@ void
 bkd_service_loop(int ac, char **av)
 {
 	SOCKET	sock = 0;
-	int	err = 0;
+	int	n, err = 0;
+	char	pipe_size[50], socket_handle[20];
+	char	*bkd_av[10] = {
+		"bk", "_socket2pipe",
+		"-s", socket_handle,	/* socket handle */
+		"-p", pipe_size,	/* set pipe size */
+		"bk", "bkd",		/* bkd command */
+		0};
 	extern	int bkd_quit; /* This is set by the helper thread */
 	extern	int bkd_register_ctrl();
 	extern	void reportStatus(SERVICE_STATUS_HANDLE, int, int, int);
@@ -207,12 +214,9 @@ bkd_service_loop(int ac, char **av)
 	/*
 	 * Main loop
 	 */
+	sprintf(pipe_size, "%d", BIG_PIPE);
 	while (1)
 	{
-		char sbuf[20];
-		char *av[10] =
-			    {"bk", "_socket2pipe", "-s", sbuf, "bk", "bkd", 0};
-		int n;
 		n = accept(sock, 0 , 0);
 		/*
 		 * We could be interrupted if the service manager
@@ -227,7 +231,7 @@ bkd_service_loop(int ac, char **av)
 		 * On win32, we cannot dup a socket,
 		 * so just pass the socket handle as a argument
 		 */
-		sprintf(sbuf, "%d", n);
+		sprintf(socket_handle, "%d", n);
 		if (Opts.log) {
 			struct  sockaddr_in sin;
 			int     len = sizeof(sin);
@@ -245,7 +249,7 @@ bkd_service_loop(int ac, char **av)
 		 * to the socket helper via pipes. Socket helper forward
 		 * all data between the pipes and the socket.
 		 */
-		if (spawnvp_ex(_P_NOWAIT, av[0], av) == -1) {
+		if (spawnvp_ex(_P_NOWAIT, bkd_av[0], bkd_av) == -1) {
 			logMsg("bkd: cannot spawn socket_helper");
 			break;
 		}

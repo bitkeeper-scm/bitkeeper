@@ -183,7 +183,7 @@ compressed(int gzip, char *csets_out)
 	close(0); dup2(fd0, 0); close(fd0);
 	gzip_init(gzip);
 	while ((n = read(rfd, buf, sizeof(buf))) > 0) {
-		gzip2fd(buf, n, 1);
+		gzip2fd(buf, n, 1, 0);
 	}
 	gzip_done();
 	waitpid(pid, &status, 0);
@@ -485,13 +485,18 @@ next:	sccs_free(s);
 
 
 	fputs("@PATCH@\n", stdout);
-	fflush(stdout);
-	if (gzip) sprintf(gzip_str, "| bk _gzip -z%d", gzip);
-	sprintf(buf, "bk makepatch %s - < %s %s",
-				metaOnly ? "-e" : "", rev_list, gzip_str);
+	fflush(stdout); 
+	sprintf(buf, "bk makepatch %s - < %s | bk _gzip -z%d",
+				metaOnly ? "-e" : "", rev_list, gzip);
 	if (system(buf)) {
 		fprintf(stderr, "cmd_pull_part2: makepatch failed\n");
 	}
+
+	/*
+	 * Note: If you revise the protocol and need to read back staus
+	 * form the remote side. You may need to flush the output
+	 * fd/socket here, see the call to flush2remote() in push.c
+	 */
 
 	/*
 	 * Fire up the post-trigger (for non-logging tree only)

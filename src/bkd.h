@@ -91,10 +91,13 @@ char	*remote_unparse(remote *r);
 pid_t	bkd(int compress, remote *r);
 void	bkd_reap(pid_t resync, int r_pipe, int w_pipe);
 int	getline(int in, char *buf, int size);
-int	gunzip2fd(char *input, int len, int fd);
-int	gzip2fd(char *input, int len, int fd);
+int	gunzip2fd(char *input, int len, int fd, int hflag);
+int	gzip2fd(char *input, int len, int fd, int hflag);
 void	gzip_done(void);
 void	gzip_init(int level);
+int	gzipAll2fd(int rfd, int wfd, int level, int *in, int *out,
+							int hflag, int verbose);
+int	gunzipAll2fd(int rfd, int wfd, int level, int *in, int *out);
 int	in(char *s, int len);
 int	out(char *s);
 int	readn(int from, char *buf, int size);
@@ -124,4 +127,5 @@ int	skip_http_hdr(remote *r);
 int	getServerInfoBlock(remote *r);
 void	sendEnv(FILE *f, char **envVar);
 void	wait_eof(remote *r, int verbose);
+void	flush2remote(remote *r);
 #endif

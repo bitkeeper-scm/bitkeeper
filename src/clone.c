@@ -227,12 +227,14 @@ initProject(char *root)
 	return (0);
 }
 
+
 private int
 sfio(opts opts, int gzip, remote *r)
 {
 	int	n, status;
 	pid_t	pid;
 	int	pfd;
+	u32	hlen;
 	char	*cmds[10];
 	char	buf[4096];
 
@@ -249,18 +251,7 @@ sfio(opts opts, int gzip, remote *r)
 #ifndef WIN32
 	signal(SIGCHLD, SIG_DFL);
 #endif
-	if (gzip) {
-		gzip_init(6);
-		while ((n = read_blk(r, buf, sizeof(buf))) > 0) {
-			opts.in += n;
-			opts.out += gunzip2fd(buf, n, pfd);
-		}
-		gzip_done();
-	} else {
-		while ((n = read_blk(r, buf, sizeof(buf))) > 0) {
-			write(pfd, buf, n);
-		}
-	}
+	gunzipAll2fd(r->rfd, pfd, gzip, &(opts.in), &(opts.out));
 	close(pfd);
 	waitpid(pid, &status, 0);
 	if (gzip && !opts.quiet) {

@@ -84,7 +84,7 @@ cmd_push(int ac, char **av)
 			 * If that doesn't work, we need two sockets.
 			 */
 			while ((n = read(0, buf, sizeof(buf))) > 0) {
-				gunzip2fd(buf, n, wfd);
+				gunzip2fd(buf, n, wfd, 0);
 			}
 			gzip_done();
 			close(wfd);
@@ -260,6 +260,7 @@ cmd_push_part2(int ac, char **av)
 	static	char *resolve[7] = { "bk", "resolve", "-t", "-c", 0, 0, 0};
 
 
+
 #ifndef	WIN32
 	signal(SIGCHLD, SIG_DFL);
 #endif
@@ -321,11 +322,7 @@ cmd_push_part2(int ac, char **av)
 	if (metaOnly) takepatch[3] = 0; /* allow conflict in logging patch */
 	pid = spawnvp_wPipe(takepatch, &pfd);
 	dup2(fd2, 2); close(fd2);
-	if (gzip) gzip_init(6);
-	while ((n = read(0, buf, sizeof(buf))) > 0) {
-		buf2fd(gzip, buf, n, pfd);
-	}
-	if (gzip) gzip_done();
+	gunzipAll2fd(0, pfd, gzip, 0, 0);
 	close(pfd);
 
 	waitpid(pid, &status, 0);
