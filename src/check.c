@@ -9,7 +9,7 @@
 #include "range.h"
 WHATSTR("@(#)%K%");
 
-private	MDBM	*buildKeys();
+private	MDBM	*buildKeys(void);
 private	char	*csetFind(char *key);
 private	int	check(sccs *s, MDBM *db);
 private	char	*getRev(char *root, char *key, MDBM *idDB);
@@ -17,7 +17,7 @@ private	char	*getFile(char *root, MDBM *idDB);
 private	int	checkAll(MDBM *db);
 private	void	listFound(MDBM *db);
 private	void	listCsetRevs(char *key);
-private void	init_idcache();
+private void	init_idcache(void);
 private int	checkKeys(sccs *s, char *root);
 private	int	chk_csetpointer(sccs *s);
 private void	warnPoly(void);
@@ -27,7 +27,9 @@ private int	writable_gfile(sccs *s);
 private int	readonly_gfile(sccs *s);
 private int	no_gfile(sccs *s);
 private int	chk_eoln(sccs *s, int eoln_unix);
+private void	progress(int n, int err);
 
+private	int	nfiles;		/* for progress bar */
 private	int	verbose;
 private	int	all;		/* if set, check every entry in the ChangeSet */
 private	int	resync;		/* called in resync dir */
@@ -72,7 +74,7 @@ private	struct {
 int
 check_main(int ac, char **av)
 {
-	int	c;
+	int	c, n;
 	MDBM	*db;
 	MDBM	*keys = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	sccs	*s;
@@ -126,6 +128,10 @@ check_main(int ac, char **av)
 	}
 	proj = cset->proj;
 	mixed = LONGKEY(cset) == 0;
+	if (verbose == 1) {
+		nfiles = sccs_hashcount(cset);
+		fprintf(stderr, "Preparing to check %u files...\r", nfiles);
+	}
 	db = buildKeys();
 	if (all) init_idcache();
 
@@ -138,12 +144,13 @@ check_main(int ac, char **av)
 	}
 
 	want_dfile = exists(DFILE);
-	for (name = sfileFirst("check", &av[optind], 0);
-	    name; name = sfileNext()) {
+	for (n = 0, name = sfileFirst("check", &av[optind], 0);
+	    name; n++, name = sfileNext()) {
 		unless (s = sccs_init(name, flags, proj)) {
 			if (all) fprintf(stderr, "%s init failed.\n", name);
 			continue;
 		}
+		if (all && (verbose == 1))  progress(n, 0);
 		unless (s->cksumok == 1) {
 			fprintf(stderr,
 			    "%s: bad file checksum, corrupted file?\n",
@@ -207,7 +214,7 @@ check_main(int ac, char **av)
 		if (e = check(s, db)) {
 			errors |= 4;		/* 2 is reserved */
 		} else {
-			if (verbose) fprintf(stderr, "%s is OK\n", s->sfile);
+			if (verbose>1) fprintf(stderr, "%s is OK\n", s->sfile);
 		}
 		sccs_free(s);
 	}
@@ -215,7 +222,7 @@ check_main(int ac, char **av)
 	if (all) {
 		fprintf(idcache, "#$sum$ %u\n", id_sum);
 		fclose(idcache);
-		if (sccs_lockfile(IDCACHE_LOCK, 16, 1, 0)) {
+		if (sccs_lockfile(IDCACHE_LOCK, 16, 0)) {
 			fprintf(stderr, "Not updating cache due to locking.\n");
 			unlink(id_tmp);
 		} else {
@@ -224,7 +231,7 @@ check_main(int ac, char **av)
 				perror("rename of idcache");
 				unlink(IDCACHE);
 			}
-			unlink(IDCACHE_LOCK);
+			sccs_unlockfile(IDCACHE_LOCK);
 			chmod(IDCACHE, GROUP_MODE);
 		}
 	}
@@ -276,7 +283,43 @@ check_main(int ac, char **av)
 	} else {
 		if (sys("bk", "sane", SYS)) errors |= 16;
 	}
+	if (verbose == 1) progress(nfiles+1, errors);
 	return (errors);
+}
+
+/*
+ * Use 65 columns for the progress bar.
+ * %3u% |================================ \r
+ */
+private void
+progress(int n, int err)
+{
+	static	int last = 0;
+	int	percent = (n * 100) / nfiles;
+	int	i, want;
+	char	buf[81];
+
+	unless ((n > nfiles) || (percent > last)) return;
+	/* just in case, split root screwed up the count */
+	if (percent > 100) percent = 100;
+	last = percent;
+	want = percent * 65;
+	want /= 100;
+	buf[0] = '|';
+	for (i = 1; i <= want; ++i) buf[i] = '=';
+	while (i <= 65) buf[i++] = ' ';
+	buf[i++] = '|';
+	if (n > nfiles) {
+		if (err) {
+			strcpy(&buf[i], " FAILED\n");
+		} else {
+			strcpy(&buf[i], " OK\n");
+		}
+	} else {
+		buf[i++] = '\r';
+		buf[i] = 0;
+	}
+	fprintf(stderr, "%3u%% %s", percent, buf);
 }
 
 private int
@@ -856,7 +899,7 @@ buildKeys()
 	}
 	sccs_free(cset);
 	csetKeys.deltas[csetKeys.n] = (char*)1;
-	if (verbose > 1) {
+	if (verbose > 2) {
 		fprintf(stderr, "check: found %d keys in ChangeSet\n", n);
 	}
 	mdbm_close(idDB);
@@ -994,7 +1037,7 @@ check(sccs *s, MDBM *db)
 	 * Make sure that all marked deltas are found in the ChangeSet
 	 */
 	for (d = s->table; d; d = d->next) {
-		if (verbose > 2) {
+		if (verbose > 3) {
 			fprintf(stderr, "Check %s@%s\n", s->sfile, d->rev);
 		}
 		unless (d->flags & D_CSET) continue;
@@ -1014,7 +1057,7 @@ check(sccs *s, MDBM *db)
 			sccs_sdelta(s, d, buf);
 			fprintf(stderr, "\t%s -> %s\n", d->rev, buf);
 			errors++;
-		} else if (verbose > 1) {
+		} else if (verbose > 2) {
 			fprintf(stderr, "%s: found %s in ChangeSet\n",
 			    s->sfile, buf);
 		}
@@ -1157,7 +1200,7 @@ checkKeys(sccs *s, char *root)
 			a = csetFind(csetKeys.deltas[i]);
 			if (isGone(s)) fprintf(stderr, "Warning: ");
 			fprintf(stderr,
-			    "key %s is in\n\tChangeSet:%s\n\tbut not in %s\n",
+			    "key %s is in\n\tChangeSet|%s\n\tbut not in %s\n",
 			    csetKeys.deltas[i], a, s->sfile);
 			free(a);
 			if (isGone(s)) {
@@ -1175,7 +1218,7 @@ You may want to delete the file as well to be consistent with your parent.\n",
 			    "%s@%s is in ChangeSet but not marked\n",
 			   s->gfile, d->rev);
 		    	errors++;
-		} else if (verbose > 1) {
+		} else if (verbose > 2) {
 			fprintf(stderr, "%s: found %s from ChangeSet\n",
 			    s->sfile, d->rev);
 		}

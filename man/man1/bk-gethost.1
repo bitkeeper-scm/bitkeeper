@@ -3,13 +3,17 @@
 .SH NAME
 bk gethost \- display machine name
 .SH SYNOPSIS
-.B bk gethost
+.B bk gethost [-r]
 .SH DESCRIPTION
 .LP
 Outputs the fully-qualified name of the machine. Used primarily
 when doing
 .B bk
 scripting.
+.OPTIONS
+.TP
+.B \-r
+print the real host name, ignoring $BK_HOST.
 .SH SEE ALSO
 .SA getuser 1
 .SH CATEGORY

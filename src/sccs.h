@@ -189,9 +189,11 @@
 #define	X_EOLN_NATIVE	0x00000800	/* use eoln native to this OS */
 #define	X_LONGKEY	0x00001000	/* all keys are long format */
 #define	X_KV		0x00002000	/* key value file */
+#define	X_NOMERGE	0x00004000	/* treat as binary even if ascii */
 					/* flags which can be changed */
-#define	X_MAYCHANGE	(X_RCS|X_YEAR4|X_SHELL|X_EXPAND1|X_SCCS|X_EOLN_NATIVE|X_KV)
-					/* default set of flags */
+#define	X_MAYCHANGE	(X_RCS | X_YEAR4 | X_SHELL | X_EXPAND1 | \
+			X_SCCS | X_EOLN_NATIVE | X_KV | X_NOMERGE)
+/* default set of flags when we create a file */
 #define	X_DEFAULT	(X_BITKEEPER|X_CSETMARKED|X_EOLN_NATIVE)
 #define	X_REQUIRED	(X_BITKEEPER|X_CSETMARKED)
 
@@ -243,6 +245,7 @@
 #define	EOLN_NATIVE(s)	(s->xflags & X_EOLN_NATIVE)
 #define	LONGKEY(s)	(s->xflags & X_LONGKEY)
 #define	KV(s)		(s->xflags & X_KV)
+#define	NOMERGE(s)	(s->xflags & X_NOMERGE)
 
 /*
  * Flags (d->flags) that indicate some state on the delta.
@@ -506,6 +509,10 @@ extern	char *upgrade_msg;
 #define	LOCK_RD_BUSY	"ERROR-Can't get read lock on the repository."
 #define	LOCK_PERM	"ERROR-Lock fail: possible permission problem."
 #define	LOCK_UNKNOWN	"ERROR-Unknown lock error."
+
+#define	LOCKERR_NOREPO		-1
+#define	LOCKERR_PERM		-2
+#define	LOCKERR_LOST_RACE	-3
 
 /*
  * Bumped whenever we change any file format.
@@ -772,6 +779,7 @@ int	sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, char kind, char *opts, FI
 int	sccs_encoding(sccs *s, char *enc, char *comp);
 int	sccs_get(sccs *s,
 	    char *rev, char *mRev, char *i, char *x, u32 flags, char *out);
+int	sccs_hashcount(sccs *s);
 int	sccs_clean(sccs *s, u32 flags);
 int	sccs_info(sccs *s, u32 flags);
 int	sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out);
@@ -825,15 +833,11 @@ char	*sfileNext(void);
 char	*sfileRev(void);
 char	*sfileFirst(char *cmd, char **Av, int Flags);
 void	sfileDone(void);
-void	rangeReset(sccs *sc);
-int	rangeAdd(sccs *sc, char *rev, char *date);
 int	tokens(char *s);
 delta	*findrev(sccs *, char *);
 delta	*sccs_top(sccs *);
 delta	*sccs_findKey(sccs *, char *);
 delta	*sccs_dInit(delta *, char, sccs *, int);
-char	*sccs_gethost(void);
-char	*sccs_realhost(void);
 char	*sccs_getuser(void);
 int	sccs_markMeta(sccs *);
 
@@ -871,8 +875,8 @@ MDBM	*loadDB(char *file, int (*want)(char *), int style);
 delta 	*mkOneZero(sccs *s);
 typedef	void (*handler)(int);
 handler	sig_catch(handler);
-int	sig_ignore();
-void	sig_default();
+int	sig_ignore(void);
+void	sig_default(void);
 int	csetIds(sccs *cset, char *rev);
 int	csetIds_merge(sccs *cset, char *rev, char *merge);
 int	cset_inex(int flags, char *op, char *revs);
@@ -890,9 +894,14 @@ int	sccs_resolveFiles(sccs *s);
 sccs	*sccs_keyinit(char *key, u32 flags, project *p, MDBM *idDB);
 delta	*sfind(sccs *s, ser_t ser);
 int	sccs_lock(sccs *, char);	/* respects repo locks */
-int	sccs_lockfile(const char *lockfile, int wait, int rm, int quiet);
-int	sccs_stalefile(const char *lockfile, int discard);
 int	sccs_unlock(sccs *, char);
+
+int	sccs_lockfile(const char *lockfile, int wait, int quiet);
+int	sccs_stalelock(const char *lockfile, int discard);
+int	sccs_unlockfile(const char *file);
+int	sccs_mylock(const char *lockf);
+int	sccs_readlockf(const char *file, pid_t *pidp, char **hostp, time_t *tp);
+
 char	*sccs_utctime(delta *d);
 int	sccs_setlod(char *rev, u32 flags);
 void	sccs_renumber(sccs *s, ser_t nextlod, ser_t thislod, MDBM *lodDb,
@@ -912,7 +921,7 @@ off_t	mtell(MMAP *m);
 size_t	msize(MMAP *m);
 MMAP	*mrange(char *start, char *stop, char *mode);
 int	linelen(char *s);
-void 	license();
+void 	license(void);
 char	*mkline(char *mmap);
 int	mkdirp(char *dir);
 int	mkdirf(char *file);
@@ -922,7 +931,6 @@ int	getline(int in, char *buf, int size);
 void	explodeKey(char *key, char *parts[6]);
 int	smartUnlink(char *name);
 int	smartRename(char *old, char *new);
-void	concat_path(char *buf, char *first, char *second);
 void	free_pfile(pfile *pf);
 int	sccs_read_pfile(char *who, sccs *s, pfile *pf);
 int	sccs_rewrite_pfile(sccs *s, pfile *pf);
@@ -939,7 +947,7 @@ delta	*sccs_gca(sccs *, delta *l, delta *r, char **i, char **x, int best);
 char	*_relativeName(char *gName, int isDir, int withsccs,
 	    int mustHaveRmarker, int wantRealName, project *proj, char *root);
 void	rcs(char *cmd, int argc, char **argv);
-char	*findBin();
+char	*findBin(void);
 project	*chk_proj_init(sccs *s, char *file, int line);
 void	proj_free(project *p);
 int 	prompt(char *msg, char *buf);
@@ -949,18 +957,18 @@ int	unique(char *key);
 int	uniq_lock(void);
 int	uniq_unlock(void);
 int	uniq_open(void);
-time_t	uniq_drift();
+time_t	uniq_drift(void);
 int	uniq_update(char *key, time_t t);
 int	uniq_close(void);
 time_t	sccs_date2time(char *date, char *zone);
-void	cd2root();
+void	cd2root(void);
 pid_t	mail(char *to, char *subject, char *file);
 int	connect_srv(char *srv, int port, int trace);
 int	get(char *path, int flags, char *output);
 int	gethelp(char *helptxt, char *help_name, char *bkarg, char *prefix, FILE *f);
 void	status(int verbose, FILE *out);
-void	notify();
-char	*package_name();
+void	notify(void);
+char	*package_name(void);
 int	bkusers(int countOnly, int raw, char *prefix, FILE *out);
 globv	read_globs(FILE *f, globv oldglobs);
 int	match_one(char *string, char *glob, int ignorecase);
@@ -973,28 +981,26 @@ void	remark(int quiet);
 int	readn(int from, char *buf, int size);
 void	send_request(int fd, char * request, int len);
 int	writen(int to, char *buf, int size);
-char	chop(register char *s);
-int	mkdirp(char *dir);
-int	mkdirf(char *file);
 long	almostUnique(int harder);
+int	repository_downgrade(void);
 int	repository_locked(project *p);
+int	repository_mine(char type);
 int	repository_lockers(project *p);
-int	repository_locker(char type, pid_t pid, char *host);
-int	repository_cleanLocks(project *p, int r, int w, int force, int verbose);
 int	repository_rdlock(void);
+int	repository_rdunlock(int all);
+void	repository_unlock(int all);
 int	repository_wrlock(void);
-int	repository_rdunlock(int force);
-int	repository_wrunlock(int force);
-int	isValidLock(char, pid_t, char *);
+int	repository_wrunlock(int all);
+int	repository_hasLocks(char *root, char *dir);
 void	comments_save(char *s);
 int	comments_got(void);
 void	comments_done(void);
 delta	*comments_get(delta *d);
-void	host_done();
+void	host_done(void);
 delta	*host_get(delta *, int);
-void	user_done();
+void	user_done(void);
 delta	*user_get(delta *, int);
-char	*shell();
+char	*shell(void);
 struct	lod;
 typedef struct lod lod_t;
 lod_t	*lod_init(sccs *cset, char *lodname, u32 flags, char *who);
@@ -1011,19 +1017,18 @@ char	*sccs_rmName(sccs *s, int useCommonDir);
 int	sccs_rm(char *name, char *del_name, int useCommonDir, int force);
 void	sccs_rmEmptyDirs(char *path);
 void	do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out);
-char 	**get_http_proxy();
+char 	**get_http_proxy(void);
 int	confirm(char *msg);
-int	setlod_main(int ac, char **av);
 int	cset_setup(int flags, int ask);
 off_t	fsize(int fd);
 char	*separator(char *);
 int	trigger(char **av, char *when);
-int	cmdlog_start(char **av, int want_http_hdr);
-int	cmdlog_end(int ret, int flags);
-off_t	get_byte_count();
+void	cmdlog_start(char **av, int want_http_hdr);
+int	cmdlog_end(int ret);
+off_t	get_byte_count(void);
 void	save_byte_count(unsigned int byte_count);
 int	cat(char *file);
-char	*getHomeDir();
+char	*getHomeDir(void);
 char	*age(time_t secs, char *space);
 void	sortLines(char **);
 	/* this must be the last argument to all calls to sys/sysio */
@@ -1041,22 +1046,21 @@ int     http_connect(remote *r, char *cgi_script);
 int     http_send(remote *, char *, size_t, size_t, char *, char *); 
 char *	user_preference(char *what);
 int	bktemp(char *buf);
-char	*bktmpfile();	/* return a char* to a just created temp file */
+char	*bktmpfile(void);	/* return a char* to a just created temp file */
 char	*getRealCwd(char *, size_t);
 int	smallTree(int threshold);
 MDBM	*csetDiff(MDBM *, int);
 char	*aprintf(char *fmt, ...);
 void	ttyprintf(char *fmt, ...);
-void	enableFastPendingScan();
+void	enableFastPendingScan(void);
 char	*isHostColonPath(char *);
-int	hasGUIsupport();
-char	*GUI_display();
-int	cat(char *file);
+int	hasGUIsupport(void);
+char	*GUI_display(void);
 char	*savefile(char *dir, char *prefix, char *pathname);
 void	has_proj(char *who);
 int	mv(char*, char *);
 char	*rootkey(char *buf);
-char	*globalroot();
+char	*globalroot(void);
 void	sccs_touch(sccs *s);
 int	setlevel(int);
 void	sccs_rmUncommitted(int quiet);    
@@ -1082,10 +1086,10 @@ struct tm
         *utc2tm(time_t t);
 void	fix_stime(sccs *s);
 int	isLocalHost(char *h);
-void	do_cmds();
-void	core();
-void	ids();
-void	requestWebLicense();
+void	do_cmds(void);
+void	core(void);
+void	ids(void);
+void	requestWebLicense(void);
 void	http_hdr(int full);
 pid_t	bkd_tcp_connect(remote *r);
 int	check_rsh(char *remsh);

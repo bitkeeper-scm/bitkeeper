@@ -11,7 +11,6 @@ private	void	add(MDBM *m, char *t);
 private	void	addn(MDBM *m, char *t, int i);
 private	void	sort(MDBM *m);
 private	void	convert_init(void);
-private	int	tou(unsigned char *s);
 private	u8	*toc(u32 val);
 
 /*
@@ -325,16 +324,6 @@ convert_init()
 	a2i[125] = 121; i2a[121] = 125;
 	a2i[126] = 122; i2a[122] = 126;
 	a2i[127] = 123; i2a[123] = 127;
-}
-
-private int
-tou(u8 *s)
-{
-	u32	val = 0;
-	
-	if (!s || !*s) return (0);
-	while (*s) val = val * BASE + a2i[*s++];
-	return (val);
 }
 
 private u8*

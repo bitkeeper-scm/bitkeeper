@@ -103,7 +103,6 @@ typedef struct {
 #define	WEB_PORT	80
 
 extern	struct cmd cmds[];
-extern	int exists(char *);
 extern	bkdopts Opts;
 extern	char cmdlog_buffer[];
 extern	char *logRoot;
@@ -113,7 +112,6 @@ remote	*remote_parse(const char *url, int is_clone);
 char	*remote_unparse(remote *r);
 pid_t	bkd(int compress, remote *r);
 void	bkd_reap(pid_t resync, int r_pipe, int w_pipe);
-int	getline(int in, char *buf, int size);
 int	gunzip2fd(char *input, int len, int fd, int hflag);
 int	gzip2fd(char *input, int len, int fd, int hflag);
 void	gzip_done(void);
@@ -122,8 +120,6 @@ int	gzipAll2fd(int rfd, int wfd, int level, int *in, int *out,
 							int hflag, int verbose);
 int	gunzipAll2fd(int rfd, int wfd, int level, int *in, int *out);
 int	in(char *s, int len);
-int	out(char *s);
-int	readn(int from, char *buf, int size);
 void	remote_free(remote *r);
 void	remote_print(remote *r, FILE *f);
 int	outfd(int fd, char*buf);
@@ -131,7 +127,6 @@ int	outfd(int fd, char*buf);
 int	read_blk(remote *r, char *c, int len);
 int	write_blk(remote *r, char *c, int len);
 sccs *	mk_probekey(FILE *f);
-void	sccs_color(sccs *s, delta *d);
 int	getline2(remote *r, char *buf, int size); 
 int	get_ok(remote *r, char *read_ahead, int verbose); 
 int	send_msg(remote *r, char *msg, int mlen, int extra, int compress);
@@ -140,8 +135,8 @@ int	skip_hdr(remote *r);
 int	getTriggerInfoBlock(remote *r, int verbose); 
 int	bkd_connect(remote *r, int compress, int verbose);
 void	disconnect(remote *r, int how);
-void	drain();
-char	**getClientInfoBlock();
+void	drain(void);
+char	**getClientInfoBlock(void);
 void	sendServerInfoBlock(int);
 int	prunekey(sccs *, remote *, int, int, int, int *, int *, int *);
 int	buf2fd(int gzip, char *buf, int len, int fd);

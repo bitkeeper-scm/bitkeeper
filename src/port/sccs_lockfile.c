@@ -1,73 +1,8 @@
 #include "../system.h"
 #include "../sccs.h"
 
-private	int	sccs_stalelock(const char *file, int discard);
-
-/*
- * Copyright (c) 2001 Larry McVoy & Andrew Chang       All rights reserved.
- */
-
-
-
-#ifdef WIN32
-/*
- * TODO Move this inteface into the uwtlib
- * after we fixed all other code which uses
- * link() as a "fast copy" inteface.
- */
-private int
-link(const char *from, const char *to)
-{
-	errno = EPERM;
-	return (-1);
-}
-#endif
-
-
-
-
-#ifdef WIN32
-private int
-linkcount(const char *file)
-{
-	/*
-	 * stat() is a _very_ expensive call on win32
-	 * since no win32 FS supports hard links, just return 1
-	 */
-	return (1);
-}
-#else
-private int
-linkcount(const char *file)
-{
-	struct	stat sb;
-
-	if (stat(file, &sb) != 0) return (-1);
-	return (sb.st_nlink);
-
-}
-#endif
-
-
-
-
-private char *
-uniqfile(const char *file)
-{
-	char	*p, *dir,  *uniq;
-
-	if (strrchr(file, '/')) {
-		dir = strdup(file);
-		p = strrchr(dir, '/');
-		*p++ = 0;
-		uniq = aprintf("%s/%u@%s.%s",
-		    dir, getpid(), sccs_realhost(), p);
-		free(dir);
-	} else {
-		uniq = aprintf("%u@%s.%s", getpid(), sccs_realhost(), file);
-	}
-	return (uniq);
-}
+private	char	*uniqfile(const char *file);
+private	int	linkcount(const char *file);
 
 /*
  * Create a file with a unique name,
@@ -82,12 +17,11 @@ uniqfile(const char *file)
  * for the seconds arg is not suggested.
  */
 int
-sccs_lockfile(const char *file, int waitsecs, int rm, int quiet)
+sccs_lockfile(const char *file, int waitsecs, int quiet)
 {
 	char	*p, *uniq;
 	int	fd;
 	int	uslp = 1000, waited = 0;
-	struct	stat sb;
 
 	uniq = uniqfile(file);
 	unlink(uniq);
@@ -108,27 +42,32 @@ sccs_lockfile(const char *file, int waitsecs, int rm, int quiet)
 				if (fd != -1) {
 					write(fd, p, strlen(p));
 					unless (getenv("BK_REGRESSION")) {							fsync(fd);
+						fsync(fd);
 				    	}
 					close(fd);
+					free(uniq);
+					free(p);
 					return (0);
 				}
 			}
 		}
 		/* not true on windows file systems */
 		if (linkcount(uniq) == 2) {
-			if (rm) unlink(uniq);
 			free(uniq);
 			free(p);
 			return (0);
 		}
 		if (sccs_stalelock(file, 1)) continue;
-		unless (waitsecs) return (-1);
+		unless (waitsecs) {
+			unlink(uniq);
+			return (-1);
+		}
 		if ((waitsecs > 0) && ((waited / 1000000) >= waitsecs)) {
 			unless (quiet < 2) {
 				fprintf(stderr,
 				    "Timed out waiting for %s\n", file);
 			}
-			if (rm) unlink(uniq);
+			unlink(uniq);
 			free(uniq);
 			free(p);
 			return (-1);
@@ -152,9 +91,12 @@ int
 sccs_unlockfile(const char *file)
 {
 	char	*uniq = uniqfile(file);
+	int	error = 0;
 
-	if ((unlink(uniq) == 0) && (unlink((char*)file) == 0)) return (0);
-	return (-1);
+	if (unlink(uniq)) error++;
+	if (unlink((char*)file)) error++;
+	free(uniq);
+	return (error ? -1 : 0);
 }
 
 /*
@@ -162,69 +104,27 @@ sccs_unlockfile(const char *file)
  * etc, as the hostname.  That's what you get on poorly configured machines
  * and we'll have to respect those.
  */
-private int
+int
 sccs_stalelock(const char *file, int discard)
 {
-	int	fd;
-	char	buf[1024];
-	char	*host, *p;
+	char	*host;
 	pid_t	pid;
-	time_t	t = 0;
+	time_t	t;
 	const	int DAY = 24*60*60;
 
-	unless ((fd = open(file, 0, 0)) >= 0) {
-		if (exists((char*)file)) {
-err:			perror(file);
-			return (0);
-		}
-		return (0);	/* unknown, may have lost race */
-	}
-	bzero(buf, sizeof(buf));
-	if (fsize(fd) == 0) {	/* old style, the file is pid@host.lock */
-		struct	stat sb;
-
-		fstat(fd, &sb);
-		t = sb.st_mtime;
-		close(fd);
-		if (p = strrchr(file, '/')) {
-			p++;
-		} else {
-			p = (char*)file;
-		}
-		pid = atoi(p);
-		unless (p = strchr(p, '@')) return (0);	/* don't know */
-		p++;
-		host = sccs_realhost();
-		if (strneq(p, host, strlen(host)) &&
-		    (p[strlen(host)] == '.') && !isLocalHost(host)) {
-			goto check;
-		}
-		goto err;
-	} else {
-		unless (read(fd, buf, sizeof(buf)) > 0) {
-			close(fd);
-			goto err;
-		}
-		chomp(buf);
-		p = strchr(buf, ' ');
-		assert(p);
-		*p++ = 0;
-		pid = atoi(buf);
-		host = p;
-		p = strchr(host, ' ');
-		assert(p);
-		*p++ = 0;
-		t = atoi(p);
-	}
-	close(fd);
+	if (sccs_readlockf(file, &pid, &host, &t) == -1) return (0);
 
 	if (streq(host, sccs_realhost()) && !isLocalHost(host)) {
-check:		if (kill(pid, 0) == -1) {
-stale:			unlink((char*)file);
-			if (getenv("BK_DEBUG")) ttyprintf("STALE %s\n", file);
+		if (kill(pid, 0) == -1) {
+stale:			if (discard) unlink((char*)file);
+			if (getenv("BK_DBGLOCKS")) {
+				ttyprintf("STALE %s\n", file);
+			}
+			free(host);
 			return (1);
 		}
 		if (pid == getpid()) ttyprintf("LOCK LOOP on %s\n", file);
+		free(host);
 		return (0);
 	}
 
@@ -232,5 +132,154 @@ stale:			unlink((char*)file);
 		ttyprintf("STALE timestamp %s\n", file);
 		goto stale;
 	}
+	free(host);
 	return (0);
 }
+
+int
+sccs_mylock(const char *file)
+{
+	char	*host;
+	pid_t	pid;
+	time_t	t;
+
+	if (sccs_readlockf(file, &pid, &host, &t) == -1) return (0);
+	if ((getpid() == pid) &&
+	    streq(host, sccs_realhost()) && !isLocalHost(host)) {
+	    	free(host);
+		return (1);
+	}
+	free(host);
+	return (0);
+}
+
+int
+sccs_readlockf(const char *file, pid_t *pidp, char **hostp, time_t *tp)
+{
+	int	fd, flen;
+	int	try = 0;
+	char	buf[1024];
+	char	*host, *p;
+	int	i, n;
+
+	unless ((fd = open(file, O_RDONLY, 0)) >= 0) {
+		if (exists((char*)file)) {
+			perror(file);
+			return (-1);
+		}
+		return (-1);	/* unknown, may have lost race */
+	}
+	setmode(fd, _O_BINARY);
+	bzero(buf, sizeof(buf));
+	if ((flen = fsize(fd)) < 0) {
+		perror("fsize");
+		return (-1);
+	}
+	
+	if (flen == 0) {	/* old style, the file is pid@host.lock */
+		struct	stat sb;
+
+		fstat(fd, &sb);
+		*tp = sb.st_mtime;
+		close(fd);
+		p = basenm((char*)file);
+		*pidp = atoi(p);
+		unless (p = strchr(p, '@')) return (-1);	/* don't know */
+		host = ++p;
+		unless ((p = strrchr(p, '.')) && streq(p, ".lock")) return (-1);
+		*p = 0;
+		*hostp = strdup(host);
+		*p = '.';
+		return (0);
+	}
+
+	/*
+	 * Win33 samba clients sometimes read garbage.
+	 * If we detect this case, we wait a little and
+	 * re-do the read().
+	 */
+	assert(flen < sizeof (buf));
+	assert(flen > 0);
+	for (;;) {
+		unless ((n = read(fd, buf, flen)) == flen) {
+			close(fd);
+			return (-1);
+		}
+		buf[n] = 0;
+		for (p = buf, i= 0; *p; p++) if (*p == ' ') i++;
+		if (i == 2) break;	/* should be pid host time_t */
+		if (++try >= 100) {
+			close(fd);
+			fprintf(stderr, "sccs_readlockf: read failed\n");
+			return (-1);
+		}
+		usleep(5000);
+		if (lseek(fd, 0L, SEEK_SET) != 0) perror("lseek");
+	}
+	close(fd);
+	chomp(buf);
+	p = strchr(buf, ' ');
+	assert(p);
+	*p++ = 0;
+	*pidp = atoi(buf);
+	host = p;
+	p = strchr(host, ' ');
+	assert(p);
+	*p++ = 0;
+	*hostp = strdup(host);
+	*tp = atoi(p);
+	return (0);
+}
+
+private char *
+uniqfile(const char *file)
+{
+	char	*p, *dir,  *uniq;
+
+	if (strrchr(file, '/')) {
+		dir = strdup(file);
+		p = strrchr(dir, '/');
+		*p++ = 0;
+		uniq = aprintf("%s/%u@%s.%s",
+		    dir, getpid(), sccs_realhost(), p);
+		free(dir);
+	} else {
+		uniq = aprintf("%u@%s.%s", getpid(), sccs_realhost(), file);
+	}
+	return (uniq);
+}
+
+#ifdef WIN32
+/*
+ * TODO Move this inteface into the uwtlib
+ * after we fixed all other code which uses
+ * link() as a "fast copy" inteface.
+ */
+private int
+link(const char *from, const char *to)
+{
+	errno = EPERM;
+	return (-1);
+}
+
+private int
+linkcount(const char *file)
+{
+	/*
+	 * stat() is a _very_ expensive call on win32
+	 * since no win32 FS supports hard links, just return 1
+	 */
+	return (1);
+}
+#else
+private int
+linkcount(const char *file)
+{
+	struct	stat sb;
+
+	if (stat(file, &sb) != 0) return (-1);
+	return (sb.st_nlink);
+
+}
+#endif
+

@@ -108,9 +108,15 @@ trigger(char **av, char *when)
 	unless (isdir(triggerDir)) return (0);
 	sys("bk", "get", "-q", triggerDir, SYS);
 
+	/* run post-triggers with a read lock */
+	if (streq(when, "post")) repository_downgrade();
+
+	/* post-resolve == post-incoming */
+	if (streq(when, "post") && streq(event, "resolve")) what = "incoming";
+
 	/* Run the incoming trigger in the RESYNC dir if there is one.  */
 	resolve = (triggerDir != tbuf) && streq(what, "resolve");
-	if (resolve) {
+	if (resolve && !streq(when, "post")) {
 		assert(isdir(ROOT2RESYNC));
 	    	chdir(ROOT2RESYNC);
 		triggerDir = RESYNC2ROOT "/BitKeeper/triggers";

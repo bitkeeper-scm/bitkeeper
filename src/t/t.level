@@ -97,3 +97,6 @@ grep -q 'cannot pull to lower level repository' OUT || {
 	exit 1
 }
 echo OK
+
+bk lock -U $HERE/project
+bk lock -U $HERE/copy

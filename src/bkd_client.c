@@ -3,7 +3,6 @@
 private remote	*file_parse(char *p);
 private	remote	*nfs_parse(char *p);
 private	remote	*url_parse(char *p, int default_port);
-extern	char	cmdlog_buffer[];
 
 /*
  * Turn either
@@ -334,7 +333,6 @@ bkd(int compress, remote *r)
 	char	*cmd[100];
 	int	i;
 	pid_t	p;
-	int	findprog(char *);
 
 	if (r->port) {
 		assert(r->host);

@@ -38,15 +38,20 @@ private	int	pass4_apply(opts *opts);
 private	int	passes(opts *opts);
 private	int	pending(int checkComments);
 private	int	pendingEdits(void);
-private	int	pendingRenames();
+private	int	pendingRenames(void);
 private void	checkins(opts *opts, char *comment);
 private	void	rename_delta(resolve *rs, char *sf, delta *d, char *rf, int w);
 private	int	rename_file(resolve *rs);
-private	int	rename_file(resolve *rs);
 private	void	restore(opts *o);
+private void	resolve_post(int c);
 private void	unapply(FILE *f);
 private int	copyAndGet(char *from, char *to, project *proj, int getFlags);
 private int	writeCheck(sccs *s, MDBM *db);
+private	void	listPendingRenames(void);
+private	int	noDiffs(void);
+private	int	bk_check(void);
+private	void	log_cleanup(void);
+
 private MDBM	*localDB;	/* real name cache for local tree */
 private MDBM	*resyncDB;	/* real name cache for resyn tree */
 
@@ -120,7 +125,26 @@ resolve_main(int ac, char **av)
 	c = passes(&opts);
 	mdbm_close(localDB);
 	mdbm_close(resyncDB);
+	resolve_post(c);
 	return (c);
+}
+
+private void
+resolve_post(int c)
+{
+	char	*av[] = { "resolve", 0 };
+
+	if (getenv("POST_INCOMING_TRIGGER") &&
+	    streq(getenv("POST_INCOMING_TRIGGER"), "NO")) {
+	    	return;
+	}
+	/* XXX - there can be other reasons */
+	if (c) {
+		putenv("BK_STATUS=CONFLICTS");
+	} else {
+		putenv("BK_STATUS=OK");
+	}
+	trigger(av, "post");
 }
 
 private void
@@ -1186,7 +1210,7 @@ flags_delta(resolve *rs,
 {
 	char	*av[40];
 	char	buf[MAXPATH];
-	char	fbuf[8][12];	/* Must match list below */
+	char	fbuf[10][25];	/* Must match list below */
 	int	n, i, f;
 	sccs	*s;
 	int	bits = flags & X_MAYCHANGE;
@@ -1214,6 +1238,7 @@ flags_delta(resolve *rs,
 	doit(X_EXPAND1, "EXPAND1");
 	doit(X_SCCS, "SCCS");
 	doit(X_EOLN_NATIVE, "EOLN_NATIVE");
+	doit(X_NOMERGE, "NOMERGE");
 	for (i = 0; i < f; ++i) av[++n] = fbuf[i];
 	av[++n] = sfile;
 	assert(n < 38);	/* matches 40 in declaration */
@@ -1846,10 +1871,11 @@ automerge(resolve *rs, names *n)
 			fprintf(stderr,
 			    "Not automerging binary '%s'\n", rs->s->gfile);
 		}
-		rs->opts->hadConflicts++;
+nomerge:	rs->opts->hadConflicts++;
 		unlink(rs->s->gfile);
 		return;
 	}
+	if (NOMERGE(rs->s)) goto nomerge;
 
 	unless (n) {
 		sprintf(cmd, "BitKeeper/tmp/%s@%s", name, rs->revs->local);
@@ -2176,7 +2202,7 @@ pass4_apply(opts *opts)
 		    default: flags = CLEAN_RESYNC|CLEAN_PENDING; break;
 		}
 		mdbm_close(permDB);
-		resolve_cleanup(opts, flags);
+		resolve_cleanup(opts, CLEAN_NOSHOUT|flags);
 	}
 	
 	/*
@@ -2647,9 +2673,11 @@ resolve_cleanup(opts *opts, int what)
 
 	freeStuff(opts);
 	unless (what & CLEAN_OK) {
-		SHOUT2();
+		unless (what & CLEAN_NOSHOUT) SHOUT2();
 		exit(1);
 	}
+
+	resolve_post(0);
 
 	/*
 	 * Force a logging process even if we did not create a merge node

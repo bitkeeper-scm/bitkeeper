@@ -15,7 +15,7 @@
 # For each flag we have, make sure we can add and delete it if that is allowed.
 # Make sure we cannot change it if it is not allowed.
 
-MAYCHANGE="RCS YEAR4 SHELL EXPAND1 SCCS EOLN_NATIVE"
+MAYCHANGE="RCS YEAR4 SHELL EXPAND1 SCCS EOLN_NATIVE NOMERGE"
 MAYNOT="BITKEEPER CSETMARKED HASH SINGLE LONGKEY"
 
 echo "logging: none" > $HERE/c

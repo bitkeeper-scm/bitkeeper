@@ -12,7 +12,6 @@ typedef	struct {
 private char *
 rclone_common(int ac, char **av, opts *opts)
 {
-	extern	int errno;
 	int	c;
 	char	*p;
 

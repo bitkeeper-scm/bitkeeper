@@ -181,7 +181,12 @@ doit(char **fileList, char *rev_list, char *qflag)
 	 * make sense at cset boundries.
 	 * Also, run all files through renumber.
 	 */
-	if (do_rename(fileList, qflag)) return (-1);
+	putenv("BK_IGNORELOCK=YES");
+	if (do_rename(fileList, qflag)) {
+		putenv("BK_IGNORELOCK=NO");
+		return (-1);
+	}
+	putenv("BK_IGNORELOCK=NO");
 	if (move_file()) return (-1); /* mv from RESYNC to user tree */
 	return (0);
 }

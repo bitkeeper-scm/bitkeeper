@@ -197,14 +197,10 @@ chk_permissions(void)
 private int
 chk_idcache(void)
 {
-	if (exists(IDCACHE_LOCK)) {
-		fprintf(stderr, "ID cache is locked\n");
-		return (1);
-	}
-	if (sccs_lockfile(IDCACHE_LOCK, 6, 1, 0)) {
+	if (sccs_lockfile(IDCACHE_LOCK, 6, 0)) {
 		fprintf(stderr, "sane: can't lock id cache\n");
 		return (1);
 	}
-	unlink(IDCACHE_LOCK);
+	sccs_unlockfile(IDCACHE_LOCK);
 	return (0);
 }

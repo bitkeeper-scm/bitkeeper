@@ -198,4 +198,6 @@ cmp -s clone/WANT GOT || {
 	diff clone/WANT GOT
 	exit 1
 }
+bk lock -U
+bk lock -U $HERE/clone
 echo OK

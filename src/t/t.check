@@ -71,10 +71,13 @@ if [ `bk sfiles -C | wc -l` -ne 0 ];
 then	echo failed to commit all files; exit 1; fi
 echo OK
 echo $N Make sure that it checks clean ..............................$NL
-bk -r check -a > OUT 2>&1
-if [ $? -ne 0 ]; then echo failed to exit 0; exit 1; fi
-#if [ -s OUT ]; then echo failed; cat OUT; exit 1; fi
+bk -r check -a > OUT 2>&1 || {
+	echo failed to exit 0
+	cat OUT
+	exit 1
+}
 echo OK
+cp -rp $HERE/project $HERE/clean
 echo $N Make sure that it complains if a file is missing ............$NL
 mv d1/sub1/SCCS/s.a d1/sub1/SCCS/junk.a
 bk -r check -a > OUT 2>&1
@@ -172,6 +175,24 @@ bk -r check -a > OUT 2>&1 && {
 }
 grep -q 'belongs to:' OUT || {
 	echo bad error message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure commit refuses to commit out of sync files ........$NL
+cd $HERE/clean/d3/sub2
+for i in a b c
+do	bk stripdel -qCr+ $i
+done
+bk stripdel -qCr+ a
+for i in a b c
+do	bk edit $Q $i
+	echo error >> $i
+	bk delta $Q -y'out of sync' $i || exit 1
+done
+bk commit $Q -y'out of sync' > OUT 2>&1 && {
+	echo should have failed the commit
 	cat OUT
 	exit 1
 }

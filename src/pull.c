@@ -10,7 +10,7 @@ typedef	struct {
 	u32	quiet:1;		/* -q: shut up */
 	u32	nospin:1;		/* -Q: no spin for the GUI */
 	u32	metaOnly:1;		/* -e empty patch */
-	u32	noresolve:1;		/* -r: don't run resolve at all */
+	u32	noresolve:1;		/* -R: don't run resolve at all */
 	u32	textOnly:1;		/* -t: don't pass -t to resolve */
 	u32	debug:1;		/* -d: debug */
 	int	gzip;			/* -z[level] compression */
@@ -350,6 +350,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 			goto done;
 		}
 		unless (opts.noresolve) {
+			putenv("POST_INCOMING_TRIGGER=NO");
 			if (resolve(opts, r)) {
 				rc = 1;
 				putenv("BK_STATUS=CONFLICTS");
@@ -377,7 +378,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	}
 
 done:	putenv("BK_RESYNC=FALSE");
-	unless (opts.metaOnly) trigger(av, "post");
+	unless (opts.metaOnly || opts.noresolve) trigger(av, "post");
 	unlink(probe_list);
 
 	/*

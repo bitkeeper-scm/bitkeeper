@@ -27,14 +27,13 @@ WHATSTR("@(#)%K%");
 #define	SFIO_MODE	"SFIO vm1.4"	/* must be 10 bytes exactly */
 #define	SFIO_VERS	(doModes ? SFIO_MODE : SFIO_NOMODE)
 
-private	int	sfio_out();
+private	int	sfio_out(void);
 private int	out_file(char *file, struct stat *, off_t *byte_count);
 private int	out_link(char *file, struct stat *, off_t *byte_count);
 private	int	sfio_in(int extract);
 private int	in_link(char *file, int todo, int extract);
 private int	in_file(char *file, int todo, int extract);
 private	int	mkfile(char *file);
-extern	void	platformSpecificInit(char *name);
 
 private	int	quiet;
 private	int	doModes;

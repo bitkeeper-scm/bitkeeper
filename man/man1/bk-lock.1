@@ -4,11 +4,12 @@
 .SH NAME
 bk lock \- lock a repository or show lockers
 .SH SYNOPSIS
-.B bk lock [\-l|r|w] [\-q]
+.B bk lock [\-l|r|w|L|U] [\-q] [directory]
 .SH DESCRIPTION
 .LP
 The lock command can be used to lock an entire repository or to list the
-lockers of a repository.
+lockers of a repository.  If a directory is specified, the operation
+applies to the repository rooted at that directory.
 .LP
 Since a lock is valid only as long as the locking process exists, when
 placing  lock, the lock command does not exit, it goes to sleep waiting
@@ -26,6 +27,12 @@ Add a read lock (non-exclusive).
 .tp
 .B \-w
 Add a write lock (exclusive).
+.tp
+.B \-L
+Wait for the repository to become locked (primarily used for testing).
+.tp
+.B \-U
+Wait for the repository to become unlocked (primarily used for testing).
 .SH "EXIT STATUS"
 .LP
 If called with no options or if called with the 

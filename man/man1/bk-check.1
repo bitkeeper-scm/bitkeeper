@@ -95,8 +95,18 @@ List deltas which are in more than one cset.
 Only do checks which make sense in the RESYNC dir.
 .tp
 .B \-v
-Be verbose about files which are OK.  Normally, there is no output
-if the repository is OK; only output if things are broken.
+Be more verbose.  Each
+.B \-v
+adds additional verbosity.  With just one, 
+.B check
+will display a progress bar. 
+With two, 
+.B check 
+will list each file which is OK.  More than two is for debugging only.
+Without the
+.B \-v 
+option, there is no output
+if the repository is OK; there is only output if things are broken.
 .tp
 .B \-w
 List files which are writable but not locked.

@@ -9,7 +9,7 @@ typedef	struct {
 	u32	in, out;
 } opts;
 
-private void usage();
+private void usage(void);
 private int rclone(char **av, opts opts, remote *r, char **envVar);
 private int rclone_part1(opts opts, remote *r, char **envVar);
 private int rclone_part2(char **av, opts opts, remote *r, char **envVar);

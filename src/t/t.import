@@ -31,6 +31,7 @@ cmp -s foo.c $HERE/import_dir/src/foo.c
 bk get $Q boo.c
 cmp -s boo.c $HERE/import_dir/src/boo.c
 echo OK
+
 # XXX - we do not test for links pointing outside the tree
 if [ $PLATFORM != "WIN32" ]
 then
@@ -59,6 +60,7 @@ test -f SCCS/s.link
 bk get $Q link
 cmp -s link $HERE/import_dir/src/foo.c
 echo OK
+
 echo $N Test import of a patch file .................................$NL
 cd $HERE
 mkdir -p import_new/src
@@ -77,6 +79,7 @@ then
 	exit 1
 fi
 echo OK
+
 cd $HERE
 echo $N Test import of a patch file which deletes a file ............$NL
 cd $HERE/project
@@ -97,6 +100,7 @@ then	echo Can not find deleted file
 	exit 1
 fi
 echo OK
+
 #----------------------------------------------------
 fi	# Win32
 echo $N Test import of an sccs file .................................$NL
@@ -115,6 +119,7 @@ bk undos bar.c > X
 bk undos $HERE/import_sccs/src/bar.c > Y
 cmp -s X Y
 echo OK
+
 if [ $PLATFORM != "WIN32" ]
 then #----------------------------------------------------------------
 echo $N Test import of an sccs file with meta char in file name .....$NL
@@ -131,6 +136,7 @@ cd $HERE/project/src
 bk get $Q '*.c' $HERE/import_sccs2/src/'*.c'
 cmp -s '*.c' $HERE/import_sccs2/src/'*.c'
 echo OK
+
 fi   #----------------------------------------------------------------
 set +e
 trap '' 0
@@ -153,6 +159,7 @@ bk new $Q LS
 bk _loggingaccepted
 bk commit $Q -ywhatever 
 echo OK
+
 
 echo $N Import a patch which deletes the logging_ok file ............$NL
 bk export -S $HERE/A
@@ -182,6 +189,82 @@ test -f etc/SCCS/s.logging_ok || {
 }
 echo OK
 
+echo $N Import a patch into a tree with versioned .rej files ........$NL
+cd $HERE
+no_logging rej
+ls > foo.rej
+cat > data <<EOF
+A
+B
+C
+D
+EOF
+bk new $Q foo.rej data
+bk commit $Q -ywah
+cat > $HERE/patch <<EOF
+diff -Nru a/data b/data
+--- a/data   Sun Mar  3 21:37:06 2002
++++ b/data   Sun Mar  3 21:37:17 2002
+@@ -1,4 +1,4 @@
+ A
+ B
+-C
++XYZ
+ D
+EOF
+bk import -tpatch $HERE/patch . < /dev/null > $HERE/OUT 2>&1
+bk cat data | grep -q XYZ || {
+	echo failed to apply patch
+	cat $HERE/OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure that patch rejects are still caught ...............$NL
+cat > $HERE/patch <<EOF
+diff -Nru a/data b/data
+--- a/data   Sun Mar  3 21:37:06 2002
++++ b/data   Sun Mar  3 21:37:17 2002
+@@ -1,4 +1,4 @@
+ A
+ B
+-C
++This should fail!
+ D
+EOF
+bk import -tpatch $HERE/patch . < /dev/null > $HERE/OUT 2>&1 && {
+	echo failed to exit with an error
+	cat $HERE/OUT
+	exit 1
+}
+bk cat data | grep -q 'This should fail!' && {
+	echo failed to reject patch
+	cat $HERE/OUT
+	exit 1
+}
+echo OK
+
+echo $N Catch read only destinations ................................$NL
+bk setup -f -c$HERE/c $HERE/dest
+chmod 555 $HERE/dest
+mkdir $HERE/data
+cd $HERE/data
+for i in 1 2 3 4 5 6
+do	echo hi mom > data$i
+done
+bk import -tplain $HERE/data $HERE/dest >OUT 2>&1 && {
+	echo failed to exit with an error
+	cat OUT
+	exit 1
+}
+grep -q 'not writable' OUT || {
+	echo failed to warn about write permission
+	cat OUT
+	exit 1
+}
+chmod 777 $HERE/dest
+echo OK
+
 TESTDATA=/home/bk/test_data
 
 test -d $TESTDATA/lmbench && {
@@ -208,6 +291,7 @@ test -x ixupdate.pl || {
 	exit 1
 }
 echo OK
+
 echo $N Make sure RCS/CVS imports set RCS flag ......................$NL
 bk flags ixupdate.pl > F
 grep -q RCS F || {
@@ -268,4 +352,3 @@ do	cd import$i
 done
 echo OK
 }
-exit 0

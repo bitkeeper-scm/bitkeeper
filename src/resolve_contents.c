@@ -424,7 +424,9 @@ resolve_contents(resolve *rs)
 	int	ret;
 	char	buf[MAXPATH];
 
-	if (rs->s->encoding & E_BINARY) return (resolve_binary(rs));
+	if ((rs->s->encoding & E_BINARY) || NOMERGE(rs->s)) {
+		return (resolve_binary(rs));
+	}
 
         if (rs->opts->debug) {
 		fprintf(stderr, "resolve_contents: ");

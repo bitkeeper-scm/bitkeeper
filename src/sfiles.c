@@ -461,7 +461,7 @@ c:	lftw(".", caches);
 			unlink(id_tmp);
 			goto out;
 		}
-		if (sccs_lockfile(IDCACHE_LOCK, 16, 1, 0)) {
+		if (sccs_lockfile(IDCACHE_LOCK, 16, 0)) {
 			fprintf(stderr, "Not updating cache due to locking.\n");
 			unlink(id_tmp);
 		} else {
@@ -470,7 +470,7 @@ c:	lftw(".", caches);
 				perror("rename of idcache");
 				unlink(IDCACHE);
 			}
-			unlink(IDCACHE_LOCK);
+			if (sccs_unlockfile(IDCACHE_LOCK)) perror(IDCACHE_LOCK);
 			chmod(IDCACHE, GROUP_MODE);
 		}
 	}

@@ -45,6 +45,8 @@ test -f $HERE/tst/project/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' || {
 	echo failed
 	exit 1
 }
+cd $HERE/project
+bk level 2
 cd $HERE
 bk clone -l $Q $HERE/project $HERE/copy || { echo failed; exit 1; }
 test -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' || { echo failed; exit 1; }
@@ -56,6 +58,12 @@ test x$parent = xfile:/$HERE/project || {
 	exit 1
 }
 cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
+cd $HERE/copy
+lv=`bk level`
+test "$lv" = "Repository level is 2" || {
+	echo wrong level in clone: $lv
+	exit 1
+}
 echo OK
 
 echo $N Clone a nested repository ...................................$NL

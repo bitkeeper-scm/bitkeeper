@@ -44,18 +44,18 @@ if [ -f A ]; then echo failed to remove A; exit 1; fi
 echo OK
 echo $N Check edit with existing stale read lock ....................$NL
 bk lock -r &
-while bk lock -s; do true; done
+bk lock -L
 bk edit $Q A 2> /dev/null
 if [ ! -w A ]; then echo failed to get writable file; exit 1; fi
 bk clean A
 echo OK
 echo $N Check edit with existing stale write lock ...................$NL
-bk unlock -r 2> /dev/null
+bk unlock -r
 if [ -d BitKeeper/readers ]
-then	echo failed to clean up read lock; exit 1
+then	echo failed to clean up read lock; ls -l BitKeeper/readers; exit 1
 fi
 bk lock -w &
-while bk lock -s; do true; done
+bk lock -L
 bk edit $Q A 2> /dev/null
 if [ ! -w A ]; then echo failed to get writable file; exit 1; fi
 echo OK
@@ -63,15 +63,20 @@ echo $N Check edit with existing valid read lock ....................$NL
 bk clean A
 bk unlock -w
 bk lock -r &
-while bk lock -s; do true; done
+bk lock -L
 mv BitKeeper/readers/* BitKeeper/readers/1234@nowhere.nowhere
 bk edit $Q A
 writable A || { echo failed to lock A; exit 1; }
 echo OK
 echo $N Make sure delta fails with existing read lock ...............$NL
-bk delta $Q -yXXX A 2> /dev/null
-if [ ! -w A ]; then echo failed to fail delta; exit 1; fi
+bk delta $Q -yXXX A 2> OUT
+test -w A || {
+	echo failed to fail delta
+	cat OUT
+	exit 1
+}
 echo OK
+
 echo $N Make sure clean works with existing read lock ...............$NL
 bk clean $Q A 
 if [ -w A ]; then echo failed to clean; exit 1; fi
@@ -79,7 +84,7 @@ echo OK
 echo $N Check edit with existing valid write lock ...................$NL
 bk unlock -r
 bk lock -w &
-while bk lock -s; do true; done
+bk lock -L
 rm -f BitKeeper/writer/lock
 mv BitKeeper/writer/* BitKeeper/writer/1234@nowhere.nowhere
 ln BitKeeper/writer/1234@nowhere.nowhere BitKeeper/writer/lock
@@ -87,8 +92,16 @@ bk edit $Q A
 writable A || { echo failed to lock A; exit 1; }
 echo OK
 echo $N Make sure delta fails with existing write lock ..............$NL
-bk delta $Q -yXXX A 2> /dev/null
-if [ ! -w A ]; then echo failed to fail delta; exit 1; fi
+bk lock -l > LOCKS 2>&1
+bk delta $Q -yXXX A 2> OUT
+test -w A || {
+	echo failed to fail delta
+	echo LOCKS:
+	cat LOCKS
+	echo DELTA OUTPUT
+	cat OUT
+	exit 1
+}
 echo OK
 echo $N Make sure clone fails with existing write lock in source ....$NL
 cd $HERE
@@ -109,8 +122,11 @@ done
 cd $HERE
 bk clone bk://localhost:$P clone 2> clone.out
 echo "ERROR-Can't get read lock on the repository." > ref
-cmp -s clone.out ref
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
+cmp -s clone.out ref || {
+	echo Failed
+	diff clone.out ref
+	exit 1
+}
 if [ -d clone ]; then echo clone failed to clean up; exit 1; fi
 echo OK
 fi #------------------------------------------------------------------------
@@ -118,7 +134,7 @@ echo $N Make sure clone works with existing read lock in source .....$NL
 cd $HERE/project
 bk unlock -w
 bk lock -r &
-while bk lock -s; do true; done
+bk lock -L
 mv BitKeeper/readers/* BitKeeper/readers/1234@nowhere.nowhere
 cd $HERE
 bk clone $Q project clone 2>/dev/null
@@ -143,7 +159,7 @@ ls > C
 bk new $Q C
 bk commit $Q -ywhatever
 bk lock -w &
-while bk lock -s; do true; done
+bk lock -L
 cd $HERE/clone
 bk pull -t -c0 $Q 2>/dev/null
 if [ $? != 1 ]; then echo pull failed to exit with error; exit 1; fi
@@ -152,7 +168,7 @@ echo $N Make sure pull works with existing read lock in source ......$NL
 cd $HERE/project
 bk unlock -w
 bk lock -r &
-while bk lock -s; do true; done
+bk lock -L
 mv BitKeeper/readers/* BitKeeper/readers/1234@nowhere.nowhere
 cd $HERE/clone
 bk pull -t $Q -R 2>/dev/null
@@ -177,11 +193,23 @@ echo $N Make sure push fails with existing write lock in dest .......$NL
 cd $HERE/project
 rm -rf BitKeeper/readers BitKeeper/writer
 bk lock -w &
-while bk lock -s; do true; done
+PID=$!
+bk lock -L
 cd $HERE/clone
-bk push -c0 $Q
-if [ $? != 1 ]; then echo push failed to exit with an error; exit 1; fi
+bk push -c0 > OUT 2>&1 && {
+	echo push failed to exit with an error
+	cat OUT
+	kill $PID
+	exit 1
+}
+kill $PID
+grep -q 'ERROR-Unable to lock repository for update.' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
 echo OK
+
 echo $N Make sure push succeeds with no locks in destination ........$NL
 cd $HERE/project
 rm -rf BitKeeper/readers BitKeeper/writer
@@ -189,7 +217,7 @@ cd $HERE/clone
 bk push $Q
 if [ $? != 0 ]; then echo push exited with an error; exit 1; fi
 cd $HERE/project
-while ! bk lock -s; do true; done
+bk lock -U
 bk pull -t $HERE/clone > OUT 2>&1
 grep -q 'Nothing to pull' OUT || {
 	echo failed - bad status message
@@ -197,15 +225,16 @@ grep -q 'Nothing to pull' OUT || {
 	exit 1
 }
 echo OK
-echo $N Make sure commit respect repository lock  ....................$NL
-mkdir -p $HERE/project/RESYNC/stuff
+echo $N Make sure commit respects repository lock ...................$NL
 bk co $Q -l D
 date > D
 bk ci $Q -ynew_styff D
-bk commit $Q -y"should-failed" > commit.out
+mkdir -p $HERE/project/RESYNC/stuff
+bk commit $Q -y"should-failed" > commit.out 2>&1
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
-echo "ERROR-Unable to lock repository for update." > x
-bk undos x > ref
-cmp -s commit.out ref
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
+grep -q 'ERROR-Unable to lock repository for update.' commit.out || {
+	echo unexpected error message
+	cat commit.out
+	exit 1
+}
 echo OK

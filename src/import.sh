@@ -87,12 +87,20 @@ import() {
 	if [ ! -d "$2/BitKeeper" ]
 	then	echo "$2 is not a BitKeeper package"; exit 1
 	fi
+	if [ ! -w "$2" -o ! -w "$2/BitKeeper" ]
+	then	echo import: "$2" is not writable
+		exit 1
+	fi
 	HERE=`bk pwd`
 	if [ $TYPE != patch ]
 	then	cd "$1"
 		FROM=`bk pwd`
 		cd "$HERE"
 	else	FROM="$1"
+		test -f "$FROM" || {
+			echo "No such file $FROM"
+			exit 1
+		}
 	fi
 	cd "$2"
 	TO="`bk pwd`"
@@ -288,7 +296,6 @@ transfer() {
 }
 
 import_patch() {
-
 	PATCH=$1
 	PNAME=`basename $PATCH`
 	SAVE=$USER
@@ -318,14 +325,15 @@ import_patch() {
 	then	cat ${TMP}plog$$
 	fi
 	bk sfiles -x | grep '=-PaTcH_BaCkUp!$' | bk _unlink
-	find .  -name '*.rej' -print > ${TMP}rejects$$
+	bk sfiles -x | grep '\.rej$' > ${TMP}rejects$$
 	if [ $REJECTS = NO -a -s ${TMP}rejects$$ ]
 	then	
 		rm -f `cat ${TMP}rejects$$`
 		bk unedit `bk sfiles -l`
 		Done 1
 	fi
-	while [ -s ${TMP}rejects$$ ]
+	TRIES=0
+	while [ -s ${TMP}rejects$$ -a $TRIES -lt 5 ]
 	do 	echo "Patch rejects:"
 		cat ${TMP}rejects$$
 		echo 
@@ -336,8 +344,15 @@ import_patch() {
 		echo ===============================================
 		echo 
 		sh -i
-		find .  -name '*.rej' -print > ${TMP}rejects$$
+		bk sfiles -x | grep '\.rej$' > ${TMP}rejects$$
+		TRIES=`expr $TRIES + 1`
 	done
+	test -s ${TMP}rejects$$ && {
+		echo Giving up, too many tries to clean up.
+		rm -f `cat ${TMP}rejects$$`
+		bk unedit `bk sfiles -l`
+		Done 1
+	}
 	grep '^Creating file ' ${TMP}plog$$ |
 	    sed 's/Creating file //' > ${TMP}creates$$
 	grep '^Removing file ' ${TMP}plog$$ |

@@ -105,3 +105,43 @@ grep -q 'no write permission' OUT || {
 }
 echo OK
 
+echo $N Check for extra idcache rebuild for new files ...............$NL
+bk idcache 2>/dev/null
+cd $HERE
+bk clone $Q project clone
+cd project
+echo I hope not > rebuild
+bk new $Q rebuild
+bk commit $Q -ywhatever
+cd ../clone
+bk pull >OUT 2>&1
+grep -q 'Rebuilding idcache' OUT && {
+	echo Failed to short circuit rebuild
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure we catch duplicate files ..........................$NL
+cd $HERE/project
+echo catch me > duplicate
+bk new $Q duplicate
+bk commit $Q -ywhatever
+cp SCCS/s.duplicate $HERE/clone/SCCS/s.catch_me
+cd ../clone
+bk pull >OUT 2>&1 && {
+	echo failed to exit non zero
+	cat OUT
+	exit 1
+}
+grep -q 'Rebuilding idcache' OUT && {
+	echo Failed to short circuit rebuild
+	cat OUT
+	exit 1
+}
+grep -q 'check: SCCS/s.catch_me should be SCCS/s.duplicate' OUT || {
+	echo Failed to catch duplicate
+	cat OUT
+	exit 1
+}
+echo OK

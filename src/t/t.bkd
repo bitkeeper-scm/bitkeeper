@@ -241,7 +241,7 @@ if [ $? -ne 0 ]; then echo failed; cat bk.out; exit 1; fi
 echo OK
 echo $N Make sure bk/basic allows pull from master repository .......$NL
 cd $HERE/copy
-while ! bk lock -s; do true; done
+bk lock -U
 cd $HERE/copy2
 bk undo -fqr+ || exit 1
 bk pull $Q -t bk://localhost:$P/$HERE/copy

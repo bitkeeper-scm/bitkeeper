@@ -44,7 +44,6 @@ private delta*	hostArg(delta *d, char *arg);
 private delta*	pathArg(delta *d, char *arg);
 private delta*	randomArg(delta *d, char *arg);
 private delta*	zoneArg(delta *d, char *arg);
-delta*	modeArg(delta *d, char *arg);
 private delta*	mergeArg(delta *d, char *arg);
 private delta*	sumArg(delta *d, char *arg);
 private	void	symArg(sccs *s, delta *d, char *name);
@@ -451,6 +450,7 @@ joinLines(char *sep, char **space)
 	return (buf);
 }
 
+#if 0
 /*
  * Compare up to and including the newline.  Both have to be on \n to match.
  */
@@ -463,7 +463,7 @@ strnleq(register char *s, register char *t)
 	}
 	return (0);
 }
-
+#endif
 
 /*
  * Convert a serial to an ascii string.
@@ -1917,6 +1917,18 @@ defbranch(sccs *s)
 {
 	if (s->defbranch) return (s->defbranch);
 	return ("65535");
+}
+
+private int
+lodstart(char *rev)
+{
+	char	*p;
+
+	p = strchr(rev, '.');
+	assert(p);
+	p++;
+	if (strchr(p, '.')) return (0);
+	return (streq("1", p));
 }
 
 /*
@@ -4670,10 +4682,7 @@ sccs_lock(sccs *s, char type)
 	if (READ_ONLY(s)) return (0);
 	
 	verbose = (s->state & SILENT) ? 0 : 1;
-	if ((type == 'z') && repository_locked(s->proj) &&
-	    (repository_cleanLocks(s->proj, 1, 1, 0, verbose) != 0)) {
-		return (0);
-	}
+	if ((type == 'z') && repository_locked(s->proj)) return (0);
 
 	/* get -e does Z lock so we can skip past the repository locks */
 	if (type == 'Z') type = 'z';
@@ -6654,7 +6663,7 @@ getLinkBody(sccs *s,
 	u16 dsum = 0;
 	delta	*e;
 
-	unless (f) return 1;
+	unless (f) return 2;
 	
 	/*
 	 * What we want is to just checksum the symnlink.
@@ -7282,7 +7291,7 @@ badcksum(sccs *s, int flags)
 }
 
 inline int
-isAscii(c)
+isAscii(int c)
 {
 	if (c & 0x60) return (1);
 	return (c == '\f') ||
@@ -10173,6 +10182,8 @@ name2xflg(char *fl)
 		return X_EOLN_NATIVE;
 	} else if (streq(fl, "KV")) {
 		return X_KV;
+	} else if (streq(fl, "NOMERGE")) {
+		return X_NOMERGE;
 	}
 	return (0);			/* lint */
 }
@@ -10208,16 +10219,16 @@ changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 	if (add) {
 		if (xflags & mask) {
 			verbose((stderr,
-				"admin: warning: %s %s flag is already on\n",
-				sc->sfile, flag));
+			    "admin: warning: %s %s flag is already on\n",
+			    sc->sfile, flag));
 			return (0);
 		} 
 		xflags |= mask;
 	} else {
 		unless (xflags & mask) {
 			verbose((stderr,
-				"admin: warning: %s %s flag is already off\n",
-				sc->sfile, flag));
+			    "admin: warning: %s %s flag is already off\n",
+			    sc->sfile, flag));
 			return (0);
 		}
 		xflags &= ~mask;
@@ -10525,7 +10536,6 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		int	add = f[i].flags & A_ADD;
 		char	*v = &f[i].thing[1];
 
-		//flags |= NEWCKSUM;
 		if (isupper(f[i].thing[0])) {
 			char *fl = f[i].thing;
 
@@ -10536,40 +10546,34 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			if (name2xflg(fl) & X_MAYCHANGE) {
 				if (v) goto noval;
 				ALLOC_D();
-				flagsChanged += changeXFlag(sc, d, flags, add, fl);
+				flagsChanged +=
+				    changeXFlag(sc, d, flags, add, fl);
 			}
-#if 0
-			else if (streq(fl, "BK") || streq(fl, "BITKEEPER")) {
-				if (v) goto noval;
-				if (add)
-					sc->state |= S_BITKEEPER;
-				else
-					sc->state &= ~S_BITKEEPER;
-			}
-#endif
 			else if (streq(fl, "DEFAULT")) {
 				if (sc->defbranch) free(sc->defbranch);
 				sc->defbranch = v ? strdup(v) : 0;
 				flagsChanged++;
 			} else {
-				if (v) fprintf(stderr,
-					       "admin: unknown flag %s=%s\n",
-					       fl, v);
-				else fprintf(stderr,
+				if (v) {
+					fprintf(stderr,
+					  "admin: unknown flag %s=%s\n", fl, v);
+				} else {
+					fprintf(stderr,
 					     "admin: unknown flag %s\n", fl);
-
+				}
 				error = 1;
 				sc->state |= S_WARNED;
 			}
 			continue;
 
 		noval:	fprintf(stderr,
-				"admin: flag %s can't have a value\n", fl);
+			    "admin: flag %s can't have a value\n", fl);
 			error = 1;
 			sc->state = S_WARNED;
 		} else {
+			char	*buf;
+
 			switch (f[i].thing[0]) {
-				char	*buf;
 			    case 'd':
 				if (sc->defbranch) free(sc->defbranch);
 				sc->defbranch = *v ? strdup(v) : 0;
@@ -11174,6 +11178,29 @@ newcmd:
 	return (0);
 }
 
+sccs_hashcount(sccs *s)
+{
+	int	n;
+	kvpair	kv;
+
+	unless (HASH(s)) return (0);
+	if (sccs_get(s, "+", 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
+		sccs_whynot("get", s);
+		return (0);
+	}
+	/* count the number of long keys in the *values* since those
+	 * are far more likely to be current.
+	 */
+	for (n = 0, kv = mdbm_first(s->mdbm);
+	    kv.key.dsize; kv = mdbm_next(s->mdbm)) {
+		unless (CSET(s)) {
+			n++;
+			continue;
+		}
+		if (sccs_iskeylong(kv.val.dptr)) n++;
+	}
+	return (n);
+}
 
 /*
  * Initialize as much as possible from the file.
@@ -11814,8 +11841,8 @@ sccs_delta(sccs *s,
 	FILE	*sfile = 0;	/* the new s.file */
 	int	i, free_syms = 0, error = 0;
 	char	*t;
-	delta	*d = 0, *n = 0;
-	char	*tmpfile = 0;
+	delta	*d = 0, *p, *n = 0;
+	char	*rev, *tmpfile = 0;
 	int	added, deleted, unchanged;
 	int	locked;
 	pfile	pf;
@@ -11958,6 +11985,21 @@ out:
 		    "delta: can't find %s in %s\n", pf.oldrev, s->gfile);
 		OUT;
 	}
+
+	/*
+	 * Catch p.files with bogus revs.
+	 */
+	rev = d->rev;
+	p = getedit(s, &rev);
+	assert(p);	/* we just found it above */
+	unless (streq(rev, pf.newrev) || 
+	    (lodstart(pf.newrev) && !findrev(s, pf.newrev))) {
+		fprintf(stderr,
+		    "delta: invalid nextrev %s in p.file, using %s instead.\n",
+		    pf.newrev, rev);
+		strcpy(pf.newrev, rev);
+	}
+
 	if (pf.mRev || pf.xLst || pf.iLst) flags |= DELTA_FORCE;
 	debug((stderr, "delta found rev\n"));
 	if (diffs) {
@@ -12073,7 +12115,7 @@ out:
 	 * initial version in the pfile to make conditions tighter.
 	 */
 	unless (flags & DELTA_PATCH) {
-		if (BITKEEPER(s) && n->r[1] == 1 && n->r[2] == 0) {
+		if (BITKEEPER(s) && lodstart(n->rev)) {
 			if (s->defbranch) {
 				free(s->defbranch);
 				s->defbranch = 0;
@@ -13417,6 +13459,9 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		if (flags & X_KV) {
 			if (comma) fs(","); fs("KV"); comma = 1;
 		}
+		if (flags & X_NOMERGE) {
+			if (comma) fs(","); fs("NOMERGE"); comma = 1;
+		}
 		return (strVal);
 	}
 
@@ -13442,25 +13487,9 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	if (streq(kw, "HASHCOUNT")) {
-		int	n;
-		kvpair	kv;
+		int	n = sccs_hashcount(s);
 
 		unless (HASH(s)) return (nullVal);
-		if (sccs_get(s, "+", 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
-			sccs_whynot("get", s);
-			return (-1);
-		}
-		/* count the number of long keys in the *values* since those
-		 * are far more likely to be current.
-		 */
-		for (n = 0, kv = mdbm_first(s->mdbm);
-		    kv.key.dsize; kv = mdbm_next(s->mdbm)) {
-			unless (CSET(s)) {
-				n++;
-				continue;
-			}
-			if (sccs_iskeylong(kv.val.dptr)) n++;
-		}
 		fd(n);
 		return (strVal);
 	}

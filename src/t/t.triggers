@@ -136,6 +136,10 @@ bk clone $Q -r1.1 project clone || {
 	echo should have succeeded and did not
 	exit 1
 }
+bk clone $Q -r1.1 project apply || {
+	echo should have succeeded and did not
+	exit 1
+}
 test -d clone || {
 	echo should have created repository
 	exit 1
@@ -248,6 +252,8 @@ test -z "$DUMP_VARS" || {
 	cat $HERE/post-incoming-clone
 }
 
+if [ "$PLATFORM" != "WIN32" ]
+then #-----------------------------------------------------------------
 # Make a post-incoming trigger be checked in, see if clone -l runs it.
 echo $N Test post-incoming in a clone -l ............................$NL
 cd $HERE/parent
@@ -255,7 +261,10 @@ bk edit $Q BitKeeper/triggers
 cat > BitKeeper/triggers/post-incoming <<EOF
 #!/bin/sh
 set | grep $DASHA BK |
-    grep -v BK_LCLONE | grep -v _BK_ | sort > $HERE/post-incoming-clone-l
+    grep -v BK_LCLONE |
+    grep -v _BK_ |
+    grep -v BK_IGNORELOCK |
+    sort > $HERE/post-incoming-clone-l
 exit 0
 EOF
 chmod +x BitKeeper/triggers/post-incoming
@@ -281,6 +290,7 @@ cmp -s $HERE/post-incoming-clone $HERE/post-incoming-clone-l || {
 	exit 1
 }
 echo OK
+fi #-------------------------------------------------------------------
 cd $HERE
 rm -rf parent clone2
 
@@ -373,6 +383,7 @@ cat > BitKeeper/triggers/pre-resolve <<EOF
 #!/bin/sh
 bk changes - < \$BK_CSETLIST > $HERE/changes
 cp \$BK_CSETLIST $HERE/csets-out
+pwd > $HERE/resolve-pwd
 exit 1
 EOF
 chmod +x BitKeeper/triggers/*
@@ -402,6 +413,14 @@ if [ `grep '^ChangeSet' $HERE/changes | wc -l` -ne 2 ]; then
 fi
 echo OK
 
+echo $N Make sure the pre-resolve trigger is run in RESYNC ..........$NL
+grep -q RESYNC $HERE/resolve-pwd || {
+	echo failed
+	cat RESYNC $HERE/resolve-pwd
+	exit 1
+}
+echo OK
+
 echo $N Check bk changes -v - .......................................$NL
 echo 1.1 > list
 echo junk >> list
@@ -421,7 +440,90 @@ if [ `grep '^ChangeSet' out | wc -l` -ne 1 ]; then
 	exit 1
 fi
 echo OK
+
+echo $N Make sure pre-apply exiting 1 cleans up .....................$NL
+cd $HERE/apply
+test -d BitKeeper/triggers || mkdir BitKeeper/triggers
+cat > BitKeeper/triggers/pre-apply <<EOF
+#!/bin/sh
+set | grep $DASHA BK | sort -u > $HERE/pre-apply
+pwd > $HERE/apply-pwd
+exit 1
+EOF
+chmod +x BitKeeper/triggers/*
+bk pull $Q && {
+	echo failed to exit non zero with failed pre-apply trigger
+	exit 1
+}
+test -d RESYNC && {
+	echo failed to clean up RESYNC
+	exit 1
+}
+test -d PENDING && {
+	echo failed to clean up PENDING
+	exit 1
+}
+echo OK
+test -z "$DUMP_VARS" || {
+	echo ========== pre-apply ==========
+	cat $HERE/pre-apply
+}
+
+echo $N Make sure the pre-apply trigger is run in RESYNC ............$NL
+grep -q RESYNC $HERE/apply-pwd || {
+	echo failed
+	cat RESYNC $HERE/apply-pwd
+	exit 1
+}
+echo OK
+
+echo $N Make sure pre-apply exiting 2 leaves patch in PENDING .......$NL
+cd $HERE/apply
+test -d BitKeeper/triggers || mkdir BitKeeper/triggers
+cat > BitKeeper/triggers/pre-apply <<EOF
+#!/bin/sh
+exit 2
+EOF
+chmod +x BitKeeper/triggers/*
+bk pull $Q && {
+	echo failed to exit non zero with failed pre-apply trigger
+	exit 1
+}
+test -d RESYNC && {
+	echo failed to clean up RESYNC
+	exit 1
+}
+test -d PENDING || {
+	echo failed to leave PENDING
+	exit 1
+}
+echo OK
+
+echo $N Make sure pre-apply exiting 3 leaves RESYNC and PENDING .....$NL
+cd $HERE/apply
+test -d BitKeeper/triggers || mkdir BitKeeper/triggers
+cat > BitKeeper/triggers/pre-apply <<EOF
+#!/bin/sh
+exit 3
+EOF
+chmod +x BitKeeper/triggers/*
+bk pull $Q && {
+	echo failed to exit non zero with failed pre-apply trigger
+	exit 1
+}
+X="RESYNC-*"
+test "$X" || {
+	echo failed to leave RESYNC
+	exit 1
+}
+test -d PENDING || {
+	echo failed to leave PENDING
+	exit 1
+}
+echo OK
+
 echo $N Make sure we can see the data in the post-incoming trigger ..$NL
+cd $HERE/clone
 rm BitKeeper/triggers/* $HERE/changes
 cat > BitKeeper/triggers/post-incoming <<EOF
 #!/bin/sh
@@ -489,8 +591,59 @@ test -z "$DUMP_VARS" || {
 	cat $HERE/pre-incoming
 }
 
+echo $N Make sure pull -R does not run post-incoming ................$NL
+rm -f $HERE/pre-* $HERE/post-*
+cd $HERE/project
+rm BitKeeper/triggers/*
+cat > BitKeeper/triggers/post-incoming <<EOF
+#!/bin/sh
+echo I am the post-incoming trigger
+set | grep $DASHA BK | sort > $HERE/post-incoming
+exit 1
+EOF
+chmod +x BitKeeper/triggers/*
+cd $HERE/clone
+ls > whatever
+bk new $Q whatever
+bk commit -ywhatever $Q
+cd $HERE/project
+bk pull -R $HERE/clone 2>OUT || {
+	echo pull should not have failed
+	exit 1
+}
+test -d RESYNC || {
+	echo failed to leave RESYNC
+	exit 1
+}
+test -f $HERE/post-incoming && {
+	echo should not have run trigger, we did not finish
+	exit 1
+}
+echo OK
+
+echo $N Make sure resolve does run the post-incoming ................$NL
+rm -f $HERE/post-incoming
+bk resolve >OUT 2>&1 || {
+	echo resolve should not have failed
+	exit 1
+}
+test -d RESYNC && {
+	echo failed to clean up RESYNC
+	exit 1
+}
+test -f $HERE/post-incoming || {
+	echo should have run trigger, we did finish
+	exit 1
+}
+echo OK
+test -z "$DUMP_VARS" || {
+	echo ====== resolve post-incoming ==========
+	cat $HERE/post-incoming
+}
+
 echo $N Fail a push in pre-resolve and make sure we clean up ........$NL
 cd $HERE/project
+bk undo -qsfr+
 rm BitKeeper/triggers/*
 cat > BitKeeper/triggers/pre-resolve <<EOF
 #!/bin/sh
@@ -503,6 +656,7 @@ cd $HERE/clone
 rm -f BitKeeper/triggers/* $HERE/pre-resolve
 bk push 2>OUT && {
 	echo push should have failed
+	cat OUT
 	exit 1
 }
 test -d ../project/RESYNC && {
@@ -530,6 +684,7 @@ rm BitKeeper/triggers/*
 cat > BitKeeper/triggers/pre-resolve <<EOF
 #!/bin/sh
 echo pre-resolve failing but leaving patch
+set | grep $DASHA BK | sort >> $HERE/pre-resolve
 exit 2
 EOF
 chmod +x BitKeeper/triggers/*
@@ -558,7 +713,7 @@ test -z "$DUMP_VARS" || {
 	cat $HERE/pre-resolve
 }
 
-echo $N Look for cset list in pre_resolve in the push ...............$NL
+echo $N Look for cset list in pre-resolve in the push ...............$NL
 cd $HERE/clone
 cat > $HERE/project/BitKeeper/triggers/pre-resolve <<EOF
 #!/bin/sh
@@ -578,8 +733,9 @@ test -s $HERE/changes || {
 	echo failed to create change list
 	exit 1
 }
-grep -q ChangeSet@1.4 $HERE/changes || {
+grep -q ChangeSet@1.5 $HERE/changes || {
 	echo failed to list the ChangeSet
+	cat $HERE/changes
 	exit 1
 }
 echo OK
@@ -601,7 +757,7 @@ test -s $HERE/changes || {
 	echo failed to create change list
 	exit 1
 }
-grep -q ChangeSet@1.4 $HERE/changes || {
+grep -q ChangeSet@1.5 $HERE/changes || {
 	echo failed to list the ChangeSet
 	exit 1
 }
@@ -782,8 +938,8 @@ echo "OK"
 echo $N Clone w/failure triggers ....................................$NL
 cd $HERE
 bk clone $Q $HERE/project $HERE/dontcopy && { echo failed; exit 1; }
-#cd $HERE/project
-#while ! bk lock -s; do true; done
+cd $HERE/project
+bk lock -U
 echo OK
 
 echo $N Commit w/failure triggers ...................................$NL

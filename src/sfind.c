@@ -9,6 +9,8 @@
  
 WHATSTR("@(#)%K%");
 
+private	void	print_summary(void);
+
 
 typedef struct {
 	u32     show_markers:1;		/* -v: show markers */

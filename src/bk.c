@@ -9,6 +9,7 @@ char	*BitKeeper = "BitKeeper/";	/* XXX - reset this? */
 project	*bk_proj = 0;
 jmp_buf	exit_buf;
 char	cmdlog_buffer[MAXPATH*4];
+int	cmdlog_flags;
 char 	*upgrade_msg =
 "This feature is not available in this version of BitKeeper, to upgrade\n\
 please contact sales@bitmover.com\n"; 
@@ -17,17 +18,16 @@ private char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
 #define	LOGVER	0
 
 
-char	*find_wish();
-char	*find_perl5();
+char	*find_wish(void);
+char	*find_perl5(void);
 void	cmdlog_exit(void);
 int	cmdlog_repo;
 private	void	cmdlog_dump(int, char **);
 private int	run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av);
+private int	usage(void);
 
-extern	void	getoptReset();
 extern	void	platformInit(char **av);
 extern	int	proj_cd2root(project *p);
-extern	int	spawn_cmd(int flag, char **av);
 
 /* KEEP THIS SORTED! */
 int	_createlod_main(int, char **);
@@ -143,7 +143,6 @@ int	send_main(int, char **);
 int	sendbug_main(int, char **);
 int	set_main(int, char **);
 int	setlod_main(int, char **);
-int	setup_main(int, char **);
 int	setup_main(int, char **);
 int	sfiles_main(int, char **);
 int	sfind_main(int, char **);
@@ -350,7 +349,7 @@ struct	command cmdtbl[] = {
 	{0, 0},
 };
 
-int
+private int
 usage()
 {
 	system("bk help -s bk");
@@ -363,7 +362,7 @@ int
 main(int ac, char **av)
 {
 	int	i, c, si, is_bk = 0, dashr = 0;
-	int	flags, ret;
+	int	ret;
 	char	*prog, *argv[MAXARGS];
 	char	sopts[30];
 
@@ -377,9 +376,10 @@ main(int ac, char **av)
 	}
 
 	cmdlog_buffer[0] = 0;
+	cmdlog_flags = 0;
 	if (i = setjmp(exit_buf)) {
 		i -= 1000;
-		cmdlog_end(i, 0);
+		cmdlog_end(i);
 		return (i >= 0 ? i : 1);
 	}
 	atexit(cmdlog_exit);
@@ -413,7 +413,6 @@ main(int ac, char **av)
 	if (!bk_proj || !bk_proj->root || !isdir(bk_proj->root)) {
 		bk_proj = proj_init(0);
 	}
-
 
 	/*
 	 * Parse our options if called as "bk".
@@ -499,9 +498,9 @@ run:	getoptReset();
 		return (0);
 	}
 
-	flags = cmdlog_start(av, 0);
+	cmdlog_start(av, 0);
 	ret = run_cmd(prog, is_bk, si > 1 ? sopts : 0, ac, av);
-	cmdlog_end(ret, flags);
+	cmdlog_end(ret);
 	exit(ret);
 }
 
@@ -636,7 +635,7 @@ void
 cmdlog_exit(void)
 {
 	purify_list();
-	if (cmdlog_buffer[0]) cmdlog_end(LOG_BADEXIT, 0);
+	if (cmdlog_buffer[0]) cmdlog_end(LOG_BADEXIT);
 }
 
 private	struct {
@@ -645,8 +644,8 @@ private	struct {
 } repolog[] = {
 	{"abort", CMD_FAST_EXIT},
 	{"check", CMD_FAST_EXIT},
-	{"pull", CMD_BYTES},
-	{"push", CMD_BYTES},
+	{"pull", CMD_BYTES|CMD_WRLOCK|CMD_WRUNLOCK},
+	{"push", CMD_BYTES|CMD_RDLOCK|CMD_RDUNLOCK},
 	{"commit", CMD_WRLOCK|CMD_WRUNLOCK},
 	{"remote pull", CMD_BYTES|CMD_FAST_EXIT|CMD_RDLOCK|CMD_RDUNLOCK},
 	{"remote push", CMD_BYTES|CMD_FAST_EXIT|CMD_WRLOCK|CMD_WRUNLOCK},
@@ -658,57 +657,31 @@ private	struct {
 	{"remote rclone part1", CMD_BYTES},
 	{"remote rclone part2", CMD_BYTES|CMD_FAST_EXIT},
 	{"synckeys", CMD_RDLOCK|CMD_RDUNLOCK},
-	{"chg_part1", CMD_RDLOCK},
-	{"chg_part2", CMD_RDUNLOCK},
+	/*
+	 * This is a hack because we short circuit part2 in changes.c.
+	 * It opens a tiny race.
+	 */
+	{"chg_part1", CMD_RDLOCK|CMD_RDUNLOCK},
+	{"chg_part2", CMD_RDLOCK|CMD_RDUNLOCK},
 	{ 0, 0 },
 };
 
-/* Turn remote push -n into a read lock/unlock. */
-private int
-adjustFlags(char **av, int flags)
-{
-	int	ac, i;
-
-	unless (strneq("remote push", av[0], 11)) return (flags);
-	for (ac = 0; av[ac];  ac++);
-	if (flags & CMD_WRLOCK) {
-		getoptReset();
-		while ((i = getopt(ac, av, "n")) != -1) {
-			if (i == 'n') {
-				flags |= CMD_RDLOCK;
-				flags &= ~CMD_WRLOCK;
-			}
-		}
-	}
-	if (flags & CMD_WRUNLOCK) {
-		getoptReset();
-		while ((i = getopt(ac, av, "n")) != -1) {
-			if (i == 'n') {
-				flags |= CMD_RDUNLOCK;
-				flags &= ~CMD_WRUNLOCK;
-			}
-		}
-	}
-	getoptReset();
-	return (flags);
-}
-
-int
+void
 cmdlog_start(char **av, int httpMode)
 {
-	int	i, len, cflags = 0;
+	int	i, len;
 
 	cmdlog_buffer[0] = 0;
 	cmdlog_repo = 0;
+	cmdlog_flags = 0;
 
 	for (i = 0; repolog[i].name; i++) {
 		if (streq(repolog[i].name, av[0])) {
-			cflags = repolog[i].flags;
-			cmdlog_repo = 1;
+			cmdlog_flags = repolog[i].flags;
+			cmdlog_repo = i;
 			break;
 		}
 	}
-	cflags = adjustFlags(av, cflags);
 
 	/*
 	 * When in http mode, since push/pull part 1 and part 2 run in
@@ -717,13 +690,13 @@ cmdlog_start(char **av, int httpMode)
 	 * we enter part 2, with the up-to-date pid.
 	 */
 	if (httpMode) {
-		if (cflags & CMD_WRLOCK) cflags |= CMD_WRUNLOCK;
-		if (cflags & CMD_WRUNLOCK) cflags |= CMD_WRLOCK;
-		if (cflags & CMD_RDLOCK) cflags |= CMD_RDUNLOCK;
-		if (cflags & CMD_RDUNLOCK) cflags |= CMD_RDLOCK;
+		if (cmdlog_flags & CMD_WRLOCK) cmdlog_flags |= CMD_WRUNLOCK;
+		if (cmdlog_flags & CMD_WRUNLOCK) cmdlog_flags |= CMD_WRLOCK;
+		if (cmdlog_flags & CMD_RDLOCK) cmdlog_flags |= CMD_RDUNLOCK;
+		if (cmdlog_flags & CMD_RDUNLOCK) cmdlog_flags |= CMD_RDLOCK;
 	}            
 
-	unless (bk_proj && bk_proj->root) return (cflags);
+	unless (bk_proj && bk_proj->root) return;
 
 	if (cmdlog_repo) {
 		sprintf(cmdlog_buffer,
@@ -739,18 +712,23 @@ cmdlog_start(char **av, int httpMode)
 			strcpy(cmdlog_buffer, av[i]);
 		}
 	}
-	if (getenv("BK_TRACE")) fprintf(stderr, "%s\n", cmdlog_buffer);
+	if (getenv("BK_TRACE")) ttyprintf("CMD %s\n", cmdlog_buffer);
 
-	if (cflags & CMD_WRLOCK) {
+	if (cmdlog_flags & CMD_WRLOCK) {
 		if (i = repository_wrlock()) {
-			char junkMsg[MAXLINE];
-
-			if (i == -1) {
+			unless (strneq("remote ", av[0], 7) || !bk_proj) {
+				repository_lockers(bk_proj);
+			}
+			switch (i) {
+			    case LOCKERR_LOST_RACE:
 				out(LOCK_WR_BUSY);
-			} else if (i == -2) {
+				break;
+			    case LOCKERR_PERM:
 				out(LOCK_PERM);
-			} else {
+				break;
+			    default:
 				out(LOCK_UNKNOWN);
+				break;
 			}
 			out("\n");
 			/*
@@ -758,22 +736,25 @@ cmdlog_start(char **av, int httpMode)
 			 * We need this to make the bkd error message show up
 			 * on the client side.
 			 */
-			if (strneq("remote ", av[0], 7)) {
-				read(0, junkMsg, sizeof(junkMsg));
-			}
+			if (strneq("remote ", av[0], 7)) drain();
 			exit(1);
 		}
 	}
-	if (cflags & CMD_RDLOCK) {
+	if (cmdlog_flags & CMD_RDLOCK) {
 		if (i = repository_rdlock()) {
-			char junkMsg[MAXLINE];
-
-			if (i == -1) {
+			unless (strneq("remote ", av[0], 7) || !bk_proj) {
+				repository_lockers(bk_proj);
+			}
+			switch (i) {
+			    case LOCKERR_LOST_RACE:
 				out(LOCK_RD_BUSY);
-			} else if (i == -2) {
+				break;
+			    case LOCKERR_PERM:
 				out(LOCK_PERM);
-			} else {
+				break;
+			    default:
 				out(LOCK_UNKNOWN);
+				break;
 			}
 			out("\n");
 			/*
@@ -781,26 +762,25 @@ cmdlog_start(char **av, int httpMode)
 			 * We need this to make the bkd error message show up
 			 * on the client side.
 			 */
-			if (strneq("remote ", av[0], 7)) {
-				read(0, junkMsg, sizeof(junkMsg));
-			}
+			if (strneq("remote ", av[0], 7)) drain();
 			exit(1);
 		}
 	}
-	if (cflags & CMD_BYTES) save_byte_count(0); /* init to zero */
-	return (cflags);
-
+	if (cmdlog_flags & CMD_BYTES) save_byte_count(0); /* init to zero */
 }
 
 int
-cmdlog_end(int ret, int flags)
+cmdlog_end(int ret)
 {
 	FILE	*f;
 	char	*user, *file;
 	char	path[MAXPATH];
+	int	flags = cmdlog_flags & CMD_FAST_EXIT;
 
 	purify_list();
-	unless (cmdlog_buffer[0] && bk_proj && bk_proj->root) return (flags);
+	unless (cmdlog_buffer[0] && bk_proj && bk_proj->root) {
+		return (flags);
+	}
 
 	if (cmdlog_repo) {
 		file = "repo_log";
@@ -810,7 +790,7 @@ cmdlog_end(int ret, int flags)
 	sprintf(path, "%s/BitKeeper/log/%s", bk_proj->root, file);
 	unless (f = fopen(path, "a")) {
 		sprintf(path, "%s/%s", bk_proj->root, BKROOT);
-		unless (exists(path)) return(flags);
+		unless (exists(path)) return (flags);
 		sprintf(path, "%s/BitKeeper/log/%s", bk_proj->root, file);
 		mkdirf(path);
 		unless (f = fopen(path, "a")) {
@@ -827,7 +807,7 @@ cmdlog_end(int ret, int flags)
 		fprintf(f, "%s = ?\n", cmdlog_buffer);
 	} else {
 		fprintf(f, "%s = %d", cmdlog_buffer, ret);
-		if (flags&CMD_BYTES) {
+		if (cmdlog_flags&CMD_BYTES) {
 			fprintf(f, " xfered=%u", (u32)get_byte_count());
 		}
 		fputs("\n", f);
@@ -845,20 +825,21 @@ cmdlog_end(int ret, int flags)
 
 	/*
 	 * If error and repo command, force unlock, force exit
+	 * See also bkd.c, bottom of do_cmds().
 	 */
-	if ((flags & CMD_WRLOCK) && ret) {
-		flags |= CMD_WRUNLOCK;
-		flags |= CMD_FAST_EXIT;
+	if ((cmdlog_flags & CMD_WRLOCK) && ret) {
+		cmdlog_flags |= CMD_WRUNLOCK;
+		cmdlog_flags |= CMD_FAST_EXIT;
 	}
-	if ((flags & CMD_RDLOCK) && ret) {
-		flags |= CMD_RDUNLOCK;
-		flags |= CMD_FAST_EXIT;
+	if ((cmdlog_flags & CMD_RDLOCK) && ret) {
+		cmdlog_flags |= CMD_RDUNLOCK;
+		cmdlog_flags |= CMD_FAST_EXIT;
 	}
-	if (flags & CMD_WRUNLOCK) repository_wrunlock(0);
-	if (flags & CMD_RDUNLOCK) repository_rdunlock(0);
+	if (cmdlog_flags & (CMD_WRUNLOCK|CMD_RDUNLOCK)) repository_unlock(0);
 
 	cmdlog_buffer[0] = 0;
 	cmdlog_repo = 0;
+	cmdlog_flags = 0;
 	return (flags);
 }
 
@@ -989,24 +970,24 @@ bk_sfiles(char *opts, int ac, char **av)
 	if (status = sfind_main(sac, sav)) {
 		kill(pid, SIGTERM);
 		waitpid(pid, 0, 0);
-		cmdlog_end(status, 0);
+		cmdlog_end(status);
 		exit(status);
 	}
 	fflush(stdout);
 	close(1);
 	waitpid(pid, &status, 0);
 	if (WIFEXITED(status)) {
-		cmdlog_end(WEXITSTATUS(status), 0);
+		cmdlog_end(WEXITSTATUS(status));
 		exit(WEXITSTATUS(status));
 	}
 	if (WIFSIGNALED(status)) {
 		fprintf(stderr,
 		    "Child was signaled with %d\n",
 		    WTERMSIG(status));
-		cmdlog_end(WTERMSIG(status), 0);
+		cmdlog_end(WTERMSIG(status));
 		exit(WTERMSIG(status));
 	}
-	cmdlog_end(100, 0);
+	cmdlog_end(100);
 	exit(100);
 }
 

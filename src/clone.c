@@ -21,7 +21,6 @@ private void	parent(opts opts, remote *r);
 private int	sfio(opts opts, int gz, remote *r);
 private void	usage(void);
 private int	initProject(char *root);
-private void	usage(void);
 private	int	lclone(opts, remote *, char *to);
 private int	linkdir(char *from, char *to, char *dir);
 private int	relink(char *a, char *b);
@@ -72,7 +71,17 @@ clone_main(int ac, char **av)
 	 */
 	r = remote_parse(av[optind], 1);
 	unless (r) usage();
-	if (link) return (lclone(opts, r, av[optind+1]));
+	if (link) {
+#ifdef WIN32
+		fprintf(stderr,
+		    "clone: sorry, -l option is not supported on "
+		    "this platform\n");
+		return (1);
+#else
+		return (lclone(opts, r, av[optind+1]));
+#endif
+		/* NOT REACHED */
+	}
 	if (av[optind + 1]) {
 		l = remote_parse(av[optind + 1], 1);
 		unless (l) {
@@ -232,7 +241,7 @@ done:	if (rc) {
 	disconnect(r, 1);
 
 	wait_eof(r, opts.debug); /* wait for remote to disconnect */
-	unless (rc) repository_wrunlock(0);
+	unless (rc) repository_unlock(0);
 	unless (rc || opts.quiet) {
 		fprintf(stderr, "Clone completed successfully.\n");
 	}
@@ -435,6 +444,7 @@ lclone(opts opts, remote *r, char *to)
 	char	skip[MAXPATH];
 	FILE	*f;
 	char	*p;
+	int	level;
 
 	assert(r);
 	unless (r->type == ADDR_FILE) {
@@ -485,7 +495,9 @@ out:		chdir(from);
 	mkdir("RESYNC", 0777);		/* lock it */
 	chdir(from);
 	unless (f = popen("bk sfiles -d", "r")) goto out;
+	level = getlevel();
 	chdir(dest);
+	setlevel(level);
 	while (fnext(buf, f)) {
 		chomp(buf);
 		unless (streq(buf, ".")) {

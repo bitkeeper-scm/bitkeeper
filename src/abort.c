@@ -3,9 +3,9 @@
 #include "resolve.h"
 WHATSTR("@(#)%K%");
 
-void	abort_patch();
-private int send_abort_msg();
-private int remoteAbort(remote *r);
+private	void	abort_patch(int leavepatch);
+private int	send_abort_msg(remote *r);
+private int	remoteAbort(remote *r);
 
 /*
  * Abort a pull/resync by deleting the RESYNC dir and the patch file in

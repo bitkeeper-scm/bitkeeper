@@ -40,14 +40,11 @@ private	int	marklist(char *file);
 private	void	csetDeltas(cset_t *cs, sccs *sc, delta *start, delta *d);
 private	delta	*mkChangeSet(sccs *cset, FILE *diffs);
 private	char	*file2str(char *f);
-//private	void	doRange(cset_t *cs, sccs *sc);
-private	void	doEndpoints(cset_t *cs, sccs *sc);
 private	void	doSet(sccs *sc);
 private	void	doMarks(cset_t *cs, sccs *sc);
 private	void	doDiff(sccs *sc, char kind);
 private	void	sccs_patch(sccs *, cset_t *);
 private	void	cset_exit(int n);
-extern	void	explodeKey(char *key, char *parts[4]);
 private	char	csetFile[] = CHANGESET; /* for win32, need writable buffer */
 private	cset_t	copts;
 private char	*spin = "|/-\\";
@@ -828,7 +825,7 @@ doDiff(sccs *sc, char kind)
 	sccs_diffs(sc, e->rev, d->rev, 0, kind, 0, stdout);
 }
 
-
+#if 0
 /*
  * Print a range suitable for diffs.
  * XXX - does not make sure that they are both on the trunk.
@@ -852,6 +849,7 @@ doEndpoints(cset_t *cs, sccs *sc)
 	printf("%s%c%s..%s\n",
 	    sc->gfile, BK_FS, earlier ? earlier->rev : "1.0", later->rev);
 }
+#endif
 
 private void
 doMarks(cset_t *cs, sccs *s)
