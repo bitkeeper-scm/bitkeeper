@@ -78,7 +78,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o approve.o \
 	slib.o status.o stripdel.o synckeys.o sys.o \
 	tagmerge.o takepatch.o trigger.o unbk.o undo.o undos.o unedit.o \
 	unique.o unlink.o unlock.o unpull.o unwrap.o \
-	user.o utils.o version.o what.o xflags.o zgets.o \
+	user.o utils.o uu.o version.o what.o xflags.o zgets.o \
 	zone.o
 
 MDBMOBJ	= mdbm/mdbm.o mdbm/hash.o mdbm/debug.o mdbm/byte_order.o

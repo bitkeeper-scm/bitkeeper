@@ -5595,6 +5595,21 @@ uudecode1(register char *from, register uchar *to)
 	return (save);
 }
 
+int
+uudecode(FILE *in, FILE *out)
+{
+	uchar	ibuf[650];
+	char	obuf[450];
+	int	n, moved = 0;
+
+	while (fnext(ibuf, in)) {
+		n = uudecode1(ibuf, obuf);
+		moved += n;
+		fwrite(obuf, n, 1, out);
+	}
+	return (moved);
+}
+
 private int
 openOutput(sccs *s, int encode, char *file, FILE **op)
 {

@@ -163,6 +163,8 @@ int	unpark_main(int, char **);
 int	unpull_main(int, char **);
 int	unwrap_main(int, char **);
 int	users_main(int, char **);
+int	uuencode_main(int, char **);
+int	uudecode_main(int, char **);
 int	val_main(int, char **);
 int	version_main(int, char **);
 int	what_main(int, char **);
@@ -318,6 +320,8 @@ struct	command cmdtbl[] = {
 	{"unwrap", unwrap_main},		/* doc 2.0 */
 	{"users", users_main},			/* doc 2.0 */
 	{"user", users_main},			/* aliases of "bk users" */
+	{"uudecode", uudecode_main},
+	{"uuencode", uuencode_main},
 	{"val", val_main},			/* doc 2.0 */
 	{"version", version_main},		/* doc 2.0 */
 	{"what", what_main},			/* doc 2.0 */
