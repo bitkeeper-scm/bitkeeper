@@ -46,7 +46,7 @@ private	int	pendingRenames(void);
 private	void	rename_delta(resolve *rs, char *sf, delta *d, char *rf, int w);
 private	int	rename_file(resolve *rs);
 private	int	rename_file(resolve *rs);
-private	void	restore(FILE *f);
+private	void	restore(FILE *f, opts *o);
 private	void	unbackup(FILE *f);
 
 int
@@ -86,7 +86,7 @@ resolve_main(int ac, char **av)
 			exit(1);
 		}
     	}
-	unless (opts.mergeprog) opts.mergeprog = "merge";
+	unless (opts.mergeprog) opts.mergeprog = "bkmerge";
 	if ((av[optind] != 0) && isdir(av[optind])) chdir(av[optind]);
 
 	/* XXX - needs to be ifdefed for !Unix */
@@ -107,6 +107,14 @@ resolve_main(int ac, char **av)
 	}
 	unless (comment || opts.comment) {
 		opts.comment = "Merge";
+	}
+
+	unless (opts.quiet) {
+		fprintf(stderr, "Checking the state of the local tree...\n");
+	}
+	unless (sys("bk -r check -a", &opts) == 0) {
+		fprintf(stderr, "Check failed.  Resolve not even started.\n");
+		exit(1);
 	}
 
 	c = passes(&opts);
@@ -860,7 +868,7 @@ rename_delta(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 	sprintf(buf, "bk delta %s -y'Merge rename: %s -> %s' %s",
 	    rs->opts->log ? "" : "-q", d->pathname, t, sfile);
 	free(t);
-	system(buf);
+	sys(buf, rs->opts);
 }
 
 /*
@@ -899,7 +907,7 @@ type_delta(resolve *rs,
 	edit_tip(rs, sfile, o, rfile, loser);
 	if (S_ISREG(n->mode)) {
 		sprintf(buf, "bk get -kpq -r%s %s > %s", n->rev, sfile, g);
-		if (system(buf)) {
+		if (sys(buf, rs->opts)) {
 			fprintf(stderr, "%s failed\n", buf);
 			exit(1);
 		}
@@ -918,7 +926,7 @@ type_delta(resolve *rs,
 	free(g);
 	sprintf(buf, "bk delta -q -y'Merge file types: %s -> %s' %s",
 	    mode2FileType(o->mode), mode2FileType(n->mode), sfile);
-	if (system(buf)) {
+	if (sys(buf, rs->opts)) {
 		fprintf(stderr, "%s failed\n", buf);
 		exit(1);
 	}
@@ -954,7 +962,7 @@ mode_delta(resolve *rs, char *sfile, delta *d, mode_t m, char *rfile, int which)
 	edit_tip(rs, sfile, d, rfile, which);
 	sprintf(buf, "bk delta %s -y'Change mode to %s' -M%s %s",
 	    rs->opts->log ? "" : "-q", a, a, sfile);
-	if (system(buf)) {
+	if (sys(buf, rs->opts)) {
 		fprintf(stderr, "%s failed\n", buf);
 		exit(1);
 	}
@@ -991,7 +999,7 @@ flags_delta(resolve *rs,
 	}
 	edit_tip(rs, sfile, d, rfile, which);
 	sprintf(buf, "bk clean %s", sfile);
-	system(buf);
+	sys(buf, rs->opts);
 	sprintf(buf, "bk admin -r%s", d->rev);
 #define	add(s)		{ strcat(buf, " -f"); strcat(buf, s); }
 #define	del(s)		{ strcat(buf, " -F"); strcat(buf, s); }
@@ -1005,7 +1013,7 @@ flags_delta(resolve *rs,
 	strcat(buf, sfile);
 	if (rs->opts->debug) fprintf(stderr, "cmd: [%s]\n", buf);
 
-	if (system(buf)) {
+	if (sys(buf, rs->opts)) {
 		fprintf(stderr, "%s failed\n", buf);
 		exit(1);
 	}
@@ -1044,7 +1052,7 @@ edit_tip(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 	}
 	sprintf(buf, "bk get -e%s%s -r%s %s",
 	    which < 0 ? "g" : "", rs->opts->log ? "" : "q", d->rev, sfile);
-	system(buf);
+	sys(buf, rs->opts);
 	if (which) {
 		t = strrchr(sfile, '/');
 		assert(t && (t[1] == 's'));
@@ -1294,7 +1302,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	 * out of citool, it exits !0.
 	 */
 	unless (opts->textOnly) {
-		int	ret = system("bk citool -R");
+		int	ret = sys("bk citool -R", opts);
 
 		if (ret) {
 			fprintf(stderr, "citool failed, aborting.\n");
@@ -1538,7 +1546,7 @@ automerge(resolve *rs, names *n)
 	 */
 	sprintf(cmd, "%s/%s %s %s %s %s", bin,
 	    rs->opts->mergeprog, n->local, n->gca, n->remote, rs->s->gfile);
-	ret = system(cmd) & 0xffff;
+	ret = sys(cmd, rs->opts) & 0xffff;
 	if (do_free) {
 		unlink(tmp.local);
 		unlink(tmp.gca);
@@ -1725,12 +1733,12 @@ backup(opts *opts, char *sfile, MDBM *backups, FILE *save)
 	t[1] = 'b';			/* b is for backup */
 	if (exists(buf) && !mdbm_fetch_str(backups, buf)) {
 		fprintf(stderr, "Will not overwrite existing backup %s\n", buf);
-		restore(save);
+		restore(save, opts);
 		return (1);
 	}
 	if (rename(sfile, buf)) {
 		fprintf(stderr, "Unable to rename(%s->%s)\n", sfile, buf);
-		restore(save);
+		restore(save, opts);
 		return (1);
 	}
 	mdbm_store_str(backups, buf, "", MDBM_INSERT);
@@ -1756,7 +1764,6 @@ pass4_apply(opts *opts)
 	char	buf[MAXPATH];
 	char	key[MAXKEY];
 	char	orig[MAXPATH];
-	void	restore(FILE *f);
 	void	unbackup(FILE *f);
 	int	create;
 	MDBM	*backups = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
@@ -1796,13 +1803,13 @@ pass4_apply(opts *opts)
 		unless (r = sccs_init(buf, INIT, opts->resync_proj)) {
 			fprintf(stderr,
 			    "resolve: can't init %s - abort.\n", buf);
-			restore(save);
+			restore(save, opts);
 			unlink(orig);
 			fprintf(stderr, "resolve: no files were applied.\n");
 			exit(1);
 		}
 		if (sccs_admin(r, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0, 0)) {
-			restore(save);
+			restore(save, opts);
 			unlink(orig);
 			exit(1);	/* ??? */
 		}
@@ -1814,7 +1821,7 @@ pass4_apply(opts *opts)
 			if (IS_EDITED(l) || IS_LOCKED(l)) {
 				fprintf(stderr,
 				    "Will not overwrite edited %s\n", l->gfile);
-				restore(save);
+				restore(save, opts);
 				unlink(orig);
 				exit(1);
 			}
@@ -1856,7 +1863,7 @@ pass4_apply(opts *opts)
 			if (exists(key) && !mdbm_fetch_str(backups, key)) {
 				fprintf(stderr,
 				"Will not overwrite existing BACKUP %s\n", key);
-				restore(save);
+				restore(save, opts);
 				unlink(orig);
 				exit(1);
 			}
@@ -1920,7 +1927,7 @@ pass4_apply(opts *opts)
 		fprintf(stderr,
 		    "resolve: running consistency check, please wait...\n");
 	}
-	unless (system("bk sfiles | bk check -a -") == 0) {
+	unless (sys("bk -r check -a", opts) == 0) {
 		fprintf(stderr, "Check failed.  Resolve not completed.\n");
 		fclose(save);
 		unlink(orig);
@@ -1961,7 +1968,7 @@ unbackup(FILE *f)
  * Go through and put everything back.
  */
 private	void
-restore(FILE *f)
+restore(FILE *f, opts *o)
 {
 	char	*t;
 	char	from[MAXPATH];
@@ -1994,7 +2001,7 @@ restore(FILE *f)
 		fprintf(stderr,
 "Your repository should be back to where it was before the resolve started.\n\
 We are running a consistency check to verify this.\n");
-		system("bk -r check -a");
+		sys("bk -r check -a", o);
 	} else {
 		fprintf(stderr,
 "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\
@@ -2062,7 +2069,7 @@ resolve_cleanup(opts *opts, int what)
 		char cmd[1024];
 		assert(exists("RESYNC"));
 		sprintf(cmd, "%s -rf RESYNC", RM);
-		system(cmd);
+		sys(cmd, opts);
 	} else {
 		fprintf(stderr, "resolve: RESYNC directory left intact.\n");
 	}
@@ -2082,4 +2089,15 @@ resolve_cleanup(opts *opts, int what)
 	repository_wrunlock();
 	repository_lockers(0);
 	exit(0);
+}
+
+int
+sys(char *cmd, opts *o)
+{
+	int	ret;
+
+	if (o->debug) fprintf(stderr, "SYS %s = ", cmd);
+	ret = system(cmd);
+	if (o->debug) fprintf(stderr, "%d\n", ret);
+	return (ret);
 }

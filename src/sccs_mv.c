@@ -199,7 +199,11 @@ again:	sprintf(path, "%s/%s", p->root, IDCACHE_LOCK);
 		return (1);
 	}
 	mdbm_store_str(idDB, key, new, MDBM_REPLACE);
-	f = fopen(path, "w");
+	unless (f = fopen(path, "w")) {
+		perror(path);
+		mdbm_close(idDB);
+		return (1);
+	}
 	fprintf(f,
 "# This is a BitKeeper cache file.\n\
 # If you suspect that the file is corrupted, simply remove it and \n\

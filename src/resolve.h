@@ -148,3 +148,4 @@ int	resolve_flags(resolve *rs);
 void	saveKey(opts *opts, char *key, char *file);
 int	slotTaken(opts *opts, char *slot);
 void	do_delta(opts *opts, sccs *s);
+int	sys(char *cmd, opts *o);

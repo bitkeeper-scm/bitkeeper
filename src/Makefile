@@ -43,7 +43,7 @@ ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
 	  zlib/uncompr.o zlib/zutil.o
 SCRIPTS	= rcs2sccs bk.script import resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 \
-	  renametool mkdiffs lodset merge gzip_uuwrap ungzip_uuwrap
+	  renametool mkdiffs lodset bkmerge gzip_uuwrap ungzip_uuwrap
 LOCALSCR= testfast mkindex build crank
 PSCR	= t/doit
 LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a
@@ -78,7 +78,7 @@ SCRSRCS	= rcs2sccs.perl testfast.perl bk.sh import.sh clone.sh \
 	  unuuwrap.sh port/unix_platform.sh port/unix_platform.tcl \
 	  port/unix_platform.perl pmerge.perl gui/csettool.tcl \
 	  port/win32_platform.perl port/win32_platform.tcl \
-	  port/win32_platform.sh gui/renametool.tcl merge.sh \
+	  port/win32_platform.sh gui/renametool.tcl bkmerge.sh \
 	  gzip_uuwrap.sh ungzip_uuwrap.sh resync.sh
 MISC	= bkhelp.doc config.h.in configure substvars.in bitkeeper.config \
 	  t/doit.sh
@@ -318,11 +318,11 @@ mkdiffs: mkdiffs.perl port/unix_platform.perl substvars
 	chmod +x mkdiffs.T
 	mv -f mkdiffs.T mkdiffs
 
-merge: merge.sh
-	rm -f merge
-	cp merge.sh merge
-	chmod +x merge
-	chmod -w merge
+bkmerge: bkmerge.sh
+	rm -f bkmerge
+	cp bkmerge.sh bkmerge
+	chmod +x bkmerge
+	chmod -w bkmerge
 
 resync: resync.sh
 	rm -f resync

@@ -525,6 +525,8 @@ platformInit(char **av)
 	static	char buf[MAXPATH];
 	char	link[MAXPATH];
 	int	add2path = 1;
+	int	n;
+	int	flags = SILENT;	/* for debugging */
 
 	if (bin) return;
 #ifdef	WIN32
@@ -541,10 +543,16 @@ platformInit(char **av)
 	 * points to the path.
 	 * Otherwise, set the bin dir to whereever we found the program.
 	 */
-	if (IsFullPath(av[0])) {
+	if (IsFullPath(av[0]) && executable(av[0])) {
+		verbose((stderr, "USING fullpath %s\n", av[0]));
 		strcpy(buf, av[0]);
 gotit:		
-		if (readlink(buf, link, sizeof(link)) != -1) strcpy(buf, link);
+		if ((n = readlink(buf, link, sizeof(link))) != -1) {
+			add2path = 1;
+			link[n] = 0;
+			verbose((stderr, "LINK %s->%s\n", buf, link));
+			strcpy(buf, link);
+		}
 		t = strrchr(buf, '/');
 		*t = 0;
 		bin = buf; /* buf is static */
@@ -563,6 +571,7 @@ gotit:
 
 	/* partially specified paths are respected */
 	if (t = strchr(av[0], '/')) {
+		verbose((stderr, "USING partial %s\n", av[0]));
 		getcwd(buf, sizeof(buf));
 		strcat(buf, "/");
 		strcat(buf, av[0]);
@@ -572,7 +581,8 @@ gotit:
 	for (t = s = p; t = strchr(s, ':'); s = t + 1) {
 		*t = 0;
 		sprintf(buf, "%s/%s", s, av[0]);
-		if (exists(buf)) {
+		if (executable(buf)) {
+		verbose((stderr, "USING PATH %s\n", buf));
 			unless (IsFullPath(s)) {
 				getcwd(buf, sizeof(buf));
 				strcat(buf, "/");

@@ -95,7 +95,7 @@ do_diff(resolve *rs, char *left, char *right)
 	char	cmd[MAXPATH*3];
 
 	sprintf(cmd, "bk diff %s %s | %s", left, right, rs->pager);
-	system(cmd);
+	sys(cmd, rs->opts);
 }
 
 int
@@ -109,7 +109,7 @@ do_sdiff(resolve *rs, char *left, char *right)
 	if (p) pclose(p);
 
 	sprintf(cmd, "bk sdiff -w %d %s %s | %s", cols, left, right, rs->pager);
-	system(cmd);
+	sys(cmd, rs->opts);
 }
 
 int	
@@ -185,7 +185,7 @@ more(resolve *rs, char *file)
 	char	cmd[MAXPATH];
 
 	sprintf(cmd, "%s %s", rs->pager, file);
-	system(cmd);
+	sys(cmd, rs->opts);
 	return (0);
 }
 
@@ -225,7 +225,7 @@ res_vr(resolve *rs)
 
 	fprintf(stderr, "--- Viewing %s ---\n", rs->s->gfile);
 	sprintf(cmd, "bk get -qp %s | %s", rs->s->gfile, rs->pager);
-	system(cmd);
+	sys(cmd, rs->opts);
 	return (0);
 }
 
@@ -264,7 +264,7 @@ prs_common(resolve *rs, sccs *s, char *a, char *b)
 		return;
 	}
 	sprintf(cmd, "bk prs -r%s %s | %s", list, rs->s->gfile, rs->pager);
-	system(cmd);
+	sys(cmd, rs->opts);
 	return (0);
 }
 
@@ -503,7 +503,7 @@ sc_ml(resolve *rs)
 	sprintf(cmd, "cp -p %s/%s BitKeeper/RENAMES/SCCS/s.%d",
 	    RESYNC2ROOT, rs->dname, filenum);
 	if (rs->opts->debug) fprintf(stderr, "%s\n", cmd);
-	if (system(cmd)) {
+	if (sys(cmd, rs->opts)) {
 		perror(cmd);
 		exit(1);
 	}
@@ -542,13 +542,13 @@ sc_remove(resolve *rs)
 	sprintf(cmd, "cp -p %s/%s BitKeeper/RENAMES/SCCS/s.%d",
 	    RESYNC2ROOT, ((sccs*)rs->opaque)->sfile, filenum);
 	if (rs->opts->debug) fprintf(stderr, "%s\n", cmd);
-	if (system(cmd)) {
+	if (sys(cmd, rs->opts)) {
 		perror(cmd);
 		exit(1);
 	}
 	sprintf(cmd, "bk rm BitKeeper/RENAMES/SCCS/s.%d", filenum);
 	if (rs->opts->debug) fprintf(stderr, "%s\n", cmd);
-	if (system(cmd)) {
+	if (sys(cmd, rs->opts)) {
 		perror(cmd);
 		exit(1);
 	}

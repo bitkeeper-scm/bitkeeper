@@ -50,7 +50,7 @@ c_dgl(resolve *rs)
 	char	cmd[MAXPATH*2];
 
 	sprintf(cmd, "bk diff %s %s | %s", n->gca, n->local, rs->pager);
-	system(cmd);
+	sys(cmd, rs->opts);
 	return (0);
 }
 
@@ -61,7 +61,7 @@ c_dgr(resolve *rs)
 	char	cmd[MAXPATH*2];
 
 	sprintf(cmd, "bk diff %s %s | %s", n->gca, n->remote, rs->pager);
-	system(cmd);
+	sys(cmd, rs->opts);
 	return (0);
 }
 
@@ -72,7 +72,7 @@ c_dlm(resolve *rs)
 	char	cmd[MAXPATH*2];
 
 	sprintf(cmd, "bk diff %s %s | %s", n->local, rs->s->gfile, rs->pager);
-	system(cmd);
+	sys(cmd, rs->opts);
 	return (0);
 }
 
@@ -83,7 +83,7 @@ c_drm(resolve *rs)
 	char	cmd[MAXPATH*2];
 
 	sprintf(cmd, "bk diff %s %s | %s", n->remote, rs->s->gfile, rs->pager);
-	system(cmd);
+	sys(cmd, rs->opts);
 	return (0);
 }
 
@@ -93,7 +93,7 @@ c_em(resolve *rs)
 	char	cmd[MAXPATH*2];
 
 	sprintf(cmd, "%s %s", rs->editor, rs->s->gfile);
-	system(cmd);
+	sys(cmd, rs->opts);
 	return (0);
 }
 
@@ -133,12 +133,16 @@ c_merge(resolve *rs)
 
 	sprintf(cmd, "bk %s %s %s %s %s",
 	    rs->opts->mergeprog, n->local, n->gca, n->remote, rs->s->gfile);
-	ret = system(cmd) & 0xffff;
+	ret = sys(cmd, rs->opts) & 0xffff;
+	/*
+	 * We need to restart even if there are errors, otherwise we think
+	 * the file is not writable.
+	 */
+	sccs_restart(rs->s);
 	if (ret == 0) {
 		unless (rs->opts->quiet) {
 			fprintf(stderr, "merge of %s OK\n", rs->s->gfile);
 		}
-		sccs_restart(rs->s);
 		return (rs->opts->advance);
 	}
 	if (ret == 0xff00) {
