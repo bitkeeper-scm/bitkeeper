@@ -1,5 +1,6 @@
 #!/bin/sh
 
+USER=`bk getuser`
 exec > /tmp/LOG-$USER 2>&1
 set -x
 
@@ -7,7 +8,6 @@ set -x
 cd ..
 TREE=`pwd`
 TREE_HOST=work
-USER=`bk getuser`
 REPO=`basename $TREE`-$USER
 cd /tmp || exit 1
 rm -rf $REPO
