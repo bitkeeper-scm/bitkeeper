@@ -8,7 +8,7 @@ case "X`uname -s`" in
     XWindows_NT|XCYGWIN_NT*)
     		exec sed -es,@FEATURE_SH@,bash,g \
 			 -es,@FAST_SH@,/bin/sh,g \
-			 -es,@TEST_SH@,bash,g "$@"
+			 -es,@TEST_SH@,/bin/sh,g "$@"
 		;;
     XDarwin)	exec sed -es,@FEATURE_SH@,/bin/sh,g \
 			-es,@FAST_SH@,/bin/sh,g \

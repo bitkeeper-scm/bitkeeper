@@ -68,7 +68,7 @@ cygwin_env()
 {
 	unset MAKEFLAGS CFLAGS LDFALGS LD;
 	CC=gcc;
-	MAKE=make;
+	MAKE="make -e";
 }
 
 test "$CC" || CC=gcc
