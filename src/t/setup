@@ -91,6 +91,10 @@ checkfiles() {
         }
 }
 
+verbose() {
+	test -z "$Q" && echo ${1+"$@"}
+}
+
 cd "$BK_REGRESSION" || exit 1
 
 # We need this because ksh on Solaris override $PATH from .profile
