@@ -3790,14 +3790,14 @@ filter(char *buf)
 	char *h;
 
 	r = pref_parse(buf);
-	if ((r->user) && !streq(r->user, sccs_getuser())) {
-nup:		remote_free(r);
+	if ((r->user) && !match_one(sccs_getuser(), r->user)) {
+no_match:		remote_free(r);
 		return (0);
 	}
 
 	if (r->host) {
 		h = sccs_gethost();
-		unless (h && streq(h, r->host)) goto nup;
+		unless (h && match_one(h, r->host)) goto no_match;
 	}
 
 	if (r->path) {
@@ -3808,7 +3808,8 @@ nup:		remote_free(r);
 			free(bk_proj->root);
 			bk_proj->root = strdup(t);
 		}
-		unless (patheq(r->path, bk_proj->root)) goto nup;
+		/* XXX TODO: win32 path matching should be case in sensitive */
+		unless (match_one(bk_proj->root, r->path)) goto no_match;
 	}
 
 	remote_free(r);
