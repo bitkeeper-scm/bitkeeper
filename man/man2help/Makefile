@@ -12,13 +12,13 @@ helptxt: FRC
 
 pages: ../bk-macros man2help.pl
 	@bk get -STq ../man1
-	perl ./man2help.pl -debug ../bk-macros bk- `ls ../man1/*.1`
+	@perl -Ssw ./man2help.pl -debug ../bk-macros bk- `ls ../man1/*.1`
 
 helptxt2:
 	@cat -- *.fmt > helptxt2
 
 summaries: helptxt2 ../bk-macros help2sum.pl
-	@perl ./help2sum.pl helptxt2
+	@perl -Ssw ./help2sum.pl helptxt2
 	@for i in $(SUM); \
 	do	cat $$i.done; \
 	done > helptxt
@@ -26,7 +26,7 @@ summaries: helptxt2 ../bk-macros help2sum.pl
 	@/bin/rm -f helptxt2
 	@grep '^help://' helptxt | sort > ALL
 	@grep '^help://' helptxt | sort -u > UNIQUE
-	#@cmp -s ALL UNIQUE || { echo Not unique; diff ALL UNIQUE; }
+	@cmp -s ALL UNIQUE || { echo Not unique; diff ALL UNIQUE; }
 
 install:
 	@$(MAKE) clean
