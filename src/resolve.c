@@ -2403,7 +2403,7 @@ copyAndGet(char *from, char *to, project *proj)
 	}
 	s = sccs_init(to, INIT_SAVEPROJ, proj);
 	assert(s && s->tree);
-	sccs_get(s, 0, 0, 0, 0, SILENT, "-");
+	sccs_get(s, 0, 0, 0, 0, SILENT|GET_EXPAND, "-");
 	sccs_free(s);
 	return (0);
 }

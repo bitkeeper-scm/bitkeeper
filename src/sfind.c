@@ -11,7 +11,7 @@ WHATSTR("@(#)%K%");
 
 
 private	char *sfind_usage = "\n\
-usage: sfiles [-aACeEgvS] [-s<select_sets>] [-o<file>] [directories]\n\n\
+usage: sfind [-aACeEgvS] [-s<select_sets>] [-o<file>] [directories]\n\n\
     -a		examine all files, even if listed in BitKeeper/etc/ignore\n\
     -A		for used with -s,,p, list all revs, not just the tip\n\
     -C		for used with -s,,p, list pending files in file@rev format\n\
