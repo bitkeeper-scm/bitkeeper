@@ -21,6 +21,7 @@ usage: sfind [-aACeEgvS] [-s<select_sets>] [-o<file>] [directories]\n\n\
     -v		verbose mode: annotate the output with state markers\n\
     -o<file>	send the file list to <file>, and progress info to stdout\n\
     -S		summarize output\n\
+    -U		list user file only (hide BitKeeper administrative file)\n\
 ";
 
 typedef struct {
@@ -44,6 +45,7 @@ typedef struct {
 	u32	progress:1;		/* if set, send progress to stdout */
 	FILE	*out;			/* send output here */
 	u32     Sflg:1;     		/* summarize output  	*/
+	u32     Uflg:1;     		/* list user file only 	*/
 } options;
 
 typedef struct _q_item {
@@ -188,7 +190,7 @@ usage:		fprintf(stderr, "%s", sfind_usage);
 		return (0);
 	}                
 
-	while ((c = getopt(ac, av, "aAcCdDeEgklo:pPrRs:Suvx")) != -1) {
+	while ((c = getopt(ac, av, "aAcCdDeEgklo:pPrRs:SuUvx")) != -1) {
 		switch (c) {
 		    case 'a':	opts.aflg = 1; break;
 		    case 'A':	opts.s3_pflg = opts.Aflg = 1; break;
@@ -224,6 +226,7 @@ usage:		fprintf(stderr, "%s", sfind_usage);
 				break;
 		    case 'S':	opts.Sflg = 1; break; /* summarize output */	
 		    case 'u':	opts.s1_uflg = 1; break;
+		    case 'U':	opts.Uflg = 1; break;
 		    case 'x':	opts.s1_xflg = opts.s1_jflg = 1; break;
 		    default: 	goto usage;
 		}
@@ -712,6 +715,12 @@ print_it(char state[5], char *file, char *rev)
 	char *sfile, *gfile;
 
 	gfile =  strneq("./",  file, 2) ? &file[2] : file;
+	if (opts.Uflg) {
+		if (streq(gfile, "ChangeSet") ||
+		    (strlen(gfile) > 10) && strneq(gfile, "BitKeeper/", 10)) {
+			return;
+		}
+	}
 	if (opts.show_markers) fprintf(opts.out, "%s ", state);
 	if (opts.gflg || (state[CSTATE] == 'x') || (state[CSTATE] == 'j'))  {
 		fputs(gfile, opts.out);	/* print gfile name */

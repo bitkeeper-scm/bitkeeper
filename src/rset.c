@@ -296,7 +296,7 @@ parse_rev(sccs *s, char *args, char **rev1, char **rev2)
 {
 	char *p;
 
-	unless (args) return;
+	unless (args) return (1);
 	p = strchr(args, ',');
 	if (p) {
 		*rev1 = args;
@@ -351,7 +351,7 @@ rset_main(int ac, char **av)
 				break;
 		default:
 usage:				fprintf(stderr,
-				"Usage: rset [-a] [-h] [-H] -rrev1[,rev2]\n");
+		    "Usage: rset [-a] [-h] [-H] [-l<rev>|-r[<rev1>,]<rev2>]\n");
 				if (s) sccs_close(s);
 				return (1);
 		}
