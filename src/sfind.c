@@ -51,7 +51,8 @@ int	caches(const char *filename, const struct stat *sb, int flag);
 char	*name(char *);
 sccs	*cset;
 int	lftw(const char *dir,
-	    int(*func)(const char *file, struct stat *sb, int flag), int depth);
+	     int(*func)(const char *file, const struct stat *sb, int flag),
+	     int depth);
 
 int
 main(int ac, char **av)
@@ -475,7 +476,7 @@ _ftw_get_flag(const char *dir, struct stat *sb)
  */
 int
 lftw(const char *dir,
-	int(*func)(const char *file, struct stat *sb, int flag),
+	int (*func)(const char *file, const struct stat *sb, int flag),
 	int depth)
 {
 	DIR	*d;

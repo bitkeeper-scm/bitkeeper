@@ -276,102 +276,39 @@ _receive() {
 
 # Clone a repository, usage "clone from to"
 _clone() {
-	V=-vv
-	while getopts qv opt
-	do	case "$opt" in
-		    v)	V=${V}v;;
-		    q)	V=;;
-		esac
-	done
-	shift `expr $OPTIND - 1`
-
-	USAGE="usage: bk clone [opts] from to"
-	if [ "X$1" = X -o "X$2" = X ]; then echo "$USAGE"; exit 1; fi
-
-	# Really half assed remote support.  We should have a mode in
-	# resync which shleps over the data as a cpio archive and unpacks
-	# it if possible.
-	case X"$1" in
-	    *:*) exec ${BIN}resync $V -ap $1 $2;;
-	esac
-	case X"$2" in
-	    *:*) exec ${BIN}resync $V -ap $1 $2;;
-	esac
-
-	if [ "X$1" = X -o ! -d "$1" ]
-	then	echo "Not a directory: $1"
-		echo "$USAGE"
-		exit 1
+	if [ -d $to ]
+	then echo "clone: warning: $to exists" >&2
 	fi
-	if [ "X$2" = X ]; then echo "$USAGE"; exit 1; fi
-	if [ -d "$2" ]
-	then	echo "$1 exists already."
-		echo "$USAGE"
-		exit 1
-	fi
-	mkdir -p $2 || exit 1
-	# Handle all those relative paths nicely
-	HERE=`pwd`
-	cd $2
-	THERE=`pwd`
-	cd $HERE
-	cd $1
-	PARENT="`${BIN}gethost`:`pwd`"
-
-	# If we got lucky, punk, then do it.
-	if [ `_dirty` = NO ]
-	then	if [ X$V != X ]
-		then	echo $N Fast clone in progress...$NL
-		fi
-		find . -name 's.*' -print | grep 'SCCS/s\.' | cpio -pdm $THERE
-		cd $THERE
-		if [ X$V != X ]
-		then	echo $N Running consistency check...$NL
-		fi
-		bk -r check -a > ${TMP}check$$
-		if [ -s ${TMP}check$$ ]
-		then	echo ""
-			echo "bk clone failed, the new repository is corrupted:"
-			cat ${TMP}check$$
-			echo ""
-			echo "Please remove the repository and try again"
-			exit 1
-		fi
-		if [ X$V != X ]; then echo OK, clone completed.; fi
-		echo "$PARENT" > "$THERE/BitKeeper/log/parent"
-		exit 0
-	fi
-
-	# Gotta do it the hard way
-	if [ X$V != X ]
-	then	echo Slow clone because of pending changes...
-	fi
-	${BIN}resync -a $V . $THERE
-	X=$?
-	echo "$PARENT" > "$THERE/BitKeeper/log/parent"
-	exit $X
+	exec ${BIN}resync -ap "$@"
 }
 
+# Manually set the parent pointer for a repository.
+# resync is used mainly for URL canonicalization.
 _parent() {
 	_cd2root
-	if [ ! -d BitKeeper/log ]
-	then	echo No BitKeeper/log directory, failed to set parent.
-		exit 1
-	fi
-	if [ "X$1" = X ]
-	then	echo "usage: bk parent path/to/parent"
-		exit 1
-	fi
+	exec ${BIN}resync -npq $1 .
+}
+
+# Pull: update from parent repository.  You can feed this any resync
+# switches you like.  Does not auto-resolve.
+_pull() {
+	_cd2root
 	if [ -f BitKeeper/log/parent ]
-	then	OLD=`cat BitKeeper/log/parent`
-		if [ "$OLD" = "$1" ]
-		then	echo Parent is already $OLD
-			exit 0
-		fi
-		echo Changing parent from $OLD to $1
-	else	echo Setting parent to $1
+	then	exec ${BIN}resync "$@" `cat BitKeeper/log/parent` .
+	else	echo "No parent repository, cannot pull" >&2
+		exit 1
 	fi
-	echo "$1" > BitKeeper/log/parent
+}
+
+# Push: send changes back to parent.  This does auto-resolve, which
+# means conflicts are not allowed.
+_push() {
+	_cd2root
+	if [ -f BitKeeper/log/parent ]
+	then	exec ${BIN}resync -a "$@" . `cat BitKeeper/log/parent`
+	else	echo "No parent repository, cannot push" >&2
+		exit 1
+	fi
 }
 
 _save() {
@@ -396,21 +333,6 @@ _save() {
 	fi
 	${BIN}cset -m$REV $V > $OUTPUT
 	exit $?
-}
-
-# Counts on being in the root, only cares about uncommited changes.
-_dirty() {
-	if [ -d RESYNC/BitKeeper -o -d RESOLVE/BitKeeper ]
-	then	echo YES
-		return
-	fi
-	${BIN}sfiles -C > ${TMP}dirty$$
-	if [ -s ${TMP}dirty$$ ]
-	then	echo YES
-		${RM} -f ${TMP}dirty$$
-		return
-	fi
-	echo NO
 }
 
 # Show repository status
