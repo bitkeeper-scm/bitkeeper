@@ -12,6 +12,7 @@ usage: check [-acfRv]\n\n\
     -a		warn if the files listed are a subset of the repository\n\
     -c		check file checksum\n\
     -f		fix any fixable errors\n\
+    -p		list deltas which are in more than one cset\n\
     -R		only do checks which make sense in the RESYNC dir\n\
     -v		list each file which is OK\n\n";
 
@@ -39,6 +40,7 @@ private char	csetFile[] = CHANGESET;
 private int	flags = SILENT|INIT_SAVEPROJ|INIT_NOCKSUM;
 private	FILE	*idcache;
 private	int	poly;
+private	int	polyList;
 
 #define	POLY	"BitKeeper/etc/SCCS/x.poly"
 #define	CTMP	"BitKeeper/tmp/ChangeSet-all"
@@ -80,11 +82,12 @@ usage:		fprintf(stderr, "%s", check_help);
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "acfRv")) != -1) {
+	while ((c = getopt(ac, av, "acfpRv")) != -1) {
 		switch (c) {
 		    case 'a': all++; break;
 		    case 'f': fix++; break;
 		    case 'c': flags &= ~INIT_NOCKSUM; break;
+		    case 'p': polyList++; break;
 		    case 'R': resync++; break;
 		    case 'v': verbose++; break;
 		    default:
@@ -548,9 +551,11 @@ markCset(sccs *s, delta *d)
 	do {
 		if (d->flags & D_SET) {
 			poly = 1;
-			fprintf(stderr,
-				"check: %s: %s in more than one cset\n",
-				s->gfile, d->rev);
+			if (polyList) {
+				fprintf(stderr,
+				    "check: %s: %s in more than one cset\n",
+				    s->gfile, d->rev);
+			}
 		}
 		d->flags |= D_SET;
 		if (d->merge) {
