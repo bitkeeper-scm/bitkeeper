@@ -17,17 +17,15 @@ private int append(char *, char *);
 private int parkfile_header(sccs *, delta *, char *, FILE *);
 private	char *name2tname(char *);
 private char *tname2sname(char *);
-private char **getParkComment(int *err);
+char **getParkComment(int *err);
 
 private project *parkdir_proj = 0;
-private jmp_buf jmp;
-private void    abort_park(int dummy) { longjmp(jmp, 1); }
 
 private void
 usage1(void)
 {
 	fprintf(stderr, "Usage: bk park [-a] [-f] [-l] [-q] [-u]"
-						    "[-p num] [-y comment]\n");
+						    "[-p <num>] [-y<comment>]\n");
 }
 
 private void
@@ -246,7 +244,10 @@ err:		if (s) sccs_free(s);
 	}
 
 	if (ask && !comments)  comments = getParkComment(&err);
-	if (err) return (1);
+	if (err) {
+		sys(RM, "-rf", PARKDIR, SYS);
+		return (1);
+	}
 
 	/*
 	 * Make a list of file we want to feed to sfio
@@ -359,11 +360,30 @@ done:	unlink(sfio_list);
 	return (0);
 }
 
+private void
+printComments(char *parkfile)
+{
+	FILE	*f;
+	char	buf[MAXLINE];
+
+	f = fopen(parkfile, "rb");
+	assert(f);
+	while (fnext(buf, f)) {
+		chomp(buf);
+		if (streq("#", buf)) break; /* end of header */
+		if (strneq("# COMMENT: ", buf, 11)) {
+			printf("  %s\n", &buf[11]);
+		}
+	}
+	fclose(f);
+}
+
 private int
 listParkFile()
 {
 	struct	dirent *e;
 	DIR	*dh;
+	char	parkfile[MAXPATH];
 
 	dh = opendir(BKTMP);
 	unless (dh) return (0);
@@ -371,6 +391,8 @@ listParkFile()
 		if ((strlen(e->d_name) > 9) &&
 		    strneq(e->d_name, "parkfile_", 9)) {
 			printf("%s\n", e->d_name);
+			sprintf(parkfile, "%s/%s", BKTMP, e->d_name);
+			printComments(parkfile);
 		}
 	}
 	closedir(dh);
@@ -1356,32 +1378,4 @@ append(char *from, char *to)
 	if (close(fd)) perror(to);
 	mclose(m);
 	return (rc);
-}
-
-private char **
-getParkComment(int *err)
-{
-        char    buf2[1024];
-	char	**comments = NULL;
-	handler old;
-
-        fprintf(stderr,
-            "End comments with \".\" by itself, "
-            "blank line, or EOF.\n");
-        fprintf(stderr, "parkfile>>  ");
-        if (setjmp(jmp)) {
-                fprintf(stderr,
-                    "\nPark aborted due to interrupt.\n");
-                sig_catch(old);
-		*err = 1;
-		return (NULL);
-        }
-        old = sig_catch((handler)abort_park);
-        while (getline(0, buf2, sizeof(buf2)) > 0) {
-                if ((buf2[0] == 0) || streq(buf2, "."))
-                        break;
-                comments = addLine(comments, strdup(buf2));
-        	fprintf(stderr, "parkfile>>  ");
-        }
-        return (comments);
 }
