@@ -4,7 +4,7 @@
 .SH NAME
 bk sfiles \- generates lists of revision control files
 .SH SYNOPSIS
-.Bc sfiles [\-acdDeEgijlrSuUvx] [
+.Bc sfiles [\-acdDeEgijlrSuUvx] [\-sn] [
 .OPTreq \-o file
 .Bc ] [
 .OPTopt \-p A|C
@@ -91,6 +91,9 @@ that implies
 .BR \-pC ,
 and 
 lists all revisions, not just the tip.
+.tp
+.B \-sn
+list unchanged files.  
 .tp
 .B \-S
 produce a summary listing only, typically combined with 
