@@ -227,15 +227,10 @@ clean $HERE/copy/src
 cd $HERE/copy/src
 get $Q -p a.c >ref.c
 bk mv a.c e.c
-bk resync $Q $HERE/project $HERE/copy 2> /dev/null
-bk resolve $Q -f - << EOF > /dev/null 2>&1
-l
-m
-C
-EOF
-get $Q e.c
-cmp -s e.c ref.c
+bk resync $Q $HERE/project $HERE/copy  > resync.out 2>&1
+grep -q "has uncommitted changes" resync.out
 if [ $? -ne 0 ]; then echo failed; else echo OK; fi;
+rm -f resync.out
 
 echo $N Check resync w/ pending rename in source tree ..........$NL
 cd $HERE/project/src

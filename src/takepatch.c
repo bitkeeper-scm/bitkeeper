@@ -192,7 +192,7 @@ extractPatch(char *name, FILE *p, int flags, int fast, char *root)
 	sccs	*perfile = 0;
 	int	newFile = 0;
 	char	*gfile;
-	int	nfound = 0;
+	int	nfound = 0, rc;
 	static	int rebuilt = 0;	/* static - do it once only */
 	char	buf[1200];
 
@@ -248,6 +248,10 @@ again:	s = sccs_keyinit(buf, INIT_NOCKSUM, idDB);
 			SHOUT();
 			fprintf(stderr,
 			   "takepatch: can't find key '%s' in id cache\n", buf);
+cleanup:			if (perfile) free(perfile);
+			free(gfile);
+			free(name);
+			if (s) sccs_free(s);
 			cleanup(CLEAN_RESYNC);
 		}
 	}
@@ -271,7 +275,7 @@ again:	s = sccs_keyinit(buf, INIT_NOCKSUM, idDB);
 				fprintf(stderr,
 				    "takepatch: %s is edited and modified\n",
 				    name);
-				cleanup(CLEAN_RESYNC);
+				goto cleanup;
 			} else {
 				sccs_restart(s);
 			}
@@ -280,21 +284,21 @@ again:	s = sccs_keyinit(buf, INIT_NOCKSUM, idDB);
 			SHOUT();
 			fprintf(stderr, 
 			    "takepatch: %s is locked w/o gfile?\n", s->sfile);
-			cleanup(CLEAN_RESYNC);
+			goto cleanup;
 		}
 		unless (tmp = sccs_findKey(s, buf)) {
 			SHOUT();
 			fprintf(stderr,
 			    "takepatch: can't find root delta '%s' in %s\n",
 			    buf, name);
-			cleanup(CLEAN_RESYNC);
+			goto cleanup;
 		}
 		unless (s->tree == tmp) {
 			SHOUT();
 			fprintf(stderr,
 			    "takepatch: root deltas do not match in %s\n",
 			    name);
-			cleanup(CLEAN_RESYNC);
+			goto cleanup;
 		}
 	} else {	/* create a new file */
 		/*
@@ -324,12 +328,18 @@ again:	s = sccs_keyinit(buf, INIT_NOCKSUM, idDB);
 		if (echo != 2) fprintf(stderr, "\n");
 	}
 	if (patchList && gca) getLocals(s, gca, name);
-	applyPatch(s ? s->sfile : 0, name, flags, perfile, root);
+	rc = applyPatch(s ? s->sfile : 0, name, flags, perfile, root);
 	if (echo == 2) fprintf(stderr, " \n");
 	if (perfile) free(perfile);
 	free(gfile);
 	free(name);
 	if (s) sccs_free(s);
+	if (rc < 0) {
+		free(root);
+		fclose(p);
+		/* if (rc == -2) cleanup(CLEAN_RESYNC|CLEAN_PENDING); */
+		cleanup(CLEAN_RESYNC);
+	}
 	return (nfound);
 }
 
@@ -593,7 +603,6 @@ uncommitted(char *file)
 "takepatch: %s has uncommitted changes\n\
 Please commit pending changes with `bk commit' and reapply the patch.\n",
 		file);
-	cleanup(CLEAN_RESYNC);
 }
 
 void
@@ -635,12 +644,12 @@ applyPatch(
 	}
 	if (fileCopy(localPath, p->resyncFile)) {
 		perror("cp");
-		cleanup(CLEAN_RESYNC);
+		return -1;
 	}
 	unless (s = sccs_init(p->resyncFile, INIT_NOCKSUM|flags, root)) {
 		SHOUT();
 		fprintf(stderr, "takepatch: can't open %s\n", p->resyncFile);
-		cleanup(CLEAN_RESYNC);
+		return -1;
 	}
 	if (!s->tree) {
 		SHOUT();
@@ -650,7 +659,7 @@ applyPatch(
 		} else {
 			perror(s->sfile);
 		}
-		cleanup(CLEAN_RESYNC);
+		return -1;
 	}
 	unless (gca) goto apply;
 	/*
@@ -667,7 +676,7 @@ applyPatch(
 				fprintf(stderr,
 				    "rmdel of %s failed.\n", p->resyncFile);
 			}
-			cleanup(CLEAN_RESYNC);
+			return -1;
 		}
 	}
 	sccs_free(s);
@@ -678,7 +687,7 @@ applyPatch(
 		SHOUT();
 		fprintf(stderr,
 		    "takepatch: can't open %s\n", p->resyncFile);
-		cleanup(CLEAN_RESYNC);
+		return -1;
 	}
 apply:
 	p = patchList;
@@ -695,7 +704,7 @@ apply:
 			if (p->flags & PATCH_META) {
 				if (sccs_meta(s, d, p->initFile)) {
 					perror("meta");
-					cleanup(CLEAN_RESYNC);
+					return -1;
 				}
 			} else {
 				newflags = (echo > 5) ?
@@ -704,7 +713,7 @@ apply:
 				/* CSTYLED */
 				if (sccs_get(s, d->rev, 0,0,0, newflags, "-")) {
 				    	perror("get");
-					cleanup(CLEAN_RESYNC);
+					return -1;
 				}
 				sccs_restart(s);
 				if (echo > 6) {
@@ -722,10 +731,10 @@ apply:
 				    DELTA_FORCE|DELTA_PATCH|SILENT;
 				if (sccs_delta(s, newflags, 0, iF, dF)) {
 					perror("delta");
-					cleanup(CLEAN_RESYNC);
+					return -1;
 				}
 				if (s->state & S_BAD_DSUM) {
-					cleanup(CLEAN_RESYNC);
+					return -1;
 				}
 				fclose(iF);	/* dF done by delta() */
 			}
@@ -736,7 +745,7 @@ apply:
 				fprintf(stderr,
 				    "takepatch: can't create %s\n",
 				    p->resyncFile);
-				cleanup(CLEAN_RESYNC);
+				return -1;
 			}
 			if (perfile) sccscopy(s, perfile);
 			iF = fopen(p->initFile, "rb");
@@ -747,7 +756,7 @@ apply:
 			    NEWFILE|DELTA_FORCE|DELTA_PATCH|SILENT;
 			if (sccs_delta(s, newflags, d, iF, dF)) {
 				perror("delta");
-				cleanup(CLEAN_RESYNC);
+				return -1;
 			}
 			if (s->state & S_BAD_DSUM) cleanup(CLEAN_RESYNC);
 			fclose(iF);	/* dF done by delta() */
@@ -786,26 +795,16 @@ apply:
 	conflicts += confThisFile;
 	if (confThisFile && !(s->state & S_CSET)) {
 		assert(d);
-		unless (d->flags & D_CSET) uncommitted(localPath);
+		unless (d->flags & D_CSET) {
+			sccs_free(s);
+			if (gcaPath) free(gcaPath);
+			uncommitted(localPath);
+			return -1;
+		}
 	}
 	sccs_free(s);
 	if (noConflicts && conflicts) noconflicts();
-	for (p = patchList; p; ) {
-		patch	*next = p->next;
-
-		unlink(p->initFile);
-		free(p->initFile);
-		if (p->diffFile) {
-			unlink(p->diffFile);
-			free(p->diffFile);
-		}
-		if (p->localFile) free(p->localFile);
-		free(p->resyncFile);
-		if (p->pid) free(p->pid);
-		if (p->me) free(p->me);
-		free(p);
-		p = next;
-	}
+	freePatchList();
 	patchList = 0;
 	fileNum = 0;
 	if (gcaPath) free(gcaPath);
@@ -929,6 +928,28 @@ insertPatch(patch *p)
 	 */
 	assert(earlier(t, p));
 	t->next = p;
+}
+
+freePatchList()
+{
+	patch	*p;
+
+	for (p = patchList; p; ) {
+		patch	*next = p->next;
+
+		unlink(p->initFile);
+		free(p->initFile);
+		if (p->diffFile) {
+			unlink(p->diffFile);
+			free(p->diffFile);
+		}
+		if (p->localFile) free(p->localFile);
+		free(p->resyncFile);
+		if (p->pid) free(p->pid);
+		if (p->me) free(p->me);
+		free(p);
+		p = next;
+	}
 }
 
 /*
@@ -1264,6 +1285,10 @@ rebuild_id(char *id)
 void
 cleanup(int what)
 {
+	if (patchList) freePatchList();
+	if (idDB) mdbm_close(idDB);
+	if (goneDB) mdbm_close(goneDB);
+	purify_list(); /* win32 note: if we get here, all fd must be closed */
 	if (saveDirs) {
 		fprintf(stderr, "takepatch: neither directory removed.\n");
 		SHOUT2();
