@@ -143,6 +143,9 @@ usage:			system("bk help -s diffs");
 	/* XXX - if we are doing boundaries | diffs
 	 * then we don't need the GFILE.
 	 * Currently turned off in sfiles.
+	 *
+	 * Replace the "optimization" below with SF_WRITE_OK.
+	 * if (!things && !Rev && !IS_WRITABLE(s)) goto next;
 	 */
 	if (things || boundaries || Rev) {
 		name = sfileFirst("diffs", &av[optind], 0);
@@ -151,7 +154,7 @@ usage:			system("bk help -s diffs");
 
 		name = sfileFirst("diffs", nav, SF_GFILE);
 	} else {
-		name = sfileFirst("diffs", &av[optind], SF_GFILE);
+		name = sfileFirst("diffs", &av[optind], SF_GFILE|SF_WRITE_OK);
 	}
 	while (name) {
 		int	ex = 0;
@@ -225,6 +228,9 @@ usage:			system("bk help -s diffs");
 		 * TOT.
 		 * IS_EDITED() doesn't work because they could have chmod +w
 		 * the file.
+		 *
+		 * XXX - I'm not sure this works with -C but we'll fix it in
+		 * the 3.1 tree.
 		 */
 		if (!things && !Rev && !IS_WRITABLE(s)) goto next;
 
