@@ -243,7 +243,7 @@ file_init(char *file, char *rev, char *anno, file_t *f)
 	rev = strdup(rev);
 	if (inc = strchr(rev, '+')) *inc++ = 0;
 	if (exc = strchr(inc ? inc : rev, '-')) *exc++ = 0;
-	if (sccs_get(s, rev, inc, exc, 0, flags, f->tmpfile)) {
+	if (sccs_get(s, rev, 0, inc, exc, flags, f->tmpfile)) {
 		fprintf(stderr, "Fetch of revision %s failed!\n", rev);
 		return (-1);
 	}
