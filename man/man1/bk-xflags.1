@@ -4,6 +4,7 @@
 bk xflags \- check or fix BitKeeper flags
 .SH SYNOPSIS
 .B bk \-r xflags [\-ns]
+.FILES
 .SH DESCRIPTION
 .LP
 Xflags is an administrative command used to check and/or fix BitKeeper 
@@ -11,14 +12,14 @@ flags.  These flags control things such as what sort of keywords are
 expanded.
 .LP
 This command should not be typically needed, it exists to fix older
-repositories which did not properly maintain these flags.  Bk check output
-like
+repositories which did not properly maintain these flags.  If bk check 
+yields output like
 .DS
 src/utils/Makefile@@1.12 should have EXPAND1 flag
 src/utils/README@@1.3 should have SCCS flag
 src/DOCS: missing required flag[s]: BITKEEPER
 .DE
-indicates that this command needs to be run.
+bk xflags needs to be run.
 .LP
 With no options,
 .B bk xflags
@@ -33,7 +34,7 @@ Do not change any files, just list any problems found.
 .tp
 .B \-s
 Do not change any files, do not list any status, just exit 0 if no
-probles were found, exit 1 if problems were found.
+problems were found, exit 1 if problems were found.
 .SH SEE ALSO
 .SA admin 1
 .SA check 1

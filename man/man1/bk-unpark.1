@@ -8,6 +8,43 @@ bk unpark \- resume work
 .SH DESCRIPTION
 To return a repository to its pre-parked state use bk unpark.
 To list parkfiles and comments, use bk park -l.
+.SH BUGS
+.LP
+If the repository has parked files and those files are modified by 
+bk pull when bk unpark is run, it may fail with the following error:
+.DS
+Unparking BitKeeper/tmp/parkfile-1
+patching file UserGuide
+Hunk #12 FAILED at 716.
+1 out of 12 hunks FAILED -- saving rejects to file UserGuide.rej
+Cannot unpark BitKeeper/tmp/parkfile-1
+.DE
+To fix the state of the repository:
+.br
+.BU 
+Check that the park file still exists
+.br
+.BU 
+Clean the directory with the problem file
+.br
+.BU
+Undo the pull
+.br
+.BU
+Unpark
+.br
+.DS
+ls /BitKeeper/tmp       # look for parkfile-NUM
+mv problem_file problem_file.tmp
+bk clean
+bk unlock problem_file
+bk -r check -ac
+bk status               # make sure no new changes have been made
+bk unpull
+bk unpark
+.DE
+This will return the repository to the state it was before bk park was 
+executed.
 .SH "SEE ALSO"
 .SA park 1
 .SH CATEGORY

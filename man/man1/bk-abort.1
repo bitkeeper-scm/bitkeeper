@@ -18,14 +18,14 @@ want to leave it there for an extended period of time.
 If the update (i.e., a bk pull/bk push/bk resync) failed and there has been no
 manual resolve work done yet, there is no harm in aborting and trying
 again.  If manual resolution has been done, it may be worth the effort
-to figure out what went wrong and try and fix it.
+to figure out what went wrong and try to fix it.
 .SH OPTIONS
 .TP
 .B \-f
 Do not prompt for confirmation, just do it.
 .SH BUGS
 .LP
-Abort could go look to see if you have done any work and refuse to
+Abort should go look to see if you have done any work and refuse to
 abort without
 .B \-f
 if you have.

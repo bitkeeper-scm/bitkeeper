@@ -19,42 +19,29 @@ bk import \- import a set of files into a \*(BK package
 .ARG destination
 .SH DESCRIPTION
 .LP
-If you have not yet set up a package, read the bk help setup section.
+Use bk import to put non-\*(BK files into a \*(BK package and check-in
+the initial revision.
 .LP
-If you have a tree full of files which you wish to include, go to
-your tree and make sure there is nothing in it except for the files
-you want to place under revision control (or see the section on file
-specification below).  Then do this:
-.DS
-$ bk import /path/to/src_files /path/to/package
-.DE
-This will copy all files *below* /path/to/src_files into the
-package directory and check in the initial revision of the files.
-Your original files are left untouched.
-.SH "FILE SPECIFICATION"
+The destination should be a bitkeeper package.  Please see
+bk help setup if a package is not yet set up.
 .LP
-You can generate the list of files externally, and pass that list
-to import.  In that case, the usage is
+You can import files by specifying the directory
+containing files for import (Note: All files under the directory will
+be imported.  If a subset is desired, specify using a list or run 
+interactively.)
 .DS
-$ bk import -l/tmp/list ~/src/files ~/package
+bk import /path/to/src_files /path/to/package
 .DE
-and the list of files must be relative paths, relative to the root
-of the "from" directory.  One way to generate the list might be:
+.LP
+You may also specify files to import using an external list.  The
+path names of files in the list must be relative to the source directory.
 .DS
-$ cd ~/src/files
-$ find . -type f -name '*.[ch]' -print > /tmp/list
-$ bk import -l/tmp/list ~/src/files ~/package
+bk import -l/tmp/list ~/src/files ~/package
 .DE
-If you want to filter the lists, you can do that as well. One way would
-is to edit the /tmp/list file with a text editor.  Another way is to
-use bk's interactive mode of setting file inclusions and exclusions.
-Suppose that you have a tree which has other stuff in it, such as .o's
-or core files, whatever.  You happen to know that the files you want
-are all of the form *.c *.h or Makefile and you want to pick up just
-these files.  To do that, try the -include and/or -exclude options
-and enter the patterns one per line:
+bk import can be run interactively to include and exclude files using
+regular expressions.
 .DS
-$ bk import -i ~/src_files ~/package
+bk import -i ~/src_files ~/package
 End patterns with "." by itself or EOF
 Include>> *.c
 Include>> *.h

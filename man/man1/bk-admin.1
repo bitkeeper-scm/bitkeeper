@@ -19,18 +19,18 @@ command is used to create and/or administer \*(BK files.
 .if t .TP .8i
 .if n .TP 1.5i
 .B \-0
-add a 1.0 delta if there is not one already
+add a 1.0 delta if there is not one already.
 .nr tp_space .065i
 .tp
 .B \-B
-make the landing pad bigger
+make the landing pad bigger.
 .tp
 .OPTopt \-C csetfile
 set or remove the changeset file pointer in the 1.0 delta
-(very rarely used, \fBnot\fP recommended)
+(very rarely used, \fBnot\fP recommended).
 .tp
 .B \-D
-remove the delta changeset marks (very rarely used, \fBnot\fP recommended)
+remove the delta changeset marks (very rarely used, \fBnot\fP recommended).
 .tp
 .OPTreq \-E enc
 force file to be encoded with 
@@ -48,7 +48,7 @@ same as
 .ARG text
 .tp
 .B binary
-force binary file (data will be uuencoded in s.file)
+force binary file (data will be uuencoded in s.file).
 .tp
 .RE
 .tp
@@ -73,10 +73,10 @@ expand RCS keywords, i.e., $\fIkeyword\fP$ etc.
 expand SCCS keywords, i.e., %\fIK\fP% etc.
 .tp
 .B YEAR4
-display dates as 4 digit years (breaks \*(AT compatibility)
+display dates as 4 digit years 
 .tp
 .B EOLN_NATIVE
-use operating system's native end-of-line termination.
+use operating system's native end-of-line termination
 .sp .25
 .ti -1.1i
 Flags with arguments are:
@@ -90,24 +90,24 @@ command.
 .OPTreq \-F f
 delete flag 
 .ARG f ,
-reverting to default behaviour.
+reverting to default behaviour
 .tp
 .B \-h
 check s.file structure in general, but limited to \*(AT features.
 .tp
 .B \-hh
-as above, but also check \*(BK structure
+as above, but also check \*(BK structure.
 .tp
 .B \-hhh
-as above, but also check time stamps
+as above, but also check time stamps.
 .tp
 .B \-H
-same as -h, plus check that file contents are ASCII
+same as -h, plus check that file contents are ASCII.
 .tp
 .OPTopt \-i file
 read initial text from
 .ARG file
-(default stdin)
+(default stdin).
 .tp
 .OPTreq \-m mode
 set the mode of the file;
@@ -132,7 +132,7 @@ operation, typically used only by
 .BR bk\ import .
 .tp
 .B \-q
-run quietly
+run quietly.
 .tp
 .OPTreq \-r rev
 may be used with 
@@ -146,18 +146,18 @@ to specify the initial revision.
 associate symbolic name (tag)
 .ARG sym
 with revision
-.ARG rev
+.ARG rev .
 .tp
 .OPTreq \-t file
 read description text from 
 .ARG file
-and replace the current descriptive text, if any
+and replace the current descriptive text, if any.
 .tp
 .B \-T
-clear description text
+clear description text.
 .tp
 .B \-u
-force all timestamps to be increasing (very dangerous, this changes the keys)
+force all timestamps to be increasing (very dangerous, this changes the keys).
 .tp
 .OPTreq \-y comment
 make 
@@ -168,7 +168,7 @@ and
 .BR \-n ).
 .tp
 .B \-z
-recalculate file checksum
+recalculate file checksum.
 .tp
 .OPTreq \-Z alg
 compress stored s.file with 

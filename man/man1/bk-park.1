@@ -10,9 +10,12 @@ bk park \- temporarily save work
 .B ]
 .SH DESCRIPTION
 Use bk park to temporarily save the state of work in progress.
-
-The alternative is to clone the parent repository somewhere else
-and do the bug fixes in that repository.
+bk park saves current modifications in a park file and unmodifies
+the original in the repository to allow other work (a bug fix, for example)
+to be done.  Once that work is checked-in, use bk unpark to continue 
+working on the previous work in progress.
+.LP
+An alternative is to have multiple clones of the parent repository.
 .SH OPTIONS
 .if n .TP .8i
 .if t .TP
@@ -28,34 +31,43 @@ quiet mode
 .tp
 .OPTreq \-y cmt
 specify comment for park file
-.\" .SH BUGS
-.\" .LP
-.\" If the repository has parked files and those files are modified by 
-.\" bk pull when bk unpark is run, it may fail with the following error:
-.\" .DS
-.\" Unparking BitKeeper/tmp/parkfile-1
-.\" patching file UserGuide
-.\" Hunk #12 FAILED at 716.
-.\" 1 out of 12 hunks FAILED -- saving rejects to file UserGuide.rej
-.\" Cannot unpark BitKeeper/tmp/parkfile-1
-.\" .DE
-.\" To fix the state of the repository:
-.\" .BU Check that the park file still exists
-.\" .BU Clean the directory with the problem file
-.\" .BU Undo the pull
-.\" .BU Unpark
-.\" .DS
-.\" ls /BitKeeper/tmp	# look for parkfile-NUM
-.\" mv problem_file problem_file.tmp
-.\" bk clean
-.\" bk unlock problem_file
-.\" bk -r check -ac
-.\" bk status		# make sure no new changes have been made
-.\" bk unpull
-.\" bk unpark
-.\" .DE
-.\" This doesn't help the situation much because you are back to the starting
-.\" point.
+.SH BUGS
+.LP
+If the repository has parked files and those files are modified by 
+bk pull when bk unpark is run, it may fail with the following error:
+.DS
+Unparking BitKeeper/tmp/parkfile-1
+patching file UserGuide
+Hunk #12 FAILED at 716.
+1 out of 12 hunks FAILED -- saving rejects to file UserGuide.rej
+Cannot unpark BitKeeper/tmp/parkfile-1
+.DE
+To fix the state of the repository:
+.br
+.BU 
+Check that the park file still exists
+.br
+.BU 
+Clean the directory with the problem file
+.br
+.BU
+Undo the pull
+.br
+.BU
+Unpark
+.br
+.DS
+ls /BitKeeper/tmp	# look for parkfile-NUM
+mv problem_file problem_file.tmp
+bk clean
+bk unlock problem_file
+bk -r check -ac
+bk status		# make sure no new changes have been made
+bk unpull
+bk unpark
+.DE
+This will return the repository to the state it was before bk park was 
+executed.
 .SH "SEE ALSO"
 .SA unpark 1
 .SH CATEGORY
