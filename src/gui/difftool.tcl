@@ -199,7 +199,7 @@ proc sdiff {L R} \
 	return [open "| $sdiffw $dotL $dotR"]
 }
 
-proc readFiles {L R} \
+proc readFiles {L R M} \
 {
 	global	Diffs DiffsEnd diffCount nextDiff lastDiff dev_null rmList
 
@@ -248,6 +248,11 @@ proc readFiles {L R} \
 	    "|"	{ incr diffCount 1; changed $r $l $n }
 	    "<"	{ incr diffCount 1; left $r $l $n }
 	    ">"	{ incr diffCount 1; right $r $l $n }
+	}
+	if {$M != ""} {
+		catch {
+			close [open $M w]
+		} dummy
 	}
 	if {$diffCount == 0} { puts "No differences"; exit }
 	close $r
@@ -506,12 +511,10 @@ proc main {} \
 		set lfile $tmp
 	}
 	widgets $lfile $rfile
-	readFiles $lfile $rfile 
 	if {$argc == 3} {
-		set marker [lindex $argv 2]
-		catch {
-			close [open $marker w]
-		} dummy
+		readFiles $lfile $rfile [lindex $argv 2]
+	} else {
+		readFiles $lfile $rfile ""
 	}
 	if {$argc == 1} {
 		# Done this way so we don't delete the gfile by mistake.
