@@ -50,9 +50,11 @@ proc file_history {} \
 proc dotFile {{line {}}} \
 {
 	global	lastFile fileCount Files tmp_dir file_start_stop file_stop
-	global	RealFiles file
+	global	RealFiles file finfo
 
 	busy 1
+	set finfo(lt) ""
+	set finfo(rt) ""
 	if {$line != ""} { set lastFile $line }
 	if {$lastFile == 1} {
 		.menu.prevFile configure -state disabled
@@ -79,9 +81,17 @@ proc dotFile {{line {}}} \
 	gets $p parent
 	close $p
 	if {$parent == ""} { set parent "1.0" }
+	set finfo(l) "$file@$parent"
+	set finfo(r) "$file@$stop"
+	set p [open "| bk prs -hr$parent {-d:D: :T:\n} \"$file\""]
+	gets $p finfo(lt)
+	close $p
+	set p [open "| bk prs -hr$stop {-d:D: :T:\n} \"$file\""]
+	gets $p finfo(rt)
+	close $p
 	set tmp [file tail "$file"]
-	set l [file join $tmp_dir $tmp-$parent[pid]]
-	set r [file join $tmp_dir $tmp-$stop[pid]]
+	set l [file join $tmp_dir $tmp-${parent}_[pid]]
+	set r [file join $tmp_dir $tmp-${stop}_[pid]]
 	catch { exec bk get -qkpr$parent "$file" > $l}
 	catch { exec bk get -qkpr$stop "$file" > $r}
 	displayInfo $file $file $parent $stop 
@@ -143,10 +153,11 @@ proc getFiles {revs file_rev} \
 
 	busy 1
 
-	# Only search for the last part of the file. This might fail when there are
-	# multiple file.c@rev in the tree. However, I am trying to solve the case where
-	# csettool is called like -f~user/some_long_path/src/file.c. The preceding would
-	# never match any of the items in the file list
+	# Only search for the last part of the file. This might fail when 
+	# there are multiple file.c@rev in the tree. However, I am trying 
+	# to solve the case where csettool is called like 
+	# -f~user/some_long_path/src/file.c. The preceding would never 
+	# match any of the items in the file list
 	set file_rev [file tail $file_rev]
 
 	# Initialize these variables so that files with no differences don't
@@ -186,7 +197,8 @@ proc getFiles {revs file_rev} \
 	}
 	catch { close $r }
 	if {$fileCount == 0} {
-		#displayMessage "This ChangeSet is a merge ChangeSet and does not contain any files."
+		#displayMessage \ 
+		#  "ChangeSet doesn't contain files since it is a merge ChangeSet."
 		exit
 	}
 	.l.filelist.t configure -state disabled
