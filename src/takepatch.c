@@ -58,6 +58,7 @@ private	void	freePatchList(void);
 private	void	fileCopy2(char *from, char *to);
 private	void	badpath(sccs *s, delta *tot);
 private void	merge(char *gfile);
+private	void	merge_bkstate(void);
 private	int	skipPatch(MMAP *p);
 private	void	getConfig(void);
 private	void	getGone(int isLogPatch);
@@ -265,6 +266,14 @@ usage:		system("bk help -s takepatch");
 	getConfig();
 
 	/*
+	 * The commit in the RESYNC directory might need to update the
+	 * BKSTATE file so always copy it down if it is not there already.
+	 */
+	unless (exists(ROOT2RESYNC "/" BKSTATE)) {
+		fileCopy(BKSTATE, ROOT2RESYNC "/" BKSTATE);
+	}
+
+	/*
 	 * The ideas here are to (a) automerge any hash-like files which
 	 * we maintain, and (b) converge on the oldest inode for a
 	 * particular file.  The converge code will make sure all of the
@@ -291,6 +300,8 @@ usage:		system("bk help -s takepatch");
 		}
 		pclose(f);
 		system("bk _converge -R");
+
+		merge_bkstate();
 		chdir(RESYNC2ROOT);
 	}
 
@@ -398,6 +409,50 @@ merge(char *gfile)
 	free(sfile);
 	free(rfile);
 }
+
+/*
+ * Automerge any updates by always picking the local version.
+ * Those are the values most likely to be used next.
+ *
+ * XXX The "use local" merge should have zero impact on weave, but
+ *     it doesn't currently.
+ */
+private void
+merge_bkstate(void)
+{
+	char	*gfile = GBKSTATE;
+	char	*s;
+	char	*sfile = name2sccs(gfile);
+	char	*rfile = name2sccs(gfile);
+	char	*t;
+	char	buf[MAXPATH];
+	char	l[MAXREV], g[MAXREV], r[MAXREV];
+
+	t = strrchr(rfile, '/'), t[1] = 'r';
+	if (exists(rfile)) {
+		FILE	*f;
+
+		/*
+		 * Both remote and local have updated the file.
+		 * We automerge here, saves trouble later.
+		 */
+		f = fopen(rfile, "r");
+		fscanf(f, "merge deltas %s %s %s", l, g, r);
+		fclose(f);
+		s = strchr(l, '.'); s++;
+		s = strchr(s, '.');
+		sprintf(buf, "bk get -eqgM%s %s", s ? l : r, gfile);
+		system(buf);
+		sprintf(buf, "bk get -qpr%s %s > %s", l, gfile, gfile);
+		system(buf);
+		sprintf(buf, "bk ci -qdPymerge-local %s", gfile);
+		system(buf);
+		unlink(rfile);
+	} /* else remote update only */
+	free(sfile);
+	free(rfile);
+}
+
 
 private	delta *
 getRecord(MMAP *f)

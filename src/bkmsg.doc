@@ -96,6 +96,12 @@ safely run
 to fix up your repository.  If it is somewhere other than the MySQL 
 tree, contact BitMover.
 $
+#cset1
+An attempt was made to include or exclude a merge changeset.
+This is not currently supported.
+If you would like to be able to exclude one side
+of the merge, then please contact BitMover.
+$
 #write_perms
 One or more directories which need updating do not have write permission.
 Please examine the list and fix the permissions.
@@ -1201,4 +1207,16 @@ d) Run "bk commit" to record the new location in a changeset.
 e) Run "bk resolve" or "bk pull" again.
 f) You should also inform owners of other repositories to avoid using 
    similar names.
+$
+#bkstate-wrong-file
+The file BitKeeper/etc/bkstate is a special internal file created and
+maintained by BitKeeper.  This repository has some other file stored
+in the same location.  The bkstate file in this repository needs to be
+deleted or move to a new location before commits will succeed.
+$
+#bkstate-wrong-location
+In the current repository the BitKeeper internal file BitKeeper/etc/bkstate
+has been renamed to #BKARG# for some reason.
+The file needs to be returned to its correct location before commits
+will succeed in this repository.
 $

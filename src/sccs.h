@@ -349,6 +349,8 @@
 #define	GCHANGESET	"ChangeSet"
 #define	LOGGING_OK	"BitKeeper/etc/SCCS/s.logging_ok"
 #define	GLOGGING_OK	"BitKeeper/etc/logging_ok"
+#define	BKSTATE		"BitKeeper/etc/SCCS/s.bkstate"
+#define	GBKSTATE	"BitKeeper/etc/bkstate"
 #define	IDCACHE		"BitKeeper/etc/SCCS/x.id_cache"
 #define	IDCACHE_LOCK	"BitKeeper/etc/SCCS/z.id_cache"
 #define	DFILE		"BitKeeper/etc/SCCS/x.dfile"
@@ -1179,6 +1181,7 @@ void	close_gaps(u8 *vec, int n, int (*compare)(int a, int b));
 int	diff_algor(int m, int n, u8 *lchg, u8 *rchg,
     int (*compare)(int a, int b));
 int   diffline(char *left, char *right);
+int	update_bkstate(void);
 typedef	void (*set_pfunc)(sccs *, delta *);
 ser_t	*set_get(sccs *s, char *rev);
 void	set_list(sccs *s, char *rev, set_pfunc p);
