@@ -12,7 +12,7 @@ pending_main(int ac, char **av)
 $each(:C:){  (:C:)} \\n$each(:SYMBOL:){  TAG: (:SYMBOL:)\\n}";
 
 	if (sccs_cd2root(0, 0) == -1) {
-		fprintf(stderr, "pending: can not find project root\n");
+		fprintf(stderr, "pending: cannot find project root\n");
 		exit(1);
 	}
 	sprintf(buf, "bk sfiles -CA | bk prs -Yh '-d%s' - | %s", dspec, pager);

@@ -36,7 +36,7 @@ undo_main(int ac,  char **av)
 		}
 	}
 	if (sccs_cd2root(0, 0) == -1) {
-		fprintf(stderr, "undo: can not find package root.\n");
+		fprintf(stderr, "undo: cannot find package root.\n");
 		exit(1);
 	}
 	unless (rev) {
@@ -178,7 +178,7 @@ mk_list(char *rev_list, char *rev)
 	sprintf(cmd, "bk cset -ffl%s > %s", rev, rev_list);
 	if (system(cmd) != 0) {
 		printf("undo: %s\n", cmd);
-		printf("undo: can not extact revision list\n");
+		printf("undo: cannot extact revision list\n");
 		return (NULL);
 	}
 	free(cmd);
@@ -289,7 +289,7 @@ clean_file(MDBM *fileList)
 		assert(s);
 		unless(proj) proj = s->proj;
 		if (sccs_clean(s, SILENT)) {
-			printf("Can not clean %s, Undo aborted\n", sfile);
+			printf("Cannot clean %s, Undo aborted\n", sfile);
 			sccs_free(s);
 			free(sfile);
 			if (proj) proj_free(proj);

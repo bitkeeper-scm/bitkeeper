@@ -880,7 +880,7 @@ rename_file(resolve *rs)
 	unless (opts->resolveNames) return (-1);
 
 	if (opts->automerge) {
-		fprintf(stderr, "resolve: can not autorename %s\n", rs->dname);
+		fprintf(stderr, "resolve: cannot autorename %s\n", rs->dname);
 		return (-1);
 	}
 
@@ -1877,7 +1877,7 @@ automerge(resolve *rs, names *n)
 	}
 #ifdef WIN32
 	if (ret == 0xff00) {
-	    	fprintf(stderr, "Can not execute '%s'\n", cmd);
+	    	fprintf(stderr, "Cannot execute '%s'\n", cmd);
 		rs->opts->errors = 1;
 		unlink(rs->s->gfile);
 		return;
@@ -1957,7 +1957,7 @@ edit(resolve *rs)
 	if (rs->opts->quiet) flags |= SILENT;
 	if (sccs_get(rs->s, 0, branch, 0, 0, flags, "-")) {
 		fprintf(stderr,
-		    "resolve: can not edit/merge %s\n", rs->s->sfile);
+		    "resolve: cannot edit/merge %s\n", rs->s->sfile);
 		rs->opts->errors = 1;
 		return (1);
 	}

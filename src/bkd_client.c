@@ -229,7 +229,7 @@ bkd(int compress, remote *r, int *r_pipe, int *w_pipe)
 #ifdef WIN32
 		p = tcp_pipe(r->host, r->port, r_pipe, w_pipe);
 		if (p == ((pid_t) -1)) {
-			fprintf(stderr, "can not create socket_helper\n");
+			fprintf(stderr, "cannot create socket_helper\n");
 			return (-1);
 		}
 #else
@@ -249,7 +249,7 @@ bkd(int compress, remote *r, int *r_pipe, int *w_pipe)
 #ifdef WIN32
 			if (!(t = prog2path(remsh)) ||
 			    strstr(t, "system32/rsh")) {
-				fprintf(stderr, "Can not find %s.\n", remsh);
+				fprintf(stderr, "Cannot find %s.\n", remsh);
 				fprintf(stderr,
 "=========================================================================\n\
 The programs rsh/ssh are not bundled with the BitKeeper distribution.\n\

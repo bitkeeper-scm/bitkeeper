@@ -54,7 +54,7 @@ sccs_rm(char *name, int useCommonDir)
 	if (useCommonDir) {
 		_relativeName(&b[2], 0, 0, 1, 0, root);
 		unless(root[0]) {
-			fprintf(stderr, "sccsrm: can not find root?\n");
+			fprintf(stderr, "sccsrm: cannot find root?\n");
 			return (1);
 		}
 		sprintf(path, "%s/BitKeeper/deleted/SCCS", sPath(root, 1));

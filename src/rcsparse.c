@@ -102,7 +102,7 @@ rcs_init(char *file)
 		return (0);
 	}
 	unless (m = mopen(file, "b")) {
-		fprintf(stderr, "Can not mmap %s\n", file);
+		fprintf(stderr, "Cannot mmap %s\n", file);
 err:		perror(file);
 		exit(1);
 	}

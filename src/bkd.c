@@ -173,7 +173,7 @@ bkd_service_loop(int ac, char **av)
 		if (chdir(Opts.startDir) != 0) {
 			char msg[MAXLINE];
 
-			sprintf(msg, "bkd: can not cd to \"%s\"",
+			sprintf(msg, "bkd: cannot cd to \"%s\"",
 								Opts.startDir);
 			logMsg(msg);
 			goto done;
@@ -199,7 +199,7 @@ bkd_service_loop(int ac, char **av)
 			continue; /* re-try */
 		}
 		/*
-		 * On win32, we can not dup a socket,
+		 * On win32, we cannot dup a socket,
 		 * so just pass the socket handle as a argument
 		 */
 		sprintf(sbuf, "%d", n);
@@ -221,7 +221,7 @@ bkd_service_loop(int ac, char **av)
 		 * all data between the pipes and the socket.
 		 */
 		if (spawnvp_ex(_P_NOWAIT, av[0], av) == -1) {
-			logMsg("bkd: can not spawn socket_helper");
+			logMsg("bkd: cannot spawn socket_helper");
 			break;
 		}
 		CloseHandle((HANDLE) n); /* important for EOF */

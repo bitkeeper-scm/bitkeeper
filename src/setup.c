@@ -130,7 +130,7 @@ again:		printf("Editor to use [%s] ", editor);
 	system(buf);
 	unlink(setup_files);
  	if (sccs_cd2root(0, 0) == -1) {
-                fprintf(stderr, "setup: can not find package root.\n");
+                fprintf(stderr, "setup: cannot find package root.\n");
                 exit(1);
         }                           
 	mkdir("BitKeeper/etc/.master", 0775);

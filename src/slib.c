@@ -3304,7 +3304,7 @@ err:			free(s->gfile);
 				s->symlink = strdup(link);
 			} else {
 				verbose((stderr,
-				    "can not read sym link: %s\n", s->gfile));
+				    "cannot read sym link: %s\n", s->gfile));
 				goto err;
 			}
 		}
@@ -3391,7 +3391,7 @@ loadConfig(char *root, int convert)
 		return 0;
 	}
 	if (gettemp(x_config, "bk_config")) {
-		fprintf(stderr, "Can not create temp file\n");
+		fprintf(stderr, "Cannot create temp file\n");
 		sccs_free(s1);
 		return 0;
 	}
@@ -5101,7 +5101,7 @@ sccs_impliedList(sccs *s, char *who, char *base, char *rev)
 
 	unless (baseRev = findrev(s, base)) {
 		fprintf(stderr,
-		    "%s: can not find base rev %s in %s\n",
+		    "%s: cannot find base rev %s in %s\n",
 		    who, base, s->sfile);
 err:		s->state |= S_WARNED;
 		if (inc) free(inc);
@@ -5111,7 +5111,7 @@ err:		s->state |= S_WARNED;
 	}
 	unless (mRev = findrev(s, rev)) {
 		fprintf(stderr,
-		    "%s: can not find merge rev %s in %s\n",
+		    "%s: cannot find merge rev %s in %s\n",
 		    who, rev, s->sfile);
 		goto err;
 	}
@@ -5153,7 +5153,7 @@ err:		s->state |= S_WARNED;
 		}
 	}
 	if (compressmap(s, baseRev, slist, &inc, &exc)) {
-		fprintf(stderr, "%s: can not compress merged set\n", who);
+		fprintf(stderr, "%s: cannot compress merged set\n", who);
 		goto err;
 	}
 	if (exc) {
@@ -5699,7 +5699,7 @@ out:			if (slist) free(slist);
 		if (!streq(fname, "-") && (utime(fname, &ut) != 0)) {
 			char msg[1024];
 
-			sprintf(msg, "%s: Can not set modificatime; ", fname);
+			sprintf(msg, "%s: Cannot set modificatime; ", fname);
 			perror(msg);
 			s->state |= S_WARNED;
 			goto out;
@@ -6891,7 +6891,7 @@ sccs_hasDiffs(sccs *s, u32 flags)
 	}
 
 	/*
-	 * Can not enforce this assert here, gfile may be ready only
+	 * Cannot enforce this assert here, gfile may be ready only
 	 * due to  GET_SKIPGET
 	 * assert(IS_WRITABLE(s));
 	 */
@@ -9060,11 +9060,11 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
 
 	/*
  	 * Until we fix the ChangeSet processing code
-	 * we can not allow null delta in ChangeSet file
+	 * we cannot allow null delta in ChangeSet file
 	 */
 	if ((sc->state & S_CSET) && isNullDelta) {
 		fprintf(stderr,
-			"Can not create null delta in ChangeSet file\n");
+			"Cannot create null delta in ChangeSet file\n");
 		return (0);
 	}
 
@@ -10219,7 +10219,7 @@ skip:
 	}
 
 	/* text are optional */
-	/* Can not be WANT('T'), buf[1] could be null */
+	/* Cannot be WANT('T'), buf[1] could be null */
 	while (buf[0] == 'T') {
 		if (buf[1] == ' ') {
 			d->text = addLine(d->text, strdup(&buf[2]));
@@ -10788,7 +10788,7 @@ out:
 
 #ifdef WIN32
 	/*
-	 * Win32 note: If gfile is in use, we can not delete
+	 * Win32 note: If gfile is in use, we cannot delete
 	 * it when we are done.It is better to bail now
 	 */
 	if (HAS_GFILE(s) &&
@@ -14118,7 +14118,7 @@ smartUnlink(char *file)
 	chmod(file, S_IWRITE);
 	unless (rc = unlink(file)) return (0);
 	unless (access(file, 0)) {
-		fprintf(stderr, "smartUnlink:can not unlink %s, errno = %d\n",
+		fprintf(stderr, "smartUnlink:cannot unlink %s, errno = %d\n",
 		    file, save);
 	}
 	errno = save;
@@ -14141,7 +14141,7 @@ smartRename(char *old, char *new)
 		return (rc);
 	}
 	unless (rc = rename(old, new)) return (0);
-	fprintf(stderr, "smartRename: can not rename from %s to %s, errno=%d\n",
+	fprintf(stderr, "smartRename: cannot rename from %s to %s, errno=%d\n",
 	    old, new, errno);
 	errno = save;
 	return (rc);

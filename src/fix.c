@@ -48,7 +48,7 @@ fix_main(int ac,  char **av)
 			s = sccs_init(p, SILENT, 0);
 			assert(s);
 			if (sccs_get(s, 0, 0, 0, 0, gflags, "-")) {
-				fprintf(stderr, "can not lock %s\n", av[i]);
+				fprintf(stderr, "cannot lock %s\n", av[i]);
 			}
 			sccs_free(s);
 			unlink(av[i]);

@@ -114,7 +114,7 @@ notify()
 		fflush(stdout); /* needed for citool */
 		waitpid(pid, &ret, 0);
 		if (WEXITSTATUS(ret) != 0) {
-			fprintf(stdout, "can not notify %s\n", buf);
+			fprintf(stdout, "cannot notify %s\n", buf);
 			fflush(stdout); /* needed for citool */
 		}
 	}
@@ -143,7 +143,7 @@ status(int verbose, FILE *f)
 
 	fprintf(f, "Status for BitKeeper repository %s:%s\n",
 	    sccs_gethost(), fullname(".", 0));
-	gethelp("version", bk_mode() ? " Prefessional " : " Basic ", 0, f);
+	gethelp("version", bk_mode() ? " Professional " : " Basic ", 0, f);
 	sprintf(parent_file, "%slog/parent", BitKeeper);
 	if (exists(parent_file)) {
 		fprintf(f, "Parent repository is ");

@@ -557,7 +557,7 @@ goneError(char *buf)
 	SHOUT();
 	fprintf(stderr,
 "File %s\n\
-is marked as gone in this repository and therefor can not accept updates.\n\
+is marked as gone in this repository and therefor cannot accept updates.\n\
 The fact that you are getting updates indicates that the file is not gone\n\
 in the other repository and could be restored in this repository.\n\
 Contact BitMover for assistance, we'll have a tool to do this soon.\n", buf);
@@ -1262,7 +1262,7 @@ init(char *inputFile, int flags, project **pp)
 	 * we're just doing the RESYNC part.
 	 */
 	if (mkdir("RESYNC", 0777)) {
-		fprintf(stderr, "takepatch: can not create RESYNC dir.\n");
+		fprintf(stderr, "takepatch: cannot create RESYNC dir.\n");
 		repository_lockers(p);
 		cleanup(0);
 	}

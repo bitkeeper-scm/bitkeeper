@@ -174,7 +174,7 @@ mkrev_main(int ac, char **av)
 	datum	k;
 	
 	if (sccs_cd2root(0, 0)) {
-		fprintf(stderr, "mkrev: can not find package root.\n");
+		fprintf(stderr, "mkrev: cannot find package root.\n");
 		exit(1);
 	} 
 

@@ -63,13 +63,13 @@ usage:			fprintf(stderr,
 	}
 
 	if (mkdirp(dst) != 0) {
-		fprintf(stderr, "can not mkdir %s\n", dst);
+		fprintf(stderr, "cannot mkdir %s\n", dst);
 		exit(1);
 	}
 	strcpy(dst_path, fullname(dst, 0));
 	chdir(src);
 	if (sccs_cd2root(0, 0) == -1) {
-		fprintf(stderr, "Can not find package root.\n");
+		fprintf(stderr, "Cannot find package root.\n");
 		exit(1);
 	}
 	strcpy(src_path, fullname(".", 0));
@@ -121,7 +121,7 @@ usage:			fprintf(stderr,
 		free(s->gfile);
 		s->gfile = strdup(output);
 		if (sccs_get(s, p, 0, 0, 0, flags, "-")) {
-			fprintf(stderr, "can not export to %s\n", output);
+			fprintf(stderr, "cannot export to %s\n", output);
 		}
 		sccs_free(s);
 		if (wflag) chmod(output, 0644);

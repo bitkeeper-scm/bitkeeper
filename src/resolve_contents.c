@@ -149,7 +149,7 @@ c_merge(resolve *rs)
 		return (rs->opts->advance);
 	}
 	if (ret == 0xff00) {
-	    	fprintf(stderr, "Can not execute '%s'\n", cmd);
+	    	fprintf(stderr, "Cannot execute '%s'\n", cmd);
 		rs->opts->errors = 1;
 		return (0);
 	}
@@ -237,7 +237,7 @@ needs_merge(resolve *rs)
 	unless (exists(rs->s->gfile)) return (0);
 
 	unless (m = mopen(rs->s->gfile, "r")) {
-		fprintf(stderr, "%s can not be opened\n", rs->s->gfile);
+		fprintf(stderr, "%s cannot be opened\n", rs->s->gfile);
 		return (0);
 	}
 	while ((t = mnext(m)) && ((m->end - t) > 7)) {
