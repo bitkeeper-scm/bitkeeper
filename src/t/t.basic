@@ -39,7 +39,7 @@ do	case "$D" in
 	echo $N checkout with ${D}SCCS/s.foo ${DOTS}............................$NL
 	co $Q ${D}foo
 	if [ ! -f ${D}foo ]; then echo Failed to get foo.; exit 1; fi
-	if [ -w ${D}foo ]; then echo foo is writable; exit 1; fi
+	if writable ${D}foo; then echo foo is writable; exit 1; fi
 	echo OK
 	echo $N Verifying data checksum .....................................$NL
 	A=`prs -r1.1 -hd:CHKSUM: ${D}foo`
@@ -54,7 +54,7 @@ do	case "$D" in
 	echo $N "checkout of the directory ${D}" ${DOTS}..........................$NL
 	co $Q ${D}
 	if [ ! -f ${D}foo ]; then echo Failed to get foo.; exit 1; fi
-	if [ -w ${D}foo ]; then echo foo is writable; exit 1; fi
+	if writable ${D}foo; then echo foo is writable; exit 1; fi
 	echo OK
 	if [ $ATT = YES ]
 	then
@@ -69,7 +69,7 @@ do	case "$D" in
 	    echo $N checkout with ${D}s.foo ${DOTS}.................................$NL
 	    co $Q ${D}s.foo
 	    if [ ! -f ${D}foo ]; then echo Failed to get foo.; exit 1; fi
-	    if [ -w ${D}foo ]; then echo foo is writable; exit 1; fi
+	    if writable ${D}foo; then echo foo is writable; exit 1; fi
 	    echo OK
 	fi
 	echo $N "cleaning ${D}" ${DOTS}...........................................$NL
@@ -79,7 +79,7 @@ do	case "$D" in
 	echo $N "checkout of the directory ${D}" ${DOTS}..........................$NL
 	co $Q ${D}
 	if [ ! -f ${D}foo ]; then echo Failed to get foo.; exit 1; fi
-	if [ -w ${D}foo ]; then echo foo is writable; exit 1; fi
+	if writable ${D}foo; then echo foo is writable; exit 1; fi
 	echo OK
 done
 ${RM} -rf foo SCCS A

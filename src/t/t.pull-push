@@ -1,5 +1,6 @@
 # Tests for pull, push, and clone.
 
+check_for_rsh
 echo $N Create initial repository ...................................$NL
 HERE=`${CWD}`
 echo "logging: /dev/null" > $HERE/c
@@ -33,7 +34,6 @@ bk clone $Q $HERE/project $HERE/copy || { echo failed; exit 1; }
 parent=`cat copy/BitKeeper/log/parent`
 [ x$parent = x$HERE/project ] || { echo wrong parent $parent; exit 1; }
 echo OK
-
 echo $N Pull with no changes in child ...............................$NL
 cd project/src
 get $Q -e foo.c
@@ -45,7 +45,6 @@ bk pull $Q || { echo failed; exit 1; }
 revs=`prs -hd:I: src/foo.c | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
 echo OK
-# most NT system does not have rshd/sshd, it may have ssh/rsh client however
 if [ $DO_REMOTE = YES ]; then
  echo $N Pull with explicit remote parent ............................$NL
  bk pull $Q localhost:$HERE/project || { echo failed; exit 1; }

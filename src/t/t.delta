@@ -18,12 +18,12 @@ echo $N Make sure delta -l works ....................................$NL
 cp SCCS/s.init SCCS/s.T
 X=`wc SCCS/s.T`
 get $S -e T
-if [ ! -w T ]; then echo Get failed to get file writeable; exit 1; fi
+if writable T; then :; else echo Get failed to get file writeable; exit 1; fi
 delta $S -ly T
 if [ "`wc SCCS/s.T`" = "$X" ]; then echo Failed to create delta; exit 1; fi
 if [ ! -f SCCS/p.T ]; then echo Failed to leave file locked; exit 1; fi
 if [ ! -f T ]; then echo Failed to get file; exit 1; fi
-if [ ! -w T ]; then echo Failed to leave file writeable; exit 1; fi
+if writable T; then :; else echo Failed to leave file writeable; exit 1; fi
 echo OK
 echo $N Make sure delta -il works ...................................$NL
 echo delta -il > init2
@@ -76,7 +76,7 @@ echo $N Make sure delta -n works ....................................$NL
 get $S -e T
 delta $S -ny T
 if [ ! -f T ]; then echo Failed to save file; exit 1; fi
-if [ ! -w T ]; then echo Failed to save file writeable; exit 1; fi
+if writable T; then :; else echo Failed to save file writeable; exit 1; fi
 echo OK
 echo $N Make sure delta prompts for comments ........................$NL
 ${RM} -f T
@@ -129,7 +129,7 @@ echo $N Make sure ci -u with no change works ........................$NL
 get $S -e init2
 ci $Q -u init2 2> ${DEV_NULL}
 if [ ! -f init2 ]; then echo File not checked out.; exit 1; fi
-if [ -w init2 ]; then echo File not read only.; exit 1; fi
+if writable init2; then echo File not read only.; exit 1; fi
 echo OK
 echo $N Make sure delta -G works ....................................$NL
 # Figure out which kind of touch we have

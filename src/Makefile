@@ -9,10 +9,10 @@ BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  get gethost getuser key2rev lines lod prs range rechksum renumber \
 	  rmdel sccscat sccslog sccsmv sccsrm sccssh sfiles sfio sids	 \
 	  sinfo stripdel smoosh takepatch undos what gca mtime zone	 \
-	  isascii resyncwrap r2c lodset rename
+	  isascii resyncwrap r2c rename
 SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 mkindex \
-	  renametool mkdiffs
+	  renametool mkdiffs lodset
 PSCR	= t/doit
 LIBS	= zlib/libz.a mdbm/libmdbm.a libsccs.a
 LINKS	= ci co edit unedit unget
@@ -329,7 +329,7 @@ testfast: testfast.perl substvars
 	mv -f testfast.T testfast
 
 bk: bk.sh bk.ver port/unix_platform.sh substvars 
-	cat port/unix_platform.sh bk.sh | ./substvars | \
+	./substvars port/unix_platform.sh bk.sh | \
 		sed "s/VERSION=unknown/VERSION=\"`cat bk.ver`\"/" > bk.T
 	chmod +x bk.T
 	mv -f bk.T bk
@@ -360,7 +360,7 @@ unuuwrap: unuuwrap.sh substvars
 	mv -f unuuwrap.T unuuwrap
 
 import: import.sh port/unix_platform.sh substvars
-	cat port/unix_platform.sh import.sh | ./substvars > import.T
+	./substvars port/unix_platform.sh import.sh > import.T
 	chmod +x import.T
 	mv -f import.T import
 

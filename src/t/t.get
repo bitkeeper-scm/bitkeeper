@@ -42,7 +42,7 @@ get $S -GA -r1.1 date
 get $S -G B -r1.2 date
 if [ ! -f A ]; then echo Failed to creat A.; exit 1; fi
 if [ ! -f B ]; then echo Failed to creat B.; exit 1; fi
-if [ -w B ]; then echo B is writable; exit 1; fi
+if writable B; then echo B is writable; exit 1; fi
 if [ -f date ]; then echo Created date and it should not have; exit 1; fi
 grep -q Hallo A
 if [ $? -ne 0 ]; then echo Bad data in A.; exit 1; fi
@@ -130,13 +130,13 @@ X=`wc date`
 ci $Q -y date
 get $S -k date
 if [ -f core ]; then echo core dumped; exit 1; fi
-if [ -w date ]; then echo date is writable and should not be; exit 1; fi
+if writable date; then echo date is writable and should not be; exit 1; fi
 if [ "$X" != "`wc date`" ]; then echo Failed - wrong size.; exit 1; fi
 echo OK
 echo $N Make sure get does expand keywords ..........................$NL
 get $S date
 if [ -f core ]; then echo core dumped; exit 1; fi
-if [ -w date ]; then echo date is writable and should not be; exit 1; fi
+if writable date; then echo date is writable and should not be; exit 1; fi
 if [ "$X" = "`wc date`" ]; then echo Failed - wrong size.; exit 1; fi
 echo OK
 echo $N RCS keywords should fail w/o -fRCS ..........................$NL
@@ -144,13 +144,13 @@ get $S -e date
 ${ECHO} '$Id$' > date
 ci $S -y date
 get $S date
-if [ -w date ]; then echo date is writable and should not be; exit 1; fi
+if writable date; then echo date is writable and should not be; exit 1; fi
 if [ '$Id$' != "`cat date`" ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N RCS keywords should work w/ -fRCS ...........................$NL
 admin $Q -fRCS date
 get $S date
-if [ -w date ]; then echo date is writable and should not be; exit 1; fi
+if writable date; then echo date is writable and should not be; exit 1; fi
 if [ '$Id$' = "`cat date`" ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N Get -ep should fail .........................................$NL
@@ -160,7 +160,7 @@ echo OK
 echo $N Get -eg should remove readonly gfile ........................$NL
 get $S -eg date
 if [ -f "date" ]; then echo failed, did not remove file; exit 1; fi
-if [ -w "date" ]; then echo failed, added writable file; exit 1; fi
+if writable date; then echo failed, added writable file; exit 1; fi
 echo OK
 echo $N Make sure get -n works ......................................$NL
 ${ECHO} HI > T

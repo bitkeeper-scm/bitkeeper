@@ -30,7 +30,6 @@ then
 	TMP=$TEMP
 	USR_TMP=C:/usr/tmp
 	if [ ! -d $USR_TMP ]; then mkdir -p $USR_TMP 2> nul; fi
-	BK_TMP=$USR_TMP
 	CAT="bin_mode_cat"
 	ECHO="bin_mode_echo"
 	RM=rm
@@ -55,9 +54,10 @@ then
 	binary_data2="$BK_BIN/co.exe"
 	PATH=$_BK_BIN:$_BK_BIN/bin/gnu:$PATH
 	BK_BIN="$BK_BIN/"
-	export PATH BK_BIN BK_TMP
+	export PATH BK_BIN
 	# It is unlikely that ssh/rsh to localhost will work on NT.
-	DO_REMOTE=NO
+	# We let the user tell us otherwise.
+	if [ -z "$DO_REMOTE" ]; then DO_REMOTE=NO; fi
 else
 	# we are on a unix box
 	PLATFORM="UNIX"
@@ -89,23 +89,9 @@ else
 	then USR_TMP=/var/tmp
 	else USR_TMP=`pwd`	# better than nothing.
 	fi
-	BK_TMP=$USR_TMP
-	export PATH BK_BIN BK_TMP
+	export PATH BK_BIN
 	unset CDPATH
-	if [ X$DO_REMOTE != XNO ]; then
-	if [ X$PREFER_RSH != X ]
-	then	if type rsh >/dev/null 2>&1
-		then	DO_REMOTE=YES
-		elif type ssh >/dev/null 2>&1
-		then	DO_REMOTE=YES
-			unset PREFER_RSH
-		fi
-	else	if type ssh >/dev/null 2>&1 || type rsh >/dev/null 2>&1
-		then	DO_REMOTE=YES
-		else	DO_REMOTE=NO
-		fi
-	fi
-	fi
+	if [ -z "$DO_REMOTE" ]; then DO_REMOTE=YES; fi
 fi
 export TST_DIR CORES BK_BIN
 
@@ -122,6 +108,50 @@ cores()
 		exit 10
 	fi
 	${RM} -f cores
+}
+
+# [ -w file ] always succeeds when you are root.
+writable () {
+	[ -f $1 ] || return 1
+	case "`ls -l $1 | cut -c1-10`" in
+	    *w*) return 0;;
+	    *) return 1;;
+	esac
+}
+
+# We don't want to do this expensive test unless we need to.
+check_for_rsh () {
+if [ X$DO_REMOTE != XNO ]; then
+	if [ X$PREFER_RSH != X ]
+	then
+		if type rsh >/dev/null 2>&1 &&
+			rsh localhost true </dev/null >/dev/null 2>&1
+		then	DO_REMOTE=YES
+		elif type ssh >/dev/null 2>&1 &&
+			ssh -o PasswordAuthentication=no localhost true \
+				</dev/null >/dev/null 2>&1
+		then	DO_REMOTE=YES
+			unset PREFER_RSH
+		else	DO_REMOTE=NO
+		fi
+	else
+		if type ssh >/dev/null 2>&1 &&
+			ssh -o PasswordAuthentication=no localhost true \
+				</dev/null >/dev/null 2>&1
+		then	DO_REMOTE=YES
+		elif type rsh >/dev/null 2>&1 &&
+			rsh localhost true </dev/null >/dev/null 2>&1
+		then	DO_REMOTE=YES
+			PREFER_RSH=YES
+		else	DO_REMOTE=NO
+		fi
+	fi
+	if [ $DO_REMOTE = NO ]
+	then	echo Skipping remote resync tests.
+		echo To test remote resync, you must be able to rsh 
+		echo or ssh to localhost with no password.
+	fi
+fi
 }
 
 if [ X$1 = X-t ]
@@ -159,9 +189,12 @@ if [ X$HOSTNAME = X ]; then HOSTNAME=`gethost`; fi
 REGRESSION=$TST_DIR/.regression-$USER
 export USER HOSTNAME REGRESSION
 if [ -d $REGRESSION ]; then ${RM} -rf $REGRESSION; fi
-mkdir $REGRESSION || exit 1
-cd $REGRESSION || exit 1
-if [ -d SCCS ]; then echo "There should be no SCCS directory here."; exit 1; fi
 # save the list of file cuurently in $TMP
 # check it when again when we are in clean up
 ls -a $TMP > ${USR_TMP}/T.${USER}-$$
+mkdir $REGRESSION || exit 1
+cd $REGRESSION || exit 1
+mkdir .tmp || exit 1
+BK_TMP=$REGRESSION/.tmp
+export BK_TMP
+if [ -d SCCS ]; then echo "There should be no SCCS directory here."; exit 1; fi
