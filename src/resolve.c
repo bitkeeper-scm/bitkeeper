@@ -507,17 +507,40 @@ pass2_renames(opts *opts)
 				opts->resolveNames, path, opts->renames2);
 		}
 
+		rs = resolve_init(opts, s);
+
+		/*
+		 * This code is ripped off from the create path.
+		 * We are looking for the case that a directory component is
+		 * in use for a file name that we want to put there.
+		 * If that's true, then we want to call the resolve_create()
+		 * code and fall through if they said EAGAIN or just skip
+		 * this one.
+		 */
+		if (slotTaken(opts, rs->dname) == DIR_CONFLICT) {
+			/* If we are just looking for space, skip this one */
+			unless (opts->resolveNames) goto out;
+			if (opts->noconflicts) {
+				fprintf(stderr,
+				    "resolve: dir/file conflict for ``%s'',\n",
+				    rs->d->pathname);
+				goto out;
+			}
+			if (resolve_create(rs, DIR_CONFLICT) != EAGAIN) {
+				goto out;
+			}
+		}
+
 		/*
 		 * If we have a "names", then we have a conflict or a 
 		 * rename, so do that.  Otherwise, this must be a create.
 		 */
-		rs = resolve_init(opts, s);
 		if (rs->gnames) {
 			rename_file(rs);
 		} else {
 			create(rs);
 		}
-		resolve_free(rs);
+out:		resolve_free(rs);
 	}
 	pclose(f);
 	return (n);
@@ -819,7 +842,10 @@ move_remote(resolve *rs, char *sfile)
 	}
 
 	sccs_close(rs->s);
-	if (ret = rename(rs->s->sfile, sfile)) return (ret);
+	if (ret = rename(rs->s->sfile, sfile)) {
+		mkdirf(sfile);
+		if (ret = rename(rs->s->sfile, sfile)) return (ret);
+	}
 	unlink(sccs_Xfile(rs->s, 'm'));
 	if (rs->opts->resolveNames) rs->opts->renames2++;
 	if (rs->opts->log) {
@@ -1094,6 +1120,28 @@ edit_tip(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 	}
 }
 
+private int
+pathConflict(opts *opts, char *gfile)
+{
+	char	*t, *s;
+	
+	for (t = strrchr(gfile, '/'); t; ) {
+		*t = 0;
+		if (exists(gfile) && !isdir(gfile)) {
+			if (opts->debug) {
+			    	fprintf(stderr,
+				    "%s exists in local repository\n", gfile);
+			}
+			*t = '/';
+			return (1);
+		}
+		s = t;
+		t = strrchr(t, '/');
+		*s = '/';
+	}
+	return (0);
+}
+
 /*
  * Return 1 if the pathname in question is in use in the repository by
  * an SCCS file that is not already in the RESYNC/RENAMES dirs.
@@ -1141,6 +1189,10 @@ slotTaken(opts *opts, char *slot)
 			free(gfile);
 			chdir(ROOT2RESYNC);
 			return (GFILE_CONFLICT);
+		} else if (pathConflict(opts, gfile)) {
+			free(gfile);
+			chdir(ROOT2RESYNC);
+			return (DIR_CONFLICT);
 		}
 		free(gfile);
 	}

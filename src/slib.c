@@ -3440,7 +3440,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	if (flags & INIT_SAVEPROJ) s->state |= S_SAVEPROJ;
 
 	if (s->mmap == (caddr_t)-1) {
-		if (errno == ENOENT) {
+		if ((errno == ENOENT) || (errno == ENOTDIR)) {
 			/* Not an error if the file doesn't exist yet.  */
 			debug((stderr, "%s doesn't exist\n", s->sfile));
 			s->cksumok = -1;
