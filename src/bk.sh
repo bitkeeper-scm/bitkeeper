@@ -708,7 +708,7 @@ _chmod() {		# /* doc 2.0 */
 	shift
 	ROOT=`bk root`
 	rm -f "$ROOT/BitKeeper/tmp/err$$"
-	bk gfiles ${1+"$@"} | while read i
+	bk sfiles -g ${1+"$@"} | while read i
 	do	bk clean "$i" || {
 			echo Can not clean "$i," skipping it
 			continue
