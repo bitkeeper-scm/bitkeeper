@@ -414,6 +414,7 @@ pass1_renames(opts *opts, sccs *s)
 	char	*rfile;
 
 	if (nameOK(opts, s)) {
+		unlink(sccs_Xfile(s, 'm'));
 		sccs_free(s);
 		return;
 	}
@@ -494,7 +495,7 @@ pass2_renames(opts *opts)
 	 * files (think hashed directories.
 	 */
 	unless (f =
-	    popen("bk _find BitKeeper/RENAMES/SCCS |sort", "r")) {
+	    popen("bk _find BitKeeper/RENAMES/SCCS | sort", "r")) {
 	    	return (0);
 	}
 	while (fnext(path, f)) {
@@ -1264,12 +1265,12 @@ pass3_resolve(opts *opts)
 	 * Make sure the renames are done first.
 	 * XXX - doesn't look in RENAMES, should it?
 	 */
-	unless (p = popen("bk _find -name 'm.*' .", "r")) {
+	unless (p = popen("bk _find . -name 'm.*'", "r")) {
 		perror("popen of find");
 		exit (1);
 	}
 	while (fnext(buf, p)) {
-		fprintf(stderr, "Needs rename: %s", &buf[2]);
+		fprintf(stderr, "Needs rename: %s", buf);
 		n++;
 	}
 	pclose(p);
@@ -1919,12 +1920,12 @@ pass4_apply(opts *opts)
 	opts->pass = 4;
 
 	if (pendingRenames()) exit(1);
-	unless (p = popen("find . -type f -name '[mr].*' -print", "r")) {
+	unless (p = popen("bk _find . -name '[mr].*'", "r")) {
 		perror("popen of find");
 		exit (1);
 	}
 	while (fnext(buf, p)) {
-		fprintf(stderr, "Pending: %s", &buf[2]);
+		fprintf(stderr, "Pending: %s", buf[2]);
 		n++;
 	}
 	pclose(p);
