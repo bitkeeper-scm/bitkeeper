@@ -2395,6 +2395,7 @@ private int
 copyAndGet(char *from, char *to, project *proj)
 {
 	sccs *s;
+	char *p;
 
 	if (link(from, to)) {
 		if (mkdirf(to)) {
@@ -2418,7 +2419,12 @@ copyAndGet(char *from, char *to, project *proj)
 	}
 	s = sccs_init(to, INIT_SAVEPROJ, proj);
 	assert(s && HASGRAPH(s));
-	sccs_get(s, 0, 0, 0, 0, SILENT|GET_EXPAND, "-");
+
+	p = user_preference("checkout");
+	if (strieq(p, "edit"))
+		sccs_get(s, 0, 0, 0, 0, SILENT|GET_EDIT, "-");
+	else
+		sccs_get(s, 0, 0, 0, 0, SILENT|GET_EXPAND, "-");
 	sccs_free(s);
 	return (0);
 }
