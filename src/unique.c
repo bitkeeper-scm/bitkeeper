@@ -2,7 +2,7 @@
  * In order to ensure that delta keys are unique, we're going to try the
  * following:
  * 
- * Create in $BK_BIN/tmp/keys.mdbm an mdbm where db{ROOTKEY} = timestamp
+ * Create in $BK_TMP/keys.mdbm an mdbm where db{ROOTKEY} = timestamp
  * of TOT if the timestamp is less than TIMEWINDOW seconds ago, again only
  * for those keys created on this host.
  * 
@@ -22,7 +22,7 @@
  * 
  * The rules for locking are:
  * 
- *     1) the lock file is $BK_BIN/tmp/keys.lock
+ *     1) the lock file is $BK_TMP/keys.lock
  *     2) the lock file contains the pid (in ascii) of the locking process
  *     3) if the pid is gone, the lock is broken
  *
@@ -32,6 +32,7 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
+extern	char *findTmp();
 private	int dirty;	/* set if we updated the db */
 private MDBM *db;
 
@@ -43,7 +44,7 @@ private MDBM *db;
 int
 uniq_lock()
 {
-	char	*bin;
+	char	*tmp;
 	pid_t	pid = 0;
 	int	fd;
 	int	first = 1;
@@ -57,11 +58,11 @@ uniq_lock()
 		fprintf(stderr, "keys: db already locked\n");
 		return (-1);
 	}
-	unless (bin = findBin()) {
-		fprintf(stderr, "Can not find BitKeeper bin directory\n");
+	unless (tmp = findTmp()) {
+		fprintf(stderr, "Can not find BitKeeper tmp directory\n");
 		return (-1);
 	}
-	sprintf(path, "%stmp/keys.lock", bin);
+	sprintf(path, "%s/keys.lock", tmp);
 #ifdef WIN32
 	while ((fd = _sopen(path, _O_CREAT|_O_EXCL|_O_WRONLY|_O_SHORT_LIVED,
 					_SH_DENYRW, _S_IREAD | _S_IWRITE)) == -1) {
@@ -146,14 +147,14 @@ uniq_lock()
 int
 uniq_unlock()
 {
-	char	*bin;
+	char	*tmp;
 	char	path[MAXPATH];
 
-	unless (bin = findBin()) {
-		fprintf(stderr, "Can not find BitKeeper bin directory");
+	unless (tmp = findTmp()) {
+		fprintf(stderr, "Can not find BitKeeper tmp directory");
 		return (-2);
 	}
-	sprintf(path, "%stmp/keys.lock", bin);
+	sprintf(path, "%s/keys.lock", tmp);
 	return (unlink(path));
 }
 
@@ -168,25 +169,25 @@ uniq_unlock()
 int
 uniq_open()
 {
-	char	*s, *bin;
+	char	*s, *tmp;
 	FILE	*f;
 	time_t	t, cutoff = time(0) - CLOCK_DRIFT;
 	datum	k, v;
 	char	path[MAXPATH*2];
 
 	unless (uniq_lock() == 0) return (-1);
-	unless (bin = findBin()) {
-		fprintf(stderr, "Can not find BitKeeper bin directory");
+	unless (tmp = findTmp()) {
+		fprintf(stderr, "Can not find BitKeeper tmp directory");
 		return (-1);
 	}
-	sprintf(path, "%stmp/keys", bin);
+	sprintf(path, "%s/keys", tmp);
 	db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	unless (f = fopen(path, "r")) return (0);
 	while (fnext(path, f)) {
 		s = strchr(path, ' ');
 		if ((chop(path) != '\n') || !s) {
 			fprintf(stderr,
-			    "bad data: <%s> in %stmp/keys\n", path, bin);
+			    "bad data: <%s> in %stmp/keys\n", path, tmp);
 			mdbm_close(db);
 			return (-1);
 		}
@@ -214,7 +215,7 @@ uniq_open()
 
 			fprintf(stderr,
 			    "Warning: duplicate key '%s' in %stmp/keys\n",
-			    path, bin);
+			    path, tmp);
 		    	v2 = mdbm_fetch(db, k);
 			assert(v2.dsize == sizeof(time_t));
 			memcpy(&t2, v2.dptr, sizeof(time_t));
@@ -284,15 +285,15 @@ uniq_close()
 	FILE	*f;
 	kvpair	kv;
 	time_t	t;
-	char	*bin;
+	char	*tmp;
 	char	path[MAXPATH];
 
 	unless (dirty) goto close;
-	unless (bin = findBin()) {
-		fprintf(stderr, "Can not find BitKeeper bin directory");
+	unless (tmp = findTmp()) {
+		fprintf(stderr, "Can not find BitKeeper tmp directory");
 		return (-1);
 	}
-	sprintf(path, "%stmp/keys", bin);
+	sprintf(path, "%s/keys", tmp);
 	unlink(path);
 	unless (f = fopen(path, "w")) {
 		perror(path);
