@@ -54,7 +54,7 @@ if [ ! -f SCCS/s.empty2 ]; then echo Failed.; exit 1; fi
 set `grep -v "^.cF" SCCS/s.empty2 | wc -w`
 # Accomodate Sun's stupid symlink
 if [ -h /dev/null ]
-the	FUDGE=17
+then	FUDGE=17
 else	FUDGE=16
 fi
 if [ $1 -ne `expr $BASE + $FUDGE` ]; then echo Failed - wrong size.; exit 1; fi
