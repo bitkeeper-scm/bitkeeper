@@ -18,6 +18,7 @@ char	*find_perl5();
 void	cmdlog_exit(void);
 int	cmdlog_repo;
 private	void	cmdlog_dump(int, char **);
+private int	run_cmd(char *prog, int is_bk, int ac, char **av);
 
 extern	void	getoptReset();
 extern	void	platformInit(char **av);
@@ -240,13 +241,9 @@ usage()
 int
 main(int ac, char **av)
 {
-	int	i, j;
-	char	cmd_path[MAXPATH];
-	char	*argv[MAXARGS];
-	int	c;
-	int	is_bk = 0, dashr = 0;
+	int	i, c, is_bk = 0, dashr = 0;
 	int	flags, ret;
-	char	*prog;
+	char	*prog, *argv[MAXARGS];
 
 	cmdlog_buffer[0] = 0;
 	if (i = setjmp(exit_buf)) {
@@ -278,7 +275,7 @@ main(int ac, char **av)
 	prog = basenm(av[0]);
 	if (streq(prog, "bk")) {
 		is_bk = 1;
-		while ((c = getopt(ac, av, "rR")) != -1) {
+		while ((c = getopt(ac, av, "hrR")) != -1) {
 			switch (c) {
 			    case 'h':
 				return (help_main(1, argv));
@@ -325,20 +322,32 @@ main(int ac, char **av)
 		return (0);
 	}
 
+	flags = cmdlog_start(av);
+	ret = run_cmd(prog, is_bk, ac, av);
+	cmdlog_end(ret, flags);
+	exit(ret);
+}
+
+
+private int
+run_cmd(char *prog, int is_bk, int ac, char **av)
+{
+	int	i, j, flags, ret;
+	char	cmd_path[MAXPATH];
+	char	*argv[MAXARGS];
+
 	/*
 	 * look up the internal command 
 	 */
 	for (i = 0; cmdtbl[i].name; i++) {
 		if (streq(cmdtbl[i].name, prog)){
-			flags = cmdlog_start(av);
 			ret = cmdtbl[i].func(ac, av);
-			cmdlog_end(ret, flags);
-			exit(ret);
+			return (ret);
 		}
 	}
 	unless(is_bk) {
 		fprintf(stderr, "%s is not a linkable command\n",  prog);
-		exit(1);
+		return (1);
 	}
 
 	/*
@@ -356,10 +365,8 @@ main(int ac, char **av)
 			argv[i] = av[j];
 		}
 		argv[i] = 0;
-		cmdlog_start(argv);
 		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
-		cmdlog_end(ret, 0);
-		exit(ret);
+		return (ret);
 	}
 
 	/*
@@ -397,10 +404,8 @@ main(int ac, char **av)
 			argv[i] = av[j];
 		}
 		argv[i] = 0;
-		cmdlog_start(argv);
 		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
-		cmdlog_end(ret, 0);
-		exit(ret);
+		return (ret);
 	}
 
 	/*
@@ -413,15 +418,13 @@ main(int ac, char **av)
 		for (i = 2, j = 1; av[j]; i++, j++) {
 			if (i >= (MAXARGS-10)) {
 				fprintf(stderr, "bk: too many args\n");
-				exit(1);
+				return (1);
 			}
 			argv[i] = av[j];
 		}
 		argv[i] = 0;
-		cmdlog_start(argv);
 		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
-		cmdlog_end(ret, 0);
-		exit(ret);
+		return (ret);
 	}
 
 	/*
@@ -429,10 +432,8 @@ main(int ac, char **av)
 	 */
 	if (streq(prog, "patch") ||
 	    streq(prog, "diff3")) {
-		cmdlog_start(av);
 		ret = spawnvp_ex(_P_WAIT, av[0], av);
-		cmdlog_end(ret, 0);
-		exit(ret);
+		return (ret);
 	}
 
 	/*
@@ -448,15 +449,13 @@ main(int ac, char **av)
 	for (i = 2, j = 0; av[j]; i++, j++) {
 		if (i >= (MAXARGS-10)) {
 			fprintf(stderr, "bk: too many args\n");
-			exit(1);
+			return (1);
 		}
 		argv[i] = av[j];
 	}
 	argv[i] = 0;
-	cmdlog_start(av);
 	ret = spawnvp_ex(_P_WAIT, argv[0], argv);
-	cmdlog_end(ret, 0);
-	exit(ret);
+	return (ret);
 }
 
 #define	LOG_MAXSIZE	(32<<10)
