@@ -29,6 +29,7 @@ if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
+
 echo $N Create some data ............................................$NL
 mkdir $HERE/project/src
 cd $HERE/project/src
@@ -39,7 +40,10 @@ echo h > h.h
 bk ci $Q -i h.h
 if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
 echo OK
+
 echo $N Attempt citool with commit which errors .....................$NL
+cp -rp $HERE/project $HERE/interactive
+cp -rp $HERE/project $HERE/interactive.cmd
 mkdir $HERE/project/BitKeeper/triggers
 cat > $HERE/project/BitKeeper/triggers/pre-commit <<EOF
 #!/bin/sh
@@ -48,6 +52,7 @@ echo "The repository is currently locked against updates, try later."
 exit 1
 EOF
 chmod +x $HERE/project/BitKeeper/triggers/pre-commit
+echo foo > $HERE/project/SCCS/c.ChangeSet
 bk citool
 echo OK
 echo You should have seen a popup, if you did not this test failed
@@ -56,14 +61,66 @@ echo
 echo $N Attempt citool with commit which says something but works ...$NL
 cat > $HERE/project/BitKeeper/triggers/pre-commit <<EOF
 #!/bin/sh
-
 echo "Yo momma wears army boots"
 echo "Yo poppa likes it"
 exit 0
 EOF
 chmod +x $HERE/project/BitKeeper/triggers/pre-commit
+echo foo > $HERE/project/SCCS/c.ChangeSet
 bk citool
 echo OK
 echo You should have seen a popup, if you did not this test failed
 bk pending
-exit 0
+
+echo $N Attempt citool which has interactive negative response ......$NL
+cd $HERE/interactive
+mkdir BitKeeper/triggers
+echo '#!/bin/sh
+echo DO NOT AGREE WITH THIS > BitKeeper/tmp/msg
+bk prompt -t "REJECT" -n "Do not accept" -y Accept -f BitKeeper/tmp/msg &&
+    exit 0
+echo This changeset has not completed because
+echo you did not accept the license.
+exit 1
+' > BitKeeper/triggers/pre-commit
+chmod +x BitKeeper/triggers/pre-commit
+echo foo > SCCS/c.ChangeSet
+bk citool
+bk sfiles -p > XXX
+test -s XXX || {
+	echo Did not fail the commit
+	exit 1
+}
+echo OK
+
+echo $N Attempt commit which has interactive negative response ......$NL
+echo ""
+bk commit -ywhatever
+echo ""
+bk sfiles -p > XXX
+test -s XXX || {
+	echo Did not fail the commit
+	exit 1
+}
+echo OK
+
+echo $N Attempt citool which has interactive positive response ......$NL
+cd $HERE/interactive
+echo '#!/bin/sh
+PAGER=cat bk help bkl > BitKeeper/tmp/msg
+bk prompt -t "ACCEPT" -n "Do not accept" -y Accept -f BitKeeper/tmp/msg &&
+    exit 0
+echo This changeset has not completed because
+echo you did not accept the license.
+exit 1
+' > BitKeeper/triggers/pre-commit
+chmod +x BitKeeper/triggers/pre-commit
+echo foo > SCCS/c.ChangeSet
+rm -f XXX
+bk citool
+bk sfiles -p > XXX
+test -s XXX && {
+	echo Did not commit
+	exit 1
+}
+echo OK

@@ -1,0 +1,54 @@
+.so bk-macros
+.TH "bk prompt" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk prompt \- prompt a user with a message
+.SH SYNOPSIS
+.Bc bk prompt [opts] [message]
+.SH DESCRIPTION
+.B bk prompt
+is used to prompt a user with a message in either the command line or
+graphical environment.  The command displays a message, prompts the user, gets
+an answer, and uses that answer for the exit status.
+.LP
+This interface may be used for either command line or graphical environments.
+If the environment variable \s-2\fBBK_GUI\fP\s0 is set, then the graphical
+tool will be used instead of the command line version.  All of the \*[BK]
+GUI tools set this variable automatically such that any call to bk prompt
+from inside the graphical tools will result in a graphical prompt.
+.LP
+If the environment
+variable \s-2\fBBK_MSG_GEOM\fP\s0 is set, the graphical tool will use the
+value of this variable to locate itself on the screen.  The format of the
+variable must be in the for 
+.I +x+y
+where "x" and "y" are screen coordinates.  bk citool sets this variable 
+automatically such that the prompt will be at the same x/y location as
+the upper left corner of citool.
+.SH OPTIONS
+.if t .TP
+.if n .TP 1.2i
+.OPTreq \-f file
+Specifies the file contain the message to be displayed.  If this option is
+not set then the last command line argument is required to be the message.
+.tp
+.OPTreq \-n No
+If set, specifies the message for the label in the graphical tool which
+is to be used if the user does not agree.  Default is "NO".  Not used
+for the command line version.
+.tp
+.OPTreq \-t Title
+If set, specifies the title of the graphical tool.
+Default is "BitKeeper Message".
+Not used for the command line version.
+.tp
+.OPTreq \-y Yes
+If set, specifies the message for the label in the graphical tool, or 
+the prompt in the command line tool,
+which is to be used if the user does agree.  Default is "OK".  
+.SH "EXIT STATUS"
+Exits 0 if the user agreed, 1 if the user did not agree.
+.SH "SEE ALSO"
+.SA citool 1
+.SA triggers 1
+.SH CATEGORY
+.B File

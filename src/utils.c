@@ -306,6 +306,82 @@ confirm(char *msg)
 }
 
 /*
+ * Usage: bk prompt [-n NO] [-y YES] [-t TITLE] msg | -f FILE
+ */
+int
+prompt_main(int ac, char **av)
+{
+	int	c;
+	char	*file = 0, *no = "NO", *yes = "OK", *title = 0;
+	pid_t	pid;
+	int	ret;
+
+	while ((c = getopt(ac, av, "f:n:t:y:")) != -1) {
+		switch (c) {
+		    case 'f': file = optarg; break;
+		    case 'n': no = optarg; break;
+		    case 't': title = optarg; break;	/* Only for GUI */
+		    case 'y': yes = optarg; break;
+		}
+	}
+	if ((file && av[optind]) ||
+	    (!file && !av[optind]) ||
+	    (av[optind] && av[optind+1])) {
+err:		system("bk help -s prompt");
+		exit(1);
+	}
+	if (getenv("BK_GUI")) {
+		int	i;
+		char	*nav[16];
+
+		nav[i=0] = "bk";
+		nav[++i] = "msgtool";
+		if (title) {
+			nav[++i] = "-T";
+			nav[++i] = title;
+		}
+		assert(no);
+		nav[++i] = "-N";
+		nav[++i] = no;
+		assert(yes);
+		nav[++i] = "-Y";
+		nav[++i] = yes;
+		if (file) {
+			nav[++i] = "-F";
+			nav[++i] = file;
+		} else {
+			nav[++i] = av[optind];
+		}
+		nav[++i] = 0;
+		assert(i < sizeof(nav)/sizeof(char*));
+		ret = spawnvp_ex(_P_WAIT, nav[0], nav);
+		if (WIFEXITED(ret)) exit(WEXITSTATUS(ret));
+		exit(2);
+	}
+
+	if (file) {
+		FILE	*f = fopen(file, "r");
+		char	buf[1024];
+
+		unless (f = fopen(file, "r")) goto err;
+		pid = mkpager();
+		while (fnext(buf, f)) {
+			fputs(buf, stdout);
+		}
+		fflush(stdout);
+		fclose(stdout);
+		waitpid(pid, 0, 0);
+	} else if (streq(av[optind], "-")) {
+		goto err;
+	} else {
+		fputs(av[optind], stdout);
+		fputc('\n', stdout);
+	}
+	/* XXX - why does this not return exit codes exit if I use exit? */
+	return (confirm(yes ? yes : "OK") ? 0 : 1);
+}
+
+/*
  * Return an MDBM with all the keys from the ChangeSet file
  * after subtracting the keys from the "not" database.
  * The result are stored as db{key} = rev.

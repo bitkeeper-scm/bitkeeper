@@ -1,8 +1,6 @@
-set usage "Usage: bk msg ?--title title? ?--ok label?\
-	    ?--cancel label? message"
+set usage "Usage: bk msgtool ?-T title? ?-Y YES-label? ?-N NO-label? message"
 
 proc main {} {
-
 	init
 	widgets
 }
@@ -11,59 +9,52 @@ proc init {} {
 	global argv
 	global options
 
-	# the last argument is the message (or "-" for stdin);
-	# strip it off; the rest are all options
-	set message [lindex $argv end]
-	set nextToLast [expr {[llength $argv]-2}]
-	set argv [lrange $argv 0 $nextToLast]
-
-	# These are defaults; note that if the -cancel option
-	# is null, no cancel button will be shown. 
-	set options(-ok) "OK"
-	set options(-cancel) ""
+	# These are defaults; note that if the -no option
+	# is null, no no button will be shown. 
+	set options(-yes) "OK"
+	set options(-no) ""
 	set options(-title) "BitKeeper message"
 	set options(-textWidth) 80
+	set message "-"
+	set f stdin
 
 	set error 0
-	while {[llength $argv] > 0} {
+	while {[llength $argv] > 1} {
 		set key [pop argv]
 		switch -exact -- $key {
-
-			-o -
-			--ok {
-				set value [pop argv]
-				set options(-ok) $value
+			-F {
+				set f [open [pop argv]]
 			}
-
-			-c -
-			--cancel {
+			-N {
 				set value [pop argv]
-				set options(-cancel) $value
+				set options(-no) $value
 			}
-
-			-T -
-			--title {
+			-T {
 				set value [pop argv]
 				set options(-title) $value
 			}
-
+			-Y {
+				set value [pop argv]
+				set options(-yes) $value
+			}
 			default {
 				# The intent is to reset the options
 				# and then display the error message
 				# as if it was what the user wanted
 				set options(-message) \
 				    "illegal option $key\n\n$::usage"
-				set options(-cancel) ""
-				set options(-ok) "OK"
+				set options(-no) ""
+				set options(-yes) "OK"
 				set error 1
 				break
 			}
 		}				       
 	}
+	if {[llength $argv] > 0} { set message [pop argv] }
 
 	if {!$error} {
 		if {[string match "-" $message]} {
-			set options(-message) [read stdin]
+			set options(-message) [read $f]
 		} else {
 			set options(-message) $message
 		}
@@ -78,7 +69,6 @@ proc init {} {
 			if {!$havetabs && [string first \t $line] >= 0} {
 				set havetabs 1
 			}
-
 			if {!$havetabs} {
 				set l [string length $line]
 
@@ -87,7 +77,6 @@ proc init {} {
 				}
 			}
 		}
-
 		if {$havetabs} {
 			set options(-textWidth) 80
 		} else {
@@ -101,23 +90,25 @@ proc init {} {
 # of this code should be in a library so that it can be used by other
 # apps without having to do an exec to display a message
 proc widgets {} {
-	global options
-	global widgets
+	global options widgets env
 
 	set widgets(toplevel) .
 	set w ""
 
 	# If the user closes the window via the window manager, treat
-	# that as if they pressed cancel even if no cancel button is
+	# that as if they pressed no even if no "no" button is
 	# displayed. This way, the calling program can still distinguish
-	# between the user clicking "ok" or not clicking "ok"
+	# between the user clicking "yes" or not clicking "yes"
 	wm protocol $widgets(toplevel) WM_DELETE_WINDOW {
-		doCommand cancel
+		doCommand no
 	}
 
 	wm title $widgets(toplevel) $options(-title)
 
 	$widgets(toplevel) configure -borderwidth 4 -relief flat 
+	if  {[info exists env(BK_MSG_GEOM)]} {
+		wm geometry $widgets(toplevel) $env(BK_MSG_GEOM)
+	}
 
 	# Any widgets that get referenced outside of this
 	# proc need to be defined here, so that if the layout
@@ -128,8 +119,8 @@ proc widgets {} {
 	set widgets(sby)  $widgets(message).sby
 	set widgets(logo) $w.logo
 	set widgets(buttonFrame) $w.buttons
-	set widgets(ok) $widgets(buttonFrame).ok
-	set widgets(cancel) $widgets(buttonFrame).cancel
+	set widgets(yes) $widgets(buttonFrame).yes
+	set widgets(no) $widgets(buttonFrame).no
 
 	## Bk Logo
 	catch {exec bk bin} bin
@@ -170,12 +161,11 @@ proc widgets {} {
 		    -background #f8f8f8 \
 		    -text "\n$options(-message)\n"
 	} else {
-		if {[llength $lines] > 20} {
-			set height 20
+		if {[llength $lines] > 24} {
+			set height 24
 		} else {
 			set height [llength $lines]
 		}
-
 		frame $widgets(message) \
 		    -borderwidth 1 \
 		    -relief sunken \
@@ -253,31 +243,31 @@ proc widgets {} {
 	## Buttons
 	frame $widgets(buttonFrame) -borderwidth 0
 
-	button $widgets(ok) \
-	    -text $options(-ok) \
+	button $widgets(yes) \
+	    -text $options(-yes) \
 	    -borderwidth 1 \
 	    -padx 8 \
 	    -relief raised \
-	    -command [list doCommand ok]
+	    -command [list doCommand yes]
 	
-	if {[string length $options(-cancel)] > 0} {
-		button $widgets(cancel) \
-		    -text $options(-cancel) \
+	if {[string length $options(-no)] > 0} {
+		button $widgets(no) \
+		    -text $options(-no) \
 		    -borderwidth 1 \
 		    -relief raised \
-		    -command [list doCommand cancel]
+		    -command [list doCommand no]
 
 		frame $widgets(buttonFrame).spacer \
 		    -width 16 \
 		    -background [$widgets(buttonFrame) cget -background]
 
-		pack $widgets(ok) -side right -fill x -expand y
+		pack $widgets(yes) -side right -fill x -expand y
 		pack $widgets(buttonFrame).spacer -side right -fill y
-		pack $widgets(cancel) -side left -fill x -expand y
+		pack $widgets(no) -side left -fill x -expand y
 
 	} else {
 
-		pack $widgets(ok) -side top -fill x -expand y
+		pack $widgets(yes) -side top -fill x -expand y
 	}
 
 	frame $w.spacer1 -height 4 -bg #00008b
@@ -295,8 +285,8 @@ proc doCommand {command args} {
 	global widgets
 
 	switch -exact -- $command {
-		ok 		{exit 0}
-		cancel 		{exit 1}
+		yes 		{exit 0}
+		no 		{exit 1}
 		scroll {
 			set what [lindex $args 0]
 
@@ -341,8 +331,8 @@ proc pop {listVariable} {
 }
 
 if {[llength $::argv] == 0} {
-	lappend ::argv --title "bk msg usage"
-	lappend ::argv --ok    "Ok"
+	lappend ::argv -T "bk msgtool usage"
+	lappend ::argv -Y "OK"
 	lappend ::argv $::usage
 }
 
