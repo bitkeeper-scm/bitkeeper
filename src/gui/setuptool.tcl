@@ -96,7 +96,7 @@ proc dialog_wait { dlg width len } \
 
 proc license_check {}  \
 {
-	global ret_value env tcl_platform bkdir
+	global ret_value env tcl_platform st_g
 
 	#
 	# Make user accept license if environment var not set
@@ -105,14 +105,15 @@ proc license_check {}  \
 	    [string compare $env(BK_LICENSE) "ACCEPTED"] == 0} {
 		return
         } elseif {$tcl_platform(platform) == "windows"} {
-		set bkaccepted [file join $bkdir _bkaccepted]
+		set bkaccepted [file join $st_g(bkdir) _bkaccepted]
 		if {[file exists $bkaccepted]} {return}
 	} elseif {[info exists env(HOME)]} {
-		set bkaccepted [file join $bkdir .bkaccepted]
+		set bkaccepted [file join $st_g(bkdir) .bkaccepted]
 		if {[file exists $bkaccepted]} {return}
 	} else {
 		puts "Error: HOME not defined"
 	}
+	catch {wm iconify .} err
 	# open modal dialogue box
 	dialog .lic "License" 1
 	frame .lic.t -bd 2 -relief raised
@@ -142,8 +143,8 @@ proc license_check {}  \
 	dialog_bottom .lic Agree "Don't Agree"
 	set rc [ dialog_wait .lic 600 480 ]
 	if {$rc == 1} {
-		puts "rc is $rc"
-		exit
+		displayMessage "License Not Accepted"
+		exit 1
 	}
 	if {[info exist bkaccepted]} {
 		#puts "exist bkaccepted"
@@ -155,6 +156,7 @@ proc license_check {}  \
 			close $fid
 	    	}
 	}
+	catch {wm deiconify .} err
 	return 0
 }
 
@@ -164,11 +166,11 @@ proc license_check {}  \
 #
 proc save_config_info {} \
 {
-	global st_cinfo env bkrc
+	global st_cinfo env st_g
 
 	#puts "Writing config file: $env(HOME)"
-	if {[catch {open $bkrc w} fid]} {
-		puts stderr "Cannot open $bkrc"
+	if {[catch {open $st_g(bkrc) w} fid]} {
+		puts stderr "Cannot open $st_g(bkrc)"
 	} else {
 		foreach el [lsort [array names st_cinfo]] {
 			puts $fid "${el}: $st_cinfo($el)"
@@ -181,9 +183,9 @@ proc save_config_info {} \
 
 proc read_bkrc {} \
 {
-	global env st_cinfo debug bkrc
+	global env st_cinfo debug st_g
 
-	set fid [open $bkrc "r"]
+	set fid [open $st_g(bkrc) "r"]
 	#while { [ gets $fid line ] != -1 } {
 	#	.lic.t.text insert end $line
 	#}
@@ -206,7 +208,7 @@ proc read_bkrc {} \
 # Generate etc/config file and then create the repository
 proc create_repo {} \
 {
-	global st_cinfo env st_repo_name tmp_dir debug topics
+	global st_cinfo env st_repo_name tmp_dir debug st_g
 
 	regsub -all {\ } $st_cinfo(description) {\\ }  escaped_desc
 	# save config info back to users .bkrc file
@@ -215,7 +217,7 @@ proc create_repo {} \
 	set pid [pid]
 	set cfile [file join $tmp_dir "config.$pid"]
 	set cfid [open "$cfile" w]
-	foreach el $topics {
+	foreach el $st_g(topics) {
 		puts $cfid "${el}: $st_cinfo($el)"
 		if {$debug} { puts "${el}: $st_cinfo($el)" }
 	}
@@ -233,9 +235,9 @@ proc create_repo {} \
 # Read previous values for config info from resource file
 proc get_config_info {} \
 {
-	global env st_cinfo bkrc
+	global env st_cinfo st_g
 
-	if {[file exists $bkrc]} {
+	if {[file exists $st_g(bkrc)]} {
 		#puts "found file .bkrc"
 		read_bkrc
 		return 
@@ -282,7 +284,7 @@ proc check_config { widget } \
 
 proc create_config {w} \
 {
-	global st_cinfo st_bk_cfg rootDir st_dlg_button logo widget topics
+	global st_cinfo st_g rootDir st_dlg_button logo widget
 	global gc tcl_platform
 
         getConfig "setup"
@@ -299,11 +301,12 @@ proc create_config {w} \
 	frame $w -bg $gc(setup.BG)
 	    frame $w.t -bd 2 -relief raised -bg $gc(setup.BG)
 		label $w.t.label -text "Configuration Info" -bg $gc(setup.BG)
+		#XXX: Have a left side and a right side to put the info in
 		frame $w.t.l -bg $gc(setup.BG)
 		frame $w.t.e -bg $gc(setup.BG)
 		frame $w.t.info -bg $gc(setup.BG)
-		message $w.t.info.msg -width 200 -bg $gc(setup.BG) \
-		    -text "The items on the right that are highlited are \
+		message $w.t.info.msg -width 200 -bg $gc(setup.mandatoryColor) \
+		    -text "The highlighted items on the right that are \
 		           mandatory fields"
 		pack $w.t.info.msg -side bottom  -pady 10
 		# create button bar on bottom
@@ -332,7 +335,7 @@ proc create_config {w} \
 	pack $w.t.l -side right -fill both  -ipadx 5
 	pack $w.t.info -side right -fill both -expand yes -ipady 10 -ipadx 10
 
-	foreach desc $topics {
+	foreach desc $st_g(topics) {
 		    #puts "desc: ($desc) desc: ($desc)"
 		    label $w.t.l.$desc -text "$desc" -justify right \
 			-bg $gc(setup.BG)
@@ -347,7 +350,7 @@ proc create_config {w} \
 		    bind $w.t.e.$desc <FocusIn> "
 			$w.t.t.t configure -state normal;\
 			$w.t.t.t delete 1.0 end;\
-			$w.t.t.t insert insert \$st_bk_cfg($desc);\
+			$w.t.t.t insert insert \$st_g($desc);\
 			$w.t.t.t configure -state disabled"
 	}
 	# Highlight mandatory fields
@@ -379,6 +382,7 @@ proc create_config {w} \
 	focus $w.t.e.repository
 	pack $w.t
 	pack $w
+	wm protocol . WM_DELETE_WINDOW "handle_close ."
 	#if {[$w.t.e.repository selection present] == 1} {
 	#	puts "Repository selected"
 	#}
@@ -391,11 +395,69 @@ proc create_config {w} \
 	return 0
 }
 
+proc setbkdir {} \
+{
+	global st_g tcl_platform env
+
+        if {$tcl_platform(platform) == "windows"} {
+		package require registry
+		set appdir [registry get {HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders} AppData]
+		set st_g(bkdir) [file join $appdir BitKeeper]
+		if {![file isdirectory $st_g(bkdir)]} {
+			catch {file mkdir $st_g(bkdir)} err
+		}
+		set set_g(bkrc) [file join $st_g(bkdir) _bkrc]
+	} elseif {[info exists env(HOME)]} {
+		set st_g(bkdir) $env(HOME)
+		set st_g(bkrc) [file join $st_g(bkdir) .bkrc]
+	} else {
+		displayMessage "HOME environment variable not set"
+		exit 1
+	}
+}
+
+#
+# Reads the bkhelp.doc file to generate a list of entries to be used in
+# the /etc/config file. Also, use bk gethelp on this list of entries to
+# get the help text which will be shown in the bottom panel of setuptool
+#
+proc getMessages {} \
+{
+	global st_g
+
+	set st_g(topics) "repository"
+	set st_g(repository) "Repository name"
+
+	set fid [open "|bk getmsg config_template" "r"]
+	while {[gets $fid topic] != -1} {
+		set found 0
+		set cfg_topic ""
+		set topic [string trim $topic]
+		lappend st_g(topics) $topic 
+		append cfg_topic "config_" $topic
+		set hfid [open "|bk getmsg $cfg_topic" "r"]
+		while {[gets $hfid help] != -1} {
+			set found 1
+			#puts "$topic: $help"
+			append st_g($topic) $help " "
+		}
+		if {$found == 0} {
+			#puts "topic not found: $topic"
+			set st_g($topic) ""
+		}	
+	}
+	catch {close $fid}
+	catch {close $hfid}
+}
+
 proc main {} \
 {
-	global env argc argv st_repo_name st_dlg_button st_cinfo st_bk_cfg
+	global env argc argv st_repo_name st_dlg_button st_cinfo st_g
 
+	setbkdir
 	license_check
+	getMessages
+
 	set swidth [winfo screenwidth .]
 	set sheight [winfo screenheight .]
 	set x [expr {($swidth/2) - 100}]
@@ -419,60 +481,5 @@ proc main {} \
 	}
 }
 
-proc setbkdir {} \
-{
-	global bkdir bkrc tcl_platform
-
-        if {$tcl_platform(platform) == "windows"} {
-		package require registry
-		set appdir [registry get {HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders} AppData]
-		set bkdir [file join $appdir BitKeeper]
-		if {![file isdirectory $bkdir]} { file mkdir $bkdir }
-		set bkrc [file join $bkdir _bkrc]
-	} elseif {[info exists env(HOME)]} {
-		set bkdir $env(HOME)
-		set bkrc [file join $bkdir .bkrc]
-	} else {
-		displayMessage "HOME environment variable not set"
-		exit 1
-	}
-}
-
-#
-# Reads the bkhelp.doc file to generate a list of entries to be used in
-# the /etc/config file. Also, use bk gethelp on this list of entries to
-# get the help text which will be shown in the bottom panel of setuptool
-#
-proc getMessages {} \
-{
-	global st_bk_cfg topics
-
-	set topics "repository"
-	set st_bk_cfg(repository) "Repository name"
-
-	set fid [open "|bk getmsg config_template" "r"]
-	while {[gets $fid topic] != -1} {
-		set found 0
-		set cfg_topic ""
-		set topic [string trim $topic]
-		lappend topics $topic 
-		append cfg_topic "config_" $topic
-		set hfid [open "|bk getmsg $cfg_topic" "r"]
-		while {[gets $hfid help] != -1} {
-			set found 1
-			#puts "$topic: $help"
-			append st_bk_cfg($topic) $help " "
-		}
-		if {$found == 0} {
-			#puts "topic not found: $topic"
-			set st_bk_cfg($topic) ""
-		}	
-	}
-	catch {close $fid}
-	catch {close $hfid}
-}
-
 bk_init
-setbkdir
-getMessages
 main
