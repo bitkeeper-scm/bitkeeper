@@ -26,6 +26,7 @@ private	void	listFound(MDBM *db);
 private	void	listCsetRevs(char *key);
 private void	init_idcache();
 private int	checkKeys(sccs *s, char *root);
+private void	warnPoly(void);
 
 private	int	verbose;
 private	int	all;	/* if set, check every darn entry in the ChangeSet */
@@ -37,7 +38,9 @@ private	project	*proj;
 private char	csetFile[] = CHANGESET;
 private int	flags = SILENT|INIT_SAVEPROJ|INIT_NOCKSUM;
 private	FILE	*idcache;
+private	int	poly;
 
+#define	POLY	"BitKeeper/etc/SCCS/x.poly"
 #define	CTMP	"BitKeeper/tmp/ChangeSet-all"
 
 /*
@@ -200,8 +203,28 @@ usage:		fprintf(stderr, "%s", check_help);
 		}
 	}
 	if (csetKeys.deltas) free(csetKeys.deltas);
+	if (poly) warnPoly();
 	purify_list();
 	return (errors);
+}
+
+private void
+warnPoly(void)
+{
+	fprintf(stderr,
+	"check: Warning -- this repository has been found to have\n"
+	"deltas which belong to multiple csets.  This can happen\n"
+	"by copying a respository that has pending deltas then having\n"
+	"those deltas commited into csets in different repositories.\n"
+	"This should not cause any problems in the operation of\n"
+	"Bitkeeper, but does make understanding difficult for what\n"
+	"it does for some operations.  Please make sure to use\n"
+	"'bk clone {from} {to}' when copying a repository, or when\n"
+	"using tools like tar or cpio, to make sure there are no\n"
+	"pending deltas by running 'bk pending'.\n"
+	"You will only see this warning one per repository.\n");
+
+	close(open(POLY, O_CREAT|O_TRUNC, 0664));
 }
 
 /*
@@ -528,6 +551,31 @@ getRev(char *root, char *key, MDBM *idDB)
 }
 
 /*
+ * Tag with D_SET all deltas in a cset.
+ * Flag an error if delta already in cset.
+ */
+private void
+markCset(sccs *s, delta *d)
+{
+	do {
+		if (d->flags & D_SET) {
+			poly = 1;
+			fprintf(stderr,
+				"check: %s: %s in more than one cset\n",
+				s->gfile, d->rev);
+		}
+		d->flags |= D_SET;
+		if (d->merge) {
+			delta	*e = sfind(s, d->merge);
+
+			assert(e);
+			unless (e->flags & D_CSET) markCset(s, e);
+		}
+		d = d->parent;
+	} while (d && !(d->flags & D_CSET));
+}
+
+/*
 	1) for each key in the changeset file, we need to make sure the
 	   key is in the source file and is marked.
 
@@ -658,6 +706,18 @@ check(sccs *s, MDBM *db, MDBM *marks)
 		*t = 0;
 		errors += checkKeys(s, buf);
 		*t = '|';
+	}
+
+	/* If we are not already marked as a repository having poly
+	 * cseted deltas, then check to see if it is the case
+	 */
+	if (!exists(POLY) && (s->state & S_CSETMARKED)) {
+		for (d = s->table; d; d = d->next) {
+			d->flags &= ~D_SET;
+		}
+		for (d = s->table; d; d = d->next) {
+			if (d->flags & D_CSET) markCset(s, d);
+		}
 	}
 	return (errors);
 }
