@@ -82,6 +82,7 @@ proc prevFile {} \
 	dotFile
 }
 
+# XXX: Some functionality that Larry never implemented?
 proc nextCset {} \
 {
 }
@@ -394,16 +395,17 @@ proc widgets {} \
 	    grid .diffs.right -row 1 -column 2 -sticky nsew
 	    grid .diffs.xscroll -row 2 -column 0 -sticky ew
 	    grid .diffs.xscroll -columnspan 3
+	    grid columnconfigure .diffs 0 -weight 1
+	    grid columnconfigure .diffs 2 -weight 1
 
 	    grid columnconfigure .diffs.yscroll 1 -weight 0
 	    grid columnconfigure .diffs.status 0 -weight 1
 	    grid columnconfigure .diffs.status 2 -weight 1
-	    grid columnconfigure .diffs.left 0 -weight 1
-	    grid columnconfigure .diffs.right 2 -weight 1
-	    grid columnconfigure .diffs 0 -weight 10
 
 	    grid rowconfigure .diffs 0 -weight 0
 	    grid rowconfigure .diffs 1 -weight 1
+	    grid rowconfigure .diffs.left 1 -weight 1
+	    grid rowconfigure .diffs.right 1 -weight 1
 	    grid rowconfigure .diffs 2 -weight 0
 
 image create photo prevImage \
@@ -496,7 +498,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	# smaller than this doesn't look good.
 	#wm minsize . $x 400
 
-	grid .menu -row 0 -column 0 -sticky ew
+	grid .menu -row 0 -column 0 -sticky w
 	grid .l -row 1 -column 0 -sticky nsew
 	grid .l.sccslog -row 0 -column 1 -sticky nsew
 	grid .l.filelist -row 0 -column 0 -sticky nsew
@@ -512,8 +514,6 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	grid columnconfigure .l.filelist 0 -weight 1
 	grid columnconfigure .l.sccslog 1 -weight 1
 	grid columnconfigure .diffs 0 -weight 1
-	grid columnconfigure .diffs.left 0 -weight 1
-	grid columnconfigure .diffs.right 1 -weight 1
 
 	bind .diffs <Configure> { computeHeight }
 	#$search(widget) tag configure search \
