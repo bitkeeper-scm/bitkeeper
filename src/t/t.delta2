@@ -1,0 +1,20 @@
+no_logging project
+# This test case shows a bug of the strncmp() function supplied by MS C libary
+# bk.exe will be aborted by the OS unless we use our own strncmp().
+echo $N show XP strncmp bug .........................................$NL
+cp /dev/null test.c
+bk new $Q -l test.c
+rm -f test.c
+echo "0a1,279" > diffs
+cnt=0
+# Create a diffs file with 4096 char (page boundary?) and short line at the end
+while true
+do
+	echo "> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" >> diffs
+	cnt=`expr $cnt + 1`
+	if [ $cnt -eq 101 ]; then break; fi
+done
+echo "> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" >> diffs
+echo "> " >> diffs
+bk delta $Q -y -Ddiffs test.c || { echo failed; exit 1; }
+echo OK
