@@ -623,9 +623,7 @@ proc addline {y xspace ht l} \
 		set wid($rev) $lastwid
 		set last [expr {$x + $lastwid}]
 	}
-	if {[info exists merges] != 1} {
-		set merges {}
-	}
+	if {![info exists merges]} { set merges [list] }
 }
 
 proc balloon_setup {rev} \
@@ -849,6 +847,7 @@ proc listRevs {r file {N {}}} \
 	set screen(maxy) 0
 	set lines ""
 	set n ""
+	set merges [list]
 
 	$w(graph) delete all
 	$w(graph) configure -scrollregion {0 0 0 0}
@@ -914,8 +913,10 @@ proc listRevs {r file {N {}}} \
 	foreach s $lines {
 		line $s $len $ht
 	}
-	foreach m $merges {
-		mergeArrow $m $ht
+	if {[info exists merges]} {
+		foreach m $merges {
+			mergeArrow $m $ht
+		}
 	}
 	if {$bad != 0} {
 		wm title . "revtool: $file -- $bad bad revs"
@@ -1245,6 +1246,7 @@ proc currentMenu {} \
 		# don't want to modify global rev2 in this procedure
 		set end $rev2
 	}
+	busy 1
 	cd2root
 	$gc(current) delete 1 end
 	set revs [open "| bk -R prs -hbMr$rev1..$end {-d:I:\n} ChangeSet"]
@@ -1259,6 +1261,7 @@ proc currentMenu {} \
 	}
 	catch {close $revs}
 	catch {close $log}
+	busy 0
 	return
 }
 
