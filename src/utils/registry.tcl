@@ -30,12 +30,23 @@ proc main {} \
 
 	set reglog {}
 	set shortcutlog {}
-	registry_install $destination
-	startmenu_install $destination
-	addpath $destination
+	if {[catch {registry_install $destination}]} {
+		# failed, almost certainly because user doesn't have
+		# admin privs. Whatever the reason we can still do
+		# the startmenu and path stuff for this user
+		startmenu_install $destination
+		addpath user $destination
+		set exit 2
+	} else {
+		# life is good; registry was updated
+		startmenu_install $destination
+		addpath system $destination
+		set exit 0
+	}
+
 	writelog $destination
 
-	exit 0
+	exit $exit
 }
 
 proc registry_install {destination} \
@@ -94,6 +105,9 @@ proc startmenu_install {dest {group "BitKeeper"}} \
 	set uninstall [file nativename [file join $dest bkuninstall.exe]]
 	set installlog [file nativename [file join $dest install.log]]
 	lappend shortcutlog "CreateGroup \"$group\""
+	# by not specifying whether this is a common or user group 
+	# it will default to common if the user has admin privs and
+	# user if not.
 	progman CreateGroup "$group,"
 	progman AddItem "$bk helptool,BitKeeper Documentation,,,,,,,1"
 	progman AddItem "$bk sendbug,Submit bug report,,,,,,,1"
@@ -102,6 +116,7 @@ proc startmenu_install {dest {group "BitKeeper"}} \
 	progman AddItem "$dest\\bk_refcard.pdf,Quick Reference,,,,,,,1"
 	progman AddItem "$dest\\gnu\\msys.bat,Msys Shell,,,,,,,1"
 	progman AddItem "http://www.bitkeeper.com,BitKeeper on the Web,,,,,,,1"
+	progman AddItem "http://www.bitkeeper.com/Test.html,BitKeeper Test Drive,,,,,,,1"
 }
 # use dde to talk to the program manager
 proc progman {command details} \
@@ -169,17 +184,31 @@ proc writelog {dest} \
 	close $f
 }
 
-proc addpath {dir} \
+proc addpath {type dir} \
 {
-	set key "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet"
-	append key "\\Control\\Session Manager\\Environment"
-	set path [registry get $key Path]
-	set dir [normalize [file nativename $dir]]
+	if {$type eq "system"} {
+		set key "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet"
+		append key "\\Control\\Session Manager\\Environment"
+	} else {
+		set key "HKEY_CURRENT_USER\\Environment"
+	}
+
+	if {[catch {set path [registry get $key Path]}]} {
+		# it's possible that there won't be a Path value
+		# if the key is under HKEY_CURRENT_USER
+		set path ""
+	}
+
+	# at this point it's easier to deal with a list of dirs
+	# rather than a string of semicolon-separated dirs
+	set path [split $path {;}]
+
 	# look through the path to see if this directory is already
 	# there (presumably from a previous install); no sense in
 	# adding a duplicate
-	foreach d [split $path {;}] {
-		set d [file normalize $d]
+	set dir [normalize $dir]
+	foreach d $path {
+		set d [normalize $d]
 		if {$d eq $dir} {
 			# dir is already in the path
 			return 
@@ -190,7 +219,8 @@ proc addpath {dir} \
 	# key (versus creating it). Andrew wanted to know the exact
 	# bits added to the path so we'll pass that info along so 
 	# it gets logged
-	set path "$path;$dir"
+	lappend path $dir
+	set path [join $path {;}]
 	reg modify $key Path $path $dir
 	reg broadcast Environment
 }
@@ -210,8 +240,10 @@ proc normalize {dir} \
 {
 	if {[file exists $dir]} {
 		# If possible, use bk's notion of a normalized
-		# path. This only works if the file exists, though.
-		catch {set dir [exec bk pwd $dir]}
+		# path. This only works if the file exists and
+		# we give a unixy anme (forward-slash, as given by
+		# tcl's normalize function) 
+		catch {set dir [exec bk pwd [file normalize $dir]]}
 		if {$dir eq ""} {
 			set dir [file nativename [file normalize $dir]]
 		}
