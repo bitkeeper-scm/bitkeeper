@@ -57,6 +57,7 @@ int	deledit_main(int, char **);
 int	delget_main(int, char **);
 int	delta_main(int, char **);
 int	diffs_main(int, char **);
+int	diffsplit_main(int, char **);
 int	exists_main(int, char **);
 int	export_main(int, char **);
 int	f2csets_main(int, char **);
@@ -97,6 +98,7 @@ int	logging_main(int, char **);
 int	loggingaccepted_main(int ac, char **av);
 int	loggingask_main(int ac, char **av);
 int	loggingto_main(int, char **);
+int	mailsplit_main(int, char **);
 int	mail_main(int, char **);
 int	makepatch_main(int, char **);
 int	merge_main(int, char **);
@@ -234,6 +236,7 @@ struct	command cmdtbl[] = {
 	{"deledit", deledit_main},		/* doc 2.0 */
 	{"delget", delget_main},		/* doc 2.0 */
 	{"diffs", diffs_main},			/* doc 2.0 */
+	{"diffsplit", diffsplit_main},
 	{"edit", get_main},	/* aliases */	/* doc 2.0 */
 	{"enter", delta_main},			/* doc 2.0 */
 	{"export", export_main},		/* doc 2.0 */
@@ -262,6 +265,7 @@ struct	command cmdtbl[] = {
 	{"lock", lock_main},			/* doc 2.0 */
 	{"lod", lod_main},	/* XXX - doc 2.0 - says doesn't work yet */
 	{"log", log_main},
+	{"mailsplit", mailsplit_main},
 	{"makepatch", makepatch_main},		/* doc 2.0 */
 	{"merge", merge_main},			/* doc 2.0 */
 	{"mklock", mklock_main},	/* regression test */ /* undoc 2.0 */

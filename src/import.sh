@@ -71,7 +71,8 @@ import() {
 			echo "Not at a repository root"
 			exit 1
 		}
-		mailsplit diffsplit applypatch NAME DOMAIN SUBJECT EXPLANATION
+		bk mailsplit bk diffsplit \
+				applypatch NAME DOMAIN SUBJECT EXPLANATION
 		exit $?
 	fi
 

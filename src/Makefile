@@ -41,7 +41,7 @@ XTRA=
 UWTLIB	=
 UWT_H	=
 WIN_TMP	=*.idb *.pdb *.ilk *.exe *~bkp
-BINS	= $(BK) mailsplit diffsplit
+BINS	= $(BK)
 RESOURCE=
 
 # Override Solaris make.rules
@@ -59,7 +59,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o approve.o \
 	check.o checksum.o clean.o cleanpath.o clone.o \
 	comment.o comments.o commit.o compress.o converge.o \
 	cp.o cset.o cset_inex.o csetprune.o csets.o cweave.o delta.o diffs.o \
-	dir_gif.o dirname.o export.o fdiff.o file_gif.o \
+	diffsplit.o dir_gif.o dirname.o export.o fdiff.o file_gif.o \
 	find.o findkey.o fix.o g2sccs.o gca.o get.o gethelp.o \
 	gethost.o getopt.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \
@@ -68,7 +68,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o approve.o \
 	libsfiles.o libusers.o license.o lines.o \
 	localtm.o lock.o locking.o lod.o logflags.o \
 	logging.o mail.o merge.o mkdir.o mklock.o \
-	mmap.o mtime.o multiuser.o names.o newrev.o \
+	mailsplit.o mmap.o mtime.o multiuser.o names.o newrev.o \
 	parent.o park.o \
 	pending.o preference.o port/bkd_client.o port/bkd_server.o \
 	port/check_gfile.o port/executable.o \
