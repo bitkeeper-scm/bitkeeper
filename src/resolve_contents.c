@@ -208,9 +208,9 @@ c_fm3tool(resolve *rs)
 
 	av[0] = "bk";
 	av[1] = "fm3tool";
-	av[2] = rs->tnames->local;
-	av[3] = rs->tnames->gca;
-	av[4] = rs->tnames->remote;
+	av[2] = rs->revs->local;
+	av[3] = rs->revs->gca;
+	av[4] = rs->revs->remote;
 	av[5] = rs->s->gfile;
 	av[6] = 0;
 	spawnvp_ex(_P_NOWAIT, "bk", av);

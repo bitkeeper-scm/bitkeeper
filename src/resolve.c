@@ -100,7 +100,7 @@ resolve_main(int ac, char **av)
     	}
 	unless (opts.mergeprog) {
 		char	*env = getenv("BK_RESOLVE_MERGEPROG");
-		opts.mergeprog = env ? env : "merge";
+		opts.mergeprog = env ? env : "smerge";
 	}
 	if ((av[optind] != 0) && isdir(av[optind])) chdir(av[optind]);
 
