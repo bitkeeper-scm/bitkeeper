@@ -142,7 +142,7 @@ proc widgets {} \
 		set py 0
 	} else {
 		set swid 12
-		set font {helvetica 12 roman}
+		set font {fixed 12 roman}
 		set buttonFont {times 12 roman bold}
 		set py 1
 	}

@@ -807,7 +807,7 @@ proc adjustHeight {diff list} \
 proc widgets {} \
 {
 	global	leftColor rightColor scroll boldFont diffHeight
-	global	buttonFont wish bithelp listHt tcl_platform
+	global	buttonFont wish listHt tcl_platform
 
 	if {$tcl_platform(platform) == "windows"} {
 		set boldFont {helvetica 9 roman bold}
@@ -818,10 +818,10 @@ proc widgets {} \
 		set y 0
 		set filesHt 9
 	} else {
-		set boldFont {helvetica 12 roman bold}
-		set listFont {helvetica 12 roman }
+		set boldFont {fixed 12 roman bold}
+		set listFont {fixed 12 roman }
 		set buttonFont {times 12 roman bold}
-		set diffFont {helvetica 12 roman}
+		set diffFont {fixed 12 roman}
 		set swid 12
 		set y 1
 		set filesHt 7

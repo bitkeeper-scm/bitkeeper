@@ -7,7 +7,7 @@ BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  sinfo stripdel smoosh takepatch undos what gca mtime zone	 \
 	  isascii resyncwrap
 SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
-	  sccstool citool helptool difftool csettool fm fm3 bithelp mkindex \
+	  sccstool citool helptool difftool csettool fm fm3 mkindex \
 	  renametool mkdiffs
 PSCR	= t/doit
 LIBS	= zlib/libz.a mdbm/libmdbm.a libsccs.a
@@ -54,7 +54,7 @@ HDRS	= sccs.h purify.h range.h system.h mdbm/common.h mdbm/mdbm.h \
 	  comments.c host.c user.c
 SCRSRCS	= rcs2sccs.perl testfast.perl bk.sh import.sh \
 	  resolve.perl gui/sccstool.tcl gui/citool.tcl gui/difftool.tcl \
-	  gui/vitool.tcl gui/fm.tcl gui/fm3.tcl gui/bithelp.tcl \
+	  gui/vitool.tcl gui/fm.tcl gui/fm3.tcl \
 	  gui/helptool.tcl gui/mkindex.tcl resync.perl uuwrap.sh \
 	  unuuwrap.sh port/unix_platform.sh port/unix_platform.tcl \
 	  port/unix_platform.perl pmerge.perl gui/csettool.tcl \
@@ -415,11 +415,6 @@ fm3: gui/fm3.tcl substvars
 	./substvars gui/fm3.tcl >fm3.T
 	chmod +x fm3.T
 	mv -f fm3.T fm3
-
-bithelp: gui/bithelp.tcl substvars
-	./substvars gui/bithelp.tcl >bithelp.T
-	chmod +x bithelp.T
-	mv -f bithelp.T bithelp
 
 mkindex: gui/mkindex.tcl substvars
 	./substvars gui/mkindex.tcl >mkindex.T

@@ -753,7 +753,7 @@ proc busy {busy} \
 proc widgets {} \
 {
 	global	font bfont arrow background search swid diffOpts getOpts
-	global	lineOpts dspec dspecnonl wish bithelp yspace paned file
+	global	lineOpts dspec dspecnonl wish yspace paned file
 	global	tcl_platform
 
 	set dspec \
@@ -774,8 +774,8 @@ proc widgets {} \
 		set py 0; set px 1; set bw 2
 		set swid 18
 	} else {
-		set font {helvetica 12 roman}
-		set bfont {helvetica 12 roman bold}
+		set font {fixed 12 roman}
+		set bfont {fixed 12 roman bold}
 		set lFont {fixed 12 roman bold}
 		set buttonFont {times 12 roman bold}
 		set py 1; set px 4; set bw 2
@@ -866,7 +866,6 @@ proc widgets {} \
 	bind .p.top.c <1>		{ prs; break }
 	bind .p.top.c <3>		"diff2 0; break"
 	bind .p.top.c <Double-1>	"get; break"
-	bind .p.top.c <c>		"cset"
 	bind .p.top.c <h>		"history"
 	bind .p.top.c <q>		"exit"
 	bind .p.top.c <s>		"sfile"

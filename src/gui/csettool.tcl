@@ -539,7 +539,7 @@ proc computeHeight {} \
 proc widgets {} \
 {
 	global	leftColor rightColor scroll diffbFont diffHeight
-	global	buttonFont wish bithelp tcl_platform
+	global	buttonFont wish tcl_platform
 
 	if {$tcl_platform(platform) == "windows"} {
 		set listFont {helvetica 9 roman}
@@ -552,12 +552,12 @@ proc widgets {} \
 		set py 0; set px 1; set bw 2
 		set swid 18
 	} else {
-		set listFont {helvetica 12 roman}
+		set listFont {fixed 12 roman}
 		set buttonFont {times 12 roman bold}
-		set diffFont {helvetica 12 roman}
-		set diffbFont {helvetica 11 roman bold}
+		set diffFont {fixed 12 roman}
+		set diffbFont {fixed 12 roman bold}
 		set lFont {fixed 12 roman bold}
-		set leftWid 56
+		set leftWid 55
 		set rightWid 80
 		set py 1; set px 4; set bw 2
 		set swid 12

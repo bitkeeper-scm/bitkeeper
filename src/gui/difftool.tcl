@@ -325,9 +325,10 @@ proc computeHeight {} \
 proc widgets {L R} \
 {
 	global	leftColor rightColor scroll diffHeight
-	global	wish bithelp tcl_platform diffbFont
+	global	wish tcl_platform diffbFont
 
-	set diffWidth 55
+	set leftWidth 51
+	set rightWidth 70
 	set diffHeight 30
 	set tcolor lightseagreen
 	set leftColor orange
@@ -343,8 +344,8 @@ proc widgets {L R} \
 	} else {
 		set py 1; set px 4; set bw 2
 		set buttonFont {times 12 roman bold}
-		set diffFont {helvetica 12 roman}
-		set diffbFont {helvetica 11 roman bold}
+		set diffFont {fixed 12 roman}
+		set diffbFont {fixed 12 roman bold}
 		set lFont {fixed 12 roman bold}
 		set swid 12
 	}
@@ -371,11 +372,11 @@ proc widgets {L R} \
 		grid .diffs.status.l -row 0 -column 0 -sticky ew
 		grid .diffs.status.middle -row 0 -column 1
 		grid .diffs.status.r -row 0 -column 2 -sticky ew
-	    text .diffs.left -width $diffWidth -height $diffHeight \
+	    text .diffs.left -width $leftWidth -height $diffHeight \
 		-state disabled -wrap none -font $diffFont \
 		-xscrollcommand { .diffs.xscroll set } \
 		-yscrollcommand { .diffs.yscroll set }
-	    text .diffs.right -width $diffWidth -height $diffHeight \
+	    text .diffs.right -width $rightWidth -height $diffHeight \
 		-state disabled -wrap none -font $diffFont
 	    scrollbar .diffs.xscroll -wid $swid -troughcolor $tcolor \
 		-orient horizontal -command { xscroll }
