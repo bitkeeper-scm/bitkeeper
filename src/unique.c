@@ -71,7 +71,7 @@ keysHome(void)
 		concat_path(path, t, ".bk_keys");
 		return (keysFile = (strdup)(path));
 	}
-	keysFile = aprintf("%s/bk_keys", getBkDir());
+	keysFile = strdup(findDotFile(".bk_keys", "bk_keys", path));
 	return (keysFile);
 }
 

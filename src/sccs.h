@@ -1166,6 +1166,7 @@ char	*loadfile(char *file, int *size);
 char	*repo_id(void);
 void	fromTo(char *op, remote *r, remote *l);
 u32	adler32_file(char *filename);
+char	*findDotFile(char *old, char *new, char *buf);
 
 extern char *bk_vers;
 extern char *bk_utc;

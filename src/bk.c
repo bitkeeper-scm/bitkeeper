@@ -65,6 +65,7 @@ int	delget_main(int, char **);
 int	delta_main(int, char **);
 int	diffs_main(int, char **);
 int	diffsplit_main(int, char **);
+int	dotbk_main(int, char **);
 int	exists_main(int, char **);
 int	export_main(int, char **);
 int	f2csets_main(int, char **);
@@ -75,7 +76,6 @@ int	fix_main(int, char **);
 int	fixlod_main(int, char **);
 int	gca_main(int, char **);
 int	get_main(int, char **);
-int	getbkdir_main(int, char **);
 int	gethelp_main(int, char **);
 int	gethost_main(int, char **);
 int	getmsg_main(int, char **);
@@ -201,7 +201,6 @@ struct	command cmdtbl[] = {
 	{"_find", find_main },
 	{"_g2sccs", _g2sccs_main},
 	{"_get", get_main},
-	{"_getbkdir", getbkdir_main},
 	{"_gzip", gzip_main }, 
 	{"_keysort", keysort_main},
 	{"_key2path", key2path_main},
@@ -258,6 +257,7 @@ struct	command cmdtbl[] = {
 	{"delget", delget_main},		/* doc 2.0 */
 	{"diffs", diffs_main},			/* doc 2.0 */
 	{"diffsplit", diffsplit_main},
+	{"dotbk", dotbk_main},
 	{"edit", get_main},	/* aliases */	/* doc 2.0 */
 	{"enter", delta_main},			/* doc 2.0 */
 	{"export", export_main},		/* doc 2.0 */
