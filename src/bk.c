@@ -732,7 +732,7 @@ bk_mode()
 		return (BK_STD);
 	}
 	sprintf(s_config, "%s/BitKeeper/etc/SCCS/s.config", root);
-	sprintf(g_config, "%s/BitKeeper/etc/Sconfig", root);
+	sprintf(g_config, "%s/BitKeeper/etc/config", root);
 	if (exists(g_config)) {
 		f = fopen(g_config, "rt");
 	} else if (exists(s_config)) {

@@ -144,7 +144,7 @@ bk lock || { echo failed; exit 1; }
 cd $HERE/project
 bk lock || { echo failed; exit 1; }
 echo OK
-echo $N auto-checkpoint .............................................$NL
+echo $N auto-mirroring ..............................................$NL
 cd $HERE/project/BitKeeper/triggers
 rm -f *
 bk clone $Q $HERE/project $HERE/backup
