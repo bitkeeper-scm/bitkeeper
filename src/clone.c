@@ -434,7 +434,10 @@ consistency(int quiet)
 	cmds[++i] = "-a";
 	cmds[++i] = "-f";
 	cmds[++i] = 0;
-	unless ((ret = spawnvp_ex(_P_WAIT, "bk", cmds)) == 2) return (ret);
+	ret = spawnvp_ex(_P_WAIT, "bk", cmds);
+	unless (WIFEXITED(ret)) return (-1);
+	ret = WEXITSTATUS(ret);
+	unless (ret == 2) return (ret);
 	unless (quiet) {
 		fprintf(stderr, "Running consistency check again ...\n");
 	}
