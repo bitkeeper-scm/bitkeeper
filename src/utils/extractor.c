@@ -40,14 +40,16 @@ void	rmTree(char *dir);
 int	do_reboot(void);
 #endif
 
+int
 main(int ac, char **av)
 {
-	char	*p, *sfio, *dest = 0, *tmp = findtmp();
-	int	i, fd;
+	char	*p, *dest = 0, *tmp = findtmp();
+	int	i;
 	int	rc = 0;
 	pid_t	pid = getpid();
 	FILE	*f;
 	int	dolinks = 0;
+	int	upgrade = 0;
 	char	tmpdir[MAXPATH];
 	char	buf[MAXPATH];
 
@@ -63,6 +65,7 @@ main(int ac, char **av)
 	 * If they want to upgrade, go find that dir before we fix the path.
 	 */
 	if (av[1] && (streq(av[1], "-u") || streq(av[1], "--upgrade"))) {
+		upgrade = 1;
 		if (chdir(tmp)) {
 			perror(tmp);
 			exit(1);
@@ -181,21 +184,24 @@ main(int ac, char **av)
 #endif
 	if (dest) {
 		fprintf(stderr, "Installing BitKeeper in %s\n", dest);
-		sprintf(buf, "bk install -f%s \"%s\"",
-			dolinks ? "S" : "",
+		sprintf(buf, "bk install %s %s \"%s\"",
+			dolinks ? "-S" : "",
+			upgrade ? "-f" : "",
 			dest);
-		system(buf);
-		p = getenv("BK_OLDPATH");
-		tmp = malloc(strlen(p) + MAXPATH);
-		sprintf(tmp, "PATH=%s%c%s", dest, PATH_DELIM, p);
-		putenv(tmp);
-		fprintf(stderr, "\nInstalled version information:\n\n");
-		sprintf(buf, "bk version", dest);
-		system(buf);
-		fprintf(stderr, "\nInstallation directory: ");
-		sprintf(buf, "bk bin", dest);
-		system(buf);
-		fprintf(stderr, "\n");
+		unless (system(buf)) {
+			/* Why not just run <dest>/bk version  ?? -Wayne */
+			p = getenv("BK_OLDPATH");
+			tmp = malloc(strlen(p) + MAXPATH);
+			sprintf(tmp, "PATH=%s%c%s", dest, PATH_DELIM, p);
+			putenv(tmp);
+			fprintf(stderr, "\nInstalled version information:\n\n");
+			sprintf(buf, "bk version");
+			system(buf);
+			fprintf(stderr, "\nInstallation directory: ");
+			sprintf(buf, "bk bin");
+			system(buf);
+			fprintf(stderr, "\n");
+		}
 	} else {
 		sprintf(buf, "bk installtool");
 		for (i = 1; av[i]; i++) {
