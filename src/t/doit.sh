@@ -408,16 +408,22 @@ echo ''
 	then	OUTPIPE=""
 	else	OUTPIPE=" 2>&1 | tee $TMPDIR/OUT.$$"
 	fi
-	cat setup $i | eval @TEST_SH@ $dashx $OUTPIPE
-	EXIT=$?
+	EXF=$TMPDIR/T.${USER}-next
+	cat setup $i | eval "{ @TEST_SH@ $dashx; echo \$?>$EXF; } $OUTPIPE"
+	EXIT=`cat $EXF`
+	rm -f $EXF
 	BAD=0
-	egrep -v '^.*\.OK$|^---.*$|\.\.failed \(bug|^.*\.skipped$' \
-	    $TMPDIR/OUT.$$ > $DEV_NULL && {
-		echo
-		echo WARNING: unexpected output lines
-		BADOUTPUT="$i $BADOUTPUT"
-		test "X$FAIL_WARNING" = "XYES" && {
-			BAD=1
+	# If the test passes, then check to see if it contains any unexpected
+	# output.
+	test $EXIT -eq 0 && {
+		egrep -v '^.*\.OK$|^---.*$|\.\.failed \(bug|^.*\.skipped$' \
+		    $TMPDIR/OUT.$$ > $DEV_NULL && {
+			echo
+			echo WARNING: unexpected output lines
+			BADOUTPUT="$i $BADOUTPUT"
+			test "X$FAIL_WARNING" = "XYES" && {
+				BAD=1
+			}
 		}
 	}
 	$RM -f $TMPDIR/OUT.$$
