@@ -53,13 +53,7 @@ b_commit(resolve *rs)
 	 * If in text only mode, then check in the file now.
 	 * Otherwise, leave it for citool.
 	 */
-	if (rs->opts->textOnly) {
-		unless (sccs_hasDiffs(rs->s, 0, 0)) {
-			do_delta(rs->opts, rs->s, SCCS_MERGE);
-		} else {
-			do_delta(rs->opts, rs->s, 0);
-		}
-	}
+	if (rs->opts->textOnly) do_delta(rs->opts, rs->s, 0);
 	rs->opts->resolved++;
 	return (1);
 }

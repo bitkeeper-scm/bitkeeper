@@ -5,28 +5,27 @@ private int	newroot(int single, char *ranbits);
 WHATSTR("@(#)%K%");
 
 /*
- * multiuser - convert a repository to multi-user from single user.
+ * this is also an alias for 'bk multiuser'
+ *      - convert a repository to multi-user from single user.
  */
-int
-multiuser_main(int ac, char **av)
-{
-	if (((ac == 2) && streq("--help", av[1])) || (ac != 1)) {
-		close(0);
-		system("bk help -s multiuser");
-		return (1);
-	}
-	exit(newroot(1, 0));
-}
-
 int
 newroot_main(int ac, char **av)
 {
 	int	c;
+	int	single = 0;
 	char	*ranbits = 0;
+	char	*name;
+
+	if (name = strrchr(av[0], '/')) {
+		++name;
+	} else {
+		name = av[0];
+	}
+	if (streq(name, "multiuser")) single = 1;
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
-usage:		system("bk help -s newroot");
+ usage:		sys("bk", "help", "-s", name, SYS);
 		return (1);
 	}
 	while ((c = getopt(ac, av, "k:")) != -1) {
@@ -49,7 +48,7 @@ k_err:			fprintf(stderr,
 		}
 		if (*p) goto k_err;
 	}
-	exit(newroot(0, ranbits));
+	return (newroot(single, ranbits));
 }
 
 /*

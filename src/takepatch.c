@@ -1316,7 +1316,7 @@ apply:
 	patchList = 0;
 	fileNum = 0;
 	return (0);
- err:
+err:
 	if (s) sccs_free(s);
 	return (-1);
 }

@@ -111,6 +111,7 @@ rm -rf tag_a, tag_b, tag_c
 bk clone $Q simple tag_a
 bk clone $Q simple tag_b
 cd $HERE/tag_b
+bk tag $Q -r1.1 OLDEST-OLD
 bk edit $Q b
 bk delta $Q -y1.2 b
 bk commit $Q -STAG_B1 -y"Tagged node on trunk"
@@ -147,8 +148,13 @@ bk pull $Q -t $HERE/tag_b
 bk edit $Q a
 bk delta $Q -y1.2 a
 bk commit $Q -y"tip to be deleted"
+bk tag $Q -r1.1 OLDEST-NEW
 bk csetprune < ../KEYS 2> ERROR
 if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
+tip=`bk prs -h -rOLDEST-OLD -d':I:\n' ChangeSet`
+if [ "$tip" != 1.1 ]; then echo Failed; exit 1; fi
+tip=`bk prs -h -rOLDEST-NEW -d':I:\n' ChangeSet`
+if [ "$tip" != 1.1 ]; then echo Failed; exit 1; fi
 cd $HERE
 bk clone $Q -rTAG_B2 tag_c tag_clone 2> ERROR
 if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
