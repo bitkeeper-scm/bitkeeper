@@ -1301,6 +1301,7 @@ fullname(char *gfile, int withsccs)
 		 * and getenv.
 		 */
 		getcwd(pwd, sizeof(pwd));
+		assert(IsFullPath(pwd));
 		/*
 		 * TODO we should store the PWD info
 		 * in the project stuct or some here

@@ -11,8 +11,9 @@ char *getRelativeName(char *name);
 int
 sccs_mv(char *name, char *dest, int isDir, int isDelete)
 {
-	char 	buf[1024], *p, *q, *t, *destfile, *oldpath;
+	char 	*p, *q, *t, *destfile, *oldpath;
 	char	*gfile, *sfile, *nrev = 0;
+	char	buf[1024], commentBuf[MAXPATH*2];
 	sccs	*s;
 	delta	*d;
 	int	error = 0, wasEdited = 0;
@@ -45,6 +46,18 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 		fprintf(stderr, "sccsmv: destination %s exists\n", gfile);
 		return (1);
 	}
+	oldpath = getRelativeName(name);
+	if (isDelete) {
+		sprintf(commentBuf, "Delete: %s", oldpath); 
+	} else {
+		char *newpath;
+
+		newpath = getRelativeName(destfile);
+		sprintf(commentBuf, "Rename: %s -> %s", oldpath, newpath); 
+		free(newpath);
+	}
+	free(oldpath);
+
 	error |= mv(s->sfile, sfile);
 	if (!error && exists(s->gfile)) error = mv(s->gfile, gfile);
 	if (HAS_PFILE(s) && !error) {
@@ -95,19 +108,7 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 		s = sccs_restart(s);
 	}
 
-	oldpath = getRelativeName(name);
-	if (isDelete) {
-		sprintf(buf, "Delete: %s", oldpath); 
-	} else {
-		char *newpath;
-
-		newpath = getRelativeName(destfile);
-		sprintf(buf, "Rename: %s -> %s", oldpath, newpath); 
-		free(newpath);
-
-	}
-	free(oldpath);
-	comment = buf;
+	comment = commentBuf;
 	gotComment = 1;
 	unless (s && (d = getComments(0))) {
 		error = 1;
