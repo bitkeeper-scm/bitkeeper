@@ -77,14 +77,14 @@ cores
 bk -r check -a
 echo $N Save a tarball of the repository ............................$NL
 cd $HERE
-tar cf SAVE project
+tar cf SAVE project 2> /dev/null
 echo OK
 
 
 echo $N Create a file w/ no conflict for completeness ...............$NL
 cd $HERE
 rm -rf project copy
-tar xf SAVE
+tar xf SAVE 2> /dev/null
 cp -rp project copy
 cd project
 echo "No conflicts" > no_conflicts
@@ -101,7 +101,7 @@ echo OK
 echo $N Rename a file to a no conflict case for completeness ........$NL
 cd $HERE
 rm -rf project copy
-tar xf SAVE
+tar xf SAVE 2> /dev/null
 cp -rp project copy
 cd project
 echo foo > no_conflicts
@@ -129,7 +129,7 @@ echo OK
 echo $N Create with local gfile, no sfile ...........................$NL
 cd $HERE
 rm -rf project copy
-tar xf SAVE
+tar xf SAVE 2> /dev/null
 cp -rp project copy
 cd project
 echo "I am the project file" > 'B%A!#$%^&)(-_+=];,'
@@ -139,7 +139,7 @@ cd $HERE/copy
 echo "I am the copy file" > 'B%A!#$%^&)(-_+=];,'
 cd $HERE
 bk resync -t $Q project copy
-tar cf SAVE.copy copy
+tar cf SAVE.copy copy 2> /dev/null
 echo OK
 echo $N '  resolve by removing local file ............................'$NL
 bk resolve -t $L copy >OUT 2>&1 <<EOF
@@ -162,7 +162,7 @@ echo OK
 
 echo $N '  resolve by renaming local file ............................'$NL
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 bk resolve -t $L copy >XXX 2>&1 <<EOF
 ml
 LOCAL
@@ -188,7 +188,7 @@ echo OK
 
 echo $N '  try to rename local to existing sfile in repository .......'$NL
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 bk resolve -t -d -l $L copy >ERRORS 2>&1 <<EOF
 ml
 c C#
@@ -207,7 +207,7 @@ echo OK
 
 echo $N '  try to rename local to existing gfile in repository .......'$NL
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 touch copy/GFILE
 bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 ml
@@ -225,7 +225,7 @@ echo OK
 
 echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 mr
 ChangeSet
@@ -243,7 +243,7 @@ echo OK
 
 echo $N '  resolve by renaming remote file but abort commit ..........'$NL
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 bk resolve -t -y $L copy >LOG 2>&1 <<EOF
 mr
 REMOTE
@@ -270,7 +270,7 @@ echo OK
 
 echo $N '  resolve by renaming remote file using default comments ....'$NL
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 bk resolve $L -t copy >OUT 2>&1 <<EOF
 mr
 REMOTE
@@ -306,7 +306,7 @@ echo OK
 
 echo $N '  resolve by renaming remote file passing in comments .......'$NL
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 bk resolve $L -t -yYO_BABY_YO_BABY copy >OUT 2>&1 <<EOF
 mr
 REMOTE
@@ -340,7 +340,7 @@ echo OK
 
 echo $N '  try to rename remote to existing local sfile ..............'$NL
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 bk resolve -t $L copy 2>ERRORS <<EOF
 mr
 c C#
@@ -357,7 +357,7 @@ echo OK
 
 echo $N '  try to rename remote to existing local sfile in RESYNC ....'$NL
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 bk resolve -t $L copy 2>ERRORS <<EOF
 mr
 ChangeSet
@@ -374,7 +374,7 @@ echo OK
 
 echo $N '  try to rename remote to existing local gfile ..............'$NL
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 touch copy/GFILE
 bk resolve -t $L copy 2>ERRORS <<EOF
 mr
@@ -397,7 +397,7 @@ echo OK
 echo $N Rename with local gfile, no sfile ...........................$NL
 cd $HERE
 rm -rf project copy
-tar xf SAVE
+tar xf SAVE 2> /dev/null
 cp -rp project copy
 cd project
 echo "I am the project file" > OLDNAME
@@ -408,7 +408,7 @@ cd $HERE/copy
 echo "I am the copy file" > 'B%A!#$%^&)(-_+=];,'
 cd $HERE
 bk resync -t $Q project copy
-tar cf SAVE.copy copy
+tar cf SAVE.copy copy 2> /dev/null
 echo OK
 echo $N '  resolve by removing local file ............................'$NL
 bk resolve -t $L copy >OUT 2>&1 <<EOF
@@ -433,7 +433,7 @@ echo OK
 
 echo $N '  resolve by renaming local file ............................'$NL
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 bk resolve -t $L copy >XXX 2>&1 <<EOF
 ml
 LOCAL
@@ -461,7 +461,7 @@ echo OK
 
 echo $N '  try to rename local to existing sfile in repository .......'$NL
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 ml
 c C#
@@ -478,7 +478,7 @@ echo OK
 
 echo $N '  try to rename local to existing gfile in repository .......'$NL
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 touch copy/GFILE
 bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 ml
@@ -496,7 +496,7 @@ echo OK
 
 echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 mr
 ChangeSet
@@ -514,7 +514,7 @@ echo OK
 
 echo $N '  resolve by renaming remote file ...........................'$NL
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 bk resolve $L -t -yMerge copy >OUT 2>&1 <<EOF
 mr
 REMOTE
@@ -543,7 +543,7 @@ echo OK
 
 echo $N '  try to rename remote to existing local sfile ..............'$NL
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 mr
 c C#
@@ -560,7 +560,7 @@ echo OK
 
 echo $N '  try to rename remote to existing local sfile in RESYNC ....'$NL
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 mr
 ChangeSet
@@ -577,7 +577,7 @@ echo OK
 
 echo $N '  try to rename remote to existing local gfile ..............'$NL
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 touch copy/GFILE
 bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 mr
@@ -600,7 +600,7 @@ echo OK
 echo $N Remote create, local sfile w/ no pending deltas .............$NL
 cd $HERE
 rm -rf project copy
-tar xf SAVE
+tar xf SAVE 2> /dev/null
 cp -rp project copy
 cd project
 echo "I am the project file" > 'B%A!#$%^&)(-_+=];,'
@@ -613,7 +613,7 @@ bk new $Q 'B%A!#$%^&)(-_+=];,'
 bk commit $Q -ywhatever
 cd $HERE
 bk resync -t $Q project copy
-tar cf SAVE.copy copy
+tar cf SAVE.copy copy 2> /dev/null
 echo OK
 
 echo $N '  resolve by removing local file ............................'$NL
@@ -652,7 +652,7 @@ echo OK
 echo $N '  resolve by removing remote file ...........................'$NL
 cd $HERE
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 bk resolve -t $L -t -yMerge copy >OUT 2>&1 <<EOF
 rr
 y
@@ -687,7 +687,7 @@ echo OK
 echo $N '  resolve by renaming local file ............................'$NL
 cd $HERE
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 cd copy
 bk resolve $L -t -yMerge >XXX 2>&1 <<EOF
 ml
@@ -719,7 +719,7 @@ echo OK
 echo $N '  try to rename local to existing sfile in repository .......'$NL
 cd $HERE
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 ml
 c C#
@@ -737,7 +737,7 @@ echo OK
 echo $N '  try to rename local to existing gfile in repository .......'$NL
 cd $HERE
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 touch copy/GFILE
 bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 ml
@@ -756,7 +756,7 @@ echo OK
 echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
 cd $HERE
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 mr
 ChangeSet
@@ -774,7 +774,7 @@ echo OK
 echo $N '  resolve by renaming remote file ...........................'$NL
 cd $HERE
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 bk get -q copy/'B%A!#$%^&)(-_+=];,'
 bk resolve -t $L -t -yMerge copy >OUT 2>&1 <<EOF
 mr
@@ -805,7 +805,7 @@ echo OK
 
 echo $N '  try to rename to an existing sfile in local repository ....'$NL
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 bk resolve -t -l copy >ERRORS 2>&1 <<EOF
 mr
 c C#
@@ -824,7 +824,7 @@ echo OK
 
 echo $N '  try to rename to an existing sfile in RESYNC tree .........'$NL
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 bk resolve -t -l copy >ERRORS 2>&1 <<EOF
 mr
 ChangeSet
@@ -843,7 +843,7 @@ echo OK
 
 echo $N '  try to rename to an existing gfile in local repository ....'$NL
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 touch copy/GFILE
 bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 mr
@@ -864,7 +864,7 @@ echo OK
 echo $N Remote create, local sfile w/ pending deltas .. .............$NL
 cd $HERE
 rm -rf project copy
-tar xf SAVE
+tar xf SAVE 2> /dev/null
 cp -rp project copy
 cd project
 echo "I am the project file" > 'B%A!#$%^&)(-_+=];,'
@@ -875,7 +875,7 @@ echo "I am the copy file" > 'B%A!#$%^&)(-_+=];,'
 bk new $Q 'B%A!#$%^&)(-_+=];,'
 cd $HERE
 bk resync -t $Q project copy
-tar cf SAVE.copy copy
+tar cf SAVE.copy copy 2> /dev/null
 echo OK
 
 echo $N '  resolve by removing local file ............................'$NL
@@ -912,7 +912,7 @@ echo OK
 echo $N '  resolve by renaming local file (should error) .............'$NL
 cd $HERE
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 cd copy
 bk resolve -t $L >ERRORS 2>&1 <<EOF
 ml
@@ -935,7 +935,7 @@ echo OK
 echo $N Remote rename, local sfile w/ no pending deltas .............$NL
 cd $HERE
 rm -rf project copy
-tar xf SAVE
+tar xf SAVE 2> /dev/null
 cp -rp project copy
 cd project
 echo "I am the project file" > OLDNAME
@@ -948,7 +948,7 @@ bk new $Q 'B%A!#$%^&)(-_+=];,'
 bk commit $Q -ywhatever
 cd $HERE
 bk resync -t $Q project copy
-tar cf SAVE.copy copy
+tar cf SAVE.copy copy 2> /dev/null
 echo OK
 
 echo $N '  resolve by removing local file ............................'$NL
@@ -984,7 +984,7 @@ echo OK
 echo $N '  resolve by renaming local file ............................'$NL
 cd $HERE
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 cd copy
 bk resolve $L -t -yMerge >XXX 2>&1 <<EOF
 ml
@@ -1013,7 +1013,7 @@ echo OK
 echo $N '  try to rename local to existing sfile in repository .......'$NL
 cd $HERE
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 ml
 c C#
@@ -1031,7 +1031,7 @@ echo OK
 echo $N '  try to rename local to existing gfile in repository .......'$NL
 cd $HERE
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 touch copy/GFILE
 bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 ml
@@ -1050,7 +1050,7 @@ echo OK
 echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
 cd $HERE
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 mr
 ChangeSet
@@ -1068,7 +1068,7 @@ echo OK
 echo $N '  resolve by renaming remote file ...........................'$NL
 cd $HERE
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 bk get -q copy/'B%A!#$%^&)(-_+=];,'
 bk resolve $L -t -yMerge copy >OUT 2>&1 <<EOF
 mr
@@ -1096,7 +1096,7 @@ echo OK
 
 echo $N '  try to rename to an existing sfile in local repository ....'$NL
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 mr
 c C#
@@ -1113,7 +1113,7 @@ echo OK
 
 echo $N '  try to rename to an existing sfile in RESYNC tree .........'$NL
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 bk resolve -t -l copy >ERRORS 2>&1 <<EOF
 mr
 ChangeSet
@@ -1132,7 +1132,7 @@ echo OK
 
 echo $N '  try to rename to an existing gfile in local repository ....'$NL
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 touch copy/GFILE
 bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 mr
@@ -1153,7 +1153,7 @@ echo OK
 echo $N Create a file w/ tmp conflict which gets renamed away .......$NL
 cd $HERE
 rm -rf project copy
-tar xf SAVE
+tar xf SAVE 2> /dev/null
 cp -rp project copy
 cd project
 bk mv "A A" MOVED
@@ -1228,7 +1228,7 @@ bk new $Q 'B%A!#$%^&)(-_+=];,'
 bk commit $Q -ywhatever
 cd $HERE
 bk resync -t $Q project copy
-tar cf SAVE.copy copy
+tar cf SAVE.copy copy 2> /dev/null
 if [ ! -d copy/RESYNC ]
 then	echo Failed to create resync dir in COPY
 	exit 1
@@ -1238,7 +1238,7 @@ echo OK
 echo $N '  resolve by renaming local file ............................'$NL
 cd $HERE
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 cd copy
 bk resolve $L -t -yMerge 2>XXX <<EOF
 ml
@@ -1261,7 +1261,7 @@ echo OK
 echo $N '  try to rename local to existing sfile in repository .......'$NL
 cd $HERE
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 ml
 c C#
@@ -1279,7 +1279,7 @@ echo OK
 echo $N '  try to rename local to existing gfile in repository .......'$NL
 cd $HERE
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 touch copy/GFILE
 bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 ml
@@ -1298,7 +1298,7 @@ echo OK
 echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
 cd $HERE
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 mr
 ChangeSet
@@ -1316,7 +1316,7 @@ echo OK
 echo $N '  resolve by renaming remote file ...........................'$NL
 cd $HERE
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 bk get -q copy/'B%A!#$%^&)(-_+=];,'
 bk resolve $L -t -yMerge copy >OUT 2>&1 <<EOF
 mr
@@ -1338,7 +1338,7 @@ echo OK
 
 echo $N '  try to rename to an existing sfile in local repository ....'$NL
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 mr
 c C#
@@ -1355,7 +1355,7 @@ echo OK
 
 echo $N '  try to rename to an existing sfile in RESYNC tree .........'$NL
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 bk resolve -t -l copy >ERRORS 2>&1 <<EOF
 mr
 ChangeSet
@@ -1374,7 +1374,7 @@ echo OK
 
 echo $N '  try to rename to an existing gfile in local repository ....'$NL
 rm -rf copy
-tar xf SAVE.copy
+tar xf SAVE.copy 2> /dev/null
 touch copy/GFILE
 bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 mr
@@ -1395,7 +1395,7 @@ echo OK
 echo $N Resolve with an edited file created after RESYNC is created..$NL
 cd $HERE
 rm -rf project copy
-tar xf SAVE
+tar xf SAVE 2> /dev/null
 cp -rp project copy
 cd project
 bk sccsmv "A A" Z

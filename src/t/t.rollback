@@ -46,14 +46,14 @@ bk -r check -a
 echo $N Clone and save a tarball of the two repositories ............$NL
 cd $HERE
 bk clone $Q project copy
-tar cf SAVE project copy
+tar cf SAVE project copy 2> /dev/null
 echo OK
 
 # Add keys to the cset file by creating a file and change one key.
 echo $N Check corrupted key in the ChangeSet file w/ new file .......$NL
 cd $HERE
 rm -rf project copy
-tar xf SAVE
+tar xf SAVE 2> /dev/null
 cd project
 ls > LS
 bk new $Q LS
@@ -74,15 +74,15 @@ echo OK
 echo $N Check for removed file in RESYNC dir ........................$NL
 cd $HERE
 rm -rf project copy
-tar xf SAVE
+tar xf SAVE 2> /dev/null
 cd project
 ls > LS
 bk new $Q LS
 bk commit $Q -ywhatever
 cd ../copy
-bk resync $Q $HERE/project
+bk pull -R $Q $HERE/project
 cd $HERE
-tar cf copy.tar copy
+tar cf copy.tar copy 2> /dev/null
 cd copy
 rm RESYNC/SCCS/s.LS
 bk resolve -t $Q 2>ERRORS
@@ -98,7 +98,7 @@ echo OK
 echo $N Check for corrupted file in RESYNC dir ......................$NL
 cd $HERE
 rm -rf copy
-tar xf copy.tar
+tar xf copy.tar 2> /dev/null
 cd copy
 chmod +w RESYNC/SCCS/s.LS
 echo foo >> RESYNC/SCCS/s.LS

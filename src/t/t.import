@@ -66,6 +66,35 @@ bk edit $Q foo
 bk import $Q -tpatch BitKeeper/tmp/P . || exit 1
 echo OK
 
+echo $N Make sure an import does not commit unrelated deltas ........$NL
+cd $HERE
+rm -rf EDIT
+tar xf TAR
+cd EDIT
+bk edit $Q foo bar
+cat >> foo <<EOF
+E
+F
+G
+EOF
+bk diffs -u > BitKeeper/tmp/P
+bk unedit $Q foo
+echo hi mom >> bar
+bk delta -ywhatever $Q bar
+bk pending > BitKeeper/tmp/pending
+bk import -tpatch BitKeeper/tmp/P . > BitKeeper/tmp/PLOG 2>&1 || {
+	echo Patch failed
+	cat BitKeeper/tmp/PLOG
+	exit 1
+}
+bk pending > BitKeeper/tmp/pending2
+cmp -s BitKeeper/tmp/pending BitKeeper/tmp/pending2 || {
+	echo failed to leave pending delta
+	diff BitKeeper/tmp/pending BitKeeper/tmp/pending2
+	exit 1
+}
+echo OK
+
 echo $N Test import of a patch into a tree with modified BK files ...$NL
 cd $HERE
 rm -rf EDIT
@@ -138,7 +167,7 @@ echo OK
 rm -f extra
 bk unedit $Q foo
 
-echo $N Make sure a patch undo a patch delete when patch failed .....$NL
+echo $N Make sure a patch undoes a patch delete when patch fails ....$NL
 # make a patch
 cd $HERE
 bk export -tplain -r+ $HERE/EDIT $HERE/A
