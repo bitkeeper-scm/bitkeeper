@@ -93,10 +93,7 @@ echo OK
 
 echo $N Make sure it complains about locked files w/o a gfile........$NL
 bk get -eg $Q d1/sub1/SCCS/s.a
-bk -r check -a > OUT 2>&1 && {
-	echo should have exited with a failure
-	exit 1
-}
+bk -r check -a > OUT 2>&1
 grep -q 'is locked but not checked out' OUT || {
 	echo bad error message
 	cat OUT

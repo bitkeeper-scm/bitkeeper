@@ -360,21 +360,33 @@ is where the file wants to be.  To correct this:\n\
 private int
 writable_gfile(sccs *s)
 {
+	pfile pf = { "+", "?", "?", NULL, "?", NULL, NULL, NULL };
+
 	if (!HAS_PFILE(s) && S_ISREG(s->mode) && IS_WRITABLE(s)) {
 		if (badWritable) {
 			printf("%s\n", s->gfile);
 		} else {
-			fprintf(stderr,
-"===========================================================================\n\
-check: %s writable but not checked out, which usually means that you have\n\
-modified a file without first doing a \"bk edit\". To fix the problem,\n\
-do a \"bk -R edit -g %s\" to change the file to checked out status.\n\
-To fix all bad writable file, use the following command:\n\
-\t\"bk -r check -w | bk -R edit -g -\"\n\
-===========================================================================\n",
-			    s->gfile, s->gfile);
+			/*
+			 * If the file flag say SCCS or RCS flag is "on", and
+			 * keyword is expanded, re-get the file with keyword
+			 * un-expanded. (because we want to be in edit mode.)
+			 */
+			if ((s->xflags & (X_RCS|X_SCCS)) &&
+			    (diff_gfile(s, &pf, 1, DEV_NULL) == 1)) {
+				unlink(s->gfile);
+				s->state &= ~S_GFILE;
+				fprintf(stderr,
+	     "check: %s writable but not checked out, forcing a bk edit..\n",
+				    s->gfile);
+				sys("bk", "edit", s->gfile, SYS);
+			} else {
+				fprintf(stderr,
+	     "check: %s writable but not checked out, forcing a bk edit -g..\n",
+			     	    s->gfile);
+				sys("bk", "edit", "-g", s->gfile, SYS);
+			}
 		}
-		return (32);
+		return (0);
 	}
 	return (0);
 }
@@ -387,13 +399,10 @@ no_gfile(sccs *s)
 			unlink(sccs_Xfile(s, 'p'));
 		} else {
 			fprintf(stderr,
-"===========================================================================\n\
-check: %s is locked but not checked out,\n\
-which usually means that a file was locked (via a \"bk edit\")\n\
-and then removed without being unlocked.\n\
-===========================================================================\n",
-			    s->gfile);
-			return (64);
+"check: %s is locked but not checked out,\nremoving staled lock\n",
+				s->gfile);
+			unlink(sccs_Xfile(s, 'p'));
+			s->state &= ~S_PFILE;
 		}
 	}
 	return (0);
