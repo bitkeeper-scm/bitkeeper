@@ -810,19 +810,25 @@ _logAddr() {
 # This is not always right (consider .to) but works most of the time.
 # We are fascist about the letters allowed on the RHS of an address.
 _users() {
-	if [ "X$1" = "X-a" ]; then ALL=YES; shift; else ALL=NO; fi
+	if [ "X$1" = "X-a" ]
+	then WHAT=ALL; shift
+	elif [ "X$1" = "X-c" ]
+	then WHAT="sort -u | wc -l"; shift
+	else WHAT="sort -u"
+	fi
 	if [ X$1 != X -a -d "$1" ]; then cd $1; fi
 	_cd2root
-	${BIN}prs -hd':P:@:HT:' ChangeSet | sort -u > ${TMP}users$$
-	if [ $ALL = "YES" ]
-	then	cat ${TMP}users$$
-		/bin/rm ${TMP}users$$
+	${BIN}prs -hd':P:@:HT:' ChangeSet > ${TMP}users$$
+	if [ $? -ne 0 ]; then exit 1; fi
+	if [ "$WHAT" = ALL ]
+	then	sort -u ${TMP}users$$
+		${RM} ${TMP}users$$
 		return
 	fi
 	tr A-Z a-z < ${TMP}users$$ | sed '
 s/@[a-z0-9.-]*\.\([a-z0-9-]*\)\.\([a-z0-9-][a-z0-9-][a-z0-9-]\)$/@\1.\2/
-s/@[a-z0-9.-]*\.\([a-z0-9-]*\.[a-z0-9-][a-z0-9-]\)\.\([a-z0-9-][a-z0-9-]\)$/\1.\2/
-' | sort -u
+s/@[a-z0-9.-]*\.\([a-z0-9-]*\.[a-z0-9-][a-z0-9-]\)\.\([a-z0-9-][a-z0-9-]\)$/@\1.\2/
+' | eval $WHAT
 	${RM} -f ${TMP}users$$
 }
 
@@ -965,7 +971,7 @@ _commit() {
 		_chkConfig && LOGADDR=`_logAddr` ||
 		    { ${RM} -f ${TMP}list$$ ${TMP}commit$$; exit 1; }
 		export LOGADDR
-		nusers=`_users | wc -l` ||
+		nusers=`_users -c` ||
 		    { ${RM} -f ${TMP}list$$ ${TMP}commit$$; exit 1; }
 		if [ $nusers -gt 1 ]
 		then $CHECKLOG
@@ -999,7 +1005,7 @@ _commit() {
 			_chkConfig && LOGADDR=`_logAddr` ||
 			    { ${RM} -f ${TMP}list$$ ${TMP}commit$$; exit 1; }
 			export LOGADDR
-			nusers=`_users | wc -l` ||
+			nusers=`_users -c` ||
 			    { ${RM} -f ${TMP}list$$ ${TMP}commit$$; exit 1; }
 			if [ $nusers -gt 1 ]
 			then $CHECKLOG

@@ -83,6 +83,7 @@ err:		sccs_free(s);
 		}
 		goto err;
 	}
+	sccs_free(s);
 	sfileDone();
 	purify_list();
 	return (0);

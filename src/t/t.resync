@@ -1,7 +1,12 @@
 #!/bin/sh
-
 # Copyright (c) 1999 Andrew Chang?
 # %K%
+
+# XXX still need to test propagation of:
+# descriptive text
+# permissions
+# LODs
+# per file information (flags, etc.)
 
 echo $N Create initial repository ...................................$NL
 HERE=`${CWD}`
@@ -175,7 +180,7 @@ cmp -s ref.c c.c
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
 if [ -s resolve.out ]; then
     echo "failed (known bug)"
-    cat resolve.out
+    sed -n '/:/s/^/	/p' resolve.out
 else
     echo OK
 fi
@@ -380,6 +385,16 @@ EOF
 cmp -s merge.c merge.ref
 if [ $? -ne 0 ]; then echo failed; diff -u merge.c merge.ref; exit 1; fi
 echo OK
+echo $N Merge back up should have no conflicts ......................$NL
+cd $HERE
+bk resync $Q -a copy project 2> resolve.out
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+if [ -s resolve.out ]
+then echo "failed (known bug)"
+     sed -n '/:/s/^/	/p' resolve.out
+else echo OK
+fi
+rm -f resolve.out
 echo $N Test propagation of a symbol on new changeset ...............$NL
 cd $HERE/project/src
 date > symbol_test
@@ -417,11 +432,11 @@ echo OK
 echo $N Test propagation of a symbol added later by itself ..........$NL
 cd $HERE/project
 admin $Q -S'YAsymbol:1.5' SCCS/s.ChangeSet
-bk commit $Q -y'YAsymbol'
 bk resync $Q -a $HERE/project $HERE/copy
 cd $HERE/copy
 grep -q 'SYAsymbol' SCCS/s.ChangeSet
-if [ $? != 0 ]; then echo "failed (known bug)"; else echo OK; fi
+if [ $? != 0 ]; then echo failed; exit 1; fi
+echo OK
 cores
 
 # TEST: Check for parallel work winds up losing a file
@@ -505,7 +520,6 @@ then	echo Failed to update aaa.c
 	exit 1
 fi
 echo OK
-
 echo $N Check resolve w/ auto merge and overlap change ..............$NL
 cd $HERE/project/src
 cat > overlap.c << EOF
@@ -528,7 +542,7 @@ bk co $Q -l overlap.c
 sed -e "s/222/222-right/"  overlap.c > overlap.tmp
 mv overlap.tmp overlap.c
 # make sure time stamp is different
-sleep 1
+nextsecond
 bk ci $Q -y overlap.c
 bk commit $S -y"abc"
 bk resync $Q $HERE/project $HERE/copy
@@ -536,12 +550,3 @@ bk resolve $Q -a -f - $HERE/copy >/dev/null 2> resolve.out
 grep -q "Overlap change detected" resolve.out
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
-rm -f resolve.out
-
-
-#echo XXX - need to have little tests which check each of
-#echo symbols
-#echo descriptive text
-#echo permissions
-#echo LODs
-#echo per file information

@@ -4,7 +4,8 @@
 #include "range.h"
 WHATSTR("@(#)%K%");
 char	*prs_help = "\n\
-usage: prs [-hmv] [-c<d>] [-I<rev>] [-r<r>] [files...]\n\n\
+usage: prs [-ahmv] [-c<d>] [-I<rev>] [-r<r>] [files...]\n\n\
+    -a		print info on all deltas, not just data deltas\n\
     -b		reverse the order of the printed deltas\n\
     -c<date>	Cut off dates.  See sccsrange(1) for details.\n\
     -C		do not include branch deltas which are not merged\n\
@@ -50,7 +51,7 @@ main(int ac, char **av)
 		    case 'h':
 			doheader = 0;
 			break;
-		    case 'a': /* ATT compat - same as 'm' */
+		    case 'a': flags |= PRS_ALL; break;
 		    case 'm': flags |= PRS_META; break;
 		    case 'v': noisy = 1; break;
 		    RANGE_OPTS('c', 'r');
