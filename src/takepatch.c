@@ -1345,7 +1345,7 @@ noupdates(char *localPath)
 	 * deltas we are either filling that back in or error with a
 	 * pending message.
 	 */
-	s = sccs_init(resync, INIT_NOCKSUM, 0);
+	s = sccs_init(resync, INIT_NOCKSUM);
 	sccs_sdelta(s, sccs_ino(s), key);
 	f = popen("bk sccscat -h " ROOT2RESYNC "/ChangeSet", "r");
 	while (fnext(buf, f)) {
@@ -1362,7 +1362,9 @@ noupdates(char *localPath)
 	}
 	pclose(f);
 	unless (sccs_top(s)->flags & D_CSET) {
-		uncommitted(s->gfile + strlen(ROOT2RESYNC) + 1);
+		SHOUT();
+		getMsg("tp_uncommitted",
+		    s->gfile + strlen(ROOT2RESYNC) + 1, 0, stderr);
 		rc = -1;
 	} else {
 		sccs_newchksum(s);

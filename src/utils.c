@@ -563,11 +563,11 @@ csetDiff(MDBM *not,  int wantTag)
 int
 isCsetFile(char *spath)
 {
-	char	*p, *q, *r;
+	char	*q;
 	char	buf[MAXPATH];
 
 	unless (spath) return (0);
-	
+
 	/* find "SCCS/s.ChangeSet" suffix */
 	unless (q = strrchr(spath, '/')) return (0);
 	q -= 4;
