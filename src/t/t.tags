@@ -500,6 +500,80 @@ echo OK
 
 kill -9 `cat $HERE/pid`
 
+echo $N Test opush of new tag, should not send tag or R delta .......$NL
+cd $HERE
+no_logging tagpush
+ls > file
+bk new $Q file
+bk commit $Q -ywhatever
+bk clone $Q $HERE/tagpush $HERE/tagchild
+bk tag $Q TAG
+bk opush $HERE/tagchild 2>OUT
+grep -q 'Nothing to push' OUT || {
+	echo Tried to push the tag
+	exit 1
+}
+bk edit $Q file
+bk delta $Q -ywhatever file
+bk commit -ywhatever $Q
+bk opush $Q $HERE/tagchild
+cd $HERE/tagchild
+grep -q 'd R 1.2 ' SCCS/s.ChangeSet && {
+	echo propogated tag delta, probably not the tag
+	echo Trying to fix it
+	bk admin -z
+	grep -q 'd R 1.2 ' SCCS/s.ChangeSet
+	if [ $? = 0 ]
+	then
+		echo OK, admin -z did not fix it
+	else
+		echo OK, admin -z fixed it at least.
+	fi
+	exit 1
+}
+echo OK
+
+echo $N Test opull of new tag, should not send tag or R delta .......$NL
+cd $HERE
+rm -rf tagpush tagchild
+no_logging tagpush
+ls > file
+bk new $Q file
+bk commit $Q -ywhatever
+bk clone $Q $HERE/tagpush $HERE/tagchild
+bk tag $Q TAG
+cd $HERE/tagchild
+bk opull 2>OUT
+grep -q 'Nothing to pull' OUT || {
+	echo Tried to pull the tag
+	exit 1
+}
+cd $HERE/tagpush
+bk edit $Q file
+bk delta $Q -ywhatever file
+bk commit -ywhatever $Q
+cd $HERE/tagchild
+bk opull $Q
+grep -q 'd R 1.2 ' SCCS/s.ChangeSet && {
+	echo propogated tag delta, probably not the tag
+	echo Trying to fix it
+	bk admin -z
+	grep -q 'd R 1.2 ' SCCS/s.ChangeSet
+	if [ $? = 0 ]
+	then
+		echo OK, admin -z did not fix it
+	else
+		echo OK, admin -z fixed it at least.
+	fi
+	exit 1
+}
+echo OK
+
+# Create a repository
+# clone it
+# tag it
+# opush the tag
+
 #echo $N Create the same tag in a new place ..........................$NL
 #cd $HERE/copy/src
 #bk get $Q -e 'F!O#O$ B%A^R&RR(R)RR'

@@ -3133,7 +3133,7 @@ mkgraph(sccs *s, int flags)
 	line++;
 	debug((stderr, "mkgraph(%s)\n", s->sfile));
 	for (;;) {
-nextdelta:	unless (buf = fastnext(s)) {
+		unless (buf = fastnext(s)) {
 bad:
 			fprintf(stderr,
 			    "%s: bad delta on line %d, expected `%s'",
@@ -3255,7 +3255,7 @@ bad:
 				d->ignore = getserlist(s, 1, &buf[3], 0);
 				break;
 			    case 'e':
-				goto nextdelta;
+				goto done;
 			    case 'm':	/* save MR's and pass them through */
 				d->mr = addLine(d->mr, strnonldup(buf));
 				break;
@@ -3295,7 +3295,10 @@ comment:		switch (buf[1]) {
 				goto bad;
 			}
 		}
-done:		;	/* CSTYLED */
+done:		if ((s->state & S_CSET) && (d->type == 'R') &&
+		    !d->symGraph && !(d->flags & D_SYMBOLS)) {
+			d->flags |= D_GONE;
+		}
 	}
 
 	/*
@@ -8723,7 +8726,7 @@ private int
 checkOpenBranch(sccs *s, int flags)
 {
 	delta	*d;
-	int	error =0, tips = 0;
+	int	ret = 0, tips = 0;
 	u8	*lodmap = 0;
 	ser_t	next;
 
@@ -8737,12 +8740,27 @@ checkOpenBranch(sccs *s, int flags)
 	 */
 	unless (lodmap = calloc(next, sizeof(lodmap))) {
 		perror("calloc lodmap");
-		return (1);
+		return (ret);
 	}
 
 	for (d = s->table; d; d = d->next) {
-		if (d->flags & D_GONE) continue;
+		/*
+		 * This order is important:
+		 * Skip 1.0,
+		 * check for bad R delta even if it is marked gone so we warn,
+		 * then skip the rest if they are GONE.
+		 */
 		if (streq(d->rev, "1.0")) continue;
+		if (s->state & S_CSET) {
+			if (!d->added && !d->deleted && !d->same &&
+			    !(d->flags & D_SYMBOLS) && !d->symGraph) {
+				verbose((stderr,
+				    "%s: illegal removed delta %s\n",
+				    s->sfile, d->rev));
+				ret = 1;
+			}
+		}
+		if (d->flags & D_GONE) continue;
 		unless (isleaf(s, d)) continue;
 		unless (lodmap[d->r[0]]++) continue; /* first leaf OK */
 		tips++;
@@ -8750,7 +8768,7 @@ checkOpenBranch(sccs *s, int flags)
 
 	unless (tips) {
 		if (lodmap) free(lodmap);
-		return (0);
+		return (ret);
 	}
 
 	for (d = s->table; d; d = d->next) {
@@ -8761,7 +8779,7 @@ checkOpenBranch(sccs *s, int flags)
 		verbose((stderr, "%s: unmerged leaf %s\n", s->sfile, d->rev));
 	}
 	if (lodmap) free(lodmap);
-	return (1);
+	return (ret);
 }
 
 
@@ -13564,12 +13582,12 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 	symbol	*sym;
 	char	type;
 
-	if (!d) return;
+	if (!d) return (0);
 	type = d->type;
-	if ((d->type == 'R') &&
-	    d->parent && streq(d->rev, d->parent->rev)) {
+	if ((d->type == 'R') && d->parent && streq(d->rev, d->parent->rev)) {
 	    	type = 'M';
 	}
+
 	fprintf(out, "%c %s %s%s %s%s%s +%u -%u\n",
 	    type, d->rev, d->sdate,
 	    d->zone ? d->zone : "",
