@@ -236,6 +236,9 @@ proc getFiles {} \
 {
 	global argv0 argv argc dev_null lfile rfile tmp_dir
 
+	set rev1 ""
+	set rev2 ""
+
 	if {$argc < 1 || $argc > 3} { usage }
 	set tmps [list]
 	if {$argc == 1} {
@@ -244,6 +247,9 @@ proc getFiles {} \
 		set lfile [getRev $rfile "+" 1]
 		lappend tmps $lfile
 		set lname "$rfile"
+		set lnorev $rfile
+		set rnorev $rfile
+		set rev1 "+"
 	} elseif {$argc == 2} {
 		set a [lindex $argv 0]
 		if {[regexp -- {-r(.*)} $a junk rev1]} {
@@ -251,6 +257,9 @@ proc getFiles {} \
 			if {[file exists $rfile] != 1} { usage }
 			set rname $rfile
 			set lfile [getRev $rfile $rev1 0]
+			set lnorev $rfile
+			set rnorev $rfile
+			set rev2 "+"
 			set lname "$rfile@$rev1"
 			lappend tmps $lfile
 		} else {
@@ -258,6 +267,8 @@ proc getFiles {} \
 			set lname $lfile
 			set rfile [lindex $argv 1]
 			set rname $rfile
+			set lnorev $lfile
+			set rnorev $rfile
 		}
 	} else {
 		set file [lindex $argv 2]
@@ -271,7 +282,10 @@ proc getFiles {} \
 		set rfile [getRev $file $rev2 0]
 		set rname "$file@$rev2"
 		lappend tmps $rfile
+		set lnorev $file 
+		set rnorev $file
 	}
+	displayInfo $lnorev $rnorev $rev1 $rev2
 	readFiles $lfile $rfile $lname $rname
 	foreach tmp $tmps { file delete $tmp }
 }

@@ -238,6 +238,55 @@ proc sdiff {L R} \
 	return [open "| $sdiffw \"$dotL\" \"$dotR\""]
 }
 
+# Displays the flags, modes, path, and encoding for files so that the
+# user can tell whether the left and right file have been modified if
+# the diffs line shows 0 diffs
+#
+proc displayInfo {lfile rfile {parent {}} {stop {}}} \
+{
+	
+	global app gc
+
+	.diffs.left tag configure "select" -background $gc($app.infoColor)
+	.diffs.right tag configure "select" -background $gc($app.infoColor)
+	set dspec1 "{-dEncoding=(:ENC:) Path=(:DPN:) Flags=(:FLAGS:) Mode=(:RWXMODE:)\n}"
+	set dspec2 "{-dEncoding=(:ENC:) Flags=(:FLAGS:) Path=(:DPN:)\n}"
+
+	catch {set f [open "| bk sfiles -g \"$lfile\"" r]} err
+	if { ([gets $f fname] <= 0)} {
+		set ltext "Not a BitKeeper revision controlled file"
+	} else {
+		set ltext "$lfile"
+		if {$parent != "1.0"} {
+			set p [open "| bk prs -hr$parent $dspec1 \"$lfile\""]
+		} else {
+			set p [open "| bk prs -hr$parent $dspec2 \"$lfile\""]
+		}
+		gets $p ltext
+		catch {close $p}
+	}
+	catch {set f [open "| bk sfiles -g \"$rfile\"" r]} err
+	if { ([gets $f fname] <= 0)} {
+		set rtext "Not a BitKeeper revision controlled file"
+	} else {
+		set rtext "$rfile"
+		if {$parent != "1.0"} {
+			set p [open "| bk prs -hr$stop $dspec1 \"$rfile\""]
+		} else {
+			set p [open "| bk prs -hr$stop $dspec2 \"$rfile\""]
+		}
+		gets $p rtext
+		catch {close $p}
+	}
+	#puts stderr "R=($rfile) L=($lfile) parent=($parent) stop=($stop)"
+	.diffs.left configure -state normal
+	.diffs.right configure -state normal
+	.diffs.left delete 1.0 end
+	.diffs.right delete 1.0 end
+	.diffs.left insert end "$ltext\n" select
+	.diffs.right insert end "$rtext\n" select
+}
+
 proc readFiles {L R {Ln {}} {Rn {}}} \
 {
 	global	Diffs DiffsEnd diffCount nextDiff lastDiff dev_null rmList
@@ -263,8 +312,9 @@ does not exist"
 		set f [file tail $R]
 		.diffs.status.r configure -text "$f"
 	}
-	.diffs.left delete 1.0 end
-	.diffs.right delete 1.0 end
+	# Moved the deletes to displayInfo proc
+	#.diffs.left delete 1.0 end
+	#.diffs.right delete 1.0 end
 
 	. configure -cursor watch
 	update
