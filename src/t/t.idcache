@@ -50,14 +50,11 @@ bk -r check -a || exit 1
 echo OK
 
 echo $N corrupt the idcache, should rebuild .........................$NL
-bk -R ed BitKeeper/etc/SCCS/x.id_cache <<EOF >/dev/null 2>&1
-1
-i
-hi mom
-.
-w
-q
-EOF
+cd $HERE/project
+echo "hi mom" > X
+cat X BitKeeper/etc/SCCS/x.id_cache > Y
+mv Y BitKeeper/etc/SCCS/x.id_cache
+cd $HERE/project/src
 bk -r check -a 2>OUT || exit 1
 grep -q 'Rebuilding idcache' OUT || {
 	echo Bad error message
@@ -68,22 +65,19 @@ echo OK
 
 bk sane
 echo $N No write permission on idcache ..............................$NL
-bk -R ed BitKeeper/etc/SCCS/x.id_cache <<EOF >/dev/null 2>&1
-1
-i
-hi mom
-.
-w
-q
-EOF
-chmod -w `bk root`/BitKeeper/etc/SCCS/x.id_cache
+cd $HERE/project
+echo "hi mom" > X
+cat X BitKeeper/etc/SCCS/x.id_cache > Y
+cp Y BitKeeper/etc/SCCS/x.id_cache
+chmod -w $HERE/project/BitKeeper/etc/SCCS/x.id_cache
+cd $HERE/project/src
 bk -r check -a 2>OUT || exit 1
 grep -q 'Rebuilding idcache' OUT || {
 	echo Bad error message
 	cat OUT
 	exit 1
 }
-grep 'hi mom' `bk root`/BitKeeper/etc/SCCS/x.id_cache && {
+grep 'hi mom' $HERE/project/BitKeeper/etc/SCCS/x.id_cache && {
 	echo failed to rewrite cache
 	cat `bk root`/BitKeeper/etc/SCCS/x.id_cache
 	exit 1
@@ -91,22 +85,19 @@ grep 'hi mom' `bk root`/BitKeeper/etc/SCCS/x.id_cache && {
 echo OK
 
 echo $N No write permission on BitKeeper/etc/SCCS ...................$NL
-bk -R ed BitKeeper/etc/SCCS/x.id_cache <<EOF >/dev/null 2>&1
-1
-i
-hi mom
-.
-w
-q
-EOF
-chmod -w `bk root`/BitKeeper/etc/SCCS
+cd $HERE/project
+echo "hi mom" > X
+cat X BitKeeper/etc/SCCS/x.id_cache > Y
+cp Y BitKeeper/etc/SCCS/x.id_cache
+chmod -w $HERE/project/BitKeeper/etc/SCCS
+cd $HERE/project/src
 bk -r check -a 2>OUT && {
 	chmod +w `bk root`/BitKeeper/etc/SCCS
 	echo failed to error about write permission
 	cat OUT
 	exit 1
 }
-chmod +w `bk root`/BitKeeper/etc/SCCS
+chmod +w $HERE/project/BitKeeper/etc/SCCS
 grep -q 'no write permission' OUT || {
 	echo Bad error message
 	cat OUT
