@@ -82,7 +82,11 @@ smerge_main(int ac, char **av)
 	}
 	if (ac - optind != 4) {
 		usage();
-		return(2);
+		return (2);
+	}
+	if (mode == MODE_3WAY && fdiff) {
+		fprintf(stderr, "3way mode is not legal with fdiff output\n");
+		return (2);
 	}
 	file = av[optind + 3];
 	for (i = 0; i < 3; i++) {

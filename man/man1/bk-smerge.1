@@ -1,0 +1,62 @@
+.so bk-macros
+.TH "bk smerge" 1 2001/08/28 "\*(BC" "\*(UM"
+.SH NAME
+bk smerge \- smart text-based 3-way file merge
+.SH SYNOPSIS
+.\"
+.B bk smerge [\-23Aaefhns] [
+.OPTreq \-r seqrange
+.B ] 
+.ARG local_rev
+.ARG ancestor_rev
+.ARG remote_rev
+.ARG file
+.SH DESCRIPTION
+This command does a smart 3-way file merge.
+.SH OPTIONS
+.if t .TP .6i
+.if n .TP 1i
+.B \-2
+Enable the 2 way output format (like diff3)
+.tp
+.B \-3
+Enable the 3 way output format (shows gca)
+.tp
+.B \-n
+Enable the 'newonly' output format.  (like
+.B \-3
+except it marks added lines)
+.tp
+.B \-e
+Print examples of all 4 output formats from 
+.B smerge
+.tp
+-B \-a
+Enable automerging of output
+.tp
+-B \-f
+Enable fdiff output.  (Used internally by 
+.B  fm3merge
+)
+.tp
+.B \-A
+Do not automaticly collapse conflicts when the same text was added
+by local and remove users.
+.tp
+.B \-s
+Show sequence numbers in output
+.tp
+.OPTreq \-r range
+When given a range of the format 'start..end' it limits the output to
+just the sequence numbers after (not including) 'start' and before (not 
+including) 'end'.  start or end can be omitted to go to the end of the file.
+.SH EXIT STATUS
+0 for no conflicts, 1 for conflicts, 2 for errors.
+.SH "SEE ALSO"
+.BR diff3 (1)
+.br
+.SA merging 1
+.SA resolve 1
+.SA merge 1
+.SH CATEGORY
+.B Utility
