@@ -586,6 +586,9 @@ _logAddr() {
 		${BIN}clean ${cfgDir}config
 		exit 1 
 		;;
+	Xlogging:.*bitkeeper.openlogging.org)
+		LOG=changesets@openlogging.org
+		;;
 	esac
 	echo ${LOG#*:} 
 }
@@ -617,13 +620,11 @@ s/@[a-z0-9.-]*\.\([a-z0-9-]*\.[a-z0-9-][a-z0-9-]\)\.\([a-z0-9-][a-z0-9-]\)$/\1.\
 # If they have agreed, then don't keep asking the question.
 # XXX - should probably ask once for each user.
 _checkLog() {
-	grep -q "^logging_ok:" ${cfgDir}config
-	if [ $? -eq 0 ]
+	if [ `grep "^logging_ok:" ${cfgDir}config | wc -l` -eq 0 ]
 	then	${BIN}clean ${cfgDir}config
 		return
 	fi
-	echo $LOGADDR | grep -q "@openlogging.org$"
-	if [ $? -eq 0 ]
+	if [ `echo $LOGADDR | grep "@openlogging.org$" | wc -l` -eq 0 ]
 	then
 		_gethelp log_query $LOGADDR
 		echo $N "OK [y/n]? "$NL
