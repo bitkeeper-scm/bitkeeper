@@ -11,7 +11,7 @@ endif
 REPO   := $(shell basename `bk root`)
 LIBDIR	= lib
 GUIS	= revtool citool helptool difftool csettool fmtool fm3tool \
-	  msgtool renametool setuptool bugform
+	  msgtool renametool setuptool bugform supportform
 TCLWRAP	= ../tclwrap
 DOIT	= ../t/doit
 BK	= $(REPO)/src/bk
@@ -21,7 +21,7 @@ SRC	= appState.tcl bugform.tcl buglib.tcl ciedit.tcl citool.tcl \
 	  common.tcl config.tcl csettool.tcl difflib.tcl difftool.tcl \
 	  fm3tool.tcl fmtool.tcl helptool.tcl msgtool.tcl progress.tcl \
 	  renametool.tcl revtool.tcl search.tcl setuptool.tcl \
-	  ../port/$(SYS)_platform.tcl
+	  ../port/$(SYS)_platform.tcl supportform.tcl supportlib.tcl
 
 default: notes/BUILD
 	@cat notes/BUILD
@@ -81,6 +81,9 @@ FORCE:
 
 bugform: $(COMMON) search.tcl appState.tcl buglib.tcl bugform.tcl
 	(echo 'wm withdraw .' ;  cat $^) | $(TCLWRAP) > $(LIBDIR)/bugform
+
+supportform: $(COMMON) search.tcl appState.tcl supportlib.tcl supportform.tcl
+	(echo 'wm withdraw .' ;  cat $^) | $(TCLWRAP) > $(LIBDIR)/supportform
 
 citool: $(COMMON) search.tcl appState.tcl progress.tcl ciedit.tcl citool.tcl
 	(echo 'wm withdraw .' ; cat $^) |  $(TCLWRAP) > $(LIBDIR)/citool

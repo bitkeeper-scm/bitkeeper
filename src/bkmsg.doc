@@ -970,9 +970,8 @@ by more than 24 hours.  Please verify the time on your computer and
 that the timezone is set correctly and try again.
 $
 #gui-support-submitter
-Please enter your contact information here, possibly including
-a phone number and a time to call in case more information is
-needed. You can also specify your preferred email address.
+Please enter your valid email address here so we can reach you
+to provide support.
 $
 #gui-support-summary
 One line: i.e., "sfiles dumps core when running on CP/M"

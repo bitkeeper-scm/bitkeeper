@@ -136,7 +136,6 @@ LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a tomcrypt/libtomcrypt.a $(UWTLIB)
 LINKS	= ci co edit unget
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt bklogo.gif \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf
-LINKTO	= fm fmtool fm3 fm3tool
 BINLINKS= admin$(EXE) get$(EXE) delta$(EXE) unget$(EXE) rmdel$(EXE) prs$(EXE)
 # Note: $(XTRA) must be listed after "gnu"
 ALL	= $(LIBS) $(BINS) GUI $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) \
@@ -528,9 +527,10 @@ binlinks:
 
 install-nolinks: $(BINLINKS)
 	@-if [ $(BINDIR) = "/usr/libexec/bitkeeper" ]; then \
-		rm -rf /usr/libexec/bitkeeper 2>/dev/null; \
-		test -d /usr/libexec/bitkeeper && \
-		    mv /usr/libexec/bitkeeper /usr/libexec/BKJUNK$$$$; \
+		find $(BINDIR) -type d | xargs chmod +w; \
+		/bin/rm -rf $(BINDIR)/* 2>/dev/null; \
+		test -d $(BINDIR) && \
+		    mv $(BINDIR) /usr/libexec/BKJUNK$$$$; \
 	fi
 	@test -d $(BINDIR) || mkdir -p $(BINDIR)
 	tar cf - $(BINS) $(SCRIPTS) | (cd $(BINDIR) && tar xf -)
@@ -540,12 +540,6 @@ install-nolinks: $(BINLINKS)
 	mkdir $(BINDIR)/gui
 	@cp -rp gui/bin gui/lib $(BINDIR)/gui
 	@-rm -rf $(BINDIR)/t
-	@set `echo $(LINKTO)`; \
-	while [ "X$$1" != X ]; \
-	do	rm -f $(BINDIR)/$$1; \
-		ln $(BINDIR)/$$2 $(BINDIR)/$$1; \
-		shift; shift; \
-	done
 	@if [ $(SYS) = win32 ]; \
 	then cd gnu && $(MAKE) install BINDIR=$(BINDIR) DIFF_BINS= DIRS=patch ;\
 	else (cd gnu && $(MAKE) install BINDIR=$(BINDIR)) ;\
