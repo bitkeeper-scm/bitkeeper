@@ -13530,7 +13530,7 @@ err:			fprintf(stderr,
 		s->version = atoi(&buf[2]);
 		unless (buf = mkline(mnext(in))) goto err; (*lp)++;
 	}
-	assert(s->version);
+	unless (s->version) s->version = SCCS_VERSION;
 	if (buf[0]) goto err;		/* should be empty */
 
 	if (unused) {
