@@ -575,7 +575,7 @@ trailer(char *path)
 		    "<table border=0 bgcolor=white width=100%>\n"
 		    "<tr>\n"
 		    "<td align=left><img src=\"logo.gif\" alt=\"\"></img></td>\n"
-		    "<td align=right><a href=www.bitkeeper.com><img src=trailer.gif alt=\"Learn more about BitKeeper\"></a></td>\n"
+		    "<td align=right><a href=http://www.bitkeeper.com><img src=trailer.gif alt=\"Learn more about BitKeeper\"></a></td>\n"
 		    "</tr>\n"
 		    "</table>\n"
 		    "</font>\n");
@@ -1210,7 +1210,7 @@ http_error(int status, char *fmt, ...)
 	    "<th valign=top align=left>bkhttp/" BKWEB_SERVER_VERSION " server on ");
 	out(url(0));
 	out("</th>\n"
-	    "<td align=right><a alink=white link=white href=www.bitkeeper.com>\n"
+	    "<td align=right><a alink=white link=white href=http://www.bitkeeper.com>\n"
 	    "<img src=/trailer.gif alt=\"Learn more about BitKeeper\">\n"
 	    "</a></td>\n"
 	    "</tr>\n"
