@@ -13,7 +13,7 @@ cmd_clone(int ac, char **av)
 {
 	int	c, rc;
 	int	gzip = 0, delay = -1;
-	char 	*p, *rev = 0, *ebuf = 0;
+	char 	*p, *rev = 0;
 
 	/*
 	 * If BK_REMOTE_PROTOCOL is not defined,
@@ -85,8 +85,7 @@ cmd_clone(int ac, char **av)
 		exit(1);
 	}
 	if (rev) {
-		ebuf = aprintf("BK_CSETS=1.0..%s", rev);
-		putenv(ebuf);
+		safe_putenv("BK_CSETS=1.0..%s", rev);
 	} else {
 		putenv("BK_CSETS=1.0..");
 	}
@@ -111,7 +110,6 @@ cmd_clone(int ac, char **av)
 	if (delay > 0) sleep(delay);
 
 	putenv("BK_CSETS=");
-	if (ebuf) free(ebuf);
 	return (rc);
 }
 	    
@@ -139,6 +137,7 @@ compressed(int level, int hflag)
 	FILE	*fh;
 	char	*sfiocmd;
 	char	*cmd;
+	int	rc = 1;
 
 	tmpf1 = bktmpfile();
 	tmpf2 = bktmpfile();
@@ -149,7 +148,7 @@ compressed(int level, int hflag)
 	cmd = aprintf("bk sfiles > %s", tmpf2);
 	status = system(cmd);
 	free(cmd);
-	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) return (1);
+	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) goto out;
 	
 	sfiocmd = aprintf("cat %s %s | bk sfio -oq", tmpf1, tmpf2);
 	signal(SIGCHLD, SIG_DFL);
@@ -159,8 +158,12 @@ compressed(int level, int hflag)
 	setmode(fd, _O_BINARY); /* for win32 */
 	gzipAll2fd(fd, 1, level, 0, 0, hflag, 0);
 	status = pclose(fh);
+	rc = 0;
+ out:
 	unlink(tmpf1);
 	unlink(tmpf2);
+	free(tmpf1);
+	free(tmpf2);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) return (1);
-	return (0);
+	return (rc);
 }

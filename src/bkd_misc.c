@@ -85,9 +85,9 @@ cmd_putenv(int ac, char **av)
 	if (strneq("BK_USER=", av[1], 8)) sccs_resetuser();
 	if (strneq("_BK_USER=", av[1], 9)) {
 		sccs_resetuser();
-		putenv(strdup(&av[1][1]));	/* convert to BK_USER */
+		putenv(&av[1][1]);	/* convert to BK_USER */
 	} else {
-		putenv(strdup(av[1])); 
+		putenv(av[1]); 
 	}
 
 	/*

@@ -161,8 +161,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		usage();
 	}
 	if (opts.rev) {
-		sprintf(buf, "BK_CSETS=1.0..%s", opts.rev);
-		putenv((strdup)(buf));
+		safe_putenv("BK_CSETS=1.0..%s", opts.rev);
 	} else {
 		putenv("BK_CSETS=1.0..");
 	}
@@ -599,15 +598,15 @@ out_trigger(char *status, char *rev, char *when)
 {
 	char	*av[2] = { "remote clone", 0 };
 
-	putenv(aprintf("BK_REMOTE_PROTOCOL=%s", BKD_VERSION));
-	putenv(aprintf("BK_VERSION=%s", bk_vers));
-	putenv(aprintf("BK_UTC=%s", bk_utc));
-	putenv(aprintf("BK_TIME_T=%s", bk_time));
-	putenv(aprintf("BK_USER=%s", sccs_getuser()));
-	putenv(aprintf("_BK_HOST=%s", sccs_gethost()));
+	safe_putenv("BK_REMOTE_PROTOCOL=%s", BKD_VERSION);
+	safe_putenv("BK_VERSION=%s", bk_vers);
+	safe_putenv("BK_UTC=%s", bk_utc);
+	safe_putenv("BK_TIME_T=%s", bk_time);
+	safe_putenv("BK_USER=%s", sccs_getuser());
+	safe_putenv("_BK_HOST=%s", sccs_gethost());
 	if (status) putenv(status);
 	if (rev) {
-		putenv(aprintf("BK_CSETS=1.0..%s", rev));
+		safe_putenv("BK_CSETS=1.0..%s", rev);
 	} else {
 		putenv("BK_CSETS=1.0..");
 	}
@@ -620,15 +619,15 @@ in_trigger(char *status, char *rev, char *root)
 {
 	char	*av[2] = { "clone", 0 };
 
-	putenv(aprintf("BKD_HOST=%s", sccs_gethost()));
-	putenv(aprintf("BKD_ROOT=%s", root));
-	putenv(aprintf("BKD_TIME_T=%s", bk_time));
-	putenv(aprintf("BKD_USER=%s", sccs_getuser()));
-	putenv(aprintf("BKD_UTC=%s", bk_utc));
-	putenv(aprintf("BKD_VERSION=%s", bk_vers));
+	safe_putenv("BKD_HOST=%s", sccs_gethost());
+	safe_putenv("BKD_ROOT=%s", root);
+	safe_putenv("BKD_TIME_T=%s", bk_time);
+	safe_putenv("BKD_USER=%s", sccs_getuser());
+	safe_putenv("BKD_UTC=%s", bk_utc);
+	safe_putenv("BKD_VERSION=%s", bk_vers);
 	if (status) putenv(status);
 	if (rev) {
-		putenv(aprintf("BK_CSETS=1.0..%s", rev));
+		safe_putenv("BK_CSETS=1.0..%s", rev);
 	} else {
 		putenv("BK_CSETS=1.0..");
 	}

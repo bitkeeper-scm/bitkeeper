@@ -41,7 +41,7 @@ ids()
 		seteuid(u);
 #endif
 		p = getpwuid(geteuid());
-		putenv(aprintf("USER=%s", p->pw_name));
+		safe_putenv("USER=%s", p->pw_name);
 		if (Opts.log) {
 			fprintf(Opts.log,
 			    "Set to UID %u (%s)\n", geteuid(), sccs_getuser());

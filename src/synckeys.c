@@ -474,10 +474,8 @@ empty:	for (d = s->table; d; d = d->next) {
 	if (remote_csets) *remote_csets = rcsets;
 	if (remote_tags) *remote_tags = rtags;
 	if (local_only) *local_only = local;
-	p = aprintf("BK_LOCALCSETS=%d", local);
-	putenv(p);
-	p = aprintf("BK_REMOTECSETS=%d", rcsets);
-	putenv(p);
+	safe_putenv("BK_LOCALCSETS=%d", local);
+	safe_putenv("BK_REMOTECSETS=%d", rcsets);
 	rc = local; 
 
 	return (rc);

@@ -123,7 +123,7 @@ cmd_rclone_part2(int ac, char **av)
 {
 	opts	opts;
 	char	buf[MAXPATH];
-	char	*path, *p, *ebuf = NULL;
+	char	*path, *p;
 	int	fd2, rc = 0;
 
 	unless (path = rclone_common(ac, av, &opts)) return (1);
@@ -138,8 +138,7 @@ cmd_rclone_part2(int ac, char **av)
 	free(path);
 
 	if (opts.rev) {
-		ebuf = aprintf("BK_CSETS=1.0..%s", opts.rev);
-		putenv(ebuf);
+		safe_putenv("BK_CSETS=1.0..%s", opts.rev);
 	} else {
 		putenv("BK_CSETS=1.0..");
 	}
@@ -206,7 +205,6 @@ done:
 	trigger(av,  "post");
 	repository_wrunlock(0);
 	putenv("BK_CSETS=");
-	if (ebuf) free(ebuf);
 	return (rc);
 }
 

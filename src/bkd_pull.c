@@ -72,7 +72,7 @@ cmd_pull_part2(int ac, char **av)
 	int	c, n, rc = 0, fd, fd0, rfd, status, local, rem, debug = 0;
 	int	gzip = 0, metaOnly = 0, dont = 0, verbose = 1, list = 0;
 	int	delay = -1;
-	char	buf[4096], s_cset[] = CHANGESET;
+	char	s_cset[] = CHANGESET;
 	char	*revs = bktmpfile();
 	char	*serials = bktmpfile();
 	char	*makepatch[10] = { "bk", "makepatch", 0 };
@@ -144,8 +144,7 @@ cmd_pull_part2(int ac, char **av)
 	/*
 	 * Fire up the pre-trigger (for non-logging tree only)
 	 */
-	sprintf(buf, "BK_CSETLIST=%s", revs);
-	putenv((strdup)(buf));
+	safe_putenv("BK_CSETLIST=%s", revs);
 	if (dont) {
 		putenv("BK_STATUS=DRYRUN");
 	} else unless (local) {
@@ -216,8 +215,7 @@ done:	unlink(serials); free(serials);
 	}
 	if (rc) {
 		unlink(revs); free(revs);
-		sprintf(buf, "BK_STATUS=%d", rc);
-		putenv((strdup)(buf));
+		safe_putenv("BK_STATUS=%d", rc);
 	} else {
 		/*
 		 * Pull is ok:
@@ -228,8 +226,7 @@ done:	unlink(serials); free(serials);
 		if (rename(revs, CSETS_OUT)) perror(CSETS_OUT);
 		free(revs);
 		chmod(CSETS_OUT, 0666);
-		sprintf(buf, "BK_CSETLIST=%s", CSETS_OUT);
-		putenv((strdup)(buf));
+		safe_putenv("BK_CSETLIST=%s", CSETS_OUT);
 	}
 	/*
 	 * Fire up the post-trigger (for non-logging tree only)
