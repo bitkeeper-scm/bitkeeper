@@ -103,20 +103,18 @@ rangeAdd(sccs *sc, char *rev, char *date)
 	if (!tmp && rev && streq(rev , "1.0")) {
 		/*
 		 * If this file does not have 1.0 delta
-		 * map it to 1.1
+		 * make a fake one. 
+		 * XXX This should be move to sccs_init()/mkgraph()
+		 * in the next major release.
+		 * I put it here beacuse this is less disruptive.
 		 */
-		tmp = sccs_getrev(
-			sc, "1.1", date, sc->rstart ? ROUNDUP: ROUNDDOWN);
-		sc->state |= S_ONEZERO;
+		tmp = mkOneZero(sc);
 	}
 	unless (tmp) return (-1);
 	unless (sc->rstart) {
 		sc->rstart = tmp;
 	} else {
 		sc->rstop = tmp;
-		if (sc->rstop->date < sc->rstart->date) {
-			sc->rstart = sc->rstop = 0;
-		}
 	}
 	return (0);
 }

@@ -14,8 +14,9 @@ sub platformInit
 	$exe = ".exe";
 	$pager = $ENV{'PAGER'} || "less";
 	$editor = $ENV{'EDITOR'} || "vim";
-	$dev_null = "nul" if 0;
-	$exe = "" if 0;
+
+	# needed for -w mode
+	if (0) { $tmp = $dev_null = $tty = $pager = $editor = $exe = ""; }
 }
 
 sub cd2root

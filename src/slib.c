@@ -2475,6 +2475,28 @@ sccs_next(sccs *s, delta *d)
 }
 
 /*
+ * make a fake 1.0 delta and insert it into the graph
+ */
+delta	*
+mkOneZero(sccs *s)
+{
+	delta *d =  calloc(sizeof(*d), 1); 
+
+	assert(d);
+	d->next = s->table;
+	s->table = d;
+	d->kid = s->tree;
+	assert(d->kid->parent == 0);
+	d->kid->parent = d;
+	s->tree = d;
+	d->rev = strdup("1.0");
+	explode_rev(d);
+	s->numdeltas++;
+	s->state |= S_ONEZERO;       
+	return d;
+}
+
+/*
  * Read in an sfile and build the delta table graph.
  * Scanf caused problems here when there are corrupted files.
  */
@@ -5409,7 +5431,15 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 	s->cksum = 0;
 
 	if (fixDate) fixNewDate(s);
-	for (d = s->table; d; d = d->next) {
+	
+	/* If the 1.0 delta is a fake, skip it */
+	if (s->state & S_ONEZERO) {
+		assert(streq(s->table->rev, "1.0"));
+		d = s->table->next;
+	} else {
+		d = s->table;
+	}
+	for (; d; d = d->next) {
 		if (d->flags & D_GONE) {
 			/* This delta has been deleted - it is not to be
 			 * written out at all.
@@ -9560,7 +9590,11 @@ mkTag(char kind, char *label, char *rev, char *path, char tag[])
 	if ((kind == DF_UNIFIED) || (kind == DF_CONTEXT)) {
 		sprintf(tag, "%s %s", path, rev);
 	} else  if (kind == DF_GNU_PATCH) {
-		if (streq(path, DEV_NULL)) {
+		/*
+		 * 1.0 => create (or reverse create in a reverse pacth )
+		 * DEV_NULL => delete (i.e. sccsrm)
+		 */
+		if (streq(rev, "1.0") || streq(path, DEV_NULL)) {
 			sprintf(tag, "%s", "/dev/null");
 		} else {
 			sprintf(tag, "%s/%s", label? label : rev, path);
@@ -9600,7 +9634,7 @@ mkDiffHdr(char kind, char tag[], char *buf, FILE *out, char *rev)
 		buf[3] = 0; marker = buf;
 		if (kind == DF_GNU_PATCH) {
 #define			EPROCH "\tWed Dec 31 16:00:00 1969\n"
-			if (streq(rev, "1.0")) date = EPROCH;
+			if (streq(tag, "/dev/null")) date = EPROCH;
 		}
 		fprintf(out, "%s %s%s", marker, tag, date);
 	} else	fputs(buf, out);
@@ -9691,16 +9725,13 @@ mapRev(sccs *s, u32 flags,
 		rrev = "?";
 	}
 	unless (findrev(s, lrev)) {
-		free_pfile(pf);
 		return (-2);
 	}
 	if (r2 && !findrev(s, r2)) {
-		free_pfile(pf);
 		return (-3);
 	}
 	if (!rrev) rrev = findrev(s, 0)->rev;
 	if (!lrev) lrev = findrev(s, 0)->rev;
-	if ((s->state & S_ONEZERO) &&  streq(r1, "1.1")) lrev = "1.0";
 	*rev1 = lrev; *rev2 = rrev;
 	return 0;
 }
@@ -9722,7 +9753,7 @@ private int
 mkDiffTarget(sccs *s, char *rev, char kind,
 			u32 flags, int here, char *target , pfile *pf)
 {
-	if ((s->state & S_ONEZERO) &&  streq(rev, "1.0")) {
+	if (streq(rev, "1.0")) {
 		strcpy(target, DEV_NULL);
 		return (0);
 	}
@@ -9768,6 +9799,7 @@ rename_diff(sccs *s, char *lrev, char *rrev, u32 flags, char kind,
 		/*
 		 * This happen when someone move a
 		 * deleted file back to the undeleted state.
+		 * (or in a reverse patch)
 		 */
 		goto create; 
 	}
@@ -9791,7 +9823,7 @@ rename_diff(sccs *s, char *lrev, char *rrev, u32 flags, char kind,
 		flags, kind, lfile, DEV_NULL, out, lrev, rrev, ltag, rtag);
 	if (rc == -1) goto done;
 
-	rpath = getHistoricPath(s, rrev); assert(rpath);
+create:	rpath = getHistoricPath(s, rrev); assert(rpath);
 	lpath = DEV_NULL;
 	b =  basenm(rpath);
 	if (strlen(b) > 5 &&  strneq(".del-", b, 5)) {
@@ -9801,7 +9833,7 @@ rename_diff(sccs *s, char *lrev, char *rrev, u32 flags, char kind,
 	 * Create the rfile for diff,
 	 * lfile is DEV_NULL
 	 */
-create:	if (mkDiffTarget(s, rrev, kind, flags, here, rfile, 0)) goto done;
+	if (mkDiffTarget(s, rrev, kind, flags, here, rfile, 0)) goto done;
 
 	/*
 	 * Make the tag string used for labeling the diff output
@@ -9815,7 +9847,7 @@ create:	if (mkDiffTarget(s, rrev, kind, flags, here, rfile, 0)) goto done;
 	rc = doDiff(s,
 		flags, kind, DEV_NULL, rfile, out, lrev, rrev, ltag, rtag);
 done:	unless (streq(lfile, DEV_NULL)) unlink(lfile);
-	unless (streq(rfile, s->gfile)) unlink(rfile);
+	unless (streq(rfile, s->gfile) || streq(rfile, DEV_NULL)) unlink(rfile);
 	return (rc);
 }
 
@@ -9858,7 +9890,7 @@ normal_diff(sccs *s, char *lrev, char *rrev, u32 flags, char kind,
 	 */
 	rc = doDiff(s, flags, kind, lfile, rfile, out, lrev, rrev, ltag, rtag);
 done:	unless (streq(lfile, DEV_NULL)) unlink(lfile);
-	unless (streq(rfile, s->gfile)) unlink(rfile);
+	unless (streq(rfile, s->gfile) || streq(rfile, DEV_NULL)) unlink(rfile);
 	return (rc);
 }
 
@@ -9897,7 +9929,7 @@ new_sccs_diffs(sccs *s, char *r1,
 	 * Figure out what revision the user what.
 	 * Translate r1 => lrev, r2 => rrev.
 	 */
-	if (rc = mapRev(s, flags, r1, r2, &lrev, &rrev, &pf)) return rc;
+	if (rc = mapRev(s, flags, r1, r2, &lrev, &rrev, &pf)) goto done;
 
 	if (is_gnu_rename(s, lrev, rrev, kind)) {
 		rc = rename_diff(s, lrev, rrev, flags, kind,
@@ -9907,7 +9939,7 @@ new_sccs_diffs(sccs *s, char *r1,
 					 	out, lLabel, rLabel, &pf);
 	}
 
-	free_pfile(&pf);
+done:	free_pfile(&pf);
 	return (rc);
 }
 

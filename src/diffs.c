@@ -53,7 +53,7 @@ main(int ac, char **av)
 	sccs	*s;
 	int	all = 0, flags = DIFF_HEADER|SILENT, c, rc;
 	char	kind;
-	char	*name, *lLabel, *rLabel;
+	char	*name, *lLabel = 0, *rLabel = 0;
 	RANGE_DECL;
 
 	debug_main(av);
