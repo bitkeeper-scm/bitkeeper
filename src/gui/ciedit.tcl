@@ -3,11 +3,11 @@
 
 proc cmd_edit {} \
 {
-	global	curLine edit_busy gc filename
+	global	curLine edit_busy gc filename w
 
 	# If comments are in the comments window, save them before invoking 
 	# the editor
-	set cmts [.top.comments get 1.0 "end - 1 char"]
+	set cmts [$w(c_comments) get 1.0 "end - 1 char"]
 	if {$cmts != ""} {
 		saveComments $filename $cmts
 	}
@@ -315,6 +315,43 @@ proc edit_save {} \
 	set edit_changed ""
 	edit_exit
 	cmd_refresh 1
+}
+
+proc confirm {what msg} \
+{
+	global w
+
+	set ret [catch {toplevel .c}]
+	if {$ret != 0} { return }
+
+	frame .c.top
+	    label .c.top.icon \
+		-bitmap questhead
+	    label .c.top.msg \
+		-text $msg
+	pack .c.top.icon -side left
+	pack .c.top.msg -side right
+	frame .c.sep \
+		-height 2 \
+		-borderwidth 1 \
+		-relief sunken
+	frame .c.controls
+	    button .c.controls.ok \
+		    -text "OK" \
+		    -command $what
+	    button .c.controls.cancel \
+		    -text "cancel" \
+		    -command "destroy .c"
+	pack .c.controls.ok -side left -padx 4
+	pack .c.controls.cancel -side right -padx 4
+	pack .c.top -padx 8 -pady 8
+	pack .c.sep -fill x -pady 4
+	pack .c.controls -pady 4
+	set x [expr {[winfo rootx .edit] + [winfo width $w(c_top)] - 250}]
+	set y [expr {[winfo rooty .edit] + 120}]
+	wm geometry .c "+$x+$y"
+	wm title .c "Confirm Quit"
+	wm transient .c $w(c_top)
 }
 
 # XXX - needs to figure out if we made any changes.
