@@ -2676,6 +2676,7 @@ flushFILE(FILE *out)
 void
 sccs_whynot(char *who, sccs *s)
 {
+	if (s->io_error && s->io_warned) return;
 	if (BEEN_WARNED(s)) return;
 	unless (HAS_SFILE(s)) {
 		fprintf(stderr, "%s: No such file: %s\n", who, s->sfile);
@@ -4101,6 +4102,9 @@ sccs_free(sccs *s)
 	symbol	*sym, *t;
 
 	unless (s) return;
+	if (s->io_error && !s->io_warned) {
+		fprintf(stderr, "%s: unreported I/O error\n", s->sfile);
+	}
 	sccsXfile(s, 0);
 #if 0
 	{ struct stat sb;
@@ -5283,7 +5287,11 @@ fflushdata(sccs *s, FILE *out)
 	}
 	data_next = data_block;
 	debug((stderr, "SUM2 %u\n", s->cksum));
-	if (flushFILE(out)) return(-1);
+	if (flushFILE(out)) {
+		perror(s->sfile);
+		s->io_error = s->io_warned = 1;
+		return(-1);
+	}
 	return (0);
 }
 
@@ -6043,7 +6051,10 @@ out:			if (slist) free(slist);
 	if (flags & GET_HASHONLY) {
 		error = 0;
 	} else {
-		error = flushFILE(out);
+		if (error = flushFILE(out)) {
+			perror(s->gfile);
+			s->io_error = s->io_warned = 1;
+		}
 		if (popened) {
 			pclose(out);
 		} else if (flags & PRINT) {
@@ -7198,7 +7209,11 @@ delta_table(sccs *s, FILE *out, int willfix)
 		fputmeta(s, "\n", out);
 	}
 	fputmeta(s, "\001T\n", out);
-	if (flushFILE(out)) return (-1);
+	if (flushFILE(out)) {
+		perror(s->sfile);
+		s->io_warned = 1;
+		return (-1);
+	}
 	return (0);
 }
 
@@ -8488,6 +8503,7 @@ no_config:
 	if (error) {
 abort:		if (sfile) fclose(sfile);
 		sccs_unlock(s, 'z');
+		sccs_unlock(s, 'x');
 		return (-1);
 	}
 	t = sccsXfile(s, 'x');
@@ -10021,6 +10037,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	sc->encoding = new_enc;
 	if (delta_table(sc, sfile, 0)) {
 		sccs_unlock(sc, 'x');
+		if (sc->io_warned) OUT;
 		goto out;	/* we don't know why so let sccs_why do it */
 	}
 	assert(sc->state & S_SOPEN);
@@ -10051,7 +10068,9 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	/* not really needed, we already wrote it */
 	sc->encoding = new_enc;
 	if (fflushdata(sc, sfile)) {
+		sccs_unlock(sc, 'x');
 		sccs_close(sc), fclose(sfile), sfile = NULL;
+		if (sc->io_warned) OUT;
 		goto out;
 	}
 	fseek(sfile, 0L, SEEK_SET);
@@ -11104,6 +11123,7 @@ out:
 		return (error);
 	}
 #define	OUT	{ error = -1; s->state |= S_WARNED; goto out; }
+#define	WARN	{ error = -1; goto out; }
 
 	if (init) {
 		int	e;
@@ -11111,7 +11131,7 @@ out:
 		if (syms) {
 			fprintf(stderr, "delta: init or symbols, not both\n");
 			init = 0;  /* prevent double free */
-			goto out;
+			OUT;
 		}
 		prefilled =
 		    sccs_getInit(s,
@@ -11126,7 +11146,7 @@ out:
 		if (syms) free_syms = 1;
 		unless (prefilled && !e) {
 			fprintf(stderr, "delta: bad init file\n");
-			goto out;
+			OUT;
 		}
 		debug((stderr, "delta got prefilled %s\n", prefilled->rev));
 		if (flags & DELTA_PATCH) {
@@ -11390,9 +11410,7 @@ out:
 	}
 
 	assert(d);
-	if (delta_body(s, n, diffs, sfile, &added, &deleted, &unchanged)) {
-		OUT;
-	}
+	if (delta_body(s, n, diffs, sfile, &added, &deleted, &unchanged)) OUT;
 	if (S_ISLNK(n->mode)) {
 		u8 *t;
 		/*
@@ -11403,7 +11421,7 @@ out:
 	if (end(s, n, sfile, flags, added, deleted, unchanged)) {
 		fclose(sfile); sfile = NULL;
 		sccs_unlock(s, 'x');
-		goto out;	/* not OUT - we want the warning */
+		WARN;
 	}
 
 	sccs_close(s), fclose(sfile), sfile = NULL;
@@ -11506,7 +11524,7 @@ end(sccs *s, delta *n, FILE *out, int flags, int add, int del, int same)
 				    "%s: bad delta checksum: %u:%d for %s\n",
 				    s->sfile, s->dsum,
 				    z ? z->sum : -1, n->rev);
-				s->state |= S_BAD_DSUM;
+				s->bad_dsum = 1;
 			}
 		}
 		unless (n->flags & D_ICKSUM) {
@@ -11523,8 +11541,7 @@ end(sccs *s, delta *n, FILE *out, int flags, int add, int del, int same)
 				n->sum = (unsigned short) almostUnique(0);
 			}
 #if 0
-
-Fucks up citool
+Breaks up citool
 
 			/*
 			 * XXX - should this be fatal for cset?
@@ -11544,7 +11561,11 @@ Fucks up citool
 	}
 	fseek(out, 0L, SEEK_SET);
 	fprintf(out, "\001h%05u\n", s->cksum);
-	if (flushFILE(out)) return (-1);
+	if (flushFILE(out)) {
+		perror(s->sfile);
+		s->io_warned = 1;
+		return (-1);
+	}
 	return (0);
 }
 

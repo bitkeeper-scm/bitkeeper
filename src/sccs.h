@@ -137,7 +137,7 @@
 #define S_MAPPRIVATE	0x00020000	/* hack for Samba */
 #define S_READ_ONLY	0x00040000	/* force read only mode */
 #define	S_RANGE2	0x00080000	/* second call for date|rev range */
-#define	S_BAD_DSUM	0x00100000	/* patch checksum mismatch */
+/*	AVAILABLE	0x00100000	   patch checksum mismatch */
 #define S_ISSHELL	0x00200000	/* this is a shell script */
 #define	S_SET		0x00400000	/* the tree is marked with a set */
 #define	S_CSETMARKED	0x00800000	/* X_CSETMARKED match */
@@ -561,6 +561,9 @@ typedef	struct sccs {
 	u32	cksumok:1;	/* check sum was ok */
 	u32	cksumdone:1;	/* check sum was checked */
 	u32	grafted:1;	/* file has grafts */
+	u32	bad_dsum:1;	/* patch checksum mismatch */
+	u32	io_error:1;	/* had an output error, abort */
+	u32	io_warned:1;	/* we told them about the error */
 } sccs;
 
 typedef struct {

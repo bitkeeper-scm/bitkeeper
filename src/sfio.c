@@ -324,7 +324,10 @@ in_file(char *file, int todo, int extract)
 		 * much.  Another 35% is consumed by the mkdir() call in
 		 * mkfile(). File I/O on NT is 4X slower than Linux.
 		 */
-		if (writen(fd, buf, n) != n) goto err;
+		if (writen(fd, buf, n) != n) {
+			perror(file);
+			goto err;
+		}
 	}
 	if (todo) {
 		fprintf(stderr, "Premature EOF on %s\n", file);

@@ -63,7 +63,7 @@ ls > INITX
 bk co -l $Q init_test
 ls >> init_test
 bk delta $Q -IINITX init_test 2>${DEV_NULL}
-if [ $? != 0 ]; then echo Failed - delta did not error; cat INITX; exit 1; fi
+if [ $? != 1 ]; then echo Failed - delta did not error; cat INITX; exit 1; fi
 echo OK
 echo $N Make sure delta -I works w/ blank comments ..................$NL
 cat > INITX <<EOF
