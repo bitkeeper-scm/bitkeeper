@@ -7235,12 +7235,7 @@ sccs_clean(sccs *s, u32 flags)
 		return (2);
 	}
 
-	/*
-	 * XXX - there is a bug somewhere that leaves stuff edited when it
-	 * isn't.  I suspect some interactions with make, but I'm not
-	 * sure.  The difference ends up being on a line with the keywords.
-	 */
-	if (access(s->gfile, W_OK)) {
+	unless (IS_EDITED(s)) { 
 		if (s->encoding == E_ASCII) {
 			flags |= GET_EXPAND;
 			if (s->state & S_RCS) flags |= GET_RCSEXPAND;
