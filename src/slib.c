@@ -10919,8 +10919,25 @@ sccs_resolveFile(sccs *s, int noRfile, char *lpath, char *gpath, char *rpath)
 	FILE	*f = 0;
 	delta	*d, *a = 0, *b = 0;
 	char	*n[3];
+	u16	*lodmap = 0;
+	u16	next;
+	u16	defbranch;
+	int	retcode = -1;
 
+	/* XXX: before or after checking for LOD conflict?? */
 	if (noRfile) goto mfile;
+
+	next = sccs_nextlod(s);
+	/* next now equals one more than greatest that exists
+	 * so last entry in array is lodmap[next-1] which is 
+	 * is current max.
+	 */
+	unless (lodmap = calloc(next, sizeof(lodmap))) {
+		perror("calloc lodmap");
+		goto out;
+	}
+
+	defbranch = (s->defbranch) ? atoi(s->defbranch) : (next - 1);
 
 	/*
 	 * b is that branch which needs to be merged.
@@ -10928,13 +10945,23 @@ sccs_resolveFile(sccs *s, int noRfile, char *lpath, char *gpath, char *rpath)
 	 * LODXXX - can be two if there are LODs.
 	 */
 	for (d = s->table; d; d = d->next) {
+		if (d->type != 'D') continue;
 		if ((d->flags & D_MERGED) || !isleaf(d)) continue;
-		if (!a) {
-			a = d;
-		} else {
-			b = d;
-			/* Could break but I like the error checking */
+		if (d->r[0] == defbranch) {
+			if (!a) {
+				a = d;
+			} else {
+				assert(!b);
+				b = d;
+				/* Could break but I like the error checking */
+			}
+			continue;
 		}
+		unless (lodmap[d->r[0]]++) continue; /* if first leaf */
+
+		fprintf(stderr, "\ntakepatch: ERROR: conflict on lod %d\n",
+			d->r[0]);
+		goto out;
 	}
 	if (b) {
 		d = gca(a, b);
@@ -10959,7 +10986,7 @@ sccs_resolveFile(sccs *s, int noRfile, char *lpath, char *gpath, char *rpath)
 mfile:	if (lpath) {
 		unless (f = fopen(sccsXfile(s, 'm'), "w")) {
 			perror("m.file");
-			return (-1);
+			goto out;
 		}
 		n[0] = name2sccs(lpath);
 		n[1] = name2sccs(gpath);
@@ -10970,7 +10997,10 @@ mfile:	if (lpath) {
 		free(n[1]);
 		free(n[2]);
 	}
-	return (b ? 1 : 0);
+	retcode = (b ? 1 : 0);
+out:
+	if (lodmap) free(lodmap);
+	return (retcode);
 }
 
 /*
