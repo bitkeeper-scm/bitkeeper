@@ -887,43 +887,23 @@ proc parseLicenseData {type} \
 	}
 }
 
-proc readConfig {type {filename {}}} \
+# Set the color and text for the pulldown when it is selected
+#
+proc setCat {cat} \
 {
+	global gc st_cinfo
 
-	global errorCode
-	global tcl_platform
+	$gc(catmenu) configure \
+	    -text $cat \
+	    -bg $gc(setup.BG)
+	set st_cinfo(category) "$cat"
+	check_config
+	return
+	
+}
 
-	array set result {}
-
-	if {$type == "template"} {
-		if {$tcl_platform(platform) == "windows"} {
-			package require registry
-			set key {HKEY_LOCAL_MACHINE\Software\Microsoft\Windows}
-			append key {\CurrentVersion\Explorer\Shell Folders}
-			catch {set appdir \
-				   [registry get "$HKLM\\$l" {Common AppData}]
-			}
-
-			if {$errorCode ==  {} } {
-				set filename [file join $appdir \
-						  BitKeeper etc config.template]
-			}
-		} else {
-			set filename "/etc/BitKeeper/etc/config.template"
-		}
-	}
-
-	if {[file exists $filename] && [file readable $filename]} {
-		set f [open $filename r]
-		while {[gets $f line] != -1} {
-			if {[regexp {^ *#} $line]} continue
-			if {[regexp {([^:]+) *: *(.*)} $line -> key value]} {
-				set result($key) [string trim $value]
-			}
-		}
-	}
-
-	return [array get result]
+# Create the hierarchical menus that are from the redhat rpm list
+proc createCatMenu {w} \
 }
 
 # this removes hardcoded newlines from paragraphs so that the paragraphs
