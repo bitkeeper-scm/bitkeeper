@@ -107,7 +107,7 @@ extern	char cmdlog_buffer[];
 extern	char *logRoot;
 
 void	bkd_server(int, char **);
-remote	*remote_parse(const char *url, int is_clone);
+remote	*remote_parse(const char *url);
 char	*remote_unparse(remote *r);
 pid_t	bkd(int compress, remote *r);
 void	bkd_reap(pid_t resync, int r_pipe, int w_pipe);

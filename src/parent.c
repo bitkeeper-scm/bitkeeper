@@ -55,7 +55,7 @@ parent_main(int ac,  char **av)
 		return (1);
 	}
 
-	r = remote_parse(av[optind], 0);
+	r = remote_parse(av[optind]);
 	unless (r) {
 		fprintf(stderr, "Invalid parent address: %s\n", av[optind]);
 		return (1);

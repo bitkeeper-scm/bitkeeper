@@ -76,7 +76,7 @@ pull_main(int ac, char **av)
 
 	loadNetLib();
 	has_proj("pull");
-	r = remote_parse(av[optind], 0);
+	r = remote_parse(av[optind]);
 	unless (r) {
 		usage();
 		return 1;
@@ -127,14 +127,14 @@ fromTo(char *op, remote *f, remote *t)
 	if (f) {
 		from = remote_unparse(f);
 	} else {
-		tmp = remote_parse(bk_proj->root, 1);
+		tmp = remote_parse(bk_proj->root);
 		from = remote_unparse(tmp);
 		remote_free(tmp);
 	}
 	if (t) {
 		to = remote_unparse(t);
 	} else {
-		tmp = remote_parse(bk_proj->root, 1);
+		tmp = remote_parse(bk_proj->root);
 		to = remote_unparse(tmp);
 		remote_free(tmp);
 	}
