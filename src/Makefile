@@ -112,7 +112,7 @@ fullwarn:
 # production builds
 
 p:
-	$(MAKE) CFLAGS="-O2 -fomit-frame-pointer" all
+	$(MAKE) CFLAGS="-O2 -fomit-frame-pointer $(CF)" all
 ndebug:
 	$(MAKE) CFLAGS="-O2 -DNDEBUG -fomit-frame-pointer" all
 g:
