@@ -1,0 +1,54 @@
+#include "system.h"
+#include "sccs.h"
+#include "zlib.h"
+
+void do_checksum(void);
+
+int
+main(void)
+{
+	platformSpecificInit(NULL);
+	do_checksum();
+	exit(0);
+}
+
+/*
+ * Compute a checksum over the interesting part of the output.
+ * This is from the PATCH_VERSION line (inclusive) all the way to the end.
+ * The "# Patch checksum=..." line is not checksummed.
+ *
+ * If there are human readable diffs above PATCH_VERSION, they get their
+ * own checksum.
+ *
+ * adler32() is in zlib.
+ */
+void
+do_checksum(void)
+{
+	char buf[2*MAXPATH];
+	int len;
+	int doXsum = 0;
+	uLong sum = 0;
+#define EOT 0x04
+
+	while (fnext(buf, stdin)) {
+		if (buf[0] == EOT) break; /* EOF ndicator  */
+		if (streq(buf, PATCH_CURRENT)) {
+			if (!doXsum) doXsum = 1;
+			else {
+				printf("# Human readable diff checksum=%.8lx\n", sum);
+				sum = 0;
+			}
+		} else if (streq(buf,
+		 "# that BitKeeper cares about, is below these diffs.\n")) {
+			doXsum = 1;
+		}
+		if (doXsum) {
+			len = strlen(buf);
+			sum = adler32(sum, buf, len);
+		}
+		fputs(buf, stdout);
+		if (feof(stdin)) break;
+	}
+	printf("# Patch checksum=%.8lx\n", sum);
+}	

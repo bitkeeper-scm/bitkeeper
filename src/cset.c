@@ -295,9 +295,6 @@ do_checksum(void)
  * line.
  *
  */
-#ifdef WIN32
-#define WIFEXITED(status) 1
-#define WEXITSTATUS(status) 0 /* XXX FIX ME */
 pid_t
 spawn_checksum_child(void)
 {
@@ -306,7 +303,8 @@ spawn_checksum_child(void)
 	char cmd[MAXPATH];
 	char *av[2] = {cmd, 0};
 
-	if (_pipe(p, 512, O_BINARY)) {
+	/* the strange syntax is to hide the call from purify */
+	if ((pipe)(p)) {
 		perror("pipe");
 		return -1;
 	}
@@ -319,7 +317,7 @@ spawn_checksum_child(void)
 	/* for Child.
 	 * Replace stdin with the read end of the pipe.
 	 */
-	sprintf(cmd, "%spatch_cksum.exe", getenv("BK_BIN"));
+	sprintf(cmd, "%sadler32", getenv("BK_BIN"));
 	rc = (close)(0);
 	if (rc == -1) perror("close");
 	assert(rc != -1);
@@ -345,54 +343,6 @@ spawn_checksum_child(void)
 	(close)(p[1]);
 	return pid;
 }
-#else
-pid_t
-spawn_checksum_child(void)
-{
-	int p[2], fd;
-	pid_t pid;
-
-	if (pipe(p)) {
-		perror("pipe");
-		return -1;
-	}
-
-	pid = fork();
-	if (pid == -1) {
-		perror("fork");
-		return -1;
-	} else if (pid) {
-		/* Parent.
-		 * Replace stdout with the write end of the pipe.
-		 * There must have been nothing written to stdout before this.
-		 * The odd parentheses hide the operation from purify,
-		 * which will get confused otherwise.
-		 */
-		fd = fileno(stdout);
-		(close)(fd);
-		(dup2)(p[1], fd);
-		close(p[0]);
-		close(p[1]);
-		return pid;
-
-	} else {
-		/* Child.
-		 * Replace stdin with the read end of the pipe.
-		 * If we read revs from stdin, the FILE will be in
-		 * the wrong state, so reset it.
-		 */
-		if (freopen(DEV_NULL, "r", stdin) == NULL) abort();
-		fd = fileno(stdin);
-		(close)(fd);
-		(dup2)(p[0], fd);
-		close(p[0]);
-		close(p[1]);
-		/* Now go do the real work... */
-		do_checksum();
-		exit(0);
-	}
-}
-#endif
 
 int
 csetInit(sccs *cset, int flags)
@@ -837,14 +787,10 @@ again:	/* doDiffs can make it two pass */
 		    "cset: marked %d revisions in %d files\n", ndeltas, nfiles);
 	}
 	if (makepatch) {
-#ifdef WIN32
-#define EOT 0x04
-		char eot[3] = { EOT, '\n', 0 };
+		char eot[3] = { '\004', '\n', 0 };
 
-		fputs(eot, stdout);	/* For win32, since win32 fclose()	*/
-					/* does not trigger EOF	event		*/
-#endif
-		fclose(stdout);  /* give the child an EOF */
+		fputs(eot, stdout);	/* send  EOF indicator */
+		fclose(stdout);
 		if (waitpid(pid, &status, 0) != pid) {
 			perror("waitpid");
 		}

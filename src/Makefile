@@ -3,7 +3,7 @@ BINS	= delta get ci co admin diffs clean prs what sinfo sccssh sids \
 	  smoosh sccslog sfiles renumber lines rmdel takepatch \
 	  smark cset g2sccs range zone gethost undos chksum rechksum \
 	  cset_todo sccsmv sccsrm sccscat csetmark key2rev edit unedit sdiffs \
-	  check fdiff
+	  check fdiff adler32
 SCRIPTS	= rcs2sccs testfast bk import resolve resync
 GUISCR	= gui/sccstool gui/citool gui/vitool gui/fm gui/fm3 \
 	  gui/bithelp gui/mkindex
@@ -40,7 +40,7 @@ BINOBJ  = admin.o csetmark.o key2rev.o rechksum.o sccsmv.o smoosh.o \
 	  diffs.o rmdel.o sccssh.o what.o co.o g2sccs.o \
 	  prs.o sccs_mv.o sfind.o zone.o cset.o get.o rangemain.o \
 	  sccscat.o sids.o cset_todo.o gethost.o rcs.o sccslog.o sinfo.o \
-	  fdiff.o check.o
+	  fdiff.o check.o adler32
 
 SRCS	= slib.c range.c newrev.c getopt.c popen.c libdiff.c \
 	  sfiles.c purify.c zgets.c dirname.c maketmp.c mkdir.c \
@@ -52,7 +52,7 @@ SRCS	= slib.c range.c newrev.c getopt.c popen.c libdiff.c \
 	  zlib/uncompr.c zlib/deflate.c zlib/trees.c zlib/zutil.c \
 	  zlib/inflate.c zlib/infblock.c zlib/inftrees.c zlib/infcodes.c \
 	  zlib/infutil.c zlib/inffast.c \
-	  delta.c get.c ci.c co.c admin.c diffs.c clean.c prs.c what.c \
+	  delta.c get.c ci.c co.c adler32.c admin.c diffs.c clean.c prs.c what.c \
 	  sinfo.c sccssh.c sids.c smoosh.c sccslog.c sfind.c \
 	  renumber.c lines.c rmdel.c takepatch.c smark.c \
 	  cset.c g2sccs.c rangemain.c zone.c gethost.c undos.c chksum.c \
@@ -271,6 +271,8 @@ delta: delta.o $(LIBS)
 	$(CC) $(CFLAGS) delta.o $(LINK) -o delta
 diffs: diffs.o $(LIBS)
 	$(CC) $(CFLAGS) diffs.o $(LINK) -o diffs
+adler32: adler32.o $(LIBS)
+	$(CC) $(CFLAGS) adler32.o $(LINK) -o adler32
 
 edit: get
 	-/bin/rm -f edit
