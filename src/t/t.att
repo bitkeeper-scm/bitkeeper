@@ -1,0 +1,38 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 1999 Larry McVoy
+# %k%
+
+date > date
+bk ci $Q -i -l date
+echo new > date
+bk ci $Q -y date
+echo $N Make sure get -r1.1 works w/ no b flag ......................$NL
+bk get $S -er1.1 date
+if [ ! -f SCCS/p.date ]; then echo Failed, did not edit file.; exit 1; fi
+grep -q '1.1 1.1.1.1 ' SCCS/p.date
+if [ $? -ne 0 ]; then echo Failed, bad rev.; exit 1; fi
+bk clean date
+echo OK
+#echo $N Make sure get -b works w/ no -b flag ........................$NL
+#bk get $S -eb date
+#grep -q '1.3 1.4 ' SCCS/p.date
+#if [ $? -ne 0 ]; then echo Failed, bad rev.; exit 1; fi
+#bk clean date
+#echo OK
+#echo $N Make sure get -b works with -b flag .........................$NL
+#bk admin $Q -fb date
+#bk get $S -eb date
+#grep -q '1.3 1.3.1.1 ' SCCS/p.date
+#if [ $? -ne 0 ]; then echo Failed, bad rev.; exit 1; fi
+#bk clean date
+#echo OK

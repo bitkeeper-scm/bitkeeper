@@ -10993,7 +10993,9 @@ out:
 	}
 	Chmod(s->sfile, 0444);
 	unlink(s->pfile);
-	if (s->state & S_BITKEEPER) updatePending(s);
+	if ((s->state & S_BITKEEPER) && !(flags & DELTA_NOPENDING)) {
+		 updatePending(s);
+	}
 	goto out;
 #undef	OUT
 }

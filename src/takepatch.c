@@ -903,9 +903,9 @@ apply:
 					dF = p->diffMmap;
 					p->diffMmap = 0;
 				}
-				newflags = (echo > 2) ?
-				    DELTA_FORCE|DELTA_PATCH :
-				    DELTA_FORCE|DELTA_PATCH|SILENT;
+				newflags = 
+				    DELTA_FORCE|DELTA_PATCH|DELTA_NOPENDING;
+				if (echo <= 2) newflags |= SILENT;
 				if (sccs_delta(s, newflags, 0, iF, dF, 0)) {
 					perror("delta");
 					return -1;
@@ -952,9 +952,9 @@ apply:
 				p->diffMmap = 0;
 			}
 			d = 0;
-			newflags = (echo > 2) ?
-			    NEWFILE|DELTA_FORCE|DELTA_PATCH :
-			    NEWFILE|DELTA_FORCE|DELTA_PATCH|SILENT;
+			newflags = 
+			    NEWFILE|DELTA_FORCE|DELTA_PATCH|DELTA_NOPENDING;
+			if (echo <= 2) newflags |= SILENT;
 			if (sccs_delta(s, newflags, d, iF, dF, 0)) {
 				perror("delta");
 				return -1;

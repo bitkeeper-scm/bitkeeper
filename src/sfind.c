@@ -17,7 +17,6 @@ usage: sfiles [-aAcCeEgjlmpux] [directories]\n\n\
     -C		list leaves which are not in a changeset as file:1.3\n\
     -e		list everything in quick scan mode\n\
     -E		list everything in detail scan mode\n\
-    -f<file>	send the file list to <file>, and progress info to stdout
     -j		list junk files under the SCCC directory\n\
     -g		list the gfile name, not the sfile name\n\
     -l		list locked files (p.file and/or z.file)\n\
@@ -77,6 +76,7 @@ private void do_print(char state[4], char *file, char *rev);
 private void walk(char *dir, int level);
 private void file(char *f);
 private void sccsdir(char *dir, int level, DIR *sccs_dh, char buf[MAXPATH]);
+private void progress(int force);
 private int chk_diffs(sccs *s);
 
 
@@ -554,6 +554,7 @@ done:	if (level == 0) {
 	if (opts.progress) progress(0);
 }
 
+private void
 progress(int force)
 {
 	static	struct timeval tv;
@@ -579,7 +580,14 @@ progress(int force)
 	if (write(1, buf, strlen(buf)) != strlen(buf)) exit(1);
 	s_last = s_count;
 	x_last = x_count;
-	if (force == 2) usleep(300000);		/* let TK update */
+	if (force == 2) {
+		usleep(300000);		/* let TK update */
+	}
+#ifdef WIN32
+	else {
+		usleep(0);		/* let TK update */
+	}
+#endif
 }
 
 private int

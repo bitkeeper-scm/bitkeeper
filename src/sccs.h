@@ -73,6 +73,7 @@
 #define	DELTA_EMPTY	0x01000000	/* initialize with empty file */
 #define	DELTA_FORCE	0x02000000	/* delta -f: force a delta */
 #define	DELTA_HASH	0x04000000	/* treat as hash (MDBM) file */
+#define	DELTA_NOPENDING	0x08000000	/* don't create pending marker */
 
 #define	ADMIN_FORMAT	0x10000000	/* check file format (admin) */
 #define	ADMIN_ASCII	0x20000000	/* check file format (admin) */
