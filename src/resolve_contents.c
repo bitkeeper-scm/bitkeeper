@@ -112,6 +112,9 @@ c_quit(resolve *rs)
 		rs->s = sccs_restart(rs->s);
 		sccs_unedit(rs->s, 0);
 	}
+	assert(exists(RESYNC2ROOT "/" ROOT2RESYNC));
+	chdir(RESYNC2ROOT);
+	restore_checkouts(rs->opts);
 	exit(1);
 }
 

@@ -369,6 +369,9 @@ prs_common(resolve *rs, sccs *s, char *a, char *b)
 int
 res_quit(resolve *rs)
 {
+	assert(exists(RESYNC2ROOT "/" ROOT2RESYNC));
+	chdir(RESYNC2ROOT);
+	restore_checkouts(rs->opts);
 	exit(1);
 	return (-1);
 }
