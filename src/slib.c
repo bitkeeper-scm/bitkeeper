@@ -3121,6 +3121,13 @@ err:			free(s->gfile);
 	return (0);
 }
 
+/*
+ * Parse a line from the config file
+ * a) reject all line without a ':' character
+ * b) remove all whitespaces
+ * c) replace ':' with space as field seperator.
+ * d) reject the "logging_ok" field; MDBM does not like dup keys.
+ */
 private int
 parseConfig(char *buf)
 {
@@ -3149,13 +3156,16 @@ parseConfig(char *buf)
  * Load config file into a MDBM DB
  * This function is called (indirectly) from sccs_init()
  * It also call sccs_init() itself, i.e potential mutual recursion.
- * Another form of potetial recursion is:
- * 	opening the config file (from upper level) may
- * 	trigger this code path.
+ * Another form of potential recursion is:
+ * 	Doing a "bk clean" on  config file (from upper level) may
+ * 	actually trigger the config file to be checked out.
+ * Note: We currently do not test if we are called from the RESYNC directory.
+ * (If so, we should probably get the config file from the parent of RESYNC)
+ * This may be important someday if we are trying to control attribute
+ * during "resync" processing.
  */
- 
 private MDBM *
-loadConfig(sccs *s, char *root)
+loadConfig(char *root)
 {
 	MDBM	*DB = 0;
 	char 	s_config[MAXPATH];
@@ -3164,8 +3174,8 @@ loadConfig(sccs *s, char *root)
 	project *proj;
 
 	/*
-	 * Hand make a project struct, so sccs_init(s_config, ..)
-	 * won'nt call us againt, otherwise we end up in a loop.
+	 * Hand make a project struct, so sccs_init(s_config, ..) below
+	 * won'nt call us again, otherwise we end up in a loop.
 	 */
 	proj = calloc(1, sizeof(*proj));
 	proj->root = strdup(root);
@@ -3174,7 +3184,7 @@ loadConfig(sccs *s, char *root)
 	sprintf(g_config, "%s/BitKeeper/etc/config", root);
 	/*
 	 * If the config is already checked out, use that.
-	 * Otherwise, get it into a temp file.
+	 * Otherwise, check it out.
 	 */
 	if (exists(s_config) && !exists(g_config)) {
 		s1 = sccs_init(s_config, SILENT, proj);
@@ -3188,11 +3198,11 @@ loadConfig(sccs *s, char *root)
 	DB = loadDB(g_config, parseConfig, DB_NODUPS);
 	if (s1) {
 		/*
-		 * If it has a p file, someone (e.g) setup/commit
-		 * may be trying to update the config. Clean up
-		 * our gfile so we do'nt get in their way.
+		 * If we checked out the config file,
+		 * we must clean it up. (The uppper level could be
+		 * doing a "bk -r clean") Leaving the config
+		 * checked out could give strange result.
 		 */
-		//if (HAS_PFILE(s1)) unlink(g_config);
 		unlink(g_config);
 		sccs_free(s1);
 	}
@@ -3220,7 +3230,7 @@ proj_init(sccs *s)
 	unless (root = sccs_root(s)) return (0);
 	p = calloc(1, sizeof(*p));
 	p->root = root;
-	p->config = loadConfig(s, root);
+	p->config = loadConfig(root);
 	return (p);
 }
 
@@ -3346,11 +3356,6 @@ sccs_init(char *name, u32 flags, project *proj)
 			/* Not an error if the file doesn't exist yet.  */
 			debug((stderr, "%s doesn't exist\n", s->sfile));
 			s->cksumok = -1;
-			/*
-			 * This is a little bogus - we are looking for a
-			 * a project when there may not be one.
-			 */
-			//s->proj = proj ? proj : proj_init(s);
 			return (s);
 		} else {
 			fputs("sccs_init: ", stderr);
@@ -3378,7 +3383,7 @@ sccs_init(char *name, u32 flags, project *proj)
 			return (0);
 		}
 	}
-	
+
 	/*
 	 * Let them force YEAR4
 	 */
