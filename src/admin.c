@@ -57,22 +57,24 @@ admin_main(int ac, char **av)
 	       != -1) {
 		switch (c) {
 		/* user|group */
-		    case 'a':	OP(u, optarg, A_ADD); break;
-		    case 'e':	OP(u, optarg, A_DEL); break;
+		    case 'a':	OP(u, optarg, A_ADD); break; /* undoc? 2.0 */
+		    case 'e':	OP(u, optarg, A_DEL); break; /* undoc? 2.0 */
 		/* flags */
-		    case 'f':	OP(f, optarg, A_ADD); new_delta = 1; break;
-		    case 'F':
-		    case 'd':	OP(f, optarg, A_DEL); new_delta = 1; break;
+		    case 'f':	/* doc 2.0 */
+				OP(f, optarg, A_ADD); new_delta = 1; break; 
+		    case 'F':	/* doc 2.0 */
+		    case 'd':	/* undoc? 2.0 */	
+				OP(f, optarg, A_DEL); new_delta = 1; break; 
 		/* new file options */
-		    case 'i':	newfile = optarg ? optarg : "-";
+		    case 'i':	newfile = optarg ? optarg : "-";	/* doc 2.0 */
 				flags |= NEWFILE; break;
-		    case 'n':	flags |= NEWFILE; break;
-		    case 'r':	rev = optarg; break;
-		    case 'y':	comment = optarg; break;
-		    case 'M':	merge = optarg; flags |= NEWCKSUM; break;
+		    case 'n':	flags |= NEWFILE; break;	/* undoc? 2.0 */
+		    case 'r':	rev = optarg; break;	/* doc 2.0 */
+		    case 'y':	comment = optarg; break;	/* doc 2.0 */
+		    case 'M':	merge = optarg; flags |= NEWCKSUM; break; /* doc 2.0 */
 		/* mode */
 		/* XXX should accept octal modes too */
-		    case 'm':	m = optarg;
+		    case 'm':	m = optarg;		/* doc 2.0 */
 		    		switch (m[0]) {
 				    case '-':
 				    case 'l':
@@ -87,26 +89,27 @@ admin_main(int ac, char **av)
 		   		flags |= NEWCKSUM;
 				break;
 		/* pathname */
-		    case 'p':	path = optarg;
+		    case 'p':	path = optarg;	/* doc 2.0 */
 		    		flags |= ADMIN_SHUTUP|NEWCKSUM;
 				dopath++;
 				break;
 		/* encoding and compression */
-		    case 'Z':	compp = optarg ? optarg : "gzip";
+		    case 'Z':	compp = optarg ? optarg : "gzip";	/* doc 2.0 */
 				flags |= NEWCKSUM;
 				touchGfile++;
 				break;
-		    case 'E':	encp = optarg; break;
+		    case 'E':	encp = optarg; break;	/* doc 2.0 */
 		/* symbols */
-		    case 'S':	OP(s, optarg, A_ADD); break;
+		    case 'S':	OP(s, optarg, A_ADD); break;	/* doc 2.0 */
 		/* text */
-		    case 't':	text = optarg ? optarg : ""; new_delta = 1; break;
-		    case 'T':	text = ""; new_delta = 1; break;
+		    case 't':	/* doc 2.0 */
+				text = optarg ? optarg : ""; new_delta = 1; break;
+		    case 'T':	text = ""; new_delta = 1; break;	/* doc 2.0 */
 		/* singletons */
-		    case '0':	flags |= ADMIN_ADD1_0|NEWCKSUM; break;
-		    case 'B':	bigpad++; break;
-		    case 'C':	rmCset++; flags |= NEWCKSUM; break;
-		    case 'h':	if (flags & ADMIN_FORMAT) {
+		    case '0':	flags |= ADMIN_ADD1_0|NEWCKSUM; break; /* doc 2.0 */
+		    case 'B':	bigpad++; break;	/* doc 2.0 */
+		    case 'C':	rmCset++; flags |= NEWCKSUM; break;	/* doc 2.0 */
+		    case 'h':	if (flags & ADMIN_FORMAT) {		/* doc 2.0 */
 		    			flags |= ADMIN_BK;
 				} else if (flags & ADMIN_BK) {
 					flags |= ADMIN_TIME;
@@ -114,12 +117,13 @@ admin_main(int ac, char **av)
 		    			flags |= ADMIN_FORMAT;
 				}
 				break;
-		    case 'H':	flags |= ADMIN_FORMAT|ADMIN_ASCII|ADMIN_TIME;
+		    case 'H':	/* doc 2.0 */	
+				flags |= ADMIN_FORMAT|ADMIN_ASCII|ADMIN_TIME;
 				break;
-		    case 's':
-		    case 'q':	flags |= SILENT; break;
-		    case 'u':	doDates = 1; flags |= NEWCKSUM; break;
-		    case 'z':	init_flags |= INIT_NOCKSUM;
+		    case 's':	/* undoc? 2.0 */
+		    case 'q':	flags |= SILENT; break;			/* doc 2.0 */
+		    case 'u':	doDates = 1; flags |= NEWCKSUM; break;	/* doc 2.0 */
+		    case 'z':	init_flags |= INIT_NOCKSUM;		/* doc 2.0 */
 		    		flags |= NEWCKSUM;
 				touchGfile++;
 				break;

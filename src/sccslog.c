@@ -38,12 +38,12 @@ sccslog_main(int ac, char **av)
 	}
 	while ((c = getopt(ac, av, "ACc;i;pr|v")) != -1) {
 		switch (c) {
-		    case 'A': Aflg++; break;
-		    case 'C': Cflg++; break;
-		    case 'i': indent = atoi(optarg); break;
-		    case 'p': pflag++; break;
-		    case 'v': flags &= ~SILENT; break;
-		    RANGE_OPTS('c', 'r');
+		    case 'A': Aflg++; break;	/* doc 2.0 */
+		    case 'C': Cflg++; break;	/* doc 2.0 */
+		    case 'i': indent = atoi(optarg); break;	/* doc 2.0 */
+		    case 'p': pflag++; break;	/* doc 2.0 */
+		    case 'v': flags &= ~SILENT; break;	/* doc 2.0 */
+		    RANGE_OPTS('c', 'r');	/* doc 2.0 */
 		    default:
 usage:			system("bk help -s sccslog");
 			return (1);

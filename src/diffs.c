@@ -47,20 +47,20 @@ diffs_main(int ac, char **av)
 	}
 	while ((c = getopt(ac, av, "acC|d;DfhMnpr|R|suUv")) != -1) {
 		switch (c) {
-		    case 'a': all = 1; break;	/* undocumented, unused??? */
-		    case 'h': flags &= ~DIFF_HEADER; break;
-		    case 'c': kind = DF_CONTEXT; break;
-		    case 'C': cset = optarg; break;
-		    case 'D': flags |= GET_PREFIXDATE; break;
-		    case 'f': flags |= GET_MODNAME; break;
-		    case 'M': flags |= GET_REVNUMS; break;
-		    case 'p': kind = DF_PDIFF; break;
-		    case 'n': kind = DF_RCS; break;
-		    case 'R': rev = optarg; break;
-		    case 's': kind = DF_SDIFF; break;
-		    case 'u': kind = DF_UNIFIED; break;
-		    case 'U': flags |= GET_USER; break;
-		    case 'v': verbose = 1; break;
+		    case 'a': all = 1; break;	/* unused??? */	/* undoc? 2.0 */
+		    case 'h': flags &= ~DIFF_HEADER; break;	/* doc 2.0 */
+		    case 'c': kind = DF_CONTEXT; break;	/* doc 2.0 */
+		    case 'C': cset = optarg; break;	/* doc 2.0 */
+		    case 'D': flags |= GET_PREFIXDATE; break;	/* doc 2.0 */
+		    case 'f': flags |= GET_MODNAME; break;	/* doc 2.0 */
+		    case 'M': flags |= GET_REVNUMS; break;	/* doc 2.0 */
+		    case 'p': kind = DF_PDIFF; break;	/* doc 2.0 */
+		    case 'n': kind = DF_RCS; break;	/* doc 2.0 */
+		    case 'R': rev = optarg; break;	/* doc 2.0 */
+		    case 's': kind = DF_SDIFF; break;	/* doc 2.0 */
+		    case 'u': kind = DF_UNIFIED; break;	/* doc 2.0 */
+		    case 'U': flags |= GET_USER; break;	/* doc 2.0 */
+		    case 'v': verbose = 1; break;	/* doc 2.0 */
 		    RANGE_OPTS('d', 'r');
 		    default:
 usage:			system("bk help -s diffs");

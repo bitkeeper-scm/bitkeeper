@@ -123,37 +123,37 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 	    (c =
 	    getopt(ac, av, "c|e|Cd|DfHhi;m|M|pqr|sS;vx;y|Y|")) != -1) {
 		switch (c) {
-		    case 'D': ignoreDeleted++; break;
-		    case 'f': copts.force++; break;
-		    case 'h': copts.historic++; break;
-		    case 'H': copts.hide_cset++; break;
-		    case 'i':
+		    case 'D': ignoreDeleted++; break;	/* undoc? 2.0 */
+		    case 'f': copts.force++; break;	/* undoc? 2.0 */
+		    case 'h': copts.historic++; break;	/* undoc? 2.0 */
+		    case 'H': copts.hide_cset++; break;	/* undoc? 2.0 */
+		    case 'i':	/* doc 2.0 */
 			if (copts.include || copts.exclude) goto usage;
 			copts.include++;
 			r[rd++] = optarg;
 			break;
-		    case 'r':
+		    case 'r':	/* undoc? 2.0 */
 			copts.listeach++;
 		    	/* fall through */
-		    case 'd':
+		    case 'd':	/* undoc? 2.0 */
 			if (c == 'd') copts.doDiffs++;
 		    	/* fall through */
-		    case 'e':
+		    case 'e':	/* undoc? 2.0 */
 			if (c == 'e') {
 				copts.metaOnly++;
 				copts.makepatch++;
 			}
 			/* fall through */
-		    case 'c':
+		    case 'c':	/* undoc? 2.0 */
 			if (c == 'c') {
 				copts.csetOnly++;
 				copts.makepatch++;
 			}
 			/* fall through */
-		    case 'M':
+		    case 'M':	/* doc 2.0 */
 			if (c == 'M') copts.mark++;
 			/* fall through */
-		    case 'm':
+		    case 'm':	/* undoc? 2.0 */
 			if (c == 'm') copts.makepatch++;
 		    	list |= 1;
 			if (optarg) {
@@ -161,7 +161,7 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 				things += tokens(notnull(optarg));
 			}
 			break;
-		    case 'C':
+		    case 'C':	/* doc 2.0 */
 			/* XXX - this stomps on everyone else */
 		    	list |= 1;
 			copts.mark++;
@@ -171,24 +171,25 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 			rd = 1;
 			things = tokens(notnull(optarg));
 			break;
-		    case 'p': flags |= PRINT; break;
-		    case 'q':
-		    case 's': flags |= SILENT; break;
-		    case 'v': copts.verbose++; break;
-		    case 'x':
+		    case 'p': flags |= PRINT; break;	/* doc 2.0 */
+		    case 'q':	/* doc 2.0 */
+		    case 's': flags |= SILENT; break;	/* undoc? 2.0 */
+		    case 'v': copts.verbose++; break;	/* undoc? 2.0 */
+		    case 'x':	/* doc 2.0 */
 			if (copts.include || copts.exclude) goto usage;
 			copts.exclude++;
 			r[rd++] = optarg;
 			break;
-		    case 'y':
+		    case 'y':	/* doc 2.0 */
 			comments_save(optarg);
 			flags |= DELTA_DONTASK;
 			break;
-		    case 'Y':
+		    case 'Y':	/* doc 2.0 */
 			comments_save(cFile = file2str(optarg));
 			flags |= DELTA_DONTASK;
 			break;
-		    case 'S': syms = addLine(syms, strdup(optarg)); break;
+		    case 'S': 	/* doc 2.0 */
+				syms = addLine(syms, strdup(optarg)); break;
 
 		    default:
 			sprintf(buf, "bk help -s %s", av[0]);

@@ -78,22 +78,22 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 	}
 	while ((c = getopt(ac, av, "aAcCdDgklpPrRuvx")) != -1) {
 		switch (c) {
-		    case 'a': aFlg++; break;
-		    case 'A': Aflg++; break;
-		    case 'c': cFlg++; break;
-		    case 'C': Cflg++; break;
-		    case 'd': dFlg++; break;
-		    case 'D': Dflg++; break;
-		    case 'g': gFlg++; break;
-		    case 'k': kFlg++; break;
-		    case 'l': lFlg++; break;
-		    case 'p': pFlg++; break;
-		    case 'P': Pflg++; break;
-		    case 'r': rFlg++; break;
-		    case 'R': Rflg++; break;
-		    case 'v': vFlg++; break;
-		    case 'u': uFlg++; break;
-		    case 'x': xFlg++; break;
+		    case 'a': aFlg++; break;	/* doc 2.0 */
+		    case 'A': Aflg++; break;	/* undoc? 2.0 -pA?*/
+		    case 'c': cFlg++; break;	/* doc 2.0 */
+		    case 'C': Cflg++; break;	/* undoc? 2.0 -pC?*/
+		    case 'd': dFlg++; break;	/* doc 2.0 */
+		    case 'D': Dflg++; break;	/* doc 2.0 */
+		    case 'g': gFlg++; break;	/* doc 2.0 */
+		    case 'k': kFlg++; break;	/* undoc? 2.0 */
+		    case 'l': lFlg++; break;	/* doc 2.0 */
+		    case 'p': pFlg++; break;	/* doc 2.0 */
+		    case 'P': Pflg++; break;	/* undoc? 2.0 */
+		    case 'r': rFlg++; break;	/* undoc? 2.0 */
+		    case 'R': Rflg++; break;	/* undoc? 2.0 */
+		    case 'v': vFlg++; break;	/* doc 2.0 */
+		    case 'u': uFlg++; break;	/* doc 2.0 */
+		    case 'x': xFlg++; break;	/* doc 2.0 */
 		    default: goto usage;
 		}
 	}

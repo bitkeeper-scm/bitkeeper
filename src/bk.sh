@@ -24,12 +24,12 @@ __cd2root() {
 }
 
 # shorthand
-_inode() {
+_inode() {		# /* undoc? 2.0 */
 	bk prs -hr+ -d':ROOTKEY:\n' "$@"
 }
 
 # Run csettool on the list of csets, if any
-_csets() {
+_csets() {		# /* doc 2.0 */
 	if [ X$1 = X"--help" ]; then bk help csets; exit 0; fi
 	__cd2root
 	if [ -f RESYNC/BitKeeper/etc/csets-in ]
@@ -45,31 +45,7 @@ _csets() {
 	exit 1
 }
 
-_save() {
-	V=-vv
-	case X$1 in
-	X-q)	V=; shift
-		;;
-	esac
-	if [ X$1 = X ]
-	then	echo "usage: bk save [-q] [cset_revs] pathname"
-		exit 1
-	fi
-	if [ X$2 = X ]
-	then	__cd2root
-		REV=`bk prs -hr+ -d:I: ChangeSet`
-		OUTPUT=$1
-	else	REV=$1
-		OUTPUT=$2
-	fi
-	if [ X$V != X ]
-	then	echo "Saving ChangeSet $REV in $OUTPUT"
-	fi
-	bk cset -m$REV $V > $OUTPUT
-	exit $?
-}
-
-_locked() {
+_locked() {		# /* undoc? 2.0 */
 	V=NO
 	while getopts v opt
 	do	case "$opt" in
@@ -87,13 +63,13 @@ _locked() {
 	exit 1
 }
 
-_extra() {
+_extra() {		# /* doc 2.0 as extras */
 	_extras "$@"
 }
 
-_extras() {
+_extras() {		# /* doc 2.0 */
 	if [ X$1 = X"--help" ]; then bk help extras; exit 0; fi
-	if [ "X$1" != X -a -d "$1" ]
+	if [ "X$1" != X -a -d "$1" ]	# /* -a doc 2.0 */
 	then	cd $1
 		shift
 		bk sfiles -x "$@"
@@ -101,7 +77,7 @@ _extras() {
 	fi
 }
 
-_keycache() {
+_keycache() {	# /* undoc? 2.0 */
 	bk sfiles -k
 }
 
@@ -136,11 +112,11 @@ _vi() {
 	exec vi $@
 }
 
-_sdiffs() {
+_sdiffs() {		# /* doc 2.0 as diffs -s */
 	bk diffs -s "$@"
 }
 
-_mvdir() {
+_mvdir() {		# /* doc 2.0 */
 
 	case `bk version` in
 	*Basic*)
@@ -166,7 +142,7 @@ _mvdir() {
 	bk idcache -q
 }
 
-_rmdir() {
+_rmdir() {		# /* doc 2.0 */
 	if [ X$1 = X"--help" ]; then bk help rmdir; exit 0; fi
 	if [ X$1 = X ]; then bk help -s rmdir; exit 1; fi
 	if [ X$2 != X ]; then bk help -s rmdir; exit 1; fi
@@ -202,13 +178,13 @@ _rmdir() {
 }
 
 # usage: tag [r<rev>] symbol
-_tag() {
+_tag() {		# /* doc 2.0 */
 	if [ X$1 = X"--help" ]; then bk help tag; exit 0; fi
 	__cd2root
 	REV=
 	while getopts r: opt
 	do	case "$opt" in
-		r) REV=:$OPTARG;;
+		r) REV=:$OPTARG;;	# /* undoc? 2.0 */
 		esac
 	done
 	shift `expr $OPTIND - 1`
@@ -221,7 +197,7 @@ _tag() {
 
 # usage: ignore glob [glob ...]
 #    or: ignore
-_ignore() {
+_ignore() {		# /* doc 2.0 */
 	if [ X$1 = X"--help" ]; then bk help ignore; exit 1; fi
 	__cd2root
 	if [ "x$1" = x ]
@@ -245,7 +221,7 @@ _ignore() {
 }	
 
 # usage: chmod mode file [file ...]
-_chmod() {
+_chmod() {		# /* doc 2.0 */
 	if [ "X$1" = X -o "X$2" = X ]
 	then	bk help chmod
 		exit 1
@@ -271,7 +247,7 @@ _chmod() {
 	done
 }
 
-_after() {
+_after() {		# /* undoc? 2.0 */
 	AFTER=
 	while getopts r: opt
 	do	case "$opt" in
@@ -290,7 +266,7 @@ _after() {
 	return $?
 }
 
-_man() {
+_man() {		# /* undoc 2.0 - its BS anyway.  doesn't work.  */
 	export MANPATH=`bk bin`/man:$MANPATH
 	for i in /usr/bin /bin /usr/local/bin /usr/sbin
 	do	if [ -x /usr/bin/man ]
@@ -302,7 +278,7 @@ _man() {
 }
 
 # Make links in /usr/bin (or wherever they say).
-_links() {
+_links() {		# /* undoc? 2.0 - what is this for? */
 	if [ X$1 = X ]
 	then	echo "usage: bk links bk-bin-dir [public-dir]"
 		echo "Typical is bk links /usr/libexec/bitkeeper /usr/bin"
@@ -329,7 +305,7 @@ _links() {
 # get a system dependent default:
 # on unix: the default is -r
 # in win32 the defaule is -l
-_regression() {
+_regression() {		# /* doc 2.0 */
 	PREFER_RSH=YES
 	V=
 	X=

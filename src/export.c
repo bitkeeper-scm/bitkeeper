@@ -26,29 +26,30 @@ export_main(int ac,  char **av)
 
 	while ((c = getopt(ac, av, "d:hkt:Twvi|x|r:")) != -1) {
 		switch (c) {
-		    case 'v':	vflag = 1; break;
-		    case 'q':	break; /* no op; for interface consistency */
-		    case 'd':	diff_style = optarg; break;
-		    case 'h':	hflag = 1; break; /* disbale patch header */
-		    case 'k':	kflag = 1; break;
-		    case 'r':	rev = optarg; break;
-		    case 't':	if (type) goto usage;
+		    case 'v':	vflag = 1; break;	/* doc 2.0 */
+		    case 'q':	/* undoc 2.0 */
+				break; /* no op; for interface consistency */
+		    case 'd':	diff_style = optarg; break;	/* doc 2.0 */
+		    case 'h':	hflag = 1; break; /*disbale patch header*/ /* doc 2.0 */
+		    case 'k':	kflag = 1; break;	/* doc 2.0 */
+		    case 'r':	rev = optarg; break;	/* doc 2.0 */
+		    case 't':	if (type) goto usage;	/* undoc? 2.0 */
 				type = optarg; 
 				if (!streq(type, "patch") &&
 				    !streq(type, "plain")) {
 					goto usage;
 				}
 				break;
-		    case 'T':	tflag = 1; break;
-		    case 'w':	wflag = 1; break;
-		    case 'i':	if (optarg && *optarg) {
+		    case 'T':	tflag = 1; break;	/* doc 2.0 */
+		    case 'w':	wflag = 1; break;	/* doc 2.0 */
+		    case 'i':	if (optarg && *optarg) {	/* doc 2.0 */
 					sprintf(include,
 						    "| egrep '%s' ",  optarg);
 				} else {
 					include[0] = 0;
 				}
 				break;
-		    case 'x':	if (optarg && *optarg) {
+		    case 'x':	if (optarg && *optarg) {	/* doc 2.0 */
 					sprintf(exclude,
 						    "| egrep -v '%s' ", optarg);
 				} else {

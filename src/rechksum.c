@@ -38,10 +38,10 @@ rechksum_main(int ac, char **av)
 	}
 	while ((c = getopt(ac, av, "cfov")) != -1) {
 		switch (c) {
-		    case 'c': dont++; break;
-		    case 'f': flags |= GET_FORCE; break;
-		    case 'o': old++; break;
-		    case 'v': verbose++; break;
+		    case 'c': dont++; break;	/* doc 2.0 */
+		    case 'f': flags |= GET_FORCE; break;	/* doc 2.0 */
+		    case 'o': old++; break;	/* doc 2.0 */
+		    case 'v': verbose++; break;	/* doc 2.0 */
 		    default:  system("bk help -s rechksum");
 			      return (1);
 		}

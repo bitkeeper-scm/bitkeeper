@@ -31,29 +31,30 @@ bkd_main(int ac, char **av)
 
 	while ((c = getopt(ac, av, "c:dDeE:hHil|L:p:P:Rs:St:u:x:")) != -1) {
 		switch (c) {
-		    case 'c': Opts.count = atoi(optarg); break;
-		    case 'd': Opts.daemon = 1; break;
-		    case 'D': Opts.debug = 1; break;
-		    case 'e': Opts.errors_exit = 1; break;
-		    case 'i': Opts.interactive = 1; break;
-		    case 'h': Opts.http_hdr_out; break;
-		    case 'H': Opts.http_hdr_out = Opts.http_hdr_in = 1; break;
-		    case 'l':
+		    case 'c': Opts.count = atoi(optarg); break;	/* undoc? 2.0 */
+		    case 'd': Opts.daemon = 1; break;	/* doc 2.0 */
+		    case 'D': Opts.debug = 1; break;	/* doc 2.0 */
+		    case 'e': Opts.errors_exit = 1; break;	/* doc 2.0 */
+		    case 'i': Opts.interactive = 1; break;	/* doc 2.0 */
+		    case 'h': Opts.http_hdr_out; break;	/* undoc? 2.0 */
+		    case 'H': 	/* undoc? 2.0 */
+				Opts.http_hdr_out = Opts.http_hdr_in = 1; break;
+		    case 'l':	/* doc 2.0 */
 			Opts.log = optarg ? fopen(optarg, "a") : stderr;
 			break;
-		    case 'L':
+		    case 'L':	/* undoc? 2.0 */
 			logRoot = strdup(optarg); break;
-		    case 'p': Opts.port = atoi(optarg); break;
-		    case 'P': Opts.pidfile = optarg; break;
+		    case 'p': Opts.port = atoi(optarg); break;	/* doc 2.0 */
+		    case 'P': Opts.pidfile = optarg; break;	/* doc 2.0 */
 #ifdef WIN32
-		    case 'E': putenv((strdup)(optarg)); break;
-		    case 's': Opts.startDir = optarg; break;
-		    case 'S': Opts.start = 1; Opts.daemon = 1; break;
-		    case 'R': Opts.remove = 1; Opts.daemon = 1; break;
+		    case 'E': putenv((strdup)(optarg)); break;	/* undoc? 2.0 */
+		    case 's': Opts.startDir = optarg; break;	/* undoc? 2.0 */
+		    case 'S': Opts.start = 1; Opts.daemon = 1; break;	/* undoc? 2.0 */
+		    case 'R': Opts.remove = 1; Opts.daemon = 1; break;	/* undoc? 2.0 */
 #endif
-		    case 't': Opts.alarm = atoi(optarg); break;
-		    case 'u': uid = optarg; break;
-		    case 'x': exclude(optarg); break;
+		    case 't': Opts.alarm = atoi(optarg); break;	/* doc 2.0 */
+		    case 'u': uid = optarg; break;	/* doc 2.0 */
+		    case 'x': exclude(optarg); break;	/* doc 2.0 */
 		    default: usage();
 	    	}
 	}
