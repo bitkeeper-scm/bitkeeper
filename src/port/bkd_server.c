@@ -267,8 +267,8 @@ bkd_service_loop(int ac, char **av)
 		 * We could be interrupted if the service manager
 		 * want to shut us down.
 		 */
+		if (bkd_quit == 1) break; 
 		if (n == INVALID_SOCKET) {
-			if (bkd_quit == 1) break; 
 			logMsg("bkd: got invalid socket, re-trying...");
 			continue; /* re-try */
 		}
@@ -497,11 +497,27 @@ bkd_remove_service(int verbose)
 DWORD WINAPI
 helper(LPVOID param)
 {
+	SOCKET	sock;
+
 	hServerStopEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-	WaitForSingleObject(hServerStopEvent, INFINITE);
-	bkd_quit = 1;
-	raise(SIGINT); /* interrupt blocking accept() in service main loop */
-	return (0);
+	for (;;) {
+		WaitForSingleObject(hServerStopEvent, INFINITE);
+		bkd_quit = 1;
+
+		/*
+		 * Send a fake connection to unblock the accept() call in
+		 * bkd_service_loop(), We do this because SIGINT
+		 * cause a error exit, and it is done in a new thread.
+		 * This is not what we want, we want bkd_service_loop()
+		 * to shut down gracefully.
+		 * XXX Note: If we need to use SIGINT in the future; try
+		 * calling reportStatus() and exit(0) in the signal handler,
+		 * it may be enough to keep the service manager happy.
+		 */
+		sock = tcp_connect("localhost",
+					Opts.port ? Opts.port : BK_PORT);
+		CloseHandle((HANDLE) sock);
+	}
 }
 
 int
@@ -510,7 +526,7 @@ bkd_register_ctrl()
 	DWORD threadId;
 	/*
 	 * Create a mini helper thread to handle the stop request.
-	 * We need the helper thred becuase we can not riase SIGINT in the 
+	 * We need the helper thread becuase we can not raise SIGINT in the 
 	 * context of the service manager.
 	 * We can not use event object directly becuase we can not wait
 	 * for a socket event and a regular event together
@@ -543,7 +559,7 @@ bkd_service_ctrl(DWORD dwCtrlCode)
 	switch(dwCtrlCode)
 	{
 	    case SERVICE_CONTROL_STOP:
-           	reportStatus(statusHandle, SERVICE_STOP_PENDING, NO_ERROR, 0);
+           	reportStatus(statusHandle, SERVICE_STOP_PENDING, NO_ERROR, 500);
     		if (hServerStopEvent) {
 			SetEvent(hServerStopEvent);
 		} else {
@@ -608,7 +624,7 @@ reportStatus(SERVICE_STATUS_HANDLE sHandle,
 	srvStatus.dwServiceSpecificExitCode = 0;
         srvStatus.dwCurrentState = dwCurrentState;
         srvStatus.dwWin32ExitCode = dwWin32ExitCode;
-        srvStatus.dwWaitHint = dwWaitHint;
+        srvStatus.dwWaitHint = dwWaitHint ? dwWaitHint : 100;
 
         if ((dwCurrentState == SERVICE_RUNNING) ||
 	    (dwCurrentState == SERVICE_STOPPED)) {
