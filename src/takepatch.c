@@ -768,9 +768,9 @@ nothingtodo(void)
 mismatch.  You need to make sure that the software generating the patch is\n\
 the same as the software accepting the patch.  We were looking for\n\
 %s", PATCH_CURRENT);
-	if (exists("RESYNC")) {
+	if (exists("RESYNC") && exists("PENDING")) {
 		cleanup(CLEAN_PENDING|CLEAN_RESYNC);
-	} else {
+	} else if (exists("PENDING")) {
 		cleanup(CLEAN_PENDING);
 	}
 }

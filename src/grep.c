@@ -20,6 +20,7 @@ grep_main(int ac, char **av)
 		system("bk help grep");
 		return (1);
 	}
+	has_proj("grep");
 
 	*s++ = '-';
 	*g++ = '-';

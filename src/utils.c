@@ -792,3 +792,11 @@ savefile(char *dir, char *prefix, char *pathname)
 		}
 	}
 }
+
+void
+has_proj(char *who)
+{
+        if (bk_proj && bk_proj->root) return;
+	fprintf(stderr, "%s: cannot find package root\n", who);
+	exit(1);
+}

@@ -61,6 +61,7 @@ usage:			system("bk help -s push");
 	}
 
 	loadNetLib();
+	has_proj("push");
 	r = remote_parse(av[optind], 0);
 	unless (r) goto usage;
 	if (opts.debug) r->trace = 1;

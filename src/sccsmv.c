@@ -30,6 +30,7 @@ mv_main(int ac, char **av)
 	int	errors = 0;
 	int	dofree = 0;
 
+	has_proj("mv");
 	if ((bk_mode() == BK_BASIC) && !isMasterTree()) {
 		fprintf(stderr, upgrade_msg);
 		return(1);
