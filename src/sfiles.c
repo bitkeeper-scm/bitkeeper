@@ -67,14 +67,13 @@ again:
 	} else if (d) {
 		while ((e = readdir(d))) {
 			/* 
-			 * readdir return the base name only, must re-construct the relative 
-			 * path. Otherwise oksccs will be checking the wrong file 
+			 * readdir return the base name only, must re-construct
+			 * the relative path. Otherwise oksccs will be checking
+			 * the wrong file .
 			 * See test case "A/" in "basic test" of regression test
 			 */
-			sprintf(buf, "%s%s", prefix, e->d_name);
+			concat_path(buf, prefix, e->d_name);
 			unless (oksccs(buf, flags, 0)) continue;
-			name = e->d_name;
-			sprintf(buf, "%s%s", prefix, e->d_name);
 			return (buf);
 		}
 		closedir(d);
@@ -152,13 +151,17 @@ sfileFirst(char *cmd, char **Av, int Flags)
 				return (0);
 			}
 			concat_path(prefix, Av[0], "SCCS");
-			if ((d = opendir(prefix))) {
-				strcat(prefix, "/");
-			} else {
-				d = opendir(Av[0]);
-				concat_path(prefix, Av[0], "/");
+			unless (d = opendir(sPath(prefix, 1))) {
+				/*
+				 * trim off the "SCCS" part 
+				 * and try again
+				 */
+				prefix[strlen(prefix) - 4] = 0;
+				unless (d = opendir(sPath(prefix, 1))) {
+					perror(sPath(prefix, 1));
+				}
 			}
-			return (sfileNext());
+				return (sfileNext());
 		}
 		av = Av;
 		ac = 0;
@@ -166,12 +169,16 @@ sfileFirst(char *cmd, char **Av, int Flags)
 	}
 	if (flags & SF_NOEXPAND) return (0);
 	if (!d) {
-		strcpy(prefix, "SCCS/");
-		d = opendir("SCCS");
+		strcpy(prefix, "SCCS");
+		d = opendir(sPath("SCCS", 1));
 	}
 	if (!d) {
+		/*
+		 * trim off the "SCCS" part 
+		 * and try again
+		 */
 		prefix[0] = 0;
-		d = opendir(".");
+		d = opendir(sPath(".", 1));
 	}
 	return (sfileNext());
 }
@@ -220,7 +227,7 @@ oksccs(char *sfile, int flags, int complain)
 	ok = lstat(g, &sbuf) == 0;
 	if ((flags&SF_GFILE) && !ok) {
 		if (complain) {
-			unless (exists(sfile)) {
+			unless (exists(sPath(sfile,0))) {
 				fprintf(stderr,
 				    "%s: neither '%s' nor '%s' exists.\n",
 				    prog, g, sfile);
@@ -243,19 +250,28 @@ oksccs(char *sfile, int flags, int complain)
 	return (1);
 }
 
-/* concatenate two paths "first" and "second", and put the result in "buf" */
+/*
+ * concatenate two paths "first" and "second", and put the result in "buf"
+ * TODO: This function should be grouped with cleanPath() and put in
+ *	 the same file.
+ */
 void concat_path(char *buf, char *first, char *second)
 {
-	strcpy(buf, first);
+	int len;
+	if (buf != first) strcpy(buf, first);
+	len = strlen(buf);
+	if ((buf[len -2] == '/') && (buf[len -1] == '.') && second[0]) {
+		buf[len - 1] = 0; len--;
+	}
 	/*
 	 * if "first" and "second" already have a seperator between them,
 	 * don't add another one.
-	 * Another special case is also checked here: "second" is a null string.
+	 * Another special case is also checked here:
+	 * 	first or "second" is a null string.
 	 */
-	if ((first[strlen(first) -1] != '/') &&
-	    (second[0] != '/') && (second[0] != '\0')) {
+	if ((buf[0] != '\0') && (second[0] != '\0') &&
+	    (buf[len -1] != '/') && (second[0] != '/'))
 		strcat(buf, "/");
-	}
 	strcat(buf, second);
 }
 

@@ -137,6 +137,7 @@ extractPatch(FILE *p, int flags)
 	int	newFile = 0;
 	char	*gfile;
 	static	int rebuilt = 0;	/* static - do it once only */
+	static	unsigned int uniqueId = 0;	/* unique ID for new file */
 	char	buf[1200];
 
 	/*
@@ -169,14 +170,20 @@ extractPatch(FILE *p, int flags)
 	}
 	if (echo>3) fprintf(stderr, "%s\n", buf);
 again:	s = sccs_keyinit(buf, NOCKSUM, idDB);
-	unless (s || newFile) {
+	/*
+	 * Unless it is a brand new workspace, rebuild the id cache if
+	 * look up failed. Even if the file is supposed to be "new".
+	 */
+	unless (s || newProject) {
 		unless (rebuilt++) {
 			rebuild_id();
 			goto again;
 		}
-		fprintf(stderr,
-		    "takepatch: can't find key '%s' in id cache\n", buf);
-		cleanup(CLEAN_RESYNC);
+		unless (newFile) {
+			fprintf(stderr,
+			   "takepatch: can't find key '%s' in id cache\n", buf);
+			cleanup(CLEAN_RESYNC);
+		}
 	}
 
 	/*
@@ -213,23 +220,43 @@ again:	s = sccs_keyinit(buf, NOCKSUM, idDB);
 			exit(1);
 		}
 	} else {	/* create a new file */
-		if (exists(name)) {
-			fprintf(stderr,
-"\n--- takepatch namespace conflict ---\n\
-\n\
-File: ``%s''\n\
-\n\
-This file exists in both repositories but is not based on the same\n\
-revision history.  This usually means that two different people created\n\
-the same file in two different repositories.  Currently, you have to\n\
-resolve this by hand, by removing or moving one of the files out of the\n\
-way and trying the patch again.  You can do this by using running\n\n\
-\tbk mv file file.duplicate\n\n\
-NOTE: if you are resyncing multiple changesets and the filename moved more\n\
-than once, it is possible that BitKeeper is getting confused.   Try the\n\
-resync with one changeset at a time and see if that works.\n\n\
-This is a temporary work around for the problem.\n", name);
-			cleanup(CLEAN_RESYNC);
+		/*
+		 * ChangeSet is special, do'nt rename it,
+		 * because "reslove" expect to find a ChangeSet
+		 * file in it is normal location.
+		 * ChangeSet is never renamed, so
+		 * it is safe to assume there is no
+		 * name conflict for the ChangeSet file.
+		 */
+		if (!streq(name, "SCCS/s.ChangeSet")) {
+			char	*p, tmp[1024];
+			/*
+			 * Put new file in BitKeeper/.new to avoid
+			 * conflict with existing file in target tree. 
+			 * The name is constructed to avoid disk
+			 * look up traffic; i.e. no stat()
+			 * We will move the file to its "real" name later.
+			 *
+			 * Use base name only, in case the file
+			 * have "BitKeeper/etc" in its name, wihch
+			 * will create a false root 
+			 *
+			 * TODO: we may want to split the .new directory
+			 * if it get too big.
+			 */
+			p = strrchr(name, '/');
+			p = p ? &p[1] : name;
+			sprintf(tmp,
+				"BitKeeper/.new/SCCS/%s~%u", p, uniqueId++);
+			free(name);
+			name = strdup(tmp);
+		}  else {
+			/*
+			 * If we are about to create a new ChangeSet file,
+			 * this better be the very first and only
+			 * ChangeSet file.
+			 */
+			assert(!exists("SCCS/s.ChangeSet"));
 		}
 		sprintf(buf, "RESYNC/%s", name);
 		s = sccs_init(buf, NEWFILE);
@@ -556,12 +583,6 @@ apply:
 			newflags = (echo > 2) ?
 			    NOCKSUM|NEWFILE|FORCE|PATCH :
 			    NOCKSUM|NEWFILE|FORCE|PATCH|SILENT;
-			if (newProject &&
-			    streq("RESYNC/SCCS/s.ChangeSet", p->resyncFile)) {
-				d = calloc(1, sizeof(*d));
-				d->rev = strdup("1.0");
-				s->state |= S_ONE_ZERO;
-			}
 			if (sccs_delta(s, newflags, d, iF, dF)) {
 				perror("delta");
 				exit(1);
@@ -602,19 +623,20 @@ apply:
 	d = sccs_findKey(s, p2->me);
 	assert(d);
 	remotePath = d->pathname;
-	if (localPath && !streq(localPath, remotePath)) {
+	if (!localPath) {
+		/* new file */
+		conflicts +=
+			sccs_resolveFile(s, ">none<", ">none<", remotePath);
+	} else if (streq(localPath, remotePath)) {
+		/* existing file, no path change */
+		conflicts += sccs_resolveFile(s, 0, 0, 0);
+	} else {/* existing file, path changed   */
+		if (streq(localPath, "ChangeSet")) {
+			fprintf(stderr, "rename ChangeSet is illegal\n");
+			exit(1);
+		}
 		conflicts += sccs_resolveFile(s, localPath,
 			gca ? gca->pathname : localPath, remotePath);
-	} else {
-		char	*p = sccs2name(patchList->resyncFile);
-
-		if (streq(&p[7], remotePath)) {
-			conflicts += sccs_resolveFile(s, 0, 0, 0);
-		} else {
-			conflicts +=
-			    sccs_resolveFile(s, ">none<", ">none<", remotePath);
-		}
-		free(p);
 	}
 	sccs_free(s);
 	for (p = patchList; p; ) {

@@ -365,10 +365,10 @@ getuser(void)
 
 	if (s) return (s);
 	s = getenv("USER");
-	if (!s) {
+	if (!s || !s[0] ) {
 		s = getlogin();
 	}
-	if (!s) {
+	if (!s || !s[0] ) {
 		s = UNKNOWN_USER;
 	}
 	return (s);
@@ -1489,6 +1489,105 @@ relativeName(sccs *sc, int withsccs, int mustHaveRmarker)
 	if (strncmp("RESYNC/", s, 7) == 0) s += 7;
 	return (s);
 }
+
+#ifdef SPLIT_ROOT
+/*
+ * make directory (including the parent)
+ * TODO: replace the "system" call
+ * will local mkdir() implementation
+ */
+int
+mkDir(char *dir)
+{
+	char cmd[1024];
+
+	sprintf(cmd, "mkdir -p %s", dir);
+	return (system(cmd));
+}
+
+/*
+ * If we get a rootfile, (i.e split root),
+ * copy the the new sroot from the root file, return 1;
+ * otherwise return 0
+ */
+int
+hasRootFile(char *gRoot, char *sRoot)
+{
+	FILE	*f;
+	char 	*p, rootfile[1024], buf[1024];
+#define ROOTFILE  "BitKeeper/etc/RootFile"
+
+	/*
+	 * TODO:
+	 * we need to cache the sRoot value
+	 */
+	concat_path(rootfile, gRoot, ROOTFILE);
+	unless (exists(rootfile)) return 0;
+	f = fopen(rootfile, "rt");
+	unless (f) {
+		perror(rootfile);
+		return 0;
+	}
+	
+	while(fnext(buf, f)) {
+		if (buf[0] == '#') continue; /* skip comment */
+		if (chop(buf) != '\n') { 
+			assert("line too long in rootfile" == 0);
+		}
+		p = strchr(buf, ' '); assert(p);
+		*p++ = 0;
+		if (streq(buf, "SROOT")) {
+			strcpy(sRoot, p);
+			fclose(f);
+			return 1;
+		}
+	}
+	fclose(f);
+	fprintf(stderr, "Warning: %s has no SROOT entry, ignored\n", rootfile);
+	return 0;
+}
+
+/*
+ * Given a file/dir name , return its path in the S root tree
+ * return value is in local static buffer
+ * user must copy it before calling other function
+ */
+char *
+sPath(char *name, int isDir)
+{
+	static	char buf[1024]; 
+	char	*s, *path, gRoot[1024], sRoot[1024];
+
+	/*
+	 *  If there is a local SCCS directory, use it
+	 */
+	cleanPath(name, buf);
+	path = name2sccs(buf);
+	strrchr(path, '/')[0] = 0;
+	assert(streq("SCCS", basenm(path)));
+	if (isdir(path)) {
+		free(path);
+		//return (fullname(buf, 0));
+		debug((stderr, "sPath(%s) -> %s\n", name, name));
+		return (name);
+	}
+	free(path);
+
+	path = _relativeName(name, isDir, 0, 0, gRoot);
+	if (IsFullPath(path)) return path; /* no root marker */
+	if (hasRootFile(gRoot, sRoot)) {
+		concat_path(buf, sRoot, path);
+	} else {
+		concat_path(buf, gRoot, path);
+	}
+	cleanPath(buf, buf);
+	debug((stderr, "sPath(%s) -> %s\n", name, buf));
+	return buf;
+}
+#else
+char *
+sPath(char *name, int isDir) { return name; }
+#endif /* SPLIT_ROOT */
 
 /*
  * Revision number/branching theory of operation:
@@ -3076,7 +3175,7 @@ sccs_init(char *name, int flags)
 		umask(~u_mask);
 	}
 	if (is_sccs(name)) {
-		s->sfile = strdup(name);
+		s->sfile = strdup(sPath(name, 0));
 		s->gfile = sccs2name(name);
 	} else {
 		fprintf(stderr, "Not an SCCS file: %s\n", name);
@@ -3087,6 +3186,9 @@ sccs_init(char *name, int flags)
 	if (t) {
 		if (streq(t, "/s.ChangeSet")) s->state |= S_CSET;
 	} else {
+		// awc -> lm : this seem to be a impossbile code path
+		// if we get here, there should be no '/' in s->sfile
+		// do you mean streq(s->sfile, "s.ChangeSet") ?
 		if (streq(s->sfile, "SCCS/s.ChangeSet")) s->state |= S_CSET;
 	}
 	unless (t && (t >= s->sfile + 4) && strneq(t - 4, "SCCS/s.", 7)) {
@@ -3143,7 +3245,9 @@ sccs_init(char *name, int flags)
 		}
 		s->state |= S_CHMOD;
 	} else {
+		extern int errno;
 		s->fd = open(s->sfile, 0, 0);
+		if ((s->fd < 0) && (errno != ENOENT)) perror("sccs_init");
 		s->mmap = mmap(0, s->size, PROT_READ, MAP_SHARED, s->fd, 0);
 	}
 	if ((int)s->mmap == -1) {
@@ -3361,7 +3465,11 @@ mksccsdir(sccs *sc)
 	if ((s >= sc->sfile + 4) &&
 	    s[-1] == 'S' && s[-2] == 'C' && s[-3] == 'C' && s[-4] == 'S') {
 		*s = 0;
+#ifdef SPLIT_ROOT
+		unless (exists(sc->sfile)) mkDir(sc->sfile);
+#else
 		mkdir(sc->sfile, 0775);
+#endif
 		*s = '/';
 	}
 }
@@ -4272,14 +4380,24 @@ openOutput(int encode, char *file, FILE **op)
 	    case E_ASCII:
 	    case E_UUENCODE:
 	    case E_GZIP:
+#ifdef SPLIT_ROOT
+		unless (toStdout) {
+			char *s = rindex(file, '/');
+			if (s) {
+				*s = 0; /* split off the file part */
+				unless (exists(file)) mkDir(file);
+				*s = '/';
+			}                                          
+		}
+#endif
 		*op = toStdout ? stdout : fopen(file, "w");
 		break;
 	    case E_UUGZIP:
 		if (toStdout) {
-			*op = popen("gzip -d", "w");
+			*op = popen("gzip -d", M_WRITE_B);
 		} else {
 			sprintf(buf, "gzip -d > %s", file);
-			*op = popen(buf, "w");
+			*op = popen(buf, M_WRITE_B);
 		}
 		break;
 	    default:
@@ -4424,6 +4542,44 @@ write_pfile(sccs *s, int flags, delta *d,
 	return (0);
 }
 
+char *
+setupOutput(sccs *s, char *printOut, int flags, delta *d)
+{
+	char *f; 
+	static char path[1024];
+
+	if (flags & PRINT) {
+		f = printOut;
+	} else if (flags & DELTA_PATH) {
+		/* put the file in its historic location */
+		assert(d->pathname);
+		_relativeName(".", 1 , 0, 0, path); /* get groot */
+		concat_path(path, path, d->pathname);
+		f = path;
+		unlink(f);
+	} else {
+		if (WRITABLE(s)) {
+			fprintf(stderr, "Writeable %s exists\n", s->gfile);
+			s->state |= S_WARNED;
+			return 0;
+		}
+		f = s->gfile;
+		unlinkGfile(s);
+	}
+#ifdef SPLIT_ROOT
+	unless (flags & PRINT) {
+		char *p = rindex(f, '/');
+		//unlinkGfile(s);
+		if (p) { /* if parent dir does not exist, creat it */
+			*p = 0; /* split off the file part */
+			unless (exists(f)) mkDir(f);
+			*p = '/';
+		}                                          
+	}
+#endif
+	return f;
+} 
+
 private int
 getRegBody(sccs *s, char *printOut, int flags, delta *d,
 		int *ln, char *iLst, char *xLst)
@@ -4435,7 +4591,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	sum_t	sum;
 	FILE 	*out;
 	BUF	(buf);
-	char 	*base, *f = (flags & PRINT) ? printOut : s->gfile;
+	char 	*base, *f, path[1024];
 
 	slist = serialmap(s, d, flags, iLst, xLst, &error);
 	if (error == 1) {
@@ -4466,9 +4622,13 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	state = allocstate(0, 0, s->nextserial);
 	if (flags & MODNAME) base = basenm(s->gfile);
 	
+	f = setupOutput(s, printOut, flags, d);
+	unless (f) return 1;
 	popened = openOutput(encoding, f, &out);
 	unless (out) {
 		fprintf(stderr, "Can't open %s for writing\n", f);
+		if (slist) free(slist);
+		if (state) free(state);
 		return 1;
 	}
 	seekto(s, s->data);
@@ -4585,23 +4745,26 @@ private int
 getLinkBody(sccs *s,
 	char *printOut, int flags, delta *d, int *ln)
 {
+	char *f = setupOutput(s, printOut, flags, d);
+
+	unless (f) return 1;
 	if (flags & PRINT) {
 		int	popened; 
 		FILE 	*out;
 
-		popened = openOutput(E_ASCII, printOut, &out);
+		popened = openOutput(E_ASCII, f, &out);
 		assert(popened == 0);
 		unless (out) {
 			fprintf(stderr,
-				"Can't open %s for writing\n", printOut);
+				"Can't open %s for writing\n", f);
 			return 1;
 		}
 		fprintf(out, "SYMLINK -> %s\n", d->glink);
-		unless (streq("-", printOut)) fclose(out);
+		unless (streq("-", f)) fclose(out);
 		*ln = 1;
 	} else {
-		unless (symlink(d->glink, s->gfile) == 0 ) {
-			perror(s->gfile);
+		unless (symlink(d->glink, f) == 0 ) {
+			perror(f);
 			return 1;
 		}
 		*ln = 0;
@@ -4680,14 +4843,6 @@ err:		if (i2) free(i2);
 		locked = 1;
 	}
 	if (flags&SKIPGET)  goto skip_get;
-	if ((flags & PRINT) == 0) {
-		if (WRITABLE(s)) {
-			fprintf(stderr, "Writeable %s exists\n", s->gfile);
-			s->state |= S_WARNED;
-			goto err;
-		}
-	}
-	unless (flags & PRINT) unlinkGfile(s);
 
 	/*
 	 * Base on the file type,
@@ -5341,7 +5496,17 @@ sccs_hasDiffs(sccs *s, int flags)
 		if (S_ISLNK(s->mode)) RET(!streq(s->glink, d->glink));
 	}
 
-	assert(IS_WRITABLE(s));
+	/* If the path changed, it is a diff */
+	if (d->pathname) {
+		char *r = _relativeName(s->gfile, 0, 0, 1, 0);
+		if (r && !streq(d->pathname, r)) RET(1);
+	}
+
+	/* 
+	 * Can not enforce this assert here, gfile may be ready only
+	 * due to  SKIPGET
+	 * assert(IS_WRITABLE(s));
+	 */
 	if ((s->encoding != E_ASCII) && (s->encoding != E_GZIP)) {
 		tmpfile = 1;
 		sprintf(sbuf, "%s/getU%d", TMP_PATH, getpid());
@@ -5435,7 +5600,7 @@ deflate_gfile(sccs *s, char *tmpfile)
 		break;
 	    case E_UUGZIP:
 		sprintf(cmd, "gzip -nq4 < %s", s->gfile);
-		in = popen(cmd, "r");
+		in = popen(cmd, M_READ_B);
 		uuencode(in, out);
 		pclose(in);
 		fclose(out);
@@ -5500,11 +5665,18 @@ isRegularFile(mode_t m)
  *	0 if no change
  *	1 if file type changed 
  *	2 if meta mode field changed (e.g. glink)
+ * 	3 if path changed
  *	
  */
-diff_gmode(sccs *s, pfile *pf, char *tmpfile)
+diff_gmode(sccs *s, pfile *pf)
 {
 	delta *d = findrev(s, pf->oldrev);
+
+	/* If the path changed, it is a diff */
+	if (d->pathname) {
+		char *r = _relativeName(s->gfile, 0, 0, 1, 0);
+		if (r && !streq(d->pathname, r)) return 3;
+	}
 
 	unless (sameFileType(s, d)) return (1) ; /* type chaneged */
 	if (S_ISLNK(s->mode)) {
@@ -5606,20 +5778,22 @@ diff_gfile(sccs *s, pfile *pf, char *tmpfile)
  *	-1 for some already bitched about error
  *	0 if there were differences
  *	1 if no differences
- *	2 if diffs in meta mode field only (no change in delta body)
  *
  */
-diff_g(sccs *s, pfile *pf, char *tmpfile)
+diff_g(sccs *s, pfile *pf, char **tmpfile)
 {
-	switch (diff_gmode(s, pf, tmpfile)) {
+	*tmpfile = DEV_NULL;
+	switch (diff_gmode(s, pf)) {
 	    case 0: 		/* no mode change */
 		if (!isRegularFile(s->mode)) return 1;
-		return (diff_gfile(s, pf, tmpfile));
-		break;
+		*tmpfile  = tmpnam(0);
+		return (diff_gfile(s, pf, *tmpfile));
 	    case 2:		/* meta mode field changed */
-		return 2;
+		return 0;
+	    case 3:		/* path changed */
 	    case 1:		/* file type changed */
-		if (diff_gfile(s, pf, tmpfile) == -1) return (-1);
+		*tmpfile  = tmpnam(0);
+		if (diff_gfile(s, pf, *tmpfile) == -1) return (-1);
 		return 0;
 	    default:
 		return -1;
@@ -5728,7 +5902,7 @@ sccs_clean(sccs *s, int flags)
 	if (S_ISLNK(s->mode)) {
 		if (streq(s->glink, d->glink)) {
 			verbose((stderr, "Clean %s\n", s->gfile));
-			unlinkGfile(s);
+			unedit(s, flags);
 			free_pfile(&pf);
 			return (0);
 		}
@@ -5904,10 +6078,10 @@ openInput(sccs *s, int flags, FILE **inp)
 		 * the best time/space tradeoff.
 		 */
 		if (streq("-", file)) {
-			*inp = popen("gzip -nq4", "r");
+			*inp = popen("gzip -nq4", M_READ_B);
 		} else {
 			sprintf(buf, "gzip -nq4 < %s", file);
-			*inp = popen(buf, "r");
+			*inp = popen(buf, M_READ_B);
 		}
 		return (1);
 	}
@@ -5988,18 +6162,40 @@ updMode(sccs *s, delta *d, delta *dParent)
 	}
 }
 
+void
+get_sroot(char *sfile, char *sroot)
+{
+	char *g;
+	g = sccs2name(sfile); /* strip SCCS */
+	sroot[0] = 0;
+	_relativeName(g, 0, 0, 1, sroot);
+	free(g);
+}      
+
+/*
+ * TODO: split the x.pending file by LOD
+ */
 private void
 updatePending(sccs *s, delta *d)
 {
 	int fd;
-	char *bk_root, buf[2048];
-	
-	assert(s);
-	assert(d);
-	if (d->pathname && streq("ChangeSet", d->pathname)) return;
-	bk_root = getenv("BK_ROOT");
-	unless (bk_root) return;
-	sprintf(buf, "%s/SCCS/x.pending", bk_root);
+	char sRoot[1024], buf[2048];
+
+	// XXX 
+	// Do not enable this until
+	// we fix "sfiles -C" or cset to consume the entries in x.pending
+	// This feature is need for performance only
+#ifdef LATER
+	assert(s); assert(d);
+	if (s->state & S_CSET) return;
+	get_sroot(s->sfile, sRoot);
+	unless (sRoot[0]) return;
+	concat_path(buf, sRoot, "SCCS");
+
+	/* should never happen, "bk setup" should have created it */
+	assert(exists(buf));
+
+	concat_path(buf, buf, "x.pending");
 	fd = open(buf, O_CREAT|O_APPEND|O_WRONLY, 0660);
 	unless (fd > 0) return;
 	sccs_sdelta(buf, sccs_ino(s));
@@ -6010,6 +6206,7 @@ updatePending(sccs *s, delta *d)
 		perror("Can't write to pending file");
 	}
 	close(fd);
+#endif
 }
 
 /*
@@ -6069,15 +6266,19 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 	explode_rev(n);
 	unless (s->state & S_NOSCCSDIR) {
 		if (s->state & S_CSET) {
-			sccs_sdelta(buf, n);
-			n->csetFile = strdup(buf);
+			unless (n->csetFile) {
+				sccs_sdelta(buf, n);
+				n->csetFile = strdup(buf);
+			}
 			s->state |= S_BITKEEPER;	
 			n->flags |= D_CKSUM;
 		} else {
 			t = relativeName(s, 0, 0);
 			assert(t);
 			if (t[0] != '/') {
-				n->csetFile = getCSetFile(s);
+				unless (n->csetFile) {
+					n->csetFile = getCSetFile(s);
+				}
 				s->state |= S_BITKEEPER;	
 			}
 		}
@@ -8137,7 +8338,7 @@ sccs_delta(sccs *s, int flags, delta *prefilled, FILE *init, FILE *diffs)
 	int	error = 0;
 	char	*t;
 	delta	*d = 0, *n = 0;
-	char	*tmpfile = tmpnam(0);
+	char	*tmpfile = 0;
 	int	added, deleted, unchanged;
 	int	locked;
 	char	buf2[MAXLINE];
@@ -8155,7 +8356,7 @@ out:
 		if (sfile) fclose(sfile);
 		if (diffs) fclose(diffs);
 		free_pfile(&pf);
-		unless (streq(tmpfile, DEV_NULL)) unlink(tmpfile);
+		if (tmpfile  && !streq(tmpfile, DEV_NULL)) unlink(tmpfile);
 		if (locked) unlock(s, 'z');
 		debug((stderr, "delta returns %d\n", error));
 		return (error);
@@ -8172,9 +8373,17 @@ out:
 			goto out;
 		}
 		debug((stderr, "delta got prefilled %s\n", prefilled->rev));
-		if ((flags & PATCH) && !(s->state & S_ONE_ZERO)) {
-			free(prefilled->rev);
-			prefilled->rev = 0;
+		if (flags & PATCH) {
+			if (prefilled->pathname &&
+			    streq(prefilled->pathname, "ChangeSet")) {
+				s->state |= S_CSET;
+		    	}
+			unless (flags & NEWFILE) {
+				/* except the very first delta   */
+				/* all rev are subject to rename */
+				free(prefilled->rev);
+				prefilled->rev = 0;
+			}
 		}
 	}
 
@@ -8227,18 +8436,19 @@ out:
 	if (diffs) {
 		debug((stderr, "delta using diffs passed in\n"));
 	} else {
-		switch (diff_g(s, &pf, tmpfile)) {
+		switch (diff_g(s, &pf, &tmpfile)) {
 		    case 1:		/* no diffs */
 						    /* CSTYLED */
 			if (flags & FORCE) break;     /* forced 0 sized delta */
 			if (!(flags & SILENT))
 				fprintf(stderr,
 				    "Clean %s (no diffs)\n", s->gfile);
+			if (flags & AUTOCHKIN) {
+				error = -2;
+				goto out;
+			}
 			unedit(s, flags);
 			goto out;
-		    case 2:		/* diffs in mode only */
-			tmpfile = DEV_NULL;
-			break;
 		    case 0:		/* diffs */
 			break;
 		    default: OUT;
@@ -10179,6 +10389,8 @@ loadDB(char *file, int (*want)(char *))
 	int	first = 1;
 	char	buf[MAXLINE];
 
+	// XXX awc->lm: we should check the z lock here
+	// someone could be updating the file...
 again:	unless (f = fopen(file, "rt")) {
 		if (first) {
 			first = 0;

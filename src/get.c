@@ -2,7 +2,7 @@
 #include "sccs.h"
 WHATSTR("%W%");
 char	*get_help = "\n\
-usage: get [-bdeFgkmnpqsu] [-c<date>] [-G<name>] \n\
+usage: get [-bdeFgHkmnpqsu] [-c<date>] [-G<name>] \n\
            [-i<revs>] [-r<revs>] [-x<revs>] [files...] OR [-]\n\n\
     A useful thing to note is that\n\
 	bk sfiles src | bk get -e -\n\
@@ -20,6 +20,7 @@ usage: get [-bdeFgkmnpqsu] [-c<date>] [-G<name>] \n\
     -F		don't check the checksum\n\
     -g		just do locking, don't get the file\n\
     -G<name>	place the output file in <name>\n\
+    -H		place the outout file in historic path\n
     -i<revs>	include specified revs in the get (rev, rev and/or rev-rev)\n\
     -k		don't expand keywords\n\
     -m		prefix each line with revision number\n\
@@ -59,7 +60,7 @@ get_main(int ac, char **av, char *out)
 		return (1);
 	}
 	if (streq(av[0], "edit")) flags |= EDIT;
-	while ((c = getopt(ac, av, "bc;dDeFgG:i;kmM|nNpPqr;Rstux;")) != -1) {
+	while ((c = getopt(ac, av, "bc;dDeFgG:Hi;kmM|nNpPqr;Rstux;")) != -1) {
 		switch (c) {
 		    case 'b': flags |= FORCEBRANCH; break;
 		    case 'c': cdate = optarg; break;
@@ -69,6 +70,7 @@ get_main(int ac, char **av, char *out)
 		    case 'F': flags |= NOCKSUM; break;
 		    case 'g': flags |= SKIPGET; break;
 		    case 'G': Gname = optarg; break;
+		    case 'H': flags |= DELTA_PATH; break;
 		    case 'i': iLst = optarg; break;
 		    case 'k': flags &= ~EXPAND; break;
 		    case 'm': flags |= REVNUMS; break;
@@ -105,6 +107,13 @@ usage:			fprintf(stderr, "get: usage error, try get --help\n");
 			goto usage;
 		}
 	}
+	if ((flags & DELTA_PATH) && Gname) {
+		fprintf(stderr, "get: can't use -G and -H at the same time.\n");
+		return (1);
+	}
+	// TODO: make sure -H -p is not used at the same time
+	// 	 make sure -H -e is not used at the same time
+	// 	 make sure -G -p is not used at the same time
 	if ((rev || cdate) && hasrevs) {
 		fprintf(stderr, "get: can't specify more than one rev.\n");
 		return (1);
