@@ -2054,17 +2054,17 @@ defIsVer(sccs *s)
 /*
  * Get the delta that is the basis for this edit.
  * Get the revision name of the new delta.
+ * Sep 2000 - removed branch, we don't support it.
  */
 private delta *
-getedit(sccs *s, char **revp, int branch)
+getedit(sccs *s, char **revp)
 {
 	char	*rev = *revp;
 	u16	a = 0, b = 0, c = 0, d = 0;
 	delta	*e, *t;
 	static	char buf[MAXREV];
 
-	debug((stderr,
-	    "getedit(%s, %s, b=%d)\n", s->gfile, notnull(*revp), branch));
+	debug((stderr, "getedit(%s, %s)\n", s->gfile, notnull(*revp)));
 	/*
 	 * use the findrev logic to get to the delta.
 	 */
@@ -2102,7 +2102,7 @@ ok:
 	 * Just continue trunk/branch
 	 * Because the kid may be a branch, we have to be extra careful here.
 	 */
-	else if (!branch && !morekids(e, (s->state & S_BITKEEPER))) {
+	else if (!morekids(e, (s->state & S_BITKEEPER))) {
 		a = e->r[0];
 		b = e->r[1];
 		c = e->r[2];
@@ -3054,9 +3054,6 @@ misc(sccs *s)
 	for (; (buf = fastnext(s)) && !strneq(buf, "\001t\n", 3); ) {
 		if (strneq(buf, "\001f R\n", 5)) {	/* XXX - obsolete */
 			s->state |= S_RCS;
-			continue;
-		} else if (strneq(buf, "\001f b\n", 5)) {
-			s->state |= S_BRANCHOK;
 			continue;
 		} else if (strneq(buf, "\001f Y\n", 5)) { /* XXX - obsolete */
 			s->state |= S_YEAR4;
@@ -5903,13 +5900,7 @@ err:		if (i2) free(i2);
 	}
 	if (rev && streq(rev, "+")) rev = 0;
 	if (flags & GET_EDIT) {
-#if 0
-		int	f = (s->state & S_BRANCHOK) ? flags&GET_BRANCH : 0;
-#else
-		int	f = 0;
-#endif
-
-		d = getedit(s, &rev, f);
+		d = getedit(s, &rev);
 		if (!d) {
 			fprintf(stderr, "get: can't find revision %s in %s\n",
 			    notnull(rev), s->sfile);
@@ -6811,9 +6802,6 @@ delta_table(sccs *s, FILE *out, int willfix)
 	*p++ = '\n';
 	*p   = '\0';
 	fputmeta(s, buf, out);
-	if (s->state & S_BRANCHOK) {
-		fputmeta(s, "\001f b\n", out);
-	}
 	if (s->state & S_BITKEEPER) bits |= X_BITKEEPER;
 	if (s->state & S_CSETMARKED) bits |= X_CSETMARKED;
 	bits |= state2xflags(s->state);
@@ -9102,7 +9090,7 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
 	n = sccs_dInit(n, 'D', sc, 0);
 	unless (p) p = findrev(sc, 0);
 	rev = p->rev;
-	getedit(sc, &rev, f);
+	getedit(sc, &rev);
 	n->rev = strdup(rev);
 	n->pserial = p->serial;
 	n->serial = sc->nextserial++;
@@ -9500,13 +9488,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	}
 
 	/*
-	 * b	turn on branching support (S_BRANCHOK)
-	 * e	encoding
-	 * d	default branch (sc->defbranch)
-	 * R	turn on rcs keyword expansion (S_RCS)
-	 * Y	turn on 4 digit year printouts
-	 *
-	 * Anything else, just eat it.
+	 * flags, unkwown single letter passed through.
 	 */
 	for (i = 0; f && f[i].flags; ++i) {
 		int	add = f[i].flags & A_ADD;
@@ -9531,28 +9513,10 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 					sc->state |= S_BITKEEPER;
 				else
 					sc->state &= ~S_BITKEEPER;
-			} else if (streq(fl, "BRANCHOK")) {
-				if (v) goto noval;
-				if (add)
-					sc->state |= S_BRANCHOK;
-				else
-					sc->state &= ~S_BRANCHOK;
 			} else if (streq(fl, "DEFAULT")) {
 				if (sc->defbranch) free(sc->defbranch);
 				sc->defbranch = v ? strdup(v) : 0;
-			} else if (streq(fl, "ENCODING")) {
-				/* XXX Need symbolic values */
-				if (v) {
-					new_enc = atoi(v);
-					verbose((stderr, "New encoding %d\n", new_enc));
-				} else {
-					fprintf(stderr,
-						"admin: -fENCODING requires a value\n");
-					error = 1;
-					sc->state |= S_WARNED;
-				}
-			}
-			else {
+			} else {
 				if (v) fprintf(stderr,
 					       "admin: unknown flag %s=%s\n",
 					       fl, v);
@@ -9572,12 +9536,6 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			switch (f[i].thing[0]) {
 				char	buf[500];
 
-			case 'b':
-				if (add)
-					sc->state |= S_BRANCHOK;
-				else
-					sc->state &= ~S_BRANCHOK;
-				break;
 			case 'd':
 				if (sc->defbranch) free(sc->defbranch);
 				sc->defbranch = *v ? strdup(v) : 0;
