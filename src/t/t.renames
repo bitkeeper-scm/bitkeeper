@@ -53,7 +53,7 @@ else	L=
 fi
 
 # Create a repository with 5 files in it.  The files contain
-# 1, 2, 3, 4, 5 and start out as A, B, C, D, E
+# 1, 2, 3, 4, 5 and start out as "A A", B, C, D, E
 echo $N Create initial repository ...................................$NL
 no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
@@ -63,13 +63,13 @@ if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 touch BitKeeper/etc/SCCS/x.marked
 echo OK
 echo $N Create 5 files with 1,2,3,4,5 as contents ...................$NL
-echo 1 > A
+echo 1 > "A A"
 echo 2 > B
-echo 3 > C
+echo 3 > 'c C#'
 echo 4 > D
 echo 5 > E
-bk ci $Q -i A B C D E
-if [ ! -f SCCS/s.A ]; then echo failed to create history; exit 1; fi
+bk ci $Q -i "A A" B 'c C#' D E
+if [ ! -f SCCS/s."A A" ]; then echo failed to create history; exit 1; fi
 bk commit $S -a -y"This is a \"Change Set\""
 echo OK
 cores
@@ -123,11 +123,11 @@ rm -rf project copy
 tar xf SAVE
 cp -rp project copy
 cd project
-echo "I am the project file" > CONFLICT
-bk new $Q CONFLICT
+echo "I am the project file" > 'B%A!#$%^&)(-_+=];,'
+bk new $Q 'B%A!#$%^&)(-_+=];,'
 bk commit $Q -ywhatever
 cd $HERE/copy
-echo "I am the copy file" > CONFLICT
+echo "I am the copy file" > 'B%A!#$%^&)(-_+=];,'
 cd $HERE
 bk resync -t $Q project copy
 tar cf SAVE.copy copy
@@ -137,16 +137,16 @@ bk resolve -t $Q $L copy >/dev/null 2>&1 <<EOF
 rl
 y
 EOF
-if [ ! -f copy/CONFLICT ]
-then	echo Failed to get CONFLICT file
+if [ ! -f copy/'B%A!#$%^&)(-_+=];,' ]
+then	echo Failed to get 'B%A!#$%^&)(-_+=];,' file
 	bk _find copy 
 	exit 1
 fi
-if [ "`cat copy/CONFLICT`" != "I am the project file" ]
+if [ "`cat copy/'B%A!#$%^&)(-_+=];,'`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `bk prs -hr+ -d:I: copy/CONFLICT` != "1.1" ]
-then	echo 'Added new rev to CONFLICT?'; exit 1
+if [ `bk prs -hr+ -d:I: copy/'B%A!#$%^&)(-_+=];,'` != "1.1" ]
+then	echo 'Added new rev to B%A!#$%^&)(-_+=];,?'; exit 1
 fi
 echo OK
 
@@ -163,31 +163,33 @@ fi
 if [ "`cat copy/LOCAL`" != "I am the copy file" ]
 then	echo Bad data in local file; cat copy/LOCAL; exit 1
 fi
-if [ ! -f copy/CONFLICT ]
-then	echo Failed to get CONFLICT file
+if [ ! -f copy/'B%A!#$%^&)(-_+=];,' ]
+then	echo Failed to get 'B%A!#$%^&)(-_+=];,' file
 	bk _find copy
 	exit 1
 fi
-if [ "`cat copy/CONFLICT`" != "I am the project file" ]
+if [ "`cat copy/'B%A!#$%^&)(-_+=];,'`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `bk prs -hr+ -d:I: copy/CONFLICT` != "1.1" ]
-then	echo 'Added new rev to CONFLICT?'; exit 1
+if [ `bk prs -hr+ -d:I: copy/'B%A!#$%^&)(-_+=];,'` != "1.1" ]
+then	echo 'Added new rev to B%A!#$%^&)(-_+=];,?'; exit 1
 fi
 echo OK
 
 echo $N '  try to rename local to existing sfile in repository .......'$NL
 rm -rf copy
 tar xf SAVE.copy
-bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
+bk resolve -t -d -l $Q $L copy >ERRORS 2>&1 <<EOF
 ml
-C
+c C#
 q
 EOF
 if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
+then	echo resolve failed to exit with an error
+	cat ERRORS
+	exit 1
 fi
-grep -q 'SCCS/s.C exists locally already' ERRORS
+grep -q 'SCCS/s.c C# exists locally already' ERRORS
 if [ $? -ne 0 ]
 then	echo bad or no error message from resolve; cat ERRORS; exit 1
 fi
@@ -237,11 +239,11 @@ mr
 REMOTE
 a
 EOF
-if [ ! -f copy/CONFLICT ]
+if [ ! -f copy/'B%A!#$%^&)(-_+=];,' ]
 then	echo Failed to leave local file; exit 1
 fi
-if [ "`cat copy/CONFLICT`" != "I am the copy file" ]
-then	echo Bad data in local file; cat copy/CONFLICT; exit 1
+if [ "`cat copy/'B%A!#$%^&)(-_+=];,'`" != "I am the copy file" ]
+then	echo Bad data in local file; cat copy/'B%A!#$%^&)(-_+=];,'; exit 1
 fi
 if [ -f copy/SCCS/s.REMOTE -o -f copy/REMOTE ]
 then	echo Should not have applied REMOTE
@@ -264,11 +266,11 @@ mr
 REMOTE
 u
 EOF
-if [ ! -f copy/CONFLICT ]
+if [ ! -f copy/'B%A!#$%^&)(-_+=];,' ]
 then	echo Failed to leave local file; exit 1
 fi
-if [ "`cat copy/CONFLICT`" != "I am the copy file" ]
-then	echo Bad data in local file; cat copy/CONFLICT; exit 1
+if [ "`cat copy/'B%A!#$%^&)(-_+=];,'`" != "I am the copy file" ]
+then	echo Bad data in local file; cat copy/'B%A!#$%^&)(-_+=];,'; exit 1
 fi
 if [ ! -f copy/REMOTE ]
 then	echo Failed to get REMOTE file
@@ -293,11 +295,11 @@ bk resolve $Q $L -t -yYO_BABY_YO_BABY copy >/dev/null 2>&1 <<EOF
 mr
 REMOTE
 EOF
-if [ ! -f copy/CONFLICT ]
+if [ ! -f copy/'B%A!#$%^&)(-_+=];,' ]
 then	echo Failed to leave local file; exit 1
 fi
-if [ "`cat copy/CONFLICT`" != "I am the copy file" ]
-then	echo Bad data in local file; cat copy/CONFLICT; exit 1
+if [ "`cat copy/'B%A!#$%^&)(-_+=];,'`" != "I am the copy file" ]
+then	echo Bad data in local file; cat copy/'B%A!#$%^&)(-_+=];,'; exit 1
 fi
 if [ ! -f copy/REMOTE ]
 then	echo Failed to get REMOTE file
@@ -325,13 +327,13 @@ rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
-C
+c C#
 q
 EOF
 if [ $? -eq 0 ]
 then	echo resolve failed to exit with an error; exit 1
 fi
-grep -q 'SCCS/s.C exists locally already' ERRORS
+grep -q 'SCCS/s.c C# exists locally already' ERRORS
 if [ $? -ne 0 ]
 then	echo bad or no error message from resolve; cat ERRORS; exit 1
 fi
@@ -384,10 +386,10 @@ cp -rp project copy
 cd project
 echo "I am the project file" > OLDNAME
 bk new $Q OLDNAME
-bk mv OLDNAME CONFLICT
+bk mv OLDNAME 'B%A!#$%^&)(-_+=];,'
 bk commit $Q -ywhatever
 cd $HERE/copy
-echo "I am the copy file" > CONFLICT
+echo "I am the copy file" > 'B%A!#$%^&)(-_+=];,'
 cd $HERE
 bk resync -t $Q project copy
 tar cf SAVE.copy copy
@@ -397,17 +399,17 @@ bk resolve -t $Q $L copy >/dev/null 2>&1 <<EOF
 rl
 y
 EOF
-if [ ! -f copy/CONFLICT ]
-then	echo Failed to get CONFLICT file
+if [ ! -f copy/'B%A!#$%^&)(-_+=];,' ]
+then	echo Failed to get 'B%A!#$%^&)(-_+=];,' file
 	bk _find copy
 	exit 1
 fi
-if [ "`cat copy/CONFLICT`" != "I am the project file" ]
+if [ "`cat copy/'B%A!#$%^&)(-_+=];,'`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `bk prs -hr+ -d:I: copy/CONFLICT` != "1.2" ]
-then	echo 'Added new rev to CONFLICT?'
-	bk prs -h -d'REV :I:' copy/CONFLICT
+if [ `bk prs -hr+ -d:I: copy/'B%A!#$%^&)(-_+=];,'` != "1.2" ]
+then	echo 'Added new rev to B%A!#$%^&)(-_+=];,?'
+	bk prs -h -d'REV :I:' copy/'B%A!#$%^&)(-_+=];,'
 	exit 1
 fi
 echo OK
@@ -425,17 +427,17 @@ fi
 if [ "`cat copy/LOCAL`" != "I am the copy file" ]
 then	echo Bad data in local file; cat copy/LOCAL; exit 1
 fi
-if [ ! -f copy/CONFLICT ]
-then	echo Failed to get CONFLICT file
+if [ ! -f copy/'B%A!#$%^&)(-_+=];,' ]
+then	echo Failed to get 'B%A!#$%^&)(-_+=];,' file
 	bk _find copy
 	exit 1
 fi
-if [ "`cat copy/CONFLICT`" != "I am the project file" ]
+if [ "`cat copy/'B%A!#$%^&)(-_+=];,'`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `bk prs -hr+ -d:I: copy/CONFLICT` != "1.2" ]
-then	echo 'Added new rev to CONFLICT?'
-	bk prs -h -d'REV :I:' copy/CONFLICT
+if [ `bk prs -hr+ -d:I: copy/'B%A!#$%^&)(-_+=];,'` != "1.2" ]
+then	echo 'Added new rev to B%A!#$%^&)(-_+=];,?'
+	bk prs -h -d'REV :I:' copy/'B%A!#$%^&)(-_+=];,'
 	exit 1
 fi
 echo OK
@@ -445,13 +447,13 @@ rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
 ml
-C
+c C#
 q
 EOF
 if [ $? -eq 0 ]
 then	echo resolve failed to exit with an error; exit 1
 fi
-grep -q 'SCCS/s.C exists locally already' ERRORS
+grep -q 'SCCS/s.c C# exists locally already' ERRORS
 if [ $? -ne 0 ]
 then	echo bad or no error message from resolve; cat ERRORS; exit 1
 fi
@@ -500,11 +502,11 @@ bk resolve $Q $L -t -yMerge copy >/dev/null 2>&1 <<EOF
 mr
 REMOTE
 EOF
-if [ ! -f copy/CONFLICT ]
+if [ ! -f copy/'B%A!#$%^&)(-_+=];,' ]
 then	echo Failed to leave local file; exit 1
 fi
-if [ "`cat copy/CONFLICT`" != "I am the copy file" ]
-then	echo Bad data in local file; cat copy/CONFLICT; exit 1
+if [ "`cat copy/'B%A!#$%^&)(-_+=];,'`" != "I am the copy file" ]
+then	echo Bad data in local file; cat copy/'B%A!#$%^&)(-_+=];,'; exit 1
 fi
 if [ ! -f copy/REMOTE ]
 then	echo Failed to get REMOTE file
@@ -527,13 +529,13 @@ rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
 mr
-C
+c C#
 q
 EOF
 if [ $? -eq 0 ]
 then	echo resolve failed to exit with an error; exit 1
 fi
-grep -q 'SCCS/s.C exists locally already' ERRORS
+grep -q 'SCCS/s.c C# exists locally already' ERRORS
 if [ $? -ne 0 ]
 then	echo bad or no error message from resolve; cat ERRORS; exit 1
 fi
@@ -584,12 +586,12 @@ rm -rf project copy
 tar xf SAVE
 cp -rp project copy
 cd project
-echo "I am the project file" > CONFLICT
-bk new $Q CONFLICT
+echo "I am the project file" > 'B%A!#$%^&)(-_+=];,'
+bk new $Q 'B%A!#$%^&)(-_+=];,'
 bk commit $Q -ywhatever
 cd $HERE/copy
-echo "I am the copy file" > CONFLICT
-bk new $Q CONFLICT
+echo "I am the copy file" > 'B%A!#$%^&)(-_+=];,'
+bk new $Q 'B%A!#$%^&)(-_+=];,'
 # Remote this to make it the pending deltas case
 bk commit $Q -ywhatever
 cd $HERE
@@ -605,23 +607,23 @@ y
 q
 EOF
 cd copy
-if [ ! -f CONFLICT ]
-then	echo Failed to get CONFLICT file
+if [ ! -f 'B%A!#$%^&)(-_+=];,' ]
+then	echo Failed to get 'B%A!#$%^&)(-_+=];,' file
 	bk _find .
 	exit 1
 fi
-if [ "`cat CONFLICT`" != "I am the project file" ]
+if [ "`cat 'B%A!#$%^&)(-_+=];,'`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `bk prs -hr+ -d:I: CONFLICT` != "1.1" ]
-then	echo 'Added new rev to CONFLICT?'; exit 1
+if [ `bk prs -hr+ -d:I: 'B%A!#$%^&)(-_+=];,'` != "1.1" ]
+then	echo 'Added new rev to B%A!#$%^&)(-_+=];,?'; exit 1
 fi
-if [ ! -f BitKeeper/deleted/SCCS/s..del-CONFLICT ]
+if [ ! -f BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,' ]
 then	echo Deleted file missing
 	bk _find .
 	exit 1
 fi
-if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-CONFLICT`" != "I am the copy file" ]
+if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'`" != "I am the copy file" ]
 then	echo bad data in deleted file; exit 1
 fi
 if [ `bk prs -hr+ -d:I: ChangeSet` != "1.4" ]
@@ -638,23 +640,23 @@ rr
 y
 EOF
 cd copy
-bk get $Q CONFLICT
-if [ ! -f CONFLICT ]
-then	echo Failed to get CONFLICT file
+bk get $Q 'B%A!#$%^&)(-_+=];,'
+if [ ! -f 'B%A!#$%^&)(-_+=];,' ]
+then	echo Failed to get 'B%A!#$%^&)(-_+=];,' file
 	bk _find .
 	exit 1
 fi
-if [ "`cat CONFLICT`" != "I am the copy file" ]
+if [ "`cat 'B%A!#$%^&)(-_+=];,'`" != "I am the copy file" ]
 then	echo Failed to leave old file in place
-	cat CONFLICT
+	cat 'B%A!#$%^&)(-_+=];,'
 	exit 1
 fi
-if [ ! -f BitKeeper/deleted/SCCS/s..del-CONFLICT ]
+if [ ! -f BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,' ]
 then	echo Deleted file missing
 	bk _find .
 	exit 1
 fi
-if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-CONFLICT`" != "I am the project file" ]
+if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'`" != "I am the project file" ]
 then	echo bad data in deleted file, should be project; exit 1
 fi
 if [ `bk prs -hr+ -d:I: ChangeSet` != "1.4" ]
@@ -678,16 +680,16 @@ fi
 if [ "`cat LOCAL`" != "I am the copy file" ]
 then	echo Bad data in local file; cat LOCAL; exit 1
 fi
-if [ ! -f CONFLICT ]
-then	echo Failed to get CONFLICT file
+if [ ! -f 'B%A!#$%^&)(-_+=];,' ]
+then	echo Failed to get 'B%A!#$%^&)(-_+=];,' file
 	bk _find .
 	exit 1
 fi
-if [ "`cat CONFLICT`" != "I am the project file" ]
+if [ "`cat 'B%A!#$%^&)(-_+=];,'`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `bk prs -hr+ -d:I: CONFLICT` != "1.1" ]
-then	echo 'Added new rev to CONFLICT?'; exit 1
+if [ `bk prs -hr+ -d:I: 'B%A!#$%^&)(-_+=];,'` != "1.1" ]
+then	echo 'Added new rev to B%A!#$%^&)(-_+=];,?'; exit 1
 fi
 if [ `bk prs -hr+ -d:I: ChangeSet` != "1.4" ]
 then	echo 'Failed to add rm cset to ChangeSet'; exit 1
@@ -700,13 +702,13 @@ rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
 ml
-C
+c C#
 q
 EOF
 if [ $? -eq 0 ]
 then	echo resolve failed to exit with an error; exit 1
 fi
-grep -q 'SCCS/s.C exists locally already' ERRORS
+grep -q 'SCCS/s.c C# exists locally already' ERRORS
 if [ $? -ne 0 ]
 then	echo bad or no error message from resolve; cat ERRORS; exit 1
 fi
@@ -753,16 +755,16 @@ echo $N '  resolve by renaming remote file ...........................'$NL
 cd $HERE
 rm -rf copy
 tar xf SAVE.copy
-bk get -q copy/CONFLICT
+bk get -q copy/'B%A!#$%^&)(-_+=];,'
 bk resolve -t $Q $L -t -yMerge copy >/dev/null 2>&1 <<EOF
 mr
 REMOTE
 EOF
-if [ ! -f copy/CONFLICT ]
+if [ ! -f copy/'B%A!#$%^&)(-_+=];,' ]
 then	echo Failed to leave local file; exit 1
 fi
-if [ "`cat copy/CONFLICT`" != "I am the copy file" ]
-then	echo Bad data in local file; cat copy/CONFLICT; exit 1
+if [ "`cat copy/'B%A!#$%^&)(-_+=];,'`" != "I am the copy file" ]
+then	echo Bad data in local file; cat copy/'B%A!#$%^&)(-_+=];,'; exit 1
 fi
 if [ ! -f copy/REMOTE ]
 then	echo Failed to get REMOTE file
@@ -785,13 +787,13 @@ rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
 mr
-C
+c C#
 q
 EOF
 if [ $? -eq 0 ]
 then	echo resolve failed to exit with an error; exit 1
 fi
-grep -q 'SCCS/s.C exists locally already' ERRORS
+grep -q 'SCCS/s.c C# exists locally already' ERRORS
 if [ $? -ne 0 ]
 then	echo bad or no error message from resolve; cat ERRORS; exit 1
 fi
@@ -840,12 +842,12 @@ rm -rf project copy
 tar xf SAVE
 cp -rp project copy
 cd project
-echo "I am the project file" > CONFLICT
-bk new $Q CONFLICT
+echo "I am the project file" > 'B%A!#$%^&)(-_+=];,'
+bk new $Q 'B%A!#$%^&)(-_+=];,'
 bk commit $Q -ywhatever
 cd $HERE/copy
-echo "I am the copy file" > CONFLICT
-bk new $Q CONFLICT
+echo "I am the copy file" > 'B%A!#$%^&)(-_+=];,'
+bk new $Q 'B%A!#$%^&)(-_+=];,'
 cd $HERE
 bk resync -t $Q project copy
 tar cf SAVE.copy copy
@@ -859,23 +861,23 @@ y
 q
 EOF
 cd copy
-if [ ! -f CONFLICT ]
-then	echo Failed to get CONFLICT file
+if [ ! -f 'B%A!#$%^&)(-_+=];,' ]
+then	echo Failed to get 'B%A!#$%^&)(-_+=];,' file
 	bk _find .
 	exit 1
 fi
-if [ "`cat CONFLICT`" != "I am the project file" ]
+if [ "`cat 'B%A!#$%^&)(-_+=];,'`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `bk prs -hr+ -d:I: CONFLICT` != "1.1" ]
-then	echo 'Added new rev to CONFLICT?'; exit 1
+if [ `bk prs -hr+ -d:I: 'B%A!#$%^&)(-_+=];,'` != "1.1" ]
+then	echo 'Added new rev to B%A!#$%^&)(-_+=];,?'; exit 1
 fi
-if [ ! -f BitKeeper/deleted/SCCS/s..del-CONFLICT ]
+if [ ! -f BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,' ]
 then	echo Deleted file missing
 	bk _find .
 	exit 1
 fi
-if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-CONFLICT`" != "I am the copy file" ]
+if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'`" != "I am the copy file" ]
 then	echo bad data in deleted file; exit 1
 fi
 echo OK
@@ -893,9 +895,11 @@ EOF
 if [ $? -eq 0 ]
 then	echo resolve failed to error exit; exit 1
 fi
-grep -q 'uncommitted local file CONFLICT' ERRORS
+grep -q 'uncommitted local file B%A' ERRORS
 if [ $? -ne 0 ]
-then	failed to error on uncommitted deltas; exit 1
+then	echo failed to error on uncommitted deltas
+	cat -n ERRORS
+	exit 1
 fi
 echo OK
 
@@ -909,11 +913,11 @@ cp -rp project copy
 cd project
 echo "I am the project file" > OLDNAME
 bk new $Q OLDNAME
-bk mv OLDNAME CONFLICT
+bk mv OLDNAME 'B%A!#$%^&)(-_+=];,'
 bk commit $Q -ywhatever
 cd $HERE/copy
-echo "I am the copy file" > CONFLICT
-bk new $Q CONFLICT
+echo "I am the copy file" > 'B%A!#$%^&)(-_+=];,'
+bk new $Q 'B%A!#$%^&)(-_+=];,'
 bk commit $Q -ywhatever
 cd $HERE
 bk resync -t $Q project copy
@@ -928,23 +932,23 @@ y
 q
 EOF
 cd copy
-if [ ! -f CONFLICT ]
-then	echo Failed to get CONFLICT file
+if [ ! -f 'B%A!#$%^&)(-_+=];,' ]
+then	echo Failed to get 'B%A!#$%^&)(-_+=];,' file
 	bk _find .
 	exit 1
 fi
-if [ "`cat CONFLICT`" != "I am the project file" ]
+if [ "`cat 'B%A!#$%^&)(-_+=];,'`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `bk prs -hr+ -d:I: CONFLICT` != "1.2" ]
-then	echo 'Added new rev to CONFLICT?'; exit 1
+if [ `bk prs -hr+ -d:I: 'B%A!#$%^&)(-_+=];,'` != "1.2" ]
+then	echo 'Added new rev to B%A!#$%^&)(-_+=];,?'; exit 1
 fi
-if [ ! -f BitKeeper/deleted/SCCS/s..del-CONFLICT ]
+if [ ! -f BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,' ]
 then	echo Deleted file missing
 	bk _find .
 	exit 1
 fi
-if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-CONFLICT`" != "I am the copy file" ]
+if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'`" != "I am the copy file" ]
 then	echo bad data in deleted file; exit 1
 fi
 echo OK
@@ -965,16 +969,16 @@ fi
 if [ "`cat LOCAL`" != "I am the copy file" ]
 then	echo Bad data in local file; cat LOCAL; exit 1
 fi
-if [ ! -f CONFLICT ]
-then	echo Failed to get CONFLICT file
+if [ ! -f 'B%A!#$%^&)(-_+=];,' ]
+then	echo Failed to get 'B%A!#$%^&)(-_+=];,' file
 	bk _find .
 	exit 1
 fi
-if [ "`cat CONFLICT`" != "I am the project file" ]
+if [ "`cat 'B%A!#$%^&)(-_+=];,'`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `bk prs -hr+ -d:I: CONFLICT` != "1.2" ]
-then	echo 'Added new rev to CONFLICT?'; exit 1
+if [ `bk prs -hr+ -d:I: 'B%A!#$%^&)(-_+=];,'` != "1.2" ]
+then	echo 'Added new rev to B%A!#$%^&)(-_+=];,?'; exit 1
 fi
 echo OK
 
@@ -984,13 +988,13 @@ rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
 ml
-C
+c C#
 q
 EOF
 if [ $? -eq 0 ]
 then	echo resolve failed to exit with an error; exit 1
 fi
-grep -q 'SCCS/s.C exists locally already' ERRORS
+grep -q 'SCCS/s.c C# exists locally already' ERRORS
 if [ $? -ne 0 ]
 then	echo bad or no error message from resolve; cat ERRORS; exit 1
 fi
@@ -1037,16 +1041,16 @@ echo $N '  resolve by renaming remote file ...........................'$NL
 cd $HERE
 rm -rf copy
 tar xf SAVE.copy
-bk get -q copy/CONFLICT
+bk get -q copy/'B%A!#$%^&)(-_+=];,'
 bk resolve $Q $L -t -yMerge copy >/dev/null 2>&1 <<EOF
 mr
 REMOTE
 EOF
-if [ ! -f copy/CONFLICT ]
+if [ ! -f copy/'B%A!#$%^&)(-_+=];,' ]
 then	echo Failed to leave local file; exit 1
 fi
-if [ "`cat copy/CONFLICT`" != "I am the copy file" ]
-then	echo Bad data in local file; cat copy/CONFLICT; exit 1
+if [ "`cat copy/'B%A!#$%^&)(-_+=];,'`" != "I am the copy file" ]
+then	echo Bad data in local file; cat copy/'B%A!#$%^&)(-_+=];,'; exit 1
 fi
 if [ ! -f copy/REMOTE ]
 then	echo Failed to get REMOTE file
@@ -1066,13 +1070,13 @@ rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
 mr
-C
+c C#
 q
 EOF
 if [ $? -eq 0 ]
 then	echo resolve failed to exit with an error; exit 1
 fi
-grep -q 'SCCS/s.C exists locally already' ERRORS
+grep -q 'SCCS/s.c C# exists locally already' ERRORS
 if [ $? -ne 0 ]
 then	echo bad or no error message from resolve; cat ERRORS; exit 1
 fi
@@ -1121,9 +1125,9 @@ rm -rf project copy
 tar xf SAVE
 cp -rp project copy
 cd project
-bk mv A MOVED
-touch A
-bk new $Q A
+bk mv "A A" MOVED
+touch "A A"
+bk new $Q "A A"
 bk commit $Q -ywhatever
 cd $HERE
 bk resync -t $Q project copy
@@ -1139,13 +1143,13 @@ FILE=`echo *`
 	do	if [ "$x" = "== MOVED ==" ]
 		then	exec > MOVED
 		fi
-		if [ "$x" = "== A ==" ]
-		then	exec > A
+		if [ "$x" = "== A A ==" ]
+		then	exec > "A A"
 		fi
 		echo "$x"
 	done
 )
-cat TOP A MOVED | bk _adler32 -w > PATCH
+cat TOP "A A" MOVED | bk _adler32 -w > PATCH
 cd ..
 rm -rf RESYNC
 VV=
@@ -1162,12 +1166,12 @@ bk resolve -t $Q $L copy
 if [ $? != 0 ]
 then	echo resolved did not exit 0; exit 1
 fi
-bk get -s copy/MOVED copy/A project/MOVED project/A
+bk get -s copy/MOVED copy/"A A" project/MOVED project/"A A"
 if ! cmp -s copy/MOVED project/MOVED
 then	echo MOVED does not match; exit 1
 fi
-if ! cmp -s copy/A project/A
-then	echo A does not match; exit 1
+if ! cmp -s copy/"A A" project/"A A"
+then	echo "A A" does not match; exit 1
 fi
 echo OK
 
@@ -1179,17 +1183,17 @@ rm -rf project copy
 tar xf SAVE
 cp -rp project copy
 # project:
-#	create CONFLICT
+#	create B%A!#$%^&)(-_+=];,
 # copy:
-#	create CONFLICT
+#	create B%A!#$%^&)(-_+=];,
 # resync
 cd project
-echo Hi there, I am a conflict file > CONFLICT
-bk new $Q CONFLICT
+echo Hi there, I am a conflict file > 'B%A!#$%^&)(-_+=];,'
+bk new $Q 'B%A!#$%^&)(-_+=];,'
 bk commit $Q -ywhatever
 cd $HERE/copy
-echo Hi there, I am a conflict file > CONFLICT
-bk new $Q CONFLICT
+echo Hi there, I am a conflict file > 'B%A!#$%^&)(-_+=];,'
+bk new $Q 'B%A!#$%^&)(-_+=];,'
 bk commit $Q -ywhatever
 cd $HERE
 bk resync -t $Q project copy
@@ -1213,13 +1217,13 @@ EOF
 if [ ! -f LOCAL ]
 then	echo Failed to rename local file; cat XXX; exit 1
 fi
-if [ ! -f CONFLICT ]
-then	echo Failed to get CONFLICT file
+if [ ! -f 'B%A!#$%^&)(-_+=];,' ]
+then	echo Failed to get 'B%A!#$%^&)(-_+=];,' file
 	bk _find .
 	exit 1
 fi
-if [ `bk prs -hr+ -d:I: CONFLICT` != "1.1" ]
-then	echo 'Added new rev to CONFLICT?'; exit 1
+if [ `bk prs -hr+ -d:I: 'B%A!#$%^&)(-_+=];,'` != "1.1" ]
+then	echo 'Added new rev to B%A!#$%^&)(-_+=];,?'; exit 1
 fi
 echo OK
 
@@ -1229,13 +1233,13 @@ rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
 ml
-C
+c C#
 q
 EOF
 if [ $? -eq 0 ]
 then	echo resolve failed to exit with an error; exit 1
 fi
-grep -q 'SCCS/s.C exists locally already' ERRORS
+grep -q 'SCCS/s.c C# exists locally already' ERRORS
 if [ $? -ne 0 ]
 then	echo bad or no error message from resolve; cat ERRORS; exit 1
 fi
@@ -1282,12 +1286,12 @@ echo $N '  resolve by renaming remote file ...........................'$NL
 cd $HERE
 rm -rf copy
 tar xf SAVE.copy
-bk get -q copy/CONFLICT
+bk get -q copy/'B%A!#$%^&)(-_+=];,'
 bk resolve $Q $L -t -yMerge copy >/dev/null 2>&1 <<EOF
 mr
 REMOTE
 EOF
-if [ ! -f copy/CONFLICT ]
+if [ ! -f copy/'B%A!#$%^&)(-_+=];,' ]
 then	echo Failed to leave local file; exit 1
 fi
 if [ ! -f copy/REMOTE ]
@@ -1305,13 +1309,13 @@ rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
 mr
-C
+c C#
 q
 EOF
 if [ $? -eq 0 ]
 then	echo resolve failed to exit with an error; exit 1
 fi
-grep -q 'SCCS/s.C exists locally already' ERRORS
+grep -q 'SCCS/s.c C# exists locally already' ERRORS
 if [ $? -ne 0 ]
 then	echo bad or no error message from resolve; cat ERRORS; exit 1
 fi
@@ -1360,19 +1364,19 @@ rm -rf project copy
 tar xf SAVE
 cp -rp project copy
 cd project
-bk sccsmv A Z
-bk commit $S -a -y'A->Z'
+bk sccsmv "A A" Z
+bk commit $S -a -y'A A->Z'
 cd ..
 bk resync -t $Q project copy
 cd copy
-BK_IGNORELOCK=YES bk get -e $Q A
-echo modified >> A
+BK_IGNORELOCK=YES bk get -e $Q "A A"
+echo modified >> "A A"
 bk resolve -t -q >../ERR 2>&1  
 if [ $? != 1 ]
 then	echo Resolve did not exit 1; exit 1
 fi
 cat<<EOF | cmp -s - ../ERR
-Warning: A is modified, will not overwrite it.
+Warning: A A is modified, will not overwrite it.
 ===================== ERROR ========================
 There are modified files in the repository which are also in the patch.
 BitKeeper is aborting this patch until you check in those files.
@@ -1396,7 +1400,7 @@ then	echo Failed to leave PENDING dir
 fi
 echo OK
 echo $N Clean the edit and try the first pass of resolve ............$NL
-bk unedit A
+bk unedit "A A"
 bk takepatch $Q -f PENDING/*
 bk resolve -t $L $Q -234
 if [ -f RESYNC/SCCS/s.Z -o ! -f RESYNC/BitKeeper/RENAMES/SCCS/s.1 ]
@@ -1406,10 +1410,10 @@ if [ -f RESYNC/SCCS/m.Z -o ! -f RESYNC/BitKeeper/RENAMES/SCCS/m.1 ]
 then	echo Failed to move renamed m.file to RENAMES; exit 1
 fi
 echo OK
-echo $N Run resolve to completion and make sure it moves A to Z .....$NL
+echo $N Run resolve to completion and make sure it moves A A to Z ...$NL
 bk resolve -t $Q $L
-if [ -f SCCS/s.A ]
-then	echo failed to move A; exit 1
+if [ -f SCCS/s."A A" ]
+then	echo failed to move "A A"; exit 1
 fi
 if [ ! -f SCCS/s.Z ]
 then	echo failed to create Z; exit 1
@@ -1417,8 +1421,8 @@ fi
 echo OK
 echo $N Undo that last cset .........................................$NL
 bk undo -fqsr+
-if [ ! -f SCCS/s.A ]
-then	echo failed to bring back s.A; exit 1
+if [ ! -f SCCS/s."A A" ]
+then	echo failed to bring back s."A A"; exit 1
 fi
 if [ -f SCCS/s.Z ]
 then	echo failed to delete s.Z; exit 1
@@ -1427,15 +1431,15 @@ if [ -f Z ]
 then	echo "failed to delete Z"; exit 1
 fi
 echo OK
-echo $N Do some work in Z/A and resync ..............................$NL
+echo $N Do some work in Z/A A and resync ............................$NL
 cd $HERE/project
 bk get $Q -e Z
 echo same data >> Z
 bk ci $Q -y'change as Z'
 bk commit $S -a -y'change as Z'
 cd $HERE/copy
-bk get $Q -e A
-echo same data >> A
+bk get $Q -e "A A"
+echo same data >> "A A"
 bk ci $Q -y'change as A'
 bk commit $S -a -y'change as A'
 bk resync -t $Q $HERE/project $HERE/copy

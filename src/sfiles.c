@@ -457,6 +457,11 @@ c:	lftw(".", caches);
 	if (id_cache) {
 		fprintf(id_cache, "#$sum$ %u\n", id_sum);
 		fclose(id_cache);
+		if (dups) {
+			fprintf(stderr, "Not updating idcache due to dups.\n");
+			unlink(id_tmp);
+			goto out;
+		}
 		if (sccs_lockfile(IDCACHE_LOCK, 16)) {
 			fprintf(stderr, "Not updating cache due to locking.\n");
 			unlink(id_tmp);
@@ -470,7 +475,7 @@ c:	lftw(".", caches);
 			chmod(IDCACHE, GROUP_MODE);
 		}
 	}
-	sccs_free(cset);
+out:	sccs_free(cset);
 	mdbm_close(idDB);
 	if (proj) proj_free(proj);
 }

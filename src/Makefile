@@ -60,7 +60,7 @@ OBJ	= abort.o adler32.o admin.o annotate.o \
 	  sane.o sccs_mv.o sccscat.o sccslog.o sccsmv.o sccsrm.o \
 	  send.o sendbug.o setup.o \
 	  sfiles.o sfind.o sfio.o sinfo.o slib.o \
-	  status.o stripdel.o takepatch.o undo.o undos.o \
+	  status.o stripdel.o sys.o takepatch.o undo.o undos.o \
 	  unique.o unedit.o unlink.o unlock.o unwrap.o user.o utils.o \
 	  version.o what.o zgets.o zone.o license.o trigger.o
 
