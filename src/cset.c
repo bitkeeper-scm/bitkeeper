@@ -1123,7 +1123,6 @@ mkChangeSet(sccs *cset, FILE *diffs)
 	sccs_sdelta(cset, d, buf);
 	fprintf(diffs, " %s\n", buf);
 #endif
-	sccs_free(cset);
 	return (d);
 }
 
@@ -1196,6 +1195,7 @@ csetCreate(sccs *cset, int flags, char *sym)
 	gettemp(filename, "cdif");
 	unless (fdiffs = fopen(filename, "w+")) {
 		perror(filename);
+		sccs_free(cset);
 		exit(1);
 	}
 
@@ -1204,16 +1204,12 @@ csetCreate(sccs *cset, int flags, char *sym)
 	fclose(fdiffs);
 	unless (diffs = mopen(filename)) {
 		perror(filename);
+		sccs_free(cset);
 		unlink(filename);
 		exit(1);
 	}
 
 	date = d->date;
-	unless (cset = sccs_init(csetFile, flags, 0)) {
-		perror("init");
-		error = -1;
-		goto out;
-	}
 	if (sym) d->sym = strdup(sym);
 	d->flags |= D_CSET;	/* XXX: longrun, don't tag cset file */
 
