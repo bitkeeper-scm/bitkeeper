@@ -65,20 +65,9 @@ help_main(int ac,  char **av)
 					synopsis, av[i], bin, out);
 		}
 		if (system(buf) != 0) {
-			if (is_command(av[optind])) {
-				f = fopen(out, "ab");
-				fprintf(f,
-	"		-------------- %s help ---------------\n\n", av[i]);
-				fclose(f);
-				sprintf(buf,
-				    "bk %s --help >> %s 2>&1", av[i], out);
-				system(buf);
-			} else {
-				f = fopen(out, "ab");
-				fprintf(f,
-				    "No help for %s, check spelling.\n", av[i]);
-				fclose(f);
-			}
+			f = fopen(out, "ab");
+			fprintf(f, "No help for %s, check spelling.\n", av[i]);
+			fclose(f);
 		}
 	}
 print:
