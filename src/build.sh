@@ -71,11 +71,11 @@ cygwin_env()
 	MAKE="make -e";
 }
 
-test "$G" || G=-g
-test "$CC" || CC=gcc
-test "$LD" || LD=$CC
-test "$MAKE" || MAKE=gmake
-test "$WARN" || WARN=YES
+test "X$G" = X && G=-g
+test "X$CC" = X && CC=gcc
+test "X$LD" = X && LD=$CC
+test "X$MAKE" = X && MAKE=gmake
+test "X$WARN" = X && WARN=YES  
 
 case "X`uname -s`" in
     *_NT*)

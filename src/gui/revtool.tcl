@@ -1124,7 +1124,7 @@ proc prs {} \
 		busy 1
 		set base [file tail $file]
 		if {$base == "ChangeSet"} {
-			set cmd "|bk changes -vr$rev1 2>$dev_null"
+			set cmd "|bk changes -evr$rev1 2>$dev_null"
 			set ttype "cset_prs"
 		} else {
 			set cmd "|bk prs {$dspec} -r$rev1 \"$file\" 2>$dev_null"
@@ -1374,7 +1374,7 @@ proc csetdiff2 {{rev {}}} \
 	$w(aptext) configure -state normal; $w(aptext) delete 1.0 end
 	$w(aptext) insert end "ChangeSet history for $rev1..$rev2\n\n"
 
-	set revs [open "|bk changes -fv -r$rev1..$rev2"]
+	set revs [open "|bk changes -fv -er$rev1..$rev2"]
 	filltext $w(aptext) $revs 0 "sccslog for files"
 	set ttype "cset_prs"
 	catch {close $revs}
