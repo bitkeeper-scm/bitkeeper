@@ -85,7 +85,7 @@ cd $HERE
 rm -rf $HERE/copy
 bk clone $Q $HERE/project $HERE/copy
 cd $HERE/project/src
-bk admin $Q -fEXPAND1 -fRCS -fYEAR4 bar.c
+bk admin $Q -fEXPAND1 -fRCS -fYEAR4 -fALWAYS_EDIT bar.c
 bk commit $Q -yabc
 bk resync -t $Q $HERE/project $HERE/copy
 bk resolve -t $Q $HERE/copy

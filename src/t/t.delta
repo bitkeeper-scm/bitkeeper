@@ -241,3 +241,24 @@ echo OK
 fi #---------------------------------------------------------------
 cd ..
 rm -rf A garbage
+echo $N Make sure delta works with ALWAYS_EDIT flags ................$NL
+HERE=`bk pwd`
+no_logging project
+cd $HERE/project
+echo hi > hi.c
+bk ci $Q -i hi.c
+if [ -f SCCS/p.hi.c ]; then echo failed; exit 1; fi
+bk admin $Q -fALWAYS_EDIT hi.c
+bk co $Q -l hi.c
+echo hello > hi.c
+bk ci $Q -yhello hi.c
+if [ ! -f SCCS/p.hi.c ]; then echo failed; exit 1; fi
+cd $HERE/project/BitKeeper/etc
+bk edit $Q config
+echo "always_edit: true" >> config
+bk delta $Q -yalways_edit config
+cd $HERE/project
+echo lo > lo.c
+bk ci $Q -i lo.c
+if [ ! -f SCCS/p.lo.c ]; then echo failed; exit 1; fi
+echo OK

@@ -3077,6 +3077,7 @@ misc(sccs *s)
 			if (bits & X_SINGLE) s->state |= S_SINGLE;
 			if (bits & X_EXPAND1) s->state |= S_EXPAND1;
 			if (bits & X_CSETMARKED) s->state |= S_CSETMARKED;
+			if (bits & X_ALWAYS_EDIT) s->state |= S_ALWAYS_EDIT;
 #ifdef S_ISSHELL
 			if (bits & X_ISSHELL) s->state |= S_ISSHELL;
 #endif
@@ -6811,6 +6812,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 	if (s->state & S_RCS) bits |= X_RCS;
 	if (s->state & S_EXPAND1) bits |= X_EXPAND1;
 	if (s->state & S_CSETMARKED) bits |= X_CSETMARKED;
+	if (s->state & S_ALWAYS_EDIT) bits |= X_ALWAYS_EDIT;
 #ifdef S_ISSHELL
 	if (s->state & S_ISSHELL) bits |= X_ISSHELL;
 #endif
@@ -8078,13 +8080,13 @@ checkin(sccs *s,
 	if (s->state & S_BITKEEPER) {
 		MDBM	*m;
 		delta	*d;
-		char	*user, *host;
+		char	*user, *host, *always_edit;
 
 		unless (s->proj && s->proj->root) goto no_config;
 		unless (m = loadConfig(s->proj->root, 0)) goto no_config;
 		user = mdbm_fetch_str(m, "single_user");
 		host = mdbm_fetch_str(m, "single_host");
-		unless (user && host) goto no_config;
+		unless (user && host) goto multi_user;
 		d = s->tree;
 		free(d->user);
 		d->user = strdup(user);
@@ -8103,6 +8105,18 @@ checkin(sccs *s,
 		}
 		s->state |= S_SINGLE;
 		first->xflags |= X_SINGLE;
+
+multi_user:	always_edit = mdbm_fetch_str(m, "always_edit");
+		if (always_edit) {
+			if (streq(always_edit, "true")) {
+				s->state |= S_ALWAYS_EDIT;
+				first->xflags |= X_ALWAYS_EDIT;
+			} else unless (streq(always_edit, "false")) {
+				fprintf(stderr,
+"Warning: config file: unknown setting \"%s\" for always_edit entry, ignored\n",
+					always_edit);
+			}
+		}
 		mdbm_close(m);
 	}
 
@@ -9116,6 +9130,8 @@ name2xflg(char *fl)
 		return X_YEAR4;
 	} else if (streq(fl, "SINGLE")) {
 		return X_SINGLE;
+	} else if (streq(fl, "ALWAYS_EDIT")) {
+		return X_ALWAYS_EDIT;
 	}
 	assert("bad flag" == 0);
 	return (0);			/* lint */
@@ -9153,6 +9169,7 @@ state2xflags(u32 state)
 	if (state & S_EXPAND1) xflags |= X_EXPAND1;
 	if (state & S_CSETMARKED) xflags |= X_CSETMARKED;
 	if (state & S_HASH) xflags |= X_HASH;
+	if (state & S_ALWAYS_EDIT) xflags |= X_ALWAYS_EDIT;
 	return (xflags);
 }
 
@@ -9172,6 +9189,7 @@ xflags2state(u32 xflags)
 	if (xflags & X_EXPAND1) state |= S_EXPAND1;
 	if (xflags & X_CSETMARKED) state |= S_CSETMARKED;
 	if (xflags & X_HASH) state |= S_HASH;
+	if (xflags & X_ALWAYS_EDIT) state |= S_ALWAYS_EDIT;
 	return (state);
 }
 
@@ -9529,6 +9547,13 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 					sc->state |= S_SINGLE;
 				else
 					sc->state &= ~S_SINGLE;
+			} else if (streq(fl, "ALWAYS_EDIT")) {
+				if (v) goto noval;
+				changeXFlag(sc, d, flags, add, fl);
+				if (add)
+					sc->state |= S_ALWAYS_EDIT;
+				else
+					sc->state &= ~S_ALWAYS_EDIT;
 			/* Flags below are non propagated */
 			} else if (streq(fl, "BK") || streq(fl, "BITKEEPER")) {
 				if (v) goto noval;
@@ -10726,6 +10751,11 @@ out:
 					s->state |= S_EXPAND1;
 				} else {
 					s->state &= ~S_EXPAND1;
+				}
+				if (bits & X_ALWAYS_EDIT) {
+					s->state |= S_ALWAYS_EDIT;
+				} else {
+					s->state &= ~S_ALWAYS_EDIT;
 				}
 			}
 			if (prefilled->flags & D_TEXT) {
@@ -11966,6 +11996,9 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 			if (comma) fs(","); fs("ISSHELL"); comma = 1;
 		}
 #endif
+		if (flags & X_ALWAYS_EDIT) {
+			if (comma) fs(","); fs("ALWAYS_EDIT"); comma = 1;
+		}
 		return (strVal);
 	}
 
@@ -12490,13 +12523,12 @@ fprintDelta(FILE *out, char *vbuf,
 			    default:  fc('\\'); q++; break;
 			}
 		} else if (*q == ':') {		/* keyword expansion */
-			b = &q[1];
-			len = extractKeyword(b, end, ":", kwbuf);
+			len = extractKeyword(&q[1], end, ":", kwbuf);
 			if ((len > 0) && (len < KWSIZE) &&
 			    (kw2val(out, NULL, "", 0, kwbuf,
 				    "", 0, s, d) != notKeyword)) {
 				/* got a keyword */
-				q = &b[len + 1];
+				q = &q[len + 2];
 			} else {
 				/* not a keyword */
 				fc(*q++);
@@ -12504,8 +12536,7 @@ fprintDelta(FILE *out, char *vbuf,
 		} else if ((*q == '$') &&	/* conditional expansion */
 		    (q[1] == 'i') && (q[2] == 'f') &&
 		    (q[3] == '(') && (q[4] == ':')) {
-			b = &q[5];
-			len = extractKeyword(b, end, ":", kwbuf);
+			len = extractKeyword(&q[5], end, ":", kwbuf);
 			if (len < 0) { return (printLF); } /* error */
 			leftVal[0] = 0;
 			t = extractOp(&q[6 + len], end, rightVal, &op); 
@@ -12616,6 +12647,7 @@ sccs_perfile(sccs *s, FILE *out)
 	if (s->state & S_ISSHELL) i |= X_ISSHELL;
 #endif
 	if (s->state & S_HASH) i |= X_HASH;
+	if (s->state & S_ALWAYS_EDIT) i |= X_ALWAYS_EDIT;
 
 	if (i) fprintf(out, "f x %u\n", i);
 	EACH(s->text) fprintf(out, "T %s\n", s->text[i]);
@@ -12671,6 +12703,7 @@ err:			fprintf(stderr,
 		if (bits & X_ISSHELL) s->state |= S_ISSHELL;
 #endif
 		if (bits & X_HASH) s->state |= S_HASH;
+		if (bits & X_ALWAYS_EDIT) s->state |= S_ALWAYS_EDIT;
 		unless (buf = mkline(mnext(in))) goto err; (*lp)++;
 	}
 	while (strneq(buf, "T ", 2)) {
