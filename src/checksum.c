@@ -17,11 +17,11 @@ checksum_main(int ac, char **av)
 {
 	sccs	*s;
 	delta	*d;
-	int	doit;
+	int	doit = 0;
 	char	*name;
 	int	fix = 0, diags = 0, bad = 0, do_sccs = 0, ret = 0;
 	int	c;
-	char	*off;
+	char	*off = 0;
 	project	*proj = 0;
 
 	if (ac > 1 && streq("--help", av[1])) {

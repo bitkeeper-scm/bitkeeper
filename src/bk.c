@@ -45,7 +45,7 @@ int	checksum_main(int, char **);
 int	clean_main(int, char **);
 int	cleanpath_main(int, char **);
 int	clone_main(int, char **);
-int	comment_main(int, char **);
+int	comments_main(int, char **);
 int	commit_main(int, char **);
 int	config_main(int, char **);
 int	converge_main(int, char **);
@@ -224,7 +224,8 @@ struct	command cmdtbl[] = {
 	{"clean", clean_main},			/* doc 2.0 */
 	{"clone", clone_main},			/* doc 2.0 */
 	{"co", get_main},			/* doc 2.0 */
-	{"comment", comment_main},
+	{"comment", comments_main}, /* alias for Linus, remove... */
+	{"comments", comments_main},
 	{"commit", commit_main},		/* doc 2.0 */
 	{"config", config_main},		/* doc 2.0 */
 	{"cp", cp_main},

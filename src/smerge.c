@@ -517,7 +517,7 @@ find_conflicts(void)
 	int	mk[3];
 	ld_t	*lines[3];
 	conflct	*list = 0;
-	conflct	*end;
+	conflct	*end = 0;
 	conflct	*p;
 
 	for (i = 0; i < 3; i++) mk[i] = 0;
@@ -1285,7 +1285,7 @@ private void
 user_conflict_fdiff(conflct *c)
 {
 	int	i, j;
-	diffln	*left, *right;
+	diffln	*left = 0, *right = 0;
 	diffln	*diffs;
 	diffln	*rightbuf;
 	diffln	*lp, *rp;

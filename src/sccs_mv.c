@@ -151,13 +151,13 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete, int isUnDelete)
 	}
 	free(p);
 
+	ogfile = strdup(s->gfile);
+	osfile = strdup(s->sfile);
 //fprintf(stderr, "mv(%s, %s) = %d\n", s->sfile, sfile, error);
 	if (!error && (error = update_idcache(s, oldpath, newpath))) {
 		fprintf(stderr, "Idcache failure\n");
 		goto out;
 	}
-	ogfile = strdup(s->gfile);
-	osfile = strdup(s->sfile);
 	if (HAS_PFILE(s) && !error) {
 		was_edited = 1;
 		error = mv(s->pfile, q = mkXfile(sfile, 'p'));

@@ -185,3 +185,29 @@ grep -q 'No write permission: src' OUT || {
 }
 chmod +w src
 echo OK
+echo $N Try a commit -Yfile .........................................$NL
+cd $HERE/project
+echo arg > foo
+bk new $Q foo || exit 1
+echo line1 > comment
+echo line2 >> comment
+bk commit $Q -Ycomment || exit 1
+if [ ! -f comment ]; then echo dont delete file; exit 1; fi
+bk prs -r+ -hd:COMMENTS: ChangeSet > C1
+bk undos > C2 <<EOF
+C line1
+C line2
+EOF
+cmp -s C1 C2
+if [ $? -ne 0 ]; then echo Failed to set correct comments.; exit 1; fi
+echo OK
+echo $N Try a commit -Ymissingfile ..................................$NL
+cd $HERE/project
+bk edit $Q foo || exit
+echo arg2 >> foo
+bk delta $Q -yjunk foo || exit 1
+bk commit $Q -Ynocomment 2> /dev/null
+if [ $? -eq 0 ]; then echo failed; exit 1; fi
+bk pending > C
+grep 'foo@1.2' C > /dev/null || exit 1
+echo OK

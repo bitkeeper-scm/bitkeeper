@@ -12,10 +12,20 @@ BK=	bk
 CC_OUT	=-o $@
 LD_OUT	=-o $@
 LD	=cc
-CC_DEBUG=-g
-CC_FAST_DEBUG=-g -O2
+
+# -Wno-parentheses shuts up "suggest parentheses around assignment ...".
+#  Unfortunately it also turns off dangling else warnings.
+# -Wno-char-subscripts shuts up "subscript has type char", which comes
+#  up all the time with broken <ctype.h> implementations.  (To be turned
+#  back on for 1.1 or so.)
+#    WHS: Current versions of gcc supress warnings in system files by default.
+#         Perhaps this can be reenabled?
+# -Wno-format-y2k supresses complains about '%y' in strftime formats
+WARNINGS=-Wall -Wno-parentheses -Wno-char-subscripts -Wno-format-y2k
+CC_DEBUG=-g $(WARNINGS)
+CC_FAST_DEBUG=-g -O2 $(WARNINGS)
 CC_FAST	=$(CC_FAST_DEBUG)
-CC_WALL=-g -DLINT -Wall -Wno-parentheses -Wno-char-subscripts
+CC_WALL=-g -DLINT $(WARNINGS)
 INSTALL=install
 XTRA=
 #UWTLIB is used on win32 only - passed in from build.sh
@@ -60,7 +70,6 @@ OBJ =	abort.o adler32.o admin.o annotate.o approve.o \
 	port/getrealcwd.o port/getrealname.o port/globalroot.o port/gui.o \
 	port/hostColonPath.o port/http_proxy.o \
 	port/lock.o port/mail.o port/mnext.o \
-	port/mkBkRootIcon.o \
 	port/ns_sock_host2ip.o port/platforminit.o \
 	port/popen.o port/randomBits.o \
 	port/rlimit.o port/runable.o port/samepath.o \
@@ -165,11 +174,6 @@ dp debug:
 dp2 debug2:
 	$(MAKE) CFLAGS="-g -DPURIFY -DDEBUG2" all
 
-# -Wno-parentheses shuts up "suggest parentheses around assignment ...".
-# Unfortunately it also turns off dangling else warnings.
-# -Wno-char-subscripts shuts up "subscript has type char", which comes
-# up all the time with broken <ctype.h> implementations.  (To be turned
-# back on for 1.1 or so.)
 gWall Wall:
 	$(MAKE) CFLAGS="$(CC_WALL)" all
 

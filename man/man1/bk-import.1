@@ -70,6 +70,15 @@ Do not commit the ChangeSet.
 .B \-f
 Force; do not prompt for list editing.
 .tp
+.B \-F
+Fast; run more quickly for large imports.
+.B NOTICE:
+use this option 
+.B only
+when you know that this is the only \*(BK activity you are doing. 
+Using this option on two parallel imports may cause \*(BK consistency
+problems.
+.tp
 .B \-H 
 do not pass \-h option to rcs2sccs (turns off verification, faster, unsafe).
 .tp
@@ -143,6 +152,15 @@ DOS style end of lines to Unix style end of lines.
 .tp
 .B \-r
 Do not do rename processing when doing patch imports.
+.tp
+.B \-R
+If a patch fails to apply cleanly, back out the entire operation
+and exit with a failure.
+.tp
+.OPTreq \-y comment
+Set the message for the delta comments for all files to
+.B <comment>
+rather than "Import patch PATCHNAME".
 .SH "IMPORTING PATCHES"
 .LP
 \*(BK can be used to track external work by importing patches (diff -Nur)

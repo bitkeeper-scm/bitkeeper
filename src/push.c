@@ -99,6 +99,13 @@ usage:			system("bk help -s push");
 				"push: remote locked, trying again...\n");
 		}
 		disconnect(r, 2); /* close fd before we retry */
+		/*
+		 * if we are sendng via the pipe, reap the child
+		 */
+		if (r->pid)  {
+			waitpid(r->pid, NULL, 0);	
+			r->pid = 0;
+		}
 		sleep(min((i++ * 2), 10)); /* auto back off */
 	}
 	if (rc == -2) rc = 1; /* if retry failed, reset exit code to 1 */
@@ -333,7 +340,10 @@ push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 	if (r->rfd < 0) return (-1);
 
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
-	if (getline2(r, buf, sizeof(buf)) <= 0) return (-1);
+	if (getline2(r, buf, sizeof(buf)) <= 0) {
+err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
+		return (-1);
+	}
 	if ((rc = remote_lock_fail(buf, opts.verbose))) {
 		return (rc); /* -2 means locked */
 	} else if (streq(buf, "@SERVER INFO@")) {
@@ -342,7 +352,7 @@ push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 		    (atoi(getenv("BKD_LEVEL")) < getlevel())) {
 			fprintf(opts.out,
 			    "push: cannot push to lower level repository\n");
-			return (-1);
+			goto err;
 		}
 		getline2(r, buf, sizeof(buf));
 	} else {
@@ -352,7 +362,7 @@ push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 		if (getTriggerInfoBlock(r, opts.verbose)) return (-1);
 		getline2(r, buf, sizeof(buf));
 	}
-	if (get_ok(r, buf, opts.verbose)) return (-1);
+	if (get_ok(r, buf, opts.verbose)) goto err;
 
 	/*
 	 * What we want is: "remote => bk _prunekey => rev_list"
@@ -371,12 +381,16 @@ ChangeSet file do not match.  Please check the pathnames and try again.\n");
 				close(fd);
 				unlink(rev_list);
 				sccs_free(s);
+				if (r->type == ADDR_HTTP) disconnect(r, 2);
 				return (1); /* needed to force bkd unlock */
 		    case -3:	unless  (opts.forceInit) {
 					fprintf(opts.out,
 					    "You are pushing to an a empty "
 					    "directory\n");
 					sccs_free(s);
+					if (r->type == ADDR_HTTP) {
+						disconnect(r, 2);
+					}
 					return (1); /* empty dir */
 				}
 				break;
@@ -551,7 +565,7 @@ send_patch_msg(remote *r, char rev_list[], int ret, char **envVar)
 	char	msgfile[MAXPATH];
 	FILE	*f;
 	int	rc;
-	u32	extra = 0, m, n;
+	u32	extra = 0, m = 0, n;
 	int	gzip;
 
 	/*

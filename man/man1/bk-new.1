@@ -1,5 +1,5 @@
 .so bk-macros
-.TH "bk new" 1 20%E% "\*(BC" "\*(UM"
+.TH "bk new" 1 2002/02/05 "\*(BC" "\*(UM"
 .SH NAME
 bk new \- add a file to the repository
 .SH SYNOPSIS
@@ -20,6 +20,8 @@ all files in the repository which are not under \*(BK control
 .IR *.o ,
 .IR core ,
 etc.).
+The bk new command is an alias for bk delta -i.  For a complete list
+of options see bk help delta.
 .LP
 When checking in multiple files in a directory, do:
 .DS
@@ -51,6 +53,7 @@ on text files as well.
 .B \-q
 be quiet.
 .SH SEE ALSO
+.SA delta 1
 .SA edit 1
 .SA get 1
 .SA sfiles 1

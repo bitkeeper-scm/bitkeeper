@@ -499,7 +499,7 @@ proc dot {} \
 \"$gc($app.prevconflict)\" for the previous conflict,
 \"$gc($app.firstdiff)\" for the first diff,
 \"$gc($app.lastdiff)\" for the last diff,
-\"space\" is an alias for \"$gc($app.nextdiff)\"."
+\"space\" is an alias for \"$gc($app.nextconflict)\"."
 	catch { .diffs.left index "c$lastDiff" } ret
 	if {[string first "bad text" $ret] == -1 } {
 		set buf [.merge.t get $d $e]
@@ -1011,7 +1011,6 @@ proc widgets {} \
 	set g [wm geometry .]
 	wm title . "BitKeeper FileMerge $argv"
 
-	wm iconify .
 	if {$tcl_platform(platform) == "windows"} {
 		set gc(py) -2; set gc(px) 1; set gc(bw) 2
 		if {("$g" == "1x1+0+0") && ("$gc(fm3.geometry)" != "")} {
@@ -1418,7 +1417,8 @@ proc edit_done {} \
 	for {set i 1} {$i <= $diffCount} {incr i} {
 		catch { .diffs.left index "c$i" } ret
 		if {[string first "bad text" $ret] == 0 } { continue }
-		set buf [.merge.t get "d$i" "e$i"]
+		catch { set buf [.merge.t get "d$i" "e$i"] } ret
+		if {[string first "bad text" $ret] == 0 } { continue }
 		if {$buf == $UNMERGED} { incr n }
 	}
 	set conf_todo $n

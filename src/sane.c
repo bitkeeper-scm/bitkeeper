@@ -74,12 +74,23 @@ chk_host(void)
 		    host ? host : "<empty>");
 		return (1);
 	}
+	/*
+	 * Check for legal hostnames.  _, (, and ) are not legal 
+	 * hostnames, but it should bother BK and we don't want to
+	 * deal with the support calls.
+	 *  ( RedHat sometimes installs machines with a hostname
+	 *    of 'machine.(none)' )
+	 * Later we might want to just warn about these if we know
+	 * the user is interactive.
+	 */
 	for (p = host; *p; p++) {
 		unless (isalnum(*p) || 
 		    *p == '.' ||
 		    *p == '-' ||
-		    *p == '_') { /* _ is NOT legal, but... */
-			fprintf(stderr,
+		    *p == '_' ||
+		    *p == '(' ||
+		    *p == ')') { 
+			  fprintf(stderr,
 "================================================================\n"
 "sane: bad host name: \"%s\".\n"
 "BitKeeper requires a vaild hostname.\n"

@@ -247,4 +247,25 @@ bk undo -fqr+ || exit 1
 bk pull $Q -t bk://localhost:$P/$HERE/copy
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
+echo $N Make sure bkd -C disallow cd to parent dir ..................$NL
+cd $HERE/project/src
+P=50000
+bk bkd -q -d -Ce -p$P -c3
+while [ $? -eq 2 ]
+do	P=`expr $P + 1`
+	bk bkd -q -d -Ce -p$P -c3
+done
+cd $HERE/copy
+bk pull bk://localhost:$P/$HERE/project 2> pull.out
+grep -q "cd to absolute path disabled" pull.out
+if [ $? -ne 0 ]; then echo failed; cat pull.out; exit 1 ; fi
+bk pull bk://localhost:$P.. 2> pull.out
+grep -q "cd to parent directory disabled" pull.out
+if [ $? -ne 0 ]; then echo failed; cat pull.out; exit 1 ; fi
+bk pull bk://localhost:$P"sub/../../project" 2> pull.out
+grep -q "cd to parent directory disabled" pull.out
+if [ $? -ne 0 ]; then echo failed; cat pull.out; exit 1 ; fi
+echo OK
+
+
 if [ "$PLATFORM" = "WIN32" ]; then bk bkd -R 2> $DEV_NULL; fi

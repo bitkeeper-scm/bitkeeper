@@ -14,7 +14,6 @@ proc widgets {} \
 	set g [wm geometry .]
 	wm title . "Diff Tool"
 
-	wm iconify .
 	if {$tcl_platform(platform) == "windows"} {
 		set gc(py) -2; set gc(px) 1; set gc(bw) 2
 		if {("$g" == "1x1+0+0") && ("$gc(diff.geometry)" != "")} {
@@ -163,15 +162,15 @@ proc keyboard_bindings {} \
 		.diffs.left yview -pickplace end
 		.diffs.right yview -pickplace end
 	}
-	bind all		$gc(diff.quit)	cleanup
-	bind all		<N>		nextFile
-	bind all		<P>		prevFile
-	bind all		<Control-n>	nextFile
-	bind all		<Control-p>	prevFile
-	bind all		<n>		next
-	bind all		<space>		next
-	bind all		<p>		prev
-	bind all		<period>	dot
+	bind all	<$gc(diff.quit)>	cleanup
+	bind all	<N>			nextFile
+	bind all	<P>			prevFile
+	bind all	<Control-n>		nextFile
+	bind all	<Control-p>		prevFile
+	bind all	<n>			next
+	bind all	<space>			next
+	bind all	<p>			prev
+	bind all	<period>		dot
 	if {$tcl_platform(platform) == "windows"} {
 		bind all <MouseWheel> {
 		    if {%D < 0} { next } else { prev }

@@ -1,23 +1,38 @@
+.\" help://comment
 .so bk-macros
-.TH "bk comment" 1 20%E% "\*(BC" "\*(UM"
+.TH "bk comments" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME 
-bk comment \- change the checkin comment of a file
+bk comments \- change checkin comments
 .SH SYNOPSIS
-.Bc bk comment [
+.Bc bk comments [\-p] [
+.OPTreq \-C csetrev
+.Bc ] [
 .OPTreq \-r rev
 .Bc ] [
 .OPTreq \-y cmt
 .Bc ] [
 .OPTreq \-Y file
 .B ]
-file [file ...]
+[file ...] [\-]
 .SH DESCRIPTION
 .LP
 The
-.B comment
+.B comments
 command changes the stored comments for a revision controlled file.
 The comments may be specified on the command line, or if they are
 not, you will be placed in your editor to type in the comments.
+.LP
+If given
+.B \- for a file argument, then 
+.B comments
+will read a list of files and comments to be edited in batch.
+The format is like:
+.DS
+### Change the comments to file.c|1.23 below
+this is a sample comment
+### Change the comments to file2.h|1.2.3.4 below
+these are
+other comments
 .SH OPTIONS
 .if t .TP .8i
 .if n .TP 1.2i
@@ -28,12 +43,22 @@ most recent revision.
 .OPTreq \-y comment
 Use
 .ARG comment
-as the new comment.
+as the new comment for all files.
 .tp
 .OPTreq \-Y file
 Use the contents of
 .ARG file
-as the new comment.
+as the new comment for all files.
+.tp
+.OPTreq \-C rev
+Edit all the file comments on the requested changeset at once.
+.tp
+.B \-p
+Generate the list of all comments in the files requested and write them to
+stdout.  This file can be edited and then later fed into 
+.B bk comments -
+on stdin to change the comments.
+.tp
 .SH BUGS
 .B Nota bene:
 if the deltas being commented have been committed to a changeset and

@@ -10,6 +10,7 @@ import() {
 	if [ X"$1" = "X--help" ]
 	then	bk help import; exit 0;
 	fi
+	COMMENTS=
 	COMMIT=YES
 	CUTOFF=
 	EX=NO
@@ -21,14 +22,14 @@ import() {
 	LIST=""
 	PARALLEL=1
 	QUIET=
+	REJECTS=YES
 	RENAMES=YES
 	SYMBOL=
 	TYPE=
 	UNDOS=
 	VERBOSE=-q
 	VERIFY=-h
-	CLOCK_DRIFT=1
-	while getopts ACc:efHij:l:rS:t:uvxq opt
+	while getopts ACc:efFHij:l:qRrS:t:uvxy: opt
 	do	case "$opt" in
 		A) FIX_ATTIC=YES;;		# doc 2.0
 		c) CUTOFF=-c$OPTARG;;		# doc 2.0
@@ -36,18 +37,26 @@ import() {
 		e) EX=YES;;			# undoc 2.0 - same as -x
 		x) EX=YES;;			# doc 2.0
 		f) FORCE=YES;;			# doc 2.0
+		F) CLOCK_DRIFT=5
+		   export CLOCK_DRIFT;;		# doc 2.1
 		H) VERIFY=;;			# doc 2.0
 		i) INC=YES;;			# doc 2.0
 		j) PARALLEL=$OPTARG;;		# doc 2.0
 		l) LIST=$OPTARG;;		# doc 2.0
 		S) SYMBOL=-S$OPTARG;;		# doc 2.0
 		r) RENAMES=NO;;			# doc 2.0
+		R) REJECTS=NO;;
 		t) TYPE=$OPTARG;;		# doc 2.0
 		q) QUIET=-qq; export _BK_SHUT_UP=YES;;	# doc 2.0
 		u) UNDOS=-u;;			# doc 2.0
 		v) VERBOSE=;;			# doc 2.0
+		y) COMMENTS="$OPTARG";;
 		esac
 	done
+	test X$CLOCK_DRIFT != X -a X$PARALLEL != X1 && {
+		echo Parallel imports may not set CLOCK_DRIFT
+		exit 1
+	}
 	shift `expr $OPTIND - 1`
 	if [ X"$1" = X -o X"$2" = X -o X"$3" != X ]
 	then	bk help -s import; exit 1;
@@ -66,7 +75,6 @@ import() {
 		then	echo import: no include/excludes allowed with patch files
 			exit 1
 		fi
-		unset CLOCK_DRIFT
 	else	if [ ! -d "$1" ]
 		then	echo import: "$1" is not a directory
 			exit 1
@@ -289,6 +297,11 @@ import_patch() {
 	Q=$QUIET
 	cd "$2"
 
+	if [ "X$COMMENTS" != X ]
+	then	COMMENTOPT=-y"$COMMENTS"
+	else	COMMENTOPT=-y"Import patch $PNAME"
+	fi
+	
 	# This must be done after we cd to $2
 	case `bk version` in
 	*Basic*)	RENAMES=NO
@@ -305,8 +318,13 @@ import_patch() {
 	then	cat ${TMP}plog$$
 	fi
 	bk sfiles -x | grep '=-PaTcH_BaCkUp!$' | bk _unlink
-	REJECTS=NO
 	find .  -name '*.rej' -print > ${TMP}rejects$$
+	if [ $REJECTS = NO -a -s ${TMP}rejects$$ ]
+	then	
+		rm -f `cat ${TMP}rejects$$`
+		bk unedit `bk sfiles -l`
+		Done 1
+	fi
 	while [ -s ${TMP}rejects$$ ]
 	do 	echo "Patch rejects:"
 		cat ${TMP}rejects$$
@@ -329,34 +347,26 @@ import_patch() {
 		# Go look for renames
 		if [ -s ${TMP}deletes$$ -a -s ${TMP}creates$$ ]
 		then	(
-			if [ -s ${TMP}deletes$$ ]
-			then	cat ${TMP}deletes$$
-			fi
-			msg ""
-			if [ -s ${TMP}creates$$ ]
-			then	cat ${TMP}creates$$
-	    		fi ) | bk renametool $Q
+			cat ${TMP}deletes$$
+			echo ""
+			cat ${TMP}creates$$
+	    		) | bk renametool $Q
 		fi
-
-		msg Checking in new or modified files in `pwd` ...
-		# Do the deletes automatically
-		if [ -s ${TMP}deletes$$ -a ! -s ${TMP}creates$$ ]
-		then	msg Removing `wc -l < ${TMP}deletes$$` files
-			bk rm - < ${TMP}deletes$$
-		fi
-		# Do the creates automatically
-		if [ ! -s ${TMP}deletes$$ -a -s ${TMP}creates$$ ]
-		then	msg Creating `wc -l < ${TMP}creates$$` files
-			bk new $Q -G -y"Import patch $PNAME" - < ${TMP}creates$$
-		fi
-	else	# Just delete and create
-		msg Checking in new or modified files in `pwd` ...
+	fi
+	msg Checking in new or modified files in `pwd` ...
+	# Do the deletes automatically
+	if [ -s ${TMP}deletes$$ -a ! -s ${TMP}creates$$ ]
+	then	msg Removing `wc -l < ${TMP}deletes$$` files
 		bk rm - < ${TMP}deletes$$
-		bk new $Q -G -y"Import patch $PNAME" - < ${TMP}creates$$
+	fi
+	# Do the creates automatically
+	if [ ! -s ${TMP}deletes$$ -a -s ${TMP}creates$$ ]
+	then	msg Creating `wc -l < ${TMP}creates$$` files
+		bk new $Q -G "$COMMENTOPT" - < ${TMP}creates$$
 	fi
 	rm -f ${TMP}creates$$ ${TMP}deletes$$
 
-	bk -cr ci $VERBOSE -G -y"Import patch $PNAME"
+	bk -cr ci $VERBOSE -G "$COMMENTOPT"
 
 	bk sfiles -x | grep -v '^BitKeeper/' > ${TMP}extras$$
 	if [ -s ${TMP}extras$$ ]
@@ -372,7 +382,7 @@ get checked in.  You need to figure out why this happened and remove the
 cause.  
 
 To get back to where you were before, just clone this repository to someplace
-else and try again, the clone will throw away and partial work.
+else and try again, the clone will throw away any partial work.
 
 EOF
 		Done 1
@@ -393,7 +403,7 @@ a patch which is invalid, for instance, a patch which contains nulls), then
 you need to fix the patch and try again.
 
 To get back to where you were before, just clone this repository to someplace
-else and try again, the clone will throw away and partial work.
+else and try again, the clone will throw away any partial work.
 
 EOF
 		Done 1

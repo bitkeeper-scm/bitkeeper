@@ -795,12 +795,11 @@ _links() {		# /* undoc? 2.0 - what is this for? */
 # -s says use ssh
 # -l says local only (don't do remote).
 # -r says do remote.
-# If neither -r or -l is specified, you
-# get a system dependent default:
-# on unix: the default is -r
-# in win32 the defaule is -l
+# If neither -r or -l is specified,
+# the defaule is -l
 _regression() {		# /* doc 2.0 */
 	PREFER_RSH=YES
+	DO_REMOTE=NO	# don't run remote by default
 	V=
 	X=
 	while getopts lsvx OPT

@@ -559,7 +559,7 @@ http_cset(char *rev)
 	int	fd;
 	char	*d, **lines = 0;
 	char	dspec[MAXPATH*2];
-	pid_t	child;
+	pid_t	child = 0;
 
 	whoami("cset@%s", rev);
 

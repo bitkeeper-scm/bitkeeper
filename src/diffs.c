@@ -51,7 +51,6 @@ private	int	cset_boundries(sccs *s, char *rev);
 int
 diffs_main(int ac, char **av)
 {
-	sccs	*s;
 	int	flags = DIFF_HEADER|SILENT, verbose = 0, rc, c;
 	int	errors = 0;
 	char	kind;
@@ -155,6 +154,7 @@ usage:			system("bk help -s diffs");
 	}
 	while (name) {
 		int	ex = 0;
+		sccs	*s = 0;
 		char	*r1 = 0, *r2 = 0;
 		int	save = things;
 
@@ -204,10 +204,21 @@ usage:			system("bk help -s diffs");
 				r1 = s->rstart->rev;
 			}
 		}
-		/* XXX - probably busted in split root */
+#if	0
+		/* 
+		 * The ONLY time keyword expansion should be enabled
+		 * is for 'bk diffs -r+ file' where there is an unlocked
+		 * gfile.  This is where the user wants to verify that
+		 * the gfile actually matches the TOT.  All other times
+		 * we are comparing committed versions to each other or an 
+		 * editted gfile.
+		 * XXX  The case above is currently broken, so I just 
+		 * disabled keywork expansion entirely.
+		 */
 		if (HAS_GFILE(s) && !IS_WRITABLE(s) && (things <= 1)) {
 			ex = GET_EXPAND;
 		}
+#endif
 
 		/*
 		 * Optimize out the case where we we are readonly and diffing

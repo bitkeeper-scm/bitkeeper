@@ -276,6 +276,7 @@ bkd_service_loop(int ac, char **av)
 		bkd_av[j++] = aprintf("-x%s", av[i]);
 		assert(j < 100);
 	}
+	if (Opts.safe_cd) bkd_av[j++] = "-C";
 	bkd_av[j] = 0;
 
 	while (1)
@@ -389,6 +390,8 @@ bkd_install_service(bkdopts *opts, char **xcmds)
 	p = aprintf("\"%s\"  bkd -S -p %d -c %d \"-s%s\" -E \"PATH=%s\"",
 		    path, opts->port, opts->count, start_dir, getenv("PATH"));
 	len = strlen(p) + 200;
+
+	if (opts->safe_cd) len += 3; /* " -C" */
 	if (getenv("BK_REGRESSION")) len += 30;
 	EACH (xcmds) len += strlen(xcmds[i]) + 8;
 
@@ -398,6 +401,7 @@ bkd_install_service(bkdopts *opts, char **xcmds)
 	cmd = malloc(len);
 	strcpy(cmd, p);
 	free(p);
+	if (opts->safe_cd) strcat(cmd, " -C");
 	if (getenv("BK_REGRESSION")) strcat(cmd, " -E \"BK_REGRESSION=YES\"");
 	p = &cmd[strlen(cmd)];
 	EACH (xcmds) {

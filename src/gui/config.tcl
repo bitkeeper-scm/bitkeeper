@@ -68,7 +68,7 @@ proc getConfig {prog} \
 	set _d(troughColor) lightblue	;# scrollbar troughs
 	set _d(warnColor) yellow	;# error messages
 
-	set _d(quit)	<Control-q>	;# binding to exit tool
+	set _d(quit)	Control-q	;# binding to exit tool
 
 	set _d(ci.editHeight) 30	;# editor height
 	set _d(ci.editWidth) 80		;# editor width

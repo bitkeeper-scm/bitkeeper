@@ -236,7 +236,7 @@ send_sfio_msg(opts opts, remote *r, char **envVar)
 	char	buf[MAXPATH];
 	FILE	*f;
 	int	gzip, rc;
-	u32	m, n, extra = 0;
+	u32	m = 0, n, extra = 0;
 
 	/*
 	 * If we are using ssh/rsh do not do gzip ourself

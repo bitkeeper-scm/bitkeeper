@@ -130,7 +130,7 @@ rcs2sccs(RCS *rcs, char *sfile)
 {
 	rdelta	*d, *stop = 0;
 	sccs	*s;
-	int	len, rev = 1;
+	int	len = 0, rev = 1;
 	char	*g = sccs2name(sfile);
 
 	/*

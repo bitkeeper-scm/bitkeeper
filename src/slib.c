@@ -1450,8 +1450,6 @@ sccs_mkroot(char *path)
 {
 	char	buf[MAXPATH];
 
-	mkBkRootIcon(path); /* for win32 */
-
 	sprintf(buf, "%s/SCCS", path);
 	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
 		perror(buf);
@@ -1501,8 +1499,6 @@ void
 sccs_unmkroot(char *path)
 {
 	char	buf[MAXPATH];
-
-	unmkBkRootIcon(path); /* for win32 */
 
 	sprintf(buf, "%s/SCCS", path);
 	if (rmdir(buf) == -1) {
@@ -2923,7 +2919,9 @@ sccs_tagleaves(sccs *s, delta **l1, delta **l2)
 	delta	*d;
 	symbol	*sym;
 	int	first = 1;
-	char	*arev, *aname, *brev, *bname;
+	char	*arev = 0;
+	char	*brev = 0;
+	char	*aname, *bname;
 
 	/*
 	 * This code used to walk the symbol table list but that doesn't
@@ -14568,7 +14566,7 @@ sccs_resolveFiles(sccs *s)
 	FILE	*f = 0;
 	delta	*p, *d, *g = 0, *a = 0, *b = 0;
 	char	*n[3];
-	u8	*lodmap;
+	u8	*lodmap = 0;
 	ser_t	next;
 	ser_t	defbranch;
 	int	retcode = -1;

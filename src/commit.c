@@ -55,8 +55,13 @@ commit_main(int ac, char **av)
 				}
 				break;
 		    case 'Y':	doit = 1; getcomment = 0;	/* doc 2.0 */
-				unlink(commentFile);
-				strcpy(commentFile, optarg);
+				if (fileCopy(optarg, commentFile)) {
+					fprintf(stderr,
+					    "commit: cannot copy to comment "
+					    "file %s\n", commentFile);
+					unlink(commentFile);
+					return (1);
+				}
 				break;
 		    case 'A':	/* internal option for regression test only */
 				/* do not document */		/* undoc 2.0 */
@@ -172,7 +177,7 @@ logs_pending(int ptype, int skipRecentCset, int grace)
 	delta	*d;
 	char 	s_cset[] = CHANGESET;
 	int	i = 0;
-	time_t	now;
+	time_t	now = 0;
 	time_t	graceInSeconds;
 
 	graceInSeconds = grace * DAY; 

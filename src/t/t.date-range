@@ -463,6 +463,8 @@ echo $N Checking Y2K date expansion on old delta ....................$NL
 # We should get 2 digit year.
 bk get $S -r1.3 -GYEAR4 YEAR4
 if [ '01/10/01' != "`cat YEAR4`" ]
-then echo "Failed (Known bug)"; #The soultion now is clone -rold_rev
-else echo OK
+then	echo 'failed (bug 2002-02-08-008)'; 
+	#The soultion now is clone -rold_rev
+else	echo 'bug 2002-02-08-008 is passing! update testcase.'
+	exit 1
 fi

@@ -12,15 +12,6 @@
 # This file test push pull between when one reposity is compressed
 # and the other is not.
 
-if [ X$PLATFORM = X"WIN32" ]
-then
-        # It is unlikely in that ssh/rsh to localhost will work on NT.
-        # We let the user tell us otherwise.
-        if [ -z "$DO_REMOTE" ]; then DO_REMOTE=NO; fi
-else
-	if [ -z "$DO_REMOTE" ]; then DO_REMOTE=YES; fi
-fi
-
 # Tests for pull, push, and clone.
 echo $N Create initial repository ...................................$NL
 no_logging project
