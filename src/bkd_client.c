@@ -138,7 +138,7 @@ remote_unparse(remote *r)
 	}
 	if (r->user) {
 		assert(r->host);
-		sprintf(buf, "%s@%s", r->user, r->host);
+		sprintf(buf, "%s@%s:", r->user, r->host);
 		if (r->path) strcat(buf, r->path);
 		return (strdup(buf));
 	} else if (r->host) {
