@@ -57,6 +57,7 @@ names_main(int ac, char **av)
 			error |= 2;
 			continue;
 		}
+		sccs_close(s); /* for win32 */
 		todo += names_rename(s->sfile, s->spathname, flags);
 		sccs_free(s);
 	}
