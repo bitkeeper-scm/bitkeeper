@@ -25,6 +25,9 @@ private int	taken(MDBM *db, delta *d);
 private int	redo(sccs *s, delta *d, MDBM *db, int flags, ser_t *release,
 		    MDBM *lodDb, ser_t *map, ser_t thislod);
 private ser_t	whichlod(sccs *s, delta *d, MDBM *lodDb);
+private void	parentSwap(sccs *s, delta *d, delta **pp, delta **mp,
+		    int flags);
+private int	needSwap(sccs *s, delta *p, delta *m, int flags);
 
 
 int
@@ -293,11 +296,135 @@ whichlod(sccs *s, delta *d, MDBM *lodDb)
 	return (lod);
 }
 
+/*
+ * Swap parent and merge pointers relating to a delta
+ * Means also fixing backpointing structures
+ */
+
+private void
+parentSwap(sccs *s, delta *d, delta **pp, delta **mp, int flags)
+{
+	delta	*t;
+	delta	**tp;
+	delta	*p = *pp;
+	delta	*m = *mp;
+
+	unless (flags & SILENT) {
+		fprintf(stderr, "renumber: for delta serial %d"
+			" swapping parent %s with merge %s\n",
+			d->serial, p->rev, m->rev);
+	}
+	/*
+	 * Unset parent, delete d from parent's kid link list
+	 */
+	d->parent = 0;
+	d->pserial = 0;
+	for (tp = &(p->kid), t = *tp; t; tp = &(t->siblings), t = *tp) {
+		if (t == d) break;
+	}
+	assert(t && tp);
+	*tp = d->siblings;
+	d->siblings = 0;
+
+	/*
+	 * Unset merge
+	 * old merge parent might still be merged elsewhere
+	 */
+	d->merge = 0;
+	m->flags &= ~D_MERGED;
+	for (t = s->table; t; t = t->next) {
+		unless (t->merge == m->serial) continue;
+		assert(t->serial > m->serial);
+		m->flags |= D_MERGED;
+		break;	/* only need to find one */
+	}
+	assert(!d->exclude);
+	assert(d->include);
+	free(d->include);
+	d->include = 0;
+
+	/*
+	 * Set old merge as new parent
+	 * If this is first 'D' type, then first kid, else last sibling
+	 * Patterned after 'dinsert'
+	 */
+	d->parent = m;
+	d->pserial = m->serial;
+	for (tp = &(m->kid), t = *tp; t; tp = &(t->siblings), t = *tp) {
+		if (t->type == 'D') break;
+	}
+	if (t) { /* not first 'D', then set to last sibling */
+		for (/* already setup */; t; tp = &(t->siblings), t = *tp) {
+			/* null body */
+		}
+		assert(tp);
+		*tp = d;
+	}
+	else { /* first 'D', then insert at head ... */
+		d->siblings = m->kid;
+		m->kid = d;
+	}
+
+	/*
+	 * Set old parent as new merge
+	 */
+	d->merge = p->serial;
+	p->flags |= D_MERGED;
+	sccs_mergeset(s, "renumber", d, p);	/* assumes d->parent is set */
+
+	/* Swap parent and merge and we are done */
+	*pp = m;
+	*mp = p;
+}
+
+/*
+ * We need to swap merge and parent if at the time of the merge,
+ * the delta that is currently the merge was on the trunk.
+ * This is because at the time of all merges, the parent was on the
+ * trunk and the merge on a branch.
+ *
+ * How we tell:
+ * By using only parent ancestory, figure out GCA
+ * and more importantly, figure out which of the kid deltas of the GCA
+ * correspond to the parent lineage and merge lineage.
+ * If the older kid is from merge, then it would have been on the trunk
+ * at the time of the merge, so then we want to do a swap.
+ */
+private int
+needSwap(sccs *s, delta *p, delta *m, int flags)
+{
+	delta	*t;
+
+	assert(p != m);
+	/* clear graph; color merge; look for color on parent */
+	for (t = s->table; t; t = t->next) {
+		t->flags &= ~D_RED;
+	}
+	for (t = m; t; t = t->parent) {
+		t->flags |= D_RED;
+	}
+	for (t = p; t; t = t->parent) {
+		assert(t->parent);
+		if (t->parent->flags & D_RED) break;
+	}
+	assert(t);
+	p = t;	/* GCA kid on parent side */
+	/* colored kid is GCA kid from merge side */
+	for (t = p->parent->kid; t; t = t->siblings) {
+		if (t->flags & D_RED) break;
+	}
+	assert(t);
+	m = t;	/* GCA kid on merge side */
+	assert(m->serial != p->serial);
+	return (m->serial < p->serial);
+}
+
 private	int
 redo(sccs *s, delta *d, MDBM *db, int flags, ser_t *release, MDBM *lodDb,
     ser_t *map, ser_t thislod)
 {
 	delta	*p;
+	delta	*m;
 
 	/* XXX hack because not all files have 1.0, special case 1.1 */
 	p = d->parent;
@@ -361,6 +488,16 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t *release, MDBM *lodDb,
 	 * Everything else we can rewrite.
 	 */
 	bzero(d->r, sizeof(d->r));
+
+	/*
+	 * If merge and it is on same lod as parent, and
+	 * If merge was on the trunk at time of merge, then swap
+	 */
+	m = (d->merge) ? sfind(s, d->merge) : 0;
+	if (m && m->r[0] == p->r[0]) {
+		assert(p != m);
+		if (needSwap(s, p, m, flags)) parentSwap(s, d, &p, &m, flags);
+	}
 
 	/*
 	 * My parent is a trunk node, I'm either continuing the trunk

@@ -1,0 +1,269 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2001 Larry McVoy & Rick Smith
+# %K%
+
+# Test out the cset split thing
+# set up a KEYS file to strip all changing to files 'a' and 'c'
+# leave files 'b' and 'd' alone
+
+echo $N Setting up cset split testing respositories .................$NL
+rm -rf simple
+no_logging simple
+touch a b c d
+bk new $Q a b c d
+bk commit $Q -y1.2
+bk prs -h -r+ -d':ROOTKEY:\n' a c > ../KEYS
+echo OK
+
+# have tip change 'a' and have it removed
+echo $N Simple remove ...............................................$NL
+cd $HERE
+rm -rf line
+bk clone $Q simple line
+cd line
+bk edit $Q a
+bk delta $Q -y1.2 a
+bk commit $Q -y1.3
+bk csetprune < ../KEYS 2> ERROR
+if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
+tip=`bk prs -h -r+ -d':I:\n' ChangeSet`
+if [ "$tip" != 1.2 ]; then echo Failed; exit 1; fi
+echo OK
+
+# have tip change 'b' and remove 'a' and check for tip reparented
+echo $N Reparent tip ................................................$NL
+cd $HERE
+rm -rf remove
+bk clone $Q simple remove
+cd remove
+bk edit $Q a
+bk delta $Q -y1.2 a
+bk commit $Q -y1.3
+bk edit $Q b
+bk delta $Q -y1.2 b
+bk commit $Q -y1.4
+key=`bk prs -h -r+ -d':KEY:\n' ChangeSet | sed 's/\(.*\)|.*/\1/'`
+bk csetprune < ../KEYS 2> ERROR
+if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
+par=`bk prs -h -r+ -d':PARENT:\n' ChangeSet`
+newkey=`bk prs -h -r+ -d':KEY:\n' ChangeSet | sed 's/\(.*\)|.*/\1/'`
+if [ "$key" != "$newkey" ]; then echo Failed:key; echo $key $newkey; exit 1; fi
+if [ "$par" != 1.2 ]; then echo Failed:par; echo $par; exit 1; fi
+echo OK
+
+# diamond tests: make a change on the branch and trunk and bring them
+# together and do a strip.
+# The 4 tests are:
+#   strip both branch and trunk; strip branch; strip trunk; strip none
+
+echo $N Merge: no change left on parent and branch ..................$NL
+cd $HERE
+rm -rf merge copy
+bk clone $Q simple merge
+bk clone $Q merge copy
+
+cd merge
+bk edit $Q a
+bk delta $Q -y1.2 a
+bk commit $Q -y1.3
+
+cd ../copy
+bk edit $Q c
+bk delta $Q -y1.2 c
+bk commit $Q -y1.3
+
+bk pull $Q
+tip=`bk prs -h -r+ -d':I:\n' ChangeSet`
+bk csetprune < ../KEYS 2> ERROR
+if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
+new=`bk prs -h -r+ -d':I:\n' ChangeSet`
+if [ "$tip" != "1.4" ]; then echo Failed:old; echo $tip; exit 1; fi
+if [ "$new" != 1.2 ]; then echo Failed:new; echo $new; exit 1; fi
+echo OK
+
+echo $N Merge: no change left on parent, change on branch ...........$NL
+cd $HERE
+rm -rf merge_m copy_m
+bk clone $Q simple merge_m
+bk clone $Q merge_m copy_m
+
+cd merge_m
+bk edit $Q a
+bk delta $Q -y1.2 a
+bk commit $Q -y1.3
+
+cd ../copy_m
+bk edit $Q b
+bk delta $Q -y1.2 b
+bk commit $Q -y1.3
+key=`bk prs -h -r+ -d':KEY:\n' ChangeSet | sed 's/\(.*\)|.*/\1/'`
+
+bk pull $Q
+bk csetprune < ../KEYS 2> ERROR
+if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
+newkey=`bk prs -h -r+ -d':KEY:\n' ChangeSet | sed 's/\(.*\)|.*/\1/'`
+if [ "$key" != "$newkey" ]; then echo Failed; echo $key $newkey; exit 1; fi
+echo OK
+
+echo $N Merge: no change left on branch, change on parent ...........$NL
+cd $HERE
+rm -rf merge_p copy_p
+bk clone $Q simple merge_p
+bk clone $Q merge_p copy_p
+
+cd merge_p
+bk edit $Q b
+bk delta $Q -y1.2 b
+bk commit $Q -y1.3
+key=`bk prs -h -r+ -d':KEY:\n' ChangeSet | sed 's/\(.*\)|.*/\1/'`
+
+cd ../copy_p
+bk edit $Q a
+bk delta $Q -y1.2 a
+bk commit $Q -y1.3
+
+bk pull $Q
+bk csetprune < ../KEYS 2> ERROR
+if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
+newkey=`bk prs -h -r+ -d':KEY:\n' ChangeSet | sed 's/\(.*\)|.*/\1/'`
+if [ "$key" != "$newkey" ]; then echo Failed; echo $key $newkey; exit 1; fi
+echo OK
+
+echo $N Merge: change on branch and parent ..........................$NL
+cd $HERE
+rm -rf merge_pb copy_pb
+bk clone $Q simple merge_pb
+bk clone $Q merge_pb copy_pb
+
+cd merge_pb
+bk edit $Q b
+bk delta $Q -y1.2 b
+bk commit $Q -y1.3
+
+cd ../copy_pb
+bk edit $Q d
+bk delta $Q -y1.2 d
+bk commit $Q -y1.3
+
+bk pull $Q
+key=`bk prs -h -r+ -d':KEY:\n' ChangeSet | sed 's/\(.*\)|.*/\1/'`
+bk csetprune < ../KEYS 2> ERROR
+if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
+newkey=`bk prs -h -r+ -d':KEY:\n' ChangeSet | sed 's/\(.*\)|.*/\1/'`
+if [ "$key" != "$newkey" ]; then echo Failed; echo $key $newkey; exit 1; fi
+echo OK
+
+# Test a merge containing a merge for the recalculation of -i
+# This is done by setting up a merge where the branch delta is a merge
+# If the branch merge gets collapsed because of no change on the trunk side
+# And that is merged with the real trunk which does have a change, then
+# the include needs to be recalculated because the original branch on a
+# branch delta was included into the tip by a recursive include.
+echo $N Merge: merge on a merge: includes recalculated ..............$NL
+cd $HERE
+rm -rf merge_mm copy_mm copy2_mm
+bk clone $Q simple merge_mm
+bk clone $Q merge_mm copy_mm
+bk clone $Q copy_mm copy2_mm
+
+cd copy2_mm
+bk edit $Q b
+bk delta $Q -y1.2 b
+bk commit $Q -y1.3
+
+cd ../copy_mm
+bk edit $Q a
+bk delta $Q -y1.2 a
+bk commit $Q -y1.3
+
+cd ../merge_mm
+bk edit $Q d
+bk delta $Q -y1.2 d
+bk commit $Q -y1.3
+
+cd ../copy_mm
+bk pull $Q
+
+cd ../copy2_mm
+bk pull $Q
+bk csetprune < ../KEYS 2> ERROR
+if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
+inc=`bk prs -h -r+ '-d:DI:\n' ChangeSet`
+if [ "$inc" != "+5" ]; then echo Failed; echo $inc; exit 1; fi
+echo OK
+
+# Test a code corner case where the delta being searched for is a merge tip
+echo $N Merge: test a corner case: search delta is merge tip.........$NL
+cd $HERE
+rm -rf corner copy_corner
+bk clone $Q simple corner
+bk clone $Q corner copy_corner
+
+cd copy_corner
+bk edit $Q b
+bk delta $Q -y1.2 b
+bk commit $Q -y1.3
+
+cd ../corner
+bk edit $Q d
+bk delta $Q -y1.2 d
+bk commit $Q -y1.3
+
+cd ../copy_corner
+bk pull $Q
+key=`bk prs -h -r+ -d':KEY:\n' ChangeSet | sed 's/\(.*\)|.*/\1/'`
+
+cd ../corner
+bk edit $Q a
+bk delta $Q -y1.2 a
+bk commit $Q -y1.4
+
+cd ../copy_corner
+bk pull $Q
+bk csetprune < ../KEYS 2> ERROR
+if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
+newkey=`bk prs -h -r+ -d':KEY:\n' ChangeSet | sed 's/\(.*\)|.*/\1/'`
+if [ "$key" != "$newkey" ]; then echo Failed; echo $key $newkey; exit 1; fi
+echo OK
+
+# Test a renumber condition: leave tip on branch
+echo $N Renumber: test when prune leaves a tip on branch ............$NL
+cd $HERE
+rm -rf renum copy_renum
+bk clone $Q simple renum
+bk clone $Q renum copy_renum
+
+cd copy_renum
+bk edit $Q a
+bk delta $Q -y1.2 a
+bk commit $Q -y1.3
+
+cd ../renum
+bk edit $Q b
+bk delta $Q -y1.2 b
+bk commit $Q -y1.3
+
+cd ../copy_renum
+bk edit $Q d
+bk delta $Q -y1.2 d
+bk commit $Q -y1.4
+bk pull $Q
+bk csetprune < ../KEYS 2> ERROR
+if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
+rev=`bk prs -h -r+ -d':I:\n' ChangeSet`
+if [ "$rev" != "1.4" ]; then echo Failed; echo Rev:$rev; exit 1; fi
+echo OK
+
+cores
+
+# Done

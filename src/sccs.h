@@ -271,6 +271,8 @@
 #define D_XFLAGS	0x40000000	/* delta has updated file flags */
 #define D_TEXT		0x80000000	/* delta has updated text */
 
+#define	D_BLUE		0x20000000	/* reuse D_LOCAL */
+
 /*
  * Flags for command log
  */
@@ -556,6 +558,9 @@ typedef	struct sccs {
 	delta	*rstop;		/* end of range (1.5 - youngest) */
 	sum_t	 cksum;		/* SCCS chksum */
 	sum_t	 dsum;		/* SCCS delta chksum */
+	u32	added;		/* lines added by this delta (u32!) */
+	u32	deleted;	/* and deleted */
+	u32	same;		/* and unchanged */
 	off_t	sumOff;		/* offset of the new delta cksum */
 	time_t	gtime;		/* gfile modidification time */
 	MDBM	*mdbm;		/* If state & S_HASH, put answer here */
@@ -733,6 +738,7 @@ delta	*sccs_findDelta(sccs *s, delta *d);
 sccs	*sccs_init(char *filename, u32 flags, project *proj);
 sccs	*sccs_restart(sccs *s);
 sccs	*sccs_reopen(sccs *s);
+void	sccs_fitCounters(char *buf, int a, int d, int s);
 void	sccs_free(sccs *);
 void	sccs_freetree(delta *);
 void	sccs_close(sccs *);
@@ -757,6 +763,7 @@ char	*sccs_root(sccs *s);
 int	sccs_cd2root(sccs *, char *optional_root);
 delta	*sccs_key2delta(sccs *sc, char *key);
 char	*sccs_impliedList(sccs *s, char *who, char *base, char *rev);
+void	sccs_mergeset(sccs *s, char *who, delta *d, delta *m);
 int	sccs_sdelta(sccs *s, delta *, char *);
 void	sccs_shortKey(sccs *s, delta *, char *);
 int	sccs_resum(sccs *s, delta *d, int diags, int dont);
