@@ -87,7 +87,6 @@ list(char *gfile)
 	char	*sfile = name2sccs(gfile);
 	char	*p, *t;
 	char	key[MAXKEY];
-	int	i = 0;
 	sccs	*s;
 	FILE	*f;
 	MDBM	*vals = mdbm_mem();
@@ -100,7 +99,6 @@ list(char *gfile)
 	if ((s = sccs_init(sfile, 0, 0)) && s->tree) {
 		sccs_sdelta(s, sccs_ino(s), key);
 		mdbm_store_str(vals, key, sfile, 0);
-		i++;
 		sccs_free(s);
 	} else {
 		if (s) sccs_free(s);
@@ -120,15 +118,10 @@ list(char *gfile)
 		chop(buf);
 		t = name2sccs(buf);
 		mdbm_store_str(vals, key, t, 0);
-		i++;
 		free(t);
 	}
 	pclose(f);
 	free(sfile);
-	unless (i) {
-		mdbm_close(vals);
-		return (0);
-	}
 	return (vals);
 }
 
@@ -144,14 +137,15 @@ resync_list(char *gfile)
 	kvpair	kv;
 	char	cmd[MAXPATH*2];
 	char	newpath[MAXPATH];
-	char	*base;
+	char	*base, *r, *t;
 	int	i;
+	sccs	*s;
+	delta	*d;
 
 	chdir(RESYNC2ROOT);
 	pvals = list(gfile);
 	chdir(ROOT2RESYNC);
 	vals = list(gfile);
-	unless (pvals) return (vals);
 
 	for (kv = mdbm_first(pvals); kv.key.dptr; kv = mdbm_next(pvals)) {
 		if (mdbm_fetch_str(vals, kv.key.dptr)) continue;
@@ -163,21 +157,36 @@ resync_list(char *gfile)
 			mdbm_store_str(vals, kv.key.dptr, kv.val.dptr, 0);
 			continue;
 		}
-		// XXX FIXME - delete name should have random and date
+		/*
+		 * IMPORTANT: newpath should matchs the pathname
+		 * generated in sccsrm.c
+		 */
+		sprintf(cmd, "%s/%s", RESYNC2ROOT, kv.val.dptr);
+		s = sccs_init(cmd, 0, 0); assert(s && s->tree);
+		d = sccs_ino(s);
+		t = sccs_utctime(d); 
+		r = d->random ?  d->random : "";
 		base = basenm(gfile);
-		sprintf(newpath, "BitKeeper/deleted/SCCS/s..del-%s", base);
+		sprintf(newpath,
+			"BitKeeper/deleted/SCCS/s..del-%s~%s~%s", base, r, t);
 		i = 0;
 		while (exists(newpath)) {
 			sprintf(newpath,
-			    "BitKeeper/deleted/SCCS/s..del-%s~%d", base, i);
+			"	BitKeeper/deleted/SCCS/s..del-%s~%s~%s~%d",
+				base, r, t, i);
 		}
+		sccs_free(s);
 		mkdirf(kv.val.dptr);
 		sprintf(cmd, "cp %s/%s %s", RESYNC2ROOT, kv.val.dptr, newpath);
 		sys(cmd);
 		sprintf(cmd, "bk get -qe %s", newpath);
 		sys(cmd);
-		sprintf(cmd, "bk delta -qy'Auto converge rename' %s", newpath);
-		sys(cmd);
+
+		s = sccs_init(newpath, SILENT, 0);
+		comments_save("Auto converge rename");
+		sccs_delta(s, SILENT|DELTA_NOPENDING|DELTA_DONTASK, 0, 0, 0, 0);
+		sccs_free(s);
+		comments_done();
 		mdbm_store_str(vals, kv.key.dptr, newpath, 0);
 	}
 	mdbm_close(pvals);
@@ -194,21 +203,22 @@ converge(char *gfile, int resync)
 	kvpair	kv;
 	int	i;
 
-	unless (vals) return (0);
-
 	/*
 	 * If there was only one file, and it isn't a derived file, done
 	 */
 	for (i = 0, kv = mdbm_first(vals); kv.key.dptr; kv = mdbm_next(vals)) {
 		i++;
 	}
+	if (i == 0) {
+done:		mdbm_close(vals);
+		return (0); /* nothing to do */ 
+	}
 	if (i == 1) {
 		kv = mdbm_first(vals);
 		if ((s = sccs_init(kv.val.dptr, 0, 0)) &&
 		    s->tree && !hasCsetDerivedKey(s)) {
 			sccs_free(s);
-			mdbm_close(vals);
-			return (0); /* nothing to do */
+			goto done;
 		}
 		if (s) sccs_free(s);
 	}
