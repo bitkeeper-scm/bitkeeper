@@ -299,16 +299,16 @@ mkconfig(FILE *out, MDBM *flist)
 	FILE	*in;
 	int	found = 0;
 	int	first = 1;
-	char	buf[200], pattern[200];
+	char	confTemplate[MAXPATH], buf[200], pattern[200];
 	char	*val;
 	kvpair	kv;
 
 
 	/*
 	 * If there is a local config file template, use that
-	 * Win32 note: This path does not work on win32
 	 */
-	if (in = fopen(GLOBAL_ROOT "BitKeepet/etc/config.template", "rt")) {
+	sprintf(confTemplate, "%s/BitKeepet/etc/config.template", globalroot());
+	if (in = fopen(confTemplate, "rt")) {
 		while (fnext(buf, in))	printField(out, flist, buf);
 		fclose(in);
 		return (0);

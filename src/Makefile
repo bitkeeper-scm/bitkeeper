@@ -57,7 +57,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o approve.o \
 	port/findprog.o port/flushsocket.o \
 	port/fullname.o port/gethomedir.o \
 	port/gethost.o port/getinput.o port/getnull.o \
-	port/getrealcwd.o port/getrealname.o port/gui.o \
+	port/getrealcwd.o port/getrealname.o port/globalroot.o port/gui.o \
 	port/hostColonPath.o port/http_proxy.o \
 	port/lock.o port/mail.o port/mnext.o \
 	port/ns_sock_host2ip.o port/platforminit.o \

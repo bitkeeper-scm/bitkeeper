@@ -1006,6 +1006,7 @@ void	has_proj(char *who);
 int	mv(char*, char *);
 char	*rootkey(char *buf);
 int	isEvalLicense();
+char	*globalroot();
 
 extern char *bk_vers;
 extern char *bk_utc;

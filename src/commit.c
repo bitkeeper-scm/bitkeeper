@@ -662,7 +662,7 @@ config(FILE *f)
 	tm = time(0);
 	fprintf(f, "%-10s %s", "Date:", ctime(&tm));
 	fputs("\n", f);
-	printConfig(f, GLOBAL_ROOT, "== Global config ==\n");
+	printConfig(f, globalroot(), "== Global config ==\n");
 	printConfig(f, ".", "== Local Config ==\n");
 	fputs("\n", f);
 	if (db = loadOK()) {
