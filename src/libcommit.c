@@ -73,25 +73,6 @@ package_name()
 }
 
 void
-remark(int quiet)
-{
-	int i;
-
-	if (exists("BitKeeper/etc/SCCS/x.marked")) return;
-	unless (quiet) getMsg("consistency_check", 0, 0, 0, stdout);
-	system("bk cset -M1.0..");
-	i = open("BitKeeper/etc/SCCS/x.marked", O_CREAT|O_TRUNC|O_WRONLY, 0664);
-	if (i < 0) {
-		perror("BitKeeper/etc/SCCS/x.marked");
-		return;
-	}
-	close(i);
-	unless(quiet) {
-		printf("Consistency check completed, thanks for waiting.\n\n");
-	}
-}
-
-void
 status(int verbose, FILE *f)
 {
 	char	buf[MAXLINE], parent_file[MAXPATH];

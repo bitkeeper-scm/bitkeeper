@@ -281,3 +281,16 @@ bk check -c ff 2> /dev/null && {
 }
 rm -f SCCS/s.ff
 echo OK
+
+echo $N Make sure check complains is cset marks are missing .........$NL
+cd $HERE
+bk clone $Q project bad || exit 1
+cd bad
+bk admin -D d1/a  || exit 1
+bk -r check -a 2>ERRS && {
+	echo check should have failed
+	exit 1
+}
+cd $HERE
+rm -rf bad
+echo OK

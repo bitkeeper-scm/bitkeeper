@@ -73,7 +73,6 @@ commit_main(int ac, char **av)
 		fprintf(stderr, "Cannot find root directory\n");
 		return (1);
 	}
-	unless(opts.resync) remark(opts.quiet);
 	if (pendingFiles[0]) {
 		if (av[optind] && streq("-", av[optind])) {
 			fprintf(stderr,
