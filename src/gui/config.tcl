@@ -121,6 +121,7 @@ proc getConfig {prog} \
 	set _d(help.helptext) ""	;# -f<helptextfile> - undocumented
 	set _d(help.exact) 0		;# helpsearch, allows partial matches
 
+	set _d(newdifftool.minThumbHeight) 30 ;# min height of custom scrollbar thumb
 	set _d(newdifftool.topMargin) 2
 	set _d(newdifftool.bottomMargin) 1
 	set _d(newdifftool.newColor) $BKGREEN1
