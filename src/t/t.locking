@@ -96,6 +96,9 @@ cd $HERE
 bk clone $Q project clone 2>/dev/null
 if [ -d clone ]; then echo clone failed to clean up; exit 1; fi
 echo OK
+# This test would not work on Win98/WinMe; no bkd support
+if [ "$PLATFORM" = "UNIX" ]
+then #---------------------------------------------------------------------
 echo $N Make sure clone fails with existing write lock in source \#2 .$NL
 cd $HERE/project
 P=50000
@@ -111,6 +114,7 @@ cmp -s clone.out ref
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 if [ -d clone ]; then echo clone failed to clean up; exit 1; fi
 echo OK
+fi #------------------------------------------------------------------------
 echo $N Make sure clone works with existing read lock in source .....$NL
 cd $HERE/project
 bk unlock -w
