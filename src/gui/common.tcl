@@ -81,6 +81,21 @@ proc balloon_aux {w msg} {
 	bind $t <Leave> "catch {destroy .balloon_help}"
 }
 
+#
+# Tcl version 8.0.5 doesn't have array unset 
+# Consider moving to common lib area?
+#
+proc array_unset {var} \
+{
+	upvar #0 $var lvar
+
+	foreach i [array names lvar] {
+		#puts "unsetting $var ($i)"
+		unset lvar($i)
+
+	}
+}
+
 # From a Cameron Laird post on usenet
 proc print_stacktrace {} {
 	set depth [info level]
