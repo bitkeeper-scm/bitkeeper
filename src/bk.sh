@@ -1102,6 +1102,8 @@ _users() {
 	if [ "X$1" != X -a -d "$1" ]; then cd $1; fi
 	__cd2root
 	${BIN}prs -hd$SPEC ChangeSet > ${TMP}users$$
+	${BIN}get -hkp ChangeSet 2> /dev/null | 
+		sed -e 's/.* //' -e's/|.*//' >> ${TMP}users$$
 	if [ $? -ne 0 ]
 	then	rm -f ${TMP}users$$
 		exit 1
