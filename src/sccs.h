@@ -884,7 +884,7 @@ delta	*sfind(sccs *s, ser_t ser);
 int	sccs_lock(sccs *, char);	/* respects repo locks */
 int	sccs_unlock(sccs *, char);
 
-int	sccs_lockfile(const char *lockfile, int wait, int rm, int quiet);
+int	sccs_lockfile(const char *lockfile, int wait, int quiet);
 int	sccs_stalelock(const char *lockfile, int discard);
 int	sccs_unlockfile(const char *file);
 int	sccs_mylock(const char *lockf);

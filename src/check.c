@@ -215,7 +215,7 @@ check_main(int ac, char **av)
 	if (all) {
 		fprintf(idcache, "#$sum$ %u\n", id_sum);
 		fclose(idcache);
-		if (sccs_lockfile(IDCACHE_LOCK, 16, 1, 0)) {
+		if (sccs_lockfile(IDCACHE_LOCK, 16, 0)) {
 			fprintf(stderr, "Not updating cache due to locking.\n");
 			unlink(id_tmp);
 		} else {
@@ -224,7 +224,7 @@ check_main(int ac, char **av)
 				perror("rename of idcache");
 				unlink(IDCACHE);
 			}
-			unlink(IDCACHE_LOCK);
+			sccs_unlockfile(IDCACHE_LOCK);
 			chmod(IDCACHE, GROUP_MODE);
 		}
 	}

@@ -17,7 +17,7 @@ private	int	linkcount(const char *file);
  * for the seconds arg is not suggested.
  */
 int
-sccs_lockfile(const char *file, int waitsecs, int rm, int quiet)
+sccs_lockfile(const char *file, int waitsecs, int quiet)
 {
 	char	*p, *uniq;
 	int	fd;
@@ -45,7 +45,6 @@ sccs_lockfile(const char *file, int waitsecs, int rm, int quiet)
 						fsync(fd);
 				    	}
 					close(fd);
-					if (rm) unlink(uniq);
 					free(uniq);
 					free(p);
 					return (0);
@@ -54,14 +53,13 @@ sccs_lockfile(const char *file, int waitsecs, int rm, int quiet)
 		}
 		/* not true on windows file systems */
 		if (linkcount(uniq) == 2) {
-			if (rm) unlink(uniq);
 			free(uniq);
 			free(p);
 			return (0);
 		}
 		if (sccs_stalelock(file, 1)) continue;
 		unless (waitsecs) {
-			if (rm) unlink(uniq);
+			unlink(uniq);
 			return (-1);
 		}
 		if ((waitsecs > 0) && ((waited / 1000000) >= waitsecs)) {
@@ -69,7 +67,7 @@ sccs_lockfile(const char *file, int waitsecs, int rm, int quiet)
 				fprintf(stderr,
 				    "Timed out waiting for %s\n", file);
 			}
-			if (rm) unlink(uniq);
+			unlink(uniq);
 			free(uniq);
 			free(p);
 			return (-1);
@@ -97,6 +95,7 @@ sccs_unlockfile(const char *file)
 
 	if (unlink(uniq)) error++;
 	if (unlink((char*)file)) error++;
+	free(uniq);
 	return (error ? -1 : 0);
 }
 

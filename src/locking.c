@@ -290,7 +290,7 @@ wrlock(void)
 	}
 
 	sprintf(lock, "%s/%s", p->root, WRITER_LOCK);
-	if (sccs_lockfile(lock, 0, 0, 0)) {
+	if (sccs_lockfile(lock, 0, 0)) {
 		proj_free(p);
 		ldebug(("WRLOCK by %d failed, lockfile failed\n", getpid()));
 		return (LOCKERR_LOST_RACE);
