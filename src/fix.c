@@ -7,7 +7,7 @@ fix_main(int ac,  char **av)
 	int	c, i;
 	char	buf[MAXLINE];
 	char	fix_file[MAXPATH];
-	char	*qflag = "-q", *p;
+	char	*qflag = "-q", *p = 0;
 	sccs	*s;
 	delta	*d;
 
@@ -61,6 +61,6 @@ fix_main(int ac,  char **av)
 			unlink(fix_file);
 		}
 	};
-	free(p);
+	if (p) free(p);
 	return (0);
 }
