@@ -308,6 +308,7 @@ c_commit(resolve *rs)
 		return (0);
 	}
 
+	rs->s = sccs_restart(rs->s);
 	if (rs->opts->force) goto doit;
 
 	if (needs_merge(rs)) return (0);
