@@ -103,7 +103,7 @@ commit_main(int ac, char **av)
 		if (system(buf) != 0) {
 			unlink(pendingFiles);
 			unlink(commentFile);
-			gethelp("duplicate_IDs", 0, 0, stdout);
+			getmsg("duplicate_IDs", 0, 0, stdout);
 			exit(1);
 		}
 	}
@@ -165,7 +165,7 @@ notice(char *key)
 {
 	printf(
 	    "==============================================================\n");
-	gethelp(key, 0, 0, stdout);
+	getmsg(key, 0, 0, stdout);
 	printf(
 	    "==============================================================\n");
 }

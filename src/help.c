@@ -8,58 +8,69 @@ int
 help_main(int ac,  char **av)
 {
 	char	buf[MAXLINE];
-	char	help_out[MAXPATH];
+	char	out[MAXPATH];
 	int	c, i = 0, use_pager = 1;
+	char	*opt = 0;
 	FILE	*f;
 
 	if (ac == 1) {
-		sprintf(buf, "bk gethelp help | %s", pager);
+		sprintf(buf, "bk help help | %s", pager);
 		system(buf);
 		return (0);
 	}
-	while ((c = getopt(ac, av, "p")) != -1) {
+	while ((c = getopt(ac, av, "akp")) != -1) {
 		switch (c) {
-		case 'p':	use_pager = 0; /* disable pager */ 
-				break;
-		defaults:	fprintf(stderr,
-					"usage: bk help [-p] [topic]\n");
-				return (1);
-				break;
+		    case 'a': opt = "al"; break;
+		    case 'k': opt = "l"; break;
+		    case 'p': use_pager = 0; break;
+		    defaults:
+			fprintf(stderr, "usage: bk help [-p] [topic]\n");
+			return (1);
 		}
 	}
-	sprintf(help_out, "%s/bk_help%d", TMP_PATH, getpid());
-	while (av[++i]) {
-		sprintf(buf, "bk gethelp help_%s %s > %s",
-							av[i], bin, help_out);
+	sprintf(out, "%s/bk_help%d", TMP_PATH, getpid());
+	unlink(out);
+	if (opt) {
+		for (av[i = optind]; av[i]; i++) {
+			sprintf(buf,
+			    "bk helpsearch -%s %s >> %s", opt, av[i], out);
+			system(buf);
+		}
+		goto print;
+	}
+	for (av[i = optind]; av[i]; i++) {
+		sprintf(buf,
+		    "bk gethelp help_%s %s >> %s", av[i], bin, out);
 		if (system(buf) != 0) {
-			if (is_command(av[i])) {
-				f = fopen(help_out, "ab");
+			if (is_command(av[optind])) {
+				f = fopen(out, "ab");
 				fprintf(f,
 	"		-------------- %s help ---------------\n\n", av[i]);
 				fclose(f);
-				sprintf(buf, "bk %s --help >> %s 2>&1",
-							    av[i], help_out);
+				sprintf(buf,
+				    "bk %s --help >> %s 2>&1", av[i], out);
 				system(buf);
 			} else {
-				f = fopen(help_out, "ab");
-				fprintf(f, "No help for %s, check spelling.\n",
-									av[i]);
+				f = fopen(out, "ab");
+				fprintf(f,
+				    "No help for %s, check spelling.\n", av[i]);
 				fclose(f);
 			}
 		}
 	}
+print:
 	if (use_pager) {
-		sprintf(buf, "%s %s", pager, help_out);
+		sprintf(buf, "%s %s", pager, out);
 		system(buf);
 	} else {
-		f = fopen(help_out, "rt");
+		f = fopen(out, "rt");
 		while (fgets(buf, sizeof(buf), f)) {
 			fputs(buf, stdout);
 		}
 		fclose(f);
 	
 	}
-	unlink(help_out);
+	unlink(out);
 	return (0);
 }
 
