@@ -879,7 +879,14 @@ extractDelta(char *name, sccs *s, int newFile, MMAP *f, int flags, int *np)
 delta1:	off = mtell(f);
 	d = getRecord(f);
 	sccs_sdelta(s, d, buf);
-	if (tmp = sccs_findKey(s, buf)) {
+	/*
+	 * 11/29/02 - we fill in dangling deltas by pretending they are
+	 * incoming deltas which we do not already have.  In the patch
+	 * they are not going to be dangling so the flag is clear;
+	 * applying the patch will clear the flag and the code paths
+	 * are all happier this way.
+	 */
+	if ((tmp = sccs_findKey(s, buf)) && !tmp->dangling) {
 		if (echo > 3) {
 			fprintf(stderr,
 			    "takepatch: delta %s already in %s, skipping it.\n",
@@ -1543,7 +1550,10 @@ apply:
 			assert(s);
 			if (echo>9) {
 				fprintf(stderr,
-				    "PID: %s\nME:  %s\n", p->pid, p->me);
+				    "------------- %s delta ---------\n"
+				    "PID: %s\nME:  %s\n",
+				    p->local ? "local" : "remote",
+				    p->pid, p->me);
 			}
 			unless (d = sccs_findKey(s, p->pid)) {
 				if ((echo == 2) || (echo == 3)) {
@@ -1746,6 +1756,21 @@ getLocals(sccs *s, delta *g, char *name)
 		 */
 		if ((d->type == 'R') && !(d->flags & D_META)) continue;
 
+		/*
+		 * If we are dangling, don't insert the local delta if
+		 * it is already in the patch list.  In applyPatch()
+		 * we'll undangle the delta.
+		 */
+		if (d->dangling) {
+			char	key[MAXPATH];
+
+			sccs_sdelta(s, d, key);
+			for (p = patchList; p; p = p->next) {
+				if (streq(key, p->me)) break;
+			}
+			if (p) continue;
+		}
+			
 		assert(d);
 		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-init", ++fileNum);
 		unless (t = fopen(tmpf, "wb")) {

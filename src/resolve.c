@@ -1278,6 +1278,7 @@ flags_delta(resolve *rs,
 	doit(X_SCCS, "SCCS");
 	doit(X_EOLN_NATIVE, "EOLN_NATIVE");
 	doit(X_NOMERGE, "NOMERGE");
+	doit(X_MONOTONIC, "MONOTONIC");
 	for (i = 0; i < f; ++i) av[++n] = fbuf[i];
 	av[++n] = sfile;
 	assert(n < 38);	/* matches 40 in declaration */
