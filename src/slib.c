@@ -7609,12 +7609,15 @@ name2xflg(char *fl)
 }
 
 private delta *
-addMode(char *me, sccs *sc, delta *n, char *mode)
+addMode(char *me, sccs *sc, delta *n, char *mode, int *fixDate)
 {
 	char	buf[50];
 
 	assert(mode);
-	unless (n) n = sccs_newDelta(sc, 1);
+	unless (n) {
+		n = sccs_newDelta(sc, 1);
+		*fixDate = 1;
+	}
 	sprintf(buf, "Change mode to %s", mode);
 	n->comments = addLine(n->comments, strdup(buf));
 	n = modeArg(n, mode);
@@ -7622,7 +7625,7 @@ addMode(char *me, sccs *sc, delta *n, char *mode)
 }
 
 private delta *
-changeXFlag(char *me, sccs *sc, delta *n, int add, char *flag)
+changeXFlag(char *me, sccs *sc, delta *n, int add, char *flag, int *fixDate)
 {
 	char	buf[50];
 	u32	xflags, mask;
@@ -7661,7 +7664,10 @@ changeXFlag(char *me, sccs *sc, delta *n, int add, char *flag)
 		}
 		xflags &= ~mask;
 	}
-	unless (n) n = sccs_newDelta(sc, 1);
+	unless (n) {
+		n = sccs_newDelta(sc, 1);
+		*fixDate = 1; 
+	}
 	n->flags |= D_XFLAGS;
 	n->xflags = xflags;
 	sprintf(buf, "Turn %s %s flag", add ? "on": "off", flag);
@@ -7788,9 +7794,8 @@ out:
 		fixDate = 1;
 	}
 	if (mode) {
-		addMode("admin", sc, d, mode);
+		d = addMode("admin", sc, d, mode, &fixDate);
 		flags |= NEWCKSUM;
-		fixDate = 1;
 	}
 
 	if (text) {
@@ -7860,21 +7865,24 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 
 			if (streq(fl, "EXPAND1")) {
 				if (v) goto noval;
-				d = changeXFlag("admin", sc, d, add, fl);
+				d = changeXFlag(
+					"admin", sc, d, add, fl, &fixDate);
 				if (add)
 					sc->state |= S_EXPAND1;
 				else
 					sc->state &= ~S_EXPAND1;
 			} else if (streq(fl, "RCS")) {
 				if (v) goto noval;
-				d = changeXFlag("admin", sc, d, add, fl);
+				d = changeXFlag(
+					"admin", sc, d, add, fl, &fixDate);
 				if (add)
 					sc->state |= S_RCS;
 				else
 					sc->state &= ~S_RCS;
 			} else if (streq(fl, "YEAR4")) {
 				if (v) goto noval;
-				d = changeXFlag("admin", sc, d, add, fl);
+				d = changeXFlag(
+					"admin", sc, d, add, fl, &fixDate);
 				if (add)
 					sc->state |= S_YEAR4;
 				else

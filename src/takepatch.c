@@ -637,7 +637,7 @@ setlod(sccs *s, delta *d, int branch)
 
 	sprintf(def, "%d", d->r[0]);
 	s->defbranch = strdup(def);
-	sccs_admin(s, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
+	sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
 }
 
 /*
