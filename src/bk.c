@@ -584,9 +584,9 @@ gotit:
 		strcat(buf, av[0]);
 		goto gotit;
 	}
-	
-	for (t = s = p; t = strchr(s, ':'); s = t + 1) {
-		*t = 0;
+
+	t = strdup(p);
+	for (s = strtok(t, ":"); s != NULL; s = strtok(NULL, ":")) {
 		sprintf(buf, "%s/%s", s, av[0]);
 		if (executable(buf)) {
 		verbose((stderr, "USING PATH %s\n", buf));
@@ -599,11 +599,10 @@ gotit:
 			} else {
 				add2path = 0;
 			}
-			*t = ':';
+			free(t);
 			goto gotit;
-			
 		}
-		*t = ':';
 	}
+	free(t);
 	return;
 }

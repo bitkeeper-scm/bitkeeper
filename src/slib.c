@@ -10834,7 +10834,7 @@ doDiff(sccs *s, u32 flags, char kind, char *leftf, char *rightf,
 		for (i = 0; i < c/2 - 18; ) spaces[i++] = '=';
 		spaces[i] = 0;
 		sprintf(buf, "sdiff -w%s %s %s", columns, leftf, rightf);
-		diffs = popen(buf, "rt");
+		diffs = popen(buf, "r");
 		if (!diffs) return (-1);
 		diffFile[0] = 0;
 	} else {

@@ -20,16 +20,22 @@ lines_main(int ac, char **av)
 
 	while ((c = getopt(ac, av, "ur;t")) != -1) {
 		switch (c) {
-		    case 'u': flags |= GET_USER; break;
-		    case 't': sort = 1; break;
-		    case 'r': rev = optarg; break;
+		    case 'u':
+			flags |= GET_USER;
+			break;
+		    case 't': sort = 1; 
+			break;
+		    case 'r': rev = optarg; 
+			break;
 		    default:
-			fprintf(stderr, "usage lines [-u] file.\n");
+usage:			fprintf(stderr, "usage lines [-u] file.\n");
 			return (1);
 		}
 	}
 
 	name = sfileFirst("lines", &av[optind], 0);
+	if (sfileNext() || !name) goto usage;
+
 	if (name && (s = sccs_init(name, INIT_NOCKSUM, 0))) {
 		ser = 0;
 		renumber(s->table);
