@@ -195,10 +195,13 @@ wait_eof(remote *r, int verbose)
 		if (verbose) fprintf(stderr, "Remote Disconnected\n");
 		return;
 	}
-	fprintf(stderr,
-		"wait_eof: Got %d unexpected byte(s) from remote\n", i);
-	buf[i] = 0;
-	fprintf(stderr, "buf=\"%s\"\n", buf);
+
+	if (verbose) {
+		fprintf(stderr,
+			"wait_eof: Got %d unexpected byte(s) from remote\n", i);
+		buf[i] = 0;
+		fprintf(stderr, "buf=\"%s\"\n", buf);
+	}
 }
 
 /*
