@@ -859,6 +859,7 @@ char	*separator(char *);
 int	trigger(char *action, char *when, int status);
 void	cmdlog_start(char **av);
 void	cmdlog_end(int ret);
+int	bk_mode();
 int	cat(char *file);
 
 #endif	/* _SCCS_H_ */

@@ -27,6 +27,10 @@ cmd_pull(int ac, char **av)
 		out("ERROR-Not at package root\n");
 		exit(1);
 	}
+	if ((bk_mode() == BK_STD) && !exists("BitKeeper/etc/.master")) {
+		out("ERROR-bkd std cannot access non-master repository\n");
+		exit(1);
+	}
 
 	unless (repository_rdlock() == 0) {
 		out("ERROR-Can't get read lock on the repository.\n");

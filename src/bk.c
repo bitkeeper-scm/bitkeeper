@@ -456,7 +456,6 @@ cmdlog_start(char **av)
 			break;
 		}
 	}
-	if ((bk_mode() == BK_STD)  && !streq("commit", av[0])) cmdlog_repo = 0;
 	if (cmdlog_repo) {
 		sprintf(cmdlog_buffer,
 		    "%s:%s", sccs_gethost(), fullname(bk_proj->root, 0));
@@ -472,7 +471,10 @@ cmdlog_start(char **av)
 		}
 	}
 	if (cmdlog_repo) {
-		int	ret = trigger(cmdlog_buffer, "pre", 0);
+		int ret ;
+
+		if ((bk_mode() == BK_STD)  && !streq("commit", av[0])) return;
+		ret = trigger(cmdlog_buffer, "pre", 0);
 
 		unless (ret == 0) exit(ret);
 	}
@@ -712,15 +714,65 @@ next:		p = ++s;
 	exit(1);
 }
 
+int
 bk_mode()
 {
-	char buf[MAXPATH];
+	char	buf[MAXPATH];
+	char	s_config[MAXPATH], g_config[MAXPATH], x_config[MAXPATH];
+	char 	*root, *license;
+	sccs	*s = 0;
+	FILE 	*f;
+	project	*proj;
+	static int mode = -1; /* cache */
 
+	if (mode != -1) return(mode);
+	root = sccs_root(0);
+	unless (root) {
+		fprintf(stderr, "bk_mode: cannot find project root\n");
+		return (BK_STD);
+	}
+	sprintf(s_config, "%s/BitKeeper/etc/SCCS/s.config", root);
+	sprintf(g_config, "%s/BitKeeper/etc/Sconfig", root);
+	if (exists(g_config)) {
+		f = fopen(g_config, "rt");
+	} else if (exists(s_config)) {
+		proj = calloc(1, sizeof(*proj));
+		proj->root = strdup(root);
+		s = sccs_init(s_config, SILENT, proj);
+		assert(s);
+		if (gettemp(x_config, "bk_config")) {
+			fprintf(stderr, "Cannot create temp file\n");
+			return BK_STD;
+		}
+		if (sccs_get(s, 0, 0, 0, 0, SILENT|PRINT, x_config)) {
+			fprintf(stderr, "Cannot print to %s\n", x_config);
+			sccs_free(s);
+			return (BK_STD);
+		}
+		f = fopen(x_config, "rt");
+	}
+	while (fgets(buf, sizeof(buf), f)) {
+		if (strneq("license:", buf, 8)) {
+			license = &buf[8];
+			break;
+		}
+	}
+#define LIC_STUB
+#ifdef LIC_STUB
 	/*
 	 * XXXX FIXME
 	 * This is a stub, pending the license key extraction code from Larry
 	 */
 	sprintf(buf, "%s/bk_std", sccs_root(0));
-	return ((exists(buf) == 1) ? BK_STD : BK_PRO); 
+	mode = (exists(buf) == 1) ? BK_STD : BK_PRO; 
+#else
+	/* XXXX under construction */
+#endif
+	fclose(f);
+	if (s) {
+		unlink(x_config);
+		sccs_free(s);
+	}
+	return (mode);
 }
 

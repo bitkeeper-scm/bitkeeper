@@ -12,7 +12,7 @@ extern	char	cmdlog_buffer[];
  * If nothing is passed in, use `bk parent`.
  */
 remote *
-remote_parse(char *p)
+remote_parse(char *p, int is_clone)
 {
 	char	buf[MAXPATH+256];
 	static	echo = -1;
@@ -41,7 +41,13 @@ remote_parse(char *p)
 	if (strneq("bk://", p, 5)) {
 		r = url_parse(p + 5);
 	} else {
-		r = nfs_parse(p);
+		if (!is_clone && (bk_mode() == BK_STD)) {
+			fprintf(stderr,
+				"Non-url address detected: %s\n", upgrade_msg);
+			r = NULL;
+		} else {
+			r = nfs_parse(p);
+		}
 	}
 	if (r && append && cmdlog_buffer[0]) {
 		char	*rem = remote_unparse(r);
@@ -61,11 +67,6 @@ nfs_parse(char *p)
 	remote	*r;
 	char	*s;
 	
-	if (bk_mode() == BK_STD) {
-		fprintf(stderr, upgrade_msg);
-		return (0);
-	}
-
 	unless (*p) return (0);
 	new(r);
 	/* user@host:path */

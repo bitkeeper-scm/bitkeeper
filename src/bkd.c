@@ -19,14 +19,6 @@ bkd_main(int ac, char **av)
 	int	c;
 	char	*uid = 0;
 
-	if (bk_mode() == BK_STD) {
-		unless (exists("BitKeeper/etc/.master")) {
-			fprintf(stderr,
-		    "bkd must start in the root of the master repository\n");
-			exit(3);
-		}
-	}
-
 	loadNetLib();
 	while ((c = getopt(ac, av, "c:deE:il|p:P:Rs:St:u:x:")) != -1) {
 		switch (c) {

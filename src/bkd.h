@@ -84,7 +84,7 @@ extern	struct cmd cmds[];
 extern	int exists(char *);
 extern	bkdopts Opts;
 
-remote	*remote_parse(char *url);
+remote	*remote_parse(char *url, int is_clone);
 char	*remote_unparse(remote *r);
 pid_t	bkd(int compress, remote *r, int *r_pipe, int *w_pipe);
 void	bkd_reap(pid_t resync, int r_pipe, int w_pipe);

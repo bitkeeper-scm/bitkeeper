@@ -234,7 +234,7 @@ test tests rsh rshtest:
 	PREFER_RSH=YES $(MAKE) realtest
 
 realtest: $(ALL) t/doit
-	-./bk get -q t/SCCS/s.t.* t/setup
+	-./bk get -q t/SCCS/s.t.* t/setup t/x.chk_env
 	cd t && ./doit
 
 t/doit: t/doit.sh substvars
@@ -401,7 +401,7 @@ install-nolinks: all
 	then	mkdir $(BINDIR)/t; \
 	fi
 	@-./bk get -q t/SCCS/s.t.* t/setup
-	@cp -f t/doit t/t.* t/setup $(BINDIR)/t
+	@cp -f t/doit t/t.* t/setup t/x.chk_env $(BINDIR)/t
 	@./bk chksum $(BINS) $(SCRIPTS) $(DATA) t/doit t/t.* t/setup \
 		| sort > $(BINDIR)/MANIFEST
 	@set `echo $(LINKTO)`; \
