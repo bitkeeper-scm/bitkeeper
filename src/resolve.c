@@ -53,8 +53,8 @@ private	void	restore(FILE *f, opts *o);
 private	void	unbackup(FILE *f);
 private void	merge_loggingok(resolve *rs);
 #ifdef WIN32_FILE_SYSTEM
-private MDBM	*localDB;
-private MDBM	*resyncDB;
+private MDBM	*localDB;		/* real name cache for local tree */
+private MDBM	*resyncDB;	/* real name cache for resyn tree */
 #endif
 
 int
@@ -2242,49 +2242,58 @@ pass4_apply(opts *opts)
 			fprintf(get, "%s\n", &buf[offset]);
 		}
 #ifdef	WIN32_FILE_SYSTEM
-	getRealName(&buf[offset], localDB, realname);
-	unless (streq(&buf[offset], realname)) {
-		opts->applied--;
-		if (strcasecmp(&buf[offset], realname) == 0) {
-			fprintf(stderr,
+		getRealName(&buf[offset], localDB, realname);
+		unless (streq(&buf[offset], realname)) {
+			char	*case_folding_err =
 "\n\
 ============================================================================\n\
-BitKeeper have detected a \"case folding file system\". What this mean\n\
-is that your file system ignore case differences when it looks for\n\
-directories and files. This also means that it is not possible to rename\n\
-a path which only has upper/lower case changes. BitKeeper wants to rename:\n\
+BitKeeper have detected a \"Case-Folding file system\". e.g. FAT and NTFS.\n\
+What this mean is that your file system ignore case differences when it looks\n\
+for directories and files. This also means that it is not possible to rename\n\
+a path correctly if there exist a similar path with only upper/lower case\n\
+differences.\n\
+BitKeeper wants to rename:\n\
     %s -> %s\n\
 Your file system is changing it to:\n\
     %s -> %s\n\
 BitKeeper consider this an error, since this may not be what you have\n\
 intended. The recommended work around for this problem is as follows:\n\
-a) exit from this resolve session\n\
-b) run \"bk mv\" to move the directory or file with upper/lower case\n\
-   changes to a temporary location\n\
-c) run \"bk mv\" again to move from the temporary location to\n\
+a) Exit from this resolve session.\n\
+b) Run \"bk mv\" to move the directory or file with upper/lower case\n\
+   changes to a temporary location.\n\
+c) Run \"bk mv\" again to move from the temporary location to\n\
    %s\n\
-d) run \"bk commit\" to record the new location in a changeset.\n\
-e) run \"bk resolve\" or \"bk pull\" again.\n\
-============================================================================\n",
-			buf, &buf[offset], buf, realname, &buf[offset]);
-		} else {
-			fprintf(stderr,
+d) Run \"bk commit\" to record the new location in a changeset.\n\
+e) Run \"bk resolve\" or \"bk pull\" again.\n\
+f) You should also inform owner of other repositories to aviod using path\n\
+   of similar names.\n\
+============================================================================\n";
+			char	*unknown_err =
 "\n\
 ============================================================================\n\
-Unknow rename error, wanted:\n\
+Unknown rename error, wanted:\n\
     %s -> %s\n\
 Got:\n\
     %s -> %s\n\
-============================================================================\n",
-			buf, &buf[offset], buf, realname);
+============================================================================\n";
+			opts->applied--;
+			if (strcasecmp(&buf[offset], realname) == 0) {
+				fprintf(stderr, case_folding_err, buf,
+				    &buf[offset], buf, realname, &buf[offset]);
+			} else {
+				fprintf(stderr, unknown_err, buf,
+						&buf[offset], buf, realname);
+			}
+			fclose(p);
+			waitpid(pid, &status, 0);
+			pclose(get);
+#ifdef WIN32
+			sleep(1); /* for win98; wait for "bk get" to exit */
+#endif
+			restore(save, opts);
+			unlink(orig);
+			exit(1);
 		}
-		fclose(p);
-		waitpid(pid, &status, 0);
-		pclose(get);
-		restore(save, opts);
-		unlink(orig);
-		exit(1);
-	}
 #endif /* WIN32_FILE_SYSTEM */
 	}
 	waitpid(pid, &status, 0);
