@@ -360,7 +360,7 @@ cd $HERE/project
 bk export ../export
 cd ..
 cp -rp export export2
-rm export2/src/foo.c
+rm -f export2/src/foo.c
 diff -Nru export export2 > test_patch || : # legitimately exits 1
 ( echo patch; echo no ) | bk import test_patch project > import.out 2>&1
 cd project
@@ -469,7 +469,7 @@ echo $N Import a patch which deletes the logging_ok file ............$NL
 bk export -S $HERE/A
 bk export -S $HERE/B
 cd $HERE
-rm B/BitKeeper/etc/logging_ok
+rm -f B/BitKeeper/etc/logging_ok
 diff -Nur A B > P
 rm -rf SAVE
 cp -rp project SAVE

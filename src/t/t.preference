@@ -105,6 +105,18 @@ find SCCS -newer foo.c | grep SCCS/s.foo.c > /dev/null
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 echo OK
 
+echo $N checkout:GET w bk admin -fSCCS ..............................$NL
+bk edit $Q foo.c
+echo '%M%' > foo.c
+bk ci $Q -y'add keyword' foo.c || exit 1
+bk admin -fSCCS foo.c || exit 1
+f=`cat foo.c`
+if [ X$f != Xfoo.c ]
+then	echo 'failed (bug 2002-10-31-003)'
+else	echo 'bug 2002-10-31-003 fixed! update test.'
+	exit 1
+fi
+
 echo $N checkout:EDIT w clone .......................................$NL
 bk undo -sqfr+ || exit 1
 bk unedit $HERE/project/BitKeeper/etc/config
@@ -291,6 +303,42 @@ if [ ! -w bar.c ]
 then	echo failed
 	exit 1
 fi
+echo OK
+
+echo $N checkout:EDIT w fix -c ......................................$NL
+bk fix -c 2> ERR || exit 1
+test -s ERR && {
+	echo ERR should be empty
+	exit 1
+}
+x=`bk sfiles -c`
+test "X$x" = "XSCCS/s.bar.c SCCS/s.foo.c" && {
+	echo files not edited
+	exit 1
+}
+test -f ../SCCS/p.ChangeSet && {
+	echo ChangeSet file shouldn\'t be locked
+	exit 1
+}
+bk sfiles -c | bk delta $Q -C
+bk commit -Y../SCCS/c.ChangeSet $Q || exit 1
+echo OK
+
+echo $N checkout:EDIT w bk cset -x ..................................$NL
+bk cset $Q -x+ || exit 1
+test -w foo.c -a -f SCCS/p.foo.c || {
+	echo checkout of foo.c failed
+	exit 1
+}
+echo OK
+
+echo $N checkout:EDIT w bk unrm .....................................$NL
+bk rm foo.c || exit 1
+bk unrm -f foo.c > /dev/null || exit 1
+test -w foo.c -a -f SCCS/p.foo.c || {
+	echo checkout of foo.c failed
+	exit 1
+}
 echo OK
 
 echo $N checkout:none w pull ........................................$NL

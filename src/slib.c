@@ -244,12 +244,6 @@ fileTypeOk(mode_t m)
 	return ((S_ISREG(m)) || (S_ISLNK(m)));
 }
 
-private int
-Chmod(char *fname, mode_t mode)
-{
-	return (chmod(fname, mode));
-}
-
 /*
  * Compare up to but not including the newline.
  * They should be newlines or nulls.
@@ -322,7 +316,7 @@ mkline(char *p)
 	unless (p) return (0);
 	for (s = buf; (*s++ = *p++) != '\n'; );
 	s[-1] = 0;
-	assert((s - buf) < MAXLINE);
+	assert((s - buf) <= MAXLINE);
 	return (buf);
 }
 
@@ -420,7 +414,6 @@ private inline void
 freedelta(delta *d)
 {
 	freeLines(d->comments, free);
-	freeLines(d->mr, free);
 	freeLines(d->text, free);
 
 	if (d->rev) free(d->rev);
@@ -428,7 +421,6 @@ freedelta(delta *d)
 	if (d->sdate) free(d->sdate);
 	if (d->include) free(d->include);
 	if (d->exclude) free(d->exclude);
-	if (d->ignore) free(d->ignore);
 	if (d->symlink && !(d->flags & D_DUPLINK)) free(d->symlink);
 	if (d->hostname && !(d->flags & D_DUPHOST)) free(d->hostname);
 	if (d->pathname && !(d->flags & D_DUPPATH)) free(d->pathname);
@@ -2308,7 +2300,7 @@ morekids(delta *d, int bk_mode)
  * Get the revision name of the new delta.
  * Sep 2000 - removed branch, we don't support it.
  */
-private delta *
+delta *
 getedit(sccs *s, char **revp)
 {
 	char	*rev = *revp;
@@ -3274,6 +3266,7 @@ checkTags(sccs *s, int flags)
  * The buffer looks like ^Ac<T>data where <T> is one character type.
  * B - cset file root key
  * C - cset boundry
+ * D - dangling delta
  * E - ??
  * F - date fudge
  * H - host name
@@ -3298,6 +3291,9 @@ meta(sccs *s, delta *d, char *buf)
 		break;
 	    case 'C':
 		d->flags |= D_CSET;
+		break;
+	    case 'D':
+		d->dangling = 1;
 		break;
 	    case 'E':
 		/* OLD, ignored */
@@ -3545,12 +3541,14 @@ bad:
 				d->exclude = getserlist(s, 1, &buf[3], 0);
 				break;
 			    case 'g':
-				d->ignore = getserlist(s, 1, &buf[3], 0);
+		    		s->state |= S_READ_ONLY;
+				fprintf(stderr, "ignore serials unsupported\n");
 				break;
 			    case 'e':
 				goto done;
-			    case 'm':	/* save MR's and pass them through */
-				d->mr = addLine(d->mr, strnonldup(buf));
+			    case 'm':
+		    		s->state |= S_READ_ONLY;
+				fprintf(stderr, "mr records unsupported\n");
 				break;
 			    default:
 				fprintf(stderr, "Bad file format: ");
@@ -7630,7 +7628,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 	/*
 	 * Add in default xflags if the 1.0 delta doesn't have them.
 	 */
-	if (s->bitkeeper) {
+	if (BITKEEPER(s)) {
 		unless (s->tree->xflags) {
 			s->tree->flags |= D_XFLAGS;
 			s->tree->xflags = X_DEFAULT;
@@ -7736,15 +7734,6 @@ delta_table(sccs *s, FILE *out, int willfix)
 			putserlist(s, d->exclude, out);
 			fputmeta(s, "\n", out);
 		}
-		if (d->ignore) {
-			fputmeta(s, "\001g ", out);
-			putserlist(s, d->ignore, out);
-			fputmeta(s, "\n", out);
-		}
-		EACH(d->mr) {
-			fputmeta(s, d->mr[i], out);
-			fputmeta(s, "\n", out);
-		}
 		EACH(d->comments) {
 			/* metadata */
 			p = fmts(buf, "\001c ");
@@ -7773,6 +7762,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			assert(d->type == 'D');
 			fputmeta(s, "\001cC\n", out);
 		}
+		if (d->dangling) fputmeta(s, "\001cD\n", out);
 		if (d->dateFudge) {
 			p = fmts(buf, "\001cF");
 			p = fmttt(p, d->dateFudge);
@@ -7926,12 +7916,14 @@ SCCS:
 		fputmeta(s, "\n", out);
 	}
 	fputmeta(s, "\001U\n", out);
-	p = fmts(buf, "\001f e ");
-	p = fmtd(p, s->encoding);
-	*p++ = '\n';
-	*p   = '\0';
-	fputmeta(s, buf, out);
-	if (s->bitkeeper) {
+	if (BITKEEPER(s) || (s->encoding != E_ASCII)) {
+		p = fmts(buf, "\001f e ");
+		p = fmtd(p, s->encoding);
+		*p++ = '\n';
+		*p   = '\0';
+		fputmeta(s, buf, out);
+	}
+	if (BITKEEPER(s)) {
 		bits = sccs_xflags(sccs_top(s));
 		if (bits) {
 			sprintf(buf, "\001f x 0x%x\n", bits);
@@ -8001,17 +7993,15 @@ expandnleq(sccs *s, delta *d, MMAP *gbuf, char *fbuf, int *flags)
  * This is an expensive call but not as expensive as running diff.
  * flags is same as get flags.
  */
-int
-sccs_hasDiffs(sccs *s, u32 flags, int inex)
+private int
+_hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 {
 	MMAP	*gfile = 0;
 	MDBM	*ghash = 0;
 	MDBM	*shash = 0;
-	pfile	pf;
 	serlist *state = 0;
 	ser_t	*slist = 0;
 	int	print = 0, different;
-	delta	*d;
 	char	sbuf[MAXLINE];
 	char	*name = 0, *mode = "rb";
 	int	tmpfile = 0;
@@ -8025,15 +8015,7 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 
 #define	RET(x)	{ different = x; goto out; }
 
-	unless (HAS_GFILE(s) && HAS_PFILE(s)) return (0);
-
-	bzero(&pf, sizeof(pf));
-	if (sccs_read_pfile("hasDiffs", s, &pf)) return (-1);
-	if (inex && (pf.mRev || pf.iLst || pf.xLst)) RET(2);
-	unless (d = findrev(s, pf.oldrev)) {
-		verbose((stderr, "can't find %s in %s\n", pf.oldrev, s->gfile));
-		RET(-1);
-	}
+	if (inex && (pf->mRev || pf->iLst || pf->xLst)) RET(2);
 	/* A questionable feature for diffs */
 	if ((flags & GET_DIFFTOT) && (d != findrev(s, 0))) RET(1);
 
@@ -8078,7 +8060,7 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 		RET(-1);
 	}
 	assert(s->state & S_SOPEN);
-	slist = serialmap(s, d, pf.iLst, pf.xLst, &error);
+	slist = serialmap(s, d, pf->iLst, pf->xLst, &error);
 	assert(!error);
 	state = allocstate(0, 0, s->nextserial);
 	seekto(s, s->data);
@@ -8227,10 +8209,36 @@ out:
 		if (tmpfile) unlink(name);
 		free(name);
 	}
-	free_pfile(&pf);
 	if (slist) free(slist);
 	if (state) free(state);
 	return (different);
+}
+
+int
+sccs_hasDiffs(sccs *s, u32 flags, int inex)
+{
+	pfile	pf;
+	int	ret;
+	delta	*d;
+
+	unless (HAS_GFILE(s) && HAS_PFILE(s)) return (0);
+
+	bzero(&pf, sizeof(pf));
+	if (sccs_read_pfile("hasDiffs", s, &pf)) return (-1);
+	unless (d = findrev(s, pf.oldrev)) {
+		verbose((stderr, "can't find %s in %s\n", pf.oldrev, s->gfile));
+		free_pfile(&pf);
+		return (-1);
+	}
+	ret = _hasDiffs(s, d, flags, inex, &pf);
+	if ((ret == 1) && MONOTONIC(s) && d->dangling && !s->tree->dangling) {
+		while (d->next && (d->dangling || TAG(d))) d = d->next;
+		assert(d->next);
+		strcpy(pf.oldrev, d->rev);
+		ret = _hasDiffs(s, d, flags, inex, &pf);
+	}
+	free_pfile(&pf);
+	return (ret);
 }
 
 private inline int
@@ -8455,7 +8463,6 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 	if (!streq(new, s->gfile) && !streq(new, DEV_NULL)){
 		unlink(new);		/* careful */
 	}
-
 	switch (ret) {
 	    case 0:	/* no diffs */
 		return (1);
@@ -9052,17 +9059,19 @@ updatePending(sccs *s)
 	touch(sccsXfile(s, 'd'),  GROUP_MODE);
 }
 
-/* s/\r\n$/\n/ */
+/* s/\r+\n$/\n/ */
 private void
 fix_crnl(register char *s)
 {
 	char	*p = s;
 	while (*p) p++;
 	unless (p - s >= 2) return;
-	if (p[-2] == '\r' && p[-1] == '\n') {
-		p[-2] = '\n';
-		p[-1] = 0;
+	unless (p[-2] == '\r' && p[-1] == '\n') return;
+	for (p -= 2; p != s; p--) {
+		unless (p[-1] == '\r') break;
 	}
+	p[0] = '\n';
+	p[1] = 0;
 }
 
 /*
@@ -9463,7 +9472,7 @@ out:		sccs_unlock(s, 'z');
 	    HAS_GFILE(s)) {
 		fix_stime(s);
 	}
-	Chmod(s->sfile, 0444);
+	chmod(s->sfile, 0444);
 	if (BITKEEPER(s)) updatePending(s);
 	sccs_unlock(s, 'z');
 	return (0);
@@ -9537,17 +9546,18 @@ sccs_isleaf(sccs *s, delta *d)
 
 /*
  * Check open branch
+ * XXX: Assumes D_RED is clear ; exits with D_RED clear
  */
 private int
 checkOpenBranch(sccs *s, int flags)
 {
-	delta	*d;
+	delta	*d, *m, *tip = 0, *symtip = 0;
 	int	ret = 0, tips = 0, symtips = 0;
 
 	/* Allow open branch for logging repository */
 	if (LOGS_ONLY(s)) return (0);
 
-	for (d = s->table; d; d = d->next) {
+	for (d = s->table; d; (d->flags &= ~D_RED), d = d->next) {
 		/*
 		 * This order is important:
 		 * Skip 1.0,
@@ -9563,27 +9573,44 @@ checkOpenBranch(sccs *s, int flags)
 				    s->sfile, d->rev));
 				ret = 1;
 			}
-			if (d->symLeaf && !(d->flags & D_GONE)) symtips++;
+			if (d->symLeaf && !(d->flags & D_GONE)) {
+				if (symtips) {
+					if (symtips == 1) {
+					    verbose((stderr,
+			    			"%s: unmerged symleaf %s\n",
+						s->sfile, symtip->rev));
+					}
+					verbose((stderr,
+			    		    "%s: unmerged symleaf %s\n",
+					    s->sfile, d->rev));
+					ret = 1;
+				}
+				symtip = d;
+				symtips++;
+			}
 		}
-		if (d->flags & D_GONE) continue;
-		if (isleaf(s, d)) tips++;
-	}
-
-	unless ((tips > 1) || (symtips > 1)) return (ret);
-
-	for (d = s->table; d; d = d->next) {
-		if (d->flags & D_GONE) continue;
-		if (streq(d->rev, "1.0")) continue;
-		if ((symtips > 1) && d->symLeaf) {
-			verbose((stderr,
-			    "%s: unmerged symleaf %s\n", s->sfile, d->rev));
-			ret = 1;
+		if ((d->flags & D_GONE) || (d->type == 'R')) continue;
+		unless (d->flags & D_RED) {
+			if (tips) {
+				if (tips == 1) {
+				    verbose((stderr,
+		    			"%s: unmerged leaf %s\n",
+					s->sfile, tip->rev));
+				}
+				verbose((stderr,
+		    		    "%s: unmerged leaf %s\n",
+				    s->sfile, d->rev));
+				ret = 1;
+			}
+			tip = d;
+			tips++;
 		}
-		if (isleaf(s, d)) {
-			verbose((stderr,
-			    "%s: unmerged leaf %s\n", s->sfile, d->rev));
+		if (d->parent) d->parent->flags |= D_RED;
+		if (d->merge) {
+			m = sfind(s, d->merge);
+			assert(m);
+			m->flags |= D_RED;
 		}
-		ret = 1;
 	}
 	return (ret);
 }
@@ -10389,6 +10416,7 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
 	rev = p->rev;
 	getedit(sc, &rev);
 	n->rev = strdup(rev);
+	explode_rev(n);
 	n->pserial = p->serial;
 	n->serial = sc->nextserial++;
 	sc->numdeltas++;
@@ -10423,6 +10451,8 @@ name2xflg(char *fl)
 		return X_KV;
 	} else if (streq(fl, "NOMERGE")) {
 		return X_NOMERGE;
+	} else if (streq(fl, "MONOTONIC")) {
+		return X_MONOTONIC;
 	}
 	return (0);			/* lint */
 }
@@ -10514,6 +10544,8 @@ sccs_encoding(sccs *sc, char *encp, char *compp)
 		enc = 0;
 	}
 
+	if (sc && CSET(sc)) comp = 0;	/* never compress ChangeSet file */
+
 	if (compp) {
 		if (streq(compp, "gzip")) {
 			comp = E_GZIP;
@@ -10545,7 +10577,6 @@ adjust_serials(delta *d, int amount)
 	if (d->merge) d->merge += amount;
 	EACH(d->include) d->include[i] += amount;
 	EACH(d->exclude) d->exclude[i] += amount;
-	EACH(d->ignore) d->ignore[i] += amount;
 }
 
 /*
@@ -10618,19 +10649,6 @@ sccs_newchksum(sccs *s)
 	return (sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0));
 }
 
-private	void
-remove_comments(sccs *s)
-{
-	delta	*d;
-
-	for (d = s->table; d; d = d->next) {
-		if (d->comments && !(d->flags & D_XFLAGS)) {
-			freeLines(d->comments, free);
-			d->comments = 0;
-		}
-	}
-}
-
 /*
  * Reverse sort it, we want the ^A's, if any, at the end.
  */
@@ -10646,7 +10664,7 @@ obscure(int uu, char *buf)
 	int	len;
 	char	*new;
 
-	for (len = 0; buf[len] != '\n'; len++);
+	for (len = 0; buf[len] && (buf[len] != '\n'); len++);
 	new = malloc(len+2);
 	strncpy(new, buf, len+1);
 	new[len+1] = 0;
@@ -10658,6 +10676,22 @@ obscure(int uu, char *buf)
 	}
 	assert(*new != '\001');
 	return (new);
+}
+
+private	void
+obscure_comments(sccs *s)
+{
+	delta	*d;
+	char	*buf;
+	int	i;
+
+	for (d = s->table; d; d = d->next) {
+		EACH(d->comments) {
+			buf = obscure(0, d->comments[i]);
+			free(d->comments[i]);
+			d->comments[i] = buf;
+		}
+	}
 }
 
 /*
@@ -10678,6 +10712,7 @@ sccs_admin(sccs *sc, delta *p, u32 flags, char *new_encp, char *new_compp,
 	char	*t;
 	char	*buf;
 	delta	*d = 0;
+	int	obscure_it;
 
 	assert(!z); /* XXX used to be LOD item */
 
@@ -10733,6 +10768,9 @@ out:
 #endif
 	}
 	if (flags & (ADMIN_BK|ADMIN_FORMAT)) goto out;
+	if ((flags & ADMIN_OBSCURE) && sccs_clean(sc, (flags & SILENT))) {
+		goto out;
+	}
 
 	if (addSym("admin", sc, flags, s, &error)) {
 		flags |= NEWCKSUM;
@@ -10813,7 +10851,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	}
 
 	/*
-	 * flags, unkwown single letter passed through.
+	 * flags, unknown single letter passed through.
 	 */
 	for (i = 0; f && f[i].flags; ++i) {
 		int	add = f[i].flags & A_ADD;
@@ -10826,13 +10864,20 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			if (v) *v++ = '\0';
 			if (v && *v == '\0') v = 0;
 
+			if ((name2xflg(fl) & X_MONOTONIC) &&
+			    sccs_top(sc)->dangling) {
+			    	fprintf(stderr, "admin: "
+				    "must remove danglers first (monotonic)\n");
+				error = 1;
+				sc->state |= S_WARNED;
+				continue;
+			}
 			if (name2xflg(fl) & X_MAYCHANGE) {
 				if (v) goto noval;
 				ALLOC_D();
 				flagsChanged +=
 				    changeXFlag(sc, d, flags, add, fl);
-			}
-			else if (streq(fl, "DEFAULT")) {
+			} else if (streq(fl, "DEFAULT")) {
 				if (sc->defbranch) free(sc->defbranch);
 				sc->defbranch = v ? strdup(v) : 0;
 				flagsChanged++;
@@ -10852,7 +10897,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		noval:	fprintf(stderr,
 			    "admin: flag %s can't have a value\n", fl);
 			error = 1;
-			sc->state = S_WARNED;
+			sc->state |= S_WARNED;
 		} else {
 			char	*buf;
 
@@ -10901,10 +10946,27 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		unless (remove_1_0(sc)) flags &= ~ADMIN_RM1_0;
 	}
 
+	if (flags & ADMIN_NEWPATH) {
+		ALLOC_D(); /* We pick up the new path when we init the delta */
+		assert(d->pathname);
+		d->comments = addLine(d->comments,
+				aprintf("Rename: %s -> %s",
+					d->parent->pathname, d->pathname));
+		flags |= NEWCKSUM;
+	}
+
+	if (flags & ADMIN_DELETE) {
+		ALLOC_D(); /* We pick up the new path when we init the delta */
+		assert(d->pathname);
+		d->comments = addLine(d->comments,
+				aprintf("Delete: %s", d->parent->pathname));
+		flags |= NEWCKSUM;
+	}
+
 	if ((flags & NEWCKSUM) == 0) {
 		goto out;
 	}
-	if (flags & ADMIN_OBSCURE) remove_comments(sc);
+	if (flags & ADMIN_OBSCURE) obscure_comments(sc);
 
 	/*
 	 * Do the delta table & misc.
@@ -10928,7 +10990,13 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	assert(sc->state & S_SOPEN);
 	seekto(sc, sc->data);
 	debug((stderr, "seek to %d\n", (int)sc->data));
-	if ((old_enc & E_GZIP) && (flags & ADMIN_OBSCURE)) {
+	obscure_it = (flags & ADMIN_OBSCURE);
+	/* ChangeSet can't be obscured, neither can the BitKeeper/etc files */
+	if (CSET(sc) ||
+	    (sc->tree->pathname && strneq(sc->tree->pathname,"BitKeeper/etc/",13))) {
+	    	obscure_it = 0;
+	}
+	if ((old_enc & E_GZIP) && obscure_it) {
 		fprintf(stderr, "admin: cannot obscure gzipped data.\n");
 		OUT;
 	}
@@ -10937,9 +11005,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	/* if old_enc == new_enc, this is slower but handles both cases */
 	sc->encoding = old_enc;
 	while (buf = nextdata(sc)) {
-		if (flags & ADMIN_OBSCURE) {
-			buf = obscure(old_enc & E_UUENCODE, buf);
-		}
+		if (obscure_it) buf = obscure(old_enc & E_UUENCODE, buf);
 		sc->encoding = new_enc;
 		if (flags & ADMIN_ADD1_0) {
 			fputbumpserial(sc, buf, 1, sfile);
@@ -10956,7 +11022,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			fputdata(sc, buf, sfile);
 		}
 		sc->encoding = old_enc;
-		if (flags & ADMIN_OBSCURE) free(buf);
+		if (obscure_it) free(buf);
 	}
 	if (flags & ADMIN_ADD1_0) {
 		sc->encoding = new_enc;
@@ -10990,7 +11056,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	}
 
 	if (HAS_GFILE(sc) && (sc->initFlags&INIT_FIXSTIME)) fix_stime(sc);
-	Chmod(sc->sfile, 0444);
+	chmod(sc->sfile, 0444);
 	goto out;
 #undef	OUT
 }
@@ -11061,7 +11127,6 @@ out:
 		if (d->merge) d->merge = remap[d->merge];
 		EACH(d->include) d->include[i] = remap[d->include[i]];
 		EACH(d->exclude) d->exclude[i] = remap[d->exclude[i]];
-		EACH(d->ignore) d->ignore[i] = remap[d->ignore[i]];
 	}
 
 	unless (sfile = fopen(sccsXfile(s, 'x'), "w")) {
@@ -11107,7 +11172,7 @@ out:
 		    t, s->sfile, t);
 		OUT;
 	}
-	Chmod(s->sfile, 0444);
+	chmod(s->sfile, 0444);
 	goto out;
 #undef	OUT
 }
@@ -11626,6 +11691,7 @@ sccs_hashcount(sccs *s)
  * R/D/M - delta type
  * B - cset file key
  * C - cset boundry marker
+ * D - dangle marker
  * c - comments
  * E - ignored for now
  * F - date fudge
@@ -11737,6 +11803,12 @@ skip:
 	/* Cset marker */
 	if ((buf[0] == 'C') && !buf[1]) {
 		d->flags |= D_CSET;
+		unless (buf = mkline(mnext(f))) goto out; lines++;
+	}
+
+	/* Dangle marker */
+	if ((buf[0] == 'D') && !buf[1]) {
+		d->dangling = 1;
 		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
@@ -12156,7 +12228,7 @@ abort:		fclose(sfile);
 		sccs_unlock(s, 'z');
 		exit(1);
 	}
-	Chmod(s->sfile, 0444);
+	chmod(s->sfile, 0444);
 	sccs_unlock(s, 'z');
 	return (0);
 }
@@ -12325,6 +12397,13 @@ out:
 		OUT;
 	}
 
+	/* Refuse to make deltas to 100% dangling files */
+	if (s->tree->dangling && !(flags & DELTA_PATCH)) {
+		fprintf(stderr,
+		    "delta: entire file %s is dangling, abort.\n", s->gfile);
+		OUT;
+	}
+
 	/*
 	 * OK, checking done, start the delta.
 	 */
@@ -12348,6 +12427,18 @@ out:
 		strcpy(pf.newrev, rev);
 	}
 
+	if (MONOTONIC(s) && d->dangling) {
+		if (diffs && !(flags & DELTA_PATCH)) {
+			fprintf(stderr,
+			    "delta: dangling deltas may not be "
+			    "combined with diffs\n");
+			OUT;
+		}
+		while (d->next && (d->dangling || TAG(d))) d = d->next;
+		assert(d->next);
+		strcpy(pf.oldrev, d->rev);
+	}
+
 	if (pf.mRev || pf.xLst || pf.iLst) flags |= DELTA_FORCE;
 	debug((stderr, "delta found rev\n"));
 	if (diffs) {
@@ -12358,9 +12449,10 @@ out:
 			if (flags & DELTA_FORCE) {
 				break;     /* forced 0 sized delta */
 			}
-			if (!(flags & SILENT))
+			unless (flags & SILENT) {
 				fprintf(stderr,
 				    "Clean %s (no diffs)\n", s->gfile);
+			}
 			if (flags & DELTA_AUTO) {
 				error = -2;
 				goto out;
@@ -12533,7 +12625,7 @@ out:
 	    HAS_GFILE(s)) {
 		fix_stime(s);
 	}
-	Chmod(s->sfile, 0444);
+	chmod(s->sfile, 0444);
 	if (BITKEEPER(s) && !(flags & DELTA_NOPENDING)) {
 		 updatePending(s);
 	}
@@ -12548,14 +12640,14 @@ void
 fit(char *buf, unsigned int i)
 {
 	int	j;
-	float	f;
+	u32	f;
 	static	char *s[] = { "K", "M", "G", 0 };
 	if (i < 100000) {
 		sprintf(buf, "%05d\n", i);
 		return;
 	}
-	for (j = 0, f = 1000.; s[j]; j++, f *= 1000.) {
-		sprintf(buf, "%04.3g%s", i/f, s[j]);
+	for (j = 0, f = 1000; s[j]; j++, f *= 1000) {
+		sprintf(buf, "%04u%s", (i+(f-1))/f, s[j]);
 		if (strlen(buf) == 5) return;
 	}
 	sprintf(buf, "E2BIG");
@@ -13829,6 +13921,9 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		if (flags & X_NOMERGE) {
 			if (comma) fs(","); fs("NOMERGE"); comma = 1;
 		}
+		if (flags & X_MONOTONIC) {
+			if (comma) fs(","); fs("MONOTONIC"); comma = 1;
+		}
 		return (strVal);
 	}
 
@@ -14284,6 +14379,14 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
+	if (streq(kw, "DANGLING")) {
+		if (MONOTONIC(s) && d->dangling) {
+			fs(d->rev);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
 	return notKeyword;
 }
 
@@ -14705,6 +14808,7 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 	 */
 	if (d->csetFile) fprintf(out, "B %s\n", d->csetFile);
 	if (d->flags & D_CSET) fprintf(out, "C\n");
+	if (d->dangling) fprintf(out, "D\n");
 	EACH(d->comments) {
 		assert(d->comments[i][0] != '\001');
 		fprintf(out, "c %s\n", d->comments[i]);
@@ -15919,7 +16023,7 @@ stripDeltas(sccs *s, FILE *out)
 		    buf, s->sfile, buf);
 		return (1);
 	}
-	Chmod(s->sfile, 0444);
+	chmod(s->sfile, 0444);
 	return (0);
 }
 
@@ -16042,7 +16146,7 @@ smartUnlink(char *file)
 		errno = save;
 		return (-1);
 	}
-	chmod(file, S_IWRITE);
+	chmod(file, 0700);
 	unless (rc = unlink(file)) return (0);
 	unless (access(file, 0)) {
 		fprintf(stderr, "smartUnlink:cannot unlink %s, errno = %d\n",
@@ -16061,15 +16165,15 @@ smartRename(char *old, char *new)
 #undef	rename
 	unless (rc = rename(old, new)) return (0);
 	save = errno;
-	if (smartUnlink(new)) {
-		debug((stderr, "smartRename: unlink fail for %s, errno=%d\n",
+	if (chmod(new, 0700)) {
+		debug((stderr, "smartRename: chmod failed for %s, errno=%d\n",
 		    new, errno));
-		errno = save;
-		return (rc);
+	} else {
+		unless (rc = rename(old, new)) return (0);
+		fprintf(stderr,
+		    "smartRename: cannot rename from %s to %s, errno=%d\n",
+		    old, new, errno);
 	}
-	unless (rc = rename(old, new)) return (0);
-	fprintf(stderr, "smartRename: cannot rename from %s to %s, errno=%d\n",
-	    old, new, errno);
 	errno = save;
 	return (rc);
 }

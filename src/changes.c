@@ -216,6 +216,7 @@ doit_local(int nac, char **nav, char *url)
 	/*
 	 * What we want is: bk synckey -lk url | bk changes opts -
 	 */
+	nav[nac++] = strdup("-a");
 	nav[nac++] = strdup("-");
 	assert(nac < 30);
 	nav[nac] = 0;
@@ -491,7 +492,7 @@ dumplog(slog *list, int *n)
  */
 private sccs *
 sccs_keyinitAndCache(char *key, int flags,
-    project *proj, MDBM *idDB, MDBM *graphDB, MDBM *goneDB)
+    project *proj, MDBM **idDB, MDBM *graphDB, MDBM *goneDB)
 {
 	static	int	rebuilt = 0;
 	datum	k, v;
@@ -505,16 +506,16 @@ sccs_keyinitAndCache(char *key, int flags,
 		return (s);
 	}
  retry:
-	s = sccs_keyinit(key, flags, proj, idDB);
+	s = sccs_keyinit(key, flags, proj, *idDB);
 	unless (s || gone(key, goneDB)) {
 		unless (rebuilt) {
-			mdbm_close(idDB);
+			mdbm_close(*idDB);
 			if (sccs_reCache(1)) {
 				fprintf(stderr,
 				    "changes: cannot build %s\n",
 				    IDCACHE);
 			}
-			unless (idDB =
+			unless (*idDB =
 			    loadDB(IDCACHE,
 				0, DB_KEYFORMAT|DB_NODUPS)) {
 				perror("idcache");
@@ -535,6 +536,7 @@ sccs_keyinitAndCache(char *key, int flags,
 
 /*
  * Given a "top" delta "d", this function computes ChangeSet boundaries
+ * It collect all the deltas inside a changeset and stuff them to "list".
  */
 private slog *
 collectDelta(sccs *s, delta *d, slog *list, char *dspec, int *n, char *dbuf)
@@ -558,18 +560,17 @@ collectDelta(sccs *s, delta *d, slog *list, char *dspec, int *n, char *dbuf)
 		ll->next = list;
 		list = ll;
 		(*n)++;
-		d->flags &= ~D_SET;
 
 		if (d->merge) {
 			e = sfind(s, d->merge);
 			assert(e);
-			unless (e->flags & D_CSET) {
+			unless (e->flags & (D_SET|D_CSET)) {
 				list = collectDelta(s, e, list, dspec, n, dbuf);
 			}
 		}
 		
 		d =  d->parent;
-	} while (d && !(d->flags & D_CSET));
+	} while (d && !(d->flags & (D_SET|D_CSET)));
 	return (list);
 }
 
@@ -730,7 +731,7 @@ cset(sccs *cset, FILE *f, char *dspec)
 			assert(dkey);
 			*dkey++ = 0;
 			s = sccs_keyinitAndCache(
-				keys[i], iflags, proj, idDB, graphDB, goneDB);
+				keys[i], iflags, proj, &idDB, graphDB, goneDB);
 			unless (s) continue;
 			d = sccs_findKey(s, dkey);
 			assert(d);

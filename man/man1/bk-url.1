@@ -26,10 +26,15 @@ Access is all local, through the local file system.
 Normally a remote repository unless 
 .ARG host 
 is what
-.B bk host
+.B bk gethost
 returns or is
 .BR localhost .
 In either of those cases, this form is the same as the above form.
+.head
+\fBfile\fR://\c
+.ARG pathname
+.br
+Access is through the local file system.
 .SS RSH
 .in +4
 .head
@@ -248,6 +253,13 @@ The following are the Unix environment variable options available for use.
 .Bc http://
 .ARGc host :
 .ARG port
+.br
+.Bc http_proxy=
+.Bc http://[
+.ARGc user :
+.ARGc pass @]
+.ARGc host :
+.ARG port /
 .br
 .Bc no_proxy=
 .ARG comma,seperated,list,of,hosts,to,not,proxy

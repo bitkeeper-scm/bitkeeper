@@ -239,9 +239,6 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 			EACH(e->exclude) {
 				if (e->exclude[i] >= serial) e->exclude[i]++;
 			}
-			EACH(e->ignore) {
-				if (e->ignore[i] >= serial) e->ignore[i]++;
-			}
 		}
 	}
 	s->nextserial++;
@@ -343,5 +340,7 @@ cset_write(sccs *s)
 		perror(s->sfile);
 		return (-1);
 	}
+	/* We don't want ChangeSet files compressed */
+	if (s->encoding & E_GZIP) sccs_unzip(s);
 	return (0);
 }

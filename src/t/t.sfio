@@ -1,0 +1,29 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+ 
+CFS=@
+
+echo $N Make sure that sfio is forgiving about readonly dirs ........$NL
+mkdir ro rw
+echo hello world > ro/a
+echo yo momma > ro/b
+echo wears army boots > rw/c
+echo yo poppa likes it > rw/d
+find ro rw -type f | bk sfio -o $Q > SFIO
+chmod 555 ro
+bk sfio -i < SFIO 2>ERR || exit 1
+grep -q 'ro/a existed but contents match, skipped.' ERR || {
+	echo bad error message
+	cat ERR
+	exit 1
+}
+chmod 777 ro	# So we can clean up
+echo OK

@@ -43,7 +43,15 @@ rcs2sccs_main(int ac, char **av)
 			    return(1);
 		}
 	}
-	unless (co_prog = prog2path("co")) {
+	unless (co_prog = getenv("BK_RCS_CO")) {
+		/* We typically want /usr/local/bin/co, it's more recent */
+		if (executable("/usr/local/bin/co")) {
+			co_prog = "/usr/local/bin/co";
+		} else {
+			co_prog = prog2path("co");
+		}
+	}
+	unless (co_prog && executable(co_prog)) {
 		fprintf(stderr,
     "rcs2sccs needs the RCS program co, which was not found in your PATH.\n");
     		exit(1);

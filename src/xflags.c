@@ -149,7 +149,7 @@ checkXflags(sccs *s, delta *d, int what)
 	if (new == want) return (0);
 	if (what & XF_STATUS) return (1);
 	if (what & XF_DRYRUN) {
-		fprintf(stderr, "%s@@%s ", s->gfile, d->rev);
+		fprintf(stderr, "%s|%s ", s->gfile, d->rev);
 		if (new & ~want) {
 			fprintf(stderr, "should not have ");
 			pflags(new & ~want);
@@ -168,6 +168,7 @@ checkXflags(sccs *s, delta *d, int what)
 	return (1);
 }
 
+/* XXX - this should be shared with the prs dspec code */
 private void
 pflags(u32 flags)
 {
@@ -215,6 +216,9 @@ pflags(u32 flags)
 	if (flags & X_NOMERGE) {
 		if (comma) fs(","); fs("NOMERGE"); comma = 1;
 	}
+	if (flags & X_MONOTONIC) {
+		if (comma) fs(","); fs("MONOTONIC"); comma = 1;
+	}
 	unless (comma) fs("<NONE>");
 }
 
@@ -237,6 +241,7 @@ a2xflag(char *flag)
 	if (streq(flag, "EOLN_NATIVE")) return (X_EOLN_NATIVE);
 	if (streq(flag, "LONGKEY")) return (X_LONGKEY);
 	if (streq(flag, "NOMERGE")) return (X_NOMERGE);
+	if (streq(flag, "MONOTONIC")) return (X_MONOTONIC);
 	fprintf(stderr, "Unknown flag: %s\n", flag);
 	return (0);
 }

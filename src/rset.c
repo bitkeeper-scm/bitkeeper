@@ -461,7 +461,7 @@ usage:				system("bk help -s rset");
 	db1 = s->mdbm; s->mdbm = NULL;
 	assert(db1);
 	if (rev2) {
-		char 	*r = streq(".", rev2) ? "+" : rev2;
+		char 	*r;
 
 		if (streq(".", rev2)) {
 			r = "+";

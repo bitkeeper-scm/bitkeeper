@@ -18,7 +18,7 @@
 
 echo $N Setting up cset split testing respositories .................$NL
 rm -rf simple
-TZ=GMT no_logging simple
+TZ=UTC+0 no_logging simple
 touch a b c d
 bk new $Q a b c d
 TZ=EST bk commit $Q -SBASETAG -y1.2
@@ -49,10 +49,10 @@ bk clone $Q simple host_inh
 cd host_inh
 bk edit $Q a
 bk delta $Q -y1.2 a
-TZ=GMT bk commit $Q -y1.3
+TZ=UTC+0 bk commit $Q -y1.3
 bk edit $Q b
 bk delta $Q -y1.2 b
-TZ=GMT bk commit $Q -y1.4
+TZ=UTC+0 bk commit $Q -y1.4
 bk csetprune < ../KEYS 2> ERROR
 if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
 zone=`bk prs -h -r+ -d':TZ:\n' ChangeSet`
@@ -386,6 +386,66 @@ cd pruneall
 bk -r prs -hr+ -nd:ROOTKEY: > ../ALLKEYS
 bk csetprune < ../ALLKEYS 2> ERROR
 if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
+echo OK
+
+# Try leaving tag graph structure alone
+echo $N Keep tag graph structure ....................................$NL
+cd $HERE
+rm -rf kg1
+bk clone $Q simple kg1
+cd kg1
+bk edit $Q a
+bk delta $Q -y1.2 a
+bk commit $Q -SKG1A -y1.3
+bk edit $Q a
+bk delta $Q -y1.3 a
+bk commit $Q -SKG1B -y1.4
+bk cset $Q -x1.4 -yx1.4
+bk tag $Q KG1C
+bk csetprune -S < ../KEYS 2> ERROR
+if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
+tip=`bk prs -rKG1A -hnd':I:' ChangeSet`
+if [ "$tip" != 1.2 ]; then echo Failed; exit 1; fi
+tip=`bk prs -rKG1B -hnd':I:' ChangeSet`
+if [ "$tip" != 1.2 ]; then echo Failed; exit 1; fi
+tip=`bk prs -rKG1C -hnd':I:' ChangeSet`
+if [ "$tip" != 1.2 ]; then echo Failed; exit 1; fi
+echo OK
+
+# Test specifying the package root
+echo $N Specify random bits to use in new package root key ..........$NL
+cd $HERE
+rm -rf ranbit
+bk clone $Q simple ranbit
+cd ranbit
+bk edit $Q a
+bk delta $Q -y1.2 a
+bk commit $Q -SKG2A -y1.3
+# Test for invalid keys not working ..
+bk csetprune -k 12345 < ../KEYS 2> ERROR && {
+	echo Failed
+	echo Key must be 16 chars: worked with 12345
+	exit 1
+}
+bk csetprune -k 1234567890abcdeg < ../KEYS 2> ERROR && {
+	echo Failed
+	echo Must be hex characters: worked with 'g'
+	exit 1
+}
+bk csetprune -k 1234567890abcdeF < ../KEYS 2> ERROR && {
+	echo Failed
+	echo Hex characters must be lower case: worked with 'F'
+	exit 1
+}
+RDOM="1234567890abcdef"
+bk csetprune -k "$RDOM" < ../KEYS 2> ERROR
+if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
+rbits=`bk prs -r+ -hnd':RANDOM:' ChangeSet`
+test "$rbits" = "$RDOM" || {
+	echo Failed
+	echo "RANDOM bits in rootkey: wanted '$RDOM', got '$rbits'"
+	exit 1
+}
 echo OK
 
 cores

@@ -92,14 +92,14 @@ _superset() {
 	__cd2root
 	LIST=YES
 	QUIET=
-	PUSH=-l
+	CHANGES=-v
 	EXIT=0
 	TMP=/tmp/bksup$$
 	TMP2=/tmp/bksup2$$
 	while getopts q opt
 	do
 		case "$opt" in
-		q) QUIET=-q; PUSH=; LIST=NO;;
+		q) QUIET=-q; CHANGES=; LIST=NO;;
 		*) echo "Usage: superset [-q] [parent]"
 		   exit 1;;
 		esac
@@ -109,8 +109,8 @@ _superset() {
 	test "X$@" = X && {
 		test "X`bk parent -qp`" = "X" && exit 1
 	}
-	bk push -n -o$TMP2 $QUIET $PUSH "$@" 
-	grep -q 'Nothing to send to' $TMP2 || {
+	bk changes -La $CHANGES "$@" > $TMP2
+	test -s $TMP2 && {
 		test $LIST = NO && {
 			rm -f $TMP $TMP2
 			exit 1
@@ -142,7 +142,7 @@ _superset() {
 	(bk sfiles -x
 	 bk sfiles -xa BitKeeper/triggers
 	 bk sfiles -xa BitKeeper/etc |
-	    egrep -v 'etc/SCCS|etc/csets-out|etc/csets-in'
+	    egrep -v 'etc/SCCS|etc/csets-out|etc/csets-in|etc/level'
 	) | sort > $TMP2
 	test -s $TMP2 && {
 		test $LIST = NO && {
@@ -497,6 +497,7 @@ _unrm () {
 			echo ""
 			echo ""
 		esac
+		bk -R unedit "$RPATH" 	# follow checkout modes
 	done < $LIST 
 	rm -f $LIST $TMPFILE
 }
@@ -524,6 +525,22 @@ _repair()
 	
 }
 
+# For sending repositories back to BitMover, this removes all comments
+# and obscures data contents.
+_obscure() {
+	ARG=--I-know-this-destroys-my-tree
+	test "$1" = "$ARG" || {
+		echo "usage: bk obscure $ARG"
+		exit 1
+	}
+	test `bk -r sfiles -c | wc -c` -gt 0 && {
+		echo "obscure: will not obscure modified tree"
+		exit 1
+	}
+	bk -r admin -Znone
+	BK_FORCE=YES bk -r admin -O
+}
+
 __bkfiles() {
 	bk sfiles "$1" |
 	    bk prs -hr1.0 -nd:DPN: - | grep BitKeeper/ > ${TMP}/bk$$
@@ -533,40 +550,6 @@ __bkfiles() {
 		exit 1
 	}
 	rm ${TMP}/bk$$
-}
-
-_mvdir() {		# /* doc 2.0 */
-
-	case `bk version` in
-	*Basic*)
-		echo "bk mvdir is not supported in this BitKeeper Basic"
-		exit 1;
-		;;
-	esac
-	if [ X"$1" = X"--help" ]; then bk help mvdir; exit 0; fi
-	if [ X"$2" = X ]; then bk help -s mvdir; exit 1; fi
-	if [ X"$3" != X ]; then bk help -s mvdir; exit 1; fi
-	if [ ! -d "$1" ]; then echo "$1" is not a directory; exit 1; fi
-	if [ -f "$2" ]; then echo "$2" is a file; exit 1; fi
-	if [ -d "$2" ]
-	then
-		bk mvdir "$1" "$2/`basename $1`"
-		return $?
-	fi
-
-	__bkfiles "$1" "Moving"
-	
-	bk -r check -a || exit 1;
-	# Win32 note: must use relative path or drive:/path
-	# because cygwin mv interpret /path relative to the mount tables.
-	# XXX TODO we should move this code to a C function
-	mkdir -p "$2"
-	rmdir "$2"
-	mv "$1" "$2"
-	cd "$2"
-	bk sfiles -u | bk edit -q -
-	bk sfiles | bk delta -q -ymvdir -
-	bk idcache -q
 }
 
 _rmdir() {		# /* doc 2.0 */
@@ -891,6 +874,24 @@ _c2r() {	# undoc
 	fi
 	shift `expr $OPTIND - 1`
 	bk prs -r"$REV" -hnd:REV: "$@"
+}
+
+# XXX undocumented hack that wayne uses.
+#
+# clone a remote repo using a local tree as a baseline
+# assumes UNIX (clone -l)
+_clonemod() {
+	if [ $# -ne 3 ]
+	then
+		echo "usage: bk clonemod URL LOCAL NEW"
+		exit 1
+	fi
+
+	bk clone -lq $2 $3 || exit 1
+	cd $3 || exit 1
+	bk parent -q $1 || exit 1
+	bk undo -q -fa`bk repogca` || exit 1
+	bk pull
 }
 
 # ------------- main ----------------------

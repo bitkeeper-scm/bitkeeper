@@ -91,6 +91,7 @@ typedef struct {
 	char	*uid;			/* desired uid or null */
 	char	*gid;			/* desired gid or null */
 	char	*pidfile;		/* write the daemon pid here */
+	char	*logfile;		/* if set, log commands to here */
 	char	*startDir;		/* start up directory for daemon */
 	char	remote[16];		/* a.b.c.d of client */
 } bkdopts;

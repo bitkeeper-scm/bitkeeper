@@ -69,13 +69,14 @@ proc undo {} \
 proc redo {} \
 {
 	global nextBoth nextDiff rDiff LastDelete
+	global gc app
 
 	set state [.merge.menu.redo cget -state]
 	if {$state == "disabled"} { return }
 	incr nextBoth 2
 	incr nextDiff 2
 	.merge.t insert end $LastDelete {tmp redo}
-	.merge.t tag configure redo -background pink
+	.merge.t tag configure redo -background $gc($app.redoBG)
 	saveMark redo
 	resolved 1
 	next
@@ -274,7 +275,7 @@ proc currentLine {array index} \
 # overrides proc from difflib.tcl
 proc highlightDiffs {} \
 {
-	global	rDiff gc
+	global	rDiff gc app
 
 	.diffs.left tag delete d
 	.diffs.right tag delete d
@@ -285,10 +286,10 @@ proc highlightDiffs {} \
 		.diffs.right tag add diff $Diff $End
 	}
 	.diffs.left tag configure d \
-	    -foreground black \
+	    -foreground $gc($app.textFG) \
 	    -font $gc(fm.activeOldFont)
 	.diffs.right tag configure d \
-	    -foreground black \
+	    -foreground $gc($app.textFG) \
 	    -font $gc(fm.activeNewFont)
 	.diffs.left tag configure diff \
 	    -background $gc(fm.oldColor)
@@ -308,7 +309,7 @@ proc dot {} \
 # overrides 'dot' from difflib.tcl, but I think it can be merged in later
 proc scrollDiffs {where} \
 {
-	global	rDiff nextDiff gc
+	global	rDiff nextDiff gc app
 
 	if {$where == ""} { return }
 	.diffs.left see "$where.0"
@@ -345,9 +346,9 @@ proc scrollDiffs {where} \
 	.diffs.left tag add highLight $Diff $End
 	.diffs.right tag add highLight $Diff $End
 	.diffs.left tag configure highLight -font $gc(fm.fixedBoldFont) \
-	    -foreground black -background $gc(fm.activeLeftColor)
+	    -foreground $gc($app.textFG) -background $gc(fm.activeLeftColor)
 	.diffs.right tag configure highLight -font $gc(fm.fixedBoldFont) \
-	    -foreground black -background $gc(fm.activeRightColor)
+	    -foreground $gc($app.textFG) -background $gc(fm.activeRightColor)
 }
 
 proc resolved {n} \
@@ -506,7 +507,7 @@ proc widgets {L R O} \
 		label .diffs.status.r -background $gc(fm.newColor) \
 		    -font $gc(fm.buttonFont) -relief sunken -borderwid 2
 		label .diffs.status.middle -background $gc(fm.oldColor) \
-		    -foreground black -background $gc(fm.statusColor) \
+		    -foreground $gc($app.textFG) -background $gc(fm.statusColor) \
 		    -font  $gc(fm.fixedFont) -wid 20 \
 		    -font $gc(fm.buttonFont) -relief sunken -borderwid 2
 		    grid .diffs.status.l -row 0 -column 0 -sticky ew

@@ -11,6 +11,22 @@ adler32_main(int ac, char **av)
 	return (do_checksum((ac == 2) && streq(av[1], "-w")));
 }
 
+u32
+adler32_file(char *file)
+{
+	MMAP	*m = mopen(file, "b");
+	u32	sum;
+
+	unless (m) return (0);
+	unless (m->size) {
+		mclose(m);
+		return (0);
+	}
+	sum = adler32(0, m->mmap, m->size);
+	mclose(m);
+	return (sum);
+}
+
 /*
  * Compute a checksum envelop over a data stream.
  * There are two possible data sections, the human and the BK part.

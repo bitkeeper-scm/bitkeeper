@@ -5,6 +5,9 @@
 
 #define	BK "bk"
 
+extern	int	test_release;
+extern	unsigned build_timet;
+
 char	*editor = 0, *pager = 0, *bin = 0;
 char	*BitKeeper = "BitKeeper/";	/* XXX - reset this? */
 char	**bk_environ;
@@ -113,6 +116,7 @@ int	mklock_main(int, char **);
 int	mtime_main(int, char **);
 int	multiuser_main(int, char **);
 int	mv_main(int, char **);
+int	mvdir_main(int, char **);
 int	mydiff_main(int, char **);
 int	names_main(int, char **);
 int	newroot_main(int, char **);
@@ -291,6 +295,7 @@ struct	command cmdtbl[] = {
 	{"mklock", mklock_main},	/* regression test */ /* undoc 2.0 */
 	{"mtime", mtime_main},		/* regression test */ /* undoc 2.0 */
 	{"mv", mv_main},			/* doc 2.0 */
+	{"mvdir", mvdir_main},			/* doc 2.0 */
 	{"multiuser", multiuser_main},		/* doc 2.0 */
 	{"mydiff", mydiff_main},
 	{"names", names_main},			/* doc 2.0 */
@@ -445,6 +450,17 @@ main(int ac, char **av, char **env)
 		printf("%s\n", getenv("PATH"));
 		exit(0);
 	}
+
+	/*
+	 * Determine if this should be a trial version of bk.
+	 * Add versions that are not tagged will automaticly expire
+	 * in 2 weeks.
+	 */
+	if (test_release && (time(0) > (time_t)build_timet + 3600*24*14)) {
+		version_main(0, 0);
+		exit(1);
+	}
+
 	/* bk _realpath is mainly for win32 */
 	if (av[1] && streq(av[1], "_realpath") && !av[2]) {
 		char buf[MAXPATH], real[MAXPATH];
@@ -1048,11 +1064,7 @@ usage:			system("bk help cmdlog");
 		    version ? version : "", 1+p);
 nextline:	;
 	}
-	if (all) {
-		pclose(f);
-	} else {
-		fclose(f);
-	}
+	fclose(f);
 }
 
 int

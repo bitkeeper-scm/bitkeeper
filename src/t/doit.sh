@@ -15,6 +15,7 @@
 
 win32_common_setup()
 {
+	DIFF=/usr/bin/diff
 	PLATFORM="WIN32"
 	DEV_NULL="nul"
 	TMP=`../bk _nativepath $TEMP`
@@ -28,16 +29,27 @@ win32_common_setup()
 	if [ X$BK_USER = XAdministrator ]; then BK_USER=Administrator-test; fi
 	if [ X$BK_USER = Xadministrator ]; then BK_USER=administrator-test; fi
 	USER="$BK_USER"	# some regression test uses $USER
+	export BK_USER
 
 	# don't run remote regressions on NT
 	if [ -z "$DO_REMOTE" ]; then DO_REMOTE=NO; fi
 	export DO_REMOTE
 
-	export BK_USER
+	BIN1="`bk bin`/bk.exe"
+	BIN2="`bk bin`/diff.exe"
+	BIN3="`bk bin`/diff3.exe"
+	export BIN1 BIN2 BIN3
+
+	# We need this only on NTFS, not needed on FAT/FAT32 file system
+	# This setting only affect the process started _after_ it is set.
+	# i.e. It has no effect on the "doit" process itself.
+	CYGWIN=nontsec
+	export CYGWIN
 }
 
 unix_common_setup()
 {
+	DIFF=diff
 	PLATFORM="UNIX"
 	DEV_NULL="/dev/null"
 	TMP="/tmp"
@@ -47,7 +59,7 @@ unix_common_setup()
 	if [ -d /usr/xpg4/bin ]; then PATH=/usr/xpg4/bin:$PATH; fi
 	BK_FS="|"
 	BK_BIN="`cd .. && pwd`"
-	PATH=$BK_BIN:$BK_BIN/gnu/bin:$PATH:/usr/local/bin:/usr/freeware/bin
+	PATH=$BK_BIN:$BK_BIN/gnu/bin:$PATH:/usr/local/bin:/usr/freeware/bin:/usr/gnu/bin
 	unset CDPATH PAGER
 	if [ X$USER = X ]; then USER=`bk getuser`; fi
 	# root user is special, remap to a differnt user before we run the test
@@ -60,6 +72,17 @@ unix_common_setup()
 	# do run remote regressions on UNIX
 	if [ -z "$DO_REMOTE" ]; then DO_REMOTE=YES; fi
 	export DO_REMOTE
+
+	BIN1=/bin/ls
+	test -r $BIN1 || BIN1=/usr/gnu/bin/od
+	test -r $BIN1 || exit 1
+	BIN2=/bin/rm
+	test -r $BIN2 || BIN2=/usr/gnu/bin/m4
+	test -r $BIN2 || exit 1
+	BIN3=/bin/cat
+	test -r $BIN3 || BIN3=/usr/gnu/bin/wc
+	test -r $BIN3 || exit 1
+	export BIN1 BIN2 BIN3
 }
 
 bad_mount()
@@ -110,33 +133,6 @@ check_path()
 	fi
 }
 
-check_tar()
-{
-	mkdir /tmp/tar_tst$$
-	echo data > /tmp/tar_tst$$/file
-	chmod 0444 /tmp/tar_tst$$/file
-	TAR=/tmp/tar_tst$$.tar
-	(cd / && tar cf $TAR tmp/tar_tst$$ 2> /dev/null)
-	rm -rf /tmp/tar_tst$$
-	(cd / && tar xf $TAR 2> /dev/null)
-	if [ -w /tmp/tar_tst$$/file ]
-	then
-		T_VER=`tar --version | grep "^tar" | cut -f4 -d' '`
-		echo "========================================================"
-		echo "The tar package you have installed does not preserve"
-		echo "file permission. This wlll not work with the BitKeeper"
-		echo "BitKeeper regression test becuase we depend on this"
-		echo "feature. To run the BitKeeper regression test correctly,"
-		echo "you need to install tar package included in the BitKeeper"
-		echo " install package"
-		echo "========================================================"
-		chmod 0666 /tmp/tar_tst$$/file
-		rm -rf /tmp/tar_tst$$
-		exit 1
-	fi
-	chmod 0666 /tmp/tar_tst$$/file
-	rm -rf $TAR /tmp/tar_tst$$
-}
 
 # Make sure the "if [ -w ... ]" construct works under this id.
 check_w()
@@ -189,16 +185,15 @@ setup_env()
 		PATH=$BK_BIN:$BK_BIN/gnu/bin:$PATH
 		check_mount_mode
 		check_path
-		check_tar
 		;;
 	    *)	# assumes everything else is unix
 		unix_common_setup
+		check_w
 		;;
 	esac
-	check_w
 	chech_enclosing_repo
 
-	# turn off pager - needed in win98
+	# turn off pager
 	BK_PAGER=cat
 	export BK_PAGER
 
@@ -266,7 +261,7 @@ clean_up()
 
 	# Make sure there are no stale files in $TMP
 	ls -a $TMP  > $TMP/T.${USER}-new
-	/usr/bin/diff $TMP/T.${USER}-new $TMP/T.${USER} | grep -v mutt-work
+	$DIFF $TMP/T.${USER}-new $TMP/T.${USER} | grep -v mutt-work
 
 }
 

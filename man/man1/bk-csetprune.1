@@ -3,7 +3,10 @@
 .SH NAME
 bk csetprune \- shrink a repository by removing files
 .SH SYNOPSIS
-.B bk csetprune < keylist
+.B bk csetprune [\-S] [
+.OPTreq \-k 16hexDigits
+.B ]
+< keylist
 .SH DESCRIPTION
 .LP
 The
@@ -25,6 +28,25 @@ is discarded.
 After all files have been removed, the identity of the ChangeSet file
 is changed (using bk newroot) and the remaining files are ``reparented''
 to the new ChangeSet file.
+.SH OPTIONS 
+.if t .TP .6i
+.if n .TP 1i
+.B \-S
+Keep the symbol structure intact.
+This is needed when doing a csetprunes over time on
+same key set and wanting the resulting repository to communicate
+with a repository created by an earlier csetprune.
+Without this option, the internal symbol graph structure is
+streamlined.
+.tp
+.OPTreq \-k 16hexDigits
+Specify the
+.ARG 16hexDigits
+used in a repository root key.
+This is needed when doing a csetprunes over time on
+same key set and wanting the resulting repository to communicate
+with a repository created by an earlier csetprune.
+.tp
 .SH "GENERATING KEYS"
 .LP
 The

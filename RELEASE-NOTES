@@ -1,4 +1,51 @@
 ===============================================================================
+Release notes for BitKeeper version 3.0.2.   These release notes cover
+the following topics:
+
+. Upgrade Notes
+. New Features
+. Noteworthy bug fixes
+
+Upgrade notes
+----------------------------------------------------------------------------
+
+Nothing is required to upgrade from the 3.0.1 release.
+
+New Features
+----------------------------------------------------------------------------
+
+  Support the SCO platform
+
+  Support Tcl/Tk 8.4 on UNIX platforms
+
+Noteworthy Bug Fixes
+----------------------------------------------------------------------------
+
+  2002-12-18-001 sfiles -i in corrupted tree dumps core
+  2002-12-28-002 have rclone respect checkout preference
+  2003-01-16-001 fix line length limitation with compressed files
+  2003-01-17-003 import -tRCS -jN fails if N is too large
+  2003-01-24-001 allow tags to contains spaces
+  2003-02-03-002 add remote level to push error messages
+  2003-02-19-001 takepatch could fail if patches contain really long lines
+
+  Fix permissions problems in resolve.  In some cases where a user
+  only has partial write permissions to a repository, resolve could
+  fail after partially applying an incoming patch.  This left the tree
+  in an unusable state.  These problems are now detected.
+
+  'bk changes -L' could rarely report csets that do exist in the
+  remote tree we there are local tags.  This is now fixed.
+
+  win32: Handle windows style pathnames in 'bk mv'
+
+  Fix race condition that can result in the lost of the ChangeSet file
+  when multiple people access the same repository.
+
+  Fix some cases where the 3-way merge could generate really strange
+  results.  Significantly improved merging in some conditions.
+
+===============================================================================
 Release notes for BitKeeper version 3.0.1.   These release notes cover
 the following topics:
 
@@ -34,6 +81,13 @@ New Features
 
   - win32: make installation of bkshellx.dll and bkscc.dll optional
 
+  - Added :MD5KEY: dspec that can be used to get a shorter unique id
+    for a delta or changeset.
+
+  - Add 'bk obscure' command to scramble your tree.  That allows
+    sending repositories to BitMover for debug without revealing
+    secret IP.
+
   Security fixes:
 
     Put all tmp files in BitKeeper/tmp by default.  Allow user to
@@ -48,11 +102,20 @@ Noteworthy Bug Fixes
   2002-10-10-002: If takepatch fails because a file is edited print the 
 		  original file name not the name it will be after this 
 		  patch.
+  2002-10-11-001: Exiting resolve early will no longer clean some
+		  files in the users tree.
   2002-10-11-002: A failed undo will no longer clean some files in the
 		  users tree.
+  2002-10-14-001: Importing huge repositories caused an assert
   2002-11-15-002: 'bk changes -uUSER -c-1w' didn't work.
   2002-11-19-002: revtool would sort revisions incorrectly (1.9 vs 1.10)
   2002-11-06-002: Go to a different uid/gid permanently in bkd.
+  2002-11-23-001: 'dlm' in "bk resolve" now does the right thing
+  2002-11-25-003: Prompts go to stderr instead of stdout.
+
+  2002-11-26-001 2002-11-05-002 2002-09-30-005 2002-08-16-001
+  2002-06-27-002: Fix various bugs with the handling of checkout:edit
+		  in 'bk fix -c' 'bk cset -x' and 'bk unrm'
 
   Fix bug where changes in an edited config file didn't get used during
   a pull.
@@ -75,6 +138,20 @@ Noteworthy Bug Fixes
   citool will now always report any errors or unexpect output from 
   'bk commit' to the user and give them a chance to recover.
 
+  Fixed problem where the license information in the
+  BitKeeper/etc/config file was not always used if the information was
+  not committed.
+
+  Fixed some bugs where the Windows version could get confused by 
+  autoproxy support in IE.
+
+  Fix problems on Windows when the native Tcl (included with
+  BitKeeper) and the Cygwin Tcl are both installed on the users
+  machine.  Bk now finds the correct version of Tcl.
+
+  Fix problems running a bkd when it doesn't have write permission to
+  a repository.
+  
 ===============================================================================
 Release notes for BitKeeper version 3.0
 

@@ -9,6 +9,7 @@ typedef struct {
 	u32	stripBranches:1;
 	u32	checkOnly:1;
 	u32	quiet:1;
+	u32	forward:1;
 } s_opts;
 
 private	delta	*checkCset(sccs *s);
@@ -17,12 +18,16 @@ private int doit(sccs *, s_opts);
 private	int do_check(sccs *s, int flags);
 private int strip_list(s_opts);
 
+private	int	getFlags = 0;
+
 int
 stripdel_main(int ac, char **av)
 {
 	sccs	*s;
 	char	*name;
 	int	c, rc;
+	MDBM	*config;
+	char	*co;
 	s_opts	opts = {1, 0, 0, 0};
 	RANGE_DECL;
 
@@ -31,11 +36,12 @@ stripdel_main(int ac, char **av)
 		system("bk help stripdel");
 		return (0);
 	}
-	while ((c = getopt(ac, av, "bcCqr;")) != -1) {
+	while ((c = getopt(ac, av, "bcCdqr;")) != -1) {
 		switch (c) {
 		    case 'b': opts.stripBranches = 1; break;	/* doc 2.0 */
 		    case 'c': opts.checkOnly = 1; break;	/* doc 2.0 */
 		    case 'C': opts.respectCset = 0; break;	/* doc 2.0 */
+		    case 'd': opts.forward = 1; break;
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
 		    RANGE_OPTS('!', 'r');			/* doc 2.0 */
 		    default:
@@ -50,6 +56,12 @@ usage:			system("bk help -s stripdel");
 	unless (opts.stripBranches || (things && r[0])) {
 		fprintf(stderr, "stripdel: must specify revisions.\n");
 		return (1);
+	}
+
+	if ((config = proj_config(bk_proj)) &&
+	    (co = mdbm_fetch_str(config, "checkout"))) {
+		if (strieq(co, "get")) getFlags = GET_EXPAND;
+		if (strieq(co, "edit")) getFlags = GET_EDIT;
 	}
 
 	/*
@@ -103,6 +115,18 @@ doit(sccs *s, s_opts opts)
 		s = sccs_restart(s);
 	}
 
+	if (MONOTONIC(s) && !opts.forward) {
+		verbose((stderr, 
+		    "Not stripping deltas from MONOTONIC file %s\n", s->gfile));
+		for (e = s->table; e; e = e->next) {
+			if ((e->flags & D_SET) && (e->type == 'D')) {
+				e->dangling = 1;
+			}
+		}
+		sccs_newchksum(s);
+		return (0);
+	}
+
 	if (opts.respectCset && (e = checkCset(s))) {
 		fprintf(stderr,
     			"stripdel: can't remove committed delta %s@%s\n",
@@ -111,7 +135,7 @@ doit(sccs *s, s_opts opts)
 	}
 
 	left = set_meta(s, opts.stripBranches, &n); 
-	if (opts.checkOnly) return(do_check(s, flags));
+	if (opts.checkOnly) return (do_check(s, flags));
 	unless (left) {
 		if (sccs_clean(s, SILENT)) {
 			fprintf(stderr,
@@ -134,13 +158,15 @@ doit(sccs *s, s_opts opts)
 		return (1); /* failed */
 	}
 	verbose((stderr, "stripdel: removed %d deltas from %s\n", n, s->gfile));
-	
 	/*
 	 * Handle checkout modes
 	 */
-	do_checkout(s);
-	
-	return 0;
+	if (getFlags && !CSET(s)) {
+		sccs	*s2 = sccs_init(s->sfile, 0, 0);
+		sccs_get(s2, 0, 0, 0, 0, SILENT|getFlags, "-");
+		sccs_free(s2);
+	}
+	return (0);
 }
 
 int
