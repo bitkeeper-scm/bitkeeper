@@ -6,38 +6,47 @@ bk terms \- definitions of \*(BK terms
 .LP
 .SS "\*(BK definitions:"
 .if t .TP
-.if n .TP 4
+.if n .TP 2
+.B package
+This term is used when a distinction needs to be drawn between
+two different repositories which do not contain the same data,
+i.e. one contains a compiler and the other contains a debugger.
+To distinguish between them,
+refer to the compiler package or the debugger package.
+One way to think about it is that a package
+is a logical concept, somewhat like an object, while a repository
+is an instance of that object.  Another way that people sometimes
+distinguish between packages is to talk about them having different
+root keys (each package has an internal identifier called the 
+root key).  
+.tp
+.B repository
+A repository (also known as a work space, a clone,
+or an instance of a package)
+is where you do your work.
+A repository is an instance of a package i.e.
+there is one package, but there can be many instances of that package.
+Unlike other systems, such as CVS, every user gets their own
+repository, complete with revision history.
+.tp
 .B sfile
 A file containing the revision history, e.g., SCCS/s.foo.c
 .tp
 .B gfile
 A file that is checked out, e.g., foo.c
 .tp
-.B package
-A package is a logical concept while the repository is 
-the physical instance of that concept. A package is 
-created only once when the 
-.B bk setup
-program is run.
-.tp
-.B repository
-A directory tree that is populated with the revision
-control files.  A repository is an instance of a
-package i.e. there is one package, but there can
-be many repositories belonging to that package.
-.tp
 .B tag, symbol
 A symbolic name (or tag) which is given to a particular
 revision of one or more files.  e.g., "Alpha1".
 .tp
-.B revision, delta (files)
-One version of a particular file, or one change to a
-particular file, depending on context.  Sometimes we
-want to talk about the way the file is while sometimes
-we want to talk about how it got there.
-Files that have been checked out, edited, and not
-yet checked back in are "modified" files.  When you
-check files in, the modifications become new deltas.
+.B delta
+A delta (also known as a revision or version)
+is a specific version of a file, or one change to a
+file, depending on context.  
+When we mean the specific version of a file, we are talking
+about the entire file as of that version.
+When we mean the changes made in a specific delta, we are
+talking about the differences contained in that delta.
 .tp
 .B rev argument
 Many commands take file revision numbers as arguments, usually
@@ -51,6 +60,7 @@ finds the version number as of changeset revision 1.4. So the
 following are all legal:
 .DS
 -r1.23
+-r3dcc5f35PWiRWg8wiP7Dehy51Pk7DA
 -r'amy@bitmover.com|man/man1/bk-terms.1|20020714011327|59990'
 -r@1.233.2
 -r@bk-3.0-pre3
@@ -69,17 +79,24 @@ Revision number for a changeset.  These numbers fluctuate,
 but stabilize, over time.  If you want an immutable, unique reference
 for a changeset, use the changeset key.
 .tp
-.B changeset key
-A unique, unchanging identifier for a changeset which may be
+.B key
+A unique, unchanging identifier for a version of a file which may be
 used anywhere a normal revision number and/or symbolic tag is used.
-A particular changeset key may be extracted with
+A particular key may be extracted with the following, the first form
+produces a longer key which is human readable, the second form produces
+a shorter key which is not human readable.
 .DS
 bk -R prs -hr<rev> -nd:KEY: ChangeSet
+bk -R prs -hr<rev> -nd:MD5KEY: ChangeSet
 .DE
 .tp
-.B identity
-Each repository family has an identity unique to that repository family.
-Updates will fail if the two repositories do not have the same identity.
+.B package identity
+Each \*(BK package has a unique identity.
+All instances (repositories) of the package have the same package indentity.
+.tp
+.B repository identity
+The  repository  identity is different in each repository,
+regardless of the package.  
 .tp
 .B repo_id
 Each repository has a unique identifier that labels that particular
@@ -106,10 +123,7 @@ made the changes, when, and why.
 Main line source base.  In \*(BK revtool, the trunk is the X.Y in the 
 graph, branches are X.Y.Q.Z, which always get merged into the trunk.
 .tp
-.B Tip
-Latest revision on some branch, usually the trunk.
-.tp
-.B Top of Trunk (TOT)
+.B Tip, Top of Trunk (TOT)
 The latest revision on the trunk.
 .\".tp
 .\".B Line of Development (LOD)
