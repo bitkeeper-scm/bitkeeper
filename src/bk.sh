@@ -432,18 +432,14 @@ _pending() {
 
 _chkConfig() {
 	_cd2root
-	# We might be inside RESYNC.
-	if [ -d ../RESYNC ]
-	then	cd ..
-	fi
-	if [ ! -f  BitKeeper/etc/SCCS/s.config ]
+	if [ ! -f  ${cfgDir}SCCS/s.config ]
 	then
 		_gethelp chkconfig_missing $BIN
 		/bin/rm -f /tmp/comments$$
 		exit 1
 	fi
-	${BIN}get -q BitKeeper/etc/config 
-	cmp -s BitKeeper/etc/config ${BIN}bitkeeper.config
+	${BIN}get -q ${cfgDir}config 
+	cmp -s ${cfgDir}config ${BIN}bitkeeper.config
 	if [ $? -eq 0 ]
 	then	_gethelp chkconfig_inaccurate $BIN
 		/bin/rm -f /tmp/comments$$
@@ -464,20 +460,20 @@ _sendConfig() {
 	  echo "Host:		`hostname`"
 	  echo "Root:		`pwd`"
 	  echo "Date:		`date`"
-	  ${BIN}get -ps BitKeeper/etc/config | \
-	    grep -v '^#' BitKeeper/etc/config | grep -v '^$'
+	  ${BIN}get -ps ${cfgDir}config | \
+	    grep -v '^#' ${cfgDir}config | grep -v '^$'
 	) | mail -s "BitKeeper config: $P" $1
 }
 
 _logAddr() {
 	_chkConfig
-	LOG=`grep "^logging:" BitKeeper/etc/config | tr -d '[\t, ]'`	
+	LOG=`grep "^logging:" ${cfgDir}config | tr -d '[\t, ]'`	
 	case X${LOG} in 
 	Xlogging:*)
 		;;
 	*)	echo "Bad config file, can not find logging entry"
 		/bin/rm -f /tmp/comments$$
-		${BIN}clean BitKeeper/etc/config
+		${BIN}clean ${cfgDir}config
 		exit 1 
 		;;
 	esac
@@ -489,9 +485,9 @@ _logAddr() {
 # If they have agreed, then don't keep asking the question.
 # XXX - should probably ask once for each user.
 _checkLog() {
-	grep -q "^logging_ok:" BitKeeper/etc/config
+	grep -q "^logging_ok:" ${cfgDir}config
 	if [ $? -eq 0 ]
-	then	${BIN}clean BitKeeper/etc/config
+	then	${BIN}clean ${cfgDir}config
 		return
 	fi
 	echo $LOGADDR | grep -q "@openlogging.org$"
@@ -502,18 +498,18 @@ _checkLog() {
 		read x
 		case X$x in
 	    	    X[Yy]*) 
-			${BIN}clean BitKeeper/etc/config
-			${BIN}get -seg BitKeeper/etc/config
-			${BIN}get -kps BitKeeper/etc/config |
+			${BIN}clean ${cfgDir}config
+			${BIN}get -seg {cfgDir}config
+			${BIN}get -kps {cfgDir}config |
 			sed -e '/^logging:/a\
-logging_ok:	to '$LOGADDR > BitKeeper/etc/config
-			${BIN}delta -y'Logging OK' BitKeeper/etc/config
+logging_ok:	to '$LOGADDR > ${cfgDir}config
+			${BIN}delta -y'Logging OK' ${cfgDir}config
 			return
 			;;
 		esac
 		_gethelp log_abort
 	 	/bin/rm -f /tmp/comments$$
-		${BIN}clean BitKeeper/etc/config
+		${BIN}clean ${cfgDir}config
 		exit 1
 	else
 		_sendConfig config@openlogging.org
@@ -531,10 +527,11 @@ _commit() {
 	GETCOMMENTS=yes
 	COPTS=
 	CHECKLOG=_checkLog
-	while getopts dfsS:y:Y: opt
+	while getopts dfRsS:y:Y: opt
 	do	case "$opt" in
 		d) DOIT=yes;;
 		f) CHECKLOG=:;;
+		R) cfgDir="../BitKeeper/etc/";; # called from RESYNC dir
 		s) COPTS="-s $COPTS";;
 		S) COPTS="-S$OPTARG $COPTS";;
 		y) DOIT=yes; GETCOMMENTS=no; echo "$OPTARG" > /tmp/comments$$;;
@@ -799,6 +796,8 @@ _export() {
 }
 
 _init() {
+	cfgDir="BitKeeper/etc/"
+
 	if [ '-n foo' = "`echo -n foo`" ] 
 	then    NL='\c'
 	        N=
