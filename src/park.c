@@ -1,15 +1,18 @@
 /*
  * Copyright (c) 2000, Andrew Chang
- */    
+ */
 #include "system.h"
 #include "sccs.h"
+
+private int listParkFile();
+private int purgeParkFile(int id);
 
 int
 park_main(int ac, char **av)
 {
 	char	parkfile[MAXPATH], changedfile[MAXPATH];
 	char	*diffsopts, *comment = 0;
-	int 	lflag  = 0, qflag = 0, purge = 0, c, status, try;
+	int 	lflag  = 0, qflag = 0, purge = 0, c, status, try = 0;
 	FILE	*f;
 
 	if (ac == 2 && streq("--help", av[1])) {
@@ -35,19 +38,18 @@ park_main(int ac, char **av)
 
 	if (lflag) return (listParkFile());
 	if (purge) return (purgeParkFile(purge));
-	
+
 	bktemp(changedfile);
 	sysio(0, changedfile, 0, "bk", "sfiles", "-c", SYS);
 	if (size(changedfile) == 0) {
-		unless (qflag) printf( "Nothing to park\n");
+		unless (qflag) printf("Nothing to park\n");
 		unlink(changedfile);
 		return (0);
 	}
 
-	for (try = 1; ; try++) {
-		sprintf(parkfile, "%s/parkfile-%d", BKTMP, try);
-		unless (exists(parkfile)) break;
-	}
+	do {
+		sprintf(parkfile, "%s/parkfile-%d", BKTMP, ++try);
+	} while (exists(parkfile));
 
 	diffsopts = qflag ? "-u" : "-uv";
 	status = sysio(changedfile, parkfile, 0,
@@ -58,7 +60,7 @@ park_main(int ac, char **av)
 		return (1);
 	}
 	assert(size(parkfile) > 0);
-	
+
 	/*
 	 * Store comment in comment file
 	 */
@@ -75,7 +77,7 @@ park_main(int ac, char **av)
 	return (0);
 }
 
-private int 
+private int
 listParkFile()
 {
 	struct	dirent *e;
@@ -107,7 +109,7 @@ listParkFile()
 private int
 purgeParkFile(int id)
 {
-	char parkfile[MAXPATH];
+	char	parkfile[MAXPATH];
 
 	sprintf(parkfile, "%s/parkfile-%d", BKTMP, id);
 	if (unlink(parkfile)) {
@@ -117,7 +119,7 @@ purgeParkFile(int id)
 	printf("%s purged\n", parkfile);
 	sprintf(parkfile, "%s/commentfile-%d", BKTMP, id);
 	unlink(parkfile);
-	return(0);
+	return (0);
 }
 
 private int
@@ -146,7 +148,7 @@ do_unpark(int id)
 		fprintf(stderr, "Cannot unpark %s\n", parkfile);
 		/* Do not unlink the parkfile,  user may want to re-try */
 		return (1);
-	} 
+	}
 	fprintf(stderr, "Unpark of %s is successful\n", parkfile);
 	unlink(parkfile); /* careful */
 	unlink(parkCommentFile); /* careful */
@@ -171,7 +173,7 @@ unpark_main(int ac, char **av)
 		fprintf(stderr, "Can't find package root\n");
 		return (0);
 	}
-	
+
 	dh = opendir(BKTMP);
 	unless (dh) {
 empty:		fprintf(stderr, "No parkfile found\n");
@@ -179,7 +181,7 @@ empty:		fprintf(stderr, "No parkfile found\n");
 	}
 
 	/*
-	 * The parkfile list is a LIFO, last one parked got unprak first 
+	 * The parkfile list is a LIFO, last one parked got unprak first
 	 */
 	while ((e = readdir(dh)) != NULL) {
 		if ((strlen(e->d_name) > 9) &&
