@@ -25,7 +25,8 @@ lconfig_main(int ac, char **av)
 
 	if (sccs_cd2root(0, 0) == -1) return (1);
 	if (pflag) {
-		printf("Number of config logs pending: %d\n", logs_pending(1));
+		printf("Number of config logs pending: %d\n",
+							logs_pending(1, 0));
 		return (0);
 	}
 
