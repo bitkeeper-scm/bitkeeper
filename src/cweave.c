@@ -244,20 +244,15 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 	s->nextserial++;
 
 	/*
-	 *  Fix up d->pserial and d->same
+	 * Fix up the parent pointer & serial.
+	 * Note: this is just linked enough that we can finish takepatch,
+	 * it is NOT a fully linked tree.
 	 */
 	if (parentKey) {
-		delta	**kp, *k;
-		p = sccs_findKey(s, parentKey); /* find parent delta */
+		p = sccs_findKey(s, parentKey);
 		assert(p);
 		d->pserial = p->serial;
 		d->parent = p;
-		for (kp = &p->kid; (k = *kp) != 0; kp = &k->kid) {
-			assert (k->serial != d->serial);
-			if (k->serial > d->serial) break;
-		}
-		d->siblings = k;
-		*kp = d;
 	}
 	sccs_inherit(s, d);
 	if ((d->type == 'D') && (s->tree != d)) d->same = 1;

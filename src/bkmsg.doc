@@ -136,7 +136,7 @@ repository for this package, you should do
 
     bk clone package_dir my_package_dir
 
-If you create a new package rather than re-syncing a copy, you will not
+If you create a new package rather than cloning a copy, you will not
 be able to exchange work between the two packages.
 
 $
@@ -342,7 +342,9 @@ $
 Error: Single user repositories are limited to #BKARG# files. If you need more
 files than that in one repository, you need to buy a commercial license or
 turn on open logging.
-BitMover can be reached in the United States at 888-401-8808
+BitMover can be reached at:
+   +1-650-872-9900 (international and California)
+   888-401-8808 (toll free in the US & Canada) 
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
@@ -350,7 +352,9 @@ $
 Error: Evaluation license are limited to #BKARG# changesets.  You are over 
 that limit and you will need to get a commercial license to make any
 more changesets.
-BitMover can be reached in the United States at 888-401-8808
+BitMover can be reached at:
+   +1-650-872-9900 (international and California)
+   888-401-8808 (toll free in the US & Canada) 
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
@@ -359,7 +363,9 @@ Warning: Evaluation licenses have a limited number of changesets. Your
 changeset quota is now down to #BKARG# which is less than 50 changesets
 away from the limit.  You will not be able to commit any more changesets
 when the quota reaches zero.  Please contact BitMover.
-BitMover can be reached in the United States at 888-401-8808
+BitMover can be reached at:
+   +1-650-872-9900 (international and California)
+   888-401-8808 (toll free in the US & Canada) 
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
@@ -956,8 +962,9 @@ This repository is configured to use a commercial license
 but does not contain a license key signature in
 the BitKeeper config key: licsign1.
 Please contact BitMover to get a valid license signature.
-
-BitMover can be reached in the United States at 888-401-8808
+BitMover can be reached at:
+   +1-650-872-9900 (international and California)
+   888-401-8808 (toll free in the US & Canada) 
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $

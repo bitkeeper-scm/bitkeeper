@@ -2552,7 +2552,7 @@ proc arguments {} \
 	# regexes for valid revision numbers. This probably should be
 	# a function that uses a bk command to check whether the revision
 	# exists.
-	set r2 {^([1-9][0-9]*)\.([1-9][0-9]*)$}
+	set r2 {^([1-9][0-9]*)\.([0-9][0-9]*)$}
 	set r4 {^([1-9][0-9]*)\.([1-9][0-9]*)\.([1-9][0-9]*)\.([1-9][0-9]*)$}
 	set d1 ""; set d2 ""
 	if {[info exists rev1] && $rev1 != ""} {

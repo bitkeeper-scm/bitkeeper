@@ -76,8 +76,6 @@ delta_trigger(sccs *s)
 
 /*
  * Remove dangling deltas from the file.
- * In order to avoid warnings from incorrectly numbered revisions we need
- * to call 'bk renumber' before and after we call stripdel.
  */
 private int
 strip_danglers(char *name, u32 flags)

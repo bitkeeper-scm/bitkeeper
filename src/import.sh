@@ -595,13 +595,13 @@ import_patch() {
 	# Note: renametool does not update the idcache when it
 	# move a s.file to match up a "delete" with a "create". Fotrunately,
 	# the new s.file location is always captured on the "create" list.
-	# We are counting on "bk sfiles -C" to ignore files which are
+	# We are counting on "bk sfiles -pC" to ignore files which are
 	# without a s.file. Otherwise we would have to rebuild the idcache,
 	# which is slow.
 	msg Creating changeset for $PNAME in `pwd` ...
 	bk _key2path < ${TMP}keys$$ > ${TMP}patching$$
 	cat ${TMP}creates$$ ${TMP}patching$$ |
-	    bk _sort -u | bk sfiles -C - > ${TMP}commit$$
+	    bk _sort -u | bk sfiles -pC - > ${TMP}commit$$
 	BK_NO_REPO_LOCK=YES bk commit \
 	    $QUIET $SYMBOL -a -y"`basename $PNAME`" - < ${TMP}commit$$
 
