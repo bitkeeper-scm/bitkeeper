@@ -27,6 +27,8 @@ Hi there, this is file foo.
 Hi there, this is file foo.
 EOF
 no_logging project
+BK_NOCOMPRESS=YES
+export BK_NOCOMPRESS
 echo $N Creating an empty file ......................................$NL
 bk admin $Q -n empty
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi

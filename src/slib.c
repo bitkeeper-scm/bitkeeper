@@ -10525,7 +10525,13 @@ sccs_admin(sccs *sc, delta *p, u32 flags, char *new_encp, char *new_compp,
 	new_enc = sccs_encoding(sc, new_encp, new_compp);
 	if (new_enc == -1) return (-1);
 	unless ((flags & ADMIN_FORCE) || CSET(sc) || bkcl(0)) {
-		new_enc |= E_GZIP;
+		static	int nocompress = -1;
+
+		/* this is for the test suite only */
+		if (nocompress == -1) nocompress = getenv("BK_NOCOMPRESS") != 0;
+		unless (nocompress && (sc->nextserial < 10)) {
+			new_enc |= E_GZIP;
+		}
 	}
 	debug((stderr, "new_enc is %d\n", new_enc));
 	GOODSCCS(sc);
@@ -10580,9 +10586,7 @@ out:
 		goto out;
 	}
 
-	if (addSym("admin", sc, flags, s, &error)) {
-		flags |= NEWCKSUM;
-	}
+	if (addSym("admin", sc, flags, s, &error)) flags |= NEWCKSUM;
 	if (mode) {
 		delta	*n = sccs_top(sc);
 		mode_t	m;
@@ -10620,10 +10624,10 @@ skipmode:
 
 	if (text) {
 		FILE	*desc;
-		char	dbuf[200];
 		char	*c;
+		char	dbuf[200];
 
-		if (!text[0]) {
+		unless (text[0]) {
 			if (sc->text) {
 				freeLines(sc->text, free);
 				sc->text = 0;
@@ -10637,7 +10641,7 @@ skipmode:
 			goto user;
 		}
 		desc = fopen(text, "rt"); /* must be text mode */
-		if (!desc) {
+		unless (desc) {
 			fprintf(stderr, "admin: can't open %s\n", text);
 			error = 1; sc->state |= S_WARNED;
 			goto user;
@@ -10766,12 +10770,17 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			}
 		}
 	}
-	if (flagsChanged) flags |= NEWCKSUM;
+	if (flagsChanged || (sc->encoding != new_enc)) flags |= NEWCKSUM;
 
 	if (flags & ADMIN_ADD1_0) {
 		insert_1_0(sc);
+		flags |= NEWCKSUM;
 	} else if (flags & ADMIN_RM1_0) {
-		unless (remove_1_0(sc)) flags &= ~ADMIN_RM1_0;
+		if (remove_1_0(sc)) {
+			flags |= NEWCKSUM;
+		} else {
+			flags &= ~ADMIN_RM1_0;
+		}
 	}
 
 	if (flags & ADMIN_NEWPATH) {
@@ -10791,9 +10800,8 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		flags |= NEWCKSUM;
 	}
 
-	if ((flags & NEWCKSUM) == 0) {
-		goto out;
-	}
+	unless (flags & NEWCKSUM) goto out;
+
 	if (flags & ADMIN_OBSCURE) obscure_comments(sc);
 
 	/*

@@ -72,7 +72,7 @@ admin_main(int ac, char **av)
 		/* mode */
 		    case 'm':	m = optarg;			/* doc 2.0 */
 				new_delta = 1;
-		   		flags |= NEWCKSUM;
+		   		/* NEWCKSUM done in sccs_admin */
 				break;
 		/* pathname */
 		    case 'p':	path = optarg;			/* doc 2.0 */
@@ -81,8 +81,8 @@ admin_main(int ac, char **av)
 				break;
 		/* encoding and compression */
 		    case 'Z':	compp = optarg ? optarg : "gzip"; /* doc 2.0 */
-				flags |= NEWCKSUM;
 				touchGfile++;
+		   		/* NEWCKSUM done in sccs_admin */
 				break;
 		    case 'E':	encp = optarg; break;		/* doc 2.0 */
 		/* symbols */
