@@ -737,7 +737,7 @@ csetlist(cset_t *cs, sccs *cset)
 			unlink(cat);
 			goto fail;
 		}
-		sprintf(buf, "sort < %s > %s", cat, csort);
+		sprintf(buf, "bk keysort < %s > %s", cat, csort);
 		if (system(buf)) {
 			unlink(cat);
 			goto fail;

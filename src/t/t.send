@@ -62,6 +62,8 @@ rm -f project/BitKeeper/etc/SCCS/x.marked
 rm -f copy/BitKeeper/etc/SCCS/x.marked
 rm -f project/BitKeeper/log/cmd copy/BitKeeper/log/cmd
 rm -f copy/BitKeeper/etc/csets
+rm -f project/BitKeeper/log/cmd_log
+rm -f copy/BitKeeper/log/cmd_log
 diff -r project copy > diff$$
 if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
 echo OK
@@ -94,6 +96,8 @@ rm -f project/BitKeeper/etc/SCCS/x.marked
 rm -f uu/BitKeeper/etc/SCCS/x.marked
 rm -f project/BitKeeper/log/cmd uu/BitKeeper/log/cmd
 rm -f uu/BitKeeper/etc/csets
+rm -f project/BitKeeper/log/cmd_log
+rm -f uu/BitKeeper/log/cmd_log
 diff -r project uu > diff$$
 if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
 echo OK
@@ -113,6 +117,8 @@ rm -f project/BitKeeper/etc/SCCS/x.marked
 rm -f csets/BitKeeper/etc/SCCS/x.marked
 rm -f project/BitKeeper/log/cmd csets/BitKeeper/log/cmd
 rm -f csets/BitKeeper/etc/csets
+rm -f project/BitKeeper/log/cmd_log
+rm -f csets/BitKeeper/log/cmd_log
 diff -r project csets > diff$$
 if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
 echo OK

@@ -41,7 +41,7 @@ OBJ	= abort.o adler32.o admin.o bkd.o bkd_cd.o bkd_client.o \
 	  filecopy.o find.o fix.o g2sccs.o \
 	  gca.o get.o gethelp.o gethost.o getopt.o \
 	  gettemp.o getuser.o glob.o graft.o help.o host.o isascii.o \
-	  key2rev.o lib_tcp.o libcommit.o libdiff.o librange.o \
+	  key2rev.o keysort.o lib_tcp.o libcommit.o libdiff.o librange.o \
 	  libsfiles.o libusers.o lines.o localtm.o locking.o \
 	  lod.o log.o logging.o mkdir.o mklock.o mmap.o \
 	  mtime.o names.o newrev.o parent.o pending.o popen.o \
@@ -397,9 +397,6 @@ install: install-nolinks
 			ln -s $(BINDIR)/$$file /usr/bin/$$file; \
 		done; \
 	fi; \
-	if [ $$LN = ln -a ! -d /var/bitkeeper ]; \
-	then	mkdir /var/bitkeeper; chmod 777 /var/bitkeeper; \
-	fi
 
 install-nolinks: all
 	@test -d $(BINDIR) || mkdir -p $(BINDIR)
@@ -529,6 +526,7 @@ help.o:		help.c $(H)
 host.o:		host.c $(H)
 isascii.o:	isascii.c
 key2rev.o:	key2rev.c $(H)
+keysort.o:	keysort.c $(H)
 lib_tcp.o:	lib_tcp.c lib_tcp.h
 libcommit.o:	libcommit.c $(H)
 libdiff.o:	libdiff.c $(H)
@@ -640,3 +638,4 @@ zlib/infutil.o:		zlib/infutil.c $(Z2)
 zlib/trees.o:		zlib/trees.c $(Z2)
 zlib/uncompr.o:		zlib/uncompr.c $(Z2)
 zlib/zutil.o:		zlib/zutil.c $(Z2)
+

@@ -75,17 +75,44 @@ private	sccs *sc;
 private	void
 sccs_patch(sccs *winner, sccs *loser)
 {
-	delta	*tot = sccs_getrev(winner, "+", 0, 0);
+	delta	*d = sccs_getrev(winner, "+", 0, 0);
+	char	*wfile = d->pathname;
+	char	*lfile = sccs_getrev(loser, "+", 0, 0)->pathname;
 
 	printf(PATCH_CURRENT);
-	printf("== %s ==\n", tot->pathname);
-	printf("Grafted file: %s\n", loser->tree->pathname);
+	printf("== %s ==\n", wfile);
+	printf("Grafted file: %s\n", lfile);
 	sccs_pdelta(winner, winner->tree, stdout);
 	printf("\n");
 	sccs_pdelta(winner, winner->tree, stdout);
 	printf("\n");
 	sc = loser;
 	_patch(loser->table);
+
+#if 0
+	/*
+	 * Now add a symbol logging the graft action.
+	 *
+	 * This doesn't work because the delta doesn't yet belong to a
+	 * ChangeSet.  What needs to happen is that we add this symbol
+	 * in the resolver after grafting the files together.
+	 */
+	sccs_pdelta(loser, loser->tree, stdout);
+	printf("\n");
+	d = sccs_dInit(0, 'R', loser, 0);
+	printf("M 0.0 %s%s %s%s%s +0 -0\n",
+	    d->sdate,
+	    d->zone ? d->zone : "",
+	    d->user,
+	    d->hostname ? "@" : "",
+	    d->hostname ? d->hostname : "");
+	printf("c Grafted %s into %s\n", lfile, wfile);
+	printf("K %u\n", almostUnique(0));
+	printf("P %s\n", lfile);
+	printf("S _BK_GRAFT\n");
+	printf("------------------------------------------------\n\n\n");
+#endif
+
 	printf(PATCH_OK);
 }
 

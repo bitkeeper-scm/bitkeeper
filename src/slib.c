@@ -108,6 +108,16 @@ writable(char *s)
 }
 
 off_t
+fsize(int fd)
+{
+	struct	stat sbuf;
+
+	if (fstat(fd, &sbuf) == -1) return 0;
+	unless (S_ISREG(sbuf.st_mode)) return (0);
+	return (sbuf.st_size);
+}
+
+off_t
 size(char *s)
 {
 	struct	stat sbuf;
@@ -622,6 +632,10 @@ dinsert(sccs *s, int flags, delta *d, int fixDate)
 		debug((stderr, " -> ROOT\n"));
 		if (fixDate) uniqRoot(s);
 		return;
+	}
+	if (d->random) {
+		debug((stderr, "GRAFT: %s@%s\n", s->gfile, d->rev));
+		s->grafted = 1;
 	}
 	if (s->lastinsert && (s->lastinsert->serial == d->pserial)) {
 		p = s->lastinsert;
@@ -3378,6 +3392,18 @@ proj_init(sccs *s)
 	return (p);
 }
 
+int
+proj_cd2root(project *p)
+{
+	int	ret = p && p->root && (chdir(p->root) == 0);
+
+	if (ret && !streq(".", p->root)) {
+		free(p->root);
+		p->root = strdup(".");
+	}
+	return (ret);
+}
+
 void
 proj_free(project *p)
 {
@@ -5757,7 +5783,8 @@ err:		if (i2) free(i2);
 		goto err;
 	}
 	/* general error checking done.  Pretend not here if defbranch 1.0 */
-	if (s->defbranch && streq(s->defbranch, "1.0")) {
+	if (s->defbranch &&
+	    streq(s->defbranch, "1.0") && !(flags & GET_FORCE)) {
 		/* verbose((stderr, "get: ignoring %s\n", s->gfile)); */
 		return (0);
 	}
@@ -13727,10 +13754,14 @@ sccs_keyinit(char *key, u32 flags, project *proj, MDBM *idDB)
 	datum	k, v;
 	char	*p;
 	sccs	*s;
-	char	buf[MAXPATH];
 	char	*localkey = 0;
+	delta	*d;
+	char	buf[MAXPATH];
 
-	/* Id cache contains long and short keys */
+	/*
+	 * Id cache contains both long and short keys
+	 * so we don't need to look things up as long then short.
+	 */
 	k.dptr = key;
 	k.dsize = strlen(key) + 1;
 	v  = mdbm_fetch(idDB, k);
@@ -13749,13 +13780,29 @@ sccs_keyinit(char *key, u32 flags, project *proj, MDBM *idDB)
 	s = sccs_init(p, flags, proj);
 	free(p);
 	unless (s && HAS_SFILE(s))  goto out;
-	sccs_sdelta(s, sccs_ino(s), buf);
-	/* modifies buf and key, so copy key to local key */
-	localkey = strdup(key);
-	assert(localkey);
-	unless (samekeystr(buf, localkey))  goto out;
-	free(localkey);
-	return (s);
+
+	/*
+	 * Go look for this key in the file.
+	 * If we are a grafted together file, any root key is a match.
+	 */
+	d = sccs_ino(s);
+	do {
+		sccs_sdelta(s, d, buf);
+
+		/* modifies buf and key, so copy key to local key */
+		localkey = strdup(key);
+		assert(localkey);
+		if (samekeystr(buf, localkey)) {
+			free(localkey);
+			return (s);
+		}
+		free(localkey);
+		localkey = 0;
+		unless (s->grafted) goto out;
+		while (d = d->next) {
+			if (d->random) break;
+		}
+	} while (d);
 
 out:	if (s) {
 		sccs_free(s);

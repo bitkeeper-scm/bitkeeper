@@ -1,5 +1,8 @@
 #include "system.h"
 #include "sccs.h"
+#include <setjmp.h>
+#define	exit(e)		longjmp(exit_buf, e)
+
 WHATSTR("@(#)%K%");
 
 /*
@@ -24,6 +27,7 @@ usage: sfiles [-aAcCdDglkpPRrux] [directories]\n\n\
     -r		rebuild the id to pathname cache\n\
     -R		when used with -C, list files as foo.c:1.3..1.5\n\
     -u		list only unlocked files\n\
+    -v		be verbose during id rebuild\n\
     -x		list files which have no revision control files\n\
 		Note 1: files in BitKeeper/log/ are ignored\n\
     		Note 2: revision control files must look like SCCS/s.*,\n\
@@ -41,8 +45,8 @@ private	int	aFlg, cFlg, Cflg, dFlg, gFlg, lFlg, pFlg, Pflg, rFlg, vFlg;
 private	int	Dflg, Aflg, Rflg, kFlg, xFlg, uFlg;
 private	FILE	*id_cache;
 private	void	keys(char *file);
-private	MDBM	*idDB;
-private	int	dups;
+private	MDBM	*idDB;		/* used to detect duplicate keys */
+private	int	dups;		/* duplicate key count */
 private	int	mixed;		/* running in mixed long/short mode */
 private	int	hasDiffs(char *file);
 private	int	isSccs(char *s);
@@ -55,6 +59,7 @@ private	void	lftw(const char *dir, lftw_func func);
 private	void	process(const char *filename, int mode);
 private	void	caches(const char *filename, int mode);
 private	project	*proj = 0;
+private	jmp_buf	exit_buf;
 
 int
 sfiles_main(int ac, char **av)
@@ -89,6 +94,7 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		    default: goto usage;
 		}
 	}
+	if (i = setjmp(exit_buf)) return (i);
 	if (xFlg && (Aflg|cFlg|Cflg|dFlg|Dflg|lFlg|pFlg|Pflg|uFlg)) {
 		fprintf(stderr, "sfiles: -x must be standalone.\n");
 		return (1);
@@ -490,30 +496,36 @@ caches(const char *filename, int mode)
 		sccs_free(sc);
 		return;
 	}
-	if (sc->defbranch && streq(sc->defbranch, "1.0")) { /* not visible */
-		sccs_free(sc);
-		return;
-	}
-	if (vFlg) printf("%s\n", sc->gfile);
 
 	if (rFlg) {
 		delta	*ino = sccs_ino(sc);
 
-		/* update the id cache only if root path != current path. */
-		assert(ino->pathname);
-		sccs_sdelta(sc, ino, buf);
-		unless (streq(ino->pathname, sc->gfile)) {
-			fprintf(id_cache, "%s %s\n", buf, sc->gfile);
-		}
-		save(sc, idDB, buf);
-		if (mixed && (t = sccs_iskeylong(buf))) {
-			*t = 0;
-			unless (streq(ino->pathname, sc->gfile)) {
+		/*
+		 * Update the id cache if root path != current path.
+		 * Add entries for any grafted in roots as well.
+		 */
+		do {
+			assert(ino->pathname);
+			sccs_sdelta(sc, ino, buf);
+			save(sc, idDB, buf);
+			if (sc->grafted || !streq(ino->pathname, sc->gfile)) {
+				if (vFlg) printf("%s %s\n", buf, sc->gfile);
 				fprintf(id_cache, "%s %s\n", buf, sc->gfile);
 			}
-			save(sc, idDB, buf);
-			*t = '|';
-		}
+			if (mixed && (t = sccs_iskeylong(buf))) {
+				*t = 0;
+				unless (streq(ino->pathname, sc->gfile)) {
+					fprintf(id_cache,
+					    "%s %s\n", buf, sc->gfile);
+				}
+				save(sc, idDB, buf);
+				*t = '|';
+			}
+			unless (sc->grafted) break;
+			while (ino = ino->next) {
+				if (ino->random) break;
+			}
+		} while (ino);
 	}
 
 	/* XXX - should this be (Cflg && !(sc->state & S_CSET)) ? */
@@ -526,6 +538,23 @@ caches(const char *filename, int mode)
 	 * If it's marked, we're done.
 	 */
 	if (d->flags & D_CSET) goto out;
+
+	/*
+	 * If it is out of view, we need to look at all leaves and see if
+	 * there is a problem or not.
+	 */
+	if (sc->defbranch && streq(sc->defbranch, "1.0")) {
+		for (d = sc->table; d; d = d->next) {
+			unless ((d->type == 'D') && sccs_isleaf(sc, d)) {
+				continue;
+			}
+			unless (d->flags & D_CSET) break;
+		}
+		unless (d) goto out;
+		fprintf(stderr,
+		    "Warning: not in view file %s skipped.\n", sc->gfile);
+		goto out;
+	}
 
 	/*
 	 * If we are looking for diff output and not -a style,

@@ -293,7 +293,6 @@ proc create_config { w } \
 
 	# Need to have global for w inorder to bind the keyRelease events
 	set widget $w
-	# set the default to openlogging.org
 	set st_cinfo(logging) "logging@openlogging.org"
 	set bcolor #ffffff
 	set mcolor #deeaf4	;# color for mandatory fields
@@ -312,9 +311,6 @@ proc create_config { w } \
 		message $w.t.info.msg -width 200 -bg $bcolor  \
 		    -text "The items on the right that are highlited are \
 		           mandatory fields"
-		#image create photo bklogo -data $logo
-		#label $w.t.info.l -image bklogo
-		#pack $w.t.info.l -side top -pady 10
 		pack $w.t.info.msg -side bottom  -pady 10
 		# create button bar on bottom
 		frame $w.t.bb -bg $bcolor
@@ -355,8 +351,7 @@ proc create_config { w } \
 			$w.t.t.t insert insert \$st_bk_cfg($des);\
 			$w.t.t.t configure -state disabled"
 	}
-	#puts "(repository) $st_bk_cfg(repository)"
-	# Mandatory fields are highlighted
+	# Highlight mandatory fields
 	$w.t.e.repository config -bg $mcolor
 	$w.t.e.description config -bg $mcolor
 	$w.t.e.logging config -bg $mcolor
@@ -383,7 +378,6 @@ proc create_config { w } \
 		puts "Repository selected"
 	}
 	tkwait variable st_dlg_button
-	#puts "st_dlg_button: $st_dlg_button"
 	if { $st_dlg_button != 0 } {
 		puts stderr "Cancelling creation of repository"
 		exit
@@ -404,8 +398,7 @@ proc main {} \
 	#wm geometry . ${width}x${len}+$x+$y
 	wm geometry . +$x+$y
 	get_config_info
-	# If argc is set, override the repository name found in the .bkrc
-	# file
+	# Override the repo name found in the .bkrc file if argc is set
 	if { $argc == 1 } {
 		set st_cinfo(repository) [lindex $argv 0]
 	}
