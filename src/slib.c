@@ -2117,7 +2117,7 @@ sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
 			} else {
 				d = cset2rev(sc, s+1);
 			}
-		} else if (strchr(s, '|') || isMD5key(s)) {
+		} else if (isKey(s)) {
 			d = sccs_findKey(sc, s);
 		} else {
 			d = findrev(sc, s);
@@ -15261,9 +15261,9 @@ sccs_findMD5(sccs *s, char *md5)
 }
 
 int
-isMD5key(char *key)
+isKey(char *key)
 {
-	return (isxdigit(key[0]) && (strlen(key) == 30));
+	return (strchr(key, '|') || (isxdigit(key[0]) && (strlen(key) == 30)));
 }
 
 /*
@@ -15286,7 +15286,7 @@ sccs_findKey(sccs *s, char *key)
 
 	unless (s && HASGRAPH(s)) return (0);
 	debug((stderr, "findkey(%s)\n", key));
-	if (isMD5key(key)) return (sccs_findMD5(s, key));
+	unless (strchr(key, '|')) return (sccs_findMD5(s, key));
 	if (s->findkeydb) {	/* if cached by calling sccs_findKeyDB() */
 		datum	k, v;
 		k.dptr = key;

@@ -95,17 +95,8 @@ Each \*(BK package has a unique identity.
 All instances (repositories) of the package have the same package indentity.
 .tp
 .B repository identity
-The  repository  identity is different in each repository,
-regardless of the package.  
-.tp
-.B repo_id
-Each repository has a unique identifier that labels that particular
-directory. The
-.B repo_id
-can be found with the command:
-.DS
-bk identity -r
-.DE
+Each repository has a unique identifier which is different across all
+repositories, regardless of the package.  
 .tp
 .B pending
 Deltas which have been checked into a file but not yet

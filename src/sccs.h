@@ -836,7 +836,7 @@ delta	*findrev(sccs *, char *);
 delta	*sccs_top(sccs *);
 delta	*sccs_findKey(sccs *, char *);
 MDBM	*sccs_findKeyDB(sccs *, u32);
-int	isMD5key(char *key);
+int	isKey(char *key);
 delta	*sccs_findMD5(sccs *s, char *md5);                              
 delta	*sccs_dInit(delta *, char, sccs *, int);
 char	*sccs_getuser(void);

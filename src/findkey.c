@@ -65,9 +65,8 @@ findkey_main(int ac, char **av)
 	}
 	unless (look.random || look.cksum ||
 	    look.email || look.host || look.path || look.utc || look.user) {
-	    	unless (av[optind] &&
-		    (strchr(av[optind], '|') || isMD5key(av[optind]))) {
-			fprintf(stderr, "%s: missing key\n", av[0]);
+	    	unless (av[optind] && isKey(av[optind])) {
+			fprintf(stderr, "%s: missing or invalid key\n", av[0]);
 			return (1);
 		}
 		look.key = av[optind++];

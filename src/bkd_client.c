@@ -39,10 +39,6 @@ remote_parse(const char *url, int skip_checks)
 			r->type = ADDR_BK;;
 			if (r->user) r->loginshell = 1;
 		}
-	} else if (!skip_checks && (bk_mode() == BK_BASIC)) {
-		fprintf(stderr,
-		    "Non-bk:// address detected: %s\n", upgrade_msg);
-		r = NULL;
 	} else if (strneq("http://", p, 7)) {
 		r = url_parse(p + 7, WEB_PORT);
 		if (r) r->type = ADDR_HTTP;;
