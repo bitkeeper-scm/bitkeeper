@@ -226,11 +226,21 @@ test -f ChangeSet && {
 	echo should not have gotten ChangeSet
 	exit 1
 }
+bk get -q .
+test -f ChangeSet && {
+	echo should not have gotten ChangeSet
+	exit 1
+}
 bk clean
 echo OK
 
 echo $N Make sure get -e does not get ChangeSet .....................$NL
 bk get -qe
+test -f ChangeSet && {
+	echo should not have gotten ChangeSet
+	exit 1
+}
+bk get -qe .
 test -f ChangeSet && {
 	echo should not have gotten ChangeSet
 	exit 1

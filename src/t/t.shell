@@ -26,7 +26,7 @@ then
 	exit 0;
 fi
 
-HERE=`bk pwd`
+HERE=`bk pwd -s`
 echo $N Create initial repository ...................................$NL
 no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi

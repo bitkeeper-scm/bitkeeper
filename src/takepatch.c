@@ -302,15 +302,15 @@ usage:		system("bk help -s takepatch");
 	getGone(isLogPatch); 
 
 	if (resolve) {
-		char 	*resolve[7] = {"bk", "resolve", "-q", 0, 0, 0, 0};
+		char 	*resolve[] = {"bk", "resolve", 0, 0, 0, 0, 0};
 		int 	i;
 
 		if (echo) {
 			fprintf(stderr,
 			    "Running resolve to apply new work...\n");
 		}
-		i = 2;
-		if (!echo) resolve[++i] = "-q";
+		i = 1;
+		unless (echo) resolve[++i] = "-q";
 		if (textOnly) resolve[++i] = "-t";
 		if (noConflicts) resolve[++i] = "-c";
 		i = spawnvp_ex(_P_WAIT, resolve[0], resolve);
@@ -609,7 +609,10 @@ error:			if (perfile) sccs_free(perfile);
 		}
 	}
 	tableGCA = 0;
-	encoding = s ? s->encoding : 0;
+	if (s) {
+		encoding = s->encoding;
+		sccs_findKeyDB(s, 0);
+	}
 	while (extractDelta(name, s, newFile, p, flags, &nfound)) {
 		if (newFile) newFile = 2;
 	}
@@ -622,6 +625,10 @@ error:			if (perfile) sccs_free(perfile);
 	if ((s && CSET(s)) || (!s && streq(name, CHANGESET))) {
 		rc = applyCsetPatch(s ? s->sfile : 0 , nfound, flags, perfile);
 	} else {
+		if (s && s->findkeydb) {
+			mdbm_close(s->findkeydb);
+			s->findkeydb = 0;
+		}
 		if (patchList && tableGCA) getLocals(s, tableGCA, name);
 		rc = applyPatch(s ? s->sfile : 0, flags, perfile);
 	}
@@ -1204,6 +1211,7 @@ apply:
 				if (chkEmpty(s, dF)) return -1;
 			}
 			cweave_init(s, nfound);
+			sccs_findKeyDB(s, 0);
 			d = cset_insert(s, iF, dF, p->pid);
 			s->bitkeeper = 1;
 		}
@@ -1232,7 +1240,12 @@ apply:
 	 * items brought in from patch.  Could call inherit.
 	 * For now, leave at this and watch performance.
 	 */
-	sys("bk", "renumber", "-q", patchList->resyncFile, SYS);
+	if (echo == 3) {
+		fprintf(stderr, "\b, ");
+		sys("bk", "renumber", "-q", "-/", patchList->resyncFile, SYS);
+	} else {
+		sys("bk", "renumber", "-q", patchList->resyncFile, SYS);
+	}
 
 	s = sccs_init(patchList->resyncFile, SILENT);
 	assert(s && s->tree);
@@ -1278,7 +1291,8 @@ apply:
 		d->flags |= p->local ? D_LOCAL : (D_REMOTE|D_SET);
 	}
 	s->state |= S_SET;
-	if (cset_resum(s, 0, 0)) {
+	if (echo == 3) fprintf(stderr, "\b, ");
+	if (cset_resum(s, 0, 0, echo == 3)) {
 		getMsg("takepatch-chksum", 0, '=', stderr);
 		return (-1);
 	}
@@ -1299,6 +1313,63 @@ apply:
 	patchList = 0;
 	fileNum = 0;
 	return (0);
+}
+
+/* 
+ * an existing file that was in the patch but didn't
+ * get any deltas.  Usually an error, but we should
+ * handle this better.
+ */
+private int
+noupdates(char *localPath)
+{
+	char    *resync = aprintf("RESYNC/%s", localPath);
+	int	rc = 0, i = 0;
+	sccs	*s;
+	delta	*d;
+	FILE	*f;
+	char	*p, buf[MAXKEY*2], key[MAXKEY];
+	
+	while (exists(resync)) {
+		free(resync);
+		resync = aprintf("RESYNC/BitKeeper/RENAMES/s.%d", i++);
+	}
+	fileCopy2(localPath, resync);
+
+	/* No changeset, no marks for you, dude */
+	unless (exists(ROOT2RESYNC "/SCCS/s.ChangeSet")) goto out;
+
+	/*
+	 * bk fix -c can leave files that are pending but then a pull
+	 * puts back the changes.  Make sure that if we have pending
+	 * deltas we are either filling that back in or error with a
+	 * pending message.
+	 */
+	s = sccs_init(resync, INIT_NOCKSUM, 0);
+	sccs_sdelta(s, sccs_ino(s), key);
+	f = popen("bk sccscat -h " ROOT2RESYNC "/ChangeSet", "r");
+	while (fnext(buf, f)) {
+		chomp(buf);
+		p = separator(buf);
+		assert(p);
+		*p++ = 0;
+		unless (streq(key, buf)) continue;
+		d = sccs_findKey(s, p);
+		assert(d);
+		if (d->flags & D_CSET) continue;
+		if (echo > 4) fprintf(stderr,"MARK(%s|%s)\n", s->gfile, d->rev);
+		d->flags |= D_CSET;
+	}
+	pclose(f);
+	unless (sccs_top(s)->flags & D_CSET) {
+		uncommitted(s->gfile + strlen(ROOT2RESYNC) + 1);
+		rc = -1;
+	} else {
+		sccs_newchksum(s);
+	}
+	sccs_free(s);
+out:	free(resync);
+	return (rc);
 }
 
 /*
@@ -1323,23 +1394,8 @@ applyPatch(char *localPath, int flags, sccs *perfile)
 
 	reversePatch();
 	p = patchList;
-	if (!p && localPath) {
-		/* 
-		 * an existing file that was in the patch but didn't
-		 * get any deltas.  Usually an error, but we should
-		 * handle this better.
-		 */
-		char    *resync = aprintf("RESYNC/%s", localPath);
-		int	i = 0;
-		
-		while (exists(resync)) {
-                  	free(resync);
-			resync = aprintf("RESYNC/BitKeeper/RENAMES/s.%d", i++);
-		}
-		fileCopy2(localPath, resync);
-		free(resync);
-		return (0);
-	}
+	if (!p && localPath) return (noupdates(localPath));
+
 	if (echo == 3) fprintf(stderr, "%c\b", spin[n++ % 4]);
 	if (echo > 7) {
 		fprintf(stderr, "L=%s\nR=%s\nP=%s\nM=%s\n",

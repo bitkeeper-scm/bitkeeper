@@ -12,7 +12,7 @@ private int	clean_file(char **);
 private	int	moveAndSave(char **fileList);
 private int	move_file(char *checkfiles);
 private int	do_rename(char **, char *);
-private int	check_patch(void);
+private int	check_patch(char *patch);
 private int	doit(char **fileList, char *rev_list, char *qflag, char *);
 
 private	int	checkout;
@@ -28,13 +28,12 @@ undo_main(int ac,  char **av)
 	int	status;
 	int	rmresync = 1;
 	char	**csetrev_list = 0;
-	char	*qflag = "", *vflag = "-v";
+	char	*qflag = "";
 	char	*cmd = 0, *rev = 0;
-	int	aflg = 0, quiet = 0;
+	int	aflg = 0, quiet = 0, verbose = 0;
 	char	**fileList = 0;
 	char	*checkfiles;	/* filename of list of files to check */
-#define	LINE "---------------------------------------------------------\n"
-#define	BK_UNDO "BitKeeper/tmp/undo_backup"
+	char	*patch = "BitKeeper/tmp/undo.patch";
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help undo");
@@ -45,15 +44,17 @@ undo_main(int ac,  char **av)
 		exit(1);
 	}
 
-	while ((c = getopt(ac, av, "a:fqsr:")) != -1) {
+	while ((c = getopt(ac, av, "a:fqp;sr:v")) != -1) {
 		switch (c) {
 		    case 'a': aflg = 1;				/* doc 2.0 */
 			/* fall though */
 		    case 'r': rev = optarg; break;		/* doc 2.0 */
 		    case 'f': force  =  1; break;		/* doc 2.0 */
 		    case 'q':					/* doc 2.0 */
-		    	quiet = 1; qflag = "-q"; vflag = ""; break;
+		    	quiet = 1; qflag = "-q"; break;
+		    case 'p': save = 1; patch = optarg; break;
 		    case 's': save = 0; break;			/* doc 2.0 */
+		    case 'v': verbose = 1; break;
 		    default :
 			fprintf(stderr, "unknown option <%c>\n", c);
 usage:			system("bk help -s undo");
@@ -102,31 +103,32 @@ err:		if (undo_list[0]) unlink(undo_list);
 		goto err;
 	}
 	unless (force) {
-		printf(LINE);
-		cat(rev_list);
-		printf(LINE);
+		for (i = 0; i<79; ++i) putchar('-'); putchar('\n');
+		fflush(stdout);
+		f = popen(verbose? "bk changes -ev -" : "bk changes -e -", "w");
+		EACH (csetrev_list) fprintf(f, "%s\n", csetrev_list[i]);
+		pclose(f);
 		printf("Remove these [y/n]? ");
 		unless (fgets(buf, sizeof(buf), stdin)) buf[0] = 'n';
 		if ((buf[0] != 'y') && (buf[0] != 'Y')) {
 			unlink(rev_list);
 			unlink(undo_list);
 			freeLines(fileList, free);
-			exit(0);
+			exit(1);
 		}
 	}
 
 	if (save) {
-		unless (quiet) fprintf(stderr, "Saving a backup patch...\n");
 		unless (isdir(BKTMP)) mkdirp(BKTMP);
-		cmd = aprintf("bk cset %s -ffm - > %s", vflag, BK_UNDO);
+		cmd = aprintf("bk cset -ffm - > %s", patch);
 		f = popen(cmd, "w");
 		free(cmd);
 		if (f) {
 			EACH(csetrev_list) fprintf(f, "%s\n", csetrev_list[i]);
 			pclose(f);
 		}
-		if (check_patch()) {
-			printf("Failed to create undo backup %s\n", BK_UNDO);
+		if (check_patch(patch)) {
+			printf("Failed to create undo backup %s\n", patch);
 			goto err;
 		}
 	}
@@ -153,10 +155,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 	chdir(RESYNC2ROOT);
 
 	rmEmptyDirs(quiet);
-	if (!quiet && save) {
-		printf("Patch containing these undone deltas left in %s\n",
-		    BK_UNDO);
-	}
+	if (!quiet && save) printf("Backup patch left in \"%s\".\n", patch);
 	unless (quiet) printf("Running consistency check...\n");
 	if (strieq("yes", user_preference("partial_check"))) {
 		rc = run_check(checkfiles, 1, quiet);
@@ -169,11 +168,13 @@ err:		if (undo_list[0]) unlink(undo_list);
 	sig_default();
 
 	freeLines(fileList, free);
-	unlink(rev_list); unlink(undo_list);
+	unlink(rev_list);
+	unlink(undo_list);
 	update_log_markers(!quiet);
 	if (rc) return (rc); /* do not remove backup if check failed */
 	unlink(BACKUP_SFIO);
 	sys(RM, "-rf", "RESYNC", SYS);
+	unlink(CSETS_IN);	/* no longer valid */
 	return (rc);
 }
 
@@ -211,9 +212,9 @@ doit(char **fileList, char *rev_list, char *qflag, char *checkfiles)
 }
 
 private int
-check_patch()
+check_patch(char *patch)
 {
-	MMAP	*m = mopen(BK_UNDO, "");
+	MMAP	*m = mopen(patch, "");
 	char	*p;
 
 	if (!m) return (1);

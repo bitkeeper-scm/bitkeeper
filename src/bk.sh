@@ -49,6 +49,19 @@ _renames() {
 	bk rset -h "$1" | awk -F'|' '{ if ($1 != $2) print $2 " -> " $1 }'
 }
 
+_repatch() {
+	__cd2root
+	PATCH=BitKeeper/tmp/undo.patch
+	test "X$1" = X || PATCH="$1"
+	test -f $PATCH || {
+		echo $PATCH not found, nothing to repatch
+		exit 0
+	}
+	# Note: this removed the patch if it works.
+	bk takepatch -vvvaf $PATCH
+}
+
+# shorthand
 _gfiles() {		# /* undoc? 2.0 */
 	exec bk sfiles -g "$@"
 }

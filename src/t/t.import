@@ -66,6 +66,22 @@ bk edit $Q foo
 bk import $Q -tpatch BitKeeper/tmp/P . || exit 1
 echo OK
 
+echo $N Test import of a patch with p0 ..............................$NL
+cd $HERE
+rm -rf EDIT
+tar xmf TAR
+cd EDIT
+cat >> BitKeeper/tmp/foo <<EOF
+A
+C
+E
+G
+EOF
+bk get $Q foo
+diff -ruN foo BitKeeper/tmp/foo > BitKeeper/tmp/P
+bk import $Q -tpatch -p0 BitKeeper/tmp/P . || exit 1
+echo OK
+
 echo $N Make sure an import does not commit unrelated deltas ........$NL
 cd $HERE
 rm -rf EDIT

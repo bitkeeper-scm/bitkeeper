@@ -548,6 +548,42 @@ csetDiff(MDBM *not,  int wantTag)
 	return (0);
 }
 
+/*
+ * Return true if spath is the real ChangeSet file.
+ * Must be light weight, it is called from sccs_init().
+ * It assumes ChangeSet and BitKeeper/etc share the same parent dir.
+ * XXX Moving the ChangeSet file will invalidate this code!
+ * Handles the following cases:
+ * a) spath = not a ChangeSet path	# common case
+ * b) spath = SCCS/s.ChangeSet		# common case
+ * c) spath = XSCCS/s.ChangeSet		# should not happen
+ * d) spath = /SCCS/s.ChangeSet		# repo root is "/"
+ * e) spath = X/SCCS/s.ChangeSet	# X is "." or other prefix
+ */
+int
+isCsetFile(char *spath)
+{
+	char	*p, *q, *r;
+	char	buf[MAXPATH];
+
+	unless (spath) return (0);
+	
+	/* find "SCCS/s.ChangeSet" suffix */
+	unless (q = strrchr(spath, '/')) return (0);
+	q -= 4;
+	unless ((q >= spath) && patheq(q, CHANGESET)) return (0);
+								/* case ' a' */
+
+	if (q == spath) return (isdir(BKROOT));			/* case ' b' */
+	--q;
+	if (*q != '/') return (0);				/* case ' c' */
+	if (q == spath) return (0);				/* case ' d' */
+
+	/* test if pathname contains BKROOT */
+	sprintf(buf, "%.*s/" BKROOT, q - spath, spath);
+	return (isdir(buf));					/* case ' e' */
+}
+
 
 int
 bkd_connect(remote *r, int compress, int verbose)

@@ -4063,10 +4063,12 @@ sccs_init(char *name, u32 flags)
 	} else {
 		s->proj = proj_init(".");
 	}
-	if (t && streq(t, "/s.ChangeSet")) {
+
+	if (isCsetFile(s->sfile)) {
 		s->xflags |= X_HASH;
 		s->state |= S_CSET;
 	}
+
 	if (flags & INIT_NOSTAT) {
 		if ((flags & INIT_HASgFILE) && check_gfile(s, flags)) return 0;
 	} else {
@@ -12724,7 +12726,7 @@ mkDiffHdr(u32 kind, char tag[], char *buf, FILE *out)
 {
 	char	*marker, *date;
 
-	unless (kind & (DF_UNIFIED|DF_CONTEXT)) {
+	unless (kind & (DF_UNIFIED|DF_CONTEXT|DF_GNUp)) {
 		fputs(buf, out);
 		return; 
 	}

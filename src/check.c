@@ -327,7 +327,7 @@ fix_merges(sccs *s)
 {
 	sccs	*tmp;
 
-	sccs_renumber(s, 0);
+	sccs_renumber(s, 0, 0);
 	sccs_newchksum(s);
 	tmp = sccs_init(s->sfile, 0);
 	assert(tmp);

@@ -35,6 +35,7 @@ void	extract(char *, char *, u32, char *);
 char	*findtmp(void);
 int	isdir(char*);
 void	rmTree(char *dir);
+char	*getdest(void);
 
 int
 main(int ac, char **av)
@@ -75,25 +76,11 @@ main(int ac, char **av)
 	 */
 	if (av[1] && (streq(av[1], "-u") || streq(av[1], "--upgrade"))) {
 		upgrade = 1;
+		unless (dest = getdest()) dest = bindir;
 		if (chdir(tmp)) {
 			perror(tmp);
 			exit(1);
 		}
-		sprintf(buf, "bk bin > bindir%u", pid);
-		system(buf);
-		sprintf(buf, "bindir%u", pid);
-		f = fopen(buf, "r");
-		if (f && fgets(buf, sizeof(buf), f)) {
-			for (dest = buf; *dest; dest++);
-			*--dest = 0;
-			if (dest[-1] == '\r') dest[-1] = 0;
-			dest = strdup(buf);
-		} else {
-			dest = bindir;
-		}
-		if (f) fclose(f);
-		sprintf(buf, "bindir%u", pid);
-		unlink(buf);
 	} else if (av[1] && (av[1][0] != '-')) {
 #ifdef	WIN32
 		unless ((av[1][1] ==':') || (av[1][0] == '/')) {
@@ -288,6 +275,40 @@ extract(char *name, char *data, u32 size, char *dir)
 	}
 	close(fd);
 	gzclose(gz);
+}
+
+char *
+getdest(void)
+{
+	FILE	*f = popen("bk bin", "r");
+	char	*p;
+	char	buf[MAXPATH], buf2[MAXPATH];
+
+	unless (f) return (0);
+
+	buf[0] = 0;
+	fgets(buf, sizeof(buf), f);
+	unless (buf[0]) {
+		pclose(f);
+		return (0);
+	}
+	pclose(f);
+	for (p = buf; *p; p++);
+	*--p = 0;
+	if (p[-1] == '\r') p[-1] = 0;
+	sprintf(buf2, "bk pwd '%s'", buf);
+	f = popen(buf2, "r");
+	buf[0] = 0;
+	fgets(buf, sizeof(buf), f);
+	unless (buf[0]) {
+		pclose(f);
+		return (0);
+	}
+	pclose(f);
+	for (p = buf; *p; p++);
+	*--p = 0;
+	if (p[-1] == '\r') p[-1] = 0;
+	return (strdup(buf));
 }
 
 int

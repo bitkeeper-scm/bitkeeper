@@ -462,12 +462,14 @@ main(int ac, char **av, char **env)
 	char	sopts[30];
 
 	if (getenv("BK_SHOWPROC")) {
-		FILE	*f = fopen(DEV_TTY, "w");
+		FILE	*f;
 
-		fprintf(f, "BK (%u t: %5s)", getpid(), milli());
-		for (i = 0; av[i]; ++i) fprintf(f, " %s", av[i]);
-		fprintf(f, "\n");
-		fclose(f);
+		if (f = fopen(DEV_TTY, "w")) {
+			fprintf(f, "BK (%u t: %5s)", getpid(), milli());
+			for (i = 0; av[i]; ++i) fprintf(f, " %s", av[i]);
+			fprintf(f, "\n");
+			fclose(f);
+		}
 	}
 
 	unless (getenv("BK_TMP")) bktmpenv();
@@ -739,28 +741,25 @@ private	struct {
 } repolog[] = {
 	{"abort", CMD_FAST_EXIT},
 	{"check", CMD_FAST_EXIT},
+	{"commit", CMD_WRLOCK|CMD_WRUNLOCK},
 	{"license", CMD_FAST_EXIT},
+	{"pending_part1", CMD_RDLOCK|CMD_RDUNLOCK},
+	{"pending_part2", CMD_RDLOCK|CMD_RDUNLOCK},
 	{"pull", CMD_BYTES|CMD_WRLOCK|CMD_WRUNLOCK},
 	{"push", CMD_BYTES|CMD_RDLOCK|CMD_RDUNLOCK},
-	{"commit", CMD_WRLOCK|CMD_WRUNLOCK},
-	{"remote pull", CMD_BYTES|CMD_FAST_EXIT|CMD_RDLOCK|CMD_RDUNLOCK},
-	{"remote push", CMD_BYTES|CMD_FAST_EXIT|CMD_WRLOCK|CMD_WRUNLOCK},
+	{"remote changes part1", CMD_RDLOCK|CMD_RDUNLOCK},
+	{"remote changes part2", CMD_RDLOCK|CMD_RDUNLOCK},
+	{"remote clone", CMD_BYTES|CMD_FAST_EXIT|CMD_RDLOCK|CMD_RDUNLOCK},
 	{"remote pull part1", CMD_BYTES|CMD_RDLOCK},
 	{"remote pull part2", CMD_BYTES|CMD_FAST_EXIT|CMD_RDUNLOCK},
+	{"remote pull", CMD_BYTES|CMD_FAST_EXIT|CMD_RDLOCK|CMD_RDUNLOCK},
 	{"remote push part1", CMD_BYTES|CMD_WRLOCK},
 	{"remote push part2", CMD_BYTES|CMD_FAST_EXIT|CMD_WRUNLOCK},
-	{"remote clone", CMD_BYTES|CMD_FAST_EXIT|CMD_RDLOCK|CMD_RDUNLOCK},
+	{"remote push", CMD_BYTES|CMD_FAST_EXIT|CMD_WRLOCK|CMD_WRUNLOCK},
 	{"remote rclone part1", CMD_BYTES},
 	{"remote rclone part2", CMD_BYTES|CMD_FAST_EXIT},
 	{"synckeys", CMD_RDLOCK|CMD_RDUNLOCK},
-	{"pending_part1", CMD_RDLOCK|CMD_RDUNLOCK},
-	{"pending_part2", CMD_RDLOCK|CMD_RDUNLOCK},
-	/*
-	 * This is a hack because we short circuit part2 in changes.c.
-	 * It opens a tiny race.
-	 */
-	{"remote changes part1", CMD_RDLOCK|CMD_RDUNLOCK},
-	{"remote changes part2", CMD_RDLOCK|CMD_RDUNLOCK},
+	{"undo", 0},
 	{ 0, 0 },
 };
 
@@ -957,11 +956,13 @@ cmdlog_end(int ret)
 	}
 
 	if (getenv("BK_SHOWPROC")) {
-		FILE	*f = fopen(DEV_TTY, "w");
+		FILE	*f;
 
-		fprintf(f, "END(%u t: %5s)", getpid(), milli());
-		fprintf(f, " %s = %d\n", cmdlog_buffer, ret);
-		fclose(f);
+		if (f = fopen(DEV_TTY, "w")) {
+			fprintf(f, "END(%u t: %5s)", getpid(), milli());
+			fprintf(f, " %s = %d\n", cmdlog_buffer, ret);
+			fclose(f);
+		}
 	}
 
 	/* If we have no project root then bail out */

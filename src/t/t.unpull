@@ -83,15 +83,14 @@ grep -q 'unpull: will not unpull local changeset 1.5' OUT || {
 }
 echo OK
 
-# 4) undo the locally added cset, unpull again, should succeed
-echo $N Undo locally added cset, try unpull, should succeed .........$NL
+# 4) undo the locally added cset, unpull again, should fail, csets-in gone
+echo $N Undo locally added cset, try unpull, should fail ............$NL
+test -f BitKeeper/etc/csets-in || exit 1
 bk undo $Q -fr+ || exit 1
-bk unpull -f $Q || exit 1
-test -f SCCS/s.foo.c && { echo failed to remove foo.c; exit 1; }
-grep -q 'D 1.2' SCCS/s.bar.c && {
-	echo failed to remove 1.2 delta in bar.c
+test -f BitKeeper/etc/csets-in && exit 1
+bk unpull -f $Q > OUT 2>&1 && {
+	echo should not have worked
+	cat OUT
 	exit 1
 }
-test -f SCCS/s.snafu.c || { echo snafu.c got removed; exit 1; }
-bk -r check -ac || exit 1
 echo OK

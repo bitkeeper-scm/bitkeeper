@@ -16,11 +16,11 @@ r2c_main(int ac, char **av)
 	char	*name;
 	delta	*e;
 	sccs	*s, *cset;
-	char	buf[MAXPATH+200];
-	char	tmpfile[MAXPATH];
 	char	*t, *key, *shortkey;
 	FILE	*f = 0;
 	int	len;
+	char	tmpfile[MAXPATH];
+	char	buf[MAXKEY*2];
 	RANGE_DECL;
 
 	if (ac == 2 && streq("--help", av[1])) {
