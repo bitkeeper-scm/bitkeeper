@@ -574,11 +574,11 @@ trailer(char *path)
 		    "<font color=black size=-2>\n"
 		    "<table border=0 bgcolor=white width=100%>\n"
 		    "<tr>\n"
-		    "<td align=left><img src=\"logo.gif\" alt=\"\"></img></td>\n"
-		    "<td align=right><a href=www.bitkeeper.com><img src=trailer.gif alt=\"Learn more about BitKeeper\"></a></td>\n"
-		    "</tr>\n"
-		    "</table>\n"
-		    "</font>\n");
+		    "<td align=left>"
+		    "<img src=\"logo.gif\" alt=\"\"></img></td>\n"
+		    "<td align=right><a href=http://www.bitkeeper.com>"
+		    "<img src=trailer.gif alt=\"Learn more about BitKeeper\">"
+		    "</a></td></tr></table></font>\n");
 	} else {
 		out("<hr>\n"
 		    "<p align=center>\n"
