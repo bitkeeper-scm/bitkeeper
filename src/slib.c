@@ -8187,6 +8187,7 @@ addMode(char *me, sccs *sc, delta *n, char *mode, int *fixDate)
 	assert(mode);
 	unless (n) {
 		n = sccs_newDelta(sc, 1);
+		unless (n) return 0;
 		*fixDate = 1;
 	}
 	sprintf(buf, "Change mode to %s", mode);
@@ -8224,22 +8225,23 @@ changeXFlag(char *me, sccs *sc, delta *n, int add, char *flag, int *fixDate)
 	if (add) {
 		if (xflags & mask) {
 			fprintf(stderr,
-				"%s: %s flag is already on, ignored\n",
-				me, flag);
+				"%s: %s %s flag is already on, ignored\n",
+				me, sc->sfile, flag);
 			return n;
 		} 
 		xflags |= mask;
 	} else {
 		unless (xflags & mask) {
 			fprintf(stderr,
-				"%s: %s flag is already off, ignored \n",
-				me, flag);
+				"%s: %s %s flag is already off, ignored \n",
+				me, sc->sfile, flag);
 			return n;
 		}
 		xflags &= ~mask;
 	}
 	unless (n) {
 		n = sccs_newDelta(sc, 1);
+		unless (n) return 0;
 		*fixDate = 1; 
 	}
 	n->flags |= D_XFLAGS;
