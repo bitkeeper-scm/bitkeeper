@@ -8780,7 +8780,7 @@ newcmd:
 			while (howmany--) {
 				/* XXX: not break but error */
 				unless (b = mnext(diffs)) break;
-				if (what == 'I' && b[0] == '\\') {
+				if (what != 'i' && b[0] == '\\') {
 					s->dsum += fputdata(s, &b[1], out);
 				} else {
 					s->dsum += fputdata(s, b, out);
