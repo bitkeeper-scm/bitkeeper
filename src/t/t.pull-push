@@ -49,6 +49,12 @@ host=`bk gethost`
 [ x$parent = x${host}:$HERE/project ] || { echo wrong parent $parent; exit 1; }
 cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
 echo OK
+echo $N Clone a nested repository ...................................$NL
+cd $HERE/project/src
+bk clone $Q $HERE/project sub_proj
+if [ ! -d $HERE/project/src/sub_proj ]; then echo failed; exit 1; fi
+rm -rf $HERE/project/src/sub_proj
+echo OK
 echo $N Pull with no changes in child ...............................$NL
 cd $HERE/project/src
 bk get $Q -e 'F!O#O$ B%A^R&RR(R)RR'

@@ -24,34 +24,41 @@ int
 setlevel(int level)
 {
 	char	buf[200];
+	char	*lfile;
 	FILE	*f;
 
-	if (sccs_cd2root(0, 0) == -1) return (1);
 
-	unless (f = fopen(LEVEL, "wt")) {
-		perror(LEVEL);
+	lfile = aprintf("%s/%s", sccs_root(0), LEVEL);
+	unless (f = fopen(lfile, "wt")) {
+		perror(lfile);
+		free(lfile);
 		return (1);
 	}
 	fprintf(f, "# This is the repository level, do not delete.\n");
 	fprintf(f, "%d\n", level);
 	fclose(f);
+	free(lfile);
 	return (0);
 }
 
 getlevel()
 {
-	if (sccs_cd2root(0, 0) == -1) return (1000000);
-	if (exists(LEVEL)) {
+	char	*lfile;
+
+	lfile = aprintf("%s/%s", sccs_root(0), LEVEL);
+	if (exists(lfile)) {
 		char	buf[200];
 		FILE	*f;
 
-		unless (f = fopen(LEVEL, "rt")) return (1000000);
+		unless (f = fopen(lfile, "rt")) return (1000000);
 		/* skip the header */
 		fgets(buf, sizeof(buf), f);
 		if (fgets(buf, sizeof(buf), f)) {
 			fclose(f);
+			free(lfile);
 			return (atoi(buf));
 		}
 	}
+	free(lfile);
 	return (1);
 }

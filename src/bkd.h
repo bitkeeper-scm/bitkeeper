@@ -127,7 +127,7 @@ int	buf2fd(int gzip, char *buf, int len, int fd);
 void	add_cd_command(FILE *f, remote *r);
 int	skip_http_hdr(remote *r);
 int	getServerInfoBlock(remote *r);
-void	sendEnv(FILE *f, char **envVar);
+void	sendEnv(FILE *f, char **envVar, int isClone);
 void	setLocalEnv(int in_out);
 void	wait_eof(remote *r, int verbose);
 void	flush2remote(remote *r);

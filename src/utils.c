@@ -560,10 +560,9 @@ putroot(char *where)
 
 /*
  * Send env varibale to remote bkd.
- * This also have the side effect of setting up local env
  */
 void
-sendEnv(FILE *f, char **envVar)
+sendEnv(FILE *f, char **envVar, int isClone)
 {
 	int	i;
 	char	*root, *user, *host;
@@ -573,24 +572,34 @@ sendEnv(FILE *f, char **envVar)
 	fprintf(f, "putenv BK_VERSION=%s\n", bk_vers);
 	fprintf(f, "putenv BK_UTC=%s\n", bk_utc);
 	fprintf(f, "putenv BK_TIME_T=%s\n", bk_time);
-	fprintf(f, "putenv BK_LEVEL=%d\n", getlevel());
 	user = sccs_getuser();
 	fprintf(f, "putenv _BK_USER=%s\n", user);
 	host = sccs_gethost();
 	fprintf(f, "putenv _BK_HOST=%s\n", host);
 
-	root = sccs_root(0);
-	if (root) {
-		if (streq(root, ".")) {
-			char	pwd[MAXPATH];
+	/*
+	 * We have no Package root when we clone, so skip root related variables
+	 * This is important when we have nested repository. Otherwise, we may
+	 * incorrectly pick up info in the enclosing tree. Jack Moffitt's
+	 * icecast repository exposed this problem.
+	 */
+	unless (isClone) {
+		fprintf(f, "putenv BK_LEVEL=%d\n", getlevel());
 
-			getcwd(pwd, MAXPATH);
-			fprintf(f, "putenv BK_ROOT=%s\n", pwd);
-		} else {
-			fprintf(f, "putenv BK_ROOT=%s\n", root);
+		root = sccs_root(0);
+		if (root) {
+			if (streq(root, ".")) {
+				char	pwd[MAXPATH];
+
+				getcwd(pwd, MAXPATH);
+				fprintf(f, "putenv BK_ROOT=%s\n", pwd);
+			} else {
+				fprintf(f, "putenv BK_ROOT=%s\n", root);
+			}
+			free(root);
 		}
-		free(root);
 	}
+
 	EACH(envVar) {
 		fprintf(f, "putenv %s\n", envVar[i]);
 	}
