@@ -93,18 +93,20 @@ grep -q "`cat D`" SCCS/s.foo
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
 echo $N Removing description ........................................$NL
+nextsecond
 cp SCCS/s.foo SCCS/s.bar
 admin $Q -t foo
 admin $Q -T bar
 set `wc -w SCCS/s.foo`
-if [ $1 -ne `expr $BASE + 27` ]; then echo Failed - wrong size $1 ; exit 1; fi
+if [ $1 -ne `expr $BASE + 26` ]; then echo Failed - wrong size $1 ; exit 1; fi
 set `wc -w SCCS/s.bar`
-if [ $1 -ne `expr $BASE + 28` ]; then echo Failed - wrong size $1 ; exit 1; fi
+if [ $1 -ne `expr $BASE + 27` ]; then echo Failed - wrong size $1 ; exit 1; fi
 echo OK
 echo $N And putting it back .........................................$NL
+nextsecond
 admin $Q -tD bar
 set `wc -w SCCS/s.bar`
-if [ $1 -ne `expr $BASE + 54` ]; then echo Failed - wrong size.; exit 1; fi
+if [ $1 -ne `expr $BASE + 52` ]; then echo Failed - wrong size.; exit 1; fi
 echo OK
 echo $N One last text test ..........................................$NL
 admin $Q -n -t junk 2>ERR
