@@ -827,7 +827,7 @@ http_both(char *pathrev)
 #define	OLD 2
 #define	NEW 3
 #define	BOLD 4
-void
+private void
 color(char c)
 {
 	static	int clr;

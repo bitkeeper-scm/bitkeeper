@@ -32,6 +32,15 @@ sccs_gethost(void)
 		unLoadNetLib();
 		goto out;
 	}
+
+	/*
+	 * XXX FIXME: We should have a short timeout here
+	 * in case the DNS server is down, or we are on a
+	 * disconnected lap top PC.
+	 * Note also that a host which uses DHCP haa no permanent
+	 * IP address. Thus they cannot put their IP address
+	 * in /etc/hosts.
+	 */
 	unless (hp = gethostbyname(host)) {
 		unLoadNetLib();
 		goto out;

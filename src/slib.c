@@ -6816,6 +6816,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 				fputmeta(s, "\001cK", out);
 				s->sumOff = ftell(out);
 				fputs("XXXXX", out);
+if (d->published) fputs(" ", out);
 				fputmeta(s, "\n", out);
 			} else if (d->flags & D_CKSUM) {
 				/*
@@ -6826,7 +6827,8 @@ delta_table(sccs *s, FILE *out, int willfix)
 				 * Leaving this fixed means we can diff the
 				 * s.files easily.
 				 */
-				sprintf(buf, "\001cK%05u\n", d->sum);
+				//sprintf(buf, "\001cK%05u\n", d->sum);
+sprintf(buf, "\001cK%05u%s\n", d->sum, d->published ? " " : "");
 				fputmeta(s, buf, out);
 			}
 		}
@@ -8901,9 +8903,13 @@ modeArg(delta *d, char *arg)
 private delta *
 sumArg(delta *d, char *arg)
 {
+	char *p;
+
 	if (!d) d = (delta *)calloc(1, sizeof(*d));
 	d->flags |= D_CKSUM;
 	d->sum = atoi(arg);
+	for (p = arg; isdigit(*p); p++);
+	if (*p == ' ') d->published = 1;
 	return (d);
 }
 
@@ -13529,7 +13535,7 @@ sccs_resolveFiles(sccs *s)
 			if (!a) {
 				a = d;
 			} else {
-				assert(!b);
+				assert((s->state&S_LOGS_ONLY) || !b);
 				b = d;
 				/* Could break but I like the error checking */
 			}
@@ -14142,6 +14148,16 @@ sccs_ids(sccs *s, u32 flags, FILE *out)
 	}
 	fprintf(out, "\n");
 }
+
+void
+sccs_color(sccs *s, delta *d)
+{
+        unless (d && !(d->flags & D_VISITED)) return;
+        assert(d->type == 'D');
+        sccs_color(s, d->parent);
+        if (d->merge) sccs_color(s, sfind(s, d->merge));
+        d->flags |= D_VISITED;
+}                 
 
 #ifdef	DEBUG
 debug_main(char **av)

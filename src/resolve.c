@@ -25,6 +25,7 @@
 #include <windows.h>
 #endif
 #include "resolve.h"
+#include "logging.h"
 
 extern	char	*bin;
 private	void	commit(opts *opts);
@@ -2216,7 +2217,7 @@ pass4_apply(opts *opts)
 {
 	sccs	*r, *l;
 	int	offset = strlen(ROOT2RESYNC) + 1;	/* RESYNC/ */
-	int	eperm = 0, first = 1;
+	int	eperm = 0, first = 1, isLoggingRepository = 0;
 	FILE	*f;
 	FILE	*save;
 	char	buf[MAXPATH];
@@ -2270,6 +2271,9 @@ pass4_apply(opts *opts)
 			eperm = 1;
 		}
 		sccs_sdelta(r, sccs_ino(r), key);
+		if ((r->state&(S_CSET|S_LOGS_ONLY)) == (S_CSET|S_LOGS_ONLY)) {
+			isLoggingRepository = 1;
+		}
 		sccs_free(r);
 		if (l = sccs_keyinit(key, INIT, opts->local_proj, opts->idDB)) {
 			/*
@@ -2436,6 +2440,7 @@ Got:\n\
 		fprintf(stderr,
 		    "Consistency check passed, resolve complete.\n");
 	}
+	unless (isLoggingRepository) logChangeSet(logging(0, 0, 0) , 0, 1);
 	resolve_cleanup(opts, CLEAN_OK|CLEAN_RESYNC|CLEAN_PENDING);
 	/* NOTREACHED */
 	return (0);
