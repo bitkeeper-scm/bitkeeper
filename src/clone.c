@@ -94,7 +94,7 @@ send_clone_msg(opts opts, int gzip, remote *r, char **envVar)
 	gettemp(buf, "clone");
 	f = fopen(buf, "w");
 	assert(f);
-	sendEnv(f, envVar, 1);
+	sendEnv(f, envVar, r, 1);
 	if (r->path) add_cd_command(f, r);
 	fprintf(f, "clone");
 	if (gzip) fprintf(f, " -z%d", gzip);

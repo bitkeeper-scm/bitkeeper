@@ -562,7 +562,7 @@ putroot(char *where)
  * Send env varibale to remote bkd.
  */
 void
-sendEnv(FILE *f, char **envVar, int isClone)
+sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 {
 	int	i;
 	char	*root, *user, *host;
@@ -576,6 +576,8 @@ sendEnv(FILE *f, char **envVar, int isClone)
 	fprintf(f, "putenv _BK_USER=%s\n", user);
 	host = sccs_gethost();
 	fprintf(f, "putenv _BK_HOST=%s\n", host);
+	if (r->host)
+		fprintf(f, "putenv BK_VHOST=%s\n", r->host);
 
 	/*
 	 * We have no Package root when we clone, so skip root related variables
