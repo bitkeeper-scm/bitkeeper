@@ -1,3 +1,9 @@
+if [ "$PLATFORM" = "WIN32" ]
+then
+	DL="@"
+else
+	DL=":"
+fi
 echo $N Setup .......................................................$NL
 set -e
 trap 'echo failed' 0
@@ -68,19 +74,19 @@ echo OK
 echo $N Check the list of pending files .............................$NL
 sfiles -C | sort > SFILES
 sort <<EOF > LIST
-SCCS/s.foo:1.1
-SCCS/s.s.foo:1.1
-bar/SCCS/s.s.foo:1.1
-bar/blech/SCCS/s.s.foo:1.1
+SCCS/s.foo${DL}1.1
+SCCS/s.s.foo${DL}1.1
+bar/SCCS/s.s.foo${DL}1.1
+bar/blech/SCCS/s.s.foo${DL}1.1
 EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 # XXX -C cannot be used with file lists.
 #sfiles -C - < .sfiles | sort > SFILES
 #sort <<EOF > LIST
-#SCCS/s.ChangeSet:1.1
-#SCCS/s.s.foo:1.1
-#SCCS/bar/blech/s.s.foo:1.1
+#SCCS/s.ChangeSet${DL}1.1
+#SCCS/s.s.foo${DL}1.1
+#SCCS/bar/blech/s.s.foo${DL}1.1
 #EOF
 #cmp -s SFILES LIST
 #if [ $? -ne 0 ]; then echo list failed; diff SFILES LIST; exit 1; fi
@@ -162,7 +168,7 @@ echo OK
 echo $N Check the list of pending files .............................$NL
 sfiles -C | sort > SFILES
 sort <<EOF > LIST
-bar/SCCS/s.s.foo:1.3
+bar/SCCS/s.s.foo${DL}1.3
 EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
@@ -170,8 +176,8 @@ echo OK
 echo $N Check the list of pending files with -A .....................$NL
 sfiles -CA | sort > SFILES
 sort <<EOF > LIST
-bar/SCCS/s.s.foo:1.2
-bar/SCCS/s.s.foo:1.3
+bar/SCCS/s.s.foo${DL}1.2
+bar/SCCS/s.s.foo${DL}1.3
 EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
@@ -179,7 +185,7 @@ echo OK
 echo $N Check the list of pending files with -R .....................$NL
 sfiles -CR | sort > SFILES
 sort <<EOF > LIST
-bar/SCCS/s.s.foo:1.1..1.3
+bar/SCCS/s.s.foo${DL}1.1..1.3
 EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
@@ -187,8 +193,8 @@ echo OK
 echo $N Check the list of pending files with -AR ....................$NL
 sfiles -CAR | sort > SFILES
 sort <<EOF > LIST
-bar/SCCS/s.s.foo:1.1..1.2
-bar/SCCS/s.s.foo:1.2..1.3
+bar/SCCS/s.s.foo${DL}1.1..1.2
+bar/SCCS/s.s.foo${DL}1.2..1.3
 EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi

@@ -409,8 +409,13 @@ pr(sccs *sc, delta *d)
 {
 	if (!d || !d->parent) return;
 	unless (d->parent->flags & D_CSET) pr(sc, d->parent);
+#ifdef WIN32 /* Colon can not be a delimiter on NT  */
+	printf("%s@%s..%s\n",
+	    gFlg ? sc->gfile : sc->sfile, d->parent->rev, d->rev);
+#else
 	printf("%s:%s..%s\n",
 	    gFlg ? sc->gfile : sc->sfile, d->parent->rev, d->rev);
+#endif
 }
 
 void
@@ -471,7 +476,11 @@ caches(const char *filename, int mode)
 	if (Rflg && !Aflg) {
 		delta	*p;
 
+#ifdef WIN32 /* Colon can not be a delimiter on NT  */
+		printf("%s@", gFlg ? sc->gfile : sc->sfile);
+#else
 		printf("%s:", gFlg ? sc->gfile : sc->sfile);
+#endif
 		for (p = d->parent; p && !(p->flags & D_CSET); p = p->parent);
 		printf("%s..%s\n", p ? p->rev : sc->tree->rev, d->rev);
 		goto out;
@@ -482,7 +491,11 @@ caches(const char *filename, int mode)
 	}
 
 	do {
+#ifdef WIN32 /* Colon can not be a delimiter on NT  */
+		printf("%s@%s\n", gFlg ? sc->gfile : sc->sfile, d->rev);
+#else
 		printf("%s:%s\n", gFlg ? sc->gfile : sc->sfile, d->rev);
+#endif
 		d = d->parent;
 	} while (Aflg && d && !(d->flags & D_CSET));
 

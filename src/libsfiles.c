@@ -101,7 +101,11 @@ again:
 		debug((stderr, "sfiles::AV got %s\n", buf));
 	}
 	if (flags & SF_HASREVS)  {
+#ifdef WIN32 /* Colon can not be a delimiter on NT  */
+		char	*r = strrchr(buf, '@');
+#else
 		char	*r = strrchr(buf, ':');
+#endif
 
 		rev[0] = 0;	/* paranoia is your friend */
 		if (!r) goto norev;
@@ -173,9 +177,6 @@ sfileFirst(char *cmd, char **Av, int Flags)
 			flags |= SF_DELETES;
 			return (sfileNext());
 		}
-#ifdef WIN32
-		flags &= ~SF_HASREVS; /* workaround for bug 1999-08-17-002 */
-#endif
 		if (isdir(Av[0])) {
 			if (flags & SF_NODIREXPAND) return (0);
 			if (Av[1]) {
