@@ -136,7 +136,7 @@ proc bkhelp {topic} \
 {
 	global line line2full gc
 
-	set topic $line2full($line)
+	#set topic $line2full($line)
 	set msg "BitKeeper help -- $topic"
 	wm title . $msg
 	set f [open "| bk help -p $topic"]
@@ -170,12 +170,17 @@ proc bkhelp {topic} \
 	.text.help configure -state disabled
 }
 
-# Find each occurrence of bk <cmd> or bk help <cmd> and tag cmd.
+# Find each occurrence of
+#	bk <cmd> or
+#	bk help <cmd> or
+#	bk helptool <cmd>
+# and tag cmd.
 proc embedded_tag {line} \
 {
-		#puts "LINE=$line"
+	#puts "LINE=$line"
 	while {$line != ""} {
-		set start [string first "bk " $line]
+		if {[regexp {bk( )+} $line match] == 0} { break }
+		set start [string first $match $line]
 		if {$start == -1} { break }
 		set end [expr {$start + 7}]
 		set t [string range $line $start $end]
@@ -245,7 +250,7 @@ proc search {} \
 			set last $key
 			.text.help insert end "$key\n" "$key seealso"
 			.text.help tag bind $key <Button-1> \
-			    "getSelection $key; stackReset; doSelect 1"
+			    "getSelection $key; stackReset; doSelect 1; break"
 			set l [topic2line $key]
 			if {"$l" != ""} {
 				.ctrl.topics tag add "search" \
@@ -402,7 +407,11 @@ proc widgets {} \
 	grid columnconfigure . 0 -weight 0
 	grid columnconfigure . 1 -weight 1
 
-	bind .ctrl.topics <ButtonPress> { doPixSelect %x %y; break }
+	bind .ctrl.topics <Button-1> { doPixSelect %x %y; break }
+	bind .ctrl.topics <Button-2> { doPixSelect %x %y; break }
+	bind .ctrl.topics <Button-3> { doPixSelect %x %y; break }
+	bind .ctrl.topics <Motion> "break"
+	bind .text.help <Motion> "break"
 	bind all <Control-e>	{ scroll "line" 1 }
 	bind all <Control-y>	{ scroll "line" -1 }
 	bind all <Down>		{ scroll "line" 1; break }
@@ -424,6 +433,8 @@ proc widgets {} \
 	bind all <Button-5> 	{ scroll "page" 1; break }
 	bind .menu.entry <Return> { search }
 	bindtags .menu.entry { all .menu.entry Entry . }
+	bindtags .ctrl.topics {.ctrl.topics . all}
+	bindtags .text.help {.text.help . all}
 	bind .text.help <Configure> {
 		global	gc pixelsPerLine firstConfig
 

@@ -512,7 +512,6 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	foreach w {.diffs.left .diffs.right} {
 		bindtags $w {all Text .}
 	}
-	#set foo [bindtags .diffs.left]
 	computeHeight
 
 	.diffs.left tag configure diff -background $gc(diff.oldColor)

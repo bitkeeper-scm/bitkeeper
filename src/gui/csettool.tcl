@@ -738,7 +738,6 @@ proc widgets {} \
 	foreach w {.diffs.left .diffs.right} {
 		bindtags $w {all Text .}
 	}
-	set foo [bindtags .diffs.left]
 	computeHeight
 
 	.diffs.left tag configure diff -background $gc(cset.oldColor)
