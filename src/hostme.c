@@ -4,10 +4,10 @@ typedef	struct {
 	u32	debug:1;		/* -d debug mode */
 	u32	verbose:1;		/* -q shut up */
 	int	gzip;			/* -z[level] compression */
-	char	host[PATH_MAX];		/* -h<host> where to host */
-	char	project[NAME_MAX];	/* -p<pname> project name */
-	char	keyfile[PATH_MAX];	/* -s<keyfile> loc of identity.pub */
-	char	repository[NAME_MAX];	/* -r<rname> repository name */
+	char	host[MAXPATH];		/* -h<host> where to host */
+	char	project[MAXPATH];	/* -p<pname> project name */
+	char	keyfile[MAXPATH];	/* -s<keyfile> loc of identity.pub */
+	char	repository[MAXPATH];	/* -r<rname> repository name */
 } opts;
 
 private void usage();
@@ -18,7 +18,7 @@ hostme_main(int ac, char **av)
 	int	c, rc, debug = 0;
 	opts	opts;
 	char	url[] = BK_HOSTME_URL;
-	char	hostme_info[NAME_MAX];
+	char	hostme_info[MAXPATH];
 	char	public_key[1024];
 	FILE	*f;
 	remote	*r;
