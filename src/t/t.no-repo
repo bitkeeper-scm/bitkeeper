@@ -249,6 +249,9 @@ dotest()
 	return 0
 }
 
+BK_EDITOR=cat
+EDITOR=$BK_EDITOR
+export BK_EDITOR EDITOR
 while read i
 do
 	dotest $i || break

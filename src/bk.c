@@ -1167,6 +1167,12 @@ find_wish(void)
 		putenv("TK_LIBRARY=/build/.wish/tk/lib/tk8.3");
 		return (path);
 	}
+	path = "c:/cygwin/build/.wish/tk/bin/bkgui";
+	if (executable(path)) {
+		putenv("TCL_LIBRARY=/build/.wish/tk/lib/tcl8.3");
+		putenv("TK_LIBRARY=/build/.wish/tk/lib/tk8.3");
+		return (path);
+	}
 	fprintf(stderr, "Cannot find the graphical interpreter\n");
 	exit(1);
 }

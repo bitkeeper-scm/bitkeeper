@@ -205,12 +205,12 @@ do_cmds()
 			}
 		}
 		getoptReset();
-		log = !streq(av[0], "putenv");
 		if ((i = findcmd(ac, av)) != -1) {
 			if (Opts.log) log_cmd(ac, av);
 			proj_reset(0); /* XXX needed? */
 
 			if (Opts.http_hdr_out) http_hdr(Opts.daemon);
+			log = !streq(av[0], "putenv");
 			if (log) cmdlog_start(av, httpMode);
 
 			/*
