@@ -1395,6 +1395,7 @@ proc gotoRev {f hrev} \
 proc currentMenu {} \
 {
 	global file gc rev1 rev2 bk_fs dev_null 
+	global fileEventHandle currentMenuList
 
 	$gc(fmenu) entryconfigure "Current Changeset*" \
 	    -state disabled
@@ -1416,23 +1417,75 @@ proc currentMenu {} \
 	}
 	busy 1
 	cd2root
+	set currentMenuList {}
 	$gc(current) delete 1 end
-	set revs [open "| bk -R prs -hbMr$rev1..$end {-d:I:\n} ChangeSet"]
-	while {[gets $revs r] >= 0} {
-		set log [open "| bk cset -Hr$r" r]
-		while {[gets $log file_rev] >= 0} {
-			set f [lindex [split $file_rev $bk_fs] 0]
-			set rev [lindex [split $file_rev $bk_fs] 1]
-			if {![string match "1.0" $rev]} {
-				$gc(current) add command -label "${f}@${rev}" \
-				    -command "gotoRev $f $rev"
-			}
-		}
-		catch {close $log}
+	$gc(current) add command -label "Computing..." -state disabled
+
+	# close any previously opened pipe
+	if {[info exists fileEventHandle]} {
+		catch {close $fileEventHandle}
 	}
-	catch {close $revs}
+	set fileEventHandle \
+	    [open "| bk changes -d:DPN:@:I:\\n -fv -er$rev1..$end"]
+
+	fconfigure $fileEventHandle -blocking false
+	fileevent $fileEventHandle readable \
+	    [list updateCurrentMenu $fileEventHandle]
+
 	busy 0
 	return
+}
+
+# this reads one line from a pipe and saves the data to a list. 
+# When no more data is available this proc will be called with 
+# cleanup set to 1 at which time it will close the pipe and 
+# create the menu.
+proc updateCurrentMenu {fd {cleanup 0}} \
+{
+	global bk_fs gc
+	global currentMenuList
+	global fileEventHandle
+
+	if {$cleanup} {
+		catch {close $fd}
+		$gc(current) delete 1 end
+		$gc(fmenu) entryconfigure "Current Changeset*" -state normal
+		if {[llength $currentMenuList] > 0} {
+			foreach item [lsort $currentMenuList] {
+				foreach {f rev} [split $item @] {break;}
+				$gc(current) add command \
+				    -label $item \
+				    -command [list gotoRev $f $rev]
+			} 
+		} else {
+			$gc(current) add command \
+			    -label "(no files)" \
+			    -state disabled
+		}
+		return
+	}
+		
+	set status [catch {gets $fd r} result]
+	if {$status != 0} {
+		# error on the channel
+		updateCurrentMenu $fd 1
+
+	} elseif {$result >= 0} {
+		# successful read
+		if {![string match {ChangeSet@*} $r]} {
+			lappend currentMenuList $r
+		}
+
+	} elseif {[eof $fd]} {
+		updateCurrentMenu $fd 1
+
+	} elseif {[fblocked $fd]} {
+		# blocked; no big deal. 
+
+	} else {
+		# should never happen. But if it does...
+		updateCurrentMenu $fd 1
+	}
 }
 
 #
