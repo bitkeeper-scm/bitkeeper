@@ -61,6 +61,8 @@ static void md4_compress(hash_state *md)
     unsigned long x[16], a, b, c, d;
     int i;
 
+    _ARGCHK(md != NULL);
+
     /* copy state */
     a = md->md4.state[0];
     b = md->md4.state[1];
@@ -144,6 +146,7 @@ static void md4_compress(hash_state *md)
 
 void md4_init(hash_state * md)
 {
+   _ARGCHK(md != NULL);
    md->md4.state[0] = 0x67452301UL;
    md->md4.state[1] = 0xefcdab89UL;
    md->md4.state[2] = 0x98badcfeUL;
@@ -155,6 +158,8 @@ void md4_init(hash_state * md)
 void md4_process(hash_state * md, const unsigned char *buf, unsigned long len)
 {
     unsigned long n;
+    _ARGCHK(md != NULL);
+    _ARGCHK(buf != NULL);
     while (len) {
         n = MIN(len, (64 - md->md4.curlen));
         memcpy(md->md4.buf + md->md4.curlen, buf, n);
@@ -174,6 +179,9 @@ void md4_process(hash_state * md, const unsigned char *buf, unsigned long len)
 void md4_done(hash_state * md, unsigned char *hash)
 {
     int i;
+
+    _ARGCHK(md != NULL);
+    _ARGCHK(hash != NULL);
 
     /* increase the length of the message */
     md->md4.length += md->md4.curlen * 8;

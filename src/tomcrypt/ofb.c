@@ -7,6 +7,10 @@ int ofb_start(int cipher, const unsigned char *IV, const unsigned char *key,
 {
    int x;
 
+   _ARGCHK(IV != NULL);
+   _ARGCHK(key != NULL);
+   _ARGCHK(ofb != NULL);
+
    if (cipher_is_valid(cipher) == CRYPT_ERROR) {
       return CRYPT_ERROR;
    }
@@ -25,6 +29,9 @@ int ofb_start(int cipher, const unsigned char *IV, const unsigned char *key,
 
 int ofb_encrypt(const unsigned char *pt, unsigned char *ct, unsigned long len, symmetric_OFB *ofb)
 {
+   _ARGCHK(pt != NULL);
+   _ARGCHK(ct != NULL);
+   _ARGCHK(ofb != NULL);
    if (cipher_is_valid(ofb->cipher) == CRYPT_ERROR) {
        return CRYPT_ERROR;
    }
@@ -40,6 +47,9 @@ int ofb_encrypt(const unsigned char *pt, unsigned char *ct, unsigned long len, s
 
 int ofb_decrypt(const unsigned char *ct, unsigned char *pt, unsigned long len, symmetric_OFB *ofb)
 {
+   _ARGCHK(pt != NULL);
+   _ARGCHK(ct != NULL);
+   _ARGCHK(ofb != NULL);
    return ofb_encrypt(ct, pt, len, ofb);
 }
 

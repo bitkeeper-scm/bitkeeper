@@ -26,6 +26,12 @@ int rsa_encrypt(const unsigned char *in,  unsigned long len,
    unsigned long x, y, blklen, rsa_size;
    int keylen;
 
+   _ARGCHK(in != NULL);
+   _ARGCHK(out != NULL);
+   _ARGCHK(outlen != NULL);
+   _ARGCHK(prng != NULL);
+   _ARGCHK(key != NULL);
+
    /* are the parameters valid? */
    if (prng_is_valid(wprng) == CRYPT_ERROR ||
       cipher_is_valid(cipher) == CRYPT_ERROR) {
@@ -120,6 +126,11 @@ int rsa_decrypt(const unsigned char *in,  unsigned long len,
    unsigned long x, y, z, keylen, blklen, rsa_size;
    int cipher;
 
+   _ARGCHK(in != NULL);
+   _ARGCHK(out != NULL);
+   _ARGCHK(outlen != NULL);
+   _ARGCHK(key != NULL);
+
    /* right key type? */
    if (key->type != PK_PRIVATE && key->type != PK_PRIVATE_OPTIMIZED) {
       crypt_error = "Cannot decrypt with public key in rsa_decrypt().";
@@ -209,6 +220,11 @@ int rsa_sign(const unsigned char *in,  unsigned long inlen,
    unsigned long hashlen, rsa_size, x, y, z;
    unsigned char rsa_in[4096], rsa_out[4096];
 
+   _ARGCHK(in != NULL);
+   _ARGCHK(out != NULL);
+   _ARGCHK(outlen != NULL);
+   _ARGCHK(key != NULL);
+
    /* type of key? */
    if (key->type != PK_PRIVATE && key->type != PK_PRIVATE_OPTIMIZED) {
       crypt_error = "Cannot sign with public key in rsa_sign().";
@@ -276,6 +292,11 @@ int rsa_verify(const unsigned char *sig, const unsigned char *msg,
    int hash;
    unsigned char rsa_in[4096], rsa_out[4096];
 
+   _ARGCHK(sig != NULL);
+   _ARGCHK(msg != NULL);
+   _ARGCHK(stat != NULL);
+   _ARGCHK(key != NULL);
+
    /* always be incorrect by default */
    *stat = 0;
 
@@ -340,6 +361,12 @@ int rsa_encrypt_key(const unsigned char *inkey, unsigned long inlen,
    unsigned char rsa_in[4096], rsa_out[4096];
    unsigned long x, y, rsa_size;
 
+   _ARGCHK(inkey != NULL);
+   _ARGCHK(outkey != NULL);
+   _ARGCHK(outlen != NULL);
+   _ARGCHK(prng != NULL);
+   _ARGCHK(key != NULL);
+
    /* are the parameters valid? */
    if (prng_is_valid(wprng) == CRYPT_ERROR) {
       return CRYPT_ERROR; 
@@ -390,6 +417,11 @@ int rsa_decrypt_key(const unsigned char *in, unsigned char *outkey,
 {
    unsigned char sym_key[MAXBLOCKSIZE], rsa_in[4096], rsa_out[4096];
    unsigned long x, y, z, i, rsa_size;
+
+   _ARGCHK(in != NULL);
+   _ARGCHK(outkey != NULL);
+   _ARGCHK(keylen != NULL);
+   _ARGCHK(key != NULL);
 
    /* right key type? */
    if (key->type != PK_PRIVATE && key->type != PK_PRIVATE_OPTIMIZED) {
@@ -449,6 +481,11 @@ int rsa_sign_hash(const unsigned char *in,  unsigned long inlen,
    unsigned long rsa_size, x, y;
    unsigned char rsa_in[4096], rsa_out[4096];
 
+   _ARGCHK(in != NULL);
+   _ARGCHK(out != NULL);
+   _ARGCHK(outlen != NULL);
+   _ARGCHK(key != NULL);
+
    /* type of key? */
    if (key->type != PK_PRIVATE && key->type != PK_PRIVATE_OPTIMIZED) {
       crypt_error = "Cannot sign with public key in rsa_sign().";
@@ -500,6 +537,11 @@ int rsa_verify_hash(const unsigned char *sig, const unsigned char *md,
 {
    unsigned long rsa_size, x, y, z;
    unsigned char rsa_in[4096], rsa_out[4096];
+
+   _ARGCHK(sig != NULL);
+   _ARGCHK(md != NULL);
+   _ARGCHK(stat != NULL);
+   _ARGCHK(key != NULL);
 
    /* always be incorrect by default */
    *stat = 0;

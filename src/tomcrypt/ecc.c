@@ -336,9 +336,9 @@ done:
 static int ecc_mulmod(mp_int *k, ecc_point *G, ecc_point *R, mp_int *modulus)
 {
    ecc_point *tG;
-   unsigned char bits[768];
    int i, j, z, first, res;
    mp_digit d;
+   unsigned char bits[768];
 
    /* get bits of k */
    for (z = i = 0; z < (int)USED(k); z++) {
@@ -384,7 +384,9 @@ error:
    crypt_error = "Out of memory in ecc.c:ecc_mulmod().";
 done:
    del_point(tG);
-   zeromem(bits, sizeof(bits)); 
+   #ifdef CLEAN_STACK
+       zeromem(bits, sizeof(bits)); 
+   #endif
    return res;
 }
 
@@ -464,6 +466,9 @@ done1:
 void ecc_sizes(int *low, int *high)
 {
  int i;
+ _ARGCHK(low != NULL);
+ _ARGCHK(high != NULL);
+
  *low = INT_MAX;
  *high = 0;
  for (i = 0; sets[i].size; i++) {
@@ -478,10 +483,14 @@ void ecc_sizes(int *low, int *high)
 
 int ecc_make_key(prng_state *prng, int wprng, int keysize, ecc_key *key)
 {
-   unsigned char buf[4096];
    int x, res;
    ecc_point *base;
    mp_int prime;
+
+   unsigned char buf[4096];
+
+   _ARGCHK(prng != NULL);
+   _ARGCHK(key != NULL);
 
    /* good prng? */
    if (prng_is_valid(wprng) == CRYPT_ERROR) {
@@ -536,11 +545,15 @@ error:
 done:
    del_point(base);
    mp_clear(&prime);
+   #ifdef CLEAN_STACK
+      zeromem(buf, sizeof(buf));
+   #endif
    return res;
 }
 
 void ecc_free(ecc_key *key)
 {
+   _ARGCHK(key != NULL);
    mp_clear_multi(&key->pubkey.x, &key->pubkey.y, &key->k, NULL);
 }
 
@@ -548,6 +561,9 @@ int compress_y_point(ecc_point *pt, int idx, int *result)
 {
    mp_int tmp, tmp2, p;
    int res;
+
+   _ARGCHK(pt != NULL);
+   _ARGCHK(result != NULL);
 
    if (mp_init_multi(&tmp, &tmp2, &p, NULL) != MP_OKAY) {
       crypt_error = "Out of memory in compress_y_point().";
@@ -589,6 +605,8 @@ int expand_y_point(ecc_point *pt, int idx, int result)
 {
    mp_int tmp, tmp2, p;
    int res;
+
+   _ARGCHK(pt != NULL);
  
    if (mp_init_multi(&tmp, &tmp2, &p, NULL) != MP_OKAY) {
       crypt_error = "Out of memory in expand_y_point().";
@@ -659,9 +677,13 @@ done:
 
 int ecc_export(unsigned char *out, unsigned long *outlen, int type, ecc_key *key)
 {
-   unsigned char buf2[512];
    unsigned long y, z;
    int res;
+   unsigned char buf2[512];
+
+   _ARGCHK(out != NULL);
+   _ARGCHK(outlen != NULL);
+   _ARGCHK(key != NULL);
 
    /* type valid? */
    if (key->type != PK_PRIVATE && type == PK_PRIVATE) { 
@@ -698,7 +720,10 @@ int ecc_export(unsigned char *out, unsigned long *outlen, int type, ecc_key *key
 
    memcpy(out, buf2, y);
    *outlen = y;
-   zeromem(buf2, sizeof(buf2));
+
+   #ifdef CLEAN_STACK
+       zeromem(buf2, sizeof(buf2));
+   #endif
    return CRYPT_OK;
 }
 
@@ -706,6 +731,9 @@ int ecc_import(const unsigned char *in, ecc_key *key)
 {
    unsigned long x, y;
    int res;
+
+   _ARGCHK(in != NULL);
+   _ARGCHK(key != NULL);
 
    /* check type */
    if (packet_valid_header((unsigned char *)in, PACKET_SECT_ECC, PACKET_SUB_KEY) == CRYPT_ERROR) { 
@@ -758,10 +786,15 @@ int ecc_shared_secret(ecc_key *private_key, ecc_key *public_key,
                       unsigned char *out, unsigned long *outlen)
 {
    unsigned long x, y;
-   unsigned char buf[256];
    ecc_point *result;
    mp_int prime;
    int res;
+   unsigned char buf[256];
+
+   _ARGCHK(private_key != NULL);
+   _ARGCHK(public_key != NULL);
+   _ARGCHK(out != NULL);
+   _ARGCHK(outlen != NULL);
 
    /* type valid? */
    if (private_key->type != PK_PRIVATE) {
@@ -809,12 +842,15 @@ error:
 done1:
    mp_clear(&prime);
    del_point(result);
-   zeromem(buf, sizeof(buf));
+   #ifdef CLEAN_STACK
+       zeromem(buf, sizeof(buf));
+   #endif
    return res;
 }
 
 int ecc_get_size(ecc_key *key)
 {
+   _ARGCHK(key != NULL);
    if (is_valid_idx(key->idx))
       return sets[key->idx].size;
    else

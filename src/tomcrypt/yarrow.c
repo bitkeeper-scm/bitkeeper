@@ -13,6 +13,8 @@ const struct _prng_descriptor yarrow_desc =
 
 int yarrow_start(prng_state *prng)
 {
+   _ARGCHK(prng != NULL);
+
    /* these are the default hash/cipher combo used */
 #ifdef RIJNDAEL
    prng->yarrow.cipher = register_cipher(&rijndael_desc);
@@ -72,6 +74,9 @@ int yarrow_add_entropy(const unsigned char *buf, unsigned long len, prng_state *
 {
    hash_state md;
 
+   _ARGCHK(buf != NULL);
+   _ARGCHK(prng != NULL);
+
    if (hash_is_valid(prng->yarrow.hash) == CRYPT_ERROR) {
       return CRYPT_ERROR;
    }
@@ -96,6 +101,8 @@ int yarrow_ready(prng_state *prng)
 {
    int ks;
 
+   _ARGCHK(prng != NULL);
+
    if (hash_is_valid(prng->yarrow.hash) == CRYPT_ERROR || 
        cipher_is_valid(prng->yarrow.cipher) == CRYPT_ERROR) {
       return CRYPT_ERROR;
@@ -115,6 +122,9 @@ int yarrow_ready(prng_state *prng)
 
 unsigned long yarrow_read(unsigned char *buf, unsigned long len, prng_state *prng)
 {
+   _ARGCHK(buf != NULL);
+   _ARGCHK(prng != NULL);
+
    if (ctr_encrypt(buf, buf, len, &prng->yarrow.ctr) == CRYPT_ERROR) {
       return 0;
    }

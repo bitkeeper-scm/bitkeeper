@@ -7,6 +7,10 @@ int ctr_start(int cipher, const unsigned char *count, const unsigned char *key, 
 {
    int x;
 
+   _ARGCHK(count != NULL);
+   _ARGCHK(key != NULL);
+   _ARGCHK(ctr != NULL);
+
    /* bad param? */
    if (cipher_is_valid(cipher) == CRYPT_ERROR) {
       return CRYPT_ERROR;
@@ -31,6 +35,10 @@ int ctr_start(int cipher, const unsigned char *count, const unsigned char *key, 
 int ctr_encrypt(const unsigned char *pt, unsigned char *ct, unsigned long len, symmetric_CTR *ctr)
 {
    int x;
+
+   _ARGCHK(pt != NULL);
+   _ARGCHK(ct != NULL);
+   _ARGCHK(ctr != NULL);
 
    if (cipher_is_valid(ctr->cipher) == CRYPT_ERROR) {
        return CRYPT_ERROR;
@@ -58,6 +66,10 @@ int ctr_encrypt(const unsigned char *pt, unsigned char *ct, unsigned long len, s
 
 int ctr_decrypt(const unsigned char *ct, unsigned char *pt, unsigned long len, symmetric_CTR *ctr)
 {
+   _ARGCHK(pt != NULL);
+   _ARGCHK(ct != NULL);
+   _ARGCHK(ctr != NULL);
+
    return ctr_encrypt(ct, pt, len, ctr);
 }
 

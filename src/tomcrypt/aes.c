@@ -86,6 +86,10 @@ int rijndael_setup(const unsigned char *key, int keylen, int numrounds, symmetri
     unsigned long  t, u, v, w, in_key[8];
     int i, k_len;
 
+    /* check arguments */
+    _ARGCHK(key  != NULL);
+    _ARGCHK(skey != NULL);
+
     if (numrounds == 0)
        numrounds = 10 + (2 * ((keylen/8)-2));
 
@@ -188,6 +192,10 @@ void rijndael_ecb_encrypt(const unsigned char *pt, unsigned char *ct, symmetric_
 {   
     unsigned long  b0[4], b1[4], *kp;
 
+    _ARGCHK(pt != NULL);
+    _ARGCHK(ct != NULL);
+    _ARGCHK(skey != NULL);
+
     LOAD32L(b0[0], &pt[0]); LOAD32L(b0[1], &pt[4]);
     LOAD32L(b0[2], &pt[8]); LOAD32L(b0[3], &pt[12]);
     b0[0] ^= skey->rijndael.eK[0]; b0[1] ^= skey->rijndael.eK[1];
@@ -234,6 +242,10 @@ void rijndael_ecb_encrypt(const unsigned char *pt, unsigned char *ct, symmetric_
 void rijndael_ecb_decrypt(const unsigned char *ct, unsigned char *pt, symmetric_key *skey)
 {   
     unsigned long b0[4], b1[4], *kp;
+
+    _ARGCHK(pt != NULL);
+    _ARGCHK(ct != NULL);
+    _ARGCHK(skey != NULL);
 
     LOAD32L(b0[0], &ct[0]); LOAD32L(b0[1], &ct[4]);
     LOAD32L(b0[2], &ct[8]); LOAD32L(b0[3], &ct[12]);
@@ -345,6 +357,8 @@ int rijndael_test(void)
 
 int rijndael_keysize(int *desired_keysize)
 {
+   _ARGCHK(desired_keysize != NULL);
+
    if (*desired_keysize < 16)
       return CRYPT_ERROR;
    if (*desired_keysize < 24) {

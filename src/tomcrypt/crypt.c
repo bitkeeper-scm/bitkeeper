@@ -108,6 +108,7 @@ struct _prng_descriptor prng_descriptor[32] = {
 int find_cipher(const char *name)
 {
    int x;
+   _ARGCHK(name != NULL);
    for (x = 0; x < 32; x++) {
        if (cipher_descriptor[x].name != NULL && !strcmp(cipher_descriptor[x].name, name)) {
           return x;
@@ -119,6 +120,7 @@ int find_cipher(const char *name)
 int find_hash(const char *name)
 {
    int x;
+   _ARGCHK(name != NULL);
    for (x = 0; x < 32; x++) {
        if (hash_descriptor[x].name != NULL && !strcmp(hash_descriptor[x].name, name)) {
           return x;
@@ -152,6 +154,7 @@ int find_hash_id(unsigned char ID)
 int find_prng(const char *name)
 {
    int x;
+   _ARGCHK(name != NULL);
    for (x = 0; x < 32; x++) {
        if ((prng_descriptor[x].name != NULL) && !strcmp(prng_descriptor[x].name, name)) {
           return x;
@@ -165,6 +168,7 @@ int find_cipher_any(const char *name, int blocklen, int keylen)
 {
    int x;
 
+   _ARGCHK(name != NULL);
    x = find_cipher(name);
    if (x != -1) return x;
 
@@ -179,6 +183,8 @@ int find_cipher_any(const char *name, int blocklen, int keylen)
 int register_cipher(const struct _cipher_descriptor *cipher)
 {
    int x;
+
+   _ARGCHK(cipher != NULL);
 
    /* is it already registered? */
    for (x = 0; x < 32; x++) {
@@ -204,6 +210,8 @@ int unregister_cipher(const struct _cipher_descriptor *cipher)
 {
    int x;
 
+   _ARGCHK(cipher != NULL);
+
    /* is it already registered? */
    for (x = 0; x < 32; x++) {
        if (!memcmp(&cipher_descriptor[x], cipher, sizeof(struct _cipher_descriptor))) {
@@ -218,6 +226,8 @@ int unregister_cipher(const struct _cipher_descriptor *cipher)
 int register_hash(const struct _hash_descriptor *hash)
 {
    int x;
+
+   _ARGCHK(hash != NULL);
 
    /* is it already registered? */
    for (x = 0; x < 32; x++) {
@@ -243,6 +253,8 @@ int unregister_hash(const struct _hash_descriptor *hash)
 {
    int x;
 
+   _ARGCHK(hash != NULL);
+
    /* is it already registered? */
    for (x = 0; x < 32; x++) {
        if (!memcmp(&hash_descriptor[x], hash, sizeof(struct _hash_descriptor))) {
@@ -257,7 +269,9 @@ int unregister_hash(const struct _hash_descriptor *hash)
 int register_prng(const struct _prng_descriptor *prng)
 {
    int x;
-   
+
+   _ARGCHK(prng != NULL);
+
    /* is it already registered? */
    for (x = 0; x < 32; x++) {
        if (!memcmp(&prng_descriptor[x], prng, sizeof(struct _prng_descriptor))) {
@@ -281,6 +295,8 @@ int register_prng(const struct _prng_descriptor *prng)
 int unregister_prng(const struct _prng_descriptor *prng)
 {
    int x;
+
+   _ARGCHK(prng != NULL);
 
    /* is it already registered? */
    for (x = 0; x < 32; x++) {

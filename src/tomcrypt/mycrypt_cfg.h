@@ -7,14 +7,15 @@
 #ifndef MYCRYPT_CFG_H
 #define MYCRYPT_CFG_H
 
-/* Controls endianess and size of registers.  Leave uncommented to get platform neutral [slower] code */
+/* type of argument checking, 0=default, 1=fatal and 2=none */
+#define ARGTYPE  0
 
+/* Controls endianess and size of registers.  Leave uncommented to get platform neutral [slower] code */
 /* detect x86-32 machines somewhat */
 #if (defined(_MSC_VER) && defined(WIN32))  || (defined(__GNUC__) && (defined(__DJGPP__) || defined(__CYGWIN__) || defined(__MINGW32__)))
    #define ENDIAN_LITTLE
    #define ENDIAN_32BITWORD
 #endif
-
 
 /* #define ENDIAN_LITTLE */
 /* #define ENDIAN_BIG */
@@ -35,7 +36,7 @@
  * after usage with a (sometimes) huge penalty in speed.  Normally this is not
  * required if you simply lock your stack and wipe it when your program is done.
  */
-/* #define CLEAN_STACK */
+#define CLEAN_STACK
 
 /* What algorithms to include? comment out and rebuild to remove em */
 /* ciphers */

@@ -29,6 +29,9 @@ int hmac_init(hmac_state *hmac, int hash, const unsigned char *key, unsigned lon
     unsigned long hashsize;
     unsigned long i, z;
 
+    _ARGCHK(hmac != NULL);
+    _ARGCHK(key != NULL);
+
     if(hash_is_valid(hash) == CRYPT_ERROR) {
         return CRYPT_ERROR;
     }
@@ -75,11 +78,12 @@ int hmac_init(hmac_state *hmac, int hash, const unsigned char *key, unsigned lon
 
 void hmac_process(hmac_state *hmac, const unsigned char *buf, unsigned long len)
 {
-    int hash = hmac->hash;
-    if (hash_is_valid(hash) == CRYPT_ERROR) {
+    _ARGCHK(hmac != NULL);
+    _ARGCHK(buf != NULL);
+    if (hash_is_valid(hmac->hash) == CRYPT_ERROR) {
         return;
     }
-    hash_descriptor[hash].process(&hmac->md, buf, len);
+    hash_descriptor[hmac->hash].process(&hmac->md, buf, len);
 }
 
 void hmac_done(hmac_state *hmac, unsigned char *hashOut)
@@ -87,8 +91,12 @@ void hmac_done(hmac_state *hmac, unsigned char *hashOut)
     unsigned char buf[MAXBLOCKSIZE];
     unsigned char isha[MAXBLOCKSIZE];
     unsigned long hashsize, i;
-    int hash = hmac->hash;
+    int hash;
 
+    _ARGCHK(hmac != NULL);
+    _ARGCHK(hashOut != NULL);
+
+    hash = hmac->hash;
     if(hash_is_valid(hash) == CRYPT_ERROR) {
         return;
     }
@@ -117,6 +125,11 @@ int hmac_memory(int hash, const unsigned char *key, unsigned long keylen,
                 const unsigned char *data, unsigned long len, unsigned char *dst)
 {
     hmac_state hmac;
+
+    _ARGCHK(key != NULL);
+    _ARGCHK(data != NULL);
+    _ARGCHK(dst != NULL);
+
     if (hmac_init(&hmac, hash, key, keylen) == CRYPT_ERROR) {
         return CRYPT_ERROR;
     }
@@ -133,6 +146,10 @@ int hmac_file(int hash, const char *fname, const unsigned char *key,
    FILE *in;
    unsigned char buf[512];
    int x;
+
+   _ARGCHK(fname != NULL);
+   _ARGCHK(key != NULL);
+   _ARGCHK(dst != NULL)
 
    if (hmac_init(&hmac, hash, key, keylen) == CRYPT_ERROR) {
        return CRYPT_ERROR;

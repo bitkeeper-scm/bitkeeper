@@ -158,6 +158,9 @@ int saferp_setup(const unsigned char *key, int keylen, int num_rounds, symmetric
    unsigned char t[33];
    static const int rounds[3] = { 8, 12, 16 };
 
+   _ARGCHK(key != NULL);
+   _ARGCHK(skey != NULL);
+
    /* check arguments */
    if (keylen != 16 && keylen != 24 && keylen != 32) {
       crypt_error = "Invalid number of key bytes for SAFER+.";
@@ -261,6 +264,10 @@ void saferp_ecb_encrypt(const unsigned char *pt, unsigned char *ct, symmetric_ke
    unsigned char b[16];
    int x;
 
+   _ARGCHK(pt != NULL);
+   _ARGCHK(ct != NULL);
+   _ARGCHK(skey != NULL);
+
    /* do eight rounds */
    for (x = 0; x < 16; x++) {
        b[x] = pt[x];
@@ -312,6 +319,10 @@ void saferp_ecb_decrypt(const unsigned char *ct, unsigned char *pt, symmetric_ke
 {
    unsigned char b[16];
    int x;
+
+   _ARGCHK(pt != NULL);
+   _ARGCHK(ct != NULL);
+   _ARGCHK(skey != NULL);
 
    /* do eight rounds */
    b[0] = ct[0] ^ skey->saferp.K[skey->saferp.rounds*2][0];
@@ -451,6 +462,8 @@ int saferp_test(void)
 
 int saferp_keysize(int *desired_keysize)
 {
+   _ARGCHK(desired_keysize != NULL);
+   
    if (*desired_keysize < 16)
       return CRYPT_ERROR;
    if (*desired_keysize < 24) {

@@ -295,6 +295,9 @@ int blowfish_setup(const unsigned char *key, int keylen, int num_rounds,
    unsigned long x, y, z, A;
    unsigned char B[8];
 
+   _ARGCHK(key != NULL);
+   _ARGCHK(skey != NULL);
+
    /* check key length */
    if (keylen < 8 || keylen > 56) {
       crypt_error = "Invalid Blowfish key length.";
@@ -359,6 +362,10 @@ void blowfish_ecb_encrypt(const unsigned char *pt, unsigned char *ct, symmetric_
 {
    unsigned long L, R;
 
+   _ARGCHK(pt != NULL);
+   _ARGCHK(ct != NULL);
+   _ARGCHK(key != NULL);
+
    /* load it */
    LOAD32H(L, &pt[0]);
    LOAD32H(R, &pt[4]);
@@ -405,6 +412,10 @@ void blowfish_ecb_decrypt(const unsigned char *ct, unsigned char *pt, symmetric_
 #endif
 {
    unsigned long L, R;
+
+   _ARGCHK(pt != NULL);
+   _ARGCHK(ct != NULL);
+   _ARGCHK(key != NULL);
 
    /* load it */
    LOAD32H(R, &ct[0]);
@@ -662,6 +673,8 @@ int blowfish_test(void)
 
 int blowfish_keysize(int *desired_keysize)
 {
+   _ARGCHK(desired_keysize != NULL);
+
    if (*desired_keysize < 8) {
       return CRYPT_ERROR;
    } else if (*desired_keysize > 56) {

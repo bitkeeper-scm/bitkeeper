@@ -78,6 +78,8 @@ static void sha512_compress(hash_state * md)
     ulong64 S[8], W[80], t0, t1;
     int i;
 
+    _ARGCHK(md != NULL);
+
     /* copy state into S */
     for (i = 0; i < 8; i++)
         S[i] = md->sha512.state[i];
@@ -122,6 +124,8 @@ static void sha512_compress(hash_state * md)
 /* init the sha512 state */
 void sha512_init(hash_state * md)
 {
+    _ARGCHK(md != NULL);
+
     md->sha512.curlen = 0;
     md->sha512.length = 0;
     md->sha512.state[0] = CONST64(0x6a09e667f3bcc908);
@@ -137,6 +141,8 @@ void sha512_init(hash_state * md)
 void sha512_process(hash_state * md, const unsigned char *buf, unsigned long len)
 {
     unsigned long n;
+    _ARGCHK(md != NULL);
+    _ARGCHK(buf != NULL);
     while (len) {
         n = MIN(len, (128 - md->sha512.curlen));
         memcpy(md->sha512.buf + md->sha512.curlen, buf, n);
@@ -156,6 +162,9 @@ void sha512_process(hash_state * md, const unsigned char *buf, unsigned long len
 void sha512_done(hash_state * md, unsigned char *hash)
 {
     int i;
+
+    _ARGCHK(md != NULL);
+    _ARGCHK(hash != NULL);
 
     /* increase the length of the message */
     md->sha512.length += md->sha512.curlen * CONST64(8);

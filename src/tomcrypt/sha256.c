@@ -51,6 +51,8 @@ static void sha256_compress(hash_state * md)
     unsigned long S[8], W[64], t0, t1;
     int i;
 
+    _ARGCHK(md != NULL);
+
     /* copy state into S */
     for (i = 0; i < 8; i++)
         S[i] = md->sha256.state[i];
@@ -94,6 +96,8 @@ static void sha256_compress(hash_state * md)
 /* init the sha256 state */
 void sha256_init(hash_state * md)
 {
+    _ARGCHK(md != NULL);
+
     md->sha256.curlen = 0;
     md->sha256.length = 0;
     md->sha256.state[0] = 0x6A09E667UL;
@@ -109,6 +113,9 @@ void sha256_init(hash_state * md)
 void sha256_process(hash_state * md, const unsigned char *buf, unsigned long len)
 {
     unsigned long n;
+    _ARGCHK(md != NULL);
+    _ARGCHK(buf != NULL);
+
     while (len) {
         n = MIN(len, (64 - md->sha256.curlen));
         memcpy(md->sha256.buf + md->sha256.curlen, buf, n);
@@ -128,6 +135,9 @@ void sha256_process(hash_state * md, const unsigned char *buf, unsigned long len
 void sha256_done(hash_state * md, unsigned char *hash)
 {
     int i;
+
+    _ARGCHK(md != NULL);
+    _ARGCHK(hash != NULL);
 
     /* increase the length of the message */
     md->sha256.length += md->sha256.curlen * 8;

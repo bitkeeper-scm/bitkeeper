@@ -23,6 +23,12 @@ int ecc_encrypt(const unsigned char *in,  unsigned long len,
     int keysize, blocksize, hashsize;
     symmetric_CTR ctr;
 
+    _ARGCHK(in != NULL)
+    _ARGCHK(out != NULL);
+    _ARGCHK(outlen != NULL);
+    _ARGCHK(prng != NULL);
+    _ARGCHK(key != NULL);
+
     /* check that wprng/cipher/hash are not invalid */
     if (prng_is_valid(wprng) == CRYPT_ERROR ||
         hash_is_valid(hash)  == CRYPT_ERROR ||
@@ -130,6 +136,11 @@ int ecc_decrypt(const unsigned char *in,  unsigned long len,
    int cipher, hash, keysize;
    ecc_key pubkey;
    symmetric_CTR ctr;
+
+   _ARGCHK(in != NULL);
+   _ARGCHK(out != NULL);
+   _ARGCHK(outlen != NULL);
+   _ARGCHK(key != NULL);
 
    /* right key type? */
    if (key->type != PK_PRIVATE) {
@@ -268,6 +279,12 @@ int ecc_sign(const unsigned char *in,  unsigned long inlen,
    unsigned long x, y, z, pubkeysize, rsize;
    int res;
 
+   _ARGCHK(in != NULL);
+   _ARGCHK(out != NULL);
+   _ARGCHK(outlen != NULL);
+   _ARGCHK(prng != NULL);
+   _ARGCHK(key != NULL);
+
    /* is this a private key? */
    if (key->type != PK_PRIVATE) {
       crypt_error = "Cannot sign with public key in ecc_sign().";
@@ -380,6 +397,11 @@ int ecc_verify(const unsigned char *sig, const unsigned char *msg,
    int hash, res;
    unsigned char md[MAXBLOCKSIZE];
 
+   _ARGCHK(sig != NULL);
+   _ARGCHK(msg != NULL);
+   _ARGCHK(stat != NULL);
+   _ARGCHK(key != NULL);
+
    /* default to invalid signature */
    *stat = 0;
 
@@ -482,6 +504,12 @@ int ecc_encrypt_key(const unsigned char *inkey, unsigned long keylen,
     ecc_key pubkey;
     unsigned long x, y, z, hashsize, pubkeysize;
 
+    _ARGCHK(inkey != NULL);
+    _ARGCHK(out != NULL);
+    _ARGCHK(len != NULL);
+    _ARGCHK(prng != NULL);
+    _ARGCHK(key != NULL);
+
     /* check that wprng/cipher/hash are not invalid */
     if (prng_is_valid(wprng) == CRYPT_ERROR ||
         hash_is_valid(hash)  == CRYPT_ERROR) {
@@ -569,6 +597,11 @@ int ecc_decrypt_key(const unsigned char *in, unsigned char *outkey,
    int hash;
    ecc_key pubkey;
 
+   _ARGCHK(in != NULL);
+   _ARGCHK(outkey != NULL);
+   _ARGCHK(keylen != NULL);
+   _ARGCHK(key != NULL);
+
    /* right key type? */
    if (key->type != PK_PRIVATE) {
       crypt_error = "Cannot decrypt with public key in ecc_decrypt_key().";
@@ -646,6 +679,12 @@ int ecc_sign_hash(const unsigned char *in,  unsigned long inlen,
    unsigned char epubkey[256], er[256], md[MAXBLOCKSIZE];
    unsigned long x, y, pubkeysize, rsize;
    int res;
+
+   _ARGCHK(in != NULL);
+   _ARGCHK(out != NULL);
+   _ARGCHK(outlen != NULL);
+   _ARGCHK(prng != NULL);
+   _ARGCHK(key != NULL);
 
    /* is this a private key? */
    if (key->type != PK_PRIVATE) {
@@ -751,6 +790,11 @@ int ecc_verify_hash(const unsigned char *sig, const unsigned char *hash,
    unsigned long x, y;
    int res;
    unsigned char md[MAXBLOCKSIZE];
+
+   _ARGCHK(sig != NULL);
+   _ARGCHK(hash != NULL);
+   _ARGCHK(hash != NULL);
+   _ARGCHK(key != NULL);
 
    /* default to invalid signature */
    *stat = 0;

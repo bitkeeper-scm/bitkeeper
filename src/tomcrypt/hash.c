@@ -4,6 +4,10 @@ int hash_memory(int hash, const unsigned char *data, unsigned long len, unsigned
 {
     hash_state md;
 
+    _ARGCHK(data != NULL);
+    _ARGCHK(dst != NULL);
+    _ARGCHK(outlen != NULL);
+
     if (hash_is_valid(hash) == CRYPT_ERROR) {
         return CRYPT_ERROR;
     }
@@ -25,6 +29,9 @@ int hash_filehandle(int hash, FILE *in, unsigned char *dst, unsigned long *outle
     hash_state md;
     unsigned char buf[512];
     int x;
+
+    _ARGCHK(dst != NULL);
+    _ARGCHK(outlen != NULL);
 
     if (hash_is_valid(hash) == CRYPT_ERROR) {
         return CRYPT_ERROR;
@@ -58,6 +65,10 @@ int hash_filehandle(int hash, FILE *in, unsigned char *dst, unsigned long *outle
 int hash_file(int hash, const char *fname, unsigned char *dst, unsigned long *outlen)
 {
     FILE *in;
+
+    _ARGCHK(fname != NULL);
+    _ARGCHK(dst != NULL);
+    _ARGCHK(outlen != NULL);
 
     if (hash_is_valid(hash) == CRYPT_ERROR) {
         return CRYPT_ERROR;

@@ -22,6 +22,9 @@ int rc6_setup(const unsigned char *key, int keylen, int num_rounds, symmetric_ke
 {
     unsigned long L[64], S[50], A, B, i, j, v, s, t, l;
 
+    _ARGCHK(key != NULL);
+    _ARGCHK(skey != NULL);
+
     /* test parameters */
     if (num_rounds != 0 && num_rounds != 20) { 
        crypt_error = "Invalid number of rounds for RC6.";
@@ -91,6 +94,9 @@ void rc6_ecb_encrypt(const unsigned char *pt, unsigned char *ct, symmetric_key *
    unsigned long a,b,c,d,t,u;
    int r;
    
+   _ARGCHK(key != NULL);
+   _ARGCHK(pt != NULL);
+   _ARGCHK(ct != NULL);
    LOAD32L(a,&pt[0]);LOAD32L(b,&pt[4]);LOAD32L(c,&pt[8]);LOAD32L(d,&pt[12]);
    b += key->rc6.K[0];
    d += key->rc6.K[1];
@@ -122,6 +128,10 @@ void rc6_ecb_decrypt(const unsigned char *ct, unsigned char *pt, symmetric_key *
 {
    unsigned long a,b,c,d,t,u;
    int r;
+
+   _ARGCHK(key != NULL);
+   _ARGCHK(pt != NULL);
+   _ARGCHK(ct != NULL);
    
    LOAD32L(a,&ct[0]);LOAD32L(b,&ct[4]);LOAD32L(c,&ct[8]);LOAD32L(d,&ct[12]);
    a -= key->rc6.K[42];
@@ -226,6 +236,7 @@ int rc6_test(void)
 
 int rc6_keysize(int *desired_keysize)
 {
+   _ARGCHK(desired_keysize != NULL);
    if (*desired_keysize < 8) {
       return CRYPT_ERROR;
    } else if (*desired_keysize > 128) {

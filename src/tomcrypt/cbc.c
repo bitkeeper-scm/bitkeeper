@@ -6,6 +6,10 @@ int cbc_start(int cipher, const unsigned char *IV, const unsigned char *key,
               int keylen, int num_rounds, symmetric_CBC *cbc)
 {
    int x;
+ 
+   _ARGCHK(IV != NULL);
+   _ARGCHK(key != NULL);
+   _ARGCHK(cbc != NULL);
 
    /* bad param? */
    if (cipher_is_valid(cipher) == CRYPT_ERROR) {
@@ -31,6 +35,10 @@ int cbc_encrypt(const unsigned char *pt, unsigned char *ct, symmetric_CBC *cbc)
    int x;
    unsigned char tmp[MAXBLOCKSIZE];
 
+   _ARGCHK(pt != NULL);
+   _ARGCHK(ct != NULL);
+   _ARGCHK(cbc != NULL);
+
    /* xor IV against plaintext */
    for (x = 0; x < cbc->blocklen; x++) {
        tmp[x] = pt[x] ^ cbc->IV[x];
@@ -45,9 +53,10 @@ int cbc_encrypt(const unsigned char *pt, unsigned char *ct, symmetric_CBC *cbc)
    /* store IV [ciphertext] for a future block */
    for (x = 0; x < cbc->blocklen; x++) 
        cbc->IV[x] = ct[x];
-#ifdef CLEAN_STACK
-   zeromem(tmp, sizeof(tmp));
-#endif
+
+   #ifdef CLEAN_STACK
+      zeromem(tmp, sizeof(tmp));
+   #endif
    return CRYPT_OK;
 }
 
@@ -55,6 +64,10 @@ int cbc_decrypt(const unsigned char *ct, unsigned char *pt, symmetric_CBC *cbc)
 {
    int x;
    unsigned char tmp[MAXBLOCKSIZE], tmp2[MAXBLOCKSIZE];
+
+   _ARGCHK(pt != NULL);
+   _ARGCHK(ct != NULL);
+   _ARGCHK(cbc != NULL);
 
    /* decrypt the block from ct into tmp */
    if (cipher_is_valid(cbc->cipher) == CRYPT_ERROR) {
@@ -75,10 +88,10 @@ int cbc_decrypt(const unsigned char *ct, unsigned char *pt, symmetric_CBC *cbc)
    for (x = 0; x < cbc->blocklen; x++) {
        cbc->IV[x] = tmp2[x];
    }
-#ifdef CLEAN_STACK
-   zeromem(tmp, sizeof(tmp));
-   zeromem(tmp2, sizeof(tmp2));
-#endif
+   #ifdef CLEAN_STACK
+      zeromem(tmp, sizeof(tmp));
+      zeromem(tmp2, sizeof(tmp2));
+   #endif
    return CRYPT_OK;
 }
 

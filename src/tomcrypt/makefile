@@ -101,7 +101,7 @@ install: library
 clean:
 	rm -f $(OBJECTS) $(TESTOBJECTS) $(HASHOBJECTS) $(LEFTOVERS) $(LIBNAME)
 	rm -f $(TEST) $(HASH) $(COMPRESSED)
-	rm -f *.lib *.exe *.obj demos/*.obj zlib/*.obj
+	rm -f *stackdump *.lib *.exe *.obj demos/*.obj zlib/*.obj
 
 #This builds the crypt.pdf file. Note that the rm -f *.pdf has been removed
 #from the clean command! This is because most people would like to keep the

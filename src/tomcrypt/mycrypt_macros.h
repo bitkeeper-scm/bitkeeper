@@ -12,6 +12,7 @@ enum {
    CRYPT_OK=0,
    CRYPT_ERROR
 };
+
 extern char *crypt_error;
 
 /* ---- HELPER MACROS ---- */

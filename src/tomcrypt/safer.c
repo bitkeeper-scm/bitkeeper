@@ -146,6 +146,9 @@ static void Safer_Expand_Userkey(const unsigned char *userkey_1,
 
 int safer_k64_setup(const unsigned char *key, int keylen, int numrounds, symmetric_key *skey)
 {
+   _ARGCHK(key != NULL);
+   _ARGCHK(skey != NULL);
+
    if (numrounds && (numrounds < 6 || numrounds > SAFER_MAX_NOF_ROUNDS)) {
       crypt_error = "Invalid number of rounds for SAFER-K64.";
       return CRYPT_ERROR;
@@ -162,6 +165,9 @@ int safer_k64_setup(const unsigned char *key, int keylen, int numrounds, symmetr
    
 int safer_sk64_setup(const unsigned char *key, int keylen, int numrounds, symmetric_key *skey)
 {
+   _ARGCHK(key != NULL);
+   _ARGCHK(skey != NULL);
+
    if (numrounds && (numrounds < 6 || numrounds > SAFER_MAX_NOF_ROUNDS)) {
       crypt_error = "Invalid number of rounds for SAFER-SK64.";
       return CRYPT_ERROR;
@@ -178,6 +184,9 @@ int safer_sk64_setup(const unsigned char *key, int keylen, int numrounds, symmet
 
 int safer_k128_setup(const unsigned char *key, int keylen, int numrounds, symmetric_key *skey)
 {
+   _ARGCHK(key != NULL);
+   _ARGCHK(skey != NULL);
+
    if (numrounds && (numrounds < 6 || numrounds > SAFER_MAX_NOF_ROUNDS)) {
       crypt_error = "Invalid number of rounds for SAFER-K128.";
       return CRYPT_ERROR;
@@ -194,6 +203,9 @@ int safer_k128_setup(const unsigned char *key, int keylen, int numrounds, symmet
 
 int safer_sk128_setup(const unsigned char *key, int keylen, int numrounds, symmetric_key *skey)
 {
+   _ARGCHK(key != NULL);
+   _ARGCHK(skey != NULL);
+
    if (numrounds && (numrounds < 6 || numrounds > SAFER_MAX_NOF_ROUNDS)) {
       crypt_error = "Invalid number of rounds for SAFER-SK128.";
       return CRYPT_ERROR;
@@ -219,7 +231,13 @@ void safer_ecb_encrypt(const unsigned char *block_in,
 #endif
 {   unsigned char a, b, c, d, e, f, g, h, t;
     unsigned int round;
-    unsigned char *key = skey->safer.key;
+    unsigned char *key;
+
+    _ARGCHK(block_in != NULL);
+    _ARGCHK(block_out != NULL);
+    _ARGCHK(skey != NULL);
+
+    key = skey->safer.key;
     a = block_in[0]; b = block_in[1]; c = block_in[2]; d = block_in[3];
     e = block_in[4]; f = block_in[5]; g = block_in[6]; h = block_in[7];
     if (SAFER_MAX_NOF_ROUNDS < (round = *key)) round = SAFER_MAX_NOF_ROUNDS;
@@ -265,7 +283,13 @@ void safer_ecb_decrypt(const unsigned char *block_in,
 #endif
 {   unsigned char a, b, c, d, e, f, g, h, t;
     unsigned int round;
-    unsigned char *key = skey->safer.key;
+    unsigned char *key;
+
+    _ARGCHK(block_in != NULL);
+    _ARGCHK(block_out != NULL);
+    _ARGCHK(skey != NULL);
+
+    key = skey->safer.key;
     a = block_in[0]; b = block_in[1]; c = block_in[2]; d = block_in[3];
     e = block_in[4]; f = block_in[5]; g = block_in[6]; h = block_in[7];
     if (SAFER_MAX_NOF_ROUNDS < (round = *key)) round = SAFER_MAX_NOF_ROUNDS;
@@ -303,6 +327,7 @@ void safer_ecb_decrypt(const unsigned char *block_in,
 
 int safer_64_keysize(int *keysize)
 {
+   _ARGCHK(keysize != NULL);
    if (*keysize < 8) {
       return CRYPT_ERROR;
    } else {
@@ -313,6 +338,7 @@ int safer_64_keysize(int *keysize)
 
 int safer_128_keysize(int *keysize)
 {
+   _ARGCHK(keysize != NULL);
    if (*keysize < 16) {
       return CRYPT_ERROR;
    } else {

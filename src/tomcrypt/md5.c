@@ -39,6 +39,8 @@ static void md5_compress(hash_state *md)
 {
     unsigned long i, W[16], a, b, c, d;
 
+    _ARGCHK(md != NULL);
+
     /* copy the state into 512-bits into W[0..15] */
     for (i = 0; i < 16; i++) {
         LOAD32L(W[i], md->md5.buf + (4*i));
@@ -131,6 +133,7 @@ static void md5_compress(hash_state *md)
 
 void md5_init(hash_state * md)
 {
+   _ARGCHK(md != NULL);
    md->md5.state[0] = 0x67452301UL;
    md->md5.state[1] = 0xefcdab89UL;
    md->md5.state[2] = 0x98badcfeUL;
@@ -142,6 +145,8 @@ void md5_init(hash_state * md)
 void md5_process(hash_state * md, const unsigned char *buf, unsigned long len)
 {
     unsigned long n;
+    _ARGCHK(md != NULL);
+    _ARGCHK(buf != NULL);
     while (len) {
         n = MIN(len, (64 - md->md5.curlen));
         memcpy(md->md5.buf + md->md5.curlen, buf, n);
@@ -161,6 +166,9 @@ void md5_process(hash_state * md, const unsigned char *buf, unsigned long len)
 void md5_done(hash_state * md, unsigned char *hash)
 {
     int i;
+
+    _ARGCHK(md != NULL);
+    _ARGCHK(hash != NULL);
 
     /* increase the length of the message */
     md->md5.length += md->md5.curlen * 8;

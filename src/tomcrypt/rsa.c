@@ -7,6 +7,9 @@ int rsa_make_key(prng_state *prng, int wprng, int size, long e, rsa_key *key)
    mp_int p, q, tmp1, tmp2, tmp3;
    int res;   
 
+   _ARGCHK(prng != NULL);
+   _ARGCHK(key != NULL);
+
    if ((size < (1024/8)) || (size > (4096/8))) {
       crypt_error = "Invalid key size in rsa_make_key()."; 
       return CRYPT_ERROR;
@@ -91,6 +94,7 @@ done:
 
 void rsa_free(rsa_key *key)
 {
+   _ARGCHK(key != NULL);
    mp_clear_multi(&key->e, &key->d, &key->N, &key->dQ, &key->dP, 
                   &key->qP, &key->pQ, &key->p, &key->q, NULL);
 }
@@ -102,6 +106,11 @@ int rsa_exptmod(const unsigned char *in,  unsigned long inlen,
    mp_int tmp, tmpa, tmpb;
    unsigned long x;
    int res;
+
+   _ARGCHK(in != NULL);
+   _ARGCHK(out != NULL);
+   _ARGCHK(outlen != NULL);
+   _ARGCHK(key != NULL);
 
    if (which == PK_PRIVATE && (key->type != PK_PRIVATE && key->type != PK_PRIVATE_OPTIMIZED)) {
       crypt_error = "Invalid key type in rsa_exptmod().";
@@ -163,6 +172,11 @@ int rsa_signpad(const unsigned char *in,  unsigned long inlen,
                       unsigned char *out, unsigned long *outlen)
 {
    unsigned long x, y;
+
+   _ARGCHK(in != NULL);
+   _ARGCHK(out != NULL);
+   _ARGCHK(outlen != NULL);
+
    if (*outlen < (3 * inlen)) {
       crypt_error = "Output overflow in rsa_signpad().";
       return CRYPT_ERROR;
@@ -183,6 +197,11 @@ int rsa_pad(const unsigned char *in,  unsigned long inlen,
 {
    unsigned char buf[2048];
    unsigned long x;
+
+   _ARGCHK(in != NULL);
+   _ARGCHK(out != NULL);
+   _ARGCHK(outlen != NULL);
+   _ARGCHK(prng != NULL);
 
    /* is output big enough? */
    if (*outlen < (3 * inlen)) { 
@@ -240,6 +259,11 @@ int rsa_signdepad(const unsigned char *in,  unsigned long inlen,
                     unsigned char *out, unsigned long *outlen)
 {
    unsigned long x;
+
+   _ARGCHK(in != NULL);
+   _ARGCHK(out != NULL);
+   _ARGCHK(outlen != NULL);
+
    if (*outlen < inlen/3) { 
       crypt_error = "Output not big enough in rsa_signdepad()."; 
       return CRYPT_ERROR; 
@@ -262,6 +286,11 @@ int rsa_depad(const unsigned char *in,  unsigned long inlen,
                     unsigned char *out, unsigned long *outlen)
 {
    unsigned long x;
+
+   _ARGCHK(in != NULL);
+   _ARGCHK(out != NULL);
+   _ARGCHK(outlen != NULL);
+
    if (*outlen < inlen/3) { 
       crypt_error = "Output not big enough in rsa_depad()."; 
       return CRYPT_ERROR; 
@@ -306,6 +335,10 @@ int rsa_export(unsigned char *out, unsigned long *outlen, int type, rsa_key *key
 {
    unsigned char buf2[5120];
    unsigned long y, z;
+
+   _ARGCHK(out != NULL);
+   _ARGCHK(outlen != NULL);
+   _ARGCHK(key != NULL);
 
    /* type valid? */
    if (!(key->type == PK_PRIVATE || key->type == PK_PRIVATE_OPTIMIZED) && 
@@ -362,6 +395,9 @@ int rsa_export(unsigned char *out, unsigned long *outlen, int type, rsa_key *key
 int rsa_import(const unsigned char *in, rsa_key *key)
 {
    unsigned long x, y;
+
+   _ARGCHK(in != NULL);
+   _ARGCHK(key != NULL);
 
    /* test packet header */
    if (packet_valid_header((unsigned char *)in, PACKET_SECT_RSA, PACKET_SUB_KEY) == CRYPT_ERROR) { 

@@ -421,6 +421,9 @@ int twofish_setup(const unsigned char *key, int keylen, int num_rounds, symmetri
    unsigned char tmp[4], tmp2[4], M[8*4];
    unsigned long A, B;
 
+   _ARGCHK(key != NULL);
+   _ARGCHK(skey != NULL);
+
    /* invalid arguments? */
    if (num_rounds != 16 && num_rounds != 0) {
       crypt_error = "Invalid number of rounds for Twofish.";
@@ -525,6 +528,10 @@ void twofish_ecb_encrypt(const unsigned char *pt, unsigned char *ct, symmetric_k
     unsigned long a,b,c,d,ta,tb,tc,td,t1,t2;
     int r;
 
+    _ARGCHK(pt != NULL);
+    _ARGCHK(ct != NULL);
+    _ARGCHK(key != NULL);
+
     LOAD32L(a,&pt[0]); LOAD32L(b,&pt[4]);
     LOAD32L(c,&pt[8]); LOAD32L(d,&pt[12]);
     a ^= key->twofish.K[0];
@@ -577,6 +584,10 @@ void twofish_ecb_decrypt(const unsigned char *ct, unsigned char *pt, symmetric_k
 {
     unsigned long a,b,c,d,ta,tb,tc,td,t1,t2;
     int r;
+
+    _ARGCHK(pt != NULL);
+    _ARGCHK(ct != NULL);
+    _ARGCHK(key != NULL);
 
     /* load input */
     LOAD32L(ta,&ct[0]); LOAD32L(tb,&ct[4]);
@@ -707,6 +718,7 @@ int twofish_test(void)
 
 int twofish_keysize(int *desired_keysize)
 {
+   _ARGCHK(desired_keysize);
    if (*desired_keysize < 16)
       return CRYPT_ERROR;
    if (*desired_keysize < 24) {

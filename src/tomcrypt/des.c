@@ -436,6 +436,9 @@ static void desfunc(unsigned long *block, const unsigned long *keys)
 
 int des_setup(const unsigned char *key, int keylen, int num_rounds, symmetric_key *skey)
 {
+    _ARGCHK(key != NULL);
+    _ARGCHK(skey != NULL);
+
     if (num_rounds != 0 && num_rounds != 16) {
         crypt_error = "Invalid number of rounds for DES; must be 16";
         return CRYPT_ERROR;
@@ -454,6 +457,9 @@ int des_setup(const unsigned char *key, int keylen, int num_rounds, symmetric_ke
 
 int des3_setup(const unsigned char *key, int keylen, int num_rounds, symmetric_key *skey)
 {
+    _ARGCHK(key != NULL);
+    _ARGCHK(skey != NULL);
+
     if( num_rounds != 0 && num_rounds != 16) {
         crypt_error = "Invalid number of rounds for 3DES; must be 16";
         return CRYPT_ERROR;
@@ -478,6 +484,9 @@ int des3_setup(const unsigned char *key, int keylen, int num_rounds, symmetric_k
 void des_ecb_encrypt(const unsigned char *pt, unsigned char *ct, symmetric_key *key)
 {
     unsigned long work[2];
+    _ARGCHK(pt != NULL);
+    _ARGCHK(ct != NULL);
+    _ARGCHK(key != NULL);
     scrunch(pt, work);
     desfunc(work, key->des.ek);
     unscrun(work, ct);
@@ -486,6 +495,9 @@ void des_ecb_encrypt(const unsigned char *pt, unsigned char *ct, symmetric_key *
 void des_ecb_decrypt(const unsigned char *ct, unsigned char *pt, symmetric_key *key)
 {
     unsigned long work[2];
+    _ARGCHK(pt != NULL);
+    _ARGCHK(ct != NULL);
+    _ARGCHK(key != NULL);
     scrunch(ct, work);
     desfunc(work, key->des.dk);
     unscrun(work, pt);
@@ -494,6 +506,9 @@ void des_ecb_decrypt(const unsigned char *ct, unsigned char *pt, symmetric_key *
 void des3_ecb_encrypt(const unsigned char *pt, unsigned char *ct, symmetric_key *key)
 {
     unsigned long work[2];
+    _ARGCHK(pt != NULL);
+    _ARGCHK(ct != NULL);
+    _ARGCHK(key != NULL);
     scrunch(pt, work);
     desfunc(work, key->des3.ek[0]);
     desfunc(work, key->des3.ek[1]);
@@ -504,6 +519,9 @@ void des3_ecb_encrypt(const unsigned char *pt, unsigned char *ct, symmetric_key 
 void des3_ecb_decrypt(const unsigned char *ct, unsigned char *pt, symmetric_key *key)
 {
     unsigned long work[2];
+    _ARGCHK(pt != NULL);
+    _ARGCHK(ct != NULL);
+    _ARGCHK(key != NULL);
     scrunch(ct, work);
     desfunc(work, key->des3.dk[0]);
     desfunc(work, key->des3.dk[1]);
@@ -694,6 +712,7 @@ int des3_test(void)
 
 int des_keysize(int *desired_keysize)
 {
+    _ARGCHK(desired_keysize != NULL)
     if(*desired_keysize < 8)
         return CRYPT_ERROR;
     *desired_keysize = 8;
@@ -702,6 +721,7 @@ int des_keysize(int *desired_keysize)
 
 int des3_keysize(int *desired_keysize)
 {
+    _ARGCHK(desired_keysize != NULL)
     if(*desired_keysize < 24)
         return CRYPT_ERROR;
     *desired_keysize = 24;

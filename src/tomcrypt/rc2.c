@@ -59,6 +59,9 @@ int rc2_setup(const unsigned char *key, int keylen, int rounds, symmetric_key *s
    unsigned T8, TM;
    int i, bits;
 
+   _ARGCHK(key != NULL);
+   _ARGCHK(skey != NULL);
+
    if (keylen < 8 || keylen > 128) {
       crypt_error = "Invalid key size for RC2.";
       return CRYPT_ERROR;
@@ -117,6 +120,10 @@ void rc2_ecb_encrypt( const unsigned char *plain,
 {
     unsigned *xkey = skey->rc2.xkey;
     unsigned x76, x54, x32, x10, i;
+
+    _ARGCHK(plain != NULL);
+    _ARGCHK(cipher != NULL);
+    _ARGCHK(skey != NULL);
 
     x76 = ((unsigned)plain[7] << 8) + (unsigned)plain[6];
     x54 = ((unsigned)plain[5] << 8) + (unsigned)plain[4];
@@ -181,6 +188,10 @@ void rc2_ecb_decrypt( const unsigned char *cipher,
     unsigned x76, x54, x32, x10;
     unsigned *xkey = skey->rc2.xkey;
     int i;
+
+    _ARGCHK(plain != NULL);
+    _ARGCHK(cipher != NULL);
+    _ARGCHK(skey != NULL);
 
     x76 = ((unsigned)cipher[7] << 8) + (unsigned)cipher[6];
     x54 = ((unsigned)cipher[5] << 8) + (unsigned)cipher[4];
@@ -293,6 +304,7 @@ int rc2_test(void)
 
 int rc2_keysize(int *keysize)
 {
+   _ARGCHK(keysize != NULL);
    if (*keysize < 8) {
        return CRYPT_ERROR;
    } else if (*keysize > 128) {

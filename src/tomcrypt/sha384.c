@@ -14,6 +14,8 @@ const struct _hash_descriptor sha384_desc =
 
 void sha384_init(hash_state * md)
 {
+    _ARGCHK(md != NULL);
+
     md->sha512.curlen = 0;
     md->sha512.length = 0;
     md->sha512.state[0] = CONST64(0xcbbb9d5dc1059ed8);
@@ -28,12 +30,17 @@ void sha384_init(hash_state * md)
 
 void sha384_process(hash_state * md, const unsigned char *buf, unsigned long len)
 {
+   _ARGCHK(md != NULL);
+   _ARGCHK(buf != NULL);
    sha512_process(md, buf, len);
 }
 
 void sha384_done(hash_state * md, unsigned char *hash)
 {
    unsigned char buf[64];
+
+   _ARGCHK(md != NULL);
+   _ARGCHK(hash != NULL);
 
    sha512_done(md, buf);
    memcpy(hash, buf, 48);

@@ -27,6 +27,8 @@ static void sha1_compress(hash_state *md)
 {
     unsigned long a,b,c,d,e,W[80],i,j;
 
+    _ARGCHK(md != NULL);
+
     /* copy the state into 512-bits into W[0..15] */
     for (i = 0; i < 16; i++) {
         LOAD32H(W[i], md->sha1.buf + (4*i));
@@ -104,6 +106,7 @@ static void sha1_compress(hash_state *md)
 
 void sha1_init(hash_state * md)
 {
+   _ARGCHK(md != NULL);
    md->sha1.state[0] = 0x67452301UL;
    md->sha1.state[1] = 0xefcdab89UL;
    md->sha1.state[2] = 0x98badcfeUL;
@@ -116,6 +119,9 @@ void sha1_init(hash_state * md)
 void sha1_process(hash_state * md, const unsigned char *buf, unsigned long len)
 {
     unsigned long n;
+    _ARGCHK(md != NULL);
+    _ARGCHK(buf != NULL);
+
     while (len) {
         n = MIN(len, (64 - md->sha1.curlen));
         memcpy(md->sha1.buf + md->sha1.curlen, buf, n);
@@ -135,6 +141,9 @@ void sha1_process(hash_state * md, const unsigned char *buf, unsigned long len)
 void sha1_done(hash_state * md, unsigned char *hash)
 {
     int i;
+
+    _ARGCHK(md != NULL);
+    _ARGCHK(hash != NULL);
 
     /* increase the length of the message */
     md->sha1.length += md->sha1.curlen * 8;

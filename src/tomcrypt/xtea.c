@@ -16,6 +16,9 @@ const struct _cipher_descriptor xtea_desc =
 
 int xtea_setup(const unsigned char *key, int keylen, int num_rounds, symmetric_key *skey)
 {
+   _ARGCHK(key != NULL);
+   _ARGCHK(skey != NULL);
+
    /* check arguments */
    if (keylen != 16) {
       crypt_error = "Invalid key length for xtea.";
@@ -40,6 +43,10 @@ void xtea_ecb_encrypt(const unsigned char *pt, unsigned char *ct, symmetric_key 
    unsigned long y, z, sum;
    int r;
 
+   _ARGCHK(pt != NULL);
+   _ARGCHK(ct != NULL);
+   _ARGCHK(key != NULL);
+
    LOAD32L(y, &pt[0]);
    LOAD32L(z, &pt[4]);
    sum = 0;
@@ -56,6 +63,10 @@ void xtea_ecb_decrypt(const unsigned char *ct, unsigned char *pt, symmetric_key 
 {
    unsigned long y, z, sum;
    int r;
+
+   _ARGCHK(pt != NULL);
+   _ARGCHK(ct != NULL);
+   _ARGCHK(key != NULL);
 
    LOAD32L(y, &ct[0]);
    LOAD32L(z, &ct[4]);
@@ -101,6 +112,7 @@ int xtea_test(void)
 
 int xtea_keysize(int *desired_keysize)
 {
+   _ARGCHK(desired_keysize);
    if (*desired_keysize < 16)
       return CRYPT_ERROR;
    *desired_keysize = 16;

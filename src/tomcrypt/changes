@@ -1,3 +1,7 @@
+Nov 11th, 2002
+v0.69  -- Added ARGCHK (see mycrypt_argchk.h) "arguement checking" to all functions that accept pointers
+       -- Note I forgot to change the CRYPT version tag in v0.68... fixed now.
+
 Nov 8th, 2002
 v0.68  -- Fixed flaw in kr_import/kr_export that wasted 4 bytes.  Source but not binary compatible with v0.67
        -- Fixed bug in kr_find_name that used memcmp to match strings.  Uses strncmp now.

@@ -32,6 +32,7 @@ int sprng_ready(prng_state *prng)
 
 unsigned long sprng_read(unsigned char *buf, unsigned long len, prng_state *prng)
 {
+   _ARGCHK(buf != NULL);
    return rng_get_bytes(buf, len, NULL);
 }
 

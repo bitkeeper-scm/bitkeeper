@@ -3,6 +3,7 @@
 void zeromem(void *dst, unsigned long len)
 {
  unsigned char *mem = (unsigned char *)dst;
+ _ARGCHK(dst != NULL);
  while (len--)
     *mem++ = 0;
 }

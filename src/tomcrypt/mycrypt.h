@@ -13,8 +13,8 @@ extern "C" {
 #endif
 
 /* version */
-#define CRYPT   0x0067
-#define SCRYPT  "0.67"
+#define CRYPT   0x0069
+#define SCRYPT  "0.69"
 
 /* max size of either a cipher/hash block or symmetric key [largest of the two] */
 #define MAXBLOCKSIZE           128
@@ -28,6 +28,9 @@ extern "C" {
 #include <mycrypt_gf.h>
 #include <mycrypt_misc.h>
 #include <mycrypt_kr.h>
+
+#include <mycrypt_argchk.h>
+
 
 #ifdef __cplusplus
    }

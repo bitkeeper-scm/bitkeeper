@@ -22,6 +22,9 @@ int rc5_setup(const unsigned char *key, int keylen, int num_rounds, symmetric_ke
 {
     unsigned long L[64], S[50], A, B, i, j, v, s, t, l;
 
+    _ARGCHK(skey != NULL);
+    _ARGCHK(key != NULL);
+
     /* test parameters */
     if (num_rounds == 0) { 
        num_rounds = rc5_desc.default_rounds;
@@ -93,6 +96,9 @@ void rc5_ecb_encrypt(const unsigned char *pt, unsigned char *ct, symmetric_key *
 {
    unsigned long A, B;
    int r;
+   _ARGCHK(key != NULL);
+   _ARGCHK(pt != NULL);
+   _ARGCHK(ct != NULL);
 
    LOAD32L(A, &pt[0]);
    LOAD32L(B, &pt[4]);
@@ -122,6 +128,9 @@ void rc5_ecb_decrypt(const unsigned char *ct, unsigned char *pt, symmetric_key *
 {
    unsigned long A, B;
    int r;
+   _ARGCHK(key != NULL);
+   _ARGCHK(pt != NULL);
+   _ARGCHK(ct != NULL);
 
    LOAD32L(A, &ct[0]);
    LOAD32L(B, &ct[4]);
@@ -207,6 +216,7 @@ int rc5_test(void)
 
 int rc5_keysize(int *desired_keysize)
 {
+   _ARGCHK(desired_keysize != NULL);
    if (*desired_keysize < 8) {
       return CRYPT_ERROR;
    } else if (*desired_keysize > 128) {

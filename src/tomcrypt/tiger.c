@@ -581,6 +581,8 @@ static void tiger_compress(hash_state *md)
     ulong64 a, b, c, x[8];
     unsigned long i;
 
+    _ARGCHK(md != NULL);
+
     /* load words */
     for (i = 0; i < 8; i++) {
         LOAD64L(x[i],&md->tiger.buf[8*i]);
@@ -611,6 +613,7 @@ static void tiger_compress(hash_state *md)
 
 void tiger_init(hash_state *md)
 {
+    _ARGCHK(md != NULL);
     md->tiger.state[0] = CONST64(0x0123456789ABCDEF);
     md->tiger.state[1] = CONST64(0xFEDCBA9876543210);
     md->tiger.state[2] = CONST64(0xF096A5B4C3B2E187);
@@ -621,6 +624,8 @@ void tiger_init(hash_state *md)
 void tiger_process(hash_state * md, const unsigned char *buf, unsigned long len)
 {
     unsigned long n;
+    _ARGCHK(md != NULL);
+    _ARGCHK(buf != NULL);
     while (len) {
         n = MIN(len, (64 - md->tiger.curlen));
         memcpy(md->tiger.buf + md->tiger.curlen, buf, n);
@@ -639,6 +644,9 @@ void tiger_process(hash_state * md, const unsigned char *buf, unsigned long len)
 
 void tiger_done(hash_state * md, unsigned char *hash)
 {
+    _ARGCHK(md != NULL);
+    _ARGCHK(hash != NULL);
+
     /* increase the length of the message */
     md->tiger.length += md->tiger.curlen * 8;
 

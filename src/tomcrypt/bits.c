@@ -91,6 +91,9 @@ unsigned long rng_get_bytes(unsigned char *buf, unsigned long len,
                             void (*callback)(void))
 {
    int x;
+
+   _ARGCHK(buf != NULL);
+
    x = rng_nix(buf, len, callback);   if (x) { return x; }
 #ifdef WIN32
    x = rng_win32(buf, len, callback); if (x) { return x; }
@@ -106,6 +109,8 @@ int rng_make_prng(int bits, int wprng, prng_state *prng,
 {
    unsigned char buf[256];
    
+   _ARGCHK(prng != NULL);
+
    /* check parameter */
    if (prng_is_valid(wprng) == CRYPT_ERROR) {
       return CRYPT_ERROR;
@@ -133,7 +138,10 @@ int rng_make_prng(int bits, int wprng, prng_state *prng,
    if (prng_descriptor[wprng].ready(prng) == CRYPT_ERROR) {
       return CRYPT_ERROR;
    }
-   zeromem(buf, sizeof(buf));
+
+   #ifdef CLEAN_STACK
+      zeromem(buf, sizeof(buf));
+   #endif
    return CRYPT_OK;
 }
 
