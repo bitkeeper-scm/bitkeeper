@@ -17,7 +17,7 @@ private int sfiles(int ac, char **av);
 
 int unedit_main(int, char **);
 int unlock_main(int, char **);
-int files_main(int, char **);
+int find_main(int, char **);
 int bkd_main(int, char **);
 int setup_main(int, char **);
 int commit_main(int, char **);
@@ -93,7 +93,7 @@ int rcs2sccs_main(int, char **);
 
 struct command cmdtbl[100] = {
 	{"unlock", unlock_main },
-	{"files", files_main },
+	{"_find", find_main }, /* internal helper function */
 	{"bkd", bkd_main },
 	{"setup", setup_main },
 	{"commit", commit_main},
@@ -529,7 +529,7 @@ platformInit(char **av)
 	int	flags = SILENT;	/* for debugging */
 
 	if (bin) return;
-	if ((editor = getenv("EDITOR")) == NULL) editor = strdup("vi");
+	if ((editor = getenv("EDITOR")) == NULL) editor = strdup(EDITOR);
 	if ((pager = getenv("PAGER")) == NULL) pager = strdup(PAGER);
 
 	unless (p = getenv("PATH")) return;	/* and pray */
@@ -616,8 +616,8 @@ gotit:
 				 * This ensure we pick up the correct binary
 				 * such as "patch.exe" and "diff.exe"
 				 *
-				 * XXX We should probable do this for Unix too
-				 * but we don't want to change the unix
+				 * XXX We should probably do this for Unix too
+				 * but we don't want to change the unix code
 				 * until after release 1.0
 				 */
 				int len = strlen(buf);

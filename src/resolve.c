@@ -480,7 +480,7 @@ pass2_renames(opts *opts)
 	 * files (think hashed directories.
 	 */
 	unless (f =
-	    popen("find BitKeeper/RENAMES/SCCS -type f -print |sort", "r")) {
+	    popen("bk _find BitKeeper/RENAMES/SCCS |sort", "r")) {
 	    	return (0);
 	}
 	while (fnext(path, f)) {
@@ -1185,7 +1185,7 @@ pass3_resolve(opts *opts)
 	 * Make sure the renames are done first.
 	 * XXX - doesn't look in RENAMES, should it?
 	 */
-	unless (p = popen("find . -type f -name 'm.*' -print", "r")) {
+	unless (p = popen("bk _find -name 'm.*' .", "r")) {
 		perror("popen of find");
 		exit (1);
 	}
