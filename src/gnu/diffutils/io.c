@@ -438,6 +438,11 @@ prepare_text_end (current)
 
   if (buffered_chars == 0 || p[buffered_chars - 1] == '\n')
     current->missing_newline = 0;
+  else if (ignore_trailing_cr_flag && p[buffered_chars - 1] == '\r')
+    {
+      p[buffered_chars - 1] = '\n';
+      current->missing_newline = 0;
+    }
   else
     {
       p[buffered_chars++] = '\n';
