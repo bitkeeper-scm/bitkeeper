@@ -8847,7 +8847,16 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 	} else {
 		unless (d->user) d->user = strdup(sccs_getuser());
 		unless (d->hostname && sccs_gethost()) {
-			hostArg(d, sccs_gethost());
+			if (getenv("BK_PATCH_IMPORT")) {
+				char	*h;
+
+				h = aprintf("%s[%s]",
+					sccs_gethost(), sccs_realuser());
+				hostArg(d, h);
+				free(h);
+			} else {
+				hostArg(d, sccs_gethost());
+			}
 		}
 		unless (d->pathname && s) {
 			char *p, *q;

@@ -1,0 +1,116 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2002 Larry McVoy
+# %K%
+
+echo $N Test import of a patch file, look for patch fudge ...........$NL
+cat > c <<EOF
+logging: none
+license: $BK_LIC_P
+description: BitKeeper Test repository
+email: nobody@nowhere.bk
+EOF
+bk setup -f -cc proj
+cd proj
+cat > file <<EOF
+Hi mom!
+Hi mom!
+Hi mom!
+Hi mom!
+Hi mom!
+EOF
+bk new $Q file
+bk commit $Q -ybaseline
+cd $HERE
+bk clone $Q proj child
+cat > PATCH << EOF
+===== file 1.1 vs edited =====
+--- 1.1/file    Wed May 01 15:32:20 2002
++++ edited/file Wed May 01 15:32:20 2002
+@@ -1,5 +1,5 @@
+-Hi mom!
+-Hi mom!
+-Hi mom!
+-Hi mom!
+-Hi mom!
++Hi Mom!
++Hi Mom!
++Hi Mom!
++Hi Mom!
++Hi Mom!
+
+EOF
+export USER=torvalds BK_USER=trini BK_HOST=butthead.com
+bk import $Q -Cftpatch PATCH proj
+cd proj
+export BK_PATCH_IMPORT=YES
+bk commit $Q -y'Should be trini@butthead.com[torvalds]'
+bk changes -vr+ -nd:HOST: > GOT
+cat > ../WANT <<EOF
+butthead.com[torvalds]
+butthead.com[torvalds]
+EOF
+cmp -s GOT ../WANT || {
+	echo failed to set the hostname properly
+	diff ../WANT GOT
+	exit 1
+}
+# This was the minimal value on May 15th 2002 at about 6pm PST.
+test `bk prs -hr+ -nd:FUDGE: file` -gt 1243730 || {
+	echo failed to fudge the date
+	bk prs -hr+ -nd:FUDGE: file
+	exit 1
+}
+echo OK
+
+echo $N Test import of a patch file, look for user name .............$NL
+cd $HERE
+export USER=lm BK_USER=trini BK_HOST=headbutt.com
+bk import $Q -Cftpatch PATCH child
+cd child
+export BK_PATCH_IMPORT=YES
+bk commit $Q -y'Should be trini@headbutt.com[lm]'
+bk changes -vr+ -nd:HOST: > GOT
+cat > ../WANT <<EOF
+headbutt.com[lm]
+headbutt.com[lm]
+EOF
+cmp -s GOT ../WANT || {
+	echo failed to set the hostname properly
+	diff ../WANT GOT
+	exit 1
+}
+# This was the minimal value on May 15th 2002 at about 6pm PST.
+test `bk prs -hr+ -nd:FUDGE: file` -gt 1243730 || {
+	echo failed to fudge the date
+	bk prs -hr+ -nd:FUDGE: file
+	exit 1
+}
+echo OK
+
+echo $N Test pull of a double imported patch, should automerge ......$NL
+unset BK_PATCH_IMPORT
+unset BK_USER
+unset BK_HOST
+unset USER
+TOP=`bk prs -hr+ -d:I: file`
+echo q | bk pull $Q
+test -d RESYNC && {
+	echo failed to finish pull
+	exit 1
+}
+NTOP=`bk prs -hr+ -d:I: file`
+test $TOP = $NTOP && {
+	echo failed to create merge delta
+	exit 1
+}
+echo OK
