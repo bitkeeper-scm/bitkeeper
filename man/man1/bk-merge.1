@@ -1,0 +1,68 @@
+.so bk-macros
+.TH "bk merge" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk merge \- three-way text based file merge
+.SH SYNOPSIS
+.B merge 
+.ARG local
+.ARG ancestor
+.ARG remote
+.ARG merge
+.SH DESCRIPTION
+The
+.B bk merge
+command combines changes made 
+to
+.ARG ancestor
+by 
+.ARG local
+with the changes made to
+.ARG ancestor
+by
+.ARG remote
+and merges them into
+.ARG merge .
+.LP
+If all changes are made to different regions of the
+.ARG ancestor ,
+then the merge is said to be free of conflicts and happens without any
+further human intervention.
+.LP
+A conflict occurs if both
+.ARG local
+and 
+.ARG remote
+have made changes to the same section of
+.ARG ancestor .
+If a conflict is found, the conflicting lines will be marked in the output
+as follows:
+.DS
+<<<<<<<\ \c
+.ARG local
+changes made in the local repository
+=======
+changes made in the remote repository
+>>>>>>>\ \c
+.ARG remote
+.DE
+It is up to the caller to edit the 
+.ARG merge 
+file and resolve any conflicts.
+.SH WARNING
+Nobody likes to hear this, but this sort of automatic merge can get you
+in trouble.  The problem is that this is a syntatic merge, not a semantic
+merge.  In other words, just because the files do not have overlapping
+changes does not mean that the merge will work.  It's up to the user to
+look carefully at the results and verify their correctness.
+.SH EXIT STATUS
+0 for no conflicts, 1 for conflicts, 2 for errors.
+.SH "SEE ALSO"
+.BR diff3 (1)
+.br
+.SA fmtool 1
+.SA merging 1
+.SA resolve 1
+.SH CATEGORY
+.B Repository
+.br
+.B File
