@@ -14587,7 +14587,7 @@ kw2buf(char *buf, const char *kw, sccs *s, delta *d)
 	rc = kw2val(0, buf ? &vbuf : 0, "", 0, kw, "", 0, s, d);
 	if (buf) {
 		char	*p = str_pullup(0, vbuf);
-		strcpy(buf, p);
+		strcpy(buf, notnull(p));
 		free(p);
 	}
 	return (rc);
