@@ -71,7 +71,8 @@ import() {
 			echo "Not at a repository root"
 			exit 1
 		}
-		mailsplit diffsplit applypatch NAME DOMAIN SUBJECT EXPLANATION
+		bk mailsplit bk diffsplit \
+				applypatch NAME DOMAIN SUBJECT EXPLANATION
 		exit $?
 	fi
 
@@ -156,7 +157,7 @@ import() {
 			fi
 			eval "$cmd" > ${TMP}import$$
 			if [ X$QUIET = X ]; then echo OK; fi
-		else	echo "" > ${TMP}import$$
+		else	touch ${TMP}import$$
 		fi
 	fi
 	if [ $TYPE != patch ]

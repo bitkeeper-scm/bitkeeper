@@ -4,7 +4,7 @@
 
 proc bk_init {} \
 {
-	global env dev_null tmp_dir wish  
+	global env dev_null tmp_dir wish tcl_version
 	global bithelp difftool helptool sccstool sdiffw bk_prs file_rev
 	global file_start_stop file_stop line_rev bk_fs file_old_new keytmp
 
@@ -34,4 +34,13 @@ proc bk_init {} \
 
 	# turn off pager in bk commands
 	set env(PAGER) "cat"
+
+	if {![info exists tcl_version]} {
+		puts "No tcl_version found?!?"
+		exit 1
+	}
+	if {$tcl_version < 8.0} {
+		puts "BitKeeper requires tcl/tk version 8.x or later."
+		exit 1
+	}
 }

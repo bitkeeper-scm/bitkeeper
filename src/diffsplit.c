@@ -1,24 +1,16 @@
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <limits.h>
-#include <string.h>
-#include <ctype.h>
-#include <sys/wait.h>
+#include "system.h"
 
 /*
  * Silly limits. 
  * Max max 1kB lines, max 256-byte headers.
  */
 #define LINELEN	1024
-#define HDRLEN	256
 
-int line, outfd = 2;
-char buffer[LINELEN];
+private int line, outfd = 2;
+private char buffer[LINELEN];
 
-char *myname = "diffsplit";
-char **argv;
+private char *myname = "diffsplit";
+private char **argv;
 
 static void syntax(char *buf)
 {
@@ -33,7 +25,7 @@ static void syntax(char *buf)
  * Pre-diff explanation: max 64kB
  */
 #define EXPLANATION 65536
-char explanation[EXPLANATION];
+private char explanation[EXPLANATION];
 
 static struct {
 	const char *name;
@@ -142,38 +134,12 @@ static void cat_diff(void)
 		write(outfd, buffer, len);
 }
 
-static void exec_program(void)
-{
-	execvp(argv[0], argv);
-	exit(128);
-}
-
-static int run_program(void)
-{
-	int pipefd[2];
-
-	if (pipe(pipefd))
-		syntax("couldn't create pipes");
-	sigblock(sigmask(SIGCHLD) | sigmask(SIGPIPE));
-	switch (fork()) {
-	case -1:
-		syntax("Fork failed");
-	case 0:
-		dup2(pipefd[0], 0);
-		close(pipefd[1]);
-		exec_program();
-	}
-	outfd = pipefd[1];
-	close(pipefd[0]);
-	return 0;
-}
-
 static int parse_file(void)
 {
 	int status;
 
 	parse_explanation();
-	run_program();
+	spawnvp_wPipe(argv, &outfd, 0);
 	cat_diff();
 	close(outfd);
 	outfd = 2;
@@ -188,7 +154,7 @@ static int parse_file(void)
 	return 0;
 }
 
-int main(int argc, char **argv)
+int diffsplit_main(int argc, char **argv)
 {
 	parse_args(argc, argv);
 

@@ -6,10 +6,18 @@ proc bk_init {} \
 {
 	global	tcl_platform dev_null tmp_dir wish sdiffw file_rev
 	global	file_start_stop file_stop line_rev keytmp file_old_new
-	global 	bk_fs env
+	global 	bk_fs env tcl_version
 
 	if [catch {wm withdraw .} err] {
 		puts "DISPLAY variable not set correctly or not running X"
+		exit 1
+	}
+	if {![info exists tcl_version]} {
+		puts "No tcl_version found?!?"
+		exit 1
+	}
+	if {$tcl_version < 8.0} {
+		puts "BitKeeper requires tcl/tk version 8.x or later."
 		exit 1
 	}
 
