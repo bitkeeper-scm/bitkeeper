@@ -239,6 +239,6 @@ bk rm foo.c
 bk commit $Q -ydelete
 cd $HERE/copy2/src
 bk get $Q foo.c
-bk pull $Q $HERE/project
+bk pull -t $Q $HERE/project
 if [ -f foo.c ]; then echo failed to delete gfile; exit 1; fi
 echo OK
