@@ -15,8 +15,11 @@ private void	http_patch(char *rev);
 private void	http_gif(char *path);
 private void	title(char *title);
 private void	pwd_title(char *t);
+private void	header(char *path);
 private void	learn();
-private void	logo();
+private void	logo(char *path);
+private char	*findRoot(char *name);
+private	char	*root;
 
 /*
  */
@@ -50,19 +53,38 @@ cmd_httpget(int ac, char **av)
 		out(buf);
 		exit(1);
 	}
-	unless (exists("BitKeeper/etc")) {
-		out("ERROR-not at project root\n");
-		exit(1);
+
+	unless (*name) name = "index.html";
+	if ((strlen(name) + sizeof("BitKeeper/html") + 2) >= MAXPATH) exit(1);
+
+	/*
+	 * Go find the project root.
+	 * If they pass in //pathname/to/root/whatever, we'll do a cd first.
+	 */
+	if (*name == '/') {
+		unless (name = findRoot(name)) {
+			out("ERROR-can't find project root\n");
+			out(buf);
+			exit(1);
+		}
+	} else {
+		static	char url[1000];
+
+		if (Opts.port) {
+			sprintf(url, "http://%s:%d", sccs_gethost(), Opts.port);
+		} else {
+			sprintf(url, "http://%s", sccs_gethost());
+		}
+		root = url;
 	}
+
 	unless (av[1]) {
 		out("ERROR-get what?\n");
 		exit(1);
 	}
-	unless (*name) name = "index.html";
-	if ((strlen(name) + sizeof("BitKeeper/html") + 2) >= MAXPATH) exit(1);
 	sprintf(buf, "BitKeeper/html/%s", name);
-	if (exists(buf)) {
-		http_file(buf);
+	if (isreg(buf)) {
+		http_file(buf);		/* XXX - doesn't respect base url */
 	} else if (streq(name, "index.html")) {
 		http_index();
 	} else if ((s = strrchr(name, '.')) && streq(s, ".gif")) {
@@ -87,6 +109,53 @@ cmd_httpget(int ac, char **av)
 		http_diffs(&name[6]);
 	}
 	exit(0);
+}
+
+/*
+ * Given a pathname, try and find a BitKeeper/etc below.
+ * We want the deepest one possible.
+ */
+private char *
+findRoot(char *name)
+{
+	char	*s, *t;
+	char	path[MAXPATH];
+	int	tries = 256;
+	static	char url[MAXPATH*2];
+
+	sprintf(path, "%s/BitKeeper/etc", name);
+	if (isdir(path)) {
+		chdir(name);
+		if (Opts.port) {
+			sprintf(url, "http://%s:%d%s",
+			    sccs_gethost(), Opts.port, name-1);
+		} else {
+			sprintf(url, "http://%s%s", sccs_gethost(), name-1);
+		}
+		root = url;
+		return ("index.html");
+	}
+	for (s = strrchr(name, '/'); s && (s != name); ) {
+		*s = 0;
+		sprintf(path, "%s/BitKeeper/etc", name);
+		unless (--tries) break;		/* just in case */
+		if (isdir(path)) {
+			chdir(name);
+			if (Opts.port) {
+				sprintf(url, "http://%s:%d%s",
+				    sccs_gethost(), Opts.port, name-1);
+			} else {
+				sprintf(url,
+				    "http://%s%s", sccs_gethost(), name-1);
+			}
+			root = url;
+			return (s + 1);
+		}
+		t = strrchr(name, '/');
+		*s = '/';
+		s = t;
+	}
+	return (0);
 }
 
 private void
@@ -122,20 +191,19 @@ http_changes(char *rev)
 	char	buf[2048];
 	MDBM	*m;
 	char	*d;
-	char	*dspec = "\
--d<tr bgcolor=#d8d8f0><td><font size=2>\
-&nbsp;:GFILE:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:DOMAIN:){@:DOMAIN:}\
-&nbsp;&nbsp;\
-<a href=/cset@:REV:><font color=red> [details]</font></a>\
-&nbsp;&nbsp;<a href=/patch@:REV:><font color=red>[all diffs]</font></a>\
-</td>$each(:TAG:){<tr bgcolor=yellow><td>&nbsp;&nbsp;&nbsp;&nbsp;\
-tag:&nbsp;&nbsp;(:TAG:)</td></tr>\n}\
-$each(:C:){<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)</td></tr>\n}\
-<tr><td>&nbsp;&nbsp;</td></tr>\n";
-
+	char	*dspec =
+	    "-d<tr bgcolor=#d8d8f0><td><font size=2>"
+	    "&nbsp;:GFILE:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:"
+	    "$if(:DOMAIN:){@:DOMAIN:}&nbsp;&nbsp;"
+	    "<a href=cset@:REV:><font color=red> [details]</font></a>"
+	    "&nbsp;&nbsp;<a href=patch@:REV:>"
+	    "<font color=red>[all diffs]</font></a>"
+	    "</td>$each(:TAG:){<tr bgcolor=yellow><td>&nbsp;&nbsp;&nbsp;&nbsp;"
+	    "tag:&nbsp;&nbsp;(:TAG:)</td></tr>\n}"
+	    "$each(:C:){<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)"
+	    "</td></tr>\n}<tr><td>&nbsp;&nbsp;</td></tr>\n";
 	httphdr(".html");
-	out("<html><body alink=black link=black bgcolor=white>\n");
-	learn();
+	header("ChangeSet");
 	m = loadConfig(".", 0);
 	if (m && (d = mdbm_fetch_str(m, "description")) && (strlen(d) < 2000)) {
 		sprintf(buf, "%s<hr>ChangeSet Summaries", d);
@@ -159,7 +227,7 @@ $each(:C:){<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)</td></tr>\n}\
 	putenv("BK_YEAR4=1");
 	spawnvp_ex(_P_WAIT, "bk", av);
 	out("</table>\n");
-	logo();
+	logo("ChangeSet");
 }
 
 private void
@@ -169,24 +237,34 @@ http_cset(char *rev)
 	FILE	*f;
 	MDBM	*m;
 	char	*d;
-	char	*dspec = "\
-<tr bgcolor=#d8d8f0><td><font size=-1>\
-&nbsp;:GFILE:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:DOMAIN:){@:DOMAIN:}\
-$if(:GFILE:=ChangeSet){\
-&nbsp;&nbsp;<a href=/patch@:REV:><font color=red>[all diffs]</font></a>}\
-$if(:GFILE:!=ChangeSet){\
-&nbsp;&nbsp;<a href=/hist/:GFILE:><font color=red>[history]</font></a>\
-&nbsp;&nbsp;<a href=/anno/:GFILE:@:REV:><font color=red>[annotate]</font></a>\
-&nbsp;&nbsp;<a href=/diffs/:GFILE:@:REV:><font color=red>[diffs]</font></a>\
-}</font></td>\
-$each(:TAG:){<tr bgcolor=yellow><td>&nbsp;&nbsp;&nbsp;&nbsp;\
-tag:&nbsp;&nbsp;(:TAG:)</td></tr>\n}\
-$each(:C:){<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)</td></tr>}\
-<tr><td>&nbsp;</td></tr>\n";
+	char	*dspec = 
+	    "<tr bgcolor=#d8d8f0><td><font size=-1>&nbsp;"
+	    ":GFILE:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:"
+	    "$if(:DOMAIN:){@:DOMAIN:}"
+	    "$if(:GFILE:=ChangeSet){"
+	      "&nbsp;&nbsp;<a href=patch@:REV:>"
+	      "<font color=red>[all diffs]</font></a>"
+	    "}"
+	    "$if(:GFILE:!=ChangeSet){"
+	      "&nbsp;&nbsp;<a href=hist/:GFILE:>"
+	      "<font color=red>[history]</font></a>"
+	      "&nbsp;&nbsp;<a href=anno/:GFILE:@:REV:>"
+	      "<font color=red>[annotate]</font></a>"
+	      "&nbsp;&nbsp;<a href=diffs/:GFILE:@:REV:>"
+	      "<font color=red>[diffs]</font></a>"
+	    "}"
+	    "</font></td>"
+	    "$each(:TAG:){"
+	      "<tr bgcolor=yellow><td>&nbsp;&nbsp;&nbsp;&nbsp;"
+	      "tag:&nbsp;&nbsp;(:TAG:)</td></tr>\n"
+	    "}"
+	    "$each(:C:){"
+	      "<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)</td></tr>"
+	    "}"
+	    "<tr><td>&nbsp;</td></tr>\n";
 
 	httphdr("cset.html");
-	out("<html><body alink=black link=black bgcolor=white>\n");
-	learn();
+	header("cset");
 	m = loadConfig(".", 0);
 	if (m && (d = mdbm_fetch_str(m, "description")) && (strlen(d) < 1900)) {
 		sprintf(buf, "%s<hr>ChangeSet details for %s", d, rev);
@@ -207,14 +285,59 @@ $each(:C:){<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)</td></tr>}\
 	}
 	pclose(f);
 	out("</table>\n");
-	logo();
+	logo("cset");
 }
 
 private void
-header()
+cat2net(char *path)
+{
+	char	buf[4<<10];
+	int	fd, n;
+
+	unless ((fd = open(path, 0, 0)) >= 0) return;
+	while ((n = read(fd, buf, sizeof(buf))) > 0) {
+		writen(1, buf, n);
+	}
+	close(fd);
+}
+
+private void
+header(char *path)
 {
 	out("<html><body alink=black link=black bgcolor=white>\n");
-	learn();
+	if (root && !streq(root, "")) {
+		out("<base href=");
+		out(root);
+		out("/>\n");
+	}
+	unless (include(path, "header.html")) learn();
+}
+
+include(char *path, char *file)
+{
+	char	buf[MAXPATH];
+
+	buf[0] = 0;
+	if (!path) {
+		sprintf(buf, "BitKeeper/html/%s", file);
+		if (isreg(buf)) {
+			cat2net(buf);
+			return (1);
+		}
+	} else if (strlen(path) < 900) {
+		sprintf(buf, "BitKeeper/html/%s/%s", path, file);
+		if (isreg(buf)) {
+			cat2net(buf);
+			return (1);
+		}
+		/* Allow one header for everything */
+		sprintf(buf, "BitKeeper/html/%s", file);
+		if (isreg(buf)) {
+			cat2net(buf);
+			return (1);
+		}
+	}
+	return (0);
 }
 
 private void
@@ -250,16 +373,18 @@ learn()
 }
 
 private void
-logo()
+logo(char *path)
 {
+	(void)include(path, "trailer.html");
 	out("<table width=100% cellpadding=0 cellspacing=0>\n");
 	out("<tr bgcolor=black>\n");
 	out("<td><font size=1>&nbsp;</td></tr></table>\n");
 	out("<p align=center><a href=http://www.bitkeeper.com>");
-	out("<img src=/bkpowered.gif></a></p>\n");
+	out("<img src=logo.gif></a></p>\n");
 	out("</body></html>\n");
 }
 
+int
 htmlify(char *from, char *html, int n)
 {
 	char	*s, *t;
@@ -292,19 +417,18 @@ http_hist(char *pathrev)
 	char	*s, *d;
 	MDBM	*m;
 	char	*dspec =
-"<tr bgcolor=#d8d8f0><td><font size=2>\
-&nbsp;:GFILE:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:DOMAIN:){@:DOMAIN:}\
-&nbsp;&nbsp;\
-<a href=/anno/:GFILE:@:REV:><font color=red> [annotate]</font></a>\
-&nbsp;&nbsp;<a href=/diffs/:GFILE:@:REV:><font color=red>[diffs]</font></a>\
-</td>$each(:TAG:){<tr bgcolor=yellow><td>&nbsp;&nbsp;&nbsp;&nbsp;\
-tag:&nbsp;&nbsp;(:TAG:)</td></tr>\n}\
-$each(:C:){<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)</td></tr>}\
-<tr><td>&nbsp;&nbsp;</td></tr>\n";
+	    "<tr bgcolor=#d8d8f0><td><font size=2>"
+	    "&nbsp;:GFILE:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:"
+	    "$if(:DOMAIN:){@:DOMAIN:}&nbsp;&nbsp;"
+	    "<a href=anno/:GFILE:@:REV:><font color=red> [annotate]</font></a>"
+	    "&nbsp;&nbsp;<a href=diffs/:GFILE:@:REV:>"
+	    "<font color=red>[diffs]</font></a>"
+	    "</td>$each(:TAG:){<tr bgcolor=yellow><td>&nbsp;&nbsp;&nbsp;&nbsp;"
+	    "tag:&nbsp;&nbsp;(:TAG:)</td></tr>\n}"
+	    "$each(:C:){<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)"
+	    "</td></tr>}<tr><td>&nbsp;&nbsp;</td></tr>\n";
 
-	httphdr(".html");
-	out("<html><body alink=black link=black bgcolor=white>\n");
-	learn();
+	header("hist");
 	m = loadConfig(".", 0);
 	if (m && (d = mdbm_fetch_str(m, "description")) && (strlen(d) < 1900)) {
 		sprintf(html, "%s<hr>Revision history for %s", d, pathrev);
@@ -325,7 +449,7 @@ $each(:C:){<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)</td></tr>}\
 	putenv("BK_YEAR4=1");
 	system(buf);
 	out("</table>\n");
-	logo();
+	logo("hist");
 }
 
 /* pathname */
@@ -343,16 +467,16 @@ http_src(char *path)
 	struct	stat sbuf;
 	struct	dirent *e;
 	time_t	now;
-	char	*dspec =
+	char	*dspec = 
 	    "<tr bgcolor=lightyellow>"
-	    "<td><img src=/file.gif></td>"
+	    "<td><img src=file.gif></td>"
 	    "<td>"
-	      "$if(:GFILE:=ChangeSet){<a href=/ChangeSet@+>:G:</a>}"
-	      "$if(:GFILE:!=ChangeSet){<a href=/hist/:GFILE:>:G:</a>}"
+	      "$if(:GFILE:=ChangeSet){<a href=ChangeSet@+>:G:</a>}"
+	      "$if(:GFILE:!=ChangeSet){<a href=hist/:GFILE:>:G:</a>}"
 	    "</td>"
 	    "<td align=right>"
-	      "$if(:GFILE:=ChangeSet){<a href=/cset@:REV:>:REV:</a>}"
-	      "$if(:GFILE:!=ChangeSet){<a href=/anno/:GFILE:@:REV:>:REV:</a>}"
+	      "$if(:GFILE:=ChangeSet){<a href=cset@:REV:>:REV:</a>}"
+	      "$if(:GFILE:!=ChangeSet){<a href=anno/:GFILE:@:REV:>:REV:</a>}"
 	    "</td>"
 	    "<td align=right><font size=2>:AGE:</font></td>"
 	    "<td align=center>:USER:</td>"
@@ -365,8 +489,7 @@ http_src(char *path)
 		exit(1);
 	}
 	httphdr(".html");
-	out("<html><body alink=black link=black vlink=black bgcolor=white>\n");
-	learn();
+	header("src");
 	m = loadConfig(".", 0);
 	if (m && (s = mdbm_fetch_str(m, "description")) && (strlen(s) < 1900)) {
 		sprintf(html, "%s<hr>Source directory &lt;%s&gt;",
@@ -398,9 +521,9 @@ http_src(char *path)
 		}
 		if (lstat(buf, &sbuf) == -1) continue;
 		if (path[1]) {
-			sprintf(buf, "<a href=/src/%s/%s>", path, e->d_name);
+			sprintf(buf, "<a href=src/%s/%s>", path, e->d_name);
 		} else {
-			sprintf(buf, "<a href=/src/%s>", e->d_name);
+			sprintf(buf, "<a href=src/%s>", e->d_name);
 		}
 		for (s = age(now - sbuf.st_mtime), t = abuf; *s; s++) {
 			if (*s == ' ') {
@@ -414,7 +537,7 @@ http_src(char *path)
 		if (S_ISDIR(sbuf.st_mode)) {
 			sprintf(html, "%s%s&nbsp;%s/%s%s%s\n",
 			  "<tr bgcolor=lightblue>"
-			  "<td><img src=/dir.gif></td><td>",
+			  "<td><img src=dir.gif></td><td>",
 			  buf,
 			  e->d_name,			/* file */
 			  "</td>"
@@ -446,7 +569,7 @@ http_src(char *path)
 	}
 	freeLines(names);
 	out("</table><br>\n");
-	logo();
+	logo("src");
 }
 
 private void
@@ -459,7 +582,7 @@ http_anno(char *pathrev)
 	char	*s, *d;
 	MDBM	*m;
 
-	header();
+	header("anno");
 	m = loadConfig(".", 0);
 	if (m && (d = mdbm_fetch_str(m, "description")) && (strlen(d) < 1900)) {
 		sprintf(html, "%s<hr>Annotated listing of %s", d, pathrev);
@@ -480,17 +603,17 @@ http_anno(char *pathrev)
 	}
 	pclose(f);
 	out("</pre>\n");
-	logo();
+	logo("anno");
 }
 
 private void
 http_both(char *pathrev)
 {
-	header();
+	header(0);
 	title("Not implemented yet, check back soon");
 	out("<pre><font size=2>\n");
 	out("</pre>\n");
-	logo();
+	logo(0);
 }
 
 #define BLACK 1
@@ -539,7 +662,7 @@ http_diffs(char *pathrev)
 	int	n;
 	char	*s;
 
-	header();
+	header("diffs");
 	out("<pre><font size=2>\n");
 	unless (s = strrchr(pathrev, '@')) exit(1);
 	*s++ = 0;
@@ -557,7 +680,7 @@ http_diffs(char *pathrev)
 	}
 	pclose(f);
 	out("</pre>\n");
-	logo();
+	logo("diffs");
 }
 
 private void
@@ -568,7 +691,7 @@ http_patch(char *rev)
 	char	html[18<<10];
 	int	n;
 
-	header();
+	header("patch");
 	out("<pre><font size=2>\n");
 	sprintf(buf, "bk export -T -h -tpatch -r%s", rev);
 	f = popen(buf, "r");
@@ -580,7 +703,7 @@ http_patch(char *rev)
 	}
 	pclose(f);
 	out("</pre>\n");
-	logo();
+	logo("patch");
 }
 
 private void
@@ -614,7 +737,7 @@ http_index()
 	time_t	now, t1h, t1d, t2d, t3d, t4d, t1w, t2w, t3w, t1m, t2m;
 	int	c1h=0, c1d=0, c2d=0, c3d=0, c4d=0;
 	int	c1w=0, c2w=0, c3w=0, c1m=0, c2m=0, c=0;
-	char	buf[200];
+	char	buf[MAXPATH*2];
 	char	*t;
 	MDBM	*m;
 
@@ -645,8 +768,7 @@ http_index()
 	}
 	sccs_free(s);
 	httphdr(".html");
-	out("<html><body bgcolor=white>\n");
-	learn();
+	header(0);
 	m = loadConfig(".", 0);
 	if (m && (t = mdbm_fetch_str(m, "description")) && (strlen(t) < 1900)) {
 		title(t);
@@ -658,7 +780,7 @@ http_index()
 #define	DOIT(c, l, u, t) \
 	if (c && (c != l)) { \
 		out("<tr><td width=45%>&nbsp;</td>"); \
-		sprintf(buf, "<td><a href=/ChangeSet@-%s>", u); \
+		sprintf(buf, "<td><a href=ChangeSet@-%s>", u); \
 		out(buf); \
 		sprintf(buf, \
 		    "%d&nbsp;ChangeSets&nbsp;in&nbsp;the&nbsp;last&nbsp;%s</a>", c, t); \
@@ -678,15 +800,17 @@ http_index()
 	DOIT(c1m, c3w, "31d", "month");
 	DOIT(c2m, c1m, "62d", "two&nbsp;months");
 	out("<tr><td>&nbsp;</td><td>");
-	out("<a href=/ChangeSet>");
+	out("<a href=ChangeSet>");
 	sprintf(buf, "All %d ChangeSets", c);
 	out(buf);
 	out("</a></td><td>&nbsp;</td></tr>");
 	out("<tr><td>&nbsp;</td>");
-	out("<td><a href=/src>Browse the source tree</a></td>");
+	sprintf(buf,
+	    "<td><a href=src>Browse the source tree</a></td>");
+	out(buf);
 	out("<td>&nbsp;</td></tr>");
 	out("</table>\n");
-	logo();
+	logo(0);
 }
 
 
