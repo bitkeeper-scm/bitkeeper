@@ -130,6 +130,8 @@ listkey_main(int ac, char **av)
 	delta	*d = 0;
 	int	i, c, debug = 0, quiet = 0, nomatch = 1, fastkey;
 	int	sndRev = 0;
+	int	metaOnly = 0;
+	int	matched_tot = 0;
 	int	ForceFullPatch = 0; /* force a "makepatch -r1.0.." */
 	char	key[MAXKEY], rootkey[MAXKEY];
 	char	s_cset[] = CHANGESET;
@@ -138,9 +140,10 @@ listkey_main(int ac, char **av)
 
 #define OUT(s)  unless(ForceFullPatch) out(s)
 
-	while ((c = getopt(ac, av, "dqrF")) != -1) {
+	while ((c = getopt(ac, av, "deqrF")) != -1) {
 		switch (c) {
 		    case 'd':	debug = 1; break;
+		    case 'e':	metaOnly = 1; break;
 		    case 'q':	quiet = 1; break;
 		    case 'r':	sndRev = 1; break;
 		    case 'F':   ForceFullPatch = 1; break;
@@ -226,6 +229,7 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 		if (!fastkey && !streq(lines[i], rootkey)) continue;
 		if (!d && (d = sccs_findKey(s, lines[i]))) {
 			if (exists(LOG_TREE)) addLogKey(d);
+			if (i == 1) matched_tot = 1;
 			sccs_color(s, d);
 			if (debug) {
 				fprintf(stderr, "listkey: found a match key\n");
@@ -272,6 +276,18 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 	 */
 	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_RED) continue;
+		/*
+		 * In a logging tree the fact that we have multiple
+		 * tips means that this list can get really huge.  In
+		 * the case of someone doing a logging push and their
+		 * top-of-trunk has already been logged, we skip this
+		 * section.  They don't need it to build a patch.  We
+		 * can't just skip it in general, because the push
+		 * case uses these keys to compute the number of csets
+		 * on the server that are missing in the local tree.
+		 */
+		if (matched_tot && metaOnly && d->type == 'D') continue;
+		
 		if (sndRev) {
 			assert(d->rev);
 			OUT(d->rev);
@@ -571,7 +587,7 @@ synckeys(remote *r, int flags)
 	if (get_ok(r, buf, 1)) return (-1);
 
 	/*
-	 * What we want is: "remote => bk _prunekey => stdout
+	 * What we want is: "remote => bk _prunekey => stdout"
 	 */
 	s = sccs_init(s_cset, 0, 0);
 	flags |= PK_REVPREFIX;

@@ -81,7 +81,8 @@ cmd_push_part1(int ac, char **av)
 
 	signal(SIGCHLD, SIG_DFL); /* for free bsd */
 	if (debug) fprintf(stderr, "cmd_push_part1: calling listkey\n");
-	sprintf(cmd, "bk _listkey > BitKeeper/tmp/lk%d", getpid());
+	sprintf(cmd, "bk _listkey %s > BitKeeper/tmp/lk%d", 
+	    metaOnly ? "-e": "", getpid());
 	l = popen(cmd, "w");
 	while ((n = getline(0, buf, sizeof(buf))) > 0) {
 		if (debug) fprintf(stderr, "cmd_push_part1: %s\n", buf);
