@@ -378,20 +378,27 @@ in_file(char *file, int todo, int extract)
 	char	buf[SFIO_BSIZ];
 	int	n;
 	int	fd = -1;
+	int	exists = 0;
 	mode_t	mode = 0;
 	u32	sum = 0, sum2 = 0;
 
 	if (extract) {
 		fd = mkfile(file);
 		/* do NOT jump to err, it unlinks and the file may exist */
-		if (fd == -1) return (1);
+		if (fd == -1) {
+			if ((errno != EEXIST) || (size(file) != todo)) {
+				perror(file);
+				return (1);
+			}
+			exists = 1;
+		}
 	}
 	/* Don't try to read zero bytes.  */
 	unless (todo) goto done;
 	while ((n = readn(0, buf, min(todo, sizeof(buf)))) > 0) {
 		todo -= n;
 		sum = adler32(sum, buf, n);
-		unless (extract) continue;
+		if (exists || !extract) continue;
 		/*
 		 * This write statement accounts for 57% sfio's execution
 		 * time on NT. Replacing it with stream mode I/0 did not help
@@ -426,7 +433,18 @@ done:	if (readn(0, buf, 10) != 10) {
 		sscanf(buf, "%03o", &imode);
 		mode = imode;
 	}
-	if (extract) {
+	if (exists) {
+		if (adler32_file(file) == sum) {
+			unless (quiet) {
+				fprintf(stderr,
+				    "%s existed but contents match, skipped.\n",
+				    file);
+			}
+		} else {
+			fprintf(stderr, "%s already exists.\n", file);
+			return (1);
+		}
+	} else if (extract) {
 		close(fd);
 		if (doModes) {
 			chmod(file, mode & 0777);
@@ -529,6 +547,7 @@ mkfile(char *file)
 
 	if (reserved(basenm(file))) {
 bad_name:	getMsg("reserved", file, 0, '=', stderr);
+		errno = EINVAL;
 		return (-1);
 	}
 
@@ -564,9 +583,9 @@ file);
 "Note: You must do the rename in the sending repository.\n"
 "==========================================================================\n",
 			file, realname);
-		  
+			errno = EINVAL;
 		} else { 
-			fprintf(stderr, "%s already exists\n", file);
+			errno = EEXIST;
 		}
 		return (-1);
 	}
