@@ -74,7 +74,7 @@ main(int ac, char **av)
 		printf("\n-------------------------------------------------\n");
 		sprintf(buf, "cat %s",  commit_file);
 		system(buf);
-		printf("------------------------------------------------\n");
+		printf("-------------------------------------------------\n");
 		printf("Use these comments (e)dit, (a)bort, (u)se? ");
 		fgets(buf, sizeof(buf), stdin); 
 		switch (buf[0]) {
