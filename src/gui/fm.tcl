@@ -1,4 +1,4 @@
-#!/usr/bin/wish
+#! @WISH@
 
 # fm - a file merging program
 # Copyright (c) 1998 by Larry McVoy; All rights reserved

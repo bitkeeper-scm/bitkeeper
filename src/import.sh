@@ -1,9 +1,9 @@
-#!/bin/sh
+#! @SH@
 
 # import.sh - import various sorts of files into BitKeeper
 # %W% %@%
 
-function help_import {
+help_import () {
 	cat <<EOF
     ================= Importing files into BitKeeper =================
 
@@ -60,7 +60,7 @@ pathnames of the files.  You can exclude things like foo/skipthis_dir.
 EOF
 }
 
-function import {
+import () {
 	INCLUDE=""
 	EXCLUDE=""
 	LIST=""
@@ -205,7 +205,7 @@ EOF
 # This function figures out what sort of tar include / files_from facility
 # If you don't support -T (aka --files-from) or -I include, then add the
 # thing you do support here and fix the case below where this gets called.
-function get_tar {
+get_tar () {
 	tar --help > /tmp/help$$ 2>&1
 	grep -q 'files-from=NAME' /tmp/help$$
 	if [ $? -eq 0 ]
@@ -223,7 +223,7 @@ function get_tar {
 	return
 }
 
-function import_finish {
+import_finish () {
 	FROM=$1
 	TO=$2
 	TYPE=$3
@@ -296,7 +296,7 @@ function import_finish {
 	bk commit -f -y'Import changeset'
 }
 
-function import_SCCS {
+import_SCCS () {
 	FROM=$1
 	TO=$2
 	cd $FROM
@@ -360,12 +360,12 @@ EOF
 	fi
 }
 
-function import_RCS {
+import_RCS () {
 	echo "Importing RCS files is not implemented yet"
 	exit 1
 }
 
-function import_text {
+import_text () {
 	FROM=$1
 	TO=$2
 	cd $FROM
@@ -377,7 +377,7 @@ function import_text {
 	fi
 }
 
-function init {
+init () {
 	if [ '-n foo' = "`echo -n foo`" ] 
 	then    NL='\c'
 	        N=

@@ -502,7 +502,6 @@ sccs	*sccs_restart(sccs *s);
 void	sccs_free(sccs *);
 void	sccs_freetree(delta *);
 char	**sccs_files(char **, int);
-void	sccs_freefiles();
 int	sccs_smoosh(char *left, char *right);
 delta	*sccs_parseArg(delta *d, char what, char *arg, int defaults);
 void	sccs_whynot(char *who, sccs *s);
@@ -563,14 +562,5 @@ delta	*sccs_next(sccs *s, delta *d);
 int	sccs_meta(sccs *s, delta *parent, char *initFile);
 int	sccs_resolveFile(sccs *s, char *lpath, char *gpath, char *rpath);
 sccs	*sccs_keyinit(char *key, u32 flags, MDBM *idDB);
-int	zgets_init(char *map, int len);
-int	zcat(char *map, int len);
-int	zeof(void);
-int	zpeekc(void);
-char	*zgets(void);
-int	zputs_init(void);
-int	zputs(void *p, FILE *f,
-	    char *data, int len, void (*func)(void *, u8 *, int, FILE *));
-int	zputs_done(void *p, FILE *f, void (*func)(void *, u8 *, int, FILE *));
 
 #endif	/* _SCCS_H_ */
