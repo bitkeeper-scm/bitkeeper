@@ -12,7 +12,6 @@
 #undef	putenv
 #undef	strdup
 #undef	unlink
-#undef	fclose
 
 #ifndef MAXPATH
 #define	MAXPATH		1024
@@ -426,3 +425,13 @@ getReg(HKEY hive, char *key, char *valname, char *valbuf, int *lenp)
         return (1);
 }
 #endif
+
+/* ditto */
+#if	defined(linux) && defined(sparc)
+#undef  fclose
+sparc_fclose(FILE *f)
+{
+	return (fclose(f));
+}
+#endif
+
