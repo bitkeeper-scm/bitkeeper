@@ -5,11 +5,17 @@ private int	do_merge(int start, int end, FILE *inputs[3]);
 private void	usage(void);
 private char	*fagets(FILE *fh);
 private int	resolve_conflict(char **lines[3]);
-private int	fdiff_resolve_conflict(char **lines[3]);
+private void	user_conflict(char **lines[3]);
+private void	user_conflict_fdiff(char **lines[3]);
 private char	**unidiff(char **gca, char **new);
 private void	show_examples(void);
 private	int	parse_range(char *range, int *start, int *end);
-private int	do_contentmerge(char **lines[3]);
+
+private int	merge_same_changes(char **lines[3]);
+private int	merge_only_one(char **lines[3]);
+private int	merge_content(char **lines[3]);
+private int	merge_common_header(char **lines[3]);
+private int	merge_common_footer(char **lines[3]);
 
 enum {
 	MODE_GCA,
@@ -31,8 +37,8 @@ private	char	*file;
 private	int	automerge = 0;
 private	int	mode = MODE_GCA;
 private	int	show_seq;
-private	int	merge_common = 1;
-private	int	merge_content;
+private	int	do_merge_common = 1;
+private	int	do_merge_content;
 private	int	fdiff;
 private	FILE	*fl, *fr;
 private	char	*anno = 0;
@@ -68,7 +74,7 @@ smerge_main(int ac, char **av)
 			fdiff = 1;
 			break;
 		    case 'C': /* do not collapse same changes on both sides */
-			merge_common = 0;
+			do_merge_common = 0;
 			break;
 		    case 'e': /* show examples */
 			show_examples();
@@ -83,7 +89,7 @@ smerge_main(int ac, char **av)
 			show_seq = 1;
 			break;
 		    case 'c': /* experimental content merge */
-			merge_content = 1;
+			do_merge_content = 1;
 			break;
 		    case 'h': /* help */
 		    default:
@@ -147,10 +153,11 @@ private char *
 skipseq(char *p)
 {
 	if (anno) {
-		while (isspace(*p) ||
-		    isdigit(*p) || (*p == '-') || (*p == '+')) {
-		    	p++;
-		}
+		++p;  /* skip first char */
+		while (isspace(*p)) ++p;
+		while (isdigit(*p)) ++p;
+		assert(*p == ' ');
+		++p;
 	} else {
 		p = strchr(p, '\t');
 		assert(p);
@@ -209,15 +216,10 @@ do_merge(int start, int end, FILE *inputs[3])
 		    seq[2] == max) {
 			if (max > start) {
 				if (lines[0] || lines[1] || lines[2]) {
-					if (fdiff) {
-						if (fdiff_resolve_conflict(lines)) {
-							ret = 1;
-						}
-					} else {
-						if (resolve_conflict(lines)) {
-							ret = 1;
-						}
+					if (resolve_conflict(lines)) {
+						ret = 1;
 					}
+					lines[0] = lines[1] = lines[2] = 0;
 				}
 				if (end && max >= end) break;
 				if (max == ~0) break;
@@ -295,36 +297,138 @@ sameLines(char **a, char **b)
 	return (1);
 }
 
-private int
-do_automerge(char **lines[3])
-{
-	int	i;
+typedef struct region region;
+struct region {
+	char	**lines[3];
+	region	*next;
+};
+private region *regions = 0;
 
-	if (merge_common && sameLines(lines[LOCAL], lines[REMOTE])) {
-		EACH(lines[LOCAL]) printline(lines[LOCAL][i], 0);
-		return (1);
+private region *
+pop_region(void)
+{
+	if (regions) {
+		region	*ret;
+
+		ret = regions;
+		regions = regions->next;
+		return (ret);
+	} else {
+		return (0);
 	}
-	if (automerge) {
-		if (sameLines(lines[LOCAL], lines[GCA])) {
-			EACH(lines[REMOTE]) printline(lines[REMOTE][i], 0);
-			return (1);
-		}
-		if (sameLines(lines[REMOTE], lines[GCA])) {
-			EACH(lines[LOCAL]) printline(lines[LOCAL][i], 0);
-			return (1);
-		}
-		if (merge_content) if (do_contentmerge(lines)) return (1);
-	}
-	return (0);
 }
+
+private void
+push_region(region *r)
+{	
+	r->next = regions;
+	regions = r;
+}
+
+/*
+ * Define of set of autoresolve function for processing
+ * a conflict each function takes an array of 3 groups of lines
+ * for the local, gca, and remote.  And looks at them and
+ * possiblibly prints some output with printline() and then 
+ * returns. 
+ * Return values:
+ *    0  printed nothing, made no changes
+ *    1  made some change, but still some lines unresolved in this
+ *       region
+ *    2  resolved this change.  No lines left to be processed in this
+ *       region.
+ *
+ *   The functions make call push_region() to schedule some lines to
+ *   be processed after the current section is finished.
+ *
+ */
+private	int	always_true = 1;
+struct mergefcns {
+	int	(*fcn)(char **lines[3]);
+	int	*flag;
+} mergefcns[] = {
+	{merge_same_changes,	&do_merge_common},
+	{merge_only_one,	&always_true},
+	{merge_content,		&do_merge_content},
+	{merge_common_header,   &do_merge_content},
+	{merge_common_footer,   &do_merge_content},
+};
+#define	N_MERGEFCNS (sizeof(mergefcns)/sizeof(struct mergefcns))
 
 private int
 resolve_conflict(char **lines[3])
 {
 	int	i;
-	char	**diffs;
+	region	*r;
+	int	ret = 0;
 
-	if (do_automerge(lines)) return (0);
+	new(r);
+	for (i = 0; i < 3; i++) r->lines[i] = lines[i];
+	push_region(r);
+	while (regions) {
+		r = pop_region();
+		if (automerge) {
+			int	changed;
+			do {
+				changed = 0;
+				for (i = 0; i < N_MERGEFCNS; i++) {
+					changed |= mergefcns[i].fcn(r->lines);
+					if (changed >= 2) goto resolved;
+				}
+			} while (changed);
+		}
+		/* found a conflict that needs to be resolved by the user */
+		ret = 1;
+		if (fdiff) {
+			user_conflict_fdiff(r->lines);
+		} else {
+			user_conflict(r->lines);
+		}
+	resolved:
+		for (i = 0; i < 3; i++) if (r->lines[i]) freeLines(r->lines[i]);
+		free(r);
+	}
+	return (ret);
+}
+
+/*
+ * All the lines on both sides are identical.
+ */
+private int
+merge_same_changes(char **lines[3])
+{
+	int	i;
+
+	if (sameLines(lines[LOCAL], lines[REMOTE])) {
+		EACH(lines[LOCAL]) printline(lines[LOCAL][i], 0);
+		return (2);
+	}
+	return (0);
+}
+
+/*
+ * Only one side make changes
+ */
+private int
+merge_only_one(char **lines[3])
+{
+	int	i;
+	if (sameLines(lines[LOCAL], lines[GCA])) {
+		EACH(lines[REMOTE]) printline(lines[REMOTE][i], 0);
+		return (2);
+	}
+	if (sameLines(lines[REMOTE], lines[GCA])) {
+		EACH(lines[LOCAL]) printline(lines[LOCAL][i], 0);
+		return (2);
+	}
+	return (0);
+}
+
+private void
+user_conflict(char **lines[3])
+{
+	int	i;
+	char	**diffs;
 
 	switch (mode) {
 	    case MODE_GCA:
@@ -382,7 +486,6 @@ resolve_conflict(char **lines[3])
 		printf(">>>\n");
 		break;
 	}
-	return (1);
 }
 
 private u32
@@ -422,15 +525,13 @@ popLine(char **lines)
 }
 	
 
-private int
-fdiff_resolve_conflict(char **lines[3])
+private void
+user_conflict_fdiff(char **lines[3])
 {
 	int	i;
 	char	**left = 0, **right = 0;
 	char	**diffs;
-	int	sl, sr;
-
-	if (do_automerge(lines)) return (0);
+	u32	sl, sr;
 
 	switch (mode) {
 	    case MODE_GCA:
@@ -494,7 +595,6 @@ fdiff_resolve_conflict(char **lines[3])
 	}
 	freeLines(left);
 	freeLines(right);
-	return (1);
 }
 
 private char **
@@ -688,7 +788,7 @@ are_unmodified(char **diff, char **lines)
 {
 	int	i;
 	int	lcnt = 1;
-	int	s;
+	u32	s;
 
 	s = seq(lines[lcnt]);
 	EACH (diff) {
@@ -704,7 +804,7 @@ are_unmodified(char **diff, char **lines)
 }
 	
 private int
-do_contentmerge(char **lines[3])
+merge_content(char **lines[3])
 {
 	char	**left, **right;
 	char	**modified;
@@ -751,9 +851,91 @@ do_contentmerge(char **lines[3])
 		if (right[r][0] == '+') printline(right[r] + 1, 0);
 		++r;
 	}
-	ret = 1;
+	ret = 2;
  bad:
 	freeLines(left);
 	freeLines(right);
 	return (ret);
 }
+
+private int
+merge_common_header(char **lines[3])
+{
+	char	**a = lines[LOCAL];
+	char	**b = lines[REMOTE];
+	int	i, j;
+
+	EACH(a) {
+		char	*al, *bl;
+		unless (VALID(b, i)) break;
+		al = strchr(a[i], anno ? '|' : '\t');
+		bl = strchr(b[i], anno ? '|' : '\t');
+		assert(al && bl);
+		unless (streq(al, bl)) break;
+	}
+	if (i == 1) return (0);
+	for (j = 1; j < i; j++) printline(a[j], 0);
+	
+	/* shift a and b down by i-1 */
+	j = 1;
+	while (VALID(a, j+i-1)) {
+		a[j] = a[j+i-1];
+		++j;
+	}
+	a[j] = 0;
+
+	j = 1;
+	while (VALID(b, j+i-1)) {
+		b[j] = b[j+i-1];
+		++j;
+	}
+	b[j] = 0;
+	return (1);
+}
+
+private int
+merge_common_footer(char **lines[3])
+{
+	char	**a = lines[LOCAL];
+	char	**b = lines[REMOTE];
+	int	i;
+	int	end_a, end_b;
+	int	ca, cb;
+	region	*r;
+
+	EACH (a);
+	ca = end_a = i - 1;
+	EACH (b);
+	cb = end_b = i - 1;
+
+	unless (ca > 1 && cb > 1) return (0);
+	
+	while (ca > 0 && cb > 0 && VALID(a, ca) && VALID(b, cb)) {
+		char	*al, *bl;
+		al = strchr(a[ca], anno ? '|' : '\t');
+		bl = strchr(b[cb], anno ? '|' : '\t');
+		assert(al && bl);
+		unless (streq(al, bl)) break;
+		--ca;
+		--cb;
+	}
+	unless (ca < end_a && cb < end_b) return (0);
+
+	new(r);
+	i = ca + 1;
+	while (VALID(a, i)) {
+		r->lines[LOCAL] = addLine(r->lines[LOCAL], a[i]);
+		++i;
+	}
+	i = cb + 1;
+	while (VALID(b, i)) {
+		r->lines[REMOTE] = addLine(r->lines[REMOTE], b[i]);
+		++i;
+	}
+	a[ca + 1] = 0;
+	b[cb + 1] = 0;
+	push_region(r);
+	return (1);
+}
+	
+
