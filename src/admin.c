@@ -34,7 +34,9 @@ usage: admin options [-] OR [file file file...]\n\n\
     -t<file>		set or (if no file) delete descriptive text\n\
     -T			delete descriptive text\n\
     -u			make sure that all dates are increasing\n\
+    -U			turn the file into an uncompressed file (!-Z)\n\
     -y<com>		initial checkin comment\n\
+    -Z			turn the file into a gzipped file\n\
     -z			recompute checksum\n\n";
 
 #define	OP(W, V, F) if (next##W < A_SZ-1) { \
@@ -78,7 +80,7 @@ main(int ac, char **av, char **ev)
 	bzero(s, sizeof(s));
 	bzero(l, sizeof(l));
 	while ((c =
-	    getopt(ac, av, "a;A;e;f;F;d;i|L;m;M;np|r;y|s;STt|BbCghHPquz")) != -1) {
+	    getopt(ac, av, "a;A;e;f;F;d;i|L;m;M;np|r;y|s;STt|BbCghHPquUzZ")) != -1) {
 		switch (c) {
 		/* user|group */
 		    case 'a':	OP(u, optarg, A_ADD); break;
@@ -132,12 +134,14 @@ main(int ac, char **av, char **ev)
 		    case 'g':	encoding = E_UUGZIP; break;
 		    case 'h':	flags |= VERBOSE|CHECKFILE; break;
 		    case 'H':
-			flags |= VERBOSE|CHECKASCII|CHECKFILE;
-			break;
+				flags |= VERBOSE|CHECKASCII|CHECKFILE;
+				break;
 		    case 'S':	fastSymOK = 0; break;
 		    case 'q':	flags |= SILENT; break;
 		    case 'u':	doDates = 1; flags |= NEWCKSUM; break;
+		    case 'U':	encoding = E_ASCII; flags |= NEWCKSUM; break;
 		    case 'z':	flags |= NOCKSUM|NEWCKSUM; break;
+		    case 'Z':	encoding = E_GZIP; flags |= NEWCKSUM; break;
 		    default:	fprintf(stderr, "admin: bad option %c.\n", c);
 				goto usage;
 		}
@@ -236,7 +240,7 @@ main(int ac, char **av, char **ev)
 				goto next;
 			}
 		}
-		if (sccs_admin(sc, flags, f, l, u, s, text)) {
+		if (sccs_admin(sc, flags, encoding, f, l, u, s, text)) {
 			unless (BEEN_WARNED(sc)) {
 				fprintf(stderr,
 				    "admin of %s failed.\n",

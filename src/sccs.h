@@ -120,21 +120,12 @@ extern	char *strdup(char *s);
 #define fnext(buf, in)  fgets(buf, sizeof(buf), in)
 #define	unlink(f)	smartUnlink(f)
 #define	rename(o, n)	smartRename(o, n)
-#ifdef	USE_STDIO
-#define next(buf, s)	fnext(buf, s->file)
-#define	seekto(s,where)	fseek(s->file, (long)where, SEEK_SET)
-#define	tell(s)		ftell(s->file)
-#define	eof(s)		feof(s->file)
-#define	peekc(c,s)	c = fgetc(s->file); ungetc(c, s->file)
-#define	BUF(b)		char b[1024]
-#else
 #define next(buf, s)	(buf = fastnext(s))
 #define	seekto(s,o)	s->where = (s->mmap + o)
 #define	tell(s)		(s->where - s->mmap)
-#define	eof(s)		(s->where >= s->mmap + s->size)
-#define	peekc(c,s)	c = *s->where
+#define	eof(s)		((s->encoding == E_GZIP) ? \
+			    zeof() : (s->where >= s->mmap + s->size))
 #define	BUF(b)		char *b
-#endif
 #define	EACH(s)		for (i = 1; (s) && (i < (int)(s[0])) && (s[i]); i++)
 #define	LPAD_SIZE	70
 
@@ -159,7 +150,7 @@ extern	char *strdup(char *s);
 #define	CHECKFILE	0x00008000	/* check file format (admin) */
 #define	NEWCKSUM	0x00010000	/* Redo checksum */
 #define	RCSEXPAND	0x00020000	/* do RCS keywords */
-#define	GETDIFFS	0x00040000	/* generate diffs w/ just add/delete */
+#define	GZIP		0x00040000	/* turn the file into a gzipped file */
 #define	TOP		0x00080000	/* use the top rev (also mkpatch) */
 #define	EMPTY		0x00100000	/* initialize with empty file */
 #define	DONTASK		0x00200000	/* don't ask for comments */
@@ -253,6 +244,7 @@ extern	char *strdup(char *s);
 #define	E_ASCII		0		/* no encoding */
 #define	E_UUENCODE	1		/* uuenecode it (traditional) */
 #define	E_UUGZIP	2		/* gzip and uuencode */
+#define	E_GZIP		4		/* gzip the data */
 
 #define	HAS_GFILE(s)	((s)->state & S_GFILE)
 #define	HAS_PFILE(s)	((s)->state & S_PFILE)
@@ -325,6 +317,7 @@ extern	char *strdup(char *s);
 typedef	unsigned short	ser_t;
 typedef	unsigned short	sum_t;
 typedef	unsigned short	u16;
+typedef	unsigned char	u8;
 
 /*
  * Struct delta - describes a single delta entry.
@@ -492,14 +485,10 @@ typedef	struct sccs {
 	int	numdeltas;	/* number of entries in the graph */
 	delta	**ser2delta;	/* indexed by serial, returns delta */
 	int	ser2dsize;	/* just to be sure */
-#ifdef	USE_STDIO
-	FILE	*file;		/* open to ... */
-#else
 	char	*mmap;		/* mapped file */
 	char	*where;		/* where we are in the mapped file */
 	off_t	size;		/* size of mapping */
 	char	*landingpad;	/* some space for symbols */
-#endif
 	int	fd;		/* cached copy of the file descriptor */
 	char	*sfile;		/* SCCS/s.foo.c */
 	char	*pfile;		/* SCCS/p.foo.c */
@@ -606,7 +595,7 @@ extern	int	optopt;
 extern	char	*optarg;
 int	getopt(int ac, char **av, char *opts);
 
-int	sccs_admin(sccs *sc, int flgs,
+int	sccs_admin(sccs *sc, int flgs, int encoding,
 	    admin *f, admin *l, admin *u, admin *s, char *txt);
 int	sccs_checkin(sccs *s, int flags, delta *d);
 int	sccs_delta(sccs *s, int flags, delta *d, FILE *init, FILE *diffs);
@@ -681,6 +670,16 @@ MDBM	*loadDB(char *file, int (*want)(char *));
 MDBM	*csetIds(sccs *cset, char *rev, int all);
 void	sccs_fixDates(sccs *);
 void	sccs_mkroot(char *root);
+int	zgets_init(char *map, int len);
+int	zcat(char *map, int len);
+int	zeof(void);
+int	zpeekc(void);
+char	*zgets(void);
+int	zputs_init(void);
+int	zputs(void *p, FILE *f,
+	    char *data, int len, void (*func)(void *, char *, int, FILE *));
+int	zputs_done(void *p, FILE *f, void (*func)(void *, char *, int, FILE *));
+
 #ifdef	WIN32
 /*
  * Most of the WIN32 stuff is defined in re_def.h
