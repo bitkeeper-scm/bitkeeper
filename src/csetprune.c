@@ -118,7 +118,6 @@ rmKeys(MDBM *s)
 	int	empty = 0;
 	int	n = 0;
 	MDBM	*m = mdbm_mem();
-	MDBM	*small = mdbm_mem();
 	MDBM	*dirs = mdbm_mem();
 	MDBM	*idDB;
 	kvpair	kv;
@@ -148,22 +147,6 @@ rmKeys(MDBM *s)
 		if (isdir(kv.key.dptr)) sccs_rmEmptyDirs(kv.key.dptr);
 	}
 	mdbm_close(dirs);
-
-	verbose((stderr, "Computing short keys...\n"));
-	for (kv = mdbm_first(m); kv.key.dsize; kv = mdbm_next(m)) {
-		if (t = sccs_iskeylong(kv.key.dptr)) {
-			*t = 0;
-			if (mdbm_store_str(small, kv.key.dptr, \
-			    "", MDBM_INSERT))
-			{
-				fprintf(stderr,
-					"Duplicate short key?\nKEY: %s\n",
-					kv.key.dptr);
-				exit (1);
-			}
-			*t = '|';
-		}
-	}
 
 	verbose((stderr, "Processing ChangeSet file...\n"));
 	sys("bk", "admin", "-Znone", "SCCS/s.ChangeSet", SYS);
@@ -196,8 +179,8 @@ rmKeys(MDBM *s)
 			t = separator(line);
 			assert(t);
 			*t = 0;
+			assert(sccs_iskeylong(line));
 			if (mdbm_fetch_str(m, line)) continue;
-			if (mdbm_fetch_str(small, line)) continue;
 			if (first) {
 				fprintf(out, "\001I %u\n", ser);
 				first = 0;
@@ -210,7 +193,6 @@ rmKeys(MDBM *s)
 done:			fclose(in);
 			fclose(out);
 			mdbm_close(m);
-			mdbm_close(small);
 			debug((stderr, "%d empty deltas\n", empty));
 			return (empty);
 		}
@@ -527,6 +509,7 @@ getKeys(MDBM *m)
 			fprintf(stderr, "Bad input, no newline: %s\n", buf);
 			return (1);
 		}
+		assert(sccs_iskeylong(buf));
 		if (mdbm_store_str(m, buf, "", MDBM_INSERT)) {
 			fprintf(stderr, "Duplicate key?\nKEY: %s\n", buf);
 			return (1);
