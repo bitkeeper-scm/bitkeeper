@@ -22,10 +22,6 @@
  * Layout in _data.c
  *	unsigned int	sfio_size;
  *	unsigned char	sfio_data[installer_size];
- *	unsigned int	shell_size;
- *	unsigned char	shell_data[installer_size];
- *	unsigned int	installer_size;
- *	unsigned char	installer_data[installer_size];
  *	unsigned int	data_size;
  *	unsigned char	data_data[data_size];
  */
@@ -110,17 +106,17 @@ fill:	writen(1, "copying data ");
 int
 main(int ac, char **av)
 {
-	int	sfio, shell, installer, data, out;
+	int	sfio, data, out;
 	uchar	buf[1024];
 	char	*cc;
 	char	*map;
 	uchar	*p;
 	struct	stat asb;
-	off_t	sf_size, sh_size, i_size, d_size, a_size;
+	off_t	sf_size, d_size, a_size;
 
-	if (ac != 5) {
+	if (ac != 3) {
 		fprintf(stderr,
-		    "usage: %s sfio shell.sfio installer data\n", av[0]);
+		    "usage: %s sfio data\n", av[0]);
 		return (1);
 	}
 
@@ -129,16 +125,8 @@ main(int ac, char **av)
 		return (1);
 	}
 
-	if ((shell = open(av[2], O_RDONLY)) < 0) {
+	if ((data = open(av[2], O_RDONLY)) < 0) {
 		perror(av[2]);
-		return (1);
-	}
-	if ((installer = open(av[3], O_RDONLY)) < 0) {
-		perror(av[3]);
-		return (1);
-	}
-	if ((data = open(av[4], O_RDONLY)) < 0) {
-		perror(av[4]);
 		return (1);
 	}
 
@@ -147,8 +135,6 @@ main(int ac, char **av)
 		return (1);
 	}
 	sf_size = setup(out, "sfio", sfio);
-	sh_size = setup(out, "shell", shell);
-	i_size = setup(out, "installer", installer);
 	d_size = setup(out, "data", data);
 	close(out);
 
@@ -160,7 +146,7 @@ main(int ac, char **av)
 		perror("fstat of object file");
 		return (1);
 	}
-	if (asb.st_size <= (sh_size + i_size + d_size)) {
+	if (asb.st_size <= (sf_size + d_size)) {
 		fprintf(stderr, "%s is not big enough\n", OBJ);
 		return (1);
 	}
@@ -170,8 +156,6 @@ main(int ac, char **av)
 		return (1);
 	}
 	p = install((uchar *)map, (uchar *)map, asb.st_size, sfio);
-	p = install((uchar *)map, p, asb.st_size, shell);
-	p = install((uchar *)map, p, asb.st_size, installer);
 	install((uchar *)map, p, asb.st_size, data);
 	munmap(map, asb.st_size);
 	write(1, "done.\n", 6);

@@ -381,6 +381,7 @@ struct tool guis[] = {
 	{ "fmtool", "fm" },
 	{ "fmtool", "fm2tool" },
 	{ "helptool", 0 },
+	{ "installtool", 0 },
 	{ "msgtool", 0 },
 	{ "renametool", 0 },
 	{ "revtool", "histool" },

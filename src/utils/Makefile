@@ -1,5 +1,10 @@
 # %K%
-# Copyright (c) 1999 Larry McVoy
+
+# Override Solaris make.rules
+.SCCS_GET:
+	bk get -q $@
+
+SFIO_SRC=../sfio.c sfio_utils.c
 
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
 ifeq "$(OSTYPE)" "cygwin"
@@ -12,23 +17,19 @@ else
 	H=../unix.h
 endif
 
-# Override Solaris make.rules
-.SCCS_GET:
-	bk get -q $@
-
-all image: munge mkbk extractor.c bitkeeper.sh gnu-os os setup.tcl \
+all image: $(MUNGE) extractor.c gnu-os os installtool sfio
 	./mkbk
-SFIO_SRC=../sfio.c sfio_utils.c
 
 sfio: $(SFIO_SRC) sfio.h
 	$(CC) -DSFIO_STANDALONE=YES -O $(SFIO_SRC) ../zlib/libz.a -o sfio
 
-setup.tcl: setupmain.tcl ../gui/tkwizard.tcl ../gui/common.tcl \
+installtool: setupmain.tcl ../gui/tkwizard.tcl ../gui/common.tcl \
 	../bklogo.gif
 	(cat setupmain.tcl ../gui/common.tcl ../gui/tkwizard.tcl; \
 	 echo "image create photo bklogo -data {`bk base64 < ../bklogo.gif`}";\
 	 echo "main"\
-	) > setup.tcl
+	) > installtool
+
 $(MUNGE): munge.c $H
 	$(CC) -O munge.c -o munge
 
