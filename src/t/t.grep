@@ -1,0 +1,60 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2003 Andrew Isaacson
+# %k%
+
+echo $N Create initial repository ...................................$NL
+no_logging project
+cat <<EOF > file1
+The quick foxy
+brown
+fox
+EOF
+bk new $Q file1 || exit 1
+mkdir dir1
+cat <<EOF > dir1/file2
+jumped foxily
+over
+the lazy
+dog
+EOF
+bk new $Q dir1/file2 || exit 1
+echo OK
+
+echo $N grep ........................................................$NL
+bk grep fox > OUT || exit 1
+cat <<EOF > expected
+file1	1.1	The quick foxy
+file1	1.1	fox
+EOF
+checkfiles OUT expected
+echo OK
+
+echo $N recursive grep ..............................................$NL
+bk -r grep fox > OUT || exit 1
+cat <<EOF > expected
+file1	1.1	The quick foxy
+file1	1.1	fox
+dir1/file2	1.1	jumped foxily
+EOF
+checkfiles OUT expected
+echo OK
+
+echo $N recursive grep -a ...........................................$NL
+bk -r grep -a fox > OUT || exit 1
+cat <<EOF > expected
+The quick foxy
+fox
+jumped foxily
+EOF
+checkfiles OUT expected
+echo OK

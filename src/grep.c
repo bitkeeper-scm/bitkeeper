@@ -98,7 +98,7 @@ usage:		system("bk help -s grep");
 	if (s) {
 		sav[++i] = sccscat_opts;
 	} else {
-		unless (none) sav[++i] = "-fm";
+		unless (none) sav[++i] = "-nnm";
 	}
 	while (sav[++i] = av[optind++]);
 
@@ -112,13 +112,13 @@ usage:		system("bk help -s grep");
 	} else {
 		i = sccscat_main(i, sav);
 	}
+	fflush(stdout);
+	close(1);
 	if (i) {
 		kill(pid, SIGTERM);
 		waitpid(pid, 0, 0);
 		exit(100);
 	}
-	fflush(stdout);
-	close(1);
 	waitpid(pid, &status, 0);
 	if (WIFEXITED(status)) exit(WEXITSTATUS(status));
 	exit(101);
