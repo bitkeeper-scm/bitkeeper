@@ -58,13 +58,21 @@ listkey_main(int ac, char **av)
 {
 	sccs	*s;
 	delta	*d = 0;
-	int	quiet = 0;
+	int	c, debug = 0, quiet = 0;
 	char	key[MAXKEY] = "", s_cset[] = CHANGESET;
 
-	if (ac == 2 && streq(av[1], "-q")) quiet = 1;
+	while ((c = getopt(ac, av, "dq")) != -1) {
+		switch (c) {
+		    case 'd':	debug = 1; break;
+		    case 'q':	quiet = 1; break;
+		    default:	fprintf(stderr,
+					"usage: bk _listkey [-d] [-q]\n");
+				return (5);
+		}
+	}
 	unless ((s = sccs_init(s_cset, 0, 0)) && s->tree) {
 		fprintf(stderr, "Can't init changeset\n");
-		return(1); /* cset error */
+		return(3); /* cset error */
 	}
 
 	/*
@@ -84,27 +92,30 @@ listkey_main(int ac, char **av)
 		return(3); /* protocol error or repo locked */
 	}
 
+	if (debug) fprintf(stderr, "listkey: looking for match key\n");
 	while (getline(0, key, sizeof(key)) > 0) {
-	if (streq("@END@", key)) break;
-		if (d = sccs_findKey(s, key)) {
-			break;
-		}
+		if (streq("@END@", key)) break;
+		if (d) continue; /* for Solaris, drain the pipe */
+		d = sccs_findKey(s, key);
 	}
 
 	/*
 	 * Phase 2, send the non marked keys.
 	 */
-	sccs_color(s, d);
 	unless (d) {
+		if (debug) fprintf(stderr, "listkey: no match key\n");
 		out("@NO MATCH@\n");
 		out("@END@\n");
-		return (2); /* package key mismatch */
+		return (1); /* package key mismatch */
 	}
+	if (debug) fprintf(stderr, "listkey: found a  match key\n");
+	sccs_color(s, d);
 
 	out("@MATCH@\n");
 	sccs_sdelta(s, d, key);
 	out(key);
 	out("\n");
+
 	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_VISITED) continue;
 		unless (d->type == 'D') continue;

@@ -132,7 +132,7 @@ int
 cmd_push_part1(int ac, char **av)
 {
 	pid_t	pid;
-	char	*listkey[] = {"bk", "_listkey", 0};
+	char	*listkey[4] = {"bk", "_listkey", "-d", 0};
 	char	*p, key_list[MAXPATH],buf[MAXKEY];
 	int	c, fd, fd1, wfd, n, status, gzip = 0,  metaOnly = 0;
 	int	debug = 0;
@@ -205,6 +205,7 @@ cmd_push_part1(int ac, char **av)
 	fd = open(key_list, O_CREAT|O_WRONLY, 0644);
 	assert(fd == 1);
 	out("@OK@\n"); /* send it into the file */
+	unless (debug) listkey[2] = 0;
 	pid = spawnvp_wPipe(listkey, &wfd);
 	close(1); dup2(fd1, 1); close(fd1);
 	while (n = getline(0, buf, sizeof(buf))) {
@@ -214,7 +215,7 @@ cmd_push_part1(int ac, char **av)
 	}
 	close(wfd);
 	waitpid(pid, &status, 0);
-	if (!WIFEXITED(status) || WEXITSTATUS(status)) {
+	if (!WIFEXITED(status) || (WEXITSTATUS(status) > 1)) {
 		out("@END@\n"); /* just in case list key did not send one */
 		out("ERROR-listkey failed\n");
 		unlink(key_list);

@@ -378,7 +378,7 @@ cmd_pull_part1(int ac, char **av)
 int
 cmd_pull_part2(int ac, char **av)
 {
-	int	c, rc = 0, fd, local_count, remote_count;
+	int	c, rc = 0, fd, local_count, remote_count, debug = 0;
 	int	gzip = 0, metaOnly = 0, dont = 0, verbose = 1, list = 0;
 	char	buf[4096], rev_list[MAXPATH], s_cset[] = CHANGESET;
 	char	gzip_str[30] = "";
@@ -386,12 +386,13 @@ cmd_pull_part2(int ac, char **av)
 	sccs	*s;
 	remote	r;
 
-	while ((c = getopt(ac, av, "elnqz|")) != -1) {
+	while ((c = getopt(ac, av, "delnqz|")) != -1) {
 		switch (c) {
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
 			if (gzip < 0 || gzip > 9) gzip = 6;
 			break;
+		    case 'd': debug = 1; break;
 		    case 'e': metaOnly = 1; break;
 		    case 'l': list = 1; break;
 		    case 'n': dont = 1; break;

@@ -262,10 +262,9 @@ send_msg(remote *r, char *msg, int mlen, int extra, int compress)
 		http_send(r, msg, mlen, extra, "BitKeeper", WEB_BKD_CGI);
 	} else {
 		if (r->wfd == -1) bkd(compress, r);
-		if (r->isSocket) {
-			send(r->wfd, msg, mlen, 0);
-		} else {
-			write(r->wfd, msg, mlen);
+		if (write_blk(r, msg, mlen) != mlen) {
+			if (r->trace) perror("send_msg");
+			return (-1);
 		}
 	}
 	return 0;

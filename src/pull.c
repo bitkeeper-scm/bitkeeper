@@ -112,6 +112,7 @@ send_part1_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	if (opts.dont) fprintf(f, " -n");
 	if (opts.list) fprintf(f, " -l");
 	if (opts.quiet) fprintf(f, " -q");
+	if (opts.debug) fprintf(f, " -d");
 	fputs("\n", f);
 	fclose(f);
 
@@ -160,7 +161,7 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	char	msg_file[MAXPATH], buf[MAXPATH * 2];
 	FILE	*f;
 	MMAP    *m;
-	int	rc;
+	int	status, rc;
 
 	bktemp(msg_file);
 	f = fopen(msg_file, "w");
@@ -173,16 +174,25 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	if (opts.dont) fprintf(f, " -n");
 	if (opts.list) fprintf(f, " -l");
 	if (opts.quiet) fprintf(f, " -q");
+	if (opts.debug) fprintf(f, " -d");
 	fputs("\n", f);
 	fclose(f);
 
 	sprintf(buf, "bk _listkey -q < %s >> %s", probe_list, msg_file);
-	if (system(buf)) {
-		unlink(msg_file);
-		return (-1);
+	status = system(buf); 
+	rc = WEXITSTATUS(status);
+	if (opts.debug) fprintf(stderr, "listkey returned %d\n", rc);
+	switch (rc) {
+	    case 0:	break;
+	    case 1:	fprintf(stderr,
+			    "You are trying to pull from an unrelated package\n"
+			    "Please check the pathnames and try again.\n");
+			break;
+	    default:	unlink(msg_file);
+			return (-1);
 	}
 	m = mopen(msg_file, "r");
-	rc = send_msg(r, m->where,  msize(m), 0, opts.gzip);
+	rc |= send_msg(r, m->where,  msize(m), 0, opts.gzip);
 	mclose(m);
 	unlink(msg_file);
 	return (rc);
