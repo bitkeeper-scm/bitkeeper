@@ -3735,14 +3735,15 @@ int
 sccs_lock(sccs *s, char type)
 {
 	char	*t;
-	int	lockfd;
+	int	lockfd, verbose;
 
 	if (s->state & S_READ_ONLY) {
 		return (0);
 	}
 	
+	verbose = (s->state & SILENT) ? 0 : 1;
 	if ((type == 'z') && repository_locked(s->proj) &&
-	    (repository_cleanLocks(s->proj, 0) != 0)) {
+	    (repository_cleanLocks(s->proj, 0, verbose) != 0)) {
 		return (0);
 	}
 
