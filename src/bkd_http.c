@@ -45,8 +45,8 @@ private int	expires = 0;
 #define	COLOR_DIFFS	"lightblue"	/* diffs */
 #define	COLOR_PATCH	"lightblue"	/* patch */
 
-#define	OUTER_TABLE "<table width=100% bgcolor=#808080 cellspacing=0 border=0 cellpadding=0><tr><td>\n"
-#define INNER_TABLE	"<table width=100% cellpadding=3 cellspacing=1 border=0 bgcolor=white>"
+#define	OUTER_TABLE	"<table width=100% bgcolor=black cellspacing=0 border=0 cellpadding=2><tr><td>\n"
+#define INNER_TABLE	"<table width=100% cellpadding=3 cellspacing=1 border=0>"
 #define OUTER_END	"</td></tr></table>\n"
 #define	INNER_END	"</table>"
 
@@ -554,6 +554,7 @@ http_cset(char *rev)
 {
 	char	*av[100];
 	char	buf[2048];
+	char	*cset = 0;
 	FILE	*f;
 	MDBM	*m;
 	int	i;
@@ -598,16 +599,19 @@ http_cset(char *rev)
 	}
 
 	putenv("BK_YEAR4=1");
-	sprintf(buf, "bk cset -r%s", rev);
+	sprintf(buf, "bk rset -r%s", rev);
 	unless (f = popen(buf, "r")) {
 		http_error(500,
-		    "bk cset -r%s failed: %s",
+		    "bk rset -r%s failed: %s",
 		    rev, strerror(errno));
 	}
 
 	while (fnext(buf, f)) {
-		if (strneq("ChangeSet@", buf, 10)) continue;
-		if ((d = strrchr(buf, '@')) && streq(d, "@1.0\n")) continue;
+		if (strneq("ChangeSet|", buf, 10)) {
+			cset = strdup(buf);
+			continue;
+		}
+		if ((d = strrchr(buf, BK_FS)) && streq(++d, "1.0\n")) continue;
 		lines = addLine(lines, strdup(buf));
 	}
 	pclose(f);
@@ -618,6 +622,7 @@ http_cset(char *rev)
 		av[i=0] = "bk";
 		av[++i] = "prs";
 		av[++i] = "-h";
+		av[++i] = "-x1st";
 		av[++i] = dspec;
 		av[++i] = "-";
 		av[++i] = 0;
@@ -639,13 +644,13 @@ http_cset(char *rev)
 	    "border=0 cellpadding=4>\n");
 
 	if (lines) {
-		sprintf(buf, "ChangeSet@%s\n", rev);
-		write(fd, buf, strlen(buf));
+		write(fd, cset, strlen(cset));
 		EACH(lines) write(fd, lines[i], strlen(lines[i]));
 		freeLines(lines);
 		close(fd);
 		waitpid(child, &i, 0);
 	}
+	if (cset) free(cset);
 
 	out(INNER_END OUTER_END);
 	if (!embedded) trailer("cset");
@@ -820,7 +825,7 @@ http_hist(char *pathrev)
 	out("<!-- dspec="); out(dspec); out(" -->\n");
 
 	out(OUTER_TABLE INNER_TABLE
-	    "<tr bgcolor=lightblue>\n"
+	    "<tr bgcolor=#d0d0d0>\n"
 	    " <th>Age</th>\n"
 	    " <th>Author</th>\n"
 	    " <th>Rev</th>\n"
@@ -894,7 +899,7 @@ http_src(char *path)
 	}
 
 	out(OUTER_TABLE INNER_TABLE
-	    "<tr bgcolor=lightblue>"
+	    "<tr bgcolor=#d0d0d0>"
 	    "<th>&nbsp;</th><th align=left>File&nbsp;name</th>\n"
 	    "<th>Rev</th>\n"
 	    "<th>&nbsp;</th>\n"
@@ -1066,7 +1071,7 @@ http_diffs(char *pathrev)
 	whoami("diffs/%s", pathrev);
 
 	i = snprintf(dspec, sizeof dspec,
-		"-d%s<tr>\n"
+		"-d%s<tr bgcolor=white>\n"
 		" <td align=right>:HTML_AGE:</td>\n"
 		" <td align=center>:USER:$if(:DOMAIN:){@:DOMAIN:}</td>\n"
 		" <td align=center><a href=anno/:GFILE:@:I:%s>:I:</a></td>\n"
@@ -1093,7 +1098,7 @@ http_diffs(char *pathrev)
 	*s++ = 0;
 
 	out(OUTER_TABLE INNER_TABLE
-	    "<tr bgcolor=lightblue>\n"
+	    "<tr bgcolor=#d0d0d0>\n"
 	    " <th>Age</th>\n"
 	    " <th>Author</th>\n"
 	    " <th>Annotate</th>\n"
@@ -1267,7 +1272,7 @@ http_stats(char *page)
 		if (!streq(user, c_user)) {
 			if (c_user[0]) {
 				sprintf(buf,
-				    "<tr>\n"
+				    "<tr bgcolor=white>\n"
 				    "<td align=center>"
 				    "<a href=\"user=%s%s\">%s</a></td>\n"
 				    "<td align=center>%d</td>\n"
@@ -1294,7 +1299,7 @@ http_stats(char *page)
 	pclose(p);
 	if (all_cs > 0) {
 		sprintf(buf,
-		    "<tr>\n"
+		    "<tr bgcolor=white>\n"
 		    "<td align=center>"
 		    "<a href=\"user=%s%s\">%s</a></td>\n"
 		    "<td align=center>%d</td>\n"
