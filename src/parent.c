@@ -82,7 +82,10 @@ parent_main(int ac,  char **av)
 	strcpy(buf, PARENT);
 	mkdirf(buf);
 	f = fopen(PARENT, "wb");
-	assert(f);
+	unless (f) {
+		perror(PARENT);
+		return (1);
+	}
 	fprintf(f, "%s\n", remote_unparse(r));
 	fclose(f);
 	unless (quiet) printf("Set parent to %s\n", remote_unparse(r));
