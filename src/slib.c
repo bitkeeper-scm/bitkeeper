@@ -2867,8 +2867,7 @@ check_gfile(sccs *s, int flags)
 
 	if (lstat(s->gfile, &sbuf) == 0) {
 		if ((!S_ISREG(sbuf.st_mode)) && 
-		    (!S_ISLNK(sbuf.st_mode)) &&  /* sym link  */
-		    (!S_ISDIR(sbuf.st_mode)))    /* directory */
+		    (!S_ISLNK(sbuf.st_mode)))  /* sym link  */
 		{
 			verbose((stderr,
 				"unsupported file type: %s\n", s->gfile));
@@ -4136,7 +4135,7 @@ write_pfile(sccs *s, int flags, delta *d,
 	int	fd, len;
 	char	*tmp, *tmp2;
 
-	if (IS_WRITABLE(s) && !(flags & SKIPGET)) {
+	if (IS_WRITABLE(s) && !(flags & SKIPGET) && !S_ISLNK(s->mode)) {
 		fprintf(stderr,
 		    "Writeable %s exists, skipping it.\n", s->gfile);
 		s->state |= WARNED;
@@ -4311,20 +4310,19 @@ err:		if (slist) free(slist);
 		}
 	} else if (flags&SKIPGET) {
 		goto skip_get;
+	} else if (S_ISLNK(d->mode) && !(flags & PRINT)) {
+		unlinkGfile(s);
 	} else if (!(flags & PRINT)) {
 		if (IS_WRITABLE(s)) {
-			fprintf(stderr, "Writeable %s exists\n", s->gfile);
+			fprintf(stderr,
+				"Writeable %s exists\n", s->gfile);
 			s->state |= WARNED;
 			goto err;
 		}
 		unlinkGfile(s);
-		if (!S_ISLNK(d->mode))  {
-			popened = openOutput(encoding, s->gfile, &out);
-		}
+		popened = openOutput(encoding, s->gfile, &out);
 	} else {
-		if (!S_ISLNK(d->mode))  {
-			popened = openOutput(encoding, printOut, &out);
-		}
+		popened = openOutput(encoding, printOut, &out);
 	}
 	if ((s->state & RCS) && (flags & EXPAND)) flags |= RCSEXPAND;
 	if ((s->state & BITKEEPER) && d->sum && !iLst && !xLst && !i2) {
@@ -4401,30 +4399,37 @@ err:		if (slist) free(slist);
 		    d->sum, sum, d->rev, s->sfile);
 	}
 	debug((stderr, "GET done\n"));
+skip_data:
 	if (popened) {
 		pclose(out);
 	} else if (flags & PRINT) {
 		unless (streq("-", printOut)) fclose(out);
-	} else {
+	} else if (out) {
 		fclose(out);
 	}
-skip_data:
-	if (S_ISLNK(d->mode)) {
+	if ((S_ISLNK(d->mode)) && !(flags & PRINT)){
 		if (symlink(d->glink, s->gfile) == -1) {
 			perror(s->gfile);
 		}
 	}
-	if (flags&EDIT) {
-		if (d->mode) {
-			chmod(s->gfile, UMASK(d->mode));
-		} else {
-			chmod(s->gfile, UMASK(0666));
-		}
-	} else if (!(flags&PRINT)) {
-		if (d->mode) {
-			chmod(s->gfile, UMASK(d->mode & ~0222));
-		} else {
-			chmod(s->gfile, UMASK(0444));
+	/*
+	 * Do'nt do chmod() on a sym-link
+	 * It change the mode on the target file (not the sym link)
+	 * This not what we want..
+	 */
+	if (!S_ISLNK(d->mode)) {
+		if (flags&EDIT) {
+			if (d->mode) {
+				chmod(s->gfile, UMASK(d->mode));
+			} else {
+				chmod(s->gfile, UMASK(0666));
+			}
+		} else if (!(flags&PRINT)) {
+			if (d->mode) {
+				chmod(s->gfile, UMASK(d->mode & ~0222));
+			} else {
+				chmod(s->gfile, UMASK(0444));
+			}
 		}
 	}
 #ifdef ISSHELL
@@ -5164,6 +5169,9 @@ diff_gfile(sccs *s, pfile *pf, char *tmpfile)
 				return (-1);
 			}
 		}
+	} else if (S_ISLNK(s->mode)) {
+		sprintf(new, "%s/new%d", TMP_PATH, getpid());
+		close(open(new, O_CREAT, 0600)); /* make a empty file */
 	} else {
 		if (fix_lf(s->gfile) == -1) return (-1); 
 		strcpy(new, s->gfile);
@@ -5469,6 +5477,21 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 			}
 		}
 #endif
+#define SYM_LINK_AUTO_MODE
+#ifdef	SYM_LINK_AUTO_MODE
+		if (S_ISLNK(s->mode)) {
+			/*
+			 * auto update the mode if new delte is a sym-link
+			 */
+			if (s->state & GFILE) {
+				//d->mode = S_IFLNK;
+				d->mode = s->mode;
+				d->glink = s->glink;
+				s->glink = 0;
+				d->flags |= D_MODE;
+			}
+		}
+#endif
 	}
 	return (d);
 }
@@ -5547,13 +5570,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 	n = sccs_dInit(n, 'D', s, nodefault);
 	unless (n->flags & D_MODE) {
 		if (s->state & GFILE) {
-			if (S_ISLNK(s->mode)) {
-				n->mode = S_IFLNK;
-				n->glink = s->glink;
-				s->glink = 0;
-			} else	{
-				n->mode = s->mode;
-			}
+			if (!S_ISLNK(s->mode)) n->mode = s->mode;
 			n->flags |= D_MODE;
 		}
 	}
@@ -7628,11 +7645,12 @@ out:
 	debug((stderr, "delta found rev\n"));
 	if (diffs) {
 		debug((stderr, "delta using diffs passed in\n"));
-	} else if (S_ISLNK(s->mode)) {
+	} else if (S_ISLNK(s->mode) && S_ISLNK(d->mode)) {
 		debug((stderr, "sym link, skipping diff\n"));
 	} else {
 		switch (diff_gfile(s, &pf, tmpfile)) {
 		    case 1:		/* no diffs */
+			if (S_ISLNK(s->mode) || S_ISLNK(d->mode)) break;
 						    /* CSTYLED */
 			if (flags & FORCE) break;     /* forced 0 sized delta */
 			if (!(flags & SILENT))
@@ -7656,7 +7674,6 @@ out:
 		fputs("====\n\n", stdout);
 		fseek(diffs, 0L, SEEK_SET);
 	}
-
 	/*
 	 * Add a new delta table entry.	 We'll come back and fix up
 	 * the add/del/unch lines later.
@@ -7696,15 +7713,15 @@ out:
 	}
 	if (error) OUT;
 	n = sccs_dInit(n, 'D', s, init != 0);
-	if (S_ISLNK(s->mode)) {
-		/* auto update the mode iff is a sym-link */
-		if (s->state & GFILE) {
-			n->mode = S_IFLNK;
-			n->glink = s->glink;
-			s->glink = 0;
-			n->flags |= D_MODE;
-		}
+	if (S_ISLNK(d->mode) && !S_ISLNK(s->mode)) {
+		/* 
+		 * Our parent is a symlink but the new delta is not,
+		 * so update the mode.
+		 */
+		n->mode = s->mode;
+		n->flags |= D_MODE;
 	}
+
 	if (!n->rev) {
 		if (pf.sccsrev[0]) {
 			n->rev = pf.sccsrev;
