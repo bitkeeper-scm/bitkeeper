@@ -73,7 +73,8 @@ if [ $? -eq 0 ]; then
 	# local changes lost!
 	echo 'failed (bug 2001-05-11-001)'
 else
-	echo OK
+	echo 'buf 2001-05-11-001 passing! update testcase.'
+	exit 1
 fi
 echo $N check pull into busted repo containing part of a change......$NL
 cd $HERE
