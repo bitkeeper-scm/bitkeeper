@@ -101,10 +101,14 @@ proc dateSeparate { } { \
         set maxx 0
         set maxy 0
 
-        #foreach xvar [ lsort [array names revX]] {
-        #       if { $minx > $revX($xvar) } { set minx $revX($xvar) }
-        #       if { $maxx < $revX($xvar) } { set maxx $revX($xvar) }
-        #}
+	#
+	# maxx/y and minx/y should be globals that are calculated
+	# in addline so we don't have to do a potentially long search here.
+	#
+        foreach xvar [ lsort [array names revX]] {
+               if { $minx > $revX($xvar) } { set minx $revX($xvar) }
+               if { $maxx < $revX($xvar) } { set maxx $revX($xvar) }
+        }
 
         # Need the min and max y-values so that we can draw the bars
         # and place the date text correctly
@@ -121,6 +125,9 @@ proc dateSeparate { } { \
 	# Try to compensate for text size when canvas is small
 	if { $maxy < 50 } { set maxy [expr $maxy + 15] }
 
+	# set y-position of text
+	set ty [expr $maxy - $ht]
+
         foreach ser [lsort -integer [array names serial2rev]] {
 
                 set rev $serial2rev($ser)
@@ -134,21 +141,23 @@ proc dateSeparate { } { \
                 } else {
                         set x $revX($rev)
 
-                        # place vertical short distance behind revision bbox
+                        # place vertical line short dx behind revision bbox
                         set lx [ expr $x - 15 ]
                         .p.top.c create line $lx $miny $lx $maxy -width 1 \
                                 -fill "lightblue"
 
                        # Attempt to center datestring between verticals
                         set tx [expr $x - (($x - $lastx)/2) - 13]
-                        .p.top.c create text $tx [expr $maxy - $ht] \
-                                -fill "green" -anchor n -text "$prevday" \
-                                -font $bfont
+                        .p.top.c create text $tx $ty -fill "green" \
+				-anchor n -text "$prevday" -font $bfont
 
                         set prevday $curday
                         set lastx $x
                 }
         }
+	set tx [expr $maxx - (($maxx - $x)/2) + 50]
+	.p.top.c create text $tx $ty -fill "green" -anchor n \
+		-text "$curday" -font $bfont
 }
 
 
