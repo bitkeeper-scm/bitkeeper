@@ -1,4 +1,14 @@
-#!/bin/sh
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
 # Copyright (c) 1999 Andrew Chang?
 # %K%
 
@@ -118,6 +128,9 @@ cmp -s ref.c c.c
 if [ $? -ne 0 ]; then echo "failed c"; exit 1; fi
 echo OK
 cores
+# Disabled until we have the new rename code in place
+if false
+then
 echo $N Check conflict within a patch ...............................$NL
 cd $HERE/project/src
 get $Q -e c.c
@@ -128,7 +141,7 @@ echo "this is the new c.c" > c.c
 ci $Q -i c.c
 bk commit $S -yrename
 cd  $HERE
-bk resync -c -r1.5 $Q $HERE/project $HERE/copy
+bk resync -c -r1.5 $Q $HERE/project $HERE/copy > MSG
 if [ $? -ne 0 ]; then	echo Failed; exit 1; fi
 cd  $HERE/copy/src
 bk resolve $Q
@@ -208,6 +221,7 @@ if [ -s resolve.out ]; then
     sed -n '/:/s/^/	/p' resolve.out
 else
     echo OK
+fi
 fi
 echo $N Check conflict caused by merge ..............................$NL
 cd  $HERE
@@ -336,36 +350,36 @@ cp $binary_data data
 admin $Q -idata -Ebinary bdata
 get $Q -r1.1 bdata
 cmp -s bdata $binary_data
-if [ $? -ne 0 ]; then echo failed; fi
-bk commit $S -ybinary1
+if [ $? -ne 0 ]; then echo failed test 1; cmp bdata $binary_data; exit 1; fi
+bk commit $S -Sbinary1 -ybinary1
 get $Q -e bdata
 cp $binary_data2 bdata
 ci $Q -y bdata
-bk commit $S -ybinary2
+bk commit $S -Sbinary2 -ybinary2
 bk resync $Q $HERE/project $HERE/copy
 cd  $HERE/copy/src
 bk resolve $Q
 get $Q bdata
 cmp -s bdata $binary_data2
-if [ $? -ne 0 ]; then echo failed; fi
-bk resync $Q -r..1.8 $HERE/copy $HERE/copy2
+if [ $? -ne 0 ]; then echo failed test 2; cmp bdata $binary_data2; exit 1; fi
+bk resync $Q -r..binary1 $HERE/copy $HERE/copy2
 bk resolve $Q $HERE/copy2
 cd $HERE/copy2/src
 get $Q bdata
 cmp -s bdata $binary_data
-if [ $? -ne 0 ]; then echo failed; fi
-bk resync $Q -r1.9 $Q $HERE/copy $HERE/copy2
+if [ $? -ne 0 ]; then echo failed test 3; cmp bdata $binary_data; exit 1; fi
+bk resync $Q -rbinary2 $Q $HERE/copy $HERE/copy2
 bk resolve $Q $HERE/copy2
 get $Q bdata
 cmp -s bdata $binary_data2
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
+if [ $? -ne 0 ]; then echo failed test 4; cmp bdata $binary_data2; exit 1; fi
 echo OK
 echo $N Check resync with skipped ChangeSet delta to new tree .......$NL
 cd $HERE
 rm -rf  $HERE/copy2
 bk resync $Q -r1.5 $HERE/copy $HERE/copy2  > resync.out 2>&1
 grep -q "resync from version 1.0 forward" resync.out
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
+if [ $? -ne 0 ]; then echo failed test 5; exit 1; fi
 echo OK
 rm -f resync.out
 echo $N Check resolve w/ merge and delete event .....................$NL
