@@ -54,6 +54,7 @@ commit_main(int ac, char **av)
 				}
 				break;
 		    case 'Y':	doit = 1; getcomment = 0;	/* doc 2.0 */
+				unlink(commentFile);
 				strcpy(commentFile, optarg);
 				break;
 		    case 'A':	/* internal option for regression test only */
@@ -897,6 +898,6 @@ sendConfig()
 	 */
 	if (getenv("BK_REGRESSION") && (logs_pending(1, 0, 0) < 20)) return;
 
-	sprintf(cmd, "bk _lconfig 2> %s &", DEV_NULL);
+	sprintf(cmd, "bk _lconfig > %s 2> %s &", DEV_NULL, DEV_NULL);
 	system(cmd);
 }

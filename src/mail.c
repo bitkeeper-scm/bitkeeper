@@ -76,6 +76,7 @@ lconfig_main(int ac, char **av)
 
 	r = remote_parse(url, 0);
 	if (getenv("_BK_FORCE_CONFIGLOG_FAILURE")) {
+		sleep(5);
 		rc = 1; /* fake a failure */
 		goto done;
 	}
