@@ -6,7 +6,7 @@ set -x
 
 # We start in the src subdir
 cd ..
-BKR=`pwd`
+BKR=`pwd | sed 's,.*/bk/,/home/bk/,'`
 TREE=`basename $BKR`
 TREE_HOST=work
 REPO=$TREE-$USER
