@@ -4,42 +4,67 @@
 .SCCS_GET:
 	bk get -q $@
 
-SFIO_OBJS=sfio.o sfio_utils.o
-
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
 ifeq "$(OSTYPE)" "cygwin"
         SYS=win32
 	EXE=.exe
-	SFIO=sfio.exe
+	EXT=exe
 	H=../win32.h
 	CC=cl
 	LD=link
+	LD_OUT=-out:$@
 	CFLAGS=-W0 -O2 -G3 -Og -Oi -Oy -DWIN32 -D_WIN32 -D_MT -D_DLL -MD
-	CC_OUT='-Fo$@'
 	LFLAGS=-nologo -debug
-	LD_OUT='-out:$@'
 	LIBS =  msvcrt.lib oldnames.lib kernel32.lib ws2_32.lib mswsock.lib \
         	advapi32.lib user32.lib gdi32.lib comdlg32.lib winspool.lib \
         	ole32.lib ../win32/uwtlib/libuwt.a
+	STRIP=true
+	O=obj
 else
         SYS=unix
 	EXE=
+	EXT=bin
 	H=../unix.h
-	CC_OUT='-o $@'
-	LD_OUT='-o $@'
+	CFLAGS=-O
+	LD=$(CC)
+	LD_OUT=-o $@
+	STRIP=strip
+	O=o
 endif
+SFIO_OBJS=sfio.$O sfio_utils.$O
+SFIO=sfio$(EXE)
+VERS	:= $(shell test -x vers || bk get vers; ./vers)
+IMAGE:= $(shell bk get -qS gnu-os os; echo $(VERS)-`./os`.$(EXT) )
 
-all image: munge$(EXE) extractor.c gnu-os os installtool $(SFIO)
-	./mkbk
+all image: $(BINDIR)/bk$(EXE) sfioball _data.$O $(IMAGE) 
+	$(STRIP) $(IMAGE)
 
-sfio.o: ../sfio.c sfio.h
-	$(CC) -c $(CFLAGS) -DSFIO_STANDALONE=YES ../sfio.c $(CC_OUT)
+sfioball: installtool
+	@echo Creating sfioball from BK in $(BINDIR) ...
+	cp installtool $(BINDIR)/gui/lib/installtool
+	# XXX - we need to fix the installer to the hardlinks because sfio does
+	# not handle hardlinks.
+	@(cd $(BINDIR)/.. && find `basename $(BINDIR)` -type f | \
+	    bk sfio -mqo) > sfioball
 
-sfio_utils.o: sfio_utils.c sfio.h
-	$(CC) -c $(CFLAGS) -DSFIO_STANDALONE=YES sfio_utils.c $(CC_OUT)
+_data.$O: $(SFIO) munge$(EXE)
+	@echo Creating data
+	@./munge $(SFIO) sfioball
+
+$(IMAGE): extractor.$O _data.$O
+	$(LD) $(LDFLAGS) extractor.$O _data.$O $(LIBS) $(LD_OUT)
+
+extractor.$O: extractor.c
+	$(CC) $(CFLAGS) -c extractor.c
+
+sfio.$O: ../sfio.c
+	$(CC) -c $(CFLAGS) -DSFIO_STANDALONE ../sfio.c
+
+sfio_utils.$O: sfio_utils.c
+	$(CC) -c $(CFLAGS) -DSFIO_STANDALONE sfio_utils.c $(LD_OUT)
 
 $(SFIO): $(SFIO_OBJS)
-	$(LD) $(LD_OUT) $(LFLAGS) $(SFIO_OBJS) $(LIBS) ../zlib/libz.a
+	$(LD) $(LFLAGS) $(SFIO_OBJS) $(LIBS) ../zlib/libz.a $(LD_OUT)
 
 installtool: setupmain.tcl ../gui/tkwizard.tcl ../gui/common.tcl \
 	../bklogo.gif ../bk
@@ -55,6 +80,6 @@ munge$(EXE): munge.o
 	$(LD) $(LFLAGS) munge.o $(LIBS) $(LD_OUT)
 
 clobber clean clean-obj:
-	/bin/rm -f _data _data.c _data.o a.out munge$(EXE) testdata \
-	testdata.tar core testdata.bin bk-*.bin bk-*.tgz *.o *.exe *.pdb *.ilk
+	/bin/rm -f _data _data.c _data.o a.out munge$(EXE) sfioball \
+	core* bk-*.bin *.o *.exe *.obj *.pdb *.ilk sfio installtool
 	bk -r. clean

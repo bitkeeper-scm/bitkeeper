@@ -3,9 +3,20 @@
  * Copyright (c) 1999 Larry McVoy
  */
 #include "../system.h"
+#undef	mkdir
+#undef	system
+#undef	unlink
+#undef	putenv
+#undef	malloc
 
 #ifndef MAXPATH
-#define	MAXPATH	1024
+#define	MAXPATH		1024
+#endif
+#ifdef	WIN32
+#define	mkdir(a, b)	_mkdir(a)
+#define	RMDIR		"rmdir /s /q"
+#else
+#define	RMDIR		"/bin/rm -rf"
 #endif
 
 extern unsigned int sfio_size;
@@ -14,58 +25,59 @@ extern unsigned int data_size;
 extern unsigned char data_data[];
 
 void	extract(char *, char *, unsigned int, char *);
+char	*findtmp(void);
 
 main(int ac, char **av)
 {
 	char	*sfio;
-	char	install_tmp[MAXPATH];
+	char	instdir[MAXPATH];
 	char	cmd[4096];
 	int	i, fd;
 	pid_t	pid = getpid();
-	char	*tmp = "C:/WINDOWS/Temp";
+	char	*tmp = findtmp();
 
-	fprintf(stderr, "Please wait while we unpack the installer...");
+	fprintf(stderr, "Please wait while we unpack to a temp dir...\n");
 
-	sprintf(install_tmp, "%s/bk_install%-u", tmp, pid);
-	if (mkdir(install_tmp, 0700)) {
-		perror(install_tmp);
+	sprintf(instdir, "%s/bksetup%u", tmp, pid);
+	if (mkdir(instdir, 0700)) {
+		perror(instdir);
 		exit(1);
 	}
-	if (chdir(install_tmp)) {
-		perror(install_tmp);
+	if (chdir(instdir)) {
+		perror(instdir);
 		exit(1);
 	}
-
-	/* sfio.exe should work on all platforms */
-	extract("sfio.exe", sfio_data, sfio_size, install_tmp);
-	extract("data", data_data, data_size, install_tmp);
 
 	/*
-	 * Unpack the sfio file, this creates ./bitkeeper/
+	 * Add this directory and BK directory to the path.
 	 */
-	if (system("./sfio.exe -im < data")) {
+	tmp = malloc(strlen(getenv("PATH")) + 3 * strlen(instdir));
+	sprintf(tmp, "PATH=%s%c%s/bitkeeper%c%s",
+	    instdir, PATH_DELIM, instdir, PATH_DELIM, getenv("PATH"));
+	putenv(tmp);
+	
+	/* The name "sfio.exe" should work on all platforms */
+	extract("sfio.exe", sfio_data, sfio_size, instdir);
+	extract("data", data_data, data_size, instdir);
+
+	/* Unpack the sfio file, this creates ./bitkeeper/ */
+	if (system("sfio.exe -im < data")) {
 		perror(cmd);
 		exit(1);
 	}
-	fprintf(stderr, "done.\n");
 	
-	/*
-	 * Run the installer.
-	 */
-	sprintf(cmd, "./bitkeeper/bk installtool");
+	sprintf(cmd, "bk installtool");
 	for (i = 1; av[i]; i++) {
 		strcat(cmd, " ");
 		strcat(cmd, av[i]);
 	}
 	av[i] = 0;
-	fprintf(stderr, "Running %s\n", cmd);
 	system(cmd);
 
-	/*
-	 * Clean up.
-	 */
+	/* Clean up your room, kids. */
 	unless (getenv("BK_SAVE_INSTALL")) {
-		sprintf(cmd, "/bin/rm -rf %s", install_tmp); 
+		chdir("..");
+		sprintf(cmd, "%s bk%d", RMDIR, pid);
 		system(cmd);	/* careful */
 	}
 
@@ -76,14 +88,14 @@ main(int ac, char **av)
 }
 
 void
-extract(char *name, char *x_data, unsigned int x_size, char *install_tmp)
+extract(char *name, char *x_data, unsigned int x_size, char *instdir)
 {
 	int	fd;
 	char	path[MAXPATH];
 	extern	int	errno;
 	static	pid_t pid = 0;
 
-	sprintf(path, "%s/%s", install_tmp, name);
+	sprintf(path, "%s/%s", instdir, name);
 	fd = open(path, O_WRONLY | O_TRUNC | O_CREAT | O_EXCL, 0755);
 	if (fd == -1) {
 		perror(path);
@@ -96,5 +108,62 @@ extract(char *name, char *x_data, unsigned int x_size, char *install_tmp)
 		exit(1);
 	}
 	close(fd);
-	return(strdup(path));
+}
+
+int
+istmp(char *path)
+{
+	char	*p = &path[strlen(path)];
+	int	fd;
+
+	sprintf(p, "/findtmp%d", getpid());
+	fd = open(path, O_CREAT | O_RDWR | O_EXCL, 0666);
+	if (fd == -1) {
+err:		*p = 0;
+		return (0);
+	}
+	if (write(fd, "Hi\n", 3) != 3) {
+		close(fd);
+		goto err;
+	}
+	close(fd);
+	unlink(path);
+	*p = 0;
+	return (1);
+}
+
+/*
+ * I'm not at all convinced we need this.
+ */
+char*
+findtmp(void)
+{
+#ifdef	WIN32
+	char	*places[] = {
+			"Temp",
+			"Tmp",
+			"WINDOWS/Temp",
+			"WINDOWS/Tmp",
+			"WINNT/Temp",
+			"WINNT/Tmp",
+			"cygwin/tmp",
+			0
+		};
+	int	i;
+	char	drive;
+	char	path[MAXPATH];
+
+	sprintf(path, "%s", TMP_PATH);
+	if (istmp(path)) return (strdup(path));
+	for (drive = 'C'; drive <= 'Z'; drive++) {
+		for (i = 0; places[i]; ++i) {
+			sprintf(path, "%c:/%s", drive, places[i]);
+			if (istmp(path)) return (strdup(path));
+		}
+	}
+	fprintf(stderr, "Can't find a temp directory\n");
+	exit(1);
+#else
+	return ("/tmp");
+#endif
 }

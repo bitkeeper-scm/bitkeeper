@@ -321,7 +321,7 @@ sfio_in(int extract)
 			if (in_reg(buf, len, extract)) return (1);
 		}
 	}
-#ifdef SFIO_STANDALONE
+#ifndef SFIO_STANDALONE
 	save_byte_count(byte_count);
 #endif
 }
