@@ -323,9 +323,8 @@ _fixtool() {
 		rm -f $merge
 		bk fmtool $previous "$x" $merge
 		test -s $merge || continue
-		mv -f "$x" "${x}~"
-		# Cross file system probably
-		cp $merge "$x"
+		cp -fp "$x" "${x}~"
+		cat $merge > "$x"
 	done
 	rm -f $fix $merge $previous 2>/dev/null
 }

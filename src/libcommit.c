@@ -81,7 +81,7 @@ status(int verbose, FILE *f)
 
 	fprintf(f, "Status for BitKeeper repository %s:%s\n",
 	    sccs_gethost(), fullname(".", 0));
-	getMsg("version", bk_model(buf, sizeof(buf)), 0, 0, f);
+	bkversion(f);
 	sprintf(parent_file, "%slog/parent", BitKeeper);
 	if (exists(parent_file)) {
 		fprintf(f, "Parent repository is ");

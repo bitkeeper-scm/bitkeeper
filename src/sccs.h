@@ -946,6 +946,7 @@ int	licenseAcceptOne(int prompt, char *lic);
 char	*licenses_accepted(void);
 char	*mkline(char *mmap);
 int	mkdirp(char *dir);
+int	test_mkdirp(char *dir);
 int	mkdirf(char *file);
 char    *mode2FileType(mode_t m);
 int	getline(int in, char *buf, int size);
@@ -1189,6 +1190,7 @@ char	*find_prog(char *);
 char	*pager(void);
 int	bkmail(char *url, char **to, char *subject, char *file);
 int	sfiles_skipdir(char *dir);
+void	bkversion(FILE *f);
 
 void	align_diffs(u8 *vec, int n, int (*compare)(int a, int b),
     int (*is_whitespace)(int i));
