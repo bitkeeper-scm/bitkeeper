@@ -119,7 +119,7 @@ reap(int sig)
 private	void
 bkd_server()
 {
-	int	sock = tcp_server(Opts.port ? Opts.port : BK_PORT);
+	int	sock = tcp_server(Opts.port ? Opts.port : BK_PORT, Opts.quiet);
 	remote	r;
 
 	if (Opts.http_hdr_in) {
