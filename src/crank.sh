@@ -43,6 +43,7 @@ do
 		continue
 	    }
             trap "rm -f .[st].$host; exit" 0 1 2 3 15
+	    rcp $REMOTE ${host}:/build/.$REPO.$U
 	    /usr/bin/time -o .t.$host -f "%E" rsh $host \
 		"env LOG=$LOG BK_USER=$U URL=$URL REPO=$REPO \
 		/bin/bash /build/.$REPO.$U $@"

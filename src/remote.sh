@@ -14,6 +14,7 @@ export PATH BK_NOTTY
 
 test X$LOG = X && LOG=LOG-$BK_USER
 cd /build
+chmod +w .$REPO.$BK_USER
 BKDIR=${REPO}-${BK_USER}
 CMD=$1
 test X$CMD = X && CMD=build
@@ -30,10 +31,13 @@ case $CMD in
 	exec > /build/$LOG 2>&1
 	set -e
 	rm -rf /build/$BKDIR
-	find /build/.images -mtime +3 -print | xargs /bin/rm -f
+	test -d .images && {
+		find .images -mtime +3 -print > .list$BK_USER
+		test -s .list$BK_USER && xargs /bin/rm -f < .list$BK_USER
+	}
 	sleep 5		# give the other guys time to get rcp'ed and started
 
-	BK_LICENSE=ACCEPTED bk clone -z0 $URL $BKDIR || failed
+	BK_NOTTY=YES BK_LICENSE=ACCEPTED bk clone -z0 $URL $BKDIR || failed
 
 	DOTBK=`bk dotbk`
 	test "X$DOTBK" != X && rm -f "$DOTBK/lease/`bk gethost -r`"
