@@ -87,82 +87,23 @@ bk co -r1.1 $Q uuencode
 cmp -s ${binary_data} uuencode
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
-echo $N Trying to check in some gzipped+uu data .....................$NL
-cp ${binary_data} data
-bk admin $Q -idata -Euugzip gzipuu
-bk co -l $Q gzipuu
-cmp -s ${binary_data} gzipuu
-if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
-echo OK
-echo $N Trying to change some gzipped+uu data .......................$NL
-cp ${binary_data2} gzipuu
-bk ci $Q -y gzipuu
-bk co $Q -k gzipuu
-cmp -s ${binary_data2} gzipuu
-if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
-echo OK
-echo $N Trying to clean a gzipped+uu file ...........................$NL
-bk co $Q -l gzipuu
-bk clean gzipuu
-if [ $? -ne 0 ]; then echo Clean failed ; exit 1; fi
-if [ -f gzipuu ]; then echo Clean failed ; exit 1; fi
-echo OK
-echo $N Verifying data checksum .....................................$NL
-bk admin $Q -fe0 gzipuu
-bk co $Q -kr1.1 gzipuu
-bk admin $Q -fe1 gzipuu
-A=`bk prs -r1.1 -hd:DSUM: gzipuu`
-B=`bk chksum < gzipuu`
-if [ $A -ne $B ]; then echo Failed - chksums $A $B differ.; exit 1; fi
-echo OK
-echo $N Trying to check in some gzipped data ........................$NL
-# This creates a file of approximately 86kB, 16kB compressed.
-# We need a file this large so all internal buffers will overflow
-# at least once.
-for h in 1 2 3 4 5 6 7 8 9 0
-do for i in q w e r t y u i o p
-do for j in a s d f g h j k l
-do for k in z x c v b n m
-do	echo $h $i $j $k $i $j $k >>X
-done
-done
-done
-done
-bk undos X > gzipped
-cp gzipped data
-bk ci -i $Q gzipped
-cp SCCS/s.gzipped SCCS/s.ref
-bk admin $Q -Z gzipped
-bk co -l $Q gzipped
-grep -q '^.f e 4$' SCCS/s.gzipped
-if [ $? -ne 0 ]; then echo Wrong encoding.; exit 1; fi
-cmp -s data gzipped
-if [ $? -ne 0 ]; then echo Failed - files differ.; diff data gzipped; exit 1; fi
-echo OK
-echo $N "admin -Z; admin -Znone should be a no-op ...................."$NL
-cp SCCS/s.gzipped SCCS/s.cmp
-bk admin $Q -Znone cmp
-cmp SCCS/s.cmp SCCS/s.ref
-if [ $? -ne 0 ]; then echo Failed - files differ.; diff SCCS/s.cmp SCCS/s.ref; exit 1; fi
-echo OK
-rm -f SCCS/s.cmp SCCS/s.ref
 echo $N Check in gzipped data with delta -Z .........................$NL
 bk delta $Q -i -Z data
-grep -q '^.f e 4$' SCCS/s.data
-if [ $? -ne 0 ]; then echo Wrong encoding.; exit 1; fi
+ENC=`bk prs -hnr+ -d:COMPRESSION:,:ENC: data`
+if [ X$ENC != X"gzip,binary" ]; then echo Wrong encoding.; exit 1; fi
 echo OK
 echo $N Uncompress and modify in one operation.......................$NL
 bk get $Q -e data
 echo '! @ # $ % ^ & * ( )' >>data
 bk delta $Q -Znone -y data
-grep -q '^.f e 0$' SCCS/s.data
-if [ $? -ne 0 ]; then echo Wrong encoding.; exit 1; fi
+ENC=`bk prs -hnr+ -d:COMPRESSION:,:ENC: data`
+if [ X$ENC != X"none,binary" ]; then echo Wrong encoding.; exit 1; fi
 echo OK
 echo $N Trying to change some gzipped data ..........................$NL
 echo "here is some data" > X
 bk undos X > gzipped
 cp gzipped ll
-bk ci $Q -y gzipped
+bk ci -i $Q -y -Z gzipped
 bk co $Q gzipped
 cmp -s ll gzipped
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi

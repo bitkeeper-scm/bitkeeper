@@ -3191,7 +3191,6 @@ misc(sccs *s)
 			switch (atoi(&buf[5])) {
 			    case E_ASCII:
 			    case E_UUENCODE:
-			    case E_UUGZIP:
 			    case E_GZIP:
 			    case E_GZIP|E_UUENCODE:
 				s->encoding = atoi(&buf[5]);
@@ -5301,21 +5300,13 @@ openOutput(int encode, char *file, FILE **op)
 #endif
 		*op = toStdout ? stdout : fopen(file, "w");
 		break;
-	    case E_UUGZIP:
-		if (toStdout) {
-			*op = popen("gzip -d", M_WRITE_B);
-		} else {
-			sprintf(buf, "gzip -d > %s", file);
-			*op = popen(buf, M_WRITE_B);
-		}
-		break;
 	    default:
 		*op = NULL;
 		debug((stderr, "openOutput = %x\n", *op));
 		return (-1);
 	}
 	debug((stderr, "openOutput = %x\n", *op));
-	return (encode == E_UUGZIP);
+	return (0);
 }
 
 /*
@@ -5844,8 +5835,7 @@ out:			if (slist) free(slist);
 
 			switch (encoding) {
 			    case E_GZIP|E_UUENCODE:
-			    case E_UUENCODE:
-			    case E_UUGZIP: {
+			    case E_UUENCODE: {
 				uchar	obuf[50];
 				int	n = uudecode1(e, obuf);
 
@@ -7342,13 +7332,6 @@ deflate_gfile(sccs *s, char *tmpfile)
 		fclose(in);
 		fclose(out);
 		break;
-	    case E_UUGZIP:
-		sprintf(cmd, "gzip -nq4 < %s", s->gfile);
-		in = popen(cmd, M_READ_B);
-		uuencode(in, out);
-		pclose(in);
-		fclose(out);
-		break;
 	    default:
 		assert("Bad encoding" == 0);
 	}
@@ -7986,20 +7969,6 @@ openInput(sccs *s, int flags, FILE **inp)
 		}
 		s->encoding = compress | E_UUENCODE;
 		return (0);
-	    case E_UUGZIP:
-		/* we do'nt support compressed E_UUGZIP yet */
-		assert((compress & E_GZIP) == 0);
-		/*
-		 * Some very seat of the pants testing showed that -4 was
-		 * the best time/space tradeoff.
-		 */
-		if (streq("-", file)) {
-			*inp = popen("gzip -nq4", M_READ_B);
-		} else {
-			sprintf(buf, "gzip -nq4 < %s", file);
-			*inp = popen(buf, M_READ_B);
-		}
-		return (1);
 	}
 }
 
@@ -9550,7 +9519,6 @@ sccs_encoding(sccs *sc, char *encp, char *compp)
 		if (streq(encp, "text")) enc = E_ASCII;
 		else if (streq(encp, "ascii")) enc = E_ASCII;
 		else if (streq(encp, "binary")) enc = E_UUENCODE;
-		else if (streq(encp, "uugzip")) enc = E_UUGZIP;
 		else {
 			fprintf(stderr,	"admin: unknown encoding format %s\n",
 				encp);
@@ -9564,22 +9532,9 @@ sccs_encoding(sccs *sc, char *encp, char *compp)
 
 	if (compp) {
 		if (streq(compp, "gzip")) {
-			if (enc == E_ASCII) {
-				comp = E_GZIP;
-			} else {
-				if (enc == E_UUENCODE) {
-					comp = E_GZIP;
-				} else if (enc == E_UUGZIP) {
-					comp = 0;
-				} else {
-					fprintf(stderr,
-						"bad encodind %x\n", enc);
-					return (-1);
-				}
-			}
+			comp = E_GZIP;
 		} else if (streq(compp, "none")) {
 			comp = 0;
-			if (enc == E_UUGZIP) enc = E_UUENCODE;
 		} else {
 			fprintf(stderr, "admin: unknown compression format %s\n",
 				compp);
@@ -9675,12 +9630,6 @@ sccs_admin(sccs *sc, delta *p, u32 flags, char *new_encp, char *new_compp,
 	if (new_enc == -1) return -1;
 
 	debug((stderr, "new_enc is %d\n", new_enc));
-	if (new_enc == (E_GZIP|E_UUGZIP)) {
-		fprintf(stderr,
-			"can't compress a file with E_UUGZIP encoding\n");
-		error = -1; sc->state |= S_WARNED;
-		return (error);
-	}
 	GOODSCCS(sc);
 	unless (flags & (ADMIN_BK|ADMIN_FORMAT|ADMIN_GONE)) {
 		unless (locked = sccs_lock(sc, 'z')) {
@@ -9910,11 +9859,6 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	if (old_enc & E_GZIP) zgets_init(sc->where, sc->size - sc->data);
 	if (new_enc & E_GZIP) zputs_init();
 	if (new_enc != old_enc) {
-		if (new_enc == E_UUGZIP) {
-			fprintf(stderr,
-			    "convertion to uugzip encoding not supported\n");
-			OUT;
-		}
 		sc->encoding = old_enc;
 		while (buf = nextdata(sc)) {
 			sc->encoding = new_enc;
@@ -12286,13 +12230,21 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	if (streq(kw, "ENC")) {
-		switch (s->encoding) {
+		switch (s->encoding & E_DATAENC) {
 		    case E_ASCII:
 			fs("ascii"); return (strVal);
 		    case E_UUENCODE:
 			fs("binary"); return (strVal);
-		    case E_UUGZIP:
-			fs("uugzip"); return (strVal);
+		}
+		return nullVal;
+	}
+
+	if (streq(kw, "COMPRESSION")) {
+		switch (s->encoding & E_COMP) {
+		    case 0: 
+			fs("none"); return (strVal);
+		    case E_GZIP:
+			fs("gzip"); return (strVal);
 		}
 		return nullVal;
 	}
