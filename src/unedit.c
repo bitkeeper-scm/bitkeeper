@@ -3,8 +3,6 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
-private char *unedit_help = "usage: unedit files...\n";
-
 /*
  * This works even if there isn't a gfile.
  */

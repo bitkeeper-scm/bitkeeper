@@ -1,6 +1,8 @@
 #include "../system.h"
 #include "../sccs.h"
 
+private	int	sccs_stalelock(const char *file, int discard);
+
 /*
  * Copyright (c) 2001 Larry McVoy & Andrew Chang       All rights reserved.
  */
@@ -74,7 +76,7 @@ sccs_lockfile(const char *file, int waitsecs, int rm, int quiet)
 			free(p);
 			return (0);
 		}
-check:		if (sccs_stalelock(file, 1)) continue;
+		if (sccs_stalelock(file, 1)) continue;
 		unless (waitsecs) return (-1);
 		if ((waitsecs > 0) && ((waited / 1000000) >= waitsecs)) {
 			unless (quiet < 2) {
@@ -115,7 +117,7 @@ sccs_unlockfile(const char *file)
  * etc, as the hostname.  That's what you get on poorly configured machines
  * and we'll have to respect those.
  */
-int
+private int
 sccs_stalelock(const char *file, int discard)
 {
 	int	fd;
