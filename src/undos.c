@@ -2,6 +2,7 @@
 #include "sccs.h"
 
 private	void	undos(char *s);
+private void	undos_stdin();
 extern	void	platformSpecificInit(char *);
 int	auto_new_line = 1;
 
@@ -44,7 +45,7 @@ undos_main(int ac, char **av)
 private void
 undos_stdin()
 {
-	char	c;
+	int	c;
 
 	while ((c = getchar()) != EOF) {
 		unless (c == '\r') {
