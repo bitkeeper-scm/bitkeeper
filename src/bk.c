@@ -1,8 +1,8 @@
 #include "system.h"
-#include "sccs.h" 
-#include "range.h" 
+#include "sccs.h"
+#include "range.h"
 
-#define BK "bk"
+#define	BK "bk"
 
 char	*editor = 0, *pager = 0, *bin = 0;
 char	*BitKeeper = "BitKeeper/";	/* XXX - reset this? */
@@ -26,7 +26,8 @@ private int	run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av);
 
 extern	void	getoptReset();
 extern	void	platformInit(char **av);
-extern	int proj_cd2root(project *p);
+extern	int	proj_cd2root(project *p);
+extern	int	spawn_cmd(int flag, char **av);
 
 /* KEEP THIS SORTED! */
 int	_createlod_main(int, char **);
@@ -168,12 +169,12 @@ int	what_main(int, char **);
 int	xflags_main(int, char **);
 int	zone_main(int, char **);
 
-struct command cmdtbl[] = {
+struct	command cmdtbl[] = {
 	{"_adler32", adler32_main},
 	{"_converge", converge_main},
 	{"_cleanpath", cleanpath_main},
 	{"_createlod", _createlod_main},
-	{"_exists", exists_main},	
+	{"_exists", exists_main},
 	{"_find", find_main },
 	{"_g2sccs", _g2sccs_main},
 	{"_get", get_main},
@@ -471,25 +472,6 @@ run:	getoptReset();
 	cmdlog_end(ret, flags);
 	exit(ret);
 }
-
-private int
-spawn_cmd(int flag, char **av)
-{
-	int ret;
-
-	ret = spawnvp_ex(flag, av[0], av); 
-	if (WIFSIGNALED(ret)) {
-		unless (WTERMSIG(ret) == SIGPIPE) {
-			fprintf(stderr,
-			    "%s died from %d\n", av[0], WTERMSIG(ret));
-		}
-	} else unless (WIFEXITED(ret)) {
-		fprintf(stderr, "bk: cannot spawn %s\n", av[0]);
-		return (127);
-	}
-	return (WEXITSTATUS(ret));
-}
-
 
 private int
 run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
