@@ -60,7 +60,7 @@ clone_main(int ac, char **av)
 	    	}
 	}
 	license();
-	unless (av[optind] && av[optind+1]) usage();
+	unless (av[optind]) usage();
 	loadNetLib();
 	/*
 	 * Trigger note: it is meaningless to have a pre clone trigger
@@ -113,10 +113,11 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	int	gzip, rc = 1, ret = 0;
 
 	gzip = r->port ? opts.gzip : 0;
-	local = fullname(local, 0);
-	if (exists(local)) {
-		fprintf(stderr, "clone: %s exists already\n", local);
-		usage();
+	if (local && (local = fullname(local, 0))) {
+		if (exists(local)) {
+			fprintf(stderr, "clone: %s exists already\n", local);
+			usage();
+		}
 	}
 	if (opts.rev) {
 		sprintf(buf, "BK_CSETS=1.0..%s", opts.rev);
@@ -124,8 +125,10 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	} else {
 		putenv("BK_CSETS=1.0..");
 	}
-	sprintf(buf, "BK_REMOTE_ROOT=%s", local);
-	putenv((strdup)(buf));
+	if (local) {
+		sprintf(buf, "BK_REMOTE_ROOT=%s", local);
+		putenv((strdup)(buf));
+	}
 	if (send_clone_msg(opts, gzip, r, envVar)) goto done;
 
 	if (r->httpd) skip_http_hdr(r);
@@ -135,6 +138,14 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	} else if (streq(buf, "@SERVER INFO@")) {
 		getServerInfoBlock(r);
 		getline2(r, buf, sizeof(buf));
+		/* use the basename of the src if no dest is specified */
+		if (!local && (local = getenv("BK_REMOTE_ROOT"))) {
+			if (p = strrchr(local, '/')) local = ++p;
+		}
+		if (exists(local)) {
+			fprintf(stderr, "clone: %s exists already\n", local);
+			usage();
+		}
 	} else {
 #ifdef BKD_VERSION1_2
 		/* try bkd 1.2 protocol */
@@ -142,6 +153,12 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 #endif
 	}
 	if (get_ok(r, buf, !opts.quiet)) {
+		disconnect(r, 2);
+		goto done;
+	}
+
+	unless (local) {
+		fprintf(stderr, "clone: cannot determine remote pathname\n");
 		disconnect(r, 2);
 		goto done;
 	}
