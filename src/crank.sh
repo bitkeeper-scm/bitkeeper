@@ -35,6 +35,6 @@ export TST_DIR TMPDIR TMP_DIR
 if [ $# -gt 0 ]; then
     eval $*
 else
-    ./build production
+    ./build production image
     ./bk regression 
 fi
