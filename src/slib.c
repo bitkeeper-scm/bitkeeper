@@ -182,6 +182,18 @@ mode2a(mode_t m)
 	return (mode);
 }
 
+char	*
+mode2FileType(mode_t m)
+{
+	if (S_ISREG(m)) {
+		return  "FILE";
+	} else if (S_ISLNK(m)) {
+		return  "SYMLINK";
+	} else {
+		return  "unsupported file type";
+	}
+}
+
 /*
  * extract the file type bits from the mode
  */
@@ -189,7 +201,7 @@ int
 fileType (mode_t m)
 {
 	// XXX this code may not be portable
-	return (m & 0170000);
+	return (m & S_IFMT);
 }
 
 int
@@ -1216,7 +1228,7 @@ sccs_root(sccs *s, char *root)
 	int	i, j;
 	char	*t;
 
-	if (s && (s->state & NOSCCSDIR)) return (0);
+	if (s && (s->state & S_NOSCCSDIR)) return (0);
 	if (root) return (root);
 	if (s && s->root) return (s->root);
 
@@ -1776,7 +1788,7 @@ sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
 
 	/* Allow null revisions to mean TOT or first delta */
 	if (!s || !*s) {
-		unless (sc->state & RANGE2) {	/* this is first call */
+		unless (sc->state & S_RANGE2) {	/* this is first call */
 			unless (ru == '+') return (sc->tree);
 		}
 		return (findrev(sc, 0));
@@ -1806,7 +1818,7 @@ sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
 	 */
 	date = date2time(s, 0, roundup);
 
-	unless (sc->state & RANGE2) {	/* first call */
+	unless (sc->state & S_RANGE2) {	/* first call */
 		if (date < sc->tree->date) return (sc->tree);
 		if (date > sc->table->date) return (0);
 	} else {			/* second call */
@@ -1829,7 +1841,7 @@ sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
 		 *             ^tmp  ^d
 		 */
 		if (d->date < date) {
-			unless (sc->state & RANGE2) {	/* first call */
+			unless (sc->state & S_RANGE2) {	/* first call */
 				return (tmp);
 			} else {
 				return (d);
@@ -2028,7 +2040,7 @@ expand(sccs *s, delta *d, char *l)
 		    case 'D':	/* today: 97/06/22 */
 			if (!now) { time(&now); tm = localtime(&now); }
 			assert(tm);
-			if (s->state & YEAR4) {
+			if (s->state & S_YEAR4) {
 				int	y = tm->tm_year;
 
 				if (y < 69) y += 2000; else y += 1900;
@@ -2043,7 +2055,7 @@ expand(sccs *s, delta *d, char *l)
 			break;
 
 		    case 'E':	/* most recent delta: 97/06/22 */
-			if (s->state & YEAR4) {
+			if (s->state & S_YEAR4) {
 				if (atoi(d->sdate) > 69) {
 					*t++ = '1'; *t++ = '9';
 				} else {
@@ -2062,7 +2074,7 @@ expand(sccs *s, delta *d, char *l)
 		    case 'G':	/* most recent delta: 06/22/97 */
 			*t++ = d->sdate[3]; *t++ = d->sdate[4]; *t++ = '/';
 			*t++ = d->sdate[6]; *t++ = d->sdate[7]; *t++ = '/';
-			if (s->state & YEAR4) {
+			if (s->state & S_YEAR4) {
 				if (atoi(d->sdate) > 69) {
 					*t++ = '1'; *t++ = '9';
 				} else {
@@ -2075,7 +2087,7 @@ expand(sccs *s, delta *d, char *l)
 		    case 'H':	/* today: 06/22/97 */
 			if (!now) { time(&now); tm = localtime(&now); }
 			assert(tm);
-			if (s->state & YEAR4) {
+			if (s->state & S_YEAR4) {
 				int	y = tm->tm_year;
 
 				if (y < 69) y += 2000; else y += 1900;
@@ -2422,7 +2434,7 @@ meta(sccs *s, delta *d, char *buf)
 	    default:
 		fprintf(stderr, "Ignoring %.5s...\n", buf);
 		/* got unknown field, force read only mode */
-		s->state |= READ_ONLY;
+		s->state |= S_READ_ONLY;
 	}
 }
 
@@ -2622,7 +2634,7 @@ done:		;	/* CSTYLED */
 		dinsert(s, flags, d);
 		d = therest;
 	}
-	if (checkrevs(s, flags) & 1) s->state |= BADREVS;
+	if (checkrevs(s, flags) & 1) s->state |= S_BADREVS;
 
 	/*
 	 * For all the metadata nodes, go through and propogate the data up to
@@ -2684,22 +2696,22 @@ misc(sccs *s)
 	 */
 	for (; next(buf, s) && !strneq(buf, "\001t\n", 3); ) {
 		if (strneq(buf, "\001f R\n", 5)) {	/* XXX - obsolete */
-			s->state |= RCS;
+			s->state |= S_RCS;
 			continue;
 		} else if (strneq(buf, "\001f b\n", 5)) {
-			s->state |= BRANCHOK;
+			s->state |= S_BRANCHOK;
 			continue;
 		} else if (strneq(buf, "\001f Y\n", 5)) { /* XXX - obsolete */
-			s->state |= YEAR4;
+			s->state |= S_YEAR4;
 			continue;
 		} else if (strneq(buf, "\001f x ", 5)) {
 			int	bits = atoi(&buf[5]);
 
-			if (bits & X_BITKEEPER) s->state |= BITKEEPER;
-			if (bits & X_YEAR4) s->state |= YEAR4;
-			if (bits & X_RCSEXPAND) s->state |= RCS;
-#ifdef ISSHELL
-			if (bits & X_ISSHELL) s->state |= ISSHELL;
+			if (bits & X_BITKEEPER) s->state |= S_BITKEEPER;
+			if (bits & X_YEAR4) s->state |= S_YEAR4;
+			if (bits & X_RCSEXPAND) s->state |= S_RCS;
+#ifdef S_ISSHELL
+			if (bits & X_ISSHELL) s->state |= S_ISSHELL;
 #endif
 			continue;
 		} else if (strneq(buf, "\001f &", 4) ||
@@ -2728,7 +2740,7 @@ misc(sccs *s)
 		}
 	}
 
-	if (s->state & REINHERIT) reinherit(s, s->tree);
+	if (s->state & S_REINHERIT) reinherit(s, s->tree);
 
 	/* Save descriptive text. */
 	for (; next(buf, s) && !strneq(buf, "\001T\n", 3); ) {
@@ -2812,11 +2824,11 @@ getflags(sccs *s, char *buf)
 	if (!t) return (0);
 	switch (f) {
 	    case 'h':	/* hostname */
-		s->state |= REINHERIT;
+		s->state |= S_REINHERIT;
 		hostArg(d, t);
 		return (1);
 	    case 'p':	/* pathname */
-		s->state |= REINHERIT;
+		s->state |= S_REINHERIT;
 		pathArg(d, t);
 		return (1);
 	    case 's':	/* symbol */
@@ -2833,7 +2845,7 @@ getflags(sccs *s, char *buf)
 		}
 		return (1);
 	    case 'w':	/* minutes west of GMT */
-		s->state |= REINHERIT;
+		s->state |= S_REINHERIT;
 		zoneArg(d, t);
 		return (1);
 	}
@@ -2904,6 +2916,10 @@ addsym(sccs *s, delta *d, delta *metad, char *rev, char *val)
 	return (1);
 }
 
+/*
+ * These are the file types we currently suppprt
+ * TODO: we may support empty directory & special file someday
+ */
 fileTypeOk(mode_t m)
 {
 	if ((S_ISREG(m)) || (S_ISLNK(m))) return 1;
@@ -2925,7 +2941,7 @@ err:			free(s->gfile);
 			free(s);
 			return (0);
 		}
-		s->state |= GFILE;
+		s->state |= S_GFILE;
 		s->mode = sbuf.st_mode;
 		if (flags & GTIME) s->gtime = sbuf.st_mtime;
 		if (S_ISLNK(sbuf.st_mode)) {
@@ -2943,7 +2959,7 @@ err:			free(s->gfile);
 			}
 		}
 	} else {
-		s->state &= ~GFILE;
+		s->state &= ~S_GFILE;
 	}
 	return (s);
 }
@@ -2977,12 +2993,12 @@ sccs_init(char *name, int flags)
 	}
 	t = strrchr(s->sfile, '/');
 	if (t) {
-		if (streq(t, "/s.ChangeSet")) s->state |= CSET;
+		if (streq(t, "/s.ChangeSet")) s->state |= S_CSET;
 	} else {
-		if (streq(s->sfile, "SCCS/s.ChangeSet")) s->state |= CSET;
+		if (streq(s->sfile, "SCCS/s.ChangeSet")) s->state |= S_CSET;
 	}
 	unless (t && (t >= s->sfile + 4) && strneq(t - 4, "SCCS/s.", 7)) {
-		s->state |= NOSCCSDIR;
+		s->state |= S_NOSCCSDIR;
 	}
 	if (t = getenv("BK_LOD")) s->defbranch = strdup(t);
 	unless (check_gfile(s, flags)) return (0);
@@ -3001,15 +3017,15 @@ sccs_init(char *name, int flags)
 			free(s);
 			return (0);
 		}
-		s->state |= SFILE;
+		s->state |= S_SFILE;
 #ifndef	USE_STDIO
 		s->size = sbuf.st_size;
 #endif
 	}
 	s->pfile = strdup(sccsXfile(s, 'p'));
 	s->zfile = strdup(sccsXfile(s, 'z'));
-	if (isreg(s->pfile)) s->state |= PFILE;
-	if (isreg(s->zfile)) s->state |= ZFILE;
+	if (isreg(s->pfile)) s->state |= S_PFILE;
+	if (isreg(s->zfile)) s->state |= S_ZFILE;
 	debug((stderr, "init(%s) -> %s, %s\n", name, s->sfile, s->gfile));
 	s->nextserial = 1;
 #ifdef	USE_STDIO
@@ -3039,10 +3055,10 @@ sccs_init(char *name, int flags)
 				s->mmap = mmap(0,
 				    s->size, PROT_READ|PROT_WRITE,
 				    MAP_PRIVATE, s->fd, 0);
-				s->state |= MAPPRIVATE;
+				s->state |= S_MAPPRIVATE;
 			}
 		}
-		s->state |= CHMOD;
+		s->state |= S_CHMOD;
 	} else {
 		s->fd = open(s->sfile, 0, 0);
 		s->mmap = mmap(0, s->size, PROT_READ, MAP_SHARED, s->fd, 0);
@@ -3054,7 +3070,7 @@ sccs_init(char *name, int flags)
 	debug((stderr, "mapped %s for %d at 0x%x\n",
 	    s->sfile, s->size, s->mmap));
 #endif
-	s->state |= SOPEN;
+	s->state |= S_SOPEN;
 	if (((flags&NOCKSUM) == 0) && badcksum(s)) {
 		fprintf(stderr, "Bad checksum for %s\n", s->sfile);
 		return (s);
@@ -3095,13 +3111,13 @@ sccs_restart(sccs *s)
 bad:			sccs_free(s);
 			return (0);
 		}
-		s->state |= GFILE;
+		s->state |= S_GFILE;
 		s->mode = sbuf.st_mode;
 	}
 	if (lstat(s->sfile, &sbuf) == 0) {
 		if (!S_ISREG(sbuf.st_mode)) goto bad;
 		if (sbuf.st_size == 0) goto bad;
-		s->state |= SFILE;
+		s->state |= S_SFILE;
 	}
 #ifndef	USE_STDIO
 	if ((s->size != sbuf.st_size) || (s->fd == -1)) {
@@ -3113,14 +3129,14 @@ bad:			sccs_free(s);
 		if (s->mmap != (caddr_t)-1L) munmap(s->mmap, s->size);
 		s->size = sbuf.st_size;
 		s->mmap = mmap(0, s->size, PROT_READ, MAP_SHARED, s->fd, 0);
-		if (s->mmap != (caddr_t)-1L) s->state |= SOPEN;
+		if (s->mmap != (caddr_t)-1L) s->state |= S_SOPEN;
 		seekto(s, 0);
 		for (; next(buf, s) && !strneq(buf, "\001T\n", 3); );
 		s->data = tell(s);
 	}
 #endif
-	if (isreg(s->pfile)) s->state |= PFILE;
-	if (isreg(s->zfile)) s->state |= ZFILE;
+	if (isreg(s->pfile)) s->state |= S_PFILE;
+	if (isreg(s->zfile)) s->state |= S_ZFILE;
 	return (s);
 }
 
@@ -3134,7 +3150,7 @@ sccs_close(sccs *s)
 	close(s->fd);
 	s->mmap = (caddr_t) -1;
 	s->fd = -1;
-	s->state &= ~SOPEN;
+	s->state &= ~S_SOPEN;
 }
 
 /*
@@ -3166,7 +3182,7 @@ sccs_free(sccs *s)
 	if (s->file) fclose(s->file);
 #else
 	if (s->mmap != (caddr_t)-1L) munmap(s->mmap, s->size);
-	if (s->state & CHMOD) {
+	if (s->state & S_CHMOD) {
 		struct	stat sbuf;
 
 		if (fstat(s->fd, &sbuf) == 0) {
@@ -3325,11 +3341,11 @@ lock(sccs *sccs, char type)
 	char	*s;
 	int	islock;
 
-	if ((type == 'z') && (sccs->state & READ_ONLY)) return (0);
+	if ((type == 'z') && (sccs->state & S_READ_ONLY)) return (0);
 	s = sccsXfile(sccs, type);
 	islock = open(s, O_CREAT|O_WRONLY|O_EXCL, type == 'z' ? 0444 : 0644);
 	close(islock);
-	if (islock > 0) sccs->state |= Z_LOCKED;
+	if (islock > 0) sccs->state |= S_ZFILE;
 	debug((stderr, "lock(%s) = %d\n", sccs->sfile, islock > 0));
 	return (islock > 0);
 }
@@ -3346,7 +3362,7 @@ unlock(sccs *sccs, char type)
 	debug((stderr, "unlock(%s, %c)\n", sccs->sfile, type));
 	s = sccsXfile(sccs, type);
 	failed  = unlink(s);
-	unless (failed) sccs->state &= ~Z_LOCKED;
+	unless (failed) sccs->state &= ~S_ZFILE;
 	return (failed);
 }
 
@@ -4137,7 +4153,7 @@ sccs_impliedList(sccs *s, char *who, char *base, char *rev)
 		fprintf(stderr,
 		    "%s: can not find base rev %s in %s\n",
 		    who, base, s->sfile);
-err:		s->state |= WARNED;
+err:		s->state |= S_WARNED;
 		return (0);
 	}
 	for (d = baseRev; d; d = d->parent) {
@@ -4193,10 +4209,10 @@ write_pfile(sccs *s, int flags, delta *d,
 	int	fd, len;
 	char	*tmp, *tmp2;
 
-	if (IS_WRITABLE(s) && !(flags & SKIPGET) && !S_ISLNK(s->mode)) {
+	if (WRITABLE(s) && !(flags & SKIPGET)) {
 		fprintf(stderr,
 		    "Writeable %s exists, skipping it.\n", s->gfile);
-		s->state |= WARNED;
+		s->state |= S_WARNED;
 		return (-1);
 	}
 	if (!lock(s, 'z')) {
@@ -4255,135 +4271,39 @@ write_pfile(sccs *s, int flags, delta *d,
 	return (0);
 }
 
-/*
- * get the specified revision.
- * The output file is passed in so that callers can redirect it.
- * iLst and xLst are malloced and get() frees them.
- */
-int
-sccs_get(sccs *s, char *rev,
-	char *mRev, char *iLst, char *xLst, int flags, char *printOut)
+private int
+getRegBody(sccs *s, char *printOut, int flags, delta *d,
+		int *ln, char *iLst, char *xLst)
 {
 	serlist *state = 0;
 	ser_t	*slist = 0;
-	delta	*d;
-	int	print = 0;
-	int	lines = 0;
-	FILE	*out = 0;
-	int	popened = 0;
+	int	lines = 0, print = 0, popened, error = 0;
 	int	encoding = (flags&FORCEASCII) ? E_ASCII : s->encoding;
-	int	error = 0;
-	char	*lrev = 0, *tmp, *base, *i2 = 0;
 	sum_t	sum;
+	FILE 	*out;
 	BUF	(buf);
+	char 	*base, *f = (flags & PRINT) ? printOut : s->gfile;
 
-	debug((stderr, "get(%s, %s, %s, %s, %s, %x, %s)\n",
-	    s->sfile, rev, mRev, iLst, xLst, flags, printOut));
-	unless (s->state & SOPEN) {
-		fprintf(stderr, "get: couldn't open %s\n", s->sfile);
-err:		if (slist) free(slist);
-		if (state) free(state);
-		if (i2) free(i2);
-		return (-1);
-	}
-	unless (s->cksumok) {
-		fprintf(stderr, "get: bad chksum on %s\n", s->sfile);
-		goto err;
-	}
-	unless (s->tree) {
-		fprintf(stderr, "get: no/bad delta tree in %s\n", s->sfile);
-		goto err;
-	}
-	if ((s->state & BADREVS) && !(flags & FORCE)) {
+	slist = serialmap(s, d, flags, iLst, xLst, &error);
+	if (error == 1) {
+		assert(!slist);
 		fprintf(stderr,
-		    "get: bad revisions, run renumber on %s\n", s->sfile);
-		s->state |= WARNED;
-		goto err;
+		    "Malformed include/exclude list for %s\n",
+		    s->sfile);
+		s->state |= S_WARNED;
+		return 1;
 	}
-	/* this has to be above the getedit() - that changes the rev */
-	if (mRev) {
-		tmp = sccs_impliedList(s, "get", rev, mRev);
-		unless (tmp) goto err;
-		i2 = strconcat(tmp, iLst, ",");
-		if (i2 != tmp) free(tmp);
+	if (error == 2) {
+		assert(!slist);
+		fprintf(stderr,
+	"Can't find specified rev in include/exclude list for %s\n",
+		    s->sfile);
+		s->state |= S_WARNED;
+		return 1;
 	}
-	if (flags & EDIT) {
-		int	f = (s->state & BRANCHOK) ? flags&FORCEBRANCH : 0;
 
-		d = getedit(s, &rev, &lrev, f);
-		if (!d) {
-			fprintf(stderr, "get: can't find revision %s in %s\n",
-			    rev, s->sfile);
-			s->state |= WARNED;
-		}
-	} else {
-		d = findrev(s, rev);
-		if (!d) {
-			fprintf(stderr,
-			    "get: can't find revision like %s in %s\n",
-			rev, s->sfile);
-			s->state |= WARNED;
-		}
-	}
-	unless (d) goto err;
-	/* moved this up above the opens so that I can bail easily */
-	unless (flags & SKIPGET) {
-		if (i2) {
-			slist = serialmap(s, d, flags, i2, xLst, &error);
-		} else {
-			slist = serialmap(s, d, flags, iLst, xLst, &error);
-		}
-		if (error == 1) {
-			assert(!slist);
-			fprintf(stderr,
-			    "Malformed include/exclude list for %s\n",
-			    s->sfile);
-			s->state |= WARNED;
-			goto err;
-		}
-		if (error == 2) {
-			assert(!slist);
-			fprintf(stderr,
-		"Can't find specified rev in include/exclude list for %s\n",
-			    s->sfile);
-			s->state |= WARNED;
-			goto err;
-		}
-	}
-	if (flags & EDIT) {
-		if (write_pfile(s, flags, d, rev, lrev, iLst, i2, xLst, mRev)) {
-			goto err;
-		}
-		if (flags & SKIPGET) goto skip_get;
-		unlinkGfile(s);
-		unless (S_ISLNK(d->mode))  {
-			popened = openOutput(encoding, s->gfile, &out);
-			if (!out) {
-				fprintf(stderr, "Can't open %s for writing\n",
-				    s->gfile);
-				unlock(s, 'p');
-				unlock(s, 'z');
-				goto err;
-			}
-		}
-	} else if (flags&SKIPGET) {
-		goto skip_get;
-	} else if (flags & PRINT) {
-		popened = openOutput(encoding, printOut, &out);
-	} else if (S_ISLNK(d->mode)) {
-		unlinkGfile(s);
-	} else {
-		if (IS_WRITABLE(s)) {
-			fprintf(stderr,
-				"Writeable %s exists\n", s->gfile);
-			s->state |= WARNED;
-			goto err;
-		}
-		unlinkGfile(s);
-		popened = openOutput(encoding, s->gfile, &out);
-	}
-	if ((s->state & RCS) && (flags & EXPAND)) flags |= RCSEXPAND;
-	if ((s->state & BITKEEPER) && d->sum && !iLst && !xLst && !i2) {
+	if ((s->state & S_RCS) && (flags & EXPAND)) flags |= RCSEXPAND;
+	if ((s->state & S_BITKEEPER) && d->sum && !iLst && !xLst) {
 		flags |= NEWCKSUM;
 	}
 	/* Think carefully before changing this */
@@ -4392,10 +4312,11 @@ err:		if (slist) free(slist);
 	}
 	state = allocstate(0, 0, s->nextserial);
 	if (flags & MODNAME) base = basenm(s->gfile);
-	unless (out)  goto skip_data;
-	if (S_ISLNK(d->mode) && (flags & PRINT)) {
-		fprintf(out, "SYMLINK -> %s\n", d->glink);
-		goto get_done;
+	
+	popened = openOutput(encoding, f, &out);
+	unless (out) {
+		fprintf(stderr, "Can't open %s for writing\n", f);
+		return 1;
 	}
 	seekto(s, s->data);
 	sum = 0;
@@ -4460,8 +4381,7 @@ err:		if (slist) free(slist);
 		    "get: bad delta cksum %u:%u for %s in %s, gotten anyway.\n",
 		    d->sum, sum, d->rev, s->sfile);
 	}
-get_done:
-	debug((stderr, "GET done\n"));
+
 	if (popened) {
 		pclose(out);
 	} else if (flags & PRINT) {
@@ -4481,9 +4401,8 @@ get_done:
 			chmod(s->gfile, UMASK(0444));
 		}
 	}
-
-#ifdef ISSHELL
-	if ((s->state & ISSHELL) && ((flags & PRINT) == 0)) {
+#ifdef S_ISSHELL
+	if ((s->state & S_ISSHELL) && ((flags & PRINT) == 0)) {
 		char cmd[MAXPATH], *t;
 
 		t = strrchr(s->gfile, '/');
@@ -4495,18 +4414,141 @@ get_done:
 		system(cmd);
 	}
 #endif
-skip_data:
-	if ((S_ISLNK(d->mode)) && !(flags & PRINT)){
+	*ln = lines;
+	if (slist) free(slist);
+	if (state) free(state);
+	return 0;
+}
+
+private int
+getLinkBody(sccs *s,
+	char *printOut, int flags, delta *d, int *ln)
+{
+	if (flags & PRINT) {
+		int	popened; 
+		FILE 	*out;
+
+		popened = openOutput(E_ASCII, printOut, &out);
+		assert(popened == 0);
+		unless (out) {
+			fprintf(stderr,
+				"Can't open %s for writing\n", printOut);
+			return 1;
+		}
+		fprintf(out, "SYMLINK -> %s\n", d->glink);
+		unless (streq("-", printOut)) fclose(out);
+		*ln = 1;
+	} else {
 		unless (symlink(d->glink, s->gfile) == 0 ) {
 			perror(s->gfile);
-			if (flags&EDIT) unlock(s, 'z');
+			return 1;
+		}
+		*ln = 0;
+	}
+	return 0;
+}
+
+/*
+ * get the specified revision.
+ * The output file is passed in so that callers can redirect it.
+ * iLst and xLst are malloced and get() frees them.
+ */
+int
+sccs_get(sccs *s, char *rev,
+	char *mRev, char *iLst, char *xLst, int flags, char *printOut)
+{
+	delta	*d;
+	int	lines = 0, locked = 0, error;
+	char	*lrev = 0, *i2 = 0;
+
+	debug((stderr, "get(%s, %s, %s, %s, %s, %x, %s)\n",
+	    s->sfile, rev, mRev, iLst, xLst, flags, printOut));
+	unless (s->state & S_SOPEN) {
+		fprintf(stderr, "get: couldn't open %s\n", s->sfile);
+err:		if (i2) free(i2);
+		if (locked) { unlock(s, 'p'); unlock(s, 'z'); }
+		return (-1);
+	}
+	unless (s->cksumok) {
+		fprintf(stderr, "get: bad chksum on %s\n", s->sfile);
+		goto err;
+	}
+	unless (s->tree) {
+		fprintf(stderr, "get: no/bad delta tree in %s\n", s->sfile);
+		goto err;
+	}
+	if ((s->state & S_BADREVS) && !(flags & FORCE)) {
+		fprintf(stderr,
+		    "get: bad revisions, run renumber on %s\n", s->sfile);
+		s->state |= S_WARNED;
+		goto err;
+	}
+	/* this has to be above the getedit() - that changes the rev */
+	if (mRev) {
+		char *tmp;
+
+		tmp = sccs_impliedList(s, "get", rev, mRev);
+		unless (tmp) goto err;
+		i2 = strconcat(tmp, iLst, ",");
+		if (i2 != tmp) free(tmp);
+	}
+	if (flags & EDIT) {
+		int	f = (s->state & S_BRANCHOK) ? flags&FORCEBRANCH : 0;
+
+		d = getedit(s, &rev, &lrev, f);
+		if (!d) {
+			fprintf(stderr, "get: can't find revision %s in %s\n",
+			    rev, s->sfile);
+			s->state |= S_WARNED;
+		}
+	} else {
+		d = findrev(s, rev);
+		if (!d) {
+			fprintf(stderr,
+			    "get: can't find revision like %s in %s\n",
+			rev, s->sfile);
+			s->state |= S_WARNED;
+		}
+	}
+	unless (d) goto err;
+
+	if (flags & EDIT) {
+		if (write_pfile(s, flags, d, rev, lrev, iLst, i2, xLst, mRev)) {
+			goto err;
+		}
+		locked = 1;
+	}
+	if (flags&SKIPGET)  goto skip_get;
+	if ((flags & PRINT) == 0) {
+		if (WRITABLE(s)) {
+			fprintf(stderr, "Writeable %s exists\n", s->gfile);
+			s->state |= S_WARNED;
 			goto err;
 		}
 	}
-skip_get:
-	if (flags&EDIT) {
-		unlock(s, 'z');
+	unless (flags & PRINT) unlinkGfile(s);
+
+	/*
+	 * Base on the file type,
+	 * we call the appropriate function to get the body
+ 	 */
+	switch (fileType(d->mode)) {
+	    case 0:		/* uninitialized mode, assume regular file */
+	    case S_IFREG:	/* regular file */
+		error = getRegBody(s, printOut,
+					flags, d, &lines, i2? i2: iLst, xLst);
+		break;
+	    case S_IFLNK:	/* symlink */
+		error = getLinkBody(s, printOut, flags, d, &lines);
+		break;
+	    default:
+		assert("unsupported file type" == 0);
 	}
+	if (error) goto err;
+	debug((stderr, "GET done\n"));
+
+skip_get:
+	if (flags&EDIT) unlock(s, 'z');
 	if (!(flags&SILENT)) {
 		fprintf(stderr, "%s %s", s->gfile, d->rev);
 		if (flags & EDIT) {
@@ -4515,8 +4557,6 @@ skip_get:
 		if (!(flags & SKIPGET)) fprintf(stderr, ": %d lines", lines);
 		fprintf(stderr, "\n");
 	}
-	if (slist) free(slist);
-	if (state) free(state);
 	if (i2) free(i2);
 	return (0);
 }
@@ -4552,36 +4592,36 @@ sccs_getdiffs(sccs *s, char *rev, int flags, char *printOut)
 	sprintf(tmpfile, "/tmp/gdiffsU%d", getpid());
 	unless (lbuf = fopen(tmpfile, "w+")) {
 		fprintf(stderr, "getdiffs: couldn't open %s\n", tmpfile);
-		s->state |= WARNED;
+		s->state |= S_WARNED;
 		return (-1);
 	}
-	unless (s->state & SOPEN) {
+	unless (s->state & S_SOPEN) {
 		fprintf(stderr, "getdiffs: couldn't open %s\n", s->sfile);
-		s->state |= WARNED;
+		s->state |= S_WARNED;
 		return (-1);
 	}
 	unless (s->cksumok) {
 		fprintf(stderr, "getdiffs: bad chksum on %s\n", s->sfile);
-		s->state |= WARNED;
+		s->state |= S_WARNED;
 		return (-1);
 	}
 	unless (s->tree) {
 		fprintf(stderr,
 		    "getdiffs: no/bad delta tree in %s\n", s->sfile);
-		s->state |= WARNED;
+		s->state |= S_WARNED;
 		return (-1);
 	}
-	if (s->state & BADREVS) {
+	if (s->state & S_BADREVS) {
 		fprintf(stderr,
 		    "getdiffs: bad revisions, run renumber on %s\n", s->sfile);
-		s->state |= WARNED;
+		s->state |= S_WARNED;
 		return (-1);
 	}
 	d = findrev(s, rev);
 	if (!d) {
 		fprintf(stderr, "get: can't find revision like %s in %s\n",
 		    rev, s->sfile);
-		s->state |= WARNED;
+		s->state |= S_WARNED;
 	}
 	unless (d) return (-1);
 	slist = serialmap(s, d, flags, 0, 0, &error);
@@ -4827,8 +4867,8 @@ delta_table(sccs *s, FILE *out, int willfix)
 	char	buf[MAXLINE];
 	int	bits = 0;
 
-	assert((s->state & READ_ONLY) == 0);
-	assert(s->state & Z_LOCKED);
+	assert((s->state & S_READ_ONLY) == 0);
+	assert(s->state & S_ZFILE);
 	fprintf(out, "\001hXXXXX\n");
 	s->cksum = 0;
 	for (d = s->table; d; d = d->next) {
@@ -4903,7 +4943,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			fputsum(s, d->hostname, out);
 			fputsum(s, "\n", out);
 		}
-		if (s->state & BITKEEPER) {
+		if (s->state & S_BITKEEPER) {
 			if (first) {
 				fputsum(s, "\001cK", out);
 				s->sumOff = ftell(out);
@@ -4976,7 +5016,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			for (i = 0; i < LPAD_SIZE; i += 10) {
 				fputsum(s, "__________", out);
 			}
-			if (s->state & BIGPAD) {
+			if (s->state & S_BIGPAD) {
 				for (i = 0; i < 10*LPAD_SIZE; i += 10) {
 					fputsum(s, "__________", out);
 				}
@@ -4994,14 +5034,14 @@ delta_table(sccs *s, FILE *out, int willfix)
 	fputsum(s, "\001U\n", out);
 	sprintf(buf, "\001f e %d\n", s->encoding);
 	fputsum(s, buf, out);
-	if (s->state & BRANCHOK) {
+	if (s->state & S_BRANCHOK) {
 		fputsum(s, "\001f b\n", out);
 	}
-	if (s->state & BITKEEPER) bits |= X_BITKEEPER;
-	if (s->state & YEAR4) bits |= X_YEAR4;
-	if (s->state & RCS) bits |= X_RCSEXPAND;
-#ifdef ISSHELL
-	if (s->state & ISSHELL) bits |= X_ISSHELL;
+	if (s->state & S_BITKEEPER) bits |= X_BITKEEPER;
+	if (s->state & S_YEAR4) bits |= X_YEAR4;
+	if (s->state & S_RCS) bits |= X_RCSEXPAND;
+#ifdef S_ISSHELL
+	if (s->state & S_ISSHELL) bits |= X_ISSHELL;
 #endif
 	if (bits) {
 		char	buf[40];
@@ -5097,7 +5137,7 @@ sccs_hasDiffs(sccs *s, int flags)
 		verbose((stderr, "can't open %s\n", name));
 		RET(-1);
 	}
-	assert(s->state & SOPEN);
+	assert(s->state & S_SOPEN);
 	slist = serialmap(s, d, 0, 0, 0, 0);
 	state = allocstate(0, 0, s->nextserial);
 	seekto(s, s->data);
@@ -5223,11 +5263,40 @@ fix_lf(char *gfile)
 	return 0;
 }
 
+int isRegularFile(mode_t m)
+{
+	return ((m == 0) || S_ISREG(m));
+}
+
+/*
+ * Check mode/glink changes
+ * Changes in permission are ignored
+ * Returns:
+ *	0 if no change
+ *	1 if file type changed 
+ *	2 if meta mode field changed (e.g. glink)
+ *	
+ */
+diff_gmode(sccs *s, pfile *pf, char *tmpfile)
+{
+	delta *d = findrev(s, pf->oldrev);
+
+	unless (sameFileType(s, d)) return (1) ; /* type chaneged */
+	if (S_ISLNK(s->mode)) {
+		if (!streq(s->glink, d->glink)) return 2; /* mode changed */
+	}
+	return 0; /* no  change */
+}
+
 /*
 * Returns:
 *	-1 for some already bitched about error
 *	0 if there were differences
 *	1 if no differences
+*
+* 	This function is called to determine the difference 
+*	in the delta body. Note that, by definition, the delta body
+*	of non-regular file is empty.
 */
 private int
 diff_gfile(sccs *s, pfile *pf, char *tmpfile)
@@ -5238,48 +5307,61 @@ diff_gfile(sccs *s, pfile *pf, char *tmpfile)
 	delta *d;
 
 	debug((stderr, "diff_gfile(%s, %s)\n", pf->oldrev, s->gfile));
-	if (s->encoding > E_ASCII) {
-		sprintf(new, "%s/getU%d", TMP_PATH, getpid());
-		if (IS_WRITABLE(s)) {
-			if (deflate(s, new)) {
-				unlink(new);
-				return (-1);
+	assert(s->state & S_GFILE); 
+	/*
+	 * set up the "new" file
+	 */
+	if (isRegularFile(s->mode)) {
+		if (s->encoding > E_ASCII) {
+			sprintf(new, "%s/getU%d", TMP_PATH, getpid());
+			if (IS_WRITABLE(s)) {
+				if (deflate(s, new)) {
+					unlink(new);
+					return (-1);
+				}
+			} else {
+			/* XXX - I'm not sure when this would ever be used. */
+				if (sccs_get(s,
+				    0, 0, 0, 0, FORCEASCII|SILENT|PRINT, new)) {
+					unlink(new);
+					return (-1);
+				}
 			}
 		} else {
-/* XXX - I'm not sure when this would ever be used. */
-			if (sccs_get(s,
-			    0, 0, 0, 0, FORCEASCII|SILENT|PRINT, new)) {
-				unlink(new);
-				return (-1);
-			}
+			if (fix_lf(s->gfile) == -1) return (-1); 
+			strcpy(new, s->gfile);
 		}
-	} else if (S_ISLNK(s->mode)) {
-		FILE	*f;
+	} else { /* non regular file, e.g symlink */
+		strcpy(new, DEV_NULL);
+	}
 
-		sprintf(new, "%s/new%d", TMP_PATH, getpid());
-		f = fopen(new, "w");
-		fprintf(f, "SYMLINK -> %s\n", s->glink);
-		fclose(f);
+	/*
+	 * set up the "old" file
+	 */
+	d = findrev(s, pf->oldrev);
+	assert(d);
+	if (isRegularFile(d->mode)) {
+		sprintf(old, "%s/get%d", TMP_PATH, getpid());
+		if (sccs_get(s, pf->oldrev, pf->mRev, pf->iLst, pf->xLst,
+		    FORCEASCII|SILENT|PRINT, old)) {
+			unlink(old);
+			return (-1);
+		}
 	} else {
-		if (fix_lf(s->gfile) == -1) return (-1); 
-		strcpy(new, s->gfile);
+		strcpy(old, DEV_NULL);
 	}
-	sprintf(old, "%s/get%d", TMP_PATH, getpid());
-	if (sccs_get(s, pf->oldrev, pf->mRev, pf->iLst, pf->xLst,
-	    FORCEASCII|SILENT|PRINT, old)) {
-		unlink(old);
-		return (-1);
+
+	/*
+	 * now we do the diff
+	 */
+	ret = diff(old, new, DF_DIFF, tmpfile);
+	unless (streq(old, DEV_NULL)) unlink(old);
+	if (!streq(new, s->gfile) && !streq(new, DEV_NULL)){
+		unlink(new);		/* careful */
 	}
-	ret = diff(old, new, D_DIFF, tmpfile);
-	unlink(old);
-	unless (streq(new, s->gfile)) unlink(new);	/* careful */
+
 	switch (ret) {
-	    case 0:	/* diff return no diffs, now check file type changes */
-		d = findrev(s, pf->oldrev);
-		unless ((d->flags & D_MODE) && (s->state & GFILE)) return 1;
-		assert(s->mode);
-		if (fileType(s->mode) != fileType(d->mode)) return 0;
-		if (S_ISLNK(s->mode)) return streq(s->glink, d->glink);	
+	    case 0:	/* no diffs */
 		return (1);
 	    case 1:	/* diffs */
 		return (0);
@@ -5292,11 +5374,41 @@ diff_gfile(sccs *s, pfile *pf, char *tmpfile)
 	}
 }
 
+/*
+ * Check mode changes & changes in delta body.
+ * The real work is done in diff_gmode & diff_gfile.
+ * Returns:
+ *	-1 for some already bitched about error
+ *	0 if there were differences
+ *	1 if no differences
+ *	2 if diffs in meta mode field only (no change in delta body)
+ *
+ */
+diff_g(sccs *s, pfile *pf, char *tmpfile)
+{
+	switch (diff_gmode(s, pf, tmpfile)) {
+	    case 0: 		/* no mode change */
+		if (!isRegularFile(s->mode)) return 1;
+		return (diff_gfile(s, pf, tmpfile));
+		break;
+	    case 2:		/* meta mode field changed */
+		return 2;
+	    case 1:		/* file type changed */
+		if (diff_gfile(s, pf, tmpfile) == -1) return (-1);
+		return 0;
+	    default:
+		return -1;
+	}
+}
+
 private void
 unlinkGfile(sccs *s)
 {
 	unlink(s->gfile);	/* Careful */
 	s->mode = 0;
+	if (s->glink) free(s->glink);
+	s->glink = 0;
+	s->state &= ~S_GFILE;
 }
 
 private void
@@ -5343,6 +5455,7 @@ sccs_clean(sccs *s, int flags)
 {
 	pfile	pf;
 	char	tmpfile[50];
+	delta	*d;
 
 	unless (HAS_SFILE(s)) {
 		verbose((stderr, "%s not under SCCS control\n", s->gfile));
@@ -5350,7 +5463,7 @@ sccs_clean(sccs *s, int flags)
 	}
 	unless (s->tree) return (-1);
 	unless (HAS_PFILE(s)) {
-		if (S_ISLNK(s->mode) || !IS_WRITABLE(s)) {
+		unless (WRITABLE(s)) {
 			verbose((stderr, "Clean %s\n", s->gfile));
 			unlinkGfile(s);
 			return (0);
@@ -5367,14 +5480,27 @@ sccs_clean(sccs *s, int flags)
 		return (0);
 	}
 
-	if (S_ISLNK(s->mode)) {
-		delta	*d;
+	if (read_pfile("clean", s, &pf)) return (1);
+	unless (d = findrev(s, pf.oldrev)) {
+		free_pfile(&pf);
+		return (1);
+	}
 
-		if (read_pfile("clean", s, &pf)) return (1);
-		unless (d = findrev(s, pf.oldrev)) {
-			free_pfile(&pf);
-			return (1);
-		}
+        unless (sameFileType(s, d)) {
+		unless (flags & PRINT) {
+			fprintf(stderr,
+			"%s has been modified, needs delta.\n", s->gfile);
+                } else {
+			printf("===== %s (file type) %s vs edited =====\n",
+			s->gfile, pf.oldrev);
+			printf("< %s\n-\n", mode2FileType(d->mode));
+			printf("> %s\n", mode2FileType(s->mode));
+ 		}
+		free_pfile(&pf);
+		return (2);
+	}         
+
+	if (S_ISLNK(s->mode)) {
 		if (streq(s->glink, d->glink)) {
 			verbose((stderr, "Clean %s\n", s->gfile));
 			unlinkGfile(s);
@@ -5389,8 +5515,8 @@ sccs_clean(sccs *s, int flags)
 			    s->gfile, pf.oldrev, "edited");
 			printf("< SYMLINK -> %s\n-\n", d->glink);
 			printf("> SYMLINK -> %s\n", s->glink);
-			free_pfile(&pf);
 		}
+		free_pfile(&pf);
 		return (2);
 	}
 
@@ -5402,9 +5528,8 @@ sccs_clean(sccs *s, int flags)
 	if (access(s->gfile, W_OK)) {
 		verbose((stderr, "%s edited but not writeable?\n", s->gfile));
 		flags |= EXPAND;
-		if (s->state & RCS) flags |= RCSEXPAND;
+		if (s->state & S_RCS) flags |= RCSEXPAND;
 	}
-	if (read_pfile("clean", s, &pf)) return (1);
 	sprintf(tmpfile, "%s/diffg%d", TMP_PATH, getpid());
 	/*
 	 * hasDiffs() ignores keyword expansion differences.
@@ -5570,16 +5695,18 @@ openInput(sccs *s, int flags, FILE **inp)
  * b) glink field changed, or
  * c) has no parent (i.e p == null)
  * Changes in permission field are ignored.
+ * Returns
+ *	1 if should update
+ *	0 if should not update
  */
 int
 shouldUpdMode (sccs *s, delta *p)
 {
-#define sameFileType(a, b) (fileType(a->mode) == fileType(b->mode))
 	unless(p) return 1;
 	if (!sameFileType(s, p)) return 1;
 	if (s->glink == p->glink) return 0; 
 	if (s->glink) return (!streq(s->glink, p->glink));
-	assert("Andrew, why is there no return statement here?" == 0);
+	return 1;
 }
 
 /*
@@ -5591,7 +5718,7 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 	if (!d) d = calloc(1, sizeof(*d));
 	d->type = type;
 	assert(s);
-	if ((s->state & BITKEEPER) && (type == 'D')) d->flags |= D_CKSUM;
+	if ((s->state & S_BITKEEPER) && (type == 'D')) d->flags |= D_CKSUM;
 	unless (d->sdate) {
 		if (s->gtime) {
 			date(d, s->gtime);
@@ -5627,14 +5754,12 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 private void
 updMode(sccs *s, delta *d, delta *dParent)
 {
-	if ((s->state & GFILE) && !(d->flags & D_MODE)) {
-		if (shouldUpdMode(s, dParent)) {
-			assert(d->mode == 0);
-			d->mode = s->mode;
-			d->glink = s->glink;
-			s->glink = 0;
-			d->flags |= D_MODE;
-		}
+	if ((s->state & S_GFILE) && !(d->flags & D_MODE) &&
+	    shouldUpdMode(s, dParent)) {
+		assert(d->mode == 0);
+		d->mode = s->mode;
+		if (s->glink) d->glink = strdup(s->glink);
+		d->flags |= D_MODE;
 	}
 }
 
@@ -5669,14 +5794,13 @@ updatePending(sccs *s, delta *d)
 private int
 checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 {
-	FILE	*id, *sfile, *gfile;
+	FILE	*id, *sfile, *gfile = 0;
 	delta	*n;
 	int	added = 0;
 	int	popened, len;
 	char	*t;
 	char	buf[MAXLINE];
 	admin	l[2];
-	int	isLink = s->glink != 0;		/* XXX - what about patches? */
 
 	assert(s);
 	debug((stderr, "checkin %s %x\n", s->gfile, flags));
@@ -5687,7 +5811,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 		if (prefilled) sccs_freetree(prefilled);
 		return (1);
 	}
-	unless (diffs || isLink) {
+	if (!diffs && isRegularFile(s->mode)) {
 		popened = openInput(s, flags, &gfile);
 		unless (gfile) {
 			perror(s->gfile);
@@ -5700,7 +5824,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 	if (exists(s->sfile)) {
 		fprintf(stderr, "delta: lost checkin race on %s\n", s->sfile);
 		if (prefilled) sccs_freetree(prefilled);
-		if (!diffs && (gfile != stdin) && !isLink) {
+		if (gfile && (gfile != stdin)) {
 			if (popened) pclose(gfile); else fclose(gfile);
 		}
 		return (1);
@@ -5715,18 +5839,18 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 	updMode(s, n, 0);
 	if (!n->rev) n->rev = strdup("1.1");
 	explode_rev(n);
-	unless (s->state & NOSCCSDIR) {
-		if (s->state & CSET) {
+	unless (s->state & S_NOSCCSDIR) {
+		if (s->state & S_CSET) {
 			sccs_sdelta(buf, n);
 			n->csetFile = strdup(buf);
-			s->state |= BITKEEPER;	
+			s->state |= S_BITKEEPER;	
 			n->flags |= D_CKSUM;
 		} else {
 			t = relativeName(s, 0, 0);
 			assert(t);
 			if (t[0] != '/') {
 				n->csetFile = getCSetFile(s);
-				s->state |= BITKEEPER;	
+				s->state |= S_BITKEEPER;	
 			}
 		}
 	} 
@@ -5772,7 +5896,6 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 	buf[0] = 0;
 	fputsum(s, "\001I 1\n", sfile);
 	s->dsum = 0;
-	if (S_ISLNK(n->mode)) goto skip_data;
 	if (!(flags & PATCH) && (s->encoding > E_ASCII)) {
 		/* XXX - this is incorrect, it needs to do it depending on
 		 * what the encoding is.
@@ -5786,7 +5909,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 				added++;
 			}
 			fclose(diffs);
-		} else {
+		} else if (gfile) {
 			while (fnext(buf, gfile)) {
 				s->dsum += fputsum(s, buf, sfile);
 				added++;
@@ -5800,10 +5923,9 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 			s->dsum += fputsum(s, "\n", sfile);
 		}
 	}
-skip_data:
 	fputsum(s, "\001E 1\n", sfile);
 	end(s, n, sfile, flags, added, 0, 0);
-	if (s->state & BITKEEPER) {
+	if (s->state & S_BITKEEPER) {
 		if (id = idFile(s)) {
 			char	*path = s->tree->pathname;
 
@@ -5813,7 +5935,7 @@ skip_data:
 			fclose(id);
 		}
 	} 
-	if (!diffs && (gfile != stdin) && !isLink) {
+	if (gfile && (gfile != stdin)) {
 		if (popened) pclose(gfile); else fclose(gfile);
 	}
 #ifdef	PARANOID
@@ -5828,7 +5950,7 @@ skip_data:
 #endif
 	Chmod(s->sfile, 0444);
 	fclose(sfile);
-	if (s->state & BITKEEPER) updatePending(s, n);
+	if (s->state & S_BITKEEPER) updatePending(s, n);
 	unlock(s, 'z');
 	return (0);
 }
@@ -6417,8 +6539,8 @@ sccs_addSym(sccs *sc, int flags, char *s)
 		fprintf(stderr, "sccs_addSym: can't zlock %s\n", sc->gfile);
 		return -1;
 	}
-	assert((sc->state & READ_ONLY) == 0);
-	assert(sc->state & Z_LOCKED);
+	assert((sc->state & S_READ_ONLY) == 0);
+	assert(sc->state & S_ZFILE);
 	assert(sc->landingpad > sc->mmap);
 	assert(sc->landingpad < sc->mmap + sc->data);
 	s = strdup(s);
@@ -6490,7 +6612,7 @@ norev:			verbose((stderr, "admin: can't find rev %s in %s\n",
 	 * SAMBA files only support MAP_PRIVATE
 	 * so we have to write it out here.
 	 */
-	if (sc->state & MAPPRIVATE) {
+	if (sc->state & S_MAPPRIVATE) {
 		lseek(sc->fd, 0, SEEK_SET);
 		write(sc->fd, sc->mmap, sc->landingpad + len + 8 - sc->mmap);
 	}
@@ -6566,7 +6688,7 @@ addLod(char *me, sccs *sc, int flags, admin *l, int *ep)
 		unless (d) {
 			fprintf(stderr,
 			    "%s: can't find %s in %s\n", me, rev, sc->sfile);
-lod_err:		error = 1; sc->state |= WARNED;
+lod_err:		error = 1; sc->state |= S_WARNED;
 			free(name);
 			continue;
 		}
@@ -6645,7 +6767,7 @@ addSym(char *me, sccs *sc, int flags, admin *s, int *ep)
 			verbose((stderr,
 			    "%s: can't find %s in %s\n",
 			    me, rev, sc->sfile));
-sym_err:		error = 1; sc->state |= WARNED;
+sym_err:		error = 1; sc->state |= S_WARNED;
 			free(sym);
 			continue;
 		}
@@ -6716,7 +6838,7 @@ sccs_admin(sccs *sc, int flags,
 		unless (locked = lock(sc, 'z')) {
 			verbose((stderr,
 			    "admin: can't get lock on %s\n", sc->sfile));
-			error = -1; sc->state |= WARNED;
+			error = -1; sc->state |= S_WARNED;
 out:
 			if (sfile) fclose(sfile);
 			if (locked) unlock(sc, 'z');
@@ -6724,7 +6846,7 @@ out:
 			return (error);
 		}
 	}
-#define	OUT	error = -1; sc->state |= WARNED; goto out;
+#define	OUT	error = -1; sc->state |= S_WARNED; goto out;
 
 	unless (HAS_SFILE(sc)) {
 		verbose((stderr, "admin: no SCCS file: %s\n", sc->sfile));
@@ -6758,7 +6880,7 @@ out:
 		desc = fopen(text, "r");
 		if (!desc) {
 			fprintf(stderr, "admin: can't open %s\n", text);
-			error = 1; sc->state |= WARNED;
+			error = 1; sc->state |= S_WARNED;
 			goto user;
 		}
 		if (sc->text) {
@@ -6782,15 +6904,15 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 				verbose((stderr,
 				    "admin: user/group %s not found in %s\n",
 				    u[i].thing, sc->sfile));
-				error = 1; sc->state |= WARNED;
+				error = 1; sc->state |= S_WARNED;
 			}
 		}
 	}
 
 	/*
-	 * b	turn on branching support (BRANCHOK)
+	 * b	turn on branching support (S_BRANCHOK)
 	 * d	default branch (sc->defbranch)
-	 * R	turn on rcs keyword expansion (RCSEXPAND)
+	 * R	turn on rcs keyword expansion (S_RCS)
 	 * Y	turn on 4 digit year printouts
 	 *
 	 * Anything else, just eat it.
@@ -6804,33 +6926,33 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		    char	buf[500];
 
 		    case 'b':	if (add)
-					sc->state |= BRANCHOK;
+					sc->state |= S_BRANCHOK;
 				else
-					sc->state &= ~BRANCHOK;
+					sc->state &= ~S_BRANCHOK;
 				break;
 		    case 'd':	if (sc->defbranch) free(sc->defbranch);
 				sc->defbranch = *v ? strdup(v) : 0;
 				break;
 		    case 'B':	if (add)
-					sc->state |= BITKEEPER;
+					sc->state |= S_BITKEEPER;
 				else
-					sc->state &= ~BITKEEPER;
+					sc->state &= ~S_BITKEEPER;
 				break;
 		    case 'R':	if (add)
-					sc->state |= RCS;
+					sc->state |= S_RCS;
 				else
-					sc->state &= ~RCS;
+					sc->state &= ~S_RCS;
 				break;
 		    case 'Y':	if (add)
-					sc->state |= YEAR4;
+					sc->state |= S_YEAR4;
 				else
-					sc->state &= ~YEAR4;
+					sc->state &= ~S_YEAR4;
 				break;
-#ifdef ISSHELL
+#ifdef S_ISSHELL
 		    case 'X':	if (add)
-					sc->state |= ISSHELL;
+					sc->state |= S_ISSHELL;
 				else
-					sc->state &= ~ISSHELL;
+					sc->state &= ~S_ISSHELL;
 				break;
 #endif
 		    default:	sprintf(buf, "%c %s", v[-1], v);
@@ -6843,7 +6965,8 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 						    "admin: flag %s not "
 						    "found in %s\n",
 						    buf, sc->sfile));
-						error = 1; sc->state |= WARNED;
+						error = 1;
+						sc->state |= S_WARNED;
 					}
 				}
 				break;
@@ -6865,7 +6988,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	delta_table(sc, sfile, 0);
 
 	seekto(sc, sc->data);
-	assert(sc->state & SOPEN);
+	assert(sc->state & S_SOPEN);
 	while (next(buf, sc)) {
 		fputsum(sc, buf, sfile);
 	}
@@ -6960,8 +7083,8 @@ delta_body(sccs *s, delta *n, FILE *diffs, FILE *out, int *ap, int *dp, int *up)
 	sum_t	sum;
 	char	buf2[MAXLINE];
 
-	assert((s->state & READ_ONLY) == 0);
-	assert(s->state & Z_LOCKED);
+	assert((s->state & S_READ_ONLY) == 0);
+	assert(s->state & S_ZFILE);
 	*ap = *dp = *up = 0;
 	/*
 	 * Do the actual delta.
@@ -6969,7 +7092,7 @@ delta_body(sccs *s, delta *n, FILE *diffs, FILE *out, int *ap, int *dp, int *up)
 	seekto(s, s->data);
 	slist = serialmap(s, n, 0, 0, 0, 0);	/* XXX - -gLIST */
 	s->dsum = 0;
-	assert(s->state & SOPEN);
+	assert(s->state & S_SOPEN);
 	state = allocstate(0, 0, s->nextserial);
 	while (fnext(buf2, diffs)) {
 		int	where;
@@ -7618,7 +7741,7 @@ sccs_meta(sccs *s, delta *parent, char *initFile)
 	unless (lock(s, 'z')) {
 		fprintf(stderr,
 		    "meta: can't get lock on %s\n", s->sfile);
-		s->state |= WARNED;
+		s->state |= S_WARNED;
 		debug((stderr, "meta returns -1\n"));
 		return (-1);
 	}
@@ -7655,7 +7778,7 @@ sccs_meta(sccs *s, delta *parent, char *initFile)
 	}
 	delta_table(s, sfile, 0);
 	seekto(s, s->data);
-	assert(s->state & SOPEN);
+	assert(s->state & S_SOPEN);
 	while (next(buf, s)) {
 		fputsum(s, buf, sfile);
 	}
@@ -7708,18 +7831,18 @@ sccs_delta(sccs *s, int flags, delta *prefilled, FILE *init, FILE *diffs)
 	bzero(&pf, sizeof(pf));
 	unless(locked = lock(s, 'z')) {
 		fprintf(stderr, "delta: can't get lock on %s\n", s->sfile);
-		error = -1; s->state |= WARNED;
+		error = -1; s->state |= S_WARNED;
 out:
 		if (prefilled) sccs_freetree(prefilled);
 		if (sfile) fclose(sfile);
 		if (diffs) fclose(diffs);
 		free_pfile(&pf);
-		unlink(tmpfile);
+		unless (streq(tmpfile, DEV_NULL)) unlink(tmpfile);
 		if (locked) unlock(s, 'z');
 		debug((stderr, "delta returns %d\n", error));
 		return (error);
 	}
-#define	OUT	{ error = -1; s->state |= WARNED; goto out; }
+#define	OUT	{ error = -1; s->state |= S_WARNED; goto out; }
 
 	if (init) {
 		int	e;
@@ -7731,7 +7854,7 @@ out:
 			goto out;
 		}
 		debug((stderr, "delta got prefilled %s\n", prefilled->rev));
-		if ((flags & PATCH) && !(s->state & ONE_ZERO)) {
+		if ((flags & PATCH) && !(s->state & S_ONE_ZERO)) {
 			free(prefilled->rev);
 			prefilled->rev = 0;
 		}
@@ -7744,14 +7867,14 @@ out:
 	if (!HAS_PFILE(s) && HAS_SFILE(s) && HAS_GFILE(s) && IS_WRITABLE(s)) {
 		fprintf(stderr,
 		    "delta: %s writable but not checked out?\n", s->gfile);
-		s->state |= WARNED;
+		s->state |= S_WARNED;
 		OUT;
 	}
 	if (HAS_GFILE(s)) {
 		if (diffs) {
 			fprintf(stderr,
 			    "delta: diffs or gfile, but not both.\n");
-			s->state |= WARNED;
+			s->state |= S_WARNED;
 			goto out;
 		}
 	} else unless (diffs) {
@@ -7786,7 +7909,7 @@ out:
 	if (diffs) {
 		debug((stderr, "delta using diffs passed in\n"));
 	} else {
-		switch (diff_gfile(s, &pf, tmpfile)) {
+		switch (diff_g(s, &pf, tmpfile)) {
 		    case 1:		/* no diffs */
 						    /* CSTYLED */
 			if (flags & FORCE) break;     /* forced 0 sized delta */
@@ -7795,6 +7918,9 @@ out:
 				    "Clean %s (no diffs)\n", s->gfile);
 			unedit(s, flags);
 			goto out;
+		    case 2:		/* diffs in mode only */
+			tmpfile = DEV_NULL;
+			break;
 		    case 0:		/* diffs */
 			break;
 		    default: OUT;
@@ -7940,7 +8066,7 @@ out:
 	}
 	Chmod(s->sfile, 0444);
 	unlink(s->pfile);
-	if (s->state & BITKEEPER) updatePending(s, n);
+	if (s->state & S_BITKEEPER) updatePending(s, n);
 	goto out;
 }
 
@@ -8005,20 +8131,20 @@ end(sccs *s, delta *n, FILE *out, int flags, int add, int del, int same)
 	fseek(out, 8L, SEEK_SET);
 	sprintf(buf, "\001s %05d/%05d/%05d\n", add, del, same);
 	if (strlen(buf) > 21) {
-		unless (s->state & BITKEEPER) {
+		unless (s->state & S_BITKEEPER) {
 			fprintf(stderr, "%s: file too large\n", s->gfile);
 			exit(1);
 		}
 		fitCounters(buf, add, del, same);
 	}
 	fputsum(s, buf, out);
-	if (s->state & BITKEEPER) {
+	if (s->state & S_BITKEEPER) {
 		if ((add || del || same) && (n->flags & D_ICKSUM)) {
 			if (s->dsum != n->sum) {
 				fprintf(stderr,
 				    "Bad delta checksum: %u vs %u\n",
 				    s->dsum, n->sum);
-				s->state |= BAD_DSUM;
+				s->state |= S_BAD_DSUM;
 			}
 		}
 		unless (n->flags & D_ICKSUM) {
@@ -8056,7 +8182,7 @@ sccs_diffs(sccs *s, char *r1, char *r2, int flags, char kind, FILE *out)
 
 	bzero(&pf, sizeof(pf));
 	GOODSCCS(s);
-	if (kind == D_SDIFF) {
+	if (kind == DF_SDIFF) {
 		unless (columns = getenv("COLUMNS")) columns = "80";
 	}
 	if (r1 && r2) {
@@ -8073,7 +8199,7 @@ sccs_diffs(sccs *s, char *r1, char *r2, int flags, char kind, FILE *out)
 		unless (HAS_GFILE(s)) {
 			verbose((stderr,
 			    "diffs: %s not checked out.\n", s->gfile));
-			s->state |= WARNED;
+			s->state |= S_WARNED;
 			return (-1);
 		}
 		left = 0;
@@ -8117,7 +8243,7 @@ sccs_diffs(sccs *s, char *r1, char *r2, int flags, char kind, FILE *out)
 	}
 	if (!right) right = findrev(s, 0)->rev;
 	if (!left) left = findrev(s, 0)->rev;
-	if (kind == D_SDIFF) {
+	if (kind == DF_SDIFF) {
 		int	i, c = atoi(columns);
 
 		for (i = 0; i < c/2 - 18; ) spaces[i++] = '=';
@@ -8145,7 +8271,7 @@ sccs_diffs(sccs *s, char *r1, char *r2, int flags, char kind, FILE *out)
 		}
 		fputs(buf, out);
 	}
-	if (kind == D_SDIFF) {
+	if (kind == DF_SDIFF) {
 		fastPclose(diffs);
 	} else {
 		fclose(diffs);
@@ -8355,7 +8481,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		if (d->sdate) {
 			char	val[512];
 
-			if (s->state & YEAR4) {
+			if (s->state & S_YEAR4) {
 				q = &val[2];
 			} else {
 				q = val;
@@ -8363,7 +8489,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 			for (p = d->sdate; *p && *p != '/'; )
 				*q++ = *p++;
 			*q = '\0';
-			if (s->state & YEAR4) {
+			if (s->state & S_YEAR4) {
 				if (atoi(&val[2]) <= 68) {
 					val[0] = '2';
 					val[1] = '0';
@@ -8741,7 +8867,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	if (streq(kw, "TYPE")) {
-		if (s->state & BITKEEPER) { 
+		if (s->state & S_BITKEEPER) { 
 			fs("BitKeeper");
 		} else {
 			fs("SCCS");
@@ -9036,8 +9162,8 @@ sccs_perfile(sccs *s, FILE *out)
 
 	if (s->defbranch) fprintf(out, "f d %s\n", s->defbranch);
 	if (s->encoding) fprintf(out, "f e %d\n", s->encoding);
-	if (s->state & YEAR4) i |= X_YEAR4;
-	if (s->state & RCS) i |= X_RCSEXPAND;
+	if (s->state & S_YEAR4) i |= X_YEAR4;
+	if (s->state & S_RCS) i |= X_RCSEXPAND;
 	if (i) fprintf(out, "f x %u\n", i);
 	EACH(s->text) fprintf(out, "T %s\n", s->text[i]);
 	fprintf(out, "\n");
@@ -9053,7 +9179,7 @@ sccs_getperfile(FILE *in, int *lp)
 	int	unused = 1;
 	char	buf[200];
 
-	s->state |= BITKEEPER;		/* duh */
+	s->state |= S_BITKEEPER;		/* duh */
 	unless (fnext(buf, in)) goto err;
 	chop(buf);
 	unless (buf[0]) {
@@ -9081,8 +9207,8 @@ err:			fprintf(stderr,
 		int	bits = atoi(&buf[4]);
 
 		unused = 0;
-		if (bits & X_YEAR4) s->state |= YEAR4;
-		if (bits & X_RCSEXPAND) s->state |= RCS;
+		if (bits & X_YEAR4) s->state |= S_YEAR4;
+		if (bits & X_RCSEXPAND) s->state |= S_RCS;
 		unused = 0;
 		unless (fnext(buf, in)) goto err; chop(buf); (*lp)++;
 	}
@@ -9764,7 +9890,7 @@ all:		if (sccs_get(s, rev, 0, 0, 0, SILENT|PRINT, name)) {
 		}
 		unless (d->parent) goto all;
 		f = fopen(name, "wt");
-		if (sccs_diffs(s, d->parent->rev, rev, SILENT, D_RCS, f)) {
+		if (sccs_diffs(s, d->parent->rev, rev, SILENT, DF_RCS, f)) {
 			sccs_whynot("get", s);
 			exit(1);
 		}
@@ -9835,7 +9961,7 @@ sccs_rmdel(sccs *s, char *rev, int destroy, int flags)
 	bzero(&pf, sizeof (pf));
 	unless(locked = lock(s, 'z')) {
 		fprintf(stderr, "rmdel: can't get lock on %s\n", s->sfile);
-		error = -1; s->state |= WARNED;
+		error = -1; s->state |= S_WARNED;
 rmdelout:
 		if (sfile) fclose(sfile);
 		free_pfile(&pf);
@@ -9844,7 +9970,7 @@ rmdelout:
 		return (error);
 	}
 #define	RMDELOUT	\
-	do { error = -1; s->state |= WARNED; goto rmdelout; } while (0)
+	do { error = -1; s->state |= S_WARNED; goto rmdelout; } while (0)
 
 	if (!HAS_SFILE(s)) {
 		fprintf(stderr, "rmdel: no sfile\n");

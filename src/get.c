@@ -79,7 +79,7 @@ get_main(int ac, char **av, char *out)
 		    case 'P': flags |= PRINT|FORCE; break;
 		    case 'q': flags |= SILENT; break;
 		    case 'r': rev = optarg; break;
-		    case 'R': hasrevs = HASREVS; break;
+		    case 'R': hasrevs = SF_HASREVS; break;
 		    case 's': flags |= SILENT; break;
 		    case 't': break;	/* compat, noop */
 		    case 'u': flags |= USER; break;
@@ -126,7 +126,7 @@ usage:			fprintf(stderr, "get: usage error, try get --help\n");
 			}
 		}
 		if (!s->tree) {
-			if (!(s->state & SFILE)) {
+			if (!(s->state & S_SFILE)) {
 				fprintf(stderr, "co: %s doesn't exist.\n",
 				    s->sfile);
 			} else {
@@ -136,7 +136,7 @@ usage:			fprintf(stderr, "get: usage error, try get --help\n");
 			continue;
 		}
 		if (cdate) {
-			s->state |= RANGE2;
+			s->state |= S_RANGE2;
 			d = sccs_getrev(s, 0, cdate, ROUNDUP);
 			if (!d) {
 				fprintf(stderr,

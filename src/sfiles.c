@@ -87,7 +87,7 @@ again:
 		}
 		strcpy(buf, name);
 	}
-	if (flags & HASREVS)  {
+	if (flags & SF_HASREVS)  {
 		char	*r = strrchr(buf, ':');
 
 		rev[0] = 0;	/* paranoia is your friend */
@@ -104,7 +104,7 @@ norev:	if (!is_sccs(buf)) {
 		strcpy(buf, name);
 		free(name);
 	}
-	if (oksccs(buf, flags, 1)) {
+	if (oksccs(buf, flags, !(flags & SF_SILENT))) {
 		return (buf);
 	}
 	goto again;
@@ -127,7 +127,7 @@ sfileFirst(char *cmd, char **Av, int Flags)
 	sfileDone();
 	rev[0] = 0;
 	prog = cmd;
-	flags = Flags|HASREVS;
+	flags = Flags|SF_HASREVS;
 	if (Av[0]) {
 #ifdef WIN32
 		nt2bmfname(Av[0], Av[0]);
@@ -143,7 +143,7 @@ sfileFirst(char *cmd, char **Av, int Flags)
 			return (sfileNext());
 		}
 		if (isdir(Av[0])) {
-			if (flags & NOEXPAND) return (0);
+			if (flags & SF_NOEXPAND) return (0);
 			if (Av[1]) {
 				fprintf(stderr,
 				    "%s: directory must be alone.\n", prog);
@@ -163,7 +163,7 @@ sfileFirst(char *cmd, char **Av, int Flags)
 		ac = 0;
 		return (sfileNext());
 	}
-	if (flags & NOEXPAND) return (0);
+	if (flags & SF_NOEXPAND) return (0);
 	if (!d) {
 		strcpy(prefix, "SCCS/");
 		d = opendir("SCCS");
@@ -212,30 +212,29 @@ oksccs(char *sfile, int flags, int complain)
 	}
 	if (s[0] != 's' || s[1] != '.') {
 		if (complain)
-			verbose((stderr,
-			    "%s: not an s.file: %s\n", prog, sfile));
+			fprint(stderr, "%s: not an s.file: %s\n", prog, sfile);
 		return (0);
 	}
 	g = sccs2name(sfile);
 	ok = lstat(g, &sbuf) == 0;
-	if ((flags&GFILE) && !ok) {
+	if ((flags&SF_GFILE) && !ok) {
 		if (complain) {
 			unless (exists(sfile)) {
-				verbose((stderr,
+				fprint(stderr,
 				    "%s: neither '%s' nor '%s' exists.\n",
-				    prog, g, sfile));
+				    prog, g, sfile);
 			} else {
-				verbose((stderr,
-				    "%s: no such file: %s\n", prog, g));
+				fprint(stderr,
+				    "%s: no such file: %s\n", prog, g);
 			}
 		}
 		free(g);
 		return (0);
 	}
-	if ((flags&WRITE_OK) && !(sbuf.st_mode & 0600)) {
+	if ((flags&SF_WRITE_OK) && !(sbuf.st_mode & 0600)) {
 		if (complain)
-			verbose((stderr,
-			    "%s: %s: no write permission\n", prog, g));
+			fprintf(stderr,
+			    "%s: %s: no write permission\n", prog, g);
 		free(g);
 		return (0);
 	}
@@ -248,11 +247,14 @@ void concat_path(char *buf, char *first, char *second)
 {
 	strcpy(buf, first);
 	/*
-	 * if "first" and "second" already have a seperator between them, don't add another one.
+	 * if "first" and "second" already have a seperator between them,
+	 * don't add another one.
 	 * Another special case is also checked here: "second" is a null string.
 	 */
-	if ((first[strlen(first) -1] != '/') && (second[0] != '/') && (second[0] != '\0'))
+	if ((first[strlen(first) -1] != '/') &&
+	    (second[0] != '/') && (second[0] != '\0')) {
 		strcat(buf, "/");
+	}
 	strcat(buf, second);
 }
 

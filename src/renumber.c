@@ -89,7 +89,7 @@ usage:		fprintf(stderr, "usage: %s [-n] [files...]\n", av[0]);
 			sfileDone();
 			return (1);
 		}
-		unless (s->state & BADREVS) {
+		unless (s->state & S_BADREVS) {
 			sccs_free(s);
 			continue;
 		}

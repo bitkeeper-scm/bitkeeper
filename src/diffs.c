@@ -65,13 +65,13 @@ main(int ac, char **av)
 	while ((c = getopt(ac, av, "acd;DMnpr|suUv")) != -1) {
 		switch (c) {
 		    case 'a': all = 1; break;
-		    case 'c': kind = D_CONTEXT; break;
+		    case 'c': kind = DF_CONTEXT; break;
 		    case 'D': flags |= PREFIXDATE; break;
 		    case 'M': flags |= REVNUMS; break;
-		    case 'p': kind = D_PDIFF; break;
-		    case 'n': kind = D_RCS; break;
-		    case 's': kind = D_SDIFF; break;
-		    case 'u': kind = D_UNIFIED; break;
+		    case 'p': kind = DF_PDIFF; break;
+		    case 'n': kind = DF_RCS; break;
+		    case 's': kind = DF_SDIFF; break;
+		    case 'u': kind = DF_UNIFIED; break;
 		    case 'U': flags |= USER; break;
 		    RANGE_OPTS('d', 'r');
 		    default:
@@ -93,9 +93,9 @@ usage:			fprintf(stderr, "diffs: usage error, try --help\n");
 	}
 
 	if (all || things) {
-		name = sfileFirst("diffs", &av[optind], SFILE);
+		name = sfileFirst("diffs", &av[optind], 0);
 	} else {
-		name = sfileFirst("diffs", &av[optind], GFILE|SFILE);
+		name = sfileFirst("diffs", &av[optind], SF_GFILE);
 	}
 	while (name) {
 		int	ex = 0;

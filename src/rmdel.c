@@ -46,7 +46,7 @@ rmdel_main(int ac, char **av, char *out)
 	do {
 		unless (s = sccs_init(name, flags)) continue;
 		if (!s->tree) {
-			if (!(s->state & SFILE)) {
+			if (!(s->state & S_SFILE)) {
 				fprintf(stderr, "rmdel: %s doesn't exist.\n",
 				    s->sfile);
 			} else {

@@ -44,14 +44,15 @@ usage:		fprintf(stderr, "usage: %s [-puv] [files...]\n", av[0]);
 	 */
 	if (flags & UNEDIT) {
 		unless (name =
-		    sfileFirst("clean", &av[optind], SFILE|GFILE|NOEXPAND)) {
+		    sfileFirst("clean",
+				&av[optind], SF_GFILE|SF_NOEXPAND)) {
 			fprintf(stderr,
 			    "clean: must have explicit list "
 			    "when discarding changes.\n");
 			exit(1);
 		}
 	} else {
-		name = sfileFirst("clean", &av[optind], SFILE|GFILE);
+		name = sfileFirst("clean", &av[optind], SF_GFILE);
 	}
 	while (name) {
 		if ((s = sccs_init(name, flags))) {

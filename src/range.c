@@ -39,7 +39,7 @@ void
 rangeReset(sccs *sc)
 {
 	sc->rstart = sc->rstop = 0;
-	sc->state &= ~RANGE2;
+	sc->state &= ~S_RANGE2;
 }
 
 /*
@@ -72,7 +72,7 @@ rangeAdd(sccs *sc, char *rev, char *date)
 			*s = '.';
 			return (-1);
 		}
-		sc->state |= RANGE2;
+		sc->state |= S_RANGE2;
 		*s = '.';
 		if (rev) {
 			rev = &s[2];
@@ -162,7 +162,7 @@ usage:			fprintf(stderr,
 			exit(1);
 		}
 	}
-	for (name = sfileFirst("range", &av[optind], SFILE);
+	for (name = sfileFirst("range", &av[optind], 0);
 	    name; name = sfileNext()) {
 	    	unless (s = sccs_init(name, NOCKSUM)) {
 			continue;

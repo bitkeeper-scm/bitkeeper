@@ -32,7 +32,7 @@
 	} \
 	if (things == 2) { \
 		if ((r[1] || d[1]) && (rangeAdd(s, r[1], d[1]) == -1)) { \
-			s->state |= RANGE2; \
+			s->state |= S_RANGE2; \
 			if (noisy) { \
 				fprintf(stderr, \
 				    "%s: no such delta ``%s'' in %s\n", \

@@ -202,7 +202,7 @@ main(int ac, char **av, char **ev)
 			error = 1;
 			continue;
 		}
-		if (bigpad) sc->state |= BIGPAD;
+		if (bigpad) sc->state |= S_BIGPAD;
 #ifndef	USE_STDIO
 		if (fastSym && sc->landingpad) {
 			int rc;
@@ -227,7 +227,7 @@ main(int ac, char **av, char **ev)
 		if (m) {
 			delta	*d;
 			
-			sc->state |= RANGE2;
+			sc->state |= S_RANGE2;
 			if (d = sccs_getrev(sc, rev, 0, 0)) d = modeArg(d, m);
 		}
 		if (merge) {
@@ -339,7 +339,7 @@ do_checkin(char *name, int encoding,
 	 * If they specified a gfile and it is different than the implied
 	 * gfile, and the implied gfile exists, that's too weird, fail it.
 	 */
-	if ((s->state & GFILE) && newfile && strcmp(newfile, s->gfile)) {
+	if ((s->state & S_GFILE) && newfile && strcmp(newfile, s->gfile)) {
 		fprintf(stderr,
 		    "admin: gfile %s exists and is "
 		    "different than specified init file %s\n",
@@ -386,7 +386,7 @@ do_checkin(char *name, int encoding,
 	} else {
 		flags |= EMPTY;
 	}
-	s->state |= GFILE;
+	s->state |= S_GFILE;
 	if (comment) { d = sccs_parseArg(d, 'C', comment, 0); }
 	if ((error = sccs_delta(s, flags|SAVEGFILE, d, 0, 0))) {
 		unless (BEEN_WARNED(s)) {

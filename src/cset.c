@@ -45,7 +45,8 @@ int
 main(int ac, char **av)
 {
 	sccs	*cset;
-	int	flags = BRANCHOK;
+	//int	flags = BRANCHOK;
+	int	flags = 0;
 	int	c, list = 0;
 	char	*sym = 0;
 	int	plus = 0;
@@ -195,7 +196,7 @@ csetInit(sccs *cset, int flags, char *sym)
 	unless(d = getUserName(d)) goto intr;
 
 	unless (d = sccs_parseArg(d, 'R', "1.0", 0)) goto intr;
-	cset->state |= CSET;
+	cset->state |= S_CSET;
 	if (sym) {
 		if (!d) d = calloc(1, sizeof(*d));
 		d->sym = strdup(sym);
