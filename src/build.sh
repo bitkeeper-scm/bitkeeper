@@ -154,6 +154,14 @@ if [ "$CHECK" ]; then
     rm -f $$ $$.c
 fi
 
+test -f /build/.static && BK_STATIC=YES
+test -z "$BK_STATIC" || {
+	# XXX - GCC static syntax, will need to be updated for others.
+	LD="$LD -static"
+	CC="$CC -static"
+	export BK_STATIC
+}
+
 if [ $WARN = NO ]
 then	$MAKE WARNINGS= "CC=$CC $CCXTRA" "G=$G" "LD=$LD" "XLIBS=$XLIBS" "$@"
 else	$MAKE "CC=$CC $CCXTRA" "G=$G" "LD=$LD" "XLIBS=$XLIBS" "$@"
