@@ -787,6 +787,7 @@ delta	*sfind(sccs *s, ser_t ser);
 int	sccs_lock(sccs *, char);	/* respects repo locks */
 int	sccs_lockfile(char *lockfile, int tries);	/* works in NFS */
 int	sccs_unlock(sccs *, char);
+char	*sccs_utctime(delta *d);
 int	sccs_setlod(char *rev, u32 flags);
 void	sccs_renumber(sccs *s, ser_t nextlod, ser_t thislod, MDBM *lodDb,
 	    char *base, u32 flags);

@@ -45,9 +45,11 @@ sccs_rm(char *name, char *del_name, int useCommonDir)
 {
 	char	path[MAXPATH], root[MAXPATH];
 	char	*sfile;
-	char	*t, *b;
+	char	*p, *r, *t, *b;
 	int	try = 0;
 	int	error = 0;
+	sccs	*s;
+	delta	*d;
 
 	sfile = name2sccs(name);
 	b = basenm(sfile);
@@ -66,14 +68,20 @@ sccs_rm(char *name, char *del_name, int useCommonDir)
 		assert(t);
 		t++;
 	}
+	s = sccs_init(sfile, 0, 0);
+	assert(s);
+	d = sccs_ino(s);
+	p = sccs_utctime(d);
+	r = d->random ?  d->random : ""; 
 	for (try = 0; ; try++) {
 		if (try) {
-			sprintf(t, "s..del-%s~%d", &b[2], try);
+			sprintf(t, "s..del-%s~%s~%s~%d", &b[2], r, p, try);
 		} else {
-			sprintf(t, "s..del-%s", &b[2]);
+			sprintf(t, "s..del-%s~%s~%s", &b[2], r, p);
 		}
 		unless (exists(path)) break;
 	}
+	sccs_free(s);
 	if (del_name) strcpy(del_name, path);
 	error |= sccs_mv(sfile, path, 0, 1);
 	free(sfile);
