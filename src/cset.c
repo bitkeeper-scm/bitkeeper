@@ -805,7 +805,7 @@ csetlist(cset_t *cs, sccs *cset)
 		close(creat(csort, TMP_MODE));
 	}
 	unlink(cat);
-	unless (list = fopen(csort, "r")) {
+	unless (list = fopen(csort, "rt")) { /* win32 sort used text mode */
 		perror(buf);
 		goto fail;
 	}
@@ -850,6 +850,7 @@ again:	/* doDiffs can make it two pass */
 		goto again;
 	}
 	fclose(list);
+	list = 0;
 	doKey(cs, 0, 0);
 	if (cs->verbose && cs->makepatch) {
 		fprintf(stderr,
@@ -887,6 +888,7 @@ fail:
 		fputs(eot, stdout);	/* send  EOF indicator */
 		fclose(stdout);
 	}
+	if (list) fclose(list);
 	unlink(csort);
 	free(csetid);
 	if (goneDB) mdbm_close(goneDB);
