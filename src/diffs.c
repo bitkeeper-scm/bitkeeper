@@ -1,0 +1,155 @@
+/* Copyright (c) 1997 L.W.McVoy */
+#include "sccs.h"
+WHATSTR("%W%");
+
+/*
+ * diffs - show differences of SCCS revisions.
+ *
+ * diffs file file file....
+ *	for each file that is checked out, diff it against the old version.
+ * diffs -r<rev> file
+ *	diff the checked out (or TOT) against rev like so
+ *	diff rev TOT
+ * diffs -r<r1> -r<r2> file
+ *	diff the two revisions like so
+ *	diff r1 r2
+ *
+ * In a quite inconsistent but (to me) useful fashion, I don't default to
+ * all files when there are no arguments.  I want
+ *	diffs
+ *	diffs -dalpha1
+ * to behave differently.
+ */
+char	*diffs_help = "\n\
+usage: diffs [-acDMsuU] [-d<d>] [-r<r>] [files...]\n\n\
+    -a		do diffs on all sfiles\n\
+    -c		do context diffs\n\
+    -d<dates>	diff using date or symbol\n\
+    -D		prefix lines with dates\n\
+    -M		prefix lines with revision numbers\n\
+    -p		procedural diffs, like diff -p\n\
+    -r<r>	diff revision <r>\n\
+    -s		do side by side\n\
+    -u		do unified diffs\n\
+    -U		prefix lines with user names\n\
+    -v		be verbose about non matching ranges\n\n\
+    Ranges of dates, symbols, and/or revisions may be specified.\n\n\
+    -r1.3 -r1.6	    diffs those revisions\n\
+    -d9207 -d92	    diffs changes from July 1 '92 to Dec 31 '92\n\
+    -dAlpha,Beta    diffs changes after Alpha up to and including Beta\n\n\
+    The date can be a symbol instead of a date.  Dates and revisions may\n\
+    be mixed and matched, see range(1) for a full description.\n\n\
+";
+
+int
+main(int ac, char **av)
+{
+	sccs	*s;
+	int	all = 0, flags = SILENT, c;
+	char	kind = streq(av[0], "sdiffs") ? D_SDIFF : D_DIFF;
+	char	*name;
+	char	*r[2], *d[2];
+	int	things = 0, rd = 0;
+
+	debug_main(av);
+	if (ac > 1 && streq("--help", av[1])) {
+		fprintf(stderr, diffs_help);
+		return (1);
+	}
+
+	r[0] = r[1] = d[0] = d[1] = 0;
+	while ((c = getopt(ac, av, "acd;DMnpr|suUv")) != -1) {
+		switch (c) {
+		    case 'a': all = 1; break;
+		    case 'c': kind = D_CONTEXT; break;
+		    case 'd':
+			if (things == 2) goto usage;
+			d[rd++] = optarg;
+			things += tokens(optarg);
+			break;
+		    case 'D': flags |= PREFIXDATE; break;
+		    case 'M': flags |= REVNUMS; break;
+		    case 'p': kind = D_PDIFF; break;
+		    case 'r':
+			if (things == 2) goto usage;
+			r[rd++] = notnull(optarg);
+			things += tokens(notnull(optarg));
+			break;
+		    case 'n': kind = D_RCS; break;
+		    case 's': kind = D_SDIFF; break;
+		    case 'u': kind = D_UNIFIED; break;
+		    case 'U': flags |= USER; break;
+		    default:
+usage:			fprintf(stderr, "diffs: usage error, try --help\n");
+			return (1);
+		}
+	}
+
+	/*
+	 * If we specified both revisions then we don't need the gfile.
+	 * If we specifed one rev, then the gfile is also optional, we'll
+	 * do TOT if it isn't there.
+	 * If we specified no revs then there must be a gfile.
+	 */
+	if ((flags&(PREFIXDATE|USER|REVNUMS)) && (things != 2)) {
+		fprintf(stderr,
+		    "%s: must have both revisions with -d|u|m\n", av[0]);
+		return (1);
+	}
+
+	if (all || things) {
+		name = sfileFirst("diffs", &av[optind], SFILE);
+	} else {
+		name = sfileFirst("diffs", &av[optind], GFILE|SFILE);
+	}
+	while (name) {
+		int	ex = 0;
+		char	*r1 = 0, *r2 = 0;
+
+		unless ((s = sccs_init(name, flags))) goto next;
+		rangeReset(s);
+		if (things) {
+			if (rangeAdd(s, r[0], d[0])) {
+				verbose((stderr,
+				    "diffs: no delta ``%s'' in %s\n",
+				    r[0] ? r[0] : d[0], s->sfile));
+				goto next;
+			}
+			if ((r[1] || d[1]) && (rangeAdd(s, r[1], d[1]) == -1)) {
+				verbose((stderr,
+				    "diffs: no delta ``%s'' in %s\n",
+				    r[1] ? r[1] : d[1], s->sfile));
+				goto next;
+			}
+			unless (s->rstart && (r1 = s->rstart->rev)) goto next;
+			if (s->rstop) r2 = s->rstop->rev;
+			/*
+			 * If we did a date specification and that covered only
+			 * one delta, bump it backwards to get some diffs.
+			 */
+			if (d[0] && (!r[1] || d[1]) &&
+			    (s->rstart == s->rstop) && s->rstart->parent) {
+				s->rstart = s->rstart->parent;
+				r1 = s->rstart->rev;
+			}
+		}
+		if (HAS_GFILE(s) && !IS_WRITABLE(s)) ex = EXPAND;
+		/*
+		 * Errors come back as -1/-2/-3/0
+		 * -2/-3 means it couldn't find the rev; ignore.
+		 */
+		switch (sccs_diffs(s, r1, r2, ex|flags, kind, stdout)) {
+		    case -2:
+		    case -3:
+		    case 0:	break;
+		    default:
+			fprintf(stderr,
+			    "diffs of %s failed.\n", s->gfile);
+		}
+next:		if (s) sccs_free(s);
+		name = sfileNext();
+	}
+	sfileDone();
+	purify_list();
+	return (0);
+}

@@ -1,0 +1,142 @@
+.so .bitmacros
+.TH DIFFS 1 "May, 1998" "BitMover, Inc." BitSCCS
+.SH NAME
+diffs \- show differences between revisions of an SCCS file
+.SH SYNOPSIS
+.B /usr/bitsccs/diffs
+[
+.B \-acDMsuU
+] 
+[\fB-d\fIdate\fR]
+[\fB-r\fIr1\fR]
+.I files
+\&.\|.\|. ]
+.if t .sp .5
+.if n .sp
+.B /usr/bitsccs/sdiffs 
+[ same options as diffs except -c/-u ]
+.SH DESCRIPTION
+This command is part of \*[BS], the \*[BM] version of \*[SCCS].  For an 
+introduction, please see
+.BR bitsccs (1).
+.LP
+.B diffs
+shows changes between different versions of \*[SCCS] files.  The most
+common usage is to show the changes which have been made to an edited
+file, but 
+.B diffs
+can also be used to see changes between any two arbitrary revisions of a
+file.
+.SH OPTIONS
+.TP
+.B -a
+Do diffs against all files, even if they are not checked out.  See
+USAGE below.
+.TP
+.B -c
+Produce context diffs.  Mutually exclusive with -s/-u.
+.TP
+.B -D
+Prefix each line with the date as in
+.BR get (1).
+Both revisons must be specified for this option.
+.TP
+.BI -d <date>
+.TP
+.B -M
+Prefix each line with the revision number as in
+.BR get (1).
+Both revisons must be specified for this option.
+.TP
+.BI -r <r1>
+Specify one of the versions as a revision.  If two revisions are
+specified, the first is the ``left'' file and the second is the ``right''
+file.  
+
+Specify the ``left'' version of the file as revision
+.IR <r1> .
+.TP
+.BI -r <r2>
+Specify the ``right'' version of the file as revision
+.IR <r2> .
+.TP
+.B -s
+Produce side by side diffs.  
+.B sdiffs
+is an alias for \fBdiffs -s\fP.  Mutually exclusive with -c/-u.
+.TP
+.B -u
+Produce unified diffs.  Mutually exclusive with -c/-s.
+.TP
+.B -U
+Prefix each line with the user name as in
+.BR get (1).
+Both revisons must be specified for this option.
+.SH USAGE
+There are multiple forms of the command.  The usage is not always obvious,
+but is the result of common practice.  Each form is described, from most
+simple to most complex.
+.LP
+Each file is preceded by an line which shows the file name, the revision of
+the ``left'' file, and the revision of the ``right'' file.  If the right
+revision is not specified, then it will be noted as either a ``?'' or 
+``edited.''  The former indicates that the file is read only, and is some
+revision, typically the most recent revision, but
+.B diffs
+doesn't know which one, so it indicates that with the question mark.  The 
+latter indicates that the file has been edited and not checked in yet.
+.LP
+The most simple form is:
+.DS
+$ diffs
+==== diffs.c 1.20 vs edited ====
+43c43
+<       while ((c = getopt(ac, av, "sumr;")) != -1) {
+---
+>       while ((c = getopt(ac, av, "dsumr;")) != -1) {
+.DE
+which shows the differences between each \*[SCCS] file's top delta and
+the checked out version of the file (the 
+.BR g -file).
+\*[SCCS] files without a 
+.BR g -file
+are silently ignored.  
+When
+.B diff
+is used with a read only
+.BR g -file,
+keywords (see
+.BR get (1)),
+are expanded; otherwise keywords are not expanded.  
+.LP
+If you wish to restrict the list to a smaller set of files than everything
+that is checked out, then you can say
+.DS
+$ diffs *.h
+.DE
+to show changes made only to header (.h) files.
+.LP
+If you wish to force diffs against all files, including files which are
+not checked out, use the 
+.B -a
+option.  This is typically used like so:
+.DS
+$ diffs -a -rAlpha
+.DE
+which says diff whatever revision was tagged with 
+.I Alpha 
+against the top delta.
+.LP
+If you want to see what has happened over some period of time, and you 
+tagged the files, you can try
+.DS
+$ diffs -a -rAlpha -rBeta
+.DE
+.SH TODO
+Add date cutoffs for start/stop to look for changes over a period of time.
+.SH "SEE ALSO"
+.BR bitsccs (1),
+.BR admin (1),
+.BR diff (1),
+.BR sdiff (1),
+.BR get (1).

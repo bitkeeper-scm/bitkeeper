@@ -1,0 +1,172 @@
+				%W%
+
+What is BitSCCS?
+----------------
+    BitSCCS is a faithful reimplementation of ATT SCCS.  SCCS is a
+    revision control system that stores multiple deltas in a single file;
+    RCS is a similar system.
+
+    This document is organized as follows: the commands are listed and 
+    described, common usage is explained, and we talk about file name
+    expansion.
+
+What are the commands?
+----------------------
+
+The commands that currently make up BitSCCS are
+
+    admin	- administrative (create, validate, manage symbols, pathnames)
+    ci		- a clone of RCS' ci command.  The SCCS version is called
+    		  "delta" and has some additional features, mostly used 
+		  in conversion scripts like rcs2sccs.  This command is 
+		  used to check in new deltas (or, with -i, create a new
+		  revision control file).
+    clean	- a tool to clean up a group of edited files.  The default
+    		  behavior is to unedit all unchanged files in the current
+		  directory and warn you about files that need revisions.
+    co		- a clone of RCS' co command.  The SCCS version is called
+		  "get" and has some additional features used for complex
+		  manipulations done during merges.  This command is
+		  used to check out files, either for editing (-l) or
+		  just to see a particular version.  Both co and get
+		  support prefixing the lines of the file with some
+		  combination of user name/date/revision number that
+		  added that line.  Handy.
+    delta	- checks in a delta; like RCS ci plus some features.
+    diffs	- a tool to show you changes; default behaviour is to
+    		  show you diffs for all modified files in the current
+		  directory.  Supports things like "diffs -dAlpha,Beta"
+		  to see everything after Alpha and up to & including Beta.
+		  diffs can also prefix lines with date/usernames/revisions
+		  to help you track down bugs.  Regular, context, and
+		  unified diffs are supported.
+    edit	- alias for "get -e" aka "co -l"; just a hard link to get.
+    get		- checks out a delta like "co" does.  get also supports 
+    		  include/exclude lists (if you don't know what those are,
+		  that's probably good).
+    info	- tells you which files are edited by whom and whether they
+    		  have modifications or not
+    prs		- prints revision history (like RCS' rlog).  Supports date
+    		  ranges.  Prints history from one file at a time (not
+		  intermixed sorted by date; see sccslog for that).
+    rcs2sccs	- a reasonably complete script to convert RCS trees to SCCS
+    		  trees.
+    sccslog	- prints a time sorted log of changes from the list of 
+    		  files given.  This is frequently more interesting than
+		  prs since the changes that happened together tend to
+		  be together in the log.
+    sccssh	- SCCS shell.  Used by conversion scripts and may become
+    		  more important as I add GUIs.
+    sdiffs	- link to diffs; does side by side diffs
+    smoosh	- grafts conflicting changes into the tree by pushing 
+    		  one line of conflicting deltas off on a branch.
+    unedit	- throws away modified files (be careful)
+    what	- looks for SCCS keywords (they are prefixed by @(#) )
+
+
+Common usage
+------------
+    The first thing to know is that "cmd --help" is the quickest way to
+    figure out how to use that command.  There are man pages for most 
+    commands but they sometimes tend to be a little out of date. If
+    you are familiar with ATT SCCS, I've tried hard to make sure that 
+    the same options do the same things.
+
+    The common thing to want to do is to create a file, change it,
+    look at what you've done, repeat.  Here's how you do that:
+
+    # Create the initial document
+    $ vi whizzy.html
+    <hack, hack, hack>
+
+    # Check in the initial version of the document
+    $ ci -i whizzy.html		# or admin -iwhizzy.html s.whizzy.html
+    whizzy.html revision 1.1: 15 inserted, 15 total
+
+    # Get the document so you can make more changes
+    $ co -l whizzy.html		# or get -e whizzy.html
+
+    # Add more cool stuff
+    $ vi whizzy.html
+    <hack, hack, hack>
+
+    # look at what you've done
+    $ diffs whizzy.html
+    ===== whizzy.html 1.1 vs edited =====
+    1c1
+    <       complete and utter garbage
+    ---
+    >       really cool stuff that I wanted
+
+    # Check in the new revision
+    $ ci whizzy.html		# or delta whizzy.html
+    End comments with "." by itself, blank line, or EOF.
+    whizzy.html 1.2>> Replace garbage with cool stuff.
+    whizzy.html 1.2>> .
+    whizzy.html revision 1.2: 1 inserted, 1 deleted, 14 unchanged, 15 total
+
+    # To see a history of what you've done
+    $ prs whizzy.html
+    ======== whizzy 1.1..TOT ========
+    D 1.2 98/07/10 10:24:04-07:00 lm@work.bitmover.com 2 1  1/1/14
+    P /tmp/whizzy.html
+    ------------------------------------------------
+    D 1.1 98/07/10 10:16:07-07:00 lm@work.bitmover.com 1 0  15/0/0
+    P /tmp/whizzy.html
+    C whizzy.html created on 98/07/10 10:16:07 by lm
+    ------------------------------------------------
+
+
+
+File name expansion
+-------------------
+    The examples so far only talk about a single file.  That's not very
+    realistic, people work on trees of files.  All of the BitSCCS commands
+    use the same file name expansion methods so you only have to learn it
+    once.
+
+    File names can be implied, be specified as arguments, be implied with
+    a directory name argument, or be specified as a list on stdin.
+
+    Implied (nothing specified)
+	If you don't list any files, the default list is SCCS/s.* and if
+	SCCS doesn't exist, ./s.*
+    
+    Specified as arguments
+	If you run a command and give it one or more files, the files can
+	be either the working file name (typically called a g-file for
+	gotten file), i.e. whizzy.html - or the SCCS file name (typically
+	called an s-file), i.e. SCCS/s.whizzy.html - or some mix thereof.
+	If you specify a g-file name, BitSCCS will look for the s-file in
+	./SCCS/s.file first and then ./s.file
+    
+    Implied (directory name specified)
+	If you give a command a single directory name as an argument, the
+	implied list of files is dir/SCCS/s.* and if there is no SCCS sub
+	directory, then it is dir/s.*
+
+	This means you can do things like "co ../../foo/bar" and populate
+	the bar directory with all the g-files.
+
+    Specified (stdin)
+	If you want to operate on a whole tree of files, the way to do that
+	is like so
+
+		find tree -name 's.*' -print | command -opts -
+
+
+RCS and BitSCCS cohabitation
+----------------------------
+    You might be wondering how we can have two commands with the same
+    name (e.g. co) and not get confused.  The current, somewhat lame,
+    solution is to put BitSCCS in /usr/bitsccs and ask users to put
+    that in their path before /usr/bin (where RCS commands live).
+    The BitSCCS commands that are RCS clones know that RCS may be
+    around and that you might have a mix of RCS files and SCCS files.
+    If you run BitSCCS co and there is an RCS directory there, then it
+    just execs the RCS co and the right thing happens.
+
+    I'm open to suggestions for a better plan.  I've thought of moving
+    the RCS commands to rcs-co and rcs-ci but that will confuse things
+    like RedHat's RPM package manager (I think).  Comments?
+

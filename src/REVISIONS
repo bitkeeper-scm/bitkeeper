@@ -1,0 +1,43 @@
+The problems with revisioning stuff in the file:
+
+Assume that no new deltas are added to the file, but the pathname is changed.
+How do you represent that?
+
+OK, so that is solved, now you have two branches in the tree, with two
+different pathnames for each branch - how do you associate the pathname 
+with the branch?  In other words, how does it generalize?  The sun way
+doesn't, as far as I can tell because they don't have any way, that I
+see, of having a branch in the name graph associated with a branch in 
+the delta graph.
+
+Seems to me there outght to be some way to mix the LOD and pathname
+namespaces to make this work out.
+
+A more clear statement of the problem:
+
+    . I may have any arbitrary object in the file that I want to fork down
+      two parallel lines of development.  So I need two name spaces in
+      which to make changes to the objects in a relative way.
+
+    . Whatever I do, I need to make sure it works for serial LOD as well
+      as parallel LOD - i.e., release 1 followed by release 2 vs 
+      stable vs hacks in parallel.
+
+Solution:
+
+Each thing which is to be revisioned is added as a removed, null delta 
+as a child of the associated revision.  In other words, if 1.3 gets Alpha4
+then there is a R1.4 (or whatever) that has a tag in the comments that
+says the symbol is "Alpha".  Each addition, deletion, modification of
+the symbol is a new delta.  Changes/additions/deletions are added to the
+null delta.
+
+The only open issue is the concept of a "default branch" for the case of
+conflicts.
+
+Actually, we have another open issue which is lines of development.  I 
+suspect that the right way to handle this is to make symbols and pathnames
+be "LOD.pathname" and/or "LOD.symbol" and then there is no confusion - they'll
+be on different branches.
+
+So the default branch can be specified as 

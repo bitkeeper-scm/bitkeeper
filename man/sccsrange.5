@@ -1,0 +1,151 @@
+.so .bitmacros
+.TH SCCSRANGE 5 "May, 1998" "BitMover, Inc." BitSCCS
+.SH NAME
+sccsrange \- \*[BS] date, symbol, revision ranges and formats
+.SH DESCRIPTION
+This information is part of \*[BS], the \*[BM] version of \*[SCCS].  For an 
+introduction, please see
+.BR bitsccs (1).
+.LP
+Various commands in \*[BS] take ranges as arguments.  The range may be
+composed of some combination of dates, symbols, and/or revisions.
+Revisions are treated separately from symbols & dates because both
+revisions and dates are numeric.
+.LP
+A range, in \*[BS], is some sort of notation which defines a set of 
+revisions.  It can be as simple as \f(CW1.1..1.5\fP or as complex as
+\f(CWAlpha1,.980621\fP.  
+.SS "Inclusive vs. Exclusive"
+.LP
+We need to be able to specify ranges with both inclusive and exclusive
+notation.  For example, suppose you tagged your source with ``Alpha''
+and ``Beta'' tags, and you want to see what happened between Alpha and
+Beta.  You really don't want \fIbetween\fP, you want after Alpha but up
+to and including Beta.  The Alpha tag is on the delta which represents
+Alpha - so you don't want to include that delta, you want the one after it.
+That's the exclusive part.  The Beta tag is on the delta which represents
+Beta, and you do want to include that.  That's the inclusive part.
+The notation for what you want is \f(CWAlpha,.Beta\fR (see below).
+.LP
+The notation we have is <start><op><op><stop>.  The <op>s are ``.'' for
+inclusive (think a..b like in math) and ``,'' for the exclusive part.
+.TP 8
+.B d1..d2
+means everything from <d1> (including <d1>) to d2 (including <d2>).
+.TP 8
+.B d1,,d2
+means everything after <d1> and before <d2>.
+.LP
+You can mix and match, as was shown in the example above.
+.TP 8
+.B d1,.d2
+means everything after <d1> but up to and including d2.  This is a
+very common thing to want to do, so we have provided a shorthand
+for it (this is somewhat Perl-ish).  The shorthand is:
+.TP
+.B d1,d2
+is the same as 
+.BR d1,.d2 .
+.TP
+.B d1.,d2
+means everything from <d1> (including <d1>) but before <d2>.
+.LP
+Sometimes you don't know both end points, you just want everything
+after some date or before some date.  You can use just one op
+before or after just one date and have that mean everything before
+such and such a date, or after a date, etc.  The rounding is
+explained in the date/time format section below.
+.TP
+.B date.
+means everything from <date> forward, inclusive.  (Rounds down.)
+.TP
+.B date,
+means everything after <date>.  (Rounds down.)
+.TP 8
+.B .date
+means everything up to and including <date>.  (Rounds up.)
+.TP
+.B ,date
+means everything before <date>.  (Rounds up.)
+.LP
+Sometimes you want to start with a revision and stop at a date.  Because both
+revisions and dates can be numeric, commands use different options for each
+of those, like so:
+.DS
+diffs -r1.8 -d9207 prs.c
+.DE
+When specifying ranges like that, you may use the dot/comma notation to
+get the rounding that you want.  For example, if you wanted the date to
+round down, you could say
+.DS
+diffs -r1.8 -d.9207 prs.c
+.DE
+.SS "Date & Time Format"
+Dates are specified like so: ``98/05/03\ 21:20:13'' which is 9:20pm on
+the 3rd of May 1998.  
+All times are in local time, but are converted to
+GMT internally.  If you wish to specify a date in a different area of 
+the world, the date may have an optional ``time zone,''
+expressed as minutes west of GMT like so:
+``98/05/03\ 21:20:13+7:00.''   
+.LP
+The punctuation is not necessary, the same date could have been specified
+as 980503212013.  Note that if you use the more verbose format, the date
+needs to be quoted so that shells do not treat it as two tokens.
+.LP
+Dates do not need to be fully specified.  The date format is really
+YY[MM[DD[HH[MM[SS]]]]].   
+.SS "Rounding"
+Depending on context, the partially specified
+dates are rounded down (98 is really 98/01/01 00:00:00) or rounded
+up (98 is really 98/12/31 23:59:59).  In general, the rounding works so as 
+to include more time rather than less.  In ranges, the starting date is
+rounded down while the stopping date is rounded up.  For single end 
+points of the form <date><op>, the date is rounded down; for dates
+of the form <op><date>, the date is rounded up.  Think of it as 
+a time line; if you are looking left (earlier), we round down, 
+if you are looking right (later), we round up.  The following ranges get
+the entire year of 1998 and and the entire month of July, 1998, respectively:
+.DS
+diffs -d98 -d98
+diffs -d9807 -d9807
+.DE
+Note that the rounding is implicit.  If you wanted to be explicit about it,
+here is the same thing spelled out:
+.DS
+diffs -d98. -d.98
+diffs -d9807. -d.9807
+.DE
+If you wish to override the default rounding, you can.  Suppose you wanted
+to specify the year of '98 but you thought the default rounding was confusing.
+You could say
+.DS
+diffs -d98 -d99,
+.DE
+which says to take 1999, round it down, and don't include the resulting date,
+so you end up with the last second before the first second in 1999.  
+.SS "Year 2K Problems"
+\*[BS] takes the approach that years in the 70-99 range are 1970-1999.
+Years in the 00-69 range are 2000-2069.  At some point in the future,
+if \*[BS] becomes the dominant SCCS implementation, we will extend the
+file format to allow 4 digit years (\*[ATT] breaks if we do this today
+and there is a lot of \*[ATT] files in existence today).
+.SS Symbols
+Anywhere a date may be used, a symbol may be substituted instead.  The
+delta associated with the symbol is found and the implied date is the
+date of that delta.  Dates tend to be quite cumbersome to use in practice;
+symbols work better and we encourage their use.
+.SS Revisions
+Revisions work in the same way as dates.  However, because dates are
+numeric and revisions are numeric, a different option to the program
+(usually
+.BR -r ),
+is used when specifying revisions.  Since symbols are associated
+with revisions, a symbol may be substituted for a revision.  The delta 
+associated with the symbol is found and the implied revision is the 
+revision of that delta.
+.SH BUGS
+The dates may not be accurate.  \*[BS] is at the mercy of the system
+clock and misconfigured systems can make time appear to march backwards.
+To avoid confusion (a) keep your clocks as accurate as possible,
+and (2) use symbols (or revisions) whenever possible.

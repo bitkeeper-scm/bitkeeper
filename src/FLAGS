@@ -1,0 +1,97 @@
+As it turns out, Rochkind figured that I would come along and want
+to add some more flags.  It only took me 20 years.  Anyway, the
+following is a registry of flags, their origin, and their use. 
+
+Flag	Origin	Use
+----	------	--------------------------------------------------------------
+b	ATT	If set, then branch deltas can be created with get -b.
+c	ATT	[ceil] Sets a ceiling on the release that can be checked out.
+f	ATT	[floor] Sets a floor...
+d	ATT	[sid] the default sid (or branch) to be used by a get.  Defaults
+		to the trunk.
+i	ATT	Treats the no id keywords as an error, not a warning.
+j	ATT	allow concurrent updates to the same revision
+l	ATT	[a|release,release...] Lock the list against edits.  a == all.
+n	ATT	create empty releases when skipping one.
+q	ATT	%Q% expansion
+m	ATT	%M% expansion (default is gfile name)
+t	ATT	%Y% expansion
+v	ATT	specifies a validation program for MRs
+
+p	Bit	specifies the path of the file.  There will be multiple of these
+		if the path name changes.  The format is <rev> <path>
+h	Bit	specifies the host name on which the file was created/modified.
+		There will be multiple of these if the file is checked in on
+		different hosts. The format is <rev> <host>
+w	Bit	specifies the minuteswest of GMT.  There will be multiple of
+		these if the file is checked in in different time zones.
+		The format is <rev> <hh:mm>
+s	Bit	specifies a rev symbol pair.  Simulates RCS symbolic names.
+		The format is <rev> <symbol>, and there can be multiple of
+		these.
+S	Bit	specifies the state of of a revision or branch.  Simulates
+		RCS state flags.  The format is <rev> <state> and there can
+		be multiple of these.
+R	Bit	specifies that RCS flags should be expanded.
+
+Y	Bit	specifies that years should be expanded as 4 digits.
+
+BitSCCS will implement all of the Bit flags, as well as b & d in release 1.0.
+I doubt BitSCCS will bother with the others, except lock.  All flags, ATT
+or BitSCCS, or others, will be carried along.  Only the implemented ones have
+any meaning, however.
+
+----------------------------------------------------------------------------
+It turns out that ATT SCCS can't handle flags that aren't in the range 
+'a' .. 'z', inclusive.  So I need to remap my flags to those.
+
+Unused ATT flags:
+
+a
+g
+h	hostname
+k
+o
+p	pathname
+r	line of development (LOD) symbols
+s	symbol
+u
+w	minutes west of GMT time
+x	bitmap		1 == RCSFLAG, 2 == year as 4 digits
+y	state
+z	landing pad
+
+Revisioning of symbols:
+
+	^Af s 1.20 symbol # user[@host] date
+	^Af r 1.20 symbol # user[@host] date
+
+The # is a monotonically increasing number (which may have conflicts at
+smoosh time, what do I do about that?).  The highest numbered version of
+a particular smbol is the one that gets used.  So if someone moved the
+tags around, you'd see
+
+	^Af s 1.20 Alpha 0 lm@bitmover.com 05/22/1998 11:02:45
+	^Af s 1.22 Alpha 1 beth@bitmover.com 05/28/1998 15:22:12
+	^Af s 1.20 Alpha 2 lm@bitmover.com 05/28/1998 15:22:15
+
+That particular sequence says that I said Alpha was 1.20, beth disagreed
+with me, we argued, and I won the fight.
+
+LOD's are exactly the same.  LOD's are placed on the ".0" delta of the
+LOD, i.e., the last delta of the previous LOD.  Because LOD's can go 
+go around corners, there may be more than one LOD entry like so:
+
+	^Af s 1.20 Kudzu 0 lm@bitmover.com 05/22/1998 11:02:45
+	^Af s 1.32 Teak 0 beth@jost.bitmover.com 06/09/1998 15:22:01
+	^Af s 1.32.1.1 Kudzu 0
+
+This means that Kudzu deltas started at 1.21, Teak deltas start at 1.33,
+and after the Teak LOD was created, we needed to add more to Kudzu.
+So Kudzu started going down a branch.
+
+XXX - what if Teak had no deltas, do I just move the Teak symbol down?
+
+In all symbols, if the user information is missing, it is implied from
+the revision associated with the symbol.  So the 1.32.1.1 symbol got 
+added when somebody checked in a delta on the Kudzu branch.

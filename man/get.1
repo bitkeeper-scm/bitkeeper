@@ -1,0 +1,480 @@
+.so .bitmacros
+.TH GET 1 "May, 1998" "BitMover, Inc." BitSCCS
+.SH NAME
+get \- retrieve a version of an SCCS file
+.SH SYNOPSIS
+.B /usr/bitsccs/get
+[\fB\-bdeFgkmnpqsu\fP] 
+[\fB-c\fIdate\fR]
+[\fB-G\fIname\fR]
+[\fB-i\fIrevs\fR]
+[\fB-r\fIrev\fR]
+[\fB-x\fIrevs\fR]
+[\fIs.file \|.\|.\|.]
+.SH DESCRIPTION
+This command is part of \*[BS], the \*[BM] version of \*[SCCS].  For an 
+introduction, please see
+.BR bitsccs (1).
+.LP
+.B get
+retrieves a particular working copy from the \*[SCCS] revision control file.
+With no options, 
+.B get
+retrieves the most recent version of the file on the current branch.
+.LP
+.B get
+can get an older version of the file, using revision numbers, dates, or
+symbols as a way of specifying the version.
+.LP
+.B get
+can get files with each line 
+prefixed with revision numbers, the user name, and/or the date of the 
+revision in which the line was most recently added.  This feature is 
+quite useful for tracking down bugs.
+.LP
+.B get
+supports both \*[RCS] and \*[SCCS] keyword expansion so that you may place
+the version number, name, date, user, etc., in the file as part of its 
+contents.  \*[RCS] keyword expansion is not on by default, see 
+.BR admin (1) 
+for information how to turn it on.
+.LP
+For each
+.I s.filename
+argument,
+.B get
+displays the revision ID and the number of lines retrieved (to standard error):
+.DS
+$ get get.c
+get.c 1.39: 145 lines
+.DE
+.LP
+The retrieved file normally has the same filename base as the
+.BR s. file,
+less the prefix, and is  referred to as the
+.BR g- file.
+If the path to the file was
+.BR .../foo/bar/SCCS/s.file ,
+then the 
+.BR g- file
+will be
+.BR .../foo/bar/file .
+.LP
+.so filenames
+.SH OPTIONS
+.TP
+.B -b
+Create a new branch.  Used with the
+.B -e
+option to indicate that the new delta should be on a branch.
+If the
+.B b
+flag is not set in the
+.BR s. file,
+this option is silently ignored.
+.TP
+.B -d
+prefix each line with the date, like so:
+.DS
+97/05/20	/* get.c - implements SCCS get */
+.DE
+.TP
+.B -e
+Check out the file for editing.  The file is locked; only one locker is allowed
+at a time. No one else may check in changes to the file while you have it locked.
+.TP
+.B -g
+Just see if you could get the specified revision, without actually getting the 
+file.  Used to verify a particular revision and/or in scripts that are 
+converting \*[RCS] to \*[SCCS] files.
+.TP
+.B -k
+Suppress expansion of both \*[SCCS] and \*[RCS] keywords.
+.B -k
+is implied by the
+.BR -e .
+.TP
+.B -m
+Precede each retrieved line with the revision number 
+of the delta in which it was added to the file like so:
+.DS
+1.1	/* get.c - implements SCCS get */
+.DE
+.TP
+.B -n
+Precede each line with the base name of the 
+.BR g -file.
+When both the
+.B -m
+and
+.B -n
+options are used, the filename is first, then the revision like so:
+.DS
+get.c	1.1	/* get.c - implements SCCS get */
+.DE
+.TP
+.B -p
+Write the text of the retrieved version to the standard output.
+.TP
+.B -s
+Run quietly, suppressing normal progress reports.  These options have
+no affect on fatal messages, only on informational messages.
+.B -q
+is an alias for
+.BR -s .
+.TP
+.B -u
+Precede each line with the user name who checked in the revision.  When
+all of 
+.BR -m ,
+.BR -n ,
+and 
+.B -u
+are specified, the order is file name, user name, revision like so:
+.DS
+get.c	lm	1.1	/* get.c - implements SCCS get */
+.DE
+.TP
+.BI -c date-time
+Retrieve the latest version checked in prior to the date and time
+indicated by the
+.I date-time
+argument.
+.I date-time
+takes the form:
+.IR yy [ mm [ dd [\c
+.IR hh [ mm [ ss ]\|]\|]\|]\|].
+Units omitted from the indicated date and time default to their maximum
+possible values; that is
+.B -c7502
+is equivalent to
+.BR -c750228235959 .
+Any number of non-numeric characters may separate
+the various 2 digit components.  If white-space characters occur, the
+.I date-time
+specification must be quoted.  The date may also be a symbolic tag,
+in which case the implied date is the date of the revision to which the
+symbolic tag refers.
+.TP
+.BI -C date-time
+Retrieve the latest version checked in after to the date and time
+indicated by the
+.I date-time
+argument.
+.I date-time
+takes the form:
+.IR yy [ mm [ dd [\c
+.IR hh [ mm [ ss ]\|]\|]\|]\|].
+Units omitted from the indicated date and time default to their minimum
+possible values; that is
+.B -c7502
+is equivalent to
+.BR -c750200000000 .
+Any number of non-numeric characters may separate
+the various 2 digit components.  If white-space characters occur, the
+.I date-time
+specification must be quoted.  The date may also be a symbolic tag,
+in which case the implied date is the date of the revision to which the
+symbolic tag refers.
+.TP 
+.BI -G newname
+Use
+.I newname
+as the name of the retrieved version.
+.I newname
+may be a directory, in which case the file is checked out into the
+directory
+.IR newname .
+The 
+.B -G
+option is not supported with 
+.B -e
+at this time.
+.TP
+.BI -i rev-list
+Specify a list of deltas to include in the retrieved version.
+The included deltas are noted in the informational message.
+.I rev-list
+is a comma-separated list of revisions.
+To specify a range of deltas, use a 
+.RB ` - ' 
+separator instead of a comma, between two revisions in the list.
+Symbolic tags may be used in place of the revisions if and only if the
+tags do not contain a
+.RB ` - '.
+.TP
+.BI \-r rev
+Retrieve the version corresponding to the indicated revision.
+.IP
+You need not specify the entire revision to retrieve a version with
+.BR get .
+When you omit
+.B -r
+altogether, or when you omit the last component of the revision,
+.B get
+normally retrieves the highest revision possible.  
+.B get 
+will not cross over release boundaries, i.e., if the revision file has
+.B 1.1-1.20,2.1-2.13
+and you ask for
+.B -r1
+then you get
+.BR 1.20 .
+It works similarly for branches, you can ask for
+.B 1.13.1
+and if 
+.B 1.13.1.5 
+is the last delta on that branch, then that is what you will get.
+.IP
+If the
+.B d
+flag is set to a revision in the 
+.BR s. file
+and you omit the revision,
+.B get
+retrieves the default version indicated by that flag.
+.IP
+The \*[SCCS] revision numbering scheme is a tad non-intuitive; there are
+never more than 4 numbers.  Most revisions take the form 
+.IR dddd.dddd ,
+i.e., 
+.B 1.2 or 
+.BR 5.123 ,
+with the first revision being 
+.BR 1.1 ,
+the next 
+.BR 1.2 ,
+and
+so on.  Revisions in this form are said to be on the \fItrunk\fP (as in
+trunk of the revision history ``tree'').
+.IP
+When a branch is created, it uses the closest trunk revision as the basis
+for the branch name.  Suppose we create a new delta, using revision
+.B 1.20 
+as the parent and there is already a revision
+.BR 1.3 .
+The new delta will be off on a branch and be named 
+.B 1.20.1.1 
+like so:
+.DS
+$ get -e -r1.20 foo.c
+foo.c 1.20 -> 1.20.1.1: 55 lines
+.DE
+The 
+.B 1.20
+part of the new revision name is because the parent node is 
+.BR 1.20 .
+The 
+.B 1.1 
+means that this is the first branch off of
+.BR 1.20 .
+If we check in this delta and then create a new delta with 
+.B 1.20.1.1
+as the parent, the new branch is just extended:
+.DS
+$ get -e -r1.20.1.1 foo.c
+foo.c 1.20.1.1 -> 1.20.1.2: 67 lines
+.DE
+What happens if we wanted create yet another child of 
+.BR 1.20 ?
+.B get
+will notice that the first branch is already taken and just create a new one
+like this:
+.DS
+$ get -e -r1.20 foo.c
+foo.c 1.20 -> 1.20.2.1: 55 lines
+.DE
+.IP
+So far, this is what one might expect from a numbering scheme.  The
+non-intuitive part is what happens when we ask for a branch off of a
+branch.  Suppose we need to create a new revision which is a child of
+.B 1.20.1.1
+and we already have a 
+.B 1.20.1.2 
+revision in place.  The system has to create a new branch, so what is it
+called?  If the naming system was logical, it would work like \*[RCS]
+and the new branch would be called
+.BR 1.20.1.1.1.1 .
+That make sense, it is just the same approach applied to branches as was
+applied to the trunk.
+.IP
+\*[ATT] did not want to do it that way, they wanted to have all revisions
+be numbered with at most 4 numbers.  So if we create a branch off of a
+branch, the numbering scheme is the same as if it were on the trunk.
+In the case where \*[RCS] would give us 
+.BR 1.20.1.1.1.1 ,
+\*[ATT] gives us
+.BR 1.20.3.1 .
+The drawback of this approach is that you can't tell if a branch is 
+directly off the trunk with \*[ATT].  The drawback of \*[RCS] is that
+the numbering scheme gets arbitrarily large, which is a bit cumbersome.
+.IP
+Neither approach is reasonable.  \*[BS] release 2 will provide 
+both standard \*[ATT] numbering and symbolic numbering.  With
+symbolic numbering, the branch versus trunk schemes all go away.
+Revision names become
+.B research.1
+and 
+.BR released.23 .
+XXX - More on this soon.
+.TP 
+.BI -x rev-list
+Exclude the indicated deltas from the retrieved version.
+The excluded deltas are noted in the standard output message.
+.I rev-list
+is a comma-separated list of revisions.
+To specify a range of deltas, use a 
+.RB ` - ' 
+separator instead of a comma, between two revisions in the list.
+Symbolic tags may be used in place of the revisions if and only if the
+tags do not contain a
+.RB ` - '.
+.SH \*[BS] keywords
+In the absence of
+.B \-e
+or
+.BR \-k ,
+.B get
+expands the following keywords by replacing them with the
+indicated values in the text of the retrieved source.
+.TP 10
+.I Keyword
+.I Value
+.sp .5
+.TP
+.B %\&@%
+The login name of the user who made the revision, with the host (and
+possibly domain name):
+.IR lm@bitmover.com .
+.TP
+.B %\&A%
+Shorthand notation %\&Z%%%\&Y% %\&M% %\&I%%\&Z% which looks like: %A%.
+This is useful for the 
+.BR what (1)
+command.
+.TP
+.B %\&D%
+Current date as 
+.IB yy / mm / dd .
+If the
+.B Y
+flag is set, then print the year as 4 digits.
+.TP
+.B %\&E%
+Date newest applied delta was created as
+.IB yy / mm / dd .
+If the
+.B Y
+flag is set, then print the year as 4 digits.
+.TP
+.B %\&F%
+The \*[SCCS]
+.BR s. file
+name
+.TP
+.B %\&G%
+Date newest applied delta was created as
+.IB mm / dd / yy .
+If the
+.B Y
+flag is set, then print the year as 4 digits.
+.TP
+.B %\&H%
+Current date as
+.IB mm / dd / yy .
+If the
+.B Y
+flag is set, then print the year as 4 digits.
+.TP
+.B %\&I%
+Revision number of the retrieved version.
+.TP
+.B %\&M%
+The file name of the 
+.BR s. file
+less the prefix
+.TP
+.B %\&P%
+Fully qualified
+.BR s. file
+name
+.TP
+.B %\&T%
+Current time as
+.IB hh : mm : ss
+.TP
+.B %\&U%
+Time the newest applied delta was created:
+.IB hh : mm : ss
+.TP
+.B %\&W%
+Shorthand notation for a line with data for
+.BR what :
+.B %\&Z%%\&M%\ \ \ \ \ \ \ \ %\&I%
+.TP
+.B %\&Z%
+4-character string:
+.RB ` @(#) ',
+recognized by
+.BR what .
+.PD
+.SH \*[RCS] keywords
+In the absence of 
+.B -e
+or 
+.BR -k ,
+and if the
+.B R
+flag is set in the file, then
+.B get
+will also expand the following list of \*[RCS] keywords:
+.TP 15
+.I Keyword
+.I Value
+.sp .5
+.TP
+.B $Author$
+The login name of the user who made the revision.
+.TP
+.B $Date$
+The date that the revision was made.
+.TP
+.B $Header$
+The full path name, the revision, the date, the user@host, and the state of the
+file.
+.TP
+.B $Id$
+Same as $Header$ except the file name is just the base name, not a full path.
+.TP
+.B $RCSfile$
+The base name of the file.
+.TP
+.B $Revision$
+The revision number of the retrieved delta.
+.TP
+.B $Source$
+The full path name of the revision control file.
+.TP
+.B $State$
+The state assigned to the file.
+.SH FILES
+.TP 20
+``g-file''
+version retrieved by
+.B get
+.TP
+.BI p. file
+lock file that indicates who has what revision locked.
+.TP
+.BI x. file
+temporary copy of
+.BI s. file
+.PD
+.SH "SEE ALSO"
+.BR bitsccs (1),
+.BR admin (1),
+.BR delta (1),
+.BR prs (1),
+.BR sfiles (1),
+.BR what (1),
+.BR sccsfile (5)

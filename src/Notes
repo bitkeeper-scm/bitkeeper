@@ -1,0 +1,159 @@
+. Add a flag that says rev A needs to be merged into rev B.  In other words,
+  put the r.file in the s.file.
+
+. i/x/g lists - be compatible with old file format but don't give anyone a
+  way to add these.  More trouble than they are worth.
+
+. Add support for <name>.<rev> revision naming, i.e., kudzu.1, etc.  Figure
+  out the following problem:  if ficus was revs 1-20 and kudzu is revs 21-30
+  does that mean rev 1.21 is kudzu.1 or kudzu.21?  Never mind, it is obvious
+  when you consider branches that it has to be kudzu.1.  Here's why.
+  Suppose the tree started as 
+
+  	ficus.1
+	ficus.2
+	ficus.3
+
+  We clone and the new tree is kudzu.  In the kudzu tree we added 3 deltas
+  and in the ficus tree we added two.
+
+	Ficus		Kudzu
+	-----		-----
+  	ficus.1		ficus.1
+	ficus.2		ficus.1
+	ficus.3		ficus.1
+	ficus.4		kudzu.1
+	ficus.5		kudzu.2
+			kudzu.3
+
+  After the smoosh of ficus into kudzu, the kudzu changes are moved off onto a
+  branch.
+
+  	ficus.1
+	ficus.2
+	ficus.3
+	ficus.4	  kudzu.1
+	ficus.5   kudzu.2
+		  kudzu.3
+
+  If we resolve the differences, we close the branch with a merge delta.
+
+  	ficus.1
+	ficus.2
+	ficus.3
+	ficus.4	  kudzu.1
+	ficus.5   kudzu.2
+		  kudzu.3
+	kudzu.4 (merge of ficus.5 kudzu.3 using GCA ficus.3)
+  
+  The issues now are
+
+  	. how do we represent the named lines of development in a tree?
+	  <<< ^an <name> which is implied in all children? >>>
+	. how do we represent a merge?
+	  <<< ^aM ficus.3 ficus.5 kudzu.3 >>>
+	. what are the default names for the trunk and a branch?
+	  None?  So the trunk is just rev 1, rev 2, etc.  So get -p -r4
+	  does what you would expect.  Branches are branch%d.1 .2 .3. etc.
+	  Numbered from 1 on up.
+
+	  I don't like that.  I think it should kudzu.1, etc.  For unnamed
+	  branches, use the normal SCCS style name with the kudzu prefix.
+	  So a branch from kudzu.3 would kudzu.3.1 (.1, .2, etc) and
+	  another branch would be kudzu.3.2 marked.
+
+
+The thorny issue of unnamed resyncs is solved.  The default name is
+
+	user@hostname.domain:date
+
+With dates in usec granularity.  
+
+We will need tools that can do the following
+
+	. rename a change
+	. split a change into N changes
+
+Note that the name space of a change needs to be revision controlled as
+well or renames/splits/merges won't work.
+
+
+
+THis is all orthogonal to LOD's.  Implement them first.
+
+Let's think some more about naming in the integration tree.  Suppose
+we were to define the trunk as where stuff goes when it is committed.
+Branches are where developmnet happens.  So //no// work actually 
+ever happens on the trunk, it's all on a branch.  When the work is 
+approved a delta is added to the trunk which either is the merge of
+what was on the trunk and the branch (there were conflicts) or it is
+a delta that includes the work that was on the branch.  Like so
+
+
+			  /-> Bug19.1 -> Bug19.2
+	T20 -> T21 -> T22
+
+If no work has happened on the trunk since the split off of the branch
+then the resulting tree looks like so:
+
+
+			  /-> Bug19.1 -> Bug19.2
+	T20 -> T21 -> T22		           T23 (includes Bug19.[12])
+
+
+If there has been other work which conflicts then it looks the same
+except there are changes in the merge delta in addition to the includes.
+
+So what about just a single work area that never gets resynced?  What if
+I want this behavior in this work area?
+	
+    Assume a root delta.  Then all work is automatically sent off to
+    an unnamed branch.  Revisions are just 1,2,3 etc, relative to the
+    branching point.  When you want to commit work to the trunk, you run
+    a command, say "commit feature", that takes whatever is the current
+    working branch and puts those deltas on the trunk, naming them
+    "feature".
+
+    (Note that this generalizes to multiple branches.  You could have
+    a trunk that is the mother of all work, say kudzu.  And a branch
+    that is the VM branch.  And yet more branches like yohn & schimmel.
+    When you commit, you are committing (by default) to the branch from
+    whence ye came, not necessarily to the trunk.  The trunk is just
+    the most likely.)
+
+The benefits are several
+
+	. we can make tools that show only the trunk revision history.
+	  each delta on the trunk is named feature.trunk (aka trunk.#)
+	  This allows multiple deltas for the feature but a compressed
+	  form for viewing.
+	
+	. Allow the approval/rejection process to work.  You get to
+	  integrate your changes but they aren't merged yet.  You merge
+	  when you get approval (XXX - will this work?  If the tree is open,
+	  you merge right now.  If the tree is serialized, you merge right
+	  now but the merge doesn't get moved over onto the trunk - need a
+	  name for this.  If the tree is not serialized, you wait until
+	  you get approval.  XXX - doesn't handle the case where you could
+	  have merged while you had all that state in your head and then 
+	  apply it later if no conflicts).
+	
+	. Name your work at logical break points.  This forms the basis for
+	  change sets/mods.
+
+Issues with this:
+
+	. If I want to make multiple changes, do I use the trunk or
+	  the TOT of my development as a base?
+	
+	. 
+-----------------------------------------------------------------
+
+Tags
+	. Tags are handy - you mark states, name releases, etc.  
+
+	. The problem is that it is expensive to add them to the
+	  files, it turns into a rewrite.  Suppose we added a tag
+	  log to the file format.  The log is a fixed size space that
+	  you can mmap, write into, and have it applied to where ever
+	  you want it applied when it fills up.

@@ -1,0 +1,5 @@
+What if a changeset contains multiple deltas from one file?  
+
+What if a patchfile needs to contain multiple changesets?
+
+How do I include the ChangeSet file itself in the patchfile?

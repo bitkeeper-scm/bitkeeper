@@ -1,0 +1,260 @@
+Checksums
+	Right after the delta entry, put a one or two entry
+	checksum like:
+		lines:sum lines:sum
+	The first one is the lines and sum of the line of the delta.  The
+	second is the same thing for the whole file.  The second is included
+	only if the delta is the last delta in the file.
+
+BitKeeper/tmp/status
+	and move all the other junk into tmp as well.
+
+admin -h -h: check that all the serial numbers are what you would get if 
+you did a makepatch/takepatch.
+
+Make takepatch strip leading "/" in pathnames or just ignore those paths.
+
+need to make sure that all deltas created under bitkeeper have a timezone.
+
+Convert all static buffers to malloc()ed buffers.
+
+Make sure that merges are recorded in the s.file as such.  Make a merge
+command which takes the 2 revisions to be merged, finds the GCA, and
+calls out to a merge program.  So the emacs guys can roll their own, 
+but they do it through merge.
+
+Rename info to something else.  Consider setting the timestamp on the 
+p.file and the gfile and saving size/mtime info someplace and 
+
+I should put a tag in that called ChangeSet that points to the ChangeSet
+being used as the relative pathname gizmo.  And use absolute paths for
+ChangeSet files.
+
+prs -r1.58,.1.58.1.4
+	does not work because "after" 1.58 is currently defined as 1.59
+	and what I should do is to figure out the after from the end 
+	point.
+
+Permission checks on a per subtree basis?
+
+For some reason, my get is taking longer than ATT get over NFS.  Track this
+down.
+
+Have clean try without -k if the gfiles are readonly and there are differences.
+
+Range tests.
+    .	-cnewer -colder should get nothing
+    .	prs/sccslog need to have a mode that says everything from here to the
+        end.  If that becomes the default, then add a -single option.
+
+Long options for consistency so that you can have
+
+	--dates Alpha,Beta
+
+for all commands.
+
+Assuming that each delta goes in in exactly one LOD, I need a way of
+having the get -pm stuff print out the LOD instead of the revision number.
+
+There is an issue with ranges where I may want the deltas to be 
+backwards.
+
+I think I could make the tree snapshot be an option on sccslog.  
+The data I need is the key for the root and each leaf as well as 
+the key for the most recently added tag.  That last one means I
+need to preserve the order of the tag additions, which makes it 
+look pretty much like another delta table.  I should probably
+bite the bullet and just convert over to that format.
+
+Make diffs have an option that produces a patch file, complete with the
+comments intermixed.  Also makeit produce a patch per delta, so it will
+reproduce the tree properly.  Also make it include enough information that
+it can find the rev that needs to be patched (optionally).  It can get by 
+with 2 lines of context easily.
+
+Do not allow symbols to start with [0-9.,] - think ranges
+
+Make it work with SCCS and/or .SCCS as the SCCS directory (for Linus).
+
+The symbols should be specific to a LOD.  So I can have Alpha/Beta/MR
+in kudzu/ficus/whatever, and have that work.  The full name of a symbol
+is "kudzu.Alpha" if that is what I really wanted; if the current LOD
+is ficus, then "Alpha" means "ficus.Alpha".  Coolness.
+
+For the cutoff dates, I currently look at TOT and work backwards.  It should
+be that if the date was specified as a LOD, look at TOT of that LOD.  In
+general, this will be the same, but it can be different.
+
+When changing symbols/paths/etc - set the utimes back.
+
+For the pathname stuff, since we need a pathname per delta and we have to
+import old files, make the current path be the 1.0 pathname.  Since 1.0
+can't exist, then we have (a) a pathname for all deltas and (b) a way of
+knowing that this is a pseudo pathname.
+
+Redo the code to mmap private the file and unmap on completion.  On frees,
+free only things which are not in the range s->mmap .. s->mmap + s->size.
+
+For systems w/o a working map private, malloc enough space for the whole file.
+This isnt quite as fast, but it is damn portable.
+
+Full screen ci program.  Have it split the screen, do the comment in
+the bottom, and the diffs in the top, with key stroke explanations
+in the middle.  Allow ^F/^B/^E/^Y to scroll around in the diffs.
+Neato.  For now, hardwire it to a vt100 or make it be a perl prog.
+
+For the flags section, see if I could add flags and recalc the checksum
+by subtracting the chars I deleted and adding the chars I added.
+
+Add a flag that defines prefix (or a list of prefices) that are to be
+stripped from the pathname so that the file name doesn't change.  Maybe.
+
+Add admin options for interactively managing the flags.  Add this to
+sccssh and have an interface like
+
+	set file	# initializes sccs structure
+	show flags	# shows all the flags with a number
+			# like	1: p /home/blah/foo
+	d 1		# deletes flag 1
+	c 2		# changes flag 2
+
+In rcs2sccs - leave a log file show which ones were successful (or failed).
+
+When doing the checksum, figure out how many deltas there and use that 
+number for allocating space for the state/serlist/delta table/etc.
+
+-R option to recursively do whatever.
+
+An env var or flags that say one file only.
+
+The RCS flag should have a value.  One bit should be for RCS keyword
+expansion and another should be for RCS symbol semantics versus lmsccs
+symbol semantics.
+
+admin -h could check the serial numbers against the ones in the file.
+Could check the parent/child relationship of the revs vs the serials.
+
+I need a flag to tell delta not to do the timezone stuff.
+
+Make a flag that tells the sccs_init not to mkgraph().
+
+Time handling:
+	SCCS stores times in localtime without a timezone noted.   That's
+	wrong for distributed source management.  RCS stores time in UTC;
+	that's wrong when browsing the files by hand.
+
+	My approach is the following:
+	1) Store times in localtime but note the timezone as a \Z special
+	   (or ^AZ timezone if not in UGLY_COMPAT mode).  The timezone gets
+	   noted in rev 1.1 and never again, if the timezone is always the
+	   same.
+	2) Support date formats of SCCS yy/mm/dd hh:mm:ss, my SCCS 
+	   .mmm extension on the seconds, and RCS' yyyy/mm/dd hh:mm:ss.
+	   For Y2K problems, I assume everything was done after 1970
+	   and before 2070.  I'll be dead by the time this is an issue
+	   again and I'm pretty sure that the same hack will work every
+	   100 years.  
+	3) Dates entered as part of a checkin or an admin are assumed to
+	   be in localtime.  The time zone can be adjusted on each date
+	   by an "admin -Z".  I could make prs print the timezone (and
+	   probably should if and only if != to my timezone).
+
+
+Make prs print stuff out in time order?  Certainly an option to do this would
+be nice.
+
+I could keep a list of the heads of all branches.  This would speed up
+searchs as the trees get more bushy.
+
+Make it not puke on new keywords, but instead ignore them.
+
+On ci's, save the comments across calls and pass them in to be
+reused.
+
+Add landing zone and also add a -rewrite to actually put the stuff where it 
+belongs (a make production target).
+
+Add a tag for obsoleting files so that a get doesn't get the obsolete ones.
+
+Go back and revisit the fingerprint idea in diff.
+
+sccssh isn't really a win because it opens/closes the file each time.  Keep
+a cache of recently used sfiles around.
+
+sccssh could also open a pipe to a shell and send commands to that.
+
+Add mmap to purify.c
+
+Consistent error returns from the top level functions.
+
+Make sdiffs know about your terminal width.
+
+Keyword expansion
+	Both SCCS style and RCS.
+
+Handle interrupts properly.
+
+    In particular, an interuppt at the commentary should be a NOP.
+
+If no file args, expand to SCCS/s.* when getting, SCCS/p.* when delta-ing.
+
+Start adding pathname et al support, ifndef SCCS_COMPAT
+
+Profile this code
+
+Make the checksum be part of the delta/get/whatever
+
+Add support for a file that runs itself after being checked out.
+
+Make diff a part of slib.c
+
+100% SCCS compatible mode for those lovely people out there with scripts.
+
+A command that puts the file in edit mode w/o getting it.
+
+Make all the indivdual commands one big program that just does different
+things based on argv[0].
+
+Think about a stdio mode where one part of the program is writing the
+"file" and the other part of the program is reading the "file".
+Sounds like a pipe to me.  There may be some issues with 4K buffers.
+I might be able to get around that by using a TCP socket w/ large windows.
+Or, heaven forbid, threading it.
+
+Restructure delta & get somehow to make them easier to debug.
+
+Keith's comments:
+
++ Use <stdlib.h>, not <malloc.h> to get malloc(3) info/prototypes.
+
++ Lots of lint/style warnings from gcc.
+
++ File created is different for the get -p command:
+
+        mongoose:sccs.lm {216} get -p ci.c > /tmp/1
+        1.4
+        41 lines
+        mongoose:sccs.lm {217} ./get -p ci.c > /tmp/2
+        ci.c revision 1.4: 41 lines
+        mongoose:sccs.lm {218} diff /tmp/1 /tmp/2
+        2c2
+        < static char   *what = "@(#)ci.c       1.4";
+        ---
+        > static char   *what = "%W%";
+
++ Get is missing some options:
+
+        c, i, x, a, l, n, t
+
++ Have you tried to plug the commands into the SCCS front-end Eric Allman
+  did for the BSD distributions?  That code is free, and defines a fairly
+  reasonable "front-end" for SCCS commands.  I think that people that used
+  SCCS on BSD systems don't call the SCCS commands directly, they use that
+  command.
+
+  (The code's awful because it was written in V6 days, but we probably
+  don't care, 'cause it's free.)
+
+  Along this line, there are a bunch of missing commands: admin, bdiff,
+  chghist, comb, prs, prt, rmchg, rmdel, sccsdiff, snull, what.
+

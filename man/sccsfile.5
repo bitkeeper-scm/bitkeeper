@@ -1,0 +1,352 @@
+.so .bitmacros
+.TH SCCSFILE 5 "February 1999" "BitMover, Inc." "BitKeeper Manual"
+.SH NAME
+sccsfile \- format of a \*[BKS] history file
+.SH DESCRIPTION
+An \*[S] file consists of six logical parts:
+.TP 13
+checksum:
+16 bit unsigned additive checksum over the file
+.TP
+delta table:
+a linear list of deltas, in order of creation (newest to oldest) containing
+information about each revision to the file
+.TP
+usernames:
+login names and/or group \s-1ID\s0s of users who may add deltas
+(not implemented in \*[BKS])
+.TP
+flags:
+definitions of internal keywords
+.TP
+description:
+arbitrary descriptive information about the file
+.TP
+body:
+the various versions of the files stored in a compact form
+.LP
+Each section is described in detail below.
+.SS Conventions
+Throughout an \*[S] file there are lines which begin with a \fB^A\fP
+(control-A).  These lines make up the \*[S] file meta information.
+.LP
+Entries of the form
+.I ddddd
+represent a five digit decimal string (a number between 00000 and 99999).
+.SS Checksum
+The first line of a \*[S] file is the checksum.  The form of the line is
+.LP
+.RS 4
+^A \fBh\fIddddd\fR
+.RE
+.LP
+The value of the checksum is a 16 bit sum, ignoring overflow, of all characters
+except those contained in the first line.  
+.SS "Delta Table"
+The delta table consists of a variable number of entries of the form:
+.LP
+.RS 4
+.nf
+^A\fBs \fIinserted\|\fB/\fIdeleted\|\fB/\fIunchanged\fR
+^A\fBd \fItype rev  yr\|\fB/\fImo\|\fB/\fIda hr\|\fB:\fImi\|\fB:\fIse user serial parent-ser\fR
+^A\fBi \fIinclude-list\fR
+^A\fBx \fIexclude-list\fR
+^A\fBm \fImr-number\fR
+^A\fBc \fIcomments\fR .\|.\|.
+^A\fBB \fIchange set file id\fR (*)
+^A\fBC \fIchange set id\fR (*)
+^A\fBH \fIhostname.domainname\fR (*) (+)
+^A\fBI \fIinclude list\fR (*) 
+^A\fBL \fIline of development tag serial\fR (*)
+^A\fBM \fImerge serial number\fR (*)
+^A\fBP \fIpathname\fR (*) (+)
+^A\fBS \fIsymbolic tag\fR (*)
+^A\fBT \fItime adjust\fR (*)
+^A\fBX \fIexclude list\fR (*)
+^A\fBZ \fItimezone (actually minutes west of GMT)\fR (*) (+)
+.RB ^A e
+.fi
+.RE
+.LP
+Those lines marked with \fB(*)\fP are new in \*[BKS] and not present unless
+the \*[BKS] flag is turned on (see flags section below).
+.LP
+Those lines marked with \fB(+)\fP are inherited fields, i.e., they apply 
+to all deltas which are descendents of the delta with the field, up to
+but not including a delta which has the same field with a different value.
+This inheritance is an implementation detail, but worth noting.
+.LP
+Each field is described below.
+.TP 6
+.RB ^A s
+contains the number of lines inserted/deleted/unchanged respectively.
+.TP
+.RB ^A d
+contains the type of the delta (\fBD\fR means present, \fBR\fP means was
+present but was removed, \fBM\fP means meta data),
+the revision number of the delta,
+the date and time of creation of the delta,
+the user-name of the person who created the delta,
+and the serial numbers of the delta and its parent, respectively.
+Note that the serial numbers, not the revision numbers, define the 
+graph structure of the revision history.
+.TP
+.RB ^A i 
+an optional line, consisting of a list of serial numbers which are 
+included when this delta is extracted.  Without any include lists,
+the list of serial numbers which make up a version of the file are
+the set of serial numbers starting with the serial number of this 
+delta and including all serial numbers up to the first delta in the file.
+An \fBi\fPnclude list adds to this list of serial numbers, allowing the
+inclusion of one or more other deltas.  Note that unlike the default
+list, the include list does not imply any other serial numbers, all
+non-default serials must be explicitly listed.
+.TP
+.RB ^A x 
+Like 
+.RB ^A i 
+except that the list is a list of serial numbers which are to be excluded
+when this delta is extracted.
+.TP
+.RB ^A m
+optional lines which each contain one MR number associated with the delta.
+These are not used but are preserved by \*[BKS].
+.TP
+.RB ^A c
+an optional set of lines which contain comments associated with the delta.
+.TP
+.RB ^A B
+\*[BK] introduces the concept of a \fIchange set\fP to \*[S].  This field is
+a pointer to the ChangeSet file which owns a set of files in a \*[BK] project.
+This field is typically only found once in an \*[S] file but may be found
+multiple times.  Each occurrence of the field indicates that the file has
+been moved to a new project with a new ChangeSet file.
+See 
+.BR changeset (5)
+for more details on change sets.
+.TP
+.RB ^A C
+This field is
+a pointer to a delta in the ChangeSet file which describes the change set to
+which this delta belongs.
+If this field is missing, and no descendent of this delta has such a field,
+then the delta does not belong to a change set.  If a descendent has such a
+field, then this delta belongs to the same change set as the descendent.
+A delta may belong to only one change set, so this field does not repeat.
+.TP
+.RB ^A H
+The hostname and domain name of the machine on which this delta was created.
+If this field is missing, then it has an implied value from the first 
+ancestor which has this field.  
+In other words, the field is inherited and
+if all deltas where made on the same machine, only the 1.1 delta would have
+this field.
+.TP
+.RB ^A I
+This is another form of include list.  Unlike the traditional \*[S] include
+list, each serial number in this list is a short hand for the list of
+serials starting with the named serial number and working up to the 
+greatest common ancestor of the delta being extracted and the delta referred
+to by this serial number.
+.TP
+.RB ^A L
+\*[BK] introduces the concept of a \fIline of development\fP (LOD) to \*[S]. 
+This field is is the marker which names the start of an LOD.  The symbol is
+placed on the \fB.0\fR version of the LOD, in other words, the LOD symbol
+is placed on the last node before the start of the LOD.
+The marker is followed by the serial number of the first revision in the LOD,
+if that revision exists.  When an LOD moves from the trunk to a branch, another
+LOD marker is placed on the last revision on the trunk, with the serial number
+pointing to the head of the branch which continues the LOD.
+See
+.BR lod.ps
+in the \*[BK] DocSet for more details on lines of development.
+.TP
+.RB ^A M
+The serial number of the delta which was merged into this delta.  When
+branches are merged, creating a new delta which is the merge of the 
+parent of the new delta and the tip of the branch, the serial number of 
+the tip of the branch is recorded.  This is useful for determining which 
+branches are unmerged.
+.TP
+.RB ^A P
+The pathname of the delta.  The fields are used for versioning of the
+pathnames of files, much like the versioning of the contents.  Each time
+the file is moved, \&[BKS] will notice and record the fact.  This field is
+inherited like hostnames.
+.TP
+.RB ^A S
+A symbolic name for the delta.
+See
+.BR tags (5)
+for more details on symbolic names in \*[BKS].
+.TP
+.RB ^A T
+The number of seconds between this delta and the previous delta in the delta
+table.  Normally, this is
+the difference between the two dates.  However, if the dates go backwards,
+this time will be the previous delta's time plus one second.
+This field is used to provide a partial ordering over all deltas in a file.
+.TP
+.RB ^A X
+Exclude list.  This is like the upper case include list.
+.TP
+.RB ^A Z
+The minutes west of GMT expressed as \fB-8:00\fP for 8 hours behind GMT (i.e.,
+USA PST) and
+\fB+4:30\fP for 4.5 hours after GMT.  The dates stored in the 
+.RB ^A d
+line are in the local time of the location in which the delta was created.
+.TP
+.RB ^A e
+ends the delta table entry.
+.br
+.ne 5
+.SS "User Names"
+.LP
+The list of user-names and/or numerical group \s-1ID\s0s
+of users who may add deltas to the file, one per line.
+This section of the file is for compatibility with \*[ATT] and is not
+used by \*[BKS] but is preserved.  Anyone is allowed to make a delta,
+provided they have write access to the file.
+.br
+These lines are bracketed by
+.RB ^A u
+and
+.RB ^A U .
+.SS Flags
+Flags are are used internally (see
+.BR admin (1)
+for more information on their use).  Each flag line takes the form:
+.LP
+.RS 4
+^A\fBf \fIflag optional text\fR
+.RE
+.LP
+\*[BKS] will pass through any flag which it doesn't know about, which means it
+won't respect it but it won't lose it either.  The flags which \*[BKS] supports
+are:
+.TP 9
+.RB ^A f " b"
+allows branching when the \fB-b\fP option is used with the 
+.B get
+command.
+Not respected when in \*[BK] mode.
+.TP
+.RB ^A f " d " \fIdefault-branch\fR
+The
+.B d
+flag defines the default branch to be used when none is specified on an
+.SM SCCS
+.B get
+or
+.B co
+command.
+.TP
+.RB ^A f " e " v
+The 
+.B e
+flag indicates whether a source file is encoded or not.  
+The 
+.B v
+is a number ranging from 0 to 2 (currently, more values will follow
+as more encodings are supported).
+A value of 
+.B 0
+indicates that the file is not encoded.
+A value of
+.B 1
+indicates that the file is encoded using the 
+.BR uuencode (1)
+algorithm.  A value of
+.B 2
+indicates that the file has been compressed using the
+.BR gzip (1)
+algorithm and then uuencoded.
+Source files need to be encoded
+when they contain control characters, or when they do not end with a newline.
+The
+.B e
+flag allows files that contain binary data to be checked in.
+.TP
+.RB ^A f " x " n
+The 
+.B x
+flag encodes a number of \*[BKS] specific options.  The 
+.B n
+is a decimal number in ASCII.  Individual bits in the number and their
+meanings are:
+.RS 9
+.TP 6
+.B 1
+Expand RCS keywords
+.TP
+.B 2
+When expanding keywords, expand the year as a 4 digit field, not a two digit 
+field.
+.TP
+.B 4
+Indicates that this file is in \*[BK] mode, not \*[S] mode.  This bit is
+always set if the file is a \*[BK] file.  If the file is an \*[S] file,
+then the flag is not present,
+the file format is strictly \*[S] compatible,
+and the \*[BK] features are disabled.
+.SS Description
+Arbitrary text surrounded by the bracketing lines
+.RB ^A t
+and
+.RB ^A T .
+This section typically will contain a description of the file's purpose.
+In \*[BKS], this section is always in use for ChangeSet files, and contains
+the name of the project which the ChangeSet file owns, i.e., 
+.I BitKeeper source management system
+or 
+.IR "Linux kernel" .
+.SS Body
+The body is where the file contents are stored.
+The body consists of text lines and control lines.
+Text lines do not begin with the control character, control lines do.
+There are three kinds of control lines:
+.IR insert , \ delete ,
+and
+.IR end ,
+represented by:
+.br
+.ne 6
+.LP
+.RS
+.nf
+.RB ^A I " \fIddddd\fP"
+.RB ^A D " \fIddddd\fP"
+.RB ^A E " \fIddddd\fP"
+.fi
+.RE
+.LP
+respectively.
+The digit string is the serial number corresponding to the delta for the
+control line.
+.SH "SEE ALSO"
+.BR admin (1),
+.BR bitkeeper (1),
+.BR bitsccs (1),
+.BR cset (1),
+.BR changeset (5),
+.BR ci (1),
+.BR citool (1),
+.BR clean (1),
+.BR co (1),
+.BR delta (1),
+.BR diffs (1),
+.BR fm (1),
+.BR get (1),
+.BR mkpatch (1),
+.BR lod (5),
+.BR prs (1),
+.BR rmdel (1),
+.BR sccssh (1),
+.BR sccstool (1),
+.BR sfiles (1),
+.BR sinfo (1),
+.BR tags (5),
+.BR tkpatch (1),
+.BR what (1)

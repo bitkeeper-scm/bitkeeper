@@ -1,0 +1,58 @@
+.so .bitmacros
+.TH PATCHSET 1 "May, 1998" "BitMover, Inc." BitKeeper
+.SH NAME
+patchset, pset \- apply a patch to source tree
+.SH SYNOPSIS
+.B /usr/bitsccs/patchset
+[\fB-d\fIdirectory\fR]
+[\fB-t\fItag\fR]
+[\fB-u\fIuser\fR]
+[\fIpatchfile\fR]
+.SH DESCRIPTION
+This command is part of \*[BK].  For an introduction, please see
+.BR bitkeeper (1).
+.LP
+.B patchset
+applies a patch file of unified diffs (see 
+.BR patch (1)),
+to an \*[SCCS] tree.  Each file specified in the patch is checked out, the 
+change is applied, and the file is checked back in.  In addition, the set of
+files patched is recorded as a change set in the ChangeSet file (see 
+.BR changeset (1)).
+.SH "FILE FORMAT"
+The patch file may have some extensions over a normal patch file.
+.LP
+By default, the patch is applied to the top of the tree.
+For patches derived from earlier versions of the tree, use the 
+.I -t
+option to specify an earlier (tagged) version of the tree.  
+XXX - if the files are of the form
+
+	tag-name/foo/bar/file.c
+	foo/bar/file.c
+
+then -t tag-name is implied.
+.SH OPTIONS
+.TP
+.BI -d directory
+Use
+.I directory
+as the root of the source tree.  The default is the current 
+working directory.
+.TP
+.BI -t tag
+Use the revisions associated with
+.I tag
+as the basis for the patches.  
+.I Tag 
+may not be the top of trunk, in fact, it is frequently the case.
+.SH "SEE ALSO"
+.BR bitsccs (1),
+.BR admin (1),
+.BR delta (1),
+.BR prs (1),
+.BR sfiles (1),
+.BR what (1),
+.BR sccsfile (5)
+.LP
+XXX - I need to be able to make binary patchsets.

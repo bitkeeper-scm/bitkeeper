@@ -1,0 +1,31 @@
+Ordering of deltas
+	The latest delta is TOT.
+	If TOT has multiple metadata deltas, it is the latest meta.
+	a Meta delta implies that delta and all earlier deltas until
+	one which is found in prev changeset
+
+Steps involved in creating a changeset
+    a) determine the set of files which have changed (or been created)
+       since the last changeset.
+       Include the about-to-be-created ChangeSet delta itself.
+
+    b) Create the new ChangeSet file with the id for the about to be created
+       delta.
+
+    c) Create the delta, using an Init file to get the id right.
+
+Steps involved in creating a patch
+    a) Build up a list of file:delta pairs of stuff that needs to be in the
+       changeset.
+    b) build up a list of file:delta pairs of stuff in the previous changeset
+    c) produce the difference.  This may include multiple deltas/file.
+
+The changeset file format needs to be the complete set of root:version
+pairs of keys which define the state of the tree when the changeset
+was applied.  So a changeset which adds three file:deltas to a tree of
+100 files, adds three lines to a 100 line file.  To get the state of the
+tree at any point, you just get that changeset and convert those lines
+into a set of checkouts on the file & rev.  Means that co needs to be
+able to take a key as a rev.
+
+Allow the use of tags to delimit boundries of a change set.

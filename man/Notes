@@ -1,0 +1,49 @@
+Patch issues:  a patch has to be able to contain the following events
+
+	- tags
+	- delta comments
+	- a delta
+	- renames
+
+Normal patch format is
+
+	--- oldfile date
+	+++ newfile date
+	@@range@@
+	data
+	data
+	data
+
+We can put the rest of the info in like
+
+	S tagname <key>
+	D 98/05/10 15:25:07-07:00 lm@lap.bitmover.com 3/1/146
+	C Better usage message.
+	--- /tmp/diffget355	Sun May 31 10:44:57 1998
+	+++ get.c	Mon May 11 21:43:55 1998
+	@@ -21,6 +21,7 @@
+			the date of the associated revision is used.
+	     -d		prefix each line with date (not time)
+	     -e		get file for editing (locked)
+	+    -F		don't check the checksum
+	     -g		just do locking, don't get the file
+	     -G<name>	place the output file in <name>
+	     -i<revs>	include specified revs in the get (rev,rev and/or rev-rev)
+
+So a patch becomes
+	
+	XXX - make this work based off the patch start line, working backwards
+	and figuring out if there is a header.
+
+	patch :=	<take> <patches>
+	take :=		NULL | <text>
+	patch :=	NULL | <pheader> <pbody>
+	pheader :=	<S> <D> <C>
+	S :=		NULL | "^S $tag $key"
+	D :=		"^D $date $time $user $changes"
+	C :=		NULL | <comment>
+	comment :=	"^C $comment"
+	pbody :=	patch
+
+I think maybe one way to make this work is to wack patch to know about this
+format directly.  XXX - Don't want mail headers in take messages.  

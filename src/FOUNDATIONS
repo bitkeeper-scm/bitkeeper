@@ -1,0 +1,85 @@
+Stuff I need to do to have the basic SCCS complete:
+
+- revision control every change that can happen
+  . pathnames
+  . symbols
+  . user adds/deletes
+  . EVERYTHING
+
+- pathname revisioning
+  . A graph just like the delta table graph
+  . Has to implement LOD just like the delta table graph
+
+- symbol revisioning
+  . A graph just like the delta table graph
+  . Has to implement LOD just like the delta table graph
+
+- LOD features
+  . mechanism to go around corners (multiple entries in the symbol
+    database, sorted by date, use the latest)
+  . syntax for nested names, i.e., kudzu.alpha.0; 
+  . syntax for both creating and setting the LOD to be the default
+  . Work out the interactions with dates/ranges/etc.
+
+- Performance
+  . make fastAdd work for everything in the flags section
+  . fix the get performance problem
+
+- Name spaces in BitSCCS
+  . Everything is part of a LOD, i.e., all fully qualified names are 
+    <LOD>.<NAME>  The LOD part can be left off of names; it is implied.
+    Files are created with a default LOD (named what? Perhaps '*' with that
+    implied if not specified?).
+
+  . When changes occur to a file, they are really LOD.change, i.e., 
+    a tag is LOD.tag, a pathname change is LOD.pathname, etc.
+  
+  . It would be nice to have some stuff be able to cross LOD's.  For example,
+    user access control - *.lm means lm can make changes to all LOD's.  
+    kudzu.lm means lm can make changes only to kudzu.
+
+- Change sets and LOD's.
+  . One useful option to changeset would be to apply the change in a new sub
+    line of development that is /not/ on the trunk.  In other words, it's a
+    complete change, on a branch, named, but the tree is in a state so as to
+    essentially be unchanged.  Then the owner can run a command to see what
+    changes have not yet be applied to his LOD and apply it by either 
+    (a) setting the LOD to this subpatch (if there are no changes after the
+        patch) and trying it out, or
+    (b) merging the trunk LOD onto the patch LOD and trying that.  
+    In either case, if it doesn't work, the undo is a one line command that
+    resets the LOD.
+
+- Workspace support
+  . A flag that says "this part of the path is to the top of the workspace"
+    so that you ignore that component in name space changes.
+  . A flag that says "this file is managed by BitKeeper".  This flag triggers
+    the search for a cache file that records the leaves of all files for
+    resync.
+  
+
+-----------------------------------------------------------------------------
+The problems with revisioning stuff in the file:
+
+Assume that no new deltas are added to the file, but the pathname is changed.
+How do you represent that?
+
+OK, so that is solved, now you have two branches in the tree, with two
+different pathnames for each branch - how do you associate the pathname 
+with the branch?  In other words, how does it generalize?  The sun way
+doesn't, as far as I can tell because they don't have any way, that I
+see, of having a branch in the name graph associated with a branch in 
+the delta graph.
+
+Seems to me there outght to be some way to mix the LOD and pathname
+namespaces to make this work out.
+
+A more clear statement of the problem:
+
+    . I may have any arbitrary object in the file that I want to fork down
+      two parallel lines of development.  So I need two name spaces in
+      which to make changes to the objects in a relative way.
+
+    . Whatever I do, I need to make sure it works for serial LOD as well
+      as parallel LOD - i.e., release 1 followed by release 2 vs 
+      stable vs hacks in parallel.

@@ -1,0 +1,19 @@
+In lmsccs, symbols are used in one of two ways:
+
+	. to name an absolute revision, i.e., 1.1 or 1.9.2.2 but not 1 or 1.2.1
+
+	. to name a line of development (a branch or trunk), i.e, 1, 2 or 1.2.1
+
+The first is the same as RCS.
+
+The second can be the same as RCS if the RCS flag is bit 2 set.  
+
+If the RCS compat mode is off, then we are in new territory with SCCS
+line of development (LOD) naming.  The idea is pretty simple.  A symbol
+names a new LOD and revisions start at 1 in that LOD.  It's a naming system
+layered on top of the more arcane a.b.c.d naming system that SCCS has.  
+So if I tag rev 1.20 as NEW then I can get at rev 1.21 as either "1.21" or
+"NEW.1".
+
+XXX - to make this work, advisory messages should use the tag naming, not
+the rev naming to educate people.

@@ -1,0 +1,111 @@
+#!/usr/bin/perl -sw
+
+$n = $d = $v = 0 if 0; # lint
+if ($v) { $s = ""; $q = ""; } else { $s = "-s"; $q = "-q"; }
+$co = "echo";
+$ci = "echo";
+$co = "/usr/bin/co" if -x "/usr/bin/co";
+$ci = "/usr/bin/ci" if -x "/usr/bin/ci";
+$co = "/usr/sbin/co" if -x "/usr/sbin/co";
+$ci = "/usr/sbin/ci" if -x "/usr/sbin/ci";
+open(SH, "|sh");
+&sh("mkdir RCS\n");
+while (<>) {
+	chop;
+	unless (m|SCCS/s\.|) {
+		warn "Bad filename: $_, skipping it.\n";
+		next;
+	}
+	unless (-f $_) {
+		warn "Not readable: $_, skipping it.\n";
+		next;
+	}
+	&doit($file = $_);
+}
+exit 0;
+
+sub sh
+{
+	print STDERR "@_" if $d || $n;
+	return if $n;
+	print SH "@_";
+}
+
+sub doit
+{
+	local(@sids);
+
+	chop($_ = `sids -p $file`);
+	@sids = reverse(split);
+	pop(@sids);
+	$deltas = $#sids + 1;
+	$deltas /= 2;
+	&sh("echo ==== $file $deltas revisions ====\n");
+	@branches = ();
+	$gfile = &gfile($file);
+	$base = &basename($gfile);
+	# Get all the deltas and create the other file.
+	&sh("echo $file gets\n");
+	for ($i = 0; $i <= $#sids; $i += 2) {
+		$rev = "$sids[$i]";
+		&sh("get $s -k -p -r$rev $file > $rev\n");
+	}
+
+	# check in all the stuff on the trunk.
+	&sh("echo $file ci\n");
+	for ($i = 0; $i <= $#sids; $i += 2) {
+		if ($sids[$i] =~ /\d+\.\d+\.\d/) {
+			push(@branches, $sids[$i], $sids[$i+1]);
+			next;
+		}
+		$rev = "$sids[$i]";
+		&sh("mv $rev $base\n");
+		&sh("$ci -f $q -mfoo -l$rev $base < /dev/null\n");
+	}
+
+	# Unlock it.
+	&sh("rcs -u $q $base\n/bin/rm $base\n");
+
+	# do the branches.
+	# XXX  - this works only sometimes.
+	for ($i = 0; $i <= $#branches; $i += 2) {
+		$rev = "$branches[$i]";
+		$parent = "$branches[$i+1]";
+		&sh("$co -l $q -r$parent $base\n");
+		&sh("mv $rev $base\n");
+		&sh("$ci -f $q -mfoo -l$rev $base < /dev/null\n");
+	}
+
+	# Unlock it.
+	&sh("rcs -u $q $base\n") if $i;
+}
+
+sub gfile 
+{
+	local($file) = $_[0];
+
+	$file =~ s|SCCS/s\.||;
+	$file;
+}
+
+sub dirname
+{
+	local($c);
+	local($dir) = $_[0];
+
+	if ($dir =~ m|/|) {
+		do {
+			$c = chop($dir);
+		} while ($c ne '/');
+	}
+	$dir;
+}
+
+sub basename
+{
+	local($c);
+	local($file) = $_[0];
+
+	$file =~ s|.*/||;
+	$file;
+}

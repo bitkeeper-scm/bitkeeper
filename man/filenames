@@ -1,0 +1,6 @@
+.LP
+File names may be specified as the working file name (with an implied
+\*[SCCS]/\fBs.\fPfile), as the \fBs.\fPfile (with an implied gfile of
+\fBfile\fP), as nothing (with the implied list being \fB\*[SCCS]/s.*\fP
+if the \*[SCCS] directory exists, else \fBs.*\fP), or as "\fB-\fP"
+and the file list comes from \fIstdin\fP.

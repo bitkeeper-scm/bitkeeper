@@ -1,0 +1,38 @@
+LM
+	Interface to rick is a list.
+	handing the list to Rick means
+		- locking has been obeyed, both RESYNC and p.file
+		- the parent is in the s.file
+		- etc.
+TODO
+	ordering hacks (lm)
+	smoosh use of ordering hacks (rick)
+	mkpatch(lm)
+	getdiffs(rick)
+	include/exclude patch(rick)
+	tkpatch(lm)
+	delta * sccs-getuuid(sccs *, delta *)
+
+mkpatch
+    Given a list of deltas to generate a patch from
+    	generate the parent UUID
+	generate the PRS record
+	generate the diffs
+	generate any PRS records for associated removed deltas.
+	
+
+sccs_patch
+    generates a patch for a particular revision.  A patch is 
+
+	a) the parent key as a PRS record
+	b) the PRS record for the delta
+	c) any removed and/or meta PRS records
+	d) the diffs in diff output but no changes, just adds and deletes.
+
+tkpatch
+    parses the patch file, the calls sccs_delta with a pointer to the diffs
+    and the PRS record.
+
+sccs_delta
+    gets modified to have one more argument, the diffs pointer, which implies
+    the FORCE flag.

@@ -1,0 +1,5 @@
+Figure out some way to delete a branches worth of deltas and
+propogate that delete into other environments.  The propogation
+should not occur of the deletes are in the default branch on 
+default line of work.  Nor should they propogate if the deltas
+are recent?

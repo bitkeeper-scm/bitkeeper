@@ -1,0 +1,26 @@
+prs needs to show only the LOD revisions in the current default branch.
+This may extend up above the top of the branch since the LOD may have
+started on the trunk and twisted off on a branch.
+
+BitSCCS 
+	- tags == LOD's
+	- a tag is the .0 revision of a LOD
+	- gets of LOD.0 get that delta, or nothing if it expands to 1.0
+	- works for a file that has N releases and 1 delta, if
+	  the LOD's are A, B, and C, then 1.1 = A.1, B.0, C.0
+
+Name space:
+	- a tag can be nested, i.e., foo.bar.0 is the parent delta of the
+	  foo line of development in the bar line of development.
+	- The most common use of this is for things like A.alpha and
+	  B.alpha (i.e., the alpha point in two different lines of development).
+	- Shorthands:  if we are in the X line of development (default branch
+	  is set to X), then you can use "foo" and have it mean "X.foo".
+	  If X.foo is not a valid tag, then we look for just "foo" as a 
+	  top level LOD.
+	- Tag creation: 
+		. If there is no default branch set, then "foo" means "foo".
+		. If there is a default branch set, then "foo" means 
+		  "LOD.foo"  XXX - is this the right answer?
+
+	  

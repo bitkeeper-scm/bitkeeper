@@ -1,0 +1,152 @@
+.so .bitmacros
+.TH DELTA 1 "May, 1998" "BitMover, Inc." BitSCCS
+.SH NAME
+delta \- make a delta to an SCCS file
+.SH SYNOPSIS
+.B /usr/bitsccs/delta
+[\fB\-cilnpqs\fP]
+[\fB-I\fIf\fR]
+[\fB-R\fIr\fR]
+[\fB-y\fIc\fR]
+[\fIfile\fP \|.\|.\|.]
+.SH DESCRIPTION
+This command is part of \*[BS], the \*[BM] version of \*[SCCS].  For an 
+introduction, please see
+.BR bitsccs (1).
+.LP
+.B delta
+checks in changes (aka deltas) in the working file to the
+\*[SCCS] revision control file.
+The working file[s] must have been previously edited by the
+.BR get ,
+.BR co ,
+or some other \*[SCCS] enabled program.
+.B delta
+may prompt you on the standard output depending upon
+the options specified and the flags that are set in the
+.BR s. file
+(see
+.BR admin (1),
+and the
+.B -y
+option below, for details).
+.so filenames
+.SH OPTIONS
+.TP
+.B -c
+Do not regenerate the \*[SCCS] checksum after writing the file.
+Use of this option is not advised, it is usually used  in conversion
+scripts for a little extra performance.
+.TP
+.B -i
+Initialize the file.  Used when checking in an initial file.  The traditional
+\*[SCCS] command for this function is
+.BR admin .
+.TP
+.TP
+.BI -I initFile
+Take the date, user, comments, pathname, hostname, etc., from the file
+.IR initFile .
+This option is typically used in conversion scripts.  The file format 
+must match that produced by a
+.B "prs -I<rev>" 
+and looks like:
+.DS
+D 1.3 97/05/25 21:59:47 lm@bitmover.com 3 2  1/1/32
+P /home/lm/smt/sccs/delta.c
+C Support -y flag.
+.DE
+.TP
+.B -l
+Lock the file after the check in.  This is analogous to following the 
+.B delta 
+command with a 
+.BR "get -e" .
+.TP
+.B -n
+Retain the edited
+.BR g -file,
+which is normally removed at the completion of processing.
+.TP
+.B -p
+Display differences (in
+.BR diff (1)
+format) on the standard output.
+.TP
+.B \-q
+Run silently, like 
+.B -s
+below.
+.TP
+.BI \-R rev
+Force the revision of the new delta to be
+.IR rev .
+Use this with caution, because an incorrect revision number can confuse
+programs which parse the files.  This option is typically only used in
+conversion scripts.
+.TP
+.B \-s
+Run quietly.  All informational messages are suppressed; error messages
+are unaffected.
+.TP
+.BI \-y [comment]
+Supply a comment for the delta.  A
+null
+comment is acceptable.  If
+.B \-y
+is not specified,
+.B delta
+prompts with the file name and new revision number like so:
+.DS
+$ delta foo.c
+End comments with "." by itself, blank line, or EOF.
+foo.c 2.11>>  
+.DE
+.SH EXAMPLES
+To check in everything in the local directory, try:
+.DS
+$ delta
+.DE
+If you wanted to use the same comment on every delta, you could also
+try:
+.DS
+$ delta -y'Changes for release 1 of Widget'
+.DE
+A common usage is to print the differences, this is handy since you frequently
+need to scan the differences to provide meaningful comment.  For each file,
+the differences are printed, then you are prompted for the comment.
+.DS
+$ delta -p foo.c bar.c
+===== foo.c 1.1 vs edited =====
+1a
+> /* Copyright 1998 Foo Corp, Ltd. */
+foo.c 1.2>> Add copyright
+foo.c 1.2>> .
+===== bar.c 1.3 vs edited =====
+1a
+> /* Copyright 1998 Foo Corp, Ltd. */
+bar.c 1.4>> Add copyright
+bar.c 1.4>> .
+.DE
+.SH FILES
+.TP 20
+.BI p. file
+lock file for a checked-out version
+.TP
+.BI s. file
+\*[SCCS] history file
+.TP
+.BI x. file
+temporary copy of the
+.BR s. file
+.TP
+.BI z. file
+lock file
+.SH "SEE ALSO"
+.BR admin (1),
+.BR sccs-ci (1),
+.BR get (1),
+.BR prs (1),
+.BR rmdel (1),
+.BR diff (1),
+.BR diffs (1).
