@@ -1,4 +1,4 @@
-.so bk-macros
+.so ../bk-macros
 .TH "bk range" 1 20%E% "\*(BC" "\*(UM"
 .\"    ================= Specifying Dates and Ranges =================
 .SH NAME
@@ -12,10 +12,14 @@ bk range \- demo program to show ranges & dates
 .BKARGS
 .SH DESCRIPTION
 .LP
-Many commands can take ranges of deltas as an argument.  A range
-is a continuous sequence of deltas, such as 1.1, 1.2, 1.3, and 1.4.
-Deltas may be specified by their revision number (1.2),  a symbolic
-name (in the case of the ChangeSet file only), or a date (99/07/25).
+Many commands can take ranges of deltas as an argument.  A range is a
+continuous sequence of deltas, such as 1.1, 1.2, 1.3, and 1.4.  Deltas
+may be specified by their revision number (1.2), delta key
+('amy@bitmover.com|man/man1/bk-terms.1|20020714011327|59990'), a
+symbolic name (@tag), changeset rev (@1.33), or changeset key
+(@'lm@disks.bitmover.com|ChangeSet|20020912140445|17593').  (see
+.B bk help terms
+for more info)
 .LP
 You may specify both end-points at once like so:
 .sp

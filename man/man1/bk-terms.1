@@ -1,4 +1,4 @@
-.so bk-macros
+.so ../bk-macros
 .TH "bk terms" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
 bk terms \- definitions of \*(BK terms
@@ -38,6 +38,24 @@ we want to talk about how it got there.
 Files that have been checked out, edited, and not
 yet checked back in are "modified" files.  When you
 check files in, the modifications become new deltas.
+.tp
+.B rev argument
+Many commands take file revision numbers as arguments, usually
+to the
+.B \-r
+option.  On the command line anytime a revision number is expected,
+the delta key can be used instead.  Or after an @ sign, a changeset
+revision, tag, or changeset key can be used.  So
+.B \-r@1.4
+finds the version number as of changeset revision 1.4. So the
+following are all legal:
+.DS
+-r1.23
+-r'amy@bitmover.com|man/man1/bk-terms.1|20020714011327|59990'
+-r@1.233.2
+-r@bk-3.0-pre3
+-r@'lm@disks.bitmover.com|ChangeSet|20020912140445|17593'
+.DE
 .tp
 .B ChangeSet
 The file used to record the repositories' history of changes.

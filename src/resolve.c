@@ -2441,6 +2441,9 @@ err:			unapply(save);
 	}
 	fclose(f);
 
+	/* Remove cache of cset revisions */
+	delete_cset_cache(".", 0);
+
  	/*
 	 * If case folding file system , make sure file name
 	 * did not change case after we copied it
