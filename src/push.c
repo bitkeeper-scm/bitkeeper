@@ -66,7 +66,7 @@ usage:			system("bk help -s push");
 	if (opts.debug) r->trace = 1;
 	for (;;) {
 		rc = push(av, opts, r, envVar);
-		if (rc != 2) break;
+		if (rc != -2) break; /* -2 means locked */
 		if (try == 0) break;
 		if (bk_mode() == BK_BASIC) {
 			if (try > 0) {
@@ -82,7 +82,7 @@ usage:			system("bk help -s push");
 		}
 		sleep(min((i++ * 2), 10)); /* auto back off */
 	}
-	if (rc == 2) rc = 1; /* if retry failed, reset exit code to 1 */
+	if (rc == -2) rc = 1; /* if retry failed, reset exit code to 1 */
 	remote_free(r);
 	freeLines(envVar);
 	return (rc);
@@ -250,8 +250,8 @@ push_part1(opts opts, remote *r, char rev_list[MAXPATH], char **envVar)
 
 	if (r->httpd) skip_http_hdr(r);
 	if (getline2(r, buf, sizeof(buf)) <= 0) return (-1);
-	if (remote_lock_fail(buf, opts.verbose)) {
-		return (-1);
+	if ((rc = remote_lock_fail(buf, opts.verbose))) {
+		return (rc); /* -2 means locked */
 	} else if (streq(buf, "@SERVER INFO@")) {
 		getServerInfoBlock(r);
 		getline2(r, buf, sizeof(buf));
@@ -367,6 +367,7 @@ genpatch(opts opts, int level, int wfd, char *rev_list)
 	 */
 	fd0 = dup(0); close(0);
 	fd = open(rev_list, O_RDONLY, 0);
+	if (fd < 0) perror(rev_list);
 	assert(fd == 0);
 	pid = spawnvp_rPipe(makepatch, &rfd, 0);
 	dup2(fd0, 0); close(fd0);
@@ -624,7 +625,7 @@ push(char **av, opts opts, remote *r, char **envVar)
 	ret = push_part1(opts, r, rev_list, envVar);
 	if (ret < 0) {
 		unlink(rev_list);
-		return (1); /* failed */
+		return (ret); /* failed */
 	}
 	return (push_part2(av, opts, r, rev_list, ret, envVar));
 }
