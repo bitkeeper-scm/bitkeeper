@@ -377,7 +377,7 @@ bkd_install_service(bkdopts *opts)
 		}
 retry:        	schService = CreateService(schSCManager, SERVICENAME,
             			SERVICEDISPLAYNAME, SERVICE_ALL_ACCESS,
-            			SERVICE_WIN32_OWN_PROCESS, SERVICE_DEMAND_START,
+            			SERVICE_WIN32_OWN_PROCESS, SERVICE_AUTO_START,
             			SERVICE_ERROR_NORMAL, cmd, NULL, NULL,
 				DEPENDENCIES, NULL, NULL);
 
