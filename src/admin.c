@@ -114,7 +114,7 @@ admin_main(int ac, char **av)
 		    case 'C':					/* doc 2.0 */
 			csetFile = optarg; newCset++; flags |= NEWCKSUM; break;
 		    case 'D':					/* doc 2.0 */
-			rmCsets = 1; break;
+			rmCsets = 1; flags |= NEWCKSUM; break;
 		    case 'h':	if (flags & ADMIN_FORMAT) {	/* doc 2.0 */
 		    			flags |= ADMIN_BK;
 				} else if (flags & ADMIN_BK) {

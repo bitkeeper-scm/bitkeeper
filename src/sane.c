@@ -52,10 +52,10 @@ chk_host()
 	if (host && (p = strrchr(host, '.')) && streq(&p[1], "localdomain")) {
 		fprintf(stderr,
 "================================================================\n"
-"sane: Warning: bad host name: \"%s\".\n"
+"sane: Warning: unable to obtain fully qualified hostname for this machine.\n"
 "\"%s\" does not look like a valid domain name.\n"
 "================================================================\n",
-		host, &p[1]);
+		host);
 	}
 
 	if (host && strchr(host, '.') && !strneq(host, "localhost", 9)) {
