@@ -1003,6 +1003,7 @@ char	*GUI_display();
 int	cat(char *file);
 char	*savefile(char *dir, char *prefix, char *pathname);
 void	has_proj(char *who);
+int	mv(char*, char *);
 
 extern char *bk_vers;
 extern char *bk_utc;
