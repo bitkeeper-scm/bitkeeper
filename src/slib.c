@@ -7574,6 +7574,14 @@ out:
 		OUT;
 	}
 
+	if ((sc->state & S_BITKEEPER) && (u && u[0].flags)){
+		/* If it is a BitKeeper File, disallow u flags */
+		verbose((stderr,
+	    "admin: add/del user/group is not supported in BitKeeper file %s\n",
+			sc->sfile));
+		OUT;
+	}
+
 	if ((flags & ADMIN_BK) && checkInvariants(sc)) OUT;
 	if (flags & ADMIN_FORMAT) {
 		if (checkrevs(sc, flags) || checkdups(sc) ||
