@@ -928,15 +928,15 @@ sccs_fixDates(sccs *s)
 void
 fixNewDate(sccs *s)
 {
-	delta *parent, *d;	
+	delta *next, *d;	
 
 	d = s->table;
 	unless (d->date) (void)getDate(d);
-	parent = d->parent;
-	unless (parent) return;
-	assert(parent->date);
-	if (d->date <= parent->date) {
-		d->dateFudge = (parent->date - d->date) + 1;
+	next = d->next;
+	unless (next) return;
+	assert(next->date);
+	if (d->date <= next->date) {
+		d->dateFudge = (next->date - d->date) + 1;
 		d->date += d->dateFudge;
 	}
 }
