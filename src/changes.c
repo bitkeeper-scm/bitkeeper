@@ -531,6 +531,7 @@ sccs_keyinitAndCache(char *key, int flags,
 
 /*
  * Given a "top" delta "d", this function computes ChangeSet boundaries
+ * It collect all the deltas inside a changeset and stuff them to "list".
  */
 private slog *
 collectDelta(sccs *s, delta *d, slog *list, char *dspec, int *n, char *dbuf)
@@ -554,18 +555,17 @@ collectDelta(sccs *s, delta *d, slog *list, char *dspec, int *n, char *dbuf)
 		ll->next = list;
 		list = ll;
 		(*n)++;
-		d->flags &= ~D_SET;
 
 		if (d->merge) {
 			e = sfind(s, d->merge);
 			assert(e);
-			unless (e->flags & D_CSET) {
+			unless (e->flags & (D_SET|D_CSET)) {
 				list = collectDelta(s, e, list, dspec, n, dbuf);
 			}
 		}
 		
 		d =  d->parent;
-	} while (d && !(d->flags & D_CSET));
+	} while (d && !(d->flags & (D_SET|D_CSET)));
 	return (list);
 }
 
