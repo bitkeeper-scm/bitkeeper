@@ -1,0 +1,3 @@
+REM this is a sample config.sys file for bitkeeper on win95/win98 (not needed for NT)
+REM The following line set up the space for environment variable in the commnad shell
+shell=C:\command.com /e:4096 /p

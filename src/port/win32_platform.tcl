@@ -17,12 +17,8 @@ proc platformInit {} \
 
 	# This does not work in wrap mode
 	# On win95 this hang the system
-	#set getDir "tk_chooseDirectory"
+	set getDir "tk_chooseDirectory"
 
-	# This does not work on any Win32 platform
-        set tkfbox [file join $bin "tkfbox.tcl"]
-        source $tkfbox
-        set getDir "tk_getOpenFile -dirok yes -dironly yes"    
 }
 
 platformInit
