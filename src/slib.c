@@ -11176,7 +11176,7 @@ sccs_resolveFile(sccs *s, char *lpath, char *gpath, char *rpath)
 		}
 		fclose(f);
 		if (lpath) {
-			unless (f = fopen(sccsXfile(s, 'R'), "w")) {
+			unless (f = fopen(sccsXfile(s, 'm'), "w")) {
 				perror("R.file");
 				return (-1);
 			}
@@ -11192,7 +11192,7 @@ sccs_resolveFile(sccs *s, char *lpath, char *gpath, char *rpath)
 		return (1);
 	}
 	if (lpath) {
-		unless (f = fopen(sccsXfile(s, 'R'), "w")) {
+		unless (f = fopen(sccsXfile(s, 'm'), "w")) {
 			perror("R.file");
 			return (-1);
 		}
