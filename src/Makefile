@@ -384,14 +384,14 @@ helptool: gui/helptool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
 	    gui/helptool.tcl > helptool
 
 difftool: gui/search.tcl gui/config.tcl gui/difftool.tcl \
-	port/$(SYS)_platform.tcl gui/common.tcl
+	port/$(SYS)_platform.tcl gui/common.tcl gui/difflib.tcl
 	cat gui/search.tcl port/$(SYS)_platform.tcl gui/config.tcl \
-	    gui/common.tcl gui/difftool.tcl > difftool
+	    gui/common.tcl gui/difflib.tcl gui/difftool.tcl > difftool
 
 csettool: gui/csettool.tcl gui/config.tcl gui/common.tcl \
-	port/$(SYS)_platform.tcl gui/search.tcl
+	port/$(SYS)_platform.tcl gui/search.tcl gui/difflib.tcl
 	cat gui/search.tcl port/$(SYS)_platform.tcl gui/config.tcl \
-	    gui/common.tcl gui/csettool.tcl > csettool
+	    gui/common.tcl gui/difflib.tcl gui/csettool.tcl > csettool
 
 renametool: gui/renametool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
 	gui/common.tcl

@@ -2,6 +2,7 @@
 # Copyright (c) 1999 by Larry McVoy; All rights reserved
 # @(#) csettool.tcl 1.39@(#) akushner@disks.bitmover.com
 
+# Override the next proc from difflib
 proc next {} \
 {
 	global	diffCount lastDiff DiffsEnd search
@@ -28,6 +29,7 @@ proc next {} \
 	dot
 }
 
+# Override the prev proc from difflib
 proc prev {} \
 {
 	global	Diffs DiffsEnd lastDiff diffCount lastFile search
@@ -62,277 +64,6 @@ proc prev {} \
 }
 
 # If even partially visible, return 1
-#
-proc visible {index} \
-{
-	if {[llength [.diffs.right bbox $index]] > 0} {
-		return 1
-	}
-	return 0
-}
-
-proc clearOrRecall {} \
-{
-	set which [.menu.searchClear cget -text]
-	if {$which == "Recall search"} {
-		searchrecall
-	} else {
-		searchreset
-	}
-}
-
-proc dot {} \
-{
-	global	Diffs DiffsEnd diffCount lastDiff
-
-	# If no differences between the files, number of diffs=0, but
-	# Diffs(0) does not exist
-	if {![info exists Diffs($lastDiff)]} {return}
-	scrollDiffs $Diffs($lastDiff) $DiffsEnd($lastDiff)
-	highlightDiffs $Diffs($lastDiff) $DiffsEnd($lastDiff)
-	.diffs.status.middle configure -text "Diff $lastDiff of $diffCount"
-	.menu.dot configure -text "Center on diff $lastDiff"
-	if {$lastDiff == 1} {
-		.menu.prev configure -state disabled
-	} else {
-		.menu.prev configure -state normal
-	}
-	if {$lastDiff == $diffCount} {
-		# XXX: I think we want to be able to go to the next file?? -ask
-		#.menu.next configure -state disabled
-	} else {
-		.menu.next configure -state normal
-	}
-	return
-}
-
-proc highlightDiffs {start stop} \
-{
-	global	gc
-
-	.diffs.left tag delete d
-	.diffs.right tag delete d
-	.diffs.left tag add d $start $stop
-	.diffs.right tag add d $start $stop
-	.diffs.left tag configure d -font $gc(cset.fixedBoldFont)
-	.diffs.right tag configure d -font $gc(cset.fixedBoldFont)
-}
-
-proc topLine {} \
-{
-	return [lindex [split [.diffs.left index @1,1] "."] 0]
-}
-
-
-proc scrollDiffs {start stop} \
-{
-	global	gc
-
-	# Either put the diff beginning at the top of the window (if it is
-	# too big to fit or fits exactly) or
-	# center the diff in the window (if it is smaller than the window).
-	set Diff [lindex [split $start .] 0]
-	set End [lindex [split $stop .] 0]
-	set size [expr {$End - $Diff}]
-	# Center it.
-	if {$size < $gc(cset.diffHeight)} {
-		set j [expr {$gc(cset.diffHeight) - $size}]
-		set j [expr {$j / 2}]
-		set i [expr {$Diff - $j}]
-		if {$i < 0} {
-			set want 1
-		} else {
-			set want $i
-		}
-	} else {
-		set want $Diff
-	}
-
-	set top [topLine]
-	set move [expr {$want - $top}]
-	.diffs.left yview scroll $move units
-	.diffs.right yview scroll $move units
-	.diffs.left xview moveto 0
-	.diffs.right see $start
-	.diffs.left see $start
-}
-
-proc chunks {n} \
-{
-	global	Diffs DiffsEnd nextDiff
-
-	set l [.diffs.left index "end - 1 char linestart"]
-	set Diffs($nextDiff) $l
-	set e [expr {$n + [lindex [split $l .] 0]}]
-	set DiffsEnd($nextDiff) "$e.0"
-	incr nextDiff
-}
-
-proc same {r l n} \
-{
-	set lines {}
-	while {$n > 0} {
-		gets $l line
-		lappend lines $line
-		gets $r line
-		incr n -1
-	}
-	set l [join $lines "\n"]
-	.diffs.left insert end "$l\n"
-	.diffs.right insert end "$l\n";
-}
-
-proc changed {r l n} \
-{
-	chunks $n
-	set llines {}
-	set rlines {}
-	while {$n > 0} {
-		gets $l line
-		lappend llines $line
-		gets $r line
-		lappend rlines $line
-		incr n -1
-	}
-	set lc [join $llines "\n"]
-	set rc [join $rlines "\n"]
-	.diffs.left insert end "$lc\n" diff
-	.diffs.right insert end "$rc\n" diff
-}
-
-proc left {r l n} \
-{
-	chunks $n
-	set lines {}
-	set newlines ""
-	while {$n > 0} {
-		gets $l line
-		lappend lines $line
-		set newlines "$newlines\n"
-		incr n -1
-	}
-	set lc [join $lines "\n"]
-	.diffs.left insert end "$lc\n" diff
-	.diffs.right insert end "$newlines" 
-}
-
-proc right {r l n} \
-{
-	chunks $n
-	set lines {}
-	set newlines ""
-	while {$n > 0} {
-		gets $r line
-		lappend lines $line
-		set newlines "$newlines\n"
-		incr n -1
-	}
-	set rc [join $lines "\n"]
-	.diffs.left insert end "$newlines" 
-	.diffs.right insert end "$rc\n" diff
-}
-
-# Get the sdiff, making sure it has no \r's from donkey dos in it.
-proc sdiff {L R} \
-{
-	global	rmList sdiffw
-
-	set rmList ""
-	set a [open "| grep {\r$} \"$L\"" r]
-	set b [open "| grep {\r$} \"$R\"" r]
-	if { ([gets $a dummy] < 0) && ([gets $b dummy] < 0)} {
-		catch { close $a }
-		catch { close $b }
-		return [open "| $sdiffw \"$L\" \"$R\"" r]
-	}
-	catch { close $a }
-	catch { close $b }
-	set dir [file dirname $L]
-	if {"$dir" == ""} {
-		set dotL .$L
-	} else {
-		set tail [file tail $L]
-		set dotL [file join $dir .$tail]
-	}
-	catch {exec bk undos $L > $dotL}
-	set dir [file dirname $R]
-	if {"$dir" == ""} {
-		set dotR .$R
-	} else {
-		set tail [file tail $R]
-		set dotR [file join $dir .$tail]
-	}
-	catch {exec bk undos $R > $dotR}
-	set rmList [list $dotL $dotR]
-	return [open "| $sdiffw \"$dotL\" \"$dotR\""]
-}
-
-proc readFiles {L R} \
-{
-	global	Diffs DiffsEnd diffCount nextDiff lastDiff dev_null rmList
-
-	.diffs.left configure -state normal
-	.diffs.right configure -state normal
-	set f [file tail $L]
-	.diffs.status.l configure -text "$f"
-	set f [file tail $R]
-	.diffs.status.r configure -text "$f"
-	.diffs.left delete 1.0 end
-	.diffs.right delete 1.0 end
-
-	set lineNo 1
-	set diffCount 0
-	set nextDiff 1
-	array set DiffsEnd {}
-	array set Diffs {}
-	set n 1
-	set l [open $L r]
-	set r [open $R r]
-	set d [sdiff $L $R]
-
-	gets $d last
-	if {$last == "" || $last == " "} { set last "S" }
-	while { [gets $d diff] >= 0 } {
-		incr lineNo 1
-		if {$diff == "" || $diff == " "} { set diff "S" }
-		if {$diff == $last} {
-			incr n 1
-		} else {
-			switch $last {
-			    "S"	{ same $r $l $n }
-			    "|"	{ incr diffCount 1; changed $r $l $n }
-			    "<"	{ incr diffCount 1; left $r $l $n }
-			    ">"	{ incr diffCount 1; right $r $l $n }
-			}
-			set n 1
-			set last $diff
-		}
-	}
-	switch $last {
-	    "S"	{ same $r $l $n }
-	    "|"	{ incr diffCount 1; changed $r $l $n }
-	    "<"	{ incr diffCount 1; left $r $l $n }
-	    ">"	{ incr diffCount 1; right $r $l $n }
-	}
-	close $r
-	close $l
-	catch { close $d }
-	if {"$rmList" != ""} {
-		foreach rm $rmList {
-			file delete $rm
-		}
-	}
-	.diffs.left configure -state disabled
-	.diffs.right configure -state disabled
-	if {$diffCount > 0} {
-		set lastDiff 1
-		dot
-	} else {
-		set lastDiff 0
-		.diffs.status.middle configure -text "No differences"
-	}
-}
-
 proc nextFile {} \
 {
 	global	fileCount lastFile
@@ -534,72 +265,6 @@ proc pixSelect {x y} \
 	set line [lindex [split $line "."] 0]
 	set lastFile $line2File($line)
 	dotFile
-}
-
-proc yscroll { a args } \
-{
-	eval { .diffs.left yview $a } $args
-	eval { .diffs.right yview $a } $args
-}
-
-proc xscroll { a args } \
-{
-	eval { .diffs.left xview $a } $args
-	eval { .diffs.right xview $a } $args
-}
-
-#
-# XXX: Why x and y set, but not used (and not globals)?
-#
-proc Page {view dir one} \
-{
-	set p [winfo pointerxy .]
-	set x [lindex $p 0]
-	set y [lindex $p 1]
-	page ".diffs" $view $dir $one
-	return 1
-}
-
-#
-# Scrolls page up or down
-#
-# w	window to scroll (seems not to be used....)
-# xy 	yview or xview
-# dir	1 or 0
-# one   1 or 0
-#
-proc page {w xy dir one} \
-{
-	global	gc
-
-	if {$xy == "yview"} {
-		set lines [expr {$dir * $gc(cset.diffHeight)}]
-	} else {
-		# XXX - should be width.
-		set lines 16
-	}
-	if {$one == 1} {
-		set lines [expr {$dir * 1}]
-	} else {
-		incr lines -1
-	}
-	.diffs.left $xy scroll $lines units
-	.diffs.right $xy scroll $lines units
-}
-
-proc fontHeight {f} \
-{
-	return [expr {[font metrics $f -ascent] + [font metrics $f -descent]}]
-}
-
-proc computeHeight {} \
-{
-	global	gc
-
-	update
-	set f [fontHeight [.diffs.left cget -font]]
-	set p [winfo height .diffs.left]
-	set gc(cset.diffHeight) [expr {$p / $f}]
 }
 
 proc adjustHeight {diff list} \
@@ -805,7 +470,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		-font $gc(cset.buttonFont) -text "Help" \
 		-command { exec bk helptool csettool & }
 	    button .menu.dot -bg $gc(cset.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
+		-pady $py -padx $px -borderwid $bw -width 15\
 		-font $gc(cset.buttonFont) -text "Current diff" \
 		-command dot
 	    label $search(plabel) -font $gc(cset.buttonFont) -width 11 \
@@ -832,7 +497,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		-bg $gc(cset.buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Clear search" -state disabled -command { clearOrRecall }
-	    label $search(status) -width 20 -font $gc(cset.buttonFont) \
+	    label $search(status) -width 10 -font $gc(cset.buttonFont) \
 		-relief flat
 
 	    pack .menu.quit -side left
@@ -960,8 +625,11 @@ proc keyboard_bindings {} \
 
 proc main {} \
 {
-	global argv0 argv argc
+	global argv0 argv argc app
 
+	# Set 'app' so that the difflib code knows which global config
+	# vars to read
+	set app cset
 	set revs ""
 	if {$argv == ""} {
 		set revs "+"
