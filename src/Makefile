@@ -590,9 +590,14 @@ binlinks:
 	fi; \
 
 install-nolinks:
+	@-if [ $(BINDIR) = "/usr/libexec/bitkeeper" ]; then \
+		rm -rf /usr/libexec/bitkeeper 2>/dev/null; \
+		test -d /usr/libexec/bitkeeper && \
+		    mv /usr/libexec/bitkeeper /usr/libexec/BKJUNK$$$$; \
+	fi
 	@test -d $(BINDIR) || mkdir -p $(BINDIR)
 	cp -f $(BINS) $(SCRIPTS) $(DATA) $(BINDIR)
-	test -x /build/.wish/tk/bin/wish || exit 1
+	test -x /build/.wish/tk/bin/bkgui || exit 1
 	cp -rp /build/.wish/tk $(BINDIR)
 	@-rm -rf $(BINDIR)/t
 	@set `echo $(LINKTO)`; \
