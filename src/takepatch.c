@@ -2516,7 +2516,10 @@ cleanup(int what)
 		}
 	}
  done:
-	SHOUT2();
-	if (what & CLEAN_OK) rc = 0;
+	if (what & CLEAN_OK) {
+		rc = 0;
+	} else {
+		SHOUT2();
+	}
 	exit(rc);
 }
