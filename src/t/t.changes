@@ -353,7 +353,7 @@ cat <<EOF > expect
 1.5 C clone
  
 EOF
-diff -u expect chgs || {
+bk diff -u expect chgs || {
 	echo changes returned wrong data
 	exit 1
 }

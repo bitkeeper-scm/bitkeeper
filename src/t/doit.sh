@@ -15,7 +15,6 @@
 
 win32_common_setup()
 {
-	DIFF="bk diff"
 	RM=rm
 	PLATFORM="WIN32"
 	WINDOWS=YES
@@ -25,7 +24,7 @@ win32_common_setup()
 	BK_FS="|"
 	BK_BIN=`cd .. && ./bk pwd -s`
 	CWD="$BK_BIN/bk pwd"
-	touch `msys2win $TEMP`/BitKeeper_null
+	touch `msys2win $TEMP`/BitKeeper_nul
 	BK_USER=`bk getuser`
 	# Admin user is special, remap to a differnt user before we run the test
 	if [ X$BK_USER = XAdministrator ]; then BK_USER=Administrator-test; fi
@@ -47,7 +46,6 @@ win32_common_setup()
 
 unix_common_setup()
 {
-	DIFF=diff
 	RM=/bin/rm
 	PLATFORM="UNIX"
 	WINDOWS=NO
@@ -57,8 +55,14 @@ unix_common_setup()
 	CWD="/bin/pwd"
 	if [ -d /usr/xpg4/bin ]; then PATH=/usr/xpg4/bin:$PATH; fi
 	BK_FS="|"
-	BK_BIN="`cd .. && pwd`"
+
+	# only a symlink to 'bk' appears on PATH
+	BK_BIN=/build/.bkbin-$USER
+	rm -rf $BK_BIN
+	mkdir $BK_BIN
+	ln -s `cd .. && pwd`/bk $BK_BIN/bk
 	PATH=$BK_BIN:$PATH:/usr/local/bin:/usr/freeware/bin:/usr/gnu/bin
+
 	unset CDPATH PAGER
 	if [ X$USER = X ]; then USER=`bk getuser`; fi
 	# root user is special, remap to a differnt user before we run the test
@@ -284,7 +288,7 @@ clean_up()
 
 	# Make sure there are no stale files in $TMPDIR
 	ls -a $TMPDIR > $TMPDIR/T.${USER}-new
-	( cd $TMPDIR && $DIFF T.${USER}-new T.${USER} )
+	( cd $TMPDIR && bk diff T.${USER}-new T.${USER} )
 
 	for i in 1 2 3 4 5 6 7 8 9 0
 	do	
@@ -328,6 +332,7 @@ init_main_loop()
 # -v 	turn on verbose mode
 # -x	trace command execution
 # -r	use rsh instead of ssh
+# -p    prompt before doing the cleanup (mostly useful for interactive GUI tests)
 #
 get_options()
 {
@@ -335,8 +340,10 @@ get_options()
 	S=-s;
 	KEEP_GOING=NO
 	TESTS=0
+	PAUSE=NO
 	while true
 	do	case $1 in
+		    -p) PAUSE=YES;;
 	            -f) FAIL_WARNING=YES;;
 		    -i) KEEP_GOING=YES;;
 		    -r) export PREFER_RSH=YES;;
@@ -436,6 +443,21 @@ echo ''
 			fi
 		}
 	}
+
+	if [ "$PAUSE" = "YES" ]
+	then
+	    bk msgtool -Y "Click to continue" \
+"The test script is now paused so you may examine 
+the working environment before it is cleaned up. 
+
+pwd: `pwd`
+tmp: $TMPDIR
+output file: $TMPDIR/OUT.$$
+
+I hope your testing experience was positive! :-)
+"
+	fi
+
 	$RM -f $TMPDIR/OUT.$$
 	if [ $EXIT -ne 0 -o $BAD -ne 0 ]
 	then

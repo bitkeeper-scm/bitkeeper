@@ -11,9 +11,6 @@ and exit accordingly.
 .LP
 This interface may be used for either command line or graphical environments.
 .LP
-If the environment variable \s-2\fBBK_NO_GUI_PROMPT\fP\s0 is set, then
-the command line interface is preferred.
-.LP
 If the environment variable \s-2\fBBK_GUI\fP\s0 is set, then the
 graphical tool will be used instead of the command line version.
 All of the \*[BK] GUI tools set this variable automatically such that any
@@ -28,14 +25,6 @@ variable must be in the for
 where "x" and "y" are screen coordinates.  bk citool sets this variable 
 automatically such that the prompt will be at the same x/y location as
 the upper left corner of citool.
-.LP
-If neither \s-2\fBBK_GUI\fP\s0 nor \s-2\fBBK_NO_GUI_PROMPT\fP\s0 is set,
-and if there are no command line overrides, then the logic which chooses
-which interface is as follows: if there is a \s-2\fBDISPLAY\fP\s0
-variable then the graphical interface is chosen; on \s-2\fBWindows\fP\s0
-based systems, the graphical interface is always chosen unless the
-command is running remotely (i.e.,
-in a bkd on a different machine).
 .SH OPTIONS
 .if t .TP
 .if n .TP 1.2i
@@ -50,7 +39,7 @@ Specifies the file contain the message to be displayed.  Unless this option
 or the 
 .B \-p
 option is present,
-the last command line argument is must be present and is used as the message.
+the last command line argument must be present and is used as the message.
 .tp
 .B \-g
 Override the BK_GUI variable and force a command line prompt if called in 

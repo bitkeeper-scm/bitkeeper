@@ -74,7 +74,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	export.o fdiff.o file_gif.o files.o \
 	find.o findcset.o findkey.o fix.o fixlod.o \
 	g2sccs.o gca.o get.o gethelp.o \
-	gethost.o getopt.o gettemp.o getuser.o glob.o \
+	gethost.o getopt.o getreg.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \
 	idcache.o isascii.o key2rev.o key2path.o kvfile.o \
 	lease.o level.o \
@@ -111,7 +111,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	root.o rset.o scompress.o sane.o sccs.o sccs_mv.o sccs2bk.o sccscat.o \
 	sccslog.o sccsmv.o sccsrm.o send.o sendbug.o \
 	set.o setup.o sfiles.o sfio.o shellcmd.o shrink.o sinfo.o \
-	slib.o smerge.o sort.o status.o stripdel.o support.o synckeys.o sys.o \
+	slib.o smerge.o sort.o status.o stripdel.o synckeys.o sys.o \
 	tagmerge.o takepatch.o testdates.o timestamp.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \
 	unique.o unlink.o unlock.o unpull.o unwrap.o \
@@ -469,9 +469,9 @@ gui-nowrap GUI-nowrap:
 
 install: installdir
 	tmp/bitkeeper/bk install -d -f $(BINDIR)
-	-$(BINDIR)/bk links $(BINDIR) /usr/bin
+	-$(BINDIR)/bk links /usr/bin
 
-installdir:
+installdir: utils/registry.tcl
 	rm -rf $(IMGDIR)
 	mkdir -p $(IMGDIR)
 	tar cf - $(BINS) $(SCRIPTS) gui/bin gui/lib gui/images | \
@@ -482,7 +482,8 @@ installdir:
 		bk get -S ../man/Makefile; \
 		cd ../man && $(MAKE) install BINDIR=$(IMGDIR) ;\
 	else \
-		cd win32 && $(MAKE) BINDIR=$(IMGDIR) install; \
+		(cd win32 && $(MAKE) BINDIR=$(IMGDIR) install); \
+		cp utils/registry.tcl $(IMGDIR)/gui/lib; \
 	fi
 	@true
 

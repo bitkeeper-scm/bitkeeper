@@ -124,51 +124,21 @@ bk ci $Q -u init2 2> ${DEV_NULL}
 if [ ! -f init2 ]; then echo File not checked out.; exit 1; fi
 if writable init2; then echo File not read only.; exit 1; fi
 echo OK
+
 echo $N Make sure delta -G works ....................................$NL
 # Figure out which kind of touch we have
 echo "G change data" > init3
 touch -t 0102030489 init3 > ${DEV_NULL} 2>&1
-TOUCH=NO
-if [ `bk mtime init3` != 1989-01-02-03:04:00 ]
-then	touch -t 8901020304.00 init3 > ${DEV_NULL} 2>&1
-	if [ `bk mtime init3` != 1989-01-02-03:04:00 ]
-	then	echo Your touch command seems busted `bk mtime init3`
-	else	TOUCH=YES
-	fi
-else	TOUCH=YES
-fi
-if [ $TOUCH = YES ]
-then	bk delta $Q -i -G init3
-	echo "89/01/02 03:04:00" > CMP1
-	bk prs -h -d':D: :T:\n' init3 > CMP2
-	# on NT, cygwin added 02 seconds
-	case X`uname -s` in
-	    XCYGWIN*)	sed -e"s/:02$/:00/" CMP2 >  CMPX
-			sed -e"s/ 04:04:/ 03:04:/" CMPX > CMP2
-		;;
-	esac
-	cmp -s CMP1 CMP2
-	if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
-	#
-	# XXX - commented out until awc fixes this to be portable.
-	#get $Q -T init3
-	# There is a bug in cygwin (version B20) ls/timezone code;
-	# It is off by one hour when we are in daylight saving time.
-	#ls -l --full-time init3 | awk '{print $9}' > CMP1
-	#prs -hr1.1 -d:T: init3 > CMP2
-	#case X`uname -s` in
-	#    XCYGWIN*)	sed -e"s/^04:/03:/" CMP2 > CMPX
-	#		mv CMPX CMP2
-	#		sed -e"s/^04:/03:/" CMP1 > CMPX
-	#		mv CMPX CMP1
-	#	;;
-	#	*)
-	#	;;
-	#esac
-	#cmp -s CMP1 CMP2
-	#if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; cat -n CMP[12]; exit 1; fi
-	echo OK
-fi
+test "`bk mtime init3`" != "1989/01/02 03:04:00" && {
+	touch -t 8901020304.00 init3 > ${DEV_NULL} 2>&1
+}
+bk mtime init3 > CMP1
+bk delta $Q -i -G init3
+bk prs -Y -h -d':D: :T:\n' init3 > CMP2
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
+echo OK
+
 echo $N Make sure delta -a new file work ............................$NL
 mkdir A
 echo "echo this is a new file" > A/data

@@ -1,6 +1,8 @@
 #include "system.h"
 #include "sccs.h"
 
+extern	char	*bin;
+
 #define	BK_LOG "BitKeeper/log"
 
 
@@ -199,7 +201,7 @@ send_main(int ac,  char **av)
 	/*
 	 * Set up wrapper
 	 */
-	if (wrapper) wrapperArgs = aprintf(" | bk %swrap", wrapper);
+	if (wrapper) wrapperArgs = aprintf(" | %s/%swrap", bin, wrapper);
 
 	/*
 	 * Print patch header
@@ -218,7 +220,11 @@ send_main(int ac,  char **av)
 	/*
 	 * Mail the patch if necessary
 	 */
-	if (patch) mail(to, "BitKeeper patch", patch);
+	if (patch) {
+		char	**tolist = addLine(0, to);
+		bkmail("SMTP", tolist, "BitKeeper patch", patch);
+		freeLines(tolist, 0);
+	}
 
 out:	if (patch) {
 		unlink(patch);

@@ -75,6 +75,7 @@ int	get_main(int, char **);
 int	gethelp_main(int, char **);
 int	gethost_main(int, char **);
 int	getmsg_main(int, char **);
+int	getreg_main(int, char **);
 int	getuser_main(int, char **);
 int	glob_main(int, char **);
 int	gnupatch_main(int, char **);
@@ -93,6 +94,7 @@ int	key2rev_main(int, char **);
 int	keycache_main(int, char **);
 int	keyunlink_main(int, char **);
 int	lconfig_main(int, char **);
+int	lease_main(int, char **);
 int	level_main(int, char **);
 int	license_main(int, char **);
 int	lines_main(int, char **);
@@ -158,7 +160,6 @@ int	sccslog_main(int, char **);
 int	scompress_main(int, char **);
 int	send_main(int, char **);
 int	sendbug_main(int, char **);
-int	support_main(int, char **);
 int	set_main(int, char **);
 int	setup_main(int, char **);
 int	sfiles_main(int, char **);
@@ -207,6 +208,7 @@ struct	command cmdtbl[] = {
 	{"_findcset", findcset_main },
 	{"_g2sccs", _g2sccs_main},
 	{"_get", get_main},
+	{"_getreg", getreg_main},
 	{"_gzip", gzip_main }, 
 	{"_key2path", key2path_main},
 	{"_keyunlink", keyunlink_main },
@@ -290,12 +292,13 @@ struct	command cmdtbl[] = {
 	{"idcache", idcache_main},		/* undoc? 2.0 */
 	{"isascii", isascii_main},		/* doc 2.0 */
 	{"key2rev", key2rev_main},		/* doc 2.0 */
-	{"keycache", keycache_main},
+	{"lease", lease_main},
 	{"level", level_main},			/* doc 2.0 */
 	{"license", license_main},		/* undoc */
 	{"lock", lock_main},			/* doc 2.0 */
 	{"lod", lod_main},	/* XXX - doc 2.0 - says doesn't work yet */
 	{"log", log_main},
+ 	{"mail", mail_main},
 	{"mailsplit", mailsplit_main},
 	{"makepatch", makepatch_main},		/* doc 2.0 */
 	{"mdiff", mdiff_main},
@@ -347,7 +350,7 @@ struct	command cmdtbl[] = {
 	{"sccsrm", rm_main},	/* alias */	/* doc 2.0 as mv */
 	{"send", send_main},			/* doc 2.0 */
 	{"sendbug", sendbug_main},		/* doc 2.0 */
-	{"support", support_main},	/* doc 3.0 */
+	{"support", sendbug_main},		/* doc 3.0 */
 	{"set", set_main},
 	{"setup", setup_main },			/* doc 2.0 */
 	{"shrink", shrink_main}, 		/* undoc? 2.0 */
@@ -1192,6 +1195,7 @@ launch_wish(char *script, char **av)
 		exit(1);
 	}
 
+	putenv("BK_GUI=YES");
 	sig_catch(SIG_IGN);
 	argv[0] = path;
 	if (strchr(script, '/')) {

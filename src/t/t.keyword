@@ -123,5 +123,5 @@ $Date: DATE $
 # $Author sdljf $Author: bk@free.bk $
 # $Author: bk@free.bk $$Author $Author: bk@free.bk $
 EOF
-diff -u CMP1 CMP2 || exit 1
+bk diff -u CMP1 CMP2 || exit 1
 echo OK

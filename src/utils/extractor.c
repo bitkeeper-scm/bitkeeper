@@ -4,11 +4,13 @@
  */
 #include "../system.h"
 #include "../zlib/zlib.h"
+#ifdef WIN32
+#include "../win32/uwtlib/misc.h"
+#endif
 #undef	malloc
 #undef	mkdir
 #undef	putenv
 #undef	strdup
-#undef	system
 #undef	unlink
 #undef	fclose
 
@@ -18,7 +20,7 @@
 #ifdef	WIN32
 #define	mkdir(a, b)	_mkdir(a)
 #define	RMDIR		"rmdir /s /q"
-#define	BINDIR		"C:/PROGRA~1/BitKeeper"
+#define	BINDIR		"C:/Program Files/BitKeeper"
 #else
 #define	RMDIR		"/bin/rm -rf"
 #define	BINDIR		"/usr/libexec/bitkeeper"
@@ -34,13 +36,18 @@ void	extract(char *, char *, u32, char *);
 char	*findtmp(void);
 int	isdir(char*);
 void	rmTree(char *dir);
+#ifdef WIN32
+int	do_reboot(void);
+#endif
 
 main(int ac, char **av)
 {
 	char	*p, *sfio, *dest = 0, *tmp = findtmp();
 	int	i, fd;
+	int	rc = 0;
 	pid_t	pid = getpid();
 	FILE	*f;
+	int	dolinks = 0;
 	char	tmpdir[MAXPATH];
 	char	buf[MAXPATH];
 
@@ -88,10 +95,46 @@ main(int ac, char **av)
 		} else {
 			dest = av[1];
 		}
-	} else if (av[1]) {
+#ifndef	WIN32
+		unless (getenv("BK_NOLINKS")) dolinks = 1;
+#endif
+	} else if (av[1]
+#ifndef WIN32
+		   || !getenv("DISPLAY")
+#endif
+		   ) {
 		fprintf(stderr, "usage: %s [-u || <directory>]\n", av[0]);
+		fprintf(stderr,
+"Installs BitKeeper on the system.\n"
+"\n"
+"With no arguments this installer will unpack itself in a temp\n"
+"directory and then start a graphical installer to walk through the\n"
+"installation.\n"
+"\n"
+"If a directory is provided on the command line then a default\n"
+"installation is written to that directory.\n"
+"\n"
+"The -u option is for batch upgrades.  The existing BitKeeper is\n"
+"found on your PATH and then this version is installed over the top\n"
+"of it.  If no existing version of BitKeeper can be found, then a\n"
+"new installation is written to " BINDIR "\n"
+"\n"
+#ifdef WIN32
+"Administrator privileges are required for a full installation.  If\n"
+"installing from a non-privileged account, then the installer will only\n"
+"be able to do a partial install.\n"
+#else
+"Normally symlinks are created in /usr/bin for 'bk' and common SCCS\n"
+"tools.  If the user doesn't have permissions to write in /usr/bin\n"
+"or BK_NOLINKS is set then this step will be skipped.\n"
+"\n"
+"If DISPLAY is not set in the environment, then the destination must\n"
+"be set on the command line.\n"
+#endif
+			);
 		exit(1);
 	}
+	/* dest =~ s,\,/,g */
 	if (dest) for (p = dest; *p; p++) if (*p == '\\') *p = '/';
 
 	sprintf(tmpdir, "%s/%s%u", tmp, TMP, pid);
@@ -138,7 +181,9 @@ main(int ac, char **av)
 #endif
 	if (dest) {
 		fprintf(stderr, "Installing BitKeeper in %s\n", dest);
-		sprintf(buf, "bk install -f \"%s\"", dest);
+		sprintf(buf, "bk install -f%s \"%s\"",
+			dolinks ? "S" : "",
+			dest);
 		system(buf);
 		p = getenv("BK_OLDPATH");
 		tmp = malloc(strlen(p) + MAXPATH);
@@ -161,7 +206,12 @@ main(int ac, char **av)
 #ifdef	WIN32
 		fprintf(stderr, "Running installer...\n");
 #endif
-		system(buf);
+		/*
+		 * Use our own version of system()
+		 * because the native one on win98 does not return the
+		 * correct exit code
+		 */
+		rc = system(buf);
 	}
 
 	/* Clean up your room, kids. */
@@ -176,6 +226,9 @@ main(int ac, char **av)
 	/*
 	 * Bitchin'
 	 */
+#ifdef WIN32
+	if (rc == 2) do_reboot();
+#endif
 	exit(0);
 }
 
@@ -283,14 +336,15 @@ isdir(char *path)
 void
 rmTree(char *dir)
 {
-	char cmd[MAXPATH + 12];
+	char buf[MAXPATH], cmd[MAXPATH + 12];
 
 	if (isWin98()) {
 		sprintf(cmd, "deltree /Y %s", dir);
 	} else {
 		sprintf(cmd, "rmdir /s /q %s", dir);
 	}
-	system(cmd);
+	/* use native system() funtion  so we get cmd.exe/command.com */
+	(system)(cmd);
 }
 
 #else

@@ -1,18 +1,21 @@
 #include "../system.h"
 #include "../sccs.h"
 
+extern	char	*bin;
+
 /*
  * Copyright (c) 2001 Andrew Chang       All rights reserved.
  */
 
 #ifndef WIN32
 pid_t
-mail(char *to, char *subject, char *file)
+smtpmail(char **to, char *subject, char *file)
 {
-	int	fd, fd0, wfd, i = -1;
+	int	fd, fd0, wfd, i, j = -1;
 	pid_t	pid;
 	char	buf[MAXLINE];
 	char	sendmail[MAXPATH], *mail;
+	char	**av;
 	struct	utsname ubuf;
 	char	*paths[] = {
 		"/usr/bin",
@@ -25,16 +28,26 @@ mail(char *to, char *subject, char *file)
 		0
 	};
 
-	while (paths[++i]) {
-		sprintf(sendmail, "%s/sendmail", paths[i]);
+	while (paths[++j]) {
+		sprintf(sendmail, "%s/sendmail", paths[j]);
 		if (access(sendmail, X_OK) == 0) {
-			FILE *f, *pipe;
-			char *av[] = {sendmail, "-i", to, 0};
+			FILE	*f, *pipe;
 
-			pid = spawnvp_wPipe(av, &wfd, 0);
+			av = addLine(0, strdup(sendmail));
+			av = addLine(av, strdup("-i"));
+			EACH (to) av = addLine(av, strdup(to[i]));
+			av = addLine(av, 0);
+
+			pid = spawnvp_wPipe(av + 1, &wfd, 0);
+			freeLines(av, free);
 			if (pid == -1) return (pid);
 			pipe = fdopen(wfd, "w");
-			fprintf(pipe, "To: %s\n", to);
+			fputs("To: ", pipe);
+			EACH (to) {
+				unless (i == 1) fprintf(pipe, ", ");
+				fprintf(pipe, "%s", to[i]);
+			}
+			fputs("\n", pipe);
 			if (subject && *subject) {
 				fprintf(pipe, "Subject: %s\n", subject);
 			}
@@ -51,50 +64,60 @@ mail(char *to, char *subject, char *file)
 	fd = open(file, O_RDONLY, 0);
 	assert(fd == 0);
 	mail = exists("/usr/bin/mailx") ? "/usr/bin/mailx" : "mail";
-	/* `mail -s subject" form doesn't work on IRIX */
+	/* "mail -s subject" form doesn't work on IRIX */
 	i = uname(&ubuf);
 	assert(i == 0);
-	if (strstr(ubuf.sysname, "IRIX")) {
-		char *av[] = {mail, to};
-		pid = spawnvp_wPipe(av, &wfd, 0);
-	}  else {
-		char *av[] = {mail, "-s", subject, to};
-		pid = spawnvp_wPipe(av, &wfd, 0);
+	av = addLine(0, strdup(mail));
+	unless (strstr(ubuf.sysname, "IRIX")) {
+		av = addLine(av, strdup("-s"));
+		av = addLine(av, strdup(subject));
 	}
+	EACH (to) av = addLine(av, strdup(to[i]));
+	av = addLine(av, 0);
+	pid = spawnvp_wPipe(av + 1, &wfd, 0);
+	freeLines(av, free);
 	dup2(fd0, 0);
 	return (pid);
 }
 #else
 pid_t
-mail(char *to, char *subject, char *file)
+smtpmail(char **to, char *subject, char *file)
 {
-	char	buf[MAXLINE];
 	pid_t	pid;
-	extern	char *bin;
+	char	**av;
+	char	buf[MAXLINE];
 
 	/*
 	 * user have a non-standard email configuration
 	 */
 	sprintf(buf, "%s/bk_mail.bat", bin);
 	if (exists(buf)) {
-		char mail_bat[MAXPATH];
-		char *av[] = {mail_bat, subject, to, file, 0};
-
-		sprintf(mail_bat, "%s/bk_mail.bat", bin);
-		pid = spawnvp_ex(_P_NOWAIT, av[0], av);
-		return (pid);
-	} 
+		av = addLine(0, strdup(buf));
+		av = addLine(av, strdup(subject));
+		av = addLine(av, joinLines(",", to));
+		av = addLine(av, strdup(file));
+		av = addLine(av, 0);
+		goto out;
+	}
 
 	/*
-	 * Try to send it via the Excahnge server
+	 * Try to send it via the Exchange server
 	 */
 	sprintf(buf, "%s/mapisend.exe", bin);
 	if (exists(buf)) {
-		char *av[] = 	{"mapisend", "-u", "MS Exchange settings",
-					"-p", "not_used", "-r", to, "-s", subject,
-								"-f", file, 0};
-		pid = spawnvp_ex(_P_NOWAIT, av[0], av);
-		if (pid != -1) return (pid);
+		av = addLine(0, strdup(buf));
+		av = addLine(av, strdup("-u"));
+		av = addLine(av, strdup("MS Exchange settings"));
+		av = addLine(av, strdup("-p"));
+		av = addLine(av, strdup("not_used"));
+		av = addLine(av, strdup("-r"));
+		av = addLine(av, joinLines(";", to));
+		av = addLine(av, strdup("-s"));
+		av = addLine(av, strdup(subject));
+		av = addLine(av, strdup("-f"));
+		av = addLine(av, strdup(file));
+		av = addLine(av, 0);
+		goto out;
 	}
 
 	/*
@@ -102,13 +125,21 @@ mail(char *to, char *subject, char *file)
 	 */
 	sprintf(buf, "%s/blat.exe", bin);
 	if (exists(buf)) {
-		char *av[] = {"blat", file, "-t", to, "-s", subject, 0, 0};
-
-		av[6] = getenv("BK_MAIL_DEBUG")  ? "-debug" : "-q";
-		pid = spawnvp_ex(_P_NOWAIT, av[0], av);
-		if (pid != -1) return (pid);
+		av = addLine(0, strdup(buf));
+		av = addLine(av, strdup(file));
+		av = addLine(av, strdup("-t"));
+		av = addLine(av, joinLines(",", to));
+		av = addLine(av, strdup("-s"));
+		av = addLine(av, strdup(subject));
+		av = addLine(av,
+		    strdup(getenv("BK_MAIL_DEBUG")  ? "-debug" : "-q"));
+		av = addLine(av, 0);
 	}
-	getMsg("no_mailer", 0, '=', stderr);
+ out:
+	pid = spawnvp_ex(_P_NOWAIT, av[1], av + 1);
+	freeLines(av, free);
+	if (pid != -1) return (pid);
+	getMsg("win32-mailer-error", 0, 0, '=', stderr);
 	return (-1);
 }
 #endif
