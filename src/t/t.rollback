@@ -60,7 +60,7 @@ bk new $Q LS
 bk commit $Q -ywhatever
 KEY=`bk prs -hr+ -d:KEY: LS`
 MONTH=`bk prs -hr+ -d:Dm: LS`
-BADKEY=`echo "$KEY" | sed s/$MONTH/99/`
+BADKEY=`echo "$KEY" | sed s/$MONTH/00/`
 mv SCCS/s.ChangeSet SCCS/s-ChangeSet
 sed "s/$KEY/$BADKEY/" < SCCS/s-ChangeSet > X
 bk undos X > SCCS/s.ChangeSet
