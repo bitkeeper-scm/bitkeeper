@@ -31,6 +31,7 @@ proc main {} \
 
 	restoreGeometry "rev" 
 	after idle [list wm deiconify .]
+	after idle [list focus -force .]
 
 	startup
 }
@@ -61,11 +62,9 @@ proc ht {id} \
 proc drawAnchor {x1 y1 x2 y2} {
 	global w gc
 
+	# this gives the illusion of a sunken node
 	$w(graph) create line $x2 $y1 $x2 $y2 $x1 $y2 \
 	    -fill #f0f0f0 -tags anchor -width 1 \
-	    -capstyle projecting
-	$w(graph) create line $x1 $y2 $x1 $y1 $x2 $y1 \
-	    -fill $gc(rev.revOutline) -tags anchor -width 1 \
 	    -capstyle projecting
 
 	set y $y2
@@ -88,14 +87,26 @@ proc drawAnchor {x1 y1 x2 y2} {
 # old - do a rectangle in gc(rev.oldColor)
 # new - do a rectangle in gc(rev.newColor)
 # gca - do a black rectangle -- used for GCA
+# tagged - draw an outline in gc(rev.tagOutline)
+#
+# id may be a canvas object id (an integer) or a tag (typically a 
+# revision number or revision-user pair)
 proc highlight {id type {rev ""}} \
 {
 	global gc w
 
+	if {![string is integer $id]} {
+		# The id is a tag rather than a canvas object id.
+		# In such a case we want to find the id of the text 
+		# object associated with the tag. 
+		set id [textbox $id]
+	}
 	catch {set bb [$w(graph) bbox $id]} err
 	#puts "In highlight: id=($id) err=($err)"
-	# If node to highlight is not in view, err=""
+	# If node to highlight is not in view, err=""; if some other
+	# unexpected error, bb might not be defined so we need to bail.
 	if {$err == ""} { return "$err" }
+	if {![info exists bb]} return
 	# Added a pixel at the top and removed a pixel at the bottom to fix 
 	# lm complaint that the bbox was touching the characters at top
 	# -- lm doesn't mind that the bottoms of the letters touch, though
@@ -107,6 +118,12 @@ proc highlight {id type {rev ""}} \
 
 	set bg {}
 	switch $type {
+	    tagged {
+		    set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
+				-outline $gc(rev.tagOutline) \
+				-width 1 \
+				-tags [list $rev revision tagged]]
+	    }
 	    anchor {
 		    drawAnchor $x1 $y1 $x2 $y2
 		}
@@ -168,10 +185,22 @@ proc highlight {id type {rev ""}} \
 	    }
 	}
 
+	$w(graph) raise tagged
 	$w(graph) raise anchor
 	$w(graph) raise revtext
 
 	return $bg
+}
+
+# find the id of the textbox for the given tag, if there is one.
+proc textbox {tag} {
+	global w
+	set tagspec "revtext&&$tag"
+	set items [$w(graph) find withtag $tagspec]
+	if {[llength $items] > 0} {
+		return [lindex $items 0]
+	}
+	return $tag
 }
 
 # This is used to adjust around the text a little so that things are
@@ -328,7 +357,6 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 	busy 1
 
 	# Search for annotated file output or annotated diff output
-	# display comment window if we are in annotated file output
 	switch -regexp -- $ttype {
 	    "^annotated$" {
 	    	if {![regexp {^(.*)[ \t]+([0-9]+\.[0-9.]+).*\|} \
@@ -340,26 +368,6 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 		# to view when a line is selected. Line has precedence over
 		# a selected node
 		set rev1 $rev
-		$w(aptext) configure -height 15
-		$w(ctext) configure -height $gc(rev.commentHeight) 
-		$w(aptext) configure -height 50
-		if {[winfo ismapped $w(ctext)]} {
-			set comments_mapped 1
-		} else {
-			set comments_mapped 0
-		}
-		if {$bindtype == "B1"} {
-			commentsWindow show
-			set prs [open "| bk prs {$dspec} -hr$rev \"$file\" 2>$dev_null"]
-			filltext $w(ctext) $prs 1 "ctext"
-			set wht [winfo height $w(cframe)]
-			set cht [font metrics $gc(rev.fixedFont) -linespace]
-			set adjust [expr {int($wht) / $cht}]
-			#puts "cheight=($wht) char_height=($cht) adj=($adjust)"
-			if {($curLine > $adjust) && ($comments_mapped == 0)} {
-				$w(aptext) yview scroll $adjust units
-			}
-		}
 	    }
 	    "^.*_prs$" {
 		# walk backwards up the screen until we find a line with a 
@@ -663,19 +671,20 @@ proc addline {y xspace ht l} \
 
 	foreach word $l {
 		# Figure out if we have another parent.
-		# 1.460.1.3-awc-890@1.459.1.2-awc-889
+		# 1.460.1.3-awc-890|1.459.1.2-awc-889
 		set m 0
 		if {[regexp $line_rev $word dummy a b] == 1} {
-			regexp {(.*)-([^-]*)} $a dummy rev serial
-			regexp {(.*)-([^-]*)} $b dummy rev2
-			set parent($rev) $rev2
+			splitRev $a trev tuser serial tagged
+			set rev "$trev-$tuser"
+			splitRev $b revb userb serialb taggedb
+			set rev2 "$revb-$userb"
+			set parent($rev) "$revb-$userb"
 			lappend merges $rev
 			set m 1
 		} else {
-			regexp {(.*)-([^-]*)} $word dummy rev serial
+			splitRev $word trev tuser serial tagged
+			set rev "$trev-$tuser"
 		}
-		set tmp [split $rev "-"]
-		set tuser [lindex $tmp 1]; set trev [lindex $tmp 0]
 		set rev2rev_name($trev) $rev
 		# determing whether to make revision box two lines 
 		if {$stacked} {
@@ -714,6 +723,9 @@ proc addline {y xspace ht l} \
 			} else {
 				highlight $id "revision" $rev
 			}
+		}
+		if {$tagged} {
+			highlight $id tagged $rev
 		}
 		#puts "ADD $word -> $rev @ $x $y"
 		#if {$m == 1} { highlight $id "arrow" }
@@ -789,10 +801,11 @@ proc line {s width ht} \
 	# The length is determined by the first and last serial numbers.
 	set word [lindex $l 1]
 	if {[regexp $line_rev $word dummy a] == 1} { set word $a }
-	regexp {(.*)-([^-]*)} $word dummy head first
-	set word [lindex $l [expr {[llength $l] - 1}]]
+	splitRev $word revision programmer first dummy
+	set head "$revision-$programmer"
+	set word [lindex $l end]
 	if {[regexp $line_rev $word dummy a] == 1} { set word $a }
-	regexp {(.*)-([^-]*)} $word dummy rev last
+	splitRev $word dummy dummy last dummy
 	if {($last == "") || ($first == "")} {return}
 	set diff [expr {$last - $first}]
 	incr diff
@@ -801,7 +814,8 @@ proc line {s width ht} \
 	# Now figure out where we can put the list.
 	set word [lindex $l 0]
 	if {[regexp $line_rev $word dummy a] == 1} { set word $a }
-	regexp {(.*)-([^-]*)} $word dummy rev last
+	splitRev $word revision programmer last dummy
+	set rev "$revision-$programmer"
 
 	# If there is no parent, life is easy, just put it at 0/0.
 	if {[info exists revX($rev)] == 0} {
@@ -946,7 +960,7 @@ proc setScrollRegion {} \
 proc listRevs {r file} \
 {
 	global	bad Opts merges dev_null ht screen stacked gc w
-	global	errorCode
+	global	errorCode bk_fs
 
 	set screen(miny) 0
 	set screen(minx) 0
@@ -964,7 +978,12 @@ proc listRevs {r file} \
 	#$w(graph) create text 0 0 -anchor nw -text " "
 
 	set errorCode [list]
-	set d [open "| bk _lines $Opts(line) $r \"$file\" 2>$dev_null" "r"]
+	if {$gc(rev.tagOutline) == ""} {
+		set tagopt ""
+	} else {
+		set tagopt "-T"
+	}
+	set d [open "| bk _lines $Opts(line) $tagopt $r \"$file\" 2>$dev_null" "r"]
 
 	# puts "bk _lines $Opts(line) $r \"$file\" 2>$dev_null"
 	if  {[lindex $errorCode 2] == 1} {
@@ -977,14 +996,12 @@ proc listRevs {r file} \
 		lappend lines $s
 		foreach word [split $s] {
 			# Figure out if we have another parent.
-			set node  [split $word '@']
+			set node [split $word $bk_fs]
 			set word [lindex $node 0]
 
 			# figure out whether name or revision is the longest
 			# so we can find the largest text string in the list
-			set revision [split $word '-']
-			set rev [lindex $revision 0]
-			set programmer [lindex $revision 1]
+			splitRev $word rev programmer serial tagged
 
 			set revlen [string length $rev]
 			set namelen [string length $programmer]
@@ -1034,6 +1051,32 @@ proc listRevs {r file} \
 	return 0
 } ;# proc listRevs
 
+# this routine is used to parse the output of "bk _lines". 
+# It sets variables in the callers context for revision, username, 
+# serial number, and whether the node has a tag or not. 
+# "rev" in this context is a string in the form revision-user-serial
+# If the string ends with an asterisk, this indicates the rev has a
+# tag
+# note that all but the first argument are variable names in the
+# caller's context.
+proc splitRev {rev revVar nameVar serialVar haveTagVar} \
+{
+	upvar $revVar revision $nameVar name $serialVar serial
+	upvar $haveTagVar haveTag
+
+	if {[string index $rev end] == "*"} {
+		set haveTag 1
+		set rev [string range $rev 0 end-1]
+	} else {
+		set haveTag 0
+	}
+	set i [string first "-" $rev]
+	set j [string last "-" $rev]
+	set revision [string range $rev 0 [expr {$i-1}]]
+	set name [string range $rev [expr {$i+1}] [expr {$j-1}]]
+	set serial [string range $rev [expr {$j+1}] end]
+}
+
 # Highlight the graph edges connecting the node to its children an parents
 #
 proc highlightAncestry {rev1} \
@@ -1048,8 +1091,15 @@ proc highlightAncestry {rev1} \
 	if {$rev1 == ""} return
 
 	set dspec {-dKIDS\n:KIDS:\nKID\n:KID:\nMPD\n:MPARENT:\n}
-	catch {exec bk prs -hr$rev1 $dspec $fname} tmp
-	array set attrs [split $tmp \n]
+	if {[catch {exec bk prs -hr$rev1 $dspec $fname} tmp]} {
+		return 
+	}
+	# the result of the split should always be an even number of
+	# elements, but doing the foreach rather than an "array set"
+	# is more forgiving if that's not the case.
+	foreach {name value} [split $tmp \n] {
+		set attrs($name) $value
+	}
 
 	# Highlight the kids
 	foreach r [split $attrs(KIDS)] {
@@ -1073,9 +1123,13 @@ proc highlightAncestry {rev1} \
 #
 proc getLeftRev { {id {}} } \
 {
-	global	rev1 rev2 w comments_mapped gc fname dev_null file
+	global	rev1 rev2 w gc fname dev_null file
 	global anchor
 
+	# destroy comment window if user is using mouse to click on the canvas
+	if {$id == ""} {
+		commentsWindow hide
+	}
 	unsetNodes
 	.menus.cset configure -state disabled -text "View Changeset "
 	set rev1 [getRev "old" $id]
@@ -1099,6 +1153,7 @@ proc getLeftRev { {id {}} } \
 		updateShortcutMenu
 	}
 	if {[info exists rev2]} { unset rev2 }
+	commentsWindow fill
 }
 
 proc getRightRev { {id {}} } \
@@ -1143,7 +1198,8 @@ proc getRightRev { {id {}} } \
 	}
 }
 
-proc setAnchor {rev} {
+proc setAnchor {rev} \
+{
 	global anchor
 
 	set anchor $rev
@@ -1152,7 +1208,8 @@ proc setAnchor {rev} {
 	highlight $anchor "anchor"
 }
 
-proc unsetNodes {} {
+proc unsetNodes {} \
+{
 	global rev1 rev2 anchor w
 
 	set rev1 ""
@@ -1273,13 +1330,13 @@ proc prs {{id ""} } \
 #
 proc history {{opt {}}} \
 {
-	global file dspec dev_null w comments_mapped ttype
+	global file dspec dev_null w ttype
 
-	catch {pack forget $w(cframe); set comments_mapped 0}
+	commentsWindow hide
 	busy 1
 	if {$opt == "tags"} {
 		set tags \
-"-d\$if(:TAG:){:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)}\n\$each(:TAG:){  TAG: (:TAG:)\n}\n}"
+"-d\$if(:TAG:){:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)\n}\$each(:TAG:){  TAG: (:TAG:)\n}\n}"
 		set f [open "| bk prs -h {$tags} \"$file\" 2>$dev_null"]
 		set ttype "file_prs"
 		filltext $w(aptext) $f 1 "There are no tags for $file"
@@ -1820,8 +1877,9 @@ proc busy {busy} \
 proc widgets {} \
 {
 	global	search Opts gc stacked d w dspec wish yspace paned 
-	global  tcl_platform fname app ttype sem chgdspec
+	global  tcl_platform fname app ttype sem comments_mapped chgdspec
 
+	set comments_mapped 0
 	set sem "start"
 	set ttype ""
 	set dspec \
@@ -1931,18 +1989,9 @@ proc widgets {} \
 		set gc(fmenu) [menu .menus.fmb.menu]
 		set gc(current) $gc(fmenu).current
 		$gc(fmenu) add command -label "Open new file..." \
-		    -command { 
-		    	set fname [selectFile]
-			if {$fname != ""} {
-				revtool $fname
-			}
-		    }
+		    -command openNewFile
 		$gc(fmenu) add command -label "Changeset History" \
-		    -command {
-			cd2root
-			set fname ChangeSet
-		    	revtool ChangeSet
-		    }
+		    -command openChangesetHistory
 		$gc(fmenu) add separator
 		$gc(fmenu) add cascade -label "Current Changeset" \
 		    -menu $gc(current)
@@ -2034,6 +2083,15 @@ proc widgets {} \
 			-command { .p.b.c.t yview } \
 			-background $gc(rev.scrollColor) \
 			-troughcolor $gc(rev.troughColor)
+		    button .p.b.c.dismiss -text "x" \
+	    		-width 2 \
+	    		-borderwidth 2 -relief groove \
+	    		-background $gc(rev.buttonColor) \
+	    		-command "commentsWindow hide" \
+	    		-highlightthickness 0 \
+	    		-padx 0 -pady 0 
+		    place .p.b.c.dismiss -in .p.b.c.t \
+	    		-relx 1.0 -rely 1.0 -anchor se
 
 		grid .p.b.c.yscroll -row 0 -column 1 -sticky ns
 		grid .p.b.c.xscroll -row 1 -column 0 -sticky ew
@@ -2195,8 +2253,18 @@ proc widgets {} \
 	$w(aptext) tag configure "oldTag" -background $gc(rev.oldColor)
 	$w(aptext) tag configure "select" -background $gc(rev.selectColor)
 
-	bindtags $w(aptext) {Bk .p.b.p.t . all}
+	bindtags $w(aptext) {Bk TimedEvent .p.b.p.t . all}
 	bindtags $w(ctext) {.p.b.c.t . all}
+
+	# If we aren't viewing the ChangeSet file, set up a timed event
+	# to show the comments window if the user clicks and holds for
+	# half a second or more
+	if {"$fname" != "ChangeSet"} {
+		timedEvent TimedEvent <ButtonPress-1> \
+		    <ButtonRelease-1> $gc(rev.doubleclick)  {
+			    commentsWindow show
+		    }
+	}
 
 	# standard text widget mouse button 1 events are overridden to
 	# do other things, which makes selection of text impossible.
@@ -2243,26 +2311,58 @@ proc widgets {} \
 
 proc commentsWindow {action} \
 {
-	global w comments_mapped
-	if {$action == "hide"} {
-		catch {pack forget $w(cframe); set comments_mapped 0}
-	} else {
-		pack configure $w(cframe) \
-		    -fill x \
-		    -expand false \
-		    -anchor n \
-		    -before $w(apframe)
-		pack configure $w(apframe) \
-		    -fill both \
-		    -expand true \
-		    -anchor n
+	global w comments_mapped gc anchor
+	global anchor file dspec dev_null
+
+	switch -exact $action {
+		hide {
+			catch {
+				pack forget $w(cframe)
+				set comments_mapped 0
+			}
+		}
+
+		show {
+
+			if {$comments_mapped} return
+			$w(ctext) configure -height $gc(rev.commentHeight) 
+			
+			pack configure $w(cframe) \
+			    -fill x \
+			    -expand false \
+			    -anchor n \
+			    -before $w(apframe)
+			pack configure $w(apframe) \
+			    -fill both \
+			    -expand true \
+			    -anchor n
+			
+			set foo [list after 1 commentsWindow adjust]
+			after cancel $foo
+			after idle $foo
+
+			set comments_mapped 1
+			commentsWindow fill
+		}
+
+		adjust {
+			set wht [winfo height $w(cframe)]
+			set cht [font metrics $gc(rev.fixedFont) -linespace]
+			set adjust [expr {int($wht) / $cht}]
+			$w(aptext) yview scroll $adjust units
+		}
+
+		fill {
+			if {!$comments_mapped || 
+			    ![info exists anchor] || 
+			    "$anchor" == ""} return
+			set cmd [list bk prs $dspec -hr$anchor $file]
+			set prs [open "| $cmd 2>$dev_null"]
+			filltext $w(ctext) $prs 1 "ctext"
+		}
 	}
 }
 
-#
-#
-#
-#
 proc selectFile {} \
 {
 	global gc fname
@@ -2276,6 +2376,31 @@ proc selectFile {} \
 	}
 	catch {close $f}
 	return $fname
+}
+
+proc openChangesetHistory {} \
+{
+	global diffpair
+
+	# diffpair isn't unset by the 'revtool' proc (and
+	# making it do so is a non-trivial change to a bunch
+	# of startup logic) but it needs to be reset before
+	# calling that proc or it might try to diff
+	# non-existent revs in the selected file.
+	if {[info exists diffpair]} {unset diffpair}
+	cd2root
+	revtool ChangeSet
+}
+
+proc openNewFile {} \
+{
+	global diffpair
+
+	set fname [selectFile]
+	if {$fname != ""} {
+		if {[info exists diffpair]} {unset diffpair}
+		revtool $fname
+	}
 }
 
 # Arguments:
@@ -2490,7 +2615,7 @@ proc arguments {} \
 	# regexes for valid revision numbers. This probably should be
 	# a function that uses a bk command to check whether the revision
 	# exists.
-	set r2 {^([1-9][0-9]*)\.([1-9][0-9]*)$}
+	set r2 {^([1-9][0-9]*)\.([0-9][0-9]*)$}
 	set r4 {^([1-9][0-9]*)\.([1-9][0-9]*)\.([1-9][0-9]*)\.([1-9][0-9]*)$}
 	set d1 ""; set d2 ""
 	if {[info exists rev1] && $rev1 != ""} {
@@ -2691,11 +2816,46 @@ proc saveState {} \
 	}
 }
 
+# this will execute a script <time> milliseconds after the start
+# event has happened. If a stopEvent is given, the script will not
+# run if the event occurs before <time> milliseconds has elapsed.
+# 
+# usage:
+#    timedEvent pathName startEvent time script
+#    timedEvent pathName startEevent stopEvent time script
+#
+# Typically the start and stop events will be button or key press
+# and release events (eg: <ButtonPress-1> <ButtonRelease-1>).
+proc timedEvent {args} \
+{
+	if {[llength $args] == 4} {
+		set stopEvent ""
+		foreach {w startEvent time script} $args {break}
+
+	} elseif {[llength $args] == 5} {
+		foreach {w startEvent stopEvent time script} $args {break}
+	} else {
+		return -code error "wrong # args: should be\
+		    timedEvent pathName startEvent ?stopEvent? time script"
+	}
+
+	set genEvent [list event generate %W <<DoTimedEvent>> -when tail]
+	bind $w $startEvent "
+		[list bind $w <<DoTimedEvent>> $script];
+		[list after $time $genEvent]
+	"
+	if {[string length $stopEvent] > 0} {
+		bind $w $stopEvent "
+			[list bind $w <<DoTimedEvent>> {}];
+			after cancel $genEvent
+		"
+	}
+}
 proc updateShortcutMenu {} \
 {
-	global rev1 rev2 w anchor file
+	global rev1 rev2 w anchor fname
 
-	set changeset [expr {"$file" == "ChangeSet"}]
+	set changeset [expr {"$fname" == "ChangeSet"}]
 	set first 0
 	if {[$w(shortcutMenu) cget -tearoff]} {
 		set first 1

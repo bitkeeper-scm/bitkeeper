@@ -16,9 +16,14 @@
  *	char	mode[3];	(VERSMODE only)
  * repeats, except for the version number.
  */
+#ifdef SFIO_STANDALONE
+#include "utils/sfio.h"
+#else
 #include "system.h"
 #include "sccs.h"
 #include "zlib/zlib.h"
+#endif
+
 #undef	unlink		/* I know the files are writable, I created them */
 WHATSTR("@(#)%K%");
 
@@ -167,6 +172,7 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 		perror(file);
 		return (1);
 	}
+	setmode(fd, _O_BINARY);
 	sprintf(len, "%010u", (unsigned int)sp->st_size);
 	n = writen(1, len, 10);
 	*byte_count += n;
@@ -255,7 +261,9 @@ sfio_in(int extract)
 			if (in_file(buf, len, extract)) return (1);
 		}
 	}
+#ifndef SFIO_STANDALONE
 	save_byte_count(byte_count);
+#endif
 }
 
 private int
@@ -430,6 +438,7 @@ bad_name:	getMsg("reserved_name", file, '=', stderr);
 	if (access(file, F_OK) == 0) {
 		char	realname[MAXPATH];
 
+#ifndef SFIO_STANDALONE
 		getRealName(file, NULL, realname);
 		unless (streq(file, realname)) {
 			getMsg2("case_conflict", file, realname, '=', stderr);
@@ -437,9 +446,11 @@ bad_name:	getMsg("reserved_name", file, '=', stderr);
 		} else { 
 			errno = EEXIST;
 		}
+#endif
 		return (-1);
 	}
 again:	fd = open(file, O_CREAT|O_EXCL|O_WRONLY, 0666);
+	setmode(fd, _O_BINARY);
 	if (fd != -1) return (fd);
 	if (errno == EINVAL) goto bad_name;
 	if (errno == EEXIST) {

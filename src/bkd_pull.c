@@ -69,7 +69,7 @@ cmd_pull_part2(int ac, char **av)
 {
 	int	c, n, rc = 0, fd, fd0, rfd, status, local, rem, debug = 0;
 	int	gzip = 0, metaOnly = 0, dont = 0, verbose = 1, list = 0;
-	int	delay = -1;
+	int	rtags, update_only = 0, delay = -1;
 	char	s_cset[] = CHANGESET;
 	char	*keys = bktmp(0, "pullkey");
 	char	*makepatch[10] = { "bk", "makepatch", 0 };
@@ -78,7 +78,7 @@ cmd_pull_part2(int ac, char **av)
 	remote	r;
 	pid_t	pid;
 
-	while ((c = getopt(ac, av, "delnqw|z|")) != -1) {
+	while ((c = getopt(ac, av, "delnquw|z|")) != -1) {
 		switch (c) {
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
@@ -90,6 +90,7 @@ cmd_pull_part2(int ac, char **av)
 		    case 'n': dont = 1; break;
 		    case 'q': verbose = 0; break;
 		    case 'w': delay = atoi(optarg); break;
+		    case 'u': update_only = 1; break;
 		    default: break;
 		}
 	}
@@ -103,7 +104,7 @@ cmd_pull_part2(int ac, char **av)
 	bzero(&r, sizeof(r));
 	s = sccs_init(s_cset, 0);
 	assert(s && HASGRAPH(s));
-	if (prunekey(s, &r, NULL, fd, PK_LKEY, 1, &local, &rem, 0) < 0) {
+ 	if (prunekey(s, &r, 0, fd, PK_LKEY, 1, &local, &rem, &rtags) < 0) {
 		local = 0;	/* not set on error */
 		sccs_free(s);
 		close(fd);
@@ -130,6 +131,12 @@ cmd_pull_part2(int ac, char **av)
 	}
 	fflush(stdout);
 	sccs_free(s);
+
+	if (update_only && (rem || rtags)) {
+		printf("@NO UPDATE BECAUSE OF LOCAL CSETS OR TAGS@\n");
+		rc = 1;
+		goto done;
+	}
 
 	/*
 	 * Fire up the pre-trigger (for non-logging tree only)
@@ -167,10 +174,10 @@ cmd_pull_part2(int ac, char **av)
 	makepatch[n++] = "-";
 	makepatch[n] = 0;
 	/*
-	 * What we want is: serails =>  bk makepatch => gzip => remote
+	 * What we want is: keys =>  bk makepatch => gzip => remote
 	 */
 	fd0 = dup(0); close(0);
-	if ((fd = open(keys, O_RDONLY, 0)) == -1) perror(keys);
+	if ((fd = open(keys, O_RDONLY, 0)) < 0) perror(keys);
 	assert(fd == 0);
 	pid = spawnvp_rPipe(makepatch, &rfd, 0);
 	dup2(fd0, 0); close(fd0);
@@ -193,7 +200,8 @@ cmd_pull_part2(int ac, char **av)
 	}
 	flushSocket(1); /* This has no effect for pipe, should be OK */
 
-done:	if (dont) {
+done:	fflush(stdout);
+	if (dont) {
 		unlink(keys);
 		putenv("BK_STATUS=DRYRUN");
 	} else if (local == 0) {
@@ -216,6 +224,7 @@ done:	if (dont) {
 			chmod(CSETS_OUT, 0666);
 			putenv("BK_CSETLIST=" CSETS_OUT);
 		}
+		unlink(keys);	/* if we copied because they were in /tmp */
 	}
 	/*
 	 * Fire up the post-trigger (for non-logging tree only)

@@ -12,6 +12,7 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
+cd "$HERE"	# For Windows
 HOST=@free.bk
 echo "logging: none" > c
 echo "single_user: butthead" >> c
@@ -195,19 +196,19 @@ echo OK
 echo $N Checking sccslog with -f option .............................$NL
 bk undos > CMP1 <<EOF
 ChangeSet
-  BitKeeper file ${BK_REGRESSION}/project/ChangeSet
+  BitKeeper file ${HERE}/project/ChangeSet
 
 ChangeSet
   Initial repository create
 
 EOF
 bk sccslog -f | grep -v butthead@free.bk | bk undos > CMP2
-cmp -s CMP1 CMP2
+bk diff -i CMP1 CMP2 > /dev/null
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 
 bk undos > CMP1 <<EOF
 a/b/c/Data
-  BitKeeper file ${BK_REGRESSION}/project/a/b/c/Data
+  BitKeeper file ${HERE}/project/a/b/c/Data
 
 a/b/c/Data
 
@@ -240,7 +241,7 @@ a/b/c/Data
 
 EOF
 bk sccslog -f a/b/c/Data | grep -v butthead@free.bk | bk undos > CMP2
-cmp -s CMP1 CMP2
+bk diff -i CMP1 CMP2 > /dev/null
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
 

@@ -4,7 +4,6 @@ eval "exec perl -Ssw $0 $@"
 
 sub main
 {
-	$ENV{'GROFF_NO_SGR'} = "no";
 	$debug = 0 if 0;
 	$m = shift(@ARGV);
 	open(FD, $m);
@@ -16,14 +15,8 @@ sub main
 	}
 	$ENV{'GROFF_NO_SGR'} = 1;
 	$MAN = "-man";
-	foreach $dir ("$ENV{HOME}/groff/share", 
-	    '/usr/local/share', '/opt/groff/share',
-	    '/usr/local/lib', '/usr/share', '/usr/lib') {
-		if (-f "${dir}/groff/tmac/tmac.gan") {
-			$MAN = "-mgan";
-		}
-	}
-	if (-d "/opt/groff/share/groff/1.17.1/tmac") {
+	unless (($^O eq "MSWin32") ||
+		system("echo | groff -mgan >/dev/null 2>/dev/null")) {
 		$MAN = "-mgan";
 	}
 
@@ -78,6 +71,7 @@ sub man2help
 		print O;
 		$nl = 0;
 	}
+	print O "\n" if $nl;
 	print O "\$\n";
 	close(O);
 	close(G);

@@ -239,20 +239,15 @@ proc search_init {w s} \
 
 proc search_widgets {w s} \
 {
-	global search app gc
+	global search app gc env
 
 	search_init $w $s
 
-	image create photo prevImage \
-	    -format gif -data {
-R0lGODdhDQAQAPEAAL+/v5rc82OkzwBUeSwAAAAADQAQAAACLYQPgWuhfIJ4UE6YhHb8WQ1u
-WUg65BkMZwmoq9i+l+EKw30LiEtBau8DQnSIAgA7
-}
-	image create photo nextImage \
-	    -format gif -data {
-R0lGODdhDQAQAPEAAL+/v5rc82OkzwBUeSwAAAAADQAQAAACLYQdpxu5LNxDIqqGQ7V0e659
-XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
-}
+	set prevImage [image create photo \
+			   -file $env(BK_BIN)/gui/images/previous.gif]
+	set nextImage [image create photo \
+			   -file $env(BK_BIN)/gui/images/next.gif]
+
 	label $search(plabel) -font $gc($app.buttonFont) -width 11 \
 	    -relief flat \
 	    -textvariable search(prompt)
@@ -264,7 +259,9 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	    -borderwid $gc(bw) \
 	    -text "Search" -width 8 -state normal \
 	    -menu $m -indicatoron 1 
-	menu $m
+	menu $m \
+	    -font $gc(fm3.buttonFont)  \
+	    -borderwidth $gc(bw)
 	    $m add command -label "Prev match" -state disabled -command {
 		searchdir ?
 		searchnext
@@ -299,11 +296,14 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		$search(menu) configure -text "Goto Line"
 		search :
 	    }
-	entry $search(text) -width 26 -font $gc($app.buttonFont)
+	entry $search(text) \
+	    -width 26 \
+	    -font $gc($app.buttonFont) \
+	    -borderwidth $gc(bw)
 	button $search(prev) -font $gc($app.buttonFont) \
 	    -bg $gc($app.buttonColor) \
 	    -pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-	    -image prevImage \
+	    -image $prevImage \
 	    -state disabled -command {
 		    searchdir ?
 		    searchnext
@@ -311,7 +311,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	button $search(next) -font $gc($app.buttonFont) \
 	    -bg $gc($app.buttonColor) \
 	    -pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-	    -image nextImage \
+	    -image $nextImage \
 	    -state disabled -command {
 		    searchdir /
 		    searchnext
@@ -363,7 +363,9 @@ proc createDiffWidgets {w} \
 		-state disabled \
 		-borderwidth 0 \
 		-wrap none \
-		-font $gc($app.fixedFont) 
+		-font $gc($app.fixedFont)  \
+		-xscrollcommand { .diffs.xscroll set } \
+		-yscrollcommand { .diffs.yscroll set }
 	    scrollbar .diffs.xscroll \
 		-wid $gc($app.scrollWidth) \
 		-troughcolor $gc($app.troughColor) \
@@ -474,22 +476,20 @@ proc dot {} \
 		.menu.file.m entryconfigure Save -state normal
 	}
 	.menu.dotdiff configure -text "Center on diff $lastDiff/$diffCount"
-	if {$lastDiff == 1} {
-		.menu.diffs.m entryconfigure "Prev diff" -state disabled
-	} else {
-		.menu.diffs.m entryconfigure "Prev diff" -state normal
-	}
-	if {$lastDiff == $diffCount} {
-		.menu.diffs.m entryconfigure "Next diff" -state disabled
-	} else {
-		.menu.diffs.m entryconfigure "Next diff" -state normal
-	}
+
+	updateButtons
+
 	set e "e$lastDiff"
 	set d "d$lastDiff"
 	foreach t {.diffs.left .diffs.right .merge.t .merge.hi} {
 		$t see $e
 		$t see $d
 	}
+	# sanity check; make sure .diffs.right is scrolled identically to
+	# .diffs.left
+	set yview [lindex [.diffs.left yview] 0]
+	.diffs.right yview moveto $yview
+
 	.merge.t tag remove next 1.0 end
 	.merge.t tag remove handline 1.0 end
 	set marked [.merge.t tag nextrange hand $d $e]
@@ -510,6 +510,8 @@ proc dot {} \
 \"$gc($app.prevConflict)\" for the previous conflict,
 \"$gc($app.firstDiff)\" for the first diff,
 \"$gc($app.lastDiff)\" for the last diff,
+\"$gc($app.toggleGCA)\" to toggle display of current diff GCA,
+\"$gc($app.toggleAnnotations)\" to toggle display of annotations,
 \"space\" is an alias for \"$gc($app.nextConflict)\"."
 
 	if {[isConflict $lastDiff]} {
@@ -541,7 +543,9 @@ To hand edit, click the merge window.
 \"$gc($app.prevDiff)\" / \"$gc($app.nextDiff)\" for the previous/next diff,
 \"$gc($app.prevConflict)\" / \"$gc($app.nextConflict)\" for the prev/next conflict,
 \"$gc($app.firstDiff)\" / \"$gc($app.lastDiff)\" for the first/last diff,
-\"space\" is an alias for \"$gc($app.nextConflict)\"."
+\"$gc($app.toggleGCA)\" to toggle display of current diff GCA,
+\"$gc($app.toggleAnnotations)\" to toggle display of annotations.
+\"space\" is an alias for \"$gc($app.nextConflict)\""
 			set msg ""
 		} else {
 			.merge.menu.l configure -bg $gc($app.handColor)
@@ -564,6 +568,70 @@ To hand edit, click the merge window.}
 	}
 	$w insert end "$msg"
 	$w configure -state disabled
+}
+
+proc updateButtons {{mode "normal"}} \
+{
+	global lastDiff diffCount search
+
+	if {$mode == "edit"} {
+		
+		foreach action {firstD lastD prevC nextC prevD nextD} {
+			set state($action) "disabled"
+		}
+
+		# ideally these menus would be active, but some parts of
+		# them would be deactivated. Presently, however, in edit
+		# mode everything is locked out. Some day we'll fix that.
+		# For now, disable the menus to reflect the fact that the
+		# user can't edit them.
+		foreach menu {file edit view diffs search gca} {
+			set state($menu) "disabled"
+		}
+
+	} else {
+		foreach action {firstD lastD prevC nextC prevD nextD} {
+			set state($action) "normal"
+		}
+
+		foreach menu {file edit view diffs search gca} {
+			set state($menu) "normal"
+		}
+
+		if {$lastDiff <= 1} {set state(firstD) "disabled"}
+		if {$lastDiff >= $diffCount} {set state(lastD) "disabled"}
+		if {[diffIndex prevDiff] == ""} {set state(prevD) "disabled"}
+		if {[diffIndex nextDiff] == ""} {set state(nextD) "disabled"}
+		if {[diffIndex prevConflict] == ""} {set state(prevC) "disabled"}
+		if {[diffIndex nextConflict] == ""} {set state(nextC) "disabled"}
+	}
+		
+	.menu.diffs.m entryconfigure "First diff" -state $state(firstD)
+	.merge.menu.toolbar.firstDiff configure -state $state(firstD)
+
+	.menu.diffs.m entryconfigure "Last diff" -state $state(lastD)
+	.merge.menu.toolbar.lastDiff configure -state $state(lastD)
+
+	.menu.diffs.m entryconfigure "Prev diff" -state $state(prevD)
+	.merge.menu.toolbar.prevDiff configure -state $state(prevD)
+
+	.menu.diffs.m entryconfigure "Next diff" -state $state(nextD)
+	.merge.menu.toolbar.nextDiff configure -state $state(nextD)
+
+	.menu.diffs.m entryconfigure "Prev conflict" -state $state(prevC)
+	.merge.menu.toolbar.prevConflict configure -state $state(prevC)
+
+	.menu.diffs.m entryconfigure "Next conflict" -state $state(nextC)
+	.merge.menu.toolbar.nextConflict configure -state $state(nextC)
+
+	.menu.file configure -state $state(file)
+	.menu.edit configure -state $state(edit)
+	.menu.view configure -state $state(view)
+	.menu.diffs configure -state $state(diffs)
+
+	$search(menu) configure -state $state(search)
+	$search(status) configure -state $state(search)
+	.menu.elide-gca configure -state $state(gca)
 }
 
 proc topLine {} \
@@ -646,6 +714,179 @@ proc diffend {} \
 		$t mark set $mark "end - 1 chars"
 		$t mark gravity $mark left
 	}
+
+}
+
+proc hideGCA {diff} \
+{
+	global savedGCAdata
+	global savedGCArange
+
+	# if we get called and there's already some hidden GCA data,
+	# restore it before continuing
+	if {[info exists savedGCAdata]} restoreGCA
+
+	.diffs.left configure -state normal
+	.diffs.right configure -state normal
+
+	set d "d$diff"
+	set e "e$diff"
+	set savedGCArange [list $d $e]
+
+	# the dump doesn't record the end mark but it needs to be restored,
+	# so a directive to do that is added to the saved data
+	set savedGCAdata(.diffs.left) [.diffs.left dump $d $e]
+	lappend savedGCAdata(.diffs.left) mark $e [.diffs.left index $e]
+
+	set savedGCAdata(.diffs.right) [.diffs.right dump $d $e]
+	lappend savedGCAdata(.diffs.right) mark $e [.diffs.right index $e]
+
+	set start [expr {int([.diffs.left index "$d linestart"])}]
+	set end   [expr {int([.diffs.left index "$e-1c linestart"])}]
+
+	set lines(left) 0
+	set lines(right) 0
+	.diffs.left mark set insert $e
+	.diffs.right mark set insert $e
+	.diffs.left tag configure gca-replacement
+	.diffs.right tag configure gca-replacement
+	.diffs.left tag lower gca-replacement
+	.diffs.right tag lower gca-replacement
+	set deleteLeft {}
+	set deleteRight {}
+	for {set i $start} {$i <= $end} {incr i} {
+		set c [.diffs.left get $i.1 $i.2]
+		if {[string equal $c "-"] ||
+		    [string equal $c "s"]} {
+#			.diffs.left delete $i.0 "$i.0 lineend +1c"
+			set deleteLeft [linsert $deleteLeft 0 $i]
+		} else {
+			.diffs.left tag add gca-replacement "$i.0" "$i.0 lineend + 1c"
+			incr lines(left) 
+		}
+		set c [.diffs.right get $i.1 $i.2]
+		if {[string equal $c "-"] ||
+		    [string equal $c "s"]} {
+#			.diffs.right delete $i.0 "$i.0 lineend +1c"
+			set deleteRight [linsert $deleteRight 0 $i]
+		} else {
+			.diffs.right tag add gca-replacement "$i.0" "$i.0 lineend + 1c"
+			incr lines(right) 
+		}
+	}
+
+	foreach i $deleteLeft {
+		.diffs.left delete $i.0 "$i.0 lineend +1c"
+	}
+	foreach i $deleteRight {
+		.diffs.right delete $i.0 "$i.0 lineend +1c"
+	}
+	# add back in blank lines to even things back up
+	if {$lines(left) > $lines(right)} {
+		set w .diffs.right
+		set n [expr {$lines(left) - $lines(right)}]
+	} else {
+		set w .diffs.left
+		set n [expr {$lines(right) - $lines(left)}]
+	}
+
+	for {set i 0} {$i < $n} {incr i} {
+		$w insert insert " s" {space gca-replacement} "\n" {gca-replacement}
+	}
+
+	.diffs.left mark set $e insert
+	.diffs.right mark set $e insert
+
+	highlightAnnotations $d $e
+
+	.diffs.left configure -state disabled
+	.diffs.right configure -state disabled
+}
+
+# w should be .diffs.left or .diffs.right; data is output from a 
+# previous text widget "dump" command
+proc restoreGCA {{left .diffs.left} {right .diffs.right}} \
+{
+	global savedGCAdata lastDiff
+	global savedGCArange
+
+	if {![info exists savedGCAdata]} return
+
+	foreach w [list $left $right] {
+		$w configure -state normal
+
+		# delete the text that was added when the original 
+		# text was saved
+		foreach {start end} [$w tag ranges gca-replacement] {
+			$w delete $start $end
+		}
+		$w tag remove gca-replacement 1.0 end
+
+		# now restore the original text, tags and marks
+		set tags {}
+		foreach {key value index} $savedGCAdata($w) {
+			switch -exact -- $key {
+				tagon {
+					lappend tags $value
+				}
+				tagoff {
+					set i [lsearch -exact $tags $value]
+					if {$i >= 0} {
+						set tags [lreplace $tags \
+							      $i $i]
+					}
+				}
+				text {
+					$w insert $index $value $tags
+				}
+				mark {
+					$w mark set $value $index
+					$w mark gravity $value left
+				}
+			}
+
+		}
+		$w configure -state normal
+	}
+	unset savedGCAdata
+
+	foreach {d e} $savedGCArange {break}
+	difflight .diffs.left $d $e
+	difflight .diffs.right $d $e
+}
+
+proc toggleAnnotations {{toggle 0}} \
+{
+	global elide
+
+	if {$toggle} {
+		set elide(annotations) [expr {$elide(annotations) ? 0 : 1}]
+	}
+
+	.diffs.left tag configure elide-annotations \
+	    -elide $elide(annotations)
+	.diffs.right tag configure elide-annotations \
+	    -elide $elide(annotations)
+}
+
+# toggle=1 means to actually toggle it. Otherwise simply do what the
+# current setting says to do
+proc toggleGCA {{toggle 0} args} \
+{
+	global elide gc
+	global lastDiff
+
+	if {![info exists lastDiff] || $lastDiff <= 0} return
+
+	if {$toggle} {
+		set elide(gca) [expr {$elide(gca) ? 0 : 1}]
+	}
+
+	restoreGCA 
+	if {$elide(gca)} {
+		hideGCA $lastDiff
+	}
+	return
 }
 
 proc both {both off} \
@@ -663,25 +904,28 @@ proc readSmerge {} \
 {
 	global	UNMERGED conf_todo errorCode smerge annotate conflicts
 
+	catch {unset gcaLines}
 	set fd [open $smerge r]
 	set merged 0
 	set state B
 	set both [list]
-	if {$annotate} {
-		# This assumes that the annotation width is the same
-		while { [gets $fd line] >= 0 } {
-			set what [string index $line 0]
-			if {$what == "+" || $what == "-"} {
-				set off [string first "|" $line]
-				incr off 2
-				break
-			}
-		}
-		seek $fd 0
-	} else {
-		set off 1
-	}
+	set off 0
+
+	# This assumes that the annotation width is the same
 	while { [gets $fd line] >= 0 } {
+		set what [string index $line 0]
+		if {$what == "+" || $what == "-"} {
+			set off [string first "|" $line]
+			incr off 2
+			break
+		}
+	}
+	seek $fd 0
+	set xxcount 0
+	set left {}
+	set right {}
+	while { [gets $fd line] >= 0 } {
+		incr xxcount
 		set what [string index $line 0]
 		if {$what == "L"} {
 			both $both $off
@@ -715,11 +959,7 @@ proc readSmerge {} \
 			continue
 		}
 		if {$state == "M"} {
-			if {$annotate} {
-				set l [string range $line $off end]
-			} else {
-				set l [string range $line 1 end]
-			}
+			set l [string range $line $off end]
 			.merge.t insert end "$l\n"
 			.merge.hi insert end "  \n" auto
 			continue
@@ -728,8 +968,12 @@ proc readSmerge {} \
 
 		if {$state == "L"} {
 			set text .diffs.left
+			set side left
+			set otherSide right
 		} elseif {$state == "R"} {
 			set text .diffs.right
+			set side right
+			set otherSide left
 		}
 		if {$what == "h"} {
 			smerge_highlight $text $line $off
@@ -742,16 +986,54 @@ proc readSmerge {} \
 		} elseif {$what == "+"} {
 			$text insert end " $c" diff
 		} elseif {$what == "s"} {
-			$text insert end " $c" space
+			$text insert end " $c" {space}
+			append l "                "
 		} elseif {$what == " "} {
 			$text insert end " $c" un
 		}
-		$text insert end "$l\n" 
+		$text insert end "$l\n"
 	}
 	if {[llength $both]} { both $both $off }
 	close $fd
 	.merge.hi configure -state disabled
 	.menu.conflict configure -text "$conf_todo conf_todo"
+
+	highlightAnnotations $off
+
+}
+
+# usage: 
+# highlightAnnotations offset
+# highlightAnnotations start end
+#
+# the first for tags everything and saves the offset for later use;
+# the second form uses the saved offset and only tags the given set
+# of lines 
+proc highlightAnnotations {args} \
+{
+	global annotationOffset
+
+	if {[llength $args] == 2} {
+		foreach {start end} $args {break}
+		set start [.diffs.left index "$start linestart"]
+		set end [.diffs.left index "$end linestart"]
+		set offset $annotationOffset
+	} else {
+		set offset [lindex $args 0]
+		if {$offset <= 0} return
+		set annotationOffset $offset
+		set start 1.0
+		set end [.diffs.left index "end-1c linestart"]
+	}
+
+	set start [expr {int($start)}]
+	set end [expr {int($end)}]
+
+	incr offset 1
+	for {set i $start} {$i <= $end} {incr i} {
+		.diffs.left tag add elide-annotations $i.2 $i.$offset
+		.diffs.right tag add elide-annotations $i.2 $i.$offset
+	}
 }
 
 # Take a like
@@ -761,11 +1043,7 @@ proc smerge_highlight {t line off} \
 {
 	global	annotate
 
-	if {$annotate} {
-		incr off
-	} else {
-		set off 2
-	}
+	incr off
 	set i [lindex [split [$t index "end -2 chars"] "."] 0]
 	$t tag add char "$i.0" "$i.2"
 	foreach r [split $line] {
@@ -796,7 +1074,11 @@ proc smerge {} \
 	}
     
 	# set if we are annotated in the diffs window
-	set annotate $gc(fm3.annotate)
+	# This used to be variable, but with the new "hide annotations" 
+	# feature we need to treat the widget as if annotation is always
+	# present. Hiding it only hides it from the human eye; dealing
+	# with the text widget at the programming level still sees the data.
+	set annotate 1
 	if {$argc == 1} {
 		set filename [lindex $argv 0]
 		exec cp $filename $smerge
@@ -822,11 +1104,7 @@ proc smerge {} \
 	set g [lindex $argv 1]
 	set r [lindex $argv 2]
 	set f [lindex $argv 3]
-	if {$annotate} {
-		set ret [catch {exec bk smerge -Im -f $f $l $r > $smerge}]
-	} else {
-		set ret [catch {exec bk smerge -f $f $l $r > $smerge}]
-	}
+	set ret [catch {exec bk smerge -Im -f $f $l $r > $smerge}]
 	set filename $f
 }
 
@@ -1033,7 +1311,7 @@ proc mscroll { a args } \
 
 proc widgets {} \
 {
-	global	scroll wish tcl_platform search gc d app DSPEC UNMERGED argv
+	global	scroll wish tcl_platform search gc d app DSPEC UNMERGED argv env
 
 	set UNMERGED "<<<<<<\nUNMERGED\n>>>>>>\n"
 
@@ -1054,23 +1332,19 @@ proc widgets {} \
 	}
 	createDiffWidgets .diffs
 
-image create photo prevImage \
-    -format gif -data {
-R0lGODdhDQAQAPEAAL+/v5rc82OkzwBUeSwAAAAADQAQAAACLYQPgWuhfIJ4UE6YhHb8WQ1u
-WUg65BkMZwmoq9i+l+EKw30LiEtBau8DQnSIAgA7
-}
-image create photo nextImage \
-    -format gif -data {
-R0lGODdhDQAQAPEAAL+/v5rc82OkzwBUeSwAAAAADQAQAAACLYQdpxu5LNxDIqqGQ7V0e659
-XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
-}
+	set prevImage [image create photo \
+			   -file $env(BK_BIN)/gui/images/previous.gif]
+	set nextImage [image create photo \
+			   -file $env(BK_BIN)/gui/images/next.gif]
 	frame .menu -relief groove -borderwidth 2
 	    set m .menu.diffs.m
 	    menubutton .menu.diffs -font $gc(fm3.buttonFont) \
 		-bg $gc(fm3.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "Goto" -menu $m
-	    menu $m
+	    menu $m \
+		-font $gc(fm3.buttonFont) \
+		-borderwidth $gc(bw)
 		$m add command -label "Prev diff" \
 		    -accelerator [shortname $gc($app.prevDiff)] \
 		    -state disabled -command { prevDiff 0 }
@@ -1095,14 +1369,14 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	    button .menu.prevdiff -font $gc(fm3.buttonFont) \
 		-bg $gc(fm3.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-image prevImage -state disabled -command {
+		-image $prevImage -state disabled -command {
 			searchreset
 			prev 0
 		}
 	    button .menu.nextdiff -font $gc(fm3.buttonFont) \
 		-bg $gc(fm3.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-image nextImage -state disabled -command {
+		-image $nextImage -state disabled -command {
 			searchreset
 			next 0
 		}
@@ -1113,14 +1387,14 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	    button .menu.prevconflict -font $gc(fm3.buttonFont) \
 		-bg $gc(fm3.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-image prevImage -command {
+		-image $prevImage -command {
 			searchreset
 			prev 1
 		}
 	    button .menu.nextconflict -font $gc(fm3.buttonFont) \
 		-bg $gc(fm3.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-image nextImage -command {
+		-image $nextImage -command {
 			searchreset
 			next 1
 		}
@@ -1132,13 +1406,14 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		-bg $gc(fm3.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "File" -menu $m
-	    menu $m
+	    menu $m \
+    		-font $gc(fm3.buttonFont) \
+		-borderwidth $gc(bw)
 		$m add command -label "Save" \
-		    -command save -state disabled -accelerator <s>
+		    -command save -state disabled -accelerator "s"
 		$m add command \
 		    -label "Restart, discarding any merges" -command readFile
-		$m add command -label "Quit" \
-		    -command cleanup -accelerator $gc(fm3.quit)
+		$m add separator
 		$m add command -label "Run revtool" -command revtool
 		$m add command -label "Run csettool on additions" \
 		    -command { csettool new }
@@ -1147,29 +1422,71 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		$m add command -label "Run csettool on both" \
 		    -command { csettool both }
 		$m add command -label "Help" -command { exec bk helptool fm3 & }
+		$m add separator
+		$m add command -label "Quit" \
+		    -command cleanup -accelerator $gc(fm3.quit)
+	    set m .menu.view.m
+	    menubutton .menu.view -font $gc(fm3.buttonFont) \
+		-bg $gc(fm3.buttonColor) \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
+		-text "View" -menu $m
+	    menu $m \
+		-borderwidth $gc(bw) \
+    		-font $gc(fm3.buttonFont) 
+		$m add checkbutton \
+    		    -label "Show Current Diff GCA" \
+    		    -onvalue 0 \
+		    -offvalue 1 \
+		    -variable elide(gca) \
+		    -command toggleGCA \
+    		    -accelerator $gc(fm3.toggleGCA)
+		$m add checkbutton \
+    		    -label "Show Annotations" \
+    		    -onvalue 0 \
+		    -offvalue 1 \
+		    -variable elide(annotations) \
+		    -command toggleAnnotations \
+    		    -accelerator $gc(fm3.toggleAnnotations)
+
 	    set m .menu.edit.m
 	    menubutton .menu.edit -font $gc(fm3.buttonFont) \
 		-bg $gc(fm3.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "Edit" -menu $m
-	    menu $m
+	    menu $m \
+		-borderwidth $gc(bw) \
+    		-font $gc(fm3.buttonFont) 
 		$m add command \
 		    -label "Edit merge window" -command { edit_merge 1 1 }
 		$m add command -state disabled \
 		    -label "Undo" -command undo \
 		    -accelerator $gc($app.undo)
 		$m add command \
-		    -label "Clear" -command edit_clear -accelerator <c>
+		    -label "Clear" -command edit_clear -accelerator "c"
 		$m add command \
-		    -label "Restore automerge" -accelerator <a> \
+		    -label "Restore automerge" -accelerator "a" \
 		    -command { edit_restore a }
 		$m add command \
-		    -label "Restore manual merge" -accelerator <m> \
+		    -label "Restore manual merge" -accelerator "m" \
 		    -command { edit_restore m }
+
+		set separator [frame .menu.separator2]
+		$separator configure -borderwidth 2 -relief groove -width 2
+ 		checkbutton .menu.elide-gca \
+    		    -font $gc(fm3.buttonFont) \
+    		    -borderwidth 1 \
+     		    -text "GCA" \
+     		    -onvalue 0 \
+ 		    -offvalue 1 \
+ 		    -variable elide(gca) \
+ 		    -command toggleGCA
 
 	    pack .menu.file -side left -fill y
 	    pack .menu.edit -side left -fill y
+	    pack .menu.view -side left -fill y
 	    pack .menu.diffs -side left -fill y
+	    pack $separator -side left -fill y -pady 2 -padx 4
+	    pack .menu.elide-gca -side left
 
 	frame .merge
 	    text .merge.t -width $gc(fm3.mergeWidth) \
@@ -1193,27 +1510,74 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		-borderwidth 0
 	    frame .merge.menu
 		set menu .merge.menu
+		    frame $menu.toolbar -highlightthickness 0 \
+    			-borderwidth 1 -relief sunken
+			button $menu.toolbar.lastDiff \
+				-image stop16 -borderwidth 1 \
+    				-command lastDiff
+			button $menu.toolbar.firstDiff \
+				-image start16 -borderwidth 1 \
+    				-command firstDiff
+			button $menu.toolbar.prevDiff \
+				-image left116 -borderwidth 1 \
+				-command [list prevDiff 0]
+			button $menu.toolbar.nextDiff \
+				-image right116 -borderwidth 1 \
+				-command [list nextDiff 0]
+			button $menu.toolbar.prevConflict \
+				-image left216 -borderwidth 1 \
+				-command [list prevDiff 1]
+			button $menu.toolbar.nextConflict \
+				-image right216 -borderwidth 1 \
+				-command [list nextDiff 1]
+			::tooltip::enable $menu.toolbar.lastDiff \
+				"last diff"
+			::tooltip::enable $menu.toolbar.firstDiff \
+				"first diff"
+			::tooltip::enable $menu.toolbar.prevDiff \
+				"previous diff"
+			::tooltip::enable $menu.toolbar.nextDiff \
+				"next diff"
+			::tooltip::enable $menu.toolbar.prevConflict \
+				"previous conflict"
+			::tooltip::enable $menu.toolbar.nextConflict \
+				"next conflict"
+		    pack $menu.toolbar.firstDiff \
+			 $menu.toolbar.prevConflict \
+    			 $menu.toolbar.prevDiff \
+    			 $menu.toolbar.nextDiff \
+    			 $menu.toolbar.nextConflict \
+    			 $menu.toolbar.lastDiff \
+    			-side left -fill both -expand y
+
 		label $menu.l -font $gc(fm3.buttonFont) \
 		    -bg $gc(fm3.buttonColor) \
 		    -padx 0 -pady 0 \
 		    -width 40 -relief groove -pady 2 \
     		    -borderwidth 2
-		text $menu.t -width 40 -height 7 \
+		text $menu.t -width 43 -height 7 \
 		    -background $gc(fm3.textBG) -fg $gc(fm3.textFG) \
 		    -wrap word -font $gc($app.fixedFont) \
-		    -borderwidth 2 -state disabled
-		catch {exec bk bin} bin
-		set logo [file join $bin "bklogo.gif"]
+		    -borderwidth 2 -state disabled \
+    		    -yscrollcommand [list $menu.yscroll set]
+		scrollbar $menu.yscroll -width $gc(fm3.scrollWidth) \
+		    -troughcolor $gc(fm3.troughColor) \
+		    -background $gc(fm3.scrollColor) \
+    		    -orient vertical -command [list $menu.t yview]
+		set bin $env(BK_BIN)
+		set logo [file join $bin gui images "bklogo.gif"]
 		if {[file exists $logo]} {
 		    image create photo bklogo -file $logo
 		    label $menu.logo -image bklogo \
 			-background $gc($app.logoBG) -relief flat -borderwid 3
-		    grid $menu.logo -row 2 -column 0 -sticky ew
+		    grid $menu.logo -row 3 -column 0 -sticky ew
 		}
 
-		grid $menu.l -row 0 -column 0 -sticky ew
-		grid $menu.t -row 1 -column 0 -sticky nsew
-		grid rowconfigure $menu 1 -weight 1
+		grid $menu.toolbar -row 0 -column 0 -sticky ew -columnspan 2
+		grid $menu.l -row 1 -column 0 -sticky ew -columnspan 2
+		grid $menu.t -row 2 -column 0 -sticky nsew
+		grid $menu.yscroll -row 2 -column 1 -sticky ns
+		grid rowconfigure $menu 2 -weight 1
 		grid columnconfigure $menu 0 -weight 1
 	    grid .merge.hi -row 0 -column 0 -sticky nsew
 	    grid .merge.t -row 0 -column 1 -sticky nsew
@@ -1246,7 +1610,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	    grid columnconfigure $prs 2 -weight 1
 
 	grid .menu -row 0 -column 0 -sticky nsew
-	if {$gc(fm3.annotate) && $gc(fm3.comments)} {
+	if {$gc(fm3.comments)} {
 		grid $prs -row 1 -column 0 -sticky ewns
 		grid rowconfigure . 1 -weight 1
 	}
@@ -1306,11 +1670,12 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		    -font $gc($app.fixedBoldFont)
 	}
 	searchreset
-	. configure -background $gc(BG)
+	. configure -background $gc(BG) -borderwidth 1 -relief flat
 	focus .
 }
 
-proc shortname {long} {
+proc shortname {long} \
+{
 	foreach {k n} {
 	    "+" "plus"
 	    "-" "minus"
@@ -1388,17 +1753,63 @@ proc keyboard_bindings {} \
 	}
 	# In the search window, don't listen to "all" tags.
 	bindtags $search(text) { .menu.search Entry . }
+
+	bind all <$gc(fm3.toggleAnnotations)> [list toggleAnnotations 1]
+	bind all <$gc(fm3.toggleGCA)> [list toggleGCA 1]
 }
 
 proc edit_merge {x y} \
 {
+	global gc
+
+	if {![winfo exists .escape] && 
+	    [string equal $gc(fm3.showEscapeButton) 1]} {
+		label .escape \
+		    -background $gc(fm3.escapeButtonBG) \
+		    -foreground $gc(fm3.escapeButtonFG) \
+		    -borderwidth 1 \
+		    -relief raised \
+		    -text "Click here or press <escape> to finish editing" \
+		    -padx 4 -pady 4
+	}
+
+	if {[string equal $gc(fm3.showEscapeButton) 1]} {
+		place .escape -in .diffs \
+		    -x 0 -rely 1.0 -anchor sw -relwidth 1 -bordermode outside
+	}
+
+	updateButtons "edit"
+	set msg [string trim "
+Useful keyboard shortcuts:
+
+<Escape>  save edits and exit editing mode
+<ctrl-Escape>  hide \"escape\" button
+
+<ctrl-a>  move to start of line
+<ctrl-e>  move to end of line
+<ctrl-n>  move to next line
+<ctrl-p>  move to previous line
+<ctrl-d>  delete character under cursor
+
+"]
+		 
+	.merge.menu.t configure -state normal
+	.merge.menu.t delete 1.0 end
+	.merge.menu.t insert 1.0 $msg
+	.merge.menu.t configure -state disabled
 	grab .merge.t
 	.merge.menu.l configure \
-	    -text "Hit Escape to exit edit mode" \
-	    -bg red
+	    -text "Edit Mode" \
+	    -background $gc(fm3.buttonColor)
 	focus .merge.t
-	bind .merge.t <Button-1> {}
+	bind .merge.t <Button-1> {
+		if {[string equal [winfo containing %X %Y] .escape]} {
+			edit_done
+			break
+		}
+	}
 	bind .merge.t <Escape> { edit_done }
+	bind .merge.t <Control-Escape> {catch {place forget .escape}}
 	bindtags .merge.t {.merge.t Text}
 	.merge.t mark set insert [.merge.t index @$x,$y]
 	edit_save
@@ -1411,6 +1822,7 @@ proc edit_done {} \
 	global	lastDiff diffCount conf_todo UNMERGED
 
 	grab release .merge.t
+	catch {place forget .escape}
 	bind .merge.t <Escape> {}
 	bind .merge.t <Button-1> { edit_merge %x %y; break }
 	bindtags .merge.t {}
@@ -1539,18 +1951,65 @@ proc isConflict {diff} \
 	}
 }
 
+proc diffIndex {which} \
+{
+	global	lastDiff diffCount
+
+	set index ""
+
+	switch -exact -- $which {
+		prevDiff {
+			if {$lastDiff == 1} {
+				set index ""
+			} else {
+				set index [expr {$lastDiff -1}]
+			}
+		}
+		nextDiff {
+			if {$lastDiff == $diffCount} {
+				set index {}
+			} else {
+				set index [expr {$lastDiff + 1}]
+			}
+		}
+		prevConflict {
+			set diff $lastDiff
+			while {$diff >= 1} {
+				incr diff -1
+				if {[isConflict $diff]} { break }
+			}
+			if {$diff == 0} { 
+				set index ""
+			} else {
+				set index $diff
+			}
+		}
+		nextConflict {
+			set diff $lastDiff
+			while {$diff <= $diffCount} {
+				incr diff
+				if {[isConflict $diff]} { break }
+			}
+			if {$diff > $diffCount || ![isConflict $diff]} { 
+				set index ""
+			} else {
+				set index $diff
+			}
+
+		}
+	}
+
+	return $index
+}
+
 proc prevDiff {conflict} \
 {
 	global	lastDiff
 
 	if {$lastDiff == 1} { return }
 	if {$conflict} {
-		set diff $lastDiff
-		while {$diff >= 1} {
-			incr diff -1
-			if {[isConflict $diff]} { break }
-		}
-		if {$diff == 0} { return }
+		set diff [diffIndex prevConflict]
+		if {$diff == ""} return
 		set lastDiff $diff
 	} else {
 		incr lastDiff -1
@@ -1564,12 +2023,8 @@ proc nextDiff {conflict} \
 
 	if {$lastDiff == $diffCount} { return }
 	if {$conflict} {
-		set diff $lastDiff
-		while {$diff <= $diffCount} {
-			incr diff
-			if {[isConflict $diff]} { break }
-		}
-		if {$diff > $diffCount} { return }
+		set diff [diffIndex nextConflict]
+		if {$diff == ""} return
 		set lastDiff $diff
 	} else {
 		incr lastDiff
@@ -1580,6 +2035,7 @@ proc nextDiff {conflict} \
 proc nextCommon {} \
 {
 	global	lastDiff diffCount undo click
+	global savedGCAdata
 
 	searchreset
 	catch {
@@ -1596,19 +2052,40 @@ proc nextCommon {} \
 	set d "d$lastDiff"
 	set e "e$lastDiff"
 	set ls [.diffs.left index "d$lastDiff"]
-	set rs [.diffs.left index "d$lastDiff"]
+	set rs [.diffs.right index "d$lastDiff"]
 	set lrevs [list]
 	set rrevs [list]
+	if {[info exists savedGCAdata]} {
+		# if we are here it means that the user has chosen to hide
+		# the GCA information. We need this information to pull out
+		# the revision numbers to display in the prs windows. This
+		# block of code reconstitutes just the text from the saved
+		# data
+		set left {}
+		set right {}
+		foreach {key value index} $savedGCAdata(.diffs.left) {
+			if {$key == "text"} {append left $value}
+		}
+		foreach {key value index} $savedGCAdata(.diffs.right) {
+			if {$key == "text"} {append right $value}
+		}
+	} else {
+		# GCA data is visible, so we pull the text straight from
+		# the text widgets
+		set left [.diffs.left get $d $e]
+		set right [.diffs.right get $d $e]
+	}
+
 	if {$ls == $rs} {
 		set text [list .diffs.left .diffs.right]
-		set lrevs [split [.diffs.left get $d $e] "\n"]
-		set rrevs [split [.diffs.right get $d $e] "\n"]
+		set lrevs [split $left "\n"]
+		set rrevs [split $right "\n"]
 	} elseif {$ls < $rs} {
 		set text [list .diffs.left]
-		set lrevs [split [.diffs.left get $d $e] "\n"]
+		set lrevs [split $left "\n"]
 	} else {
 		set text [list .diffs.right]
-		set rrevs [split [.diffs.right get $d $e] "\n"]
+		set rrevs [split $right "\n"]
 	}
 	prs $lrevs .prs.left
 	prs $rrevs .prs.right
@@ -1822,7 +2299,7 @@ proc change {lines replace orig pipe} \
 		$t mark set "U$undo" $e
         	$t mark gravity "u$undo" left
 	}
-	if {$pipe == 0 || $annotate == 0} {
+	if {$pipe == 0} {
 		set a 0
 	} else {
 		set a [string first "|" [lindex $lines 0]]
@@ -1945,10 +2422,11 @@ proc click {win block replace} \
 
 proc fm3tool {} \
 {
-	global State
+	global State gc
 
 	bk_init
 	getConfig "fm3"
+
 	smerge
 	widgets
 
@@ -1958,15 +2436,27 @@ proc fm3tool {} \
 	.prs.left insert 1.0 "Loading..."
 	.prs.right insert 1.0 "Loading..."
 	after idle [list wm deiconify .]
+	after idle [list focus -force .]
 	update idletasks
 
 	readFile
 
+	# whenever the current diff changes make sure the data honors
+	# the "gca" checkbutton
+	trace variable ::lastDiff w [list toggleGCA 0]
+
+	wm protocol . WM_DELETE_WINDOW cleanup
 	bind . <Destroy> {
 		if {[string match %W .]} {
 			saveState
 		}
 	}
+
+	set ::elide(annotations) $gc(fm3.annotate)
+	set ::elide(gca) 0
+
+	toggleGCA
+	toggleAnnotations
 }
 
 # the purpose of this proc is merely to load the persistent state;
@@ -2003,6 +2493,39 @@ proc saveState {} \
 	if {[catch {::appState save fm3 tmp} result]} {
 		puts stderr "error writing config file: $result"
 	}
+}
+
+image create photo start16 -data {
+	R0lGODlhEAAQAJEAANnZ2QAAi////////yH5BAEAAAAALAAAAAAQABAAAAJFhI+p
+	y0shfIgIDArhQ0RcUEL4EBEWlITgQ0QAxSb4QPGP4APFP4IPEQEUm+BDRFhQEoIP
+	EXFBCeFDRGBQCB8zMjMzJUAKADs=
+}
+image create photo stop16 -data {
+	R0lGODlhEAAQAJEAANnZ2QAAi////////yH5BAEAAAAALAAAAAAQABAAAAJBhI+p
+	y0HwMSMwKCF8iIgLSggfIiKMYsIHig1H8IHiH8EHin8EHyg2HMGHiAijmPAhIi4o
+	IXyIwAgK4UMQfExdXioAOw==
+}
+image create photo left116 -data {
+	R0lGODlhEAAQAJEAANnZ2QAAi////////yH5BAEAAAAALAAAAAAQABAAAAI1hI+p
+	y0ohfMSIzKOY8NEiIgg+AsUm+EjxCT5SfIKPQLEJPlpEBMHHi4hMJAnhY0ZmZqZk
+	SAEAOw==
+}
+image create photo left216 -data {
+	R0lGODlhEAAQAJEAANnZ2QAAi////////yH5BAEAAAAALAAAAAAQABAAAAJHhI+p
+	y0ch7LizCIIRcQdBCQAiguBHRFhQEoJNseEMAAiMjwYAQPHRCDbFhjOCHxFhQUkI
+	PkTEBSWEbxEYQfAvEAIREUIIGVIAOw==
+
+}
+image create photo right116 -data {
+	R0lGODlhEAAQAJEAANnZ2QAAi////////yH5BAEAAAAALAAAAAAQABAAAAI1hI+p
+	y0AhfMyITKSY8PEiIgg+GsUm+AgUn+AjxSf4SLEJPkJEBMFHi4jMIwnhI0ZmZqaU
+	DCkAOw==
+
+}
+image create photo right216 -data {
+	R0lGODlhEAAQAJEAANnZ2QAAi////////yH5BAEAAAAALAAAAAAQABAAAAJHhI+p
+	q0Gw4+4iCEbEnQUlAIgIgg8REUZxCD7FhjOCTfHRAAAoPhoAAMWGM4IdEWFBSQh+
+	RFwEhfAhAiMIvgVCICJCCCF0SAEAOw==
 }
 
 fm3tool

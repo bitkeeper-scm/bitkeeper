@@ -85,11 +85,6 @@ Include revs in
 .B \-k
 Don't expand RCS or SCCS keywords. \-k is implied by \-e.
 .tp
-.OPTreq \-M rev
-Create a merge pointer from
-.ARG rev .
-This is an internal interface and is rarely, if ever, used by end users.
-.tp
 .B \-p
 Write file to standard output (useful in scripts).
 .tp
@@ -108,6 +103,9 @@ Rev is part of pathname, i.e.,
 Get this revision. (Or key or changeset revision. See 
 .B bk help terms
 under 'rev argument')
+If combined with -e (edit), \*(BK will check out the tip revision
+combined with a set of include and exclude deltas needed to produce
+the requested revision.
 .tp
 .B \-S
 Check out the file if and only if it is not already checked out.

@@ -10,6 +10,7 @@ private int	commit(int quiet, delta *d);
 private	delta	*getComments(char *op, char *revs);
 private void	clean(char *file);
 private void	unedit(void);
+private int	mergeInList(sccs *s, char *revs);
 
 /*
  * cset_inex.c - changeset include/exclude processing.
@@ -287,6 +288,33 @@ undoit(MDBM *m)
 	return (1);
 }
 
+/* no merge allowed in cset list */
+private int
+mergeInList(sccs *s, char *revs)
+{
+	char	*p, *t;
+	delta	*d;
+
+	assert(CSET(s));
+	unless (revs) return (0);
+	assert(!strchr(revs, '-'));	/* we know list is expanded already */
+	t = revs;
+	while (t && *t) {
+		if (p = strchr(t, ',')) *p = 0;
+		d = sccs_findrev(s, t);
+		if (d && d->merge) {
+			fprintf(stderr,
+			    "cset: Merge cset found in revision list: (%s).  "
+			    "Aborting. (cset1)\n", t);
+			if (p) *p = ',';
+			return (1);
+		}
+		if (p) *p++ = ',';
+		t = p;
+	}
+	return (0);
+}
+
 private int
 doit(int flags, char *file, char *op, char *revs)
 {
@@ -319,7 +347,8 @@ doit(int flags, char *file, char *op, char *revs)
 		sccs_free(s);
 		return (1);
 	}
-	if (streq(file, CHANGESET) || streq(file, GCHANGESET)) {
+	if (CSET(s)) {
+		if (mergeInList(s, revs)) return (1);
 		flags |= GET_SKIPGET;
 	}
 	if (streq(op, "-i")) {

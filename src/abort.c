@@ -34,7 +34,7 @@ abort_main(int ac, char **av)
 	if (av[optind]) {
 		remote *r;
 
-		r = remote_parse(av[optind], 0);
+		r = remote_parse(av[optind]);
 		unless (r) {
 			fprintf(stderr, "Cannot parse \"%s\"\n", av[optind]);
 			return (1);
@@ -85,7 +85,7 @@ abort_patch(int leavepatch)
 	 * Get the patch file name from RESYNC before deleting RESYNC.
 	 */
 	sprintf(buf, "%s/%s", ROOT2RESYNC, "BitKeeper/tmp/patch");
-	unless (f = fopen(buf, "rb")) {
+	unless (f = fopen(buf, "r")) {
 		fprintf(stderr, "Warning: no BitKeeper/tmp/patch\n");
 		pendingFile[0] = 0;
 	} else {

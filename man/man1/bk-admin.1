@@ -29,30 +29,6 @@ set or remove the changeset file pointer in the 1.0 delta
 .B \-D
 remove the delta changeset marks (very rarely used, \fBnot\fP recommended).
 .tp
-.OPTreq \-E enc
-force file to be encoded with 
-.ARG enc ,
-which may be:
-.if t .RS .8i
-.if n .RS .4i
-.if t .tp 1.1i
-.if n .tp 1.2i
-.if t .ll +1.9i
-.if n .ll +1.5i
-.BR text
-regular text file (typical)
-.tp
-.B ascii
-same as 
-.ARG text
-.tp
-.B binary
-force binary file (data will be uuencoded in s.file).
-.tp
-.RE
-.ll
-.if t .tp .85i
-.if n .tp 1.6i
 .OPTreq \-f flag
 set 
 .ARG flag 
@@ -66,11 +42,6 @@ which can be any of:
 .tp \n[INDENT]u
 .B BITKEEPER
 mark the file as a \*(BK file (very rarely used, \fBnot\fP recommended)
-.tp
-.OPTreq DEFAULT= r
-set the default branch or revision used by the
-.BR bk\ get
-command.
 .tp
 .B EXPAND1
 expand keywords in first line that contains keywords only (printf conflicts)
@@ -99,21 +70,6 @@ See bk help config-etc.
 .tp
 .B YEAR4
 display dates as 4 digit years 
-.tp
-.B EOLN_NATIVE
-use the operating system's native end-of-line termination.
-EOLN_NATIVE is set to "on" by default.  To make the
-default have EOLN_NATIVE be set to "off" put eoln:unix in the
-BitKeeper/etc/config file (see bk help config-etc).
-.tp
-.B NOMERGE
-do not attempt to automerge this file, treat it as if it were a
-binary file and force a choose local or choose remote style merge.
-.tp
-.OPTreq DEFAULT= rev
-set the default branch or revision used by the
-.BR bk\ get
-command.
 .RE
 .LP
 .tp
@@ -166,12 +122,6 @@ and, when not in a \*(BK repository, with
 .B \-i
 to specify the initial revision.
 .tp
-.OPTequal -S sym rev
-associate symbolic name (tag)
-.ARG sym
-with revision
-.ARG rev .
-.tp
 .OPTreq \-t file
 read description text from 
 .ARG file
@@ -221,6 +171,7 @@ Do not depend on these options for scripts.
 .SA chmod 1
 .SA delta 1
 .SA get 1
+.SA new 1
 .SA prs 1
 .SA tag 1
 .SA keywords

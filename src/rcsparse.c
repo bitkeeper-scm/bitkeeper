@@ -758,7 +758,8 @@ select_branch(RCS *rcs, char *cvsbranch)
 	/*
 	 * Handle vendor branches
 	 */
-	if (v1111 = rcs_findit(rcs, "1.1.1.1")) {
+	if (!getenv("BK_IMPORT_NOVENDORBRANCH") &&
+	    (v1111 = rcs_findit(rcs, "1.1.1.1"))) {
 		rdelta	*v11 = rcs_findit(rcs, "1.1");
 		rdelta	*v12 = rcs_findit(rcs, "1.2");
 		rdelta	*v;
@@ -822,11 +823,23 @@ select_branch(RCS *rcs, char *cvsbranch)
 		rdelta	*lastd;
 		time_t	branchtime_s = 0;
 		time_t	branchtime_e = LASTTIME;
-		time_t	stime = rcs->tree->date;
+		time_t	stime;
 		time_t	etime;
 		char	*branchname = 0;
 		char	**branches = splitLine(cvsbranch, ",", 0);
 		int	i;
+
+		/*
+		 * If this is a branch of a branch, we need to setup
+		 * the previous branch first, so we can use the kid
+		 * pointers to find this branch.
+		 */
+		if (p = strchr(cvsbranch, ',')) select_branch(rcs, p+1);
+
+		/* first time of first non-deleted delta on trunk */
+		d = rcs->tree;
+		while (d && d->dead) d = d->next;
+		stime = d ? d->date : LASTTIME;
 
 		EACH (branches) {
 			if (branchname) free(branchname);
@@ -889,18 +902,32 @@ select_branch(RCS *rcs, char *cvsbranch)
 			/* deleted before branch, import */
 			goto skip_branch;
 		} else {
-			char	*fs = tm2date(stime);
-			char	*fe = tm2date(etime);
-			char	*bs = tm2date(branchtime_s);
-			char	*be = tm2date(branchtime_e);
+			/*
+			 * check to see if file may have been deleted when
+			 * this branch was tagged.
+			 */
+			for (d = rcs->tree; d; d = d->kid) {
+				if (d->dead && d->kid &&
+				    (d->date < branchtime_e) &&
+				    (d->kid->date > branchtime_s)) {
+					sprintf(brev, "%s.0.999", d->rev);
+					break;
+				}
+			}
+			unless (d) {
+				char	*fs = tm2date(stime);
+				char	*fe = tm2date(etime);
+				char	*bs = tm2date(branchtime_s);
+				char	*be = tm2date(branchtime_e);
 
-			fprintf(stderr,
+				fprintf(stderr,
 "ERROR: file %s doesn't have the %s branch tag,\n"
 "but was active when that branch was created.\n"
 "(file @ (%s to %s) vs branch @ (%s to %s))!\n",
-			    rcs->rcsfile, branchname, fs, fe, bs, be);
-			free(fs); free(fe); free(bs); free(be);
-			exit(1);
+				    rcs->rcsfile, branchname, fs, fe, bs, be);
+				free(fs); free(fe); free(bs); free(be);
+				exit(1);
+			}
 		}
 		free(branchname);
 		branchname = 0;
@@ -908,13 +935,23 @@ select_branch(RCS *rcs, char *cvsbranch)
 		p = strrchr(brev, '.');
 		if (!p || p[-2] != '.' || p[-1] != '0') {
 			fprintf(stderr,
-"ERROR: revision %s is not in expected form X.Y.0.Z in %s\n"
-"       This usually means that a branch tag was not passed to -b\n",
+"WARNING: revision %s is not in expected form X.Y.0.Z in %s\n"
+"         This usually means that tag is not a branch tag.\n",
 			    brev, rcs->rcsfile);
-			exit(1);
+			/*
+			 * Here we need to make a rev that will cause the
+			 * code below to act like we have a branch point that
+			 * was never added on.
+			 * So we add a bogus .X.Y that will never match, and
+			 * setup 'p' so that when that fails the 'p[-2] = 0'
+			 * below will return us the original branch rev.
+			 */
+			p = brev + strlen(brev) + 2;
+			strcat(brev, ".X.Y");
+		} else {
+			strcpy(p - 1, p + 1);  /* not portable?? (overlap) */
+			strcat(p, ".1");
 		}
-		strcpy(p - 1, p + 1);  /* not portable?? (overlap) */
-		strcat(p, ".1");
 		d = rcs_findit(rcs, brev);
 		unless (d) {
 			p[-2] = 0;  /* X.Y */

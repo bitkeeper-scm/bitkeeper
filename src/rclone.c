@@ -51,7 +51,7 @@ rclone_main(int ac, char **av)
 	 * Validate argument
 	 */
 	unless (av[optind] && av[optind + 1]) usage();
-	l = remote_parse(av[optind], 1);
+	l = remote_parse(av[optind]);
 	unless (l) usage();
 	isLocal = (l->host == NULL);
 	remote_free(l);
@@ -65,7 +65,7 @@ rclone_main(int ac, char **av)
 		fprintf(stderr, "%s is not a BitKeeper root\n", av[optind]);
 		exit(1);
 	}
-	r = remote_parse(av[optind + 1], 0);
+	r = remote_parse(av[optind + 1]);
 	unless (r) usage();
 
 	rc = rclone(av, opts, r, envVar);
@@ -118,7 +118,7 @@ rclone_part1(opts opts, remote *r, char **envVar)
 	if (getline2(r, buf, sizeof(buf)) <= 0) return (-1);
 
 	if (streq(buf, "@SERVER INFO@"))  {
-		getServerInfoBlock(r);
+		if (getServerInfoBlock(r)) return (-1);
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
 		exit(1);
@@ -179,7 +179,10 @@ rclone_part2(char **av, opts opts, remote *r, char **envVar)
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	getline2(r, buf, sizeof(buf));
 	if (streq(buf, "@SERVER INFO@")) {
-		getServerInfoBlock(r);
+		if (getServerInfoBlock(r)) {
+			rc = 1;
+			goto done;
+		}
 	}
 
 	/*

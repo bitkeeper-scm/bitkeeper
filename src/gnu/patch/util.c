@@ -43,7 +43,7 @@
 # define raise(sig) kill (getpid (), sig)
 #endif
 
-#ifdef __STDC__
+#if defined(__STDC__) || defined(WIN32)
 # include <stdarg.h>
 # define vararg_start va_start
 #else
@@ -224,7 +224,7 @@ copy_file (char const *from, char const *to, int to_flags, mode_t mode)
   int fromfd;
   size_t i;
 
-  if ((fromfd = open (from, O_RDONLY | O_BINARY)) < 0)
+  if ((fromfd = open (from, O_RDONLY | O_BINARY, 0)) < 0)
     pfatal ("Can't reopen file %s", quotearg (from));
   tofd = create_file (to, O_WRONLY | O_BINARY | to_flags, mode);
   while ((i = read (fromfd, buf, bufsize)) != 0)
@@ -564,7 +564,7 @@ ask (char const *format, ...)
 	 which makes a call-process `patch' hang when it reads from /dev/tty.
 	 POSIX.2 requires that we read /dev/tty, though.  */
       ttyfd = (posixly_correct || isatty (STDOUT_FILENO)
-	       ? open (TTY_DEVICE, O_RDONLY)
+	       ? open (TTY_DEVICE, O_RDONLY, 0)
 	       : -1);
     }
 
@@ -984,9 +984,33 @@ fetchname (char *at, int strip_leading, time_t *pstamp)
     return savestr (name);
 }
 
+#ifdef WIN32
+/*
+ * We need this because regular seek does not work in text mode
+ */
+void
+text_mode_fseek(FILE *stream, file_offset offset, int ptrname)
+{
+  /* We do not support SEEK_CUR, SEEK_END etc in text mode */
+  assert(ptrname == SEEK_SET);
+  if (fseek (stream, 0, SEEK_SET) != 0)
+    pfatal ("fseek");
+  while (ftell(stream) != offset) {
+	if (getc(stream) == EOF) 
+    	  pfatal ("fseek");
+  }
+}
+#endif
+
 void
 Fseek (FILE *stream, file_offset offset, int ptrname)
 {
+#ifdef WIN32
+  if (!binary_transput) {
+    text_mode_fseek(stream, offset, ptrname);
+    return;
+  }
+#endif
   if (file_seek (stream, offset, ptrname) != 0)
     pfatal ("fseek");
 }

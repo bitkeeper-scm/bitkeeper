@@ -81,7 +81,7 @@ loadfile(char *file, int *size)
 	char	*ret;
 	int	len;
 
-	f = fopen(file, "rb");
+	f = fopen(file, "r");
 	unless (f) return (0);
 
 	if (fstat(fileno(f), &statbuf)) {
@@ -210,7 +210,9 @@ getline(int in, char *buf, int size)
 int
 read_blk(remote *r, char *buf, int len)
 {
-	if (r->isSocket) {
+	if (r->rf) {
+		return (fread(buf, 1, len, r->rf));
+	} else if (r->isSocket) {
 		return (recv(r->rfd, buf, len, 0));
 	} else {
 		return (read(r->rfd, buf, len));
@@ -380,7 +382,6 @@ prompt_main(int ac, char **av)
 	FILE	*in;
 	char	msgtmp[MAXPATH];
 	char	buf[1024];
-	extern	char *pager;
 	char	**lines = 0;
 
 	while ((c = getopt(ac, av, "cegGiowxf:n:p:t:y:")) != -1) {
@@ -413,11 +414,14 @@ err:		system("bk help -s prompt");
 		bktmp(msgtmp, "prompt");
 		file = msgtmp;
 		cmd = aprintf("%s > %s", prog, file);
+
+		/* For caching of the real pager */
+		(void)pager();
 		putenv("PAGER=cat");
 		if (system(cmd)) goto err;
 		free(cmd);
 	}
-	if ((gui || getenv("BK_GUI")) && !nogui) {
+	if ((gui || gui_useDisplay()) && !nogui) {
 		char	*nav[19];
 
 		nav[i=0] = "bk";
@@ -497,7 +501,8 @@ err:		system("bk help -s prompt");
 	} else {
 		FILE	*out;
 
-		sprintf(buf, "%s 1>&2", pager);
+		signal(SIGPIPE, SIG_IGN);
+		sprintf(buf, "%s 1>&2", pager());
 		out = popen(buf, "w");
 		EACH(lines) {
 			fprintf(out, "%s", lines[i]);
@@ -541,6 +546,42 @@ csetDiff(MDBM *not,  int wantTag)
 	if (n) return (db);
 	mdbm_close(db);
 	return (0);
+}
+
+/*
+ * Return true if spath is the real ChangeSet file.
+ * Must be light weight, it is called from sccs_init().
+ * It assumes ChangeSet and BitKeeper/etc share the same parent dir.
+ * XXX Moving the ChangeSet file will invalidate this code!
+ * Handles the following cases:
+ * a) spath = not a ChangeSet path	# common case
+ * b) spath = SCCS/s.ChangeSet		# common case
+ * c) spath = XSCCS/s.ChangeSet		# should not happen
+ * d) spath = /SCCS/s.ChangeSet		# repo root is "/"
+ * e) spath = X/SCCS/s.ChangeSet	# X is "." or other prefix
+ */
+int
+isCsetFile(char *spath)
+{
+	char	*q;
+	char	buf[MAXPATH];
+
+	unless (spath) return (0);
+
+	/* find "SCCS/s.ChangeSet" suffix */
+	unless (q = strrchr(spath, '/')) return (0);
+	q -= 4;
+	unless ((q >= spath) && patheq(q, CHANGESET)) return (0);
+								/* case ' a' */
+
+	if (q == spath) return (isdir(BKROOT));			/* case ' b' */
+	--q;
+	if (*q != '/') return (0);				/* case ' c' */
+	if (q == spath) return (0);				/* case ' d' */
+
+	/* test if pathname contains BKROOT */
+	sprintf(buf, "%.*s/" BKROOT, q - spath, spath);
+	return (isdir(buf));					/* case ' e' */
 }
 
 
@@ -632,6 +673,7 @@ void
 disconnect(remote *r, int how)
 {
 	assert((how >= 0) && (how <= 2));
+
 	switch (how) {
 	    case 0:	if (r->rfd == -1) return;
 			if (r->isSocket) {
@@ -653,6 +695,21 @@ disconnect(remote *r, int how)
 			if (r->wfd >= 0) close(r->wfd);
 			r->rfd = r->wfd = -1;
 			break;
+	}
+	if (r->pid && (r->rfd == -1) && (r->wfd == -1)) {
+		/*
+		 * We spawned a bkd in the background to handle this
+		 * connection. When it get here it SHOULD be finished
+		 * already, but just in case we close the connections
+		 * and wait for that process to exit.
+		 */
+		if (getenv("BK_SHOWPROC")) {
+			fprintf(stderr,
+			    "disconnect(): pid %u waiting for %u...\n",
+			    getpid(), r->pid);
+		}
+		waitpid(r->pid, 0, 0);
+		r->pid = 0;
 	}
 }
 
@@ -756,6 +813,7 @@ add_cd_command(FILE *f, remote *r)
 void
 put_trigger_env(char *prefix, char *v, char *value)
 {
+	unless (value) value = "";
 	safe_putenv("%s_%s=%s", prefix, v, value);
 }
 
@@ -941,7 +999,7 @@ drainErrorMsg(remote *r, char *buf, int bsize)
 {
 	int	bkd_msg = 0, i;
 	char	**lines = 0;
-	
+
 	lines = addLine(lines, strdup(buf));
 	if (strneq("ERROR-BAD CMD: putenv", buf, 21)) {
 		bkd_msg = 1;
@@ -962,7 +1020,7 @@ drainErrorMsg(remote *r, char *buf, int bsize)
 		 * Comment the following code out, it is causing problem
 		 * when we have case 4.
 		 * And I don't remember why I need it in the first place.
-		 * 
+		 *
 		 * if (strneq("ERROR-BAD CMD:", buf, 14)) goto next;
 		 */
 		if (streq("OK-root OK", buf)) goto next;
@@ -999,28 +1057,6 @@ remote_lock_fail(char *buf, int verbose)
 }
 
 /*
- * Return the number of files in a repository.
- */
-int
-nFiles(void)
-{
-        FILE    *f;
-        int     i = 0;
-        char    buf[ 2 * MAXKEY + 10];
-	char	*p = getenv("_BK_NFILES");
- 
-        f = popen("bk -R get -qkp ChangeSet", "r");
-        assert(f);
-        while (fnext(buf, f)) {
-                i++;
-        }
-        pclose(f);
-	/* regressions: allow it to be adjusted up only */
-	if (p && (atoi(p) > i)) i = atoi(p);
-        return (i);
-}         
-
-/*
  * This function works like sprintf(), except it return a
  * malloc'ed buffer which caller should free when done
  */
@@ -1031,7 +1067,7 @@ aprintf(char *fmt, ...)
 	int	rc;
 	char	*buf;
 	int	size = strlen(fmt) + 64;
-		
+
 	while (1) {
 		buf = malloc(size);
 		va_start(ptr, fmt);
@@ -1133,7 +1169,7 @@ savefile(char *dir, char *prefix, char *pathname)
 		if (fd == -1) {
 			if (errno == EEXIST) continue;	/* name taken */
 			if (errno == ENOENT &&
-			    ((mkdir)(dir, 0777) == 0)) {
+			    (realmkdir(dir, 0777) == 0)) {
 				/* dir missing, applyall race? */
 				continue;
 			}
@@ -1176,6 +1212,34 @@ spawn_cmd(int flag, char **av)
 	return (WEXITSTATUS(ret));
 }
 
+char *
+pager(void)
+{
+	char	*pagers[3] = {"more", "less", 0};
+	static	char	*pg;
+	int	i;
+
+	if (pg) return (pg); /* already cached */
+
+	unless (pg = getenv("BK_PAGER")) pg = getenv("PAGER");
+
+	/* env can be PAGER="less -E" */
+	if (pg) {
+		char	**cmds = shellSplit(pg);
+
+		unless (cmds && cmds[1] && which(cmds[1], 0, 1)) pg = 0;
+		freeLines(cmds, free);
+	}
+	if (pg) return (strdup(pg));	/* don't trust env to not change */
+
+	for (i = 0; pagers[i]; i++) {
+		if (which(pagers[i], 0, 1)) {
+			pg = pagers[i];
+			return (pg);
+		}
+	}
+	return (pg = "bk more");
+}
 
 #define	MAXARGS	100
 /*
@@ -1188,18 +1252,18 @@ mkpager()
 	pid_t	pid;
 	char	*pager_av[MAXARGS];
 	char	*cmd;
-	extern 	char *pager;
+	char	*pg = pager();
 
 	/* win32 treats "nul" as a tty, in this case we don't care */
 	unless (isatty(1)) return (0);
 
 	/* "cat" is a no-op pager used in bkd */
-	if (streq("cat", pager)) return (0);
+	if (streq("cat", pg)) return (0);
 
 	fflush(stdout);
 	signal(SIGPIPE, SIG_IGN);
-	cmd = strdup(pager); /* line2av stomp */
-	line2av(cmd, pager_av); /* win32 pager is "less -X -E" */
+	cmd = strdup(pg); /* line2av stomp */
+	line2av(cmd, pager_av); /* some user uses "less -X -E" */
 	pid = spawnvp_wPipe(pager_av, &pfd, 0);
 	dup2(pfd, 1);
 	close(pfd);
@@ -1317,6 +1381,8 @@ myisatty(int fd)
 	int	ret;
 	char	*p;
 	char	buf[16];
+
+	if (getenv("_BK_IN_BKD") && !getenv("_BK_BKD_IS_LOCAL")) return (0);
 
 	sprintf(buf, "BK_ISATTY%d", fd);
 	if (p = getenv(buf)) {

@@ -54,7 +54,7 @@
 //#define SHA384
 //#define SHA256
 //#define TIGER
-//#define SHA1
+#define SHA1
 #define MD5
 //#define MD4
 

@@ -530,8 +530,7 @@ http_changes(char *rev)
 			" <td align=center"
 			"$if(:TAG:){ bgcolor=yellow}>"
 			"<a href=cset@:I:%s>:I:</a>"
-			"$if(:TAG:){<br>:TAG:}"
-//			"$if(:TAG:){$each(:TAG:){<br>(:TAG:)}}"
+			"$if(:TAG:){<br>$each(:TAG:){(:TAG:) }}"
 			"</td>\n"
 			" <td>:HTML_C:</td>\n"
 			"</tr>\n"
@@ -783,6 +782,9 @@ htmlify(char *str, int len)
 			buf[h++] = (*str == '<') ? 'l': 'g';
 			buf[h++] = 't';
 			buf[h++] = ';';
+		} else if (*str == '&') {
+			strcpy(&buf[h], "&amp;");
+			h += 5;
 		}
 		else
 			buf[h++] = *str;
@@ -1185,7 +1187,7 @@ http_patch(char *rev)
 	}
 
 	out("<pre><font size=2>");
-	sprintf(buf, "bk export -T -h -x -tpatch -r'%s'", rev);
+	sprintf(buf, "bk export -T -h -S -tpatch -r'%s'", rev);
 	f = popen(buf, "r");
 	color(0);
 	while (fgets(buf, sizeof(buf), f)) {
@@ -1363,11 +1365,11 @@ http_index(char *page)
 	t3d = now - (3*24*60*60);
 	t4d = now - (4*24*60*60);
 	t1w = now - (7*24*60*60);
-	t2w = now - (14*24*60*60);
-	t3w = now - (21*24*60*60);
-	t4w = now - (31*24*60*60);
-	t8w = now - (2*31*24*60*60);
-	t12w = now - (3*31*24*60*60);
+	t2w = now - (2*7*24*60*60);
+	t3w = now - (3*7*24*60*60);
+	t4w = now - (4*7*24*60*60);
+	t8w = now - (8*7*24*60*60);
+	t12w = now - (12*7*24*60*60);
 	t6m = now - (6*31*24*60*60);
 	t9m = now - (9*31*24*60*60);
 	t1y = now - (365*24*60*60);

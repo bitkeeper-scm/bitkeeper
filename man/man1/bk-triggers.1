@@ -303,6 +303,9 @@ The command did not complete because it was a "dry run", i.e., a
 pull -n to look to see if there is anything to pull.
 .ip CONFLICTS
 The command did not complete because there were conflicts (parallel work).
+.ip LOCAL_WORK
+The command did not complete because there is local work and an update only
+operation was requested.
 .ip SIGNALED
 The command did not complete because it received a signal.
 .ip OK
@@ -430,6 +433,11 @@ exit 0
 .ft
 .DE
 .SH SEE ALSO
+.SA clone 1
+.SA delta 1
 .SA prompt 1
+.SA pull 1
+.SA push 1
+.SA resolve 1
 .SH CATEGORY
 .B Repository

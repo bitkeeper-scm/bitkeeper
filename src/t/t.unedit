@@ -15,7 +15,6 @@
 
 set -e
 
-HERE=`bk pwd`
 echo $N Create initial repository ...................................$NL
 no_logging project
 mkdir src

@@ -13,6 +13,7 @@ char 		*logRoot;
 int		licenseServer[2];	/* bkweb license pipe */
 time_t		licenseEnd = 0;		/* when a temp bk license expires */
 time_t		requestEnd = 0;
+private char	**exCmds;
 
 int
 bkd_main(int ac, char **av)
@@ -67,8 +68,11 @@ bkd_main(int ac, char **av)
 		    case 's': Opts.startDir = optarg; break;	/* doc 2.0 */
 		    case 'S': 					/* undoc 2.0 */
 			Opts.start = 1; Opts.daemon = 1; break;
+
 		    case 'R': 					/* doc 2.0 */
-			Opts.remove = 1; Opts.daemon = 1; break;
+			unless (win32()) usage;
+			Opts.remove = Opts.daemon = 1;
+			break;
 		    case 'u': Opts.uid = optarg; break;		/* doc 2.0 */
 		    case 'x': exclude(optarg, 1); break;	/* doc 2.0 */
 		    case 'c': Opts.count = atoi(optarg); break;	/* undoc */
@@ -95,6 +99,7 @@ bkd_main(int ac, char **av)
 	if (Opts.port) Opts.daemon = 1;
 	core();
 	putenv("PAGER=cat");
+	putenv("_BK_IN_BKD=1");
 	if (Opts.daemon) {
 		if (tcp_pair(licenseServer) == 0) {
 			bkd_server(ac, av);
@@ -236,9 +241,16 @@ do_cmds()
 				}
 			}
 		} else if (av[0]) {
+			EACH(exCmds) {
+				if (streq(av[0], exCmds[i])) break;
+			}
 			out("ERROR-BAD CMD: ");
 			out(av[0]);
-			out(", Try help\n");
+			if (i < nLines(exCmds)) {
+				out(" is disabled for this bkd using -x\n");
+			} else {
+				out(", Try help\n");
+			}
 		} else {
 			out("ERROR-Try help\n");
 		}
@@ -300,6 +312,7 @@ exclude(char *cmd_prefix, int verbose)
 			strneq(cmd_prefix, cmds[i].realname, len)) {
 			c[j++] = cmds[i];
 		} else {
+			exCmds = addLine(exCmds, strdup(cmds[i].name));
 			foundit++;
 		}
 	}

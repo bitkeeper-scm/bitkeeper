@@ -150,3 +150,107 @@ cd $HERE/copy2
 echo hj > hh
 (echo rr; echo y) | bk pull $Q 2> ERRS || exit 1
 echo OK
+
+echo $N Check vr when remote is on a branch .........................$NL
+cd $HERE/proj
+echo VERSION 1 > foo
+bk new $Q foo
+bk commit $Q -yfoo
+cd ..
+bk clone $Q proj vrcopy
+cd proj
+bk edit $Q foo
+echo VERSION 2 > foo
+bk delta $Q -y2 foo
+bk commit $Q -yfoo
+cd ../vrcopy
+bk edit $Q foo
+bk delta $Q -y2 foo  
+bk commit $Q -yfoo
+cd ../proj
+bk pull $Q ../vrcopy  
+cd ../vrcopy
+bk edit $Q foo
+echo VERSION 3 > foo
+bk delta $Q -y2 foo
+bk commit $Q -yfoo
+cd ../proj
+bk pull $Q -R ../vrcopy
+bk resolve -t <<EOF > VR 2>&1
+vr
+q
+EOF
+# When failing, gave VERSION 2
+grep -q "VERSION 3" VR || {
+	echo Fail
+	echo Expecting to contain the string "'VERSION 3'" and resolve gave
+	cat VR
+	exit 1
+}
+echo OK
+
+echo $N Check pass1 to see if dups when no dup.......................$NL
+cd $HERE
+export CLOCK_DRIFT=1
+no_logging p1d
+mkdir src
+touch src/foo
+bk new $Q src/foo
+# 3 long names
+list="alkjlskdjflksjfdjdfskjdflsjfljfd
+	aladflskdjflskjdikjsdfdlsjdadd
+	polbnlknsdlkafljalfjallskdjskj"
+# make 162 files with long names
+for a in $list; do
+	for b in $list; do
+		for c in $list; do
+			file=''
+			dir=AB/$a/$b/$c
+			mkdir -p $dir
+			for d in $list; do
+				file="$file $dir/a$d $dir/b$e$d"
+			done
+			touch $file
+			bk new $Q $file
+		done
+	done
+done
+bk commit $Q -y'a whole lot of files'
+cd ..
+bk clone $Q p1d p1dtmp
+cd p1dtmp
+bk mv src/foo .foo
+bk mv AB A
+bk commit $Q -y'a whole lot of moving'
+cd ../p1d
+bk pull -qR ../p1dtmp
+bk resolve $Q -234 2> ERR || {
+	echo Fail
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Make sure resolve reruns when there are conflicts ...........$NL
+cd $HERE/proj
+bk abort -f
+cd $HERE
+bk clone $Q proj conflict
+for i in proj conflict
+do
+	cd $HERE/$i
+	bk edit $Q foo
+	echo $i >> foo
+	bk delta $Q -y$i foo
+	bk commit $Q -y$i 
+done
+cd $HERE/conflict
+( echo '?'
+  echo q
+) | BK_FORCE_RESOLVE_RERUN=YES bk pull > OUT 2>&1
+grep -q 'starting manual resolve process.' OUT || {
+	echo Did not restart resolve
+	cat OUT
+	exit 1
+}
+echo OK

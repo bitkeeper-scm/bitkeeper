@@ -29,7 +29,7 @@ do	P=`expr $P + 1`
 	bk bkd -q -d -p$P -ilicense -c1
 done
 export BK_LICURL=bk://localhost:$P/
-bk leaseflush
+bk lease flush -a
 echo OK
 
 echo $N Setup some files ............................................$NL

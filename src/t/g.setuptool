@@ -1,0 +1,189 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2004 Larry McVoy
+# %K%
+
+HERE=`bk pwd -s`
+test -d $HERE/home || mkdir $HERE/home
+export BK_TEST_HOME=$HERE/home
+OUT=$HERE/out
+RC=`bk dotbk`/setup.rc
+
+echo $N Simple startup and exit......................................$NL
+bk guitest setuptool >$OUT 2>&1 <<'EOF'
+    test_buttonPress Cancel
+    after 5000 [list exit 99] ;# in case the buttonpress didn't work
+EOF
+err=$?
+if [ -s $OUT ] ; then echo failed; cat $OUT; exit 1 ; fi
+if [ $err -ne 1 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
+echo OK
+
+# at present setuptool doesn't create an rc file.
+#echo $N Create dotbk/setup.rc .......................................$NL
+#test -f $RC && rm -f $RC
+#bk guitest setuptool >$OUT 2>&1 <<'EOF'
+#    test_buttonPress Cancel
+#    after 5000 [list exit 99] ;# in case the buttonpress didn't work
+#EOF
+#test -f $RC || { echo "failed"; ls -l `bk dotbk`; exit 1; }
+#echo "OK"
+
+echo $N Single User / Single Host....................................$NL
+# note the lack of single quotes around EOF, which is a bit unusual.
+# we want HERE to be expanded in the script
+bk guitest setuptool >$OUT 2>&1 <<EOF
+    focus -force .
+    test_buttonPress "Next >"
+    test_buttonPress "Single User*"
+    test_buttonPress "Next >"
+    test_buttonPress "I Agree"
+    test_buttonPress "Next >"
+    test_focus
+    test_inputString username
+    test_inputString \t
+    test_inputString test.bitkeeper.com
+    test_buttonPress "Next >"
+    test_focus
+    test_inputString $HERE/repo
+    test_inputString \t
+    test_inputString "this is the description"
+    test_inputString "\t"
+    test_inputString nobody@nowhere.bk
+    test_inputString "\t"
+    test_inputString "misc"
+    test_buttonPress "Next >"  ;# takes us to contact
+    test_buttonPress "Next >"  ;# takes us to keyword expansion
+    test_buttonPress "Next >"  ;# takes us to checkout mode
+    test_buttonPress "Next >"  ;# takes us to compression mode
+    test_buttonPress "Next >"  ;# takes us to autofix options
+    test_buttonPress "Next >"  ;# takes us to last step
+    test_buttonPress "Finish"  ;# do it!
+    after 5000 [list test_buttonPress OK] ;# darn confirmation popup :-(
+    after 10000 [list exit 99] ;# in case the buttonpress didn't work
+EOF
+err=$?
+if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
+grep -q 'The repository was successfully created.' $OUT
+if [ $? -ne 0 ] ; then echo failed ; cat $OUT ; exit 1 ; fi
+cat > $OUT <<EOF
+description: this is the description
+category: misc
+email: nobody@nowhere.bk
+name: 
+street: 
+city: 
+state: 
+postal: 
+country: 
+phone: 
+cell: 
+pager: 
+hours: 
+logging: none
+keyword: none
+compression: gzip
+autofix: yes
+checkout: none
+single_user: username
+single_host: test.bitkeeper.com
+EOF
+CONFIG=$HERE/repo/BitKeeper/etc/config
+if [ ! -f $CONFIG ] ; then echo "failed to make config file" ; exit 1 ; fi
+bk diff $Q -w $OUT $CONFIG
+if [ $? -ne 0 ] ; then echo "failed" ; bk diff -w $OUT $CONFIG; exit 1 ; fi
+echo OK
+
+echo $N -R licenseType:commercial....................................$NL
+bk guitest setuptool -R licenseType:commercial >$OUT 2>&1 <<'EOF'
+    global widgets
+    focus -force .
+    test_buttonPress "Next >" ;# takes us to license type
+    foreach {widget expected} {
+	    paidrb normal paidmi normal 
+	    singlerb disabled singlemi disabled
+	    olrb disabled olmi disabled
+    } {
+	    if {[$widgets(LicenseType).$widget cget -state] ne $expected} {
+		    puts "widget $widget should be $expected but isn't"
+		    exit 1
+	    }
+    }
+
+    exit 0
+    after 5000 [list test_buttonPress OK] ;# darn confirmation popup :-(
+    after 10000 [list exit 99] ;# in case the buttonpress didn't work
+EOF
+err=$?
+if [ $err -eq 2 ]; then 
+    echo failed;
+    cat $OUT
+    exit 1
+fi
+echo OK
+
+echo $N -R licenseType:single .......................................$NL
+bk guitest setuptool -R licenseType:single >$OUT 2>&1 <<'EOF'
+    global widgets
+    focus -force .
+    test_buttonPress "Next >" ;# takes us to license type
+    foreach {widget expected} {
+	    paidrb disabled paidmi disabled
+	    singlerb normal singlemi normal
+	    olrb disabled olmi disabled
+    } {
+	    if {[$widgets(LicenseType).$widget cget -state] ne $expected} {
+		    puts "widget $widget should be $expected but isn't"
+		    exit 1
+	    }
+    }
+
+    exit 0
+    after 5000 [list test_buttonPress OK] ;# darn confirmation popup :-(
+    after 10000 [list exit 99] ;# in case the buttonpress didn't work
+EOF
+err=$?
+if [ $err -eq 2 ]; then 
+    echo failed;
+    cat $OUT
+    exit 1
+fi
+echo OK
+
+echo $N -R licenseType:openlogging...................................$NL
+bk guitest setuptool -R licenseType:commercial >$OUT 2>&1 <<'EOF'
+    global widgets
+    focus -force .
+    test_buttonPress "Next >" ;# takes us to license type
+    foreach {widget expected} {
+	    paidrb disabled paidmi disabled
+	    singlerb disabled singlemi disabled
+	    olrb normal olmi normal
+    } {
+	    if {[$widgets(LicenseType).$widget cget -state] ne $expected} {
+		    puts "widget $widget should be $expected but isn't"
+		    exit 1
+	    }
+    }
+
+    exit 0
+    after 5000 [list test_buttonPress OK] ;# darn confirmation popup :-(
+    after 10000 [list exit 99] ;# in case the buttonpress didn't work
+EOF
+err=$?
+if [ $err -eq 2 ]; then 
+    echo failed;
+    cat $OUT
+    exit 1
+fi
+echo OK
+

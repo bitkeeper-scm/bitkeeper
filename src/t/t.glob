@@ -12,7 +12,6 @@
 
 # Copyright (c) 2003 BitMover, Inc.
 
-HERE=`bk pwd`
 echo $N Create initial repository ...................................$NL
 no_logging project
 bk admin -Z

@@ -14,6 +14,7 @@ typedef	struct {
 	u32	noresolve:1;		/* -R: don't run resolve at all */
 	u32	textOnly:1;		/* -t: don't pass -t to resolve */
 	u32	debug:1;		/* -d: debug */
+	u32	update_only:1;		/* -u: pull iff no local csets */
 	u32	gotsome:1;		/* we got some csets */
 	int	gzip;			/* -z[level] compression */
 	int	delay;			/* -w<delay> */
@@ -48,7 +49,7 @@ pull_main(int ac, char **av)
 	bzero(&opts, sizeof(opts));
 	opts.gzip = 6;
 	opts.automerge = 1;
-	while ((c = getopt(ac, av, "c:deE:GFilnqRtw|z|")) != -1) {
+	while ((c = getopt(ac, av, "c:deE:GFilnqRtuw|z|")) != -1) {
 		switch (c) {
 		    case 'G': opts.nospin = 1; break;
 		    case 'i': opts.automerge = 0; break;	/* doc 2.0 */
@@ -64,6 +65,7 @@ pull_main(int ac, char **av)
 		    case 'E': 					/* doc 2.0 */
 			envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'c': try = atoi(optarg); break;	/* doc 2.0 */
+		    case 'u': opts.update_only = 1; break;
 		    case 'w': opts.delay = atoi(optarg); break;	/* undoc 2.0 */
 		    case 'z':					/* doc 2.0 */
 			opts.gzip = optarg ? atoi(optarg) : 6;
@@ -91,7 +93,14 @@ pull_main(int ac, char **av)
 		fprintf(stderr, "pull: cannot find package root.\n");
 		exit(1);
 	}
-	unless (urls)  urls = parent_pullp();
+	unless (urls) {
+		urls = parent_pullp();
+		unless (urls) {
+			freeLines(envVar, free);
+			getMsg("missing_parent", 0, 0, stderr);
+			return (1);
+		}
+	}
 
 	unless (urls) {
 err:		freeLines(envVar, free);
@@ -103,7 +112,7 @@ err:		freeLines(envVar, free);
 	 * pull from each parent
 	 */
 	EACH (urls) {
-		r = remote_parse(urls[i], 0);
+		r = remote_parse(urls[i]);
 		unless (r) goto err;
 		if (opts.debug) r->trace = 1;
 		unless (opts.quiet) {
@@ -152,14 +161,14 @@ fromTo(char *op, remote *f, remote *t)
 	if (f) {
 		from = remote_unparse(f);
 	} else {
-		tmp = remote_parse(proj_root(0), 1);
+		tmp = remote_parse(proj_root(0));
 		from = remote_unparse(tmp);
 		remote_free(tmp);
 	}
 	if (t) {
 		to = remote_unparse(t);
 	} else {
-		tmp = remote_parse(proj_root(0), 1);
+		tmp = remote_parse(proj_root(0));
 		to = remote_unparse(tmp);
 		remote_free(tmp);
 	}
@@ -211,7 +220,7 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	if ((rc = remote_lock_fail(buf, !opts.quiet))) {
 		return (rc); /* -2 means lock busy */
 	} else if (streq(buf, "@SERVER INFO@")) {
-		getServerInfoBlock(r);
+		if (getServerInfoBlock(r)) return (-1);
 		getline2(r, buf, sizeof(buf));
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
@@ -229,7 +238,10 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		return (1);
 	}
 	if (opts.dont) putenv("BK_STATUS=DRYRUN");
-	if (!opts.metaOnly && trigger(av[0], "pre")) return (1);
+	if (!opts.metaOnly && trigger(av[0], "pre")) {
+		disconnect(r, 2);
+		return (1);
+	}
 	bktmp(probe_list, "pullprobe");
 	fd = open(probe_list, O_CREAT|O_WRONLY, 0644);
 	assert(fd >= 0);
@@ -270,11 +282,12 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	if (opts.quiet) fprintf(f, " -q");
 	if (opts.delay) fprintf(f, " -w%d", opts.delay);
 	if (opts.debug) fprintf(f, " -d");
+	if (opts.update_only) fprintf(f, " -u");
 	fputs("\n", f);
 	fclose(f);
 
 	sprintf(buf, "bk _listkey %s -q < %s >> %s",
-		opts.fullPatch ? "-F" : "", probe_list, msg_file);
+	    opts.fullPatch ? "-F" : "", probe_list, msg_file);
 	status = system(buf); 
 	rc = WEXITSTATUS(status);
 	if (opts.debug) fprintf(stderr, "listkey returned %d\n", rc);
@@ -285,7 +298,12 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 		fprintf(stderr,
 		    "You are trying to pull from an unrelated package.\n"
 		    "Please check the pathnames and try again.\n");
-		break;
+		unlink(msg_file);
+		return (-1);
+	    case 2:
+		fprintf(stderr,
+		    "pull: not pulling because of local-only changesets.\n");
+		/* fall through */
 	    default:
 		unlink(msg_file);
 		return (-1);
@@ -316,11 +334,11 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	if (remote_lock_fail(buf, !opts.quiet)) {
 		return (-1);
 	} else if (streq(buf, "@SERVER INFO@")) {
-		getServerInfoBlock(r);
+		if (getServerInfoBlock(r)) goto err;
 		getline2(r, buf, sizeof(buf));
 	}
 	if (get_ok(r, buf, !opts.quiet)) {
-		putenv("BK_STATUS=PROTOCOL ERROR");
+ err:		putenv("BK_STATUS=PROTOCOL ERROR");
 		rc = 1;
 		goto done;
 	}
@@ -368,6 +386,19 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 			    "---------------------------------------"
 			    "-------------------------------------");
 		}
+	}
+
+	/*
+	 * See if we can't update because of local csets/tags.
+	 */
+	if (streq(buf, "@NO UPDATE BECAUSE OF LOCAL CSETS OR TAGS@")) {
+		putenv("BK_STATUS=LOCAL_WORK");
+		rc = 2;
+		unless (opts.quiet) {
+			fprintf(stderr, 
+			    "pull: not updating due to local csets/tags.\n");
+		}
+		goto done;
 	}
 
 	/*

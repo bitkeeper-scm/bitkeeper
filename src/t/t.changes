@@ -91,8 +91,8 @@ cmp -s XXX WANT || {
 echo OK
 
 echo $N Check that keys work . ......................................$NL
-bk prs -hr1.0.. -nd:KEY: ChangeSet | sort > WANT
-bk changes -k | sort > GOT
+bk prs -hr1.0.. -nd:KEY: ChangeSet | bk _sort > WANT
+bk changes -k | bk _sort > GOT
 cmp -s WANT GOT || {
 	echo wrong keys
 	diff WANT GOT
@@ -196,9 +196,9 @@ cmp -s WANT GOT || {
 echo OK
 
 echo $N Check remote key listing ....................................$NL
-bk prs -hr1.0.. -nd:KEY: ChangeSet | sort > WANT
+bk prs -hr1.0.. -nd:KEY: ChangeSet | bk _sort > WANT
 cd $HERE
-bk changes -k $HERE/clone | sort > GOT
+bk changes -k $HERE/clone | bk _sort > GOT
 cmp -s clone/WANT GOT || {
 	echo wrong keys
 	diff WANT GOT
@@ -217,15 +217,14 @@ cmp -s clone/WANT GOT || {
 	diff clone/WANT GOT
 	exit 1
 }
-bk lock -U
-bk lock -U $HERE/clone
 echo OK
+
 echo $N Check bk changes -R url1 url2 ...............................$NL
 cd $HERE
 bk clone $Q  clone clone2
 cd $HERE/project
 bk changes -R -k $HERE/clone > keylist1
-bk changes -R -k $HERE/clone $HERE/clone2 > keylist2
+bk changes -R -D -k $HERE/clone $HERE/clone2 > keylist2
 cmp -s keylist1 keylist2 || { echo failed; exit 1; }
 cd $HERE/clone2
 waitForUnlock $HERE/clone2
@@ -234,12 +233,53 @@ echo "new" >> f
 bk delta $Q -ynew f
 bk commit $Q -ynew
 cd $HERE/project
-bk changes -R -k $HERE/clone $HERE/clone2 > keylist2
+bk changes -R -D -k $HERE/clone $HERE/clone2 > keylist2
 cmp -s keylist1 keylist2 && { echo failed; exit 1; }
 bk prs -nhr+ -d':KEY:' $HERE/clone2/ChangeSet >> keylist1
-sort keylist1 > keylist1_sorted
-sort keylist2 > keylist2_sorted
+bk _sort < keylist1 > keylist1_sorted
+bk _sort < keylist2 > keylist2_sorted
 cmp -s keylist1_sorted keylist2_sorted || { echo failed; exit 1; }
+echo OK
+
+echo $N Check bk changes -R - .......................................$NL
+cd $HERE/clone
+bk changes -k -r+ > $HERE/K1
+cd $HERE/clone2
+bk changes -k -r+ > $HERE/K2
+cd $HERE/project
+echo $HERE/clone | bk changes -D -R -k - > GOT
+checkfiles GOT $HERE/K1
+( echo $HERE/clone
+  echo $HERE/clone2 ) | bk changes -D -R -k - | bk _sort > GOT
+cat $HERE/K1 $HERE/K2 | bk _sort > WANT
+checkfiles WANT GOT
+echo OK
+
+echo $N Check bk changes -L - .......................................$NL
+( echo $HERE/clone2
+  echo $HERE/project ) | bk changes -k -L - > GOT
+bk changes -r+ -k $HERE/project > WANT
+checkfiles WANT GOT
+echo OK
+
+echo $N Check bk changes - ..........................................$NL
+bk changes -r+ -k | bk changes - > GOT
+bk changes -r+ > WANT
+checkfiles WANT GOT
+bk changes -k | bk changes - > GOT
+bk changes > WANT
+checkfiles WANT GOT
+echo OK
+
+echo $N Check that changes -L/-R in a subdirectory works ............$NL
+cd $HERE/project
+mkdir subdir
+cd subdir
+bk changes -R -k $HERE/clone > GOT
+checkfiles $HERE/K1 GOT
+bk changes -L -k $HERE/clone > GOT
+bk changes -r+ -k > WANT
+checkfiles WANT GOT
 echo OK
 
 echo $N Demonstrate out of order changesets .........................$NL
@@ -311,7 +351,7 @@ cat <<EOF > expect
 1.5 C clone
  
 EOF
-diff -u expect chgs || {
+bk diff -u expect chgs || {
 	echo changes returned wrong data
 	exit 1
 }
@@ -351,5 +391,34 @@ grep -q "1.6" out || {
 }
 echo OK
 
-# wait for bkd locks
-bk lock -U $HERE/project
+echo $N Check date formats ..........................................$NL
+Y=`bk prs -Yhnd:Dy: -r+ ChangeSet`
+bk changes -nd:Dy: > OUT
+bk changes -v -nd:Dy: >> OUT
+test `grep -v 1971 OUT | bk _sort -u` = $Y || {
+	echo not all YEAR4 dates
+	exit 1
+}
+echo OK
+
+echo $N Check that changes -L -R works ..............................$NL
+cd $HERE
+bk clone $Q project clone1
+cd clone1
+bk edit $Q f
+bk delta $Q -y'clone1 delta 1' f
+bk commit $Q -y'clone1 checkin 1' || exit 1
+
+cd $HERE
+rm -rf clone2
+bk clone $Q project clone2 || exit 1
+cd clone2 || exit 1
+bk edit $Q f
+bk delta $Q -y'clone2 delta' f
+bk commit $Q -y'clone2 checkin' || exit 1
+
+(bk changes -kL ../clone1; bk changes -kR ../clone1) > WANT
+bk changes -k -L -R ../clone1 | grep -v '^==== ' > GOT
+checkfiles WANT GOT
+echo OK
+

@@ -80,7 +80,6 @@ commit_main(int ac, char **av)
 	 */
 	proj_license(0);
 
-	unless(opts.resync) remark(opts.quiet);
 	if (pendingFiles[0]) {
 		if (av[optind] && streq("-", av[optind])) {
 			fprintf(stderr,
@@ -99,14 +98,14 @@ commit_main(int ac, char **av)
 			}
 			bktmp(pendingFiles, "list");
 			setmode(0, _O_TEXT);
-			f = fopen(pendingFiles, "wb");
+			f = fopen(pendingFiles, "w");
 			assert(f);
 			while (fgets(buf, sizeof(buf), stdin)) {
 				fputs(buf, f);
 			}
 			fclose(f);
 		} else {
-			bktmp(pendingFiles, "bk_pending");
+			bktmp(pendingFiles, "pending");
 			if (sysio(0,
 			    pendingFiles, 0, "bk", "sfiles", "-pC", SYS)) {
 				unlink(pendingFiles);
@@ -133,10 +132,22 @@ commit_main(int ac, char **av)
 		char	*cmd, *p;
 		FILE	*f, *f1;
 		char	commentFile[MAXPATH];
+		char	buf[512];
 
 		bktmp(commentFile, "commit");
+		f = popen("bk cat BitKeeper/templates/commit", "r");
+		assert(f);
+		if (fnext(buf, f)) {
+			f1 = fopen(commentFile, "w");
+			fputs(buf, f1);
+			while (fnext(buf, f)) {
+				fputs(buf, f1);
+			}
+			fclose(f1);
+		}
+		pclose(f);
 		cmd = aprintf("bk _sort -u | "
-			"bk sccslog -DA - > %s", commentFile);
+			"bk sccslog -DA - >> %s", commentFile);
 		f = popen(cmd, "w");
 		f1 = fopen(pendingFiles, "rt");
 		assert(f); assert (f1);
@@ -150,6 +161,7 @@ commit_main(int ac, char **av)
 		fclose(f1);
 		pclose(f);
 		free(cmd);
+
 		if (!doit && comments_prompt(commentFile)) {
 			printf("Commit aborted.\n");
 			unlink(pendingFiles);
@@ -212,9 +224,9 @@ out:		if (pendingFiles) unlink(pendingFiles);
 		 * So we open the file in read mode close it and re-open
 		 * it in write mode
 		 */
-		bktmp(pendingFiles2, "bk_pending2");
-		f = fopen(pendingFiles, "rb");
-		f2 = fopen(pendingFiles2, "wb");
+		bktmp(pendingFiles2, "pending2");
+		f = fopen(pendingFiles, "r");
+		f2 = fopen(pendingFiles2, "w");
 		assert(f); assert(f2);
 		while (fnext(buf, f)) {
 			/*
@@ -244,7 +256,9 @@ out:		if (pendingFiles) unlink(pendingFiles);
 	comments_writefile(commentFile);
 	safe_putenv("BK_COMMENTFILE=%s", commentFile);
 
-	if (rc = trigger(av[0], "pre")) goto done;
+	if (rc = trigger(opts.resync ? "merge" : av[0], "pre")) goto done;
+	comments_done();
+	comments_savefile(commentFile);
 	i = 2;
 	if (opts.quiet) dflags |= SILENT;
 	if (sym) syms = addLine(syms, strdup(sym));
@@ -261,7 +275,7 @@ out:		if (pendingFiles) unlink(pendingFiles);
 
 	putenv("BK_STATUS=OK");
 	if (rc) putenv("BK_STATUS=FAILED");
-	trigger(av[0], "post");
+	trigger(opts.resync ? "merge" : av[0], "post");
 done:	if (unlink(pendingFiles)) perror(pendingFiles);
 	unlink(commentFile);
 	if (pendingFiles2[0]) {

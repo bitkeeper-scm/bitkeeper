@@ -3,8 +3,6 @@
 #define V_QUIET		-2
 #define V_COUNT		-1
 
-extern char *pager;
-
 typedef struct {
 	u32	cset:1;
 	u32	patch:1;
@@ -19,7 +17,7 @@ typedef struct {
 	u32	forward:1;	/* cset/delta ordering */
 	int	verbose;	/* -1 => count only, -2 => quiet */
 	char	*dspec;
-	MDBM	*seen;		/* key list */
+	HASH	*seen;		/* key list */
 } options;
 
 private int doit(options *opts, char *url);
@@ -90,7 +88,7 @@ pending_main(int ac, char **av)
 		exit(1);
 	}
 
-	if (opts.cset && opts.unique) opts.seen = mdbm_mem();
+	if (opts.cset && opts.unique) opts.seen = hash_new();
 	pid = mkpager();
 	if (av[optind]) {
 		if (streq("-", av[optind])) {
@@ -119,7 +117,7 @@ pending_main(int ac, char **av)
 	} else {
 		pending |= doit_local(&opts);
 	}
-	if (opts.seen) mdbm_close(opts.seen);
+	if (opts.seen) hash_free(opts.seen);
 
 	if (!pending && !opts.skip_trailer && (opts.verbose >= 0)) {
 		printf("*** No pending item found.\n");
@@ -251,8 +249,7 @@ send_part2_msg(options *opts, remote *r, char *key_list, int rcsets)
 				chomp(buf);
 				/* mark the seen key, so we can skip them */
 				if (opts->seen != NULL) {
-					mdbm_store_str(opts->seen,
-							buf, "", MDBM_INSERT);
+					hash_storeStr(opts->seen, buf, "");
 				}
 			}
 			write_blk(r, "@END@\n", 6);
@@ -294,7 +291,7 @@ pending_part1(options *opts, remote *r, char *key_list)
 	if ((rc = remote_lock_fail(buf, 1))) {
 		return (rc); /* -2 means locked */
 	} else if (streq(buf, "@SERVER INFO@")) {
-		getServerInfoBlock(r);
+		if (getServerInfoBlock(r)) return (-1);
 		getline2(r, buf, sizeof(buf));
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
@@ -353,12 +350,12 @@ pending_part2(options *opts, remote *r, char *key_list, int rcsets)
 		fprintf(stderr, "locking error %d\n", rc_lock);
 		goto done;
 	} else if (streq(buf, "@SERVER INFO@")) {
-		getServerInfoBlock(r);
+		if (getServerInfoBlock(r)) goto err;
 	}
 
 	getline2(r, buf, sizeof(buf));
 	unless (streq("@PENDING INFO@", buf)) {
-		fprintf(stderr, "protocol  error %d\n", rc_lock);
+ err:		fprintf(stderr, "protocol  error %d\n", rc_lock);
 		goto done;
 	}
 	while (getline2(r, buf, sizeof(buf)) > 0) {
@@ -388,7 +385,7 @@ doit_remote(options *opts, char *url)
 
 	loadNetLib();
 	has_proj("pending");
-	r = remote_parse(url, 1);
+	r = remote_parse(url);
 	unless (r) {
 		fprintf(stderr, "invalid url: %s\n", url);
 		return (-1);

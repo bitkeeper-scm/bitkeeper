@@ -18,7 +18,6 @@ ME=$BK_USER@$BK_HOST
 export ME BK_USER BK_HOST
 NUM=0
 FILE=test$NUM
-HERE=`bk pwd`
 
 echo $N Create repository ...........................................$NL
 echo "logging: logging@openlogging.org" > $HERE/c
@@ -50,7 +49,7 @@ ls > LS
 bk new $Q LS
 bk commit $Q -yuser-content
 cd ../project
-bk resync -t $Q ../copy
+bk pull -R $Q ../copy
 cd RESYNC || exit 1
 # The invariant is that you always get config but none of the others for updates
 test -f BitKeeper/etc/SCCS/s.ignore && { echo Copied ignore; exit 1; }
@@ -64,7 +63,7 @@ echo $N Create cset only conflict, check copies .....................$NL
 date > date
 bk new $Q date
 bk commit $Q -ydate
-bk resync -t $Q ../copy
+bk pull -R $Q ../copy
 cores
 cd RESYNC || exit 1
 # The invariant is that you always get config and all others for conflicts
@@ -97,7 +96,7 @@ do
     bk delta $Q -y'fake update' BitKeeper/etc/$file
     bk commit $Q -y'config test'
     cd $HERE/project
-    bk resync -t $Q ../copy
+    bk pull -R $Q ../copy
     test -f RESYNC/BitKeeper/etc/$file && {
 	    # Could be OK, maybe BK checked it out
 	    bk get -qkp ../copy/BitKeeper/etc/$file > C
@@ -216,7 +215,7 @@ echo OK
 echo $N Pull opposite direction, want same result ...................$NL
 cd $HERE
 rm -rf project copy
-tar xf SAVE 
+tar xmf SAVE 
 cd project
 echo n | bk pull $Q -t ../copy >/dev/null 2>&1
 test -d RESYNC && {
@@ -353,7 +352,7 @@ echo OK
 echo $N In clone, rm logging_ok, commit a new one, pull .............$NL
 cd $HERE
 rm -rf project copy
-tar xf TAR
+tar xmf TAR
 cd $HERE/project
 CNT=`bk -r prs -hr1.0 -d'$if(:DPN:=BitKeeper/etc/gone){F\n}' | wc -l`
 if [ $CNT != 1 ]

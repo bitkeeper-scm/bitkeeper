@@ -30,6 +30,7 @@ proc main {} \
 	bk_init
 	app_init
 	widgets
+	after idle [list focus -force .]
 
 	if {$bkuser == "Administrator" || 
 	    $bkuser == "root"} {
@@ -42,7 +43,7 @@ proc main {} \
 
 	bind . <<WizCancel>> {
 		# This causes the main program to exit
-		set ::done 1
+		exit 1
 	}
 
 	bind . <<WizFinish>> {
@@ -52,8 +53,7 @@ proc main {} \
 		# "Done", we only need to exit
 		set finishLabel [lindex [. buttonconfigure finish -text] end]
 		if {$finishLabel == "Done"} {
-			set ::done 1
-			break
+			exit 0
 		}
 
 		# Finish  must really mean finish...
@@ -69,7 +69,7 @@ proc main {} \
 			    "The repository was successfully created."
 
 			if {$::wizData(closeOnCreate)} {
-				set ::done 1
+				exit 0
 			} else {
 				. buttonconfigure finish -text Done
 				. configure -state normal
@@ -99,9 +99,6 @@ proc main {} \
 			}
 		}
 	}
-
-	vwait ::done
-	exit
 }
 
 proc app_init {} \
@@ -183,7 +180,7 @@ proc app_init {} \
 	# some are allowed is simply that I haven't found the time to
 	# disable the particular widgets or steps for the other
 	# options.
-	set allowedRO {checkout repository autofix compression}
+	set allowedRO {checkout repository autofix compression licenseType}
 
 	# process command line args, which may also override some of
 	# the defaults. Note that -F and -S aren't presently
@@ -279,13 +276,11 @@ proc computeSize {wvar hvar} \
 
 proc widgets {} \
 {
-	global bkuser
-	global readonly
+	global	bkuser readonly env
 
 	::tkwizard::tkwizard . -title "BK Setup Assistant" -sequential 1 
 
-	catch {exec bk bin} bin
-	set image [file join $bin "bklogo.gif"]
+	set image "$env(BK_BIN)/gui/images/bklogo.gif"
 	if {[file exists $image]} {
 		set bklogo [image create photo -file $image]
 		. configure -icon $bklogo
@@ -357,13 +352,13 @@ proc widgets {} \
 
 	. stepconfigure EndUserLicense -body {
 
-		global wizData
-		global licenseInfo
+		global wizData widgets licenseInfo
 
 		set wizData(licenseAccept) ""
 		$this configure -defaultbutton next
 
 		set w [$this info workarea]
+		set widgets(EndUserLicense) $w
 
 		text $w.text \
 		    -yscrollcommand [list $w.vsb set] \
@@ -417,51 +412,81 @@ proc widgets {} \
 
 	. stepconfigure LicenseType -body {
 
-		global wizData
+		global wizData readonly widgets
 
 		$this configure -defaultbutton next
 
 		set w [$this info workarea]
+		set widgets(LicenseType) $w
 
-		radiobutton $w.commercialRadiobutton \
+		radiobutton $w.paidrb \
 		    -text "Commercial" \
 		    -value "commercial" \
 		    -variable wizData(licenseType) \
 		    -command {. configure -path commercial-lic}
 
-		button $w.moreInfoCommercial -text "More info" \
+		button $w.paidmi -text "More info" \
 		    -bd 1 \
 		    -command [list moreInfo commercial]
 
-		radiobutton $w.singleRadiobutton \
+		radiobutton $w.singlerb \
 		    -text "Single User / Single Host" \
 		    -value "singleuser" \
 		    -variable wizData(licenseType) \
 		    -command {. configure -path singleuser-lic}
 
-		button $w.moreInfoSingle -text "More info" -bd 1 \
+		button $w.singlemi -text "More info" -bd 1 \
 		    -command [list moreInfo singleuser]
 
-		radiobutton $w.openloggingRadiobutton \
+		radiobutton $w.olrb \
 		    -text "Open Logging" \
 		    -value "openlogging" \
 		    -variable wizData(licenseType) \
 		    -command {. configure -path openlogging-lic}
 
-		button $w.moreInfoOpenlogging -text "More info" -bd 1 \
+		button $w.olmi -text "More info" -bd 1 \
 		    -command [list moreInfo openlogging]
 		
-		grid $w.commercialRadiobutton -row 0 -column 0 -sticky w
-		grid $w.singleRadiobutton     -row 1 -column 0 -sticky w
-		grid $w.openloggingRadiobutton -row 2 -column 0 -sticky w
+		grid $w.paidrb -row 0 -column 0 -sticky w
+		grid $w.singlerb     -row 1 -column 0 -sticky w
+		grid $w.olrb -row 2 -column 0 -sticky w
 
-		grid $w.moreInfoCommercial  -row 0 -column 1 -padx 8
-		grid $w.moreInfoSingle      -row 1 -column 1 -padx 8
-		grid $w.moreInfoOpenlogging -row 2 -column 1 -padx 8
+		grid $w.paidmi  -row 0 -column 1 -padx 8
+		grid $w.singlemi      -row 1 -column 1 -padx 8
+		grid $w.olmi -row 2 -column 1 -padx 8
 
 		# this adds invisible rows and columns to take up the slack
 		grid columnconfigure $w 2 -weight 1
 		grid rowconfigure $w 3 -weight 1
+
+		if {[info exists readonly(licenseType)]} {
+			switch -exact -- $wizData(licenseType) {
+				commercial {
+					$w.paidrb configure -state normal
+					$w.singlerb configure -state disabled
+					$w.olrb configure -state disabled
+					$w.paidmi configure -state normal
+					$w.singlemi configure -state disabled
+					$w.olmi configure -state disabled
+				}
+				singleuser {
+					$w.paidrb configure -state disabled
+					$w.singlerb configure -state normal
+					$w.olrb configure -state disabled
+					$w.paidmi configure -state disabled
+					$w.singlemi configure -state normal
+					$w.olmi configure -state disabled
+				}
+				openlogging {
+					$w.paidrb configure -state disabled
+					$w.singlerb configure -state disabled
+					$w.olrb configure -state normal
+					$w.paidmi configure -state disabled
+					$w.singlemi configure -state disabled
+					$w.olmi configure -state normal
+				}
+			}
+		}
 	}
 
 
@@ -471,12 +496,12 @@ proc widgets {} \
 	    -description [wrap [getmsg setuptool_step_LicenseKey]]
 
 	. stepconfigure LicenseKey -body {
-		global wizData
-		global gc
+		global wizData gc widgets
 
 		$this configure -defaultbutton next
 
 		set w [$this info workarea]
+		set widgets(LicenseKey) $w
 
 		set ::widgets(license)  $w.license
 		set ::widgets(licsign1) $w.licsign1Entry
@@ -537,8 +562,7 @@ proc widgets {} \
 	    -description [wrap [getmsg setuptool_step_UserHostInfo]]
 
 	. stepconfigure UserHostInfo -body {
-		global wizData
-		global gc
+		global wizData gc widgets
 
 		$this configure -defaultbutton next
 
@@ -550,6 +574,7 @@ proc widgets {} \
 		trace variable wizData(single_host) w {validate user/host}
 
 		set w [$this info workarea]
+		set widgets(UserHostInfo) $w
 
 		label $w.usernameLabel -text "Username:"
 		label $w.hostnameLabel -text "Host:"
@@ -581,13 +606,12 @@ proc widgets {} \
 
 	. stepconfigure RepoInfo -body {
 
-		global wizData
-		global options
-		global readonly
+		global wizData options readonly widgets
 
 		$this configure -defaultbutton next
 
 		set w [$this info workarea]
+		set widgets(RepoInfo) $w
 
 		trace variable wizData(description) w {validate repoInfo}
 		trace variable wizData(email) w {validate repoInfo}
@@ -699,11 +723,12 @@ proc widgets {} \
 	    -description [wrap [getmsg setuptool_step_ContactInfo]]
 
 	. stepconfigure ContactInfo -body {
-		global wizData
+		global wizData widgets
 
 		$this configure -defaultbutton next
 
 		set w [$this info workarea]
+		set widgets(ContactInfo) $w
 
 		label $w.nameLabel    -text "Name:"
 		label $w.streetLabel  -text "Street:"
@@ -776,8 +801,10 @@ proc widgets {} \
 	    -description [wrap [getmsg setuptool_step_KeywordExpansion]]
 
 	. stepconfigure KeywordExpansion -body {
+		global widgets
 
 		set w [$this info workarea]
+		set widgets(KeywordExpansion) $w
 
 		$this configure -defaultbutton next
 
@@ -847,7 +874,10 @@ proc widgets {} \
 	    -description [wrap [getmsg setuptool_step_CheckoutMode]]
 
 	. stepconfigure CheckoutMode -body {
+		global widgets
+
 		set w [$this info workarea]
+		set widgets(CheckoutMode) $w
 
 		$this configure -defaultbutton next
 
@@ -871,7 +901,9 @@ proc widgets {} \
 	    -description [wrap [getmsg setuptool_step_Compression]]
 
 	. stepconfigure Compression -body {
+		global widgets
 		set w [$this info workarea]
+		set widgets(Compression) $w
 
 		$this configure -defaultbutton next
 
@@ -895,7 +927,10 @@ proc widgets {} \
 	    -description [wrap [getmsg setuptool_step_Autofix]]
 
 	. stepconfigure Autofix -body {
+		global widgets
+
 		set w [$this info workarea]
+		set widgets(Autofix) $w
 
 		$this configure -defaultbutton next
 
@@ -927,12 +962,13 @@ proc widgets {} \
 	    -description [wrap [getmsg setuptool_step_Finish]]
 
 	. stepconfigure Finish -body {
-		global wizData
+		global wizData widgets
 
 		$this configure -defaultbutton finish
 		$this buttonconfigure finish -text Finish
 
 		set w [$this info workarea]
+		set widgets(Finish) $w
 		text $w.text
 		scrollbar $w.vsb -command [list $w.text yview]
 		$w.text configure -yscrollcommand [list $w.vsb set]
@@ -1054,72 +1090,15 @@ proc parseLicenseData {type} \
 
 proc readConfig {type {filename {}}} \
 {
-
-	global errorCode
-	global tcl_platform
-
 	array set result {}
-
-	if {$type == "template"} {
-		if {$tcl_platform(platform) == "windows"} {
-			package require registry
-			set key {HKEY_LOCAL_MACHINE\Software\Microsoft\Windows}
-			append key {\CurrentVersion\Explorer\Shell Folders}
-			catch {set appdir \
-				   [registry get "$HKLM\\$l" {Common AppData}]
-			}
-
-			if {$errorCode ==  {} } {
-				set filename [file join $appdir \
-						  BitKeeper etc config.template]
-			}
-		} else {
-			set filename "/etc/BitKeeper/etc/config.template"
+	set f [open "|bk setup -p" r]
+	while {[gets $f line] != -1} {
+		if {[regexp {^ *#} $line]} continue
+		if {[regexp {([^:]+) *: *(.*)} $line -> key value]} {
+			set result($key) [string trim $value]
 		}
 	}
-
-	if {[file exists $filename] && [file readable $filename]} {
-		set f [open $filename r]
-		while {[gets $f line] != -1} {
-			if {[regexp {^ *#} $line]} continue
-			if {[regexp {([^:]+) *: *(.*)} $line -> key value]} {
-				set result($key) [string trim $value]
-			}
-		}
-	}
-
 	return [array get result]
-}
-
-# this removes hardcoded newlines from paragraphs so that the paragraphs
-# will wrap when placed in a widget that wraps (such as the description
-# of a step)
-proc wrap {text} \
-{
-	if {$::tcl_version >= 8.2} {
-		set text [string map [list \n\n \001 \n { }] $text]
-		set text [string map [list \001 \n\n] $text]
-	} else {
-		regsub -all "\n\n" $text \001 text
-		regsub -all "\n" $text { } text
-		regsub -all "\001" $text \n\n text
-	}
-	return $text
-}
-
-proc getmsg {key args} \
-{
-	# do we want to return something like "lookup failed for xxx"
-	# if the lookup fails? What we really need is something more
-	# like real message catalogs, where I can supply messages that
-	# have defaults.
-	set data ""
-	set cmd [list bk getmsg $key]
-	if {[llength $args] > 0} {
-		lappend cmd [lindex $args 0]
-	}
-	set err [catch {set data [eval exec $cmd]}]
-	return $data
 }
 
 # The purpose of this proc is to take the wizard data and format it
@@ -1235,7 +1214,12 @@ proc popupMessage {args} \
 
 	# hopefully someday we'll turn the msgtool code into a library
 	# so we don't have to exec. For now, though, exec works just fine.
-	eval exec bk msgtool $option \$message
+	if {[info exists ::env(BK_TEST_HOME)]} {
+		# we are running in test mode; spew to stderr
+		puts stderr $message
+	} else {
+		eval exec bk msgtool $option \$message
+	}
 }
 
 # This not only sets the focus, but attempts to put the cursor in

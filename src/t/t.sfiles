@@ -194,7 +194,7 @@ cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
 
-echo $N Check the list of pending files with -A .....................$NL
+echo $N Check the list of pending files with -pA ....................$NL
 bk sfiles -pCA | sort > SFILES
 sort <<EOF > LIST
 bar/SCCS/s.s.foo${BK_FS}1.2
@@ -286,7 +286,6 @@ config
 EOF
 sort <<EOF > LIST
 SCCS/OLD-s.foo
-BitKeeper/tmp/ROOTKEY
 SFILES
 SCCS/c.gone
 SCCS/c.gone${CFS}1.1
@@ -314,7 +313,6 @@ echo OK
 echo $N Test disabling ignore lists with -ax ........................$NL
 sort <<EOF > LIST
 LIST
-BitKeeper/tmp/ROOTKEY
 SCCS/OLD-s.foo
 SFILES
 SCCS/c.gone
@@ -338,7 +336,6 @@ SCCS/OLD-s.foo
 SFILES
 bar/lib
 SCCS/c.gone
-BitKeeper/tmp/ROOTKEY
 SCCS/c.gone${CFS}1.1
 SCCS/c.gone${CFS}1.2
 EOF
@@ -482,6 +479,36 @@ bk sfiles -1cdDjlnvxp | sort > $HERE/sfiles.out || { echo failed 1; exit 1; }
 cmp -s $HERE/sfiles.ref $HERE/sfiles.out || {
 	echo failed 2
 	sdiff -w80 $HERE/sfiles.ref $HERE/sfiles.out
+	exit 1
+}
+echo OK
+
+echo $N Test sfile -U ...............................................$NL
+cd bar
+echo "This is not the real ChangeSet file" > ChangeSet
+bk new $Q -y"fake changeset file" ChangeSet
+mkdir BitKeeper
+echo "This is not the real config file" > BitKeeper/config
+bk new $Q -y"fake config file" BitKeeper/config
+bk sfiles -U -g | sort > SFILES
+sort <<EOF > LIST
+BitKeeper/config
+blech/s.foo
+ChangeSet
+s.foo
+EOF
+cmp -s SFILES LIST || { echo failed; exit 1; }
+echo OK
+
+echo $N Test sfile -U with triggers, they should be listed ..........$NL
+cd `bk root`
+test -d BitKeeper/triggers || mkdir BitKeeper/triggers
+echo exit 0 > BitKeeper/triggers/pre-commit
+chmod +x BitKeeper/triggers/pre-commit
+bk new $Q BitKeeper/triggers/pre-commit
+bk sfiles -gU | grep -q BitKeeper/triggers/pre-commit || {
+	echo failed to list trigger
+	bk sfiles -gU
 	exit 1
 }
 echo OK

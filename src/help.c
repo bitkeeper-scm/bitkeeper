@@ -1,7 +1,7 @@
 #include "system.h"
 #include "sccs.h"
 
-extern char *editor, *pager, *bin;
+extern char *editor, *bin;
 
 int
 help_main(int ac,  char **av)
@@ -15,7 +15,7 @@ help_main(int ac,  char **av)
 	char 	*new_av[2] = {"help", 0 };
 
 	if (ac == 2 && streq("--help", av[1])) {
-		sprintf(buf, "bk help help | %s", pager);
+		sprintf(buf, "bk help help | %s", pager());
 		system(buf);
 		return (0);
 	}
@@ -33,8 +33,7 @@ help_main(int ac,  char **av)
 			return (1);
 		}
 	}
-	sprintf(out, "%s/bk_help%u", TMP_PATH, getpid());
-	unlink(out);
+	bktmp(out, "help");
 	unless (av[optind]) {
 		av = new_av;
 		optind = -0;
@@ -43,11 +42,11 @@ help_main(int ac,  char **av)
 		for (i = optind; av[i]; i++) {
 			if (file) {
 				sprintf(buf,
-				    "bk helpsearch -f%s -%s %s >> %s",
+				    "bk helpsearch -f%s -%s %s >> '%s'",
 				    file, opt, av[i], out);
 			} else {
 				sprintf(buf,
-				    "bk helpsearch -%s %s >> %s",
+				    "bk helpsearch -%s %s >> '%s'",
 				    opt, av[i], out);
 			}
 			system(buf);
@@ -57,16 +56,16 @@ help_main(int ac,  char **av)
 	for (i = optind; av[i]; i++) {
 		if (file) {
 			sprintf(buf,
-			    "bk gethelp %s -f%s %s %s >> %s",
+			    "bk gethelp %s -f%s %s %s >> '%s'",
 			     		synopsis, file, av[i], bin, out);
 		} else {
-			sprintf(buf, "bk gethelp %s %s %s >> %s",
+			sprintf(buf, "bk gethelp %s %s %s >> '%s'",
 					synopsis, av[i], bin, out);
 		}
 		if (system(buf) != 0) {
-			sprintf(buf, "bk getmsg -= %s >> %s", av[i], out);
+			sprintf(buf, "bk getmsg -= %s >> '%s'", av[i], out);
 			if (system(buf) != 0) {
-				f = fopen(out, "ab");
+				f = fopen(out, "a");
 				fprintf(f,
 				    "No help for %s, check spelling.\n", av[i]);
 				fclose(f);
@@ -75,7 +74,7 @@ help_main(int ac,  char **av)
 	}
 print:
 	if (use_pager) {
-		sprintf(buf, "%s %s", pager, out);
+		sprintf(buf, "%s '%s'", pager(), out);
 		system(buf);
 	} else {
 		f = fopen(out, "rt");

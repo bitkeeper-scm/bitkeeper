@@ -10,7 +10,7 @@
 WHATSTR("@(#)%K%");
 
 extern	int	sane_main(int ac, char **av);
-private	HASH	*buildKeys(MDBM *idDB);
+private	HASH	*buildKeys(sccs *cset, MDBM *idDB);
 private	char	*csetFind(char *key);
 private	int	check(sccs *s, HASH *db);
 private	char	*getRev(char *root, char *key, MDBM *idDB);
@@ -34,6 +34,7 @@ private sccs*	fix_merges(sccs *s);
 private	int	update_idcache(MDBM *idDB, HASH *keys);
 
 private	int	nfiles;		/* for progress bar */
+private	int	actual;		/* for progress bar cache */
 private	int	verbose;
 private	int	details;	/* if set, show more information */
 private	int	all;		/* if set, check every entry in the ChangeSet */
@@ -114,7 +115,7 @@ check_main(int ac, char **av)
 			return (1);
 		}
 	}
-	if (!isatty(1) && (verbose == 1)) verbose = 0;
+	if (getenv("BK_NOTTY") && (verbose == 1)) verbose = 0;
 
 	if (goneKey && badWritable) {
 		fprintf(stderr, "check: cannot have both -g and -w\n");
@@ -134,16 +135,17 @@ check_main(int ac, char **av)
 		fprintf(stderr, "Can't init ChangeSet\n");
 		exit(1);
 	}
+	unless (cset = cset_fixLinuxKernelChecksum(cset)) return (1);
 	mixed = LONGKEY(cset) == 0;
 	if (verbose == 1) {
-		nfiles = sccs_hashcount(cset);
+		nfiles = repo_nfiles(cset);
 		fprintf(stderr, "Preparing to check %u files...\r", nfiles);
 	}
 	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
 		perror("idcache");
 		exit(1);
 	}
-	db = buildKeys(idDB);
+	db = buildKeys(cset, idDB);
 	if (all) {
 		mdbm_close(idDB);
 		idDB = 0;
@@ -172,7 +174,10 @@ check_main(int ac, char **av)
 			errors |= 1;
 			continue;
 		}
-		if (all && (verbose == 1))  progress(n, 0);
+		if (all) {
+			actual++;
+			if (verbose == 1) progress(n, 0);
+		}
 		unless (s->cksumok == 1) {
 			fprintf(stderr,
 			    "%s: bad file checksum, corrupted file?\n",
@@ -259,6 +264,15 @@ check_main(int ac, char **av)
 			chmod(IDCACHE, GROUP_MODE);
 		}
 	}
+	/*
+	 * Note: we may update NFILES more than needed when not in verbose mode.
+	 */
+	if (all &&
+	    ((actual != nfiles) || !exists("BitKeeper/log/NFILES"))) {
+		FILE	*f = fopen("BitKeeper/log/NFILES", "w");
+		fprintf(f, "%u\n", actual);
+		fclose(f);
+	}
 	if ((all || resync) && checkAll(keys)) errors |= 0x40;
 	unlink(ctmp);
 	hash_free(db);
@@ -326,7 +340,7 @@ fix_merges(sccs *s)
 {
 	sccs	*tmp;
 
-	sccs_renumber(s, 0);
+	sccs_renumber(s, 0, 0);
 	sccs_newchksum(s);
 	tmp = sccs_init(s->sfile, 0);
 	assert(tmp);
@@ -672,7 +686,7 @@ checkAll(HASH *db)
 			goto full;
 		}
 		sprintf(buf,
-		    "bk sccscat -h %s/ChangeSet | bk _keysort", RESYNC2ROOT);
+		    "bk sccscat -h %s/ChangeSet | bk _sort", RESYNC2ROOT);
 		f = popen(buf, "r");
 		while (fgets(buf, sizeof(buf), f)) {
 			unless (hash_alloc(local, buf, 0, 0)) {
@@ -741,7 +755,7 @@ init_idcache()
 		perror("bktmp_local");
 		exit(1);
 	}
-	unless (idcache = fopen(id_tmp, "wb")) {
+	unless (idcache = fopen(id_tmp, "w")) {
 		perror(id_tmp);
 		exit(1);
 	}
@@ -773,17 +787,16 @@ init_idcache()
  * this program is huge already.
  */
 private HASH	*
-buildKeys(MDBM *idDB)
+buildKeys(sccs *cset, MDBM *idDB)
 {
 	HASH	*db = hash_new();
 	HASH	*r2i = hash_new();
-	char	*s, *t = 0, *r;
-	int	n = 0;
-	int	e = 0;
-	int	fd, sz;
+	char	*s, *t, *r;
+	int	fd, sz, n = 0, e = 0;
+	delta	*d;
+	FILE	*f;
 	char	buf[MAXPATH*3];
 	char	key[MAXPATH*2];
-	delta	*d;
 
 	unless (db && r2i) {
 		perror("buildkeys");
@@ -791,18 +804,28 @@ buildKeys(MDBM *idDB)
 	}
 	unless (cset && HASGRAPH(cset)) {
 		fprintf(stderr, "check: ChangeSet file not inited\n");
-		exit (1);
+		exit(1);
 	}
 	unless (bktmp(ctmp, "check")) {
 		fprintf(stderr, "bktmp failed to get temp file\n");
 		exit(1);
 	}
-	sprintf(buf, "bk sccscat -h ChangeSet | bk _keysort > %s", ctmp);
-	system(buf);
-	unless ((sz = size(ctmp)) > 0) {
-		fprintf(stderr, "Unable to create %s\n", ctmp);
-		exit(1);
+	sprintf(buf, "bk _sort > %s", ctmp);
+	f = popen(buf, "w");
+	s = t = cset->mmap + cset->data;
+	r = cset->mmap + cset->size;
+	while (s < r) {
+		if (*s == '\001') {
+			while (*s++ != '\n');
+			continue;
+		}
+		t = s;
+		while (*s != '\001') s++;
+		fwrite(t, s - t, 1, f);
 	}
+	pclose(f);
+	sz = size(ctmp);
+
 	/*
  	 * Note: malloc would return 0 if sz == 0
 	 */
@@ -814,6 +837,7 @@ buildKeys(MDBM *idDB)
 	}
 	close(fd);
 	for (fd = 0, d = cset->table; d; d = d->next) {
+		/* XXX - d->added is always 1 so this logic is fucked */
 		fd += d->added;
 	}
 	/*

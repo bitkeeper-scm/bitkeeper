@@ -4,7 +4,7 @@
 private struct {
 	u32	all:1;		/* list all, including tags etc */
 	u32	doSearch:1;	/* search the comments list */
-	u32	dups:1;		/* do not filter duplicates when multi-parent */
+	u32	showdups:1;	/* do not filter duplicates when multi-parent */
 	u32	forwards:1;	/* like prs -f */
 	u32	html:1;		/* do html style output */
 	u32	keys:1;		/* just list the keys */
@@ -18,6 +18,7 @@ private struct {
 	u32	timesort:1;	/* force sorting based on time, not dspec */
 	u32	urls:1;		/* list each URL for local/remote */
 	u32	verbose:1;	/* list the file checkin comments */
+	u32	diffs:1;	/* show diffs with verbose mode */
 
 	search	search;		/* -/pattern/[i] matches comments w/ pattern */
 	char	*date;		/* list this range of dates */
@@ -48,10 +49,10 @@ private int	changes_part1(remote *r, char **av, char *key_list);
 private int	changes_part2(remote *r, char **av, char *key_list, int ret);
 private int	_doit_remote(char **av, char *url);
 private int	doit_remote(char **nav, char *url);
-private int	doit_local(int nac, char **nav, char *url);
+private int	doit_local(int nac, char **nav, char **urls);
 private void	cset(sccs *s, FILE *f, char *dspec);
 
-private	MDBM	*seen; /* list of keys seen already */
+private	HASH	*seen; /* list of keys seen already */
 
 int
 changes_main(int ac, char **av)
@@ -59,7 +60,8 @@ changes_main(int ac, char **av)
 	int	i, c;
 	int	rc = 0, nac = 0;
 	char	*nav[30];
-	char	**urls = 0;
+	char	**urls = 0, **rurls = 0, **lurls = 0;
+	char	*normal;
 	char	buf[MAXPATH];
 	pid_t	pid = 0; /* pager */
 
@@ -67,9 +69,10 @@ changes_main(int ac, char **av)
 		system("bk help changes");
 		return (1);
 	}
+	putenv("BK_YEAR4=1");	/* 4-digit years only */
 
 	bzero(&opts, sizeof(opts));
-	opts.urls = opts.noempty = 1;
+	opts.showdups = opts.urls = opts.noempty = 1;
 	nav[nac++] = "bk";
 	nav[nac++] = "changes";
 	/*
@@ -91,8 +94,8 @@ changes_main(int ac, char **av)
 		     */
 		    case 'a': opts.all = 1; opts.noempty = 0; break;
 		    case 'c': opts.date = optarg; break;
+		    case 'D': opts.showdups = 0; break;
 		    case 'd': opts.dspec = optarg; break;
-		    case 'D': opts.dups = 1; break;
 		    case 'e': opts.noempty = !opts.noempty; break;
 		    case 'f': opts.forwards = 1; break;
 		    case 'h': opts.html = 1; break;
@@ -109,7 +112,10 @@ changes_main(int ac, char **av)
 		    case 'U': opts.others = 1;
 		    	/* fall through to u */
 		    case 'u': opts.user = optarg; break;
-		    case 'v': opts.verbose = 1; break;		/* doc 2.0 */
+		    case 'v':
+		    	if (opts.verbose) opts.diffs = 1;
+			opts.verbose =1 ;
+			break;
 		    case 'r': opts.rev = optarg; break;		/* doc 2.0 */
 		    case '/': opts.search = searchParse(optarg);
 			      opts.doSearch = 1;
@@ -126,71 +132,95 @@ usage:			system("bk help -s changes");
 	if ((opts.local || opts.remote) && opts.rev) goto usage;
 	if (opts.keys && (opts.verbose||opts.html||opts.dspec)) goto usage;
 
+	if(opts.local || opts.remote || av[optind] == 0) {
+		unless (proj_root(0)) {
+			fprintf(stderr, "bk: Cannot find package root.\n");
+			return (1);
+		}
+	}
+
 	/*
-	 * There are 4 major cases
+	 * There are 5 major cases
 	 * 1) bk changes -L (url_list | -)
 	 * 2) bk changes -R (url_list | -)
 	 * 3) bk changes url
 	 * 4) bk changes [-]
-	 * Note: the dash in case "1 & 2" is a url list,
-	 *       the dash in case "4" is a key list.
+	 * 5) bk changes -L -R (url_list | -)
+	 * Note: the dash in cases 1, 2, and 5 is a url list,
+	 *       the dash in case 4 is a key list.
 	 */
 	if (opts.local || opts.remote) {
 		if (av[optind] && streq("-", av[optind])) {
 			/*
-			 * bk changes -R -
+			 * bk changes -[LR] -
 			 * get url list from stdin
 			 */
 			while (fnext(buf, stdin)) {
 				chomp(buf);
-				urls = addLine(urls, strdup(buf));
+				normal = parent_normalize(buf);
+				lurls = addLine(lurls, normal);
 			}
 		} else if (av[optind]) {
 			while (av[optind]) {
-				char	*normal;
-
 				normal = parent_normalize(av[optind++]);
-				urls = addLine(urls, normal);
+				lurls = addLine(lurls, normal);
 			}
 		} else {
-			urls = opts.local ? parent_pushp() : parent_pullp();
+			/* proj_root(0) test above ensures this succeeds */
+			(void)proj_cd2root();
+			if (opts.local) lurls = parent_pushp();
+			if (opts.remote) rurls = parent_pullp();
+			unless (lurls || rurls) {
+				getMsg("missing_parent", 0, 0, stderr);
+				exit(1);
+			}
 		}
-		unless (urls) goto usage;
-		seen = mdbm_mem();
+		unless (lurls || rurls) goto usage;
+		unless (rurls) rurls = lurls;
+		seen = hash_new();
 		pid = mkpager();
 		putenv("BK_PAGER=cat");
-	}
-
-	if (proj_cd2root()) {
-		/* If they are doing bk changes URL that's OK */
-		if (opts.local || opts.remote ||
-		    (av[optind] && streq(av[optind], "-"))) {
-			fprintf(stderr, "Can't find package root\n");
-			exit(1);
-		}
-		/* otherwise we don't really care */
+		proj_cd2root();
 	}
 
 	if (opts.local) {
-		EACH(urls) {
-			if (opts.urls && (nLines(urls) > 1)) {
-				printf("==== changes -L %s ====\n", urls[i]);
+		rc = doit_local(nac, nav, lurls);
+	}
+	if (opts.remote) {
+		EACH(rurls) {
+			if ((opts.local && opts.remote) ||
+			    (opts.urls && (nLines(rurls) > 1))) {
+				printf("==== changes -R %s ====\n", rurls[i]);
 				fflush(stdout);
 			}
-			rc |= doit_local(nac, nav, urls[i]);
+			rc |= doit_remote(nav, rurls[i]);
 		}
-	} else if (opts.remote) {
+	}
+	if (opts.local || opts.remote) goto out;
+
+	if (av[optind] && !streq(av[optind], "-")) {
+		pid_t	pid2;
+
+		/* bk changes url [url ...] */
+		while (av[optind]) {
+			normal = parent_normalize(av[optind++]);
+			urls = addLine(urls, normal);
+		}
+		pid2 = mkpager();
+		putenv("BK_PAGER=cat");
 		EACH(urls) {
 			if (opts.urls && (nLines(urls) > 1)) {
-				printf("==== changes -R %s ====\n", urls[i]);
+				printf("==== changes %s ====\n", urls[i]);
 				fflush(stdout);
 			}
-			rc |= doit_remote(nav, urls[i]);
+			rc = doit_remote(nav, urls[i]);
 		}
-	} else if (av[optind] && !streq(av[optind], "-")) {
-		/* bk changes url */
-		rc = doit_remote(nav, av[optind]);
+		if (pid2 > 0) waitpid(pid2, 0, 0);
 	} else {
+		if (proj_cd2root()) {
+			fprintf(stderr, "Can't find package root\n");
+			exit(1);
+		}
 		unless (av[optind]) {
 			rc = doit(0); /* bk changes */
 		} else {
@@ -199,31 +229,50 @@ usage:			system("bk help -s changes");
 			rc = doit(1); /* bk changes - */
 		}
 	}
-	if (opts.local || opts.remote) {
-		if (pid > 0)  {
-			fclose(stdout);
-			waitpid(pid, 0, 0);
-		}
-		mdbm_close(seen);
-	}
 
 	/*
 	 * clean up
 	 */
+out:	if (pid > 0)  {
+		fclose(stdout);
+		waitpid(pid, 0, 0);
+	}
+	if (seen) hash_free(seen);
 	for (c = 2; c < nac; c++) free(nav[c]);
 	freeLines(urls, free);
+	if (rurls != lurls) freeLines(rurls, free);
+	freeLines(lurls, free);
 	return (rc);
 }
 
-private int
-doit_local(int nac, char **nav, char *url)
+private void
+_doit_local(int nac, char **nav, char *url, int wfd)
 {
-	int	wfd, status;
-	pid_t	pid;
 	FILE	*p;
 	char	buf[MAXKEY];
 
-	if (opts.remote) fprintf(stderr, "warning: -R option ignored\n");
+	sprintf(buf, "bk synckeys -lk %s", url);
+	p = popen(buf, "r");
+	assert(p);
+	while (fnext(buf, p)) {
+		if (opts.showdups) {
+			write(wfd, buf, strlen(buf));
+		} else {
+			int *v = hash_fetchAlloc(seen, buf, 0, sizeof(int));
+
+			*v += 1;
+		}
+	}
+	pclose(p);
+}
+
+private int
+doit_local(int nac, char **nav, char **urls)
+{
+	int	wfd, status;
+	pid_t	pid;
+	kvpair	kv;
+	int	m = 0, i;
 
 	/*
 	 * What we want is: bk synckey -lk url | bk changes opts -
@@ -234,29 +283,42 @@ doit_local(int nac, char **nav, char *url)
 	nav[nac] = 0;
 	pid = spawnvp_wPipe(nav, &wfd, 0);
 
-	/*
-	 * Send "bk synckey" stdout into the pipe after removing anything we've
-	 * already seen.
-	 */
-	sprintf(buf, "bk synckeys -lk %s", url);
-	p = popen(buf, "r");
-	assert(p);
-	while (fnext(buf, p)) {
-		if (mdbm_fetch_str(seen, buf)) continue;
-		unless (opts.dups) mdbm_store_str(seen, buf, "", MDBM_INSERT);
-		write(wfd, buf, strlen(buf));
+	EACH(urls) {
+		if ((opts.local && opts.remote) ||
+		    (opts.urls && (nLines(urls) > 1) && opts.showdups)) {
+			printf("==== changes -L %s ====\n", urls[i]);
+			fflush(stdout);
+		}
+		_doit_local(nac, nav, urls[i], wfd);
 	}
 	close(wfd);
-	pclose(p);
 	waitpid(pid, &status, 0);
-	if (WIFEXITED(status)) return (WEXITSTATUS(status));
-	return (1); /* interrupted */
+	unless (WIFEXITED(status)) return (1); /* interrupted */
+	if (WEXITSTATUS(status) != 0) return (1);
+
+	unless (opts.showdups) return (0);
+
+	/* If opts.showdups was set, _doit_local() filled up the
+	 * seen HASH with a set of keys, and the number of repositories
+	 * they were not seen in.  Iterate through the keys, and print
+	 * out the keys that were not seen in any repository.
+	 */
+	EACH_HASH(seen) {
+		int	x = *(int *)kv.val.dptr;
+
+		if (x > m) m = x;
+	}
+
+	EACH_HASH(seen) {
+		if (*(int *)kv.val.dptr == m) fputs(kv.key.dptr, stdout);
+	}
+
+	return (0);
 }
 
 private int
 pdelta(delta *e)
 {
-	if (feof(opts.f)) return (1); /* for early pager exit */
 	unless (e->flags & D_SET) return(0);
 	if (opts.keys) {
 		sccs_pdelta(opts.s, e, opts.f);
@@ -269,8 +331,7 @@ pdelta(delta *e)
 			if (opts.newline) fputc('\n', opts.f);
 		}
 	}
-	fflush(opts.f);
-	return (0);
+	return (fflush(opts.f));
 }
 
 private int
@@ -290,6 +351,14 @@ recurse(delta *d)
 		"+:LI: -:LD:\n" \
 		"$each(:C:){$if(:DPN:!=ChangeSet){  }  (:C:)\n}" \
 		"$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n"
+#define	VSPEC	"$if(:DPN:=ChangeSet){\n#### :DPN: ####\n}" \
+		"$if(:DPN:!=ChangeSet){\n==== :DPN: ====\n}" \
+		":Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:} " \
+		"$if(:DPN:!=ChangeSet){+:LI: -:LD:}" \
+		"\n" \
+		"$each(:C:){  (:C:)\n}" \
+		"$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}" \
+		"$if(:DPN:!=ChangeSet){:UDIFFS:}"
 #define	HSPEC	"<tr bgcolor=lightblue><td font size=4>" \
 		"&nbsp;:Dy:-:Dm:-:Dd: :Th:::Tm:&nbsp;&nbsp;" \
 		":P:@:HT:&nbsp;&nbsp;:I:</td></tr>\n" \
@@ -334,7 +403,7 @@ doit(int dash)
 	} else if (opts.html) {
 		spec = opts.verbose ? HSPECV : HSPEC;
 	} else {
-		spec = DSPEC;
+		spec = opts.diffs ? VSPEC : DSPEC;
 	}
 	s = sccs_init(s_cset, SILENT|INIT_NOCKSUM);
 	unless (s && HASGRAPH(s)) {
@@ -402,9 +471,8 @@ doit(int dash)
 		    "<tr><td>\n", stdout);
 		fflush(stdout);
 	}
-	s->xflags |= X_YEAR4;
 	if (opts.verbose) {
-		cset(s, stderr, spec);
+		cset(s, stdout, spec);
 	} else {
 		opts.f = stdout;
 		opts.s = s;
@@ -462,6 +530,7 @@ dateforw(const void *a, const void *b)
 /*
  * Note that these two are identical except for the d1/d2 assignment.
  */
+#if 0
 private int
 strback(const void *a, const void *b)
 {
@@ -477,6 +546,7 @@ strback(const void *a, const void *b)
 	}
         return (d2->date - d1->date);
 }
+#endif
 
 private int
 strforw(const void *a, const void *b)
@@ -496,7 +566,7 @@ strforw(const void *a, const void *b)
 
 
 private slog *
-dumplog(slog *list, int *n)
+dumplog(slog *list, int *n, FILE *f)
 {
 	slog	*ll;
 	slog 	**sorted;	
@@ -523,8 +593,8 @@ dumplog(slog *list, int *n)
 	 */
 	for (i = 0; i < *n; ++i) {
 		ll = sorted[i];
-		printf("%s", ll->log);
-		if (opts.newline) fputc('\n', stdout);
+		fprintf(f, "%s", ll->log);
+		if (opts.newline) fputc('\n', f);
 		free(ll->log);
 		free(ll);
 	}
@@ -753,7 +823,7 @@ cset(sccs *cset, FILE *f, char *dspec)
 
 		/* print cset dspec */
 		e = ee->delta;
-		sccs_prsdelta(cset, e, flags, dspec, stdout);
+		sccs_prsdelta(cset, e, flags, dspec, f);
 
 		/* get key list */
 		k.dptr = e->rev;
@@ -784,10 +854,13 @@ cset(sccs *cset, FILE *f, char *dspec)
 			 */
 			list = collectDelta(s, d, list, dspec, &n);
 		}
-		freeLines(keys, free); /* reduce mem foot print, could be huge */
+		/* reduce mem foot print, could be huge */
+		freeLines(keys, free);
 		free(ee);
-		list = dumplog(list, &n); /* sort file dspec and print it */
-		if (fflush(stdout)) break;
+
+		/* sort file dspec and print it */
+		list = dumplog(list, &n, f);
+		if (fflush(f)) break;
 	}
 
 	/*
@@ -823,12 +896,17 @@ cset(sccs *cset, FILE *f, char *dspec)
 private int
 want(sccs *s, delta *e)
 {
+	char	*p;
+	int	match;
+
 	unless (opts.all || (e->type == 'D')) return (0);
 	if (opts.tagOnly && !(e->flags & D_SYMBOLS)) return (0);
-	if (opts.others) {
-		if (streq(opts.user, e->user)) return (0);
-	} else if (opts.user && !streq(opts.user, e->user)) {
-		return (0);
+	if (opts.user) {
+		if (p = strchr(e->user, '/')) *p = 0;
+		match = streq(opts.user, e->user);
+		if (p) *p = '/';
+		if (opts.others) match = !match;
+		unless (match) return (0);
 	}
 	if (opts.nomerge && e->merge) return (0);
 	if (opts.noempty && e->merge && !e->added && !(e->flags & D_SYMBOLS)) {
@@ -893,7 +971,7 @@ send_end_msg(remote *r, char *msg)
 	int	rc;
 
 	bktmp(msgfile, "changes_end");
-	f = fopen(msgfile, "wb");
+	f = fopen(msgfile, "w");
 	assert(f);
 	sendEnv(f, NULL, r, !opts.remote);
 
@@ -921,7 +999,7 @@ send_part2_msg(remote *r, char **av, char *key_list)
 	FILE	*f;
 
 	bktmp(msgfile, "changes_msg");
-	f = fopen(msgfile, "wb");
+	f = fopen(msgfile, "w");
 	assert(f);
 	sendEnv(f, NULL, r, !opts.remote);
 
@@ -941,7 +1019,7 @@ send_part2_msg(remote *r, char **av, char *key_list)
 		write_blk(r, buf, strlen(buf));
 		chomp(buf);
 		/* mark the seen key, so we can skip it on next repo */
-		unless (opts.dups) mdbm_store_str(seen, buf, "", MDBM_INSERT);
+		unless (opts.showdups) hash_storeStr(seen, buf, "");
 	}
 	write_blk(r, "@END@\n", 6);
 	fclose(f);
@@ -967,7 +1045,10 @@ changes_part1(remote *r, char **av, char *key_list)
 	if ((rc = remote_lock_fail(buf, 1))) {
 		return (rc); /* -2 means locked */
 	} else if (streq(buf, "@SERVER INFO@")) {
-		getServerInfoBlock(r);
+		if (getServerInfoBlock(r)) {
+			fprintf(stderr, "changes: premature disconnect?\n");
+			return (-1);
+		}
 		getline2(r, buf, sizeof(buf));
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
@@ -976,13 +1057,10 @@ changes_part1(remote *r, char **av, char *key_list)
 	if (get_ok(r, buf, 1)) return (-1);
 
 	if (opts.remote == 0) {
-		pid_t	pid;
-
 		getline2(r, buf, sizeof(buf));
 		unless (streq("@CHANGES INFO@", buf)) {
-			return (0); /* protocal error */
+			return (0); /* protocol error */
 		}
-		pid = mkpager();
 		while (getline2(r, buf, sizeof(buf)) > 0) {
 			if (streq("@END@", buf)) break;
 
@@ -996,7 +1074,6 @@ changes_part1(remote *r, char **av, char *key_list)
 			}
 		}
 		fclose(stdout);
-		if (pid > 0) waitpid(pid, 0, 0);
 		return (0);
 	}
 
@@ -1056,12 +1133,15 @@ changes_part2(remote *r, char **av, char *key_list, int ret)
 		rc = rc_lock;
 		goto done;
 	} else if (streq(buf, "@SERVER INFO@")) {
-		getServerInfoBlock(r);
+		if (getServerInfoBlock(r)) {
+			rc = -1; /* protocol error */
+			goto done;
+		}
 	}
 
 	getline2(r, buf, sizeof(buf));
 	unless (streq("@CHANGES INFO@", buf)) {
-		rc = -1; /* protocal error */
+		rc = -1; /* protocol error */
 		goto done;
 	}
 	while (getline2(r, buf, sizeof(buf)) > 0) {
@@ -1087,14 +1167,10 @@ _doit_remote(char **av, char *url)
 	remote	*r;
 
 	loadNetLib();
-	r = remote_parse(url, 1);
+	r = remote_parse(url);
 	unless (r) {
 		fprintf(stderr, "invalid url: %s\n", url);
 		return (1);
-	}
-
-	if (opts.remote && opts.rev) {
-		fprintf(stderr, "warning: -r option ignored\n");
 	}
 
 	/* Quote the dspec for the other side */
@@ -1107,6 +1183,8 @@ _doit_remote(char **av, char *url)
 	rc = changes_part1(r, av, key_list);
 	if (rc >= 0 && opts.remote) {
 		rc = changes_part2(r, av, key_list, rc);
+	} else {
+		disconnect(r, 1);
 	}
 	remote_free(r);
 	if (key_list[0]) unlink(key_list);

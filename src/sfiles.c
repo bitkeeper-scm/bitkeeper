@@ -123,16 +123,20 @@ sfiles_main(int ac, char **av)
 		return (0);
 	}
 
-    while ((c = getopt(ac, av, "1acdDeEgGjlno:p|P|SuUvx")) != -1) {
-	    switch (c) {
-		case '1':	opts.onelevel = 1; break;
-		case 'a':	opts.all = 1; break;		/* doc 2.0 */
-		case 'c':	opts.changed = 1; break;	/* doc 2.0 */
-		case 'd':	opts.dirs = 1; break;
-		case 'D':	opts.xdirs = 1; break;
-		case 'E':	opts.changed = opts.names = opts.pending = 1;
+	while ((c = getopt(ac, av, "1acdDeEgGjlno:p|P|SuUvx")) != -1) {
+		switch (c) {
+		    case '1':	opts.onelevel = 1; break;
+		    case 'a':	opts.all = 1; break;		/* doc 2.0 */
+		    case 'c':	opts.modified = opts.timestamps = 1;
+		    		break;
+		    case 'C':	opts.modified = 1;
+				opts.timestamps = 0;
+				break;
+		    case 'd':	opts.dirs = 1; break;
+		    case 'D':	opts.xdirs = 1; break;
+		    case 'E':	opts.changed = opts.names = opts.pending = 1;
 			    /* fall thru */
-		case 'e':	opts.dirs = opts.xdirs = opts.gotten =
+		    case 'e':	opts.dirs = opts.xdirs = opts.gotten =
 				opts.junk = opts.locked = opts.unlocked =
 				opts.show_markers = opts.extras = 1;
 				break;
@@ -174,6 +178,12 @@ usage:				system("bk help -s sfiles");
 				return (1);
 		}
 	}
+	/* backwards compat, remove in 4.0 */
+	if (getenv("BK_NO_TIMESTAMPS")) {
+		fprintf(stderr,
+		    "Use bk sfiles -C instead of BK_NO_TIMESTAMPS\n");
+		opts.timestamps = 0;
+	}
 
 	unless (opts.out) opts.out = stdout;
 	fflush(opts.out); /* for win32 */
@@ -189,7 +199,6 @@ usage:				system("bk help -s sfiles");
 		opts.unlocked = 1;
 		opts.locked = 1;
 	}
-	if (opts.changed && !getenv("BK_NO_TIMESTAMPS")) opts.timestamps = 1;
 
 	for (i = optind; av[i]; i++);
 	i--;
@@ -561,19 +570,18 @@ sfiles_walk(char *file, struct stat *sb, void *data)
 	int	nonsccs;
 
 	if (S_ISDIR(sb->st_mode)) {
-		n = strlen(file);
 		/*
 		 * Special processing for .bk_skip file
 		 */
-		strcpy(&file[n], "/" BKSKIP);
-		if (exists(file)) return (-1);
+		if (sfiles_skipdir(file)) return (-1);
 
 		/* Skip new repo */
 		if (wi->sccsdir) {
+			n = strlen(file);
 			strcpy(&file[n], "/" BKROOT);
 			if (exists(file)) return (-1);
+			file[n] = 0;
 		}
-		file[n] = 0;
 
 		/* if SCCS dir start new processing */
 		p = 0;
@@ -785,18 +793,26 @@ isTagFile(char *file)
 	return (pathneq("BitKeeper/etc/SCCS/x.", gfile, 21));
 }
 
+private int
+isBkFile(char *gfile)
+{
+	if (streq(gfile, "ChangeSet") && isdir(BKROOT)) return (1);
+	if (strneq(gfile, "BitKeeper/", 10) &&
+	    !strneq(gfile, "BitKeeper/triggers/", 19) && isdir(BKROOT)) {
+		return (1);
+	}
+	return (0);
+}
+
+
 private void
 print_it(STATE state, char *file, char *rev)
 {
 	char	*sfile, *gfile;
 
 	gfile =  strneq("./",  file, 2) ? &file[2] : file;
-	if (opts.useronly) {
-		if (streq(gfile, "ChangeSet") ||
-		    (strlen(gfile) > 10) && pathneq(gfile, "BitKeeper/", 10)) {
-			return;
-		}
-	}
+	if ((opts.useronly) && isBkFile(gfile)) return;
+
 	if (opts.show_markers) {
 		if (state[CSTATE] == 'j') {
 			assert(streq(state, " j    "));
@@ -1089,6 +1105,31 @@ enableFastPendingScan()
 	touch(DFILE, 0666);
 }
 
+/*
+ * Return true if we should skip this directory (it contains .bk_skip).
+ * If there is an SCCS directory then complain, and return false,
+ * because that is likely to be a mistake.
+ *
+ * The intent is, if users need to be able to .bk_skip a directory with
+ * SCCS/, then this should be extended to check for $d/.bk_skip and
+ * $d/SCCS/.bk_skip.  The workaround is to rename SCCS/, or to move it to
+ * a subdirectory, at the same time as creating a .bk_skip.
+ */
+int
+sfiles_skipdir(char *dir)
+{
+	char	buf[MAXPATH];
+
+	snprintf(buf, sizeof(buf), "%s/%s", dir, BKSKIP);
+	unless (exists(buf)) return (0);
+	snprintf(buf, sizeof(buf), "%s/%s", dir, "SCCS");
+	if (isdir(buf) && !exists(strcat(buf, "/" BKSKIP))) {
+		getMsg("bk_skip_and_sccs", dir, 0, stderr);
+		return (0);
+	}
+	return (1);
+}
+
 typedef struct sinfo sinfo;
 struct sinfo {
 	walkfn	fn;
@@ -1119,7 +1160,8 @@ findsfiles(char *file, struct stat *sb, void *data)
 			/*
 			 * Skip directory containing a .bk_skip file
 			 */
-			return (-2);
+			p[1] = 0;
+			if (sfiles_skipdir(file)) return (-2);
 		}
 	}
 	return (0);

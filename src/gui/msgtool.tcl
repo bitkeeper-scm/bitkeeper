@@ -2,10 +2,15 @@ set usage "Usage: bk msgtool ?-T title? ?-Y YES-label? ?-N NO-label? message"
 
 proc main {} \
 {
+	global	env
+
 	init
 	widgets
 
 	after idle [list wm deiconify .]
+	after idle [list focus -force .]
+	
+	catch {wm iconbitmap . $env(BK_BIN)/bk16.ico} 
 }
 
 proc init {} \
@@ -128,6 +133,10 @@ proc widgets {} \
 	$widgets(toplevel) configure -borderwidth 4 -relief flat 
 	if  {[info exists env(BK_MSG_GEOM)]} {
 		wm geometry $widgets(toplevel) $env(BK_MSG_GEOM)
+	} elseif {[info exists env(BK_GEOM)]} {
+		wm geometry $widgets(toplevel) $env(BK_GEOM)
+	} else {
+		centerWindow $widgets(toplevel)
 	}
 
 	# Any widgets that get referenced outside of this
@@ -143,8 +152,7 @@ proc widgets {} \
 	set widgets(no) $widgets(buttonFrame).no
 
 	## Bk Logo
-	catch {exec bk bin} bin
-	set image [file join $bin "bklogo.gif"]
+	set image "$env(BK_BIN)/gui/images/bklogo.gif"
 	if {[file exists $image]} {
 		set bklogo [image create photo -file $image]
 		label $widgets(logo) \

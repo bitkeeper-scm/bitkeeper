@@ -7,7 +7,7 @@
 proc widgets {} \
 {
 	global	scroll wish tcl_platform search gc d app
-	global State
+	global State env
 
 	getConfig "diff"
 	loadState
@@ -23,28 +23,22 @@ proc widgets {} \
 
 	createDiffWidgets .diffs
 
-image create photo prevImage \
-    -format gif -data {
-R0lGODdhDQAQAPEAAL+/v5rc82OkzwBUeSwAAAAADQAQAAACLYQPgWuhfIJ4UE6YhHb8WQ1u
-WUg65BkMZwmoq9i+l+EKw30LiEtBau8DQnSIAgA7
-}
-image create photo nextImage \
-    -format gif -data {
-R0lGODdhDQAQAPEAAL+/v5rc82OkzwBUeSwAAAAADQAQAAACLYQdpxu5LNxDIqqGQ7V0e659
-XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
-}
+	set prevImage [image create photo \
+			   -file $env(BK_BIN)/gui/images/previous.gif]
+	set nextImage [image create photo \
+			   -file $env(BK_BIN)/gui/images/next.gif]
 	frame .menu
 	    button .menu.prev -font $gc(diff.buttonFont) \
 		-bg $gc(diff.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-image prevImage -state disabled -command {
+		-image $prevImage -state disabled -command {
 			searchreset
 			prev
 		}
 	    button .menu.next -font $gc(diff.buttonFont) \
 		-bg $gc(diff.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-image nextImage -state disabled -command {
+		-image $nextImage -state disabled -command {
 			searchreset
 			next
 		}
@@ -71,12 +65,12 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
             button .menu.filePrev -font $gc(diff.buttonFont) \
                 -bg $gc(diff.buttonColor) \
                 -pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-                -image prevImage \
+                -image $prevImage \
                 -state disabled -command { prevFile }
             button .menu.fileNext -font $gc(diff.buttonFont) \
                 -bg $gc(diff.buttonColor) \
                 -pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-                -image nextImage \
+                -image $nextImage \
                 -state normal -command { nextFile }
 	    button .menu.discard -font $gc(diff.buttonFont) \
 	        -text "Discard" \
@@ -91,7 +85,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	        
             menubutton .menu.fmb -font $gc(diff.buttonFont) -relief raised \
                 -bg $gc(diff.buttonColor) -pady $gc(py) -padx $gc(px) \
-                -borderwid $gc(bw) -text "Files" -width 10 -state normal \
+                -borderwid $gc(bw) -text "Files" -state normal \
                 -menu .menu.fmb.menu -indicatoron 1
 
 	    menu .menu.shortcuts.menu \
@@ -802,6 +796,7 @@ proc main {} \
 	update 
 
 #	after idle [list after 1 getFiles]
+	after idle [list focus -force .]
 	getFiles
 
 	# This must be done after getFiles, because getFiles may cause the

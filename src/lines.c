@@ -12,6 +12,7 @@ private	delta	*ancestor(sccs *s, delta *d);
 private int	flags;
 private sccs	*s;
 private int	sort;	/* append -timet */
+private int	tags;	/* append '*' to tagged revisions */
 private int	ser;
 private	char	*rev;
 private	delta	*tree;	/* oldest node we're displaying */
@@ -24,12 +25,14 @@ lines_main(int ac, char **av)
 	delta	*e;
 	RANGE_DECL;
 
-	while ((c = getopt(ac, av, "n;ur;R;t")) != -1) {
+	while ((c = getopt(ac, av, "n;ur;R;tT")) != -1) {
 		switch (c) {
 		    case 'u':
 			flags |= GET_USER;
 			break;
 		    case 't': sort = 1; 
+			break;
+		    case 'T': tags = 1;
 			break;
 		    case 'n':
 			n = atoi(optarg); 
@@ -40,7 +43,7 @@ lines_main(int ac, char **av)
 		    RANGE_OPTS(' ', 'R');
 		    default:
 usage:			fprintf(stderr,
-			    "Usage: _lines [-ut] [-n<n>] [-r<r> | -R<r>] file.\n");
+			    "Usage: _lines [-utT] [-n<n>] [-r<r> | -R<r>] file.\n");
 			return (1);
 		}
 	}
@@ -153,6 +156,7 @@ pd(char *prefix, delta *d)
 		puser(d->user);
 	}
 	if (sort) printf("-%u", d->pserial);
+	if (tags && (d->flags & D_SYMBOLS)) putchar('*');
 	if (d->flags & D_BADREV) printf("-BAD");
 	if (d->merge) {
 		delta	*p = sfind(s, d->merge);
@@ -165,6 +169,7 @@ pd(char *prefix, delta *d)
 				puser(p->user);
 			}
 			if (sort) printf("-%u", p->pserial);
+			if (tags && (p->flags & D_SYMBOLS)) putchar('*');
 		}
 	}
 	d->flags |= D_RED;

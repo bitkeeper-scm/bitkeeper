@@ -40,7 +40,7 @@ namespace eval ::tooltip {
 	array set config {
 		-showpopups     1
 		-command        {}
-		-delay		{500}
+		-delay		{1000}
 		-foreground 	{#000000}
 		-background 	{#ffffe0}
 		-font		{Helvetica 10}
@@ -80,20 +80,6 @@ proc ::tooltip::enable {args} \
  		    [list after $config(-delay) $command]
 		"
 	}
-}
-
-
-proc ::tooltip::xenable {w {text ""}} \
-{
-	variable config
-	variable widget
-
-	set command [list ::tooltip::tooltip show %W $text]
-	bind $w <Any-Enter> [list after $config(-delay) $command]
-	bind $w <Any-Leave> "
-	    [list catch [list after cancel $command]];
-	    [list ::tooltip::tooltip hide ]
-	"
 }
 
 proc ::tooltip::tooltip {which args} \
@@ -154,10 +140,7 @@ proc ::tooltip::show {args} \
 	# sanity check; if the pointer isn't over the window for which
 	# tooltips are desired, bail.
  	set W [eval winfo containing [winfo pointerxy [winfo toplevel $w]]]
- 	if {[string compare $w $W] != 0} {
- 		puts "fooey! w=$w W=$W"
- 		return
- 	}
+ 	if {[string compare $w $W] != 0} {return}
 
 	if {![winfo exists $config(-toplevel)]} {
 		::tooltip::create

@@ -3,7 +3,7 @@
 .SH NAME 
 bk version \- print \*(BK version
 .SH SYNOPSIS
-.B bk version
+.B bk version [-s]
 .SH DESCRIPTION
 The 
 .B version
@@ -11,20 +11,25 @@ command shows what version of \*(BK you are running.
 If the version is symbolically named (most are), the version will look
 like:
 .DS
-\*(BK version is BETA-1 for x86-linux
-Built by: lm@work.bitmover.com
-Built on: Wed Feb 23 20:20:03 PST 2000
+\*(BK version is bk-3.0.4 20031218201658 for x86-glibc22-linux
+Built by: lm@redhat71.bitmover.com in /build/3.0.x-lm/src
+Built on: Thu Dec 18 17:32:47 PST 2003
 .DE
 .LP
 The version output for a development snapshot looks like:
 .DS
-\*(BK version is 20000224020659 for x86-linux
-Built by: lm@work.bitmover.com
-Built on: Wed Feb 23 20:20:03 PST 2000
+\*(BK version is 20040211171546 for x86-glibc23-linux
+Built by: lm@work.bitmover.com in /home/bk/lm/3.0.x/src
+Built on: Wed Feb 11 14:32:08 PST 2004
 .DE
 .LP
 The timestamp value in the snapshot release is the time of the most
 recent file modification within the \*(BK source code.
+.SH OPTIONS
+.if t .TP .6i
+.if n .TP 1i
+.B \-s
+Print just the version number (either "3.0.4" or "20040211171546")
 .SH NOTE
 .LP
 BitMover, Inc provides support for symbolically\-tagged version only.

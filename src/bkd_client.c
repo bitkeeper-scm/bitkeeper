@@ -12,7 +12,7 @@ private	remote	*url_parse(char *p, int default_port);
  * into a struct remote.
  */
 remote *
-remote_parse(const char *url, int skip_checks)
+remote_parse(const char *url)
 {
 	char	*freeme = 0;
 	static	int echo = -1;
@@ -148,13 +148,16 @@ private	remote *
 url_parse(char *p, int default_port)
 {
 	remote	*r;
-	char	*s;
+	char	*s, *e;
 	char	sav;
 
 	unless (*p) return (0);
 	new(r);
 	r->rfd = r->wfd = -1;
-	if (s = strchr(p, '@')) {		
+
+	/* find end of hostname, start of pathname */
+	unless (e = strchr(p, '/')) e = p + strlen(p);
+	if ((s = strchr(p, '@')) && (s < e)) {
 		/*
 		 * user@host[:path] or
 		 * user@host[/path]
@@ -173,7 +176,7 @@ url_parse(char *p, int default_port)
 		} else {
 			r->host = strdup(p);
 		}
-	} else if ((s = strchr(p, ':')) && isdigit(s[1])) {
+	} else if ((s = strchr(p, ':')) && isdigit(s[1]) && (s < e)) {
 		/*
 		 * host:port[/path]
 		 */
@@ -282,6 +285,18 @@ void
 remote_free(remote *r)
 {
 	unless (r) return;
+	if ((r->rfd != -1) || (r->wfd != -1)) {
+		/*
+		 * This shouldn't happen.  If we opened a connection to
+		 * a remote bkd then we should disconnect before calling
+		 * remote_free().
+		 */
+#if 0
+		fprintf(stderr,
+"remote_free(): freeing struct with open connection, disconnecting...\n");
+#endif
+		disconnect(r, 2);
+	}
 	if (r->user) free(r->user);
 	if (r->host) free(r->host);
 	if (r->path) free(r->path);
@@ -329,7 +344,7 @@ bkd(int compress, remote *r)
 		if ((r->type == ADDR_RSH) ||
 		    (r->type == ADDR_NFS &&
 			(t = getenv("PREFER_RSH")) && streq(t, "YES")) ||
-		    !findprog("ssh")) {
+		    !which("ssh", 0, 1)) {
 			remsh = "rsh";
 #ifdef	hpux
 			remsh = "remsh";
@@ -386,6 +401,7 @@ bkd(int compress, remote *r)
 		}
 		cmd[++i] = 0;
 	} else {
+		putenv("_BK_BKD_IS_LOCAL=1");
 		cmd[0] = "bk";
 		cmd[1] = "bkd";
 		cmd[2] = "-e";

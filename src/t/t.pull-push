@@ -298,16 +298,12 @@ cd $HERE/project
 bk push -nl $HERE/unrelated > push.out 2>&1
 grep -q "trying to synchronize with an unrelated" push.out
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
-cd $HERE/unrelated
-waitForUnlock $HERE/unrelated
 echo OK
 echo $N pull from unrelated project should error ....................$NL
 cd $HERE/project
 bk pull -nl $HERE/unrelated > pull.out 2>&1
 grep -q "trying to pull from an unrelated" pull.out
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
-cd $HERE/unrelated
-waitForUnlock $HERE/unrelated
 echo OK
 
 echo $N pull from read-only server should work fine .................$NL
@@ -323,6 +319,45 @@ bk pull $Q || {
 	exit 1
 }
 chmod +w $HERE/project/SCCS
+echo OK
+echo $N Create bad change and pull should fail ......................$NL
+cd $HERE
+no_logging badsrc
+cd ..
+bk clone $Q badsrc badclone
+cd badsrc
+echo foo > foo
+bk new $Q foo
+bk commit $Q -yfoo
+sum=`bk prs -r+ -hnd:DSUM: ChangeSet`
+newsum=`expr $sum + 10`
+test "$newsum" -ge 65536 && {
+	newsum=`expr $newsum - 65536`
+}
+bk edit $Q foo
+echo no more foo > foo
+bk delta $Q -yfoo foo
+bk commit $Q -yfoo
+sed "s/K$sum$/K$newsum/" < SCCS/s.ChangeSet > X
+chmod 444 X
+mv SCCS/s.ChangeSet Y
+mv X SCCS/s.ChangeSet
+bk admin -z ChangeSet
+bk edit $Q foo
+echo another foo > foo
+bk delta $Q -yfoo foo
+bk commit $Q -yfoo
+cd ../badclone
+bk pull -R $Q ../badsrc 2> ERR && {
+	echo Failed
+	exit 1
+}
+grep -q "checksum in the patch for the ChangeSet" ERR || {
+	echo Failed
+	echo Wrong message. Expected "'checksum ... ChangeSet'":
+	cat ERR
+	exit 1
+}
 echo OK
 
 echo $N make sure pull normalize file url ...........................$NL

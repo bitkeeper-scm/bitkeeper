@@ -4,19 +4,17 @@
 
 
 
-private char *usage = "pwd [-scr] [path]\n";
+private char *usage = "pwd [-sr] [path]\n";
 
 int
 pwd_main(int ac, char **av)
 {
 	char	buf[MAXPATH], *p;
-	int	c, shortname = 0, cygwin = 0, bk_rpath = 0;
+	int	c, shortname = 0, bk_rpath = 0;
 
-	setmode(1, _O_BINARY);
-	while ((c = getopt(ac, av, "scr")) != -1) {
+	while ((c = getopt(ac, av, "sr")) != -1) {
 		switch (c) {
 			case 's': shortname = 1; break;
-			case 'c': cygwin = 1; break; /* output cygwin path */
 			case 'r': bk_rpath = 1; break; /* bk relative path */
 			default: fprintf(stderr, usage); exit(1);
 		}
@@ -44,11 +42,6 @@ pwd_main(int ac, char **av)
 		GetShortPathName(p, p, sizeof buf - (p - buf));
 		nt2bmfname(p, p); /* needed for win98 */
 	}
-	if (cygwin) { 
-		printf("/cygdrive/");
-		p[1] = p[0];
-		p++;
-	}
 #endif
 	printf("%s\n", bk_rpath ? _relativeName(p, 1, 1, 1, 0): p);
 	return (0);
@@ -68,7 +61,7 @@ findDotFile(char *old, char *new, char *buf)
 	char	*home;
 	char	oldpath[MAXPATH];
 
-	concat_path(buf, getBkDir(), new);
+	concat_path(buf, getDotBk(), new);
 	if (!exists(buf) && (home = getHomeDir())) {
 		/* need to upgrade? */
 		concat_path(oldpath, home, old);
@@ -94,7 +87,7 @@ dotbk_main(int ac, char **av)
 	if (ac == 3) {
 		puts(findDotFile(av[1], av[2], buf));
 	} else if (ac == 1) {
-		puts(getBkDir());
+		puts(getDotBk());
 	} else {
 		fprintf(stderr, "usage: bk dotbk [old new]\n");
 		return (1);

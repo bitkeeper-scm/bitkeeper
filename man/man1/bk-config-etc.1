@@ -1,5 +1,5 @@
 .so ../bk-macros
-.TH "bk config-etc" 1 2002/02/05 "\*(BC" "\*(UM"
+.TH "bk config-etc" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME 
 bk config-etc \- configuring \*(BK per repository
 .SH DESCRIPTION
@@ -34,7 +34,7 @@ Configuration entries may be overridden with the
 .B BK_CONFIG
 environmental variable.
 .B BK_CONFIG 
-may contain a list of key:value pairs seperated by semicolons.
+may contain a list of key:value pairs separated by semicolons.
 For example:
 .DS
 .BR BK_CONFIG =\c
@@ -297,18 +297,19 @@ autofix:no
 .SS CLOCK_SKEW
 .br
 When using the 
-.B \-ct
+.B \-c
 option to 
-.B bk sfiles
-, file timestamps may be compared to a cached list to determine when
+.BR "bk sfiles" ,
+file timestamps may be compared to a cached list to determine when
 files are unmodified and don't need to be diff'ed again.  The 'clock_skew' 
 parameter controls how old a file must be before file timestamps are to 
-be trusted.  A certain amount of clock skew is strongly advised,
-machines using a shared filesystem can othersie cause incorrect results.
+be trusted.  
+A certain amount of clock skew is strongly advised since the use of network
+file systems can can cause the timestamps to be incorrect.
 The time is in seconds and defaults to 604800 (one week).
 .DS
-clock_skew: 86400	# one day
-clock_skew: off		# disable trusting of timestamps
+clock_skew: 86400       # one day
+clock_skew: off         # disable trusting of timestamps
 .DE
 .SS BKWEB PREFERENCES
 .LP

@@ -7,22 +7,26 @@ proc getConfig {prog} \
 
 	set app $prog
 
-	option add *Scrollbar.borderWidth 1 100
 	option add *Label.borderWidth 1 100
 	option add *Button.borderWidth 1 100
 	option add *Menubutton.borderWidth 1 100
+	option add *Menu.borderWidth 1 widgetDefault
+	option add *Menu.highlightThickness 1 widgetDefault
+	option add *Menu.activeBorderWidth 1 widgetDefault
 
 	initFonts $app _d
 
 	if {$tcl_platform(platform) == "windows"} {
 		set _d(cset.leftWidth) 40
 		set _d(cset.rightWidth) 80
-		set _d(scrollWidth) 12		;# scrollbar width
 		set _d(ci.filesHeight) 8
 		set _d(ci.commentsHeight) 7	;# height of comment window
 		set _d(buttonColor) $SYSTEMBUTTONFACE	;# menu buttons
 		set _d(BG) $SYSTEMBUTTONFACE		;# default background
 	} else {
+                # windows uses native scrollbars; we don't want to dork
+                # with them
+                option add *Scrollbar.borderWidth 1 100
 		set _d(cset.leftWidth) 55
 		set _d(cset.rightWidth) 80
 		set _d(scrollWidth) 12		;# scrollbar width
@@ -33,6 +37,7 @@ proc getConfig {prog} \
 		set _d(BG) $GRAY85		;# default background
 	}
 
+	set _d(tabwidth) 8		;# default width of a tab
 	set _d(backup) ""		;# Make backups in ciedit: XXX NOTDOC 
 	set _d(balloonTime) 1000	;# XXX: NOTDOC
 	set _d(buttonColor) $SYSTEMBUTTONFACE	;# menu buttons
@@ -65,6 +70,7 @@ proc getConfig {prog} \
 	set _d(quit)	Control-q	;# binding to exit tool
 
 	set _d(bug.popupBG) $BLUE
+	set _d(support.popupBG) $BLUE
 	set _d(ci.iconBG) $BKPALEOLIVE	;# background of some icons
 	set _d(ci.csetIconBG) $BKBLUE1	;# background of some icons
 	set _d(ci.quitSaveBG) $BKSLATEBLUE1	;# "quit but save" button
@@ -101,6 +107,8 @@ proc getConfig {prog} \
 	set _d(fm3.annotate) 1		;# show annotations
 	set _d(fm3.charColor) $ORANGE	;# color of changes in a line
 	set _d(fm3.comments) 1		;# show comments window
+	set _d(fm3.escapeButtonFG) $YELLOW	;# foreground of escape button
+	set _d(fm3.escapeButtonBG) $BLACK	;# background of escape button
 	set _d(fm3.firstDiff) minus
 	set _d(fm3.lastDiff) plus
 	set _d(fm3.mergeColor) $LIGHTBLUE	;# color of merge choices in merge win
@@ -110,13 +118,16 @@ proc getConfig {prog} \
 	set _d(fm3.prevConflict) braceleft
 	set _d(fm3.prevDiff) bracketleft
 	set _d(fm3.sameColor) $BKTURQUOISE1	;# color of unchanged line
+	set _d(fm3.showEscapeButton) 1	;# show escape button?
 	set _d(fm3.spaceColor) $BLACK	;# color of spacer lines
+	set _d(fm3.toggleGCA) x		;# key to toggle GCA info
+	set _d(fm3.toggleAnnotations) z	;# key to toggle annotations
 	set _d(fm3.undo) u
 
 	set _d(help.linkColor) $BLUE	;# hyperlinks
 	set _d(help.topicsColor) $ORANGE	;# highlight for topic search matches
 	set _d(help.height) 50		;# number of rows to display
-	set _d(help.width) 72		;# number of columns to display
+	set _d(help.width) 79		;# number of columns to display
 	set _d(help.helptext) ""	;# -f<helptextfile> - undocumented
 	set _d(help.exact) 0		;# helpsearch, allows partial matches
 
@@ -149,7 +160,7 @@ proc getConfig {prog} \
 	set _d(rev.localColor) $GREEN	;# local node (for resolve)
 	set _d(rev.remoteColor) $RED	;# remote node (for resolve)
 	set _d(rev.gcaColor) $WHITE		;# gca node (for resolve)
-	set _d(rev.tagColor) $RED		;# tag box fills
+	set _d(rev.tagOutline) $YELLOW	;# outline of tagged nodes
 	set _d(rev.badColor) $RED		;# color for "bad" revision numbers
 	set _d(rev.selectColor) $BKSTEELBLUE ;# highlight color for selected tag
 	set _d(rev.dateLineColor) $LIGHTBLUE ;# line that separates dates
@@ -167,6 +178,7 @@ proc getConfig {prog} \
 	set _d(setup.stripeColor) $BLUE ;# color of horizontal separator
 	set _d(setup.mandatoryColor) $BKSLATEGRAY1 ;# mandatory fields
 	set _d(bug.mandatoryColor) $BKSLATEGRAY1 ;# mandatory fields
+	set _d(support.mandatoryColor) $BKSLATEGRAY1 ;# mandatory fields
 	set _d(entryColor) $WHITE	   ;# Color of input fields
 
 	# N.B. 'bk dotbk' has the side effect that it will move an
@@ -199,6 +211,18 @@ proc getConfig {prog} \
 			}
 		}
     	}
+
+        # final pass to exclude some options (for now just on windows)
+        # can be defeated by setting gc(app.useFullGc)
+        if {![info exists gc($app.useFullGC)]} {
+                if {$tcl_platform(platform) eq "windows"} {
+                        scrollbar ._dummy_
+                        set width [._dummy_ cget -width]
+                        set gc($app.scrollWidth) $width
+                }
+        }
+
+	option add *Text.tabwidth $gc($app.tabwidth) userDefault
 }
 
 proc initFonts {app var} \
@@ -336,7 +360,8 @@ proc defineSymbolicColors {} \
 		# This is used for menubuttons, and is based on the
 		# "SystemButtonFace" on windows. 
 		if {$tcl_platform(platform) == "windows"} {
-			set SYSTEMBUTTONFACE #d4d0c8
+#			set SYSTEMBUTTONFACE #d4d0c8
+                        set SYSTEMBUTTONFACE systembuttonface
 		} else {
 			set SYSTEMBUTTONFACE #d0d0d0
 		}

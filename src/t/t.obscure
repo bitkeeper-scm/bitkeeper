@@ -77,7 +77,7 @@ test 'Please obscure me' = "`bk cat foo`" && {
 bk -r get -qS
 mkdir $HERE/data
 cd $HERE/data
-tar xf ../TAR
+tar xmf ../TAR
 find . -type f | while read x
 do	cmp -s $x ../project/$x && echo $x
 done | sort > ../SAME

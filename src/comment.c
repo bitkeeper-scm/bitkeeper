@@ -29,7 +29,7 @@ usage(void)
 int
 comments_main(int ac, char **av)
 {
-	char	*name, *file = 0, *comment = 0, *rev = "+";
+	char	*name, *file = 0, *comment = 0, *rev = 0;
 	int	c;
 	char	**files = 0;
 	char	**lines = 0;
@@ -37,7 +37,7 @@ comments_main(int ac, char **av)
 	int	to_stdout = 0;
 	char	tmp[MAXPATH];
 	FILE	*tf;
-	
+
 	while ((c = getopt(ac, av, "C|pr|y|Y|")) != -1) {
 		switch (c) {
 		    case 'C': csetrev = optarg; break;
@@ -69,7 +69,12 @@ comments_main(int ac, char **av)
 		read_editfile(stdin);
 		return (0);
 	}
-
+	/* disable illegal combinations */
+	if ((rev && csetrev) ||
+	    (!av[optind] && rev) ||
+	    (av[optind] && csetrev)) {
+		usage();
+	}
 	/*
 	 * Get list of files/revs to edit.  It is either the set if files
 	 * in a changeset or a list of files on the command line.
@@ -82,6 +87,7 @@ comments_main(int ac, char **av)
 		}
 		files = getfiles(csetrev);
 	} else {
+		unless (rev) rev = "+";
 		for (name = sfileFirst("comment", &av[optind], SF_NODIREXPAND);
 		     name; name = sfileNext()) {
 			files = addLine(files, 
@@ -104,12 +110,11 @@ comments_main(int ac, char **av)
 		EACH (files) {
 			int	j;
 			char	*sfile = strdup(files[i]);
-			char	*rev;
 			char	*gfile;
 			rev = strchr(sfile, BK_FS);
 			*rev++ = 0;
 			gfile = sccs2name(sfile);
-			
+
 			fprintf(tf, "### Change the comments to %s%c%s below\n",
 			    gfile, BK_FS, rev);
 			free(gfile);

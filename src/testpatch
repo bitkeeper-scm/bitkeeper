@@ -79,7 +79,7 @@ do	gfile=`echo $pfile | sed 's|SCCS/p.||'`
 done
 
 # Commit changeset, get all the files out, and see what we've got.
-bk sfiles -C | bk cset -ybundle -
+bk sfiles -pC | bk cset -ybundle -
 bk sfiles | grep -v 'SCCS/s\.\.del' | bk get -kq -
 cd ..
 echo Diffing ...

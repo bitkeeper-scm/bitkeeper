@@ -46,7 +46,7 @@ bkd_tcp_connect(remote *r)
 		if (r->path && strneq(r->path, "cgi-bin/", 8)) {
 			cgi = r->path + 8;
 		}
-		http_connect(r, cgi);
+		http_connect(r);
 	} else {
 		i = tcp_connect(r->host, r->port);
 		if (i < 0) {
@@ -138,8 +138,8 @@ check_rsh(char *remsh)
 {
 	char *t;
 
-	if (!(t = prog2path(remsh)) || strstr(t, "system32/rsh")) {
-		getMsg("missing_rsh", remsh, 0, '=', stderr);
+	if (!(t = whichp(remsh, 0, 1)) || strstr(t, "system32/rsh")) {
+		getMsg("missing_rsh", remsh, '=', stderr);
 		return (-1);
 	}
 	return (0);

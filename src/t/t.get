@@ -86,6 +86,30 @@ if [ $? -ne 0 ]; then echo Bad data in a/b/c/B.; exit 1; fi
 grep -q Hi a/b/c/B
 if [ $? -ne 0 ]; then echo Bad data in a/b/c/B.; exit 1; fi
 echo OK
+echo $N Check error if get -r with no -p ............................$NL
+bk get $Q -r1.1 date 2> ERR
+if [ $? -eq 0 ]; then echo Get succeed; exit 1; fi
+grep -q "specify revisions without" ERR
+if [ $? -ne 0 ]; then echo Wrong error msg; exit 1; fi
+echo OK
+echo $N Check error if get -i with no -p ............................$NL
+bk get $Q -i1.1 date 2> ERR
+if [ $? -eq 0 ]; then echo Get succeed; exit 1; fi
+grep -q "specify include/exclude without" ERR
+if [ $? -ne 0 ]; then echo Wrong error msg; exit 1; fi
+echo OK
+echo $N Check error if get -x with no -p ............................$NL
+bk get $Q -x1.1 date 2> ERR
+if [ $? -eq 0 ]; then echo Get succeed; exit 1; fi
+grep -q "specify include/exclude without" ERR
+if [ $? -ne 0 ]; then echo Wrong error msg; exit 1; fi
+echo OK
+echo $N Check error if get -i and -x of same revision ...............$NL
+bk get $Q -p -i1.1 -x1.1 date 2> ERR
+if [ $? -eq 0 ]; then echo Get succeed; exit 1; fi
+grep -q "Same revision appears in both lists" ERR
+if [ $? -ne 0 ]; then echo Wrong error msg; exit 1; fi
+echo OK
 
 echo $N Check paths in file .........................................$NL
 grep -q '^.cP.*date$' SCCS/s.date
@@ -170,6 +194,21 @@ if writable date; then echo failed, added writable file; exit 1; fi
 bk unlock -p date
 echo OK
 
+echo $N Get -er will roll back to rev r .............................$NL
+rm -f olddate
+bk get $Q -Golddate -k -r1.4 date
+bk edit $Q -r1.4 date || exit 1
+if ! cmp olddate date; then echo Fail; exit 1; fi
+bk delta $Q -y1.4 date || exit 1
+if [ "`bk prs -r+ -hnd:DI: date`" != '-6,7' ]; then echo Fail; exit 1; fi
+rm -f olddate
+bk get $Q -Golddate -k -r1.6 date
+bk edit $Q -r1.6 date || exit 1
+if ! cmp olddate date; then echo Fail; exit 1; fi
+bk delta $Q -y1.6 date || exit 1
+if [ "`bk prs -r+ -hnd:DI: date`" != '-8' ]; then echo Fail; exit 1; fi
+echo OK
+
 echo $N Make sure get -ab works .....................................$NL
 echo HI > T
 bk ci $Q -i T
@@ -211,11 +250,21 @@ test -f ChangeSet && {
 	echo should not have gotten ChangeSet
 	exit 1
 }
+bk get -q .
+test -f ChangeSet && {
+	echo should not have gotten ChangeSet
+	exit 1
+}
 bk clean
 echo OK
 
 echo $N Make sure get -e does not get ChangeSet .....................$NL
 bk get -qe
+test -f ChangeSet && {
+	echo should not have gotten ChangeSet
+	exit 1
+}
+bk get -qe .
 test -f ChangeSet && {
 	echo should not have gotten ChangeSet
 	exit 1
@@ -363,13 +412,13 @@ echo OK
 
 echo $N Test sccs get with foo.c -Gbar.c ............................$NL
 mkdir bin
-BK=`bk bin`/bk
+BK="`bk bin`"/bk
 SCCS=bin/sccs
-test -f ${BK}.exe && {
-	BK=${BK}.exe
+test -f "${BK}.exe" && {
+	BK="${BK}.exe"
 	SCCS=bin/sccs.exe
 }
-cp $BK $SCCS
+cp "$BK" $SCCS
 rm -rf subdir T
 ./bin/sccs clean
 ./bin/sccs get $Q foo.c -Gbar.c || {

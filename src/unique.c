@@ -38,6 +38,8 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
+char		*lock_dir(void);
+
 private	char	*lockHome(void);
 private	char	*keysHome(void);
 private	int	uniq_regen(void);
@@ -45,7 +47,6 @@ private	int	uniq_regen(void);
 private	int	dirty;			/* set if we updated the db */
 private	MDBM	*db;
 private	char	*lockFile;		/* cache it */
-private	char	*keysFile;		/* cache it */
 
 private char	*
 lockHome()
@@ -53,7 +54,7 @@ lockHome()
 	char	path[MAXPATH];
 
 	if (lockFile) return (lockFile);
-	sprintf(path, "%s/.bk_kl%s", TMP_PATH, sccs_getuser());
+	sprintf(path, "%s/.bk_kl%s", lock_dir(), sccs_realuser());
 	return (lockFile = (strdup)(path));
 }
 
@@ -63,14 +64,10 @@ lockHome()
 private char	*
 keysHome(void)
 {
-	char	*t;
+	static	char	*keysFile = 0;
 	char	path[MAXPATH];
 
 	if (keysFile) return (keysFile);
-	if ((t = getenv("BK_TMP")) && isdir(t)) {
-		concat_path(path, t, ".bk_keys");
-		return (keysFile = (strdup)(path));
-	}
 	keysFile = strdup(findDotFile(".bk_keys", "bk_keys", path));
 	return (keysFile);
 }
@@ -86,7 +83,6 @@ private int
 atomic_create(char *noused, char *lock, int me)
 {
 	int	fd, flags = O_EXCL|O_CREAT|O_WRONLY;
-	FILE 	*f;
 	char	buf[100];
 
 	fd = open(lock, flags, 0666);

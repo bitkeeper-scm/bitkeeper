@@ -138,7 +138,7 @@ connection::get_connected (char FAR * hostname, char FAR * service)
   unsigned long 	ip_address;
   struct sockaddr_in	sa_in;
   int			our_port;
-  int			not = 0;
+  int			_not = 0;
   int			retval, err_code;
   unsigned long		ioctl_blocking = 1;
   char			message[512];
@@ -208,7 +208,7 @@ connection::get_connected (char FAR * hostname, char FAR * service)
   setsockopt(the_socket,
 	     SOL_SOCKET,
 	     SO_DONTLINGER,
-	     (char *) &not, sizeof(not));
+	     (char *) &_not, sizeof(_not));
 
   // get a connection
 

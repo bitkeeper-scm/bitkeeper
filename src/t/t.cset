@@ -101,3 +101,37 @@ then	echo Failed to leave pending deltas in C
 	exit 1
 fi
 echo OK
+
+echo $N Cset -x of a merge node .....................................$NL
+touch foo bar
+bk new $Q foo bar
+bk commit $Q -yfoobar
+cd $HERE
+bk clone $Q project copy
+cd project
+bk edit $Q foo
+bk delta $Q -yfoo foo
+bk commit $Q -yfoo
+cd ../copy
+bk edit $Q bar
+bk delta $Q -ybar bar
+bk commit $Q -ybar
+bk pull $Q ../project
+bk cset $Q -x+ > OUT 2> ERR && {
+	echo Failed
+	echo Cset -x with merge node functioned when it should fail.
+	exit 1
+}
+grep -q "Merge cset found in revision list" ERR || {
+	echo Failed
+	echo expected error message about merge node not allowed.
+	echo Instead the error was:
+	cat ERR
+	exit 1
+}
+# # Here's the test which shows the old bug:
+# # ChangeSet list of tips does not match actual list of tips
+# bk get -qp ChangeSet | grep bar > CSET
+# bk prs -r+ -hnd":ROOTKEY: :KEY:" bar > FILE
+# cmp -s CSET FILE || { echo Failed; exit 1}
+echo OK

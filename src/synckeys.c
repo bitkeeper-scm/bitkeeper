@@ -327,10 +327,10 @@ get_key(char *buf, int flags)
 }
 
 private int
-skipit(MDBM *skip, char *key)
+skipit(HASH *skip, char *key)
 {
 	if (skip == NULL) return (0);
-	if (mdbm_fetch_str(skip, key)) return (1);
+	if (hash_fetchStr(skip, key)) return (1);
 	return (0);
 }
 
@@ -349,7 +349,7 @@ skipit(MDBM *skip, char *key)
  * @END@
  */
 int
-prunekey(sccs *s, remote *r, MDBM *skip, int outfd, int flags,
+prunekey(sccs *s, remote *r, HASH *skip, int outfd, int flags,
 	int quiet, int *local_only, int *remote_csets, int *remote_tags)
 {
 	char	key[MAXKEY + 512] = ""; /* rev + tag + key */
@@ -357,6 +357,14 @@ prunekey(sccs *s, remote *r, MDBM *skip, int outfd, int flags,
 	int	rc = 0, rcsets = 0, rtags = 0, local = 0;
 	char	*p, *k;
 	char	**tags = NULL;
+
+	/*
+	 * Reopen stdin with a stdio stream.  We will be reading a LOT of
+	 * data and it will all be processed with this process so it is
+	 * much faster.
+	 */
+	r->rf = fdopen(r->rfd, "r");
+	assert(r->rf);
 
 	unless (getline2(r, key, sizeof(key)) > 0) {
 		unless (quiet) {
@@ -595,7 +603,7 @@ synckeys(remote *r, int flags)
 	if ((rc = remote_lock_fail(buf, 1))) {
 		return (rc); /* -2 means locked */
 	} else if (streq(buf, "@SERVER INFO@")) {
-		getServerInfoBlock(r);
+		if (getServerInfoBlock(r)) return (-1);
 		getline2(r, buf, sizeof(buf));
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
@@ -621,13 +629,11 @@ synckeys(remote *r, int flags)
 			return (1); /* empty dir */
 			break;
 		}
-		disconnect(r, 2);
-		sccs_free(s);
-		return (-1);
+		rc = -1;
 	}
 	sccs_free(s);
-	if (r->type == ADDR_HTTP) disconnect(r, 2);
-	return (0);
+	disconnect(r, 2);
+	return (rc);
 }
 
 
@@ -661,7 +667,7 @@ synckeys_main(int ac, char **av)
 
 	loadNetLib();
 	has_proj("synckeys");
-	r = remote_parse(av[optind], 0);
+	r = remote_parse(av[optind]);
 	assert(r);
 
 	if (proj_cd2root()) { 

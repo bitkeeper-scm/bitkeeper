@@ -95,8 +95,8 @@ echo OK
 cd $HERE
 tar cf chkpt.tar a b
 echo $N resync a to b ...............................................$NL
-bk resync -t $Q a b
 cd b
+bk pull -R $Q $HERE/a
 bk resolve $Q -t >resolve.out 2>&1 <<EOF
 m
 C
@@ -114,10 +114,11 @@ if [ $? -ne 0 ]; then echo failed; cat resolve.out; diff PRS PRS2; exit 1; fi
 echo OK
 cd ..
 rm -rf a b
-tar xf chkpt.tar
+tar xmf chkpt.tar
 echo $N resync b to a ...............................................$NL
-bk resync -t $Q b a
-cd a
+cd $HERE/a
+bk pull -R $Q ../b
+cd $HERE/a
 cat > R <<EOF
 m
 C

@@ -4,7 +4,7 @@
 .SH NAME
 bk sfiles \- generates lists of revision control files
 .SH SYNOPSIS
-.Bc bk [-r] sfiles [\-1acdDeEgGjlnSuUvx] [
+.Bc bk [-r] sfiles [\-1acCdDeEgGjlnSuUvx] [
 .OPTreq \-o file
 .Bc ] [
 .OPTopt \-p A|C
@@ -44,7 +44,7 @@ options.
 Only examine one directory level.  Do not go into subdirectories.
 .tp
 .B \-a
-examine all files, even if listed in BitKeeper/etc/ignore.
+Examine all files, even if listed in BitKeeper/etc/ignore.
 .tp
 .B \-c
 List changed files (locked and modified).
@@ -52,8 +52,11 @@ If clock_skew is set in the config file then the file timestamps
 and other attributes are used to speed scanning.
 The acceptible clock skew can be configured, see 'clock_skew' in
 bk help config-etc.
-For debugging purposes, the timestamp DB may be disabled by
-setting the environment variable BK_NO_TIMESTAMPS.
+.tp
+.B \-C
+Identical to 
+.B \-c
+except the timestamp DB is not consulted.
 .tp
 .B \-d
 List directories under \*(BK control (SCCS subdir exists).
@@ -62,11 +65,11 @@ List directories under \*(BK control (SCCS subdir exists).
 List directories with no (or empty) SCCS subdirs.
 .tp
 .B \-e
-shorthand for 
+Shorthand for 
 .B \-dDGjluvx
 .tp
 .B \-E
-shorthand for 
+Shorthand for 
 .B \-cdDGjlnuvxp
 .tp
 .B \-g
@@ -83,16 +86,16 @@ metadata.
 List locked files (p.file and/or z.file).
 .tp
 .B \-n
-list s.files that are not in the correct location.  (Must be run from
+List s.files that are not in the correct location.  (Must be run from
 repository root, bk -r sfiles -n.)
 .tp
 .OPTreq \-o file
-send output to
+Send output to
 .ARG file
 and progress information to stdout.
 .tp
 .OPTopt \-p A|C
-list files with pending deltas.  If 
+List files with pending deltas.  If 
 .B \-pC
 then list 
 leaves which are not in a changeset as 
@@ -109,18 +112,19 @@ Like -p, but don't trust the d.file.  Use the s.file for verification
 and create or delete the d.file to match the status of the s.file.
 .tp
 .B \-S
-produce a summary listing only, typically combined with 
+Produce a summary listing only, typically combined with 
 .BR \-E .
 .tp
 .B \-u
 List unlocked files.
 .tp
 .B \-U
-list user files only, skipping all files in the 
+List user files only, skipping 
+the ChangeSet file 
+and everything below
 .B BitKeeper/
-subdirectory as well as the 
-.B ChangeSet
-file.
+other than 
+.BR BitKeeper/triggers/* .
 .tp
 .B \-v
 Prefix the output with information about the state of the s.file.

@@ -8,23 +8,23 @@
 __platformInit()
 {
 	# Unix specific stuff
+	CLEAR=clear
 	GUI_BIN=$BIN
 	RM=/bin/rm
 	ECHO=echo
 	TMP=/tmp/
 	DEV_NULL=/dev/null
 	if [ -x /usr/bin/mailx ]
-	then	MAIL_CMD=mailx
+	then	MAIL_CMD=/usr/bin/mailx
 	else	MAIL_CMD=mail
 	fi
 	if [ -x /usr/bin/nawk ]
-	then	AWK=nawk
+	then	AWK=/usr/bin/nawk
 	else	AWK=awk
 	fi
 	ext=""	# Unlike win32, Unix binary does not have .exe extension
 	tcl=""
 	test "X$EDITOR" = X && EDITOR=vi
-	test "X$PAGER" = X && PAGER=more
 	WINDOWS=NO
 	export PAGER EDITOR GUI_BIN RM ECHO TMP DEV_NULL MAIL_CMD AWK WINDOWS
 }

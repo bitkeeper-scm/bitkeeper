@@ -51,7 +51,7 @@ rcs2sccs_main(int ac, char **av)
 		if (executable("/usr/local/bin/co")) {
 			co_prog = "/usr/local/bin/co";
 		} else {
-			co_prog = prog2path("co");
+			co_prog = whichp("co", 0, 1);
 		}
 	}
 	unless (co_prog && executable(co_prog)) {
@@ -399,13 +399,15 @@ realloc:
 		q = strchr(q, '\n'); assert(q && !q[1]); q++;
 	}
 	if (d->dead) {
-		char	*p;
+		char	*p1, *p2;
 		char	*rmName = sccs_rmName(s, 1);
 
-		p = proj_relpath(0, rmName);
+		p1 = sccs2name(rmName);
 		free(rmName);
-		sprintf(q, "P %s\n", p);
-		free(p);
+		p2 = proj_relpath(0, p1);
+		free(p1);
+		sprintf(q, "P %s\n", p2);
+		free(p2);
 	} else {
 		sprintf(q, "P %s\n", s->gfile);
 	}
@@ -498,7 +500,7 @@ R %.8s\n",
 	    streq(rcs->kk, "-kk") || streq(rcs->kk, "-kkv");
 	sprintf(t,
 		"X 0x%x\n------------------------------------------------\n",
-		X_REQUIRED | (expand ? X_RCS : 0));
+		X_DEFAULT | (expand ? X_RCS : 0));
 	init = mrange(buf, &buf[strlen(buf)], "b");
 
 	/* bk delta $Q $enc -ciI.onezero $gfile */

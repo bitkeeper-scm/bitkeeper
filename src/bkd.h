@@ -110,7 +110,7 @@ extern	char cmdlog_buffer[];
 extern	char *logRoot;
 
 void	bkd_server(int, char **);
-remote	*remote_parse(const char *url, int is_clone);
+remote	*remote_parse(const char *url);
 char	*remote_unparse(remote *r);
 pid_t	bkd(int compress, remote *r);
 void	bkd_reap(pid_t resync, int r_pipe, int w_pipe);
@@ -140,7 +140,7 @@ void	disconnect(remote *r, int how);
 void	drain(void);
 char	**getClientInfoBlock(void);
 void	sendServerInfoBlock(int);
-int	prunekey(sccs *, remote *, MDBM *, int, int, int, int *, int *, int *);
+int	prunekey(sccs *, remote *, HASH *, int, int, int, int *, int *, int *);
 int	buf2fd(int gzip, char *buf, int len, int fd);
 void	add_cd_command(FILE *f, remote *r);
 int	skip_http_hdr(remote *r);

@@ -82,9 +82,6 @@ private	void	taguncolor(sccs *s, delta *d);
 private	void	prefix(sccs *s,
 		    delta *d, u32 flags, int lines, char *name, FILE *out);
 
-private	delta	*delta_lmarker;	/* old-style log marker */
-private	delta	*delta_cmarker;	/* old-style config marker */
-
 #ifndef WIN32
 int
 emptyDir(char *dir)
@@ -1135,6 +1132,12 @@ a2tm(struct tm *tp, char *asctime, char *z, int roundup)
 	if (((asctime[-1] == '-') || (asctime[-1] == '+')) && !z) z = --asctime;
 
 correct:
+	/* Correct for dates parsed as pre-epoch because of missing tz */
+	if (tp->tm_year == 69) {
+		bzero(tp, sizeof(*tp));
+		z = 0;
+	}
+	
 	/*
 	 * Truncate down oversized fields.
 	 */
@@ -1799,6 +1802,11 @@ findrev(sccs *s, char *rev)
 	/* 1.0 == s->tree even if s->tree is 1.1 */
 	if (streq(rev, "1.0")) return (s->tree);
 
+	if (*rev == '=') {
+		e = sfind(s, atoi(++rev));
+		unless (e) fprintf(stderr, "Serial %s not found\n", rev);
+		return (e);
+	}
 	if (name2rev(s, &rev)) return (0);
 	switch (scanrev(rev, &a, &b, &c, &d)) {
 	    case 1:
@@ -3112,6 +3120,66 @@ checktags(sccs *s, delta *leaf, int flags)
 	return (1);
 }
 
+private int
+badTag(char *me, char *tag, int flags)
+{
+	char	*p;
+
+	if (isdigit(*tag)) {
+		verbose((stderr,
+		    "%s: %s: tags can't start with a digit.\n", me, tag));
+		return (1);
+	}
+	switch (*tag) {
+	    case '=':
+	    case '-':
+	    case '.':
+		verbose((stderr,
+		    "%s: %s: tags can't start with a '%c'.\n", me, tag, *tag));
+		return (1);
+	}
+	if (streq(tag, "+")) {
+		verbose((stderr,
+		    "%s: tag cannot be '+', that means most recent rev.\n",
+		    me));
+		return (1);
+	}
+	if (strstr(tag, "..")) {
+		verbose((stderr,
+		    "%s: tag %s cannot contain '..'\n", me, tag));
+		return (1);
+	}			
+	if (strstr(tag, ".,")) {
+		verbose((stderr,
+		    "%s: tag %s cannot contain '.,'\n", me, tag));
+		return (1);
+	}			
+	if (strstr(tag, ",.")) {
+		verbose((stderr,
+		    "%s: tag %s cannot contain ',.'\n", me, tag));
+		return (1);
+	}			
+	if (strstr(tag, ",,")) {
+		verbose((stderr,
+		    "%s: tag %s cannot contain ',,'\n", me, tag));
+		return (1);
+	}			
+	p = tag;
+	while (*p) {
+		switch (*p++) {
+		    case '\001':
+		    case '|':
+		    case '\n':
+		    case '\r':
+			verbose((stderr,
+			    "%s: tag %s cannot contain \"^A,|\\n\\r\"\n",
+			    me, tag));
+			return (1);
+		}
+	}
+	return (0);
+}
+
 /*
  * Check tag graph integrity.
  */
@@ -3119,9 +3187,22 @@ private int
 checkTags(sccs *s, int flags)
 {
 	delta	*l1 = 0, *l2 = 0;
+	symbol	*sym;
+	int	bad = 0;
+
+	/* Nobody else has tags */
+	unless (CSET(s)) return (0);
 
 	/* Allow open tag branch for logging repository */
 	if (LOGS_ONLY(s)) return (0);
+
+	/* Make sure that tags don't contain weird characters */
+	for (sym = s->symbols; sym; sym = sym->next) {
+		unless (sym->symname) continue;
+		/* XXX - not really "check" all the time */
+		if (badTag("check", sym->symname, flags)) bad = 1;
+	}
+	if (bad) return (128);
 
 	if (sccs_tagleaves(s, &l1, &l2)) return (128);
 	if (checktags(s, l1, flags) || checktags(s, l2, flags)) return (128);
@@ -3538,8 +3619,9 @@ misc(sccs *s)
 		}
 	}
 
-	/* Save descriptive text. */
-	for (; (buf = fastnext(s)) && !strneq(buf, "\001T\n", 3); ) {
+	/* Save descriptive text. AT&T/teamware might have more after T */
+	for (; (buf = fastnext(s)) &&
+	    !strneq(buf, "\001T\n", BITKEEPER(s) ? 3 : 2); ) {
 		s->text = addLine(s->text, strnonldup(buf));
 	}
 	s->data = sccstell(s);
@@ -3689,6 +3771,7 @@ pref_parse(char *buf)
 	int 	want_path = 0, want_host = 0;
 	
 	new(r);
+	r->rfd = r->wfd = -1;
 	unless (*buf) return (r);
 	/* user */
 	if (p = strchr(buf, '@')) {
@@ -3996,10 +4079,12 @@ sccs_init(char *name, u32 flags)
 	} else {
 		s->proj = proj_init(".");
 	}
-	if (t && streq(t, "/s.ChangeSet")) {
+
+	if (isCsetFile(s->sfile)) {
 		s->xflags |= X_HASH;
 		s->state |= S_CSET;
 	}
+
 	if (flags & INIT_NOSTAT) {
 		if ((flags & INIT_HASgFILE) && check_gfile(s, flags)) return 0;
 	} else {
@@ -4032,7 +4117,7 @@ sccs_init(char *name, u32 flags)
 		if (bad) {
 			fprintf(stderr,
 "Unable to proceed.  ChangeSet file corrupted.  error=57\n"
-"Please contact support@bitmover.com for help.\n");
+"Please run 'bk support' to request assistance.\n");
 			goto err;
 		}
 	}
@@ -4049,7 +4134,7 @@ sccs_init(char *name, u32 flags)
 	s->nextserial = 1;
 	s->fd = -1;
 	s->mmap = (caddr_t)-1;
-	sccs_open(s);
+	sccs_open(s, &sbuf);
 
 	if (s->mmap == (caddr_t)-1) {
 		if ((errno == ENOENT) || (errno == ENOTDIR)) {
@@ -4075,30 +4160,7 @@ sccs_init(char *name, u32 flags)
 	} else {
 		s->cksumok = 1;
 	}
-	delta_lmarker = 0;
-	delta_cmarker = 0;
 	mkgraph(s, flags);
-	/*
-	 * The follow two blocks handler moving logging marker from
-	 * and old ChangeSet file to the seperate maker files.
-	 * This should be removed after 2.1.4b is no longer in use.
-	 */
-	if (CSET(s) && delta_lmarker && !exists(LMARK)) {
-		FILE	*f = fopen(LMARK, "wb");
-		if (f) {
-			sccs_pdelta(s, delta_lmarker, f);
-			fputc('\n', f);
-			fclose(f);
-		}
-	}		
-	if (CSET(s) && delta_cmarker && !exists(CMARK)) {
-		FILE	*f = fopen(CMARK, "wb");
-		if (f) {
-			sccs_pdelta(s, delta_cmarker, f);
-			fputc('\n', f);
-			fclose(f);
-		}
-	}		
 	debug((stderr, "mkgraph found %d deltas\n", s->numdeltas));
 	if (HASGRAPH(s)) {
 		if (misc(s)) {
@@ -4136,42 +4198,25 @@ sccs*
 sccs_restart(sccs *s)
 {
 	struct	stat sbuf;
+	char	*buf;
 
 	assert(s);
 	if (check_gfile(s, 0)) {
 bad:		sccs_free(s);
 		return (0);
 	}
+	bzero(&sbuf, sizeof(sbuf));	/* file may not be there */
 	if (fast_lstat(s->sfile, &sbuf, 1) == 0) {
 		if (!S_ISREG(sbuf.st_mode)) goto bad;
 		if (sbuf.st_size == 0) goto bad;
 		s->state |= S_SFILE;
 	}
-	if ((s->fd == -1) || (s->size != sbuf.st_size)) {
-		char	*buf;
-
-		if (s->fd == -1) {
-			s->fd = open(s->sfile, 0, 0);
-		}
-		if (s->mmap != (caddr_t)-1L) munmap(s->mmap, s->size);
-		s->size = sbuf.st_size;
-		s->mmap = (s->fd == -1) ? (caddr_t)-1L :
-			    mmap(0, s->size, PROT_READ, MAP_SHARED, s->fd, 0);
-		if (s->fd != -1) {
-			assert(s->mmap != (caddr_t)-1L);
-			assert((s->state & S_SOPEN) == 0);
-		}
-		if (s->mmap != (caddr_t)-1L) {
-			s->state |= S_SOPEN;
-#if	defined(linux) && defined(sparc)
-		flushDcache();
-#endif
-			seekto(s, 0);
-			while(buf = fastnext(s)) {
-				if (strneq(buf, "\001T\n", 3)) break;
-			}
-			s->data = sccstell(s);
-		}
+	unless ((s->state & S_SOPEN) && (s->size == sbuf.st_size)) {
+		sccs_close(s);
+		if (sccs_open(s, &sbuf)) return (s);
+		seekto(s, 0);
+		while(buf = fastnext(s)) if (strneq(buf, "\001T\n", 3)) break;
+		s->data = sccstell(s);
 	}
 	if (isreg(s->pfile)) {
 		s->state |= S_PFILE;
@@ -4211,18 +4256,29 @@ sccs_reopen(sccs *s)
  * open & mmap the file.
  * Use this after an sccs_close() to reopen,
  * use sccs_reopen() if you need to reread the graph.
+ * Note: this is used under windows via win32_open().
  */
 int
-sccs_open(sccs *s)
+sccs_open(sccs *s, struct stat *sp)
 {
 	assert(s);
 	if (s->state & S_SOPEN) {
 		assert(s->fd != -1);
 		assert(s->mmap != (caddr_t)-1L);
 		return (0);
+	} else {
+		assert(s->fd == -1);
+		assert(s->mmap == (caddr_t)-1);
 	}
-	if (s->fd == -1) s->fd = open(s->sfile, O_RDONLY, 0);
-	if (s->fd == -1) return (-1);
+	if ((s->fd = open(s->sfile, O_RDONLY, 0)) == -1) return (-1);
+	if (sp) {
+		s->size = sp->st_size;
+	} else {
+		struct	stat sbuf;
+
+		fstat(s->fd, &sbuf);
+		s->size = sbuf.st_size;
+	}
 	s->mmap = mmap(0, s->size, PROT_READ, MAP_SHARED, s->fd, 0);
 #if     defined(hpux)
 	if (s->mmap == (caddr_t)-1) {
@@ -4236,7 +4292,7 @@ sccs_open(sccs *s)
 		s->state |= S_MAPPRIVATE;
 	}
 #endif
-	if (s->mmap == (caddr_t) -1) {
+	if (s->mmap == (caddr_t)-1) {
 		close(s->fd);
 		s->fd = -1;
 		return (-1);
@@ -4257,6 +4313,7 @@ sccs_open(sccs *s)
 
 /*
  * close all open file stuff associated with an sccs structure.
+ * Note: this is used under windows via win32_close().
  */
 void
 sccs_close(sccs *s)
@@ -4267,8 +4324,8 @@ sccs_close(sccs *s)
 	} else {
 		assert(s->fd == -1);
 		assert(s->mmap == (caddr_t)-1L);
+		return;
 	}
-	unless (s->state & S_SOPEN) return;
 	munmap(s->mmap, s->size);
 #if	defined(linux) && defined(sparc)
 	flushDcache();
@@ -5100,7 +5157,7 @@ private ser_t *
 serialmap(sccs *s, delta *d, char *iLst, char *xLst, int *errp)
 {
 	ser_t	*slist;
-	delta	*t;
+	delta	*t, *start = d;
 	int	i;
 
 	assert(d);
@@ -5116,6 +5173,7 @@ serialmap(sccs *s, delta *d, char *iLst, char *xLst, int *errp)
 			debug((stderr, " %s", t->rev));
 			assert(t->serial <= s->nextserial);
 			slist[t->serial] = S_INC;
+			if (t->serial > start->serial) start = t;
  		}
 		debug((stderr, "\n"));
 		if (*errp) goto bad;
@@ -5132,6 +5190,7 @@ serialmap(sccs *s, delta *d, char *iLst, char *xLst, int *errp)
 			else {
 				slist[t->serial] = S_EXCL;
 			}
+			if (t->serial > start->serial) start = t;
  		}
 		debug((stderr, "\n"));
 		if (*errp) goto bad;
@@ -5150,7 +5209,7 @@ serialmap(sccs *s, delta *d, char *iLst, char *xLst, int *errp)
 	/* Seed the graph thread */
 	slist[d->serial] |= S_PAR;
 
-	for (t = s->table; t; t = t->next) {
+	for (t = start; t; t = t->next) {
 		if (t->type != 'D') continue;
 
  		assert(t->serial <= s->nextserial);
@@ -5187,6 +5246,12 @@ serialmap(sccs *s, delta *d, char *iLst, char *xLst, int *errp)
 	return (slist);
 bad:	free(slist);
 	return (0);
+}
+
+int
+sccs_graph(sccs *s, delta *d, ser_t *map, char **inc, char **exc)
+{
+	return (compressmap(s, d, map, 0, (void **)inc, (void **)exc));
 }
 
 ser_t *
@@ -5710,7 +5775,7 @@ sccs_impliedList(sccs *s, char *who, char *base, char *rev)
 {
 	delta	*baseRev, *t, *mRev;
 	int	active;
-	char	*inc = 0, *exc = 0;
+	void	*inc = 0, *exc = 0;
 	ser_t	*slist = 0;
 	int	i;
 
@@ -5770,14 +5835,14 @@ err:		s->state |= S_WARNED;
 				slist[t->exclude[i]] |= S_EXCL;
 		}
 	}
-	if (compressmap(s, baseRev, slist, 0, (void **)&inc, (void **)&exc)) {
+	if (compressmap(s, baseRev, slist, 0, &inc, &exc)) {
 		fprintf(stderr, "%s: cannot compress merged set\n", who);
 		goto err;
 	}
 	if (exc) {
 		fprintf(stderr,
 		    "%s: compressed map caused exclude list: %s\n",
-		    who, exc);
+		    who, (char *)exc);
 		goto err;
 	}
 	if (slist) free(slist);
@@ -5796,7 +5861,7 @@ sccs_adjustSet(sccs *sc, sccs *scb, delta *d)
 	int	errp;
 	ser_t	*slist;
 	delta	*n;
-	ser_t	*inc = 0, *exc = 0;
+	void	*inc = 0, *exc = 0;
 
 	errp = 0;
 	n = sfind(scb, d->serial);	/* get 'd' from backup */
@@ -5822,7 +5887,7 @@ sccs_adjustSet(sccs *sc, sccs *scb, delta *d)
 		free(d->exclude);
 		d->exclude = 0;
 	}
-	if (compressmap(sc, d, slist, 1, (void **)&inc, (void **)&exc)) {
+	if (compressmap(sc, d, slist, 1, &inc, &exc)) {
 		assert("cannot compress merged set" == 0);
 	}
 	if (inc) {
@@ -6136,7 +6201,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	MDBM	*DB = 0;
 	int	hash = 0;
 	int	hashFlags = 0;
-	int sccs_expanded, rcs_expanded;
+	int	sccs_expanded, rcs_expanded;
 	int	lf_pend = 0;
 	ser_t	serial;
 	char	align[16];
@@ -6146,19 +6211,31 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 
 	slist = d ? serialmap(s, d, iLst, xLst, &error)
 		  : setmap(s, D_SET, 0);
-	if (error == 1) {
+	if (error) {
 		assert(!slist);
-		fprintf(stderr,
-		    "Malformed include/exclude list for %s\n",
-		    s->sfile);
-		s->state |= S_WARNED;
-		return 1;
-	}
-	if (error == 2) {
-		assert(!slist);
-		fprintf(stderr,
-		    "Can't find specified rev in include/exclude list for %s\n",
-		    s->sfile);
+		switch (error) {
+		    case 1:
+			fprintf(stderr,
+			    "Malformed include/exclude list for %s\n",
+			    s->sfile);
+			break;
+		    case 2:
+			fprintf(stderr,
+			    "Can't find specified rev in include/exclude "
+			    "list for %s\n", s->sfile);
+			break;
+		    case 3:
+			fprintf(stderr,
+			    "Error in include/exclude:\n"
+			    "\tSame revision appears "
+			    "in both lists for %s\n", s->sfile);
+			break;
+		    default:
+			fprintf(stderr,
+			    "Error in converting version plus include/exclude "
+			    "to a set for %s\n", s->sfile);
+			break;
+		}
 		s->state |= S_WARNED;
 		return 1;
 	}
@@ -6194,13 +6271,11 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 		assert(proj_root(s->proj));
 	}
 
-	if (RCS(s) && (flags & GET_EXPAND)) flags |= GET_RCSEXPAND;
 	/* Think carefully before changing this */
 	if (((s->encoding != E_ASCII) && (s->encoding != E_GZIP)) || hash) {
-		flags &= ~(GET_EXPAND|GET_RCSEXPAND|GET_PREFIX);
+		flags &= ~(GET_EXPAND|GET_PREFIX);
 	}
-	unless (SCCS(s)) flags &= ~(GET_EXPAND);
-	unless (RCS(s)) flags &= ~(GET_RCSEXPAND);
+	unless (SCCS(s) || RCS(s)) flags &= ~GET_EXPAND;
 
 	if (flags & GET_LINENAME) {
 		lnum = calloc(s->nextserial, sizeof(*lnum));
@@ -6340,9 +6415,11 @@ out:			if (slist) free(slist);
 					if (p) fprintf(out, "%s\t", p);
 				}
 			}
+
 			e = buf;
 			sccs_expanded = rcs_expanded = 0;
-			if (flags & GET_EXPAND) {
+			unless (flags & GET_EXPAND) goto write;
+			if (SCCS(s)) {
 				for (e = buf; *e != '%' && *e != '\n'; e++);
 				if (*e == '%') {
 					e = e1 =
@@ -6354,19 +6431,20 @@ out:			if (slist) free(slist);
 					e = buf;
 				}
 			}
-			if (flags & GET_RCSEXPAND) {
+			if (RCS(s)) {
 				char	*t;
 
-				for (t = buf; *t != '$' && *t != '\n'; t++);
+				for (t = e; *t != '$' && *t != '\n'; t++);
 				if (*t == '$') {
 					e = e2 =
 					    rcsexpand(s, d, e, &rcs_expanded);
 					if (rcs_expanded && EXPAND1(s)) {
-						flags &= ~GET_RCSEXPAND;
+						flags &= ~GET_EXPAND;
 					}
 				}
 			} 
 
+write:
 			switch (encoding) {
 			    case E_GZIP|E_UUENCODE:
 			    case E_UUENCODE: {
@@ -6553,15 +6631,22 @@ out:			if (slist) free(slist);
 
 #ifdef X_SHELL
 	if (SHELL(s) && ((flags & PRINT) == 0)) {
-		char cmd[MAXPATH], *t;
+		char	*path = strdup(getenv("PATH"));
+		char	*t;
+		char	cmd[MAXPATH];
 
+		safe_putenv("PATH=%s", getenv("BK_OLDPATH"));
 		t = strrchr(s->gfile, '/');
 		if (t) {
 			*t = 0;
 			sprintf(cmd, "cd %s; sh %s -o", s->gfile, &t[1]);
 			*t = '/';
-		} else  sprintf(cmd, "sh %s -o", s->gfile);
+		} else {
+			sprintf(cmd, "sh %s -o", s->gfile);
+		}
 		system(cmd);
+		safe_putenv("PATH=%s", path);
+		free(path);
 	}
 #endif
 	*ln = lines;
@@ -6722,6 +6807,7 @@ err:		if (i2) free(i2);
 		// could be empty (see t.merge for example)
 		unless (tmp) goto err;
 #endif
+		/* XXX this is bogus if tmp==0 and iLst is set */
 		i2 = strconcat(tmp, iLst, ",");
 		if (tmp && i2 != tmp) free(tmp);
 	}
@@ -7004,7 +7090,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	int	error = 0;
 	int	side, nextside;
 	char	*buf;
-	char	*tmpfile = 0;
+	char	*tmpfile = 0, *tmppat = 0;
 	FILE	*lbuf = 0;
 	int	no_lf = 0;
 	ser_t	serial;
@@ -7038,7 +7124,9 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		s->state |= S_WARNED;
 		return (-1);
 	}
-	tmpfile = aprintf("%s/%s-%s-%u", TMP_PATH, basenm(s->gfile), d->rev, getpid());
+	tmppat = aprintf("%s-%s", basenm(s->gfile), d->rev);
+	tmpfile = bktmp(0, tmppat);
+	free(tmppat);
 	popened = openOutput(s, encoding, printOut, &out);
 	setmode(fileno(out), O_BINARY); /* for win32 EOLN_NATIVE file */
 	if (type == GET_HASHDIFFS) {
@@ -7072,7 +7160,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		unlink(tmpfile);
 		goto done2;
 	}
-	unless (lbuf = fopen(tmpfile, "w+b")) {
+	unless (lbuf = fopen(tmpfile, "w+")) {
 		perror(tmpfile);
 		fprintf(stderr, "getdiffs: couldn't open %s\n", tmpfile);
 		s->state |= S_WARNED;
@@ -7161,8 +7249,8 @@ done2:	/* for GET_HASHDIFFS, the encoding has been handled in getRegBody() */
 			ret = -1; /* i/o error: no disk space ? */
 		}
 		fclose(lbuf);
-done3:		unlink(tmpfile);
 	}
+done3:
 	if (flushFILE(out)) {
 		s->io_error = 1;
 		ret = -1; /* i/o error: no disk space ? */
@@ -7174,7 +7262,10 @@ done3:		unlink(tmpfile);
 	}
 	if (slist) free(slist);
 	if (state) free(state);
-	if (tmpfile) free(tmpfile);
+	if (tmpfile) {
+		unlink(tmpfile);
+		free(tmpfile);
+	}
 	return (ret);
 }
 
@@ -7799,18 +7890,14 @@ expandnleq(sccs *s, delta *d, MMAP *gbuf, char *fbuf, int *flags)
 	if ((s->encoding != E_ASCII) && (s->encoding != E_GZIP)) {
 		return (MCMP_DIFF);
 	}
-	if (!(*flags & (GET_EXPAND|GET_RCSEXPAND))) return (MCMP_DIFF);
-	if (*flags & GET_EXPAND) {
+	unless (*flags & GET_EXPAND) return (MCMP_DIFF);
+	if (SCCS(s)) {
 		e = e1 = expand(s, d, e, &sccs_expanded);
-		if (EXPAND1(s)) {
-			if (sccs_expanded) *flags &= ~GET_EXPAND;
-		}
+		if (EXPAND1(s) && sccs_expanded) *flags &= ~GET_EXPAND;
 	}
-	if (*flags & GET_RCSEXPAND) {
+	if (RCS(s)) {
 		e = e2 = rcsexpand(s, d, e, &rcs_expanded);
-		if (EXPAND1(s)) {
-			if (rcs_expanded) *flags &= ~GET_RCSEXPAND;
-		}
+		if (EXPAND1(s) && rcs_expanded) *flags &= ~GET_EXPAND;
 	}
 	rc = mcmp(gbuf, e);
 	if (sccs_expanded) free(e1);
@@ -7849,8 +7936,8 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 	/* If the file type changed, it is a diff */
 	if (d->flags & D_MODE) {
 		if (fileType(s->mode) != fileType(d->mode)) RET(1);
-		if (S_ISLNK(s->mode)) RET(!streq(s->symlink, d->symlink));
 	}
+	if (S_ISLNK(s->mode)) RET(!streq(s->symlink, d->symlink));
 
 	/* If the path changed, it is a diff */
 	if (d->pathname) {
@@ -8053,7 +8140,8 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 	bzero(&pf, sizeof(pf));
 	if (sccs_read_pfile("hasDiffs", s, &pf)) return (-1);
 	unless (d = findrev(s, pf.oldrev)) {
-		verbose((stderr, "can't find %s in %s\n", pf.oldrev, s->gfile));
+		verbose((stderr,
+		    "diffs: can't find %s in %s\n", pf.oldrev, s->gfile));
 		free_pfile(&pf);
 		return (-1);
 	}
@@ -8400,12 +8488,27 @@ sccs_clean(sccs *s, u32 flags)
 	}
 
 	unless (HAS_PFILE(s)) {
-		unless (WRITABLE(s)) {
+		pfile	dummy = { "+", "?", "?", 0, "?", 0, 0, 0 };
+		int	flags = SILENT|GET_EXPAND;
+
+		if (isRegularFile(s->mode) && !IS_WRITABLE(s)) {
 			verbose((stderr, "Clean %s\n", s->gfile));
 			unless (flags & CLEAN_CHECKONLY) unlinkGfile(s);
 			return (0);
 		}
-		fprintf(stderr, "%s writable but not edited?\n", s->gfile);
+
+		/*
+		 * It's likely that they did a chmod +w on the file.
+		 * Go look and see if there are any diffs and if not,
+		 * clean it.
+		 */
+		unless (_hasDiffs(s, sccs_top(s), flags, 0, &dummy)) {
+			verbose((stderr, "Clean %s\n", s->gfile));
+			unless (flags & CLEAN_CHECKONLY) unlinkGfile(s);
+			return (0);
+		}
+		fprintf(stderr,
+		    "%s writable, with changes, but not edited.\n", s->gfile);
 		unless (flags & PRINT) return (1);
 		sccs_diffs(s, 0, 0, DIFF_HEADER|SILENT, DF_DIFF, stdout);
 		return (1);
@@ -8499,7 +8602,6 @@ sccs_clean(sccs *s, u32 flags)
 	unless (IS_EDITED(s)) { 
 		if ((s->encoding == E_ASCII) || (s->encoding == E_GZIP)) {
 			flags |= GET_EXPAND;
-			if (RCS(s)) flags |= GET_RCSEXPAND;
 		}
 	}
 	unless (bktmp(tmpfile, "diffg")) return (1);
@@ -9581,7 +9683,8 @@ private int
 checkRev(sccs *s, char *file, delta *d, int flags)
 {
 	int	i, error = 0;
-	delta	*e;
+	int	badparent;
+	delta	*e, *p;
 
 	if ((d->type == 'R') || (d->flags & D_GONE)) return (0);
 
@@ -9631,32 +9734,22 @@ checkRev(sccs *s, char *file, delta *d, int flags)
 	/*
 	 * make sure that the parent points at us.
 	 */
-	if (d->parent) {
-		for (e = d->parent->kid; e; e = e->siblings) {
+	if (p = d->parent) {
+		for (e = p->kid; e; e = e->siblings) {
 			if (e == d) break;
 		}
 		if (!e) {
 			unless (flags & ADMIN_SHUTUP) {
 				fprintf(stderr,
 				    "%s: parent %s does not point to %s?!?!\n",
-				    file, d->parent->rev, d->rev);
+				    file, p->rev, d->rev);
 			}
 			error = 1;
 		}
-	}
-
-	/*
-	 * Two checks here.
-	 * If they are on the same branch, is the sequence numbering
-	 * correct?  Handle 1.9 -> 2.1 properly.
-	 */
-	if (!d->parent) goto done;
-	/* If a x.y.z.q release, then it's trunk node should be x.y */
-	if (d->r[2]) {
-		delta	*p;
-
-		for (p = d->parent; p && p->r[3]; p = p->parent);
-		if (!p) {
+	} else {
+		/* no parent */
+		if (BITKEEPER(s) &&
+		    !(streq(d->rev, "1.0") || streq(d->rev, "1.1"))) {
 			unless (flags & ADMIN_SHUTUP) {
 				fprintf(stderr,
 				    "%s: rev %s not connected to trunk\n",
@@ -9664,66 +9757,59 @@ checkRev(sccs *s, char *file, delta *d, int flags)
 			}
 			error = 1;
 		}
-		if (d->r[1] && ((p->r[0] != d->r[0]) || (p->r[1] != d->r[1])))
-		{
-			unless (flags & ADMIN_SHUTUP) {
-				fprintf(stderr,
-				    "%s: rev %s has incorrect parent %s\n",
-				    file, d->rev, p->rev);
-			}
-			error = 1;
-		}
-		/* if it's a x.y.z.q and not a .1, then check parent */
-		if ((d->r[3] > 1) && (d->parent->r[3] != d->r[3]-1)) {
-			unless (flags & ADMIN_SHUTUP) {
-				fprintf(stderr,
-				    "%s: rev %s has incorrect parent %s\n",
-				    file, d->rev, p->rev);
-			}
-			error = 1;
-		}
-#ifdef	CRAZY_WOW
-		XXX - this should be an option to admin.
-
-		/* if there is a parent, and the parent is a x.y.z.q, and
-		 * this is an only child,
-		 * then insist that the revs are on the same branch.
-		 */
-		if (d->parent && d->parent->r[2] &&
-		    onlyChild(d) && !samebranch(d, d->parent)) {
-			fprintf(stderr, "%s: rev %s has incorrect parent %s\n",
-			    file, d->rev, d->parent->rev);
-			error = 1;
-		}
-#endif
-		/* OK */
-		goto time;
+		goto done;
 	}
-	/* If on the trunk and release numbers are the same,
-	 * then the revisions should be in sequence.
+
+	badparent = 0;
+	/*
+	 * Two checks here.
+	 * If they are on the same branch, is the sequence numbering
+	 * correct?  Handle 1.9 -> 2.1 properly.
 	 */
-	if (d->r[0] == d->parent->r[0]) {
-		if (d->r[1] != d->parent->r[1]+1) {
-			unless (flags & ADMIN_SHUTUP) {
-				fprintf(stderr,
-				    "%s: rev %s has incorrect parent %s\n",
-				    file, d->rev, d->parent->rev);
+	if (d->r[2]) {
+		/* If a x.y.z.q release, then it's trunk node should be x.y, */
+		if ((p->r[0] != d->r[0]) || (p->r[1] != d->r[1])) {
+			badparent = 1;
+		}
+		if (d->r[3] == 0) badparent = 1;
+		if (p->r[2]) {
+			if ((d->r[3] > 1) && (d->r[3] != p->r[3]+1)) {
+				badparent = 1;
 			}
-			error = 1;
+#ifdef	CRAZY_WOW
+			// XXX - this should be an option to admin.
+
+			/* if there is a parent, and the parent is a
+			 * x.y.z.q, and this is an only child, then
+			 * insist that the revs are on the same
+			 * branch.
+			 */
+			if (onlyChild(d) && !samebranch(d, d->parent)) {
+				badparent = 1;
+			}
+#endif
+		} else {
+			if (d->r[3] != 1) badparent = 1;
 		}
 	} else {
-		/* Otherwise, this should be a .1 node or 0.y.1 node */
-		if (d->r[1] != 1 && (!d->r[1] || d->r[3] != 1)) {
-			unless (flags & ADMIN_SHUTUP) {
-				fprintf(stderr, "%s: rev %s should be a .1 rev"
-				    " since parent %s is a different release\n",
-				    file, d->rev, d->parent->rev);
-			}
-			error = 1;
+		if (d->r[0] == p->r[0]) {
+			if (d->r[1] != p->r[1]+1) badparent = 1;
+		} else {
+			/* LOD case needed for _fix_lod1 */
+			if (d->r[1] != 1) badparent = 1;
 		}
 	}
+	if (badparent) {
+		unless (flags & ADMIN_SHUTUP) {
+			fprintf(stderr,
+			    "%s: rev %s has incorrect parent %s\n",
+			    file, d->rev, p->rev);
+		}
+		error = 1;
+	}
+
 	/* If there is a parent, make sure the dates increase. */
-time:	if (d->parent && (d->date < d->parent->date)) {
+	if (d->date < p->date) {
 		if (flags & ADMIN_TIME) {
 			fprintf(stderr,
 			    "%s: time goes backwards between %s and %s\n",
@@ -9968,8 +10054,6 @@ sumArg(delta *d, char *arg)
 	d->flags |= D_CKSUM;
 	d->sum = atoi(arg);
 	for (p = arg; isdigit(*p); p++);
-	if (*p == ' ' && !delta_lmarker) delta_lmarker = d;
-	if (*p == '\t' && !delta_cmarker) delta_cmarker = d;
 	return (d);
 }
 
@@ -10177,24 +10261,7 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 			continue;
 		}
 		if (!rev || !*rev) rev = d->rev;
-		if (isdigit(s[i].thing[0])) {
-			fprintf(stderr,
-			    "%s: %s: can't start with a digit.\n",
-			    me, sym);
-			goto sym_err;
-		}
-		if (strchr(sym, ',')) {
-			verbose((stderr,
-				    "%s: symbol %s cannot contain ','\n",
-				    me, sym));
-			goto sym_err;
-		}
-		if (strstr(sym, "..")) {
-			verbose((stderr,
-				    "%s: symbol %s cannot contain '..'\n",
-				    me, sym));
-			goto sym_err;
-		}			
+		if (badTag(me, s[i].thing, flags)) goto sym_err;
 		if (dupSym(sc->symbols, sym, rev)) {
 			verbose((stderr,
 			    "%s: symbol %s exists on %s\n", me, sym, rev));
@@ -10271,7 +10338,7 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
 	sc->numdeltas++;
 	if (isNullDelta) {
 		n->added = n->deleted = 0;
-		n->same = p->same + p->added - p->deleted;
+		n->same = p->same + p->added;
 		n->sum = (unsigned short) almostUnique(0);
 		n->flags |= D_CKSUM;
 	}
@@ -10566,7 +10633,13 @@ sccs_admin(sccs *sc, delta *p, u32 flags, char *new_encp, char *new_compp,
 	new_enc = sccs_encoding(sc, new_encp, new_compp);
 	if (new_enc == -1) return (-1);
 	unless ((flags & ADMIN_FORCE) || CSET(sc) || bkcl(0)) {
-		new_enc |= E_GZIP;
+		static	int nocompress = -1;
+
+		/* this is for the test suite only */
+		if (nocompress == -1) nocompress = getenv("BK_NOCOMPRESS") != 0;
+		unless (nocompress && (sc->nextserial < 10)) {
+			new_enc |= E_GZIP;
+		}
 	}
 	debug((stderr, "new_enc is %d\n", new_enc));
 	GOODSCCS(sc);
@@ -10621,9 +10694,7 @@ out:
 		goto out;
 	}
 
-	if (addSym("admin", sc, flags, s, &error)) {
-		flags |= NEWCKSUM;
-	}
+	if (addSym("admin", sc, flags, s, &error)) flags |= NEWCKSUM;
 	if (mode) {
 		delta	*n = sccs_top(sc);
 		mode_t	m;
@@ -10661,10 +10732,10 @@ skipmode:
 
 	if (text) {
 		FILE	*desc;
-		char	dbuf[200];
 		char	*c;
+		char	dbuf[200];
 
-		if (!text[0]) {
+		unless (text[0]) {
 			if (sc->text) {
 				freeLines(sc->text, free);
 				sc->text = 0;
@@ -10678,7 +10749,7 @@ skipmode:
 			goto user;
 		}
 		desc = fopen(text, "rt"); /* must be text mode */
-		if (!desc) {
+		unless (desc) {
 			fprintf(stderr, "admin: can't open %s\n", text);
 			error = 1; sc->state |= S_WARNED;
 			goto user;
@@ -10807,12 +10878,17 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			}
 		}
 	}
-	if (flagsChanged) flags |= NEWCKSUM;
+	if (flagsChanged || (sc->encoding != new_enc)) flags |= NEWCKSUM;
 
 	if (flags & ADMIN_ADD1_0) {
 		insert_1_0(sc);
+		flags |= NEWCKSUM;
 	} else if (flags & ADMIN_RM1_0) {
-		unless (remove_1_0(sc)) flags &= ~ADMIN_RM1_0;
+		if (remove_1_0(sc)) {
+			flags |= NEWCKSUM;
+		} else {
+			flags &= ~ADMIN_RM1_0;
+		}
 	}
 
 	if (flags & ADMIN_NEWPATH) {
@@ -10832,9 +10908,8 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		flags |= NEWCKSUM;
 	}
 
-	if ((flags & NEWCKSUM) == 0) {
-		goto out;
-	}
+	unless (flags & NEWCKSUM) goto out;
+
 	if (flags & ADMIN_OBSCURE) obscure_comments(sc);
 
 	/*
@@ -12682,7 +12757,7 @@ mkDiffHdr(u32 kind, char tag[], char *buf, FILE *out)
 {
 	char	*marker, *date;
 
-	unless (kind & (DF_UNIFIED|DF_CONTEXT)) {
+	unless (kind & (DF_UNIFIED|DF_CONTEXT|DF_GNUp)) {
 		fputs(buf, out);
 		return; 
 	}
@@ -12883,18 +12958,19 @@ getHistoricPath(sccs *s, char *rev)
 
 private int
 mkDiffTarget(sccs *s,
-	char *rev, char *revM, u32 flags, char *target , pfile *pf)
+	char *rev, char *revM, u32 flags, char *target, pfile *pf)
 {
+	char	*pat;
+
 	if (streq(rev, "1.0")) {
 		strcpy(target, NULL_FILE);
 		return (0);
 	}
-	sprintf(target,
-	    "%s/%s-%s-%u", TMP_PATH, basenm(s->gfile), rev, getpid());
-	if (exists(target)) {
-		return (-1);
-	} else if (
-		(streq(rev, "edited") || streq(rev, "?")) && !findrev(s, rev)){
+	pat = aprintf("%s-%s", basenm(s->gfile), rev);
+	bktmp(target, pat);
+	free(pat);
+
+	if ((streq(rev, "edited") || streq(rev, "?")) && !findrev(s, rev)) {
 		assert(HAS_GFILE(s));
 		if (S_ISLNK(s->mode)) {
 			char	buf[MAXPATH];
@@ -12909,6 +12985,7 @@ mkDiffTarget(sccs *s,
 			fprintf(f, "SYMLINK -> %s\n", buf);
 			fclose(f);
 		} else {
+			unlink(target);
 			strcpy(target, s->gfile);
 		}
 	} else if (sccs_get(s, rev, revM, pf ? pf->iLst : 0,
@@ -13017,7 +13094,7 @@ sccs_loadkv(sccs *s)
 	char x_kv[MAXPATH];
 	extern MDBM *loadkv(char *file);
 
-	bktmp(x_kv, "bk_kv");
+	bktmp(x_kv, "kv");
 	sccs_get(s, 0, 0, 0, 0, SILENT|PRINT, x_kv);
 	s->mdbm = loadkv(x_kv);
 	unlink(x_kv);
@@ -13408,6 +13485,27 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 
 	if (streq(kw, "P") || streq(kw, "USER")) {
 		/* programmer */
+		if (d->user) {
+			if (p = strchr(d->user, '/')) *p = 0;
+			fs(d->user);
+			if (p) *p = '/';
+			return (strVal);
+		}
+		return (nullVal);
+	}
+	if (streq(kw, "REALUSER")) {
+		if (d->user) {
+			if (p = strchr(d->user, '/')) {
+				++p;
+			} else {
+				p = d->user;
+			}
+			fs(p);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+	if (streq(kw, "FULLUSER")) {
 		if (d->user) {
 			fs(d->user);
 			return (strVal);
@@ -13975,8 +14073,44 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 	if (streq(kw, "HT") || streq(kw, "HOST")) {
 		/* host without any importer name */
 		if (d->hostname) {
-			for (p = d->hostname; *p && (*p != '['); ) {
-				fc(*p++);
+			if (p = strchr(d->hostname, '/')) {
+				*p = 0;
+				fs(d->hostname);
+				*p = '/';
+			} else if (p = strchr(d->hostname, '[')) {
+				*p = 0;
+				fs(d->hostname);
+				*p = '[';
+			} else {
+				fs(d->hostname);
+			}
+			return (strVal);
+		}
+		return (nullVal);
+	}
+	if (streq(kw, "REALHOST")) {
+		if (d->hostname) {
+			if (p = strchr(d->hostname, '/')) {
+				fs(p+1);
+			} else if (p = strchr(d->hostname, '[')) {
+				*p = 0;
+				fs(d->hostname);
+				*p = '[';
+			} else {
+				fs(d->hostname);
+			}
+			return (strVal);
+		}
+		return (nullVal);
+	}
+	if (streq(kw, "FULLHOST")) {
+		if (d->hostname) {
+			if (p = strchr(d->hostname, '[')) {
+				*p = 0;
+				fs(d->hostname);
+				*p = '[';
+			} else {
+				fs(d->hostname);
 			}
 			return (strVal);
 		}
@@ -14390,6 +14524,30 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 			return (strVal);
 		}
 		return (nullVal);
+	}
+
+	if (streq(kw, "DIFFS") || streq(kw, "UDIFFS")) {
+		int	kind = streq(kw, "DIFFS") ? DF_DIFF : DF_UNIFIED;
+
+		if (d == s->tree) return (nullVal);
+		if (out) {
+			sccs_diffs(s, d->rev, d->rev, SILENT, kind, out);
+		} else {
+			char	*cmd;
+			FILE	*f;
+			char	buf[BUFSIZ];
+			
+			cmd = aprintf("bk diffs -%shR%s '%s'",
+			    kind == DF_DIFF ? "" : "u", d->rev, s->gfile);
+			unless (f = popen(cmd, "r")) {
+				free(cmd);
+				return (nullVal);
+			}
+			while (fnext(buf, f)) fs(buf);
+			pclose(f);
+			free(cmd);
+		}
+		return (strVal);
 	}
 
 	return notKeyword;
@@ -15224,7 +15382,7 @@ sccs_resolveFiles(sccs *s)
 	if (s->defbranch) {
 		fprintf(stderr, "resolveFiles: defbranch set.  "
 			"LODs are no longer supported.\n"
-			"Please contact support@bitmover.com for "
+			"Please run 'bk support' to request "
 			"assistance.\n");
 err:
 		return (retcode);
@@ -15246,8 +15404,8 @@ err:
 				fprintf(stderr, "resolveFiles: Found tips on "
 				 	"different LODs.\n"
 					"LODs are no longer supported.\n"
-					"Please contact support@bitmover.com "
-					"for assistance.\n");
+					"Please run 'bk support' to "
+					"request assistance.\n");
 				goto err;
 			}
 			/* Could break but I like the error checking */
@@ -16234,8 +16392,8 @@ smartRename(char *old, char *new)
 int
 smartMkdir(char *dir, mode_t mode)
 {
-	if (isdir(dir)) return 0;
-	return ((mkdir)(dir, mode));
+	if (isdir(dir)) return (0);
+	return (realmkdir(dir, mode));
 }
 
 /* TIMESTAMP HANDLING */

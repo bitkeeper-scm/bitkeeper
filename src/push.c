@@ -100,6 +100,12 @@ push_main(int ac, char **av)
 
 	unless (urls) {
 		urls = parent_pushp();
+		unless (urls) {
+			freeLines(envVar, free);
+			getMsg("missing_parent", 0, 0, stderr);
+			return (1);
+		}
+
 		if (opts.verbose) print_title = 1;
 	}
 
@@ -109,9 +115,9 @@ err:		freeLines(envVar, free);
 		if (opts.out && (opts.out != stderr)) fclose(opts.out);
 		return (1);
 	}
-	
+
 	EACH (urls) {
-		r = remote_parse(urls[i], 0);
+		r = remote_parse(urls[i]);
 		unless (r) goto err;
 		if (opts.debug) r->trace = 1;
 		opts.lcsets = opts.rcsets = opts.rtags = 0;
@@ -227,7 +233,7 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 	if ((rc = remote_lock_fail(buf, opts.verbose))) {
 		return (rc); /* -2 means locked */
 	} else if (streq(buf, "@SERVER INFO@")) {
-		getServerInfoBlock(r);
+		if (getServerInfoBlock(r)) return (-1);
 		if (!opts.metaOnly && getenv("BKD_LEVEL") &&
 		    (atoi(getenv("BKD_LEVEL")) < getlevel())) {
 			fprintf(opts.out,
@@ -247,7 +253,7 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 	if (get_ok(r, buf, opts.verbose)) goto err;
 
 	/*
-	 * What we want is: "remote => bk _prunekey => rev_list"
+	 * What we want is: "remote => bk _prunekey => keys"
 	 */
 	bktmp_local(rev_list, "pushrev");
 	fd = open(rev_list, O_CREAT|O_WRONLY, 0644);
@@ -275,7 +281,7 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 		}
 		close(fd);
 		unlink(rev_list);
-		disconnect(r, 2);
+		if (r->type == ADDR_HTTP) disconnect(r, 2);
 		sccs_free(s);
 		return (-1);
 	}
@@ -411,7 +417,7 @@ send_end_msg(remote *r, char *msg, char *rev_list, char **envVar)
 	gzip = r->port ? opts.gzip : 0;
 
 	bktmp(msgfile, "push_send_end");
-	f = fopen(msgfile, "wb");
+	f = fopen(msgfile, "w");
 	assert(f);
 	sendEnv(f, envVar, r, 0);
 
@@ -452,7 +458,7 @@ send_patch_msg(remote *r, char rev_list[], int ret, char **envVar)
 	gzip = r->port ? opts.gzip : 0;
 
 	bktmp(msgfile, "pullmsg2");
-	f = fopen(msgfile, "wb");
+	f = fopen(msgfile, "w");
 	assert(f);
 	sendEnv(f, envVar, r, 0);
 
@@ -599,7 +605,10 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar)
 		unlink(rev_list);
 		return (-1);
 	} else if (streq(buf, "@SERVER INFO@")) {
-		getServerInfoBlock(r);
+		if (getServerInfoBlock(r)) {
+			rc = 1;
+			goto done;
+		}
 	}
 	if (done) goto done;
 

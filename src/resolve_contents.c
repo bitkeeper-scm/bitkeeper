@@ -97,7 +97,7 @@ c_helptool(resolve *rs)
 	av[1] = "helptool";
 	av[2] = "merge";
 	av[3] = 0;
-	spawnvp_ex(_P_NOWAIT, "bk", av);
+	spawnvp(_P_DETACH, "bk", av);
 	return (0);
 }
 
@@ -203,7 +203,7 @@ c_revtool(resolve *rs)
 	av[++i] = revs[2];
 	av[++i] = rs->s->gfile;
 	av[++i] = 0;
-	spawnvp_ex(_P_NOWAIT, "bk", av);
+	spawnvp(_P_DETACH, "bk", av);
 
 	return (0);
 }
@@ -222,7 +222,7 @@ c_fm3tool(resolve *rs)
 	av[++i] = rs->revs->remote;
 	av[++i] = rs->s->gfile;
 	av[++i] = 0;
-	spawnvp_ex(_P_NOWAIT, "bk", av);
+	spawnvp(_P_DETACH, "bk", av);
 	return (0);
 }
 
@@ -241,7 +241,7 @@ c_fmtool(resolve *rs)
 	av[3] = n->remote;
 	av[4] = rs->s->gfile;
 	av[5] = 0;
-	spawnvp_ex(_P_NOWAIT, "bk", av);
+	spawnvp(_P_DETACH, "bk", av);
 	return (0);
 }
 
@@ -308,6 +308,7 @@ c_commit(resolve *rs)
 		return (0);
 	}
 
+	rs->s = sccs_restart(rs->s);
 	if (rs->opts->force) goto doit;
 
 	if (needs_merge(rs)) return (0);
@@ -339,21 +340,26 @@ int
 c_shell(resolve *rs)
 {
 	names	*n = rs->tnames;
+	int	i;
+	char	*path = strdup(getenv("PATH"));
 	char	*av[10];
 
 	safe_putenv("BK_GCA=%s", n->gca);
 	safe_putenv("BK_LOCAL=%s", n->local);
 	safe_putenv("BK_REMOTE=%s", n->remote);
 	safe_putenv("BK_MERGE=%s", rs->s->gfile);
+	safe_putenv("PATH=%s", getenv("BK_OLDPATH"));
+	av[i=0] = "sh";
 	unless (rs->shell && rs->shell[0]) {
-		system("sh -i");
-		return (0);
+		av[++i] = "-i";
+	} else {
+		av[++i] = "-c";
+		av[++i] = rs->shell;
 	}
-	av[0] = "sh";
-	av[1] = "-c";
-	av[2] = rs->shell;
-	av[3] = 0;
+	av[++i] = 0;
 	spawnvp_ex(_P_WAIT, av[0], av);
+	safe_putenv("PATH=%s", path);
+	free(path);
 	return (0);
 }
 

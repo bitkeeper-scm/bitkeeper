@@ -122,7 +122,7 @@ test -d RESYNC && {
 echo OK
 
 cd $HERE/project
-bk lock -U
+bk lock -U 2>/dev/null
 
 # This is not portable, as it depends on OS output for making a directory
 # in a read-only directory.  But has been run. Output fixed for 3.0.3

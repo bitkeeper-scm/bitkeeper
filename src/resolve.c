@@ -114,17 +114,17 @@ resolve_main(int ac, char **av)
 	unless (opts.mergeprog) opts.mergeprog = getenv("BK_RESOLVE_MERGEPROG");
 	if ((av[optind] != 0) && isdir(av[optind])) chdir(av[optind]);
 
-	if (opts.pass3 && !opts.textOnly && !hasGUIsupport()) {
+	if (opts.pass3 && !opts.textOnly && !gui_useDisplay()) {
 		opts.textOnly = 1; 
 	}
-	if (opts.pass3 && !opts.textOnly && !opts.quiet && hasGUIsupport()) {
+	if (opts.pass3 &&
+	    !opts.textOnly && !opts.quiet && !win32() && gui_useDisplay()) {
 		fprintf(stderr,
-		    "Using %s as graphical display\n", GUI_display());
+		    "Using %s as graphical display\n", gui_displayName());
 	}
 
 	if (opts.automerge) {
 		unless (comment || opts.comment) opts.comment = "Automerge";
-		opts.textOnly = 1;	/* Good idea??? */
 	}
 	unless (comment || opts.comment) {
 		opts.comment = "Merge";
@@ -235,8 +235,10 @@ passes(opts *opts)
 	sccs	*s = 0;
 	char	buf[MAXPATH];
 	char	path[MAXPATH];
-	FILE	*p;
+	char	flist[MAXPATH];
+	FILE	*p = 0;
 
+	flist[0] = 0;
 	/*
 	 * Make sure we are where we think we are.  
 	 */
@@ -280,19 +282,24 @@ passes(opts *opts)
 	 * Pass 1 - move files to RENAMES and/or build up rootDB
 	 */
 	opts->pass = 1;
-	unless (p = popen("bk sfiles .", "r")) {
-		perror("popen of bk sfiles");
+	bktmp(flist, "respass1");
+	if (sysio(0, flist, 0, "bk", "sfiles", SYS)) {
+		perror("sfiles list");
+err:		if (p) fclose(p);
+		if (flist[0]) unlink(flist);
 		return (1);
+	}
+	unless (p = fopen(flist, "r")) {
+		perror("fopen sfiles list");
+		goto err;
 	}
 	unless (opts->rootDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) {
 		perror("mdbm_open");
-		pclose(p);
-		return (1);
+		goto err;
 	}
 	unless (opts->checkoutDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) {
 		perror("mdbm_open");
-		pclose(p);
-		return (1);
+		goto err;
 	}
 	if (opts->log) {
 		fprintf(opts->log,
@@ -322,7 +329,10 @@ passes(opts *opts)
 		sccs_close(s);
 		pass1_renames(opts, s);
 	}
-	pclose(p);
+	fclose(p);
+	p = 0;
+	unlink(flist);
+	flist[0] = 0;
 	if (opts->pass1 && !opts->quiet && opts->renames) {
 		fprintf(stdlog,
 		    "resolve: found %d renames in pass 1\n", opts->renames);
@@ -959,11 +969,14 @@ again:
 		to = 0;
 	}
 	if (to) {
+		char	*mfile;
+
 		sccs_close(rs->s); /* for win32 */
 		if (rename(rs->s->sfile, to)) {
 			mkdirf(to);
 			if (rename(rs->s->sfile, to)) return (-1);
 		}
+		mfile = strdup(sccs_Xfile(rs->s, 'm'));
 		if (rs->revs) {
 			delta	*d;
 			char	rfile[MAXPATH];
@@ -972,14 +985,17 @@ again:
 			t[1] = 'r';
 			strcpy(rfile, to);
 			t[1] = 's';
-			if (rename(sccs_Xfile(rs->s, 'r'), rfile)) return (-1);
+			if (rename(sccs_Xfile(rs->s, 'r'), rfile)) {
+				free(mfile);
+				return (-1);
+			}
 			if (rs->opts->log) {
 				fprintf(rs->opts->log,
 				    "rename(%s, %s)\n",
 				    sccs_Xfile(rs->s, 'r'), rfile);
 			}
-			rs->s = sccs_restart(rs->s); 
-			assert(rs->s);
+			sccs_free(rs->s);
+			rs->s = sccs_init(to, INIT_NOCKSUM);
 			d = sccs_findrev(rs->s, rs->revs->local);
 			assert(d);
 			t = name2sccs(d->pathname);
@@ -1000,7 +1016,8 @@ again:
 			    "rename(%s, %s)\n", rs->s->sfile, to);
 		}
 		opts->renames2++;
-		unlink(sccs_Xfile(rs->s, 'm'));
+		(void)unlink(mfile);	/* may not exist */
+		free(mfile);
 	    	return (0);
 	}
 
@@ -1106,6 +1123,13 @@ rename_delta(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 	t = sccs2name(sfile);
 	sprintf(buf, "-PyMerge rename: %s -> %s", d->pathname, t);
 	free(t);
+
+	/*
+	 * We are holding this open in the calling process, have to close it
+	 * for winblows.
+	 * XXX - why not do an internal delta?
+	 */
+	win32_close(rs->s);
 	if (rs->opts->log) {
 		sys("bk", "delta", buf, sfile, SYS);
 	} else {
@@ -1204,11 +1228,10 @@ mode_delta(resolve *rs, char *sfile, delta *d, mode_t m, char *rfile, int which)
 		    sfile, d->rev, a, which == LOCAL ? "local" : "remote");
 	}
 	edit_tip(rs, sfile, d, rfile, which);
-	/* bk delta [-q] -Py'Change mode to {a}' -M{a} sfile */
-	sprintf(buf, "-PyChange mode to %s", a);
+	/* bk delta -[q]Py'Change mode to {a}' -M{a} sfile */
+	sprintf(buf, "-%sPyChange mode to %s", rs->opts->log ? "" : "q", a);
 	sprintf(opt, "-M%s", a);
-	if (sys("bk",
-	    "delta", rs->opts->log ? "" : "-q", buf, opt, sfile, SYS)) {
+	if (sys("bk", "delta", buf, opt, sfile, SYS)) {
 		syserr("failed\n");
 		resolve_cleanup(rs->opts, 0);
 	}
@@ -1523,7 +1546,7 @@ can be resolved.  Please rerun resolve and fix these first.\n", n);
 	 * do an sfiles, open up each file, check for conflicts, and
 	 * reconstruct the r.file if necessary.  XXX - not done.
 	 */
-	unless (p = popen("bk sfiles .", "r")) {
+	unless (p = popen("bk sfiles", "r")) {
 		perror("popen of sfiles");
 		resolve_cleanup(opts, 0);
 	}
@@ -1576,10 +1599,35 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	}
 
 	if (opts->hadConflicts) {
+		char	*nav[20];
+		int	i;
+
+		if (getenv("BK_REGRESSION") &&
+		    !getenv("BK_FORCE_RESOLVE_RERUN")) {
+			fprintf(stderr,
+			    "resolve: %d unresolved conflicts, "
+			    "nothing is applied.\n",
+			    opts->hadConflicts);
+			resolve_cleanup(opts, 0);
+			exit(1);	/* Shouldn't get here */
+	    	}
+
+		nav[i=0] = "bk";
+		nav[++i] = "resolve";
+		if (opts->mergeprog) {
+			nav[++i] = aprintf("-m%s", opts->mergeprog);
+		}
+		if (opts->quiet) nav[++i] = "-q";
+		if (opts->textOnly) nav[++i] = "-t";
+		if (opts->comment) nav[++i] = aprintf("-y%s", opts->comment);
+		nav[++i] = 0;
 		fprintf(stderr,
-		    "resolve: %d unresolved conflicts, nothing is applied.\n",
+		    "resolve: %d unresolved conflicts, "
+		    "starting manual resolve process.\n",
 		    opts->hadConflicts);
-		resolve_cleanup(opts, 0);
+		chdir(RESYNC2ROOT);
+		execvp("bk", nav);
+		exit(1);
 	}
 
 	/*
@@ -1612,7 +1660,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	/*
 	 * Since we are about to commit, clean up the r.files
 	 */
-	unless (p = popen("bk sfiles .", "r")) {
+	unless (p = popen("bk sfiles", "r")) {
 		perror("popen of sfiles");
 		resolve_cleanup(opts, 0);
 	}
@@ -1957,8 +2005,8 @@ nomerge:	rs->opts->hadConflicts++;
 same:		if (!IS_LOCKED(rs->s) && edit(rs)) return;
 		comments_save("Auto merged");
 		d = comments_get(0);
-		sccs_restart(rs->s);
-		flags = DELTA_DONTASK|DELTA_FORCE|(rs->opts->quiet? SILENT : 0);
+		rs->s = sccs_restart(rs->s);
+		flags = DELTA_DONTASK|DELTA_FORCE|SILENT;
 		if (sccs_delta(rs->s, flags, d, 0, 0, 0)) {
 			sccs_whynot("delta", rs->s);
 			rs->opts->errors = 1;
@@ -1994,7 +2042,7 @@ same:		if (!IS_LOCKED(rs->s) && edit(rs)) return;
 int
 edit(resolve *rs)
 {
-	int	flags = GET_EDIT|GET_SKIPGET;
+	int	flags = GET_EDIT|GET_SKIPGET|SILENT;
 	char	*branch;
 
 	branch = strchr(rs->revs->local, '.');
@@ -2004,7 +2052,6 @@ edit(resolve *rs)
 	} else {
 		branch = rs->revs->remote;
 	}
-	if (rs->opts->quiet) flags |= SILENT;
 	if (sccs_get(rs->s, 0, branch, 0, 0, flags, "-")) {
 		fprintf(stderr,
 		    "resolve: cannot edit/merge %s\n", rs->s->sfile);
@@ -2509,6 +2556,9 @@ writeCheck(sccs *s, MDBM *db)
 	return (0);
 }
 
+/*
+ * Do NOT assert in this function, return -1 instead so we clean up.
+ */
 private int
 copyAndGet(opts *opts, char *from, char *to)
 {
@@ -2550,9 +2600,8 @@ copyAndGet(opts *opts, char *from, char *to)
 		} else if (co[0] == 'n') {
 			getFlags = 0;
 		} else {
-			fprintf(stderr, "Illegal value of co (== %s)\n",
-			    co);
-			exit(1);
+			fprintf(stderr, "Illegal value of co (== %s)\n", co);
+			return (-1);
 		}
 		mdbm_delete_str(opts->checkoutDB, key);
 	} else {
@@ -2561,12 +2610,12 @@ copyAndGet(opts *opts, char *from, char *to)
 	}
 	if (opts->logging) {
 		unless (strneq(to, "BitKeeper/etc/SCCS", 18)) {
-			assert(!HAS_GFILE(s));
+			if (HAS_GFILE(s) && sccs_clean(s, SILENT)) return (-1);
 		}
 	} else if (getFlags) {
 		sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-");
 	} else {
-		assert(!HAS_GFILE(s));
+		if (HAS_GFILE(s) && sccs_clean(s, SILENT)) return (-1);
 	}
 	sccs_free(s);
 	return (0);
@@ -2623,7 +2672,8 @@ csets_in(opts *opts)
 			while (fnext(buf, in)) {
 				unless (streq(buf, "\n")) fputs(buf, out);
 			}
-			fprintf(out, "%s\n", d->rev);
+			sccs_sdelta(s, d, buf);
+			fprintf(out, "%s\n", buf);
 			fclose(out);
 		}
 		fclose(in);
@@ -2655,7 +2705,7 @@ resolve_cleanup(opts *opts, int what)
 	 * Get the patch file name from RESYNC before deleting RESYNC.
 	 */
 	sprintf(buf, "%s/%s", ROOT2RESYNC, "BitKeeper/tmp/patch");
-	unless (f = fopen(buf, "rb")) {
+	unless (f = fopen(buf, "r")) {
 		fprintf(stderr, "Warning: no BitKeeper/tmp/patch\n");
 		pendingFile[0] = 0;
 	} else {

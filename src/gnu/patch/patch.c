@@ -116,12 +116,21 @@ int main PARAMS ((int, char **));
 
 int io_mode(char *name)
 {
-	FILE * f;
-	char cmd[2048];
+#if defined(WIN32) || defined(__CYGWIN__)
+	FILE	*f;
+	int	len = strlen(name);
+	char	*cmd;
+	char	buf[512];
 
-#ifdef __CYGWIN__
-	sprintf(cmd, "bk prs -hr+ -d':FLAGS:' %s | grep -q EOLN_NATIVE", name);
-	return (system(cmd) ? O_BINARY : O_TEXT);
+	
+	cmd = malloc(len + 30);
+	sprintf(cmd, "bk prs -hr+ -d':FLAGS:' %s", name);
+	f = popen(cmd, "rt");
+	fgets(buf, sizeof (buf), f);
+	pclose(f);
+	free(cmd);
+	return (strstr(buf, "EOLN_NATIVE") ? O_TEXT : O_BINARY);
+	
 #else
 	return (O_BINARY);
 #endif

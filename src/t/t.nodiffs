@@ -13,7 +13,6 @@
 # Copyright (c) 2000 Larry McVoy
 # %K%
 
-HERE=`bk pwd`
 echo $N Create initial repository ...................................$NL
 no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
@@ -47,7 +46,7 @@ do	cd $HERE/$i
 	bk commit -y$i $Q
 done
 cd $HERE/copy
-bk resync $Q
+bk pull -R $Q
 cd ..
 tar cf TAR copy 
 cd copy
@@ -62,7 +61,7 @@ echo OK
 echo $N Resolve -t should also autocomment ..........................$NL
 cd ..
 rm -rf copy
-tar xf TAR
+tar xmf TAR
 cd copy
 ( echo s
   echo C ) | bk resolve -t $Q 2>resolve.out
