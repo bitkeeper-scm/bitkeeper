@@ -1107,6 +1107,32 @@ date2time(char *asctime, char *z, int roundup)
 }
 
 /*
+ * Force sfile's mod time to be one second before gfile's mod time
+ */
+private void
+fix_stime(sccs *s)
+{
+	struct	utimbuf	ut;
+
+	unless (s->gtime) return;
+	/*
+	 * To prevent the "make" command from doing a "get" due to 
+	 * sfile's newer modification time, and then fail due to the
+	 * editable gfile, adjust sfile's modification to be just
+	 * before that of gfile's.
+	 * Note: It is ok to do this, because we've already recorded
+	 * the time of the delta in the delta table.
+	 * A potential pitfall would be that it may confuse the backup
+	 * program to skip the sfile when doing a incremental backup.
+	 * This is why we we only do this when the user set the
+	 * INIT_FIXSTIME flag.
+	 */
+	ut.actime = time(0);
+	ut.modtime = s->gtime - 1;
+	utime(s->sfile, &ut);
+}
+
+/*
  * Diff can give me
  *	10a12, 14	-> 10 a
  *	10, 12d13	-> 10 d
@@ -8522,7 +8548,7 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 	assert(s);
 	if (BITKEEPER(s) && (type == 'D')) d->flags |= D_CKSUM;
 	unless (d->sdate) {
-		if (s->gtime) {
+		if (s->initFlags & INIT_FIXDTIME) {
 			date(d, s->gtime);
 
 			/*
@@ -9019,35 +9045,12 @@ no_config:
 	}
 	assert(size(s->sfile) > 0);
 	unless (flags & DELTA_SAVEGFILE) unlinkGfile(s);	/* Careful */
-	Chmod(s->sfile, 0444);
 	if ((flags & DELTA_SAVEGFILE) &&
-	    (flags & DELTA_FIXMTIME) &&
+	    (s->initFlags & INIT_FIXSTIME) &&
 	    HAS_GFILE(s)) {
-		struct	stat	sb;
-		struct	utimbuf	ut;
-
-		/*
-		 * To prevent the "make" command from doing a "get" due to 
-		 * sfile's newer modification time, and then fail due to the
-		 * editable gfile, adjust sfile's modification to be just
-		 * before that of gfile's.
-		 * Note: It is ok to do this, because we've already recorded
-		 * the time of the delta in the delta table.
-		 * A potential pitfall would be that it may confuse the backup
-		 * program to skip the sfile when doing a incremental backup.
-		 * This is why we we only do this when the user set the
-		 * DELTA_FIXMTIME flag.
-		 */
-		if (lstat(s->gfile, &sb) == 0) {
-			ut.actime = time(0);
-			ut.modtime = sb.st_mtime - 1;
-			utime(s->sfile, &ut);
-		} else {
-			/* We should never get here */
-			perror(s->gfile);
-		}
-		
+		fix_stime(s);
 	}
+	Chmod(s->sfile, 0444);
 	if (BITKEEPER(s)) updatePending(s);
 	if (db) mdbm_close(db);
 	sccs_unlock(s, 'z');
@@ -10496,22 +10499,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		OUT;
 	}
 
-	if (sc->initFlags & INIT_FIXMTIME) flags |= ADMIN_FIXMTIME;
-	if (flags & ADMIN_FIXMTIME) {
-		struct  stat    sb;
-		struct  utimbuf ut;
-
-		/*
-		 * To prevent the "make" command from doing a "get" due to 
-		 * sfile's newer modification time adjust sfile's modification
-		 * to be just before that of gfile's.
-		 */
-		if (lstat(sc->gfile, &sb) == 0) {
-			ut.actime = time(0);
-			ut.modtime = sb.st_mtime - 1;
-			utime(sc->sfile, &ut);
-		}
-	}
+	if (HAS_GFILE(sc) && (sc->initFlags&INIT_FIXSTIME)) fix_stime(sc);
 	Chmod(sc->sfile, 0444);
 	goto out;
 #undef	OUT
@@ -11969,30 +11957,10 @@ out:
 		OUT;
 	}
 	unlink(s->pfile);
-	if (s->initFlags & INIT_FIXMTIME) flags |= DELTA_FIXMTIME;
 	if ((flags & DELTA_SAVEGFILE) &&
-	    (flags & DELTA_FIXMTIME) &&
+	    (s->initFlags & INIT_FIXSTIME) &&
 	    HAS_GFILE(s)) {
-		struct	stat	sb;
-		struct	utimbuf	ut;
-
-		/*
-		 * To prevent the "make" command from doing a "get" due to 
-		 * sfile's newer modification time, and then fail due to the
-		 * editable gfile, adjust sfile's modification to be just
-		 * before that of gfile's.
-		 * Note: It is ok to do this, because we've already recorded
-		 * the time of the delta in the delta table.
-		 * A potential pitfall would be that it may confuse the backup
-		 * program to skip the sfile when doing a incremental backup.
-		 * This is why we we only do this when the user set the
-		 * DELTA_FIXMTIME flag.
-		 */
-		if (lstat(s->gfile, &sb) == 0) {
-			ut.actime = time(0);
-			ut.modtime = sb.st_mtime - 1;
-			utime(s->sfile, &ut);
-		}
+		fix_stime(s);
 	}
 	Chmod(s->sfile, 0444);
 	if (BITKEEPER(s) && !(flags & DELTA_NOPENDING)) {

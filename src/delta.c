@@ -35,7 +35,8 @@ int
 delta_main(int ac, char **av)
 {
 	sccs	*s;
-	int	iflags = INIT_SAVEPROJ;
+	int	iflags = INIT_SAVEPROJ|INIT_FIXSTIME;
+	int	Lflag = 0;
 	int	dflags = 0;
 	int	gflags = 0;
 	int	sflags = SF_GFILE|SF_WRITE_OK;
@@ -97,7 +98,7 @@ comment:		comments_save(optarg);
 		    case 'i': dflags |= NEWFILE; 		/* doc 2.0 */
 			      sflags |= SF_NODIREXPAND;
 			      break;
-		    case 'L': dflags |= DELTA_FIXMTIME;
+		    case 'L': Lflag = 1;;
 			      /* fall thru */
 		    case 'l': gflags |= GET_SKIPGET|GET_EDIT; 	/* doc 2.0 */
 		    	      dflags |= DELTA_SAVEGFILE;
@@ -137,7 +138,7 @@ comment:		comments_save(optarg);
 		    case 'D': diffsFile = optarg;		 /* doc 2.0 */
 			      sflags = ~(SF_GFILE | SF_WRITE_OK);
 			      break;
-		    case 'G': iflags |= INIT_GTIME; break;	/* undoc? 2.0 */
+		    case 'G': iflags |= INIT_FIXDTIME; break;	/* undoc? 2.0 */
 		    case 'h': dflags |= DELTA_HASH; break;	/* doc 2.0 */
 		    case 'I': initFile = optarg; break;		/* doc 2.0 */
 		    case 'M': mode = optarg; break;		/* doc 2.0 */
@@ -238,10 +239,11 @@ usage:			sprintf(buf, "bk help -s %s", name);
 			if (streq(ckopts, "edit")) {
 				gflags |= GET_SKIPGET|GET_EDIT;
 				dflags |= DELTA_SAVEGFILE;
+				s->initFlags &= ~INIT_FIXSTIME;
 				checkout = 1;
 			} else if (streq(ckopts, "EDIT")) { /* edit+fixmtime */
 				gflags |= GET_SKIPGET|GET_EDIT;
-				dflags |= DELTA_SAVEGFILE|DELTA_FIXMTIME;
+				dflags |= DELTA_SAVEGFILE;
 				checkout = 1;
 			} else if (streq(ckopts, "get")) {
 					gflags |= GET_EXPAND;
@@ -249,12 +251,14 @@ usage:			sprintf(buf, "bk help -s %s", name);
 			} else if (streq(ckopts, "GET")) {
 				if (hasKeyword(s))  {
 					gflags |= GET_EXPAND;
+					s->initFlags &= ~INIT_FIXSTIME;
 					checkout = 1;
 				} else {
 					checkout = 2;
-					dflags |=
-						DELTA_SAVEGFILE|DELTA_FIXMTIME;
+					dflags |= DELTA_SAVEGFILE;
 				}
+			} else unless (Lflag) {
+				s->initFlags &= ~INIT_FIXSTIME;
 			}
 		}
 
