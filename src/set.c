@@ -42,6 +42,7 @@ private void	set_diff(sccs *s, ser_t *a, ser_t *b);
 private void	set_and(sccs *s, ser_t *a, ser_t *b);
 private void	set_or(sccs *s, ser_t *a, ser_t *b);
 private void	set_xor(sccs *s, ser_t *a, ser_t *b);
+private void	set_set(sccs *s, char *rev);
 
 enum {
 	AND,		/* intersection:		A & B */
@@ -50,6 +51,7 @@ enum {
 	XOR,		/* symmetric difference:	A ^ B */
 	ELEMENT,	/* member:			A & M; M is element */
 	LIST,		/* list sets which contain rev */
+	SET,		/* list the revision as a set */
 };
 
 enum {
@@ -79,13 +81,14 @@ set_main(int ac, char **av)
 	}
 	bzero(&opts, sizeof(opts));
 	opts.format = REV;
-	while ((c = getopt(ac, av, "adeklnor;t|x")) != -1) {
+	while ((c = getopt(ac, av, "adeklnor;st|x")) != -1) {
 		switch (c) {
 		    case 'a': if (opts.op) usage(1); opts.op = AND; break;
 		    case 'd': if (opts.op) usage(1); opts.op = AND_NOT; break;
 		    case 'e': if (opts.op) usage(1); opts.op = ELEMENT; break;
 		    case 'l': if (opts.op) usage(1); opts.op = LIST; break;
 		    case 'o': if (opts.op) usage(1); opts.op = OR; break;
+		    case 's': if (opts.op) usage(1); opts.op = SET; break;
 		    case 'x': if (opts.op) usage(1); opts.op = XOR; break;
 		    case 'k': opts.format = KEY; break;
 		    case 'n': opts.name = 1; break;
@@ -152,6 +155,8 @@ set_main(int ac, char **av)
 		set_member(s, r1, getset(s, r2)); break;
 	    case LIST:
 		set_list(s, r1); break;
+	    case SET:
+		set_set(s, r1); break;
 	}
 	sccs_free(s);
 	exit(0);
@@ -340,6 +345,28 @@ set_list(sccs *s, char *rev)
 		free(map);
 		if (e == d) break;
 	}
+}
+
+/*
+ * Print the set implied by the rev.
+ */
+private void
+set_set(sccs *s, char *rev)
+{
+	delta	*d;
+	ser_t	*map;
+	int	i;
+
+	unless (d = sccs_getrev(s, rev, 0, 0)) {
+		fprintf(stderr, "set: cannot find %s in %s\n", rev, s->gfile);
+		sccs_free(s);
+		exit(1);
+	}
+	map = sccs_set(s, d, 0, 0);
+	for (i = 1; i < s->nextserial; ++i) {
+		if (map[i]) print(s, sfind(s, i));
+	}
+	free(map);
 }
 
 private void
