@@ -6,11 +6,19 @@ ms_env()
 	SYS=win32
 	BK="bk.exe"
 
+	gcc --version | grep -q cyg && test -d /mingw/bin && {
+		PATH=/mingw/bin:$PATH
+	}
+	gcc --version | grep -q cyg && test -d c:/mingw/bin && {
+		PATH=/c/mingw/bin:/cygdrive/c/mingw/bin:$PATH
+	}
+	gcc --version | grep -q cyg && test -d d:/mingw/bin && {
+		PATH=/d/mingw/bin:/cygdrive/d/mingw/bin:$PATH
+	}
 	gcc --version | grep -q cyg && {
-	    echo GCC cannot be the Cygwin version you need
-	    echo 'c:\MinGW\bin on your PATH first.'
-	    exit 1
-        }
+		echo No Mingw GCC found, I quit.
+		exit 1
+	}
 
 	XLIBS="-lws2_32 -lole32"
 	# BINDIR should really be :C:/Program Files/BitKeeper
