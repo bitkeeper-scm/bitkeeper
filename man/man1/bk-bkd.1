@@ -3,7 +3,7 @@
 .SH NAME
 bk bkd \- the \*(BK daemon
 .SH SYNOPSIS
-.Bc bk bkd [\-dDehHiR] [
+.Bc bk bkd [\-dDehiR] [
 .OPTreq \-L dir
 .Bc ] [
 .OPTreq \-l log
@@ -184,9 +184,6 @@ Exit on any error.
 .B \-h
 Make bkd print http headers on all outgoing bk push, bk pull,
 and bk clone messages.  Use when bkd is run in a cgi environment.
-.tp
-.B \-H
-Do not share port.  Run bkd as special purpose http server.
 .tp
 .B \-i
 Interactive, provide prompts.
