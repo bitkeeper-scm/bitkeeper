@@ -84,8 +84,17 @@ gotit:
 			add2path = 1;
 			link[n] = 0;
 			verbose((stderr, "LINK %s->%s\n", buf, link));
-			strcpy(buf, link);
+			if  (IsFullPath(link)) {
+				strcpy(buf, link);
+			} else {
+				fprintf(stderr,
+			  "Error, link \"%s -> %s\" must be a full path name\n",
+				    buf, link);
+				exit (1);
+			
+			}
 		}
+		
 		t = strrchr(buf, '/');
 		*t = 0;
 
