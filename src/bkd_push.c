@@ -14,6 +14,9 @@ cmd_push(int ac, char **av)
 	static	char *tp[] = { "bk", "takepatch", "-act", "-vv", 0 };
 				    /* see verbose below    ^^ */
 
+#ifdef WIN32
+	setmode(0, _O_BINARY); /* needed for gzip mode */
+#endif
 	if (!exists("BitKeeper/etc")) {
 		out("ERROR-Not at package root\n");
 		exit(1);
@@ -64,6 +67,9 @@ cmd_push(int ac, char **av)
 #endif
 		unless (verbose) tp[3] = 0;
 		if (gzip) {
+			fd2 = dup(2); close(2);
+			/* Arrange to have stderr go to stdout */
+			fd = dup(1); assert(fd == 2);
 			pid = spawnvp_wPipe(tp, &wfd);
 			if (pid == -1) {
 				out("@DONE@\n");
@@ -81,6 +87,7 @@ cmd_push(int ac, char **av)
 				gunzip2fd(buf, n, wfd);
 			}
 			gzip_done();
+			close(wfd);
 		} else {
 			fd2 = dup(2); close(2);
 			/* Arrange to have stderr go to stdout */
