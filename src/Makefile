@@ -178,7 +178,7 @@ production_image: rebuild p image
 
 # Cleanup targets.
 clean clean-obj: FORCE
-	-rm -f bk.o bkmerge.o $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) 
+	-rm -f bk.o bkmerge.o shell.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) 
 	-rm -f $(LIBS) shell.c bkdsubstr bkhelp.txt a.out core $(WIN_TMP)
 	-cd gnu && $(MAKE) clean-obj
 	-cd win32 && $(MAKE) clean-obj
