@@ -15,8 +15,17 @@ main(int ac, char **av)
 	int	doit(char *file);
 
 	debug_main(av);
-	for (i = 1; i < ac; ++i) {
-		doit(av[i]);
+	if ((ac == 2) && streq(av[1], "-")) {
+		char	buf[1024];
+
+		while (fnext(buf, stdin)) {
+			chop(buf);
+			doit(buf);
+		}
+	} else {
+		for (i = 1; i < ac; ++i) {
+			doit(av[i]);
+		}
 	}
 	return (0);
 }

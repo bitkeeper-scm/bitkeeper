@@ -59,6 +59,9 @@ private int	addSym(char *name, sccs *sc, int flags, admin *l, int *ep);
 int		smartUnlink(char *name);
 int		smartRename(char *old, char *new);
 private void	updatePending(sccs *s, delta *d);
+void		concat_path(char *buf, char *first, char *second);
+private int	fix_lf(char *gfile);
+void		free_pfile(pfile *pf);
 
 private unsigned int u_mask = 0x5eadbeef;
 
@@ -628,8 +631,17 @@ dinsert(sccs *s, int flags, delta *d)
 
 	} else if ((p->kid->type == 'D') &&
 	    samebranch(p, p->kid)) {	/* in right place */
-		d->siblings = p->kid->siblings;
-		p->kid->siblings = d;
+		/*
+		 * If there are siblings, add d at the end.
+		 */
+		if (p->kid->siblings) {
+			delta	*l = p->kid->siblings;
+
+			while (l->siblings) l = l->siblings;
+			l->siblings = d;
+		} else {
+			p->kid->siblings = d;
+		}
 		debug((stderr, " -> %s (sib)\n", p->rev));
 	} else {  /* else not in right place, put the new delta there. */
 		debug((stderr, "kid type %c, %d.%d.%d.%d vs %d.%d.%d.%d\n",
@@ -1062,6 +1074,7 @@ samefile(char *a, char *b)
 /*
  * clean up ".." and "." in a path name
  */
+void
 cleanPath(char *path, char cleanPath[])
 {
 	char	buf[1024], *p, *r, *top;
@@ -1729,7 +1742,7 @@ delta *
 sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
 {
 	delta	*tmp, *d = 0;
-	time_t	date, d2;
+	time_t	date;
 	char	*s = rev ? rev : dateSym;
 	char	ru = 0;
 
@@ -4373,7 +4386,6 @@ err:		if (slist) free(slist);
 	if (flags & MODNAME) base = basenm(s->gfile);
 	unless (out)  goto skip_data;
 	if (S_ISLNK(d->mode) && (flags & PRINT)) {
-		char tmp[1024];
 		fprintf(out, "SYMLINK -> %s\n", d->glink);
 		goto get_done;
 	}
@@ -5032,36 +5044,33 @@ expandnleq(sccs *s, delta *d, char *fbuf, char *sbuf, int flags)
 int
 sccs_hasDiffs(sccs *s, int flags)
 {
-	FILE	*tmp = fopen(s->pfile, "r");
+	FILE	*tmp = 0;
+	pfile	pf;
 	serlist *state = 0;
 	ser_t	*slist = 0;
 	int	print = 0, different;
 	delta	*d;
-	char	rev[40];
 	char	sbuf[1024];
 	char	*name = 0;
 	int	tmpfile = 0;
 	BUF	(fbuf);
 
-#define	RET(x)	different = x; goto out;
+#define	RET(x)	{ different = x; goto out; }
 
-	unless (tmp) return (-1);
-	if (fscanf(tmp, "%s", rev) != 1) {
-		verbose((stderr,
-		    "can't get revision info from %s\n", s->pfile));
-		RET(-1);
-	}
-	fclose(tmp); tmp = 0;
-	unless (d = findrev(s, rev)) {
-		verbose((stderr, "can't find %s in %s\n", rev, s->gfile));
+	bzero(&pf, sizeof(pf));
+	if (read_pfile("hasDiffs", s, &pf)) return (-1);
+	if (pf.mRev) RET(2);
+	unless (d = findrev(s, pf.oldrev)) {
+		verbose((stderr, "can't find %s in %s\n", pf.oldrev, s->gfile));
 		RET(-1);
 	}
 
 	/* If the file type changed, it is a diff */
 	if (d->flags & D_MODE) {
-		if (fileType(s->mode) != fileType(d->mode)) return 1;
-		if (S_ISLNK(s->mode)) return (!streq(s->glink, d->glink));
+		if (fileType(s->mode) != fileType(d->mode)) RET(1);
+		if (S_ISLNK(s->mode)) RET(!streq(s->glink, d->glink));
 	}
+
 	assert(IS_WRITABLE(s));
 	if (s->encoding > E_ASCII) {
 		tmpfile = 1;
@@ -5070,7 +5079,7 @@ sccs_hasDiffs(sccs *s, int flags)
 		if (deflate(s, name)) {
 			unlink(name);
 			free(name);
-			return (-1);
+			RET(-1);
 		}
 	} else {
 		if (fix_lf(s->gfile) == -1) return (-1); 
@@ -5116,6 +5125,7 @@ out:
 		if (tmpfile) unlink(name);
 		free(name);
 	}
+	free_pfile(&pf);
 	if (tmp) fclose(tmp);
 	if (slist) free(slist);
 	if (state) free(state);
@@ -5456,6 +5466,9 @@ sccs_info(sccs *s, int flags)
 	}
 	fclose(f);
 	switch (sccs_hasDiffs(s, flags)) {
+	    case 2:
+		printf(" (has merge pointer, needs delta)\n");
+		return (1);
 	    case 1:
 		printf(" (modified, needs delta)\n");
 		return (1);
@@ -5558,6 +5571,7 @@ shouldUpdMode (sccs *s, delta *p)
 	if (!sameFileType(s, p)) return 1;
 	if (s->glink == p->glink) return 0; 
 	if (s->glink) return (!streq(s->glink, p->glink));
+	assert("Andrew, why is there no return statement here?" == 0);
 }
 
 /*
@@ -7389,9 +7403,10 @@ read_pfile(char *who, sccs *s, pfile *pf)
 	}
 	pf->iLst = iLst;
 	pf->xLst = xLst;
-	pf->mRev= mRev;
+	pf->mRev = mRev;
 	debug((stderr, "pfile(%s, %s, %s, %s, %s, %s, %s)\n",
-	    pf->oldrev, pf->newrev, user, pf->date, iLst, xLst, mRev));
+    	    pf->oldrev, pf->newrev, user, pf->date,
+	    pf->iLst, pf->xLst, pf->mRev));
 	return (0);
 }
 
@@ -7928,6 +7943,7 @@ out:
 /*
  * works for 32 bit unsigned only
  */
+void
 fit(char *buf, unsigned int i)
 {
 	int	j;
@@ -7945,10 +7961,9 @@ fit(char *buf, unsigned int i)
 	return;
 }
 
+void
 fitCounters(char *buf, int a, int d, int s)
 {
-	char	tmp[6];
-
 	/* ^As 12345/12345/12345\n
 	 *  012345678901234567890
 	 */
@@ -9041,7 +9056,7 @@ sccs_getperfile(FILE *in, int *lp)
 		free(s);
 		return (0);
 	}
-	*lp++;
+	(*lp)++;
 	if (FLAG('d')) {
 		unused = 0;
 		s->defbranch = strdup(&buf[4]);
@@ -9051,12 +9066,12 @@ err:			fprintf(stderr,
 			free(s);
 			return (0);
 		}
-		chop(buf); *lp++;
+		chop(buf); (*lp)++;
 	}
 	if (FLAG('e')) {
 		unused = 0;
 		s->encoding = atoi(&buf[4]);
-		unless (fnext(buf, in)) goto err; chop(buf); *lp++;
+		unless (fnext(buf, in)) goto err; chop(buf); (*lp)++;
 	}
 	if (FLAG('x')) {
 		int	bits = atoi(&buf[4]);
@@ -9065,12 +9080,12 @@ err:			fprintf(stderr,
 		if (bits & X_YEAR4) s->state |= YEAR4;
 		if (bits & X_RCSEXPAND) s->state |= RCS;
 		unused = 0;
-		unless (fnext(buf, in)) goto err; chop(buf); *lp++;
+		unless (fnext(buf, in)) goto err; chop(buf); (*lp)++;
 	}
 	while (strneq(buf, "T ", 2)) {
 		unused = 0;
 		s->text = addLine(s->text, strnonldup(&buf[2]));
-		unless (fnext(buf, in)) goto err; chop(buf); *lp++;
+		unless (fnext(buf, in)) goto err; chop(buf); (*lp)++;
 	}
 	if (buf[0]) goto err;		/* should be empty */
 

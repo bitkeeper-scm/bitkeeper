@@ -1,46 +1,29 @@
-MAN1= resolve.1 resync.1 smoosh.1 comps.1 changed.1 \
-	preserve.1 retrieve.1 sccsrm.1 reconcile.1 update_vcs.1 \
-	sccs_nse_diff.1 sccstree.1 sccstool.1 resolve_renames.1 \
-	copies.1 sfiles.1
+MAN1= admin.1 bitsccs.1 changeset.1 clean.1 delta.1 diffs.1 \
+	get.1 sccsfile.5 sccsrange.5
 
 MANS= $(MAN1) $(MAN5)
-BASE=/usr/nselite2.0
+BASE=/usr/bitkeeper
 MANDIR=$(BASE)/man
 
 all: $(MANS)
 
-edit:
-	get -e $(MANS)
-
-delta:
-	ci
-
-diffs:
-	diffs $(MANS) | more
-
-oldinstall: 
-	changed -v -u $(MANS)
-	get -s $(MANS)
-	for i in $(MANS); \
-	do	rm -f man/$$i cat/$$i; \
-		cp $$i man/$$i; \
-		nroff -man $$i > cat/$$i; \
-	done
-	clean
-
-install:
-	@make delta
-	get -s $(MANS)
+production install:
+	bk clean
+	bk get -s .bitmacros filenames $(MANS)
 	mkdir -p $(MANDIR)/man1 $(MANDIR)/cat1
 	for i in $(MAN1); \
 	do	rm -f $(MANDIR)/man1/$$i $(MANDIR)/cat1/$$i; \
 		cp $$i $(MANDIR)/man1/$$i; \
 		nroff -man $$i > $(MANDIR)/cat1/$$i; \
 	done
-	clean
 
 print: $(MANS)
 	groff -man $(MANS)
 
 clean:
-	clean
+	bk clean
+
+clobber:
+	bk clean
+
+$(MANS): .bitmacros

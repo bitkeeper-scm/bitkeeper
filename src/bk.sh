@@ -1071,10 +1071,6 @@ EOF
 	done
 }
 
-function gui {
-	exec "${BIN}$@"
-}
-
 function commandHelp {
 	DID=no
 	for i in $* 
@@ -1143,10 +1139,6 @@ case "$1" in
 	PATH=${BIN}:$PATH regression
 	exit $?
 	;;
-    citool|sccstool|vitool|fm|fm3)
-    	gui "$@"
-	exit $?
-	;;
     setup|changes|pending|commit|commitmerge|sendbug|send|take|\
     sccsmv|mv|resync|edit|unedit)
 	cmd=$1
@@ -1173,10 +1165,30 @@ case "$1" in
 	;;
 esac
 
-# Run our stuff first if we can find it, else
-# we don't know what it is, try running it and hope it is out there somewhere.
 cmd=$1
 shift
+if [ X$cmd = X-r ]
+then	if [ X$1 = X ]
+	then	echo "usage: bk -r [dir] command [options]"
+		exit 0
+	fi
+	if [ -d "$1" ]
+	then	dir=$1
+		shift
+	else	while [ ! -d "BitKeeper/etc" ]
+		do	cd ..
+			if [ `pwd` = "/" ]
+			then	echo "bk: can not find project root."
+				exit 1
+			fi
+		done
+		dir=.
+	fi
+	exec bk sfiles $dir | bk "$@" -
+	exit 2
+fi
+# Run our stuff first if we can find it, else
+# we don't know what it is, try running it and hope it is out there somewhere.
 if [ -x ${BIN}$cmd ]
 then	exec ${BIN}$cmd "$@"
 else	exec $cmd "$@"

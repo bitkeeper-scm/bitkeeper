@@ -129,6 +129,9 @@ proc line {s w ht} \
 
 	# Now figure out where we can put the list.
 	set rev [lindex $l 0]
+	if {[regexp {([^:]*):(.*)} $rev dummy rev1 rev2] == 1} {
+		set rev $rev1
+	}
 	set px [lindex [array get revX $rev] 1]
 
 	# If there is no parent, life is easy, just put it at 0/0.

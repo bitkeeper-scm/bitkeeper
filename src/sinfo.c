@@ -24,7 +24,7 @@ usage:		fprintf(stderr, "usage: %s [-f] [files...]\n", av[0]);
 		    default: goto usage;
 		}
 	}
-	for (name = sfileFirst("info", &av[optind], GFILE);
+	for (name = sfileFirst("info", &av[optind], SILENT|GFILE);
 	    name; name = sfileNext()) {
 		if (fast) {
 			FILE	*f;
