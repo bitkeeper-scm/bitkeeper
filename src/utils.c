@@ -1,4 +1,5 @@
 #include "bkd.h"
+#include "logging.h"
 
 bkdopts	Opts;	/* has to be declared here, other people use this code */
 
@@ -841,7 +842,7 @@ sendServerInfoBlock(int is_rclone)
         	sprintf(buf, "LEVEL=%d\n", getlevel());
 		out(buf);
 		out("LICTYPE=");
-		out(is_commercial(0) ? "bkcl\n" : "bkl\n");
+		out(bkcl(0) ? "bkcl\n" : "bkl\n");
 	}
 	out("ROOT=");
 	getcwd(buf, sizeof(buf));

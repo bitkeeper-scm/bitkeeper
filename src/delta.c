@@ -3,8 +3,6 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
-int	newrev(sccs *s, pfile *pf);
-
 private int
 hasKeyword(sccs *s)
 {
@@ -80,21 +78,35 @@ delta_trigger(sccs *s)
 private int
 strip_danglers(char *name, u32 flags)
 {
-	char	*p;
-	int	ret;
+	char	*p, **revs = 0;
+	int	i;
+	sccs	*s;
+	delta	*d;
+	FILE	*f;
 
-	p = aprintf("bk prs -hnd'$if(:DANGLING:){:GFILE:|:I:}' %s"
-	    " | bk stripdel -%sdC -", name, (flags&SILENT) ? "q" : "");
-	ret = system(p);
-	if (ret) {
-err:		fprintf(stderr, "%s failed\n", p);
+	s = sccs_init(name, INIT_WACKGRAPH, 0);
+	assert(s);
+	for (d = s->table; d; d = d->next) {
+		if (d->dangling) revs = addLine(revs, strdup(d->rev));
+	}
+	sccs_free(s);
+	p = aprintf("bk stripdel -%sdC -", (flags&SILENT) ? "q" : "");
+	f = popen(p, "w");
+	EACH(revs) {
+		fprintf(f, "%s|%s\n", name, revs[i]);
+	}
+	freeLines(revs, free);
+	if (i = pclose(f)) {
+		fprintf(stderr, "%s failed\n", p);
 		free(p);
-		return (ret);
+		return (i);	// XXX - need to get exit status
 	}
 	free(p);
-	p = aprintf("bk renumber %s %s", (flags&SILENT) ? "-q" : "", name);
-	if (ret = system(p)) goto err;
-	free(p);
+	s = sccs_init(name, INIT_WACKGRAPH, 0);
+	assert(s);
+	sccs_renumber(s, (flags&SILENT)|INIT_WACKGRAPH);
+	sccs_admin(s, 0, NEWCKSUM|ADMIN_FORCE, 0, 0, 0, 0, 0, 0, 0, 0);
+	sccs_free(s);
 	return (0);
 }
 
@@ -341,7 +353,7 @@ usage:			sprintf(buf, "bk help -s %s", name);
 
 		nrev = NULL;
 		if (HAS_PFILE(s)) {
-			if (newrev(s, &pf) == -1) {
+			if (sccs_read_pfile("delta", s, &pf)) {
 				errors |= 2;
 				goto next;
 			}
