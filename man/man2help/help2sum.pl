@@ -74,7 +74,7 @@ sub summary()
 	close(S);
 	unlink("$section.summaries");
 	close(O);
-	open(F, ">$section.fmt");
+	open(F, ">$section.done");
 	print F "help://$section\n";
 	print F "help://$section.sum\n";
 	open(G, "groff -rhelpdoc=1 $MAN -P-u -P-b -Tascii < $section.roff |");

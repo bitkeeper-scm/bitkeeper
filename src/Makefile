@@ -289,11 +289,11 @@ bkmsg.txt: bkmsg.doc bk.ver Makefile
 	sed "s?@builder@?`./bk getuser`@`./bk gethost`?" | \
 	sed "s/@built_date@/`date`/" > bkmsg.txt
 
-bkhelp.txt: ../man/man2help/helptxt
-	cp ../man/man2help/helptxt bkhelp.txt
+bkhelp.txt: build FRC
+	@cd ../man/man2help && ../../src/build helptxt
+	@cp ../man/man2help/helptxt bkhelp.txt
 
-../man/man2help/helptxt: build
-	cd ../man/man2help && ../../src/build helptxt
+FRC:
 
 # XXX Must be changed when ChangeSet moves to BitKeeper/etc.
 # It is structured like this so that rebuilding prs doesn't

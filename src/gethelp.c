@@ -64,17 +64,33 @@ gethelp(char *helptxt, char *topic, char *bkarg, char *prefix, FILE *outf)
 	}
 	unless (found) return (0);
 	if (bkarg == NULL) bkarg = "";
-	if (synopsis) { /* print synopsis only */
+	if (synopsis) {			/* print synopsis only */
+		int	first = 1;
+		int	dousage = 1;
+
 		while (fgets(buf, sizeof(buf), f)) {
 			if (strneq("SYNOPSIS", buf, 8)) break;
 			if (streq("$\n", buf)) goto done;
 		}
-		fputs("usage:\n", outf);
+		fputs("usage:\t", outf);
 		while (fgets(buf, sizeof(buf), f)) {
 			if (streq("\n", buf)) break;
 			if (streq("$\n", buf)) break;
-			fputs(buf, outf);
+			for (t = buf; isspace(*t); t++);
+			if (!first && t && strneq("bk ", t, 3)) {
+				fputc('\n', outf);
+				fputc('\t', outf);
+			} else unless (first) {
+				fputc(' ', outf);
+			}
+			first = 0;
+			for ( ; *t; t++) {
+				if (*t == '\n') break;
+				if (isspace(*t) && isspace(t[1])) continue;
+				fputc(*t, outf);
+			}
 		}
+		fputc('\n', outf);
 	} else { /* print full man page */
 		while (fgets(buf, sizeof(buf), f)) {
 			char	*p;
