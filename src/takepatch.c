@@ -842,10 +842,14 @@ extractDelta(char *name, sccs *s, int newFile, MMAP *f, int flags, int *np)
 	if (strneq(b, "# Patch checksum=", 17)) return 0;
 	pid = strdup(b);
 	/*
-	 * This code assumes that the patch order is 1.1..1.100
+	 * This code assumes that the delta table order is time sorted.
 	 * We stash away the parent of the earliest delta as a "GCA".
 	 */
-	if ((parent = sccs_findKey(s, b)) && !tableGCA) tableGCA = parent;
+	if (parent = sccs_findKey(s, b)) {
+		if (!tableGCA || (tableGCA->date >= parent->date)) {
+			tableGCA = parent;
+		}
+	}
 
 	/* go get the delta table entry for this delta */
 delta1:	off = mtell(f);
@@ -2365,9 +2369,8 @@ sccs *
 sccs_unzip(sccs *s)
 {
 	s = sccs_restart(s);
-	if (sccs_admin(s,
-	    0, ADMIN_FORCE|NEWCKSUM, 0, "none", 0, 0, 0, 0, 0, 0)) {
-		sccs_free(s);
+	if (sccs_admin(s, 0,
+	    SILENT|ADMIN_FORCE|NEWCKSUM, 0, "none", 0, 0, 0, 0, 0, 0)) {
 		return (0);
 	}
 	s = sccs_restart(s);

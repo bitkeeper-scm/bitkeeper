@@ -146,7 +146,7 @@ and is restricted to one bkd service per host.  To initially start the
 bkd service:
 .DS
 open a cmd shell
-bk bkd -p<port> -s<dir>
+bk bkd -p<port>
 .DE
 .LP
 Once the bkd has been started, the service manager can be used
@@ -241,9 +241,6 @@ version.
 .TP 1i
 .B \-R
 Shutdown the bkd service.
-.tp
-.OPTreq \-s dir
-Specify the directory in which the bkd starts.
 .SH EXAMPLES
 .LP
 We use the following in 
@@ -330,6 +327,10 @@ One could argue that this is code reuse rather than a bug.
 does not ship
 .B ssh
 since it is export controlled.
+.LP
+On Windows the bkd does not work when started from a network drive.
+.LP
+On Windows the bkd does not work when started from a subst'ed drive.
 .SH "SEE ALSO"
 .SA parent
 .SA url
