@@ -21,7 +21,7 @@ sub cd2root
 	$slash = (stat("/"))[1];
 	$dir = ".";
 	while (! -d "$dir/BitKeeper/etc") {
-		last if (stat($dir))[1] == $slash;
+		return if (stat($dir))[1] == $slash;
 		$dir = "../" . $dir;
 	}
 	chdir($dir);

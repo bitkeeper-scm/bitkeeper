@@ -304,8 +304,8 @@ bk ci $Q -i $HERE/project/src/aa.c
 bk mv $HERE/project/src/aa.c  $HERE/project/src/bb.c
 echo "21" > $HERE/project/src/aa.c
 bk ci $Q -i $HERE/project/src/aa.c
-KEY1=`bk prs -hr+ -d:LONGKEY: $HERE/project/src/bb.c`
-KEY2=`bk prs -hr+ -d:LONGKEY: $HERE/project/src/aa.c`
+KEY1=`bk prs -hr+ -d:KEY: $HERE/project/src/bb.c`
+KEY2=`bk prs -hr+ -d:KEY: $HERE/project/src/aa.c`
 if [ "${KEY1}"X = "${KEY2}"X ]; then echo failed: duplicate key; exit 1; fi
 echo OK
 rm -f  $HERE/project/src/SCCS/s.aa.c  $HERE/project/src/SCCS/s.bb.c
@@ -315,8 +315,8 @@ echo $N Key conflict in two workspace ...............................$NL
 echo "12" > $HERE/project/src/dup.c
 echo "21" > $HERE/copy/src/dup.c
 bk ci $Q -i $HERE/project/src/dup.c $HERE/copy/src/dup.c
-KEY1=`bk prs -hr1.0 -d:LONGKEY: $HERE/project/src/dup.c`
-KEY2=`bk prs -hr1.0 -d:LONGKEY: $HERE/copy/src/dup.c`
+KEY1=`bk prs -hr1.0 -d:KEY: $HERE/project/src/dup.c`
+KEY2=`bk prs -hr1.0 -d:KEY: $HERE/copy/src/dup.c`
 if [ "${KEY1}"X = "${KEY2}"X ]; then echo failed: duplicate key; exit 1; fi
 echo OK
 rm -f $HERE/project/src/SCCS/s.dup.c $HERE/copy/src/SCCS/s.dup.c
