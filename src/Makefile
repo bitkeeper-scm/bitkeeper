@@ -285,8 +285,8 @@ testfast: testfast.perl substvars
 	mv -f testfast.T testfast
 
 bk: bk.sh substvars prs
-	./prs -hr+ -d'$$if(:SYMBOL:){(:SYMBOL:) }:UTC:' ../ChangeSet >bk.ver
-	./substvars bk.sh | sed "s/VERSION=unknown/VERSION=`cat bk.ver`/" >bk.T
+	./prs -hr+ -d'$$if(:SYMBOL:){:SYMBOL: }:UTC:' ../ChangeSet >bk.ver
+	./substvars bk.sh | sed "s/VERSION=unknown/VERSION=\"`cat bk.ver`\"/" >bk.T
 	chmod +x bk.T
 	/bin/rm -f bk.ver
 	mv -f bk.T bk
