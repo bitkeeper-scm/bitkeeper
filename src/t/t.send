@@ -69,9 +69,41 @@ rm -f copy/BitKeeper/log/*
 diff -r project copy > diff$$
 if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
 echo OK
-echo $N Make sure we can wrap and unwrap patches ....................$NL
+echo $N Make sure we can wrap and unwrap patches with uuwrap ........$NL
 cd $HERE/project
 bk send $Q -wuu -  | bk unwrap | ( while read x
+do	case "$x" in
+	    "# Patch vers:"*)
+		echo ""
+		echo "$x"
+		exec cat
+		;;
+	esac
+done ) > p1
+bk send $Q -  | bk unwrap > p2
+diff p1 p2
+if [ $? != 0 ]; then echo Failed because of diffs; exit 1; fi
+rm -f p1 p2
+echo OK
+echo $N Make sure we can wrap and unwrap patches with b64wrap .......$NL
+cd $HERE/project
+bk send $Q -wb64 -  | bk unwrap | ( while read x
+do	case "$x" in
+	    "# Patch vers:"*)
+		echo ""
+		echo "$x"
+		exec cat
+		;;
+	esac
+done ) > p1
+bk send $Q -  | bk unwrap > p2
+diff p1 p2
+if [ $? != 0 ]; then echo Failed because of diffs; exit 1; fi
+rm -f p1 p2
+echo OK
+echo $N Make sure we can wrap and unwrap gzipped patches ............$NL
+cd $HERE/project
+bk send $Q -wgzip_b64 -  | bk unwrap | ( while read x
 do	case "$x" in
 	    "# Patch vers:"*)
 		echo ""

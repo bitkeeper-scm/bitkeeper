@@ -1152,6 +1152,7 @@ int	isCaseFoldingFS(char *root);
 void	smerge_saveseq(u32 seq);
 char	*loadfile(char *file, int *size);
 char	*repo_id(void);
+void	fromTo(char *op, remote *r, remote *l);
 
 extern char *bk_vers;
 extern char *bk_utc;

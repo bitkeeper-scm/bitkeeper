@@ -114,8 +114,9 @@ TOMCRYPTOBJ = tomcrypt/rsa.o tomcrypt/rsa_sys.o tomcrypt/mpi.o \
 	tomcrypt/yarrow.o tomcrypt/demos/test.o
 GUI	= revtool citool helptool difftool csettool fmtool fm3tool msgtool \
 	  renametool setuptool 
-SCRIPTS	= applypatch bk.script import resync uuwrap unuuwrap \
-      $(GUI) gzip_uuwrap ungzip_uuwrap bugform
+SCRIPTS	= applypatch bk.script import resync $(GUI) bugform \
+	uuwrap unuuwrap gzip_uuwrap ungzip_uuwrap \
+	b64wrap unb64wrap gzip_b64wrap ungzip_b64wrap
 LOCALSCR= testfast build crank
 PSCR	= t/doit
 UWTOBJ	= win32/uwtlib/wapi_intf.o win32/uwtlib/wcrt_intf.o
@@ -161,7 +162,9 @@ SCRSRCS	= testfast.perl bk.sh import.sh clone.sh \
 	  port/unix_platform.perl gui/csettool.tcl \
 	  port/win32_platform.perl port/win32_platform.tcl \
 	  port/win32_platform.sh gui/renametool.tcl \
-	  gzip_uuwrap.sh ungzip_uuwrap.sh resync.sh substvars.sh
+	  gzip_uuwrap.sh ungzip_uuwrap.sh resync.sh substvars.sh \
+	  b64wrap.sh gzip_b64wrap.sh unb64wrap.sh ungzip_b64wrap.sh
+
 MISC	= bkmsg.doc bitkeeper.config t/doit.sh
 
 default:
@@ -424,6 +427,26 @@ ungzip_uuwrap: ungzip_uuwrap.sh
 	rm -f ungzip_uuwrap
 	cp ungzip_uuwrap.sh ungzip_uuwrap
 	chmod +x ungzip_uuwrap
+
+b64wrap: b64wrap.sh
+	rm -f b64wrap
+	cp b64wrap.sh b64wrap
+	chmod +x b64wrap
+
+unb64wrap: unb64wrap.sh
+	rm -f unb64wrap
+	cp unb64wrap.sh unb64wrap
+	chmod +x unb64wrap
+
+gzip_b64wrap: gzip_b64wrap.sh
+	rm -f gzip_b64wrap
+	cp gzip_b64wrap.sh gzip_b64wrap
+	chmod +x gzip_b64wrap
+
+ungzip_b64wrap: ungzip_b64wrap.sh
+	rm -f ungzip_b64wrap
+	cp ungzip_b64wrap.sh ungzip_b64wrap
+	chmod +x ungzip_b64wrap
 
 import: import.sh port/$(SYS)_platform.sh substvars
 	./substvars port/$(SYS)_platform.sh import.sh > import.T

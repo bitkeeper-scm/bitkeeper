@@ -7,64 +7,24 @@ bk wrap \- using \*(BK wrappers
 For various reasons, you may wish to wrap a patch which is transmitted
 through email.  The typical reason is that the patch is going through
 some mailer which chops long lines or performs some other unwanted
-transformation on the data.
+transformation on the data.  Wrapping is typically done via the 
+bk send interface with the -w option.
 .LP
-\*(BK provides a simple wrapper and unwrapper to do this.  The programs
-are small shell scripts which call
-.B uuencode
-and
-.BR uudecode .
-The files, which you can examine in the
-bin directory, are called
-.B uuwrap
-and
-.BR unuuwrap .
-.LP
-To use a different style of wrapper (base64, encrypted, etc),
-create two programs, one of which takes a stream of bytes on stdin
-and produces the wrapped stream of bytes, and another which takes a
-wrapped stream of bytes and produces an unwrapped stream of bytes.
-.LP
-These programs must be placed the \*(BK
-bin directory and have names of the form:
-.sp
-.if t \{\
-.IB type wrap
-.br
-.BI un type wrap
-\}
-.if n \{\
-<type>wrap
-.br
-un<type>wrap
-\}
-.sp
-i.e.,
-.B uuwrap
-and
-.BR unuuwrap .  
-.LP
-If the programs work correctly, then the following two commands produce
-identical data:
+The following two commands produce identical data:
 .DS
-$ ls -1 | uuwrap | unuuwrap
+$ ls -1 | bk uuwrap | bk unuuwrap
 $ ls -1
 .DE
-If you create new wrappers and place them in BitKeeper's
-bin directory on the sending and receiving machines, you can then invoke them when
-sending patches.  Suppose you created simple rotate\-13 wrappers
-(shifts all character values 13 over, a common net news filter) and
-you called them
-.B rot13wrap
-and
-.BR unrot13wrap .
-Send patches by doing:
+.LP
+The current set of wrappers are:
 .DS
-$ bk send -wrot13 | mail user@where.ever.com
+b64wrap - wrap data using base 64 encoding
+gzip_b64wrap - gzip the data and then base 64 encode the zipped data
+gzip_uuwrap - gzip the data and then uuencode the zipped data
+uuwrap - wrap the data using uuencode
 .DE
-The user at the other end needs the rot13 wrapper scripts or they will not
-be able to apply the patch.
 .SH SEE ALSO
+.SA base64 1
 .SA send 1
 .SA receive 1
 .SH CATEGORY

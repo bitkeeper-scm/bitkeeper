@@ -86,7 +86,7 @@ clone_main(int ac, char **av)
 		remote	*l;
 		l = remote_parse(av[optind + 1], 1);
 		unless (l) {
-err:		if (r) remote_free(r);
+err:			if (r) remote_free(r);
 			if (l) remote_free(l);
 			usage();
 		}
@@ -195,6 +195,12 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		fprintf(stderr, "clone: cannot determine remote pathname\n");
 		disconnect(r, 2);
 		goto done;
+	}
+	unless (opts.quiet) {
+		remote	*l = remote_parse(local, 0);
+
+		fromTo("Clone", r, l);
+		remote_free(l);
 	}
 
 	getline2(r, buf, sizeof (buf));

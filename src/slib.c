@@ -5977,8 +5977,11 @@ uudecode1(register char *from, register uchar *to)
 	register int	length = DEC(*from++);
 	int	save = length;
 
-	assert(length <= 50);
-	if (!length) return (0);
+	unless (length) return (0);
+	if (length > 50) {
+		fprintf(stderr, "Corrupted data: %.25s\n", from);
+		return (0);
+	}
 	while (length > 0) {
 		if (length-- > 0)
 			*to++ = (uchar)((DEC(from[0])<<2) | (DEC(from[1])>>4));

@@ -1,8 +1,7 @@
 #!/bin/sh
 
-# gzip_uuwrap - the sending side of a gzip | uuencode stream
+# gzip_b64wrap - the sending side of a gzip | base64 stream
 # %W%
-
 
 PATH=$PATH:/usr/local/bin:/usr/freeware/bin
 
@@ -13,7 +12,7 @@ do	if [ -f $i/gzip -a -x $i/gzip ]
 	fi
 done
 if [ $GZIP = NO ]
-then	exec bk uuwrap
+then	exec bk b64wrap
 	exit 1
 fi
-exec gzip | bk uuencode
+exec gzip | bk base64

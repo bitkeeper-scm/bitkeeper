@@ -341,7 +341,7 @@ echo OK
 echo $N '  try to rename remote to existing local sfile ..............'$NL
 rm -rf copy
 tar xf SAVE.copy 2> /dev/null
-bk resolve -t $L copy 2>ERRORS <<EOF
+bk resolve -t $L copy 2>ERRORS >/dev/null <<EOF
 mr
 c C#
 q
@@ -358,7 +358,7 @@ echo OK
 echo $N '  try to rename remote to existing local sfile in RESYNC ....'$NL
 rm -rf copy
 tar xf SAVE.copy 2> /dev/null
-bk resolve -t $L copy 2>ERRORS <<EOF
+bk resolve -t $L copy 2>ERRORS >/dev/null <<EOF
 mr
 ChangeSet
 q
@@ -376,7 +376,7 @@ echo $N '  try to rename remote to existing local gfile ..............'$NL
 rm -rf copy
 tar xf SAVE.copy 2> /dev/null
 touch copy/GFILE
-bk resolve -t $L copy 2>ERRORS <<EOF
+bk resolve -t $L copy 2>ERRORS >/dev/null <<EOF
 mr
 GFILE
 q
@@ -1240,7 +1240,7 @@ cd $HERE
 rm -rf copy
 tar xf SAVE.copy 2> /dev/null
 cd copy
-bk resolve $L -t -yMerge 2>XXX <<EOF
+bk resolve $L -t -yMerge 2>XXX >/dev/null <<EOF
 ml
 LOCAL
 q

@@ -295,6 +295,7 @@ init_main_loop()
 #
 # Options processing:
 # Usage: doit [-t] [-v] [-x] [test...]
+# -i	do not exit if a test fails, remember it and list it at the end
 # -t	set Test Directory
 # -v 	turn on verbose mode
 # -x	trace command execution
@@ -302,9 +303,13 @@ init_main_loop()
 #
 get_options()
 {
-	Q=-q; S=-s;
+	Q=-q
+	S=-s;
+	KEEP_GOING=NO
+	TESTS=0
 	while true
 	do	case $1 in
+		    -i) KEEP_GOING=YES;;
 		    -r) export PREFER_RSH=YES;;
 		    -t) if [ X$2 = X ]
 			then	echo "-t option requires one argument";
@@ -345,19 +350,30 @@ get_options $@
 setup_env 
 init_main_loop
 # Main Loop #
+FAILED=
 for i in $list
 do	echo ------------ ${i#t.} test
 	mkdir -p $BK_REGRESSION/.tmp || exit 1
 	cat setup $i | @TEST_SH@ $dashx
 	EXIT=$?
-	if [ $EXIT != 0 ]
-	then	echo Test exited with error $EXIT
-		exit $EXIT
+	if [ $EXIT -ne 0 ]
+	then
+		echo ERROR: Test ${i#t.} failed with error $EXIT
+		test $KEEP_GOING = NO && exit $EXIT
+		FAILED="$i $FAILED"
 	fi
 	clean_up
 done
 rm -f $TMP/T.${USER} $TMP/T.${USER}-new
-echo ------------------------------------------------
-echo All requested tests passed, must be my lucky day
-echo ------------------------------------------------
-exit 0
+test "X$FAILED" = X && {
+	echo ------------------------------------------------
+	echo All requested tests passed, must be my lucky day
+	echo ------------------------------------------------
+	exit 0
+}
+echo -----------------------------------------------
+echo Not your lucky day, the following tests failed:
+for i in $FAILED
+do	echo "	$i"
+done
+echo -----------------------------------------------
