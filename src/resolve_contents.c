@@ -39,7 +39,9 @@ c_explain(resolve *rs)
 int
 res_clear(resolve *rs)
 {
+#ifndef WIN32
 	system("clear");
+#endif
 	return (0);
 }
 

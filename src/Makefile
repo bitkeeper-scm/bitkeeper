@@ -48,7 +48,7 @@ OBJ	= abort.o adler32.o admin.o bkd.o bkd_cd.o bkd_client.o \
 	  port/executable.o port/findprog.o port/fullname.o \
 	  port/gethost.o port/getinput.o port/mail.o port/platforminit.o \
 	  port/randomBits.o port/samepath.o port/sccs_root.o \
-	  port/spawn.o port/getnull.o port/service.o \
+	  port/spawn.o port/getnull.o port/http_proxy.o port/service.o \
 	  prs.o pull.o purify.o push.o r2c.o \
 	  range.o rcs.o rcsparse.o rcs2sccs.o receive.o rechksum.o renumber.o \
 	  lock.o resolve.o resolve_contents.o resolve_create.o \
