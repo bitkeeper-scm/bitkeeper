@@ -57,7 +57,6 @@ usage:			system("bk help -s sccslog");
 		}
 		unless (proj) proj = s->proj;
 		unless (s->tree) goto next;
-		RANGE("sccslog", s, 2, 0);
 		if (Aflg) {
 			delta *d = sccs_top(s);
 
@@ -66,6 +65,8 @@ usage:			system("bk help -s sccslog");
 				d->flags |= D_SET;
 				d = d->parent;
 			}
+		} else {
+			RANGE("sccslog", s, 2, 0);
 		}
 		save = n;
 		sccslog(s);

@@ -104,8 +104,24 @@ commit_main(int ac, char **av)
 		return (0);
 	}
 	if (getcomment) {
-		sysio(pendingFiles, commentFile, 0,
-					"bk", "sccslog", "-CA", "-", SYS);
+		char	*cmd, *p;
+		FILE	*f, *f1;
+
+		cmd = aprintf("bk _sort -u | bk sccslog -CA - > %s",
+								commentFile);
+		f = popen(cmd, "w");
+		f1 = fopen(pendingFiles, "rt");
+		assert(f); assert (f1);
+		while (fnext(buf, f1)) {
+			p = strrchr(buf, BK_FS);
+			assert(p);
+			*p = 0;
+			fputs(buf, f);
+			fputs("\n", f);
+		}
+		fclose(f1);
+		pclose(f);
+		free(cmd);
 	}
 	do_clean(s_cset, SILENT);
 	if (doit) return (do_commit(av, opts, sym, pendingFiles, commentFile));
