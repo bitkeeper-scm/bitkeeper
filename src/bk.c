@@ -413,7 +413,7 @@ main(int ac, char **av)
 	char	sopts[30];
 
 	if (getenv("BK_SHOWPROC")) {
-		FILE	*f = fopen("/dev/tty", "w");
+		FILE	*f = fopen(DEV_TTY, "w");
 
 		fprintf(f, "BK (%u t: %5s)", getpid(), milli());
 		for (i = 0; av[i]; ++i) fprintf(f, " %s", av[i]);
@@ -880,7 +880,7 @@ cmdlog_end(int ret)
 	}
 
 	if (getenv("BK_SHOWPROC")) {
-		FILE	*f = fopen("/dev/tty", "w");
+		FILE	*f = fopen(DEV_TTY, "w");
 
 		fprintf(f, "END(%u t: %5s)", getpid(), milli());
 		fprintf(f, " %s = %d\n", cmdlog_buffer, ret);

@@ -283,7 +283,7 @@ change_comments(char *file, char *rev, char **comments)
 		free(comments[i]);
 		comments[i] = 0;
 	}
-	unless (comments[1]) goto err;
+	unless (comments && comments[1]) goto err;
 	freeLines(d->comments);
 	d->comments = comments;
 	if (d->comments) sccs_newchksum(s);

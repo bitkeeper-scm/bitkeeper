@@ -312,8 +312,10 @@ prompt_main(int ac, char **av)
 	int	i, c, ret, ask = 1, nogui = 0;
 	char	*prog = 0, *file = 0, *no = "NO", *yes = "OK", *title = 0;
 	char	*type = 0;
+	FILE	*in, *out = 0;
+	extern	char *pager;
 
-	while ((c = getopt(ac, av, "cegiwxf:n:p:t:y:")) != -1) {
+	while ((c = getopt(ac, av, "cegiowxf:n:p:t:y:")) != -1) {
 		switch (c) {
 		    case 'c': ask = 0; break;
 		    case 'e': type = "-E"; break;
@@ -323,6 +325,7 @@ prompt_main(int ac, char **av)
 		    case 'x': /* ignored, see notice() for why */ break;
 		    case 'f': file = optarg; break;
 		    case 'n': no = optarg; break;
+		    case 'o': no = 0; break;
 		    case 'p': prog = optarg; break;
 		    case 't': title = optarg; break;	/* Only for GUI */
 		    case 'y': yes = optarg; break;
@@ -332,6 +335,7 @@ prompt_main(int ac, char **av)
 	    (!(file || prog) && !av[optind]) ||
 	    (av[optind] && av[optind+1]) || (file && prog)) {
 err:		system("bk help -s prompt");
+		if (out) pclose(out);
 		exit(1);
 	}
 	if (getenv("BK_GUI") && !nogui) {
@@ -367,6 +371,7 @@ err:		system("bk help -s prompt");
 		exit(2);
 	}
 
+	out = popen(pager, "w");
 	if (type) {
 		int	len, half;
 
@@ -378,21 +383,19 @@ err:		system("bk help -s prompt");
 		}
 		len = strlen(type) + 4;
 		half = (76 - len) / 2;
-		for (i = 0; i < half; ++i) fputc('=', stdout);
-		fputc(' ', stdout);
-		fputc(' ', stdout);
-		fputs(type, stdout);
-		fputc(' ', stdout);
-		fputc(' ', stdout);
-		if (len & 1) fputc(' ', stdout);
-		for (i = 0; i < half; ++i) fputc('=', stdout);
-		fputc('\n', stdout);
-		fflush(stdout);
+		for (i = 0; i < half; ++i) fputc('=', out);
+		fputc(' ', out);
+		fputc(' ', out);
+		fputs(type, out);
+		fputc(' ', out);
+		fputc(' ', out);
+		if (len & 1) fputc(' ', out);
+		for (i = 0; i < half; ++i) fputc('=', out);
+		fputc('\n', out);
+		fflush(out);
 	}
 	if (file || prog) {
-		FILE	*in, *out;
 		char	buf[1024];
-		extern	char *pager;
 
 		if (file) {
 			unless (in = fopen(file, "r")) goto err;
@@ -400,23 +403,22 @@ err:		system("bk help -s prompt");
 			putenv("PAGER=cat");
 			unless (in = popen(prog, "r")) goto err;
 		}
-		out = popen(pager, "w");
 		while (fnext(buf, in)) {
 			fputs(buf, out);
 		}
 		if (file) fclose(in);
 		if (prog) pclose(in);
-		pclose(out);
 	} else if (streq(av[optind], "-")) {
 		goto err;
 	} else {
-		fputs(av[optind], stdout);
-		fputc('\n', stdout);
+		fputs(av[optind], out);
+		fputc('\n', out);
 	}
 	if (type) {
-		for (i = 0; i < 76; ++i) fputc('=', stdout);
-		fputc('\n', stdout);
+		for (i = 0; i < 76; ++i) fputc('=', out);
+		fputc('\n', out);
 	}
+	pclose(out);
 	/* No exit status if no prompt */
 	unless (ask) exit(0);
 	exit(confirm(yes ? yes : "OK") ? 0 : 1);

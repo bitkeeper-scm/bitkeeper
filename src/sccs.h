@@ -1140,6 +1140,7 @@ void	delete_cset_cache(char *rootpath, int save);
 int	nFiles(void);
 u32	bk_license(char *user);
 void	notice(char *key, char *arg, char *type);
+pid_t	findpid(pid_t pid);
 
 extern char *bk_vers;
 extern char *bk_utc;

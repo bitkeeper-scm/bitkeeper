@@ -170,6 +170,7 @@ Thanks!
 $
 #config_license
 #license_none
+
 You do not have a license for BitKeeper and the logging field in the
 BitKeeper/etc/config file is not set to "logging@openlogging.org".
 You either need a commercial license (to run without open logging),
@@ -535,6 +536,9 @@ description
 category
 logging
 license
+licsign1
+licsign2
+licsign3
 single_user
 single_host
 compression

@@ -50,7 +50,10 @@ Indicates that the prompt is an informational message.
 .OPTreq \-n no
 If set, specifies the message for the label in the graphical tool which
 is to be used if the user does not agree.  Default is "NO".  Not used
-for the command line version.
+in command line context.
+.tp
+.B \-o
+OK only, clears the default "no" value.  Not used in command line context.
 .tp
 .OPTreq \-p prog
 If set, specifies a program which, when run, will produce the message contents.
@@ -58,7 +61,7 @@ If set, specifies a program which, when run, will produce the message contents.
 .OPTreq \-t title
 If set, specifies the title of the graphical tool.
 Default is "BitKeeper Message".
-Not used for the command line version.
+Not used in command line context.
 .tp
 .OPTreq \-y yes
 If set, specifies the message for the label in the graphical tool, or 
