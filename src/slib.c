@@ -12311,21 +12311,18 @@ mapRev(sccs *s, u32 flags, char *r1, char *r2,
 			lrev = r1;
 		}
 		rrev = r2;
-	} else if (r1) {
-		if (HAS_PFILE(s)) {
-			lrev = r1;
-			rrev = "edited";
-		} else {
-			rrev = r1;
-			if (sccs_parent_revs(s, r1, &lrev, &lrevM)) {
-				return (-1);
-			}
-		}
 	} else if (HAS_PFILE(s)) {
-		if (sccs_read_pfile("diffs", s, pf)) return (-1);
-		lrev = pf->oldrev;
-		lrevM = pf->mRev;
+		if (r1) {
+			lrev = r1;
+		} else {
+			if (sccs_read_pfile("diffs", s, pf)) return (-1);
+			lrev = pf->oldrev;
+			lrevM = pf->mRev;
+		}
 		rrev = "edited";
+	} else if (r1) {
+		lrev = r1;
+		rrev = 0;
 	} else {
 		unless (HAS_GFILE(s)) {
 			verbose((stderr,
@@ -12344,6 +12341,7 @@ mapRev(sccs *s, u32 flags, char *r1, char *r2,
 	}
 	if (!rrev) rrev = findrev(s, 0)->rev;
 	if (!lrev) lrev = findrev(s, 0)->rev;
+	if (streq(lrev, rrev)) return (-3);
 	*rev1 = lrev; *rev1M = lrevM, *rev2 = rrev; 
 	return 0;
 }

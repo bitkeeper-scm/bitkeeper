@@ -34,6 +34,16 @@ You can also diff specific revisions. For example:
 .DS
 $ bk diffs -r1.2..1.4 foo.c
 .DE
+.LP
+When only one revision is supplied with -r, then that revision is
+compared to the working file or the top of trunk if the file is not
+edited.
+.LP
+You can use this to diff your entire tree, including edits against an
+existing tag in your repository.
+.DS
+$ bk rset -l<tag> | bk -R diffs -u -
+.DE
 .SH OPTIONS
 .if t .TP
 .if n .TP 1i
