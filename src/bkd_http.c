@@ -1523,9 +1523,22 @@ http_index(char *page)
 	    "</a></td></tr>\n");
 #endif
 	unless (isLoggingTree) {
-		out("<tr><td><pre><form method=get action=\"search/\">\n"
-		    "Search: <input type=\"text\" name=\"expr\"> "
-		    "<input type=\"submit\" value=\"Go\"></pre></td></tr>\n");
+		out("<tr><td align=middle>"
+		    "<form method=get action=search/>\n"
+		    "<INPUT size=26 type=text name=expr><br>\n"
+		    "<table><tr><td><font size=2>\n"
+		    "<input type=radio name=search "
+		    "value=\"ChangeSet comments\" checked>"
+		    "Changeset comments<br>\n"
+		    "<input type=radio name=search value=\"file comments\">"
+		    "File comments<br>\n"
+		    "<input type=radio name=search value=\"file contents\">"
+		    "File contents<br>\n"
+		    "</td><td align=right>"
+		    "<input type=submit value=Search><br>"
+		    "<input type=reset value=\"Clear search\">\n"
+		    "</font></td></tr></table></form>\n");
+
 	}
 	out("</table>");
 	out("</table>");
@@ -1980,23 +1993,60 @@ http_tags(char *page)
 	if (!embedded) trailer("tags");
 }
 
-/*
- * expr
- */
+private void
+expand(char *s)
+{
+	char	*buf = malloc(strlen(s) + 1);
+	char	*t = buf;
+
+	while (*s) {
+		unless (*s == '%') {
+			*t++ = *s++;
+			continue;
+		}
+		s++;
+		*t++ = strtoul(s, 0, 16);
+		while (isdigit(*s)) s++;
+	}
+	*t = 0;
+	strcpy(expr, buf);
+	free(buf);
+}
+
 private void
 http_search(char *junk)
 {
-	char	*base, *file, *rev, *text;
-	int	i, first = 1;
+	char	*s, *base, *file, *rev, *text;
+	int	which, i, first = 1;
 	FILE	*f;
 	char	buf[8<<10];
 
 	whoami("index.html");
 
+	/*
+	 * More+than+one+word+%26tc&search=comments
+	 * translates to
+	 * More than one word &tc
+	 */
+#define	SEARCH_CSET	1
+#define	SEARCH_COMMENTS	2
+#define	SEARCH_CONTENTS	3
+	which = SEARCH_CSET;
+	s = "ChangeSet comments";
+	if ((s = strrchr(expr, '&')) && strneq(s, "&search=", 8)) {
+		*s = 0;
+		s += 8;
+		if (strchr(s, '+')) *strchr(s, '+') = ' ';
+		if (streq(s, "file comments")) which = SEARCH_COMMENTS;
+		if (streq(s, "file contents")) which = SEARCH_CONTENTS;
+	}
+	expand(expr);
+	unless (strlen(expr)) http_error(404, "Search for what?\n");
+
 	if (!embedded) {
 		httphdr(".html");
 		i = snprintf(buf,
-		    sizeof(buf), "Search results for bk -r grep %s\n", expr);
+		    sizeof(buf), "Search results for \"%s\" in %s\n", expr, s);
 		if (i == -1) {
 			header(0, COLOR, "Search results", 0);
 		} else {
@@ -2004,32 +2054,55 @@ http_search(char *junk)
 		}
 	}
 
-	sprintf(buf, "bk -Ur grep -r_BK_TOP -fm '%s'", expr);
+	switch (which) {
+	    case SEARCH_CSET:
+		sprintf(buf, "bk prs -h "
+		    "-d'$each(:C:){:GFILE:\t:I:\t(:C:)\n}' ChangeSet");
+		break;
+	    case SEARCH_CONTENTS:
+		sprintf(buf, "bk -Ur grep -r_BK_TOP -fm '%s'", expr);
+		break;
+	    case SEARCH_COMMENTS:
+		sprintf(buf, "bk -Ur prs -h "
+		    "-d'$each(:C:){:GFILE:\t:I:\t(:C:)\n}'");
+		break;
+	}
 	unless (f = popen(buf, "r")) http_error(404, "grep failed?\n");
 	
-	while (fnext(buf, f)) {
-		if (first) {
-			out("<pre><strong>");
-			out("Filename         Rev        Match</strong>\n");
-			out("<hr size=1 noshade><br>");
-			first = 0;
-		}
+next:	while (fnext(buf, f)) {
 		file = buf;
 		unless (rev = strchr(buf, '\t')) continue;
 		*rev++ = 0;
 		unless (base = strrchr(file, '/')) base = file; else base++;
 		unless (text = strchr(rev, '\t')) continue;
 		*text++ = 0;
-		out("<a href=anno/");
-		out(file);
+		unless ((which == SEARCH_CONTENTS) || strstr(text, expr)) {
+			continue;
+		}
+		if (first) {
+			out("<pre><strong>");
+			out("Filename         Rev        Match</strong>\n");
+			out("<hr size=1 noshade><br>");
+			first = 0;
+		}
+		if (which == SEARCH_CSET) {
+			out("<a href=cset");
+		} else {
+			out("<a href=anno/");
+			out(file);
+		}
 		out("@");
 		out(rev);
 		out(">");
 		out(base);
 		out("</a>");
 		for (i = strlen(base); i <= 16; ++i) out(" ");
-		out("<a href=diffs/");
-		out(file);
+		if (which == SEARCH_CSET) {
+			out("<a href=patch");
+		} else {
+			out("<a href=diffs/");
+			out(file);
+		}
 		out("@");
 		out(rev);
 		out(">");
