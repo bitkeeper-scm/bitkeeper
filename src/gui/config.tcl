@@ -47,6 +47,9 @@ proc getConfig {prog} \
 	set _d(ci.excludeColor) red	;# color of the exclude X
 	set _d(ci.editor) ciedit	;# editor: ciedit=builtin, else in xterm
 	set _d(ci.display_bytes) 8192	;# number of bytes to show in new files
+	set _d(ci.filesHeight) 8	;# number of files to show in top win
+	set _d(ci.commentsHeight) 6	;# height of comment window
+	set _d(ci.diffHeight) 30	;# number of lines in the diff window
 
 	set _d(cset.listHeight) 12
 
