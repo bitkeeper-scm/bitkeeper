@@ -1303,12 +1303,24 @@ pathConflict(opts *opts, char *gfile)
 	for (t = strrchr(gfile, '/'); t; ) {
 		*t = 0;
 		if (exists(gfile) && !isdir(gfile)) {
-			if (opts->debug) {
-			    	fprintf(stderr,
-				    "%s exists in local repository\n", gfile);
+			char	*sfile = name2sccs(gfile);
+
+			/*
+			 * If the gfile has a matching sfile and that file
+			 * doesn't exist in the RESYNC dir, then it is not
+			 * a conflict, the file has been successfully moved.
+			 */
+			unless (exists(sfile) && 
+			    !mdbm_fetch_str(opts->rootDB, sfile)) {
+				if (opts->debug) {
+					fprintf(stderr,
+					    "%s exists in local repository\n", 
+					    gfile);
+				}
+				*t = '/';
+				return (1);
 			}
-			*t = '/';
-			return (1);
+			free(sfile);
 		}
 		s = t;
 		t = strrchr(t, '/');

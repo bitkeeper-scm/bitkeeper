@@ -137,6 +137,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 	}
 	chdir(RESYNC2ROOT);
 
+	rmEmptyDirs(!streq(qflag, ""));
 	if (streq(qflag, "") && save) {
 		printf("Patch containing these undone deltas left in %s\n",
 		    BK_UNDO);
@@ -148,6 +149,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 		}
 		rc = system("bk -r check -a ");
 	}
+	rc = WIFEXITED(rc) ? WEXITSTATUS(rc) : 0;
 	sig_default();
 
 	freeLines(fileList);
