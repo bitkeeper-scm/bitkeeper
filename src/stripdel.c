@@ -4,6 +4,13 @@
 #include "range.h"
 WHATSTR("@(#)%K%");
 
+typedef struct {
+	u32	respectCset:1;
+	u32	stripBranches:1;
+	u32	checkOnly:1;
+	u32	quiet:1;
+} s_opts;
+
 private	char	*stripdel_help = "\n\
 usage: stripdel [-bcq] -r<rev> filename\n\n\
     -b		strip all branch deltas\n\
@@ -13,18 +20,18 @@ usage: stripdel [-bcq] -r<rev> filename\n\n\
     -r<rev>	set of revisions to be removed\n\n";
 
 private	delta	*checkCset(sccs *s);
+private int set_meta(sccs *s, int stripBranches, int *count);
+private int doit(sccs *, s_opts);
+private	int do_check(sccs *s, int flags);
+private int strip_list(s_opts);
 
 int
 stripdel_main(int ac, char **av)
 {
 	sccs	*s;
 	char	*name;
-	delta	*e;
-	int	c, left, n;
-	int	flags = 0;
-	int	checkOnly = 0;
-	int	respectCset = 1;
-	int	stripBranches = 0;
+	int	c, rc;
+	s_opts	opts = {1, 0, 0, 0};
 	RANGE_DECL;
 
 	debug_main(av);
@@ -34,18 +41,20 @@ usage:		fprintf(stderr, stripdel_help);
 	}
 	while ((c = getopt(ac, av, "bcCqr;")) != -1) {
 		switch (c) {
-		    case 'b': stripBranches++; break;
-		    case 'c': checkOnly++; break;
-		    case 'C': respectCset = 0; break;
-		    case 'q': flags |= SILENT; break;
+		    case 'b': opts.stripBranches = 1; break;
+		    case 'c': opts.checkOnly = 1; break;
+		    case 'C': opts.respectCset = 0; break;
+		    case 'q': opts.quiet = 1; break;
 		    RANGE_OPTS('!', 'r');
 		    default:
 			fprintf(stderr,
-			    "stripdel: usage error, try stripdel --help\n");
+			    "stripdel: <%c> usage error, try stripdel --help\n", c);
 			return (1);
 		}
 	}
-	unless (stripBranches || (things && r[0])) {
+	if (streq(av[optind], "-")) return (strip_list(opts));
+
+	unless (opts.stripBranches || (things && r[0])) {
 		fprintf(stderr, "stripdel: must specify revisions.\n");
 		return (1);
 	}
@@ -65,26 +74,89 @@ usage:		fprintf(stderr, stripdel_help);
 		return (1);
 	}
 
-	if ((s->state & S_BITKEEPER) && stripBranches) {
+	unless (opts.stripBranches) RANGE("stripdel", s, 2, 1);
+	rc = doit(s, opts);
+	sfileDone();
+	purify_list();
+	return (rc);
+next:	return (1);
+}
+
+private int
+doit(sccs *s, s_opts opts)
+{
+	delta *e;
+	int left, n;
+	int flags = 0;
+
+	if (opts.quiet) flags |= SILENT;
+	if ((s->state & S_BITKEEPER) && opts.stripBranches) {
 		fprintf(stderr,
 		    "stripdel: can't strip branches from a BitKeeper file.\n");
+		sccs_free(s);
 		return (1);
 	}
 
 	if (HAS_PFILE(s)) {
 		fprintf(stderr, "stripdel: can't strip an edited file.\n");
+		sccs_free(s);
 		return (1);
 	}
 
-	unless (stripBranches) RANGE("stripdel", s, 2, 1);
-
-	if (respectCset && (e = checkCset(s))) {
+	if (opts.respectCset && (e = checkCset(s))) {
 		fprintf(stderr,
-		    "stripdel: can't remove committed delta %s@%s\n",
+    			"stripdel: can't remove committed delta %s@%s\n",
 		    s->gfile, e->rev);
 		sccs_free(s);
 		return (1);
 	}
+
+	left = set_meta(s, opts.stripBranches, &n); 
+	if (opts.checkOnly) return(do_check(s, flags));
+	unless (left) {
+		if (sccs_clean(s, SILENT)) {
+			fprintf(stderr,
+			    "stripdel: can't remove edited %s\n", s->gfile);
+			sccs_free(s);
+			return (1);
+		}
+		/* see ya! */
+		verbose((stderr, "stripdel: remove file %s\n", s->sfile));
+		sccs_close(s); /* for win32 */
+		unlink(s->sfile);
+		sccs_free(s);
+		return (0);
+	}
+
+	if (sccs_stripdel(s, "stripdel")) {
+		unless (BEEN_WARNED(s)) {
+			fprintf(stderr,
+		    "stripdel of %s failed.\n", s->sfile);
+		}
+		sccs_free(s);
+		return (1); /* failed */
+	}
+	verbose((stderr, "stripdel: removed %d deltas from %s\n", n, s->gfile));
+	sccs_free(s);
+	return 0;
+}
+
+int
+do_check(sccs *s, int flags)
+{
+	int	f = ADMIN_BK|ADMIN_FORMAT|ADMIN_GONE|flags;
+	int	error;
+
+	error = sccs_admin(s, 0, f, 0, 0, 0, 0, 0, 0, 0, 0);
+	sccs_free(s);
+	return(error? 1 : 0);
+}
+
+int
+set_meta(sccs *s, int stripBranches, int *count)
+{
+	int	n, left;
+	delta	 *e;
 
 	for (n = left = 0, e = s->table; e; e = e->next) {
 		if (stripBranches && e->r[2]) e->flags |= D_SET;
@@ -108,43 +180,37 @@ usage:		fprintf(stderr, stripdel_help);
 		}
 		left++;
 	}
+	*count = n;
+	return left;
+}
 
-	if (checkOnly) {
-		int	f = ADMIN_BK|ADMIN_FORMAT|ADMIN_GONE|flags;
-		int	error = sccs_admin(s, 0, f, 0, 0, 0, 0, 0, 0, 0, 0);
+private int
+strip_list(s_opts opts)
+{
+	char	*rev, *name;
+	char	*av[2] = {"-", 0};
+	sccs	*s = 0;
+	delta	*d;
+	project *proj = 0;
+	int 	rc = 1;
 
-		sccs_free(s);
-		return(error? 1 : 0); /* win32 bash bug, must not exit with -1 */
-	}
-
-	unless (left) {
-		if (sccs_clean(s, SILENT)) {
-			fprintf(stderr,
-			    "stripdel: can't remove edited %s\n", s->gfile);
-			sccs_free(s);
-			return (1);
+	for (name = sfileFirst("stripdel", av, SF_HASREVS); name;
+							name = sfileNext()) {
+		if (!s || !streq(s->sfile, name)) {
+			if (s && doit(s, opts)) goto fail;
+			s = sccs_init(name, SILENT|INIT_SAVEPROJ, proj);
+			assert(s);
+			unless(proj) proj = s->proj;
 		}
-		/* see ya! */
-		verbose((stderr, "stripdel: remove file %s\n", s->sfile));
-		sccs_close(s); /* for win32 */
-		unlink(s->sfile);
-		sccs_free(s);
-		return (0);
+		rev = sfileRev(); assert(rev);
+		d = findrev(s, rev); assert(d);
+		d->flags |= D_SET;
 	}
-
-	if (sccs_stripdel(s, "stripdel")) {
-		unless (BEEN_WARNED(s)) {
-			fprintf(stderr, "stripdel of %s failed.\n", name);
-		}
-		sccs_free(s);
-		return (1);
-	}
-	verbose((stderr, "stripdel: removed %d deltas from %s\n", n, s->gfile));
+	if (s && doit(s, opts)) goto fail;
+	rc = 0;
+fail:	if (proj) proj_free(proj);
 	sfileDone();
-	sccs_free(s);
-	purify_list();
-	return (0);
-next:	return (1);
+	return (rc);
 }
 
 private	delta	*

@@ -1080,35 +1080,16 @@ doMarks(cset_t *cs, sccs *s)
 }
 
 /*
- * Do the set listing but make sure that the listing isn't > MAXLINE - 200.
+ * Do the set listing
  */
 private void
 doSet(sccs *sc)
 {
 	delta	*d;
-	int	first = 1;
-	int	len = 0;
 
-	printf("%s@", sc->gfile);
-	len = strlen(sc->gfile) + 1;
 	for (d = sc->table; d; d = d->next) {
-		if (d->flags & D_SET) {
-			if (first) {
-				first = 0;
-			} else {
-				printf(",");
-				len++;
-			}
-			printf("%s", d->rev);
-			len += strlen(d->rev);
-			if (len >= (MAXLINE - 200)) {
-				printf("\n");
-				printf("%s@", sc->gfile);
-				len = strlen(sc->gfile) + 1;
-			}
-		}
+		if (d->flags & D_SET) printf("%s@%s\n", sc->gfile, d->rev);
 	}
-	printf("\n");
 }
 
 /*
