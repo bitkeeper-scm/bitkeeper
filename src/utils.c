@@ -313,7 +313,7 @@ prompt_main(int ac, char **av)
 	char	*prog = 0, *file = 0, *no = "NO", *yes = "OK", *title = 0;
 	char	*type = 0;
 
-	while ((c = getopt(ac, av, "cegiwxf:n:p:t:y:")) != -1) {
+	while ((c = getopt(ac, av, "cegiowxf:n:p:t:y:")) != -1) {
 		switch (c) {
 		    case 'c': ask = 0; break;
 		    case 'e': type = "-E"; break;
@@ -323,6 +323,7 @@ prompt_main(int ac, char **av)
 		    case 'x': /* ignored, see notice() for why */ break;
 		    case 'f': file = optarg; break;
 		    case 'n': no = optarg; break;
+		    case 'o': no = 0; break;
 		    case 'p': prog = optarg; break;
 		    case 't': title = optarg; break;	/* Only for GUI */
 		    case 'y': yes = optarg; break;
