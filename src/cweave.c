@@ -168,7 +168,7 @@ earlier(sccs *s, delta *a, delta *b)
  *
  * XXX Do we need any special processing for meta delta?
  */
-void
+delta *
 cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 {
 	int	i, error, added = 0;
@@ -306,6 +306,7 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 	 */
 	EACH (syms) addsym(s, d, d, 0, NULL, syms[i]);
 	if (syms) freeLines(syms);
+	return (d);
 }
 
 extern int sccs_csetPatchWeave(sccs *s, FILE *f);
