@@ -10845,10 +10845,10 @@ skip:
 		 * and expect checksum to be generated when the delta is 
 		 * is created.
 		 */
-		if (!d->added && !d->deleted &&
-				     !d->same && !d->include && !d->exclude) {
+		if (!d->added && !d->deleted && !d->include && !d->exclude) {
 			d->sum = 0;
 			d->flags |= D_ICKSUM;
+		}
 
 #endif
  	}
