@@ -160,6 +160,8 @@ then	echo failed
 fi
 echo OK
 echo $N Check flags conflict ........................................$NL
+cd $HERE
+tar cf repo.tar project copy
 cd $HERE/project/src
 bk admin $Q -fEXPAND1 -fRCS -fYEAR4 foo.c
 bk commit $S -yperm2
@@ -182,6 +184,9 @@ then	echo failed with mode $FLAGS
 fi
 echo OK
 echo $N Check flags conflict2 .......................................$NL
+cd $HERE
+rm -rf project copy
+tar xf repo.tar
 cd $HERE/project/src
 bk admin $Q -FSCCS foo.c
 bk commit $S -yxflags2
@@ -199,20 +204,24 @@ C
 EOF
 cd $HERE/copy/src
 FLAGS=`bk prs -h -r+ -d:FLAGS: foo.c`
-if [ "$FLAGS" != "YEAR4,RCS,SINGLE,EXPAND1" ]
+if [ "$FLAGS" != "SINGLE" ]
 then	echo failed with mode $FLAGS
 	bk prs -h -d':REV:\t:FLAGS:\n' foo.c
 	exit 1
 fi
 echo OK
 echo $N Check flags conflict3 .......................................$NL
+cd $HERE
+rm -rf project copy
+tar xf repo.tar
 cd $HERE/project/src
 bk edit $Q foo.c
-echo "new-content2" >> foo.c
-bk ci $Q -y"new-content2" foo.c
+echo new-data > foo.c
+bk get $Q -p $HERE/copy/src/foo.c >> foo.c 
+bk ci $Q -y"new-content" foo.c
 bk commit $S -y"new-content2"
 cd $HERE/copy/src
-bk admin $Q -FRCS foo.c
+bk admin $Q -FSCCS foo.c
 bk commit $S -yxflags3
 bk resync -t $Q $HERE/project $HERE/copy
 cd $HERE
@@ -220,10 +229,12 @@ bk resolve -t $Q $HERE/copy 2>/dev/null 1>&2 <<EOF
 l
 m
 C
+This is a checkin comment
+.
 EOF
 cd $HERE/copy/src
 FLAGS=`bk prs -h -r+ -d:FLAGS: foo.c`
-if [ "$FLAGS" != "YEAR4,SINGLE,EXPAND1" ]
+if [ "$FLAGS" != "SINGLE" ]
 then	echo failed with mode $FLAGS
 	bk prs -h -d':REV:\t:FLAGS:\n' foo.c
 	exit 1
