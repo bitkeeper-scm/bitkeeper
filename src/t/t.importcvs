@@ -91,7 +91,7 @@ cvs -Q tag -b branch2 || exit 1
 sleep 1
 cvsbuild end next1 start
 cd $HERE
-cvs -Q co -dtest.branch1 -rbranch1 test || exit 1
+cvs -Q co -dtest.branch1 -rbranch1 test >/dev/null 2>&1 || exit 1
 cd test.branch1
 cvsbuild branch1 start
 sleep 1
@@ -100,11 +100,11 @@ cvs -Q tag -b branch1_1 || exit 1
 sleep 1
 cvsbuild next3 next2 branch1 start
 cd $HERE
-cvs -Q co -dtest.branch1_1 -rbranch1_1 test || exit 1
+cvs -Q co -dtest.branch1_1 -rbranch1_1 test >/dev/null 2>&1 || exit 1
 cd test.branch1_1
 cvsbuild branch1_1 next2 branch1 start
 cd $HERE
-cvs -Q co -dtest.branch2 -rbranch2 test || exit 1
+cvs -Q co -dtest.branch2 -rbranch2 test >/dev/null 2>&1 || exit 1
 cd test.branch2
 cvsbuild branch2 next1 start
 echo OK

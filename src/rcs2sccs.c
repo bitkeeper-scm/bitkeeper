@@ -498,7 +498,7 @@ R %.8s\n",
 	    streq(rcs->kk, "-kk") || streq(rcs->kk, "-kkv");
 	sprintf(t,
 		"X 0x%x\n------------------------------------------------\n",
-		X_REQUIRED | (expand ? X_RCS : 0));
+		X_DEFAULT | (expand ? X_RCS : 0));
 	init = mrange(buf, &buf[strlen(buf)], "b");
 
 	/* bk delta $Q $enc -ciI.onezero $gfile */
