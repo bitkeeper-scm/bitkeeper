@@ -1423,3 +1423,52 @@ bk clone $Q -EBK_NO_TRIGGERS=1 no_triggers_filt no_triggers_filt.copy2 && {
 	exit 1
 }
 echo OK
+
+echo $N Check commit w perl trigger .................................$NL
+cd $HERE
+no_logging proj2
+bk edit $Q BitKeeper/etc/config
+echo "checkout: get" >> BitKeeper/etc/config
+bk delta $Q -ycheckout BitKeeper/etc/config
+bk commit $Q -ycheckout
+mkdir BitKeeper/triggers
+PERL=`type perl | awk '{ print $3 }'`
+echo $PERL | grep -q "not found"  && { echo failed; exit 1; }
+cat > BitKeeper/triggers/pre-commit <<EOF
+#! $PERL -w
+print "I am in perl";
+EOF
+chmod +x BitKeeper/triggers/pre-commit
+echo h > h.h
+bk ci $Q -i h.h
+bk commit $S -a -yCset > $HERE/out
+grep -q "I am in perl" $HERE/out || { echo failed; cat $HERE/out; exit 1; }
+echo OK
+
+if [ "$PLATFORM" == "WIN32" ]
+then
+echo $N Check commit w Windows Batch file trigger ...................$NL
+cat > BitKeeper/triggers/pre-commit.bat <<EOF
+@ECHO OFF
+REM This is a remark
+echo "I am a Windows BATCH file"
+EOF
+bk edit $Q h.h
+echo "h2" > h.h
+bk delta $Q -yh2 h.h
+bk commit $S -a -yCset_bat > $HERE/out
+grep -q "I am a Windows BATCH file" $HERE/out || { echo failed; exit 1; }
+echo OK
+
+echo $N Check commit w bogus shell ..................................$NL
+cat > BitKeeper/triggers/pre-commit <<EOF
+#!c:/bogus.exe
+exit 0
+EOF
+bk edit $Q h.h
+echo "h2" > h.h
+bk delta $Q -yh3 h.h
+bk commit $S -a -yCset_h3 2> $HERE/out
+grep -q "Cannot expand shell path" $HERE/out || { echo failed; exit 1; }
+echo OK
+fi
