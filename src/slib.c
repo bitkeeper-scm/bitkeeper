@@ -1311,7 +1311,7 @@ basenm(char *s)
 }
 
 /*
- * clean up ".." and "." in a path name
+ * clean up "..", "." and "//" in a path name
  */
 void
 cleanPath(char *path, char cleanPath[])
@@ -1348,7 +1348,9 @@ cleanPath(char *path, char cleanPath[])
 				/* copy regular directory */
 				unless (isEmpty(buf, r)) *r-- = '/';
 				while ((p >= top) && (*p != '/')) *r-- = *p--;
-				p--;
+
+				/* skip "/", "//" etc.. */
+				while ((p >= top) && (*p == '/')) p--;
 			}
 		}
 	}
@@ -1356,7 +1358,7 @@ cleanPath(char *path, char cleanPath[])
 	if (!isEmpty(buf, r) && (top[0] != '/')) {
 		/* put back any ".." with no known parent directory  */
 		while (dotCnt--) {
-			unless (isEmpty(buf, r)) *r-- = '/';
+			if (!isEmpty(buf, r) && (r[1] != '/')) *r-- = '/';
 			*r-- = '.'; *r-- = '.';
 		}
 	}

@@ -36,6 +36,7 @@ int changes_main(int, char **);
 int check_main(int, char **);
 int chksum_main(int, char **);
 int clean_main(int, char **);
+int cleanpath_main(int, char **);
 int clone_main(int, char **);
 int commit_main(int, char **);
 int config_main(int, char **);
@@ -147,6 +148,7 @@ int _f2csets_main(int, char **);
 struct command cmdtbl[] = {
 	{"_adler32", adler32_main},
 	{"_converge", converge_main},
+	{"_cleanpath", cleanpath_main},
 	{"_createlod", _createlod_main},
 	{"_f2csets", _f2csets_main},
 	{"_find", find_main },

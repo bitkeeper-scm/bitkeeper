@@ -21,11 +21,15 @@ if [ X$P != X`$CWD`/path ]; then echo Failed; exit 1; fi
 echo OK
 echo $N checking pathname w/ cset file ..............................$NL
 no_logging project
-echo 5678 > path
-bk ci $Q -i path
-P=`bk prs -h -d':DPN:' path`
-if [ X$P != X"path" ]; then echo Failed; exit 1; fi
+mkdir -p dir1/dir2
+cd dir1
+echo 5678 > dir2/path
+# we it to be double slash
+bk ci $Q -i dir2//path
+P=`bk prs -h -d':DPN:' dir2/path`
+if [ X$P != X"dir1/dir2/path" ]; then echo Failed; exit 1; fi
 echo OK
+cd ..
 if [ "$PLATFORM" != "WIN32" ]
 then
 echo $N checking pathname w/ symlink directory ......................$NL
