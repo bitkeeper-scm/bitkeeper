@@ -10569,7 +10569,7 @@ sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out)
 #define	DEFAULT_DSPEC \
 "D :I: :D: :T::TZ: :P:$if(:HT:){@:HT:} :DS: :DP: :Li:/:Ld:/:Lu:\n\
 $if(:DPN:){P :DPN:\n}$each(:C:){C (:C:)}\n\
-------------------------------------------------\n"
+------------------------------------------------"
 
 	if (!dspec) dspec = DEFAULT_DSPEC;
 	GOODSCCS(s);
