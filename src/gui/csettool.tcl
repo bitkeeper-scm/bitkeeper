@@ -12,6 +12,16 @@ proc nextFile {} \
 	dotFile
 }
 
+proc redoFile {} \
+{
+	# Preserve the current view, re-do all the magic, then restore
+	# the view
+	set view [diffView]
+	dotFile
+	diffView $view
+	
+}
+
 proc prevFile {} \
 {
 	global	lastFile
@@ -51,6 +61,7 @@ proc dotFile {{line {}}} \
 {
 	global	lastFile fileCount Files tmp_dir file_start_stop file_stop
 	global	RealFiles file finfo
+	global gc
 
 	busy 1
 	set finfo(lt) ""
@@ -92,8 +103,20 @@ proc dotFile {{line {}}} \
 	set tmp [file tail "$file"]
 	set l [file join $tmp_dir $tmp-${parent}_[pid]]
 	set r [file join $tmp_dir $tmp-${stop}_[pid]]
-	catch { exec bk get -qkpr$parent "$file" > $l}
-	catch { exec bk get -qkpr$stop "$file" > $r}
+	if {$::showAnnotations} {
+		set annotate "$gc(cset.annotation)"
+		if {[string index $annotate 0] != "-"} {
+			set annotate "-$annotate"
+		}
+		if {[string first "a" $annotate] == -1} {
+			append annotate "a"
+		}
+		if {$annotate == "-a"} {set annotate "-aum"}
+	} else {
+		set annotate ""
+	}
+	catch { exec bk get -qkpr$parent $annotate "$file" > $l}
+	catch { exec bk get -qkpr$stop $annotate "$file" > $r}
 	displayInfo $file $file $parent $stop 
 	readFiles $l $r
 	catch {file delete $l $r}
@@ -183,11 +206,14 @@ proc getFiles {revs {file_rev {}}} \
 		.l.filelist.t insert end "ChangeSet $cset\n" cset
 		set c [open "| bk cset -Hhr$cset | bk _sort" r]
 		while { [gets $c buf] >= 0 } {
+			regexp  $file_old_new $buf dummy name oname rev
+			if {[string match "1.0" $rev]} continue
+
 			incr fileCount
 			incr line
 			set line2File($line) $fileCount
 			set Files($fileCount) $line
-			regexp  $file_old_new $buf dummy name oname rev
+
 			set RealFiles($fileCount) "  $name@$rev"
 			set buf "$oname@$rev"
 			if {[string first $file_rev $buf] >= 0} {
@@ -218,6 +244,7 @@ proc getFiles {revs {file_rev {}}} \
 # --------------- Window stuff ------------------
 proc busy {busy} \
 {
+	set oldCursor [. cget -cursor]
 	if {$busy == 1} {
 		. configure -cursor watch
 		.l.filelist.t configure -cursor watch
@@ -231,7 +258,12 @@ proc busy {busy} \
 		.diffs.left configure -cursor left_ptr
 		.diffs.right configure -cursor left_ptr
 	}
-	update
+	# only call update if the cursor changes; this will cut down
+	# a little bit on the flashing that happens at startup. It doesn't
+	# eliminate the problem, but it helps. 
+	if {![string match $oldCursor [. cget -cursor]]} {
+		update
+	}
 }
 
 proc pixSelect {x y {bindtype {}}} \
@@ -299,7 +331,7 @@ proc widgets {} \
 		-background $gc(cset.scrollColor) \
 		-orient vertical -command ".l.filelist.t yview"
 	    grid .l.filelist.t -row 0 -column 0 -sticky news
-	    grid .l.filelist.yscroll -row 0 -column 1 -sticky nse -rowspan 2
+	    grid .l.filelist.yscroll -row 0 -column 1 -sticky nse 
 	    grid .l.filelist.xscroll -row 1 -column 0 -sticky ew
 	    grid rowconfigure .l.filelist 0 -weight 1
 	    grid rowconfigure .l.filelist 1 -weight 0
@@ -321,7 +353,7 @@ proc widgets {} \
 		-background $gc(cset.scrollColor) \
 		-orient vertical -command ".l.sccslog.t yview"
 	    grid .l.sccslog.t -row 0 -column 0 -sticky news
-	    grid .l.sccslog.yscroll -row 0 -column 1 -sticky ns -rowspan 2
+	    grid .l.sccslog.yscroll -row 0 -column 1 -sticky ns
 	    grid .l.sccslog.xscroll -row 1 -column 0 -sticky ew
 	    grid rowconfigure .l.sccslog 0 -weight 1
 	    grid rowconfigure .l.sccslog 1 -weight 0
@@ -363,6 +395,13 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		-text "File" -width 8 -state normal \
 		-menu .menu.fmb.menu
 		set fmenu(widget) [menu .menu.fmb.menu]
+	    $fmenu(widget) add checkbutton \
+	        -label "Show Annotations" \
+	        -onvalue 1 \
+	    	-offvalue 0 \
+	        -variable showAnnotations \
+	        -command redoFile
+	    $fmenu(widget) add separator
 	    button .menu.nextFile -font $gc(cset.buttonFont) \
 		-bg $gc(cset.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
@@ -390,7 +429,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		-text "History" -width 8 -state normal \
 		-menu .menu.mb.menu
 		set m [menu .menu.mb.menu]
-		$m add command -label "ChangeSet History" \
+		$m add command -label "Changeset History" \
 		    -command "exec bk revtool &"
 		$m add command -label "File History" \
 		    -command file_history
@@ -419,6 +458,11 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	    # Add the search widgets to the menu bar
 	    search_widgets .menu .diffs.right
 
+	    # We put status info in the diff status window that is larger
+	    # than that expeced by difflib; so, make the label a bit wider 
+	    # to keep the display from jiggling
+	    .diffs.status.middle configure -width 25
+	
 	# smaller than this doesn't look good.
 	#wm minsize . $x 400
 
@@ -471,6 +515,10 @@ proc keyboard_bindings {} \
 {
 	global gc search tcl_platform
 
+	bind all <Control-b> { if {[Page "yview" -1 0] == 1} { break } }
+	bind all <Control-f> { if {[Page "yview"  1 0] == 1} { break } }
+	bind all <Control-e> { if {[Page "yview"  1 1] == 1} { break } }
+	bind all <Control-y> { if {[Page "yview" -1 1] == 1} { break } }
 	bind all <Prior> { if {[Page "yview" -1 0] == 1} { break } }
 	bind all <Next> { if {[Page "yview" 1 0] == 1} { break } }
 	bind all <Up> { if {[Page "yview" -1 1] == 1} { break } }
@@ -519,7 +567,7 @@ proc keyboard_bindings {} \
 
 proc main {} \
 {
-	global argv0 argv argc app
+	global argv0 argv argc app showAnnotations gc
 
 	# Set 'app' so that the difflib code knows which global config
 	# vars to read
@@ -569,13 +617,85 @@ proc main {} \
 		catch {close $fd}
 	}
 
+	loadState
+	restoreGeometry
+
 	widgets
+
+	if {$gc(cset.annotation) != ""} {
+		set showAnnotations 1
+	}
 
 	if {$stdin == 1} {
 		getFiles "-"
 	} else {
 		getFiles $revs $file_rev
 	}
+
+	bind . <Destroy> {
+		if {[string match "." %W]} {
+			saveState
+		}
+	}
 }
 
+proc restoreGeometry {} \
+{
+	global State
+
+	set res [winfo screenwidth .]x[winfo screenheight .]
+	if {![info exists State(geometry@$res)]} return
+
+	# Setting the propagate value to zero is essential; bindings
+	# in difflib will try to coerce the widgets to a particular
+	# size, resulting in much thrashing about.
+	grid propagate . 0
+
+	# We have to do a little dance because the geometry in 
+	# state is pixel-based, but the window is actually gridded
+	# (look for a widget with the -setgrid option). When a
+	# window is gridded, geometry specifications are assumed to
+	# be in grid units. So, if we set the geomtry to 200x200, 
+	# we end up with 200x200 characters rather than pixels.
+	catch {
+		set geometry $State(geometry@$res)
+		regexp {([0-9]+)x([0-9]+)(.*)} $geometry -> width height pos
+		. configure -width $width -height $height
+		wm geometry . $pos
+	}
+}
+
+proc loadState {} \
+{
+	global State
+
+	catch {::appState load cset State}
+
+}
+
+proc saveState {} \
+{
+	global State
+
+	# Copy state to a temporary variable, the re-load in the
+	# state file in case some other process has updated it
+	# (for example, setting the geometry for a different
+	# resolution). Then add in the geometry information unique
+	# to this instance.
+	array set tmp [array get State]
+	catch {::appState load cset tmp}
+	set res [winfo screenwidth .]x[winfo screenheight .]
+	set tmp(geometry@$res) [wm geometry .]
+
+	# Generally speaking, errors at this point are no big
+	# deal. It's annoying we can't save state, but it's no 
+	# reason to stop running. So, a message to stderr is 
+	# probably sufficient. Plus, given we may have been run
+	# from a <Destroy> event on ".", it's too late to pop
+	# up a message dialog.
+	if {[catch {::appState save cset tmp} result]} {
+		puts stderr "error writing config file: $result"
+	}
+
+}
 main

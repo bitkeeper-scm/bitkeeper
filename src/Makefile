@@ -452,9 +452,9 @@ bkdsubstr: bkd.h
 Gui GUI: $(GUI)
 
 revtool: gui/search.tcl gui/config.tcl gui/revtool.tcl gui/common.tcl \
-	port/$(SYS)_platform.tcl
+	port/$(SYS)_platform.tcl gui/appState.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	    gui/search.tcl gui/revtool.tcl > revtool
+	    gui/search.tcl gui/appState.tcl gui/revtool.tcl > revtool
 
 citool: gui/citool.tcl gui/config.tcl gui/common.tcl gui/search.tcl \
 	gui/progress.tcl port/$(SYS)_platform.tcl gui/ciedit.tcl
@@ -469,14 +469,17 @@ setuptool: gui/setuptool.tcl gui/lib/tkwizard.tcl \
 	gui/common.tcl gui/lib/tkwizard.tcl gui/setuptool.tcl > setuptool
 
 helptool: gui/helptool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
-	gui/common.tcl
+	gui/common.tcl gui/appState.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
+	    gui/appState.tcl \
 	    gui/helptool.tcl > helptool
 
 difftool: gui/search.tcl gui/config.tcl gui/difftool.tcl \
-	port/$(SYS)_platform.tcl gui/common.tcl gui/difflib.tcl
+	port/$(SYS)_platform.tcl gui/common.tcl gui/difflib.tcl \
+	gui/appState.tcl
 	cat gui/search.tcl port/$(SYS)_platform.tcl gui/config.tcl \
-	    gui/common.tcl gui/difflib.tcl gui/difftool.tcl > difftool
+	    gui/common.tcl gui/difflib.tcl gui/appState.tcl  \
+	    gui/difftool.tcl> difftool
 
 bugform: gui/search.tcl gui/config.tcl gui/bugform.tcl \
 	port/$(SYS)_platform.tcl gui/common.tcl gui/buglib.tcl
@@ -484,9 +487,11 @@ bugform: gui/search.tcl gui/config.tcl gui/bugform.tcl \
 	    gui/common.tcl gui/buglib.tcl gui/bugform.tcl > bugform
 
 csettool: gui/csettool.tcl gui/config.tcl gui/common.tcl \
-	port/$(SYS)_platform.tcl gui/search.tcl gui/difflib.tcl
+	port/$(SYS)_platform.tcl gui/search.tcl gui/difflib.tcl \
+	gui/appState.tcl
 	cat gui/search.tcl port/$(SYS)_platform.tcl gui/config.tcl \
-	    gui/common.tcl gui/difflib.tcl gui/csettool.tcl > csettool
+	    gui/common.tcl gui/difflib.tcl gui/appState.tcl \
+	    gui/csettool.tcl > csettool
 
 renametool: gui/renametool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
 	gui/common.tcl
