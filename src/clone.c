@@ -601,7 +601,7 @@ out_trigger(char *status, char *rev, char *when)
 	putenv(aprintf("BK_VERSION=%s", bk_vers));
 	putenv(aprintf("BK_UTC=%s", bk_utc));
 	putenv(aprintf("BK_TIME_T=%s", bk_time));
-	putenv(aprintf("_BK_USER=%s", sccs_getuser()));
+	putenv(aprintf("BK_USER=%s", sccs_getuser()));
 	putenv(aprintf("_BK_HOST=%s", sccs_gethost()));
 	if (status) putenv(status);
 	if (rev) {

@@ -34,15 +34,36 @@ preference_main(int ac, char **av)
 char *
 user_preference(char *what)
 {
-	char *p;
+	char	*p;
+	MDBM	*db;
 
 	unless (bk_proj) return "";
-	unless (bk_proj->config) {
-		unless (bk_proj->root) return "";
-		bk_proj->config = loadConfig(bk_proj->root);
-		unless (bk_proj->config) return "";
-	}
-	p = mdbm_fetch_str(bk_proj->config, what);
+	db = proj_config(bk_proj);
+	unless (db) return ("");
+	p = mdbm_fetch_str(db, what);
 	unless (p) p = "";
 	return (p);
+}
+
+int
+do_checkout(sccs *s)
+{
+	MDBM	*config = proj_config(s->proj);
+	int	getFlags = 0;
+	char	*co;
+
+	unless (config) return (0);
+
+	if ((co = mdbm_fetch_str(config, "checkout"))) {
+		if (strieq(co, "get")) getFlags = GET_EXPAND;
+		if (strieq(co, "edit")) getFlags = GET_EDIT;
+	}
+	if (getFlags) {
+		s = sccs_restart(s);
+		unless (s) return (-1);
+		if (sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-")) {
+			return (-1);
+		}
+	}
+	return (0);
 }

@@ -54,7 +54,10 @@ usage:			system("bk help -s unlock");
 	}
 	
 	if (flags & REPO) {
-		if (av[optind]) chdir(av[optind]);
+		if (av[optind]) {
+                        chdir(av[optind]);
+                }
+                sccs_cd2root(0, 0);
 		return (repo(flags));
 	}
 
@@ -140,8 +143,9 @@ repo(u32 flags)
 	}
 
 	if (flags & STALE) {
-		repository_rdunlock(0);
-		repository_wrunlock(0);
+		/* these remove stale locks */
+		(void)repository_hasLocks(0, WRITER_LOCK_DIR);
+		(void)repository_hasLocks(0, READER_LOCK_DIR);
 	}
 
 	return (error);

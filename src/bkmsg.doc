@@ -355,12 +355,21 @@ Default compression algorithm for stored s.files is gzip.
 If you want no compression, set this to "none".
 
 $
+#config_autofix
+
+Default is to autofix problems found by check.
+If you want to manually fix them, set this to "no".
+
+$
 #config_template
 description
 category
 logging
+license
 single_user
 single_host
+compression
+autofix
 contact
 email
 street
@@ -372,8 +381,6 @@ phone
 cell
 pager
 hours
-license
-compression
 $
 #warn_poly
 Warning: this repository has been found to have deltas which
@@ -381,6 +388,18 @@ belong to multiple csets (not an error, but annoying).
 This happens if a repository with uncommitted deltas is copied
 and then committed in both copies.
 Please use only 'bk clone <from> <to>' to copy a repository.
+$
+#reserved_name
+======================================================================
+BitKeeper is unable to create a file with the following path name:
+        #BKARG#
+This usually happens if your path name contains a reserved name used on
+the destination file system.  Known reserved names for FAT/NTFS/Samba/CIFS
+file system are as follows:
+        "con", "prn", "nul", "lpt?", "?:"
+Please rename the file and retry (see also "bk helptool mv")
+Note: You must do the rename in the sending repository.
+======================================================================
 $
 #setup_categories
 amusements/games

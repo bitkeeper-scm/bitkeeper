@@ -80,10 +80,7 @@ typedef struct {
 	u32	remove:1;		/* remove NT bkd service */
 	u32	http_hdr_out:1;		/* print http header to output */
 	u32	quiet:1;		/* quiet mode */
-	u32	nocd:1;			/* -xcd, bkd_http.c needs it */
-	u32	safe_cd:1;		/* For security, allow cd to sub dir */
-					/* only, no ".." path and absolute   */
-					/* path.			     */
+	u32	safe_cd:1;		/* do not allow chdir up */
 	FILE	*log;			/* if set, log commands to here */
 	int	alarm;			/* exit after this many seconds */
 	int	count;			/* exit after this many connections */

@@ -42,16 +42,34 @@ rootkey2path(char *rootkey, char *log_root, char *buf)
 	return (buf);
 }
 
+/*
+ * Change to the directory, making sure it is at or below where we are.
+ * On failure, do not tell them why, that's an information leak.
+ */
+unsafe_cd(char *path)
+{
+	char	a[MAXPATH];
+	char	b[MAXPATH];
 
+	getcwd(a, MAXPATH);
+	if (chdir(path)) return (1);
+	unless (Opts.daemon || Opts.safe_cd) return (0);
+	getcwd(b, MAXPATH);
+	unless ((strlen(b) >= strlen(a)) && strneq(a, b, strlen(a))) {
+		out("ERROR-illegal cd command\n");
+		return (1);
+	}
+	return (0);
+}
 
 int
 cmd_cd(int ac, char **av)
 {
 	char *p = av[1];
-	char *rootkey, cleanedPath[MAXPATH], buf[MAXPATH];
+	char *rootkey, buf[MAXPATH];
 
 	unless (p) {
-		out("ERROR-cd command must have path arugment\n");
+		out("ERROR-cd command must have path argument\n");
 		return (1);
 	}
 
@@ -86,26 +104,7 @@ cmd_cd(int ac, char **av)
 			return (1);
 		}
 	} else {
-		if (Opts.safe_cd) {
-			if (IsFullPath(p)) {
-				out("ERROR-cd to absolute path disabled\n");
-				return (1);
-			}
-
-			cleanPath(p, cleanedPath);
-			p = cleanedPath;
-			if (strneq("../", p, 3) || streq("..", p)) {
-				out("ERROR-cd to parent directory disabled\n");
-				return (1);
-			}
-		}
-
-		if (chdir(p)) {
-			out("ERROR-cannot cd to ");
-			out(p);
-			out("\n");
-			return (1);
-		}
+		if (unsafe_cd(p)) return (1);
 
 		/*
 		 * XXX TODO need to check for permission error here

@@ -527,6 +527,11 @@ mkfile(char *file)
 	int	fd;
 	int	first = 1;
 
+	if (reserved(basenm(file))) {
+bad_name:	getMsg("reserved_name", file, 0, stderr);
+		return (-1);
+	}
+
 	if (access(file, F_OK) == 0) {
 		char	realname[MAXPATH];
 
@@ -536,9 +541,10 @@ mkfile(char *file)
 "\n"
 "==========================================================================\n"
 "Sfio has detected a name conflict between \"%s\" and \"%s\";\n"
-"This usually happen when you transfer file from a case-sensitive file\n"
+"This usually happens when you transfer file from a case-sensitive file\n"
 "system (e.g. Unix) to a case insensitive file system (e.g FAT, NTFS)\n"
-"Please rename one of the file and retry (see also \"bk helptool mv\")\n"
+"Please rename one of the files and retry (see also \"bk helptool mv\")\n"
+"Note: You must do the rename in the sending repository.\n"
 "==========================================================================\n",
 			file, realname);
 		  
@@ -549,12 +555,18 @@ mkfile(char *file)
 	}
 again:	fd = open(file, O_CREAT|O_EXCL|O_WRONLY, 0666);
 	if (fd != -1) return (fd);
+	if (errno == EINVAL) goto bad_name;
 	if (errno == EEXIST) {
 		perror(file);
 		return (-1);
 	}
 	if (first) {
-		mkdirf(file);
+		if (mkdirf(file)) {
+			fputs("\n", stderr);
+			perror(file);
+			if (errno == EINVAL) goto bad_name;
+		
+		}
 		first = 0;
 		goto again;
 	}

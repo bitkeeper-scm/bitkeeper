@@ -56,7 +56,7 @@ names_main(int ac, char **av)
 			sccs_free(s);
 			continue;
 		}
-		if (sccs_clean(s, SILENT)) {
+		if (sccs_clean(s, SILENT|CLEAN_SKIPPATH)) {
 			fprintf(stderr,
 			    "names: %s is edited and modified\n", s->gfile);
 			fprintf(stderr, "Wimping out on this rename\n");
@@ -166,6 +166,9 @@ pass2(u32 flags)
 private	int
 try_rename(char *spathold, char *spathnew, int dopass1, u32 flags)
 {
+	sccs	*s;
+	int	ret;
+
 	assert(spathold);
 	assert(spathnew);
 	if (exists(spathnew)) {
@@ -181,5 +184,10 @@ try_rename(char *spathold, char *spathnew, int dopass1, u32 flags)
 	unless (flags & SILENT) {
 		fprintf(stderr, "names: %s -> %s\n", spathold, spathnew);
 	}
-	return (0);
+	s = sccs_init(spathnew, flags|INIT_NOCKSUM, 0);
+	unless (s) return (1);
+	ret = 0;
+	if (do_checkout(s)) ret = 1;
+	sccs_free(s);
+	return (ret);
 }

@@ -579,7 +579,8 @@ sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 	fprintf(f, "putenv BK_UTC=%s\n", bk_utc);
 	fprintf(f, "putenv BK_TIME_T=%s\n", bk_time);
 	user = sccs_getuser();
-	fprintf(f, "putenv _BK_USER=%s\n", user);
+	fprintf(f, "putenv BK_USER=%s\n", user);
+	fprintf(f, "putenv _BK_USER=%s\n", user);	/* XXX remove in 3.0 */
 	host = sccs_gethost();
 	fprintf(f, "putenv _BK_HOST=%s\n", host);
 
@@ -1048,4 +1049,32 @@ line2av(char *cmd, char **av)
 	}
 	av[i] = 0;
 	return;
+}
+
+/*
+ * Return true if there any symlinks or .. components of the path.
+ * Nota bene: we do not check the last component, that is typically
+ * anno/../bk-2.0.x/Makefile@+ stuff.
+ */
+int
+unsafe_path(char *s)
+{
+	char	buf[MAXPATH];
+	struct	stat sb;
+
+	strcpy(buf, s);
+	unless (s = strrchr(buf, '/')) return (0);
+	for (;;) {
+		/* no .. components */
+		if (streq(s, "/..")) return (1);
+		*s = 0;
+		if (lstat(buf, &sb)) return (1);
+		/* we've chopped the last component, it must be a dir */
+		unless (S_ISDIR(sb.st_mode)) return (1);
+		unless (s = strrchr(buf, '/')) {
+			/* might have started with ../someplace */
+			return (streq(buf, ".."));
+		}
+	}
+	/*NOTREACHED*/
 }

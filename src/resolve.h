@@ -128,7 +128,7 @@ char	*mode2a(mode_t m);
 int	more(resolve *rs, char *file);
 char	*res_getlocal(char *gfile);
 resolve	*resolve_init(opts *opts, sccs *s);
-void	automerge(resolve *rs, names *n);
+void	automerge(resolve *rs, names *n, int identical);
 int	c_revtool(resolve *rs);
 int	c_merge(resolve *rs);
 void 	flags_delta(resolve *,char *, delta *, int, char *, int);

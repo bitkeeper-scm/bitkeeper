@@ -167,7 +167,7 @@ Preferences can be listed multiple times with different filters.
 The filters are examined in order and the first line that
 matches the current user, host, and pathname is used.  So in general
 the most restrictive directives should appear first.
-.SS Keyword Expansion
+.SS KEYWORD EXPANSION
 .br
 Keyword expansion is turned OFF by default.  To have keyword expansion
 flags applied to a file automatically upon checkin, add the keyword
@@ -191,7 +191,7 @@ keyword: sccs, expand1
 .DE
 in the config file will expand SCCS keywords only in the first line
 encountered that contains sccs keywords. 
-.SS Line Termination
+.SS LINE TERMINATION
 .br
 The unix and win32 operating systems use different characters to represent
 line terminations (eoln).  \*(BK, by default, sets the EOLN_NATIVE flag
@@ -206,7 +206,7 @@ to the BitKeeper/etc/config file.
 .LP
 There is no way to force the Windows eoln mode on all 
 platforms.
-.SS Checkout Mode
+.SS CHECKOUT MODE
 .br
 Specify checkout mode for a repository.  The default is to not show 
 gfiles unless files are checked out.  To override the default, to 
@@ -240,7 +240,7 @@ to reget the file.
 Clear the gfile after doing a bk delta
 .ARG file .
 (This is the default.)
-.SS Compression
+.SS COMPRESSION
 .br
 By default, when you setup a repository the compression algorithm
 will be set to gzip in the BitKeeper/etc/config file with a line
@@ -264,6 +264,22 @@ file to be:
 compression:none
 .DE
 See bk help delta for more information about the -Z option for compression.
+.SS AUTOFIX
+.br
+The 
+.B "bk check"
+command can automatically fix a number of problems found in a repository.
+The default is that this variable is on in newly created repositories,
+and that the variable will be passed through as the 
+.B \-f
+option to bk check.
+To enable
+or disable autofix, one of the following should be in BitKeeper/etc/config
+file:
+.DS
+autofix:yes
+autofix:no
+.DE
 .SS BKWEB PREFERENCES
 .LP
 BKWeb preferences can be specified in the BitKeeper/etc/config file.

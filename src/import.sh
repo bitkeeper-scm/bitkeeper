@@ -530,10 +530,13 @@ import_finish () {
 	bk idcache -q
 	# So it doesn't run consistency check.
 	touch BitKeeper/etc/SCCS/x.marked
-	if [ X$QUIET = X ]
-	then echo "Creating initial changeset (should be +$NFILES)"
+	if [ $COMMIT != NO ]
+	then	
+		if [ X$QUIET = X ]
+		then echo "Creating initial changeset (should be +$NFILES)"
+		fi
+		bk commit $QUIET $SYMBOL -y'Import changeset'
 	fi
-	bk commit $QUIET $SYMBOL -y'Import changeset'
 	bk -r check -ac
 }
 

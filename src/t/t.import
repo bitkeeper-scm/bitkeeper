@@ -103,6 +103,32 @@ echo OK
 
 #----------------------------------------------------
 fi	# Win32
+
+echo $N Verify checkout:get with plain import .......................$NL
+cd $HERE
+no_logging projc
+bk edit $Q BitKeeper/etc/config
+echo checkout:get >> BitKeeper/etc/config
+cd $HERE
+mkdir -p import1/src
+echo foo > import1/src/foo.c
+bk import -tplain $Q -f import1 projc || exit 1
+test -f projc/src/foo.c || exit 1
+echo OK
+
+echo $N Verify checkout:get with patch import .......................$NL
+cd $HERE
+cp -rp import1 import2
+echo bar >> import2/src/foo.c
+echo baz > import2/src/baz.c
+diff -Nur import1 import2 > patch || : # legitimately exits 1
+bk clean $Q projc/src/foo.c || exit 1
+bk import -tpatch $Q -f patch projc || exit 1
+test -f projc/src/foo.c || exit 1
+test -f projc/src/baz.c || exit 1
+rm -rf import1 import2 projc
+echo OK
+
 echo $N Test import of an sccs file .................................$NL
 cd $HERE
 mkdir -p import_sccs/src
@@ -111,9 +137,13 @@ echo bar > bar.c
 bk ci $Q -i -l bar.c
 echo "bar-new" > bar.c
 bk ci $Q -y bar.c
+cd $HERE/project
+bk edit $Q BitKeeper/etc/config
+echo checkout:get >> BitKeeper/etc/config
 cd $HERE
 ( echo SCCS; echo no ) | bk import import_sccs project  > import.out 2>&1
 cd $HERE/project/src
+test -f bar.c || exit 1
 bk get $Q bar.c $HERE/import_sccs/src/bar.c
 bk undos bar.c > X
 bk undos $HERE/import_sccs/src/bar.c > Y
@@ -303,6 +333,7 @@ echo OK
 }
 
 test -d $TESTDATA/import-CVS.1 && {
+
 echo $N Make sure that import -A imports Attic files ................$NL
 cd $HERE
 no_logging import-CVS.1
@@ -322,6 +353,20 @@ grep -q 'GNU General Public License' COPYING && {
 	exit 1
 }
 echo OK
+
+echo $N Make sure that import -tCVS works with checkout:get .........$NL
+cd $HERE
+rm -rf import-CVS.1
+no_logging import-CVS.1
+bk edit $Q BitKeeper/etc/config
+echo checkout:get >> BitKeeper/etc/config
+bk import -AquftCVS $TESTDATA/import-CVS.1 .
+test -f COPYING || {
+	echo failed to get COPYING after import
+	exit 1
+}
+echo OK
+
 }
 
 test -d $TESTDATA/import_data && {
@@ -352,3 +397,4 @@ do	cd import$i
 done
 echo OK
 }
+exit 0

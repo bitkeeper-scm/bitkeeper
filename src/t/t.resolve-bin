@@ -123,3 +123,41 @@ bk cat $HERE/ascii/ascii | cmp - ascii || {
 	exit 1
 }
 echo OK
+
+echo $N Make sure identical binaries automerge ......................$NL
+cd $HERE
+bk clone $Q proj automerge
+cd $HERE/proj
+bk edit $Q uuencode
+( cat $binary_data2; cat $binary_data2; cat $binary_data2) > uuencode
+bk delta $Q -yreplace uuencode
+bk commit $Q -yreplace
+cd $HERE/automerge
+bk edit $Q uuencode
+( cat $binary_data2; cat $binary_data2; cat $binary_data2) > uuencode
+cp uuencode $HERE/cmp
+bk delta $Q -yreplace uuencode
+bk commit $Q -yreplace
+bk pull $Q -R
+echo q | bk resolve -l -d -a -t > OUT 2>&1
+grep -q "Not automerging binary 'uuencode'" OUT && {
+	echo failed to automerge
+	cat OUT
+	exit 1
+}
+REV=`bk prs -hr+ -d:I: uuencode`
+test "X$REV" = X1.4 || {
+	echo failed to make merge delta
+	bk prs uuencode
+	exit 1
+}
+bk get $Q uuencode
+cmp -s uuencode $HERE/cmp || {
+	echo did not end up with the same file
+	cat OUT
+	exit 1
+}
+echo OK
+
+# This crashes revtool and X11 if you double click on the last rev
+# bk revtool uuencode

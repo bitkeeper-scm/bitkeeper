@@ -120,112 +120,12 @@ get_config(char *url, char **proxies)
 
 }
 
-#ifndef WIN32
-
-#if	0
-/*
- * XXX TODO: This is broken, it picks up proxy entries even if they
- *           are disabled.
- */
 private char **
-_get_netscape_proxy(char **proxies)
-{
-	char	*p, *q, buf[MAXLINE], autoconfig[MAXPATH] = "";
-	char	proxy_host[MAXPATH], socks_server[MAXPATH];
-	int	proxy_port = -1, proxy_type = -1, socks_port = 1080;
-	FILE	*f;
-	extern char *getHomeDir();
-
-	p = getHomeDir();
-	assert(p);
-	sprintf(buf, "%s/.netscape/preferences.js", p);
-	f = fopen(buf, "rt");
-	if (f == NULL) return (proxies);
-	while (fgets(buf, sizeof(buf), f)) {
-		if (strneq("user_pref(\"network.proxy.http\",", buf, 31)) {
-			p = &buf[33];
-				
-			q = proxy_host;
-			while (*p && *p != '\"') *q++ = *p++;
-			assert(*p == '\"');
-			*q = 0;
-		} else if (strneq("user_pref(\"network.proxy.http_port\",",
-								    buf, 36)) {
-			p = &buf[37];
-			proxy_port = atoi(p);
-			assert(proxy_port >= 0);
-		} else if (strneq("user_pref(\"network.proxy.type\",",
-								    buf, 30)) {
-			p = &buf[31];
-			proxy_type = atoi(p);
-		} else if (strneq("user_pref(\"network.proxy.autoconfig_url\",",
-								    buf, 41)) {
-			p = &buf[43];
-			q = autoconfig;
-			while (*p && *p != '\"') *q++ = *p++;
-			assert(*p == '\"');
-			*q = 0;
-		} else if (strneq("user_pref(\"network.hosts.socks_server\",",
-								    buf, 39)) {
-			p = &buf[41];
-			q = socks_server;
-			while (*p && *p != '\"') *q++ = *p++;
-			assert(*p == '\"');
-			*q = 0;
-		} else if (strneq(
-				"user_pref(\"network.hosts.socks_serverport\",",
-								     buf, 43)) {
-			p = &buf[44];
-			socks_port = atoi(p);
-			assert(socks_port >= 0);
-		}
-	}
-	fclose(f);
-	if (proxy_type == 2) {
-		proxies = get_config(autoconfig, proxies);
-	} else {
-
-		if (proxy_host[0] && (proxy_port != -1)) {
-			sprintf(buf, "PROXY %s:%d", proxy_host, proxy_port);
-			proxies = addLine(proxies, strdup(buf));
-		}
-		if (socks_server[0]) {
-			sprintf(buf, "SOCKS %s:%d", socks_server, socks_port);
-			proxies = addLine(proxies, strdup(buf));
-		}
-	}
-	return (proxies);
-}
-#endif 
-
-private char **
-_get_socks_proxy(char **proxies)
-{
-	char	*p, *q, buf[MAXLINE];
-
-	q = getenv("SOCKS_PORT");
-	p = getenv("SOCKS_HOST"); 
-	if (p && *p) {
-		sprintf(buf, "SOCKS %s:%s", p, q ? q : "1080");
-		proxies = addLine(proxies, strdup(buf));
-	}
-
-	p = getenv("SOCKS_SERVER"); /* <host>:<port> */
-	if (p && *p && (q = strchr(p, ':'))) {
-		*q++ = 0;
-		sprintf(buf, "SOCKS %s:%s", p, q);
-		q[-1] = ':';
-		proxies = addLine(proxies, strdup(buf));
-	}
-	return (proxies);
-}
-
-private char **
-_get_http_proxy(char **proxies)
+_get_http_proxy_env(char **proxies)
 {
 	char	*p, *q, *r, *h, *cr, buf[MAXLINE];
 
-	p = getenv("http_proxy");  /* http://proxy.host:8080 */
+	p = getenv("http_proxy");  /* http://[use:password@]proxy.host:8080 */
 	if (p && *p && strneq("http://", p, 7) && (q = strrchr(&p[7], ':'))) {
 		*q++ = 0;
 		p = &p[7];
@@ -265,19 +165,30 @@ _get_http_proxy(char **proxies)
 	return (proxies);
 }
 
-char **
-get_http_proxy()
+
+private char **
+_get_socks_proxy(char **proxies)
 {
-	char	**proxies = NULL;
-	
-	proxies = _get_cached_proxy(proxies);
-	proxies = _get_socks_proxy(proxies);
-	proxies = _get_http_proxy(proxies);
-	//proxies = _get_netscape_proxy(proxies);
+	char	*p, *q, buf[MAXLINE];
+
+	q = getenv("SOCKS_PORT");
+	p = getenv("SOCKS_HOST"); 
+	if (p && *p) {
+		sprintf(buf, "SOCKS %s:%s", p, q ? q : "1080");
+		proxies = addLine(proxies, strdup(buf));
+	}
+
+	p = getenv("SOCKS_SERVER"); /* <host>:<port> */
+	if (p && *p && (q = strchr(p, ':'))) {
+		*q++ = 0;
+		sprintf(buf, "SOCKS %s:%s", p, q);
+		q[-1] = ':';
+		proxies = addLine(proxies, strdup(buf));
+	}
 	return (proxies);
 }
 
-#else /* WIN32 */
+#ifdef WIN32
 int
 getReg(HKEY hive, char *key, char *valname, char *valbuf, int *buflen)
 {
@@ -324,15 +235,15 @@ addProxy(char *type, char *line, char **proxies)
 }
 
 /*
+ * Get proxy from windows registry
  * Note: This works for both IE and netscape on win32
  */
 char **
-get_http_proxy()
+_get_http_proxy_reg(char **proxies)
 {
 #define KEY "Software\\Microsoft\\Windows\\CurrentVersion\\internet Settings"
 	char *p, *q, *type, buf[MAXLINE] = "", proxy_host[MAXPATH];
 	int proxy_port, len = sizeof(buf);
-	char **proxies = NULL;
 
 	getReg(HKEY_CURRENT_USER, KEY, "AutoConfigURL", buf, &len);
 	if (buf[0]) {
@@ -341,7 +252,7 @@ get_http_proxy()
 		len = sizeof(buf);  /* important */
 		if (getReg(HKEY_CURRENT_USER,
 					KEY, "ProxyServer", buf, &len) == 0) {
-			return NULL;
+			return (proxies);
 		}
 		/*
 		 * We support 3 froms:
@@ -390,3 +301,21 @@ get_http_proxy()
 	return (proxies);
 }
 #endif
+
+/*
+ * Win32 note:	We support socks proxy on win32, but we do not support
+ *		socks DNS (yet).
+ */ 
+char **
+get_http_proxy()
+{
+	char	**proxies = NULL;
+	
+	//proxies = _get_cached_proxy(proxies);
+	proxies = _get_http_proxy_env(proxies);
+	proxies = _get_socks_proxy(proxies);
+#ifdef WIN32
+	proxies = _get_http_proxy_reg(proxies);
+#endif
+	return (proxies);
+}

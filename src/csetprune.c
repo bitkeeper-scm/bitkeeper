@@ -13,14 +13,13 @@ WHATSTR("@(#)%K%");
  *	}
  *	return 1
  * If that returned 1 then the whole delta is gone, mark the delta with D_GONE.
+ * Walk table order and remove all tag information.
  * Walk "prune" with Rick's OK-to-be-gone alg, which fixes the pointers.
- * Walk "prune" and remove all tag information.
+ * Walk sym and table order and rebuild tag information.
  * Write out the graph with the normal delta_table().
  * Write out the body, skipping all deltas marked as D_GONE.
  * Free prune, but not pristine.
  * Reinit the file into cset2, scompress it, write it, reinit again.
- * Walk pristine's tag graph and move the tags to the first real delta
- * found in the the shrunk file.
  * Walk the graph recursively and apply from root forward.
  * Create a new root key.
  * 
@@ -29,14 +28,11 @@ WHATSTR("@(#)%K%");
 
 int	csetprune_main(int ac, char **av);
 private	int rmKeys(MDBM *s);
-private	int found(delta *d);
+private	int found(delta *start, delta *stop);
 private void _pruneEmpty(delta *d);
 private void pruneEmpty(sccs *s, sccs *sb, MDBM *m);
 private int getKeys(MDBM *m);
 private int flags;
-
-/* XXX: get the slib.c prototype out of here! */
-extern void sccs_adjustSet(sccs *sc, sccs *scb, delta *d);
 
 int
 csetprune_main(int ac, char **av)
@@ -238,58 +234,30 @@ done:			fclose(in);
  * also remove tags, write it out, and free the sccs*.
  */
 private sccs *sc, *scb;
-private delta *findme;
 
 private int
-found(delta *d)
-{
-	unless (d && !(d->flags & D_RED)) return (0);
-	d->flags |= D_RED;
-	if (d == findme) return (1);
-	if ((d->serial > findme->serial) && found(d->parent)) return (1);
-	if (d->merge >= findme->serial) return (found(sfind(sc, d->merge)));
-	return (0);
-}
-
-private void
-pruneList(ser_t *list)
-{
-	int	i;
-	int	shift;
-	
-	unless (list) return;
-	shift = 0;
-	EACH(list) {
-		unless (sfind(sc, list[i])->flags & D_GONE) {
-			unless (shift) continue;
-			list[i-shift] = list[i];
-			list[i] = 0;
-			continue;
-		}
-		list[i] = 0;
-		shift++;
-	}
-}
-
-private void
-unDup(sccs *s)
+found(delta *start, delta *stop)
 {
 	delta	*d;
 
-#define	UNDUP(field, flag, str) \
-	if (d->flags & flag) { \
-		d->field = strdup(d->field); \
-		d->flags &= ~flag; \
+	assert(start && stop);
+	if (start == stop) return (1);
+	if (start->serial < stop->serial) {
+		d = start;
+		start = stop;
+		stop = d;
 	}
 
-	for (d = s->table; d; d = d->next) {
-		UNDUP(pathname, D_DUPPATH, "path");
-		UNDUP(hostname, D_DUPHOST, "host");
-		UNDUP(zone, D_DUPZONE, "zone");
-		UNDUP(csetFile, D_DUPCSETFILE, "csetFile");
-		UNDUP(symlink, D_DUPLINK, "symlink");
+	for (d = start->next; d && d != stop; d = d->next) d->flags &= ~D_RED;
+	start->flags |= D_RED;
+	stop->flags &= ~D_RED;
+
+	for (d = start; d && d != stop; d = d->next) {
+		unless (d->flags & D_RED) continue;
+		if (d->parent) d->parent->flags |= D_RED;
+		if (d->merge) sfind(sc, d->merge)->flags |= D_RED;
 	}
-#undef	UNDUP
+	return ((stop->flags & D_RED) != 0);
 }
 
 private void
@@ -328,137 +296,126 @@ rebuildTags(sccs *s)
 			md->flags |= D_GONE;
 			md = sym->metad = d;
 		}
-		/*
-		 * If this is the first symbol assigned to a delta,
-		 * wire into graph.  There could be many assigned.
-		 */
-		unless (md->flags & D_SYMBOLS) {
-			md->flags |= D_SYMBOLS;
-			if (last) {
-				last->ptag = md->serial;
-			} else {
-				md->symLeaf = 1;
-			}
-			last = md;
-			md->symGraph = 1;
+		md->flags |= D_SYMBOLS;
+	}
+	/*
+	 * symbols above could now be out of order.
+	 * Use table order to build tag graph.
+	 */
+	for (d = s->table; d; d = d->next) {
+		unless (d->flags & D_SYMBOLS) continue;
+		assert(!(d->flags & D_GONE));
+		if (last) {
+			last->ptag = d->serial;
+		} else {
+			d->symLeaf = 1;
 		}
+		last = d;
+		d->symGraph = 1;
 	}
 	mdbm_close(symdb);
 }
 
+/*
+ * We maintain d->parent, d->merge, and d->pserial
+ * We do not maintain d->kid, d->sibling, or d->flags & D_MERGED
+ *
+ * Which means, don't call much else after this, just get the file
+ * written to disk!
+ */
 private void
 _pruneEmpty(delta *d)
 {
-	int	i;
+	delta	*m;
 
-	unless (d && d->parent) return;
+	/*
+	 * Build reverse table order on stack,
+	 * but skip over tag deltas
+	 */
+	for ( ; d ; d = d->next) {
+		if (d->type == 'D') break;
+	}
+	unless (d && d->next) return;	/* don't prune root */
 	_pruneEmpty(d->next);
-	unless (d->type == 'D') return;
-	debug((stderr, "%s ", d->rev));
-	pruneList(d->include);
-	pruneList(d->exclude);
-	if (d->merge) {
-		delta	*m;
 
+	debug((stderr, "%s ", d->rev));
+	if (d->merge) {
 		debug((stderr, "\n"));
 		/*
 		 * cases which can happen:
 		 * a) all nodes up both parents are D_GONE until C.A.
+		 *    => merge and parent are same!  Remove merge marker
 		 * b) all on the trunk are gone, but not the merge
+		 *    => make merge the parent
 		 * c) all on the merge are gone, but not the trunk
-		 * d) non-gones in both
+		 *    => remove merge marker
+		 * d) non-gones in both, trunk and branch are backwards
+		 *    => swap trunk and branch
+		 * e) non-gones in both, trunk and branch are oriented okay
+		 *    => do nothing
 		 *
-		 * Given a parent and merge, the smaller serial is older.
-		 * Set findme to the older node.
-		 * Recurse up the other node and see if you find findme.
-		   If (found) {
-		  	if (older was merge) {
-		  		remove merge and include list
-		 		after asserting that all in include are D_GONE
-		  	} else {
-		 		the merge node becomes the parent node
-				and the merge pointer and include list
-				are removed
-		  	}
-		   }
+		 * First look to see if one is 'found' in ancestory of other.
+		 * If so, the merge collapses (cases a, b, and c)
+		 * Else, check for case d, else do nothing for case e.
+		 *
+		 * Then fix up those pesky include and exclude lists.
 		 */
-		
-		for (m = sc->table; m; m = m->next) m->flags &= ~D_RED;
 		m = sfind(sc, d->merge);
-		if (m->serial > d->parent->serial) {	/* parent is older */
-			findme = d->parent;
-			unless (found(m)) goto check;
-			/* merge node becomes the parent */
-			debug((stderr,
-			    "%s gets new parent %s (M)\n", d->rev, m->rev));
-			d->parent = m;
-			d->pserial = m->serial;
-		} else {				/* merge is older */
-			findme = m;
-			unless (found(d->parent)) goto check;
-			EACH(d->include) {
-			    assert("Collapsing merge with includes left" == 0);
+		if (found(d->parent, m)) {	/* merge collapses */
+			if (d->merge > d->pserial) {
+				d->parent = m;
+				d->pserial = d->merge;
 			}
+			d->merge = 0;
 		}
-
-		/*
-		 * One might think that this is bogus since they could have
-		 * done a cset -i.  It's not because we are in a merge delta
-		 * and we create those in the RESYNC dir and there is no way
-		 * to do a cset -i there.
-		 */
+		/* else if merge .. (chk case d and e) */
+		else if (sccs_needSwap(d->parent, m)) {
+			d->parent = m;
+			d->merge = d->pserial;
+			d->pserial = d->parent->serial;
+		}
+		/* fix include and exclude lists */
+		sccs_adjustSet(sc, scb, d);
+		/* for now ... remove later if cset -i allowed in merge */
+		assert((d->merge && d->include) || (!d->merge && !d->include));
 		assert(!d->exclude);
-		assert(d->include);
-		free(d->include);
-		d->include = 0;
-		d->merge = 0;
+	}
+	/* Else this never was a merge node, so just adjust inc and exc */
+	else if (d->include || d->exclude) {
+		sccs_adjustSet(sc, scb, d);
 	}
 	/*
-	 * May be a list with nothing in it, pruned above.
+	 * See if node is a keeper ...
 	 */
-	EACH(d->include) goto check;
-	EACH(d->exclude) goto check;
-	if (d->added) return;		/* Note: do this after inc/exc check */
+	if (d->added || d->merge || d->include || d->exclude) return;
+
+	/* Not a keeper, so re-wire around it */
 	debug((stderr, "RMDELTA(%s)\n", d->rev));
 	d->flags |= D_GONE;
+	assert(d->parent);	/* never get rid of root node */
 	if (d->flags & D_MERGED) {
-		delta	*m;
-
-		assert(d->parent);
-		for (m = sc->table; m; m = m->next) {
+		for (m = sc->table; m && m->serial > d->serial; m = m->next) {
 			unless (m->merge == d->serial) continue;
 			debug((stderr,
 			    "%s gets new merge parent %s (was %s)\n",
 			    m->rev, d->parent->rev, d->rev));
-			m->merge = d->parent->serial;
-			d->parent->flags |= D_MERGED;
+			m->merge = d->pserial;
 		}
 	}
-	for (d = d->kid; d; d = d->siblings) {
-		unless (d->type == 'D') continue;
-		if (d->parent->parent) {
-			debug((stderr,
-			    "%s gets new parent %s\n",
-			    d->rev, d->parent->parent->rev));
-			d->parent = d->parent->parent;
-			d->pserial = d->parent->serial;
-		} else {
-			d->pserial = 0;
-		}
+	for (m = d->kid; m; m = m->siblings) {
+		unless (m->type == 'D') continue;
+		debug((stderr, "%s gets new parent %s (was %s)\n",
+			    m->rev, d->parent->rev, d->rev));
+		m->parent = d->parent;
+		m->pserial = d->pserial;
 	}
 	return;
-
-check:	/* for unpruned nodes that are merge or have includes or excludes */
-
-	sccs_adjustSet(sc, scb, d);
 }
 
 private void
 pruneEmpty(sccs *s, sccs *sb, MDBM *m)
 {
 	delta	*n;
-
-	unDup(s);
 
 	/*
 	 * Mark the empty deltas, reset tag tree structure
@@ -485,6 +442,7 @@ pruneEmpty(sccs *s, sccs *sb, MDBM *m)
 	scb = sb;
 	_pruneEmpty(sc->table);
 	rebuildTags(sc);
+	sccs_reDup(sc);
 	sccs_newchksum(sc);
 	sccs_free(sc);
 }

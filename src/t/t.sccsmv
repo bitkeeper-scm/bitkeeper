@@ -36,16 +36,24 @@ bk sfiles -l A B | bk clean -
 sleep 1
 bk co $Q -l A/file1
 bk mv A/file1 B/file1
+# We need this on cygwin (dir cache lag?)
+while true
+do
+	if [ ! -f B/SCCS/s.file1 ]
+	then echo waiting; sleep 1
+	else break
+	fi
+done
 # The file should have been moved, but not checked in.
-if [ ! -f B/file1 ]; then echo failed; exit 1; fi
-if [ ! -f B/SCCS/s.file1 ]; then echo failed; exit 1; fi
-if [ ! -f B/SCCS/p.file1 ]; then echo failed; exit 1; fi
-if [ ! -f A/SCCS/s.file3 ]; then echo failed; exit 1; fi
+if [ ! -f B/file1 ]; then echo failed 1; exit 1; fi
+if [ ! -f B/SCCS/s.file1 ]; then echo failed 2; exit 1; fi
+if [ ! -f B/SCCS/p.file1 ]; then echo failed 3; exit 1; fi
+if [ ! -f A/SCCS/s.file3 ]; then echo failed 4; exit 1; fi
 # XXX - I think this is right but am not sure.
 DPATH=`bk prs -hr1.5 -d:DPN: B/file1`
-if [ ${DPATH}X != "B/file1"X ]; then echo failed; exit 1; fi
+if [ ${DPATH}X != "B/file1"X ]; then echo failed 5; exit 1; fi
 find B -newer B/file1 | grep -q B/SCCS/s.file
-if [ $? -eq 0 ]; then echo failed; exit 1; fi
+if [ $? -eq 0 ]; then echo failed 6; exit 1; fi
 # Now check it in so later tests aren't confused.
 bk ci $Q -yrename B/file1
 bk -r check -a || { echo check exits $?; exit 1; }
@@ -207,8 +215,8 @@ if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N Test bk rm on non bitkeeper file ............................$NL
 echo hi > non_bk_file 
-bk rm non_nk_file 2> rm.out
-grep -q "not a BitKeeper flle, ignored" rm.out
+bk rm non_bk_file 2> rm.out
+grep -q "not a BitKeeper file, ignored" rm.out
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N Test check -ag ..............................................$NL

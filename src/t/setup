@@ -51,6 +51,14 @@ checkLocks() {
 	fi
 }
 
+# We need this because some proxy disallow proxy to localhost
+# some of our test do http push/pull/clone to localhost
+unsetHttpProxy() {
+	unset http_proxy HTTP_PROXY_HOST HTTP_PROXY_PORT
+	unset SOCKS_HOST SOCKS_PORT SOCKS_SERVER
+	unset HTTP_PROXY # workaround for cygwin
+}
+
 # Usage: waitForUnlock <root>
 waitForUnlock() {
 	bk lock -U $1
@@ -64,7 +72,7 @@ no_logging() {
 	echo "email: nobody@nowhere.bk" >> c
 	echo "eoln: unix" >> c
 	echo "keyword: sccs" >> c
-	bk setup -f -cc $1
+	bk setup -f -cc $1 || { echo "Setup failed!"; exit 1; }
 	cd $1
 }
 

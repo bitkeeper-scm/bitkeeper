@@ -20,6 +20,7 @@ if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
+
 echo $N Create some data ............................................$NL
 for dir in d1 d2 d3 d1/sub1 d2/sub1 d3/sub d3/sub2
 do	mkdir $dir
@@ -30,11 +31,13 @@ done
 bk sfiles -x | bk ci $Q -i -
 if [ ! -f d3/sub2/SCCS/s.a ]; then echo failed to create files; exit 1; fi
 echo OK
+
 echo $N Commit the data .............................................$NL
 bk commit $S -a -yCset
 if [ `bk sfiles -C | wc -l` -ne 0 ];
 then	echo failed to commit all files; exit 1; fi
 echo OK
+
 echo $N Create another changeset ....................................$NL
 bk -r edit $Q
 bk sfiles -g | grep -v ChangeSet | grep -v BitKeeper | while read x
@@ -45,6 +48,7 @@ bk commit $S -a -yCset2
 if [ `bk sfiles -C | wc -l` -ne 0 ];
 then	echo failed to commit all files; exit 1; fi
 echo OK
+
 echo $N Create another changeset ....................................$NL
 bk -r edit $Q
 bk sfiles -g | grep -v ChangeSet | grep -v BitKeeper | while read x
@@ -55,6 +59,7 @@ bk commit $S -a -yCset3
 if [ `bk sfiles -C | wc -l` -ne 0 ];
 then	echo failed to commit all files; exit 1; fi
 echo OK
+
 echo $N Create another changeset with two deltas ....................$NL
 bk -r edit $Q
 bk sfiles -g | grep -v ChangeSet | grep -v BitKeeper | while read x
@@ -70,6 +75,7 @@ bk commit $S -a -yCset4
 if [ `bk sfiles -C | wc -l` -ne 0 ];
 then	echo failed to commit all files; exit 1; fi
 echo OK
+
 echo $N Make sure that it checks clean ..............................$NL
 bk -r check -a > OUT 2>&1 || {
 	echo failed to exit 0
@@ -94,17 +100,8 @@ bk -r check -a > OUT 2>&1 || {
 }
 echo OK
 
-#echo $N Make sure it complains about locked files w/o a gfile........$NL
-bk get -eg $Q d1/sub1/SCCS/s.a
-#bk -r check -a > OUT 2>&1
-#grep -q 'is locked but not checked out' OUT || {
-#	echo bad error message
-#	cat OUT
-#	exit 1
-#}
-#echo OK
-
-echo $N Make sure it it fixes the above problem with -f .............$NL
+echo $N Make sure it fixes locked files w/o a gfile with -f .........$NL
+bk get -eg $Q BitKeeper/etc/config
 bk -r check -af > OUT 2>&1 || {
 	echo should have exited cleanly
 	exit 1
@@ -148,8 +145,61 @@ bk -r check -a > OUT 2>&1 || {
 }
 echo OK
 
+echo $N Make sure it complains unlocked files with rw gfile .........$NL
+bk get $Q d1/sub1/a
+chmod +w d1/sub1/a
+bk -r check -a > OUT 2>&1
+test -f d1/sub1/SCCS/p.a && {
+	echo should not have created lock file
+	cat OUT
+	exit 1
+}
+test -w d1/sub1/a || {
+	echo should not have unedited file
+	cat OUT
+	exit 1
+}
+grep -q 'writable but not checked out.' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure it fixes unlocked files with rw gfile with -f .....$NL
+bk -r check -af > OUT 2>&1
+test -f d1/sub1/SCCS/p.a || {
+	echo should have created lock file
+	cat OUT
+	exit 1
+}
+test -w d1/sub1/a || {
+	echo should not have unedited file
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure it autofixes unlocked files with rw gfile .........$NL
+bk edit $Q BitKeeper/etc/config
+echo "autofix:yes" >> BitKeeper/etc/config
+rm d1/sub1/SCCS/p.a
+bk -r check -a > OUT 2>&1
+test -f d1/sub1/SCCS/p.a || {
+	echo should have created lock file
+	cat OUT
+	exit 1
+}
+test -w d1/sub1/a || {
+	echo should not have unedited file
+	cat OUT
+	exit 1
+}
+echo OK
+
+
 echo $N Make sure it complains about file/dir conflicts .............$NL
-bk clean $Q d1/sub1/a
+bk unedit $Q d1/sub1/a
 mkdir d1/sub1/a
 bk -r check -a > OUT 2>&1 && {
 	echo should have exited with a failure
@@ -163,6 +213,7 @@ grep -q 'file/directory conflict' OUT || {
 }
 rmdir d1/sub1/a
 echo OK
+
 echo $N Make sure it complains about cset pointer problems ..........$NL
 echo hi > foo
 bk new $Q foo || exit 1

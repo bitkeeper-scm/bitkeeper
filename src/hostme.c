@@ -106,7 +106,7 @@ hostme_main(int ac, char **av)
 	if (!opts.debug) unlink(hostme_info);
 	if (!rc && opts.verbose) {
 		printf("\nOK, give us a minute while we create the account. "
-		"Try logging\ninto the admininstrative shell using the "
+		"Try logging\ninto the administrative shell using the "
 		"following:\n\n"
 		"\tssh %s.admin@%s\n\n"
 		"If that does not work, please contact support@bitmover.com. "

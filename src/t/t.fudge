@@ -1,0 +1,91 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2002 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2002 Wayne Scott
+
+set -e    # require all commands to succeed
+
+echo $N Create a repository with funny times ........................$NL
+no_logging project
+cat <<EOF >INIT
+D 1.1 99/5/11 01:30:00-0:00 foo 0 0 0/0/0
+c orig
+F 0
+P file
+EOF
+echo hi >file
+bk new $Q -IINIT file
+bk commit $Q -ywhat
+cd $HERE
+bk clone $Q project copy
+cd project
+bk edit $Q file
+cat <<EOF >INIT
+D 1.2 99/5/11 01:30:05-0:00 foo 0 0 0/0/0
+c main
+F 0
+EOF
+echo main >> file
+bk delta $Q -IINIT file
+
+bk commit $Q -ywhatmain
+cd $HERE/copy
+bk edit $Q file
+cat <<EOF >INIT
+D 1.2 99/5/11 01:30:04-0:00 foo 0 0 0/0/0
+c copy
+F 2
+EOF
+echo copy > file
+echo hi >> file
+bk delta $Q -IINIT file
+bk commit $Q -ywhatcopy
+cd $HERE
+echo OK
+
+echo $N Merge two files together ....................................$NL
+cd $HERE/copy
+bk pull $Q
+echo OK
+
+echo $N Verify each side can be recreated ...........................$NL
+cd $HERE
+bk clone $Q -r1.3 copy orig.main
+bk clone $Q -r1.2.1.1 copy orig.copy
+if [ "`bk prs -r+ -hnd':REV: :C:' orig.main/file`" != '1.2 main' ]
+then	echo undo failed!
+	exit 1
+fi
+if [ "`bk prs -r+ -hnd':REV: :C:' orig.copy/file`" != '1.2 copy' ]
+then	echo undo failed!
+	exit 1
+fi
+echo OK
+
+echo $N Reverse the merge ...........................................$NL
+cd orig.main
+bk pull $Q ../orig.copy
+echo OK
+
+echo $N Verify that everything is still OK ..........................$NL
+cd $HERE
+bk clone $Q -r1.3 orig.main orig2.main
+bk clone $Q -r1.2.1.1 orig.main orig2.copy
+if [ "`bk prs -r+ -hnd':REV: :C:' orig2.main/file`" != '1.2 main' ]
+then	echo undo failed!
+	exit 1
+fi
+if [ "`bk prs -r+ -hnd':REV: :C:' orig2.copy/file`" != '1.2 copy' ]
+then	echo undo failed!
+	exit 1
+fi
+echo OK
+

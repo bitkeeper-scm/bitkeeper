@@ -22,8 +22,6 @@ proc getConfig {prog} \
 		set _d(fm.activeNewFont) {{Lucida Console} 9 bold}
 		set _d(ci.filesHeight) 10
 	} else {
-		#set _d(fixedFont) {fixed 12 roman}
-		#set _d(fixedBoldFont) {fixed 12 roman bold}
 		set _d(fixedFont) {6x13}
 		set _d(fixedBoldFont) {6x13bold}
 		set _d(buttonFont) {times 12 roman bold}
@@ -31,9 +29,10 @@ proc getConfig {prog} \
 		set _d(cset.rightWidth) 80
 		set _d(scrollWidth) 12		;# scrollbar width
 		set _d(help.scrollWidth) 14	;# helptool scrollbar width
-		set _d(fm.activeOldFont) {fixed 12 roman bold}
-		set _d(fm.activeNewFont) {fixed 12 roman bold}
-		set _d(ci.filesHeight) 8	;# num files to show in top win
+		set _d(fm.activeOldFont) {6x13bold}
+		set _d(fm.activeNewFont) {6x13bold}
+		set _d(ci.filesHeight) 9	;# num files to show in top win
+		set _d(fm.editor) "fm2tool"
 	}
 
 	if {$tcl_platform(platform) == "windows"} {

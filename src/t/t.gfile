@@ -15,6 +15,8 @@
 
 echo $N Create initial repository and some data .....................$NL
 no_logging project
+bk edit $Q BitKeeper/etc/config
+echo "autofix:yes" >> BitKeeper/etc/config
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 echo '%M%' > keywords

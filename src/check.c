@@ -28,6 +28,8 @@ private int	readonly_gfile(sccs *s);
 private int	no_gfile(sccs *s);
 private int	chk_eoln(sccs *s, int eoln_unix);
 private void	progress(int n, int err);
+private int	chk_merges(sccs *s);
+private sccs*	fix_merges(sccs *s);
 
 private	int	nfiles;		/* for progress bar */
 private	int	verbose;
@@ -142,6 +144,11 @@ check_main(int ac, char **av)
 	if (check_eoln) {
 		eoln_native = !streq(user_preference("eoln"), "unix"); 
 	}
+	unless (fix) {
+		if (t = user_preference("autofix")) {
+			fix = streq(t, "yes") || streq(t, "on");
+		}
+	}
 
 	want_dfile = exists(DFILE);
 	for (n = 0, name = sfileFirst("check", &av[optind], 0);
@@ -168,20 +175,26 @@ check_main(int ac, char **av)
 			sccs_free(s);
 			continue;
 		}
-		errors |= sccs_resum(s, 0, 0, 0);
-		errors |= chk_gfile(s);
-		errors |= no_gfile(s);
-		errors |= readonly_gfile(s);
-		errors |= writable_gfile(s);
-		errors |= chk_csetpointer(s);
-		
-		if (want_dfile) errors |= chk_dfile(s);
-		if (check_eoln) errors |= chk_eoln(s, eoln_native);
+		/*
+		 * exit code 2 means try again, all other errors should be
+		 * distint.
+		 */
+		if (sccs_resum(s, 0, 0, 0)) errors |= 0x04;
+		if (chk_gfile(s)) errors |= 0x08;
+		if (no_gfile(s)) errors |= 0x08;
+		if (readonly_gfile(s)) errors |= 0x08;
+		if (writable_gfile(s)) errors |= 0x08;
+		if (chk_csetpointer(s)) errors |= 0x10;
+		if (want_dfile && chk_dfile(s)) errors |= 0x10;
+		if (check_eoln && chk_eoln(s, eoln_native)) errors |= 0x10;
+		if (chk_merges(s)) {
+			if (fix) s = fix_merges(s);
+			errors |= 0x20;
+		}
 
 		/*
 		 * Store the full length key and only if we are in mixed mode,
-		 * also store the short key.  We want all of them to be
-		 * unique.
+		 * also store the short key.  We want all of them to be unique.
 		 */
 		sccs_sdelta(s, sccs_ino(s), buf);
 		if (mdbm_store_str(keys, buf, s->gfile, MDBM_INSERT)) {
@@ -192,7 +205,7 @@ check_main(int ac, char **av)
 			} else {
 				perror("mdbm_store_str");
 			}
-			errors = 1;
+			errors |= 1;
 		}
 		if (mixed) {
 			t = sccs_iskeylong(buf);
@@ -207,12 +220,12 @@ check_main(int ac, char **av)
 				} else {
 					perror("mdbm_store_str");
 				}
-				errors = 1;
+				errors |= 1;
 			}
 		}
 
 		if (e = check(s, db)) {
-			errors |= 4;		/* 2 is reserved */
+			errors |= 0x40;
 		} else {
 			if (verbose>1) fprintf(stderr, "%s is OK\n", s->sfile);
 		}
@@ -235,7 +248,7 @@ check_main(int ac, char **av)
 			chmod(IDCACHE, GROUP_MODE);
 		}
 	}
-	if ((all || resync) && checkAll(keys)) errors |= 8;
+	if ((all || resync) && checkAll(keys)) errors |= 0x40;
 	assert(strneq(ctmp, "BitKeeper/tmp/bk", 16));
 	unlink(ctmp);
 	mdbm_close(db);
@@ -255,8 +268,11 @@ check_main(int ac, char **av)
 		if (csetpointer) {
 			char	buf[MAXKEY + 20];
 			char	*csetkey = getCSetFile(bk_proj);
-			fprintf(stderr, "check: fixing %d incorrect cset file pointers...\n",
-				csetpointer);
+
+			fprintf(stderr,
+			    "check: "
+			    "fixing %d incorrect cset file pointers...\n",
+			    csetpointer);
 			sprintf(buf, "bk -r admin -C'%s'", csetkey);
 			system(buf);
 		}
@@ -278,13 +294,27 @@ check_main(int ac, char **av)
 	if (poly) warnPoly();
 	if (resync) {
 		chdir(RESYNC2ROOT);
-		if (sys("bk", "sane", SYS)) errors |= 16;
+		if (sys("bk", "sane", SYS)) errors |= 0x80;
 		chdir(ROOT2RESYNC);
 	} else {
-		if (sys("bk", "sane", SYS)) errors |= 16;
+		if (sys("bk", "sane", SYS)) errors |= 0x80;
 	}
 	if (verbose == 1) progress(nfiles+1, errors);
 	return (errors);
+}
+
+private sccs *
+fix_merges(sccs *s)
+{
+	sccs	*tmp;
+
+	/* sccs_renumber(s, 0, 0, 0, 0, (verbose) ? 0 : SILENT); */
+	sccs_renumber(s, 0, 0, 0, 0, 0);
+	sccs_newchksum(s);
+	tmp = sccs_init(s->sfile, 0, 0);
+	assert(tmp);
+	sccs_free(s);
+	return (tmp);
 }
 
 /*
@@ -428,6 +458,23 @@ writable_gfile(sccs *s)
 			printf("%s\n", s->gfile);
 			return (0);
 		}
+		unless (fix) {
+			fprintf(stderr,
+			    "===================================="
+			    "=====================================\n"
+			    "check: ``%s'' writable but not checked out.\n"
+			    "This means that a file has been modified "
+			    "without first doing a \"bk edit\".\n"
+			    "\tbk -R edit -g %s\n"
+			    "will fix the problem by changing the  "
+			    "file to checked out status.\n"
+			    "Running \"bk -r check -acf\" will "
+			    "fix most problems automatically.\n"
+			    "===================================="
+			    "=====================================\n",
+			    s->gfile, s->gfile);
+			return (32);
+		}
 
 		/*
 		 * See if diffing against the gfile with or without keywords
@@ -491,15 +538,10 @@ readonly_gfile(sccs *s)
 {
 	if ((HAS_PFILE(s) && exists(s->gfile) && !writable(s->gfile))) {
 		if (gfile_unchanged(s)) {
-			char	*p;
-
 			unlink(s->pfile);
 			s->state &= ~S_PFILE;
 			if (resync) return (0);
-			p = user_preference("checkout");
-			if (streq(p, "edit") || streq(p, "EDIT")) {
-				sccs_get(s, 0, 0, 0, 0, SILENT|GET_EDIT, "-");
-			}
+			do_checkout(s);
 			return (0);
 		} else {
 			fprintf(stderr,
@@ -1167,6 +1209,28 @@ check(sccs *s, MDBM *db)
 		}
 	}
 	return (errors);
+}
+
+private int
+chk_merges(sccs *s)
+{
+	delta	*p, *m, *d;
+
+	for (d = s->table; d; d = d->next) {
+		unless (d->merge) continue;
+		p = d->parent;
+		assert(p);
+		m = sfind(s, d->merge);
+		assert(m);
+		if (sccs_needSwap(p, m)) {
+			if (fix) return (1);
+			fprintf(stderr,
+			    "%s|%s: %s/%s need to be swapped, run with -f.\n",
+			    s->gfile, d->rev, p->rev, m->rev);
+			return (1);
+		}
+	}
+	return (0);
 }
 
 private int

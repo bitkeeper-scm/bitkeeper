@@ -17,6 +17,8 @@ private int	doit(char **fileList, char *rev_list, char *qflag);
 private	void	save_log_markers(void);
 private	void	update_log_markers(int verbose);
 
+private	int	checkout;
+
 int
 undo_main(int ac,  char **av)
 {
@@ -55,6 +57,11 @@ usage:			system("bk help -s undo");
 		}
 	}
 	unless (rev) goto usage;
+
+	/* do checkouts? */
+	if (strieq(user_preference("checkout"), "get")) checkout = 1;
+	if (strieq(user_preference("checkout"), "edit")) checkout = 2;
+
 	save_log_markers();
 	unlink(BACKUP_SFIO); /* remove old backup file */
 	if (ckRev) checkRev(rev);
@@ -479,6 +486,17 @@ move_file()
 			    "Cannot move %s to %s\n", from, to);
 			rc = -1;
 			break;
+		};
+		if (checkout) {
+			/* 
+			 * We don't use do_checkout() because the proj
+			 * struct is not realiable.
+			 */
+			if (checkout == 1) {
+				sys("bk", "get", "-q", to, SYS);
+			} else {
+				sys("bk", "edit", "-q", to, SYS);
+			}
 		};
 	}
 	pclose(f);
