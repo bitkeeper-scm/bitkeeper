@@ -6,15 +6,22 @@ bk help \- get help for \*(BK commands
 .Bc bk help [\-akp] [
 .OPTreq \-f\  filename
 .B ]
-.ARG topic
+.ARG specific-topic
+.br
+.B bk help topics
 .SH DESCRIPTION
 The 
 .B bk help
 command displays the online help for the specified command or topic.
-In general, the graphical 
+Output gets displayed in the current command shell window.
+See 
 .B bk helptool
-is a nicer interface, but sometimes this is useful.  Both display the
-same information.
+for information about the graphical interface for help.
+.LP
+To get a list of all bk help topics use
+.DS
+.B bk help topics
+.DE
 .SH OPTIONS
 .TP .9i
 .B \-a
