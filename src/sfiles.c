@@ -1145,16 +1145,18 @@ typedef struct sinfo sinfo;
 struct sinfo {
 	walkfn	fn;
 	void	*data;
+	int	rootlen;
 };
 
 private int
 findsfiles(char *file, struct stat *sb, void *data)
 {
 	char	*p = strrchr(file, '/');
+	sinfo	*si = (sinfo *)data;
 
 	unless (p) return (0);
 	if (S_ISDIR(sb->st_mode)) {
-		if (p - file > 1 && patheq(p+1, "BitKeeper")) {
+		if (p - file > si->rootlen && patheq(p+1, "BitKeeper")) {
 			/*
 			 * Do not cross into other package roots
 			 * (e.g. RESYNC).
@@ -1164,7 +1166,6 @@ findsfiles(char *file, struct stat *sb, void *data)
 		}
 	} else {
 		if ((p - file >= 6) && pathneq(p - 5, "/SCCS/s.", 8)) {
-			sinfo	*si = (sinfo *)data;
 			return (si->fn(file, sb, si->data));
 		} else if (patheq(p+1, BKSKIP)) {
 			/*
@@ -1183,5 +1184,6 @@ walksfiles(char *dir, walkfn fn, void *data)
 
 	si.fn = fn;
 	si.data = data;
+	si.rootlen = strlen(dir);
 	return (walkdir(dir, findsfiles, &si));
 }
