@@ -9488,11 +9488,19 @@ out:		sccs_unlock(s, 'z');
 			randomBits(buf);
 			if (buf[0]) d->random = strdup(buf);
 		}
-
 		unless (hasComments(d)) {
-			sprintf(buf, "BitKeeper file %s",
-			    fullname(s->gfile, 0));
+			sprintf(buf, "BitKeeper file %s",fullname(s->gfile, 0));
 			d->comments = addLine(d->comments, strdup(buf));
+		}
+		if ((d == n0) && !hasComments(n)) {
+			if (comments_readcfile(s, 0, n)) {
+				if (flags & DELTA_CFILE) {
+					fprintf(stderr,
+					    "checkin: no comments for %s\n",
+					    s->sfile);
+					goto out;
+				}
+			}
 		}
 	}
 	if (BITKEEPER(s)) {
