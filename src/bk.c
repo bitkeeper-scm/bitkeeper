@@ -354,6 +354,40 @@ usage()
 }
 
 #define	MAXARGS	1024
+#define	u64	unsigned long long
+
+char *
+milli(void)
+{
+	struct	timeval	tv;
+	u64	now, start;
+	static	char time[20];
+
+	gettimeofday(&tv, 0);
+	unless (getenv("BK_SEC")) {
+		safe_putenv("BK_SEC=%u", tv.tv_sec);
+		safe_putenv("BK_MSEC=%u", tv.tv_usec / 1000);
+		return ("0");
+	}
+	start = (u64)atoi(getenv("BK_SEC")) * (u64)1000;
+	start += (u64)atoi(getenv("BK_MSEC"));
+	now = (u64)tv.tv_sec * (u64)1000;
+	now += (u64)(tv.tv_usec / 1000);
+	sprintf(time, "%u", (u32)(now - start));
+	return (time);
+}
+
+private void
+save_gmon()
+{
+	char	buf[200];
+	int	i = 0;
+
+	do {
+		sprintf(buf, "gmon.%d", i++);
+	} while (exists(buf));
+	rename("gmon.out", buf);
+}
 
 int
 main(int ac, char **av)
@@ -366,7 +400,7 @@ main(int ac, char **av)
 	if (getenv("BK_SHOWPROC")) {
 		FILE	*f = fopen("/dev/tty", "w");
 
-		fprintf(f, "BK(%d)", getpid());
+		fprintf(f, "BK (%u t: %5s)", getpid(), milli());
 		for (i = 0; av[i]; ++i) fprintf(f, " %s", av[i]);
 		fprintf(f, "\n");
 		fclose(f);
@@ -489,6 +523,7 @@ main(int ac, char **av)
 	}
 
 run:	getoptReset();
+	if (exists("gmon.out")) save_gmon();
 
 	if (streq(prog, "cmdlog")) {
 		cmdlog_dump(ac, av);
@@ -798,6 +833,13 @@ cmdlog_end(int ret)
 		}
 	}
 
+	if (getenv("BK_SHOWPROC")) {
+		FILE	*f = fopen("/dev/tty", "w");
+
+		fprintf(f, "END(%u t: %5s)", getpid(), milli());
+		fprintf(f, " %s = %d\n", cmdlog_buffer, ret);
+		fclose(f);
+	}
 	user = sccs_getuser();
 	fprintf(f, "%c%s %lu %s: ",
 	    log_versions[LOGVER],

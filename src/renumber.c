@@ -98,7 +98,7 @@ sccs_renumber(sccs *s, ser_t nextlod, ser_t thislod, MDBM *lodDb, \
 	delta	*d;
 	ser_t	i;
 	ser_t	release = 0;
-	MDBM	*db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
+	MDBM	*db = mdbm_open(NULL, 0, 0, 128);
 	ser_t	size = (nextlod > s->nextserial) ? nextlod : s->nextserial;
 	ser_t	*map = calloc(size, sizeof(ser_t));
 	ser_t	defserial = 0;
@@ -197,13 +197,12 @@ out:
 private	void
 newRev(sccs *s, int flags, MDBM *db, delta *d)
 {
-	char	*buf;
+	char	buf[MAXREV];
 
 	if (d->r[2]) {
-		buf = aprintf("%d.%d.%d.%d",
-					d->r[0], d->r[1], d->r[2], d->r[3]);
+		sprintf(buf, "%d.%d.%d.%d", d->r[0], d->r[1], d->r[2], d->r[3]);
 	} else {
-		buf = aprintf("%d.%d", d->r[0], d->r[1]);
+		sprintf(buf, "%d.%d", d->r[0], d->r[1]);
 	}
 	unless (streq(buf, d->rev)) {
 		verbose((stderr,
@@ -212,7 +211,6 @@ newRev(sccs *s, int flags, MDBM *db, delta *d)
 		d->rev = strdup(buf);
 	}
 	if (d->type == 'D') remember(db, d);
-	free(buf);
 }
 
 private	void
