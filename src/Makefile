@@ -94,15 +94,15 @@ dp2 debug2:
 # Linting...
 # N.B. -DLINT is no longer needed when compiling with gcc.
 ansi:
-	$(MAKE) CFLAGS="-g -Wall -ansi -pedantic -DANSIC" all
+	$(MAKE) CFLAGS="-g -O -Wall -ansi -pedantic -DANSIC" all
 
 # -Wno-parentheses shuts up "suggest parentheses around assignment ...".
 # Unfortunately it also turns off dangling else warnings.
 Wall:
-	$(MAKE) CFLAGS="-g -DWALL -DLINT -Wall -Wno-parentheses -DPURIFY" all
+	$(MAKE) CFLAGS="-g -O -DWALL -Wall -Wno-parentheses -DPURIFY" all
 
 WWall:
-	$(MAKE) CFLAGS="-g -W -Wall -Wstrict-prototypes -Wmissing-prototypes -Wwrite-strings -DPURIFY" all
+	$(MAKE) CFLAGS="-g -O -W -Wall -Wstrict-prototypes -Wmissing-prototypes -Wwrite-strings -DPURIFY" all
 
 fullwarn:
 	$(MAKE) CFLAGS="-g -fullwarn -DLINT -DPURIFY" all

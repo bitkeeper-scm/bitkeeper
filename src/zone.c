@@ -27,4 +27,5 @@ main(void)
 	}
 	sprintf(tmp, "%c%02d:%02d", sign, hwest, mwest);
 	printf("%s\n", tmp);
+	return (0);
 }

@@ -124,13 +124,13 @@ branches(delta *d)
 	branches(d->siblings);
 }
 
+void
 pd(char *prefix, delta *d)
 {
 	printf("%s%s", prefix, d->rev);
 	if (flags & GET_USER) printf("-%s", d->user);
 	if (d->flags & D_BADREV) printf("-BAD");
 	if (d->merge) {
-		extern	delta *sfind();
 		delta	*p = sfind(s, d->merge);
 
 		assert(p);

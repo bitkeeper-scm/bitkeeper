@@ -327,6 +327,7 @@ c:	lftw(".", caches, 15);
 	mdbm_close(idDB);
 }
 
+void
 visit(delta *d)
 {
 	d->flags |= D_VISITED;
@@ -360,6 +361,7 @@ csetDeltas(sccs *sc, delta *start, delta *d)
 	if (d->type == 'D') printf("%s:%s\n", sc->sfile, d->rev);
 }
 
+void
 save(sccs *sc, MDBM *idDB, char *buf)
 {
 	if (mdbm_store_str(idDB, buf, sc->gfile, MDBM_INSERT)) {
@@ -383,7 +385,6 @@ caches(const char *filename, struct stat *sb, int flag)
 	register delta *d, *e;
 	char	buf[MAXPATH*2];
 	char	*t;
-	int	n;
 
 	if (S_ISDIR(sb->st_mode)) return (0);
 	if ((file[0] == '.') && (file[1] == '/')) file += 2;
@@ -458,6 +459,7 @@ caches(const char *filename, struct stat *sb, int flag)
 	return (0);
 }
 
+int
 _ftw_get_flag(const char *dir, struct stat *sb)
 {
 
@@ -484,7 +486,7 @@ lftw(const char *dir,
 	struct	stat sbuf;
 	char	tmp_buf[MAXPATH];
 	char	*slash = "/";
-	int	flag, rc = 0, first_time = 1;
+	int	flag, rc = 0, len;
 
 	flag = _ftw_get_flag(dir, &sbuf);
 
@@ -496,17 +498,14 @@ lftw(const char *dir,
 	 * if we get here, the top level node is a directory
 	 * now we process its children
 	 */
+	len = strlen(dir);
+	if ((len > 1) && (dir[len -1] == '/')) slash = "";
+	if ((d = opendir(dir)) == NULL) {
+		perror(dir);
+		return rc;
+	}
 	/* CSTYLED */
 	for (;;) {
-		if (first_time) {
-			int len = strlen(dir);
-			first_time = 0;
-			if ((len > 1) && (dir[len -1] == '/')) slash = "";
-			if ((d = opendir(dir)) == NULL) {
-				perror(dir);
-				goto done;
-			}
-		}
 		e = readdir(d);
 		if (e == NULL) goto done;
 		if ((strcmp(e->d_name, ".") == 0) ||

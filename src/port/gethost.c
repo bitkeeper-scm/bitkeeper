@@ -8,9 +8,8 @@
 char	*
 sccs_gethost(void)
 {
-	static char host[257];
-	int	len = sizeof(host) - 1;
-	static	done = 0;
+	static	char host[257];
+	static	int done = 0;
 	struct	hostent *hp;
 	char 	*h;
 

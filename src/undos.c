@@ -5,6 +5,7 @@
 
 void undos(char *s);
 
+int
 main(int ac, char **av)
 {
 	FILE	*f;
@@ -23,7 +24,8 @@ main(int ac, char **av)
 		undos(buf);
 		puts(buf);
 	}
-	exit(0);
+
+	return (0);
 }
 
 /* kill the newline and the \r */

@@ -40,7 +40,6 @@ main(int ac, char **av)
 	sccs	*s;
 	char	*name;
 	int	save, c, flags = SILENT;
-	char	*rev;
 	int	inroot = 0;
 	RANGE_DECL;
 

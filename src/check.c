@@ -17,6 +17,11 @@ char	*csetFind(char *key);
 int	check(sccs *s, MDBM *db, MDBM *marks);
 char	*getRev(char *root, char *key, MDBM *idDB);
 char	*getFile(char *root, MDBM *idDB);
+void	listMarks(MDBM *db);
+int	checkAll(MDBM *db);
+void	listFound(MDBM *db);
+void	listCsetRevs(char *key);
+
 int	verbose;
 int	all;		/* if set, check every darn entry in the ChangeSet */
 int	mixed;
@@ -137,6 +142,7 @@ usage:		fprintf(stderr, "%s", check_help);
  *
  * Also check that all files are where they are supposed to be.
  */
+int
 checkAll(MDBM *db)
 {
 	FILE	*keys = popen("bk sccscat -h ChangeSet", "r");
@@ -212,6 +218,7 @@ checkAll(MDBM *db)
 	return (errors);
 }
 
+void
 listFound(MDBM *db)
 {
 	kvpair	kv;
@@ -237,7 +244,7 @@ buildKeys()
 	MDBM	*db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	MDBM	*idDB;
 	FILE	*keys = popen("bk sccscat -h ChangeSet", "r");
-	char	*t;
+	char	*t = 0;
 	int	n = 0;
 	int	e = 0;
 	char	buf[MAXPATH*3];
@@ -334,6 +341,7 @@ buildKeys()
 /*
  * List all revisions which have the specified key.
  */
+void
 listCsetRevs(char *key)
 {
 	FILE	*keys = popen("bk sccscat -hm ChangeSet", "r");
@@ -350,7 +358,7 @@ listCsetRevs(char *key)
 	while (fnext(buf, keys)) {
 		if (chop(buf) != '\n') {
 			fprintf(stderr, "bad data: <%s>\n", buf);
-			return (0);
+			goto out;
 		}
 		//fprintf(stderr, "BUF %s\n", buf);
 		t = strrchr(buf, ' '); assert(t); *t++ = 0;
@@ -366,7 +374,7 @@ listCsetRevs(char *key)
 		fprintf(stderr, "%s", buf);
 	}
 	fprintf(stderr, "\n");
-	pclose(keys);
+out:	pclose(keys);
 }
 
 char	*
@@ -489,6 +497,7 @@ check(sccs *s, MDBM *db, MDBM *marks)
 	return (errors);
 }
 
+void
 listMarks(MDBM *db)
 {
 	kvpair	kv;
@@ -511,7 +520,6 @@ csetFind(char *key)
 	FILE	*p;
 	char	*s;
 
-#ifdef WIN32
 	char *k, *r =0;
 
 	sprintf(buf, "bk sccscat -hm ChangeSet");
@@ -532,16 +540,4 @@ csetFind(char *key)
 	pclose(p);
 	unless (r) return (strdup("[not found]"));
 	return (r);
-#else
-	sprintf(buf, "bk sccscat -hm ChangeSet | grep '%s'", key);
-	unless (fnext(buf, p)) {;
-		pclose(p);
-		return (strdup("[not found]"));
-	}
-	pclose(p);
-	for (s = buf; *s && !isspace(*s); s++);
-	unless (s) return (strdup("[bad data]"));
-	*s = 0;
-	return (strdup(buf));
-#endif
 }
