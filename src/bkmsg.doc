@@ -396,7 +396,7 @@ BitKeeper is unable to create a file with the following path name:
 This usually happens if your path name contains a reserved name used on
 the destination file system.  Known reserved names for FAT/NTFS/Samba/CIFS
 file system are as follows:
-        "con", "prn", "nul", "lpt?", "?:"
+        "aux", "con", "prn", "nul", "lpt?", "?:"
 Please rename the file and retry (see also "bk helptool mv")
 Note: You must do the rename in the sending repository.
 ======================================================================
