@@ -25,27 +25,25 @@ diffutils: FORCE
 patch: FORCE
 	cd pub/patch && unset MAKEFLAGS && make
 
-MSYS = MSYS-1.0.10-rc4.tar.gz
-
 MSYSBIN = ../gnu
 msys: ./msysver.sh FORCE
-	mkdir -p $(MSYSBIN)
+	mkdir -p $(MSYSBIN)/tmp
 	MSYSVER=`./msysver.sh`; \
-	if [ $$? -eq 0 -a -f $$MSYSVER ]; \
-	then	tar -C$(MSYSBIN) -xzf $$MSYSVER; \
+	if [ -n "$$MSYSVER" -a -f "$$MSYSVER" ]; \
+	then	tar -C$(MSYSBIN) -xpzf $$MSYSVER; \
 	else	test -d msys || bk clone -r`tail -1 MSYSKEY` \
 			bk://data.bitmover.com/msys msys; \
-		bk get msys/$(MSYS); \
-		tar -C$(MSYSBIN) -xzf msys/$(MSYS); \
-		MSYSVER=`./msysver.sh` && test -f $$MSYSVER || { \
-	                test -d /build/obj || { \
-				mkdir /build/obj; \
-				chmod 777 /build/obj; \
-			}; \
-			cp msys/$(MSYS) $$MSYSVER; \
+		bk sfiles -Ug msys | bk get -S -; \
+		(cd msys; bk sfiles -Ug) | \
+			tar -Cmsys -cf- -T- | \
+			tar -C$(MSYSBIN) -xf-; \
+		MSYSVER=`./msysver.sh`; \
+		test -n "$$MSYSVER" -a \! -f "$$MSYSVER" && { \
+	                test -d /build/obj || mkdir -m 777 -p /build/obj; \
+			(cd msys; bk sfiles -Ug | tar -czf $$MSYSVER -T-); \
 			chmod 666 $$MSYSVER; \
 		}; \
-		bk clean msys/$(MSYS); \
+		true; \
 	fi
 
 install: all blat data/bk.ico
