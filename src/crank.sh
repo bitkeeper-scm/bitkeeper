@@ -7,12 +7,13 @@ set -x
 # We start in the src subdir
 cd ..
 TREE=`pwd`
+TREE=`basename $TREE`
 TREE_HOST=work
-REPO=`basename $TREE`-$USER
+REPO=$TREE-$USER
 cd /tmp || exit 1
 rm -rf $REPO
 set -e
-PREFER_RSH=YES bk clone $TREE_HOST:$TREE $REPO
+PREFER_RSH=YES bk clone $TREE_HOST:/home/bk/$TREE $REPO
 cd $REPO/src
 get build.sh || exit 1
 cp build.sh build
