@@ -1184,6 +1184,8 @@ void	set_xor(sccs *s, ser_t *a, ser_t *b, set_pfunc p);
 void	set_set(sccs *s, char *rev, set_pfunc p);
 int	saveStdin(char *tmpfile);
 
+int	annotate_args(int flags, char *args);
+
 extern char *bk_vers;
 extern char *bk_utc;
 extern char *bk_time;
