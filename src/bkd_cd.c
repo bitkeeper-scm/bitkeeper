@@ -52,11 +52,15 @@ cmd_cd(int ac, char **av)
 	char *rootkey, buf[MAXPATH];
 	extern int errno;
 
+	unless (p) {
+		out("ERROR-cd command must have path arugment\n");
+		return (1);
+	}
 #ifdef WIN32
 	/* convert /c:path => c:path */
-	if (p && (p[0] == '/') && isalpha(p[1]) && (p[2] == ':')) p++;
+	if ((p[0] == '/') && isalpha(p[1]) && (p[2] == ':')) p++;
 #endif
-	if ((strlen(av[1]) >= 14) && strneq("///LOG_ROOT///", av[1], 14)) {
+	if ((strlen(p) >= 14) && strneq("///LOG_ROOT///", p, 14)) {
 
 		unless (logRoot) {
 			out("ERROR-cannot get log_root\n");
@@ -68,7 +72,7 @@ cmd_cd(int ac, char **av)
 			out(" does not exist\n");
 			return (1);
 		}
-		rootkey=&(av[1][14]);
+		rootkey=&(p[14]);
 		unless (rootkey2path(rootkey, logRoot, buf)) {
 			out("ERROR-cannot convert key to path\n");
 			return (1);
@@ -81,7 +85,7 @@ cmd_cd(int ac, char **av)
 			return (1);
 		}
 	} else {
-		if (!p || chdir(p)) {
+		if (chdir(p)) {
 			out("ERROR-cannot cd to ");
 			out(p);
 			out("\n");
@@ -116,7 +120,7 @@ cmd_cd(int ac, char **av)
 		 */
 		unless (exists("BitKeeper/etc")) {
 			out("ERROR-directory '");
-			out(av[1]);
+			out(p);
 			out("' is not a package root\n");
 			return (-1);
 		}    
