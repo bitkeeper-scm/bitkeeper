@@ -35,13 +35,14 @@ echo new > bar.c
 echo new > h.h
 bk delta $Q -ynew_stuff bar.c h.h
 bk commit $S -ynew_stuff
+bk mv h.h h.newname || exit 1
 cd $HERE/copy/src
 bk edit $Q bar.c h.h
 echo new2 > bar.c
 echo new2 > h.h
 bk pull  2> pull.out
 grep -q "bar.c is edited" pull.out || { echo failed; exit 1; }
-grep -q "h.h is edited" pull.out || { echo failed; exit 1; }
+grep -q "h.h is edited" pull.out || { echo failed; cat pull.out; exit 1; }
 echo OK
 echo $N push to a repo with edited files ............................$NL
 cd $HERE/project
