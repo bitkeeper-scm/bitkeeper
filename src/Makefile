@@ -532,13 +532,13 @@ renametool: tclwrap \
 	gui/renametool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
 	gui/common.tcl gui/appState.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	    gui/appState.tcl gui/renametool.tcl \
+	    gui/appState.tcl gui/renametool.tcl | \
 	    ./tclwrap > renametool
 
 fmtool: tclwrap gui/fmtool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
 	gui/common.tcl gui/difflib.tcl gui/appState.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	    gui/appState.tcl gui/difflib.tcl gui/fmtool.tcl \
+	    gui/appState.tcl gui/difflib.tcl gui/fmtool.tcl | \
 	    ./tclwrap > fmtool
 
 fm3tool: tclwrap gui/fm3tool.tcl gui/config.tcl gui/common.tcl \
