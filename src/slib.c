@@ -3177,7 +3177,8 @@ loadConfig(char *root)
 	MDBM	*DB = 0;
 	char 	s_config[MAXPATH];
 	char 	g_config[MAXPATH];
-	sccs 	*s1 = 0;
+	char 	x_config[MAXPATH];
+	sccs	*s1;
 	project *proj = 0;
 
 	sprintf(s_config, "%s/BitKeeper/etc/SCCS/s.config", root);
@@ -3186,35 +3187,32 @@ loadConfig(char *root)
 	 * If the config is already checked out, use that.
 	 * Otherwise, check it out.
 	 */
-	if (exists(s_config) && !exists(g_config)) {
-		/*
-		 * Hand make a project struct, so sccs_init(s_config, ..) below
-		 * won'nt call us again, otherwise we end up in a loop.
-		 */
-		proj = calloc(1, sizeof(*proj));
-		proj->root = strdup(root);
-		s1 = sccs_init(s_config, SILENT, proj);
-		unless (s1) {
-			proj_free(proj);
-			return 0;
-		}
-		if (sccs_get(s1, 0, 0, 0, 0, SILENT, 0)) {
-			sccs_free(s1);
-			return (0);
-		}
+	if (exists(g_config)) return (loadDB(g_config, parseConfig, DB_NODUPS));
+	unless (exists(s_config)) return 0;
+
+	/*
+	 * Hand make a project struct, so sccs_init(s_config, ..) below
+	 * won'nt call us again, otherwise we end up in a loop.
+	 */
+	proj = calloc(1, sizeof(*proj));
+	proj->root = strdup(root);
+	s1 = sccs_init(s_config, SILENT, proj);
+	unless (s1) {
+		proj_free(proj);
+		return 0;
 	}
-	unless (exists(g_config)) return (0);
-	DB = loadDB(g_config, parseConfig, DB_NODUPS);
-	if (s1) {
-		/*
-		 * If we checked out the config file,
-		 * we must clean it up. (The uppper level could be
-		 * doing a "bk -r clean") Leaving the config
-		 * checked out could give strange result.
-		 */
-		unlink(g_config);
+	if (gettemp(x_config, "bk_config")) {
+		fprintf(stderr, "Can not create temp file\n");
 		sccs_free(s1);
+		return 0;
 	}
+	if (sccs_get(s1, 0, 0, 0, 0, SILENT|PRINT, x_config)) {
+		sccs_free(s1);
+		return (0);
+	}
+	DB = loadDB(x_config, parseConfig, DB_NODUPS);
+	unlink(x_config);
+	sccs_free(s1);
 	return DB;
 }
 
