@@ -3668,7 +3668,7 @@ parseConfig(char *buf)
 	q = &p[-1];
 	if (*q == '\n') q--;
 	while (isspace(*q)) q--;		/* trim trailing space */
-	*++q = p[-1];
+	if (p[-1] == '\n') *++q = p[-1];	/* preserve LF for loadDB */
 	*++q = 0;
 	
 	return (1);
