@@ -1068,6 +1068,7 @@ char	**getdir(char *);
 delta	*getSymlnkCksumDelta(sccs *s, delta *d);
 struct tm
         *utc2tm(time_t t);
+void	fix_stime(sccs *s);
 
 extern char *bk_vers;
 extern char *bk_utc;
