@@ -205,6 +205,9 @@ tar xf TAR
 cd EDIT/BitKeeper/etc
 bk edit $Q config
 echo "license: $BK_LIC_P" > config
+echo "licsign1: $BK_LIC_P1" >> config
+echo "licsign2: $BK_LIC_P2" >> config
+echo "licsign3: $BK_LIC_P3" >> config
 echo "logging: none" >> config
 echo "logging_ask: no" >> config
 bk delta $Q -yprivate

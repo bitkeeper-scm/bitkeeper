@@ -22,6 +22,9 @@ eoln: unix
 keyword: sccs
 logging_ask: no
 license: $BK_LIC_P
+licsign1: $BK_LIC_P1
+licsign2: $BK_LIC_P2
+licsign3: $BK_LIC_P3
 EOF
 BK_USER=joe bk setup -cc -f project
 cd project
