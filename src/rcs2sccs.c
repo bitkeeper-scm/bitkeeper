@@ -31,9 +31,6 @@ rcs2sccs_main(int ac, char **av)
 	proj = 0;
 	co_prog = cutoff = 0;
 
-	// XXX FIXME: We don't call "bk help" now
-	// because the "bk help page is out-of-date
-
 	while ((c = getopt(ac, av, "c;dhqu")) != -1) {
 		switch (c) {
 		    case 'c': cutoff = optarg; break;		/* doc 2.0 */
@@ -42,9 +39,8 @@ rcs2sccs_main(int ac, char **av)
 		    case 'h': verify++; break;			/* doc 2.0 */
 		    case 'u': undos++; break;			/* doc 2.0 */
 		    default:
-		    	fprintf(stderr,
-			    "Usage: %s [-hq] [-c<TAG>] files\n", av[0]);
-			exit(1);
+			    system("bk help -s rcs2sccs");
+			    return(1);
 		}
 	}
 	unless (co_prog = prog2path("co")) {
