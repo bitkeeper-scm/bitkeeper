@@ -118,25 +118,28 @@ sub getUdiff
 	return ("EOF", "");
 }
 
-sub ejectListXX
-{
-	foreach (@_) { print OUT "$_\n"; }
-}
-
 sub ejectList
 {
-	local($mylist, $stripmarker) = ($_[0], $_[1]);
+	local($mylist, $stripmarker, $skipGca) = ($_[0], $_[1], $_[2]);
 	local($ln);
 
 	foreach $ln (@$mylist) {
-		$ln =~ s/^.// if $stripmarker;
+		next if (($skipGca || $stripmarker) && ($ln =~ /^d/));
+		if ($stripmarker) {
+			$ln =~ s/^.//;
+		} else {
+			$ln =~ s/^d/-/;
+			$ln =~ s/^i/+/;
+			$ln =~ s/^u/=/;
+		}
 		print OUT "$ln\n"
 	}
 }
 
+# XXX TODO we should exclude the deleted line in the count
 sub needCommon
 {
-	local($threshold) = 2; # tuneable parameter;
+	local($threshold) = 4; # tuneable parameter;
 	local($clen, $llen , $rlen) = ($_[0], $_[1], $_[2]);
 	$clen++; $llen++; $rlen++;
 	return 1 if ($clen >= $threshold);
@@ -144,12 +147,13 @@ sub needCommon
 	return 0;
 }
 
-sub fixMarker()
+sub isPrintable
 {
-	$_ = $_[0];
-	return "=" if /u/;
-	return "+" if /i/;
-	warn "unexpected marker: $_\n";
+	local($marker) = $_[0];
+
+	return 0 if ($marker eq "s");
+	return 0 if (($marker eq "d") && (!$wantGca));
+	return 1;
 }
 
 
@@ -169,20 +173,20 @@ sub _chk_conflict
 	open(TMPL, ">$ltmp"); open(TMPR, ">$rtmp");
 	while (1) {
 		chop($lm = <LM>); chop($rm = <RM>); 
-		$ld = <LD>; $rd = <RD>; 
+		chop($ld = <LD>); chop($rd = <RD>); 
 		last if ($lm eq ">");
 		$len++;
-		unless($lm eq "s" || $lm eq "d") {
+		if (&isPrintable($lm)) {
 			if ($lm eq ">") {print OUT "bad marker:$lm : $ld\n"; }
-			push(@ldata, $ld);
-			push(@lmarker, &fixMarker($lm));
-			print(TMPL "$ld");
+			push(@ldata, "$lm$ld");
+			push(@lmarker, $lm);
+			print(TMPL "$ld\n");
 		}
-		unless($rm eq "s" || $rm eq "d") {
+		if (&isPrintable($rm)) {
 			if ($rm eq ">") {print OUT "bad marker:$rm : $rd\n"; }
-			push(@rdata, $rd);
-			push(@rmarker, &fixMarker($rm));
-			print(TMPR "$rd");
+			push(@rdata, "$rm$rd");
+			push(@rmarker, $rm);
+			print(TMPR "$rd\n");
 		}
 	}
 	close(TMPL); close(TMPR);
@@ -233,22 +237,22 @@ sub _chk_conflict
 		}
 		$needArrow = 1 if (($#ldata1 >= 0) || ($#rdata1  >=0));
 		if ($needArrow) {
-			ejectList(\@cdata1, 1) if ($prefix);
+			ejectList(\@cdata1, 1, 1) if ($prefix);
 			print OUT "<<<<<<< $lfile\n" if $needArrow;
-			ejectList(\@ldata1, 0); @ldata1 = ();
+			ejectList(\@ldata1, 0, 0); @ldata1 = ();
 			print OUT "=======\n" if $needArrow; 
-			ejectList(\@rdata1, 0); @rdata1 = ();
+			ejectList(\@rdata1, 0, 0); @rdata1 = ();
 			print OUT ">>>>>>> $rfile\n" if $needArrow;
 			@cdata1 = ();
 			@cdata1 = @cdata2 if $suffix;
 			@cdata2 = ();
 		} else {
-			ejectList(\@cdata1, 1); @cdata1 = ();
-			ejectList(\@ldata1, 1); @ldata1 = ();
-			ejectList(\@rdata1, 1); @rdata1 = ();
+			ejectList(\@cdata1, 1, 1); @cdata1 = ();
+			ejectList(\@ldata1, 1, 0); @ldata1 = ();
+			ejectList(\@rdata1, 1, 0); @rdata1 = ();
 		}
 		if ($mode eq "EOF") {
-			ejectList(\@cdata1, 1); @cdata1 = ();
+			ejectList(\@cdata1, 1, 1); @cdata1 = ();
 			last;
 		}
 	}
@@ -257,16 +261,17 @@ sub _chk_conflict
 	force_unlink($ltmp); force_unlink($rtmp);
 	if ($same) {
 		# bath side added the same text, then not a real conflict
-		foreach  $ld (@ldata) { print OUT "$ld"; }
+		#foreach  $ld (@ldata) { print OUT "$ld\n"; }
+		ejectList(\@ldata, 1, 1);
 	}
 	if ($debug >= 2 ) {
 		foreach  $ld (@ldata) { 
 			$lm = shift(@lmarker);
-			print OUT "#L# $lm: $ld"; 
+			print OUT "#L# $lm: $ld\n"; 
 		}
 		foreach  $rd (@rdata) {
 			$rm = shift(@rmarker);
-			print OUT "#R# $rm: $rd";
+			print OUT "#R# $rm: $rd\n";
 		}
 	}
 	@ldata=@rdata=@lmarker=@rmarker=();
@@ -416,7 +421,9 @@ DESCRIPTION
 
 OPTIONS
 
-    -m  turn off +/= markers
+    -g  show gca text in conflict block (marked as '-")
+
+    -m  turn off markers
 
     -q  quite mode.
 
@@ -440,6 +447,7 @@ sub init
 		if ($x eq "d") { $debug++; }
 		elsif ($x eq "q") { $quiet = 1; }
 		elsif ($x eq "m") { $hideMarker = 1; }
+		elsif ($x eq "g") { $wantGca = 1; }
 		shift(@ARGV); 
 	}
 	&usage if ($#ARGV != 2);
