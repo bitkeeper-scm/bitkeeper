@@ -703,7 +703,7 @@ _undo() {
 	then	echo undo: nothing to undo in "$1"
 		exit 0
 	fi
-	sed 's/[:@].*$//' < ${TMP}rmlist$$ | bk clean - || {
+	sed 's/[:@].*$//' < ${TMP}rmlist$$ | ${BIN}clean - || {
 		echo Undo aborted.
 		$RM -f ${TMP}rmlist$$
 		exit 1
@@ -1301,14 +1301,20 @@ _export() {
 	__cd2root
 
 	# XXX: cset -t+ should work.
-	(${BIN}cset -t`${BIN}prs $R -hd:I: ChangeSet`) \
+	CREV=`${BIN}prs $R -hd:I: ChangeSet`
+	if [ X$CREV = X ]
+	then	echo "export: unable to find revision $R in ChangeSet"
+		rmdir $DST
+		exit 1
+	fi
+	
+	${BIN}cset -t`${BIN}prs $R -hd:I: ChangeSet` \
 	| eval egrep -v "'^(BitKeeper|ChangeSet)'" $INCLUDE $EXCLUDE \
 	| sed 's/:/ /' | while read file rev
 	do
-		PN=`bk prs -r$rev -hd:DPN: $SRC/$file`
-		if ${BIN}get $K $Q -r$rev -G$DST/$PN $SRC/$file
-		then :
-		else	DIR=`dirname $DST/$$PN`
+		PN=`${BIN}prs -r$rev -hd:DPN: $SRC/$file`
+		if ! ${BIN}get $K $Q -r$rev -G$DST/$PN $SRC/$file
+		then	DIR=`dirname $DST/$PN`
 			mkdir -p $DIR || exit 1
 			${BIN}get $K $Q -r$rev -G$DST/$PN $SRC/$file
 		fi

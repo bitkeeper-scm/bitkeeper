@@ -24,9 +24,8 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 		sccs_free(s);
 		return (1);
 	}
+
 	if (HAS_PFILE(s) && !HAS_GFILE(s)){
-		fprintf(stderr,
-		"sccsmv: extraneous lock file %s, cleared\n", s->pfile);
 		unlink(s->pfile);	
 		s->state &= ~S_PFILE;
 	}

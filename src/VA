@@ -43,6 +43,10 @@ b) big chunks which fail - postpone this for now.
 
 [ZW] Shouldn't have to worry about this given a pristine LOD.
 
+c) --norejects (also --search) options to patch.  Suppose that we had a wrapper
+   around patch which could take a patch file and wander through the tree 
+   looking for the versions of files which take the whole patch cleanly.
+   
 WORKING PRACTICE
 ----------------
 
