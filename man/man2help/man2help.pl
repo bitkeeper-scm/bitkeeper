@@ -5,14 +5,19 @@ eval "exec perl -Ssw $0 $@"
 sub main()
 {
 	$debug = 0 if 0;
-	$prefix = $macros = "";
 	$C = "sum";
 	%dups = %taken = %sections = ();
-	unless ($ARGV[0] =~ /\./) {
-		$macros = "cat " . shift(@ARGV) . "; ";
-	}
+	$macros = "cat " . shift(@ARGV) . "; ";
+	$prefix = "";
 	unless ($ARGV[0] =~ /\./) {
 		$prefix = shift(@ARGV);
+	}
+	$MAN = "-man";
+	foreach $dir ('/usr/local/share',
+	    '/usr/local/lib', '/usr/share', '/usr/lib') {
+		if (-f "${dir}/groff/tmac/tmac.gan") {
+			$MAN = "-mgan";
+		}
 	}
 
 	# Figure out which files are duplicated across sections.
@@ -116,7 +121,7 @@ sub man2help
 	close(F);
 
 	$cmd = "( echo .pl 10000i; $macros grep -v bk-macros < $page ) | " .
-		"groff -rhelpdoc=1 -man -P-u -P-b -Tascii | uniq";
+		"groff -rhelpdoc=1 $MAN -P-u -P-b -Tascii | uniq";
 	open(G, "$cmd |");
 	print O <G>;
 	print O "\$\n";
