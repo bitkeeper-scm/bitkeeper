@@ -49,7 +49,6 @@ private int	copyAndGet(char *from, char *to, project *proj, int getFlags);
 private int	writeCheck(sccs *s, MDBM *db);
 private	void	listPendingRenames(void);
 private	int	noDiffs(void);
-private	int	bk_check(void);
 private	void	log_cleanup(void);
 
 private MDBM	*localDB;	/* real name cache for local tree */
@@ -2122,18 +2121,6 @@ unfinished(opts *opts)
 	if (n) resolve_cleanup(opts, 0);
 }
 
-private int
-bk_check()
-{
-	char	*av[5] = {"bk", "-r", "check", "-a", 0};
-	int	status;
-
-	status = spawnvp_ex(_P_WAIT, av[0], av);
-	unless (WIFEXITED(status))  return (1);  /* fail */
-	return (WEXITSTATUS(status) != 0);   
-
-}
-
 /*
  * Remove a sfile, if its parent is empty, remove them too.
  * We leave stuff in place if we are being called from apply;
@@ -2399,7 +2386,12 @@ Got:\n\
 		fprintf(stderr,
 		    "resolve: running consistency check, please wait...\n");
 	}
-	if (bk_check()) {
+	if (strieq("yes", user_preference("partial_check"))) {
+		ret = check(BACKUP_LIST);
+	} else {
+		ret = check(0);
+	}
+	if (ret) {
 		fprintf(stderr, "Check failed.  Resolve not completed.\n");
 		/*
 		 * Clean up any gfiles we may have pulled out to run check.

@@ -1078,3 +1078,25 @@ unsafe_path(char *s)
 	}
 	/*NOTREACHED*/
 }
+
+#define	STALE	(24*60*60)
+
+/*
+ * If they hand us a partial list use that if we can.
+ * Otherwise do a full check.
+ */
+int
+check(char *partial)
+{
+	int	ret;
+	struct	stat sb;
+	time_t	now = time(0);
+
+	if (!partial || stat(CHECKED, &sb) || ((now - sb.st_mtime) > STALE)) {
+		ret = sys("bk", "-r", "check", "-ac", SYS);
+	} else {
+		ret = sysio(partial, 0, 0, "bk", "check", "-", SYS);
+	}
+	unless (WIFEXITED(ret))  return (1);  /* fail */
+	return (WEXITSTATUS(ret) != 0);   
+}

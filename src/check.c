@@ -300,6 +300,10 @@ check_main(int ac, char **av)
 		if (sys("bk", "sane", SYS)) errors |= 0x80;
 	}
 	if (verbose == 1) progress(nfiles+1, errors);
+	if (all && !errors && !(flags & INIT_NOCKSUM)) {
+		unlink(CHECKED);
+		touch(CHECKED, 0666);
+	} 
 	return (errors);
 }
 
