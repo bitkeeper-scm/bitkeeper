@@ -11,7 +11,7 @@ private char *usage = "pwd [-scf] path\n";
 
 pwd_main(int ac, char **av)
 {
-	char buf[1024], *p;
+	char buf[1024], realname[MAXPATH], *p;
 	int c, shortname = 0, cygwin = 0, forwardSlash = 0;
 	extern	void platformSpecificInit(char *);
 
@@ -46,6 +46,7 @@ pwd_main(int ac, char **av)
 		buf[0] = buf[1] = '/'; 
 		p = buf;
 	}
-	printf("%s\n", p);
+	getRealName(p, NULL, realname);
+	printf("%s\n", realname);
 	return (0);
 }

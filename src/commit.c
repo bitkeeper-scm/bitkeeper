@@ -157,22 +157,32 @@ notice(char *key)
 }
 
 int
-logs_pending(int ptype)
+logs_pending(int ptype, int skipRecentCset)
 {
+#define MAX_LOG_DELAY (60 * 60 * 24 * 7) /* 7 days */
 	sccs 	*s;
 	delta	*d;
 	char 	key[MAXKEY], s_cset[] = CHANGESET;
 	FILE	*f;
 	int	i = 0;
+	time_t	now;
+	time_t	max_delay = MAX_LOG_DELAY;
 
 	s = sccs_init(s_cset, 0, 0);
 	assert(s && s->tree);
 	for (d = sccs_top(s); d; d = d->next) {
 		if (d->published && (d->ptype == ptype)) sccs_color(s, d);
 	}
-count:	for (d = s->table; d; d = d->next) {
+
+	if (skipRecentCset) {
+		now = time(0);
+		assert(now >= 0);
+	}
+
+	for (d = s->table; d; d = d->next) {
 		if (d->type != 'D') continue; 
 		if (d->flags & D_VISITED) continue; 
+		if (skipRecentCset && ((now - d->date) < max_delay)) continue;
 		i++;
 	}
 	sccs_free(s);
@@ -271,19 +281,17 @@ do_commit(char **av, c_opts opts, char *sym,
 	 */
 	ptype = (l&LOG_OPEN) ? 0 : 1;
 	unless (opts.resync) {
-		if (logs_pending(ptype) >= MAX_PENDING_LOG) {
+		if (logs_pending(ptype, 1) >= MAX_PENDING_LOG) {
 			printf("Commit: forcing pending logs\n");
 			if (l&LOG_OPEN) {
 				system("bk _log -qc2");
 			} else {
 				system("bk _lconfig");
 			}
-			if ((logs_pending(ptype) >= MAX_PENDING_LOG)) {
-			unless (getenv("_BK_IGNORE_PENDING")) {
+			if ((logs_pending(ptype, 1) >= MAX_PENDING_LOG)) {
 				printf(
 				  "max pending log exceeded, commit aborted\n");
 				return (1);
-			}
 			}
 		}
 	}
@@ -415,7 +423,7 @@ logChangeSet(int l, char *rev, int quiet)
 	/*
 	 * Allow up to 20 ChangeSets with $REGRESSION set to not be logged.
 	 */
-	if (getenv("BK_REGRESSION") && (logs_pending(0) < 20)) return;
+	if (getenv("BK_REGRESSION") && (logs_pending(0, 0) < 20)) return;
 
 	unless (rev) {
 		s = sccs_init(s_cset, 0, 0);
@@ -577,7 +585,7 @@ sendConfig(char *to, char *rev)
 	/*
 	 * Allow up to 20 ChangeSets with $REGRESSION set to not be logged.
 	 */
-	if (getenv("BK_REGRESSION") && (logs_pending(1) < 20)) return;
+	if (getenv("BK_REGRESSION") && (logs_pending(1, 0) < 20)) return;
 
 	spawnvp_ex(_P_NOWAIT, av[0], av);
 }

@@ -21,9 +21,6 @@
  * opts->rootDB{key} = <path>.  If the key is there then the inode is in the
  * 	RESYNC directory or the RENAMES directory under <path>.
  */
-#ifdef WIN32
-#include <windows.h>
-#endif
 #include "resolve.h"
 #include "logging.h"
 
@@ -50,10 +47,8 @@ private	void	restore(opts *o);
 private void	unapply(FILE *f);
 private int	copyAndGet(char *from, char *to, project *proj);
 private int	writeCheck(sccs *s, MDBM *db);
-#ifdef WIN32_FILE_SYSTEM
 private MDBM	*localDB;	/* real name cache for local tree */
 private MDBM	*resyncDB;	/* real name cache for resyn tree */
-#endif
 
 int
 resolve_main(int ac, char **av)
@@ -1355,147 +1350,6 @@ pathConflict(opts *opts, char *gfile)
 }
 
 
-#ifdef WIN32_FILE_SYSTEM
-private int
-scanDir(char *dir, char *name, MDBM *db, char *realname)
-{
-	DIR *d;
-	struct dirent *e;
-	char path[MAXPATH];
-
-	realname[0] = 0;
-	d = opendir(dir);
-	unless (d) goto done;
-
-	while (e = readdir(d)) {
-		if (streq(e->d_name, ".") || streq(e->d_name, "..")) continue;
-		sprintf(path, "%s/%s", dir, e->d_name);
-		if (db) mdbm_store_str(db, path, e->d_name, MDBM_INSERT);
-		if (strcasecmp(e->d_name, name) == 0) {
-			if (realname[0] == 0) {
-				strcpy(realname, e->d_name);
-			} else {
-				strcpy(realname, name);
-				break;
-			}
-		}
-	}
-	closedir(d);
-	/*
-	 * If the entry does not exist (directory/file not created yet)
-	 * then the given name is the real name.
-	 */
-done:	if (realname[0] == 0) strcpy(realname, name);
-	sprintf(path, "%s/%s", dir, name);
-	if (db) mdbm_store_str(db, path, name, MDBM_INSERT);
-	return (0); /* ok */
-
-}
-
-/*
- * Given a path, find the real name of the base part
- */
-private int
-getRealBaseName(char *path, char *realParentName, MDBM *db, char *realBaseName)
-{
-	char *p, *parent, *base, *dir;
-	int rc;
-
-	if (db) {
-		p = mdbm_fetch_str(db, path);
-		if (p) { /* cache hit */
-			//fprintf(stderr, "@@@ cache hit: path=%s\n", path);
-			strcpy(realBaseName, p);
-			return (0); /* ok */
-		}
-	}
-	p = strrchr(path, '/');
-	if (p) {
-		*p = 0; 
-		parent = path; base = &p[1];
-	} else {
-		parent = "."; base = path;
-	}
-	/*
-	 * To increase the cache hit rate
-	 * we use the realParentName if it is known
-	 */
-	dir = realParentName[0] ? realParentName: parent;
-	if ((realParentName[0]) &&  !streq(parent, ".")) {
-		if (strcasecmp(parent, realParentName)) {
-			fprintf(stderr, "warning: name=%s, realname=%s\n",
-							parent, realParentName);
-		}
-		assert(strcasecmp(parent, realParentName) == 0);
-	}
-	rc = scanDir(dir, base, db, realBaseName);
-	if (p) *p = '/';
-	return (rc);
-}
-
-
-int
-getRealName(char *path, MDBM *db, char *realname)
-{
-	char	mypath[MAXPATH], name[MAXPATH], *p, *q, *r;
-	int	first = 1;
-
-	assert(path != realname); /* must be different buffer */
-	cleanPath(path, mypath);
-
-	realname[0] = 0;
-	q = mypath;
-	r = realname;
-	
-#ifdef WIN32
-	if (q[1] == ':') {
-		q = &q[3];
-#else
-	if (q[0] == '/') {
-		q = &q[1];
-#endif
-	} else {
-		q = mypath;
-		while (strneq(q, "../", 3)) {
-			q += 3;
-		}
-	}
-	while (p  = strchr(q, '/')) {
-		*p = 0;
-		if (getRealBaseName(mypath, realname, db, name))  goto err;
-		if (first) {
-			char *t;
-			t = strrchr(mypath, '/');
-			if (t) {
-				*t = 0;
-				sprintf(r, "%s/%s", mypath, name);
-				*t = '/';
-			} else {
-				sprintf(r, "%s", name);
-			}
-			r += strlen(r);
-			first = 0;
-		} else {
-			sprintf(r, "/%s", name);
-			r += strlen(name) + 1;
-		}
-		*p = '/';
-		q = ++p;
-	}
-	if (getRealBaseName(mypath, realname, db, name))  goto err;
-	sprintf(r, "/%s", name);
-	return (1);
-err:	fprintf(stderr, "getRealName failed: mypath=%s\n", mypath);
-	return (0);
-}
-#else
-getRealName(char *path, MDBM *db, char *realname)
-{
-	strcpy(realname, path);
-}
-#endif /* WIN32_FILE_SYSTEM */
-
-
 /*
  * Return 1 if the pathname in question is in use in the repository by
  * an SCCS file that is not already in the RESYNC/RENAMES dirs.
@@ -2312,7 +2166,7 @@ pass4_apply(opts *opts)
 {
 	sccs	*r, *l;
 	int	offset = strlen(ROOT2RESYNC) + 1;	/* RESYNC/ */
-	int	eperm = 0, first = 1, isLoggingRepository = 0;
+	int	eperm = 0, first = 1, isLoggingRepository = 0, flags;
 	FILE	*f;
 	FILE	*save;
 	char	buf[MAXPATH];
@@ -2459,7 +2313,6 @@ pass4_apply(opts *opts)
 			opts->applied++;
 		}
 		fprintf(save, "%s\n", &buf[offset]);
-#ifdef	WIN32_FILE_SYSTEM
 		getRealName(&buf[offset], localDB, realname);
 		unless (streq(&buf[offset], realname)) {
 			char	*case_folding_err =
@@ -2506,7 +2359,6 @@ Got:\n\
 			restore(opts);
 			exit(1);
 		}
-#endif /* WIN32_FILE_SYSTEM */
 	}
 	fclose(f);
 	unless (opts->quiet) {
@@ -2537,8 +2389,9 @@ Got:\n\
 		fprintf(stderr,
 		    "Consistency check passed, resolve complete.\n");
 	}
-	unless (isLoggingRepository) logChangeSet(logging(0, 0, 0) , 0, 1);
-	resolve_cleanup(opts, CLEAN_OK|CLEAN_RESYNC|CLEAN_PENDING);
+	flags = CLEAN_OK|CLEAN_RESYNC|CLEAN_PENDING|DO_LOG;
+	unless (isLoggingRepository) flags |= DO_LOG;
+	resolve_cleanup(opts, flags);
 	/* NOTREACHED */
 	return (0);
 }
@@ -2707,5 +2560,6 @@ resolve_cleanup(opts *opts, int what)
 		SHOUT2();
 		exit(1);
 	}
+	if (what & DO_LOG) logChangeSet(logging(0, 0, 0) , 0, 1);
 	exit(0);
 }

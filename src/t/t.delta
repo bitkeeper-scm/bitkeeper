@@ -206,10 +206,10 @@ bk clean data
 bk edit $Q data
 rm -f data
 echo new > DATA
-bk delta $Q -ychk_path DATA
-bk prs -h -r+ -d:DPN: DATA | grep -q "A/data\$"
+bk delta $Q -ychk_path ../a/DATA
+bk prs -h -r+ -d':DPN:\n' DATA | grep -q "A/data\$"
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
-bk prs -h -r+ -d:DPN: DATA | grep -q "A/DATA\$"
+bk prs -h -r+ -d':DPN:\n' DATA | grep -q "A/DATA\$"
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 echo OK
 fi #---------------------------------------------------------------
@@ -269,3 +269,9 @@ if [ ! -f mid.c ]; then echo failed; exit 1; fi
 if [ -f SCCS/p.mid.c ]; then echo failed; exit 1; fi
 if writable mid.c; then echo failed; exit 1; fi
 echo OK
+echo $N Make sure "bk new -b" force binary encoding for text file .....$NL
+echo "this is text" > text
+bk new $Q -b text
+ENC=`bk prs -hr+ -d:ENC: text`
+if [ "$ENC" != "binary" ]; then echo failed; exit 1; fi
+echo OK;

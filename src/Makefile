@@ -40,7 +40,7 @@ OBJ	= abort.o adler32.o admin.o annotate.o \
 	  cset.o cset_inex.o delta.o diffs.o dirname.o export.o fdiff.o \
 	  filecopy.o find.o fix.o g2sccs.o \
 	  gca.o get.o gethelp.o gethost.o getopt.o \
-	  gettemp.o getuser.o glob.o gnupatch.o graft.o grep.o \
+	  getrealname.o gettemp.o getuser.o glob.o gnupatch.o graft.o grep.o \
 	  help.o http.o host.o isascii.o \
 	  key2rev.o keysort.o \
 	  lib_tcp.o libcommit.o libdiff.o librange.o \
@@ -558,6 +558,7 @@ gethost.o:	gethost.c
 gethost.o:	port/gethost.c $(H)
 getinput.o:	port/getinput.c $(H)
 getopt.o:	getopt.c $(H)
+getrealname.o:	getrealname.c $(H)
 gettemp.o:	gettemp.c $(H)
 getuser.o:	getuser.c
 glob.o:		glob.c $(H)

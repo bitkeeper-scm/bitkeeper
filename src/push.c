@@ -118,7 +118,8 @@ log_main(int ac, char **av)
 			fprintf(stderr, "Cannot find project root\n");
 			return (1);
 		}
-		printf("Number of open logs pending: %d\n", logs_pending( 0));
+		printf("Number of open logs pending: %d\n",
+							logs_pending(0, 0));
 		return (0);
 	}
 
@@ -432,10 +433,8 @@ send_patch_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
 	char	msgfile[MAXPATH];
 	FILE	*f;
 	int	rc;
-	u32	extra = 0;
+	u32	extra = 0, m, n;
 	int	gzip;
-	int	nul = 0;
-	int	true = 1;
 
 	/*
 	 * If we are using ssh/rsh do not do gzip ourself
@@ -462,15 +461,28 @@ send_patch_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
 	 * 6 is the size of "@END@" string
 	 */
 	if (r->httpd) {
-		extra = patch_size(opts, gzip, rev_list) + 6;
-		assert(extra >= 6);
+		m = patch_size(opts, gzip, rev_list);
+		assert(m > 0);
+		extra = m + 6;
 	}
 
 	rc = send_file(r, msgfile, extra, opts.gzip);	
 
-	genpatch(opts, gzip, r->wfd, rev_list);
-	write_blk(r, "@END@\n", 6); /* important for win32 socket helper */
-	flush2remote(r); /* important, without this, protocol will hang */
+	n = genpatch(opts, gzip, r->wfd, rev_list);
+	if ((r->httpd) && (m != n)) {
+		fprintf(stderr,
+			"Error: patch have change size from %d to %d\n",
+			m, n);
+		disconnect(r, 2);
+		return (-1);
+	}
+	write_blk(r, "@END@\n", 6);
+	if (getenv("_BK_NO_SHUTDOWN")) {
+		send_flush_block(r); /* ignored by bkd */
+		flush2remote(r);
+	} else {
+		disconnect(r, 1);
+	}
 
 	if (unlink(msgfile)) perror(msgfile);
 	if (rc == -1) {

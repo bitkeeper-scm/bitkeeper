@@ -111,7 +111,7 @@ comment:		comments_save(optarg);
 			break;
 		    case 'b':	/* -b == -Ebinary */	/* doc 2.0 - new */
 			if (streq(name, "new")) {
-		    		enc = E_BINARY;
+		    		encp = "binary";
 			} else {
 				goto usage;
 			}

@@ -4,7 +4,7 @@
 .SH NAME
 bk import \- import a set of files into a \*(BK package
 .SH SYNOPSIS
-.Bc bk import [-efHiqrv] [
+.Bc bk import [-efHiqrvu] [
 .OPTreq \-c tag
 .Bc ] [
 .OPTreq \-j n
@@ -113,6 +113,11 @@ can be one of:
 .tp
 .B plain
 Import plain text files
+.tp
+.B \-u
+Run files through bk undos first; this will convert
+DOS style end of lines to Unix style end of lines.
+Used with -tCVS or -tRCS.
 .tp
 .B patch
 Import a patch (diffs)

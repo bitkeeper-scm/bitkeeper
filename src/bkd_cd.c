@@ -26,7 +26,11 @@ rootkey2path(char *rootkey, char *log_root, char *buf)
 	*q++ = 0;
 	s = q;
 	r = strchr(q, '|');
-	unless (r) r = ""; /* some old repository have no random field */
+	if (r) {
+		*r++ = 0;
+	} else {
+		r = ""; /* some old repository have no random field */
+	}
 
 	u = uh;
 	h = strchr(uh, '@');
