@@ -8,10 +8,13 @@ int
 gethost_main()
 {
 	extern	char	*sccs_gethost();
+	char 	*host;
 
 #ifdef WIN32
 	setmode(1, _O_BINARY);
 #endif
-	printf("%s\n", sccs_gethost());
+	host = sccs_gethost();
+	if ((host == NULL) || (*host == '\0')) return (1);
+	printf("%s\n", host);
 	return (0);
 }
