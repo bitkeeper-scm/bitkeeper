@@ -10,7 +10,7 @@ all: os
 	for i in $(DIRS); \
 	do	test -d $$i/$$OS || mkdir $$i/$$OS; \
 		( \
-		cd $$i; bk get -q checkout; sh checkout; \
+		cd $$i; ../../get -q checkout; sh checkout; \
 		cd $$OS; test -f Makefile || ../configure $(CACHE); \
 		$(MAKE) \
 		); \
