@@ -197,7 +197,7 @@ proc dotFile {{line {}}} \
 }
 
 
-proc getFiles {revs} \
+proc getFiles {revs file_rev} \
 {
 	global	fileCount lastFile Files line2File file_start_stop
 	global  RealFiles fmenu
@@ -213,6 +213,8 @@ proc getFiles {revs} \
 	.l.filelist.t delete 1.0 end
 	set fileCount 0
 	set line 0
+	set found ""
+	set match ""
 	set r [open "| bk prs -bhr$revs {-d:I:\n} ChangeSet" r]
 	while {[gets $r cset] > 0} {
 		.diffs.status.middle configure -text "Getting cset $cset"
@@ -228,6 +230,9 @@ proc getFiles {revs} \
 			regexp  "(.*)@(.*)@(.*)" $buf dummy name oname rev
 			set RealFiles($fileCount) "  $name@$rev"
 			set buf "$oname@$rev"
+			if {[string first $file_rev $buf] >= 0} {
+				set found $fileCount
+			}
 			.l.filelist.t insert end "  $buf\n"
 			$fmenu add command -label "$buf" \
 			    -command  "dotFile $fileCount"
@@ -238,7 +243,11 @@ proc getFiles {revs} \
 	if {$fileCount == 0} { exit }
 	.l.filelist.t configure -state disabled
 	set lastFile 1
-	dotFile
+	if {$found != ""} {
+		dotFile $found
+	} else {
+		dotFile
+	}
 	busy 0
 }
 
@@ -603,16 +612,31 @@ proc main {} \
 	# Set 'app' so that the difflib code knows which global config
 	# vars to read
 	set revs ""
+	set argindex 0
+	set file_rev ""
+
 	if {$argv == ""} {
 		set revs "+"
-	} elseif {[regexp {^[ \t]*-r(.*)} $argv dummy revs] == 0} {
-		puts "Usage: csettool -r<revs>"
-		exit 1
 	}
+	while {$argindex < $argc} {
+		set arg [lindex $argv $argindex]
+		switch -regexp -- $arg {
+		    "^-f.*" {
+			set ftmp [lindex $argv $argindex]
+		   	regexp {^[ \t]*-f(.*)} $ftmp dummy file_rev
+		    }
+		    "^-r.*" {
+			set rev [lindex $argv $argindex]
+		   	regexp {^[ \t]*-r(.*)} $rev dummy revs
+		    }
+		}
+		incr argindex
+	}
+	#puts "revs=$revs file=$file_rev"
 	bk_init
 	cd2root
 	widgets
-	getFiles $revs
+	getFiles $revs $file_rev
 }
 
 main

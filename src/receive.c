@@ -20,13 +20,13 @@ receive_main(int ac,  char **av)
 
 	while ((c = getopt(ac, av, "acFiStv")) != -1) {
 		switch (c) { 
-		    case 'a': strcat(opts, " -a"); break;
-		    case 'c': strcat(opts, " -c"); break;
-		    case 'F': strcat(opts, " -F"); break;
-		    case 'i': strcat(opts, " -i"); new =1; break;
-		    case 'S': strcat(opts, " -S"); break;
-		    case 't': strcat(opts, " -t"); break;
-		    case 'v': strcat(opts, " -v"); break;
+		    case 'a': strcat(opts, " -a"); break;	/* doc 2.0 */
+		    case 'c': strcat(opts, " -c"); break;	/* doc 2.0 */
+		    case 'F': strcat(opts, " -F"); break;	/* undoc? 2.0 */
+		    case 'i': strcat(opts, " -i"); new =1; break;	/* doc 2.0 */
+		    case 'S': strcat(opts, " -S"); break;	/* undoc? 2.0 */
+		    case 't': strcat(opts, " -t"); break;	/* undoc? 2.0 */
+		    case 'v': strcat(opts, " -v"); break;	/* doc 2.0 */
 		    default :
 			system("bk help -s receive");
 			exit(1);

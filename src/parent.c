@@ -24,8 +24,8 @@ parent_main(int ac,  char **av)
 
 	while ((c = getopt(ac, av, "qr")) != -1) {
 		switch (c) {
-		    case 'q': quiet = 1; break;
-		    case 'r': do_remove = 1; break;
+		    case 'q': quiet = 1; break;	/* doc 2.0 */
+		    case 'r': do_remove = 1; break;	/* doc 2.0 */
 		    default:
 			system("bk help -s parent");
 			exit(1);

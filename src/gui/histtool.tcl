@@ -73,7 +73,7 @@ proc highlight {id type {rev ""}} \
 		    -outline $gc(hist.arrowColor) -width 1]}
 	    red     {\
 		#puts "highlight: red ($rev)"
-	        set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
+		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
 		    -outline "red" -width 1.5 -tags "$rev"]}
 	    old  {\
 		#puts "highlight: old ($rev) id($id)"
@@ -112,12 +112,12 @@ proc chkSpace {x1 y1 x2 y2} \
 #
 proc revMap {file} \
 {
-        global rev2date serial2rev dev_null revX
+	global rev2date serial2rev dev_null revX
 
-        #set dspec "-d:I:-:P: :DS: :Dy:/:Dm:/:Dd:/:TZ: :UTC-FUDGE:\n"
-        set dspec "-d:I:-:P: :DS: :UTC: :UTC-FUDGE:\n"
-        set fid [open "|bk prs -h {$dspec} \"$file\" 2>$dev_null" "r"]
-        while {[gets $fid s] >= 0} {
+	#set dspec "-d:I:-:P: :DS: :Dy:/:Dm:/:Dd:/:TZ: :UTC-FUDGE:\n"
+	set dspec "-d:I:-:P: :DS: :UTC: :UTC-FUDGE:\n"
+	set fid [open "|bk prs -h {$dspec} \"$file\" 2>$dev_null" "r"]
+	while {[gets $fid s] >= 0} {
 		set rev [lindex $s 0]
 		if {![info exists revX($rev)]} {continue}
 		set serial [lindex $s 1]
@@ -126,9 +126,9 @@ proc revMap {file} \
 		set date "$yr/$month/$day"
 		set utc [lindex $s 3]
 		#puts "rev: ($rev) utc: $utc ser: ($serial) date: ($date)"
-                set rev2date($rev) $date
-                set serial2rev($serial) $rev
-        }
+		set rev2date($rev) $date
+		set serial2rev($serial) $rev
+	}
 }
 
 # If in annotated diff output, find parent and diff between parent 
@@ -202,7 +202,7 @@ proc diffParent {} \
 #    B3 - calls getRightRev
 #    D1 - if in annotate, brings up histtool, else gets file annotation
 #
-proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
+proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 {
 	global curLine cdim gc file dev_null dspec rev2rev_name
 	global w rev1 srev errorCode comments_mapped firstnode
@@ -212,26 +212,18 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 	# Keep track of whether we are being called from within the 
 	# file annotation text widget
 	set annotated 0
-	$win tag remove "select" 1.0 end
+	set prs 0
 
-	if {($line == -1) || ($line == 1)} {
-		set top [expr {$curLine - 3}]
-		set numLines [$win index "end -1 chars linestart" ]
-		if {($line == 1) && ($curLine < ($numLines - 1))} {
-			set curLine [expr $curLine + 1.0]
-		} elseif {($line == -1) && ($curLine >= 1.0)} {
-			set curLine [expr $curLine - 1.0]
-		}
-		if {$top >= 0} {
-			set frac [expr {$top / $numLines}]
-			$win yview moveto $frac
-		}
-	} else {
-		set curLine [$win index "@$x,$y linestart"]
-	}
+	$win tag remove "select" 1.0 end
+	set curLine [$win index "@$x,$y linestart"]
+
 	if {$srev == ""} {
 		set line [$win get $curLine "$curLine lineend"]
 	}
+
+	# highlight the specified revision in the prs output if started
+	# with the -a option 
+	# XXX: The top 'if' might not be a used codepath
 	if {$srev != ""} {
 		set line ""
 		set rev $srev
@@ -282,6 +274,7 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 		# Fall through and assume we are in prs output and walk 
 		# backwards up the screen until we find a line with a 
 		# revision number
+		set prs 1
 		regexp {^(.*)@([0-9]+\.[0-9.]+),.*} $line match fname rev
 		regexp {^\ \ ([0-9]+\.[0-9.]+)\ .*} $line match rev
 		while {![info exists rev]} {
@@ -311,10 +304,9 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 	# filename.c
 	#   1.8 10/09/99 .....
 	#
-	if {![info exists fname] && [info exists rev] && ($srev == "")} {
+	if {![info exists fname] && [info exists rev] && ($prs == 1)} {
 		set prevLine [expr $curLine - 1.0]
 		set fname [$win get $prevLine "$prevLine lineend"]
-		#puts "fname=($fname) rev=($rev)"
 		if {($bindtype == "B1") && ($fname != "") && 
 		    ($fname != "ChangeSet")} {
 			catch {exec bk histtool -a $rev $fname &} err
@@ -336,7 +328,6 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 		} else {
 			set prev $rev
 		}
-		#puts "prev=($prev)"
 		listRevs "-R${prev}.." "$file"
 		revMap "$file"
 		dateSeparate
@@ -345,9 +336,6 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 		$w(graph) xview moveto 0 
 		set hrev [lineOpts $rev]
 		set rc [highlight $hrev "old"]
-		#if {$rc == ""} {
-			#puts "trying to highlight rev=($rev) hrev=($hrev1)"
-		#}
 		set revname $rev2rev_name($rev)
 		
 		# XXX: This can be done cleaner -- coalesce this
@@ -359,7 +347,6 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 			if {"$file" == "ChangeSet"} {
 				csettool
 			} else {
-				#puts "getting r2c for rev=($rev)"
 				r2c
 			}
 		}
@@ -402,9 +389,6 @@ proc centerRev {revname} \
 {
 	global cdim w
 
-	# XXX:
-	# If you go adding tags to the revisions, the index to 
-	# rev_x2 might need to be modified
 	set bbox [$w(graph) bbox $revname]
 	set b_x1 [lindex $bbox 0]
 	set b_x2 [lindex $bbox 2]
@@ -412,7 +396,8 @@ proc centerRev {revname} \
 	set b_y2 [lindex $bbox 3]
 
 	#displayMessage "b_x1=($b_x1) b_x2=($b_x2) b_y1=($b_y1) b_y2=($b_y2)"
-	#displayMessage "cdim_x=($cdim(s,x1)) cdim_x2=($cdim(s,x2)) cdim_y=($cdim(s,y1)) cdim_y2=($cdim(s,y2))"
+	#displayMessage "cdim_x=($cdim(s,x1)) cdim_x2=($cdim(s,x2))"
+	# cdim_y=($cdim(s,y1)) cdim_y2=($cdim(s,y2))"
 
 	set rev_y2 [lindex [$w(graph) coords $revname] 1]
 	set cheight [$w(graph) cget -height]
@@ -424,6 +409,9 @@ proc centerRev {revname} \
 	# XXX: Not working the way I would like
 	#if {($b_x1 >= $cdim(s,x1)) && ($b_x2 <= $cdim(s,x2))} {return}
 
+	# XXX:
+	# If you go adding tags to the revisions, the index to 
+	# rev_x2 might need to be modified
 	set rev_x2 [lindex [$w(graph) coords $revname] 0]
 	set cwidth [$w(graph) cget -width]
 	set xdiff [expr $cwidth / 2]
@@ -441,16 +429,16 @@ proc centerRev {revname} \
 #
 proc dateSeparate { } { \
 
-        global serial2rev rev2date revX revY ht screen gc w
+	global serial2rev rev2date revX revY ht screen gc w
 
-        set curday ""
-        set prevday ""
-        set lastx 0
+	set curday ""
+	set prevday ""
+	set lastx 0
 
 	# Adjust height of screen by adding text height
 	# so date string is not so scrunched in
-        set miny [expr {$screen(miny) - $ht}]
-        set maxy [expr {$screen(maxy) + $ht}]
+	set miny [expr {$screen(miny) - $ht}]
+	set maxy [expr {$screen(maxy) + $ht}]
 
 	# Try to compensate for date text size when canvas is small
 	if { $maxy < 50 } { set maxy [expr {$maxy + 15}] }
@@ -460,17 +448,17 @@ proc dateSeparate { } { \
 
 	if {[array size serial2rev] <= 1} {return}
 
-        foreach ser [lsort -integer [array names serial2rev]] {
+	foreach ser [lsort -integer [array names serial2rev]] {
 
-                set rev $serial2rev($ser)
-                set date $rev2date($rev)
+		set rev $serial2rev($ser)
+		set date $rev2date($rev)
 
-                #puts "s#: $ser rv: $rev d: $date X:$revX($rev) Y:$revY($rev)" 
-                set curday $rev2date($rev)
-                if {[string compare $prevday $curday] == 0} {
-                        #puts "SAME: cur: $curday prev: $prevday $rev $nrev"
-                } else {
-                        set x $revX($rev)
+		#puts "s#: $ser rv: $rev d: $date X:$revX($rev) Y:$revY($rev)" 
+		set curday $rev2date($rev)
+		if {[string compare $prevday $curday] == 0} {
+			#puts "SAME: cur: $curday prev: $prevday $rev $nrev"
+		} else {
+			set x $revX($rev)
 			set date_array [split $prevday "/"]
 			set day [lindex $date_array 1]
 			set mon [lindex $date_array 2]
@@ -478,24 +466,23 @@ proc dateSeparate { } { \
 			set tz [lindex $date_array 3]
 			set date "$day/$mon\n$yr\n$tz"
 
-                        # place vertical line short dx behind revision bbox
-                        set lx [ expr {$x - 15}]
-                        $w(graph) create line $lx $miny $lx $maxy -width 1 \
+			# place vertical line short dx behind revision bbox
+			set lx [ expr {$x - 15}]
+			$w(graph) create line $lx $miny $lx $maxy -width 1 \
 			    -fill "lightblue" -tags date_line
 
-                       # Attempt to center datestring between verticals
-                        set tx [expr {$x - (($x - $lastx)/2) - 13}]
-                        $w(graph) create text $tx $ty \
+			# Attempt to center datestring between verticals
+			set tx [expr {$x - (($x - $lastx)/2) - 13}]
+			$w(graph) create text $tx $ty \
 			    -fill $gc(hist.dateColor) \
 			    -justify center \
 			    -anchor n -text "$date" -font $gc(hist.fixedFont) \
 			    -tags date_text
 
-                        set prevday $curday
-                        set lastx $x
-                }
-        }
-
+			set prevday $curday
+			set lastx $x
+		}
+	}
 	set date_array [split $curday "/"]
 	set day [lindex $date_array 1]
 	set mon [lindex $date_array 2]
@@ -978,7 +965,15 @@ proc sfile {} \
 #
 proc get { type {val {}}} \
 {
-	global file dev_null rev1 rev2 Opts w
+	global file dev_null rev1 rev2 Opts w srev
+
+	# XXX: Oy, this is yucky. Setting srev to "" since we just clicked
+	# on a node and we no longer looking at a specific rev (used to 
+	# determine what we are looking at in selectTag. This fixes a bug
+	# where we were forced to click on a line twice to get the comments.
+	# The right fix is to use tcl Marks to determine what we are looking
+	# at.
+	set srev ""
 
 	if {$type == "id"} {
 		getLeftRev $val
@@ -1097,14 +1092,28 @@ proc csetdiff2 {{rev {}}} \
 # Bring up csettool for a given set of revisions as selected by the mouse
 proc r2c {} \
 {
-	global file rev1 rev2
+	global file rev1 rev2 errorCode
 
 	busy 1
 	set csets ""
+	set c ""
+	set errorCode [list]
+
+	# XXX: When called from "View changeset", rev1 has the name appended
+	#      need to track down the reason -- this is a hack
+	set rev1 [lindex [split $rev1 "-"] 0]
+	#displayMessage "rev1=($rev1) file=($file)"
 	if {[info exists rev2]} {
 		set revs [open "| bk prs -hbMr$rev1..$rev2 {-d:I:\n} \"$file\""]
 		while {[gets $revs r] >= 0} {
-			set c [exec bk r2c -r$r "$file"]
+			catch {set c [exec bk r2c -r$r "$file"]} err 
+			if {[lindex $errorCode 2] == 1} {
+				displayMessage \
+				    "Unable to find ChangeSet information for $file@$r"
+				busy 0
+				catch {close $revs} err
+				return
+			}
 			if {$csets == ""} {
 				set csets $c
 			} else {
@@ -1113,9 +1122,15 @@ proc r2c {} \
 		}
 		catch {close $revs} err
 	} else {
-		set csets [exec bk r2c -r$rev1 "$file"]
+		catch {set csets [exec bk r2c -r$rev1 "$file"]} c
+		if {[lindex $errorCode 2] == 1} {
+			displayMessage \
+			    "Unable to find ChangeSet information for $file@$rev1"
+			busy 0
+			return
+		}
 	}
-	catch {exec bk csettool -r$csets &}
+	catch {exec bk csettool -r$csets -f$file@$rev1 &}
 	busy 0
 }
 
@@ -1568,8 +1583,8 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		bind . <Shift-Button-5>   "$w(graph) xview scroll 1 pages"
 		bind . <Control-Button-4> "$w(graph) yview scroll -1 units"
 		bind . <Control-Button-5> "$w(graph) yview scroll 1 units"
-		bind . <Button-4>         "$w(aptext) yview scroll -5 units"
-		bind . <Button-5>         "$w(aptext) yview scroll 5 units"
+		bind . <Button-4>	  "$w(aptext) yview scroll -5 units"
+		bind . <Button-5>	  "$w(aptext) yview scroll 5 units"
 	}
 	$search(widget) tag configure search \
 	    -background $gc(hist.searchColor) -font $gc(hist.fixedBoldFont)
@@ -1584,9 +1599,9 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	}
 	searchreset
 
-	bind $w(aptext) <Button-1> { selectTag %W %x %y "" "B1"; break}
-	bind $w(aptext) <Button-3> { selectTag %W %x %y "" "B3"; break}
-	bind $w(aptext) <Double-1> { selectTag %W %x %y "" "D1"; break }
+	bind $w(aptext) <Button-1> { selectTag %W %x %y "B1"; break}
+	bind $w(aptext) <Button-3> { selectTag %W %x %y "B3"; break}
+	bind $w(aptext) <Double-1> { selectTag %W %x %y "D1"; break }
 
 	# highlighting.
 	$w(aptext) tag configure "newTag" -background $gc(hist.newColor)
@@ -1844,7 +1859,7 @@ proc arguments {} \
 			exit
 		}
 	}
-}
+} ;# proc arguments
 
 # Return the revision and user name (1.147.1.1-akushner) so that
 # we can manipulate tags
@@ -1862,6 +1877,7 @@ proc lineOpts {rev} \
 proc startup {} \
 {
 	global fname rev2rev_name w rev1 rev2 gca srev errorCode gc dev_null
+	global file
 
 	#displayMessage "srev=($srev) rev1=($rev1) rev2=($rev2) gca=($gca)"
 	if {$srev != ""} {
@@ -1869,6 +1885,9 @@ proc startup {} \
 		histtool $fname "-$srev"
 		set rev1 [lineOpts $srev]
 		highlight $rev1 "old"
+		set file [exec bk sfiles -g $fname 2>$dev_null]
+		#displayMessage "fname=($fname) file=($file)"
+		.menus.cset configure -state normal 
 	} elseif {$rev1 == ""} {
 		histtool $fname "-$gc(hist.showHistory)"
 	} else {
