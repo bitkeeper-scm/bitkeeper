@@ -6,6 +6,7 @@
 typedef	struct {
 	u32	doit:1;
 	u32	verbose:1;
+	u32	nospin:1;
 	u32	textOnly:1;
 	u32	autopull:1;
 	int	list;
@@ -37,7 +38,7 @@ push_main(int ac, char **av)
 	opts.gzip = 6;
 	opts.doit = opts.verbose = 1;
 
-	while ((c = getopt(ac, av, "ac:deE:ilnqtz|")) != -1) {
+	while ((c = getopt(ac, av, "ac:deE:Gilnqtz|")) != -1) {
 		switch (c) {
 		    case 'a': opts.autopull = 1; break;		/* doc 2.0 */
 		    case 'c': try = atoi(optarg); break;	/* doc 2.0 */
@@ -45,6 +46,7 @@ push_main(int ac, char **av)
 		    case 'e': opts.metaOnly = 1; break;		/* undoc 2.0 */
 		    case 'E': 					/* doc 2.0 */
 				envVar = addLine(envVar, strdup(optarg)); break;
+		    case 'G': opts.nospin = 1; break;
 		    case 'i': opts.forceInit = 1; break;	/* undoc? 2.0 */
 		    case 'l': opts.list++; break;		/* doc 2.0 */
 		    case 'n': opts.doit = 0; break;		/* doc 2.0 */
@@ -411,6 +413,7 @@ genpatch(opts opts, int level, int wfd, char *rev_list)
 	char	*makepatch[10] = {"bk", "makepatch", 0};
 	int	fd0, fd, rfd, n, status;
 	pid_t	pid;
+	int	verbose = opts.verbose && !opts.nospin;
 
 	opts.in = opts.out = 0;
 	n = 2;
@@ -427,7 +430,7 @@ genpatch(opts opts, int level, int wfd, char *rev_list)
 	assert(fd == 0);
 	pid = spawnvp_rPipe(makepatch, &rfd, 0);
 	dup2(fd0, 0); close(fd0);
-	gzipAll2fd(rfd, wfd, level, &(opts.in), &(opts.out), 1, opts.verbose);
+	gzipAll2fd(rfd, wfd, level, &(opts.in), &(opts.out), 1, verbose);
 	close(rfd);
 	waitpid(pid, &status, 0);
 	return (opts.out);
@@ -514,6 +517,7 @@ send_patch_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
 	if (gzip) fprintf(f, " -z%d", opts.gzip);
 	if (opts.debug) fprintf(f, " -d");
 	if (opts.metaOnly) fprintf(f, " -e");
+	if (opts.nospin) fprintf(f, " -G");
 	fputs("\n", f);
 	fprintf(f, "@PATCH@\n");
 	fclose(f);

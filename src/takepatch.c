@@ -145,9 +145,9 @@ usage:		system("bk help -s takepatch");
 		++line;
 		/* we need our own storage , extractPatch calls mkline */
 		b = strdup(mkline(buf));
-		if (echo>3) fprintf(stderr, "%s\n", b);
+		if (echo>4) fprintf(stderr, "%s\n", b);
 		unless (strncmp(b, "== ", 3) == 0) {
-			if (echo > 6) {
+			if (echo > 7) {
 				fprintf(stderr, "skipping: %s\n", b);
 			}
 			free(b);
@@ -397,7 +397,7 @@ extractPatch(char *name, MMAP *p, int flags, int fast, project *proj)
 	}
 	if (newProject && !newFile) notfirst();
 
-	if (echo>3) fprintf(stderr, "%s\n", t);
+	if (echo>4) fprintf(stderr, "%s\n", t);
 again:	s = sccs_keyinit(t, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB);
 	/*
 	 * Unless it is a brand new workspace, or a new file,
@@ -442,11 +442,11 @@ cleanup:		if (perfile) sccs_free(perfile);
 	 */
 	if (s) {
 		reallyNew = 0;
-		if (newFile && (echo > 3)) {
+		if (newFile && (echo > 4)) {
 			fprintf(stderr,
 			    "takepatch: new file %s already exists.\n", name);
 		}
-		if (echo > 6) {
+		if (echo > 7) {
 			fprintf(stderr, "takepatch: file %s found.\n",
 			s->sfile);
 		}
@@ -503,7 +503,7 @@ cleanup:		if (perfile) sccs_free(perfile);
 		    exists("SCCS/s.ChangeSet")) {
 			changesetExists();
 		}
-		if (echo > 2) {
+		if (echo > 3) {
 			fprintf(stderr,
 			    "takepatch: new file %s\n", t);
 		}
@@ -517,11 +517,12 @@ cleanup:		if (perfile) sccs_free(perfile);
 	if (echo>1) {
 		fprintf(stderr, "Applying %3d revisions to %s%s ",
 		    nfound, reallyNew ? "new file " : "", gfile);
-		if (echo != 2) fprintf(stderr, "\n");
+		if ((echo != 2) && (echo != 3)) fprintf(stderr, "\n");
 	}
 	if (patchList && tableGCA) getLocals(s, tableGCA, name);
 	rc = applyPatch(s ? s->sfile : 0, flags, perfile, proj);
-	if (echo == 2) fprintf(stderr, " \n");
+	if (echo == 2) fprintf(stderr, "\n");
+	if (echo == 3) fprintf(stderr, " \n");
 	if (perfile) sccs_free(perfile);
 	free(gfile);
 	free(name);
@@ -572,7 +573,7 @@ extractDelta(char *name, sccs *s, int newFile, MMAP *f, int flags, int *np)
 	if (newFile == 1) goto delta1;
 
 	b = mkline(mnext(f)); line++;
-	if (echo>3) fprintf(stderr, "%s\n", b);
+	if (echo>4) fprintf(stderr, "%s\n", b);
 	if (strneq(b, "# Patch checksum=", 17)) return 0;
 	pid = strdup(b);
 	/*
@@ -586,7 +587,7 @@ delta1:	off = mtell(f);
 	d = getRecord(f);
 	sccs_sdelta(s, d, buf);
 	if (tmp = sccs_findKey(s, buf)) {
-		if (echo > 2) {
+		if (echo > 3) {
 			fprintf(stderr,
 			    "takepatch: delta %s already in %s, skipping it.\n",
 			    tmp->rev, s->sfile);
@@ -611,10 +612,10 @@ delta1:	off = mtell(f);
 		while ((b = mnext(f)) && (*b != '\n')) {
 			stop = f->where;
 			line++;
-			if (echo>3) fprintf(stderr, "%.*s", linelen(b), b);
+			if (echo>4) fprintf(stderr, "%.*s", linelen(b), b);
 		}
 		line++;
-		if (echo>4) fprintf(stderr, "\n");
+		if (echo>5) fprintf(stderr, "\n");
 		p = calloc(1, sizeof(patch));
 		p->remote = 1;
 		p->pid = pid;
@@ -625,14 +626,14 @@ delta1:	off = mtell(f);
 		sprintf(buf, "RESYNC/%s", name);
 		p->resyncFile = strdup(buf);
 		p->order = parent == d ? 0 : d->date;
-		if (echo>5) fprintf(stderr, "REM: %s %s %lu\n",
+		if (echo>6) fprintf(stderr, "REM: %s %s %lu\n",
 				    d->rev, p->me, p->order);
 		c = line;
 		start = f->where; stop = start;
 		while ((b = mnext(f)) && (*b != '\n')) {
 			stop = f->where;
 			line++;
-			if (echo>4) fprintf(stderr, "%.*s", linelen(b), b);
+			if (echo>5) fprintf(stderr, "%.*s", linelen(b), b);
 		}
 		if (d->flags & D_META) {
 			p->meta = 1;
@@ -641,7 +642,7 @@ delta1:	off = mtell(f);
 			p->diffMmap = mrange(start, stop, "b");
 		}
 		line++;
-		if (echo>4) fprintf(stderr, "\n");
+		if (echo>5) fprintf(stderr, "\n");
 		(*np)++;
 		insertPatch(p);
 	}
@@ -793,7 +794,7 @@ badXsum(int a, int b)
 {
 	SHOUT();
 	fputs("takepatch: patch checksum is invalid", stderr);
-	if (echo > 2) fprintf(stderr,  " (%x != %x)", a, b);
+	if (echo > 3) fprintf(stderr,  " (%x != %x)", a, b);
 	fputs(".\nThe patch was probably corrupted in transit,\n", stderr);
 	fputs("sometimes mailers do this.\n", stderr);
 	fputs("Please get a new copy and try again.\n", stderr);
@@ -926,8 +927,8 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 
 	unless (p) return (0);
 	lodkey[0] = 0;
-	if (echo == 2) fprintf(stderr, "%c\b", spin[n++ % 4]);
-	if (echo > 6) {
+	if (echo == 3) fprintf(stderr, "%c\b", spin[n++ % 4]);
+	if (echo > 7) {
 		fprintf(stderr, "L=%s\nR=%s\nP=%s\nM=%s\n",
 		    p->localFile, p->resyncFile, p->pid, p->me);
 	}
@@ -1001,7 +1002,7 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 	assert(tableGCA);
 	assert(tableGCA->rev);
 	assert(tableGCA->pathname);
-	if (echo > 5) {
+	if (echo > 6) {
 		fprintf(stderr,
 		    "stripdel %s from %s\n", tableGCA->rev, s->sfile);
 	}
@@ -1035,11 +1036,14 @@ apply:
 
 	p = patchList;
 	while (p) {
-		if (echo == 2) fprintf(stderr, "%c\b", spin[n++ % 4]);
+		if (echo == 3) fprintf(stderr, "%c\b", spin[n % 4]);
+		n++;
 		if (p->pid) {
 			assert(s);
 			unless (d = sccs_findKey(s, p->pid)) {
-				if (echo == 2) fprintf(stderr, " \n");
+				if ((echo == 2) || (echo == 3)) {
+					fprintf(stderr, " \n");
+				}
 				ahead(p->pid, s->sfile);
 			}
 			unless (sccs_restart(s)) { perror("restart"); exit(1); }
@@ -1047,7 +1051,7 @@ apply:
 				s->state |= S_FORCELOGGING;
 				s->xflags |= X_LOGS_ONLY;
 			}
-			if (echo>8) {
+			if (echo>9) {
 				fprintf(stderr, "Child of %s", d->rev);
 				if (p->meta) {
 					fprintf(stderr, " meta\n");
@@ -1065,7 +1069,7 @@ apply:
 				}
 			} else {
 				newflags = GET_FORCE|GET_SKIPGET|GET_EDIT;
-				unless (echo > 5) newflags |= SILENT;
+				unless (echo > 6) newflags |= SILENT;
 				/* CSTYLED */
 				if (sccs_get(s, d->rev, 0,0,0, newflags, "-")) {
 				    	perror("get");
@@ -1087,7 +1091,7 @@ apply:
 				if (isLogPatch && chkEmpty(s, dF)) return -1;
 				newflags = 
 				    DELTA_FORCE|DELTA_PATCH|DELTA_NOPENDING;
-				if (echo <= 2) newflags |= SILENT;
+				if (echo <= 3) newflags |= SILENT;
 				if (sccs_delta(s, newflags, 0, iF, dF, 0)) {
 					unless (s->io_error) perror("delta");
 					return -1;
@@ -1155,7 +1159,7 @@ apply:
 			d = 0;
 			newflags = 
 			    NEWFILE|DELTA_FORCE|DELTA_PATCH|DELTA_NOPENDING;
-			if (echo <= 2) newflags |= SILENT;
+			if (echo <= 3) newflags |= SILENT;
 			if (sccs_delta(s, newflags, d, iF, dF, 0)) {
 				unless (s->io_error) perror("delta");
 				return -1;
@@ -1245,7 +1249,7 @@ getLocals(sccs *s, delta *g, char *name)
 	int	n = 0;
 	static	char tmpf[MAXPATH];	/* don't allocate on stack */
 
-	if (echo > 5) {
+	if (echo > 6) {
 		fprintf(stderr, "getlocals(%s, %s, %s)\n",
 		    s->gfile, g->rev, name);
 	}
@@ -1300,7 +1304,7 @@ getLocals(sccs *s, delta *g, char *name)
 		sccs_sdelta(s, d, tmpf);
 		p->me = strdup(tmpf);
 		p->order = d->date;
-		if (echo>5) {
+		if (echo>6) {
 			fprintf(stderr,
 			    "LOCAL: %s %s %lu\n", d->rev, p->me, p->order);
 		}
@@ -1540,7 +1544,7 @@ init(char *inputFile, int flags, project **pp)
 
 		for (;;) {
 			st.newline = streq("\n", buf);
-			if (echo > 9) {
+			if (echo > 10) {
 				fprintf(stderr, "ST: ");
 				if (st.newline) fprintf(stderr, "nl ");
 				if (st.preamble_nl) fprintf(stderr, "p_nl ");
@@ -1557,7 +1561,7 @@ init(char *inputFile, int flags, project **pp)
 				if (st.diffs) fprintf(stderr, "d ");
 				if (st.diffsblank) fprintf(stderr, "db ");
 			}
-			if (echo > 6) fprintf(stderr, "P: %s", buf);
+			if (echo > 7) fprintf(stderr, "P: %s", buf);
 	
 			if (st.preamble) {
 				if (st.newline) {
@@ -1714,19 +1718,22 @@ error:					fprintf(stderr, "GOT: %s", buf);
 
 				*t = 0;
 				unless (st.first) {
-					fprintf(stderr, "\b: %d deltas\n", j);
+					if (echo == 3) fprintf(stderr, "\b");
+					fprintf(stderr, ": %d deltas\n", j);
 					j = 0;
 				} else {
 					st.first = 0;
 				}
-				fprintf(stderr, "%s ", &buf[3]);
+				fprintf(stderr, "%s", &buf[3]);
+				if (echo == 3) fprintf(stderr, " ");
 			}
 
-			if (st.metablank) {
-				fprintf(stderr, "%c\b", spin[j++ % 4]);
+			if (st.metablank && (echo == 3)) {
+				fprintf(stderr, "%c\b", spin[j % 4]);
 			}
+			j++;
 
-			if (st.preamble && echo > 4) {
+			if (st.preamble && echo > 5) {
 				fprintf(stderr, "Discard: %s", buf);
 			}
 
@@ -1736,7 +1743,10 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			}
 		}
 		if (st.preamble) nothingtodo();
-		if (mkpatch) fprintf(stderr, "\b: %d deltas\n", j);
+		if (mkpatch) {
+			if (echo == 3) fprintf(stderr, "\b");
+			fprintf(stderr, ": %d deltas\n", j);
+		}
 		if (fclose(f)) {
 			perror("fclose on patch");
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);

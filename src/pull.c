@@ -8,6 +8,7 @@ typedef	struct {
 	u32	automerge:1;		/* -i: turn off automerge */
 	u32	dont:1;			/* -n: do not actually do it */
 	u32	quiet:1;		/* -q: shut up */
+	u32	nospin:1;		/* -Q: no spin for the GUI */
 	u32	metaOnly:1;		/* -e empty patch */
 	u32	noresolve:1;		/* -r: don't run resolve at all */
 	u32	textOnly:1;		/* -t: don't pass -t to resolve */
@@ -37,8 +38,9 @@ pull_main(int ac, char **av)
 	bzero(&opts, sizeof(opts));
 	opts.gzip = 6;
 	opts.automerge = 1;
-	while ((c = getopt(ac, av, "c:deE:ilnqrtw|z|")) != -1) {
+	while ((c = getopt(ac, av, "c:deE:Gilnqrtw|z|")) != -1) {
 		switch (c) {
+		    case 'G': opts.nospin = 1; break;
 		    case 'i': opts.automerge = 0; break;	/* doc 2.0 */
 		    case 'l': opts.list++; break;		/* doc 2.0 */
 		    case 'n': opts.dont = 1; break;		/* doc 2.0 */
@@ -428,7 +430,13 @@ takepatch(opts opts, int gzip, remote *r)
 
 	cmds[n = 0] = "bk";
 	cmds[++n] = "takepatch";
-	unless (opts.quiet) cmds[++n] = "-mvv";
+	if (opts.quiet) {
+		;
+	} else if (opts.nospin) {
+		cmds[++n] = "-mvv";
+	} else {
+		cmds[++n] = "-mvvv";
+	}
 	cmds[++n] = 0;
 	pid = spawnvp_wPipe(cmds, &pfd, BIG_PIPE);
 	gunzipAll2fd(r->rfd, pfd, gzip, &(opts.in), &(opts.out));

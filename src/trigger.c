@@ -54,6 +54,8 @@ trigger(char **av, char *when)
 	struct	dirent *e;
 	DIR	*dh;
 
+	if (getenv("BK_NO_TRIGGERS")) return (0);
+
 	t = av[0];
 	if (strneq(t, "remote pull", 11)) {
 		what = "outgoing";
@@ -110,12 +112,14 @@ trigger(char **av, char *when)
 
 	/*
 	 * Find all the trigger scripts associated with this event.
-	 * XXX TODO need to think about the spilt root case
+	 * XXX TODO need to think about the split root case
 	 */
 	sprintf(buf, "%s-%s", when, what);
 	len = strlen(buf);
-	dh = opendir(triggerDir);
-	assert(dh);
+	unless (dh = opendir(triggerDir)) {
+		if (resolve) chdir(RESYNC2ROOT);
+		return (0);
+	}
 	while (e = readdir(dh)) {
 		if ((strlen(e->d_name) >= len) &&
 		    strneq(e->d_name, buf, len)) {

@@ -243,11 +243,11 @@ cmd_push_part2(int ac, char **av)
 	char	buf[4096];
 	char	bkd_nul = BKD_NUL;
 	char	*pr[2] = { "remote resolve", 0 };
-	static	char *takepatch[] = { "bk", "takepatch", "-vv", "-c", 0};
+	static	char *takepatch[] = { "bk", "takepatch", "-vvv", "-c", 0};
 	static	char *resolve[7] = { "bk", "resolve", "-t", "-c", 0, 0, 0};
 
 	signal(SIGCHLD, SIG_DFL);
-	while ((c = getopt(ac, av, "denz|")) != -1) {
+	while ((c = getopt(ac, av, "deGnz|")) != -1) {
 		switch (c) {
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
@@ -255,6 +255,7 @@ cmd_push_part2(int ac, char **av)
 			break;
 		    case 'd': debug = 1; break;
 		    case 'e': metaOnly = 1; break;
+		    case 'G': takepatch[2] = "-vv"; break;
 		    case 'n': dont = 1; break;
 		    default: break;
 		}
