@@ -351,5 +351,15 @@ grep -q "1.6" out || {
 }
 echo OK
 
+echo $N Check date formats ..........................................$NL
+Y=`bk prs -Yhnd:Dy: -r+ ChangeSet`
+bk changes -nd:Dy: > OUT
+bk changes -v -nd:Dy: >> OUT
+test `sort -u < OUT` = $Y || {
+	echo not all YEAR4 dates
+	exit 1
+}
+echo OK
+
 # wait for bkd locks
 bk lock -U $HERE/project
