@@ -4,8 +4,8 @@
 export BK_PATCH_IMPORT=YES
 export BK_USER="$1"
 export BK_HOST="$2"
-export SUBJECT=`echo "$3" | sed 's/\(\[[^]]*\]\)* *\(.*\)/\2/'`
-export CMITMSG="[PATCH] $SUBJECT
+SUBJECT=`echo "$3" | sed 's/\(\[[^]]*\]\)* *\(.*\)/\2/'`
+CMITMSG="[PATCH] $SUBJECT
 
 $4"
 REJECTS=../REJECTS
