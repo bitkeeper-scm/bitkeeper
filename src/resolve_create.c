@@ -249,6 +249,10 @@ res_vr(resolve *rs)
 	char	tmp[MAXPATH];
 	char	*name = rs->s->gfile;
 
+	if (rs->tnames) {
+		more(rs, rs->tnames->remote);
+		return (0);
+	}
 	if (rs->res_resync) name = rs->dname;
 	bktmp(tmp, "resvr");
 	sysio(0, tmp, 0, "bk", "get", "-qkp", name, SYS);
