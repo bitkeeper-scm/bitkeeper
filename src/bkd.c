@@ -1,45 +1,33 @@
 #include "bkd.h"
 
-typedef struct {
-	u32	interactive:1;		/* show prompts, etc */
-	u32	errors_exit:1;		/* exit on any error */
-	u32	daemon:1;		/* listen for TCP connections */
-	u32	readonly:1;		/* do read only commands exclusively */
-	FILE	*log;			/* if set, log commands to here */
-	u16	port;			/* listen on this port */
-	char	remote[16];		/* a.b.c.d */
-} opts;
-
-void	do_cmds(opts opts, int in, int out);
-int	findcmd(opts opts, int ac, char **av);
-int	getav(opts opts, int in, int out, int *acp, char ***avp);
+void	do_cmds();
+int	findcmd(int ac, char **av);
+int	getav(int *acp, char ***avp);
 
 int
 main(int ac, char **av)
 {
 	int	c;
-	opts	opts;
 
-	bzero(&opts, sizeof(opts));
 	while ((c = getopt(ac, av, "deil|p;r")) != -1) {
 		switch (c) {
-		    case 'd': opts.daemon = 1; break;
-		    case 'e': opts.errors_exit = 1; break;
-		    case 'i': opts.interactive = 1; break;
+		    case 'd': Opts.daemon = 1; break;
+		    case 'e': Opts.errors_exit = 1; break;
+		    case 'i': Opts.interactive = 1; break;
 		    case 'l':
-			opts.log = optarg ? fopen(optarg, "a") : stderr;
+			Opts.log = optarg ? fopen(optarg, "a") : stderr;
 			break;
-		    case 'p': opts.port = atoi(optarg); break;
-		    case 'r': opts.readonly = 1; break;
+		    case 'p': Opts.port = atoi(optarg); break;
+		    case 'r': Opts.readonly = 1; break;
 	    	}
 	}
-	if (opts.readonly) readonly();
+	if (Opts.readonly) readonly();
 	putenv("PAGER=cat");
-	if (opts.daemon) {
-		bkd_server(opts);
+	if (Opts.daemon) {
+		bkd_server();
 		/* NOTREACHED */
 	} else {
-		do_cmds(opts, 0, 1);
+		do_cmds();
 		return (0);
 	}
 }
@@ -51,88 +39,84 @@ reap(int sig)
 	signal(SIGCHLD, reap);
 }
 
-bkd_server(opts opts)
+bkd_server()
 {
-	int	sock = tcp_server(opts.port ? opts.port : BK_PORT);
+	int	sock = tcp_server(Opts.port ? Opts.port : BK_PORT);
 
 	signal(SIGCHLD, reap);
 	while (1) {
 		int	n = tcp_accept(sock);
 
-		if (opts.log) {
+		if (fork()) {
+		    	close(n);
+			/* reap 'em if you got 'em */
+			waitpid((pid_t)-1, 0, WNOHANG);
+			continue;
+		}
+
+		if (Opts.log) {
 			struct	sockaddr_in sin;
 			int	len = sizeof(sin);
 
 			if (getpeername(n, (struct sockaddr*)&sin, &len)) {
-				strcpy(opts.remote, "unknown");
+				strcpy(Opts.remote, "unknown");
 			} else {
-				strcpy(opts.remote, inet_ntoa(sin.sin_addr));
+				strcpy(Opts.remote, inet_ntoa(sin.sin_addr));
 			}
 		}
-
-		switch (fork()) {
-		    case 0:
-			do_cmds(opts, n, n);
-			exit(0);
-		    default:
-		    	close(n);
-			/* reap 'em if you got 'em */
-			waitpid((pid_t)-1, 0, WNOHANG);
-		}
+		/*
+		 * Make sure all the I/O goes to/from the socket
+		 */
+		close(0); dup(n);
+		close(1); dup(n);
+		close(n);
+		do_cmds();
+		exit(0);
 	}
 }
 
 void
-drain(int fd)
-{
-	int	c;
-
-	while (read(fd, &c, 1) == 1);
-}
-
-void
-do_cmds(opts opts, int in, int out)
+do_cmds()
 {
 	int	ac;
 	char	**av;
 	int	i;
 
-	while (getav(opts, in, out, &ac, &av)) {
+	while (getav(&ac, &av)) {
 		getoptReset();
-		if ((i = findcmd(opts, ac, av)) != -1) {
-			if (opts.log) log_cmd(opts, i, ac, av);
-			if (cmds[i].cmd(ac, av, in, out) != 0) {
-				if (opts.interactive) {
-					writen(out, "ERROR-CMD FAILED\n");
+		if ((i = findcmd(ac, av)) != -1) {
+			if (Opts.log) log_cmd(i, ac, av);
+			if (cmds[i].cmd(ac, av) != 0) {
+				if (Opts.interactive) {
+					out("ERROR-CMD FAILED\n");
 				}
-				if (opts.errors_exit) {
-					writen(out, "ERROR-exiting\n");
-					drain(in);
+				if (Opts.errors_exit) {
+					out("ERROR-exiting\n");
 					exit(1);
 				}
 			}
 		} else if (av[0]) {
-			if (opts.interactive) writen(out, "ERROR-BAD CMD: ");
-			if (opts.interactive) writen(out, av[0]);
-			if (opts.interactive) writen(out, ", Try help\n");
-		} else {
-			if (opts.interactive) writen(out, "ERROR-Try help\n");
+			if (Opts.interactive) out("ERROR-BAD CMD: ");
+			if (Opts.interactive) out(av[0]);
+			if (Opts.interactive) out(", Try help\n");
+		} else if (Opts.interactive) {
+			out("ERROR-Try help\n");
 		}
 	}
 }
 
-log_cmd(opts opts, int i, int ac, char **av)
+log_cmd(int i, int ac, char **av)
 {
 	time_t	t;
 	struct	tm tm, *tp;
 
 	time(&t);
 	tp = localtime(&t);
-	fprintf(opts.log, "%s %.24s ", opts.remote, asctime(tp));
+	fprintf(Opts.log, "%s %.24s ", Opts.remote, asctime(tp));
 	for (i = 0; i < ac; ++i) {
-		fprintf(opts.log, "%s ", av[i]);
+		fprintf(Opts.log, "%s ", av[i]);
 	}
-	fprintf(opts.log, "\n");
+	fprintf(Opts.log, "\n");
 }
 
 /* remove all write commands from the cmds array */
@@ -154,7 +138,7 @@ readonly()
 }
 
 int
-findcmd(opts opts, int ac, char **av)
+findcmd(int ac, char **av)
 {
 	int	i;
 
@@ -166,15 +150,15 @@ findcmd(opts opts, int ac, char **av)
 }
 
 int
-getav(opts opts, int in, int out, int *acp, char ***avp)
+getav(int *acp, char ***avp)
 {
 	static	char buf[2500];		/* room for two keys */
 	static	char *av[50];
 	int	i, inspace = 1;
 	int	ac;
 
-	if (opts.interactive) write(out, "BK> ", 4);
-	for (ac = i = 0; read(in, &buf[i], 1) == 1; i++) {
+	if (Opts.interactive) out("BK> ");
+	for (ac = i = 0; in(&buf[i], 1) == 1; i++) {
 		if (buf[i] == '\n') {
 			buf[i] = 0;
 			av[ac] = 0;

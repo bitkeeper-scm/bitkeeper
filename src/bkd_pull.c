@@ -1,12 +1,15 @@
 #include "bkd.h"
 
-void	listIt(sccs *s, int out);
-void	listrev(delta *d, int out);
+void	listIt(sccs *s);
+void	listrev(delta *d);
+private int uncompressed(char *tmpfile);
+private int compressed(int gzip, char *tmpfile);
+
+static	char *cset[] = { "bk", "cset", "-m", "-", 0 };
 
 int
-cmd_pull(int ac, char **av, int in, int out)
+cmd_pull(int ac, char **av)
 {
-	static	char *cset[] = { "bk", "cset", "-m", "-", 0 };
 	char	buf[4096];
 	char	tmpfile[MAXPATH];
 	char	csetfile[200] = CHANGESET;
@@ -14,29 +17,33 @@ cmd_pull(int ac, char **av, int in, int out)
 	MDBM	*them = 0, *me = 0;
 	int	list = 0, error = 0, bytes = 0;
 	int	doit = 1, verbose = 1, first = 1;
-	pid_t	pid;
+	int	gzip = 0;
 	kvpair	kv;
 	char	*t;
 	int	c;
 	sccs	*s;
 
 	if (!exists("BitKeeper/etc")) {
-		writen(out, "ERROR-Not at project root\n");
+		out("ERROR-Not at project root\n");
 		exit(1);
 	}
 
 	unless (repository_rdlock() == 0) {
-		writen(out, "ERROR-Can't get read lock on the repository.\n");
+		out("ERROR-Can't get read lock on the repository.\n");
 		exit(1);
 	} else {
-		writen(out, "OK-read lock granted\n");
+		out("OK-read lock granted\n");
 	}
 
-	while ((c = getopt(ac, av, "lnq")) != -1) {
+	while ((c = getopt(ac, av, "lnqz|")) != -1) {
 		switch (c) {
 		    case 'l': list = 1; verbose = 0; break;
 		    case 'n': doit = 0; break;
 		    case 'q': verbose = 0; break;
+		    case 'z': 
+			gzip = optarg ? atoi(optarg) : 6;
+			if (gzip < 1 || gzip > 9) gzip = 6;
+			break;
 	    	}
 	}
 	
@@ -45,7 +52,7 @@ cmd_pull(int ac, char **av, int in, int out)
 	 */
 #define	OUT	{ error = 1; goto out; }
 	unless (them = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) OUT;
-	while (getline(in, buf, sizeof(buf)) > 0) {
+	while (getline(0, buf, sizeof(buf)) > 0) {
 		if (streq("@ABORT@", buf)) OUT;
 		if (streq("@END@", buf)) break;
 		mdbm_store_str(them, buf, "", 0);
@@ -66,8 +73,7 @@ cmd_pull(int ac, char **av, int in, int out)
 		unless (mdbm_fetch_str(them, buf)) {
 			if (first) {
 				// XXX
-				writen(out,
-				    "Different project, root key mismatch\n");
+				out("Different project, root key mismatch\n");
 				goto out;
 			}
 			mdbm_store_str(me, t, "", 0);
@@ -77,17 +83,17 @@ cmd_pull(int ac, char **av, int in, int out)
 	}
 	pclose(f); f = 0;
 	unless (bytes) {
-		if (doit) writen(out, "OK-Nothing to send.\n");
+		if (doit) out("OK-Nothing to send.\n");
 		goto out;
 	}
-	writen(out, "OK-something to send.\n");
+	out("OK-something to send.\n");
 	if (doit) {
-		if (verbose || list) writen(out, 
+		if (verbose || list) out(
 "OK--------------------- Sending the following csets ---------------------\n");
 		gettemp(tmpfile, "push");
 		f = fopen(tmpfile, "w");
 	} else {
-		if (verbose || list) writen(out,
+		if (verbose || list) out(
 "OK-------------------- Would send the following csets -------------------\n");
 	}
 	if (list) {
@@ -102,54 +108,35 @@ cmd_pull(int ac, char **av, int in, int out)
 
 			d->flags |= D_SET;
 		} else if (verbose) {
-			writen(out, kv.key.dptr);
+			out(kv.key.dptr);
 		}
 		bytes += kv.key.dsize;
 		if (bytes >= 50) {
-			if (verbose) writen(out, "\nOK-");
+			if (verbose) out("\nOK-");
 			bytes = 0;
 		} else {
-			if (verbose) writen(out, " ");
+			if (verbose) out(" ");
 		}
 	}
 	if (verbose || list) {
 		if (list) {
-			listIt(s, out);
+			listIt(s);
 			sccs_free(s);
 		} else {
-			writen(out, "\n");
+			out("\n");
 		}
-		writen(out, 
+		out(
 "OK----------------------------------------------------------------------\n");
-		writen(out, "OK-END\n");
+		out("OK-END\n");
 	}
 	unless (doit) goto out;
 
 	fclose(f); f = 0;
 
-	/*
-	 * What I want is to run cset with stdin being the file and
-	 * stdout being the socket.
-	 */
-	if (pid = fork()) {
-		int	status;
-
-		if (pid == -1) {
-			writen(out, "ERROR-fork failed\n");
-			goto out;
-		}
-		waitpid(pid, &status, 0);
-		unlink(tmpfile);
-		if (WIFEXITED(status)) {
-			error = WEXITSTATUS(status);
-			goto out;
-		}
-		OUT;
+	if (gzip) {
+		error = compressed(gzip, tmpfile);
 	} else {
-		close(0);
-		open(tmpfile, 0, 0);
-		if (out != 1) { close(1); dup(out); close(out); }
-		execvp(cset[0], cset);
+		error = uncompressed(tmpfile);
 	}
 
 out:
@@ -157,31 +144,100 @@ out:
 	if (them) mdbm_close(them);
 	if (me) mdbm_close(me);
 	repository_rdunlock(0);
-	writen(out, "OK-Unlocked\n");
+	out("OK-Unlocked\n");
 	exit(error);
 }
 
-void
-listIt(sccs *s, int out)
+private int
+uncompressed(char *tmpfile)
 {
-	delta	*d;
+	pid_t	pid;
 
-	for (d = s->table; d; d = d->next) {
-		if (d->flags & D_SET) listrev(d, out);
+	/*
+	 * What I want is to run cset with stdin being the file.
+	 */
+	if (pid = fork()) {
+		int	status;
+
+		if (pid == -1) {
+			out("ERROR-fork failed\n");
+			return (1);
+		}
+		waitpid(pid, &status, 0);
+		unlink(tmpfile);
+		if (WIFEXITED(status)) {
+			return (WEXITSTATUS(status));
+		}
+		return (100);
+	} else {
+		close(0);
+		open(tmpfile, 0, 0);
+		execvp(cset[0], cset);
+	}
+}
+
+private int
+compressed(int gzip, char *tmpfile)
+{
+	pid_t	pid;
+	int	n;
+	int	p[2];
+	char	buf[8192];
+
+	if (pipe(p) == -1) {
+err:		repository_rdunlock(0);
+		exit(1);
+	}
+
+	pid = fork();
+	if (pid == -1) {
+		out("ERROR-fork failed\n");
+		goto err;
+	} else if (pid) {
+		int	status;
+
+		close(p[1]);
+		gzip_init(gzip);
+		while ((n = read(p[0], buf, sizeof(buf))) > 0) {
+			gzip2fd(buf, n, 1);
+		}
+		gzip_done();
+		waitpid(pid, &status, 0);
+		unlink(tmpfile);
+		if (WIFEXITED(status)) {
+			return (WEXITSTATUS(status));
+		}
+		return (100);
+	} else {
+		close(0);
+		open(tmpfile, 0, 0);
+		close(1); dup(p[1]); close(p[1]);
+		close(p[0]);
+		execvp(cset[0], cset);
 	}
 }
 
 void
-listrev(delta *d, int out)
+listIt(sccs *s)
+{
+	delta	*d;
+
+	for (d = s->table; d; d = d->next) {
+		if (d->flags & D_SET) listrev(d);
+	}
+}
+
+void
+listrev(delta *d)
 {
 	char	*t;
 	int	i;
 	char	buf[100];
 
 	assert(d);
-	writen(out, "OK-ChangeSet@");
-	writen(out, d->rev);
-	writen(out, ", ");
+	out("OK-ChangeSet@");
+	out(d->rev);
+	out(", ");
 	if (atoi(d->sdate) <= 68) {
 		strcpy(buf, "20");
 		strcat(buf, d->sdate);
@@ -193,22 +249,22 @@ listrev(delta *d, int out)
 	}
 	for (t = buf; *t != '/'; t++); *t++ = '-';
 	for ( ; *t != '/'; t++); *t = '-';
-	writen(out, buf);
+	out(buf);
 	if (d->zone) {
-		writen(out, "-");
-		writen(out, d->zone);
+		out("-");
+		out(d->zone);
 	}
-	writen(out, ", ");
-	writen(out, d->user);
+	out(", ");
+	out(d->user);
 	if (d->hostname) {
-		writen(out, "@");
-		writen(out, d->hostname);
+		out("@");
+		out(d->hostname);
 	}
-	writen(out, "\n");
+	out("\n");
 	EACH(d->comments) {
-		writen(out, "OK-  ");
-		writen(out, d->comments[i]);
-		writen(out, "\n");
+		out("OK-  ");
+		out(d->comments[i]);
+		out("\n");
     	}
-	writen(out, "OK-\n");
+	out("OK-\n");
 }

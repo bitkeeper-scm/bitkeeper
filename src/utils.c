@@ -1,5 +1,22 @@
 #include "bkd.h"
 
+bkdopts	Opts;	/* has to be declared here, other people use this code */
+
+/*
+ * Write the data to either the gzip channel or to 1.
+ */
+int
+out(char *buf)
+{
+	return (writen(1, buf));
+}
+
+int
+in(char *buf, int n)
+{
+	return (readn(0, buf, n));
+}
+
 int
 writen(int fd, char *buf)
 {
@@ -48,15 +65,7 @@ getline(int in, char *buf, int size)
 				return (-2);
 			}
 			break;
-#if 0
-		    /*
-		     * This is bad - 0 means EOF in some situations
-		     * The question is: does 0 ever mean try again?
-		     */
-		    case 0:
-			usleep(100000);
-			break;	/* try again */
-#endif
+
 		    default:
 			unless (errno == EINTR) {
 				return (-1);
