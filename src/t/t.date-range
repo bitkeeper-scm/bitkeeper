@@ -388,7 +388,7 @@ cmp -s F FILE
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Getting a range from 98..01 with -c .........................$NL
-prs -c98..01 FILE | awk '{print $1, $2, $3}' | sed 's/  *$//' > CMP1
+prs -c98..01 FILE | awk '{print $1, $2, $3}' | sed 's/  *$//' | ${CAT} > CMP1
 ${CAT} > CMP2 <<EOF
 ======== FILE 1.5..1.7
 D 1.7 01/05/28

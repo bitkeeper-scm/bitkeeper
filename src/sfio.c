@@ -35,19 +35,41 @@ int	isdir(char *s);
 int	readn(int from, char *buf, int size);
 int	writen(int from, char *buf, int size);
 
+int qflag = 0;
+
 int
 main(int ac, char **av)
 {
-	if (ac != 2) {
-usage:		fprintf(stderr, "sfiles | sfio -o\nor\nsfio -i < archive\n");
-		fprintf(stderr, "or\nsfio -p < archive\n");
-		return (1);
+	int c;
+	int op = 0;
+
+	while ((c = getopt(ac, av, (char *) "iopq")) != -1) {
+		switch (c) {
+			case 'i': /* fall thru */
+			case 'o': /* fall thru */
+			case 'p': if (op) return (usage()); op = c; break;
+			case 'q': qflag = 1; break;
+			default:  return (usage());
+		}
 	}
-	if (streq("-o", av[1])) return (sfio_out());
-	if (streq("-i", av[1])) return (sfio_in(1));
-	if (streq("-p", av[1])) return (sfio_in(0));
-	goto usage;
+	if ((ac - optind) != 0) return (usage());
+
+	switch (op) {
+	    case 'o': return (sfio_out());
+	    case 'i': return (sfio_in(1));
+	    case 'p': return (sfio_in(0));
+	    default:  return (usage());
+	}
 }
+
+int
+usage()
+{
+	fprintf(stderr, "sfiles | sfio -o\nor\nsfio -i < archive\n");
+	fprintf(stderr, "or\nsfio -p < archive\n");
+	return (1);
+}
+
 
 int
 sfio_out()
@@ -195,7 +217,7 @@ in(char *file, int todo, int extract)
 		goto err;
 	}
 	if (extract) close(fd);
-	fprintf(stderr, "%s\n", file);
+	unless (qflag) fprintf(stderr, "%s\n", file);
 	return (0);
 
 err:	
