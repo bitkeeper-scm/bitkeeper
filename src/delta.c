@@ -79,7 +79,7 @@ delta_main(int ac, char **av)
 	}
 
 	while ((c = getopt(ac, av,
-			   "1abcdD:E|fg;GhI;ilLm|M;npPqRrsuUy|YZ|")) != -1) {
+			   "1abcdD:E|fg;GhI;ilm|M;npPqRrsuy|YZ|")) != -1) {
 		switch (c) {
 		    /* SCCS flags */
 		    case 'n': dflags |= DELTA_SAVEGFILE; break;	/* undoc? 2.0 */
@@ -97,12 +97,8 @@ comment:		comments_save(optarg);
 		    case 'i': dflags |= NEWFILE; 		/* doc 2.0 */
 			      sflags |= SF_NODIREXPAND;
 			      break;
-		    case 'L': ckopts = "EDIT";
-			      break;
 		    case 'l': ckopts = "edit";			/* doc 2.0 */ 
 			      checkout = 1;
-			      break;
-		    case 'U': ckopts = "GET";
 			      break;
 		    case 'u': ckopts = "get";			/* doc 2.0 */
 			      break;
@@ -159,7 +155,7 @@ usage:			sprintf(buf, "bk help -s %s", name);
 		ckopts  = user_preference("checkout");
 	}
 
-	if (streq("GET", ckopts) || streq("EDIT", ckopts)) {
+	if (strieq("get", ckopts) || strieq("edit", ckopts)) {
 		iflags |= INIT_FIXSTIME;
 	}
 
@@ -239,18 +235,11 @@ usage:			sprintf(buf, "bk help -s %s", name);
 		 * see rev 1.118
 		 */
 		unless (CSET(s)) {
-			if (streq(ckopts, "edit")) {
+			if (strieq(ckopts, "edit")) {
 				gflags |= GET_SKIPGET|GET_EDIT;
 				dflags |= DELTA_SAVEGFILE;
 				checkout = 1;
-			} else if (streq(ckopts, "EDIT")) {
-				gflags |= GET_SKIPGET|GET_EDIT;
-				dflags |= DELTA_SAVEGFILE;
-				checkout = 1;
-			} else if (streq(ckopts, "get")) {
-					gflags |= GET_EXPAND;
-					checkout = 1;
-			} else if (streq(ckopts, "GET")) {
+			} else if (strieq(ckopts, "get")) {
 				if (hasKeyword(s))  {
 					gflags |= GET_EXPAND;
 					s->initFlags &= ~INIT_FIXSTIME;
