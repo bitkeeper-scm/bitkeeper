@@ -745,8 +745,8 @@ If you choose "Open Logging" you will not have to enter any data for the
 license, and all changes to the repository will be posted to openlogging.org
 $
 #setuptool_step_LicenseKey
-Please enter the license key exactly as it was given to you. If this is a 
-version 5 license key you must also enter the key signatures.
+Please enter the license key and signatures exactly as they were given to
+you.
 
 If the license keys are in a file, click the "From file..." button and the 
 values will be extracted from the file. This should work even if the file 
