@@ -500,6 +500,31 @@ __init() {
 	fi
 }
 
+# Usage: treediff tree1 tree2
+_treediff() {
+	if [ $# -ne 2 ]
+	then
+		echo "treediff: need two arguments"
+		errflg=1
+	fi
+	if [ ! -d $1 ]
+	then
+		echo "$1 is not a directory"
+		errflg=1
+	fi
+	if [ ! -d $2 ]
+	then
+		echo "$2 is not a directory"
+		errflg=1
+	fi
+	if [ "$errflg" = "1" ]
+	then
+		echo "Usage: bk treediff <dir> <dir>"
+		exit 1
+	fi
+	diff -Nur --exclude=SCCS --exclude=BitKeeper --exclude=ChangeSet $1 $2
+}
+
 # ------------- main ----------------------
 __platformInit
 __init
