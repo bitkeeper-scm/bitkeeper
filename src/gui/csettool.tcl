@@ -143,6 +143,7 @@ proc dotFile {{line {}}} \
 	set r [file join $tmp_dir $tmp-$stop[pid]]
 	catch { exec bk get -qkpr$parent "$file" > $l}
 	catch { exec bk get -qkpr$stop "$file" > $r}
+	displayInfo $file $file $parent $stop 
 	readFiles $l $r
 	catch {file delete $l $r}
 

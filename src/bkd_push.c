@@ -298,13 +298,16 @@ cmd_push_part2(int ac, char **av)
 	close(pfd);
 
 	waitpid(pid, &status, 0);
+	rc =  WEXITSTATUS(status);
+	printf("%c%d\n", BKD_RC, rc);
+	fflush(stdout);
+	write(1, &bkd_nul, 1);
+	fputs("@END@\n", stdout);
 	if (!WIFEXITED(status) || WEXITSTATUS(status)) {
 		printf("ERROR-takepatch errored\n");
 		rc = 1;
 		goto done;
 	}
-	write(1, &bkd_nul, 1);
-	fputs("@END@\n", stdout);
 	unless (bk_proj) bk_proj = proj_init(0); /* for new logging tree */
 
 	/*
@@ -331,6 +334,9 @@ cmd_push_part2(int ac, char **av)
 	dup2(fd2, 2); close(fd2);
 	waitpid(pid, &status, 0);
 	close(pfd);
+	rc =  WEXITSTATUS(status);
+	printf("%c%d\n", BKD_RC, rc);
+	fflush(stdout);
 	write(1, &bkd_nul, 1);
 	fputs("@END@\n", stdout);
 	fflush(stdout);

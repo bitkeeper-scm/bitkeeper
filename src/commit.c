@@ -173,7 +173,7 @@ notice(char *key)
 }
 
 int
-logs_pending(int resync, int ptype)
+logs_pending(int ptype)
 {
 	sccs 	*s;
 	delta	*d;
@@ -181,7 +181,6 @@ logs_pending(int resync, int ptype)
 	FILE	*f;
 	int	i = 0;
 
-	if (resync) chdir(RESYNC2ROOT);
 	s = sccs_init(s_cset, 0, 0);
 	assert(s && s->tree);
 	for (d = sccs_top(s); d; d = d->next) {
@@ -193,7 +192,6 @@ count:	for (d = s->table; d; d = d->next) {
 		i++;
 	}
 	sccs_free(s);
-	if (resync) chdir(ROOT2RESYNC);
 	return (i);
 }
 
@@ -287,16 +285,19 @@ do_commit(char **av, c_opts opts, char *sym,
 	 * 	 monitors our stdout via a pipe.
 	 */
 	ptype = (l&LOG_OPEN) ? 0 : 1;
-	if (logs_pending(opts.resync, ptype) >= MAX_PENDING_LOG) {
-		printf("Commit: forcing pending logs\n");
-		if (l&LOG_OPEN) {
-			system("bk _log -qc2");
-		} else {
-			system("bk _lconfig");
-		}
-		if ((logs_pending(opts.resync, ptype) >= MAX_PENDING_LOG)) {
-			printf("max pending log exceeded, commit aborted\n");
-			return (1);
+	unless (opts.resync) {
+		if (logs_pending(ptype) >= MAX_PENDING_LOG) {
+			printf("Commit: forcing pending logs\n");
+			if (l&LOG_OPEN) {
+				system("bk _log -qc2");
+			} else {
+				system("bk _lconfig");
+			}
+			if ((logs_pending(ptype) >= MAX_PENDING_LOG)) {
+				printf(
+				  "max pending log exceeded, commit aborted\n");
+				return (1);
+			}
 		}
 	}
 	if (pending(s_logging_ok)) {
@@ -405,7 +406,7 @@ logChangeSet(int l, char *rev, int quiet)
 	/*
 	 * Allow up to 20 ChangeSets with $REGRESSION set to not be logged.
 	 */
-	if (getenv("BK_REGRESSION") && (logs_pending(0, 0) < 20)) return;
+	if (getenv("BK_REGRESSION") && (logs_pending(0) < 20)) return;
 
 	unless (rev) {
 		s = sccs_init(s_cset, 0, 0);
@@ -567,7 +568,7 @@ sendConfig(char *to, char *rev)
 	/*
 	 * Allow up to 20 ChangeSets with $REGRESSION set to not be logged.
 	 */
-	if (getenv("BK_REGRESSION") && (logs_pending(0, 1) < 20)) return;
+	if (getenv("BK_REGRESSION") && (logs_pending(1) < 20)) return;
 
 	spawnvp_ex(_P_NOWAIT, av[0], av);
 }

@@ -103,7 +103,7 @@ int	outfd(int fd, char*buf);
 
 int	read_blk(remote *r, char *c, int len);
 int	write_blk(remote *r, char *c, int len);
-int	logs_pending(int resync, int ptype);
+int	logs_pending(int ptype);
 remote	*remote_parse(char *p, int is_clone);
 sccs *	mk_probekey(FILE *f);
 void	sccs_color(sccs *s, delta *d);
@@ -122,4 +122,5 @@ void	add_cd_command(FILE *f, remote *r);
 int	skip_http_hdr(remote *r);
 int	getServerInfoBlock(remote *r);
 void	sendEnv(FILE *f, char **envVar);
+void	wait_eof(remote *r, int verbose);
 #endif

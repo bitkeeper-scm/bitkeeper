@@ -5,6 +5,7 @@
 #include "bkd.h"
 
 typedef struct {
+	u32	debug:1;		/* -d: debug mode */
 	u32	quiet:1;		/* -q: shut up */
 	int	gzip;			/* -z[level] compression */
 	char	*rev;			/* remove everything after this */
@@ -31,6 +32,7 @@ clone_main(int ac, char **av)
 	opts	opts;
 	char	**envVar = 0;
 	char	*getParent(char *);
+	remote 	*r;
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help clone");
@@ -39,8 +41,9 @@ clone_main(int ac, char **av)
 
 	bzero(&opts, sizeof(opts));
 	opts.gzip = 6;
-	while ((c = getopt(ac, av, "E:qr;z|")) != -1) {
+	while ((c = getopt(ac, av, "dE:qr;z|")) != -1) {
 		switch (c) {
+		    case 'd': opts.debug = 1; break;
 		    case 'E': envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'q': opts.quiet = 1; break;
 		    case 'r': opts.rev = optarg; break;
@@ -59,8 +62,12 @@ clone_main(int ac, char **av)
 	 * Trigger note: it is meaningless to have a pre clone trigger
 	 * for the client side, since we have no tree yet
 	 */
-	rc = clone(av, opts, remote_parse(av[optind], 1), av[optind+1], envVar);
+	r = remote_parse(av[optind], 1);
+	unless (r) usage();
+	if (opts.debug) r->trace = 1;
+	rc = clone(av, opts, r, av[optind+1], envVar);
 	freeLines(envVar);
+	remote_free(r);
 	return (rc);
 }
 
@@ -103,9 +110,8 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 {
 	int	ret = 0;
 	char	*p, buf[MAXPATH];
-	int	gzip;
+	int	n, gzip, rc = 0;
 
-	unless (r) usage();
 	gzip = r->port ? opts.gzip : 0;
 	local = fullname(local, 0);
 	if (exists(local)) {
@@ -138,15 +144,15 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	getline2(r, buf, sizeof (buf));
 	if (streq(buf, "@TRIGGER INFO@")) { 
 		if (getTriggerInfoBlock(r, !opts.quiet)) {
-			disconnect(r, 2);
-			return (1);
+			rc = 1;
+			goto done;
 		}
 		getline2(r, buf, sizeof (buf));
 	}
 
 	if (!streq(buf, "@SFIO@")) { 
-err:		disconnect(r, 2);
-		return (1);
+err:		rc = 1;
+		goto done;
 	}
 
 	/* create the new package */
@@ -182,7 +188,6 @@ err:		disconnect(r, 2);
 	rmEmptyDirs(opts);
 
 	parent(opts, r);
-	remote_free(r);
 
 	if (ret) {
 		ret = consistency(opts);
@@ -203,9 +208,10 @@ err:		disconnect(r, 2);
 	}
 	
 	trigger(av, "post", ret);
+done:	wait_eof(r, opts.debug); /* wait for remote to disconnect */
 	repository_wrunlock(0);
 	unless (opts.quiet) fprintf(stderr, "Clone completed successfully.\n");
-	return (0);
+	return (rc);
 }
 
 private int
