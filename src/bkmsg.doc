@@ -1078,22 +1078,6 @@ $
 Unknown proxy entry: "#BKARG"
 If this is a legal proxy entry please file a bug report.
 $
-#no_mailer
-Cannot find a working mailer.  If you have access to an SMTP server,
-you can install the "blat" mailer with the following command:
-
-        blat -install <smtp_server_address> <your email address>
-
-If you have a non-standard connection, you can supply a bk_mail.bat file
-to connect BitKeeper to your mail server; the bk_mail.bat file should
-accept the three arguments, as follows:
-
-        bk_mail.bat file recipient subject
-
-You should put the bk_mail.bat file in the BitKeeper directory.
-The bk_mail.bat command should exit with status zero when the mail is
-sent successfully.
-$
 #http_delay
 Note: since httpd batches a large block of output together before it
 sends back a reply, this can take a while, please wait...

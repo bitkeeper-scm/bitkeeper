@@ -292,6 +292,7 @@ struct	command cmdtbl[] = {
 	{"idcache", idcache_main},		/* undoc? 2.0 */
 	{"isascii", isascii_main},		/* doc 2.0 */
 	{"key2rev", key2rev_main},		/* doc 2.0 */
+	{"keycache", keycache_main},
 	{"lease", lease_main},
 	{"level", level_main},			/* doc 2.0 */
 	{"license", license_main},		/* undoc */

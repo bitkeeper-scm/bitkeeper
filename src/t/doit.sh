@@ -398,7 +398,7 @@ echo ''
 	printf " %s test " ${i#t.}
 	printf "%.${LEN}s\n" "================================================"
 
-        bk leaseflush
+        bk lease flush -a
 	mkdir -p $BK_TMP || exit 1
 
 	# Let's be safe out there boys and girls
