@@ -399,13 +399,15 @@ realloc:
 		q = strchr(q, '\n'); assert(q && !q[1]); q++;
 	}
 	if (d->dead) {
-		char	*p;
+		char	*p1, *p2;
 		char	*rmName = sccs_rmName(s, 1);
 
-		p = proj_relpath(0, rmName);
+		p1 = sccs2name(rmName);
 		free(rmName);
-		sprintf(q, "P %s\n", p);
-		free(p);
+		p2 = proj_relpath(0, p1);
+		free(p1);
+		sprintf(q, "P %s\n", p2);
+		free(p2);
 	} else {
 		sprintf(q, "P %s\n", s->gfile);
 	}

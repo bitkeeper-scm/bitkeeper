@@ -913,8 +913,16 @@ cd $HERE
 no_logging import-CVS.1
 bk import -quftCVS $TESTDATA/import-CVS.1 .
 bk get -q
-test -f BitKeeper/deleted/SCCS/s..del-pkginfo* || {
+P1=BitKeeper/deleted/SCCS/s..del-pkginfo*
+test -f $P1 || {
 	echo failed to get pkginfo from the Attic
+	exit 1
+}
+P1=`echo $P1 | sed 's,SCCS/s.,,'`
+P2=`bk prs -hnd:DPN: -r+ $P1`
+test "$P1" != "$P2" && {
+	echo pathname not stored correctly
+	echo $P1 vs $P2
 	exit 1
 }
 test -d Attic && {
