@@ -75,3 +75,21 @@ if [ $? -eq 0 ]; then
 else
 	echo OK
 fi
+echo $N check pull into busted repo containing part of a change......$NL
+cd $HERE
+rm -rf *
+no_logging project
+mkdir src
+echo bar > src/bar
+bk new $Q src/bar || exit 1
+bk commit $Q -ywhat1 || exit 1
+bk edit $Q src/bar || exit 1
+echo foo >> src/bar
+bk delta $Q -ysecond src/bar || exit 1
+bk commit $Q -ywhat1 || exit 1
+cd ..
+bk clone $Q project copy
+cd copy
+bk stripdel $Q -Cr+ ChangeSet
+bk pull $Q || exit 1
+echo OK
