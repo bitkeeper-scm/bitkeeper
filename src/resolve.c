@@ -2540,18 +2540,17 @@ copyAndGet(opts *opts, char *from, char *to)
 			    to, strerror(errno));
 			return (-1);
 		}
-		if (link(from, to)) {
-			unless (errno == EXDEV) return (-1);
-			/*
-			 * We should rarelly get here, this mean
-			 * the enclosing tree and the RESYNC tree are on
-			 * different file system. It is reported that
-			 * in AFS file system, the link() call return EXDEV
-			 * when we try to create hard link across different
-			 * directories, because AFS's ACL is per directory.
-			 */
-			if (fileCopy(from, to)) return (-1);
-		}
+		/*
+		 * We need to fall back to fileCopy() if:
+		 * a) The enclosing tree and the RESYNC tree are on
+		 *    different file system. 
+		 * b) it is Samba, which does not support hard link.
+		 * Note: It is alos reported that in AFS file system,
+		 *    the link() call return EXDEV when we try to
+		 *    create hard link across different
+		 *    directories, because AFS's ACL is per directory.
+		 */
+		if (link(from, to) && fileCopy(from, to)) return (-1);
 	}
 
 	s = sccs_init(to, INIT_SAVEPROJ, opts->local_proj);
