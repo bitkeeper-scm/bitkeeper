@@ -290,9 +290,9 @@
 /*
  * Hash behaviour.  Bitmask.
  */
-#define DB_NODUPS       0x01		/* keys must be unique */
-#define DB_USEFIRST     0x02		/* use the first key found */
-#define DB_USELAST      0x04		/* use the last key found */
+#define	DB_NODUPS       0x01		/* keys must be unique */
+#define	DB_USEFIRST     0x02		/* use the first key found */
+#define	DB_USELAST      0x04		/* use the last key found */
 #define	DB_KEYSONLY	0x08		/* boolean hashes */
 #define	DB_NOBLANKS	0x10		/* keys must have values or skip */
 #define	DB_KEYFORMAT	0x20		/* key/value are u@h|path|date|cksum */
@@ -301,22 +301,24 @@
 #define	MAXREV	24	/* 99999.99999.99999.99999 */
 
 #define	OPENLOG_HOME	"bitmover.com"
-#define	OPENLOG_URL	"http://www.openlogging.org:80////LOG_ROOT///" 
+#define	OPENLOG_URL	"http://www.openlogging.org:80////LOG_ROOT///"
 #define	OPENLOG_URLHOST	"www.openlogging.org"
 //#define	OPENLOG_IP	"http://207.181.251.164:80////LOG_ROOT///" 
 //#define	OPENLOG_IPHOST	"207.181.251.164"
 #define	BK_WEBMAIL_URL	"http://www.bitkeeper.com:80"
+#define	BK_HOSTME_URL	"http://hostme.bitkeeper.com:80"
 #define	WEB_BKD_CGI	"web_bkd"
+#define	HOSTME_CGI	"hostme_cgi"
 #define	WEB_MAIL_CGI	"web_mail"
 #define	BK_CONFIG_URL	"http://www.bitkeeper.com:80"
 #define	BK_CONFIG_CGI	"bk_config"
 #define	SCCSTMP		"SCCS/T.SCCSTMP"
 #define	BKTMP		"BitKeeper/tmp"
 #define	BKROOT		"BitKeeper/etc"
-#define BKMASTER	"BitKeeper/etc/.master"
+#define	BKMASTER	"BitKeeper/etc/.master"
 #define	GONE		"BitKeeper/etc/gone"
-#define CSETS_IN	"BitKeeper/etc/csets-in"
-#define CSETS_OUT	"BitKeeper/etc/csets-out"
+#define	CSETS_IN	"BitKeeper/etc/csets-in"
+#define	CSETS_OUT	"BitKeeper/etc/csets-out"
 #define	SGONE		"BitKeeper/etc/SCCS/s.gone"
 #define	CHANGESET	"SCCS/s.ChangeSet"
 #define	GCHANGESET	"ChangeSet"

@@ -43,7 +43,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o approve.o \
 	dir_gif.o dirname.o export.o fdiff.o file_gif.o \
 	find.o findkey.o fix.o g2sccs.o gca.o get.o gethelp.o \
 	gethost.o getopt.o gettemp.o getuser.o glob.o \
-	gnupatch.o graft.o grep.o help.o host.o http.o \
+	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \
 	isascii.o key2rev.o keysort.o kvfile.o level.o \
 	lib_tcp.o libcommit.o libdiff.o librange.o \
 	libsfiles.o libusers.o license.o lines.o \
@@ -617,6 +617,7 @@ graft.o:	graft.c $(H)
 grep.o:		grep.c $(H)
 help.o:		help.c $(H)
 host.o:		host.c $(H)
+hostme.o:	hostme.c $(H)
 isascii.o:	isascii.c
 key2rev.o:	key2rev.c $(H)
 keysort.o:	keysort.c $(H)
