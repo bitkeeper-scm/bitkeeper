@@ -448,9 +448,13 @@ proc keyboard_bindings {} \
 
 proc init {} \
 {
-	global	bin
+	global	bin env tcl_platform
 
-	set bin "/usr/bin"
+	if { $tcl_platform(platform) == "windows"} {
+		set bin $env(BK_BIN)
+	} else {
+		set bin "/usr/bin"
+	}
 	platformInit
 }
 
@@ -459,7 +463,7 @@ proc main {} \
 	global argv0 argv argc bin dev_null lfile rfile
 
 	if {$argc < 2 || $argc > 3} {
-		puts "usage: $argv0 left right [done]"
+		puts "usage: $argv0 left right \[done\]"
 		exit
 	}
 	init

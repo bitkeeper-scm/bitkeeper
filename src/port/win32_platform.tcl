@@ -7,14 +7,16 @@
 proc platformInit {} \
 {
 	global tcl_platform env dev_null tmp_dir wish auto_path unix_bin bin
-	global bithelp sccstool sdiffw getDir bk_prs file_rev
+	global bithelp difftool helptool sccstool sdiffw getDir bk_prs file_rev
 	
 	# init for WIN32 env
 	set sdiffw [list "diff" "-W" "1" "-y" "--" ]
 	set dev_null "nul"
 	set wish "@WISH@.exe"
-	set bithelp [file join $bin "bithelp.tcl"]
-	set sccstool [file join $bin "sccstool.tcl"]
+	set bithelp [file join $bin bithelp.tcl]
+	set difftool [file join $bin difftool.tcl]
+	set helptool [file join $bin helptool.tcl]
+	set sccstool [file join $bin sccstool.tcl]
 	set tmp_dir $env(TEMP)
 	set auto_path "$bin $auto_path"
 	set file_rev {(.*)@([0-9].*)}
