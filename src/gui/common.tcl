@@ -213,7 +213,15 @@ proc resizeRequest {pathName maxWidth maxHeight width height type} \
 	if {$height > $maxHeight} {set height $maxHeight; set constrain 1}
 
 	if {$constrain} {
-		wm geometry $pathName ${width}x${height}
+		# Note that we must configure the window width and 
+		# height rather than use the "wm geometry" command.
+		# If we use "wm geometry" and the window is gridded
+		# (ie: some subwidget has -grid set to true), the
+		# width and height will be interpreted as a number 
+		# of grid units. This will cause this proc to resize 
+		# the window to some huge size, which will trigger 
+		# this proc, which will ... (read: infinite loop)
+		$pathName configure -width $width -height $height
 	}
 
 	unset ::inResizeRequest
