@@ -110,7 +110,7 @@ proc bkhelp {topic} \
 		if {($seealso == 1) && 
 		    [string compare "SEE ALSO" $help] != 0} {
 		    	set tag [string trim $help]
-			.text.help insert end "\t"
+			.text.help insert end "    "
 			.text.help insert end "$tag\n" "$tag seealso"
 			.text.help tag bind $tag <Button-1> \
 			    "getSelection $tag; doSelect 1"
