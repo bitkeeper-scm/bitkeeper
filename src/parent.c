@@ -7,7 +7,7 @@ parent_main(int ac,  char **av)
 {
 	char	buf[MAXLINE];
 	FILE	*f;
-	int	c, do_remove = 0, quiet = 0, shell = 0;
+	int	c, do_remove = 0, quiet = 0, shell = 0, force = 0;
 	remote	*r;
 	char	*fp;
 
@@ -21,8 +21,9 @@ parent_main(int ac,  char **av)
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "qpr")) != -1) {
+	while ((c = getopt(ac, av, "fqpr")) != -1) {
 		switch (c) {
+		    case 'f': force = 1; break;
 		    case 'p': shell = 1; break;
 		    case 'q': quiet = 1; break;			/* doc 2.0 */
 		    case 'r': do_remove = 1; break;		/* doc 2.0 */
@@ -60,12 +61,23 @@ parent_main(int ac,  char **av)
 		fprintf(stderr, "Invalid parent address: %s\n", av[optind]);
 		return (1);
 	}
-	if (isLocalHost(r->host)) {
-		if (r->path) {
+	if (!force && isLocalHost(r->host)) {
+		/*
+		 * We skip the path check of the url has a port address
+		 * there are two reasons for this:
+		 * a) In release 3.0 bkd will support virtual path
+		 *    we will not know the real path until access time
+		 * b) Some site may be using ssh port forwarding
+		 *    which means the path is not really local.
+		 */
+		if (r->path && !r->port) {
 			sprintf(buf, "%s/BitKeeper/etc", r->path);
 			unless (isdir(buf)) {
-				printf("%s is not a BitKeeper package root\n",
-					r->path);
+				printf("bk parent: attempting to set parnet "
+				    "url to \"%s\"\n"
+				    "but \"%s\" is not a BitKeeper root.\n"
+				    "To force this url, use bk parent -f.\n",
+				     av[optind], r->path);
 				return (1);
 			}
 			unless (IsFullPath(r->path)) {

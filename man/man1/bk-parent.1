@@ -4,7 +4,7 @@
 bk parent \- show or set the parent repository
 .SH SYNOPSIS
 .Bc bk parent [
-.Bc -qpr] [
+.Bc -fqpr] [
 .ARGc repository
 .B ]
 .SH DESCRIPTION
@@ -19,6 +19,16 @@ The parent is automatically set when a repository is cloned and will be
 named according to the access method (see bk help url for more information).
 .SH OPTIONS
 .TP
+.B \-f
+Force; i.e. disable the auto-subsitution of "localhost" with the
+real host name when we store the parent pointer. This also disable
+the auto-subsitution of relative path to absolute path.
+This is used by advance user for setting up ssh port forwarding
+from a localhost port. It is probably a "bad" idea to use this option
+on a repository shared over a network file system such as NFS or SAMBA.
+"localhost" may point to different parent repositories on different
+host.
+.tp
 .B \-q
 Run quietly.
 .tp
