@@ -1874,8 +1874,26 @@ proc widgets {} \
 	$w(aptext) tag configure "oldTag" -background $gc(rev.oldColor)
 	$w(aptext) tag configure "select" -background $gc(rev.selectColor)
 
-	bindtags $w(aptext) {.p.b.p.t . all}
+	bindtags $w(aptext) {Bk .p.b.p.t . all}
 	bindtags $w(ctext) {.p.b.c.t . all}
+
+	bind Bk <Shift-Button-1> { 
+		#puts "in %W %x %y"
+		tkTextButton1 %W %x %y
+		%W tag remove sel 0.0 end
+		break 
+	}
+
+	bind Bk <Shift-B1-Motion> {
+		set tkPriv(x) %x
+		set tkPriv(y) %y
+		tkTextSelectTo %W %x %y
+	}
+
+	bind Bk <ButtonRelease-1> {
+		tkCancelRepeat
+	}
+
 	# In the search window, don't listen to "all" tags. (This is now done
 	# in the search.tcl lib) <remove if all goes well> -ask
 	#bindtags $search(text) { .cmd.search Entry }

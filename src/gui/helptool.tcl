@@ -457,10 +457,14 @@ proc widgets {} \
 	bind all <Control-y>	{ scroll "line" -1 }
 	bind all <Down>		{ scroll "line" 1; break }
 	bind all <Up>		{ scroll "line" -1; break }
+	bind .text.help <Down>	{ scroll "line" 1; break }
+	bind .text.help <Up>	{ scroll "line" -1; break }
 	bind all <Left>		".text.help xview scroll -1 units; break"
 	bind all <Right>	".text.help xview scroll 1 units; break"
 	bind all <Prior>	{ scroll "page" -1; break }
 	bind all <Next>		{ scroll "page" 1; break }
+	bind Text <Prior>	{ scroll "page" -1; break }
+	bind Text <Next>	{ scroll "page" 1; break }
 	bind all <Home>		 ".text.help yview -pickplace 1.0; break"
 	bind all <End>		 ".text.help yview -pickplace end; break"
 	bind all <Control-Up>	{ doNext -1 }
