@@ -1,0 +1,79 @@
+.sp .5i
+.ps 12
+.vs 14
+.ft H
+.po .6i
+.PS
+DEV: [
+	B: box wid 6 ht 3.5
+	"Unclassified Development" at last box.n + 0,.2
+	BK: [
+	    M: ellipse wid 1.5 ht 1 fill .1 "BK Master 1"
+	    K: [
+		A: ellipse wid 1.5 ht 1 fill .1 "Work space 1"
+		   move right .3
+		B: ellipse wid 1.5 ht 1 fill .1 "Work space 2" 
+		   move right .3
+		C: ellipse wid 1.5 ht 1 fill .1 "Work space 3"
+	    ] with .s at M.n + 0,.5
+	    arrow from M.nw to K.A.se <->
+	    arrow from M.n to K.B.s <->
+	    arrow from M.ne to K.C.sw <->
+	    C: box wid .5 ht .2 fill .2 "\s-2CDRW\s0" \
+		with .ne at M.sw - 1.3,.5
+	    arrow dashed from M.sw to C.ne
+	    CD: ellipse wid .5 ht .2 fill .2 "\s-2CD\s0" \
+		with .sw at M.sw + 2.2,-.6
+	    arrow dashed from CD.nw to M.se
+
+	] with .c at B.c
+]
+SECURE: [
+	B: box  wid 6 ht 4
+	"Classified Development" at last box.n + 0,.2
+	BK: [
+	    M: ellipse wid 1.5 ht 1 fill .1 "BK Master 2"
+	    K: [
+		A: ellipse wid 1.5 ht 1 fill .1 "Work space 4"
+		   move right .3
+		B: ellipse wid 1.5 ht 1 fill .1 "Work space 5" 
+		   move right .3
+		C: ellipse wid 1.5 ht 1 fill .1 "Work space 6"
+	    ] with .n at M.s - 0,.5
+	    arrow from M.sw to K.A.ne <->
+	    arrow from M.s to K.B.n <->
+	    arrow from M.se to K.C.nw <->
+	    C: ellipse wid .5 ht .2 fill .2 "\s-2CD\s0" \
+		with .se at M.nw - 1.5,-1
+	    D: ellipse wid 1.2 ht .8 fill .1 "BK master 1" "copy" \
+		with .n at C.s - 0,.3
+	    arrow dashed from C.s to D.n
+	    arc dashed -> ccw rad 2 from D.se to M.w
+	    "bk pull" at last arc.s - .9,0
+	    arc dashed -> ccw rad 2 from M.nw to D.e
+	    "bk pull -r" at last arc.n + .6,.1
+	    CD: box wid .5 ht .2 fill .2 "\s-2CDRW\s0" \
+		with .s at M.n + 0,.8
+	    arrow dashed from D.ne to CD.w
+.vs -3
+	    "\s-2PENDING/\s0" "\s-22001-03-09-001\s0" at last arrow.c + -.1,.2
+	    arrow dashed from CD.e right 1
+	    "Reviewer" at last arrow .e +.1,0 ljust
+.vs
+	] with .c at B.c
+] with .n at DEV.s - 0,1
+
+	move to SECURE.BK.CD.e +1.47,.2
+	arrow dashed up to DEV.BK.CD.s
+	arrow dashed from DEV.BK.C.s to SECURE.BK.C.n
+	move to DEV.sw - 0,.38
+	line thick 2 right 6
+	"Air gap, no network connection" at DEV.s - 0,.51
+	move to DEV.sw - 0,.61
+	line thick 2 right 6
+
+.PE
+.ps 
+.vs 
+.ft
+.po
