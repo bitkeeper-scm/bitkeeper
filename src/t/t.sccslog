@@ -22,8 +22,7 @@ bk setup -f -cc project
 cd project
 mkdir -p a/b/c
 echo 1.1 > a/b/c/Data
-bk admin -q -n -ia/b/c/Data a/b/c/Data
-rm -f a/b/c/Data
+bk new -q a/b/c/Data
 # D 1.2 93/03/11 00:50:40.000 butthead 2 1  9/2/44
 # C added 4.x etc targets
 for i in 2 3 4 5 6 7 8 9 10
