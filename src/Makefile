@@ -487,7 +487,7 @@ msg: gui/msg.tcl
 #	rpm -bb bk.spec
 rpm: g pkg
 
-pkg: install-nolinks epmhelper.sh
+pkg: g epmhelper.sh
 	rm -rf tmp/bitkeeper; \
 	DIR=`pwd`/tmp/bitkeeper; set -e; \
 	BINDIR=$$DIR ${MAKE} -e install-nolinks; \
