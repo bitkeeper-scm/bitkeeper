@@ -16,7 +16,12 @@ __platformInit()
 	fi
 	ext=""	# Unlike win32, Unix binary does not have .exe extension
 	tcl=""
-	wish=wish
+	if type wish8.2 >/dev/null 2>&1
+	then wish=wish8.2
+	elif type wish8.0 >/dev/null 2>&1
+	then wish=wish8.0
+	else wish=wish
+	fi
 	if [ "X$EDITOR" = X ]
 	then EDITOR=vi
 	fi
