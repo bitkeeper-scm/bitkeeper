@@ -45,7 +45,7 @@ int export_main(int, char **);
 int fdiff_main(int, char **);
 int find_main(int, char **);
 int fix_main(int, char **);
-int g2sccs_main(int, char **);
+int _g2sccs_main(int, char **);
 int gca_main(int, char **);
 int get_main(int, char **);
 int gethelp_main(int, char **);
@@ -145,6 +145,7 @@ struct command cmdtbl[] = {
 	{"_createlod", _createlod_main},
 	{"_f2csets", _f2csets_main},
 	{"_find", find_main },
+	{"_g2sccs", _g2sccs_main},
 	{"_get", get_main},
 	{"_gzip", gzip_main }, 
 	{"_keysort", keysort_main},
@@ -185,7 +186,6 @@ struct command cmdtbl[] = {
 	{"export", export_main},
 	{"fdiff", fdiff_main},		/* undocumented */
 	{"fix", fix_main},
-	{"g2sccs", g2sccs_main},
 	{"gca", gca_main},
 	{"get", get_main},
 	{"gethelp", gethelp_main},	/* undocumented */

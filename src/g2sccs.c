@@ -5,15 +5,15 @@ WHATSTR("@(#)%K%");
 static void	print_name(char *);
 
 /*
- * g2sccs - convert gfile names to sfile names
+ * _g2sccs - convert gfile names to sfile names
  */
 int
-g2sccs_main(int ac, char **av)
+_g2sccs_main(int ac, char **av)
 {
 	int	i;
 
 	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help g2sccs");
+		fprintf(stderr, "usage: bk g2sccs file file file ... | -\n");
 		return (1);
 	}
 	if ((ac > 1) && strcmp(av[ac-1], "-")) {

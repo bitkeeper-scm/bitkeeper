@@ -132,7 +132,7 @@ import() {
 			fi
 		done < ${TMP}import$$
 		if [ $TYPE != SCCS ]
-		then	bk g2sccs < ${TMP}import$$ > ${TMP}sccs$$
+		then	bk _g2sccs < ${TMP}import$$ > ${TMP}sccs$$
 			while read x
 			do	if [ -e "$x" ]
 				then	echo \
