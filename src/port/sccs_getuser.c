@@ -23,5 +23,11 @@ sccs_getuser(void)
 	}
 #endif
 	unless (s && s[0]) s = UNKNOWN_USER;
+	if (strchr(s, '\n') || strchr(s, '\r')) {
+		fprintf(stderr,
+		    "bad user name: user name cannot contain LR or CR "
+		    "character\n");
+		s = NULL;
+	}
 	return (s);
 }

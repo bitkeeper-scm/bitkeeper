@@ -68,7 +68,7 @@ delta_main(int ac, char **av)
 	}
 
 	while ((c = getopt(ac, av,
-			   "1abcdD:E|fg;GhI;ilm|M;npPqRrsuy|YZ|")) != -1) {
+			   "1abcdD:E|fg;GhI;ilLm|M;npPqRrsuy|YZ|")) != -1) {
 		switch (c) {
 		    /* SCCS flags */
 		    case 'n': dflags |= DELTA_SAVEGFILE; break;	/* undoc? 2.0 */
@@ -86,6 +86,8 @@ comment:		comments_save(optarg);
 		    case 'i': dflags |= NEWFILE; 		/* doc 2.0 */
 			      sflags |= SF_NODIREXPAND;
 			      break;
+		    case 'L': dflags |= DELTA_FIXMTIME;
+			      /* fall thru */
 		    case 'l': gflags |= GET_SKIPGET|GET_EDIT; 	/* doc 2.0 */
 		    	      dflags |= DELTA_SAVEGFILE;
 			      checkout = 1;
@@ -147,6 +149,10 @@ usage:			sprintf(buf, "bk help -s %s", name);
 		if (streq(p, "edit")) {
 			gflags |= GET_SKIPGET|GET_EDIT;
 			dflags |= DELTA_SAVEGFILE;
+			checkout = 1;
+		} else if (streq(p, "EDIT")) { /* edit + fixmitime */
+			gflags |= GET_SKIPGET|GET_EDIT;
+			dflags |= DELTA_SAVEGFILE|DELTA_FIXMTIME;
 			checkout = 1;
 		} else if (streq(p, "get")) {
 			gflags |= GET_EXPAND;

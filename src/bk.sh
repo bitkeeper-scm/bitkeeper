@@ -65,6 +65,28 @@ _tags() {
 	bk changes -t
 }
 
+# Dump the repository license, this is not the BKL.
+_repo_license() {
+    	__cd2root
+	test -f BitKeeper/etc/SCCS/s.COPYING && {
+	    	echo =========== Repository license ===========
+		bk cat BitKeeper/etc/COPYING
+		exit 0
+	}
+	test -f BitKeeper/etc/SCCS/s.REPO_LICENSE && {
+	    	echo =========== Repository license ===========
+		bk cat BitKeeper/etc/REPO_LICENSE
+		exit 0
+	}
+	echo There is no BitKeeper repository license for this repository.
+	exit 0
+}
+
+# Earlier documentation had repo_license as "copying".
+_copying() {
+    	_repo_license
+}
+
 # Hard link based clone.
 # Usage: lclone from [to]
 _lclone() {

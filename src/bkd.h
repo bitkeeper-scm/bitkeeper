@@ -111,7 +111,6 @@ int	outfd(int fd, char*buf);
 
 int	read_blk(remote *r, char *c, int len);
 int	write_blk(remote *r, char *c, int len);
-int	logs_pending(int ptype, int skipRecentCset);
 remote	*remote_parse(char *p, int is_clone);
 sccs *	mk_probekey(FILE *f);
 void	sccs_color(sccs *s, delta *d);

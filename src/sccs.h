@@ -73,6 +73,7 @@
 #define	DELTA_FORCE	0x02000000	/* delta -f: force a delta */
 #define	DELTA_HASH	0x04000000	/* treat as hash (MDBM) file */
 #define	DELTA_NOPENDING	0x08000000	/* don't create pending marker */
+#define	DELTA_FIXMTIME	0x00100000	/* force sfile mtime < gfile mtime */
 
 #define	ADMIN_FORMAT	0x10000000	/* check file format (admin) */
 #define	ADMIN_ASCII	0x20000000	/* check file format (admin) */
@@ -302,9 +303,9 @@
 
 #define	OPENLOG_HOME	"bitmover.com"
 #define	OPENLOG_URL	"http://www.openlogging.org:80////LOG_ROOT///"
-#define	OPENLOG_URLHOST	"www.openlogging.org"
-//#define	OPENLOG_IP	"http://207.181.251.164:80////LOG_ROOT///" 
-//#define	OPENLOG_IPHOST	"207.181.251.164"
+#define	OPENLOG_BACKUP	"http://backup1.openlogging.org:80////LOG_ROOT///"
+#define	OPENLOG_HOST	"www.openlogging.org"
+#define	OPENLOG_HOST1   "backup1.openlogging.org"
 #define	BK_WEBMAIL_URL	"http://www.bitkeeper.com:80"
 #define	BK_HOSTME_SERVER "hostme.bitkeeper.com"
 #define	WEB_BKD_CGI	"web_bkd"
@@ -1034,6 +1035,7 @@ int	rmUncommitted(int quiet);
 void	rmEmptyDirs(int quiet);    
 int	after(int quiet, char *rev);
 int	lod(int quiet, char *rev);
+int	logs_pending(int ptype, int skipRecentCset, int grace); 
 
 extern char *bk_vers;
 extern char *bk_utc;
