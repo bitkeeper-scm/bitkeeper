@@ -41,7 +41,8 @@ proc displayMessage {msg {exit {}}} \
 
 # The balloon stuff was taken from the tcl wiki pages and modified by
 # ask so that it can take a command pipe to display
-proc balloon_help {w msg {cmd {}}} {
+proc balloon_help {w msg {cmd {}}} \
+{
 
 	global gc app
 
@@ -61,7 +62,8 @@ proc balloon_help {w msg {cmd {}}} {
 	    after 100 {catch {destroy .balloon_help}}"
     }
 
-proc balloon_aux {w msg} {
+proc balloon_aux {w msg} \
+{
 	set t .balloon_help
 	catch {destroy $t}
 	toplevel $t
@@ -138,14 +140,16 @@ proc centerWindow {w args} \
 }
 
 # From a Cameron Laird post on usenet
-proc print_stacktrace {} {
+proc print_stacktrace {} \
+{
 	set depth [info level]
 	puts "Current call stack shows"
 	for {set i 1} {$i < $depth} {incr i} {
 		puts "\t[info level $i]"
 	}
 }
-proc _parray {a {pattern *}} {
+proc _parray {a {pattern *}} \
+{
 	upvar 1 $a array
 	if {![array exists array]} {
 		error "\"$a\" isn't an array"
@@ -164,6 +168,55 @@ proc _parray {a {pattern *}} {
 		    [format "%-*s = %s\n" $maxl $nameString $array($name)]
 	}
 	return $answer
+}
+
+# usage: constrainSize ?toplevel? ?maxwidth? ?maxheight?
+# Adds code to constrain the size of the toplevel to the width of the
+# display and 95% of the height
+proc constrainSize {{toplevel .} {maxWidth -1} {maxHeight -1}} \
+{
+	if {$maxWidth == -1} {
+		set maxWidth  [winfo screenwidth $toplevel]
+	}
+	if {$maxHeight == -1} {
+		set maxHeight [expr {int([winfo screenheight $toplevel]*.95)}]
+	}
+
+	# Setting the maxsize is only a hint to the window manager; 
+	# therefore, we need to also do some binding magic to constrain
+	# window sizes manually. This is more trouble than it ought to
+	# be.
+	wm maxsize $toplevel $maxWidth $maxHeight
+
+	# Note: we do NOT want the binding on the window itself
+	# because that will cause it to fire for every widget
+	# (assuming the window is a toplevel). That would hurt. 
+	bindtags $toplevel [concat "resize-$toplevel" [bindtags $toplevel]]
+	bind resize-$toplevel <Configure> \
+	    [list resizeRequest $toplevel $maxWidth $maxHeight %w %h %T]
+}
+
+# this is used by constrainSize, and is executed in response to a GUI
+# being resized.
+proc resizeRequest {pathName maxWidth maxHeight width height type} \
+{
+
+	if {[info exists ::inResizeRequest]} {return} 
+
+	set ::inResizeRequest 1
+
+	# the test for constrain is critically important; if we 
+	# unconditionally call wm geometry we can get into an
+	# endless loop.
+	set constrain 0
+	if {$width > $maxWidth} {set width $maxWidth; set constrain 1}
+	if {$height > $maxHeight} {set height $maxHeight; set constrain 1}
+
+	if {$constrain} {
+		wm geometry $pathName ${width}x${height}
+	}
+
+	unset ::inResizeRequest
 }
 
 # usage: bgExec ?options? command ?arg? ?arg ..?

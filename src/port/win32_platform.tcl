@@ -43,4 +43,7 @@ proc bk_init {} \
 		puts "BitKeeper requires tcl/tk version 8.x or later."
 		exit 1
 	}
+
+	# make sure GUIs don't come up bigger than the screen
+	constrainSize
 }
