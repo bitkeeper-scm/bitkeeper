@@ -635,6 +635,8 @@ cmdlog_end(int ret, int flags)
 	char	*user, *file;
 	char	path[MAXPATH];
 
+	extern char bk_vers[];
+
 	purify_list();
 	unless (cmdlog_buffer[0] && bk_proj && bk_proj->root) return (flags);
 
@@ -657,7 +659,8 @@ cmdlog_end(int ret, int flags)
 	}
 
 	user = sccs_getuser();
-	fprintf(f, "%s %lu: ", user ? user : "Phantom User", time(0));
+	fprintf(f, "%s %lu %s: ",
+	    user ? user : "Phantom User", time(0), bk_vers);
 	if (ret == LOG_BADEXIT) {
 		fprintf(f, "%s = ?\n", cmdlog_buffer);
 	} else {
