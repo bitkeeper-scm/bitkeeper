@@ -41,7 +41,7 @@ commit_main(int ac, char **av)
 		    case 'd': 	doit = 1; break;		/* doc 2.0 */
 		    case 'f':					/* undoc 2.0 */
 			strcpy(pendingFiles, optarg); break;
-		    case 'F':	force = 1; break;		/* doc 2.0 */
+		    case 'F':	force = 1; break;		/* undoc */
 		    case 'R':	BitKeeper = "../BitKeeper/";	/* doc 2.0 */
 				opts.resync = 1;
 				break;
