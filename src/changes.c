@@ -6,8 +6,9 @@ typedef struct {
 	u32     tagOnly:1;
 	u32     ldiff:1;	/* want the new local csets */
 	u32     rdiff:1;	/* want the new remote csets */ 
-	char	*rev;
+	u32	doSearch:1;	/* search the comments list */
 	search	search;
+	char	*rev;
 	int	indent;
 } opts;
 
@@ -16,13 +17,6 @@ private int	doit(opts, int dash);
 private int	doit_remote(opts opts, char **av, int optind);
 private void	line2av(char *cmd, char **av);
 private int	mkpager();
-
-private void
-usage()
-{
-	system("bk help -s changes");
-    	exit(1);
-}
 
 int
 changes_main(int ac, char **av)
@@ -51,11 +45,14 @@ changes_main(int ac, char **av)
 			opts.indent = optarg ? atoi(optarg) : 2;
 			break;
 		    case 'r': opts.rev = optarg; break;		/* doc 2.0 */
-		    case '/': opts.search = searchParse(optarg); break;
+		    case '/': opts.search = searchParse(optarg); 
+			      opts.doSearch = 1;
+			      break;
 		    case 'L': opts.ldiff = 1; break;
 		    case 'R': opts.rdiff = 1; break;
 		    default:
-			usage();
+usage:			system("bk help -s changes"); 
+			exit(1);
 	    	}
 	}
 	if (sccs_cd2root(0, 0)) {
@@ -216,19 +213,23 @@ doit(opts opts, int dash)
 	extern	char *pager;
 	char	*pager_av[MAXARGS];
 	int	i, fd1, pfd;
+	int	all = 0;
 	sccs	*s;
 	delta	*d;
 
 	s = sccs_init(s_cset, SILENT, 0);
 	assert(s && s->tree);
 	if (opts.rev) {
-		if (opts.search.pattern) {
+		if (opts.doSearch) {
 			fprintf(stderr, "Warning: -s option ignored\n");
 		}
 		s->state |= S_SET;
 		d = findrev(s, opts.rev);
-		assert(d);
-		if (d) d->flags |= D_SET;
+		if (d) {
+			d->flags |= D_SET;
+		} else {
+			 fprintf(stderr, "Cannot find rev %s\n", opts.rev);
+		}
 		
 	} else if (dash) {
 		s->state |= S_SET;
@@ -249,7 +250,7 @@ doit(opts opts, int dash)
 			}
 			d->flags |= D_SET;
 		}
-	} else if (opts.search.pattern) {
+	} else if (opts.doSearch) {
 		s->state |= S_SET;
 		for (d = s->table; d; d = d->next) {
 			if (d->type != 'D')  continue;
@@ -260,7 +261,7 @@ doit(opts opts, int dash)
 			}
 		}
 	} else {
-		s->state &= ~S_SET; /* probably redundant */
+		all = 1;
 	}
 
 	/*
@@ -273,7 +274,7 @@ doit(opts opts, int dash)
 	s->xflags |= X_YEAR4;
 	for (d = s->table; d; d = d->next) {
 		if (feof(f)) break; /* for early pager exit */
-		if (SET(s) && !(d->flags & D_SET)) continue;
+		if (!all && !(d->flags & D_SET)) continue;
 		sccs_prsdelta(s, d, 0, spec, f);
 		fflush(f);
 		if (opts.verbose) {
