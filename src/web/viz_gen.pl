@@ -7,8 +7,11 @@
 #
 # Call with a filename, else defaults to the cset file
 #
-# TODO: Don't even think of doing this on the bk cset file yet. Gif is 
-# mongo big.
+# Example: 
+#  ./viz_gen.pl | dot -Tgif > /tmp/z2.gif
+#
+# TODO: Don't even think of doing this on the full bk cset file yet. The
+# resulting gif is mongo big.
 #
 
 if ($ARGV[0]) {
@@ -16,7 +19,7 @@ if ($ARGV[0]) {
 	open(L,"bk _lines -u -t $file |") or die "Can't open _lines";
 } else {
 	$file = "ChangeSet";
-	open(L,"bk -R _lines -u -t $file |") or die "Can't open _lines";
+	open(L,"bk -R _lines -R-1M -n50 -u -t $file |") or die "Can't open _lines";
 }
 
 #printf STDERR "file=($file)\n";
@@ -27,7 +30,7 @@ sub header
 	print "digraph \"$file\" {\n";
 	#print "\trotate=90\n";
 	print "\trankdir=LR\n";
-	print "\tranksep=.3\n";
+	print "\tranksep=.25\n";
 	print "\tnode [height=.3,width=.3,shape=box,style=filled,regular=1,color=\".7 .3 1.0\"];\n";
 }
 sub footer

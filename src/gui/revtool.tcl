@@ -245,7 +245,6 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 	global w rev1 srev errorCode comments_mapped firstnode
 
 	if {[info exists fname]} {unset fname}
-	#displayMessage "type=($ttype)"
 
 	$win tag remove "select" 1.0 end
 	set curLine [$win index "@$x,$y linestart"]
@@ -283,7 +282,7 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 		    -expand true \
 		    -anchor n
 		set prs [open "| bk prs {$dspec} -hr$rev \"$file\" 2>$dev_null"]
-		filltext $w(ctext) $prs 1
+		filltext $w(ctext) $prs 1 "ctext"
 		set wht [winfo height $w(cframe)]
 		set cht [font metrics $gc(rev.fixedFont) -linespace]
 		set adjust [expr {int($wht) / $cht}]
@@ -387,13 +386,13 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 				diff2 0 $id
 			}
 			if {($bindtype == "D1") && ($ttype != "annotated")} {
-				get "id" $id
+				selectNode "id" $id
 			}
 		} 
 		# XXX: This can be done cleaner -- coalesce this
 		# one and the bottom if into one??
 		if {($ttype != "annotated") && ($bindtype == "D1")} {
-			get "rev" $rev
+			selectNode "rev" $rev
 		} elseif {($ttype == "annotated") && ($bindtype == "D1")} {
 			set rev1 $rev
 			if {"$file" == "ChangeSet"} {
@@ -416,7 +415,7 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 			diff2 0 $id
 		}
 		if {($bindtype == "D1") && ($ttype != "annotated")} {
-			get "id" $id
+			selectNode "id" $id
 		}
 	} else {
 		#puts "Error: tag not found ($line)"
@@ -444,7 +443,6 @@ proc centerRev {revname} \
 {
 	global cdim w
 
-	#print_stacktrace
 	set bbox [$w(graph) bbox $revname]
 	set b_x1 [lindex $bbox 0]
 	set b_x2 [lindex $bbox 2]
@@ -899,29 +897,11 @@ proc getLeftRev { {id {}} } \
 	if {$id == ""} {
 		catch {pack forget $w(cframe); set comments_mapped 0}
 	}
-	# Reset the colored lines to the parent nodes
-	$w(graph) itemconfigure "pline" -fill $gc(rev.arrowColor)
-	$w(graph) itemconfigure "mline" -fill $gc(rev.arrowColor)
-	$w(graph) itemconfigure "hline" -fill $gc(rev.arrowColor)
-
 	$w(graph) delete new
 	$w(graph) delete old
 	.menus.cset configure -state disabled -text "View Changeset "
 	.menus.difftool configure -state disabled
 	set rev1 [getRev "old" $id]
-	catch {exec bk prs -hr$rev1 -d:KIDS: $fname} kids
-	foreach r $kids {
-		$w(graph) itemconfigure "l_$rev1-$r" -fill $gc(rev.hlineColor)
-	}
-	catch {exec bk prs -hr$rev1 -d:KID: $fname} kid
-	if {$kid != ""} {
-		$w(graph) itemconfigure "l_$kid" -fill $gc(rev.hlineColor)
-	}
-	set mpd [open "|bk prs -hr$rev1 {-d:MPARENT:} $fname"]
-	if {[gets $mpd mp]} {
-		$w(graph) itemconfigure "l_$mp-$rev1" -fill $gc(rev.hlineColor)
-	}
-	$w(graph) itemconfigure "l_$rev1" -fill $gc(rev.hlineColor)
 	if {[info exists rev2]} { unset rev2 }
 	if {$rev1 != ""} { .menus.cset configure -state normal }
 }
@@ -963,6 +943,7 @@ proc getRev {type {id {}} } \
 proc filltext {win f clear {msg {}}} \
 {
 	global search w file
+	#puts "filltext win=($win) f=($f) clear=($clear) msg=($msg)"
 
 	$win configure -state normal
 	if {$clear == 1} { $win delete 1.0 end }
@@ -970,24 +951,10 @@ proc filltext {win f clear {msg {}}} \
 		$win insert end "$str\n"
 	}
 	catch {close $f} ignore
-	set numLines [$win index "end -1 chars linestart" ]
-	# lm's code is broken -- need to fix correctly
-	if {0} {
-	    if {$numLines > 1.0} {
-		    set line [$win get "end - 1 char linestart" end]
-		    while {"$line" == "\n"} {
-			    $win delete "end - 1 char linestart" end
-			    set line [$win get "end - 1 char linestart" end]
-		    }
-		    $win insert end "\n"
-	    } else {
-		    if {$msg != ""} {$win insert end "$msg\n"}
-	    }
-	}
 	$win configure -state disabled
+	if {$clear == 1 } { busy 0 }
 	searchreset
 	set search(prompt) "Welcome"
-	if {$clear == 1 } { busy 0 }
 }
 
 #
@@ -995,16 +962,16 @@ proc filltext {win f clear {msg {}}} \
 #
 proc prs {} \
 {
-	global file rev1 dspec dev_null search w diffpair ttype
+	global file rev1 dspec dev_null search w diffpair ttype 
 
 	getLeftRev
 	if {"$rev1" != ""} {
 		set diffpair(left) $rev1
 		set diffpair(right) ""
 		busy 1
-		set prs [open "| bk prs {$dspec} -r$rev1 \"$file\" 2>$dev_null"]
+		set prs [open "|bk prs {$dspec} -r$rev1 \"$file\" 2>$dev_null"]
 		set ttype "file_prs"
-		filltext $w(aptext) $prs 1
+		filltext $w(aptext) $prs 1 "prs output"
 	} else {
 		set search(prompt) "Click on a revision"
 	}
@@ -1049,14 +1016,14 @@ proc sfile {} \
 	set sfile [exec bk sfiles $file]
 	set f [open "$sfile" "r"]
 	set ttype "sccs"
-	filltext $w(aptext) $f 1
+	filltext $w(aptext) $f 1 "No sfile data"
 }
 
 #
 # Displays annotated file listing or changeset listing in the bottom 
 # text widget 
 #
-proc get { type {val {}}} \
+proc selectNode { type {val {}}} \
 {
 	global file dev_null rev1 rev2 Opts w srev ttype
 
@@ -1069,7 +1036,7 @@ proc get { type {val {}}} \
 	set srev ""
 
 	if {$type == "id"} {
-		getLeftRev $val
+		#getLeftRev $val
 	} elseif {$type == "rev"} {
 		set rev1 $val
 	}
@@ -1080,7 +1047,7 @@ proc get { type {val {}}} \
 		set get \
 		    [open "| bk get $Opts(get) -Pr$rev1 \"$file\" 2>$dev_null"]
 		set ttype "annotated"
-		filltext $w(aptext) $get 1
+		filltext $w(aptext) $get 1 "No annotation"
 		return
 	}
 	set rev2 $rev1
@@ -1171,14 +1138,14 @@ proc currentMenu {} \
 	global file gc rev1 rev2 bk_fs dev_null 
 
 	if {$file != "ChangeSet"} {return}
-	cd2root
 	if {$rev1 == ""} {return}
 	if {![info exists rev2] || ($rev2 == "")} { 
 		set end $rev1 
 	} else {
-		# don't want to modifey global rev2 in this procedure
+		# don't want to modify global rev2 in this procedure
 		set end $rev2
 	}
+	cd2root
 	$gc(current) delete 1 end
 	set revs [open "| bk -R prs -hbMr$rev1..$end {-d:I:\n} ChangeSet"]
 	while {[gets $revs r] >= 0} {
@@ -1211,7 +1178,6 @@ proc csetdiff2 {{rev {}}} \
 	global file rev1 rev2 Opts dev_null w ttype
 
 	busy 1
-	cd2root
 	if {$rev != ""} { set rev1 $rev; set rev2 $rev }
 	$w(aptext) configure -state normal; $w(aptext) delete 1.0 end
 	$w(aptext) insert end "ChangeSet history for $rev1..$rev2\n\n"
@@ -1220,9 +1186,9 @@ proc csetdiff2 {{rev {}}} \
 	while {[gets $revs r] >= 0} {
 		set c [open "| bk sccslog -r$r ChangeSet" r]
 		set ttype "cset_prs"
-		filltext $w(aptext) $c 0
+		filltext $w(aptext) $c 0 "cset_prs"
 		set log [open "| bk cset -Hr$r | bk _sort | bk sccslog -" r]
-		filltext $w(aptext) $log 0
+		filltext $w(aptext) $log 0 "sccslog"
 	}
 	busy 0
 	catch {close $revs}
@@ -1446,6 +1412,7 @@ proc widgets {} \
 	global	search Opts gc stacked d w dspec wish yspace paned 
 	global  tcl_platform fname app ttype
 
+	set sem ""
 	set ttype ""
 	set dspec \
 "-d:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)\n}\$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n"
@@ -1665,15 +1632,14 @@ proc widgets {} \
 	grid columnconfigure .cmd 0 -weight 1
 	grid columnconfigure .cmd 1 -weight 2
 
-	bind $w(graph) <1>		{ prs; currentMenu; break }
-	#bind $w(graph) <1>		{ prs; break }
-	bind $w(graph) <3>		"diff2 0; currentMenu; break"
-	bind $w(graph) <Double-1>	{get "id"; break}
+	bind $w(graph) <Button-1>	{ prs; currentMenu; break }
+	bind $w(graph) <Double-1>	{ selectNode "id"; break }
+	bind $w(graph) <3>		{ diff2 0; currentMenu; break }
 	bind $w(graph) <h>		"history"
 	bind $w(graph) <t>		"history tags"
 	bind $w(graph) <d>		"diffParent"
-	bind $w(graph) <Button-2>	{history; break}
-	bind $w(graph) <Double-2>	{history tags; break}
+	bind $w(graph) <Button-2>	{ history; break }
+	bind $w(graph) <Double-2>	{ history tags; break }
 	bind $w(graph) $gc(rev.quit)	"done"
 	bind $w(graph) <s>		"sfile"
 	bind $w(graph) <Prior>		"$w(aptext) yview scroll -1 pages"
@@ -1956,13 +1922,14 @@ proc init {} \
 #
 proc arguments {} \
 {
-	global rev1 rev2 argv argc fname gca srev errorCode
+	global rev1 rev2 dfile argv argc fname gca srev errorCode
 
 	set rev1 ""
 	set rev2 ""
 	set gca ""
 	set srev ""
 	set fname ""
+	set dfile ""
 	set fnum 0
 	set argindex 0
 
@@ -1979,6 +1946,9 @@ proc arguments {} \
 		    }
 		    "^-l.*" {
 			set rev1 [string range $arg 2 end]
+		    }
+		    "^-d.*" {
+			set dfile [string range $arg 2 end]
 		    }
 		    default {
 		    	incr fnum
@@ -2055,7 +2025,7 @@ proc lineOpts {rev} \
 proc startup {} \
 {
 	global fname rev2rev_name w rev1 rev2 gca srev errorCode gc dev_null
-	global file merge diffpair
+	global file merge diffpair dfile
 
 	set ids 0
 
@@ -2086,6 +2056,32 @@ proc startup {} \
 		set diffpair(right) $rev2
 		diff2 2
 	} 
+	if {[info exists dfile] && ($dfile != "")} {
+		printCanvas
+	}
+}
+
+proc printCanvas {} \
+{
+	global w dfile
+
+	puts stderr "dumping file=($dfile)"
+	update
+	set x0 0
+	set y0 0
+	set x1 [winfo width $w(graph)]
+	set y1 [winfo height $w(graph)]
+	foreach {x0 y0 x1 y1} [$w(graph) bbox all] {}
+	puts stderr "{x0 y0 x1 y1}={$x0 $y0 $x1 $y1}"
+	set width [expr {$x1-$x0}]
+	set h [expr {$y1-$y0}]
+	set fd [open "|convert - $dfile" w]
+	$w(graph) postscript -channel $fd -x $x0 -y $y0 \
+	    -width $width -height $h
+	#puts [$w(graph) postscript -x $x0 -y $y0 \
+	#    -width $width -height $h]
+	catch { close $fd } err
+	exit
 }
 
 wm withdraw .
