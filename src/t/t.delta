@@ -18,6 +18,18 @@ echo hi there > init
 bk delta $S -i init
 if [ ! -f SCCS/s.init ]; then echo Failed to create s.file; exit 1; fi
 echo OK
+
+echo $N Make sure delta -i works with a c.file ......................$NL
+echo hi there > comments
+echo BitKeeper rocks > SCCS/c.comments
+bk delta $S -i comments
+test "BitKeeper rocks" = "`bk prs -hr+ -nd:C: comments`" || {
+	echo failed
+	bk prs -r1.0.. comments
+	exit 1
+}
+echo OK
+
 echo $N Check delta -i works w/ existing file .......................$NL
 echo hi there again > init
 bk delta -i init 2> delta.out
@@ -27,6 +39,7 @@ if [ $? -ne 0 ]; then echo Failed; exit 1; fi
 if [ -f SCCS/z.init ]; then echo Failed, fail to clean zlock; exit 1; fi
 rm -f init
 echo OK
+
 echo $N Make sure delta -l works ....................................$NL
 cp SCCS/s.init SCCS/s.T
 X=`wc SCCS/s.T`
@@ -38,6 +51,7 @@ if [ ! -f SCCS/p.T ]; then echo Failed to leave file locked; exit 1; fi
 if [ ! -f T ]; then echo Failed to get file; exit 1; fi
 if writable T; then :; else echo Failed to leave file writeable; exit 1; fi
 echo OK
+
 echo $N Make sure delta -il works ...................................$NL
 echo delta -il > init2
 bk delta $S -il init2
@@ -45,6 +59,7 @@ if [ ! -f SCCS/s.init2 ]; then echo failed to create file; exit 1; fi
 if [ ! -f SCCS/p.init2 ]; then echo failed to lock file; exit 1; fi
 bk clean init2
 echo OK
+
 rm -f SCCS/p.T T
 echo $N Make sure delta -I works with good file .....................$NL
 cat > INITX <<EOF
@@ -61,6 +76,7 @@ if [ $? -ne 0 ]; then echo Failed to add comment; exit 1; fi
 grep -q '^.cPthis/is/the/pathname$' SCCS/s.init_test
 if [ $? -ne 0 ]; then echo Failed to add path; exit 1; fi
 echo OK
+
 echo $N Make sure delta -I fails with bad file ......................$NL
 ls > INITX
 bk co -l $Q init_test
@@ -74,6 +90,7 @@ bk delta $Q -IINITX init_test 2>OUT && {
 	exit 1
 }
 echo OK
+
 echo $N Make sure delta -I works w/ blank comments ..................$NL
 cat > INITX <<EOF
 D 1.2 97/05/28 23:49:57 joe_user@joes_hostname 0 0 0/0/0
@@ -91,6 +108,7 @@ if [ $? -ne 0 ]; then echo Failed to add blank comment line.; exit 1; fi
 grep -q '^.c This is the line after the blank line.$' SCCS/s.init_test
 if [ $? -ne 0 ]; then echo Failed to add last line in comment; exit 1; fi
 echo OK
+
 #echo $N Make sure delta -n works ....................................$NL
 #bk get $S -e T
 #bk delta $S -ny T
@@ -104,6 +122,7 @@ echo "I am the comment" | bk delta $S T 2> ${DEV_NULL}
 grep -q '^.c I am the comment$' SCCS/s.T
 if [ $? -ne 0 ]; then echo Failed to add comment; exit 1; fi
 echo OK
+
 echo $N Make sure delta prompts once with -Y ........................$NL
 bk get $S -e T
 bk get $S -e init
@@ -118,12 +137,14 @@ if [ $? -eq 0 ]; then echo Added unwanted second comment to T; exit 1; fi
 grep -q '^.c second comment$' SCCS/s.init
 if [ $? -eq 0 ]; then echo Added unwanted second comment to init; exit 1; fi
 echo OK
+
 echo $N Make sure ci -u with no change works ........................$NL
 bk get $S -e init2
 bk ci $Q -u init2 2> ${DEV_NULL}
 if [ ! -f init2 ]; then echo File not checked out.; exit 1; fi
 if writable init2; then echo File not read only.; exit 1; fi
 echo OK
+
 
 echo $N Make sure delta -G works ....................................$NL
 # Figure out which kind of touch we have
@@ -139,6 +160,7 @@ cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
 
+
 echo $N Make sure delta -a new file work ............................$NL
 mkdir A
 echo "echo this is a new file" > A/data
@@ -146,11 +168,13 @@ bk sfiles -x A | bk delta $Q -a -l -y"new file" -
 REV=`bk prs -r+ -hd:I: A/data`
 if [ ${REV}X != "1.1"X ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N Make sure delta -a unchanged file work ......................$NL
 bk sfiles A | bk delta $Q -a -l -y"unchanged file" -
 REV=`bk prs -r+ -hd:I: A/data`
 if [ ${REV}X != "1.1"X ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N Make sure delta -a changed file work ........................$NL
 echo fff > A/bar
 bk new $Q A/bar
@@ -162,10 +186,12 @@ with newline" -
 REV=`bk prs -r+ -hd:I: A/data`
 if [ ${REV}X != "1.2"X ]; then echo failed $REV; exit 1; fi
 echo OK
+
 echo $N Make sure delta -y can have newlines ........................$NL
 bk prs -r+ A/data | grep 'with newline' > /dev/null
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
+
 if [ "$PLATFORM" = "UNIX" ]
 then #-----------------------------------------------------------------
 echo $N Make sure delta -a symlink dir works ........................$NL
@@ -175,20 +201,24 @@ bk sfiles -x A | bk delta $Q -a -l -y"new symlink dir" -
 REV=`bk prs -r+ -hd:I: A/symdir`
 if [ ${REV}X != "1.1"X ]; then echo failed; exit 1; fi
 echo OK
+
 fi #--------------------------------------------------------------------
 echo $N Make sure delta -i does not check in ........................$NL
 mkdir garbage; cd garbage; touch a b c d e s.c s.f
 bk delta $Q -i
 if [ -d "SCCS" ]; then	echo failed - it did check stuff in; exit 1; fi
 echo OK
+
 echo $N Make sure ci -i does not check in ...........................$NL
 bk ci $Q -i
 if [ -d "SCCS" ]; then	echo failed - it did check stuff in; exit 1; fi
 echo OK
+
 echo $N Make sure delta -i a b c d does check in ....................$NL
 bk delta $Q -i a b c d e
 if [ ! -d "SCCS" ]; then	echo failed; exit 1; fi
 echo OK
+
 if [ $PLATFORM = "WIN32" ]
 then #-------------------------------------------------------------
 echo $N Make sure delta uses the real name of the sfile .............$NL
@@ -203,6 +233,7 @@ if [ $? -ne 0 ]; then echo failed; exit 1; fi
 bk prs -h -r+ -d':DPN:\n' DATA | grep -q "A/DATA\$"
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 echo OK
+
 fi #---------------------------------------------------------------
 cd ..
 rm -rf A garbage
@@ -242,6 +273,7 @@ do
 	writable hi.c || { echo failed; exit 1; }
 done
 echo OK
+
 echo $N Make sure ci -i works with checkout:edit preference .........$NL
 cp config.sav BitKeeper/etc/config
 echo "checkout:edit" >> BitKeeper/etc/config
@@ -253,6 +285,7 @@ if [ ! -f SCCS/p.lo.c ]; then echo failed; exit 1; fi
 if [ ! -f lo.c ]; then echo failed; exit 1; fi
 writable lo.c || { echo failed; exit 1; }
 echo OK
+
 echo $N Make sure ci -i works with checkout:get preference ..........$NL
 cp config.sav BitKeeper/etc/config
 echo "checkout:get" >> BitKeeper/etc/config
@@ -266,6 +299,7 @@ if [ ! -f low.c ]; then echo failed; exit 1; fi
 if [ -f SCCS/p.low.c ]; then echo failed; exit 1; fi
 if writable low.c; then echo failed; exit 1; fi
 echo OK
+
 echo $N Make sure ci works with checkout:get preference .............$NL
 bk edit $Q low.c mid.c
 echo mid2 > mid.c
@@ -278,6 +312,7 @@ if [ ! -f low.c ]; then echo failed; exit 1; fi
 if [ -f SCCS/p.low.c ]; then echo failed; exit 1; fi
 if writable low.c; then echo failed; exit 1; fi
 echo OK
+
 echo $N Make sure checkout:GET preserve modtime if no keyword .......$NL
 cp config.sav BitKeeper/etc/config
 echo "checkout:GET" >> BitKeeper/etc/config
@@ -296,12 +331,14 @@ if writable low.c; then echo failed; exit 1; fi
 find . -newer mid.c | grep -q ./SCCS/s.mid.c
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N Make sure "bk new -b" forces binary encoding for text file ....$NL
 echo "this is text" > text
 bk new $Q -b text
 ENC=`bk prs -hr+ -d:ENC: text`
 if [ "$ENC" != "binary" ]; then echo failed; exit 1; fi
 echo OK;
+
 
 echo $N Small ascii files with nulls should be caught ...............$NL
 echo baseline > baseline
@@ -320,6 +357,7 @@ grep -q 'file format is ascii, delta is binary' OUT || {
 	exit 1
 }
 echo OK
+
 
 echo $N Large ascii files with nulls should be caught ...............$NL
 cat >tmp <<EOF

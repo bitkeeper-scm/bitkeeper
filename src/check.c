@@ -130,7 +130,7 @@ check_main(int ac, char **av)
 		fprintf(stderr, "check: cannot find package root.\n");
 		return (1);
 	}
-	if (sane_main(0, 0)) return (1);
+	if (sane(0, resync)) return (1);
 	unless (cset = sccs_init(s_cset, flags, 0)) {
 		fprintf(stderr, "Can't init ChangeSet\n");
 		exit(1);

@@ -1192,6 +1192,8 @@ char	*pager(void);
 int	bkmail(char *url, char **to, char *subject, char *file);
 int	sfiles_skipdir(char *dir);
 void	bkversion(FILE *f);
+int	sane(int, int);
+int	global_locked(void);
 
 void	align_diffs(u8 *vec, int n, int (*compare)(int a, int b),
     int (*is_whitespace)(int i));

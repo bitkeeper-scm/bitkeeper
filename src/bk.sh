@@ -34,7 +34,7 @@ __cd2root() {
 # shorthand to dig out renames
 _renames() {
 	case "X$1" in
-	    X-r[0-9]*)
+	    X-r[0-9]*|X-r+)
 		;;
 	    *)
 	    	echo 'usage renames -r<rev> OR renames -r<rev>,<rev>'
@@ -662,7 +662,7 @@ _tag() {		# /* doc 2.0 */
 	while getopts qr: opt
 	do	case "$opt" in
 		q) OPTS="-q";;		# /* undoc? 2.0 */
-		r) REV=:$OPTARG;;	# /* undoc? 2.0 */
+		r) REV="|$OPTARG";;	# /* undoc? 2.0 */
 		esac
 	done
 	shift `expr $OPTIND - 1`
