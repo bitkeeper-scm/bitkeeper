@@ -1078,6 +1078,7 @@ proc widgets {} \
 	bind .p.bottom.t <1> "break"
 	bind .p.bottom.t <2> "break"
 	bind .p.bottom.t <3> "break"
+	bind .p.bottom.t <Motion> "break"
 
 	bind .p.top.c <1>		{ prs; break }
 	bind .p.top.c <3>		"diff2 0; break"
