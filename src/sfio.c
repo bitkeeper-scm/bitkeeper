@@ -17,6 +17,7 @@
  * repeats, except for the version number.
  */
 #include "system.h"
+#include <zlib.h>	/* for adler32 */
 #undef	unlink		/* I know the files are writable, I created them */
 WHATSTR("@(#)%K%");
 

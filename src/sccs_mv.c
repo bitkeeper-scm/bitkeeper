@@ -3,8 +3,6 @@
 #include "sccs.h"
 WHATSTR("%W%");
 
-#include "comments.c"
-
 char *getRelativeName(char *);
 void rmDir(char *);
 int mv(char *, char *);
@@ -109,9 +107,8 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 		s = sccs_restart(s);
 	}
 
-	comment = commentBuf;
-	gotComment = 1;
-	unless (s && (d = getComments(0))) {
+	d = sccs_parseArg(0, 'C', commentBuf, 0);
+	unless (s && d) {
 		error = 1;
 		goto out;
 	}
@@ -119,7 +116,6 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 	if (sccs_delta(s, flags, d, 0, 0) == -1) error = 1;
 out:	if (s) sccs_free(s);
 	free(destfile); free(sfile); free(gfile);
-	if (gotComment) commentsDone(saved);
 	return (error);
 }
 
@@ -138,7 +134,7 @@ getRelativeName(char *name)
 int
 mv(char *src, char *dest)
 {
-	//fprintf(stderr, "moving %s -> %s\n", src, dest);
+	debug((stderr, "moving %s -> %s\n", src, dest));
 	if (rename(src, dest)) {	/* try mv(1) */
 		char	cmd[MAXPATH*2 + 5];
 
@@ -161,7 +157,6 @@ void
 rmDir(char *dir)
 {
 	if (streq(".", dir) || samepath(".", dir)) return;
-	//fprintf(stderr, "removing %s\n", dir);
+	debug((stderr, "removing %s\n", dir));
 	rmdir(dir);
 }
-
