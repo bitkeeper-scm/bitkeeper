@@ -261,6 +261,7 @@ proc diffFiles {L R} \
 	}
 	if {![file exists $R]} {
 		displayMessage "File $R does not exist"
+		catch {file delete $tmp} err
 		return
 	}
 	set l [open $tmp r]
@@ -625,10 +626,10 @@ proc Guess {} \
 	# Try a partial basename match, ignoring case
 	set l [expr {$guessNext + 1}]
 	set file [.files.r get "$l.0" "$l.0 lineend"]
+	set L [string tolower $left]
 	while {$file != ""} {
-		set right [file tail $file]
-		if {[regexp -nocase $left $right] ||
-		    [regexp -nocase $right $left]} {
+		set R [string tolower [file tail $file]]
+		if {[string first $L $R] >= 0 || [string first $R $L] >= 0} {
 			Select .files.r rightLine rightFile $l.0
 			diffFiles $leftFile $rightFile
 			set guessNext $l
