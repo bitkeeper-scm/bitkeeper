@@ -378,6 +378,7 @@ import_RCS () {
 	do	bk rcs2sccs $CUTOFF $VERIFY $QUIET -q - < $i &
 	done
 	wait
+	bk _unlink < ${TMP}import$$
 }
 
 import_SCCS () {
