@@ -84,7 +84,7 @@ cmd_rclone_part1(int ac, char **av)
 		char	*new = fullname(path, 0);
 		getcwd(cwd, sizeof(cwd));
 		unless ((strlen(new) >= strlen(cwd)) && 
-		    strneq(cwd, new, strlen(cwd))) {
+		    pathneq(cwd, new, strlen(cwd))) {
 			out("ERROR-illegal cd command\n");
 			free(path);
 			drain();

@@ -56,7 +56,7 @@ unsafe_cd(char *path)
 	if (chdir(path)) return (1);
 	unless (Opts.daemon || Opts.safe_cd) return (0);
 	getcwd(b, MAXPATH);
-	unless ((strlen(b) >= strlen(a)) && strneq(a, b, strlen(a))) {
+	unless ((strlen(b) >= strlen(a)) && pathneq(a, b, strlen(a))) {
 		out("ERROR-illegal cd command\n");
 		return (1);
 	}
