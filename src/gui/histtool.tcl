@@ -1245,10 +1245,10 @@ proc busy {busy} \
 	update
 }
 
-proc widgets {fname} \
+proc widgets {} \
 {
 	global	search Opts gc stacked d w dspec wish yspace paned 
-	global  tcl_platform
+	global  tcl_platform fname
 
 	set dspec \
 "-d:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)\n}\$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n"
@@ -1339,13 +1339,16 @@ proc widgets {fname} \
 	    button .menus.difftool -font $gc(hist.buttonFont) -relief raised \
 		-bg $gc(hist.buttonColor) -pady $py -padx $px -borderwid $bw \
 		-text "Diff tool" -command "diff2 1" -state disabled
+	    button .menus.file -font $gc(hist.buttonFont) -relief raised \
+		-bg $gc(hist.buttonColor) -pady $py -padx $px -borderwid $bw \
+		-text "Select File" -command { selectFile }
 	    if {"$fname" == "ChangeSet"} {
 		    .menus.cset configure -command csettool
 		    pack .menus.quit .menus.help .menus.mb .menus.cset \
-			-side left -fill y
+			.menus.file -side left -fill y
 	    } else {
 		    pack .menus.quit .menus.help .menus.difftool \
-			.menus.mb .menus.cset -side left -fill y
+			.menus.mb .menus.cset .menus.file -side left -fill y
 	    }
 
 	frame .p
@@ -1499,6 +1502,22 @@ proc widgets {fname} \
 	wm deiconify .
 	focus $w(graph)
 	. configure -background $gc(BG)
+}
+
+proc selectFile {} \
+{
+	global gc fname
+
+	set file [tk_getOpenFile]
+	catch {set f [open "| bk sfiles -g \"$file\"" r]} err
+	if { ([gets $f fname] <= 0)} {
+		displayMessage "$file is not under revision control.\n
+Please select a revision controled file"
+	} else {
+		#displayMessage "file=($file) err=($err)"
+		histtool $fname "-$gc(hist.showHistory)"
+	}
+	close $f
 } ;# proc widgets
 
 #
@@ -1525,7 +1544,7 @@ proc histtool {fname R} \
 	set bad 0
 	set file [exec bk sfiles -g $fname 2>$dev_null]
 	if {"$file" == ""} {
-		fatalMessage "No such file \"$fname\" rev=($R)"
+		displayMessage "No such file \"$fname\" rev=($R)" 0
 	}
 	if {[catch {exec bk root $file} proot]} {
 		wm title . "histtool: $file $R"
@@ -1549,12 +1568,14 @@ proc histtool {fname R} \
 			history "-r$srev"
 		}
 	} else {
-		set ago [exec bk prs -hr+ -d:AGE: $fname]
+		set ago ""
+		catch {set ago [exec bk prs -hr+ -d:AGE: $fname]}
 		# XXX: Highlight this in a different color? Yellow?
 		$w(aptext) configure -state normal; $w(aptext) delete 1.0 end
 		$w(aptext) insert end  "Error: No data within the given time\
 period; please choose a longer amount of time.\n
-The file $fname was last modified $ago ago."
+The file $fname was last modified ($ago) ago."
+		histtool $fname +
 	}
 	set search(prompt) "Welcome"
 	focus $w(graph)
@@ -1635,10 +1656,13 @@ if {$fname == ""} {
 	set fname ChangeSet
 	catch {exec bk sane} err
 	if {[lindex $errorCode 2] == 1} {
-		fatalMessage "$err"
+		displayMessage "$err" 0
 	}
 }
-widgets $fname
+
+widgets
+histtool $fname "-$gc(hist.showHistory)"
+
 if {$rev1 == ""} {
 	histtool $fname "-$gc(hist.showHistory)"
 } else {

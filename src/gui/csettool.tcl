@@ -817,7 +817,10 @@ proc main {} \
 {
 	global argv0 argv argc
 
-	if {[regexp {^[ \t]*-r(.*)} $argv dummy revs] == 0} {
+	set revs ""
+	if {$argv == ""} {
+		set revs "+"
+	} elseif {[regexp {^[ \t]*-r(.*)} $argv dummy revs] == 0} {
 		puts "Usage: csettool -r<revs>"
 		exit 1
 	}
