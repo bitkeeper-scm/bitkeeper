@@ -65,6 +65,7 @@ int	diffsplit_main(int, char **);
 int	dotbk_main(int, char **);
 int	exists_main(int, char **);
 int	export_main(int, char **);
+int	findcset_main(int, char **);
 int	f2csets_main(int, char **);
 int	fdiff_main(int, char **);
 int	find_main(int, char **);
@@ -199,6 +200,7 @@ struct	command cmdtbl[] = {
 	{"_cleanpath", cleanpath_main},
 	{"_exists", exists_main},
 	{"_find", find_main },
+	{"_findcset", findcset_main },
 	{"_g2sccs", _g2sccs_main},
 	{"_get", get_main},
 	{"_gzip", gzip_main }, 
