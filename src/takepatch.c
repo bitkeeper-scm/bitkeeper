@@ -976,6 +976,11 @@ tree:
 			if (exists(pendingFile)) continue;
 			if (f = fopen(pendingFile, "w+")) {
 				break;
+			} else {
+				SHOUT();
+				perror(pendingFile);
+				fputs("Check permissions on PENDING\n", stderr);
+				cleanup(CLEAN_RESYNC);
 			}
 			if (i > 100) {
 				SHOUT();
