@@ -202,7 +202,7 @@ EOF
 [ $? -eq 0 ] || { echo resolve failed; cat resolve.out; exit 1; }
 L=`bk get $Q -p src/h.h | wc -l`
 target=5
-if [ "X$BK_RESOLVE_MERGEPROG" == "Xsmerge" ]; then
+if [ "X$BK_RESOLVE_MERGEPROG" = "Xsmerge" ]; then
 	target=7
 fi
 [ $L -eq $target ] || { echo merge failed; exit 1; }
