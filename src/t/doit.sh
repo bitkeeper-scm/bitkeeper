@@ -28,7 +28,9 @@ for i in $list
 do	n=${i#t.}
 	echo ------------ $n tests
 	( echo "set fnord $dashv ; shift"
-	cat setup $i cleanup ) | @SH@ $dashx
+	  echo 'PATH=$PATH:/usr/local/bin:/usr/freeware/bin'
+	  cat setup $i cleanup
+	) | @SH@ $dashx
 	EXIT=$?
 	if [ $EXIT != 0 ]
 	then	echo Test exited with error $EXIT
