@@ -539,6 +539,9 @@ say (char const *format, ...)
   vararg_start (args, format);
   vfprintf (stdout, format, args);
   va_end (args);
+#ifdef __CYGWIN__
+  fputs("\r", stdout);
+#endif
   fflush (stdout);
 }
 
