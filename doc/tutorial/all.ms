@@ -1,11 +1,6 @@
 .nr PS 12
 .nr VS 14
 .nr FG 0 1
-.de H
-.	br
-.	ne 2i
-.	NH \\$1
-..
 .de FG
 .	br
 .	ce 1
@@ -23,9 +18,9 @@
 .de LI
 .       IP \(bu 2
 ..
-.H 1
+.NH 1
 Getting started with BitKeeper
-.H 2
+.NH 2
 Creating a new project
 .LP
 Before you can start using BitKeeper, you need to create a repository.
@@ -52,7 +47,7 @@ figure 1.
 .LP
 .so setup.pic
 .FG A new BitKeeper repository
-.H 2
+.NH 2
 Importing data
 .LP
 .so import.pic
@@ -70,7 +65,7 @@ bk helptool import
 .CE
 Once you have imported your data, you are ready to create a personal
 workspace and start working.
-.H 2
+.NH 2
 Cloning a personal workspace
 .LP
 Just as with many other SCM systems, work occurs in a personal workspace,
@@ -93,22 +88,17 @@ remote sites, work without limitations or restrictions.  Performance is
 much improved since all operations, except for updates, are local.
 .LP
 After you have cloned a repository, you are ready to start making changes.
-.H 2
+.NH 2
 Editing files
 .LP
 BitKeeper repositories contain the revision history of all files.  
 Repositories may be configured to run in ``locked'' or ``unlocked''
 mode, the default (in BK 2.x) being unlocked.  Running with the default mode,
 which has somewhat higher performance, requires you to lock files
-before making changes, the files are readonly unless they are locked.
-To learn more about configuring the behavior of your repositories,
-run:
-.CS
-bk helptool config-etc
-.CE
+before making changes, the files are read-only unless they are locked.
 .LP
 In the default mode, the files will not be visible until they are
-checked out, whether it be in locked or unlocked mode.  If you
+checked out.  If you
 did a clone and went to look for your files, only to find nothing
 but some \f(CWSCCS\fP directories there, fear not, your files are 
 there under the \f(CWSCCS\fP directories.  The choice of the name
@@ -124,6 +114,12 @@ you run \f(CWemacs\fP on a file, if the file is not there,
 \f(CWemacs\fP will check it out for you.  The \f(CWpatch\fP command
 is another example of a program which knows what to do with
 \f(CWSCCS\fP files.
+.LP
+To learn more about configuring the behavior of your repositories,
+run:
+.CS
+bk helptool config-etc
+.CE
 .LP
 Assuming that your repository is running in the default mode, before
 you start working, you need to lock the files you wish to change.
@@ -145,7 +141,7 @@ but all are actually in the repository.
 Now that you have your own repository, and you've locked the files you
 wish to modify, you may edit them with your favorite editor and make
 the changes they need.  Then you are ready to check in the new work.
-.H 2
+.NH 2
 Checking in changes
 .LP
 Once you have made changes, you will want to check in those changes.
@@ -180,71 +176,102 @@ each file (if it is a revision controlled file) or the file contents
 (if it is not a revision controlled file).
 .LP
 XXX - need to talk about committing a changeset.
-.H 2
-Updating the Master
-.\".LP
-.\"XXX - talk about pushing changes, why this is needed, and that it may 
-.\"not work if there are new changes in the parent.
+.NH 2
+Sharing your changes
+.\" What you are going to do.
+.\" BitKeeper works like this.
+.\" Other systems work like that.
+.\" Pros/cons.
+.\" The picture...
+.\" Expand on command details.
 .LP
-When you are ready to share your work you will probably want to update
-the Shared Repository, or Master, with your changes.
+When you have checked in your changes, you need to ``push'' them
+to the shared repository so that other developers may get those
+changes.
+BitKeeper does not automatically push the changes from your
+repository to the shared (aka parent) repository.
+You may be familiar with other systems which do automatically publish all
+changes on checkin.
+They have that model because they have no local revision history, there
+is only way place to store the checkins.
+The BitKeeper model adds an extra step but also gives you the
+ability to work in isolation, making as many checkins as you
+need to get your change to work.
+In the event the change turns out to be a bad idea, you can throw away
+that repository and start over, even if you have made multiple checkins.
 .so push.pic
-.FG Updating the Master
+.FG Updating the shared repository
 .LP
-In BitKeeper this is done explicitly using
+The command used move your changes to the shared repository is
 .CS
 bk push
 .CE
+There is a related command, \f(CWbk pull\fP, which moves changes from
+the shared repository to your repository.
 .LP
-If your repository is not a superset of the Master repository (ie., someone
-else pushed new work into the Master before you) you must update your
-workspace first (see the next section, "Updating the personal workspace")
-and then try the push again.
-.H 2
-Updating the personal workspace
-.\".LP
-.\"XXX - talk about the non-conflicting update, point them at merging 
-.\"XXX - non-conflicting update, auto-merging updates, merging
+The push command will not succeed unless your repository is a superset
+of the shared repository.  If there is new work in the shared repository,
+you have to ``pull'' it, merge it locally, and then retry the push.  The
+idea is that the shared repository is a shared resource and since it is
+locked during a merge, it is better to do the merge in your personal
+repository.  The next section talks about getting other people's changes.
+.NH 2
+Getting other's changes
 .LP
-To get changes from the Master to your personal workspace, you must update
-your personal workspace.
+If you are working with other people, there is a good chance that someone
+has checked in changes and pushed them.  When you want those, you need to
+pull them into your repository with the \f(CWbk pull\fP command.
 .so pull.pic
 .FG Updating your workspace
-You can do this by running
+There are three categories of updates:
+.LI
+Only the shared repository has new work;
+.LI
+Both repositories have new work but it is in different files and/or it all
+auto merges;
+.LI
+Both repositories have new work and at least some of it does not auto merge.
+.NH 3
+Simple updates
+.LP
+If you have made no local changes, then a pull will always complete without
+any intervention.
+If you have made local changes, but they do not conflict, i.e., there is no
+overlap between your changes and the other repository's changes, then the
+pull will also complete without intervention.  If you want to look at all
+changes, even if they would atuo merge, you can run
 .CS
-bk pull
+bk pull -i
 .CE
-There are three types of updates:
-.LI
-non-conflicting updates 
-.LI
-conflicting updates that can be auto-merged
-.LI
-conflicting updates that must be merged manually
+.NH 3
+Conflicting changes
 .LP
-First, a file conflict is defined as two deltas made in parallel in different
-repositories.  A non-conflicting update or a conflicting update that
-can be automerged will be pulled successfully, by default.  You can turn
-off the automerge by using the \-i option with bk pull.
-.LP
-A pull will not add data to your repository if there is a conflict that
-must be resolved manually.
-Those conflicts that touch the same regions of a file or rename the
-same file require a manual merge.  The pulled data will be saved in a RESYNC
-directory until you resolve the conflicts or abort the pull 
+If you have made local changes that overlap with the changes from the 
+other repository the pull will not complete successfully until you 
+manually merge the conflicts.
+The updates will be saved in a RESYNC
+directory until you resolve the conflicts or abort the pull. 
+To resolve conflicts, run 
 .CS
 bk resolve
 .CE
-or
+To abort the pull, use
 .CS
 bk abort
 .CE
-For more information on merging, see the next section, "Merging Conflicts" and
+For more information on resolving conflicts, see the next section, 
+"Merging Conflicts" and
 .CS
 bk help merging
 bk helptool merging
 .CE
-.H 2
+.NH 2
 Merging conflicts
 .LP
 Rip off the merging man page
+.LP
+When you do a pull and need to manually resolve conflicts, you need to
+walk all the conflicts in a file using BitKeeper's resolver,
+.CS 
+bk resolve
+.CE
