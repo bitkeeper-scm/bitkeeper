@@ -1,0 +1,49 @@
+.so bk-macros
+.TH "bk help" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk help \- get help for \*(BK commands
+.SH SYNOPSIS
+.Bc bk help [\-akp] [
+.OPTreq \-f\  filename
+.B ]
+.ARG topic
+.SH DESCRIPTION
+The 
+.B bk help
+command displays the online help for the specified command or topic.
+In general, the graphical 
+.B bk helptool
+is a nicer interface, but sometimes this is useful.  Both display the
+same information.
+.SH OPTIONS
+.TP .9i
+.B \-a
+Just search the docs for the string
+.ARG topic .
+This matches substrings and prints the topic followed by the matching
+line.
+.tp
+.OPTreq \-f file
+Use
+.ARG file
+as the helptext file.
+.tp
+.B \-k
+Similar to
+.BR -a ,
+but only matches whole words.
+.tp
+.B \-p
+disable the use of any pagerm just send the output to stdout.
+.SH "FUTURE DIRECTIONS"
+We will be adding a
+.B bk man
+command to format the man pages on the fly.
+.SH TODO
+The help system is actually useful for other docs besides \*(BK.  At
+\*(BM we have the Tcl/Tk docs reformatted into a helpdoc and some
+day we need to explain how other people can do this.
+.SH "SEE ALSO"
+.SA helptool 1
+.SH CATEGORY
+.B Basics

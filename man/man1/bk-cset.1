@@ -1,93 +1,71 @@
-.so ../macros
-.TH "bk cset" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk cset" 1 20%E% "\*(BC" "\*(UM"
 .\"    ====================== BitKeeper cset command ======================
 .SH NAME
 bk cset \- creates and manipulates changesets
 .SH SYNOPSIS
-.if t \{\
-.B cset 
-.OA [\-CcHhpq] 
-.OA d range
-.OA i list
-.OA l range
-.OA M range
-.OA m range
-.OA r range
-.OA S sym
-.OA x list
-.OA Y file
-.OA y msg 
-.\}
-.if n
-bk cset [\-CcHhpq] [-d<range>] [i<list>] [l<range>] 
-[-M<range>] [-m<range>] [-r<range>] [-S<sym>] [-x<list>] [-Y<file>] [-y<msg>]
+.Bc bk cset [\-Cpq] [
+.OPTreq \-i list
+.Bc ] [
+.OPTreq \-l range
+.Bc ] [
+.OPTreq \-M range
+.Bc ] [
+.OPTreq \-S sym
+.Bc ] [
+.OPTreq \-x list
+.Bc ] [
+.OPTreq \-Y file
+.Bc ] [
+.OPTreq \-y msg
+.B ]
 .SH DESCRIPTION
 .LP
-The cset command is a low level command used to generate BitKeeper patches.
+The cset command is a low level command used mostly to generate \*(BK patches.
 .SH OPTIONS
-.if t .TP
+.if t .TP .7i
 .if n .TP 1i
-.B -C
+.B \-C
 Clear and remark all ChangeSet boundaries.
 .tp
-.B -c
-Like -m, except generate only ChangeSet diffs.
+.OPTreq \-i list
+create a new cset on TOL that includes the csets in
+.ARG list .
 .tp
-.AN -d range
-Do unified diffs for the range,
-.IR range .
-.tp
-.B -H
-With -r listing, hide Changeset file from file list.
-.tp
-.B -h
-With -r listing, show historic path.
-.tp
-.AN -i list
-create a new cset on TOT that includes the csets in
-.IR list .
-.tp
-.AN -l range
+.OPTreq \-l range
 List each rev in 
-.I range 
+.ARG range 
 as file@rev (may be multiline per file).
 .tp
-.AN -M range
-Mark the files included in the range of csets.
+.OPTreq \-M range
+Mark the files included in the
+.ARG range
+of csets.
 .tp
-.AN -m range
-Generate a patch of the changes in
-.IR range .
-.tp
-.B -p
+.B \-p
 Print the list of deltas being added to the cset.
 .tp
-.B -q
+.B \-q
 Run quietly.
 .tp
-.AN -r range
-List the filenames:rev..rev which are included in
-.IR range .
-.tp
-.AN -S sym
+.OPTreq \-S sym
 Set
-.I sym
+.ARG sym
 to be a symbolic tag for this revision.
 .tp
-.AN -x list
-Create a new cset on TOT that excludes the csets in 
-.IR list .
+.OPTreq \-x list
+Create a new cset on TOL that excludes the csets in 
+.ARG list .
 .tp
-.AN -Y file
+.OPTreq \-Y file
 Sets the changeset comment to the contents of
-.IR file .
+.ARG file .
 .tp
-.AN -y msg
+.OPTreq \-y msg
 Sets the changeset comment to 
-.IR msg .
+.ARG msg .
 .SH BUGS
 .LP
 This command does too much and needs to be split apart.
-Many of these options are going away, to be replaced by the rset command.
 .SH CATEGORY
 .B Repository

@@ -1,0 +1,94 @@
+.so bk-macros
+.TH "bk rset" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk rset \- generate a ``release set''
+.SH SYNOPSIS
+.B bk rset [-ahH] 
+.OPTreq -r rev
+.br
+.B bk rset [-ahH] 
+.OPTreq -l rev
+.SH DESCRIPTION
+.B bk rset
+is used to generate a view of either the changes contained in a particular
+changeset, the changes contained in a sequence of changesets, or a view
+of the entire repository as of a particular changeset.
+.LP
+To see the changes made by a particular change, try
+.DS
+$ bk rset -r1.201
+ChangeSet@1.200..1.201
+src/gui/fmtool.tcl@1.17..1.21
+.DE
+.BR Note :
+the first revision listed in the
+.I 1.17..1.21
+is the revision of the last delta created before the start of the
+specified changeset.  It is done this way so that programs which
+parse this output know where the last changeset stopped.  It is also
+worth noting that \*(BK changesets can contain multiple revisions to 
+the same file, which is why the end of the last changeset and the start
+of the requested changeset is listed in the output.
+.LP
+This program is not normally run by users, the 
+._SA export 1
+command uses 
+.B bk rset
+combined with
+.B bk gnupatch
+to generate traditional patches.
+.SH OPTIONS
+.TP 1.0i
+.B -a
+show deleted files which are normally surpressed.
+.tp
+.B -h
+show the ``historic'' paths of the file as well as the current path.
+This makes the output look like
+.ARG current \c
+@\c
+.ARG starting \c
+@\c
+.ARG ending \c
+@\c
+.ARG rev \c
+\&..\c
+.ARG rev .
+The output has three file names, current, starting, and ending, 
+corresponding to the current pathname,
+the pathname of the file at the start of the first changeset listed, 
+and the pathname of the file at the end of the last changeset.
+.tp
+.B -H
+do not list the ChangeSet file.
+.tp
+.OPTreq -l rev
+list the entire repository as of changeset 
+.ARG rev .
+Mutually exclusive with
+.BR \-r .
+.tp
+.OPTreq -r rev
+specify the changeset revision to show.  This will show all the files
+changed in this changeset.
+.tp
+.OPTreq -r r1,r2
+specify the changeset range to show.  This will show all the files
+changed after changeset
+.ARG r1 
+up to and including changeset
+.ARG r2 .
+.tp
+.OPTreq -r rev,
+specify the changeset range to show.  This will show all the files
+changed after changeset
+.ARG rev .
+.SH "SEE ALSO"
+.SA export 1
+.SA gnupatch 1
+.SA prs 1
+.BR diff (1)
+.br
+.BR patch (1)
+.SH CATEGORY
+.B Utility

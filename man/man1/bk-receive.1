@@ -1,29 +1,30 @@
-.so ../macros
-.TH "bk receive" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk receive" 1 20%E% "\*(BC" "\*(UM"
 .\"    =============== Receiving BitKeeper patches ===============
 .SH NAME
-bk receive \- receive a BitKeeper patch
+bk receive \- receive a \*(BK patch
 .SH SYNOPSIS
-.B bk receive [
-.IB takepatch\ options ] 
-.B [
-.IB repository ]
+.Bc bk receive [
+.ARGc takepatch_options
+.Bc ] [
+.ARGc repository
+.B ]
 .SH DESCRIPTION
 .LP
-Use when applying a BitKeeper patch you received via email.  You can
-take a BitKeeper patch and pipe the whole email message through
+Use when applying a \*(BK patch you received via email.  You can
+take a \*(BK patch and pipe the whole email message through
 bk receive. Headers and footers are stripped automatically.
 .LP
 When someone sends you a patch with the following command:
-.AX
-    $ bk send -rbeta.. you@your.host.com
-.XA
+.DS
+$ bk send -rbeta.. you@your.host.com
+.DE
 .LP
 You will receive an email message which needs to be saved so you can
 feed it to the receive command:
-.AX
-    $ bk receive ~/mypackage < patch
-.XA
+.DS
+$ bk receive ~/mypackage < patch
+.DE
 .LP
 Many Unix email programs (pine, elm, etc) will allow you to pipe a
 message directly to a program. For example, when you are reading a
@@ -32,20 +33,24 @@ with a message asking you for a program name where the message should
 be piped.
 .LP
 Remember that if you are getting the very first patch, you need to create
-a new repository by adding the "-i" option.  BitKeeper does not create
+a new repository by adding the "\-i" option.  \*(BK does not create
 repositories by default.
 .LP
 Specifying the repository is optional; if it is unspecified, receive tries
 to use the current working directory.
 .LP
 Patches may be wrapped. If they are you will see something like
-.AX
-    ## Wrapped with uu ##
-.XA
-near the top of the patch.  BitKeeper knows how to unwrap patches which
+.DS
+## Wrapped with uu ##
+.DE
+near the top of the patch.  \*(BK knows how to unwrap patches which
 it wrapped.  We currently support only uuencoded wrappers, but it is
 trivial to create different ones, see bk help wrap for more information.
 .SH OPTIONS
+.LP
+All options are sent to takepatch.  With no options, takepatch is
+completely silent.  If you want to see the progress reports you
+see with resync, add \-vv to the options.
 .TP
 .B \-a
 Apply the changes (call 
@@ -59,15 +64,9 @@ Initial patch, create a new repository.
 .tp
 .B \-v
 Verbose level, more is more verbose, \-vv is suggested.
-.LP
-All options are sent to takepatch.  With no options, takepatch is
-completely silent.  If you want to see the progress reports you
-see with resync, add -vv to the options.
 .SH "SEE ALSO"
 .SA send 1
-.br
 .SA takepatch 1
-.br
 .SA wrap 1
 .SH CATEGORY
 .B File

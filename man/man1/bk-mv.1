@@ -1,50 +1,50 @@
-.so ../macros
-.TH "bk mv" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk mv" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME 
 bk mv \- move file[s]
 .SH SYNOPSIS
-.if t \{\
 .B bk mv
-.I source destination
-\}
-.if n
-bk mv <source> <destination>
+.ARG "source file[s]"
+.ARG "destination file or directory"
 .SH DESCRIPTION
 .LP
 To move a file from
-.I A
+.ARG A
 to
-.I B
+.ARG B
 do this:
-.AX
+.DS
 $ bk mv A B
-.XA
+.DE
+.ft R
 The
 .B mv
 command will move the checked out file (if any) as well as the
-revision control file.  Edited files (i.e. ones that are read-write and
-locked) can not be moved; you must check them in first.  The rename
-will appear as a separate change to the file when you commit the
+revision control file.  Edited files are also moved and then redited,
+preserving any changes made but not yet checked in.
+The rename
+will appear as an additional change to the file when you commit the
 next changeset.
 .LP
-Renames happen automatically when you
-.B bk resync.
-The 
-.B bk resolve
-command
-will ask for help if both repositories renamed the same file
-differently.
+Renames propogate just like content changes,
+i.e., they happen automatically when you pull changes into your 
+repository from another repository unless you have also moved the file.
+In that case, the resolver will prompt you to choose a name.
 .SH NOTES
 .LP
 .B bk mv
-will not move directories. 
+will not move directories, please use
+.B bk mvdir
+for that. 
 .SH SEE ALSO
 .SA commit 1
-.br
-.SA rm 1
-.br
+.SA mvdir 1
+.SA pull 1
+.SA push 1
 .SA resync 1
-.\" help://Basics/sccsmv
-.\" help://Basics/renames
+.SA rm 1
+.SA rmdir
+.SH AVAILABILITY
+\*(BK Professional
 .SH CATEGORY
 .B Basics

@@ -1,49 +1,53 @@
-.so ../macros
-.TH "bk bkd" 1 08/18/00 "\*(BC" "\*(UM"
-.\"	============== The BitKeeper daemon ==============
+.so bk-macros
+.TH "bk bkd" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
-bk bkd \- the BitKeeper daemon
+bk bkd \- the \*(BK daemon
 .SH SYNOPSIS
-.if t \{\
-.B bk bkd [\-eid] [\-l
-.IB log ]
-.B [\-P
-.IB file ] 
-.B [\-p
-.IB port ] 
-.B [\-t
-.IB num ] 
-.B [\-u
-.IB uid ] 
-.B [\-x
-.IB cmd ]
-.\}
-.if n
-bk bkd [-eid] [-l<log>] [-P<file>] [-p<port>] [-t<num>] [-u<uid>] [-x<cmd>]
+.Bc bk bkd [\-dDei] [
+.OPTreq \-l log
+.Bc ] [
+.OPTreq \-P pfile
+.Bc ] [
+.OPTreq \-p psrt
+.Bc ] [
+.OPTreq \-t num
+.Bc ] [
+.OPTreq \-u uid
+.Bc ] [
+.OPTreq \-x cmd
+.B ]
 .SH DESCRIPTION
 .LP
-The BitKeeper daemon, bkd, is used to get information about a
-repository from a remote machine.  It is run in one of two ways,
+The \*(BK daemon, bkd, is used to get information about a
+repository from a remote machine.  It is run in one of three ways,
 .sp
 .RS .5i
-a) via rsh/ssh, i.e., "rsh remote host bkd",
+a) via rsh/ssh, i.e., "rsh remote host bk bkd -e",
 .br
-b) as a stand\-alone daemon, i.e., "bkd \-d".
+b) via ssh as a login shell, and/or
+.br
+c) as a stand-alone daemon, i.e., "bkd \-d".
 .RE
 .LP
 The method used depends on how the remote repository is named.
-See bk help parent for details on the naming syntax.
+See 
+.B bk parent
+for details on the naming syntax.
 .LP
 The preferred method is via ssh, since ssh provides a secure channel.
 .LP
-The stand\-alone daemon method currently has no security, other than the
-ability to run in read\-only mode.  The daemon does support compression.
+The stand-alone daemon method has no security, other than the
+ability to run in read-only mode.  The daemon does support compression.
+If security is a requirement, use 
+.B ssh
+to get to the daemon.  See below for configuring the daemon as a login
+shell.
 .SH COMMANDS
 .LP
-The commands are not intended for user access; BitKeeper client programs
+The commands are not intended for user access; \*(BK client programs
 interact with the daemon directly.  However, it may be useful to access
 the commands directly for debugging.  It is possible to telnet to the
-BitKeeper port, in the same way it is possible to telnet to the SMTP port.
+\*(BK port, in the same way it is possible to telnet to the SMTP port.
 .LP
 The command summary is below.  The options tend to track the client
 commands fairly closely.
@@ -52,6 +56,8 @@ commands fairly closely.
 cd pathname
 .br
 clone [\-q] [\-z[0\-9]]
+.br
+get /filename HTTP/1.0
 .br
 help
 .br
@@ -73,21 +79,21 @@ send the appropriate commands to complete the action.  When started
 with the \-l option, all sent commands are logged.
 .SH "ANONYMOUS ACCESS"
 .LP
-The most common use of the stand\-alone daemon is for anonymous access
-to a repository.  To provide read\-only, anonymous access, you can run:
-.AX
+The most common use of the stand-alone daemon is for anonymous access
+to a repository.  To provide read-only, anonymous access, you can run:
+.DS
 bk bkd \-d \-xpush
-.XA
+.DE
 .LP
 This will allow anyone to read (but not write) all repositories on the
 system running the daemon.
 .LP
 If you want to export a single repository, pick a port number, and 
 do this:
-.AX
+.DS
 cd /u/linux
 bk bkd \-d \-p5555 \-xcd \-xpush
-.XA
+.DE
 .LP
 This says to run in daemon mode, bind to port 5555, and disallow the
 "cd" and "push" commands.  By disallowing the "cd" command, the daemon
@@ -96,68 +102,132 @@ at port 5555 is tied to the repository in the current working directory
 "push" command, the repository is protected from updates.
 .LP
 Clients can get to this repository by using the BK URL of
-.AX    
+.DS    
 bk://host.domain:5555
-.XA
+.DE
 .br
 i.e.,
-.AX
+.DS
 $ bk clone bk://host.domain:5555 my_tree
-.XA
+.DE
+.SH SECURED ACCESS VIA SSH
+Secure access is provided via 
+.BR ssh .
+There two ways to invoke 
+.BR ssh :
+.tp .5i
+a)
+when the repository is specified in this form: 
+[\c
+.ARGc user @]
+.ARGc host :
+.ARG pathname ,
+.B ssh
+will be called to run
+.B bk bkd -e
+on the remote host.  When the client command completes, the 
+.B ssh 
+connection is broken and the 
+.B bkd
+daemon goes away.
+.tp
+b)
+when the repository is specified in this form: 
+.Bc bk://user@host[
+.ARG pathname \fB]\fR,
+.B ssh
+will be called to remote login to 
+.B host
+and will expect that the login shell is the \*(BK daemon.
 .LP
+.SS BKD LOGIN SHELL
+On Red Hat Linux, the following steps are necessary to add a \*(BK 
+daemon login shell:
+create a simple shell script, call it 
+.BR bkd , 
+put it someplace like 
+.BR /usr/libexec/bitkeeper/bkd ,
+add the full path to the script in 
+.BR /etc/shells ,
+and add a user with that path as their shell.
+.LP
+An example 
+.B bkd
+shell script which works for us is:
+.DS
+#!/bin/sh
+exec bk bkd -e
+.DE
+.LP
+.B Note:
+this does not work with 
+.BR rsh ,
+but it is somewhat pointless to have 
+.B rsh 
+work since it is insecure.
 .SH OPTIONS
 .TP 1i
 .B \-d
 Run as a daemon.
 .tp
+.B \-D
+.tp
+debug mode, do not fork and run in the background.
 .B \-e
 Exit on any error.
 .tp
 .B \-i
 Interactive, provide prompts.
 .tp
-.AN \-l log
+.OPTreq \-l log
 Log accesses in 
-.IR log ;
-if log is not specified, then to stderr.
+.ARG log ;
+if
+.ARG log
+is not specified, then log to stderr.
 .tp
-.AN \-P pfile
+.OPTreq \-P pfile
 Write the pid of daemon process into this file at startup.
 .tp
-.AN \-p port
+.OPTreq \-p port
 Specify an alternative port.  The default port is currently
 0x3962 (aka 14690) but that will change once we get a
 reserved port. 
 .tp
-.AN \-t num
+.OPTreq \-t num
 Exit after 
-.I num 
+.ARG num
 seconds. (used when debugging)
 .tp
-.AN \-u uid
+.OPTreq \-u uid
 Run as UID
-.IR uid .
+.ARG uid .
 .tp
-.AN \-x cmd
+.OPTreq \-x cmd
 Exclude 
-.I cmd 
+.ARG cmd
 from the allowed command list.
 .SH EXAMPLES
 .LP
-We use the following in /var/bitkeeper/repositories to provide anonymous 
-read only access to some BitKeeper repositories.  This works with the
-init script shown below:
-.AX
+We use the following in 
+.B /var/bitkeeper/repositories
+to provide anonymous read only access to some \*(BK repositories.  
+.DS
 #----------------------\ cut\ here\ --------------------------
 /home/bk/LMbench \-p5000 \-xcd \-xpush \-u99
 /home/bk/bitcluster \-p6000 \-xcd \-xpush \-u99
 /home/bk/one \-p7000 \-xcd \-xpush \-u99
 #----------------------\ cut\ here\ --------------------------
-.XA
+.DE
 .LP
-We use the following as /etc/rc.d/init.d/bitkeeper to start up BitKeeper
-on bitkeeper.com:
-.AX
+The init script shown below can be generated with a 
+.DS
+$ bk getmsg bitkeeper.init
+.DE
+We use the it in
+.BR /etc/rc.d/init.d/bitkeeper
+to start up \*(BK on bitkeeper.com (a Red Hat based Linux system):
+.DS
 #----------------------\ cut\ here\ --------------------------
 #!/bin/sh
 #
@@ -212,26 +282,24 @@ case "$1" in
 esac
 exit 0
 #----------------------\ cut\ here\ --------------------------
-.XA
+.DE
 .SH BUGS
+Needs 
+.B ssh
+to provide access controlled, authenticated users.
+One could argue that this is code reuse rather than a bug.
 .LP
-The log files are currently single user because they don't append.
-.br
-Uses one log file per daemon.
-.br
-Needs password support.
-.br
-Needs access control based on authenticated users.
+\*(BM
+does not ship
+.B ssh
+since it is export controlled.
 .SH "SEE ALSO"
-.SA qs_bkd 1
-.br
 .SA parent
-.br
-.SA initscripts
-.\" help://Repository/anonymous
-.\" help://Repository/deamon
-.\" help://Repository/daemon
-.\" help://Repository/demon
-.\" help://Repository/security
+.SA qs_bkd 1
+.\" help://anonymous
+.\" help://deamon
+.\" help://daemon
+.\" help://demon
+.\" help://security
 .SH CATEGORY
 .B Repository

@@ -1,169 +1,202 @@
-.so ../macros
-.TH "bk admin" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk admin" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
-bk admin \- administer BitKeeper files (tags, checksums, validation)
+bk admin \- administer \*(BK files (tags, checksums, validation)
 .SH SYNOPSIS
-.B bk admin options [\- | file file file...]
+.B bk admin 
+.I
+options
+.BKARGS
 .SH DESCRIPTION
 .LP
 The 
 .B admin
-command is used to administer individual files.
+command is used to create and/or administer \*(BK files.
 .SH OPTIONS
-.if t .TP .75i
-.if n .TP 1.3i
+.\" Undocumented on purpose:
+.\" ATT compat: -a, -e, -d, -n
+.\" -s
+.if t .TP .8i
+.if n .TP 1.5i
 .B \-0
 add a 1.0 delta if there is not one already
-.tp
-.B \-q
-run quietly
-.tp
-.AN \-r rev
-revision to add or modify
-.tp
-.AN \-y comment
-comment for change
-.tp
-.B \-n
-create new SCCS history file
-.tp
-.AB \-i file
-read initial text from
-.I file
-(default stdin)
-.tp
-.AB \-t file
-read description from 
-.I file
-.tp
-.B \-T
-clear description
-.tp
-.B \-h
-check s.file structure
-.tp
-.B \-hh
-check s.file structure for BitKeeper structure
-.tp
-.B \-hhh
-check s.file structure for BitKeeper & time structure
-.tp
-.B \-H
-same as -h, plus check file contents are ASCII
-.tp
-.B \-z
-recalculate file checksum
-.tp
-.if t
-.AN \-f Flag\ Val
-.if n
-.AN \-f Flag><Val
-set 
-.I Flag
-to value
-.IR Val .
-.I Val 
-can be any of:
-.if t .RS .9i
-.if n .RS 1.25i
-.if t .TP 
-.if n .TP .8i
-.B EXPAND1
-expand keywords in first keyword containing line only
-.tp
-.B RCS
-expand RCS keywords
-.tp
-.B SCCS
-expand SCCS keywords
-.tp
-.B YEAR4
-store dates as 4 digit years (breaks SCCS compat)
-.RE
-.tp
-.AN \-F f
-delete flag 
-.I f
-.tp
-.AN \-m mode
-set the mode of the file
-.tp
-.AN \-M merge
-Merge branch 
-.I merge
-into TOT or 
-.I rev
-.tp
-.AL -S sym rev
-associate 
-.if t .I sym
-.if n <sym>
-with 
-.if t .I rev
-.if n <rev>
-.tp
-.AN \-p path
-set path of the most recent delta to 
-.if t .I path
-.if n <path>
+.nr tp_space .065i
 .tp
 .B \-B
 make the landing pad bigger
 .tp
 .B \-C
-remove the changeset marks
+remove the changeset marks (very rarely used, \fBnot\fP recommended)
 .tp
 .B \-CC
-remove the changeset marks and pointer
+remove the changeset marks and pointer (very rarely used, \fBnot\fP recommended)
 .tp
-.AB \-Z alg
-compress stored s.file with 
-.I alg ,
+.OPTreq \-E enc
+force file to be encoded with 
+.ARG enc ,
 which may be:
-.if t .RS .9i
-.if n .RS 1.25i
-.if t .TP
-.if n .TP 1.5i
+.if t .RS .8i
+.if n .RS .4i
+.if t .tp 1.1i
+.if n .tp 1.1i
+.BR text
+regular text file (typical)
+.tp
+.B ascii
+same as 
+.ARG text
+.tp
+.B binary
+force binary file (data will be uuencoded in s.file)
+.tp
+.B uugzip
+data will be gzipped, then uuencoded in s.file
+.RE
+.tp
+.OPTreq \-f flag
+set 
+.ARG flag 
+which can be any of:
+.if t .RS .8i
+.if n .RS .4i
+.if t .tp 1.1i  
+.if n .tp 1.1i
+.B ALWAYS_EDIT
+always follow a delta with an edit, leaving a locked file.
+.tp
+.B BITKEEPER
+mark the file as a \*(BK file (very rarely used, \fBnot\fP recommended)
+.tp
+.B EXPAND1
+expand keywords in first keyword containing line only (printf conflicts)
+.tp
+.B RCS
+expand RCS keywords, i.e., $\fIkeyword\fP$ etc.
+.tp
+.B SCCS
+expand SCCS keywords, i.e., %\fIK\fP% etc.
+.tp
+.B YEAR4
+display dates as 4 digit years (breaks \*(AT compatibility)
+.sp .25
+.ti -1.1i
+Flags with arguments are:
+.tp
+.OPTreq DEFAULT= rev
+set the default branch or revision used by the
+.BR bk\ get
+command.
+.RE
+.tp
+.OPTreq \-F f
+delete flag 
+.ARG f ,
+reverting to default behaviour.
+.tp
+.B \-h
+check s.file structure in general, but limited to \*(AT features.
+.tp
+.B \-hh
+as above, but also check \*(BK structure
+.tp
+.B \-hhh
+as above, but also check time stamps
+.tp
+.B \-H
+same as -h, plus check that file contents are ASCII
+.tp
+.OPTopt \-i file
+read initial text from
+.ARG file
+(default stdin)
+.tp
+.OPTreq \-m mode
+set the mode of the file;
+.ARG mode
+is in the form 
+.BR -rwxrwxrwx .
+.tp
+.OPTreq \-M merge
+Mark branch specified by revision
+.ARG merge
+as merged into 
+.ARG rev ,
+if specified, or top of trunk.
+.tp
+.OPTopt \-p path
+set path of the most recent delta to 
+.ARG path ,
+if
+.ARG path
+was specified, otherwise use the current file location.  Note: not a timesafe
+operation, typically used only by 
+.BR bk\ import .
+.tp
+.B \-q
+run quietly
+.tp
+.OPTreq \-r rev
+may be used with 
+.B \-M
+to specify a revision other than top of trunk,
+and, when not in a \*(BK repository, with 
+.B \-i
+to specify the initial revision.
+.tp
+.OPTequal -S sym rev
+associate symbolic name (tag)
+.ARG sym
+with revision
+.ARG rev
+.tp
+.OPTreq \-t file
+read description text from 
+.ARG file
+and replace the current descriptive text, if any
+.tp
+.B \-T
+clear description text
+.tp
+.B \-u
+force all timestamps to be increasing (very dangerous, this changes the keys)
+.tp
+.OPTreq \-y comment
+make 
+.ARG comment
+be the checkin comment for the initial checkin (only valid with 
+.B \-i
+and
+.BR \-n ).
+.tp
+.B \-z
+recalculate file checksum
+.tp
+.OPTreq \-Z alg
+compress stored s.file with 
+.ARG alg
+which may be:
+.if t .RS .8i
+.if n .RS .4i
+.if t .tp
+.if n .tp 1.1i
 .B  gzip
-like gzip(1) (default)
+like 
+.BR gzip (1)
 .tp
 .B none
 no compression
 .RE
-.tp
-.AB \-E enc
-treat file as encoded with 
-.I enc ,
-which may be:
-.if t .RS .9i
-.if n .RS 1.25i
-.if t .TP
-.if n .TP 1.5i
-.B text
-plain text
-.tp
-.B ascii
-same
-.tp
-.B binary
-binary file (must uuencode before diffing)
-.tp
-.B uugzip
-same, but compress before uuencode
-.RE
-.tp
-.B \-u
-make sure that all dates are increasing (dangerous, this changes the keys)
 .SH BUGS
 .LP
-This command does way too much and should be split apart.  Other than the
-traditional ATT options, do not depend on these options for scripts.
+This command does way too much and is likely to be split apart.
+Do not depend on these options for scripts.
 .SH SEE ALSO
 .LP
-.SA tag 1
-.br
 .SA chmod 1
-.br
+.SA delta 1
+.SA get 1
+.SA prs 1
+.SA tag 1
 .SA keywords
 .SH CATEGORY
 .B Admin

@@ -1,53 +1,51 @@
-.so ../macros
-.TH "bk info" 1 08/18/00 "\*(BC" "\*(UM"
-.\"    =========== Information about files in BitKeeper ===========
+.so bk-macros
+.TH "bk info" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
-bk info \- show the state of a BitKeeper file or set of files
+bk info \- show the state of \*(BK files
 .SH SYNOPSIS
-.B bk info [
-.IB file\ list ]
+.B bk info 
+.BKARGS
 .SH DESCRIPTION
 .LP
-The info command shows the state of a set of specified or implied files.
+The 
+.B bk info
+command shows the state of a set of specified or implied set of files.
 .LP
 The state is as follows:
-.if t .AX
-.if n \{\
-.sp
-.nf
-.\}
+.DS
+.if n .in -4
 slib.c:     1.361 1.362 lm 99/09/22 03:36:18 (modified, needs delta)
 sinfo.c:    1.16 1.17 lm 99/09/22 22:15:58 (modified, needs delta)
 fdiff.c:    1.77 1.78 lm 99/09/22 22:15:57
-.if t .XA
-.if n \{\
-.fi
-.\}
+.DE
 .LP
-The field names are:
-.if t .TP 1i
-.if n .TP 1.75i
-file name
-Name of file.
+The field names (taken from the first line in the example) are:
+.TP .9i
+slib.c
+name of the file.
 .tp
-Parent revision
-Basis for the edited file.
+1.361
+basis for (parent revision of) the edited file;
 .tp
-new revision
-What it would be called if you checked it in.
+1.362
+revision to be created at checkin time;
 .tp 
-user name 
-User name of the user who edited the file.
+lm
+name of the user who edited the file;
 .tp
-date and time 
-Time when the file was locked.
+99/09/22 03:36:18
+date and time when the file was locked.
 .tp
-(state) 
-If present, indicates that the file is modified.
+(modified, needs delta) 
+if present, indicates that the file is modified.
 .SH NOTE
 .LP
-The info command is an alias for the program sinfo. The "info" command
-name was already taken by the GNU document browser.
-.\" help://File/sinfo
+Most people prefer the 
+.B bk sfiles
+interface for finding files in a particular state.
+.SH SEE ALSO
+.SA prs 1
+.SA sfiles 1
+.SA status 1
 .SH CATEGORY
 .B File

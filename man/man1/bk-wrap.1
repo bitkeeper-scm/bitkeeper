@@ -1,7 +1,7 @@
-.so ../macros
-.TH "bk wrap" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk wrap" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME 
-wrap
+bk wrap
 .SH DESCRIPTION
 .LP
 For various reasons, you may wish to wrap a patch which is transmitted
@@ -9,7 +9,7 @@ through email.  The typical reason is that the patch is going through
 some mailer which chops long lines or performs some other unwanted
 transformation on the data.
 .LP
-BitKeeper provides a simple wrapper and unwrapper to do this.  The programs
+\*(BK provides a simple wrapper and unwrapper to do this.  The programs
 are small shell scripts which call
 .B uuencode
 and
@@ -25,9 +25,8 @@ create two programs, one of which takes a stream of bytes on stdin
 and produces the wrapped stream of bytes, and another which takes a
 wrapped stream of bytes and produces an unwrapped stream of bytes.
 .LP
-These programs must be placed the BitKeeper
-.I bin
-directory and have names of the form:
+These programs must be placed the \*(BK
+bin directory and have names of the form:
 .sp
 .if t \{\
 .IB type wrap
@@ -47,28 +46,26 @@ and
 .LP
 If the programs work correctly, then the following two commands produce
 identical data:
-.AX
+.DS
 $ ls -1 | uuwrap | unuuwrap
 $ ls -1
-.XA
+.DE
 If you create new wrappers and place them in BitKeeper's
-.I bin
-directory on the sending and receiving machines, you can then invoke them when
-sending patches.  Suppose you created simple rotate-13 wrappers
+bin directory on the sending and receiving machines, you can then invoke them when
+sending patches.  Suppose you created simple rotate\-13 wrappers
 (shifts all character values 13 over, a common net news filter) and
 you called them
 .B rot13wrap
 and
 .BR unrot13wrap .
 Send patches by doing:
-.AX
+.DS
 $ bk send -wrot13 | mail user@where.ever.com
-.XA
+.DE
 The user at the other end needs the rot13 wrapper scripts or they will not
 be able to apply the patch.
 .SH SEE ALSO
 .SA send 1
-.br
 .SA receive 1
 .SH CATEGORY
 .B File

@@ -1,6 +1,5 @@
-.so ../macros
-.TH "bk csets" 1 08/18/00 "\*(BC" "\*(UM"
-.\"    =============== Viewing recent changesets ===============
+.so bk-macros
+.TH "bk csets" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
 bk csets \- run csettool on last set of imported changes
 .SH SYNOPSIS
@@ -10,15 +9,18 @@ bk csets \- run csettool on last set of imported changes
 The
 .B csets
 command will run the
-.B csettool
+.B bk csettool
 command on the last set of 
 changesets imported into this repository with a
-.BR pull ,
-.BR push ,
+.BR bk\ pull ,
+.BR bk\ push ,
 or
-.BR resync .
-This is useful for tracking down problems.
+.BR bk\ resync .
+This is useful for tracking down problems and/or doing a quick review.
 .SH "SEE ALSO"
 .SA csettool 1
+.SA pull 1
+.SA push 1
+.SA resync 1
 .SH CATEGORY
 .B Repository

@@ -1,12 +1,13 @@
-.so ../macros
-.TH "bk citool" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk citool" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
-bk citool \- graphical check-in tool
+bk citool \- \*(BK graphical check-in tool
 .SH SYNOPSIS
-.B bk citool
-.BI [ dir
-.BI or \ file
-.IB list ]
+.Bc bk citool [
+.ARG dir
+.B | 
+.ARGc file_list
+.B ]
 .SH DESCRIPTION
 The
 .B citool
@@ -20,67 +21,60 @@ Otherwise,
 will look in the list of arguments for files or directories.  The
 arguments are processed by
 .B bk
-.BR sfind ,
+.BR sfiles ,
 and have to follow the restrictions imposed by
 .B bk
-.BR sfind .
+.BR sfiles .
 .LP
-Citool three main windows:  the top window containing the list of
-files with modifications, the middle window for entering comments,
-and the bottom window for displaying differences and the contents of
-new files. 
+Citool has three main windows:  the top window contains the list of
+files with modifications, the middle window is for entering comments,
+and the bottom window displays differences for modified files and 
+the contents for new files. 
 .LP
-The typical process is to move to each file, add comments, and repeat
+Typical usage is to move to each file, add comments, and repeat
 until done. When all files are commented, the
 .B commit
 button is pressed to make the changes part of a ChangeSet.
 .LP
-You can move around within the file list by clicking on a file or using the
-keyboard accelerators Control-N (next file) and Control-P (previous file).
+You can move around within the file list by clicking on a file name or using 
+the keyboard accelerators Control-n (next file) and Control-p (previous file).
 You may add comments, move around, come back, and update the comments.
-Nothing is applied until you click
-.BR [Commit] .
+The comments are not applied to the files until 
+.BR [Commit]
+is clicked.
 .LP
 The files with the question mark icon are files that are not under 
-revision control. The new files can be added by using the mouse to 
-click on the question mark icon or by using the Control-t key to 
-tag the file. When one clicks on the question mark, it becomes a 
+revision control. To add the new files to the changeset, click on 
+the question mark icon or use the Control-t key to 
+tag the file. When clicked on, the question mark icons becomes a
 check mark, indicating that the file will be part of the cset.
 .LP
 Some of the new files might be files that you do not wish to put
 under revision control and having them visible clutters up the file
-window. When a new file is highlighted, the Ignore button becomes
-active on the right-hand button menu. If you click the ignore button,
+window. When a new file is highlighted, the 
+.B Ignore
+button is
+actived on the button bar menu. If you click the ignore button,
 the selected file will be added to the BitKeeper/etc/ignore file
 so that when citool is run again, the selected file will not be
 shown. If you accidentaly click ignore on a file that you want, click
-the Unignore button. The BitKeeper/etc/ignore file is not updated
+the
+.B Unignore
+button. The \*(BK /etc/ignore file is not updated
 until the changeset is committed. The ignore file is a revision
-controled file like any other BitKeeper file and can be edited with a
+controlled file like any other \*(BK file and can be edited with a
 text editor if you want to remove or add files to the ignore list.
 .LP
-Some of the new files might be files that you do not wish to put
-under revision control and having them visible clutters up the file
-window. When a new file is highlighted, the Ignore button becomes
-active on the right-hand button menu. If you click the ignore button,
-the selected file will be added to the BitKeeper/etc/ignore file
-so that when citool is run again, the selected file will not be
-shown. If you accidentaly click ignore on a file that you want, click
-the Unignore button. The BitKeeper/etc/ignore file is not updated
-until the changeset is committed. The ignore file is a revision
-controled file like any other BitKeeper file and can be edited with a
-text editor if you want to remove or add files to the ignore list.
-.LP
-At times, one might wish to exclude files from a changeset. For
-example, if you are working on a file and have made changes to it
-(changes can be committed and in the pending state), but don't
+At times, you might wish to exclude files from a changeset. For
+example, if you are working on a file and have made changes to
+it (changes can be committed and in the pending state), but don't
 want these changes to propogate when you push your work to another
-repository. To exclude files from the changeset, use the mouse to click
-on the file-type icon.  If the file can be excluded, the icon will
-change to a red X. If you try to exclude a pending file while a modified 
-version of the file exists, both the pending and the modified file will 
-be excluded. It is possible to exclude the modified file, while keeping 
-the pending file in an included state.
+repository. To exclude files from the changeset, use the left mouse
+button to click on the file-type icon.  If the file can be excluded,
+the icon will change to a red X. If you try to exclude a pending
+file while a modified version of the file exists, both the pending
+and the modified file will be excluded. It is possible to exclude
+the modified file, while keeping the pending file in an included state.
 .LP
 When you move to a file, the differences for this file are shown in the
 bottom window.  When entering comments, it is normal to want to scroll
@@ -88,7 +82,7 @@ the differences window (assuming that the differences are larger than
 the window).  While this can be done using the mouse and the scrollbar,
 the following keyboard accelerators will work at all times, even when
 typing in the comments window:
-.SH "SCROLLING THE DIFFERENCES"
+.SH "KEYBOARD BINDINGS"
 .if t .TP 1.2i
 .if n .TP 1.7i
 .B Home
@@ -97,16 +91,43 @@ Scroll to the start of the differences
 .B End
 Scroll to the end of the differences
 .tp
-.B Control-b
-Scroll the differences up 1 screen
-.tp
 .B PageUp
 Scroll the differences up 1 screen
 .tp
-.B Control-f
+.B PageDown
 Scroll the differences down 1 screen
 .tp
-.B PageDown
+.B Shift-DownArrow
+Scroll the differences down 1 line
+.tp
+.B Shift-UpArrow
+Scroll the differences up 1 line
+.if t .TP 1.2i
+.if n .TP 1.7i
+.B Control-l
+Rerun the diffs in case an external program has changed the file.
+.tp
+.B Control-n
+Go to the next file
+.tp
+.B Control-p
+Go to the previous file
+.tp
+.B Control-t
+Toggle include/exclude state and/or add/don't add state.  See the text
+about include/exclude and new files.
+.tp
+.B Control-T
+Toggle all new file into or out off the changeset. 
+.tp
+.B Control-q
+Same as clicking the [Quit] button.
+.if t .TP 1.2i
+.if n .TP 1.7i
+.B Control-b
+Scroll the differences up 1 screen
+.tp
+.B Control-f
 Scroll the differences down 1 screen
 .tp
 .B Control-u
@@ -118,29 +139,15 @@ Scroll the differences down 1/2 screen
 .B Control-e
 Scroll the differences down 1 line
 .tp
-.B Shift-DownArrow
-Scroll the differences down 1 line
-.tp
 .B Control-y
 Scroll the differences up 1 line
-.tp
-.B Shift-UpArrow
-Scroll the differences up 1 line
-.SH "MOVING BETWEEN FILES"
-.TP 1.2i
-.B Control-N
-Go to the next file
-.TP
-.B Control-P
-Go to the previous file
 .SH "EDITING THE COMMENTS"
 .LP
 The comments window is a standard TK text widget with word and line 
 erase added.  Moving around is down with the arrow keys, backspace
-to delete the previous character, Control-w to erase a word, and
+to delete the previous character, Control-w (or Alt-w) to erase a word, and
 Alt-u to erase a line.
-.SH MISC
-Escape will rerun the diffs in case an external program has changed the file.
+.SH BUTTONS
 .LP
 There are a series of buttons on the right.  They perform the following
 functions:
@@ -148,32 +155,40 @@ functions:
 .if n .TP 1.7i
 .B [Cut comments]
 takes the contents of the current comment window and saves them in a buffer.
-.TP
+.tp
 .B [Paste comments]
 pastes comments saved by the previous button, overwriting any existing comments.
-.TP
+.tp
 .B [Commit]
 displays all comments in the differences window and asks if you want to commit.
-.TP
+.tp
 .B [Edit]
 pops you into a simple editor on the current file.
-.TP
+.tp
 .B [History]
-starts up sccstool on the current file
-.TP
+starts up histtool on the current file
+.tp
 .B [Diff tool]
 starts up difftool on the previous/current versions of the file.
-.TP
+.tp
 .B [Discard]
 destroys the changes made to the current file, in other words,
 throws away the differences.
-.TP
+.tp
+.B [Ignore]
+When a new file is selected, the ignore button will add the selected 
+file to the \*(BK /etc/ignore file.
+.tp
+.B [Unignore]
+When a new file is selected and is in the ignore state, the Unignore button 
+prevents the selected file from being added to the \*(BK /etc/ignore file.
+.tp
 .B [Help]
-Starts up the BitKeeper help tool and displays this help.
-.TP
+Starts up the \*(BK help tool and displays this help.
+.tp
 .B [Quit]
-Quits.  If you have provided comments, this will prompt you again
-because quitting without committing throws away those comments.
+Quits.  If you have provided comments, this will prompt you to save your
+comments or discard you comments.
 .SH LOCKING
 .LP 
 If the repository is locked, and you try to
@@ -190,7 +205,6 @@ repository.   After it is unlocked, the
 should work.
 .SH SEE ALSO
 .SA ci 1
-.TP
 .SA ignore 1
 .SH CATEGORY
 .B GUI-tools

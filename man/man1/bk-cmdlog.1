@@ -1,16 +1,14 @@
-.so ../macros
-.TH "bk cmdlog" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk cmdlog" 1 20%E% "\*(BC" "\*(UM"
 .\"    =================== BitKeeper Command Log ===================
 .SH NAME
-bk cmd_log \- show the log of commands executed in this repository
+bk cmdlog \- show the log of commands executed in this repository
 .SH SYNOPSIS
-.B bk cmdlog
-.br
-.B bk cmdlog \-a
+.B bk cmdlog [\-a]
 .SH DESCRIPTION
 .LP
-There are two command logs maintained by BitKeeper, both in the
-BitKeeper/log directory: repo_log and cmd_log.  The first logs only
+There are two command logs maintained by \*(BK, both in the
+\*(BK/log directory: repo_log and cmd_log.  The first command log saves only
 commands which operate at the repository level, specifically:
 .RS .5i
 clone
@@ -23,15 +21,16 @@ pull
 .br
 push
 .RE
-The second logs all other commands.
+The second command log saves all other commands.
 To see the repository commands, run
-.AX
+.DS
 bk cmdlog
-.XA
+.DE
 To see all commands, run
-.AX
-bk cmdlog -a
-.XA
+.DS
+bk cmdlog \-a
+.DE
 Commands are listed in least recent to most recent order.
 .SH CATEGORY
 .B Repository
+.\" help://history

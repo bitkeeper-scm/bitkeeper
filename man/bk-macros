@@ -1,0 +1,143 @@
+.de DS
+.	br
+.	ne 2
+.	if t .ft CW
+.	if n .sp
+.	if t .sp .5
+.	nf
+.	in +4
+..
+.de DE
+.	if n .sp
+.	if t .sp .5
+.	in -4
+.	fi
+.	if t .ft R
+..
+.de SP
+.	if n .sp
+.	if t .sp .5
+..
+.if n \{\
+.	ds BC BitMover, Inc
+.	ds BM BitMover
+.	ds BS BitSCCS
+.	ds BK BitKeeper
+.	ds UM \*(BK User's Manual
+.	ds AT ATT SCCS
+.	ds S SCCS
+.	ds R RCS
+.	ds UN UNIX
+.\}
+.if t \{\
+.	ds BM B\s-3IT\s0M\s-3OVER\s0
+.	ds BC \*(BM, \s-3INC.\s0
+.	ds BS \s-1B\s0\s-2IT\s0\s-1SCCS\s0
+.	ds BK B\s-3IT\s0K\s-3EEPER\s0
+.	ds UM \*(BK User's Manual
+.	ds AT \s-1ATT SCCS\s0
+.	ds SC \s-1SCCS\s0
+.	ds R \s-1RCS\s0
+.	ds UN \s-1UNIX\s0
+.\}
+.\" Non-breaking bold
+.de Bc
+.B \fB\\$*\fP\c
+..
+.\" Non-breaking italic
+.de Ic
+.I \fI\\$*\fP\c
+..
+.\" Italic for troff, <> for nroff.
+.de ARG
+.	if t \fI\\$1\fP\\$2
+.	if n <\\$1>\\$2
+.. 
+.\" Italic for troff, <> for nroff.  no break.
+.de ARGc
+.	if t \fI\\$1\fP\\$2\c
+.	if n <\\$1>\\$2\c
+.. 
+.\" Print [files ... | -], i.e., optional list of files or "-".
+.de BKARGS
+.	B [\c
+.	ARGc file
+\fI\ .\|.\|.\ \fR|\ \fI-\fB]\fR
+..
+.\" Print [file ...], i.e., optional file list
+.de FILES
+.	B [\c
+.	ARGc file
+\fI\ .\|.\|.\fB]\fR
+..
+.de OA
+.\" For synopsis line with bold/italic combo ([Crev] for instance)
+.if t \fB[\\$1\fP\fI\\$2\fP\fB]\fP
+.if n \fB[\\$1\fP<\\$2>\fB]\fP
+..
+.de OB
+.\" For synopsis line with bold/italic combo ([C[rev]] for instance)
+.if t \fB[\\$1[\fP\fI\\$2\fP\fB]]\fP
+.if n \fB[\\$1[\fP<\\$2>\fB]]\fP
+..
+.de OPTreq
+.\" Bold Italic for option arg no space (optionarg)
+.\" option character with a required argument with no space
+.\" -cREQUIRED or -c<REQUIRED>
+.if t \fB\\$1\fP\fI\\$2\fP\c
+.if n \fB\\$1\fP<\\$2>\c
+..
+.de OPT_req
+.\" Bold Italic for option arg with space (option arg)
+.\" option character with a required argument with a space
+.\" -c REQUIRED or -c <REQUIRED>
+.if t \fB\\$1\fP \ \fI\\$2\fP\c
+.if n \fB\\$1\fP <\\$2>\c
+..
+.de OPTopt
+.\" Bold Italic for option arg with [] (option[arg])
+.\" option character with a optional argument with no space
+.\" -c[OPTIONAL] or -c[<OPTIONAL>]
+.if t \fB\\$1[\fI\\$2\fB]\fR\c
+.if n \fB \\$1[\fP<\\$2>\fB]\fR\c
+..
+.de OPT_opt
+.\" option character with a optional argument with a space
+.\" -c [ OPTIONAL ] or -c [ <OPTIONAL> ]
+.       if t \fB\\$1 [\fP\fI\\$2\fP\fB]\fP\c
+.       if n \fB\\$1 [\fP<\\$2\fP>\fB]\fP\c
+..
+.de OPTcolon
+.\" Bold Italic for option arg:arg
+.if t .BI \\$1\\$2:\\$3\c
+.if n \fB\\$1\fP<\\$2>:<\\$3>\c
+..
+.de OPTequal
+.\" Bold Italic for option arg=arg
+.if t .BI \\$1\\$2=\\$3\c
+.if n \fB\\$1\fP<\\$2>=<\\$3>\c
+..
+.de tp
+.	if t .sp -(u;\\n[PD]u)
+.	if t .sp (u;\\n[PD]u/4)
+.	if n .sp -\\n[PD]u
+.	TP \\$1
+..
+.if t .ds BU \(bu
+.if n .ds BU \&. 
+.de _SA
+.\" SEE ALSO sections...  printed=bk man; online=bk help
+.	if t .BR bk-\\$1 (\\$2)
+.	if n \{\
+.		ie \n[helpdoc]=1 \{\
+.			B bk help \\$1
+.		\}
+.		el \{\
+.			BR bk-\\$1 (\\$2)
+.		\}
+.	\}
+..
+.de SA
+.	_SA \\$1 \\$2
+.	br
+..

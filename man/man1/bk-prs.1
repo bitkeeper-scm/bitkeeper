@@ -1,83 +1,469 @@
 .\"  this needs more documentation -- email from lm & slib.c
-.so ../macros
-.TH "bk prs" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk prs" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
-bk prs \- prints revision history (similar to RCS rlog)
+bk prs \- print revision summary
 .SH SYNOPSIS
-.if t \{\
-.B bk prs [-abdhmMov]
-.OA c date
-.OA C rev
-.OA r rev
-.BI [ files... ]
-\}
-.if n
-bk prs [-abdhmMov] [-c<date>] [-C<rev>] [-r<rev>] [files...]
+.if n .ll 7.49i
+.Bc bk prs [-abdhmMov] [
+.if t .ds d date
+.if n .ds d d
+.if t .ds r rev
+.if n .ds r r
+.OPTreq -c \*d
+.Bc ] [
+.OPTreq -C \*r
+.Bc ] [
+.OPTreq -r \*r
+.Bc ] [
+.OPTreq -x \*r
+.B ] 
+.if n .ll
+.BKARGS
+.SH DESCRIPTION
+The
+.B bk prs
+command is used to extract revision history and or metadata from a file or
+set of files.  The default behavior is to print a summary of each revision
+to each of the specified files.  There are options to restrict the set if
+revisions to print, a very commonly used one is
+.OPTreq -r + ,
+\ which restricts the set to the most recent revision.
 .SH OPTIONS
 .if t .TP .7i
 .if n .TP 1i
-.B -a
+.B \-a
 Print info on all deltas, not just data deltas.
 .tp
-.B -b
+.B \-b
 Reverse the order of the printed deltas.
 .tp
-.AN -c date
-Cut-off dates.  See bk help range for details.
+.OPTreq \-c date
+Cut-off dates.  See 
+._SA range 1
+for details.
 .tp
-.AN -C rev
+.OPTreq \-C rev
 Make the range be all revs that are the same cset as
-.IR rev .
+.ARG rev .
 .tp
-.AN -d spec
-Specify output data specification.
+.OPTreq \-d spec
+Override the default output format (see below).
 .tp
-.B -h
+.B \-h
 Suppress range header.
 .tp
-.B -m
-Print metadata, such as users and symbols.
+.B \-m
+Print metadata, such as users and tags.
 .tp
-.B -M
+.B \-M
 Do not include branch deltas which are not merged.
 .tp
-.B -o
-Print the set of deltas that were not specified.
+.B \-o
+Reverse the sense of which deltas to print, i.e., print all unspecified
+deltas.
 .tp
-.AN -r rev
+.OPTreq \-r rev
 Specify a revision, or part of a range.
 .tp
-.AN -x rev
-Exclude rev from the selection in 
-.BR -r .
+.OPTreq \-x rev
+Exclude
+.ARG rev
+from the selection in 
+.BR \-r .
+If
+.ARG rev
+is the special value
+.BR 1st ,
+then exclude the first (earliest) revision in the selection (useful when
+combined with the output of 
+.BR bk\ rset ).
 .tp
-.B -v
+.B \-v
 Complain about SCCS files that do not match the range.
 .LP
-Note that
-.I date
-may be a symbol, which implies the date of the delta which matches the symbol.
-.LP
-Range specifications:
-.if t .TP .7i
+Note that either
+.ARG rev
+or
+.ARG date
+may be a symbolic tag, which implies the revision or date of the delta
+which matches the symbolic tag.
+.SS RANGE SPECIFICATIONS
+.if t .TP .9i
 .if n .TP 1.25i
-.I -r+
+.I \-r+
 prints the most recent delta
 .tp
-.I -r1.3..1.6
+.I \-r1.3..1.6
 prints all deltas 1.3 through 1.6
 .tp
-.I -c9207..92
+.I \-c9207..92
 prints all deltas from July 1 '92 to Dec 31 '92
 .tp
--c92..92
+\-c92..92
 prints all deltas from Jan 1 '92 to Dec 31 '92
 .tp
--c-1d
+\-c-1d
 prints all deltas made in the last 24 hours; similarly for
 .I s/m/h/d/M/Y
 for seconds/minutes, hours, days, months, and years.
-.\" .SH BUGS
-.\" not 100% compatibile with AT&T despecs
+.SH OUTPUT FORMAT
+.LP
+The 
+.B bk prs
+command has a default output format which can be overridden.  There are
+many different pieces of information in an \*(SC file and 
+.B bk prs 
+can extract most of them.
+To extract specific information, a 
+.I dspec
+(data specification) string must be provided and should contain
+.IR keywords .
+.B bk prs
+will expand each of these keywords in the output it produces.
+To specify a 
+.SM TAB
+character in the output, use
+.BR \et ;
+to specify a 
+.SM NEWLINE
+in the output,
+use 
+.BR \en .
+An example 
+.I dspec 
+which prints the SCCS file name and the revision number
+is 
+.BR ':SFILE:\ :REV:\en' .
+.LP
+In almost all cases, a trailing
+newline is not provided by any of the variables 
+and one should be provided as needed.
+The list of variables which currently provide one are:
+.BR COMMENTS ,
+.BR PATH ,
+.BR DEFAULT ,
+.BR SYMBOLS .
+.LP
+If a multi-line variable is printed as one line, i.e., without
+.I $each() 
+(see below) providing a prefix and/or a suffix, then the lines are separated 
+by spaces.  The list of variables with this behavior is:
+.BR C ,
+.BR GB ,
+.BR FD .
+.br
+.ne 5
+.SS CONDITIONAL OUTPUT
+The 
+.I dspec
+can produce output conditionally.  The following will print the default
+output format for each revision made by 
+.IR lm :
+.DS
+.B bk prs -d'$if(:P:=lm){:DEFAULT:}' \c
+foo.c
+.DE
+.br
+.ne 5
+.SS CONDITIONAL STATEMENTS
+.TP .8i
+.if t \fB$if(\fIexpr\fB)\fB{\fIanything\fB}\fR
+.\" XXX needs to be conditional on helpdoc?
+.if n \fB$if(\fI<expr>\fB)\fB{\fI<anything>\fB}\fR
+prints 
+.ARG anything
+if
+.ARG expr
+is true.  If
+.ARG expr 
+is a field, i.e.,
+.ARG :MERGE: ,
+then the field is expanded and returns true if it has a value.
+.ARG anything 
+can contain fields as normal, i.e.,
+.ARG :REV: .
+.tp
+.if t \fB$unless(\fIexpr\fB)\fB{\fIanything\fB}\fR
+.\" XXX needs to be conditional on helpdoc?
+.if n \fB$unless(\fI<expr>\fB)\fB{\fI<anything>\fB}\fR
+prints 
+.ARG anything
+if
+.ARG expr
+is false.
+.SS CONDITIONAL OPERATORS
+.ad l
+.TP .8i
+.B strings
+.ARGc lhs
+.B =\c
+.ARG rhs
+true if
+.ARG lhs
+is identical to 
+.ARG rhs .  
+.br
+.ARGc lhs
+.B !=\c
+.ARG rhs
+true if
+.ARG lhs
+is different than
+.ARG rhs .
+.br
+.BR Note :
+no spaces on either side of the operator.
+.tp
+.B numbers
+.ARGc lhs
+.B \ \-eq\ \c
+.ARG rhs
+equality;
+.br
+.ARGc lhs
+.B \ \-ge\ \c
+.ARG rhs
+equal or greater than;
+.ARGc lhs
+.B \ \-gt\ \c
+.ARG rhs
+greater than;
+.br
+.ARGc lhs
+.B \ \-le\ \c
+.ARG rhs
+equal or less than;
+.ARGc lhs
+.B \ \-lt\ \c
+.ARG rhs
+less than.
+.br
+.BR Note :
+spaces 
+.B required
+on both sides of the operator.
+.SS ITERATIVE OUTPUT
+.ad b
+Some fields, such as comments or tags, may be multi-line.  To print a prefix
+in front of each of these files, the idiom is:
+.DS
+.B bk prs -d'$if(:C:){$each(:C:){C\ \ (:C:)\en}' \c
+foo.c
+.DE
+The
+.B GB
+variable can not be used in a 
+.IR $each() .
+.SS KEYWORDS
+Some fields are per file and are marked with
+.B F
+in the 
+.B T
+column below; other fields are per delta and are marked with
+.BR D .
+In the ``What is printed'' column, 
+.B D
+refers to the specified delta, since some operations work relative to 
+.BR D .
+Some fields are compatible with \*[AT], they are typically the one and 
+two letter fields;  \*[BK] fields tend to be longer.
+.if t .sp .5
+.if n .sp
+.nf
+.ta +10 +4 +20
+.nr XX 0
+.de xx
+.br
+.if \\n(XX<\\n% \{\
+Name	T	What is printed
+.if t .sp -.5
+.if t \l'6.0i'
+.if t .sp -.8
+.if t \l'6.0i'
+.if n \l'5.8i\&='
+.nr XX \\n%
+.\}
+..
+.\" TODO? A B BD BF CB FB HT=HOST J KF KV LK M MF MR ND Q UN Y
+.xx
+AGE	D	D's age, i.e., seven hours, two weeks, etc.
+.xx
+C	D	D's comments
+.xx
+COMMENTS	D	comments portion of :DEFAULT:
+.xx
+CSETKEY	D	delta key if D is at a changeset boundary
+.xx
+CSETREV	D	revision of first cset boundary after D
+.xx
+CSETFILE	F	key of the ChangeSet file for this file
+.xx
+D	D	D's date as YY/MM/DD (years may be 4 digits)
+.xx
+DEFAULT	D	default prs dspec
+.xx
+DFB	F	default branch if set (similar to Ds)
+.xx
+DI	D	D's includes/excludes as +I,I/-X,X (serials)
+.xx
+DL	D	lines inserted/deleted/unchanged in D
+.xx
+DOMAIN	D	the domain part of the hostname of D
+.xx
+DP	D	the serial number of the parent of D
+.xx
+DPN	D	the pathname of g.file as of D
+.xx
+DS	D	the serial number of D
+.xx
+DSUM	D	D's 16 bit unsigned checksum
+.xx
+DSUMMARY	D	first line of :DEFAULT:
+.xx
+DT	D	the type (D|R|M) of D
+.xx
+Dd	D	day part of D's date as DD
+.xx
+Dm	D	month part of D's date as MM
+.xx
+Dn	D	serial numbers of D's includes, if any
+.xx
+Ds	F	default branch or "none"
+.xx
+Dt	D	D's data as :DT::I::D::T::P::DS::DP:
+.xx
+Dx	D	serial numbers of D's excludes, if any
+.xx
+Dy	D	year part of D's date as YY or YYYY
+.xx
+ENC	F	current encoding scheme (ascii|binary|uugzip)
+.xx
+F	F	basename of the SCCS file
+.xx
+FD	F	file descriptive text
+.xx
+FLAGS	D	file flags as of D in words (HASH, YEAR4...)
+.xx
+FSUM	F	16 bit unsigned checksum of the s.file
+.xx
+FUDGE	D	timestamp fudge used make time monotonic
+.xx
+G	F	basename of the gfile
+.xx
+GB	D	file as of version D
+.xx
+GCA	D	find the graph GCA for D's parents
+.xx
+GCA2	D	find the set GCA for D's parents
+.xx
+GFILE	F	pathname of the gfile
+.xx
+HASHCOUNT	D	count of key/value pairs in D if & only if hash file
+.xx
+HOST	D	hostname of D
+.xx
+I	D	D's revision number
+.xx
+KEY	D	\*[BK] key of D
+.xx
+KID	D	D's kid in the graph data structure
+.xx
+L	D	the second field in D's rev (R.L.B.S)
+.xx
+LODKEY	D	the key of the start of D's LOD
+.xx
+Ld	D	lines deleted in D
+.xx
+Li	D	lines inserted in D
+.xx
+Lu	D	lines unchanged in D
+.xx
+MERGE	D	D's rev if & only if D has a merge parent
+.xx
+MGP	D	D's merge parent's serial number
+.xx
+MODE	D	D's file modes as an octal (777)
+.xx
+MODE	D	D's file modes as an octal (777)
+.xx
+MPARENT	D	D's merge parent's revision
+.xx
+NEXT	D	next entry after D in delta table 
+.xx
+P	D	programmer who made D; same as USER
+.xx
+PARENT	D	D's parent's revision
+.xx
+PATH	D	path portion of :DEFAULT:
+.xx
+PN	D	pathname of s.file, same as SFILE
+.xx
+PREV	D	previous entry before D in delta table
+.xx
+R	D	the first field in D's rev (R.L.B.S)
+.xx
+RANDOM	F	Random bits part of ROOTKEY
+.xx
+REV	D	same as I, D's revision
+.xx
+RI	D	revision numbers of D's includes/excludes 
+.xx
+ROOTKEY	F	key of the 1.0 delta, files internal name
+.xx
+RWXMODE	D	D's file modes as ascii (-rwxrwxrwx)
+.xx
+Rn	D	revision numbers of D's includes 
+.xx
+Rx	D	revision numbers of D's excludes 
+.xx
+S	D	last field in D's rev (R.L.B.S)
+.xx
+SFILE	F	pathname of s.file
+.xx
+SHORTKEY	D	D's key as user@host.domain|path|date
+.xx
+SIBLINGS	D	rev sibling's pointer in D
+.xx
+SPN	D	pathname of s.file as of D
+.xx
+SYMBOLS	D	symbolic tag portion of :DEFAULT:
+.xx
+SYMLINK	D	value of D's symlink target
+.xx
+T	D	time of D as HH:MM:SS
+.xx
+TAG	D	any symbolic tag[s] associated with D
+.xx
+TIME_T	D	D's date as GMT time_t, TZ and Fudge adjusted
+.xx
+TIP	D	D's rev is D is a tip of a LOD
+.xx
+TYPE	F	file type (SCCS | BitKeeper)
+.xx
+TZ	D	offset from GMT as +/-HH:MM
+.xx
+Th	D	hour part of D's date as HH
+.xx
+Tm	D	minute part of D's date as MM
+.xx
+Ts	D	seconds part of D's date as SS
+.xx
+USER	D	programmer who made D; same as P
+.xx
+UTC	D	D's timestamp as YYYYMMDDHHMMSS in GMT
+.xx
+UTC-FUDGE	D	like UTC but without the date fudge
+.xx
+VERSION	F	file format version
+.xx
+W	D	what string
+.xx
+X_FLAGS	D	D's per file flags as 0xFFFF
+.xx
+Z	D	@(#)
+.SH BUGS
+Not very compatible with \*(AT dspec; this should be considered a feature
+unless you are trying to maintain old scripts.
 .SH CATEGORY
 .B Basics

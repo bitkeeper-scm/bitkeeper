@@ -1,0 +1,43 @@
+.so bk-macros
+.TH "bk makepatch" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk makepatch \- creates \*(BK patches
+.SH SYNOPSIS
+.Bc bk makepatch [\-v] [
+.OPTreq \-c range
+.Bc ] [
+.OPTreq \-d range
+.Bc ] [
+.OPTreq \-r range
+.B ]
+.SH DESCRIPTION
+.LP
+The makepatch command is a low level command used to generate \*(BK patches.
+.SH OPTIONS
+.if t .TP .7i
+.if n .TP 1i
+.B \-c
+Like \-r, except generate only ChangeSet diffs.  Used for logging only.
+.tp
+.OPTreq \-d range
+Do unified diffs for 
+.ARG range .
+.tp
+.OPTreq \-r range
+Generate a \*(BK patch patch of the changes in
+.ARG range .
+.tp
+.B \-v
+Be more verbose for each instance.
+.SH FUTURE DIRECTIONS
+The
+.B bk makepatch
+command will be evolved to send empty patches which just containing comments
+for logging purposes.
+.SH SEE ALSO
+.SA cset 1
+.SA export 1
+.SA gnupatch 1
+.SA rset 1
+.SH CATEGORY
+.B Repository

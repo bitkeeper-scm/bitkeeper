@@ -1,0 +1,20 @@
+.so bk-macros
+.TH "bk undos" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk undos \- convert DOS files to UNIX files
+.SH SYNOPSIS
+.B bk undos [\-n]
+.ARG file
+.SH DESCRIPTION
+The
+.B bk undo
+command reads the specified file and translates each 
+.B \er\en
+into 
+.BR \en .
+.SH OPTIONS
+.TP
+.B \-n
+automatically add a trailing newline if the file does not already have one.
+.SH CATEGORY
+.B Utility

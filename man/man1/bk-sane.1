@@ -1,0 +1,16 @@
+.so bk-macros
+.TH "bk sane" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk sane \- check for various \*(BK needs
+.SH SYNOPSIS
+.B bk sane
+.SH DESCRIPTION
+This command is used to check for various things which \*(BK needs to
+run.  At the time of this writing, it checked for a valid hostname, username,
+permissions on various metadata directories, and the ability to lock the
+idcache.  The command produces no output if everything is sane, otherwise
+it complains on stderr and exits non-zero.
+.LP
+Please run this command and include its output in any bug reports.
+.SH CATEGORY
+.B Admin

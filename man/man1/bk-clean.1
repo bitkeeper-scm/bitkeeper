@@ -1,11 +1,10 @@
-.so ../macros
-.TH "bk clean" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk clean" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
 bk clean \- removes unmodified files
 .SH SYNOPSIS
-.B bk clean [-pqv]
-.BI [ files...
-.B ]
+.B bk clean [\-pqv]
+.BKARGS
 .SH DESCRIPTION
 The
 .B clean
@@ -18,19 +17,18 @@ If there are files which are both locked and modified,
 will refuse to delete them and will instead list them as needing a check-in.
 .SH OPTIONS
 .TP
-.B -p
+.B \-p
 Prints diffs for all modified files. The diffs are printed
 in the least readable diff format; you may prefer to use
-.B bk diffs -u
+.B bk diffs \-u
 .tp
-.B -q
+.B \-q
 Run quietly.
 .tp
-.B -v
+.B \-v
 Run verbosely.  List files deleted as well as modified files.
 .SH SEE ALSO
 .SA unedit 1
-.br
 .SA unlock 1
 .SH CATEGORY
 .B Basics

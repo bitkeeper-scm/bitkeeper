@@ -1,0 +1,33 @@
+.so bk-macros
+.TH "bk what" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk what \- look for \*(SC what strings
+.SH SYNOPSIS
+.Bc bk what [
+.ARGc files
+]
+.SH DESCRIPTION
+The
+.B bk what
+command looks through the specified list of file[s] for strings which 
+start with the \*(SC \*(lqwhat\*(rq string \*(lq@(#)\*(rq, which can be
+stated as %\&Z% in a source file, and prints the
+entire string.
+.LP
+If a C program contains
+.DS
+char sccsid[] = "@(#)some ident info";
+.DE
+and the program is compiled to yield a program a.out, then the command
+.DS
+what a.out
+.DE
+will produce
+.DS
+a.out:
+    some ident info
+.DE
+.SH "SEE ALSO"
+.SA keywords 1
+.SH CATEGORY
+.B File

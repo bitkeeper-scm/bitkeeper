@@ -1,22 +1,26 @@
-.so ../macros
-.TH "bk difftool" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk difftool" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
-bk difftool \- BitKeeper Graphical Diff Tool
+bk difftool \- \*(BK Graphical Diff Tool
 .SH SYNOPSIS
-.LP
 .B bk difftool
-.I file1
+.ARG file1
+.br
+.B bk difftool 
+.OPTreq \-r rev
+\ 
+.ARG file1
 .br
 .B bk difftool
-.BI -r 1.3
-.I file1
+.OPTreq \-r rev1
+\ 
+.OPTreq \-r rev2
+\ 
+.ARG file1
 .br
 .B bk difftool
-.BI -r 1.3 -r 1.9
-.I file1
-.br
-.B bk difftool
-.I file1 file2
+.ARG file1
+.ARG file2
 .SH DESCRIPTION
 .LP
 The
@@ -25,7 +29,7 @@ command is a side-by-side differences viewer that shows each
 file in a window, with the differences color coded.
 You can move back and forth through the diffs using the keys
 described below.
-All differences are highlightd, but as you move to a new diff,
+All differences are highlighted, but as you move to a new diff,
 that diff becomes highlighted in a bold font.
 .SH ARGUMENTS
 .LP
@@ -45,11 +49,7 @@ If two files are specified,
 .B difftool
 diffs those two files.
 .SH "KEY BINDINGS"
-.\".de tp
-.\".	sp -.5
-.\".	TP
-.\"..
-.TP .9i
+.TP 1.2i
 .B Home
 Scroll both files to the top
 .tp
@@ -62,10 +62,10 @@ Scroll both files one screen up
 .B PageDown
 Scroll both files one screen down
 .tp
-.B Up
+.B UpArrow
 Scroll both files one line up
 .tp
-.B Down
+.B DownArrow
 Scroll both files one line down
 .tp
 .B Left
@@ -73,8 +73,8 @@ Scroll both files to the left
 .tp
 .B Right
 Scroll both files to the right
-.tp
-.B q
+.TP
+.B Control-q
 Quit
 .tp
 .B space
@@ -91,7 +91,6 @@ Center the current diff on the screen
 .SH SEE ALSO
 .LP
 .SA diffs 1
-.br
 .SA fmtool 1
 .SH CATEGORY
 .B GUI-tools

@@ -1,12 +1,12 @@
-.so ../macros
-.TH "bk extras" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk extras" 1 20%E% "\*(BC" "\*(UM"
 .\"    ======================= Finding extra files =======================
 .SH NAME
 bk extras \- list extra files not under revision control
 .SH SYNOPSIS
-.B bk extras [
-.IR dir ] 
-.B [\-a]
+.Bc bk extras [
+.ARGc dir
+.B ] [\-a]
 .SH DESCRIPTION
 .LP
 The extras command finds files which are not under revision control and 
@@ -14,16 +14,16 @@ are not listed in the ignore file (see bk help ignore).
 .LP
 The default behavior is to find all extra files in the entire tree, this
 can be changed by specifying a subdirectory like so
-.AX
+.DS
     bk extras .
-.XA
+.DE
 The default behavior is to respect the ignore file, this can be changed
-by adding the -a flag (which must follow the optional directory argument)
+by adding the \-a flag (which must follow the optional directory argument)
 like so
-.AX
+.DS
     bk extras -a	# find all extra files
     bk extras . -a
-.XA
+.DE
 .SH BUGS
 .LP
 The
@@ -31,7 +31,6 @@ The
 position is lame.
 .SH "SEE ALSO"
 .SA ignore 1
-.br
 .SA sfiles 1
 .SH CATEGORY
 .B File

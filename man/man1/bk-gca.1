@@ -1,0 +1,24 @@
+.so bk-macros
+.TH "bk gca" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk gca \- show the greatest common ancestor
+.SH SYNOPSIS
+.\"
+.B bk gca [\-t]
+.OPTreq \-r rev1
+\ 
+.OPTreq \-r rev2
+\ 
+.ARG file
+.SH DESCRIPTION
+This command will print the revision which is the greatest common ancestor
+of the specified two revisions.  If there is no node in the graph which is
+an exact match, the printed revision will have an include list and/or
+an exclude list of revisions which must be added to the revision in
+order to get the actual gca.
+.if t .TP .8i
+.if n .TP \w'\-r<rev>\ \ 'u
+.OPTreq -r rev
+specify either the first of second rev (both are required).
+.SH CATEGORY
+.B Utility

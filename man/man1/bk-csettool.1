@@ -1,36 +1,31 @@
-.so ../macros
-.TH "bk csettool" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk csettool" 1 20%E% "\*(BC" "\*(UM"
 .\"    =============== BitKeeper Graphical ChangeSet Browser ===============
 .SH NAME
-bk csettool \- graphical changeset browser
+bk csettool \- \*(BK graphical changeset browser
 .SH SYNOPSIS
-.if t \{\
 .B bk csettool 
-.BI -r revs
-\}
-.if n \{\ 
-bk csettool -r<revs>
-\}
+.OPTreq \-r revs
 .SH DESCRIPTION
 .LP
 The csettool command is used to view the detailed information about the
 specified changeset[s].  The tool displays the list of changes in each
-changeset, the ChangeSet history, and (optionally) the differences found
+changeset, the ChangeSet history, and the differences found
 in each file contained in each changeset.
 .LP
 To see the changes for a particular file, click on the file name
 in the top left window and you will see:
-.TP
-.B \-
-the number of diffs in the light blue, middle status window
+.TP 2
+\*(BU
+the number of diffs in the middle status window
 .tp
-.B \-
+\*(BU
 the old version of the file in the lower left window
 .tp
-.B \-
+\*(BU
 the new version of the file in the lower right window
 .tp
-.B \-
+\*(BU
 the ChangeSet's comments followed by the delta's comments in
 the upper right window
 .LP
@@ -65,7 +60,7 @@ Scroll both files to the left
 .tp
 .B RightArrow
 Scroll both files to the right
-.tp
+.TP
 .B Alt-UpArrow
 Make the diffs windows one line bigger and
 the lists windows one line smaller.
@@ -73,18 +68,18 @@ the lists windows one line smaller.
 .B Alt-DownArrow
 Make the diffs windows one line smaller and
 the lists windows one line bigger.
-.tp
-.B q
+.TP
+.B Control-q
 Quit
 .tp
 .B space
-Next diff, if last diff, then next file
+Next diff, if last diff in this file, then goto next file
 .tp
 .B n
-Next diff, if last diff, then next file
+Next diff, if last diff in this file, then goto next file
 .tp
 .B p
-Previous diff, if first diff, then previous file
+Previous diff, if first diff in this file, then goto previous file
 .tp
 .B .
 Center the current diff on the screen
@@ -100,9 +95,7 @@ We plan on having a single screen diff window option where the changes
 are all shown color coded in one window.  
 .SH "SEE ALSO"
 .SA cset 1
-.br
 .SA difftool 1
-.br
 .SA ranges 1
 .SH CATEGORY
 .B GUI-tools

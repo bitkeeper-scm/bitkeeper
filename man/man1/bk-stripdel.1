@@ -1,0 +1,56 @@
+.so bk-macros
+.TH "bk stripdel" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk stripdel \- strip deltas out of an s.file
+.SH SYNOPSIS
+.Bc bk stripdel [-bCcq] [
+.OPTreq \-r rev
+.B ]
+.ARG filename
+.SH DESCRIPTION
+The 
+.B bk stripdel
+command is used to \*(lqstrip\*(rq deltas from a revision history.  The
+deltas, once stripped, are not recoverable.  
+.LP
+This command is typically called by the 
+.B bk clone
+or the 
+.B bk undo
+commands, and perhaps the
+.B bk import command.
+It can be called directly if you wish to remove certain deltas from a
+file.
+.LP
+The 
+.B stripdel
+command will fail if the specified revisions are included in a changeset
+and the 
+.B \-C 
+option is not present.
+.SH WARNING
+It is an extremely bad idea to use the 
+.B \-C option, it can corrupt your repository.
+.SH OPTIONS
+.if t .TP .8i
+.if n .TP 1i
+.B -b
+Strip all branch deltas.  
+.tp
+.B -C
+Do not respect cset boundries, used by 
+.BR "bk undo" .
+.tp
+.B -c
+Checks if the specified rev[s] can be stripped but do not strip them.
+.tp
+.B -q
+Run quietly.
+.tp
+.OPTreq -r rev
+Set of revisions to be removed.
+.SH "SEE ALSO"
+.SA clone 1
+.SA undo 1
+.SH CATEGORY
+.B File

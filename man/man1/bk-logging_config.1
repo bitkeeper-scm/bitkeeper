@@ -1,0 +1,28 @@
+.so bk-macros
+.TH "bk logging_config" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk open logging
+.SH "SPECIFYING OPEN LOGGING"
+.LP
+An Open Logging package is indicated by the presence of a line like
+this in the BitKeeper/etc/config file
+.DS
+logging:	logging@openlogging.org
+.DE
+You can look for that by doing this
+.DS
+$ bk -R get -p BitKeeper/etc/config | grep logging:
+.DE
+.SH "NO OPEN LOGGING"
+.LP
+If you do not want Open Logging, you must specify some other email address
+or the word "none" for the logging field, i.e.,
+.DS
+logging:	dev@bitmover.com
+.DE
+or
+.DS
+logging:	none
+.DE
+.SH CATEGORY
+.B Licensing

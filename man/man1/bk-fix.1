@@ -1,10 +1,10 @@
-.so ../macros
-.TH "bk fix" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk fix" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
 bk fix \- re-edit a checked in (but uncommitted) delta
 .SH SYNOPSIS
-.B bk fix
-.I file.c
+.B bk fix [-v]
+.ARG file.c
 .SH DESCRIPTION
 .LP
 The
@@ -18,12 +18,12 @@ The reason for this is that ChangeSets are immutable - once they are created,
 they may not be modified.
 .SH OPTIONS
 .TP
-.B -q
-run quietly
+.B \-v
+be verbose
 .SH SEE ALSO
 .LP
 .SA ci 1
-.br
 .SA edit 1
+.SA stripdel 1
 .SH CATEGORY
 .B Basics

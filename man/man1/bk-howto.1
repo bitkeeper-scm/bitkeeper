@@ -1,17 +1,17 @@
-.so ../macros
-.TH "bk howto" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk howto" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
-howto
+bk howto
 .SH DESCRIPTION
 .LP
 This section provides detailed, step-by-step instructions for several
 common scenarios. We will cover the following scenarios:
-.AX
+.DS
 A) Two machines and two repositories.
 B) Single machine shared with multiple developers and a single 
 	   repository
 C) Hierarchy of repositories 
-.XA
+.DE
 .SH SECTIONS:
 .nf
 	I.   Creating and Working with a Repository
@@ -25,7 +25,7 @@ C) Hierarchy of repositories
 .SS PREREQUISITES:
 .LP
 .nf
-1) BitKeeper must be installed on both machines.
+1) \*(BK must be installed on both machines.
 2) Multiple machine scenarios require that the machines be connected
    by a network and either ssh, rsh, or bkd must be working. (Go here 
    http://www.openssh.org for ssh help).
@@ -38,79 +38,79 @@ master.dmn.com and slave.dmn.com.
 .LP
 On machine 'master', we will create a new repository under the /u01
 mount point:
-.AX
+.DS
 master$ bk setup /u01/my_package
-.XA
+.DE
 The setup command will prompt you for a description of the package. In
 addition, you will be asked to edit a configuration file containing
 information about your new repository.
 .LP
 After creating the repository, "bk new" is used to add files from
 scratch and "bk import" is used to populate your repository from an
-existing, non-BitKeeper package.
+existing, non-\*(BK package.
 .LP
 For this scenario, we will create new files from scratch. Change to
 the /u01/my_package directory that was created from the setup step and
 create a source and doc directory:
-.AX
+.DS
 master$ mkdir doc src
-.XA
+.DE
 Now change to the src directory and create a new file with the editor
 of your choice:
-.AX
+.DS
 master$ cd src
 master$ vi test.c 
-.XA
+.DE
 Once you have added some content to test.c, save the file and exit 
 the editor. Now do the following:
-.AX
+.DS
 master$ bk new test.c
-.XA
+.DE
 Upon doing the "bk new", test.c will be removed from the current
 directory and the corresponding s.file, s.test.c, will be placed in
 the SCCS subdirectory. If you look in the SCCS directory, you will
 see one file, s.test.c (See the "bk help files" topic for more info).
 .LP
 To make additional changes to test.c, use "bk edit":
-.AX
+.DS
 master$ bk edit test.c 	(or "bk edit" to check out all files in a directory)
 master$ vi test.c       (make some more changes)
-.XA
+.DE
 At this point, you might want to experiment with SCCS keywords (see
 "bk help keywords"). For example, try adding the following string
 to test.c:
-.AX
+.DS
 static char *what = "%W%";
-.XA
+.DE
 When test.c is checked out in read-only mode (i.e. "bk co"), the
 keyword will be expanded to:
-.AX
+.DS
 static char *what = "@(#)test.doc 1.2";
-.XA
+.DE
 The "bk what" command can be used to search for keywords that follow
 the "what string", i.e., "@(#)". "bk what" will even extract the what
 string when the program is compiled into a binary executable.
 .LP
 Before checking in the file, you might want to see what changes you
 have made to the file since checking it out:
-.AX
+.DS
 master$ bk diffs
-.XA
+.DE
 When you are happy with your changes and want to commit them, type:
-.AX
+.DS
 master$ bk ci test.c
-.XA
+.DE
 An alternative to doing 
 .BR bk diffs ,
 is to use the 
 .B -p 
 option when
 checking in a file.  For example, typing:
-.AX
+.DS
 master$ bk ci -p test.c
-.XA
+.DE
 Will show the following:
-.AX
+.DS
 ==== Changes to test.c ====
 8,9c8,9
 <     int k;
@@ -121,7 +121,7 @@ Will show the following:
 ====
 End comments with "." by itself, blank line, or EOF.
 test.c 1.5>> 
-.XA
+.DE
 Now when you are prompted for comments, you will be reminded of the
 changes you made to the file.
 .LP
@@ -132,31 +132,31 @@ a window to type in comments, and another window showing the diffs.
 After checking in files with "ci", you may want to see what files need
 to be added to the changeset. Type "bk pending" to show all files checked
 in, but not yet committed to a changeset.
-.AX
+.DS
 master$	bk pending 
 src/test.c@1.6, 2000-02-29 17:27:29-08:00, usr@master.dmn.com added for loop 
-.XA
+.DE
 Finally, you must do a "bk commit" if you want your changes to become
 part of a changeset. If you don't do a commit, other users will not see
 the changes when they synchronize with your repository.  Repositories
 are synchronized at the changeset level, not at the delta level.
-.AX
+.DS
 master$ bk commit
-.XA
+.DE
 You will be prompted for comments.  If you used citool, the changeset
 is usually created as part of the check in.
 .SS "II. CLONING A REPOSITORY"
 .LP
 Sooner or later, you will want to let others work with you on the
-package or you might want to use BitKeeper to synchronize packages
+package or you might want to use \*(BK to synchronize packages
 between a desktop and a laptop or between a work and home machine.
 In this case, you need to clone your repository.  Login to the machine
 'slave.dmn.com' and do:
-.AX
+.DS
 slave$ bk clone master.dmn.com:/u01/package1  /dest/package1
-.XA
+.DE
 The output when running clone will look like the following:
-.AX
+.DS
 src/SCCS/s.test.c
 SCCS/s.ChangeSet
 BitKeeper/etc/SCCS/s.config
@@ -164,11 +164,11 @@ Looking for, and removing, any uncommitted deltas...
 Removing any directories left empty ...
 Set parent to master.dmn.com:/u01/package1
 Clone completed successfully.
-.XA
+.DE
 If you did not commit work to the changeset, you will find that
 uncommitted deltas are not cloned to your new repository. Here is
 an example where test.c was checked in, but not committed.
-.AX
+.DS
 src/SCCS/s.test.c
 SCCS/s.ChangeSet
 BitKeeper/etc/SCCS/s.config
@@ -179,7 +179,7 @@ Removing any directories left empty ...
 Set parent to master.dmn.com:/u01/package1
 Running consistency check ...
 Clone completed successfully.
-.XA
+.DE
 The marked line shows what clone does when it has cloned deltas not yet
 part of a changeset - it throws them out of the newly created repository.
 .SH "III. WORKING WITH A CLONED REPOSITORY"
@@ -195,7 +195,7 @@ master and slave repository and then merge the work.
 .LP
 Let's add a new file to the cloned repository. Go to the package
 directory and enter the following c program:
-.AX
+.DS
 slave$ cd /u01/package1/src
 
 ======= use editor and cut-and-paste into file1.c ====
@@ -211,16 +211,16 @@ int main () {
 
 slave$ bk new file1.c
 slave$ bk commit -y"Test of bitkeeper"
-.XA
+.DE
 We can use the "bk parent" command to check to see what the slave
 thinks is the master repository:
-.AX
+.DS
 slave$ bk parent 
 Parent repository is slave.dmn.com:/u01/package1
-.XA
+.DE
 The "bk parent" command can be given an argument to set the parent
 pointer to another repository. (see "bk help parent")
-.AX
+.DS
 slave$ bk push -n -l
 
 ----------------- Would send the following csets -----------------
@@ -229,13 +229,13 @@ ChangeSet@1.5, 2000-03-01 09:05:39, u1@slave.dmn.com   test change
 
 slave$ bk csets -r1.5 
 src/file.c@1.0..1.1
-.XA
+.DE
 If you'd like to see what files are a part of that changeset, use
 "bk csettool" (see "bk help csettool").
 .LP
 Now push the changes you have made in the slave repository to the 
 master repository:
-.AX	
+.DS	
 slave$ bk push
 
 --------------- Sending the following csets ---------------------
@@ -257,20 +257,20 @@ Running resolve to apply new work...
 resolve: applied 2 files in pass 4
 resolve: running consistency check, please wait...
 Consistency check passed, resolve complete.
-.XA
+.DE
 Now go to the master repository and make some changes to
 file1.c.  Since we did the push from the slave, file1.c now exists
 in /u01/package1/src/ of the master repository. By making changes to
 the files in the master repository, we are simulating the situation
 where progress is being made on the package at multiple repositories.
-.AX
+.DS
 master$ cd /u01/package1/src
 master$ bk edit
 master$ bk vi file1.c 
-.XA
+.DE
 Make the file look like the one below, i.e. add the "int j;" line
 above the printf.
-.AX
+.DS
        ======= 
 
     #include <stdio.h>
@@ -282,15 +282,15 @@ above the printf.
     }
 
        ======
-.XA
+.DE
 Save the file, check it in, and then commit it to a changeset.
-.AX
+.DS
 master$ bk ci -y"added variable" file1.c
 master$ bk commit -Yfile1.c
-.XA
+.DE
 Now go back to the slave, and make a slightly different change to
 file.c. Enter "int k;" instead of "int j;".
-.AX
+.DS
         ======= 
 
     #include <stdio.h>
@@ -305,10 +305,10 @@ file.c. Enter "int k;" instead of "int j;".
 
 slave$ bk ci -y"added variable" file1.c
 slave$ bk commit -Yfile1.c
-.XA
+.DE
 Now synchronize with the master. We can use the -t option to 
 pull to specify the text-only version.
-.AX
+.DS
 slave$ bk pull -t
 
 ------------- Sending the following csets ---------------------
@@ -325,17 +325,17 @@ takepatch: 2 new revisions, 1 conflicts in 2 files
 Running resolve to apply new work ...
 Conflicts during automerge of src/file1.c
 resolve: 1 unresolved conflicts, nothing is applied.
-.XA
+.DE
 Notice that the pull didn't complete this time since there were
 conflicting changes within the file1.c code. When push and pull result
 in conflicts, we use the "bk resolve" command.
-.AX
+.DS
 slave$ bk resolve -t
 src/file1.c 1.2 inc: 1.1.1.1 -> 1.3
 src/file1.c>> 
-.XA
+.DE
 At the prompt, type a question mark to see what options are available:
-.AX
+.DS
 
 src/file1.c>> ?
 
@@ -377,11 +377,11 @@ Commands are:
 
 Typical command sequence: 'm' 'e' 'C';
 Difficult merges may be helped by 'p'.
-.XA
+.DE
 Between the dashed lines above, resolve displays what files need
-to be merged, and what BitKeeper sees as the revision history. The
+to be merged, and what \*(BK sees as the revision history. The
 greatest common ancestor for file1.c was 1.1. However, by modifying
-the file on both repositories, BitKeeper needs to change the revision
+the file on both repositories, \*(BK needs to change the revision
 numbers since both files cannot be version 1.2.
 .LP
 Notice above that the resolve interface shows the typical command
@@ -389,7 +389,7 @@ sequence as 'm', 'e', and then 'C'. The 'm' option will try to
 automerge, but automerge will not work in our situation because of
 the conflicts. When the 'e' option is used , your default editor
 is opened with the following:
-.AX
+.DS
 #include <stdio.h>
 
 static char *what = "%W%";
@@ -403,7 +403,7 @@ main () {
 >>>>>>> BitKeeper/tmp/file1.c_user2@1.2
 	printf("Go BitKeeper: %s\n",what);
 }
-.XA
+.DE
 Notice the tags surrounding the conflict.  From the left arrows (<<<<<)
 to the dashed-line represent the local code while from the dashes
 to the right arrows (>>>>) show the remote repository version. 
@@ -414,7 +414,7 @@ be done. In our case, suppose that we speak to the owner of the code
 on the master repository and determine that both "int k" and "int j"
 should be in the program. We then remove the tags and make the code 
 look like:
-.AX
+.DS
 #include <stdio.h>
 
     static char *what = "%W%";
@@ -425,17 +425,17 @@ look like:
             int j;
             printf("Go BitKeeper: %s\n",what);
     }
-.XA
+.DE
 Once edited, we do the commit step:
-.AX
+.DS
 resolve: resolved 1 conflicts in pass 3
 ChangeSet 1.5 inc: 1.4.1.1 -> 1.6
 resolve: applied 2 files in pass 4
 resolve: running consistency check, please wait...
 Consistency check passed, resolve complete.
-.XA
+.DE
 Now we can do a push to the master repository:
-.AX
+.DS
 slave$ bk push
 
 [akushner@vermin src]$ bk push
@@ -476,7 +476,7 @@ C added int j
 D 1.1 00/03/01 11:20:23 u1@master.dmn.com 2 1 00009/00000/00000
 P src/file1.c
 ------------------------------------------------
-.XA
+.DE
 .\" help://General/HOWTO
 .SH CATEGORY
 .B General

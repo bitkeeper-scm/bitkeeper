@@ -1,12 +1,14 @@
-.so ../macros
-.TH "bk root" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk root" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
 bk root \- print the path name to the root of the repository
 .SH SYNOPSIS
-.B
-bk root
+.B bk root
 .SH DESCRIPTION
-.LP
-The root command prints the pathname to the root of the repository.
+This command prints the full pathname to the root of the repository.
+The following will do the same thing:
+.DS
+bk -R pwd
+.DE
 .SH CATEGORY
 .B Admin

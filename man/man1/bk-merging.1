@@ -1,25 +1,27 @@
-.so ../macros
-.TH "bk merge" 1 08/18/00 "\*(BC" "\*(UM"
-.\"    ====================== Merging differences ======================
+.so bk-macros
+.TH "bk merging" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
-bk merge
+bk merging \- help on merging conflicts
 .SH DESCRIPTION
 .LP
 This section documents the merge process started by the resolve command,
 see 
-.B bk help resolve
- for details on how to run resolve.
+.B bk resolve
+for details on how to run resolve.
 .LP
 While in resolve, you can hit return to see a summary of the commands.
 .LP
-The resolve command will prompt you on each file that has conflicts.
+The 
+.B bk resolve
+command will prompt you on each file that has conflicts.
 A conflict is defined to be two deltas made in parallel in different
-repositories.  The conflict may not have any overlapping lines, in
-other words, it is not the same as what RCS merge calls a conflict,
-it's more conservative.
+repositories.  If the conflict does not have any overlapping lines,
+then it may have been automerged, depending on how
+.B bk resolve
+was run.
 .LP
-There are multiple sorts of conflicts, besides the usual file content
-conflicts.  BitKeeper manages file names, permissions, flags, symbols,
+There are other sorts of conflicts, besides the usual file content
+conflicts.  \*(BK manages file names, permissions, flags, symbols,
 and descriptive text in the same way as it manages file contents.
 That means that you can have a permissions conflict if, for example, one
 person changed the file to 0755 mode and another changed it to 0777 mode.
@@ -39,30 +41,29 @@ To see the diffs use the "d" command.  For side-by-side diffs, use the
 "sd" command.  You can also diff one or the other branches against the
 common ancestor using "dr" or "dl".  Type "D" to get a graphical, color
 coded side-by-side diff browser.
-
+.LP
 There are built in commands to show the history of the file, see "h",
 "hl", "hr".  In addition, "p" starts the the graphical file browser.  You
 can see diffs between versions by clicking the left button on the earlier
 rev and the right button on a later rev.  The bottom of the screen will
 show the diffs.  If you type Return at the prompt, the 3 revisions forming
 the merge are part of the help message.
-
 .SH "MERGING CONTENTS"
 .LP
 When in resolve, there are four different files for each merge.  They
 are:
 .TP
 .B local
-This is the version of the file in the local repository.
+The version of the file in the local repository.
 .tp
 .B remote
-this is the version of the file in the other repository
+The version of the file in the other repository.
 .tp
 .B merge
-this is the merged file
+The merged file.
 .tp
 .B GCA
-this is a common ancestor of the local/remote versions
+A common ancestor of the local/remote versions.
 .LP
 Your goal is to generate the merge file.  There are several ways to
 do this.
@@ -95,19 +96,45 @@ There is a three-way file merge but it is not currently supported and we
 don't suggest you use it.  You can take a look by typing "F", it may be
 marginally useful.
 .LP
-You can specify your own merge tool to resolve, see 
-.BR bk\ help\ resolve .
+You may also call an external tool to merge changes.  When in the resolver,
+if you say
+.DS
+file.c>>\ \c
+.Bc !
+.ARG command
+.DE
+.ft R
+then
+.ARG command
+will be run with the following environment variables set:
+.br
+.ne 5
+.TP 1i
+BK_LOCAL
+pathname of a temp file containing the local version
+.tp
+BK_GCA
+file containing the common ancestor
+.tp
+BK_REMOTE
+pathname of a temp file containing the remote version
+.tp
+BK_MERGE
+pathname where the merged content should be placed
 .SH COMMIT
 .LP
 The merge process is not complete until you commit the file with the
 "C" command at the resolve prompt.  This means you can merge repeatedly
-until you are happy with the results.
+until you are happy with the results.  Each time you merge and save,
+however, you are overwriting the previous merge attempt.
 .LP
 When you are happy with your merged file, click done in filemerge,
 quit in the file browser, and type "C" at the prompt to commit to
 that file and move on to the next one.
 .SH "SEE ALSO"
+.SA merge 1
+.SA fmtool 1
+.SA histtool 1
 .SA resolve 1
-.\" help://Repository/merging
 .SH CATEGORY
 .B Repository

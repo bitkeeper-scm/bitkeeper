@@ -1,12 +1,12 @@
-.so ../macros
-.TH "bk chmod" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk chmod" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME 
 bk chmod \- change the mode of a file and save it
 .SH SYNOPSIS
-.B bk chmod mode
-.I file
-.BI [ file
-.IB ... ]
+.B bk chmod 
+.ARG mode
+.ARG file
+.BKARGS
 .SH DESCRIPTION
 .LP
 The
@@ -30,7 +30,6 @@ modes into the revision history.
 .SH SEE ALSO
 .LP
 .SA admin 1
-.br
 .BR chmod (1)
 .SH CATEGORY
 .B File

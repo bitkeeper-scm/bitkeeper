@@ -1,17 +1,22 @@
-.so ../macros
-.TH "bk ignore" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk ignore" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
 bk ignore \- ignore shell glob patterns
 .SH SYNOPSIS
-.B bk ignore [glob [glob...]]
+.Bc bk ignore [
+.ARG glob 
+.Bc [
+.ARGc glob
+.Ic .\|.\|.
+.B ]]
 .SH DESCRIPTION
 .LP
 The 
 .B ignore
-command is used to tell BitKeeper about files which should
+command is used to tell \*(BK about files which should
 be ignored when looking for extras files not under revision control.
 It affects the output of 
-.B bk sfiles -x
+.B bk sfiles \-x
 and all commands which use that output, such as 
 .B bk status
 and 
@@ -22,26 +27,27 @@ Typical things to ignore are object files, core files, a.out, *.exe, etc.
 .LP
 The patterns are matched against both the basename of the file and the
 pathname of the file.  If you are trying to never have the file 
-.I JUNK
+.ARG JUNK
 match, regardless of which directory it is in, you can say
-.AX
+.DS
 bk ignore 'JUNK'
-.XA
+.DE
+.ft R
 and that will match 
-.I JUNK
+.ARG JUNK
 and
-.I sub/dir/JUNK
+.ARG sub/dir/JUNK
 but not
-.I JUNK-PRECIOUS.
+.ARG JUNK-PRECIOUS .
 .LP
 If you want to match a file in just one subdirectory, you can do
-.AX
+.DS
 bk ignore sub/directory/this_one
-.XA
+.DE
 which will match 
-.I sub/directory/this_one
+.ARG sub/directory/this_one
 but not
-.I other_dir/this_one.
+.ARG other_dir/this_one .
 .LP
 If you give ignore no arguments it will print out the current ignore list.
 .LP
@@ -51,10 +57,10 @@ You may edit this file if you wish; the format is simply one glob per line.
 Editing the ignore file is the only way to remove entries from the list.
 .LP
 There is currently no default list, but the following is suggested:
-.AX
+.DS
 core
 *.o
-.*.swp
+*.swp
 *.a
 *.exe
 *~
@@ -63,7 +69,7 @@ core
 BitKeeper/etc/*
 BitKeeper/tmp/*
 BitKeeper/triggers/*
-.XA
+.DE
 .SH BUGS
 .LP
 There is no per directory
@@ -73,7 +79,6 @@ list, nor is there a
 .SH SEE ALSO
 .LP
 .SA sfiles 1
-.br
 .SA extras 1
 .SH CATEGORY
 .B Admin

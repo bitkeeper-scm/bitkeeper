@@ -1,0 +1,58 @@
+.so bk-macros
+.TH "bk sfio" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk sfio \- \*(BK file archiver
+.SH SYNOPSIS
+.B bk sfio [\-qm] \-i <
+.ARG archive.sfio
+.br
+.B bk sfio [\-m] \-p <
+.ARG archive.sfio
+.br
+.B bk sfio [\-qm] -o < 
+.ARG filelist
+.SH DESCRIPTION
+.LP
+The
+.B bk sfio 
+command is similar to
+.BR cpio (1).
+It exists because we were unable to find a single CPIO format which was
+portable across all of our supported platforms.
+.LP
+.B bk sfio 
+is used to transfer data during 
+.B bk import
+and 
+.B bk clone
+commands.
+.LP
+There are three ways to run sfio, as listed above.
+The first creates files from an archive,
+the second lists the contents of an archive,
+and the third creates an archive from the specified list of files.
+.SH OPTIONS
+.TP 
+.B \-i
+Extract all files from the archive.
+.tp
+.B \-m
+Transfer file modes (default not to do so).  If the archive was created
+with 
+.B \-m
+then it must be extracted with
+.BR \-m .
+We will not turn this on by default, transferring the file modes is not
+always the correct answer so we force it to be explicit.
+.tp
+.B \-o
+Create an archive.
+.tp
+.B \-p
+List contents of an archive.
+.tp
+.B \-q
+Quiet mode, when combined with the create or extract, does not list files
+as they are added or extracted.
+.SH CATEGORY
+.B Repository

@@ -1,17 +1,15 @@
-.so ../macros
-.TH "bk push" 1 08/18/00 "\*(BC" "\*(UM"
-.\"    ============== Pushing changes from your repository ==============
+.so bk-macros
+.TH "bk push" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
 bk push \- send local changes to the parent repository
 .SH SYNOPSIS
-.if t \{\
-.B bk push [\-aglntq] [\-z
-.I d
-.B ] [
-.IB parent ]
-.\}
-.if n
-bk push [\-aglntq] [\-z<d>] [<parent>]
+.Bc bk push [\-aglnqt] [\-z[
+.ARGc 0-9
+.Bc ]] [
+.OPTreq \-c n
+.Bc ] [
+.ARGc parent
+.B ]
 .SH DESCRIPTION
 Push sends changes in the current repository back to its parent if
 and only if the current repository is a superset of the parent.
@@ -37,8 +35,10 @@ and specify the child as the
 If the parent is a superset of the current repository,
 then automatically pull that work into the current repository.
 .tp
-.B -c
-Do not use compression when using ssh.
+.OPTreq \-c n
+Try to get the remote lock 
+.ARG n
+times before giving up (default forever).
 .tp
 .B -g
 Allow the use of GUI tools during the resolve (unlike resolve -t).
@@ -65,22 +65,28 @@ the pull operation (requires
 .B \-a
 and that the parent is a superset).
 .tp
-.AN \-z d
+.OPTreq \-z d
 Do compression at level 
-.IB d ,
+.ARG d ,
 if possible, where
-.I d
+.ARG d
 is an integer value 0-9; default is 
 .BR \-z6 .
 Compression is possible when using ssh or the BK daemon,
 but not with rsh.
 .SH "SEE ALSO"
 .SA pull 1
-.br
 .SA parent 1
-.br
 .SA resolve 1
-.br
 .SA triggers 1
+.SH AVAILABILITY
+.\" lm, how's this?
+.BU
+\*(BK Professional allows communication via ssh, rsh,
+and email as well as the bk daemon.
+.br
+.BU
+\*(BK Professional will retry the operation automatically if
+the remote host is busy.
 .SH CATEGORY
 .B Repository

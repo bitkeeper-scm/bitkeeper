@@ -1,0 +1,75 @@
+.so bk-macros
+.TH "bk sendbug" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk sendbug \- file a \*(BK bug report
+.SH SYNOPSIS
+.B bk sendbug
+.SH DESCRIPTION
+.LP
+This command should be used to file a bug report rather then sending
+mail to one of the developers.
+.LP
+This is a interactive command, a template will be displayed in your editor,
+and you fill in the details.
+.LP
+The bug database is online at
+.B http://www.bitkeeper.com/ 
+scroll down and click on the
+.B Bug Database
+entry.  
+The bug database is also available via email, consult the web page for
+more information.
+.SH FUTURE DIRECTIONS
+At some point, we will offer a more polished version of the bug system
+as a \*(BK add on.  Everyone wants a bug system which ties into changesets,
+we know that, we want it too.
+.SH EXAMPLE
+An example template looks like this:
+.sp
+.nf
+Bug/RFE:
+        [bug is obvious, RFE is request for enhancement]
+
+Severity:
+        [5 - no big deal, 1 - can't use BitKeeper until this is fixed]
+
+Priority:
+        [5 - fix whenever, 1 - fix RIGHT NOW]
+
+Program:
+        [cset, co, delta, etc.  If you know which caused the problem]
+
+Release:
+        beta10-pre1
+
+OS:
+        [Linux, IRIX, NT, etc]
+Etc.
+.sp
+.fi
+and the filled out report should look like this (note that the data
+goes after the tags, not on the same line):
+.sp
+.nf
+Bug/RFE:
+        bug
+
+Severity:
+        1
+
+Priority:
+        1
+
+Program:
+        sendbug
+
+Release:
+        pre-2.0-2
+
+OS:
+        All
+Etc.
+.sp
+.fi
+.SH CATEGORY
+.B Admin

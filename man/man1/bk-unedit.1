@@ -1,21 +1,14 @@
-.so ../macros
-.TH "bk unget" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk unget" 1 20%E% "\*(BC" "\*(UM"
 .\"    =============== Un-editing files ===============
 .SH NAME
-bk unget \- destroy any unchecked in changes to specified files
+bk unedit \- destroy any unchecked in changes to specified files
 .SH SYNOPSIS
-.if t \{\
-.B bk unedit [
-.IB files... ]
+.B bk unedit [\-q]
+.FILES
 .br
-.B bk unget [
-.IB files... ]
-.\}
-.if n \{\
-.B bk unedit [files...]
-.br
-.B bk unget [files...]
-.\}
+.B bk unget [\-q]
+.FILES
 .SH DESCRIPTION
 .LP
 If you wish to discard any modifications you have made to a file,
@@ -28,12 +21,14 @@ up only those files without changes, use the bk clean command.
 The unedit command will not autoexpand the file list, you must explicitly
 name each file you want to unedit.
 .LP
-unget is an alias for unedit; unget is the ATT SCCS compatible name.
+unget is an alias for unedit; unget is the \*(AT compatible name.
+.SH OPTIONS
+.B \-q
+be quiet.
 .SH "SEE ALSO"
 .SA clean 1
-.br
+.SA edit 1
 .SA unlock 1
-.\" help://File/unget
-.\" help://File/unedit
+.\" help://unget
 .SH CATEGORY
 .B File

@@ -1,0 +1,28 @@
+.so bk-macros
+.TH "bk rmdir" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk rmdir \- remove a \*(BK directory
+.SH SYNOPSIS
+.B bk rmdir 
+.ARG dir
+.SH DESCRIPTION
+This command is used to delete entire subsections of a \*(BK repository.
+.LP
+To delete a directory called A, do this:
+.DS
+$ bk rmdir A
+.DE
+This will call
+.B bk rm
+on each of the files in that subtree after verifying that there are no
+extra files, and no modified files in that subtree.  
+.LP
+The files are recoverable, none of the \*(BK commands actually remove
+the files, they are just moved to the 
+.B BitKeeper/deleted
+directory.
+.SH "SEE ALSO"
+.SA mvdir 1
+.SA rm 1
+.SH CATEGORY
+.B Basics

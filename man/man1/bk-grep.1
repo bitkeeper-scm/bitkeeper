@@ -1,13 +1,13 @@
-.so ../macros
-.TH "bk grep" 1 08/18/00 "\*(BC" "\*(UM"
-.\"    =================== Searching for strings ===================
+.so bk-macros
+.TH "bk grep" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
 bk grep \- search all revisions for a pattern
 .SH SYNOPSIS
-.B bk grep [\-dimnu] 
-.IB pattern \ [
-.IB files... \ | 
-.IB \- ]
+.B bk grep [\-dimnu] [
+.OPTreq \-r rev
+.B ]
+.ARG pattern
+.BKARGS
 .SH DESCRIPTION
 .LP
 If you need to find a string which you know was present in some version
@@ -22,9 +22,9 @@ command uses
 to show the concatenation of all
 lines in all versions of a file.  The listing can be annotated with dates,
 revision numbers, file names, and/or user names.  If no annotations are
-selected, the default is to do "-mn".
+selected, the default is to do "\-mn".
 .SH OPTIONS
-.TP
+.TP .8i
 .B \-d
 Prefix each line with the date it was last modified.
 .tp
@@ -37,9 +37,17 @@ Prefix each line with the rev it was last modified in.
 .B \-n
 Prefix each line with the filename.
 .tp
+.OPTreq \-r rev
+only look in revision
+.ARG rev
+for the pattern.  A common revision is "+" which means the most recent
+revision.
+.tp
 .B \-u
 Prefix each line with the user who last modified it.
 .SH "SEE ALSO"
+.BR grep (1)
+.br
 .SA sccscat 1
 .SH CATEGORY
 .B File

@@ -1,15 +1,13 @@
-.so ../macros
-.TH "bk unwrap" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk unwrap" 1 20%E% "\*(BC" "\*(UM"
 .\"    =============== Unwrapping BitKeeper patches ===============
 .SH NAME
-.if t \{\
 bk unwrap \- unwrap patches
 .SH SYNOPSIS
 .B bk unwrap \< 
-.I patch 
-.BI \>\  patch.unwrapped
-.\}
-.if n .B bk unwrap < <patch> > <patch.unwrapped>
+.ARG patch 
+.B \>
+.ARG patch.unwrapped
 .SH DESCRIPTION
 .LP
 Normally you do not use this command as it is invoked automatically
@@ -19,9 +17,7 @@ command.   However, you may want to use this
 command to peek inside a wrapped patch.
 .SH SEE ALSO
 .SA receive 1
-.br
 .SA send 1
-.br
 .SA wrap 1
 .SH CATEGORY
 .B File

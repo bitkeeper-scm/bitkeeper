@@ -1,51 +1,142 @@
-.so ../macros
-.TH "bk parent" 1 08/18/00 "\*(BC" "\*(UM"
-.\"    ============== Setting the parent repository ==============
+.so bk-macros
+.TH "bk parent" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
 bk parent \- show or set the parent repository
 .SH SYNOPSIS
-.if t \{\
-.B bk [\-qr] parent [
-.IB repository ]
-.\}
-.if n
-bk [\-qr] parent [<repository>]
+.Bc bk [\-qr] parent [
+.ARGc repository
+.B ]
 .SH DESCRIPTION
 .LP
 The parent command prints or sets the default location where the 
-bk pull/push commands get/put new work.
+\fBbk pull\fR/\fBbk push\fR commands get/put new work.
 .LP
-With no argument, print the parent name.  With an argument, set the 
-parent to that argument.  The form of the parent can be
-.AX
-/path/to/repository
-.XA
-or
-.AX
-host:relative/or/absolute/path/to/repository
-.XA
-or
-.AX
-bk://host[:port]/absolute/path/to/repository
-bk://host:port
-bk://host
-.XA
-The first form only works locally and is appropriate for repositories
-which are not accessed from the network.
-.LP
-The second form works locally or remotely and implies ssh or rsh as
-the transport used to get to the remote repository.   In general,
-this is the best form to use to specify a repository.  If the host
-is the same as what 
-.B bk gethost
-prints, then it will optimize out the host and work locally.
-.LP
-The third form works locally or remotely and implies that there is a 
-BitKeeper daemon running on the remote host at the implied or stated
-port.  In the cases where no pathname is specified, there must be
-a BK daemon running at the root of the repository.
+With no argument, the comand prints the parent name.  With an argument, it sets
+the parent to that argument.  
 .LP
 The parent is automatically set when a repository is cloned.
+.SH REPOSITORY NAMES
+\*(BK supports multiple ways to access a repository.  The selection of the
+access method is determined by how the repository is referenced.  Each
+form is described here:
+.SS LOCAL NAME
+.in +4
+.de head
+.	br
+.	ne 4
+.	ti -4
+..
+.head
+.ARG pathname
+.br
+access is all local, through the local file system.
+.head
+.ARGc host :
+.ARG pathname
+.br
+Normally a remote repository unless 
+.ARG host 
+is what
+.B bk host
+returns or is
+.BR localhost .
+In either of those cases, this form is the same as the above form.
+.SS REMOTE NAME
+.in +4
+.head
+.ARGc host :
+.ARG pathname
+.br
+Uses 
+.B ssh 
+(by default)
+to access 
+.ARG host ,
+and starts a temporary
+.BR bkd .
+If 
+.B $BK_RSH 
+is set, then use that to talk to the host (allows proxying).
+If no 
+.B ssh
+is not found, then falls back to
+.BR rsh.
+.head
+\fBbk\fR://\c
+.ARG host
+.br
+Connects to an existing 
+.B bkd
+on the default 
+.B bkd
+port.
+The 
+.B bkd
+most be at the root of the repository.
+.head
+\fBbk\fR://\c
+.ARGc host /
+.ARG pathname
+.br
+Connects to an existing 
+.B bkd
+on the default bkd port,
+changes to 
+.ARG <pathname> ,
+then runs command.
+.head
+\fBbk\fR://\c
+.ARGc host :
+.ARG port
+.br
+Connects to an existing 
+talks to an existing 
+.B bkd
+on the specified port.
+.B bkd
+most be at the root of the repository.
+.head
+\fBbk\fR://\c
+.ARGc host :
+.ARGc port /
+.ARG pathname
+.br
+Connects to an existing 
+.B bkd
+on the specified port,
+changes to 
+.ARG pathname ,
+then runs command.
+.head
+\fBbk\fR://\c
+.ARGc user @
+.ARG host 
+.br
+Connects to
+.ARG host
+using 
+.BR ssh ,
+assumes that 
+.B bkd
+is the login shell.
+The home directory of 
+.ARG user
+must be the root of the repository.
+.head
+\fBbk\fR://\c
+.ARGc user @
+.ARGc host :
+.ARG pathname
+.br
+Connects to
+.ARG host
+using 
+.BR ssh ,
+assumes that 
+.B bkd
+is the login shell.
+Changes direcotires to the specified pathname, which may be relative to the
+home directory or absolute.
 .SH OPTIONS
 .TP
 .B \-q
@@ -55,14 +146,13 @@ Run quietly.
 Remove the parent pointer.
 .SH "SEE ALSO"
 .SA bkd 1
-.br
 .SA clone 1
-.br
 .SA pull 1
-.br
 .SA push 1
-.br
 .SA resync 1
-.\" help://Repository/url
+.\" help://url
+.\" help://bk-url
+.\" help://remote
+.\" help://naming
 .SH CATEGORY
 .B Repository

@@ -1,23 +1,19 @@
-.so ../macros
-.TH "bk resolve" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk resolve" 1 20%E% "\*(BC" "\*(UM"
 .\"    ============== BitKeeper resolve ==============
 .SH NAME
 bk resolve \- merge and/or apply new work after push/pull/resync
 .SH SYNOPSIS
-.if t \{\
-.B bk resolve [\-aAcdqrt1234] [\-l
-.I log
-.B ] [\-m
-.I merge
-.B ] [\-y
-.I comment
-.B ] [
-.I package_root
+.\" -F undoc
+.Bc bk resolve [\-aAcdqrtv1234] [
+.OPTreq \-l log
+.Bc ] [
+.OPTreq \-m merge
+.Bc ] [
+.OPTreq \-y comment
+.Bc ] [
+.ARGc package_root
 .B ]
-.\}
-.if n
-bk resolve [\-aAcdqrt1234] [-l <log>] 
-[\-m<merge>] [-y<comment>] [<package_root>]
 .SH DESCRIPTION
 .LP
 After a 
@@ -40,22 +36,29 @@ be found in RESYNC/BitKeeper/etc/csets).
 .LP
 Resolve traverses all of the files, prompting you with a list of files
 needing to be merged.  The following are the stages when resolving files:
-.BU
+.TP 2
+\*(BU
 create and rename conflicts
-.BU 
+.tp
+\*(BU 
 mode conflicts (file permissions)
-.BU
+.tp
+\*(BU
 file flag conflicts
-.BU
+.tp
+\*(BU
 file content conflicts
 .LP
 In the future, we will be adding resolve stages for the following:
-.BU
+.TP 2
+\*(BU
 symbol "conflicts" (local and remote added the "alpha" symbol to
 different deltas)
-.BU
+.tp
+\*(BU
 descriptive text conflicts
-.BU
+.tp
+\*(BU
 LOD name conflicts
 .LP
 When there are no conflicts left to be merged, resolve groups any merge
@@ -68,11 +71,14 @@ up the merge process.
 For detailed help on the merge process, see 
 .BR bk\ help\ merge .
 .SH OPTIONS
-.if t .TP .7i
+.if t .TP .8i
 .if n .TP 1i
+.B \-1
+Run only pass 1; similarly for 2 3 and 4.
+.tp
 .B \-a
 Automerge.  This will run a diff3\-based merge of
-all non-overlapping lines.  If there are overlapping
+all non\-overlapping lines.  If there are overlapping
 lines in merged files, the merge will fail and the files
 will not be resolved; you have to run resolve again
 without the 
@@ -93,21 +99,21 @@ advances to the next file.
 .tp
 .B \-c
 No conflicts.  This option tells resolve to complete if and
-only if new non-conflicting work appears in the patch.
+only if new non\-conflicting work appears in the patch.
 .tp
 .B \-d
-Debugging (mainly useful to BitKeeper developers).
+Debugging (mainly useful to \*(BK developers).
 .tp
-.AN \-l log
+.OPTreq \-l log
 Log operations to 
-.I log 
+.ARG log
 (or stderr if destination specified).
 This option is to provide for audit trails; support is not
 yet complete.
 .tp
-.AN \-m merge
+.OPTreq \-m merge
 Use 
-.I merge 
+.ARG merge
 as the merge program called when you press "m"
 in the content resolver.  A merge program takes four file
 arguments: the local version of the file, the ancestor
@@ -119,35 +125,31 @@ to merge the changes into the merge file.
 Be quiet.
 .tp
 .B \-r
-Re-merge.  If you started to resolve, exited the resolver,
+Re\-merge.  If you started to resolve, exited the resolver,
 and then restarted, files already merged will be skipped.
-This options allows you to re-merge files which need
+This options allows you to re\-merge files which need
 help, yet allows you to skip past the ones you are happy
 with by hitting "C" in the resolve menu.
 .tp
 .B \-t
-Text-only. Enables the text-based resolve menu when doing 
+Text\-only. Enables the text\-based resolve menu when doing 
 the final commit instead of using citool.
 .tp
-.AN \-y msg
+.OPTreq \-y comment
 Use 
-.I msg 
-as the changeset check-in message.  This is option
+.ARG comment
+as the changeset check\-in message.  This is option
 is typically set by the calling program, i.e., 
 .BR bk\ pull .
 If 
-.I msg 
+.ARG comment
 is not present, resolve will prompt for one
 at commit time.
 .SH "SEE ALSO"
 .SA csets 1
-.br
 .SA merge 1
-.br
 .SA pull 1
-.br
 .SA push 1
-.br
 .SA resync 1
 .SH CATEGORY
 .B Repository

@@ -1,11 +1,10 @@
-.so ../macros
-.TH "bk triggers" 1 08/18/00 "\*(BC" "\*(UM"
-.\"    =================== BitKeeper triggers ===================
+.so bk-macros
+.TH "bk triggers" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
-triggers
+bk triggers
 .SH DESCRIPTION
 .LP
-BitKeeper supports a variety of trigger types. Triggers are 
+\*(BK supports a variety of trigger types. Triggers are 
 arbitrary commands which run before or after a repository 
 level command.  These triggers can be used for event notification 
 and/or to implement control over the events.
@@ -28,43 +27,38 @@ any sort of executable program, placed in the BitKeeper/triggers
 subdirectory.  There are three triggers, corresponding to the
 event class, each of which can be called before or after the
 event:
-.\" .AX    
-.RS .5i
-.nf
-.I BitKeeper/triggers/pre-commit
-.I BitKeeper/triggers/post-commit
-.I BitKeeper/triggers/pre-incoming
-.I BitKeeper/triggers/post-incoming
-.I BitKeeper/triggers/pre-outgoing
-.I BitKeeper/triggers/post-outgoing
-.\" .XA
-.RE
+.DS
+BitKeeper/triggers/pre\-commit
+BitKeeper/triggers/post\-commit
+BitKeeper/triggers/pre\-incoming
+BitKeeper/triggers/post\-incoming
+BitKeeper/triggers/pre\-outgoing
+BitKeeper/triggers/post\-outgoing
+.DE
 .sp .1i
-.fi
 When a trigger is called, it is called at the root of the
 repository.  Triggers are easily customized on a per repository
 basis, for example:
-.AX
+.DS
 #!/bin/sh
 
 if [ `pwd` = /home/bk/stable ]
-then	echo whatever | mail -s 'event in stable' lm
+then	echo whatever | mail \-s 'event in stable' lm
 fi
-.XA
+.DE
 Both pre and post triggers are called with the command line which
 started the trigger, somewhat like this:
-.AX
+.DS
 pre|post this:/repository command args
-.XA
-The pre-triggers can be used to control events within a repository.
-If the pre-trigger exits with a non-zero exit status, the event will
+.DE
+The pre\-triggers can be used to control events within a repository.
+If the pre\-trigger exits with a non\-zero exit status, the event will
 not be executed.  Ideally, this could be used to implement some sort
 of process control, such as insisting on a bug id before a commit.
 .LP
-The post-triggers are typically used for event status.  They are
-called with command-line arguments and with the status stored in 
+The post\-triggers are typically used for event status.  They are
+called with command\-line arguments and with the status stored in 
 the appropriate environment variable:
-.\".AX
 .RS .5i
 .nf
 .ps -1
@@ -75,13 +69,11 @@ the appropriate environment variable:
 .B BK_COMMIT
 .fi
 .RE
-.\".XA
 Possible values for the variables:
-.AX
-.TP 16
+.TP 1.2i
 .B OK
 Changesets were moved into this repository
-.TP
+.tp
 .B NOTHING
 There was nothing to do, i.e., a pull was
 executed, but the from repository had no new work.
@@ -96,45 +88,44 @@ destination which were not in the source.
 .tp
 .B SIGNALED	
 A helper process died with a signal.
-.XA
 .SH EXAMPLES
 .LP
-These are real examples from the BitKeeper project right after triggers
+These are real examples from the \*(BK project right after triggers
 were first implemented:
 .LP
-BitKeeper/triggers/post-incoming:
-.AX
+BitKeeper/triggers/post\-incoming:
+.DS
 #!/bin/sh
 
 shift
 REPO=`bk gethost`:`pwd`
-if [ "$BK_INCOMING" = OK -a -f BitKeeper/etc/csets ]
+if [ "$BK_INCOMING" = OK \-a \-f BitKeeper/etc/csets ]
 then    ( 
 	echo ${USER}@"$@"
 	echo ""
-	bk changes -r`cat BitKeeper/etc/csets`
-	) | mail -s "Incoming to $REPO" lm@bitmover.com
+	bk changes \-r`cat BitKeeper/etc/csets`
+	) | mail \-s "Incoming to $REPO" lm@bitmover.com
 fi
-.XA
-BitKeeper/triggers/post-outgoing:
-.AX
+.DE
+BitKeeper/triggers/post\-outgoing:
+.DS
 #!/bin/sh
 
 shift
 REPO=`bk gethost`:`pwd`
 TO=lm@bitmover.com
-if [ -f BitKeeper/etc/pushed -a "$BK_OUTGOING" = OK ]
+if [ \-f BitKeeper/etc/pushed \-a "$BK_OUTGOING" = OK ]
 then	( 
 	echo ${USER}@"$@"
 	echo ""
-	bk changes - < BitKeeper/etc/pushed
-	) | mail -s "Outgoing from $REPO" $TO
+	bk changes \- < BitKeeper/etc/pushed
+	) | mail \-s "Outgoing from $REPO" $TO
 else
-	echo ${USER}@"$@"| mail -s "Outgoing from $REPO = $BK_OUTGOING" $TO
+	echo ${USER}@"$@"| mail \-s "Outgoing from $REPO = $BK_OUTGOING" $TO
 fi
-.XA
+.DE
 Example output from a pull:
-.AX
+.DS
 From: Larry McVoy <lm@bitmover.com>                                             
 Date: Sun, 28 May 2000 16:48:57 -0700
 To: lm@bitmover.com
@@ -145,7 +136,7 @@ lm@work.bitmover.com:/tmp/TRIGGERS pull work.bitmover.com:/home/bk/exit
 ChangeSet@1.735, 2000-05-28 01:41:31-07:00, orc@india.pell.portland.or.us
   More work on triggers.  Now triggers are fired from within the
   cmdlog_start() and cmdlog_end() functions, and they now support
-  path-specific triggers as well as triggers that everyone else
+  path\-specific triggers as well as triggers that everyone else
   will use.
 	 
 ChangeSet@1.734, 2000-05-27 23:49:25-07:00, orc@india.pell.portland.or.us
@@ -157,8 +148,12 @@ ChangeSet@1.733, 2000-05-27 14:24:48-07:00, lm@work.bitmover.com
 
 ChangeSet@1.731.1.1, 2000-05-27 14:16:42-07:00, lm@work.bitmover.com
   Forgot to wait for child process in changes.c.
-.XA
+.DE
 .\" help://Repository/notification
 .\" help://Repository/notify
+.SH AVAILABILITY
+.\" XXX not sure how to word this one. - amy
+Pull and push triggers available
+with \*(BK Professional only.
 .SH CATEGORY
 .B Repository

@@ -1,50 +1,68 @@
-.so ../macros
-.TH "bk delta" 1 08/18/00 "\*(BC" "\*(UM"
-.\"    ========== Checking in Deltas (changes) to BitKeeper ==========
+.so bk-macros
+.TH "bk delta" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
 bk delta \- check in modified files
 .SH SYNOPSIS
-.if t \{\
-.B bk delta [\-iluYpqfach] [\-S
-.IB sym ] 
-.B [\-Z
-.IB alg ] 
-.B [\-y
-.IB comment ] 
-.BI [ files...
-.B ]
-\}
-.if n \{\ 
-bk delta [-iluYpqfach] [-S<sym>] [-Z<alg>] [-y<comment>] [files...]
-\}
+.if n \{\
+.	ds Ss s
+.	ds Sz z
+.	ds Sy c
+.\}
+.if t \{
+.	ds Ss sym
+.	ds Sz alg
+.	ds Sy comment
+.\}
+.Bc bk delta [\-achilpquY] [
+.OPTopt \-y msg
+.if n .B ] [more]
+.if t .B ] [more options]
+.BKARGS
 .SH DESCRIPTION
 .LP
-Saves editing changes in a Source Code Control System (SCCS) file.
+The
+.B bk delta 
+command is used to check in changes made to revision controlled files.
+This command is fairly rich in features and is the preferred interface
+for scripting.  For humans, easier interfaces are
+.B bk ci 
+and 
+.BR "bk citool" .
 .SH OPTIONS
 .if t .TP .75i
 .if n .TP 1.25i
 .B \-a
-Check in new work automatically.
+Normally, 
+.B delta
+wants a 
+.B \-i
+to add a file to the revision control system.  If this option is set,
+then the following do the same thing:
+.DS
+bk delta -a newfile
+bk delta -i newfile
+bk new newfile
+.DE
+The usefulness of this option is more apparent when you consider having
+a mixed list of files, some under revision control and some not.
 .tp
 .B \-c
-Don't verify file checksum.
+Do not verify file checksum (slight performance win).
 .tp
-.AN \-D file
+.OPTreq \-D file
 Take diffs from
-.IR file .
+.if t .IR file .
+.if n <file>.
 .tp
-.B \-E
+.OPTreq \-E enc
 Set file encoding (like admin).
-.tp
-.B \-f
-Force creation of a null delta when invoked as ci.
 .tp
 .B \-h
 Invert sense of file's hash flag.
 .tp
-.AN \-I file
+.OPTreq \-I file
 Use init 
-.I file
+.ARG file
 for meta data.
 .tp
 .B \-i
@@ -53,9 +71,10 @@ Initial check-in, create a new revision history.
 .B \-l
 Follow check in with a locked check out like bk get -e.
 .tp
-.AN \-M mode
+.OPTreq \-M mode
 Set the permissions on the new delta to
-.IR mode .
+.if t .IR mode .
+.if n <mode>.
 .tp
 .B \-p
 Print differences before prompting for comments.
@@ -63,10 +82,10 @@ Print differences before prompting for comments.
 .B \-q
 Run silently.
 .tp
-.AN \-S sym
-Set the symbol
-.I sym
-to be the revision created.
+.OPTreq \-S sym
+Add the symbol
+.ARG sym
+as a symbolic tag on the revision created.
 .tp
 .B \-u
 Follow check in with an unlocked check out like bk get.
@@ -74,26 +93,35 @@ Follow check in with an unlocked check out like bk get.
 .B \-Y
 Prompt for one comment, then use it for all the files.
 .tp
-.AN \-y comment
+.OPTreq \-y comment
 Sets the revision comment to 
-.IR comment .
+.if t .IR comment .
+.if n <comment>.
 .tp
-.AN \-Z,\ \-Z alg
+.OPTreq \-Z,\ \-Z alg
 Compress stored s.file with 
-.IR alg ,
+.if t .IR alg ,
+.if n <alg>,
 which may be:
 .br
 gzip - like
 .BR gzip (1) 
 .br
 none -  no compression
+.SH BUGS
+The
+.B bk delta
+command does not yet use the 
+.B SCCS/c.file
+comment caches created by
+.BR "bk citool" .
+.LP
+The format of the init file is not documented.
 .SH "SEE ALSO"
 .SA ci 1
-.br
+.SA citool 1
 .SA co 1
-.br
 .SA edit 1
-.br
 .SA get 1
 .SH CATEGORY
 .B File

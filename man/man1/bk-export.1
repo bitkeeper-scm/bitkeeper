@@ -1,96 +1,80 @@
-.so ../macros
-.TH "bk export" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.\" XXX -t is listed in synopsis, but not in options
+.TH "bk export" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME 
-bk export\- checks out clear-text version of all BitKeeper files
+bk export \- checks out clear-text version of all \*(BK files
 .SH SYNOPSIS
-.if t \{\
-.B bk export
-.OA t plain
-.BI [ -kTvw ]
-.B [
-.BI -i pat ]
-.B [
-.BI -x pat ]
-.BI -r rev
-.BI [ source ]
-.I dest
+.Bc bk export [\-tplain] [\-kTvw] [
+.OPTreq \-i pat
+.Bc ] [
+.OPTreq \-x pat
+.B ]
+.OPTreq \-r rev
+.Bc \ [
+.ARGc source
+.B ]
+.ARG dest
 .br
-or
-.br
-.B bk export
-.BI -t patch 
-.BI [ -hT ]
-.BI [-d u|c ]
-.BI \ \-r rev1,rev2
-\}
-.if n \{\
-bk export [-tplain] [-kTvw] [-i<pat>] [-x<pat>] -r<rev>  [source] dest
-.br
-or
-.br
-bk export -tpatch [-hT] [-d u|c] -r<rev1,rev2>
-\}
+.B bk export \-tpatch [\-hT] [\-d u|c]
+.OPTreq \-r rev1,rev2
 .SH DESCRIPTION
 .LP
 The
 .B export
-command generates a directory tree alongside the BitKeeper
+command generates a directory tree alongside the \*(BK
 repository which contains checked-out copies of all the files under
-BitKeeper control.  It can also generate traditional
+\*(BK control.  It can also generate traditional
 .RB ( diff
-.BR -urN )
+.BR \-urN )
 patches between any two revisions of the source tree.
 .SH OPTIONS
 .if t .TP
 .if n .TP 1i
-.AN -d style
-Set patch's diff style to Unified or Context diff.
+.OPTreq \-d u|c
+Set patch's diff style to unified or context diff.  If no style
+specified, do regular diffs.
 .tp
-.B -h
+.B \-h
 Disable patch header.
 .tp
-.AN -i pat
+.OPTreq \-i pat
 Export only pathnames matching 
-.IR pattern .
+.ARG pat
+pattern.
 .tp 
-.B -k
+.B \-k
 Do not expand keywords (default is to expand keywords).
 .tp
-.AN -r rev
+.OPTreq \-r rev
 Export the tree as of revision 
-.IR rev .
+.ARG rev .
 .tp
-.B -T
+.B \-T
 Set gfile modification time to check-in time.
 .tp
-.B -v
+.B \-v
 Be verbose.
 .tp
-.B -w
+.B \-w
 Make files writable (default is read-only).
 .tp
-.AN -x pat
+.OPTreq \-x pat
 Export all pathnames not matching 
-.IR pattern .
+.ARG pat
+pattern.
 .LP
 Note that
-.I -i
+.I \-i
 and
-.I -x
+.I \-x
 take a single,
-.BR egrep -style
+.BR egrep \-style
 regular expression which is matched against the partial pathname from the root.
 .LP
-.B bk export
-requires you to be in the top-level of your repository. For
-example, if your package is
-.I /u/proj1
-and you want to export your package to
-.IR /tmp/proj1 ,
-do the following:
-.AX
-$ cd /u/proj1
-$ bk export /tmp/proj1
-.XA
+.SH SEE ALSO
+.BR diff (1)
+.br
+.SA gnupatch 1
+.SA rset 1
 .SH CATEGORY
 .B Compat

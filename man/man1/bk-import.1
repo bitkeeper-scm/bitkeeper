@@ -1,19 +1,20 @@
-.so ../macros
-.TH "bk import" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk import" 1 20%E% "\*(BC" "\*(UM"
 .\"    ================= Importing files into BitKeeper =================
 .SH NAME
-bk import \- import a set of files into a BitKeeper package
+bk import \- import a set of files into a \*(BK package
 .SH SYNOPSIS
-.if t \{\
-.B bk import [\-efiqrv] [\-l
-.IB file ]
-.B [\-S
-.IB sym ]
-.B [\-t
-.IB type ]
-.\}
-.if n
-bk import [\-efiqrv] [\-l<file>] [-S<sym>] [-t<type>]
+.Bc bk import [-efHiqrv] [
+.OPTreq \-c tag
+.Bc ] [
+.OPTreq \-j n
+.Bc ] [
+.OPTreq \-l file
+.Bc ] [
+.OPTreq \-S sym
+.Bc ] [
+.OPTreq \-t type
+.B ]
 .SH DESCRIPTION
 .LP
 If you have not yet set up a package, read the bk help setup section.
@@ -22,9 +23,9 @@ If you have a tree full of files which you wish to include, go to
 your tree and make sure there is nothing in it except for the files
 you want to place under revision control (or see the section on file
 specification below).  Then do this:
-.AX
+.DS
 $ bk import /path/to/src_files /path/to/package
-.XA
+.DE
 This will copy all files *below* /path/to/src_files into the
 package directory and check in the initial revision of the files.
 Your original files are left untouched.
@@ -32,16 +33,16 @@ Your original files are left untouched.
 .LP
 You can generate the list of files externally, and pass that list
 to import.  In that case, the usage is
-.AX
+.DS
 $ bk import -l/tmp/list ~/src/files ~/package
-.XA
+.DE
 and the list of files must be relative paths, relative to the root
 of the "from" directory.  One way to generate the list might be:
-.AX
+.DS
 $ cd ~/src/files
 $ find . -type f -name '*.[ch]' -print > /tmp/list
 $ bk import -l/tmp/list ~/src/files ~/package
-.XA
+.DE
 If you want to filter the lists, you can do that as well. One way would
 is to edit the /tmp/list file with a text editor.  Another way is to
 use bk's interactive mode of setting file inclusions and exclusions.
@@ -50,21 +51,25 @@ or core files, whatever.  You happen to know that the files you want
 are all of the form *.c *.h or Makefile and you want to pick up just
 these files.  To do that, try the -include and/or -exclude options
 and enter the patterns one per line:
-.AX
+.DS
 $ bk import -i ~/src_files ~/package
 End patterns with "." by itself or EOF
 Include>> *.c
 Include>> *.h
 Include>> Makefile
 Include>> .
-.XA
+.DE
 Importing from a CVS tree:
-.AX
+.DS
 $ bk import -v -tCVS warehouse new
-.XA
+.DE
 .SH OPTIONS
 .if t .TP
 .if n .TP 1i
+.OPTreq \-c tag
+do not import anything after
+.ARG tag .
+(RCS/CVS only)
 .B \-e
 Prompts for a regular expression to apply to the list
 of files.  All matches are excluded.
@@ -72,12 +77,18 @@ of files.  All matches are excluded.
 .B \-f
 Force; do not prompt for list editing.
 .tp
+.B \-H 
+do not pass \-h option to rcs2sccs (turns off verification, faster, unsafe).
+.tp
 .B \-i
 Like \-e but includes only files which match.
 .tp
-.AN \-l file
+.OPTreq \-j n
+n-way parallel for RCS conversion.
+.tp
+.OPTreq \-l file
 Use the list of files in 
-.IB file .
+.ARG file .
 .tp
 .B \-q
 Be quiet.
@@ -85,20 +96,17 @@ Be quiet.
 .B \-r
 Do not do rename processing when doing patch imports.
 .tp
-.AN \-S sym
+.OPTreq \-S sym
 Add tag 
-.I sym
+.ARG sym
 to the changeset created around the import
 .tp
-.B \-v
-Be verbose.
-.tp
-.AN \-t type
+.OPTreq \-t type
 Specify import file type.  
-.I type 
+.ARG type
 can be one of:
 .if t .RS .5i
-.if n .RS 1i
+.if n .RS .3i
 .tp
 .B plain
 Import plain text files
@@ -114,7 +122,11 @@ Import CVS files
 .tp
 .B SCCS
 Import SCCS files
+.RE
+.tp
+.B \-v
+Be verbose.
 .SH "SEE ALSO"
-.SA HOWTO 1
+.SA rcs2sccs 1
 .SH CATEGORY
 .B Repository

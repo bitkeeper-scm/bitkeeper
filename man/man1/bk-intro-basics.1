@@ -1,7 +1,7 @@
-.so ../macros
-.TH "bk intro-basics" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk intro-basics" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
-Introduction
+bk Introduction
 .SH DESCRIPTION
 .LP
 This section explains how to make changes to files under revision
@@ -9,7 +9,7 @@ control.  If you have not created a package, then see the
 .B bk help setup
 section.
 .LP
-Note that BitKeeper supports both the traditional SCCS commands
+Note that \*(BK supports both the traditional SCCS commands
 for checking in/out files
 .RB ( admin
 .BR -i ,
@@ -32,41 +32,41 @@ Try
 for more information on the RCS interactions.
 .LP
 As an example, go to the directory where you would like to make changes:
-.AX
+.DS
 $ cd ~/mypackage/src
-.XA
+.DE
 If you are starting a new package, then create new files with any
 editor and check them in.  The initial check in for a file that already 
 exists will look like this:
-.AX
+.DS
 $ bk new coolStuff.c
-.XA
+.DE
 If you want to modify an existing file, you can do this:
-.AX
+.DS
 $ bk edit coolStuff.c
-.XA
+.DE
 Or, if you have multiple files in the directory, you can do the
 following to place all files into a state where they can be modified:
-.AX
+.DS
 $ bk edit
-.XA
+.DE
 If you want to lock the entire tree, including subdirectories, try this:
-.AX
+.DS
 $ bk -r edit
-.XA
+.DE
 Locking the entire directory is useful when applying patches that
 will access many files in a tree.
 .LP
 Once you are finished making changes to files, you can check in the files
 as follows:
-.AX
+.DS
 $ bk ci file1 file2 file3
-.XA
+.DE
 However, we recommend using the graphical checkin tool which is invoked with 
 the following command:
-.AX
+.DS
 $ bk citool
-.XA
+.DE
 Note that currently 
 .B bk citool
 works only for existing revision control files.
@@ -79,11 +79,11 @@ invoking
 .B bk citool.
 .SH DOCUMENTATION
 .LP
-Each command in BitKeeper has command-specific help.  You can access
+Each command in \*(BK has command-specific help.  You can access
 individual help topics by typing:
-.AX
+.DS
 $ bk help <command>		# e.g., "bk help co"
-.XA
+.DE
 There are also a number of other topics that describe various areas
 in detail. Try
 .B bk help
@@ -91,11 +91,8 @@ for a listing of help topics.
 .SH SEE ALSO
 .LP
 .SA ci 1
-.br
 .SA edit 1
-.br
 .SA get 1
-.br
 .SA new 1
 .SH CATEGORY
 .B Basics

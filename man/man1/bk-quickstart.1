@@ -1,19 +1,15 @@
-.so ../macros
-.TH "bk quickstart" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk quickstart" 1 20%E% "\*(BC" "\*(UM"
 .\"    =================== BitKeeper quickstart ===================
 .SH NAME
-Quickstart guides
+\*(BK Quickstart guides
 .SH DESCRIPTION
 .LP
 Quickstart guides are recipes for accomplishing common tasks with
-BitKeeper.  The guides contain little or no explanations.  Each command
+\*(BK.  The guides contain little or no explanations.  Each command
 has detailed help which you can see by running
-.if t \{\
-.B bk
-.BI help \ command .
-\}
-.if n
-bk help <command>
+.B bk help
+.ARG command .
 .LP
 Project leads should read the
 .B bk help qs_setup 
@@ -25,11 +21,9 @@ need to read
 .B bk help
 .BR qs_developer .
 .SH "SEE ALSO"
-.SA qs_bkd
-.br
-.SA qs_developer
-.br
-.SA qs_setup
+.SA qs_bkd 1
+.SA qs_developer 1
+.SA qs_setup 1
 .\" help://General/Quickstart
 .SH CATEGORY
 .B General

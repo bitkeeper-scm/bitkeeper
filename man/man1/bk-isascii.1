@@ -1,0 +1,19 @@
+.so bk-macros
+.TH "bk isascii" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk isascii \- check that a file is ascii
+.SH SYNOPSIS
+.B bk isascii
+.ARG filename
+.SH DESCRIPTION
+.B bk isascii
+looks through a file for binary data which \*(BK can not handle without
+encoding the file.  This consists of either a NULL (zero byte) or the
+two byte sequence \en\e001, aka
+.SM NEWLINE
+followed by
+.SM CTRL-A.
+.SH EXIT CODES
+0 if ascii, 1 otherwise.
+.SH CATEGORY
+.B Utility

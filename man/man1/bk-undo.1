@@ -1,55 +1,22 @@
-.so ../macros
-.TH "bk undo" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk undo" 1 20%E% "\*(BC" "\*(UM"
 .\"    ====================== BitKeeper undo ======================
 .SH NAME
 bk undo \- Undo a changeset or set of changesets
 .SH SYNOPSIS
-.if t \{\
-.B bk undo [\-fqs] \-a
-.IB rev\  | 
-.B \-r
-.I revs
-.\}
-.if n
-bk undo [\-fqs] \-a<rev> | -r<revs>
+.\" XXX - lm, what to do with these [] around -a and -r arguments?
+.Bc bk undo [\-fqs] \-a[
+.ARGc rev 
+.Bc ] | \-r[
+.ARGc revs
+.B ]
 .SH DESCRIPTION
 .LP
 The undo command can be used to remove any changeset or set of
-changesets.  The list of changesets must be constructed so as to
-not leave unmerged branches.  If you look at the ChangeSet file
-with sccstool, you may see branches which are closed into the
-trunk like so:
-.if t \{\
-.AX
-    1.1 -> 1.2 -> 1.3 -----> 1.4 -----> 1.5
-            \\                         /
-	      +-> 1.2.1.1 -> 1.2.1.2 -+
-.XA
-.\}
-.if n \{\
-.AX
-1.1 -> 1.2 -> 1.3 -----> 1.4 -----> 1.5
-		\\                         /
-		 +-> 1.2.1.1 -> 1.2.1.2 -+
-.XA
-.\}
-In this case, the 1.5 delta is the merge delta and can not be removed
-without either removing 1.3 and 1.4 or removing 1.2.1.1 and 1.2.1.2.
-In other words, the following undo commands would fail:
-.AX
-$ bk undo -r1.5			(1)
-$ bk undo -r1.4,1.5			(2)
-$ bk undo -r1.2.1.2,1.5		(3)
-.XA
-However, either of these would succeed:
-.AX
-$ bk undo -r1.3,1.4,1.5		(4)
-$ bk undo -r1.2.1.1,1.2.1.2,1.5	(5)
-.XA
-If you did example #4 above, don't be surprised that the branch
-will disappear.  The undo renumbers the revisions to match what the
-file should look like with the deltas removed. In other words, if a
-portion of the trunk is removed, then a branch will take its place.
+changesets.   There are options to select specific changesets or all
+changesets after some point (which is what
+.B bk clone \-r
+uses.)
 .SH WARNING
 .LP
 You can not undo an undo.  If the data was only present in your
@@ -57,39 +24,33 @@ repository, when you undo it, it is gone for good.
 .SH OPTIONS
 .if t .TP 
 .if n .TP 1i
-.AN -a rev
+.OPTreq \-a rev
 Remove all changesets which occurred after 
-.if t .IR rev .
-.if n <rev>.
+.ARG rev .
 If 
-.if t .I rev 
-.if n <rev>
+.ARG rev
 is what you want to have be top of trunk,
 use this option.
 .tp
-.B -f
+.B \-f
 Force the undo to complete if it can.  Normally, undo will
 prompt with a list of deltas which will be removed.
 .tp
-.B -q
+.B \-q
 Run quietly; do not list files.
 .tp
-.B -s
+.B \-s
 Do not save undone changes as a patch.
 .tp
-.AN -r revs
+.OPTreq \-r revs
 Remove the list of changesets specified by 
-.if t .IR revs .
-.if n <revs>.
-.if t .I revs
-.if n <revs>
+.ARG revs .
+.ARG revs
 must be of the form r1,r2,r3, etc.
 .SH "SEE ALSO"
 .LP
-.SA cset 1
-.br 
-.SA stripdel XXX
-.br
+.SA makepatch 1
+.SA stripdel 1
 .SA takepatch 1
 .SH CATEGORY
 .B Repository

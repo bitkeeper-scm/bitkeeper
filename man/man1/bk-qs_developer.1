@@ -1,8 +1,8 @@
-.so ../macros
-.TH "bk qs_developer" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk qs_developer" 1 20%E% "\*(BC" "\*(UM"
 .\"    =================== Quickstart Developer =======================
 .SH NAME
-Quickstart Developer
+bk Quickstart Developer
 .SH DESCRIPTION
 .LP
 Here is an example sequence of commands used to create a new package,
@@ -10,7 +10,7 @@ import files into the package, create a clone of the package for
 modifications, do some work in the clone, pull new work from the
 master tree down, merge, and then push the work back up.
 .sp
-.AX
+.DS
 # Create a clone on your development machine.  
 # The destination directory should not exist.
 bk clone bk://host.domain:6666/project ~/myproject
@@ -29,14 +29,13 @@ bk citool
 # overlapping changes and will not apply the new work.
 bk pull
 
-# Resolve the conflicts.  This step is only 
-# necessary if pull said there were conflicts 
-# which could not be automerged.
+# Resolve the conflicts.  This step is only necessary if pull
+# said there were conflicts which could not be automerged.
 bk resolve
 
 # push the merge and the local changes back up.
 bk push
-.XA
+.DE
 .SH "SEE ALSO"
 .SA quickstart 1
 .SH CATEGORY

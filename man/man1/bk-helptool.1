@@ -1,14 +1,17 @@
-.so ../macros
-.TH "bk helptool" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk helptool" 1 20%E% "\*(BC" "\*(UM"
 .\"    ====================== BitKeeper helptool ======================
 .SH NAME
-bk helptool \- graphical front-end to the help system
+bk helptool \- graphical front-end to the \*(BK help system
 .SH SYNOPSIS
-.B bk helptool
-.BI [ topic ]
+.Bc bk helptool [
+.ARGc topic
+.B ]
 .SH DESCRIPTION
 .LP
-The helptool command is a graphical interface to the online help system.
+The
+.B helptool
+command is a graphical interface to the online help system.
 .LP
 There are two text windows displayed, a window of topics on the left
 and the help text on the right.  There are multiple sections, which
@@ -22,14 +25,16 @@ arrow to move forward.  This is fairly useful since the first entry
 in each section tries to give a brief overview of that section.
 .SH "HYPERLINK STACK"
 .LP
-Helptool has a stack of places that you have visited, very similar
+.B Helptool
+has a stack of places that you have visited, very similar
 to  the hyperlink stack in Netscape.  If you click on a topic you will
 notice that the "Back" button becomes enabled.  Clicking it will move
 back to the previous topic.  Similarly for forward.  The same hot keys
 which work in Netscape are used here for forward and back.
 .SH SEARCHING
 .LP
-Helptool includes a simple search facility.  To search for information,
+.B Helptool
+includes a simple search facility.  To search for information,
 you type a word or phrase and hit return (or click on Search).  The search
 facility is fairly basic, single word searches tend to work better
 than phrases.  If a phrase is wanted, it must be put in quotes, i.e.,
@@ -43,7 +48,9 @@ so that you click through each of the pages which contain the information.
 .LP
 If you go to a page and it was not what you wanted, and you wish
 to look at the summary lines again, jump back by clicking Search or
-hitting return.
+hitting return.  Note that the search results are not part of the
+hyperlink stack of visited pages, but you can get back to the 
+search results at any time by hitting Return.
 .SH BINDINGS
 .LP
 The up/down bindings will move through topics, so when they hit the end
@@ -54,6 +61,12 @@ Scroll the help text down one line.
 .tp
 .B UpArrow
 Scroll the help text up one line.
+.tp
+.B LeftArrow
+Scroll the help text left one column.
+.tp
+.B RightArrow
+Scroll the help text right one column.
 .tp
 .B PageDown
 Scroll the help text down one screen.
@@ -67,29 +80,35 @@ Scroll to the top of help text.
 .B End
 Scroll to the bottom of the help text.
 .tp
-.B Escape
-Quit the helptool.
+.B Control-Up
+Move to the beginning of the previous topic.
 .tp
-.B LeftArrow
+.B Control-Down
+Move to the beginning of the next topic.
+.tp
+.B Control-Left
 Move to the beginning of the next section (not topic).
 .tp
-.B RightArrow
+.B Control-Right
 Move to the beginning of the previous section (not topic).
 .tp
 .B Alt-Left
 Move backwards to the previously visited topic.
 .tp
-.B Alt-RightArrow
+.B Alt-Right
 Move forwards to the to the next topic in the stack.
+.tp
+.B Escape
+Exit bk helptool.
 .tp
 .B Control-e
 Scroll the help text down one line.
 .tp
 .B Control-y
 Scroll the help text up one line.
-.SH BUGS
-.LP
-Unquoted phrases seem to just do the first word.
+.tp
+.B Control-q
+Exit from helptool.
 .SH "SEE ALSO"
 .SA GUI 1
 .SH CATEGORY

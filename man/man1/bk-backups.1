@@ -1,12 +1,17 @@
-.so ../macros
-.TH "bk backups" 8 08/18/00 "\*(BC" \*(BK
+.so bk-macros
+.TH "bk backups" 1 20%E% "\*(BC" "\*(UM"
 .\"    =============== Safeguarding your BitKeeper repositories ===============
 .SH NAME
-backups
+bk backups
 .SH DESCRIPTION
 .LP
 BitKeeper repositories with no pending files can be safely backed up
-with any backup tool, such as tar or dump, etc.
+with any backup tool, such as tar or dump, etc.  To see if there are
+any pending files, run
+.DS
+bk pending
+.DE
+No output indicates no pending files.
 .LP
 .SH WARNING
 .LP
@@ -16,7 +21,7 @@ should be done carefully.  Problems can arise if the repository is
 restored multiple times and the same pending deltas are committed 
 to different changesets.  In other words, the following will cause
 problems:
-.AX
+.DS
 cd REPO
 bk edit foo.c
 echo "I am a pending delta not yet committed" >> foo.c
@@ -27,7 +32,7 @@ cd REPO
 bk commit
 cd ../COPY
 bk commit
-.XA
+.DE
 .LP
 Why is it a problem?  Because the two commits both created a changeset,
 and the changesets are different.  This means that the same delta to
@@ -39,10 +44,9 @@ point.
 If what you want is a copy of the repository, use bk clone to copy
 it, not tar, cp, or some other file by file copy.
 .SH "SEE ALSO"
-.SA pending 8
-.br
-.SA status 8
-.\" help://Repository/copying
-.\" help://Repository/copy
+.SA pending 1
+.SA sfiles 1
+.SA status 1
+.\" help://copy
 .SH CATEGORY
 .B Repository

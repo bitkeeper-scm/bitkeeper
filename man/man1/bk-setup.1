@@ -1,25 +1,21 @@
-.so ../macros
-.TH "bk setup" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk setup" 1 20%E% "\*(BC" "\*(UM"
 .\"    ====================== BitKeeper setup ======================
 .SH NAME
-bk setup \- create a new BitKeeper package repository
+bk setup \- create a new \*(BK package repository
 .SH SYNOPSIS
-.if t \{\
-.B bk setup [
-.AN \-c config
+.Bc bk setup [-f] [
+.OPTopt \-c config_file
 .B ] 
-.I directory
-.\}
-.if n
-bk setup [-c<config>] <directory>
+.ARG directory
 .SH DESCRIPTION
 .LP
-Before setting up a BitKeeper repository, you need to read the
-license.  BitKeeper is not traditional Open Source.  Please see
+Before setting up a \*(BK repository, you need to read the
+license.  \*(BK is not traditional Open Source.  Please see
 .B bk help license 
 and make sure that you agree with the terms.
 .LP
-To set up a BitKeeper package, you need to create and populate a
+To set up a \*(BK package, you need to create and populate a
 package tree.  The 
 .B setup 
 command will create the package tree.
@@ -32,11 +28,11 @@ The setup command will prompt you for a description of the package. In
 addition, you will be asked to edit a configuration file containing 
 information about your new repository.
 .SH OPTIONS
-.if t .TP
-.if n .TP 1.1i
-.AN -c config
+.if t .TP .9i
+.if n .TP 1.8i
+.OPTopt -c config_file
 Use 
-.I config 
+.ARG config_file
 as the configuration file to setup the repository.
 .tp
 .B -f
@@ -45,20 +41,26 @@ Don't ask for confirmation.
 .LP
 When creating a repository called "mypackage", you type
 the following command:
-.AX
+.DS
 $ bk setup ~/mypackage
-.XA
+.DE
 The following shows the directory structure of a new package.
 .TP 17
 .B mypackage/
+.if t .sp -.3
+.if n .sp -1
 .RS .3i
 .TP 17
 .B ChangeSet
 Index of all changes to the repository.
+.if t .sp -.3
+.if n .sp -1
 .TP
 .B BitKeeper/
 Directory where administrative files are kept.
 .RE
+.if t .sp -.3
+.if n .sp -1
 .RS 1i
 .TP 10
 .B etc/
@@ -111,12 +113,10 @@ for more info.
 .LP
 If you have an existing set of files that you want to add to the
 repository, see 
-.BR bk\ help\ import .
+.BR bk import .
 .SH "SEE ALSO"
 .SA quickstart 1
-.br
 .SA howto 1
-.br
 .SA free 1
 .SH CATEGORY
 .B Repository

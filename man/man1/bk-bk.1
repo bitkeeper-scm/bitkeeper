@@ -1,45 +1,60 @@
-.so ../macros
-.TH "bk" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
-bk \- BitKeeper shell
+bk \- \*(BK source management system front end
 .SH SYNOPSIS
+.B bk 
+.ARG command 
+.Bc [
+.ARGc options
+.B ]
+.br
+.B bk \-R
+.ARG command 
+.Bc [
+.ARGc options
+.B ]
+.br
+.Bc bk [
+.OPTopt \-r dir
+.B ]
+.ARG command
+.Bc [
+.ARG options
+.B ]
+.SH DESCRIPTION
 .B bk
-.AS -r Dir
-.RI [ -R ]
-.BI command \ [options]
-.SH OPTIONS
-.if t TP
-.if n .TP 1i
-.AS -R
-Change directories to the root of the repository before running the command.
-.tp
-.AS -r dir
-Starting at 
-.IR dir ,
-or the repository root if 
-.I dir
-was not specified, generate a list of sfiles and pass them to the command.  
-.LP
-All BitKeeper commands are prefixed with 
+is the front end to all \*(BK commands.
+All \*(BK commands are prefixed with 
 .B bk
 in order to avoid ambiguity with
-non-BitKeeper commands that might be on the system such as 
+non-\*(BK commands that might be on the system such as 
 .B get
 and
 .BR ci .
+.SH OPTIONS
+.if t .TP
+.if n .TP 1i
+.B \-R
+Change directories to the root of the repository before running the command.
+.tp
+.OPTopt \-r dir
+Starting at 
+.ARG dir ,
+or the repository root if 
+.ARG dir
+was not specified, generate a list of sfiles and pass them to the command.  
+The command is run in
+.ARG dir
+or the root of the repository if no directory was specified.
 .SH NOTE
 .LP
 The following commands are equivalent:
-.AX
+.if n .sp -1
+.DS
 bk -r get
 bk -R sfiles | bk -R get -
 cd `bk root`; bk sfiles | bk get -
-.XA
-.SH SEE ALSO
-.SA check 8
-.br
-.SA diffs 1
-.br
-.SA tag 1
+.DE
 .SH CATEGORY
 .B Basics

@@ -1,26 +1,19 @@
-. 1so ../macros
-.TH "bk unlock" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk unlock" 1 20%E% "\*(BC" "\*(UM"
 .\"    =============== Discarding lock files ===============
 .SH NAME
-bk unlock \- remove BitKeeper file locks
+bk unlock \- remove \*(BK file locks
 .SH SYNOPSIS
-.if t \{\
-.B bk unlock [-rsw]
+.B bk unlock [\-rsw]
 .br
-.B bk unlock [\-bfpxz] 
-.I file\-list
-.\}
-.if n \{\
-.B bk unlock [-rsw]
-.br
-.B bk unlock [\-bfpxz] file-list
-.\}
+.B bk unlock [\-bfpxz]
+.FILES
 .SH DESCRIPTION
 .LP
 The unlock command can be used to remove locks which have been left behind
 for some reason.  In general, you shouldn't need this command, if you do
 it indicates that either you are removing files without unediting them
-or it indicates that BitKeeper is leaving lock files that it should not.
+or it indicates that \*(BK is leaving lock files that it should not.
 If it is the second case, please tell support@bitmover.com so we can fix
 that problem.
 .LP
@@ -35,28 +28,28 @@ created locally but the process is no longer present.
 .LP
 Note: a repository can have two write locks: the regular lock file and
 the existence of the RESYNC directory.  Removing the write lock does not
-imply removing the RESYNC directory, see "bk help abort" for that.
+imply removing the RESYNC directory, see bk help abort for that.
 .SH "REPOSITORY UNLOCK OPTIONS"
 .TP
-.B -r
+.B \-r
 Remove all read locks, stale or not.
 .tp
-.B -s
+.B \-s
 Remove both read and write locks, but only if they are stale.
 .tp
-.B -w
+.B \-w
 Remove the write lock, stale or not.  Does not remove the RESYNC directory.
 .SH "FILE UNLOCKING"
 .LP
 Sometimes you need to explicitly unlock files.  The most common reason for
 wanting to do this comes from doing the following:
-.AX
+.DS
     $ bk edit user.c
     $ rm user.c
     $ bk edit user.c
     get: can't plock user.c
     get of SCCS/s.user.c failed, skipping it.
-.XA
+.DE
 .LP
 In other words, the checked out file has been removed but the lock file
 still exists.  See the clean and unedit commands for ways to avoid this
@@ -79,19 +72,19 @@ out file does not exist, i.e., like the scenario described above.
 .B \-b
 Removes the b.file lock which is created as part of the resolve
 process.
-.TP
+.tp
 .B \-f
 Force the unlink of the p.file even if the checked out file exists.
-.TP
+.tp
 .B \-p
 Removes the p.file lock which is created by bk edit.
-.TP
+.tp
 .B \-x
-Removes the x.file lock which is created during a check-in. x.file
+Removes the x.file lock which is created during a check\-in. x.file
 contains the new s.file.
-.TP
+.tp
 .B \-z
-Removes the z.file lock which is created to prevent check-in and
+Removes the z.file lock which is created to prevent check\-in and
 edit races.
 .SH BUGS
 .LP
@@ -99,11 +92,8 @@ The unlock interface is overload for both file level and repository level
 operations and that is confusing.
 .SH "SEE ALSO"
 .SA unedit 1
-.br
 .SA clean 1
-.br
 .SA lock 1
-.br
 .SA abort 1
 .\" help://Repository/locks
 .\" help://Repository/repo

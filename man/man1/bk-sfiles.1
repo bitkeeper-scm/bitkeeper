@@ -1,70 +1,155 @@
-.so ../macros
-.TH "bk sfiles" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk sfiles" 1 20%E% "\*(BC" "\*(UM"
 .\"    ======================== Sfiles Help ===========================
 .SH NAME
 bk sfiles \- generates lists of revision control files
 .SH SYNOPSIS
-.B sfiles [\-aAcCdDglkpPRrux] 
-.BI [ directories ]
+.Bc sfiles [\-acdDeEgijlrSuUvx] [
+.OPTreq \-o file
+.Bc ] [
+.OPTopt \-p A|C
+.Bc ] [
+.ARGc dirs
+.B ]
+.SH DESCRIPTION
+.B bk sfiles
+is used to generate lists of revision control files, files related to
+revision control files, directories related (or not) to revision control files,
+and/or files not under revision control.  In other words, if you need a list
+of files, you've come to the right place.
+.LP
+.B bk sfiles 
+without any arguments finds all s.files in or below the current working
+directory.  This is what
+.B bk\ \-r\ \c
+.ARG command
+uses to generate the list of files to feed to 
+.ARG command .
+.LP
+If a directory and/or file list is specified, then each of the items in 
+the list is processed; directories are processed recursively.
 .SH OPTIONS
-.TP
-.B \-A
-When used with \-C, list all revisions, not just the tip.
-.tp
+When examining the options, bear in mind that if you want a list of files
+in one particular state, do not combine the option which specifies that
+state with options which specify different states; you'll get one list 
+with both kinds of files if you do.
+.LP
+If you want a one pass with different sorts of files listed, look at
+the 
+.B \-e/E/i/v
+options.
+.if n .TP .9i
+.if t .TP .5i
 .B \-a
-Examine all files, even if listed in BitKeeper/etc/ignore.
-.tp
-.B \-C
-List leaves which are not in a changeset as file:1.3
+examine all files, even if listed in BitKeeper/etc/ignore.
 .tp
 .B \-c
-List only changed files (locked and modified).
+List changed files (locked and modified).
+.tp
+.B \-d
+List directories under \*(BK control (SCCS subdir exists).
 .tp
 .B \-D
 List directories with no (or empty) SCCS subdirs.
 .tp
-.B \-d
-List directories under SCCS control (have SCCS subdir).
+.B \-e
+shorthand for 
+.B \-jluvx
+.tp
+.B \-E
+shorthand for 
+.B \-cjluvxp
 .tp
 .B \-g
 List the gfile name, not the sfile name.
 .tp
+.B \-i
+shorthand for 
+.B \-cjlvxp
+aka the interesting state.
+.tp
+.B \-j
+List junk files, i.e., files in \*(SC subdirectories which are not 
+metadata.
+.tp
 .B \-l
-List only locked files (p.file and/or z.file).
+List locked files (p.file and/or z.file).
 .tp
-.B \-k
-List the keys which should be in keys cache.
+.OPTreq \-o file
+send output to
+.ARG file
+and progress information to stdout.
 .tp
-.B \-P
-(paranoid) Opens each file to make sure it is an SCCS file.
+.OPTopt \-p AC
+list files with pending deltas.  If 
+.B \-pC
+then list 
+leaves which are not in a changeset as file@1.3
+If
+.BR \-pA ,
+that implies 
+.BR \-pC ,
+and 
+lists all revisions, not just the tip.
 .tp
-.B \-p
-(paranoid) Opens each file to make sure it is an SCCS file,
-but only if the pathname to the file is not ../SCCS/s.*.
-.tp
-.B \-R
-When used with \-C, list files as foo.c:1.3..1.5
-.tp
-.B \-r
-Rebuild the id to pathname cache.
+.B \-S
+produce a summary listing only, typically combined with 
+.BR \-E .
 .tp
 .B \-u
-List only unlocked files.
+List unlocked files.
 .tp
-.B -v
-Be verbose during id rebuild.
+.B \-U
+list user files only, skipping all files in the 
+.B BitKeeper/
+subdirectory as well as the 
+.B ChangeSet
+file.
+.tp
+.B \-v
+Prefix the output with information about the state of the s.file.
+The information is in a 4 character field, followed by a space,
+then followed by the filename.  Each of the columns are described
+below:
+.RS
+.tp
+\f(CBl???\fR
+the file is locked
+.tp
+\f(CBu???\fR
+the file is unlocked
+.tp
+\f(CBjjjj\fR
+the file is junk
+.tp
+\f(CBxxxx\fR
+the file is an extra
+.tp
+\f(CB?c??\fR
+the file is modified (changed)
+.tp
+\f(CB??p?\fR
+the file has pending deltas
+.RE
 .tp
 .B \-x
 List files which have no revision control files.
 .SH NOTES
 .LP
-Files in BitKeeper/log/ are ignored.
+.B bk sfiles
+will not descend into directories containing a
+.B .bk_skip
+file.  This allows you to prune entire subtrees from processing.
+.LP
+Files under BitKeeper/{log,readers,writers}/ are always ignored.
 .LP
 Revision control files must look like SCCS/s.*,
 not foo/bar/blech/s.*
-.LP
-The \-r option can take an optional repository root but not any other
-directories.
+.SH BUGS
+The 
+.B \-d/\-D
+options do not combine with the other listing options, they are done
+by a different program.  This will be fixed soon.
 .SH "SEE ALSO"
 .SA history 1
 .br

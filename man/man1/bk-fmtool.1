@@ -1,15 +1,13 @@
-.so ../macros
-.TH "bk fmtool" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk fmtool" 1 20%E% "\*(BC" "\*(UM"
 .\"    =============== BitKeeper 2-way File Merge Tool ===============
 .SH NAME
-bk fmtool \- side-by-side merge tool
+bk fmtool \- \*(BK side-by-side merge tool
 .SH SYNOPSIS
-.if t \{\
 .B bk fmtool
-.I local remote merge
-\}
-.if n
-bk fmtool <local> <remote> <merge>
+.ARG local_file
+.ARG remote_file
+.ARG merged_file
 .SH DESCRIPTION
 .LP
 fmtool is a side-by-side merge tool used for resolving differences
@@ -23,7 +21,7 @@ or a
 .B bk
 .BR pull ,
 your repository
-is considered local and the other one is considered remote, and BitKeeper
+is considered local and the other one is considered remote, and \*(BK
 arranges to have the local version of the file on the left side and the
 remote version on the right.
 .LP
@@ -43,7 +41,7 @@ window.
 .B 3.
 Repeat the process until all changes are placed in the merge file.
 .LP
-The changes in the merge window colored so that it is easy to tell whether
+The changes in the merge window are colored so that it is easy to tell whether
 the work was from the local or remote file.
 .LP
 Each merge may be undone either by clicking the "Undo" button or using
@@ -67,6 +65,9 @@ Skip the current diff, using neither.
 .B Control-UpArrow
 Undo the last choice.
 .tp
+.B Control-q
+Exit from fmtool.
+.tp
 .B Alt-UpArrow
 Grow the merge window and shrink the diff windows.
 .tp
@@ -75,7 +76,8 @@ Grow the diff windows and shrink the merge window.
 .LP
 The following keys operate on the set of windows that have the focus.
 Click in the diff windows or the merge window to set the focus.
-.TP 12
+.if t .TP .9i
+.if n .TP 10
 .B PageDown
 Scroll the diffs or the merge window up one screen.
 .tp

@@ -1,20 +1,19 @@
-.so ../macros
-.TH "bk pull" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk pull" 1 20%E% "\*(BC" "\*(UM"
 .\"    ============== Pulling changes into your repository ==============
 .SH NAME
 bk pull \- updates the repository from its parent
 .SH SYNOPSIS
-.if t \{\
-.B bk pull [\-ilnqrt] [\-z
-.I d
-.B ] [
-.IB parent ]
-.\}
-.if n
-bk pull [\-ilnqrt] [\-z<d>] [<parent>]
+.Bc bk pull [\-ilnqrt] [\-z[
+.ARGc 0-9
+.Bc ]] [
+.OPTreq \-c n
+.Bc ] [
+.ARGc parent
+.B ]
 .SH DESCRIPTION
 .LP
-pull updates a repository from its parent.  Changes are retrieved and
+Pull updates a repository from its parent.  Changes are retrieved and
 automatically applied, if possible.  You will only be asked to resolve
 conflicts by hand if a file has overlapping changes (changes where both
 repositories have touched the same line in the same file).
@@ -32,6 +31,11 @@ You can override the default parent by specifying a different one.
 Doing so changes the parent for the duration of this command only.
 .SH OPTIONS
 .TP
+.tp
+.OPTreq \-c n
+try to get the remote lock
+.ARG c
+times before giving up (default forever).
 .B \-i
 Turn off automerge feature in resolve.
 .tp
@@ -60,24 +64,30 @@ to resolve (
 .B \-t
 means do not use the GUI tools.)
 .tp
-.AN \-z d
-Do compression at level 
-.IB d ,
-if possible, where
-.I d
-is an integer value 0-9; default is 
+.OPTreq \-z d
+Do compression at level
+.ARG d ,
+if possible, where 
+.ARG d
+is an integer value 0-9;
+default is 
 .BR \-z6 .
 Compression is possible when using ssh or the BK daemon,
 but not with rsh.
 .SH "SEE ALSO"
 .SA bkd 1
-.br
 .SA parent 1
-.br
 .SA push 1
-.br
 .SA resolve 1
-.br
 .SA triggers 1
+.SH AVAILABILITY
+.\" XXX -lm, how's this?
+.BU
+\*(BK Professional allows communication via ssh, rsh, 
+and email as well as the bk daemon.
+.br
+.BU
+\*(BK Professional will retry the operation automatically if
+the remote host is busy.
 .SH CATEGORY
 .B Repository
