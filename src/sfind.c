@@ -289,7 +289,6 @@ chk_pending(sccs *s, char *gfile, char state[4], MDBM *sDB, MDBM *gDB)
 	
 	/*
 	 * check for pending deltas
-	 * TODO: need to handle LOD
 	 */                                    
 	state[PSTATE] = ' ';
 	unless (d = sccs_getrev(s, "+", 0, 0))  goto out;	
@@ -455,7 +454,7 @@ walk(char *dir, int level)
 		} else {
 			/*
 			 * Dir is not a BitKeeper repository,
-			 * turn off all BitKeeper specify feature.
+			 * turn off all BitKeeper specific feature.
 			 */
 			opts.aflg = 1;
 		}
@@ -463,7 +462,12 @@ walk(char *dir, int level)
 	}
 
 	concat_path(buf, dir, "SCCS");
-	unless (sccs_dh =  opendir(buf)) {
+	/*
+	 * TODO: for better performance in split root mode,
+	 * we should be able to better optimized the sPath() code
+	 */
+	sccs_dh =  opendir(opts.splitRoot ? sPath(buf, 1) : buf);
+	unless (sccs_dh) {
 		/*
 		 * TODO: we need to check for the caes where
 		 * the pwd is a SCCS dir
@@ -533,7 +537,7 @@ isIgnored(char *file)
 		 * For backward compat with "bk sfiles"
 		 * trimed "./" and match against ignore list.
 		 */
-		if (match_globs(gfile, ignore)) {
+		if ((gfile !=  file) && match_globs(gfile, ignore)) {
 			debug((stderr, "SKIP\t%s\n", gfile));
 			return (1);
 		}
@@ -549,54 +553,68 @@ isIgnored(char *file)
 	}
 
 	/*
-	 * HACK to hide stuff in the log directory & BitKeeper/etc/SCCS/x.*
+	 * HACK to hide stuff in the log directory
 	 * This assumes the sfind is ran from project root
-	 * If you run "bk sfind" under <project root>/BitKeeper directory
-	 * These file will show up. It is probably OK.
+	 * If you run "bk sfind" under <project root>/BitKeeper directory,
+	 * these file will show up. It is probably OK.
 	 */
 	if (strneq("BitKeeper/log/", gfile, 14)) return (1);
-	if (strneq("BitKeeper/etc/SCCS/x.", gfile, 21)) return (1);
 	return (0);
 }
+
+private int
+isTagFile(char *file)
+{
+	char *gfile;
+
+	gfile =  strneq("./",  file, 2) ? &file[2] : file;
+	return (strneq("BitKeeper/etc/SCCS/x.", gfile, 21));
+}
+
 
 private void
 print_it(char state[4], char *file, char *rev)
 {
-	char *sfile = 0, *gfile;
-	char *name, tmp[MAXPATH];
+	char *sfile, *gfile;
 
 	gfile =  strneq("./",  file, 2) ? &file[2] : file;
 	if (opts.show_markers) printf("%s ", state);
 	if (opts.gflg || (state[CSTATE] == 'x') || (state[CSTATE] == 'j'))  {
-		fputs(gfile, stdout); 			 /* print gfile name */
+		fputs(gfile, stdout);	/* print gfile name */
 	} else {
-		fputs(sfile = name2sccs(gfile), stdout); /* print sfile name */
+		sfile = name2sccs(gfile);
+		/*
+		 * TODO: for better performance in split root mode,
+		 * we should be able to better optimized the sPath() code
+		 * e.g. we could pass project struct into sPath()
+		 */
+		fputs(opts.splitRoot ? sPath(sfile, 0) : sfile, stdout);
+		free(sfile);
 	}
 	if (rev) printf("@%s", rev);
 	fputs("\n", stdout);
-	if (sfile) free(sfile);
 }
 
 private void
 do_print(char state[4], char *file, char *rev)
 {
 
+	if ((state[PSTATE] == 'p') && opts.pflg) goto print;
+
 	switch (state[LSTATE]) {
-	    case 'l':	if (opts.lflg) goto chk_ig; break;
-	    case 'u':	if (opts.uflg) goto chk_ig; break;
+	    case 'l':	if (opts.lflg) goto print; break;
+	    case 'u':	if (opts.uflg) goto print; break;
 	}
 
 	switch (state[CSTATE]) {
-	    case 'c':	if (opts.cflg) goto chk_ig; break;
-	    case 'n':	if (opts.nflg) goto chk_ig; break;
-	    case 'j':	if (opts.jflg) goto chk_ig; break;
-	    case 'x':	if (opts.xflg) goto chk_ig; break;
+	    case 'c':	if (opts.cflg) goto print; break;
+	    case 'n':	if (opts.nflg) goto print; break;
+	    case 'j':	if (opts.jflg && !isTagFile(file)) goto print; break;
+	    case 'x':	if (opts.xflg && !isIgnored(file)) goto print; break;
 	}
-	if ((state[PSTATE] == 'p') && opts.pflg) goto chk_ig;
 	return;
 
-chk_ig: if (isIgnored(file)) return;
-	print_it(state, file, rev);
+print:	print_it(state, file, rev);
 }
 
 char *
@@ -650,9 +668,7 @@ sccsdir(char *dir, int level, DIR *sccs_dh)
 		/*
 		 * Do not descend into another project root. e.g RESYNC
 		 */
-		if ((level > 0)  && patheq(e->d_name, "BitKeeper")) {
-			return;
-		}
+		if ((level > 0)  && patheq(e->d_name, "BitKeeper")) return;
 
 		/*
 		 * Skip files with paths that are too long
@@ -735,7 +751,6 @@ sccsdir(char *dir, int level, DIR *sccs_dh)
 
 		s = 0;
 		file = p;
-		//unless (strneq("s.", file, 2)) continue;
 		gfile = &file[2];
 
 		/*
@@ -812,6 +827,7 @@ sccsdir(char *dir, int level, DIR *sccs_dh)
 				 * c.file@rev entries. Extract the @rev part
 				 * from kv.val.ptr and append it to buf1 to
 				 * reconstruct the correct file name.
+				 * i.e c.file@rev
 				 */
 				p = kv.val.dptr;
 				while (p) {
