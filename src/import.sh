@@ -1,6 +1,11 @@
 #! @SH@
 
 # import.sh - import various sorts of files into BitKeeper
+# Usage:
+#	bk import [-e] [-i] [-l file] [-t type] from to
+# TODO
+#	we allow repeated imports on patches but don't error check the other
+#	cases.  We should fail if the repository is not empty.
 # %W% %@%
 
 import() {
@@ -13,63 +18,118 @@ import() {
 	LIST=""
 	INC=NO
 	EX=NO
-	while getopts eil: opt
+	TYPE=
+	while getopts eil:t: opt
 	do	case "$opt" in
 		e) EX=YES;;
 		i) INC=YES;;
 		l) LIST=$OPTARG;;
+		t) TYPE=$OPTARG;;
 		esac
 	done
 	shift `expr $OPTIND - 1`
 	if [ X"$1" = X -o X"$2" = X -o X"$3" != X ]
 	then	bk help import
-		exit 0
+		exit 1
 	fi
-	if [ ! -d "$1" ]
-	then	echo import: "$1" is not a directory
-		exit 0
+	gettype $TYPE
+	if [ $TYPE = patch ]
+	then	if [ ! -f "$1" ]
+		then	echo import: "$1" is not a patch file
+			exit 1
+		fi
+		if [ X"$LIST" != X ]
+		then	echo import: no lists allowed with patch files
+			exit 1
+		fi
+		if [ "$EX" != NO -o $INC != NO ]
+		then	echo import: no include/excludes allowed with patch files
+			exit 1
+		fi
+	else	if [ ! -d "$1" ]
+		then	echo import: "$1" is not a directory
+			exit 1
+		fi
 	fi
 	if [ ! -d "$2" ]
 	then	echo import: "$2" is not a directory, run setup first
-		exit 0
+		exit 1
 	fi
 	if [ ! -d "$2/BitKeeper" ]
-	then	echo "$2 is not a BitKeeper project"; exit 0
+	then	echo "$2 is not a BitKeeper project"; exit 1
 	fi
 	HERE=`pwd`
-	cd $1
-	FROM=`pwd`
-	cd $HERE
+	if [ $TYPE != patch ]
+	then	cd $1
+		FROM=`pwd`
+		cd $HERE
+	else	FROM=$1
+	fi
 	cd $2
 	TO=`pwd`
-	cat <<EOF
-
-BitKeeper can currently handle the following types of files:
-
-    plain	- these are regular files which are not under revision control
-    SCCS	- SCCS files which are not presently under BitKeeper
-    RCS		- files controlled by RCS or CVS
-
-If the files you wish to import do not match any of these forms, you will
-have to write your own conversion scripts.  See the rcs2sccs perl script
-for an example.  If you write such a script, please consider contributing
-it to the BitKeeper project.
-
-EOF
-	TRY=yes
-	while [ $TRY = yes ]
-	do	echo $N "Type of files to import? " $NL
-		read type
-		TRY=no
-		case "$type" in
-		    p*) type=text;;
-		    R*) type=RCS;;
-		    S*) type=SCCS;;
-		    *)	echo Please use one of plain, RCS, or SCCS
-			TRY=yes
-		    	;;
+	getIncExc
+	if [ X"$LIST" != X ]
+	then	cd $HERE
+		if [ ! -s "$LIST" ]
+		then	echo Empty file $LIST
+			exit 1
+		fi
+		read path < $LIST
+		case "$path" in
+		/*) echo "The list of imported files has to match $FROM"
+		    exit 1;;
 		esac
-	done
+		cd $FROM
+		if [ ! -f $path ]
+		then	echo No such file: $FROM/$path
+			exit 1
+		fi
+		cd $HERE
+		cp $LIST /tmp/import$$
+	else	if [ $TYPE != patch ]
+		then	echo Finding files in $FROM
+			cd $FROM
+			cmd="find . -follow -type f -print"
+			if [ X"$INCLUDE" != X ]
+			then	cmd="$cmd | egrep '$INCLUDE'"
+			fi
+			if [ X"$EXCLUDE" != X ]
+			then	cmd="$cmd | egrep -v '$EXCLUDE'"
+			fi
+			eval "$cmd" | sed 's/^..//' > /tmp/import$$
+			echo OK
+		else	echo "" > /tmp/import$$
+		fi
+	fi
+	if [ $TYPE != patch ]
+	then	echo Checking to make sure there are no files
+		echo already in $TO
+		cd $TO
+		while read x
+		do	if [ -e $x ]
+			then	echo import: $x exists, entire import aborted
+				rm -f /tmp/import$$
+				exit 1
+			fi
+		done < /tmp/import$$
+		bk g2sccs < /tmp/import$$ > /tmp/sccs$$
+		while read x
+		do	if [ -e $x ]
+			then	echo import: $x exists, entire import aborted
+				rm -f /tmp/sccs$$ /tmp/import$$
+				exit 1
+			fi
+		done < /tmp/sccs$$
+		echo OK
+	fi
+	cd $TO
+	eval validate_$type $FROM $TO
+	transfer_$type $FROM $TO
+	eval import_$type $FROM $TO
+	import_finish $TO
+}
+
+getIncExc () {
 	if [ "$INC" = YES ]
 	then	echo End patterns with "." by itself or EOF
 		echo $N "File name pattern to include>> " $NL
@@ -96,63 +156,63 @@ EOF
 			echo $N "File name pattern to exclude>> " $NL
 		done
 	fi
-	echo
-	if [ X"$LIST" != X ]
-	then	cd $HERE
-		if [ ! -s "$LIST" ]
-		then	echo Empty file $LIST
-			exit 1
-		fi
-		read path < $LIST
-		case "$path" in
-		/*) echo "The list of imported files has to match $FROM"
-		    exit 1;;
-		esac
-		cd $FROM
-		if [ ! -f $path ]
-		then	echo No such file: $FROM/$path
-			exit 1
-		fi
-		cd $HERE
-		cp $LIST /tmp/import$$
-	else	echo Finding files in $FROM
-		cd $FROM
-		cmd="find . -follow -type f -print"
-		if [ X"$INCLUDE" != X ]
-		then	cmd="$cmd | egrep '$INCLUDE'"
-		fi
-		if [ X"$EXCLUDE" != X ]
-		then	cmd="$cmd | egrep -v '$EXCLUDE'"
-		fi
-		eval "$cmd" | sed 's/^..//' > /tmp/import$$
-		echo OK
-	fi
-	echo Checking to make sure there are no files
-	echo already in $TO
-	cd $TO
-	while read x
-	do	if [ -e $x ]
-		then	echo import: $x exists, entire import aborted
-			rm -f /tmp/import$$
-			exit 1
-		fi
-	done < /tmp/import$$
-	bk g2sccs < /tmp/import$$ > /tmp/sccs$$
-	while read x
-	do	if [ -e $x ]
-		then	echo import: $x exists, entire import aborted
-			rm -f /tmp/sccs$$ /tmp/import$$
-			exit 1
-		fi
-	done < /tmp/sccs$$
-	echo OK
-	eval import_validate_$type $FROM $TO
-	import_transfer $FROM $TO
-	eval import_doimport_$type $TO
-	import_finish $TO
 }
 
-import_transfer () {
+gettype() {
+	type=
+	if [ "X$1" != X ]
+	then	case "$1" in
+		    plain)	type=text;;
+		    patch)	type=patch;;
+		    RCS|CVS)	type=RCS;;
+		    SCCS)	type=SCCS;;
+		esac
+		if [ X$type != X ]
+		then	TYPE=$type
+			return
+		fi
+	fi
+	cat <<EOF
+
+BitKeeper can currently handle the following types of imports:
+
+    plain	- these are regular files which are not under revision control
+    patch	- a patch file generated by diff -Nur
+    SCCS	- SCCS files which are not presently under BitKeeper
+    RCS		- files controlled by RCS
+    CVS		- files controlled by CVS
+
+If the files you wish to import do not match any of these forms, you will
+have to write your own conversion scripts.  See the rcs2sccs perl script
+for an example.  If you write such a script, please consider contributing
+it to the BitKeeper project.
+
+EOF
+	TRY=yes
+	while [ $TRY = yes ]
+	do	echo $N "Type of files to import? " $NL
+		read type
+		TRY=no
+		case "$type" in
+		    pa*) type=patch;;
+		    pl*) type=text;;
+		    R*) type=RCS;;
+		    S*) type=SCCS;;
+		    *)	echo Please use one of plain, patch, RCS, CVS, or SCCS
+			TRY=yes
+		    	;;
+		esac
+	done
+	TYPE=$type
+}
+
+
+transfer_RCS() { transfer "$@" }
+transfer_SCCS() { transfer "$@" }
+transfer_text() { transfer "$@" }
+transfer_patch() { return }
+
+transfer() {
 	FROM=$1
 	TO=$2
 	TYPE=$3
@@ -179,14 +239,92 @@ import_transfer () {
 	sfio -omq < /tmp/import$$ | (cd $TO && sfio -imq) || exit 1
 }
 
-import_doimport_text () {
-	cd $1
+import_patch() {
+	cd $2
+	echo Locking files in `pwd` ...
+	bk -r get -eq
+	echo Patching...
+	# XXX - I want to use -Z here and -G on the ci to pick up the timestamps
+	# but it screws up the printouts for some reason.
+	(cd $HERE && cat $1) |
+	    bk patch -p1 -E -z '=-PaTcH_BaCkUp!' --verbose > /tmp/plog$$ 2>&1
+	echo Removing patch backups...
+	bk sfiles -x | grep '=-PaTcH_BaCkUp!$' | xargs rm -f
+	REJECTS=NO
+	find .  -name '*.rej' -print > /tmp/rejects$$
+	if [ -s /tmp/rejects$$ ]
+	then 	echo Patch rejects:
+		cat /tmp/rejects$$
+		echo
+		echo "Patch aborted, you need to clean up by hand, XXX"
+		Done 1
+	fi
+	echo Checking for potential renames in `pwd` ...
+	grep '^Creating file ' /tmp/plog$$ |
+	    sed 's/Creating file //' | 
+	    sed 's/ .*//' > /tmp/creates$$
+	grep '^Removing file ' /tmp/plog$$ |
+	    sed 's/Removing file //' |
+	    sed 's/ .*//' > /tmp/deletes$$
+	SAVE=$USER
+	USER=anon
+	# Go look for renames
+	if [ -s /tmp/deletes$$ -a -s /tmp/creates$$ ]
+	then	(
+		if [ -s /tmp/deletes$$ ]
+		then	cat /tmp/deletes$$
+		fi
+		echo ""
+		if [ -s /tmp/creates$$ ]
+		then	cat /tmp/creates$$
+	    	fi ) | bk renametool
+	fi
+
+	# Do the deletes automatically
+	if [ -s /tmp/deletes$$ -a ! -s /tmp/creates$$ ]
+	then	while read rm
+		do	bk rm -d $rm
+		done < /tmp/deletes$$
+	fi
+	# Do the creates automatically
+	if [ ! -s /tmp/deletes$$ -a -s /tmp/creates$$ ]
+	then	while read new
+		do	bk new -q $new
+		done < /tmp/creates$$
+	fi
+	rm -f /tmp/creates$$ /tmp/deletes$$
+
+	echo Checking in modified files in `pwd` ...
+	bk -r ci -q -y"Patch"
+
+	echo Cleaning all other files `pwd` ...
+	bk -r clean
+
+	bk sfiles -x | grep -v '^BitKeeper/' > /tmp/extras$$
+	if [ -s /tmp/extras$$ ]
+	then	echo There were extra files, patch aborted, here is the list
+		cat /tmp/extras$$
+		echo
+		echo "Patch aborted, you must clean up by hand, XXX"
+		Done 1
+    	fi
+
+	USER=$SAVE
+	echo Creating changeset for $1 in `pwd` ...
+	bk sfiles -C | bk cset -y"$1" -
+
+	echo Done.
+	Done 0
+}
+
+import_text () {
+	cd $2
 	echo Checking in plain text files...
 	ci -is - < /tmp/import$$ || exit 1
 }
 
-import_doimport_RCS () {
-	cd $1
+import_RCS () {
+	cd $2
 	echo Converting RCS files.
 	echo WARNING: Branches will be discarded.
 	echo Ignore errors relating to missing newlines at EOF.
@@ -194,8 +332,8 @@ import_doimport_RCS () {
 	xargs rm -f < /tmp/import$$
 }
 
-import_doimport_SCCS () {
-	cd $1
+import_SCCS () {
+	cd $2
 	echo Checking for and fixing Teamware corruption...
 	sfiles | renumber -q -
 	if [ -s /tmp/reparent$$ ]
@@ -234,7 +372,7 @@ import_finish () {
 	bk commit -f -y'Import changeset'
 }
 
-import_validate_SCCS () {
+validate_SCCS () {
 	FROM=$1
 	TO=$2
 	cd $FROM
@@ -293,7 +431,7 @@ EOF
 	fi
 }
 
-import_validate_RCS () {
+validate_RCS () {
 	grep ',v$' /tmp/import$$ >/tmp/rcs$$
 	# Filter out CVS repository metadata here.
 	grep -v ',v$' /tmp/import$$ | egrep -v 'CVS|#cvs' >/tmp/notrcs$$
@@ -311,7 +449,7 @@ import_validate_RCS () {
 	rm -f /tmp/notrcs$$
 }
 
-import_validate_text () {
+validate_text () {
 	FROM=$1
 	TO=$2
 	cd $FROM
@@ -329,6 +467,33 @@ import_validate_text () {
 		mv /tmp/text$$ /tmp/import$$
 		rm -f /tmp/nottext$$
 	fi
+}
+
+# Make sure there are no locked/extra files
+validate_patch() {
+	cd $2
+	echo Make sure there are no locked files in `pwd` ...
+	bk sfiles -l | grep -v BitKeeper/ > /tmp/locked$$
+	if [ -s /tmp/locked$$ ]
+	then	echo Not patching because of locked files:
+		cat /tmp/locked$$
+		Done 1
+    	fi
+	echo Make sure there are no extra files in `pwd` ...
+	bk sfiles -x | grep -v BitKeeper/ > /tmp/extras$$
+	if [ -s /tmp/extras$$ ]
+	then	echo Not patching because of extra files:
+		cat /tmp/extras$$
+		Done 1
+    	fi
+	rm -f /tmp/locked$$ /tmp/extras$$
+}
+
+Done() {
+	for i in rejects plog extras locked import sccs
+	do	rm -f /tmp/${i}$$
+	done
+	exit $1
 }
 
 init () {
