@@ -42,12 +42,12 @@ cset_inex(int flags, char *op, char *revs)
 	pid = spawnvp_rPipe(av, &fd);
 	if (pid == -1) {
 		perror("spawnvp_rPipe");
-		exit(1);
+		return (1);
 	}
 	unless (f = fdopen(fd, "r")) {
 		perror("fdopen");
 		kill(pid, SIGKILL);
-		exit(1);
+		return (1);
 	}
 
 	d = getComments(op, revs);
@@ -253,16 +253,56 @@ commit(int quiet, delta *d)
 private int
 undoit(MDBM *m)
 {
-	char	buf[MAXPATH*3];
 	kvpair	kv;
+	int	i, pid, worked = 1;
+	char	*t;
+	FILE	*f;
+	char	*av[10];
+	char	rev[MAXREV+10];
+	char	buf[MAXPATH];
 
 	fprintf(stderr,
 	    "\n!!! Cset operation failed.  Undoing changes... !!!\n\n");
-	for (kv = mdbm_first(m); kv.key.dsize; kv = mdbm_next(m)) {
-		sprintf(buf, "bk sfiles -C %s | bk stripdel -", kv.key.dptr);
-		system(buf);
+	av[i=0] = "bk";
+	av[++i] = "sfiles";
+	av[++i] = "-ACg";
+	av[++i] = 0;
+	pid = spawnvp_rPipe(av, &i);
+	if (pid == -1) {
+		perror("spawnvp_rPipe");
+		exit(1);
 	}
+	unless (f = fdopen(i, "r")) {
+		perror("fdopen");
+		kill(pid, SIGKILL);
+		exit(1);
+	}
+	while (fgets(buf, sizeof(buf), f)) {
+		chop(buf);
+		t = strchr(buf, '@');
+		assert(t);
+		*t = 0;
+		unless (mdbm_fetch_str(m, buf)) continue;
+		av[i=0] = "bk";
+		av[++i] = "stripdel";
+		sprintf(rev, "-r%s", &t[1]);
+		av[++i] = rev;
+		av[++i] = buf;
+		av[++i] = 0;
+		if (spawnvp_ex(_P_WAIT, av[0], av)) {
+			for (i = 0; av[i]; ++i) {
+				if (i) fprintf(stderr, " ");
+				fprintf(stderr, "%s", av[i]);
+			}
+			fprintf(stderr, ": failed.\n");
+			worked = 0;
+			/* Keep going */
+		}
+	}
+	fclose(f);
+	wait(0);
 	mdbm_close(m);
+	if (worked) fprintf(stderr, "Successfully cleaned up all files.\n");
 	return (1);
 }
 
@@ -283,6 +323,17 @@ doit(int flags, char *file, char *op, char *revs, delta *d)
 		return (1);
 	}
 	free(sfile);
+	unless (s->tree) {
+		fprintf(stderr, "No graph in %s?\n", s->gfile);
+		sccs_free(s);
+		return (1);
+	}
+	unless (sccs_top(s)->flags & D_CSET) {
+		fprintf(stderr,
+		    "%s has uncommitted deltas, aborting.\n", s->gfile);
+		sccs_free(s);
+		return (1);
+	}
 	if (sccs_clean(s, SILENT)) {
 		sccs_free(s);
 		return (1);
