@@ -13,7 +13,8 @@
 # %K%
 
 # Do not use this feature.
-# This features is likely to be removed in the future
+# This feature is likely to be removed in the future
+no_logging project
 echo $N Test x flag .................................................$NL
 echo "echo this is a shell script > CMP1" > test_script.sh
 bk ci $Q -i test_script.sh

@@ -14,32 +14,32 @@
 
 # Test the operation of various gca operations
 # These are not BK specific, per se
-
+no_logging project
 echo $N Create graph with some merge, -i, and -x stuff ..............$NL
 echo foo > foo.c
 bk ci $Q -i foo.c
 if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
-bk get $Q -e foo.c
+bk _get $Q -e foo.c
 bk delta $Q -y1.2 foo.c
-bk get $Q -e foo.c
+bk _get $Q -e foo.c
 bk delta $Q -y1.3 foo.c
-bk get $Q -e -r1.2 foo.c
+bk _get $Q -e -r1.2 foo.c
 bk delta $Q -y1.2.1.1 foo.c
-bk get $Q -e foo.c
+bk _get $Q -e foo.c
 bk delta $Q -y1.4 foo.c
-bk get $Q -e -r1.2.1 foo.c
+bk _get $Q -e -r1.2.1 foo.c
 bk delta $Q -y1.2.1.2 foo.c
-bk get $Q -e foo.c
+bk _get $Q -e foo.c
 bk delta $Q -y1.5 foo.c
-bk get $Q -e -r1.2.1 foo.c
+bk _get $Q -e -r1.2.1 foo.c
 bk delta $Q -y1.2.1.3 foo.c
-bk get $Q -e -x1.2 foo.c
+bk _get $Q -e -x1.2 foo.c
 bk delta $Q -y1.6 foo.c
-bk get $Q -e -x1.2 -r1.2.1 foo.c
+bk _get $Q -e -x1.2 -r1.2.1 foo.c
 bk delta $Q -y1.2.1.4 foo.c
-bk get $Q -e -M1.2.1.2 foo.c
+bk _get $Q -e -M1.2.1.2 foo.c
 bk delta $Q -y1.7 foo.c
-bk get $Q -e -M1.4 -r1.2.1 foo.c
+bk _get $Q -e -M1.4 -r1.2.1 foo.c
 bk delta $Q -y1.2.1.5 foo.c
 gca=`bk gca -r1.2.1.5 -r1.7 foo.c`
 expect="1.2.1.2 -i1.3,1.4 -x1.2"
@@ -50,24 +50,25 @@ if [ "$gca" != "$expect" ]; then
 	exit 1
 fi
 echo OK
+
 # Do a weird graph, in the sense that it is knocking out things
 # it doesn't even have.  This isn't as much a test of the set gca
-# as when we get to the merge stuff.  Need to handle this case.
+# as when we _get to the merge stuff.  Need to handle this case.
 echo $N Create graph with some weird pathalogical -i and -x .........$NL
 echo bar > bar.c
 bk ci $Q -i bar.c
 if [ ! -f SCCS/s.bar.c ]; then echo failed to create history; exit 1; fi
-bk get $Q -e bar.c
+bk _get $Q -e bar.c
 bk delta $Q -y1.2 bar.c
 # make 2 new branches and include trunk 1.2 into each
-bk get $Q -e -i1.2 -r1.1 bar.c
+bk _get $Q -e -i1.2 -r1.1 bar.c
 bk delta $Q -y1.1.1.1 bar.c
-bk get $Q -e -i1.2 -r1.1 bar.c
+bk _get $Q -e -i1.2 -r1.1 bar.c
 bk delta $Q -y1.1.2.1 bar.c
 # add to branch, excluding something from the other side
-bk get $Q -e -x1.1.2.1 -r1.1.1 bar.c
+bk _get $Q -e -x1.1.2.1 -r1.1.1 bar.c
 bk delta $Q -y1.1.1.2 bar.c
-bk get $Q -e -x1.1.1.1 -r1.1.2 bar.c
+bk _get $Q -e -x1.1.1.1 -r1.1.2 bar.c
 bk delta $Q -y1.1.2.2 bar.c
 # do set gca to see what it says.  Should include 1.2 (should be 1.2)
 gca=`bk gca -r1.1.1.2 -r1.1.2.2 bar.c`

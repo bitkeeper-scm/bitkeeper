@@ -14,7 +14,7 @@ WHATSTR("@(#)%K%");
 
 private	int	do_checkin(char *nm, char *ep, char *cp, int fl,
 		   char *rev, char *newf, char *com);
-private	void	clearCset(sccs *s, int flags, int which);
+private	void	clearCsets(sccs *s, int flags);
 private	void	touch(sccs *s);
 private	int	setMerge(sccs *sc, char *merge, char *rev);
 extern	int     newrev(sccs *s, pfile *pf); 
@@ -35,9 +35,10 @@ admin_main(int ac, char **av)
 	char	*encp = 0, *compp = 0;
 	int	error = 0;
 	int	bigpad = 0;
-	int	fastSym = 0, dopath = 0, rmCset = 0;
+	int	fastSym = 0, dopath = 0, rmCsets = 0, newCset = 0;
 	int	doDates = 0, touchGfile = 0;
 	char	*m = 0;
+	char	*csetFile = 0;
 	delta	*d = 0;
 	int 	was_edited = 0, new_delta = 0;
 	pfile	pf;
@@ -53,7 +54,7 @@ admin_main(int ac, char **av)
 	bzero(u, sizeof(u));
 	bzero(s, sizeof(s));
 	while ((c =
-	    getopt(ac, av, "a;d;e;E;f;F;i|M;m;p|r;S;t|y|Z|0BChHnqsTuz"))
+	    getopt(ac, av, "a;C|d;e;E;f;F;i|M;m;p|r;S;t|y|Z|0BDhHnqsTuz"))
 	       != -1) {
 		switch (c) {
 		/* user|group */
@@ -63,7 +64,7 @@ admin_main(int ac, char **av)
 		    case 'f':	/* doc 2.0 */
 				OP(f, optarg, A_ADD); new_delta = 1; break; 
 		    case 'F':	/* doc 2.0 */
-		    case 'd':	/* doc 2.0; same as -F asked awc */	
+		    case 'd':	/* undoc 2.0 */
 				OP(f, optarg, A_DEL); new_delta = 1; break; 
 		/* new file options */
 		    case 'i':	newfile = optarg ? optarg : "-"; /* doc 2.0 */
@@ -112,7 +113,9 @@ admin_main(int ac, char **av)
 			flags |= ADMIN_ADD1_0|NEWCKSUM; break;
 		    case 'B':	bigpad++; break;	/* doc 2.0 */
 		    case 'C':	/* doc 2.0 */
-			rmCset++; flags |= NEWCKSUM; break;
+			csetFile = optarg; newCset++; flags |= NEWCKSUM; break;
+		    case 'D':	/* doc 2.0 */
+			rmCsets = 1; break;
 		    case 'h':	if (flags & ADMIN_FORMAT) {	/* doc 2.0 */
 		    			flags |= ADMIN_BK;
 				} else if (flags & ADMIN_BK) {
@@ -137,20 +140,20 @@ admin_main(int ac, char **av)
 		}
 	}
 	if ((flags & ADMIN_FORMAT) && ((flags & ~(ADMIN_CHECKS|SILENT)) ||
-	    nextf || nextu || nexts || nextp || comment || path || rmCset ||
+	    nextf || nextu || nexts || nextp || comment || path || newCset ||
 	    newfile || doDates || rev)) {
 		fprintf(stderr, "admin: -h option must be alone.\n");
 		goto usage;
 	}
 	if (merge && ((flags & ~(ADMIN_CHECKS|SILENT|NEWCKSUM)) ||
-	    nextf || nextu || nexts || nextp || comment || path || rmCset ||
+	    nextf || nextu || nexts || nextp || comment || path || newCset ||
 	    newfile || doDates)) {
 		fprintf(stderr, "admin: -M option must be alone or with -r\n");
 		goto usage;
 	}
 	if ((flags & ADMIN_ADD1_0) &&
 	    ((flags & ~(ADMIN_CHECKS|ADMIN_ADD1_0|SILENT|NEWCKSUM)) ||
-	    nextf || nextu || nexts || nextp || comment || path || rmCset ||
+	    nextf || nextu || nexts || nextp || comment || path || newCset ||
 	    newfile || doDates || rev)) {
 		fprintf(stderr, "admin: -0 option must be alone\n");
 		goto usage;
@@ -254,7 +257,12 @@ admin_main(int ac, char **av)
 			top->flags &= ~(D_NOPATH|D_DUPPATH);
 			top->pathname = strdup(path ? path : sc->gfile);
 		}
-		if (rmCset) clearCset(sc, flags, rmCset);
+		if (newCset) {
+			sc->tree->csetFile = csetFile;
+			sc->tree->flags &= ~D_DUPCSETFILE;
+			flags |= NEWCKSUM;
+		}
+		if (rmCsets) clearCsets(sc, flags);
 		if (doDates) sccs_fixDates(sc);
 		if (merge) {
 			if (setMerge(sc, merge, rev) == -1) {
@@ -307,27 +315,11 @@ usage:	system("bk help -s admin");
 }
 
 private	void
-clearCset(sccs *s, int flags, int which)
+clearCsets(sccs *s, int flags)
 {
 	delta	*d;
-	int	name = 0;
 
-	for (d = s->table; d; d = d->next) {
-		d->flags &= ~D_CSET;
-		unless (which == 2) continue;
-		if (d->csetFile && !(d->flags & D_DUPCSETFILE)) {
-			if (!name) {
-				verbose((stderr,
-				    "RM cset from %s\n", s->sfile));
-				name = 1;
-			}
-			verbose((stderr, "\tFILE: %s\n", d->csetFile));
-			free(d->csetFile);
-			d->csetFile = 0;
-		} else {
-			d->csetFile = 0;
-		}
-	}
+	for (d = s->table; d; d = d->next) d->flags &= ~D_CSET;
 }
 
 /*

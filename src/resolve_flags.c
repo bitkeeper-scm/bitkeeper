@@ -14,12 +14,6 @@ flags(int bits)
 #define	fs(s)	strcat(buf, s)
 
 	buf[0] = 0;
-#if 0
-	if (bits & X_BITKEEPER) {
-		fs("BITKEEPER");
-		comma = 1;
-	}
-#endif
 	if (bits & X_YEAR4) {
 		if (comma) fs(","); fs("YEAR4"); comma = 1;
 	}
@@ -32,17 +26,9 @@ flags(int bits)
 	if (bits & X_EXPAND1) {
 		if (comma) fs(","); fs("EXPAND1"); comma = 1;
 	}
-#if 0
-	if (bits & X_CSETMARKED) {
-		if (comma) fs(","); fs("CSETMARKED"); comma = 1;
-	}
-#endif
-	if (bits & X_HASH) {
-		if (comma) fs(","); fs("HASH"); comma = 1;
-	}
-#ifdef S_ISSHELL
-	if (bits & X_ISSHELL) {
-		if (comma) fs(","); fs("ISSHELL"); comma = 1;
+#ifdef X_SHELL
+	if (bits & X_SHELL) {
+		if (comma) fs(","); fs("SHELL"); comma = 1;
 	}
 #endif
 	return (buf);
@@ -56,9 +42,9 @@ f_help(resolve *rs)
 	int	lf, rf, gf;
 	char	g[512], l[512], r[512];
 
-	lf = sccs_getxflags(d->local);
-	rf = sccs_getxflags(d->remote);
-	gf = sccs_getxflags(d->gca);
+	lf = sccs_xflags(d->local);
+	rf = sccs_xflags(d->remote);
+	gf = sccs_xflags(d->gca);
 	sprintf(g, "original  flags  %s", gf ? flags(gf) : "<none>");
 	if ((gf == lf) && (gf != rf)) {
 		sprintf(l, "unchanged flags  %s", flags(lf));
@@ -115,7 +101,7 @@ f_local(resolve *rs)
 
 	sccs_close(rs->s); /* for win32 */
 	flags_delta(rs, rs->s->sfile,
-	    r, sccs_getxflags(l), sccs_Xfile(rs->s, 'r'), REMOTE);
+	    r, sccs_xflags(l), sccs_Xfile(rs->s, 'r'), REMOTE);
 	return (1);
 }
 
@@ -128,7 +114,7 @@ f_remote(resolve *rs)
 
 	sccs_close(rs->s); /* for win32 */
 	flags_delta(rs, rs->s->sfile,
-	    l, sccs_getxflags(r), sccs_Xfile(rs->s, 'r'), LOCAL);
+	    l, sccs_xflags(r), sccs_Xfile(rs->s, 'r'), LOCAL);
 	return (1);
 }
 

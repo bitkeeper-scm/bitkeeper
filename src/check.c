@@ -11,7 +11,7 @@ WHATSTR("@(#)%K%");
 
 private	MDBM	*buildKeys();
 private	char	*csetFind(char *key);
-private	int	check(sccs *s, MDBM *db, MDBM *marks);
+private	int	check(sccs *s, MDBM *db);
 private	char	*getRev(char *root, char *key, MDBM *idDB);
 private	char	*getFile(char *root, MDBM *idDB);
 private	void	listMarks(MDBM *db);
@@ -70,7 +70,6 @@ check_main(int ac, char **av)
 	int	c;
 	MDBM	*db;
 	MDBM	*keys = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
-	MDBM	*marks = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	sccs	*s;
 	int	errors = 0;
 	int	e;
@@ -120,7 +119,7 @@ check_main(int ac, char **av)
 		exit(1);
 	}
 	proj = cset->proj;
-	mixed = (cset->state & S_LONGKEY) == 0;
+	mixed = LONGKEY(cset) == 0;
 	db = buildKeys();
 	if (all) init_idcache();
 
@@ -188,14 +187,13 @@ check_main(int ac, char **av)
 			}
 		}
 
-		if (e = check(s, db, marks)) {
+		if (e = check(s, db)) {
 			errors |= 4;		/* 2 is reserved */
 		} else {
 			if (verbose) fprintf(stderr, "%s is OK\n", s->sfile);
 		}
 		sccs_free(s);
 	}
-	listMarks(marks);
 	sfileDone();
 	if (all) {
 		fprintf(idcache, "#$sum$ %u\n", id_sum);
@@ -218,7 +216,6 @@ check_main(int ac, char **av)
 	unlink(ctmp);
 	mdbm_close(db);
 	mdbm_close(keys);
-	mdbm_close(marks);
 	if (goneDB) mdbm_close(goneDB);
 	if (proj) proj_free(proj);
 	if (errors && fix) {
@@ -755,11 +752,10 @@ idsum(u8 *s)
 	5) rebuild the idcache if in -a mode.
 */
 private int
-check(sccs *s, MDBM *db, MDBM *marks)
+check(sccs *s, MDBM *db)
 {
 	delta	*d, *ino;
 	int	errors = 0;
-	int	marked = 0;
 	int	missing = 0;
 	int	i;
 	char	*t;
@@ -773,7 +769,6 @@ check(sccs *s, MDBM *db, MDBM *marks)
 			fprintf(stderr, "Check %s@%s\n", s->sfile, d->rev);
 		}
 		unless (d->flags & D_CSET) continue;
-		marked++;
 		sccs_sdelta(s, d, buf);
 		unless (t = mdbm_fetch_str(db, buf)) {
 			char	*term;
@@ -806,7 +801,7 @@ check(sccs *s, MDBM *db, MDBM *marks)
 		fprintf(stderr, "check: can't get spathname in %s\n", s->sfile);
 		errors++;
 	} else unless (resync ||
-	    streq(s->sfile, s->spathname) || (s->state & S_LOGS_ONLY)) {
+	    streq(s->sfile, s->spathname) || LOGS_ONLY(s)) {
 		fprintf(stderr,
 		    "check: %s should be %s\n", s->sfile, s->spathname);
 		errors++;
@@ -841,13 +836,6 @@ check(sccs *s, MDBM *db, MDBM *marks)
 				if (ino->random) break;
 			}
 		} while (ino);
-	}
-
-	/* Make sure that we think we have cset marks */
-	unless (s->state & S_CSETMARKED) {
-		mdbm_store_str(marks, s->sfile, "", 0);
-		missing++;
-		errors++;
 	}
 
 	/*
@@ -898,7 +886,7 @@ check(sccs *s, MDBM *db, MDBM *marks)
 	/* If we are not already marked as a repository having poly
 	 * cseted deltas, then check to see if it is the case
 	 */
-	if (!exists(POLY) && (s->state & S_CSETMARKED)) {
+	if (!exists(POLY) && CSETMARKED(s)) {
 		for (d = s->table; d; d = d->next) {
 			d->flags &= ~D_SET;
 		}

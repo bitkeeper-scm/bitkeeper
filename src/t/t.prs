@@ -12,6 +12,8 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
+no_logging project
+export USER=bk
 R=1
 for D in '87/05/28 23:49:57' '97/05/28 23:49:57' '97/05/30 01:34:11' '97/06/23 01:33:45+06:30' '98/01/30 17:45:17-05:00'
 do	cat > INITX <<EOF
@@ -140,15 +142,14 @@ $USER
 EOF
 bk prs -r1.1 -d':P:\n' FILE > CMP2
 cmp -s CMP1 CMP2
-if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
 echo $N checking host :HT: ..........................................$NL
 echo data > host
 bk ci -i host > ${DEV_NULL} 2>&1
-HOST=`bk gethost`
 bk undos > CMP1 <<EOF
 ======== host 1.1 ========
-${HOST}
+free.bk
 EOF
 bk prs -d':HT:\n' -r1.1 host > CMP2
 cmp -s CMP1 CMP2
@@ -209,27 +210,27 @@ echo OK
 echo $N checking default output......................................$NL
 bk undos > CMP1 <<EOF
 ======== FILE 1.1..1.5 ========
-D 1.5 98/01/30 17:45:17-05:00 ${USER} 5 4 00001/00000/00004
+D 1.5 98/01/30 17:45:17-05:00 ${USER}@free.bk 5 4 00001/00000/00004
 P this/is/the/pathname.5
 C This is revision 1.5 of 98/01/30 17:45:17-05:00
 C This the second comment of 1.5
 ------------------------------------------------
-D 1.4 97/06/23 01:33:45+06:30 ${USER} 4 3 00001/00000/00003
+D 1.4 97/06/23 01:33:45+06:30 ${USER}@free.bk 4 3 00001/00000/00003
 P this/is/the/pathname.4
 C This is revision 1.4 of 97/06/23 01:33:45+06:30
 C This the second comment of 1.4
 ------------------------------------------------
-D 1.3 97/05/30 01:34:11 ${USER} 3 2 00001/00000/00002
+D 1.3 97/05/30 01:34:11 ${USER}@free.bk 3 2 00001/00000/00002
 P this/is/the/pathname.3
 C This is revision 1.3 of 97/05/30 01:34:11
 C This the second comment of 1.3
 ------------------------------------------------
-D 1.2 97/05/28 23:49:57 ${USER} 2 1 00001/00000/00001
+D 1.2 97/05/28 23:49:57 ${USER}@free.bk 2 1 00001/00000/00001
 P this/is/the/pathname.2
 C This is revision 1.2 of 97/05/28 23:49:57
 C This the second comment of 1.2
 ------------------------------------------------
-D 1.1 87/05/28 23:49:57 ${USER} 1 0 00001/00000/00000
+D 1.1 87/05/28 23:49:57 ${USER}@free.bk 1 0 00001/00000/00000
 P this/is/the/pathname.1
 C This is revision 1.1 of 87/05/28 23:49:57
 C This the second comment of 1.1

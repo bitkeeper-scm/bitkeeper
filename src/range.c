@@ -2,14 +2,6 @@
 #include "sccs.h"
 #include "range.h"
 
-void
-old2new(delta *d, delta *stop)
-{
-	unless (d) return;
-	unless (d == stop) old2new(d->next, stop);
-	printf(" %s", d->rev);
-}
-
 int
 range_main(int ac, char **av)
 {
@@ -40,24 +32,19 @@ usage:			fprintf(stderr,
 		if (s->state & S_SET) {
 			printf("%s set:", s->gfile);
 			for (e = s->table; e; e = e->next) {
-				unless (e->type == 'D') continue;
 				if (e->flags & D_SET) {
 					printf(" %s", e->rev);
+					if (e->type == 'R') printf("T");
 				}
 			}
 		} else {
 			printf("%s %s..%s:",
-			    s->gfile, s->rstart->rev, s->rstop->rev);
-			old2new(s->rstop, s->rstart);
-#ifdef bogus
-			printf("\n");
-			printf("%s %s..%s:",
 			    s->gfile, s->rstop->rev, s->rstart->rev);
 			for (e = s->rstop; e; e = e->next) {
 				printf(" %s", e->rev);
+				if (e->type == 'R') printf("T");
 				if (e == s->rstart) break;
 			}
-#endif
 		}
 		printf("\n");
 next:		sccs_free(s);

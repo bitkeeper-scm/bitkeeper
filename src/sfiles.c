@@ -424,7 +424,7 @@ rebuild()
 		sccs_free(cset);
 		exit(1);
 	}
-	mixed = !(cset->state & S_LONGKEY);
+	mixed = !LONGKEY(cset);
 
 	if (Cflg) {
 		if (csetIds(cset, 0)) {

@@ -39,7 +39,6 @@ private int	checkRev(sccs *s, char *file, delta *d, int flags);
 private int	checkrevs(sccs *s, int flags);
 private int	stripChecks(sccs *s, delta *d, char *who);
 private delta*	csetFileArg(delta *d, char *name);
-private delta*	dtflagsArg(delta *, char *arg);
 private delta*	hostArg(delta *d, char *arg);
 private delta*	pathArg(delta *d, char *arg);
 private delta*	randomArg(delta *d, char *arg);
@@ -69,8 +68,6 @@ private delta	*gca(delta *left, delta *right);
 private delta	*gca2(sccs *s, delta *left, delta *right);
 private u32	dt2dflags(u32 dt);
 private u32	dflags2dt(u32 dflags);
-private u32	state2xflags(u32 state);
-private u32	xflags2state(u32 xflags);
 private delta	*gca3(sccs *s, delta *left, delta *right, char **i, char **e);
 private int	compressmap(sccs *s, delta *d, ser_t *set, char **i, char **e);
 private	void	uniqDelta(sccs *s);
@@ -366,6 +363,9 @@ linelen(char *s)
 	return (t-s);
 }
 
+static	char	**addLine_lastp;
+static	int	addLine_lasti;
+
 /*
  * Save a line in an array.  If the array is out of space, reallocate it.
  * The size of the array is in array[0].
@@ -382,15 +382,21 @@ addLine(char **space, char *line)
 		space[0] = (char *)32;
 	} else if (space[(int)(long)space[0]-1]) {	/* full up, dude */
 		int	size = (int)(long)space[0];
-		char	**tmp = calloc(size*2, sizeof(char*));
+		char	**tmp = calloc(size*4, sizeof(char*));
 
 		assert(tmp);
 		bcopy(space, tmp, size*sizeof(char*));
-		tmp[0] = (char *)(long)(size * 2);
+		tmp[0] = (char *)(long)(size * 4);
 		free(space);
 		space = tmp;
 	}
-	EACH(space);	/* I want to get to the end */
+	if (addLine_lastp == space) {
+		i = ++addLine_lasti;	/* big perf win */
+	} else {
+		EACH(space); 		/* I want to get to the end */
+		addLine_lastp = space;
+		addLine_lasti = i;
+	}
 	assert(i < (int)(long)space[0]);
 	assert(space[i] == 0);
 	space[i] = line;
@@ -419,6 +425,7 @@ freeLines(char **space)
 	}
 	space[0] = 0;
 	free(space);
+	addLine_lastp = 0;
 }
 
 private int
@@ -437,6 +444,7 @@ removeLine(char **space, char *s)
 				}
 				n++;
 				found = 1;
+				addLine_lastp = 0;
 				break;
 			}
 		}
@@ -506,7 +514,7 @@ atoi(register char *s)
 }
 
 private inline int
-atoi2(char **sp)
+atoi_p(char **sp)
 {
 	register int val = 0;
 	register char *s = *sp;
@@ -519,20 +527,22 @@ atoi2(char **sp)
 	return (val);
 }
 
-private inline int
-atoiMult(char *s)
+private int
+atoiMult_p(char **p)
 {
 	register int val = 0;
+	register char *s = *p;
 
 	if (!s) return (0);
 	while (*s && isdigit(*s)) {
 		val = val * 10 + *s++ - '0';
 	}
 	switch (*s) {
-	    case 'K': val *= 1000; break;
-	    case 'M': val *= 1000000; break;
-	    case 'G': val *= 1000000000; break;
+	    case 'K': val *= 1000; s++; break;
+	    case 'M': val *= 1000000; s++; break;
+	    case 'G': val *= 1000000000; s++; break;
 	}
+	*p = s;
 	return (val);
 }
 
@@ -989,7 +999,7 @@ uniqDelta(sccs *s)
 	 * This is kind of a hack.  We aren't in BK mode yet we are fudging.
 	 * It keeps BK happy, I guess.
 	 */
-	unless (s->state & S_BITKEEPER) {
+	unless (BITKEEPER(s)) {
 		unless (next = d->next) return;
 		if (next->date >= d->date) {
 			time_t	tdiff;
@@ -1176,17 +1186,17 @@ scandiff(char *s, int *where, char *what, int *howmany)
 		else unless (*s == 'D' || *s == 'I' || *s == 'N')
 			return (-1);
 		s++;
-		*where = atoi2(&s);
+		*where = atoi_p(&s);
 		unless (*s == ' ')  return (-1);
 		s++;
-		*howmany = atoi2(&s);
+		*howmany = atoi_p(&s);
 		return (0);
 	}
 	*howmany = 0;	/* not used by this part */
-	*where = atoi2(&s);
+	*where = atoi_p(&s);
 	if (*s == ',') {
 		s++;
-		(void)atoi2(&s);
+		(void)atoi_p(&s);
 	}
 	if (*s != 'a' && *s != 'c' && *s != 'd') {
 		return (-1);
@@ -1202,13 +1212,13 @@ private inline int
 scanrev(char *s, u16 *a, u16 *b, u16 *c, u16 *d)
 {
 	if (!isdigit(*s)) return (0);
-	*a = atoi2(&s);
+	*a = atoi_p(&s);
 	if (b && *s == '.') {
 		s++;
-		*b = atoi2(&s);
+		*b = atoi_p(&s);
 		if (c && *s == '.') {
 			s++;
-			*c = atoi2(&s);
+			*c = atoi_p(&s);
 			if (d && *s == '.') {
 				s++;
 				*d = atoi(s);
@@ -1878,9 +1888,11 @@ findrev(sccs *s, char *rev)
 }
 
 /*
- * Return Top of Trunk
+ * Return the top of the default branch/lod.
+ *
+ * XXX - this could be much faster in big files by starting at the table
+ * end and returning the first real delta which matches the default branch.
  */
-
 delta	*
 sccs_top(sccs *s)
 {
@@ -2147,7 +2159,7 @@ ok:
 	/* if BK, and no rev (or rev == def) and def is x.x or x.x.x.x,
 	 * then newlod
 	 */
-	if ((s->state & S_BITKEEPER)
+	if (BITKEEPER(s)
 	    && (!rev || (s->defbranch && streq(rev, s->defbranch)))
 	    && defIsVer(s)) {
 		unless (a = sccs_nextlod(s)) {
@@ -2161,7 +2173,7 @@ ok:
 	 * Just continue trunk/branch
 	 * Because the kid may be a branch, we have to be extra careful here.
 	 */
-	else if (!morekids(e, (s->state & S_BITKEEPER))) {
+	else if (!morekids(e, BITKEEPER(s))) {
 		a = e->r[0];
 		b = e->r[1];
 		c = e->r[2];
@@ -2172,7 +2184,7 @@ ok:
 			int	release = rev ? atoi(rev) : 1;
 
 			if (release > a) {
-				a = (s->state & S_BITKEEPER) 
+				a = BITKEEPER(s) 
 				    ? sccs_nextlod(s)
 				    : release;
 				unless (a) {
@@ -2318,7 +2330,7 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 		    case 'D':	/* today: 97/06/22 */
 			if (!now) { time(&now); tm = localtime(&now); }
 			assert(tm);
-			if (s->state & S_YEAR4) {
+			if (YEAR4(s)) {
 				int	y = tm->tm_year;
 
 				if (y < 69) y += 2000; else y += 1900;
@@ -2334,7 +2346,7 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 			break;
 
 		    case 'E':	/* most recent delta: 97/06/22 */
-			if (s->state & S_YEAR4) {
+			if (YEAR4(s)) {
 				if (atoi(d->sdate) > 69) {
 					*t++ = '1'; *t++ = '9';
 				} else {
@@ -2353,7 +2365,7 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 		    case 'G':	/* most recent delta: 06/22/97 */
 			*t++ = d->sdate[3]; *t++ = d->sdate[4]; *t++ = '/';
 			*t++ = d->sdate[6]; *t++ = d->sdate[7]; *t++ = '/';
-			if (s->state & S_YEAR4) {
+			if (YEAR4(s)) {
 				if (atoi(d->sdate) > 69) {
 					*t++ = '1'; *t++ = '9';
 				} else {
@@ -2366,7 +2378,7 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 		    case 'H':	/* today: 06/22/97 */
 			if (!now) { time(&now); tm = localtime(&now); }
 			assert(tm);
-			if (s->state & S_YEAR4) {
+			if (YEAR4(s)) {
 				int	y = tm->tm_year;
 
 				if (y < 69) y += 2000; else y += 1900;
@@ -2962,7 +2974,7 @@ checkSymGraph(sccs *s, int flags)
 	symbol	*s1, *s2;
 
 	/* Allow open tag branch for logging repository */
-	if (s->state & S_LOGS_ONLY) return (0);
+	if (LOGS_ONLY(s)) return (0);
 
 	if (tagleaves(s, &l1, &l2)) return (128);
 	if (checktags(s, l1, flags) || checktags(s, l2, flags)) return (128);
@@ -3011,13 +3023,7 @@ meta(sccs *s, delta *d, char *buf)
 		d->flags |= D_CSET;
 		break;
 	    case 'E':
-		if ((buf[3] == ' ') && (buf[4] == 'd') && (buf[5] == ' ')) {
-			dtflagsArg(d, &buf[6]);
-		} else {
-			fprintf(stderr,
-			    "unknown entry <%s>, forcing read only\n", buf);
-			s->state |= S_READ_ONLY;
-		}
+		/* OLD, ignored */
 		break;
 	    case 'F':
 		/* Do not add to date here, done in inherit */
@@ -3062,12 +3068,12 @@ meta(sccs *s, delta *d, char *buf)
 		break;
 	    case 'X':
 		assert(d);
-		d->flags |= D_XFLAGS;
 		if ((buf[3] == '0') && (buf[4] == 'x')) {
 			d->xflags = strtol(&buf[5], 0, 16);
 		} else {
 			d->xflags = atoi(&buf[3]);
 		}
+		if (d->xflags) d->flags |= D_XFLAGS;
 		break;
 	    case 'Z':
 		zoneArg(d, &buf[3]);
@@ -3076,7 +3082,9 @@ meta(sccs *s, delta *d, char *buf)
 		fprintf(stderr, "Ignoring %.5s", buf);
 		/* got unknown field, force read only mode */
 		s->state |= S_READ_ONLY;
+		return;
 	}
+	s->bitkeeper = 1;
 }
 
 /*
@@ -3170,9 +3178,12 @@ bad:
 			expected = "^As ";
 			goto bad;
 		}
-		d->added = atoiMult(&buf[3]);
-		d->deleted = atoiMult(&buf[9]);
-		d->same = atoiMult(&buf[15]);
+		p = &buf[3];
+		d->added = atoiMult_p(&p);
+		p++;
+		d->deleted = atoiMult_p(&p);
+		p++;
+		d->same = atoiMult_p(&p);
 		/* ^Ad D 1.2.1.1 97/05/15 23:11:46 lm 4 2 */
 		/* ^Ad R 1.2.1.1 97/05/15 23:11:46 lm 4 2 */
 		buf = fastnext(s);
@@ -3210,7 +3221,7 @@ bad:
 		}
 		p++;
 	    /* 10 11 */
-		d->serial = atoi2(&p);
+		d->serial = atoi_p(&p);
 		if (*p != ' ') {
 			expected = "^AD 1.1 98/03/17 18:32:39 user 12 ";
 			goto bad;
@@ -3300,7 +3311,7 @@ comment:		switch (buf[1]) {
 				goto bad;
 			}
 		}
-done:		if ((s->state & S_CSET) && (d->type == 'R') &&
+done:		if (CSET(s) && (d->type == 'R') &&
 		    !d->symGraph && !(d->flags & D_SYMBOLS)) {
 			d->flags |= D_GONE;
 		}
@@ -3380,28 +3391,22 @@ misc(sccs *s)
 	 * are not handled here.
 	 */
 	for (; (buf = fastnext(s)) && !strneq(buf, "\001t\n", 3); ) {
-		if (strneq(buf, "\001f R\n", 5)) {	/* XXX - obsolete */
-			s->state |= S_RCS;
-			continue;
-		} else if (strneq(buf, "\001f Y\n", 5)) { /* XXX - obsolete */
-			s->state |= S_YEAR4;
-			continue;
-		} else if (strneq(buf, "\001f x ", 5)) {
-			int	bits;
-			
-			if ((buf[5] == '0') && (buf[6] == 'x')) {
-				bits = strtol(&buf[7], 0, 16);
-			} else {
-				bits = atoi(&buf[5]);
-			}
-
-			if (bits & X_BITKEEPER) s->state |= S_BITKEEPER;
-			if (bits & X_CSETMARKED) s->state |= S_CSETMARKED;
-			if (bits & X_LOGS_ONLY) s->state |= S_LOGS_ONLY;
-			continue;
-		} else if (strneq(buf, "\001f &", 4) ||
+		if (strneq(buf, "\001f &", 4) ||
 		    strneq(buf, "\001f z _", 6)) {	/* XXX - obsolete */
 			/* We strip these now */
+			continue;
+		} else if (strneq(buf, "\001f x", 4)) { /* strip it */
+			unless (sccs_xflags(sccs_top(s))) {
+				u32	bits;
+
+				if ((buf[5] == '0') && (buf[6] == 'x')) {
+					bits = strtol(&buf[7], 0, 16);
+				} else {
+					bits = atoi(&buf[5]);
+				}
+				s->tree->xflags = bits;
+				s->tree->flags |= D_XFLAGS;
+			}
 			continue;
 		} else if (strneq(buf, "\001f e ", 5)) {
 			switch (atoi(&buf[5])) {
@@ -3834,9 +3839,6 @@ chk_proj_init(sccs *s, char *file, int line)
 	unless (root = sccs_root(s)) return (0);
 	p = chk_calloc(1, sizeof(*p), file, line);
 	p->root = root;
-#ifdef	NOT_USED
-	p->config = loadConfig(root);
-#endif
 	return (p);
 }
 
@@ -3888,7 +3890,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	sccs	*s;
 	struct	stat sbuf;
 	char	*t;
-	static	int YEAR4;
+	static	int _YEAR4;
 	delta	*d;
 
 	localName2bkName(name, name);
@@ -3907,7 +3909,10 @@ sccs_init(char *name, u32 flags, project *proj)
 
 	s->proj = proj ? proj : proj_init(s);
 	t = strrchr(s->sfile, '/');
-	if (t && streq(t, "/s.ChangeSet")) s->state |= S_HASH|S_CSET;
+	if (t && streq(t, "/s.ChangeSet")) {
+		s->xflags |= X_HASH;
+		s->state |= S_CSET;
+	}
 	if (flags & INIT_NOSTAT) {
 		if ((flags & INIT_HASgFILE) && check_gfile(s, flags)) return 0;
 	} else {
@@ -4036,17 +4041,17 @@ sccs_init(char *name, u32 flags, project *proj)
 
 		/*
 		 * get the xflags from the delta graph
-		 * instaed of the sccs flag section
+		 * instead of the sccs flag section
 		 */
-		bits = sccs_getxflags(sccs_top(s));
-		s->state |= xflags2state(bits);
+		s->xflags = sccs_xflags(sccs_top(s));
+		unless (BITKEEPER(s)) s->xflags |= X_SCCS;
 	}
 
 	/*
 	 * Let them force YEAR4
 	 */
-	unless (YEAR4) YEAR4 = getenv("BK_YEAR4") ? 1 : -1;
-	if (YEAR4 == 1) s->state |= S_YEAR4;
+	unless (_YEAR4) _YEAR4 = getenv("BK_YEAR4") ? 1 : -1;
+	if (_YEAR4 == 1) s->xflags |= X_YEAR4;
 
 #ifndef WIN32
 	signal(SIGPIPE, SIG_IGN); /* win32 platform does not have sigpipe */
@@ -4427,9 +4432,7 @@ sccs_lock(sccs *s, char type)
 	char	*t;
 	int	lockfd, verbose;
 
-	if (s->state & S_READ_ONLY) {
-		return (0);
-	}
+	if (READ_ONLY(s)) return (0);
 	
 	verbose = (s->state & SILENT) ? 0 : 1;
 	if ((type == 'z') && repository_locked(s->proj) &&
@@ -5510,7 +5513,7 @@ openOutput(sccs *s, int encode, char *file, FILE **op)
 		 * diffs file with normlized to LF.
 		 */
 		if (((encode == E_ASCII) || (encode == E_GZIP)) &&
-		    (s->state&S_EOLN_NATIVE)) {
+		    EOLN_NATIVE(s)) {
 			mode = "wt";
 		}
 #endif
@@ -5877,16 +5880,16 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	}
 	if (flags & GET_SUM) {
 		flags |= NEWCKSUM;
-	} else if (d && (s->state & S_BITKEEPER) && !iLst && !xLst) {
+	} else if (d && BITKEEPER(s) && !iLst && !xLst) {
 		flags |= NEWCKSUM;
 	}
 	/* we're changing the meaning of the file, checksum would be invalid */
-	if ((s->state & S_HASH) && (flags & GET_NOHASH)) {
+	if (HASH(s) && (flags & GET_NOHASH)) {
 		flags &= ~NEWCKSUM;
 	}
-	if ((s->state & S_HASH) && !(flags & GET_NOHASH)) {
+	if (HASH(s) && !(flags & GET_NOHASH)) {
 		hash = 1;
-		if (s->state & S_CSET) hashFlags = DB_KEYFORMAT;
+		if (CSET(s)) hashFlags = DB_KEYFORMAT;
 		unless ((encoding == E_ASCII) || (encoding == E_GZIP)) {
 			fprintf(stderr, "get: has files must be ascii.\n");
 			s->state |= S_WARNED;
@@ -5899,13 +5902,13 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 		}
 	}
 
-	if ((s->state & S_RCS) && (flags & GET_EXPAND)) flags |= GET_RCSEXPAND;
+	if (RCS(s) && (flags & GET_EXPAND)) flags |= GET_RCSEXPAND;
 	/* Think carefully before changing this */
 	if (((s->encoding != E_ASCII) && (s->encoding != E_GZIP)) || hash) {
 		flags &= ~(GET_EXPAND|GET_RCSEXPAND|GET_PREFIX);
 	}
-	unless (s->state & S_SCCS) flags &= ~(GET_EXPAND);
-	unless (s->state & S_RCS) flags &= ~(GET_RCSEXPAND);
+	unless (SCCS(s)) flags &= ~(GET_EXPAND);
+	unless (RCS(s)) flags &= ~(GET_RCSEXPAND);
 
 	if (flags & GET_MODNAME) base = basenm(s->gfile);
 	/*
@@ -6032,8 +6035,7 @@ out:			if (slist) free(slist);
 				if (*e == '%') {
 					e = e1 =
 					    expand(s, d, buf, &sccs_expanded);
-					if (sccs_expanded &&
-					    (s->state & S_EXPAND1)) {
+					if (sccs_expanded && EXPAND1(s)) {
 						flags &= ~GET_EXPAND;
 					}
 				} else {
@@ -6047,8 +6049,7 @@ out:			if (slist) free(slist);
 				if (*t == '$') {
 					e = e2 =
 					    rcsexpand(s, d, e, &rcs_expanded);
-					if (rcs_expanded &&
-					    (s->state & S_EXPAND1)) {
+					if (rcs_expanded && EXPAND1(s)) {
 						flags &= ~GET_RCSEXPAND;
 					}
 				}
@@ -6185,8 +6186,8 @@ out:			if (slist) free(slist);
 	}
 
 
-#ifdef S_ISSHELL
-	if ((s->state & S_ISSHELL) && ((flags & PRINT) == 0)) {
+#ifdef X_SHELL
+	if (SHELL(s) && ((flags & PRINT) == 0)) {
 		char cmd[MAXPATH], *t;
 
 		t = strrchr(s->gfile, '/');
@@ -6276,7 +6277,7 @@ sccs_get(sccs *s, char *rev,
 	debug((stderr, "get(%s, %s, %s, %s, %s, %x, %s)\n",
 	    s->sfile, notnull(rev), notnull(mRev),
 	    notnull(iLst), notnull(xLst), flags, printOut));
-	if (!(flags & (PRINT|GET_SKIPGET)) && (s->state & S_LOGS_ONLY)) {
+	if (!!LOGS_ONLY(s) && !(flags & (PRINT|GET_SKIPGET))) {
 		unless (s->tree->pathname) {
 			fprintf(stderr, "get: no pathname for %s\n", s->sfile);
 			return (-1);
@@ -6612,15 +6613,14 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	if (type == GET_HASHDIFFS) {
 		int	lines = 0;
 		int	f = PRINT;
-		int	hash = s->state & S_HASH;
+		int	hash = s->xflags & X_HASH;
 		int	set = d->flags & D_SET;
 		char	b[MAXLINE];
 
-		s->state |= S_HASH;
+		s->xflags |= X_HASH;
 		d->flags |= D_SET;
-		ret =
-		    getRegBody(s, tmpfile, f|flags, 0, &lines, 0, 0);
-		unless (hash) s->state &= ~S_HASH;
+		ret = getRegBody(s, tmpfile, f|flags, 0, &lines, 0, 0);
+		unless (hash) s->xflags &= ~X_HASH;
 		unless (set) d->flags &= ~D_SET;
 		unless ((ret == 0) && (lines != 0)) {
 		    	goto done3;
@@ -6973,7 +6973,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 	char	*p, *t;
 	int	bits = 0;
 	int	gonechkd = 0;
-	int	strip_tags = (s->state & S_CSET) && getenv("_BK_STRIPTAGS");
+	int	strip_tags = CSET(s) && getenv("_BK_STRIPTAGS");
 	int	version = SCCS_VERSION;
 
 	if (getenv("_BK_SCCS_VERSION")) {
@@ -6989,10 +6989,27 @@ delta_table(sccs *s, FILE *out, int willfix)
 			    "Bad version %s, defaulting to current\n", version);
 		}
 	}
-	assert((s->state & S_READ_ONLY) == 0);
+	assert(!READ_ONLY(s));
 	assert(s->state & S_ZFILE);
 	fputs("\001hXXXXX\n", out);
 	s->cksum = 0;
+	assert(sizeof(buf) >= 1024);	/* see comment code */
+
+	/*
+	 * Add in default xflags if the 1.0 delta doesn't have them.
+	 */
+	if (s->bitkeeper) {
+		unless (s->tree->xflags) {
+			s->tree->flags |= D_XFLAGS;
+			s->tree->xflags = X_DEFAULT;
+		}
+		/* for old binaries */
+		s->tree->xflags |= X_BITKEEPER|X_CSETMARKED;
+		if (CSET(s)) {
+			s->tree->xflags &= ~(X_SCCS|X_RCS);
+			s->tree->xflags |= X_HASH;
+		}
+	}
 
 	for (d = s->table; d; d = d->next) {
 		if ((d->next == NULL) && (s->state & S_FAKE_1_0)) {
@@ -7027,7 +7044,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 		 * XXX Whoa, nelly.  This is wrong, we must allow these if
 		 * we are doing a takepatch.
 		 */
-		if (d->parent && (s->state & S_BITKEEPER) &&
+		if (d->parent && BITKEEPER(s) &&
 		    (d->date <= d->parent->date)) {
 		    	s->state |= S_READ_ONLY;
 			fprintf(stderr,
@@ -7035,11 +7052,16 @@ delta_table(sccs *s, FILE *out, int willfix)
 			return (-1);
 		}
 
-		/* Do not change this */
-		sprintf(buf, "\001s %05d/%05d/%05d\n",
-		    d->added, d->deleted, d->same);
+		/*
+		 * Have to leave this for now.  I changed the code to
+		 * handle 1/2/3 instead of 00001/00002/00003 but until
+		 * everyone upgrades, we have to leave it.
+		 * Fix in 3.0.
+		 */
+		sprintf(buf,
+		    "\001s %05d/%05d/%05d\n", d->added, d->deleted, d->same);
 		if (strlen(buf) > 21) {
-			unless (s->state & S_BITKEEPER) {
+			unless (BITKEEPER(s)) {
 				fprintf(stderr,
 				    "%s: file too large\n", s->gfile);
 				return (-1);
@@ -7058,7 +7080,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 		*p++ = ' ';
 		p = fmts(p, d->sdate);
 		*p++ = ' ';
-		if (s->state & S_SINGLE) {
+		if (SINGLE(s)) {
 			p = fmts(p, s->tree->user);
 		} else {
 			p = fmts(p, d->user);
@@ -7095,11 +7117,20 @@ delta_table(sccs *s, FILE *out, int willfix)
 			if (d->comments[i][0] != '\001') {
 				p = fmts(p, "\001c ");
 			}
+			if (strlen(d->comments[i]) >= 1020) {
+				fprintf(stderr,
+				   "%s@@%s: Truncating comment to 1020 chars\n",
+				   s->gfile, d->rev);
+				d->comments[i][1019] = 0;
+			}
 			p = fmts(p, d->comments[i]);
 			*p++ = '\n';
 			*p   = '\0';
 			fputmeta(s, buf, out);
 		}
+
+		unless (BITKEEPER(s)) goto SCCS;
+
 		if (d->csetFile && !(d->flags & D_DUPCSETFILE)) {
 			p = fmts(buf, "\001cB");
 			p = fmts(p, d->csetFile);
@@ -7111,15 +7142,6 @@ delta_table(sccs *s, FILE *out, int willfix)
 			assert(d->type == 'D');
 			fputmeta(s, "\001cC\n", out);
 		}
-		/*
-		 * Output the per delta flags
-		 */
-		bits = 0;
-		bits |= dflags2dt(d->flags & D_DT_ALL);
-		if (bits) {
-			sprintf(buf, "\001cE d 0x%x\n", bits);
-			fputmeta(s, buf, out);
-		}
 		if (d->dateFudge) {
 			p = fmts(buf, "\001cF");
 			p = fmttt(p, d->dateFudge);
@@ -7127,8 +7149,9 @@ delta_table(sccs *s, FILE *out, int willfix)
 			*p   = '\0';
 			fputmeta(s, buf, out);
 		}
+
 		t = 0;
-		if (s->state & S_SINGLE) {
+		if (SINGLE(s)) {
 			if (d == s->tree) {
 				assert(s->tree->hostname);
 				t = s->tree->hostname;
@@ -7143,30 +7166,30 @@ delta_table(sccs *s, FILE *out, int willfix)
 			*p   = '\0';
 			fputmeta(s, buf, out);
 		}
-		if (s->state & S_BITKEEPER) {
-			char *t = "";
-
-			if (d->published) t = d->ptype ? "\t" : " ";
-			if (first) {
-				fputmeta(s, "\001cK", out);
-				s->sumOff = ftell(out);
-				fputs("XXXXX", out);
-				if (d->published) fputs(t, out);
-				fputmeta(s, "\n", out);
-			} else if (d->flags & D_CKSUM) {
-				/*
-				 * It turns out not to be worth to save the
-				 * few bytes you might save by not making this
-				 * a fixed width field.  85% of the sums are
-				 * 5 digits, 97% are 4 or 5.
-				 * Leaving this fixed means we can diff the
-				 * s.files easily.
-				 */
-				sprintf(buf, "\001cK%05u%s\n", d->sum, t);
-				fputmeta(s, buf, out);
-			}
+		
+		t = "";
+		if (d->published) {
+			t = (d->ptype ? "\t" : " ");
+			assert(CSET(s));
+	    	}
+		if (first) {
+			fputmeta(s, "\001cK", out);
+			s->sumOff = ftell(out);
+			fputs("XXXXX", out);
+			if (d->published) fputs(t, out);
+			fputmeta(s, "\n", out);
+		} else if (d->flags & D_CKSUM) {
+			/*
+			 * It turns out not to be worth to save the
+			 * few bytes you might save by not making this
+			 * a fixed width field.  85% of the sums are
+			 * 5 digits, 97% are 4 or 5.
+			 * Leaving this fixed means we can diff the
+			 * s.files easily.
+			 */
+			sprintf(buf, "\001cK%05u%s\n", d->sum, t);
+			fputmeta(s, buf, out);
 		}
-		first = 0;
 		if (d->merge) {
 			p = fmts(buf, "\001cM");
 			p = fmtd(p, d->merge);
@@ -7219,7 +7242,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			}
 		}
 		/* automagically strip tag serials from non-csetfiles */
-		if (!strip_tags && d->symGraph && (s->state & S_CSET)) {
+		if (!strip_tags && d->symGraph && CSET(s)) {
 			p = fmts(buf, "\001cS");
 			if (d->ptag) {
 				p = fmtd(p, d->ptag);
@@ -7257,6 +7280,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			fputmeta(s, buf, out);
 		}
 		if (d->flags & D_XFLAGS) {
+			if (s->state & S_FORCELOGGING) d->xflags |= X_LOGS_ONLY;
 			sprintf(buf, "\001cX0x%x\n", d->xflags);
 			fputmeta(s, buf, out);
 		}
@@ -7282,6 +7306,8 @@ delta_table(sccs *s, FILE *out, int willfix)
 			fputmeta(s, "\n", out);
 #endif
 		}
+SCCS:
+		first = 0;
 		fputmeta(s, "\001e\n", out);
 	}
 	fputmeta(s, "\001u\n", out);
@@ -7295,11 +7321,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 	*p++ = '\n';
 	*p   = '\0';
 	fputmeta(s, buf, out);
-	bits = 0;
-	if (s->state & S_BITKEEPER) bits |= X_BITKEEPER;
-	if (s->state & S_CSETMARKED) bits |= X_CSETMARKED;
-	if (s->state & S_LOGS_ONLY) bits |= X_LOGS_ONLY;
-	bits |= state2xflags(s->state);
+	bits = sccs_xflags(sccs_top(s));
 	if (bits) {
 		sprintf(buf, "\001f x 0x%x\n", bits);
 		fputmeta(s, buf, out);
@@ -7347,13 +7369,13 @@ expandnleq(sccs *s, delta *d, MMAP *gbuf, char *fbuf, int *flags)
 	if (!(*flags & (GET_EXPAND|GET_RCSEXPAND))) return (MCMP_DIFF);
 	if (*flags & GET_EXPAND) {
 		e = e1 = expand(s, d, e, &sccs_expanded);
-		if (s->state & S_EXPAND1) {
+		if (EXPAND1(s)) {
 			if (sccs_expanded) *flags &= ~GET_EXPAND;
 		}
 	}
 	if (*flags & GET_RCSEXPAND) {
 		e = e2 = rcsexpand(s, d, e, &rcs_expanded);
-		if (s->state & S_EXPAND1) {
+		if (EXPAND1(s)) {
 			if (rcs_expanded) *flags &= ~GET_RCSEXPAND;
 		}
 	}
@@ -7432,8 +7454,8 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 		mode = "rt";
 		name = strdup(s->gfile);
 	}
-	if (s->state & S_HASH) {
-		int	flags = (s->state & S_CSET) ? DB_KEYFORMAT : 0;
+	if (HASH(s)) {
+		int	flags = CSET(s) ? DB_KEYFORMAT : 0;
 
 		ghash = loadDB(name, 0, flags|DB_USEFIRST);
 		shash = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
@@ -7459,7 +7481,7 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 				}
 				continue;
 			}
-			if (s->state & S_HASH) {
+			if (HASH(s)) {
 				char	*from, *to, *val;
 				/* XXX: hack to use sbuf, but it exists */
 				for (from = fbuf, to = sbuf;
@@ -7556,7 +7578,7 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 		debug2((stderr, "%.*s\n", linelen(fbuf), fbuf));
 		print = printstate((const serlist*)state, (const ser_t*)slist);
 	}
-	if (s->state & S_HASH) {
+	if (HASH(s)) {
 		kvpair	kv;
 		kv = mdbm_first(ghash);
 		if (kv.key.dsize) {
@@ -7676,7 +7698,7 @@ int
 diffMDBM(sccs *s, char *old, char *new, char *tmpfile)
 {
 	FILE	*f = fopen(tmpfile, "w");
-	int	flags = (s->state & S_CSET) ? DB_KEYFORMAT : 0;
+	int	flags = CSET(s) ? DB_KEYFORMAT : 0;
 	MDBM	*o = loadDB(old, 0, flags|DB_USEFIRST);
 	MDBM	*n = loadDB(new, 0, flags|DB_USEFIRST);
 	/* 'p' is not used as hash, but has simple storage */
@@ -7792,7 +7814,7 @@ diff_gfile(sccs *s, pfile *pf, char *tmpfile)
 	/*
 	 * now we do the diff
 	 */
-	if (s->state & S_HASH) {
+	if (HASH(s)) {
 		ret = diffMDBM(s, old, new, tmpfile);
 	} else {
 		ret = diff(old, new, DF_DIFF, tmpfile);
@@ -7952,7 +7974,7 @@ sccs_clean(sccs *s, u32 flags)
 		return (2);
 	}
 
-	if (s->state & S_BITKEEPER) {
+	if (BITKEEPER(s)) {
 		char *t = relativeName(s, 0, 1);
 
 		unless (t) {
@@ -8005,7 +8027,7 @@ sccs_clean(sccs *s, u32 flags)
 	unless (IS_EDITED(s)) { 
 		if ((s->encoding == E_ASCII) || (s->encoding == E_GZIP)) {
 			flags |= GET_EXPAND;
-			if (s->state & S_RCS) flags |= GET_RCSEXPAND;
+			if (RCS(s)) flags |= GET_RCSEXPAND;
 		}
 	}
 	if (gettemp(tmpfile, "diffg")) return (1);
@@ -8229,7 +8251,7 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 	if (!d) d = calloc(1, sizeof(*d));
 	d->type = type;
 	assert(s);
-	if ((s->state & S_BITKEEPER) && (type == 'D')) d->flags |= D_CKSUM;
+	if (BITKEEPER(s) && (type == 'D')) d->flags |= D_CKSUM;
 	unless (d->sdate) {
 		if (s->gtime) {
 			date(d, s->gtime);
@@ -8319,7 +8341,7 @@ get_sroot(char *sfile, char *sroot)
 private void
 updatePending(sccs *s)
 {
-	if (s->state & S_CSET) return;
+	if (CSET(s)) return;
 	close(open(sccsXfile(s, 'd'),  O_CREAT|O_APPEND|O_WRONLY, GROUP_MODE));
 }
 
@@ -8421,8 +8443,7 @@ out:		sccs_unlock(s, 'z');
 
 	buf[0] = 0;
 	t = relativeName(s, 0, 0);
-	if ((s->state & S_CSET) || (t && !IsFullPath(t))) {
-		s->state |= S_BITKEEPER|S_CSETMARKED;
+	if (CSET(s) || (t && !IsFullPath(t))) {
 		if ((strlen(t) > 14) &&
 		    strneq("BitKeeper/etc/", t, 14)) {
 			bk_etc = 1;
@@ -8476,13 +8497,10 @@ out:		sccs_unlock(s, 'z');
 	if (!n->rev) n->rev = n0 ? strdup("1.1") : strdup("1.0");
 	explode_rev(n);
 	if (nodefault) {
-		if (prefilled) s->state |= xflags2state(prefilled->xflags);
+		if (prefilled) s->xflags |= prefilled->xflags;
 	} else if (s->encoding == E_ASCII) {
-		/* XXX - EXPAND1 too? */
-		s->state |= S_SCCS;		/* default to SCCS keywords */
+		s->xflags |= X_SCCS;		/* default to SCCS keywords */
 	}
-	if (flags & DELTA_HASH) s->state |= S_HASH;
-	s->version = SCCS_VERSION;		/* auto upgrades in patch */
 	n->serial = s->nextserial++;
 	s->table = n;
 	if (n->flags & D_BADFORM) {
@@ -8494,8 +8512,6 @@ out:		sccs_unlock(s, 'z');
 	} else {
 		l[0].flags = 0;
 	}
-	first->flags |= D_XFLAGS;
-	first->xflags = state2xflags(s->state);
 	dinsert(s, flags, n, !(flags & DELTA_PATCH));
 	s->numdeltas++;
 	EACH (syms) {
@@ -8517,12 +8533,22 @@ out:		sccs_unlock(s, 'z');
 			d->comments = addLine(d->comments, strdup(buf));
 		}
 	}
-	if (s->state & S_BITKEEPER) {
+	if ((flags & DELTA_PATCH) || s->proj) {
+		s->bitkeeper = 1;
+		s->xflags |= X_BITKEEPER;
+	}
+	if (BITKEEPER(s)) {
 		MDBM	*m;
 		delta	*d;
 		char	*user, *host, *always_edit;
 
-		if (s->state & S_CSET) {
+		s->version = SCCS_VERSION;
+		if (flags & DELTA_HASH) s->xflags |= X_HASH;
+		unless (flags & DELTA_PATCH) {
+			first->flags |= D_XFLAGS;
+			first->xflags = s->xflags;
+		}
+		if (CSET(s)) {
 			unless (first->csetFile) {
 				first->sum = (unsigned short) almostUnique(1);
 				first->flags |= D_ICKSUM;
@@ -8557,7 +8583,7 @@ out:		sccs_unlock(s, 'z');
 			d->hostname = s->tree->hostname;
 			d->flags |= D_DUPHOST;
 		}
-		s->state |= S_SINGLE;
+		s->xflags |= X_SINGLE;
 		first->xflags |= X_SINGLE;
 
 		mdbm_close(m);
@@ -8657,7 +8683,7 @@ abort:		if (sfile) fclose(sfile);
 	assert(size(s->sfile) > 0);
 	unless (flags & DELTA_SAVEGFILE) unlinkGfile(s);	/* Careful */
 	Chmod(s->sfile, 0444);
-	if (s->state & S_BITKEEPER) updatePending(s);
+	if (BITKEEPER(s)) updatePending(s);
 	sccs_unlock(s, 'z');
 	return (0);
 }
@@ -8739,7 +8765,7 @@ checkOpenBranch(sccs *s, int flags)
 	ser_t	next;
 
 	/* Allow open branch for logging repository */
-	if (s->state & S_LOGS_ONLY) return (0);
+	if (LOGS_ONLY(s)) return (0);
 
 	next = sccs_nextlod(s);
 	/* next now equals one more than greatest that exists
@@ -8759,7 +8785,7 @@ checkOpenBranch(sccs *s, int flags)
 		 * then skip the rest if they are GONE.
 		 */
 		if (streq(d->rev, "1.0")) continue;
-		if (s->state & S_CSET) {
+		if (CSET(s)) {
 			if (!d->added && !d->deleted && !d->same &&
 			    !(d->flags & D_SYMBOLS) && !d->symGraph) {
 				verbose((stderr,
@@ -8795,14 +8821,22 @@ checkOpenBranch(sccs *s, int flags)
  * Check all the BitKeeper specific stuff such as
  *	. xflags implied by s->state matches xflags implied top-of-trunk delta
  *	. no open branches
+ *	. checksums on all deltas
  */
 private int
 checkInvariants(sccs *s, int flags)
 {
 	int	error = 0;
+	delta	*d;
 
 	error |= checkOpenBranch(s, flags);
 	error |= checkSymGraph(s, flags);
+	for (d = s->table; d; d = d->next) {
+		if ((d->type == 'D') && !(d->flags & D_CKSUM)) {
+			verbose((stderr,
+			    "%s@@%s: no checksum\n", s->gfile, d->rev));
+		}
+	}
 	return (error);
 }
 
@@ -9022,7 +9056,7 @@ time:	if (d->parent && (d->date < d->parent->date)) {
 		}
 	}
 	/* If the dates are identical, check that the keys are sorted */
-	if (d->parent && (d->date == d->parent->date)) {
+	if (BITKEEPER(s) && d->parent && (d->date == d->parent->date)) {
 		char	me[MAXPATH], parent[MAXPATH];
 
 		sccs_sdelta(s, d, me);
@@ -9192,21 +9226,6 @@ pathArg(delta *d, char *arg) { ARG(pathname, D_NOPATH, D_DUPPATH); }
 private delta *
 randomArg(delta *d, char *arg) { ARG(random, 0, 0); }
 
-private delta *
-dtflagsArg(delta *d, char *arg)
-{
-	int	bits = 0;
-
-	if (!d) d = (delta *)calloc(1, sizeof(*d));
-	if ((arg[0] == '0') && (arg[1] == 'x')) {
-		bits = strtol(&arg[2], 0, 16);
-	} else {
-		bits = atoi(arg);
-	}
-	d->flags |= dt2dflags(bits);
-	return (d);
-}
-
 /*
  * Handle either 0664 style or -rw-rw-r-- style.
  */
@@ -9299,9 +9318,8 @@ symArg(sccs *s, delta *d, char *name)
 	/*
 	 * If this succeeds, then ALL keys must be in long key format
 	 */
-	if ((s->state & S_CSET) &&
-	    streq(d->rev, "1.0") && streq(sym->name, KEY_FORMAT2)) {
-	    	s->state |= S_LONGKEY;
+	if (CSET(s) && streq(d->rev, "1.0") && streq(sym->name, KEY_FORMAT2)) {
+	    	s->xflags |= X_LONGKEY;
 	}
 }
 
@@ -9426,7 +9444,7 @@ sccs_addSym(sccs *sc, u32 flags, char *s)
 		fprintf(stderr, "sccs_addSym: can't zlock %s\n", sc->gfile);
 		return -1;
 	}
-	assert((sc->state & S_READ_ONLY) == 0);
+	assert(!READ_ONLY(sc));
 	assert(sc->state & S_ZFILE);
 	assert(sc->landingpad > sc->mmap);
 	assert(sc->landingpad < sc->mmap + sc->data);
@@ -9541,7 +9559,7 @@ addSym(char *me, sccs *sc, int flags, admin *s, int *ep)
 
 	unless (s && s[0].flags) return (0);
 
-	unless (sc->state & S_CSET) {
+	unless (CSET(sc)) {
 		fprintf(stderr,
 		    "Tagging files is not supported, use bk tag instead\n");
 		return (0);
@@ -9623,7 +9641,7 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
  	 * Until we fix the ChangeSet processing code
 	 * we cannot allow null delta in ChangeSet file
 	 */
-	if ((sc->state & S_CSET) && isNullDelta) {
+	if (CSET(sc) && isNullDelta) {
 		fprintf(stderr,
 			"Cannot create null delta in ChangeSet file\n");
 		return (0);
@@ -9649,7 +9667,7 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
 	dinsert(sc, 0, n, 1);
 	/* XXX: distributing LOD information.  encapusate it! */
 	/* When starting a new LOD, clear defbranch */
-	if ((sc->state & S_BITKEEPER)
+	if (BITKEEPER(sc)
 	    && (sc->defbranch && streq(sc->defbranch, p->rev))
 	    && defIsVer(sc)) {
 		free(sc->defbranch);
@@ -9661,20 +9679,18 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
 private int 
 name2xflg(char *fl)
 {
-	if (streq(fl, "EXPAND1")) {
-		return X_EXPAND1;
-	} else if (streq(fl, "SCCS")) {
-		return X_SCCS;
-	} else if (streq(fl, "RCS")) {
+	if (streq(fl, "RCS")) {
 		return X_RCS;
 	} else if (streq(fl, "YEAR4")) {
 		return X_YEAR4;
-	} else if (streq(fl, "HASH")) {
-		return X_HASH;
-	} else if (streq(fl, "SINGLE")) {
-		return X_SINGLE;
+#ifdef	X_SHELL
 	} else if (streq(fl, "SHELL")) {
-		return X_ISSHELL;
+		return X_SHELL;
+#endif
+	} else if (streq(fl, "EXPAND1")) {
+		return X_EXPAND1;
+	} else if (streq(fl, "SCCS")) {
+		return X_SCCS;
 	} else if (streq(fl, "EOLN_NATIVE")) {
 		return X_EOLN_NATIVE;
 	}
@@ -9697,66 +9713,6 @@ addMode(char *me, sccs *sc, delta *n, char *mode)
 	n = modeArg(n, newmode);
 }
 
-private u32
-dt2dflags(u32 dt_flags)
-{
-	u32 dflags = 0;
-
-	if (dt_flags & DT_PLACEHOLDER) dflags |= D_PLACEHOLDER;
-	if (dt_flags & DT_NO_TRANSMIT) dflags |= D_NO_TRANSMIT;
-
-	return dflags;
-}
-
-private u32
-dflags2dt(u32 dflags)
-{
-	u32 dt = 0;
-
-	if (dflags & D_PLACEHOLDER) dt |= DT_PLACEHOLDER;
-	if (dflags & D_NO_TRANSMIT) dt |= DT_NO_TRANSMIT;
-
-	return dt;
-}
-
-private u32
-state2xflags(u32 state)
-{
-	u32	xflags = 0;
-
-	if (state & S_RCS) xflags |= X_RCS;
-	if (state & S_SCCS) xflags |= X_SCCS;
-	if (state & S_SINGLE) xflags |= X_SINGLE;
-	if (state & S_YEAR4) xflags |= X_YEAR4;
-#ifdef	S_ISSHELL
-	if (state & S_ISSHELL) xflags |= X_ISSHELL;
-#endif
-	if (state & S_EXPAND1) xflags |= X_EXPAND1;
-	if (state & S_HASH) xflags |= X_HASH;
-	if (state & S_EOLN_NATIVE) xflags |= X_EOLN_NATIVE;
-	if (state & S_LONGKEY) xflags |= X_LONGKEY;
-	return (xflags);
-}
-
-private u32
-xflags2state(u32 xflags)
-{
-	u32	state = 0;
-
-	if (xflags & X_RCS) state |= S_RCS;
-	if (xflags & X_SCCS) state |= S_SCCS;
-	if (xflags & X_SINGLE) state |= S_SINGLE;
-	if (xflags & X_YEAR4) state |= S_YEAR4;
-#ifdef	S_ISSHELL
-	if (xflags & X_ISSHELL) state |= S_ISSHELL;
-#endif
-	if (xflags & X_EXPAND1) state |= S_EXPAND1;
-	if (xflags & X_HASH) state |= S_HASH;
-	if (xflags & X_EOLN_NATIVE) state |= S_EOLN_NATIVE;
-	if (xflags & X_LONGKEY) state |= S_LONGKEY;
-	return (state);
-}
-
 void
 changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 {
@@ -9768,10 +9724,10 @@ changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 	mask = name2xflg(flag);
 	/*
 	 * If this is the first time we touch n->xflags,
-	 * initialize it from sc->state.
+	 * initialize it from sc->xflags.
 	 */
 	unless (n && (n->flags & D_XFLAGS)) {
-		xflags = state2xflags(sc->state) & X_XFLAGS;
+		xflags = sc->xflags;
 	} else {
 		xflags = n->xflags;
 	}
@@ -9784,7 +9740,6 @@ changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 			return;
 		} 
 		xflags |= mask;
-		sc->state |= xflags2state(mask);
 	} else {
 		unless (xflags & mask) {
 			verbose((stderr,
@@ -9793,8 +9748,8 @@ changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 			return;
 		}
 		xflags &= ~mask;
-		sc->state &= ~xflags2state(mask);
 	}
+	sc->xflags = xflags;
 	assert(n);
 	n->flags |= D_XFLAGS;
 	n->xflags = xflags;
@@ -9803,11 +9758,11 @@ changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 }
 
 int
-sccs_getxflags(delta *d)
+sccs_xflags(delta *d)
 {
 	unless (d) return (0);
-	if (d->flags & D_XFLAGS) return (d->xflags & X_XFLAGS);
-	if (d->parent) return (sccs_getxflags(d->parent));
+	if (d->flags & D_XFLAGS) return (d->xflags);
+	if (d->parent) return (sccs_xflags(d->parent));
 	return (0); /* old sfile, xflags values unknown */
 }                    
 
@@ -9913,6 +9868,12 @@ insert_1_0(sccs *s)
 	d = sccs_dInit(d, 'D', s, 0);
 }
 
+int
+sccs_resum(sccs *s)
+{
+	return (sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0));
+}
+
 /*
  * admin the specified file.
  *
@@ -9954,7 +9915,7 @@ out:
 #define	ALLOC_D()	\
 	unless (d) { \
 		unless (d = sccs_newDelta(sc, p, 1)) OUT; \
-		if (sc->state & S_BITKEEPER) updatePending(sc); \
+		if (BITKEEPER(sc)) updatePending(sc); \
 	}
 
 	unless (HAS_SFILE(sc)) {
@@ -9981,7 +9942,6 @@ out:
 			    sc->sfile));
 		}
 #endif
-		verbose((stderr, "admin: %s checks out OK\n", sc->sfile));
 	}
 	if (flags & (ADMIN_BK|ADMIN_FORMAT)) goto out;
 
@@ -10043,7 +10003,7 @@ out:
 	}
 
 user:	for (i = 0; u && u[i].flags; ++i) {
-		if (sc->state & S_BITKEEPER) {
+		if (BITKEEPER(sc)) {
 			fprintf(stderr,
 			    "admin: changing user/group is not supported\n");
 			OUT;
@@ -10078,17 +10038,20 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			if (v && *v == '\0') v = 0;
 			ALLOC_D();
 
-			if (name2xflg(fl) & X_XFLAGS) {
+			if (name2xflg(fl) & X_MAYCHANGE) {
 				if (v) goto noval;
 				changeXFlag(sc, d, flags, add, fl);
-			/* Flags below are non propagated */
-			} else if (streq(fl, "BK") || streq(fl, "BITKEEPER")) {
+			}
+#if 0
+			else if (streq(fl, "BK") || streq(fl, "BITKEEPER")) {
 				if (v) goto noval;
 				if (add)
 					sc->state |= S_BITKEEPER;
 				else
 					sc->state &= ~S_BITKEEPER;
-			} else if (streq(fl, "DEFAULT")) {
+			}
+#endif
+			else if (streq(fl, "DEFAULT")) {
 				if (sc->defbranch) free(sc->defbranch);
 				sc->defbranch = v ? strdup(v) : 0;
 			} else {
@@ -10337,7 +10300,7 @@ getHashSum(sccs *sc, delta *n, MMAP *diffs)
 	delta	*d;
 	int	offset;
 
-	assert(sc->state & S_HASH);
+	assert(HASH(sc));
 	assert(diffs);
 	/*
 	 * If we have a hash already and it is a simple delta, then just
@@ -10372,7 +10335,7 @@ bad:		fprintf(stderr, "bad diffs: '%.*s'\n", linelen(buf), buf);
 	while (buf = mnext(diffs)) {
 		unless (offset == 0 || buf[0] == '>') goto bad;
 		t = key, v = &buf[offset];
-		if (sc->state & S_CSET) {
+		if (CSET(sc)) {
 			int	pipes = 0;
 
 			/*
@@ -10447,7 +10410,7 @@ delta_body(sccs *s, delta *n, MMAP *diffs, FILE *out, int *ap, int *dp, int *up)
 		    "%s has nulls (\\0) in diffs, delta aborted.\n", s->gfile);
 		return (-1);
 	}
-	assert((s->state & S_READ_ONLY) == 0);
+	assert(!READ_ONLY(s));
 	assert(s->state & S_ZFILE);
 	*ap = *dp = *up = 0;
 	/*
@@ -10581,7 +10544,7 @@ newcmd:
 	if (state) free(state);
 	if (slist) free(slist);
 	if (s->encoding & E_GZIP) zgets_done();
-	if ((s->state & S_HASH) && (getHashSum(s, n, diffs) != 0)) {
+	if (HASH(s) && (getHashSum(s, n, diffs) != 0)) {
 		return (-1);
 	}
 	return (0);
@@ -10597,7 +10560,7 @@ newcmd:
  * B - cset file key
  * C - cset boundry marker
  * c - comments
- * E - ???
+ * E - ignored for now
  * F - date fudge
  * i - include keys
  * K - delta checksum
@@ -10726,14 +10689,8 @@ skip:
 	}
 
 	if (WANT('E')) {
-		if ((buf[1] == ' ') && (buf[2] == 'd') && (buf[3] == ' ')) {
-			d = dtflagsArg(d, &buf[4]);
-			unless (buf = mkline(mnext(f))) goto out; lines++;
-		} else {
-			fprintf(stderr, "%s: Bad E line: %s\n", sc->sfile, buf);
-			sc->state |= S_WARNED;
-			error++;
-		}
+		/* ignored */
+		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
 	/* date fudges are optional */
@@ -10893,30 +10850,6 @@ skip:
 		    "Warning: Bad line in init file follows.\n'%s'\n", buf);
 		error++;
 	}
-
-	if (patch && (d->type == 'D') && !(d->flags & D_ICKSUM))  {
-		fprintf(stderr,
-			"sccs_getInit: Warning: "
-			"%s: rev %s: Undefined delta checksum in patch\n",
-			sc->sfile, d->rev);
-#if 0
-		/*
-		 * Some really old repository e.g LMbench, have deltas with
-		 * no checksum field, (becuase the BITKEEPER flag is unset)
-		 * We must force zero checksum because it is part of the
-		 * delta key recorded in the ChangeSet file.
-		 * Do this only when we process a non-meta, null delta in
-		 * a patch, becuase regular INIT file omit the K line
-		 * and expect checksum to be generated when the delta is 
-		 * is created.
-		 */
-		if (!d->added && !d->deleted && !d->include && !d->exclude) {
-			d->sum = 0;
-			d->flags |= D_ICKSUM;
-		}
-
-#endif
- 	}
 
 out:	if (d) {
 		unless (hasComments(d)) d->flags |= D_NOCOMMENTS;
@@ -11534,7 +11467,7 @@ out:
 	 * initial version in the pfile to make conditions tighter.
 	 */
 	unless (flags & DELTA_PATCH) {
-		if ((s->state & S_BITKEEPER) && n->r[1] == 1 && n->r[2] == 0) {
+		if (BITKEEPER(s) && n->r[1] == 1 && n->r[2] == 0) {
 			if (s->defbranch) {
 				free(s->defbranch);
 				s->defbranch = 0;
@@ -11554,15 +11487,12 @@ out:
 	/*
 	 * If the new delta is a top-of-trunk, update the xflags
 	 * This is needed to maintain the xflags invariant:
-	 * s->state should always match sccs_getxflag(tot);
+	 * s->state should always match sccs_xflags(tot);
 	 * where "tot" is the top-of-trunk delta in the
 	 * current LOD
  	 */
 	if (init && (flags&DELTA_PATCH) && (n->flags & D_XFLAGS)) {
-		if (n == sccs_getrev(s, "+", 0, 0)) {
-			s->state &= ~(S_XFLAGS);
-			s->state |= xflags2state(sccs_getxflags(n)) & S_XFLAGS;
-		}
+		if (n == sccs_top(s)) s->xflags = n->xflags;
 	}
 
 	if (delta_table(s, sfile, 1)) {
@@ -11598,7 +11528,7 @@ out:
 	}
 	Chmod(s->sfile, 0444);
 	unlink(s->pfile);
-	if ((s->state & S_BITKEEPER) && !(flags & DELTA_NOPENDING)) {
+	if (BITKEEPER(s) && !(flags & DELTA_NOPENDING)) {
 		 updatePending(s);
 	}
 	goto out;
@@ -11670,14 +11600,14 @@ end(sccs *s, delta *n, FILE *out, int flags, int add, int del, int same)
 	fseek(out, 8L, SEEK_SET);
 	sprintf(buf, "\001s %05d/%05d/%05d\n", add, del, same);
 	if (strlen(buf) > 21) {
-		unless (s->state & S_BITKEEPER) {
+		unless (BITKEEPER(s)) {
 			fprintf(stderr, "%s: file too large\n", s->gfile);
 			exit(1);
 		}
 		fitCounters(buf, add, del, same);
 	}
 	fputmeta(s, buf, out);
-	if (s->state & S_BITKEEPER) {
+	if (BITKEEPER(s)) {
 		if ((add || del || same) && (n->flags & D_ICKSUM)) {
 			delta	*z = getCksumDelta(s, n);
 
@@ -12279,7 +12209,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		if (d->sdate) {
 			char	val[512];
 
-			if (s->state & S_YEAR4) {
+			if (YEAR4(s)) {
 				q = &val[2];
 			} else {
 				q = val;
@@ -12287,7 +12217,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 			for (p = d->sdate; *p && *p != '/'; )
 				*q++ = *p++;
 			*q = '\0';
-			if (s->state & S_YEAR4) {
+			if (YEAR4(s)) {
 				if (atoi(&val[2]) <= 68) {
 					val[0] = '2';
 					val[1] = '0';
@@ -12686,14 +12616,6 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "X_FLAGS")) {
-		char	buf[20];
-
-		sprintf(buf, "0x%x", sccs_getxflags(d));
-		fs(buf);
-		return (strVal);
-	}
-
 	if (streq(kw, "CSETFILE")) {
 		if (s->tree->csetFile) {
 			fs(s->tree->csetFile);
@@ -12735,15 +12657,48 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "FLAGS")) {
-		int	comma = 0;
-		int	flags = sccs_getxflags(d);
+	if (streq(kw, "X_FLAGS")) {
+		char	buf[20];
 
-		if (flags & X_YEAR4) {
-			if (comma) fs(","); fs("YEAR4"); comma = 1;
+		sprintf(buf, "0x%x", sccs_xflags(d));
+		fs(buf);
+		return (strVal);
+	}
+
+	if (streq(kw, "X_XFLAGS")) {
+		char	buf[20];
+
+		sprintf(buf, "0x%x", s->xflags);
+		fs(buf);
+		return (strVal);
+	}
+
+	if (streq(kw, "FLAGS") || streq(kw, "XFLAGS")) {
+		int	comma = 0;
+		int	flags = streq(kw, "FLAGS") ? sccs_xflags(d) : s->xflags;
+
+		if (flags & X_BITKEEPER) {
+			if (comma) fs(","); fs("BITKEEPER"); comma = 1;
 		}
 		if (flags & X_RCS) {
 			if (comma) fs(","); fs("RCS"); comma = 1;
+		}
+		if (flags & X_YEAR4) {
+			if (comma) fs(","); fs("YEAR4"); comma = 1;
+		}
+#ifdef S_ISSHELL
+		if (flags & X_SHELL) {
+			if (comma) fs(","); fs("SHELL"); comma = 1;
+		}
+#endif
+		if (flags & X_EXPAND1) {
+			if (comma) fs(","); fs("EXPAND1"); comma = 1;
+		}
+		if (flags & X_CSETMARKED) {
+			if (comma) fs(","); fs("CSETMARKED"); comma = 1;
+		}
+		if (flags & X_HASH) {
+			if (comma) fs(","); fs("HASH"); comma = 1;
 		}
 		if (flags & X_SCCS) {
 			if (comma) fs(","); fs("SCCS"); comma = 1;
@@ -12751,19 +12706,14 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		if (flags & X_SINGLE) {
 			if (comma) fs(","); fs("SINGLE"); comma = 1;
 		}
-		if (flags & X_EXPAND1) {
-			if (comma) fs(","); fs("EXPAND1"); comma = 1;
+		if (flags & X_LOGS_ONLY) {
+			if (comma) fs(","); fs("LOGS_ONLY"); comma = 1;
 		}
-		if (flags & X_HASH) {
-			if (comma) fs(","); fs("HASH"); comma = 1;
-		}
-#ifdef S_ISSHELL
-		if (flags & X_ISSHELL) {
-			if (comma) fs(","); fs("ISSHELL"); comma = 1;
-		}
-#endif
 		if (flags & X_EOLN_NATIVE) {
 			if (comma) fs(","); fs("EOLN_NATIVE"); comma = 1;
+		}
+		if (flags & X_LONGKEY) {
+			if (comma) fs(","); fs("LONGKEY"); comma = 1;
 		}
 		return (strVal);
 	}
@@ -12793,7 +12743,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		int	n;
 		kvpair	kv;
 
-		unless (s->state & S_HASH) return (nullVal);
+		unless (HASH(s)) return (nullVal);
 		if (sccs_get(s, "+", 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
 			sccs_whynot("get", s);
 			return (-1);
@@ -12803,7 +12753,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		 */
 		for (n = 0, kv = mdbm_first(s->mdbm);
 		    kv.key.dsize; kv = mdbm_next(s->mdbm)) {
-			unless (s->state & S_CSET) {
+			unless (CSET(s)) {
 				n++;
 				continue;
 			}
@@ -12996,12 +12946,12 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 
 	if (streq(kw, "DSUM")) {
 		if (d->flags & D_CKSUM) {
-			fd((int)d->sum);
+			f5d((int)d->sum);
 			return (strVal);
 		}
 		if (d->type == 'R') {
 			assert(d->sum == 0);
-			fs("0");
+			fs("00000");
 			return (strVal);
 		}
 		return (nullVal);
@@ -13044,7 +12994,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	if (streq(kw, "TYPE")) {
-		if (s->state & S_BITKEEPER) {
+		if (BITKEEPER(s)) {
 			fs("BitKeeper");
 		} else {
 			fs("SCCS");
@@ -13503,7 +13453,7 @@ sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out)
 	const	char *end;
 
 	if (d->type != 'D' && !(flags & PRS_ALL)) return (0);
-	if ((s->state & S_SET) && !(d->flags & D_SET)) return (0);
+	if (SET(s) && !(d->flags & D_SET)) return (0);
 	end = &dspec[strlen(dspec) - 1];
 	s->prs_output = 0;
 	fprintDelta(out, NULL, dspec, end, s, d);
@@ -13525,15 +13475,10 @@ sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out)
 void
 sccs_perfile(sccs *s, FILE *out)
 {
-	int	i = 0;
+	int	i;
 
 	if (s->defbranch) fprintf(out, "f d %s\n", s->defbranch);
 	if (s->encoding) fprintf(out, "f e %d\n", s->encoding);
-	if (s->state & S_BITKEEPER) i |= X_BITKEEPER;
-	if (s->state & S_CSETMARKED) i |= X_CSETMARKED;
-	i |= state2xflags(s->state);
-
-	if (i) fprintf(out, "f x %u\n", i);
 	EACH(s->text) fprintf(out, "T %s\n", s->text[i]);
 	if (s->version) fprintf(out, "V %u\n", s->version);
 	fprintf(out, "\n");
@@ -13549,7 +13494,6 @@ sccs_getperfile(MMAP *in, int *lp)
 	int	unused = 1;
 	char	*buf;
 
-	s->state |= S_BITKEEPER;		/* duh */
 	unless (buf = mkline(mnext(in))) goto err;
 	unless (buf[0]) {
 		free(s);
@@ -13573,12 +13517,7 @@ err:			fprintf(stderr,
 		unless (buf = mkline(mnext(in))) goto err; (*lp)++;
 	}
 	if (FLAG('x')) {
-		int	bits = atoi(&buf[4]);
-
-		unused = 0;
-		if (bits & X_BITKEEPER) s->state |= S_BITKEEPER;
-		if (bits & X_CSETMARKED) s->state |= S_CSETMARKED;
-		s->state |= xflags2state(bits);
+		/* Ignored */
 		unless (buf = mkline(mnext(in))) goto err; (*lp)++;
 	}
 	while (strneq(buf, "T ", 2)) {
@@ -13591,6 +13530,7 @@ err:			fprintf(stderr,
 		s->version = atoi(&buf[2]);
 		unless (buf = mkline(mnext(in))) goto err; (*lp)++;
 	}
+	assert(s->version);
 	if (buf[0]) goto err;		/* should be empty */
 
 	if (unused) {
@@ -13629,14 +13569,6 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 	EACH(d->comments) {
 		assert(d->comments[i][0] != '\001');
 		fprintf(out, "c %s\n", d->comments[i]);
-	}
-	/*
-	 * For now, we only print the E line for logging patch
-	 * This may change when we start using other DT flags
-	 * such as DT_NO_TRANSMIT
-	 */
-	if (flags&PRS_PLACEHOLDER) {
-		fprintf(out, "E d 0x%x\n", DT_PLACEHOLDER);
 	}
 	if (d->dateFudge) fprintf(out, "F %d\n", (int)d->dateFudge);
 	EACH(d->include) {
@@ -13721,7 +13653,11 @@ text:	if (d->flags & D_TEXT) {
 		fprintf(out, "\n");
 	}
 	if (d->flags & D_XFLAGS) {
-		fprintf(out, "X 0x%x\n", d->xflags);
+		if (flags & PRS_LOGGING) {
+			fprintf(out, "X 0x%x\n", X_LOGS_ONLY | d->xflags);
+		} else {
+			fprintf(out, "X 0x%x\n", d->xflags);
+		}
 	}
 	if (s->tree->zone) assert(d->zone);
 	fprintf(out, "------------------------------------------------\n");
@@ -13761,7 +13697,7 @@ sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out)
 			fprintf(out, "S %s %s\n", sym->name, sym->rev);
 		}
 	}
-	unless (s->state & S_SET) {
+	unless (SET(s)) {
 		for (d = s->rstop; d; d = d->next) {
 			d->flags |= D_SET;
 			if (d == s->rstart) break;
@@ -14132,7 +14068,7 @@ sccs_resolveFiles(sccs *s)
 			if (!a) {
 				a = d;
 			} else {
-				assert((s->state&S_LOGS_ONLY) || !b);
+				assert(LOGS_ONLY(s) || !b);
 				b = d;
 				/* Could break but I like the error checking */
 			}
@@ -14613,7 +14549,7 @@ csetIds_merge(sccs *s, char *rev, char *merge)
 	kvpair	kv;
 	char	*t;
 
-	assert(s->state & S_HASH);
+	assert(HASH(s));
 	if (sccs_get(s, rev, merge, 0, 0, SILENT|GET_HASHONLY, 0)) {
 		sccs_whynot("get", s);
 		return (-1);
@@ -14624,7 +14560,7 @@ csetIds_merge(sccs *s, char *rev, char *merge)
 	}
 
 	/* If we are the new key format, then we shouldn't have mixed keys */
-	if (s->state & S_LONGKEY) return (0);
+	if (LONGKEY(s)) return (0);
 
 	/*
 	 * If there are both long and short keys, then use the long form
@@ -14875,10 +14811,9 @@ out:
 	 * find the new top-of-trunk
 	 * XXX Is this good enough ??
 	 */
-	e = sccs_getrev(s, "+", 0, 0);
+	e = sccs_top(s);
 	assert(e);
-	s->state &= ~(S_RCS|S_YEAR4|S_ISSHELL|S_EXPAND1|S_HASH|S_SINGLE);
-	s->state |= xflags2state(sccs_getxflags(e));
+	s->xflags = sccs_xflags(e);
 
 	/* write out upper half */
 	if (delta_table(s, sfile, 0)) {  /* 0 means as-is, so chksum works */

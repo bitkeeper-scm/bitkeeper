@@ -93,7 +93,7 @@ doit(sccs *s, s_opts opts)
 	int	flags = 0;
 
 	if (opts.quiet) flags |= SILENT;
-	if ((s->state & S_BITKEEPER) && opts.stripBranches) {
+	if (BITKEEPER(s) && opts.stripBranches) {
 		fprintf(stderr,
 		    "stripdel: can't strip branches from a BitKeeper file.\n");
 		return (1);

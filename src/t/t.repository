@@ -105,18 +105,10 @@ bk makepatch $Q -e1.0..1.2 > $HERE/patch
 mkdir -p $HERE/proj_log
 cd $HERE/proj_log
 bk takepatch  -a < $HERE/patch
-grep -q "^.cE " SCCS/s.ChangeSet
-if [ $? -eq 0 ]; then echo failed; exit 1; fi
-grep -q "^.cE " BitKeeper/etc/SCCS/s.config
-if [ $? -eq 0 ]; then echo failed; exit 1; fi
-X=`grep "^.cE " src/SCCS/s.h.h | wc -l`
-if [ "$X" -ne 2 ]; then echo failed; exit 1; fi
 bk -r check -a || { echo failed; exit 1; }
 cd $HERE/project
 bk push $Q -e $HERE/proj_log
 cd $HERE/proj_log
-X=`grep "^.cE " src/SCCS/s.h.h | wc -l`
-if [ "$X" -ne 4 ]; then echo failed; exit 1; fi
 bk -r check -a || { echo failed; exit 1; }
 echo OK
 echo $N Make sure we reject logging patch in a regular repository ...$NL

@@ -761,5 +761,6 @@ rangeProcess(char *me, sccs *s, int expand, int noisy,
 		s->state |= S_SET;
 	}
 	if ((expand == 3) && !(s->state & S_SET)) rangeConnect(s);
+	sccs_markMeta(s);
 	return 0;
 }

@@ -88,7 +88,7 @@
 #define PRS_ALL		0x80000000	/* scan all revs, not just type D */
 #define	PRS_GRAFT	0x01000000	/* put the perfile in the patch */
 #define	PRS_LF		0x02000000	/* terminate non-empty output with LF */
-#define	PRS_PLACEHOLDER	0x04000000	/* make a place holder patch */
+#define	PRS_LOGGING	0x04000000	/* add logging bit to xflags */
 #define	PRS_COMPAT	0x08000000	/* for makepatch -C, send old tags */
 
 #define SINFO_TERSE	0x10000000	/* print in terse format: sinfo -t */
@@ -123,34 +123,18 @@
 #define	S_ZFILE		0x00000008	/* SCCS/z.file exists */
 #define	S_SOPEN		0x00000010	/* s->sfile is open */
 #define	S_WARNED	0x00000020	/* error message already sent */
-#define	S_RCS		0x00000040	/* expand RCS keywords */
-#define	S_EOLN_NATIVE	0x00000080	/* use eoln native to this OS */
-#define	S_EXPAND1	0x00000100	/* expand first line of keyowrds only */
-#define	S_CHMOD		0x00000200	/* change the file back to 0444 mode */
-#define	S_YEAR4		0x00000400	/* print out the year as 4 digits */
-#define	S_BADREVS	0x00000800	/* has corrupted revisions */
-#define	S_BIGPAD	0x00001000	/* admin -B: make the landing pad big */
-/*			0x00002000	AVAILABLE */
-#define	S_BITKEEPER	0x00004000	/* X_BITKEEPER flag */
-#define	S_CSET		0x00008000	/* this is a changeset file */
-/* AVALIABLE		0x00010000	*/
-#define S_MAPPRIVATE	0x00020000	/* hack for Samba */
-#define S_READ_ONLY	0x00040000	/* force read only mode */
-#define	S_RANGE2	0x00080000	/* second call for date|rev range */
-/*	AVAILABLE	0x00100000	   patch checksum mismatch */
-#define S_ISSHELL	0x00200000	/* this is a shell script */
-#define	S_SET		0x00400000	/* the tree is marked with a set */
-#define	S_CSETMARKED	0x00800000	/* X_CSETMARKED match */
-#define S_CACHEROOT	0x01000000	/* don't free the root entry */
-#define	S_LONGKEY	0x02000000	/* all keys are version 2 format */
-#define	S_HASH		0x04000000	/* this file is an MDBM file */
-#define	S_FAKE_1_0	0x08000000	/* the 1.0 delta is a fake */
-#define	S_SAVEPROJ	0x10000000	/* do not free the project struct */
-#define	S_SCCS		0x20000000	/* expand SCCS keywords */
-#define	S_SINGLE	0x40000000	/* inherit user/host */
-#define	S_LOGS_ONLY	0x80000000	/* this is a logging repository */
-#define S_XFLAGS	(S_RCS|S_YEAR4|S_ISSHELL|S_EXPAND1|S_HASH|\
-			 S_SCCS|S_SINGLE|S_EOLN_NATIVE)
+#define	S_CHMOD		0x00000040	/* change the file back to 0444 mode */
+#define	S_BADREVS	0x00000080	/* has corrupted revisions */
+#define	S_BIGPAD	0x00000100	/* admin -B: make the landing pad big */
+#define	S_CSET		0x00000200	/* this is a changeset file */
+#define S_MAPPRIVATE	0x00000400	/* hack for Samba */
+#define S_READ_ONLY	0x00000800	/* force read only mode */
+#define	S_RANGE2	0x00001000	/* second call for date|rev range */
+#define	S_SET		0x00002000	/* the tree is marked with a set */
+#define S_CACHEROOT	0x00004000	/* don't free the root entry */
+#define	S_FAKE_1_0	0x00008000	/* the 1.0 delta is a fake */
+#define	S_SAVEPROJ	0x00010000	/* do not free the project struct */
+#define	S_FORCELOGGING	0x00020000	/* Yuck - force it to logging */
 
 #define	KEY_FORMAT2	"BK key2"	/* sym in csets created w/ long keys */
 
@@ -185,23 +169,20 @@
 #define	X_BITKEEPER	0x00000001	/* BitKeeper file, not SCCS */
 #define	X_RCS		0x00000002	/* RCS keywords */
 #define	X_YEAR4		0x00000004	/* 4 digit years */
-#define	X_ISSHELL	0x00000008	/* This is a shell script */
+#define	X_SHELL		0x00000008	/* This is a shell script */
 #define	X_EXPAND1	0x00000010	/* Expand first line of keywords only */
 #define	X_CSETMARKED	0x00000020	/* ChangeSet boundries are marked */
 #define	X_HASH		0x00000040	/* mdbm file */
 #define	X_SCCS		0x00000080	/* SCCS keywords */
 #define	X_SINGLE	0x00000100	/* single user, inherit user/host */
-#if 0
-/* Do not re-use this bit until we are sure no production repository use it. */
-/* This is a undocumented feature shiped in release pre2-2.0		     */
-#define	X_ALWAYS_EDIT	0x00000200	/* stays in edit mode after delta/ci */
-#endif
+/*	X_DO_NOT_USE	0x00000200	   was used shortly, never reuse */
 #define	X_LOGS_ONLY	0x00000400	/* this is a logging repository */
 #define	X_EOLN_NATIVE	0x00000800	/* use eoln native to this OS */
 #define	X_LONGKEY	0x00001000	/* all keys are long format */
 					/* flags which can be changed */
-#define X_XFLAGS	(X_RCS|X_YEAR4|X_ISSHELL|X_EXPAND1|X_HASH|\
-			 X_SCCS|X_SINGLE|X_EOLN_NATIVE)
+#define	X_MAYCHANGE	(X_RCS|X_YEAR4|X_SHELL|X_EXPAND1|X_SCCS|X_EOLN_NATIVE)
+					/* default set of flags */
+#define	X_DEFAULT	(X_BITKEEPER|X_EXPAND1|X_CSETMARKED|X_SCCS)
 
 /*
  * Encoding flags.
@@ -226,8 +207,24 @@
 #define IS_EDITED(s)	((((s)->state&S_EDITED) == S_EDITED) && IS_WRITABLE(s))
 #define IS_LOCKED(s)	(((s)->state&S_LOCKED) == S_LOCKED)
 #define WRITABLE(s)	(IS_WRITABLE(s) && isRegularFile(s->mode))
+#define	CSET(s)		((s)->state & S_CSET)
+#define	READ_ONLY(s)	((s)->state & S_READ_ONLY)
+#define	SET(s)		((s)->state & S_SET)
 
 #define	GOODSCCS(s)	assert(s); unless (s->tree && s->cksumok) return (-1)
+
+#define	BITKEEPER(s)	(s->bitkeeper)
+#define	RCS(s)		(s->xflags & X_RCS)
+#define	YEAR4(s)	(s->xflags & X_YEAR4)
+#define	SHELL(s)	(s->xflags & X_SHELL)
+#define	EXPAND1(s)	(s->xflags & X_EXPAND1)
+#define	CSETMARKED(s)	(s->xflags & X_CSETMARKED)
+#define	HASH(s)		(s->xflags & X_HASH)
+#define	SCCS(s)		(s->xflags & X_SCCS)
+#define	SINGLE(s)	(s->xflags & X_SINGLE)
+#define	LOGS_ONLY(s)	(s->xflags & X_LOGS_ONLY)
+#define	EOLN_ONLY(s)	(s->xflags & X_EOLN_ONLY)
+#define	LONGKEY(s)	(s->xflags & X_LONGKEY)
 
 /*
  * Flags (d->flags) that indicate some state on the delta.
@@ -251,9 +248,6 @@
 #define	D_CKSUM		0x00010000	/* delta has checksum */
 #define	D_MERGED	0x00020000	/* set on branch tip which is merged */
 #define	D_GONE		0x00040000	/* this delta is gone, don't print */
-#define	D_PLACEHOLDER	0x00080000	/* metadata only, no contents */
-#define	D_NO_TRANSMIT	0x00100000	/* do not transmit - not used yet */
-/*			0x00?00000	   AVAILABLE */
 #define	D_ICKSUM	0x01000000	/* use checksum from init file */
 #define	D_MODE		0x02000000	/* permissions in d->mode are valid */
 #define	D_SET		0x04000000	/* range.c: marked as part of a set */
@@ -262,17 +256,6 @@
 #define	D_LOCAL		0x20000000	/* for resolve; this is a local delta */
 #define D_XFLAGS	0x40000000	/* delta has updated file flags */
 #define D_TEXT		0x80000000	/* delta has updated text */
-#define D_DT_ALL	(D_PLACEHOLDER|D_NO_TRANSMIT)
-
-/*
- * Bits for the per delta d flag in the delta table. (^AcE d 0x????)
- *
- * Nota bene: these can not change once the product is shipped.  Ever.
- * They are stored on disk.
- */
-#define DT_PLACEHOLDER	0x00000001	/* metadata only, no contents */
-#define DT_NO_TRANSMIT	0x00000002	/* do not transmit - not used yet */
-#define DT_ALL		(DT_PLACEHOLDER|DT_NO_TRANSMIT)
 
 /*
  * Flags for command log
@@ -408,7 +391,7 @@ typedef struct delta {
 	time_t	dateFudge;		/* make dates go forward */
 	mode_t	mode;			/* 0777 style modes */
 	char 	*symlink;		/* sym link target */
-	u32	xflags;			/* x flags */
+	u32	xflags;			/* timesafe x flags */
 	/* In memory only stuff */
 	u16	r[4];			/* 1.2.3 -> 1, 2, 3, 0 */
 	time_t	date;			/* date - conversion from sdate/zone */
@@ -424,6 +407,7 @@ typedef struct delta {
 	u32	published:1;	
 	u32	ptype:1;	
 } delta;
+#define	TAG(d)	((d)->type == 'R')
 
 /*
  * Rap on lod/symbols wrt deltas.
@@ -547,7 +531,8 @@ typedef	struct sccs {
 	int	encoding;	/* ascii, uuencode, gzip, etc. */
 	char	**flags;	/* flags in the middle that we didn't grok */
 	char	**text;		/* descriptive text */
-	int	state;		/* GFILE/SFILE etc */
+	u32	state;		/* GFILE/SFILE etc */
+	u32	xflags;		/* cache of sccs_top()->xflags */
 	mode_t	mode;		/* mode of the gfile */
 	off_t	data;		/* offset to data in file */
 	delta	*rstart;	/* start of a range (1.1 - oldest) */
@@ -568,6 +553,7 @@ typedef	struct sccs {
 	u32	io_error:1;	/* had an output error, abort */
 	u32	io_warned:1;	/* we told them about the error */
 	u32	prs_output:1;	/* prs printed something */
+	u32	bitkeeper:1;	/* bitkeeper file */
 } sccs;
 
 typedef struct {
@@ -817,7 +803,7 @@ int	csetIds(sccs *cset, char *rev);
 int	csetIds_merge(sccs *cset, char *rev, char *merge);
 int	cset_inex(int flags, char *op, char *revs);
 void	sccs_fixDates(sccs *);
-int	sccs_getxflags(delta *d);
+int	sccs_xflags(delta *d);
 void	sccs_mkroot(char *root);
 char	*sccs_nivPath(sccs *s);
 int	sccs_parent_revs(sccs *s, char *rev, char **revP, char **revM);

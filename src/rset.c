@@ -408,7 +408,7 @@ usage:				system("bk help -s rset");
 	 */
 	if (csetIds_merge(s, rev1, revM)) {
 		fprintf(stderr,
-			"Cannot get ChangeSet for revision %s\n", rev1);
+		    "Cannot get ChangeSet for revision %s\n", rev1);
 		return (1);
 	}
 	db1 = s->mdbm; s->mdbm = NULL;
@@ -424,7 +424,7 @@ usage:				system("bk help -s rset");
 		opts.show_diffs = 1;
 	}
 	proj = s->proj;
-	mixed = !(s->state & S_LONGKEY);
+	mixed = !LONGKEY(s);
 	sccs_close(s);
 
 	idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS);

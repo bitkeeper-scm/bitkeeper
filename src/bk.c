@@ -79,6 +79,7 @@ int listkey_main(int, char **);
 int lock_main(int, char **);
 int lod_main(int, char **);
 int log_main(int, char **);
+int logflags_main(int, char **);
 int logging_main(int, char **);
 int loggingaccepted_main(int ac, char **av);
 int loggingask_main(int ac, char **av);
@@ -166,6 +167,7 @@ struct command cmdtbl[] = {
 	{"_lines", lines_main},	
 	{"_listkey", listkey_main},	
 	{"_log", log_main},
+	{"_logflags", logflags_main},
 	{"_logging", logging_main},
 	{"_loggingaccepted", loggingaccepted_main},
 	{"_loggingask", loggingask_main},

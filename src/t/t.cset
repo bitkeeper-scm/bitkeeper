@@ -19,6 +19,13 @@ if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+bk prs -hr1.0 -nd:FLAGS: ChangeSet | grep -q LONGKEY || {
+	echo no LONGKEY flag in the ChangeSet file
+	bk prs -hr1.0 -nd:FLAGS: ChangeSet
+	bk prs -hr1.0 -nd:XFLAGS: ChangeSet
+	cat SCCS/s.ChangeSet
+	exit 1
+}
 echo OK
 
 echo $N Make sure that we can remove an earlier cset ................$NL

@@ -64,6 +64,7 @@ date > date
 bk new $Q date
 bk commit $Q -ydate
 bk resync -t $Q ../copy
+cores
 cd RESYNC || exit 1
 # The invariant is that you always get config and all others for conflicts
 test -f BitKeeper/etc/SCCS/s.ignore || { echo No ignore; exit 1; }
@@ -274,7 +275,7 @@ cd project
 cd BitKeeper/etc
 sed -e's?cPChangeSet?cPBitKeeper/etc/logging_ok?' \
         < ../../SCCS/s.ChangeSet | grep -v "^.cC$" | grep -v '^.cS' |
-	grep -v '^.cX' > X
+	grep -v '^.cX' | grep -v '^.f x 0x' > X
 bk undos X > SCCS/s.logging_ok
 bk admin -z logging_ok
 bk stripdel $Q -r1.1.. logging_ok

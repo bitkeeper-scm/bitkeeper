@@ -269,7 +269,7 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 
 	cset = sccs_init(csetFile, flags & SILENT, 0);
 	if (!cset) return (101);
-	copts.mixed = !(cset->state & S_LONGKEY);
+	copts.mixed = !LONGKEY(cset);
 
 	if (list) {
 #ifdef  ANSIC
@@ -363,11 +363,13 @@ cset_setup(int flags)
 	int	fd;
 
 	cset = sccs_init(csetFile, flags & SILENT, 0);
+	assert(cset->proj);
 
 	if (flags & DELTA_DONTASK) unless (d = comments_get(d)) goto intr;
 	unless (d = host_get(d)) goto intr;
 	unless (d = user_get(d)) goto intr;
-	cset->state |= S_CSET|S_LONGKEY;
+	cset->state |= S_CSET;
+	cset->xflags |= X_LONGKEY;
 	if (sccs_delta(cset, flags|DELTA_EMPTY|NEWFILE, d, 0, 0, 0) == -1) {
 intr:		sccs_whynot("cset", cset);
 		sccs_free(cset);
@@ -462,7 +464,7 @@ markThisCset(cset_t *cs, sccs *s, delta *d)
 
 /*
  * Return true if the two keys describe the same file.
- * If we are in S_LONGKEY it's easy, they match or they don't.
+ * If we are in X_LONGKEY it's easy, they match or they don't.
  * Otherwise we'll try short versions.
  */
 private int
@@ -572,34 +574,6 @@ retry:	sc = sccs_keyinit(lastkey, INIT_NOCKSUM, 0, idDB);
 		return (cs->force ? 0 : -1);
 	}
 
-	/*
- 	 * Unless we are here to mark the file, if it isn't marked,
-	 * go do that first.  We skip ChangeSet files because the code
-	 * path which does the work also seems to skip them (because it
-	 * is used for other operations which don't want them).
-	 */
-	if (!(sc->state & S_CSET) && !(sc->state & S_CSETMARKED) && !cs->mark) {
-		char	buf[MAXPATH];
-
-		if (doneFullRemark) {
-			fprintf(stderr,
-			    "cset: missing cset metadata in %s\n",
-			    sc->sfile);
-			return (-1);
-		}
-		fprintf(stderr,
-		    "cset: %s has no ChangeSet marks\n\n", sc->sfile);
-		fputs(
-"\nBitKeeper has found a file which is missing some metadata.  That metadata\n\
-is being automatically generated and added to all files.  If your repository\n\
-is large, this is going to take a while - it has to rewrite each file.\n\
-This is a one time event to upgrade this repository to the latest format.\n\
-Please stand by.\n\n", stderr);
-		sprintf(buf, "bk cset -M1.0.. %s", cs->verbose ? "-v" : "");
-		system(buf);
-		doneFullRemark++;
-		goto retry;
-	}
 	unless (d = sccs_findKey(sc, val)) {
 		fprintf(stderr,
 		    "cset: cannot find\n\t%s in\n\t%s\n", val, sc->sfile);
@@ -745,7 +719,7 @@ again:	/* doDiffs can make it two pass */
 			fputs("\n", stdout);
 			fputs(PATCH_PATCH, stdout);
 		}
-		if (cs->metaOnly || (cset->state & S_LOGS_ONLY)) {
+		if (cs->metaOnly || LOGS_ONLY(cset)) {
 			assert(!cs->compat);
 			fputs(PATCH_CURRENT, stdout);
 			fputs(PATCH_LOGGING, stdout);
@@ -917,8 +891,7 @@ doMarks(cset_t *cs, sccs *s)
 			}
 		}
 	}
-	if (did || !(s->state & S_CSETMARKED)) {
-		s->state |= S_CSETMARKED;
+	if (did) {
 		sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
 		if ((cs->verbose > 1) && did) {
 			fprintf(stderr,
@@ -1265,12 +1238,11 @@ sccs_patch(sccs *s, cset_t *cs)
 			int len1 = strlen(s->tree->pathname);
 			int len2 = strlen(BKROOT);
 			unless ((s->state & S_CSET) ||
-				((len1 > len2) &&
-				    strneq(s->tree->pathname, BKROOT, len2))) {
-				
+			    ((len1 > len2) &&
+			    strneq(s->tree->pathname, BKROOT, len2))) {
 				mk_placeholder = 1;
-				prs_flags |= PRS_PLACEHOLDER;
 			}
+			prs_flags |= PRS_LOGGING;
 		}
 		if (sccs_prs(s, prs_flags, 0, NULL, stdout)) cset_exit(1);
 		printf("\n");

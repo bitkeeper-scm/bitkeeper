@@ -12,6 +12,7 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
+no_logging whatever
 echo some text >X
 echo other text >Y
 bk delta $Q -i X Y
@@ -173,7 +174,6 @@ echo $N No change to expand first keyword only .. check sfiles -c ...$NL
 echo %""@% > exp1 
 echo %""K% >> exp1 
 bk ci $Q -i exp1
-bk admin -fEXPAND1 exp1
 bk get $Q exp1
 mv exp1 exp1.ro
 bk get $Q -e exp1

@@ -1175,7 +1175,7 @@ flags_delta(resolve *rs,
 	char	fbuf[8][12];	/* Must match list below */
 	int	n, i, f;
 	sccs	*s;
-	int	bits = flags & X_XFLAGS;
+	int	bits = flags & X_MAYCHANGE;
 
 	if (rs->opts->debug) {
 		fprintf(stderr, "flags(%s, %s, 0x%x, %s)\n",
@@ -1192,15 +1192,14 @@ flags_delta(resolve *rs,
 #define	del(s)		{ sprintf(fbuf[f], "-F%s", s); av[++n] = fbuf[f]; }
 #define	doit(bit,s)	if (bits&bit) add(s) else del(s); f++ 
 	f = 0;
-	doit(X_YEAR4, "YEAR4");
 	doit(X_RCS, "RCS");
-	doit(X_SCCS, "SCCS");
-	doit(X_EXPAND1, "EXPAND1");
-#ifdef S_ISSHELL
-	doit(X_ISSHELL, "SHELL");
+	doit(X_YEAR4, "YEAR4");
+#ifdef X_SHELL
+	doit(X_SHELL, "SHELL");
 #endif
-	doit(X_HASH, "HASH");
-	doit(X_SINGLE, "SINGLE");
+	doit(X_EXPAND1, "EXPAND1");
+	doit(X_SCCS, "SCCS");
+	doit(X_EOLN_NATIVE, "EOLN_NATIVE");
 	for (i = 0; i < f; ++i) av[++n] = fbuf[i];
 	av[++n] = sfile;
 	assert(n < 38);	/* matches 40 in declaration */
@@ -1718,7 +1717,7 @@ conflict(opts *opts, char *sfile)
 	/*
 	 * Merge changes to the flags (RCS/SCCS/EXPAND1/etc).
 	 */
-	unless (sccs_getxflags(d.local) == sccs_getxflags(d.remote)) {
+	unless (sccs_xflags(d.local) == sccs_xflags(d.remote)) {
 		rs->opaque = (void*)&d;
 		resolve_flags(rs);
 		s = rs->s;
@@ -2316,7 +2315,7 @@ Got:\n\
 		fprintf(stderr,
 		    "Consistency check passed, resolve complete.\n");
 	}
-	flags = CLEAN_OK|CLEAN_RESYNC|CLEAN_PENDING|DO_LOG;
+	flags = CLEAN_OK|CLEAN_RESYNC|CLEAN_PENDING;
 	unless (opts->logging) flags |= DO_LOG;
 	resolve_cleanup(opts, flags);
 	/* NOTREACHED */

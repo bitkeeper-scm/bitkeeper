@@ -12,6 +12,7 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
+no_logging project
 echo $N Make sure delta -i works ....................................$NL
 echo hi there > init
 bk delta $S -i init

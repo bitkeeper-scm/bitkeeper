@@ -18,6 +18,7 @@ then
 	exit 0;
 fi
 
+no_logging project
 echo $N Check in an executable file .................................$NL
 touch prog
 chmod 0751 prog

@@ -12,6 +12,7 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
+no_logging project
 echo $N Test add E flag .............................................$NL
 echo 'XX@W@YY' | sed s/@/%/g > test.c
 echo 'YY@W@ZZ' | sed s/@/%/g >> test.c

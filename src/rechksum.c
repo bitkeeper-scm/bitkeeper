@@ -56,16 +56,14 @@ rechksum_main(int ac, char **av)
 			    av[0], s->sfile);
 			continue;
 		}
-		unless (s->state & S_BITKEEPER) {
+		unless (BITKEEPER(s)) {
 			fprintf(stderr,
 			    "%s: \"%s\" is not a BitKeeper file, ignored\n",
 			    av[0], s->sfile);
 			continue;
 		}
 		for (doit = 0, d = s->table; d; d = d->next) {
-			if ((d->type == 'D') && 
-			    ((s->state & S_CSET) || d->added ||
-			    d->deleted || d->include || d->exclude)) {
+			if (d->type == 'D') {
 				doit += resum(s, d, verbose, flags, old, dont);
 			}
 		}
@@ -96,7 +94,7 @@ rechksum_main(int ac, char **av)
 private	int
 resum(sccs *s, delta *d, int verbose, int flags, int old7bit, int dont)
 {
-	int	old, new;
+	int	i, old, new;
 	int	encoding = s->encoding;
 	char	path[MAXPATH];
 
@@ -124,6 +122,39 @@ resum(sccs *s, delta *d, int verbose, int flags, int old7bit, int dont)
 			d->flags |= D_CKSUM;
 			return (1);
 		}
+	}
+
+	/*
+	 * If there is no content change, then if no checksum, cons one up
+	 * from the data in the delta table.
+	 */
+	unless (d->added || d->deleted || d->include || d->exclude) {
+		if (d->flags & D_CKSUM) return (0);
+		if (verbose>1) fprintf(stderr, "%s:%s\n", s->sfile, d->rev);
+		new = 0;
+		new = adler32(new, d->sdate, strlen(d->sdate));
+		new = adler32(new, d->user, strlen(d->user));
+		if (d->pathname) {
+			new = adler32(new, d->pathname, strlen(d->pathname));
+		}
+		if (d->hostname) {
+			new = adler32(new, d->hostname, strlen(d->hostname));
+		}
+		EACH(d->comments) {
+			new = adler32(new,
+			    d->comments[i], strlen(d->comments[i]));
+		}
+		if (dont) {
+			fprintf(stderr, "%s:%s actual=<none> sum=%d\n",
+			    s->gfile, d->rev, new);
+			return (1);
+		}
+		if (verbose>1) {
+			fprintf(stderr, "Converting %s:%s\n", s->sfile, d->rev);
+		}
+		d->sum = (sum_t)new;
+		d->flags |= D_CKSUM;
+		return (1);
 	}
 
 	if (verbose>1) fprintf(stderr, "%s:%s\n", s->sfile, d->rev);

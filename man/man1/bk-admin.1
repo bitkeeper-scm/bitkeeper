@@ -25,11 +25,12 @@ add a 1.0 delta if there is not one already
 .B \-B
 make the landing pad bigger
 .tp
-.B \-C
-remove the changeset marks (very rarely used, \fBnot\fP recommended)
+.OPTopt \-C csetfile
+set or remove the changeset file pointer in the 1.0 delta
+(very rarely used, \fBnot\fP recommended)
 .tp
-.B \-CC
-remove the changeset marks and pointer (very rarely used, \fBnot\fP recommended)
+.B \-D
+remove the delta changeset marks (very rarely used, \fBnot\fP recommended)
 .tp
 .OPTreq \-E enc
 force file to be encoded with 
@@ -85,11 +86,6 @@ set the default branch or revision used by the
 .BR bk\ get
 command.
 .RE
-.tp
-.OPTreq \-d f
-delete flag
-.ARG f ,
-reverting to default behaviour.
 .tp
 .OPTreq \-F f
 delete flag 

@@ -12,6 +12,7 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
+no_logging project
 echo $N Checking Delta in Negative Time zone ........................$NL
 echo "some data" > TIME
 TZ=UTC+8 bk delta $S -i  TIME

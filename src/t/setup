@@ -14,10 +14,11 @@
 
 cores()
 {
-        find "$BK_REGRESSION" -name core -print > "$BK_REGRESSION"/cores
-        if [ -s cores ]
-        then    ls -l `cat "$BK_REGRESSION"/cores`
-                file `cat "$BK_REGRESSION"/cores`
+	OUT="$BK_REGRESSION/cores"
+        find "$BK_REGRESSION" -name core -print > "$OUT"
+        if [ -s "$OUT" ]
+        then    ls -l `cat "$OUT"`
+                file `cat "$OUT"`
                 exit 10
         fi
 }

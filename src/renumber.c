@@ -105,7 +105,7 @@ sccs_renumber(sccs *s, ser_t nextlod, ser_t thislod, MDBM *lodDb, \
 	char	def[20];	/* X.Y.Z each 5 digit plus term = 18 */
 
 	/* Ignore lod mapping if this is ChangeSet or file is not BK */
-	if (!(s->state & S_BITKEEPER) || (s->state & S_CSET)) {
+	if (!BITKEEPER(s) || (s->state & S_CSET)) {
 		lodDb = 0;
 		/* Save current default branch */
 		if (d = sccs_top(s)) {
@@ -146,7 +146,7 @@ sccs_renumber(sccs *s, ser_t nextlod, ser_t thislod, MDBM *lodDb, \
 			continue;
 		}
 		/* restore 1 or 3 digit branch? 1 if BK or trunk */
-		if (s->state & S_BITKEEPER || d->r[2] == 0) {
+		if (BITKEEPER(s) || d->r[2] == 0) {
 			sprintf(def, "%u", d->r[0]);
 			s->defbranch = strdup(def);
 			continue;

@@ -421,6 +421,10 @@ again:	s = sccs_keyinit(t, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB);
 			}
 			goto again;
 		}
+		if (!newFile && isLogPatch) {
+			skipPatch(p);
+			return (0);
+		}
 		unless (newFile) {
 			SHOUT();
 			fprintf(stderr,
@@ -646,6 +650,30 @@ delta1:	off = mtell(f);
 	if ((c = mpeekc(f)) != EOF) {
 		return (c != '=');
 	}
+	return (0);
+}
+
+/*
+ * Skip to the next file start.
+ * Deltas end on the first blank line.
+ */
+private	int
+skipPatch(MMAP *p)
+{
+	char	*b;
+	int	c;
+
+	do {
+		b = mnext(p); line++;
+		if (strneq(b, "# Patch checksum=", 17)) return 0;
+		/* Eat metadata */
+		while ((b = mnext(p)) && (*b != '\n')) line++;
+		line++;
+		/* Eat diffs */
+		while ((b = mnext(p)) && (*b != '\n')) line++;
+		line++;
+		if ((c = mpeekc(p)) == EOF) return (0);
+	} while (c != '=');
 	return (0);
 }
 
@@ -925,7 +953,7 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 		return -1;
 	}
 	if (isLogPatch) {
-		unless (s->state&S_LOGS_ONLY) {
+		unless (LOGS_ONLY(s)) {
 			fprintf(stderr,
 	        		"takepatch: can't apply a logging "
 				"patch to a regular file %s\n",
@@ -934,7 +962,7 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 			return -1;
 		}
 	} else {
-		if (s->state&S_LOGS_ONLY) {
+		if (LOGS_ONLY(s)) {
 			fprintf(stderr,
 	        		"takepatch: can't apply a regular "
 				"patch to a logging file %s\n",
@@ -1016,6 +1044,10 @@ apply:
 				ahead(p->pid, s->sfile);
 			}
 			unless (sccs_restart(s)) { perror("restart"); exit(1); }
+			if (isLogPatch) {
+				s->state |= S_FORCELOGGING;
+				s->xflags |= X_LOGS_ONLY;
+			}
 			if (echo>8) {
 				fprintf(stderr, "Child of %s", d->rev);
 				if (p->flags & PATCH_META) {
@@ -1121,8 +1153,9 @@ apply:
 				p->diffMmap = 0;
 			}
 			if (isLogPatch) {
+				s->state |= S_FORCELOGGING;
+				s->xflags |= X_LOGS_ONLY;
 				if (chkEmpty(s, dF)) return -1;
-				s->state |= S_LOGS_ONLY;
 			}
 			d = 0;
 			newflags = 
@@ -1751,12 +1784,6 @@ error:					fprintf(stderr, "GOT: %s", buf);
 		fprintf(g, "%s\n", inputFile);
 		fclose(g);
 
-		if (exists(LOG_TREE)) {
-			isLogPatch = 1;
-			mkdirp(ROOT2RESYNC "/BitKeeper/etc");
-			close(creat(ROOT2RESYNC "/" LOG_TREE, 0666));
-		}
-
 		i = 0;
 		while (t = mnext(m)) {
 			if (strneq(t, PATCH_CURRENT, strsz(PATCH_CURRENT))) {
@@ -1765,6 +1792,11 @@ error:					fprintf(stderr, "GOT: %s", buf);
 				t = mnext(m);
 				if (strneq(t, PATCH_LOGGING, len)) {
 					isLogPatch = 1;
+					assert(exists("BitKeeper/etc"));
+					close(creat(LOG_TREE, 0666));
+					mkdirp(ROOT2RESYNC "/BitKeeper/etc");
+					close(creat(ROOT2RESYNC
+					    "/" LOG_TREE, 0666));
 				}
 				i++;
 				break;

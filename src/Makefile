@@ -45,7 +45,7 @@ OBJ	= abort.o adler32.o admin.o approve.o annotate.o \
 	  key2rev.o keysort.o \
 	  level.o lib_tcp.o libcommit.o libdiff.o librange.o \
 	  libsfiles.o libusers.o lines.o localtm.o locking.o \
-	  lod.o logging.o mail.o merge.o mkdir.o mklock.o mmap.o \
+	  lod.o logflags.o logging.o mail.o merge.o mkdir.o mklock.o mmap.o \
 	  mtime.o names.o newrev.o oclone.o opull.o opush.o \
 	  park.o parent.o pending.o popen.o \
 	  port/executable.o port/findprog.o port/fullname.o port/flushsocket.o \
@@ -182,7 +182,7 @@ production_image: rebuild p image
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # Read the checkin comments on this delta before changing this.
 clean-obj: FORCE
-	-@rm -f bk.o shell.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) 
+	-@rm -f bk bk.o shell.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) 
 	-@rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
 	-@rm -f $(LIBS) shell.c bkdsubstr bkmsg.txt bkhelp.txt a.out core $(WIN_TMP)
 	-@cd gnu && $(MAKE) clean-obj

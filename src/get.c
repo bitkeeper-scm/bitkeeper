@@ -194,10 +194,10 @@ usage:			sprintf(realname, "bk help -s %s", prog);
 			rev = d->rev;
 		}
 		if (dohash) {
-			if (s->state & S_HASH) {
-				s->state &= ~S_HASH;
+			if (HASH(s)) {
+				s->xflags &= ~X_HASH;
 			} else {
-				s->state |= S_HASH;
+				s->xflags |= X_HASH;
 			}
 		}
 		if (hasrevs) rev = sfileRev();
@@ -214,8 +214,7 @@ usage:			sprintf(realname, "bk help -s %s", prog);
 			}
 			rev = d->rev;
 		}
-		if ((s->state & S_BITKEEPER) &&
-		    (flags & GET_EDIT) && rev && !branch_ok) {
+		if (BITKEEPER(s) && (flags & GET_EDIT) && rev && !branch_ok) {
 			fprintf(stderr,
 			    "Do not use -r to create branch, "
 			    "use \"bk setlod\"\n");

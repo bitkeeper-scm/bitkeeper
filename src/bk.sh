@@ -39,7 +39,12 @@ _renames() {
 
 # shorthand
 _inode() {		# /* undoc? 2.0 */
-	bk prs -hr+ -d':ROOTKEY:\n' "$@"
+	bk prs -hr+ -nd':ROOTKEY:' "$@"
+}
+
+# shorthand
+_flags() {		# /* undoc? 2.0 */
+	bk prs -hr+ -nd':GFILE: :FLAGS:' "$@"
 }
 
 # This removes the tag graph.  Use with care.
@@ -135,11 +140,11 @@ __keysync() {
 #	put the merge on top of the edited file
 # fi
 _fixtool() {
-	__cd2root
+	if [ "X$@" = X ]; then __cd2root; fi
 	fix=${TMP}/fix$$	
 	merge=${TMP}/merge$$	
 	previous=${TMP}/previous$$	
-	bk sfiles -cg > $fix
+	bk sfiles -cg "$@" > $fix
 	test -s $fix || {
 		echo Nothing to fix
 		rm -f $fix
@@ -147,8 +152,9 @@ _fixtool() {
 	}
 	# XXX - this does not work if the filenames have spaces, etc.
 	for x in `cat $fix`
-	do	bk diffs $x | ${PAGER} 
-		echo $N "Fix ${x}? y)es q)uit n)o: "$NL
+	do	echo ""
+		bk diffs $x | ${PAGER} 
+		echo $N "Fix ${x}? y)es q)uit n)o: [no] "$NL
 		read ans 
 		DOIT=YES
 		case "X$ans" in

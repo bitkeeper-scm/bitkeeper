@@ -12,13 +12,6 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
-echo $N checking pathname w/o cset file .............................$NL
-rm -rf BitKeeper SCCS/s.ChangeSet
-echo "1234" > path
-bk ci $Q -i path
-P=`bk prs -h -d':DPN:' path`
-if [ X$P != X`$CWD`/path ]; then echo Failed; exit 1; fi
-echo OK
 echo $N checking pathname w/ cset file ..............................$NL
 no_logging project
 mkdir -p dir1/dir2
