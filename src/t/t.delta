@@ -182,10 +182,19 @@ REV=`bk prs -r+ -hd:I: A/data`
 if [ ${REV}X != "1.1"X ]; then echo failed; exit 1; fi
 echo OK
 echo $N Make sure delta -a changed file work ........................$NL
+echo fff > A/bar
+bk new $Q A/bar
+bk edit $Q A/bar
+echo fff >> A/bar
 echo "echo this is changed file" > A/data
-bk sfiles A | bk delta $Q -l -a -y"changed file" -
+bk sfiles A | bk delta $Q -l -a -y"changed file
+with newline" -
 REV=`bk prs -r+ -hd:I: A/data`
 if [ ${REV}X != "1.2"X ]; then echo failed $REV; exit 1; fi
+echo OK
+echo $N Make sure delta -y can have newlines ........................$NL
+bk prs -r+ A/data | grep 'with newline' > /dev/null
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 if [ "$PLATFORM" = "UNIX" ]
 then #-----------------------------------------------------------------

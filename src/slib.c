@@ -9830,8 +9830,7 @@ commentArg(delta *d, char *arg)
 	while (arg && *arg) {
 		tmp = arg;
 		while (*arg && *arg++ != '\n');
-		if (arg[-1] == '\n') arg[-1] = 0;
-		d->comments = addLine(d->comments, strdup(tmp));
+		d->comments = addLine(d->comments, strnonldup(tmp));
 	}
 	return (d);
 }
