@@ -5,7 +5,7 @@ BINS	= delta get admin diffs clean prs what sinfo sccssh sids \
 	  smoosh sccslog sfiles renumber lines rmdel takepatch \
 	  cset g2sccs range undos chksum rechksum \
 	  sccsmv sccsrm sccscat key2rev check fdiff adler32 gethost \
-	  afio
+	  sfio
 PRIVATE	= nextsecond mtime zone install.sh
 SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
 	  sccstool citool vitool fm fm3 bithelp mkindex
@@ -257,6 +257,8 @@ delta: delta.o rcs.o $(LIBS)
 	$(CC) $(CFLAGS) delta.o rcs.o $(LINK) -o delta
 diffs: diffs.o $(LIBS)
 	$(CC) $(CFLAGS) diffs.o $(LINK) -o diffs
+sfio: sfio.o $(LIBS)
+	$(CC) $(CFLAGS) sfio.o $(LINK) -o sfio
 adler32: adler32.o $(LIBS)
 	$(CC) $(CFLAGS) adler32.o $(LINK) -o adler32
 undos: undos.o
