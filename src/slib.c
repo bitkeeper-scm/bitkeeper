@@ -6599,6 +6599,11 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		    case RIGHT:
 			count++;
 			if ((type == GET_DIFFS) || (side == RIGHT)) {
+				if (buf[0] == CNTLA_ESCAPE) {
+					assert((encoding == E_ASCII)
+						|| (encoding == E_GZIP));
+					buf++; /* skip the escape character */
+				}
 				fnlputs(buf, lbuf);
 			}
 			break;
