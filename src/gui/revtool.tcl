@@ -224,6 +224,10 @@ proc diffParent {} \
 	return
 }
 
+#
+# Highlights the specified revision in the text body and moves scrolls
+# it into view. Called from startup.
+#
 proc highlightTextRev {rev file} \
 {
 	global w dev_null
@@ -313,8 +317,19 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 		# revision number (if in cset prs) or filename@revision 
 		# if in specific file prs output
 		catch {unset rev}
+		# Handle the case were we are looking at prs for the cset
 		regexp {^(.*)@([0-9]+\.[0-9.]+),.*} $line match fname rev
-		regexp {^\ \ ([0-9]+\.[0-9.]+)\ .*} $line match rev
+
+		# Handle the case where we are looking at prs for the
+		# files contained in a cset (i.e. when double clicking
+		# on a node in the cset graph).
+		# example:
+		# src/t/t.delta
+		#   1.38 01/07/18 10:24:46 awc@etp3.bitmover.com +3 -4
+		#   Make the test case for "bk delta -L" more portable
+		regexp {^\ \ ([0-9]+\.[0-9.]+)\ [0-9]+/[0-9]+/[0-9]+\ .*} \
+		    $line match rev
+
 		while {![info exists rev]} {
 			set curLine [expr $curLine - 1.0]
 			if {$curLine == "0.0"} {
@@ -326,7 +341,9 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 			}
 			set line [$win get $curLine "$curLine lineend"]
 			regexp {^(.*)@([0-9]+\.[0-9.]+),.*} $line m fname rev
-			regexp {^\ \ ([0-9]+\.[0-9.]+)\ .*} $line m rev
+			regexp \
+			    {^\ \ ([0-9]+\.[0-9.]+)\ [0-9]+/[0-9]+/[0-9]+\ .*} \
+			    $line m rev
 		}
 		$win see $curLine
 	    }
