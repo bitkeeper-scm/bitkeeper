@@ -15,7 +15,7 @@ for i in /usr/bin /usr/gnu/bin
 do	test -x $i/cvs && touch CVS
 done
 test -f CVS || {
-	echo "cvs not installed on this client: test skipped"
+	echo cvs not installed on this client ............................skipped
 	exit 0
 }
 

@@ -13,7 +13,7 @@
 
 # This should have everything in bk.c and bk.sh
 # Except stuff like editor/vi/etc that needs a tty
-cat > INTERFACES <<EOF
+cat > .INTERFACES <<EOF
 _adler32
 _applyall
 _cleanpath
@@ -258,6 +258,6 @@ export BK_EDITOR EDITOR
 while read i
 do
 	dotest $i || break
-done < INTERFACES
+done < .INTERFACES
 test -s XXX && exit 1
 exit 0

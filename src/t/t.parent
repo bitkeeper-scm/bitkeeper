@@ -78,22 +78,22 @@ echo OK
 
 echo $N Set several parents, make sure they are all recorded ........$NL
 PARENT=$PREFIX/project
-bk parent -sq $PARENT bozo@somewhere.com:/tmp bk://ibm.com/a/b/c || exit 1
+bk parent -sq $PARENT bozo@somewhere.com://tmp bk://ibm.com/a/b/c || exit 1
 bk parent -l > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
-bozo@somewhere.com:/tmp
+bozo@somewhere.com://tmp
 $PARENT
 EOF
 cmp -s GOT WANT || { echo failed; diff -ur GOT WANT; exit 1; }
 echo OK
 
 echo $N Set incoming parents, make sure they are all recorded .......$NL
-bk parent -isq bozo@somewhere.com:/tmp bk://ibm.com/a/b/c || exit 1
+bk parent -isq bozo@somewhere.com://tmp bk://ibm.com/a/b/c || exit 1
 bk parent -l > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
-bozo@somewhere.com:/tmp
+bozo@somewhere.com://tmp
 EOF
 cmp -s GOT WANT || { echo failed; diff -ur GOT WANT; exit 1; }
 bk parent -ol > GOT
@@ -104,11 +104,11 @@ cmp -s GOT WANT || { echo failed; diff -ur GOT WANT; exit 1; }
 echo OK
 
 echo $N Set outgoing parents, make sure they are all recorded .......$NL
-bk parent -osq bozo@somewhere.com:/tmp bk://ibm.com/a/b/c || exit 1
+bk parent -osq bozo@somewhere.com://tmp bk://ibm.com/a/b/c || exit 1
 bk parent -ol > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
-bozo@somewhere.com:/tmp
+bozo@somewhere.com://tmp
 EOF
 cmp -s GOT WANT || { echo failed; diff -ur GOT WANT; exit 1; }
 bk parent -il > GOT
@@ -126,11 +126,11 @@ echo OK
 echo $N Add several parents, make sure they are all recorded ........$NL
 bk parent -qr
 bk parent -q $HERE/project || exit 1
-bk parent -aq bozo@somewhere.com:/tmp bk://ibm.com/a/b/c || exit 1
+bk parent -aq bozo@somewhere.com://tmp bk://ibm.com/a/b/c || exit 1
 bk parent -l > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
-bozo@somewhere.com:/tmp
+bozo@somewhere.com://tmp
 $PARENT
 EOF
 cmp -s GOT WANT || {
@@ -150,7 +150,7 @@ bk parent -l > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
 bk://oneway.com/incoming
-bozo@somewhere.com:/tmp
+bozo@somewhere.com://tmp
 $PARENT
 EOF
 cmp -s GOT WANT || {
@@ -167,7 +167,7 @@ cmp -s GOT WANT || {
 bk parent -ol > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
-bozo@somewhere.com:/tmp
+bozo@somewhere.com://tmp
 $PARENT
 EOF
 cmp -s GOT WANT || {
@@ -188,7 +188,7 @@ cat > WANT <<EOF
 bk://ibm.com/a/b/c
 bk://oneway.com/incoming
 bk://oneway.com/outgoing
-bozo@somewhere.com:/tmp
+bozo@somewhere.com://tmp
 $PARENT
 EOF
 cmp -s GOT WANT || {
@@ -200,7 +200,7 @@ bk parent -il > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
 bk://oneway.com/incoming
-bozo@somewhere.com:/tmp
+bozo@somewhere.com://tmp
 $PARENT
 EOF
 cmp -s GOT WANT || {
@@ -212,7 +212,7 @@ bk parent -ol > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
 bk://oneway.com/outgoing
-bozo@somewhere.com:/tmp
+bozo@somewhere.com://tmp
 $PARENT
 EOF
 cmp -s GOT WANT || {
@@ -228,7 +228,7 @@ cat > WANT <<EOF
 Pull parent: bk://oneway.com/incoming
 Push parent: bk://oneway.com/outgoing
 Push/pull parent: bk://ibm.com/a/b/c
-Push/pull parent: bozo@somewhere.com:/tmp
+Push/pull parent: bozo@somewhere.com://tmp
 Push/pull parent: $PARENT
 EOF
 cmp -s GOT WANT || {
@@ -240,7 +240,7 @@ bk parent -i > GOT
 cat > WANT <<EOF
 Pull parent: bk://oneway.com/incoming
 Push/pull parent: bk://ibm.com/a/b/c
-Push/pull parent: bozo@somewhere.com:/tmp
+Push/pull parent: bozo@somewhere.com://tmp
 Push/pull parent: $PARENT
 EOF
 cmp -s GOT WANT || {
@@ -252,7 +252,7 @@ bk parent -o > GOT
 cat > WANT <<EOF
 Push parent: bk://oneway.com/outgoing
 Push/pull parent: bk://ibm.com/a/b/c
-Push/pull parent: bozo@somewhere.com:/tmp
+Push/pull parent: bozo@somewhere.com://tmp
 Push/pull parent: $PARENT
 EOF
 cmp -s GOT WANT || {
@@ -269,7 +269,7 @@ cat > WANT <<EOF
 bk://ibm.com/a/b/c
 bk://oneway.com/incoming
 bk://oneway.com/outgoing
-bozo@somewhere.com:/tmp
+bozo@somewhere.com://tmp
 EOF
 cmp -s GOT WANT || {
 	echo Failed listing of both directions
@@ -280,7 +280,7 @@ bk parent -il > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
 bk://oneway.com/incoming
-bozo@somewhere.com:/tmp
+bozo@somewhere.com://tmp
 EOF
 cmp -s GOT WANT || {
 	echo Failed listing of incoming
@@ -291,7 +291,7 @@ bk parent -ol > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
 bk://oneway.com/outgoing
-bozo@somewhere.com:/tmp
+bozo@somewhere.com://tmp
 EOF
 cmp -s GOT WANT || {
 	echo Failed listing of outgoing
@@ -307,7 +307,7 @@ bk parent -l > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
 bk://oneway.com/outgoing
-bozo@somewhere.com:/tmp
+bozo@somewhere.com://tmp
 EOF
 cmp -s GOT WANT || {
 	echo Failed listing of both directions
@@ -317,7 +317,7 @@ cmp -s GOT WANT || {
 bk parent -il > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
-bozo@somewhere.com:/tmp
+bozo@somewhere.com://tmp
 EOF
 cmp -s GOT WANT || {
 	echo Failed listing of incoming
@@ -328,7 +328,7 @@ bk parent -ol > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
 bk://oneway.com/outgoing
-bozo@somewhere.com:/tmp
+bozo@somewhere.com://tmp
 EOF
 cmp -s GOT WANT || {
 	echo Failed listing of outgoing
@@ -343,7 +343,7 @@ bk parent -rq bk://oneway.com/outgoing || exit 1
 bk parent -l > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
-bozo@somewhere.com:/tmp
+bozo@somewhere.com://tmp
 EOF
 cmp -s GOT WANT || {
 	echo Failed listing of both directions
@@ -353,7 +353,7 @@ cmp -s GOT WANT || {
 bk parent -il > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
-bozo@somewhere.com:/tmp
+bozo@somewhere.com://tmp
 EOF
 cmp -s GOT WANT || {
 	echo Failed listing of incoming
@@ -363,7 +363,7 @@ cmp -s GOT WANT || {
 bk parent -ol > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
-bozo@somewhere.com:/tmp
+bozo@somewhere.com://tmp
 EOF
 cmp -s GOT WANT || {
 	echo Failed listing of outgoing
@@ -378,7 +378,7 @@ bk parent -roq bk://ibm.com/a/b/c || exit 1
 bk parent -l > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
-bozo@somewhere.com:/tmp
+bozo@somewhere.com://tmp
 EOF
 cmp -s GOT WANT || {
 	echo Failed listing of both directions
@@ -388,7 +388,7 @@ cmp -s GOT WANT || {
 bk parent -il > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
-bozo@somewhere.com:/tmp
+bozo@somewhere.com://tmp
 EOF
 cmp -s GOT WANT || {
 	echo Failed listing of incoming
@@ -397,7 +397,7 @@ cmp -s GOT WANT || {
 }
 bk parent -ol > GOT
 cat > WANT <<EOF
-bozo@somewhere.com:/tmp
+bozo@somewhere.com://tmp
 EOF
 cmp -s GOT WANT || {
 	echo Failed listing of outgoing
@@ -408,11 +408,11 @@ test -f BitKeeper/log/parent && exit 1
 echo OK
 
 echo $N Convert parent to outgoing, check recording and listing .....$NL
-bk parent -riq bozo@somewhere.com:/tmp || exit 1
+bk parent -riq bozo@somewhere.com://tmp || exit 1
 bk parent -l > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
-bozo@somewhere.com:/tmp
+bozo@somewhere.com://tmp
 EOF
 cmp -s GOT WANT || {
 	echo Failed listing of both directions
@@ -430,7 +430,7 @@ cmp -s GOT WANT || {
 }
 bk parent -ol > GOT
 cat > WANT <<EOF
-bozo@somewhere.com:/tmp
+bozo@somewhere.com://tmp
 EOF
 cmp -s GOT WANT || {
 	echo Failed listing of outgoing
@@ -444,7 +444,7 @@ echo $N Convert to single outgoing, check recording and listing .....$NL
 bk parent -rq bk://ibm.com/a/b/c || exit 1
 bk parent -l > GOT
 cat > WANT <<EOF
-bozo@somewhere.com:/tmp
+bozo@somewhere.com://tmp
 EOF
 cmp -s GOT WANT || {
 	echo Failed listing of both directions
@@ -462,7 +462,7 @@ cmp -s GOT WANT || {
 }
 bk parent -ol > GOT
 cat > WANT <<EOF
-bozo@somewhere.com:/tmp
+bozo@somewhere.com://tmp
 EOF
 cmp -s GOT WANT || {
 	echo Failed listing of outgoing
@@ -473,10 +473,10 @@ test -f BitKeeper/log/parent && exit 1
 echo OK
 
 echo $N Convert to incoming to bidirectional, check .................$NL
-bk parent -aq bozo@somewhere.com:/tmp || exit 1
+bk parent -aq bozo@somewhere.com://tmp || exit 1
 bk parent -l > GOT
 cat > WANT <<EOF
-bozo@somewhere.com:/tmp
+bozo@somewhere.com://tmp
 EOF
 cmp -s GOT WANT || {
 	echo Failed listing of both directions
@@ -485,7 +485,7 @@ cmp -s GOT WANT || {
 }
 bk parent -il > GOT
 cat > WANT <<EOF
-bozo@somewhere.com:/tmp
+bozo@somewhere.com://tmp
 EOF
 cmp -s GOT WANT || {
 	echo Failed listing of incoming
@@ -494,7 +494,7 @@ cmp -s GOT WANT || {
 }
 bk parent -ol > GOT
 cat > WANT <<EOF
-bozo@somewhere.com:/tmp
+bozo@somewhere.com://tmp
 EOF
 cmp -s GOT WANT || {
 	echo Failed listing of outgoing
