@@ -13,7 +13,7 @@
 # %K%
 
 echo $N Test import plain file ......................................$NL
-HERE=`${CWD}`
+HERE=`pwd`
 ${ECHO} "logging: none" > $HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
 mkdir -p import_dir/src
