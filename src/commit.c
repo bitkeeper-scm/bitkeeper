@@ -259,7 +259,7 @@ logChangeSet(int l, char *rev, int quiet)
 	char 	*av[] = {
 		"bk",
 		"log",
-		"http://www.bitkeeper.com/cgi-bin/logit",
+		"http://207.181.251.165/cgi-bin/logit",
 		to,
 		subject, 
 		commit_log,
@@ -412,7 +412,7 @@ sendConfig(char *to, char *rev)
 	char 	*av[] = {
 		"bk",
 		"log",
-		"http://www.bitkeeper.com/cgi-bin/logit",
+		"http://207.181.251.165/cgi-bin/logit",
 		to,
 		subject, 
 		config_log,
