@@ -292,7 +292,7 @@ merge(char *gfile)
 		system(buf);
 		sprintf(buf, "sort -u < %s > %s", TMP, gfile);
 		system(buf);
-		sprintf(buf, "bk ci -qPyauto-union %s", gfile);
+		sprintf(buf, "bk ci -qdPyauto-union %s", gfile);
 		system(buf);
 		unlink(rfile);
 		t[1] = 'm';

@@ -906,6 +906,7 @@ int	bk_sfiles(int ac, char **av);
 int	outc(char c);
 MDBM	*loadConfig(char *root, int convert);
 int	ascii(char *file);
+char	*sccs_rmName(sccs *s, int useCommonDir);
 int	sccs_rm(char *name, char *del_name, int useCommonDir);
 int	mkconfig(FILE *out);
 int	config2logging(char *root);

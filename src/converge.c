@@ -136,7 +136,6 @@ resync_list(char *gfile)
 	MDBM	*pvals, *vals;
 	kvpair	kv;
 	char	cmd[MAXPATH*2];
-	char	newpath[MAXPATH];
 	char	*base, *r, *t;
 	int	i;
 	sccs	*s;
@@ -157,37 +156,25 @@ resync_list(char *gfile)
 			mdbm_store_str(vals, kv.key.dptr, kv.val.dptr, 0);
 			continue;
 		}
-		/*
-		 * IMPORTANT: newpath should matchs the pathname
-		 * generated in sccsrm.c
-		 */
+
 		sprintf(cmd, "%s/%s", RESYNC2ROOT, kv.val.dptr);
 		s = sccs_init(cmd, 0, 0); assert(s && s->tree);
-		d = sccs_ino(s);
-		t = sccs_utctime(d); 
-		r = d->random ?  d->random : "";
-		base = basenm(gfile);
-		sprintf(newpath,
-			"BitKeeper/deleted/SCCS/s..del-%s~%s~%s", base, r, t);
-		i = 0;
-		while (exists(newpath)) {
-			sprintf(newpath,
-			"	BitKeeper/deleted/SCCS/s..del-%s~%s~%s~%d",
-				base, r, t, i);
-		}
+		/* reset the proj->root to RESYNC root */
+		free(s->proj->root);
+		s->proj->root = strdup(".");
+		t = sccs_rmName(s, 1);
 		sccs_free(s);
+
 		mkdirf(kv.val.dptr);
-		sprintf(cmd, "cp %s/%s %s", RESYNC2ROOT, kv.val.dptr, newpath);
+		sprintf(cmd, "cp %s/%s %s", RESYNC2ROOT, kv.val.dptr, t);
 		sys(cmd);
-		sprintf(cmd, "bk get -qe %s", newpath);
+		sprintf(cmd, "bk get -qe %s", t);
 		sys(cmd);
 
-		s = sccs_init(newpath, SILENT, 0);
-		comments_save("Auto converge rename");
-		sccs_delta(s, SILENT|DELTA_NOPENDING|DELTA_DONTASK, 0, 0, 0, 0);
-		sccs_free(s);
-		comments_done();
-		mdbm_store_str(vals, kv.key.dptr, newpath, 0);
+		sprintf(cmd, "bk delta -dqy'Auto converge rename' %s", t);
+		system(cmd);
+		mdbm_store_str(vals, kv.key.dptr, t, 0);
+		free(t);
 	}
 	mdbm_close(pvals);
 	return (vals);
