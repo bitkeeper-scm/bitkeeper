@@ -9,11 +9,6 @@ proc bk_init {} \
 	global file_start_stop file_stop line_rev bk_fs keytmp
 
 	# init for WIN32 env
-	if {[info exists env(BK_BIN)]} {
-		set bin	$env(BK_BIN)
-	} else {
-		set bin	"C:\\Program Files\\BitKeeper"
-	}
 	set sdiffw [list "diff" "-W" "1" "-y" "--" ]
 	set dev_null "nul"
 	# XXX wish shell change name with each release
@@ -21,8 +16,8 @@ proc bk_init {} \
 	# TODO: get the wish shell name from registry
 	set wish "wish83.exe"
 	set tmp_dir $env(TEMP)
-	set keytmp "$tmp_dir\\Bitkeeper"
-	set auto_path "$bin $auto_path"
+	# XXX keytmp should much findTmp() in finddir.c
+	set keytmp "$tmp_dir"
 	set file_rev {(.*)@([0-9].*)}
 	set file_start_stop {(.*)@(.*)\.\.(.*)}
 	set file_stop {(.*)@([0-9.]+$)}

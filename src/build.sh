@@ -1,6 +1,5 @@
 #!/bin/sh
 
-set -x
 CC=gcc
 LD=gcc
 MAKE=gmake
@@ -51,9 +50,10 @@ case `uname -s` in
 		WIN_UTIL="win_util"
 		LDFLAGS="-nologo -debug"
 		AR=`pwd`/win32/util/mklib
+		BINDIR="C:/BitKeeper"
 		export SYS CFLAGS CC_OUT LD_OUT LD AR RANLIB UWTLIB LDFLAGS
 		export CC_FAST CC_DEBUG CC_NOFRAME LINK_LIB
-		export BK BKMERGE MORE UWT_H WIN_UTIL
+		export BK BKMERGE MORE UWT_H WIN_UTIL BINDIR
 		;;
 esac
 $MAKE "CC=$CC" "LD=$LD" "XLIBS=$XLIBS" "$@"

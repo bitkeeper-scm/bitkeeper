@@ -448,7 +448,7 @@ status(int verbose, FILE *f)
 		sprintf(buf, "bk sfiles -C > %s", tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
-		for (i = 0;  fgets(buf, sizeof (buf), f); i++);
+		for (i = 0;  fgets(buf, sizeof (buf), f1); i++);
 		fclose(f1);
 		fprintf(f,
 		    "%6d files with checked in, but not committed, deltas.\n",
