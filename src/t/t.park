@@ -50,7 +50,7 @@ echo "This a comment for bar.c" > SCCS/c.bar.c
 cp SCCS/c.bar.c $HERE/c.ref
 cp foo.c $HERE/foo.sav
 cp bar.c $HERE/bar.sav
-bk park 2> /dev/null || exit 1
+bk park -y 2> /dev/null || exit 1
 NUM=`bk sfiles -c | wc -l`
 if [ $NUM -ne 0 ]; then echo failed; exit 1; fi;
 if [ -f SCCS/c.bar.c ]; then echo failed; exit 1; fi
@@ -65,7 +65,7 @@ cmp -s SCCS/c.bar.c $HERE/c.ref
 if [ $? -ne 0 ]; then echo failed 3; exit 1; fi
 echo OK
 echo $N Check basic park/unpark via stdin ...........................$NL
-bk park 2> /dev/null || exit 1
+bk park -y"hi mom" 2> /dev/null || exit 1
 mv $HERE/project/BitKeeper/tmp/parkfile_1.sfio $HERE/parkfile$$
 bk unpark - < $HERE/parkfile$$ 2>/dev/null 1>&2 || exit 1
 cmp -s foo.c $HERE/foo.sav
@@ -76,7 +76,11 @@ echo $N Check basic park/unpark with reject file ....................$NL
 bk unedit bar.c
 bk edit $Q foo.c
 echo foo-new2 > foo.c
-bk park 2> /dev/null
+bk park <<EOF 2> /dev/null
+hi mom
+hi dad
+.
+EOF
 NUM=`bk sfiles -c | wc -l`
 if [ $NUM -ne 0 ]; then echo failed; exit 1; fi;
 bk edit $Q foo.c
@@ -107,7 +111,7 @@ bk undos > move_me <<EOF
 EOF
 bk new $Q -l move_me
 echo "444" >> move_me
-bk park 2> /dev/null
+bk park -y 2> /dev/null
 bk edit $Q move_me
 cp $HERE/project/BitKeeper/etc/SCCS/x.id_cache x.id_cache
 bk mv move_me new_me
@@ -129,7 +133,7 @@ bk new $Q -lb binary
 cp $binary_data2 binary
 echo "I am a extra file" > extra
 cp extra $HERE/extra.ref
-bk park -a 2> /dev/null
+bk park -y -a 2> /dev/null
 if [ -f extra ]; then echo failed 0; exit 1; fi
 bk edit $Q binary
 cp $binary_data3 binary
@@ -148,7 +152,7 @@ if [ ! -f extra ]; then echo failed; exit 1; fi
 cmp -s extra $HERE/extra.ref || { echo failed 3; exit 1; }
 echo OK
 echo $N Should failed unpark binary changed delta ...................$NL
-bk park -a 2> /dev/null
+bk park -y -a 2> /dev/null
 bk edit $Q binary_moved
 cp $binary_data3 binary_moved
 bk delta  $Q -uy"new" binary_moved
@@ -173,7 +177,7 @@ bk edit $Q foo.c
 echo "666" >> foo.c
 cp bar.c bar.ref
 cp foo.c foo.ref
-bk park 2> /dev/null
+bk park -y 2> /dev/null
 if [ -f bar.c ]; then echo failed; exit 1; fi
 if [ -f foo.c ]; then echo failed; exit 1; fi
 bk unpark 2> /dev/null 1>&2
@@ -198,14 +202,14 @@ bk delta $Q -i sym
 bk edit $Q sym
 rm -f sym
 ln -s foo.c sym
-bk park 2> park.out 1>&2
+bk park -y 2> park.out 1>&2
 grep -q "sym.*not parked" park.out || { echo failed; exit 1; }
 if [ ! -e sym ]; then echo failed; exit 1; fi
 bk unpark 2> /dev/null 1>&2
 cmp -s new_me new_me.ref || { echo failed; exit 1; }
 echo OK
 echo $N Make sure park -a handle symlink ............................$NL
-bk park -a 2> /dev/null
+bk park -y -a 2> /dev/null
 if [ -L "sym" ]; then echo failed; exit 1; fi
 bk unpark 2> /dev/null 1>&2
 if [ ! -L "sym" ]; then echo failed; exit 1; fi
@@ -215,7 +219,7 @@ echo $N Make sure park -a handle symlink to Text case  ...............$NL
 rm -f sym
 echo "I AM CHANGING FROM A SYMLINK TO A TEXT FILE" > sym
 cp sym sym.ref
-bk park -a 2> /dev/null
+bk park -y -a 2> /dev/null
 if [ -e sym ]; then echo failed; exit 1; fi
 bk unpark 2> /dev/null 1>&2
 cmp -s sym sym.ref || { echo failed; exit 1; }
@@ -223,7 +227,7 @@ echo OK
 echo $N Make sure park -a handle symlink as extra file ..............$NL
 bk unedit $Q sym
 ln -s foo.c extra_sym
-bk park -a 2> /dev/null
+bk park -y -a 2> /dev/null
 if [ -e extra_sym ]; then echo failed; exit 1; fi
 bk unpark 2> /dev/null 1>&2
 if [ ! -L "extra_sym" ]; then echo failed; exit 1; fi
