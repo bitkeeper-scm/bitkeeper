@@ -94,8 +94,8 @@ err:		if (s) sccs_free(s);
 		if (sfio_list[0]) unlink(sfio_list);
 		if (changedfile[0]) unlink(changedfile);
 		if (parkedfile[0]) unlink(parkedfile);
-		freeLines(comments);
-		freeLines(ccomments);
+		freeLines(comments, free);
+		freeLines(ccomments, free);
 		return (1);
 	}
 	if (chdir(buf)) {
@@ -378,8 +378,8 @@ err:		if (s) sccs_free(s);
 done:	unlink(sfio_list);
 	unlink(changedfile);
 	unlink(parkedfile);
-	freeLines(comments);
-	freeLines(ccomments);
+	freeLines(comments, free);
+	freeLines(ccomments, free);
 	return (0);
 }
 
