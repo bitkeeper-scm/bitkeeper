@@ -1114,6 +1114,7 @@ proc diffs {diffs l} \
 
 proc done {} \
 {
+	saveHistory
 	exit
 }
 
@@ -1269,13 +1270,16 @@ proc widgets {} \
 	set w(graph) .p.top.c
 	set stacked 1
 
-	if {$tcl_platform(platform) == "windows"} {
-		set gc(py) 0; set gc(px) 1; set gc(bw) 2
-	} else {
-		set gc(py) 1; set gc(px) 4; set gc(bw) 2
-	}
 	getConfig "hist"
 	option add *background $gc(BG)
+
+	if {$tcl_platform(platform) == "windows"} {
+		set gc(py) 0; set gc(px) 1; set gc(bw) 2
+		set gc(histfile) [file join $gc(bkdir) "_bkhistory"]
+	} else {
+		set gc(py) 1; set gc(px) 4; set gc(bw) 2
+		set gc(histfile) [file join $gc(bkdir) ".bkhistory"]
+	}
 
 	set Opts(line_time)  "-R-$gc(hist.showHistory)"
 	if {"$gc(hist.geometry)" != ""} {
@@ -1353,19 +1357,30 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		-bg $gc(hist.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "Diff tool" -command "diff2 1" -state disabled
-	    button .menus.file -font $gc(hist.buttonFont) -relief raised \
+	    #button .menus.file -font $gc(hist.buttonFont) -relief raised \
+		#-bg $gc(hist.buttonColor) \
+		#-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
+		#-text "Select File" -command { selectFile }
+	    menubutton .menus.fmb -font $gc(hist.buttonFont) -relief raised \
 		-bg $gc(hist.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "Select File" -command { selectFile }
+		-text "Select File" -width 12 -state normal \
+		-menu .menus.fmb.menu
+		set gc(fmenu) [menu .menus.fmb.menu]
+		$gc(fmenu) add command -label "Get new file" \
+		    -command { selectFile }
+		$gc(fmenu) add separator
+		$gc(fmenu) add command -label "$fname" \
+		    -command "histtool $fname -$gc(hist.showHistory)"
+		getHistory
 	    if {"$fname" == "ChangeSet"} {
 		    .menus.cset configure -command csettool
 		    pack .menus.quit .menus.help .menus.mb .menus.cset \
-			.menus.file -side left -fill y
+			.menus.fmb -side left -fill y
 	    } else {
 		    pack .menus.quit .menus.help .menus.difftool \
-			.menus.mb .menus.cset .menus.file -side left -fill y
+			.menus.mb .menus.cset .menus.fmb -side left -fill y
 	    }
-
 	frame .p
 	    frame .p.top -borderwidth 2 -relief sunken
 		scrollbar .p.top.xscroll -wid $gc(hist.scrollWidth) \
@@ -1460,7 +1475,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	bind $w(graph) <d>		"diffParent"
 	bind $w(graph) <Button-2>	{history; break}
 	bind $w(graph) <Double-2>	{history tags; break}
-	bind $w(graph) $gc(hist.quit)	"exit"
+	bind $w(graph) $gc(hist.quit)	"done"
 	bind $w(graph) <s>		"sfile"
 	bind $w(graph) <Prior>		"$w(aptext) yview scroll -1 pages"
 	bind $w(graph) <Next>		"$w(aptext) yview scroll  1 pages"
@@ -1544,23 +1559,73 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	wm deiconify .
 	focus $w(graph)
 	. configure -background $gc(BG)
-}
+} ;# proc widgets
 
 proc selectFile {} \
 {
 	global gc fname
 
 	set file [tk_getOpenFile]
+	if {$file == ""} {return}
 	catch {set f [open "| bk sfiles -g \"$file\"" r]} err
 	if { ([gets $f fname] <= 0)} {
 		displayMessage "$file is not under revision control.\n
 Please select a revision controled file"
 	} else {
+		#XXX: add item to the list of known files
 		#displayMessage "file=($file) err=($err)"
+		$gc(fmenu) add command -label "$fname" \
+		    -command "histtool $fname -$gc(hist.showHistory)" 
 		histtool $fname "-$gc(hist.showHistory)"
 	}
 	close $f
-} ;# proc widgets
+}
+
+# XXX: Should only save the most recent (10?) files that were looked at
+# should be a config option
+proc saveHistory {} \
+{
+	global gc
+
+	set num [$gc(fmenu) index end]
+	set h [open "$gc(histfile)" w]
+	if {[catch {open $gc(histfile) w} fid]} {
+		puts stderr "Cannot open $bkrc"
+	} else {
+		# Start at 3 so we skip over the "Add new" and sep entries
+		set start 3
+		set saved [expr $gc(hist.savehistory) + 2]
+		if {$num > $saved} {
+			set start [expr $num - $gc(hist.savehistory)]
+		}
+		for {set i $start} {$i <= $num} {incr i 1} {
+			set index $i
+			set fname [$gc(fmenu) entrycget $index -label]
+			#puts [$gc(fmenu) entryconfigure $index]
+			#puts "i=($i) label=($fname)"
+			puts $fid "$fname"
+		}
+		catch {close $h}
+	}
+	return
+}
+
+proc getHistory {} \
+{
+	global gc
+
+	if {![file exists $gc(histfile)]} {
+		puts "no history file exists"
+		return
+	}
+	set h [open "$gc(histfile)"]
+	while {[gets $h file] >= 0} {
+		if {$file == "ChangeSet"} {continue}
+		$gc(fmenu) add command -label "$file" \
+		    -command "histtool $file -$gc(hist.showHistory)" 
+	}
+	catch {close $h}
+}
 
 # Arguments:
 #   all - boolean (optional) : If set to 1, displays all csets
@@ -1568,10 +1633,12 @@ Please select a revision controled file"
 # This variable is a placeholder -- I expect that we will put an
 # option/menu in that will allow the user to select last month, week, etc.
 #
-proc histtool {fname R} \
+proc histtool {lfname R} \
 {
 	global	bad revX revY search dev_null rev2date serial2rev w
-	global  srev Opts gc file rev2rev_name cdim firstnode
+	global  srev Opts gc file rev2rev_name cdim firstnode fname
+
+	set fname $lfname
 
 	busy 1
 	$w(graph) delete all
@@ -1583,9 +1650,9 @@ proc histtool {fname R} \
 	if {[info exists firstnode]} { unset firstnode }
 
 	set bad 0
-	set file [exec bk sfiles -g $fname 2>$dev_null]
+	set file [exec bk sfiles -g $lfname 2>$dev_null]
 	if {"$file" == ""} {
-		displayMessage "No such file \"$fname\" rev=($R)" 0
+		displayMessage "No such file \"$lfname\" rev=($R)" 0
 	}
 	if {[catch {exec bk root $file} proot]} {
 		wm title . "histtool: $file $R"
@@ -1610,13 +1677,13 @@ proc histtool {fname R} \
 		}
 	} else {
 		set ago ""
-		catch {set ago [exec bk prs -hr+ -d:AGE: $fname]}
+		catch {set ago [exec bk prs -hr+ -d:AGE: $lfname]}
 		# XXX: Highlight this in a different color? Yellow?
 		$w(aptext) configure -state normal; $w(aptext) delete 1.0 end
 		$w(aptext) insert end  "Error: No data within the given time\
 period; please choose a longer amount of time.\n
-The file $fname was last modified ($ago) ago."
-		histtool $fname +
+The file $lfname was last modified ($ago) ago."
+		histtool $lfname +
 	}
 	set search(prompt) "Welcome"
 	focus $w(graph)

@@ -105,12 +105,14 @@ proc file_history {} \
 	catch {exec bk -R histtool -a $stop "$file" &}
 }
 
-proc dotFile {} \
+# Takes a line number as an arg when creating continuations for the file menu
+proc dotFile {{line {}}} \
 {
 	global	lastFile fileCount Files tmp_dir file_start_stop file_stop
 	global	RealFiles
 
 	busy 1
+	if {$line != ""} { set lastFile $line }
 	if {$lastFile == 1} {
 		.menu.prevFile configure -state disabled
 	} else {
@@ -196,7 +198,7 @@ proc dotFile {} \
 proc getFiles {revs} \
 {
 	global	fileCount lastFile Files line2File file_start_stop
-	global  RealFiles
+	global  RealFiles fmenu
 
 	busy 1
 
@@ -225,6 +227,8 @@ proc getFiles {revs} \
 			set RealFiles($fileCount) "  $name@$rev"
 			set buf "$oname@$rev"
 			.l.filelist.t insert end "  $buf\n"
+			$fmenu add command -label "$buf" \
+			    -command  "dotFile $fileCount"
 		}
 		catch { close $c }
 	}
@@ -281,7 +285,7 @@ proc adjustHeight {diff list} \
 
 proc widgets {} \
 {
-	global	scroll gc wish tcl_platform d search
+	global	scroll gc wish tcl_platform d search fmenu
 
 	getConfig "cset"
 	option add *background $gc(BG)
@@ -419,11 +423,19 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	    button .menu.prevFile -font $gc(cset.buttonFont) \
 		-bg $gc(cset.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "<< File" -command prevFile
+		-image prevImage -command prevFile
+	    menubutton .menu.fmb -font $gc(cset.buttonFont) -relief raised \
+		-bg $gc(cset.buttonColor) \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
+		-text "File" -width 8 -state normal \
+		-menu .menu.fmb.menu
+		set fmenu [menu .menu.fmb.menu]
+		#$m add command -label "xxx: some file"
+		#$m add command -label "xxx: some file"
 	    button .menu.nextFile -font $gc(cset.buttonFont) \
 		-bg $gc(cset.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text ">> File" -command nextFile
+		-image nextImage -command nextFile
 	    button .menu.prev -font $gc(cset.buttonFont) \
 		-bg $gc(cset.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
@@ -466,6 +478,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	    pack .menu.quit -side left
 	    pack .menu.help -side left
 	    pack .menu.prevFile -side left -fill y
+	    pack .menu.fmb -side left -fill y
 	    pack .menu.nextFile -side left -fill y
 	    pack .menu.prev -side left -fill y
 	    pack .menu.dot -side left
@@ -495,7 +508,6 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	grid columnconfigure .diffs 0 -weight 1
 	grid columnconfigure .diffs.left 0 -weight 1
 	grid columnconfigure .diffs.right 1 -weight 1
-
 
 	bind .diffs <Configure> { computeHeight }
 	$search(widget) tag configure search \
