@@ -598,7 +598,7 @@ proc dateSeparate { } { \
 proc addline {y xspace ht l} \
 {
 	global	bad wid revX revY gc merges parent line_rev screen
-	global  stacked rev2rev_name w firstnode
+	global  stacked rev2rev_name w firstnode firstrev
 
 	set last -1
 	set ly [expr {$y - [expr {$ht / 2}]}]
@@ -646,7 +646,10 @@ proc addline {y xspace ht l} \
 			    -anchor sw -text "$txt" -justify center \
 			    -font $gc(rev.fixedBoldFont) -tags "$rev revtext"]
 			#ballon_setup $trev
-			if {![info exists firstnode]} { set firstnode $id }
+			if {![info exists firstnode]} { 
+				set firstnode $id 
+				set firstrev $trev
+			}
 			if {$m == 1} { 
 				highlight $id "merge" $rev
 			} else {
@@ -1996,7 +1999,7 @@ proc revtool {lfname {R {}}} \
 {
 	global	bad revX revY search dev_null rev2date serial2rev w
 	global  Opts gc file rev2rev_name cdim firstnode fname
-	global  merge diffpair
+	global  merge diffpair firstrev
 
 	# Set global so that other procs know what file we should be
 	# working on. Need this when menubutton is selected
@@ -2012,6 +2015,7 @@ proc revtool {lfname {R {}}} \
 	if {[info exists serial2rev]} { unset serial2rev }
 	if {[info exists rev2rev_name]} { unset rev2rev_name }
 	if {[info exists firstnode]} { unset firstnode }
+	if {[info exists firstrev]} { unset firstrev}
 
 	set bad 0
 	set file [exec bk sfiles -g $lfname 2>$dev_null]
@@ -2053,7 +2057,7 @@ select a new file to view"
 		dateSeparate
 		setScrollRegion
 		set first [$w(graph) gettags $firstnode]
-		history "-r$R"
+		history "-r$firstrev.."
 	} else {
 		set ago ""
 		catch {set ago [exec bk prs -hr+ -d:AGE: $lfname]}
