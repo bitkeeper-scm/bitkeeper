@@ -269,6 +269,13 @@ that will work too, it just gets another patch.\n");
 			goto pass3;
 		}
 
+		if (opts->noconflicts) {
+			fprintf(stderr,
+			    "Did not resolve %d renames, abort\n", n);
+			freeStuff(opts);
+			exit(1);
+		}
+
 		/*
 		 * Now do the same thing, calling the resolver.
 		 */
