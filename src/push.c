@@ -247,7 +247,7 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 	if (get_ok(r, buf, opts.verbose)) goto err;
 
 	/*
-	 * What we want is: "remote => bk _prunekey => rev_list"
+	 * What we want is: "remote => bk _prunekey => keys"
 	 */
 	bktmp_local(rev_list, "pushrev");
 	fd = open(rev_list, O_CREAT|O_WRONLY, 0644);

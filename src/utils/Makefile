@@ -5,7 +5,7 @@
 	bk get -q $@
 
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
-ifeq "$(OSTYPE)" "cygwin"
+ifeq "$(OSTYPE)" "msys"
         SYS=win32
 	EXE=.exe
 	EXT=exe
@@ -31,9 +31,10 @@ IMAGE:= $(shell bk get -qS gnu-os os; echo $(VERS)-`./os`.$(EXT) )
 all image: $(BINDIR)/bk$(EXE) sfioball _data.o $(IMAGE) 
 	$(STRIP) $(IMAGE)
 
-sfioball: installtool $(BINDIR)
+sfioball: installtool registry.tcl $(BINDIR)
 	@echo Creating sfioball from BK in $(BINDIR) ...
 	cp installtool $(BINDIR)/gui/lib/installtool
+	cp registry.tcl $(BINDIR)/gui/lib/registry.tcl
 	@(cd $(BINDIR)/.. && find `basename $(BINDIR)` -type f | \
 	    bk sfio -mqo) > sfioball
 

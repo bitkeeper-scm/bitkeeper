@@ -253,3 +253,13 @@ platform(void)
 #endif
 	return(p);
 }
+
+int
+win32()
+{
+#ifdef	WIN32
+	return (1);
+#else
+	return (0);
+#endif
+}

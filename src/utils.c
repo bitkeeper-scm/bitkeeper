@@ -414,11 +414,14 @@ err:		system("bk help -s prompt");
 		bktmp(msgtmp, "prompt");
 		file = msgtmp;
 		cmd = aprintf("%s > %s", prog, file);
+
+		/* For caching of the real pager */
+		(void)pager();
 		putenv("PAGER=cat");
 		if (system(cmd)) goto err;
 		free(cmd);
 	}
-	if ((gui || getenv("BK_GUI")) && !nogui) {
+	if ((gui || gui_haveDisplay()) && !nogui) {
 		char	*nav[19];
 
 		nav[i=0] = "bk";
@@ -1348,6 +1351,8 @@ myisatty(int fd)
 	int	ret;
 	char	*p;
 	char	buf[16];
+
+	if (getenv("_BK_IN_BKD") && !getenv("_BK_BKD_IS_LOCAL")) return (0);
 
 	sprintf(buf, "BK_ISATTY%d", fd);
 	if (p = getenv(buf)) {

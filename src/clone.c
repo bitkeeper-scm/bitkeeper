@@ -677,7 +677,7 @@ out_trigger(char *status, char *rev, char *when)
 	} else {
 		putenv("BK_CSETS=1.0..");
 	}
-	putenv("BK_LCLONE=YES");
+	putenv("_BK_LCLONE=YES");
 	return (trigger("remote clone", when));
 }
 
@@ -700,7 +700,7 @@ in_trigger(char *status, char *rev, char *root, char *repoid)
 		putenv("BK_CSETS=1.0..");
 	}
 	if (repoid) safe_putenv("BKD_REPO_ID=%s", repoid);
-	putenv("BK_LCLONE=YES");
+	putenv("_BK_LCLONE=YES");
 	return (trigger("clone", "post"));
 }
 

@@ -534,3 +534,51 @@ echo OK
 #bk delta $Q -yopush_cset 'F!O#O$ B%A^R&RR(R)RR'
 #bk commit $Q -yopush_cset -STAG2
 #echo OK
+
+test -x /usr/bin/ruby && {
+echo $N Test ruby script to archive tagged csets ....................$NL
+cd $HERE
+bk clone $Q -r1.2 project tagexport || exit 1
+mkdir tagexport/BitKeeper/triggers
+cat > tagexport/BitKeeper/triggers/post-incoming.release <<'EOF'
+#!/usr/bin/ruby -w
+
+exit 0 if ENV['BK_EVENT'] != "incoming push"
+exit 0 if ENV['BK_STATUS'] != "OK"
+
+tags = {}
+IO.popen("bk changes -d'$if(:TAG:){$each(:TAG:){(:TAG:)\n}}' - " +
+	 "< #{ENV['BK_CSETLIST']}") {|f|
+	f.each {|tag| tags[tag.chomp] = 1 }
+}
+exit 0 if tags.empty?
+
+RELEASEDIR="../release"
+
+tags.each_key {|tag|
+	puts "Making release archive for #{tag}"
+	base = File.expand_path("#{RELEASEDIR}/prog-#{tag}")
+	file = base + ".tar.gz"
+	File.unlink(file) if File.exists? file
+
+	system("bk export -r#{tag} -tplain . #{base}") or raise
+	system("tar -C#{base} -czf #{file} .") or raise
+	system("rm -rf #{base}") or raise
+}
+exit 0
+EOF
+chmod +x tagexport/BitKeeper/triggers/post-incoming.release || exit 1
+cd project
+echo "I love ruby" > language
+bk new $Q language
+bk commit $Q -yruby || exit 1
+bk tag $Q ruby
+mkdir ../release
+bk push $Q ../tagexport 2> OUT || exit 1
+test -f ../release/prog-ruby.tar.gz || exit 1
+bk tag $Q newstuff
+bk push $Q ../tagexport 2> OUT || exit 1
+test -f ../release/prog-newstuff.tar.gz || exit 1
+echo OK
+}
+exit 0

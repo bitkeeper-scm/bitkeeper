@@ -167,10 +167,10 @@ cmd_pull_part2(int ac, char **av)
 	makepatch[n++] = "-";
 	makepatch[n] = 0;
 	/*
-	 * What we want is: serails =>  bk makepatch => gzip => remote
+	 * What we want is: keys =>  bk makepatch => gzip => remote
 	 */
 	fd0 = dup(0); close(0);
-	if ((fd = open(keys, O_RDONLY, 0)) == -1) perror(keys);
+	if ((fd = open(keys, O_RDONLY, 0)) < 0) perror(keys);
 	assert(fd == 0);
 	pid = spawnvp_rPipe(makepatch, &rfd, 0);
 	dup2(fd0, 0); close(fd0);

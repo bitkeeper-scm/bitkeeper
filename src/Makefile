@@ -1,12 +1,12 @@
 # Makefile for BitKeeper.
 # @(#) %K%
 HERE    := $(shell pwd)
-REPO    := $(shell basename `bk root`)
+REPO    := $(shell basename "`bk root`")
 URL     := $(shell echo bk://work/`bk root` | sed s,/home/bk/,,)
 LOG	:= $(shell echo LOG-`bk getuser`)
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
 
-ifeq "$(OSTYPE)" "cygwin"
+ifeq "$(OSTYPE)" "msys"
 	SYS=win32
 	EXE=.exe
 	XTRA=win32
@@ -238,7 +238,7 @@ clean-gcov: FORCE
 	-@rm -f *.bb *.bbg *.da *.gcov
 
 clean-bin: FORCE
-	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR)
+	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) bk.ico bk16.ico
 	-@cd ../doc && $(MAKE) clean-obj
 	-@cd ../man && $(MAKE) clean
 	-@cd gnu && $(MAKE) clean 
@@ -332,10 +332,10 @@ bkres.o: win32/data/bk.rc bk.ico
 	windres -i win32/data/bk.rc -o bkres.o
 
 bk16.ico: win32/data/bk16.ico
-	@cp win32/data/bk16.ico .
+	@cp -f win32/data/bk16.ico .
 
 bk.ico: win32/data/bk.ico
-	@cp win32/data/bk.ico .
+	@cp -f win32/data/bk.ico .
 
 $(BK): bk.o $(LIBS) $(RESOURCE) $(OBJ)
 	$(LD) $(LDFLAGS) -o $@ bk.o $(OBJ) $(RESOURCE) $(LIBS) $(XLIBS) 

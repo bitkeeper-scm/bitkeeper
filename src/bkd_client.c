@@ -389,6 +389,7 @@ bkd(int compress, remote *r)
 		}
 		cmd[++i] = 0;
 	} else {
+		putenv("_BK_BKD_IS_LOCAL=1");
 		cmd[0] = "bk";
 		cmd[1] = "bkd";
 		cmd[2] = "-e";

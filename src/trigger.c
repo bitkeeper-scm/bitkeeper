@@ -255,7 +255,7 @@ localTrigger(char *event, char *what, char **triggers)
 private int
 remotePreTrigger(char *event, char *what, char **triggers)
 {
-	int	i, rc = 0, lclone = getenv("BK_LCLONE") != 0;
+	int	i, rc = 0, lclone = getenv("_BK_LCLONE") != 0;
 	char	output[MAXPATH], buf[MAXLINE];
 	FILE	*f;
 

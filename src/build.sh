@@ -1,8 +1,18 @@
 #!/bin/sh
 
+orig_args="$@"
+
 #Set up environment for Microsoft VC++ compiler
 ms_env()
 {
+	test "$MSYSBUILDENV" || {
+		echo running in wrong environment, respawning...
+		bk get -S ./update_buildenv
+		BK_USEMSYS=1 bk sh ./update_buildenv
+		export HOME=`bk pwd`
+		exec C:/build/buildenv/bin/sh --login $0 $orig_args
+	}
+
 	SYS=win32
 	BK="bk.exe"
 
@@ -20,7 +30,7 @@ ms_env()
 		exit 1
 	}
 
-	XLIBS="-lws2_32 -lole32"
+	XLIBS="/mingw/lib/CRT_noglob.o -lws2_32 -lole32"
 	# BINDIR should really be :C:/Program Files/BitKeeper
 	# The shell can not handle space in pathname, so
 	# we use the short name here

@@ -136,7 +136,11 @@ do_difftool(resolve *rs, char *left, char *right, int wait)
 	av[2] = left;
 	av[3] = right;
 	av[4] = 0;
-	spawnvp_ex(wait ? _P_WAIT : _P_NOWAIT, "bk", av);
+	if (wait) {
+		return (spawnvp_ex(_P_WAIT, "bk", av));
+	} else {
+		spawnvp(_P_DETACH, "bk", av);
+	}
 	return (0);
 }
 
@@ -270,7 +274,7 @@ revtool(char *name)
 	av[1] = "revtool";
 	av[2] = name;
 	av[3] = 0;
-	spawnvp_ex(_P_NOWAIT, "bk", av);
+	spawnvp(_P_DETACH, "bk", av);
 	return (0);
 }
 

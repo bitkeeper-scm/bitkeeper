@@ -135,6 +135,8 @@ proc widgets {} \
 		wm geometry $widgets(toplevel) $env(BK_MSG_GEOM)
 	} elseif {[info exists env(BK_GEOM)]} {
 		wm geometry $widgets(toplevel) $env(BK_GEOM)
+	} else {
+		centerWindow $widgets(toplevel)
 	}
 
 	# Any widgets that get referenced outside of this

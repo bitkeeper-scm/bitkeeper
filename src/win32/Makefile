@@ -1,6 +1,6 @@
 HERE	:= $(shell pwd)
 
-all: uwtlib diffutils patch msys
+all: uwtlib diffutils patch msys bkscc bkshellx
 	cd pub/winctl && unset MAKEFLAGS && make
 
 clean clean-obj clobber:
@@ -10,6 +10,7 @@ clean clean-obj clobber:
 		cd $(HERE)/pub/winctl && make $@; \
 		cd $(HERE)/pub/diffutils && make $@; \
 		cd $(HERE)/pub/patch && make $@; \
+		cd $(HERE) && rm -rf dll; \
 	}
 	@true
 
@@ -41,17 +42,32 @@ msys: ./msysver.sh MSYSKEY FORCE
 			tar -C$(MSYSBIN) -xf-; \
 		MSYSVER=`./msysver.sh`; \
 		test -n "$$MSYSVER" -a \! -f "$$MSYSVER" && { \
-	                test -d /build/obj || mkdir -m 777 -p /build/obj; \
 			(cd msys; bk sfiles -Ug | tar -czf $$MSYSVER -T-); \
 			chmod 666 $$MSYSVER; \
 		}; \
 		true; \
 	fi
 
+bkshellx: getdatarepo BKSHELLXKEY FORCE
+	[ -d dll ] || mkdir dll
+	./getdatarepo dll/shellx bk://data.bitmover.com/bkshellx_dll.bk BKSHELLXKEY
+	cd dll/shellx; bk -Ur get -Sq
+
+bkscc: getdatarepo BKSCCKEY FORCE
+	[ -d dll ] || mkdir dll
+	./getdatarepo dll/scc bk://data.bitmover.com/bkscc_dll.bk BKSCCKEY
+	cd dll/scc; bk -Ur get -Sq
+
 install: all blat data/bk.ico
+	@if [ X$(BINDIR) = X ]; then echo Must set BINDIR; exit 1; fi
 	cp -f data/bk.ico $(BINDIR)/bk.ico
+	cp -f dll/scc/lib/bkscc.dll $(BINDIR)
+	cp -f dll/shellx/bin/shellx $(BINDIR)
+	cp -f dll/shellx/lib/Bk*.ico $(BINDIR)
+	cp -f dll/shellx/lib/BkShellX.dll $(BINDIR)
 	cd pub/blat && make BINDIR=$(BINDIR) install
 	cd pub/diffutils && make BINDIR=$(BINDIR) install
 	cd pub/patch && make BINDIR=$(BINDIR) install
 	cd pub/winctl && make BINDIR=$(BINDIR) install
+	cd util && make BINDIR=$(BINDIR) install
 	make MSYSBIN=$(BINDIR)/gnu msys	

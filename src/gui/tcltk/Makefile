@@ -1,6 +1,6 @@
 HERE	:= $(shell pwd)
 OSTYPE	:= $(shell bash -c 'echo $$OSTYPE')
-ifeq "$(OSTYPE)" "cygwin"
+ifeq "$(OSTYPE)" "msys"
 	S := win
 	EXE := .exe
 	STRIP := true
@@ -17,7 +17,7 @@ all: build version.sh
 	-rm -rf bin lib
 	TCLVER=`./version.sh`; \
 	if [ -n "$$TCLVER" -a -f "$$TCLVER" ]; \
-	then	gunzip < $$TCLVER | tar xf -; \
+	then	gunzip < "$$TCLVER" | tar -xf -; \
 	else	./build bin/tclsh bin/bkgui; \
 	fi
 	./build install

@@ -73,11 +73,11 @@ usage:			system("bk help -s undo");
 		return (0);
 	}
 	rev = 0;  /* don't use wrong value */
-	bktmp(rev_list, "bk_rev_list");
+	bktmp(rev_list, "rev_list");
 	fileList = mk_list(rev_list, csetrev_list);
 	unless (fileList) goto err;
 
-	bktmp(undo_list, "bk_undo_list");
+	bktmp(undo_list, "undo_list");
 	cmd = aprintf("bk stripdel -Cc - 2> %s", undo_list);
 	f = popen(cmd, "w");
 	free(cmd);
