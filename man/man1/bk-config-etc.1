@@ -118,8 +118,24 @@ The general format for the repository preference config file is
 .DS
 [filter]preference:option
 .DE
-Currently, checkout is the only user preference supported.
-To set, add a line to the BitKeeper/etc/config file as follows:
+.LP
+LINE TERMINATION
+.LP
+The unix and win32 operating systems use different characters to represent
+line terminations (eoln).  \*(BK, by default, sets the EOLN_NATIVE flag
+to "on" when an sfile is created.  To change this to make the
+EOLN_NATIVE flag default to "off", add
+.DS
+eoln:unix
+.DE
+to the BitKeeper/etc/config file.
+.LP
+CHECKOUT MODE
+.LP
+Specify checkout mode for a repository.  The default is to not show 
+gfiles unless files are checked out.  To override the default, to 
+have gfiles checked out in read-only or read-write mode, a line
+must be added to the BitKeeper/etc/config file as follows:
 .DS
 [filter]checkout:option
 .DE
@@ -189,6 +205,7 @@ homepage: http://www.bitkeeper.com
 .SA config-gui 1
 .SA config 1
 .SA setup
+.SA admin
 .\" help://configuration
 .\" help://user preferences
 .\" help://repository preferences
