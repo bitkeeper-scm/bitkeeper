@@ -14,7 +14,7 @@
 # Copyright (c) 2002 Rick Smith
 # %K%
 
-if [ "$PLATFORM" == "WIN32" ]
+if [ "$PLATFORM" = "WIN32" ]
 then
 	echo "For non win32 only: This test is not applicable to this platform"
 	exit 0
