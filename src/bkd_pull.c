@@ -84,6 +84,8 @@ cmd_pull(int ac, char **av)
 	pclose(f); f = 0;
 	unless (bytes) {
 		if (doit) out("OK-Nothing to send.\n");
+		repository_rdunlock(0);
+		out("OK-Unlocked\n");
 		goto out;
 	}
 	out("OK-something to send.\n");
@@ -147,7 +149,6 @@ out:
 	if (them) mdbm_close(them);
 	if (me) mdbm_close(me);
 	repository_rdunlock(0);
-	out("OK-Unlocked\n");
 	exit(error);
 }
 

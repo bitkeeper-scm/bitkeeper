@@ -52,7 +52,12 @@ echo $N Creating an empty file from /dev/null .......................$NL
 bk admin $Q -i${DEV_NULL} empty2
 if [ ! -f SCCS/s.empty2 ]; then echo Failed.; exit 1; fi
 set `grep -v "^.cF" SCCS/s.empty2 | wc -w`
-if [ $1 -ne `expr $BASE + 16` ]; then echo Failed - wrong size.; exit 1; fi
+# Accomodate Sun's stupid symlink
+if [ -h /dev/null ]
+the	FUDGE=17
+else	FUDGE=16
+fi
+if [ $1 -ne `expr $BASE + $FUDGE` ]; then echo Failed - wrong size.; exit 1; fi
 echo OK
 echo $N Creating a file from stdin ..................................$NL
 bk admin $Q -i stdin < SAVE

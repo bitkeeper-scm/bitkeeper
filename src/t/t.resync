@@ -86,11 +86,11 @@ if [ -d project2/src ]; then echo failed; exit 1; fi
 echo OK
 cores
 echo $N Check circular rename .......................................$NL
-bk repo || sleep 2
 cd $HERE/project/src
 echo "File 1" > a.c
 echo "File 2" > b.c
 echo "File 3" > c.c
+bk repo || sleep 2
 bk ci $Q -i a.c b.c c.c
 $RM -f a.c b.c c.c
 bk commit $S -yabc

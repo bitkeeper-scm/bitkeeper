@@ -118,8 +118,8 @@ bk resolve -t $Q
 echo OK
 echo $N Make sure pull works with existing read lock in source \#2 ...$NL
 cd $HERE/clone2
-bk pull -t $Q -r  2>/dev/null
-if [ ! -d RESYNC ]; then echo pull failed; exit 1; fi
+bk pull -t -r  2>XXX
+if [ ! -d RESYNC ]; then echo pull failed; cat XXX; exit 1; fi
 bk resolve -t $Q
 echo OK
 echo $N Make sure push fails with existing read lock in dest ........$NL
