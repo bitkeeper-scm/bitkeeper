@@ -1228,7 +1228,7 @@ _install()
 			rm -rf "$OBK" 2> /dev/null
 			if [ -f "$ODLL" ]
 			then "$SRC/gui/bin/tclsh" "$SRC/runonce.tcl" \
-			     "BitKeeper" \
+			     "BitKeeper$$" \
 			     "\"$DEST/bkuninstall.exe\" -R \"$ODLL\" \"$OBK\""
 			fi
 		else
@@ -1252,6 +1252,10 @@ _install()
 		V=v
 		echo Installing data in "$DEST" ...
 	}
+	if [ "X$OSTYPE" = "Xmsys" ]
+	then 	echo "fixing up permissions, please wait..."
+		find "$SRC" | xargs chmod +w	# for Win/Me
+	fi
 	(cd "$SRC"; tar cf - .) | (cd "$DEST"; tar x${V}f -)
 	
 	# binlinks
@@ -1292,6 +1296,11 @@ _install()
 		test $VERBOSE = YES && echo "updating registry..."
 		gui/bin/tclsh gui/lib/registry.tcl $DLLOPTS "$DEST" 
 		test -z "$DLLOPTS" || __register_dll "$DEST"/BkShellX.dll
+
+		test -f "$ODLL" && {
+			"$DEST"/bkuninstall.exe -i -b 2>nul 1>&2 &
+			exit 2		# this forces installtool to exit
+		}
 	fi
 	exit 0
 }

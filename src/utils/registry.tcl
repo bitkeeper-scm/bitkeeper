@@ -1,11 +1,9 @@
-# usage: tclsh registry.tcl install destination
-# e.g. tclsh registry.tcl install 'c:/program files/bitkeeper'
-
-package require registry
+# usage: tclsh registry.tcl destination
+# e.g. tclsh registry.tcl "c:/bitkeeper"
 
 proc main {} \
 {
-	global argv options
+	global argv options reglog shortcutlog
 	
 	set options(shellx_network) 0
 	set options(shellx_local) 0
@@ -30,16 +28,19 @@ proc main {} \
 		exit 1
 	}
 
+	set reglog {}
+	set shortcutlog {}
 	registry_install $destination
+	startmenu_install $destination
 	addpath $destination
-	writelog "$destination/registry.log"
+	writelog $destination
 
 	exit 0
 }
 
 proc registry_install {destination} \
 {
-	global env log options
+	global env reglog options
 
 	set bk [file join $destination bk.exe]
 	catch {exec $bk version -s} version
@@ -80,19 +81,46 @@ proc registry_install {destination} \
 
 }
 
+proc startmenu_install {dest {group "BitKeeper"}} \
+{
+	global env shortcutlog
+
+	set dest [file nativename $dest]
+	set bk [file nativename [file join $dest bk.exe]]
+	set uninstall [file nativename [file join $dest bkuninstall.exe]]
+	set installlog [file nativename [file join $dest install.log]]
+	lappend shortcutlog "CreateGroup \"$group\""
+	progman CreateGroup "$group,"
+	progman AddItem "$bk helptool,BitKeeper Documentation,,,,,,,1"
+	progman AddItem "$bk sendbug,Submit bug report,,,,,,,1"
+	progman AddItem "$bk support,Request BitKeeper Support,,,,,,,1"
+	progman AddItem "$uninstall -r -S \"$installlog\",Uninstall BitKeeper,,,,,,,1"
+	progman AddItem "$dest\\bk_refcard.pdf,Quick Reference,,,,,,,1"
+	progman AddItem "$dest\\gnu\\msys.bat,Msys Shell,,,,,,,1"
+	progman AddItem "http://www.bitkeeper.com,BitKeeper on the Web,,,,,,,1"
+}
+# use dde to talk to the program manager
+proc progman {command details} \
+{
+	global reglog
+	set command "\[$command ($details)\]"
+	if {[catch {dde execute PROGMAN PROGMAN $command} error]} {
+		lappend reglog "error $error"
+	}
+}
 # perform a registry operation and save pertinent information to
 # a log
 proc reg {command args} \
 {
-	global log
+	global reglog
 	if {$command== "set"} {
 		set key [lindex $args 0]
 		set name [lindex $args 1]
 		set value [lindex $args 2]
 		if {$name eq ""} {
-			lappend log "set $key"
+			lappend reglog "set $key"
 		} else {
-			lappend log "set $key \[$name\]"
+			lappend reglog "set $key \[$name\]"
 		}
 		set command [list registry set $key $name $value]
 	} elseif {$command == "modify"} {
@@ -101,9 +129,9 @@ proc reg {command args} \
 		set value [lindex $args 2]
 		set newbits [lindex $args 3]
 		if {$newbits eq ""} {
-			lappend log "modify $key \[$name\]"
+			lappend reglog "modify $key \[$name\]"
 		} else {
-			lappend log "modify $key \[$name\] $newbits"
+			lappend reglog "modify $key \[$name\] $newbits"
 		}
 		set command [list registry set $key $name $value]
 	} else {
@@ -114,16 +142,24 @@ proc reg {command args} \
 	uplevel $command
 }
 
-# writes the data in the global variable 'log' to the named logfile
-proc writelog {file} \
+proc writelog {dest} \
 {
-	global log
-	set f [open $file w]
+	global reglog shortcutlog
+
 	# we process the data in reverse order since that is the
 	# order in which things must be undone
-	while {[llength $log] > 0} {
-		set item [lindex $log end]
-		set log [lrange $log 0 end-1]
+	set f [open "$dest/registry.log" w]
+	while {[llength $reglog] > 0} {
+		set item [lindex $reglog end]
+		set reglog [lrange $reglog 0 end-1]
+		puts $f $item
+	}
+	close $f
+
+	set f [open "$dest/shortcuts.log" w]
+	while {[llength $shortcutlog] > 0} {
+		set item [lindex $shortcutlog end]
+		set shortcutlog [lrange $shortcutlog 0 end-1]
 		puts $f $item
 	}
 	close $f
