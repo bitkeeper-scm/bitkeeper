@@ -635,7 +635,7 @@ echo OK
 
 echo $N '  resolve by removing remote file ...........................'$NL
 cd $HERE
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L -t -yMerge copy 2>/dev/null <<EOF
 rr

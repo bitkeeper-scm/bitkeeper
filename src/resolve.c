@@ -628,6 +628,7 @@ again:	if (how = slotTaken(opts, rs->dname)) {
 			return (-1);
 		}
 
+		sccs_close(rs->s); /* for win32 */
 		ret = resolve_create(rs, how);
 		if (opts->debug) {
 			fprintf(stderr, "resolve_create = %d %s\n",

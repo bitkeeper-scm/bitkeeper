@@ -1,9 +1,10 @@
 #!/bin/sh
 
+set -x
 CC=gcc
 LD=gcc
 MAKE=gmake
-uname -s | grep "_NT"
+uname -s | grep -q "_NT"
 if [ $?  != 0 ]
 then PATH=/opt/gnu/bin:/usr/local/bin:/usr/freeware/bin:/usr/ccs/bin:$PATH
 fi
@@ -21,8 +22,8 @@ case `uname -s` in
 		MAKE="make -e"
 		CC=cl
 		LD=link
-		AR=`pwd`/win32/util/mklib
-		if [ ! -f ${AR} ]; then get ${AR}; fi
+		MKLIB=./win32/util/mklib
+		if [ ! -f ${MKLIB} ]; then get ${MKLIB}; fi
 		CFLAGS="-nologo -ZI -Od -DWIN32 -D_MT -D_DLL -MD"
 		CC_COMMON="-nologo -DWIN32 -D_MT -D_DLL -MD"
 		CC_FAST="-O2 $CC_COMMON"
@@ -43,14 +44,16 @@ case `uname -s` in
 		_LIB2="mswsock.lib advapi32.lib user32.lib gdi32.lib"
 		_LIB3=" comdlg32.lib winspool.lib ole32.lib"
 		WIN32_LIBS="$_LIB1 $_LIB2 $_LIB3"
-		LINK="libsccs.a mdbm/libmdbm.a zlib/libz.a $UWTLIB"
-		LINK="$LINK $WIN32_LIBS"
+		LINK_LIB="libsccs.a mdbm/libmdbm.a zlib/libz.a $UWTLIB"
+		LINK_LIB="$LINK_LIB $WIN32_LIBS"
 		BK="bk.exe"
 		BKMERGE="bkmerge.exe"
+		WIN_UTIL="win_util"
 		LDFLAGS="-nologo -debug"
-		export SYS CFLAGS CC_OUT LD_OUT LD AR RANLIB UWTLIB LINK LDFLAGS
-		export CC_FAST CC_DEBUG CC_NOFRAME
-		export BK BKMERGE MORE UWT_H
+		AR=`pwd`/win32/util/mklib
+		export SYS CFLAGS CC_OUT LD_OUT LD AR RANLIB UWTLIB LDFLAGS
+		export CC_FAST CC_DEBUG CC_NOFRAME LINK_LIB
+		export BK BKMERGE MORE UWT_H WIN_UTIL
 		;;
 esac
 $MAKE "CC=$CC" "LD=$LD" "XLIBS=$XLIBS" "$@"
