@@ -233,6 +233,7 @@ struct	command cmdtbl[] = {
 	{"_sortmerge", sortmerge_main},
 	{"_shellSplit_test", shellSplit_test_main},
 	{"_strings", strings_main},
+	{"_unbk", unbk_main},			/* undoc? 2.0 */
 	{"_unlink", unlink_main },
 	{"abort", abort_main},			/* doc 2.0 */	
 	{"add", delta_main},			/* doc 2.0 */
@@ -367,7 +368,6 @@ struct	command cmdtbl[] = {
 	{"takepatch", takepatch_main},		/* doc 2.0 */
 	{"testdates", testdates_main},		/* undoc 2.0 */
 	{"timestamps", timestamp_main},
-	{"unbk", unbk_main},			/* undoc? 2.0 */
 	{"undo", undo_main},			/* doc 2.0 */
 	{"undos", undos_main},			/* doc 2.0 */
 	{"unedit", unedit_main},		/* doc 2.0 */

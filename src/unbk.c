@@ -14,12 +14,13 @@ unbk_main(int ac, char **av)
 	char	*name;
 
 	debug_main(av);
-	if (ac > 1 && streq("--help", av[1])) {
-		system("bk help unbk");
+	unless(ac > 1 && streq("--I-know-this-destroys-my-bk-repo", av[1])) {
+		fprintf(stderr, 
+		    "usage: bk _unbk --I-know-this-destroys-my-bk-repo\n");
 		return (1);
 	}
 
-	for (name = sfileFirst("unbk", &av[1], 0);
+	for (name = sfileFirst("_unbk", &av[2], 0);
 	    name; name = sfileNext()) {
 		unless (s = sccs_init(name, 0)) continue;
 		unless (HASGRAPH(s)) {
