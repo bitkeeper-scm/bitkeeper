@@ -1,0 +1,65 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+
+# Copyright (c) 2000 Larry McVoy
+# %K%
+
+HERE=`bk pwd`
+echo $N Create initial repository ...................................$NL
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+echo OK
+echo $N Create some data, commit it, clone it .......................$NL
+echo foo > foo.c
+echo bar > bar.c
+echo h > h.h
+bk ci $Q -i foo.c bar.c h.h
+if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
+bk commit $S -a -yCset
+cd $HERE
+bk clone $Q project copy
+echo OK
+echo $N Add some data, commit it, then remove the file ..............$NL
+cd $HERE/project
+bk edit $Q foo.c
+echo foo >> foo.c
+bk ci $Q -ywhatever foo.c
+bk commit $Q -ywhatever
+KEY="`bk prs -hr+ -d:ROOTKEY: foo.c`"
+rm -f SCCS/s.foo.c
+bk gone $Q "$KEY"
+bk -r check -a || exit 1
+echo OK
+echo $N Pull to child without committing gone file, should fail .....$NL
+cd $HERE/copy
+bk pull $Q 2>OUT
+grep -q 'is missing and key is not in a committed gone delta' OUT || {
+	find . -type f -print
+	exit 1
+}
+echo OK
+echo $N Commit gone file and try pull again .........................$NL
+cd $HERE/project
+bk commit $Q -ygone
+cd $HERE/copy
+bk pull -t $Q 2>MSGS || {
+	cat MSGS
+	find . -type f -print
+	exit 1
+}
+grep -q 'It is marked as gone but exists in your repository, missing' MSGS || {
+	echo Bad or no warning message from pull
+	cat MSGS
+	exit 1
+}
+echo OK

@@ -28,6 +28,7 @@ bk sfind | sort > SFILES
 sort <<EOF > LIST
 SCCS/s.ChangeSet
 BitKeeper/etc/SCCS/s.config
+BitKeeper/etc/SCCS/s.ignore
 SCCS/s.foo
 SCCS/s.s.foo
 bar/SCCS/s.s.foo
@@ -58,6 +59,7 @@ bk sfind -g | sort > SFILES
 sort <<EOF > LIST
 ChangeSet
 BitKeeper/etc/config
+BitKeeper/etc/ignore
 foo
 s.foo
 bar/s.foo
@@ -129,6 +131,7 @@ echo $N Check the list of unlocked files ............................$NL
 bk sfind -u | sort > SFILES
 sort <<EOF > LIST
 BitKeeper/etc/SCCS/s.config
+BitKeeper/etc/SCCS/s.ignore
 SCCS/s.ChangeSet
 SCCS/s.foo
 bar/blech/SCCS/s.s.foo
@@ -151,6 +154,7 @@ bk ci $Q -mblech s.foo
 bk sfind -u | sort > SFILES
 sort <<EOF > LIST
 BitKeeper/etc/SCCS/s.config
+BitKeeper/etc/SCCS/s.ignore
 SCCS/s.ChangeSet
 SCCS/s.foo
 SCCS/s.s.foo
@@ -224,6 +228,7 @@ FOO="`bk sfind s.foo`"
 if [ "$FOO" != "SCCS/s.s.foo" ]; then echo Failed - got $FOO.; exit 1; fi
 echo OK
 echo $N Test ignore lists with -x ...................................$NL
+bk edit $Q BitKeeper/etc/ignore
 cat <<EOF > BitKeeper/etc/ignore
 LIST
 s.*
@@ -249,18 +254,17 @@ bar/blech/SCCS/s.s.foo
 EOF
 bk sfind -au | sort > SFILES
 cmp -s SFILES LIST
-if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
+if [ $? -ne 0 ]; then echo failed; sdiff -w80 SFILES LIST; exit 1; fi
 echo OK
 echo $N Test disabling ignore lists with -ax ........................$NL
 sort <<EOF > LIST
-BitKeeper/etc/ignore
 LIST
 SCCS/OLD-s.foo
 SFILES
 EOF
 bk sfind -ajx | sort > SFILES
 cmp -s SFILES LIST
-if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
+if [ $? -ne 0 ]; then echo failed; sdiff -w80 SFILES LIST; exit 1; fi
 echo OK
 echo $N Test that tree walk does not follow symlinks ................$NL
 if [ $PLATFORM = "WIN32" ]
@@ -289,6 +293,7 @@ mv impostor SCCS/s.impostor
 bk sfind | sort > SFILES
 sort <<EOF > LIST
 BitKeeper/etc/SCCS/s.config
+BitKeeper/etc/SCCS/s.ignore
 SCCS/s.s.foo
 bar/SCCS/s.s.foo
 bar/blech/SCCS/s.s.foo

@@ -54,7 +54,7 @@ resolve_free(resolve *rs)
 int
 resolve_loop(char *name, resolve *rs, rfuncs *rf)
 {
-	int	i, ret;
+	int	i, ret, bang = -1;
 	char	buf[100];
 
 	rs->funcs = rf;
@@ -64,6 +64,8 @@ resolve_loop(char *name, resolve *rs, rfuncs *rf)
 		fprintf(stderr, "\ttot: %s@%s\n", rs->d->pathname, rs->d->rev);
 	}
 	rs->n = 0;
+	for (i = 0; rf[i].spec && !streq(rf[i].spec, "!"); i++);
+	if (rf[i].spec) bang = i;
 	while (1) {
 		fprintf(stderr, "%s>> ", rs->prompt);
 		getline(0, buf, sizeof(buf));
@@ -72,6 +74,12 @@ resolve_loop(char *name, resolve *rs, rfuncs *rf)
 again:		/* 100 tries for the same file means we're hosed.  */
 		if (++rs->n == 100) return (ELOOP);
 		for (i = 0; rf[i].spec && !streq(rf[i].spec, buf); i++);
+		if (!rf[i].spec && (buf[0] == '!') && (bang >= 0)) {
+			i = bang;
+			rs->shell = &buf[1];
+		} else {
+			rs->shell = 0;
+		}
 		unless (rf[i].spec) {
 			strcpy(buf, "?");
 			goto again;

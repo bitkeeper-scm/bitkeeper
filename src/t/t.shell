@@ -1,0 +1,78 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+
+# Copyright (c) 2000 Larry McVoy
+# %K%
+
+HERE=`bk pwd`
+echo $N Create initial repository ...................................$NL
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+echo OK
+echo $N Create some data ............................................$NL
+cat > file <<EOF
+1
+2
+3
+4
+5
+6
+7
+8
+9
+EOF
+bk ci $Q -i file
+if [ ! -f SCCS/s.file ]; then echo failed to create history; exit 1; fi
+touch BitKeeper/etc/SCCS/x.marked
+bk commit $Q -ywhatever 
+echo OK
+echo $N Clone it, modify it in both, and resync it ..................$NL
+cd $HERE
+bk clone $Q project copy
+for i in copy project
+do	cd $HERE/$i
+	bk get -e -g $Q file
+	bk get -kp $Q file | sed -e s/2/2-$i/ -e s/3/3-$i/ > file
+	bk delta $Q -y$i
+	bk commit -y$i $Q
+done
+cd $HERE/copy
+bk resync $Q
+echo OK
+echo $N Make sure shell escapes to an interactive shell work ........$NL
+( echo '!'
+  echo echo ESCAPE_FROM_NEW_YORK
+  echo exit
+  echo q ) | bk resolve $Q > OUT 2>ERR
+grep -q ESCAPE_FROM_NEW_YORK OUT || { 
+	echo failed to escape
+	cat OUT
+	exit 1
+}
+echo OK
+echo $N Make sure shell escapes to run a command work ...............$NL
+( echo '!diff $BK_LOCAL $BK_REMOTE'
+  echo q ) | bk resolve $Q > OUT 2>ERR
+cat > DIFFS <<EOF
+2,3c2,3
+< 2-copy
+< 3-copy
+---
+> 2-project
+> 3-project
+EOF
+cmp -s DIFFS OUT || {
+	echo failed to run diffs on local/remote files
+	exit 1
+}
+echo OK
