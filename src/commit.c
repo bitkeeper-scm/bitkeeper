@@ -73,6 +73,13 @@ commit_main(int ac, char **av)
 		fprintf(stderr, "Cannot find root directory\n");
 		return (1);
 	}
+	/*
+	 * Check for licensing problems before we get buried in a bunch
+	 * of subprocesses.  This process will need the result anyway so
+	 * this isn't any slower.
+	 */
+	lease_check(0);
+
 	unless(opts.resync) remark(opts.quiet);
 	if (pendingFiles[0]) {
 		if (av[optind] && streq("-", av[optind])) {

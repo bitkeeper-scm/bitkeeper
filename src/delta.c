@@ -72,22 +72,30 @@ delta_trigger(sccs *s)
 	return (i);
 }
 
+/*
+ * Remove dangling deltas from the file.
+ * In order to avoid warnings from incorrectly numbered revisions we need
+ * to call 'bk renumber' before and after we call stripdel.
+ */
 private int
 strip_danglers(char *name, u32 flags)
 {
 	char	*p;
+	char	*q = (flags&SILENT) ? "-q" : "";
 	int	ret;
 
-	p = aprintf("bk prs -hnd'$if(:DANGLING:){:GFILE:|:I:}' %s"
-	    " | bk stripdel -%sdC -", name, (flags&SILENT) ? "q" : "");
-	ret = system(p);
-	if (ret) {
+	p = aprintf("bk renumber %s %s", q, name);
+	if (ret = system(p)) {
 err:		fprintf(stderr, "%s failed\n", p);
 		free(p);
 		return (ret);
 	}
 	free(p);
-	p = aprintf("bk renumber %s %s", (flags&SILENT) ? "-q" : "", name);
+	p = aprintf("bk prs -hnd'$if(:DANGLING:){:GFILE:|:I:}' %s"
+	    " | bk stripdel %s -dC -", name, q);
+	if (ret = system(p)) goto err;
+	free(p);
+	p = aprintf("bk renumber %s %s", q, name);
 	if (ret = system(p)) goto err;
 	free(p);
 	return (0);
