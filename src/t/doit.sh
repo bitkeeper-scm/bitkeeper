@@ -35,6 +35,7 @@ unix_common_setup()
 	DEV_NULL="/dev/null"
 	TMP="/tmp"
 	if [ -z "$TST_DIR" ]; then TST_DIR="/tmp"; fi
+	TST_DIR=`bk pwd $TST_DIR`       # if symlink, force to real path
 	CWD="/bin/pwd"
 	if [ -d /usr/xpg4/bin ]; then PATH=/usr/xpg4/bin:$PATH; fi
 	BK_FS="|"
