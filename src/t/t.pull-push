@@ -252,6 +252,8 @@ bk pull $Q -t $HERE/project
 if [ ! -f src2/src3/SCCS/s.bar.c ]; then echo failed; exit 1; fi
 if [ ! -f src2/src3/SCCS/s.h.h ]; then echo failed; exit 1; fi
 echo OK
+if [ $PLATFORM != "WIN32" ]
+then # -----------------------------------------------------------------
 echo $N push -n to a read locked repository should work .............$NL
 cd $HERE/copy2
 date > newfile
@@ -277,6 +279,7 @@ grep -q 'Unable to lock repository for update' OUT || {
 }
 kill $KILLME
 echo OK
+fi #-------------------------------------------------------------------
 echo $N push to unrelated project should error ......................$NL
 cd $HERE
 no_logging unrelated

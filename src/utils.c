@@ -675,10 +675,11 @@ flush2remote(remote *r)
 
 /*
  * Drain error message:
- * There are three possibilities:
+ * Theses are the possibilities:
  * 1) remote is running a version 1.2 (i.e. old) bkd
  * 2) remote is not running a bkd.
  * 3) remote is running a current bkd, but have some type of config/path error
+ * 4) remote is running a current bkd, but some command have been disabled
  *
  * XXX This function could be simplied if we don't need to detect old bkd.
  */
@@ -701,7 +702,13 @@ drainErrorMsg(remote *r, char *buf, int bsize)
 	while (1) {
 		if (strneq("ERROR-BAD CMD: pull_part1", buf, 25)) break;
 		if (strneq("ERROR-BAD CMD: @END", buf, 19)) break; /*for push*/
-		if (strneq("ERROR-BAD CMD:", buf, 14)) goto next;
+		/*
+		 * Comment the following code out, it is causing problem
+		 * when we have case 4.
+		 * And I don't remember why I need it in the first place.
+		 * 
+		 * if (strneq("ERROR-BAD CMD:", buf, 14)) goto next;
+		 */
 		if (streq("OK-root OK", buf)) goto next;
 		if (streq("ERROR-exiting", buf)) exit(1);
 		if (!strneq("ERROR-", buf, 6)) {

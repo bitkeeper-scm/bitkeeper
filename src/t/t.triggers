@@ -582,8 +582,12 @@ echo OK
 echo $N Check BK_STATUS in push and push -n and pull -n .............$NL
 cd $HERE/project/BitKeeper/triggers
 rm -f *
-echo 'set | grep BK_STATUS' > pre-incoming
-echo 'set | grep BK_STATUS' > pre-outgoing
+bk undos > pre-incoming <<EOF
+#! /bin/sh
+set | grep BK_STATUS
+EOF
+cp pre-incoming pre-outgoing
+
 chmod +x pre*
 cd $HERE/copy
 rm -f BitKeeper/triggers/*
