@@ -75,8 +75,7 @@ converge_main(int ac, char **av)
 	 */
 	for (c = 0; files[c]; c++) {
 		ret += converge(files[c], resync);
-		sprintf(buf, "bk clean -q %s", files[c]);
-		_sys(buf);
+		sys("bk", "clean", "-q", files[c], SYS);
 	}
 	return (ret);
 }
@@ -150,9 +149,8 @@ resync_list(char *gfile)
 		if (mdbm_fetch_str(vals, kv.key.dptr)) continue;
 		unless (exists(kv.val.dptr)) {
 			mkdirf(kv.val.dptr);
-			sprintf(cmd, "cp %s/%s %s",
-			    RESYNC2ROOT, kv.val.dptr, kv.val.dptr);
-			_sys(cmd);
+			sprintf(cmd, "%s/%s",  RESYNC2ROOT, kv.val.dptr);
+			sys("cp", cmd, kv.val.dptr, SYS);
 			mdbm_store_str(vals, kv.key.dptr, kv.val.dptr, 0);
 			continue;
 		}
@@ -166,13 +164,10 @@ resync_list(char *gfile)
 		sccs_free(s);
 
 		mkdirf(kv.val.dptr);
-		sprintf(cmd, "cp %s/%s %s", RESYNC2ROOT, kv.val.dptr, t);
-		_sys(cmd);
-		sprintf(cmd, "bk get -qe %s", t);
-		_sys(cmd);
-
-		sprintf(cmd, "bk delta -dqy'Auto converge rename' %s", t);
-		system(cmd);
+		sprintf(cmd, "%s/%s", RESYNC2ROOT, kv.val.dptr);
+		sys("cp", cmd, t, SYS);
+		sys("bk", "get", "-qe", t, SYS);
+		sys("bk", "delta", "-dqy'Auto converge rename'", t, SYS);
 		mdbm_store_str(vals, kv.key.dptr, t, 0);
 		free(t);
 	}
@@ -185,10 +180,11 @@ converge(char *gfile, int resync)
 {
 	char	buf[MAXPATH], key[MAXKEY];
 	char	*sfile;
+	char	*get[10] = { "bk", "get", "-kpq", 0, 0 };
 	sccs	*s, *winner = 0;
 	MDBM	*vals = resync ? resync_list(gfile) : list(gfile);
 	kvpair	kv;
-	int	i;
+	int	i, fd, fd1;
 
 	/*
 	 * If there was only one file, and it isn't a derived file, done
@@ -211,13 +207,20 @@ done:		mdbm_close(vals);
 	}
 	
 	/*
-	 * Get the contents of all files, we'll sort -u them later.
+	 * Get the contents of all files into CTMP, we'll sort -u them later.
 	 */
 	unlink(CTMP);
+	fd1 = dup(1); close(1);
+	fd = open(CTMP, O_CREAT|O_WRONLY, 0666);
+	assert(fd == 1);
 	for (kv = mdbm_first(vals); kv.key.dptr; kv = mdbm_next(vals)) {
-		sprintf(buf, "bk get -kpq %s >> %s", kv.val.dptr, CTMP);
-		_sys(buf);
+		get[3] = kv.val.dptr;
+		if (spawnvp_ex(_P_WAIT, get[0], get)  < 0) {
+			fprintf(stderr, "converge; can'nt spawn get process\n");
+			exit(1);
+		}
 	}
+	close(1); dup2(fd1, 1); close(fd1);
 
 	/*
 	 * Figure out who is going to win, i.e.,
@@ -263,11 +266,9 @@ done:		mdbm_close(vals);
 	 * slide this one into place.
 	 */
 	if (winner && exists(sfile) && !streq(sfile, winner->sfile)) {
-		sprintf(key, "bk rm %s", gfile);
-		_sys(key);
+		sys("bk", "rm", gfile, SYS);
 		sccs_close(winner); /* for win32 */
-		sprintf(key, "bk mv %s %s", winner->gfile, gfile);
-		_sys(key);
+		sys("bk", "mv", winner->gfile, gfile, SYS);
 	}
 
 	if (exists(CTMP)) {
@@ -278,26 +279,19 @@ done:		mdbm_close(vals);
 		if (winner) {
 			sccs_free(winner);
 			winner = 0;
-			sprintf(key, "bk get -qeg %s", gfile);
-			_sys(key);
-			sprintf(key, "bk _sort -u < %s > %s", CTMP, gfile);
-			_sys(key);
-			sprintf(key, "bk ci -qy'Auto converge' %s", gfile);
-			_sys(key);
+			sys("bk", "get", "-qeg", gfile, SYS);
+			sysio(CTMP, gfile, 0, "bk", "_sort", "-u", SYS);
+			sys("bk", "ci", "-qy'Auto converge'", gfile, SYS);
 		} else {
 			/*
 			 * The file may be there because it is cset derived
 			 * and there was no winner.  So we remove it.
 			 */
-			if (exists(sfile)) {
-				sprintf(key, "bk rm %s", gfile);
-				_sys(key);
-			}
-			sprintf(key, "bk _sort -u < %s > %s", CTMP, gfile);
-			_sys(key);
-			sprintf(key,
-			    "bk delta -qiy'Auto converge/create' %s", gfile);
-			_sys(key);
+			if (exists(sfile)) sys("bk", "rm", gfile, SYS);
+
+			sysio(CTMP, gfile, 0, "bk", "_sort", "-u", SYS);
+			sys("bk", "delta",
+				"-qiy'Auto converge/create'", gfile, SYS);
 		}
 	}
 	mdbm_close(vals);
