@@ -6,15 +6,12 @@
 #
 # TODO: 
 #
-# 	Is there an environment variable so we know how to get files from the
-# 	bk gui directory? Need to read in setup_messages.tcl and the bklogo.gif
-#
 #	Add error checking for:
 #		ensure repository name does not have spaces
 #		validate all fields in entry widgets
 #
 # Arguments:
-#
+# 	optional arg for the name of the repository
 #
 
 set debug 0
@@ -125,7 +122,7 @@ proc license_check {}  \
 	    scrollbar .lic.t.text.scrl -command ".lic.t.text yview"
 	    scrollbar .lic.t.text.scrl_h -command ".lic.t.text xview" \
 		-orient horizontal
-	set fid [open "|bk help bkl" "r"]
+	set fid [open "|bk help bkl -p" "r"]
 
 	#while { [ gets $fid line ] != -1 } {
 	#	.lic.t.text insert end $line
@@ -299,26 +296,23 @@ proc createCatMenu {w} \
 	global gc
 
 	set categories [list]
+	set sub_categories [list]
 	set gc(catmenu) $w
 
-	menubutton $gc(catmenu) -font $gc(setup.buttonFont) -relief raised \
+	menubutton $gc(catmenu) -font $gc(setup.fixedFont) -relief raised \
 	    -bg $gc(setup.BG) \
 	    -text "Select Category" -width 30 -state normal \
 	    -menu $gc(catmenu).menu 
 	#-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 	#set gc(cmenu) [menu $w.menu]
 	set cmenu [menu $gc(catmenu).menu]
+	set num 0
 
 	set fid [open "|bk getmsg setup_categories" "r"]
 	while {[gets $fid c] != -1} {
-		set cat [lindex [split $c "/"] 0]
-		if {!([lsearch $categories $cat] >= 0)} {
-			lappend categories $cat
-			$cmenu add command -label $cat \
-			    -command "setCat [list $cat]"
-		}
-		puts stderr "cat=$cat"
-		#$gc(cmenu) add command -label $cat
+		$cmenu add command -label $c \
+		    -command "setCat [list $c]"
+		puts stderr "c=$c"
 	}
 	catch {close $fid} err
 }
@@ -379,12 +373,14 @@ proc create_config {w} \
 	foreach desc $st_g(topics) {
 		    #puts "desc: ($desc) desc: ($desc)"
 		    label $w.t.l.$desc -text "$desc" -justify right \
-			-bg $gc(setup.BG)
+			-bg $gc(setup.BG) -font $gc(setup.fixedFont)
 		    if {$desc == "category"} {
 		    	createCatMenu $w.t.e.$desc
 		    } else {
-			    entry $w.t.e.$desc -width 30 -relief sunken -bd 2 \
-				-bg $gc(setup.BG) -textvariable st_cinfo($desc)
+			    entry $w.t.e.$desc -width 30 -relief sunken \
+				-bd 2 -bg $gc(setup.BG) \
+				-textvariable st_cinfo($desc) \
+				-font $gc(fixedFont)
 		    }
 		    if {$tcl_platform(platform) == "windows"} {
 			    grid $w.t.e.$desc  -pady 1
@@ -519,12 +515,15 @@ proc main {} \
 	}
 	create_config .cconfig
 	if {[create_repo] == 0} {
-		displayMessage "Repository created"
+		tk_messageBox -title "Repository Created" \
+		    -type ok -icon info \
+		    -message "$st_cinfo(repository) repository created"
 		exit
 	} else {
 		displayMessage "Failed to create repository"
 	}
 }
 
+#console show
 bk_init
 main
