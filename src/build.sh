@@ -12,6 +12,7 @@ ms_env()
 	    exit 1
         }
 
+	XLIBS="-lws2_32 -lole32"
 	# BINDIR should really be :C:/Program Files/BitKeeper
 	# The shell can not handle space in pathname, so
 	# we use the short name here

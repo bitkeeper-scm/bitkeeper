@@ -16,7 +16,6 @@ ifeq "$(OSTYPE)" "cygwin"
 	UWT_H=$(patsubst %,win32/uwtlib/%.h, \
 		dirent misc re_map sys/wait stat utsname ftw \
 	 	mman re_map_decl times)
-	W32LIBS=-lws2_32 -lole32
 else
 	SYS=unix
 	EXE=
@@ -31,8 +30,6 @@ BINDIR	= /usr/libexec/bitkeeper
 
 GET=	bk get -s
 BK=	bk 
-CC_OUT	=-o $@
-LD_OUT	=-o $@
 LD	=cc
 G	=-g
 TRIAL	=0
@@ -147,12 +144,6 @@ ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA) GUI
 CFLAGS	= $(CC_FAST_DEBUG) $(CC_WALL) \
 	  -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM -DFASTPURIFY
 CPPFLAGS= -Izlib -Imdbm
-# For extra libraries required by the system, e.g. libnsl.
-LINK_LIB= $(XLIBS) $(LSCCS) $(LMDBM) $(LZLIB) $(LTOMCRYPT)
-LSCCS	= -L. -lsccs
-LMDBM	= -Lmdbm -lmdbm
-LZLIB	= -Lzlib -lz
-LTOMCRYPT = -Ltomcrypt -ltomcrypt
 # Override this if you don't have it.
 RANLIB	= ranlib
 SRCS	= $(OBJ:.o=.c) $(MDBMOBJ:.o=.c) $(ZLIBOBJ:.o=.c) $(TOMCRYPTOBJ:.o=.c)
@@ -365,10 +356,10 @@ bk.res: win32/data/bk.rc win32/data/bk.ico
 
 bklink.exe: bklink.c
 	$(CC) $(CFLAGS) -c bklink.c
-	$(LD) $(LDFLAGS) $(LD_OUT) bklink.o $(W32LIBS)
+	$(LD) $(LDFLAGS) -o $@ bklink.o $(XLIBS)
 
 $(BK): bk.o $(LIBS) $(RESOURCE)
-	$(LD) $(LDFLAGS) $(LD_OUT) bk.o $(LIBS) $(W32LIBS) $(RESOURCE)
+	$(LD) $(LDFLAGS) -o $@ bk.o $(LIBS) $(XLIBS) $(RESOURCE)
 
 testfast: testfast.perl
 	rm -f testfast
@@ -551,7 +542,7 @@ build: build.sh
 
 # The default .c.o rule is broken with some Makes.
 .c.o:
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< $(CC_OUT)
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
 depend: $(SRCS)
 	$(CC) -MM -MG -D_DEPEND $(SRCS) > depends

@@ -1219,6 +1219,7 @@ _install()
 	(find . | xargs chown root) 2> /dev/null
 	(find . | xargs chgrp root) 2> /dev/null
 	find . | xargs chmod -w
+	exit 0
 }
 
 _uninstall()
