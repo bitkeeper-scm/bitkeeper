@@ -1343,16 +1343,15 @@ cleanPath(char *path, char cleanPath[])
 			if (dotCnt) {
 				/* skip dir impacted by ".." */
 				while ((p >= top) && (*p != '/')) p--;
-				p--; dotCnt--;
+				dotCnt--;
 			} else {
 				/* copy regular directory */
 				unless (isEmpty(buf, r)) *r-- = '/';
 				while ((p >= top) && (*p != '/')) *r-- = *p--;
-
-				/* skip "/", "//" etc.. */
-				while ((p >= top) && (*p == '/')) p--;
 			}
 		}
+		/* skip "/", "//" etc.. */
+		while ((p >= top) && (*p == '/')) p--;
 	}
 
 	if (!isEmpty(buf, r) && (top[0] != '/')) {
