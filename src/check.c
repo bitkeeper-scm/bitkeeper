@@ -183,11 +183,14 @@ checkAll(MDBM *db)
 		/*
 		 * The location recorded and the location found should match.
 		 */
-		if (streq(s->gfile, d->pathname)) continue;	/* cool */
-		fprintf(stderr, "check: %s should be %s\n",
-		    s->sfile, d->pathname);
-		errors++;
+		if (!streq(s->gfile, d->pathname)) {
+			fprintf(stderr, "check: %s should be %s\n",
+				s->sfile, d->pathname);
+			errors++;
+		}
+		sccs_free(s);
 	}
+	pclose(keys);
 	return (errors);
 }
 

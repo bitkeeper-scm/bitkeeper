@@ -3530,7 +3530,6 @@ sccs_free(sccs *s)
 	free(s->gfile);
 	free(s->zfile);
 	free(s->pfile);
-	if (s->mmap != (caddr_t)-1L) munmap(s->mmap, s->size);
 	if (s->state & S_CHMOD) {
 		struct	stat sbuf;
 
@@ -3543,7 +3542,7 @@ sccs_free(sccs *s)
 #endif
 		}
 	}
-	close(s->fd);
+	if (s->state & S_SOPEN) sccs_close(s);
 	if (s->defbranch) free(s->defbranch);
 	if (s->ser2delta) free(s->ser2delta);
 	freeLines(s->usersgroups);
