@@ -3,8 +3,6 @@
 #endif
 #include "../system.h"
 #include "../sccs.h"
-#include <sys/socket.h>
-#ifndef WIN32
 
 #define CACHED_PROXY "BitKeeper/etc/.cached_proxy"
 
@@ -121,6 +119,7 @@ get_config(char *url, char **proxies)
 
 }
 
+#ifndef WIN32
 char **
 get_http_proxy()
 {
@@ -176,29 +175,29 @@ get_http_proxy()
 	} else {
 
 		if (proxy_host[0] && (proxy_port != -1)) {
-			sprintf(buf, "PROXY %s:%d\n", proxy_host, proxy_port);
+			sprintf(buf, "PROXY %s:%d", proxy_host, proxy_port);
 			proxies = addLine(proxies, strdup(buf));
 		}
 		if (socks_server[0]) {
-			sprintf(buf, "SOCKS %s:%d\n", socks_server, socks_port);
+			sprintf(buf, "SOCKS %s:%d", socks_server, socks_port);
 			proxies = addLine(proxies, strdup(buf));
 		}
 	}
 done:	p = getenv("HTTP_PROXY_HOST"); 
 	q = getenv("HTTP_PROXY_PORT"); 
 	if (p && *p) {
-		sprintf(buf, "PROXY %s:%s\n", p, q ? q : "8000");
+		sprintf(buf, "PROXY %s:%s", p, q ? q : "8000");
 		proxies = addLine(proxies, strdup(buf));
 	}
 	q = getenv("SOCKS_PORT");
 	p = getenv("SOCKS_HOST"); 
 	if (p && *p) {
-		sprintf(buf, "SOCKS %s:%s\n", p, q ? q : "1080");
+		sprintf(buf, "SOCKS %s:%s", p, q ? q : "1080");
 		proxies = addLine(proxies, strdup(buf));
 	}
 	p = getenv("SOCKS_SERVER");
 	if (p && *p) {
-		sprintf(buf, "SOCKS %s:%s\n", p, q ? q : "1080");
+		sprintf(buf, "SOCKS %s:%s", p, q ? q : "1080");
 		proxies = addLine(proxies, strdup(buf));
 	}
 	return (proxies);
@@ -212,59 +211,85 @@ getReg(char *key, char *valname, char *valbuf, int *buflen)
         HKEY    hKey;
         DWORD   valType = REG_SZ;
 
+	valbuf[0] = 0;
         rc = RegOpenKeyEx(HKEY_CURRENT_USER, key, 0, KEY_QUERY_VALUE, &hKey);
-        if (rc != ERROR_SUCCESS) {
-                fprintf(stderr,
-                        "Can not open registry HKEY_LOCAL_MACHINE\\%s\n", key);
-                return (0);
-        }
+        if (rc != ERROR_SUCCESS) return (0);
 
         rc = RegQueryValueEx(hKey,valname, NULL, &valType, valbuf, buflen);
-        if (rc != ERROR_SUCCESS) {
-                fprintf(stderr,
-"Can not get registry value \"%s\" in HKEY_LOCAL_MACHINE\\%s\n", key);
-                return (0);
-        };
+        if (rc != ERROR_SUCCESS) return (0);
         RegCloseKey(hKey);
         return (1);
+}
+
+char **
+addProxy(char *type, char *line, char **proxies)
+{
+	char	*q, buf[MAXLINE], proxy_host[MAXPATH];
+	int	proxy_port;
+
+	unless (line) return proxies;
+	q = strchr(line, ':');
+	assert(q);
+	*q = 0;
+	strcpy(proxy_host, line);
+	proxy_port = atoi(++q);
+	sprintf(buf, "%s %s:%d", type, proxy_host, proxy_port);
+fprintf(stderr, "####adding <%s>\n", buf);
+	return (addLine(proxies, strdup(buf)));
 }
 
 /*
  * Note: This works for both IE and netscape on win32
  */
-void
-get_http_proxy(char *proxy_host, int *proxy_port)
+char **
+get_http_proxy()
 {
 #define KEY "Software\\Microsoft\\Windows\\CurrentVersion\\internet Settings"
-	char *p, *q, *r, buf[MAXLINE];
-	int len = sizeof(buf);
+	char *p, *q, *type, buf[MAXLINE], proxy_host[MAXPATH];
+	int proxy_port, len = sizeof(buf);
+	char **proxies = NULL;
 
-	getReg(KEY, "ProxyServer", buf, &len);
-	/* simple form */
-	if (strchr(buf, '=') == 0) {
-		q = strchr(buf, ':');
-		assert(q);
-		*q = 0;
-		strcpy(proxy_host, buf);
-		*proxy_port = atoi(++q);
-		return; 
-	}
-
-	/* non-simple form */
-	p = strtok(buf, ";");
-	while (p) {
-		if (!strneq("http=", p, 5)) {
-			p = strtok(NULL, ";");
-			continue;
+	getReg(KEY, "AutoConfigURL", buf, &len);
+	if (buf[0]) {
+		proxies = get_config(buf, proxies);
+	} else {
+		if (getReg(KEY, "ProxyServer", buf, &len) == 0) return NULL;
+		/*
+		 * We support 3 froms:
+		 * 1) host:port
+		 * 2) http=host:port
+		 * 3) http://host:port
+		 * form 1 can only exist in a single field line
+		 * form 2 and 3 can be part of a multi-field line
+		 */
+		if (strchr(buf, ';') == 0) {
+			if (strneq("http://", buf, 7)) {
+				proxies = addProxy("PROXY", &buf[7], proxies);
+			} else if (strneq("http=", buf, 5)) {
+				proxies = addProxy("PROXY", &buf[5], proxies);
+			} else if (strneq("socks=", buf, 6)) {
+				proxies = addProxy("SOCKS", &buf[6], proxies);
+			} else {
+				proxies = addProxy("PROXY", buf, proxies);
+			}
+		} else {
+			q = strtok(buf, ";");
+			while (q) {
+				if (strneq("http://", q, 7)) {
+					proxies =
+					    addProxy("PROXY", &q[7], proxies);
+				} else if (strneq("http=", q, 5)) {
+					proxies =
+					    addProxy("PROXY", &q[5], proxies);
+				} else if (strneq("socks=", q, 6)) {
+					proxies =
+					    addProxy("SOCKS", &q[6], proxies);
+				} else {
+					q = strtok(NULL, ";");
+				}
+			}
 		}
-		p = &buf[5];
-		q = strtok(p, ":");
-		assert(q);
-		strcpy(proxy_host, q);
-		q = strtok(NULL, ";");
-		*proxy_port = atoi(q);
-		break;
 	}
-	
+	return (proxies);
 }
 #endif
