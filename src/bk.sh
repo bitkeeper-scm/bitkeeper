@@ -73,6 +73,11 @@ _flags() {		# /* undoc? 2.0 */
 }
 
 # shorthand
+_mode() {		# /* undoc? 2.0 */
+	bk prs -hr+ -nd':GFILE: :RWXMODE:' "$@"
+}
+
+# shorthand
 _encoding() {		# /* undoc? 2.0 */
 	bk prs -hr+ -nd':GFILE: :ENC:' "$@"
 }
@@ -674,27 +679,24 @@ _chmod() {		# /* doc 2.0 */
 	fi
 	MODE=$1
 	shift
-	for i in `bk sfiles -g ${1+"$@"}`
+	ROOT=`bk root`
+	rm -f "$ROOT/BitKeeper/tmp/err$$"
+	bk gfiles ${1+"$@"} | while read i
 	do	bk clean "$i" || {
 			echo Can not clean "$i," skipping it
 			continue
 		}
-		bk get -qe "$i" || {
-			echo Can not edit "$i," skipping it
-			continue
+		bk admin -m$MODE "$i" || {
+			echo "$i" > "$ROOT/BitKeeper/tmp/err$$"
+			break
 		}
-		omode=`ls -l "$i" | sed 's/[ \t].*//'`
-		bk clean "$i"
-		touch "$i"
-		chmod $MODE "$i"
-		mode=`ls -l "$i" | sed 's/[ \t].*//'`
-		rm -f "$i"
-		bk unedit "$i"	# follow checkout modes
-		if [ $omode = $mode ]
-		then	continue
-		fi
-		bk admin -m$mode "$i"
+		bk unedit "$i"
 	done
+	test -f "$ROOT/BitKeeper/tmp/err$$" && {
+		rm -f "$ROOT/BitKeeper/tmp/err$$"
+		exit 1
+	}
+	exit 0
 }
 
 _after() {		# /* undoc? 2.0 */
@@ -931,6 +933,10 @@ _clonemod() {
 	bk parent -q $1 || exit 1
 	bk undo -q -fa`bk repogca` || exit 1
 	bk pull
+}
+
+_leaseflush() {
+	rm -f `bk dotbk`/lease/`bk gethost -r`
 }
 
 # ------------- main ----------------------

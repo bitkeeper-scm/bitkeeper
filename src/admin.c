@@ -44,7 +44,6 @@ admin_main(int ac, char **av)
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
-		//fprintf(stderr, "%s", help);
 		system("bk help admin");
 		return (1);
 	}
@@ -73,19 +72,8 @@ admin_main(int ac, char **av)
 		    case 'M':					/* doc 2.0 */
 				merge = optarg; flags |= NEWCKSUM; break;
 		/* mode */
-		/* XXX should accept octal modes too */
 		    case 'm':	m = optarg;			/* doc 2.0 */
-		    		switch (m[0]) {
-				    case '-':
-				    case 'l':
-				    case 'd':
-					break;
-				    default:
-				    	fprintf(stderr,
-					    "%s: mode must be like ls -l\n",
-					    av[0]);
-					goto usage;
-				}
+				new_delta = 1;
 		   		flags |= NEWCKSUM;
 				break;
 		/* pathname */
@@ -166,11 +154,6 @@ admin_main(int ac, char **av)
 		fprintf(stderr,
 		    "admin: comment may only be specified with -i and/or -n\n");
 		goto usage;
-	}
-	if (compp && streq(compp, "none") && (bk_mode() != BK_PRO)) {
-		fprintf(stderr,
-		    "uncompressing files requires a commercial license\n");
-		return (1);
 	}
 	/* All of these need to be here: m/nextf are for resolve,
 	 * newfile is for !BK mode.
@@ -262,7 +245,7 @@ admin_main(int ac, char **av)
 		if (new_delta) {
 			if (IS_EDITED(sc)) {
 				was_edited = 1;
-				newrev(sc, &pf);
+				sccs_read_pfile("admin", sc, &pf);
 				if (unlink(sc->pfile)) {
 					fprintf(stderr,
 					"admin: cannot unlink %s\n", sc->pfile);

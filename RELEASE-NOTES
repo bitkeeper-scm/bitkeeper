@@ -14,7 +14,7 @@ Nothing is required to upgrade from the 3.0.1 release.
 New Features
 ----------------------------------------------------------------------------
 
-  Support SCO and Tru64 platforms
+  Add support for SCO (x86), Tru64 (Alpha), and Linux (mips) platforms
 
   Tcl/Tk is now included is distribution, eliminating dependencies on the
   installed version.
@@ -24,8 +24,8 @@ New Features
   Consistency checks now display a progress bar unless -q is passed or BK_NOTTY
   is set.
 
-  All BitKeeper files are now stored in a $HOME/.bk subdirectory.
-  Old files are migrated automatically.
+  All BitKeeper files formerly stored in $HOME/.bk* are now stored in
+  the $HOME/.bk subdirectory.  Old files are migrated automatically.
 
   The new install image includes a graphical installer that is run by
   default if $DISPLAY is set. (or on Windows) 
@@ -90,6 +90,9 @@ Noteworthy Bug Fixes
 
   Fix problem with restarting a BKD where existing children are still
   holding the socket open.
+
+  User authentication to HTTP proxies was broken in 3.0.1, it is fixed
+  again now.
 
 ===============================================================================
 Release notes for BitKeeper version 3.0.1.   These release notes cover

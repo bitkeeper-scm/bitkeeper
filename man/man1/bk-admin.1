@@ -51,7 +51,8 @@ force binary file (data will be uuencoded in s.file).
 .tp
 .RE
 .ll
-.tp 1.6i
+.if t .tp .85i
+.if n .tp 1.6i
 .OPTreq \-f flag
 set 
 .ARG flag 
@@ -81,11 +82,6 @@ use the operating system's native end-of-line termination.
 EOLN_NATIVE is set to "on" by default.  To make the
 default have EOLN_NATIVE be set to "off" put eoln:unix in the
 BitKeeper/etc/config file (see bk help config-etc).
-.tp
-.B MONOTONIC
-mark the file as a monotonically increasing file.  Monotonic files do not 
-roll backwards with the rest of the repository as a result of a bk undo
-or bk clone -r.  Suggested for the BitKeeper/etc/* files.
 .tp
 .B NOMERGE
 do not attempt to automerge this file, treat it as if it were a
@@ -142,12 +138,6 @@ same as -h, plus check that file contents are ASCII.
 read initial text from
 .ARG file
 (default stdin).
-.tp
-.OPTreq \-m mode
-set the mode of the file;
-.ARG mode
-is in the form 
-.BR -rwxrwxrwx .
 .tp
 .OPTreq \-M merge
 Mark branch specified by revision
@@ -219,6 +209,9 @@ like
 .B none
 no compression
 .RE
+.br
+.if t .ll 6.5i
+.if n .ll 6.5i
 .SH BUGS
 .LP
 This command does way too much and is likely to be split apart.

@@ -985,7 +985,7 @@ sc_rmr(resolve *rs)
 		perror(repo);
 		exit(1);
 	}
-	sprintf(repo, "-PyDelete: %s", ((sccs*)rs->opaque)->gfile);
+	sprintf(repo, "-PyDelete: %s", rs->d->pathname);
 	if (sys("bk", "delta", repo, resync, SYS)) {
 		perror(repo);
 		exit(1);
