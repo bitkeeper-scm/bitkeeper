@@ -12,10 +12,9 @@ BK=	bk
 CC_OUT	=-o $@
 LD_OUT	=-o $@
 LD	=cc
-CC_FAST	=-O2
 CC_DEBUG=-g
-CC_FAST_DEBUG=-g -O
-CC_NOFRAME=-fomit-frame-pointer
+CC_FAST_DEBUG=-g -O2
+CC_FAST	=$(CC_FAST_DEBUG)
 CC_WALL=-Wall -Wno-parentheses -Wno-char-subscripts
 INSTALL=install
 XTRA=
@@ -154,7 +153,7 @@ Wall:
 
 # production builds
 p:
-	$(MAKE) CFLAGS="$(CC_FAST) $(CC_NOFRAME) $(CF)" all
+	$(MAKE) CFLAGS="$(CC_FAST) $(CF)" all
 ndebug:
 	$(MAKE) CFLAGS="$(CC_FAST) -DNDEBUG $(CC_NOFRAME)" all
 stats:
