@@ -30,25 +30,36 @@ is the location of the config file; this path is usually
 .LP
 The config file must be a valid tcl program as it is
 evaluated by the \*(BK GUI tools (which are also tcl/tk programs).
-The advantage of being a
-program is that you can add custom tcl code to the config file
+The point of being a
+program is that tcl code may be added to the config file
 in order to customize the gui based on arbitrary values such
-as machine name, domain name, etc.
+as machine name, screen size, etc.  For example, if all screens
+of a certain size were known to be LCD screens (typically laptops),
+then the following technique could be used to get colors more
+appropriate for those screens:
+.DS
+if {[winfo screenwidth .] <= 1024} {
+	# These show up better on LCD displays.
+	set gc(oldColor) lightseagreen
+	set gc(newColor) gray
+	set gc(fm3.handColor) yellow
+}
+.DE
 .LP
-The 
+The point of the
 .B .bkgui
-file consists of lines that set configuration options.
-A typical configuration line looks like this:
+is to change configuration options.
+A typical line looks like this:
 .ft R
 .DS
-.if t .ta +1.0i
-set gc(BG) #f0f0f
+set gc(oldColor) #f0f0f0
 .DE
-The items that make up a config line are as follows:
+and the meanings for each part of that line are:
 .DS
-set     tcl command used to assign values to variables
-gc(BG)  array value
-#f0f0f0 hexadecimal color value
+.ta +1.4i
+set	tcl syntax for assigning variables
+gc(oldColor)	configuration option
+#f0f0f0	hexadecimal color value
 .DE
 Each variable in the config file may take one of two forms, 
 tool specific or global.  Tool specific variables, which apply only
@@ -80,8 +91,25 @@ The tool names used to get to tool specific
 variables (or to have a change only apply to that tool) are the
 GUI tool's name with the trailing \*(lqtool\*(rq dropped, i.e.,
 \*(lqdiff\*(rq for \*(lqdifftool.\*(rq
+.SH TCL INFORMATION
+The following tcl/tk commands may be useful for display specific
+customization:
+.TP
+[winfo depth .] 
+returns the color depth of the screen in bits, i.e., 16 means the screen
+can do 65536 different colors.
+.TP
+[winfo screen .] 
+Returns the name of the screen in the form displayName.screenIndex,
+i.e., "disks.bitmover.com:0.0".
+.TP
+[winfo screenheight .] 
+returns the height of the screen in pixels.
+.TP
+[winfo screenwidth .] 
+returns the width of the screen in pixels.
 .SH GUI CONFIGURATION
-.SS GLOBAL VARIABLES
+.SS GLOBAL CONFIGURATION
 The following is a list of variables used by the various gui tools.
 Each of these needs to be in a statement like: 
 .DS
@@ -94,8 +122,8 @@ set gc(\c
 but in the list below we just show the 
 .ARG variable
 part.
-.if n .TP 2
-.if t .TP 4
+.nr I 18
+.TP \n[I]
 .B fixedFont
 Font used in all of the text widgets such as file lists,
 entry boxes, and text widgets showing contents of files.
@@ -123,11 +151,11 @@ Default:\ #e8e8e8
 .tp
 .B newColor
 Color of the newer revision or diff.
-Default:\ lightblue
+Default:\ #a8d8e0
 .tp
 .B oldColor
 Color of the older revision or diff.
-Default:\ #d070ff
+Default:\ #b48cff
 .tp
 .B noticeColor
 Color for warnings and messages.  Default:\ #b0b0e0
@@ -218,9 +246,8 @@ Default 80
 .tp
 .B quit
 Key used to exit from the gui tools. Default:\ <Control-q>
-.SS TOOL SPECIFIC VARIABLES
-.if n .TP 3
-.if t .TP 4
+.SS CITOOL CONFIGURATION
+.TP \n[I]
 .B ci.commentsHeight
 height of the comments window.
 .tp
@@ -250,11 +277,13 @@ manner where you modify many files that logically belong to separate
 changesets. This option then allows you to stay in citool and create
 different changesets for the files without restarting citool each
 time. Default:\ 0
-.tp
+.SS CSETTOOL CONFIGURATION
+.TP \n[I]
 .B cset.listHeight
 Number of lines in the list windows.
 Default:\ 12
-.tp
+.SS DIFFTOOL CONFIGURATION
+.TP \n[I]
 .B diff.diffHeight
 Number of lines in the diff windows.
 Default:\ 50
@@ -262,7 +291,65 @@ Default:\ 50
 .B diff.searchColor
 Highlight color for search matches.
 Default:\ lightblue
+.SS FM3TOOL CONFIGURATION
+.TP \n[I]
+.B charColor
+Color used to highlight portions of a line which has changed.
+Default:\ orange
 .tp
+.B comments
+Boolean which controls the display of the comments window at the top.
+Default:\ 1 (on).
+.tp
+.B firstDiff
+Keyboard accelerator for going to the first change.
+Default:\ "-".
+.tp
+.B handColor
+Color used to highlight hand selected merge choices in the side by side 
+local and remote diff windows.
+Default:\ lightyellow.
+.tp
+.B lastDiff
+Keyboard accelerator for going to the last change.
+Default:\ "+".
+.tp
+.B mergeColor
+Color used to highlight merge choices, both manual and automatic, in the 
+lower merge window.
+Default:\ lightblue.
+.tp
+.B nextConflict
+Keyboard accelerator for going to the next conflict (skips automerged changes).
+Default:\ "}".
+.tp
+.B nextDiff
+Keyboard accelerator for going to the next change.
+Default:\ "]".
+.tp
+.B prevConflict
+Keyboard accelerator for going to the previous conflict
+(skips automerged changes).
+Default:\ "{".
+.tp
+.B prevDiff
+Keyboard accelerator for going to the previous change.
+Default:\ "[".
+.tp
+.B sameColor
+Color used to highlight the portion of a conflict consisting of unchanged lines.
+Default:\ #1cc7d0.
+.tp
+.B spaceColor
+Color used to highlight the beginnings of lines which are "spacers" inserted
+to make the changes line up horizontally.
+Default:\ black.
+.tp
+.B undo
+Keyboard accelerator for undoing the last merge selection.
+Default:\ "u".
+.SS HELPTOOL CONFIGURATION
+.TP \n[I]
 .B help.linkColor
 Color of the hyperlinks in helptool. Default:\ blue
 .tp
@@ -279,11 +366,13 @@ Number of columns to display in helptool. Default:\ 72
 .B help.exact
 Only return full word/phrase matches.
 Default:\ 0, set to 1 to enable.
-.tp
+.SS RENAMETOOL CONFIGURATION
+.TP \n[I]
 .B rename.listHeight
 Height of the file list widget in renametool (in
 lines). Default:\ 8
-.tp 
+.SS REVTOOL CONFIGURATION
+.TP \n[I]
 .B rev.canvasBG
 Color of the graph background. Default:\ #9fb6b8
 .tp 
@@ -331,8 +420,6 @@ valid entry for the prs -R option. Default:\ 1M
 .B rev.dateColor
 Color of the date text at the bottom of graph.
 Default:\ #181818
-.SH AUTHOR
-The GUI configuration was designed and is maintained by Aaron Kushner.
 .SH "SEE ALSO"
 .B Any Tcl/Tk documentation
 .br

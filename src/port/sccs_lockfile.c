@@ -196,7 +196,11 @@ sccs_readlockf(const char *file, pid_t *pidp, char **hostp, time_t *tp)
 	 * If we detect this case, we wait a little and
 	 * re-do the read().
 	 */
-	assert(flen < sizeof (buf));
+	if (flen >= sizeof(buf)) {
+		fprintf(stderr, "Corrupt lock file: %s\n", file);
+		close(fd);
+		return(-1);
+	}
 	assert(flen > 0);
 	for (;;) {
 		unless ((n = read(fd, buf, flen)) == flen) {

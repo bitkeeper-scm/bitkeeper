@@ -430,3 +430,44 @@ repository_wrunlock(int all)
 	proj_free(p);
 	return (error);
 }
+
+/*
+ * This function is called when the current process is exiting after
+ * the current repository should no longer be locked.
+ * Any locks remaining (from this process) is an error.
+ */
+void
+repository_lockcleanup(void)
+{
+	char	*root = sccs_root(0);
+
+	unless (root) return;
+	chdir(root);
+
+	if (repository_mine('r')) {
+		ttyprintf(
+"WARNING: process %d is exiting and it has left the repository at
+%s read locked!!  This is the result of a process that has been
+killed prematurely or is a bug.
+The stale lock will be removed.\n",
+			getpid(), root);
+		repository_rdunlock(0);
+	}
+
+	if (repository_mine('w')) {
+		ttyprintf(
+"ERROR: process %d is exiting and it has left the repository at
+%s write locked!!  This is the result of a process that has been
+killed prematurely or is a bug.\n",
+			getpid(), root);
+		/*
+		 * No need to keep the lock if we also have a RESYNC dir
+		 */
+		if (isdir(ROOT2RESYNC)) repository_wrunlock(0);
+	}
+	free(root);
+	/*
+	 * Unfortunatly this is run in atexit() so we can't portably change
+	 * the exit status if an error occurs.
+	 */
+}

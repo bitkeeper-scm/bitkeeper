@@ -21,8 +21,8 @@ private char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
 
 char	*find_wish(void);
 char	*find_perl5(void);
-void	cmdlog_exit(void);
-int	cmdlog_repo;
+private	void	cmdlog_exit(void);
+private	int	cmdlog_repo;
 private	void	cmdlog_dump(int, char **);
 private int	run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av);
 private int	usage(void);
@@ -649,11 +649,12 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 #define	LOG_MAXSIZE	(1<<20)
 #define	LOG_BADEXIT	-100000		/* some non-valid exit */
 
-void
+private void
 cmdlog_exit(void)
 {
 	purify_list();
 	if (cmdlog_buffer[0]) cmdlog_end(LOG_BADEXIT);
+	repository_lockcleanup();
 }
 
 private	struct {

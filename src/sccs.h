@@ -840,6 +840,7 @@ delta	*sccs_findKey(sccs *, char *);
 delta	*sccs_dInit(delta *, char, sccs *, int);
 char	*sccs_getuser(void);
 void	sccs_resetuser(void);
+char	*sccs_realuser(void);
 int	sccs_markMeta(sccs *);
 
 int	newrev(sccs *s, pfile *pf);
@@ -993,6 +994,7 @@ void	repository_unlock(int all);
 int	repository_wrlock(void);
 int	repository_wrunlock(int all);
 int	repository_hasLocks(char *root, char *dir);
+void	repository_lockcleanup(void);
 void	comments_save(char *s);
 int	comments_got(void);
 void	comments_done(void);
