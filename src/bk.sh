@@ -1162,10 +1162,10 @@ __findRegsvr32()
 		for i in system32 system
 		do
 			REGSVR32="$SYS/$i/regsvr32.exe" 
-			if [ -e "$REGSVR32" ]
-			then echo "$REGSVR32";
-			     return;
-			fi
+			test -f "$REGSVR32" && {
+				echo "$REGSVR32"
+				return
+			}
 		done
 	fi
 
@@ -1173,11 +1173,10 @@ __findRegsvr32()
 	do
 		for dir in WINDOWS/system32 WINDOWS/system WINNT/system32
 		do
-			if [ -f "$drv:/$dir/regsvr32.exe" ]
-			then
+			test -f "$drv:/$dir/regsvr32.exe" && {
 				REGSVR32="$drv:/$dir/regsvr32.exe"
-				break;
-			fi
+				break
+			}
 		done
 		test X"$REGSVR32" != X && break; 
 	done

@@ -545,7 +545,7 @@ import_RCS () {
 			cd $d || Done 1
 			# If there is a name conflict, do NOT use the Attic file
 			bk _find . -name '*,v' | while read i
-			do	if [ -e "../$i" ] 
+			do	if [ -f "../$i" ] 
 				then	$RM -f "$i"
 				else	mv "$i" ..
 				fi
