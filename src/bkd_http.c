@@ -1555,8 +1555,7 @@ http_error(int status, char *fmt, ...)
 		out(buf);
 
 		strcpy(buf, "<html><head><title>Error!</title></head>\n"
-			    "<body alink=black link=black bgcolor=white>\n"
-			    "<center>\n");
+			    "<body alink=black link=black bgcolor=white>\n");
 	}
 	sprintf(buf+strlen(buf), "<h2>Error %d</h2>\n", status);
 	size = strlen(buf);
@@ -1571,20 +1570,27 @@ http_error(int status, char *fmt, ...)
 	} else {
 		strcat(buf, "\n");
 	}
+	out("<center>\n"
+            "<table>\n"
+	    "<tr bgcolor=red fgcolor=white>\n"
+	    "  <td align=center>\n");
 	out(buf);
+	out("  </td>\n"
+	    "</tr>\n"
+	    "</table>\n"
+            "</center>\n");
 
 	if (embedded) return;
 
-	out("</center>\n"
-	    "<hr>\n"
+	out("<hr>\n"
 	    "<table width=100%>\n"
 	    "<tr>\n"
-	    "<th valign=top align=left>bkhttp/" BKWEB_SERVER_VERSION " server on ");
+	    "  <th valign=top align=left>bkhttp/" BKWEB_SERVER_VERSION " server on ");
 	out(url(0));
-	out("</th>\n"
-	    "<td align=right><a href=http://www.bitkeeper.com>\n"
-	    "<img src=/trailer.gif alt=\"Learn more about BitKeeper\">\n"
-	    "</a></td>\n"
+	out("  </th>\n"
+	    "  <td align=right><a href=http://www.bitkeeper.com>"
+	    "<img src=/trailer.gif alt=\"Learn more about BitKeeper\"></a>"
+	    "  </td>\n"
 	    "</tr>\n"
 	    "</table>\n");
 	out("</body>\n");
