@@ -75,7 +75,6 @@ private int	checkGone(sccs *s, int bit, char *who);
 private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
 private void	singleUser(sccs *s, MDBM *m);
 private	int	parseConfig(char *buf);
-private void	fix_stime(sccs *s);
 
 int
 emptyDir(char *dir)
@@ -1109,7 +1108,7 @@ date2time(char *asctime, char *z, int roundup)
 /*
  * Force sfile's mod time to be one second before gfile's mod time
  */
-private void
+void
 fix_stime(sccs *s)
 {
 	struct	utimbuf	ut;
