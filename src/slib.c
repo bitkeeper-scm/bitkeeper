@@ -66,7 +66,8 @@ private int	fprintDelta(FILE *,
 private delta	*gca(delta *left, delta *right);
 private delta	*gca2(sccs *s, delta *left, delta *right);
 private delta	*gca3(sccs *s, delta *left, delta *right, char **i, char **e);
-private int	compressmap(sccs *s, delta *d, ser_t *set, char **i, char **e);
+private int	compressmap(sccs *s, delta *d, ser_t *set, int useSer,
+			void **i, void **e);
 private	void	uniqDelta(sccs *s);
 private	void	uniqRoot(sccs *s);
 private int	checkGone(sccs *s, int bit, char *who);
@@ -5162,7 +5163,7 @@ freestr(struct liststr *list)
  */
 
 private int
-compressmap(sccs *s, delta *d, ser_t *set, char **inc, char **exc)
+compressmap(sccs *s, delta *d, ser_t *set, int useSer, void **inc, void **exc)
 {
 	struct	liststr	*inclist = 0, *exclist = 0;
 	int	inclen = 0, exclen = 0;
@@ -5170,6 +5171,7 @@ compressmap(sccs *s, delta *d, ser_t *set, char **inc, char **exc)
 	delta	*t;
 	int	i;
 	int	active;
+	ser_t	*incser = 0, *excser = 0;
 
 	assert(d);
 	assert(set);
@@ -5200,13 +5202,21 @@ compressmap(sccs *s, delta *d, ser_t *set, char **inc, char **exc)
 
 		/* exclude if active in delta set and not in desired set */
 		if (active && !set[t->serial]) {
-			exclen += insertstr(&exclist, t->rev);
+			if (useSer) {
+				excser = addSerial(excser, t->serial);
+			} else {
+				exclen += insertstr(&exclist, t->rev);
+			}
 		}
 		unless (set[t->serial])  continue;
 
 		/* include if not active in delta set and in desired set */
 		if (!active) {
-			inclen += insertstr(&inclist, t->rev);
+			if (useSer) {
+				incser = addSerial(incser, t->serial);
+			} else {
+				inclen += insertstr(&inclist, t->rev);
+			}
 		}
 		EACH(t->include) {
 			unless(slist[t->include[i]] & (S_INC|S_EXCL))
@@ -5218,8 +5228,13 @@ compressmap(sccs *s, delta *d, ser_t *set, char **inc, char **exc)
 		}
 	}
 
-	if (inclen) *inc = buildstr(inclist, inclen);
-	if (exclen) *exc = buildstr(exclist, exclen);
+	if (useSer) {
+		if (incser) *inc = incser;
+		if (excser) *exc = excser;
+	} else {
+		if (inclen) *inc = buildstr(inclist, inclen);
+		if (exclen) *exc = buildstr(exclist, exclen);
+	}
 
 	if (slist)   free(slist);
 	if (exclist) freestr(exclist);
@@ -5910,7 +5925,7 @@ err:		s->state |= S_WARNED;
 				slist[t->exclude[i]] |= S_EXCL;
 		}
 	}
-	if (compressmap(s, baseRev, slist, &inc, &exc)) {
+	if (compressmap(s, baseRev, slist, 0, (void **)&inc, (void **)&exc)) {
 		fprintf(stderr, "%s: cannot compress merged set\n", who);
 		goto err;
 	}
@@ -5936,14 +5951,14 @@ sccs_adjustSet(sccs *sc, sccs *scb, delta *d)
 	int	errp;
 	ser_t	*slist;
 	delta	*n;
-	char	*inc, *exc;
+	ser_t	*inc, *exc;
 
 	errp = 0;
 	n = sfind(scb, d->serial);	/* get 'd' from backup */
 	assert(n);
 	slist = serialmap(scb, n, 0, 0, &errp);
 	if (errp) {
-err:		fprintf(stderr, "an errp error\n");
+		fprintf(stderr, "an errp error\n");
 		if (inc) free(inc);
 		if (exc) free(exc);
 		if (slist) free(slist);
@@ -5960,20 +5975,14 @@ err:		fprintf(stderr, "an errp error\n");
 		free(d->exclude);
 		d->exclude = 0;
 	}
-	if (compressmap(sc, d, slist, &inc, &exc)) {
+	if (compressmap(sc, d, slist, 1, (void **)&inc, (void **)&exc)) {
 		assert("cannot compress merged set" == 0);
 	}
 	if (inc) {
-		d->include = getserlist(sc, 0, inc, &errp);
-		if (errp) goto err;
-		free(inc);
-		inc = 0;
+		d->include = inc;
 	}
 	if (exc) {
-		d->exclude = getserlist(sc, 0, exc, &errp);
-		if (errp) goto err;
-		free(exc);
-		exc = 0;
+		d->exclude = exc;
 	}
 	if (slist) {
 		free(slist);
@@ -14741,7 +14750,7 @@ gca3(sccs *s, delta *left, delta *right, char **inc, char **exc)
 	 * compress it to be -i and -x relative to gca2 result
 	 */
 
-	if (compressmap(s, gca, gmap, inc, exc))  goto bad;
+	if (compressmap(s, gca, gmap, 0, (void **)inc, (void **)exc))  goto bad;
 	ret = gca;
 
 bad:	if (lmap) free (lmap);
