@@ -4763,7 +4763,17 @@ out:			if (slist) free(slist);
 
 		e1= e2 = 0;
 		if (isData(buf)) {
-			if (!print) continue;
+			if (!print) {
+				/* if we are skipping data from pending block */
+				if (lf_pend &&
+				    lf_pend == whatstate((const serlist*)state))
+				{
+					fputc('\n', out);
+					if (flags & NEWCKSUM) sum += '\n';
+					lf_pend = 0;
+				}
+				continue;
+			}
 			if (hash) {
 				if (getKey(DB, buf, flags) == 1) {
 					unless (flags & GET_HASHONLY) {
@@ -5991,26 +6001,26 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
  * If we are trying to compare with expanded strings, do so.
  */
 private inline int
-expandnleq(sccs *s, delta *d, char *fbuf, char *sbuf, int flags)
+expandnleq(sccs *s, delta *d, MMAP *gbuf, char *fbuf, int *flags)
 {
 	char	*e = fbuf, *e1 = 0, *e2 = 0;
 	int sccs_expanded = 0 , rcs_expanded = 0, rc;
 
-	if (s->encoding != E_ASCII) return (0);
-	if (!(flags & (GET_EXPAND|GET_RCSEXPAND))) return 0;
-	if (flags & GET_EXPAND) {
+	if (s->encoding != E_ASCII) return (MCMP_DIFF);
+	if (!(*flags & (GET_EXPAND|GET_RCSEXPAND))) return (MCMP_DIFF);
+	if (*flags & GET_EXPAND) {
 		e = e1 = expand(s, d, e, &sccs_expanded);
 		if (s->state & S_EXPAND1) {
-			if (sccs_expanded) flags &= ~GET_EXPAND;
+			if (sccs_expanded) *flags &= ~GET_EXPAND;
 		}
 	}
-	if (flags & GET_RCSEXPAND) {
+	if (*flags & GET_RCSEXPAND) {
 		e = e2 = rcsexpand(s, d, e, &rcs_expanded);
 		if (s->state & S_EXPAND1) {
-			if (rcs_expanded) flags &= ~GET_RCSEXPAND;
+			if (rcs_expanded) *flags &= ~GET_RCSEXPAND;
 		}
 	}
-	rc = strnleq(e, sbuf);
+	rc = mcmp(gbuf, e);
 	if (sccs_expanded) free(e1);
 	if (rcs_expanded) free(e2);
 	return (rc);
@@ -6023,7 +6033,9 @@ expandnleq(sccs *s, delta *d, char *fbuf, char *sbuf, int flags)
 int
 sccs_hasDiffs(sccs *s, u32 flags)
 {
-	FILE	*tmp = 0;
+	MMAP	*tmp = 0;
+	MDBM	*ghash = 0;
+	MDBM	*shash = 0;
 	pfile	pf;
 	serlist *state = 0;
 	ser_t	*slist = 0;
@@ -6032,7 +6044,12 @@ sccs_hasDiffs(sccs *s, u32 flags)
 	char	sbuf[MAXLINE];
 	char	*name = 0, *mode = "rb";
 	int	tmpfile = 0;
+	int	mcmprc;
 	char	*fbuf;
+	int	no_lf = 0;
+	int	lf_pend = 0;
+	u32	eflags = flags; /* copy because expandnleq destroys bits */
+	int	serial;
 
 #define	RET(x)	{ different = x; goto out; }
 
@@ -6077,7 +6094,11 @@ sccs_hasDiffs(sccs *s, u32 flags)
 		mode = "rt";
 		name = strdup(s->gfile);
 	}
-	unless (tmp = fopen(name, mode)) {
+	if (s->state & S_HASH) {
+		ghash = loadDB(name, 0, DB_USEFIRST);
+		shash = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
+	}
+	else unless (tmp = mopen(name, mode)) {
 		verbose((stderr, "can't open %s\n", name));
 		RET(-1);
 	}
@@ -6088,34 +6109,140 @@ sccs_hasDiffs(sccs *s, u32 flags)
 	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
 	while (fbuf = nextdata(s)) {
 		if (fbuf[0] != '\001') {
-			if (!print) continue;
-			unless (fnext(sbuf, tmp)) {
-				debug((stderr, "diff because EOF on gfile\n"));
-				RET(1);
+			if (!print) {
+				/* if we are skipping data from pending block */
+				if (lf_pend &&
+				    lf_pend == whatstate((const serlist*)state))
+				{
+					lf_pend = 0;
+				}
+				continue;
 			}
-			unless (strnleq(fbuf, sbuf) ||
-			    expandnleq(s, d, fbuf, sbuf, flags)) {
+			if (s->state & S_HASH) {
+				char	*from, *to, *val;
+				/* XXX: hack to use sbuf, but it exists */
+				for (from = fbuf, to = sbuf;
+				    *from && *from != ' ';
+				    *to++ = *from++) /* null body */;
+				assert(*from == ' ');
+				*to++ = '\0';
+				from++;
+				val = to;
+				for ( ;
+				    *from && *from != '\n';
+				    *to++ = *from++) /* null body */;
+				assert(*from == '\n');
+				*to = '\0';
+				/* XXX: could use the MDBM_INSERT fails */
+				if (mdbm_fetch_str(shash, sbuf)) continue;
+				if (mdbm_store_str(shash, sbuf, "1",
+				    MDBM_INSERT))
+				{
+					fprintf(stderr, "sccs_hasDiffs: "
+						"key insert caused conflict "
+						"'%s'\n", sbuf);
+					RET(-1);
+				}
+				unless (to = mdbm_fetch_str(ghash, sbuf)) {
+#ifdef	WHEN_DELETE_KEY_SUPPORTED
+					debug((stderr, "diff because sfile "
+						"had key\n"));
+					RET(1);
+#else
+					continue;
+#endif
+				}
+				unless (streq(to, val)) {
+					debug((stderr, "diff because same "
+						"key diff value\n"));
+					RET(1);
+				}
+				mdbm_delete_str(ghash, sbuf);
+				continue;
+			}
+			mcmprc = mcmp(tmp, fbuf);
+			if (mcmprc == MCMP_DIFF) {
+				mcmprc = expandnleq(s, d, tmp, fbuf, &eflags);
+			}
+			no_lf = 0;
+			lf_pend = print;
+			switch (mcmprc) {
+			    case MCMP_ERROR:
+			    	fprintf(stderr, "sccs_hasDiffs: mcmp error\n");
+				exit(1);
+			    case MCMP_MATCH:
+			    	break;
+			    case MCMP_NOLF:
+			    	no_lf = print;
+				break;
+			    case MCMP_DIFF:
 				debug((stderr, "diff because diff data\n"));
 				RET(1);
+			    case MCMP_SFILE_EOF:
+			    case MCMP_BOTH_EOF:
+			    	fprintf(stderr, "sccs_hasDiffs: "
+				    "sfile has data and is EOF?\n");
+				RET(1);
+			    case MCMP_GFILE_EOF:
+				debug((stderr, "diff because EOF on gfile\n"));
+				RET(1);
+			    default:
+			    	fprintf(stderr,
+				    "sccs_hasDiffs: switch with no case %d\n",
+				    mcmprc);
+				exit(1);
 			}
 			debug2((stderr, "SAME %.*s", linelen(fbuf), fbuf));
 			continue;
 		}
-		changestate(state, fbuf[1], atoi(&fbuf[3]));
+		serial = atoi(&fbuf[3]);
+		if (fbuf[1] == 'E' && lf_pend == serial &&
+		    whatstate((const serlist*)state) == serial)
+		{
+			char	*n = &fbuf[3];
+			while (isdigit(*n)) n++;
+			if (*n == 'N') {
+				no_lf = (no_lf) ? 0 : 1; /* toggle */
+			}
+			else if (no_lf) {
+				/* sfile has newline when gfile had none */
+				debug((stderr, "diff because EOF on gfile\n"));
+				RET(1);
+			}
+			lf_pend = 0;
+		}
+		changestate(state, fbuf[1], serial);
 		debug2((stderr, "%.*s\n", linelen(fbuf), fbuf));
 		print = printstate((const serlist*)state, (const ser_t*)slist);
 	}
-	unless (fnext(sbuf, tmp)) {
+	if (s->state & S_HASH) {
+		kvpair	kv;
+		kv = mdbm_first(ghash);
+		if (kv.key.dsize) {
+			debug((stderr, "diff because gfile had key\n"));
+			RET(1);
+		}
+		debug((stderr, "hashes same\n"));
+		RET(0);
+	}
+	if (no_lf) {
+		/* gfile has newline when sfile had none */
+		debug((stderr, "diff because EOF on sfile\n"));
+		RET(1);
+	}
+	mcmprc = mcmp(tmp, 0);
+	if (mcmprc == MCMP_BOTH_EOF) {
 		debug((stderr, "same\n"));
 		RET(0);
 	}
-	debug((stderr, "diff because not EOF on both %s %s\n",
-	    eof(s) ? "sfile done" : "sfile not done",
-	    feof(tmp) ? "gfile done" : "gfile not done"));
+	assert(mcmprc == MCMP_SFILE_EOF);
+	debug((stderr, "diff because EOF on sfile\n"));
 	RET(1);
 out:
 	if (s->encoding & E_GZIP) zgets_done();
-	if (tmp) fclose(tmp); /* must close before we unlink */
+	if (tmp) mclose(tmp); /* must close before we unlink */
+	if (ghash) mdbm_close(ghash);
+	if (shash) mdbm_close(shash);
 	if (name) {
 		if (tmpfile) unlink(name);
 		free(name);
@@ -8548,7 +8675,16 @@ finish(sccs *s, int *ip, int *pp, FILE *out, register serlist *state,
 		debug2((stderr, "G> %.*s", linelen(buf), buf));
 		sum = fputdata(s, buf, out);
 		if (isData(buf)) {
-			unless (print) continue;
+			if (!print) {
+				/* if we are skipping data from pending block */
+				if (lf_pend &&
+				    lf_pend == whatstate((const serlist*)state))
+				{
+					sum += '\n';
+					lf_pend = 0;
+				}
+				continue;
+			}
 			unless (lf_pend) sum -= '\n';
 			lf_pend = print;
 			s->dsum += sum;
@@ -12550,7 +12686,7 @@ sccs_keyinit(char *key, u32 flags, project *proj, MDBM *idDB)
 	/* Id cache contains long and short keys */
 	k.dptr = key;
 	k.dsize = strlen(key) + 1;
-	v = mdbm_fetch(idDB, k);
+	v  = mdbm_fetch(idDB, k);
 	if (v.dsize) {
 		p = name2sccs(v.dptr);
 	} else {
