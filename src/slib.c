@@ -7598,10 +7598,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 		}
 		EACH(d->comments) {
 			/* metadata */
-			p = buf;
-			if (d->comments[i][0] != '\001') {
-				p = fmts(p, "\001c ");
-			}
+			p = fmts(buf, "\001c ");
 			if (strlen(d->comments[i]) >= 1020) {
 				fprintf(stderr,
 				   "%s@@%s: Truncating comment to 1020 chars\n",
@@ -8104,7 +8101,8 @@ hasComments(delta *d)
 	int	i;
 
 	EACH(d->comments) {
-		if (d->comments[i][0] != '\001') return (1);
+		assert(d->comments[i][0] != '\001');
+		return (1);
 	}
 	return (0);
 }
@@ -13054,7 +13052,6 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		/* XXX TODO: we may need to the walk the comment graph	*/
 		/* to get the latest comment				*/
 		EACH(d->comments) {
-			if (d->comments[i][0] == '\001') continue;
 			if (!plen && !slen && j++) fc(' ');
 			fprintDelta(out, vbuf, prefix, &prefix[plen -1], s, d);
 			fs(d->comments[i]);
@@ -13073,7 +13070,6 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 			fs("&nbsp;");
 		} else {
 			EACH(d->comments) {
-				if (d->comments[i][0] == '\001') continue;
 				if (i > 1) fs("<br>");
 				if (d->comments[i][0] == '\t') {
 					fs("&nbsp;&nbsp;&nbsp;&nbsp;");
@@ -13338,7 +13334,6 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		/* XXX TODO: we may need to the walk the comment graph	*/
 		/* to get the latest comment				*/
 		EACH(d->comments) {
-			if (d->comments[i][0] == '\001') continue;
 			fs("C ");
 			fs(d->comments[i]);
 			fc('\n');
