@@ -262,8 +262,7 @@ out:		if (commentFile) unlink(commentFile);
 	 * XXX Do we want to fire the trigger when we are in RESYNC ?
 	 */
 	p = pendingFiles2[0] ? pendingFiles2 : pendingFiles;
-	sprintf(buf, "BK_PENDING=%s", p);
-	putenv((strdup)(buf));
+	safe_putenv("BK_PENDING=%s", p);
 	if (trigger(av, "pre")) {
 		rc = 1;
 		goto done;

@@ -407,7 +407,6 @@ pull(char **av, opts opts, remote *r, char **envVar)
 	char	csetFile[MAXPATH] = CHANGESET;
 	char	key_list[MAXPATH];
 	char	buf[MAXPATH];
-	char	*root;
 	int	gzip, rc;
 
 	unless (r) {
@@ -432,7 +431,6 @@ pull(char **av, opts opts, remote *r, char **envVar)
 	}
 	sccs_sdelta(cset, sccs_ino(cset), buf);
 	sccs_free(cset);  /* for win32 */
-	root = strdup(buf);
 
 	rc = pull_part1(av, opts, r, key_list, envVar);
 	if (rc) return (rc); /* fail */

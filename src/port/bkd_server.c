@@ -41,7 +41,7 @@ ids()
 		seteuid(u);
 #endif
 		p = getpwuid(geteuid());
-		putenv(aprintf("USER=%s", p->pw_name));
+		safe_putenv("USER=%s", p->pw_name);
 		if (Opts.log) {
 			fprintf(Opts.log,
 			    "Set to UID %u (%s)\n", geteuid(), sccs_getuser());
@@ -238,7 +238,7 @@ bkd_service_loop(int ac, char **av)
 		"bk", "_socket2pipe",
 		"-s", socket_handle,	/* socket handle */
 		"-p", pipe_size,	/* set pipe size */
-		"bk", "bkd",		/* bkd command */
+		"bk", "bkd", "-z",	/* bkd command */
 		0};
 	extern	int bkd_quit; /* This is set by the helper thread */
 	extern	int bkd_register_ctrl();
@@ -273,7 +273,7 @@ bkd_service_loop(int ac, char **av)
 	 * Main loop
 	 */
 	sprintf(pipe_size, "%d", BIG_PIPE);
-	for (i = 1, j = 8; i < ac; i++, j++) {
+	for (i = 1, j = 9; i < ac; i++, j++) {
 		bkd_av[j++] = aprintf("-x%s", av[i]);
 		assert(j < 100);
 	}

@@ -38,7 +38,7 @@ sendbug_main(int ac,  char **av)
 		    case 'w':   webmail = 1; break;
 		    case 'e':   webmail = 0; break;
 		    case 't':   textmode = 1; break;
-		    default:    fprintf(stderr, "usage: bk _logConfig [-d]\n");
+		    default:    fprintf(stderr, "usage: bk sendbug -[e|w|t]\n");
 				return (1);
 		}
 	}

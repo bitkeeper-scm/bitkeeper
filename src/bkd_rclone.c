@@ -79,6 +79,18 @@ cmd_rclone_part1(int ac, char **av)
 	char	*path, *p;
 
 	unless (path = rclone_common(ac, av, &opts)) return (1);
+	if (isDaemon(Opts) || Opts.safe_cd) {
+		char	cwd[MAXPATH];
+		char	*new = fullname(path, 0);
+		getcwd(cwd, sizeof(cwd));
+		unless ((strlen(new) >= strlen(cwd)) && 
+		    strneq(cwd, new, strlen(cwd))) {
+			out("ERROR-illegal cd command\n");
+			free(path);
+			drain();
+			return (1);
+		}
+	}
 	if (exists(path)) {
 		if (isdir(path)) {
 			if  (!isEmptyDir(path)) {
@@ -111,11 +123,11 @@ cmd_rclone_part2(int ac, char **av)
 {
 	opts	opts;
 	char	buf[MAXPATH];
-	char	*path, *p, *ebuf = NULL;
+	char	*path, *p;
 	int	fd2, rc = 0;
 
 	unless (path = rclone_common(ac, av, &opts)) return (1);
-	if (chdir(path)) {
+	if (unsafe_cd(path)) {
 		p = aprintf("ERROR-cannot chdir to \"%s\"\n", path);
 		out(p);
 		free(p);
@@ -126,8 +138,7 @@ cmd_rclone_part2(int ac, char **av)
 	free(path);
 
 	if (opts.rev) {
-		ebuf = aprintf("BK_CSETS=1.0..%s", opts.rev);
-		putenv(ebuf);
+		safe_putenv("BK_CSETS=1.0..%s", opts.rev);
 	} else {
 		putenv("BK_CSETS=1.0..");
 	}
@@ -191,7 +202,6 @@ done:
 	trigger(av,  "post");
 	repository_wrunlock(0);
 	putenv("BK_CSETS=");
-	if (ebuf) free(ebuf);
 	return (rc);
 }
 

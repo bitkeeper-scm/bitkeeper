@@ -68,8 +68,7 @@ insertCygwinPath(char *bkpath, char *pathList)
 			t = "";
 		}
 		if (streq(t, cygwinPath())) return(0); /* already got it */
-		q = aprintf("PATH=%s;%s;%s", pathList, cygwinPath(), t);
-		putenv(q);
+		safe_putenv("PATH=%s;%s;%s", pathList, cygwinPath(), t);
 		return (0);
 	}
 	return (-1);
@@ -180,20 +179,18 @@ gotit:
 		 * the correct diff and patch binary
 		 */
 		if (add2path) {
-			s = aprintf("PATH=%s%c%s/gnu/bin%c%s%c%s",
+			safe_putenv("PATH=%s%c%s/gnu/bin%c%s%c%s",
 			    		buf, PATH_DELIM,
 					buf, PATH_DELIM,
 					cygwinPath(), PATH_DELIM,
 					p);
-			putenv(s);
 		} else {
 			insertCygwinPath(buf, p);
 		}
 #else
 		if (add2path) {
-			s = aprintf("PATH=%s%c%s/gnu/bin%c%s",
+			safe_putenv("PATH=%s%c%s/gnu/bin%c%s",
 			    		buf, PATH_DELIM, buf, PATH_DELIM, p);
-			putenv(s);
 		}
 #endif
 		return;

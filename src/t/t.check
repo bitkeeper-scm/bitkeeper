@@ -77,12 +77,23 @@ then	echo failed to commit all files; exit 1; fi
 echo OK
 
 echo $N Make sure that it checks clean ..............................$NL
+rm -f `bk root`/BitKeeper/log/checked
 bk -r check -a > OUT 2>&1 || {
 	echo failed to exit 0
 	cat OUT
 	exit 1
 }
 echo OK
+
+echo $N Make sure that check -a does not add a checked timestamp ....$NL
+test -f `bk root`/BitKeeper/log/checked && exit 1
+echo OK
+
+echo $N Make sure that check -ac does add a checked timestamp .......$NL
+bk -r check -ac
+test -f `bk root`/BitKeeper/log/checked || exit 1
+echo OK
+
 cp -rp $HERE/project $HERE/clean
 echo $N Make sure that it complains if a file is missing ............$NL
 mv d1/sub1/SCCS/s.a d1/sub1/SCCS/junk.a

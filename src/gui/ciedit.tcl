@@ -13,9 +13,9 @@ proc eat {fd} \
 	}
 }
 
-proc cmd_edit {} \
+proc cmd_edit {which} \
 {
-	global	curLine edit_busy gc filename w tmp_dir
+	global	curLine edit_busy gc filename w tmp_dir env
 
 	# If comments are in the comments window, save them before invoking 
 	# the editor
@@ -26,12 +26,18 @@ proc cmd_edit {} \
 	if {$edit_busy == 1} { return }
 	set edit_busy 1
 	if {[file writable $filename]} {
-		if {$gc(ci.editor) == "ciedit"} {
+		if {$which == "gui"} {
 			edit_widgets
 			edit_file
-		} elseif {$gc(ci.editor) == "fm2tool"} {
+		} elseif {$which == "fmtool"} {
 			set old [file join $tmp_dir old[pid]]
-			exec bk get -qkp $filename >$old
+			catch {exec bk get -qkp $filename >$old}
+			if {![file readable $old] || [file size $old] == 0} {
+				# XXX - replace with popup when I merge 
+				exec bk msg "Unable to bk get $filename"
+				set edit_busy 0
+				return
+			}
 			set merge [file join $tmp_dir merge[pid]]
 			set fd [open "| bk fmtool $old $filename $merge" r]
 			fileevent $fd readable "eat $fd"
@@ -41,8 +47,15 @@ proc cmd_edit {} \
 			} 
 			catch {file delete $old $merge}
 		} else {
-			set geom "$gc(ci.editHeight)x$gc(editWidth)-1-1"
-			catch {exec xterm -g $geom -e $gc(ci.editor) $filename}
+			if {[info exists env(EDITOR)]} {
+				set editor $env(EDITOR)
+			} else {
+				set editor vim
+			}
+			set geom "$gc(ci.editWidth)x$gc(ci.editHeight)"
+			set fd [open "| xterm -g $geom -e $editor $filename" r]
+			fileevent $fd readable "eat $fd"
+			vwait edit_busy
 		}
 	}
 	cmd_refresh 1

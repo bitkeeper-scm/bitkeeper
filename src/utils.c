@@ -521,45 +521,25 @@ add_cd_command(FILE *f, remote *r)
 void
 put_trigger_env(char *prefix, char *v, char *value)
 {
-	char *env;
-	char *buf;
-	char *e;
-
-	env = aprintf("%s_%s", prefix, v);
-	if ((e = getenv(env)) && streq(e, value)) return;
-	buf = aprintf("%s=%s", env, value);
-	putenv(strdup(buf));
-	free(env); free(buf);
+	safe_putenv("%s_%s=%s", prefix, v, value);
 }
 
 void
 putroot(char *where)
 {
 	char	*root = sccs_root(0);
-	char	*e, *buf, *env;
-
-	env = aprintf("%s_ROOT", where);
 
 	if (root) {
 		if (streq(root, ".")) {
 			char	pwd[MAXPATH];
 
 			getcwd(pwd, MAXPATH);
-			if ((e = getenv(env)) && streq(e, pwd)) {
-				return;
-			}
-			buf = aprintf("%s=%s", env, pwd);
+			safe_putenv("%s_ROOT=%s", where, pwd);
 		} else {
-			if ((e = getenv(env)) && streq(e, root)) {
-				return;
-			}
-			buf = aprintf("%s=%s", env, root);
+			safe_putenv("%s_ROOT=%s", where, root);
 		}
-		putenv(buf);
-		buf = 0; /* paranoid */
 		free(root);
 	}
-	free(env);
 }
 
 /*
@@ -580,6 +560,7 @@ sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 	fprintf(f, "putenv BK_TIME_T=%s\n", bk_time);
 	user = sccs_getuser();
 	fprintf(f, "putenv BK_USER=%s\n", user);
+	fprintf(f, "putenv _BK_USER=%s\n", user);	/* XXX remove in 3.0 */
 	host = sccs_gethost();
 	fprintf(f, "putenv _BK_HOST=%s\n", host);
 
@@ -614,17 +595,16 @@ sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 int
 getServerInfoBlock(remote *r)
 {
-	char	*p, buf[4096];
+	char	buf[4096];
 
 	while (getline2(r, buf, sizeof(buf)) > 0) {
 		if (streq(buf, "@END@")) return (0); /* ok */
 		if (r->trace) fprintf(stderr, "Server info:%s\n", buf);
 		if (strneq(buf, "PROTOCOL", 8)) {
-			p = aprintf("BK_REMOTE_%s", buf);
+			safe_putenv("BK_REMOTE_%s", buf);
 		} else {
-			p = aprintf("BKD_%s", buf);
+			safe_putenv("BKD_%s", buf);
 		}
-		putenv(p);
 	}
 	return (1); /* protocol error, never saw @END@ */
 }
@@ -801,15 +781,12 @@ smallTree(int threshold)
  * malloc'ed buffer which caller should free when done
  */
 char *
-aprintf(char *fmt, ...)
+vaprintf(const char *fmt, va_list ptr)
 {
-	va_list	ptr;
 	int	rc, size = strlen(fmt) + 64;
 	char	*buf = malloc(size);
 
-	va_start(ptr, fmt);
 	rc = vsnprintf(buf, size, fmt, ptr);
-	va_end(ptr);
 	/*
 	 * On IRIX, it truncates and returns size-1.
 	 * We can't assume that that is OK, even though that might be
@@ -821,11 +798,26 @@ aprintf(char *fmt, ...)
 		size *= 2;
 		free(buf);
 		buf = malloc(size);
-		va_start(ptr, fmt);
 		rc = vsnprintf(buf, size, fmt, ptr);
-		va_end(ptr);
 	}
 	return (buf); /* caller should free */
+}
+
+/*
+ * This function works like sprintf(), except it return a
+ * malloc'ed buffer which caller should free when done
+ */
+char *
+aprintf(char *fmt, ...)
+{
+	va_list	ptr;
+	char	*ret;
+	
+	va_start(ptr, fmt);
+	ret = vaprintf(fmt, ptr);
+	va_end(ptr);
+	
+	return (ret);
 }
 
 /*
@@ -1048,4 +1040,54 @@ line2av(char *cmd, char **av)
 	}
 	av[i] = 0;
 	return;
+}
+
+/*
+ * Return true if there any symlinks or .. components of the path.
+ * Nota bene: we do not check the last component, that is typically
+ * anno/../bk-2.0.x/Makefile@+ stuff.
+ */
+int
+unsafe_path(char *s)
+{
+	char	buf[MAXPATH];
+	struct	stat sb;
+
+	strcpy(buf, s);
+	unless (s = strrchr(buf, '/')) return (0);
+	for (;;) {
+		/* no .. components */
+		if (streq(s, "/..")) return (1);
+		*s = 0;
+		if (lstat(buf, &sb)) return (1);
+		/* we've chopped the last component, it must be a dir */
+		unless (S_ISDIR(sb.st_mode)) return (1);
+		unless (s = strrchr(buf, '/')) {
+			/* might have started with ../someplace */
+			return (streq(buf, ".."));
+		}
+	}
+	/*NOTREACHED*/
+}
+
+#define	STALE	(24*60*60)
+
+/*
+ * If they hand us a partial list use that if we can.
+ * Otherwise do a full check.
+ */
+int
+check(char *partial)
+{
+	int	ret;
+	struct	stat sb;
+	time_t	now = time(0);
+
+	if (!partial || stat(CHECKED, &sb) || ((now - sb.st_mtime) > STALE)) {
+		ret = sys("bk", "-r", "check", "-ac", SYS);
+	} else {
+		ret = sysio(partial, 0, 0, "bk", "check", "-", SYS);
+	}
+	unless (WIFEXITED(ret))  return (1);  /* fail */
+	return (WEXITSTATUS(ret) != 0);   
 }

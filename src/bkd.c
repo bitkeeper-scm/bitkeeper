@@ -27,54 +27,54 @@ bkd_main(int ac, char **av)
 
 	loadNetLib();
 	bzero(&Opts, sizeof(Opts));	/* just in case */
+	Opts.errors_exit = 1;
 
 	/*
 	 * Win32 note: -u/-t options have no effect on win32; win32 cannot
 	 *	 support alarm and setuid.	 
-	 * Unix note: -E/-s/-S/-R options have no effect on Unix;
+	 * Unix note: -E/-s/-S/-R/-z options have no effect on Unix;
 	 * 	 These option are used by the win32 bkd service as internal
 	 *	 interface.
 	 * XXX Win32 note: WARNING: If you add a new optoin,  you _must_
 	 * XXX propagate the option in  bkd_install_service() and 
-	 * XXX bkd_service_loop(). The NT service is a 3 level spwaning
-	 * XXX architechture!! (The above function are in port/bkd_server.c)
+	 * XXX bkd_service_loop(). The NT service is a 3 level spawning
+	 * XXX architechture!! (The above functions are in port/bkd_server.c)
 	 */
 	while ((c = getopt(ac, av,
-			"c:CdDeE:g:hil|L:p:P:qRs:St:u:V:x:")) != -1) {
+			"c:CdDeE:g:hil|L:p:P:qRs:St:u:V:x:z")) != -1) {
 		switch (c) {
-		    case 'c': Opts.count = atoi(optarg); break;
-		    case 'C': Opts.safe_cd = 1; break;
+		    case 'C': Opts.safe_cd = 1; break;		/* doc */
 		    case 'd': Opts.daemon = 1; break;		/* doc 2.0 */
 		    case 'D': Opts.debug = 1; break;		/* doc 2.0 */
-		    case 'e': Opts.errors_exit = 1; break;	/* doc 2.0 */
 		    case 'i': Opts.interactive = 1; break;	/* doc 2.0 */
 		    case 'g': Opts.gid = optarg; break;		/* doc 2.0 */
 		    case 'h': Opts.http_hdr_out = 1; break;	/* doc 2.0 */
 		    case 'l':					/* doc 2.0 */
 			Opts.log = optarg ? fopen(optarg, "a") : stderr;
 			break;
-		    case 'L':					/* doc 2.0 */
-			logRoot = strdup(optarg); break;
-		    case 'V':
+		    case 'V':	/* XXX - should be documented */
 			vRootPrefix = strdup(optarg); break;
 		    case 'p': Opts.port = atoi(optarg); break;	/* doc 2.0 */
 		    case 'P': Opts.pidfile = optarg; break;	/* doc 2.0 */
-		    case 'q': Opts.quiet = 1; break; 		/* undoc? 2.0 */
-		    case 'E': putenv((strdup)(optarg)); break;	/* undoc 2.0 */
 		    case 's': Opts.startDir = optarg; break;	/* doc 2.0 */
 		    case 'S': 					/* undoc 2.0 */
 			Opts.start = 1; Opts.daemon = 1; break;
 		    case 'R': 					/* doc 2.0 */
 			Opts.remove = 1; Opts.daemon = 1; break;
-		    case 't': Opts.alarm = atoi(optarg); break;	/* doc 2.0 */
 		    case 'u': Opts.uid = optarg; break;		/* doc 2.0 */
-		    case 'x':
+		    case 'x':					/* doc 2.0 */
 			exclude(optarg); 
-			if (streq(optarg, "cd")) Opts.nocd = 1;
 #ifdef WIN32
 			xcmds = addLine(xcmds, strdup(optarg));
 #endif
-			break;					/* doc 2.0 */
+			break;
+		    case 'c': Opts.count = atoi(optarg); break;	/* undoc */
+		    case 'e': break;				/* undoc */
+		    case 'E': putenv(optarg); break;		/* undoc */
+		    case 'L': logRoot = strdup(optarg); break;	/* undoc */
+		    case 'q': Opts.quiet = 1; break; 		/* undoc */
+		    case 't': Opts.alarm = atoi(optarg); break;	/* undoc */
+		    case 'z': Opts.nt_service = 1; break;	/* undoc */
 		    default: usage();
 	    	}
 	}

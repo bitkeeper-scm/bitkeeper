@@ -3,6 +3,9 @@
  * Copyright (c) 1999 Larry McVoy
  */
 #include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/fcntl.h>
 #include <unistd.h>
 
 extern unsigned int installer_size;
@@ -19,7 +22,7 @@ main()
 
 	fprintf(stderr, "Please wait while we unpack the installer...");
 	sprintf(installer_name, "/tmp/installer%d", getpid());
-	fd = creat(installer_name, 0777);
+	fd = open(installer_name, O_WRONLY | O_TRUNC | O_CREAT | O_EXCL, 0755);
 	if (fd == -1) {
 		perror(installer_name);
 		exit(1);
@@ -31,12 +34,11 @@ main()
 	}
 	close(fd);
 	sprintf(data_name, "/tmp/data%d", getpid());
-	fd = creat(data_name, 0777);
+	fd = open(data_name, O_WRONLY | O_TRUNC | O_CREAT | O_EXCL, 0755);
 	if (fd == -1) {
 		perror(data_name);
 		exit(1);
 	}
-	sprintf(installer_name, "/tmp/installer%d", getpid());
 	if (write(fd, data_data, data_size) != data_size) {
 		perror("write on data");
 		unlink(data_name);

@@ -84,12 +84,10 @@ usage()
 private int
 rclone(char **av, opts opts, remote *r, char **envVar)
 {
-	char	*ebuf = 0;
 	int	rc;
 
 	if (opts.rev) {
-		ebuf = aprintf("BK_CSETS=1.0..%s", opts.rev);
-		putenv(ebuf);
+		safe_putenv("BK_CSETS=1.0..%s", opts.rev);
 	} else {
 		putenv("BK_CSETS=1.0..");
 	}
@@ -105,7 +103,6 @@ rclone(char **av, opts opts, remote *r, char **envVar)
 	trigger(av, "post");
 
 done:	putenv("BK_CSETS=");
-	if (ebuf) free(ebuf);
 	return (rc);
 }
 

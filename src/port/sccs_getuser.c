@@ -38,6 +38,7 @@ sccs_getuser(void)
 	return (s);
 }
 
+void
 sccs_resetuser()
 {
 	s = 0;

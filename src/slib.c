@@ -3983,7 +3983,7 @@ config2mdbm(MDBM *db, char *config)
 /*
  * Load config file into a MDBM DB
  */
-MDBM *
+private MDBM *
 loadRepoConfig(char *root)
 {
 	MDBM	*DB = 0;
@@ -4363,7 +4363,7 @@ bad:		sccs_free(s);
 		if (sbuf.st_size == 0) goto bad;
 		s->state |= S_SFILE;
 	}
-	if ((s->size != sbuf.st_size) || (s->fd == -1)) {
+	if ((s->fd == -1) || (s->size != sbuf.st_size)) {
 		char	*buf;
 
 		if (s->fd == -1) {
@@ -4532,6 +4532,7 @@ sccs_free(sccs *s)
 	if (s->symlink) free(s->symlink);
 	if (s->mdbm) mdbm_close(s->mdbm);
 	if (s->spathname) free(s->spathname);
+	if (s->locs) free(s->locs);
 	unblock = s->unblock;
 	bzero(s, sizeof(*s));
 	free(s);

@@ -300,6 +300,10 @@ check_main(int ac, char **av)
 		if (sys("bk", "sane", SYS)) errors |= 0x80;
 	}
 	if (verbose == 1) progress(nfiles+1, errors);
+	if (all && !errors && !(flags & INIT_NOCKSUM)) {
+		unlink(CHECKED);
+		touch(CHECKED, 0666);
+	} 
 	return (errors);
 }
 
@@ -1376,7 +1380,9 @@ chk_csetpointer(sccs *s)
 			s->tree->csetFile == NULL ? "NULL" : s->tree->csetFile,
 			csetkey);
 		csetpointer++;
+		free(csetkey);
 		return (1);
 	}
+	free(csetkey);
 	return (0);
 }

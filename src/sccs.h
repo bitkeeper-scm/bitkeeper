@@ -335,6 +335,7 @@
 #define	IDCACHE_LOCK	"BitKeeper/etc/SCCS/z.id_cache"
 #define	DFILE		"BitKeeper/etc/SCCS/x.dfile"
 #define	WEBMASTER	"BitKeeper/etc/webmaster"
+#define	CHECKED		"BitKeeper/log/checked"
 #define	BKSKIP		".bk_skip"
 #define	TMP_MODE	0666
 #define	GROUP_MODE	0664
@@ -838,6 +839,7 @@ delta	*sccs_top(sccs *);
 delta	*sccs_findKey(sccs *, char *);
 delta	*sccs_dInit(delta *, char, sccs *, int);
 char	*sccs_getuser(void);
+void	sccs_resetuser(void);
 int	sccs_markMeta(sccs *);
 
 int	newrev(sccs *s, pfile *pf);
@@ -1052,6 +1054,7 @@ char	*getRealCwd(char *, size_t);
 int	smallTree(int threshold);
 MDBM	*csetDiff(MDBM *, int);
 char	*aprintf(char *fmt, ...);
+char	*vaprintf(const char *fmt, va_list ptr);
 void	ttyprintf(char *fmt, ...);
 void	enableFastPendingScan(void);
 char	*isHostColonPath(char *);
@@ -1130,6 +1133,7 @@ int	chk_host(void);
 int	chk_user(void);
 int	fix_gmode(sccs *s, int gflags);
 int	do_checkout(sccs *s);
+int	unsafe_path(char *s);
 void	set_timestamps(sccs *s);
 
 extern char *bk_vers;

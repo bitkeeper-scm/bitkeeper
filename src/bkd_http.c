@@ -49,15 +49,15 @@ private int	expires = 0;
 #define	INNER_END	"</table>"
 #define OUTER_END	"</td></tr></table>\n"
 
-#define BKWEB_SERVER_VERSION	"0.2"
+#define BKWEB_SERVER_VERSION	"0.3"
 #define	NOFUDGE(d)	(d->date - d->dateFudge)
 
 private char	arguments[MAXPATH];
 private char	navbar[MAXPATH];
 private char	thisPage[MAXPATH];
-private char	user[80];
-private char	prefix[100];
-private char	suffix[10];
+private char	*user;
+private char	*prefix;
+private char	*suffix;
 private int	isLoggingTree;
 private	char	*expr;
 
@@ -127,12 +127,19 @@ cmd_httpget(int ac, char **av)
 	/*
 	 * Go find the project root.
 	 * If they pass in //pathname/to/root/whatever, we'll do a cd first.
+	 * Security checking to make sure we are below where we started,
+	 * as in bkd_cd.c
+	 * Don't give seperate error messages as that is an information leak.
 	 */
 	if (*name == '/') {
-		if (Opts.nocd) {
-			http_error(403, "Absolute paths are not allowed");
-		}
-		unless (name = findRoot(name)) {
+		char	a[MAXPATH];
+		char	b[MAXPATH];
+
+		getcwd(a, MAXPATH);
+		name = findRoot(name);
+		getcwd(b, MAXPATH);
+		unless (name && 
+		    (strlen(b) >= strlen(a)) && strneq(a, b, strlen(a))) {
 			http_error(503, "Can't find project root");
 		}
 	} else {
@@ -140,7 +147,7 @@ cmd_httpget(int ac, char **av)
 	}
 
 	name = parseurl(name);
-	if (user[0]) sprintf(root+strlen(root), "user=%s/", user);
+	if (user) sprintf(root+strlen(root), "user=%s/", user);
 	unless (*name) name = "index.html";
 
 	unless (bk_options()&BKOPT_WEB) {
@@ -159,6 +166,9 @@ cmd_httpget(int ac, char **av)
 			ret = strneq(pages[i].name, name, pages[i].size);
 		}
 		if (ret) {
+			if (unsafe_path(name + pages[i].size)) {
+				http_error(403, "illegal pathname");
+			}
 			http_page(pages[i].page, pages[i].content,
 			    (pages[i].flags & HAS_ARG) ? pages[i].arg
 						       : name + pages[i].size);
@@ -166,6 +176,9 @@ cmd_httpget(int ac, char **av)
 		}
 	}
 
+	if (unsafe_path(name)) {
+		http_error(403, "illegal pathname");
+	}
 	sprintf(buf, "BitKeeper/html/%s", name);
 	if (isreg(buf)) {
 		http_file(buf);		/* XXX - doesn't respect base url */
@@ -176,7 +189,6 @@ cmd_httpget(int ac, char **av)
 	}
 	exit(0);
 }
-
 
 private void
 whoami(char *fmt, ...)
@@ -283,13 +295,13 @@ navbutton(int active, int tag, char *start, char *end)
 			sprintf(buf, "Changesets after %s", start+10);
 			out(buf);
 		}
-		if (user[0] && !shiftroot) {
+		if (user && !shiftroot) {
 			out(" by ");
 			out(user);
 		}
 		start = 0;
 	} else if (strneq(start, "index.html", 10)) {
-		if (user[0] && !shiftroot) {
+		if (user && !shiftroot) {
 			out("Statistics for ");
 			out(user);
 		} else {
@@ -432,7 +444,7 @@ findRoot(char *name)
 	char	*s, *t;
 	char	path[MAXPATH];
 	int	tries = 256;
-
+	
 	sprintf(path, "%s/BitKeeper/etc", name);
 	if (isdir(path)) {
 		chdir(name);
@@ -785,7 +797,7 @@ private void
 http_hist(char *pathrev)
 {
 	char	*av[100];
-	char	revision[100];
+	char	*revision = 0;
 	char	*s;
 	int	i;
 	char	dspec[MAXPATH*2];
@@ -825,8 +837,7 @@ http_hist(char *pathrev)
 	av[++i] = dspec;
 	if (s = strrchr(pathrev, '@')) {
 		*s++ = 0;
-		sprintf(revision, "-r%s", s);
-		av[++i] = revision;
+		av[++i] = revision = aprintf("-r%s", s);;
 	}
 	av[++i] = pathrev;
 	av[++i] = 0;
@@ -846,6 +857,7 @@ http_hist(char *pathrev)
 
 	out(INNER_END OUTER_END);
 	if (!embedded) trailer("hist");
+	if (revision) free(revision);
 }
 
 
@@ -1241,7 +1253,6 @@ http_stats(char *page)
 {
 	int	recent_cs, all_cs;
 	char	c_user[80];
-	char	user[80];
 	int	ct;
 	char	units[80];
 	char	buf[200];
@@ -1274,13 +1285,14 @@ http_stats(char *page)
 	    "<th>All changesets</th></tr>\n");
 
 	while (fnext(buf,p)) {
-		unless (sscanf(buf, " %s %d %s", user, &ct, units) == 3) {
+		char	f_user[80];
+		unless (sscanf(buf, " %79s %d %199s", f_user, &ct, units) == 3) {
 			strtok(buf, "\n");
 			out("<!-- reject ["); out(buf); out("] -->\n");
 			continue;
 		}
 
-		if (!streq(user, c_user)) {
+		if (!streq(f_user, c_user)) {
 			if (c_user[0]) {
 				sprintf(buf,
 				    "<tr bgcolor=white>\n"
@@ -1292,7 +1304,7 @@ http_stats(char *page)
 				    recent_cs, all_cs);
 				out(buf);
 			}
-			strcpy(c_user, user);
+			strcpy(c_user, f_user);
 			recent_cs = all_cs = 0;
 		}
 		if (strneq(units, "year", 4)) {
@@ -1335,7 +1347,6 @@ http_index(char *page)
 	int	c1w=0, c2w=0, c3w=0, c4w=0, c8w=0, c12w=0, c6m=0, c9m=0;
 	int	c1y=0, c2y=0, c3y=0, c=0, cm=0;
 	char	buf[MAXPATH*2];
-	char	titlebar[200];
 	char	*email=0, *desc=0, *contact=0, *category=0;
 	char	*bkweb=0, *master=0, *homepage=0;
 	MDBM	*m;
@@ -1358,7 +1369,7 @@ http_index(char *page)
 	t2y = now - (2*365*24*60*60);
 	t3y = now - (3*365*24*60*60);
 	for (d = s->table; d; d = d->next) {
-		if (user[0] && !streq(user, d->user)) continue;
+		if (user && !streq(user, d->user)) continue;
 		if (d->type == 'R') continue;
 		unless (d->added > 0) {
 			unless (d == s->tree) cm++;
@@ -1385,6 +1396,16 @@ http_index(char *page)
 	}
 	sccs_free(s);
 
+	if (m = loadConfig(".")) {
+		desc = mdbm_fetch_str(m, "description");
+		contact = mdbm_fetch_str(m, "contact");
+		email = mdbm_fetch_str(m, "email");
+		category = mdbm_fetch_str(m, "category");
+		bkweb = mdbm_fetch_str(m, "bkweb");
+		master = mdbm_fetch_str(m, "master");
+		homepage = mdbm_fetch_str(m, "homepage");
+	}
+
 	whoami("index.html");
 
 	if (embedded) {
@@ -1395,16 +1416,6 @@ http_index(char *page)
 		/* don't use header() here; this is one place where the regular
 		 * header.txt is not needed
 		 */
-		if (m = loadConfig(".")) {
-			desc = mdbm_fetch_str(m, "description");
-			contact = mdbm_fetch_str(m, "contact");
-			email = mdbm_fetch_str(m, "email");
-			category = mdbm_fetch_str(m, "category");
-			bkweb = mdbm_fetch_str(m, "bkweb");
-			master = mdbm_fetch_str(m, "master");
-			homepage = mdbm_fetch_str(m, "homepage");
-		}
-
 		out("<html><head><title>\n");
 		out(desc ? desc : "ChangeSet activity");
 		out("\n"
@@ -1437,15 +1448,17 @@ http_index(char *page)
 					email, contact);
 			}
 
-			if (user[0] && snprintf(titlebar, sizeof titlebar,
-			    "ChangeSet activity for %s", user) != -1) {
+			if (user) {
+				char	*titlebar;
+				titlebar = aprintf("ChangeSet activity for %s",
+				    user);
 				title(titlebar, buf, COLOR);
+				free(titlebar);
 			} else {
 				title("ChangeSet activity", buf, COLOR);
 			}
 		}
 		out("</td></tr></table>\n");
-		if (m) mdbm_close(m);
 	}
 
 	out("<p><table bgcolor=#e0e0e0 border=1 align=middle>\n");
@@ -1487,7 +1500,7 @@ http_index(char *page)
 	out("</a></td></tr></table>\n");
 	out("</td><td align=middle valign=top width=50%>\n");
 	out("<table cellpadding=3>\n\n");
-	unless (user[0]) {
+	unless (user) {
 		out("<tr><td align=middle>");
 		sprintf(buf,
 		    "<a href=stats%s>User statistics</a></td></tr>\n", navbar);
@@ -1543,6 +1556,7 @@ http_index(char *page)
 	out("</table>");
 	out("</table>");
 	if (!embedded) trailer(0);
+	if (m) mdbm_close(m);
 }
 
 /*
@@ -1790,8 +1804,7 @@ parseurl(char *url)
 {
 	char *s;
 
-	thisPage[0] = arguments[0] = navbar[0] = user[0] = 0;
-	prefix[0] = suffix[0] = 0;
+	thisPage[0] = arguments[0] = navbar[0] = 0;
 	
 	expand(url);
 
@@ -1812,12 +1825,19 @@ parseurl(char *url)
 		} else {
 			s = url;
 		}
-		strcpy(user, url+5);
+		user = strdup(url+5);
 
-		sprintf(prefix, "$if(:USER:=%s){", user);
-		sprintf(suffix, "}");
+		prefix = aprintf("$if(:USER:=%s){", user);
+		suffix = strdup("}");
 
-		return (s == url) ? "" : s;
+		url = (s == url) ? "" : s;
+	} else {
+		if (user) free(user);
+		user = 0;
+		if (prefix) free(prefix);
+		prefix = strdup("");
+		if (suffix) free(suffix);
+		suffix = strdup("");
 	}
 	return url;
 }

@@ -287,10 +287,11 @@ oksccs(char *sfile, int flags, int complain)
 void
 concat_path(char *buf, char *first, char *second)
 {
-	int len;
+	int	len;
 	if (buf != first) strcpy(buf, first);
 	len = strlen(buf);
-	if ((buf[len -2] == '/') && (buf[len -1] == '.') && second[0]) {
+	if (len >= 2 &&
+	    (buf[len -2] == '/') && (buf[len -1] == '.') && second[0]) {
 		buf[len - 1] = 0; len--;
 	}
 	/*
