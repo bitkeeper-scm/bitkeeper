@@ -27,6 +27,7 @@ typedef	struct cset {
 
 	/* numbers */
 	int	verbose;
+	int	notty;
 	int	fromStart;	/* if we did -R1.1..1.2 */
 	int	ndeltas;
 	int	nfiles;
@@ -132,6 +133,7 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 	}
 
 	if (streq(av[0], "makepatch")) copts.makepatch = 1;
+	copts.notty = getenv("BK_NOTTY") != 0;
 
 	while (
 	    (c =
@@ -1201,7 +1203,9 @@ sccs_patch(sccs *s, cset_t *cs)
 		d = list[i];
 		assert(d);
 		if (cs->verbose > 2) fprintf(stderr, "%s ", d->rev);
-		if (cs->verbose == 2) fprintf(stderr, "%c\b", spin[deltas % 4]);
+		if ((cs->verbose == 2) && !cs->notty) {
+			fprintf(stderr, "%c\b", spin[deltas % 4]);
+		}
 		if (i == n - 1) {
 			unless (s->gfile) {
 				fprintf(stderr, "\n%s%c%s has no path\n",
@@ -1274,7 +1278,7 @@ sccs_patch(sccs *s, cset_t *cs)
 		printf("\n");
 		deltas++;
 	}
-	if (cs->verbose == 2) {
+	if ((cs->verbose == 2) && !cs->notty) {
 		fprintf(stderr, "%d revisions\r", deltas);
 		fprintf(stderr, "%79s\r", "");
 	} else if (cs->verbose > 1) {

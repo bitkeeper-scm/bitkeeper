@@ -289,9 +289,9 @@ clone2(opts opts, remote *r)
 			fprintf(stderr, "Running consistency check ...\n");
 		}
 		if (strieq("yes", user_preference("partial_check"))) {
-			rc = run_check(checkfiles, 1);
+			rc = run_check(checkfiles, 1, opts.quiet);
 		} else {
-			rc = run_check(0, 1);
+			rc = run_check(0, 1, opts.quiet);
 		}
 		if (rc) {
 			fprintf(stderr, "Consistency check failed, "

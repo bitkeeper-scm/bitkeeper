@@ -115,6 +115,7 @@ check_main(int ac, char **av)
 			return (1);
 		}
 	}
+	if (getenv("BK_NOTTY") && (verbose == 1)) verbose = 0;
 
 	if (goneKey && badWritable) {
 		fprintf(stderr, "check: cannot have both -g and -w\n");

@@ -192,7 +192,7 @@ cmd_rclone_part2(int ac, char **av)
 		if (opts.verbose) {
 			fprintf(stderr, "Running consistency check ...\n");
 		}
-		run_check(0, 1);
+		run_check(0, 1, !opts.verbose);
 	}
 
 	p = user_preference("checkout");
