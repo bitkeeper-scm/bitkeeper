@@ -10553,6 +10553,48 @@ sccs_newchksum(sccs *s)
 	return (sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0));
 }
 
+private	void
+remove_comments(sccs *s)
+{
+	delta	*d;
+
+	for (d = s->table; d; d = d->next) {
+		if (d->comments && !(d->flags & D_XFLAGS)) {
+			freeLines(d->comments);
+			d->comments = 0;
+		}
+	}
+}
+
+/*
+ * Reverse sort it, we want the ^A's, if any, at the end.
+ */
+private int
+c_compar(void *a, void *b)
+{
+	return (*(char*)b - *(char*)a);
+}
+
+private	char *
+obscure(int uu, char *buf)
+{
+	int	len;
+	char	*new;
+
+	for (len = 0; buf[len] != '\n'; len++);
+	new = malloc(len+2);
+	strncpy(new, buf, len+1);
+	new[len+1] = 0;
+	if (*new == '\001') return (new);
+	if (uu) {
+		qsort(new+1, len-1, 1, c_compar);
+	} else {
+		qsort(new, len, 1, c_compar);
+	}
+	assert(*new != '\001');
+	return (new);
+}
+
 /*
  * admin the specified file.
  *
@@ -10794,6 +10836,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	if ((flags & NEWCKSUM) == 0) {
 		goto out;
 	}
+	if (flags & ADMIN_OBSCURE) remove_comments(sc);
 
 	/*
 	 * Do the delta table & misc.
@@ -10817,11 +10860,18 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	assert(sc->state & S_SOPEN);
 	seekto(sc, sc->data);
 	debug((stderr, "seek to %d\n", sc->data));
+	if ((old_enc & E_GZIP) && (flags & ADMIN_OBSCURE)) {
+		fprintf(stderr, "admin: cannot obscure gzipped data.\n");
+		OUT;
+	}
 	if (old_enc & E_GZIP) zgets_init(sc->where, sc->size - sc->data);
 	if (new_enc & E_GZIP) zputs_init();
 	/* if old_enc == new_enc, this is slower but handles both cases */
 	sc->encoding = old_enc;
 	while (buf = nextdata(sc)) {
+		if (flags & ADMIN_OBSCURE) {
+			buf = obscure(old_enc & E_UUENCODE, buf);
+		}
 		sc->encoding = new_enc;
 		if (flags & ADMIN_ADD1_0) {
 			fputbumpserial(sc, buf, 1, sfile);
@@ -10838,6 +10888,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			fputdata(sc, buf, sfile);
 		}
 		sc->encoding = old_enc;
+		if (flags & ADMIN_OBSCURE) free(buf);
 	}
 	if (flags & ADMIN_ADD1_0) {
 		sc->encoding = new_enc;

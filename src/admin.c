@@ -53,7 +53,7 @@ admin_main(int ac, char **av)
 	bzero(u, sizeof(u));
 	bzero(s, sizeof(s));
 	while ((c =
-	    getopt(ac, av, "a;C|d;e;E;f;F;i|M;m;p|r;S;t|y|Z|0BDhHnqsTuz"))
+	    getopt(ac, av, "a;C|d;e;E;f;F;i|M;m;Op|r;S;t|y|Z|0BDhHnqsTuz"))
 	       != -1) {
 		switch (c) {
 		/* user|group */
@@ -134,6 +134,13 @@ admin_main(int ac, char **av)
 		    		flags |= NEWCKSUM;
 				touchGfile++;
 				break;
+		    case 'O':
+			unless (getenv("BK_FORCE")) {
+				fprintf(stderr, "Set BK_FORCE to do this\n");
+				exit(1);
+			}
+			flags |= NEWCKSUM|ADMIN_OBSCURE;
+			break;
 		    default:	fprintf(stderr, "admin: bad option %c.\n", c);
 				goto usage;
 		}
