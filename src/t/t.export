@@ -68,3 +68,222 @@ if [ ! -f ../EXPORT/bar.c ]
 then	echo failed to get bar.c; exit 1
 fi
 echo OK
+
+echo $N Set up for include/exclude tests ............................$NL
+cd $HERE/project
+for i in man src html
+do	mkdir $i
+done
+for i in foo bar blech
+do	echo $i > man/${i}.1
+	echo $i > src/${i}.c
+	echo $i > src/${i}.h
+	echo $i > html/${i}.html
+done
+bk extras | bk new $Q -
+bk commit $Q -ywhatever
+bk sfiles -gU | bk _sort | while read x
+do echo ./$x
+done > ../LIST
+echo OK
+
+# ===========================================================================
+
+echo $N Exclude src subdirectory ....................................$NL
+rm -rf ../EXPORT
+bk export -tplain -x'src/*' ../EXPORT
+cd ../EXPORT
+find . -type f | bk _sort > ../GOT
+cd ..
+grep -v src/ < LIST > WANT
+checkfiles GOT WANT
+echo OK
+
+echo $N Exclude man and html subdirectories .........................$NL
+cd $HERE/project
+rm -rf ../EXPORT
+bk export -tplain -x'man/*' -x'html/*' ../EXPORT
+cd ../EXPORT
+find . -type f | bk _sort > ../GOT
+cd ..
+grep -v man/ < LIST | grep -v html/ > WANT
+checkfiles GOT WANT
+echo OK
+
+echo $N Exclude all .c and .h files .................................$NL
+cd $HERE/project
+rm -rf ../EXPORT
+bk export -tplain -x'*.c' -x'*.h' ../EXPORT
+cd ../EXPORT
+find . -type f | bk _sort > ../GOT
+cd ..
+grep -v 'src/' < LIST > WANT
+checkfiles GOT WANT
+echo OK
+
+echo $N Include html pages only .....................................$NL
+cd $HERE/project
+rm -rf ../EXPORT
+bk export -tplain -i'*.html' ../EXPORT
+cd ../EXPORT
+find . -type f | bk _sort > ../GOT
+cd ..
+grep 'html/' < LIST > WANT
+checkfiles GOT WANT
+echo OK
+
+echo $N Exclude all .c and .h files and include man pages ...........$NL
+cd $HERE/project
+rm -rf ../EXPORT
+bk export -tplain -x'*.c' -x'*.h' -i'*.1' ../EXPORT
+cd ../EXPORT
+find . -type f | bk _sort > ../GOT
+cd ..
+grep man/ < LIST > WANT
+checkfiles GOT WANT
+echo OK
+
+echo $N Include all .c and .h files .................................$NL
+cd $HERE/project
+rm -rf ../EXPORT
+bk export -tplain -i'*.c' -i'*.h' ../EXPORT
+cd ../EXPORT
+find . -type f | bk _sort > ../GOT
+cd ..
+grep src/ < LIST > WANT
+checkfiles GOT WANT
+echo OK
+
+echo $N Include all .c and .h files but exclude src/foo.c ...........$NL
+cd $HERE/project
+rm -rf ../EXPORT
+bk export -tplain -i'*.c' -i'*.h' -xsrc/foo.c ../EXPORT
+cd ../EXPORT
+find . -type f | bk _sort > ../GOT
+cd ..
+grep src/ < LIST | grep -v foo.c > WANT
+checkfiles GOT WANT
+echo OK
+
+# =================== Patch tests ===========================================
+
+echo $N Exclude src subdirectory in a patch .........................$NL
+cd $HERE/project
+bk export -tpatch -x'src/*' > ../PATCH
+grep -q b/src/ ../PATCH && {
+	echo failed to exclude src directory
+	cat ../PATCH
+	exit 1
+}
+echo OK
+
+echo $N Exclude man and html subdirectories in a patch ..............$NL
+bk export -tpatch -x'man/*' -x'html/*' > ../PATCH
+grep -q b/man/ ../PATCH && {
+	echo failed to exclude man directory
+	cat ../PATCH
+	exit 1
+}
+grep -q b/html/ ../PATCH && {
+	echo failed to exclude html directory
+	cat ../PATCH
+	exit 1
+}
+grep -q b/src/ ../PATCH || {
+	echo failed to include src directory
+	cat ../PATCH
+	exit 1
+}
+echo OK
+
+echo $N Exclude all .c and .h files in a patch ......................$NL
+bk export -tpatch -x'*.c' -x'*.h' > ../PATCH
+grep -q b/src/ ../PATCH && {
+	echo failed to exclude some files
+	cat ../PATCH
+	exit 1
+}
+echo OK
+
+echo $N Include html pages only in a patch ..........................$NL
+bk export -tpatch -i'*.html' > ../PATCH
+grep -q html ../PATCH || {
+	echo failed to include html in patch
+	cat ../PATCH
+	exit 1
+}
+grep -q b/src/ ../PATCH && {
+	echo failed to exclude src directory
+	cat ../PATCH
+	exit 1
+}
+grep -q b/man/ ../PATCH && {
+	echo failed to exclude man directory
+	cat ../PATCH
+	exit 1
+}
+echo OK
+
+echo $N Exclude all .c and .h files and include man pages in a patch.$NL
+bk export -tpatch -x'*.c' -x'*.h' -i'*.1' > ../PATCH
+grep -q b/src/ ../PATCH && {
+	echo failed to exclude src directory
+	cat ../PATCH
+	exit 1
+}
+grep -q b/html/ ../PATCH && {
+	echo failed to exclude html directory
+	cat ../PATCH
+	exit 1
+}
+grep -q b/man/ ../PATCH || {
+	echo failed to include man directory
+	cat ../PATCH
+	exit 1
+}
+echo OK
+
+echo $N Include all .c and .h files in a patch ......................$NL
+bk export -tpatch -i'*.c' -i'*.h' > ../PATCH
+grep -q b/man/ ../PATCH && {
+	echo failed to exclude man directory
+	cat ../PATCH
+	exit 1
+}
+grep -q b/html/ ../PATCH && {
+	echo failed to exclude html directory
+	cat ../PATCH
+	exit 1
+}
+grep -q b/src/foo.c ../PATCH || {
+	echo failed to include src/foo.c
+	cat ../PATCH
+	exit 1
+}
+echo OK
+
+echo $N Include all .c and .h files but exclude src/foo.c in a patch.$NL
+bk export -tpatch -i'*.c' -i'*.h' -xsrc/foo.c > ../PATCH
+grep -q b/src/foo.c ../PATCH && {
+	echo failed to exclude src/foo.c
+	cat ../PATCH
+	exit 1
+}
+grep -q b/src/foo.h ../PATCH || {
+	echo failed to include src/foo.h
+	cat ../PATCH
+	exit 1
+}
+echo OK
+
+# XXX - todo, test case where a patch includes a rename
+
+# 2004-02-06-001 - error out if source does not exist
+echo $N Export should fail if source+dest specified but no source ...$NL
+cd $HERE/project
+bk export ../bar $HERE/whoops-plain 2>ERR
+test -d $HERE/whoops-plain && {
+	echo failed when exporting -tplain
+	exit 1
+}
+echo OK

@@ -1,6 +1,8 @@
 #include "system.h"
 #include "sccs.h"
 
+extern	char	*bin;
+
 #define	BK_LOG "BitKeeper/log"
 
 
@@ -11,24 +13,29 @@
 private	char *
 getNewRevs(char *to, char *rev, char *url)
 {
-	char	x_sendlog[MAXPATH], here[MAXPATH];
-	char	buf[MAXLINE];
 	static	char keysFile[MAXPATH];
-	FILE	*f;
-	FILE	*fprs;
+	FILE	*f, *fsend;
+	MDBM	*keys;
+	kvpair	kv;
+	int	status;
 	int	empty = 1;
+	char	buf[MAXLINE];
+	char	x_sendlog[MAXPATH];
 
 	assert(url || !streq(to, "-"));
 
 	unless (isdir(BK_LOG)) mkdirp(BK_LOG);
 	sprintf(x_sendlog, "%s/send-%s", BK_LOG, to);
-	unless (url) bktmp(here, "bk_here");
-	sprintf(keysFile, "%s/bk_keys%u", TMP_PATH, getpid());
-	close(open(x_sendlog, O_CREAT, 0660));
+	bktmp(keysFile, "keys");
+	touch(x_sendlog, 0660);
 
 	if (url) {
-		sprintf(buf, "bk synckeys -lk %s > %s", url, keysFile);
-		system(buf);
+		sprintf(buf, "bk synckeys -lk %s > '%s'", url, keysFile);
+		status = system(buf);
+		unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) {
+			fprintf(stderr, "send: synckeys failed\n");
+			exit(1);
+		}
 		if (size(keysFile) == 0) {
 			unlink(keysFile);
 			return (0);
@@ -36,40 +43,48 @@ getNewRevs(char *to, char *rev, char *url)
 		return (keysFile);
 	}
 
-	if (rev == NULL) {
-		sprintf(buf, "bk prs -hd':KEY:\n' ChangeSet | bk _sort > %s", here);
-	} else {
-		sprintf(buf,
-		    "bk prs -hd':KEY:\n' -r'%s' ChangeSet | bk _sort > %s",
-		    rev, here);
+	/* load the list of keys to be transfered */
+	if (rev) rev = aprintf("-r'%s'", rev);
+	sprintf(buf, "bk prs -hnd:KEY: %s ChangeSet", rev ? rev : "");
+	unless (f = popen(buf, "rb")) {
+		fprintf(stderr, "Failed to execute %s\n", buf);
+		exit(1);
 	}
-	system(buf);
-
-	/*
-	 * XXX TODO:
-	 * For historical reason, we store the revs in x_sendlog
-	 * We should reallly store the keys, because the rev notation
-	 * does not record if tags are transfered
-	 */
-	sprintf(buf, "bk _sort -u < %s | comm -23 %s - > %s",
-		x_sendlog, here, keysFile);
-	system(buf);
-	sprintf(buf, "cp %s %s", x_sendlog, here);
-	system(buf);
-	sprintf(buf, "bk key2rev ChangeSet < %s", keysFile);
-	f = popen(buf, "r");
-	sprintf(buf, "bk prs -hd':KEY:\n' - >> %s", here);
-	fprs = popen(buf, "w");
-	while (fgets(buf, sizeof(buf), f)) {
-		chop(buf);
-		fprintf(fprs, "ChangeSet|%s\n", buf);
-		empty = 0;
+	if (rev) free(rev);
+	keys = mdbm_mem();
+	while (fnext(buf, f)) {
+		chomp(buf);
+		mdbm_store_str(keys, buf, "", MDBM_INSERT);
 	}
 	pclose(f);
-	pclose(fprs);
-	sprintf(buf, "bk _sort -u < %s > %s", here, x_sendlog);
-	system(buf);
-	unlink(here);
+
+	/* remove the list of keys that have already been sent. */
+	if (f = fopen(x_sendlog, "r")) {
+		while (fnext(buf, f)) {
+			chomp(buf);
+			mdbm_delete_str(keys, buf);
+		}
+		fclose(f);
+	}
+
+	/* save keysFile and update sendlog */
+	unless (f = fopen(keysFile, "w")) {
+		fprintf(stderr, "send: unable to write %s\n", keysFile);
+		exit(1);
+	}
+	unless (fsend = fopen(x_sendlog, "a")) {
+		fprintf(stderr, "send: unable to write %s\n", x_sendlog);
+		exit(1);
+	}
+	EACH_KV (keys) {
+		empty = 0;
+		fprintf(f, "%s\n", kv.key.dptr);
+		fprintf(fsend, "%s\n", kv.key.dptr);
+	}
+	fclose(f);
+	fclose(fsend);
+	mdbm_close(keys);
+
 	if (empty) {
 		unlink(keysFile);
 		return (0);
@@ -177,8 +192,8 @@ send_main(int ac,  char **av)
 		f = stdout;
 		out = "";
 	} else {
-		patch = aprintf("%s/bk_patch%u", TMP_PATH, getpid());
-		f = fopen(patch, "wb");
+		patch = bktmp(0, "patch");
+		f = fopen(patch, "w");
 		assert(f);
 		out = aprintf(" >> %s", patch);
 	}
@@ -186,7 +201,7 @@ send_main(int ac,  char **av)
 	/*
 	 * Set up wrapper
 	 */
-	if (wrapper) wrapperArgs = aprintf(" | bk %swrap", wrapper);
+	if (wrapper) wrapperArgs = aprintf(" | %s/%swrap", bin, wrapper);
 
 	/*
 	 * Print patch header
@@ -205,7 +220,11 @@ send_main(int ac,  char **av)
 	/*
 	 * Mail the patch if necessary
 	 */
-	if (patch) mail(to, "BitKeeper patch", patch);
+	if (patch) {
+		char	**tolist = addLine(0, to);
+		bkmail("SMTP", tolist, "BitKeeper patch", patch);
+		freeLines(tolist, 0);
+	}
 
 out:	if (patch) {
 		unlink(patch);

@@ -34,7 +34,7 @@ uudecode_main(int ac, char **av)
 	FILE	*f;
 
 	if (av[1]) {
-		unless (f = fopen(av[1], "wb")) {
+		unless (f = fopen(av[1], "w")) {
 			perror(av[1]);
 			exit(1);
 		}

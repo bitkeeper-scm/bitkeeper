@@ -82,7 +82,7 @@ cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo list failed; diff SFILES LIST; exit 1; fi
 echo OK
 echo $N Check the list of pending files .............................$NL
-bk sfiles -C | sort > SFILES
+bk sfiles -pC | sort > SFILES
 sort <<EOF > LIST
 SCCS/s.foo${BK_FS}1.1
 SCCS/s.s.foo${BK_FS}1.1
@@ -91,8 +91,8 @@ bar/blech/SCCS/s.s.foo${BK_FS}1.1
 EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
-# XXX -C cannot be used with file lists.
-#bk sfiles -C - < .sfiles | sort > SFILES
+# XXX -pC cannot be used with file lists.
+#bk sfiles -pC - < .sfiles | sort > SFILES
 #sort <<EOF > LIST
 #SCCS/s.ChangeSet${BK_FS}1.1
 #SCCS/s.s.foo${BK_FS}1.1
@@ -178,15 +178,15 @@ cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo list failed; diff SFILES LIST; exit 1; fi
 echo OK
 echo $N Check the list of pending files .............................$NL
-bk sfiles -C | sort > SFILES
+bk sfiles -pC | sort > SFILES
 sort <<EOF > LIST
 bar/SCCS/s.s.foo${BK_FS}1.3
 EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
-echo $N Check the list of pending files with -A .....................$NL
-bk sfiles -CA | sort > SFILES
+echo $N Check the list of pending files with -pA ....................$NL
+bk sfiles -pCA | sort > SFILES
 sort <<EOF > LIST
 bar/SCCS/s.s.foo${BK_FS}1.2
 bar/SCCS/s.s.foo${BK_FS}1.3
@@ -195,10 +195,10 @@ cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
 echo $N Commit work, check pending lists again ......................$NL
-bk sfiles -C | bk commit $Q -ysecond -
-bk sfiles -C | sort > SFILES
+bk sfiles -pC | bk commit $Q -ysecond -
+bk sfiles -pC | sort > SFILES
 if [ -s SFILES ]; then echo "Failed (short)"; cat SFILES; exit 1; fi
-bk sfiles -CA | sort > SFILES
+bk sfiles -pCA | sort > SFILES
 if [ -s SFILES ]; then echo "Failed (long)"; cat SFILES; exit 1; fi
 echo OK
 echo $N Look for directories under SCCS control .....................$NL
@@ -387,6 +387,7 @@ cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
 fi
+
 echo $N Test sfile -i with s.file w no pathname .....................$NL
 # create a s.file which has no pathname
 perl -ne 'print unless /^.cP/' SCCS/s.foo  | bk undos > SCCS/s.bad
@@ -405,4 +406,33 @@ EOF
 bk sfiles -i | sort > $HERE/sfiles.out || { echo failed 1; exit 1; }
 cmp -s $HERE/sfiles.ref $HERE/sfiles.out || { echo failed 2; diff -u $HERE/sfiles.ref $HERE/sfiles.out; exit 1; }
 echo OK
+echo $N Test sfile -U ...............................................$NL
+cd bar
+echo "This is not the real ChangeSet file" > ChangeSet
+bk new $Q -y"fake changeset file" ChangeSet
+mkdir BitKeeper
+echo "This is not the real config file" > BitKeeper/config
+bk new $Q -y"fake config file" BitKeeper/config
+bk sfiles -U -g | sort > SFILES
+sort <<EOF > LIST
+BitKeeper/config
+blech/s.foo
+ChangeSet
+s.foo
+EOF
+cmp -s SFILES LIST || { echo failed; exit 1; }
+echo OK
 set +e
+
+echo $N Test sfile -U with triggers, they should be listed ..........$NL
+cd `bk root`
+test -d BitKeeper/triggers || mkdir BitKeeper/triggers
+echo exit 0 > BitKeeper/triggers/pre-commit
+chmod +x BitKeeper/triggers/pre-commit
+bk new $Q BitKeeper/triggers/pre-commit
+bk sfiles -gU | grep -q BitKeeper/triggers/pre-commit || {
+	echo failed to list trigger
+	bk sfiles -gU
+	exit 1
+}
+echo OK

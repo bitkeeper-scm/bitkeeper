@@ -39,7 +39,7 @@
 #define	GET_REVNUMS	0x40000000	/* get -m: prefix each line with rev */
 #define GET_USER	0x80000000	/* get -u: prefix with user name */
 #define GET_SKIPGET	0x01000000	/* get -g: don't get the file */
-#define	GET_RCSEXPAND	0x02000000	/* do RCS keywords */
+/* available		0x02000000	   used to be GET_RCSEXPAND */
 #define	GET_ASCII	0x04000000	/* Do not gunzip/uudecode */
 #define	GET_LINENUM	0x08000000	/* get -N: show line numbers */
 #define	GET_MODNAME	0x00100000	/* get -n: prefix with %M */
@@ -94,7 +94,7 @@
 #define	ADMIN_OBSCURE	0x00100000	/* remove comments, obscure data */
 #define	ADMIN_FORCE	0x00200000	/* use Z lock; for pull/cweave */
 #define	ADMIN_NEWPATH	0x00400000	/* path changed, add a new null delta */
-#define	ADMIN_DELETE	0x00400000	/* file deleted, add a new null delta */
+#define	ADMIN_DELETE	0x00800000	/* file deleted, add a new null delta */
 
 #define	ADMIN_CHECKS	(ADMIN_FORMAT|ADMIN_ASCII|ADMIN_TIME|ADMIN_BK)
 
@@ -722,6 +722,12 @@ struct command
         int (*func)(int, char **);
 };      
 
+struct tool
+{
+	char	*prog;	/* fm3tool */
+	char	*alias;	/* fm3 or 0 */
+};
+
 /*
  * BK "URL" formats are:
  *	bk://user@host:port/pathname
@@ -819,6 +825,7 @@ int	sccs_sdelta(sccs *s, delta *, char *);
 void	sccs_md5delta(sccs *s, delta *d, char *b64);                            
 void	sccs_shortKey(sccs *s, delta *, char *);
 int	sccs_resum(sccs *s, delta *d, int diags, int dont);
+int	cset_resum(sccs *s, int diags, int fix, int spinners);
 int	sccs_newchksum(sccs *s);
 void	sccs_perfile(sccs *, FILE *);
 sccs	*sccs_getperfile(MMAP *, int *);
@@ -868,12 +875,12 @@ int	readable(char *f);
 void 	randomBits(char *);
 int	samepath(char *a, char *b);
 int	writable(char *f);
-int	executable(char *f);
 char	*basenm(char *);
 char	*sccs2name(char *);
 char	*name2sccs(char *);
 int	diff(char *lfile, char *rfile, u32 kind, char *out);
 int	check_gfile(sccs*, int);
+char	*lock_dir(void);
 void	platformSpecificInit(char *);
 MDBM	*loadDB(char *file, int (*want)(char *), int style);
 delta 	*mkOneZero(sccs *s);
@@ -882,6 +889,7 @@ void	sig_catch(handler);
 void	sig_restore(void);
 int	sig_ignore(void);
 void	sig_default(void);
+int	isCsetFile(char *);
 int	csetIds(sccs *cset, char *rev);
 int	csetIds_merge(sccs *cset, char *rev, char *merge);
 int	cset_inex(int flags, char *op, char *revs);
@@ -904,12 +912,11 @@ int	sccs_lockfile(const char *lockfile, int wait, int quiet);
 int	sccs_stalelock(const char *lockfile, int discard);
 int	sccs_unlockfile(const char *file);
 int	sccs_mylock(const char *lockf);
-int	sccs_readlockf(const char *file, pid_t *pidp, char **hostp, time_t *tp);
 
 sccs	*sccs_unzip(sccs *s);
 sccs	*sccs_gzip(sccs *s);
 char	*sccs_utctime(delta *d);
-void	sccs_renumber(sccs *s, u32 flags);
+void	sccs_renumber(sccs *s, u32 flags, int spinners);
 char 	*sccs_iskeylong(char *key);
 #ifdef	PURIFY_FILES
 MMAP	*purify_mopen(char *file, char *mode, char *, int);
@@ -930,6 +937,7 @@ int	licenseAcceptOne(int prompt, char *lic);
 char	*licenses_accepted(void);
 char	*mkline(char *mmap);
 int	mkdirp(char *dir);
+int	test_mkdirp(char *dir);
 int	mkdirf(char *file);
 char    *mode2FileType(mode_t m);
 int	getline(int in, char *buf, int size);
@@ -964,7 +972,7 @@ time_t	uniq_drift(void);
 int	uniq_update(char *key, time_t t);
 int	uniq_close(void);
 time_t	sccs_date2time(char *date, char *zone);
-pid_t	mail(char *to, char *subject, char *file);
+pid_t	smtpmail(char **to, char *subject, char *file);
 int	connect_srv(char *srv, int port, int trace);
 int	get(char *path, int flags, char *output);
 int	gethelp(char *helptxt, char *help_name, char *bkarg, char *prefix, FILE *f);
@@ -981,7 +989,8 @@ char	*match_globs(char *string, globv globs, int ignorecase);
 void	free_globs(globv globs);
 int	searchMatch(char *s, search search);
 search	searchParse(char *str);
-char	*prog2path(char *prog);
+char	*whichp(char *prog, int internal, int external);
+int	which(char *prog, int internal, int external);
 int	readn(int from, char *buf, int size);
 void	send_request(int fd, char * request, int len);
 int	writen(int to, char *buf, int size);
@@ -1019,7 +1028,7 @@ char	*sccs_rmName(sccs *s, int useCommonDir);
 int	sccs_rm(char *name, char *del_name, int useCommonDir, int force);
 void	sccs_rmEmptyDirs(char *path);
 void	do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out);
-char 	**get_http_proxy(void);
+char 	**get_http_proxy(char *host);
 int	confirm(char *msg);
 int	csetCreate(sccs *cset, int flags, char *files, char **syms);
 int	cset_setup(int flags, int ask);
@@ -1034,7 +1043,7 @@ off_t	get_byte_count(void);
 void	save_byte_count(unsigned int byte_count);
 int	cat(char *file);
 char	*getHomeDir(void);
-char	*getBkDir(void);
+char	*getDotBk(void);
 char	*age(time_t secs, char *space);
 	/* this must be the last argument to all calls to sys/sysio */
 #define	SYS	(char*)0, 0xdeadbeef
@@ -1046,11 +1055,15 @@ MDBM	*sccs_tagConflicts(sccs *s);
 void	sccs_tagMerge(sccs *s, delta *d, char *tag);
 int	sccs_tagleaves(sccs *, delta **, delta **);
 ser_t	*sccs_set(sccs *, delta *, char *iLst, char *xLst);
+int	sccs_graph(sccs *s, delta *d, ser_t *map, char **inc, char **exc);
 
-int     http_connect(remote *r, char *cgi_script);
+int     http_connect(remote *r);
 int     http_send(remote *, char *, size_t, size_t, char *, char *); 
+int	http_fetch_direct(char *url, char *file);
 char *	user_preference(char *what);
 char	*bktmp(char *buf, const char *template);
+void	bktmpenv(void);
+char	*bktmpdir(char *buf, const char *template);
 char	*bktmp_local(char *buf, const char *template);
 void	bktmpcleanup(void);
 char	*getRealCwd(char *, size_t);
@@ -1062,8 +1075,8 @@ char	*strdup_tochar(const char *s, int c);
 void	ttyprintf(char *fmt, ...);
 void	enableFastPendingScan(void);
 char	*isHostColonPath(char *);
-int	hasGUIsupport(void);
-char	*GUI_display(void);
+int	gui_useDisplay(void);
+char	*gui_displayName(void);
 char	*savefile(char *dir, char *prefix, char *pathname);
 void	has_proj(char *who);
 int	mv(char*, char *);
@@ -1110,6 +1123,7 @@ delta	*cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey);
 int	cset_map(sccs *s, int extras);
 int	cset_write(sccs *s);
 int	cset_diffs(sccs *s, ser_t ser);
+sccs	*cset_fixLinuxKernelChecksum(sccs *s);
 int	cweave_init(sccs *s, int extras);
 int	isNullFile(char *rev, char *file);
 unsigned long	ns_sock_host2ip(char *host, int trace);
@@ -1129,7 +1143,6 @@ void	metaUnionResync2(void);
 int	sccs_istagkey(char *key);
 char	*testdate(time_t t);
 void	putroot(char *where);
-int	runable(char *file);
 int	uuencode(FILE *in, FILE *out);
 int	uudecode(FILE *in, FILE *out);
 void	sccs_unmkroot(char *path);
@@ -1155,7 +1168,6 @@ char	*hashstr(char *str);
 char	*secure_hashstr(char *str, char *key);
 int	write_log(char *root, char *file, int rotate, char *format, ...);
 void	delete_cset_cache(char *rootpath, int save);
-int	nFiles(void);
 void	notice(char *key, char *arg, char *type);
 pid_t	findpid(pid_t pid);
 void	save_log_markers(void);
@@ -1170,6 +1182,10 @@ void	fromTo(char *op, remote *r, remote *l);
 u32	adler32_file(char *filename);
 char	*findDotFile(char *old, char *new, char *buf);
 char	*platform(void);
+char	*pager(void);
+int	bkmail(char *url, char **to, char *subject, char *file);
+int	sfiles_skipdir(char *dir);
+void	bkversion(FILE *f);
 void	set_timestamps(char *sfile);
 
 void	align_diffs(u8 *vec, int n, int (*compare)(int a, int b),

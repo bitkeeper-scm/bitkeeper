@@ -10,8 +10,6 @@
 #define	SEND_BOGUS	2
 #define	SEND_NOCONNECT	3
 
-#define	BINARY	"application/octet-stream"
-
 extern void save_cached_proxy(char *proxy);
 
 #define	SOCKS_REQUEST_GRANTED		90
@@ -92,7 +90,7 @@ proxyAuthHdr(const char *cred)
 	char	*t1, *t2;
 
 	t1 = str2base64(cred);
-	t2 = aprintf("Proxy-Authorization: BASIC %s\n", t1);
+	t2 = aprintf("Proxy-Authorization: BASIC %s\r\n", t1);
 	free(t1);
 	return (t2);
 }
@@ -215,18 +213,17 @@ connect_srv(char *srv, int port, int trace)
 }
 
 int
-connect_socks4_srv(char *host, int port, char *url, int trace)
+connect_socks4_srv(remote *r, char *host, int port)
 {
 	unsigned char sbuf[BUFSIZ];
-	char	web_host[MAXPATH], web_path[MAXPATH];
 	struct	socks_op    c;
 	struct	socks_reply *s = (struct socks_reply *)sbuf;
-	int	web_ip, web_port = 80, n, sfd;
-
+	int	web_ip, web_port, n, sfd;
+	int	trace = r->trace;
 
 	/* build a socks4 request */
-	parse_url(url, web_host, web_path);
-	web_ip = htonl(ns_sock_host2ip(web_host, trace));
+	web_ip = htonl(ns_sock_host2ip(r->host, r->trace));
+	web_port = r->port;
 
 	c.vn = 4;
 	c.cd = 1;
@@ -288,19 +285,14 @@ connect_socks4_srv(char *host, int port, char *url, int trace)
 }
 
 private int
-http_connect_srv(char *type, char *host, int port, char *cgi_script, int trace)
+http_connect_srv(remote *r, char *type, char *host, int port)
 {
 	int	fd;
-	char	bk_url[MAXPATH];
 
-
-	sprintf(bk_url, "http://%s/cgi-bin/%s", host, cgi_script);
-	if (streq(type, "DIRECT")) {
-		fd = connect_srv(host, port, trace);
-	} else if (streq(type, "PROXY")) {
-		fd = connect_srv(host, port, trace);
+	if (streq(type, "PROXY")) {
+		fd = connect_srv(host, port, r->trace);
 	} else if (streq(type, "SOCKS")) {
-		fd = connect_socks4_srv(host, port, bk_url, trace);
+		fd = connect_socks4_srv(r, host, port);
 	} else {
 		fprintf(stderr, "unknown proxy type %s\n", type);
 		fd = -1;
@@ -312,26 +304,29 @@ private int
 in_no_proxy(char *host)
 {
 	char	*list;
-	char	*p;
-	int	hlen = strlen(host);
+	char	*p, *e;
+	int	found = 0;
 
-	p = list = getenv("no_proxy");
-	while (list && *list) {
-		while (*p && *p != ',') ++p;
-		if (p-list == hlen && strneq(list, host, hlen)) return (1);
-		if (*p) ++p;
-
-		list = p;
+	unless (list = getenv("no_proxy")) return (0);
+	p = list = strdup(list);
+	while (p) {
+		if (e = strchr(list, ',')) *e++ = 0;
+		if (*p && match_one(host, p, 1)) {
+			found = 1;
+			break;
+		}
+		p = e;
 	}
-	return (0);
+	free(list);
+	return (found);
 }
 
 int
-http_connect(remote *r, char *cgi_script)
+http_connect(remote *r)
 {
-	int	i, port;
+	int	i, proxy_port;
 	char	*p, **proxies;
-	char	*type;
+	char	*proxy_type;
 	char	*proxy_host;
 	char	*cred;
 
@@ -340,25 +335,25 @@ http_connect(remote *r, char *cgi_script)
 	/*
 	 * Try proxy connection if available
 	 */
-	proxies = get_http_proxy();
+	proxies = get_http_proxy(r->host);
 	EACH(proxies) {
 		if (r->trace) {
 			fprintf(stderr, "trying %s\n", proxies[i]);
 			fflush(stderr);
 		}
-		type = proxies[i];
-		p = strchr(type, ' ');
+		proxy_type = proxies[i];
+		p = strchr(proxy_type, ' ');
 		assert(p);
 		*p++ = 0;
 		proxy_host = p;
 		p = strchr(proxy_host, ':');
 		assert(p);
 		*p++ = 0;
-		port = strtol(p, &p, 10);
+		proxy_port = strtol(p, &p, 10);
 		assert(p);
 		cred = (*p == ' ') ? p+1 : 0;
-		r->rfd = http_connect_srv(type, proxy_host,
-						port, cgi_script, r->trace);
+		r->rfd =
+		    http_connect_srv(r, proxy_type, proxy_host, proxy_port);
 		r->wfd = r->rfd;
 		if (r->rfd >= 0) {
 			if (r->trace) fprintf(stderr, "connected\n");
@@ -382,8 +377,7 @@ http_connect(remote *r, char *cgi_script)
 		fprintf(stderr, "Trying direct connection\n");
 		fflush(stderr);
 	}
-	r->wfd = r->rfd = http_connect_srv("DIRECT", r->host,
-						r->port, cgi_script, r->trace);
+	r->wfd = r->rfd = connect_srv(r->host, r->port, r->trace);
 	if (r->rfd >= 0) {
 		if (r->trace) fprintf(stderr, "Connected\n");
 		return (0);
@@ -419,16 +413,17 @@ http_send(remote *r, char *msg,
 		proxy_auth = proxyAuthHdr(r->cred);
 	}
 	header = aprintf(
-	    "POST http://%s:%d/cgi-bin/%s HTTP/1.0\n"
+	    "POST http://%s:%d/cgi-bin/%s HTTP/1.0\r\n"
 	    "%s"			/* optional proxy authentication */
-	    "User-Agent: %s\n"
-	    "Accept: text/html\n"
-	    "Host: %s:%d\n"
-	    "Content-type: %s\n"
-	    "Content-length: %u\n\n",
-	    r->host, r->port, cgi_script, proxy_auth, user_agent, 
+	    "User-Agent: %s\r\n"
+	    "Accept: text/html\r\n"
+	    "Host: %s:%d\r\n"
+	    "Content-type: application/octet-stream\r\n"
+	    "Content-length: %u\r\n"
+	    "\r\n",
+	    r->host, r->port, cgi_script, proxy_auth, user_agent,
 	    r->host, r->port,
-	    BINARY, mlen + extra);
+	    mlen + extra);
 
 	if (*proxy_auth) free(proxy_auth);
 	if (r->trace) fprintf(stderr, "Sending http header:\n%s", header);
@@ -466,3 +461,48 @@ err:		if (header) free(header);
 	free(header);
 	return 0;
 }
+
+int
+http_fetch_direct(char *url, char *file)
+{
+	remote	*r;
+	char	*header = 0;
+	int	len;
+	int	rc = -1;
+	FILE	*f;
+	char	buf[MAXLINE];
+
+	r = remote_parse(url);
+	r->rfd = r->wfd = connect_srv(r->host, r->port, r->trace);
+	if (r->rfd < 0) goto out;
+	r->isSocket = 1;
+
+	header = aprintf(
+	    "GET %s HTTP/1.0\r\n"
+	    "User-Agent: BitKeeper/fetch\r\n"
+	    "Accept: text/html\r\n"
+	    "Host: %s:%d\r\n"
+	    "\r\n",
+	    url, r->host, r->port);
+	
+	if (r->trace) fprintf(stderr, "Sending http header:\n%s", header);
+	len = strlen(header);
+	if (write_blk(r, header, len) != len) {
+		if (r->trace) fprintf(stderr, "Send failed\n");
+		goto out;
+	}
+	skip_http_hdr(r);
+	if (f = fopen(file, "w")) {
+		while (getline2(r, buf, sizeof(buf)) > 0) {
+			if (r->trace) fprintf(stderr, "-> %s\n", buf);
+			fprintf(f, "%s\n", buf);
+		}
+		fclose(f);
+		rc = 0;
+	}
+ out:
+	if (header) free(header);
+	disconnect(r, 2);
+	return (rc);
+}
+

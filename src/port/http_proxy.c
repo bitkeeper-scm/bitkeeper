@@ -5,41 +5,6 @@
  * Copyright (c) 2001 Andrew Chang       All rights reserved.
  */
 
-#define CACHED_PROXY "BitKeeper/etc/.cached_proxy"
-
-void
-save_cached_proxy(char *proxy)
-{
-	char *p = proj_root(0);
-	char cached_proxy[MAXPATH];
-	FILE *f;
-	
-	unless (p) return;
-	sprintf(cached_proxy, "%s/%s", p, CACHED_PROXY);
-	f = fopen(cached_proxy, "wb");
-	fputs(proxy, f);
-	fclose(f);
-}
-
-char **
-_get_cached_proxy(char **proxies)
-{
-	char *p = proj_root(0);
-	char buf[MAXPATH];
-	FILE *f;
-
-	unless (p) return NULL;
-	sprintf(buf, "%s/%s", p, CACHED_PROXY);
-	f = fopen(buf, "rb");
-	unless (f) return NULL;
-	buf[0] = 0;
-	fgets(buf, sizeof(buf), f);
-	fclose(f);
-	unless (buf[0]) return NULL;
-	return (addLine(proxies, strdup(buf)));
-}
-
-
 private char **
 _get_http_proxy_env(char **proxies)
 {
@@ -109,18 +74,24 @@ _get_socks_proxy(char **proxies)
 }
 
 #ifdef WIN32
+private char	**_get_http_autoproxy(char **proxies, char *host);
+private char	**_get_http_autoproxyurl(char **, char *host, char *url);
+
+
 int
-getReg(HKEY hive, char *key, char *valname, char *valbuf, int *buflen)
+getReg(HKEY hive, char *key, char *valname, char *valbuf, int *lenp)
 {
         int	rc;
         HKEY    hKey;
         DWORD   valType = REG_SZ;
+	DWORD	len = *lenp;
 
 	valbuf[0] = 0;
         rc = RegOpenKeyEx(hive, key, 0, KEY_QUERY_VALUE, &hKey);
         if (rc != ERROR_SUCCESS) return (0);
 
-        rc = RegQueryValueEx(hKey,valname, NULL, &valType, valbuf, buflen);
+        rc = RegQueryValueEx(hKey,valname, NULL, &valType, valbuf, &len);
+	*lenp = len;
         if (rc != ERROR_SUCCESS) return (0);
         RegCloseKey(hKey);
         return (1);
@@ -132,7 +103,7 @@ getRegDWord(HKEY hive, char *key, char *valname, DWORD *val)
         int	rc;
         HKEY    hKey;
         DWORD   valType = REG_DWORD;
-	int	buflen = sizeof (DWORD);
+	DWORD	buflen = sizeof (DWORD);
 
         rc = RegOpenKeyEx(hive, key, 0, KEY_QUERY_VALUE, &hKey);
         if (rc != ERROR_SUCCESS) return (0);
@@ -144,7 +115,7 @@ getRegDWord(HKEY hive, char *key, char *valname, DWORD *val)
         return (1);
 }
 
-char **
+private char **
 addProxy(char *type, char *line, char **proxies)
 {
 	char	*q, buf[MAXLINE], proxy_host[MAXPATH];
@@ -153,7 +124,7 @@ addProxy(char *type, char *line, char **proxies)
 	unless (line) return proxies;
 	q = strchr(line, ':');
 	unless (q) {
-		getMsg("unknown_proxy", line, 0, '=', stderr);
+		getMsg("unknown_proxy", line, '=', stderr);
 		return (proxies);
 	}
 	*q = 0;
@@ -170,79 +141,63 @@ addProxy(char *type, char *line, char **proxies)
  * Get proxy from windows registry
  * Note: This works for both IE and netscape on win32
  */
-char **
-_get_http_proxy_reg(char **proxies)
+private char **
+_get_http_proxy_reg(char **proxies, char *host)
 {
 #define KEY "Software\\Microsoft\\Windows\\CurrentVersion\\internet Settings"
-	char	*p, *q, *type, buf[MAXLINE] = "", proxy_host[MAXPATH];
-	int	proxy_port, len = sizeof(buf);
+	char	*p, *q;
+	int	len;
 	int	proxyEnable = 0;
+	char	buf[MAXLINE];
 
 	if (getRegDWord(HKEY_CURRENT_USER,
-			KEY, "ProxyEnable", &proxyEnable) == 0) {
+			KEY, "ProxyEnable", (DWORD *)&proxyEnable) == 0) {
 		goto done;
 	}
-	if (proxyEnable == 0) goto done;
+	unless (proxyEnable) goto done;
 
+	len = sizeof(buf);  /* important */
 	getReg(HKEY_CURRENT_USER, KEY, "AutoConfigURL", buf, &len);
-	if (buf[0]) {
-		/*
-		 * We need a JavaScript interpretor to parse the auto-config
-		 * pac file properly.  We killed pac file support on Unix
-		 * long time ago. Thers is no reason to do differently on
-		 * Windows. So just skip the pac and make the user set up
-		 * their proxy with envronment variable.
-		 */
-		return (proxies);
-	} else {
-		len = sizeof(buf);  /* important */
-		if (getReg(HKEY_CURRENT_USER,
-					KEY, "ProxyServer", buf, &len) == 0) {
-			return (proxies);
+	if (buf[0]) return(_get_http_autoproxyurl(proxies, host, buf));
+
+	len = sizeof(buf);  /* important */
+	if (getReg(HKEY_CURRENT_USER, KEY, "ProxyOverride", buf, &len)) {
+		q = buf;
+		while (q) {
+			if (p = strchr(q, ';')) *p++ = 0;
+			if (*q && match_one(host, q, 1)) goto done;
+			q = p;
 		}
-		/*
-		 * We support 3 froms:
-		 * 1) host:port
-		 * 2) http=host:port
-		 * 3) http://host:port
-		 * form 1 can only exist in a single field line
-		 * form 2 and 3 can be part of a multi-field line
-		 */
-		if (getenv("BK_HTTP_PROXY_DEBUG")) {
-			fprintf(stderr, "ProxyServer= \"%s\"\n", buf);
+	}
+	
+	len = sizeof(buf);  /* important */
+	if (getReg(HKEY_CURRENT_USER, KEY, "ProxyServer", buf, &len) == 0) {
+		goto done;
+	}
+	/*
+	 * We support 3 froms:
+	 * 1) host:port
+	 * 2) http=host:port
+	 * 3) http://host:port
+	 * form 1 can only exist in a single field line
+	 * form 2 and 3 can be part of a multi-field line
+	 */
+	if (getenv("BK_HTTP_PROXY_DEBUG")) {
+		fprintf(stderr, "ProxyServer= \"%s\"\n", buf);
+	}
+	q = buf;
+	while (q) {
+		if (p = strchr(q, ';')) *p++ = 0;
+		if (strneq("http://", q, 7)) {
+			proxies = addProxy("PROXY", &q[7], proxies);
+		} else if (strneq("http=", q, 5)) {
+			proxies = addProxy("PROXY", &q[5], proxies);
+		} else if (strneq("socks=", q, 6)) {
+			proxies = addProxy("SOCKS", &q[6], proxies);
+		} else if (!p) {
+			proxies = addProxy("PROXY", q, proxies);
 		}
-		if (strchr(buf, ';') == 0) {
-			if (strneq("http://", buf, 7)) {
-				proxies = addProxy("PROXY", &buf[7], proxies);
-			} else if (strneq("http=", buf, 5)) {
-				proxies = addProxy("PROXY", &buf[5], proxies);
-			} else if (strneq("socks=", buf, 6)) {
-				proxies = addProxy("SOCKS", &buf[6], proxies);
-			} else {
-				proxies = addProxy("PROXY", buf, proxies);
-			}
-		} else {
-			q = buf;
-			p = strchr(q, ';'); 
-			if (p) *p++ = 0;
-			while (q) {
-				if (strneq("http://", q, 7)) {
-					proxies =
-					    addProxy("PROXY", &q[7], proxies);
-				} else if (strneq("http=", q, 5)) {
-					proxies =
-					    addProxy("PROXY", &q[5], proxies);
-				} else if (strneq("socks=", q, 6)) {
-					proxies =
-					    addProxy("SOCKS", &q[6], proxies);
-				} 
-				q = p;
-				if (q) {
-					p = strchr(q, ';');
-					if (p) *p++ = 0;
-				}
-			}
-		}
+		q = p;
 	}
 done:	return (proxies);
 }
@@ -253,15 +208,209 @@ done:	return (proxies);
  *		socks DNS (yet).
  */ 
 char **
-get_http_proxy()
+get_http_proxy(char *host)
 {
-	char	**proxies = NULL;
+	char	**proxies = 0;
 	
-	//proxies = _get_cached_proxy(proxies);
 	proxies = _get_http_proxy_env(proxies);
 	proxies = _get_socks_proxy(proxies);
 #ifdef WIN32
-	proxies = _get_http_proxy_reg(proxies);
+	proxies = _get_http_proxy_reg(proxies, host);
+	unless (getenv("BK_HTTP_SKIP_AUTOPROXY")) {
+		proxies = _get_http_autoproxy(proxies, host);
+	}
 #endif
 	return (proxies);
 }
+
+#ifdef WIN32
+#include <wininet.h>
+
+/* jscript helper function */
+DWORD __stdcall 
+ResolveHostName(char *host, char *ipaddr, u32 *ipaddrlen)
+{
+	int	trace = getenv("BK_HTTP_PROXY_DEBUG") != 0;
+	struct in_addr sin_addr;
+	char	buf[16];
+
+	sin_addr.s_addr = host2ip(host, trace);
+	if (sin_addr.s_addr == -1) return (ERROR_INTERNET_NAME_NOT_RESOLVED);
+	strcpy(buf, inet_ntoa(sin_addr));
+	assert(ipaddr);
+	assert(strlen(buf) < *ipaddrlen);
+	strcpy(ipaddr, buf);
+	return (0);
+}
+
+/* jscript helper function */
+BOOL __stdcall
+IsResolvable(char *host)
+{
+	char	buf[256];
+	u32	size = sizeof(buf) - 1;
+
+	return (ResolveHostName(host, buf, &size) ? FALSE : TRUE);
+}
+
+/* jscript helper function */
+DWORD __stdcall 
+GetIPAddress(char *ipaddr, u32 *ipaddrsize )
+{
+	char	host[256];
+
+	if (gethostname(host, sizeof(host) - 1) != ERROR_SUCCESS) {
+		return (ERROR_INTERNET_INTERNAL_ERROR);
+	}
+	return (ResolveHostName(host, ipaddr, ipaddrsize));
+}
+
+
+/* jscript helper function */
+BOOL __stdcall 
+IsInNet(char *ipaddr, char *dest, char *mask)
+{
+	u32	ipaddrn, destn, maskn;
+
+	ipaddrn = inet_addr(ipaddr);
+	destn = inet_addr(dest);
+	maskn = inet_addr(dest);
+
+	if ((destn == INADDR_NONE) || (ipaddrn == INADDR_NONE) ||
+	    ((ipaddrn & maskn) != destn)) {
+		return (FALSE);
+	}
+	return (TRUE);
+}
+
+#define  PROXY_AUTO_DETECT_TYPE_DHCP    1
+#define  PROXY_AUTO_DETECT_TYPE_DNS_A   2
+
+private char **
+_get_http_autoproxy(char **proxies, char *host)
+{
+	int	flags = getenv("BK_HTTP_PROXY_DEBUG") ? 0 : SILENT;
+	static HMODULE	hModWI = 0;
+	char	WPAD_url[1024]= "";
+	static BOOL (*DetectAutoProxyUrl)
+		(char *proxyurl, u32 proxyurllen, u32 flags);
+
+	unless (hModWI) {
+		unless (hModWI = LoadLibrary("wininet.dll")) {
+			verbose((stderr, "LoadLibrary(wininet.dll) failed\n"));
+			goto out;
+		}
+		DetectAutoProxyUrl = 
+			(void *)GetProcAddress(hModWI, "DetectAutoProxyUrl");
+		unless (DetectAutoProxyUrl) {
+			verbose((stderr,
+			    "Failed to load address from wininet.dll\n"));
+			goto out;
+		}
+	}
+	unless (DetectAutoProxyUrl(WPAD_url, sizeof(WPAD_url), 
+	    PROXY_AUTO_DETECT_TYPE_DHCP | PROXY_AUTO_DETECT_TYPE_DNS_A)) {
+		verbose((stderr, "No WPAD found\n"));
+		goto out;
+	}
+	verbose((stderr, "WPAD==%s\n", WPAD_url));
+
+	proxies = _get_http_autoproxyurl(proxies, host, WPAD_url);
+ out:
+	return (proxies);
+}
+
+private char **
+_get_http_autoproxyurl(char **proxies, char *host, char *WPAD_url)
+{
+	int	flags = getenv("BK_HTTP_PROXY_DEBUG") ? 0 : SILENT;
+	static HMODULE	hModJS = 0;
+	char	*url = 0;
+	char	*tmpf = 0;
+	char	proxyBuffer[1024];
+	char	*proxy = proxyBuffer;
+	u32	dwProxyHostNameLength = sizeof(proxyBuffer);
+
+	struct AutoProxyHelperVtbl {
+		BOOL (__stdcall *pIsResolvable)(char *host);
+		DWORD (__stdcall *pGetIPAddress)
+		     (char *ipaddr, u32 *ipaddrsize);
+		DWORD (__stdcall *pResolveHostName)
+		     (char *host, char *ipaddr, u32 *);
+		BOOL (__stdcall *pIsInNet)
+		     (char *ipaddr, char *dest, char *mask);
+	} Vtbl = {
+		IsResolvable,
+		GetIPAddress,
+		ResolveHostName,
+		IsInNet
+	};
+	struct AutoProxyHelperFunctions {
+		const struct AutoProxyHelperVtbl *Vtbl;
+	} HelperFunctions = { &Vtbl };
+	// Declare function pointers for the three autoproxy functions
+	static BOOL (CALLBACK *InternetInitializeAutoProxyDll)(
+		DWORD Version, char *tmpf, char *mime,
+		struct AutoProxyHelperFunctions *callbacks,
+		void *AutoProxyScriptBuffer);
+	static BOOL (CALLBACK *InternetDeInitializeAutoProxyDll)(
+		char *mime, DWORD reserved);
+	static BOOL (CALLBACK *InternetGetProxyInfo)(
+		char *url, u32 urllen, 
+		char *host, u32 hostlen,
+		char **proxy, u32 *proxylen);
+
+	unless (hModJS) {
+		unless (hModJS = LoadLibrary("jsproxy.dll")) {
+			verbose((stderr, "LoadLibrary(jsproxy.dll) failed\n"));
+			goto out;
+		}
+		InternetInitializeAutoProxyDll =
+			GetProcAddress(hModJS,
+			    "InternetInitializeAutoProxyDll");
+		InternetDeInitializeAutoProxyDll =
+			GetProcAddress(hModJS,
+			    "InternetDeInitializeAutoProxyDll");
+		InternetGetProxyInfo =
+			GetProcAddress(hModJS, "InternetGetProxyInfo");
+		unless (InternetInitializeAutoProxyDll &&
+		    InternetDeInitializeAutoProxyDll &&
+		    InternetGetProxyInfo) {
+			verbose((stderr,
+			    "Failed to load addresses from jsproxy.dll\n"));
+			goto out;
+		}
+	}
+
+	unless (tmpf = bktmp(0, "proxy")) goto out;
+	if (http_fetch_direct(WPAD_url, tmpf)) {
+		verbose((stderr, "Fetch of %s to %s failed\n",
+		    WPAD_url, tmpf));
+		goto out;
+	}
+	unless (InternetInitializeAutoProxyDll(0, tmpf, NULL, 
+	    &HelperFunctions, NULL)) {
+		verbose((stderr, "InternetInitializeAutoProxyDll failed\n"));
+		goto out;
+	}
+	url = aprintf("http://%s", host);
+	unless (InternetGetProxyInfo(url, strlen(url), host, strlen(host),
+	    &proxy, &dwProxyHostNameLength)) {
+		verbose((stderr, "InternetGetProxyInfo(%s) failed\n",
+		    url));
+		goto out;
+	}
+	unless (InternetDeInitializeAutoProxyDll(0, 0)) goto out;
+	verbose((stderr, "proxy==%s\n", proxy));
+	unless (streq(proxy, "DIRECT")) {
+		proxies = addLine(proxies, strdup(proxy));
+	}
+ out:
+	if (url) free(url);
+	if (tmpf) {
+		unlink(tmpf);
+		free(tmpf);
+	}
+	return (proxies);
+}
+#endif

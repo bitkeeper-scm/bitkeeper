@@ -9,17 +9,21 @@
 char *
 getHomeDir(void)
 {
-        char	*homeDir, *t;
+        char	*homeDir;
 	char	home_buf[MAXPATH], tmp[MAXPATH];
 	int	len = MAXPATH;
 #define KEY "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders"
 
+	if (homeDir = getenv("BK_TEST_HOME")) {
+		homeDir = strdup(homeDir);
+		return homeDir;
+	}
 	if (!getReg(HKEY_CURRENT_USER,
 				KEY, "AppData", home_buf, &len)) {
 		return (NULL);
 	}
 	GetShortPathName(home_buf, tmp, MAXPATH);
-	localName2bkName(home_buf, home_buf);
+	localName2bkName(tmp, tmp);
 	concat_path(tmp, tmp, "BitKeeper");
 	unless (exists(tmp)) mkdir(tmp, 0640);
 	homeDir = strdup(tmp);
@@ -31,14 +35,14 @@ getHomeDir(void)
 {
         char *homeDir;
 
-        homeDir = getenv("HOME");
+	unless (homeDir = getenv("BK_TEST_HOME")) homeDir = getenv("HOME");
 	if (homeDir) homeDir = strdup(homeDir);
         return homeDir;
 }
 #endif
 
 char *
-getBkDir(void)
+getDotBk(void)
 {
 	static	char	*dir;
 	char	*t;
@@ -53,6 +57,14 @@ getBkDir(void)
 
 	if (dir) return (dir);
 
+	if (t = getenv("BK_DOTBK")) {
+		unless (isdir(t)) {
+			fprintf(stderr, "DOTBK (%s) doesn't exist.\n", t);
+			exit(1);
+		}
+		dir = strdup(t);
+		return (dir);
+	}
 	if (t = getHomeDir()) {
 		dir = aprintf("%s/%s", t, bkdir);
 		free(t);

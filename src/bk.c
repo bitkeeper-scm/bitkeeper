@@ -8,7 +8,7 @@
 extern	int	test_release;
 extern	unsigned build_timet;
 
-char	*editor = 0, *pager = 0, *bin = 0;
+char	*editor = 0, *bin = 0;
 char	*BitKeeper = "BitKeeper/";	/* XXX - reset this? */
 char	**bk_environ;
 jmp_buf	exit_buf;
@@ -19,8 +19,7 @@ private char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
 #define	LOGVER	0
 
 
-char	*find_wish(void);
-char	*find_perl5(void);
+int	launch_wish(char *script, char **av);
 private	void	cmdlog_exit(void);
 private	int	cmdlog_repo;
 private	void	cmdlog_dump(int, char **);
@@ -75,6 +74,7 @@ int	get_main(int, char **);
 int	gethelp_main(int, char **);
 int	gethost_main(int, char **);
 int	getmsg_main(int, char **);
+int	getreg_main(int, char **);
 int	getuser_main(int, char **);
 int	glob_main(int, char **);
 int	gnupatch_main(int, char **);
@@ -91,9 +91,9 @@ int	isascii_main(int, char **);
 int	key2path_main(int, char **);
 int	key2rev_main(int, char **);
 int	keycache_main(int, char **);
-int	keysort_main(int, char **);
 int	keyunlink_main(int, char **);
 int	lconfig_main(int, char **);
+int	lease_main(int, char **);
 int	level_main(int, char **);
 int	license_main(int, char **);
 int	lines_main(int, char **);
@@ -113,6 +113,7 @@ int	makepatch_main(int, char **);
 int	mdiff_main(int, char **);
 int	merge_main(int, char **);
 int	mklock_main(int, char **);
+int	more_main(int, char **);
 int	mtime_main(int, char **);
 int	multiuser_main(int, char **);
 int	mv_main(int, char **);
@@ -140,6 +141,7 @@ int	rclone_main(int, char **);
 int	rcs2sccs_main(int, char **);
 int	rcsparse_main(int, char **);
 int	receive_main(int, char **);
+int	repogca_main(int, char **);
 int	relink_main(int, char **);
 int	renumber_main(int, char **);
 int	repo_main(int, char **);
@@ -191,6 +193,7 @@ int	uuencode_main(int, char **);
 int	val_main(int, char **);
 int	version_main(int, char **);
 int	what_main(int, char **);
+int	which_main(int, char **);
 int	xflags_main(int, char **);
 int	zone_main(int, char **);
 
@@ -204,8 +207,8 @@ struct	command cmdtbl[] = {
 	{"_findcset", findcset_main },
 	{"_g2sccs", _g2sccs_main},
 	{"_get", get_main},
+	{"_getreg", getreg_main},
 	{"_gzip", gzip_main }, 
-	{"_keysort", keysort_main},
 	{"_key2path", key2path_main},
 	{"_keyunlink", keyunlink_main },
 	{"_lconfig", lconfig_main},	
@@ -289,16 +292,19 @@ struct	command cmdtbl[] = {
 	{"isascii", isascii_main},		/* doc 2.0 */
 	{"key2rev", key2rev_main},		/* doc 2.0 */
 	{"keycache", keycache_main},
+	{"lease", lease_main},
 	{"level", level_main},			/* doc 2.0 */
 	{"license", license_main},		/* undoc */
 	{"lock", lock_main},			/* doc 2.0 */
 	{"lod", lod_main},	/* XXX - doc 2.0 - says doesn't work yet */
 	{"log", log_main},
+ 	{"mail", mail_main},
 	{"mailsplit", mailsplit_main},
 	{"makepatch", makepatch_main},		/* doc 2.0 */
 	{"mdiff", mdiff_main},
 	{"merge", merge_main},			/* doc 2.0 */
 	{"mklock", mklock_main},	/* regression test */ /* undoc 2.0 */
+	{"more", more_main},
 	{"mtime", mtime_main},		/* regression test */ /* undoc 2.0 */
 	{"mv", mv_main},			/* doc 2.0 */
 	{"mvdir", mvdir_main},			/* doc 2.0 */
@@ -327,6 +333,7 @@ struct	command cmdtbl[] = {
 	{"relink", relink_main},
 	{"renumber", renumber_main},		/* doc 2.0 */
 	{"repo", repo_main},	/* obsolete */ 	/* undoc 2.0 */
+	{"repogca", repogca_main},
 	{"resolve", resolve_main},		/* doc 2.0 */
 	{"restore", restore_main},
 	{"rev2cset", r2c_main},	/* alias */	/* doc 2.0 as r2c */
@@ -343,6 +350,7 @@ struct	command cmdtbl[] = {
 	{"sccsrm", rm_main},	/* alias */	/* doc 2.0 as mv */
 	{"send", send_main},			/* doc 2.0 */
 	{"sendbug", sendbug_main},		/* doc 2.0 */
+	{"support", sendbug_main},		/* doc 3.0 */
 	{"set", set_main},
 	{"setup", setup_main },			/* doc 2.0 */
 	{"shrink", shrink_main}, 		/* undoc? 2.0 */
@@ -374,10 +382,32 @@ struct	command cmdtbl[] = {
 	{"val", val_main},			/* doc 2.0 */
 	{"version", version_main},		/* doc 2.0 */
 	{"what", what_main},			/* doc 2.0 */
+	{"which", which_main },
 	{"xflags", xflags_main},		/* doc 2.0 */
 	{"zone", zone_main},			/* doc 2.0 */
 
 	{0, 0},
+};
+
+/* Keep this sorted too */
+struct tool guis[] = {
+	{ "citool", 0 },
+	{ "csettool", "csetool" },
+	{ "difftool", 0 },
+	{ "newdifftool", 0 },
+	{ "fm3tool", "fm3" },
+	{ "fmtool", "fm" },
+	{ "fmtool", "fm2tool" },
+	{ "helptool", 0 },
+	{ "installtool", 0 },
+	{ "msgtool", 0 },
+	{ "renametool", 0 },
+	{ "revtool", "histool" },
+	{ "revtool", "histtool" },
+	{ "revtool", "sccstool" },
+	{ "setuptool", 0 },
+
+	{ 0, 0 }
 };
 
 private int
@@ -431,14 +461,17 @@ main(int ac, char **av, char **env)
 	char	sopts[30];
 
 	if (getenv("BK_SHOWPROC")) {
-		FILE	*f = fopen(DEV_TTY, "w");
+		FILE	*f;
 
-		fprintf(f, "BK (%u t: %5s)", getpid(), milli());
-		for (i = 0; av[i]; ++i) fprintf(f, " %s", av[i]);
-		fprintf(f, "\n");
-		fclose(f);
+		if (f = fopen(DEV_TTY, "w")) {
+			fprintf(f, "BK (%u t: %5s)", getpid(), milli());
+			for (i = 0; av[i]; ++i) fprintf(f, " %s", av[i]);
+			fprintf(f, "\n");
+			fclose(f);
+		}
 	}
 
+	unless (getenv("BK_TMP")) bktmpenv();
 	/*
 	 * Windows seems to have a problem with stderr under rxvt's.
 	 * Force unbuffered mode.
@@ -501,13 +534,13 @@ main(int ac, char **av, char **env)
 	if (streq(prog, "sccs")) prog = "bk";
 	if (streq(prog, "bk")) {
 		is_bk = 1;
-		while ((c = getopt(ac, av, "acdDeEgijlnpr|RSuUvx")) != -1) {
+		while ((c = getopt(ac, av, "acCdDeEgijlnpr|RSuUvx")) != -1) {
 			switch (c) {
-			    case 'a': case 'c': case 'd': case 'D':
-			    case 'e': case 'E': case 'g': case 'i':
-			    case 'j': case 'l': case 'n': case 'p':
-			    case 'S': case 'u': case 'U': case 'v':
-			    case 'x':				/* doc 2.0 */
+			    case 'a': case 'c': case 'C': case 'd':
+			    case 'D': case 'e': case 'E': case 'g':
+			    case 'i': case 'j': case 'l': case 'n':
+			    case 'p': case 'S': case 'u': case 'U':
+			    case 'v': case 'x':
 				sopts[++si] = c;
 				break;
 			    case 'h':				/* undoc? 2.0 */
@@ -581,6 +614,9 @@ run:	getoptReset();
 	exit(ret);
 }
 
+/*
+ * The commands here needed to be spawned, not execed, so command logging works.
+ */
 private int
 run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 {
@@ -602,52 +638,23 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 		return (1);
 	}
 
-
 	/*
 	 * Handle Gui script
 	 */
-	if (streq(prog, "fm") ||
-	    streq(prog, "fm3") ||
-	    streq(prog, "citool") ||
-	    streq(prog, "_citool") ||
-	    streq(prog, "sccstool") ||
-	    streq(prog, "histtool") ||
-	    streq(prog, "revtool") ||
-	    streq(prog, "histool") ||
-	    streq(prog, "setuptool") ||
-	    streq(prog, "fmtool") ||
-	    streq(prog, "fm2tool") ||
-	    streq(prog, "fm3tool") ||
-	    streq(prog, "difftool") ||
-	    streq(prog, "newdifftool") ||
-	    streq(prog, "helptool") ||
-	    streq(prog, "csettool") ||
-	    streq(prog, "renametool") ||
-	    streq(prog, "msgtool")) {
-		sig_catch(SIG_IGN);
-		argv[0] = find_wish();
-		if (streq(prog, "fm2tool")) prog = "fmtool";
-		if (streq(prog, "sccstool")) prog = "revtool";
-		if (streq(prog, "histool")) prog = "revtool";
-		if (streq(prog, "histtool")) prog = "revtool";
-		if (streq(prog, "revtool")) prog = "revtool";
-		sprintf(cmd_path, "%s/%s", bin, prog);
-		argv[1] = cmd_path;
-		for (i = 2, j = 1; av[j]; i++, j++) {
-			if (i >= (MAXARGS-10)) {
-				fprintf(stderr, "bk: too many args\n");
-				exit(1);
-			}
-			argv[i] = av[j];
+	for (i = 0; guis[i].prog; i++) {
+		unless (streq(guis[i].prog, prog) ||
+		    (guis[i].alias && streq(guis[i].alias, prog))) {
+			continue;
 		}
-		argv[i] = 0;
-		return (spawn_cmd(_P_WAIT, argv));
+		return (launch_wish(guis[i].prog, av+1));
 	}
 
 	/*
-	 * Handle shell script
+	 * Handle shell scripts.
 	 */
-	if (streq(prog, "resync") || streq(prog, "import")) {
+	if (streq(prog, "applypatch") ||
+	    streq(prog, "import") ||
+	    streq(prog, "resync")) {
 		argv[0] = shell();
 		sprintf(cmd_path, "%s/%s", bin, prog);
 		argv[1] = cmd_path;
@@ -666,8 +673,17 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 	 * Is it a known C program ?
 	 */
 	if (streq(prog, "patch") ||
-	    streq(prog, "diff3")) {
+	    streq(prog, "cmp") ||
+	    streq(prog, "diff") ||
+	    streq(prog, "diff3") ||
+	    streq(prog, "sdiff")) {
 		return (spawn_cmd(_P_WAIT, av));
+	}
+
+	/* Handle GUI test */
+	if (streq(prog, "guitest")) {
+		sprintf(cmd_path, "%s/t/guitest.tcl", bin);
+		return (launch_wish(cmd_path, av+1));
 	}
 
 	/*
@@ -724,28 +740,25 @@ private	struct {
 } repolog[] = {
 	{"abort", CMD_FAST_EXIT},
 	{"check", CMD_FAST_EXIT},
+	{"commit", CMD_WRLOCK|CMD_WRUNLOCK},
 	{"license", CMD_FAST_EXIT},
+	{"pending_part1", CMD_RDLOCK|CMD_RDUNLOCK},
+	{"pending_part2", CMD_RDLOCK|CMD_RDUNLOCK},
 	{"pull", CMD_BYTES|CMD_WRLOCK|CMD_WRUNLOCK},
 	{"push", CMD_BYTES|CMD_RDLOCK|CMD_RDUNLOCK},
-	{"commit", CMD_WRLOCK|CMD_WRUNLOCK},
-	{"remote pull", CMD_BYTES|CMD_FAST_EXIT|CMD_RDLOCK|CMD_RDUNLOCK},
-	{"remote push", CMD_BYTES|CMD_FAST_EXIT|CMD_WRLOCK|CMD_WRUNLOCK},
+	{"remote changes part1", CMD_RDLOCK|CMD_RDUNLOCK},
+	{"remote changes part2", CMD_RDLOCK|CMD_RDUNLOCK},
+	{"remote clone", CMD_BYTES|CMD_FAST_EXIT|CMD_RDLOCK|CMD_RDUNLOCK},
 	{"remote pull part1", CMD_BYTES|CMD_RDLOCK},
 	{"remote pull part2", CMD_BYTES|CMD_FAST_EXIT|CMD_RDUNLOCK},
+	{"remote pull", CMD_BYTES|CMD_FAST_EXIT|CMD_RDLOCK|CMD_RDUNLOCK},
 	{"remote push part1", CMD_BYTES|CMD_WRLOCK},
 	{"remote push part2", CMD_BYTES|CMD_FAST_EXIT|CMD_WRUNLOCK},
-	{"remote clone", CMD_BYTES|CMD_FAST_EXIT|CMD_RDLOCK|CMD_RDUNLOCK},
+	{"remote push", CMD_BYTES|CMD_FAST_EXIT|CMD_WRLOCK|CMD_WRUNLOCK},
 	{"remote rclone part1", CMD_BYTES},
 	{"remote rclone part2", CMD_BYTES|CMD_FAST_EXIT},
 	{"synckeys", CMD_RDLOCK|CMD_RDUNLOCK},
-	{"pending_part1", CMD_RDLOCK|CMD_RDUNLOCK},
-	{"pending_part2", CMD_RDLOCK|CMD_RDUNLOCK},
-	/*
-	 * This is a hack because we short circuit part2 in changes.c.
-	 * It opens a tiny race.
-	 */
-	{"remote changes part1", CMD_RDLOCK|CMD_RDUNLOCK},
-	{"remote changes part2", CMD_RDLOCK|CMD_RDUNLOCK},
+	{"undo", 0},
 	{ 0, 0 },
 };
 
@@ -942,11 +955,13 @@ cmdlog_end(int ret)
 	}
 
 	if (getenv("BK_SHOWPROC")) {
-		FILE	*f = fopen(DEV_TTY, "w");
+		FILE	*f;
 
-		fprintf(f, "END(%u t: %5s)", getpid(), milli());
-		fprintf(f, " %s = %d\n", cmdlog_buffer, ret);
-		fclose(f);
+		if (f = fopen(DEV_TTY, "w")) {
+			fprintf(f, "END(%u t: %5s)", getpid(), milli());
+			fprintf(f, " %s = %d\n", cmdlog_buffer, ret);
+			fclose(f);
+		}
 	}
 
 	/* If we have no project root then bail out */
@@ -1128,64 +1143,71 @@ bk_sfiles(char *opts, int ac, char **av)
 	exit(100);
 }
 
-char *
-find_prog(char *prog)
+int
+launch_wish(char *script, char **av)
 {
-	char *p, *s;
-	char path[MAXLINE];
-	static char prog_path[MAXPATH];
-	int more = 1;
-
-	p  = getenv("PATH");
-	if (p) {;
-		sprintf(path, "%s%c/usr/local/bin", p, PATH_DELIM);
-		localName2bkName(path, path);
-	} else {
-		strcpy(path, "/usr/local/bin");
-	}
-	p = path;
-	while (more) {
-		for (s = p; (*s != PATH_DELIM) && (*s != '\0');  s++);
-		if (*s == '\0') more = 0;
-		*s = '\0';
-		sprintf(prog_path, "%s/%s%s", p, prog, EXE);
-		if (exists(prog_path)) return (prog_path);
-		p = ++s;
-	}
-	return (0);
-}
-
-char *
-find_wish(void)
-{
-	static char	*path;
-
-	if (path) return (path);
+	char	*path;
+	int	i, ret;
+	pid_t	pid;
+	char	cmd_path[MAXPATH];
+	char	*argv[MAXARGS];
 
 	/* If they set this, they can set TCL_LIB/TK_LIB as well */
-	if ((path = getenv("BK_WISH")) && executable(path)) return (path);
+	unless ((path = getenv("BK_WISH")) && executable(path)) path = 0;
+	unless (path) {
+		path = aprintf("%s/gui/bin/bkgui", bin);
+		if (executable(path)) {
+			safe_putenv("TCL_LIBRARY=%s/tcltk/lib/tcl8.4", bin);
+			safe_putenv("TK_LIBRARY=%s/tcltk/lib/tk8.4", bin);
+		} else {
+			free(path);
+			path = 0;
+		}
+	}
+	unless (path) {
+		fprintf(stderr, "Cannot find the graphical interpreter\n");
+		exit(1);
+	}
 
-	path = aprintf("%s/tk/bin/bkgui", bin);
-	if (executable(path)) {
-		safe_putenv("TCL_LIBRARY=%s/tk/lib/tcl8.3", bin);
-		safe_putenv("TK_LIBRARY=%s/tk/lib/tk8.3", bin);
-		return (path);
+	putenv("BK_GUI=YES");
+	sig_catch(SIG_IGN);
+	argv[0] = path;
+	if (strchr(script, '/')) {
+		strcpy(cmd_path, script);
+	} else {
+		sprintf(cmd_path, "%s/gui/lib/%s", bin, script);
 	}
-	free(path);
-	path = "/build/.wish/tk/bin/bkgui";
-	if (executable(path)) {
-		putenv("TCL_LIBRARY=/build/.wish/tk/lib/tcl8.3");
-		putenv("TK_LIBRARY=/build/.wish/tk/lib/tk8.3");
-		return (path);
+	argv[1] = cmd_path;
+	i = 0;
+	while (1) {
+		if (i >= (MAXARGS-10)) {
+			fprintf(stderr, "bk: too many args\n");
+			exit(1);
+		}
+		argv[i+2] = av[i];
+		unless (av[i]) break;
+		i++;
 	}
-	path = "c:/cygwin/build/.wish/tk/bin/bkgui";
-	if (executable(path)) {
-		putenv("TCL_LIBRARY=/build/.wish/tk/lib/tcl8.3");
-		putenv("TK_LIBRARY=/build/.wish/tk/lib/tk8.3");
-		return (path);
+	if ((pid = spawnvp_ex(_P_NOWAIT, argv[0], argv)) < 0) {
+		fprintf(stderr, "bk: cannot spawn %s\n", argv[0]);
 	}
-	fprintf(stderr, "Cannot find the graphical interpreter\n");
-	exit(1);
+#ifdef	WIN32
+	/*
+	 * If we are about to call a GUI command hide the console
+	 * since we won't be using it.  This is so that we don't have
+	 * a unused console windows in the background of the GUIs.
+	 * WARNING: after this we shouldn't try to do any console IO.
+	 * This does not work on Win/Me (probably also Win/98)
+	 */
+	unless (isWin98()) FreeConsole();
+#endif
+	if (waitpid(pid, &ret, 0) < 0) {
+		return (126);
+	} else if (!WIFEXITED(ret)) {
+		return (127);
+	} else {
+		return (WEXITSTATUS(ret));
+	}
 }
 
 char *
@@ -1193,10 +1215,16 @@ shell(void)
 {
 	char	*sh;
 
+	/*
+	 * Remember that in the regressions we have a restricted PATH.
+	 * Search for BK_LIMITPATH
+	 */
+#ifndef	WIN32
 	if (sh = getenv("BK_SHELL")) return (sh);
-	if (sh = find_prog("bash")) return (sh);
-	if (sh = find_prog("ksh")) return (sh);
-	if (sh = find_prog("sh")) return (sh);
+	if (sh = whichp("bash", 0, 1)) return (sh);
+	if (sh = whichp("ksh", 0, 1)) return (sh);
+#endif
+	if (sh = whichp("sh", 0, 1)) return (sh);
 	assert("No shell" == 0);
 	return (0);	/* Windows warns otherwise */
 }

@@ -4,7 +4,7 @@
 #include <time.h>
 
 
-extern char	*editor, *pager, *bin;
+extern char	*editor, *bin;
 extern char	*BitKeeper;
 
 void
@@ -25,10 +25,11 @@ void
 do_clean(char *file, int flags)
 {
 	sccs *s;
-	s = sccs_init(file, INIT_NOCKSUM);
-	assert(s);
-	sccs_clean(s, flags);
-	sccs_free(s);
+
+	if (s = sccs_init(file, INIT_NOCKSUM)) {
+		if (HASGRAPH(s)) sccs_clean(s, flags);
+		sccs_free(s);
+	}
 }
 
 int
@@ -81,7 +82,7 @@ status(int verbose, FILE *f)
 
 	fprintf(f, "Status for BitKeeper repository %s:%s\n",
 	    sccs_gethost(), fullname(".", 0));
-	getMsg("version", bk_model(buf, sizeof(buf)), 0, f);
+	bkversion(f);
 	sprintf(parent_file, "%slog/parent", BitKeeper);
 	if (exists(parent_file)) {
 		fprintf(f, "Parent repository is ");
@@ -97,7 +98,7 @@ status(int verbose, FILE *f)
 
 	if (verbose) {
 		bktmp(tmp_file, "status");
-		f1 = fopen(tmp_file, "wb");
+		f1 = fopen(tmp_file, "w");
 		assert(f1);
 		bkusers(0, 0, f1);
 		fclose(f1);
@@ -120,7 +121,7 @@ status(int verbose, FILE *f)
 			fprintf(f, "Modified:\t%s", buf);
 		}
 		fclose(f1);
-		sprintf(buf, "bk sfiles -g -s,,p -C > %s", tmp_file);
+		sprintf(buf, "bk sfiles -g -s,,p -pC > %s", tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) {

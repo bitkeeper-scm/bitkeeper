@@ -1,73 +1,36 @@
 #!/bin/sh
 
+orig_args="$@"
+
 #Set up environment for Microsoft VC++ compiler
 ms_env()
 {
-	PATH='/cygdrive/c/Program Files/BitKeeper':$PATH
+	test "$MSYSBUILDENV" || {
+		echo running in wrong environment, respawning...
+		bk get -S ./update_buildenv
+		BK_USEMSYS=1 bk sh ./update_buildenv
+		export HOME=`bk pwd`
+		exec C:/build/buildenv/bin/sh --login $0 $orig_args
+	}
+
 	SYS=win32
-	CC=cl
-	LD=link
-	MKLIB=./win32/util/mklib
-	if [ ! -f ${MKLIB} ]; then get ${MKLIB}; fi
-	CC_NOFRAME="-Oy"
-	CC_COMMON="-nologo -DWIN32 -D_MT -D_DLL -MD"
-	CC_FAST="-O2 -G3 -Og -Oi $CC_NOFRAME $CC_COMMON"
-	CFLAGS="$CC_FAST"
-	CC_DEBUG="-ZI $CC_COMMON"
-	CC_FAST_DEBUG=$CC_FAST
-	CC_WALL="-W3"
-	CC_OUT='-Fo$@'
-	LD_OUT='-out:$@'
-	INCLUDE="C:\\Program Files\\Microsoft Visual Studio\\VC98\\Include"
-	LIB="C:\\Program Files\\Microsoft Visual Studio\\VC98\\Lib"
-	
-	# make ranlib a no-op
-	RANLIB="true"
-	U=win32/uwtlib
-	UWTLIB=$U/libuwt.a
-	UH1="$U/dirent.h $U/misc.h $U/re_map.h $U/sys/wait.h"
-	UH2="$U/stat.h $U/utsname.h $U/ftw.h $U/mman.h"
-	UH3="$U/re_map_decl.h  $U/times.h"
-	UWT_H="$UH1 $UH2 $UH3"
-	_LIB1="msvcrt.lib oldnames.lib kernel32.lib ws2_32.lib"
-	_LIB2="mswsock.lib advapi32.lib user32.lib gdi32.lib"
-	_LIB3=" comdlg32.lib winspool.lib ole32.lib"
-	WIN32_LIBS="$_LIB1 $_LIB2 $_LIB3"
-	LINK_LIB="libsccs.a mdbm/libmdbm.a zlib/libz.a tomcrypt/libtomcrypt.a"
-	LINK_LIB="$LINK_LIB $UWTLIB $WIN32_LIBS"
 	BK="bk.exe"
-	LDFLAGS="-nologo -debug"
-	AR=`pwd`/win32/util/mklib
+
+	gcc --version | grep -q cyg && {
+		echo No Mingw GCC found, I quit.
+		exit 1
+	}
+
+	XLIBS="/mingw/lib/CRT_noglob.o -lws2_32 -lole32"
 	# BINDIR should really be :C:/Program Files/BitKeeper
 	# The shell can not handle space in pathname, so
 	# we use the short name here
 	BINDIR="C:/Progra~1/BitKeeper"
-	# IMPORTANT NOTE: XTRA must be built *after* gnu 
-	# because we want diff binary in win32/pub/diffutils
-	# This means XTRA must be after gnu in the "all" target
-	# in the Makefile.
-	XTRA=win32
-	INSTALL=install-nolinks
-	RESOURCE=bk.res
+	INSTALL=installdir
+	RESOURCE=bkres.o
+	CC="gcc -pipe"
 
-	#
-	# XXX Need to set the VC++ path when we build via rsh
-	# XXX change this if you install VC++ to non-standard path
-	#
-	PATH=$PATH:'/cygdrive/c/Program Files/Microsoft Visual Studio/VC98/bin'
-	PATH=$PATH:'/cygdrive/c/Program Files/Microsoft Visual Studio/Common/MSDev98/Bin'
-
-	export SYS CFLAGS CC_OUT LD_OUT LD AR RANLIB UWTLIB LDFLAGS
-	export INCLUDE LIB CC_FAST CC_DEBUG CC_NOFRAME CC_WALL LINK_LIB
-	export BK UWT_H WIN_UTIL BINDIR XTRA INSTALL PATH
-	export RESOURCE
-}
-
-#Set up environment for cygwin tools
-cygwin_env()
-{
-	unset MAKEFLAGS CFLAGS LDFALGS LD;
-	CC=gcc;
+	export SYS BK BINDIR INSTALL RESOURCE CC
 }
 
 test "X$G" = X && G=-g
@@ -76,7 +39,7 @@ test "X$LD" = X && LD=$CC
 test "X$WARN" = X && WARN=YES  
 
 case "X`uname -s`" in
-    *_NT*)
+    *_NT*|*_98*)
     	;;
     *)	AR=/usr/ccs/bin
 	GREP=/usr/xpg4/bin:/usr/xpg2/bin
@@ -98,13 +61,8 @@ case "X`uname -s`" in
 		;;
 	XAIX)	CHECK=1
 		;;
-	XWindows_NT|XCYGWIN_NT*)
-		if [ X$1 = X"-u" ]; 
-		then	shift
-			cygwin_env;
-		else 
-			ms_env;
-		fi
+	X*_NT*|X*_98*)
+		ms_env;
 		;;
 	XOSF1)
 		CC=gcc
@@ -119,6 +77,9 @@ case "X`uname -s`" in
 		LD=cc
 		export CC LD 
 		CCXTRA="-DHAVE_GMTOFF -no-cpp-precomp"
+		;;
+	XHP-UX)
+		CCXTRA=-Dhpux
 		;;
 	*)
 		CHECK=1

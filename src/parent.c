@@ -208,7 +208,7 @@ add(char *which, char *url, int *rc)
 	    case 'o': m = "push parent"; break;
 	    case 'b': m = "parent"; break;
 	}
-	unless (r = remote_parse(url, 0)) {
+	unless (r = remote_parse(url)) {
 		fprintf(stderr, "Invalid parent address: %s\n", url);
 		*rc = 1;
 		return;
@@ -428,7 +428,7 @@ parent_normalize(char *url)
 {
 	remote	*r = 0;
 
-	if ((r = remote_parse(url, 0)) && (r->type ==  ADDR_FILE) && r->path) {
+	if ((r = remote_parse(url)) && (r->type ==  ADDR_FILE) && r->path) {
 		url = fullname(r->path, 0);
 	}
 	if (r) remote_free(r);

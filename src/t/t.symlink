@@ -14,7 +14,7 @@
 
 if [ "$PLATFORM" = "WIN32" ]
 then
-	echo "Symlink is not supported on win32, test skipped"
+	echo "For non win32 only ..........................................skipped"
 	exit 0
 fi
 
@@ -264,18 +264,17 @@ echo OK
 echo $N Check that a symlink to file transition resyncs .............$NL
 cd $HERE
 rm -rf SL copy
-tar xf SAVE
+tar xmf SAVE
 mv SL copy
-tar xf SAVE
+tar xmf SAVE
 cd SL
 bk edit $Q link
 rm link
 echo convert link to file > link
 bk ci $Q -y'link -> file' link
 bk commit $Q -y'link -> file' 
-cd $HERE
-bk resync $Q -at SL copy
-cd copy
+cd $HERE/copy
+bk pull -t $Q $HERE/SL
 bk co $Q link
 if [ ! -f link ]
 then	echo failed to upgrade file to a regular file; exit 1
@@ -288,18 +287,17 @@ echo OK
 echo $N Check that a file to symlink transition resyncs .............$NL
 cd $HERE
 rm -rf SL copy
-tar xf SAVE
+tar xmf SAVE
 mv SL copy
-tar xf SAVE
+tar xmf SAVE
 cd SL
 bk edit $Q file
 rm file
 ln -s another/dangling/link file
 bk ci $Q -y'file -> link' file
 bk commit $Q -y'file -> link' 
-cd $HERE
-bk resync $Q -at SL copy
-cd copy
+cd $HERE/copy
+bk pull -t $Q $HERE/SL
 bk co $Q file
 if [ -f file ]
 then	echo failed to upgrade file to a link; exit 1
@@ -313,9 +311,9 @@ echo OK
 echo $N Check symlink to file, choosing file ........................$NL
 cd $HERE
 rm -rf SL copy
-tar xf SAVE
+tar xmf SAVE
 mv SL copy
-tar xf SAVE
+tar xmf SAVE
 cd SL
 bk edit $Q link
 rm link
@@ -330,8 +328,8 @@ bk ci $Q -ywhatever link
 bk commit $Q -ywhatever
 cd $HERE
 tar cf SAVE2 SL copy
-bk resync $Q -t SL copy
 cd copy
+bk pull -R -t $Q $HERE/SL
 bk resolve $Q -t <<EOF >RESOLVE 2>&1
 r
 u
@@ -351,9 +349,9 @@ echo OK
 echo $N Check symlink to file, choosing symlink .....................$NL
 cd $HERE
 rm -rf SL copy
-tar xf SAVE2
-bk resync $Q -t SL copy
+tar xmf SAVE2
 cd copy
+bk pull -R -t $Q $HERE/SL
 bk resolve $Q -t <<EOF >RESOLVE 2>&1
 l
 u
@@ -370,9 +368,9 @@ echo OK
 echo $N Check file to symlink, choosing file ........................$NL
 cd $HERE
 rm -rf SL copy
-tar xf SAVE
+tar xmf SAVE
 mv SL copy
-tar xf SAVE
+tar xmf SAVE
 cd SL
 bk edit $Q link
 rm link
@@ -387,8 +385,8 @@ bk ci $Q -ywhatever link
 bk commit $Q -ywhatever
 cd $HERE
 tar cf SAVE2 SL copy
-bk resync $Q -t copy SL
 cd SL
+bk pull -R -t $Q $HERE/copy
 bk resolve $Q -t <<EOF >RESOLVE 2>&1
 l
 u
@@ -408,9 +406,9 @@ echo OK
 echo $N Check file to symlink, choosing symlink .....................$NL
 cd $HERE
 rm -rf SL copy
-tar xf SAVE2
-bk resync $Q -t copy SL
+tar xmf SAVE2
 cd SL
+bk pull -R -t $Q $HERE/copy
 bk resolve $Q -t <<EOF >RESOLVE 2>&1
 r
 u
@@ -427,13 +425,12 @@ echo OK
 echo $N Check file to symlink, with rename, choosing symlink ........$NL
 cd $HERE
 rm -rf SL copy
-tar xf SAVE2
+tar xmf SAVE2
 cd copy
 bk mv link renamed
 bk commit $Q -ymv
-cd $HERE
-bk resync $Q -t copy SL
-cd SL
+cd $HERE/SL
+bk pull -R -t $Q $HERE/copy
 bk resolve -t $Q <<EOF >RESOLVE 2>&1
 r
 u
@@ -450,15 +447,16 @@ echo OK
 echo $N Both renamed, symlink converted to file, choose l l .........$NL
 cd $HERE
 rm -rf SL copy
-tar xf SAVE2
+tar xmf SAVE2
 cd copy
 bk mv link copy
 bk commit $Q -ymv
 cd $HERE/SL
 bk mv link SL
 bk commit $Q -ymv
+cd $HERE/SL
+bk pull -R -t $Q $HERE/copy
 cd $HERE
-bk resync $Q -t copy SL
 tar cf SAVE3 SL
 cd SL
 # At this point
@@ -487,15 +485,16 @@ echo OK
 echo $N Both renamed, symlink converted to file, choose l r .........$NL
 cd $HERE
 rm -rf SL copy
-tar xf SAVE2
+tar xmf SAVE2
 cd copy
 bk mv link copy
 bk commit $Q -ymv
 cd $HERE/SL
 bk mv link SL
 bk commit $Q -ymv
+cd $HERE/SL
+bk pull -R -t $Q $HERE/copy
 cd $HERE
-bk resync $Q -t copy SL
 tar cf SAVE3 SL
 cd SL
 # At this point
@@ -524,7 +523,7 @@ echo OK
 echo $N Make sure edited symlinks do not fail checks ................$NL
 cd $HERE
 rm -rf SL copy
-tar xf SAVE2
+tar xmf SAVE2
 cd copy
 bk -r edit $Q
 bk -r check -a 2>OUT || {

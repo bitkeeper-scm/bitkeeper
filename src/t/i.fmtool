@@ -1,0 +1,53 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2004 Larry McVoy
+# %K%
+
+HERE=`${CWD}`
+test -d $HERE/home || mkdir $HERE/home
+export BK_TEST_HOME=$HERE/home
+
+echo $N Create test data ............................................$NL
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+mkdir $HERE/project/src
+cd $HERE/project/src
+cat > left <<EOF
+Common to both
+this is unique to the left
+this should be common
+as should this
+... and this
+but not this
+or this
+The last line, however, is the same.
+EOF
+cat > right <<EOF
+Common to both
+this is unique to the right
+this should be common
+as should this
+... and this
+but definitely not this
+and this
+The last line, however, is the same.
+EOF
+bk ci $Q -i left right
+echo OK
+
+echo $N Starting fmtool .............................................$NL
+bk get $Q left right 
+bk fmtool left right merge
+echo OK

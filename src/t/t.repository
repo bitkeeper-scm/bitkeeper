@@ -13,7 +13,7 @@
 # Copyright (c) 1999 Andrew Chang?
 # %K%
 
-HERE=`bk pwd`
+HERE=`bk pwd -s`
 echo $N Create initial repository ...................................$NL
 no_logging project
 bk admin -Z
@@ -65,7 +65,7 @@ date > h.h
 bk ci $Q -ytest_cmt1 h.h
 date > t.c
 bk ci $Q -ytest_cmt2 -i t.c
-bk -R sfiles -C | bk commit $Q -ycmt3 -
+bk -R sfiles -pC | bk commit $Q -ycmt3 -
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 cat > X <<EOF
@@ -86,7 +86,7 @@ echo new-stuff > h.h
 bk ci $Q -ytest_cmt1 h.h
 date > q.c
 bk ci $Q -ytest_cmt2 -i q.c
-bk -R sfiles -C > $HERE/flist
+bk -R sfiles -pC > $HERE/flist
 bk commit $Q -ycmt4 -f$HERE/flist 
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo wrong pending result $P; bk pending; exit 1; fi
@@ -97,7 +97,7 @@ src/q.c${BK_FS}src/q.c${BK_FS}1.0${BK_FS}src/q.c${BK_FS}1.1
 EOF
 bk undos X > CMP1
 bk -R rset -hr1.3,1.4 > CMP2
-diff -u CMP1 CMP2 
+bk diff -u CMP1 CMP2 
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo failed; cat CMP2; exit 1; fi
 echo OK
@@ -127,7 +127,7 @@ file=post-incoming-regression-$USER
 cat <<EOF 2> /dev/null > /etc/BitKeeper/triggers/.incoming.$file
 #!/bin/sh
 
-if [ "X$USER" != "X\$USER" ]
+if [ "X$USER" != "X\$USER" ] || [ "X`bk id`" != "X\`bk id\`" ]
 then	exit 0
 fi
 set | egrep '^_?BK' > $HERE/post-incoming.out
@@ -154,12 +154,16 @@ if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 
 if [ $TRIGGERS -eq 1 ]; then
-echo $N A failed logging patch should still call the triggers,.......$NL
+echo $N A failed logging patch should still call the triggers........$NL
 test -f $HERE/post-incoming.out || {
 	echo trigger never ran
 	exit 1
 }
-sed 's/^/TT_/' < $HERE/post-incoming.out > $HERE/post-incoming.vars
+perl -ne "
+	chop;
+	@_ = split(/[='\\$]+/, \$_);
+	print \"TT_\$_[0]='\$_[1]'\n\";
+	" < $HERE/post-incoming.out > $HERE/post-incoming.vars
 . $HERE/post-incoming.vars
 if [ $TT_BK_STATUS != FAILED ]
 then	echo trigger should indicate failure
@@ -203,6 +207,23 @@ bk takepatch  $Q -a < $HERE/patch
 cd $HERE/proj_log
 bk -r check -a
 bk lock -U
+echo OK
+
+echo $N Check that missing edited gfile does not abort takepatch ....$NL
+cd $HERE/project
+echo "foo" > aaa
+bk new $Q aaa
+bk commit $Q -y'add aaa' aaa
+bk clone $Q $HERE/project $HERE/proj_takepatch
+bk edit $Q aaa
+echo "bar" >> aaa
+bk ci $Q -y'add bar' aaa
+bk commit $Q -y'add bar to aaa' aaa
+bk makepatch $Q -r+ > $HERE/patch
+cd $HERE/proj_takepatch
+bk edit $Q aaa
+rm aaa
+bk takepatch -a < $HERE/patch || { echo takepatch failed >&2; exit 1; }
 echo OK
 
 #echo $N Test for path conflict ......................................$NL

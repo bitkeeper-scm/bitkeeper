@@ -112,13 +112,21 @@ You can restart the resolve with a
 
 after fixing the permissions.
 $
+#bk_skip_and_sccs
+The directory #BKARG# contains both .bk_skip and SCCS.
+BitKeeper ignores the .bk_skip file in this case.  To get rid of this
+warning, remove the file #BKARG#/.bk_skip.
+
+If you want to skip #BKARG#,
+either rename the SCCS directory, or move it into a subdirectory.
+$
 #saw_blanknonl
 The file #BKARG# is corrupted because of a bug in
 BitKeeper version 3.0.1 and earlier.  It was caused by a 
 file on Windows that has a carriage return as the last 
 character of the file without a following new line.
-Please contact BitMover at support@bitmover.com for
-help in repairing this file.
+Please contact BitMover by running 'bk support'
+to request help in repairing this file.
 $
 #setup_1
 
@@ -128,7 +136,7 @@ repository for this package, you should do
 
     bk clone package_dir my_package_dir
 
-If you create a new package rather than re-syncing a copy, you will not
+If you create a new package rather than cloning a copy, you will not
 be able to exchange work between the two packages.
 
 $
@@ -177,7 +185,9 @@ within the grace period.  This changeset will be created
 as normal, but you need to contact BitMover to purchase an
 updated license.
 
-BitMover can be reached in the United States at 888-401-8808
+BitMover can be reached at:
+   +1-650-872-9900 (international and California)
+   888-401-8808 (toll free in the US & Canada) 
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
@@ -186,7 +196,9 @@ Your evaluation license for BitKeeper is less than one week away from
 expiring.  This changeset will be created as normal, but you need to
 contact BitMover to purchase a commercial license.
 
-BitMover can be reached in the United States at 888-401-8808
+BitMover can be reached at:
+   +1-650-872-9900 (international and California)
+   888-401-8808 (toll free in the US & Canada) 
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
@@ -197,7 +209,9 @@ have contacted BitMover to purchase a new license.
 
 For more information, please run "bk helptool license"
 
-BitMover can be reached in the United States at 888-401-8808
+BitMover can be reached at:
+   +1-650-872-9900 (international and California)
+   888-401-8808 (toll free in the US & Canada) 
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
@@ -213,7 +227,9 @@ these things, you may not create any changesets.
 You can get a temporary license by sending a mail request
 to sales@bitmover.com.  
 
-BitMover can be reached in the United States at 888-401-8808
+BitMover can be reached at:
+   +1-650-872-9900 (international and California)
+   888-401-8808 (toll free in the US & Canada) 
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
@@ -233,7 +249,9 @@ Saying no means the changeset will neither be logged nor be
 created, which means a loss of the distributed functionality
 of BitKeeper.  If it is important that you keep the information
 private, you can contact BitMover for a closed use license.
-BitMover can be reached in the United States at 888-401-8808
+BitMover can be reached at:
+   +1-650-872-9900 (international and California)
+   888-401-8808 (toll free in the US & Canada) 
 during business hours (PST) or via email at sales@bitmover.com.
 
 Saying yes will send the changeset comments and per file comments.
@@ -273,7 +291,8 @@ a count of the pending logs: use the following command:
 	bk _lconfig -p
 
 If the pending count is still non-zero after bk commit is done, please run
-the following command and email its output to support@bitmover.com:
+the following command and attach/include its output in the form
+presented by running 'bk support'.
 
 	bk _lconfig -d
 $
@@ -288,7 +307,8 @@ There are two possible causes for this error:
 a) Network connectivity problems such as firewall/proxy configuration.
 b) Problems with the server at www.bitkeeper.com
 
-Please run the following command and email its output to support@bitmover.com:
+Please run the following command and attach/include its output in the form
+presented by running 'bk support'.
 
 	bk _lconfig -d
 $
@@ -306,9 +326,8 @@ b) Problems in the logging tree at www.openlogging.org
 Please run the logging command in debug mode to see what the problem is:
 	bk log -d
 After you have ruled out a network connectivity problem and configuration
-problems at your site, please email the following information to
-support@bitmover.com:
-
+problems at your site, please include the following information when
+running 'bk support':
 a) Output of the above logging command
 b) Output of the "bk identity" command
 $
@@ -320,10 +339,21 @@ and make sure your logs are being transmitted properly. You can test your
 log transmission with the command "bk log -d".
 $
 #single_file_max
-Error: Single user repositories are limited to #BKARG# files. If you need more
-files than that in one repository, you need to buy a commercial license or
-turn on open logging.
+Error: The BitKeeper free use license limits the total number of files
+in all of your single user repositories to 1000 files.  You will need
+to buy a commercial license or turn on openlogging to continue.
 BitMover can be reached in the United States at 888-401-8808
+during business hours (PST) or via email at sales@bitmover.com.
+Thanks!
+$
+#single_config_mismatch
+Error: This repository was orignially configured as a single user repository
+but the configuration has been updated to not have this restriction.
+This repository must be turned into a multiuser repository before it can
+be used.  Please read 'bk help multiuser' to do this.
+BitMover can be reached at:
+   +1-650-872-9900 (international and California)
+   888-401-8808 (toll free in the US & Canada) 
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
@@ -331,7 +361,9 @@ $
 Error: Evaluation license are limited to #BKARG# changesets.  You are over 
 that limit and you will need to get a commercial license to make any
 more changesets.
-BitMover can be reached in the United States at 888-401-8808
+BitMover can be reached at:
+   +1-650-872-9900 (international and California)
+   888-401-8808 (toll free in the US & Canada) 
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
@@ -340,11 +372,25 @@ Warning: Evaluation licenses have a limited number of changesets. Your
 changeset quota is now down to #BKARG# which is less than 50 changesets
 away from the limit.  You will not be able to commit any more changesets
 when the quota reaches zero.  Please contact BitMover.
-BitMover can be reached in the United States at 888-401-8808
+BitMover can be reached at:
+   +1-650-872-9900 (international and California)
+   888-401-8808 (toll free in the US & Canada) 
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
-
+#takepatch-chksum
+Error: A checksum in the patch for the ChangeSet file does not match
+the checksum of the data in the patch.
+Please verify the integrity of the source and destination repositories
+by running "bk -r check -acv" in each.  If that passes, and a pull still
+fails, run in the source repository "bk -R checksum ChangeSet".  If the
+source repository has a problem that cannot be fixed, please run
+"bk support" and fill out the form.  If the source repository has no
+problems, and you were doing a push or pull, try the operation again. 
+If you were running takepatch, then generate a new patch file from the
+source repository using the same method as you have.  If the problem
+occurs again, please run "bk support" and fill in the details. 
+$
 #bugtemplate
 BitKeeper Bug Report
 --------------------
@@ -362,10 +408,10 @@ Bug/RFE:
 	[a bug is obvious, RFE is a request for enhancement]
 
 Severity:
-	[5 - no big deal, 1 - can't use BitKeeper until this is fixed]
+	[5 - annoying, 1 - cannot use BitKeeper until this is fixed]
 
 Priority:
-	[5 - fix whenever, 1 - fix RIGHT NOW]
+	[5 - fix sometime, 1 - fix RIGHT NOW]
 
 Program:
 	[cset, co, delta, etc.  If you know which one caused the problem]
@@ -408,6 +454,56 @@ Contact info:
 
 ------------------------------------------------------------------------------
 $
+#supporttemplate
+BitKeeper Support Request
+-------------------------
+
+Please fill in the fields below as much as possible.  We parse this
+automatically, so please follow the format guidelines.
+
+Fields marked with [whatever] are single line fields.
+
+The Description, Suggestions, and Contact sections can be multi line.
+
+------------------------------------------------------------------------------
+
+Program:
+	[cset, co, delta, etc.  If you know which caused the problem]
+
+Release:
+	#BKEXEC# bk version | head -1
+
+OS:
+	#BKEXEC# uname -a
+
+Synopsis:
+	[one line: i.e., sfiles dumps core when running on CP/M]
+
+Description:
+	Please tell us what support you would like.
+	In general, this is what helps us help you:
+	- what you were doing
+	- what happened
+	- can you make it happen again, if so, how?
+	- what you think went wrong
+	- machine / OS / etc on which the bug occurred
+	- anything else that you think might be useful
+	Take as much space as you need, but leave a blank line
+	between this and the next field.
+
+Interest list:
+	[emails of others who care about this like so: a@foo.com,b@foo.com]
+
+Contact info:
+	Your contact information here.
+	A phone number and a time to call is useful if we need more
+	information.
+	You can also specify a preferred email address.
+	Take as much space as you need, but leave a blank line between
+	this and the ----- below.
+
+------------------------------------------------------------------------------
+$
 #duplicate_IDs
 You have two files with the same ID.  You must determine why,
 and correct that situation before this ChangeSet can be created.
@@ -433,7 +529,7 @@ tree.
 The error caused by this undo is:
 $
 #version
-BitKeeper#BKARG#version is @version@
+BitKeeper#BKARG# version is @version@
 Built by: @builder@
 Built on: @built_date@
 $
@@ -677,8 +773,8 @@ you will not have to enter any data for the license, and all checkin
 comments made in your repository will be posted at www.openlogging.org.
 $
 #setuptool_step_LicenseKey
-Please enter the license key exactly as it was given to you. If this is a 
-version 5 license key you must also enter the key signatures.
+Please enter the license key and signatures exactly as they were given to
+you.
 
 If the license keys are in a file, click the "From file..." button and the 
 values will be extracted from the file. This should work even if the file 
@@ -875,8 +971,9 @@ This repository is configured to use a commercial license
 but does not contain a license key signature in
 the BitKeeper config key: licsign1.
 Please contact BitMover to get a valid license signature.
-
-BitMover can be reached in the United States at 888-401-8808
+BitMover can be reached at:
+   +1-650-872-9900 (international and California)
+   888-401-8808 (toll free in the US & Canada) 
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
@@ -909,13 +1006,83 @@ $
 BitKeeper was unable to validate this version of BitKeeper.
 The error code returned from BitMover was:
 	#BKARG#
-Contact support@bitmover.com for assistance.
+Please run 'bk support' to request assistance.
 $
 #lease_timesync
 Unable to obtain a lease for this version of BitKeeper from
 lease.openlogging.org because the local clock on this computer is off
 by more than 24 hours.  Please verify the time on your computer and that
 the timezone is set correctly and try again.
+$
+#gui-support-submitter
+Please enter your valid email address here so we can reach you
+to provide support.
+$
+#gui-support-summary
+One line: i.e., "sfiles dumps core when running on CP/M"
+$
+#gui-support-program
+cset, co, delta, etc -- if you are having problems with a specific one
+$
+#gui-support-os
+On what operating system did the problem occur?
+$
+#gui-support-release
+What release of bitkeeper do you have installed?
+$
+#gui-support-description
+Please tell us:
+    - What you were doing.
+    - What happened.
+    - Can you make it happen again. If so, how?
+    - What you think went wrong.
+    - Anything else that you think might be useful
+$
+#gui-support-interest
+Email addresses of others who care about this problem.
+If more than one, then as a comma separated list, such as:
+user1@mywork.com,user2@mywork.com
+$
+#gui-support-attachment
+Please attach any files that may help responding to your request.
+$
+#gui-support-projemail
+Email address where to send this support request.
+$
+#gui-support-project
+For what project is support being requested?
+$
+#gui-support-help
+Please fill in all the fields that you can. You may use the TAB key
+to move between fields. As you move to each field this help window
+will change to describe what it is that you should put in the field.
+Some fields are automatically filled in and may not be editable, but
+are displayed so you can see what will be sent to BitMover.
+Required fields may appear with a different background color.
+$
+#gui-bug-type
+The two choices are: Bug or Request for Enhancement
+$
+#gui-bug-severity
+5 - annoying. 1 - cannot use BK until this is fixed
+$
+#gui-bug-priority
+5 - fix sometime. 1 - fix RIGHT NOW
+$
+#gui-bug-program
+cset, co, delta, etc. If you know which cause the problem
+$
+#gui-bug-suggestion
+Any suggested fix is most welcome. Take as much space as you need.
+$
+#gui-bug-projemail
+Email address where to send this bug submission.
+#gui-bug-project
+For what project is this bug being submitted?
+$
+#gui-bug-attachment
+Please attach any files that may help in understanding and fixing
+the problem.
 $
 #unrelated_repos
 You are trying to synchronize with an unrelated package.
@@ -947,22 +1114,6 @@ $
 #unknown_proxy
 Unknown proxy entry: "#BKARG"
 If this is a legal proxy entry please file a bug report.
-$
-#no_mailer
-Cannot find a working mailer.  If you have access to an SMTP server,
-you can install the "blat" mailer with the following command:
-
-        blat -install <smtp_server_address> <your email address>
-
-If you have a non-standard connection, you can supply a bk_mail.bat file
-to connect BitKeeper to your mail server; the bk_mail.bat file should
-accept the three arguments, as follows:
-
-        bk_mail.bat file recipient subject
-
-You should put the bk_mail.bat file in the BitKeeper directory.
-The bk_mail.bat command should exit with status zero when the mail is
-sent successfully.
 $
 #http_delay
 Note: since httpd batches a large block of output together before it
@@ -1197,6 +1348,53 @@ d) Run "bk commit" to record the new location in a changeset.
 e) Run "bk resolve" or "bk pull" again.
 f) You should also inform owners of other repositories to avoid using 
    similar names.
+$
+#win32-mailer-error
+Can not find a working mailer.
+
+If you have access to a SMTP server, you can install the "blat" mailer
+with the following command:
+
+	blat -install <smtp_server_address> <your email address>
+
+If you have a non-standard connection, you can supply a bk_mail.bat
+file to connect BitKeeper to your mail server; the bk_mail.bat file
+should accept the three auguments, as follows:
+
+	bk_mail.bat file recipient subject
+
+(recipient is a comma seperated list if there is more than one)
+
+You should put the bk_mail.bat file in the BitKeeper directory.
+The bk_mail.bat command should exit with status zero when the mail is
+sent sucessfully.
+$
+#install-cygwin-upgrade
+Thanks for installing BitKeeper.  We noticed that this was an upgrade
+from an earlier version of BitKeeper.  Earlier versions of BitKeeper
+required Cygwin (http://cygwin.com) and we did not uninstall Cygwin.
+
+Versions 3.2.0 and later of Bitkeeper no longer require Cygwin in
+order to function.  It is fine if Cygwin is left there, BitKeeper
+doesn't need it but BK will work fine from a Cygwin shell.
+
+We did not remove Cygwin as part of your upgrade because it is
+common for people to have customized their Cygwin installation.
+If you don't need or want Cygwin, the Cygwin documentation says that
+you may remove Cygwin by manually removing the following items:
+
+* The registry tree `Software\Cygnus Solutions' under
+   HKEY_LOCAL_MACHINE and/or HKEY_CURRENT_USER .
+* Anything under the Cygwin root folder, `C:\cygwin' by default.
+* Anything created by setup in its temporary working directory.
+
+For more information see http://cygwin.com/faq/faq0.html#SEC19
+$
+#bad-linux-kern-tree
+This copy of the Linux Kernel tree contains a bad ChangeSet file that
+needs to be repaired manually.  If at all possible please delete this
+repository and clone a new copy.  Otherwise contact BitMover and
+request assistance.
 $
 #changes_no_parent
 This repository has no parent.  You must set a parent with "bk parent" or

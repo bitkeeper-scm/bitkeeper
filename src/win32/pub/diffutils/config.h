@@ -10,11 +10,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <sys/time.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <io.h>
 #include <stdarg.h>     /* for _vsnprintf */
-#include <time.h>
 #include <share.h>      /* for locks */
 #include <errno.h>
 #include <string.h>
@@ -54,3 +54,5 @@
 
 #define popen(c, m)	safe_popen(c, m)
 #define pclose(f)	safe_pclose(f)
+
+#define	HAVE_DUP2	1

@@ -69,7 +69,7 @@ clone_main(int ac, char **av)
 	 * Trigger note: it is meaningless to have a pre clone trigger
 	 * for the client side, since we have no tree yet
 	 */
-	r = remote_parse(av[optind], 1);
+	r = remote_parse(av[optind]);
 	unless (r) usage();
 	if (link) {
 #ifdef WIN32
@@ -83,7 +83,7 @@ clone_main(int ac, char **av)
 	}
 	if (av[optind + 1]) {
 		remote	*l;
-		l = remote_parse(av[optind + 1], 1);
+		l = remote_parse(av[optind + 1]);
 		unless (l) {
 err:			if (r) remote_free(r);
 			if (l) remote_free(l);
@@ -160,6 +160,11 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		fprintf(stderr, "clone: %s exists already\n", local);
 		usage();
 	}
+	if (local ? test_mkdirp(local) : access(".", W_OK)) {
+		fprintf(stderr, "clone: %s: %s\n",
+			(local ? local : "current directory"), strerror(errno));
+		usage();
+	}
 	if (opts.rev) {
 		safe_putenv("BK_CSETS=1.0..%s", opts.rev);
 	} else {
@@ -183,9 +188,16 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		if (!local && (local = getenv("BKD_ROOT"))) {
 			if (p = strrchr(local, '/')) local = ++p;
 		}
+		unless (local) {
+			fprintf(stderr,
+			    "clone: cannot determine remote pathname\n");
+			disconnect(r, 2);
+			goto done;
+		}
 		if (exists(local) && !emptyDir(local)) {
 			fprintf(stderr, "clone: %s exists already\n", local);
-			usage();
+			disconnect(r, 2);
+			goto done;
 		}
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
@@ -196,11 +208,6 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		goto done;
 	}
 
-	unless (local) {
-		fprintf(stderr, "clone: cannot determine remote pathname\n");
-		disconnect(r, 2);
-		goto done;
-	}
 	if ((lic = getenv("BKD_LICTYPE")) && !licenseAcceptOne(1, lic)) {
 		fprintf(stderr, "clone: failed to accept license '%s'\n",
 		    getenv("BKD_LICTYPE"));
@@ -209,7 +216,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	}
 
 	unless (opts.quiet) {
-		remote	*l = remote_parse(local, 0);
+		remote	*l = remote_parse(local);
 
 		fromTo("Clone", r, l);
 		remote_free(l);
@@ -245,10 +252,10 @@ done:	if (rc) {
 	/*
 	 * Don't bother to fire trigger if we have no tree.
 	 */
-	if (proj_root(0)) trigger(av[0], "post");
+	if (proj_root(0) && (rc != 2)) trigger(av[0], "post");
 
 	/*
-	 * XXX This is a workaround for a csh fd lead:
+	 * XXX This is a workaround for a csh fd leak:
 	 * Force a client side EOF before we wait for server side EOF.
 	 * Needed only if remote is running csh; csh have a fd lead
 	 * which cause it fail to send us EOF when we close stdout and stderr.
@@ -278,7 +285,7 @@ clone2(opts opts, remote *r)
 		return (-1);
 	}
 
-	checkfiles = bktmp(0, "clone2");
+	checkfiles = bktmp(0, "clonechk");
 	f = fopen(checkfiles, "w");
 	assert(f);
 	sccs_rmUncommitted(opts.quiet, f);
@@ -597,8 +604,8 @@ out:		chdir(from);
 			sprintf(skip, "%s/%s/%s", from, buf, BKROOT);
 			if (exists(skip)) continue;
 		}
-		sprintf(skip, "%s/%s/%s", from, buf, BKSKIP);
-		if (exists(skip)) continue;
+		sprintf(skip, "%s/%s", from, buf);
+		if(sfiles_skipdir(skip)) continue;
 		unless (opts.quiet || streq(".", buf)) {
 			fprintf(stderr, "Linking %s\n", buf);
 		}
@@ -677,7 +684,7 @@ out_trigger(char *status, char *rev, char *when)
 	} else {
 		putenv("BK_CSETS=1.0..");
 	}
-	putenv("BK_LCLONE=YES");
+	putenv("_BK_LCLONE=YES");
 	return (trigger("remote clone", when));
 }
 
@@ -700,7 +707,7 @@ in_trigger(char *status, char *rev, char *root, char *repoid)
 		putenv("BK_CSETS=1.0..");
 	}
 	if (repoid) safe_putenv("BKD_REPO_ID=%s", repoid);
-	putenv("BK_LCLONE=YES");
+	putenv("_BK_LCLONE=YES");
 	return (trigger("clone", "post"));
 }
 

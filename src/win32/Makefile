@@ -1,18 +1,23 @@
-all:
-	cd uwtlib && make
-	cd pub/diffutils && unset MAKEFLAGS && make
+HERE	:= $(shell pwd)
+
+all: uwtlib diffutils patch msys bkscc bkshellx
 	cd pub/winctl && unset MAKEFLAGS && make
 
-clean clean-obj:
-	-@if uname -s | grep _NT; \
-	then \
-		cd uwtlib && make $@ && cd ..; \
-		cd pub/blat && make $@ && cd ../../; \
-		cd pub/winctl && make $@ && cd ../../; \
-		cd pub/diffutils && make $@ && cd ../..; \
-	fi
+clean clean-obj clobber:
+	test -d c:/ && { \
+		cd $(HERE)/uwtlib && make $@; \
+		cd $(HERE)/pub/blat && make $@; \
+		cd $(HERE)/pub/winctl && make $@; \
+		cd $(HERE)/pub/diffutils && make $@; \
+		cd $(HERE)/pub/patch && make $@; \
+		cd $(HERE) && rm -rf dll; \
+	}
+	@true
 
 FORCE:
+
+uwtlib: FORCE
+	cd uwtlib && make
 
 blat: FORCE
 	cd pub/blat && make
@@ -20,9 +25,51 @@ blat: FORCE
 diffutils: FORCE
 	cd pub/diffutils && unset MAKEFLAGS && make
 
+patch: FORCE
+	cd pub/patch && unset MAKEFLAGS && make
+
+MSYSBIN = ../gnu
+msys: ./msysver.sh MSYSKEY FORCE
+	mkdir -p $(MSYSBIN)/tmp
+	-MSYSVER=`./msysver.sh`; \
+	if [ -n "$$MSYSVER" -a -f "$$MSYSVER" ]; \
+	then	tar -C$(MSYSBIN) -xpzf $$MSYSVER; \
+	else	test -d msys || bk clone -r`tail -1 MSYSKEY` \
+			bk://data.bitmover.com/msys msys; \
+		bk sfiles -Ug msys | bk get -S -; \
+		(cd msys; bk sfiles -Ug) | \
+			tar -Cmsys -cf- -T- | \
+			tar -C$(MSYSBIN) -xf-; \
+		MSYSVER=`./msysver.sh`; \
+		test -n "$$MSYSVER" -a \! -f "$$MSYSVER" && { \
+			(cd msys; bk sfiles -Ug | tar -czf $$MSYSVER -T-); \
+			chmod 666 $$MSYSVER; \
+		}; \
+		true; \
+	fi
+	rm -f $(MSYSBIN)/bin/rxvt.exe
+
+bkshellx: getdatarepo BKSHELLXKEY FORCE
+	[ -d dll ] || mkdir dll
+	./getdatarepo dll/shellx bk://data.bitmover.com/bkshellx_dll.bk BKSHELLXKEY
+	cd dll/shellx; bk -Ur get -Sq
+
+bkscc: getdatarepo BKSCCKEY FORCE
+	[ -d dll ] || mkdir dll
+	./getdatarepo dll/scc bk://data.bitmover.com/bkscc_dll.bk BKSCCKEY
+	cd dll/scc; bk -Ur get -Sq
+
 install: all blat data/bk.ico
+	@if [ X$(BINDIR) = X ]; then echo Must set BINDIR; exit 1; fi
 	cp -f data/bk.ico $(BINDIR)/bk.ico
+	cp -f dll/scc/lib/bkscc.dll $(BINDIR)
+	cp -f dll/shellx/bin/shellx $(BINDIR)
+	cp -f dll/shellx/bin/bkshellx_cmd.sh $(BINDIR)
+	cp -f dll/shellx/lib/Bk*.ico $(BINDIR)
+	cp -f dll/shellx/lib/BkShellX.dll $(BINDIR)
 	cd pub/blat && make BINDIR=$(BINDIR) install
 	cd pub/diffutils && make BINDIR=$(BINDIR) install
+	cd pub/patch && make BINDIR=$(BINDIR) install
 	cd pub/winctl && make BINDIR=$(BINDIR) install
-	
+	cd util && make BINDIR=$(BINDIR) install
+	make MSYSBIN=$(BINDIR)/gnu msys	

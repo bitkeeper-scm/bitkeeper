@@ -44,7 +44,7 @@ echo OK
 cores
 echo $N Create a copy of the project ................................$NL
 cd $HERE
-bk resync $Q -at project copy
+bk clone $Q project copy
 if [ ! -d copy ]; then echo failed to make top level directory; exit 1; fi
 cd copy
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
@@ -90,8 +90,9 @@ cmp -s bar.c Y || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1; }
 echo OK
 bk commit $S -a -ywhatever
 echo $N Check for no newline changes back to project ................$NL
+cd $HERE/project
+bk pull -t $Q ../copy
 cd $HERE
-bk resync $Q -at copy project
 cp copy/X project/SAVEfoo.c
 cp copy/Y project/SAVEbar.c
 cd project

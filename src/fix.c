@@ -1,25 +1,26 @@
 #include "system.h"
 #include "sccs.h"
-private void cfile(sccs *s, char *revs);
-private void check(char *path, char *rev);
-private	void do_cset(char *qflag);
-private void doit(char *file, char *revs, char *qflag, char *force);
+private void cfile(sccs *s, char *rev);
+private	void do_cset(char *qflag, int flags, int save);
+private void doit(char *file, char *rev, char *qflag, int flags, char *force);
+private	int simple(sccs *s, delta *top, int flags);
 
 int
 fix_main(int ac,  char **av)
 {
 	int	c, i;
-	int	cset = 0;
+	int	save = 1, cset = 0, flags = 0;
 	char	*qflag = "-q";
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help fix");
 		return (1);
 	}
-	while ((c = getopt(ac, av, "cqv")) != -1) {
+	while ((c = getopt(ac, av, "cqsv")) != -1) {
 		switch (c) {
 		    case 'c': cset = 1; break;
-		    case 'q': break;				/* undoc 2.0 */
+		    case 'q': flags |= SILENT; break;		/* undoc 2.0 */
+		    case 's': save = 0; break;
 		    case 'v': qflag = ""; break;		/* doc 2.0 */
 		    default :
 			system("bk help -s fix");
@@ -27,32 +28,31 @@ fix_main(int ac,  char **av)
 		}
 	}
 	if (cset) {
-		do_cset(qflag);
+		do_cset(qflag, flags, save);
 	} else {
 		i =  optind - 1;
 		while (av[++i]) {
-			doit(av[i], "+", qflag, "");
+			doit(av[i], "+", qflag, flags, "");
 		}
 	}
 	return (0);
 }
 
 private void
-do_cset(char *qflag)
+do_cset(char *qflag, int flags, int save)
 {
-	int	c;
+	int	c, i;
 	char	*revs, *n, *p;
 	sccs	*s;
 	delta	*d;
-	char	path[MAXPATH];
-	char	lastpath[MAXPATH];
+	char	**lines = 0;
 	FILE	*f = popen("bk cset -r+", "r");
+	char	path[MAXPATH], lastpath[MAXPATH];
 
 	if (proj_cd2root()) {
 		fprintf(stderr, "fix: can't find repository root\n");
 		exit(1);
 	}
-	save_log_markers();
 	/* 
 	 * check to see if there are later deltas.
 	 * XXX - we could try locking the tree with the RESYNC dir.
@@ -64,10 +64,22 @@ do_cset(char *qflag)
 		assert(c == '\n');
 		p = strchr(path, '|');
 		assert(p);
-		*p++ = 0;
+		*p = 0;
 		if (lastpath[0] && streq(path, lastpath)) continue;
 		strcpy(lastpath, path);
-		n = name2sccs(path);
+		*p = '|';
+		lines = addLine(lines, strdup(path));
+	}
+	if (pclose(f)) {
+		fprintf(stderr, "Sorry, unable to fix this cset.\n");
+		exit(1);
+	}
+
+	EACH(lines) {
+		p = strchr(lines[i], '|');
+		assert(p);
+		*p++ = 0;	/* Note: restored below, don't move p */
+		n = name2sccs(lines[i]);
 		s = sccs_init(n, 0);
 		unless (s && HASGRAPH(s)) {
 			fprintf(stderr,
@@ -97,67 +109,53 @@ do_cset(char *qflag)
 		}
 		free(n);
 		sccs_free(s);
+		p[-1] = '|';
 	}
-	pclose(f);
+
+	/*
+	 * Saving the patch can fail if the repo is in a screwed up state,
+	 * eg one of the files in the patch is missing and not goned.
+	 */
+	if (save) {
+		int	rc;
+		
+		rc = sysio(0, "BitKeeper/tmp/fix.patch",
+			0, "bk", "makepatch", "-r+", SYS);
+		if (rc) {
+			fprintf(stderr, "fix: unable to save patch, abort.\n");
+			exit(1);
+		}
+	}
 
 	/*
 	 * OK, go fix it up.
 	 */
-	f = popen("bk cset -r+", "r");
+	save_log_markers();
 	revs = 0;
-	lastpath[0] = 0;
-	while (fnext(path, f)) {
-		c = chop(path);
-		assert(c == '\n');
-		p = strchr(path, '|');
+	EACH(lines) {
+		p = strchr(lines[i], '|');
 		assert(p);
 		*p++ = 0;
-		if (!revs || streq(path, lastpath)) {
-			if (revs) {
-				char *tmp = aprintf("%s,%s", revs, p);
-				free(revs);
-				revs = tmp;
-			} else {
-new:				revs = strdup(p);
-				strcpy(lastpath, path);
-			}
-			continue;
-		}
-		assert(lastpath[0]);
-		check(lastpath, revs);
-		doit(lastpath, revs, qflag, "-C");
-		free(revs);
-		revs = 0;
-		goto new;
+		doit(lines[i], p, qflag, flags, "-C");
 	}
-	assert(lastpath[0]);
-	check(lastpath, revs);
-	doit(lastpath, revs, qflag, "-C");
-	pclose(f);
+	freeLines(lines, free);
 	update_log_markers(streq(qflag, ""));
 }
 
+/*
+ * Strip top rev off sfile and leave the contents of the top delta edited
+ * in the gfile if and only if it is a content change.
+ *
+ * XXX if it is a content change plus a rename because they moved the 
+ * s.file by hand and then edited it, modified it, and checked it in,
+ * this does the wrong thing.  It's not idempotent wrt citool.
+ *
+ * XXX Ideally this function would leave the gfile untouched so the
+ * user doesn't need to rebuild after running 'bk fix -c'.  At the
+ * moment we end up refetching the gfile.
+ */
 private void
-check(char *path, char *rev)
-{
-	char	*p, *n;
-	sccs	*s;
-	delta	*d;
-	
-	if (p = strchr(rev, ',')) *p = 0;
-	n = name2sccs(path);
-	s = sccs_init(n, 0);
-	assert(s && HASGRAPH(s));
-	d = sccs_top(s);
-	assert(d && streq(rev, d->rev));
-	if (p) *p = ',';
-	assert(sccs_clean(s, SILENT) == 0);
-	sccs_free(s);
-	free(n);
-}
-
-private void
-doit(char *file, char *revs, char *qflag, char *force)
+doit(char *file, char *rev, char *qflag, int flags, char *force)
 {
 	char	buf[MAXLINE];
 	char	fixfile[MAXPATH];
@@ -176,7 +174,7 @@ doit(char *file, char *revs, char *qflag, char *force)
 	p = name2sccs(file);
 	s = sccs_init(p, SILENT);
 	unless (s && HASGRAPH(s)) {
-		fprintf(stderr, "%s does not exist or is not a BK file.\n", p);
+		fprintf(stderr, "%s removed while fixing?\n", s->sfile);
 		sccs_free(s);
 		return;
 	}
@@ -188,13 +186,53 @@ doit(char *file, char *revs, char *qflag, char *force)
 		return;
 	}
 	unless (cset) {
-		get(p, SILENT|PRINT, fixfile);
 		d = sccs_top(s);
+		unless (simple(s, d, flags)) {
+			free(p);
+			p = sccs_Xfile(s, 'd');
+			close(creat(p, 0664));
+			d->flags &= ~D_CSET;
+			sccs_get(s, 0, 0, 0, 0, SILENT, "-");
+			sccs_newchksum(s);
+			sccs_free(s);
+			return;
+		}
+
+		assert(streq(d->rev, rev) || streq(rev, "+"));
+
+		/*
+		 * If this file was bk new'd in this cset then
+		 * just get the c.file and gfile and unlink s.file.
+		 * bk citool will put new it again.
+		 * Note that if they newed and then delta-ed it
+		 * before committing we don't take this code path,
+		 * that's on purpose.  Undo top delta only.
+		 */
+		if ((d == s->tree) || (d->parent == s->tree)) {
+			/* make sure this is 1.0->1.1 or just old 1.1 only */
+			assert(d->serial <= 2);
+
+			cfile(s, "1.0");
+			sccs_get(s, 0, 0, 0, 0, SILENT, "-");
+			chmod(s->gfile, d->mode);
+
+			/* careful */
+			free(p);
+			p = sccs_Xfile(s, 'd');
+			unlink(p);
+			p = strdup(s->sfile);
+			sccs_free(s);
+			unlink(p);
+			free(p);
+			return;
+		}
+
 		mode = d->mode;
+		sccs_get(s, 0, 0, 0, 0, SILENT|PRINT, fixfile);
 	}
-	cfile(s, revs);
+	cfile(s, rev);
 	sccs_free(s);
-	sprintf(buf, "bk stripdel %s %s -r%s '%s'", qflag, force, revs, file);
+	sprintf(buf, "bk stripdel %s %s -r%s '%s'", qflag, force, rev, file);
 	if (system(buf)) {
 		unlink(fixfile);
 	} else {
@@ -211,16 +249,68 @@ doit(char *file, char *revs, char *qflag, char *force)
 		unless (cset) {
 			if (rename(fixfile, file) == -1) perror(file);
 			if (mode) chmod(file, mode);
+			utime(file, 0);	/* touch gfile */
 		}
 	}
 	free(p);
 }
 
+/*
+ * Return true if this is a pure content change delta.
+ * Exception: we allow mode changes, we can catch those.
+ */
+private	int
+simple(sccs *s, delta *top, int flags)
+{
+	unless (streq(top->pathname, top->parent->pathname)) {
+		verbose((stderr,
+		    "Not fixing %s because of pathname change.\n", s->gfile));
+		return (0);
+	}
+	if (top->symlink) {
+		verbose((stderr,
+		    "Not fixing %s because it is a symlink.\n", s->gfile));
+		return (0);
+	}
+	if (top->include) {
+		verbose((stderr,
+		    "Not fixing %s because it has includes.\n", s->gfile));
+		return (0);
+	}
+	if (top->exclude) {
+		verbose((stderr,
+		    "Not fixing %s because it has excludes.\n", s->gfile));
+		return (0);
+	}
+	if (top->merge) {
+		verbose((stderr,
+		    "Not fixing %s because tip is a merge delta.\n", s->gfile));
+		return (0);
+	}
+	if (top->flags & D_XFLAGS) {
+		verbose((stderr,
+		    "Not fixing %s because it has xflags change.\n", s->gfile));
+		return (0);
+	}
+	if (top->flags & D_TEXT) {
+		verbose((stderr,
+		    "Not fixing %s because it has text change.\n", s->gfile));
+		return (0);
+	}
+	unless (top->added || top->deleted) {
+		verbose((stderr,
+		    "Not fixing %s because it has no changes.\n", s->gfile));
+		return (0);
+	}
+	assert(!top->dangling);
+	return (1);
+}
+
 private void
-cfile(sccs *s, char *revs)
+cfile(sccs *s, char *rev)
 {
 	char	*out = sccs_Xfile(s, 'c');
-	char	*r = aprintf("-hr%s", revs);
+	char	*r = aprintf("-hr%s", rev);
 
 	sysio(0, out,0, "bk", "prs", r, "-d$each(:C:){(:C:)\n}", s->gfile, SYS);
 	free(r);

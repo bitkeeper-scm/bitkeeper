@@ -90,7 +90,7 @@ r_helptool(resolve *rs)
 	av[0] = "bk";
 	av[1] = "helptool";
 	av[2] = 0;
-	spawnvp_ex(_P_NOWAIT, "bk", av);
+	spawnvp(_P_DETACH, "bk", av);
 	return (0);
 }
 
@@ -168,7 +168,7 @@ res_revtool(resolve *rs)
 	av[1] = "revtool";
 	av[2] = rs->s->gfile;
 	av[3] = 0;
-	spawnvp_ex(_P_NOWAIT, "bk", av);
+	spawnvp(_P_DETACH, "bk", av);
 	return (0);
 }
 

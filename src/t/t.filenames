@@ -133,7 +133,7 @@ bk edit $Q "a a a"
 echo "bar" >> "a a a"
 bk delta $Q -y"test" "a a a"
 bk commit $Q -a -yCset
-bk -R checksum -c ChangeSet || { echo checksum failed; exit 1; }
+bk -R checksum ChangeSet || { echo checksum failed; exit 1; }
 echo OK
 
 echo $N Pull changes with spaces to another repo ....................$NL
@@ -141,7 +141,7 @@ cd $HERE
 bk clone $Q project copy
 cd copy
 bk undo $Q -fr+ || exit 1
-bk pull > /dev/null 2>OUT || {
+bk pull -G > /dev/null 2>OUT || {
 	echo pull should have worked
 	exit 1
 }

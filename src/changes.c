@@ -315,7 +315,6 @@ doit_local(int nac, char **nav, char **urls)
 private int
 pdelta(delta *e)
 {
-	if (feof(opts.f)) return (1); /* for early pager exit */
 	unless (e->flags & D_SET) return(0);
 	if (opts.keys) {
 		sccs_pdelta(opts.s, e, opts.f);
@@ -328,8 +327,7 @@ pdelta(delta *e)
 			if (opts.newline) fputc('\n', opts.f);
 		}
 	}
-	fflush(opts.f);
-	return (0);
+	return (fflush(opts.f));
 }
 
 private int
@@ -958,7 +956,7 @@ send_end_msg(remote *r, char *msg)
 	int	rc;
 
 	bktmp(msgfile, "changes_end");
-	f = fopen(msgfile, "wb");
+	f = fopen(msgfile, "w");
 	assert(f);
 	sendEnv(f, NULL, r, !opts.remote);
 
@@ -986,7 +984,7 @@ send_part2_msg(remote *r, char **av, char *key_list)
 	FILE	*f;
 
 	bktmp(msgfile, "changes_msg");
-	f = fopen(msgfile, "wb");
+	f = fopen(msgfile, "w");
 	assert(f);
 	sendEnv(f, NULL, r, !opts.remote);
 
@@ -1154,7 +1152,7 @@ _doit_remote(char **av, char *url)
 	remote	*r;
 
 	loadNetLib();
-	r = remote_parse(url, 1);
+	r = remote_parse(url);
 	unless (r) {
 		fprintf(stderr, "invalid url: %s\n", url);
 		return (1);
@@ -1170,6 +1168,8 @@ _doit_remote(char **av, char *url)
 	rc = changes_part1(r, av, key_list);
 	if (rc >= 0 && opts.remote) {
 		rc = changes_part2(r, av, key_list, rc);
+	} else {
+		disconnect(r, 1);
 	}
 	remote_free(r);
 	if (key_list[0]) unlink(key_list);

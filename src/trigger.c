@@ -78,6 +78,10 @@ trigger(char *cmd, char *when)
 	char	*event = 0;
 	int	rc = 0;
 
+	if (getenv("BK_SHOW_TRIGGERS")) {
+		ttyprintf("TRIGGER cmd(%s) when(%s)\n", cmd, when);
+	}
+
 	if (getenv("BK_NO_TRIGGERS")) return (0);
 	/*
 	 * For right now, if you set this at all, it means /etc.
@@ -127,6 +131,9 @@ trigger(char *cmd, char *when)
 		strcpy(triggerDir, RESYNC2ROOT "/BitKeeper/triggers");
 	} else if (strneq(cmd, "commit", 6)) {
 		what = event = "commit";
+	} else if (strneq(cmd, "merge", 5)) {
+		what = event = "commit";
+		strcpy(triggerDir, RESYNC2ROOT "/BitKeeper/triggers");
 	} else if (strneq(cmd, "delta", 5)) {
 		what = event = "delta";
 	} else {
@@ -135,7 +142,13 @@ trigger(char *cmd, char *when)
 		return (0);
 	}
 
-	unless (isdir(triggerDir)) return (0);
+	unless (isdir(triggerDir)) {
+		if (getenv("BK_SHOW_TRIGGERS")) {
+			ttyprintf("No trigger dir %s\n", triggerDir);
+		}
+		return (0);
+	}
+
 	/*
 	 * XXX - we should see if we need to fork this process before
 	 * doing so.  FIXME.
@@ -163,6 +176,9 @@ trigger(char *cmd, char *when)
 	triggers = getTriggers(triggerDir, buf);
 	unless (triggers) {
 		if (streq(what, "resolve")) chdir(RESYNC2ROOT);
+		if (getenv("BK_SHOW_TRIGGERS")) {
+			ttyprintf("No %s triggers in %s \n", buf, triggerDir);
+		}
 		return (0);
 	}
 
@@ -214,17 +230,22 @@ runit(char *file, char *what, char *output)
 {
 	int	status, rc;
 	char	*root = streq(what, "resolve") ? RESYNC2ROOT : ".";
+	char	*path = strdup(getenv("PATH"));
 
 	safe_putenv("BK_TRIGGER=%s", basenm(file));
 	write_log(root, "cmd_log", 0, "Running trigger %s", file);
+	if (getenv("BK_SHOW_TRIGGERS")) ttyprintf("Running trigger %s\n", file);
+	safe_putenv("PATH=%s", getenv("BK_OLDPATH"));
 	status = sysio(0, output, 0, file, SYS);
+	safe_putenv("PATH=%s", path);
+	free(path);
 	if (WIFEXITED(status)) {
 		rc = WEXITSTATUS(status);
 	} else {
 		rc = 100;
 	}
 	write_log(root, "cmd_log", 0, "Trigger %s returns %d", file, rc);
-	if (getenv("BK_SHOWPROC")) {
+	if (getenv("BK_SHOWPROC") || getenv("BK_SHOW_TRIGGERS")) {
 		ttyprintf("TRIGGER %s => %d\n", basenm(file), rc);
 	}
 	return (rc);
@@ -241,7 +262,7 @@ localTrigger(char *event, char *what, char **triggers)
 	trigger_env("BK", event, what);
 
 	EACH(triggers) {
-		unless (runable(triggers[i])) continue;
+		unless (executable(triggers[i])) continue;
 		rc = runit(triggers[i], what, 0);
 		if (rc) break;
 	}
@@ -251,7 +272,7 @@ localTrigger(char *event, char *what, char **triggers)
 private int
 remotePreTrigger(char *event, char *what, char **triggers)
 {
-	int	i, rc = 0, lclone = getenv("BK_LCLONE") != 0;
+	int	i, rc = 0, lclone = getenv("_BK_LCLONE") != 0;
 	char	output[MAXPATH], buf[MAXLINE];
 	FILE	*f;
 
@@ -260,7 +281,7 @@ remotePreTrigger(char *event, char *what, char **triggers)
 	bktmp(output, "trigger");
 	unless (lclone) fputs("@TRIGGER INFO@\n", stdout);
 	EACH(triggers) {
-		unless (runable(triggers[i])) continue;
+		unless (executable(triggers[i])) continue;
 		rc = runit(triggers[i], what, output);
 		f = fopen(output, "rt");
 		assert(f);
@@ -329,7 +350,7 @@ remotePostTrigger(char *event, char *what, char **triggers)
 	fd1 = dup(1); assert(fd1 > 0);
 	if (dup2(2, 1) < 0) perror("trigger: dup2");
 	EACH(triggers) {
-		unless (runable(triggers[i])) continue;
+		unless (executable(triggers[i])) continue;
 		rc = runit(triggers[i], what, 0);
 		if (rc) break;
 	}

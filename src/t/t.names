@@ -13,7 +13,7 @@
 # Copyright (c) 1999 Andrew Chang?
 # %K%
 
-HERE=`bk pwd`
+HERE=`bk pwd -s`
 echo $N Create a file ...............................................$NL
 no_logging project
 echo data > foo.c
@@ -43,8 +43,7 @@ test -f SCCS/s.date && {
 	echo should not have data file
 	exit 1
 }
-bk resync $Q
-echo q | bk resolve $Q > OUT 2>&1
+echo q | bk pull -t $Q > OUT 2>&1
 test -s OUT && { 
 	echo Resolve should not produce any output 
 	cat OUT
@@ -66,7 +65,7 @@ test -f SCCS/s.A && {
 	echo should not have data file
 	exit 1
 }
-bk resync $Q
+bk pull -R $Q
 ( echo ""
   echo q ) | bk resolve $Q > OUT 2>&1
 grep -q 'has a name conflict with a file with the same name' OUT || {

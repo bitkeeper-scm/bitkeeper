@@ -126,7 +126,7 @@ fi
 echo OK
 #echo $N Check propagation of rmdel in resync ........................$NL
 #cd $HERE
-#bk resync -a $Q project clone
+#bk RESYNC -a $Q project clone
 #if cmp -s project/SCCS/s.foo.c clone/SCCS/s.foo.c
 #then	:
 #else	echo failed to propagate removed delta

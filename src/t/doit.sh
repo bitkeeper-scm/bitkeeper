@@ -1,4 +1,4 @@
-#! @TEST_SH@
+#!@TEST_SH@
 
 # All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
 # and are not licensed under the terms of the BKL (BitKeeper License).
@@ -15,15 +15,16 @@
 
 win32_common_setup()
 {
-	DIFF=/usr/bin/diff
+	RM=rm
 	PLATFORM="WIN32"
 	WINDOWS=YES
 	DEV_NULL="nul"
-	if [ -z "$TST_DIR" ]; then TST_DIR=`../bk _nativepath /tmp`; fi
+	if [ -z "$TST_DIR" ]
+	then	TST_DIR=`mount | sed -n 's, on /tmp.*,,p' | tr A-Z a-z`; fi
 	BK_FS="|"
 	BK_BIN=`cd .. && ./bk pwd -s`
 	CWD="$BK_BIN/bk pwd"
-	touch `../bk _nativepath $TEMP`/BitKeeper_null
+	touch `msys2win $TEMP`/BitKeeper_nul
 	BK_USER=`bk getuser`
 	# Admin user is special, remap to a differnt user before we run the test
 	if [ X$BK_USER = XAdministrator ]; then BK_USER=Administrator-test; fi
@@ -40,28 +41,31 @@ win32_common_setup()
 	BIN3="`bk bin`/diff3.exe"
 	export BIN1 BIN2 BIN3
 
-	# We need this only on NTFS, not needed on FAT/FAT32 file system
-	# This setting only affect the process started _after_ it is set.
-	# i.e. It has no effect on the "doit" process itself.
-	CYGWIN=nontsec
-	export CYGWIN
-
 	export WINDOWS
 }
 
 unix_common_setup()
 {
-	DIFF=diff
+	RM=/bin/rm
 	PLATFORM="UNIX"
 	WINDOWS=NO
 	DEV_NULL="/dev/null"
-	if [ -z "$TST_DIR" ]; then TST_DIR="/tmp"; fi
+	if [ -z "$TST_DIR" ]; then TST_DIR="/build"; fi
 	TST_DIR=`bk pwd $TST_DIR`       # if symlink, force to real path
 	CWD="/bin/pwd"
 	if [ -d /usr/xpg4/bin ]; then PATH=/usr/xpg4/bin:$PATH; fi
 	BK_FS="|"
-	BK_BIN="`cd .. && pwd`"
-	PATH=$BK_BIN:$BK_BIN/gnu/bin:$PATH:/usr/local/bin:/usr/freeware/bin:/usr/gnu/bin
+
+	# only a symlink to 'bk' appears on PATH
+	BK_BIN=/build/.bkbin-$USER
+	rm -rf $BK_BIN
+	mkdir $BK_BIN
+	ln -s `cd .. && pwd`/bk $BK_BIN/bk
+	PATH=$BK_BIN:$PATH:/usr/local/bin:/usr/freeware/bin:/usr/gnu/bin
+
+	# clear any stale uniq locks
+	rm -f /tmp/.bk_kl$USER
+
 	unset CDPATH PAGER
 	if [ X$USER = X ]; then USER=`bk getuser`; fi
 	# root user is special, remap to a differnt user before we run the test
@@ -85,6 +89,25 @@ unix_common_setup()
 	test -r $BIN3 || BIN3=/usr/gnu/bin/wc
 	test -r $BIN3 || exit 1
 	export BIN1 BIN2 BIN3
+
+	test `uname` = SCO_SV && return
+
+	BK_LIMITPATH=/build/.bktools-$USER
+	rm -rf $BK_LIMITPATH
+	mkdir $BK_LIMITPATH
+	for f in awk expr sh ksh grep egrep sed env test [ sleep getopts \
+	    basename dirname cat cp ln mkdir mv rm rmdir touch wc xargs \
+	    co rcs ssh rsh gzip gunzip remsh rcmd uname \
+	    perl
+	do	p=`bk which -e $f`
+		if [ $? -eq 0 ]
+		then	ln -s $p $BK_LIMITPATH/$f
+		else	:
+			# Too noisy
+			# echo WARNING: could not find a $f binary.
+		fi
+	done
+	export BK_LIMITPATH
 	export WINDOWS
 }
 
@@ -180,12 +203,12 @@ EOF
 # setup env variables for regression test
 setup_env()
 {
-	if [ -x $OSTYPE ]; then OSTYPE=`uname -s`; fi
+	test "X$OSTYPE" = X && OSTYPE=`uname -s`
 	case X$OSTYPE in
-	    Xcygwin|Xcygwin32|XCYGWIN*)
+	    Xcygwin|Xcygwin32|XCYGWIN*|Xmsys)
+		BK_BIN=$(win2msys $(cd .. && ./bk pwd -s))
+		PATH=$BK_BIN:/bin:$PATH
 		win32_common_setup
-		BK_BIN=`cd .. && ./bk pwd -sc`
-		PATH=$BK_BIN:$BK_BIN/gnu/bin:$PATH
 		check_mount_mode
 		check_path
 		;;
@@ -203,16 +226,21 @@ setup_env()
 	BK_PAGER=cat
 	export BK_PAGER
 
+	# Force GUI tools to autoplace
+	BK_GEOM=+1+1
+	export BK_GEOM
+
 	unset BK_BIN _BK_GMODE_DEBUG
-	BK_LICENSE=ACCEPTED
 	BK_REGRESSION=`bk _cleanpath $TST_DIR/.regression-$USER`
-	HERE=$BK_REGRESSION
+	HERE=`cd $TST_DIR; bk pwd`/.regression-$USER
 	BK_TMP=$BK_REGRESSION/.tmp
-	TMPDIR=/tmp/.tmp-$USER
-	BKL_P=BKL5413557503d719ed00001200ffffe
-	BKL_P1=YgAAAo0AAAADgAAAADsCeUepwSCv8vdzC+zfqSI/LcdNEi6Oqas5Wj01Fa7w/0rY
-	BKL_P2=dGV7TM68nu7/Yw1sr5iwwEB4/BrY5EerWnFGYHhlOmnrgok04a4Ln/lLTpfFmpyd
-	BKL_P3=zR2DzsoRpyZDrgggmVjmb3IMm5OnW+zd6Di8IuaOkUSZJbjA9BzsZjlJiKIM
+	BK_DOTBK=$BK_REGRESSION/.bk
+	export BK_DOTBK
+	TMPDIR=/build/.tmp-$USER
+	BKL_P=BKL54316b5003d71c9000001200ffffe
+	BKL_P1=YgAAAo0AAAADgAAAANeWSrorfi5t/kX5twCWkrDJukboDouPS+LG/MTHyQDR1dBJ
+	BKL_P2=ChDM6mO3QoKrhaUcxTtI8avce6YnEUhSzH/CVhYqPPrqX1QONT9S4qn2d3L/FufL
+	BKL_P3=St9lVeCrJaxJNni3VlR2znLbXWhIqy69VawOvBWuYE1eMSq4b96N+Vkt6ZIu
 	BKL_B=BKL53f52d2503d719ed00001100ffffe
 	BKL_B1=YgAAAo4AAAADgQAAAAFh6k0m5PVc4sDTeRu+SHHlRYu/J/S1JQC1uOWZ2d5W/uWF
 	BKL_B2=q+HaT/OgbdCyjQ0vTY65SVvgDml4U2q9yp3dxDJ58MZCarZiIyBcnFnxSddc2jeW
@@ -221,6 +249,8 @@ setup_env()
 	BKL_EX1=YgAAAo4AAAADgQAAAAFQoPDeRRdpqjJLu30dIZFxdyKx9/rKDuF5WLctEEQzXfcM
 	BKL_EX2=7C4OKLdN/zrNavYbU24iyPR362lgpT6X4A4CvZBLc3cqGtDhX0tO/PWRlb3xr1nN
 	BKL_EX3=4OfnMtUM6SsjQ/kNebbbrnJjKLgSfu/61sVkQXaQ3rmEQXvg72eGHrKjnZT1FA==
+	BK_NO_GUI_PROMPT=YES
+	export BK_NO_GUI_PROMPT
 	BK_GLOB_TRANSLATE_EQUAL=NO
 }
 
@@ -229,7 +259,7 @@ clean_up()
 	# Win32 have no core file
 	if [ "$PLATFORM" = "UNIX" ]
 	then
-		find $BK_REGRESSION -name core -print > $BK_REGRESSION/cores
+		bk _find $BK_REGRESSION -name core > $BK_REGRESSION/cores
 		if [ -s $BK_REGRESSION/cores ]
 		then    ls -l `cat $BK_REGRESSION/cores`
 			file `cat $BK_REGRESSION/cores`
@@ -238,7 +268,7 @@ clean_up()
 	fi
 
 	for i in 1 2 3 4 5
-	do	find $BK_REGRESSION -name bk'*' -print |
+	do	bk _find $BK_REGRESSION -name 'bk*' |
 		    grep BitKeeper/tmp > $BK_REGRESSION/junk
 		if [ ! -s $BK_REGRESSION/junk ]
 		then	break
@@ -252,7 +282,7 @@ clean_up()
 	fi
 
 	# Make sure there are no lockfiles left
-	find $BK_REGRESSION -type f -print |
+	bk _find $BK_REGRESSION |
 	    egrep 'BitKeeper/readers/|BitKeeper/writer/' > $BK_REGRESSION/junk
 	test -s $BK_REGRESSION/junk && {
 		echo Stale lock files
@@ -262,7 +292,7 @@ clean_up()
 
 	# Make sure there are no stale files in $TMPDIR
 	ls -a $TMPDIR > $TMPDIR/T.${USER}-new
-	$DIFF $TMPDIR/T.${USER}-new $TMPDIR/T.${USER}
+	( cd $TMPDIR && bk diff T.${USER}-new T.${USER} )
 
 	for i in 1 2 3 4 5 6 7 8 9 0
 	do	
@@ -287,8 +317,9 @@ init_main_loop()
 	fi
 
 	BK_PATH=$PATH
-	export PATH BK_PATH PLATFORM DEV_NULL TST_DIR CWD BK_LICENSE
+	export PATH BK_PATH PLATFORM DEV_NULL TST_DIR CWD
 	export USER BK_FS BK_REGRESSION HERE BK_TMP TMPDIR NL N Q S CORES
+	export RM
 	export NXL NX
 	export BKL_P BKL_EX BKL_B
 	export BKL_P1 BKL_P2 BKL_P3
@@ -305,6 +336,7 @@ init_main_loop()
 # -v 	turn on verbose mode
 # -x	trace command execution
 # -r	use rsh instead of ssh
+# -p    prompt before doing the cleanup (mostly useful for interactive GUI tests)
 #
 get_options()
 {
@@ -312,8 +344,11 @@ get_options()
 	S=-s;
 	KEEP_GOING=NO
 	TESTS=0
+	PAUSE=NO
 	while true
 	do	case $1 in
+		    -p) PAUSE=YES;;
+	            -f) FAIL_WARNING=YES;;
 		    -i) KEEP_GOING=YES;;
 		    -r) export PREFER_RSH=YES;;
 		    -t) if [ X$2 = X ]
@@ -357,10 +392,21 @@ init_main_loop
 
 # Main Loop #
 FAILED=
+BADOUTPUT=
 for i in $list
-do	echo ------------ ${i#t.} test
-        bk leaseflush
+do
+echo ''
+	LEN=`echo ${i#t.} | wc -c`
+	LEN=`expr 40 - $LEN`
+	printf "================="
+	printf " %s test " ${i#t.}
+	printf "%.${LEN}s\n" "================================================"
+
 	mkdir -p $BK_TMP || exit 1
+	mkdir -p $BK_DOTBK || exit 1
+
+	bk license -a bkl || exit 1
+	bk license -a bkcl || exit 1
 
 	# Let's be safe out there boys and girls
 	case $TMPDIR in
@@ -368,6 +414,7 @@ do	echo ------------ ${i#t.} test
 			exit 1
 			;;
 	    /tmp/*)	;;
+	    /build/*)	;;
 	    *)		Really weird TMPDIR $tmpdir, I quit
 			exit 1
 			;;
@@ -380,26 +427,81 @@ do	echo ------------ ${i#t.} test
 	touch $TMPDIR/T.${USER}-new
 	ls -a $TMPDIR > $TMPDIR/T.${USER}
 
-	cat setup $i | @TEST_SH@ $dashx
-	EXIT=$?
-	if [ $EXIT -ne 0 ]
+	touch $TMPDIR/OUT.$$
+	if [ X$Q = X -o X$dashx = X-x ]
+	then	OUTPIPE=""
+	else	OUTPIPE=" 2>&1 | tee $TMPDIR/OUT.$$"
+	fi
+	EXF=$TMPDIR/T.${USER}-next
+	cat setup $i | eval "{ @TEST_SH@ $dashx; echo \$?>$EXF; } $OUTPIPE"
+	EXIT=`cat $EXF`
+	rm -f $EXF
+	BAD=0
+	# If the test passes, then check to see if it contains any unexpected
+	# output.
+	test $EXIT -eq 0 && {
+		egrep -v '^.*\.OK$|^---.*$|\.\.failed \(bug|^.*\.skipped$' \
+		    $TMPDIR/OUT.$$ > $DEV_NULL && {
+			if [ "X$FAIL_WARNING" = "XYES" ]
+			then	BAD=1
+			else	echo
+				echo WARNING: unexpected output lines
+				BADOUTPUT="$i $BADOUTPUT"
+			fi
+		}
+	}
+
+	if [ "$PAUSE" = "YES" ]
 	then
-		echo ERROR: Test ${i#t.} failed with error $EXIT
+	    bk msgtool -Y "Click to continue" \
+"The test script is now paused so you may examine 
+the working environment before it is cleaned up. 
+
+pwd: `pwd`
+tmp: $TMPDIR
+output file: $TMPDIR/OUT.$$
+
+I hope your testing experience was positive! :-)
+"
+	fi
+
+	$RM -f $TMPDIR/OUT.$$
+	if [ $EXIT -ne 0 -o $BAD -ne 0 ]
+	then
+		if [ $EXIT -ne 0 ]
+		then	echo ERROR: Test ${i#t.} failed with error $EXIT
+		else	echo ERROR: Test ${i#t.} failed with unexpected output
+			EXIT=2
+		fi
 		test $KEEP_GOING = NO && exit $EXIT
 		FAILED="$i $FAILED"
 	fi
 	clean_up
 done
 rm -f $TMPDIR/T.${USER} $TMPDIR/T.${USER}-new
-test "X$FAILED" = X && {
-	echo ------------------------------------------------
+test $BK_LIMITPATH && rm -rf $BK_LIMITPATH
+echo
+EXIT=100	# Because I'm paranoid
+echo ------------------------------------------------
+if [ "X$FAILED" = X ]
+then
 	echo All requested tests passed, must be my lucky day
+	EXIT=0
+else
+	echo Not your lucky day, the following tests failed:
+	for i in $FAILED
+	do	echo "	$i"
+	done
+	EXIT=1
+fi
+echo ------------------------------------------------
+test "X$BADOUTPUT" != X && {
+        echo
 	echo ------------------------------------------------
-	exit 0
+	echo The follow tests had unexpected output:
+	for i in $BADOUTPUT
+	do	echo "	$i"
+	done
+	echo ------------------------------------------------
 }
-echo -----------------------------------------------
-echo Not your lucky day, the following tests failed:
-for i in $FAILED
-do	echo "	$i"
-done
-echo -----------------------------------------------
+exit $EXIT

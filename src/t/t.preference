@@ -13,7 +13,7 @@
 # Copyright (c) 2001 Andrew Chang
 # %K%
 
-HERE=`bk pwd`
+HERE=`bk pwd -s`
 echo $N Create initial repository ...................................$NL
 no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
@@ -353,7 +353,7 @@ test -f ../SCCS/p.ChangeSet && {
 	echo ChangeSet file shouldn\'t be locked
 	exit 1
 }
-bk sfiles -c | bk delta $Q -C
+bk sfiles -c | bk delta $Q -C -
 bk commit -Y../SCCS/c.ChangeSet $Q || exit 1
 echo OK
 

@@ -629,13 +629,11 @@ synckeys(remote *r, int flags)
 			return (1); /* empty dir */
 			break;
 		}
-		disconnect(r, 2);
-		sccs_free(s);
-		return (-1);
+		rc = -1;
 	}
 	sccs_free(s);
-	if (r->type == ADDR_HTTP) disconnect(r, 2);
-	return (0);
+	disconnect(r, 2);
+	return (rc);
 }
 
 
@@ -669,7 +667,7 @@ synckeys_main(int ac, char **av)
 
 	loadNetLib();
 	has_proj("synckeys");
-	r = remote_parse(av[optind], 0);
+	r = remote_parse(av[optind]);
 	assert(r);
 
 	if (proj_cd2root()) { 

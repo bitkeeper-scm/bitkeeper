@@ -98,16 +98,16 @@ commit_main(int ac, char **av)
 			}
 			bktmp(pendingFiles, "list");
 			setmode(0, _O_TEXT);
-			f = fopen(pendingFiles, "wb");
+			f = fopen(pendingFiles, "w");
 			assert(f);
 			while (fgets(buf, sizeof(buf), stdin)) {
 				fputs(buf, f);
 			}
 			fclose(f);
 		} else {
-			bktmp(pendingFiles, "bk_pending");
+			bktmp(pendingFiles, "pending");
 			if (sysio(0, pendingFiles, 0,
-				"bk", "sfind", "-s,,p", "-C", SYS)) {
+				"bk", "sfind", "-s,,p", "-pC", SYS)) {
 				unlink(pendingFiles);
 				getMsg("duplicate_IDs", 0, 0, stdout);
 				return (1);
@@ -211,9 +211,9 @@ out:		if (pendingFiles) unlink(pendingFiles);
 		 * So we open the file in read mode close it and re-open
 		 * it in write mode
 		 */
-		bktmp(pendingFiles2, "bk_pending2");
-		f = fopen(pendingFiles, "rb");
-		f2 = fopen(pendingFiles2, "wb");
+		bktmp(pendingFiles2, "pending2");
+		f = fopen(pendingFiles, "r");
+		f2 = fopen(pendingFiles2, "w");
 		assert(f); assert(f2);
 		while (fnext(buf, f)) {
 			/*
@@ -243,7 +243,7 @@ out:		if (pendingFiles) unlink(pendingFiles);
 	comments_writefile(commentFile);
 	safe_putenv("BK_COMMENTFILE=%s", commentFile);
 
-	if (rc = trigger(av[0], "pre")) goto done;
+	if (rc = trigger(opts.resync ? "merge" : av[0], "pre")) goto done;
 	i = 2;
 	if (opts.quiet) dflags |= SILENT;
 	if (sym) syms = addLine(syms, strdup(sym));
@@ -260,7 +260,7 @@ out:		if (pendingFiles) unlink(pendingFiles);
 
 	putenv("BK_STATUS=OK");
 	if (rc) putenv("BK_STATUS=FAILED");
-	trigger(av[0], "post");
+	trigger(opts.resync ? "merge" : av[0], "post");
 done:	if (unlink(pendingFiles)) perror(pendingFiles);
 	unlink(commentFile);
 	if (pendingFiles2[0]) {

@@ -3,7 +3,7 @@
 .SH NAME
 bk unpull \- remove changesets added by bk pull
 .SH SYNOPSIS
-.B bk unpull [-fq]
+.B bk unpull [-fqs]
 .SH DESCRIPTION
 .LP
 bk unpull will remove changesets added by the most recent bk pull command.
@@ -16,6 +16,10 @@ Force unpull.
 .tp
 .B \-q
 Quiet mode.
+.tp
+.B \-s
+Do not save a backup patch in
+.IR BitKeeper/tmp/unpull.patch .
 .SH "SEE ALSO"
 .SA pull 1
 .SA undo 1

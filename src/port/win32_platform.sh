@@ -22,6 +22,7 @@ __nativepath()
 __platformInit()
 {
 	# WIN32 specific stuff
+	CLEAR=cls
 	TMP=`__nativepath /tmp`/
 	DEV_NULL=nul
 	WINDOWS=YES
@@ -29,6 +30,6 @@ __platformInit()
 	ext=".exe"
 	tcl=".tcl"
 	test "X$EDITOR" = X && EDITOR=notepad.exe
-	test "X$PAGER" = X && PAGER=more
-	export PAGER EDITOR TMP DEV_NULL AWK WINDOWS
+	RM=rm
+	export EDITOR TMP DEV_NULL AWK RM WINDOWS
 }

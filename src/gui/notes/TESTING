@@ -1,0 +1,119 @@
+RUNNING TESTS
+
+There are two types of GUI tests: automated and interactive. Automated
+tests are named g.*, interactive tests are named i.*.
+
+INTERACTIVE TESTS:
+
+Interactive tests are named i.* and require user input to
+complete. Many of these are simple tests that create some test data
+then run the tool, with no checking for proper results when the tool
+exits. Each tool has a test named "i.<tool>" that does exactly
+that, so to do a spot check of any tool just do "./doit
+i.<tool>". Other interactive tests are largely left-overs from before
+there were automated tests.
+
+Normally the doit script will clean up after a test runs to
+completion, which means any effects of the test may be lost (ie:
+temporary repositories will be removed). To prevent this you can set the
+environment variable DOIT_PAUSE. This will cause a message to pop up
+on the screen and suspend the cleanup process until you dismiss the
+message, giving you a chance to manually verify the state of the test
+data.
+
+
+AUTOMATED TESTS:
+
+Automated tests can be run like any other test in the test directory
+(eg: doit g.citool). From the src/gui directory you can also do
+"./build test" to run all of the automated tests. It is wise not to
+attempt to do anything on a system that is running the automated GUI
+tests since GUIs will pop up and go away, potentially stealing the
+keyboard and mouse focus as it goes.
+
+Remember that the GUIs save some persistent data in `bk
+dotbk`/<app>.rc when run normally. If you are working on layout issues
+you may want to delete that file each time you run the command so that
+the geometry isn't continuously saved and restored. An alternative is
+to set BK_HOME_DIR to point to a read-only directory. The automated
+tests (g.*) create .rc files in a temporary home directory.
+
+
+HOW THE AUTOMATED TESTS WORK
+
+Most GUIs are started in a test with "bk guitest <toolname> <args>".
+The "guitest" portion sets up some special commands, loads the
+program, then reads additional from stdin (or from a file with
+--script and a filename as the first two arguments). This is all done
+in the file src/t/guitest.tcl. 
+
+To debug a failing test you can edit the test file and comment out
+where the test exits (usually via a call like "test_buttonPress Quit"
+"exit"). This will cause the program to run interactively up to that
+point then wait for user input.
+
+
+SPECIAL GUITEST COMMANDS:
+
+In addition to all normal tcl commands and commands created by the GUI
+being tested, the following special commands are made available by the
+GUI testing harness:
+
+test_buttonPress <buttonlabel>
+
+    <buttonlabel> is the labe on a button (eg: "Quit"). The command
+    will search all buttons for one with the given label and invoke
+    that button. This makes it possible to invoke buttons without 
+    having to hard-code widget paths.
+    
+    Example: test_buttonPress Quit
+
+
+test_menuSelect <menuitem>
+
+    <menuitem> is a symbolic representation of a menu item, built by
+    joining the labels of all the menus and submens together,
+    separated by "->". For example, if there is a menubutton labelled
+    "File" that has a menu item labelled "Quit", <menuitem> will be
+    "File->Quit"
+
+    If more than one menu meets the criteria, the first one found will
+    be used. If our GUIs ever have multiple menus that match the name
+    they darn well ought to be synonymous (eg: a menubar item named
+    Edit->Cut should do exactly the same thing as a popup menu that
+    says "Edit->Cut".
+
+    In the future we could extend this to supply symbolic names to
+    menus so that we could distinguish between "Menubar->Edit->Cut"
+    and "Popup->Edit->Cut" but right now that's not necessary.
+
+    Example: test_menuSelect File->Quit
+
+    
+test_inputString <string>
+
+    <string> is a normal text string. The command works by simulating
+    both keypress and keyrelease events so this command can be used to
+    trigger accelerators. The input goes to whatever widget has focus.
+
+    Example: test_inputString "Hello, World!\n"
+
+
+Example:
+
+This example shows how to run msgtool, verify that the window title is
+correct, then exit by pressing the Ok button. The last command before
+EOF, "exit 99" is a catch-all in case the test_buttonPress command
+failed to exit the application and hang the test suite.
+
+    bk guitest msgtool -T "The Title" "Foo" >$OUT 2>&1 <<'EOF'
+    set actual [wm title .]
+    set expected "The Title"
+    if {$actual ne $expected} {
+	puts "expected: '$expected' got: '$actual'"
+    }
+    test_buttonPress "Ok"
+    exit 99
+    EOF
+    test -s $OUT && { echo failed; cat $OUT; exit 1; }
+    echo OK

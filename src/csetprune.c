@@ -117,7 +117,7 @@ k_err:			fprintf(stderr,
 		exit(1);	/* leave it locked! */
 	}
 	verbose((stderr, "Renumbering ChangeSet file...\n"));
-	sccs_renumber(s, SILENT);
+	sccs_renumber(s, SILENT, 0);
 	sccs_newchksum(s);
 	sccs_free(s);
 	unless ((s = sccs_init(csetFile, INIT_NOCKSUM)) && s->tree) {
@@ -476,7 +476,7 @@ fixTags(sccs *s)
 				    "csetprune: Tag (%s) on pruned revision "
 				    "(%s) will be removed,\nbecause the "
 				    "revision has no parent to receive the "
-				    "tag.\nPlease write support@bitmover.com "
+				    "tag.\nPlease run 'bk support' "
 				    "describing what you did to get this "
 				    "message.\nThis is a warning message, "
 				    "not a failure.\n", sym->symname, d->rev);
@@ -532,7 +532,7 @@ fixTags(sccs *s)
 				    "revision "
 				    "(%s) will be removed,\nbecause the "
 				    "revision has no parent to receive the "
-				    "tag.\nPlease write support@bitmover.com "
+				    "tag.\nPlease run 'bk support' "
 				    "describing what you did to get this "
 				    "message.\nThis is a warning message, "
 				    "not a failure.\n",

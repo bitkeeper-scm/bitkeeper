@@ -55,6 +55,7 @@ comments_savefile(char *s)
 	while (fnext(buf, f)) {
 		last = buf;
 		while (*last && (*last != '\n')) last++;
+		while ((last > buf) && (last[-1] == '\r')) --last;
 		if ((last == &buf[MAXCMT - 1]) && !*last) {
 			fprintf(stderr,
 			    "Splitting comment line \"%.50s\"...\n", buf);

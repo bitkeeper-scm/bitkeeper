@@ -2,46 +2,55 @@
 .TH "bk setup" 1 20%E% "\*(BC" "\*(UM"
 .\"    ====================== BitKeeper setup ======================
 .SH NAME
-bk setup \- create a new \*(BK package repository
+bk setup \- create a new \*(BK package
 .SH SYNOPSIS
-.Bc bk setup [-f] [
-.OPTopt \-c config_file
+.Bc bk setup [-fp] [
+.OPTreq \-F key=val
+.Bc ] [
+.OPTreq \-c config_file
 .B ] 
 .ARG directory
 .SH DESCRIPTION
+There is a graphical version of this command, bk setuptool.
 .LP
-Before setting up a \*(BK repository, you need to read the
-license.  \*(BK is not traditional Open Source.  Please see
-.B bk help license 
-and make sure that you agree with the terms.
-.LP
-To set up a \*(BK package, you need to create and populate a
-package tree.  The 
+To set up a \*(BK package, you need to create and populate an initial tree.
+The 
 .B setup 
-command will create the package tree.
-That is, it creates a top level directory
-with the same name as the repository name as well as
-several files and directories that are used for
-administrative purposes.
+command will create a mostly empty package tree containing a
+few files and directories that are used by \*(BK.
 .LP
-The setup command will prompt you for a description of the package. In
-addition, you will be asked to edit a configuration file containing 
-information about your new repository.
+The setup command will prompt you for a description of the package as
+well as other information about your new package.
 .LP
-A system wide default config file may be created in 
-/etc/BitKeeper/etc/config.template.  If this file is detected when 
+A system wide default config template file may be created in either
+.I $HOME/.bk/config.template 
+or in
+.I /etc/BitKeeper/etc/config.template
+or in
+.IR `bk\ bin`/etc/config.template .
+If this file is detected when 
 bk setup is run, without the -c option, it will be used as the 
-default BitKeeper/etc/config file automatically.
+default
+.I BitKeeper/etc/config
+file automatically.
+The first file found is used.
 .SH OPTIONS
 .if t .TP .9i
-.if n .TP 1.8i
-.OPTopt -c config_file
+.if n .TP 1.6i
+.OPTreq -c config_file
 Use 
 .ARG config_file
 as the configuration file to setup the repository.
 .tp
 .B -f
 Don't ask for confirmation.
+.tp
+.B -Fkey=val
+Override default values for the specified field.
+Typically used in combination with a config template.
+.tp
+.B -p
+print the field names to stdout (used by setuptool).
 .SH EXAMPLES
 .LP
 When creating a repository called "mypackage", you type
@@ -88,10 +97,6 @@ Transient directory for writer lock.
 .tp
 .B triggers/
 Executable trigger programs stored here.
-.tp
-.B linked/
-Directory for keeping track of linked files
-(i.e.  two files which are logically one). 
 .RE
 .LP
 Once the repository is created, you should make a hierarchy to store
@@ -124,7 +129,9 @@ repository, see
 .SH "SEE ALSO"
 .SA Howto 1
 .SA Howto-setup 1
-.SA import 1
 .SA config-etc
+.SA import 1
+.SA license 1
+.SA setuptool 1
 .SH CATEGORY
 .B Repository

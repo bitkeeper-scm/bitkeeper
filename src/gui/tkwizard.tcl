@@ -844,6 +844,8 @@ proc ::tkwizard::showStep {name args} \
     # Build the step
     buildStep $name $step
 
+    # focus on the default button; the step may override
+    ${name}::~style focus $wizConfig(-defaultbutton)
 }
 
 proc ::tkwizard::init {name {style {default}}} \
@@ -1148,10 +1150,10 @@ proc ::tkwizard::updateButtons {name args} \
     set stepIndex [lsearch -exact $steps $wizConfig(-step)]
 
     if {$wizConfig(-defaultbutton) == "none"} {
-        ${name}::~style buttonconfigure finish -default none
-        ${name}::~style buttonconfigure next   -default none
-        ${name}::~style buttonconfigure back   -default none
-        ${name}::~style buttonconfigure cancel -default none
+        ${name}::~style buttonconfigure finish -default normal
+        ${name}::~style buttonconfigure next   -default normal
+        ${name}::~style buttonconfigure back   -default normal
+        ${name}::~style buttonconfigure cancel -default normal
         bind $name <Return> {}
     } else {
         foreach b {next back cancel finish} {
@@ -1554,6 +1556,11 @@ proc ::tkwizard::style-default::styleCommand {name command args} \
             } else {
                 $w invoke
             }
+        }
+
+        focus {
+            set name "[lindex $args 0]Button"
+            focus $widget($name)
         }
 
         buttonconfigure {

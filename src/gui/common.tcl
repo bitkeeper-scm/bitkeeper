@@ -312,7 +312,7 @@ proc tmpfile {name} \
 
 proc restoreGeometry {app {w .} {force 0}} \
 {
-	global State gc
+	global State gc env
 
 	# The presence of the global variable 'geometry' means that the
 	# user specified a geometry on the command line. If that happens
@@ -328,6 +328,7 @@ proc restoreGeometry {app {w .} {force 0}} \
 	} elseif {[info exists gc($app.geometry)]} {
 		set geometry $gc($app.geometry)
 	}
+	if {[info exists env(BK_GEOM)]} { set geometry $env(BK_GEOM) }
 	if {![info exists geometry]} return
 
 	if {[catch {
@@ -335,8 +336,15 @@ proc restoreGeometry {app {w .} {force 0}} \
 		set width [expr {$width > $rwidth ? $rwidth : $width}]
 		set height [expr {$height > $rheight ? $rheight : $height}]
 	} message]} {
-		# punt! 
-		return
+		# See if we have just the +x+y form
+		if {[catch {
+			regexp {^([-+][0-9]+)([-+][0-9]+)$} $geometry -> x y
+			wm geometry $w $x$y
+			return
+		} message]} {
+			# OK, now we can punt
+			return
+		}
 	}
 
 	# Since we are setting the size of the window we must turn
@@ -379,6 +387,38 @@ proc restoreGeometry {app {w .} {force 0}} \
 			wm geometry $w $loc
 		}
 	}
+}
+
+# this removes hardcoded newlines from paragraphs so that the paragraphs
+# will wrap when placed in a widget that wraps (such as the description
+# of a step)
+proc wrap {text} \
+{
+	if {$::tcl_version >= 8.2} {
+		set text [string map [list \n\n \001 \n { }] $text]
+		set text [string map [list \001 \n\n] $text]
+	} else {
+		regsub -all "\n\n" $text \001 text
+		regsub -all "\n" $text { } text
+		regsub -all "\001" $text \n\n text
+	}
+	return $text
+}
+
+# get a message from the bkmsg.doc message catalog
+proc getmsg {key args} \
+{
+	# do we want to return something like "lookup failed for xxx"
+	# if the lookup fails? What we really need is something more
+	# like real message catalogs, where I can supply messages that
+	# have defaults.
+	set data ""
+	set cmd [list bk getmsg $key]
+	if {[llength $args] > 0} {
+		lappend cmd [lindex $args 0]
+	}
+	set err [catch {set data [eval exec $cmd]}]
+	return $data
 }
 
 # usage: bgExec ?options? command ?arg? ?arg ..?

@@ -130,7 +130,7 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 	}
 
 	if (streq(av[0], "makepatch")) copts.makepatch = 1;
-	copts.notty = !isatty(1);
+	copts.notty = (getenv("BK_NOTTY") != 0);
 
 	while (
 	    (c =
@@ -651,7 +651,7 @@ csetlist(cset_t *cs, sccs *cset)
 			unlink(cat);
 			goto fail;
 		}
-		if (sysio(cat, csort, 0, "bk", "_keysort", SYS)) {
+		if (sysio(cat, csort, 0, "bk", "_sort", SYS)) {
 			unlink(cat);
 			goto fail;
 		}

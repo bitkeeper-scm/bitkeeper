@@ -206,20 +206,20 @@ bkd_server(int ac, char **av)
 #define SERVICEDISPLAYNAME 	"BitKeeper Service"
 #define DEPENDENCIES       	""
 
-static SERVICE_STATUS		srvStatus;
-static SERVICE_STATUS_HANDLE	statusHandle;
-static HANDLE			hServerStopEvent = NULL;
-static int			err_num = 0;
-static char			err[256];
-int				bkd_quit = 0; /* global */
+static	SERVICE_STATUS		srvStatus;
+static	SERVICE_STATUS_HANDLE	statusHandle;
+static	HANDLE			hServerStopEvent = NULL;
+static	char			err[256];
+static	int			bkd_quit = 0; /* global */
 
-static void WINAPI bkd_service_ctrl(DWORD dwCtrlCode);
-static char *getError(char *buf, int len);
-void reportStatus(SERVICE_STATUS_HANDLE, int, int, int);
-void bkd_remove_service();
-void bkd_install_service(bkdopts *opts, int ac, char **av);
-void bkd_start_service(void (*service_func)(int, char**));
-void logMsg(char *msg);
+private	void	WINAPI bkd_service_ctrl(DWORD dwCtrlCode);
+private	char	*getError(char *buf, int len);
+private	void	reportStatus(SERVICE_STATUS_HANDLE, int, int, int);
+private	void	bkd_remove_service(int verbose);
+private	void	bkd_install_service(bkdopts *opts, int ac, char **av);
+private	void	bkd_start_service(void (*service_func)(int, char**));
+private	int	bkd_register_ctrl(void);
+private	void	logMsg(char *msg);
 
 private void
 argv_save(int ac, char **av, char **nav, int j)
@@ -285,11 +285,11 @@ argv_free(char **nav, int j)
 	while (nav[j]) free(nav[j++]);
 }
 
-void
+private void
 bkd_service_loop(int ac, char **av)
 {
 	SOCKET	sock = 0;
-	int	c, i, j, n, err = 0;
+	int	n;
 	char	pipe_size[50], socket_handle[20];
 	char	*nav[100] = {
 		"bk", "_socket2pipe",
@@ -297,10 +297,6 @@ bkd_service_loop(int ac, char **av)
 		"-p", pipe_size,	/* set pipe size */
 		"bk", "bkd", "-z",	/* bkd command */
 		0};
-	extern	int bkd_quit; /* This is set by the helper thread */
-	extern	int bkd_register_ctrl();
-	extern	void reportStatus(SERVICE_STATUS_HANDLE, int, int, int);
-	extern	void logMsg(char *);
 	SERVICE_STATUS_HANDLE   sHandle;
 	
 	/*
@@ -389,8 +385,6 @@ done:	if (sock) CloseHandle((HANDLE)sock);
 void
 bkd_server(int ac, char **av)
 {
-	extern void bkd_service_loop(int, char **);
-
 	if (Opts.start) { 
 		bkd_start_service(bkd_service_loop);
 		exit(0);
@@ -403,19 +397,32 @@ bkd_server(int ac, char **av)
 	}
 }
 
+/* e.g. return env string " -E \"BK_DOTBK=path\"" */
+private char *
+genEnvArgs(char *buf, char *envVar)
+{
+	char	*v;
+
+	unless (v = getenv(envVar)) return ("");
+	sprintf(buf, " -E \"%s=%s\"", envVar, v);
+	return (buf);
+}
+
 /*
  * Install and start bkd service
  */
-void
+private void
 bkd_install_service(bkdopts *opts, int ac, char **av)
 {
 	SC_HANDLE   schService = 0;
 	SC_HANDLE   schSCManager = 0;
 	SERVICE_STATUS serviceStatus;
 	char	path[1024], here[1024];
-	char	*start_dir, *cmd, *p, *q;
+	char	*start_dir, *cmd, *p;
 	char	**nav;
-	int	i, j, len, try = 0;
+	char	*eVars[] = {"BK_REGRESION", "BK_DOTBK", "PATH", 0};
+	int	i, len, try = 0;
+	char	buf[MAXLINE];
 
 	if (GetModuleFileName(NULL, path, sizeof(path)) == 0) {
 		fprintf(stderr, "Unable to install %s - %s\n",
@@ -430,17 +437,17 @@ bkd_install_service(bkdopts *opts, int ac, char **av)
 		start_dir = here;
 	}
 	
-	p = aprintf("\"%s\"  bkd -S -p %d -c %d \"-s%s\" -E \"PATH=%s\"",
-		path, opts->port, opts->count, start_dir, getenv("PATH"));
+	p = aprintf("\"%s\"  bkd -S -p %d -c %d \"-s%s\"",
+		path, opts->port, opts->count, start_dir);
 	len = strlen(p) + 1;
-	if (getenv("BK_REGRESSION")) len += 30;
+	for (i = 0; eVars[i]; i++) len += strlen(genEnvArgs(buf, eVars[i]));
 	nav = malloc((ac + 1) * sizeof(char *));
 	argv_save(ac, av, nav, 0);
 	len += argv_size(nav);
 	cmd = malloc(len);
 	strcpy(cmd, p);
 	free(p);
-	if (getenv("BK_REGRESSION")) strcat(cmd, " -E \"BK_REGRESSION=YES\"");
+	for (i = 0; eVars[i]; i++) strcat(cmd, genEnvArgs(buf, eVars[i]));
 	for (i = 0; nav[i]; i++) {
 		strcat(cmd, " \"");
 		strcat(cmd, nav[i]);
@@ -486,7 +493,7 @@ out:		if (cmd) free(cmd);
 	/*
 	 * Here is where we enter the bkd_service_loop()
 	 */
-	if (StartService(schService, --ac, ++av) == 0) {
+	if (StartService(schService, --ac, (LPCTSTR *)++av) == 0) {
 		fprintf(stderr, "%s cannot start service. %s\n",
 		    SERVICEDISPLAYNAME, getError(err, 256));
 		goto out;
@@ -517,7 +524,7 @@ out:		if (cmd) free(cmd);
 /*
  * start bkd service
  */
-void
+private void
 bkd_start_service(void (*service_func)(int, char **))
 {
 	SERVICE_TABLE_ENTRY dispatchTable[] = {
@@ -534,7 +541,7 @@ bkd_start_service(void (*service_func)(int, char **))
 /*
  * stop & remove the bkd service
  */
-void
+private void
 bkd_remove_service(int verbose)
 {
 	SC_HANDLE   schService;
@@ -591,7 +598,7 @@ bkd_remove_service(int verbose)
 /*
  * code for (mini) helper thread
  */
-DWORD WINAPI
+private DWORD WINAPI
 helper(LPVOID param)
 {
 	SOCKET	sock;
@@ -616,8 +623,8 @@ helper(LPVOID param)
 	}
 }
 
-int
-bkd_register_ctrl()
+private int
+bkd_register_ctrl(void)
 {
 	DWORD threadId;
 	/*
@@ -648,7 +655,7 @@ bkd_register_ctrl()
 /*
  * This function is called by the service control manager
  */
-void WINAPI
+private void WINAPI
 bkd_service_ctrl(DWORD dwCtrlCode)
 {
 	switch(dwCtrlCode)
@@ -675,7 +682,7 @@ bkd_service_ctrl(DWORD dwCtrlCode)
 /*
  * Belows are utilities functions used by the bkd service
  */
-char *
+private char *
 getError(char *buf, int len)
 {
 	int	rc;
@@ -690,13 +697,13 @@ getError(char *buf, int len)
        		buf[0] = 0;
     	} else {
         	buf1[lstrlen(buf1)-2] = 0;
-        	sprintf(buf, "%s (0x%x)", buf1, GetLastError());
+        	sprintf(buf, "%s (0x%lx)", buf1, GetLastError());
     	}
     	if (buf1) LocalFree((HLOCAL) buf1);
 	return buf;
 }
 
-void
+private void
 reportStatus(SERVICE_STATUS_HANDLE sHandle, 
 			int dwCurrentState, int dwWin32ExitCode, int dwWaitHint)
 {
@@ -728,13 +735,14 @@ reportStatus(SERVICE_STATUS_HANDLE sHandle,
         }
 }
 
-void
+private void
 logMsg(char *msg)
 {
 	HANDLE	evtSrc = RegisterEventSource(NULL, SERVICENAME);
 
 	unless (evtSrc) return;
-	ReportEvent(evtSrc, EVENTLOG_ERROR_TYPE, 0, 0, NULL, 1, 0, &msg, NULL);
+	ReportEvent(evtSrc, EVENTLOG_ERROR_TYPE, 0, 0, NULL, 1, 0,
+		(LPCTSTR *)&msg, NULL);
 	DeregisterEventSource(evtSrc);
 }
 #endif

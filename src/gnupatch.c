@@ -178,7 +178,7 @@ gnupatch_main(int ac, char **av)
                 exit(1);
         }
 
-	sprintf(tmpdir, "%s/bk%u", TMP_PATH, getpid());
+	bktmpdir(tmpdir, "patch");
 	sprintf(buf, "%s/a", tmpdir);
 	if (mkdirp(buf)) {
                 fprintf(stderr, "gnupatch: cannot mkdir%s.\n", buf);
@@ -261,7 +261,7 @@ gnupatch_main(int ac, char **av)
 	mdbm_close(db);
 	if (cset1) free(cset1);
 	if (cset2) free(cset2);
-	chdir((char *) TMP_PATH);
-	spawnvp_ex(_P_NOWAIT, "rm", clean_av);
-	return(0);
+	chdir("/");
+	spawnvp_ex(_P_WAIT, "rm", clean_av);
+	return (0);
 }

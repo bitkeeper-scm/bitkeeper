@@ -8,7 +8,6 @@ private	MDBM	*idDB;		/* used to detect duplicate keys */
 private	int	dups;		/* duplicate key count */
 private	int	mixed;		/* running in mixed long/short mode */
 private	void	rebuild(void);
-private	sccs	*cset;
 private	int	caches(char *filename, struct stat *sb, void *data);
 
 private inline sccs *
@@ -38,6 +37,7 @@ idcache_main(int ac, char **av)
 private	void
 rebuild(void)
 {
+	sccs	*cset;
 	FILE	*id_cache;
 	char	s_cset[] = CHANGESET;
 	char	*id_tmp;
@@ -52,12 +52,12 @@ rebuild(void)
 		exit(1);
 	}
 	mixed = !LONGKEY(cset);
-
+	sccs_free(cset);
 	unless (id_tmp = bktmp_local(0, "id_tmp")) {
 		perror("bktmp_local");
 		exit(1);
 	}
-	unless (id_cache = fopen(id_tmp, "wb")) {
+	unless (id_cache = fopen(id_tmp, "w")) {
 		perror(id_tmp);
 		exit(1);
 	}
@@ -90,7 +90,7 @@ rebuild(void)
 		if (sccs_unlockfile(IDCACHE_LOCK)) perror(IDCACHE_LOCK);
 		chmod(IDCACHE, GROUP_MODE);
 	}
-out:	sccs_free(cset);
+out:	
 	free(id_tmp);
 	mdbm_close(idDB);
 }

@@ -1,9 +1,8 @@
-WinCtl.exe: WinCtl.c
-	cl.exe /nologo /ML /GX /Og /D "WIN32" /D "_CONS OLE"  /c WinCtl.c 
-	link WinCtl.obj user32.lib
+WinCtl: WinCtl.c
 
-clean clen-obj:
+clean clean-obj clobber:
 	rm -f *.exe *.obj *.pdb *.idb
 
 install: Winctl.exe
+	@if [ X$(BINDIR) = X ]; then echo Must set BINDIR; exit 1; fi
 	cp WinCtl.exe $(BINDIR)/winctlw.exe

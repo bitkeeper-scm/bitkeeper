@@ -1,0 +1,80 @@
+#!/bin/sh
+
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies. 
+#    
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2004 Andrew Isaacson
+# %K%
+
+echo $N Create initial repository ...................................$NL
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+echo OK
+
+echo $N Test trivial clone ..........................................$NL
+cd $HERE
+bk clone $Q project clone || { echo clone failed; exit 1; }
+rm -rf clone
+echo OK
+
+echo $N Test that clone with unwritable destination fails ...........$NL
+cd $HERE
+mkdir foo; chmod ugo-w foo
+bk clone $Q project foo/clone 2>ERR && { echo clone did not fail; exit 1; }
+[ -s ERR ] || { echo clone did not print error message; exit 1; }
+chmod -R u+w foo; rm -rf foo
+echo OK
+
+echo $N Test that clone with unwritable . fails .....................$NL
+cd $HERE
+mkdir foo; chmod ugo-w foo
+cd foo
+bk clone $Q ../project clone 2>$HERE/ERR && { echo clone did not fail; exit 1; }
+[ -s $HERE/ERR ] || { echo clone did not print error message; exit 1; }
+cd $HERE
+chmod -R u+w foo; rm -rf foo
+echo OK
+
+echo $N Test that clone with unwritable . and implicit dest fails ...$NL
+cd $HERE
+mkdir foo; chmod ugo-w foo
+cd foo
+bk clone $Q ../project 2>$HERE/ERR && { echo clone did not fail; exit 1; }
+[ -s $HERE/ERR ] || { echo clone did not print error message; exit 1; }
+cd $HERE
+chmod -R u+w foo; rm -rf foo
+echo OK
+
+echo $N Test clone with path ........................................$NL
+cd $HERE
+bk clone $Q project foo/bar/baz || { echo clone failed; exit 1; }
+rm -rf foo
+echo OK
+
+echo $N Test clone with partially-extant path .......................$NL
+cd $HERE
+mkdir foo; mkdir foo/bar
+bk clone $Q project foo/bar/baz/quux || { echo clone failed; exit 1; }
+rm -rf foo
+echo OK
+
+echo $N Test clone with absolute path ...............................$NL
+cd $HERE
+bk clone $Q project $HERE/foo || { echo clone failed; exit 1; }
+rm -rf foo
+echo OK
+
+echo $N Test clone with absolute path requiring mkdirp ..............$NL
+cd $HERE
+bk clone $Q project $HERE/foo/bar/baz || { echo clone failed; exit 1; }
+rm -rf foo
+echo OK

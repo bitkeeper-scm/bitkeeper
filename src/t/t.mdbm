@@ -1,0 +1,4 @@
+
+# run mdbm self test
+
+`bk bin`/mdbm/mtst  2>&1

@@ -103,7 +103,7 @@ err:		freeLines(envVar, free);
 	 * pull from each parent
 	 */
 	EACH (urls) {
-		r = remote_parse(urls[i], 0);
+		r = remote_parse(urls[i]);
 		unless (r) goto err;
 		if (opts.debug) r->trace = 1;
 		unless (opts.quiet) {
@@ -152,14 +152,14 @@ fromTo(char *op, remote *f, remote *t)
 	if (f) {
 		from = remote_unparse(f);
 	} else {
-		tmp = remote_parse(proj_root(0), 1);
+		tmp = remote_parse(proj_root(0));
 		from = remote_unparse(tmp);
 		remote_free(tmp);
 	}
 	if (t) {
 		to = remote_unparse(t);
 	} else {
-		tmp = remote_parse(proj_root(0), 1);
+		tmp = remote_parse(proj_root(0));
 		to = remote_unparse(tmp);
 		remote_free(tmp);
 	}
@@ -229,7 +229,10 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		return (1);
 	}
 	if (opts.dont) putenv("BK_STATUS=DRYRUN");
-	if (!opts.metaOnly && trigger(av[0], "pre")) return (1);
+	if (!opts.metaOnly && trigger(av[0], "pre")) {
+		disconnect(r, 2);
+		return (1);
+	}
 	bktmp(probe_list, "pullprobe");
 	fd = open(probe_list, O_CREAT|O_WRONLY, 0644);
 	assert(fd >= 0);

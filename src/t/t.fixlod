@@ -34,7 +34,7 @@ echo OK
 
 echo $N Commit the data .............................................$NL
 bk commit $S -a -yCset
-test `bk sfiles -C | wc -l` -eq 0 || {
+test `bk sfiles -pC | wc -l` -eq 0 || {
 	echo failed to commit all files
 	exit 1
 }
@@ -49,7 +49,7 @@ perl -pe "binmode(STDOUT); s/ D $rev / D 2.1 /" SCCS/s.ChangeSet > tmp
 mv SCCS/s.ChangeSet old-s.ChangeSet
 chmod 444 tmp
 mv tmp SCCS/s.ChangeSet
-bk admin -z SCCS/s.ChangeSet
+bk admin -z SCCS/s.ChangeSet || exit 1
 rev=`bk prs -r+ -hnd:I: d1/a`
 perl -pe "binmode(STDOUT); s/ D $rev / D 2.1 /" d1/SCCS/s.a > tmp
 mv d1/SCCS/s.a old-d1-s.a
@@ -89,7 +89,7 @@ echo OK
 echo $N Converge to repos which each fixed lod ......................$NL
 mkdir $HERE/clone
 cd $HERE/clone
-tar xf ../save.tar
+tar xmf ../save.tar
 bk _fix_lod1 > out1 2> err1 || {
 	echo Failed fix
 	cat err1

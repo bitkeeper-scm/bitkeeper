@@ -177,6 +177,20 @@ if [ -f "date" ]; then echo failed, did not remove file; exit 1; fi
 if writable date; then echo failed, added writable file; exit 1; fi
 bk unlock -p date
 echo OK
+echo $N Get -er will roll back to rev r .............................$NL
+rm -f olddate
+bk get $Q -Golddate -k -r1.4 date
+bk edit $Q -r1.4 date || exit 1
+if ! cmp olddate date; then echo Fail; exit 1; fi
+bk delta $Q -y1.4 date || exit 1
+if [ "`bk prs -r+ -hnd:DI: date`" != '-6,7' ]; then echo Fail; exit 1; fi
+rm -f olddate
+bk get $Q -Golddate -k -r1.6 date
+bk edit $Q -r1.6 date || exit 1
+if ! cmp olddate date; then echo Fail; exit 1; fi
+bk delta $Q -y1.6 date || exit 1
+if [ "`bk prs -r+ -hnd:DI: date`" != '-8' ]; then echo Fail; exit 1; fi
+echo OK
 echo $N Make sure get -n works ......................................$NL
 echo HI > T
 bk ci $Q -i T
@@ -212,11 +226,21 @@ test -f ChangeSet && {
 	echo should not have gotten ChangeSet
 	exit 1
 }
+bk get -q .
+test -f ChangeSet && {
+	echo should not have gotten ChangeSet
+	exit 1
+}
 bk clean
 echo OK
 
 echo $N Make sure get -e does not get ChangeSet .....................$NL
 bk get -qe
+test -f ChangeSet && {
+	echo should not have gotten ChangeSet
+	exit 1
+}
+bk get -qe .
 test -f ChangeSet && {
 	echo should not have gotten ChangeSet
 	exit 1
@@ -359,13 +383,13 @@ echo OK
 
 echo $N Test sccs get with foo.c -Gbar.c ............................$NL
 mkdir bin
-BK=`bk bin`/bk
+BK="`bk bin`"/bk
 SCCS=bin/sccs
-test -f ${BK}.exe && {
-	BK=${BK}.exe
+test -f "${BK}.exe" && {
+	BK="${BK}.exe"
 	SCCS=bin/sccs.exe
 }
-cp $BK $SCCS
+cp "$BK" $SCCS
 rm -rf subdir T
 ./bin/sccs clean
 ./bin/sccs get $Q foo.c -Gbar.c || {

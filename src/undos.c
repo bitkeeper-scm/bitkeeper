@@ -3,28 +3,35 @@
 
 private	void	undos(char *s);
 private void	undos_stdin(void);
+private	void	redos_stdin(void);
 int	auto_new_line = 1;
 
 int
 undos_main(int ac, char **av)
 {
 	int 	c;
+	int	redos = 0;
 
 	if (ac == 2 && !strcmp("--help", av[1])) {
 		system("bk help undos");
 		return (0);
 	}
 
- 	while ((c = getopt(ac, av, "n")) != -1) { 
+ 	while ((c = getopt(ac, av, "nr")) != -1) { 
 		switch (c) {
 		    case 'n': auto_new_line = 0; break;		/* doc 2.0 */
+		    case 'r': redos = 1; break;			/* undoc */
 		    default:
 			system("bk help -s undos");
 			return (1);
 		}
 	}
 	unless (av[optind]) {
-		undos_stdin();
+		if (redos) {
+			redos_stdin();
+		} else {
+			undos_stdin();
+		}
 		return (0);
 	}
 	while (av[optind]) {
@@ -63,6 +70,27 @@ again:		switch (c = getchar()) {
 			break;
 		}
 	}
+}
+
+/*
+ * Make out have CRLF if it doesn't already
+ */
+private void
+redos_stdin(void)
+{
+	int	c, sawcr = 0;
+
+	while ((c = getchar()) != EOF) {
+		switch (c) {
+		case '\r': sawcr = 1; break;
+		case '\n':
+			unless (sawcr) putchar('\r');
+		default:
+			sawcr = 0;
+			putchar(c);
+			break;
+		}
+	} 
 }
 
 private void

@@ -66,10 +66,26 @@ bk edit $Q foo
 bk import $Q -tpatch BitKeeper/tmp/P . || exit 1
 echo OK
 
+echo $N Test import of a patch with p0 ..............................$NL
+cd $HERE
+rm -rf EDIT
+tar xmf TAR
+cd EDIT
+cat >> BitKeeper/tmp/foo <<EOF
+A
+C
+E
+G
+EOF
+bk get $Q foo
+bk diff -ruN foo BitKeeper/tmp/foo > BitKeeper/tmp/P
+bk import $Q -tpatch -p0 BitKeeper/tmp/P . || exit 1
+echo OK
+
 echo $N Make sure an import does not commit unrelated deltas ........$NL
 cd $HERE
 rm -rf EDIT
-tar xf TAR
+tar xmf TAR
 cd EDIT
 bk edit $Q foo bar
 cat >> foo <<EOF
@@ -98,7 +114,7 @@ echo OK
 echo $N Test import of a patch into a tree with modified BK files ...$NL
 cd $HERE
 rm -rf EDIT
-tar xf TAR
+tar xmf TAR
 cd EDIT
 bk edit $Q foo bar
 cat >> foo <<EOF
@@ -138,7 +154,7 @@ echo $N Make sure a patch creating a file does not overwrite ........$NL
 cd $HERE/EDIT
 mkdir a b
 echo 'I am the patch file being imported.' > a/extra
-diff -Nur a b > BitKeeper/tmp/P
+bk diff -Nur a b > BitKeeper/tmp/P
 rm -rf a b
 echo hi mom > extra
 cp extra BitKeeper/tmp
@@ -186,19 +202,28 @@ cat > $HERE/B/bar <<EOF
 EOF
 # force a delete event for "foo"
 rm -f $HERE/B/foo
-diff -Nur A B > $HERE/patch
+bk diff -Nur A B > $HERE/patch
 cd $HERE/EDIT
 bk get $Q -r+ -p foo > foo.ref
-bk import $Q -tpatch  $HERE/patch  $HERE/EDIT > BitKeeper/tmp/PLOG
-if [ $? -eq 0 ]; then echo failed to reject bad patch; exit 1; fi
-grep -q 'hunk FAILED -- saving rejects to file bar.rej' BitKeeper/tmp/PLOG
-if [ $? -ne 0 ]; then echo failed to reject bad patch; exit 1; fi
+bk import $Q -tpatch -R $HERE/patch $HERE/EDIT \
+    > BitKeeper/tmp/PLOG 2>&1 < /dev/null
+test $? -eq 0 && {
+	echo failed to reject bad patch
+	cat BitKeeper/tmp/PLOG
+	exit 1
+}
+grep -q 'hunk FAILED -- saving rejects to file bar.rej' BitKeeper/tmp/PLOG || {
+	echo failed to reject bad patch, no hunk FAILED
+	cat BitKeeper/tmp/PLOG
+	exit 1
+}
 bk get $Q -r+ -p foo > foo.now
 cmp -s foo.now foo.ref || { echo failed; exit 1; }
 rm -f foo.now foo.ref bar.ref
 if [ -f bar ]; then echo failed; exit 1; fi
 if [ -f SCCS/p.foo ]; then echo failed to unlock foo; exit 1; fi
 echo OK
+
 rm -rf $HERE/A $HERE/B $HERE/EDIT/*.rej
 echo $N Make sure we allow a file to be patched multiple times ......$NL
 # make a patch
@@ -207,7 +232,7 @@ bk export -tplain -r+ $HERE/EDIT $HERE/A
 bk export -tplain -r+ $HERE/EDIT $HERE/B
 chmod +w $HERE/A/bar $HERE/B/bar $HERE/B/foo
 echo E >> $HERE/B/bar
-diff -Nur A B > $HERE/patch
+bk diff -Nur A B > $HERE/patch
 echo E >> $HERE/A/bar
 cat >$HERE/B/bar <<EOF
 B
@@ -215,7 +240,7 @@ C
 D
 E
 EOF
-diff -Nur A B >> $HERE/patch
+bk diff -Nur A B >> $HERE/patch
 cd $HERE/EDIT
 bk import $Q -tpatch  $HERE/patch  $HERE/EDIT
 cat > bar.ref <<EOF
@@ -231,7 +256,7 @@ echo OK
 echo $N Test import of an email patch ...............................$NL
 cd $HERE
 rm -rf EDIT
-tar xf TAR
+tar xmf TAR
 cd EDIT/BitKeeper/etc
 bk edit $Q config
 echo "license: $BKL_P" > config
@@ -240,13 +265,23 @@ echo "licsign2: $BKL_P2" >> config
 echo "licsign3: $BKL_P3" >> config
 echo "logging: none" >> config
 echo "logging_ask: no" >> config
+bk lease flush
 bk delta $Q -yprivate
-bk commit $Q -yprivate
+bk commit $Q -yprivate 2> OUT && {
+	echo should have failed
+	cat OUT
+	exit 1
+}
+grep -q "Please read 'bk help multiuser'" OUT || {
+	echo wrong error message
+	exit 1
+}
 bk multiuser 2> OUT || {
 	echo failed
 	cat OUT
 	exit 1
 }
+bk commit $Q -yprivate
 test `wc -l < OUT` -eq 1 || {
 	echo errors from multiuser
 	cat OUT
@@ -300,6 +335,7 @@ bk import -temail < BitKeeper/tmp/E > BitKeeper/tmp/PLOG 2>&1 || {
 bk get $Q foo
 grep -q G foo || {
 	echo failed to apply patch
+	cat BitKeeper/tmp/PLOG
 	exit 1
 }
 U=akushner@bitmover.com+`bk getuser -r`
@@ -363,11 +399,11 @@ mkdir -p import_new/src
 echo "foo-new" > X
 bk undos X >  $HERE/import_new/src/foo.c
 rm import_dir/src/link
-diff -Nru import_dir import_new > test_patch || : # legitimately exits 1
+bk diff -Nru import_dir import_new > test_patch || : # legitimately exits 1
 ( echo patch; echo no ) | bk import test_patch project > import.out 2>&1
 cd $HERE/project/src
 bk get $Q foo.c
-diff -u foo.c $HERE/import_new/src/foo.c
+bk diff -u foo.c $HERE/import_new/src/foo.c
 cmp -s foo.c $HERE/import_new/src/foo.c
 U=`bk prs -r+ -h -d:P: foo.c`
 if [ X$U != Xpatch -a X$U != Xbk ] 
@@ -383,7 +419,7 @@ bk export ../export
 cd ..
 cp -rp export export2
 rm -f export2/src/foo.c
-diff -Nru export export2 > test_patch || : # legitimately exits 1
+bk diff -Nru export export2 > test_patch || : # legitimately exits 1
 ( echo patch; echo no ) | bk import test_patch project > import.out 2>&1
 cd project
 if [ -f src/SCCS/s.foo ]
@@ -417,7 +453,7 @@ cd $HERE
 cp -rp import1 import2
 echo bar >> import2/src/foo.c
 echo baz > import2/src/baz.c
-diff -Nur import1 import2 > patch || : # legitimately exits 1
+bk diff -Nur import1 import2 > patch || : # legitimately exits 1
 bk clean $Q projc/src/foo.c || exit 1
 bk import -tpatch $Q -f patch projc || exit 1
 test -f projc/src/foo.c || exit 1
@@ -765,7 +801,7 @@ bk export -S $HERE/A
 bk export -S $HERE/B
 cd $HERE
 rm -f B/BitKeeper/etc/logging_ok
-diff -Nur A B > P
+bk diff -Nur A B > P
 rm -rf SAVE
 cp -rp project SAVE
 unset BK_GUI
@@ -802,7 +838,7 @@ EOF
 bk new $Q foo.rej data
 bk commit $Q -ywah
 cat > $HERE/patch <<EOF
-diff -Nru a/data b/data
+bk diff -Nru a/data b/data
 --- a/data   Sun Mar  3 21:37:06 2002
 +++ b/data   Sun Mar  3 21:37:17 2002
 @@ -1,4 +1,4 @@
@@ -822,7 +858,7 @@ echo OK
 
 echo $N Make sure that patch rejects are still caught ...............$NL
 cat > $HERE/patch <<EOF
-diff -Nru a/data b/data
+bk diff -Nru a/data b/data
 --- a/data   Sun Mar  3 21:37:06 2002
 +++ b/data   Sun Mar  3 21:37:17 2002
 @@ -1,4 +1,4 @@
@@ -913,8 +949,16 @@ cd $HERE
 no_logging import-CVS.1
 bk import -quftCVS $TESTDATA/import-CVS.1 .
 bk get -q
-test -f BitKeeper/deleted/SCCS/s..del-pkginfo* || {
+P1=BitKeeper/deleted/SCCS/s..del-pkginfo*
+test -f $P1 || {
 	echo failed to get pkginfo from the Attic
+	exit 1
+}
+P1=`echo $P1 | sed 's,SCCS/s.,,'`
+P2=`bk prs -hnd:DPN: -r+ $P1`
+test "$P1" != "$P2" && {
+	echo pathname not stored correctly
+	echo $P1 vs $P2
 	exit 1
 }
 test -d Attic && {

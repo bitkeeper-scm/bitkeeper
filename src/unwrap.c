@@ -39,7 +39,7 @@ unwrap_main(int ac,  char **av)
 
 				return (spawnvp_ex(_P_WAIT, wrap_path, av));
 			} else {
-				FILE *f = fopen(DEV_TTY, "wb");
+				FILE *f = fopen(DEV_TTY, "w");
 				fprintf(f,
 					"bk receive: don't have %s wrapper\n",
 					wrap);

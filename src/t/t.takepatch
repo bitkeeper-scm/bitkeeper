@@ -1,0 +1,72 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+
+# Copyright (c) 2004 adi@bitmover.com
+# %K%
+
+echo $N Create initial repository ...................................$NL
+cat > c <<EOF
+logging: none
+license: $BKL_P
+licsign1: $BKL_P1
+licsign2: $BKL_P2
+licsign3: $BKL_P3
+description: BitKeeper Test repository
+email: nobody@nowhere.bk
+EOF
+BK_HOST=bk_regression.bitkeeper.com
+export BK_HOST
+bk setup -f -cc project
+cd project
+echo foo > f
+BK_USER=adam bk delta $Q -i -y'Initial checkin' f
+BK_USER=adam bk commit $Q -y'Initial checkin' || exit 1
+bk edit $Q f
+BK_USER=second bk delta $Q -y'Second checkin' f
+BK_USER=second bk commit $Q -Ssecond -y'Second checkin' || exit 1
+bk edit $Q f
+BK_USER=third bk delta $Q -y'Third checkin' f
+BK_USER=third bk commit $Q -Sthird -y'Third checkin' || exit 1
+echo OK
+
+echo $N Test basic takepatch ........................................$NL
+cd $HERE
+bk clone $Q -r1.2 project clone1
+cd project
+bk makepatch $Q -r1.2..+ > $HERE/patch
+cd $HERE/clone1
+bk takepatch $Q -a < $HERE/patch
+bk changes -L $HERE/project > c1 || [ -s c1 ] || {
+       echo "unexpected output from changes -L:"
+       cat c1
+       exit 1
+} >&2
+bk changes -R $HERE/project > c2 || [ -s c2 ] || {
+       echo "unexpected output from changes -R:"
+       cat c2
+       exit 1
+} >&2
+echo OK
+
+echo $N Do another takepatch, verify no output ......................$NL
+cd $HERE/clone1
+bk takepatch -a < $HERE/patch > e1 2>&1 || {
+	echo "takepatch exited with $?" >&2
+	exit 1;
+}
+[ -s e1 ] && {
+	echo
+	echo "Unexpected output from takepatch:"
+	cat e1
+	exit 1
+} >&2
+echo OK
