@@ -367,7 +367,9 @@ proc getFiles {} \
 	if {$ht > 12} { set ht 12 }
 	set diff [expr {$gc(rename.listHeight) - $ht}]
 	incr gc(rename.diffHeight) $gc(rename.listHeight)
-	incr gc(rename.listHeight) -$diff
+	if {$diff > 0} {
+		incr gc(rename.listHeight) -$diff
+	}
 	.diffs.l configure -height $gc(rename.diffHeight)
 	.diffs.r configure -height $gc(rename.diffHeight)
 	.files.l configure -state disabled -height $gc(rename.listHeight)
