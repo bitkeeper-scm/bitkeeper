@@ -130,7 +130,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	if (bkd_connect(r, opts.gzip, !opts.quiet)) goto done;
 	if (send_clone_msg(opts, gzip, r, envVar)) goto done;
 
-	if (r->httpd) skip_http_hdr(r);
+	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	if (getline2(r, buf, sizeof (buf)) <= 0) return (-1);
 	if (remote_lock_fail(buf, !opts.quiet)) {
 		return (-1);

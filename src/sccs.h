@@ -702,8 +702,8 @@ struct command
  */
 typedef struct {
 	u16	port;		/* remote port if set */
+	u16	type:3;		/* address type, nfs/bk/http/file/ssh/rsh */
 	u16	loginshell:1;	/* if set, login shell is the bkd */
-	u16	httpd:1;	/* if set, httpd is the bkd */
 	u16	trace:1;	/* for debug, trace send/recv msg */
 	u16	isSocket:1;	/* if set, rfd and wfd are sockets */
 	u16	badhost:1;	/* if set, hostname lookup failed */
@@ -713,6 +713,20 @@ typedef struct {
 	char	*host;		/* remote host if set */
 	char	*path;		/* pathname (must be set) */
 } remote;
+
+#define	ADDR_NFS	0x000	/* host:/path */
+#define	ADDR_BK		0x001	/* bk://host:[port]//path */
+#define	ADDR_HTTP	0x002	/* http://host:[port]//path */
+#define	ADDR_FILE	0x003	/* file://path */
+#define	ADDR_SSH	0x004	/*
+				 * ssh:[user@]host//path or
+				 * ssh:[user@]host:/path
+				 */
+#define	ADDR_RSH	0x005	/*
+				 * rsh:[user@]host//path or
+				 * rsh:[user@]host:/path
+				 */
+
 
 
 int	sccs_admin(sccs *sc, delta *d, u32 flgs, char *encoding, char *compress,

@@ -304,7 +304,7 @@ push_part1(opts opts, remote *r, char rev_list[MAXPATH], char **envVar)
 	send_part1_msg(opts, r, rev_list, envVar);
 	if (r->rfd < 0) return (-1);
 
-	if (r->httpd) skip_http_hdr(r);
+	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	if (getline2(r, buf, sizeof(buf)) <= 0) return (-1);
 	if ((rc = remote_lock_fail(buf, opts.verbose))) {
 		return (rc); /* -2 means locked */
@@ -408,7 +408,7 @@ these changes or do a \"bk pull -nl\" to see what they are.\n", rcsets);
 		}
 	}
 	sccs_free(s);
-	if (r->httpd) disconnect(r, 2);
+	if (r->type == ADDR_HTTP) disconnect(r, 2);
 	/*
 	 * if lcsets > 0, we update the log marker in push part 2
 	 */
@@ -487,7 +487,7 @@ send_end_msg(opts opts, remote *r, char *msg, char *rev_list, char **envVar)
 	 * No need to do "cd" again if we have a non-http connection
 	 * becuase we already did a "cd" in pull part 1
 	 */
-	if (r->path && r->httpd) add_cd_command(f, r);
+	if (r->path && (r->type == ADDR_HTTP)) add_cd_command(f, r);
 	fprintf(f, "push_part2");
 	if (gzip) fprintf(f, " -z%d", opts.gzip);
 	if (opts.metaOnly) fprintf(f, " -e");
@@ -528,7 +528,7 @@ send_patch_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
 	 * No need to do "cd" again if we have a non-http connection
 	 * becuase we already did a "cd" in pull part 1
 	 */
-	if (r->path && r->httpd) add_cd_command(f, r);
+	if (r->path && (r->type == ADDR_HTTP)) add_cd_command(f, r);
 	fprintf(f, "push_part2");
 	if (gzip) fprintf(f, " -z%d", opts.gzip);
 	if (opts.debug) fprintf(f, " -d");
@@ -555,7 +555,7 @@ send_patch_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
 	 * We have to comoute the ptach size before we sent
 	 * 6 is the size of "@END@" string
 	 */
-	if (r->httpd) {
+	if (r->type == ADDR_HTTP) {
 		m = patch_size(opts, gzip, rev_list);
 		assert(m > 0);
 		extra = m + 6;
@@ -564,7 +564,7 @@ send_patch_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
 	rc = send_file(r, msgfile, extra, opts.gzip);	
 
 	n = genpatch(opts, gzip, r->wfd, rev_list);
-	if ((r->httpd) && (m != n)) {
+	if ((r->type == ADDR_HTTP) && (m != n)) {
 		fprintf(stderr,
 			"Error: patch have change size from %d to %d\n",
 			m, n);
@@ -587,7 +587,7 @@ send_patch_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
 
 	if (opts.debug) {
 		fprintf(stderr, "Send done, waiting for remote\n");
-		if (r->httpd) {
+		if (r->type == ADDR_HTTP) {
 			fprintf(stderr,
 				"Note: since httpd batch a large block of\n"
 				"output together before it send back a reply\n"
@@ -629,7 +629,7 @@ push_part2(char **av, opts opts,
 	char	buf[4096];
 	int	n, rc = 0, done = 0, do_pull = 0;
 
-	if (r->httpd && bkd_connect(r, opts.gzip, opts.verbose)) {
+	if ((r->type == ADDR_HTTP) && bkd_connect(r, opts.gzip, opts.verbose)) {
 		rc = 1;
 		goto done;
 	}
@@ -662,7 +662,7 @@ push_part2(char **av, opts opts,
 		}
 	}
 
-	if (r->httpd) skip_http_hdr(r);
+	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	getline2(r, buf, sizeof(buf));
 	if (remote_lock_fail(buf, opts.verbose)) {
 		return (-1);
@@ -775,6 +775,7 @@ push(char **av, opts opts, remote *r, char **envVar)
 
 	if ((bk_mode() == BK_BASIC) && !opts.metaOnly &&
 	    !isLocalHost(r->host) && exists(BKMASTER)) {
+
 		fprintf(stderr, "Cannot push from master repository: %s",
 			upgrade_msg);
 		exit(1);

@@ -31,16 +31,36 @@ remote_parse(char *p, int is_clone)
 	unless (p) return (0);
 	if (strneq("bk://", p, 5)) {
 		r = url_parse(p + 5, BK_PORT);
+		if (r) r->type = ADDR_BK;;
 	} else if (!is_clone && (bk_mode() == BK_BASIC)) {
 		fprintf(stderr,
 		    "Non-bk:// address detected: %s\n", upgrade_msg);
 		r = NULL;
 	} else if (strneq("http://", p, 7)) {
 		r = url_parse(p + 7, WEB_PORT);
-		if (r) r->httpd = 1;
+		if (r) r->type = ADDR_HTTP;;
+	} else if (strneq("rsh://", p, 6)) {
+		r = url_parse(p + 6, 0);
+		if (r) {
+			r->type = ADDR_RSH;;
+			r->port = 0; /*
+				      * Non-standard rsh port
+				      * not supported yet
+				      */
+		}
+	} else if (strneq("ssh://", p, 6)) {
+		r = url_parse(p + 6, 0);
+		if (r) {
+			r->type = ADDR_SSH;;
+			r->port = 0; /*
+				      * Non-standard ssh port
+				      * not supported yet
+				      */
+		}
 	} else {
 		if (strneq("file://", p, 7)) {
 			r = file_parse(p);
+			if (r) r->type = ADDR_FILE;;
 		} else if (strneq("file:/", p, 6)) {
 			fprintf(stderr,
 			    "\"file\" is a illegal host name.\n"
@@ -48,6 +68,7 @@ remote_parse(char *p, int is_clone)
 			r = NULL;
 		} else {
 			r = nfs_parse(p);
+			if (r) r->type = ADDR_NFS;;
 		}
 	}
 	if (r && append && cmdlog_buffer[0]) {
@@ -139,7 +160,11 @@ url_parse(char *p, int default_port)
 	unless (*p) return (0);
 	new(r);
 	r->rfd = r->wfd = -1;
-	if (s = strchr(p, '@')) {		/* user@host[:path] */
+	if (s = strchr(p, '@')) {		
+		/*
+		 * user@host[:path] or
+		 * user@host[/path]
+		 */
 		r->loginshell = 1;
 		*s = 0; r->user = strdup(p); p = s + 1; *s = '@';
 		s = p;
@@ -155,7 +180,10 @@ url_parse(char *p, int default_port)
 		} else {
 			r->host = strdup(p);
 		}
-	} else if ((s = strchr(p, ':')) && isdigit(s[1])) { /* host:port[/path] */
+	} else if ((s = strchr(p, ':')) && isdigit(s[1])) {
+		/*
+		 * host:port[/path]
+		 */
 		*s = 0; r->host = strdup(p); p = s + 1; *s = ':';
 		r->port = atoi(p);
 		/*
@@ -166,16 +194,29 @@ url_parse(char *p, int default_port)
 		while (isdigit(*p)) p++;
 		if ((*p == ':') || (*p == '/')) p++; /* skip field separator */
 		if (*p) r->path = strdup(p);
-	} else if (s = strchr(p, '/')) {	/* host/path */
-		*s++ = 0;
-		r->port = default_port;
-		r->host = strdup(p);
-		//*s = '/';
-		r->path = strdup(s);
-	} else { 				/* host */
-		r->port = default_port;
-		r->host = strdup(p);
-		r->path = 0;
+	} else {
+		/*
+		 * host/path or
+		 * host:path or
+		 * path
+		 */
+		s = p;
+		while (*s) {
+			if ((*s == ':') || (*s == '/')) break;
+			s++;
+		}
+		if (*s) {
+			sav = *s;
+			*s++ = 0;
+			r->port = default_port;
+			r->host = strdup(p);
+			r->path = strdup(s);
+			s[-1] = sav;
+		} else {
+			r->port = default_port;
+			r->host = strdup(p);
+			r->path = 0;
+		}
 	}
 	return (r);
 }
@@ -191,8 +232,15 @@ remote_unparse(remote *r)
 	char	buf[MAXPATH*2];
 	char	port[10];
 
-	if (r->port || r->loginshell) {
-		strcpy(buf, r->httpd ? "http://" : "bk://");
+	if ((r->type == ADDR_HTTP) || (r->type == ADDR_BK) ||
+	    (r->type == ADDR_RSH) || (r->type == ADDR_SSH)) {
+		switch (r->type) {
+		    case ADDR_BK:	strcpy(buf, "bk://"); break;
+		    case ADDR_HTTP:	strcpy(buf, "http://"); break;
+		    case ADDR_RSH:	strcpy(buf, "rsh://"); break;
+		    case ADDR_SSH:	strcpy(buf, "ssh://"); break;
+		    default:		assert("unknown address type" == 0);
+		}
 		if (r->user) {
 			strcat(buf, r->user);
 			strcat(buf, "@");
@@ -200,7 +248,11 @@ remote_unparse(remote *r)
 		assert(r->host);
 		strcat(buf, r->host);
 		if (r->port) {
-			if (r->port != BK_PORT) {
+			/*
+			 * If default port, skip
+			 */
+			if (((r->type == ADDR_BK) && (r->port != BK_PORT))  ||
+			    ((r->type == ADDR_HTTP) && (r->port != WEB_PORT))) {
 				strcat(buf, ":");
 				sprintf(port, "%u", r->port);
 				strcat(buf, port);
@@ -279,7 +331,9 @@ bkd(int compress, remote *r)
 	}
 	t = sccs_gethost();
 	if (r->host && (!t || !streq(t, r->host))) { 
-		if (((t = getenv("PREFER_RSH")) && streq(t, "YES")) ||
+		if ((r->type == ADDR_RSH) ||
+		    (r->type == ADDR_NFS &&
+			(t = getenv("PREFER_RSH")) && streq(t, "YES")) ||
 		    !findprog("ssh")) {
 #ifdef	hpux
 			remsh = "remsh";

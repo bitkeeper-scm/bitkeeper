@@ -140,7 +140,7 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	if (bkd_connect(r, opts.gzip, !opts.quiet)) return (-1);
 	if (send_part1_msg(opts, r, probe_list, envVar)) return (-1);
 
-	if (r->httpd) skip_http_hdr(r);
+	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	if (getline2(r, buf, sizeof (buf)) <= 0) return (-1);
 	if ((rc = remote_lock_fail(buf, !opts.quiet))) {
 		return (rc); /* -2 means lock busy */
@@ -174,7 +174,7 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	}
 	if (opts.gzip) gzip_done();
 	close(fd);
-	if (r->httpd) disconnect(r, 2);
+	if (r->type == ADDR_HTTP) disconnect(r, 2);
 	return (0);
 }
 
@@ -194,7 +194,7 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	 * No need to do "cd" again if we have a non-http connection
 	 * becuase we already did a "cd" in pull part 1
 	 */
-	if (r->path && r->httpd) add_cd_command(f, r);
+	if (r->path && (r->type == ADDR_HTTP)) add_cd_command(f, r);
 	fprintf(f, "pull_part2");
 	if (opts.gzip) fprintf(f, " -z%d", opts.gzip);
 	if (opts.metaOnly) fprintf(f, " -e");
@@ -235,14 +235,16 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	int	rc = 0, n, i;
 	char	*pr[2] = { "resolve", 0 };
 
-	if (r->httpd && bkd_connect(r, opts.gzip, !opts.quiet)) return (-1);
+	if ((r->type == ADDR_HTTP) && bkd_connect(r, opts.gzip, !opts.quiet)) {
+		return (-1);
+	}
 	if (send_keys_msg(opts, r, probe_list, envVar)) {
 		putenv("BK_STATUS=PROTOCOL ERROR");
 		rc = 1;
 		goto done;
 	}
 
-	if (r->httpd) skip_http_hdr(r);
+	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	getline2(r, buf, sizeof (buf));
 	if (remote_lock_fail(buf, !opts.quiet)) {
 		return (-1);

@@ -45,7 +45,7 @@ pid_t
 bkd_tcp_connect(remote *r)
 {
 	int i;
-	if (r->httpd) {
+	if (r->type == ADDR_HTTP) {
 		http_connect(r, WEB_BKD_CGI);
 	} else {
 		i = tcp_connect(r->host, r->port);
