@@ -98,7 +98,10 @@ resolve_main(int ac, char **av)
 			exit(1);
 		}
     	}
-	unless (opts.mergeprog) opts.mergeprog = "merge";
+	unless (opts.mergeprog) {
+		char	*env = getenv("BK_RESOLVE_MERGEPROG");
+		opts.mergeprog = env ? env : "merge";
+	}
 	if ((av[optind] != 0) && isdir(av[optind])) chdir(av[optind]);
 
 	if (opts.pass3 && !opts.textOnly && !hasGUIsupport()) {
@@ -1814,6 +1817,36 @@ get_revs(resolve *rs, names *n)
 	return (0);
 }
 
+private void
+export_rev(char **string, int *size, const char *name, const char *ver)
+{
+	int	len = strlen(name) + strlen(ver) + 14;
+	int	doputenv = 0;
+
+	if (*size < len) {
+		if (*string) free(*string);
+		*size = len + 16; /* extra just in case */
+		*string = malloc(*size);
+		doputenv = 1;
+	}
+	sprintf(*string, "MERGE_REVS_%s=%s", name, ver);
+	if (doputenv) {
+		int	ret;
+		ret = putenv(*string);
+		assert(ret == 0);
+	}
+}
+
+void
+export_revs(resolve *rs)
+{
+	static	char	*strings[3];
+	static	int	size[3] = {0, 0, 0};
+
+	export_rev(&strings[0], &size[0], "LOCAL", rs->revs->local);
+	export_rev(&strings[1], &size[1], "GCA", rs->revs->gca);
+	export_rev(&strings[2], &size[2], "REMOTE", rs->revs->remote);
+}
 
 /*
  * Try to automerge.
@@ -1852,6 +1885,7 @@ automerge(resolve *rs, names *n)
 	 * and the program must return as follows:
 	 * 0 for no overlaps, 1 for some overlaps, 2 for errors.
 	 */
+	export_revs(rs);
 	ret = sys("bk", rs->opts->mergeprog,
 	    n->local, n->gca, n->remote, rs->s->gfile, SYS);
 	if (do_free) {
