@@ -28,7 +28,7 @@ cmd_push_part1(int ac, char **av)
 	if (debug) fprintf(stderr, "cmd_push_part1: sending server info\n");
 	setmode(0, _O_BINARY); /* needed for gzip mode */
 	sendServerInfoBlock(0);
-	unless (isdir("BitKeeper/etc")) {
+	unless (isdir("BitKeeper/etc") || metaOnly) {
 		out("ERROR-Not at package root\n");
 		out("@END@\n");
 		drain();
