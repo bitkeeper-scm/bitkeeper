@@ -161,9 +161,9 @@ proc widgets {} \
 		    -bd 2 \
 		    -relief groove
 
-		array set font [font actual [$widgets(logo) cget -font]]
-		incr font(-size) 4
-		$widgets(logo) configure -font [array get font]
+		array set tmp [font actual [$widgets(logo) cget -font]]
+		incr tmp(-size) 4
+		$widgets(logo) configure -font [array get tmp]
 	}
 
 	## The widget(s) to display the message
