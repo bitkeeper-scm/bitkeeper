@@ -49,6 +49,7 @@ private	int	rename_file(resolve *rs);
 private	void	restore(opts *o);
 private void	merge_loggingok(resolve *rs);
 private void	unapply(FILE *f);
+private int	copyAndGet(char *from, char *to, project *proj);
 #ifdef WIN32_FILE_SYSTEM
 private MDBM	*localDB;		/* real name cache for local tree */
 private MDBM	*resyncDB;	/* real name cache for resyn tree */
@@ -2180,7 +2181,7 @@ pass4_apply(opts *opts)
 {
 	sccs	*r, *l;
 	int	offset = strlen(ROOT2RESYNC) + 1;	/* RESYNC/ */
-	FILE	*f, *p;
+	FILE	*f;
 	FILE	*save;
 	char	buf[MAXPATH];
 	char	key[MAXKEY];
@@ -2279,7 +2280,6 @@ pass4_apply(opts *opts)
 	}
 	fflush(f);
 	rewind(f);
-	p = popen("bk get -q -", "w");
 	while (fnext(buf, f)) {
 		chop(buf);
 		/*
@@ -2297,7 +2297,7 @@ pass4_apply(opts *opts)
 		if (opts->log) {
 			fprintf(stdlog, "copy(%s, %s)\n", buf, &buf[offset]);
 		}
-		if (copyAndGet(buf, &buf[offset], p)) {
+		if (copyAndGet(buf, &buf[offset], opts->local_proj)) {
 			perror("copy");
 			fprintf(stderr,
 			    "copy(%s, %s) failed\n", buf, &buf[offset]);
@@ -2352,9 +2352,6 @@ Got:\n\
 				fprintf(stderr, unknown_err, buf,
 						&buf[offset], buf, realname);
 			}
-#ifdef WIN32
-			sleep(1); /* for win98; wait for "bk get" to exit */
-#endif
 			unapply(save);
 			restore(opts);
 			exit(1);
@@ -2362,7 +2359,6 @@ Got:\n\
 #endif /* WIN32_FILE_SYSTEM */
 	}
 	fclose(f);
-	pclose(p);
 	unless (opts->quiet) {
 		fprintf(stderr,
 		    "resolve: applied %d files in pass 4\n", opts->applied);
@@ -2396,17 +2392,19 @@ Got:\n\
 	return (0);
 }
 
-/*
- * XXX - needs to be a copy on NT
- */
-int
-copyAndGet(char *from, char *to, FILE *p)
+private int
+copyAndGet(char *from, char *to, project *proj)
 {
+	sccs *s;
+
 	if (link(from, to)) {
 		mkdirf(to);
 		if (link(from, to)) return (-1);
 	}
-	fprintf(p, "%s\n", to);
+	s = sccs_init(to, INIT_SAVEPROJ, proj);
+	assert(s && s->tree);
+	sccs_get(s, 0, 0, 0, 0, SILENT, "-");
+	sccs_free(s);
 	return (0);
 }
 

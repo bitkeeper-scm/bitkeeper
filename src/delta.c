@@ -10,6 +10,7 @@ WHATSTR("@(#)%K%");
 */
 private	char	*delta_help = "\n\
 usage: delta [-iluYpq] [-S<sym>] [-Z<alg>] [-y<c>] [files...]\n\n\
+   -1		force one-root mode\n\
    -a		check in new work automatically\n\
    -c		don't verify file checksum\n\
    -D<file>	take diffs from <file>\n\
@@ -77,9 +78,10 @@ help:		fputs(delta_help, stderr);
 		return (1);
 	}
 	while ((c = getopt(ac, av,
-			   "acD:E|fg;GhI;ilm|M;npqRrS;suy|YZ|")) != -1) {
+			   "1acD:E|fg;GhI;ilm|M;npqRrS;suy|YZ|")) != -1) {
 		switch (c) {
 		    /* SCCS flags */
+		    case '1': iflags |= INIT_ONEROOT; break;
 		    case 'n': dflags |= DELTA_SAVEGFILE; break;
 		    case 'p': dflags |= PRINT; break;
 		    case 'y':

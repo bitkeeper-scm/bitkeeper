@@ -5527,7 +5527,8 @@ out:			if (slist) free(slist);
 		}
 		popened = openOutput(encoding, f, &out);
 		unless (out) {
-			fprintf(stderr, "Can't open %s for writing\n", f);
+			fprintf(stderr, "getRegody: Can't open %s for writing\n", f);
+			fflush(stderr);
 			goto out;
 		}
 	}
@@ -5811,7 +5812,8 @@ getLinkBody(sccs *s,
 		assert(popened == 0);
 		unless (out) {
 			fprintf(stderr,
-				"Can't open %s for writing\n", f);
+				"getLinkBody: Can't open %s for writing\n", f);
+			fflush(stderr);
 			return 1;
 		}
 		fprintf(out, "SYMLINK -> %s\n", d->symlink);
@@ -8082,7 +8084,6 @@ checkin(sccs *s,
 		unless (m = loadConfig(s->proj->root, 0)) goto no_config;
 		user = mdbm_fetch_str(m, "single_user");
 		host = mdbm_fetch_str(m, "single_host");
-		mdbm_close(m);
 		unless (user && host) goto no_config;
 		d = s->tree;
 		free(d->user);
@@ -8102,6 +8103,7 @@ checkin(sccs *s,
 		}
 		s->state |= S_SINGLE;
 		first->xflags |= X_SINGLE;
+		mdbm_close(m);
 	}
 
 no_config:

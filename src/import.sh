@@ -374,7 +374,7 @@ import_text () {
 
 	cd $2
 	echo Checking in plain text files...
-	bk ci -i $Q - < ${TMP}import$$ || exit 1
+	CLOCK_DRIFT=1 bk ci -1i $Q - < ${TMP}import$$ || exit 1
 }
 
 import_RCS () {
