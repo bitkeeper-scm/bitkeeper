@@ -97,7 +97,7 @@ usage:		fprintf(stderr, stripdel_help);
 		int	error = sccs_admin(s, 0, f, 0, 0, 0, 0, 0, 0, 0, 0);
 
 		sccs_free(s);
-		return (error);
+		return(error? 1 : 0); /* win32 bash bug, must not exit with -1 */
 	}
 
 	unless (left) {
@@ -109,6 +109,7 @@ usage:		fprintf(stderr, stripdel_help);
 		}
 		/* see ya! */
 		verbose((stderr, "stripdel: remove file %s\n", s->sfile));
+		sccs_close(s); /* for win32 */
 		unlink(s->sfile);
 		sccs_free(s);
 		return (0);

@@ -1055,7 +1055,7 @@ _commit() {
 		s|q) QUIET=YES; COPTS="-s $COPTS";;
 		S) SYM="-S$OPTARG";;
 		y) DOIT=YES; GETCOMMENTS=NO
-		   ${ECHO} "$OPTARG" > ${TMP}commit$$;;
+		   echo "$OPTARG" > ${TMP}commit$$;;
 		Y) DOIT=YES; GETCOMMENTS=NO; cp "$OPTARG" ${TMP}commit$$;;
 		esac
 	done
