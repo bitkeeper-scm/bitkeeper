@@ -321,6 +321,7 @@
 #define	BK_CONFIG_BCKUP	"http://config2.bitkeeper.com:80"
 #define	BK_CONFIG_CGI	"bk_config"
 #define	SCCSTMP		"SCCS/T.SCCSTMP"
+#define	BKDIR		"BitKeeper"
 #define	BKTMP		"BitKeeper/tmp"
 #define	BKROOT		"BitKeeper/etc"
 #define	BKMASTER	"BitKeeper/etc/.master"
@@ -1166,6 +1167,7 @@ void	notice(char *key, char *arg, char *type);
 pid_t	findpid(pid_t pid);
 void	save_log_markers(void);
 void	update_log_markers(int verbose);
+int	isCaseFoldingFS(char *root);
 void	set_timestamps(char *sfile);
 
 extern char *bk_vers;

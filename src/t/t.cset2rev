@@ -72,3 +72,11 @@ then	echo wrong: $x
 	exit 1
 fi
 echo OK
+
+echo $N Verify that the cset2rev cache is cleaned ...................$NL
+test `ls BitKeeper/tmp/csetcache.* | wc -l` -gt 2 && {
+	echo The cache files should have been cleaned
+	ls -l BitKeeper/tmp/csetcache.*
+	exit 1
+}
+echo OK

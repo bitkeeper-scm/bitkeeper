@@ -421,6 +421,36 @@ test -d RESYNC && {
 }
 echo OK
 
+# These are white box tests, designed to tickle an ex-bug (L1 failed)
+echo $N Merge tag where history contains same name on L2 branch .....$NL
+cd $HERE
+bk clone $Q project mergemain
+cd mergemain
+bk edit $Q foo
+bk delta $Q -yfoo foo
+bk commit $Q -Sfoo -yfoo
+cd $HERE
+bk clone $Q mergemain mergebranch
+cd mergemain
+bk edit $Q foo
+bk delta $Q -yfoo foo
+bk commit $Q -Sbar -yfoo
+cd $HERE/mergebranch
+bk edit $Q foo
+bk delta $Q -yfoo foo
+bk commit $Q -Sfoo -yfoo
+bk pull $Q $HERE/mergemain
+echo OK
+echo $N Merge tag where history contains same name on L1 branch .....$NL
+cd $HERE/mergemain
+bk edit $Q foo
+bk delta $Q -yfoo foo
+bk commit $Q -Sbaz -yfoo
+echo q | bk pull $Q $HERE/mergebranch > OUT 2>&1 || {
+	echo Failed
+	exit 1
+}
+echo OK
 
 # Create a repository
 # clone it

@@ -76,6 +76,7 @@ private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
 private void	singleUser(sccs *s);
 private	int	parseConfig(char *buf, char **k, char **v);
 private	delta	*cset2rev(sccs *s, char *rev);
+private	void	taguncolor(sccs *s, delta *d);
 
 private	delta	*delta_lmarker;	/* old-style log marker */
 private	delta	*delta_cmarker;	/* old-style config marker */
@@ -2357,7 +2358,7 @@ delete_cset_cache(char *rootpath, int save)
 	p = buf + strlen(buf);
 	*p++ = '/';
 	EACH (files) {
-		if (files[i][0] == '@') {
+		if (strneq(files[i], "csetcache.", 10)) {
 			struct	stat statbuf;
 			strcpy(p, files[i]);
 			stat(buf, &statbuf);
@@ -3259,6 +3260,39 @@ sccs_tagLeaf(sccs *s, delta *d, delta *md, char *tag)
 }
 
 /*
+ * This is called after sccs_tagcolor() which colors all nodes
+ * related to a node.  It colors them RED and BLUE.
+ * 
+ * This code is used to uncolor the RED nodes that lie in the
+ * intersection of histories of 2 different leaves.
+ * If it finds a RED and BLUE, it uncolors RED.
+ * If it find a BLUE but not RED, then it uncolors the BLUE.
+ * For this trick to work, we need to go in table order rather
+ * than recurse, because doing this, when we uncolor BLUE, we
+ * know that we will not need to use it again.  The same is not
+ * true if we did recurse.
+ *
+ * When calling sccs_tagcolor again, it will only color
+ * RED and BLUE the nodes not in the intersection.
+ */
+private void
+taguncolor(sccs *s, delta *d)
+{
+	assert(d);
+	d->flags |= D_BLUE;
+	for (; d; d = d->next) {
+		unless (d->flags & D_BLUE) continue;
+		if (d->flags & D_RED) {
+			d->flags &= ~D_RED;
+			continue;
+		}
+		if (d->ptag) sfind(s, d->ptag)->flags |= D_BLUE;
+		if (d->mtag) sfind(s, d->mtag)->flags |= D_BLUE;
+		d->flags &= ~D_BLUE;
+	}
+}
+
+/*
  * Return an MDBM ${value} = rev,rev
  * for each value that was added by both the left and the right.
  */
@@ -3278,6 +3312,7 @@ sccs_tagConflicts(sccs *s)
 	 */
 	unless (db) db = mdbm_mem();
 	sccs_tagcolor(s, l1);
+	taguncolor(s, l2);	/* uncolor the intersection */
 	for (sy1 = s->symbols; sy1; sy1 = sy1->next) {
 		unless (sy1->metad->flags & D_RED) continue;
 		sy1->metad->flags &= ~D_RED;
