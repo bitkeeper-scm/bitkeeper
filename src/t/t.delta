@@ -269,3 +269,9 @@ if [ ! -f mid.c ]; then echo failed; exit 1; fi
 if [ -f SCCS/p.mid.c ]; then echo failed; exit 1; fi
 if writable mid.c; then echo failed; exit 1; fi
 echo OK
+echo $N Make sure "bk new -b" force binary encoding for text file .....$NL
+echo "this is text" > text
+bk new $Q -b text
+ENC=`bk prs -hr+ -d:ENC: text`
+if [ "$ENC" != "binary" ]; then echo failed; exit 1; fi
+echo OK;
