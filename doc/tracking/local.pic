@@ -1,0 +1,36 @@
+.ft H
+.ps 11
+.vs 12
+.PS
+	scale = 1.3
+	drop = .06
+	f = .5
+	w = 1.3
+	h = .7
+W: [
+	S: ellipse thick 0 fill f wid w ht h
+	A: ellipse thick 1 wid w ht h fill .1 "Shared" "Repository" \
+	    with .n at last ellipse.n + (-drop, drop)
+] with .A.w at R.e + .5,0
+arrowwid = .11
+arrowht = .15
+linethick = 1
+K: [
+    K1: [
+	S: ellipse thick 0 fill f wid w ht h
+	A: ellipse thick 1 wid w ht h fill .1 "Jill's" "Repository" \
+	    with .n at last ellipse.n + (-drop, drop)
+    	]
+    K2: [
+	S: ellipse thick 0 fill f wid w ht h
+	A: ellipse thick 1 wid w ht h fill .1 "Joe's" "Repository" \
+	    with .n at last ellipse.n + (-drop, drop)
+    	] with .e at last [].w - .3,0
+	"\fB\s+8\ \ . . .\s0\fP" at K1.e ljust
+] with .n at W.s - 0,.5
+line dashed <-> from K.K1.n to W.S.se
+line dashed <-> from K.K2.n to W.S.sw
+.PE
+.ps \n[PS]
+.vs \n[VS]
+.ft R

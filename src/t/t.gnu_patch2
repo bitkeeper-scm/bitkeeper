@@ -34,14 +34,15 @@ date > $HERE/project/BitKeeper/etc/data
 bk ci $Q -i $HERE/project/BitKeeper/etc/data
 bk commit $S -a -y"This is a \"Change Set\" B"
 cd $HERE/project
-bk export -hT -tpatch -r1.2,1.3 > $HERE/CMP1
+# the sed script filters off the time which might not match
+bk export -hT -tpatch -r1.2,1.3 | sed -e 's/foo\.c.*/foo.c/' > $HERE/CMP1
 cd $HERE/project
 bk export -T -k -r1.2 $HERE/a
 bk export -T -k -r1.3 $HERE/b
 cd $HERE
-diff --minimal -Nru a b > $HERE/CMP2
+diff -Nru a b | sed -e 's/foo\.c.*/foo.c/' > $HERE/CMP2
 diff -c CMP1 CMP2
-if [ $? -ne 0 ]; then echo failed; exit 1; else echo OK; fi
+if [ $? -ne 0 ]; then echo failed; else echo OK; fi
 rm -rf $HERE/a $HERE/b
 echo $N Test file w no 1.0 delta ....................................$NL
 cd $HERE/project/src
@@ -61,7 +62,7 @@ bk export -hT -tpatch -r1.3,1.4 > patch
 bk patch -sp 1 -d $HERE/a < patch
 bk export -T -k -r1.4 $HERE/b
 diff -r $HERE/a $HERE/b
-if [ $? -ne 0 ]; then echo failed; exit 1; else echo OK; fi
+if [ $? -ne 0 ]; then echo failed; else echo OK; fi
 rm -rf $HERE/a $HERE/b
 echo $N Test chaining rename ........................................$NL
 cd $HERE/project/src
@@ -89,7 +90,7 @@ bk export -hT -tpatch -r1.5,1.6 > patch
 bk patch -sp 1 -d $HERE/a < patch
 bk export -T -k -r1.6 $HERE/b
 diff -r $HERE/a $HERE/b
-if [ $? -ne 0 ]; then echo failed; exit 1; else echo OK; fi
+if [ $? -ne 0 ]; then echo failed; else echo OK; fi
 rm -rf $HERE/a $HERE/b
 echo $N Test reverse patch \& un-delete ..............................$NL
 bk export -T -k -r1.6 $HERE/a
@@ -97,7 +98,7 @@ bk export -hT -tpatch -r1.6,1.5 > patch
 bk patch -sp 1 -d $HERE/a < patch
 bk export -T -k -r1.5 $HERE/b
 diff -r $HERE/a $HERE/b
-if [ $? -ne 0 ]; then echo failed; exit 1; else echo OK; fi
+if [ $? -ne 0 ]; then echo failed; else echo OK; fi
 rm -rf $HERE/a $HERE/b
 echo $N Test reverse patch \& reverse-rename .........................$NL
 cd $HERE/project

@@ -174,6 +174,11 @@ private int
 marktags(sccs *s, delta *d)
 {
 	assert(d);
+
+	/* note that the tagwalk path will use D_BLUE */
+	if (d->flags & D_RED) return (d->flags & D_GONE);
+	d->flags |= D_RED;
+
 	if (d->ptag && marktags(s, sfind(s, d->ptag))) d->flags |= D_SET|D_GONE;
 	if (d->mtag && marktags(s, sfind(s, d->mtag))) d->flags |= D_SET|D_GONE;
 	return (d->flags & D_GONE);

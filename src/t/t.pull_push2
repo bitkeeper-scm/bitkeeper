@@ -49,3 +49,47 @@ bk push $HERE/copy 2> push.out
 grep -q "bar.c is edited" push.out || { echo failed; exit 1; }
 grep -q "h.h is edited" push.out || { echo failed; exit 1; }
 echo OK
+echo $N pull into repo with edited non-locked files overwrites.......$NL
+cd $HERE
+rm -rf *
+no_logging project
+echo bar > bar
+bk new $Q bar || exit 1
+bk commit $Q -ywhat || exit 1
+cd $HERE
+bk clone $Q project copy
+cd project
+bk edit $Q bar
+echo foo >> bar
+bk delta $Q -ywhat2 bar || exit 1
+bk commit $Q -ywhat3 || exit 1
+cd $HERE/copy
+bk get $Q bar
+chmod +w bar
+echo foo2 >> bar
+chmod -w bar
+bk pull $Q
+if [ $? -eq 0 ]; then
+	# local changes lost!
+	echo 'failed (bug 2001-05-11-001)'
+else
+	echo OK
+fi
+echo $N check pull into busted repo containing part of a change......$NL
+cd $HERE
+rm -rf *
+no_logging project
+mkdir src
+echo bar > src/bar
+bk new $Q src/bar || exit 1
+bk commit $Q -ywhat1 || exit 1
+bk edit $Q src/bar || exit 1
+echo foo >> src/bar
+bk delta $Q -ysecond src/bar || exit 1
+bk commit $Q -ywhat1 || exit 1
+cd ..
+bk clone $Q project copy
+cd copy
+bk stripdel $Q -Cr+ ChangeSet
+bk pull $Q || exit 1
+echo OK

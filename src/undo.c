@@ -296,24 +296,35 @@ mk_list(char *rev_list, char *rev)
 private int
 do_rename(char **fileList, char *qflag)
 {
-	sccs	*s;
 	project *proj = 0;
-	FILE	*f, *f1;
-	char	renum_list[MAXPATH], rename_list[MAXPATH], buf[MAXLINE];
-	int 	i, rc, status, warned = 0;
-
-	bktemp(renum_list);
-	bktemp(rename_list);
-	f = fopen(renum_list, "wb"); assert(f);
-	f1 = fopen(rename_list, "wb"); assert(f1);
+	FILE	*f;
+	int 	i, rc, status;
+	char	*cmd;
+	
+	cmd = aprintf("bk renumber %s -", qflag);
+	f = popen(cmd, "w"); 
+	assert(f);
+	free(cmd);
 	EACH (fileList) {
-		char	*sfile, *old_path;
-		delta	*d;
+		char	*sfile = fileList[i];
+		unless (exists(sfile)) continue;
+		fprintf(f, "%s\n", sfile);
+	}
+	status = pclose(f);
+	rc = WEXITSTATUS(status);
+	if (rc) return(rc);
 
-		sfile = fileList[i];
-		unless (exists(sfile)) {
-			continue;
-		}
+	cmd = aprintf("bk names %s -", qflag);
+	f = popen(cmd, "w"); 
+	assert(f);
+	free(cmd);
+	EACH (fileList) {
+		char	*sfile = fileList[i];
+		char	*old_path;
+		delta	*d;
+		sccs	*s;
+
+		unless (exists(sfile)) continue;
 		s = sccs_init(sfile, INIT_NOCKSUM|INIT_SAVEPROJ, proj);
 		assert(s);
 		unless(proj) proj = s->proj;
@@ -321,24 +332,13 @@ do_rename(char **fileList, char *qflag)
 		assert(d);
 		old_path = name2sccs(d->pathname);
 		sccs_free(s);
-		unless (streq(sfile, old_path)) fprintf(f1, "%s\n", sfile);
-		fprintf(f, "%s\n", old_path);
+		unless (streq(sfile, old_path)) fprintf(f, "%s\n", sfile);
 		free(old_path);
 	}
 	if (proj) proj_free(proj);
-	fclose(f);
-	fclose(f1);
-
-	sprintf(buf, "bk names %s -  < %s", qflag, rename_list);
-	status = system(buf);
+	status = pclose(f);
 	rc = WEXITSTATUS(status);
-	if (rc) goto done;
 
-	sprintf(buf, "bk renumber %s -  < %s", qflag, renum_list);
-	status = system(buf);
-	rc = WEXITSTATUS(status);
-done:	unlink(rename_list);
-	unlink(renum_list);
 	return rc;
 }
 

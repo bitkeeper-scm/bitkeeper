@@ -262,6 +262,7 @@ proc getFiles {} \
 			set t "{$lfile} {$rfile} {$fname} + checked_out"
 			lappend files $t
 		}
+		close $fd
 	} elseif {$argc == 1} {
 		if {$argv == "-"} { ;# typically from sfiles pipe
 			while {[gets stdin fname] >= 0} {

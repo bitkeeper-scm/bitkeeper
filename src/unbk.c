@@ -4,7 +4,6 @@
 WHATSTR("@(#)%K%");
 
 private	project	*proj = 0;
-private void remove_1_0(sccs *s);
 
 /*
  * Convert a BK file to SCCS format.
@@ -32,9 +31,9 @@ usage:		system("bk help unbk");
 			errors |= 1;
 			continue;
 		}
-		/* XXX - need to be sure this is not compressed */
 		s->bitkeeper = 0;
-		sccs_admin(s, 0, NEWCKSUM|ADMIN_RM1_0, 0, 0, 0, 0, 0, 0, 0, 0);
+		sccs_admin(s,
+		    0, NEWCKSUM|ADMIN_RM1_0, 0, "none", 0, 0, 0, 0, 0, 0);
 		sccs_free(s);
 	}
 	sfileDone();

@@ -129,3 +129,25 @@ bk prs -r1.4 ChangeSet > OUT || {
 	exit 1
 }
 echo OK
+echo $N Undo a rename where renumber needs to run before names ......$NL
+cd $HERE
+no_logging rename
+echo a > a
+echo b > b
+bk new $Q a b
+bk commit -Sc1 -yc1 $Q || exit 1
+cd ..
+bk clone $Q rename rename2
+cd rename
+bk edit $Q a 
+echo a >> a
+bk delta $Q -yd1 a 
+bk commit -Sc2 -yc2 $Q
+cd ../rename2
+bk mv a t || exit 1
+bk mv b a || exit 1
+bk mv t b || exit 1
+bk commit -Sc3 -yc3 $Q || exit 1
+bk pull $Q || exit 1
+bk undo $Q -f -ac3 || exit 1
+echo OK

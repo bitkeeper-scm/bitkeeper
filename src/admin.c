@@ -235,6 +235,7 @@ admin_main(int ac, char **av)
 				exit(1);
 			}
 			sccs_free(sc);
+			name = sfileNext();
 			continue;
 		}
 		if (bigpad) {

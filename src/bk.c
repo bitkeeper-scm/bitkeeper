@@ -352,6 +352,15 @@ main(int ac, char **av)
 	char	*prog, *argv[MAXARGS];
 	char	sopts[30];
 
+	if (getenv("BK_SHOWPROC")) {
+		FILE	*f = fopen("/dev/tty", "w");
+
+		fprintf(f, "BK(%d)", getpid());
+		for (i = 0; av[i]; ++i) fprintf(f, " %s", av[i]);
+		fprintf(f, "\n");
+		fclose(f);
+	}
+
 	cmdlog_buffer[0] = 0;
 	if (i = setjmp(exit_buf)) {
 		i -= 1000;
@@ -1018,6 +1027,11 @@ find_wish()
 	static char wish_path[MAXPATH];
 	int more = 1;
 
+#ifdef	__APPLE__
+	strcpy(wish_path,
+	    "/Applications/Wish Shell.app/Contents/MacOS/Wish Shell");
+	if (exists(wish_path)) return (wish_path);
+#endif
 	p  = getenv("PATH");
 	if (p) {;
 		sprintf(path, "%s%c/usr/local/bin", p, PATH_DELIM);

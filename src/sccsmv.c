@@ -29,6 +29,7 @@ mv_main(int ac, char **av)
 	int	isDir, sflags = 0;
 	int	errors = 0;
 	int	dofree = 0;
+	int	i;
 
 	has_proj("mv");
 	if ((bk_mode() == BK_BASIC) && !isMasterTree()) {
@@ -57,18 +58,19 @@ usage:		system("bk help -s mv");
 		return (1);
 	}
 
-	/*
-	 * If they specified a directory as the first arg,
-	 * or if there is more than one file,
-	 * and the last arg doesn't exist, create it as a directory.
-	 */
-	if (isdir(av[1]) || (name2 = sfileNext())) {
-		unless (isdir(dest)) mkdir(dest, 0777);
-		/* mvdir includes deleted files */
-		if (isdir(av[1])) sflags |= SF_DELETES; 
+	for (i = 1; i < ac-1; i++) {
+		if (isdir(av[i])) {
+			fprintf(stderr, 
+"mv only moves files.  Use mvdir to move directories.\n");
+			return (1);
+		}
 	}
 	isDir = isdir(dest);
-	unless ((isDir > 0) || (ac == 3)) goto usage;
+	if (ac > 3 && !isDir) {
+		fprintf(stderr,
+		    "Multiple files must be moved to a directory!\n");
+		return (1);
+	}
 	av[ac-1] = 0;
 	for (name =
 	    sfileFirst("sccsmv" ,&av[1], sflags); name; name = sfileNext()) {
