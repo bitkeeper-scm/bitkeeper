@@ -143,7 +143,9 @@ printline(char *line, int preserve_char)
 		++line;
 	}
 	if (fdiff) {
+		fputc(' ', fl);
 		fputs(line, fl);
+		fputc(' ', fr);
 		fputs(line, fr);
 	} else {
 		fputs(line, stdout);
@@ -423,8 +425,8 @@ fdiff_resolve_conflict(char **lines[3])
 		free(diffs);
 		break;
 	}
-	sl = seq(left[1]);
-	sr = seq(right[1]);
+	sl = left ? seq(left[1]) : 0;
+	sr = right ? seq(right[1]) : 0;
 	while (sl && sr) {
 		while (sl < sr) {
 			fputs(popLine(left), fl);
