@@ -515,7 +515,7 @@ _repair()
 					# failed the pull
 	echo "pulling a jumbo patch.."
 	bk pull -F ${_MASTER} || exit 1
-	echo "bk repair have resurrected all files not-gone in the remote"
+	echo "bk repair has resurrected all files not-gone in the remote"
 	echo "repository."
 	echo "If you intend to resurrect the deleted file, please"
 	echo "make sure its key is not in Bitkeeper/etc/gone."
@@ -537,7 +537,7 @@ _obscure() {
 		echo "obscure: will not obscure modified tree"
 		exit 1
 	}
-	bk -r admin -Znone
+	bk -r admin -Znone || exit 1
 	BK_FORCE=YES bk -r admin -O
 }
 

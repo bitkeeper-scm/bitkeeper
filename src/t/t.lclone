@@ -135,7 +135,7 @@ h3=trigger/src/SCCS/s.h.h
 cmp -s $h1 $h2 || exit 1
 cmp -s $h2 $h3 || exit 1
 cd project
-bk admin -Zgzip src/h.h
+bk admin -fRCS src/h.h
 cd $HERE
 cmp -s $h1 $h2 && { 
 	echo failed to break link

@@ -167,6 +167,11 @@ admin_main(int ac, char **av)
 		    "admin: comment may only be specified with -i and/or -n\n");
 		goto usage;
 	}
+	if (compp && streq(compp, "none") && (bk_mode() != BK_PRO)) {
+		fprintf(stderr,
+		    "uncompressing files requires a commercial license\n");
+		return (1);
+	}
 	/* All of these need to be here: m/nextf are for resolve,
 	 * newfile is for !BK mode.
 	 */

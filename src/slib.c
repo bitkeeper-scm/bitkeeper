@@ -64,7 +64,7 @@ private int	isRegularFile(mode_t m);
 private void	sccs_freetable(delta *d);
 private	delta*	getCksumDelta(sccs *s, delta *d);
 private int	fprintDelta(FILE *,
-			char *, const char *, const char *, sccs *, delta *);
+			char ***, const char *, const char *, sccs *, delta *);
 private delta	*gca(delta *left, delta *right);
 private delta	*gca2(sccs *s, delta *left, delta *right);
 private delta	*gca3(sccs *s, delta *left, delta *right, char **i, char **e);
@@ -13053,33 +13053,23 @@ done:	free_pfile(&pf);
 }
 
 private void
-show_d(sccs *s, delta *d, FILE *out, char *vbuf, char *format, int num)
+show_d(sccs *s, delta *d, FILE *out, char ***vbuf, char *format, int num)
 {
 	if (out) {
 		fprintf(out, format, num);
 		s->prs_output = 1;
 	}
-	if (vbuf) {
-		char	dbuf[512];
-
-		sprintf(dbuf, format, num);
-		assert(strlen(dbuf) < 512);
-		strcat(vbuf, dbuf);
-		assert(strlen(vbuf) < VSIZE);
-	}
+	if (vbuf) *vbuf = str_append(*vbuf, aprintf(format, num), 1);
 }
 
 private void
-show_s(sccs *s, delta *d, FILE *out, char *vbuf, char *str)
+show_s(sccs *s, delta *d, FILE *out, char ***vbuf, char *str)
 {
 	if (out) {
 		fputs(str, out);
 		s->prs_output = 1;
 	}
-	if (vbuf) {
-		strcat(vbuf, str);
-		assert(strlen(vbuf) < VSIZE);
-	}
+	if (vbuf) *vbuf = str_append(*vbuf, str, 0);
 }
 
 /*
@@ -13132,7 +13122,7 @@ key2val(sccs *s, const char *key)
  * macros.
  */
 private int
-kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
+kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 	const char *suffix, int slen, sccs *s, delta *d)
 {
 	char	*p, *q;
@@ -14391,6 +14381,26 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 }
 
 /*
+ * A temporary function that provides an interface like kw2val() but
+ * that writes to a fixed buffer.  This function will be deleted when
+ * the new prs parser is used.
+ */
+private int
+kw2buf(char *buf, const char *kw, sccs *s, delta *d)
+{
+	int	rc;
+	char	**vbuf = 0;
+
+	rc = kw2val(0, buf ? &vbuf : 0, "", 0, kw, "", 0, s, d);
+	if (buf) {
+		char	*p = str_pullup(0, vbuf);
+		strcpy(buf, p);
+		free(p);
+	}
+	return (rc);
+}
+
+/*
  * given a string "<token><endMarker>..."
  * extrtact token and put it in a buffer
  * return the length of the token
@@ -14548,7 +14558,7 @@ eval(char *leftVal, char op, char *rightVal)
  * kw2val() and fprintDelta() are mutually recursive
  */
 private int
-fprintDelta(FILE *out, char *vbuf,
+fprintDelta(FILE *out, char ***vbuf,
 	    const char *dspec, const char *end, sccs *s, delta *d)
 {
 #define	KWSIZE 64
@@ -14591,8 +14601,7 @@ fprintDelta(FILE *out, char *vbuf,
 				return (0);
 			}
 			if (len && (len < KWSIZE) &&
-			    (kw2val(NULL, op ? leftVal: NULL, "",
-			    0, kwbuf, "", 0,  s, d) == strVal) &&
+			    (kw2buf(op ? leftVal :0, kwbuf, s, d) == strVal) &&
 			    (!op || eval(leftVal, op, rightVal))) {
 			    	goto dont;
 			} else {
@@ -14611,8 +14620,7 @@ fprintDelta(FILE *out, char *vbuf,
 				return (0);
 			}
 			if (len && (len < KWSIZE) &&
-			    (kw2val(NULL, op ? leftVal: NULL, "",
-			    0, kwbuf, "", 0,  s, d) == strVal) &&
+			    (kw2buf(op ? leftVal: 0, kwbuf, s, d) == strVal) &&
 			    (!op || eval(leftVal, op, rightVal))) {
 				const char *cb;	/* conditional spec */
 				int clen;
@@ -14686,21 +14694,22 @@ sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out)
 	return (0);
 }
 
-int
-sccs_prsbuf(sccs *s, delta *d, int flags, const char *dspec, char *buf)
+char *
+sccs_prsbuf(sccs *s, delta *d, int flags, const char *dspec)
 {
 	const	char *end;
+	char	**buf = 0;
 
 	if (d->type != 'D' && !(flags & PRS_ALL)) return (0);
 	if (SET(s) && !(d->flags & D_SET)) return (0);
 	end = &dspec[strlen(dspec) - 1];
 	s->prs_output = 0;
-	fprintDelta(0, buf, dspec, end, s, d);
+	fprintDelta(0, &buf, dspec, end, s, d);
 	if (s->prs_output) {
 		s->prs_odd = !s->prs_odd;
-		if (flags & PRS_LF) strcat(buf, "\n");
+		if (flags & PRS_LF) buf = str_append(buf, "\n", 0);
 	}
-	return (0);
+	return (str_pullup(0, buf));
 }
 
 

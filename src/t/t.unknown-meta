@@ -1,0 +1,52 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 1999 Larry McVoy
+# %K%
+
+no_logging project
+# create a sfile with unknown field "c?"
+echo data > GOOD
+bk ci $Q -l -i GOOD
+echo more data >> GOOD
+bk ci $Q -y GOOD
+perl -pe 's/^.cZ/c?/' < SCCS/s.GOOD | bk undos >  tmp
+OLDSUM=`sed -n 1p  < tmp | sed 's/^.[hH]//'`
+#adjust checksum
+NEWSUM=`expr $OLDSUM - 27`
+perl -pe s/$OLDSUM\$/$NEWSUM/ < tmp  | bk undos > X
+bk undos X > SCCS/s.BAD
+echo $N Read access test.............................................$NL
+bk admin -h -q BAD 2>${DEV_NULL}
+if [ $? -ne 0 ]; then echo failed.; exit 1; fi
+bk co $Q BAD 2>${DEV_NULL}
+if [ $? -ne 0 ]; then echo failed.; exit 1; fi
+bk clean BAD 2>${DEV_NULL}
+if [ $? -ne 0 ]; then echo failed.; exit 1; fi
+bk get $Q BAD 2>${DEV_NULL}
+if [ $? -ne 0 ]; then echo failed.; exit 1; fi
+bk get $Q -k BAD 2>${DEV_NULL}
+if [ $? -ne 0 ]; then echo failed.; exit 1; fi
+bk prs BAD >${DEV_NULL} 2>&1
+if [ $? -ne 0 ]; then echo failed.; exit 1; fi
+echo OK
+echo $N Write access test '(should fail)'..............................$NL
+bk admin -z -q BAD 2>${DEV_NULL}
+if [ $? -eq 0 ]; then echo failed.; exit 1; fi
+bk co $Q -l BAD 2>${DEV_NULL}
+if [ $? -eq 0 ]; then echo failed.; exit 1; fi
+bk get $Q -e BAD 2>${DEV_NULL}
+if [ $? -eq 0 ]; then echo failed.; exit 1; fi
+bk rmdel -r1.2 BAD 2>${DEV_NULL}
+if [ $? -eq 0 ]; then echo failed.; exit 1; fi
+echo OK
+rm -rf GOOD BAD tmp SCCS
+
