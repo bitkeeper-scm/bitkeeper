@@ -130,12 +130,7 @@ purify:
 PURIFY:
 	$(MAKE) CFLAGS="-g $O -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM -DPURIFY_FREQ=1" all
 gprof:
-	$(MAKE) CFLAGS="-g -pg -O2" all
-# Recent gcc only profiles libc if you do it this way.
-# Note - profiling libc is incompatible with use of system zlib.
-gproflib:
-	$(MAKE) CFLAGS="-g -profile -O2" LZLIB="-Lzlib -lz" all
-
+	$(MAKE) CFLAGS="-g -pg -O2" LDFLAGS=-pg all
 # Debugging...
 d:
 	$(MAKE) CFLAGS="-g -DDEBUG" all

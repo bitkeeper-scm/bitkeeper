@@ -21,8 +21,7 @@ else
 fi
 data="data"
 
-rm -rf foo SCCS A
-mkdir SCCS; bk cset -n -s .
+no_logging proj
 echo $N Trying to check in some binary data .........................$NL
 cp ${binary_data} ${data}
 chmod u+w ${data}

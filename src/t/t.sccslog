@@ -12,8 +12,14 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
-bk cset -n -s .
-rm -rf a
+HOST=@free.bk
+echo "logging: none" > c
+echo "single_user: butthead" >> c
+echo "single_host: free.bk" >> c
+echo "description:	BitKeeper Test repository" >> c
+echo "email:		nobody@nowhere.bk" >> c
+bk setup -f -cc project
+cd project
 mkdir -p a/b/c
 echo 1.1 > a/b/c/Data
 bk admin -q -n -ia/b/c/Data a/b/c/Data
@@ -29,10 +35,6 @@ do	bk co $Q -l a/b/c/Data
 	bk delta $Q -IInit a/b/c/Data
 done
 echo $N Checking sccslog with -p option .............................$NL
-HOST=`bk gethost`
-if [ X$HOST != X ]
-then	HOST=@$HOST
-fi
 cat > CMP1 <<EOF
 Data 1.10 20/03/11 00:00:10 butthead${HOST} +1 -0
   Rev 10
@@ -63,7 +65,7 @@ Data 1.2 20/03/11 00:00:02 butthead${HOST} +1 -0
 
 
 EOF
-bk sccslog -p a/b/c/Data | grep -v ${USER}@ | grep -v 'BitKeeper file' | cat > CMP2
+bk sccslog -p a/b/c/Data | grep -v '^Data 1.1 ' | grep -v 'BitKeeper file' | cat > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK

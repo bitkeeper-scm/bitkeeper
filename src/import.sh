@@ -87,15 +87,15 @@ import() {
 	if [ ! -d "$2/BitKeeper" ]
 	then	echo "$2 is not a BitKeeper package"; exit 1
 	fi
-	HERE=`pwd`
+	HERE=`bk pwd`
 	if [ $TYPE != patch ]
 	then	cd $1
-		FROM=`pwd`
+		FROM=`bk pwd`
 		cd $HERE
 	else	FROM=$1
 	fi
 	cd $2
-	TO=`pwd`
+	TO=`bk pwd`
 	getIncExc
 	if [ X"$LIST" != X ]
 	then	cd $HERE
@@ -568,6 +568,5 @@ init() {
 }
 
 init
-__logCommand "$@"
 import "$@"
 exit 0

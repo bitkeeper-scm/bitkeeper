@@ -1380,9 +1380,11 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	 * Always do autocommit if there are no pending changes.
 	 * We supply a default comment because there is little point
 	 * in bothering a user for a merge.
+	 * Go ask about logging if we need to.  We never ask on a push.
 	 */
 	unless (!mustCommit || pending() || pendingCheckins()) {
 		unless (opts->comment) opts->comment = "Merge";
+		unless (opts->noconflicts) ok_commit(logging(0, 0, 0), 0);
 		commit(opts);
 		return (0);
 	}
@@ -1436,7 +1438,11 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	while (fnext(buf, p)) n++;
 	pclose(p);
 
-	if (n) commit(opts);
+	if (n) {
+		assert(!opts->noconflicts);
+		ok_commit(logging(0, 0, 0), 0);
+		commit(opts);
+	}
 
 	return (0);
 }
@@ -1829,15 +1835,12 @@ commit(opts *opts)
 {
 	int	i;
 	char	*cmds[10], *cmt = 0;
-	extern	char *BitKeeper;
 
-	BitKeeper = "../BitKeeper/";
-#ifdef OLD_LICENSE
-	if (checkLog(opts->quiet, 1)) {
-		fprintf(stderr, "Commit aborted, no changes applied");
+	unless (ok_commit(logging(0, 0, 0), 1)) {
+		fprintf(stderr,
+		   "Commit aborted because of licensing, no changes applied\n");
 		exit(1);
 	}
-#endif
 
 	cmds[i = 0] = "bk";
 	cmds[++i] = "commit";
@@ -1925,7 +1928,7 @@ pass4_apply(opts *opts)
 		exit (1);
 	}
 	while (fnext(buf, p)) {
-		fprintf(stderr, "Pending: %s", buf[2]);
+		fprintf(stderr, "Pending: %s", buf);
 		n++;
 	}
 	pclose(p);
@@ -1975,6 +1978,7 @@ pass4_apply(opts *opts)
 				unlink(orig);
 				exit(1);
 			}
+			sccs_clean(l, SILENT); 
 			sccs_close(l);
 			if (backup(opts, l->sfile, backups, save)) {
 				unlink(orig);

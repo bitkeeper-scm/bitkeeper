@@ -72,7 +72,7 @@ check_path()
 setup_env()
 {
 	case X$OSTYPE in
-	    Xcygwin32)
+	    Xcygwin|Xcygwin32)
 		win32_common_setup
 		BK_BIN=`cd .. && ./pwd.exe -scf`
 		PATH=$BK_BIN:$BK_BIN/gnu/bin:$PATH

@@ -148,10 +148,10 @@ notice(char *key)
 	    "==============================================================\n");
 }
 
-private int
-ok_commit(int l, c_opts opts)
+int
+ok_commit(int l, int alreadyAsked)
 {
-	if (opts.alreadyAsked) {	/* has to be OK or error */
+	if (alreadyAsked) {	/* has to be OK or error */
 		/* if open, then OK */
 		if ((l & (LOG_OPEN|LOG_OK)) == (LOG_OPEN|LOG_OK)) return (1);
 		/* if logging, then must have OKed or error */
@@ -206,7 +206,7 @@ do_commit(c_opts opts, char *sym, char *commentFile)
 	sccs	*s;
 	delta	*d;
 
-	unless (ok_commit(l, opts)) {
+	unless (ok_commit(l, opts.alreadyAsked)) {
 		if (commentFile) unlink(commentFile);
 		return (1);
 	}
@@ -314,15 +314,17 @@ logChangeSet(int l, char *rev, int quiet)
 	if (l & LOG_OPEN) {
 		pid = spawnvp_ex(_P_NOWAIT, av[0], av);
 		if (pid == -1) unlink(commit_log);
-		fprintf(stdout, "Waiting for http...\n");
+		fprintf(stdout, "Sending ChangeSet log via http...\n");
+		fflush(stdout); /* needed for citool */
+		/* do not do waitpid(), let http xfer run in back ground */
 	} else {
 		pid = mail(to, subject, commit_log);
 		if (pid == -1) unlink(commit_log);
-		fprintf(stdout, "Waiting for mailer...\n");
+		fprintf(stdout, "Sending ChangeSet log via email...\n");
+		fflush(stdout); /* needed for citool */
+		waitpid(pid, 0, 0);
+		unlink(commit_log);
 	}
-	fflush(stdout); /* needed for citool */
-	waitpid(pid, 0, 0);
-	unlink(commit_log);
 }
 
 void
@@ -332,16 +334,14 @@ config(char *rev, FILE *f)
 	kvpair	kv;
 	time_t	tm;
 	FILE	*f1;
-	MDBM	*db = loadConfig(".");
+	MDBM	*db = loadConfig(".", 1);
 	char	buf[MAXLINE], aliases[MAXPATH];
 	char	s_cset[MAXPATH] = CHANGESET;
 
 	dspec = "$each(:FD:){Proj:      (:FD:)}\\nID:        :KEY:";
 	do_prsdelta(s_cset, "1.0", 0, dspec, f);
-	fprintf(f, "%-10s %s", "User:", sccs_realuser());
-	if (streq(sccs_getuser(), BK_FREEUSER)) fprintf(f, " (free use)");
-	fprintf(f, "\n%-10s %s", "Host:", sccs_realhost());
-	if (streq(sccs_gethost(), BK_FREEHOST)) fprintf(f, " (free use)");
+	fprintf(f, "%-10s %s", "User:", sccs_getuser());
+	fprintf(f, "\n%-10s %s", "Host:", sccs_gethost());
 	fprintf(f, "\n%-10s %s\n", "Root:", fullname(".", 0));
 	sprintf(buf, "%slog/parent", BitKeeper);
 	if (exists(buf)) {

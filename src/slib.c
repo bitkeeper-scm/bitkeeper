@@ -395,41 +395,23 @@ strnleq(register char *s, register char *t)
 	return (0);
 }
 
-static	char	user[256];
-
-private	char *
-getuser(int real)
-{
-	char	*u;
-
-	if (real) {
-		u = getenv("USER");
-	} else {
-		unless (u = getenv("BK_USER")) u = getenv("USER");
-	}
-	unless (u && u[0]) u = getlogin();
-#ifndef WIN32
-	if (!u || !u[0] ) {
-		struct	passwd	*p = getpwuid(getuid());
-
-		u = p->pw_name;
-	}
-#endif
-	unless (u && u[0]) u = UNKNOWN_USER;
-	strcpy(user, u);
-	return (user);
-}
-
-char	*
-sccs_realuser(void)
-{
-	return (getuser(1));
-}
-
 char	*
 sccs_getuser(void)
 {
-	return (getuser(0));
+	static	char	*s;
+
+	if (s) return (s);
+	unless (s = getenv("BK_USER")) s = getenv("USER");
+	unless (s && s[0]) s = getlogin();
+#ifndef WIN32
+	unless (s && s[0]) {
+		struct	passwd	*p = getpwuid(getuid());
+
+		s = p->pw_name;
+	}
+#endif
+	unless (s && s[0]) s = UNKNOWN_USER;
+	return (s);
 }
 
 /*
@@ -3015,6 +2997,7 @@ misc(sccs *s)
 			if (bits & X_YEAR4) s->state |= S_YEAR4;
 			if (bits & X_SCCS) s->state |= S_SCCS;
 			if (bits & X_RCS) s->state |= S_RCS;
+			if (bits & X_SINGLE) s->state |= S_SINGLE;
 			if (bits & X_EXPAND1) s->state |= S_EXPAND1;
 			if (bits & X_CSETMARKED) s->state |= S_CSETMARKED;
 #ifdef S_ISSHELL
@@ -3288,10 +3271,16 @@ parseConfig(char *buf)
 		strcpy(buf, "CONVERT ME PLEASE\n");
 		return (1);
 	}
-	unless (isspace(*p)) return (1);	/* we're done */
-	for (q = p; *q && isspace(*q); q++);
-	unless (*q) return (0);			/* garbage */
-	while (*p++ = *q++);			/* leftshift over the spc */
+	if (isspace(*p)) {
+		for (q = p; *q && isspace(*q); q++);
+		unless (*q) return (0);		/* garbage */
+		while (*p++ = *q++);		/* leftshift over the spc */
+	}
+	p = strrchr(buf, '\n');
+	assert(p);
+	q = &p[-1] ;
+	while (isspace(*q)) q--;		/* trim trailing space */
+	if (q != &p[-1]) strcpy(&q[1], "\n");
 	return (1);
 }
 
@@ -3305,7 +3294,7 @@ parseConfig(char *buf)
  * 	actually trigger the config file to be checked out.
  */
 MDBM *
-loadConfig(char *root)
+loadConfig(char *root, int convert)
 {
 	MDBM	*DB = 0;
 	char 	s_config[MAXPATH];
@@ -3322,7 +3311,7 @@ loadConfig(char *root)
 	 * Otherwise, check it out.
 	 */
 	if (exists(g_config)) {
-		DB = loadDB(g_config, parseConfig, DB_USELAST);
+		DB = loadDB(g_config, parseConfig, DB_NOBLANKS|DB_USELAST);
 		goto check;
 	}
 	unless (exists(s_config)) return 0;
@@ -3347,13 +3336,13 @@ loadConfig(char *root)
 		sccs_free(s1);
 		return (0);
 	}
-	DB = loadDB(x_config, parseConfig, DB_USELAST);
+	DB = loadDB(x_config, parseConfig, DB_NOBLANKS|DB_USELAST);
 	unlink(x_config);
 	sccs_free(s1);
-check:	if ((t = mdbm_fetch_str(DB, "CONVERT")) &&
+check:	if (convert && (t = mdbm_fetch_str(DB, "CONVERT")) &&
 	    streq("ME PLEASE", t) && (config2logging(root) == 0)) {
 		mdbm_close(DB);
-		return (loadConfig(root));
+		return (loadConfig(root, 1));
 	}
 	return (DB);
 }
@@ -4058,7 +4047,7 @@ date(delta *d, time_t tt)
 	zoneArg(d, tmp);
 	getDate(d);
 	if (d->date != tt) {
-		fprintf(stderr, "Date=[%s%s] d->date=%lu tt=%lu\n",
+		fprintf(stderr, "Date=[%s%s] d->date=%u tt=%u\n",
 		    d->sdate, d->zone, d->date, tt);
 		fprintf(stderr, "Internal error on dates, aborting.\n");
 		assert(d->date == tt);
@@ -4089,7 +4078,7 @@ testdate(time_t t)
 
 	if (date2time(date, zone, EXACT) != t) {
 		fprintf(stderr, "Internal error on dates, aborting.\n");
-		fprintf(stderr, "time_t=%lu vs %lu date=%s zone=%s\n",
+		fprintf(stderr, "time_t=%u vs %u date=%s zone=%s\n",
 		    date2time(date, zone, EXACT), t, date, zone);
 		exit(1);
 	}
@@ -5136,12 +5125,12 @@ write_pfile(sccs *s, int flags, delta *d,
 		repository_lockers(s->proj);
 		return (-1);
 	}
-	unless (sccs_lock(s, 'p')) {
+	fd = open(s->pfile, O_CREAT|O_WRONLY|O_EXCL, GROUP_MODE);
+	if (fd == -1) {
 		fprintf(stderr, "get: can't plock %s\n", s->gfile);
 		sccs_unlock(s, 'z');
 		return (-1);
 	}
-	fd = open(s->pfile, 2, 0);
 	tmp2 = now();
 	assert(sccs_getuser() != 0);
 	len = strlen(d->rev)
@@ -6422,7 +6411,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 	int	i;	/* used by EACH */
 	int	first = willfix;
 	char	buf[MAXLINE];
-	char	*p;
+	char	*p, *t;
 	int	bits = 0;
 	int	gonechkd = 0;
 
@@ -6494,7 +6483,11 @@ delta_table(sccs *s, FILE *out, int willfix)
 		*p++ = ' ';
 		p = fmts(p, d->sdate);
 		*p++ = ' ';
-		p = fmts(p, d->user);
+		if (s->state & S_SINGLE) {
+			p = fmts(p, s->tree->user);
+		} else {
+			p = fmts(p, d->user);
+		}
 		*p++ = ' ';
 		p = fmtd(p, d->serial);
 		*p++ = ' ';
@@ -6549,9 +6542,18 @@ delta_table(sccs *s, FILE *out, int willfix)
 			*p   = '\0';
 			fputmeta(s, buf, out);
 		}
-		if (d->hostname && !(d->flags & D_DUPHOST)) {
+		t = 0;
+		if (s->state & S_SINGLE) {
+			if (d == s->tree) {
+				assert(s->tree->hostname);
+				t = s->tree->hostname;
+			}
+		} else if (d->hostname && !(d->flags & D_DUPHOST)) {
+			t = d->hostname;
+		}
+		if (t) {
 			p = fmts(buf, "\001cH");
-			p = fmts(p, d->hostname);
+			p = fmts(p, t);
 			*p++ = '\n';
 			*p   = '\0';
 			fputmeta(s, buf, out);
@@ -6687,6 +6689,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 	if (s->state & S_BITKEEPER) bits |= X_BITKEEPER;
 	if (s->state & S_YEAR4) bits |= X_YEAR4;
 	if (s->state & S_SCCS) bits |= X_SCCS;
+	if (s->state & S_SINGLE) bits |= X_SINGLE;
 	if (s->state & S_RCS) bits |= X_RCS;
 	if (s->state & S_EXPAND1) bits |= X_EXPAND1;
 	if (s->state & S_CSETMARKED) bits |= X_CSETMARKED;
@@ -7836,8 +7839,7 @@ checkin(sccs *s,
 		return (-1);
 	}
 	/*
-	 * Disallow BK_FS characters in file name
-	 * ':' is used on Unix, '@' is used on Win32
+	 * Disallow '@' character in file name.
 	 */
 	t = basenm(s->sfile);
 	if (strchr(t, ':') || strchr(t, '@')) {
@@ -7974,6 +7976,38 @@ checkin(sccs *s,
 			}
 		}
 	}
+	if (s->state & S_BITKEEPER) {
+		MDBM	*m;
+		delta	*d;
+		char	*user, *host;
+
+		unless (s->proj && s->proj->root) goto no_config;
+		unless (m = loadConfig(s->proj->root, 0)) goto no_config;
+		user = mdbm_fetch_str(m, "single_user");
+		host = mdbm_fetch_str(m, "single_host");
+		mdbm_close(m);
+		unless (user && host) goto no_config;
+		d = s->tree;
+		free(d->user);
+		d->user = strdup(user);
+		if (d->hostname) free(d->hostname);
+		d->hostname = strdup(host);
+		d->flags &= ~D_DUPHOST;
+		if (d->kid) {
+			d = d->kid;
+			free(d->user);
+			d->user = strdup(user);
+			if (d->hostname && !(d->flags & D_DUPHOST)) {
+				free(d->hostname);
+			}
+			d->hostname = s->tree->hostname;
+			d->flags |= D_DUPHOST;
+		}
+		s->state |= S_SINGLE;
+		first->xflags |= X_SINGLE;
+	}
+
+no_config:
 	if (flags & DELTA_HASH) s->state |= S_HASH;
 	if (delta_table(s, sfile, 1)) {
 		error++;
@@ -8973,6 +9007,8 @@ name2xflg(char *fl)
 		return X_RCS;
 	} else if (streq(fl, "YEAR4")) {
 		return X_YEAR4;
+	} else if (streq(fl, "SINGLE")) {
+		return X_SINGLE;
 	}
 	assert("bad flag" == 0);
 	return (0);			/* lint */
@@ -9002,6 +9038,7 @@ state2xflags(u32 state)
 	if (state & S_BITKEEPER) xflags |= X_BITKEEPER;
 	if (state & S_RCS) xflags |= X_RCS;
 	if (state & S_SCCS) xflags |= X_SCCS;
+	if (state & S_SINGLE) xflags |= X_SINGLE;
 	if (state & S_YEAR4) xflags |= X_YEAR4;
 #ifdef	S_ISSHELL
 	if (state & S_ISSHELL) xflags |= X_ISSHELL;
@@ -9020,6 +9057,7 @@ xflags2state(u32 xflags)
 	if (xflags & X_BITKEEPER) state |= S_BITKEEPER;
 	if (xflags & X_RCS) state |= S_RCS;
 	if (xflags & X_SCCS) state |= S_SCCS;
+	if (xflags & X_SINGLE) state |= S_SINGLE;
 	if (xflags & X_YEAR4) state |= S_YEAR4;
 #ifdef	S_ISSHELL
 	if (xflags & X_ISSHELL) state |= S_ISSHELL;
@@ -9376,6 +9414,13 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 					sc->state |= S_YEAR4;
 				else
 					sc->state &= ~S_YEAR4;
+			} else if (streq(fl, "SINGLE")) {
+				if (v) goto noval;
+				changeXFlag(sc, d, flags, add, fl);
+				if (add)
+					sc->state |= S_SINGLE;
+				else
+					sc->state &= ~S_SINGLE;
 			/* Flags below are non propagated */
 			} else if (streq(fl, "BK")) {
 				if (v) goto noval;
@@ -10543,6 +10588,11 @@ out:
 					s->state |= S_SCCS;
 				} else {
 					s->state &= ~S_SCCS;
+				}
+				if (bits & X_SINGLE) {
+					s->state |= S_SINGLE;
+				} else {
+					s->state &= ~S_SINGLE;
 				}
 				if (bits & X_EXPAND1) {
 					s->state |= S_EXPAND1;
@@ -11890,6 +11940,9 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		if (flags & X_SCCS) {
 			if (comma) fs(","); fs("SCCS"); comma = 1;
 		}
+		if (flags & X_SINGLE) {
+			if (comma) fs(","); fs("SINGLE"); comma = 1;
+		}
 		if (flags & X_EXPAND1) {
 			if (comma) fs(","); fs("EXPAND1"); comma = 1;
 		}
@@ -12487,6 +12540,7 @@ sccs_perfile(sccs *s, FILE *out)
 	if (s->state & S_YEAR4) i |= X_YEAR4;
 	if (s->state & S_RCS) i |= X_RCS;
 	if (s->state & S_SCCS) i |= X_SCCS;
+	if (s->state & S_SINGLE) i |= X_SINGLE;
 	if (s->state & S_EXPAND1) i |= X_EXPAND1;
 	if (s->state & S_CSETMARKED) i |= X_CSETMARKED;
 #ifdef S_ISSHELL
@@ -12541,6 +12595,7 @@ err:			fprintf(stderr,
 		if (bits & X_YEAR4) s->state |= S_YEAR4;
 		if (bits & X_RCS) s->state |= S_RCS;
 		if (bits & X_SCCS) s->state |= S_SCCS;
+		if (bits & X_SINGLE) s->state |= S_SINGLE;
 		if (bits & X_EXPAND1) s->state |= S_EXPAND1;
 		if (bits & X_CSETMARKED) s->state |= S_CSETMARKED;
 #ifdef S_ISSHELL
@@ -13554,7 +13609,9 @@ out:		if (f) fclose(f);
 		if (style & DB_KEYSONLY) {
 			v = "";
 		} else {
-			v = strchr(buf, ' ');
+			unless (v = strchr(buf, ' ')) {
+				if (style & DB_NOBLANKS) continue;
+			}
 			assert(v);
 			*v++ = 0;
 		}

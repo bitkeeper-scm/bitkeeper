@@ -12,9 +12,7 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
-HERE=`pwd`
-bk cset -n -s .
-rm -rf FILE SCCS
+no_logging project
 R=1
 for D in '87/05/28 23:49:57' '97/05/28 23:49:57' '97/05/30 01:34:11' '97/06/23 01:33:45+06:30' '98/01/30 17:45:17-05:00'
 do	cat > INITX <<EOF
@@ -100,10 +98,7 @@ cd $HERE
 mkdir resync
 cd resync
 HERE=$HERE/resync
-BK_USER=bk; BK_HOST=free.bk; export BK_USER BK_HOST
-echo "logging: none" > $HERE/c
-bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
-cd project
+no_logging project
 echo foo > foo.c
 bk ci $Q -i foo.c
 bk commit $Q -ywhatever
