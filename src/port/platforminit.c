@@ -97,6 +97,9 @@ platformInit(char **av)
 
 	unless (p = getenv("PATH")) return;	/* and pray */
 
+#ifndef	WIN32
+	signal(SIGHUP, SIG_IGN);
+#endif
 #ifdef WIN32
 	/*
 	 * Force mkstemp() in uwtlib to use dir argument
