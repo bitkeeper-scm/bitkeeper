@@ -1725,6 +1725,7 @@ err:		unlink(left);
 	}
 	unlink(left);
 	unlink(right);
+	sccs_close(rs->s); /* for win32 */
 	sprintf(cmd, "bk delta -y'Auto merged' %s %s",
 	    rs->opts->quiet ? "-q" : "", GLOGGING_OK);
 	if (sys(cmd, rs->opts)) {
