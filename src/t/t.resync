@@ -57,6 +57,23 @@ if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 if [ ! -f BitKeeper/log/parent ]; then echo failed to record parent; exit 1; fi
 echo OK
+echo $N Create a different project, try to resync from the first ....$NL
+cd ..
+bk setup -f -n'BitKeeper Test repo number two' -c$HERE/c project2
+if [ ! -d project2 ]; then echo failed to make top level directory; exit 1; fi
+cd project2
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo "don't stand in the doorway, don't block up the hall" > times
+ci $Q -i -ydylan times
+bk commit $S -f -yCset2
+cd ..
+bk resync $Q -a project project2 2>resync.out
+if [ $? -eq 0 ]; then echo failed; cat resync.out; exit 1; fi
+if [ -d project2/src ]; then echo failed; exit 1; fi
+echo OK
 cores
 echo $N Check circular rename .......................................$NL
 cd $HERE/project/src

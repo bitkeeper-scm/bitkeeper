@@ -80,10 +80,10 @@ _setup() {
 	${BIN}admin -qtDescription ChangeSet
 	# This descr is used by the regression tests.  Don't spam the
 	# setups alias.
-	if [ "`cat Description`" = "BitKeeper Test repository" ]
-	then logsetup=
-	else logsetup=YES
-	fi
+	case "`cat Description`" in
+	    "BitKeeper Test"*) logsetup=NO;;
+	    *) logsetup=YES;;
+	esac
 	${RM} -f Description D.save
 	cd BitKeeper/etc
 	if [ "X$CONFIG" = X ]
@@ -107,7 +107,7 @@ _setup() {
 	else	cp $CONFIG config
 	fi
 	${BIN}ci -qi config
-	if [ x$logsetup = xYES ]
+	if [ $logsetup = YES ]
 	then	${BIN}get -s config
 		_sendConfig setups@openlogging.org
 	fi
