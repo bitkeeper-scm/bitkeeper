@@ -82,11 +82,15 @@ _locked() {
 }
 
 _extra() {
-	bk sfiles -x
+	_extras "$@"
 }
 
 _extras() {
-	bk sfiles -x
+	if [ "X$1" != X -a -d "$1" ]
+	then	shift
+		cd $1 && bk sfiles -x "$@"
+	else	bk -R sfiles -x "$@"
+	fi
 }
 
 _jove() {

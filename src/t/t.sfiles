@@ -134,7 +134,7 @@ SCCS/s.foo
 bar/blech/SCCS/s.s.foo
 EOF
 cmp -s SFILES LIST
-if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
+if [ $? -ne 0 ]; then echo list failed; diff SFILES LIST; exit 1; fi
 bk sfiles -u - < .sfiles | sort > SFILES
 sort <<EOF > LIST
 SCCS/s.ChangeSet
@@ -261,31 +261,13 @@ if [ ! -f SCCS/s.s.foo ]; then exit 1; fi
 FOO="`bk sfiles s.foo`"
 if [ "$FOO" != "SCCS/s.s.foo" ]; then echo Failed - got $FOO.; exit 1; fi
 echo OK
+echo $N Test ignore lists with -x ...................................$NL
 cat <<EOF > BitKeeper/etc/ignore
 LIST
 s.*
 *ore
 config
 EOF
-echo $N Test ignore lists with -u ...................................$NL
-bk sfiles -u | sort > SFILES
-sort <<EOF > LIST
-SCCS/s.foo
-SCCS/s.ChangeSet
-EOF
-cmp -s SFILES LIST
-if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
-echo OK
-echo $N Test ignore lists with -ug ..................................$NL
-bk sfiles -ug | sort > SFILES
-sort <<EOF > LIST
-foo
-ChangeSet
-EOF
-cmp -s SFILES LIST
-if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
-echo OK
-echo $N Test ignore lists with -x ...................................$NL
 sort <<EOF > LIST
 SCCS/OLD-s.foo
 SFILES
@@ -344,6 +326,10 @@ mv SCCS/s.impostor s.impostor
 mv impostor SCCS/s.impostor
 bk sfiles | sort > SFILES
 sort <<EOF > LIST
+BitKeeper/etc/SCCS/s.config
+SCCS/s.s.foo
+bar/SCCS/s.s.foo
+bar/blech/SCCS/s.s.foo
 SCCS/s.foo
 SCCS/s.ChangeSet
 SCCS/s.impostor
@@ -354,6 +340,10 @@ echo OK
 echo $N Test mildly paranoid mode ...................................$NL
 bk sfiles -p | sort > SFILES
 sort <<EOF > LIST
+BitKeeper/etc/SCCS/s.config
+SCCS/s.s.foo
+bar/SCCS/s.s.foo
+bar/blech/SCCS/s.s.foo
 SCCS/s.foo
 SCCS/s.ChangeSet
 SCCS/s.impostor
@@ -365,6 +355,10 @@ echo OK
 echo $N Test truly paranoid mode ....................................$NL
 bk sfiles -P | sort > SFILES
 sort <<EOF > LIST
+BitKeeper/etc/SCCS/s.config
+SCCS/s.s.foo
+bar/SCCS/s.s.foo
+bar/blech/SCCS/s.s.foo
 SCCS/s.foo
 SCCS/s.ChangeSet
 s.impostor

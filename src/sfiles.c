@@ -595,7 +595,7 @@ lftw_inner(char *path, char *base, struct stat *sb,
 {
 	DIR		*d;
 	struct dirent	*e;
-	int		mode, n;
+	int		mode, n, plus2 = strneq(path, "./", 2);
 #ifndef WIN32
 	ino_t		lastInode = 0;
 #endif
@@ -626,7 +626,8 @@ lftw_inner(char *path, char *base, struct stat *sb,
 			continue;
 		}
 		strcpy(base, e->d_name);
-		if (match_globs(path, ignore)) {
+		if (match_globs(path, ignore) ||
+		    (plus2 && match_globs(path + 2, ignore))) {
 			debug((stderr, "SKIP\t%s\n", path));
 			continue;
 		}
