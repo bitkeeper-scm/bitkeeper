@@ -328,6 +328,7 @@ get_options()
 	TESTS=0
 	while true
 	do	case $1 in
+	            -f) FAIL_WARNING=YES;;
 		    -i) KEEP_GOING=YES;;
 		    -r) export PREFER_RSH=YES;;
 		    -t) if [ X$2 = X ]
@@ -371,6 +372,7 @@ init_main_loop
 
 # Main Loop #
 FAILED=
+BADOUTPUT=
 for i in $list
 do
 echo ''
@@ -401,9 +403,25 @@ echo ''
 	touch $TMPDIR/T.${USER}-new
 	ls -a $TMPDIR > $TMPDIR/T.${USER}
 
-	cat setup $i | @TEST_SH@ $dashx
+	touch $TMPDIR/OUT.$$
+	if [ X$Q = X -o X$dashx = X-x ]
+	then	OUTPIPE=""
+	else	OUTPIPE=" 2>&1 | tee $TMPDIR/OUT.$$"
+	fi
+	cat setup $i | eval @TEST_SH@ $dashx $OUTPIPE
 	EXIT=$?
-	if [ $EXIT -ne 0 ]
+	BAD=0
+	egrep -v '^.*\.OK$|^---.*$|\.\.failed \(bug|^.*\.skipped$' \
+	    $TMPDIR/OUT.$$ > $DEV_NULL && {
+		echo
+		echo WARNING: unexpected output lines
+		BADOUTPUT="$i $BADOUTPUT"
+		test "X$FAIL_WARNING" = "XYES" && {
+			BAD=1
+		}
+	}
+	$RM -f $TMPDIR/OUT.$$
+	if [ $EXIT -ne 0 -o $BAD -ne 0 ]
 	then
 		echo ERROR: Test ${i#t.} failed with error $EXIT
 		test $KEEP_GOING = NO && exit $EXIT
@@ -413,15 +431,24 @@ echo ''
 done
 rm -f $TMPDIR/T.${USER} $TMPDIR/T.${USER}-new
 test $BK_LIMITPATH && rm -rf $BK_LIMITPATH
-test "X$FAILED" = X && {
-	echo ------------------------------------------------
+echo
+echo ------------------------------------------------
+if [ "X$FAILED" = X ]
+then
 	echo All requested tests passed, must be my lucky day
+else
+	echo Not your lucky day, the following tests failed:
+	for i in $FAILED
+	do	echo "	$i"
+	done
+fi
+echo ------------------------------------------------
+test "X$BADOUTPUT" != X && {
+        echo
 	echo ------------------------------------------------
-	exit 0
+	echo The follow tests had unexpected output:
+	for i in $BADOUTPUT
+	do	echo "	$i"
+	done
+	echo ------------------------------------------------
 }
-echo -----------------------------------------------
-echo Not your lucky day, the following tests failed:
-for i in $FAILED
-do	echo "	$i"
-done
-echo -----------------------------------------------

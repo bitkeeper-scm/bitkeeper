@@ -1183,9 +1183,11 @@ shell(void)
 {
 	char	*sh;
 
+#ifndef	WIN32
 	if (sh = getenv("BK_SHELL")) return (sh);
 	if (sh = find_prog("bash")) return (sh);
 	if (sh = find_prog("ksh")) return (sh);
+#endif
 	if (sh = find_prog("sh")) return (sh);
 	assert("No shell" == 0);
 	return (0);	/* Windows warns otherwise */
