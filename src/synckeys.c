@@ -358,6 +358,14 @@ prunekey(sccs *s, remote *r, MDBM *skip, int outfd, int flags,
 	char	*p, *k;
 	char	**tags = NULL;
 
+	/*
+	 * Reopen stdin with a stdio stream.  We will be reading a LOT of
+	 * data and it will all be processed with this process so it is
+	 * much faster.
+	 */
+	r->rf = fdopen(r->rfd, "r");
+	assert(r->rf);
+
 	unless (getline2(r, key, sizeof(key)) > 0) {
 		unless (quiet) {
 			fprintf(stderr,
