@@ -1377,6 +1377,7 @@ progressbar(int n, int max, char *msg)
 	float	elapsed;
 	int	percent = max ? (n * 100) / max : 100;
 	int	i, want;
+	int	barlen = 65;
 	struct	timeval tv;
 
 	if (percent > 100) percent = 100;
@@ -1394,20 +1395,19 @@ progressbar(int n, int max, char *msg)
 	last = percent;
 	lastup = elapsed;
 
-	want = (percent * 65) / 100;
-	fprintf(stderr, "%3u%% |", percent);
-	for (i = 1; i <= want; ++i) fputc('=', stderr);
-	for (; i <= 65; ++i) fputc(' ', stderr);
-	fputc('|', stderr);
-	if (msg) {
-		fprintf(stderr, " %-20s\n", msg);
-	} else {
-		if ((elapsed > 10.0) && (n < max)) {
-			int	remain = elapsed * (((float)max/n) - 1.0);
+	fprintf(stderr, "%3u%% ", percent);
+	if ((elapsed > 10.0) && (n < max)) {
+		int	remain = elapsed * (((float)max/n) - 1.0);
 
-			fprintf(stderr, " %dm%ds remaining",
-			    remain / 60, remain % 60);
-		}
-		fputc('\r', stderr);
+		barlen -= fprintf(stderr, "%dm%02ds ", remain/60, remain%60);
+	}
+	fputc('|', stderr);
+	want = (percent * barlen) / 100;
+	for (i = 1; i <= want; ++i) fputc('=', stderr);
+	for (; i <= barlen; ++i) fputc(' ', stderr);
+	if (msg) {
+		fprintf(stderr, "| %-20s\n", msg);
+	} else {
+		fprintf(stderr, "|\r");
 	}
 }
