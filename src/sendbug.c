@@ -2,7 +2,7 @@
 
 extern char *editor;
 private int do_email(char *bug);
-private int do_wevmail(char *bug);
+private int do_webmail(char *bug);
 
 int
 sendbug_main(int ac,  char **av)

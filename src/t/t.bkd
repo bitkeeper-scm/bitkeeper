@@ -210,6 +210,7 @@ bk push -c0 bk://localhost:$P$HERE/copy 2> bk.out3
 grep -q "bkd std cannot access non-master" bk.out3
 if [ $? -ne 0 ]; then echo failed 3; cat bk.out2 bk.out3; exit 1; fi
 echo OK
+waitForUnlock $HERE/copy
 echo $N Make sure bk/basic allows clone from master repository ......$NL
 mkdir $HERE/copy/BitKeeper/etc/.master
 bk clone $Q bk://localhost:$P$HERE/copy $HERE/copy3
