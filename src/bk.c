@@ -75,6 +75,7 @@ int	gzip_main(int, char **);
 int	help_main(int, char **);
 int	helpsearch_main(int, char **);
 int	helptopics_main(int, char **);
+int	hostme_main(int, char **);
 int	idcache_main(int, char **);
 int	isascii_main(int, char **);
 int	key2rev_main(int, char **);
@@ -239,6 +240,7 @@ struct command cmdtbl[] = {
 	{"help", help_main},			/* doc 2.0 */
 	{"helpsearch", helpsearch_main},	/* undoc 2.0 */
 	{"helptopics", helptopics_main},	/* undoc 2.0 */
+	{"hostme", hostme_main},		/* undoc 2.0 */
 	{"info", sinfo_main},			/* doc 2.0 */
 	{"idcache", idcache_main},		/* undoc? 2.0 */
 	{"isascii", isascii_main},		/* doc 2.0 */
