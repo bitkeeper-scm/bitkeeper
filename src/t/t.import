@@ -10,10 +10,14 @@ echo "logging_ok: t" >>$HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
 mkdir -p import_dir/src
 ${ECHO} foo > import_dir/src/foo.c
+touch import_dir/src/boo.c
 ( echo plain; echo no ) | bk import import_dir project > import.out 2>&1
 cd $HERE/project/src
 get $Q foo.c
 cmp -s foo.c $HERE/import_dir/src/foo.c
+if [ $? -ne 0 ]; then echo failed; cat import.out; exit 1; fi
+get $Q boo.c
+cmp -s boo.c $HERE/import_dir/src/boo.c
 if [ $? -ne 0 ]; then echo failed; cat import.out; exit 1; fi
 echo OK
 echo $N Test import patch file ......................................$NL

@@ -209,8 +209,8 @@ in(char *file, int todo, int extract)
 	u32	sum = 0, sum2 = 0;
 
 	unless (todo) {
-		fprintf(stderr, "Empty file: %s\n", file);
-		return (1);
+		close(fd = mkfile(file));
+		goto done;
 	}
 	if (extract) {
 		fd = mkfile(file);
@@ -227,7 +227,7 @@ in(char *file, int todo, int extract)
 		fprintf(stderr, "Premature EOF on %s\n", file);
 		goto err;
 	}
-	if (readn(0, buf, 10) != 10) {
+done:	if (readn(0, buf, 10) != 10) {
 		perror("chksum read");
 		goto err;
 	}
