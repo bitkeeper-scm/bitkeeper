@@ -18,12 +18,16 @@ private int doit(sccs *, s_opts);
 private	int do_check(sccs *s, int flags);
 private int strip_list(s_opts);
 
+private	int	getFlags = 0;
+
 int
 stripdel_main(int ac, char **av)
 {
 	sccs	*s;
 	char	*name;
 	int	c, rc;
+	MDBM	*config;
+	char	*co;
 	s_opts	opts = {1, 0, 0, 0};
 	RANGE_DECL;
 
@@ -52,6 +56,12 @@ usage:			system("bk help -s stripdel");
 	unless (opts.stripBranches || (things && r[0])) {
 		fprintf(stderr, "stripdel: must specify revisions.\n");
 		return (1);
+	}
+
+	if ((config = proj_config(bk_proj)) &&
+	    (co = mdbm_fetch_str(config, "checkout"))) {
+		if (strieq(co, "get")) getFlags = GET_EXPAND;
+		if (strieq(co, "edit")) getFlags = GET_EDIT;
 	}
 
 	/*
@@ -148,12 +158,14 @@ doit(sccs *s, s_opts opts)
 		return (1); /* failed */
 	}
 	verbose((stderr, "stripdel: removed %d deltas from %s\n", n, s->gfile));
-	
 	/*
 	 * Handle checkout modes
 	 */
-	do_checkout(s);
-	
+	if (getFlags) {
+		sccs	*s2 = sccs_init(s->sfile, 0, 0);
+		sccs_get(s2, 0, 0, 0, 0, SILENT|getFlags, "-");
+		sccs_free(s2);
+	}
 	return (0);
 }
 
