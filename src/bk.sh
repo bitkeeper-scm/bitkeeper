@@ -37,6 +37,7 @@ _setup() {
 	do	case "$opt" in
 		    c) case X$OPTARG in
 			  X/*) CONFIG=$OPTARG;;
+			  X[a-zA-Z]:/*) CONFIG=$OPTARG;; # for win32 path
 			  *) CONFIG=$PWD/$OPTARG;;
 		       esac;;
 		    f) FORCE=YES;;
