@@ -92,14 +92,14 @@ _superset() {
 	__cd2root
 	LIST=YES
 	QUIET=
-	PUSH=-l
+	CHANGES=-v
 	EXIT=0
 	TMP=/tmp/bksup$$
 	TMP2=/tmp/bksup2$$
 	while getopts q opt
 	do
 		case "$opt" in
-		q) QUIET=-q; PUSH=; LIST=NO;;
+		q) QUIET=-q; CHANGES=; LIST=NO;;
 		*) echo "Usage: superset [-q] [parent]"
 		   exit 1;;
 		esac
@@ -109,8 +109,8 @@ _superset() {
 	test "X$@" = X && {
 		test "X`bk parent -qp`" = "X" && exit 1
 	}
-	bk push -n -o$TMP2 $QUIET $PUSH "$@" 
-	grep -q 'Nothing to send to' $TMP2 || {
+	bk changes -La $CHANGES "$@" > $TMP2
+	test -s $TMP2 && {
 		test $LIST = NO && {
 			rm -f $TMP $TMP2
 			exit 1
@@ -142,7 +142,7 @@ _superset() {
 	(bk sfiles -x
 	 bk sfiles -xa BitKeeper/triggers
 	 bk sfiles -xa BitKeeper/etc |
-	    egrep -v 'etc/SCCS|etc/csets-out|etc/csets-in'
+	    egrep -v 'etc/SCCS|etc/csets-out|etc/csets-in|etc/level'
 	) | sort > $TMP2
 	test -s $TMP2 && {
 		test $LIST = NO && {
