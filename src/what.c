@@ -15,6 +15,10 @@ main(int ac, char **av)
 	int	doit(char *file);
 
 	debug_main(av);
+	if ((ac == 2) && streq(av[1], "--help")) {
+		fprintf(stderr, "Usage: what [file file file...]\n");
+		exit(1);
+	}
 	if ((ac == 2) && streq(av[1], "-")) {
 		char	buf[MAXPATH];
 

@@ -21,8 +21,7 @@ main(int ac, char **av)
 		switch (c) {
 		    case 'u': flags |= GET_USER; break;
 		    default:
-			fprintf(stderr,
-			    "lines: usage error, try --help.\n");
+			fprintf(stderr, "usage lines [-u] file.\n");
 			return (1);
 		}
 	}

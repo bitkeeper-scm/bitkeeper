@@ -2,31 +2,31 @@
 #include "system.h"
 #include "sccs.h"
 WHATSTR("@(#)%K%");
+/* undocumented:
+   -n		preserve gfile, kill pfile; SCCS compat\n\
+   -r		obsolete, SCCS compat\n\
+   -R		respect rev (?)\n\
+   -s		same as -q\n\
+*/
 char	*delta_help = "\n\
 usage: delta [-iluYpq] [-S<sym>] [-Z<alg>] [-y<c>] [files...]\n\n\
    -a		check in new work automatically\n\
    -c		don't verify file checksum\n\
    -D<file>	take diffs from <file>\n\
    -E		set file encoding (like admin)\n\
-   -f		force ci of null delta - default when invoked as delta\n\
-   -g		obsolete, SCCS compat\n\
+   -f		force creation of a null delta when invoked as ci\n\
    -h		invert sense of file's hash flag\n\
    -i		initial checkin, create a new revision history\n\
-   -I<file>	use init file\n\
-   -l		follow checkin with a locked checkout like ``get -e''\n\
-   -m		(delta) obsolete, SCCS compat;  (ci) same as -y\n\
-   -n		preserve gfile, kill pfile; SCCS compat\n\
-   -p		print differences before prompting for comments.\n\
+   -I<file>	use init file for meta data\n\
+   -l		follow check in with a locked check out like ``get -e''\n\
+   -p		print differences before prompting for comments\n\
    -q		run silently.\n\
-   -r		obsolete, SCCS compat\n\
-   -R		respect rev (?)\n\
-   -s		same as -q\n\
    -S<sym>	set the symbol <sym> to be the revision created\n\
-   -u		follow checkin with an unlocked checkout like ``get''\n\
-   -Y		prompt for one comment, then use it for all the files.\n\n\
-   -y<comment>	sets the revision comment to <comment>.\n\
+   -u		follow check in with an unlocked check out like ``get''\n\
+   -Y		prompt for one comment, then use it for all the files\n\n\
+   -y<comment>	sets the revision comment to <comment>\n\
    -Z, -Z<alg>	compress stored s.file with <alg>, which may be:\n\
-		gzip	like gzip(1) (default)\n\
+		gzip	like gzip(1)\n\
 		none	no compression\n";
 
 #include "comments.c"
