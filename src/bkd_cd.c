@@ -47,7 +47,7 @@ getLogRoot(char log_root[])
 
 	if (logRoot) {
 		strcpy(log_root, logRoot);
-		return(0);
+		return(log_root);
 	}
 
 	/*

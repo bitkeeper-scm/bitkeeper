@@ -63,6 +63,7 @@ int idcache_main(int, char **);
 int isascii_main(int, char **);
 int key2rev_main(int, char **);
 int keysort_main(int, char **);
+int lconfig_main(int, char **);
 int lines_main(int, char **);
 int listkey_main(int, char **);
 int lock_main(int, char **);
@@ -129,7 +130,6 @@ int unlock_main(int, char **);
 int unwrap_main(int, char **);
 int users_main(int, char **);
 int version_main(int, char **);
-int webmail_main(int, char **);
 int what_main(int, char **);
 int zone_main(int, char **);
 
@@ -140,6 +140,7 @@ struct command cmdtbl[] = {
 	{"_find", find_main },
 	{"_gzip", gzip_main }, 
 	{"_keysort", keysort_main},
+	{"_lconfig", lconfig_main},	
 	{"_lines", lines_main},	
 	{"_listkey", listkey_main},	
 	{"_log", log_main},
@@ -157,7 +158,6 @@ struct command cmdtbl[] = {
 	{"_probekey", probekey_main},
 	{"_sortmerge", sortmerge_main},
 	{"_unlink", unlink_main },
-	{"_webmail", webmail_main},
 	{"abort", abort_main},
 	{"admin", admin_main},
 	{"annotate", annotate_main},

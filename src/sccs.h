@@ -308,7 +308,7 @@
 #define	OPENLOG_LOG	"BitKeeper/etc/SCCS/x.log"
 #define	BK_WEBMAIL_URL	"http://www.bitkeeper.com:80"
 #define	WEB_BKD_CGI	"web_bkd"
-#define	WEB_MAIL_CGI	"logit"
+#define	WEB_MAIL_CGI	"web_mail"
 #define	SCCSTMP		"SCCS/T.SCCSTMP"
 #define	BKROOT		"BitKeeper/etc"
 #define	GONE		"BitKeeper/etc/gone"
@@ -405,6 +405,7 @@ typedef struct delta {
 	struct	delta *next;		/* all deltas in table order */
 	int	flags;			/* per delta flags */
 	u32	published:1;	
+	u32	ptype:1;	
 } delta;
 
 /*
@@ -935,7 +936,7 @@ char 	**get_http_proxy();
 int	confirm(char *msg);
 int	setlod_main(int ac, char **av);
 MDBM *	loadOK();
-void	config(char *rev, FILE *f);
+void	config(FILE *f);
 int	ok_commit(int l, int alreadyAsked);
 int	cset_setup(int flags);
 off_t	fsize(int fd);
@@ -960,4 +961,5 @@ int     http_connect(remote *r, char *cgi_script);
 int     http_send(remote *, char *, size_t, size_t, char *, char *); 
 char *	user_preference(char *what, char buf[MAXPATH]);
 int	bktemp(char *buf);
+void	updLogMarker(int ptype);
 #endif	/* _SCCS_H_ */

@@ -6812,11 +6812,14 @@ delta_table(sccs *s, FILE *out, int willfix)
 			fputmeta(s, buf, out);
 		}
 		if (s->state & S_BITKEEPER) {
+			char *t = "";
+
+			if (d->published) t = d->ptype ? "\t" : " ";
 			if (first) {
 				fputmeta(s, "\001cK", out);
 				s->sumOff = ftell(out);
 				fputs("XXXXX", out);
-if (d->published) fputs(" ", out);
+				if (d->published) fputs(t, out);
 				fputmeta(s, "\n", out);
 			} else if (d->flags & D_CKSUM) {
 				/*
@@ -6827,8 +6830,7 @@ if (d->published) fputs(" ", out);
 				 * Leaving this fixed means we can diff the
 				 * s.files easily.
 				 */
-				//sprintf(buf, "\001cK%05u\n", d->sum);
-sprintf(buf, "\001cK%05u%s\n", d->sum, d->published ? " " : "");
+				sprintf(buf, "\001cK%05u%s\n", d->sum, t);
 				fputmeta(s, buf, out);
 			}
 		}
@@ -8909,7 +8911,8 @@ sumArg(delta *d, char *arg)
 	d->flags |= D_CKSUM;
 	d->sum = atoi(arg);
 	for (p = arg; isdigit(*p); p++);
-	if (*p == ' ') d->published = 1;
+	if (*p == ' ') { d->published = 1; d->ptype = 0; }
+	if (*p == '\t') { d->published = 1; d->ptype = 1; }
 	return (d);
 }
 

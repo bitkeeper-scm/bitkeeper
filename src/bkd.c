@@ -45,7 +45,7 @@ bkd_main(int ac, char **av)
 		goto doit;
         }
 
-	while ((c = getopt(ac, av, "c:dDeE:hil|Lp:P:Rs:St:u:x:")) != -1) {
+	while ((c = getopt(ac, av, "c:dDeE:hil|L:p:P:Rs:St:u:x:")) != -1) {
 		switch (c) {
 		    case 'c': Opts.count = atoi(optarg); break;
 		    case 'd': Opts.daemon = 1; break;
