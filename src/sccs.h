@@ -626,7 +626,9 @@ typedef struct patch {
 	char	*diffFile;	/* RESYNC/BitKeeper/diff-1, only if !diffMmap */
 	MMAP	*diffMmap;	/* points into mmapped patch */
 	time_t	order;		/* ordering over the whole list, oldest first */
-	int	flags;		/* local/remote /etc */
+	u32	local:1;	/* patch is from local file */
+	u32	remote:1;	/* patch is from remote file */
+	u32	meta:1;		/* delta is metadata */
 	struct	patch *next;	/* guess */
 } patch;
 
@@ -667,13 +669,6 @@ typedef struct patch {
 #define	PATCH_END	"\001 End\n"
 #define	PATCH_ABORT	"\001 Patch abort\n"
 #define	PATCH_OK	"\001 Patch OK\n"
-
-/*
- * Internal to takepatch
- */
-#define	PATCH_LOCAL	0x0001	/* patch is from local file */
-#define	PATCH_REMOTE	0x0002	/* patch is from remote file */
-#define	PATCH_META	0x0004	/* delta is metadata */
 
 /*
  * The amount of clock drift we handle when generating keys.

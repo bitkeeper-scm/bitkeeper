@@ -513,9 +513,17 @@ gc_sameFiles(resolve *rs)
 	chdir(ROOT2RESYNC);
 	unlink(buf);
 	if (same) {
+		if (opts->log) {
+			fprintf(stdlog, "same files %s\n", rs->d->pathname);
+		}
 		sprintf(buf, "%s/%s", RESYNC2ROOT, rs->d->pathname);
 		assert(!isdir(buf));
-		unlink(buf);
+		if (unlink(buf)) {
+			fprintf(stderr,
+			    "Unable to remove local file %s\n",
+			    rs->d->pathname);
+			return (0);
+		}
 		if (opts->log) fprintf(stdlog, "unlink(%s)\n", buf);
 		return (EAGAIN);
 	}
