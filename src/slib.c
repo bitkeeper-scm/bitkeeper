@@ -3063,6 +3063,7 @@ tagwalk(sccs *s, delta *d)
 {
 	unless (d) return ((delta*)1);	/* this is an error case */
 
+	/* note that the stripdel path has used D_RED */
 	if (d->flags & D_BLUE) return(0);
 	d->flags |= D_BLUE;
 
