@@ -61,3 +61,21 @@ sub localName2bkName
 }
 
 
+sub cpio_out
+{
+	local($q, $list) = ($_[0], $_[1]);
+
+	# win32 note: can not re-direct stderr
+	# must use "--quiet" option
+	$cpioq = $q ? ' --quiet' : ' -v';
+	system("${BIN}cpio -o -Hcrc $cpioq < $list")
+		and die "cpio unsuccessful exit $?\n";
+}
+
+sub cpio_in
+{
+	# Can not use -m option yet, need to fix cpio to
+	# close file before chmod()
+	system("${BIN}cpio -id --quiet")
+		and die "cpio exited unsuccessfully\n";
+}
