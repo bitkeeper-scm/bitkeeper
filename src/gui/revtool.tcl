@@ -283,7 +283,7 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 		    -expand true \
 		    -anchor n
 		set prs [open "| bk prs {$dspec} -hr$rev \"$file\" 2>$dev_null"]
-		filltext $w(ctext) $prs 1
+		filltext $w(ctext) $prs 1 "ctext"
 		set wht [winfo height $w(cframe)]
 		set cht [font metrics $gc(rev.fixedFont) -linespace]
 		set adjust [expr {int($wht) / $cht}]
@@ -885,6 +885,36 @@ proc listRevs {range file} \
 	return 0
 } ;# proc listRevs
 
+# Highlight the graph edges connecting the node to its children an parents
+#
+proc highlightAncestry {rev1} \
+{
+	global	w gc fname dev_null
+
+	# Reset the highlighted graph edges to the default color
+	$w(graph) itemconfigure "pline" -fill $gc(rev.arrowColor)
+	$w(graph) itemconfigure "mline" -fill $gc(rev.arrowColor)
+	$w(graph) itemconfigure "hline" -fill $gc(rev.arrowColor)
+
+	# Highlight the kids
+	catch {exec bk prs -hr$rev1 -d:KIDS: $fname} kids
+	foreach r $kids {
+		$w(graph) itemconfigure "l_$rev1-$r" -fill $gc(rev.hlineColor)
+	}
+	# Highlight the kid (XXX: There was a reason why I did this)
+	catch {exec bk prs -hr$rev1 -d:KID: $fname} kid
+	if {$kid != ""} {
+		$w(graph) itemconfigure "l_$kid" -fill $gc(rev.hlineColor)
+	}
+	# NOTE: I am only interested in the first MPARENT
+	set mpd [open "|bk prs -hr$rev1 {-d:MPARENT:} $fname"]
+	if {[gets $mpd mp]} {
+		$w(graph) itemconfigure "l_$mp-$rev1" -fill $gc(rev.hlineColor)
+	}
+	catch { close $mpd }
+	$w(graph) itemconfigure "l_$rev1" -fill $gc(rev.hlineColor)
+}
+
 # If called from the button selection mechanism, we give getLeftRev a
 # handle to the graph revision node
 #
@@ -896,29 +926,14 @@ proc getLeftRev { {id {}} } \
 	if {$id == ""} {
 		catch {pack forget $w(cframe); set comments_mapped 0}
 	}
-	# Reset the colored lines to the parent nodes
-	$w(graph) itemconfigure "pline" -fill $gc(rev.arrowColor)
-	$w(graph) itemconfigure "mline" -fill $gc(rev.arrowColor)
-	$w(graph) itemconfigure "hline" -fill $gc(rev.arrowColor)
-
 	$w(graph) delete new
 	$w(graph) delete old
 	.menus.cset configure -state disabled -text "View Changeset "
 	.menus.difftool configure -state disabled
 	set rev1 [getRev "old" $id]
-	catch {exec bk prs -hr$rev1 -d:KIDS: $fname} kids
-	foreach r $kids {
-		$w(graph) itemconfigure "l_$rev1-$r" -fill $gc(rev.hlineColor)
-	}
-	catch {exec bk prs -hr$rev1 -d:KID: $fname} kid
-	if {$kid != ""} {
-		$w(graph) itemconfigure "l_$kid" -fill $gc(rev.hlineColor)
-	}
-	set mpd [open "|bk prs -hr$rev1 {-d:MPARENT:} $fname"]
-	if {[gets $mpd mp]} {
-		$w(graph) itemconfigure "l_$mp-$rev1" -fill $gc(rev.hlineColor)
-	}
-	$w(graph) itemconfigure "l_$rev1" -fill $gc(rev.hlineColor)
+
+	highlightAncestry $rev1
+
 	if {[info exists rev2]} { unset rev2 }
 	if {$rev1 != ""} { .menus.cset configure -state normal }
 }
@@ -942,9 +957,11 @@ proc getRev {type {id {}} } \
 
 	if {$id == ""} {
 		set id [$w(graph) gettags current]
-		# Don't want to create boxes around date_text or date_line
-		if {[lsearch $id date_*] >= 0} { return }
-		if {[lsearch $id l_*] >= 0} { return }
+		# Don't want to create boxes around items that are not
+		# graph nodes
+		if {([lsearch $id date_*] >= 0) || ([lsearch $id l_*] >= 0)} {
+			return 
+		}
 	}
 	set id [lindex $id 0]
 	if {("$id" == "current") || ("$id" == "")} { return "" }
@@ -992,8 +1009,9 @@ proc filltext {win f clear {msg {}}} \
 #
 proc prs {} \
 {
-	global file rev1 dspec dev_null search w diffpair ttype
+	global file rev1 dspec dev_null search w diffpair ttype sem lock
 
+	set lock "inprs"
 	getLeftRev
 	if {"$rev1" != ""} {
 		set diffpair(left) $rev1
@@ -1001,9 +1019,14 @@ proc prs {} \
 		busy 1
 		set prs [open "| bk prs {$dspec} -r$rev1 \"$file\" 2>$dev_null"]
 		set ttype "file_prs"
-		filltext $w(aptext) $prs 1
+		filltext $w(aptext) $prs 1 "prs"
 	} else {
 		set search(prompt) "Click on a revision"
+	}
+	if {$sem == "show_sccslog"} {
+		set lock "outprs"
+		get "id"
+		set sem ""
 	}
 }
 
@@ -1046,7 +1069,7 @@ proc sfile {} \
 	set sfile [exec bk sfiles $file]
 	set f [open "$sfile" "r"]
 	set ttype "sccs"
-	filltext $w(aptext) $f 1
+	filltext $w(aptext) $f 1 "sfile output"
 }
 
 #
@@ -1055,8 +1078,12 @@ proc sfile {} \
 #
 proc get { type {val {}}} \
 {
-	global file dev_null rev1 rev2 Opts w srev ttype
+	global file dev_null rev1 rev2 Opts w srev ttype sem lock
 
+	if {$lock == "inprs"} {
+		set sem "show_sccslog"
+		return
+	}
 	# XXX: Oy, this is yucky. Setting srev to "" since we just clicked
 	# on a node and we no longer looking at a specific rev (used to 
 	# determine what we are looking at in selectTag. This fixes a bug
@@ -1066,7 +1093,7 @@ proc get { type {val {}}} \
 	set srev ""
 
 	if {$type == "id"} {
-		getLeftRev $val
+		#getLeftRev $val
 	} elseif {$type == "rev"} {
 		set rev1 $val
 	}
@@ -1077,7 +1104,7 @@ proc get { type {val {}}} \
 		set get \
 		    [open "| bk get $Opts(get) -Pr$rev1 \"$file\" 2>$dev_null"]
 		set ttype "annotated"
-		filltext $w(aptext) $get 1
+		filltext $w(aptext) $get 1 "get"
 		return
 	}
 	set rev2 $rev1
@@ -1217,9 +1244,9 @@ proc csetdiff2 {{rev {}}} \
 	while {[gets $revs r] >= 0} {
 		set c [open "| bk sccslog -r$r ChangeSet" r]
 		set ttype "cset_prs"
-		filltext $w(aptext) $c 0
+		filltext $w(aptext) $c 0 "empty sccslog for cset"
 		set log [open "| bk cset -Hr$r | bk _sort | bk sccslog -" r]
-		filltext $w(aptext) $log 0
+		filltext $w(aptext) $log 0 "sccslog for files"
 	}
 	busy 0
 	catch {close $revs}
@@ -1441,8 +1468,9 @@ proc busy {busy} \
 proc widgets {} \
 {
 	global	search Opts gc stacked d w dspec wish yspace paned 
-	global  tcl_platform fname app ttype
+	global  tcl_platform fname app ttype sem
 
+	set sem ""
 	set ttype ""
 	set dspec \
 "-d:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)\n}\$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n"
