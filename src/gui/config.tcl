@@ -71,6 +71,8 @@ proc getConfig {prog} \
 	set _d(sccs.selectColor) lightblue ;# highlight color for selected tag
 	set _d(sccs.dateColor) #181818	   ;# dates at the bottom of graph
 	set _d(sccs.commentHeight) 5       ;# height of comment text widget
+	set _d(sccs.textWidth) 92	   ;# width of text windows
+	set _d(sccs.textHeight) 30	   ;# height of lower window
 
 	if {$tcl_platform(platform) == "windows"} {
 		package require registry

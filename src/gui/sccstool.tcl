@@ -1132,7 +1132,8 @@ proc widgets {} \
 	    frame .p.b -borderwidth 2 -relief sunken
 	    	# prs and annotation window
 		frame .p.b.p
-		    text .p.b.p.t -width 80 -height 30 \
+		    text .p.b.p.t -width $gc(sccs.textWidth) \
+			-height $gc(sccs.textHeight) \
 			-font $gc(sccs.fixedFont) \
 			-xscrollcommand { .p.b.p.xscroll set } \
 			-yscrollcommand { .p.b.p.yscroll set } \
@@ -1148,7 +1149,8 @@ proc widgets {} \
 			-troughcolor $gc(sccs.troughColor)
 		# change comment window
 		frame .p.b.c
-		    text .p.b.c.t -width 80 -height $gc(sccs.commentHeight) \
+		    text .p.b.c.t -width $gc(sccs.textWidth) \
+			-height $gc(sccs.commentHeight) \
 			-font $gc(sccs.fixedFont) \
 			-xscrollcommand { .p.b.c.xscroll set } \
 			-yscrollcommand { .p.b.c.yscroll set } \
