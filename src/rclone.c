@@ -4,6 +4,7 @@ typedef	struct {
 	u32	debug:1;		/* -d debug mode */
 	u32	verbose:1;		/* -q shut up */
 	int	gzip;			/* -z[level] compression */
+	char	*rev;
 	u32	in, out;
 } opts;
 
@@ -24,10 +25,11 @@ rclone_main(int ac, char **av)
 
 	opts.verbose = 1;
 	opts.gzip = 6;
-	while ((c = getopt(ac, av, "dqz|")) != -1) {
+	while ((c = getopt(ac, av, "dqr;z|")) != -1) {
 		switch (c) {
 		    case 'd': opts.debug = 1; break;
 		    case 'q': opts.verbose = 0; break;
+		    case 'r': opts.rev = optarg; break;
 		    case 'z':
 			opts.gzip = optarg ? atoi(optarg) : 6;
 			if (opts.gzip < 0 || opts.gzip > 9) opts.gzip = 6;
@@ -124,6 +126,7 @@ send_part1_msg(opts opts, remote *r)
 	sendEnv(f, NULL, r, 0);
 	fprintf(f, "rclone_part1");
 	if (gzip) fprintf(f, " -z%d", gzip);
+	if (opts.rev) fprintf(f, " -r%s", opts.rev); 
 	if (opts.verbose) fprintf(f, " -v");
 	if (r->path) fprintf(f, " %s", r->path);
 	fputs("\n", f);
@@ -181,7 +184,7 @@ rclone_part2(char **av, opts opts, remote *r)
 		getline2(r, buf, sizeof(buf));
 	}
 
-done:	//trigger(av, "post");
+done:	trigger(av, "post");
 	disconnect(r, 1);
 	wait_eof(r, opts.debug); /* wait for remote to disconnect */
 	disconnect(r, 2);
@@ -221,6 +224,7 @@ send_sfio_msg(opts opts, remote *r)
 	sendEnv(f, NULL, r, 0);
 	fprintf(f, "rclone_part2");
 	if (gzip) fprintf(f, " -z%d", gzip);
+	if (opts.rev) fprintf(f, " -r%s", opts.rev); 
 	if (opts.verbose) fprintf(f, " -v");
 	if (r->path) fprintf(f, " %s", r->path);
 	fputs("\n", f);

@@ -1030,6 +1030,8 @@ int	setlevel(int);
 int	consistency(int quiet);
 int	rmUncommitted(int quiet);
 void	rmEmptyDirs(int quiet);    
+int	after(int quiet, char *rev);
+int	lod(int quiet, char *rev);
 
 extern char *bk_vers;
 extern char *bk_utc;

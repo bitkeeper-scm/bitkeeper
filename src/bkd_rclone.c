@@ -6,6 +6,7 @@ typedef	struct {
 	u32	debug:1;
 	u32	verbose:1;
 	u32	gzip;
+	char    *rev;
 } opts;
 
 private char *
@@ -15,9 +16,10 @@ rclone_common(int ac, char **av, opts *opts)
 	int	c;
 	char	*p;
 
-	while ((c = getopt(ac, av, "vdz|")) != -1) {
+	while ((c = getopt(ac, av, "dr;vz|")) != -1) {
 		switch (c) {
 		    case 'd': opts->debug = 1; break;
+		    case 'r': opts->rev = optarg; break; 
 		    case 'v': opts->verbose = 1; break;
 		    case 'z':
 			opts->gzip = optarg ? atoi(optarg) : 6;
@@ -133,6 +135,20 @@ cmd_rclone_part2(int ac, char **av)
 	}
 	/* remove any uncommited stuff */
 	rmUncommitted(!opts.verbose);
+
+
+	/* set up correct lod while the revision number is accurate */
+	if (opts.rev) {
+		if (lod(!opts.verbose, opts.rev)) {
+			fprintf(stderr,
+				    "clone: cannot set lod, aborting ...\n");
+			fputc(BKD_NUL, stdout);
+			goto done;
+		}
+	}
+
+	/* remove any later stuff */
+	if (opts.rev) after(!opts.verbose, opts.rev);
 
 	/* clean up empty directories */
 	rmEmptyDirs(!opts.verbose);

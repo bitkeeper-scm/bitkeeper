@@ -15,8 +15,6 @@ typedef struct {
 	u32	in, out;		/* stats */
 } opts;
 
-private int	after(opts opts);
-private int	lod(opts opts);
 private int	clone(char **, opts, remote *, char *, char **);
 private void	parent(opts opts, remote *r);
 private int	sfio(opts opts, int gz, remote *r);
@@ -176,7 +174,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 
 	/* set up correct lod while the revision number is accurate */
 	if (opts.rev) {
-		if (lod(opts)) {
+		if (lod(opts.quiet, opts.rev)) {
 			fprintf(stderr,
 				    "clone: cannot set lod, aborting ...\n");
 			fprintf(stderr, "clone: removing %s ...\n", local);
@@ -187,7 +185,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	}
 
 	/* remove any later stuff */
-	if (opts.rev) ret |= after(opts);
+	if (opts.rev) ret |= after(opts.quiet, opts.rev);
 
 	/* clean up empty directories */
 	rmEmptyDirs(opts.quiet);
@@ -351,22 +349,22 @@ rmUncommitted(int quiet)
 	return (did);
 }
 
-private int
-after(opts opts)
+int
+after(int quiet, char *rev)
 {
 	char	*cmds[10];
 	char	*p;
 	int	i;
 
-	unless (opts.quiet) {
-		fprintf(stderr, "Removing revisions after %s ...\n", opts.rev);
+	unless (quiet) {
+		fprintf(stderr, "Removing revisions after %s ...\n", rev);
 	}
 	cmds[i = 0] = "bk";
 	cmds[++i] = "undo";
 	cmds[++i] = "-fs";
-	if (opts.quiet) cmds[++i] = "-q";
-	cmds[++i] = p = malloc(strlen(opts.rev) + 3);
-	sprintf(cmds[i], "-a%s", opts.rev);
+	if (quiet) cmds[++i] = "-q";
+	cmds[++i] = p = malloc(strlen(rev) + 3);
+	sprintf(cmds[i], "-a%s", rev);
 	cmds[++i] = 0;
 	i = spawnvp_ex(_P_WAIT, "bk", cmds);
 	free(p);
@@ -374,22 +372,22 @@ after(opts opts)
 	return (WEXITSTATUS(i));
 }
 
-private int
-lod(opts opts)
+int
+lod(int quiet, char *rev)
 {
 	char	*cmds[10];
 	char	*p;
 	int	i;
 
-	unless (opts.quiet) {
+	unless (quiet) {
 		fprintf(stderr,
-		    "Setting repository to correct lod for %s...\n", opts.rev);
+		    "Setting repository to correct lod for %s...\n", rev);
 	}
 	cmds[i = 0] = "bk";
 	cmds[++i] = "setlod";
-	if (opts.quiet) cmds[++i] = "-q";
-	cmds[++i] = p = malloc(strlen(opts.rev) + 3);
-	sprintf(cmds[i], "-l%s", opts.rev);
+	if (quiet) cmds[++i] = "-q";
+	cmds[++i] = p = malloc(strlen(rev) + 3);
+	sprintf(cmds[i], "-l%s", rev);
 	cmds[++i] = 0;
 	i = spawnvp_ex(_P_WAIT, "bk", cmds);
 	free(p);
