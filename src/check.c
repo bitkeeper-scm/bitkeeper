@@ -805,7 +805,8 @@ check(sccs *s, MDBM *db, MDBM *marks)
 	} else unless (sccs_setpathname(s)) {
 		fprintf(stderr, "check: can't get spathname in %s\n", s->sfile);
 		errors++;
-	} else unless (resync || streq(s->sfile, s->spathname)) {
+	} else unless (resync ||
+	    streq(s->sfile, s->spathname) || (s->state & S_LOGS_ONLY)) {
 		fprintf(stderr,
 		    "check: %s should be %s\n", s->sfile, s->spathname);
 		errors++;

@@ -6,6 +6,7 @@ left||right->path == s->gfile.
 /* Copyright (c) 1999-2000 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
+#include "logging.h"
 #include "zlib/zlib.h"
 WHATSTR("@(#)%K%");
 
@@ -398,7 +399,7 @@ extractPatch(char *name, MMAP *p, int flags, int fast, project *proj)
 	if (newProject && !newFile) notfirst();
 
 	if (echo>3) fprintf(stderr, "%s\n", t);
-again:	s = sccs_keyinit(t, INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB);
+again:	s = sccs_keyinit(t, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB);
 	/*
 	 * Unless it is a brand new workspace, or a new file,
 	 * rebuild the id cache if look up failed.
@@ -467,7 +468,7 @@ cleanup:		if (perfile) sccs_free(perfile);
 			goto cleanup;
 		}
 		sccs_setpathname(s);
-		unless (streq(s->spathname, s->sfile)) {
+		unless (isLogPatch || streq(s->spathname, s->sfile)) {
 			tmp = sccs_top(s);
 			badpath(s, tmp);
 			goto cleanup;
@@ -1083,7 +1084,8 @@ apply:
 			}
 		} else {
 			assert(s == 0);
-			unless (s = sccs_init(p->resyncFile, NEWFILE, proj)) {
+			unless (s =
+			    sccs_init(p->resyncFile, NEWFILE|SILENT, proj)) {
 				SHOUT();
 				fprintf(stderr,
 				    "takepatch: can't create %s\n",
@@ -1133,7 +1135,7 @@ apply:
 			if (s->bad_dsum || s->io_error) return (-1);
 			mclose(iF);	/* dF done by delta() */
 			s->proj = 0; sccs_free(s);
-			s = sccs_init(p->resyncFile, INIT_NOCKSUM, proj);
+			s = sccs_init(p->resyncFile, INIT_NOCKSUM|SILENT, proj);
 		}
 		p = p->next;
 	}
@@ -1143,7 +1145,7 @@ apply:
 		fclose(csets);
 	}
 	s->proj = 0; sccs_free(s);
-	s = sccs_init(patchList->resyncFile, 0, proj);
+	s = sccs_init(patchList->resyncFile, SILENT, proj);
 	assert(s);
 	if (encoding & E_GZIP) s = unexpand(s);
 	if (lodkey[0]) { /* restore LOD setting */
@@ -1569,6 +1571,10 @@ init(char *inputFile, int flags, project **pp)
 					st.type = 0;
 					st.version = 1;
 					isLogPatch = 1;
+					assert(exists("BitKeeper/etc"));
+					close(creat(LOG_TREE, 0666));
+					close(creat(
+					    ROOT2RESYNC "/" LOG_TREE, 0666));
 				} else {
 					fprintf(stderr, "Expected type\n");
 					goto error;
