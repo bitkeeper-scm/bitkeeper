@@ -16,6 +16,7 @@ private struct {
 	u32	newline:1;	/* add a newline after each record, like prs */
 	char	*rev;		/* list this rev or range of revs */
 	u32	remote:1;	/* want the new remote csets */
+	u32	remote2:1;	/* bk changes url */
 	u32	tagOnly:1;	/* only show items which are tagged */
 	char	*user;		/* only from this user */
 	u32	others:1;	/* -U<user> everyone except <user> */
@@ -34,16 +35,22 @@ private int	send_end_msg(remote *r, char *msg);
 private int	send_part2_msg(remote *r, char **av, char *key_list);
 private int	changes_part1(remote *r, char **av, char *key_list);
 private int	changes_part2(remote *r, char **av, char *key_list, int ret);
-private int	doit_remote(char **av, char *url);
+private int	_doit_remote(char **av, char *url);
+private int	doit_remote(char **nav, char *url);
+private int	doit_local(int nac, char **nav, char *url);
 private void	cset(sccs *s, FILE *f, char *dspec);
+
+private	MDBM	*seen; /* key list */
 
 int
 changes_main(int ac, char **av)
 {
 	int	c;
+	int	rc = 0, nac = 0;
 	char	*nav[30];
-	int	nac = 0;
-	char	*url;
+	char	*url = NULL, *freeme = NULL;
+	char	buf[MAXPATH];
+	pid_t	pid = 0; /* pager */
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help changes");
@@ -96,75 +103,124 @@ usage:			system("bk help -s changes");
 	nav[nac] = 0;
 	if ((opts.local || opts.remote) && opts.rev) goto usage;
 	if (opts.keys && (opts.verbose||opts.html||opts.dspec)) goto usage;
+
+	if (!opts.local && !opts.remote &&
+		av[optind] && !streq("-", av[optind])) {
+		opts.remote2 = 1;	/* bk changes url */
+	}
+
 	if (sccs_cd2root(0, 0)) {
-		if (!av[optind] || opts.local || opts.remote) {
+		if (!opts.remote2) {
 			fprintf(stderr, "Can't find package root\n");
 			exit(1);
 		}
 		/* otherwise we don't really care */
 	}
 
-	unless (opts.local || opts.remote || av[optind]) {
-		for (c = 2; c < nac; c++) free(nav[c]);
-		return (doit(0));
-	} else if (av[optind] && streq("-", av[optind])) {
-		if (opts.local || opts.remote) goto usage;
-		for (c = 2; c < nac; c++) free(nav[c]);
-		return (doit(1));
-	}
-	
-	unless (url = av[optind]) {
-		unless (url = getParent()) {
-			fprintf(stderr, "No repository specified?!\n");
-			goto out;
-		}
-	}
-
+	/*
+	 * There are 4 major cases
+	 * 1) bk changes -L url
+	 * 2) bk changes -R (url_list | -)
+	 * 3) bk changes url
+	 * 4) bk changes [-]
+	 * Note: the dash in case "2" is a url list,
+	 *       the dash in case "4" is a key list.
+	 */
 	if (opts.local) {
-		int	wfd, fd1, status;
-		pid_t	pid;
-
-		if (opts.remote) {
-			fprintf(stderr, "warning: -R option ignored\n");
+		/* "bk changes -L url */
+		unless (url = av[optind]) {
+			unless (url = freeme = getParent()) {
+				fprintf(stderr, "No repository specified?!\n");
+out:				for (c = 2; c < nac; c++) free(nav[c]);
+				if (freeme) free(freeme);
+				if (seen) mdbm_close(seen);
+				return (1);
+			}
 		}
-
-		/*
-		 * What we want is: bk synckey -lk url | bk changes opts -
-		 */
-		nav[nac++] = strdup("-");
-		assert(nac < 30);
-		nav[nac] = 0;
-		pid = spawnvp_wPipe(nav, &wfd, 0);
-
-		/*
-		 * Send "bk synckey" stdout into the pipe
-		 */
-		fd1 = dup(1); close(1);
-		dup2(wfd, 1); close(wfd);
-		sys("bk", "synckeys", "-lk", url, SYS);
-		close(1); dup2(fd1, 1); /* restore fd1, just in case */
-		waitpid(pid, &status, 0);
-		if (WIFEXITED(status)) return (WEXITSTATUS(status));
-out:		for (c = 2; c < nac; c++) free(nav[c]);
-		unless (av[optind]) free(url);
-		return (1); /* interrupted */
+		rc = doit_local(nac, nav, url);
+	} else if (opts.remote) {
+		pid = mkpager();
+		seen = mdbm_mem();
+		if (av[optind] && streq("-", av[optind])) {
+			/*
+			 * bk changes -R -
+			 * get url list from stdin
+			 */
+			while (fnext(buf, stdin)) {
+				chomp(buf);
+				rc |= doit_remote(nav, buf);
+			}
+		} else if (av[optind] == NULL) {
+			/* bk changes -R */
+			unless (url = freeme = getParent()) {
+				fprintf(stderr, "No repository specified?!\n");
+				if (pid > 0)  {
+					fclose(stdout);
+					waitpid(pid, 0, 0);
+				}
+				goto out;
+			}
+			rc = doit_remote(nav, url);
+		} else {
+			/* bk changes -R url_list */
+			while (av[optind]) {
+				rc |= doit_remote(nav, av[optind++]);
+			}
+		}
+		mdbm_close(seen);
+		if (pid > 0)  {
+			fclose(stdout);
+			waitpid(pid, 0, 0);
+		}
+	} else if (opts.remote2) {
+		/* bk changes url */
+		rc = doit_remote(nav, av[optind]);
 	} else {
-		int	rc;
-		int	i = 0;
-
-		for (;;) {
-			rc = doit_remote(&nav[1], url);
-			if (rc != -2) break; /* -2 means locked */
-			fprintf(stderr,
-			    "changes: remote locked, trying again...\n");
-			sleep(min((i++ * 2), 10)); /* auto back off */
+		if (!av[optind]) {
+			rc = doit(0); /* bk changes */
+		} else {
+			assert(streq(av[optind], "-"));
+			/* get key list from stdin */
+			rc = doit(1); /* bk changes - */
 		}
-		
-		for (c = 2; c < nac; c++) free(nav[c]);
-		unless (av[optind]) free(url);
-		
-		return (rc);
 	}
+
+	/*
+	 * clean up
+	 */
+	for (c = 2; c < nac; c++) free(nav[c]);
+	if (freeme) free(freeme);
+	return (rc);
+}
+
+private int
+doit_local(int nac, char **nav, char *url)
+{
+	int	wfd, fd1, status;
+	pid_t	pid;
+
+	if (opts.remote) {
+		fprintf(stderr, "warning: -R option ignored\n");
+	}
+
+	/*
+	 * What we want is: bk synckey -lk url | bk changes opts -
+	 */
+	nav[nac++] = strdup("-");
+	assert(nac < 30);
+	nav[nac] = 0;
+	pid = spawnvp_wPipe(nav, &wfd, 0);
+
+	/*
+	 * Send "bk synckey" stdout into the pipe
+	 */
+	fd1 = dup(1); close(1);
+	dup2(wfd, 1); close(wfd);
+	sys("bk", "synckeys", "-lk", url, SYS);
+	close(1); dup2(fd1, 1); /* restore fd1, just in case */
+	waitpid(pid, &status, 0);
+	if (WIFEXITED(status)) return (WEXITSTATUS(status));
+	return (1); /* interrupted */
 }
 
 private int
@@ -483,7 +539,12 @@ send_part2_msg(remote *r, char **av, char *key_list)
 	f = fopen(key_list, "rt");
 	assert(f);
 	write_blk(r, "@KEY LIST@\n", 11);
-	while (fnext(buf, f)) write_blk(r, buf, strlen(buf));
+	while (fnext(buf, f)) {
+		write_blk(r, buf, strlen(buf));
+		chomp(buf);
+		/* mark the seen key, so we can skip it on next repo */
+		mdbm_store_str(seen, buf, "", MDBM_INSERT);
+	}
 	write_blk(r, "@END@\n", 6);
 	fclose(f);
 	return (rc);
@@ -545,7 +606,7 @@ changes_part1(remote *r, char **av, char *key_list)
 	fd = open(key_list, O_CREAT|O_WRONLY, 0644);
 	s = sccs_init(s_cset, 0, 0);
 	flags = PK_REVPREFIX|PK_RKEY;
-	rc = prunekey(s, r, NULL, fd, flags, 0, NULL, &rcsets, &rtags);
+	rc = prunekey(s, r, seen, fd, flags, 0, NULL, &rcsets, &rtags);
 	if (rc < 0) {
 		switch (rc) {
 		    case -2:
@@ -578,7 +639,6 @@ changes_part2(remote *r, char **av, char *key_list, int ret)
 	int	rc = 0;
 	int	rc_lock;
 	char	buf[MAXLINE];
-	pid_t	pid;
 
 	if ((r->type == ADDR_HTTP) && bkd_connect(r, 0, 0)) {
 		return (1);
@@ -605,7 +665,6 @@ changes_part2(remote *r, char **av, char *key_list, int ret)
 		rc = -1; /* protocal error */
 		goto done;
 	}
-	pid = mkpager();
 	while (getline2(r, buf, sizeof(buf)) > 0) {
 		if (streq("@END@", buf)) break;
 		if (write(1, &buf[1], strlen(buf) - 1) < 0) {
@@ -613,8 +672,6 @@ changes_part2(remote *r, char **av, char *key_list, int ret)
 		}
 		write(1, "\n", 1);
 	}
-	fclose(stdout);
-	if (pid > 0) waitpid(pid, 0, 0);
 
 done:	unlink(key_list);
 	disconnect(r, 1);
@@ -623,7 +680,7 @@ done:	unlink(key_list);
 }
 
 private int
-doit_remote(char **av, char *url)
+_doit_remote(char **av, char *url)
 {
 	char 	key_list[MAXPATH] = "";
 	char	*tmp;
@@ -655,5 +712,21 @@ doit_remote(char **av, char *url)
 	}
 	remote_free(r);
 	if (key_list[0]) unlink(key_list);
+	return (rc);
+}
+
+private int
+doit_remote(char **nav, char *url)
+{
+	int	rc;
+	int	i = 0;
+
+	for (;;) {
+		rc = _doit_remote(&nav[1], url);
+		if (rc != -2) break; /* -2 means locked */
+		fprintf(stderr,
+		    "changes: remote locked, trying again...\n");
+		sleep(min((i++ * 2), 10)); /* auto back off */
+	}
 	return (rc);
 }

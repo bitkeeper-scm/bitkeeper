@@ -201,6 +201,30 @@ cmp -s clone/WANT GOT || {
 bk lock -U
 bk lock -U $HERE/clone
 echo OK
+echo $N Check bk changes -R url1 url2 ...............................$NL
+cd $HERE
+bk clone $Q  clone clone2
+cd $HERE/project
+bk changes -R -k $HERE/clone > keylist1
+bk changes -R -k $HERE/clone $HERE/clone2 > keylist2
+cmp -s keylist1 keylist2 || { echo failed; exit 1; }
+cd $HERE/clone2
+waitForUnlock $HERE/clone2
+bk edit $Q f
+echo "new" >> f
+bk delta $Q -ynew f
+bk commit $Q -ynew
+cd $HERE/project
+bk changes -R -k $HERE/clone $HERE/clone2 > keylist2
+cmp -s keylist1 keylist2 && { echo failed; exit 1; }
+bk prs -nhr+ -d':KEY:' $HERE/clone2/ChangeSet >> keylist1
+sort keylist1 > keylist1_sorted
+sort keylist2 > keylist2_sorted
+cmp -s keylist1_sorted keylist2_sorted || { echo failed; exit 1; }
+echo OK
+
+exit
+
 
 echo $N Demonstrate out of order changesets .........................$NL
 no_logging p
@@ -242,3 +266,4 @@ then	echo 'failed (bug 2002-04-19-001)'
 else	echo 'bug 2002-04-19-001 passing! fix test.'
 	exit 1
 fi
+
