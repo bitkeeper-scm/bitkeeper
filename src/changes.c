@@ -23,7 +23,7 @@ changes_main(int ac, char **av)
 
 	while ((c = getopt(ac, av, "tr|v|")) != -1) {
 		switch (c) {
-		    case 'i': indent = atoi(optarg); break;	/* undoc? 2.0 */
+		    case 'i': indent = atoi(optarg); break;  /* undoc? 2.0 */
 		    case 't': tagOnly = 1; break;	/* doc 2.0 */
 		    case 'v':	/* doc 2.0 */
 			verbose = 1;

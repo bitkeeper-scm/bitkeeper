@@ -187,9 +187,11 @@ gnupatch_main(int ac, char **av)
 
 	while ((c = getopt(ac, av, "hTd|")) != -1) { 
 		switch (c) {
-		    case 'h':	header = 0; break; /* disable header */ /* doc 2.0 */
+		    case 'h':	/* doc 2.0 */
+			header = 0; break; /* disable header */
 		    case 'T':	fix_mod_time = 1; break;	/* doc 2.0 */
-		    case 'd':	diff_style = optarg ? optarg : ""; break; /* doc 2.0 */
+		    case 'd':	/* doc 2.0 */
+			diff_style = optarg ? optarg : ""; break;
 		    default:	system("bk help -s gnupatch");
 				return (1);
 		}

@@ -79,8 +79,9 @@ comment:		comments_save(optarg);
 		    case 's': /* fall through */	/* undoc 2.0 */
 
 		    /* RCS flags */
-		    case 'q': dflags |= SILENT; gflags |= SILENT; break; /* doc 2.0 */
-		    case 'f': dflags |= DELTA_FORCE; break;	/* doc 2.0 - ci */
+		    case 'q': 	/* doc 2.0 */
+			dflags |= SILENT; gflags |= SILENT; break;
+		    case 'f': dflags |= DELTA_FORCE; break;	/* doc 2.0 ci */
 		    case 'i': dflags |= NEWFILE; /* doc 2.0 */
 			      sflags |= SF_NODIREXPAND;
 			      break;
@@ -117,7 +118,7 @@ comment:		comments_save(optarg);
 			}
 			break;
 		    case 'c': iflags |= INIT_NOCKSUM; break; /* doc 2.0 */
-		    case 'd': /* internal interface, do not document */ /* undoc 2.0 */
+		    case 'd': /* internal interface */ /* undoc 2.0 */
 			      dflags |= DELTA_NOPENDING; break;
 		    case 'D': diffsFile = optarg; /* doc 2.0 */
 			      sflags = ~(SF_GFILE | SF_WRITE_OK);
@@ -129,7 +130,8 @@ comment:		comments_save(optarg);
 		    case 'P': ignorePreference = 1;  break;	/* undoc 2.0 */
 		    case 'R': dflags |= DELTA_PATCH; break;	/* undoc? 2.0 */
 		    case 'Y': dflags |= DELTA_DONTASK; break; /* doc 2.0 */
-		    case 'Z': compp = optarg ? optarg : "gzip"; break; /* doc 2.0 */
+		    case 'Z': 	/* doc 2.0 */
+			compp = optarg ? optarg : "gzip"; break;
 		    case 'E': encp = optarg; break; /* doc 2.0 */
 
 		    default:

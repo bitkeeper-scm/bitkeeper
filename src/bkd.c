@@ -57,8 +57,10 @@ bkd_main(int ac, char **av)
 #ifdef WIN32
 		    case 'E': putenv((strdup)(optarg)); break;	/* undoc 2.0 */
 		    case 's': Opts.startDir = optarg; break;	/* doc 2.0 */
-		    case 'S': Opts.start = 1; Opts.daemon = 1; break;	/* undoc 2.0 */
-		    case 'R': Opts.remove = 1; Opts.daemon = 1; break;	/* doc 2.0 */
+		    case 'S': 	/* undoc 2.0 */
+			Opts.start = 1; Opts.daemon = 1; break;
+		    case 'R': 	/* doc 2.0 */
+			Opts.remove = 1; Opts.daemon = 1; break;
 #endif
 		    case 't': Opts.alarm = atoi(optarg); break;	/* doc 2.0 */
 		    case 'u': uid = optarg; break;	/* doc 2.0 */

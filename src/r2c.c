@@ -27,7 +27,8 @@ r2c_main(int ac, char **av)
 		system("bk help r2c");
 		return (0);
 	}
-	unless (av[1] && strneq(av[1], "-r", 2) && av[2] && !av[3]) { /* doc 2.0 */
+	unless (av[1] && strneq(av[1], "-r", 2) && av[2] && !av[3]) { 
+		/* doc 2.0 */
 		system("bk help -s r2c");
 		exit(1);
 	}

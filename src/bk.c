@@ -167,27 +167,27 @@ struct command cmdtbl[] = {
 	{"_unlink", unlink_main },
 	{"abort", abort_main},		/* doc 2.0 */	
 	{"admin", admin_main},		/* doc 2.0 */
-	{"annotate", annotate_main},		/* doc 2.0 */
-	{"bkd", bkd_main },			/* doc 2.0 */
+	{"annotate", annotate_main},	/* doc 2.0 */
+	{"bkd", bkd_main },		/* doc 2.0 */
 	{"changes", changes_main},	/* doc 2.0 */
 	{"check", check_main},		/* doc 2.0 */
 	{"chksum", chksum_main},	/* doc 2.0 */
-	{"ci", delta_main},			/* doc 2.0 */
+	{"ci", delta_main},		/* doc 2.0 */
 	{"clean", clean_main},		/* doc 2.0 */
 	{"clone", clone_main},		/* doc 2.0 */
-	{"co", get_main},			/* doc 2.0 */
+	{"co", get_main},		/* doc 2.0 */
 	{"commit", commit_main},	/* doc 2.0 */
 	{"config", config_main},	/* doc 2.0 */
 	{"createlod", createlod_main},	/* undoc? 2.0 */
 	{"cset", cset_main},		/* doc 2.0 */
 	{"delta", delta_main},		/* doc 2.0 */
 	{"diffs", diffs_main},		/* doc 2.0 */
-	{"edit", get_main},			/* aliases */		/* doc 2.0 */
+	{"edit", get_main},		/* aliases */	/* doc 2.0 */
 	{"export", export_main},	/* doc 2.0 */
 	{"fdiff", fdiff_main},		/* undoc? 2.0 */
-	{"fix", fix_main},			/* doc 2.0 */
-	{"gca", gca_main},			/* doc 2.0 */
-	{"get", get_main},			/* doc 2.0 */
+	{"fix", fix_main},		/* doc 2.0 */
+	{"gca", gca_main},		/* doc 2.0 */
+	{"get", get_main},		/* doc 2.0 */
 	{"gethelp", gethelp_main},	/* undoc? 2.0 */
 	{"gethost", gethost_main},	/* doc 2.0 */
 	{"getmsg", getmsg_main},	/* undoc? 2.0 */
@@ -204,37 +204,37 @@ struct command cmdtbl[] = {
 	{"isascii", isascii_main},	/* doc 2.0 */
 	{"key2rev", key2rev_main},	/* doc 2.0 */
 	{"lock", lock_main},		/* doc 2.0 */
-	{"lod", lod_main},			/* XXX - doc 2.0 - says doesn't work yet */
+	{"lod", lod_main},	/* XXX - doc 2.0 - says doesn't work yet */
 	{"makepatch", makepatch_main},		/* doc 2.0 */
 	{"merge", merge_main},		/* doc 2.0 */
-	{"mklock", mklock_main},	/* for regression test only */ /* undoc 2.0 */
-	{"mtime", mtime_main},		/* for regression test only */ /* undoc 2.0 */
-	{"mv", mv_main},			/* doc 2.0 */
+	{"mklock", mklock_main},	/* regression test */ /* undoc 2.0 */
+	{"mtime", mtime_main},		/* regression test */ /* undoc 2.0 */
+	{"mv", mv_main},		/* doc 2.0 */
 	{"names", names_main},		/* doc 2.0 */
 	{"new", delta_main},		/* aliases */		/* doc 2.0 */
 	{"oclone", oclone_main},	/* undoc? 2.0 */
-	{"opull", opull_main},		/* old pull protocol */ /* undoc? 2.0 */
-	{"opush", opush_main},		/* old pull protocol */ /* undoc? 2.0 */
+	{"opull", opull_main},		/* old pull */ /* undoc? 2.0 */
+	{"opush", opush_main},		/* old push */ /* undoc? 2.0 */
 	{"parent", parent_main},	/* doc 2.0 */
 	{"park", park_main},		/* doc 2.0 */
 	{"pending", pending_main},	/* doc 2.0 */
-	{"prs", prs_main},			/* doc 2.0 */
+	{"prs", prs_main},		/* doc 2.0 */
 	{"pull", pull_main},		/* doc 2.0 */
 	{"push", push_main},		/* doc 2.0 */
-	{"pwd", pwd_main},			/* for regression test only */ /* undoc? 2.0 */
-	{"r2c", r2c_main},			/* doc 2.0 */
-	{"range", range_main},		/* XXX - doc 2.0 exists, but wrong see amy*/
+	{"pwd", pwd_main},	/* regression test */ /* undoc? 2.0 */
+	{"r2c", r2c_main},		/* doc 2.0 */
+	{"range", range_main},		/* XXX - doc 2.0 it sucks*/
 	{"rcs2sccs", rcs2sccs_main},	/* doc 2.0 */
 	{"rcsparse", rcsparse_main},	/* doc 2.0 */
 	{"receive", receive_main},	/* doc 2.0 */
 	{"rechksum", rechksum_main},	/* doc 2.0 */
 	{"renumber", renumber_main},	/* doc 2.0 */
-	{"repo", repo_main},		/* obsolete, undocumented */ /* undoc 2.0 */
+	{"repo", repo_main},		/* obsolete */ /* undoc 2.0 */
 	{"resolve", resolve_main},	/* doc 2.0 */
 	{"rev2cset", r2c_main},		/* alias */	/* doc 2.0 as r2c */
 	{"root", root_main},		/* doc 2.0 */
 	{"rset", rset_main},		/* doc 2.0 */
-	{"rm", rm_main},			/* doc 2.0 */
+	{"rm", rm_main},		/* doc 2.0 */
 	{"rmdel", rmdel_main},		/* doc 2.0 */
 	{"sane", sane_main},		/* doc 2.0 */
 	{"sccscat", sccscat_main},	/* doc 2.0 as annotate */

@@ -40,13 +40,14 @@ commit_main(int ac, char **av)
 		switch (c) {
 		    case 'a':	opts.alreadyAsked = 1; break;	/* doc 2.0 */
 		    case 'd': 	doit = 1; break;	/* doc 2.0 */
-		    case 'f':	strcpy(pendingFiles, optarg); break;	/* undoc 2.0 */
+		    case 'f':	/* undoc 2.0 */
+			strcpy(pendingFiles, optarg); break;
 		    case 'F':	force = 1; break;	/* doc 2.0 */
-		    case 'L':	opts.lod = 1; break;	/* undoc 2.0 - lod related */
+		    case 'L':	opts.lod = 1; break;	/* undoc 2.0  */
 		    case 'R':	BitKeeper = "../BitKeeper/";	/* doc 2.0 */
 				opts.resync = 1;
 				break;
-		    case 's':	/* fall thru  */	/* internal */	/* undoc 2.0 */
+		    case 's':	/* fall thru  *//* internal *//* undoc 2.0 */
 		    case 'q':	opts.quiet = 1; break;	/* doc 2.0 */
 		    case 'S':	sym = optarg; break;	/* doc 2.0 */
 		    case 'y':	doit = 1; getcomment = 0;	/* doc 2.0 */
@@ -58,7 +59,7 @@ commit_main(int ac, char **av)
 				strcpy(commentFile, optarg);
 				break;
 		    case 'A':	/* internal option for regression test only */
-				/* do not document			    */	/* undoc 2.0 */
+				/* do not document */	/* undoc 2.0 */
 				opts.no_autoupgrade = 1; break;
 		    default:	system("bk help -s commit");
 				return (1);

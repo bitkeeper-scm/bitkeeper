@@ -369,11 +369,14 @@ rset_main(int ac, char **av)
 
 	while ((c = getopt(ac, av, "ahHl|r|")) != -1) {
 		switch (c) {
-		case 'a':	opts.show_all = 1;  /* show deleted files *//* doc 2.0 */
+		case 'a':	/* doc 2.0 */	
+				opts.show_all = 1;  /* show deleted files */
 				break;
-		case 'h':	opts.show_path = 1; /* show historic path *//* doc 2.0 */
+		case 'h':	/* doc 2.0 */
+				opts.show_path = 1; /* show historic path */
 				break;
-		case 'H':	opts.hide_cset = 1; /* hide ChangeSet file *//* doc 2.0 */
+		case 'H':	/* doc 2.0 */
+				opts.hide_cset = 1; /* hide ChangeSet file */
 				break;
 		case 'l':	opts.lflg = 1;	/* doc 2.0 */
 				rev1 = optarg;

@@ -30,7 +30,8 @@ export_main(int ac,  char **av)
 		    case 'q':	/* undoc 2.0 */
 				break; /* no op; for interface consistency */
 		    case 'd':	diff_style = optarg; break;	/* doc 2.0 */
-		    case 'h':	hflag = 1; break; /*disbale patch header*/ /* doc 2.0 */
+		    case 'h':	/* doc 2.0 */
+			hflag = 1; break; /*disbale patch header*/
 		    case 'k':	kflag = 1; break;	/* doc 2.0 */
 		    case 'r':	rev = optarg; break;	/* doc 2.0 */
 		    case 't':	if (type) goto usage;	/* doc 2.0 */

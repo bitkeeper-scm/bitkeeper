@@ -48,7 +48,7 @@ clone_main(int ac, char **av)
 		switch (c) {
 		    case 'd': opts.debug = 1; break;	/* undoc 2.0 */
 		    case 'E': 	/* doc 2.0 */
-				envVar = addLine(envVar, strdup(optarg)); break;
+			envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'q': opts.quiet = 1; break;	/* doc 2.0 */
 		    case 'r': opts.rev = optarg; break;	/* doc 2.0 */
 		    case 'z':	/* doc 2.0 */

@@ -41,7 +41,7 @@ prs_main(int ac, char **av)
 		    case 'm': flags |= PRS_META; break;	/* doc 2.0 */
 		    case 'M': expand = 3; break;	/* doc 2.0 */
 		    case 'n': nflag++; break;	/* doc 2.0 */
-		    case 'o': opposite = 1; doheader = 0; break;	/* doc 2.0 */
+		    case 'o': opposite = 1; doheader = 0; break; /* doc 2.0 */
 		    case 'x': xrev = optarg; break;	/* doc 2.0 */
 		    case 'v': noisy = 1; break;	/* doc 2.0 */
 		    case 'Y': year4 = strdup("BK_YEAR4=1");	/* undoc 2.0 */

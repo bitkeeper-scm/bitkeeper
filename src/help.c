@@ -25,7 +25,7 @@ help_main(int ac,  char **av)
 		switch (c) {
 		    case 'a': opt = "al"; break;	/* doc 2.0 */
 		    case 'f': file = optarg; break;	/* doc 2.0 */
-		    case 'k': opt = "l"; break;		/* like man -k */	/* doc 2.0 */
+		    case 'k': opt = "l"; break;	/* like man -k *//* doc 2.0 */
 		    case 's': synopsis = "-s";	/* undoc 2.0 */
 			      /* fall thru */
 		    case 'p': use_pager = 0; break;	/* doc 2.0 */

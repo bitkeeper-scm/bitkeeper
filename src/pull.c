@@ -47,7 +47,7 @@ pull_main(int ac, char **av)
 		    case 'd': opts.debug = 1; break;	/* undoc 2.0 */
 		    case 'e': opts.metaOnly = 1; break;	/* undoc 2.0 */
 		    case 'E': 	/* doc 2.0 */
-				envVar = addLine(envVar, strdup(optarg)); break;
+			envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'c': try = atoi(optarg); break;	/* doc 2.0 */
 		    case 'z':	/* doc 2.0 */
 			opts.gzip = optarg ? atoi(optarg) : 6;

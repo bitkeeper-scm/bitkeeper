@@ -150,7 +150,7 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 		    case 'D': ignoreDeleted++; break;	/* undoc 2.0 */
 		    case 'f': copts.force++; break;	/* undoc? 2.0 */
 		    case 'h': copts.historic++; break;	/* undoc? 2.0 */
-		    case 'H': copts.hide_cset++; break;	/* undoc 2.0 - internal */
+		    case 'H': copts.hide_cset++; break;	/* undoc 2.0 internal */
 		    case 'i':	/* doc 2.0 */
 			if (copts.include || copts.exclude) goto usage;
 			copts.include++;

@@ -71,9 +71,12 @@ sfio_main(int ac, char **av)
 			in_reg = in_file_compat;
 			out_reg = out_file_compat;
 			break;
-		    case 'i': if (mode) goto usage; mode = M_IN;   break; /* doc 2.0 */
-		    case 'o': if (mode) goto usage; mode = M_OUT;  break; /* doc 2.0 */
-		    case 'p': if (mode) goto usage; mode = M_LIST; break; /* doc 2.0 */
+		    case 'i': 	/* doc 2.0 */
+			if (mode) goto usage; mode = M_IN;   break;
+		    case 'o': 	/* doc 2.0 */
+			if (mode) goto usage; mode = M_OUT;  break;
+		    case 'p': 	/* doc 2.0 */
+			if (mode) goto usage; mode = M_LIST; break; 
 		    case 'm': doModes = 1; break; 	/* doc 2.0 */
 		    case 'q': quiet = 1; break; 	/* doc 2.0 */
 		    default:
