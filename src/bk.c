@@ -242,6 +242,7 @@ struct command cmdtbl[] = {
 	{"level", level_main},			/* doc 2.0 */
 	{"lock", lock_main},			/* doc 2.0 */
 	{"lod", lod_main},	/* XXX - doc 2.0 - says doesn't work yet */
+	{"log", log_main},
 	{"makepatch", makepatch_main},		/* doc 2.0 */
 	{"merge", merge_main},			/* doc 2.0 */
 	{"mklock", mklock_main},	/* regression test */ /* undoc 2.0 */

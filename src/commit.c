@@ -302,7 +302,7 @@ out:		if (commentFile) unlink(commentFile);
 		if (log_quota <= 0) {
 			printf("Commit: forcing pending logs\n");
 			if (l&LOG_OPEN) {
-				system("bk _log -qc2");
+				system("bk log -qc2");
 			} else {
 				system("bk _lconfig");
 			}
@@ -319,7 +319,7 @@ out:		if (commentFile) unlink(commentFile);
 "b) Problems in the logging tree at www.openlogging.org\n"
 "\n"
 "Please run the logging command in debug mode to see what the problem is:\n"
-"\t\"bk _log  -d\"\n\n"
+"\t\"bk log  -d\"\n\n"
 "If you have ruled out a network connectivity problem at your local network,\n"
 "please email the following information to support@bitmover.com:\n"
 "a) Output of the above logging command\n"
@@ -336,7 +336,7 @@ out:		if (commentFile) unlink(commentFile);
 "Your log quota is now down to %d. You will not be able to commit ChangeSet\n"
 "if yor log quota is down to zero. Please check your network configuration\n"
 "and make sure logs are transmitted properly. You can test your log\n"
-"transmission with the command \"bk _log -d\".\n"
+"transmission with the command \"bk log -d\".\n"
 "============================================================================\n"
 , log_quota);
 		}
@@ -472,7 +472,7 @@ logChangeSet(int l, char *rev, int quiet)
 	pid_t	pid;
 	sccs	*s;
 	delta	*d;
-	char	*log_av[] = {"bk", "_log", "-q", OPENLOG_URL, 0};
+	char	*log_av[] = {"bk", "log", "-q", OPENLOG_URL, 0};
 	char	*mail_av[] = {"bk", "_mail", to, subject, commit_log, 0};
 
 	/*
@@ -500,7 +500,7 @@ logChangeSet(int l, char *rev, int quiet)
 		pid = spawnvp_ex(_P_NOWAIT, log_av[0], log_av);
 		unless (quiet) {
 			if (pid == -1) {
-				printf("Error: cannot spawn bk _log\n");
+				printf("Error: cannot spawn bk log\n");
 			} else {
 				printf("Sending ChangeSet log ...\n");
 			}

@@ -439,37 +439,36 @@ get_ok(remote *r, char *read_ahead, int verbose)
 }
 
 
-private char *
-rootkey()
+char *
+rootkey(char *buf)
 {
-	static char key[MAXKEY] = "";
 	char	s_cset[] = CHANGESET;
 	sccs	*s;
 
 	s = sccs_init(s_cset, INIT_NOCKSUM, 0);
 	assert(s);
-	sccs_sdelta(s, sccs_ino(s), key);
+	sccs_sdelta(s, sccs_ino(s), buf);
 	sccs_free(s);
-	return (key);
+	return (buf);
 }
 
 void
 add_cd_command(FILE *f, remote *r)
 {
 	int	needQuote = 0;
-	char	*k;
+	char	key[MAXKEY];
 
 	/*
 	 * XXX TODO need to handle embeded quote in pathname
 	 */
 	if (strchr(r->path, ' ')) needQuote = 1;
 	if (streq(r->path, "///LOG_ROOT///")) {
-		k = rootkey(); assert(k);
-		if (strchr(k, ' ')) needQuote = 1;
+		rootkey(key);
+		if (strchr(key, ' ')) needQuote = 1;
 		if (needQuote) {
-			fprintf(f, "cd \"%s%s\"\n", r->path, rootkey());
+			fprintf(f, "cd \"%s%s\"\n", r->path, key);
 		} else {
-			fprintf(f, "cd %s%s\n", r->path, rootkey());
+			fprintf(f, "cd %s%s\n", r->path, key);
 		}
 	} else {
 		if (needQuote) {

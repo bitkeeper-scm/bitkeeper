@@ -4158,6 +4158,9 @@ chk_gmode(sccs *s)
 			fprintf(stderr,
 			    "ERROR: %s: writable gfile with no p.file\n",
 			    gfile);
+			if (getenv("_BK_GMODE_DEBUG")) {
+				assert("writable gfile wilth no p.file" == 0);
+			}
 		};
 	}
 
@@ -4166,6 +4169,9 @@ chk_gmode(sccs *s)
 			fprintf(stderr,
 			    "ERROR: %s: p.file with read only gfile\n",
 			    gfile);
+			if (getenv("_BK_GMODE_DEBUG")) {
+				assert("p.file with read only gfile" == 0);
+			}
 		}
 	}
 	free(gfile);

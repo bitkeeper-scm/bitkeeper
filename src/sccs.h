@@ -1004,6 +1004,7 @@ int	cat(char *file);
 char	*savefile(char *dir, char *prefix, char *pathname);
 void	has_proj(char *who);
 int	mv(char*, char *);
+char	*rootkey(char *buf);
 
 extern char *bk_vers;
 extern char *bk_utc;
