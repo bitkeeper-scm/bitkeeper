@@ -1,5 +1,5 @@
 .so ../bk-macros
-.TH "bk bin" 1 20%E% "\*(BC" "\*(UM"
+.TH "bk links" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
 bk links \- make links to the bitkeeper binary installation directory
 .SH SYNOPSIS
@@ -9,9 +9,23 @@ bk links \- make links to the bitkeeper binary installation directory
 .OPT public_dir
 .SH DESCRIPTION
 .LP
-Makes links from the specified public directory to the BitKeeper 
-binary installation directory.  Makes links to /usr/bin if no
-public directory is specified.
+Makes links from BitKeeper commands in the specified public directory to 
+the executables in which the BitKeeper binary is installed.  
+.LP
+Makes links to /usr/bin if no public directory is specified.
+.LP
+This is typically used after installing BitKeeper as a non-root user.
+.SH EXAMPLE
+.DS
+$ bk links /usr/libexec/bitkeeper /usr/local/bin
+ln -s /usr/libexec/bitkeeper/admin /usr/local/bin/admin
+ln -s /usr/libexec/bitkeeper/get /usr/local/bin/get
+ln -s /usr/libexec/bitkeeper/delta /usr/local/bin/delta
+ln -s /usr/libexec/bitkeeper/unget /usr/local/bin/unget
+ln -s /usr/libexec/bitkeeper/rmdel /usr/local/bin/rmdel
+ln -s /usr/libexec/bitkeeper/prs /usr/local/bin/prs
+ln -s /usr/libexec/bitkeeper/bk /usr/local/bin/bk
+.DE
 .SH SEE ALSO
 .SA bin
 .SH CATEGORY
