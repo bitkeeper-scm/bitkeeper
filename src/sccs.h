@@ -807,6 +807,7 @@ int	sccs_newchksum(sccs *s);
 void	sccs_perfile(sccs *, FILE *);
 sccs	*sccs_getperfile(MMAP *, int *);
 char	*sccs_gethost(void);
+char	*sccs_realhost(void);
 int	sccs_getComments(char *, char *, delta *);
 int	sccs_getHostName(delta *);
 int	sccs_getUserName(delta *);
@@ -881,7 +882,8 @@ int	sccs_resolveFiles(sccs *s);
 sccs	*sccs_keyinit(char *key, u32 flags, project *p, MDBM *idDB);
 delta	*sfind(sccs *s, ser_t ser);
 int	sccs_lock(sccs *, char);	/* respects repo locks */
-int	sccs_lockfile(char *lockfile, int tries);	/* works in NFS */
+int	sccs_lockfile(const char *lockfile, int wait, int rm, int quiet);
+int	sccs_stalefile(const char *lockfile, int discard);
 int	sccs_unlock(sccs *, char);
 char	*sccs_utctime(delta *d);
 int	sccs_setlod(char *rev, u32 flags);

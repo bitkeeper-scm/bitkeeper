@@ -201,7 +201,7 @@ chk_idcache(void)
 		fprintf(stderr, "ID cache is locked\n");
 		return (1);
 	}
-	if (sccs_lockfile(IDCACHE_LOCK, 6)) {
+	if (sccs_lockfile(IDCACHE_LOCK, 6, 1, 0)) {
 		fprintf(stderr, "sane: can't lock id cache\n");
 		return (1);
 	}

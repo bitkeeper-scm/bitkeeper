@@ -306,7 +306,7 @@ again:
 	fprintf(f, "#$sum$ %u\n", id_sum);
 	fclose(f);
 	sprintf(path, "%s/%s", p->root, IDCACHE_LOCK);
-	if (sccs_lockfile(path, 16)) {
+	if (sccs_lockfile(path, 16, 1, 0)) {
 		fprintf(stderr, "Not updating idcache due to locking.\n");
 		fprintf(stderr, "Run \"bk idcache\" to rebuild it.\n");
 		return (1);
