@@ -260,7 +260,7 @@ lodset: lodset.sh
 bk.ver: stamp-ver
 stamp-ver:: ../SCCS/s.ChangeSet utils/os utils/gnu-os
 	( echo \
-	  `./prs -hr+ -d'$$if(:SYMBOL:){:SYMBOL: }:UTC:' ../ChangeSet;` \
+	  `./bk prs -hr+ -d'$$if(:SYMBOL:){:SYMBOL: }:UTC:' ../ChangeSet;` \
 	  for \
 	  `utils/os` \
 	) >bk.v
