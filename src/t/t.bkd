@@ -166,6 +166,9 @@ if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N Make sure bk/basic allows push/pull from master repository ..$NL
 cd $HERE/copy2
+ls > JUNK
+bk new $Q JUNK
+bk commit $Q -ywhatever
 bk push -t $Q bk://localhost:$P$HERE/copy 2> bk.out
 grep -q "2 csets only in" bk.out
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
