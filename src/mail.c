@@ -76,10 +76,11 @@ lconfig_main(int ac, char **av)
 	assert(m);
 	rc = http_send(r, m->where, msize(m), 0, "webmail", WEB_MAIL_CGI);
 	mclose(m);
+	skip_http_hdr(r);
 	unless (rc) rc = get_ok(r, 0, 0);
 	disconnect(r, 2);
 	unlink(config_log);
-	updLogMarker(1, debug);
+	unless (rc) updLogMarker(1, debug);
 	return (rc);
 }
 

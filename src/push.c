@@ -2,6 +2,7 @@
  * Copyright (c) 2000, Andrew Chang & Larry McVoy
  */    
 #include "bkd.h"
+#include "logging.h"
 
 typedef	struct {
 	u32	doit:1;
@@ -115,14 +116,17 @@ log_main(int ac, char **av)
 		}
 	}
 
+	if (sccs_cd2root(0, 0) == -1) {
+		fprintf(stderr, "Cannot find project root\n");
+		return (1);
+	}
+
 	if (pflag) {
-		if (sccs_cd2root(0, 0) == -1) {
-			fprintf(stderr, "Cannot find project root\n");
-			return (1);
-		}
 		printf("Number of open logs pending: %d\n", logs_pending(0, 0));
 		return (0);
 	}
+
+	
 
 	/*
 	 * WIN32 note:
@@ -137,6 +141,12 @@ log_main(int ac, char **av)
 		fopen(NULL_FILE, "rt"); /* stdin */
 		fopen(DEV_NULL, "wt");	/* stdout */
 		fopen(DEV_NULL, "wt");	/* stderr */
+	}
+
+	unless (logging(0, 0, 0) & LOG_OPEN) {
+		printf(
+		    "This repository is not configured for open logging.\n");
+		return (1);
 	}
 
 	i = 2;
