@@ -219,9 +219,20 @@ updLogMarker(int ptype, int verbose)
 private int
 needLogMarker(opts opts, remote *r)
 {
-	return (opts.metaOnly && 
-		(streq(OPENLOG_URL, remote_unparse(r)) ||
-		 streq(OPENLOG_IP, remote_unparse(r))));
+	unless (opts.metaOnly) return (0);
+
+	/*
+	 * Look for OPENLOG_URL and OPENLOG_IP address
+	 */
+	unless(r->host) return (0);
+	unless(r->path) return (0);
+	unless(r->port == 80) return (0);
+	unless (streq(r->path, "///LOG_ROOT///")) return (0);
+	unless (streq(r->host, OPENLOG_URLHOST) ||
+					streq(r->host, OPENLOG_IPHOST)) {
+		return (0);
+	}
+	return (1);
 }
 
 private void

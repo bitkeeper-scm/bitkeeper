@@ -161,7 +161,7 @@ remote_unparse(remote *r)
 		    	}
 		}
 		if (r->path) {
-			strcat(buf, ":");
+			unless(r->path[0] == '/') strcat(buf, ":");
 			strcat(buf, r->path);
 		}
 		return (strdup(buf));
