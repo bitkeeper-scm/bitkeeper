@@ -34,7 +34,10 @@ usage: takepatch [-cFiv] [-f file]\n\n\
 
 #define	CLEAN_RESYNC	1	/* blow away the RESYNC dir */
 #define	CLEAN_PENDING	2	/* blow away the PENDING dir */
-
+#define	SHOUT() \
+	fputs("===================== ERROR ========================\n", stderr);
+#define	SHOUT2() \
+	fputs("====================================================\n", stderr);
 
 delta	*getRecord(FILE *f);
 int	extractPatch(char *name, FILE *p, int flags, int fast, char *root);
@@ -113,6 +116,7 @@ usage:		fprintf(stderr, takepatch_help);
 			continue;
 		}
 		unless ((t = strrchr(buf, ' ')) && streq(t, " ==\n")) {
+			SHOUT();
 			fprintf(stderr, "Bad patch: %s", buf);
 			cleanup(CLEAN_RESYNC);
 		}
@@ -221,6 +225,7 @@ again:	s = sccs_keyinit(buf, INIT_NOCKSUM, idDB);
 			goto again;
 		}
 		unless (newFile) {
+			SHOUT();
 			fprintf(stderr,
 			   "takepatch: can't find key '%s' in id cache\n", buf);
 			cleanup(CLEAN_RESYNC);
@@ -241,24 +246,29 @@ again:	s = sccs_keyinit(buf, INIT_NOCKSUM, idDB);
 			s->sfile);
 		}
 		if (IS_EDITED(s)) {
+			SHOUT();
 			fprintf(stderr,
 			    "takepatch: %s is edited\n", name);
 			cleanup(CLEAN_RESYNC);
 		}
 		if (s->state & S_PFILE) {
+			SHOUT();
 			fprintf(stderr, 
 			    "takepatch: %s is locked.\n", s->sfile);
 			cleanup(CLEAN_RESYNC);
 		}
 		unless (tmp = sccs_findKey(s, buf)) {
+			SHOUT();
 			fprintf(stderr,
 			    "takepatch: can't find root delta '%s' in %s\n",
 			    buf, name);
 			cleanup(CLEAN_RESYNC);
 		}
 		unless (s->tree == tmp) {
+			SHOUT();
 			fprintf(stderr,
-		    	"takepatch: root deltas do not match in %s\n", name);
+			    "takepatch: root deltas do not match in %s\n",
+			    name);
 			cleanup(CLEAN_RESYNC);
 		}
 	} else {	/* create a new file */
@@ -447,6 +457,7 @@ delta:	off = ftell(f);
 void
 changesetExists(void)
 {
+	SHOUT();
 	fputs(
 "You are trying to create a ChangeSet file in a repository which already has\n\
 one.  This usually means you are trying to apply a patch intended for a\n\
@@ -460,6 +471,7 @@ the changeset ID at the top of the patch:\n\
 void
 noconflicts(void)
 {
+	SHOUT();
 	fputs(
 "takepatch was instructed not to accept conflicts into this tree.\n\
 Please resync in the opposite direction and then reapply this patch.\n",
@@ -470,6 +482,7 @@ stderr);
 void
 notfirst(void)
 {
+	SHOUT();
 	fputs(
 "takepatch: when creating a project, as you are currently doing, you have\n\
 to resync from version 1.0 forward.  Please try again, with a command like\n\
@@ -486,6 +499,7 @@ stderr);
 void
 ahead(char *pid, char *sfile)
 {
+	SHOUT();
 	fprintf(stderr,
 	    "takepatch: can't find parent ID\n\t%s\n\tin %s\n", pid, sfile);
 	fputs(
@@ -498,6 +512,7 @@ and get a patch that is based on a common ancestor.\n", stderr);
 void
 nothingtodo(void)
 {
+	SHOUT();
 	fprintf(stderr,
 "takepatch: nothing to do in patch, which probably means a patch version\n\
 mismatch.  You need to make sure that the software generating the patch is\n\
@@ -509,6 +524,7 @@ the same as the software accepting the patch.  We were looking for\n\
 void
 noversline(char *name)
 {
+	SHOUT();
 	fprintf(stderr,
 "takepatch: the version line on %s is missing or does not match the
 format understood by this program.\n\
@@ -519,13 +535,16 @@ the same as the software accepting the patch.  We were looking for\n\
 }
 
 void
-badXsum(void)
+badXsum(int a, int b)
 {
-	fputs(
-"takepatch: patch checksum is invalid.\n\
-The patch was probably corrupted in transit.  Get a new copy and try again.\n",
-stderr);
+	SHOUT();
+	fputs("takepatch: patch checksum is invalid", stderr);
+	if (echo > 2) fprintf(stderr,  " (%x != %x)", a, b);
+	fputs(".\nThe patch was probably corrupted in transit,\n", stderr);
+	fputs("sometimes mailers do this.\n", stderr);
+	fputs("Please get a new copy and try again.\n", stderr);
 	cleanup(CLEAN_PENDING|CLEAN_RESYNC);
+	/* XXX - should clean up everything if this was takepatch -i */
 }
 
 /*
@@ -563,10 +582,12 @@ applyPatch(
 		cleanup(CLEAN_RESYNC);
 	}
 	unless (s = sccs_init(p->resyncFile, INIT_NOCKSUM|flags, root)) {
+		SHOUT();
 		fprintf(stderr, "takepatch: can't open %s\n", p->resyncFile);
 		cleanup(CLEAN_RESYNC);
 	}
 	if (!s->tree) {
+		SHOUT();
 		if (!(s->state & S_SFILE)) {
 			fprintf(stderr,
 			    "takepatch: no s.file %s\n", p->resyncFile);
@@ -586,6 +607,7 @@ applyPatch(
 			      gca->rev, s->sfile);
 	if (d = sccs_next(s, sccs_getrev(s, gca->rev, 0, 0))) {
 		if (sccs_rmdel(s, d, 1, SILENT)) {
+			SHOUT();
 			unless (BEEN_WARNED(s)) {
 				fprintf(stderr,
 				    "rmdel of %s failed.\n", p->resyncFile);
@@ -598,6 +620,7 @@ applyPatch(
 	 * so do a hard restart.
 	 */
 	unless (s = sccs_init(p->resyncFile, INIT_NOCKSUM|flags, root)) {
+		SHOUT();
 		fprintf(stderr,
 		    "takepatch: can't open %s\n", p->resyncFile);
 		cleanup(CLEAN_RESYNC);
@@ -653,6 +676,7 @@ apply:
 		} else {
 			assert(s == 0);
 			unless (s = sccs_init(p->resyncFile, NEWFILE, root)) {
+				SHOUT();
 				fprintf(stderr,
 				    "takepatch: can't create %s\n",
 				    p->resyncFile);
@@ -769,6 +793,7 @@ getLocals(sccs *s, delta *g, char *name)
 			p->diffFile = strdup(tmpf);
 			sccs_restart(s);
 			if (sccs_getdiffs(s, d->rev, 0, tmpf)) {
+				SHOUT();
 				fprintf(stderr, "unable to create diffs");
 				cleanup(CLEAN_RESYNC);
 			}
@@ -848,8 +873,10 @@ void
 initProject()
 {
 	unless (emptyDir(".")) {
+		SHOUT();
 		fprintf(stderr,
 		    "takepatch: -i can only be used in an empty directory\n");
+		SHOUT();
 		/*
 		 * We MUST exit here.  It is an invariant that if we are not
 		 * empty we abort.  See cleanup().
@@ -882,6 +909,7 @@ init(FILE *p, int flags, char **resyncRootp)
 	} else {
 	    root = sccs_root(0, 0);
 	    if (sccs_cd2root(0, root)) {
+		SHOUT();
 		fprintf(stderr, "takepatch: can't find project root.\n");
 		cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 	    }
@@ -895,11 +923,13 @@ init(FILE *p, int flags, char **resyncRootp)
 	if ((mkdir("RESYNC", 0775) == -1) && (access("RESYNC", F_OK) == 0)) {
 		unless ((f = fopen("RESYNC/BitKeeper/tmp/pid", "r")) &&
 		    fnext(buf, f)) {
+			SHOUT();
 			fprintf(stderr, "takepatch: RESYNC dir exists\n");
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 		}
 		fclose(f);
 		chop(buf);
+		SHOUT();
 		if ((f = fopen("RESYNC/BitKeeper/tmp/patch", "r")) &&
 		    fnext(file, f)) {
 			chop(file);
@@ -913,11 +943,13 @@ init(FILE *p, int flags, char **resyncRootp)
 		cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 	}
 	unless (mkdir("RESYNC/SCCS", 0775) == 0) {
+		SHOUT();
 		perror("mkdir");
 		cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 	}
 	sccs_mkroot("RESYNC");
 	unless (f = fopen("RESYNC/BitKeeper/tmp/pid", "w")) {
+		SHOUT();
 		perror("RESYNC/BitKeeper/tmp/pid");
 		cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 	}
@@ -943,8 +975,14 @@ init(FILE *p, int flags, char **resyncRootp)
 			if (exists(pendingFile)) continue;
 			if (f = fopen(pendingFile, "w+")) {
 				break;
+			} else {
+				SHOUT();
+				perror(pendingFile);
+				fputs("Check permissions on PENDING\n", stderr);
+				cleanup(CLEAN_RESYNC);
 			}
 			if (i > 100) {
+				SHOUT();
 				fprintf(stderr,
 				    "takepatch: too many patches.\n");
 				cleanup(CLEAN_RESYNC);
@@ -1002,11 +1040,12 @@ init(FILE *p, int flags, char **resyncRootp)
 	}
 
 	unless (sumR) {
+		SHOUT();
 		fputs("takepatch: missing trailer line on patch\n",
 		      stderr);
 		cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 	}
-	unless (sumR == sumC) badXsum();
+	unless (sumR == sumC) badXsum(sumR, sumC);
 
 	rewind(f);
 	fnext(buf, f);		/* skip version number */
@@ -1107,7 +1146,10 @@ cleanup(int what)
 	} else {
 		fprintf(stderr, "takepatch: RESYNC directory left intact.\n");
 	}
-	if (input != stdin) exit(1);
+	if (input != stdin) {
+		SHOUT2();
+		exit(1);
+	}
 	if (what & CLEAN_PENDING) {
 		assert(exists("PENDING"));
 		unlink(pendingFile);
@@ -1121,5 +1163,6 @@ cleanup(int what)
 			    pendingFile);
 		}
 	}
+	SHOUT2();
 	exit(1);
 }
