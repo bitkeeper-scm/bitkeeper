@@ -59,6 +59,7 @@ cmd_cd(int ac, char **av)
 
 	/*
 	 * Win32 note: If the path look like /C:path, strip the leading slash.
+	 * We only need this for pre 2.0 client (which had a bug)
 	 */
 	if ((p[0] == '/') && isDriveColonPath(&p[1])) p++;
 

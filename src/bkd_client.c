@@ -106,6 +106,7 @@ url_parse(char *p, int default_port)
 {
 	remote	*r;
 	char	*s;
+	char	sav;
 
 	unless (*p) return (0);
 	new(r);
@@ -113,8 +114,15 @@ url_parse(char *p, int default_port)
 	if (s = strchr(p, '@')) {		/* user@host[:path] */
 		r->loginshell = 1;
 		*s = 0; r->user = strdup(p); p = s + 1; *s = '@';
-		if (s = strchr(p, ':')) {
-			*s = 0; r->host = strdup(p); p = s + 1; *s = ':';
+		s = p;
+		while (*s) {
+			if ((*s == ':') || (*s == '/')) break;
+			s++;
+		}
+		if (*s) {
+			sav = *s;
+			*s = 0; r->host = strdup(p); p = s + 1;
+			*s = sav;
 			r->path = strdup(p);
 		} else {
 			r->host = strdup(p);
