@@ -1227,17 +1227,18 @@ unsafe_path(char *s)
  * Otherwise do a full check.
  */
 int
-run_check(char *partial, int fix)
+run_check(char *partial, int fix, int quiet)
 {
 	int	ret;
 	struct	stat sb;
 	time_t	now = time(0);
 	char	*fixopt;
+	char	*opts = quiet ? "-ac" : "-acv";
 
  again:
 	fixopt = (fix ? "-f" : "--");
 	if (!partial || stat(CHECKED, &sb) || ((now - sb.st_mtime) > STALE)) {
-		ret = sys("bk", "-r", "check", "-ac", fixopt, SYS);
+		ret = sys("bk", "-r", "check", opts, fixopt, SYS);
 	} else {
 		ret = sysio(partial, 0, 0, "bk", "check", fixopt, "-", SYS);
 	}

@@ -2,7 +2,7 @@
 .TH "bk abort" 1 20%E% "\*(BC" "\*(UM"
 .\"    ============ Aborting a failed pull/push/resync  ============
 .SH NAME
-bk abort \- abort a failed pull, push, or resync
+bk abort \- abort a failed pull or push
 .SH SYNOPSIS
 .Bc bk abort [\-f] [
 .ARGc repository_root
@@ -15,7 +15,7 @@ the PENDING and RESYNC directories behind.  Since the existence of the
 RESYNC directory acts as a global repository lock, you probably don't
 want to leave it there for an extended period of time.
 .LP
-If the update (i.e., a bk pull/bk push/bk resync) failed and there has been no
+If the update (i.e., a bk pull or bk push) failed and there has been no
 manual resolve work done yet, there is no harm in aborting and trying
 again.  If manual resolution has been done, it may be worth the effort
 to figure out what went wrong and try to fix it.
@@ -32,6 +32,5 @@ if you have.
 .SH "SEE ALSO"
 .SA pull 1
 .SA push 1
-.SA resync 1
 .SH CATEGORY
 .B Repository

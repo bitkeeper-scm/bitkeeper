@@ -330,7 +330,7 @@ that limit and you will need to purchase a commercial license to make any
 more changesets.
 $
 #eval-warn
-Warning: Evaluation licenses have a limited number changesets. Your
+Warning: Evaluation licenses have a limited number of changesets. Your
 changeset quota is now down to #BKARG# which is less than 50 changesets
 away from the limit.  You will not be able to commit any more changesets
 when the quota reaches zero.  Please upgrade to a commercial license.

@@ -29,7 +29,7 @@ undo_main(int ac,  char **av)
 	char	**csetrev_list = 0;
 	char	*qflag = "", *vflag = "-v";
 	char	*cmd = 0, *rev = 0;
-	int	aflg = 0;
+	int	aflg = 0, quiet = 0;
 	char	**fileList = 0;
 	char	*checkfiles;	/* filename of list of files to check */
 #define	LINE "---------------------------------------------------------\n"
@@ -50,7 +50,8 @@ undo_main(int ac,  char **av)
 			/* fall though */
 		    case 'r': rev = optarg; break;		/* doc 2.0 */
 		    case 'f': force  =  1; break;		/* doc 2.0 */
-		    case 'q': qflag = "-q"; vflag = ""; break;	/* doc 2.0 */
+		    case 'q':					/* doc 2.0 */
+		    	quiet = 1; qflag = "-q"; vflag = ""; break;
 		    case 's': save = 0; break;			/* doc 2.0 */
 		    default :
 			fprintf(stderr, "unknown option <%c>\n", c);
@@ -133,9 +134,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 	}
 
 	if (save) {
-		if (streq(qflag, "")) {
-			fprintf(stderr, "Saving a backup patch...\n");
-		}
+		unless (quiet) fprintf(stderr, "Saving a backup patch...\n");
 		unless (isdir(BKTMP)) mkdirp(BKTMP);
 		cmd = aprintf("bk cset %s -ffm - > %s", vflag, BK_UNDO);
 		f = popen(cmd, "w");
@@ -168,16 +167,16 @@ err:		if (undo_list[0]) unlink(undo_list);
 	}
 	chdir(RESYNC2ROOT);
 
-	rmEmptyDirs(!streq(qflag, ""));
-	if (streq(qflag, "") && save) {
+	rmEmptyDirs(quiet);
+	if (!quiet && save) {
 		printf("Patch containing these undone deltas left in %s\n",
 		    BK_UNDO);
 	}
-	if (streq(qflag, "")) printf("Running consistency check...\n");
+	unless (quiet) printf("Running consistency check...\n");
 	if (strieq("yes", user_preference("partial_check"))) {
-		rc = run_check(checkfiles, 1);
+		rc = run_check(checkfiles, 1, quiet);
 	} else {
-		rc = run_check(0, 1);
+		rc = run_check(0, 1, quiet);
 	}
 	unlink(checkfiles);
 	free(checkfiles);
@@ -186,7 +185,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 
 	freeLines(fileList, free);
 	unlink(rev_list); unlink(undo_list);
-	update_log_markers(streq(qflag, ""));
+	update_log_markers(!quiet);
 	if (rc) return (rc); /* do not remove backup if check failed */
 	unlink(BACKUP_SFIO);
 	sys(RM, "-rf", "RESYNC", SYS);

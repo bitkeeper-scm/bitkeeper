@@ -2,6 +2,8 @@
 #include "system.h"
 #include "sccs.h"
 
+#define	MAXCMT	1020
+
 private	char	**saved;	/* saved copy of comments across files */
 private	char	*comment;	/* a placed to parse the comment from */
 private	int	gotComment;	/* seems redundant but it isn't, this is
@@ -11,8 +13,57 @@ private	int	gotComment;	/* seems redundant but it isn't, this is
 void
 comments_save(char *s)
 {
-	comment = s;
+	char	*p, **split;
+	int	i, len;
+
+	unless (s) {
+		comment = 0;
+		goto out;
+	}
+
+	if (saved) freeLines(saved, free);
+	saved = 0;
+	split = splitLine(s, "\n", 0);
+	EACH(split) {
+		len = strlen(split[i]);
+		if (len <= MAXCMT) {
+			saved = addLine(saved, strdup(split[i]));
+		} else {
+			for (p = split[i]; len > MAXCMT; len -= MAXCMT) {
+				saved = addLine(saved, strndup(p, MAXCMT));
+				p += MAXCMT;
+				fprintf(stderr,
+				    "Splitting comment line \"%.50s\"...\n", p);
+			}
+			saved = addLine(saved, strdup(p));
+		}
+	}
+	freeLines(split, free);
+out:	gotComment = 1;
+}
+
+void
+comments_savefile(char *s)
+{
+	FILE	*f = fopen(s, "r");
+	char	*last;
+	char	buf[MAXCMT];
+
+	unless (f) return;
 	gotComment = 1;
+	comment = "";
+	while (fnext(buf, f)) {
+		last = buf;
+		while (*last && (*last != '\n')) last++;
+		if ((last == &buf[MAXCMT - 1]) && !*last) {
+			fprintf(stderr,
+			    "Splitting comment line \"%.50s\"...\n", buf);
+		}
+		*last = 0;	/* strip any trailing NL */
+		saved = addLine(saved, strdup(buf));
+	}
+	if (saved) comment = 0;
+	fclose(f);
 }
 
 int
@@ -41,7 +92,7 @@ comments_get(delta *d)
 	int	i;
 
 	unless (d) d = calloc(1, sizeof(*d));
-	if (!comment && gotComment) return (d);
+	if (!comment && !saved && gotComment) return (d);
 	if (!comment) {
 		if (saved) {
 			EACH(saved) {
@@ -133,4 +184,19 @@ comments_cleancfile(char *file)
 		unlink(cfile);
 	}
 	free(cfile);
+}
+
+void
+comments_writefile(char *file)
+{
+	FILE	*f;
+	int	i;
+
+	if (f = fopen(file, "w")) {
+		if (comment) fprintf(f, "%s\n", comment);
+		EACH (saved) {
+			fprintf(f, "%s\n", saved[i]);
+		}
+		fclose(f);
+	}
 }

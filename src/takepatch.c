@@ -146,6 +146,7 @@ takepatch_main(int ac, char **av)
 		}
 	}
 	if (getenv("TAKEPATCH_SAVEDIRS")) saveDirs++;
+	if (getenv("BK_NOTTY") && (echo == 3)) echo = 2;
 	if (av[optind]) {
 usage:		system("bk help -s takepatch");
 		return (1);

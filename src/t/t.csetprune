@@ -400,7 +400,7 @@ bk commit $Q -SKG1A -y1.3
 bk edit $Q a
 bk delta $Q -y1.3 a
 bk commit $Q -SKG1B -y1.4
-bk cset $Q -x1.4 -yx1.4
+bk cset $Q -x1.4
 bk tag $Q KG1C
 bk csetprune -S < ../KEYS 2> ERROR
 if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
