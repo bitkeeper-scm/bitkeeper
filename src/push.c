@@ -189,7 +189,8 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 		if (!opts.metaOnly && getenv("BKD_LEVEL") &&
 		    (atoi(getenv("BKD_LEVEL")) < getlevel())) {
 			fprintf(opts.out,
-			    "push: cannot push to lower level repository\n");
+"push: cannot push to lower level repository (remote level == %s)\n",
+			    getenv("BKD_LEVEL"));
 			goto err;
 		}
 		getline2(r, buf, sizeof(buf));

@@ -90,3 +90,14 @@ grep -q 'illegal cd' OUT || {
        exit 1
 }
 echo OK
+echo $N Make sure rclone respect checkout preference ................$NL
+cd $HERE/project/BitKeeper/etc
+bk edit $Q config
+echo "checkout:get" >> config
+bk delta $Q -ynew_preference config
+bk commit $Q -ynew_preference
+if [ X$PLATFORM = X"WIN32" ]; then SLASH="//"; else SLASH="/"; fi
+bk _rclone $Q $HERE/project file:$SLASH$HERE/copy5 || { echo failed; exit 1; }
+cd $HERE/copy5
+if [ ! -f src/bar.c ]; then echo failed; exit 1; fi
+echo OK

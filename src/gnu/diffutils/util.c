@@ -375,11 +375,28 @@ line_cmp (s1, s2)
 	    }
 	  else if (ignore_trailing_cr_flag)
 	    {
-	      /* For -E, \r\n == \n */
-	      if ((c1 == '\r') && (*t1 == '\n')) c1 = *t1++;
+  	      unsigned char const *start;
+	      /* For -E, \r+\n == \n */
+	      if (c1 == '\r')
+	        {
+	          for (start = t1 ; c1 == '\r'; c1 = *t1++);
+		  if (c1 != '\n')
+		    {
+		      t1 = start;
+		      c1 = '\r';
+	            }
+	        }
 
 	      /* Likewise for line 2.  */
-	      if ((c2 == '\r') && (*t2 == '\n')) c2 = *t2++;
+	      if (c2 == '\r')
+	        {
+	          for (start = t2 ; c2 == '\r'; c2 = *t2++);
+	          if (c2 != '\n')
+		    {
+		      t2 = start;
+		      c2 = '\r';
+	            }
+		}
 	    }
 
 	  /* Lowercase all letters if -i is specified.  */
@@ -492,7 +509,7 @@ print_1_line (line_flag, line)
 }
 
 /* Output a line from TEXT up to LIMIT.  Without -t, output verbatim.
-   Not quite.  If ignore_trailing_cr_flag is set, we s/\r\n/\n/ first.
+   Not quite.  If ignore_trailing_cr_flag is set, we s/\r+\n/\n/ first.
    With -t, expand white space characters to spaces, and if FLAG_FORMAT
    is nonzero, output it with argument LINE_FLAG after every
    internal carriage return, so that tab stops continue to line up.  */
@@ -508,7 +525,8 @@ output_1_line (text, limit, flag_format, line_flag)
     int len = limit - text;
 
     if ((len >= 2) && (text[len - 2] == '\r') && (text[len - 1] == '\n')) {
-      fwrite (text, sizeof (char), len - 2, outfile);
+      for (len -= 2; len && (text[len - 1] == '\r'); len --);
+      fwrite (text, sizeof (char), len, outfile);
       putc('\n', outfile);
     }
     else
@@ -534,12 +552,16 @@ output_1_line (text, limit, flag_format, line_flag)
 	    break;
 
 	  case '\r':
-	    if ((*t != '\n') || !ignore_trailing_cr_flag) {
-	      putc (c, out);
-	      if (flag_format && t < limit && *t != '\n')
-	        fprintf (out, flag_format, line_flag);
-	      column = 0;
-	    }
+	    /* XXX: current logic does not allow, but in case that changes */
+	    if (ignore_trailing_cr_flag)
+	      {
+	        fprintf(stderr, "Fix ignore_trailing_cr and expand\n");
+		exit (1);
+	      }
+	    putc (c, out);
+	    if (flag_format && t < limit && *t != '\n')
+	      fprintf (out, flag_format, line_flag);
+	    column = 0;
 	    break;
 
 	  case '\b':

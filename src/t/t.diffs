@@ -194,3 +194,61 @@ EOF
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; cat D; exit 1; fi
 echo OK
+echo $N Checking diff on lines with many carriage returns ...........$NL
+echo > a
+echo > b
+bk diff --ignore-trailing-cr a b > DIFF || {
+	echo Fail same
+	echo output of diff:
+	cat DIFF
+	exit 1
+}
+echo '' > b
+bk diff --ignore-trailing-cr a b > DIFF || {
+	echo Fail simple
+	echo output of diff:
+	cat DIFF
+	exit 1
+}
+bk diff --ignore-trailing-cr b a > DIFF || {
+	echo Fail simple
+	echo output of diff:
+	cat DIFF
+	exit 1
+}
+echo '' > b
+bk diff --ignore-trailing-cr a b > DIFF || {
+	echo Fail multiple cr
+	echo output of diff:
+	cat DIFF
+	exit 1
+}
+bk diff --ignore-trailing-cr b a > DIFF || {
+	echo Fail multiple cr
+	echo output of diff:
+	cat DIFF
+	exit 1
+}
+echo 'a' > a
+echo 'a' > b
+bk diff -q --ignore-trailing-cr a b > DIFF && {
+	echo Fail multiple cr
+	echo output of diff:
+	cat DIFF
+	exit 1
+}
+bk diff -q --ignore-trailing-cr b a > DIFF && {
+	echo Fail multiple cr
+	echo output of diff:
+	cat DIFF
+	exit 1
+}
+echo 'a' > a
+bk new $Q a
+bk edit $Q a
+echo 'a' > a
+bk clean $Q a || {
+	echo Fail clean
+	exit 1
+}
+echo OK

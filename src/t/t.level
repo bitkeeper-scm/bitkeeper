@@ -68,7 +68,7 @@ bk push $Q 2>OUT && {
 	echo should have failed
 	exit 1
 }
-grep -q 'cannot push to lower level repository' OUT || {
+grep -q 'cannot push to lower level repository (remote level == 2)' OUT || {
 	echo bad error message
 	cat OUT
 	exit 1
@@ -95,7 +95,7 @@ bk pull $Q $HERE/copy 2>OUT && {
 	echo should have failed
 	exit 1
 }
-grep -q 'cannot pull to lower level repository' OUT || {
+grep -q 'cannot pull to lower level repository (remote level == 100)' OUT || {
 	echo bad error message
 	cat OUT
 	exit 1

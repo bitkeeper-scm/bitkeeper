@@ -131,6 +131,7 @@ usage:			system("bk help -s changes");
 		/*
 		 * What we want is: bk synckey -lk url | bk changes opts -
 		 */
+		nav[nac++] = strdup("-a");
 		nav[nac++] = strdup("-");
 		assert(nac < 30);
 		nav[nac] = 0;

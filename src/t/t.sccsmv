@@ -197,9 +197,9 @@ echo OK
 cd ..
 echo $N Test bk unrm ................................................$NL
 bk unrm A/file4 > /dev/null
-if [ ! -f A/SCCS/s.file4 ]; then echo failed; exit; fi
-if [ -f A/SCCS/c.file4 ]; then echo failed; exit; fi
-if [ -f A/SCCS/c.file4@1.1 ]; then echo failed; exit; fi
+if [ ! -f A/SCCS/s.file4 ]; then echo failed; exit 1; fi
+if [ -f A/SCCS/c.file4 ]; then echo failed; exit 1; fi
+if [ -f A/SCCS/c.file4@1.1 ]; then echo failed; exit 1; fi
 XFILES=`bk -R sfiles -x`
 if [ "$XFILES" != "" ]; then echo filed; exit 1; fi
 bk rm A/file4
@@ -510,3 +510,21 @@ test -d BitKeeper || {
 }
 echo OK
 
+
+if [ "$PLATFORM" = "WIN32" ]
+then    #----------------------------------------------------------------
+echo $N Make sure bk mv work with back slash style dos path..........$NL
+        cd $HERE
+        no_logging project2
+        mkdir src
+        cd src
+        echo foo > foo.c
+        bk new $Q foo.c
+	cd ..
+        bk mv .\\src\\foo.c .\\src\\bar.c
+        if [ ! -f src/SCCS/s.bar.c ]; then echo failed; exit 1; fi
+	bk rm src\\bar.c
+        if [ -f src/SCCS/s.bar.c ]; then echo failed 2; exit 1; fi
+        echo OK
+fi      #----------------------------------------------------------------
+exit 0

@@ -95,6 +95,11 @@ case "X`uname -s`" in
 		export MAKE
 		CHECK=1
 		;;
+	XSCO_SV)
+		XLIBS="-lsocket"
+		export XLIBS
+		CHECK=1
+		;;
 	XAIX)	MAKE=make
 		CHECK=1
 		;;

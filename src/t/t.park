@@ -13,17 +13,6 @@
 # Copyright (c) 2000 Andrew Chang
 # %K%
 
-if [ X$PLATFORM = X"WIN32" ]
-then
-	binary_data="`bk bin`/bk.exe"
-	binary_data2="`bk bin`/diff.exe"
-	binary_data3="`bk bin`/diff3.exe"
-else
-	binary_data="/bin/ls"
-	binary_data2="/bin/rm"
-	binary_data3="/bin/cp"
-fi
-
 HERE=`bk pwd`
 echo $N Create initial repository ...................................$NL
 no_logging project
@@ -128,15 +117,15 @@ EOF
 cmp -s new_me new_me.ref || { echo failed; exit 1; }
 echo OK
 echo $N Should not unpark binary over changed file ..................$NL
-cp $binary_data binary
+cp $BIN1 binary
 bk new $Q -lb binary
-cp $binary_data2 binary
+cp $BIN2 binary
 echo "I am a extra file" > extra
 cp extra $HERE/extra.ref
 bk park -y -a 2> /dev/null
 if [ -f extra ]; then echo failed 0; exit 1; fi
 bk edit $Q binary
-cp $binary_data3 binary
+cp $BIN3 binary
 bk unpark 2> unpark.out 1>&2
 grep -q "unsafe to unpark over changed binary file" unpark.out || {
 							echo failed 1; exit 1; }
@@ -147,14 +136,14 @@ rm -f binary
 bk mv binary binary_moved
 bk unpark  2>/dev/null 1>&2
 if [ -f binary ]; then echo failed; exit 1; fi
-cmp -s $binary_data2 binary_moved || { echo failed; exit 1; }
+cmp -s $BIN2 binary_moved || { echo failed; exit 1; }
 if [ ! -f extra ]; then echo failed; exit 1; fi
 cmp -s extra $HERE/extra.ref || { echo failed 3; exit 1; }
 echo OK
 echo $N Should failed unpark binary changed delta ...................$NL
 bk park -y -a 2> /dev/null
 bk edit $Q binary_moved
-cp $binary_data3 binary_moved
+cp $BIN3 binary_moved
 bk delta  $Q -uy"new" binary_moved
 if [ ! -f binary_moved ]; then echo failed; exit 1; fi
 bk unpark 2> unpark.out 1>&2
@@ -164,7 +153,7 @@ echo OK
 echo $N Unpark \-f should overide local changed delta  ................$NL
 bk unpark -cf 2> /dev/null 1>&2
 if [ ! -f binary_moved ]; then echo failed; exit 1; fi
-cmp -s $binary_data2 binary_moved || { echo failed; exit 1; }
+cmp -s $BIN2 binary_moved || { echo failed; exit 1; }
 echo OK
 if [ "$PLATFORM" = "WIN32" ]
 then #--------------------------------------------------------------------
@@ -210,9 +199,9 @@ cmp -s new_me new_me.ref || { echo failed; exit 1; }
 echo OK
 echo $N Make sure park -a handle symlink ............................$NL
 bk park -y -a 2> /dev/null
-if [ -L "sym" ]; then echo failed; exit 1; fi
+if [ -h "sym" ]; then echo failed; exit 1; fi
 bk unpark 2> /dev/null 1>&2
-if [ ! -L "sym" ]; then echo failed; exit 1; fi
+if [ ! -h "sym" ]; then echo failed; exit 1; fi
 ls -l sym | grep -q "\-> foo.c" || { echo failed; exit 1; }
 echo OK
 echo $N Make sure park -a handle symlink to Text case  ...............$NL
@@ -230,7 +219,7 @@ ln -s foo.c extra_sym
 bk park -y -a 2> /dev/null
 if [ -e extra_sym ]; then echo failed; exit 1; fi
 bk unpark 2> /dev/null 1>&2
-if [ ! -L "extra_sym" ]; then echo failed; exit 1; fi
+if [ ! -h "extra_sym" ]; then echo failed; exit 1; fi
 ls -l extra_sym | grep -q "\-> foo.c" || { echo failed; exit 1; }
 echo OK
 fi   #--------------------------------------------------------------------
