@@ -647,46 +647,41 @@ private	void
 lftw_inner(char *path, char *base, struct stat *sb,
 	   globv ignore, lftw_func func)
 {
-	DIR		*d;
-	struct dirent	*e;
-	int		mode, n, plus2 = strneq(path, "./", 2);
+	char		**d;
+	int		i, mode, n, plus2 = strneq(path, "./", 2);
 #ifndef WIN32	/* Linux 2.3.x NFS bug, skip repeats. */
-	ino_t		lastInode = 0;
+	char	*lastEntry = 0;
 #endif
 
-	if ((d = opendir(path)) == NULL) {
+	if ((d = getdir(path)) == NULL) {
 		perror(path);
 		return;
 	}
 	if (base[-1] != '/') *base++ = '/';
-	while ((e = readdir(d)) != NULL) {
+	EACH (d) {
 #ifndef WIN32	/* Linux 2.3.x NFS bug, skip repeats. */
-		if (lastInode == e->d_ino) continue;
-		lastInode = e->d_ino;
+		if (lastEntry && streq(lastEntry, d[i])) continue;
+		lastEntry = d[i];
 #endif
-		if (streq(e->d_name, ".") || streq(e->d_name, "..")) {
+		if (streq(d[i], ".") || streq(d[i], "..")) {
 			continue;
 		}
-		if (match_globs(e->d_name, ignore)) {
-			debug((stderr, "SKIP\t%s\n", e->d_name));
+		if (match_globs(d[i], ignore)) {
+			debug((stderr, "SKIP\t%s\n", d[i]));
 			continue;
 		}
-		if (base - path + strlen(e->d_name) + 2 > MAXPATH) {
+		if (base - path + strlen(d[i]) + 2 > MAXPATH) {
 			fprintf(stderr, "lftw: path too long\n[%s%s]\n",
-				path, e->d_name);
+				path, d[i]);
 			continue;
 		}
-		strcpy(base, e->d_name);
+		strcpy(base, d[i]);
 		if (match_globs(path, ignore) ||
 		    (plus2 && match_globs(path + 2, ignore))) {
 			debug((stderr, "SKIP\t%s\n", path));
 			continue;
 		}
 
-#ifdef DT_UNKNOWN
-		if (e->d_type != DT_UNKNOWN) mode = DTTOIF(e->d_type);
-		else
-#endif
 		if (fast_lstat(path, sb, 0)) {
 			/*
 			 * Do not print an error, A file entry may be deleted
@@ -699,7 +694,7 @@ lftw_inner(char *path, char *base, struct stat *sb,
 			continue;
 		} else mode = (sb->st_mode & S_IFMT);
 
-		debug((stderr, "FUNC\t%s\n", e->d_name));
+		debug((stderr, "FUNC\t%s\n", d[i]));
 		func(path, mode);
 
 		if (!S_ISDIR(mode)) continue;
@@ -730,10 +725,10 @@ lftw_inner(char *path, char *base, struct stat *sb,
 
 		/* Descend directory.  */
 		base[n] = '\0';
-		debug((stderr, "DIR\t%s\n", e->d_name));
+		debug((stderr, "DIR\t%s\n", d[i]));
 		lftw_inner(path, base + n, sb, ignore, func);
 	}
-	closedir(d);
+	freeLines(d);
 }
 
 private	void

@@ -937,8 +937,6 @@ again:	if (lstat(dir, &sb1)) {
 	}
 	if ((sb1.st_mtime != sb2.st_mtime) || 
 	    (sb1.st_size != sb2.st_size)) {
-		fprintf(stderr,
-		    "Directory change while doing readdir(), restarting...\n");
 		freeLines(lines);
 		lines = 0;
 		goto again;
