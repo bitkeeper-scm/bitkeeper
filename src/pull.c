@@ -135,7 +135,7 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		getServerInfoBlock(r, "_OUTGOING");
 		getline2(r, buf, sizeof(buf));
 	} else {
-		drainNonStandardMsg(r, buf, sizeof(buf));
+		drainErrorMsg(r, buf, sizeof(buf));
 	}
 	if (getenv("BK_OUTGOING_LEVEL") &&
 	    (atoi(getenv("BK_OUTGOING_LEVEL")) > getlevel())) {
