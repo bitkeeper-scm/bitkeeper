@@ -1794,6 +1794,11 @@ findrev(sccs *s, char *rev)
 	/* 1.0 == s->tree even if s->tree is 1.1 */
 	if (streq(rev, "1.0")) return (s->tree);
 
+	if (*rev == '=') {
+		e = sfind(s, atoi(++rev));
+		unless (e) fprintf(stderr, "Serial %s not found\n", rev);
+		return (e);
+	}
 	if (name2rev(s, &rev)) return (0);
 	switch (scanrev(rev, &a, &b, &c, &d)) {
 	    case 1:
@@ -3522,8 +3527,9 @@ misc(sccs *s)
 		}
 	}
 
-	/* Save descriptive text. */
-	for (; (buf = fastnext(s)) && !strneq(buf, "\001T\n", 3); ) {
+	/* Save descriptive text. AT&T/teamware might have more after T */
+	for (; (buf = fastnext(s)) &&
+	    !strneq(buf, "\001T\n", BITKEEPER(s) ? 3 : 2); ) {
 		s->text = addLine(s->text, strnonldup(buf));
 	}
 	s->data = sccstell(s);

@@ -257,7 +257,9 @@ grep -q "^ChangeSet revision" OUT || {
 	cat OUT
 	exit 1
 }
-cd $HERE/EDIT
+cd $HERE
+tar cf MULTI EDIT
+cd EDIT
 bk edit $Q foo bar
 cat >> foo <<EOF
 E
@@ -429,18 +431,33 @@ export BK_CONFIG
 
 echo $N Test import of an sccs file .................................$NL
 cd $HERE
+echo "logging: none" > c
+echo "license: $BKL_P" >> c
+echo "licsign1: $BKL_P1" >> c
+echo "licsign2: $BKL_P2" >> c
+echo "licsign3: $BKL_P3" >> c
+echo "description: BitKeeper Test repository" >> c
+echo "email: nobody@nowhere.bk" >> c
+echo "eoln: unix" >> c
+echo "keyword: sccs" >> c
+echo "checkout: get" >> c
+bk setup -f -cc co_get || { echo "Setup failed!"; exit 1; }
+# These are for later tests
+bk clone $Q co_get nonconform
+bk clone $Q co_get metachar
 mkdir -p import_sccs/src
 cd $HERE/import_sccs/src
 echo bar > bar.c
 bk ci $Q -i -l bar.c
 echo "bar-new" > bar.c
 bk ci $Q -y bar.c
-cd $HERE/project
-bk edit $Q BitKeeper/etc/config
-echo checkout:get >> BitKeeper/etc/config
 cd $HERE
-( echo SCCS; echo no ) | bk import import_sccs project  > import.out 2>&1
-cd $HERE/project/src
+( echo SCCS; echo no ) | bk import -v import_sccs co_get > import.out 2>&1 || {
+	echo Failed
+	cat import.out
+	exit 1
+}
+cd $HERE/co_get/src
 test -f bar.c || exit 1
 bk get $Q bar.c $HERE/import_sccs/src/bar.c
 bk undos bar.c > X
@@ -448,10 +465,256 @@ bk undos $HERE/import_sccs/src/bar.c > Y
 cmp -s X Y
 echo OK
 
-unset BK_CONFIG
+echo $N Test import of non conforming SCCS files ....................$NL
+cd $HERE/import_sccs/src
+# test fakes, removed delta, backward time, and duplicate revisions
+touch u
+cat - <<EOF > INIT
+D 1.1 70/01/01 00:00:00 a@bk
+c Fake 1
+EOF
+bk delta $Q -i -IINIT u
+bk edit $Q u
+cat - <<EOF > INIT
+D 1.2 70/01/01 00:00:00 b@bk
+c Fake 2
+EOF
+bk delta $Q -IINIT u
+bk edit $Q u
+cat - <<EOF > INIT
+D 1.3 80/01/01 00:00:02 removed@bk
+c Removed
+EOF
+bk delta $Q -IINIT u
+bk rmdel -r+ u
+bk edit $Q u
+cat - <<EOF > INIT
+D 1.3 80/01/01 00:00:10 realuser@bk
+c Real
+EOF
+bk delta $Q -IINIT u
+bk edit $Q u
+cat - <<EOF > INIT
+D 1.4 80/01/01 00:00:05 another@bk
+c Backwards in time
+EOF
+bk delta $Q -IINIT u
+bk edit $Q u
+cat - <<EOF > INIT
+D 1.5 80/01/01 00:00:20 realuser@bk
+c First 1.5
+EOF
+bk delta $Q -IINIT u
+bk edit $Q u
+cat - <<EOF > INIT
+D 1.5 80/01/01 00:00:30 realuser@bk
+c Another using 1.5
+EOF
+bk delta $Q -IINIT u
+# Want to have INIT_SHUTUP passed in, but no hooks, so just divert stderr
+bk prs -r1.0.. -ahnd':DT: :I: :D: :T: :FUDGE: :P:' u > PRE 2> WARN || {
+	echo Fail
+	echo Error message:
+	cat WARN
+	exit 1
+}
+cat - <<EOF > WANTPRE
+D 1.5 80/01/01 00:00:30 0 realuser
+D 1.5 80/01/01 00:00:20 0 realuser
+D 1.4 80/01/01 00:00:05 0 another
+D 1.3 80/01/01 00:00:10 0 realuser
+R 1.3 80/01/01 00:00:02 0 removed
+D 1.2 70/01/01 00:00:00 0 b
+D 1.1 70/01/01 00:00:00 0 a
+EOF
+cmp WANTPRE PRE || {
+	echo FAIL
+	echo The PRE u test failed with this difference in desired and actual:
+	diff WANTPRE PRE
+	exit 1
+}
+# Collapse : 1.1 is parent of 1.1.1.1 and 1.2 and 1.1.1.1 is merge of 1.2
+# Want it to become a straight line: all on trunk
+touch x
+cat - <<EOF > INIT
+D 1.1 80/01/01 00:00:00 bk@bk
+c base
+EOF
+bk delta $Q -i -IINIT x
+bk edit $Q x
+cat - <<EOF > INIT
+D 1.1.1.1 80/01/01 00:00:01 bk@bk
+c branch
+EOF
+bk delta $Q -IINIT x
+bk _get $Q -e -r1.1.1.1 -M1.1 x
+cat - <<EOF > INIT
+D 1.2 80/01/01 00:00:02 bk@bk
+c trunk
+EOF
+bk delta $Q -IINIT x
+bk prs -r1.0.. -ahnd':DT: :I: :D: :T: :FUDGE: :P:' x > PRE
+cat - <<EOF > WANTPRE
+D 1.2 80/01/01 00:00:02 0 bk
+D 1.1.1.1 80/01/01 00:00:01 0 bk
+D 1.1 80/01/01 00:00:00 0 bk
+EOF
+cmp WANTPRE PRE || {
+	echo FAIL
+	echo The PRE x test failed with this difference in desired and actual:
+	diff WANTPRE PRE
+	exit 1
+}
+# branch earlier than trunk: should swap so branch becomes trunk etc.
+touch z
+cat - <<EOF > INIT
+D 1.1 80/01/01 00:00:00 bk@bk
+c base
+EOF
+bk delta $Q -i -IINIT z
+bk edit $Q z
+cat - <<EOF > INIT
+D 1.1.1.1 80/01/01 00:00:01 bk@bk
+c branch younger than trunk
+EOF
+bk delta $Q -IINIT z
+bk _get $Q -e -r1.1 z
+cat - <<EOF > INIT
+D 1.2 80/01/01 00:00:02 bk@bk
+c trunk older than branch
+EOF
+bk delta $Q -IINIT z
+bk _get $Q -e -r1.2 -M1.1.1.1 z
+cat - <<EOF > INIT
+D 1.3 80/01/01 00:00:03 bk@bk
+c merge on trunk
+EOF
+bk delta $Q -IINIT z
+bk prs -r1.0.. -ahnd':DT: :I: :D: :T: :FUDGE: :P:' z > PRE
+cat - <<EOF > WANTPRE
+D 1.3 80/01/01 00:00:03 0 bk
+D 1.2 80/01/01 00:00:02 0 bk
+D 1.1.1.1 80/01/01 00:00:01 0 bk
+D 1.1 80/01/01 00:00:00 0 bk
+EOF
+cmp WANTPRE PRE || {
+	echo FAIL
+	echo The PRE z test failed with this difference in desired and actual:
+	diff WANTPRE PRE
+	exit 1
+}
+# import
+cd $HERE
+echo src/SCCS/s.u > flist
+echo src/SCCS/s.x >> flist
+echo src/SCCS/s.z >> flist
+bk import -v -tSCCS -lflist -f import_sccs nonconform  > import.out 2>&1 || {
+	echo Failed
+	cat import.out
+	exit 1
+}
+cd nonconform/src
+bk prs -r1.0.. -ahnd':DT: :I: :D: :T: :FUDGE: :P:' u > POST
+cat - <<EOF > WANTPOST
+D 1.6 80/01/01 00:00:30 0 realuser
+D 1.5 80/01/01 00:00:20 0 realuser
+D 1.4 80/01/01 00:00:05 6 another
+D 1.3 80/01/01 00:00:10 0 realuser
+D 1.2 80/01/01 00:00:09 0 realuser
+D 1.1 80/01/01 00:00:08 0 realuser
+D 1.0 80/01/01 00:00:07 0 realuser
+EOF
+cmp WANTPOST POST || {
+	echo FAIL
+	echo The POST u test failed with this difference in desired and actual:
+	diff WANTPOST POST
+	exit 1
+}
+bk prs -r1.0.. -ahnd':DT: :I: :D: :T: :FUDGE: :P:' x > POST
+cat - <<EOF > WANTPOST
+D 1.3 80/01/01 00:00:02 0 bk
+D 1.2 80/01/01 00:00:01 0 bk
+D 1.1 80/01/01 00:00:00 0 bk
+D 1.0 79/12/31 23:59:59 0 bk
+EOF
+cmp WANTPOST POST || {
+	echo FAIL
+	echo The POST x test failed with this difference in desired and actual:
+	diff WANTPOST POST
+	exit 1
+}
+bk prs -r1.0.. -ahnd':DT: :I: :D: :T: :FUDGE: :P:' z > POST
+cat - <<EOF > WANTPOST
+D 1.3 80/01/01 00:00:03 0 bk
+D 1.1.1.1 80/01/01 00:00:02 0 bk
+D 1.2 80/01/01 00:00:01 0 bk
+D 1.1 80/01/01 00:00:00 0 bk
+D 1.0 79/12/31 23:59:59 0 bk
+EOF
+cmp WANTPOST POST || {
+	echo FAIL
+	cat POST
+	echo The POST z test failed with this difference in desired and actual:
+	diff WANTPOST POST
+	exit 1
+}
+echo OK
+
+echo $N Import SCCS file under checkout:edit ........................$NL
+cd $HERE
+echo hi > co_edit_foo
+bk new $Q co_edit_foo
+bk edit $Q co_edit_foo
+echo again >> co_edit_foo
+bk delta $Q -yagain co_edit_foo
+# checkout: edit repo
+echo "logging: none" > c
+echo "license: $BKL_P" >> c
+echo "licsign1: $BKL_P1" >> c
+echo "licsign2: $BKL_P2" >> c
+echo "licsign3: $BKL_P3" >> c
+echo "description: BitKeeper Test repository" >> c
+echo "email: nobody@nowhere.bk" >> c
+echo "eoln: unix" >> c
+echo "keyword: sccs" >> c
+echo "checkout: edit" >> c
+bk setup -f -cc co_edit || { echo "Setup failed!"; exit 1; }
+cp SCCS/s.co_edit_foo co_edit/SCCS
+cd co_edit
+bk sccs2bk -cx co_edit_foo >OUT 2>ERR || {
+	echo FAILED
+	echo STDOUT
+	cat OUT
+	echo
+	echo STDERR
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Import SCCS binary file with null in 1.2 ....................$NL
+cd $HERE
+echo hi > co_edit_bar
+bk new $Q -b co_edit_bar
+bk edit $Q co_edit_bar
+printf "a line with a \000 in it\n" >> co_edit_bar
+bk delta $Q -ywithnull co_edit_bar
+cp SCCS/s.co_edit_bar co_edit/SCCS
+cd co_edit
+bk sccs2bk -cx co_edit_bar >OUT 2>ERR || {
+	echo FAILED
+	echo STDOUT
+	cat OUT
+	echo
+	echo STDERR
+	cat ERR
+	exit 1
+}
+echo OK
 
 if [ $PLATFORM != "WIN32" ]
 then #----------------------------------------------------------------
+
 echo $N Test import of an sccs file with meta char in file name .....$NL
 cd $HERE
 mkdir -p import_sccs2/src
@@ -461,13 +724,19 @@ bk ci $Q -i -l './*.c'
 echo "bar-new" > './*.c'
 bk ci $Q -y '*.c'
 cd $HERE
-( echo SCCS; echo no ) | bk import import_sccs2 project  > import.out 2>&1
-cd $HERE/project/src
+( echo SCCS; echo no ) | bk import import_sccs2 metachar > import.out 2>&1 || {
+	echo Failed
+	cat import.out
+	exit 1
+}
+cd $HERE/metachar/src
 bk get $Q './*.c' $HERE/import_sccs2/src/'*.c'
 cmp -s '*.c' $HERE/import_sccs2/src/'*.c'
 echo OK
-
 fi   #----------------------------------------------------------------
+
+unset BK_CONFIG
+
 set +e
 trap '' 0
 
@@ -706,4 +975,7 @@ do	cd import$i
 done
 echo OK
 }
+
+# In win, the failed test above means this returns 1 even though there is
+# no error, so set it to 0
 exit 0

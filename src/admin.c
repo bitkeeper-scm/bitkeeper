@@ -100,16 +100,12 @@ admin_main(int ac, char **av)
 			csetFile = optarg; newCset++; flags |= NEWCKSUM; break;
 		    case 'D':					/* doc 2.0 */
 			rmCsets = 1; flags |= NEWCKSUM; break;
-		    /*
-		     * XXX: no way to set ADMIN_TIME in the following code.
-		     * is it needed?
-		     */
-		    case 'h':	if (flags & ADMIN_FORMAT) {	/* doc 2.0 */
-		    			flags |= ADMIN_BK;
-				} else if (flags & ADMIN_BK) {
-					flags |= ADMIN_TIME;
-				} else {
+		    case 'h':	unless (flags & ADMIN_FORMAT) {	/* doc 2.0 */
 		    			flags |= ADMIN_FORMAT;
+				} else unless (flags & ADMIN_BK) {
+		    			flags |= ADMIN_BK;
+				} else unless (flags & ADMIN_TIME) {
+					flags |= ADMIN_TIME;
 				}
 				break;
 		    case 'H':					/* doc 2.0 */	

@@ -321,10 +321,23 @@ done:	return (gap);
  * c) user boundary
  */
 private int
-isCsetBoundary(delta *d1, delta *d2, time_t tagDate)
+isCsetBoundary(delta *d1, delta *d2, time_t tagDate, time_t now, int *skip)
 {
 
 	assert(d1->date <= d2->date);
+
+	/*
+	 * For debugging:
+	 * Ignore delta older than N months.
+	 * N = opts.blackOutTime.
+	 */
+
+	if (opts.blackOutTime &&
+	    (d2->date < (now - (opts.blackOutTime * MONTH)))) {
+		(*skip)++;
+		return (0);
+	}
+
 	/* (tagDate == 0) => no tag */
 	if (tagDate && d1->date <= tagDate && d2->date > tagDate) return (1);
 
@@ -764,20 +777,6 @@ isBreakPoint(time_t now, delta *d)
 		}
 		return (1);
 	}
-
-	/*
-	 * For debugging:
-	 * Ignore delta younger than N months.
-	 * N = opts.blackOutTime.
-	 */
-	if (d->date >= (now - (opts.blackOutTime * MONTH))) {
-		if (opts.verbose > 1) {
-			fprintf(stderr,
-			    "Skipping delta younger than %d month.\n",
-			    opts.blackOutTime);
-		}
-		return (1);
-	}
 	return (0);
 }
 
@@ -795,6 +794,7 @@ findcset(void)
 	char	*nextTag;
 	int	ret;
 	char	**syms;
+	int	skip = 0;
 
 
 	nextTag = readTag(&tagDate);
@@ -812,7 +812,7 @@ findcset(void)
 				free(nextTag);
 				nextTag = readTag(&tagDate);
 			}
-			if (isCsetBoundary(previous, d, tagDate)) {
+			if (isCsetBoundary(previous, d, tagDate, now, &skip)) {
 				syms = 0;
 				while (nextTag && tagDate >= previous->date &&
 				    tagDate < d->date) {
@@ -849,6 +849,11 @@ findcset(void)
 		saveComment(csetComment, d->rev, p, d->pathname);
 		free(p);
 		/* pathname will be freeed in freeComment() */
+	}
+	if (skip && (opts.verbose > 1)) {
+		fprintf(stderr,
+		    "Skipping %d delta%s older than %d month.\n",
+		    skip, ((skip == 1) ? "" : "s"), opts.blackOutTime);
 	}
 	assert(d == sorted[n - 1]);
 	if (isBreakPoint(now, d)) goto done;
