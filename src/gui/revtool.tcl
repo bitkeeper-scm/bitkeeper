@@ -3,7 +3,6 @@
 #
 # %W% %@%
 #
-
 array set month {
 	""	"bad"
 	"01"	"JAN"
@@ -43,6 +42,26 @@ proc ht {id} \
 	return [expr {$y2 - $y1}]
 }
 
+proc drawAnchor {x1 y1 x2 y2} {
+	global w gc
+
+	$w(graph) create line $x2 $y1 $x2 $y2 $x1 $y2 \
+	    -fill #f0f0f0 -tags anchor -width 1 \
+	    -capstyle projecting
+	$w(graph) create line $x1 $y2 $x1 $y1 $x2 $y1 \
+	    -fill $gc(rev.revOutline) -tags anchor -width 1 \
+	    -capstyle projecting
+
+	set y $y2
+	foreach incr {3 3 3 } {
+		incr x1 $incr
+		incr x2 -$incr
+		incr y $incr
+		$w(graph) create line $x1 $y $x2 $y \
+		    -fill $gc(rev.revOutline) -tags anchor 
+	}
+
+}
 #
 # Set highlighting on the bounding box containing the revision number
 #
@@ -66,17 +85,21 @@ proc highlight {id type {rev ""}} \
 	# -- lm doesn't mind that the bottoms of the letters touch, though
 	#puts "id=($id)"
 	set x1 [lindex $bb 0]
-	set y1 [expr [lindex $bb 1] - 1]
+	set y1 [expr {[lindex $bb 1] - 1}]
 	set x2 [lindex $bb 2]
-	set y2 [expr [lindex $bb 3] - 1]
+	set y2 [expr {[lindex $bb 3] - 1}]
 
+	set bg {}
 	switch $type {
+	    anchor {
+		    drawAnchor $x1 $y1 $x2 $y2
+		}
 	    revision {\
 		#puts "highlight: revision ($rev)"
-		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
-		    -fill $gc(rev.revColor) \
-		    -outline $gc(rev.revOutline) \
-		    -width 1 -tags [list $rev revision]]}
+ 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
+ 		    -fill $gc(rev.revColor) \
+ 		    -outline $gc(rev.revOutline) \
+ 		    -width 1 -tags [list $rev revision]]}
 	    merge   {\
 		#puts "highlight: merge ($rev)"
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
@@ -91,29 +114,47 @@ proc highlight {id type {rev ""}} \
 		#puts "highlight: red ($rev)"
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
 		    -outline "red" -width 1.5 -tags "$rev"]}
-	    old  {\
+	    old  {
 		#puts "highlight: old ($rev) id($id)"
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
-		    -outline $gc(rev.revOutline) -fill $gc(rev.oldColor) \
-		    -tags old]}
+			    -outline $gc(rev.revOutline) \
+			    -fill $gc(rev.oldColor) \
+			    -tags old]
+		catch {$w(graph) raise gca old}
+		catch {$w(graph) raise local old}
+		catch {$w(graph) raise remote old}
+	    }
 	    new   {\
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
 		    -outline $gc(rev.revOutline) -fill $gc(rev.newColor) \
 		    -tags new]}
+		catch {$w(graph) raise gca new}
+		catch {$w(graph) raise local new}
+		catch {$w(graph) raise remote new}
 	    local   {\
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
 		    -outline $gc(rev.revOutline) -fill $gc(rev.localColor) \
 		    -width 2 -tags local]}
+		catch {$w(graph) raise local new}
+		catch {$w(graph) raise local old}
 	    remote   {\
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
 		    -outline $gc(rev.revOutline) -fill $gc(rev.remoteColor) \
 		    -width 2 -tags remote]}
-	    gca  {\
+		catch {$w(graph) raise remote new}
+		catch {$w(graph) raise remote old}
+	    gca  {
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
-		    -outline black -width 2 -fill lightblue]}
+			    -outline black -width 2 -fill $gc(rev.gcaColor) \
+			    -tags gca]
+		catch {$w(graph) raise gca new}
+		catch {$w(graph) raise gca old}
+	    }
 	}
 
+	$w(graph) raise anchor
 	$w(graph) raise revtext
+
 	return $bg
 }
 
@@ -156,72 +197,63 @@ proc revMap {file} \
 	catch { close $fid }
 }
 
-# If in annotated diff output, find parent and diff between parent 
-# and selected rev.
-#
-# If only a node in the graph is selected, then do the diff between it 
-# and its parent
-#
-proc diffParent {} \
+proc orderSelectedNodes {reva revb} \
 {
-	global w file rev1 rev2
+	global rev1 rev2 anchor rev2rev_name w
+
+ 	if {[info exists rev2rev_name($reva)]} {
+ 		set reva $rev2rev_name($reva)
+ 	}
+ 	if {[info exists rev2rev_name($revb)]} {
+ 		set revb $rev2rev_name($revb)
+ 	}
+
+	if {$reva < $revb} {
+		set rev2 [getRev new $revb]
+		set rev1 [getRev old $reva]
+	} else {
+		set rev2 [getRev new $reva]
+		set rev1 [getRev old $revb]
+	}
+	# make sure tag priorities still favor the merge tags
+  	foreach mergeTag {local remote gca} {
+  		foreach tag {new old anchor} {
+  			catch {$w(graph) raise $mergeTag $tag}
+  		}
+  	}
+}
+
+# Diff between a rev and its parent, or between the two highlighted
+# nodes
+proc doDiff {{difftool 0}} \
+{
+	global w file rev1 rev2 anchor
 
 	set rev ""
 	set b ""
-	# See if node is selected and then try to get the revision number
-	set id [$w(graph) find withtag old]
-	if {$id != ""} {
-		set tags [$w(graph) gettags $id]
-		set bb [$w(graph) bbox $id]
-		set x1 [expr {[lindex $bb 0] - 1}]
-		set y1 [expr {[lindex $bb 1] - 1}]
-		set x2 [expr {[lindex $bb 2] + 1}]
-		set y2 [expr {[lindex $bb 3] + 1}]
-		if {$bb != ""} {
-			set b [$w(graph) find enclosed $x1 $y1 $x2 $y2]
-			# Tags for the different indexes
-			# t(0)=1.130-kush revsion
-			# t(1)=old/new
-			# t(2)=1.130-kush revtext current
-			set tag [lindex $b 2]
-			set tags [$w(graph) gettags $tag]
-			if {[lsearch $tags revtext] >= 0} { 
-				set rev_user [lindex $tags 0]
-				set rev [lindex [split $rev_user "-"] 0]
-				#puts "tags=($tags) rev=($rev)"
-			}
-		}
-	}
-	#puts "id=($id) rev=($rev)"
-	set selectedLine [$w(aptext) tag ranges select]
-	if {$selectedLine != ""} {
-		set l [lindex $selectedLine 0]
-		set line [$w(aptext) get $l "$l lineend - 1 char"]
-		if {[regexp \
-		    {^(.*)[ \t]+([0-9]+\.[0-9.]+).*\|} $line m user rev]} {
-			set parent [exec bk prs -d:PARENT:  -hr${rev} $file]
-			#puts "if: line=($line)"
-			#puts "rev=($rev) parent=($parent) f=($file)"
-			displayDiff $parent $rev
-		}
-	} elseif {$rev != ""} {
-		set rev1 [exec bk prs -d:PARENT: -hr${rev} $file]
-		set rev2 $rev
-		set base [file tail $file]
-		# not fully working -- need to reset nodes when clicking on
-		# a new node
-		#set hrev1 [lineOpts $rev1]
-		#set hrev2 [lineOpts $rev2]
-		#highlight $hrev1 "old"
-		#highlight $hrev2 "new"
+	if {![info exists anchor] || $anchor == ""} return
 
-		if {$base == "ChangeSet"} {
-			csetdiff2
-			return
-		}
-		busy 1
-		displayDiff $rev1 $rev2
+	# No second rev? Get the parent
+	if {![info exists rev2] || $rev2 == $rev1} {
+		set rev2 $anchor
+		set rev1 [exec bk prs -d:PARENT: -hr${anchor} $file]
 	}
+
+	orderSelectedNodes $rev1 $rev2
+	busy 1
+
+	set base [file tail $file]
+
+	if {$base == "ChangeSet"} {
+		csetdiff2
+	} else {
+		if {$difftool} {
+			difftool $file $rev1 $rev2
+		} else {
+			displayDiff $rev1 $rev2
+		}
+	}
+
 	return
 }
 
@@ -383,7 +415,7 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 		set fname [$win get $prevLine "$prevLine lineend"]
 		regsub -- {^  } $fname "" fname
 		if {($bindtype == "B1") && ($fname != "") && ($fname != "ChangeSet")} {
-			catch {exec bk revtool -l$rev $fname &} err
+			catch {exec bk revtool -r$rev $fname &} err
 		}
 		busy 0
 		return
@@ -437,6 +469,7 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 				r2c
 			}
 		}
+		currentMenu
 		busy 0
 		return
 	}
@@ -453,6 +486,7 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 		if {($bindtype == "D1") && ($ttype != "annotated")} {
 			selectNode "id" $id
 		}
+		currentMenu
 	} else {
 		#puts "Error: tag not found ($line)"
 		busy 0
@@ -528,7 +562,9 @@ proc dateSeparate { } { \
 	# Adjust height of screen by adding text height
 	# so date string is not so scrunched in
 	set miny [expr {$screen(miny) - $ht}]
-	set maxy [expr {$screen(maxy) + $ht}]
+
+	# 12 is added to maxy to accomdate the little anchor glyph
+	set maxy [expr {$screen(maxy) + $ht + 12}]
 
 	# Try to compensate for date text size when canvas is small
 	if { $maxy < 50 } { set maxy [expr {$maxy + 15}] }
@@ -598,7 +634,7 @@ proc dateSeparate { } { \
 proc addline {y xspace ht l} \
 {
 	global	bad wid revX revY gc merges parent line_rev screen
-	global  stacked rev2rev_name w firstnode
+	global  stacked rev2rev_name w firstnode firstrev
 
 	set last -1
 	set ly [expr {$y - [expr {$ht / 2}]}]
@@ -646,7 +682,10 @@ proc addline {y xspace ht l} \
 			    -anchor sw -text "$txt" -justify center \
 			    -font $gc(rev.fixedBoldFont) -tags "$rev revtext"]
 			#ballon_setup $trev
-			if {![info exists firstnode]} { set firstnode $id }
+			if {![info exists firstnode]} { 
+				set firstnode $id 
+				set firstrev $trev
+			}
 			if {$m == 1} { 
 				highlight $id "merge" $rev
 			} else {
@@ -1008,16 +1047,16 @@ proc highlightAncestry {rev1} \
 proc getLeftRev { {id {}} } \
 {
 	global	rev1 rev2 w comments_mapped gc fname dev_null file
+	global anchor
 
 	# destroy comment window if user is using mouse to click on the canvas
 	if {$id == ""} {
 		catch {pack forget $w(cframe); set comments_mapped 0}
 	}
-	$w(graph) delete new
-	$w(graph) delete old
+	unsetNodes
 	.menus.cset configure -state disabled -text "View Changeset "
-	.menus.difftool configure -state disabled
 	set rev1 [getRev "old" $id]
+	setAnchor [getRev "anchor" $id]
 
 	highlightAncestry $rev1
 
@@ -1033,16 +1072,37 @@ proc getLeftRev { {id {}} } \
 			    -state normal \
 			    -text "View Changeset "
 		}
+		.menus.difftool configure -state normal
 	}
 	if {[info exists rev2]} { unset rev2 }
 }
 
 proc getRightRev { {id {}} } \
 {
-	global	rev2 file w
+	global	anchor rev1 rev2 file w rev2rev_name
 
-	$w(graph) delete new
-	set rev2 [getRev "new" $id]
+	$w(graph) delete new old
+	set rev2 [getRev "unknown" $id]
+
+	if {$rev2 == ""} {
+		# The assumption is, the user must have clicked somewhere 
+		# other than over a node
+		unsetNodes
+		return
+	}
+
+	if {$rev2 == $rev1} {
+		highlight $rev2 old
+	} else {
+		highlight $rev2 new
+	}
+
+	if {![info exists anchor]} {
+		setAnchor $rev2
+	}
+
+	orderSelectedNodes $anchor $rev2
+
 	if {$rev2 != ""} {
 		.menus.difftool configure -state normal
 		catch {exec bk prs -hr$rev2 -d:CSETKEY: $file} info
@@ -1058,10 +1118,30 @@ proc getRightRev { {id {}} } \
 	}
 }
 
+proc setAnchor {rev} {
+	global anchor
+
+	set anchor $rev
+	if {$anchor == ""} return
+	.menus.difftool configure -state normal
+	highlight $anchor "anchor"
+}
+
+proc unsetNodes {} {
+	global rev1 rev2 anchor w
+
+	set rev1 ""
+	set rev2 ""
+	set anchor ""
+	$w(graph) delete anchor new old
+	.menus.difftool configure -state disabled
+	highlightAncestry ""
+}
+
 # Returns the revision number (without the -username portion)
 proc getRev {type {id {}} } \
 {
-	global w
+	global w anchor
 
 	if {$id == ""} {
 		set id [$w(graph) gettags current]
@@ -1073,6 +1153,7 @@ proc getRev {type {id {}} } \
 	}
 	set id [lindex $id 0]
 	if {("$id" == "current") || ("$id" == "")} { return "" }
+	if {$id == "anchor"} {set id $anchor}
 	$w(graph) select clear
 	highlight $id $type 
 	regsub -- {-.*} $id "" id
@@ -1250,10 +1331,12 @@ proc csettool {} \
 proc diff2 {difftool {id {}} } \
 {
 	global file rev1 rev2 Opts dev_null bk_cset tmp_dir w
+	global anchor
 
 	if {![info exists rev1] || ($rev1 == "")} { return }
 	if {$difftool == 0} { getRightRev $id }
 	if {"$rev2" == ""} { return }
+
 	set base [file tail $file]
 	if {$base == "ChangeSet"} {
 		csetdiff2
@@ -1295,12 +1378,15 @@ proc displayDiff {rev1 rev2} \
 #
 proc gotoRev {f hrev} \
 {
-	global rev1 rev2 gc dev_null
+	global anchor rev1 rev2 gc dev_null
 
 	set rev1 $hrev
 	revtool $f $hrev
 	set hrev [lineOpts $hrev]
-	highlight $hrev "old"
+	set anchor [getRev "anchor" $hrev]
+	set rev1 [getRev "old" $hrev]
+#	highlight $anchor "anchor"
+#	highlight $hrev "old"
 	catch {exec bk prs -hr$hrev -d:I:-:P: $f 2>$dev_null} out
 	if {$out != ""} {centerRev $out}
 	if {[info exists rev2]} { unset rev2 }
@@ -1309,32 +1395,97 @@ proc gotoRev {f hrev} \
 proc currentMenu {} \
 {
 	global file gc rev1 rev2 bk_fs dev_null 
+	global fileEventHandle currentMenuList
 
+	$gc(fmenu) entryconfigure "Current Changeset*" \
+	    -state disabled
 	if {$file != "ChangeSet"} {return}
-	if {$rev1 == ""} {return}
-	if {![info exists rev2] || ($rev2 == "")} { 
+
+	if {![info exists rev1] || $rev1 == ""} {return}
+	$gc(fmenu) entryconfigure "Current Changeset*" \
+	    -state normal
+
+	if {![info exists rev2] || ($rev2 == "") || $rev2 == $rev1} { 
 		set end $rev1 
+		$gc(fmenu) entryconfigure "Current Changeset*" \
+		    -label "Current Changeset"
 	} else {
 		# don't want to modify global rev2 in this procedure
 		set end $rev2
+		$gc(fmenu) entryconfigure "Current Changeset*" \
+		    -label "Current Changesets"
 	}
 	busy 1
 	cd2root
+	set currentMenuList {}
 	$gc(current) delete 1 end
-	set revs [open "| bk -R prs -hbMr$rev1..$end {-d:I:\n} ChangeSet"]
-	while {[gets $revs r] >= 0} {
-		set log [open "| bk cset -Hr$r" r]
-		while {[gets $log file_rev] >= 0} {
-			set f [lindex [split $file_rev $bk_fs] 0]
-			set rev [lindex [split $file_rev $bk_fs] 1]
-			$gc(current) add command -label "${f}@${rev}" \
-			    -command "gotoRev $f $rev"
-		}
-		catch {close $log}
+	$gc(current) add command -label "Computing..." -state disabled
+
+	# close any previously opened pipe
+	if {[info exists fileEventHandle]} {
+		catch {close $fileEventHandle}
 	}
-	catch {close $revs}
+	set fileEventHandle \
+	    [open "| bk changes -d:DPN:@:I:\\n -fv -er$rev1..$end"]
+
+	fconfigure $fileEventHandle -blocking false
+	fileevent $fileEventHandle readable \
+	    [list updateCurrentMenu $fileEventHandle]
+
 	busy 0
 	return
+}
+
+# this reads one line from a pipe and saves the data to a list. 
+# When no more data is available this proc will be called with 
+# cleanup set to 1 at which time it will close the pipe and 
+# create the menu.
+proc updateCurrentMenu {fd {cleanup 0}} \
+{
+	global bk_fs gc
+	global currentMenuList
+	global fileEventHandle
+
+	if {$cleanup} {
+		catch {close $fd}
+		$gc(current) delete 1 end
+		$gc(fmenu) entryconfigure "Current Changeset*" -state normal
+		if {[llength $currentMenuList] > 0} {
+			foreach item [lsort $currentMenuList] {
+				foreach {f rev} [split $item @] {break;}
+				$gc(current) add command \
+				    -label $item \
+				    -command [list gotoRev $f $rev]
+			} 
+		} else {
+			$gc(current) add command \
+			    -label "(no files)" \
+			    -state disabled
+		}
+		return
+	}
+		
+	set status [catch {gets $fd r} result]
+	if {$status != 0} {
+		# error on the channel
+		updateCurrentMenu $fd 1
+
+	} elseif {$result >= 0} {
+		# successful read
+		if {![string match {ChangeSet@*} $r]} {
+			lappend currentMenuList $r
+		}
+
+	} elseif {[eof $fd]} {
+		updateCurrentMenu $fd 1
+
+	} elseif {[fblocked $fd]} {
+		# blocked; no big deal. 
+
+	} else {
+		# should never happen. But if it does...
+		updateCurrentMenu $fd 1
+	}
 }
 
 #
@@ -1350,10 +1501,10 @@ proc currentMenu {} \
 #
 proc csetdiff2 {{rev {}}} \
 {
-	global file rev1 rev2 Opts dev_null w ttype
+	global file rev1 rev2 Opts dev_null w ttype anchor
 
 	busy 1
-	if {$rev != ""} { set rev1 $rev; set rev2 $rev }
+	if {$rev != ""} { set rev1 $rev; set rev2 $rev; set anchor $rev1 }
 	$w(aptext) configure -state normal; $w(aptext) delete 1.0 end
 	$w(aptext) insert end "ChangeSet history for $rev1..$rev2\n\n"
 
@@ -1443,7 +1594,6 @@ proc diffs {diffs l} \
 
 proc done {} \
 {
-	#saveHistory
 	exit
 }
 
@@ -1465,9 +1615,17 @@ proc PaneCreate {} \
 	set percent [expr {[winfo reqheight .p.b] / double($ysize)}]
 	.p configure -height $ysize -width $xsize -background black
 	frame .p.fakesb -height $gc(rev.scrollWidth) -background grey \
-	    -borderwid 1.25 -relief sunken
-	    label .p.fakesb.l -text "<-- scrollbar -->"
-	    pack .p.fakesb.l -expand true -fill x
+	    -borderwid 1 -relief sunken
+	    scrollbar .p.fakesb.x\
+	    	    -wid $gc(rev.scrollWidth) \
+		    -orient horiz \
+		    -background $gc(rev.scrollColor) \
+		    -troughcolor $gc(rev.troughColor)
+	    frame .p.fakesb.y -width $gc(rev.scrollWidth) \
+	    	-background grey -bd 2
+	    grid .p.fakesb.x -row 0 -column 0 -sticky ew
+	    grid .p.fakesb.y -row 0 -column 1 -sticky ns -padx 2
+	    grid columnconfigure .p.fakesb 0 -weight 1
 	place .p.fakesb -in .p -relx .5 -rely $percent -y -2 \
 	    -relwidth 1 -anchor s
 	frame .p.sash -height 2 -background black
@@ -1486,35 +1644,54 @@ proc PaneCreate {} \
 	bind .p.grip <B1-Motion> "PaneDrag %Y"
 	bind .p.grip <ButtonRelease-1> "PaneStop"
 
-	PaneGeometry
 	set paned 1
 }
 
-# When we get an resize event, don't resize the top canvas if it is
-# currently fitting in the window.
 proc PaneResize {} \
 {
-	global	percent
+	global	percent preferredGraphSize
 
-	set ht [expr {[ht all] + 30}]
-	incr ht -1
-	set y [winfo height .p]
-	set y1 [winfo height .p.top]
-	set y2 [winfo height .p.b]
-	if {$y1 >= $ht} {
-		set y1 $ht
-		set percent [expr {$y1 / double($y)}]
+	if {[info exists preferredGraphSize]} {
+		set max [expr {double([winfo height .p])}]
+		set percent [expr {double($preferredGraphSize) / $max}]
+		if {$percent > 1.0} {set percent 1.0}
+	} else {
+		set ht [expr {[ht all] + 29.0}]
+		set y [winfo height .p]
+		set y1 [winfo height .p.top]
+		set y2 [winfo height .p.b]
+		if {$y1 >= $ht} {
+			set y1 $ht
+			set percent [expr {$y1 / double($y)}]
+		}
+		if {$y > $ht && $y1 < $ht} {
+			set y1 $ht
+			set percent [expr {$y1 / double($y)}]
+		}
+
+		# Make sure default graph size is never more than
+		# 40% of the GUI as a whole.
+		if {$percent > .40} {set percent .40}
+
 	}
-	if {$y > $ht && $y1 < $ht} {
-		set y1 $ht
-		set percent [expr {$y1 / double($y)}]
-	}
-	PaneGeometry
+
+	# The plan is, the very first time this proc is called should
+	# be when the window first comes up. We want to set the
+	# preferred size then. All other times this proc is called 
+	# should be in response to the user interactively resizing the
+	# window, in which case we definitely do not want to change
+	# the preferred size of the graph. 
+	PaneGeometry [expr {![info exists preferredGraphSize]}]
 }
 
-proc PaneGeometry {} \
+proc PaneGeometry {{saveSize 0}} \
 {
-	global	percent psize
+	global	percent psize preferredGraphSize
+
+	if {$saveSize} {
+		set preferredGraphSize \
+		    [expr {double([winfo height .p]) * $percent}]
+	}
 
 	place .p.top -relheight $percent
 	place .p.b -relheight [expr {1.0 - $percent}]
@@ -1530,6 +1707,10 @@ proc PaneGeometry {} \
 proc PaneDrag {D} \
 {
 	global	lastD percent psize
+
+	# sync the fake scrollbar with the real one, to promote the
+	# illusion that we're dragging the actual scrollbar
+	eval .p.fakesb.x set [.p.top.xscroll get]
 
 	if {[info exists lastD]} {
 		set delta [expr {double($lastD - $D) / $psize}]
@@ -1553,7 +1734,7 @@ proc PaneStop {} \
 {
 	global	lastD
 
-	PaneGeometry
+	PaneGeometry 1
 	catch {unset lastD}
 }
 
@@ -1676,7 +1857,7 @@ proc widgets {} \
 	    button .menus.difftool -font $gc(rev.buttonFont) -relief raised \
 		-bg $gc(rev.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "Diff tool" -command "diff2 1" -state disabled
+		-text "Diff tool" -command "doDiff 1" -state disabled
 	    menubutton .menus.fmb -font $gc(rev.buttonFont) -relief raised \
 	        -indicatoron 1 \
 		-bg $gc(rev.buttonColor) \
@@ -1685,30 +1866,23 @@ proc widgets {} \
 		-menu .menus.fmb.menu
 		set gc(fmenu) [menu .menus.fmb.menu]
 		set gc(current) $gc(fmenu).current
-		set gc(recent) $gc(fmenu).recent
-		$gc(fmenu) add command -label "Open new file" \
+		$gc(fmenu) add command -label "Open new file..." \
 		    -command { 
 		    	set fname [selectFile]
 			if {$fname != ""} {
 				revtool $fname
 			}
 		    }
-		$gc(fmenu) add command -label "Project History" \
+		$gc(fmenu) add command -label "Changeset History" \
 		    -command {
 			cd2root
 			set fname ChangeSet
 		    	revtool ChangeSet
 		    }
 		$gc(fmenu) add separator
-		$gc(fmenu) add cascade -label "Current ChangeSet" \
+		$gc(fmenu) add cascade -label "Current Changeset" \
 		    -menu $gc(current)
-		$gc(fmenu) add cascade -label "Recently Viewed Files" \
-		    -menu $gc(recent)
-		menu $gc(recent) 
 		menu $gc(current) 
-		$gc(recent) add command -label "$fname" \
-		    -command "revtool $fname"
-		getHistory
 	    if {"$fname" == "ChangeSet"} {
 		    #.menus.cset configure -command csettool
 		    pack .menus.quit .menus.help .menus.mb .menus.cset \
@@ -1718,7 +1892,7 @@ proc widgets {} \
 			.menus.mb .menus.cset .menus.fmb -side left -fill y
 	    }
 	frame .p
-	    frame .p.top -borderwidth 2 -relief sunken
+	    frame .p.top -borderwidth 1 -relief sunken
 		scrollbar .p.top.xscroll -wid $gc(rev.scrollWidth) \
 		    -orient horiz \
 		    -command "$w(graph) xview" \
@@ -1729,17 +1903,24 @@ proc widgets {} \
 		    -background $gc(rev.scrollColor) \
 		    -troughcolor $gc(rev.troughColor)
 		canvas $w(graph) -width 500 \
+	    	    -borderwidth 1 \
 		    -background $gc(rev.canvasBG) \
 		    -xscrollcommand ".p.top.xscroll set" \
 		    -yscrollcommand ".p.top.yscroll set"
-		pack .p.top.yscroll -side right -fill y
-		pack .p.top.xscroll -side bottom -fill x
-		pack $w(graph) -expand true -fill both
 
-	    frame .p.b -borderwidth 2 -relief sunken
+		grid .p.top.yscroll -row 0 -column 1 -sticky ns
+		grid .p.top.xscroll -row 1 -column 0 -sticky ew
+		grid $w(graph)      -row 0 -column 0 -sticky nsew
+		grid rowconfigure    .p.top 0 -weight 1
+		grid rowconfigure    .p.top 1 -weight 0
+		grid columnconfigure .p.top 0 -weight 1
+		grid columnconfigure .p.top 1 -weight 0
+		
+	    frame .p.b -borderwidth 1 -relief sunken
 	    	# prs and annotation window
 		frame .p.b.p
 		    text .p.b.p.t -width $gc(rev.textWidth) \
+			-borderwidth 1 \
 			-height $gc(rev.textHeight) \
 			-font $gc(rev.fixedFont) \
 			-xscrollcommand { .p.b.p.xscroll set } \
@@ -1757,6 +1938,7 @@ proc widgets {} \
 		# change comment window
 		frame .p.b.c
 		    text .p.b.c.t -width $gc(rev.textWidth) \
+			-borderwidth 1 \
 			-height $gc(rev.commentHeight) \
 			-font $gc(rev.fixedFont) \
 			-xscrollcommand { .p.b.c.xscroll set } \
@@ -1772,13 +1954,21 @@ proc widgets {} \
 			-background $gc(rev.scrollColor) \
 			-troughcolor $gc(rev.troughColor)
 
-		pack .p.b.c.yscroll -side right -fill y
-		pack .p.b.c.xscroll -side bottom -fill x
-		pack .p.b.c.t -expand true -fill x
+		grid .p.b.c.yscroll -row 0 -column 1 -sticky ns
+		grid .p.b.c.xscroll -row 1 -column 0 -sticky ew
+		grid .p.b.c.t       -row 0 -column 0 -sticky nsew
+		grid rowconfigure    .p.b.c 0 -weight 1
+		grid rowconfigure    .p.b.c 1 -weight 0
+		grid columnconfigure .p.b.c 0 -weight 1
+		grid columnconfigure .p.b.c 1 -weight 0
 
-		pack .p.b.p.yscroll -side right -fill y
-		pack .p.b.p.xscroll -side bottom -fill x
-		pack .p.b.p.t -expand true -fill both
+		grid .p.b.p.yscroll -row 0 -column 1 -sticky ns
+		grid .p.b.p.xscroll -row 1 -column 0 -sticky ew
+		grid .p.b.p.t       -row 0 -column 0 -sticky nsew
+		grid rowconfigure    .p.b.p 0 -weight 1
+		grid rowconfigure    .p.b.p 1 -weight 0
+		grid columnconfigure .p.b.p 0 -weight 1
+		grid columnconfigure .p.b.p 1 -weight 0
 
 		pack .p.b.p -expand true -fill both -anchor s
 		pack .p.b -expand true -fill both -anchor s
@@ -1805,7 +1995,7 @@ proc widgets {} \
 	bind $w(graph) <3>		{ diff2 0; currentMenu; break }
 	bind $w(graph) <h>		"history"
 	bind $w(graph) <t>		"history tags"
-	bind $w(graph) <d>		"diffParent"
+	bind $w(graph) <d>		"doDiff"
 	bind $w(graph) <Button-2>	{ history; break }
 	bind $w(graph) <Double-2>	{ history tags; break }
 	bind $w(graph) <$gc(rev.quit)>	"done"
@@ -1928,65 +2118,9 @@ proc selectFile {} \
 	if { ([gets $f fname] <= 0)} {
 		set rc [tk_dialog .new "Error" "$file is not under revision control.\nPlease select a revision controled file" "" 0 "Cancel" "Select Another File" "Exit BitKeeper"]
 		if {$rc == 2} {exit} elseif {$rc == 1} { selectFile }
-	} else {
-		#displayMessage "file=($file) err=($err)"
-		# XXX: Need to add in a function so that we can check for
-		# duplicates
-		if {$fname == "ChangeSet"} {
-			#pack forget .menus.difftool
-		} else {
-			$gc(recent) add command -label "$fname" \
-			    -command "revtool $fname"
-		}
 	}
 	catch {close $f}
 	return $fname
-}
-
-# XXX: Should only save the most recent (10?) files that were looked at
-# should be a config option
-proc saveHistory {} \
-{
-	global gc
-
-	set num [$gc(recent) index end]
-	set h [open "$gc(histfile)" w]
-	if {[catch {open $gc(histfile) w} fid]} {
-		puts stderr "Cannot open $bkrc"
-	} else {
-		# Start at 3 so we skip over the "Add new" and sep entries
-		set start 3
-		set saved [expr $gc(rev.savehistory) + 2]
-		if {$num > $saved} {
-			set start [expr $num - $gc(rev.savehistory)]
-		}
-		for {set i $start} {$i <= $num} {incr i 1} {
-			set index $i
-			set fname [$gc(recent) entrycget $index -label]
-			#puts [$gc(recent) entryconfigure $index]
-			#puts "i=($i) label=($fname)"
-			puts $fid "$fname"
-		}
-		catch {close $h}
-	}
-	return
-}
-
-proc getHistory {} \
-{
-	global gc
-
-	if {![file exists $gc(histfile)]} {
-		#puts stderr "no history file exists"
-		return
-	}
-	set h [open "$gc(histfile)"]
-	while {[gets $h file] >= 0} {
-		if {$file == "ChangeSet"} {continue}
-		$gc(recent) add command -label "$file" \
-		    -command "revtool $file"
-	}
-	catch {close $h}
 }
 
 # Arguments:
@@ -1996,22 +2130,26 @@ proc revtool {lfname {R {}}} \
 {
 	global	bad revX revY search dev_null rev2date serial2rev w
 	global  Opts gc file rev2rev_name cdim firstnode fname
-	global  merge diffpair
+	global  merge diffpair firstrev
+	global rev1 rev2 anchor
+	global State
 
 	# Set global so that other procs know what file we should be
 	# working on. Need this when menubutton is selected
 	set fname $lfname
-
+	
 	busy 1
 	$w(graph) delete all
 	if {[info exists revX]} { unset revX }
 	if {[info exists revY]} { unset revY }
+	if {[info exists anchor]} {unset anchor}
 	if {[info exists rev1]} { unset rev1 }
 	if {[info exists rev2]} { unset rev2 }
 	if {[info exists rev2date]} { unset rev2date }
 	if {[info exists serial2rev]} { unset serial2rev }
 	if {[info exists rev2rev_name]} { unset rev2rev_name }
 	if {[info exists firstnode]} { unset firstnode }
+	if {[info exists firstrev]} { unset firstrev}
 
 	set bad 0
 	set file [exec bk sfiles -g $lfname 2>$dev_null]
@@ -2053,7 +2191,7 @@ select a new file to view"
 		dateSeparate
 		setScrollRegion
 		set first [$w(graph) gettags $firstnode]
-		history "-r$R"
+		history "-r$firstrev.."
 	} else {
 		set ago ""
 		catch {set ago [exec bk prs -hr+ -d:AGE: $lfname]}
@@ -2064,7 +2202,7 @@ period; please choose a longer amount of time.\n
 The file $lfname was last modified ($ago) ago."
 		revtool $lfname 1.1..
 	}
-	# Now make sure that the last/gca node is visible in the canvas
+	# Now make sure that the last/gca node is visible in the canvas "
 	if {$gca != ""} {
 		set r $gca
 	} else {
@@ -2076,24 +2214,31 @@ The file $lfname was last modified ($ago) ago."
 	}
 	# Make sure we don't lose the highlighting when we do a select Range
 	if {[info exists merge(G)] && ($merge(G) != "")} {
-		set gca [lineOpts $merge(G)]
-		highlight $gca "gca"
-		set rev2 [lineOpts $merge(r)]
-		highlight $rev2 "remote"
-		set rev1 [lineOpts $merge(l)]
-		highlight $rev1 "local"
+ 		set gca [lineOpts $merge(G)]
+ 		highlight $gca "gca"
+ 		set rev2 [lineOpts $merge(r)]
+ 		highlight $rev2 "remote"
+ 		set rev1 [lineOpts $merge(l)]
+ 		highlight $rev1 "local"
+		setAnchor $gca
 	} else {
 		if {[info exists diffpair(left)] && ($diffpair(left) != "")} {
 			set rev1 [lineOpts $diffpair(left)]
+			set anchor $rev1
+			highlightAncestry $diffpair(left)
+			centerRev $rev1
+			setAnchor $rev1
 			highlight $rev1 "old"
 		}
 		if {[info exists diffpair(right)] && ($diffpair(right) != "")} {
 			set rev2 [lineOpts $diffpair(right)]
 			highlight $rev2 "new"
+			orderSelectedNodes $anchor $rev2
 		}
 	}
 	set search(prompt) "Welcome"
 	focus $w(graph)
+	currentMenu
 	busy 0
 	return
 } ;#revtool
@@ -2113,7 +2258,7 @@ proc init {} \
 #
 proc arguments {} \
 {
-	global rev1 rev2 dfile argv argc fname gca errorCode
+	global anchor rev1 rev2 dfile argv argc fname gca errorCode
 
 	set rev1 ""
 	set rev2 ""
@@ -2230,21 +2375,32 @@ proc startup {} \
 {
 	global fname rev2rev_name w rev1 rev2 gca errorCode gc dev_null
 	global file merge diffpair dfile
+	global State percent preferredGraphSize
+
+	set res [winfo screenwidth .]x[winfo screenheight .]
+	if {[info exists State(geometry@$res)]} {
+		after idle [list wm geometry . $State(geometry@$res)]
+	}
 
 	if {$gca != ""} {
 		set merge(G) $gca
 		set merge(l) $rev1
 		set merge(r) $rev2
 	} elseif {$rev2 != ""} { 
-		set diffpair(right) $rev2 
+		set diffpair(left) $rev2
 	}
 	revtool $fname 
-	if {[info exists rev2] && ($rev2 != "")} {
-		set diffpair(right) $rev2
-		diff2 2
-	} 
+	if {[info exists diffpair(left)]} {
+		doDiff
+	}
 	if {[info exists dfile] && ($dfile != "")} {
 		printCanvas
+	}
+
+	bind . <Destroy> {
+		if {[string match %W "."]} {
+			saveState
+		}
 	}
 }
 
@@ -2275,7 +2431,47 @@ proc printCanvas {} \
 	exit
 }
 
+# the purpose of this proc is merely to load the persistent state;
+# it does not do anything with the data (such as set the window 
+# geometry). That is best done elsewhere. This proc does, however,
+# attempt to make sure the data is in a usable form.
+proc loadState {} \
+{
+	global State
+
+	catch {::appState load rev State}
+
+}
+
+proc saveState {} \
+{
+	global State
+
+	# Copy state to a temporary variable, the re-load in the
+	# state file in case some other process has updated it
+	# (for example, setting the geometry for a different
+	# resolution). Then add in the geometry information unique
+	# to this instance.
+	array set tmp [array get State]
+	catch {::appState load rev tmp}
+	set res [winfo screenwidth .]x[winfo screenheight .]
+	set tmp(geometry@$res) [wm geometry .]
+
+	# Generally speaking, errors at this point are no big
+	# deal. It's annoying we can't save state, but it's no 
+	# reason to stop running. So, a message to stderr is 
+	# probably sufficient. Plus, given we may have been run
+	# from a <Destroy> event on ".", it's too late to pop
+	# up a message dialog.
+	if {[catch {::appState save rev tmp} result]} {
+		puts stderr "error writing config file: $result"
+	}
+}
+
+
 init
 arguments
 widgets
+loadState
 startup
+

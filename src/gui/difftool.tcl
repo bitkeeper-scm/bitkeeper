@@ -7,8 +7,11 @@
 proc widgets {} \
 {
 	global	scroll wish tcl_platform search gc d app
+	global State
 
 	getConfig "diff"
+	loadState
+
 	option add *background $gc(BG)
 
 	set g [wm geometry .]
@@ -17,15 +20,18 @@ proc widgets {} \
 	set gc(bw) 1
 	if {$tcl_platform(platform) == "windows"} {
 		set gc(py) -2; set gc(px) 1
-		if {("$g" == "1x1+0+0") && ("$gc(diff.geometry)" != "")} {
-			wm geometry . $gc(diff.geometry)
-		}
 	} else {
 		set gc(py) 1; set gc(px) 4
-		# We iconify here so that the when we finally deiconify, all
-		# of the widgets are correctly sized. Fixes irritating 
-		# behaviour on ctwm.
 	}
+
+	set res [winfo screenwidth .]x[winfo screenheight .]
+	if {[info exists State(geometry@$res)]} {
+		wm geometry . $State(geometry@$res)
+
+	} elseif {("$g" == "1x1+0+0") && ("$gc(diff.geometry)" != "")} {
+		wm geometry . $gc(diff.geometry)
+	}
+
 	createDiffWidgets .diffs
 
 image create photo prevImage \
@@ -131,9 +137,6 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	search_keyboard_bindings
 	searchreset
 	. configure -background $gc(BG)
-	if {("$g" == "1x1+0+0") && ("$gc(diff.geometry)" != "")} {
-		wm geometry . $gc(diff.geometry)
-	}
 }
 
 # Set up keyboard accelerators.
@@ -357,6 +360,7 @@ proc getFiles {} \
 	# Now add the menubutton items if necessary
 	if {[llength $files] >= 1} {
 		wm deiconify .
+		.menu.fmb configure -text "Files ([llength $files])"
 		set menu(widget) [menu .menu.fmb.menu]
 		set item 1
 		foreach e $files {
@@ -485,6 +489,54 @@ proc searchsee {location} \
 	scrollDiffs $location $location
 }
 
+# the purpose of this proc is merely to load the persistent state;
+# it does not do anything with the data (such as set the window 
+# geometry). That is best done elsewhere. This proc does, however,
+# attempt to make sure the data is in a usable form.
+proc loadState {} \
+{
+	global State
+
+	catch {::appState load diff State}
+
+}
+
+proc saveState {} \
+{
+	global State
+
+	# Copy state to a temporary variable, the re-load in the
+	# state file in case some other process has updated it
+	# (for example, setting the geometry for a different
+	# resolution). Then add in the geometry information unique
+	# to this instance.
+	array set tmp [array get State]
+	catch {::appState load diff tmp}
+	set res [winfo screenwidth .]x[winfo screenheight .]
+	set tmp(geometry@$res) [wm geometry .]
+
+	# Generally speaking, errors at this point are no big
+	# deal. It's annoying we can't save state, but it's no 
+	# reason to stop running. So, a message to stderr is 
+	# probably sufficient. Plus, given we may have been run
+	# from a <Destroy> event on ".", it's too late to pop
+	# up a message dialog.
+	if {[catch {::appState save diff tmp} result]} {
+		puts stderr "error writing config file: $result"
+	}
+}
 bk_init
 widgets
 getFiles
+
+# This must be done after getFiles, because getFiles may cause the
+# app to exit. If that happens, the window size will be small, and
+# that small size will be saved. We don't want that to happen. So,
+# we only want this binding to happen if the app successfully starts
+# up
+bind . <Destroy> {
+	if {[string match %W "."]} {
+		saveState
+	}
+}
+

@@ -582,6 +582,7 @@ typedef	struct sccs {
 	off_t	sumOff;		/* offset of the new delta cksum */
 	time_t	gtime;		/* gfile modidification time */
 	MDBM	*mdbm;		/* If state & S_HASH, put answer here */
+	MDBM	*findkeydb;	/* Cache a map of delta key to delta* */
 	project	*proj;		/* If in BK mode, pointer to project */
 	u16	version;	/* file format version */
 	u16	userLen;	/* maximum length of any user name */
@@ -846,6 +847,7 @@ int	tokens(char *s);
 delta	*findrev(sccs *, char *);
 delta	*sccs_top(sccs *);
 delta	*sccs_findKey(sccs *, char *);
+MDBM	*sccs_findKeyDB(sccs *, u32);
 delta	*sccs_dInit(delta *, char, sccs *, int);
 char	*sccs_getuser(void);
 void	sccs_resetuser(void);
@@ -1076,7 +1078,7 @@ char	*rootkey(char *buf);
 char	*globalroot(void);
 void	sccs_touch(sccs *s);
 int	setlevel(int);
-void	sccs_rmUncommitted(int quiet);    
+void	sccs_rmUncommitted(int quiet, FILE *chkfiles);
 void	rmEmptyDirs(int quiet);    
 int	after(int quiet, char *rev);
 int	consistency(int quiet);
@@ -1153,7 +1155,7 @@ int	comments_readcfile(sccs *s, int prompt, delta *d);
 int	comments_prompt(char *file);
 void	saveEnviroment(char *patch);
 void	restoreEnviroment(char *patch);
-int	run_check(char *partial);
+int	run_check(char *partial, int fix);
 char	*key2path(char *key, MDBM *idDB);
 int	check_licensesig(char *key, char *sign);
 int	write_log(char *root, char *file, int rotate, char *format, ...);
@@ -1162,6 +1164,8 @@ int	nFiles(void);
 u32	bk_license(char *user);
 void	notice(char *key, char *arg, char *type);
 pid_t	findpid(pid_t pid);
+void	save_log_markers(void);
+void	update_log_markers(int verbose);
 void	set_timestamps(sccs *s);
 
 extern char *bk_vers;

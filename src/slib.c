@@ -4560,6 +4560,10 @@ bad:		sccs_free(s);
 		mdbm_close(s->mdbm);
 		s->mdbm = 0;
 	}
+	if (s->findkeydb) {
+		mdbm_close(s->findkeydb);
+		s->findkeydb = 0;
+	}
 	return (s);
 }
 
@@ -4736,6 +4740,7 @@ sccs_free(sccs *s)
 	if (s->proj && !(s->state & S_SAVEPROJ)) proj_free(s->proj);
 	if (s->symlink) free(s->symlink);
 	if (s->mdbm) mdbm_close(s->mdbm);
+	if (s->findkeydb) mdbm_close(s->findkeydb);
 	if (s->spathname) free(s->spathname);
 	if (s->locs) free(s->locs);
 	unblock = s->unblock;
@@ -15330,6 +15335,71 @@ sccs_istagkey(char *key)
 }
 
 /*
+ * Make a mdbm of "char delta_key[]" => delta*
+ * It is used by sccs_findKey() to quickly return a query.
+ * This should be called when many calls to sccs_findKey() are made
+ * so that the overall performance of the code will go up.
+ *
+ * If the 'selectflag' is zero, then all deltas are cached.
+ * If it is set, then it is a bit map that will be anded with
+ * the d->flags and if non zero, will cache those deltas.
+ * This makes it easy to only cache deltas that are tagged
+ * cset, D_SET, D_GONE, or whatever is desired.
+ *
+ * WARNING: calling this function with flags set means
+ * that all future calls to sccs_findKey will be limited
+ * to only keys in the list will be found.
+ * If you use this "feature", and you don't call sccs_free(s)
+ * (which erases this cache), then you should:
+ *   if (s->findkeydb) {
+ *      mdbm_close(s->findkeydb);
+ *      s->findkeydb = 0;
+ *   }
+ */
+
+MDBM	*
+sccs_findKeyDB(sccs *s, u32 flags)
+{
+	delta	*d;
+	datum	k, v;
+	MDBM	*findkey;
+	char	key[MAXKEY];
+	int	mixed = LONGKEY(s) == 0;
+
+	if (s->findkeydb) {	/* do not know if different selection crit */
+		mdbm_close(s->findkeydb);
+		s->findkeydb = 0;
+	}
+
+	findkey = mdbm_mem();
+	for (d = s->table; d; d = d->next) {
+		if (flags && !(d->flags & flags)) continue;
+		sccs_sdelta(s, d, key);
+		k.dptr = key;
+		k.dsize = strlen(key) + 1;
+		v.dptr = (void*)&d;
+		v.dsize = sizeof(d);
+		if (mdbm_store(findkey, k, v, MDBM_INSERT)) {
+			fprintf(stderr, "fk cache: insert error for %s\n", key);
+			perror("insert");
+			mdbm_close(findkey);
+			return (0);
+		}
+		unless (mixed) continue;
+		*strrchr(key, '|') = 0;
+		k.dsize = strlen(key) + 1;
+		if (mdbm_store(findkey, k, v, MDBM_INSERT)) {
+			fprintf(stderr, "fk cache: insert error for %s\n", key);
+			perror("insert");
+			mdbm_close(findkey);
+			return (0);
+		}
+	}
+	s->findkeydb = findkey;
+	return (findkey);
+}
+
+/*
  * Take a key like sccs_sdelta makes and find it in the tree.
  */
 delta *
@@ -15345,6 +15415,15 @@ sccs_findKey(sccs *s, char *key)
 
 	unless (s && HASGRAPH(s)) return (0);
 	debug((stderr, "findkey(%s)\n", key));
+	if (s->findkeydb) {	/* if cached by calling sccs_findKeyDB() */
+		datum	k, v;
+		k.dptr = key;
+		k.dsize = strlen(key) + 1;
+		v = mdbm_fetch(s->findkeydb, k);
+		e = 0;
+		if (v.dsize) bcopy(v.dptr, &e, sizeof(e));
+		return (e);
+	}
 	strcpy(buf, key);
 	explodeKey(buf, parts);
 	user = parts[0];

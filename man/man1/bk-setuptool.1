@@ -1,0 +1,102 @@
+.so ../bk-macros
+.TH "bk setuptool" 1 2002/09/17 "\*(BC" "\*(UM"
+.\"    ====================== BitKeeper setuptool ======================
+.SH NAME
+bk setuptool \- graphical front-end to the \*(BK setup command
+.SH SYNOPSIS
+.Bc bk setuptool [
+.ARGc directory
+.B ]
+.SH DESCRIPTION
+.LP
+The
+.B setuptool
+command is a graphical interface for creating new BitKeeper repositories.
+.LP
+The purpose of the tool is to help you enter all of the information 
+needed to create a repository by stepping you through a series of
+input forms and prompts.
+.LP
+Before you can create a repository you must read and accept the
+appropriate BitKeeper license. The exact license you must accept
+depends on the type of the repository you are creating. 
+.B Setuptool 
+will prompt you for the type of repository and give you an
+opportunity to read and accept the license. If you choose to not
+accept the license you will not be able to create the
+repository. See bk help setup, bk help licensing and bk help
+openlogging for more information. 
+.LP
+After you have accepted a particular license, the next time you run 
+.B setuptool
+you will not be required to accept the same license again. 
+.LP
+Once you have defined the type of repository and accepted the
+appropriate license you will be prompted for additional information
+that will be stored in the config file for the repository. Different
+types of repositories will require slightly different sets of
+data. For example, a repository that uses a commercial license will
+require that you enter the license key and signatures.
+.LP
+After all information has been entered you will have a chance to
+review the information that will be put into the config file before
+the repository is created. When the repository is created, the config 
+file is stored as a normal revision controlled file so that you may go 
+back and edit the file at a later date.
+.LP
+If you will be creating several repositories that will use the same 
+configuration information (such as contact information) you may
+create a system-wide default config file in 
+/etc/BitKeeper/etc/config.template. This has the same format as a
+regular config file. 
+.B Setuptool 
+will look for
+this file and, if found, use the data in the file to set the default
+values when creating a new repository.
+.SH "LICENSE KEYS"
+.LP
+If you have a commercial license key you may enter it by hand when
+prompted.
+.B Setuptool also allows you to load the license key and signatures
+from a file. This is the most accurate way to enter the licensing
+information. 
+.LP
+This file may have other information besides the license
+key as long as the key and signatures are embedded in the text
+somewhere. So, for example, if you receive an email that includes
+your license key you can save that email to a file and select that
+file from within
+.BR setuptool .
+.SH "EXAMPLES"
+.LP
+To create a repostory named /projects/helloworld, you type the
+following command:
+.DS
+bk setuptool /projects/helloworld
+.DE
+This will prompt you for information to place in the config file and
+then create a project hierarchy rooted at /projects/helloworld. The
+config file with the data you entered is in 
+/projects/helloworld/BitKeeper/etc/config.
+.LP
+You do not need to include the name of a directory on the command line. If
+you do not include it you will be required to enter a name during one
+of the configuration steps.
+.SH BINDINGS
+.LP
+.TP 15
+.B Enter
+Perform the default action, which is either to go to the next step,
+or create the repository if on the final step.
+.TP 15
+.B Tab
+Moves between input fields.
+.LP
+You may also use your system's cut, copy and paste keys in the input
+fields.
+.SH "SEE ALSO"
+.SA config-etc
+.SA setup
+.SA openlogging
+.SA licensing
+

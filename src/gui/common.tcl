@@ -96,6 +96,47 @@ proc array_unset {var} \
 	}
 }
 
+# usage: centerWindow pathName ?width height?
+#
+# If width and height are supplied the window will be set to
+# that size and that size will be used to compute the location
+# of the window. Otherwise the requested width and height of the
+# window will be used.
+proc centerWindow {w args} \
+{
+
+	# if this proc has never been called, we'll add a bindtag
+	# to the named window, set a binding on that bindtag, and
+	# exit. When the binding fires we'll do the real work.
+	set w [winfo toplevel $w]
+	set bindtags [bindtags $w]
+	set tag "Center-$w"
+	set i [lsearch -exact $bindtags $tag]
+	if {$i == -1} {
+		set bindtags [linsert $bindtags 0 $tag]
+		bindtags $w $bindtags
+		bind $tag <Configure> [concat centerWindow $w $args]
+		return
+	}
+
+	if {[llength $args] > 0} {
+		set width [lindex $args 0]
+		set height [lindex $args 1]
+	} else {
+		set width [winfo reqwidth $w]
+		set height [winfo reqheight $w]
+	}
+	set x [expr {([winfo vrootwidth $w] - $width) /2}]
+	set y [expr {([winfo vrootheight $w] - $height) /2}]
+
+	wm geometry $w ${width}x${height}+${x}+${y}
+
+	# remove the bindtag so we don't end up back here again
+	bind $tag <Configure> {}
+	set bindtags [lreplace $bindtags $i $i]
+	bindtags $w $bindtags
+}
+
 # From a Cameron Laird post on usenet
 proc print_stacktrace {} {
 	set depth [info level]
