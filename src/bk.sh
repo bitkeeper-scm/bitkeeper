@@ -654,7 +654,11 @@ _links() {		# /* undoc? 2.0 - what is this for? */
 	else	BIN=/usr/bin
 	fi
 	for i in admin get delta unget rmdel prs bk
-	do	/bin/rm -f "$BIN/$i"
+	do	test -f "$BIN/$i" && {
+			echo Saving "$BIN/$i" in "$BIN/${i}.ORIG"
+			/bin/mv -f "$BIN/$i" "$BIN/${i}.ORIG"
+		}
+		/bin/rm -f "$BIN/$i"
 		echo "ln -s $BK/$i $BIN/$i"
 		ln -s "$BK/$i" "$BIN/$i"
 	done
