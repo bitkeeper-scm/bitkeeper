@@ -655,10 +655,9 @@ applyPatch(
 	assert(gca);
 	assert(gca->rev);
 	assert(gca->pathname);
-	if (echo > 5) fprintf(stderr, "rmdel %s from %s\n",
-			      gca->rev, s->sfile);
+	if (echo > 5) fprintf(stderr, "rmdel %s from %s\n", gca->rev, s->sfile);
 	if (d = sccs_next(s, sccs_getrev(s, gca->rev, 0, 0))) {
-		if (sccs_rmdel(s, d, 1, SILENT)) {
+		if (sccs_rmdel(s, d, 1, (echo > 4) ? 0 : SILENT)) {
 			SHOUT();
 			unless (BEEN_WARNED(s)) {
 				fprintf(stderr,

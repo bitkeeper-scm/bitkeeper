@@ -153,6 +153,15 @@ get $S date
 if [ -w date ]; then echo date is writable and should not be; exit 1; fi
 if [ '$Id$' = "`cat date`" ]; then echo Failed.; exit 1; fi
 echo OK
+echo $N Get -ep should fail .........................$NL
+get $S -ep date > junk 2>junk2
+if [ -e SCCS/p.date ]; then echo failed, created p.file; exit 1; fi
+echo OK
+echo $N Get -eg should remove readonly gfile ........$NL
+get $S -eg date
+if [ -e date ]; then echo failed, did not remove file; exit 1; fi
+if [ -w date ]; then echo failed, added writable file; exit 1; fi
+echo OK
 echo $N Make sure get -n works ......................$NL
 ${ECHO} HI > T
 ci $Q -i T
