@@ -123,7 +123,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	if (send_clone_msg(opts, gzip, r, envVar)) goto done;
 
 	if (r->httpd) skip_http_hdr(r);
-	getline2(r, buf, sizeof (buf));
+	if (getline2(r, buf, sizeof (buf)) <= 0) return (-1);
 	if (streq(buf, "ERROR-Unable to lock repository for update.")) {
 		if (!opts.quiet) fprintf(stderr, "%s\n", buf);
 		return (-1);

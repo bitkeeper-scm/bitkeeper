@@ -434,7 +434,7 @@ sendServerInfoBlock()
 	char buf[100];
 
 	out("@SERVER INFO@\n");
-        sprintf(buf, "PROROCOL=%s\n", BKD_VERSION);	/* protocol version */
+        sprintf(buf, "PROTOCOL=%s\n", BKD_VERSION);	/* protocol version */
 	out(buf);
         sprintf(buf, "RELEASE=%s\n", BK_RELEASE);	/* binary version   */
 	out(buf);

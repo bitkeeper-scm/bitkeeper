@@ -127,7 +127,7 @@ pull_part1(opts opts, remote *r, char probe_list[], char **envVar)
 	if (send_part1_msg(opts, r, probe_list, envVar)) return (-1);
 
 	if (r->httpd) skip_http_hdr(r);
-	getline2(r, buf, sizeof (buf));
+	if (getline2(r, buf, sizeof (buf)) <= 0) return (-1);
 	if (streq(buf, "ERROR-Can't get read lock on the repository")) {
 		if (!opts.quiet) fprintf(stderr, "%s\n", buf);
 		return (-1);
