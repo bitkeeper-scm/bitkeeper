@@ -896,3 +896,9 @@ The error code returned from BitMover was:
 	#BKARG#
 Contact support@bitmover.com for assistance.
 $
+#lease-timesync
+Unable to obtain a permission to use this version of BitKeeper from
+lease.openlogging.org because the local clock on this computer is off
+by more than 24 hours.  Please verify the time on your computer and
+that the timezone is set correctly and try again.
+$
