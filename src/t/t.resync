@@ -10,8 +10,7 @@
 
 echo $N Create initial repository ...................................$NL
 HERE=`${CWD}`
-echo "logging: /dev/null" > $HERE/c
-echo "logging_ok: no" >>$HERE/c
+echo "logging: none" > $HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
 if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
 cd project
@@ -471,8 +470,7 @@ echo "----------- Andrew's anomaly (file disappears) -----------"
 cd $HERE
 rm -fr project copy
 echo $N Create initial repository ...................................$NL
-echo "logging: /dev/null" > $HERE/c
-echo "logging_ok: no" >>$HERE/c
+echo "logging: none" > $HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
 if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
 cd project

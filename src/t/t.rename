@@ -10,8 +10,7 @@ set -e
 HERE=`pwd`
 mkdir gca; cd gca
 cset -qi .
-${ECHO} "logging: lm@openlogging.org" > BitKeeper/etc/config
-${ECHO} "logging_ok: no" >> BitKeeper/etc/config
+${ECHO} "logging: none" > BitKeeper/etc/config
 ci -i $Q BitKeeper/etc/config
 mkdir src
 cd src

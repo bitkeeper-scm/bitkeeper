@@ -4,8 +4,8 @@
 
 echo $N Check bk fix to re-edit a file ..............................$NL
 cset -i -s .
-${ECHO} "logging: lm@openlogging.org" > BitKeeper/etc/config
-${ECHO} "logging_ok: no" >> BitKeeper/etc/config
+${ECHO} "logging: none" > BitKeeper/etc/config
+${ECHO} "seats: 1" >> BitKeeper/etc/config
 ci -i $Q BitKeeper/etc/config
 date > FILE
 ci $Q -i FILE
@@ -15,7 +15,7 @@ cp FILE SAVE
 ci $Q -y'Oops' FILE
 bk fix $Q FILE
 if [ ! -f SCCS/p.FILE ]; then echo Failed to edit FILE; exit 1; fi
-if [ ! -w FILE ]; then echo Failed to edit FILE; exit 1; fi
+isWritable FILE || { echo Failed to edit File; exit 1; }
 cmp -s SAVE FILE
 if [ $? != 0 ]; then echo failed to restore FILE; diff FILE SAVE; exit 1; fi
 set `cat SCCS/p.FILE`
