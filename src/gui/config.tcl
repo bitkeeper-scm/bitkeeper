@@ -103,6 +103,8 @@ proc getConfig {prog} \
 	set _d(fm3.annotate) 1		;# show annotations
 	set _d(fm3.charColor) $ORANGE	;# color of changes in a line
 	set _d(fm3.comments) 1		;# show comments window
+	set _d(fm3.escapeButtonFG) $YELLOW	;# foreground of escape button
+	set _d(fm3.escapeButtonBG) $BLACK	;# background of escape button
 	set _d(fm3.firstDiff) minus
 	set _d(fm3.lastDiff) plus
 	set _d(fm3.mergeColor) $LIGHTBLUE	;# color of merge choices in merge win
@@ -112,7 +114,10 @@ proc getConfig {prog} \
 	set _d(fm3.prevConflict) braceleft
 	set _d(fm3.prevDiff) bracketleft
 	set _d(fm3.sameColor) $BKTURQUOISE1	;# color of unchanged line
+	set _d(fm3.showEscapeButton) 1	;# show escape button?
 	set _d(fm3.spaceColor) $BLACK	;# color of spacer lines
+	set _d(fm3.toggleGCA) x		;# key to toggle GCA info
+	set _d(fm3.toggleAnnotations) z	;# key to toggle annotations
 	set _d(fm3.undo) u
 
 	set _d(help.linkColor) $BLUE	;# hyperlinks

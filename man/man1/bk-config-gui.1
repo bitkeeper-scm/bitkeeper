@@ -290,59 +290,80 @@ Highlight color for search matches.
 Default:\ lightblue
 .SS FM3TOOL CONFIGURATION
 .TP \n[I]
-.B charColor
+.B fm3.charColor
 Color used to highlight portions of a line which has changed.
 Default:\ orange
 .tp
-.B comments
+.B fm3.comments
 Boolean which controls the display of the comments window at the top.
 Default:\ 1 (on).
 .tp
-.B firstDiff
+.B fm3.escapeButtonBG
+Background color of the edit mode escape button.
+Default:\ black.
+.tp
+.B fm3.escapeButtonFG
+Foreground color of the edit mode escape button.
+Default:\ yellow.
+.tp
+.B fm3.firstDiff
 Keyboard accelerator for going to the first change.
 Default:\ "-".
 .tp
-.B handColor
+.B fm3.handColor
 Color used to highlight hand selected merge choices in the side by side 
 local and remote diff windows.
 Default:\ lightyellow.
 .tp
-.B lastDiff
+.B fm3.lastDiff
 Keyboard accelerator for going to the last change.
 Default:\ "+".
 .tp
-.B mergeColor
+.B fm3.mergeColor
 Color used to highlight merge choices, both manual and automatic, in the 
 lower merge window.
 Default:\ lightblue.
 .tp
-.B nextConflict
+.B fm3.nextConflict
 Keyboard accelerator for going to the next conflict (skips automerged changes).
 Default:\ "}".
 .tp
-.B nextDiff
+.B fm3.nextDiff
 Keyboard accelerator for going to the next change.
 Default:\ "]".
 .tp
-.B prevConflict
+.B fm3.prevConflict
 Keyboard accelerator for going to the previous conflict
 (skips automerged changes).
 Default:\ "{".
 .tp
-.B prevDiff
+.B fm3.prevDiff
 Keyboard accelerator for going to the previous change.
 Default:\ "[".
 .tp
-.B sameColor
+.B fm3.sameColor
 Color used to highlight the portion of a conflict consisting of unchanged lines.
 Default:\ #1cc7d0.
 .tp
-.B spaceColor
+.B fm3.showEscapeButton
+When entering edit mode, if this variable is set to 1 a button will be
+displayed that you can click on to exit edit mode.
+Default:\ 1.
+.tp
+.B fm3.spaceColor
 Color used to highlight the beginnings of lines which are "spacers" inserted
 to make the changes line up horizontally.
 Default:\ black.
 .tp
-.B undo
+.B fm3.toggleAnnotations
+Keyboard accelerator for toggling the display of annotations.
+Default:\ "z"
+.tp
+.B fm3.toggleGCA
+Keyboard accelerator for toggling the display of the GCA.
+Default:\ "x"
+.tp
+.B fm3.undo
 Keyboard accelerator for undoing the last merge selection.
 Default:\ "u".
 .SS HELPTOOL CONFIGURATION
