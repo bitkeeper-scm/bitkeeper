@@ -1,10 +1,12 @@
 #include "system.h"
 #include "sccs.h"
 #include "zlib/zlib.h"
+
 WHATSTR("@(#)%K%");
 
 private int	do_chksum(int fd, int off, int *sump);
 private int	chksum_sccs(char **files, char *offset);
+private	int	sccs_csetchksum(sccs *s, int diags, int fix);
 private int	do_file(char *file, int off);
 
 /*
@@ -38,9 +40,9 @@ checksum_main(int ac, char **av)
 			      return (1);
 		}
 	}
-	
+
 	if (do_sccs) return (chksum_sccs(&av[optind], off));
-	
+
 	for (name = sfileFirst("checksum", &av[optind], 0);
 	    name; name = sfileNext()) {
 		s = sccs_init(name, INIT_SAVEPROJ, proj);
@@ -57,11 +59,16 @@ checksum_main(int ac, char **av)
 			    av[0], s->sfile);
 			continue;
 		}
-		for (doit = 0, d = s->table; d; d = d->next) {
-			if (d->type == 'D') {
-				c = sccs_resum(s, d, diags, fix);
-				if (c & 1) doit++;
-				if (c & 2) bad++;
+		if (CSET(s)) {
+			doit = bad = sccs_csetchksum(s, diags, fix);
+		} else {
+			doit = bad = 0;
+			for (d = s->table; d; d = d->next) {
+				if (d->type == 'D') {
+					c = sccs_resum(s, d, diags, fix);
+					if (c & 1) doit++;
+					if (c & 2) bad++;
+				}
 			}
 		}
 		if (diags && fix) {
@@ -298,4 +305,153 @@ do_chksum(int fd, int off, int *sump)
 	}
 	*sump = (int)sum;
 	return (0);
+}
+
+typedef struct serset serset;
+struct serset {
+	int	num, size;
+	struct _sse {
+		ser_t	ser;
+		u16	sum;
+	} data[0];
+};
+
+#define	SS_SIZE  sizeof(serset)
+#define	SSE_SIZE sizeof(struct _sse)
+
+private void
+add_ins(HASH *h, char *root, int len, ser_t ser, u16 sum)
+{
+	serset	**ssp, *ss;
+
+	ssp = (serset **)hash_fetchAlloc(h, root, len, sizeof(serset *));
+	unless (*ssp) {
+		*ssp = malloc(SS_SIZE + 4*SSE_SIZE);
+		(*ssp)->num = 0;
+		(*ssp)->size = 4;
+	} else if ((*ssp)->num == (*ssp)->size - 1) {
+		/* realloc 2X */
+		ss = malloc(SS_SIZE + (2 * (*ssp)->size)*SSE_SIZE);
+		memcpy(ss, *ssp, SS_SIZE + (*ssp)->size*SSE_SIZE);
+		ss->size = 2 * (*ssp)->size;
+		free(*ssp);
+		*ssp = ss;
+	}
+	ss = *ssp;
+	ss->data[ss->num].ser = ser;
+	ss->data[ss->num].sum = sum;
+	++ss->num;
+	ss->data[ss->num].ser = 0;
+}
+
+private int
+sccs_csetchksum(sccs *s, int diags, int fix)
+{
+	HASH	*root2map = hash_new();
+	ser_t	ins_ser = 0;
+	char	*p, *q, *e;
+	char	*end = s->mmap + s->size;
+	u16	sum;
+	int	cnt, i, added;
+	serset	**map;
+	ser_t	*slist;
+	struct	_sse *sse;
+	delta	*d;
+	int	found = 0;
+	kvpair	kv;
+
+	/* build up weave data structure */
+	p = s->mmap + s->data;
+	while (p < end) {
+		if (p[0] == '\001') {
+			if (p[1] == 'I') ins_ser = atoi(p + 3);
+			e = p;
+			while (*e++ != '\n');
+		} else {
+			q = separator(p);
+			sum = 0;
+			e = p;
+			do {
+				sum += *e;
+			} while (*e++ != '\n');
+			add_ins(root2map, p, q-p, ins_ser, sum);
+		}
+		p = e;
+	}
+	cnt = 0;
+	EACH_HASH(root2map) ++cnt;
+	map = malloc(cnt * sizeof(serset *));
+	cnt = 0;
+	EACH_HASH(root2map) {
+		map[cnt] = *(serset **)kv.val.dptr;
+		++cnt;
+	}
+	/* the above is very fast, no need to optimize further */
+
+	/* foreach delta */
+	for (d = s->table; d; d = d->next) {
+
+		unless (d->type == 'D') continue;
+		unless (d->added || d->include || d->exclude) continue;
+
+		slist = sccs_set(s, d, 0, 0); /* slow */
+
+		sum = 0;
+		added = 0;
+		for (i = 0; i < cnt; i++) {
+			ser_t	ser;
+
+			sse = map[i]->data;
+			ser = sse->ser;
+			while (ser) {
+				if ((ser <= d->serial) && slist[ser]) {
+					sum += sse->sum;
+					if (ser == d->serial) ++added;
+					break;
+				}
+				++sse;
+				ser = sse->ser;
+			}
+		}
+		free(slist);
+
+		if ((d->added != added) || (d->deleted != 0) ||
+		    (d->same != 1)) {
+			/*
+			 * We dont report bad counts if we are not fixing.
+			 * We have not been consistant about this in the past.
+			 */
+			if (diags > 1) {
+				fprintf(stderr, "%s a/d/s "
+					"%s:%s %d/%d/%d->%d/0/1\n",
+				    (fix ? "Corrected" : "Bad"),
+				    s->sfile, d->rev,
+				    d->added, d->deleted, d->same, added);
+			}
+			if (fix) {
+				d->added = added;
+				d->deleted = 0;
+				d->same = 1;
+				++found;
+			}
+		}
+
+		if (d->sum != sum) {
+			if (!fix || (diags > 1)) {
+				fprintf(stderr, "%s checksum %d:%d in %s|%s\n",
+				    (fix ? "Corrected" : "Bad"),
+				    d->sum, sum, s->gfile, d->rev);
+			}
+			if (fix) {
+				d->sum = sum;
+				d->flags |= D_CKSUM;
+			}
+			++found;
+		}
+	}
+	for (i = 0; i < cnt; i++) free(map[i]);
+	free(map);
+	hash_free(root2map);
+
+	return (found);
 }
