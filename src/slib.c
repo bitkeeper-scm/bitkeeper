@@ -3907,15 +3907,14 @@ no_match:	remote_free(r);
 		unless (h && match_one(h, r->host, 1)) goto no_match;
 	}
 
-	if (r->path) {
-		unless (IsFullPath(bk_proj->root)) {
-			char *t = fullname(bk_proj->root, 0);
-
-			assert(t);
-			free(bk_proj->root);
-			bk_proj->root = strdup(t);
+	if (r->path && bk_proj) {
+		char	*root = bk_proj->root;
+		unless (IsFullPath(root)) {
+			root = fullname(root, 0);
+			
+			assert(root);
 		}
-		unless (match_one(bk_proj->root, r->path, !mixedCasePath())) {
+		unless (match_one(root, r->path, !mixedCasePath())) {
 			goto no_match;
 		}
 	}
@@ -3980,9 +3979,16 @@ config2mdbm(MDBM *db, char *config)
 
 	if (f = fopen(config, "rt")) {
 		while (fnext(buf, f)) {
+			int	flags = MDBM_INSERT;
+			char	*p;
 			unless (parseConfig(buf, &k, &v)) continue;
-			chomp(v);
-			mdbm_store_str(db, k, v, MDBM_INSERT);
+			p = v;
+			while (p[1]) ++p;
+			if (*p == '!') {
+				*p = 0;
+				flags = MDBM_REPLACE;
+			}
+			mdbm_store_str(db, k, v, flags);
 		}
 		fclose(f);
 	}
