@@ -475,10 +475,13 @@ cd $HERE
 bk resync -a $Q project copy 
 cd copy/src
 if [ ! -f aaa.c ]; then echo Failed to get aaa.c; exit 1; fi
-if [ "`bk co -qp aaa.c | diff - aaa.c`" != "" ]
+bk co -qp aaa.c > aaa.p
+diff aaa.p aaa.c
+if [ $? -ne 0 ]
 then	echo Failed to update aaa.c
 	exit 1
 fi
+${RM} aaa.p aaa.c
 echo OK
 
 echo $N Check resolve w/ auto merge and overlap change ..............$NL
