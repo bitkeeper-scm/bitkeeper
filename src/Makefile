@@ -8,9 +8,11 @@ OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
 ifeq "$(OSTYPE)" "cygwin"
 	SYS=win32
 	EXE=.exe
+	XTRA=win32
 else
 	SYS=unix
 	EXE=
+	XTRA=gnu
 endif
 
 # You can set this to anywhere you like and do a "build production" and you'll
@@ -48,7 +50,6 @@ CC_FAST_DEBUG=$G -O2 $(WARNINGS)
 CC_FAST	=$(CC_FAST_DEBUG)
 CC_WALL=$G -DLINT $(WARNINGS)
 INSTALL=install
-XTRA=
 #UWTLIB is used on win32 only - passed in from build.sh
 UWTLIB	=
 UWT_H	=
@@ -138,8 +139,7 @@ DATA	= bitkeeper.config bkmsg.txt bkhelp.txt bklogo.gif \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf
 LINKTO	= fm fmtool fm3 fm3tool
 BINLINKS= admin$(EXE) get$(EXE) delta$(EXE) unget$(EXE) rmdel$(EXE) prs$(EXE)
-# Note: $(XTRA) must be listed after "gnu"
-ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) gnu $(XTRA)
+ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA)
 
 # FASTPURIFY does not do overrun/underrun checking at each alloc/free
 CFLAGS	= $(CC_FAST_DEBUG) $(CC_WALL) \
@@ -328,10 +328,7 @@ FORCE:
 
 gnu: $(BK) FORCE
 	@bk get -sS gnu/Makefile
-	@if [ $(SYS) = win32 ]; \
-	then cd gnu && cmd /c $(MAKE) BINDIR=$(BINDIR) DIFF_BINS= DIRS=patch ;\
-	else cd gnu && $(MAKE) BINDIR=$(BINDIR) ;\
-	fi
+	cd gnu && $(MAKE) BINDIR=$(BINDIR)
 
 win32: FORCE
 	cd win32 && $(MAKE) BINDIR=$(BINDIR)
@@ -621,9 +618,8 @@ install-nolinks: $(BINLINKS)
 		ln $(BINDIR)/$$2 $(BINDIR)/$$1; \
 		shift; shift; \
 	done
-	@if [ $(SYS) = win32 ]; \
-	then cd gnu && $(MAKE) install BINDIR=$(BINDIR) DIFF_BINS= DIRS=patch ;\
-	else (cd gnu && $(MAKE) install BINDIR=$(BINDIR)) ;\
+	@if [ $(SYS) = unix ]; \
+	then (cd gnu && $(MAKE) install BINDIR=$(BINDIR)) ;\
 	     bk get -S ../man/Makefile; \
 	     cd ../man && $(MAKE) install BINDIR=$(BINDIR) ;\
 	fi
