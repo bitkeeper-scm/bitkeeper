@@ -90,7 +90,7 @@ unix_common_setup()
 	mkdir $BK_LIMITPATH
 	for f in awk expr sh grep egrep sed env test [ sleep getopts \
 	    basename dirname cat cp ln mkdir mv rm rmdir touch wc xargs \
-	    co rcs ssh rsh gzip gunzip remsh rcmd
+	    co rcs ssh rsh gzip gunzip remsh rcmd uname
 	do	p=`bk which -e $f`
 		if [ $? -eq 0 ]
 		then	ln -s $p $BK_LIMITPATH/$f

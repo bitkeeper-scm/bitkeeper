@@ -6020,7 +6020,7 @@ sccs_impliedList(sccs *s, char *who, char *base, char *rev)
 {
 	delta	*baseRev, *t, *mRev;
 	int	active;
-	char	*inc = 0, *exc = 0;
+	void	*inc = 0, *exc = 0;
 	ser_t	*slist = 0;
 	int	i;
 
@@ -6080,14 +6080,14 @@ err:		s->state |= S_WARNED;
 				slist[t->exclude[i]] |= S_EXCL;
 		}
 	}
-	if (compressmap(s, baseRev, slist, 0, (void **)&inc, (void **)&exc)) {
+	if (compressmap(s, baseRev, slist, 0, &inc, &exc)) {
 		fprintf(stderr, "%s: cannot compress merged set\n", who);
 		goto err;
 	}
 	if (exc) {
 		fprintf(stderr,
 		    "%s: compressed map caused exclude list: %s\n",
-		    who, exc);
+		    who, (char *)exc);
 		goto err;
 	}
 	if (slist) free(slist);
@@ -6106,7 +6106,7 @@ sccs_adjustSet(sccs *sc, sccs *scb, delta *d)
 	int	errp;
 	ser_t	*slist;
 	delta	*n;
-	ser_t	*inc = 0, *exc = 0;
+	void	*inc = 0, *exc = 0;
 
 	errp = 0;
 	n = sfind(scb, d->serial);	/* get 'd' from backup */
@@ -6132,7 +6132,7 @@ sccs_adjustSet(sccs *sc, sccs *scb, delta *d)
 		free(d->exclude);
 		d->exclude = 0;
 	}
-	if (compressmap(sc, d, slist, 1, (void **)&inc, (void **)&exc)) {
+	if (compressmap(sc, d, slist, 1, &inc, &exc)) {
 		assert("cannot compress merged set" == 0);
 	}
 	if (inc) {
