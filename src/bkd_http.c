@@ -74,8 +74,8 @@ cmd_httpget(int ac, char **av)
 		arguments[0] = 0;
 	}
 
-	unless (*name) name = "index.html";
 	if ((strlen(name) + sizeof("BitKeeper/html") + 2) >= MAXPATH) exit(1);
+	unless (*name) name = "index.html";
 
 	/*
 	 * Go find the project root.
@@ -162,71 +162,71 @@ whoami(char *fmt, ...)
 private void
 navbutton(int active, int tag, char *start, char *end)
 {
-    char *sep;
-    char buf[MAXPATH];
-    int ct;
+	char *sep;
+	char *p;
+	char buf[MAXPATH];
+	int ct;
 
-    for (sep = start; sep < end && *sep != '|'; ++sep)
-	;
-    if (*sep == '|') {
+	for (sep = start; sep < end && *sep != '|'; ++sep)
+	    ;
 	out("<a style=\"text-decoration: none\" ");
 	if (tag) {
-	    sprintf(buf, "href=\"%.*s?%.*s\">",
+		sprintf(buf, "href=\"%.*s?%.*s\">",
 		    sep-start, start, start-arguments, arguments);
 	} else {
-	    sprintf(buf, "href=\"%.*s\">", sep-start,start);
+		sprintf(buf, "href=\"%.*s\">", sep-start,start);
 	}
 	out(buf);
-	out(active ? "<font size=2 color=lightblue>" : "<font size=2 color=yellow>");
-	sep++;
-	if (*sep == '@') {
-	    switch (sep[1]) {
-		case 'C':	/* range of changesets */
-		    if (sep[2] == '*') {
-			out("All ChangeSets");
-		    } else {
-			ct = atoi(sep+3);
+	out(active ? "<font size=2 color=lightblue>"
+		   : "<font size=2 color=yellow>");
+
+	if (strneq(start,"ChangeSet", 9)) {
+		if (start[9] == '@') {
+			ct = atoi(&start[11]);
 			sprintf(buf,
-			    "Changesets in the last %d %s", ct, units(sep+3));
+			    "Changesets in the last %d %s",
+			    ct, units(&start[11]));
 			out(buf);
-		    }
-		    out(active ? "</a>" : " &gt;&gt; </a>");
-		    goto fin;
-		case 'H':
-		    out("Home");
-		    out(active ? "</a>" : " &gt;&gt; </a>");
-		    goto fin;
-		case 'h':	/* history of a file */
-		    out("History of ");
-		    break;
-		case 'a':	/* annotated versions for a file */
-		    out("Annotations for ");
-		    break;
-		case 'd':	/* diffs */
-		    out("Diffs for ");
-		    break;
-		case 'c':	/* a particular changeset */
-		    out("ChangeSet ");
-		    break;
-		case 'p':	/* patch */
-		    out("Patch for ");
-		    break;
-		default:
-		    goto regular;
-	    }
-	    sep += 2;
-	    sprintf(buf, "%.*s", end-sep, sep);
-	    out(buf);
-	    out(active ? "</a>" : " &gt;&gt; </a>");
-	    goto fin;
+		}
+		else
+			out("All ChangeSets");
+		start = 0;
+	} else if (strneq(start, "index.html", 10)) {
+		out("Home");
+		start = 0;
+	} else if (strneq(start, "hist/", 5)) {
+		out("History of ");
+		start += 5;
+	} else if (strneq(start, "anno/", 5)) {
+		out("Annotations for ");
+		start += 5;
+	} else if (strneq(start, "diffs/", 6)) {
+		out("Diffs for ");
+		start += 6;
+	} else if (strneq(start, "patch@", 6)) {
+		out("All diffs for ");
+		start += 6;
+	} else if (strneq(start, "cset@", 5)) {
+		out("ChangeSet ");
+		start += 5;
+	} else if (strneq(start, "src", 3)) {
+		start += 3;
+		if (sep-start == 2 && strneq(start, "/.", 2)) {
+			out("Sources");
+			start = 0;
+		} else {
+			for (p = sep; p > start && *p != '/'; --p)
+				;
+			start = p;
+			if (*start == '/') ++start;
+		}
 	}
-regular:
-	sprintf(buf, "%.*s", end-sep, sep);
-	out(buf);
-	out(active ? "</a>" : " &gt;&gt; </a>");
-fin:
-        out("</font>\n");
-    }
+	if (start) {
+	    sprintf(buf, "%.*s", sep-start, start);
+	    out(buf);
+	}
+	out("</a></font>\n");
+	unless (active) out("<font color=white>&gt;&gt;</font>\n");
 }
 
 
@@ -306,6 +306,7 @@ header(char *path, char *color, char *titlestr, char *headerstr, ...)
 }
 
 
+
 /*
  * Given a pathname, try and find a BitKeeper/etc below.
  * We want the deepest one possible.
@@ -316,35 +317,42 @@ findRoot(char *name)
 	char	*s, *t;
 	char	path[MAXPATH];
 	int	tries = 256;
-	static	char url[MAXPATH+2];
+	static	char url[MAXPATH*2];
 
-	s = name + strlen(name) + 1;
-
-	while (s > name) {
-		for (t = s; *t != '/' && t > name; --t)
-			;
-		unless (t > name) break;
-
-		sprintf(path, "%.*s/BitKeeper/etc", t-name, name);
-
+	sprintf(path, "%s/BitKeeper/etc", name);
+	if (isdir(path)) {
+		chdir(name);
+		if (Opts.port) {
+			sprintf(url, "http://%s:%d%s",
+			    sccs_gethost(), Opts.port, name-1);
+		} else {
+			sprintf(url, "http://%s%s", sccs_gethost(), name-1);
+		}
+		root = url;
+		return ("index.html");
+	}
+	for (s = strrchr(name, '/'); s && (s != name); ) {
+		*s = 0;
+		sprintf(path, "%s/BitKeeper/etc", name);
+		unless (--tries) break;		/* just in case */
 		if (isdir(path)) {
-			sprintf(path, "%.*s", t-name, name);
-			chdir(path);
+			chdir(name);
 			if (Opts.port) {
-				sprintf(url, "http://%s:%d/%s",
-				    sccs_gethost(), Opts.port, path);
+				sprintf(url, "http://%s:%d%s",
+				    sccs_gethost(), Opts.port, name-1);
 			} else {
 				sprintf(url,
-				    "http://%s/%s", sccs_gethost(), path);
+				    "http://%s%s", sccs_gethost(), name-1);
 			}
 			root = url;
-			return (t + 1);
+			return (s + 1);
 		}
-		s = t-1;
+		t = strrchr(name, '/');
+		*s = '/';
+		s = t;
 	}
-	return 0;
+	return (0);
 }
-
 
 private void
 httphdr(char *file)
@@ -386,9 +394,9 @@ http_changes(char *rev)
 	char	*d;
 
 	if (rev) {
-		whoami("ChangeSet@%s|@C%s", rev, rev);
+		whoami("ChangeSet@%s", rev);
 	} else {
-		whoami("ChangeSet|@C*");
+		whoami("ChangeSet");
 	}
 
 	sprintf(dspec,  "-d<tr>\n"
@@ -437,7 +445,7 @@ http_cset(char *rev)
 	char	*d, **lines = 0;
 	char	dspec[MAXPATH*2];
 
-	whoami("cset@%s|@c%s", rev, rev);
+	whoami("cset@%s", rev);
 
 	sprintf(dspec,
 	    "<tr bgcolor=#d8d8f0><td>&nbsp;"
@@ -626,7 +634,7 @@ http_hist(char *pathrev)
 	MDBM	*m;
 	char	dspec[MAXPATH*2];
 
-	whoami("hist/%s|@h%s", pathrev, pathrev);
+	whoami("hist/%s", pathrev);
 
 	sprintf(dspec,
 		"<tr>\n"
@@ -682,9 +690,7 @@ http_src(char *path)
 	time_t	now;
 	char 	dspec[MAXPATH*2];
 
-	unless (t = strrchr(path, '/')) t = path-1;
-
-	whoami("src/%s|%s", path, t+1);
+	whoami("src/%s", path);
 
 	sprintf(dspec, 
 	    "<tr bgcolor=lightyellow>"
@@ -723,7 +729,7 @@ http_src(char *path)
 
 	now = time(0);
 	while (e = readdir(d)) {
-		if (streq(".", e->d_name) || streq("SCCS", e->d_name)) continue;
+		if (streq(".", e->d_name) || streq("SCCS", e->d_name) || streq("..", e->d_name)) continue;
 		if (path[1]) {
 			sprintf(buf, "%s/%s", path, e->d_name);
 		} else {
@@ -744,12 +750,9 @@ http_src(char *path)
 			  "<td align=right>&nbsp;</td>"
 			  "<td>&nbsp;</td>"			/* user */
 			  "<td>&nbsp;</td></tr>\n",		/* comments */
-			  streq(e->d_name, "..") ?
-			    "back.gif" : "dir.gif",
+			  "dir.gif",
 			  buf,
-			  streq(e->d_name, "..") ?
-			    "Parent directory" : e->d_name	/* file */
-			  );
+			  e->d_name);
 			names = addLine(names, strdup(html));
 		}
 	}
@@ -787,7 +790,7 @@ http_anno(char *pathrev)
 
 	httphdr(".html");
 
-	whoami("anno/%s|@a%s", pathrev, pathrev);
+	whoami("anno/%s", pathrev);
 
 	header("anno", COLOR_ANNO, "Annotated listing of %s", 0, pathrev);
 
@@ -872,7 +875,7 @@ http_diffs(char *pathrev)
 	char	dspec[MAXPATH*2];
 
 
-	whoami("diffs/%s|@d%s", pathrev, pathrev);
+	whoami("diffs/%s", pathrev);
 
 	sprintf(dspec,
 		"<tr>\n"
@@ -933,11 +936,11 @@ http_patch(char *rev)
 
 	httphdr(".html");
 
-	whoami("patch@%s|@p%s", rev, rev);
+	whoami("patch@%s", rev);
 
 	header("rev", COLOR_PATCH,
-	    "Patch for ChangeSet %s",
-	    "<a href=cset@%s?%s>Patch for ChangeSet %s</a>",
+	    "All diffs for ChangeSet %s",
+	    "<a href=cset@%s?%s>All diffs for ChangeSet %s</a>",
 	    rev, navbar, rev);
 
 	out("<pre><font size=2>");
@@ -1071,8 +1074,13 @@ http_index()
 	out("\n"
 	    "</title></head>\n"
 	    "<body alink=black link=black bgcolor=white>\n");
+	if (root && !streq(root, "")) {
+		out("<base href=");
+		out(root);
+		out("/>\n");
+	}
 
-	whoami("index.html|@H");
+	whoami("index.html");
 
 	printnavbar();
 
