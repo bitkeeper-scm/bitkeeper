@@ -469,7 +469,7 @@ echo "logging_ok: c@b" >> $HERE/c
 echo "logging_ok: d@b" >> $HERE/c
 echo "description: BitKeeper Test repository" >> $HERE/c
 echo "email:		nobody@nowhere.bk" >> $HERE/c
-bk setup -f -c$HERE/c project
+BK_LOGGING_OK=YES bk setup -f -c$HERE/c project
 cd project 
 touch BitKeeper/etc/SCCS/x.marked
 ls > LS

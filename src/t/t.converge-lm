@@ -25,7 +25,7 @@ echo "logging: logging@openlogging.org" > $HERE/c
 echo "description: BitKeeper Test repository" >> $HERE/c
 echo "email:		nobody@nowhere.bk" >> $HERE/c
 echo "eoln: unix" >> $HERE/c
-bk setup -f -c$HERE/c project
+BK_LOGGING_OK=YES bk setup -f -c$HERE/c project
 touch project/BitKeeper/etc/SCCS/x.marked
 echo OK
 echo $N Add content to ignore, gone, logging_ok .....................$NL
@@ -117,22 +117,17 @@ done
 echo $N Create repository, clone, make csets as same users ..........$NL
 cd $HERE
 rm -rf project copy
-bk setup -f -c$HERE/c project
+BK_LOGGING_OK=YES bk setup -f -c$HERE/c project
 touch project/BitKeeper/etc/SCCS/x.marked
 bk clone $Q project copy
 cd project
-BK_USER=joe
-BK_HOST=blow.dork
-export BK_USER BK_HOST
-ls > LS
-bk new $Q LS
-echo y | bk commit $Q -ywhatever2 >/dev/null 2>&1
-OLD=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/logging_ok`
+bk gone $Q fff
+bk commit $Q -ywhatever2 || exit 1
+OLD=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/gone`
 cd ../copy
-date > date
-bk new $Q date
-echo y | bk commit $Q -ywhatever2 >/dev/null 2>&1
-NEW=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/logging_ok`
+bk gone $Q copydd
+bk commit $Q -ywhatever2 || exit 1
+NEW=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/gone`
 if [ "$NEW" = "$OLD" ]
 then	echo failed to make different keys
 	echo "NEW: $NEW"
@@ -142,21 +137,15 @@ fi
 echo OK
 # Note that we are in the repository with the newer key in the slot.
 echo $N Pull them, should not ask, should union, oldest in slot .....$NL
-echo n | bk pull -d -t ../project > OUT 2>&1
+bk pull -t ../project > OUT 2>&1
 test -d RESYNC && {
-	echo failed to use existing logging_ok, left RESYNC
+	echo failed to use existing gone, left RESYNC
 	cat OUT
 	exit 1
 }
-KEY=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/logging_ok`
+KEY=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/gone`
 if [ "$NEW" = "$KEY" ]
 then	echo failed to use older key
-	exit 1
-fi
-LINES=`bk get -kpq BitKeeper/etc/logging_ok | wc -l`
-if [ $LINES -ne 1 ]
-then	echo Error, should have exactly one user in the OK file
-	bk get -kpq BitKeeper/etc/logging_ok
 	exit 1
 fi
 echo OK
@@ -169,36 +158,32 @@ echo OK
 echo $N Create repository, clone, csets as diff users, same time_t ..$NL
 cd $HERE
 rm -rf project copy
-bk setup -f -c$HERE/c project
+BK_LOGGING_OK=YES bk setup -f -c$HERE/c project
 touch project/BitKeeper/etc/SCCS/x.marked
 bk clone $Q project copy
 cd project
 BK_USER=AAA
-BK_HOST=blow.dork
-export BK_USER BK_HOST
-ls > LS
-bk new $Q LS
+bk gone $Q project33
 echo y | bk commit $Q -ywhatever2 >/dev/null 2>&1
-DATE=`bk -R prs -hr1.0 '-dD :I: :D: :T:\n' BitKeeper/etc/logging_ok`
-UTC=`bk -R prs -hr1.0 '-d:UTC:\n' BitKeeper/etc/logging_ok`
+DATE=`bk -R prs -hr1.0 '-dD :I: :D: :T:\n' BitKeeper/etc/gone`
+UTC=`bk -R prs -hr1.0 '-d:UTC:\n' BitKeeper/etc/gone`
 cd ../copy
 BK_USER=BBB
-date > date
-bk new $Q date
+bk gone $Q copy55
 echo y | bk commit $Q -ywhatever2 >/dev/null 2>&1
-JUNK=`bk -R prs -hr1.0 '-dD :I: :D: :T:\n' BitKeeper/etc/logging_ok`
-J_UTC=`bk -R prs -hr1.0 '-d:UTC:\n' BitKeeper/etc/logging_ok`
-mv BitKeeper/etc/SCCS/s.logging_ok OLD
-perl -pe "s|$JUNK BBB |$DATE BBB |" < OLD | bk undos > BitKeeper/etc/SCCS/s.logging_ok
-bk admin -z BitKeeper/etc/logging_ok
+JUNK=`bk -R prs -hr1.0 '-dD :I: :D: :T:\n' BitKeeper/etc/gone`
+J_UTC=`bk -R prs -hr1.0 '-d:UTC:\n' BitKeeper/etc/gone`
+mv BitKeeper/etc/SCCS/s.gone OLD
+perl -pe "s|$JUNK BBB |$DATE BBB |" < OLD | bk undos > BitKeeper/etc/SCCS/s.gone
+bk admin -z BitKeeper/etc/gone
 mv SCCS/s.ChangeSet OLD2
-sed "s?BitKeeper/etc/logging_ok|$J_UTC?BitKeeper/etc/logging_ok|$UTC?" \
+sed "s?BitKeeper/etc/gone|$J_UTC?BitKeeper/etc/gone|$UTC?" \
 								< OLD2 >  X
 bk undos X > SCCS/s.ChangeSet
 bk admin -z ChangeSet
 bk checksum -f ChangeSet 2> /dev/null
-bk -r check -a
-NEW=`bk -R prs -hr1.0 '-dD :I: :D: :T:\n' BitKeeper/etc/logging_ok`
+bk -r check -a || exit 1
+NEW=`bk -R prs -hr1.0 '-dD :I: :D: :T:\n' BitKeeper/etc/gone`
 if [ "$NEW" != "$DATE" ]
 then	echo failed to fix the dates
 	echo "NEW: $NEW"
@@ -211,20 +196,14 @@ echo $N Pull them, should not ask, should union, oldest in slot .....$NL
 cd $HERE
 tar cf SAVE project copy
 cd copy
-echo n | bk pull $Q -t ../project >/dev/null 2>&1
+bk pull $Q -t ../project || exit 1
 test -d RESYNC && {
-	echo failed to use existing logging_ok, left RESYNC
+	echo failed to use existing gone, left RESYNC
 	exit 1
 }
-KEY=`bk -R prs -hr1.0 '-d:USER:\n' BitKeeper/etc/logging_ok`
+KEY=`bk -R prs -hr1.0 '-d:USER:\n' BitKeeper/etc/gone`
 if [ "$KEY" != AAA ]
 then	echo failed to use older key
-	exit 1
-fi
-LINES=`bk get -kpq BitKeeper/etc/logging_ok | wc -l`
-if [ $LINES -ne 2 ]
-then	echo Error, should have exactly two users in the OK file
-	bk get -kpq BitKeeper/etc/logging_ok
 	exit 1
 fi
 KEY=`bk -R prs -hr1.0 '-d:USER:\n' BitKeeper/deleted/SCCS/s.*`
@@ -241,23 +220,17 @@ tar xf SAVE
 cd project
 echo n | bk pull $Q -t ../copy >/dev/null 2>&1
 test -d RESYNC && {
-	echo failed to use existing logging_ok, left RESYNC
+	echo failed to use existing gone, left RESYNC
 	exit 1
 }
-test -f BitKeeper/etc/SCCS/s.logging_ok || {
-	echo failed to restore logging_ok
+test -f BitKeeper/etc/SCCS/s.gone || {
+	echo failed to restore gone
 	exit 1
 }
-KEY=`bk -R prs -hr1.0 '-d:USER:\n' BitKeeper/etc/logging_ok`
+KEY=`bk -R prs -hr1.0 '-d:USER:\n' BitKeeper/etc/gone`
 if [ "$KEY" != AAA ]
 then	echo failed to use older key, got $KEY
-	bk -R prs -r1.0.. -nd:USER: BitKeeper/etc/logging_ok
-	exit 1
-fi
-LINES=`bk get -kpq BitKeeper/etc/logging_ok | wc -l`
-if [ $LINES -ne 2 ]
-then	echo Error, should have exactly two users in the OK file
-	bk get -kpq BitKeeper/etc/logging_ok
+	bk -R prs -r1.0.. -nd:USER: BitKeeper/etc/gone
 	exit 1
 fi
 KEY=`bk -R prs -hr1.0 '-d:USER:\n' BitKeeper/deleted/SCCS/s.*`
@@ -270,7 +243,7 @@ echo OK
 echo $N Create repository ...........................................$NL
 cd $HERE
 rm -rf project copy
-bk setup -f -c$HERE/c project
+BK_LOGGING_OK=YES bk setup -f -c$HERE/c project
 touch project/BitKeeper/etc/SCCS/x.marked
 echo OK
 
@@ -279,13 +252,14 @@ BK_USER=user
 BK_HOST=host.bk
 cd project
 cd BitKeeper/etc
-perl -ne 's,cPChangeSet,cPBitKeeper/etc/logging_ok,; print unless /^.cC$/ || /^.cS/ || /^.cX/ || /^.f x 0x/;' < ../../SCCS/s.ChangeSet | bk undos > X
-mv X SCCS/s.logging_ok
-bk admin -z logging_ok
-bk stripdel $Q -r1.1.. logging_ok
-bk _loggingaccepted	# adds $ME
-bk commit $Q -ywhatever
-KEY=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/logging_ok`
+perl -ne 's,cPChangeSet,cPBitKeeper/etc/gone,; print unless /^.cC$/ || /^.cS/ || /^.cX/ || /^.f x 0x/;' \
+    < ../../SCCS/s.ChangeSet | bk undos > X
+mv X SCCS/s.gone
+bk admin -z gone
+bk stripdel $Q -r1.1.. gone
+bk gone $Q project44
+echo y | bk commit $Q -ywhatever >/dev/null 2>&1
+KEY=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/gone`
 cd $HERE
 bk clone $Q project copy
 echo OK
@@ -295,12 +269,11 @@ cd project
 BK_USER=joe
 BK_HOST=blow.dork
 export BK_USER BK_HOST
-ls > LS
-bk new $Q LS
+bk gone $Q project34
 echo y | bk commit $Q -ywhatever2 >/dev/null 2>&1
-KEY2=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/logging_ok`
+KEY2=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/gone`
 if [ "$KEY" != "$KEY2" ]
-then	echo failed to leave original logging_ok file
+then	echo failed to leave original gone file
 	exit 1
 fi
 
@@ -308,34 +281,33 @@ cd $HERE/copy
 BK_USER=jane
 BK_HOST=kick.dork
 export BK_USER BK_HOST
-ls > JANE
-bk new $Q JANE
+bk gone $Q copy34
 echo y | bk commit $Q -ywhatever2 >/dev/null 2>&1
-KEY2=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/logging_ok`
+KEY2=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/gone`
 if [ "$KEY" != "$KEY2" ]
-then	echo failed to leave original logging_ok file
+then	echo failed to leave original gone file
 	exit 1
 fi
 echo OK
 
 echo $N Pull, make sure it deletes the OK file and creates new one ..$NL
 bk pull -t $Q ../project
-KEY2=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/logging_ok`
+KEY2=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/gone`
 if [ "$KEY" = "$KEY2" ]
-then	echo failed to delete original logging_ok file
+then	echo failed to delete original gone file
 	exit 1
 fi
 sort <<EOF > X
-$ME
-jane@kick.dork
-joe@blow.dork
+copy34
+project34
+project44
 EOF
 bk undos X > DATA
-bk get $Q BitKeeper/etc/logging_ok
-cmp -s BitKeeper/etc/logging_ok DATA || {
+bk get $Q BitKeeper/etc/gone
+cmp -s BitKeeper/etc/gone DATA || {
 	echo failed to union data
 	echo GOT vs WANTED
-	sdiff -w80 BitKeeper/etc/logging_ok DATA
+	sdiff -w80 BitKeeper/etc/gone DATA
 	exit 1
 }
 echo OK
@@ -347,16 +319,15 @@ echo OK
 echo $N Create repo, clone, commit in both and save .................$NL
 cd $HERE
 rm -rf project copy
-bk setup -f -c$HERE/c project
+BK_LOGGING_OK=YES bk setup -f -c$HERE/c project
 touch project/BitKeeper/etc/SCCS/x.marked
 bk clone $Q project copy
 cd project
+bk gone $Q project34
 BK_USER=jane
 BK_HOST=kick.dork
-ls > LS
-bk new $Q LS
 echo y | bk commit -yjane $Q > /dev/null 2>&1
-test -f BitKeeper/etc/SCCS/s.logging_ok || exit 1
+test -f BitKeeper/etc/SCCS/s.gone || exit 1
 test `bk sfiles -p | wc -l` -eq 0 || {
 	echo failed to commit all files
 	bk sfiles -p
@@ -365,10 +336,9 @@ test `bk sfiles -p | wc -l` -eq 0 || {
 cd $HERE/copy
 BK_USER=joe
 BK_HOST=blow.dork
-ls > list
-bk new $Q list
+bk gone $Q copy34
 echo y | bk commit -yjoe $Q > /dev/null 2>&1
-test -f BitKeeper/etc/SCCS/s.logging_ok || exit 1
+test -f BitKeeper/etc/SCCS/s.gone || exit 1
 test `bk sfiles -p | wc -l` -eq 0 || {
 	echo failed to commit all files
 	bk sfiles -p
@@ -376,61 +346,6 @@ test `bk sfiles -p | wc -l` -eq 0 || {
 }
 cd $HERE
 tar cf TAR project copy
-echo OK
-echo $N In clone, unlink logging_ok add to gone and pull as OK user .$NL
-cd $HERE/copy
-bk prs -hr1.0 -d':KEY:\n' BitKeeper/etc/logging_ok > BitKeeper/etc/gone
-bk clean BitKeeper/etc/logging_ok
-rm -f BitKeeper/etc/SCCS/s.logging_ok
-BK_USER=jane
-BK_HOST=kick.dork
-echo n | bk pull $Q -t ../project >/dev/null 2>&1
-test -d RESYNC && {
-	echo failed to use existing logging_ok, left RESYNC
-	exit 1
-}
-CNT=`bk -r prs -hr1.0 -d'$if(:DPN:=BitKeeper/etc/logging_ok){F\n}' | wc -l`
-if [ $CNT -ne 1 ]
-then	echo Should not have created another logging OK file
-	bk -r prs -hr1.0 -d'$if(:DPN:=BitKeeper/etc/logging_ok){:GFILE:\n}'
-	exit 1
-fi
-echo OK
-echo $N In clone, same as above but not OK user .....................$NL
-cd $HERE
-rm -rf project copy
-tar xf TAR
-cd $HERE/copy
-bk prs -hr1.0 -d':KEY:\n' BitKeeper/etc/logging_ok > BitKeeper/etc/gone
-bk clean BitKeeper/etc/logging_ok
-rm -f BitKeeper/etc/SCCS/s.logging_ok
-# User from removed file
-BK_USER=joe
-BK_HOST=blow.dork
-echo y | bk pull -d -t ../project >OUT 2>&1
-test -d RESYNC && {
-	echo failed to use existing logging_ok, left RESYNC
-	cat OUT
-	exit 1
-}
-cat <<EOF > X
-jane@kick.dork
-joe@blow.dork
-EOF
-bk undos X > DATA
-bk get $Q BitKeeper/etc/logging_ok
-cmp -s BitKeeper/etc/logging_ok DATA || {
-	echo failed to union data
-	echo GOT vs WANTED
-	sdiff -w80 BitKeeper/etc/logging_ok DATA
-	exit 1
-}
-CNT=`bk -r prs -hr1.0 -d'$if(:DPN:=BitKeeper/etc/logging_ok){F\n}' | wc -l`
-if [ $CNT -ne 1 ]
-then	echo Should not have created another logging OK file
-	bk -r prs -hr1.0 -d'$if(:DPN:=BitKeeper/etc/logging_ok){:GFILE:\n}'
-	exit 1
-fi
 echo OK
 
 # Should not create two copies of the old logging OK, it should move the
@@ -440,23 +355,24 @@ cd $HERE
 rm -rf project copy
 tar xf TAR
 cd $HERE/project
-CNT=`bk -r prs -hr1.0 -d'$if(:DPN:=BitKeeper/etc/logging_ok){F\n}' | wc -l`
+CNT=`bk -r prs -hr1.0 -d'$if(:DPN:=BitKeeper/etc/gone){F\n}' | wc -l`
 if [ $CNT != 1 ]
-then	echo wrong number of logging OK files in PROJECT
+then	echo wrong number of gone files in PROJECT
 	exit 1
 fi
 cd $HERE/copy
-OLD=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/logging_ok`
-CNT=`bk -r prs -hr1.0 -d'$if(:DPN:=BitKeeper/etc/logging_ok){F\n}' | wc -l`
+OLD=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/gone`
+CNT=`bk -r prs -hr1.0 -d'$if(:DPN:=BitKeeper/etc/gone){F\n}' | wc -l`
 if [ $CNT != 1 ]
-then	echo wrong number of logging OK files in COPY
+then	echo wrong number of gone files in COPY
 	exit 1
 fi
-bk rm -f BitKeeper/etc/logging_ok
-echo y | bk commit $Q -yrm-logging_ok > /dev/null 2>&1
-NEW=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/logging_ok`
+bk rm -f BitKeeper/etc/gone
+bk gone $Q copy44
+echo y | bk commit $Q -yrm-gone > /dev/null 2>&1
+NEW=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/gone`
 if [ "$NEW" = "$OLD" ]
-then	echo failed to move logging_ok into deleted slot and create new one
+then	echo failed to move gone into deleted slot and create new one
 	exit 1
 fi
 BK_USER=jerk
@@ -467,33 +383,33 @@ test -d RESYNC && {
 	exit 1
 }
 # Should be 3, the original 2 and the new one after the rm.
-CNT=`bk -r prs -hr1.0 -d'$if(:DPN:=BitKeeper/etc/logging_ok){F\n}' | wc -l`
+CNT=`bk -r prs -hr1.0 -d'$if(:DPN:=BitKeeper/etc/gone){F\n}' | wc -l`
 if [ $CNT != 3 ]
-then	echo wrong number of logging OK files after pull
-	bk -r prs -hr1.0 -d'$if(:DPN:=BitKeeper/etc/logging_ok){:ROOTKEY:\n}'
+then	echo wrong number of gone files after pull
+	bk -r prs -hr1.0 -d'$if(:DPN:=BitKeeper/etc/gone){:ROOTKEY:\n}'
 	exit 1
 fi
-OK=`bk prs -hr1.0 '-d:TIME_T:\n' BitKeeper/etc/logging_ok`
+OK=`bk prs -hr1.0 '-d:TIME_T:\n' BitKeeper/etc/gone`
 bk sfiles BitKeeper/deleted |
-bk prs -hr1.0 -d'$if(:DPN:=BitKeeper/etc/logging_ok){:TIME_T: :GFILE:\n}' - |
+bk prs -hr1.0 -d'$if(:DPN:=BitKeeper/etc/gone){:TIME_T: :GFILE:\n}' - |
 while read tt file
 do	if [ $tt -lt $OK ]
-	then	echo "$file is older than BitKeeper/etc/logging_ok"
+	then	echo "$file is older than BitKeeper/etc/gone"
 		exit 1
 	fi
 	#if [ $tt -eq $OK ]
-	#then	echo "$file is same age as BitKeeper/etc/logging_ok"
+	#then	echo "$file is same age as BitKeeper/etc/gone"
 	#fi
 	#if [ $tt -gt $OK ]
-	#then	echo "$file is younger than BitKeeper/etc/logging_ok"
+	#then	echo "$file is younger than BitKeeper/etc/gone"
 	#fi
 done
 cat <<EOF > DATA
-jane@kick.dork
-jerk@blow.dork
-joe@blow.dork
+copy34
+copy44
+project34
 EOF
-bk get -kp $Q BitKeeper/etc/logging_ok | bk _sort > GOT
+bk get -kp $Q BitKeeper/etc/gone | bk _sort > GOT
 cmp -s GOT DATA || {
 	echo failed to union data
 	echo GOT vs WANTED

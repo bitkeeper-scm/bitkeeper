@@ -34,12 +34,10 @@ typedef	struct cset {
 	pid_t	pid;		/* adler32 process id */
 } cset_t;
 
-private int	csetCreate(sccs *cset, int flags, char **syms);
 private	void	csetlist(cset_t *cs, sccs *cset);
 private	int	marklist(char *file);
 private	void	csetDeltas(cset_t *cs, sccs *sc, delta *start, delta *d);
 private	delta	*mkChangeSet(sccs *cset, FILE *diffs);
-private	char	*file2str(char *f);
 private	void	doSet(sccs *sc);
 private	void	doMarks(cset_t *cs, sccs *sc);
 private	void	doDiff(sccs *sc, char kind);
@@ -115,9 +113,8 @@ int
 cset_main(int ac, char **av)
 {
 	sccs	*cset;
-	int	dflags = 0, flags = 0;
+	int	flags = 0;
 	int	c, list = 0;
-	char	**syms = 0;
 	int	ignoreDeleted = 0;
 	char	*cFile = 0;
 	char	allRevs[6] = "1.0..";
@@ -137,7 +134,7 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 
 	while (
 	    (c =
-	    getopt(ac, av, "c|e|Cd|DfHhi;lm|M|pqr|sS;vx;y|Y|")) != -1) {
+	    getopt(ac, av, "c|e|Cd|DfHhi;lm|M|pqr|svx;")) != -1) {
 		switch (c) {
 		    case 'D': ignoreDeleted++; break;		/* undoc 2.0 */
 		    case 'f': copts.force++; break;		/* undoc? 2.0 */
@@ -206,17 +203,6 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 			copts.exclude++;
 			r[rd++] = optarg;
 			break;
-		    case 'y':					/* doc 2.0 */
-			comments_save(optarg);
-			dflags |= DELTA_DONTASK;
-			break;
-		    case 'Y':					/* doc 2.0 */
-			comments_save(cFile = file2str(optarg));
-			dflags |= DELTA_DONTASK;
-			break;
-		    case 'S': 					/* doc 2.0 */
-				syms = addLine(syms, strdup(optarg)); break;
-
 		    default:
 			sprintf(buf, "bk help -s %s", av[0]);
 			system(buf);
@@ -294,20 +280,10 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 		csetlist(&copts, cset);
 next:		sccs_free(cset);
 		if (cFile) free(cFile);
-		freeLines(syms, free);
 		return (0);
 	}
-
-	/*
-	 * Otherwise, go figure out if we have anything to add to the
-	 * changeset file.
-	 * XXX - should allow them to pick and choose for multiple
-	 * changesets from one pending file.
-	 */
-	c = csetCreate(cset, dflags|flags, syms);
-	if (cFile) free(cFile);
-	freeLines(syms, free);
-	return (c);
+	fprintf(stderr, "cset: bad options\n");
+	return (1);
 }
 
 private void
@@ -1070,7 +1046,8 @@ mkChangeSet(sccs *cset, FILE *diffs)
 #endif
 	return (d);
 }
-private	int
+
+int
 csetCreate(sccs *cset, int flags, char **syms)
 {
 	delta	*d;
@@ -1121,37 +1098,6 @@ out:	sccs_free(cset);
 	unlink(filename);
 	comments_done();
 	return (error);
-}
-
-private	char	*
-file2str(char *f)
-{
-	struct	stat sb;
-	int 	n;
-	int	fd = open(f, O_RDONLY, 0);
-	char	*s;
-
-	setmode(fd, O_TEXT);
-	if ((fd == -1) || (fstat(fd, &sb) == -1) || (sb.st_size == 0)) {
-		fprintf(stderr, "Can't get comments from %s\n", f);
-		if (fd != -1) close(fd);
-		return (0);
-	}
-	s = malloc(sb.st_size + 1);
-	if (!s) {
-		perror("malloc");
-		close(fd);
-		return (0);
-	}
-	/*
-	 * Note: On win32, n may be smaller than sb.st_size
-	 * because text mode remove \r when reading
-	 */
-	n = read(fd, s, sb.st_size);
-	assert((n >= 0) && (n <= sb.st_size));
-	s[n] = 0;
-	close(fd);
-	return (s);
 }
 
 /*
