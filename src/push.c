@@ -182,19 +182,22 @@ updLogMarker(int ptype, int verbose)
 {
 	sccs	*s;
 	delta	*d;
-	char	s_cset[] = CHANGESET;
+	char	s_cset[] = CHANGESET, rev[MAXREV+1];
+	int	i;
 
-	/*
-	 * LOD Note:
-	 * XXX TODO: We should mark the tip of each lod
-	 */
 	if (s = sccs_init(s_cset, INIT_NOCKSUM, 0)) {
-		assert(s->tree);
-		d = findrev(s, 0);
-		assert(d);
-		unPublish(s, d);
-		d->published = 1;
-		d->ptype = ptype;
+
+		/*
+		 * Update log marker for each LOD
+		 */
+		for (i = 1; i <= 0xffff; ++i) {
+			sprintf(rev, "%d.1", i);
+			unless (d = findrev(s, rev)) break;
+			while (d->kid && (d->kid->type == 'D')) d = d->kid;
+			unPublish(s, d);
+			d->published = 1;
+			d->ptype = ptype;
+		}
 		sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
 		sccs_free(s);
 		if (verbose) {
