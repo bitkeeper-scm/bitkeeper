@@ -327,6 +327,7 @@ visit(delta *d)
 	if (d->parent) visit(d->parent);
 }
 
+#ifdef	CRAZY_WOW
 /*
  * Print out everything leading from start to d, not including start.
  * XXX - stolen from cset.c - both copies need to go in slib.c.
@@ -353,6 +354,7 @@ csetDeltas(sccs *sc, delta *start, delta *d)
 	// Is this an issue?  I think makepatch handles them.
 	if (d->type == 'D') printf("%s:%s\n", sc->sfile, d->rev);
 }
+#endif
 
 save(sccs *sc, MDBM *idDB, char *buf)
 {
@@ -409,7 +411,7 @@ caches(const char *filename, const struct stat *sb, int flag)
 		}
 	}
 
-	unless (Cflg && !(sc->state & S_CSET)) {
+	unless (Cflg) {
 		sccs_free(sc);
 		return (0);
 	}
@@ -421,6 +423,21 @@ caches(const char *filename, const struct stat *sb, int flag)
 		return (0);
 	}
 
+	/*
+	 * If it's marked, we're done.
+	 */
+	if (d->flags & D_CSET) {
+		sccs_free(sc);
+		return;
+	}
+
+	printf("%s:%s\n", sc->sfile, d->rev);
+	while (aFlg && d->parent && !(d->parent->flags & D_CSET)) {
+		d = d->parent;
+		printf("%s:%s\n", sc->sfile, d->rev);
+	}
+
+#ifdef	CRAZY_WOW
 	/* Go look for long and short versions in the cset */
 	sccs_sdelta(sc, sccs_ino(sc), buf);
 	unless (t = mdbm_fetch_str(cset->mdbm, buf)) {
@@ -448,6 +465,7 @@ caches(const char *filename, const struct stat *sb, int flag)
 			printf("%s:%s\n", sc->sfile, d->rev);
 		}
 	}
+#endif
 	sccs_free(sc);
 	return (0);
 }
