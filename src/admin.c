@@ -73,8 +73,8 @@ admin_main(int ac, char **av)
 		    case 'M':					/* doc 2.0 */
 				merge = optarg; flags |= NEWCKSUM; break;
 		/* mode */
-		/* XXX should accept octal modes too */
 		    case 'm':	m = optarg;			/* doc 2.0 */
+				new_delta = 1;
 		   		flags |= NEWCKSUM;
 				break;
 		/* pathname */

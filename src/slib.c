@@ -176,7 +176,7 @@ getMode(char *arg)
 
 	if (isdigit(*arg)) {
 		char	*p = arg;
-		for (m = 0; isdigit(*p); m <<= 3, m |= (*arg - '0'), p++) {
+		for (m = 0; isdigit(*p); m <<= 3, m |= (*p - '0'), p++) {
 			unless ((*p >= '0') && (*p <= '7')) {
 				fprintf(stderr, "Illegal octal file mode: %s\n",
 				    arg);

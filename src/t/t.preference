@@ -134,6 +134,9 @@ if [ ! -f $HERE/copy2/src/SCCS/p.foo.c ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N checkout:EDIT w chmod .......................................$NL
+# 'unedit' will actually get the file to be check out edit (plocked)
+bk unedit foo.c
+test -w foo.c || { echo failed; exit 1; }
 test -x foo.c && { echo failed; exit 1; }
 bk chmod +x foo.c || exit 1
 if [ ! -f foo.c ]; then echo failed; exit 1; fi
@@ -142,6 +145,17 @@ if [ ! -f SCCS/p.foo.c ]; then echo failed; exit 1; fi
 test -x foo.c || { echo failed; exit 1; }
 find SCCS -newer foo.c | grep SCCS/s.foo.c > /dev/null
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
+bk chmod 400 foo.c 2> CHMOD_WARN || {
+	echo failed
+	echo chmod 400 stderr:
+	cat CHMOD_WARN
+	exit 1
+}
+if [ ! -f foo.c ]; then echo failed; exit 1; fi
+if [ ! -w foo.c ]; then echo failed; exit 1; fi
+if [ ! -f SCCS/p.foo.c ]; then echo failed; exit 1; fi
+test -x foo.c && { echo failed; exit 1; }
+find SCCS -newer foo.c | grep SCCS/s.foo.c > /dev/null
 echo OK
 
 

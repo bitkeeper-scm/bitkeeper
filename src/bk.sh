@@ -73,6 +73,11 @@ _flags() {		# /* undoc? 2.0 */
 }
 
 # shorthand
+_mode() {		# /* undoc? 2.0 */
+	bk prs -hr+ -nd':GFILE: :RWXMODE:' "$@"
+}
+
+# shorthand
 _encoding() {		# /* undoc? 2.0 */
 	bk prs -hr+ -nd':GFILE: :ENC:' "$@"
 }
@@ -686,6 +691,7 @@ _chmod() {		# /* doc 2.0 */
 		omode=`ls -l "$i" | sed 's/[ \t].*//'`
 		chmod $MODE "$i"
 		mode=`ls -l "$i" | sed 's/[ \t].*//'`
+		chmod u+rw "$i"
 		bk unedit "$i"	# follow checkout modes
 		if [ $omode = $mode ]
 		then	continue
