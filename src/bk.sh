@@ -1031,7 +1031,11 @@ __mail() {
 
 __logAddr() {
 	__cd2root
-	#LOG=`grep "^logging:" ${BK_ETC}config | tr -d '[\t, ]'`
+	while getopts R opt
+	do	case "$opt" in
+		R) BK_ETC="../BitKeeper/etc/";; # called from RESYNC
+		esac
+	done
 	LOG=`${BIN}get -qp ${BK_ETC}config | grep "^logging:" | tr -d '[\t, ]'`
 	case X${LOG} in
 	Xlogging:*)
