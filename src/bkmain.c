@@ -153,6 +153,7 @@ main(int ac, char **av)
 	int i, j, rc;
 	char cmd_path[MAXPATH];
 	char *argv[100];
+	char *p;
 
 	/*
 	 * XXX TODO: implement "__logCommand"
@@ -208,9 +209,11 @@ main(int ac, char **av)
 	}
 
 	/*
-	 * Set up PATH variable
+	 * Set up Env variables
 	 */
-	unless (strneq(bin, getenv("PATH"), strlen(bin) - 1)) {
+	assert(bin);
+	p = getenv("PATH");
+	unless (p && strneq(bin, getenv("PATH"), strlen(bin) - 1)) {
 		char path[MAXLINE];
 		int last = strlen(bin) -1;
 
@@ -218,9 +221,11 @@ main(int ac, char **av)
 		bin[last] = 0; /* trim tailing slash */
 		sprintf(path, "PATH=%s:%s", bin, getenv("PATH"));
 		bin[last] = '/'; /* restore tailing slash */
-		putenv(path);
+		putenv(strdup(path));
 
 	}
+	sprintf(cmd_path, "BK_BIN=%s", bin);
+	putenv(strdup(cmd_path));
 
 	/*
 	 * look up the internal command 
@@ -239,6 +244,7 @@ main(int ac, char **av)
 		sprintf(cmd_path, "%s%s", bin, av[0]);
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
+		argv[i] = 0;
 		return (spawnvp_ex(_P_WAIT, argv[0], argv));;
 	}
 
@@ -251,6 +257,7 @@ main(int ac, char **av)
 		sprintf(cmd_path, "%s%s", bin, av[0]);
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
+		argv[i] = 0;
 		return (spawnvp_ex(_P_WAIT, argv[0], argv));;
 	}
 
@@ -271,6 +278,7 @@ main(int ac, char **av)
 		sprintf(cmd_path, "%s%s", bin, av[0]);
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
+		argv[i] = 0;
 		return (spawnvp_ex(_P_WAIT, argv[0], argv));
 	}
 
@@ -280,10 +288,19 @@ main(int ac, char **av)
 	if (streq(av[0], "resync") ||
 	    streq(av[0], "clone") ||
 	    streq(av[0], "pull")) {
-		argv[0] = "sh";
+#ifdef WIN32
+		argv[0] = "bash";
+#else
+		argv[0] = "/bin/sh";
+#endif
 		sprintf(cmd_path, "%s%s", bin, av[0]);
 		argv[1] = cmd_path;
-		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
+		for (i = 2, j = 1; av[j]; i++, j++) {
+			argv[i] = av[j];
+		}
+		argv[i] = 0;
+		for (i = 0; argv[i] != 0;  i++) {
+		}
 		return (spawnvp_ex(_P_WAIT, argv[0], argv));
 	}
 
@@ -301,10 +318,15 @@ main(int ac, char **av)
 	 * b) external program/script
 	 * XXX This is slow because we are going thru the shell
 	 */
-	argv[0] = "sh";
+#ifdef WIN32
+	argv[0] = "bash";
+#else
+	argv[0] = "/bin/sh";
+#endif
 	sprintf(cmd_path, "%sbk.script", bin);
 	argv[1] = cmd_path;
 	for (i = 2, j = 0; av[j]; i++, j++) argv[i] = av[j];
+	argv[i] = 0;
 	return (spawnvp_ex(_P_WAIT, argv[0], argv));
 }
 

@@ -505,6 +505,8 @@ cd2root()
 void
 platformInit()
 {
+	// XXX TODO:  Need a new way to handle the @bitkeeper_bin@ installed
+	// time variable.
 	char *paths[] = {
 		"/usr/libexec/bitkeeper/",
 		"/usr/lib/bitkeeper/",
@@ -519,6 +521,7 @@ platformInit()
 	char buf[MAXPATH];
 	int i = -1;
 
+	if (bin) return;
 #ifdef WIN32
 	setmode(1, _O_BINARY);
 	setmode(2, _O_BINARY);
@@ -535,14 +538,7 @@ platformInit()
 
 	while (paths[++i]) {
 		sprintf(buf, "%s%s", paths[i], TAG_FILE);
-		if (exists(buf)){
-			bin =  strdup(paths[i]);
-			sprintf(buf, "BK_BIN=%s", paths[i]);
-			putenv(buf);
-			sprintf(buf, "PATH=%s:/usr/xpg4/bin:%s",
-					    paths[i], getenv("PATH"));
-			putenv(buf);
-		}
+		if (exists(buf)) bin =  strdup(paths[i]);
 	}
 }
 

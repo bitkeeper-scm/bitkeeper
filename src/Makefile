@@ -5,11 +5,12 @@
 # have an installed BitKeeper.
 BK_BIN	= /usr/libexec/bitkeeper
 BINS 	= bk bkd sccssh
-BK_SUBS	= adler32.o admin.o check.o chksum.o clean.o cset.o delta.o diffs.o \
+BKOBJ	= bkmain.o \
+	  adler32.o admin.o check.o chksum.o clean.o cset.o delta.o diffs.o \
 	  fdiff.o g2sccs.o get.o gethost.o getuser.o key2rev.o lines.o lod.o \
 	  prs.o range.o rechksum.o renumber.o rmdel.o sccscat.o sccslog.o \
 	  sccsmv.o sccsrm.o sfiles.o sfio.o sids.o sinfo.o stripdel.o \
-	  smoosh.o takepatch.o undos.o what.o gca.o mtime.o zone.o	 \
+	  smoosh.o takepatch.o undos.o what.o gca.o mtime.o zone.o \
 	  bkusers.o commit.o fix.o gethelp.o getlog.o help.o \
 	  isascii.o logaddr.o logchangeset.o parent.o r2c.o \
 	  receive.o send.o sendconfig.o setlog.o setup.o status.o unwrap.o \
@@ -139,7 +140,7 @@ production_image: rebuild p image
 # Cleanup targets.
 clean-obj: FORCE
 	-/bin/rm -f $(PORTOBJ) $(SCCSOBJ) $(MDBMOBJ) $(ZLIBOBJ) $(BINOBJ) \
-	    $(BKDOBJ) $(RESOBJ) $(LIBS) bkhelp.txt a.out core
+	    $(BKDOBJ) ${BKOBJ} $(RESOBJ) $(LIBS) bkhelp.txt a.out core
 	-cd gnu && $(MAKE) clean-obj
 
 clean-bin: FORCE
@@ -222,8 +223,8 @@ libsccs.a: $(SCCSOBJ) $(PORTOBJ)
 	$(AR) cr libsccs.a $(SCCSOBJ) $(PORTOBJ)
 	-$(RANLIB) libsccs.a
 
-bk: bkmain.o ${BK_SUBS} ${RESOBJ}
-	$(CC) $(CFLAGS) bkmain.o ${BK_SUBS} ${RESOBJ} $(LINK) -o bk
+bk: ${BKOBJ} ${RESOBJ}
+	$(CC) $(CFLAGS) ${BKOBJ} ${RESOBJ} $(LINK) -o bk
 
 zone: zone.o localtm.o port/platforminit.o
 	$(CC) $(CFLAGS) -o zone zone.o localtm.o port/platforminit.o

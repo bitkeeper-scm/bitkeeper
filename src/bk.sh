@@ -671,45 +671,13 @@ __init() {
 }
 
 __platformPath() {
-	# We find the internal binaries like this:  If BK_BIN is set
-	# and points at a directory containing an `sccslog' executable,
-	# use it.  Otherwise, look through a list of places where the
-	# executables might be found, and use the first one that exists.
-	# In both cases we export BK_BIN so that subcommands don't have to
-	# go through all this rigmarole.  (See e.g. oldresolve.perl.)
-
-	# XXX TODO bk_tagfile should be a config varibale
-	#     On NT, bk_tagfile should be "sccslog.exe"
-        bk_tagfile="bk"
-
+	# BK_BIN is computed in bkmain.c
 	BIN=
-	if [ X$BK_BIN != X -a -x ${BK_BIN}$bk_tagfile ]
+	if [ X$BK_BIN != X ]
 	then	BIN="$BK_BIN"
 		export BK_BIN
 		return
 	fi
-	# The following  path  list only works in unix, on win32 we must find it
-	# in @bitkeeper_bin@
-	#
-	# This list must match the list in port/unix_platform.tcl and 
-	# utils/extractor.c
-	for i in @bitkeeper_bin@ \
-	    /usr/libexec/bitkeeper \
-	    /usr/lib/bitkeeper \
-	    /usr/bitkeeper \
-	    /opt/bitkeeper \
-	    /usr/local/bitkeeper \
-	    /usr/local/bin/bitkeeper \
-	    /usr/bin/bitkeeper
-	do	if [ -x $i/$bk_tagfile ]
-		then	BIN="$i/"
-			BK_BIN=$BIN
-			export BK_BIN
-			PATH=$BIN:/usr/xpg4/bin:$PATH
-			return
-		fi
-	done
-
 	echo "Installation problem: cannot find binary directory" >&2
 	exit 1
 }
