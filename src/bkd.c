@@ -279,7 +279,7 @@ get_byte_count()
 
 	char buf[MAXPATH];
 	off_t	byte_count = 0;
-	FILE *f;
+	FILE *f = 0;
 
 	unless (bk_proj && bk_proj->root) return (0);
 	sprintf(buf, "%s/BitKeeper/log/byte_count", bk_proj->root);
@@ -287,10 +287,12 @@ get_byte_count()
 	if (f && fgets(buf, sizeof(buf), f)) {
 		if (strlen(buf) > 11) {
 			fprintf(stderr, "Holy big transfer, Batman!\n");
+			fclose(f);
 			return ((off_t)0xffffffff);
 		}
 		byte_count = strtoul(buf, 0, 10);
 	}
+	if (f) fclose(f);
 	return (byte_count);
 }
 

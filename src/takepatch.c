@@ -196,17 +196,20 @@ usage:		fprintf(stderr, takepatch_help);
 		cleanup(CLEAN_RESYNC | CLEAN_PENDING);
 	}
 	if (resolve) {
+		char 	*resolve[7] = {"bk", "resolve", "-q", 0, 0, 0, 0};
+		int 	i;
+
 		if (echo) {
 			fprintf(stderr,
 			    "Running resolve to apply new work...\n");
 		}
-		if (textOnly) {
-			system(echo ? "bk resolve -t" : "bk resolve -qt");
-		} else {
-			system(echo ? "bk resolve" : "bk resolve -q");
-		}
+		i = 2;
+		if (!echo) resolve[++i] = "-q";
+		if (textOnly) resolve[++i] = "-t";
+		if (noConflicts) resolve[++i] = "-c";
+		error = spawnvp_ex(_P_WAIT, resolve[0], resolve);
 	}
-	exit(0);
+	exit(error);
 }
 
 /*

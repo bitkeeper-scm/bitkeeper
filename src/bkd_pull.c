@@ -159,7 +159,6 @@ uncompressed(char *csets_out)
 	return (100);
 }
 
-//XXX this code path have no regression test
 private int
 compressed(int gzip, char *csets_out)
 {
