@@ -335,18 +335,24 @@ disconnect(remote *r, int how)
 
 
 int
-get_ok(remote *r, int verbose)
+get_ok(remote *r, char *read_ahead, int verbose)
 {
 	int 	i, ret;
-	char	buf[200] = "";
+	char	buf[200], *p;
 
-	ret = getline2(r, buf, sizeof(buf));
-	if (ret <= 0) {
-		if (verbose) fprintf(stderr, "Got EOF.\n");
-		return (1); /* failed */
+	if (read_ahead) {
+		p = read_ahead;
+	} else {
+		ret = getline2(r, buf, sizeof(buf));
+		if (ret <= 0) {
+			if (verbose) fprintf(stderr, "get_ok: Got EOF.\n");
+			return (1); /* failed */
+		}
+		p = buf;
 	}
-	if (streq(buf, "@OK@")) return (0); /* ok */
-	if (strneq(buf, "ERROR-BAD CMD:", 14)) {
+
+	if (streq(p, "@OK@")) return (0); /* ok */
+	if (strneq(p, "ERROR-BAD CMD:", 14)) {
 		fprintf(stderr,
 			"Remote seems to be running a older BitKeeper release\n"
 			"Try \"bk opush\", \"bk opull\" or \"bk oclone\"\n");
@@ -354,7 +360,7 @@ get_ok(remote *r, int verbose)
 	}
 	if (verbose) {
 		i = 0;
-		fprintf(stderr, "remote: %s\n", buf);
+		fprintf(stderr, "remote: %s\n", p);
 		while (getline2(r, buf, sizeof(buf)) > 0) {
 			fprintf(stderr, "remote: %s\n", buf);
 			if (streq(buf, "@END@")) break;

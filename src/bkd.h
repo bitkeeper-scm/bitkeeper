@@ -109,7 +109,7 @@ remote	*remote_parse(char *p, int is_clone);
 sccs *	mk_probekey(FILE *f);
 void	sccs_color(sccs *s, delta *d);
 int	getline2(remote *r, char *buf, int size); 
-int	get_ok(remote *r, int verbose); 
+int	get_ok(remote *r, char *read_ahead, int verbose); 
 int	send_msg(remote *r, char *msg, int mlen, int extra, int compress);
 int	skip_hdr(remote *r);
 int	getTriggerInfoBlock(remote *r, int verbose); 
