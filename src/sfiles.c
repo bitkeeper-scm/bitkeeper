@@ -138,28 +138,7 @@ parse_select(char *sets)
 private int
 fastprint(char *file, struct stat *sb, void *data)
 {
-	char	*p = strrchr(file, '/');
-
-	unless (p) return (0);
-	if (S_ISDIR(sb->st_mode)) {
-		if (p - file > 1 && patheq(p+1, "BitKeeper")) {
-			/*
-			 * Do not cross into other package roots
-			 * (e.g. RESYNC).
-			 */
-			strcat(file, "/etc");
-			if (exists(file)) return (-2);
-		}
-	} else {
-		if ((p - file >= 6) && pathneq(p - 5, "/SCCS/s.", 8)) {
-			puts(file + 2);
-		} else if (patheq(p+1, BKSKIP)) {
-			/*
-			 * Skip directory containing a .bk_skip file
-			 */
-			return (-2);
-		}
-	}
+	puts(file + 2);
 	return (0);
 }
 
@@ -173,7 +152,7 @@ sfiles_main(int ac, char **av)
 	if (setjmp(sfiles_exit)) return (1); /* error exit */
 
 	if (ac == 1) {
-		walkdir(".", fastprint, 0);
+		walksfiles(".", fastprint, 0);
 		return (0);
 	}
 
@@ -1154,4 +1133,49 @@ handle_dflg(int ac, char **av, int dflg)
 			walkdir(av[i], walk_dflg, (void *)dflg);
 		}
 	}
+}
+
+typedef struct sinfo sinfo;
+struct sinfo {
+	walkfn	fn;
+	void	*data;
+};
+
+private int
+findsfiles(char *file, struct stat *sb, void *data)
+{
+	char	*p = strrchr(file, '/');
+
+	unless (p) return (0);
+	if (S_ISDIR(sb->st_mode)) {
+		if (p - file > 1 && patheq(p+1, "BitKeeper")) {
+			/*
+			 * Do not cross into other package roots
+			 * (e.g. RESYNC).
+			 */
+			strcat(file, "/etc");
+			if (exists(file)) return (-2);
+		}
+	} else {
+		if ((p - file >= 6) && pathneq(p - 5, "/SCCS/s.", 8)) {
+			sinfo	*si = (sinfo *)data;
+			return (si->fn(file, sb, si->data));
+		} else if (patheq(p+1, BKSKIP)) {
+			/*
+			 * Skip directory containing a .bk_skip file
+			 */
+			return (-2);
+		}
+	}
+	return (0);
+}
+
+int
+walksfiles(char *dir, walkfn fn, void *data)
+{
+	sinfo	si;
+
+	si.fn = fn;
+	si.data = data;
+	return (walkdir(dir, findsfiles, &si));
 }

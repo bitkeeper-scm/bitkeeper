@@ -1099,6 +1099,7 @@ int	delta_table(sccs *s, FILE *out, int willfix);
 char	**getdir(char *);
 typedef	int	(*walkfn)(char *file, struct stat *statbuf, void *data);
 int	walkdir(char *dir, walkfn fn, void *data);
+int	walksfiles(char *dir, walkfn fn, void *data);
 char	*getParent(void);
 char	**getParentList(char *, char **);
 delta	*getSymlnkCksumDelta(sccs *s, delta *d);

@@ -75,7 +75,7 @@ rebuild(void)
 	id_sum = 0;
 	idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	assert(idDB);
-	walkdir(".", caches, id_cache);
+	walksfiles(".", caches, id_cache);
 	fprintf(id_cache, "#$sum$ %u\n", id_sum);
 	fclose(id_cache);
 	if (dups) {
@@ -133,30 +133,9 @@ caches(char *file, struct stat *sb, void *data)
 	sccs	*sc;
 	delta	*ino;
 	char	*t;
-	char	*p = strrchr(file, '/');
 	char	buf[MAXPATH*2];
 
-	unless (p) return (0);
-	if (S_ISDIR(sb->st_mode)) {
-		if (p - file > 1 && patheq(p+1, "BitKeeper")) {
-			/*
-			 * Do not cross into other package roots
-			 * (e.g. RESYNC).
-			 */
-			strcat(file, "/etc");
-			if (exists(file)) return (-2);
-		}
-		return (0);
-	}
-	if (patheq(p+1, BKSKIP)) {
-		/*
-		 * Skip directory containing a .bk_skip file
-		 */
-		return (-2);
-	}
-
-	if ((file[0] == '.') && (file[1] == '/')) file += 2;
-	unless (sccs_filetype(file) == 's') return (0);
+	file += 2;
 	unless (sc = init(file, INIT_NOCKSUM)) return (0);
 	unless (HAS_SFILE(sc) && sc->cksumok) {
 		sccs_free(sc);
