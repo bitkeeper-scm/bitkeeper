@@ -159,11 +159,11 @@ preference to the BitKeeper/etc/config file.
 Keyword preference options are:
 .TP .80i
 .B sccs
-expand SCCS keywords (%keyword%)
+expand SCCS keywords (%keyword%).
 .tp
 .B expand1
 expand keywords in the first line that contains keywords only (avoids printf
-conflicts)
+conflicts).
 .tp
 .B rcs
 expand rcs keywords ($keyword$)
@@ -178,12 +178,17 @@ encountered that contains sccs keywords.
 .br
 The unix and win32 operating systems use different characters to represent
 line terminations (eoln).  \*(BK, by default, sets the EOLN_NATIVE flag
-to "on" when an sfile is created.  To change this to make the
-EOLN_NATIVE flag default to "off", add
+to "on" when an sfile is created.  EOLN_NATIVE mode means that files checked
+out on Windows will have the Windows eoln and files checked out on UNIX will
+have the UNIX eoln.
+To force the UNIX eoln mode on all platforms use:
 .DS
 eoln:unix
 .DE
-to the BitKeeper/etc/config file.
+to the BitKeeper/etc/config file.  
+.LP
+There is no way to force the Windows eoln mode on all 
+platforms.
 .SS Checkout Mode
 .br
 Specify checkout mode for a repository.  The default is to not show 
@@ -207,15 +212,11 @@ Automatically do a bk edit
 .ARG file
 after doing a bk delta
 .ARG file .
-(Checkout in edit mode.)
-.tp
-.B EDIT
-Automatically do a bk edit
-.ARG file
-after doing a bk delta
-.ARG file ,
-but adjust mod time of the s.file to be one second before the mod time
-of the gfile.  This prevents recompilation after a check-in operation.
+Note: This will also
+adjust the modification time of the s.file to be one second before the 
+modification time
+of the gfile, which is needed in order to prevent make(1) from attempting
+to reget the file.
 (Checkout in edit mode.)
 .tp
 .B none
