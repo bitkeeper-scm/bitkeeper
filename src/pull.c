@@ -135,8 +135,9 @@ pull_part1(opts opts, remote *r, char probe_list[], char **envVar)
 	getline2(r, buf, sizeof (buf));
 	if (streq(buf, "@SERVER INFO@")) {
 		getServerInfoBlock(r);
+		getline2(r, buf, sizeof (buf));
 	}
-	if (get_ok(r, !opts.quiet)) {
+	if (get_ok(r, buf, !opts.quiet)) {
 		disconnect(r, 2);
 		return (1);
 	}
@@ -210,8 +211,12 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	}
 
 	if (r->httpd) skip_http_hdr(r);
-	getServerInfoBlock(r);
-	if (get_ok(r, !opts.quiet)) {
+	getline2(r, buf, sizeof (buf));
+	if (streq(buf, "@SERVER INFO@")) {
+		getServerInfoBlock(r);
+		getline2(r, buf, sizeof (buf));
+	}
+	if (get_ok(r, buf, !opts.quiet)) {
 		rc = 1;
 		goto done;
 	}

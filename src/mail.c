@@ -60,7 +60,7 @@ lconfig_main(int ac, char **av)
 	assert(m);
 	rc = http_send(r, m->where, msize(m), 0, "webmail", WEB_MAIL_CGI);
 	mclose(m);
-	unless (rc) rc = get_ok(r, 0);
+	unless (rc) rc = get_ok(r, 0, 0);
 	disconnect(r, 2);
 	unlink(config_log);
 	updLogMarker(1);

@@ -335,18 +335,24 @@ disconnect(remote *r, int how)
 
 
 int
-get_ok(remote *r, int verbose)
+get_ok(remote *r, char *read_ahead, int verbose)
 {
 	int 	i, ret;
-	char	buf[200] = "";
+	char	buf[200], *p;
 
-	ret = getline2(r, buf, sizeof(buf));
-	if (ret <= 0) {
-		if (verbose) fprintf(stderr, "Got EOF.\n");
-		return (1); /* failed */
+	if (read_ahead) {
+		p = read_ahead;
+	} else {
+		ret = getline2(r, buf, sizeof(buf));
+		if (ret <= 0) {
+			if (verbose) fprintf(stderr, "get_ok: Got EOF.\n");
+			return (1); /* failed */
+		}
+		p = buf;
 	}
-	if (streq(buf, "@OK@")) return (0); /* ok */
-	if (strneq(buf, "ERROR-BAD CMD:", 14)) {
+
+	if (streq(p, "@OK@")) return (0); /* ok */
+	if (strneq(p, "ERROR-BAD CMD:", 14)) {
 		fprintf(stderr,
 			"Remote seems to be running a older BitKeeper release\n"
 			"Try \"bk opush\", \"bk opull\" or \"bk oclone\"\n");
@@ -354,7 +360,7 @@ get_ok(remote *r, int verbose)
 	}
 	if (verbose) {
 		i = 0;
-		fprintf(stderr, "remote: %s\n", buf);
+		fprintf(stderr, "remote: %s\n", p);
 		while (getline2(r, buf, sizeof(buf)) > 0) {
 			fprintf(stderr, "remote: %s\n", buf);
 			if (streq(buf, "@END@")) break;
@@ -425,36 +431,6 @@ getServerInfoBlock(remote *r)
 		putenv(p);
 	}
 	return (1); /* protocol error */
-}
-
-int
-getTriggerInfoBlock(remote *r, int verbose)
-{
-	char	buf[4096];
-	int	i =0, rc = 0;
-
-	while (getline2(r, buf, sizeof(buf)) > 0) {
-		if (buf[0] == BKD_DATA) {
-			unless (i++) {
-				if (verbose) fprintf(stderr,
-"------------------------- Remote trigger message --------------------------\n"
-				);
-			}
-			if (verbose) fprintf(stderr, "%s\n", &buf[1]);
-		} else if (buf[0] == BKD_RC) {
-			rc = atoi(&buf[1]);
-			if (rc && r->trace) {
-				fprintf(stderr, "trigger failed rc=%d\n", rc);
-			}
-		}
-		if (streq(buf, "@END@")) break;
-	}
-	if (i && verbose) {
-		fprintf(stderr, 
-"---------------------------------------------------------------------------\n"
-		);
-	}
-	return (rc);
 }
 
 void

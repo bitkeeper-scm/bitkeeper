@@ -330,9 +330,11 @@ cmd_push_part2(int ac, char **av)
 
 	waitpid(pid, &status, 0);
 	rc =  WEXITSTATUS(status);
-	printf("%c%d\n", BKD_RC, rc);
-	fflush(stdout);
 	write(1, &bkd_nul, 1);
+	if (rc) {
+		printf("%c%d\n", BKD_RC, rc);
+		fflush(stdout);
+	}
 	fputs("@END@\n", stdout);
 	if (!WIFEXITED(status)) {
 		putenv("BK_INCOMING=SIGNALED");
@@ -370,9 +372,11 @@ cmd_push_part2(int ac, char **av)
 	waitpid(pid, &status, 0);
 	close(pfd);
 	rc =  WEXITSTATUS(status);
-	printf("%c%d\n", BKD_RC, rc);
-	fflush(stdout);
 	write(1, &bkd_nul, 1);
+	if (rc) {
+		printf("%c%d\n", BKD_RC, rc);
+		fflush(stdout);
+	}
 	fputs("@END@\n", stdout);
 	fflush(stdout);
 	if (!WIFEXITED(status)) {

@@ -135,7 +135,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		goto done;
 		
 	}
-	if (get_ok(r, !opts.quiet)) {
+	if (get_ok(r, 0, !opts.quiet)) {
 		disconnect(r, 2);
 		goto done;
 	}
