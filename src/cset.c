@@ -446,10 +446,12 @@ markThisCset(cset_t *cs, sccs *s, delta *d)
 			delta	*e = sfind(s, d->merge);
 
 			assert(e);
-			unless (e->flags & D_CSET) markThisCset(cs, s, e);
+			unless (e->flags & (D_SET|D_CSET)) {
+				markThisCset(cs, s, e);
+			}
 		}
 		d = d->parent;
-	} while (d && !(d->flags & D_CSET));
+	} while (d && !(d->flags & (D_SET|D_CSET)));
 }
 
 /*

@@ -461,25 +461,9 @@ import_RCS () {
 
 import_SCCS () {
 	cd "$2"
-	msg Making sure all files have pathnames, proper dates, and checksums...
-	bk sccs2bk -c`bk prs -hr+ -nd:ROOTKEY: ChangeSet` - < ${TMP}import$$ ||
+	msg Converting SCCS files...
+	bk sccs2bk $VERIFY -c`bk prs -hr+ -nd:ROOTKEY: ChangeSet` - < ${TMP}import$$ ||
 	    exit 1
-	bk sfiles -P > /dev/null
-	test X$VERIFY = X && return
-	# XXX - this needs to be a C program
-	echo Verifying each rev in each SCCS file, please wait...
-	while read x
-	do	bk prs -hnd:I: $x | while read rev
-		do	bk get -Fqkpr$rev "$FROM/$x" > ${TMP}cmp$$
-			bk get -qkpr$rev "$x" | cmp -s ${TMP}cmp$$ - || {
-				echo ============= ERROR ==============
-				echo "Rev $rev in $x has differences"
-				bk get -qkpr$rev "$x" | diff ${TMP}cmp$$ -
-				exit 1
-			}
-		done 
-		echo "$x OK"
-	done < ${TMP}import$$
 	rm -f ${TMP}cmp$$
 }
 
