@@ -687,7 +687,7 @@ proc Page {view dir one} \
 	set y [lindex $p 1]
 	set w [winfo containing $x $y]
 	#puts "window=($w)"
-	if {[regexp {^.diffs} $w]} {
+	if {[regexp {^.diffs} $w] || [regexp {^.menu} $w]} {
 		page ".diffs" $view $dir $one
 		return 1
 	}
