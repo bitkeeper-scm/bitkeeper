@@ -59,7 +59,7 @@ OBJ	= abort.o adler32.o admin.o annotate.o \
 	  lock.o resolve.o resolve_contents.o resolve_create.o \
 	  resolve_flags.o resolve_generic.o resolve_modes.o resolve_tags.o \
 	  resolve_renames.o resolve_filetypes.o rmdel.o root.o rset.o \
-	  sane.o sccs_mv.o sccscat.o sccslog.o sccsmv.o sccsrm.o \
+	  sane.o sccs.o sccs_mv.o sccscat.o sccslog.o sccsmv.o sccsrm.o \
 	  send.o sendbug.o setup.o \
 	  sfiles.o sfind.o sfio.o sinfo.o slib.o \
 	  status.o stripdel.o synckeys.o sys.o takepatch.o undo.o undos.o \
