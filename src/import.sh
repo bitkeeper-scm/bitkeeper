@@ -147,7 +147,8 @@ EOF
 	fi
 	eval "$cmd" | sed 's/^..//' > /tmp/import$$
 	echo OK
-	echo Checking to make sure there are no files already in $TO
+	echo Checking to make sure there are no files 
+	echo already in $TO
 	cd $TO
 	while read x 
 	do	if [ -e $x ]
@@ -210,7 +211,9 @@ function import_finish {
 		fi
 		NFILES=`wc -l < /tmp/import$$ | sed 's/ //g'`
 	esac
-	echo Importing files from $FROM to $TO
+	echo Importing files
+	echo "	from $FROM"
+	echo "	to   $TO"
 	# XXX - this should go try the various tar options until it can make
 	# one work and use that.
 	TAR=`get_tar`

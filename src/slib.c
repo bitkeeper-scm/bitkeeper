@@ -25,7 +25,7 @@ private void	date(delta *d, time_t tt);
 private int	sig(int what, int sig);
 #endif
 private int	getflags(sccs *s, char *buf);
-private int	addsym(sccs *s, delta *d, delta *reald, char *a, char *b);
+private int	addsym(sccs *s, delta *d, delta *metad, char *a, char *b);
 private void	inherit(sccs *s, int flags, delta *d);
 private void	linktree(sccs *s, delta *l, delta *r);
 private sum_t	fputsum(sccs *s, char *buf, FILE *out);
@@ -196,7 +196,7 @@ addLine(char **space, char *line)
 	return (space);
 }
 
-private void
+void
 freeLines(char **space)
 {
 	int	i;
@@ -2707,7 +2707,7 @@ getflags(sccs *s, char *buf)
  * so we can just add it to the delta's comments.
  */
 private int
-addsym(sccs *s, delta *d, delta *reald, char *rev, char *val)
+addsym(sccs *s, delta *d, delta *metad, char *rev, char *val)
 {
 	symbol	*sym, *s2, *s3;
 
@@ -2726,9 +2726,9 @@ addsym(sccs *s, delta *d, delta *reald, char *rev, char *val)
 	sym->rev = strdup(rev);
 	sym->name = strdup(val);
 	sym->d = d;
-	sym->reald = reald;
+	sym->metad = metad;
 	d->flags |= D_SYMBOLS;
-	reald->flags |= D_SYMBOLS;
+	metad->flags |= D_SYMBOLS;
 	if (!d->date) getDate(d);
 	assert(d->date);
 
@@ -2738,12 +2738,12 @@ addsym(sccs *s, delta *d, delta *reald, char *rev, char *val)
 	if (!s->symbols || !s->symbols->d) {
 		sym->next = s->symbols;
 		s->symbols = sym;
-	} else if (d->date >= s->symbols->d->date) {
+	} else if (metad->date >= s->symbols->d->date) {
 		sym->next = s->symbols;
 		s->symbols = sym;
 	} else {
 		for (s3 = 0, s2 = s->symbols; s2; s3 = s2, s2 = s2->next) {
-			if (!s2->d || (d->date >= s2->d->date)) {
+			if (!s2->d || (metad->date >= s2->d->date)) {
 				sym->next = s2;
 				s3->next = sym;
 				break;
@@ -2758,7 +2758,8 @@ addsym(sccs *s, delta *d, delta *reald, char *rev, char *val)
 			}
 		}
 	}
-	debug((stderr, "Added symbol %s->%s in %s\n", val, rev, s->sfile));
+	debug((stderr, "Added symbol %s->%s (%d,%d) in %s\n",
+	    val, rev, d->serial, metad->serial, s->sfile));
 	return (1);
 }
 
@@ -3844,12 +3845,12 @@ uuencode_sum(sccs *s, FILE *in, FILE *out)
 			n = (length > 45) ? 45 : length;
 			length -= n;
 			uuencode1(p, obuf, n);
-			fputsum(s, obuf, out);
+			s->dsum += fputsum(s, obuf, out);
 			p += n;
 			added++;
 		}
 	}
-	fputsum(s, " \n", out);
+	s->dsum += fputsum(s, " \n", out);
 	return (++added);
 }
 
@@ -4706,7 +4707,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			symbol	*sym;
 
 			for (sym = s->symbols; sym; sym = sym->next) {
-				unless (sym->reald == d) continue;
+				unless (sym->metad == d) continue;
 				fputsum(s, "\001cS", out);
 				fputsum(s, sym->name, out);
 				fputsum(s, "\n", out);
@@ -4718,24 +4719,22 @@ delta_table(sccs *s, FILE *out, int willfix)
 			fputsum(s, "\n", out);
 		}
 		if (!d->next) {
+#if LPAD_SIZE > 0
 			/* Landing pad for fast rewrites */
 			fputsum(s, "\001c", out);
-			for (i = 0; i < LPAD_SIZE; i += 30) {
-				fputsum(s,
-				    "______________________________", out);
+			for (i = 0; i < LPAD_SIZE; i += 10) {
+				fputsum(s, "__________", out);
 			}
 			if (s->state & BIGPAD) {
-				for (i = 0; i < 10*LPAD_SIZE; i += 30) {
-					fputsum(s,
-					    "______________________________",
-					    out);
+				for (i = 0; i < 10*LPAD_SIZE; i += 10) {
+					fputsum(s, "__________", out);
 				}
 			}
 			fputsum(s, "\n", out);
+#endif
 		}
 		fputsum(s, "\001e\n", out);
 	}
-
 	fputsum(s, "\001u\n", out);
 	EACH(s->usersgroups) {
 		fputsum(s, s->usersgroups[i], out);
@@ -4766,16 +4765,6 @@ delta_table(sccs *s, FILE *out, int willfix)
 		fputsum(s, s->flags[i], out);
 		fputsum(s, "\n", out);
 	}
-#if	0
-	for (sym = s->symbols; sym; sym = sym->next) {
-		if (!sym->name) continue;
-		fputsum(s, "\001f s ", out);
-		fputsum(s, sym->rev, out);
-		fputsum(s, " ", out);
-		fputsum(s, sym->name, out);
-		fputsum(s, "\n", out);
-	}
-#endif
 	fputsum(s, "\001t\n", out);
 	EACH(s->text) {
 		fputsum(s, s->text[i], out);
@@ -5409,7 +5398,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 	buf[0] = 0;
 	fputsum(s, "\001I 1\n", sfile);
 	s->dsum = 0;
-	if (s->encoding > E_ASCII) {
+	if (!(flags & PATCH) && (s->encoding > E_ASCII)) {
 		/* XXX - this is incorrect, it needs to do it depending on
 		 * what the encoding is.
 		 */
@@ -5848,7 +5837,7 @@ symArg(sccs *s, delta *d, char *name)
 	 * This is temporary.  "d" gets reset to real delta once we
 	 * build the graph.
 	 */
-	sym->d = sym->reald = d;
+	sym->d = sym->metad = d;
 	d->flags |= D_SYMBOLS;
 	return;
 }
@@ -6291,7 +6280,7 @@ sym_err:		error = 1; sc->state |= WARNED;
 		n->serial = sc->nextserial++;
 		sc->numdeltas++;
 		dinsert(sc, 0, n);
-		if (addsym(sc, n, d, rev, sym) == 0) {
+		if (addsym(sc, d, n, rev, sym) == 0) {
 			verbose((stderr,
 			    "%s: won't add identical symbol %s to %s\n",
 			    me, sym, sc->sfile));
@@ -6716,7 +6705,7 @@ sccs_getInit(sccs *sc, delta *d, FILE *f, int patch, int *errorp, int *linesp)
 		d = sccs_parseArg(d, 'U', t, 0);
 		if (!d->hostname) d->flags |= D_NOHOST;
 	}
-	if (patch) goto comments;	/* skip the rest of this line */
+	if (patch) goto skip;	/* skip the rest of this line */
 	t = s;
 	while (*s && (*s++ != ' '));	/* serial */
 	unless (d->serial) {
@@ -6746,43 +6735,30 @@ sccs_getInit(sccs *sc, delta *d, FILE *f, int patch, int *errorp, int *linesp)
 		d->same = atoi(s);
 	}
 
+skip:
+	fnext(buf, f); chop(buf); lines++;
+
+	/* Cset file ID */
+	if (WANT('B')) {
+		unless (d->csetFile) d = csetFileArg(d, &buf[2]);
+		unless (fnext(buf, f)) goto out; lines++; chop(buf);
+	}
+
+	/* Cset ID */
+	if (WANT('C')) {
+		unless (d->csetFile) d = csetArg(d, &buf[2]);
+		unless (fnext(buf, f)) goto out; lines++; chop(buf);
+	}
+
 	/*
 	 * Comments are optional and look like:
 	 * C added 4.x etc targets
 	 */
-comments:
-	buf[0] = 0;
-	while (fnext(buf, f) && WANT('C')) {
-		lines++;
-		if (buf[2] == '\001') {
-			fprintf(stderr, "Warning: skipping %s\n", buf);
-		} else unless (nocomments) {
-			chop(buf);
+	while (WANT('c')) {
+		unless (nocomments) {
 			d->comments = addLine(d->comments, strdup(&buf[2]));
 		}
-		buf[0] = 0;
-	}
-	if (!buf[0]) goto out;
-	lines++;
-	chop(buf);
-
-	/* Excludes are optional and are specified as keys.
-	 * If there is no sccs* ignore them.
-	 */
-	while (WANT('E')) {
-		if (sc) {
-			delta	*e = sccs_findKey(sc, &buf[2]);
-
-			unless (e) {
-				fprintf(stderr, "Can't find ex %s in %s\n",
-				    &buf[2], sc->sfile);
-			} else {
-				d->exclude = addSerial(d->exclude, e->serial);
-			}
-		}
-		unless (fnext(buf, f)) goto out;
-		lines++;
-		chop(buf);
+		unless (fnext(buf, f)) goto out; lines++; chop(buf);
 	}
 
 	/* date fudges are optional */
@@ -6794,19 +6770,10 @@ comments:
 		chop(buf);
 	}
 
-	/* hostnames are optional */
-	if (WANT('H')) {
-		if (d) d->flags &= ~D_NOHOST;
-		unless (d->hostname) d = hostArg(d, &buf[2]);
-		unless (fnext(buf, f)) goto out;
-		lines++;
-		chop(buf);
-	}
-
 	/* Includes are optional and are specified as keys.
 	 * If there is no sccs* ignore them.
 	 */
-	while (WANT('I')) {
+	while (WANT('i')) {
 		if (sc) {
 			delta	*e = sccs_findKey(sc, &buf[2]);
 
@@ -6874,9 +6841,20 @@ comments:
 		chop(buf);
 	}
 
-	/* zones are optional */
-	if (WANT('Z')) {
-		unless (d->zone) d = zoneArg(d, &buf[2]);
+	/* Excludes are optional and are specified as keys.
+	 * If there is no sccs* ignore them.
+	 */
+	while (WANT('x')) {
+		if (sc) {
+			delta	*e = sccs_findKey(sc, &buf[2]);
+
+			unless (e) {
+				fprintf(stderr, "Can't find ex %s in %s\n",
+				    &buf[2], sc->sfile);
+			} else {
+				d->exclude = addSerial(d->exclude, e->serial);
+			}
+		}
 		unless (fnext(buf, f)) goto out;
 		lines++;
 		chop(buf);
@@ -7574,7 +7552,12 @@ end(sccs *s, delta *n, FILE *out, int flags, int add, int del, int same)
 	fputsum(s, buf, out);
 	if (s->state & BITKEEPER) {
 		if ((add || del || same) && (n->flags & D_ICKSUM)) {
-			assert(s->dsum == n->sum);
+			if (s->dsum != n->sum) {
+				fprintf(stderr,
+				    "Bad delta checksum: %u vs %u\n",
+				    s->dsum, n->sum);
+				s->state |= BAD_DSUM;
+			}
 		}
 		unless (n->flags & D_ICKSUM) {
 			if (!add && !del && !same) {
@@ -8560,6 +8543,85 @@ do_prs(sccs *s, delta *d, int flags, const char *dspec, FILE *out)
 		fputc('\n', out);
 }
 
+/*
+ * Order is
+ *	f d default
+ *	f e encoding
+ *	f x bitkeeper bits
+ *	T descriptive text
+ *	T descriptive text
+ *	...
+ */
+sccs_perfile(sccs *s, FILE *out)
+{
+	int	i = 0;
+
+	if (s->defbranch) fprintf(out, "f d %s\n", s->defbranch);
+	if (s->encoding) fprintf(out, "f e %d\n", s->encoding);
+	if (s->state & YEAR4) i |= X_YEAR4;
+	if (s->state & X_RCSEXPAND) i |= X_RCSEXPAND;
+	if (i) fprintf(out, "f x %u\n", i);
+	EACH(s->text) fprintf(out, "T %s\n", s->text[i]);
+	fprintf(out, "\n");
+}
+
+#define	FLAG(c)	((buf[0] == 'f') && (buf[1] == ' ') &&\
+		(buf[2] == c) && (buf[3] == ' '))
+
+sccs	*
+sccs_getperfile(FILE *in, int *lp)
+{
+	sccs	*s = calloc(1, sizeof(sccs));
+	int	unused = 1;
+	char	buf[200];
+
+	s->state |= BITKEEPER;		/* duh */
+	unless (fnext(buf, in)) goto err;
+	chop(buf);
+	unless (buf[0]) {
+		free(s);
+		return (0);
+	}
+	*lp++;
+	if (FLAG('d')) {
+		unused = 0;
+		s->defbranch = strdup(&buf[4]);
+		unless (fnext(buf, in)) {
+err:			fprintf(stderr,
+			    "takepatch: file format error near line %d\n", *lp);
+			free(s);
+			return (0);
+		}
+		chop(buf); *lp++;
+	}
+	if (FLAG('e')) {
+		unused = 0;
+		s->encoding = atoi(&buf[4]);
+		unless (fnext(buf, in)) goto err; chop(buf); *lp++;
+	}
+	if (FLAG('x')) {
+		int	bits = atoi(&buf[4]);
+
+		unused = 0;
+		if (bits & X_YEAR4) s->state |= YEAR4;
+		if (bits & X_RCSEXPAND) s->state |= RCS;
+		unused = 0;
+		unless (fnext(buf, in)) goto err; chop(buf); *lp++;
+	}
+	while (strneq(buf, "T ", 2)) {
+		unused = 0;
+		s->text = addLine(s->text, strnonldup(&buf[2]));
+		unless (fnext(buf, in)) goto err; chop(buf); *lp++;
+	}
+	if (buf[0]) goto err;		/* should be empty */
+
+	if (unused) {
+		free(s);
+		return (0);
+	}
+	return (s);
+}
+
 private void
 do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 {
@@ -8590,33 +8652,27 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 	    start->hostname ? "@" : "",
 	    start->hostname ? start->hostname : "",
 	    start->added, start->deleted);
+
+	/*
+	 * Order from here down is alphabetical.
+	 */
+	if (start->csetFile) fprintf(out, "B %s\n", start->csetFile);
+	if (start->cset) fprintf(out, "C %s\n", start->cset);
 	EACH(start->comments) {
 		assert(start->comments[i][0] != '\001');
-		fprintf(out, "C %s\n", start->comments[i]);
+		fprintf(out, "c %s\n", start->comments[i]);
 	}
-	EACH(start->exclude) {
-		d = sfind(s, start->exclude[i]);
-		assert(d);
-		fprintf(out, "E ");
-		sccs_pdelta(d, out);
-		fprintf(out, "\n");
-	}
-	if (start->dateFudge) {
-		fprintf(out, "F %d\n", (int)start->dateFudge);
-	}
+	if (start->dateFudge) fprintf(out, "F %d\n", (int)start->dateFudge);
 	EACH(start->include) {
 		d = sfind(s, start->include[i]);
 		assert(d);
-		fprintf(out, "I ");
+		fprintf(out, "i ");
 		sccs_pdelta(d, out);
 		fprintf(out, "\n");
 	}
-	if (start->flags & D_CKSUM) {
-		fprintf(out, "K %u\n", start->sum);
-	}
-	if (start->flags & D_DUPLOD) {
-		fprintf(out, "L %s\n", start->lod->name);
-	}
+	if (start->flags & D_CKSUM) fprintf(out, "K %u\n", start->sum);
+	/* XXX - D_DUPLOD??? */
+	if (start->flags & D_DUPLOD) fprintf(out, "L %s\n", start->lod->name);
 	if (start->merge) {
 		d = sfind(s, start->merge);
 		assert(d);
@@ -8628,9 +8684,16 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 	if (start->pathname) fprintf(out, "P %s\n", start->pathname);
 	if (start->flags & D_SYMBOLS) {
 		for (sym = s->symbols; sym; sym = sym->next) {
-			unless (sym->reald == start) continue;
+			unless (sym->metad == start) continue;
 			fprintf(out, "S %s\n", sym->name);
 		}
+	}
+	EACH(start->exclude) {
+		d = sfind(s, start->exclude[i]);
+		assert(d);
+		fprintf(out, "x ");
+		sccs_pdelta(d, out);
+		fprintf(out, "\n");
 	}
 	if (s->tree->zone) assert(start->zone);
 	fprintf(out, "------------------------------------------------\n");

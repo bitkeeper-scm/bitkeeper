@@ -135,7 +135,7 @@ extern	char *strdup(char *s);
 #define	BUF(b)		char *b
 #endif
 #define	EACH(s)		for (i = 1; (s) && (i < (int)(s[0])) && (s[i]); i++)
-#define	LPAD_SIZE	400
+#define	LPAD_SIZE	70
 
 /*
  * Flags that modify some operation (passed to sccs_*).
@@ -151,8 +151,8 @@ extern	char *strdup(char *s);
 #define	SAVEGFILE	0x00000100	/* delta -n: save edited gfile */
 #define	UNEDIT		0x00000200	/* clean -u: unedit - discard changes */
 #define	NEWFILE		0x00000400	/* delta -i: create initial file */
-#define	AVAILABLE_1	0x00000800	/* AVAILABLE */
-#define	AVAILABLE_2	0x00001000	/* AVAILABLE */
+/*					   AVAILABLE */
+#define	PATCH		0x00001000	/* mk/tkpatch, delta -R */
 #define	NOCKSUM		0x00002000	/* don't do the checksum */
 #define	FORCEBRANCH	0x00004000	/* force a branch when creating delta */
 #define	CHECKFILE	0x00008000	/* check file format (admin) */
@@ -168,10 +168,9 @@ extern	char *strdup(char *s);
 #define	PREFIXDATE	0x02000000	/* get -d: show date */
 #define	CHECKASCII	0x04000000	/* check file format (admin) */
 #define	LINENUM		0x08000000	/* get -N: show line numbers */
-#define	PATCH		0x10000000	/* mk/tkpatch, delta -R */
-#define	VERBOSE		0x20000000	/* when !SILENT isn't enough */
-#define SHUTUP		0x40000000	/* when SILENT isn't enough */
-#define GTIME		0x80000000	/* use g file mod time as time stamp */
+#define	VERBOSE		0x10000000	/* when !SILENT isn't enough */
+#define SHUTUP		0x20000000	/* when SILENT isn't enough */
+#define GTIME		0x40000000	/* use g file mod time as time stamp */
 
 /*
  * Flags (s->state) that indicate the state of a file.  Set up in init.
@@ -205,6 +204,7 @@ extern	char *strdup(char *s);
 #define READ_ONLY	0x01000000	/* force read only mode */
 #define Z_LOCKED	0x02000000	/* file is locked */
 #define	RANGE2		0x04000000	/* second call for date|rev range */
+#define	BAD_DSUM	0x08000000	/* patch checksum mismatch */
 
 /*
  * Options to sccs_diffs()
@@ -426,7 +426,7 @@ typedef	struct symbol {			/* symbolic tags */
 	char	*rev;			/* 1.32 */
 	delta	*d;			/* delta associated with this one */
 					/* only for absolute revs, not LOD */
-	delta	*reald;			/* where the symbol lives on disk */
+	delta	*metad;			/* where the symbol lives on disk */
 } symbol;
 
 /*
@@ -566,9 +566,12 @@ typedef struct patch {
 	char	*initFile;	/* RESYNC/BitKeeper/init-1 */
 	char	*diffFile;	/* RESYNC/BitKeeper/diff-1 */
 	time_t	order;		/* ordering over the whole list, oldest first */
-	int	flags;		/* unused so far */
+	int	flags;		/* local/remote /etc */
+	sccs	*init;		/* if new file, then init from here */
 	struct	patch *next;	/* guess */
 } patch;
+
+#define	PATCH_VERSION	"# BitKeeper Patch version 0.2\n"
 
 #define	PATCH_LOCAL	0x0001	/* patch is from local file */
 #define	PATCH_REMOTE	0x0002	/* patch is from remote file */
@@ -612,7 +615,7 @@ void	sccs_ids(sccs *s, int flags, FILE *out);
 int	sccs_hasDiffs(sccs *s, int flags);
 void	sccs_print(delta *d);
 delta	*sccs_getInit(sccs *s,
-		      delta *d, FILE *f, int patch, int *errorp, int *linesp);
+		delta *d, FILE *f, int patch, int *errorp, int *linesp);
 delta	*sccs_ino(sccs *);
 int	sccs_rmdel(sccs *s, char *rev, int destroy, int flags);
 int	sccs_getdiffs(sccs *s, char *rev, int flags, char *printOut);

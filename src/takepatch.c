@@ -27,7 +27,7 @@ char *takepatch_help = "usage: takepatch [-v] [-i]\n";
 #define	CLEAN_PENDING	2
 
 delta	*getRecord(FILE *f);
-int	extractPatch(FILE *p, int flags, int compat);
+int	extractPatch(FILE *p, int flags);
 int	extractDelta(char *name, sccs *s, int newFile, FILE *f, int flags);
 int	applyPatch(int flags);
 int	getLocals(sccs *s, delta *d, char *name);
@@ -55,12 +55,10 @@ main(int ac, char **av)
 	FILE	*p;
 	int	c;
 	int	flags = SILENT;
-	int	compat = 0;
 
 	debug_main(av);
-	while ((c = getopt(ac, av, "civ")) != -1) {
+	while ((c = getopt(ac, av, "iv")) != -1) {
 		switch (c) {
-		    case 'c': compat++; break;
 		    case 'i': newProject++; break;
 		    case 'v': echo++; flags &= ~SILENT; break;
 		    default: goto usage;
@@ -83,7 +81,7 @@ usage:		fprintf(stderr, takepatch_help);
 			fprintf(stderr, "skipping: %s", buf);
 			continue;
 		}
-		extractPatch(p, flags, compat);
+		extractPatch(p, flags);
 	}
 	fclose(p);
 	purify_list();
@@ -119,15 +117,18 @@ getRecord(FILE *f)
  * Extract a contiguous set of deltas for a single file from the patch file.
  */
 int
-extractPatch(FILE *p, int flags, int compat)
+extractPatch(FILE *p, int flags)
 {
 	delta	*tmp;
 	sccs	*s = 0;
+	sccs	*perfile = 0;
 	datum	k, v;
 	char	*name;
 	int	newFile = 0;
 	char	*gfile;
 	char	buf[1200];
+
+sccs	*sccs_getperfile(FILE *, int *);
 
 	/*
 	 * Patch format for continuing file:
@@ -140,6 +141,8 @@ extractPatch(FILE *p, int flags, int compat)
 	 * Patch format for new file:
 	 * == filename == 
 	 * New file: filename as of creation time
+	 * perfile information (encoding, etc)
+	 * 
 	 * lm||19970518232929
 	 * D 1.1 99/02/23 00:29:01-08:00 lm@lm.bitmover.com +128 -0
 	 * etc.
@@ -150,11 +153,10 @@ extractPatch(FILE *p, int flags, int compat)
 	if (strneq("New file: ", buf, 10)) {
 		newFile = 1;
 		name = name2sccs(&buf[10]);
-		unless (compat) {
-			fnext(buf, p);
-			chop(buf);
-			line++;
-		}
+		perfile = sccs_getperfile(p, &line);
+		fnext(buf, p);
+		chop(buf);
+		line++;
 	}
 	if (echo>3) fprintf(stderr, "%s\n", buf);
 	k.dptr = buf;
@@ -211,6 +213,12 @@ extractPatch(FILE *p, int flags, int compat)
 			fprintf(stderr,
 			    "takepatch: new file %s\n", name);
 		}
+		if (perfile) {
+			sccscopy(s, perfile);
+			if (perfile->defbranch) free(perfile->defbranch);
+			if (perfile->text) freeLines(perfile->text);
+			free(perfile);
+		}
 	}
 	gca = 0;
 	nfound = 0;
@@ -232,6 +240,21 @@ extractPatch(FILE *p, int flags, int compat)
 	free(gfile);
 	free(name);
 	return (0);
+}
+
+sccscopy(sccs *to, sccs *from)
+{
+	unless (to && from) return;
+	to->state |= from->state;
+	unless (to->defbranch) {
+		to->defbranch = from->defbranch;
+		from->defbranch = 0;
+	}
+	to->encoding = from->encoding;
+	unless (to->text) {
+		to->text = from->text;
+		from->text = 0;
+	}
 }
 
 /*
@@ -321,6 +344,7 @@ delta:	off = ftell(f);
 		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-diffs", no);
 		p->diffFile = strdup(tmpf);
 		p->order = parent == d ? 0 : d->date;
+		if (newFile) p->init = s;
 		if (echo>5) fprintf(stderr, "REM: %s %s %u\n", d->rev, p->me, p->order);
 		unless (t = fopen(tmpf, "w")) {
 			perror(tmpf);
@@ -464,16 +488,19 @@ apply:
 					perror("delta");
 					exit(1);
 				}
+				if (s->state & BAD_DSUM) cleanup(CLEAN_RESYNC);
 				fclose(iF);	/* dF done by delta() */
 			}
 		} else {
 			assert(s == 0);
+			assert(p->init);
 			unless (s = sccs_init(p->resyncFile, NEWFILE)) {
 				fprintf(stderr,
 				    "takepatch: can't create %s\n",
 				    p->resyncFile);
 				exit(1);
 			}
+			sccscopy(s, p->init);
 			iF = fopen(p->initFile, "r");
 			dF = fopen(p->diffFile, "r");
 			d = 0;
@@ -490,6 +517,7 @@ apply:
 				perror("delta");
 				exit(1);
 			}
+			if (s->state & BAD_DSUM) cleanup(CLEAN_RESYNC);
 			fclose(iF);	/* dF done by delta() */
 			sccs_free(s);
 			s = sccs_init(p->resyncFile, 0);
@@ -662,6 +690,7 @@ init(FILE *p, int flags)
 	ino_t	slash = 0;
 	struct	stat sb;
 	int	i, j;
+	int	started = 0;
 	FILE	*f, *g;
 
 	if (newProject) {
@@ -696,11 +725,6 @@ init(FILE *p, int flags)
 			    CHANGESET);
 			exit(1);
 		}
-	}
-
-	unless (flags & SILENT) {
-		if (!buf[0]) getcwd(buf, sizeof(buf));
-		fprintf(stderr, "takepatch: using %s as project root\n", buf);
 	}
 
 tree:
@@ -777,9 +801,6 @@ tree:
 		perror("RESYNC/BitKeeper/tmp/patch");
 		exit(1);
 	}
-	unless (flags & SILENT) {
-		fprintf(stderr, "takepatch: saving patch in %s\n", pendingFile);
-	}
 	fprintf(g, "%s\n", pendingFile);
 	fclose(g);
 
@@ -787,11 +808,20 @@ tree:
 	 * Save patch first, making sure it is on disk.
 	 */
 	while (fnext(buf, p)) {
-		fputs(buf, f);
+		if (!started && streq(buf, PATCH_VERSION)) started = 1;
+		if (started) {
+			fputs(buf, f);
+		} else {
+			printf("Discard: %s", buf);
+		}
 	}
 	fflush(f);
 	fsync(fileno(f));
+	unless (flags & SILENT) {
+		fprintf(stderr, "takepatch: saved patch in %s\n", pendingFile);
+	}
 	fseek(f, 0, 0);
+	fnext(buf, f);		/* skip version number */
 
 	if (newProject) {
 		unless (idDB = mdbm_open(NULL, 0, 0, 4096)) {
@@ -820,8 +850,10 @@ mkdirp(char *file)
 
 	if (!s) return (0);
 	*s = 0;
-	sprintf(buf, "mkdir -p %s\n", file);
-	system(buf);
+	unless (isdir(file)) {
+		sprintf(buf, "mkdir -p %s\n", file);
+		system(buf);
+	}
 	*s = '/';
 	return (0);
 }

@@ -686,6 +686,31 @@ function setup {
 	if [ -e "$1" ]
 	then	echo bk: "$1" exists already, setup fails.; exit 1
 	fi
+	cat <<EOF
+
+--------------------------------------------------------
+You are about create a new Linux repository.  You may do
+this exactly once for each project stored in BitKeeper.
+If there already is a BitKeeper repository for this project,
+you should do
+
+    bk resync project_dir my_project_dir
+
+If you create a new project rather than resyncing a copy,
+you will not be able to exchange work between the two projects.
+
+--------------------------------------------------------------
+EOF
+	echo $N "Create new project? [no] " $NL
+	read ans
+	case X$ans in
+	    Xy*)
+	    	;;
+	    *)
+	    	exit 0
+		;;
+	esac
+
 	mkdir -p "$1"
 	cd $1 || exit 1
 	mkdir -p BitKeeper/etc BitKeeper/bin BitKeeper/caches
@@ -750,12 +775,20 @@ function send {
 		;;
 	esac
 	case X$2 in
-	    X-)	${BIN}cset -l$1 | ${BIN}makepatch $V - 
+	    X-)	${BIN}cset -l$1 | csetSort | ${BIN}makepatch $V - 
 	    	;;
-	    *)	${BIN}cset -l$1 | ${BIN}makepatch $V - | \
+	    *)	${BIN}cset -l$1 | csetSort | ${BIN}makepatch $V - | \
 	    	mail -s "BitKeeper patch" $2
 	    	;;
 	esac
+}
+
+# The ChangeSet file should always be first.
+function csetSort {
+	sort -u > /tmp/save$$
+	grep '^ChangeSet:' < /tmp/save$$ 
+	grep -v '^ChangeSet:' < /tmp/save$$
+	rm /tmp/save$$
 }
 
 function resync {
@@ -796,23 +829,29 @@ function resync {
 	if [ "X$INIT" = "X-i" ]
 	then	bk prs -hd:I: ChangeSet | while read x
 		do	bk cset -l$x
-		done | sort -u > /tmp/list$$
+		done | csetSort > /tmp/list$$
 	else
 		bk smoosh ChangeSet $TO/ChangeSet | \
 		sed 's/ChangeSet://' | while read x
 		do	bk cset -l$x
-		done | sort -u > /tmp/list$$
+		done | csetSort > /tmp/list$$
 	fi
-	if [ -s /tmp/list$$ ]
-	then	bk makepatch $V - > /tmp/resync$$ < /tmp/list$$
-	else	echo "resync: $TO is a superset of $FROM"
+	if [ ! -s /tmp/list$$ ]
+	then	echo "resync: Nothing to do."
+		/bin/rm /tmp/list$$
 		exit 0
 	fi
+	bk makepatch $V - < /tmp/list$$ | ( cd $TO && bk takepatch $V $INIT )
 	/bin/rm /tmp/list$$
-	cd $TO
-	bk takepatch $V $INIT < /tmp/resync$$
-	/bin/rm /tmp/resync$$
 	exit 0
+}
+
+function edit {
+	bk get -e "$@"
+}
+
+function unedit {
+	bk clean -u "$@"
 }
 
 function mv {
@@ -1071,7 +1110,7 @@ case "$1" in
 	exit $?
 	;;
     setup|changes|pending|commit|commitmerge|sendbug|send|take|\
-    sccsmv|mv|resync)
+    sccsmv|mv|resync|edit|unedit)
 	cmd=$1
     	shift
 	eval $cmd "$@"
