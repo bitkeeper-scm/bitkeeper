@@ -1339,6 +1339,10 @@ _install()
 			echo "bk install: destination exists, failed"
 			exit 1
 		}
+		test -d "$DEST"/SCCS && {
+			echo "bk install: destination is a bk source tree!!"
+			exit 1
+		}
 		test -f "$DEST"/bkhelp.txt || {
 			echo "bk install: destination is not an existing bk tree, failed"
 			exit 1

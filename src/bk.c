@@ -67,7 +67,6 @@ int	dotbk_main(int, char **);
 int	exists_main(int, char **);
 int	export_main(int, char **);
 int	f2csets_main(int, char **);
-int	fdiff_main(int, char **);
 int	find_main(int, char **);
 int	findkey_main(int, char **);
 int	fix_main(int, char **);
@@ -183,6 +182,7 @@ int	unlock_main(int, char **);
 int	unpark_main(int, char **);
 int	unpull_main(int, char **);
 int	unwrap_main(int, char **);
+int	upgrade_main(int, char **);
 int	users_main(int, char **);
 int	uuencode_main(int, char **);
 int	uudecode_main(int, char **);
@@ -261,7 +261,6 @@ struct	command cmdtbl[] = {
 	{"edit", get_main},	/* aliases */	/* doc 2.0 */
 	{"enter", delta_main},			/* doc 2.0 */
 	{"export", export_main},		/* doc 2.0 */
-	{"fdiff", fdiff_main},			/* undoc? 2.0 */
 	{"findkey", findkey_main},		/* doc 2.0 */
 	{"fix", fix_main},			/* doc 2.0 */
 	{"_fix_lod1", fixlod_main},		/* undoc 2.0 */
@@ -362,6 +361,7 @@ struct	command cmdtbl[] = {
 	{"unpark", unpark_main},		/* doc 2.0 */
 	{"unpull", unpull_main},		/* doc 2.0 */
 	{"unwrap", unwrap_main},		/* doc 2.0 */
+	{"upgrade", upgrade_main},
 	{"users", users_main},			/* doc 2.0 */
 	{"user", users_main},			/* aliases of "bk users" */
 	{"uudecode", uudecode_main},

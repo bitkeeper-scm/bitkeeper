@@ -398,7 +398,7 @@ int rsa_encrypt_key(const unsigned char *inkey, unsigned long inlen,
    return CRYPT_OK;
 }
 
-int rsa_decrypt_key(const unsigned char *in,  unsigned long len,
+int rsa_decrypt_key(const unsigned char *in,  unsigned long *len,
                     unsigned char *outkey, unsigned long *keylen,
                     rsa_key *key)
 {
@@ -421,6 +421,11 @@ int rsa_decrypt_key(const unsigned char *in,  unsigned long len,
    y = PACKET_SIZE;
    LOAD32L(rsa_size, (in+y))
    y += 4;
+   if (y + rsa_size > *len) {
+       crypt_error = "Buffer underflow in rsa_decrypt_key().";
+       return CRYPT_ERROR;
+   }
+   *len = y + rsa_size;
 
    /* read it in */
    for (x = 0; x < rsa_size; x++, y++) {

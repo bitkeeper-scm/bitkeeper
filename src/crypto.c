@@ -8,6 +8,8 @@ private	int	make_keypair(int bits, char *secret, char *public);
 private	int	signdata(rsa_key *secret);
 private	int	validatedata(rsa_key *public, char *sign);
 private	int	cryptotest(void);
+private	int	encrypt(rsa_key *public, FILE *fin, FILE *fout);
+private	int	decrypt(rsa_key	*secret, FILE *fin, FILE *fout);
 
 private void	loadkey(char *file, rsa_key *key);
 
@@ -55,9 +57,10 @@ crypto_main(int ac, char **av)
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "histv")) != -1) {
+	while ((c = getopt(ac, av, "dehistv")) != -1) {
 		switch (c) {
 		    case 'h': case 'i': case 's': case 't': case 'v':
+		    case 'e': case 'd':
 			if (mode) usage();
 			mode = c;
 			break;
@@ -78,6 +81,7 @@ crypto_main(int ac, char **av)
 		usage();
 	}
 
+	setmode(0, _O_BINARY);
 	register_cipher(&rijndael_desc);
 	register_hash(&md5_desc);
 	register_prng(&yarrow_desc);
@@ -88,14 +92,14 @@ crypto_main(int ac, char **av)
 		ret = make_keypair(atoi(av[optind]),
 		    av[optind+1], av[optind+2]);
 		break;
-	    case 's':
+	    case 'e': case 'd': case 's': case 'v':
 		loadkey(av[optind], &key);
-		ret = signdata(&key);
-		rsa_free(&key);
-		break;
-	    case 'v':
-		loadkey(av[optind], &key);
-		ret = validatedata(&key, av[optind+1]);
+		switch (mode) {
+		    case 'e': ret = encrypt(&key, stdin, stdout); break;
+		    case 'd': ret = decrypt(&key, stdin, stdout); break;
+		    case 's': ret = signdata(&key); break;
+		    case 'v': ret = validatedata(&key, av[optind+1]); break;
+		}
 		rsa_free(&key);
 		break;
 	    case 't':
@@ -374,6 +378,7 @@ check_licensesig(char *key, char *sign)
 	outlen = sizeof(signbin);
 	if (base64_decode(sign, strlen(sign), signbin, &outlen)) return (-1);
 	if (rsa_verify(signbin, key, strlen(key), &stat, &rsakey)) return (-1);
+	rsa_free(&rsakey);
 	return (stat ? 0 : 1);
 }
 
@@ -463,8 +468,14 @@ secure_hashstr(char *str, char *key)
 	char	md5[32];
 	char	b64[32];
 
-	if (hmac_memory(hash, key, strlen(key),
-		str, strlen(str), md5)) return (0);
+	if (streq(str, "-")) {
+		if (hmac_filehandle(hash, stdin, key, strlen(key), md5)) {
+			return (0);
+		}
+	} else {
+		if (hmac_memory(hash, key, strlen(key),
+			str, strlen(str), md5)) return (0);
+	}
 	b64len = sizeof(b64);
 	md5len = hash_descriptor[hash].hashsize;
 	if (base64_encode(md5, md5len, b64, &b64len)) return (0);
@@ -505,4 +516,130 @@ hashstr(char *str)
 		}
 	}
 	return (strdup(b64));
+}
+
+private int
+encrypt(rsa_key *key, FILE *fin, FILE *fout)
+{
+	int	wprng = find_prng("sprng");
+	int	cipher = register_cipher(&rijndael_desc);
+	long	inlen, outlen, blklen;
+	int	i;
+	symmetric_CTR	ctr;
+	u8	sym_IV[MAXBLOCKSIZE];
+	u8	skey[32];
+	u8	in[4096], out[4096];
+
+	/* generate random session key */
+	i = 32;
+	cipher_descriptor[cipher].keysize(&i);
+	inlen = i;
+
+	blklen = cipher_descriptor[cipher].block_length;
+	rng_get_bytes(skey, inlen, 0);
+	rng_get_bytes(sym_IV, blklen, 0);
+
+	outlen = sizeof(out);
+	if (rsa_encrypt_key(skey, inlen, out, &outlen, 0, wprng, key)) {
+err:		fprintf(stderr, "crypto encrypt: %s\n", crypt_error);
+		return (1);
+	}
+	fwrite(out, 1, outlen, fout);
+	fwrite(sym_IV, 1, blklen, fout);
+
+	/* bulk encrypt */
+	if (ctr_start(cipher, sym_IV, skey, inlen, 0, &ctr)) {
+		goto err;
+	}
+
+	while ((i = fread(in, 1, sizeof(in), fin)) > 0) {
+		ctr_encrypt(in, out, i, &ctr);
+		fwrite(out, 1, i, fout);
+	}
+	return (0);
+}
+
+private int
+decrypt(rsa_key *key, FILE *fin, FILE *fout)
+{
+	int	cipher = register_cipher(&rijndael_desc);
+	long	inlen, outlen, blklen;
+	int	i;
+	symmetric_CTR	ctr;
+	u8	sym_IV[MAXBLOCKSIZE];
+	u8	skey[32];
+	u8	in[4096], out[4096];
+
+	i = fread(in, 1, sizeof(in), fin);
+
+	inlen = i;
+	outlen = sizeof(out);
+	if (rsa_decrypt_key(in, &inlen, out, &outlen, key)) {
+err:		fprintf(stderr, "crypto decrypt: %s\n", crypt_error);
+		return (1);
+	}
+	memcpy(skey, out, outlen);
+
+	blklen = cipher_descriptor[cipher].block_length;
+	assert(inlen + blklen < i);
+	memcpy(sym_IV, in + inlen, blklen);
+
+	/* bulk encrypt */
+	if (ctr_start(cipher, sym_IV, skey, outlen, 0, &ctr)) {
+		goto err;
+	}
+	i -= inlen + blklen;
+	ctr_decrypt(in + inlen + blklen, out, i, &ctr);
+	fwrite(out, 1, i, fout);
+
+	while ((i = fread(in, 1, sizeof(in), fin)) > 0) {
+		ctr_decrypt(in, out, i, &ctr);
+		fwrite(out, 1, i, fout);
+	}
+	return (0);
+}
+
+private char *
+upgrade_secretkey(void)
+{
+	static	char *key;
+	unsigned long keylen;
+	int	i, len;
+	int	tmp;
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~<
+
+	if (key) return (key);
+	coded = strdup(coded);
+	len = strlen(coded);
+	for (i = 0; i < len/2; i++) {
+		tmp = coded[i];
+		coded[i] = coded[len-i-1];
+		coded[len-i-1] = tmp;
+	}
+	keylen = len;
+	key = malloc(keylen);
+	base64_decode(coded, len, key, &keylen);
+	free(coded);
+	return (key);
+}
+
+int
+upgrade_decrypt(char *infile, char *outfile)
+{
+	FILE	*fin, *fout;
+	rsa_key	rsakey;
+
+	unless (fin = fopen(infile, "r")) return (1);
+	unless (fout = fopen(outfile, "w")) {
+		fclose(fin);
+		return (1);
+	}
+	if (rsa_import(upgrade_secretkey(), &rsakey)) {
+		fprintf(stderr, "crypto rsa_import: %s\n", crypt_error);
+		exit(1);
+	}
+	decrypt(&rsakey, fin, fout);
+	fclose(fin);
+	fclose(fout);
+	return (0);
 }

@@ -5,9 +5,6 @@
  * Copyright (c) 2001 Andrew Chang       All rights reserved.
  */
 
-private char	**_get_http_autoproxy(char **proxies, char *host);
-private char	**_get_http_autoproxyurl(char **, char *host, char *url);
-
 private char **
 _get_http_proxy_env(char **proxies)
 {
@@ -77,6 +74,10 @@ _get_socks_proxy(char **proxies)
 }
 
 #ifdef WIN32
+private char	**_get_http_autoproxy(char **proxies, char *host);
+private char	**_get_http_autoproxyurl(char **, char *host, char *url);
+
+
 int
 getReg(HKEY hive, char *key, char *valname, char *valbuf, int *lenp)
 {
@@ -332,6 +333,7 @@ _get_http_autoproxyurl(char **proxies, char *host, char *WPAD_url)
 	static HMODULE	hModJS = 0;
 	char	*url = 0;
 	char	*tmpf = 0;
+	remote	*r;
 	char	proxyBuffer[1024];
 	char	*proxy = proxyBuffer;
 	u32	dwProxyHostNameLength = sizeof(proxyBuffer);
@@ -388,11 +390,19 @@ _get_http_autoproxyurl(char **proxies, char *host, char *WPAD_url)
 	}
 
 	unless (tmpf = bktmp(0, "proxy")) goto out;
-	if (http_fetch_direct(WPAD_url, tmpf)) {
+	r = remote_parse(WPAD_url);
+	r->rfd = r->wfd = connect_srv(r->host, r->port, r->trace);
+	if (r->rfd < 0) {
+		verbose((stderr, "Unable to connect to %s\n", WPAD_url));
+		goto out;
+	}
+	r->isSocket = 1;
+	if (http_fetch(r, WPAD_url, tmpf)) {
 		verbose((stderr, "Fetch of %s to %s failed\n",
 		    WPAD_url, tmpf));
 		goto out;
 	}
+	remote_free(r);
 	unless (InternetInitializeAutoProxyDll(0, tmpf, NULL, 
 	    &HelperFunctions, NULL)) {
 		verbose((stderr, "InternetInitializeAutoProxyDll failed\n"));

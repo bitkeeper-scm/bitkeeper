@@ -1123,3 +1123,18 @@ needs to be repaired manually.  If at all possible please delete this
 repository and clone a new copy.  Otherwise contact BitMover and
 request assistance.
 $
+#upgrade-badperms
+The current user does not have permissions to replace the version of
+BitKeeper installed at:
+	#BKARG#
+Please rerun the upgrade command from an account with the needed
+permissions.
+$
+#upgrade-require-lease
+The current version of BitKeeper is tagged as being available for
+commercial customers only.  A valid lease for any commercial repository
+is required to upgrade this version of bk.  Please chdir to a repo setup
+with a current commercial license and run:
+	bk lease renew
+and then repeat this upgrade command.
+$

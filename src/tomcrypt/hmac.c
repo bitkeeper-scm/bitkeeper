@@ -122,12 +122,12 @@ int hmac_memory(int hash, const unsigned char *key, unsigned long keylen,
     return CRYPT_OK;
 }
 
+
 /* hmac_file added by Tom St Denis */
-int hmac_file(int hash, const char *fname, const unsigned char *key,
+int hmac_filehandle(int hash, FILE *in, const unsigned char *key,
                 unsigned long keylen, unsigned char *dst)
 {
    hmac_state hmac;
-   FILE *in;
    unsigned char buf[512];
    int x;
 
@@ -135,18 +135,11 @@ int hmac_file(int hash, const char *fname, const unsigned char *key,
        return CRYPT_ERROR;
    }
 
-   in = fopen(fname, "rb");
-   if (in == NULL) {
-      crypt_error = "Error opening file in hmac_file().";
-      return CRYPT_ERROR;
-   }
-
    /* process the file contents */
    do {
       x = fread(buf, 1, sizeof(buf), in);
       hmac_process(&hmac, buf, x);
    } while (x == sizeof(buf));
-   fclose(in);
 
    /* get final hmac */
    hmac_done(&hmac, dst);
@@ -157,6 +150,22 @@ int hmac_file(int hash, const char *fname, const unsigned char *key,
 #endif   
 
    return CRYPT_OK;
+}
+
+int hmac_file(int hash, const char *fname, const unsigned char *key,
+                unsigned long keylen, unsigned char *dst)
+{
+   FILE *in;
+   int rc;
+
+   in = fopen(fname, "rb");
+   if (in == NULL) {
+      crypt_error = "Error opening file in hmac_file().";
+      return CRYPT_ERROR;
+   }
+   rc = hmac_filehandle(hash, in, key, keylen, dst);
+   fclose(in);
+   return (rc);
 }
 
 /*

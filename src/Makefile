@@ -6,6 +6,9 @@ URL     := $(shell echo bk://work/`bk root` | sed s,/home/bk/,,)
 LOG	:= $(shell echo LOG-`bk getuser`)
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
 
+# Is this building a commercial-only release of bk
+COMMERCIAL = 0
+
 ifeq "$(OSTYPE)" "msys"
 	SYS=win32
 	EXE=.exe
@@ -71,7 +74,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	comment.o comments.o commit.o compress.o converge.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
 	dirs.o delta.o diffs.o diffsplit.o dir_gif.o dirname.o \
-	export.o fdiff.o file_gif.o \
+	export.o file_gif.o \
 	find.o findkey.o fix.o fixlod.o \
 	g2sccs.o gca.o get.o gethelp.o \
 	gethost.o getopt.o getreg.o gettemp.o getuser.o glob.o \
@@ -113,7 +116,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	slib.o smerge.o sort.o status.o stripdel.o synckeys.o sys.o \
 	tagmerge.o takepatch.o testdates.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \
-	unique.o unlink.o unlock.o unpull.o unwrap.o \
+	unique.o unlink.o unlock.o unpull.o unwrap.o upgrade.o \
 	user.o utils.o uu.o version.o what.o which.o xflags.o zgets.o \
 	zone.o
 SCRIPTS	= applypatch bk.script import resync \
@@ -378,6 +381,7 @@ bkver.c: FRC
 	echo "char *bk_platform = \""`./utils/os`"\";" >> bk.v
 	echo "unsigned build_timet = "`perl -e "print time"`";" >> bk.v
 	echo "int test_release = "$(TRIAL)";" >> bk.v
+	echo "int bk_commercial = $(COMMERCIAL);" >> bk.v
 	mv -f bk.v bkver.c
 
 bkver.o: bkver.c
