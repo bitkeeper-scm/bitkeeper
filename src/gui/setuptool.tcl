@@ -473,19 +473,22 @@ proc create_config {widget} \
 
 proc setbkdir {} \
 {
-	global st_g tcl_platform env
+	global st_g tcl_platform env errorCode
 
 	set HKCU "HKEY_CURRENT_USER"
 	set HKLM "HKEY_LOCAL_MACHINE"
 	set l {Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders}
 	set tfile "/etc/BitKeeper/etc/config.template"
+	set errorCode [list]
 
         if {$tcl_platform(platform) == "windows"} {
 		package require registry
-		set appdir [registry get "$HKLM\\$l" {Common AppData}]
-		set ct [file join $appdir BitKeeper etc config.template]
-		if {[file exists $ct]} {
-			set st_g(bktemplate) $ct
+		catch {set appdir [registry get "$HKLM\\$l" {Common AppData}]}
+		if {$errorCode ==  {} } {
+			set ct [file join $appdir BitKeeper etc config.template]
+			if {[file exists $ct]} {
+				set st_g(bktemplate) $ct
+			}
 		}
 		set appdir [registry get "$HKCU\\$l" {AppData}]
 		set st_g(bkdir) [file join $appdir BitKeeper]
