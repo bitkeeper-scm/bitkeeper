@@ -244,9 +244,10 @@ ChangeSet file do not match.  Please check the pathnames and try again.\n");
 	 * Spit out the set of keys we would send.
 	 */
 	if (opts.verbose || opts.list) {
+		char	*url = remote_unparse(r);
 		if (opts.rcsets && !opts.metaOnly && opts.doit) {
 			fprintf(opts.out,
-			    "Unable to push to %s\nThe", remote_unparse(r));
+			    "Unable to push to %s\nThe", url);
 csets:			fprintf(opts.out,
 " repository that you are pushing to is %d changesets\n\
 ahead of your repository. Please do a \"bk pull\" to get \n\
@@ -254,7 +255,7 @@ these changes or do a \"bk pull -nl\" to see what they are.\n", opts.rcsets);
 		} else if (opts.rtags && !opts.metaOnly && opts.doit) {
 tags:			fprintf(opts.out,
 			    "Not pushing because of %d tags only in %s\n",
-			    opts.rtags, remote_unparse(r));
+			    opts.rtags, url);
 		} else if (opts.lcsets > 0) {
 			fprintf(opts.out, opts.doit ?
 "----------------------- Sending the following csets -----------------------\n":
@@ -288,13 +289,14 @@ tags:			fprintf(opts.out,
 			if (opts.rtags && !opts.metaOnly) goto tags;
 		} else if (opts.lcsets == 0) {
 			fprintf(opts.out,
-			    "Nothing to send to %s\n", remote_unparse(r));
+			    "Nothing to send to %s\n", url);
 			if (opts.rcsets && !opts.metaOnly) {
 				fprintf(opts.out, "but the");
 				goto csets;
 			}
 			if (opts.rtags && !opts.metaOnly) goto tags;
 		}
+		free(url);
 	}
 	sccs_free(s);
 	if (r->type == ADDR_HTTP) disconnect(r, 2);

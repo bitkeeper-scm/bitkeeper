@@ -279,7 +279,7 @@ out:		if (commentFile) unlink(commentFile);
 			
 			chop(buf);
 			t = aprintf("-S%s", buf);
-			cset[i++] = t;
+			cset[i++] = t; /* XXX leaks! */
 			assert(i < 90);
 		}
 		fclose(f);

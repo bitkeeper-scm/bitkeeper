@@ -54,7 +54,7 @@ rclone_main(int ac, char **av)
 	l = remote_parse(av[optind], 1);
 	unless (l) usage();
 	isLocal = (l->host == NULL);
-	free(l);
+	remote_free(l);
 	unless (isLocal) usage();
 	
 	if (chdir(av[optind])) {
@@ -310,6 +310,7 @@ gensfio(opts opts, int verbose, int level, int wfd)
 	gzipAll2fd(fileno(fh), wfd, level, &opts.in, &opts.out, 1, 0);
 	status = pclose(fh);
 	unlink(tmpf);
+	free(tmpf);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) return (0);
 	return (opts.out);
 

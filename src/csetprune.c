@@ -74,6 +74,7 @@ csetprune_main(int ac, char **av)
 	verbose((stderr, "Pruning ChangeSet file...\n"));
 	sccs_close(sb); /* for win32 */
 	pruneEmpty(s, sb, m);
+	mdbm_close(m);
 	sccs_free(sb);
 	s = sccs_init(csetFile, ADMIN_SHUTUP|INIT_NOCKSUM, 0);
 	unless (s && s->tree) {
