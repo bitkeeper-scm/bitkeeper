@@ -168,9 +168,8 @@ admin_main(int ac, char **av)
 		goto usage;
 	}
 	if (compp && streq(compp, "none") && (bk_mode() != BK_PRO)) {
-		fprintf(stderr,
-		    "uncompressing files requires a commercial license\n");
-		return (1);
+		/* fail silently */
+		return (0);
 	}
 	/* All of these need to be here: m/nextf are for resolve,
 	 * newfile is for !BK mode.
