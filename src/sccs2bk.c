@@ -140,7 +140,8 @@ regen(sccs *s, char *key)
 {
 	delta	*d;
 	delta	**table = malloc(s->nextserial * sizeof(delta*));
-	int	n = 0, pid = getpid();
+	pid_t	pid = getpid();
+	int	n = 0;
 	int	i;
 	char	*sfile = s->sfile;
 	char	*gfile = s->gfile;
@@ -214,17 +215,17 @@ regen(sccs *s, char *key)
 	for (i = 0; i < n; ++i) {
 		d = table[i];
 		a1 = aprintf("-kpr%s", rev(revs, d->rev));
-		a2 = aprintf("/tmp/A%d", pid);
+		a2 = aprintf("/tmp/A%u", pid);
 		sysio(0, a2, 0, "bk", "get", "-q", a1, gfile, SYS);
 
 		free(a1);
 		a1 = aprintf("-kpr%s", d->rev);
-		a3 = aprintf("/tmp/B%d", pid);
+		a3 = aprintf("/tmp/B%u", pid);
 		sysio(0, a3, 0, "bk", "get", "-q", a1, tmp, SYS);
 		unless (sameFiles(a2, a3)) {
 			fprintf(stderr, "%s@%s != orig@%s\n\n",
 			    gfile, rev(revs, d->rev), d->rev);
-			a1 = aprintf("bk diff /tmp/A%d /tmp/B%d", pid, pid);
+			a1 = aprintf("bk diff /tmp/A%u /tmp/B%u", pid, pid);
 			system(a1);
 			//exit(1);
 		}

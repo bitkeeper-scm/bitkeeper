@@ -90,7 +90,7 @@ doit(char *file)
 		if (convert) {
 			mode_t	m = mode(file);
 
-			sprintf(path, "%s%d", file, getpid());
+			sprintf(path, "%s%u", file, getpid());
 			rename(file, path);
 			sysio(0, file, 0, "bk", "undos", "-n", path, SYS);
 			unlink(path);

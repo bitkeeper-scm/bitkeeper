@@ -137,7 +137,7 @@ uniq_lock()
 	int	slept = 0;
 	char	linkpath[MAXPATH];
 	char	*lock = lockHome();
-	int	me = getpid();
+	pid_t	me = getpid();
 	static	int flags = -1;
 
 	if (flags == -1) {
@@ -148,7 +148,7 @@ uniq_lock()
 		}
 	}
 
-	sprintf(linkpath, "%s.%d", lock, me);
+	sprintf(linkpath, "%s.%u", lock, me);
 	mk_prelock(linkpath, me);
 	while (atomic_create(linkpath, lock, me) != 0) {
 		if (f = fopen(lock, "r")) {
