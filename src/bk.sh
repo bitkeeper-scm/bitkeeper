@@ -308,7 +308,29 @@ _clone() {
 # resync is used mainly for URL canonicalization.
 _parent() {
 	_cd2root
-	exec ${BIN}resync -npq $1 .
+	case "X$1" in
+	    *:*)
+	    	$RM -f BitKeeper/log/parent
+	    	echo $1 > BitKeeper/log/parent
+		echo Set parent to $1
+		exit 0
+		;;
+	esac
+	if [ "X$1" = X ]
+	then	echo "Must specify parent root directory"
+		exit 1
+	fi
+	if [ ! -d "$1/BitKeeper/etc" ]
+	then	echo "$1 is not a BitKeeper project root"
+		exit 1
+	fi
+	HERE=`pwd`
+	cd $1 || { echo Can not find $1; exit 1; }
+	P=`${BIN}gethost`:`pwd`
+	cd $HERE
+	$RM -f BitKeeper/log/parent
+	echo $P > BitKeeper/log/parent
+	echo Set parent to $P
 }
 
 # Pull: update from parent repository.  You can feed this any resync

@@ -177,7 +177,7 @@ TAGS: srcs
 	@echo etags completed
 
 test tests: $(ALL) t/doit
-	@if [ ! -d tmp ]; then mkdir tmp; fi
+	@if [ ! -d tmp ]; then mkdir tmp; chmod 777 tmp; fi
 	@rm -f tmp/keys
 	-@get -q t/SCCS/s.t.* t/setup t/cleanup
 	cd t && ./doit

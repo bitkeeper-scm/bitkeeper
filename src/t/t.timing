@@ -1,0 +1,64 @@
+#!/bin/sh
+# Copyright (c) 1999 Larry McVoy
+# %K%
+
+echo $N Create initial repository ...................................$NL
+HERE=`${CWD}`
+echo "logging: /dev/null" > $HERE/c
+echo "logging_ok: t" >>$HERE/c
+bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
+if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
+cd project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo OK
+echo $N Create some data ............................................$NL
+echo foo > foo
+bk new $Q foo
+bk commit $S -f -ywhatever
+echo OK
+echo $N Create a copy of the project ................................$NL
+cd $HERE
+bk clone $Q project clone
+if [ ! -d clone ]; then echo failed to make top level directory; exit 1; fi
+cd clone
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if [ ! -f BitKeeper/log/parent ]; then echo failed to record parent; exit 1; fi
+echo OK
+echo $N Create series of deltas to the same file quickly ............$NL
+cd $HERE
+for i in 1 2 3 4 5 6 7 8 9 0
+do	get $Q -e project/foo clone/foo
+	echo $i >> project/foo
+	echo $i >> clone/foo
+	delta $Q -y$i project/foo
+	delta $Q -y$i clone/foo
+done
+prs -r1.2.. -hd':I: :KEY:' project/foo | while read rev key
+do	echo "$key" > A.$rev
+	K=`prs -hr$rev -d:KEY: clone/foo`
+	echo "$K" > B.$rev
+done
+for i in `prs -r1.2.. -hd:I: project/foo`
+do	cmp -s A.$i B.$i
+	if [ $? -eq 0 ]
+	then	echo failed on $i; exit 1
+	fi
+done
+echo OK
+echo $N Create changesets quickly ...................................$NL
+cd project
+bk commit $Q -ywhatever
+cd ../clone
+touch BitKeeper/etc/SCCS/x.marked
+bk commit $Q -ywhatever
+cd ..
+A=`prs -hr+ -d:KEY: project/ChangeSet`
+B=`prs -hr+ -d:KEY: clone/ChangeSet`
+if [ "$A" = "$B" ]
+then	echo failed to create different keys; exit 1
+fi
+echo OK
