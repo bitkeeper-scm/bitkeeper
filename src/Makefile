@@ -508,7 +508,7 @@ image: all
 	cd utils && $(MAKE) image BK_BIN=$$DIR
 
 # Rules for test builds.
-BUILDHOSTS	= sun sgi hp aix va ppc freebsd
+BUILDHOSTS	= sun sgi hp aix va ppc freebsd alpha
 CRANKTURN	= ./build
 CRANKTEST	= bk regression
 
@@ -525,7 +525,10 @@ cranktest:
 	$(MAKE) crank CRANKCMD="$(CRANKTEST)"
 
 build: build.sh
+	/bin/rm -f build
 	cp build.sh build
+	chmod +x build
+	chmod -w build
 
 # The default .c.o rule is broken with some Makes.
 .c.o:
