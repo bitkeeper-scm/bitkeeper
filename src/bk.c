@@ -65,6 +65,7 @@ int	fdiff_main(int, char **);
 int	find_main(int, char **);
 int	findkey_main(int, char **);
 int	fix_main(int, char **);
+int	fixlod_main(int, char **);
 int	gca_main(int, char **);
 int	get_main(int, char **);
 int	gethelp_main(int, char **);
@@ -247,6 +248,7 @@ struct	command cmdtbl[] = {
 	{"fdiff", fdiff_main},			/* undoc? 2.0 */
 	{"findkey", findkey_main},		/* doc 2.0 */
 	{"fix", fix_main},			/* doc 2.0 */
+	{"_fix_lod1", fixlod_main},		/* undoc 2.0 */
 	{"gca", gca_main},			/* doc 2.0 */
 	{"get", get_main},			/* doc 2.0 */
 	{"gethelp", gethelp_main},		/* undoc? 2.0 */
