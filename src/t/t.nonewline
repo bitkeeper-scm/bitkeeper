@@ -31,7 +31,7 @@ P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
 echo $N Create files with and without newlines ......................$NL
-echo foo > foo.c; cp foo.c SAVEfoo.c
+${ECHO} foo > foo.c; cp foo.c SAVEfoo.c
 echo $N bar$NL > bar.c; cp bar.c SAVEbar.c
 ci $Q -i foo.c bar.c 
 if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
@@ -53,7 +53,7 @@ if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 echo OK
 echo $N Check resynced files for newline status .....................$NL
-echo foo > SAVEfoo.c
+${ECHO} foo > SAVEfoo.c
 echo $N bar$NL > SAVEbar.c
 if [ ! -f SCCS/s.foo.c ]; then echo failed to resync history; exit 1; fi
 if [ ! -f SCCS/s.bar.c ]; then echo failed to resync history; exit 1; fi
@@ -64,19 +64,19 @@ echo OK
 echo $N Check including no newline deltas ...........................$NL
 get $Q -e foo.c bar.c
 echo $N trunk$NL >> foo.c
-echo >> bar.c
+${ECHO} >> bar.c
 echo $N trunk$NL >> bar.c
 delta $Q -ytrunk foo.c bar.c
 get $Q -e -r1.1 foo.c bar.c
 echo $N branch$NL >> foo.c
-echo >> bar.c
+${ECHO} >> bar.c
 echo $N branch$NL >> bar.c
 delta $Q -ybranch foo.c bar.c
-echo branch >> SAVEfoo.c
+${ECHO} branch >> SAVEfoo.c
 echo $N trunk$NL >> SAVEfoo.c
-echo >> SAVEbar.c
-echo branch >> SAVEbar.c
-echo bar >> SAVEbar.c
+${ECHO} >> SAVEbar.c
+${ECHO} branch >> SAVEbar.c
+${ECHO} bar >> SAVEbar.c
 echo $N trunk$NL >> SAVEbar.c
 get $Q -e -M1.1.1.1 foo.c
 get $Q -e -M1.1.1.1 bar.c

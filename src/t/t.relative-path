@@ -26,6 +26,8 @@ ci $Q -y path
 P=`prs -r1.2 -h -d':DPN:' path`
 if [ X$P != X"path" ]; then echo Failed; exit 1; fi
 echo OK
+if [ "$PLATFORM" != "WIN32" ]
+then
 echo $N checking pathname w/ symlink directory ......................$NL
 mkdir src
 touch src/foo
@@ -44,4 +46,5 @@ delta $Q -ysym-path $HERE/symlink/foo
 P=`prs -r1.3 -h -d':DPN:' symlink/foo`
 if [ X$P != X"src/foo" ]; then echo Failed; exit 1; fi
 echo OK
+fi
 
