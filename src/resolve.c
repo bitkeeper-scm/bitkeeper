@@ -20,6 +20,7 @@
  */
 #include "system.h"
 #include "sccs.h"
+#include "comments.c"
 
 #define	stdlog	opts->log ? opts->log : stderr
 #define	INIT	(INIT_SAVEPROJ|INIT_NOCKSUM)
@@ -43,6 +44,12 @@ typedef struct {
 	int	noconflicts:1;	/* do not handle conflicts */
 	int	hadconflicts:1;	/* set if conflicts are found */
 	int	quiet:1;	/* no output except for errors */
+	int	errors:1;	/* set if there are errors, don't apply */
+	char	*mergeprog;	/* program to merge with */
+	int	renames;	/* count of renames processed in pass 1 */
+	int	renames2;	/* count of renames processed in pass 2 */
+	int	resolved;	/* count of files resolved in pass 3 */
+	int	applied;	/* count of files processed in pass 4 */
 	MDBM	*rootDB;	/* db{ROOTKEY} = pathname in RESYNC */
 	MDBM	*idDB;		/* for the local repository, not RESYNC */
 	project	*local_proj;	/* for the local repository, not RESYNC */
@@ -56,17 +63,27 @@ typedef struct {
 	char	*remote;
 } names;
 
+void	automerge(opts *opts, char *name, char *rfile, names *revs);
 void	cleanup(opts *opts, int what);
-void	saveKey(opts *opts, char *key, char *file);
-int	nameOK(opts *opts, sccs *s);
-names	*getnames(char *path, int type);
-int	passes(opts *opts);
-void	renames_pass1(opts *opts, sccs *s);
-int	renames_pass2(opts *opts);
-int	rename_file(opts *opts, sccs *s, names *names, char *mfile);
+void	cleanup(opts *opts, int what);
+void	commit(opts *opts);
+void	conflict(opts *opts, char *rfile);
 int	create(opts *opts, sccs *s, delta *d);
-int	resolve_conflicts(opts *opts);
-int	apply(opts *opts);
+int	edit(opts *opts, sccs *s, names *revs);
+void	freeStuff(opts *opts);
+void	freenames(names *names, int free_struct);
+names	*getnames(char *path, int type);
+int	nameOK(opts *opts, sccs *s);
+void	pass1_renames(opts *opts, sccs *s);
+int	pass2_renames(opts *opts);
+int	pass3_resolve(opts *opts);
+int	pass4_apply(opts *opts);
+int	passes(opts *opts);
+int	pending();
+int	pendingRenames();
+int	rename_file(opts *opts, sccs *s, names *names, char *mfile);
+void	saveKey(opts *opts, char *key, char *file);
+int	slotTaken(opts *opts, char *slot);
 
 int
 main(int ac, char **av)
@@ -76,7 +93,7 @@ main(int ac, char **av)
 
 	opts.pass1 = opts.pass2 = opts.pass3 = opts.pass4 = 1;
 
-	while ((c = getopt(ac, av, "l|acdq1234")) != -1) {
+	while ((c = getopt(ac, av, "l|m;acdq1234")) != -1) {
 		switch (c) {
 		    case 'l':
 		    	if (optarg) {
@@ -88,6 +105,7 @@ main(int ac, char **av)
 		    case 'a': opts.automerge = 1; break;
 		    case 'd': opts.debug = 1; break;
 		    case 'c': opts.noconflicts = 1; break;
+		    case 'm': opts.mergeprog = optarg; break;
 		    case 'q': opts.quiet = 1; break;
 		    case '1': opts.pass1 = 0; break;
 		    case '2': opts.pass2 = 0; break;
@@ -99,34 +117,9 @@ main(int ac, char **av)
 	return (c);
 }
 
-void
-saveKey(opts *opts, char *key, char *file)
-{
-	if (mdbm_store_str(opts->rootDB, key, file, MDBM_INSERT)) {
-		fprintf(stderr, "Duplicate key: %s\n", key);
-		fprintf(stderr, "\twanted by %s\n", file);
-		fprintf(stderr,
-		    "\tused by %s\n", mdbm_fetch_str(opts->rootDB, key));
-		exit(1);
-	} else if (opts->debug) {
-		fprintf(stdlog, "saveKey(%s)->%s\n", key, file);
-	}
-}
-
-void
-freeStuff(opts *opts)
-{
-	/*
-	 * Clean up allocations/files/dbms
-	 */
-	if (opts->local_proj) sccs_freeProject(opts->local_proj);
-	if (opts->resync_proj) sccs_freeProject(opts->resync_proj);
-	if (opts->log && (opts->log != stderr)) fclose(opts->log);
-	if (opts->rootDB) mdbm_close(opts->rootDB);
-	if (opts->idDB) mdbm_close(opts->idDB);
-	purify_list();
-}
-
+/*
+ * Do the setup and then work through the passes.
+ */
 int
 passes(opts *opts)
 {
@@ -149,7 +142,7 @@ passes(opts *opts)
 	}
 
 	unless (opts->idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
-		fprintf(stderr, "renames: can't open %s\n", IDCACHE);
+		fprintf(stderr, "resolve: can't open %s\n", IDCACHE);
 		exit(1);
 	}
 	opts->local_proj = sccs_initProject(0);
@@ -184,10 +177,14 @@ passes(opts *opts)
 			saveKey(opts, path, buf);
 			sccs_free(s);
 		} else {
-			renames_pass1(opts, s);
+			pass1_renames(opts, s);
 		}
 	}
 	pclose(p);
+	if (opts->pass1 && !opts->quiet) {
+		fprintf(stdlog,
+		    "resolve: found %d renames in pass 1\n", opts->renames);
+	}
 
 	/*
 	 * If there are edited files, bail.
@@ -220,10 +217,17 @@ that will work too, it just gets another patch.\n");
 		 */
 		do {
 			old = n;
-			n = renames_pass2(opts);
+			n = pass2_renames(opts);
 		} while (n && ((old == -1) || (n < old)));
 
-		unless (n) goto pass3;
+		unless (n) {
+			unless (opts->quiet) {
+				fprintf(stdlog,
+				    "resolve: resolved %d renames in pass 2\n",
+				    opts->renames2);
+			}
+			goto pass3;
+		}
 
 		/*
 		 * Now do the same thing, calling the resolver.
@@ -232,24 +236,29 @@ that will work too, it just gets another patch.\n");
 		n = -1;
 		do {
 			old = n;
-			n = renames_pass2(opts);
+			n = pass2_renames(opts);
 		} while (n && ((old == -1) || (n < old)));
 		if (n && opts->pass4) {
 			fprintf(stderr,
 			    "Did not resolve %d renames, abort\n", n);
 			exit(1);
 		}
+		unless (opts->quiet) {
+			fprintf(stdlog,
+			    "resolve: resolved %d renames in pass 2\n",
+			    opts->renames2);
+		}
 	}
 
 	/*
 	 * Pass 3 - resolve content/permissions/flags conflicts.
 	 */
-pass3:	if (opts->pass3) resolve_conflicts(opts);
+pass3:	if (opts->pass3) pass3_resolve(opts);
 
 	/*
 	 * Pass 4 - apply files to repository.
 	 */
-	if (opts->pass4) apply(opts);
+	if (opts->pass4) pass4_apply(opts);
 	
 	freeStuff(opts);
 
@@ -257,6 +266,26 @@ pass3:	if (opts->pass3) resolve_conflicts(opts);
 	 * Whoohooo...
 	 */
 	return (0);
+}
+
+/* ---------------------------- Pass1 stuff ---------------------------- */
+
+/*
+ * Save the key away so we know what we have in the RESYNC directory.
+ * This is called for each file in the RESYNC dir.
+ */
+void
+saveKey(opts *opts, char *key, char *file)
+{
+	if (mdbm_store_str(opts->rootDB, key, file, MDBM_INSERT)) {
+		fprintf(stderr, "Duplicate key: %s\n", key);
+		fprintf(stderr, "\twanted by %s\n", file);
+		fprintf(stderr,
+		    "\tused by %s\n", mdbm_fetch_str(opts->rootDB, key));
+		exit(1);
+	} else if (opts->debug) {
+		fprintf(stdlog, "saveKey(%s)->%s\n", key, file);
+	}
 }
 
 /*
@@ -320,7 +349,7 @@ nameOK(opts *opts, sccs *s)
  * Pass 1 - move to RENAMES and/or build up the DBM of root keys
  */
 void
-renames_pass1(opts *opts, sccs *s)
+pass1_renames(opts *opts, sccs *s)
 {
 	char	path[MAXPATH];
 	static	int filenum;
@@ -376,6 +405,67 @@ renames_pass1(opts *opts, sccs *s)
 	sccs_free(s);
 	free(mfile);
 	free(rfile);
+	opts->renames++;
+}
+
+/* ---------------------------- Pass2 stuff ---------------------------- */
+
+/*
+ * Pass 2 - move files into their final resting place in the RESYNC dir.
+ * This pass only works if there are no conflicts, the conflicts are in pass3.
+ *
+ * If there is no m.file then that means we are a create or they didn't move.
+ */
+int
+pass2_renames(opts *opts)
+{
+	char	path[MAXPATH];
+	sccs	*s;
+	delta	*e;
+	names	*names = 0;
+	project	*proj = 0;
+	DIR	*dir;
+	struct dirent *d;
+	int	n = 0;
+
+	unless (dir = opendir("BitKeeper/RENAMES/SCCS")) return (0);
+	while (d = readdir(dir)) {
+		if (streq(d->d_name, ".") || streq(d->d_name, "..")) continue;
+		n++;
+		unless (d->d_name[0] == 's') continue;
+		sprintf(path, "BitKeeper/RENAMES/SCCS/%s", d->d_name);
+		unless ((s = sccs_init(path, INIT, proj)) && s->tree) {
+			if (s) sccs_free(s);
+			fprintf(stderr, "Ignoring %s\n", path);
+			continue;
+		}
+		unless (proj) proj = s->proj;
+		d->d_name[0] = 'm';
+		sprintf(path, "BitKeeper/RENAMES/SCCS/%s", d->d_name);
+		names = getnames(path, 'm');
+		unless (e = sccs_getrev(s, "+", 0, 0)) {
+			/* should NEVER happen */
+			fprintf(stderr, "Can't find TOT in %s\n", path);
+			fprintf(stderr, "ERROR: File left in %s\n", path);
+			sccs_free(s);
+			freenames(names, 1);
+			continue;
+		}
+		
+		/*
+		 * If we have a "names", then we have a conflict or a 
+		 * rename, so do that.  Otherwise, this must be a create.
+		 */
+		if (names) {
+			rename_file(opts, s, names, path);
+			freenames(names, 1);
+		} else {
+			create(opts, s, e);
+		}
+		sccs_free(s);
+	}
+	closedir(dir);
+	return (n);
 }
 
 /*
@@ -395,12 +485,7 @@ getnames(char	*path, int type)
 	unless (f) return (0);
 	unless (fnext(buf, f)) {
 out:		fclose(f);
-		if (names) {
-			if (names->local) free(names->local);
-			if (names->gca) free(names->gca);
-			if (names->remote) free(names->remote);
-			free(names);
-		}
+		freenames(names, 1);
 		return (0);
 	}
 	unless (names = calloc(1, sizeof(*names))) goto out;
@@ -433,91 +518,11 @@ out:		fclose(f);
 	if (s = strchr(t, ' ')) {	/* r.file case */
 		*s = 0;
 	} else {			/* m.file case */
-		chop(s);
+		chop(t);
 	}
 	unless (names->remote = strdup(t)) goto out;
 	fclose(f);
 	return (names);
-}
-	
-/*
- * Pass 2 - move files into their final resting place in the RESYNC dir.
- * This pass only works if there are no conflicts, the conflicts are in pass3.
- *
- * If there is no m.file then that means we are a create or they didn't move.
- */
-int
-renames_pass2(opts *opts)
-{
-	char	path[MAXPATH];
-	sccs	*s;
-	delta	*e;
-	names	*names = 0;
-	project	*proj = 0;
-	DIR	*dir;
-	struct dirent *d;
-	int	n = 0;
-
-	unless (dir = opendir("BitKeeper/RENAMES/SCCS")) return (0);
-	while (d = readdir(dir)) {
-		if (streq(d->d_name, ".") || streq(d->d_name, "..")) continue;
-		n++;
-		unless (d->d_name[0] == 's') continue;
-		sprintf(path, "BitKeeper/RENAMES/SCCS/%s", d->d_name);
-		unless ((s = sccs_init(path, INIT, proj)) && s->tree) {
-			if (s) sccs_free(s);
-			fprintf(stderr, "Ignoring %s\n", path);
-			continue;
-		}
-		unless (proj) proj = s->proj;
-		d->d_name[0] = 'm';
-		sprintf(path, "BitKeeper/RENAMES/SCCS/%s", d->d_name);
-		names = getnames(path, 'm');
-		unless (e = sccs_getrev(s, "+", 0, 0)) {
-			/* should NEVER happen */
-			fprintf(stderr, "Can't find TOT in %s\n", path);
-			fprintf(stderr, "ERROR: File left in %s\n", path);
-			sccs_free(s);
-			continue;
-		}
-		
-		/*
-		 * If we have a "names", then we have a conflict or a 
-		 * rename, so do that.  Otherwise, this must be a create.
-		 */
-		if (names) {
-			rename_file(opts, s, names, path);
-			free(names->local);
-			free(names->gca);
-			free(names->remote);
-			free(names);
-		} else {
-			create(opts, s, e);
-		}
-		sccs_free(s);
-	}
-	closedir(dir);
-	return (n);
-}
-
-int
-slotTaken(opts *opts, char *slot)
-{
-	if (exists(slot)) {
-		char	buf2[MAXKEY];
-		sccs	*local = sccs_init(slot, 0, 0);
-
-		sccs_sdelta(local, sccs_ino(local), buf2);
-		sccs_free(local);
-		unless (mdbm_fetch_str(opts->rootDB, buf2)) {
-			if (opts->debug) {
-				fprintf(stdlog,
-				    "%s exists in local repository\n", slot);
-			}
-			return (1);
-		}
-	}
-	return (0);
 }
 
 /*
@@ -585,7 +590,18 @@ create(opts *opts, sccs *s, delta *d)
 	}
 	saveKey(opts, buf, s->sfile);
 	free(sfile);
+	unless (opts->resolve) opts->renames2++;
 	return (ret);
+}
+
+void
+freenames(names *names, int free_struct)
+{
+	unless (names) return;
+	if (names->local) free(names->local);
+	if (names->gca) free(names->gca);
+	if (names->remote) free(names->remote);
+	if (free_struct) free(names);
 }
 
 /*
@@ -606,7 +622,7 @@ rename_file(opts *opts, sccs *s, names *names, char *mfile)
 	if (opts->noconflicts && 
 	    (!streq(names->local, names->gca) &&
 	    !streq(names->gca, names->remote))) {
-	    	fprintf(stderr, "renames: can't process conflict\n");
+	    	fprintf(stderr, "resolve: can't process rename conflict\n");
 		fprintf(stderr,
 		    "%s ->\n\tLOCAL:  %s\n\tGCA:    %s\n\tREMOTE: %s\n",
 		    s->gfile, names->local, names->gca, names->remote);
@@ -651,6 +667,7 @@ rename_file(opts *opts, sccs *s, names *names, char *mfile)
 	saveKey(opts, buf, s->sfile);
 	ret = rename(s->sfile, sfile);
 	unless (ret) {
+		unless (opts->resolve) opts->renames2++;
 		if (mfile) unlink(mfile);
 		if (!ret && opts->log) {
 			fprintf(opts->log, "rename(%s, %s)\n", s->sfile, sfile);
@@ -670,11 +687,33 @@ rename_file(opts *opts, sccs *s, names *names, char *mfile)
 	return (ret);
 }
 
+int
+slotTaken(opts *opts, char *slot)
+{
+	if (exists(slot)) {
+		char	buf2[MAXKEY];
+		sccs	*local = sccs_init(slot, 0, 0);
+
+		sccs_sdelta(local, sccs_ino(local), buf2);
+		sccs_free(local);
+		unless (mdbm_fetch_str(opts->rootDB, buf2)) {
+			if (opts->debug) {
+				fprintf(stdlog,
+				    "%s exists in local repository\n", slot);
+			}
+			return (1);
+		}
+	}
+	return (0);
+}
+
+/* ---------------------------- Pass3 stuff ---------------------------- */
+
 /*
  * Handle all the non-rename conflicts.
  */
 int
-resolve_conflicts(opts *opts)
+pass3_resolve(opts *opts)
 {
 	sccs	*r, *l;
 	char	buf[MAXPATH];
@@ -694,7 +733,7 @@ resolve_conflicts(opts *opts)
 		exit (1);
 	}
 	while (fnext(buf, p)) {
-		fprintf(stderr, "Needs rename: %s", buf);
+		fprintf(stderr, "Needs rename: %s", &buf[2]);
 		n++;
 	}
 	pclose(p);
@@ -716,23 +755,197 @@ can be resolved.  Please rerun resolve and fix these first.\n", n);
 	}
 	while (fnext(buf, p)) {
 		chop(buf);
-		conflict(opts, buf);
+		conflict(opts, &buf[2]);
 	}
 	pclose(p);
+	unless (opts->quiet) {
+		fprintf(stdlog,
+		    "resolve: resolved %d conflicts in pass 3\n",
+		    opts->resolved);
+	}
+
+	if (opts->errors) {
+		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
+		exit(1);
+	}
+
 	return (0);
 }
 
 /*
  * Read the r.file, get the versions, run the merge tool.
  */
+void
 conflict(opts *opts, char *rfile)
 {
 	names	*names;
+	char	*name;
+	char	*t;
+	
+	t = strrchr(rfile, '/');
+	assert(t[1] == 'r');
+	t[1] = 's';
+	name = sccs2name(rfile);
+	t[1] = 'r';
 
 	names = getnames(rfile, 'r');
-	fprintf(stderr, "Conflict: %s %s %s %s\n",
-	    rfile, names->local, names->gca, names->remote);
+	if (opts->debug) {
+		fprintf(stderr, "Conflict: %s %s %s %s\n",
+		    rfile, names->local, names->gca, names->remote);
+	}
+	if (opts->noconflicts) {
+	    	fprintf(stderr,
+		    "resolve: can't process conflict in %s\n", name);
+		free(name);
+		freenames(names, 1);
+		opts->hadconflicts = 1;
+		return;
+	}
+
+	/*
+	 * If we are automerging, try that.  The interface to the merge
+	 * program is "merge left_vers gca_vers right_vers merge_vers"
+	 * and the program must return as follows:
+	 * 0 for no overlaps, 1 for some overlaps, 2 for errors.
+	 */
+	gotComment = 0; comment = 0;
+	if (opts->automerge) {
+		automerge(opts, name, rfile, names);
+		free(name);
+		freenames(names, 1);
+		return;
+	}
 }
+
+/*
+ * Try to automerge.
+ */
+void
+automerge(opts *opts, char *name, char *rfile, names *revs)
+{
+	char	cmd[MAXPATH*4];
+	sccs	*s;
+	char	*t;
+	int	ret;
+	names	tmp;
+	int	flags = PRINT | (opts->quiet ? SILENT : 0);
+	
+	t = strrchr(rfile, '/');
+	assert(t[1] == 'r');
+	t[1] = 's';
+	unless (s = sccs_init(rfile, INIT, opts->resync_proj)) {
+		opts->errors = 1;
+		t[1] = 'r';
+		return;
+	}
+	t[1] = 'r';
+	t = basenm(name);
+
+	/*
+	 * If it is the ChangeSet file, just edit it, we'll finish later.
+	 */
+	if (streq("SCCS/r.ChangeSet", rfile)) {
+		(void)edit(opts, s, revs);
+		sccs_free(s);
+		unlink(rfile);
+		return;
+	}
+
+	sprintf(cmd, "BitKeeper/tmp/%s@%s", t, revs->local);
+	tmp.local = strdup(cmd);
+	sprintf(cmd, "BitKeeper/tmp/%s@%s", t, revs->gca);
+	tmp.gca = strdup(cmd);
+	sprintf(cmd, "BitKeeper/tmp/%s@%s", t, revs->remote);
+	tmp.remote = strdup(cmd);
+	if (sccs_get(s, revs->local, 0, 0, 0, flags, tmp.local)) {
+		fprintf(stderr, "Unable to get %s\n", tmp.local);
+		opts->errors = 1;
+		freenames(&tmp, 0);
+		return;
+	}
+	if (sccs_get(s, revs->gca, 0, 0, 0, flags, tmp.gca)) {
+		fprintf(stderr, "Unable to get %s\n", tmp.gca);
+		opts->errors = 1;
+		freenames(&tmp, 0);
+		return;
+	}
+	if (sccs_get(s, revs->remote, 0, 0, 0, flags, tmp.remote)) {
+		fprintf(stderr, "Unable to get %s\n", tmp.remote);
+		opts->errors = 1;
+		freenames(&tmp, 0);
+		return;
+	}
+	sprintf(cmd, "bk %s %s %s %s %s",
+	    opts->mergeprog ? opts->mergeprog : "merge",
+	    tmp.local, tmp.gca, tmp.remote, name);
+	ret = system(cmd) & 0xffff;
+	unlink(tmp.local);
+	unlink(tmp.gca);
+	unlink(tmp.remote);
+	freenames(&tmp, 0);
+	if (ret == 0) {
+		unless (opts->quiet) {
+			fprintf(stdlog, "automerge of %s OK\n", name);
+		}
+		if (edit(opts, s, revs)) {
+			sccs_free(s);
+			return;
+		}
+		comment = "automerge";
+		gotComment = 1;
+		sccs_restart(s);
+		flags = DELTA_DONTASK|DELTA_FORCE|(opts->quiet ? SILENT : 0);
+		if (sccs_delta(s, flags, 0, 0, 0, 0)) {
+			sccs_whynot("delta", s);
+			opts->errors = 1;
+			return;
+		}
+	    	opts->resolved++;
+		unlink(rfile);
+		return;
+	}
+	sccs_free(s);
+	if (ret == 0xff00) {
+	    	fprintf(stderr, "Can not execute '%s'\n", cmd);
+		opts->errors = 1;
+		return;
+	}
+	if ((ret >> 8) == 1) {
+		fprintf(stderr, "Conflicts during merge of %s\n", name);
+		opts->hadconflicts = 1;
+		return;
+	}
+	fprintf(stderr, "Automerge of %s failed for unknown reasons\n", name);
+	opts->errors = 1;
+	return;
+}
+
+/*
+ * Figure out which delta is the branch one and merge it in.
+ */
+int
+edit(opts *opts, sccs *s, names *revs)
+{
+	char	*branch;
+	int	flags = GET_EDIT|GET_SKIPGET;
+
+	branch = strchr(revs->local, '.');
+	assert(branch);
+	if (strchr(++branch, '.')) {
+		branch = revs->local;
+	} else {
+		branch = revs->remote;
+	}
+	if (opts->quiet) flags |= SILENT;
+	if (sccs_get(s, 0, branch, 0, 0, flags, "-")) {
+		fprintf(stderr, "resolve: can not edit/merge %s\n", s->sfile);
+		opts->errors = 1;
+		return (1);
+	}
+	return (0);
+}
+
+/* ---------------------------- Pass4 stuff ---------------------------- */
 
 int
 pendingRenames()
@@ -753,11 +966,39 @@ pendingRenames()
 }
 
 /*
+ * Return true if there are pending deltas.
+ */
+int
+pending()
+{
+	FILE	*f = popen("bk sfiles -C", "r");
+	int	ret = fgetc(f) != EOF;
+
+	pclose(f);
+	return (ret);
+}
+
+/*
+ * Commit the changeset.
+ *
+ * XXX - need to check logging.
+ */
+void
+commit(opts *opts)
+{
+	if (opts->quiet) {
+		system("bk commit -sRFf -yMerge");
+	} else {
+		system("bk commit -RFf -yMerge");
+	}
+}
+
+/*
  * Make sure there are no edited files, no RENAMES, and {r,m}.files and
  * apply all files.
  */
 int
-apply(opts *opts)
+pass4_apply(opts *opts)
 {
 	sccs	*r, *l;
 	char	buf[MAXPATH];
@@ -774,11 +1015,23 @@ apply(opts *opts)
 		exit (1);
 	}
 	while (fnext(buf, p)) {
-		fprintf(stderr, "Pending: %s", buf);
+		fprintf(stderr, "Pending: %s", &buf[2]);
 		n++;
 	}
 	pclose(p);
 	if (n) exit(1);
+
+	/*
+	 * Pass 4b - create the cset.
+	 * We need to do a commit if the ChangeSet file needs one and/or
+	 * if there are any pending changes in the RESYNC dir.  We have
+	 * go check for the pendings because we might have made them in
+	 * an earlier run of this program.  Then this run wouldn't know
+	 * that work has been done.
+	 */
+	if (exists("SCCS/p.ChangeSet") || pending()) {
+		commit(opts);
+	}
 
 	/*
 	 * Pass 4a - check for edited files and remove old files.
@@ -821,7 +1074,7 @@ apply(opts *opts)
 	pclose(p);
 
 	/*
-	 * Pass 4b - apply the files.
+	 * Pass 4c - apply the files.
 	 */
 	sprintf(key, "bk sfiles %s", ROOT2RESYNC);
 	unless (p = popen(key, "r")) {
@@ -842,11 +1095,19 @@ apply(opts *opts)
 				perror("rename");
 				fprintf(stderr, "rename(%s, %s) failed\n",
 				    buf, &buf[offset]);
+			} else {
+				opts->applied++;
 			}
+		} else {
+			opts->applied++;
 		}
 	}
 	pclose(p);
-	unless (opts->quiet) fprintf(stdlog, "resolve: rebuilding caches...\n");
+	unless (opts->quiet) {
+		fprintf(stdlog,
+		    "resolve: applied %d files in pass 4\n", opts->applied);
+		fprintf(stdlog, "resolve: rebuilding caches...\n");
+	}
 	system("bk sfiles -r");
 	unless (opts->quiet) {
 		fprintf(stdlog, "resolve: running consistency check...\n");
@@ -862,6 +1123,20 @@ apply(opts *opts)
 	cleanup(opts, CLEAN_OK|CLEAN_RESYNC|CLEAN_PENDING);
 	/* NOTREACHED */
 	return (0);
+}
+
+void
+freeStuff(opts *opts)
+{
+	/*
+	 * Clean up allocations/files/dbms
+	 */
+	if (opts->local_proj) sccs_freeProject(opts->local_proj);
+	if (opts->resync_proj) sccs_freeProject(opts->resync_proj);
+	if (opts->log && (opts->log != stderr)) fclose(opts->log);
+	if (opts->rootDB) mdbm_close(opts->rootDB);
+	if (opts->idDB) mdbm_close(opts->idDB);
+	purify_list();
 }
 
 void

@@ -23,6 +23,12 @@ cmd_root(int ac, char **av, int in, int out, int err)
 			writen(err, "'\n");
 			return (-1);
 		}
+		unless (exists("BitKeeper/etc")) {
+			writen(err, "ERROR: directory '");
+			writen(err, av[1]);
+			writen(err, "' is not a project root\n");
+			return (-1);
+		}
 	} else if (!av[optind]) {
 		char	buf[MAXPATH];
 

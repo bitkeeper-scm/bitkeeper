@@ -3101,7 +3101,8 @@ sccs_initProject(sccs *s)
 	 */
 	sprintf(path, "%s/RESYNC", root);
 	if (exists(path)) p->flags |= PROJ_RESYNC;
-	unless (emptyDir(READER_LOCK_DIR)) p->flags |= PROJ_READER;
+	sprintf(path, "%s/%s", root, READER_LOCK_DIR);
+	if (exists(path) && !emptyDir(path)) p->flags |= PROJ_READER;
 	return (p);
 }
 
@@ -3143,6 +3144,43 @@ sccs_lockers(project *p)
 		if (reader_locked(p)) fprintf(stderr, " by READER lock");
 		fprintf(stderr, ".\n");
 	}
+}
+
+/*
+ * Try and get a read lock for the whole repository.
+ * Return true if it worked.
+ */
+repository_rdlock()
+{
+	char	path[MAXPATH];
+
+	unless (exists("BitKeeper/etc")) return(-1);
+
+	/*
+	 * We go ahead and create the lock and then see if there is a
+	 * write lock.  If there is, we lost the race and we back off.
+	 */
+	unless (exists(READER_LOCK_DIR)) mkdir(READER_LOCK_DIR, 0777);
+	sprintf(path, "%s/%d@%s", READER_LOCK_DIR, getpid(), sccs_gethost());
+	close(creat(path, 0666));
+	unless (exists(path)) return (-1);
+	if (exists(ROOT2RESYNC)) {
+		unlink(path);
+		return (-1);
+	}
+	return (0);
+}
+
+int
+repository_rdunlock()
+{
+	char	path[MAXPATH];
+
+	unless (exists("BitKeeper/etc")) return(-1);
+
+	sprintf(path, "%s/%d@%s", READER_LOCK_DIR, getpid(), sccs_gethost());
+	unlink(path);
+	return (0);
 }
 
 /*
@@ -5151,6 +5189,14 @@ skip_get:
 	}
 	if (!(flags&SILENT)) {
 		fprintf(stderr, "%s %s", s->gfile, d->rev);
+		if (i2) {
+			fprintf(stderr, " inc: %s", i2);
+		} else if (iLst) {
+			fprintf(stderr, " inc: %s", iLst);
+		}
+		if (xLst) {
+			fprintf(stderr, " exc: %s", xLst);
+		}
 		if (flags & GET_EDIT) {
 			fprintf(stderr, " -> %s", rev);
 		}

@@ -18,6 +18,11 @@
 #	rename with conflict
 #	rename with conflict that gets moved out of the way
 
+if [ X$Q = X ]
+then	L=-l
+else	L=
+fi
+
 # Create a repository with 5 files in it.  The files contain
 # 1, 2, 3, 4, 5 and start out as A, B, C, D, E
 echo $N Create initial repository ...................................$NL
@@ -61,6 +66,7 @@ then	echo Resolve did not exit 1; exit 1
 fi
 cat<<EOF | cmp -s - ../ERR
 Warning: A is modified, will not overwrite it.
+resolve: found 1 renames in pass 1
 ===================== ERROR ========================
 There are modified files in the repository which are also in the patch.
 BitKeeper is aborting this patch until you check in those files.
@@ -72,6 +78,7 @@ EOF
 if [ $? != 0 ]
 then	echo Bad error message from resolve
 	cat ../ERR
+	exit 1
 fi
 if [ -d RESYNC ]
 then	echo Failed to remove RESYNC directory
@@ -85,7 +92,7 @@ echo OK
 echo $N Clean the edit and try the first pass of resolve ............$NL
 bk unedit $Q A
 takepatch $Q -f PENDING/*
-resolve -234
+resolve $L $Q -234
 if [ -f RESYNC/SCCS/s.Z -o ! -f RESYNC/BitKeeper/RENAMES/SCCS/s.1 ]
 then	echo Failed to move renamed s.file to RENAMES; exit 1
 fi
@@ -94,7 +101,7 @@ then	echo Failed to move renamed m.file to RENAMES; exit 1
 fi
 echo OK
 echo $N Run resolve to completion and make sure it moves A to Z .....$NL
-resolve -q
+resolve $Q $L
 if [ -f SCCS/s.A ]
 then	echo failed to move A; exit 1
 fi
@@ -114,12 +121,12 @@ echo OK
 echo $N Do some work in Z/A and resync ..............................$NL
 cd $HERE/project
 get $Q -e Z
-date >> Z
+echo same data >> Z
 ci $Q -y'change as Z'
 bk commit $S -f -y'change as Z'
 cd $HERE/copy
 get $Q -e A
-date >> A
+echo same data >> A
 ci $Q -y'change as A'
 bk commit $S -f -y'change as A'
 resync $Q $HERE/project $HERE/copy
@@ -128,7 +135,7 @@ then	echo failed to create conflict for Z; exit 1
 fi
 echo OK
 echo $N Run pass 1 of resolve and make sure m/r files move ..........$NL
-resolve $Q -234 
+resolve $L $Q -234 
 if [ -f RESYNC/SCCS/s.Z -o ! -f RESYNC/BitKeeper/RENAMES/SCCS/s.1 ]
 then	echo Failed to move renamed s.file to RENAMES; exit 1
 fi
@@ -140,7 +147,7 @@ then	echo Failed to move renamed r.file to RENAMES; exit 1
 fi
 echo OK
 echo $N Run pass 2 of resolve and make sure r file moves back .......$NL
-resolve $Q -134 
+resolve $L $Q -134 
 if [ ! -f RESYNC/SCCS/s.Z ]
 then	echo Failed to move renamed s.file from RENAMES; exit 1
 fi
@@ -149,6 +156,18 @@ then	echo Failed to move renamed r.file from RENAMES; exit 1
 fi
 echo OK
 echo $N Run resolve in no conflict mode and make sure it fails ......$NL
-resolve $Q -l -c
-cat RESYNC/SCCS/r.*
+resolve $L $Q -c 2>ERR
+if [ $? = 0 ]
+then	echo Failed to return an error
+fi
+echo OK
+# XXX - need a test where the only conflict is the ChangeSet file and that
+# gets automerged.
+
+# Start testing conflicts.
+echo $N Run resolve in automerge mode and make sure it merges .......$NL
+resolve $L $Q -a
+if [ $? != 0 ]
+then	echo failed; exit 1
+fi
 echo OK

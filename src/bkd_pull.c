@@ -33,9 +33,9 @@ cmd_pull(int ac, char **av, int in, int out, int err)
 		exit(1);
 	}
 
-	if (exists("RESYNC")) {
-		writen(err, "Project is locked for update.\n");
-		exit(1);
+	unless (repository_rdlock() == 0) {
+		writen(err, "Can't get read lock on the repository.\n");
+		return (-1);
 	}
 
 	while ((c = getopt(ac, av, "nq")) != -1) {
@@ -137,5 +137,6 @@ out:
 	if (f) pclose(f);
 	if (them) mdbm_close(them);
 	if (me) mdbm_close(me);
+	repository_rdunlock();
 	exit(error);
 }

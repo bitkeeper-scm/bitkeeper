@@ -464,7 +464,7 @@ check(sccs *s, MDBM *db, MDBM *marks)
 		errors++;
 	} else if (!streq(s->gfile, d->pathname)) {
 		fprintf(stderr,
-		    "check: %s should be %s\n", s->sfile, d->pathname);
+		    "check: %s should be %s\n", s->gfile, d->pathname);
 		errors++;
 		names = 1;
 	}

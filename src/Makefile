@@ -13,7 +13,7 @@ BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 SCRIPTS	= rcs2sccs testfast bk import oldresync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 mkindex \
 	  renametool mkdiffs lodset count_user getlog build \
-	  pull clone resync oldresolve
+	  pull clone resync oldresolve merge
 PSCR	= t/doit
 LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a
 LINKS	= ci co edit unedit unget
@@ -67,7 +67,7 @@ SCRSRCS	= rcs2sccs.perl testfast.perl bk.sh import.sh \
 	  unuuwrap.sh port/unix_platform.sh port/unix_platform.tcl \
 	  port/unix_platform.perl pmerge.perl gui/csettool.tcl \
 	  port/win32_platform.perl port/win32_platform.tcl \
-	  port/win32_platform.sh gui/renametool.tcl
+	  port/win32_platform.sh gui/renametool.tcl merge.sh
 MISC	= bkhelp.txt config.h.in configure substvars.in bitkeeper.config \
 	  t/doit.sh
 
@@ -405,6 +405,12 @@ mkdiffs: mkdiffs.perl port/unix_platform.perl substvars
 	./substvars mkdiffs.perl port/unix_platform.perl > mkdiffs.T
 	chmod +x mkdiffs.T
 	mv -f mkdiffs.T mkdiffs
+
+merge: merge.sh
+	rm -f merge
+	cp merge.sh merge
+	chmod +x merge
+	chmod -w merge
 
 clone: clone.sh
 	rm -f clone
