@@ -494,6 +494,7 @@ proc line {s width ht} \
 	set word [lindex $l [expr {[llength $l] - 1}]]
 	if {[regexp $line_rev $word dummy a] == 1} { set word $a }
 	regexp {(.*)-([^-]*)} $word dummy rev last
+	if {($last == "") || ($first == "")} {return}
 	set diff [expr {$last - $first}]
 	incr diff
 	set len [expr {$xspace * $diff}]
@@ -1421,8 +1422,8 @@ proc histtool {fname R} \
 	set bad 0
 	set file [exec bk sfiles -g $fname 2>$dev_null]
 	if {"$file" == ""} {
-		puts "No such file $fname"
-		exit 0
+		puts stderr "No such file $fname"
+		exit 1
 	}
 	if {[catch {exec bk root $file} proot]} {
 		wm title . "histtool: $file $R"
