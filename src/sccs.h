@@ -371,8 +371,7 @@ typedef	struct symbol {			/* symbolic tags */
 #define	SFREE	1
 #define	SLIST	0
 typedef struct serial {
-	struct	serial *next;		/* forward & */
-	struct	serial *prev;		/* ... back links when allocated */
+	struct	serial *next;		/* forward link with offset 0 */
 	ser_t	serial;			/* # we're working on */
 	char	type;			/* 'I' or 'E' */
 } serlist;
