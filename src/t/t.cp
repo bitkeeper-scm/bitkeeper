@@ -22,7 +22,9 @@ do
 	bk delta -y"comment $i" file1
 done
 bk cp file1 file2
-if [ ! -f SCCS/s.file2 ]; then echo Failed; exit 1; fi
+if [ ! -f SCCS/s.file2 ]; then echo Failed to create an s.file; exit 1; fi
+diff file1 file2
+if [ $? -ne 0 ]; then echo Failed to copy content correctly; exit 1; fi 
 echo OK
 echo $N Test revision history is preserved after bk cp ..............$NL
 REV=`bk prs -hr+ -d':REV:' file2`
