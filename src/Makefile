@@ -511,7 +511,7 @@ image: all
 	cd utils && $(MAKE) image BK_BIN=$$DIR
 
 # Rules for test builds.
-BUILDHOSTS	= sun sgi hp aix va ppc freebsd alpha
+BUILDHOSTS	= sun sgi hp aix work ppc freebsd alpha
 CRANKTURN	= ./build
 CRANKTEST	= bk regression
 
