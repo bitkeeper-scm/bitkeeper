@@ -38,12 +38,16 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
+private	char	*lockHome(void);
+private	char	*keysHome(void);
+private	int	uniq_regen(void);
+
 private	int	dirty;			/* set if we updated the db */
 private	MDBM	*db;
 private	char	*lockFile;		/* cache it */
 private	char	*keysFile;		/* cache it */
 
-char	*
+private char	*
 lockHome()
 {
 	char	path[MAXPATH];
@@ -56,7 +60,7 @@ lockHome()
 /*
  * Use BK_TMP first, we set that for the regression tests.
  */
-char	*
+private char	*
 keysHome()
 {
 	char	*t;

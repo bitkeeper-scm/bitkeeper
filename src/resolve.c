@@ -38,15 +38,19 @@ private	int	pass4_apply(opts *opts);
 private	int	passes(opts *opts);
 private	int	pending(int checkComments);
 private	int	pendingEdits(void);
-private	int	pendingRenames();
+private	int	pendingRenames(void);
 private void	checkins(opts *opts, char *comment);
 private	void	rename_delta(resolve *rs, char *sf, delta *d, char *rf, int w);
-private	int	rename_file(resolve *rs);
 private	int	rename_file(resolve *rs);
 private	void	restore(opts *o);
 private void	unapply(FILE *f);
 private int	copyAndGet(char *from, char *to, project *proj, int getFlags);
 private int	writeCheck(sccs *s, MDBM *db);
+private	void	listPendingRenames(void);
+private	int	noDiffs(void);
+private	int	bk_check(void);
+private	void	log_cleanup(void);
+
 private MDBM	*localDB;	/* real name cache for local tree */
 private MDBM	*resyncDB;	/* real name cache for resyn tree */
 

@@ -2,8 +2,7 @@
 #include "sccs.h"
 
 private	void	undos(char *s);
-private void	undos_stdin();
-extern	void	platformSpecificInit(char *);
+private void	undos_stdin(void);
 int	auto_new_line = 1;
 
 int

@@ -4,7 +4,6 @@
 int
 getuser_main(int ac, char **av)
 {
-	extern	char	*sccs_getuser();
 	char *user;
 
 	if (ac == 2 && !strcmp("--help", av[1])) {

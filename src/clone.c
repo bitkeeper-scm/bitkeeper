@@ -21,7 +21,6 @@ private void	parent(opts opts, remote *r);
 private int	sfio(opts opts, int gz, remote *r);
 private void	usage(void);
 private int	initProject(char *root);
-private void	usage(void);
 private	void	lclone(opts, remote *, char *to);
 private int	linkdir(char *from, char *to, char *dir);
 private int	relink(char *a, char *b);

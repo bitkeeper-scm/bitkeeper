@@ -2,8 +2,6 @@
 
 #define	PARENT "BitKeeper/log/parent"
 
-char	*getParent();
-
 int
 parent_main(int ac,  char **av)
 {

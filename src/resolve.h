@@ -80,7 +80,9 @@ typedef struct {
 	delta	*remote;
 } deltas;
 
-typedef	int (*rfunc)();
+typedef struct resolve resolve;
+
+typedef	int (*rfunc)(resolve *rs);
 
 /* there has to be one with "?" as the index */
 typedef	struct {
@@ -93,7 +95,7 @@ typedef	struct {
 /*
  * State about the resolve; instantiated and freed for each pass.
  */
-typedef	struct resolve {
+struct resolve {
 	opts	*opts;		/* so we don't have to pass both */
 	sccs	*s;		/* the sccs file we are resolving */
 	char	*key;		/* root key of this sfile */
@@ -117,7 +119,7 @@ typedef	struct resolve {
 	u32	res_dirfile:1;	/* pathname component conflicts w/ file */
 	u32	res_resync:1;	/* conflict in the RESYNC dir */
 	u32	res_contents:1;	/* content conflict */
-} resolve;
+};
 
 
 names	*getnames(char *path, int type);
@@ -128,16 +130,13 @@ resolve	*resolve_init(opts *opts, sccs *s);
 void	automerge(resolve *rs, names *n);
 int	c_revtool(resolve *rs);
 int	c_merge(resolve *rs);
-int	confirm(char *msg);
 void 	flags_delta(resolve *,char *, delta *, int, char *, int);
 int	edit(resolve *rs);
 void	freenames(names *names, int free_struct);
 int	get_revs(resolve *rs, names *n);
-int	getline(int in, char *buf, int size);
 void	mode_delta(resolve*, char *, delta *d, mode_t, char *rfile, int which);
 int	move_remote(resolve *rs, char *sfile);
 int	ok_local(sccs *s, int check_pending);
-int	prompt(char *msg, char *buf);
 void	type_delta(resolve *, char *, delta *, delta *, char *, int);
 int	res_abort(resolve *rs);
 int	res_clear(resolve *rs);

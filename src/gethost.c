@@ -4,7 +4,6 @@
 int
 gethost_main(int ac, char **av)
 {
-	extern	char	*sccs_gethost();
 	char 	*host;
 
 	if (ac == 2 && !strcmp("--help", av[1])) {

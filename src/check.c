@@ -9,7 +9,7 @@
 #include "range.h"
 WHATSTR("@(#)%K%");
 
-private	MDBM	*buildKeys();
+private	MDBM	*buildKeys(void);
 private	char	*csetFind(char *key);
 private	int	check(sccs *s, MDBM *db);
 private	char	*getRev(char *root, char *key, MDBM *idDB);
@@ -17,7 +17,7 @@ private	char	*getFile(char *root, MDBM *idDB);
 private	int	checkAll(MDBM *db);
 private	void	listFound(MDBM *db);
 private	void	listCsetRevs(char *key);
-private void	init_idcache();
+private void	init_idcache(void);
 private int	checkKeys(sccs *s, char *root);
 private	int	chk_csetpointer(sccs *s);
 private void	warnPoly(void);

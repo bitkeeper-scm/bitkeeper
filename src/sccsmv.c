@@ -3,6 +3,9 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
+private	int	isMasterTree(void);
+
+
 /*
  * Returm true if Master repository
  */

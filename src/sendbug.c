@@ -1,11 +1,10 @@
 #include "bkd.h"
 
 extern char *editor;
-extern char *find_wish();
+extern char *find_wish(void);
 extern char *bin;
 private int do_email(char *bug);
 private int do_webmail(char *bug);
-extern int spawn_cmd(int flag, char **av);
 
 #define	MAXARGS 1024
 

@@ -19,10 +19,18 @@ G	=-g
 # -Wno-char-subscripts shuts up "subscript has type char", which comes
 #  up all the time with broken <ctype.h> implementations.  (To be turned
 #  back on for 1.1 or so.)
-#    WHS: Current versions of gcc supress warnings in system files by default.
-#         Perhaps this can be reenabled?
+#    WHS: Current versions of gcc (3.0?) supress warnings in system files 
+#	  by default. Perhaps this can be reenabled?
 # -Wno-format-y2k supresses complains about '%y' in strftime formats
-WARNINGS=-Wall -Wno-parentheses -Wno-char-subscripts -Wno-format-y2k
+# -Wstrict-prototypes    Don't allow non-ansi function declarations
+# other options wanted:
+#    -Wmissing-declarations Functions without a prototype
+#    -Wnested-externs	    Prototypes declared in a function
+#    -Wwrite-strings	    warn in string constant is passed to a char *
+#    -W
+#    -Wmissing-prototypes   Same as -Wmissing-declarations ??
+#    -Wredundant-decls	    Declaring same function twice (system header probs)
+WARNINGS=-Wall -Wno-parentheses -Wno-char-subscripts -Wno-format-y2k -Wstrict-prototypes
 CC_DEBUG=$G $(WARNINGS)
 CC_FAST_DEBUG=$G -O2 $(WARNINGS)
 CC_FAST	=$(CC_FAST_DEBUG)

@@ -4,6 +4,8 @@
 #include "bkd.h"
 extern	char *vRootPrefix;
 
+private	int	cd2vroot(void);
+
 int
 cmd_eof(int ac, char **av)
 {

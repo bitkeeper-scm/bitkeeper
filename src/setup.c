@@ -5,7 +5,7 @@
 extern char *editor, *pager, *bin;
 private int	mkconfig(FILE *out, MDBM *flist);
 private void    usage(void);
-private void	defaultIgnore();
+private void	defaultIgnore(void);
 private void	printField(FILE *out, MDBM *flist, char *field);
 private MDBM	*addField(MDBM *flist, char *field);
 

@@ -87,7 +87,6 @@ sccs_lockfile(const char *file, int waitsecs, int rm, int quiet)
 	char	*p, *uniq;
 	int	fd;
 	int	uslp = 1000, waited = 0;
-	struct	stat sb;
 
 	uniq = uniqfile(file);
 	unlink(uniq);

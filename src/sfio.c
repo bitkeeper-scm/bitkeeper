@@ -31,7 +31,7 @@ WHATSTR("@(#)%K%");
 			    (doModes ? COMPAT_MODE : COMPAT_NOMODE) : \
 			    (doModes ? SFIO_MODE : SFIO_NOMODE))
 
-private	int	sfio_out();
+private	int	sfio_out(void);
 private int	out_file(char *file, struct stat *, off_t *byte_count);
 private int	out_file_compat(char *file, struct stat *, off_t *byte_count);
 private int	out_link(char *file, struct stat *, off_t *byte_count);
@@ -40,13 +40,12 @@ private int	in_link(char *file, int todo, int extract);
 private int	in_file(char *file, int todo, int extract);
 private int	in_file_compat(char *file, int todo, int extract);
 private	int	mkfile(char *file);
-extern	void	platformSpecificInit(char *name);
 
 private	int	quiet;
 private	int	doModes;
 private	int	compat;		/* internal use only compat option */
-private int	(*out_reg)();
-private int	(*in_reg)();
+private int	(*out_reg)(char *file, struct stat *sp, off_t *byte_count);
+private int	(*in_reg)(char *file, int todo, int extract);
 
 #define M_IN	1
 #define M_OUT	2

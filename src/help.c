@@ -2,7 +2,6 @@
 #include "sccs.h"
 
 extern char *editor, *pager, *bin;
-private	int is_command(char *file);
 
 int
 help_main(int ac,  char **av)
@@ -85,16 +84,4 @@ print:
 	}
 	unlink(out);
 	return (0);
-}
-
-private	int
-is_command(char *cmd)
-{
-	int i;
-	extern  struct command cmdtbl[]; /* see bkmain.c */
-
-	for (i = 0; cmdtbl[i].name; i++) {
-		if (streq(cmdtbl[i].name, cmd)) return 1;
-	}
-	return 0;
 }

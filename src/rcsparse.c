@@ -343,6 +343,7 @@ mkgraph(RCS *rcs)
 	}
 }
 
+#if 0
 private void
 rcs_branch(RCS *rcs)
 {
@@ -353,6 +354,7 @@ rcs_branch(RCS *rcs)
 	}
 	printf("\n");
 }
+#endif
 
 #ifdef	THIS_CODE_IS_BUSTED
 private	void
