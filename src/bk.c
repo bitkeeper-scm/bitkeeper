@@ -8,7 +8,7 @@
 extern	int	test_release;
 extern	unsigned build_timet;
 
-char	*editor = 0, *pager = 0, *bin = 0;
+char	*editor = 0, *bin = 0;
 char	*BitKeeper = "BitKeeper/";	/* XXX - reset this? */
 char	**bk_environ;
 project	*bk_proj = 0;
