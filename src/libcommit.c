@@ -48,8 +48,7 @@ logAddr()
 void
 sendConfig(char *to)
 {
-	sccs *s;
-	char *project_name = "", *dspec;
+	char *dspec;
 	char config_log[MAXPATH], buf[MAXLINE];
 	FILE *f;
 	time_t tm;
@@ -103,12 +102,7 @@ sendConfig(char *to)
 		fclose(f);
 	}
 
-	s = sccs_init(CHANGESET, 0, 0);
-	assert(s);
-	if (s->text && (int)(s->text[0])  >= 1) project_name = s->text[1];
-	sprintf(buf, "BitKeeper config: %s", project_name);
-	sccs_free(s);
-
+	sprintf(buf, "BitKeeper config: %s", project_name());
 	mail(to, buf, config_log);
 	unlink(config_log);
 }
@@ -170,7 +164,7 @@ project_name()
 	static char pname[MAXLINE] = "";
 	cd2root();
 	s = sccs_init(CHANGESET, 0, 0);
-	if (s->text && (int)(s->text[0])  >= 1) strcpy(pname, s->text[1]);
+	if (s && s->text && (int)(s->text[0])  >= 1) strcpy(pname, s->text[1]);
 	sccs_free(s);
 	return (pname);
 }
@@ -194,7 +188,7 @@ notify()
 	}
 	if (size(notify_file) <= 0) return;
 	sprintf(notify_log, "%s/bk_notify%d", TMP_PATH, getpid());
-	sprintf(buf, "%s bk version > %s", bin, notify_log);
+	sprintf(buf, "%sbk version > %s", bin, notify_log);
 	system(buf);
 	f = fopen(notify_log, "w");
 	fprintf(f, "BitKeeper repository %s : %s\n",
