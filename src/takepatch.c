@@ -378,7 +378,7 @@ delta:	off = ftell(f);
 		while (fnext(buf, f) && !streq("\n", buf)) {
 			line++;
 			if (echo>3) fprintf(stderr, "%s", buf);
-			if (fputs(buf, t) <= 0) {
+			if (fputs(buf, t) == EOF) {
 				perror("fputs on init file");
 				cleanup(CLEAN_RESYNC);
 			}
@@ -405,7 +405,7 @@ delta:	off = ftell(f);
 		}
 		c = line;
 		while (fnext(buf, f) && !streq("\n", buf)) {
-			if (fputs(buf, t) <= 0) {
+			if (fputs(buf, t) == EOF) {
 				perror("fputs on diffs file");
 				cleanup(CLEAN_RESYNC);
 			}
@@ -888,7 +888,7 @@ tree:
 		while (fnext(buf, p)) {
 			if (!started && streq(buf, PATCH_VERSION)) started = 1;
 			if (started) {
-				if (fputs(buf, f) <= 0) {
+				if (fputs(buf, f) == EOF) {
 					perror("fputs on patch");
 					cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 				}
