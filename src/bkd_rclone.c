@@ -79,7 +79,7 @@ cmd_rclone_part1(int ac, char **av)
 	char	*path, *p;
 
 	unless (path = rclone_common(ac, av, &opts)) return (1);
-	if (Opts.daemon || Opts.safe_cd) {
+	if (isDaemon(Opts) | Opts.safe_cd) {
 		char	cwd[MAXPATH];
 		char	*new = fullname(path, 0);
 		getcwd(cwd, sizeof(cwd));

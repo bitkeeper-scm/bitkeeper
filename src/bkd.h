@@ -78,6 +78,7 @@ typedef struct {
 	u32	daemon:1;		/* listen for TCP connections */
 	u32	start:1;		/* start NT bkd service */
 	u32	remove:1;		/* remove NT bkd service */
+	u32	nt_service;		/* running as NT bkd service */
 	u32	http_hdr_out:1;		/* print http header to output */
 	u32	quiet:1;		/* quiet mode */
 	u32	safe_cd:1;		/* do not allow chdir up */
