@@ -251,8 +251,8 @@ proc diffFiles {L R} \
 	while {[gets $l buf] >= 0} {
 		puts $t "$buf"
 	}
-	close $l
-	close $t
+	catch { close $l }
+	catch { close $t }
 	set l [open $tmp r]
 	set r [open $R r]
 	set d [sdiff $tmp $R]
@@ -281,8 +281,8 @@ proc diffFiles {L R} \
 	    "<"	{ incr diffCount 1; left $r $l $n }
 	    ">"	{ incr diffCount 1; right $r $l $n }
 	}
-	close $r
-	close $l
+	catch { close $r }
+	catch { close $l }
 	catch { close $d }
 	if {"$rmList" != ""} {
 		foreach rm $rmList {
@@ -307,7 +307,7 @@ proc fillFile {which file} \
 	set f [open $file r]
 	set data [read $f]
 	$which insert end $data
-	close $f
+	catch { close $f }
 	.files.l configure -state disabled
 	.files.r configure -state disabled
 	.diffs.status.r configure -text "$file"
@@ -649,7 +649,7 @@ proc Apply {} \
 		}
 		set buf [.files.sh get "$l.0" "$l.0 lineend"]
 	}
-	close $NEW
+	catch { close $NEW }
 	if {$l == 1.0 && $leftCount == 0 && $rightCount == 0} { exit 0 }
 	.files.sh tag delete select
 	.files.sh configure -state disabled
