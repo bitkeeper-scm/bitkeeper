@@ -530,15 +530,19 @@ _links() {
 _regression() {
 	DO_REMOTE=YES
 	PREFER_RSH=YES
-	while getopts ls OPT
+	V=
+	X=
+	while getopts lsvx OPT
 	do	case $OPT in
 		l)	DO_REMOTE=NO;;
 		s)	PREFER_RSH=;;
+		v)	V=-v;;
+		x)	X=-x;;
 		esac
 	done
 	shift `expr $OPTIND - 1`
 	export DO_REMOTE PREFER_RSH
-	cd ${BIN}t && exec ./doit "$@"
+	cd ${BIN}t && exec ./doit $V $X "$@"
 }
 
 __init() {

@@ -81,6 +81,7 @@ err:		repository_rdunlock(0);
 	} else if (pid) {
 		int	status;
 
+		signal(SIGCHLD, SIG_IGN);
 		close(p[1]);
 		gzip_init(gzip);
 		while ((n = read(p[0], buf, sizeof(buf))) > 0) {

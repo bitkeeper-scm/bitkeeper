@@ -255,6 +255,7 @@ bkd(int compress, remote *r, int *sock)
 	    	execvp(cmd[0], cmd);
 		exit(1);
 	    default:
+		signal(SIGCHLD, SIG_IGN);
 		close(inout[1]);
 		*sock = inout[0];
 	    	return (p);

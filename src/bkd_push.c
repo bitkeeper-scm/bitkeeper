@@ -47,6 +47,7 @@ cmd_push(int ac, char **av)
 			out("@END@\n");
 			goto out;
 		}
+		signal(SIGCHLD, SIG_IGN);
 		waitpid(pid, &status, 0);
 		out("@END@\n");
 		if (WIFEXITED(status)) {
@@ -80,6 +81,7 @@ cmd_push(int ac, char **av)
 		} else if (pid) {
 			int	n, status;
 
+			signal(SIGCHLD, SIG_IGN);
 			/*
 			 * We get the data from the socket, uncompress,
 			 * and feed it to takepatch.
