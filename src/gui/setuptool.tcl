@@ -2,7 +2,7 @@
 # setuptool - a tool for seting up a repository
 # Copyright (c) 2000 by Aaron Kushner; All rights reserved.
 #
-# %W%
+# @(#)setuptool.tcl 1.30
 #
 # TODO: 
 #
@@ -87,11 +87,13 @@ proc license_check {}  \
 	#
 	# Make user accept license if environment var not set
 	#
+	#puts "bkdir=($st_g(bkdir))"
 	if {[info exists env(BK_LICENSE)] && \
 	    [string compare $env(BK_LICENSE) "ACCEPTED"] == 0} {
 		return
         } elseif {$tcl_platform(platform) == "windows"} {
-		set bkaccepted [file join $st_g(bkdir) _bkaccepted]
+		#set bkaccepted [file join $st_g(bkdir) _bkaccepted]
+		set bkaccepted [file join $st_g(bkdir) .bkaccepted]
 		if {[file exists $bkaccepted]} {return}
 	} elseif {[info exists env(HOME)]} {
 		set bkaccepted [file join $st_g(bkdir) .bkaccepted]
@@ -209,7 +211,7 @@ proc read_bkrc {} \
 # Generate etc/config file and then create the repository
 proc create_repo {} \
 {
-	global st_cinfo env st_repo_name tmp_dir debug st_g
+	global st_cinfo env st_repo_name tmp_dir debug st_g force_setup
 
 	regsub -all {\ } $st_cinfo(description) {\\ }  escaped_desc
 	# save config info back to users .bkrc file
@@ -224,7 +226,11 @@ proc create_repo {} \
 	}
 	catch { close $cfid }
 	set repo $st_cinfo(repository)
-	catch { exec bk setup -f -c$cfile $repo } msg
+	if {$force_setup == 1} {
+		catch { exec bk setup -e -f -c$cfile $repo } msg
+	} else {
+		catch { exec bk setup -f -c$cfile $repo } msg
+	}
 	if {$msg != ""} {
 		displayMessage "Repository creation failed: $msg"
 		exit 1
@@ -549,18 +555,47 @@ proc getMessages {} \
 proc main {} \
 {
 	global env argc argv st_repo_name st_dlg_button st_cinfo st_g w
-	global gc
+	global gc force_setup
 
 	setbkdir
 	license_check
 	getMessages
 
+	set repo ""
+	set force_setup 0
+	set argindex 0
+	set fnum 0
+
+	wm withdraw .
+
 	# Override the repo name found in the .bkrc file if argc is set
-	if {$argc == 1} {
-		set st_cinfo(repository) [lindex $argv 0]
+	while {$argindex < $argc} {
+	    set arg [lindex $argv $argindex]
+	    switch -regexp -- $arg {
+		"^-e" {
+		    set force_setup 1
+		}
+		default {
+		    incr fnum
+		    set repo $arg
+		}
+	    }
+	    incr argindex
+	}
+	set arg [lindex $argv $argindex]
+	if {$fnum > 1} {
+		displayMessage "Wrong number of arguments. If the repository
+name contains spaces, please put the name in quotes.\nFor example:\n\tbk setuptool \"test repo\""
+		exit
+	}
+
+	if {$repo != ""} {
+		set st_cinfo(repository) $repo
 	} else {
 		set st_cinfo(repository) ""
 	}
+	wm deiconify .
+
 	create_config .c
 	get_config_info
 
