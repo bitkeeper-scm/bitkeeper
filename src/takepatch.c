@@ -360,9 +360,8 @@ cleanup:		if (perfile) sccs_free(perfile);
 			    s->sfile);
 			goto cleanup;
 		}
-		tmp = sccs_getrev(s, "+", 0, 0);
-		assert(tmp);
-		unless (streq(tmp->pathname, s->gfile)) {
+		sccs_setpathname(s);
+		unless (streq(s->spathname, s->sfile)) {
 			badpath(s, tmp);
 			goto cleanup;
 		}
