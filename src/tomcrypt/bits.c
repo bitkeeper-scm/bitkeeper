@@ -126,10 +126,6 @@ unsigned long rng_get_bytes(unsigned char *buf, unsigned long len,
 {
    int x = 0;
 
-   if (getenv("BK_REGRESSION")) {
-	   x += rng_fake(buf+x, len-x);    if (x==len) { return x; }
-   }
-
    x += rng_nix(buf+x, len-x, callback);   if (x==len) { return x; }
 #ifdef WIN32
    x += rng_win32(buf+x, len-x, callback); if (x==len) { return x; }
