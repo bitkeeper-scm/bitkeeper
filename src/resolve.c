@@ -2390,7 +2390,7 @@ Got:\n\
 		    "resolve: running consistency check, please wait...\n");
 	}
 	if (strieq("yes", user_preference("partial_check"))) {
-		ret = check(BACKUP_LIST);
+		ret = check(APPLIED);
 	} else {
 		ret = check(0);
 	}
