@@ -828,6 +828,8 @@ savefile(char *dir, char *prefix, char *pathname)
 	
 	/* Force this group writable */
 	(void)chmod(dir, 0775);
+	if (access(dir, W_OK)) return (0);
+
 	for (i = 1; ; i++) {				/* CSTYLED */
 		struct	tm *tm;
 		time_t	now = time(0);
