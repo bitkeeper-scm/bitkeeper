@@ -596,11 +596,13 @@ proc diffend {} \
 }
 
 proc both {both} {
+	global	annotate
+
 	foreach l $both {
 		.diffs.left insert end " $l\n"
 		.diffs.right insert end " $l\n"
 		set bar [string first "|" $l]
-		if {$bar == -1} {
+		if {$annotate == 0 || $bar == -1} {
 			set l [string range $l 1 end]
 		} else {
 			incr bar 2
@@ -613,7 +615,7 @@ proc both {both} {
 
 proc readSmerge {} \
 {
-	global	UNMERGED conflicts errorCode smerge
+	global	UNMERGED conflicts errorCode smerge annotate
 
 	set fd [open $smerge r]
 	set merged 0
@@ -654,7 +656,7 @@ proc readSmerge {} \
 		}
 		if {$state == "M"} {
 			set bar [string first "|" $line]
-			if {$bar == -1} {
+			if {$annotate == 0 || $bar == -1} {
 				set l [string range $line 1 end]
 			} else {
 				incr bar 2
@@ -703,7 +705,7 @@ proc readSmerge {} \
 
 proc smerge {} \
 {
-	global  argc argv filename smerge tmps tmp_dir
+	global  argc argv filename smerge tmps tmp_dir annotate
 
 	if {$argc != 4} {
 		puts "Usage: fm3tool <local> <gca> <remote> <file>"
@@ -715,6 +717,8 @@ proc smerge {} \
 	set f [lindex $argv 3]
 	set smerge [file join $tmp_dir bksmerge_[pid]]
 	set tmps [list $smerge]
+	# set if we are annotated in the diffs window
+	set annotate 1
 	if {[catch {exec bk smerge -Im -pf $l $g $r $f > $smerge}] == 0} {
 		# puts "No conflicts"
 		set junk 1
@@ -797,7 +801,7 @@ proc csettool {what} \
 		close $fd
 		set revs "$r,$revs"
 	}
-	set revs [string range $revs 0 "end-1"]
+	set revs [string trimright $revs ,]
 	exec bk csettool -r$revs -f$filename &
 }
 
@@ -920,7 +924,7 @@ proc mscroll { a args } \
 
 proc widgets {} \
 {
-	global	scroll wish tcl_platform search gc d app DSPEC UNMERGED
+	global	scroll wish tcl_platform search gc d app DSPEC UNMERGED argv
 
 	set UNMERGED "<<<<<<\nUNMERGED\n>>>>>>\n"
 
@@ -932,7 +936,7 @@ proc widgets {} \
 	option add *background $gc(BG)
 
 	set g [wm geometry .]
-	wm title . "BitKeeper FileMerge"
+	wm title . "BitKeeper FileMerge $argv"
 
 	wm iconify .
 	if {$tcl_platform(platform) == "windows"} {
@@ -1028,8 +1032,10 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "File" -menu $m
 	    menu $m
-		$m add command -label "Quit" -command cleanup 
-		$m add command -label "Save" -command save -state disabled
+		$m add command -label "Quit" \
+		    -command cleanup -accelerator $gc(fm3.quit)
+		$m add command -label "Save" \
+		    -command save -state disabled -accelerator <Alt-s>
 		$m add command \
 		    -label "Restart, discarding any merges" -command readFile
 		$m add command -label "Run revtool" -command revtool
@@ -1049,12 +1055,12 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		$m add command \
 		    -label "Edit merge window" -command { edit_merge 1 1 }
 		$m add command \
-		    -label "Clear" -command edit_clear -accelerator "c"
+		    -label "Clear" -command edit_clear -accelerator <Alt-c>
 		$m add command \
-		    -label "Restore automerge" -accelerator "a" \
+		    -label "Restore automerge" -accelerator <Alt-a> \
 		    -command { edit_restore a }
 		$m add command \
-		    -label "Restore manual merge" -accelerator "m" \
+		    -label "Restore manual merge" -accelerator <Alt-m> \
 		    -command { edit_restore m }
 
 	    pack .menu.file -side left -fill y
@@ -1233,9 +1239,19 @@ proc keyboard_bindings {} \
 	bind all	<Shift-space>	{ next 1; break }
 	bind all	<p>		{ prev 0; break }
 	bind all	<P>		{ prev 1; break }
-	bind all	<c>		{ edit_clear }
-	bind all	<a>		{ edit_restore a }
-	bind all	<m>		{ edit_restore m }
+	bind all	<Alt-c>		{ edit_clear }
+	bind all	<Alt-a>		{ edit_restore a }
+	bind all	<Alt-m>		{ edit_restore m }
+	bind all	<Alt-s>		{
+	    global conflicts
+
+	    if {$conflicts} {
+	    	displayMessage \
+		    "Need to resolve $conflicts more conflicts first" 0
+	    } else {
+	    	save
+	    }
+	}
 	bind all	<period>	{ dot; break }
 	bind all	<minus>		{
 	    global lastDiff
@@ -1274,7 +1290,7 @@ proc edit_merge {x y} \
 
 proc edit_done {} \
 {
-	global	lastDiff diffCount
+	global	lastDiff diffCount conflicts UNMERGED
 
 	grab release .merge.t
 	bind .merge.t <Escape> {}
@@ -1315,6 +1331,17 @@ proc edit_done {} \
 		incr i
 	}
 	.merge.hi configure -state disabled
+
+	# This catches all cases where they fixed a merge (we hope)
+	set n 0
+	for {set i 1} {$i <= $diffCount} {incr i} {
+		catch { .diffs.left index "c$i" } ret
+		if {[string first "bad text" $ret] == 0 } { continue }
+		set buf [.merge.t get "d$i" "e$i"]
+		if {$buf == $UNMERGED} { incr n }
+	}
+	set conflicts $n
+
 	dot
 	focus .
 }
@@ -1479,11 +1506,11 @@ proc edit_save {} \
 	set e "e$lastDiff"
 	set buf [.merge.t get $d $e]
 	if {[info exists restore("a$lastDiff")] == 0} {
-		set restore("a$lastDiff") [string range $buf 0 "end-1"]
+		set restore("a$lastDiff") [string trimright $buf]
 		.menu.edit.m entryconfigure "Restore a*" -state normal
 	}
 	if {[.merge.hi tag nextrange hand $d $e] != ""} {
-		set restore("m$lastDiff") [string range $buf 0 "end-1"]
+		set restore("m$lastDiff") [string trimright $buf]
 		.menu.edit.m entryconfigure "Restore m*" -state normal
 	}
 }
@@ -1547,7 +1574,7 @@ proc edit_restore {c} \
 
 proc change {lines replace orig} \
 {
-	global	lastDiff diffCount UNMERGED conflicts restore
+	global	lastDiff diffCount UNMERGED conflicts restore annotate
 
 	edit_save
 	set next [expr $lastDiff + 1]
@@ -1572,7 +1599,7 @@ proc change {lines replace orig} \
 	}
 	foreach line $lines {
 		set bar [string first "|" $line]
-		if {$bar == -1} {
+		if {$annotate == 0 || $bar == -1} {
 			set l [string range $line 1 end]
 		} else {
 			incr bar 2
@@ -1598,7 +1625,7 @@ proc change {lines replace orig} \
 
 proc click {win block replace} \
 {
-	global	lastDiff
+	global	lastDiff annotate
 
 	set d "d$lastDiff"
 	set e "e$lastDiff"
