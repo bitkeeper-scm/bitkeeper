@@ -8,7 +8,7 @@ private void	defaultIgnore();
 int
 setup_main(int ac, char **av)
 {
-	int	force = 0, c;
+	int	force = 0, allowNonEmptyDir = 0, c;
 	char	*package_path = 0, *config_path = 0, *t;
 	char	buf[MAXLINE], my_editor[1024], setup_files[MAXPATH];
 	char 	s_config[] = "BitKeeper/etc/SCCS/s.config";
@@ -21,7 +21,7 @@ setup_main(int ac, char **av)
 		system("bk help setup");
 		return (0);
 	}
-	while ((c = getopt(ac, av, "c:f")) != -1) {
+	while ((c = getopt(ac, av, "c:ef")) != -1) {
 		switch (c) {
 		    case 'c':					/* doc 2.0 */
 		    	unless(exists(optarg)) {
@@ -32,6 +32,9 @@ setup_main(int ac, char **av)
 			}
 			localName2bkName(optarg, optarg);
 			config_path = fullname(optarg, 0);
+			break;
+		    case 'e':					/* to be doc*/
+			allowNonEmptyDir = 1;
 			break;
 		    case 'f':					/* doc 2.0 */
 			force = 1;
@@ -44,7 +47,7 @@ setup_main(int ac, char **av)
 		printf("Usage: bk setup [-c<config file>] directory\n");
 		exit (0);
 	}
-	if (exists(package_path)) {
+	if (!allowNonEmptyDir && exists(package_path)) {
 		printf("bk: %s exists already, setup fails.\n", package_path);
 		exit (1);
 	}
@@ -62,6 +65,10 @@ setup_main(int ac, char **av)
 	if (chdir(package_path) != 0) {
 		perror(package_path);
 		exit(1);
+	}
+	if (allowNonEmptyDir && exists(BKROOT)) {
+		printf("bk: %s repositoty exists already, setup fails.\n",
+		package_path);
 	}
 	sccs_mkroot(".");
 	enableFastPendingScan();
