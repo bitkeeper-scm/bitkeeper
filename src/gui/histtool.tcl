@@ -393,6 +393,9 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 	return
 } ;# proc selectTag
 
+#
+# revname:  revision-username (e.g. 1.832-akushner)
+#
 proc centerRev {revname} \
 {
 	global cdim w
@@ -1834,7 +1837,7 @@ proc lineOpts {rev} \
 
 proc startup {} \
 {
-	global fname rev2rev_name w rev1 rev2 gca srev errorCode gc
+	global fname rev2rev_name w rev1 rev2 gca srev errorCode gc dev_null
 
 	#displayMessage "srev=($srev) rev1=($rev1) rev2=($rev2) gca=($gca)"
 	if {$srev != ""} {
@@ -1845,6 +1848,10 @@ proc startup {} \
 		highlight $rev1 "old"
 	} elseif {$rev1 == ""} {
 		histtool $fname "-$gc(hist.showHistory)"
+		catch {exec bk prs -hr+ -d:I:-:P: ChangeSet 2>$dev_null} out
+		if {$out != ""} {
+			centerRev $out
+		}
 	} else {
 		set srev $rev1
 		histtool $fname "-$rev1"
