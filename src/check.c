@@ -72,7 +72,7 @@ check_main(int ac, char **av)
 	MDBM	*db;
 	MDBM	*keys = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	sccs	*s;
-	int	errors = 0;
+	int	errors = 0, want_dfile;
 	int	e;
 	char	*name;
 	char	buf[MAXKEY];
@@ -127,6 +127,8 @@ check_main(int ac, char **av)
 	/* This can legitimately return NULL */
 	/* XXX - I don't know for sure I always need this */
 	goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
+
+	want_dfile = exists(DFILE);
 	for (name = sfileFirst("check", &av[optind], 0);
 	    name; name = sfileNext()) {
 		unless (s = sccs_init(name, flags, proj)) {
@@ -154,6 +156,7 @@ check_main(int ac, char **av)
 		errors |= no_gfile(s);
 		errors |= readonly_gfile(s);
 		errors |= writable_gfile(s);
+		if (want_dfile) errors |= chk_dfile(s);
 
 		/*
 		 * Store the full length key and only if we are in mixed mode,
@@ -253,6 +256,55 @@ check_main(int ac, char **av)
 		if (sys("bk", "sane", SYS)) errors |= 16;
 	}
 	return (errors);
+}
+
+private int
+chk_dfile(sccs *s)
+{
+	delta	*d;
+	char	*p;
+
+	d = sccs_getrev(s, "+", 0, 0);
+	unless (d) return (0);
+
+       /*
+	* XXX This code is blindly copied from sfind.c which in turn
+	*     was copied from the lod code.
+	*     (We need this to pass the lod test case )
+	* 
+        * If it is out of view, we need to look at all leaves and see if
+        * there is a problem or not.
+        */
+       if (s->defbranch && streq(s->defbranch, "1.0")) {
+               for (d = s->table; d; d = d->next) {
+                       unless ((d->type == 'D') && sccs_isleaf(s, d)) {
+                               continue;
+                       }
+                       unless (d->flags & D_CSET) break;
+               }
+               unless (d) return (0);
+               fprintf(stderr,
+                   "Warning: not in view file %s skipped.\n", s->gfile);
+               return (0);
+       }
+
+
+
+	p = basenm(s->sfile);
+	*p = 'd';
+	if  (!(d->flags & D_CSET) && !exists(s->sfile)) { 
+		*p = 's';
+		fprintf(stderr,
+"===========================================================================\n"
+"check: %s have pending delta(s) but no d.file\n"
+"You can fix this by running \"bk -R sfiles -P\"\n"
+"===========================================================================\n",
+			s->gfile);
+		return (1);
+	}
+	*p = 's';
+	return (0);
+
 }
 
 private int
