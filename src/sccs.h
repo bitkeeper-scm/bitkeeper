@@ -830,7 +830,7 @@ int	mkconfig(FILE *out);
 int	config2logging(char *root);
 int	logging(char *user, MDBM *configDB, MDBM *okDB);
 void	do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out);
-void	get_http_proxy(char *proxy_host, int *proxy_port);
+char 	**get_http_proxy();
 int	confirm(char *msg);
 int	setlod_main(int ac, char **av);
 MDBM *	loadOK();
