@@ -3268,11 +3268,12 @@ sccs_init(char *name, u32 flags, char *root)
 		if (s->mmap == (caddr_t)-1) {
 			/* Some file systems don't support shared writable
 			 * maps (smbfs).
+			 * HP-UX won't let you have two to the same file.
 			 */
 			debug((stderr,
 			       "MAP_SHARED failed, trying MAP_PRIVATE\n"));
-			s->mmap = mmap(0, s->size, mapmode, MAP_PRIVATE,
-				       s->fd, 0);
+			s->mmap =
+			    mmap(0, s->size, mapmode, MAP_PRIVATE, s->fd, 0);
 			s->state |= S_MAPPRIVATE;
 		}
 	}
