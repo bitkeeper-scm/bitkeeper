@@ -308,11 +308,11 @@ _parent() {
 }
 
 # Pull: update from parent repository.  You can feed this any resync
-# switches you like.  Does not auto-resolve.
+# switches you like.  Default is auto-resolve.
 _pull() {
 	_cd2root
 	if [ -f BitKeeper/log/parent ]
-	then	exec ${BIN}resync "$@" `cat BitKeeper/log/parent` .
+	then	exec ${BIN}resync -A "$@" `cat BitKeeper/log/parent` .
 	else	echo "No parent repository, cannot pull" >&2
 		exit 1
 	fi
@@ -323,10 +323,23 @@ _pull() {
 _push() {
 	_cd2root
 	if [ -f BitKeeper/log/parent ]
-	then	exec ${BIN}resync -a "$@" . `cat BitKeeper/log/parent`
+	then	:
 	else	echo "No parent repository, cannot push" >&2
 		exit 1
 	fi
+
+	# Before pushing, we do an implicit pull and abort if it
+	# reports changes.
+	PARENT=`cat BitKeeper/log/parent`
+	changes="`${BIN}resync -v $PARENT . 2>&1`"
+	case "$changes" in
+	    "Nothing to resync.")
+		exec ${BIN}resync -a "$@" . `cat BitKeeper/log/parent`;;
+	    *)	echo "Changes in parent - resolve and try again" >&2
+		echo "$changes" >&2
+		exit 1
+		;;
+	esac
 }
 
 _save() {
