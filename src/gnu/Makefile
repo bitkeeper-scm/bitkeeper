@@ -1,6 +1,7 @@
 OS=`sh os`
 DIRS=patch diffutils
-BINS=patch/$(OS)/patch diffutils/$(OS)/diff diffutils/$(OS)/diff3
+BINS=patch/$(OS)/patch diffutils/$(OS)/diff diffutils/$(OS)/diff3 \
+	diffutils/$(OS)/sdiff diffutils/$(OS)/cmp
 BK_BIN=/usr/bitkeeper
 CACHE=--cache-file=../../../config.cache
 
