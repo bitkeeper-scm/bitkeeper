@@ -21,7 +21,8 @@ cmd_push(int ac, char **av, int in, int out, int err)
 	pid_t	pid;
 	int	c, verbose = 1;
 	char	buf[100];
-	static	char *prs[] = { "bk", "prs", "-r1.0..", "-bhad:KEY:", "ChangeSet", 0 };
+	static	char *prs[] =
+	    { "bk", "prs", "-r1.0..", "-bhad:KEY:", "ChangeSet", 0 };
 	static	char *tp[] = { "bk", "takepatch", "-act", "-vv", 0 };
 				    /* see verbose below    ^^ */
 
@@ -30,8 +31,8 @@ cmd_push(int ac, char **av, int in, int out, int err)
 		return (-1);
 	}
 
-	if (exists("RESYNC")) {
-		writen(err, "Project is already locked for update.\n");
+	if (repository_wrlock()) {
+		writen(err, "Unable to lock project for update.\n");
 		return (-1);
 	}
 
@@ -102,5 +103,10 @@ cmd_push(int ac, char **av, int in, int out, int err)
 	}
 
 out:
+	/*
+	 * This could screw up if takepatch errored but left the RESYNC dir.
+	 * The write lock code respects the RESYNC dir, so that's OK.
+	 */
+	if (error) repository_wrunlock();
 	exit(error);
 }

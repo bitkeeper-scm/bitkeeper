@@ -4,6 +4,7 @@ WHATSTR("@(#)%K%");
 
 void	prevs(sccs *d);
 void	branches(delta *d);
+void	renumber(delta *d);
 void	p(delta *d);
 int	flags;
 sccs	*s;
@@ -42,6 +43,7 @@ main(int ac, char **av)
  * - starts at 0, not 1
  * - increments only for real deltas, not meta
  */
+void
 renumber(delta *d)
 {
 	if (d->next) renumber(d->next);

@@ -140,7 +140,7 @@ usage:		fprintf(stderr, "%s", check_help);
 	mdbm_close(db);
 	mdbm_close(keys);
 	mdbm_close(marks);
-	if (proj) sccs_freeProject(proj);
+	if (proj) proj_free(proj);
 	purify_list();
 	if (errors && fix) {
 		if (names) {
@@ -166,7 +166,6 @@ checkAll(MDBM *db)
 	MDBM	*idDB, *goneDB;
 	MDBM	*warned = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	sccs	*s;
-	delta	*d;
 	int	found = 0;
 	char	buf[MAXPATH*3];
 

@@ -127,9 +127,9 @@ passes(opts *opts)
 		/* fake one for new repositories */
 		opts->idDB = mdbm_open(0, 0, 0, 0);
 	}
-	opts->local_proj = sccs_initProject(0);
+	opts->local_proj = proj_init(0);
 	chdir(ROOT2RESYNC);
-	opts->resync_proj = sccs_initProject(0);
+	opts->resync_proj = proj_init(0);
 
 	/*
 	 * Pass 1 - move files to RENAMES and/or build up rootDB
@@ -1305,6 +1305,10 @@ conflict(opts *opts, char *sfile)
 		resolve_modes(rs);
 		s = rs->s;
 		if (opts->errors) return;
+		/* Need to re-init these, the resolve stomped on the s-> */
+		d.local = sccs_getrev(s, rs->revs->local, 0, 0);
+		d.gca = sccs_getrev(s, rs->revs->gca, 0, 0);
+		d.remote = sccs_getrev(s, rs->revs->remote, 0, 0);
 	}
 
 	/*
@@ -1806,8 +1810,8 @@ freeStuff(opts *opts)
 	/*
 	 * Clean up allocations/files/dbms
 	 */
-	if (opts->local_proj) sccs_freeProject(opts->local_proj);
-	if (opts->resync_proj) sccs_freeProject(opts->resync_proj);
+	if (opts->local_proj) proj_free(opts->local_proj);
+	if (opts->resync_proj) proj_free(opts->resync_proj);
 	if (opts->log && (opts->log != stderr)) fclose(opts->log);
 	if (opts->rootDB) mdbm_close(opts->rootDB);
 	if (opts->idDB) mdbm_close(opts->idDB);
@@ -1874,5 +1878,7 @@ resolve_cleanup(opts *opts, int what)
 		SHOUT2();
 		exit(1);
 	}
+	repository_wrunlock();
+	repository_lockers(0);
 	exit(0);
 }

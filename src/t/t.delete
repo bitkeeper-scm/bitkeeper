@@ -47,6 +47,7 @@ cd clone
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 if [ ! -f BitKeeper/log/parent ]; then echo failed to record parent; exit 1; fi
+checkLocks
 echo OK
 echo $N Move a file manually and resync a change to it ..............$NL
 cd src
@@ -94,4 +95,5 @@ Whatever dude.
 u
 EOF
 if [ $? -ne 0 ]; then echo failed; cat resolve.out; exit 1; fi
+checkLocks
 echo OK

@@ -38,8 +38,6 @@ sccs_getComments(char *file, char *rev, delta *n)
 	sig(UNBLOCK, SIGINT);
 #endif
 	while (getline(0, buf2, sizeof(buf2)) > 0) {
-		char	*t;
-
 		if ((buf2[0] == 0) || streq(buf2, "."))
 			break;
 		n->comments = addLine(n->comments, strdup(buf2));

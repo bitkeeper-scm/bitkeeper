@@ -270,6 +270,7 @@ typedef	unsigned short	sum_t;
 typedef	unsigned int	u32;
 typedef	unsigned short	u16;
 typedef	unsigned char	u8;
+typedef	char		**globv;
 
 /*
  * Struct delta - describes a single delta entry.
@@ -395,6 +396,8 @@ typedef struct {
 #define	PROJ_RDLOCK	0x00000002	/* Locked by reader */
 
 #define	READER_LOCK_DIR	"BitKeeper/readers"
+#define	WRITER_LOCK_DIR	"BitKeeper/writer"
+#define	WRITER_LOCK	"BitKeeper/writer/lock"
 
 #define	SCCS_VERSION	1	/* bumped whenever we change any file format */
 
@@ -686,8 +689,8 @@ char	*_relativeName(char *gName,
 	    int isDir, int withsccs, int mustHaveRmarker, char *root);
 void	rcs(char *cmd, int argc, char **argv);
 char	*findBin();
-project	*sccs_initProject(sccs *s);
-void	sccs_freeProject(project *p);
+project	*proj_init(sccs *s);
+void	proj_free(project *p);
 char	*sccs_Xfile(sccs *s, char type);
 int	uniq_lock(void);
 int	uniq_unlock(void);
@@ -697,7 +700,6 @@ time_t	uniq_drift();
 int	uniq_update(char *key, time_t t);
 int	uniq_root(char *key);
 int	uniq_close(void);
-
 void	cd2root();
 void	platformInit();
 void	mail(char *to, char *subject, char *file);
@@ -709,10 +711,16 @@ char	*logAddr();
 char	*project_name(); 
 void	init_aliases();
 char	*cname_user(char *username); 
-
-typedef	char **globv;
 globv	read_globs(FILE *f, globv oldglobs);
 char	*match_globs(char *string, globv globs);
 void	free_globs(globv globs);
+int	repository_locked(project *p);
+int	repository_lockers(project *p);
+int	repository_lockerList(project *p);
+int	repository_unlock(project *p);
+int	repository_rdlock(void);
+int	repository_rdunlock(void);
+int	repository_wrunlock(void);
+int	repository_wrlock(void);
 
 #endif	/* _SCCS_H_ */

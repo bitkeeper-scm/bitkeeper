@@ -163,7 +163,7 @@ usage:		fprintf(stderr, takepatch_help);
 		remote += rc;
 	}
 	mclose(p);
-	sccs_freeProject(proj);
+	proj_free(proj);
 	if (idDB) { mdbm_close(idDB); idDB = 0; }
 	if (goneDB) { mdbm_close(goneDB); goneDB = 0; }
 	if (error < 0) {
@@ -695,8 +695,6 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 		    p->localFile, p->resyncFile, p->pid, p->me);
 	}
 	unless (localPath) {
-		char	*t;
-
 		mkdirf(p->resyncFile);
 		goto apply;
 	}
@@ -1123,7 +1121,7 @@ init(char *inputFile, int flags, project **pp)
 	if (newProject) {
 		initProject();
 		new(p);
-		p->root = strdup("RESYNC");
+		p->root = strdup(ROOT2RESYNC);
 		*pp = p;
 	} else {
 		root = sccs_root(0);
@@ -1137,7 +1135,7 @@ init(char *inputFile, int flags, project **pp)
 			}
 			initProject();
 			new(p);
-			p->root = strdup("RESYNC");
+			p->root = strdup(ROOT2RESYNC);
 			*pp = p;
 			newProject = 1;
 		} else if (sccs_cd2root(0, root)) {
@@ -1149,7 +1147,7 @@ init(char *inputFile, int flags, project **pp)
 			char	*tmp = root;
 
 			root = malloc(strlen(root) + 8);
-			sprintf(root, "%s%s", tmp, "/RESYNC");
+			sprintf(root, "%s/%s", tmp, ROOT2RESYNC);
 			new(p);
 			p->root = root;
 			*pp = p;
@@ -1159,40 +1157,12 @@ init(char *inputFile, int flags, project **pp)
 
 	/*
 	 * See if we can lock the tree.
+	 * We assume that a higher level program called repository_wrlock(),
+	 * we're just doing the RESYNC part.
 	 */
-	if (mkdir("RESYNC", 0775) == -1) {
-		char	file[MAXPATH];
-		char	buf2[MAXPATH];
-
-		if (errno != EEXIST) {
-			SHOUT();
-			perror("mkdir RESYNC");
-			cleanup(0);
-		}
-
-		file[0] = buf2[0] = 0;
-		if ((f = fopen("RESYNC/BitKeeper/tmp/pid", "r")) &&
-		    fnext(buf2, f)) {
-			fclose(f);
-			chop(buf2);
-		}
-		if ((f = fopen("RESYNC/BitKeeper/tmp/patch", "rb")) &&
-		    fnext(file, f)) {
-			fclose(f);
-			chop(file);
-		}
-
-		SHOUT();
-		if (buf2[0] && file[0]) {
-			fprintf(stderr,
-		      "takepatch: RESYNC dir locked by pid %s for patch %s\n",
-				buf2, file);
-		} else if (buf2[0]) {
-			fprintf(stderr,
-			      "takepatch: RESYNC dir locked by pid %s\n", buf2);
-		} else {
-			fprintf(stderr, "takepatch: RESYNC dir exists\n");
-		}
+	if (mkdir("RESYNC", 0775)) {
+		fprintf(stderr, "takepatch: can not get write lock\n");
+		repository_lockers(p);
 		cleanup(0);
 	}
 	unless (mkdir("RESYNC/SCCS", 0775) == 0) {

@@ -135,6 +135,21 @@ writable () {
 	esac
 }
 
+checkLocks () {
+	if [ -d BitKeeper/readers ]
+	then	if [ `find BitKeeper/readers -type f -print | wc -l` -ne 0 ]
+		then	echo Failed to remove read lock in `pwd`
+			exit 1
+		fi
+	fi
+	if [ -d BitKeeper/writer ]
+	then	if [ `find BitKeeper/writer -type f -print | wc -l` -ne 0 ]
+		then	echo Failed to remove write lock in `pwd`
+			exit 1
+		fi
+	fi
+}
+
 # We don't want to do this expensive test unless we need to.
 check_for_rsh () {
 if [ X$DO_REMOTE != XNO ]; then

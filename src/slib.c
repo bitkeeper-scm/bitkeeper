@@ -3121,9 +3121,15 @@ err:			free(s->gfile);
 /*
  * Initialize the project struct.
  * We don't put it in the sccs in case there isn't one, the caller can do it.
+ * Callers of this (see locking.c) depend on it returning NULL if there is
+ * no BitKeeper root.
+ *
+ * XXX - this is fine for when we start, but what if the locking status
+ * changes while we are running?
+ * Seems to me that the check for locking should be at delta time.
  */
 project	*
-sccs_initProject(sccs *s)
+proj_init(sccs *s)
 {
 	char	*root;
 	project	*p;
@@ -3139,15 +3145,17 @@ sccs_initProject(sccs *s)
 	/*
 	 * Go figure out if we are locked.
 	 */
-	sprintf(path, "%s/RESYNC", root);
-	if (exists(path)) p->flags |= PROJ_WRLOCK;
-	sprintf(path, "%s/%s", root, READER_LOCK_DIR);
+	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
 	if (exists(path) && !emptyDir(path)) p->flags |= PROJ_RDLOCK;
+	sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
+	if (exists(path) && !emptyDir(path)) p->flags |= PROJ_WRLOCK;
+	sprintf(path, "%s/%s", p->root, ROOT2RESYNC);
+	if (exists(path)) p->flags |= PROJ_WRLOCK;
 	return (p);
 }
 
 void
-sccs_freeProject(project *p)
+proj_free(project *p)
 {
 	unless (p) return;
 	if (p->root) free(p->root);
@@ -3262,7 +3270,7 @@ sccs_init(char *name, u32 flags, project *proj)
 			 * This is a little bogus - we are looking for a
 			 * a project when there may not be one.
 			 */
-			s->proj = proj ? proj : sccs_initProject(s);
+			s->proj = proj ? proj : proj_init(s);
 			return (s);
 		} else {
 			fputs("sccs_init: ", stderr);
@@ -3294,7 +3302,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	/*
 	 * Don't go look for BK root if not a BK file.
 	 */
-	if (s->state & S_BITKEEPER) s->proj = proj ? proj : sccs_initProject(s);
+	if (s->state & S_BITKEEPER) s->proj = proj ? proj : proj_init(s);
 
 	/*
 	 * Let them force YEAR4
@@ -3427,7 +3435,7 @@ sccs_free(sccs *s)
 	freeLines(s->usersgroups);
 	freeLines(s->flags);
 	freeLines(s->text);
-	if (s->proj && !(s->state & S_SAVEPROJ)) sccs_freeProject(s->proj);
+	if (s->proj && !(s->state & S_SAVEPROJ)) proj_free(s->proj);
 	if (s->random) free(s->random);
 	if (s->symlink) free(s->symlink);
 	if (s->mdbm) mdbm_close(s->mdbm);
@@ -8491,6 +8499,7 @@ xflags2state(u32 xflags)
 	return (state);
 }
 
+void
 changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 {
 	char	buf[50];
@@ -8589,6 +8598,7 @@ sccs_encoding(sccs *sc, char *encp, char *compp)
  * If this is a BitKeeper file with changeset marks, then we have to 
  * replicate the key on the 1.1 delta.
  */
+void
 insert_1_0(sccs *s)
 {
 	delta	*d;
