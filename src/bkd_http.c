@@ -789,15 +789,15 @@ http_hist(char *pathrev)
 		sprintf(buf, "bk prs -hd'%s' %s", dspec, pathrev);
 	}
 	FANCY_TABLE_BEGIN;
-	out("<table width=100% " TABLE_FORMAT ">\n");
-	//out("<table border=1 cellpadding=1 cellspacing=0 width=100% ");
-	//out("bgcolor=white>\n");
-	out("<tr bgcolor=lightblue>\n");
-	out(" <th>Age</th>\n");
-	out(" <th>Author</th>\n");
-	out(" <th>Rev</th>\n");
-	out(" <th align=left>Comments</th>\n");
-	out("</tr>\n");
+	//out("<table border=1 cellpadding=1 cellspacing=0 width=100% "
+	//    "bgcolor=white>\n"
+	out("<table width=100% " TABLE_FORMAT ">\n"
+	    "<tr bgcolor=lightblue>\n"
+	    " <th>Age</th>\n"
+	    " <th>Author</th>\n"
+	    " <th>Rev</th>\n"
+	    " <th align=left>Comments</th>\n"
+	    "</tr>\n");
 	putenv("BK_YEAR4=1");
 	f = popen(buf, "r");
 	while (fnext(buf, f)) out(buf);
@@ -1064,19 +1064,22 @@ http_diffs(char *pathrev)
 	}
 
 	*s++ = 0;
-	out("<table border=1 cellpadding=1 cellspacing=0 width=100% ");
-	out("bgcolor=white>\n");
-	out("<tr bgcolor=lightblue>\n");
-	out(" <th>Age</th>\n");
-	out(" <th>Author</th>\n");
-	out(" <th>Annotate</th>\n");
-	out(" <th align=left>Comments</th>\n");
-	out("</tr>\n");
+	//out("<table border=1 cellpadding=1 cellspacing=0 width=100% ");
+	//out("bgcolor=white>\n");
+	FANCY_TABLE_BEGIN;
+	out("<table width=100% " TABLE_FORMAT ">\n"
+	    "<tr bgcolor=lightblue>\n"
+	    " <th>Age</th>\n"
+	    " <th>Author</th>\n"
+	    " <th>Annotate</th>\n"
+	    " <th align=left>Comments</th>\n"
+	    "</tr>\n");
 	sprintf(buf, "bk prs -hr%s -d'%s' %s", s, dspec, pathrev);
 	f = popen(buf, "r");
 	while (fnext(buf, f)) out(buf);
 	pclose(f);
 	out("</table>\n");
+	FANCY_TABLE_END;
 
 	if (strstr(s, "..")) {
 		sprintf(buf, "bk diffs -ur%s %s", s, pathrev);
@@ -1291,6 +1294,7 @@ http_index(char *page)
 	int	c1w=0, c2w=0, c3w=0, c4w=0, c8w=0, c12w=0, c6m=0, c9m=0;
 	int	c1y=0, c2y=0, c3y=0, c=0;
 	char	buf[MAXPATH*2];
+	char	titlebar[200];
 	char	*email, *desc, *contact, *category;
 	MDBM	*m;
 
@@ -1383,7 +1387,12 @@ http_index(char *page)
 					email, contact);
 			}
 
-			title("ChangeSet activity", buf, COLOR_TOP);
+			if (user[0] && snprintf(titlebar, sizeof titlebar,
+			    "ChangeSet activity for %s", user) != -1) {
+				title(titlebar, buf, COLOR_TOP);
+			} else {
+				title("ChangeSet activity", buf, COLOR_TOP);
+			}
 		}
 		out("</td></tr></table>\n");
 		if (m) mdbm_close(m);
@@ -1643,13 +1652,16 @@ private void
 http_related(char *file)
 {
 	char	*av[100];
-	int	i;
+	int	i, j;
+	int     flen;
 	char	buf[2048];
 	char    dspec[MAXPATH];
-	char	revisions[MAXPATH];
 	char	*d;
 	char	*c;
 	FILE	*f;
+	char	**when = 0;
+	char	**candidate = 0;
+	char	**cset = 0;
 
 	whoami("related/%s", file);
 
@@ -1664,56 +1676,105 @@ http_related(char *file)
 			" <td>:HTML_C:</td>\n"
 			"</tr>\n%s", prefix, navbar, suffix);
 
-	if (i == -1) {
+	if (i == -1)
 		http_error(500, "buffer overflow in http_related");
-	}
 
-
-	sprintf(buf, "bk prs -hd':REV:\n' %s | bk _sort -u", file);
+	/* find when the revisions to this file were
+	 */
+	sprintf(buf, "bk prs -hd':D:\n' %s | bk _sort -u", file);
 
 	unless (f = popen(buf, "r"))
 		http_error(500, "%s: %s", buf, strerror(errno));
+
+	while (fnext(buf, f)) {
+		chop(buf);
+		when = addLine(when, strdup(buf));
+	}
+	pclose(f);
+
+	/* then find all the changesets that happened during these times
+	 */
+	EACH(when) {
+		sprintf(buf, "bk prs -hd'$if(:D:=%s){:REV:\n}' %s | bk _sort -u", when[i], CHANGESET);
+		unless (f = popen(buf, "r"))
+			http_error(500, "%s: %s", buf, strerror(errno));
+
+		while (fnext(buf, f)) {
+			chop(buf);
+			candidate = addLine(candidate, strdup(buf));
+		}
+		pclose(f);
+	}
+	//freeLines(when);
+
+	/* then search each of these changesets to see if the file can
+	 * be found within them
+	 */
+	flen = strlen(file);
+	EACH(candidate) {
+		sprintf(buf, "bk cset -r%s", candidate[i]);
+		unless (f = popen(buf, "r"))
+			http_error(500, "%s: %s", buf, strerror(errno));
+		while (fnext(buf,f)) {
+			chop(buf);
+			if (strneq(buf, file, flen) && buf[flen] == BK_FS) {
+				cset = addLine(cset, strdup(candidate[i]));
+				break;
+			}
+		}
+		pclose(f);
+	}
+	//freeLines(candidate);
 
 	if (!embedded) {
 		httphdr(".html");
 		header(0, COLOR_CHANGES, "ChangeSets that modify %s", 0, file);
 	}
 
-	revisions[0] = 0;
-	while (fnext(buf, f)) {
-		for (c=buf; *c; ++c) ;
-		while (c[-1] == '\r' || c[-1] == '\n') --c;
-		if (c < buf) continue;
-		*c = 0;
-		if (revisions[0]) {
-			strcat(revisions, ",");
-		} else {
-			strcpy(revisions, "-r");
-		}
-		strcat(revisions, buf);
+// DEBUGGING
+	if (when) out("<!-- \n");
+	EACH(when) {
+	    sprintf(buf, " when[%d] = '%s'\n", i, when[i]);
+	    out(buf);
 	}
-	pclose(f);
+	if (when) out(" -->\n");
 
-	if (revisions[0]) {
+	if (candidate) out("<!-- \n");
+	EACH(candidate) {
+	    sprintf(buf, " candidate[%d] = '%s'\n", i, candidate[i]);
+	    out(buf);
+	}
+	if (candidate) out(" -->\n");
+
+	if (cset) out("<!-- \n");
+	EACH(cset) {
+	    sprintf(buf, " cset[%d] = '%s'\n", i, cset[i]);
+	    out(buf);
+	}
+	if (cset) out(" -->\n");
+// END DEBUGGING
+
+	if (cset) {
 		FANCY_TABLE_BEGIN;
-		//out("<table width=100% border=1 cellpadding=2"
-		//    " cellspacing=0 bgcolor=white>\n"
 		out("<table width=100% " TABLE_FORMAT ">\n"
 		    "<tr bgcolor=#d0d0d0>\n"
 		    "<th>Age</th><th>Author</th><th>Rev</th>"
 		    "<th align=left>&nbsp;Comments</th></tr>\n");
 
-		av[i=0] = "bk";
-		av[++i] = "prs";
-		av[++i] = "-h";
-		av[++i] = dspec;
-		av[++i] = revisions;
-		av[++i] = file /*"ChangeSet"*/;
-		av[++i] = 0;
-		putenv("BK_YEAR4=1");
-		close(0);
-		dup2(fileno(f), 0);
-		spawnvp_ex(_P_WAIT, "bk", av);
+		EACH(cset) {
+			sprintf(buf, "-r%s", cset[i]);
+
+			av[j=0] = "bk";
+			av[++j] = "prs";
+			av[++j] = "-h";
+			av[++j] = dspec;
+			av[++j] = buf;
+			av[++j] = "ChangeSet";
+			av[++j] = 0;
+			putenv("BK_YEAR4=1");
+			spawnvp_ex(_P_WAIT, "bk", av);
+		}
+
 		out("</table>\n");
 		FANCY_TABLE_END;
 	}
