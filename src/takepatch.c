@@ -354,7 +354,7 @@ delta:	off = ftell(f);
 		}
 		c = line;
 		while (fnext(buf, f) && !streq("\n", buf)) {
-			fputs((buf[0] == '\\') ? &buf[1] : buf, t);
+			fputs(buf, t);
 			line++;
 			if (echo>4) fprintf(stderr, "%s", buf);
 		}
@@ -463,13 +463,16 @@ apply:
 				ahead(p->pid, s->sfile);
 			}
 			unless (sccs_restart(s)) { perror("restart"); exit(1); }
+			if (echo>8) fprintf(stderr, "Child of %s\n", d->rev);
 			if (p->flags & PATCH_META) {
 				if (sccs_meta(s, d, p->initFile)) {
 					perror("meta");
 					exit(1);
 				}
 			} else {
-				newflags = NOCKSUM|SILENT|SKIPGET|EDIT;
+				newflags = (echo > 5) ?
+				    NOCKSUM|SKIPGET|EDIT :
+				    NOCKSUM|SILENT|SKIPGET|EDIT;
 				/* CSTYLED */
 				if (sccs_get(s, d->rev, 0,0,0, newflags, "-")) {
 				    	perror("get");

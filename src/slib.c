@@ -28,8 +28,8 @@ private int	getflags(sccs *s, char *buf);
 private int	addsym(sccs *s, delta *d, delta *metad, char *a, char *b);
 private void	inherit(sccs *s, int flags, delta *d);
 private void	linktree(sccs *s, delta *l, delta *r);
-private sum_t	fputmeta(sccs *s, char *buf, FILE *out);
-private sum_t	fputdata(sccs *s, char *buf, FILE *out);
+private sum_t	fputmeta(sccs *s, u8 *buf, FILE *out);
+private sum_t	fputdata(sccs *s, u8 *buf, FILE *out);
 private void	putserlist(sccs *sc, ser_t *s, FILE *out);
 private ser_t*	getserlist(sccs *sc, int isSer, char *s, int *ep);
 private int	read_pfile(char *who, sccs *s, pfile *pf);
@@ -200,11 +200,22 @@ mode2FileType(mode_t m)
  * extract the file type bits from the mode
  */
 int
-fileType (mode_t m)
+fileType(mode_t m)
 {
 	// XXX this code may not be portable
 	return (m & S_IFMT);
 }
+
+/*
+ * These are the file types we currently suppprt
+ * TODO: we may support empty directory & special file someday
+ */
+inline int
+fileTypeOk(mode_t m)
+{
+	return ((S_ISREG(m)) || (S_ISLNK(m)));
+}
+
 
 int
 Chmod(char *fname, mode_t mode)
@@ -2497,11 +2508,11 @@ mkgraph(sccs *s, int flags)
 	BUF(	buf);			/* CSTYLED */
 
 	seekto(s, 0);
-	next(buf, s);			/* checksum */
+	fastnext(s);			/* checksum */
 	line++;
 	debug((stderr, "mkgraph(%s)\n", s->sfile));
 	for (;;) {
-nextdelta:	unless (next(buf, s)) {
+nextdelta:	unless (buf = fastnext(s)) {
 bad:
 			fprintf(stderr,
 			    "%s: bad delta on line %d, expected `%s', "
@@ -2533,7 +2544,7 @@ bad:
 		d->same = atoiMult(&buf[15]);
 		/* ^Ad D 1.2.1.1 97/05/15 23:11:46 lm 4 2 */
 		/* ^Ad R 1.2.1.1 97/05/15 23:11:46 lm 4 2 */
-		next(buf, s);
+		buf = fastnext(s);
 		line++;
 		if (buf[0] != '\001' || buf[1] != 'd' || buf[2] != ' ') {
 			expected = "^Ad ";
@@ -2585,7 +2596,7 @@ bad:
 		d->sdate = strdup(tmp);
 		d->user = strdup(user);
 		for (;;) {
-			if (!next(buf, s) || buf[0] != '\001') {
+			if (!(buf = fastnext(s)) || buf[0] != '\001') {
 				expected = "^A";
 				goto bad;
 			}
@@ -2628,7 +2639,7 @@ bad:
 		}
 		/* ^Ac branch. */
 		for (;;) {
-			if (!next(buf, s) || buf[0] != '\001') {
+			if (!(buf = fastnext(s)) || buf[0] != '\001') {
 				expected = "^A";
 				freeLines(d->comments);
 				goto bad;
@@ -2724,7 +2735,7 @@ misc(sccs *s)
 	BUF(	buf);	/* CSTYLED */
 
 	/* Save the users / groups list */
-	for (; next(buf, s) && !strneq(buf, "\001U\n", 3); ) {
+	for (; (buf = fastnext(s)) && !strneq(buf, "\001U\n", 3); ) {
 		if (buf[0] == '\001') {
 			fprintf(stderr, "%s: corrupted user section.\n",
 			    s->sfile);
@@ -2736,7 +2747,7 @@ misc(sccs *s)
 	/* Save the flags.  Some are handled by the flags routine; those
 	 * are not handled here.
 	 */
-	for (; next(buf, s) && !strneq(buf, "\001t\n", 3); ) {
+	for (; (buf = fastnext(s)) && !strneq(buf, "\001t\n", 3); ) {
 		if (strneq(buf, "\001f R\n", 5)) {	/* XXX - obsolete */
 			s->state |= S_RCS;
 			continue;
@@ -2786,7 +2797,7 @@ misc(sccs *s)
 	if (s->state & S_REINHERIT) reinherit(s, s->tree);
 
 	/* Save descriptive text. */
-	for (; next(buf, s) && !strneq(buf, "\001T\n", 3); ) {
+	for (; (buf = fastnext(s)) && !strneq(buf, "\001T\n", 3); ) {
 		s->text = addLine(s->text, strnonldup(buf));
 	}
 	s->data = tell(s);
@@ -2957,16 +2968,6 @@ addsym(sccs *s, delta *d, delta *metad, char *rev, char *val)
 	debug((stderr, "Added symbol %s->%s (%d,%d) in %s\n",
 	    val, rev, d->serial, metad->serial, s->sfile));
 	return (1);
-}
-
-/*
- * These are the file types we currently suppprt
- * TODO: we may support empty directory & special file someday
- */
-fileTypeOk(mode_t m)
-{
-	if ((S_ISREG(m)) || (S_ISLNK(m))) return 1;
-	return 0;
 }
 
 sccs *
@@ -3162,7 +3163,7 @@ bad:			sccs_free(s);
 		s->mmap = mmap(0, s->size, PROT_READ, MAP_SHARED, s->fd, 0);
 		if (s->mmap != (caddr_t)-1L) s->state |= S_SOPEN;
 		seekto(s, 0);
-		for (; next(buf, s) && !strneq(buf, "\001T\n", 3); );
+		for (; (buf = fastnext(s)) && !strneq(buf, "\001T\n", 3); );
 		s->data = tell(s);
 	}
 	if (isreg(s->pfile)) s->state |= S_PFILE;
@@ -3197,6 +3198,13 @@ sccs_free(sccs *s)
 	assert(s->sfile);
 	assert(s->gfile);
 	sccsXfile(s, 0);
+#if 0
+	{ struct stat sb;
+	sb.st_size = 0;
+	stat(s->sfile, &sb);
+	fprintf(stderr, "Closing size = %d\n", sb.st_size);
+	}
+#endif
 	if (s->tree) sccs_freetree(s->tree);
 	for (sym = s->symbols; sym; sym = t) {
 		t = sym->next;
@@ -3979,8 +3987,8 @@ private void inline
 fnlputs(char *buf, FILE *out)
 {
 	register char	*t = buf;
-	char	fbuf[MAXLINE];
-	register char *p = fbuf;
+	char		fbuf[MAXLINE];
+	register char	*p = fbuf;
 
 	do {
 		*p++ = *t;
@@ -4000,12 +4008,12 @@ fnlputs(char *buf, FILE *out)
  * This interface is used for writing the metadata (delta table, flags, etc).
  */
 private sum_t
-fputmeta(sccs *s, char *buf, FILE *out)
+fputmeta(sccs *s, u8 *buf, FILE *out)
 {
-	register char	*t = buf;
+	u8		fbuf[MAXLINE];
+	register u8	*t = buf;
+	register u8	*p = fbuf;
 	register sum_t	 sum = 0;
-	char	fbuf[MAXLINE];
-	register char *p = fbuf;
 
 	for (; *t; t++) {
 		sum += *t;
@@ -4044,14 +4052,14 @@ gzip_sum(void *p, u8 *buf, int len, FILE *out)
  * Real soon now, we are going to add compression here.
  */
 private sum_t
-fputdata(sccs *s, char *buf, FILE *out)
+fputdata(sccs *s, u8 *buf, FILE *out)
 {
-	static char fbuf[16<<10];
-	static sum_t sum2;
-	register char	*t = buf;
-	static char *next = fbuf;
-	register char *p = next;
-	register sum_t sum = 0;
+	static u8	fbuf[16<<10];
+	static sum_t	sum2;
+	static u8	*next = fbuf;
+	register u8	*t = buf;
+	register u8	*p = next;
+	register sum_t	sum = 0;
 
 	if (!buf) {	/* flush */
 		int	len = next - fbuf;
@@ -4415,7 +4423,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	if (s->encoding == E_GZIP) zgets_init(s->where, s->size - s->data);
 	sum = 0;
 	while (buf = nextdata(s)) {
-		register char *e;
+		register u8 *e;
 
 		if (isData(buf)) {
 			if (!print) continue;
@@ -4476,12 +4484,13 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 		changestate(state, buf[1], atoi(&buf[3]));
 		print = printstate((const serlist*)state, (const ser_t*)slist);
 	}
-	if ((flags & NEWCKSUM) && lines && (sum != d->sum)) {
+	if ((flags & NEWCKSUM) && !(flags&SHUTUP) && lines && (sum != d->sum)) {
 		fprintf(stderr,
 		    "get: bad delta cksum %u:%u for %s in %s, gotten anyway.\n",
 		    d->sum, sum, d->rev, s->sfile);
 	}
 
+	if (s->encoding == E_GZIP) zgets_done();
 	if (popened) {
 		pclose(out);
 	} else if (flags & PRINT) {
@@ -4855,6 +4864,7 @@ sccs_getdiffs(sccs *s, char *rev, int flags, char *printOut)
 	}
 	ret = 0;
 getdifferr:
+	if (s->encoding == E_GZIP) zgets_done();
 	if (lbuf) {
 		fclose(lbuf);
 		unlink(tmpfile);
@@ -4867,6 +4877,43 @@ getdifferr:
 	if (slist) free(slist);
 	if (state) free(state);
 	return (ret);
+}
+
+/*
+ * Return true if bad cksum
+ */
+private int
+signed_badcksum(sccs *s)
+{
+	register char *t;
+	register char *end = s->mmap + s->size;
+	register sum_t sum = 0;
+	int	filesum;
+
+	debug((stderr, "Checking sum from %x to %x (%d)\n",
+	    s->mmap, end, (char*)end - s->mmap));
+	assert(s);
+	seekto(s, 0);
+	filesum = atoi(&s->mmap[2]);
+	debug((stderr, "File says sum is %d\n", filesum));
+	t = s->mmap + 8;
+	end -= 16;
+	while (t < end) {
+		sum += t[0] + t[1] + t[2] + t[3] + t[4] + t[5] + t[6] + t[7] +
+		    t[8] + t[9] + t[10] + t[11] + t[12] + t[13] + t[14] + t[15];
+		t += 16;
+	}
+	end += 16;
+	while (t < end) sum += *t++;
+	if (sum == filesum) {
+		s->cksumok = 1;
+	} else {
+		fprintf(stderr, "Bad checksum for %s, got %d, wanted %d\n",
+		    s->sfile, sum, filesum);
+	}
+	debug((stderr,
+	    "%s has %s cksum\n", s->sfile, s->cksumok ? "OK" : "BAD"));
+	return (sum != filesum);
 }
 
 /*
@@ -4898,13 +4945,21 @@ badcksum(sccs *s)
 	if (sum == filesum) {
 		s->cksumok = 1;
 	} else {
-		fprintf(stderr, "Bad checksum for %s, got %d, wanted %d\n",
-		    s->sfile, sum, filesum);
+		if (signed_badcksum(s)) {
+			fprintf(stderr,
+			    "Bad checksum for %s, got %d, wanted %d\n",
+			    s->sfile, sum, filesum);
+		} else {
+			fprintf(stderr,
+			    "Accepting old 7 bit checksum for %s\n", s->sfile);
+			return (0);
+		}
 	}
 	debug((stderr,
 	    "%s has %s cksum\n", s->sfile, s->cksumok ? "OK" : "BAD"));
 	return (sum != filesum);
 }
+
 
 inline int
 isAscii(c)
@@ -4916,29 +4971,6 @@ isAscii(c)
 /*
  * Check for bad characters in the file.
  */
-#ifdef	USE_STDIO
-private int
-badchars(sccs *s)
-{
-	char	buf[MAXLINE];
-
-	assert(s);
-	seekto(s, 0);
-	while (next(buf, s)) {
-		register char	*t = buf;
-
-		while (*t) {
-			unless (isAscii(*t) || ((*t == '\001') && t == buf)) {
-				fprintf(stderr,
-				    "admin: bad line in %s follows\n%s", buf);
-				return (1);
-			}
-			t++;
-		}
-	}
-	return (0);
-}
-#else
 private int
 badchars(sccs *s)
 {
@@ -4966,7 +4998,6 @@ badchars(sccs *s)
 	}
 	return (0);
 }
-#endif	/* !USE_STDIO */
 
 private int
 sameMode(delta *a, delta *b)
@@ -5307,6 +5338,7 @@ sccs_hasDiffs(sccs *s, int flags)
 	    feof(tmp) ? "gfile done" : "gfile not done"));
 	RET(1);
 out:
+	if (s->encoding == E_GZIP) zgets_done();
 	if (name) {
 		if (tmpfile) unlink(name);
 		free(name);
@@ -6052,9 +6084,10 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 			off = isdigit(buf[0]) ? 2 : 0;
 			while (fnext(buf, diffs)) {
 				if ((off == 0) && (buf[0] == '\\')) {
-					s->dsum += fputsum(s, &buf[1], sfile);
+					s->dsum += fputdata(s, &buf[1], sfile);
 				} else {
-					s->dsum += fputsum(s, &buf[off], sfile);
+					s->dsum +=
+					    fputdata(s, &buf[off], sfile);
 				}
 				added++;
 			}
@@ -7161,6 +7194,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	fseek(sfile, 0L, SEEK_SET);
 	fprintf(sfile, "\001h%05u\n", sc->cksum);
 	sccs_close(sc), fclose(sfile), sfile = NULL;
+	if (old_enc == E_GZIP) zgets_done();
 	/*
 	 * XXX - right here, I should look at old checksum and if no different,
 	 * leave well enough alone.
@@ -7350,9 +7384,9 @@ newcmd:
 				/* XXX: not break but error */
 				unless (fnext(buf2, diffs)) break;
 				if (buf2[0] == '\\') {
-					s->dsum += fputsum(s, &buf2[1], out);
+					s->dsum += fputdata(s, &buf2[1], out);
 				} else {
-					s->dsum += fputsum(s, buf2, out);
+					s->dsum += fputdata(s, buf2, out);
 				}
 				debug2((stderr, "INS %s", buf2));
 				added++;
@@ -7383,6 +7417,7 @@ newcmd:
 	*up = unchanged;
 	if (state) free(state);
 	if (slist) free(slist);
+	if (s->encoding == E_GZIP) zgets_done();
 	return (0);
 }
 
@@ -7636,7 +7671,7 @@ private int
 read_pfile(char *who, sccs *s, pfile *pf)
 {
 	int	fsize = size(s->pfile);
-	char	*iLst = malloc(fsize), *xLst = malloc(fsize);
+	char	*iLst, *xLst;
 	char	*mRev = malloc(MAXREV+1);
 	char	c1 = 0, c2 = 0, c3 = 0;
 	char	*t;
@@ -7644,15 +7679,18 @@ read_pfile(char *who, sccs *s, pfile *pf)
 	FILE	*tmp;
 	char	date[10], time[10], user[40];
 
-	assert(fsize);
 	bzero(pf, sizeof(*pf));
+	if (!fsize) {
+		fprintf(stderr, "Empty p.file %s - aborted.\n", s->pfile);
+		return (-1);
+	}
 	unless (tmp = fopen(s->pfile, "r")) {
-		fprintf(stderr, "delta: can't open %s\n", s->pfile);
-		if (iLst) free(iLst);
-		if (xLst) free(xLst);
+		fprintf(stderr, "pfile: can't open %s\n", s->pfile);
 		free(mRev);
 		return (-1);
 	}
+	iLst = malloc(fsize);
+	xLst = malloc(fsize);
 	iLst[0] = xLst[0] = 0;
 	e = fscanf(tmp, "%s %s %s %s %s -%c%s -%c%s -%c%s",
 	    pf->oldrev, pf->newrev, user, date, time, &c1, iLst, &c2, xLst,
@@ -7983,12 +8021,16 @@ sccs_meta(sccs *s, delta *parent, char *initFile)
 	}
 	delta_table(s, sfile, 0);
 	seekto(s, s->data);
-	if (s->encoding == E_GZIP) zputs_init();
+	if (s->encoding == E_GZIP) {
+		zgets_init(s->where, s->size - s->data);
+		zputs_init();
+	}
 	assert(s->state & S_SOPEN);
-	while (next(buf, s)) {
+	while (buf = nextdata(s)) {
 		fputdata(s, buf, sfile);
 	}
 	fputdata(s, 0, sfile);
+	if (s->encoding == E_GZIP) zgets_done();
 	fseek(sfile, 0L, SEEK_SET);
 	fprintf(sfile, "\001h%05u\n", s->cksum);
 	sccs_close(s); fclose(sfile); sfile = NULL;
@@ -8350,8 +8392,8 @@ end(sccs *s, delta *n, FILE *out, int flags, int add, int del, int same)
 		if ((add || del || same) && (n->flags & D_ICKSUM)) {
 			if (s->dsum != n->sum) {
 				fprintf(stderr,
-				    "Bad delta checksum: %u vs %u\n",
-				    s->dsum, n->sum);
+				    "%s: bad delta checksum: %u:%u for %s\n",
+				    s->sfile, s->dsum, n->sum, n->rev);
 				s->state |= S_BAD_DSUM;
 			}
 		}
@@ -9052,6 +9094,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		d->date -= d->dateFudge;
 		if (utcTime = sccs_utctime(d)) {
 			fs(utcTime);
+			d->date += d->dateFudge;
 			return (strVal);
 		}
 		d->date += d->dateFudge;
@@ -9064,6 +9107,17 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		sprintf(buf, "%d", (int)d->dateFudge);
 		fs(buf);
 		return (strVal);
+	}
+
+	if (streq(kw, "CHKSUM")) {
+		if (d->flags & D_CKSUM) {
+			char	buf[20];
+
+			sprintf(buf, "%d", (int)d->sum);
+			fs(buf);
+			return (strVal);
+		}
+		return (nullVal);
 	}
 
 	if (streq(kw, "MODE")) {
@@ -10228,12 +10282,18 @@ rmdelout:
 	/* write out upper half */
 	delta_table(s, sfile, 0);  /* 0 means as-is, so checksum works */
 
+	if (s->encoding == E_GZIP) {
+		zgets_init(s->where, s->size - s->data);
+		zputs_init();
+	}
+
 	/* write out lower half */
 	if (destroy ? delta_strip(s, d, sfile, flags)
 		    : delta_rm(s, d, sfile, flags)) {
 		RMDELOUT;
 	}
-
+	fputdata(s, 0, sfile);
+	if (s->encoding == E_GZIP) zgets_done();
 	fseek(sfile, 0L, SEEK_SET);
 	fprintf(sfile, "\001h%05u\n", s->cksum);
 
@@ -10337,14 +10397,14 @@ delta_rm(sccs *s, delta *d, FILE *sfile, int flags)
 	 */
 
 	while (!eof(s)) {
-		if (!next(buf, s)) break;
+		unless (buf = nextdata(s)) break;
 
 		if (buf[0] == '\001' && serial == atoi(&buf[3])) {
 			register int checker = 0;
 			register int skip = 0;
 			if (buf[1] == 'D' || buf[1] == 'E') continue;
 			assert(buf[1] == 'I');
-			while (next(buf, s)) {
+			while (buf = nextdata(s)) {
 				checker = 1;
 				if (buf[0] == '\001') {
 					ser_t	num;
@@ -10357,9 +10417,9 @@ delta_rm(sccs *s, delta *d, FILE *sfile, int flags)
 					}
 					if (!skip && buf[1] == 'I')
 						skip = num;
-					fputmeta(s, buf, sfile);
+					fputdata(s, buf, sfile);
 				} else if (skip) {
-					fputmeta(s, buf, sfile);
+					fputdata(s, buf, sfile);
 				}
 				checker = 0;
 			}
@@ -10367,7 +10427,7 @@ delta_rm(sccs *s, delta *d, FILE *sfile, int flags)
 			assert(buf[1] == 'E' && serial == atoi(&buf[3]));
 			continue;
 		}
-		fputmeta(s, buf, sfile);
+		fputdata(s, buf, sfile);
 	}
 	return 0;
 }
@@ -10406,10 +10466,10 @@ delta_strip(sccs *s, delta *d, FILE *sfile, int flags)
 	 *	remove all D and E serial outside of this.
 	 */
 
-	while (!eof(s) && next(buf, s)) {
+	while (!eof(s) && (buf = nextdata(s))) {
 		if (buf[0] == '\001' && (stop = atoi(&buf[3])) > serial) {
 			if (buf[1] == 'I') {
-				while (!eof(s) && next(buf, s)) {
+				while (!eof(s) && (buf = nextdata(s))) {
 					if ((buf[0] == '\001') &&
 					    (atoi(&buf[3]) == stop)) {
 						assert(buf[1] == 'E');
@@ -10421,7 +10481,7 @@ delta_strip(sccs *s, delta *d, FILE *sfile, int flags)
 			assert(buf[1] == 'D' || buf[1] == 'E');
 			continue;
 		}
-		fputmeta(s, buf, sfile);
+		fputdata(s, buf, sfile);
 	}
 	return 0;
 }

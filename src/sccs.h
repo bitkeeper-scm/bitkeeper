@@ -120,7 +120,6 @@ extern	char *strdup(char *s);
 #define fnext(buf, in)  fgets(buf, sizeof(buf), in)
 #define	unlink(f)	smartUnlink(f)
 #define	rename(o, n)	smartRename(o, n)
-#define next(buf, s)	(buf = fastnext(s))
 #define	seekto(s,o)	s->where = (s->mmap + o)
 #define	tell(s)		(s->where - s->mmap)
 #define	eof(s)		((s->encoding == E_GZIP) ? \
@@ -677,8 +676,8 @@ int	zpeekc(void);
 char	*zgets(void);
 int	zputs_init(void);
 int	zputs(void *p, FILE *f,
-	    char *data, int len, void (*func)(void *, char *, int, FILE *));
-int	zputs_done(void *p, FILE *f, void (*func)(void *, char *, int, FILE *));
+	    char *data, int len, void (*func)(void *, u8 *, int, FILE *));
+int	zputs_done(void *p, FILE *f, void (*func)(void *, u8 *, int, FILE *));
 
 #ifdef	WIN32
 /*

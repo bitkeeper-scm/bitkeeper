@@ -1,0 +1,144 @@
+#include "sccs.h"
+WHATSTR("%W%");
+/*
+ * rechksum - regenerate the checksums associated with a file.
+ *
+ * Foreach delta {
+ *	get -k the file
+ *	verify the checksum both 7bit and 8bit
+ *	if the 7bit one is right, insert the 8bit one
+ *	if neither is right, scream.
+ * }
+ *
+ * Copyright (c) 1999 L.W.McVoy
+ */
+
+int	resum(sccs *s, delta *d);
+int	sumit(char *path, int *old, int *new);
+
+int
+main(int ac, char **av)
+{
+	sccs	*s;
+	delta	*d;
+	int	doit;
+	char	*name;
+
+	for (name = sfileFirst("rechksum", &av[1], 0);
+	    name; name = sfileNext()) {
+		s = sccs_init(name, 0);
+		if (!s) continue;
+		unless (s->tree) {
+			fprintf(stderr, "%s: can't read SCCS info in \"%s\".\n",
+			    av[0], s->sfile);
+			continue;
+		}
+		for (doit = 0, d = s->table; d; d = d->next) {
+			if (d->type == 'D') {
+				doit += resum(s, d);
+			}
+		}
+		if (doit) {
+			fprintf(stderr, "Redid %d in %s\n", doit, s->sfile);
+			unless (sccs_restart(s)) { perror("restart"); exit(1); }
+			if (sccs_admin(s, NEWCKSUM, 0, 0, 0, 0, 0, 0)) {
+				unless (BEEN_WARNED(s)) {
+					fprintf(stderr,
+					    "admin -z of %s failed.\n",
+					    s->sfile);
+				}
+			}
+		}
+		sccs_free(s);
+	}
+	sfileDone();
+	purify_list();
+	return (0);
+}
+
+int
+resum(sccs *s, delta *d)
+{
+	int	old, new;
+	int	encoding = s->encoding;
+
+	unless (sccs_restart(s)) { perror("restart"); exit(1); }
+
+	if (IS_EDITED(s)) {
+		fprintf(stderr,
+		    "Can't do checksums on edited file %s\n", s->sfile);
+		return (0);
+	}
+
+	//fprintf(stderr, "%s:%s\n", s->sfile, d->rev);
+	
+	/* expand the file in the form that we checksum it */
+	if ((s->encoding == E_UUENCODE) || (s->encoding == E_UUGZIP)) {
+		s->encoding = E_ASCII;
+	}
+
+	/* flags can't have EXPAND in them */
+	if (sccs_get(s, d->rev, 0, 0, 0, SHUTUP|SILENT, "-")) {
+		unless (BEEN_WARNED(s)) {
+			fprintf(stderr,
+			    "co of %s:%s failed, skipping it.\n",
+			    s->gfile, d->rev);
+		}
+		s->encoding = encoding;
+		return (0);
+	}
+	s->encoding = encoding;
+
+	if (sumit(s->gfile, &old, &new)) {
+		sccs_clean(s, SILENT);
+		return (0);
+	}
+	sccs_clean(s, SILENT);
+
+	if (d->sum == new) return (0);
+	if (d->sum != old) {
+		if (d->flags & D_CKSUM) {
+			fprintf(stderr,
+			    "Bad checksum %d:%d:%d in %s:%s NOT corrected\n",
+			    d->sum, old, new, s->sfile, d->rev);
+			return (0);
+		}
+		d->sum = new;
+		d->flags |= D_CKSUM;
+		return (1);
+	} else {
+		//fprintf(stderr, "Converting %s:%s\n", s->sfile, d->rev);
+		d->sum = new;
+		d->flags |= D_CKSUM;
+		return (1);
+	}
+	assert("Not reached" == 0);
+}
+
+int
+sumit(char *path, int *old, int *new)
+{
+	unsigned char buf[16<<10];
+	register unsigned char *u;
+	register char *s;
+	register int i;
+	unsigned short usum = 0;
+	unsigned short sum = 0;
+	int fd, save, bytes = 0;
+
+	*old = *new = 0;
+	if ((fd = open(path, 0)) == -1) {
+		perror(path);
+		return (-1);
+	}
+	while ((i = read(fd, buf, sizeof(buf))) > 0) {
+		bytes += i;
+		save = i;
+		for (u = buf; i--; usum += *u++);
+		for (s = buf, i = save; i--; sum += *s++);
+	}
+	*old = sum;
+	*new = usum;
+	close(fd);
+	return (bytes ? 0 : 1);
+}

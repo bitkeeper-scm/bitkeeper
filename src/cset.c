@@ -563,6 +563,7 @@ updateIdCacheEntry(sccs *sc, const char *filename)
 	fprintf(id_cache, "%s %s\n", buf, path);
 }
 
+#ifndef	PROFILE
 /*
  * XXX TODO
  * the locking code need to handle intr
@@ -590,6 +591,7 @@ unlock(char *lockName)
 		perror("unlink:");
 	}
 }
+#endif
 
 int
 csetCreate(sccs *cset, int flags, char *sym)
