@@ -4070,12 +4070,7 @@ sccs_init(char *name, u32 flags, project *proj)
 #ifndef WIN32
 	signal(SIGPIPE, SIG_IGN); /* win32 platform does not have sigpipe */
 #endif
-#ifdef	ANSIC
-	signal(SIGINT, SIG_IGN);
-#else
-	sig(CATCH, SIGINT);
-	sig(BLOCK, SIGINT);
-#endif
+	if (sig_ignore() == 0) s->unblock = 1;
 	return (s);
 }
 
@@ -4192,19 +4187,13 @@ void
 sccs_free(sccs *s)
 {
 	symbol	*sym, *t;
+	int	unblock;
 
 	unless (s) return;
 	if (s->io_error && !s->io_warned) {
 		fprintf(stderr, "%s: unreported I/O error\n", s->sfile);
 	}
 	sccsXfile(s, 0);
-#if 0
-	{ struct stat sb;
-	sb.st_size = 0;
-	stat(s->sfile, &sb);
-	fprintf(stderr, "Closing size = %d\n", sb.st_size);
-	}
-#endif
 	if (s->table) sccs_freetable(s->table);
 	for (sym = s->symbols; sym; sym = t) {
 		t = sym->next;
@@ -4222,11 +4211,7 @@ sccs_free(sccs *s)
 
 		if (fstat(s->fd, &sbuf) == 0) {
 			sbuf.st_mode &= ~0200;
-#ifdef	ANSIC
 			chmod(s->sfile, sbuf.st_mode & 0777);
-#else
-			fchmod(s->fd, sbuf.st_mode & 0777);
-#endif
 		}
 	}
 	if (s->defbranch) free(s->defbranch);
@@ -4238,14 +4223,10 @@ sccs_free(sccs *s)
 	if (s->symlink) free(s->symlink);
 	if (s->mdbm) mdbm_close(s->mdbm);
 	if (s->spathname) free(s->spathname);
+	unblock = s->unblock;
 	bzero(s, sizeof(*s));
 	free(s);
-#ifdef	ANSIC
-	signal(SIGINT, SIG_DFL);
-#else
-	sig(UNCATCH, SIGINT);
-	sig(UNBLOCK, SIGINT);
-#endif
+	if (unblock) sig_default();
 }
 
 /*
@@ -13796,71 +13777,6 @@ sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out)
 	}
 	return (0);
 }
-
-#ifndef	ANSIC
-
-#ifndef	_NSIG
-#define	_NSIG	32	/* XXX - might be wrong, probably OK */
-#endif
-
-private int	caught[_NSIG];
-private struct	sigaction savesig[_NSIG];
-private void	catch(int sig) { caught[sig]++; }
-
-int
-sigcaught(int sig)
-{
-	assert(sig > 0);
-	assert(sig < _NSIG);
-	return (caught[sig]);
-}
-
-/*
- * Signal theory of operation:
- *	block signals when initializing,
- *	unblock when we are going to do anything that takes a long time.
- *	XXX - doesn't stack more than one deep.	 Bad for a library.
- */
-int
-sig(int what, int sig)
-{
-	struct	sigaction sa;
-	sigset_t sigs;
-
-	assert(sig > 0);
-	assert(sig < _NSIG);
-	switch (what) {
-	    case CATCH:
-		bzero(&sa, sizeof(sa));
-		sa.sa_handler = catch;
-		sigaction(sig, &sa, &savesig[sig]);
-		break;
-	    case UNCATCH:
-		sigaction(sig, &savesig[sig], 0);
-		break;
-	    case BLOCK:
-		sigemptyset(&sigs);
-		sigaddset(&sigs, sig);
-		sigprocmask(SIG_BLOCK, &sigs, 0);
-		break;
-	    case UNBLOCK:
-		sigemptyset(&sigs);
-		sigaddset(&sigs, sig);
-		sigprocmask(SIG_UNBLOCK, &sigs, 0);
-		break;
-	    case CHKPENDING:
-		sigemptyset(&sigs);
-		sigpending(&sigs);
-		return (sigismember(&sigs, sig));
-	    case CAUGHT:
-		return (caught[sig]);
-	    case CLEAR:
-		caught[sig] = 0;
-		break;
-	}
-	return (0);
-}
-#endif	/* !ANSIC */
 
 /*
  * return the number of nodes, including this one, in this subgraph.

@@ -7,11 +7,9 @@
  * 		Unix  version  of sccs_getXXXX
  * -------------------------------------------------------------
  */
-#ifdef	ANSIC
-private jmp_buf jmp;
-
-void	abort_ci() { longjmp(jmp, 1); }
-#endif
+private jmp_buf	jmp;
+private	void	(*handler)(int);
+private	void	abort_ci() { longjmp(jmp, 1); }
 
 int
 sccs_getComments(char *file, char *rev, delta *n)
@@ -27,16 +25,13 @@ sccs_getComments(char *file, char *rev, delta *n)
 	} else {
 		fprintf(stderr, "%s>>  ", file);
 	}
-#ifdef	ANSIC
 	if (setjmp(jmp)) {
 		fprintf(stderr,
 		    "\nCheck in aborted due to interrupt.\n");
+		signal(SIGINT, handler);
 		return (-1);
 	}
-	signal(SIGINT, abort_ci);
-#else
-	sig(UNBLOCK, SIGINT);
-#endif
+	handler = signal(SIGINT, abort_ci);
 	while (getline(0, buf2, sizeof(buf2)) > 0) {
 		if ((buf2[0] == 0) || streq(buf2, "."))
 			break;
@@ -47,14 +42,6 @@ sccs_getComments(char *file, char *rev, delta *n)
 			fprintf(stderr, "%s>>  ", file);
 		}
 	}
-#ifndef	ANSIC
-	if (sig(CAUGHT, SIGINT)) {
-		sig(BLOCK, SIGINT);
-		fprintf(stderr,
-		    "\nCheck in aborted due to interrupt.\n");
-		return (-1);
-	}
-#endif
 	return (0);
 }
 
@@ -64,16 +51,13 @@ sccs_getHostName(delta *n)
 	char	buf2[1024];
 
 	fprintf(stderr, "Hostname of your machine>>  ");
-#ifdef	ANSIC
 	if (setjmp(jmp)) {
 		fprintf(stderr,
 		    "\nCheck in aborted due to interrupt.\n");
+		signal(SIGINT, handler);
 		return (-1);
 	}
-	signal(SIGINT, abort_ci);
-#else
-	sig(UNBLOCK, SIGINT);
-#endif
+	handler = signal(SIGINT, abort_ci);
 	while (getline(0, buf2, sizeof(buf2)) > 0) {
 		if (isValidHost(buf2)) {
 			n->hostname = strdup(buf2);
@@ -82,14 +66,6 @@ sccs_getHostName(delta *n)
 		fprintf(stderr, "%s is not a valid hostname\n", buf2);
 		fprintf(stderr, "Hostname of your machine>>  ");
 	}
-#ifndef	ANSIC
-	if (sig(CAUGHT, SIGINT)) {
-		sig(BLOCK, SIGINT);
-		fprintf(stderr,
-		    "\nCheck in aborted due to interrupt.\n");
-		return (-1);
-	}
-#endif
 	return (0);
 }
 
@@ -99,16 +75,13 @@ sccs_getUserName(delta *n)
 {
 	char	buf2[1024];
 
-#ifdef	ANSIC
 	if (setjmp(jmp)) {
 		fprintf(stderr,
 		    "\nCheck in aborted due to interrupt.\n");
+		signal(SIGINT, handler);
 		return (-1);
 	}
-	signal(SIGINT, abort_ci);
-#else
-	sig(UNBLOCK, SIGINT);
-#endif
+	handler = signal(SIGINT, abort_ci);
 	fprintf(stderr, "User name>>  ");
 	while (getline(0, buf2, sizeof(buf2)) > 0) {
 		char	*t;
@@ -123,14 +96,6 @@ sccs_getUserName(delta *n)
 		fprintf(stderr, "%s is not a valid user name\n", buf2);
 		fprintf(stderr, "User name>>  ");
 	}
-#ifndef	ANSIC
-	if (sig(CAUGHT, SIGINT)) {
-		sig(BLOCK, SIGINT);
-		fprintf(stderr,
-		    "\nCheck in aborted due to interrupt.\n");
-		return (-1);
-	}
-#endif
 	return (0);
 }
 #else /* WIN32 */

@@ -83,7 +83,6 @@ getline(int in, char *buf, int size)
 {
 	int	ret, i = 0;
 	char	c;
-	int	sigs = sigcaught(SIGINT);
 	static	int echo = -1;
 
 	if (echo == -1) {
@@ -112,16 +111,12 @@ getline(int in, char *buf, int size)
 			break;
 
 		    default:
-			unless (errno == EINTR) {	/* for !SIGINT */
-err:				buf[i] = 0;
-				if (echo) {
-					perror("getline");
-					fprintf(stderr, "[%s]=%d\n", buf, ret);
-				}
-				return (-1);
-			} else if (sigs != sigcaught(SIGINT)) {
-				goto err;
+			buf[i] = 0;
+			if (echo) {
+				perror("getline");
+				fprintf(stderr, "[%s]=%d\n", buf, ret);
 			}
+			return (-1);
 		}
 	}
 }
@@ -184,7 +179,6 @@ getline2(remote *r, char *buf, int size)
 {
 	int	ret, i = 0;
 	char	c;
-	int	sigs = sigcaught(SIGINT);
 	static	int echo = -1;
 
 	if (echo == -1) {
@@ -214,19 +208,19 @@ getline2(remote *r, char *buf, int size)
 			break;
 
 		    default:
-			unless (errno == EINTR) {	/* for !SIGINT */
-err:				buf[i] = 0;
-				if (echo) {
-					perror("getline2");
-					fprintf(stderr, "[%s]=%d\n", buf, ret);
-				}
-				return (-1);
-			} else if (sigs != sigcaught(SIGINT)) {
-				goto err;
+			buf[i] = 0;
+			if (echo) {
+				perror("getline2");
+				fprintf(stderr, "[%s]=%d\n", buf, ret);
 			}
+			return (-1);
 		}
 	}
 }
+
+private jmp_buf	jmp;
+private	void	(*handler)(int);
+private	void	abort_prompt() { longjmp(jmp, 1); }
 
 /*
  * Prompt the user and get an answer.
@@ -235,9 +229,19 @@ err:				buf[i] = 0;
 int
 prompt(char *msg, char *buf)
 {
+	if (setjmp(jmp)) {
+		fprintf(stderr, "\n(interrupted)\n");
+		signal(SIGINT, handler);
+		return (0);
+	}
+	handler = signal(SIGINT, abort_prompt);
 	write(2, msg, strlen(msg));
 	write(2, " ", 1);
-	if (getline(0, buf, MAXPATH) > 1) return (1);
+	if (getline(0, buf, MAXPATH) > 1) {
+		signal(SIGINT, handler);
+		return (1);
+	}
+	signal(SIGINT, handler);
 	return (0);
 }
 
@@ -246,10 +250,19 @@ confirm(char *msg)
 {
 	char	buf[100];
 
+	if (setjmp(jmp)) {
+		fprintf(stderr, "\n(interrupted)\n");
+		signal(SIGINT, handler);
+		return (0);
+	}
 	fflush(stdout);
 	write(1, msg, strlen(msg));
 	write(1, " (y/n) ", 7);
-	if (getline(0, buf, sizeof(buf)) <= 1) return (0);
+	if (getline(0, buf, sizeof(buf)) <= 1) {
+		signal(SIGINT, handler);
+		return (0);
+	}
+	signal(SIGINT, handler);
 	return ((buf[0] == 'y') || (buf[0] == 'Y'));
 }
 

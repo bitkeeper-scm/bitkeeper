@@ -7,6 +7,7 @@ private MDBM	*mk_list(char *, char *);
 private int	clean_file(MDBM *);
 private int	do_rename(MDBM *, char *);
 private void	checkRev(char *);
+private int	check_patch();
 
 int
 undo_main(int ac,  char **av)
@@ -19,7 +20,7 @@ undo_main(int ac,  char **av)
 	MDBM	*fileList;
 #define	LINE "---------------------------------------------------------\n"
 #define	BK_TMP  "BitKeeper/tmp"
-#define	BK_UNDO "BitKeeper/tmp/undo"
+#define	BK_UNDO "BitKeeper/tmp/undo_backup"
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help undo");
@@ -31,14 +32,14 @@ undo_main(int ac,  char **av)
 	}
 	while ((c = getopt(ac, av, "a:fqsr:")) != -1) {
 		switch (c) {
-		    case 'a':	/* doc 2.0 */
+		    case 'a':					/* doc 2.0 */
 		    	rev = getrev(optarg);
 			unless (rev) return (0); /* we are done */
 			break;
-		    case 'f': force  =  1; break;	/* doc 2.0 */
+		    case 'f': force  =  1; break;		/* doc 2.0 */
 		    case 'q': qflag = "-q"; vflag = ""; break;	/* doc 2.0 */
 		    case 'r': rev = optarg; ckRev++; break;	/* doc 2.0 */
-		    case 's': save = 0; break;	/* doc 2.0 */
+		    case 's': save = 0; break;			/* doc 2.0 */
 		    default :
 			fprintf(stderr, "unknown option <%c>\n", c);
 usage:			system("bk help -s undo");
@@ -78,16 +79,20 @@ err:		if (undo_list[0]) unlink(undo_list);
 	}
 
 	if (save) {
+		if (streq(qflag, "")) {
+			fprintf(stderr, "Saving a backup patch...\n");
+		}
 		unless (isdir(BK_TMP)) mkdirp(BK_TMP);
 		sprintf(cmd, "bk cset %s -ffm%s > %s", vflag, rev, BK_UNDO);
 		system(cmd);
-		if (size(BK_UNDO) <= 0) {
+		if (check_patch()) {
 			printf("Failed to create undo backup %s\n", BK_UNDO);
 			goto err;
 		}
 	}
 	free(cmd); cmd = 0;
 
+	sig_ignore();
 	sprintf(buf, "bk stripdel %s -C - < %s", qflag, rev_list);
 	if (system(buf) != 0) {
 		fprintf(stderr, "Undo failed\n");
@@ -108,13 +113,31 @@ err:		if (undo_list[0]) unlink(undo_list);
 		    BK_UNDO);
 	}
 	if (streq(qflag, "")) printf("Running consistency check...\n");
-	if ((rc = system("bk -r check -af")) == 2) { /* 2 mean try again */
+	if ((rc = system("bk -r check -af")) == 2) { /* 2 means try again */
 		if (streq(qflag, "")) {
 			printf("Running consistency check again ...\n");
 		}
 		rc = system("bk -r check -a ");
 	}
+	sig_default();
 	return (rc);
+}
+
+private int
+check_patch()
+{
+	MMAP	*m = mopen(BK_UNDO, "");
+	char	*p;
+
+	if (!m) return (1);
+	for (p = m->mmap + msize(m) - 2; (p > m->mmap) && (*p != '\n'); p--);
+	if (p <= m->mmap) {
+bad:		mclose(m);
+		return (1);
+	}
+	unless (strneq(p, "\n# Patch checksum=", 18)) goto bad;
+	mclose(m);
+	return (0);
 }
 
 private void

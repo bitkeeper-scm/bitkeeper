@@ -278,15 +278,9 @@
 
 /*
  * Signal handling.
- * Caught signals do not restart system calls.
  */
-#define	CATCH		0x0001		/* catch the specified signal */
-#define	BLOCK		0x0002		/* block the signal */
-#define	UNBLOCK		0x0004		/* block the signal */
-#define	CHKPENDING	0x0008		/* check for pending signal */
-#define	UNCATCH		0x0010		/* restore old handler */
-#define	CAUGHT		0x0020		/* has this signal been caught? */
-#define	CLEAR		0x0040		/* forget about past catches */
+#define	SIG_IGNORE	0x0001		/* ignore the specified signal */
+#define	SIG_DEFAULT	0x0002		/* restore old handler */
 
 /*
  * Hash behaviour.  Bitmask.
@@ -568,6 +562,7 @@ typedef	struct sccs {
 	u32	prs_output:1;	/* prs printed something */
 	u32	bitkeeper:1;	/* bitkeeper file */
 	u32	prs_odd:1;	/* for :ODD: :EVEN: in dspecs */
+	u32	unblock:1;	/* sccs_free: only if set */
 } sccs;
 
 typedef struct {

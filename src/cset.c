@@ -270,15 +270,6 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 	if (!cset) return (101);
 	copts.mixed = !LONGKEY(cset);
 
-	if (list) {
-#ifdef  ANSIC
-		signal(SIGINT, SIG_DFL);
-#else
-		sig(UNCATCH, SIGINT);
-		sig(UNBLOCK, SIGINT);
-#endif
-	}
-
 	if (list && (things < 1) && !copts.dash) {
 		fprintf(stderr, "cset: must specify a revision.\n");
 		sccs_free(cset);
@@ -298,6 +289,7 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 			expand = 2;
 		}
 		RANGE("cset", cset, expand, 1);
+		sig_default();
 		csetlist(&copts, cset);
 next:		sccs_free(cset);
 		if (cFile) free(cFile);

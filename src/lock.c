@@ -3,6 +3,9 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
+private jmp_buf	jmp;
+private	void	abort_lock() { longjmp(jmp, 1); }
+
 /*
  * lock - repository level locking
  */
@@ -40,6 +43,12 @@ usage:			system("bk help -s lock");
 	sccs_cd2root(0, 0);
 	pid = getpid();
 	thisHost = sccs_gethost();
+	if (setjmp(jmp)) {
+		if (what == 'r') repository_rdunlock(0);
+		if (what == 'w') repository_wrunlock(0);
+		exit(0);
+	}
+	(void)signal(SIGINT, abort_lock);
 	switch (what) {
 	    case 'r':	/* read lock the repository */
 		if (repository_rdlock()) {
@@ -48,15 +57,9 @@ usage:			system("bk help -s lock");
 			exit(1);
 		}
 		/* make ourselves go away after the lock is gone */
-		catch();
 		do {
 			usleep(500000);
-			if (caught()) {
-				repository_rdunlock(0);
-				break;
-			}
 		} while (repository_locker('r', pid, thisHost));
-		uncatch();
 		exit(0);
 	    
 	    case 'w':
@@ -66,15 +69,9 @@ usage:			system("bk help -s lock");
 			exit(1);
 		}
 		/* make ourselves go away after the lock is gone */
-		catch();
 		do {
 			usleep(500000);
-			if (caught()) {
-				repository_wrunlock(0);
-				break;
-			}
 		} while (repository_locker('w', pid, thisHost));
-		uncatch();
 		exit(0);
 
 	    case 'l':
