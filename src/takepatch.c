@@ -1178,16 +1178,18 @@ fileCopy(char *from, char *to)
 void
 rebuild_id(char *id)
 {
-	fprintf(stderr,
+	if (echo > 0) {
+		fprintf(stderr,
 "takepatch: miss in idcache\n\tfor %s,\n\
 \trebuilding (this can take a while)...", id);
+	}
 	system("bk sfiles -r");
 	if (idDB) mdbm_close(idDB);
 	unless (idDB = loadDB("SCCS/x.id_cache", 0)) {
 		perror("SCCS/x.id_cache");
 		exit(1);
 	}
-	fprintf(stderr, "done\n");
+	if (echo > 0) fprintf(stderr, "done\n");
 }
 
 void
