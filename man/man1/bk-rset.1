@@ -3,10 +3,10 @@
 .SH NAME
 bk rset \- generate a ``release set''
 .SH SYNOPSIS
-.B bk rset [-ahH] 
+.B bk rset [-ah] 
 .OPTreq -r rev
 .br
-.B bk rset [-ahH] 
+.B bk rset [-ah] 
 .OPTreq -l rev
 .SH DESCRIPTION
 .B bk rset
@@ -31,8 +31,7 @@ the same file, which is why the end of the last changeset and the start
 of the requested changeset is listed in the output.
 .LP
 This program is not normally run by users, the 
-._SA export 1
-command uses 
+bk export command uses 
 .B bk rset
 combined with
 .B bk gnupatch
@@ -58,9 +57,6 @@ The output has three file names, current, starting, and ending,
 corresponding to the current pathname,
 the pathname of the file at the start of the first changeset listed, 
 and the pathname of the file at the end of the last changeset.
-.tp
-.B -H
-do not list the ChangeSet file.
 .tp
 .OPTreq -l rev
 list the entire repository as of changeset 
