@@ -1235,13 +1235,16 @@ private int
 chk_csetpointer(sccs *s)
 {
 	char	*csetkey = getCSetFile(s->proj);
-	
-	unless (streq(csetkey, s->tree->csetFile)) {
+
+	if (s->tree->csetFile == NULL ||
+	    !(streq(csetkey, s->tree->csetFile))) {
 		fprintf(stderr, 
 "Extra file: %s\n\
      belongs to: %s\n\
      should be:  %s\n",
-			s->sfile, s->tree->csetFile, csetkey);
+			s->sfile,
+			s->tree->csetFile == NULL ? "NULL" : s->tree->csetFile,
+			csetkey);
 		csetpointer++;
 		return (1);
 	}
