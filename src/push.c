@@ -854,7 +854,7 @@ pull(remote *r)
 	unless (opts.verbose) cmd[++i] = "-q";
 	if (opts.textOnly) cmd[++i] = "-t";
 	cmd[++i] = url;
-	cmd[i] = 0;
+	cmd[++i] = 0;
 	if (opts.verbose) {
 		fprintf(opts.out, "Pulling in new work\n");
 	}

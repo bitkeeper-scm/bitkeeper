@@ -163,10 +163,11 @@ mv h.x h.h
 bk delta $Q -ydvorak h.h
 cd ..
 bk commit $Q -yzxcvbnm
-bk push -t -a $Q || { echo push w/ autopull failed; exit 1; }
-cd $HERE/project
-KEY2="`bk prs -hd:KEY: -r+ ChangeSet`"
-[ "$KEY" = "$KEY2" ] || { echo bad push; exit 1; }
+bk parent $Q $HERE/copy
+bk push $Q -t -a $HERE/project || { echo push w/ autopull failed; exit 1; }
+bk parent $Q $HERE/project
+bk findkey $KEY > foo
+if [ ! -s foo ]; then echo bad push; exit 1; fi
 cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
 echo OK
 echo $N Push with a conflicting upstream delta ......................$NL
