@@ -52,6 +52,7 @@ main(int ac, char **av)
 	MMAP	*diffs = 0;
 	MMAP	*init = 0;
 	pfile	pf;
+	int	dash;
 
 	debug_main(av);
 	name = strrchr(av[0], '/');
@@ -137,6 +138,7 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 	enc = sccs_encoding(0, encp, compp);
 	if (enc == -1) goto usage;
 
+	dash = av[optind] && streq(av[optind], "-");
 	name = sfileFirst(av[0], &av[optind], sflags);
 	/* They can only have an initFile for one file...
 	 * So we go get the next file and error if there
@@ -145,6 +147,13 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 	if ((initFile || diffsFile) && name && sfileNext()) {
 		fprintf(stderr,
 "%s: only one file may be specified with init or diffs file.\n", av[0]);
+		goto usage;
+	}
+
+	/* force them to do something sane */
+	if (!comment && dash && name && sfileNext()) {
+		fprintf(stderr,
+"%s: only one file may be specified without a checkin comment\n", av[0]);
 		goto usage;
 	}
 	if (initFile && (dflags & DELTA_DONTASK)) {
