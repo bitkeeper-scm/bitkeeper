@@ -47,7 +47,7 @@ proc initGlobals {} \
 		append key {\Windows\CurrentVersion} 
 		if {[catch {set pf [registry get $key ProgramFilesDir]}]} {
 			puts "Can't read $key"
-			set pf {C:\Program Files\BitKeeper}
+			set pf {C:\Program Files}
 		}
 		set runtime(places) \
 		    [list [normalize [file join $pf BitKeeper]]]
@@ -334,6 +334,7 @@ proc widgets {} \
 			    set tmp [tk_chooseDirectory -initialdir $f]
 			    if {![string equal $tmp ""]} {
 				    set ::runtime(destination) $tmp
+				    set ::runtime(destinationRB) ""
 				    setDestination $tmp
 			    }
 		    }
@@ -357,7 +358,7 @@ proc widgets {} \
 		incr row
 		set ::widgets(dirStatus) $w.dirStatus
 		label $::widgets(dirStatus)  -anchor w -foreground red
-		grid $::widgets(dirStatus) -row $row -column 0 \
+		grid $::widgets(dirStatus) -pady 10 -row $row -column 0 \
 		    -columnspan 3 -sticky ew
 
 		grid columnconfigure $w 0 -weight 0 -minsize $rbwidth
@@ -652,7 +653,8 @@ proc widgets {} \
 				}
 			}
 
-			if {[file exists $::runtime(destination)]} {
+			if {[file exists $::runtime(destination)] && \
+			    ![isempty $::runtime(destination)]} {
 				. configure -path existing
 			} else {
 				. configure -path new
@@ -788,7 +790,7 @@ proc setDestination {dir} \
 	if {[string equal $dir ""]} {
 		$widgets(destinationButton) configure -state normal
 		$::widgets(dirStatus) configure -text ""
-		. configure -state normal
+		. configure -state pending
 
 	} else {
 		$widgets(destinationButton) configure -state disabled
@@ -810,21 +812,34 @@ proc setDestination {dir} \
 			    -text "Directory $dir doesn't exist" \
 			    -foreground black
 		}
+		$widgets(destinationButton) configure -state normal
 	}
+}
+
+proc isempty {dir} \
+{
+	set files [exec bk _find -type f $dir]
+	if {[string length $files] > 0} { return 0 }
+	return 1
 }
 
 proc validateDestination {} \
 {
-	set destination $::runtime(destination)
+	set dest $::runtime(destination)
 
-	if {![file isdirectory $destination]} {
-		set message "\"$destination\" is not a directory"
-		return $message
+	if {![file isdirectory $dest]} {
+		return "\"$dest\" is not a directory"
 	}
 
-	if {![file writable $destination] && ![file owned $destination]} {
-		set message "Write permission for \"$destination\" is denied"
-		return $message
+	set bkhelp [file join $dest bkhelp.txt]
+	if {[file exists $bkhelp]} { return "" }
+
+	if {![isempty $dest]} {
+		return "Will not overwrite non-empty directory \"$dest\""
+	}
+
+	if {![file writable $dest]} {
+		return "Write permission for \"$dest\" is denied"
 	}
 
 	return ""

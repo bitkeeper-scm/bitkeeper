@@ -234,10 +234,14 @@ proc addpath {type dir} \
 	# there (presumably from a previous install); no sense in
 	# adding a duplicate
 
+	set npath ""
 	foreach d $path {
 		if {[shortname $d] eq [shortname $dir]} {
 			# dir is already in the path
 			return 
+		}
+		if {![file exists "$d/bkhelp.txt"]} {
+			lappend npath $d
 		}
 	}
 
@@ -245,8 +249,8 @@ proc addpath {type dir} \
 	# key (versus creating it). Andrew wanted to know the exact
 	# bits added to the path so we'll pass that info along so 
 	# it gets logged
-	lappend path $dir
-	set path [join $path {;}]
+	lappend npath $dir
+	set path [join $npath {;}]
 	reg modify $key Path $path $dir
 	reg broadcast Environment
 }
