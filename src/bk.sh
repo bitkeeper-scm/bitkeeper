@@ -336,6 +336,7 @@ _advertise()
 }
 
 # Manually set the parent pointer for a repository.
+# With no args, print the parent pointer.
 _parent() {
 	__cd2root
 	case "X$1" in
@@ -347,7 +348,11 @@ _parent() {
 		;;
 	esac
 	if [ "X$1" = X ]
-	then	echo "Must specify parent root directory"
+	then	if [ -f BitKeeper/log/parent ]
+		then	echo Parent repository is `cat BitKeeper/log/parent`
+			exit 0
+		fi
+		echo "Must specify parent root directory"
 		exit 1
 	fi
 	if [ ! -d "$1/BitKeeper/etc" ]
