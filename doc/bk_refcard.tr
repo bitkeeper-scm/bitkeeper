@@ -692,8 +692,6 @@ Searching
 bk grep [\fIoptions\fP] pattern [\fIfiles\fP]
 .LP
 Search some/all revisions of one or more files for a string.
-.IP -r+
-Search only the most recent revision
 .H2
 bk annotate [\fIoptions\fP] [\fIfiles\fP]
 .LP

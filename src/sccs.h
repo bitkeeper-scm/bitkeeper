@@ -1,4 +1,4 @@
-/* %W% Copyright (c) 1997 Larry McVoy */
+/* %W% Copyright (c) 1997-2001 Larry McVoy */
 #ifndef	_SCCS_H_
 #define	_SCCS_H_
 
@@ -845,6 +845,8 @@ char	*name2sccs(char *);
 int	diff(char *lfile, char *rfile, char kind, char *opts, char *out);
 char	**addLine(char **space, char *line);
 void	freeLines(char **space);
+int	removeLine(char **space, char *s);
+void	removeLineN(char **space, int rm);
 int	check_gfile(sccs*, int);
 void	platformSpecificInit(char *);
 MDBM	*loadDB(char *file, int (*want)(char *), int style);
@@ -1063,6 +1065,7 @@ int	spawn_cmd(int flag, char **av);
 int	getRealName(char *path, MDBM *db, char *realname);
 int	addsym(sccs *s, delta *d, delta *metad, int, char*, char*);
 int	delta_table(sccs *s, FILE *out, int willfix);
+char	**getdir(char *); 
 delta	*getSymlnkCksumDelta(sccs *s, delta *d);
 struct tm
         *utc2tm(time_t t);

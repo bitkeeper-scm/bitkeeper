@@ -173,6 +173,11 @@ f_merge(resolve *rs)
 			    l, newflags, sccs_Xfile(rs->s, 'r'), LOCAL);
 		/* remove delta must be refetched after previous delta */
 		r = sccs_getrev(rs->s, rs->revs->remote, 0, 0);
+		sccs_close(rs->s); /*
+				    * for win32, have to close it again
+				    * becuase the previous flags_delta()
+				    * called sccs_init()
+				    */
 		flags_delta(rs, rs->s->sfile, 
 			    r, newflags, sccs_Xfile(rs->s, 'r'), REMOTE);
 		unless (rs->opts->quiet) {

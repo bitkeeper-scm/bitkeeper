@@ -233,8 +233,8 @@ updLogMarker(int ptype, int verbose, FILE *vf)
 
 			getcwd(buf, sizeof (buf));
 			fprintf(vf,
-				"updLogMarker: cannot access %s, pwd=%s\n",
-				s_cset, buf);
+			    "updLogMarker: cannot access %s, pwd=%s\n",
+			    s_cset, buf);
 		}
 	}
 }

@@ -375,7 +375,7 @@ freeLines(char **space)
 	addLine_lastp = 0;
 }
 
-private int
+int
 removeLine(char **space, char *s)
 {
 	int	i, found, n = 0;
@@ -397,6 +397,22 @@ removeLine(char **space, char *s)
 		}
 	} while (found);
 	return (n > 0);
+}
+
+void
+removeLineN(char **space, int rm)
+{
+	int	i;
+
+	assert(rm < (int)(long)space[0]);
+	assert(rm > 0);
+	free(space[rm]);
+	space[rm] = 0;
+	for (i = rm; (++i < (int)(long)space[0]) && space[i]; ) {
+		space[i-1] = space[i];
+		space[i] = 0;
+	}
+	addLine_lastp = 0;
 }
 
 /*

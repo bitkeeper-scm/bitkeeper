@@ -540,7 +540,7 @@ doKey(cset_t *cs, char *key, char *val)
 		perror("idcache");
 	}
 	lastkey = strdup(key);
-retry:	sc = sccs_keyinit(lastkey, INIT_NOCKSUM|INIT_SAVMOD, 0, idDB);
+retry:	sc = sccs_keyinit(lastkey, INIT_SAVMOD, 0, idDB);
 	unless (sc) {
 		/* cache miss, rebuild cache */
 		unless (doneFullRebuild) {
@@ -964,7 +964,7 @@ add(FILE *diffs, char *buf)
 		cset_exit(1);
 	}
 	*rev++ = 0;
-	unless (s = sccs_init(buf, INIT_NOCKSUM|SILENT, 0)) {
+	unless (s = sccs_init(buf, SILENT, 0)) {
 		fprintf(stderr, "cset: can't init %s\n", buf);
 		system("bk clean -u ChangeSet");
 		cset_exit(1);

@@ -24,7 +24,7 @@ usage:		system("bk help -s grep");
 	*s++ = '-';
 	*g++ = '-';
 	rev[0] = range[0] = 0;
-	while ((c = getopt(ac, av, "ac|defimnNur|R|")) != -1) {
+	while ((c = getopt(ac, av, "ac;defimnNur;R|")) != -1) {
 		switch (c) {
 		    case 'a':					/* doc 2.0 */
 			none = 1;
@@ -47,7 +47,11 @@ usage:		system("bk help -s grep");
 			sprintf(range, "-c%s", optarg);
 			break;
 		    case 'R':					/* doc 2.0 */
-			sprintf(range, "-r%s", optarg);
+			if (optarg && optarg[0]) {
+				sprintf(range, "-r%s", optarg);
+			} else {
+				strcpy(range, "-r1.0..");
+			}
 			break;
 		    case 'i':					/* doc 2.0 */
 			*g++ = c;
@@ -77,6 +81,7 @@ usage:		system("bk help -s grep");
 		exit(1);
 	}
 
+	unless (range[0] || rev[0]) strcpy(rev, "-r+");
 	if (rev[0]) {
 		sav[i=0] = "get";
 		sav[++i] = rev;
