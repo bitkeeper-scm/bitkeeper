@@ -321,6 +321,7 @@
 #define	BK_CONFIG_BCKUP	"http://config2.bitkeeper.com:80"
 #define	BK_CONFIG_CGI	"bk_config"
 #define	SCCSTMP		"SCCS/T.SCCSTMP"
+#define	BKDIR		"BitKeeper"
 #define	BKTMP		"BitKeeper/tmp"
 #define	BKROOT		"BitKeeper/etc"
 #define	BKMASTER	"BitKeeper/etc/.master"

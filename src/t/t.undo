@@ -19,6 +19,7 @@ if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
+
 echo $N Check undo to rev 1.2 .......................................$NL
 mkdir src
 cd $HERE/project/src
@@ -55,10 +56,11 @@ then
 	exit
 fi
 echo OK
+
 echo $N Check undo with edited file .................................$NL
 bk co $Q -l foo.c
 echo new-data > foo.c
-bk undo -r+ > undo.out 2>&1
+bk undo -fr+ > undo.out 2>&1
 if [ $? -eq 0 ]; then echo "failed"; exit 1; fi
 grep -q "src/foo.c has been modified, needs delta." undo.out
 if [ $? -ne 0 ]; then echo "failed1"; exit 1; fi
@@ -129,6 +131,7 @@ bk prs -r1.4 ChangeSet > OUT || {
 	exit 1
 }
 echo OK
+
 echo $N Undo a rename where renumber needs to run before names ......$NL
 cd $HERE
 no_logging rename
@@ -150,4 +153,17 @@ bk mv t b || exit 1
 bk commit -Sc3 -yc3 $Q || exit 1
 bk pull $Q || exit 1
 bk undo $Q -f -ac3 || exit 1
+echo OK
+
+echo $N Undo should not touch files when it fails ...................$NL
+cd $HERE/project/src
+bk get $Q new_foo.c
+bk undo $Q -r1.2 >OUT && {
+	echo should have generated an error
+	exit 1
+}
+test -f new_foo.c || {
+	echo a failed undo should not have deleted any files
+	exit 1
+}
 echo OK
