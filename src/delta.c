@@ -20,7 +20,15 @@ usage: delta [-AcGilnpqs] [-I<f>] [-S<sym>] [-y<c>] [files...]\n\n\
     -I<file>	Take the initial rev/date/user/comments/etc from <file>\n\
     		See prs for file format information\n\
     -y<comment>	Sets the revision comment to <comment>.\n\
-    -Y		prompts for comment and then uses that for all files.\n\n";
+    -Y		prompts for comment and then uses that for all files.\n\n
+    -Z, -Z<alg>		compress stored s.file with <alg>, which may be:\n\
+		gzip	like gzip(1) (default)\n\
+		none	no compression\n\
+    -E<enc>		treat file as encoded with <enc>, which may be:\n\
+		text	plain text\n\
+		ascii	same\n\
+		binary	binary file (must uuencode before diffing)\n\
+		uugzip	same, but compress before uuencode\n";
 
 /*
  * Not implemented:
@@ -44,12 +52,13 @@ main(int ac, char **av)
 	int	dflags = DELTA_FORCE;
 	int	gflags = 0;
 	int	sflags = SF_GFILE|SF_WRITE_OK;
-	int	c, rc;
+	int	c, rc, enc;
 	char	*initFile = 0;
 	char	*diffsFile = 0;
 	char	*name;
 	char	*sym = 0;
 	char	*lod = 0;
+	char	*compp = 0, *encp = 0;
 	FILE	*diffs = 0;
 	FILE	*init = 0;
 	pfile	pf;
@@ -59,7 +68,7 @@ main(int ac, char **av)
 help:		fprintf(stderr, delta_help);
 		return (1);
 	}
-	while ((c = getopt(ac, av, "acD:g;GhI;ilL;m;npqRS;sy|Y")) != -1) {
+	while ((c = getopt(ac, av, "acD:E|g;GhI;ilL;m;npqRS;sy|YZ|")) != -1) {
 		switch (c) {
 		    /* SCCS flags */
 		    case 'g': fprintf(stderr, "-g Not implemented.\n");
@@ -98,12 +107,16 @@ help:		fprintf(stderr, delta_help);
 		    case 'R': dflags |= DELTA_PATCH; break;
 		    case 'S': sym = optarg; break;
 		    case 'Y': dflags |= DELTA_DONTASK; break;
+		    case 'Z': compp = optarg ? optarg : "gzip"; break;
+		    case 'E': encp = optarg; break;
 
 		    default:
 usage:			fprintf(stderr, "delta: usage error, try --help.\n");
 			return (1);
 		}
 	}
+	enc = sccs_encoding(0, encp, compp);
+	if (enc == -1) goto usage;
 
 	name = sfileFirst("delta", &av[optind], sflags);
 	/* They can only have an initFile for one file...
@@ -171,6 +184,7 @@ usage:			fprintf(stderr, "delta: usage error, try --help.\n");
 			}
 			nrev = pf.newrev;
 		}
+		s->encoding = enc;
 		rc = sccs_delta(s, dflags, d, init, diffs);
 		if (rc == -2) goto next; /* no diff in file */
 		if (rc == -1) {

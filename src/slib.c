@@ -7944,6 +7944,48 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 }
 
 /*
+ * Translate an encoding string (e.g. "ascii") and a compression string
+ * (e.g. "gzip") to a suitable value for sccs->encoding.
+ */
+int
+sccs_encoding(sccs *sc, char *encp, char *compp)
+{
+	int enc, comp;
+
+	if (encp) {
+		if (streq(encp, "text")) enc = E_ASCII;
+		else if (streq(encp, "ascii")) enc = E_ASCII;
+		else if (streq(encp, "binary")) enc = E_UUENCODE;
+		else if (streq(encp, "uugzip")) enc = E_UUGZIP;
+		else {
+			fprintf(stderr,	"admin: unknown encoding format %s\n",
+				encp);
+			return (-1);
+		}
+	} else if (sc) {
+		enc = (sc->encoding & E_DATAENC);
+	} else {
+		enc = 0;
+	}
+
+	if (compp) {
+		if (streq(compp, "gzip")) comp = E_GZIP;
+		else if (streq(compp, "none")) comp = 0;
+		else {
+			fprintf(stderr, "admin: unknown compression format %s\n",
+				compp);
+			return (-1);
+		}
+	} else if (sc) {
+		comp = (sc->encoding & ~E_DATAENC);
+	} else {
+	        comp = 0;
+	}
+
+	return (enc | comp);
+}
+
+/*
  * admin the specified file.
  *
  * Note: flag values are optional.
@@ -7956,33 +7998,13 @@ sccs_admin(sccs *sc, u32 flags, char *new_encp, char *new_compp,
 	admin *f, admin *l, admin *u, admin *s, char *text)
 {
 	FILE	*sfile = 0;
-	int	new_enc, new_comp, error = 0, locked, i, old_enc = 0;
+	int	new_enc, error = 0, locked, i, old_enc = 0;
 	char	*t;
 	BUF	(buf);
 
-	if (new_encp) {
-		if (streq(new_encp, "text")) new_enc = E_ASCII;
-		else if (streq(new_encp, "ascii")) new_enc = E_ASCII;
-		else if (streq(new_encp, "binary")) new_enc = E_UUENCODE;
-		else if (streq(new_encp, "uugzip")) new_enc = E_UUGZIP;
-		else {
-			fprintf(stderr,	"admin: unknown encoding format %s\n",
-				new_encp);
-			return (-1);
-		}
-	} else	new_enc = (sc->encoding & E_DATAENC);
-
-	if (new_compp) {
-		if (streq(new_compp, "gzip")) new_comp = E_GZIP;
-		else if (streq(new_compp, "none")) new_comp = 0;
-		else {
-			fprintf(stderr, "admin: unknown compression format %s\n",
-				new_compp);
-			return (-1);
-		}
-	} else	new_comp = (sc->encoding & ~E_DATAENC);
-
-	new_enc |= new_comp;
+	new_enc = sccs_encoding(sc, new_encp, new_compp);
+	if (new_enc == -1) return -1;
+	
 	debug((stderr, "new_enc is %d\n", new_enc));
 	if (new_enc == (E_GZIP|E_UUGZIP)) {
 		fprintf(stderr,
