@@ -92,8 +92,8 @@ sccs_lockfile(const char *file, int waitsecs, int quiet)
 		} else {
 			unless (quiet) {
 				fprintf(stderr, "Waiting for lock %s\n", file);
-				sleep(1);
 			}
+			sleep(uslp/1000000);
 		}
 	}
 	/* NOTREACHED */

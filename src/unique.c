@@ -72,140 +72,6 @@ keysHome(void)
 	return (keysFile);
 }
 
-#ifdef WIN32
-private void
-mk_prelock(char *linkpath, int me)
-{
-	/* no op */
-}
-
-private int
-atomic_create(char *noused, char *lock, int me)
-{
-	int	fd, flags = O_EXCL|O_CREAT|O_WRONLY;
-	char	buf[100];
-
-	fd = open(lock, flags, 0666);
-	if (fd < 0) return (-1);
-	
-	sprintf(buf, "#%d\n", me);
-	write(fd, buf, strlen(buf));
-	close(fd);
-	return (0);
-}
-#else
-private void
-mk_prelock(char *linkpath, int me)
-{
-	FILE 	*f;
-
-	unless (f = fopen(linkpath, "w")) {
-		unlink(linkpath);
-		f = fopen(linkpath, "w");
-	}
-	assert(f);
-	fprintf(f, "#%d\n", me);
-	fclose(f);
-}
-
-private int
-atomic_create(char *linkpath, char *lock, int me)
-{
-	return (link(linkpath, lock));
-}
-#endif
-
-/* -1 means error, 0 means OK */
-int
-uniq_lock()
-{
-	FILE	*f;
-	int	slept = 0;
-	char	linkpath[MAXPATH];
-	char	*lock = lockHome();
-	pid_t	me = getpid();
-	static	int flags = -1;
-
-	if (flags == -1) {
-		if (getenv("_BK_SHUT_UP")) {
-			flags = SILENT;
-		} else {
-			flags = 0;
-		}
-	}
-
-	sprintf(linkpath, "%s.%u", lock, me);
-	mk_prelock(linkpath, me);
-	while (atomic_create(linkpath, lock, me) != 0) {
-		if (f = fopen(lock, "r")) {
-			int	pid = 0;
-
-			/*
-			 * We added a leading "#" character
-			 * because some pid (e.g 844) would pop
-			 * a bogus Norton virus alert.
-			 */
-			fscanf(f, "#%u\n", &pid);
-			fclose(f);
-			unless (pid) continue;	/* must be gone */
-			assert(pid != me);
-			if (kill(pid, 0) != 0) {
-				if (unlink(lock) == 0) {
-					fprintf(stderr,
-					   "removing stale lock %s\n", lock);
-					continue;
-				}
-				fprintf(stderr,
-				    "Unable to remove lock %s, "
-				    "error: %s, sleeping...\n",
-				    lock, strerror(errno));
-				sleep(10);
-			}
-			/* bitch every second */
-			if ((slept >= 1000) && !(slept % 1000)) {
-				verbose((stderr,
-				"%d: waiting for process %d who has lock %s\n",
-				    me, pid, lock));
-			}
-			/*
-			 * Randomize this a bit based on pids.
-			 */
-			unless (slept) {
-				/* 99 * 1000 = .1 seconds */
-				usleep((me % 100) * 1000);
-				slept = 1000;	/* fake but OK */
-			} else {
-				usleep(200000);
-				slept += 200;
-			}
-		}
-	}
-	unlink(linkpath);
-	return (0);
-}
-
-int
-uniq_unlock()
-{
-	char	*tmp;
-	int	fd;
-
-	unless (tmp = lockHome()) return (-2);
-	if (unlink(tmp) == 0) return (0);
-	perror(tmp);
-	/* We hit a race on HPUX, be paranoid an be sure it is a race */
-	if ((fd = open(tmp, 0, 0)) >= 0) {
-		char	buf[20];
-
-		bzero(buf, sizeof(buf));
-		if (read(fd, buf, sizeof(buf)) > 0) {
-			assert(getpid() != atoi(buf));
-		}
-		close(fd);
-	}
-	return 0;
-}
-
 /*
  * Turn this on and then watch tmp/keys - it should stay small.
  */
@@ -297,7 +163,7 @@ uniq_regen()
 	 */
 	unless (tmp) return (-1);
 	sysio(0, tmp, 0, "bk", "keycache", SYS);
-	uniq_unlock();
+	sccs_unlockfile(lockHome());
 	return (uniq_open());
 }
 
@@ -311,7 +177,9 @@ uniq_open()
 	char	buf[MAXPATH*2];
 	int	pipes;
 
-	unless (uniq_lock() == 0) return (-1);
+	if (sccs_lockfile(lockHome(), -1, getenv("_BK_SHUT_UP") != 0)) {
+		return (-1);
+	}
 	unless (tmp = keysHome()) return (-1);
 	db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	unless (f = fopen(tmp, "r")) return (0);
@@ -424,6 +292,6 @@ uniq_close()
 close:  mdbm_close(db);
 	db = 0;
 	dirty = 0;
-	uniq_unlock();
+	sccs_unlockfile(lockHome());
 	return (0);
 }
