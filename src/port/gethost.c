@@ -55,6 +55,9 @@ out:
 		GetComputerName(host, &len);
 	}
 #endif
+	/* Fold case. */
+	for (h = host; *h; h++) *h = tolower(*h);
+	/* localhost isn't what we want.  */
 	if (streq(host, "localhost") || streq(host, "localhost.localdomain")) {
 		host[0] = 0;
 		return (0);
