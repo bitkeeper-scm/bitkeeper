@@ -45,6 +45,7 @@ int	checksum_main(int, char **);
 int	clean_main(int, char **);
 int	cleanpath_main(int, char **);
 int	clone_main(int, char **);
+int	clonedo_main(int, char **); 
 int	commit_main(int, char **);
 int	config_main(int, char **);
 int	converge_main(int, char **);
@@ -180,6 +181,7 @@ struct	command cmdtbl[] = {
 	{"_adler32", adler32_main},
 	{"_converge", converge_main},
 	{"_cleanpath", cleanpath_main},
+	{"_clonedo", clonedo_main},
 	{"_createlod", _createlod_main},
 	{"_exists", exists_main},
 	{"_find", find_main },

@@ -1,6 +1,6 @@
 #include "bkd.h"
 
-private int getsfio(int verbose, int gzip);
+private int	getsfio(int verbose, int gzip);
 
 typedef	struct {
 	u32	debug:1;
@@ -168,9 +168,6 @@ cmd_rclone_part2(int ac, char **av)
 		fflush(stdout);
 		goto done;
 	}
-	/* remove any uncommited stuff */
-	sccs_rmUncommitted(!opts.verbose);
-
 
 	/* set up correct lod while the revision number is accurate */
 	if (opts.rev) {
@@ -193,7 +190,6 @@ cmd_rclone_part2(int ac, char **av)
 	 * XXX TODO: set up parent pointer
 	 */
 
-	consistency(!opts.verbose);
 	/* restore original stderr */
 	dup2(fd2, 2); close(fd2);
 	fputc(BKD_NUL, stdout);
@@ -215,20 +211,15 @@ done:
 private int
 getsfio(int verbose, int gzip)
 {
-	int	n, status, pfd;
-	u32	in, out;
-	char	*cmds[10] = {"bk", "sfio", "-i", "-q", 0};
+	int	n, status;
 	pid_t	pid;
-
-	pid = spawnvp_wPipe(cmds, &pfd, BIG_PIPE);
-	if (pid == -1) {
-		fprintf(stderr, "Cannot spawn %s %s\n", cmds[0], cmds[1]);
-		return (1);
-	}
+	FILE	*fh;
+	
+	fh = popen("bk sfio -ieq | bk _clonedo -q -", "w");
+	unless (fh) return(101);
 	signal(SIGCHLD, SIG_DFL);
-	gunzipAll2fd(0, pfd, gzip, &in, &out);
-	close(pfd);
-	waitpid(pid, &status, 0);
+	gunzipAll2fd(0, fileno(fh), gzip, 0, 0);
+	status = pclose(fh);
 	if (WIFEXITED(status)) {
 		return (WEXITSTATUS(status));
 	}

@@ -1064,7 +1064,6 @@ int	isEvalLicense();
 char	*globalroot();
 void	sccs_touch(sccs *s);
 int	setlevel(int);
-int	consistency(int quiet);
 void	sccs_rmUncommitted(int quiet);    
 void	rmEmptyDirs(int quiet);    
 int	after(int quiet, char *rev);
@@ -1085,7 +1084,7 @@ void	updateTimestampDB(char *gfile, char *sfile, MDBM *timestamps, int diff);
 struct tm
         *utc2tm(time_t t);
 void	fix_stime(sccs *s);
-void	set_timestamps(char *sfile);
+void	set_timestamps(sccs *s);
 
 extern char *bk_vers;
 extern char *bk_utc;

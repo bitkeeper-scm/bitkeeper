@@ -38,6 +38,7 @@ extern	void	platformSpecificInit(char *name);
 
 private	int	quiet;
 private	int	doModes;
+private	int	echo;		/* echo files to stdout as they are written */
 
 #define M_IN	1
 #define M_OUT	2
@@ -53,8 +54,9 @@ sfio_main(int ac, char **av)
 		system("bk help sfio");
 		return (0);
 	}
-	while ((c = getopt(ac, av, "imopq")) != -1) {
+	while ((c = getopt(ac, av, "eimopq")) != -1) {
 		switch (c) {
+		    case 'e': echo = 1; break;			/* undoc 2.1 */
 		    case 'i': 					/* doc 2.0 */
 			if (mode) goto usage; mode = M_IN;   break;
 		    case 'o': 					/* doc 2.0 */
@@ -305,6 +307,7 @@ in_link(char *file, int pathlen, int extract)
 		 */
 	}
 	unless (quiet) fprintf(stderr, "%s\n", file);
+	if (echo) printf("%s\n", file);
 	return (0);
 
 err:	
@@ -375,6 +378,7 @@ done:	if (readn(0, buf, 10) != 10) {
 		}
 	}
 	unless (quiet) fprintf(stderr, "%s\n", file);
+	if (echo) printf("%s\n", file);
 	return (0);
 
 err:	
