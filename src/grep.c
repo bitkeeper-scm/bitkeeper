@@ -36,13 +36,13 @@ struct	grep {
 	u32	anno:1;		/* skip over the annotations when searching */
 	u32	firstmatch:1;	/* if set, we are the first match */
 
-	u32	before;		/* lines of context before the match */
-	u32	after;		/* lines of context after the match */
+	int	before;		/* lines of context before the match */
+	int	after;		/* lines of context after the match */
 	u32	found;		/* set if any matches were found in any file */
-	u32	line;		/* line number in current file */
-	u8	fname;		/* if set, position in annotations of file */
-	u8	user;		/* if set, position in annotations of user */
-	u8	rev;		/* if set, position in annotations of revnums */
+	int	line;		/* line number in current file */
+	short	fname;		/* if set, position in annotations of file */
+	short	user;		/* if set, position in annotations of user */
+	short	rev;		/* if set, position in annotations of revnums */
 } opts;
 
 int
@@ -193,7 +193,7 @@ typedef	struct {
 
 private	line	*lines;	/* array of opts.before+1 lines */
 private	char	*lower;
-private	int	cur, lsiz;
+private	int	cur, lsiz, nlines;
 
 char	*
 fgetline(FILE *f)
@@ -202,8 +202,11 @@ fgetline(FILE *f)
 	int	nchar;
 	line	*l;
 
-	unless (lines) lines = calloc(opts.before + 1, sizeof(line));
-	if (opts.before) cur = (cur + 1) % (opts.before + 1);
+	unless (lines) {
+		nlines = opts.before + 1;
+		lines = calloc(nlines, sizeof(line));
+	}
+	if (opts.before) cur = (cur + 1) % nlines;
 	l = &lines[cur];
 	unless (l->bufsiz) {
 		l->bufsiz = 512;
@@ -237,18 +240,17 @@ realloc:
 }
 
 private void
-pline(char *file, char *buf, char c)
+pline(char *file, char *buf, char c, int lineno)
 {
 	int	len = 0;
 	int	n = 0;
-	char	spacer = opts.align ? '\t' : ':';
 
 	if (file && opts.name) {
-		printf("%s%c", file, spacer);
+		printf("%s%c", file, c);
 		n++;
 	}
 	if (opts.lineno) {
-		printf("%d%c", opts.line, c);
+		printf("%d%c", lineno, c);
 		n++;
 	}
 	if (opts.anno) {
@@ -270,10 +272,10 @@ pline(char *file, char *buf, char c)
 						putchar('\t');
 					}
 				} else {
-					putchar(spacer);
+					putchar(c);
 				}
 			} else {
-				putchar(':');
+				putchar(c);
 			}
 			while (isspace(p[1])) p++;
 			len = 0;
@@ -292,6 +294,7 @@ doit(FILE *f)
 	char	*p, *file = strdup("?");
 	int	match;
 	int	first = 1, skip = 0, print = 0;
+	int	lastprinted = 0;
 	u32	count = 0;
 	char	*buf = 0;
 
@@ -300,6 +303,7 @@ doit(FILE *f)
 		if ((buf[0] == '|') && (p = getfile(buf))) {
 			unless (first) done(file, count);
 			count = opts.line = first = skip = 0;
+			print = lastprinted = 0;
 			free(file);
 			file = strdup(p);
 			continue;
@@ -307,7 +311,6 @@ doit(FILE *f)
 		if (skip) continue;
 		opts.line++;
 		p = opts.anno ? strchr(buf, '|') + 2 : buf;
-		unless (p[0]) continue;
 		if (opts.nocase) {
 			int	i;
 
@@ -318,40 +321,37 @@ doit(FILE *f)
 			match = re_exec(p);
 		}
 		if (opts.invert) match = !match;
-		if (match || print) {
-			if (match) {
-				count++;
-				print = opts.after;
-			} else {
-				print--;
-			}
-			if (opts.quiet) exit(0);
-			opts.found = 1;
-			if (opts.list) {
-				unless (file) file = "(standard input)";
-				printf("%s\n", file);
-				skip = 1;
-				continue;
-			}
-			unless (opts.List || opts.count) {
-				if (!opts.firstmatch && match &&
-				    (opts.before || opts.after)) {
-				    	puts("--");
-				}
-				opts.firstmatch = 0;
-				if (match && opts.before) {
-					int	i, j;
+		unless (match || print) continue;
+		if (match) {
+			count++;
+			print = opts.after;
+		} else {
+			print--;
+		}
+		if (opts.quiet) exit(0);
+		opts.found = 1;
+		if (opts.list) {
+			unless (file) file = "(standard input)";
+			printf("%s\n", file);
+			skip = 1;
+			continue;
+		}
+		if (opts.List || opts.count) continue;
+		if (match && (opts.before || opts.after) && lastprinted &&
+				((lastprinted + 1 + opts.before) < opts.line)) {
+			puts("--");
+		}
+		opts.firstmatch = 0;
+		if (match && opts.before) {
+			int	i, j, n = opts.line;
 
-					opts.line -= opts.before;
-					for (i = 1; i <= opts.before; ++i) {
-						j = (cur + i) % (opts.before+1);
-						pline(file, lines[j].buf, '-');
-						opts.line++;
-					}
-				}
-				pline(file, buf, match ? ':' : '-');
+			for (i=max(n-opts.before, lastprinted+1); i < n; ++i) {
+				j = (cur + (i-n) + nlines) % nlines;
+				pline(file, lines[j].buf, '-', i);
 			}
 		}
+		pline(file, buf, match ? ':' : '-', opts.line);
+		lastprinted = opts.line;
 	}
 	done(file, count);
 }
