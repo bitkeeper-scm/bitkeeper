@@ -273,6 +273,7 @@ import_patch() {
 	PNAME=`basename $PATCH`
 	SAVE=$USER
 	USER=patch
+	export USER
 	Q=$QUIET
 	cd $2
 	echo Locking files in `pwd` ...
@@ -332,6 +333,7 @@ import_patch() {
 	if [ X$Q = X ]
 	then	bk -r clean -q
 	fi
+
 	bk -r ci $Q -G -y"Import patch $PNAME"
 
 	bk sfiles -x | grep -v '^BitKeeper/' > ${TMP}extras$$

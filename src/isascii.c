@@ -1,8 +1,5 @@
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
+#include "system.h"
+#include "sccs.h"
 
 static int	ascii(int);
 
@@ -18,7 +15,7 @@ isascii_main(int ac, char **av)
 	if (ac != 2) {
 		fprintf(stderr, "usage: %s filename\n", av[0]);
 	}
-	return (ascii(open(av[1], 0)));
+	return (ascii(open(av[1], 0, 0)));
 }
 
 static int

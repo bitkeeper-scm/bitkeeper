@@ -15,9 +15,9 @@
 # The optional datefudge line is excluded from $BASE2
 BASE=40
 BASE2=`expr $BASE + 70`
-${RM} -rf foo SCCS A
+rm -rf foo SCCS A
 mkdir SCCS; bk cset -i -s .
-${CAT} > SAVE <<EOF
+cat > SAVE <<EOF
 Hi there, this is file foo.
 Hi there, this is file foo.
 Hi there, this is file foo.
@@ -39,7 +39,7 @@ echo $N Creating the same file '(should fail)' ........................$NL
 bk admin $Q -n empty 2> ERR
 if [ $? -eq 0 ]; then echo Bad exit code 0.; exit 1; fi
 echo OK
-${RM} -f ERR
+rm -f ERR
 echo $N Creating a file from foo ....................................$NL
 cp SAVE foo
 bk admin $Q -ifoo foo
@@ -65,7 +65,7 @@ if [ ! -f SCCS/s.stdin ]; then echo Failed.; exit 1; fi
 set `grep -v "^.cF" SCCS/s.stdin | wc -w`
 if [ $1 -ne $BASE2 ]; then echo Failed - wrong size.; exit 1; fi
 echo OK
-${RM} -rf foo SCCS
+rm -rf foo SCCS
 mkdir SCCS; bk cset -i -s .
 echo $N Creating an empty file with rel 3.1 .........................$NL
 bk admin $Q -r3.1 -n empty
@@ -74,7 +74,7 @@ if [ ! -f SCCS/s.empty ]; then echo Failed.; exit 1; fi
 grep -q 'd D 3.1 ' SCCS/s.empty
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
-${RM} -rf SCCS
+rm -rf SCCS
 mkdir SCCS; bk cset -i -s .
 echo $N Creating an empty file with rel 1.2.3.4 .....................$NL
 bk admin $Q -r1.2.3.4 -n empty
@@ -83,19 +83,19 @@ if [ ! -f SCCS/s.empty ]; then echo Failed.; exit 1; fi
 grep -q 'd D 1.2.3.4 ' SCCS/s.empty
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
-${RM} -rf SCCS
+rm -rf SCCS
 mkdir SCCS; bk cset -i -s .
 echo $N Attempting bad create with rel 1.2.3 ........................$NL
 bk admin $Q -r1.2.3 -n empty 2> ERR
 if [ $? -eq 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
-${RM} -rf SCCS
+rm -rf SCCS
 mkdir SCCS; bk cset -i -s .
 echo $N Attempting bad create with rel 1.2.3.4.9999 .................$NL
 bk admin $Q -r1.2.3.4.9999 -n empty 2> ERR
 if [ $? -eq 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
-${RM} -rf SCCS
+rm -rf SCCS
 mkdir SCCS; bk cset -i -s .
 echo This is the description. > D
 echo $N Creating a file with description ............................$NL
@@ -125,7 +125,7 @@ echo $N One last text test ..........................................$NL
 bk admin $Q -n -t junk 2>ERR
 if [ $? -eq 0 ]; then echo Failed.; exit 1; fi
 echo OK
-${RM} -rf SCCS foo
+rm -rf SCCS foo
 mkdir SCCS; bk cset -i -s .
 cp SAVE foo
 echo $N Creating a file with a comment ..............................$NL
@@ -133,7 +133,7 @@ bk admin $Q -n -y'THIS IS THE COMMENT' foo
 grep -q "c THIS IS THE COMMENT" SCCS/s.foo
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
-${RM} -rf SCCS foo
+rm -rf SCCS foo
 mkdir SCCS; bk cset -i -s .
 echo $N File w/ comment, text, release ..............................$NL
 bk admin $Q -n -tD -r1.2 -y'THIS IS THE COMMENT' foo
@@ -249,7 +249,7 @@ echo OK
 
 # test a graph which has a branch merged into a branch
 echo $N Check that range connect on a branch works ..................$NL
-${RM} -rf foo SCCS
+rm -rf foo SCCS
 mkdir SCCS; bk cset -i -s .
 touch foo
 bk ci $Q -i foo

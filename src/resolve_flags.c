@@ -108,6 +108,7 @@ f_local(resolve *rs)
 	delta	*l = sccs_getrev(rs->s, rs->revs->local, 0, 0);
 	delta	*r = sccs_getrev(rs->s, rs->revs->remote, 0, 0);
 
+	sccs_close(rs->s); /* for win32 */
 	flags_delta(rs, rs->s->sfile,
 	    r, sccs_getxflags(l), sccs_Xfile(rs->s, 'r'), REMOTE);
 	return (1);
@@ -120,6 +121,7 @@ f_remote(resolve *rs)
 	delta	*l = sccs_getrev(rs->s, rs->revs->local, 0, 0);
 	delta	*r = sccs_getrev(rs->s, rs->revs->remote, 0, 0);
 
+	sccs_close(rs->s); /* for win32 */
 	flags_delta(rs, rs->s->sfile,
 	    l, sccs_getxflags(r), sccs_Xfile(rs->s, 'r'), LOCAL);
 	return (1);

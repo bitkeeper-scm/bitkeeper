@@ -36,6 +36,10 @@ LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
 LIBOBJS = @LIBOBJS@
 
+# override Solaris make.rules
+.SCCS_GET:
+	bk get -q $@
+
 prefix = @prefix@
 exec_prefix = @exec_prefix@
 edit_program_name = sed '@program_transform_name@'

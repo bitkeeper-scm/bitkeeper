@@ -48,18 +48,16 @@ uncompressed()
 {
 	pid_t	pid;
 
-	pid = fork();
+	pid = spawnvp_ex(_P_WAIT, cmd[0], cmd);
 	if (pid == -1) {
 		repository_rdunlock(0);
 		exit(1);
-	} else if (pid) {
+	} else {
 		int	status;
 
 		waitpid(pid, &status, 0);
 		repository_rdunlock(0);
 		exit(0);
-	} else {
-		execvp(cmd[0], cmd);
 	}
 }
 
@@ -67,33 +65,23 @@ private void
 compressed(int gzip)
 {
 	pid_t	pid;
-	int	n;
-	int	p[2];
+	int	n, rfd, status;
 	char	buf[4096];
 
-	if (pipe(p) == -1) {
-err:		repository_rdunlock(0);
+#ifndef WIN32
+	signal(SIGCHLD, SIG_DFL);
+#endif
+	pid = spawnvp_rPipe(cmd, &rfd);
+	if (pid == -1) {
+		repository_rdunlock(0);
 		exit(1);
 	}
-	pid = fork();
-	if (pid == -1) {
-		goto err;
-	} else if (pid) {
-		int	status;
-
-		signal(SIGCHLD, SIG_DFL);
-		close(p[1]);
-		gzip_init(gzip);
-		while ((n = read(p[0], buf, sizeof(buf))) > 0) {
-			gzip2fd(buf, n, 1);
-		}
-		gzip_done();
-		waitpid(pid, &status, 0);
-		repository_rdunlock(0);
-		exit(0);
-	} else {
-		close(p[0]);
-		close(1); dup(p[1]); close(p[1]);
-		execvp(cmd[0], cmd);
+	gzip_init(gzip);
+	while ((n = read(rfd, buf, sizeof(buf))) > 0) {
+		gzip2fd(buf, n, 1);
 	}
+	gzip_done();
+	waitpid(pid, &status, 0);
+	repository_rdunlock(0);
+	exit(0);
 }

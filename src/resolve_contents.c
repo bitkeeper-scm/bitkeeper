@@ -230,6 +230,7 @@ needs_merge(resolve *rs)
 {
 	MMAP	*m;
 	char	*t;
+	int	ok = 1;
 
 	unless (exists(rs->s->gfile)) return (0);
 
@@ -240,11 +241,28 @@ needs_merge(resolve *rs)
 	while ((t = mnext(m)) && ((m->end - t) > 7)) {
 		if (strneq(t, "<<<<<<", 6)) {
 			mclose(m);
-			return (1);
+			ok = 0;
+			break;
 		}
 	}
 	mclose(m);
-	return (0);
+	if (ok) return (0);
+
+	fprintf(stderr, 
+"\nThe file has unresolved conflicts.  These conflicts are marked in the\n\
+file like so\n\
+\n\
+	<<<<<<< BitKeeper/tmp/bk.sh_lm@1.191\n\
+	changes made by user lm in revision 1.191 of bk.sh\n\
+	some more changes by lm\n\
+	=======\n\
+	changes made by user awc in revision 1.189.1.5 of bk.sh\n\
+	more changes by awc\n\
+	>>>>>>> BitKeeper/tmp/bk.sh_awc@1.189.1.5\n\
+\n\
+Use 'e' to edit the file and resolve these conflicts.\n\
+Alternatively, you use 'f' to try the graphical filemerge.\n\n");
+	return (1);
 }
 
 int
@@ -259,23 +277,7 @@ c_commit(resolve *rs)
 
 	if (rs->opts->force) goto doit;
 
-	if (needs_merge(rs)) {
-		fprintf(stderr, 
-"\nThe file has unresolved conflicts.  These conflicts are marked in the\n\
-file like so\n\
-\n\
-	<<<<<<< BitKeeper/tmp/bk.sh_lm@1.191\n\
-	changes made by user lm in revision 1.191 of bk.sh\n\
-	some more changes by lm
-	=======\n\
-	changes made by user awc in revision 1.189.1.5 of bk.sh\n\
-	more changes by awc
-	>>>>>>> BitKeeper/tmp/bk.sh_awc@1.189.1.5\n\
-\n\
-Use 'e' to edit the file and resolve these conflicts.\n\
-Alternatively, you use 'f' to try the graphical filemerge.\n\n");
-		return (0);
-	}
+	if (needs_merge(rs)) return (0);
 	
 	/*
 	 * If in text only mode, then check in the file now.
