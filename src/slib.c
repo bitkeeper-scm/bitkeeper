@@ -65,20 +65,41 @@ private unsigned int u_mask = 0x5eadbeef;
 int
 executable(char *f)
 {
-	return (access(f, X_OK) == 0);
+	struct	stat sbuf;
+
+	if (lstat(f, &sbuf) == -1) return 0;
+	return(S_IXUSR & sbuf.st_mode);
+}
+
+int
+readable(char *f)
+{
+	struct	stat sbuf;
+
+	if (lstat(f, &sbuf) == -1) return 0;
+	return(S_IRUSR & sbuf.st_mode);
+}
+
+int
+writable(char *f)
+{
+	struct	stat sbuf;
+
+	if (lstat(f, &sbuf) == -1) return 0;
+	return(S_IWUSR & sbuf.st_mode);
+}
+
+int
+exists(char *f)
+{
+	struct	stat sbuf;
+
+	if (lstat(f, &sbuf) == -1) return 0;
+	return 1;
 }
 
 int
 isdir(char *s)
-{
-	struct	stat sbuf;
-
-	if (stat(s, &sbuf) == -1) return 0;
-	return (S_ISDIR(sbuf.st_mode));
-}
-
-int
-isRealDir(char *s)
 {
 	struct	stat sbuf;
 
@@ -91,7 +112,7 @@ isreg(char *s)
 {
 	struct	stat sbuf;
 
-	if (stat(s, &sbuf) == -1) return 0;
+	if (lstat(s, &sbuf) == -1) return 0;
 	return (S_ISREG(sbuf.st_mode));
 }
 
@@ -100,7 +121,7 @@ size(char *s)
 {
 	struct	stat sbuf;
 
-	if (stat(s, &sbuf) == -1) return 0;
+	if (lstat(s, &sbuf) == -1) return 0;
 	return (sbuf.st_size);
 }
 
@@ -109,7 +130,7 @@ emptyDir(char *dir)
 {
 	struct	stat sbuf;
 
-	if (stat(dir, &sbuf) == -1) return 0;
+	if (lstat(dir, &sbuf) == -1) return 0;
 	return (sbuf.st_nlink == 2);	/* . and .. */
 }
 
@@ -177,6 +198,18 @@ mode2a(mode_t m)
 	*s++ = (m & S_IXOTH) ? 'x' : '-';
 	*s = 0;
 	return (mode);
+}
+
+char	*
+mode2FileType(mode_t m)
+{
+	if (S_ISREG(m)) {
+		return  "FILE";
+	} else if (S_ISLNK(m)) {
+		return  "SYMLINK";
+	} else {
+		return  "unsupported file type";
+	}
 }
 
 /*
@@ -2879,6 +2912,10 @@ addsym(sccs *s, delta *d, delta *metad, char *rev, char *val)
 	return (1);
 }
 
+/*
+ * These are the file types we currently suppprt
+ * TODO: we may support emtpy directory & special file someday
+ */
 fileTypeOk(mode_t m)
 {
 	if ((S_ISREG(m)) || (S_ISLNK(m))) return 1;
@@ -5170,10 +5207,31 @@ fix_lf(char *gfile)
 }
 
 /*
+ * Check mode/glink changes
+ * Changes in permission are ignored
+ * Returns:
+ *	0 if no change
+ *	1 if glink changed
+ *	2 if file type changed 
+ */
+diff_gmode(sccs *s, pfile *pf, char *tmpfile)
+{
+	delta *d = findrev(s, pf->oldrev);
+
+	unless (sameFileType(s, d)) return (2) ; /* type chaneged */
+	if (S_ISLNK(s->mode)) return (!streq(s->glink, d->glink));
+	return 0;
+}
+
+/*
 * Returns:
 *	-1 for some already bitched about error
 *	0 if there were differences
 *	1 if no differences
+*
+* 	This function is called to determine the difference 
+*	in the delta body. Note that, by definition, the delta body
+*	of symlink is empty.
 */
 private int
 diff_gfile(sccs *s, pfile *pf, char *tmpfile)
@@ -5184,6 +5242,8 @@ diff_gfile(sccs *s, pfile *pf, char *tmpfile)
 	delta *d;
 
 	debug((stderr, "diff_gfile(%s, %s)\n", pf->oldrev, s->gfile));
+	assert(s->state & GFILE); 
+	d = findrev(s, pf->oldrev);
 	if (s->encoding > E_ASCII) {
 		sprintf(new, "%s/getU%d", TMP_PATH, getpid());
 		if (IS_WRITABLE(s)) {
@@ -5200,28 +5260,30 @@ diff_gfile(sccs *s, pfile *pf, char *tmpfile)
 			}
 		}
 	} else if (S_ISLNK(s->mode)) {
-		sprintf(new, "%s/new%d", TMP_PATH, getpid());
-		close(open(new, O_CREAT, 0600)); /* make a empty file */
+		strcpy(new, DEV_NULL);
 	} else {
 		if (fix_lf(s->gfile) == -1) return (-1); 
 		strcpy(new, s->gfile);
 	}
-	sprintf(old, "%s/get%d", TMP_PATH, getpid());
-	if (sccs_get(s, pf->oldrev, pf->mRev, pf->iLst, pf->xLst,
-	    FORCEASCII|SILENT|PRINT, old)) {
-		unlink(old);
-		return (-1);
+	if (S_ISLNK(d->mode)) {
+		strcpy(old, DEV_NULL);
+	} else {
+		sprintf(old, "%s/get%d", TMP_PATH, getpid());
+		if (sccs_get(s, pf->oldrev, pf->mRev, pf->iLst, pf->xLst,
+		    FORCEASCII|SILENT|PRINT, old)) {
+			unlink(old);
+			return (-1);
+		}
 	}
 	ret = diff(old, new, D_DIFF, tmpfile);
-	unlink(old);
-	unless (streq(new, s->gfile)) unlink(new);	/* careful */
+	unless (streq(old, DEV_NULL)) unlink(old);
+	if (!streq(new, s->gfile) && !streq(new, DEV_NULL)){
+		unlink(new);		/* careful */
+	}
+
 	switch (ret) {
 	    case 0:	/* diff return no diffs, now check file type changes */
-		d = findrev(s, pf->oldrev);
-		unless ((d->flags & D_MODE) && (s->state & GFILE)) return 1;
-		assert(s->mode);
-		if (fileType(s->mode) != fileType(d->mode)) return 0;
-		if (S_ISLNK(s->mode)) return streq(s->glink, d->glink);	
+		unless (sameFileType(s, d)) return 0;
 		return (1);
 	    case 1:	/* diffs */
 		return (0);
@@ -5284,6 +5346,7 @@ int
 sccs_clean(sccs *s, int flags)
 {
 	pfile	pf;
+	delta	*d;
 	char	tmpfile[50];
 
 	unless (HAS_SFILE(s)) {
@@ -5309,14 +5372,27 @@ sccs_clean(sccs *s, int flags)
 		return (0);
 	}
 
-	if (S_ISLNK(s->mode)) {
-		delta	*d;
+	if (read_pfile("clean", s, &pf)) return (1);
+	unless (d = findrev(s, pf.oldrev)) {
+		free_pfile(&pf);
+		return (1);
+	}
 
-		if (read_pfile("clean", s, &pf)) return (1);
-		unless (d = findrev(s, pf.oldrev)) {
-			free_pfile(&pf);
-			return (1);
+	unless (sameFileType(s, d)) {
+		unless (flags & PRINT) {
+			fprintf(stderr,
+			    "%s has been modified, needs delta.\n", s->gfile);
+		} else {
+			printf("===== %s (file type) %s vs edited =====\n", 
+			    s->gfile, pf.oldrev);
+			printf("< %s\n-\n", mode2FileType(d->mode));
+			printf("> %s\n", mode2FileType(s->mode));
 		}
+		free_pfile(&pf);
+		return (2);
+	}
+
+	if (S_ISLNK(s->mode)) {
 		if (streq(s->glink, d->glink)) {
 			verbose((stderr, "Clean %s\n", s->gfile));
 			unlinkGfile(s);
@@ -5327,11 +5403,11 @@ sccs_clean(sccs *s, int flags)
 			fprintf(stderr,
 			    "%s has been modified, needs delta.\n", s->gfile);
 		} else {
-			printf("===== %s (link) %s vs %s =====\n", 
-			    s->gfile, pf.oldrev, "edited");
+			printf("===== %s (link) %s vs edited =====\n", 
+			    s->gfile, pf.oldrev);
 			printf("< %s\n-\n> %s\n", d->glink, s->glink);
-			free_pfile(&pf);
 		}
+		free_pfile(&pf);
 		return (2);
 	}
 
@@ -5340,12 +5416,11 @@ sccs_clean(sccs *s, int flags)
 	 * isn't.  I suspect some interactions with make, but I'm not
 	 * sure.  The difference ends up being on a line with the keywords.
 	 */
-	if (access(s->gfile, W_OK)) {
+	if (!writable(s->gfile)) {
 		verbose((stderr, "%s edited but not writeable?\n", s->gfile));
 		flags |= EXPAND;
 		if (s->state & RCS) flags |= RCSEXPAND;
 	}
-	if (read_pfile("clean", s, &pf)) return (1);
 	sprintf(tmpfile, "%s/diffg%d", TMP_PATH, getpid());
 	/*
 	 * hasDiffs() ignores keyword expansion differences.
@@ -5512,7 +5587,6 @@ openInput(sccs *s, int flags, FILE **inp)
 int
 shouldUpdMode (sccs *s, delta *p)
 {
-#define sameFileType(a, b) (fileType(a->mode) == fileType(b->mode))
 	unless(p) return 1;
 	if (!sameFileType(s, p)) return 1;
 	if (s->glink == p->glink) return 0; 
@@ -5564,14 +5638,12 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 private void
 updMode(sccs *s, delta *d, delta *dParent)
 {
-	if ((s->state & GFILE) && !(d->flags & D_MODE)) {
-		if (shouldUpdMode(s, dParent)) {
-			assert(d->mode == 0);
-			d->mode = s->mode;
-			d->glink = s->glink;
-			s->glink = 0;
-			d->flags |= D_MODE;
-		}
+	if ((s->state & GFILE) && !(d->flags & D_MODE) &&
+	    shouldUpdMode(s, dParent)) {
+		assert(d->mode == 0);
+		d->mode = s->mode;
+		if (s->glink) d->glink = strdup(s->glink);
+		d->flags |= D_MODE;
 	}
 }
 
@@ -5606,7 +5678,7 @@ updatePending(sccs *s, delta *d)
 private int
 checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 {
-	FILE	*id, *sfile, *gfile;
+	FILE	*id, *sfile, *gfile = 0;
 	delta	*n;
 	int	added = 0;
 	int	popened, len;
@@ -5623,7 +5695,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 		if (prefilled) sccs_freetree(prefilled);
 		return (1);
 	}
-	unless (diffs) {
+	if (!diffs && !S_ISLNK(s->mode)) {
 		popened = openInput(s, flags, &gfile);
 		unless (gfile) {
 			perror(s->gfile);
@@ -5707,7 +5779,6 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 	buf[0] = 0;
 	fputsum(s, "\001I 1\n", sfile);
 	s->dsum = 0;
-	if (S_ISLNK(n->mode)) goto skip_data;
 	if (!(flags & PATCH) && (s->encoding > E_ASCII)) {
 		/* XXX - this is incorrect, it needs to do it depending on
 		 * what the encoding is.
@@ -5721,7 +5792,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 				added++;
 			}
 			fclose(diffs);
-		} else {
+		} else if (gfile) {
 			while (fnext(buf, gfile)) {
 				s->dsum += fputsum(s, buf, sfile);
 				added++;
@@ -5735,7 +5806,6 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 			s->dsum += fputsum(s, "\n", sfile);
 		}
 	}
-skip_data:
 	fputsum(s, "\001E 1\n", sfile);
 	end(s, n, sfile, flags, added, 0, 0);
 	if (s->state & BITKEEPER) {
@@ -5752,7 +5822,7 @@ skip_data:
 			fclose(id);
 		}
 	} 
-	if (!diffs && (gfile != stdin)) {
+	if (!diffs && gfile && (gfile != stdin)) {
 		if (popened) pclose(gfile); else fclose(gfile);
 	}
 #ifdef	PARANOID
@@ -7644,7 +7714,7 @@ out:
 		if (sfile) fclose(sfile);
 		if (diffs) fclose(diffs);
 		free_pfile(&pf);
-		unlink(tmpfile);
+		unless (streq(tmpfile, DEV_NULL)) unlink(tmpfile);
 		if (locked) unlock(s, 'z');
 		debug((stderr, "delta returns %d\n", error));
 		return (error);
@@ -7716,6 +7786,24 @@ out:
 	if (diffs) {
 		debug((stderr, "delta using diffs passed in\n"));
 	} else {
+		switch (diff_gmode(s, &pf, tmpfile)) {
+		    case 0: 		/* no mode change */
+			unless (S_ISLNK(s->mode)) break; /* go do diff_gfile */
+			unless (flags & FORCE) {
+				if (!(flags & SILENT))
+					fprintf(stderr,
+					    "Clean %s (no diffs)\n", s->gfile);
+				unedit(s, flags);
+				goto out;
+			} /* fall thru */
+		    case 1:		/* glink changed */
+			tmpfile = DEV_NULL;
+			goto have_diff;
+		    case 2:		/* file type changed */
+			break;		/* go do diff_gfile */
+		    default:
+			assert("diff_gmode failed" == 0);
+		}
 		switch (diff_gfile(s, &pf, tmpfile)) {
 		    case 1:		/* no diffs */
 						    /* CSTYLED */
@@ -7729,7 +7817,7 @@ out:
 			break;
 		    default: OUT;
 		}
-		unless (diffs = fopen(tmpfile, "rt")) { /* open in text mode */
+have_diff:	unless (diffs = fopen(tmpfile, "rt")) { /* open in text mode */
 			fprintf(stderr,
 			    "delta: can't open diff file %s\n", tmpfile);
 			OUT;
@@ -9971,7 +10059,7 @@ smartUnlink(char *file)
 		chmod(file, S_IWRITE);
 		rc = unlink(file);
 	}
-	if ((rc) && (!access(file, 0))) {
+	if ((rc) && exists(file)) {
 		fprintf(stderr,
 			"smartUnlink:can not unlink %s, errno = %d\n",
 			file, errno);

@@ -90,7 +90,7 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		ftw(".", func, 15);
 	} else {
 		for (i = optind; i < ac; ++i) {
-			if (isRealDir(av[i])) {
+			if (isdir(av[i])) {
 				lftw(av[i], func, 15);
 			} else {
 				file(av[i], func, 15);
@@ -457,7 +457,7 @@ lftw(const char *dir,
 
 		/* now we do the real work */
 		sprintf(tmp_buf, "%s%s%s", dir, slash, e->d_name);
-		if (isRealDir(tmp_buf)) {
+		if (isdir(tmp_buf)) {
 			lftw(tmp_buf, func, 0);
 		} else {
 			flag = _ftw_get_flag(tmp_buf, &sbuf);
