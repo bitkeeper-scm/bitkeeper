@@ -6,7 +6,8 @@ PATH=/bin:/usr/bin:/usr/bsd:/usr/local/bin:/usr/gnu/bin:/usr/freeware/bin:/usr/c
 
 IMAGE=image
 test $OSTYPE = cygwin && {
-	PATH=$PATH:/cygdrive/c/WINDOWS/system32
+	PATH=$PATH:/cygdrive/c/WINDOWS/system32::/cygdrive/c/PROGRA~1/BITKEE~1
+	bk bkd -R >/dev/null 2>&1
 	IMAGE=
 }
 BK_NOTTY=YES
@@ -34,6 +35,7 @@ case $CMD in
 	test -d .images && {
 		find .images -type f -mtime +3 -print > .list$BK_USER
 		test -s .list$BK_USER && xargs /bin/rm -f < .list$BK_USER
+		rm -f .list$BK_USER
 	}
 	sleep 5		# give the other guys time to get rcp'ed and started
 
@@ -61,7 +63,11 @@ case $CMD in
 	test $CMD = save -o -d c: || {
 		cd /build	# windows won't remove .
 		rm -rf /build/$BKDIR
+		# XXX - I'd like to remove /build/.bk-3.0.x.regcheck.lm but I
+		# can't on windows, we have it open.
+		test $OSTYPE = cygwin || rm -f /build/.${BKDIR}.$BK_USER
 	}
+	rm -rf /build/.tmp-$BK_USER
 	;;
 
     clean)
