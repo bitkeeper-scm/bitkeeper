@@ -12566,6 +12566,8 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 				for ( ; *p ; ++p) {
 					if (isalnum(*p)) {
 						fc(*p);
+					} else if (*p == ' ') {
+						fs("&nbsp;");
 					} else {
 						sprintf(html_ch, "&#%d;", *p);
 						fs(html_ch);

@@ -1,0 +1,61 @@
+[Thu May  3 09:41:54 PDT 2001]
+
+This note documents an approach for detecting and creating changeset
+boundaries in an imported CVS tree.  It actually has nothing to do
+with CVS; this would work for Teamware imports as well.  The Teamware
+imports are harder because they have branches and merges, but they 
+could be done.  For now, let's just look at CVS straightlines.
+
+The method described here assumes that the repository history can fit
+completely in memory.  Given that I can buy 1.5GB for $400 now, this is
+an OK assumption.  If you think about it after reading the description,
+you could see how to do a multi pass version of this that worked in less
+memory.  I wouldn't bother.
+
+Data structures
+---------------
+    delta list - a linked list (through d->next) of all deltas over all files
+    sfile array - an array of sfile names
+
+    We reuse the d->merge number as an index into the sfile array; so that
+    sfiles[d->merge] is the file name associated with d.  This means we
+    need an assert that the number of sfiles is less than 64K.
+
+Algorithm
+--------
+    The sccslog.c code is quite close to what we want.  Start with that.
+    Init each file, filling in the sfile array as we go.  Use an MDBM for
+    the sfile array.
+    sccs_close() the file after initing it - this will drop the mmap and
+    we don't want to have all the files mapped.
+    Make sure that the deltas all have fudges such that 
+	d->date < d->kid->date
+    in all cases.  I think rcs2sccs does this already, but make sure.
+    If the datefudge is greater than an hour, then print a warning.
+    Create a linked list of all deltas in all files (code exists in sccslog).
+    Sort the list on d->date (code exists in sccslog).
+    Create a predicate, sameCset(d1, d2).  As a starting point, we could
+    just use "(d2->date - d1->date) > GAP".
+    Walk the list, gathering up the range of deltas which meet the conditions
+    from the first to the last delta.
+    Walk the gathered up list, building up an mdbm of the _last_ delta for
+    each file in the list (i.e., there may be more than one delta in a 
+    changeset for a particular file).
+    get -eg ChangeSet file.
+    For each delta in the cset MDBM {
+    	sccs_sdelta() the key and print it into the changeset file
+	// this is slow but it will work
+	sccs_init the file
+	add the cset mark
+	sccs_newchksum() the file
+	sccs_free()
+    }
+    sccs_delta() the changeset file with a some sort of comment.  
+    We need delta the changeset file with a date that equals the last delta
+    in the changeset.  The user should someobody in the list of deltas in
+    the changset.
+    The comment is an open issue - we could use the checkin comments
+    on the files but that is going to make the changeset file huge.
+    I'm open for suggestions here.
+
+That's it.  Then bk -r check -ac the tree, it should be fine.
