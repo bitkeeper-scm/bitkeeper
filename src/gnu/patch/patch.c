@@ -338,6 +338,8 @@ main (int argc, char **argv)
 			   "s" + (last_offset == 1));
 		    say (".\n");
 		}
+	        if (log_names && outname) 
+		  say ("Patching file %s\n", quotearg (outname));
 	    }
 	}
 
@@ -547,6 +549,7 @@ static struct option const longopts[] =
   {"quoting-style", required_argument, NULL, CHAR_MAX + 8},
   {"lognames", no_argument, NULL, CHAR_MAX + 9},
   {"forcetime", no_argument, NULL, CHAR_MAX + 10},
+  {"bkimport", no_argument, NULL, CHAR_MAX + 11},
   {NULL, no_argument, NULL, 0}
 };
 
@@ -607,6 +610,7 @@ static char const *const option_help[] =
 "  --posix  Conform to the POSIX standard.",
 "  --lognames  Log the creation and/or deletion of files.",
 "  --forcetime  Force the time stamps, ignore mismatches.",
+"  --bkimport  Unedit files first, do not allow patching of non-BK files.",
 "",
 "  -d DIR  --directory=DIR  Change the working directory to DIR first.",
 #if HAVE_SETMODE
@@ -811,6 +815,9 @@ get_some_switches (void)
 		break;
 	    case CHAR_MAX + 10:
 		forcetime = 1;
+		break;
+	    case CHAR_MAX + 11:
+		bkimport = 1;
 		break;
 	    default:
 		usage (stderr, 2);

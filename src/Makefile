@@ -409,6 +409,7 @@ import: import.sh port/$(SYS)_platform.sh substvars
 	mv -f import.T import
 
 applypatch: applypatch.sh 
+	rm -f applypatch
 	cp applypatch.sh applypatch
 	chmod +x applypatch
 
