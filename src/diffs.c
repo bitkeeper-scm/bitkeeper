@@ -55,7 +55,8 @@ diffs_main(int ac, char **av)
 {
 	int	flags = DIFF_HEADER|SILENT, verbose = 0, rc, c;
 	int	errors = 0;
-	char	kind;
+	int	kind, fd, mdiff = 0;
+	pid_t	pid = 0; /* lint */
 	char	*name;
 	project	*proj = 0;
 	char	*Rev = 0, *cset = 0, *boundaries = 0;
@@ -77,8 +78,9 @@ diffs_main(int ac, char **av)
 	opts = optbuf;
 	*opts++ = '-';
 	*opts = 0;
-	while ((c = getopt(ac, av, "bBcC|d;Dfhl|Mnpr|R|suUvw")) != -1) {
+	while ((c = getopt(ac, av, "AbBcC|d;DfhIl|Mmnpr|R|suUvw")) != -1) {
 		switch (c) {
+		    case 'A': flags |= GET_ALIGN; break;
 		    case 'b': /* fall through */		/* doc 2.0 */
 		    case 'B': *opts++ = c; *opts = 0; break;	/* doc 2.0 */
 		    case 'h': flags &= ~DIFF_HEADER; break;	/* doc 2.0 */
@@ -86,8 +88,10 @@ diffs_main(int ac, char **av)
 		    case 'C': cset = optarg; break;		/* doc */
 		    case 'D': flags |= GET_PREFIXDATE; break;	/* doc 2.0 */
 		    case 'f': flags |= GET_MODNAME; break;	/* doc 2.0 */
+		    case 'I': kind = DF_IFDEF; break;
 		    case 'l': boundaries = optarg; break;	/* doc 2.0 */
 		    case 'M': flags |= GET_REVNUMS; break;	/* doc 2.0 */
+		    case 'm': kind = DF_IFDEF; mdiff = 1; break;
 		    case 'p': kind = DF_PDIFF; break;		/* doc 2.0 */
 		    case 'n': kind = DF_RCS; break;		/* doc 2.0 */
 		    case 'R': Rev = optarg; break;		/* doc 2.0 */
@@ -147,6 +151,25 @@ usage:			system("bk help -s diffs");
 		name = sfileFirst("diffs", nav, SF_GFILE);
 	} else {
 		name = sfileFirst("diffs", &av[optind], 0);
+	}
+	if (mdiff) {
+		char	*mav[20];
+		int	i;
+		
+		mav[i=0] = "bk";
+		mav[++i] = "mdiff";
+		if (flags & (GET_PREFIXDATE|GET_MODNAME|GET_REVNUMS|GET_USER)) {
+			flags |= GET_ALIGN;
+			mav[++i] = "-A";
+		} else {
+			assert(!(flags & GET_ALIGN));
+		}
+		mav[++i] = 0;
+		if ((pid = spawnvp_wPipe(mav, &fd, BIG_PIPE)) == -1) {
+			perror("mdiff");
+			exit(1);
+		}
+		close(1); dup(fd); close(fd);
 	}
 	while (name) {
 		int	ex = 0;
@@ -252,6 +275,8 @@ usage:			system("bk help -s diffs");
 		/*
 		 * Errors come back as -1/-2/-3/0
 		 * -2/-3 means it couldn't find the rev; ignore.
+		 *
+		 * XXX - need to catch a request for annotations w/o 2 revs.
 		 */
 		rc = sccs_diffs(s, r1, r2, ex|flags, kind, opts, stdout);
 		switch (rc) {
@@ -279,6 +304,14 @@ next:		if (s) {
 	if (proj) proj_free(proj);
 	sfileDone();
 	if (cset) unlink(rset);
+	if (mdiff) {
+		u32	status;
+
+		fflush(stdout);		/* just in case */
+		close(1);
+		waitpid(pid, &status, 0);
+		if (WIFEXITED(status)) errors = WEXITSTATUS(status);
+	}
 	return (errors);
 }
 

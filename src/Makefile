@@ -76,7 +76,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	lib_tcp.o libcommit.o libdiff.o liblines.o librange.o \
 	libsfiles.o libusers.o license.o lines.o \
 	localtm.o lock.o locking.o lod.o logflags.o \
-	logging.o mail.o merge.o mkdir.o mklock.o \
+	logging.o mail.o mdiff.o merge.o mkdir.o mklock.o \
 	mailsplit.o mmap.o mtime.o multiuser.o names.o \
 	opark.o parent.o park.o \
 	pending.o preference.o port/bkd_client.o port/bkd_server.o \

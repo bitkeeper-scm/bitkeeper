@@ -155,6 +155,7 @@
 #define	DF_UNIFIED	'u'
 #define	DF_PDIFF	'p'
 #define	DF_RCS		'n'
+#define	DF_IFDEF	'I'
 
 /*
  * Date handling.
@@ -1181,6 +1182,7 @@ void	close_gaps(u8 *vec, int n, int (*compare)(int a, int b));
 int	diff_algor(int m, int n, u8 *lchg, u8 *rchg,
     int (*compare)(int a, int b));
 int   diffline(char *left, char *right);
+int	saveStdin(char *tmpfile);
 
 extern char *bk_vers;
 extern char *bk_utc;

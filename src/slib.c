@@ -12968,9 +12968,14 @@ doDiff(sccs *s, u32 flags, char kind, char *opts, char *leftf, char *rightf,
 	}
 	while (fnext(buf, diffs)) {
 		if (first) {
-			if (flags & DIFF_HEADER) {
+			if ((flags & DIFF_HEADER) && (kind == DF_IFDEF)) {
+				fprintf(out, "#ifdef !!HEADER!!\n");
+				fprintf(out, "< %s %s\n", s->gfile, lrev);
+				fprintf(out, "> %s %s\n", s->gfile, rrev);
+				fprintf(out, "#endif !!HEADER!!\n");
+			} else if (flags & DIFF_HEADER) {
 				fprintf(out, "%s %s %s vs %s%s %s\n",
-				    spaces, s->gfile, lrev, rrev, error, spaces);
+				    spaces, s->gfile, lrev, rrev, error,spaces);
 			} else {
 				fprintf(out, "\n");
 			}

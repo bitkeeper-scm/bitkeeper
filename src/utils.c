@@ -3,6 +3,27 @@
 
 bkdopts	Opts;	/* has to be declared here, other people use this code */
 
+int
+saveStdin(char *tmpfile)
+{
+	int	fd, n;
+	char	buf[BUFSIZ];
+
+	if ((fd = open(tmpfile, O_CREAT|O_TRUNC|O_WRONLY, 0664)) == -1) {
+		perror(tmpfile);
+		return (-1);
+	}
+	while ((n = read(0, buf, sizeof(buf))) > 0) {
+		if (write(fd, buf, n) != n) {
+			perror(tmpfile);
+			close(fd);
+			return (-1);
+		}
+	}
+	close(fd);
+	return (0);
+}
+
 #ifndef WIN32
 int
 cat(char *file)
