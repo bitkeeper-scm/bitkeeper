@@ -20,6 +20,9 @@ touch s.foo
 touch bar/s.foo
 touch bar/blech/s.foo
 bk delta $Q -i foo s.foo bar/s.foo bar/blech/s.foo
+touch SCCS/c.gone
+touch SCCS/c.gone@1.1
+touch SCCS/c.gone@1.2
 trap '' 0
 set +e
 echo OK
@@ -240,6 +243,9 @@ bk sfiles -x | sort > SFILES
 sort <<EOF > LIST
 LIST
 SFILES
+SCCS/c.gone
+SCCS/c.gone@1.1
+SCCS/c.gone@1.2
 EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
@@ -253,9 +259,12 @@ sort <<EOF > LIST
 LIST
 SCCS/OLD-s.foo
 SFILES
+SCCS/c.gone
+SCCS/c.gone@1.1
+SCCS/c.gone@1.2
 EOF
 cmp -s SFILES LIST
-if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
+if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; cat SFILES; exit 1; fi
 X=`bk sfiles -x SCCS/OLD-s.foo`
 if [ "X$X" != "XSCCS/OLD-s.foo" ]; then echo failed; echo $X; exit 1; fi
 echo OK
@@ -276,6 +285,9 @@ EOF
 sort <<EOF > LIST
 SCCS/OLD-s.foo
 SFILES
+SCCS/c.gone
+SCCS/c.gone@1.1
+SCCS/c.gone@1.2
 EOF
 bk sfiles -x | sort > SFILES
 cmp -s SFILES LIST
@@ -299,6 +311,9 @@ sort <<EOF > LIST
 LIST
 SCCS/OLD-s.foo
 SFILES
+SCCS/c.gone
+SCCS/c.gone@1.1
+SCCS/c.gone@1.2
 EOF
 bk sfiles -ax | sort > SFILES
 cmp -s SFILES LIST

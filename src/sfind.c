@@ -858,7 +858,7 @@ sccsdir(char *dir, int level, DIR *sccs_dh, char buf[MAXPATH])
 			} else {
 				p = "";
 			} 
-			mdbm_store_str(sDB, e->d_name, p, MDBM_INSERT);
+			mdbm_store_str(sDB, e->d_name, p, MDBM_REPLACE);
 		}
 	}
 	closedir(sccs_dh);
@@ -995,7 +995,7 @@ skip:			mdbm_close(gDB);
 			char buf1[MAXPATH];
 
 			concat_path(buf1, buf, kv.key.dptr);
-			if (kv.val.dsize -= 0) {
+			if (kv.val.dsize == 0) {
 				do_print(" j ", buf1, 0);
 			} else {
 				/*
@@ -1007,12 +1007,17 @@ skip:			mdbm_close(gDB);
 				 */
 				p = kv.val.dptr;
 				while (p) {
-					char *q;
+					char *q, *t, buf2[MAXPATH];
 
 					q = strchr(p, ',');
 					if (q) *q++ = 0;
-					concat_path(buf1, buf1, p);
-					do_print("jjjj", buf1, 0);
+					if (*p) {
+						t = buf2;
+						sprintf(buf2, "%s@%s", buf1, p);
+					} else {
+						t = buf1;
+					}
+					do_print(" j ", t, 0);
 					p = q;
 				}
 			}
