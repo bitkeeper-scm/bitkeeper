@@ -52,7 +52,7 @@ main(int ac, char **av)
 	char	*sym = 0;
 	char	*lod = 0;
 	char	*compp = 0, *encp = 0;
-	FILE	*diffs = 0;
+	MMAP	*diffs = 0;
 	FILE	*init = 0;
 	pfile	pf;
 
@@ -162,7 +162,7 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 			av[0]);
 		goto usage;
 	}
-	if (diffsFile && !(diffs = fopen(diffsFile, "r"))) {
+	if (diffsFile && !(diffs = mopen(diffsFile))) {
 		fprintf(stderr, "%s: diffs file '%s': %s.\n",
 			av[0], diffsFile, strerror(errno));
 	       return (1);
@@ -215,7 +215,7 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 		if (rc == -1) {
 			sccs_whynot("delta", s);
 			if (init) fclose(init);
-			if (diffs) fclose(diffs);
+			if (diffs) mclose(diffs);
 			sccs_free(s);
 			commentsDone(saved);
 			sfileDone();

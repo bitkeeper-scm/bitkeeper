@@ -623,7 +623,8 @@ applyPatch(
     char *localPath, char *remotePath, int flags, sccs *perfile, char *root)
 {
 	patch	*p = patchList;
-	FILE	*iF, *dF;
+	FILE	*iF;
+	MMAP	*dF;
 	sccs	*s = 0;
 	delta	*d = 0;
 	int	newflags;
@@ -726,7 +727,7 @@ apply:
 					system(buf);
 				}
 				iF = fopen(p->initFile, "rb");
-				dF = fopen(p->diffFile, "rb");
+				dF = mopen(p->diffFile);
 				newflags = (echo > 2) ?
 				    DELTA_FORCE|DELTA_PATCH :
 				    DELTA_FORCE|DELTA_PATCH|SILENT;
@@ -750,7 +751,7 @@ apply:
 			}
 			if (perfile) sccscopy(s, perfile);
 			iF = fopen(p->initFile, "rb");
-			dF = fopen(p->diffFile, "rb");
+			dF = mopen(p->diffFile);
 			d = 0;
 			newflags = (echo > 2) ?
 			    NEWFILE|DELTA_FORCE|DELTA_PATCH :

@@ -307,6 +307,65 @@ linelen(char *s)
 	return (t-s);
 }
 
+char *
+mnext(register MMAP *m)
+{
+	register char	*s, *t;
+
+	if (m->where >= m->end) return (0);
+	for (s = m->where; (s < m->end) && (*s++ != '\n'); );
+	assert(s[-1] == '\n');		/* XXX - what if no newline? */
+	t = m->where;
+	m->where = s;
+	return (t);
+}
+
+MMAP	*
+mopen(char *file)
+{
+	MMAP	*m;
+	int	fd;
+	struct	stat st;
+
+	unless ((fd = open(file, 0)) >= 0) {
+		perror(file);
+		return (0);
+	}
+	unless (fstat(fd, &st) == 0) {
+		perror(file);
+		close(fd);
+		return (0);
+	}
+	m = calloc(1, sizeof(*m));
+	/* Allow zero sized mappings */
+	unless (m->size = st.st_size) return (m);
+	m->mmap = mmap(0, m->size, PROT_READ, MAP_SHARED, fd, 0);
+	if (m->mmap == (caddr_t)-1) {
+		perror(file);
+		free(m);
+		close(fd);
+		return (0);
+	}
+	m->where = m->mmap;
+	m->end = m->mmap + m->size;
+	close(fd);
+	return (m);
+}
+
+void
+mclose(MMAP *m)
+{
+	unless (m) return;
+	if (m->mmap) munmap(m->mmap, m->size);
+	free(m);
+}
+
+mrewind(MMAP *m)
+{
+	assert(m);
+	m->where = m->mmap;
+}
+
 /*
  * Save a line in an array.  If the array is out of space, reallocate it.
  * The size of the array is in array[0].
@@ -1524,7 +1583,7 @@ char *
 sPath(char *name, int isDir)
 {
 	static	char buf[1024]; 
-	char	*s, *path, gRoot[1024], sRoot[1024];
+	char	*path, gRoot[1024], sRoot[1024];
 
 	/*
 	 *  If there is a local SCCS directory, use it
@@ -6780,7 +6839,7 @@ updatePending(sccs *s, delta *d)
  */
 /* ARGSUSED */
 private int
-checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
+checkin(sccs *s, int flags, delta *prefilled, int nodefault, MMAP *diffs)
 {
 	FILE	*sfile, *gfile = 0;
 	delta	*n0 = 0, *n, *first;
@@ -6965,31 +7024,31 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 	} else {
 		if (diffs) {
 			int	off;
+			char	*t;
 
-			fnext(buf, diffs);	/* skip diff header */
-			off = isdigit(buf[0]) ? 2 : 0;
-			while (fnext(buf, diffs)) {
-				if ((off == 0) && (buf[0] == '\\')) {
-					s->dsum += fputdata(s, &buf[1], sfile);
+			if (t = mnext(diffs)) off = isdigit(t[0]) ? 2 : 0;
+			while (t = mnext(diffs)) {
+				if ((off == 0) && (t[0] == '\\')) {
+					++t;
 				} else {
-					s->dsum +=
-					    fputdata(s, &buf[off], sfile);
+					t = &t[off];
 				}
+				s->dsum += fputdata(s, t, sfile);
 				added++;
 			}
-			fclose(diffs);
+			mclose(diffs);
 		} else if (gfile) {
 			while (fnext(buf, gfile)) {
 				s->dsum += fputdata(s, buf, sfile);
 				added++;
 			}
-		}
-		/*
-		 * For ascii files, add missing line feeds automagically.
-		 */
-		len = strlen(buf);
-		if (len && (buf[len - 1] != '\n')) {
-			s->dsum += fputdata(s, "\n", sfile);
+			/*
+			 * For ascii files, add missing \n automagically.
+			 */
+			len = strlen(buf);
+			if (len && (buf[len - 1] != '\n')) {
+				s->dsum += fputdata(s, "\n", sfile);
+			}
 		}
 	}
 	if (n0) {
@@ -8342,10 +8401,11 @@ nxtline(sccs *s, int *ip, int before, int *lp, int *pp, FILE *out,
  * we are still operating on the old file, without the diffs applied.
  */
 private int
-getHashSum(sccs *sc, delta *n, FILE *diffs)
+getHashSum(sccs *sc, delta *n, MMAP *diffs)
 {
-	char	buf[MAXPATH*3];
-	char	*k, *v, *v2, *t;
+	char	*buf;
+	char	key[MAXPATH], val[MAXPATH];
+	char	*v, *t;
 	u8	*e;
 	unsigned int sum = 0;
 	int	lines = 0;
@@ -8353,9 +8413,10 @@ getHashSum(sccs *sc, delta *n, FILE *diffs)
 	delta	*d;
 
 	assert(sc->state & S_HASH);
+	assert(diffs);
 	/*
 	 * If we have a hash already and it is a simple delta, then just
-	 * use that.  Otherwisre, regen from scratch.
+	 * use that.  Otherwise, regen from scratch.
 	 */
 	if (sc->mdbm
 	    && !n->include && !n->exclude && (d = getCksumDelta(sc, n))) {
@@ -8369,44 +8430,46 @@ getHashSum(sccs *sc, delta *n, FILE *diffs)
 		}
 		sum = sc->dsum;
 	}
-	if (fseek(diffs, 0L, SEEK_SET)) {
-		perror("fseek for hash checksum");
-		return (-1);
-	}
-	unless (fnext(buf, diffs)) {
+	mrewind(diffs);
+	unless (buf = mnext(diffs)) {
 		/* there are no diffs, we have the checksum, it's OK */
 		return (0);
 	}
-	unless (streq(buf, "0a0\n")) {
+	unless (strneq(buf, "0a0\n", 4)) {
 		fprintf(stderr, "Missing 0a0, ");
-bad:		fprintf(stderr, "bad diffs: '%s'\n", buf);
+bad:		fprintf(stderr, "bad diffs: '%.*s'\n", linelen(buf), buf);
 		return (-1);
 	}
-	while (fnext(buf, diffs)) {
+	while (buf = mnext(diffs)) {
 		unless (buf[0] == '>') goto bad;
-		for (k = v = &buf[2]; *v && (*v != ' '); v++);
+		for (t = key, v = &buf[2]; (v < diffs->end) && (*v != ' '); ) {
+			*t++ = *v++;
+		}
 		unless (*v == ' ') goto bad;
-		*v++ = 0;
-		t = v; while (*t++);
-		unless (t[-2] == '\n') goto bad;
-		t[-2] = 0;
-		if (v2 = mdbm_fetch_str(sc->mdbm, k)) {
-			if (streq(v2, v)) {
-				fprintf(stderr, "Redundant: %s %s\n", k, v);
+		*t = 0;
+		for (t = val, v++; (v < diffs->end) && (*v != '\n'); ) {
+			*t++ = *v++;
+		}
+		unless (*v == '\n') goto bad;
+		*t = 0;
+		if (v = mdbm_fetch_str(sc->mdbm, key)) {
+			if (streq(v, val)) {
+				fprintf(stderr,
+				    "Redundant: %s %s\n", key, val);
 				return (-1);
 			} else {
 				/*
 				 * Subtract off the old value and add in new
 				 */
-				for (e = v2; *e; sum -= *e++);
-				for (e = v; *e; sum += *e++);
-				mdbm_store_str(sc->mdbm, k, v, MDBM_REPLACE);
+				for (e = v; *e; sum -= *e++);
+				for (e = val; *e; sum += *e++);
+				mdbm_store_str(sc->mdbm, key, val,MDBM_REPLACE);
 			}
 		} else {
 			/* completely new, add in the whole line */
-			for (e = k; *e; sum += *e++); sum += ' ';
-			for (e = v; *e; sum += *e++); sum += '\n';
-			mdbm_store_str(sc->mdbm, k, v, MDBM_INSERT);
+			for (e = key; *e; sum += *e++); sum += ' ';
+			for (e = val; *e; sum += *e++); sum += '\n';
+			mdbm_store_str(sc->mdbm, key, val, MDBM_INSERT);
 		}
 	}
 	sc->dsum = sum;
@@ -8414,7 +8477,7 @@ bad:		fprintf(stderr, "bad diffs: '%s'\n", buf);
 }
 
 int
-delta_body(sccs *s, delta *n, FILE *diffs, FILE *out, int *ap, int *dp, int *up)
+delta_body(sccs *s, delta *n, MMAP *diffs, FILE *out, int *ap, int *dp, int *up)
 {
 	serlist *state = 0;
 	ser_t	*slist = 0;
@@ -8422,7 +8485,7 @@ delta_body(sccs *s, delta *n, FILE *diffs, FILE *out, int *ap, int *dp, int *up)
 	int	lines = 0;
 	int	added = 0, deleted = 0, unchanged = 0;
 	sum_t	sum;
-	char	buf2[MAXLINE];
+	char	*b;
 
 	assert((s->state & S_READ_ONLY) == 0);
 	assert(s->state & S_ZFILE);
@@ -8439,14 +8502,16 @@ delta_body(sccs *s, delta *n, FILE *diffs, FILE *out, int *ap, int *dp, int *up)
 	s->dsum = 0;
 	assert(s->state & S_SOPEN);
 	state = allocstate(0, 0, s->nextserial);
-	while (fnext(buf2, diffs)) {
+	while (b = mnext(diffs)) {
 		int	where;
 		char	what;
 		int	howmany;
 
 newcmd:
-		if (scandiff(buf2, &where, &what, &howmany) != 0) {
-			fprintf(stderr, "delta: can't figure out '%s'\n", buf2);
+		if (scandiff(b, &where, &what, &howmany) != 0) {
+			fprintf(stderr,
+			    "delta: can't figure out '%.*s'\n",
+			    linelen(b), b);
 			if (state) free(state);
 			if (slist) free(slist);
 			return (-1);
@@ -8466,13 +8531,14 @@ newcmd:
 		switch (what) {
 		    case 'a':
 			ctrl("\001I ", n->serial);
-			while (fnext(buf2, diffs)) {
-				if (isdigit(buf2[0])) {
+			while (b = mnext(diffs)) {
+				if (isdigit(b[0])) {
 					ctrl("\001E ", n->serial);
 					goto newcmd;
 				}
-				s->dsum += fputdata(s, &buf2[2], out);
-				debug2((stderr, "INS %s", &buf2[2]));
+				s->dsum += fputdata(s, &b[2], out);
+				debug2((stderr,
+				    "INS %.*s", linelen(&b[2]), &b[2]));
 				added++;
 			}
 			break;
@@ -8480,8 +8546,8 @@ newcmd:
 			beforeline(unchanged);
 			ctrl("\001D ", n->serial);
 			sum = s->dsum;
-			while (fnext(buf2, diffs)) {
-				if (isdigit(buf2[0])) {
+			while (b = mnext(diffs)) {
+				if (isdigit(b[0])) {
 					ctrl("\001E ", n->serial);
 					s->dsum = sum;
 					goto newcmd;
@@ -8495,21 +8561,22 @@ newcmd:
 			ctrl("\001D ", n->serial);
 			sum = s->dsum;
 			/* Toss the old stuff */
-			while (fnext(buf2, diffs)) {
-				if (!strcmp(buf2, "---\n")) break;
+			while (b = mnext(diffs)) {
+				if (strneq(b, "---\n", 4)) break;
 				nextline(deleted);
 			}
 			s->dsum = sum;
 			ctrl("\001E ", n->serial);
 			/* add the new stuff */
 			ctrl("\001I ", n->serial);
-			while (fnext(buf2, diffs)) {
-				if (isdigit(buf2[0])) {
+			while (b = mnext(diffs)) {
+				if (isdigit(b[0])) {
 					ctrl("\001E ", n->serial);
 					goto newcmd;
 				}
-				s->dsum += fputdata(s, &buf2[2], out);
-				debug2((stderr, "INS %s", &buf2[2]));
+				s->dsum += fputdata(s, &b[2], out);
+				debug2((stderr,
+				    "INS %.*s", linelen(&b[2]), &b[2]));
 				added++;
 			}
 			break;
@@ -8518,13 +8585,13 @@ newcmd:
 			ctrl("\001I ", n->serial);
 			while (howmany--) {
 				/* XXX: not break but error */
-				unless (fnext(buf2, diffs)) break;
-				if (what == 'I' && buf2[0] == '\\') {
-					s->dsum += fputdata(s, &buf2[1], out);
+				unless (b = mnext(diffs)) break;
+				if (what == 'I' && b[0] == '\\') {
+					s->dsum += fputdata(s, &b[1], out);
 				} else {
-					s->dsum += fputdata(s, buf2, out);
+					s->dsum += fputdata(s, b, out);
 				}
-				debug2((stderr, "INS %s", buf2));
+				debug2((stderr, "INS %.*s", linelen(b), b));
 				added++;
 			}
 			break;
@@ -8534,7 +8601,7 @@ newcmd:
 			ctrl("\001D ", n->serial);
 			sum = s->dsum;
 			while (howmany--) {
-				if (isdigit(buf2[0])) {
+				if (isdigit(b[0])) {
 					ctrl("\001E ", n->serial);
 					goto newcmd;
 				}
@@ -9055,7 +9122,7 @@ abort:		fclose(sfile);
  *	-3 = not DELTA_AUTO or DELTA_FORCE and no diff in gfile (gfile unlinked)
  */
 int
-sccs_delta(sccs *s, u32 flags, delta *prefilled, FILE *init, FILE *diffs)
+sccs_delta(sccs *s, u32 flags, delta *prefilled, FILE *init, MMAP *diffs)
 {
 	FILE	*sfile = 0;	/* the new s.file */
 	int	error = 0, fixDate = 1;
@@ -9064,7 +9131,6 @@ sccs_delta(sccs *s, u32 flags, delta *prefilled, FILE *init, FILE *diffs)
 	char	*tmpfile = 0;
 	int	added, deleted, unchanged;
 	int	locked;
-	char	buf2[MAXLINE];
 	pfile	pf;
 
 	assert(s);
@@ -9077,7 +9143,7 @@ sccs_delta(sccs *s, u32 flags, delta *prefilled, FILE *init, FILE *diffs)
 out:
 		if (prefilled) sccs_freetree(prefilled);
 		if (sfile) fclose(sfile);
-		if (diffs) fclose(diffs);
+		if (diffs) mclose(diffs);
 		free_pfile(&pf);
 		if (tmpfile  && !streq(tmpfile, DEV_NULL)) unlink(tmpfile);
 		if (locked) sccs_unlock(s, 'z');
@@ -9196,7 +9262,7 @@ out:
 			break;
 		    default: OUT;
 		}
-		unless (diffs = fopen(tmpfile, "rt")) { /* open in text mode */
+		unless (diffs = mopen(tmpfile)) {
 			fprintf(stderr,
 			    "delta: can't open diff file %s\n", tmpfile);
 			OUT;
@@ -9204,9 +9270,8 @@ out:
 	}
 	if (flags & PRINT) {
 		fprintf(stdout, "==== Changes to %s ====\n", s->gfile);
-		while (fnext(buf2, diffs)) fputs(buf2, stdout);
+		fwrite(diffs->mmap, diffs->size, 1, stdout);
 		fputs("====\n\n", stdout);
-		fseek(diffs, 0L, SEEK_SET);
 	}
 	/*
 	 * Add a new delta table entry.	 We'll come back and fix up

@@ -384,6 +384,16 @@ typedef struct {
 } ielist;
 
 /*
+ * Diffs are passed in mmap-ed chunks as described below.
+ */
+typedef	struct {
+	char	*mmap;			/* diffs start here */
+	size_t	size;			/* go for this much */
+	char	*where;			/* we are here in mapping */
+	char	*end;			/* == map + len */
+} MMAP;
+
+/*
  * Rap on project roots.  In BitKeeper, lots of stuff wants to know
  * where the project root is relative to where we are.  We need to
  * use the ->root field for this, remembering to null it whenever
@@ -522,8 +532,7 @@ typedef struct patch {
 int	sccs_admin(sccs *sc, u32 flgs, char *encoding, char *compress,
 	    admin *f, admin *l, admin *u, admin *s, char *txt);
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
-int	sccs_checkin(sccs *s, u32 flags, delta *d);
-int	sccs_delta(sccs *s, u32 flags, delta *d, FILE *init, FILE *diffs);
+int	sccs_delta(sccs *s, u32 flags, delta *d, FILE *init, MMAP *diffs);
 int	sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, char kind, FILE *);
 int	sccs_encoding(sccs *s, char *enc, char *comp);
 int	sccs_get(sccs *s,
@@ -619,6 +628,8 @@ delta	*sfind(sccs *s, ser_t ser);
 int	sccs_lock(sccs *, char);
 int	sccs_unlock(sccs *, char);
 char 	*sccs_iskeylong(char *key);
+MMAP	*mopen(char *file);
+void	mclose(MMAP *);
 
 /* Utility functions also in slib.c.  */
 int	exists(char *file);
