@@ -7,6 +7,20 @@ char *editor = 0, *pager = 0, *bin = 0;
 char *bk_dir = "BitKeeper/";
 int resync = 0, quiet = 0;
 
+void
+do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out)
+{
+	sccs *s;
+	delta *d;
+
+	s = sccs_init(file, INIT_NOCKSUM, NULL);
+	assert(s);
+	s->state &= ~S_SET;
+	d = findrev(s, rev);
+	sccs_prsdelta(s, d, flags, dspec, out);
+	sccs_free(s);
+}
+
 char *
 logAddr()
 {
@@ -47,6 +61,7 @@ sendConfig(char *to)
 	char *dspec;
 	char config_log[MAXPATH], buf[MAXLINE];
 	char config[MAXPATH], aliases[MAXPATH];
+	char s_cset[MAXPATH] = CHANGESET;
 	FILE *f, *f1;
 	time_t tm;
 	extern int bkusers();
@@ -58,10 +73,12 @@ sendConfig(char *to)
 		exit(1);
 	}
 	status(0, config_log);
+
 	dspec = "$each(:FD:){Project:\\t(:FD:)}\\nChangeSet ID:\\t:LONGKEY:";
-	sprintf(buf, "%sprs -hr1.0 -d'%s' ChangeSet >> %s",
-							bin, dspec, config_log);
-	system(buf);
+	f = fopen(config_log, "wb");
+	do_prsdelta(s_cset, "1.0", 0, dspec, f);
+	fclose(f);
+
 	f = fopen(config_log, "a");
 	fprintf(f, "User:\t%s\n", sccs_getuser());
 	fprintf(f, "Host:\t%s\n", sccs_gethost());
@@ -266,6 +283,7 @@ mail(char *to, char *subject, char *file)
 	    (bkusers(1,1) <= 5)) {
 		return;
 	}
+
 	while (paths[++i]) {
 		sprintf(sendmail, "%s/sendmail", paths[i]);
 		if (exists(sendmail)) {
