@@ -8,7 +8,7 @@ proc wid {id} \
 {
 	global w
 
-	set bb [$w(cvs) bbox $id]
+	set bb [$w(graph) bbox $id]
 	set x1 [lindex $bb 0]
 	set x2 [lindex $bb 2]
 	return [expr {$x2 - $x1}]
@@ -19,7 +19,7 @@ proc ht {id} \
 {
 	global w
 
-	set bb [$w(cvs) bbox $id]
+	set bb [$w(graph) bbox $id]
 	set y1 [lindex $bb 1]
 	set y2 [lindex $bb 3]
 	return [expr {$y2 - $y1}]
@@ -41,7 +41,7 @@ proc highlight {id type {rev ""}} \
 {
 	global gc w
 
-	set bb [$w(cvs) bbox $id]
+	set bb [$w(graph) bbox $id]
 	set x1 [lindex $bb 0]
 	set y1 [lindex $bb 1]
 	set x2 [lindex $bb 2]
@@ -51,39 +51,39 @@ proc highlight {id type {rev ""}} \
 	switch $type {
 	    revision {\
 		#puts "highlight: revision ($rev)"
-		set bg [$w(cvs) create rectangle $x1 $y1 $x2 $y2 \
+		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
 		    -fill $gc(sccs.revColor) \
 		    -outline $gc(sccs.revOutline) \
 		    -width 1 -tags "$rev" ]}
 	    merge   {\
 		#puts "highlight: merge ($rev)"
-		set bg [$w(cvs) create rectangle $x1 $y1 $x2 $y2 \
+		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
 		    -fill $gc(sccs.revColor) \
 		    -outline $gc(sccs.mergeOutline) \
 		    -width 1 -tags "$rev"]}
 	    arrow   {\
 		#puts "highlight: arrow ($rev)"
-		set bg [$w(cvs) create rectangle $x1 $y1 $x2 $y2 \
+		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
 		    -outline $gc(sccs.arrowColor) -width 1]}
 	    red     {\
 		#puts "highlight: red ($rev)"
-	        set bg [$w(cvs) create rectangle $x1 $y1 $x2 $y2 \
+	        set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
 		    -outline "red" -width 1.5 -tags "$rev"]}
 	    old  {\
 		#puts "highlight: old ($rev) id($id)"
-		set bg [$w(cvs) create rectangle $x1 $y1 $x2 $y2 \
+		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
 		    -outline $gc(sccs.revOutline) -fill $gc(sccs.oldColor) \
 		    -tags old]}
 	    new   {\
-		set bg [$w(cvs) create rectangle $x1 $y1 $x2 $y2 \
+		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
 		    -outline $gc(sccs.revOutline) -fill $gc(sccs.newColor) \
 		    -tags new]}
 	    black  {\
-		set bg [$w(cvs) create rectangle $x1 $y1 $x2 $y2 \
+		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
 		    -outline black -fill lightblue]}
 	}
 
-	$w(cvs) raise revtext
+	$w(graph) raise revtext
 	return $bg
 }
 
@@ -95,7 +95,7 @@ proc chkSpace {x1 y1 x2 y2} \
 
 	incr y1 -8
 	incr y2 8
-	return [$w(cvs) find overlapping $x1 $y1 $x2 $y2]
+	return [$w(graph) find overlapping $x1 $y1 $x2 $y2]
 }
 
 #
@@ -218,15 +218,21 @@ proc showTags {} \
 # When called from the mouse <B2> binding, the doubleclick var is set to 1
 # When called from the next/previous buttons, only the line variable is set
 #
+# bindtype can be one of: 
+#
+#    B1 - calls getLeftRev
+#    B3 - calls getRightRev
+#    D1 - if in annotate, brings up sccstool, else gets file annotation
+#
 proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 {
 	global tag2rev curLine dimension gc file dev_null dspec rev2rev_name
-	global rev1 w
+	global w srev errorCode
 
-	# Keep track of whether we are in the annotated output
+	# Keep track of whether we are being called from within the 
+	# file annotation text widget
 	set annotated 0
 
-	#puts "in selectTag win=($win)"
 	if {($line == -1) || ($line == 1)} {
 		set top [expr {$curLine - 3}]
 		set numLines [$win index "end -1 chars linestart" ]
@@ -242,10 +248,29 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 	} else {
 		set curLine [$win index "@$x,$y linestart"]
 	}
-	set line [$win get $curLine "$curLine lineend"]
-
-	if {[regexp \
-	    {^(.*)[ \t]+([0-9]+\.[0-9.]+).*\|} $line match filename rev]} {
+	# If warping on startup, ignore the line we are on
+	if {$srev != ""} {
+		set line ""
+	} else {
+		set line [$win get $curLine "$curLine lineend"]
+	}
+	if {$srev != ""} {
+		set rev $srev
+		set srev ""
+		catch {exec bk get -r$rev -g $file 2>$dev_null} err
+		if {[lindex $errorCode 2] == 1} {
+			puts "Error: rev ($rev) is not valid"
+			return
+		}
+		set found [$w(ap) search -regexp "$rev," 1.0]
+		if {$found != ""} {
+			set l [lindex [split $found "."] 0]
+			set curLine "$l.0"
+			$w(ap) see $curLine
+		}
+	# Search for version within the annotation output
+	} elseif {[regexp \
+	    {^(.*)[ \t]+([0-9]+\.[0-9.]+).*\|} $line match fname rev]} {
 		set annotated 1
 		$w(ap) configure -height 15
 		pack configure $w(cframe) -fill both -expand true \
@@ -254,7 +279,10 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 		set prs [open "| bk prs {$dspec} -hr$rev \"$file\" 2>$dev_null"]
 		filltext $w(ctext) $prs 1
 	} else {
-		regexp {^(.*)@([0-9]+\.[0-9.]+),.*} $line match filename rev
+		# Fall through and assume we are in prs output and walk 
+		# backwards up the screen until we find a line with a 
+		# revision number
+		regexp {^(.*)@([0-9]+\.[0-9.]+),.*} $line match fname rev
 		while {![info exists rev]} {
 			set curLine [expr $curLine - 1.0]
 			if {$curLine == "0.0"} {
@@ -265,30 +293,30 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 			}
 			set line [$win get $curLine "$curLine lineend"]
 			regexp {^(.*)@([0-9]+\.[0-9.]+),.*} \
-			       $line match filename rev
+			       $line match fname rev
 		}
 	}
-	set name [$win get $curLine "$curLine lineend"]
-	if {$name == ""} { puts "Error: name=($name)"; return }
 	$win tag remove "select" 1.0 end
 	$win tag add "select" "$curLine" "$curLine lineend + 1 char"
 	$win see $curLine
 
+	set name [$win get $curLine "$curLine lineend"]
+	if {$name == ""} { puts "Error: name=($name)"; return }
 	if {[info exists tag2rev($name)]} {
 		set revname $tag2rev($name)
 	} else {
 		set revname $rev2rev_name($rev)
 	}
-	#puts "revname=($revname) rev=($rev) filename=($filename)"
+	#puts "revname=($revname) rev=($rev)"
 
 	if {$revname != ""} {
-		$w(cvs) delete tag
-		set x2 [lindex [$w(cvs) coords $revname] 2]
-		set width [$w(cvs) cget -width]
+		$w(graph) delete tag
+		set x2 [lindex [$w(graph) coords $revname] 2]
+		set width [$w(graph) cget -width]
 		set xdiff [expr $width / 2]
 		set xfract [expr ($x2 - $xdiff) / $dimension(right)]
-		$w(cvs) xview moveto $xfract
-		set id [$w(cvs) gettag $revname]
+		$w(graph) xview moveto $xfract
+		set id [$w(graph) gettag $revname]
 			if {$bindtype == "B1"} {
 				getLeftRev $id
 			} elseif {$bindtype == "B3"} {
@@ -342,7 +370,6 @@ proc dateSeparate { } { \
                 set date $rev2date($rev)
 
                 #puts "s#: $ser rv: $rev d: $date X:$revX($rev) Y:$revY($rev)" 
-
                 set curday $rev2date($rev)
                 if {[string compare $prevday $curday] == 0} {
                         #puts "SAME: cur: $curday prev: $prevday $rev $nrev"
@@ -357,12 +384,12 @@ proc dateSeparate { } { \
 
                         # place vertical line short dx behind revision bbox
                         set lx [ expr {$x - 15}]
-                        $w(cvs) create line $lx $miny $lx $maxy -width 1 \
+                        $w(graph) create line $lx $miny $lx $maxy -width 1 \
 			    -fill "lightblue"
 
                        # Attempt to center datestring between verticals
                         set tx [expr {$x - (($x - $lastx)/2) - 13}]
-                        $w(cvs) create text $tx $ty \
+                        $w(graph) create text $tx $ty \
 			    -fill $gc(sccs.dateColor) \
 			    -justify center \
 			    -anchor n -text "$date" -font $gc(sccs.fixedFont)
@@ -379,7 +406,7 @@ proc dateSeparate { } { \
 	set date "$day/$mon\n$yr"
 
 	set tx [expr {$screen(maxx) - (($screen(maxx) - $x)/2) + 20}]
-	$w(cvs) create text $tx $ty -anchor n \
+	$w(graph) create text $tx $ty -anchor n \
 		-fill $gc(sccs.dateColor) \
 		-text "$date" -font $gc(sccs.fixedFont)
 }
@@ -409,36 +436,31 @@ proc addline {y xspace ht l} \
 		} else {
 			regexp {(.*)-([^-]*)} $word dummy rev serial
 		}
-
-		# make revision two lines
+		set tmp [split $rev "-"]
+		set tuser [lindex $tmp 1]; set trev [lindex $tmp 0]
+		set rev2rev_name($trev) $rev
+		# determing whether to make revision box two lines 
 		if {$stacked} {
-# XXX: Need to move this outside of this if
-			set jnk [split $rev "-"]
-			set tuser [lindex $jnk 1]
-			set trev [lindex $jnk 0]
 			set txt "$tuser\n$trev"
-			set rev2rev_name($trev) $rev
-			#set txt join [lindex $jnk 1] "\n" [lindex $jnk 0] 
 		} else {
 			set txt $rev
 		}
-
 		set x [expr {$xspace * $serial}]
 		set b [expr {$x - 2}]
 		if {$last > 0} {
 			set a [expr {$last + 2}]
-			$w(cvs) create line $a $ly $b $ly \
+			$w(graph) create line $a $ly $b $ly \
 			    -arrowshape {4 4 2} -width 1 \
 			    -fill $gc(sccs.arrowColor) -arrow last
 		}
 		if {[regsub -- "-BAD" $rev "" rev] == 1} {
-			set id [$w(cvs) create text $x $y -fill "red" \
+			set id [$w(graph) create text $x $y -fill "red" \
 			    -anchor sw -text "$txt" -justify center \
 			    -font $gc(sccs.fixedBoldFont) -tags "$rev revtext"]
 			highlight $id "red" $rev
 			incr bad
 		} else {
-			set id [$w(cvs) create text $x $y -fill #241e56 \
+			set id [$w(graph) create text $x $y -fill #241e56 \
 			    -anchor sw -text "$txt" -justify center \
 			    -font $gc(sccs.fixedBoldFont) -tags "$rev revtext"]
 			if {$m == 1} { 
@@ -554,9 +576,9 @@ proc line {s width ht} \
 	set y $revY($head)
 	incr y [expr {$ht / -2}]
 	incr x -4
-	set id [$w(cvs) create line $px $py $x $y -arrowshape {4 4 4} \
+	set id [$w(graph) create line $px $py $x $y -arrowshape {4 4 4} \
 	    -width 1 -fill $gc(sccs.arrowColor) -arrow last]
-	$w(cvs) lower $id
+	$w(graph) lower $id
 }
 
 # Create a merge arrow, which might have to go below other stuff.
@@ -586,7 +608,7 @@ proc mergeArrow {m ht} \
 		incr x 2
 		incr px 2
 	}
-	$w(cvs) lower [$w(cvs) create line $px $py $x $y -arrowshape {4 4 4} \
+	$w(graph) lower [$w(graph) create line $px $py $x $y -arrowshape {4 4 4} \
 	    -width 1 -fill $gc(sccs.arrowColor) \-arrow last]
 }
 
@@ -602,7 +624,7 @@ proc listRevs {file} \
 
 	# Put something in the corner so we get our padding.
 	# XXX - should do it in all corners.
-	$w(cvs) create text 0 0 -anchor nw -text " "
+	$w(graph) create text 0 0 -anchor nw -text " "
 
 	# Figure out the biggest node and its length.
 	# XXX - this could be done on a per column basis.  Probably not
@@ -665,7 +687,7 @@ proc listRevs {file} \
 	if {$bad != 0} {
 		wm title . "sccstool: $file -- $bad bad revs"
 	}
-	set bb [$w(cvs) bbox all]
+	set bb [$w(graph) bbox all]
 	set x1 [expr {[lindex $bb 0] - 10}]
 	set y1 [expr {[lindex $bb 1] - 10}]
 	set x2 [expr {[lindex $bb 2] + 10}]
@@ -674,14 +696,14 @@ proc listRevs {file} \
 	set dimension(right) $x2
 	set dimension(top) $y1
 	set dimension(bottom) $y2
-	$w(cvs) create text $x1 $y1 -anchor nw -text " "
-	$w(cvs) create text $x1 $y2 -anchor sw -text " "
-	$w(cvs) create text $x2 $y1 -anchor ne -text " "
-	$w(cvs) create text $x2 $y2 -anchor se -text " "
-	set bb [$w(cvs) bbox all]
-	$w(cvs) configure -scrollregion $bb
-	$w(cvs) xview moveto 1
-	$w(cvs) yview moveto .3
+	$w(graph) create text $x1 $y1 -anchor nw -text " "
+	$w(graph) create text $x1 $y2 -anchor sw -text " "
+	$w(graph) create text $x2 $y1 -anchor ne -text " "
+	$w(graph) create text $x2 $y2 -anchor se -text " "
+	set bb [$w(graph) bbox all]
+	$w(graph) configure -scrollregion $bb
+	$w(graph) xview moveto 1
+	$w(graph) yview moveto .3
 }
 
 # If called from the bottom selection mechanism, we give getLeftRev a
@@ -695,8 +717,8 @@ proc getLeftRev { {id {}} } \
 	if {$id == ""} {
 		catch {pack forget $w(cframe)}
 	}
-	$w(cvs) delete new
-	$w(cvs) delete old
+	$w(graph) delete new
+	$w(graph) delete old
 	.menus.cset configure -state disabled -text "View changeset "
 	.menus.difftool configure -state disabled
 	set rev1 [getRev "old" $id]
@@ -708,7 +730,7 @@ proc getRightRev { {id {}} } \
 {
 	global	rev2 file w
 
-	$w(cvs) delete new
+	$w(graph) delete new
 	set rev2 [getRev "new" $id]
 	if {$rev2 != ""} {
 		.menus.difftool configure -state normal
@@ -722,12 +744,12 @@ proc getRev {type {id {}} } \
 	global w
 
 	if {$id == ""} {
-		set id [$w(cvs) gettags current]
+		set id [$w(graph) gettags current]
 	}
 	#puts "ID (all) is $id"
 	set id [lindex $id 0]
 	if {("$id" == "current") || ("$id" == "")} { return "" }
-	$w(cvs) select clear
+	$w(graph) select clear
 	highlight $id $type 
 	regsub -- {-.*} $id "" id
 	return $id
@@ -1088,11 +1110,11 @@ proc busy {busy} \
 
 	if {$busy == 1} {
 		. configure -cursor watch
-		$w(cvs) configure -cursor watch
+		$w(graph) configure -cursor watch
 		$w(ap) configure -cursor watch
 	} else {
 		. configure -cursor left_ptr
-		$w(cvs) configure -cursor left_ptr
+		$w(graph) configure -cursor left_ptr
 		$w(ap) configure -cursor left_ptr
 	}
 	if {$paned == 0} { return }
@@ -1114,16 +1136,16 @@ proc widgets {} \
 	# apframe	- annotation/prs frame
 	# ctext		- comment text window
 	# ap		- annotation and prs text window
-	# cvs		- graph canvas window
+	# graph		- graph canvas window
 	set w(cframe) .p.b.c
 	set w(ctext) .p.b.c.t
 	set w(apframe) .p.b.p
 	set w(ap) .p.b.p.t
-	set w(cvs) .p.top.c
+	set w(graph) .p.top.c
 	set search(prompt) ""
 	set search(dir) ""
 	set search(text) .cmd.t
-	set search(focus) $w(cvs)
+	set search(focus) $w(graph)
 	set search(widget) $w(ap)
 	set stacked 1
 
@@ -1164,20 +1186,20 @@ proc widgets {} \
 	    frame .p.top -borderwidth 2 -relief sunken
 		scrollbar .p.top.xscroll -wid $gc(sccs.scrollWidth) \
 		    -orient horiz \
-		    -command "$w(cvs) xview" \
+		    -command "$w(graph) xview" \
 		    -background $gc(sccs.scrollColor) \
 		    -troughcolor $gc(sccs.troughColor)
 		scrollbar .p.top.yscroll -wid $gc(sccs.scrollWidth)  \
-		    -command "$w(cvs) yview" \
+		    -command "$w(graph) yview" \
 		    -background $gc(sccs.scrollColor) \
 		    -troughcolor $gc(sccs.troughColor)
-		canvas $w(cvs) -width 500 \
+		canvas $w(graph) -width 500 \
 		    -background $gc(sccs.canvasBG) \
 		    -xscrollcommand ".p.top.xscroll set" \
 		    -yscrollcommand ".p.top.yscroll set"
 		pack .p.top.yscroll -side right -fill y
 		pack .p.top.xscroll -side bottom -fill x
-		pack $w(cvs) -expand true -fill both
+		pack $w(graph) -expand true -fill both
 
 	    frame .p.b -borderwidth 2 -relief sunken
 	    	# prs and annotation window
@@ -1248,53 +1270,53 @@ proc widgets {} \
 	grid columnconfigure .cmd 0 -weight 1
 	grid columnconfigure .cmd 1 -weight 2
 
-	bind $w(cvs) <1>		{ prs; break }
-	bind $w(cvs) <3>		"diff2 0; break"
-	bind $w(cvs) <Double-1>		"get; break"
-	bind $w(cvs) <h>		"history"
-	bind $w(cvs) <t>		"history tags"
+	bind $w(graph) <1>		{ prs; break }
+	bind $w(graph) <3>		"diff2 0; break"
+	bind $w(graph) <Double-1>	"get; break"
+	bind $w(graph) <h>		"history"
+	bind $w(graph) <t>		"history tags"
 	bind . <Button-2>		{history}
 	bind . <Double-2>		{history tags}
-	bind $w(cvs) $gc(quit)		"exit"
-	bind $w(cvs) <s>		"sfile"
+	bind $w(graph) $gc(quit)	"exit"
+	bind $w(graph) <s>		"sfile"
 
-	bind $w(cvs) <Prior>		"$w(ap) yview scroll -1 pages"
-	bind $w(cvs) <Next>		"$w(ap) yview scroll  1 pages"
-	bind $w(cvs) <space>		"$w(ap) yview scroll  1 pages"
-	bind $w(cvs) <Up>		"$w(ap) yview scroll -1 units"
-	bind $w(cvs) <Down>		"$w(ap) yview scroll  1 units"
-	bind $w(cvs) <Home>		"$w(ap) yview -pickplace 1.0"
-	bind $w(cvs) <End>		"$w(ap) yview -pickplace end"
-	bind $w(cvs) <Control-b>	"$w(ap) yview scroll -1 pages"
-	bind $w(cvs) <Control-f>	"$w(ap) yview scroll  1 pages"
-	bind $w(cvs) <Control-e>	"$w(ap) yview scroll  1 units"
-	bind $w(cvs) <Control-y>	"$w(ap) yview scroll -1 units"
+	bind $w(graph) <Prior>		"$w(ap) yview scroll -1 pages"
+	bind $w(graph) <Next>		"$w(ap) yview scroll  1 pages"
+	bind $w(graph) <space>		"$w(ap) yview scroll  1 pages"
+	bind $w(graph) <Up>		"$w(ap) yview scroll -1 units"
+	bind $w(graph) <Down>		"$w(ap) yview scroll  1 units"
+	bind $w(graph) <Home>		"$w(ap) yview -pickplace 1.0"
+	bind $w(graph) <End>		"$w(ap) yview -pickplace end"
+	bind $w(graph) <Control-b>	"$w(ap) yview scroll -1 pages"
+	bind $w(graph) <Control-f>	"$w(ap) yview scroll  1 pages"
+	bind $w(graph) <Control-e>	"$w(ap) yview scroll  1 units"
+	bind $w(graph) <Control-y>	"$w(ap) yview scroll -1 units"
 
-	bind $w(cvs) <Shift-Prior>	"$w(cvs) yview scroll -1 pages"
-	bind $w(cvs) <Shift-Next>	"$w(cvs) yview scroll  1 pages"
-	bind $w(cvs) <Shift-Up>		"$w(cvs) yview scroll -1 units"
-	bind $w(cvs) <Shift-Down>	"$w(cvs) yview scroll  1 units"
-	bind $w(cvs) <Shift-Left>	"$w(cvs) xview scroll -1 pages"
-	bind $w(cvs) <Shift-Right>	"$w(cvs) xview scroll  1 pages"
-	bind $w(cvs) <Left>		"$w(cvs) xview scroll -1 units"
-	bind $w(cvs) <Right>		"$w(cvs) xview scroll  1 units"
-	bind $w(cvs) <Shift-Home>	"$w(cvs) xview moveto 0"
-	bind $w(cvs) <Shift-End>	"$w(cvs) xview moveto 1.0"
-        bind . <Shift-Button-4> 	"$w(cvs) xview scroll -1 pages"
-        bind . <Shift-Button-5> 	"$w(cvs) xview scroll 1 pages"
-        bind . <Control-Button-4> 	"$w(cvs) yview scroll -1 units"
-        bind . <Control-Button-5> 	"$w(cvs) yview scroll 1 units"
+	bind $w(graph) <Shift-Prior>	"$w(graph) yview scroll -1 pages"
+	bind $w(graph) <Shift-Next>	"$w(graph) yview scroll  1 pages"
+	bind $w(graph) <Shift-Up>	"$w(graph) yview scroll -1 units"
+	bind $w(graph) <Shift-Down>	"$w(graph) yview scroll  1 units"
+	bind $w(graph) <Shift-Left>	"$w(graph) xview scroll -1 pages"
+	bind $w(graph) <Shift-Right>	"$w(graph) xview scroll  1 pages"
+	bind $w(graph) <Left>		"$w(graph) xview scroll -1 units"
+	bind $w(graph) <Right>		"$w(graph) xview scroll  1 units"
+	bind $w(graph) <Shift-Home>	"$w(graph) xview moveto 0"
+	bind $w(graph) <Shift-End>	"$w(graph) xview moveto 1.0"
+        bind . <Shift-Button-4> 	"$w(graph) xview scroll -1 pages"
+        bind . <Shift-Button-5> 	"$w(graph) xview scroll 1 pages"
+        bind . <Control-Button-4> 	"$w(graph) yview scroll -1 units"
+        bind . <Control-Button-5> 	"$w(graph) yview scroll 1 units"
         bind . <Button-4> 		"$w(ap) yview scroll -5 units"
         bind . <Button-5>		"$w(ap) yview scroll 5 units"
-	#bind $w(cvs) <Control-T>	"showTags"
+	#bind $w(graph) <Control-T>	"showTags"
 	bind $w(ap) <Button-1> { selectTag %W %x %y "" "B1" }
 	bind $w(ap) <Button-3> { selectTag %W %x %y "" "B3" }
 	bind $w(ap) <Double-1> { selectTag %W %x %y "" "D1" }
 
 	# Command window bindings.
-	bind $w(cvs) <slash> "search /"
-	bind $w(cvs) <question> "search ?"
-	bind $w(cvs) <n> "searchnext"
+	bind $w(graph) <slash> "search /"
+	bind $w(graph) <question> "search ?"
+	bind $w(graph) <n> "searchnext"
 	bind $search(text) <Return> "searchstring"
 	$search(widget) tag configure search \
 	    -background $gc(sccs.searchColor) -relief groove -borderwid 0
@@ -1307,7 +1329,7 @@ proc widgets {} \
 	bindtags $w(ap) {.p.b.p.t . all}
 	bindtags $w(ctext) {.p.b.c.t . all}
 
-	focus $w(cvs)
+	focus $w(graph)
 	. configure -background $gc(BG)
 }
 
@@ -1338,9 +1360,10 @@ proc next {inc} \
 proc sccstool {name} \
 {
 	global	file bad revX revY search dev_null rev2date serial2rev w
+	global  srev
 
 	busy 1
-	$w(cvs) delete all
+	$w(graph) delete all
 	if {[info exists revX]} { unset revX }
 	if {[info exists revY]} { unset revY }
 	set bad 0
@@ -1361,8 +1384,9 @@ proc sccstool {name} \
 
 	history
 	set search(prompt) "Welcome"
-	focus $w(cvs)
+	focus $w(graph)
 	busy 0
+
 }
 
 proc init {} \
@@ -1373,15 +1397,21 @@ proc init {} \
 	set env(BK_YEAR4) 1
 }
 
+#
+# srev		- specified revision to warp to on startup
+# rev1
+# rev2
+#
 proc arguments {} \
 {
-	global rev1 rev2 argv file gca 
+	global rev1 rev2 argv file gca srev
 
 	set state flag
 	set rev1 ""
 	set rev2 ""
 	set gca ""
 	set file ""
+	set srev ""
 	foreach arg $argv {
 		switch -- $state {
 		    flag {
@@ -1389,6 +1419,7 @@ proc arguments {} \
 			    -G		{ set state gca }
 			    -l		{ set state remote }
 			    -r		{ set state local }
+			    -a		{ set state srev }
 			    default	{ set file $arg }
 			}
 		    }
@@ -1402,6 +1433,10 @@ proc arguments {} \
 		    }
 		    remote {
 		    	set rev2 $arg
+			set state flag
+		    }
+		    srev {
+		    	set srev $arg
 			set state flag
 		    }
 		}
@@ -1440,4 +1475,8 @@ if {$rev2 != ""} {
 if {$gca != ""} {
 	set gca [lineOpts $gca]
 	highlight $gca  "black"
+}
+# Warp to the correct revision if we can
+if {$srev != ""} {
+	selectTag $w(ap) 0 0 0 B1
 }
