@@ -69,7 +69,7 @@ main(int ac, char **av)
 	char	*rev = 0;
 	int	c;
 	admin	f[A_SZ], u[A_SZ], s[A_SZ];
-	int	nextf = 0, nextl = 0, nextu = 0, nexts = 0, nextp = 0;
+	int	nextf = 0, nextu = 0, nexts = 0, nextp = 0;
 	char	*comment = 0, *text = 0, *newfile = 0;
 	char	*path = 0, *merge = 0;
 	char	*name;

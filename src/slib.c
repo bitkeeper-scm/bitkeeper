@@ -8344,7 +8344,6 @@ read_pfile(char *who, sccs *s, pfile *pf)
 	char	*iLst, *xLst;
 	char	*mRev = malloc(MAXREV+1);
 	char	c1 = 0, c2 = 0, c3 = 0;
-	char	*t;
 	int	e;
 	FILE	*tmp;
 	char	date[10], time[10], user[40];
