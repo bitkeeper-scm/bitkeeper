@@ -33,8 +33,8 @@ ms_env()
 	_LIB2="mswsock.lib advapi32.lib user32.lib gdi32.lib"
 	_LIB3=" comdlg32.lib winspool.lib ole32.lib"
 	WIN32_LIBS="$_LIB1 $_LIB2 $_LIB3"
-	LINK_LIB="libsccs.a mdbm/libmdbm.a zlib/libz.a $UWTLIB"
-	LINK_LIB="$LINK_LIB $WIN32_LIBS"
+	LINK_LIB="libsccs.a mdbm/libmdbm.a zlib/libz.a tomcrypt/libtomcrypt.a"
+	LINK_LIB="$LINK_LIB $UWTLIB $WIN32_LIBS"
 	BK="bk.exe"
 	LDFLAGS="-nologo -debug"
 	AR=`pwd`/win32/util/mklib
