@@ -56,7 +56,7 @@ hasTriggers(void)
 	free(t);
 	lines = getTriggers(dir, "pre-delta");
 	ret = lines != 0;
-	freeLines(lines);
+	freeLines(lines, free);
 	free(dir);
 	return (ret);
 }

@@ -337,180 +337,6 @@ linelen(char *s)
 	return (t-s);
 }
 
-static	char	**addLine_lastp;
-static	int	addLine_lasti;
-
-/*
- * Save a line in an array.  If the array is out of space, reallocate it.
- * The size of the array is in array[0].
- * This is OK on 64 bit platforms.
- */
-char	**
-addLine(char **space, char *line)
-{
-	int	i;
-
-	if (!space) {
-		space = calloc(32, sizeof(char *));
-		assert(space);
-		space[0] = (char *)32;
-	} else if (space[(int)(long)space[0]-1]) {	/* full up, dude */
-		int	size = (int)(long)space[0];
-		char	**tmp = calloc(size*4, sizeof(char*));
-
-		assert(tmp);
-		bcopy(space, tmp, size*sizeof(char*));
-		tmp[0] = (char *)(long)(size * 4);
-		free(space);
-		space = tmp;
-	}
-	if (addLine_lastp == space) {
-		i = ++addLine_lasti;	/* big perf win */
-	} else {
-		EACH(space); 		/* I want to get to the end */
-		addLine_lastp = space;
-		addLine_lasti = i;
-	}
-	assert(i < (int)(long)space[0]);
-	assert(space[i] == 0);
-	space[i] = line;
-	return (space);
-}
-
-void
-sortLines(char **space)
-{
-	int	i;
-	int	string_sort(const void *a, const void *b);
-
-	if (!space) return;
-	EACH(space);
-	qsort((void*)&space[1], i-1, sizeof(char*), string_sort);
-}
-
-void
-freeLines(char **space)
-{
-	int	i;
-
-	if (!space) return;
-	EACH(space) {
-		free(space[i]);
-	}
-	space[0] = 0;
-	free(space);
-	addLine_lastp = 0;
-}
-
-int
-removeLine(char **space, char *s)
-{
-	int	i, found, n = 0;
-
-	do {
-		found = 0;
-		EACH(space) {
-			if (streq(space[i], s)) {
-				free(space[i]);
-				while ((++i< (int)(long)space[0]) && space[i]) {
-					space[i-1] = space[i];
-					space[i] = 0;
-				}
-				n++;
-				found = 1;
-				addLine_lastp = 0;
-				break;
-			}
-		}
-	} while (found);
-	return (n > 0);
-}
-
-void
-removeLineN(char **space, int rm)
-{
-	int	i;
-
-	assert(rm < (int)(long)space[0]);
-	assert(rm > 0);
-	free(space[rm]);
-	space[rm] = 0;
-	for (i = rm; (++i < (int)(long)space[0]) && space[i]; ) {
-		space[i-1] = space[i];
-		space[i] = 0;
-	}
-	addLine_lastp = 0;
-}
-
-/*
- * Like perl's join(),
- * use it for making arbitrary length strings.
- */
-char	*
-joinLines(char *sep, char **space)
-{
-	int	i, slen, len = 0;
-	char	*buf, *p;
-
-	unless (space && space[1]) return (0);
-	slen = sep ? strlen(sep) : 0;
-	EACH(space) {
-		len += strlen(space[i]);
-		len += slen;
-	}
-	len++;
-	buf = malloc(len);
-	p = buf;
-	EACH(space) {
-		strcpy(p, space[i]);
-		p += strlen(space[i]);
-		if (sep) {
-			strcpy(p, sep);
-			p += slen;
-		}
-	}
-	/*
-	 * No trailing sep.
-	 */
-	if (sep) {
-		p -= slen;
-		*p = 0;
-	}
-	return (buf);
-}
-
-/*
- * Split a C string into tokens like strtok()
- *
- * The string 'line' is seperated into tokens seperated
- * by one of more characters from 'delim' and each token will
- * be added to the 'tokens' line array.
- * The tokens will be null terminated and will not contain characters
- * from 'delim'
- *
- * REMOVE THIS FUNCTION in 4.0.  It is already in liblines.c.
- */
-char   **
-splitLine(char *line, char *delim, char **tokens)
-{
-       while (1) {
-               int     len;
-               char    *p;
-
-               line += strspn(line, delim); /* skip delimiters */
-               len = strcspn(line, delim);
-               unless (len) break;
-
-               /* strndup() ... */
-               p = malloc(len+1);
-               strncpy(p, line, len);
-               p[len] = 0;
-               tokens = addLine(tokens, p);
-               line += len;
-       }
-       return (tokens);
-}
-
 #if 0
 /*
  * Compare up to and including the newline.  Both have to be on \n to match.
@@ -592,9 +418,9 @@ atoiMult_p(char **p)
 private inline void
 freedelta(delta *d)
 {
-	freeLines(d->comments);
-	freeLines(d->mr);
-	freeLines(d->text);
+	freeLines(d->comments, free);
+	freeLines(d->mr, free);
+	freeLines(d->text, free);
 
 	if (d->rev) free(d->rev);
 	if (d->user) free(d->user);
@@ -2367,15 +2193,15 @@ delete_cset_cache(char *rootpath, int save)
 			    aprintf("%08x %s", (u32)~statbuf.st_atime, buf));
 		}
 	}
-	freeLines(files);
-	sortLines(keep);
+	freeLines(files, free);
+	sortLines(keep, 0);
 	EACH (keep) {
 		if (i > save) {
 			p = strchr(keep[i], ' ');
 			unlink(p+1);
 		}
 	}
-	freeLines(keep);
+	freeLines(keep, free);
 }
 
 private delta *
@@ -3737,7 +3563,7 @@ bad:
 		for (;;) {
 			if (!(buf = fastnext(s)) || buf[0] != '\001') {
 				expected = "^A";
-				freeLines(d->comments);
+				freeLines(d->comments, free);
 				goto bad;
 			}
 			line++;
@@ -3756,7 +3582,7 @@ comment:		switch (buf[1]) {
 				break;
 			    default:
 				expected = "^A{e,c}";
-				freeLines(d->comments);
+				freeLines(d->comments, free);
 				goto bad;
 			}
 		}
@@ -4769,9 +4595,9 @@ sccs_free(sccs *s)
 	}
 	if (s->defbranch) free(s->defbranch);
 	if (s->ser2delta) free(s->ser2delta);
-	freeLines(s->usersgroups);
-	freeLines(s->flags);
-	freeLines(s->text);
+	freeLines(s->usersgroups, free);
+	freeLines(s->flags, free);
+	freeLines(s->text, free);
 	if (s->proj && !(s->state & S_SAVEPROJ)) proj_free(s->proj);
 	if (s->symlink) free(s->symlink);
 	if (s->mdbm) mdbm_close(s->mdbm);
@@ -10797,7 +10623,7 @@ remove_comments(sccs *s)
 
 	for (d = s->table; d; d = d->next) {
 		if (d->comments && !(d->flags & D_XFLAGS)) {
-			freeLines(d->comments);
+			freeLines(d->comments, free);
 			d->comments = 0;
 		}
 	}
@@ -10931,7 +10757,7 @@ out:
 
 		if (!text[0]) {
 			if (sc->text) {
-				freeLines(sc->text);
+				freeLines(sc->text, free);
 				sc->text = 0;
 				flags |= NEWCKSUM;
 			}
@@ -10949,7 +10775,7 @@ out:
 			goto user;
 		}
 		if (sc->text) {
-			freeLines(sc->text);
+			freeLines(sc->text, free);
 			sc->text = 0;
 		}
 		ALLOC_D();
@@ -10975,7 +10801,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			sc->usersgroups =
 			    addLine(sc->usersgroups, strdup(u[i].thing));
 		} else {
-			unless (removeLine(sc->usersgroups, u[i].thing)) {
+			unless (removeLine(sc->usersgroups, u[i].thing, free)) {
 				verbose((stderr,
 				    "admin: user/group %s not found in %s\n",
 				    u[i].thing, sc->sfile));
@@ -11051,7 +10877,8 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 					sc->flags =
 						addLine(sc->flags, strdup(buf));
 				} else {
-					unless (removeLine(sc->flags, buf)) {
+					unless (removeLine(sc->flags,
+					    buf, free)) {
 						verbose((stderr,
 					"admin: flag %s not found in %s\n",
 							 buf, sc->sfile));
@@ -12288,7 +12115,7 @@ sccs_meta(sccs *s, delta *parent, MMAP *iF, int fixDate)
 	EACH (syms) {
 		addsym(s, m, m, 0, m->rev, syms[i]);
 	}
-	freeLines(syms);
+	freeLines(syms, free);
 	/*
 	 * Do the delta table & misc.
 	 */
@@ -12387,7 +12214,7 @@ out:
 		if (sfile) fclose(sfile);
 		if (diffs) mclose(diffs);
 		free_pfile(&pf);
-		if (free_syms) freeLines(syms); 
+		if (free_syms) freeLines(syms, free); 
 		if (tmpfile  && !streq(tmpfile, DEV_NULL)) unlink(tmpfile);
 		if (locked) sccs_unlock(s, 'z');
 		debug((stderr, "delta returns %d\n", error));
@@ -12427,7 +12254,7 @@ out:
 		    	}
 			if (prefilled->flags & D_TEXT) {
 				if (s->text) {
-					freeLines(s->text);
+					freeLines(s->text, free);
 					s->text = 0;
 				}
 				EACH(prefilled->text) {
@@ -12457,7 +12284,7 @@ out:
 		int rc;
 
 		rc = checkin(s, flags, prefilled, init != 0, diffs, syms);
-		if (free_syms) freeLines(syms); 
+		if (free_syms) freeLines(syms, free); 
 		return rc;
 	}
 

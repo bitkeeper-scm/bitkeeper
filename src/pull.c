@@ -134,8 +134,7 @@ err:		freeLines(envVar);
 		if (rc) break;
 	}
 	
-	freeLines(envVar);
-	freeLines(pList);
+	freeLines(pList, free);
 	return (rc);
 }
 

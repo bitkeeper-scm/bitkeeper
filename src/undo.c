@@ -83,7 +83,7 @@ usage:			system("bk help -s undo");
 	unless (f) {
 err:		if (undo_list[0]) unlink(undo_list);
 		unlink(rev_list);
-		freeLines(fileList);
+		freeLines(fileList, free);
 		if (size(BACKUP_SFIO) > 0) {
 			if (sysio(BACKUP_SFIO, 0, 0,
 						"bk", "sfio", "-im", SYS)) {
@@ -128,7 +128,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 		unless (fgets(buf, sizeof(buf), stdin)) buf[0] = 'n';
 		if ((buf[0] != 'y') && (buf[0] != 'Y')) {
 			unlink(rev_list);
-			freeLines(fileList);
+			freeLines(fileList, free);
 			exit(0);
 		}
 	}
@@ -150,7 +150,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 			goto err;
 		}
 	}
-	freeLines(csetrev_list);
+	freeLines(csetrev_list, free);
 	if (clean_file(fileList)) goto err;
 	sig_ignore();
 
@@ -184,7 +184,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 
 	sig_default();
 
-	freeLines(fileList);
+	freeLines(fileList, free);
 	unlink(rev_list); unlink(undo_list);
 	update_log_markers(streq(qflag, ""));
 	if (rc) return (rc); /* do not remove backup if check failed */

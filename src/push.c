@@ -141,7 +141,7 @@ err:		freeLines(envVar);
 	}
 
 	freeLines(pList);
-	freeLines(envVar);
+	freeLines(envVar, free);
 	if (opts.out && (opts.out != stderr)) fclose(opts.out);
 	return (rc);
 }

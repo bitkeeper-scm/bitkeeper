@@ -4,6 +4,7 @@ eval "exec perl -Ssw $0 $@"
 
 sub main
 {
+	$ENV{'GROFF_NO_SGR'} = "no";
 	$debug = 0 if 0;
 	$m = shift(@ARGV);
 	open(FD, $m);

@@ -69,7 +69,7 @@ rclone_main(int ac, char **av)
 	unless (r) usage();
 
 	rc = rclone(av, opts, r, envVar);
-	freeLines(envVar);
+	freeLines(envVar, free);
 	remote_free(r);
 	return (rc);
 }

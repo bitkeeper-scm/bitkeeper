@@ -875,7 +875,7 @@ next:		if (getline2(r, buf, bsize) <= 0) break;
 		fprintf(stderr,
 		    "Remote seems to be running a older BitKeeper release\n");
 	}
-	freeLines(lines);
+	freeLines(lines, free);
 	return;
 }
 
@@ -1083,7 +1083,7 @@ again:	if (lstat(dir, &sb1)) {
 	}
 	lines = addLine(lines, strdup("f"));
 	assert(streq("f", lines[1]));
-	removeLineN(lines, 1);
+	removeLineN(lines, 1, free);
 	while (e = readdir(d)) {
 		unless (streq(e->d_name, ".") || streq(e->d_name, "..")) {
 			lines = addLine(lines, strdup(e->d_name));
@@ -1092,21 +1092,21 @@ again:	if (lstat(dir, &sb1)) {
 	closedir(d);
 	if (lstat(dir, &sb2)) {
 		perror(dir);
-		freeLines(lines);
+		freeLines(lines, free);
 		return(NULL);
 	}
 	if ((sb1.st_mtime != sb2.st_mtime) || 
 	    (sb1.st_size != sb2.st_size)) {
-		freeLines(lines);
+		freeLines(lines, free);
 		lines = 0;
 		goto again;
 	}
-	sortLines(lines);
+	sortLines(lines, 0);
 
 	/* Remove duplicate files that can result on some filesystems.  */
 	EACH(lines) {
 		while ((i > 1) && streq(lines[i-1], lines[i])) {
-			removeLineN(lines, i);
+			removeLineN(lines, i, free);
 		}
 	}
 	return (lines);
