@@ -663,7 +663,7 @@ _chmod() {		# /* doc 2.0 */
 	fi
 	MODE=$1
 	shift
-	for i
+	for i in `bk sfiles -g ${1+"$@"}`
 	do	bk clean "$i" || {
 			echo Can not clean "$i," skipping it
 			continue
