@@ -428,8 +428,21 @@ if [ '01/10/01' != "`cat YEAR4`" ]; then echo Failed on 1.3.; exit 1; fi
 echo OK
 echo $N Checking Y2K date expansion w -fY ...........................$NL
 admin $Q -fYEAR4 YEAR4
-get $S -r1.1 YEAR4
-if [ '06/23/1997' != "`cat YEAR4`" ]; then echo Failed on 1.1.; exit 1; fi
-get $S YEAR4
-if [ '01/10/2001' != "`cat YEAR4`" ]; then echo Failed on 1.3.; exit 1; fi
+get $Q -e YEAR4
+${CAT} > INITX <<EOF
+D 1.5 01/02/22 10:10:10  $USER 0 0 0/0/0
+c This is revision 1.5
+------------------------------------------------
+EOF
+delta $Q -IINITX YEAR4
+get $S -r1.5 YEAR4
+if [ '02/22/2001' != "`cat YEAR4`" ]; then echo Failed on 1.5.; exit 1; fi
 echo OK
+echo $N Checking Y2K date expansion on old delta ....................$NL
+# We set the YEAR4 flag in delta 1.4, when we access delta 1.3
+# We should get 2 digit year.
+get $S -r1.3 YEAR4
+if [ '01/10/01' != "`cat YEAR4`" ]
+then echo "Failed (Known bug)";
+else ecoh OK
+fi

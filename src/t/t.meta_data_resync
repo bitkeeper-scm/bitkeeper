@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (c) 1999 Andrew Chang?
+# Copyright (c) 1999 Andrew Chang
 # %K%
 
 echo $N Create initial repository ...................................$NL
@@ -50,9 +50,7 @@ bk commit $S -yperm1
 bk resync $Q $HERE/project $HERE/copy
 bk resolve $Q $HERE/copy
 cd $HERE/copy/src
-REV=`bk prs -h -r+ -d":I:" foo.c`
-if [ "$REV" != "1.2" ]; then echo fail to propagate a new delta; exit 1; fi
-grep -q '^.cO-rwx------' SCCS/s.foo.c
+diff $HERE/project/src/SCCS/s.foo.c  $HERE/copy/src/SCCS/s.foo.c
 if [ $? -ne 0 ]; then echo failed to propagate permissions; exit 1; fi
 echo OK
 echo $N Check permission conflict ...................................$NL
@@ -72,11 +70,45 @@ MODE=`bk prs -h -r1.4 -d":MODE:" foo.c`
 if [ "$MODE" != "100740" ]
 then	echo "failed (Known bug)"  
 	${RM} -rf $HERE/copy/PENDING $HERE/copy/RESYNC
+	cd $HERE/project/src
+	bk undo -f -q 1.4
+	cd $HERE/copy/src
 	bk undo -f -q 1.4
 else	echo OK;
 fi
-echo $N Check propagation of symbol ...............................$NL
+echo $N Check propagation of symbol .................................$NL
 cd $HERE/project/src
 admin $Q -SBASE_LINE:1.1 bar.c
 P=`bk pending | wc -l`
 if [ $P -eq 0 ]; then echo "failed (Knwon bug)"; else echo OK; fi
+echo $N Check propagation of flags ..................................$NL
+cd $HERE
+${RM} -rf $HERE/copy
+bk clone $Q $HERE/project $HERE/copy
+cd $HERE/project/src
+admin $Q -fEXPAND1 -fRCS -fYEAR4 bar.c
+bk commit $Q -yabc
+bk resync $Q $HERE/project $HERE/copy
+bk resolve $Q $HERE/copy
+cd $HERE/copy/src
+diff $HERE/project/src/SCCS/s.bar.c  $HERE/copy/src/SCCS/s.bar.c
+if [ $? -ne 0 ]; then echo failed; fi
+cd $HERE/project/src
+admin $Q -FRCS -FYEAR4 bar.c
+bk commit $Q -yabc
+bk resync $Q $HERE/project $HERE/copy
+bk resolve $Q $HERE/copy
+cd $HERE/copy/src
+diff $HERE/project/src/SCCS/s.bar.c  $HERE/copy/src/SCCS/s.bar.c
+if [ $? -ne 0 ]; then echo failed; fi
+echo OK
+echo $N Check propagation of flags \& permission .....................$NL
+cd $HERE/project/src
+admin $Q -fRCS -m-rwx-r--r-- bar.c
+bk commit $Q -yabc
+bk resync $Q $HERE/project $HERE/copy
+bk resolve $Q $HERE/copy
+cd $HERE/copy/src
+diff $HERE/project/src/SCCS/s.bar.c  $HERE/copy/src/SCCS/s.bar.c
+if [ $? -ne 0 ]; then echo failed; fi
+echo OK

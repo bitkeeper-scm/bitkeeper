@@ -94,7 +94,7 @@ usage:		fprintf(stderr, stripdel_help);
 
 	if (checkOnly) {
 		int	f = ADMIN_BK|ADMIN_FORMAT|ADMIN_GONE|flags;
-		int	error = sccs_admin(s, f, 0, 0, 0, 0, 0, 0, 0, 0);
+		int	error = sccs_admin(s, 0, f, 0, 0, 0, 0, 0, 0, 0, 0);
 
 		sccs_free(s);
 		return (error);

@@ -200,6 +200,7 @@
 #define	D_CSET		0x08000000	/* this delta is marked in cset file */
 #define D_DUPLINK	0x10000000	/* this symlink pointer is shared */
 #define	D_LOCAL		0x20000000	/* for resolve; this is a local delta */
+#define D_XFLAGS	0x40000000	/* delta has updated file flags */
 
 /*
  * Signal handling.
@@ -291,6 +292,7 @@ typedef struct delta {
 	time_t	dateFudge;		/* make dates go forward */
 	mode_t	mode;			/* 0777 style modes */
 	char 	*symlink;		/* sym link target */
+	u32	xflags;			/* x flags */
 	/* In memory only stuff */
 	u16	r[4];			/* 1.2.3 -> 1, 2, 3, 0 */
 	time_t	date;			/* date - conversion from sdate/zone */
@@ -483,7 +485,7 @@ typedef struct patch {
 #define	PATCH_REMOTE	0x0002	/* patch is from remote file */
 #define	PATCH_META	0x0004	/* delta is metadata */
 
-int	sccs_admin(sccs *sc, u32 flgs, char *encoding, char *compress,
+int	sccs_admin(sccs *sc, delta *d, u32 flgs, char *encoding, char *compress,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
 int	sccs_delta(sccs *s, u32 flags, delta *d, MMAP *init, MMAP *diffs);
