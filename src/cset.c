@@ -3,6 +3,7 @@
 #include "sccs.h"
 #include "range.h"
 #include "zlib/zlib.h"
+#include "zgets.h"
 
 WHATSTR("@(#)%K%");
 
@@ -1159,97 +1160,100 @@ file2str(char *f)
 private	void
 sccs_patch(sccs *s, cset_t *cs)
 {
-	delta	*d;
+	delta	*d, *e;
 	int	deltas = 0, prs_flags = (PRS_PATCH|SILENT);
-	int	i, n, newfile, empty, encoding = 0;
-	delta	**list;
+	int	newfile, empty;
 
         if (sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0, 0)) {
-		fprintf(stderr, "Patch aborted, %s has errors\n", s->sfile);
-		fprintf(stderr,
-		    "Run ``bk -r check -a'' for more information.\n");
+		fprintf(stderr, "Initialization error in %s (mkpatch1)\n",
+			s->sfile);
 		cset_exit(1);
-	}
-	if (s->state & S_CSET) {
-		encoding = s->encoding;
-		if (encoding & E_GZIP) sccs_unzip(s);
 	}
 	if (cs->compat) prs_flags |= PRS_COMPAT;
 
 	if (cs->verbose>1) fprintf(stderr, "makepatch: %s ", s->gfile);
 
-	/*
-	 * Build a list of the deltas we're sending
-	 * Clear the D_SET flag because we need to be able to do one at
-	 * a time when sending the cset diffs.
-	 */
-	for (n = 0, d = s->table; d; d = d->next) {
-		if (d->flags & D_SET) n++;
-	}
-	list = calloc(n, sizeof(delta*));
-	newfile = s->tree->flags & D_SET;
-	for (i = 0, d = s->table; d; d = d->next) {
-		if (d->flags & D_SET) {
-			assert(i < n);
-			list[i++] = d;
-			d->flags &= ~D_SET;
+	empty = 0;
+	if (cs->metaOnly) {
+		int len1 = strlen(s->tree->pathname);
+		int len2 = strlen("BitKeeper/");
+		unless ((s->state & S_CSET) ||
+		    ((len1 > len2) &&
+		    strneq(s->tree->pathname, "BitKeeper/", len2))) {
+			empty = 1;
 		}
+		prs_flags |= PRS_LOGGING;
 	}
+
+	newfile = s->tree->flags & D_SET;
 
 	/*
 	 * For each file, spit out file seperators when the filename
 	 * changes.
 	 * Spit out the root rev so we can find if it has moved.
 	 */
-	for (i = n - 1; i >= 0; i--) {
-		d = list[i];
-		assert(d);
+
+	assert (s->gfile);
+	printf("== %s ==\n", s->gfile);
+
+	if (newfile) {
+		d = s->tree;
+		printf("New file: %s\n", d->pathname);
+		if (cs->compat) {
+			s->state |= S_READ_ONLY;
+			s->version = SCCS_VERSION_COMPAT;
+		}
+		sccs_perfile(s, stdout);
+	}
+
+	sccs_pdelta(s, sccs_ino(s), stdout);
+	printf("\n");
+
+	if (CSET(s)) {
+		seekto(s, s->data);
+		if (s->encoding & E_GZIP) {
+			zgets_init(s->where, s->size - s->data);
+		}
+	}
+
+	/*
+	 * Output the D_SET tagged deltas, now newest to oldest
+	 * XXX: Used to be D_SET was used because cset was output
+	 * by sccs_getdiffs.  Not the case now because cset output by
+	 * cset_diffs().
+	 *
+	 * If newfile, then the 1.0 delta must goes first, then the rest.
+	 * cset must go newest to oldest for cset_diffs() to work.
+	 * other files don't matter, so do same as cset file.
+	 */
+	e = (newfile) ? s->tree : s->table;
+	while (e) {
+		d = e;
+		if (newfile) {
+			newfile = 0;
+			e = s->table;
+		} else {
+			e = d->next;
+		}
+		unless (d->flags & D_SET) continue;
+		/* clear to not send 1.0 twice (only if newfile) */
+		d->flags &= ~D_SET;
+
 		if (cs->verbose > 2) fprintf(stderr, "%s ", d->rev);
 		if (cs->verbose == 2) fprintf(stderr, "%c\b", spin[deltas % 4]);
-		if (i == n - 1) {
-			unless (s->gfile) {
-				fprintf(stderr, "\n%s%c%s has no path\n",
-				    s->gfile, BK_FS, d->rev);
-				cset_exit(1);
-			}
-			printf("== %s ==\n", s->gfile);
-			if (newfile) {
-				printf("New file: %s\n", d->pathname);
-				if (cs->compat) {
-					s->state |= S_READ_ONLY;
-					s->version = SCCS_VERSION_COMPAT;
-				}
-				sccs_perfile(s, stdout);
-			}
-			s->rstop = s->rstart = s->tree;
-			sccs_pdelta(s, sccs_ino(s), stdout);
-			printf("\n");
-		}
 
 		/*
-		 * For each file, also eject the parent of the rev.
+		 * For each delta, also eject the parent of the rev.
 		 */
 		if (d->parent) {
 			sccs_pdelta(s, d->parent, stdout);
 			printf("\n");
 		}
-		s->rstop = s->rstart = d;
 		/*
-		 * XXX FIXME
-		 * TODO  move the test out side this loop. This would
-		 * be a little faster.
+		 * setting these both equal is how to pass 'd' to sccs_prs()
+		 * in the presense of PRS_PATCH bit in the prs_flags.
 		 */
-		empty = 0;
-		if (cs->metaOnly) {
-			int len1 = strlen(s->tree->pathname);
-			int len2 = strlen("BitKeeper/");
-			unless ((s->state & S_CSET) ||
-			    ((len1 > len2) &&
-			    strneq(s->tree->pathname, "BitKeeper/", len2))) {
-				empty = 1;
-			}
-			prs_flags |= PRS_LOGGING;
-		}
+		s->rstop = s->rstart = d;
 		if (sccs_prs(s, prs_flags, 0, NULL, stdout)) cset_exit(1);
 		printf("\n");
 		if (d->type == 'D') {
@@ -1262,13 +1266,18 @@ sccs_patch(sccs *s, cset_t *cs)
 			}
 			if (rc) { /* sccs_getdiffs errored */
 				fprintf(stderr,
-				    "Patch aborted, sccs_getdiffs %s failed\n",
+				    "Getdiff error in %s (mkpatch2)\n",
 				    s->sfile);
 				cset_exit(1);
 			}
 		}
 		printf("\n");
 		deltas++;
+	}
+	if (CSET(s) && (s->encoding & E_GZIP) && zgets_done()) {
+		fprintf(stderr, "Gzip error in %s (mkpatch3)\n",
+			s->sfile);
+		cset_exit(1);
 	}
 	if (cs->verbose == 2) {
 		fprintf(stderr, "%d revisions\r", deltas);
@@ -1277,8 +1286,6 @@ sccs_patch(sccs *s, cset_t *cs)
 		fprintf(stderr, "\n");
 	}
 	cs->ndeltas += deltas;
-	if (list) free(list);
-	if ((s->state & S_CSET) && (encoding & E_GZIP)) sccs_gzip(s);
 }
 
 
