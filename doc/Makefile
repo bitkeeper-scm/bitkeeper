@@ -19,8 +19,8 @@ bk_refcard.ps: bk_refcard.tr
 bk_refcard.pdf: bk_refcard.tr bk_refcard.ps
 	if uname -s | grep -q NT; \
 	then \
-		PATH="${WIN32_GS_PATH}/lib:${WIN32_GS_PATH}/bin" \
-		c:/winnt/system32/cmd /c ps2pdf12.bat bk_refcard.ps; \
+		PATH="${PATH}:${WIN32_GS_PATH}/lib:${WIN32_GS_PATH}/bin" \
+		cmd /c ps2pdf12.bat bk_refcard.ps; \
 	else \
 		case X`uname -n` in \
 		    Xqube*|Xmacos*) bk co -p bk_refcard.pdf.preformatted > bk_refcard.pdf;; \
