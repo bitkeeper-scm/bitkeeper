@@ -38,6 +38,27 @@ if [ ! -f SCCS/p.T ]; then echo Failed to leave file locked; exit 1; fi
 if [ ! -f T ]; then echo Failed to get file; exit 1; fi
 if writable T; then :; else echo Failed to leave file writeable; exit 1; fi
 echo OK
+if [ "$PLATFORM" = "UNIX" ]
+then #------------------------------------------------------------------
+echo $N Make sure delta -l works with \"make\" ........................$NL
+bk undos > hello.c <<EOF
+main() { }
+EOF
+bk new $Q hello.c
+bk edit $Q hello.c
+bk undos > hello.c <<EOF
+main()
+{
+	printf("hello world\n");
+}
+EOF
+cc -c hello.c
+sleep 1
+BK_FORCE_SFILE_MTIME=yes bk delta $Q -l -y"rev1" hello.c
+make -s hello  
+if [ ! -f hello ]; then echo failed; exit 1; fi
+echo OK
+fi #--------------------------------------------------------------------
 echo $N Make sure delta -il works ...................................$NL
 echo delta -il > init2
 bk delta $S -il init2

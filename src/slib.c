@@ -11701,7 +11701,34 @@ out:
 	}
 	Chmod(s->sfile, 0444);
 	unlink(s->pfile);
-	if ((flags & DELTA_SAVEGFILE) && HAS_GFILE(s)) sccs_touch(s);
+	if ((flags & DELTA_SAVEGFILE) &&
+	    HAS_GFILE(s) &&
+	    getenv("BK_FORCE_SFILE_MTIME")) {
+		struct	stat	sb;
+		struct	utimbuf	ut;
+
+		/*
+		 * To prevent the "make" command from doing a "get" due to 
+		 * sfile's newer modification time, and then fail due to the
+		 * editable gfile, adjust sfile's modification to be just
+		 * before that of gfile's.
+		 * Note: It is ok to do this, because we've already recorded
+		 * the time of the delta in the delta table.
+		 * A potential pitfall would be that it may confuse the backup
+		 * program to skip the sfile when doing a incremental backup.
+		 * This is why we we only do this when the user set the
+		 * BK_FORCE_SFILE_MTIME environment variable.
+		 */
+		if (lstat(s->gfile, &sb) == 0) {
+			ut.actime = time(0);
+			ut.modtime = sb.st_mtime - 1;
+			utime(s->sfile, &ut);
+		} else {
+			/* We should never get here */
+			perror(s->gfile);
+		}
+		
+	}
 	if (BITKEEPER(s) && !(flags & DELTA_NOPENDING)) {
 		 updatePending(s);
 	}
