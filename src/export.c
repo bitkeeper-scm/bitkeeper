@@ -111,8 +111,10 @@ usage:			system("bk help -s export");
 		f = popen("bk sfiles -luxg", "r");
 		while (fnext(buf, f)) {
 			chomp(buf);
-			unless (included(buf, include)) continue;
-			if (excluded(buf, exclude)) continue;
+			if ((excludes && match_globs(buf, excludes, 0)) ||
+			    (includes && !match_globs(buf, includes, 0))) {
+				continue;
+			}
 			if (!sysfiles && strneq(buf, "BitKeeper/", 10)) {
 				continue;
 			}

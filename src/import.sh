@@ -337,14 +337,14 @@ transfer_MKS () {
 	mycd "$2" || exit 1
 	# Double check we are in the BK tree.
 	test -f "BitKeeper/etc/SCCS/s.config" || exit 1
-	find . -type f | perl -w -e '
+	bk _find . -type f | perl -w -e '
 		while (<>) {
 			next if m|/SCCS/|i;
 			next if m|^./BitKeeper/|i;
 			chop;
 			unlink $_ unless m|/rcs/|i;
 		}'
-	find . -type f | perl -w -e '
+	bk _find . -type f | perl -w -e '
 		while ($old = <>) {
 			$old =~ s|^\./||;
 			next if $old =~ m|/SCCS/|i;
@@ -620,7 +620,7 @@ import_text () {
 }
 
 mvup() {
-	find . -type f | perl -w -e '
+	bk _find . -type f | perl -w -e '
 		while (<STDIN>) {
 			next unless m|,v$|;
 			chop;
@@ -689,7 +689,7 @@ import_RCS () {
 		rm -f ${TAGFILE}.raw
 		Done 1
 	}
-	sort +1n < ${TAGFILE}.raw | grep -v 'X$' > $TAGFILE
+	bk _sort -k2 -n < ${TAGFILE}.raw | grep -v 'X$' > $TAGFILE
 	rm -f ${TAGFILE}.raw
 	
 	if [ "X$BRANCH" != "X" ]
@@ -733,8 +733,8 @@ explain_tag_problem ()
     	bk rcsparse -d -t $BRANCH - < ${TMP}import$$ |
 		grep "^-${B}_BASE " > ${TMP}tagdbg$$
 
-	file1=`sort +1nr < ${TMP}tagdbg$$ | head -1 | sed -e 's/.*|//'`
-	file2=`sort +2n < ${TMP}tagdbg$$ | head -1 | sed -e 's/.*|//'`
+	file1=`bk _sort -k2 -nr < ${TMP}tagdbg$$ | sed -n '1{p;q}' | sed -e 's/.*|//'`
+	file2=`bk _sort -k3 -n < ${TMP}tagdbg$$ | sed -n '1{p;q}' | sed -e 's/.*|//'`
 	echo "       The files $file1 and $file2 don't agree when"
 	echo "       the branch $B was created!"
 	rm -f ${TMP}tagdbg$$

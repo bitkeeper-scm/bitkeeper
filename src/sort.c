@@ -8,6 +8,9 @@ typedef	struct	mem {
 	struct	mem *next;
 } mem_t;
 
+private	int	(*sortfcn)(const void *a, const void *b);
+private	int	sortfield = 0;
+
 private mem_t	*
 moreMem(mem_t *m)
 {
@@ -30,6 +33,30 @@ number_sort(const void *a, const void *b)
 }
 
 /*
+ * sort on the Nth field.  Split by whitespace only.
+ */
+private	int
+field_sort(const void *a, const void *b)
+{
+	char	*na, *nb;
+	int	i;
+
+	na = *(char **)a;
+	na += strspn(na, " \t");
+	for (i = 1; i < sortfield; i++) {
+		na += strcspn(na, " \t");
+		na += strspn(na, " \t");
+	}
+	nb = *(char **)b;
+	nb += strspn(nb, " \t");
+	for (i = 1; i < sortfield; i++) {
+		nb += strcspn(nb, " \t");
+		nb += strspn(nb, " \t");
+	}
+	return (sortfcn(&na, &nb));
+}
+
+/*
  * A simple sort clone.  This is often used to sort keys in the ChangeSet
  * file so the allocations are sized to do that efficiently.
  */
@@ -45,8 +72,9 @@ sort_main(int ac, char **av)
 	int	i, c;
 	mem_t	*mem;
 
-	while ((c = getopt(ac, av, "nru")) != -1) {
+	while ((c = getopt(ac, av, "k:nru")) != -1) {
 		switch (c) {
+		    case 'k': sortfield = atoi(optarg); break;
 		    case 'n': nflag = 1; break;
 		    case 'r': rflag = 1; break;
 		    case 'u': uflag = 1; break;
@@ -76,8 +104,9 @@ sort_main(int ac, char **av)
 		lines = addLine(lines, p);
 		n++;
 	}
+	sortfcn = nflag ? number_sort : string_sort;
 	qsort((void*)&lines[1], n, sizeof(char *),
-	    (nflag ? number_sort : string_sort));
+	    (sortfield ? field_sort : sortfcn));
 	if (rflag) reverseLines(lines);
 	EACH(lines) {
 		if (uflag && last && streq(last, lines[i])) continue;
