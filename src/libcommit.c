@@ -244,14 +244,16 @@ project_name()
 {
 	sccs	*s;
 	static	char pname[MAXLINE] = "";
-	char	changeset[MAXPATH] = CHANGESET;
+	char	*root, s_cset[MAXPATH] = CHANGESET;
 
 	if (pname[0]) return(pname); /* cached */
-	if (sccs_cd2root(0, 0) == -1) {
+	if ((root = sccs_root(0)) == NULL) {
 		fprintf(stderr, "project name: Can not find project root\n");
 		return (pname);
 	}
-	s = sccs_init(changeset, 0, 0);
+	sprintf(s_cset, "%s/%s", root, CHANGESET);
+
+	s = sccs_init(s_cset, 0, 0);
 	if (s && s->text && (int)(s->text[0])  >= 1) strcpy(pname, s->text[1]);
 	sccs_free(s);
 	return (pname);
@@ -323,6 +325,35 @@ mail(char *to, char *subject, char *file)
 		return;
 	}
 
+#ifdef WIN32
+	if (findprog("blat.exe") ) {
+		char *av[] = {"blat", file, "-t", to, "-s", subject, 0};
+
+		if (spawnvp_ex(_P_WAIT, av[0], av) == 0) return;
+	}
+	if (findprog("mail.bat") ) {
+		sprintf(buf,
+		    "%s/mail.bat -s \"%s\" %s %s", bin, subject, to, file);
+		if (system(buf) == 0) return;
+	} 
+	fprintf(stderr, "\n\
+===========================================================================\n\
+Can not find a working mailer.\n\n\
+If you have access to a SMTP server, you can install the \"blat\" mailer\n\
+with the following command:\n\n\
+	blat -install <smtp_server_address> <your email address>\n\
+\n\
+If you have a non-smtp connection, (e.g. MS exchange), you can supply\n\
+a mail.bat file to connect Bitkeeper to your mail server; the mail.bat \n\
+file should accept the three auguments, as follows:\n\n\
+	mail.bat file recipient subject\n\
+\n\
+You should put the mail.bat file in the BitKeeper directory.\n\
+The mail.bat command should exit with status zero when the mail is \n\
+sent sucessfully.\n\
+===========================================================================\n");
+	return;
+#else
 	while (paths[++i]) {
 		sprintf(sendmail, "%s/sendmail", paths[i]);
 		if (exists(sendmail)) {
@@ -354,6 +385,7 @@ mail(char *to, char *subject, char *file)
 		sprintf(buf, "%s -s \"%s\" %s < %s", mail, subject, to, file);
 	}
 	system(buf);
+#endif
 
 }
 

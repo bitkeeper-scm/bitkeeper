@@ -76,21 +76,6 @@ private	void	uniqRoot(sccs *s);
 private unsigned int u_mask;
 
 int
-executable(char *f)
-{
-	struct	stat sbuf;
-
-#ifdef WIN32
-	// XXX FIXME: should call GetBinaryType() here
-	// alos need add .exe extension 
-	return (1);
-#else
-	if (stat(f, &sbuf) == -1) return 0;
-	return (S_ISREG(sbuf.st_mode) && (sbuf.st_mode & 0111));
-#endif
-}
-
-int
 exists(char *s)
 {
 	struct	stat sbuf;

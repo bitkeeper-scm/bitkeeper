@@ -39,7 +39,7 @@ OBJ	= abort.o adler32.o admin.o bkd.o bkd_cd.o bkd_client.o \
 	  libsfiles.o libusers.o lines.o localtm.o locking.o \
 	  lod.o log.o logaddr.o logchangeset.o mkdir.o mklock.o mmap.o \
 	  mtime.o names.o newrev.o parent.o pending.o popen.o \
-	  port/disksp.o port/findprog.o port/fullname.o \
+	  port/disksp.o port/executable.o port/findprog.o port/fullname.o \
 	  port/gethost.o port/getinput.o port/platforminit.o \
 	  port/randomBits.o port/samepath.o port/sccs_root.o \
 	  port/spawn.o port/getnull.o prs.o pull.o purify.o push.o r2c.o \

@@ -504,27 +504,28 @@ next:		p = ++s;
 
 
 // XXX TODO move this function to the port directory
+// This should be done *after* we merge with the main tree
 private void
 platformInit(char **av)
 {
 	char	*p, *t, *s;
 	static	char buf[MAXPATH], buf1[MAXPATH];
-	char	link[MAXPATH];
+	char	buf2[10 * MAXPATH], link[MAXPATH];
 	int	add2path = 1;
 	int	n;
 	int	flags = SILENT;	/* for debugging */
 
 	if (bin) return;
-#ifdef	WIN32
-	setmode(1, _O_BINARY);
-	setmode(2, _O_BINARY);
-	localName2bkName(av[0], buf1);
-	av[0] = buf1;
-#endif
 	if ((editor = getenv("EDITOR")) == NULL) editor = "vi";
 	if ((pager = getenv("PAGER")) == NULL) pager = PAGER;
 
 	unless (p = getenv("PATH")) return;	/* and pray */
+#ifdef WIN32
+	setmode(1, _O_BINARY);
+	setmode(2, _O_BINARY);
+	localName2bkName(av[0], buf1);	av[0] = buf1;
+	localName2bkName(p, buf2);	p = buf2;
+#endif
 
 	/*
 	 * Find the program and if it is a symlink, then add where it
