@@ -8,7 +8,7 @@ cmd_push(int ac, char **av)
 	int	n, c, verbose = 1;
 	int	gzip = 0;
 	char	buf[4096];
-	int	fd, fd2, wfd, status;
+	int	fd2, wfd, status;
 	static	char *prs[] =
 	    { "bk", "prs", "-r1.0..", "-bhad:KEY:", "ChangeSet", 0 };
 	static	char *tp[] = { "bk", "takepatch", "-act", "-vv", 0 };

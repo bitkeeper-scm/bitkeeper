@@ -3,6 +3,7 @@
 #endif
 #include "../system.h"
 #include "../sccs.h"
+#include <sys/socket.h>
 #ifndef WIN32
 
 #define CACHED_PROXY "BitKeeper/etc/.cached_proxy"
@@ -60,9 +61,8 @@ extract(char *buf, char *type, char **proxies)
 char **
 http_get_file(char *host, char *path, char **proxies)
 {
-	int fd, rc, i;
-	char header[1024];
-	char buf[4096], *p, *q;
+	int fd;
+	char header[1024], buf[MAXLINE];
 
 	fd = connect_srv(host, 80);
 	if (fd < 0) {
