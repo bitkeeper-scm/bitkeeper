@@ -1158,9 +1158,13 @@ _install()
 	FORCE=0
 	CHMOD=YES
 	VERBOSE=NO
-	while getopts dfv opt
+	DLLOPTS=""
+	while getopts dfvlns opt
 	do
 		case "$opt" in
+		l) DLLOPTS="-l $DLLOPTS";; # enable bkshellx for local drives
+		n) DLLOPTS="-n $DLLOPTS";; # enable bkshellx for network drives
+		s) DLLOPTS="-s $DLLOPTS";; # enable bkscc dll
 		d) CHMOD=NO;;	# do not change permissions, dev install
 		f) FORCE=1;;	# force
 		v) VERBOSE=YES;;
@@ -1231,6 +1235,12 @@ _install()
 		(find . | xargs chgrp root) 2> /dev/null
 		find . | xargs chmod -w
 	}
+	# registry
+	if [ "X$OSTYPE" = "Xmsys" ]
+	then
+		test $VERBOSE = YES && echo "updating registry..."
+		gui/bin/tclsh gui/lib/registry.tcl $DLLOPTS "$DEST" 
+	fi
 	exit 0
 }
 

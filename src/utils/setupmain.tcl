@@ -37,11 +37,17 @@ proc initGlobals {} \
 	set runtime(tmpdir) [pwd]
 	set runtime(destination) ""
 	if {$tcl_platform(platform) == "windows"} {
+		set runtime(enableSccDLL) 1
+		set runtime(enableShellxLocal) 1
+		set runtime(enableShellxNetwork) 1
 		set runtime(places) \
 		    [list [normalize {C:/Program Files/BitKeeper}]]
 		set runtime(symlinkDir) ""
 		set id "./gnu/id"
 	} else {
+		set runtime(enableSccDLL) 0
+		set runtime(enableShellxLocal) 0
+		set runtime(enableShellxNetwork) 0
 		set runtime(symlinkDir) "/usr/bin"
 		set runtime(places) {
 			/usr/libexec/bitkeeper 
@@ -87,13 +93,19 @@ proc install {} \
 
 	set installfrom [pwd]
 
-	set err [catch {
-		doCommand bk install -v -f $runtime(destination)
-	} result]
+	set command [list doCommand bk install -vf]
+	if {$runtime(enableSccDLL)}	   {lappend command -s}
+	if {$runtime(enableShellxLocal)}   {lappend command -l}
+	if {$runtime(enableShellxNetwork)} {lappend command -n}
+	# destination must be normalized, otherwise we run into a 
+	# bug in the msys shell where mkdir -p won't work with 
+	# DOS-style (backward-slash) filenames.
+	lappend command [file normalize $runtime(destination)]
+	set err [catch $command result]
 
 	if {$err == 0} {
 		set newbk [file join $runtime(destination) bk]
-		set version [doCommand -nolog $newbk version]
+		set version [string trim [doCommand -nolog $newbk version]]
 		set m [string trim $::strings(InstallComplete)]
 		set m [string map [list %v $version] $m]
 		log "\n$m\n"
@@ -151,9 +163,21 @@ proc widgets {} \
 	    -icon bklogo
 
 	. buttonconfigure finish -text "Done"
-	. add path new -steps {Welcome PickPlace Install Summary}
-	. add path existing -steps {Welcome PickPlace OverWrite Install Summary}
-	. add path createDir -steps {Welcome PickPlace CreateDir Install Summary}
+	if {$tcl_platform(platform) eq "windows"} {
+		. add path new -steps \
+		    {Welcome PickPlace InstallDLLs Install Summary}
+		. add path existing -steps \
+		    {Welcome PickPlace OverWrite InstallDLLs Install Summary}
+		. add path createDir -steps \
+		    {Welcome PickPlace CreateDir InstallDLLs Install Summary}
+	} else {
+		. add path new -steps \
+		    {Welcome PickPlace Install Summary}
+		. add path existing -steps \
+		    {Welcome PickPlace OverWrite Install Summary}
+		. add path createDir -steps \
+		    {Welcome PickPlace CreateDir Install Summary}
+	}
 	. configure -path new
 
 	#-----------------------------------------------------------------------
@@ -297,6 +321,52 @@ proc widgets {} \
 		setDestination $::runtime(destinationRB)
 	}
 	
+	#-----------------------------------------------------------------------
+	. add step InstallDLLs \
+	    -title "Install BitKeeper DLLs" \
+	    -body {
+		    set w [$this info workarea]
+		    set bk [file join $::runtime(destination)/bk]
+		    set map [list \
+				 %D $::runtime(destination) \
+				 %B $::runtime(symlinkDir)\
+				]
+		    lappend map %bk $bk
+
+		    set d [string map $map $::strings(InstallDLLs)]
+		    $this stepconfigure InstallDLLs -description [unwrap $d]
+
+		    set ::runtime(installDLLs) 1
+
+		    checkbutton $w.shellx-local \
+			-anchor w \
+			-text "Enable shell extensions on LOCAL drives" \
+			-borderwidth 1 \
+			-variable ::runtime(enableShellxLocal) \
+			-onvalue 1 \
+			-offvalue 0 
+		    checkbutton $w.shellx-remote \
+			-anchor w \
+			-text "Enable shell extensions on NETWORK drives" \
+			-borderwidth 1 \
+			-variable ::runtime(enableShellxNetwork) \
+			-onvalue 1 \
+			-offvalue 0 
+		    checkbutton $w.bkscc \
+			-anchor w \
+			-text "Enable VC++ integration" \
+			-borderwidth 1 \
+			-variable ::runtime(enableSccDLL) \
+			-onvalue 1 \
+			-offvalue 0 
+
+		    frame $w.spacer1 -height 8 -borderwidth 0 
+		    pack $w.spacer1 -side top -fill x
+		    pack $w.shellx-local -side top -fill x -anchor w
+		    pack $w.shellx-remote -side top -fill x -anchor w
+		    pack $w.bkscc -side top -fill x -anchor w
+	    }
+
 	#-----------------------------------------------------------------------
 	. add step OverWrite \
 	    -title "Existing Installation" \
@@ -562,7 +632,7 @@ proc log {string {tag {}}} \
 	$::widgets(log) insert end $string $tag
 	$::widgets(log) configure -state disabled
 	$::widgets(log) see end-1c
-	update 
+	update idletasks
 }
 
 proc busy {on} \
@@ -850,6 +920,16 @@ set strings(PickPlace.windows) {
 set strings(Overwrite) {
 	BitKeeper appears to already be installed in %D. 
 	Please confirm the removal of the existing version before continuing.
+}
+
+set strings(InstallDLLs) {
+	BitKeeper includes optional integration with the explorer
+	and and Visual C++ 6.0. 
+
+	The explorer integration can be enabled separately for local
+	and remote hard drives. Enabling this option on remote drives
+	can lead to performance problems if you have a slow or
+	unreliable network. 
 }
 
 set strings(Install) {
