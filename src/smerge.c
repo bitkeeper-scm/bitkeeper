@@ -2,37 +2,39 @@
 #include "sccs.h"
 #include <string.h>
 
-typedef struct conflict	conflict_t;
+typedef struct conflct	conflct;
 typedef struct ld	ld_t;
-typedef struct diffline	diffline_t;
+typedef struct diffln	diffln;
 typedef struct file	file_t;
 
 private	char	*getrevs(int i, char *str);
 private int	do_weave_merge(u32 start, u32 end);
-private conflict_t	*find_conflicts(void);
-private void	merge_conflicts(conflict_t *head);
+private conflct	*find_conflicts(void);
+private void	merge_conflicts(conflct *head);
 private void	usage(void);
-private int	resolve_conflict(conflict_t *curr);
-private diffline_t	*unidiff(conflict_t *curr, int left, int right);
+private int	resolve_conflict(conflct *curr);
+private diffln	*unidiff(conflct *curr, int left, int right);
 private void	show_examples(void);
 private	int	parse_range(char *range, u32 *start, u32 *end);
 private int	sameline(ld_t *left, ld_t *right);
 private	void	file_init(file_t *f, char *filename);
 private	void	file_free(file_t *f);
 
-private	void	user_conflict(conflict_t *curr);
-private	void	user_conflict_fdiff(conflict_t *curr);
+private void	highlight_diff(diffln *diff);
+
+private	void	user_conflict(conflct *curr);
+private	void	user_conflict_fdiff(conflct *curr);
 
 /* automerge functions */
 private	void	enable_mergefcns(char *list, int enable);
 private	void	mergefcns_help(void);
 
-private int	merge_same_changes(conflict_t *r);
-private int	merge_only_one(conflict_t *r);
-private int	merge_content(conflict_t *r);
-private int	merge_common_header(conflict_t *r);
-private int	merge_common_footer(conflict_t *r);
-private	int	merge_common_deletes(conflict_t *r);
+private int	merge_same_changes(conflct *r);
+private int	merge_only_one(conflct *r);
+private int	merge_content(conflct *r);
+private int	merge_common_header(conflct *r);
+private int	merge_common_footer(conflct *r);
+private	int	merge_common_deletes(conflct *r);
 
 enum {
 	MODE_GCA,
@@ -54,8 +56,9 @@ struct ld {
 	u32	seq;		/* seq number for line */
 };
 
-struct diffline {
+struct diffln {
 	ld_t	*ld;
+	int	*highlight;
 	char	c;		/* character at start of line */
 };
 
@@ -343,13 +346,30 @@ printline(ld_t *ld, char first_char)
 	while (p < end) putc(*p++, outf);
 }
 
-struct conflict {
+private void
+printhighlight(int *highlight)
+{
+	int	s, e;
+	
+	putc('h', outf);
+	
+	while (1) {
+		s = highlight[0];
+		e = highlight[1];
+		if (s == 0 && e == 0) break;
+		fprintf(outf, " %d-%d", s, e);
+		highlight += 2;
+	}
+	putc('\n', outf);
+}
+
+struct conflct {
 	int	start[3];	/* lines at start of conflict */
 	int	end[3];		/* lines after end of conflict */
 	int	start_seq;	/* seq of lines before 'start' */
 	int	end_seq;	/* seq of lines at 'end' */
 	ld_t	*merged;	/* result of an automerge */
-	conflict_t	*prev, *next;
+	conflct	*prev, *next;
 	/* XXX need list of automerge algros that touched this block */
 };
 
@@ -357,7 +377,7 @@ struct conflict {
  * Print a series of lines on one side of a conflict
  */
 private void
-printlines(conflict_t *curr, int side)
+printlines(conflct *curr, int side)
 {
 	int	len = curr->end[side] - curr->start[side];
 	int	i;
@@ -371,8 +391,8 @@ printlines(conflict_t *curr, int side)
 private int
 do_weave_merge(u32 start, u32 end)
 {
-	conflict_t	*clist;
-	conflict_t	*curr;
+	conflct	*clist;
+	conflct	*curr;
 	int	mk[3];
 	int	i;
 	int	len;
@@ -387,7 +407,7 @@ do_weave_merge(u32 start, u32 end)
 	mk[0] = mk[1] = mk[2] = 0;
 	curr = clist;
 	while (curr) {
-		conflict_t	*tmp;
+		conflct	*tmp;
 
 		/* print lines up the the next conflict */
 		len = curr->start[GCA] - mk[GCA];
@@ -441,15 +461,15 @@ do_weave_merge(u32 start, u32 end)
  * Find all conflict sections in the file based only of sequence numbers.
  * Return a linked list of conflict regions.
  */
-private conflict_t *
+private conflct *
 find_conflicts(void)
 {
 	int	i, j;
 	int	mk[3];
 	ld_t	*lines[3];
-	conflict_t	*list = 0;
-	conflict_t	*end;
-	conflict_t	*p;
+	conflct	*list = 0;
+	conflct	*end;
+	conflct	*p;
 
 	for (i = 0; i < 3; i++) mk[i] = 0;
 
@@ -525,6 +545,7 @@ find_conflicts(void)
 		for (i = 0; i < 3; i++) {
 			p->end[i] = mk[i];
 		}
+		assert(seq[0]);
 		p->end_seq = seq[0];
 	}
 	return (list);
@@ -534,7 +555,7 @@ find_conflicts(void)
  * Return true if a line appears anywhere inside a conflict.
  */
 private int
-contains_line(conflict_t *c, ld_t *line)
+contains_line(conflct *c, ld_t *line)
 {
 	int	i, j;
 
@@ -553,7 +574,7 @@ contains_line(conflict_t *c, ld_t *line)
  * XXX should handle N
  */
 private void
-merge_conflicts(conflict_t *head)
+merge_conflicts(conflct *head)
 {
 	while (head) {
 		if (head->next && head->next->start[0] - head->end[0] == 1) {
@@ -561,7 +582,7 @@ merge_conflicts(conflict_t *head)
 			
 			if (contains_line(head, line) ||
 			    contains_line(head->next, line)) {
-				conflict_t	*tmp;
+				conflct	*tmp;
 				int	i;
 
 				/* merge the two regions */
@@ -569,6 +590,7 @@ merge_conflicts(conflict_t *head)
 				for (i = 0; i < 3; i++) {
 					head->end[i] = tmp->end[i];
 				}
+				assert(tmp->end_seq);
 				head->end_seq = tmp->end_seq;
 				head->next = tmp->next;
 				if (tmp->next) tmp->next->prev = head;
@@ -614,8 +636,8 @@ strdup_afterchar(const char *s, int c)
  * should be considered private and all operations are done
  * with the member functions below.
  */
-typedef struct diffwalk diffwalk_t;
-struct diffwalk {
+typedef struct difwalk difwalk;
+struct difwalk {
 	char	**lines;
 	FILE	*diff;
 	int	rline;
@@ -633,7 +655,7 @@ struct diffwalk {
  * Read nead command from diff stream
  */
 private void
-diffwalk_readcmd(diffwalk_t *dw)
+diffwalk_readcmd(difwalk *dw)
 {
 	char	buf[MAXLINE];
 	char	*p;
@@ -687,10 +709,10 @@ diffwalk_readcmd(diffwalk_t *dw)
 /*
  * create a new diffwalk struct from two filenames
  */
-private diffwalk_t *
+private difwalk *
 diffwalk_new(char *left, char *right)
 {
-	diffwalk_t	*dw;
+	difwalk	*dw;
 	char	*cmd;
 
 	new(dw);
@@ -709,7 +731,7 @@ diffwalk_new(char *left, char *right)
  * file.
  */
 private int
-diffwalk_nextdiff(diffwalk_t *dw)
+diffwalk_nextdiff(difwalk *dw)
 {
 	return (dw->cmd.gcastart);
 }
@@ -719,7 +741,7 @@ diffwalk_nextdiff(diffwalk_t *dw)
  * GCA line number.
  */
 private void
-diffwalk_extend(diffwalk_t *dw, int gcalineno)
+diffwalk_extend(difwalk *dw, int gcalineno)
 {
 	char	*line;
 
@@ -752,7 +774,7 @@ diffwalk_extend(diffwalk_t *dw, int gcalineno)
  * Start a new diff at the given line number in the GCA file.
  */
 private void
-diffwalk_start(diffwalk_t *dw, int gcalineno)
+diffwalk_start(difwalk *dw, int gcalineno)
 {
 	assert(gcalineno <= dw->cmd.gcastart);
 	while (dw->rline < gcalineno + dw->offset) {
@@ -768,7 +790,7 @@ diffwalk_start(diffwalk_t *dw, int gcalineno)
  * Return the ending GCA line number for the current diff region
  */
 private int
-diffwalk_end(diffwalk_t *dw)
+diffwalk_end(difwalk *dw)
 {
 	return (dw->end);
 }
@@ -778,7 +800,7 @@ diffwalk_end(diffwalk_t *dw)
  * and prepare for a new diff
  */
 private char **
-diffwalk_return(diffwalk_t *dw)
+diffwalk_return(difwalk *dw)
 {
 	char	**ret = dw->lines;
 	dw->lines = 0;
@@ -789,7 +811,7 @@ diffwalk_return(diffwalk_t *dw)
  * free a diffwalk struct
  */
 private void
-diffwalk_free(diffwalk_t *dw)
+diffwalk_free(difwalk *dw)
 {
 	mclose(dw->right);
 	assert(dw->lines == 0);
@@ -803,8 +825,8 @@ do_diff_merge(int start, int end)
 	char	*cmd;
 	char	files[3][MAXPATH];
 	char	**lines[3];
-	diffwalk_t	*ldiff;
-	diffwalk_t	*rdiff;
+	difwalk	*ldiff;
+	difwalk	*rdiff;
 	MMAP	*gcafile;
 	int	gcaline;
 	int	ret = 0;
@@ -946,7 +968,7 @@ fagets(FILE *fh)
 struct mergefcns {
 	char	*name;		/* "name" of function for commandline */
 	int	enable;		/* is this function enabled by default? */
-	int	(*fcn)(conflict_t *r);
+	int	(*fcn)(conflct *r);
 	char	*help;
 } mergefcns[] = {
 	{"1",	1, merge_same_changes,
@@ -1024,7 +1046,7 @@ to change the way smerge will automerge.  Starred entries are on by default.\n")
  * Try automerging and then print the merge, or display a conflict.
  */
 private int
-resolve_conflict(conflict_t *curr)
+resolve_conflict(conflct *curr)
 {
 	int	i;
 	int	ret = 0;
@@ -1088,7 +1110,7 @@ sameline(ld_t *left, ld_t *right)
  * Sequence numbers are ignored in the comparison.
  */
 private int
-samedata(conflict_t *c, int l, int r)
+samedata(conflct *c, int l, int r)
 {
 	int	i;
 	int	len;
@@ -1112,10 +1134,10 @@ samedata(conflict_t *c, int l, int r)
  * Print a conflict region that must be resolved by the user.
  */
 private void
-user_conflict(conflict_t *curr)
+user_conflict(conflct *curr)
 {
 	int	i;
-	diffline_t	*diffs;
+	diffln	*diffs;
 	int	sameleft;
 	int	sameright;
 
@@ -1202,13 +1224,13 @@ user_conflict(conflict_t *curr)
  * Print a conflict in fdiff format
  */
 private void
-user_conflict_fdiff(conflict_t *c)
+user_conflict_fdiff(conflct *c)
 {
 	int	i, j;
-	diffline_t	*left, *right;
-	diffline_t	*diffs;
-	diffline_t	*rightbuf;
-	diffline_t	*lp, *rp;
+	diffln	*left, *right;
+	diffln	*diffs;
+	diffln	*rightbuf;
+	diffln	*lp, *rp;
 	ld_t	*p, *end;
 	ld_t	blankline;
 
@@ -1220,7 +1242,7 @@ user_conflict_fdiff(conflict_t *c)
 	    case MODE_2WAY:
 		/* fake a diff output */
 		left = malloc((c->end[LEFT] - c->start[LEFT] + 1) *
-		    sizeof(diffline_t));
+		    sizeof(diffln));
 		p = &body[LEFT].lines[c->start[LEFT]];
 		end = &body[LEFT].lines[c->end[LEFT]];
 		i = 0;
@@ -1231,7 +1253,7 @@ user_conflict_fdiff(conflict_t *c)
 		}
 		left[i].ld = 0;
 		right = malloc((c->end[RIGHT] - c->start[RIGHT] + 1) *
-		    sizeof(diffline_t));
+		    sizeof(diffln));
 		p = &body[RIGHT].lines[c->start[RIGHT]];
 		end = &body[RIGHT].lines[c->end[RIGHT]];
 		i = 0;
@@ -1245,7 +1267,7 @@ user_conflict_fdiff(conflict_t *c)
 	    case MODE_NEWONLY:
 		diffs = unidiff(c, GCA, LEFT);
 		for (i = 0; diffs[i].ld; i++);
-		left = malloc((i+1) * sizeof(diffline_t));
+		left = malloc((i+1) * sizeof(diffln));
 		j = 0;
 		for (i = 0; diffs[i].ld; i++) {
 			if (diffs[i].c != '-') {
@@ -1256,7 +1278,7 @@ user_conflict_fdiff(conflict_t *c)
 		free(diffs);
 		diffs = unidiff(c, GCA, RIGHT);
 		for (i = 0; diffs[i].ld; i++);
-		right = malloc((i+1) * sizeof(diffline_t));
+		right = malloc((i+1) * sizeof(diffln));
 		j = 0;
 		for (i = 0; diffs[i].ld; i++) {
 			if (diffs[i].c != '-') {
@@ -1271,6 +1293,13 @@ user_conflict_fdiff(conflict_t *c)
 		exit(2);
 		break;
 	}
+	
+	/*
+	 * generate highlighting, don't forget to free below
+	 */
+	highlight_diff(left);
+	highlight_diff(right);
+
 	/*
 	 * Need to allocate rightbuf to hold data that will be printed
 	 * on the right.
@@ -1279,7 +1308,7 @@ user_conflict_fdiff(conflict_t *c)
 	i = 0;
 	for (diffs = left; diffs->ld; diffs++) i++;
 	for (diffs = right; diffs->ld; diffs++) i++;
-	rightbuf = malloc((i+1) * sizeof(diffline_t));
+	rightbuf = malloc((i+1) * sizeof(diffln));
 
 	blankline.line = "\n";
 	blankline.len = 1;
@@ -1295,20 +1324,25 @@ user_conflict_fdiff(conflict_t *c)
 		if (!rp->ld || lp->ld && lp->ld->seq < rp->ld->seq) {
 			/* line on left */
 			printline(lp->ld, lp->c);
+			if (lp->highlight) printhighlight(lp->highlight);
 			rightbuf[i].ld = &blankline;
 			rightbuf[i].c = 's';
+			rightbuf[i].highlight = 0;
 			++lp;
 		} else if (!lp->ld || rp->ld->seq < lp->ld->seq) {
 			/* line on right */
 			printline(&blankline, 's');
 			rightbuf[i].ld = rp->ld;
 			rightbuf[i].c = rp->c;
+			rightbuf[i].highlight = rp->highlight;
 			++rp;
 		} else {
 			/* matching line */
 			printline(lp->ld, lp->c);
+			if (lp->highlight) printhighlight(lp->highlight);
 			rightbuf[i].ld = rp->ld;
 			rightbuf[i].c = rp->c;
+			rightbuf[i].highlight = rp->highlight;
 			++lp;
 			++rp;
 		}
@@ -1316,7 +1350,22 @@ user_conflict_fdiff(conflict_t *c)
 	}
 
 	fputs("R\n", outf);
-	for (j = 0; j < i; j++) printline(rightbuf[j].ld, rightbuf[j].c);
+	for (j = 0; j < i; j++) {
+		printline(rightbuf[j].ld, rightbuf[j].c);
+		if (rightbuf[j].highlight) {
+			printhighlight(rightbuf[j].highlight);
+		}
+	}
+
+	/* 
+	 * free highlight,  C++ makes this much nicer
+	 */
+	for (i = 0; left[i].ld; i++) {
+		if (left[i].highlight) free(left[i].highlight);
+	}
+	for (i = 0; right[i].ld; i++) {
+		if (right[i].highlight) free(right[i].highlight);
+	}
 
 	free(left);
 	free(right);
@@ -1325,7 +1374,7 @@ user_conflict_fdiff(conflict_t *c)
 
 /*
  * do a diff of two sides of a conflict region and return
- * add array of diffline_t structures.  The diff is purely based on
+ * an array of diffln structures.  The diff is purely based on
  * sequence numbers and is very quick.
  * The returned array is allocated with malloc and needs to be freed by
  * the user and the end of the array is marked by a ld pointer set to null.
@@ -1337,15 +1386,15 @@ user_conflict_fdiff(conflict_t *c)
  *    }
  *    free(diffs);
  */
-private diffline_t *
-unidiff(conflict_t *curr, int left, int right)
+private diffln *
+unidiff(conflct *curr, int left, int right)
 {
 	ld_t	*llines, *rlines;
 	ld_t	*el, *er;
-	diffline_t	*out;
-	diffline_t	*p;
-	diffline_t	*del, *delp;
-	diffline_t	*ins, *insp;
+	diffln	*out;
+	diffln	*p;
+	diffln	*del, *delp;
+	diffln	*ins, *insp;
 
 	llines = &body[left].lines[curr->start[left]];
 	rlines = &body[right].lines[curr->start[right]];
@@ -1353,9 +1402,9 @@ unidiff(conflict_t *curr, int left, int right)
 	er = &body[right].lines[curr->end[right]];
 
 	/* allocate the maximum space that might be needed. */
-	p = out = malloc((el - llines + er - rlines + 1) * sizeof(diffline_t));
-	delp = del = malloc((el - llines) * sizeof(diffline_t));
-	insp = ins = malloc((er - rlines) * sizeof(diffline_t));
+	p = out = calloc(el - llines + er - rlines + 1, sizeof(diffln));
+	delp = del = calloc(el - llines, sizeof(diffln));
+	insp = ins = calloc(er - rlines, sizeof(diffln));
 
 	while (llines < el || rlines < er) {
 		if (rlines == er || llines < el && llines->seq < rlines->seq) {
@@ -1370,13 +1419,13 @@ unidiff(conflict_t *curr, int left, int right)
 			assert(llines->len == rlines->len);
 			if (delp > del) {
 				int	cnt = delp - del;
-				memcpy(p, del, cnt * sizeof(diffline_t));
+				memcpy(p, del, cnt * sizeof(diffln));
 				p += cnt;
 				delp = del;
 			}
 			if (insp > ins) {
 				int	cnt = insp - ins;
-				memcpy(p, ins, cnt * sizeof(diffline_t));
+				memcpy(p, ins, cnt * sizeof(diffln));
 				p += cnt;
 				insp = ins;
 			}
@@ -1389,14 +1438,14 @@ unidiff(conflict_t *curr, int left, int right)
 	}
 	if (delp > del) {
 		int	cnt = delp - del;
-		memcpy(p, del, cnt * sizeof(diffline_t));
+		memcpy(p, del, cnt * sizeof(diffln));
 		p += cnt;
 		delp = del;
 	}
 	free(del);
 	if (insp > ins) {
 		int	cnt = insp - ins;
-		memcpy(p, ins, cnt * sizeof(diffline_t));
+		memcpy(p, ins, cnt * sizeof(diffln));
 		p += cnt;
 		insp = ins;
 	}
@@ -1405,6 +1454,77 @@ unidiff(conflict_t *curr, int left, int right)
 	p->c = 0;
 
 	return (out);
+}
+
+/*
+ * Look at a pair of matching lines and attempt to highlight them.
+ */
+private void
+highlight_line(diffln *del, diffln *add)
+{
+	int s, e;
+	char	*dline = del->ld->line;
+	int	dlen = del->ld->len;
+	char	*aline = add->ld->line;
+	int	alen = add->ld->len;
+	int	len;
+
+	s = 0;
+	while (s < dlen && s < alen && dline[s] == aline[s]) s++;
+	
+	e = 0;
+	while (e < dlen - s && e < alen - s && 
+	    dline[dlen - e - 1] == aline[alen - e - 1]) e++;
+	
+	len = min(alen, dlen);
+
+	if (s + e < len / 3) return; /* not enough matched */
+	
+	if (s + e < dlen) {
+		del->highlight = calloc(4, sizeof(int));
+		del->highlight[0] = s;
+		del->highlight[1] = dlen - e;
+	}
+	if (s + e < alen) {
+		add->highlight = calloc(4, sizeof(int));
+		add->highlight[0] = s;
+		add->highlight[1] = alen - e;
+	}
+}
+
+/*
+ * Walk replacements in a diff and find lines that are mostly similar.
+ * For those lines generate chararacter highlighting information to
+ * mark the characters that have changed.
+ *
+ * For any line that should be highlighted, the highlight field of
+ * the diffln struct is set of an array of character pairs.  The array
+ * ends at the pair 0,0.  (The array is allocated with malloc and it
+ * is up to the user to free.
+ */
+private void
+highlight_diff(diffln *diff)
+{
+	int	a, b;
+
+	a = 0;
+	while (1) {
+		/* find start of deleted region */
+		while (diff[a].ld && diff[a].c != '-') a++;
+		unless (diff[a].ld) return;
+		
+		/* find replacements */
+		b = a + 1;
+		while (diff[b].ld && diff[b].c == '-') b++;
+
+		while (diff[b].ld && diff[a].c == '-' && diff[b].c == '+') {
+			/* found a replacement do highlighting */
+			highlight_line(&diff[a], &diff[b]);
+			a++;
+			b++;
+		}
+		a = b;
+	}
 }
 
 private void
@@ -1498,7 +1618,7 @@ parse_range(char *range, u32 *start, u32 *end)
  * All the lines on both sides are identical.
  */
 private int
-merge_same_changes(conflict_t *c)
+merge_same_changes(conflct *c)
 {
 	int	i;
 
@@ -1518,7 +1638,7 @@ merge_same_changes(conflict_t *c)
  * Only one side make changes
  */
 private int
-merge_only_one(conflict_t *c)
+merge_only_one(conflct *c)
 {
 	int	i;
 
@@ -1549,14 +1669,14 @@ merge_only_one(conflict_t *c)
  * Return NULL if the diff doesn't match the 'modification' pattern.
  */
 private u32 *
-lines_modified(diffline_t *diff)
+lines_modified(diffln *diff)
 {
 	u32	*out = 0;
 	u32	*op;
 	int	i;
 	int	saw_deletes;
 	int	saw_adds;
-	diffline_t	*p;
+	diffln	*p;
 
 	/* count number of deleted lines */
 	i = 0;
@@ -1594,7 +1714,7 @@ lines_modified(diffline_t *diff)
  * if those numbers are unmodified in the diff.
  */
 private int
-are_unmodified(diffline_t *diff, u32 *lines)
+are_unmodified(diffln *diff, u32 *lines)
 {
 	int	lcnt;
 	u32	s;
@@ -1619,10 +1739,10 @@ are_unmodified(diffline_t *diff, u32 *lines)
  * of 0 or more lines.
  */
 private int
-merge_content(conflict_t *c)
+merge_content(conflct *c)
 {
-	diffline_t	*left, *right;
-	diffline_t	*lp, *rp;
+	diffln	*left, *right;
+	diffln	*lp, *rp;
 	u32	*modified;
 	int	i;
 	int	ret = 0;
@@ -1707,13 +1827,14 @@ merge_content(conflict_t *c)
  * and those indexes.
  */
 private void
-split_conflict(conflict_t *c, int splitidx[3])
+split_conflict(conflct *c, int splitidx[3])
 {
-	conflict_t	*newc;
+	conflct	*newc;
 	int	i;
 	u32	seq;
 
 	seq = body[GCA].lines[c->start[GCA] + splitidx[GCA]].seq;
+	assert(seq);
 
 	/* create a new conflict region */
 	new(newc);
@@ -1722,6 +1843,8 @@ split_conflict(conflict_t *c, int splitidx[3])
 		newc->end[i] = c->end[i];
 		newc->start[i] = c->end[i] = c->start[i] + splitidx[i];
 	}
+	newc->end_seq = c->end_seq;
+
 	c->end_seq = seq;
 	newc->start_seq = seq;
 
@@ -1737,7 +1860,7 @@ split_conflict(conflict_t *c, int splitidx[3])
  * identical data.
  */
 private int
-merge_common_header(conflict_t *c)
+merge_common_header(conflct *c)
 {
 	ld_t	*start[3];
 	int	len[3];
@@ -1779,7 +1902,7 @@ merge_common_header(conflict_t *c)
  * identical data.
  */
 private int
-merge_common_footer(conflict_t *c)
+merge_common_footer(conflct *c)
 {
 	ld_t	*start[3];
 	int	len[3];
@@ -1823,10 +1946,10 @@ merge_common_footer(conflict_t *c)
  * conflict.
  */
 private int
-merge_common_deletes(conflict_t *c)
+merge_common_deletes(conflct *c)
 {
-	diffline_t	*left, *right;
-	diffline_t	*p;
+	diffln	*left, *right;
+	diffln	*p;
 	int	splitidx[3];
 	int	i, j;
 	int	ret = 0;
