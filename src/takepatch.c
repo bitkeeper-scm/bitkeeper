@@ -236,6 +236,9 @@ extractDelta(char *name, sccs *s, int newFile, FILE *f, int flags)
 				exit(1);
 			}
 		}
+		if ((echo > 5) && parent) {
+			fprintf(stderr, "GCA %s\n", parent->rev);
+		}
 		gca = parent;
 	}
 
@@ -373,6 +376,7 @@ applyPatch(int flags)
 	}
 	assert(gca);
 	assert(gca->rev);
+	if (echo > 5) fprintf(stderr, "rmdel %s from %s\n", gca->rev, s->sfile);
 	if (sccs_rmdel(s, gca->rev, 1, 0)) {
 		unless (BEEN_WARNED(s)) {
 			fprintf(stderr, "rmdel of %s failed.\n", p->resyncFile);
@@ -522,9 +526,13 @@ getLocals(sccs *s, delta *d, char *name)
 	sprintf(tmpf, "RESYNC/%s", name);
 	p->resyncFile = strdup(tmpf);
 	sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-diffs", no);
-	p->diffFile = strdup(tmpf);
-	sccs_restart(s);
-	sccs_getdiffs(s, d->rev, 0, tmpf);
+	unless (d->flags & D_META) {
+		p->diffFile = strdup(tmpf);
+		sccs_restart(s);
+		sccs_getdiffs(s, d->rev, 0, tmpf);
+	} else {
+		p->flags |= PATCH_META;
+	}
 	d->date = sccs_date2time(d->sdate, d->zone, 0);
 	sccs_sdelta(tmpf, d->parent);
 	p->pid = strdup(tmpf);
