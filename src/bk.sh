@@ -304,6 +304,25 @@ _clone() {
 	exec ${BIN}resync -ap "$@"
 }
 
+# Advertise this repository for remote lookup
+_advertise()
+{
+	FILE=${BIN}tmp/advertised
+	while getopts l opt
+	do	case "$opt" in
+		    l) cat $FILE; exit 0;;
+		esac
+	done
+	_cd2root
+	KEY=`${BIN}prs -hr+ -d:ROOTKEY: ChangeSet`
+	if [ ! -f $FILE ]
+	then	echo "$KEY	$PWD" > $FILE
+	else	grep -v "$PWD" $FILE > ${FILE}$$
+		echo "$KEY	$PWD" >> ${FILE}$$
+		mv -f ${FILE}$$ $FILE
+	fi
+}
+
 # Manually set the parent pointer for a repository.
 _parent() {
 	_cd2root
@@ -1268,16 +1287,16 @@ _export() {
 	Q=-q
 	K=
 	R=
-	WRITE=
+	WRITE=NO
 	INCLUDE=
 	EXCLUDE=
-	USAGE1="usage: bk export [-D] [-vew] [-i<pattern>] [-x<pattern>]"
-	USAGE2="	[-I <file>] [-X<file>] [-r<rev> | -d<date>] [source] dest"
-	while getopts vewDi:x:I:X:r:d: OPT
+	USAGE1="usage: bk export [-kwv] [-i<pattern>] [-x<pattern>]"
+	USAGE2="	[-r<rev> | -d<date>] [source] dest"
+	while getopts kwvi:x:r:d: OPT
 	do	case $OPT in
 		v)	Q=;;
-		e)	K=-k WRITE=t;;
-		w)	WRITE=t;;
+		k)	K=-k;;
+		w)	WRITE=YES;;
 		r|d)	if [ x$R != x ]
 			then	echo "export: use only one -r or -d option"
 				exit 2
@@ -1285,8 +1304,6 @@ _export() {
 			R="-$OPT$OPTARG";;
 		i)	INCLUDE="| egrep -e '$OPTARG'";;
 		x)	EXCLUDE="| egrep -ve '$OPTARG'";;
-		D|I|X)	echo "sorry, option $OPT is not implemented"
-			exit 2;;
 		*)	echo "$USAGE1"
 			echo "$USAGE2"
 			exit 2;;
@@ -1317,14 +1334,14 @@ _export() {
 	| sed 's/:/ /' | while read file rev
 	do
 		PN=`bk prs -r$rev -hd:DPN: $SRC/$file`
-		if ${BIN}get $K $Q -r$rev -G$DST/$PN $SRC/$file
+		if ! ${BIN}get $K $Q -r$rev -G$DST/$PN $SRC/$file
 		then	DIR=`dirname $DST/$$PN`
 			mkdir -p $DIR || exit 1
 			${BIN}get $K $Q -r$rev -G$DST/$PN $SRC/$file
 		fi
 	done
 
-	if [ x$WRITE != x ]
+	if [ $WRITE = YES ]
 	then	chmod -R u+w,a+rX $DST
 	fi
 }
@@ -1391,7 +1408,8 @@ case "$1" in
     mv|edit|unedit|unlock|man|undo|save|rm|new|version|\
     root|status|export|users|sdiffs|unwrap|clone|\
     pull|push|parent|diffr|fix|info|vi|r2c|rev2cset|\
-    topics|chmod|gone|tag|ignore|regression|keys|csets)
+    topics|chmod|gone|tag|ignore|regression|keys|csets|\
+    advertise)
 	cmd=$1
     	shift
 	_$cmd "$@"
