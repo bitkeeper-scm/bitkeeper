@@ -53,7 +53,7 @@ doit(char *file)
 	save = p = mmap(0, sbuf.st_size, PROT_READ, MAP_SHARED, fd, 0);
 	end = p + sbuf.st_size;
 	close(fd);
-	if ((int)p == -1) {
+	if ((int)(long)p == -1) {
 		perror("mmap");
 		return (-1);
 	}

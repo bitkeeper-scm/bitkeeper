@@ -320,18 +320,18 @@ addLine(char **space, char *line)
 		space = calloc(32, sizeof(char *));
 		assert(space);
 		space[0] = (char *)32;
-	} else if (space[(int)space[0]-1]) {	/* full up, dude */
-		int	size = (int)space[0];
+	} else if (space[(int)(long)space[0]-1]) {	/* full up, dude */
+		int	size = (int)(long)space[0];
 		char	**tmp = calloc(size*2, sizeof(char*));
 
 		assert(tmp);
 		bcopy(space, tmp, size*sizeof(char*));
-		tmp[0] = (char *)(size * 2);
+		tmp[0] = (char *)(long)(size * 2);
 		free(space);
 		space = tmp;
 	}
 	EACH(space);	/* I want to get to the end */
-	assert(i < (int)space[0]);
+	assert(i < (int)(long)space[0]);
 	assert(space[i] == 0);
 	space[i] = line;
 	return (space);
@@ -360,7 +360,7 @@ removeLine(char **space, char *s)
 		EACH(space) {
 			if (streq(space[i], s)) {
 				free(space[i]);
-				while ((++i < (int)space[0]) && space[i]) {
+				while ((++i< (int)(long)space[0]) && space[i]) {
 					space[i-1] = space[i];
 					space[i] = 0;
 				}

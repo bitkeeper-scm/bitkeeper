@@ -27,7 +27,7 @@ randomBits(char *buf)
 		u32 x, y;
 
 		gettimeofday(&tv, NULL);
-		x = (u32)sbrk(0) ^ (u32)&a;
+		x = (u32)(long)sbrk(0) ^ (u32)(long)&a;
 		y = ((u32)getpid() << 16) + (u32)getuid();
 		y ^= tv.tv_usec;
 
