@@ -12,7 +12,7 @@ private void	checkRev(char *);
 int
 undo_main(int ac,  char **av)
 {
-	int	c, rc, 	force = 0, save = 1;
+	int	c, rc, 	force = 0, save = 1, ckRev = 0;
 	char	buf[MAXLINE];
 	char	rev_list[MAXPATH], undo_list[MAXPATH] = { 0 };
 	char	*qflag = "", *vflag = "-v";
@@ -29,7 +29,7 @@ undo_main(int ac,  char **av)
 			break;
 		    case 'f': force  =  1; break;
 		    case 'q': qflag = "-q"; vflag = ""; break;
-		    case 'r': checkRev(rev = optarg); break;
+		    case 'r': rev = optarg; ckRev++; break;
 		    case 's': save = 0; break;
 		    default :
 			fprintf(stderr, "unknow option <%c>\n", c);
@@ -44,7 +44,7 @@ undo_main(int ac,  char **av)
 		fprintf(stderr, "usage bk undo [-afqs] -rcset-revision\n");
 		exit(1);
 	}
-
+	if (ckRev) checkRev(rev);
 	sprintf(rev_list, "%s/bk_rev_list%d",  TMP_PATH, getpid());
 	fileList = mk_list(rev_list, rev);
 	if (!fileList || clean_file(fileList)) goto err;
