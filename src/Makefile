@@ -3,9 +3,8 @@ BINS	= delta get ci co admin diffs clean prs what sinfo sccssh sids \
 	  smoosh sccslog sfiles renumber lines rmdel takepatch \
 	  smark cset g2sccs range zone gethost undos chksum rechksum \
 	  cset_todo sccsmv sccsrm sccscat csetmark key2rev edit unedit sdiffs \
-	  check
+	  check fdiff
 SCRIPTS	= rcs2sccs testfast bk import resolve resync
-GUIBIN	= gui/fdiff
 GUISCR	= gui/sccstool gui/citool gui/vitool gui/fm gui/fm3 \
 	  gui/bithelp gui/mkindex
 LIBS	= zlib/libz.a mdbm/libmdbm.a libsccs.a
@@ -40,15 +39,15 @@ BINOBJ  = admin.o csetmark.o key2rev.o rechksum.o sccsmv.o smoosh.o \
 	  diffs.o rmdel.o sccssh.o what.o co.o g2sccs.o \
 	  prs.o sccs_mv.o sfind.o zone.o cset.o get.o rangemain.o \
 	  sccscat.o sids.o cset_todo.o gethost.o rcs.o sccslog.o sinfo.o \
-	  gui/fdiff.o check.o
+	  fdiff.o check.o
 
 SRCS	= slib.c range.c newrev.c getopt.c popen.c libdiff.c \
-	  sfiles.c purify.c zgets.c disksp.c dirname.c \
+	  sfiles.c purify.c zgets.c disksp.c dirname.c fdiff.c \
 	  mdbm/mdbm.c mdbm/hash.c mdbm/debug.c \
 	  zlib/adler32.c zlib/compress.c zlib/crc32.c zlib/gzio.c \
 	  zlib/uncompr.c zlib/deflate.c zlib/trees.c zlib/zutil.c \
 	  zlib/inflate.c zlib/infblock.c zlib/inftrees.c zlib/infcodes.c \
-	  zlib/infutil.c zlib/inffast.c gui/fdiff.c \
+	  zlib/infutil.c zlib/inffast.c \
 	  delta.c get.c ci.c co.c admin.c diffs.c clean.c prs.c what.c \
 	  sinfo.c sccssh.c sids.c smoosh.c sccslog.c sfind.c \
 	  renumber.c lines.c rmdel.c takepatch.c smark.c \
@@ -204,8 +203,8 @@ cset_todo: cset_todo.o mdbm/libmdbm.a
 	$(CC) $(CFLAGS) -o cset_todo cset_todo.o $(LMDBM)
 zone: zone.o localtm.o
 	$(CC) $(CFLAGS) -o zone zone.o localtm.o
-gui/fdiff: gui/fdiff.o
-	$(CC) $(CFLAGS) gui/fdiff.o -o gui/fdiff
+fdiff: fdiff.o purify.o
+	$(CC) $(CFLAGS) fdiff.o purify.o -o fdiff
 
 range: rangemain.o $(LIBS)
 	$(CC) $(CFLAGS) rangemain.o $(LINK) -o range
