@@ -223,13 +223,13 @@ sccs_readlockf(const char *file, pid_t *pidp, char **hostp, time_t *tp)
 	p = strchr(buf, ' ');
 	assert(p);
 	*p++ = 0;
-	*pidp = atoi(buf);
+	*pidp = strtoul(buf, 0, 0);
 	host = p;
 	p = strchr(host, ' ');
 	assert(p);
 	*p++ = 0;
 	*hostp = strdup(host);
-	*tp = atoi(p);
+	*tp = strtoul(p, 0, 0);
 	return (0);
 }
 

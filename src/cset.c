@@ -1161,7 +1161,7 @@ sccs_patch(sccs *s, cset_t *cs)
 {
 	delta	*d;
 	int	deltas = 0, prs_flags = (PRS_PATCH|SILENT);
-	int	i, n, newfile, empty, encoding = 0;
+	int	i, n, newfile, empty;
 	delta	**list;
 
         if (sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0, 0)) {
@@ -1169,13 +1169,6 @@ sccs_patch(sccs *s, cset_t *cs)
 		fprintf(stderr,
 		    "Run ``bk -r check -a'' for more information.\n");
 		cset_exit(1);
-	}
-	if (s->state & S_CSET) {
-		encoding = s->encoding;
-		if (encoding & E_GZIP) {
-			/* if unable to unzip then remember that */
-			unless (sccs_unzip(s) == s) encoding = 0;
-		}
 	}
 	if (cs->compat) prs_flags |= PRS_COMPAT;
 
@@ -1289,5 +1282,4 @@ sccs_patch(sccs *s, cset_t *cs)
 	}
 	cs->ndeltas += deltas;
 	if (list) free(list);
-	if ((s->state & S_CSET) && (encoding & E_GZIP)) sccs_gzip(s);
 }

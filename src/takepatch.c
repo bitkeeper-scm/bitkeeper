@@ -206,16 +206,16 @@ usage:		system("bk help -s takepatch");
 		int	rc;
 
 		++line;
+		unless (strncmp(buf, "== ", 3) == 0) {
+			if (echo > 7) {
+				fprintf(stderr, "skipping: %*s",
+				    strchr(buf, '\n') - buf, buf);
+			}
+			continue;
+		}
 		/* we need our own storage , extractPatch calls mkline */
 		b = strdup(mkline(buf));
 		if (echo>4) fprintf(stderr, "%s\n", b);
-		unless (strncmp(b, "== ", 3) == 0) {
-			if (echo > 7) {
-				fprintf(stderr, "skipping: %s\n", b);
-			}
-			free(b);
-			continue;
-		}
 		unless ((t = strrchr(b, ' ')) && streq(t, " ==")) {
 			SHOUT();
 			fprintf(stderr, "Bad patch: %s\n", b);

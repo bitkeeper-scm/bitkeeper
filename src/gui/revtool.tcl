@@ -2085,22 +2085,13 @@ proc widgets {} \
 	bindtags $w(aptext) {Bk .p.b.p.t . all}
 	bindtags $w(ctext) {.p.b.c.t . all}
 
-	bind Bk <Shift-Button-1> { 
-		#puts "in %W %x %y"
-		tkTextButton1 %W %x %y
-		%W tag remove sel 0.0 end
-		break 
-	}
-
-	bind Bk <Shift-B1-Motion> {
-		set tkPriv(x) %x
-		set tkPriv(y) %y
-		tkTextSelectTo %W %x %y
-	}
-
-	bind Bk <ButtonRelease-1> {
-		tkCancelRepeat
-	}
+	# standard text widget mouse button 1 events are overridden to
+	# do other things, which makes selection of text impossible.
+	# These bindings move the standard selection bindings to a
+	# shifted button 1.  Bug 1999-06-04-001.
+	bind Bk <Shift-Button-1>	"[bind Text <Button-1>];break"
+	bind Bk <Shift-B1-Motion>	"[bind Text <B1-Motion>]"
+	bind Bk <ButtonRelease-1>	"[bind Text <ButtonRelease-1>]"
 
 	# In the search window, don't listen to "all" tags. (This is now done
 	# in the search.tcl lib) <remove if all goes well> -ask

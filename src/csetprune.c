@@ -35,7 +35,9 @@ private int getKeys(MDBM *m);
 private int flags;
 
 /* set to 1 to not unlink all the files.  Good for debugging */
-#define	JUST_CHANGESET	0
+#define	PRUNE_JUST_CHANGESET	0x10000000
+/* restructure tag graph */
+#define	PRUNE_NEW_TAG_GRAPH	0x20000000
 
 int
 csetprune_main(int ac, char **av)
@@ -43,10 +45,40 @@ csetprune_main(int ac, char **av)
 	sccs	*s, *sb;
 	char	csetFile[] = "SCCS/s.ChangeSet";
 	MDBM	*m = mdbm_mem();
+	char	buf[MAXPATH];
+	char	*ranbits = 0;
+	int	c;
 
+	flags = PRUNE_NEW_TAG_GRAPH; /* |PRUNE_JUST_CHANGESET; */
+	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
-		system("bk help -s csetprune");
-		return (0);
+usage:		system("bk help -s csetprune");
+		return (1);
+	}
+	while ((c = getopt(ac, av, "k:qS")) != -1) {
+		switch (c) {
+		    case 'k': ranbits = optarg; break;
+		    case 'q': flags |= SILENT; break;
+		    case 'S': flags &= ~PRUNE_NEW_TAG_GRAPH; break;
+		    default: goto usage;
+		}
+	}
+	if (ranbits) {
+		u8	*p;
+		if (strlen(ranbits) != 16) {
+k_err:			fprintf(stderr,
+			    "ERROR: -k option '%s' must have 16 lower case "
+			    "hex digits\n", ranbits);
+			goto usage;
+		}
+		for (p = ranbits; *p; p++) {
+			unless (isxdigit(*p)) break;
+			if (isupper(*p)) break;
+		}
+		if (*p) goto k_err;
+	} else {
+		randomBits(buf);
+		ranbits = buf;
 	}
 	if (sccs_cd2root(0, 0)) {
 		fprintf(stderr, "%s: cannot find package root\n", av[0]);
@@ -61,7 +93,7 @@ csetprune_main(int ac, char **av)
 		sys("bk", "admin", "-z", "ChangeSet", SYS);
 		sys("bk", "renumber", "-q", "ChangeSet", SYS);
 		sys("bk", "checksum", "-fv", "ChangeSet", SYS);
-		sys("bk", "newroot", SYS);
+		sys("bk", "newroot", "-k", ranbits, SYS);
 		sys("bk", "-r", "check", "-ac", SYS);
 		exit(0);
 	}
@@ -95,12 +127,12 @@ csetprune_main(int ac, char **av)
 	verbose((stderr, "Serial compressing ChangeSet file...\n"));
 	sccs_scompress(s, SILENT);
 	sccs_free(s);
-	if (JUST_CHANGESET) exit(0);
+	if (flags & PRUNE_JUST_CHANGESET) exit(0);
 	verbose((stderr, "Regenerating ChangeSet file checksums...\n"));
 	sys("bk", "checksum", "-fv", "ChangeSet", SYS);
 	rename("SCCS/s..ChangeSet", "SCCS/b.ChangeSet");
 	verbose((stderr, "Generating a new root key and updating files...\n"));
-	sys("bk", "newroot", SYS);
+	sys("bk", "newroot", "-k", ranbits, SYS);
 	verbose((stderr, "Running a check -ac...\n"));
 	if (sys("bk", "-r", "check", "-ac", SYS)) exit(1);
 	verbose((stderr, "All operations completed.\n"));
@@ -138,7 +170,7 @@ rmKeys(MDBM *s)
 	}
 	verbose((stderr, "Removing files...\n"));
 	for (kv = mdbm_first(m); kv.key.dsize; kv = mdbm_next(m)) {
-		if (JUST_CHANGESET) continue;
+		if (flags & PRUNE_JUST_CHANGESET) continue;
 		verbose((stderr, "%d removed\r", ++n));
 		sccs_keyunlink(kv.key.dptr, proj, idDB, dirs);
 	}
@@ -412,6 +444,73 @@ rebuildTags(sccs *s)
 }
 
 /*
+ * This is used when we want to keep the tag graph, just make sure
+ * it is a valid one.  Need to change 'D' to 'R' for D_GONE'd deltas
+ * and make sure real deltas are tagged.
+ */
+private void
+fixTags(sccs *s)
+{
+	delta	*d, *md;
+	symbol	*sym;
+
+	/*
+	 * Only keep newest instance of each name
+	 * Move all symbols onto real deltas that are not D_GONE
+	 */
+	for (sym = s->symbols; sym; sym = sym->next) {
+		md = sym->metad;
+		d = sym->d;
+		assert(sym->symname && md && d);
+		assert(md->type != 'D' || md == d);
+		/*
+		 * If tags a deleted node, (if parent) move tag to parent
+		 * XXX: do this first, as md check can clear D_GONE flag.
+		 */
+		if (d->flags & D_GONE) {
+			unless (d->parent) {
+				/* No where to move it: drop tag */
+				/* XXX: Can this ever happen?? */
+				fprintf(stderr,
+				    "csetprune: Tag (%s) on pruned revision "
+				    "(%s) will be removed,\nbecause the "
+				    "revision has no parent to receive the "
+				    "tag.\nPlease write support@bitmover.com "
+				    "describing what you did to get this "
+				    "message.\nThis is a warning message, "
+				    "not a failure.\n", sym->symname, d->rev);
+				sym->metad = sym->d = 0;
+				continue;
+			}
+			/* Move Tag to Parent */
+			assert(!(d->parent->flags & D_GONE));
+			d = sym->d = d->parent;
+			d->flags |= D_SYMBOLS;
+			md->parent = d;
+			md->pserial = d->serial;
+		}
+		/* If tag is deleted node, make into a 'R' node */
+		if (md->flags & D_GONE) {
+			/*
+			 * Convert a real delta to a meta delta
+			 * by removing info about the real delta.
+			 * then Ungone it.
+			 * XXX: Does the rev need to be altered?
+			 */
+			assert(md->type == 'D');
+			md->type = 'R';
+			md->flags &= ~(D_GONE|D_CKSUM|D_CSET);
+			md->added = md->deleted = md->same = 0;
+			if (md->comments) {
+				freeLines(md->comments, free);
+				md->comments = 0;
+			}
+			assert(!md->include && !md->exclude && !md->merge);
+		}
+	}
+}
+
+/*
  * We maintain d->parent, d->merge, and d->pserial
  * We do not maintain d->kid, d->sibling, or d->flags & D_MERGED
  *
@@ -513,8 +612,7 @@ pruneEmpty(sccs *s, sccs *sb, MDBM *m)
 	delta	*n;
 
 	/*
-	 * Mark the empty deltas, reset tag tree structure
-	 * Delete 'R' tags with no symbols (tag graph merge nodes)
+	 * Mark the empty deltas, possibly reset tag tree structure
 	 */
 	for (n = s->table; n; n = n->next) {
 		unless (n->type == 'R') {
@@ -525,16 +623,18 @@ pruneEmpty(sccs *s, sccs *sb, MDBM *m)
 				n->added = 0;
 			}
 		}
-		n->ptag = n->mtag = 0;
-		n->symGraph = 0;
-		n->symLeaf = 0;
-		n->flags &= ~D_SYMBOLS;
+		if (flags & PRUNE_NEW_TAG_GRAPH) {
+			n->ptag = n->mtag = 0;
+			n->symGraph = 0;
+			n->symLeaf = 0;
+			n->flags &= ~D_SYMBOLS;
+		}
 	}
 	sc = s;
 	scb = sb;
 	_pruneEmpty(sc->table);
 	verbose((stderr, "Rebuilding Tag Graph...\n"));
-	rebuildTags(sc);
+	(flags & PRUNE_NEW_TAG_GRAPH) ? rebuildTags(sc) : fixTags(sc);
 	sccs_reDup(sc);
 	sccs_newchksum(sc);
 	sccs_free(sc);

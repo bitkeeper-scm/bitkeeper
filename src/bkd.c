@@ -346,7 +346,8 @@ getav(int *acp, char ***avp, int *httpMode)
 	bzero(&r, sizeof (remote));
 	r.wfd = 1;
 	/*
-	 * XXX TODO need to handle escaped quote character in args 
+	 * XXX TODO need to handle escaped quote character in args
+	 *     This can be done easily with shellSplit()
 	 */
 	if (Opts.interactive) out("BK> ");
 	for (ac = i = 0; len != 0 && in(&buf[i], 1) == 1; i++) {

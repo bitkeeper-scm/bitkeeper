@@ -89,14 +89,20 @@ echo OK
 echo $N Check edit with existing valid write lock ...................$NL
 bk unlock -r
 waitForUnlock
-bk lock -w &
-LOCKPID=$!
-bk lock -L
-rm -f BitKeeper/writer/lock
-mv BitKeeper/writer/* BitKeeper/writer/1234@nowhere.nowhere
-ln BitKeeper/writer/1234@nowhere.nowhere BitKeeper/writer/lock
+rm -rf BitKeeper/writer
+mkdir BitKeeper/writer
+echo 1234 nowhere.nowhere 2147480000 > BitKeeper/writer/1234@nowhere.nowhere.lock
+ln BitKeeper/writer/1234@nowhere.nowhere.lock BitKeeper/writer/lock
 bk edit $Q A
 writable A || { echo failed to lock A; exit 1; }
+test -f BitKeeper/writer/lock || {
+	echo write lock is gone
+	exit 1
+}
+test -f BitKeeper/writer/1234@nowhere.nowhere.lock || {
+	echo BitKeeper/writer/1234@nowhere.nowhere.lock is gone
+	exit 1
+}
 echo OK
 echo $N Make sure delta fails with existing write lock ..............$NL
 bk lock -l > LOCKS 2>&1

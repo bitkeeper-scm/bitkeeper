@@ -18,15 +18,6 @@
 # LODs
 # per file information (flags, etc.)
 
-if [ X$PLATFORM = X"WIN32" ]
-then
-        binary_data="`bk bin`/bk.exe"
-        binary_data2="`bk bin`/diff.exe"
-else
-        binary_data="/bin/ls"
-        binary_data2="/bin/rm"
-fi
-
 echo $N Create initial repository ...................................$NL
 no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
@@ -457,14 +448,14 @@ cd  $HERE
 rm -rf $HERE/copy
 tar xf chkpoint.tar
 cd $HERE/project/src
-cp $binary_data data
+cp $BIN1 data
 bk admin $Q -idata -Ebinary bdata
 bk get $Q -r1.1 -Gbdata bdata
-cmp -s bdata $binary_data
-if [ $? -ne 0 ]; then echo failed test 1; cmp bdata $binary_data; exit 1; fi
+cmp -s bdata $BIN1
+if [ $? -ne 0 ]; then echo failed test 1; cmp bdata $BIN1; exit 1; fi
 bk commit $S -Sbinary1 -ybinary1
 bk get $Q -e bdata
-cp $binary_data2 bdata
+cp $BIN2 bdata
 bk ci $Q -y bdata
 bk commit $S -Sbinary2 -ybinary2
 cd  $HERE/copy/src
@@ -475,7 +466,7 @@ test -d RESYNC && {
 	exit 1
 }
 bk get $Q bdata
-cmp -s bdata $binary_data2
+cmp -s bdata $BIN2
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 bk clone $Q -rbinary1 $HERE/copy $HERE/copy2 || {
 	cd $HERE/copy2
@@ -484,13 +475,13 @@ bk clone $Q -rbinary1 $HERE/copy $HERE/copy2 || {
 }
 cd $HERE/copy2/src
 bk get $Q bdata
-cmp -s bdata $binary_data
+cmp -s bdata $BIN1
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 (cd $HERE/copy && bk cset -mbinary2) | (cd $HERE/copy2 && bk takepatch)
 bk resolve -t $L $Q $HERE/copy2
 bk get $Q bdata
-cmp -s bdata $binary_data2
-if [ $? -ne 0 ]; then echo failed test 4; cmp bdata $binary_data2; exit 1; fi
+cmp -s bdata $BIN2
+if [ $? -ne 0 ]; then echo failed test 4; cmp bdata $BIN2; exit 1; fi
 echo OK
 cores
 echo $N Check resolve w/ merge and delete event .....................$NL

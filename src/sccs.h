@@ -1183,6 +1183,7 @@ void	smerge_saveseq(u32 seq);
 char	*loadfile(char *file, int *size);
 char	*repo_id(void);
 void	fromTo(char *op, remote *r, remote *l);
+u32	adler32_file(char *filename);
 void	set_timestamps(char *sfile);
 
 extern char *bk_vers;
