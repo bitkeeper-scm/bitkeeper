@@ -331,10 +331,10 @@ bkres.o: win32/data/bk.rc bk.ico
 	windres -i win32/data/bk.rc -o bkres.o
 
 bk16.ico: win32/data/bk16.ico
-	@cp win32/data/bk16.ico .
+	@cp -f win32/data/bk16.ico .
 
 bk.ico: win32/data/bk.ico
-	@cp win32/data/bk.ico .
+	@cp -f win32/data/bk.ico .
 
 $(BK): bk.o $(LIBS) $(RESOURCE) $(OBJ)
 	$(LD) $(LDFLAGS) -o $@ bk.o $(OBJ) $(RESOURCE) $(LIBS) $(XLIBS) 

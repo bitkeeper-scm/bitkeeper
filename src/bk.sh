@@ -1230,26 +1230,24 @@ _install()
 			exit 1
 		}
 		test $VERBOSE = YES && echo Uninstalling $DEST
-		# uninstall can be missing
-		"$DEST"/bk which -i uninstall >/dev/null 2>&1 && {
-			"$DEST"/bk uninstall 2> /dev/null
-		}
-
-		# We use bkuninstall.exe on Windows
-		test -f "$DEST"/bkuninstall.exe && \
-		   test -f "$DEST/install.log" && {
-		       mkdir uninstall_tmp
-		       cp "$DEST"/bkuninstall.exe uninstall_tmp/bkuninstall.exe
-
-		       # Note: bkuninstall.exe may cause a reboot
-		       uninstall_tmp/bkuninstall.exe -i "$DEST"/install.log
-		       rm -rf uninstall_tmp
-		}
 		chmod -R +w "$DEST" 2> /dev/null
-		rm -rf "$DEST"/* || {
-		    echo "bk install: failed to remove $DEST"
-		    exit 1
-		}
+		if [ "X$OSTYPE" = "Xmsys" ]
+		then
+			OBK="$DEST.old$$"
+			ODLL="$OBK/BkShellX.dll"
+			mv "$DEST" "$OBK"
+			rm -rf "$OBK" 2> /dev/null
+			if [ -f "$ODLL" ]
+			then "$SRC/gui/bin/tclsh" "$SRC/runonce.tcl" \
+			     "BitKeeper" \
+			     "\"$DEST/bkuninstall.exe\" -R \"$ODLL\" \"$OBK\""
+			fi
+		else
+			rm -rf "$DEST"/* || {
+			    echo "bk install: failed to remove $DEST"
+			    exit 1
+			}
+		fi
 	}
 	mkdir -p "$DEST" || {
 		echo "bk install: Unable to mkdir $DEST, failed"
