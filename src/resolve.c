@@ -187,6 +187,8 @@ setRepoType(opts *opts)
  * For logging repository, we defer resolving path conflict
  * by moving  the conflicting remote file to the BitKeeper/conflicts
  * directory.
+ * XXX - the older file should win, I suspect.
+ *       but until then, metaUnion is used to union all files together
  */
 private void
 removePathConflict(opts *opts, resolve *rs)
@@ -2299,6 +2301,10 @@ pass4_apply(opts *opts)
 		mdbm_close(permDB);
 		resolve_cleanup(opts, CLEAN_NOSHOUT|flags);
 	}
+
+	if (opts->logging) { /* hard-coded logging tree trigger */
+		metaUnionResync1();
+	}
 	
 	/*
 	 * Pass 4a - check for edited files and build up a list of files to
@@ -2436,6 +2442,10 @@ err:			unapply(save);
 	 */
 	if (isCaseFoldingFS() && chkCaseChg(save)) goto err;
 
+	if (opts->logging) { /* hard-coded logging tree trigger */
+		metaUnionResync2();
+	}
+
 	unless (opts->quiet) {
 		fprintf(stderr,
 		    "resolve: applied %d files in pass 4\n", opts->applied);
@@ -2558,7 +2568,7 @@ copyAndGet(opts *opts, char *from, char *to)
 		getFlags = default_getFlags;
 		//ttyprintf("checkout %s with defaults(%d)\n", key, getFlags);
 	}
-	if (getFlags) {
+	if (getFlags && !opts->logging) {
 		sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-");
 	} else {
 		assert(!HAS_GFILE(s));

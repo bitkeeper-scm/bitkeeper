@@ -867,6 +867,18 @@ _repogca() {
 	rm -f /tmp/LOCAL.$$
 }
 
+# Union the contents of all meta files which match the base name.
+# Optimized to not look in any files which do not match the base name.
+_meta_union() {
+	__cd2root
+	cd BitKeeper
+	for d in etc etc/union conflicts deleted
+	do	test -d $d/SCCS || continue
+		ls -1 $d/SCCS/s.${1}* 2>/dev/null
+	done | bk prs -hr1.0 -nd'$if(:DPN:=BitKeeper/etc/'$1'){:GFILE:}' - |
+		bk sccscat - | bk _sort -u
+}
+
 # ------------- main ----------------------
 __platformInit
 __init

@@ -1101,6 +1101,8 @@ int	unmkBkRootIcon(char *path);
 char	*fast_getcwd(char *buf, int len);
 void	sccs_tagcolor(sccs *s, delta *d);
 int	checkXflags(sccs *s, delta *d, int what);
+void	metaUnionResync1(void);
+void	metaUnionResync2(void);
 int	sccs_istagkey(char *key);
 char	*testdate(time_t t);
 void	putroot(char *where);

@@ -62,7 +62,10 @@ private	sccs	*expand(sccs *s, project *proj);
 private	sccs	*unexpand(sccs *s);
 private	int	skipPatch(MMAP *p);
 private	void	getConfig(void);
-private	void	getGone(void);
+private	void	getGone(int isLogPatch);
+private void	metaUnion(void);
+private void	metaUnionFile(char *file, char *cmd);
+private void	metaUnionResyncFile(char *from, char *to);
 
 private	int	isLogPatch = 0;	/* is a logging patch */
 private	int	echo = 0;	/* verbose level, more means more diagnostics */
@@ -237,7 +240,7 @@ usage:		system("bk help -s takepatch");
 		chdir(RESYNC2ROOT);
 	}
 
-	getGone(); /* 
+	getGone(isLogPatch); /* 
 		    * We need the Gone file even for no conflict case
 		    * Because user may have deleted the sfile in the
 		    * local tree,
@@ -280,9 +283,14 @@ getConfig(void)
 }
 
 private void
-getGone(void)
+getGone(int isLogPatch)
 {
-	
+	if (isLogPatch) {
+		chdir(ROOT2RESYNC);
+		metaUnionFile(GONE, "bk meta_union gone");
+		chdir(RESYNC2ROOT);
+		metaUnionResyncFile(GONE, "RESYNC/" GONE);
+	}
 	/* XXX - if this is edited, we don't get those changes */
 	if (exists("BitKeeper/etc/SCCS/s.gone")) {
 		unless (exists("RESYNC/BitKeeper/etc/SCCS/s.gone")) {
@@ -592,6 +600,129 @@ sccscopy(sccs *to, sccs *from)
 	}
 	return (0);
 }
+/*
+ * MetaUnion is a set of functions to aid the logging tree
+ * to have a useful gfile of 'gone' and 'skipkeys' available
+ * at the right time.  skipkeys is only used by takepatch,
+ * and so needs to be correct before takepatch starts.
+ * gone is used by checking and needs to be correct in
+ * both the takepatch and resolve side of things.
+ * there was already a function getGone() to do the setup
+ * of the gone file for resolve.
+ *
+ * In resolve, modifications where to the pass4_apply function
+ * to get a good copy of the files out of the resync directory
+ * but because of clean() being called a number of times on a
+ * file, it couldn't really be put into place.  At the end of
+ * pass4_apply(), a call is made into here (metaUnionResync2())
+ * to move the files into place.
+ *
+ * the whole code path, with skipkeys and all is a hack to help
+ * out in switching lod design and make the logging tree work better.
+ *
+ */
+private void
+metaUnionFile(char *file, char *cmd)
+{
+	FILE	*f, *w;
+	char	buf[2 * MAXKEY];
+	int	ok;
+
+	ok = 0;
+	if (exists(file)) {
+		f = fopen(file, "rt");
+		assert(f);
+		if (fnext(buf, f)) {
+			if (streq(buf, "#\n")) ok = 1;
+		}
+		fclose(f);
+	}
+	unless (ok) {
+		unlink(file);
+		w = fopen(file, "wb");
+		assert(w);
+		fputs("#\n", w);
+		f = popen(cmd, "r");
+		while (fnext(buf, f)) {
+			if (streq(buf, "#\n")) continue;
+			fputs(buf, w);
+		}
+		fclose(w);
+		fclose(f);
+		chmod(file, 0444);
+	}
+}
+
+#define SKIPKEYS	"BitKeeper/etc/skipkeys"
+
+private void
+metaUnion(void)
+{
+	metaUnionFile(GONE, "bk meta_union gone");
+	metaUnionFile(SKIPKEYS, "bk meta_union skipkeys");
+}
+
+private void
+metaUnionResyncFile(char *from, char *to)
+{
+	char	temp[MAXPATH];
+	char	buf[MAXLINE];
+	FILE	*f, *w;
+
+	unless (exists(from)) return;
+
+	unless (exists(to)) {
+		sprintf(buf, "cp %s %s", from, to);
+		system(buf);
+		chmod(to, 0444);
+		return;
+	}
+
+	sprintf(temp, "%s.cp", to);
+	unlink(temp);
+	sprintf(buf, "cat %s %s | bk sort -u", from, to);
+	w = fopen(temp, "wb");
+	f = popen(buf, "r");
+	fputs("#\n", w);
+	while (fnext(buf, f)) {
+		if (streq(buf, "#\n")) continue;
+		fputs(buf, w);
+	}
+	fclose(f);
+	fclose(w);
+	chmod(temp, 0444);
+	unlink(to);
+	sprintf(buf, "cp %s %s", temp, to);
+	system(buf);
+}
+
+private void
+metaUnionCopy(char *file)
+{
+	char	temp[MAXPATH];
+
+	sprintf(temp, "%s.cp", file);
+	unless (exists(temp)) return;
+	unlink(file);
+	rename(temp, file);
+}
+
+void
+metaUnionResync1(void)
+{
+	metaUnion();
+	chdir(RESYNC2ROOT);
+	metaUnionResyncFile("RESYNC/" GONE, GONE);
+	metaUnionResyncFile("RESYNC/" SKIPKEYS, SKIPKEYS);
+	chdir(ROOT2RESYNC);
+}
+
+void
+metaUnionResync2(void)
+{
+	metaUnionCopy(GONE);
+	metaUnionCopy(SKIPKEYS);
+}
 
 /*
  * Read in the BitKeeper/etc/skipkeys file
@@ -609,9 +740,10 @@ loadskips(void)
 	char	*dkey;
 	skips	*s = 0;
 
-	f = popen("bk cat BitKeeper/etc/skipkeys", "r");
+	f = popen("bk cat " SKIPKEYS, "r");
 	while (fnext(buf, f)) {
 		chomp(buf);
+		if (buf[0] == '#') continue;
 		dkey = separator(buf);
 		assert(dkey);
 		*dkey++ = '\0';
@@ -2145,6 +2277,9 @@ missing:
 		}
 		return (m);
 	}
+
+	/* before loading up special dbs, update gfile is logging tree */
+	if (isLogPatch) metaUnion();
 
 	/* OK if this returns NULL */
 	goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
