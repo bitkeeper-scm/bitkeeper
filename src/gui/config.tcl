@@ -15,6 +15,9 @@ proc getConfig {prog} \
 		set _d(cset.rightWidth) 80
 		set _d(scrollWidth) 18		;# scrollbar width
 		set _d(help.scrollWidth) 20	;# helptool scrollbar width
+		set _d(fm.activeOldFont) {{Lucida Console} 9 bold}
+		set _d(fm.activeNewFont) {{Lucida Console} 9 bold}
+
 	} else {
 		set _d(fixedFont) {fixed 12 roman}
 		set _d(fixedBoldFont) {fixed 12 roman bold}
@@ -23,6 +26,8 @@ proc getConfig {prog} \
 		set _d(cset.rightWidth) 80
 		set _d(scrollWidth) 12		;# scrollbar width
 		set _d(help.scrollWidth) 14	;# helptool scrollbar width
+		set _d(fm.activeOldFont) {fixed 12 roman bold}
+		set _d(fm.activeNewFont) {fixed 12 roman bold}
 	}
 
 	set _d(BG) #f0f0f0		;# default background
@@ -64,6 +69,10 @@ proc getConfig {prog} \
 
 	set _d(diff.diffHeight) 50
 	set _d(diff.searchColor) lightblue ;# highlight for search matches
+
+	# fmtool fonts: See operating specific section above
+	set _d(fm.activeLeftColor) orange  ;# Color of active left region
+	set _d(fm.activeRightColor) yellow ;# Color of active right region
 
 	set _d(help.linkColor) blue	;# hyperlinks
 	set _d(help.topicsColor) orange	;# highlight for topic search matches

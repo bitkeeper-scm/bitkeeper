@@ -4,28 +4,59 @@
 
 proc next {} \
 {
-	global	diffCount lastDiff search
+	global	diffCount lastDiff DiffsEnd search
 
 	if {[searchactive]} {
 		set search(dir) "/"
 		searchnext
 		return
 	}
-	if {$lastDiff == $diffCount} { return }
+	if {$diffCount == 0} {
+		nextFile
+		return
+	}
+	if {[info exists DiffsEnd($lastDiff)] &&
+	    ([visible $DiffsEnd($lastDiff)] == 0)} {
+		Page "yview" 1 0
+		return
+	}
+	if {$lastDiff >= $diffCount} {
+		nextFile
+		return
+	}
 	incr lastDiff
 	dot
 }
 
+# Override the prev proc from difflib
 proc prev {} \
 {
-	global	Diffs DiffsEnd diffCursor diffCount lastDiff search
+	global	Diffs DiffsEnd lastDiff diffCount search
 
 	if {[searchactive]} {
 		set search(dir) "?"
 		searchnext
 		return
 	}
-	if {$lastDiff == 1} { return }
+	if {$diffCount == 0} {
+		prevFile
+		return
+	}
+	if {[info exists Diffs($lastDiff)] && 
+	    ([visible $Diffs($lastDiff)] == 0)} {
+		Page "yview" -1 0
+		return
+	}
+	if {$lastDiff <= 1} {
+		if {[prevFile] == 0} {return}
+		set lastDiff $diffCount
+		dot
+		while {[info exists Diffs($lastDiff)] &&
+		       ([visible $DiffsEnd($lastDiff)] == 0)} {
+			Page "yview" 1 0
+		}
+		return
+	}
 	incr lastDiff -1
 	dot
 }

@@ -2,67 +2,6 @@
 # Copyright (c) 1999 by Larry McVoy; All rights reserved
 # @(#) csettool.tcl 1.39@(#) akushner@disks.bitmover.com
 
-# Override the next proc from difflib
-proc next {} \
-{
-	global	diffCount lastDiff DiffsEnd search
-
-	if {[searchactive]} {
-		set search(dir) "/"
-		searchnext
-		return
-	}
-	if {$diffCount == 0} {
-		nextFile
-		return
-	}
-	if {[info exists DiffsEnd($lastDiff)] &&
-	    ([visible $DiffsEnd($lastDiff)] == 0)} {
-		Page "yview" 1 0
-		return
-	}
-	if {$lastDiff >= $diffCount} {
-		nextFile
-		return
-	}
-	incr lastDiff
-	dot
-}
-
-# Override the prev proc from difflib
-proc prev {} \
-{
-	global	Diffs DiffsEnd lastDiff diffCount lastFile search
-
-	if {[searchactive]} {
-		set search(dir) "?"
-		searchnext
-		return
-	}
-	if {$diffCount == 0} {
-		prevFile
-		return
-	}
-	if {[info exists Diffs($lastDiff)] && 
-	    ([visible $Diffs($lastDiff)] == 0)} {
-		Page "yview" -1 0
-		return
-	}
-	if {$lastDiff <= 1} {
-		if {$lastFile == 1} { return }
-		prevFile
-		set lastDiff $diffCount
-		dot
-		while {[info exists Diffs($lastDiff)] &&
-		       ([visible $DiffsEnd($lastDiff)] == 0)} {
-			Page "yview" 1 0
-		}
-		return
-	}
-	incr lastDiff -1
-	dot
-}
-
 # If even partially visible, return 1
 proc nextFile {} \
 {
@@ -77,9 +16,10 @@ proc prevFile {} \
 {
 	global	lastFile
 
-	if {$lastFile == 1} { return }
+	if {$lastFile == 1} { return 0 }
 	incr lastFile -1
 	dotFile
+	return 1
 }
 
 # XXX: Some functionality that Larry never implemented?
@@ -196,7 +136,6 @@ proc dotFile {{line {}}} \
 	busy 0
 }
 
-
 proc getFiles {revs file_rev} \
 {
 	global	fileCount lastFile Files line2File file_start_stop
@@ -234,7 +173,7 @@ proc getFiles {revs file_rev} \
 				set found $fileCount
 			}
 			.l.filelist.t insert end "  $buf\n"
-			$fmenu add command -label "$buf" \
+			$fmenu(widget) add command -label "$buf" \
 			    -command  "dotFile $fileCount"
 		}
 		catch { close $c }
@@ -449,9 +388,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "File" -width 8 -state normal \
 		-menu .menu.fmb.menu
-		set fmenu [menu .menu.fmb.menu]
-		#$m add command -label "xxx: some file"
-		#$m add command -label "xxx: some file"
+		set fmenu(widget) [menu .menu.fmb.menu]
 	    button .menu.nextFile -font $gc(cset.buttonFont) \
 		-bg $gc(cset.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
@@ -591,8 +528,8 @@ proc keyboard_bindings {} \
 	bind all <n>		next
 	bind all <p>		prev
 	bind all <period>	dot
-	bind all <N>		nextFile
-	bind all <P>		prevFile
+	bind all <Control-n>	nextFile
+	bind all <Control-p>	prevFile
 
 	if {$tcl_platform(platform) == "windows"} {
 		bind all <MouseWheel> {
