@@ -572,11 +572,12 @@ push_part2(char **av, opts opts,
 	getline2(r, buf, sizeof(buf));
 	if (streq(buf, "@TAKEPATCH INFO@")) {
 		while ((n = read_blk(r, buf, 1)) > 0) {
+			if (buf[0] == BKD_RC) rc = atoi(&buf[1]);
 			if (buf[0] == BKD_NUL) break;
 			if (opts.verbose) write(2, buf, n);
 		}
 		getline2(r, buf, sizeof(buf));
-		unless (streq(buf, "@END@")) {
+		unless (streq(buf, "@END@") && (rc == 0)) {
 			rc = 1;
 			goto done;
 		}
@@ -591,11 +592,12 @@ push_part2(char **av, opts opts,
 	}
 	if (streq(buf, "@RESOLVE INFO@")) {
 		while ((n = read_blk(r, buf, 1)) > 0) {
+			if (buf[0] == BKD_RC) rc = atoi(&buf[1]);
 			if (buf[0] == BKD_NUL) break;
 			if (opts.verbose) write(2, buf, n);
 		}
 		getline2(r, buf, sizeof(buf));
-		unless (streq(buf, "@END@")) {
+		unless (streq(buf, "@END@") && (rc == 0)) {
 			rc = 1;
 			goto done;
 		}
@@ -617,6 +619,7 @@ push_part2(char **av, opts opts,
 
 done:	if (!opts.metaOnly) trigger(av, "post", rc);
 	if (rev_list[0]) unlink(rev_list);
+	wait_eof(r, opts.debug); /* wait for remote to disconnect */
 	disconnect(r, 2);
 	return (rc);
 }

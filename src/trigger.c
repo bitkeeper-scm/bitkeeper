@@ -111,6 +111,7 @@ runable(char *file)
 private int
 runit(char *file, char *when, char *event, char *output)
 {
+	int	status, rc;
 #ifdef	WIN32
 		char *p;
 
@@ -120,17 +121,21 @@ runit(char *file, char *when, char *event, char *output)
 		 * so feed it to the bash shell
 		 */
 		unless (p) {
-			return (sysio(0, output, 0,
-					"bash", "-c", file, when, event, SYS));
+			status = sysio(0, output, 0,
+					"bash", "-c", file, when, event, SYS);
+		} else {
+			/*
+			 * XXX TODO: If suffix is .pl or .perl, run the perl
+			 * interpretor. Win32 ".bat" file should just work
+			 * with no special handling.
+			 */
+			status = sysio(0, output, 0, file, when, event, SYS);
 		}
-		/*
-		 * XXX TODO: If suffix is .pl or .perl, run the perl interpretor
-		 * Win32 ".bat" file should just work with no special handling.
-		 */
-		return (sysio(0, output, 0, file, when, event, SYS));
 #else
-		return (sysio(0, output, 0, file, when, event, SYS));
+		status = sysio(0, output, 0, file, when, event, SYS);
 #endif
+		rc = WEXITSTATUS(status);
+		return (rc);
 }
 
 private int

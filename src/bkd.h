@@ -122,4 +122,5 @@ void	add_cd_command(FILE *f, remote *r);
 int	skip_http_hdr(remote *r);
 int	getServerInfoBlock(remote *r);
 void	sendEnv(FILE *f, char **envVar);
+void	wait_eof(remote *r, int verbose);
 #endif

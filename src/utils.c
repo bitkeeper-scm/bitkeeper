@@ -135,6 +135,22 @@ write_blk(remote *r, char *buf, int len)
 	}
 }
 
+void
+wait_eof(remote *r, int verbose)
+{
+	int	i;
+	char	c;
+
+	if (verbose) fprintf(stderr, "Waiting for remote to disconnect\n");
+	i = read_blk(r, &c, 1);
+	if (i <= 0) {
+		if (verbose) fprintf(stderr, "Remote Disconnected\n");
+		return;
+	}
+	fprintf(stderr,
+		"wait_eof: Got %d unexpectied byte(s) from remote\n", i);
+}
+
 /*
  * 
  * Get a line : Unlke the getline() above, '\r' by itself is _not_ considered

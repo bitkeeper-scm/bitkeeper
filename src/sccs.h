@@ -307,7 +307,6 @@
 #define	OPENLOG_HOME	"bitmover.com"
 #define	OPENLOG_URL	"http://www.openlogging.org:80///LOG_ROOT///" 
 #define	OPENLOG_IP	"http://208.184.147.196:80///LOG_ROOT///" 
-#define	OPENLOG_LOG	"BitKeeper/etc/SCCS/x.log"
 #define	BK_WEBMAIL_URL	"http://www.bitkeeper.com:80"
 #define	WEB_BKD_CGI	"web_bkd"
 #define	WEB_MAIL_CGI	"web_mail"
