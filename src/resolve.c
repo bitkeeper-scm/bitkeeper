@@ -34,22 +34,19 @@ private	int	create(resolve *rs);
 private	void	edit_tip(resolve *rs, char *sf, delta *d, char *rf, int which);
 private	void	freeStuff(opts *opts);
 private	int	nameOK(opts *opts, sccs *s);
-private void	open_and_delta(opts *opts, char *sfile);
 private	void	pass1_renames(opts *opts, sccs *s);
 private	int	pass2_renames(opts *opts);
 private	int	pass3_resolve(opts *opts);
 private	int	pass4_apply(opts *opts);
 private	int	passes(opts *opts);
 private	int	pending();
-private	int	pending(void);
-private	int	pendingCheckins(void);
+private	int	pendingEdits(void);
 private	int	pendingRenames();
-private	int	pendingRenames(void);
+private void	checkins(opts *opts, char *comment);
 private	void	rename_delta(resolve *rs, char *sf, delta *d, char *rf, int w);
 private	int	rename_file(resolve *rs);
 private	int	rename_file(resolve *rs);
-private	void	restore(FILE *f, opts *o);
-private	void	unbackup(FILE *f);
+private	void	restore(opts *o);
 private void	merge_loggingok(resolve *rs);
 #ifdef WIN32_FILE_SYSTEM
 private MDBM	*localDB;		/* real name cache for local tree */
@@ -1421,6 +1418,18 @@ slotTaken(opts *opts, char *slot)
 
 /* ---------------------------- Pass3 stuff ---------------------------- */
 
+private int
+noDiffs()
+{
+	FILE	*p = popen("bk -r diffs", "r");
+	int	none;
+
+	unless (p) return (0);
+	none = (fgetc(p) == EOF);
+	pclose(p);
+	return (none);
+}
+
 /*
  * Handle all the non-rename conflicts.
  * Handle committing anything which needs a commit.
@@ -1443,10 +1452,10 @@ slotTaken(opts *opts, char *slot)
 private	int
 pass3_resolve(opts *opts)
 {
-	char	buf[MAXPATH], s_cset[MAXPATH] = CHANGESET;
+	char	buf[MAXPATH];
 	FILE	*p;
 	int	n = 0;
-	int	mustCommit;
+	int	mustCommit, pc, pe;
 
 	if (opts->log) fprintf(opts->log, "==== Pass 3 ====\n");
 	opts->pass = 3;
@@ -1544,12 +1553,18 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		sccs	*s;
 		resolve	*rs;
 		
-		s = sccs_init(s_cset, INIT, opts->resync_proj);
+		s = sccs_init(CHANGESET, INIT, opts->resync_proj);
 		rs = resolve_init(opts, s);
 		edit(rs);
 		unlink(sccs_Xfile(s, 'r'));
 		resolve_free(rs);
 	} else if (exists("SCCS/p.ChangeSet")) {
+		/*
+		 * The only way I can think of this happening is if we are
+		 * coming back in after passing the above clause on an
+		 * earlier run.  I suppose this could happen if we asked
+		 * about open logging and they aborted, got a key, and reran.
+		 */
 		mustCommit = 1;
 	}
 
@@ -1573,13 +1588,31 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	pclose(p);
 
 	/*
+	 * If there is nothing to do, bail out.
+	 */
+	pc = pending(0);
+	pe = pendingEdits();
+	unless (mustCommit || pc || pe) return (0);
+
+	if (pe && noDiffs()) {
+		if (opts->log) {
+			fprintf(opts->log, "==== Pass 3 autocheckins ====\n");
+		}
+		checkins(opts, SCCS_MERGE);
+		pe = 0;		/* saves a call to pendingEdits() below */
+	}
+
+	/*
 	 * Always do autocommit if there are no pending changes.
 	 * We supply a default comment because there is little point
 	 * in bothering a user for a merge.
 	 * Go ask about logging if we need to.  We never ask on a push.
 	 */
-	unless (!mustCommit || pending() || pendingCheckins()) {
-		unless (opts->comment) opts->comment = "Merge";
+	unless (pe && pendingEdits()) {
+		if (opts->log) {
+			fprintf(opts->log, "==== Pass 3 autocommits ====\n");
+		}
+		unless (opts->comment || pending(1)) opts->comment = "Merge";
 		unless (opts->noconflicts) ok_commit(logging(0, 0, 0), 0);
 		commit(opts);
 		return (0);
@@ -1587,19 +1620,14 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	
 	/*
 	 * Unless we are in textonly mode, let citool do all the work.
-	 * XXX - need an option to citool which FORCES the creation of
-	 * a cset.  That same option should make sure that if you quit
-	 * out of citool, it exits !0.
 	 */
 	unless (opts->textOnly) {
-		int	ret = sys("bk citool -R", opts);
-
-		if (ret) {
+		if (sys("bk citool -R", opts)) {
 			fprintf(stderr, "citool failed, aborting.\n");
 			freeStuff(opts);
 			exit(1);
 		}
-		if (pending() || pendingCheckins()) {
+		if (pending() || pendingEdits()) {
 			fprintf(stderr,
 			    "Failed to check in/commit all files, aborting.\n");
 			freeStuff(opts);
@@ -1613,33 +1641,14 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	 * in textonly mode, because an earlier partial run could have
 	 * been in a different mode.  So be safe.
 	 */
-	unless (p = popen("bk sfiles -c", "r")) {
-		perror("popen of find");
-		freeStuff(opts);
-		exit(1);
-	}
-	while (fnext(buf, p)) {
-		chop(buf);
-		open_and_delta(opts, buf);
-	}
-	pclose(p);
-	
+	checkins(opts, 0);
 	if (opts->errors) {
 		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		freeStuff(opts);
 		exit(1);
 	}
 
-	unless (p = popen("bk sfiles -C", "r")) {
-		perror("popen of find");
-		freeStuff(opts);
-		exit(1);
-	}
-	n = 0;
-	while (fnext(buf, p)) n++;
-	pclose(p);
-
-	if (n) {
+	if (pending(0)) {
 		assert(!opts->noconflicts);
 		ok_commit(logging(0, 0, 0), 0);
 		commit(opts);
@@ -1648,31 +1657,49 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	return (0);
 }
 
-private void
-open_and_delta(opts *opts, char *sfile)
-{
-	sccs	*s = sccs_init(sfile, INIT, opts->resync_proj);
-
-	assert(s);
-	do_delta(opts, s);
-	sccs_free(s);
-}
-
 void
-do_delta(opts *opts, sccs *s)
+do_delta(opts *opts, sccs *s, char *comment)
 {
-	int	flags = DELTA_FORCE;
+	int     flags = DELTA_FORCE;
+	delta	*d = 0;
 
-	comments_done();	/* force them to provide them */
+	comments_done();
+	if (comment) {
+		comments_save(comment);
+		d = comments_get(0);
+		flags |= DELTA_DONTASK;
+	}
 	if (opts->quiet) flags |= SILENT;
 	sccs_restart(s);
-	if (sccs_delta(s, flags, 0, 0, 0, 0)) {
+	if (sccs_delta(s, flags, d, 0, 0, 0)) {
 		fprintf(stderr, "Delta of %s failed\n", s->gfile);
 		freeStuff(opts);
 		exit(1);
 	}
 }
 
+private void
+checkins(opts *opts, char *comment)
+{
+	sccs	*s;
+	FILE	*p;
+	char	buf[MAXPATH];
+
+	unless (p = popen("bk sfiles -c", "r")) {
+		perror("popen of find");
+		freeStuff(opts);
+		exit(1);
+	}
+	while (fnext(buf, p)) {
+		chop(buf);
+		s = sccs_init(buf, INIT, opts->resync_proj);
+		assert(s);
+		do_delta(opts, s, comment);
+		sccs_free(s);
+	}
+	pclose(p);
+}
+	
 /*
  * Merge a conflict, manually or automatically.
  * We handle permission conflicts here as well.
@@ -1991,25 +2018,46 @@ pendingRenames()
 }
 
 /*
- * Return true if there are pending deltas.
+ * Return true if there are pending deltas (not in a changeset yet).
+ * If checkComments is set, do not return true if all of the comments
+ * are either the automerge or the sccs no diffs merge.
  */
 private	int
-pending()
+pending(int checkComments)
 {
 	FILE	*f;
+	char	buf[MAXPATH];
+	char	*t;
 	int	ret;
 
-	f = popen("bk sfiles -C", "r");
-	ret = fgetc(f) != EOF;
+	unless (checkComments) {
+		f = popen("bk sfiles -C", "r");
+		ret = fgetc(f) != EOF;
+		pclose(f);
+		return (ret);
+	}
+	f = popen("bk sfiles -CA | bk sccslog -CA -", "r");
+	while (fnext(buf, f)) {
+		unless (t = strchr(buf, '\t')) {
+			pclose(f);
+			return (1);	/* error means we assume pending */
+		}
+		t++;
+		chop(t);
+		unless (streq(t, AUTO_MERGE) || streq(t, SCCS_MERGE)) {
+			pclose(f);
+			return (1);
+		}
+	}
 	pclose(f);
-	return (ret);
+	return (0);
 }
 
 /*
- * Return true if there are pending checkins other than the cset file
+ * Return true if there are modified files not yet checked in (except ChangeSet)
  */
 private	int
-pendingCheckins()
+pendingEdits()
 {
 	char	buf[MAXPATH];
 	FILE	*f;
@@ -2066,66 +2114,12 @@ commit(opts *opts)
 	exit(1);
 }
 
-/*
- * Move the file out of the way, saving it, and
- * make space for the new file.  If this works
- * for all of them, we'll come back and remove these.
- * Otherwise, we put these back.
- */
-int
-backup(opts *opts, char *sfile, MDBM *backups, FILE *save)
+private void
+unfinished(opts *opts)
 {
-	char	buf[MAXPATH];
-	char	*t;
-
-	strcpy(buf, sfile);
-	t = strrchr(buf, '/');
-	t[1] = 'b';			/* b is for backup */
-	if (opts->log) fprintf(stdlog, "backing up(%s, %s)\n", sfile, buf);
-	if (exists(buf) && !mdbm_fetch_str(backups, buf)) {
-		fprintf(stderr,
-		    "\nWill not overwrite existing backup %s\n", buf);
-		restore(save, opts);
-		return (1);
-	}
-	if (rename(sfile, buf)) {
-		fprintf(stderr, "Unable to rename(%s->%s)\n", sfile, buf);
-		restore(save, opts);
-		return (1);
-	}
-	mdbm_store_str(backups, buf, "", MDBM_INSERT);
-	fprintf(save, "%s\n", buf);
-    	return (0);
-}
-
-/*
- * Make sure there are no edited files, no RENAMES, and {r,m}.files and
- * apply all files.
- */
-private	int
-pass4_apply(opts *opts)
-{
-	sccs	*r, *l;
-	char	*t;
-	int	offset = strlen(ROOT2RESYNC) + 1;	/* RESYNC/ */
 	FILE	*p;
-	FILE	*get;
-	FILE	*save;
 	int	n = 0;
 	char	buf[MAXPATH];
-	char	key[MAXKEY];
-	char	orig[MAXPATH];
-	void	unbackup(FILE *f);
-	int	create;
-	MDBM	*backups = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
-	char	*av[5] = {"bk", "-r", "check", "-a", 0};
-	char 	*av_r[4] = {"bk", "sfiles", ROOT2RESYNC, 0};
-	int	rfd, status;
-	pid_t	pid;
-	char 	realname[MAXPATH];
-
-	if (opts->log) fprintf(opts->log, "==== Pass 4 ====\n");
-	opts->pass = 4;
 
 	if (pendingRenames()) {
 		freeStuff(opts);
@@ -2145,157 +2139,153 @@ pass4_apply(opts *opts)
 		freeStuff(opts);
 		exit(1);
 	}
+}
+
+private int
+bk_check()
+{
+	char	*av[5] = {"bk", "-r", "check", "-a", 0};
+
+	return (spawnvp_ex(_P_WAIT, av[0], av) != 0);
+}
+
+/*
+ * Make sure there are no edited files, no RENAMES, and {r,m}.files and
+ * apply all files.
+ */
+private	int
+pass4_apply(opts *opts)
+{
+	sccs	*r, *l;
+	int	offset = strlen(ROOT2RESYNC) + 1;	/* RESYNC/ */
+	FILE	*f, *p;
+	FILE	*save;
+	char	buf[MAXPATH];
+	char	key[MAXKEY];
+	char 	realname[MAXPATH];
+
+	if (opts->log) fprintf(opts->log, "==== Pass 4 ====\n");
+	opts->pass = 4;
+
+	unfinished(opts);
 
 	/*
-	 * Pass 4a - check for edited files and remove old files.
-	 * This can leave us in a pretty bad state if there are
-	 * edited files, but all files have been checked twice,
-	 * once by takepatch and then once by nameOK() in pass1.
+	 * Pass 4a - check for edited files and build up a list of files to
+	 * backup and remove.
 	 */
-	gettemp(orig, "orig");
-	save = fopen(orig, "w+");
 	chdir(RESYNC2ROOT);
-	sprintf(key, "bk sfiles %s", ROOT2RESYNC);
-	unless (p = popen(key, "r")) {
-		perror("popen of bk sfiles");
-		fclose(save); unlink(orig);
+	save = fopen(BACKUP_LIST, "w+");
+	sprintf(key, "bk sfind %s > " TODO, ROOT2RESYNC);
+	if (system(key) || !(f = fopen(TODO, "r+")) || !save) {
+		fprintf(stderr, "Unable to create|open " TODO);
+		fclose(save);
 		freeStuff(opts);
 		exit(1);
 	}
-	while (fnext(buf, p)) {
+	while (fnext(buf, f)) {
 		chop(buf);
-		unless (r = sccs_init(buf, INIT, opts->resync_proj)) {
+		/*
+		 * We want to check the checksum here and here only
+		 * before we throw it over the wall.
+		 */
+		unless (r = sccs_init(buf, INIT_SAVEPROJ, opts->resync_proj)) {
 			fprintf(stderr,
 			    "resolve: can't init %s - abort.\n", buf);
-			restore(save, opts);
-			unlink(orig);
+			fclose(save);
 			fprintf(stderr, "resolve: no files were applied.\n");
 			freeStuff(opts);
 			exit(1);
 		}
 		if (sccs_admin(r, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0, 0)) {
-			restore(save, opts);
-			unlink(orig);
+			fprintf(stderr, "resolve: corrupt file %s\n", r->sfile);
+			fprintf(stderr, "resolve: no files were applied.\n");
+			fclose(save);
 			freeStuff(opts);
-			exit(1);	/* ??? */
+			exit(1);
 		}
 		sccs_sdelta(r, sccs_ino(r), key);
-		sccs_close(r);
+		sccs_free(r);
 		if (l = sccs_keyinit(key, INIT, opts->local_proj, opts->idDB)) {
 			/*
 			 * This should not happen, the repository is locked.
 			 */
-			if (IS_EDITED(l) || IS_LOCKED(l)) {
+			if (sccs_clean(l, SILENT)) {
 				fprintf(stderr,
 				    "\nWill not overwrite edited %s\n",
 				    l->gfile);
-				restore(save, opts);
-				unlink(orig);
+				fclose(save); 
 				freeStuff(opts);
 				exit(1);
 			}
-			sccs_clean(l, SILENT); 
-			sccs_close(l);
-			if (backup(opts, l->sfile, backups, save)) {
-				unlink(orig);
-				freeStuff(opts);
-				exit(1);
-			}
+			fprintf(save, "%s\n", l->sfile);
 			sccs_free(l);
-			create = 0;
-		} else {
-			create = 1;
 		}
-
-		/*
-		 * The file we moved above may match in inode but may not
-		 * match in pathname.  If there is an s.file in the path,
-		 * we need to back that up as well.
-		 */
-		if (exists(&buf[offset])) {
-			if (backup(opts, &buf[offset], backups, save)) {
-				unlink(orig);
-				freeStuff(opts);
-				exit(1);
-			}
-			create = 0;
-		}
-
-		/*
-		 * Finally, if this is a file we are creating, mark it as
-		 * such with a zero sized b.file so we can remember to clean
-		 * it up if the resolve fails.
-		 * Create is somewhat misleading, what we really mean is a
-		 * create with no existing file in the same path slot.
-		 */
-		if (create) {
-			strcpy(key, &buf[offset]);
-			t = strrchr(key, '/');
-			t[1] = 'b';			/* b is for backup */
-			if (exists(key) && !mdbm_fetch_str(backups, key)) {
-				fprintf(stderr,
-				    "\nWill not overwrite existing BACKUP %s\n",
-				    key);
-				restore(save, opts);
-				unlink(orig);
-				freeStuff(opts);
-				exit(1);
-			}
-			close(creat(key, 0666));
-			fprintf(save, "%s\n", key);
-			mdbm_store_str(backups, key, "", MDBM_INSERT);
-			if (opts->log) fprintf(stdlog, "backup(%s)\n", key);
-		}
-
-		sccs_free(r);
 	}
-	pclose(p);
+
+	/*
+	 * Pass 4b.
+	 * Save the list of files and then remove them.
+	 * XXX - need to be positive that fflush works.
+	 */
+	fflush(save);
+	if (size(BACKUP_LIST) > 0) {
+		if (system("bk sfio -omq < " BACKUP_LIST " > " BACKUP_SFIO)) {
+			fprintf(stderr,
+			    "Unable to create backup %s from %s\n",
+			    BACKUP_SFIO, BACKUP_LIST);
+			fclose(save);
+			freeStuff(opts);
+			exit(1);
+		}
+		rewind(save);
+		while (fnext(buf, save)) {
+			chop(buf);
+			if (opts->log) fprintf(stdlog, "unlink(%s)\n", buf);
+			unlink(buf);	// XXX - FIXME -> rm_sfile()
+		}
+	}
+	fclose(save);
 
 	/*
 	 * Pass 4c - apply the files.
 	 */
-	pid = spawnvp_rPipe(av_r, &rfd);
-	unless (pid > (pid_t)-1) {
-		unbackup(save);
-		unlink(orig);
-		perror("spawn of bk sfiles");
+	unless (save = fopen(APPLIED, "w+")) {
+		restore(opts);
 		freeStuff(opts);
 		exit(1);
 	}
-	p = fdopen(rfd, "rt");
-	unless (get = popen("bk get -s -", "w")) {
-		unbackup(save);
-		unlink(orig);
-		perror("popen of get -");
-		freeStuff(opts);
-		exit(1);
-	}
-	while (fnext(buf, p)) {
+	fflush(f);
+	rewind(f);
+	p = popen("bk get -q -", "w");
+	while (fnext(buf, f)) {
 		chop(buf);
 		/*
 		 * We want to get the part of the path without the RESYNC.
 		 */
-		if (opts->log) {
-			fprintf(stdlog, "rename(%s, %s)\n", buf, &buf[offset]);
+		if (exists(&buf[offset])) {
+			fprintf(stderr,
+			    "resolve: failed to remove conflict %s\n",
+			    &buf[offset]);
+			unapply(save);
+			restore(opts);
+			freeStuff(opts);
+			exit(1);
 		}
-		if (rename(buf, &buf[offset])) {
-			mkdirf(&buf[offset]);
-			if (rename(buf, &buf[offset])) {
-				perror("rename");
-				fprintf(stderr, "rename(%s, %s) failed\n",
-				    buf, &buf[offset]);
-				restore(save, opts);
-				unlink(orig);
-				freeStuff(opts);
-				exit(1);
-			} else {
-				opts->applied++;
-				fprintf(get, "%s\n", &buf[offset]);
-			}
+		if (opts->log) {
+			fprintf(stdlog, "copy(%s, %s)\n", buf, &buf[offset]);
+		}
+		if (copyAndGet(buf, &buf[offset], p)) {
+			perror("copy");
+			fprintf(stderr,
+			    "copy(%s, %s) failed\n", buf, &buf[offset]);
+			unapply(save);
+			restore(opts);
+			freeStuff(opts);
+			exit(1);
 		} else {
 			opts->applied++;
-			fprintf(get, "%s\n", &buf[offset]);
 		}
+		fprintf(save, "%s\n", &buf[offset]);
 #ifdef	WIN32_FILE_SYSTEM
 		getRealName(&buf[offset], localDB, realname);
 		unless (streq(&buf[offset], realname)) {
@@ -2339,21 +2329,17 @@ Got:\n\
 				fprintf(stderr, unknown_err, buf,
 						&buf[offset], buf, realname);
 			}
-			fclose(p);
-			waitpid(pid, &status, 0);
-			pclose(get);
 #ifdef WIN32
 			sleep(1); /* for win98; wait for "bk get" to exit */
 #endif
-			restore(save, opts);
-			unlink(orig);
+			unapply(save);
+			restore(opts);
 			exit(1);
 		}
 #endif /* WIN32_FILE_SYSTEM */
 	}
-	waitpid(pid, &status, 0);
-	fclose(p);
-	pclose(get);
+	fclose(f);
+	pclose(p);
 	unless (opts->quiet) {
 		fprintf(stderr,
 		    "resolve: applied %d files in pass 4\n", opts->applied);
@@ -2362,16 +2348,22 @@ Got:\n\
 		fprintf(stderr,
 		    "resolve: running consistency check, please wait...\n");
 	}
-	unless (spawnvp_ex(_P_WAIT, av[0], av) == 0) { 
+	if (bk_check()) {
 		fprintf(stderr, "Check failed.  Resolve not completed.\n");
-		restore(save, opts);
-		fclose(save);
-		unlink(orig);
+		/*
+		 * Clean up any gfiles we may have pulled out to run check.
+		 */
+		system("bk clean BitKeeper/etc");
+		unapply(save);
+		restore(opts);
 		freeStuff(opts);
 		exit(1);
 	}
-	unbackup(save);
-	unlink(orig);
+	fclose(save);
+	unlink(BACKUP_LIST);
+	unlink(BACKUP_SFIO);
+	unlink(APPLIED);
+	unlink(TODO);
 	unless (opts->quiet) {
 		fprintf(stderr,
 		    "Consistency check passed, resolve complete.\n");
@@ -2382,21 +2374,31 @@ Got:\n\
 }
 
 /*
- * Go through and remove the backup files.
+ * XXX - needs to be a copy on NT
  */
-private	void
-unbackup(FILE *f)
+int
+copyAndGet(char *from, char *to, FILE *p)
 {
-	char	*t;
+	if (link(from, to)) {
+		mkdirf(to);
+		if (link(from, to)) return (-1);
+	}
+	fprintf(p, "%s\n", to);
+	return (0);
+}
+
+/*
+ * Unlink all the things we successfully applied.
+ */
+unapply(FILE *f)
+{
 	char	buf[MAXPATH];
 
 	fflush(f);
 	rewind(f);
 	while (fnext(buf, f)) {
 		chop(buf);
-		t = strrchr(buf, '/');
-		assert(t && (t[1] == 'b'));
-		unlink(buf);
+		unlink(buf);	// XXX -> rm_sfile()
 	}
 	fclose(f);
 }
@@ -2405,38 +2407,16 @@ unbackup(FILE *f)
  * Go through and put everything back.
  */
 private	void
-restore(FILE *f, opts *o)
+restore(opts *o)
 {
-	char	*t;
-	char	from[MAXPATH];
-	char	to[MAXPATH];
-	int	failed = 0, n = 0;
-
-	fprintf(stderr, "\nRestoring original files...\n");
-	fflush(f);
-	rewind(f);
-	while (fnext(from, f)) {
-		chop(from);
-		strcpy(to, from);
-		t = strrchr(to, '/');
-		t[1] = 's';
-		if (rename(from, to)) {
-			perror("rename");
-			fprintf(stderr,
-			    "Unable to restore %s to %s\n", from, to);
-			failed++;
-		} else {
-			n++;
-			if (size(to) == 0) unlink(to);
-		}
-	}
-	fclose(f);
-	if (failed) {
+	if (system("bk sfio -im < " BACKUP_SFIO)) {
 		fprintf(stderr,
-		    "Failed to restore %d/%d files\n", failed, failed+n);
-	}
-	fprintf(stderr, "Restored %d/%d files\n", n, failed+n);
-	if (failed == 0) {
+"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\
+Your repository is only partially restored.   This is an error.  Please \n\
+examine the list of failures above and find out why they were not renamed.\n\
+You must move them into place by hand before the repository is usable.\n\
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+	} else {
 		fprintf(stderr,
 "Your repository should be back to where it was before the resolve started.\n\
 We are running a consistency check to verify this.\n");
@@ -2445,13 +2425,6 @@ We are running a consistency check to verify this.\n");
 		} else {
 			fprintf(stderr, "Check FAILED, contact BitMover.\n");
 		}
-	} else {
-		fprintf(stderr,
-"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\
-Your repository is only partially restored.   This is an error.  Please \n\
-examine the list of failures above and find out why they were not renamed.\n\
-You must move them into place by hand before the repository is usable.\n\
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
 	}
 }
 

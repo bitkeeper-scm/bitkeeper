@@ -44,6 +44,7 @@ private int	flags = SILENT|INIT_SAVEPROJ|INIT_NOCKSUM;
 private	FILE	*idcache;
 private	int	poly;
 private	int	polyList;
+private	MDBM	*goneDB;
 
 #define	POLY	"BitKeeper/etc/SCCS/x.poly"
 #define	CTMP	"BitKeeper/tmp/ChangeSet-all"
@@ -115,6 +116,10 @@ usage:		fprintf(stderr, "%s", check_help);
 	mixed = (cset->state & S_KEY2) == 0;
 	db = buildKeys();
 	if (all) init_idcache();
+
+	/* This can legitimately return NULL */
+	/* XXX - I don't know for sure I always need this */
+	goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
 	for (name = sfileFirst("check", &av[optind], 0);
 	    name; name = sfileNext()) {
 		unless (s = sccs_init(name, flags, proj)) continue;
@@ -186,6 +191,7 @@ usage:		fprintf(stderr, "%s", check_help);
 	mdbm_close(db);
 	mdbm_close(keys);
 	mdbm_close(marks);
+	if (goneDB) mdbm_close(goneDB);
 	if (proj) proj_free(proj);
 	if (errors && fix) {
 		if (names) {
@@ -238,7 +244,7 @@ checkAll(MDBM *db)
 {
 	FILE	*keys;
 	char	*t;
-	MDBM	*idDB, *goneDB;
+	MDBM	*idDB;
 	MDBM	*warned = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	int	found = 0;
 	char	buf[MAXPATH*3];
@@ -288,8 +294,6 @@ full:		keys = fopen(CTMP, "rt");
 		perror("idcache");
 		exit(1);
 	}
-	/* This can legitimately return NULL */
-	goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
 	while (fnext(buf, keys)) {
 		t = separator(buf);
 		assert(t);
@@ -303,7 +307,6 @@ full:		keys = fopen(CTMP, "rt");
 	if (found) listFound(warned);
 	mdbm_close(idDB);
 	mdbm_close(warned);
-	if (goneDB) mdbm_close(goneDB);
 	sprintf(buf, "%s.p", CTMP);
 	unlink(buf);
 	return (found != 0);
@@ -315,8 +318,7 @@ listFound(MDBM *db)
 	kvpair	kv;
 
 	if (goneKey) { /* -g option => key only, no header */
-		for (kv = mdbm_first(db); kv.key.dsize != 0;
-							kv = mdbm_next(db)) {
+		for (kv = mdbm_first(db); kv.key.dsize; kv = mdbm_next(db)) {
 			printf("%s\n", kv.key.dptr);
 		}
 		return;
@@ -329,7 +331,7 @@ listFound(MDBM *db)
 		fprintf(stderr,
 		    "Check: found in ChangeSet but not found in repository:\n");
 	}
-	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
+	for (kv = mdbm_first(db); kv.key.dsize; kv = mdbm_next(db)) {
 		fprintf(stderr, "    %s\n", kv.key.dptr);
 	}
 	if (resync) return;
@@ -766,6 +768,14 @@ check(sccs *s, MDBM *db, MDBM *marks)
 	return (errors);
 }
 
+isGone(sccs *s)
+{
+	char	buf[MAXKEY];
+
+	sccs_sdelta(s, sccs_ino(s), buf);
+	return (mdbm_fetch_str(goneDB, buf) != 0);
+}
+
 private int
 checkKeys(sccs *s, char *root)
 {
@@ -786,11 +796,21 @@ checkKeys(sccs *s, char *root)
 		assert(csetKeys.deltas[i] != (char*)1);
 		unless (d = sccs_findKey(s, csetKeys.deltas[i])) {
 			a = csetFind(csetKeys.deltas[i]);
+			if (isGone(s)) fprintf(stderr, "Warning: ");
 			fprintf(stderr,
 			    "key %s is in\n\tChangeSet:%s\n\tbut not in %s\n",
 			    csetKeys.deltas[i], a, s->sfile);
 			free(a);
-		    	errors++;
+			if (isGone(s)) {
+				fprintf(stderr,
+"This file: %s\n\
+was probably deleted in another repository, perhaps your parent.\n\
+It is marked as gone but exists in your repository, missing some deltas.\n\
+You may want to delete the file as well to be consistent with your parent.\n",
+				    s->sfile);
+			} else {
+		    		errors++;
+			}
 		} else unless (d->flags & D_CSET) {
 			fprintf(stderr,
 			    "%s@%s is in ChangeSet but not marked\n",

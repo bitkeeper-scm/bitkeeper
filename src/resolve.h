@@ -17,6 +17,12 @@
 #define	LOGGING_OK_CONFLICT	5
 #define	LOCAL			1
 #define	REMOTE			2
+#define	BACKUP_LIST		"BitKeeper/tmp/backup.list"
+#define	BACKUP_SFIO		"BitKeeper/tmp/backup.sfio"
+#define	TODO			"BitKeeper/tmp/sfile.list"
+#define	APPLIED			"BitKeeper/tmp/applied.list"
+#define	AUTO_MERGE		"Auto merged"
+#define	SCCS_MERGE		"SCCS merged"
 
 /* passed around everywhere to record state */
 typedef struct {
@@ -100,6 +106,7 @@ typedef	struct resolve {
 	char	*editor;	/* $EDITOR or vi */
 	rfuncs	*funcs;		/* the ops vector */
 	void	*opaque;	/* a pointer on which to hang state */
+	char	*shell;		/* shell command, if ! */
 	/* the following tell us which resolve loop we are in */
 	u32	res_gcreate:1;	/* new file conflicts with local gfile */
 	u32	res_screate:1;	/* new file conflicts with gfile */
@@ -151,5 +158,5 @@ int	resolve_modes(resolve *rs);
 int	resolve_flags(resolve *rs);
 void	saveKey(opts *opts, char *key, char *file);
 int	slotTaken(opts *opts, char *slot);
-void	do_delta(opts *opts, sccs *s);
+void	do_delta(opts *opts, sccs *s, char *comment);
 int	sys(char *cmd, opts *o);

@@ -23,7 +23,7 @@ receive_main(int ac,  char **av)
 		    case 't': strcat(opts, " -t"); break;
 		    case 'v': strcat(opts, " -v"); break;
 		    default :
-			fprintf(stderr, "unknow option <%c>\n", c);
+			fprintf(stderr, "unknown option <%c>\n", c);
 			exit(1);
 		}
 	}
