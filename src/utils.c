@@ -779,7 +779,7 @@ sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 	free(lic);
 	fprintf(f, "putenv BK_REALUSER=%s\n", sccs_realuser());
 	fprintf(f, "putenv BK_REALHOST=%s\n", sccs_realhost());
-	fprintf(f, "putenv BK_PLATFORM=%s\n", bk_platform);
+	fprintf(f, "putenv BK_PLATFORM=%s\n", platform());
 
 	/*
 	 * We have no Package root when we clone, so skip root related variables
@@ -866,7 +866,7 @@ sendServerInfoBlock(int is_rclone)
 	out("\nREALHOST=");
 	out(sccs_realhost());
 	out("\nPLATFORM=");
-	out(bk_platform);
+	out(platform());
 	if (repoid = repo_id()) {
 		sprintf(buf, "\nREPO_ID=%s", repoid);
 		out(buf);

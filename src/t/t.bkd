@@ -237,7 +237,7 @@ echo OK
 
 echo $N Make sure bkd logs requests under the remote user name ......$NL
 cd $HERE/project
-rm BitKeeper/log/*
+cp /dev/null BitKeeper/log/repo_log
 P=50000
 BK_USER=garbage bk bkd -qdp$P -c4
 while [ $? -eq 2 ]

@@ -153,20 +153,19 @@ proc getConfig {prog} \
 	set _d(bug.mandatoryColor) $BKSLATEGRAY1 ;# mandatory fields
 	set _d(entryColor) $WHITE	   ;# Color of input fields
 
+	# N.B. 'bk dotbk' has the side effect that it will move an
+	# old .bkgui/_bkgui file to the new location. Groovy.
 	if {$tcl_platform(platform) == "windows"} {
-		package require registry
-		set gc(appdir) [registry get {HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders} AppData]
-		set gc(bkdir) [file join $gc(appdir) BitKeeper]
-		if {![file isdirectory $gc(bkdir)]} { file mkdir $gc(bkdir) }
-		set rcfile [file join $gc(bkdir) _bkgui]
+		set rcfile [exec bk dotbk _bkgui config-gui]
 	} else {
-		set rcfile "~/.bkgui"
-		set gc(bkdir) "~"
+		set rcfile [exec bk dotbk .bkgui config-gui]
 	}
+
+	set gc(bkdir) [file dirname $rcfile]
 	if {[file readable $rcfile]} { source $rcfile }
 
 	# Pass one just copies all the defaults into gc unless they are set
-	# already by .bkgui rcfile.
+	# already by the config file
 	foreach index [array names _d] {
 		if {! [info exists gc($index)]} {
 			set gc($index) $_d($index)
