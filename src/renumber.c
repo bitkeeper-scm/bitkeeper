@@ -20,7 +20,7 @@
 WHATSTR("@(#)%K%");
 
 private	MDBM	*lodDb_load(MMAP *lodmap);
-private MDBM	*lodDb_create(void);
+private MDBM	*lodDb_create(sccs *cset, int flags);
 private void	renumber(sccs *s, MDBM *lodDb, int flags);
 private void	newRev(sccs *s, int flags, MDBM *db, delta *d);
 private void	remember(MDBM *db, delta *d);
@@ -28,34 +28,80 @@ private int	taken(MDBM *db, delta *d);
 private int	redo(sccs *s, delta *d, MDBM *db, int flags, u16 release,
 		    MDBM *lodDb, ser_t *map);
 
+private	char	*renumber_help = "\n\
+usage: renumber [-nqs] files (or -)\n\n\
+    -n		Do nothing.  Just talk about it\n\
+    -q		Run silently\n\
+    -s		Run silently\n\n\
+    Useful idioms:\n\t\
+    bk -r renumber\n\n";
+
 int
 renumber_main(int ac, char **av)
 {
 	sccs	*s = 0;
 	char	*name;
-	int	c, dont = 0, quiet = 0, flags = 0;
+	int	c, fixlod = 0, dont = 0, quiet = 0, flags = 0;
 	delta	*leaf(delta *tree);
 	MDBM	*lodDb = 0;
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
-usage:		fprintf(stderr, "usage: renumber [-nq] [files...]\n");
+usage:		fputs(renumber_help, stderr);
 		return (1);
 	}
-	while ((c = getopt(ac, av, "nq")) != -1) {
+	while ((c = getopt(ac, av, "lnqs")) != -1) {
 		switch (c) {
+		    case 'l': fixlod++; break;
 		    case 'n': dont = 1; break;
+		    case 's':
 		    case 'q': quiet++; flags |= SILENT; break;
 		    default:
 			goto usage;
 		}
 	}
+	if (fixlod) {
+		sccs	*cset;
+
+		unless (cset = sccs_csetInit(flags, 0)) {
+			fprintf(stderr,
+				"%s: can't init ChangeSet file\n", av[0]);
+			exit(1);
+		}
+		renumber(cset, 0, flags);
+		if (dont) {
+			unless (quiet) {
+				fprintf(stderr, "%s: not writing %s\n",
+					av[0], cset->sfile);
+			}
+		}
+		else if (sccs_admin(cset, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0))
+		{
+			unless (BEEN_WARNED(s)) {
+				fprintf(stderr,
+				    "admin -z of %s failed.\n", cset->sfile);
+			}
+			exit(1);
+		}
+		unless (cset = sccs_restart(cset)) {
+			fprintf(stderr,
+				"%s: can't restart ChangeSet file\n", av[0]);
+			exit(1);
+		}
+		unless (lodDb = lodDb_create(cset, flags)) {
+			fprintf(stderr,
+				"%s: can't init lodDb mdbm\n", av[0]);
+			exit(1);
+		}
+		sccs_free(cset);
+	}
 	for (name = sfileFirst("renumber", &av[optind], 0);
 	    name; name = sfileNext()) {
 		s = sccs_init(name, flags, 0);
 		if (!s) continue;
-		if ((s->state & S_BITKEEPER) && !lodDb) {
-			unless (s->state & S_CSET)  lodDb = lodDb_create();
+		if (fixlod && s->state & S_CSET) { /* did cset file already */
+			sccs_free(s);
+			continue;
 		}
 		unless (s->tree) {
 			fprintf(stderr, "%s: can't read SCCS info in \"%s\".\n",
@@ -130,27 +176,16 @@ lodDb_load(MMAP *lodmap)
 }
 
 private MDBM *
-lodDb_create(void)
+lodDb_create(sccs *cset, int flags)
 {
-	sccs	*cset = 0;
 	delta	*d;
 	MMAP	*lodmap = 0;
-	char	*rootpath;
-	char	csetpath[MAXPATH];
 	char	cscat[40];
 	MDBM	*lodDb = 0;
 
 	cscat[0] = '\0';
 	gettemp(cscat, "cscat");
-	unless (rootpath = sccs_root(0)) goto ret;
-	strcpy(csetpath, rootpath);
-	strcat(csetpath, "/" CHANGESET);
-	debug((stderr, "renumber: opening changeset '%s'\n", csetpath));
-	unless (cset = sccs_init(csetpath, 0, 0)) goto ret;
 
-	/* XXX: feeling frustrated, I grunt this by hand.
-	 * Tell sccscat to print everything by setting all D_SET
-	 */
 	for (d = cset->table; d; d = d->next) {
 		unless (d->type == 'D') continue;
 		d->flags |= D_SET;
@@ -173,8 +208,6 @@ lodDb_create(void)
 ret:
 	if (lodmap) mclose(lodmap);
 	if (cscat[0]) unlink(cscat);
-	if (cset) sccs_free(cset);
-	if (rootpath) free(rootpath);
 	return (lodDb);
 }
 
@@ -198,7 +231,7 @@ renumber(sccs *s, MDBM *lodDb, int flags)
 	if (!(s->state & S_BITKEEPER) || (s->state & S_CSET))  lodDb = 0;
 
 	/* Save current default branch */
-	if (d = findrev(s, "")) {
+	if (d = sccs_top(s)) {
 		defserial = d->serial;	/* serial doesn't change */
 		if (s->defbranch) {
 			char	*ptr;

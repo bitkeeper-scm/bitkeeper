@@ -99,7 +99,7 @@ HERE=`${CWD}`
 ${ECHO} "logging: none" > $HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c proj
 cd proj
-echo $N Create lod collision and see if renumber does nothing .......$NL
+echo $N Create lod branch on X.0 delta, renumber fixes it ...........$NL
 echo base > foo.c
 echo base > bar.c
 bk new $Q foo.c bar.c
@@ -137,11 +137,12 @@ cd $HERE
 bk resync $Q proj copy
 cd copy/RESYNC
 cp SCCS/s.bar.c sbar
-bk renumber $Q bar.c
+bk -r renumber $Q -l
 cmp -s sbar SCCS/s.bar.c
 retcode=$?
-if [ $retcode -eq 0 ]; then echo Fix regression; exit 1; fi
-if [ $retcode -ne 0 ]; then echo Known takepatch bug; fi
+# if failed, then maybe takepatch changed?
+if [ $retcode -eq 0 ]; then echo failed; exit 1; fi
+echo OK
 echo $N Change default to be branch, renumber should reset it .......$NL
 bk admin -fd2.0.1 bar.c
 if [ $? -ne 0 ]; then echo Failed to set; exit 1; fi

@@ -1699,6 +1699,16 @@ findrev(sccs *s, char *rev)
 }
 
 /*
+ * Return Top of Trunk
+ */
+
+delta	*
+sccs_top(sccs *s)
+{
+	return (findrev(s,0));
+}
+
+/*
  * Find the first delta (in this LOD) that is > date.
  *
  * XXX - if there are two children in the same LOD, this finds only one of them.
@@ -1902,12 +1912,6 @@ morekids(delta *d, int bk_mode)
 {
 	return (d->kid && (d->kid->type != 'R')
 		&& samebranch_bk(d, d->kid, bk_mode));
-}
-
-int
-sccs_morekids(delta *d, int bk_mode)
-{
-	return (morekids(d, bk_mode));
 }
 
 /*
@@ -3594,6 +3598,29 @@ sccs_free(sccs *s)
 	sig(UNCATCH, SIGINT);
 	sig(UNBLOCK, SIGINT);
 #endif
+}
+
+/*
+ * open the ChangeSet file if can be found.  We are not necessarily
+ * at the root, nor do we want to go to the root forcefully, as the
+ * command line parameters may not be root relative
+ */
+
+sccs	*
+sccs_csetInit(u32 flags, project *proj)
+{
+	char	*rootpath;
+	char	csetpath[MAXPATH];
+	sccs	*cset = 0;
+
+	unless (rootpath = sccs_root(0)) goto ret;
+	strcpy(csetpath, rootpath);
+	strcat(csetpath, "/" CHANGESET);
+	debug((stderr, "sccs_csetinit: opening changeset '%s'\n", csetpath));
+	cset = sccs_init(csetpath, flags, proj);
+ret:
+	if (rootpath) free(rootpath);
+	return (cset);
 }
 
 /*
@@ -7840,9 +7867,19 @@ isleaf(register delta *d)
 	for (d = d->kid; d; d = d->siblings) {
 		if (d->flags & D_GONE) continue;
 		if (d->type != 'D') continue;
-		if (d->r[0] == 1 || d->r[1] != 1) return (0);
+		/* ignore root of lods: X.1.0.x or X.0.Y.1 */
+		/* handle special case of 1.0 -> 1.1 is kid */
+		if (d->r[0] != 1 && ((d->r[1] == 1 && d->r[2] == 0) ||
+		    (d->r[1] == 0 && d->r[3] == 1))) continue;
+		return (0);
 	}
 	return (1);
+}
+
+int
+sccs_isleaf(delta *d)
+{
+	return (isleaf(d));
 }
 
 /*
@@ -12647,18 +12684,21 @@ samekey(delta *d, char *user, char *host, char *path, time_t date,
 {
 	getDate(d);
 	if (d->date != date) {
-//printf("%s: %d (%s%s) vs %d\n", d->rev, d->date, d->sdate, d->zone ? d->zone : "", date);
+		debug((stderr, "samekey: No date match %s: %d (%s%s) vs %d\n",
+		    d->rev, d->date, d->sdate,
+		    d->zone ?  d->zone : "", date));
 		return (0);
 	}
-//printf("USER %s %s\n", d->user, user);
+	debug((stderr, "samekey: DATE matches\n"));
+	debug((stderr, "samekey: USER %s %s\n", d->user, user));
 	unless (streq(d->user, user)) return (0);
-//printf("HOST %s %s\n", d->hostname, host);
+	debug((stderr, "samekey: HOST %s %s\n", d->hostname, host));
 	if (d->hostname) {
 		unless (host && streq(d->hostname, host)) return (0);
 	} else if (host) {
 		return (0);
 	}
-//printf("PATH %s %s\n", d->pathname, path);
+	debug((stderr, "samekey: PATH %s %s\n", d->pathname, path));
 	if (d->pathname) {
 		unless (path && streq(d->pathname, path)) return (0);
 	} else if (path) {
@@ -12668,7 +12708,7 @@ samekey(delta *d, char *user, char *host, char *path, time_t date,
 	if (cksump) {
 		unless (d->sum == *cksump) return (0);
 	}
-//printf("MATCH\n");
+	debug((stderr, "samekey: MATCH\n"));
 	return (1);
 }
 
@@ -12779,39 +12819,6 @@ delta	*
 sccs_gca(sccs *s, delta *left, delta *right, char **inc, char **exc, int best)
 {
 	return (best ? gca3(s, left, right, inc, exc) : gca(left, right));
-}
-
-private int
-samelod(sccs *s, delta *a, delta *b)
-{
-	assert(s && a && b);
-	return (a->r[0] == b->r[0]);
-}
-
-private delta **
-sccs_lodmap(sccs *s)
-{
-	delta	**lodmap;
-	delta	*d;
-	u16	next;
-
-	next = sccs_nextlod(s);
-	/* next now equals one more than greatest that exists
-	 * make room for having a lodmap[next] slot by extending it by one
-	 */
-	next++;
-	unless (lodmap = calloc(next, sizeof(lodmap))) {
-		perror("calloc lodmap");
-		return(0);
-	}
-
-	for (d = s->table; d; d = d->next) {
-		if ((d->type == 'D') && (d->r[1] == 1) && (d->r[2] == 0)) {
-			lodmap[d->r[0]] = d;
-		}
-	}
-
-	return (lodmap);
 }
 
 /*
@@ -12934,6 +12941,18 @@ rename:		n[1] = name2sccs(g->pathname);
 err:
 	if (lodmap) free(lodmap);
 	return (retcode);
+}
+
+int
+sccs_setlod(char *rev, u32 flags)
+{
+	int	ac;
+	char	*cmd[10];
+
+	cmd[0] = "setlod";
+	cmd[1] = 0;
+	ac = 1;
+	return(setlod_main(ac, cmd));
 }
 
 /*
@@ -13226,13 +13245,13 @@ out:		if (f) fclose(f);
  * Note: does not call sccs_restart, the caller of this sets up "s".
  */
 int
-csetIds(sccs *s, char *rev)
+csetIds_merge(sccs *s, char *rev, char *merge)
 {
 	kvpair	kv;
 	char	*t;
 
 	assert(s->state & S_HASH);
-	if (sccs_get(s, rev, 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
+	if (sccs_get(s, rev, merge, 0, 0, SILENT|GET_HASHONLY, 0)) {
 		sccs_whynot("get", s);
 		return (-1);
 	}
@@ -13257,6 +13276,12 @@ csetIds(sccs *s, char *rev)
 		*t = '|';
 	}
 	return (0);
+}
+
+int
+csetIds(sccs *s, char *rev)
+{
+	return (csetIds_merge(s, rev, 0));
 }
 
 /*

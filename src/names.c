@@ -10,8 +10,10 @@
 #include "sccs.h"
 
 private	 void	pass1(sccs *s);
-private	 void	pass2(void);
-private	 int	try_rename(sccs *s, int dopass1);
+private	 void	pass2(u32 flags);
+private	 int	try_rename(sccs *s, int dopass1, u32 flags);
+
+private	int filenum;
 
 int
 names_main(int ac, char **av)
@@ -20,6 +22,7 @@ names_main(int ac, char **av)
 	char	*n;
 	int	todo = 0;
 	int	error = 0;
+	u32	flags = 0;
 
 	/* this should be redundant, we should always be at the project root */
 	if (sccs_cd2root(0, 0)) {
@@ -28,6 +31,7 @@ names_main(int ac, char **av)
 	}
 
 	optind = 1;
+	names_init();
 	for (n = sfileFirst("names", &av[optind], 0); n; n = sfileNext()) {
 		unless (s = sccs_init(n, 0, 0)) continue;
 		unless (sccs_setpathname(s)) {
@@ -49,16 +53,32 @@ names_main(int ac, char **av)
 			error |= 2;
 			continue;
 		}
-		todo += try_rename(s, 1);
+		todo += names_rename(s, flags);
 		sccs_free(s);
 	}
 	sfileDone();
+	names_cleanup(flags);
 	purify_list();
-	if (todo) pass2();
 	return (error);
 }
 
-private	int filenum = 0;
+void
+names_init(void)
+{
+	filenum = 0;
+}
+
+int
+names_rename(sccs *s, u32 flags)
+{
+	return(try_rename(s, 1, flags));
+}
+
+void
+names_cleanup(u32 flags)
+{
+	if (filenum) pass2(flags);
+}
 
 private	void
 pass1(sccs *s)
@@ -76,7 +96,7 @@ pass1(sccs *s)
 }
 
 private	void
-pass2()
+pass2(u32 flags)
 {
 	char	path[MAXPATH];
 	sccs	*s;
@@ -99,7 +119,7 @@ pass2()
 			failed++;
 			continue;
 		}
-		if (try_rename(s, 0)) {
+		if (try_rename(s, 0, flags)) {
 			fprintf(stderr, "Can't rename %s -> %s\n",
 			    s->gfile, s->pathname);
 			fprintf(stderr, "ERROR: File left in %s\n", path);
@@ -110,9 +130,11 @@ pass2()
 		sccs_free(s);
 		worked++;
 	}
-	fprintf(stderr,
-	    "names: %d/%d worked, %d/%d failed\n",
-	    worked, filenum, failed, filenum);
+	unless (flags & SILENT) {
+		fprintf(stderr,
+		    "names: %d/%d worked, %d/%d failed\n",
+		    worked, filenum, failed, filenum);
+	}
 }
 
 /*
@@ -120,7 +142,7 @@ pass2()
  * If not, just move it there.  We should be clean so just do the s.file.
  */
 private	int
-try_rename(sccs *s, int dopass1)
+try_rename(sccs *s, int dopass1, u32 flags)
 {
 	char	*sfile;
 
@@ -139,7 +161,9 @@ try_rename(sccs *s, int dopass1)
 		if (dopass1) pass1(s);
 		return (1);
 	}
-	fprintf(stderr, "names: %s -> %s\n", s->sfile, sfile);
+	unless (flags & SILENT) {
+		fprintf(stderr, "names: %s -> %s\n", s->sfile, sfile);
+	}
 	free(sfile);
 	return (0);
 }
