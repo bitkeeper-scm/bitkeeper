@@ -2588,6 +2588,8 @@ resolve_cleanup(opts *opts, int what)
 		if (exists(LOG_TREE)) {
 			log_cleanup();
 		} else {
+			assert(!exists("RESYNC/ChangeSet"));
+			sys("bk", "unlock", "-p", "RESYNC/" CHANGESET, SYS);
 			fprintf(stderr,
 			    "resolve: RESYNC directory left intact.\n");
 		}
