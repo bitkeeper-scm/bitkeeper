@@ -4,7 +4,7 @@
 all: munge example.sh
 	(cd /usr/include/sys && tar cf - .) > testdata.tar
 	$(MAKE) image PROG=example.sh IMAGE=testdata.tar
-	testdata.bin
+	./testdata.bin
 
 munge: munge.c
 	$(CC) -O munge.c -o munge
