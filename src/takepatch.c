@@ -40,23 +40,22 @@ usage: takepatch [-cFiv] [-f file]\n\n\
 #define	SHOUT2() \
 	fputs("====================================================\n", stderr);
 
-delta	*getRecord(FILE *f);
-int	extractPatch(char *name, FILE *p, int flags, int fast, char *root);
-int	extractDelta(char *name, sccs *s, int newFile, FILE *f, int, int*);
+delta	*getRecord(MMAP *f);
+int	extractPatch(char *name, MMAP *p, int flags, int fast, char *root);
+int	extractDelta(char *name, sccs *s, int newFile, MMAP *f, int, int*);
 int	applyPatch(
 	    char *local, char *remote, int flags, sccs *perfile, char *root);
 int	getLocals(sccs *s, delta *d, char *name);
 void	insertPatch(patch *p);
 void	initProject(void);
-FILE	*init(FILE *p, int flags, char **rootp);
-int	mkdirp(char *file);
-int	fileCopy(char *from, char *to);
+MMAP	*init(char *file, int flags, char **rootp);
 void	rebuild_id(char *id);
 void	cleanup(int what);
 void	changesetExists(void);
 void	notfirst(void);
 void	goneError(char *key);
 void	freePatchList();
+void	fileCopy2(char *from, char *to);
 
 int	echo = 0;	/* verbose level, higher means more diagnostics */
 int	line;		/* line number in the patch file */
@@ -70,15 +69,14 @@ MDBM	*goneDB;	/* key to gone database */
 delta	*gca;		/* The oldest parent found in the patch */
 int	noConflicts;	/* if set, abort on conflicts */
 char	pendingFile[MAXPATH];
-FILE	*input;		/* input file pointer, either stdin or a patch file */
-char	*infname;
+char	*input;		/* input file name, either "-" or a patch file */
 
 
 int
 main(int ac, char **av)
 {
-	char	buf[MAXLINE];
-	FILE	*p;
+	char	*buf;
+	MMAP	*p;
 	int	c;
 	int	flags = SILENT;
 	int	files = 0;
@@ -89,7 +87,7 @@ main(int ac, char **av)
 				 * skips cache rebuilds on file creates */
 
 	platformSpecificInit(NULL); 
-	input = stdin;
+	input = "-";
 	debug_main(av);
 	while ((c = getopt(ac, av, "acFf:iqsSv")) != -1) {
 		switch (c) {
@@ -101,12 +99,7 @@ main(int ac, char **av)
 		    case 'c': noConflicts++; break;
 		    case 'F': fast++; break;
 		    case 'f':
-			    infname = optarg;
-			    input = fopen(optarg, "rb");
-			    unless (input) {
-				    perror(optarg);
-				    exit(1);
-			    }
+			    input = optarg;
 			    break;
 		    case 'i': newProject++; break;
 		    case 'S': saveDirs++; break;
@@ -124,23 +117,31 @@ usage:		fprintf(stderr, takepatch_help);
 	/*
 	 * Find a file and go do it.
 	 */
-	while (fnext(buf, p)) {
+	while (buf = mnext(p)) {
+		char	*b;
+
 		++line;
-		if (echo>3) fprintf(stderr, "%s", buf);
-		unless (strncmp(buf, "== ", 3) == 0) {
-			if (echo > 6) fprintf(stderr, "skipping: %s", buf);
+		/* we need our own storage , extractPatch calls mkline */
+		b = strdup(mkline(buf));
+		if (echo>3) fprintf(stderr, "%s\n", b);
+		unless (strncmp(b, "== ", 3) == 0) {
+			if (echo > 6) {
+				fprintf(stderr, "skipping: %s\n", b);
+			}
+			free(b);
 			continue;
 		}
-		unless ((t = strrchr(buf, ' ')) && streq(t, " ==\n")) {
+		unless ((t = strrchr(b, ' ')) && streq(t, " ==")) {
 			SHOUT();
-			fprintf(stderr, "Bad patch: %s", buf);
+			fprintf(stderr, "Bad patch: %s\n", b);
 			cleanup(CLEAN_RESYNC);
 		}
 		*t = 0;
 		files++;
-		remote += extractPatch(&buf[3], p, flags, fast, resyncRoot);
+		remote += extractPatch(&b[3], p, flags, fast, resyncRoot);
+		free(b);
 	}
-	fclose(p);
+	mclose(p);
 	free(resyncRoot);
 	if (idDB) mdbm_close(idDB);
 	if (goneDB) mdbm_close(goneDB);
@@ -164,7 +165,7 @@ usage:		fprintf(stderr, takepatch_help);
 }
 
 delta *
-getRecord(FILE *f)
+getRecord(MMAP *f)
 {
 	int	e = 0;
 	delta	*d = sccs_getInit(0, 0, f, 1, &e, 0);
@@ -186,7 +187,7 @@ getRecord(FILE *f)
  * sent; it might be different than the local name.
  */
 int
-extractPatch(char *name, FILE *p, int flags, int fast, char *root)
+extractPatch(char *name, MMAP *p, int flags, int fast, char *root)
 {
 	delta	*tmp;
 	sccs	*s = 0;
@@ -195,7 +196,7 @@ extractPatch(char *name, FILE *p, int flags, int fast, char *root)
 	char	*gfile = 0;
 	int	nfound = 0, rc;
 	static	int rebuilt = 0;	/* static - do it once only */
-	char	buf[1200];
+	char	*t;
 
 	/*
 	 * Patch format for continuing file:
@@ -214,20 +215,19 @@ extractPatch(char *name, FILE *p, int flags, int fast, char *root)
 	 * D 1.1 99/02/23 00:29:01-08:00 lm@lm.bitmover.com +128 -0
 	 * etc.
 	 */
-	fnext(buf, p); chop(buf);
+	t = mkline(mnext(p));
 	line++;
 	name = name2sccs(name);
-	if (strneq("New file: ", buf, 10)) {
+	if (strneq("New file: ", t, 10)) {
 		newFile = 1;
 		perfile = sccs_getperfile(p, &line);
-		fnext(buf, p);
-		chop(buf);
+		t = mkline(mnext(p));
 		line++;
 	}
 	if (newProject && !newFile) notfirst();
 
-	if (echo>3) fprintf(stderr, "%s\n", buf);
-again:	s = sccs_keyinit(buf, INIT_NOCKSUM, idDB);
+	if (echo>3) fprintf(stderr, "%s\n", t);
+again:	s = sccs_keyinit(t, INIT_NOCKSUM, idDB);
 	/*
 	 * Unless it is a brand new workspace, or a new file,
 	 * rebuild the id cache if look up failed.
@@ -240,15 +240,15 @@ again:	s = sccs_keyinit(buf, INIT_NOCKSUM, idDB);
 	 *    it.
 	 */
 	unless (s || newProject || (newFile && fast)) {
-		if (gone(buf, goneDB)) goneError(buf);
+		if (gone(t, goneDB)) goneError(t);
 		unless (rebuilt++) {
-			rebuild_id(buf);
+			rebuild_id(t);
 			goto again;
 		}
 		unless (newFile) {
 			SHOUT();
 			fprintf(stderr,
-			   "takepatch: can't find key '%s' in id cache\n", buf);
+			   "takepatch: can't find key '%s' in id cache\n", t);
 cleanup:			if (perfile) free(perfile);
 			if (gfile) free(gfile);
 			if (s) sccs_free(s);
@@ -287,11 +287,11 @@ cleanup:			if (perfile) free(perfile);
 			    "takepatch: %s is locked w/o gfile?\n", s->sfile);
 			goto cleanup;
 		}
-		unless (tmp = sccs_findKey(s, buf)) {
+		unless (tmp = sccs_findKey(s, t)) {
 			SHOUT();
 			fprintf(stderr,
 			    "takepatch: can't find root delta '%s' in %s\n",
-			    buf, name);
+			    t, name);
 			goto cleanup;
 		}
 		unless (s->tree == tmp) {
@@ -316,7 +316,7 @@ cleanup:			if (perfile) free(perfile);
 		}
 		if (echo > 2) {
 			fprintf(stderr,
-			    "takepatch: new file %s\n", buf);
+			    "takepatch: new file %s\n", t);
 		}
 	}
 	gca = 0;
@@ -337,7 +337,7 @@ cleanup:			if (perfile) free(perfile);
 	if (s) sccs_free(s);
 	if (rc < 0) {
 		free(root);
-		fclose(p);
+		mclose(p);
 		/* if (rc == -2) cleanup(CLEAN_RESYNC|CLEAN_PENDING); */
 		cleanup(CLEAN_RESYNC);
 	}
@@ -370,12 +370,11 @@ sccscopy(sccs *to, sccs *from)
  * Deltas end on the first blank line.
  */
 int
-extractDelta(char *name, sccs *s, int newFile, FILE *f, int flags, int *np)
+extractDelta(char *name, sccs *s, int newFile, MMAP *f, int flags, int *np)
 {
-	FILE	*t;
 	delta	*d, *parent = 0, *tmp;
-	char	tmpf[MAXPATH];
-	char	buf[MAXLINE];
+	char	buf[MAXPATH];
+	char	*b;
 	char	*pid = 0;
 	long	off;
 	int	c;
@@ -384,14 +383,14 @@ extractDelta(char *name, sccs *s, int newFile, FILE *f, int flags, int *np)
 
 	if (newFile == 1) goto delta1;
 
-	fnext(buf, f); chop(buf); line++;
-	if (echo>3) fprintf(stderr, "%s\n", buf);
-	if (strneq(buf, "# Patch checksum=", 17)) return 0;
-	pid = strdup(buf);
+	b = mkline(mnext(f)); line++;
+	if (echo>3) fprintf(stderr, "%s\n", b);
+	if (strneq(b, "# Patch checksum=", 17)) return 0;
+	pid = strdup(b);
 	/*
 	 * This code assumes that the patch order is 1.1..1.100
 	 */
-	if (parent = sccs_findKey(s, buf)) {
+	if (parent = sccs_findKey(s, b)) {
 		unless (gca) {
 			gca = parent;
 			/*
@@ -406,7 +405,7 @@ extractDelta(char *name, sccs *s, int newFile, FILE *f, int flags, int *np)
 	}
 
 	/* go get the delta table entry for this delta */
-delta1:	off = ftell(f);
+delta1:	off = mtell(f);
 	d = getRecord(f);
 	sccs_sdelta(s, d, buf);
 	if (tmp = sccs_findKey(s, buf)) {
@@ -419,72 +418,57 @@ delta1:	off = ftell(f);
 	} else {
 		fileNum++;
 	}
-	fseek(f, off, 0);
+	mseekto(f, off);
 	if (skip) {
 		free(pid);
 		/* Eat metadata */
-		while (fnext(buf, f) && !streq("\n", buf)) line++;
+		while ((b = mnext(f)) && (*b != '\n')) line++;
 		line++;
 		/* Eat diffs */
-		while (fnext(buf, f) && !streq("\n", buf)) line++;
+		while ((b = mnext(f)) && (*b != '\n')) line++;
 		line++;
 	} else {
-		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-init", fileNum);
-		unless (t = fopen(tmpf, "w")) {
-			perror(tmpf);
-			exit(0);
-		}
-		while (fnext(buf, f) && !streq("\n", buf)) {
+		char	*start, *stop;
+
+		start = f->where; stop = start;
+		while ((b = mnext(f)) && (*b != '\n')) {
+			stop = f->where;
 			line++;
-			if (echo>3) fprintf(stderr, "%s", buf);
-			if (fputs(buf, t) == EOF) {
-				perror("fputs on init file");
-				cleanup(CLEAN_RESYNC);
-			}
+			if (echo>3) fprintf(stderr, "%.*s", linelen(b), b);
 		}
 		line++;
 		if (echo>4) fprintf(stderr, "\n");
-		fclose(t);
 		p = calloc(1, sizeof(patch));
 		p->flags = PATCH_REMOTE;
 		p->pid = pid;
 		sccs_sdelta(s, d, buf);
 		p->me = strdup(buf);
-		p->initFile = strdup(tmpf);
+		p->initMmap = mrange(start, stop);
 		p->localFile = s ? strdup(s->sfile) : 0;
-		sprintf(tmpf, "RESYNC/%s", name);
-		p->resyncFile = strdup(tmpf);
-		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-diffs", fileNum);
-		p->diffFile = strdup(tmpf);
+		sprintf(buf, "RESYNC/%s", name);
+		p->resyncFile = strdup(buf);
 		p->order = parent == d ? 0 : d->date;
 		if (echo>5) fprintf(stderr, "REM: %s %s %lu\n",
 				    d->rev, p->me, p->order);
-		unless (t = fopen(tmpf, "wb")) {
-			perror(tmpf);
-			exit(0);
-		}
 		c = line;
-		while (fnext(buf, f) && !streq("\n", buf)) {
-			if (fputs(buf, t) == EOF) {
-				perror("fputs on diffs file");
-				cleanup(CLEAN_RESYNC);
-			}
+		start = f->where; stop = start;
+		while ((b = mnext(f)) && (*b != '\n')) {
+			stop = f->where;
 			line++;
-			if (echo>4) fprintf(stderr, "%s", buf);
+			if (echo>4) fprintf(stderr, "%.*s", linelen(b), b);
 		}
 		if (d->flags & D_META) {
 			p->flags |= PATCH_META;
 			assert(c == line);
 		}
 		line++;
+		p->diffMmap = mrange(start, stop);
 		if (echo>4) fprintf(stderr, "\n");
-		fclose(t);
 		(*np)++;
 		insertPatch(p);
 	}
 	sccs_freetree(d);
-	if ((c = getc(f)) != EOF) {
-		ungetc(c, f);
+	if ((c = mpeekc(f)) != EOF) {
 		return (c != '=');
 	}
 	return (0);
@@ -623,7 +607,7 @@ applyPatch(
     char *localPath, char *remotePath, int flags, sccs *perfile, char *root)
 {
 	patch	*p = patchList;
-	FILE	*iF;
+	MMAP	*iF;
 	MMAP	*dF;
 	sccs	*s = 0;
 	delta	*d = 0;
@@ -641,13 +625,10 @@ applyPatch(
 		    p->localFile, p->resyncFile, p->pid, p->me);
 	}
 	unless (localPath) {
-		mkdirp(p->resyncFile);
+		mkdirf(p->resyncFile);
 		goto apply;
 	}
-	if (fileCopy(localPath, p->resyncFile)) {
-		perror("cp");
-		return -1;
-	}
+	fileCopy2(localPath, p->resyncFile);
 	unless (s = sccs_init(p->resyncFile, INIT_NOCKSUM|flags, root)) {
 		SHOUT();
 		fprintf(stderr, "takepatch: can't open %s\n", p->resyncFile);
@@ -704,7 +685,10 @@ apply:
 			unless (sccs_restart(s)) { perror("restart"); exit(1); }
 			if (echo>8) fprintf(stderr, "Child of %s\n", d->rev);
 			if (p->flags & PATCH_META) {
-				if (sccs_meta(s, d, p->initFile)) {
+				MMAP	*m = p->initMmap;
+
+				unless (m) m = mopen(p->initFile);
+				if (sccs_meta(s, d, m)) {
 					perror("meta");
 					return -1;
 				}
@@ -726,8 +710,18 @@ apply:
 			p->initFile, p->initFile, p->diffFile, p->diffFile);
 					system(buf);
 				}
-				iF = fopen(p->initFile, "rb");
-				dF = mopen(p->diffFile);
+				if (p->initFile) {
+					iF = mopen(p->initFile);
+				} else {
+					iF = p->initMmap;
+					p->initMmap = 0;
+				}
+				if (p->diffFile) {
+					dF = mopen(p->diffFile);
+				} else {
+					dF = p->diffMmap;
+					p->diffMmap = 0;
+				}
 				newflags = (echo > 2) ?
 				    DELTA_FORCE|DELTA_PATCH :
 				    DELTA_FORCE|DELTA_PATCH|SILENT;
@@ -738,7 +732,7 @@ apply:
 				if (s->state & S_BAD_DSUM) {
 					return -1;
 				}
-				fclose(iF);	/* dF done by delta() */
+				mclose(iF);
 			}
 		} else {
 			assert(s == 0);
@@ -750,8 +744,18 @@ apply:
 				return -1;
 			}
 			if (perfile) sccscopy(s, perfile);
-			iF = fopen(p->initFile, "rb");
-			dF = mopen(p->diffFile);
+			if (p->initFile) {
+				iF = mopen(p->initFile);
+			} else {
+				iF = p->initMmap;
+				p->initMmap = 0;
+			}
+			if (p->diffFile) {
+				dF = mopen(p->diffFile);
+			} else {
+				dF = p->diffMmap;
+				p->diffMmap = 0;
+			}
 			d = 0;
 			newflags = (echo > 2) ?
 			    NEWFILE|DELTA_FORCE|DELTA_PATCH :
@@ -761,7 +765,7 @@ apply:
 				return -1;
 			}
 			if (s->state & S_BAD_DSUM) cleanup(CLEAN_RESYNC);
-			fclose(iF);	/* dF done by delta() */
+			mclose(iF);	/* dF done by delta() */
 			sccs_free(s);
 			s = sccs_init(p->resyncFile, INIT_NOCKSUM, root);
 		}
@@ -982,15 +986,15 @@ initProject()
  * Put our pid in that dir so that we can figure out if
  * we are still here.
  */
-FILE *
-init(FILE *p, int flags, char **resyncRootp)
+MMAP	*
+init(char *inputFile, int flags, char **resyncRootp)
 {
 	char	buf[MAXPATH];
-	char	file[MAXPATH];
-	char	*root;
+	char	*root, *t;
 	int	i, len, havexsum;
 	int	started = 0;
 	FILE	*f, *g;
+	MMAP	*m;
 	uLong	sumC = 0, sumR = 0;
 
 	root = sccs_root(0, 0);
@@ -1026,33 +1030,32 @@ init(FILE *p, int flags, char **resyncRootp)
 	 * See if we can lock the tree.
 	 */
 	if (mkdir("RESYNC", 0775) == -1) {
+		char	file[MAXPATH];
+
 		if (errno != EEXIST) {
 			SHOUT();
 			perror("mkdir RESYNC");
 			cleanup(0);
 		}
 
+		file[0] = buf[0] = 0;
 		if ((f = fopen("RESYNC/BitKeeper/tmp/pid", "r")) &&
 		    fnext(buf, f)) {
 			fclose(f);
 			chop(buf);
-		} else {
-			*buf = '\0';
 		}
 		if ((f = fopen("RESYNC/BitKeeper/tmp/patch", "rb")) &&
 		    fnext(file, f)) {
 			fclose(f);
 			chop(file);
-		} else {
-			*file = '\0';
 		}
 
 		SHOUT();
-		if (*buf && *file) {
+		if (buf[0] && file[0]) {
 			fprintf(stderr,
 		      "takepatch: RESYNC dir locked by pid %s for patch %s\n",
 				buf, file);
-		} else if (*buf) {
+		} else if (buf[0]) {
 			fprintf(stderr,
 			      "takepatch: RESYNC dir locked by pid %s\n", buf);
 		} else {
@@ -1074,7 +1077,7 @@ init(FILE *p, int flags, char **resyncRootp)
 	fprintf(f, "%d\n", getpid());
 	fclose(f);
 
-	if (p == stdin) {
+	if (streq(inputFile, "-")) {
 		/*
 		 * Save the patch in the pending dir
 		 * and record we're working on it.
@@ -1119,7 +1122,7 @@ init(FILE *p, int flags, char **resyncRootp)
 		/*
 		 * Save patch first, making sure it is on disk.
 		 */
-		while (fnext(buf, p)) {
+		while (fnext(buf, stdin)) {
 			if (!started) {
 				if (streq(buf, PATCH_CURRENT)) {
 					havexsum = 1;
@@ -1149,36 +1152,45 @@ init(FILE *p, int flags, char **resyncRootp)
 			}
 		}
 		unless (started) nothingtodo();
-		if (fflush(f) || fsync(fileno(f))) {
-			perror("fsync on patch");
+		if (fclose(f)) {
+			perror("fclose on patch");
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 		}
 		unless (flags & SILENT) {
 			fprintf(stderr,
 			    "takepatch: saved patch in %s\n", pendingFile);
 		}
+		unless (m = mopen(pendingFile)) {
+			perror(pendingFile);
+			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
+		}
 	} else {
-		f = p;
+		unless (m = mopen(inputFile)) {
+			perror(inputFile);
+			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
+		}
 		i = 0;
-		while (fnext(buf, f)) {
-			if (streq(buf, PATCH_CURRENT)) {
+		while (t = mnext(m)) {
+			if (strneq(t, PATCH_CURRENT, strsz(PATCH_CURRENT))) {
 				havexsum = 1;
 				i++;
 				break;
-			} else if (streq(buf, PATCH_NOSUM)) {
+			} else
+			    if (strneq(buf, PATCH_NOSUM, strsz(PATCH_NOSUM))) {
 				havexsum = 0;
 				oldformat();
 				i++;
 				break;
 			}
 		}
-		unless (i) noversline(infname);
+		unless (i) noversline(input);
 		do {
-			len = strlen(buf);
-			sumC = adler32(sumC, buf, len);
-			if (!fnext(buf, f)) break;
-		} while (!strneq(buf, "# Patch checksum=", 17));
-		sumR = strtoul(buf+17, 0, 16);
+			len = linelen(t);
+			sumC = adler32(sumC, t, len);
+			unless (t = mnext(m)) break;
+		} while (!strneq(t, "# Patch checksum=", 17));
+		t = mkline(t);
+		sumR = strtoul(t+17, 0, 16);
 	}
 
 	if (havexsum && !sumR) {
@@ -1189,8 +1201,8 @@ init(FILE *p, int flags, char **resyncRootp)
 	}
 	if (havexsum && sumR != sumC) badXsum(sumR, sumC);
 
-	rewind(f);
-	fnext(buf, f);		/* skip version number */
+	mseekto(m, 0);
+	mnext(m);		/* skip version number */
 	line = 1;
 
 	if (newProject) {
@@ -1198,7 +1210,7 @@ init(FILE *p, int flags, char **resyncRootp)
 			perror("mdbm_open");
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 		}
-		return (f);
+		return (m);
 	}
 
 	/* OK if this returns NULL */
@@ -1208,65 +1220,13 @@ init(FILE *p, int flags, char **resyncRootp)
 		perror("SCCS/x.id_cache");
 		exit(1);
 	}
-	return (f);
+	return (m);
 }
 
-/*
- * Creat the directory for the destination file.
- */
-int
-mkdirp(char *file)
+void
+fileCopy2(char *from, char *to)
 {
-	char	*s;
-	char	*t;
-	char	buf[MAXPATH];
-
-	strcpy(buf, file);	/* for !writable string constants */
-	unless (s = strrchr(buf, '/')) return (0);
-	*s = 0;
-	if (isdir(buf)) return (0);
-	for (t = buf; t < s; ) {
-		if (t > buf) *t++ = '/';
-		if (t < s) {
-			while ((*t != '/') && (t < s)) t++;
-			*t = 0;
-		}
-		mkdir(buf, 0775);
-	}
-	*s = '/';
-	return (0);
-}
-
-int
-fileCopy(char *from, char *to)
-{
-	char	buf[8192];
-	int	n, from_fd, to_fd;
-	struct	stat sb;
-
-	/* NT note: must read and write in binary mode */
-	mkdirp(to);
-	if ((from_fd = open(from, 0, 0)) == -1) {
-		perror(from);
-		cleanup(CLEAN_RESYNC);
-	}
-	if (fstat(from_fd, &sb) == -1) {
-		perror(from);
-		cleanup(CLEAN_RESYNC);
-	}
-	if ((to_fd = creat(to, sb.st_mode & 0777)) == -1) {
-		perror(to);
-		cleanup(CLEAN_RESYNC);
-	}
-	while ((n = read(from_fd, buf, sizeof(buf))) > 0) {
-		if (write(to_fd, buf, n) != n) {
-			perror(to);
-			cleanup(CLEAN_RESYNC);
-		}
-	}
-	close(from_fd);
-	close(to_fd);
-	return (0);
+	if (fileCopy(from, to)) cleanup(CLEAN_RESYNC);
 }
 
 void
@@ -1306,7 +1266,7 @@ cleanup(int what)
 	} else {
 		fprintf(stderr, "takepatch: RESYNC directory left intact.\n");
 	}
-	if (input != stdin) {
+	unless (streq(input, "-")) {
 		SHOUT2();
 		exit(1);
 	}

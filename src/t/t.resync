@@ -33,6 +33,7 @@ bk commit $S -f -yCset
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 echo OK
+cores
 echo $N Create a copy of the project ................................$NL
 cd $HERE
 bk resync $Q project copy
@@ -51,6 +52,7 @@ if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 if [ ! -f BitKeeper/log/parent ]; then echo failed to record parent; exit 1; fi
 echo OK
+cores
 echo $N Check circular rename .......................................$NL
 cd $HERE/project/src
 for i in a b c
@@ -86,6 +88,7 @@ ${ECHO} "this is b.c" > ref.c
 cmp -s ref.c c.c
 if [ $? -ne 0 ]; then echo "failed c"; exit 1; fi
 echo OK
+cores
 echo $N Check conflict within a patch ...............................$NL
 cd $HERE/project/src
 get $Q -e c.c
@@ -240,6 +243,7 @@ bk resync $Q $HERE/project $HERE/copy  > resync.out 2>&1
 grep -q "has uncommitted changes" resync.out
 if [ $? -ne 0 ]; then echo failed; else echo OK; fi;
 rm -f resync.out
+cores
 
 echo $N resync w/ pending rename in source tree .....................$NL
 cd $HERE/project/src
@@ -368,6 +372,30 @@ EOF
 cmp -s merge.c merge.ref
 if [ $? -ne 0 ]; then echo failed; diff -u merge.c merge.ref; exit 1; fi
 echo OK
+echo $N Test propogation of a symbol on new changeset ...............$NL
+cd $HERE/project/src
+date > symbol_test
+bk new $Q symbol_test
+bk commit $S -y"symbol test" -S'symbol test'
+bk resync $Q -a $HERE/project $HERE/copy 
+cd $HERE/copy
+if [ ! -f src/SCCS/s.symbol_test ]; then echo failed to send file; exit 1; fi
+grep -q 'Ssymbol test' SCCS/s.ChangeSet
+if [ $? != 0 ]; then echo failed to send symbol; exit 1; fi
+echo OK
+echo $N Test propogation of a stand alone symbol "(meta delta)" .......$NL
+cd $HERE/project
+date > dummy
+bk new $Q dummy
+bk commit $S -y"symbol test2"
+bk admin $Q -S'later symbol' SCCS/s.ChangeSet
+bk resync $Q -a $HERE/project $HERE/copy 
+cd $HERE/copy
+grep -q 'Slater symbol' SCCS/s.ChangeSet
+if [ $? != 0 ]; then echo failed to send symbol; exit 1; fi
+echo OK
+cores
+
 # TEST: Check for parallel work winds up losing a file
 echo "----------- Andrew's anomaly (file disappears) -----------"
 cd $HERE

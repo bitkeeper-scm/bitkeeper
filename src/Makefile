@@ -29,8 +29,8 @@ PORTOBJ = port/getinput.o port/gethost.o port/fullname.o port/platforminit.o \
 	  port/sccs_root.o port/randomBits.o port/spawn.o port/samepath.o \
 	  port/disksp.o
 SCCSOBJ	= slib.o range.o newrev.o getopt.o popen.o libdiff.o \
-	  sfiles.o purify.o zgets.o maketmp.o mkdir.o \
-	  dirname.o localtm.o ${PORTOBJ}
+	  sfiles.o purify.o zgets.o gettemp.o mkdir.o \
+	  filecopy.o dirname.o localtm.o ${PORTOBJ}
 MDBMOBJ	= mdbm/mdbm.o mdbm/hash.o mdbm/debug.o
 ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/gzio.o \
 	  zlib/uncompr.o zlib/deflate.o zlib/trees.o zlib/zutil.o \
@@ -44,7 +44,7 @@ BINOBJ  = admin.o key2rev.o rechksum.o sccsmv.o smoosh.o \
 	  fdiff.o check.o adler32.o undos.o chksum.o
 
 SRCS	= slib.c range.c newrev.c getopt.c popen.c libdiff.c \
-	  sfiles.c purify.c zgets.c dirname.c maketmp.c mkdir.c \
+	  sfiles.c purify.c zgets.c dirname.c gettemp.c mkdir.c \
 	  fdiff.c mdbm/mdbm.c mdbm/hash.c mdbm/debug.c \
 	  port/getinput.c port/gethost.c port/fullname.c port/platforminit.c \
 	  port/sccs_root.c port/randomBits.c port/spawn.c port/samepath.c \
@@ -60,7 +60,7 @@ SRCS	= slib.c range.c newrev.c getopt.c popen.c libdiff.c \
 	  rechksum.c sccs_mv.c sccsmv.c sccsrm.c sccscat.c \
 	  key2rev.c rcs.c comments.c user.c host.c localtm.c \
 	  check.c bkhelp.txt config.h.in configure substvars.in \
-	  bitkeeper.config install.in nextsecond.c mtime.c
+	  bitkeeper.config install.in nextsecond.c mtime.c filecopy.c
 HDRS	= sccs.h purify.h range.h system.h mdbm/common.h mdbm/mdbm.h \
 	  mdbm/tune.h zlib/zlib.h zlib/zutil.h zlib/zconf.h zlib/deflate.h \
 	  zlib/infblock.h zlib/infcodes.h zlib/inffast.h zlib/inffixed.h \
@@ -427,7 +427,8 @@ getopt.o:	getopt.c $(sccsdeps)
 key2rev.o:	key2rev.c $(sccsdeps)
 libdiff.o:	libdiff.c $(sccsdeps)
 lines.o:	lines.c $(sccsdeps)
-maketmp.o:	maketmp.c $(sccsdeps)
+gettemp.o:	gettemp.c $(sccsdeps)
+filecopy.o:	filecopy.c $(sccsdeps)
 mkdir.o:	mkdir.c $(sccsdeps)
 newrev.o:	newrev.c $(sccsdeps)
 popen.o:	popen.c $(sccsdeps)
