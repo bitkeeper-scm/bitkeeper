@@ -326,7 +326,7 @@ echo OK
 
 echo $N Make sure we can not remove BitKeeper files .................$NL
 cd $HERE
-tar cf TAR src
+tar cf TAR src 2> /dev/null
 cd $HERE/src/BitKeeper/etc
 bk rm config 2> OUT && {
 	echo failed to exit with an error
@@ -385,7 +385,7 @@ echo OK
 echo $N Make sure we can not move BitKeeper files ...................$NL
 cd $HERE
 rm -rf src
-tar xf TAR 
+tar xf TAR  2> /dev/null
 cd $HERE/src/BitKeeper/etc
 bk mv config JUNK 2> OUT && {
 	echo failed to exit with an error
@@ -443,7 +443,7 @@ echo OK
 echo $N Make sure we can not move BitKeeper directories .............$NL
 cd $HERE
 rm -rf src
-tar xf TAR 
+tar xf TAR  2> /dev/null
 cd $HERE/src/BitKeeper
 bk mvdir etc no-no-no 2> OUT && {
 	echo failed to exit with an error
@@ -478,7 +478,7 @@ echo OK
 echo $N Make sure we can not remove BitKeeper directories ...........$NL
 cd $HERE
 rm -rf src
-tar xf TAR 
+tar xf TAR  2> /dev/null
 cd $HERE/src/BitKeeper
 bk rmdir etc 2> OUT && {
 	echo failed to exit with an error

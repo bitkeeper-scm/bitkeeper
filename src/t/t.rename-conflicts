@@ -50,12 +50,12 @@ bk commit $Q -ywhatever
 cd $HERE/copy
 bk resync $Q
 cd $HERE
-tar cf TAR copy
+tar cf TAR copy 2> /dev/null
 echo OK
 echo $N Resolve by removing local conflict ..........................$NL
 cd $HERE
 rm -rf copy
-tar xf TAR
+tar xf TAR 2> /dev/null
 cd copy
 cat > CMDS <<EOF
 rl
@@ -87,7 +87,7 @@ echo OK
 echo $N Resolve by moving local conflict ............................$NL
 cd $HERE
 rm -rf copy
-tar xf TAR
+tar xf TAR 2> /dev/null
 cd copy
 cat > CMDS <<EOF
 ml
@@ -131,12 +131,12 @@ bk commit $Q -ywhatever
 cd $HERE/copy
 bk resync $Q
 cd $HERE
-tar cf TAR copy
+tar cf TAR copy 2> /dev/null
 echo OK
 echo $N Resolve by removing local conflict ..........................$NL
 cd $HERE
 rm -rf copy
-tar xf TAR
+tar xf TAR 2> /dev/null
 cd copy
 cat > CMDS <<EOF
 rl
@@ -168,7 +168,7 @@ echo OK
 echo $N Resolve by moving local conflict ............................$NL
 cd $HERE
 rm -rf copy
-tar xf TAR
+tar xf TAR 2> /dev/null
 cd copy
 cat > CMDS <<EOF
 ml
