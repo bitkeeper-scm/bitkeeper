@@ -62,8 +62,12 @@ resolve_main(int ac, char **av)
 	int	comment = 0;	/* set if they used -y */
 	static	opts opts;	/* so it is zero */
 
-	opts.pass1 = opts.pass2 = opts.pass3 = opts.pass4 = 1;
+	if (ac == 2 && streq("--help", av[1])) {
+		system("bk help resolve");
+		return (0);
+	}
 
+	opts.pass1 = opts.pass2 = opts.pass3 = opts.pass4 = 1;
 	setmode(0, _O_TEXT);
 	unless (localDB) localDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	unless (resyncDB) resyncDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
@@ -92,6 +96,7 @@ resolve_main(int ac, char **av)
 		    case '4': opts.pass4 = 0; break;
 		    default:
 		    	fprintf(stderr, "resolve: bad opt %c\n", optopt);
+			system("bk help -s resolve");
 			exit(1);
 		}
     	}

@@ -5,6 +5,7 @@
 #define	HSZ	7		/* number of chars, not counting NULL */
 
 extern char     *bin;
+private int synopsis;
 
 int
 gethelp_main(int ac, char **av)
@@ -12,9 +13,10 @@ gethelp_main(int ac, char **av)
 	int	c;
 	char	*file = 0;
 
-	while ((c = getopt(ac, av, "f:")) != -1) {
+	while ((c = getopt(ac, av, "f:s")) != -1) {
 		switch (c) {
 		    case 'f': file = optarg; break;
+		    case 's': synopsis = 1; break;
 		    default: goto usage;
 	    	}
 	}
@@ -62,23 +64,36 @@ gethelp(char *helptxt, char *topic, char *bkarg, char *prefix, FILE *outf)
 	}
 	unless (found) return (0);
 	if (bkarg == NULL) bkarg = "";
-	while (fgets(buf, sizeof(buf), f)) {
-		char	*p;
-
-		if (strneq(HELPURL, buf, HSZ)) continue;
-		if (streq("$\n", buf)) break;
-		if (prefix) fputs(prefix, outf);
-		p = strstr(buf, "#BKARG#");
-		if (p) {
-			*p = 0;
-			fputs(buf, outf);
-			fputs(bkarg, outf);
-			fputs(&p[7], outf);
-		} else {
+	if (synopsis) { /* print synopsis only */
+		while (fgets(buf, sizeof(buf), f)) {
+			if (strneq("SYNOPSIS", buf, 8)) break;
+			if (streq("$\n", buf)) goto done;
+		}
+		fputs("usage:\n", outf);
+		while (fgets(buf, sizeof(buf), f)) {
+			if (streq("\n", buf)) break;
+			if (streq("$\n", buf)) break;
 			fputs(buf, outf);
 		}
+	} else { /* print full man page */
+		while (fgets(buf, sizeof(buf), f)) {
+			char	*p;
+
+			if (strneq(HELPURL, buf, HSZ)) continue;
+			if (streq("$\n", buf)) break;
+			if (prefix) fputs(prefix, outf);
+			p = strstr(buf, "#BKARG#");
+			if (p) {
+				*p = 0;
+				fputs(buf, outf);
+				fputs(bkarg, outf);
+				fputs(&p[7], outf);
+			} else {
+				fputs(buf, outf);
+			}
+		}
 	}
-	fclose(f);
+done:	fclose(f);
 	return (found);
 }
 

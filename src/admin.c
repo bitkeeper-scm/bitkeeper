@@ -3,49 +3,6 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
-private const char help[] = "\n\
-usage: admin options [- | file file file...]\n\
-\n\
-    -0			add a 1.0 delta if there is not one already\n\
-    -q			run quietly\n\
-    -r<rev>		revision to add or modify\n\
-    -y<comment>		comment for change\n\
-    -n			create new SCCS history file\n\
-    -i[<file>]		read initial text from <file> (default stdin)\n\
-    -t[<file>]		read description from <file>\n\
-    -T			clear description\n\
-    -h			check s.file structure\n\
-    -hh			check s.file structure for BitKeeper structure\n\
-    -hhh		check s.file structure for BitKeeper & time structure\n\
-    -H			same as -h, plus check file contents are ASCII\n\
-    -z			recalculate file checksum\n\
-\n\
-    -f<f><val>		set flag\n\
-	EXPAND1		expand keywords in first keyword containing line only\n\
-	RCS		expand RCS keywords\n\
-	SCCS		expand SCCS keywords\n\
-	YEAR4		store dates as 4 digit years (breaks SCCS compat)\n\
-    -F<f>		delete flag <f>\n\
-\n\
-    -m<mode>		set the mode of the file\n\
-    -M<merge>		Merge branch <merge> into TOT or <rev>\n\
-    -S<sym>:<rev>	associate <sym> with <rev>\n\
-    -p<path>		set path of the most recent delta to <path>\n\
-\n\
-    -B			make the landing pad bigger\n\
-    -C			remove the changeset marks\n\
-    -CC			remove the changeset marks and pointer\n\
-    -Z[alg]		compress stored s.file with <alg>, which may be:\n\
-	    gzip	like gzip(1) (default)\n\
-	    none	no compression\n\
-    -E[enc]		treat file as encoded with <enc>, which may be:\n\
-	    text	plain text\n\
-	    ascii	same\n\
-	    binary	binary file (must uuencode before diffing)\n\
-	    uugzip	same, but compress before uuencode\n\
-    -u			make sure that all dates are increasing\n\
-			(dangerous, this changes the keys)\n\
-\n";
 
 #define	OP(W, V, F) if (next##W < A_SZ-1) { \
 			W[next##W].thing = V; \
@@ -88,7 +45,8 @@ admin_main(int ac, char **av)
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
-		fprintf(stderr, "%s", help);
+		//fprintf(stderr, "%s", help);
+		system("bk help admin");
 		return (1);
 	}
 	bzero(f, sizeof(f));
@@ -331,7 +289,7 @@ next:		sccs_free(sc);
 	sfileDone();
 	if (proj) proj_free(proj);
 	return (error);
-usage:	fprintf(stderr, "admin: usage error, try `admin --help' for info.\n");
+usage:	system("bk help -s admin");
 	return (1);
 }
 

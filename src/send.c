@@ -76,6 +76,10 @@ send_main(int ac,  char **av)
 		fprintf(stderr, upgrade_msg);
 		exit(1);
 	}
+	if (ac == 2 && streq("--help", av[1])) {
+		system("bk help send");
+		return (0);
+	}
 	while ((c = getopt(ac, av, "dfqr:w:")) != -1) {
 		switch (c) {
 		    case 'd':	dflag = "-d"; break;
@@ -85,6 +89,7 @@ send_main(int ac,  char **av)
 		    case 'w': 	wrapper = optarg; break;
 		    default :
 			fprintf(stderr, "unknown option <%c>\n", c);
+			system("bk help -s send");
 			exit(1);
 		}
 	}

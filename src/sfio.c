@@ -36,16 +36,6 @@ private int	in_file(char *file, int todo, int extract);
 private	int	mkfile(char *file);
 extern	void	platformSpecificInit(char *name);
 
-private	 const char help[] = "\
-usage:	sfio [-q] [-m] -i | -p < archive\n\
-or:	sfio [-q] [-m] -o < filelist\n\
-\n\
-  -i	extract archive\n\
-  -m	transfer file modes (default not to do so)\n\
-  -o	create archive\n\
-  -p	list contents of archive\n\
-  -q	quiet mode\n";
-
 private	int	quiet;
 private	int	doModes;
 
@@ -59,7 +49,10 @@ sfio_main(int ac, char **av)
 	int	c, mode = 0;
 
 	platformSpecificInit(NULL);
-	if (ac == 2 && streq(av[1], "--help")) goto usage;
+	if (ac == 2 && streq(av[1], "--help")) {
+		system("bk help sfio");
+		return (0);
+	}
 	while ((c = getopt(ac, av, "imopq")) != -1) {
 		switch (c) {
 		    case 'i': if (mode) goto usage; mode = M_IN;   break;
@@ -67,7 +60,7 @@ sfio_main(int ac, char **av)
 		    case 'p': if (mode) goto usage; mode = M_LIST; break;
 		    case 'm': doModes = 1; break;
 		    case 'q': quiet = 1; break;
-		default:
+		    default:
 			goto usage;
 		}
 	}
@@ -79,7 +72,7 @@ sfio_main(int ac, char **av)
 	else if (mode == M_IN)   return (sfio_in(1));
 	else if (mode == M_LIST) return (sfio_in(0));
 
-usage:	fputs(help, stderr);
+usage:	system("bk help -s sfio");
 	return (1);
 }
 

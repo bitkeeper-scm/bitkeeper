@@ -8,23 +8,6 @@
 #include "range.h"
 WHATSTR("@(#)%K%");
 
-private	char	*log_help = "\n\
-usage: sccslog [-pCv] [-c<d>] [-r<r>] [file list...] OR [-] OR []\n\n\
-    -A		select all uncommited deltas in a file.\n\
-    -c<dates>	Cut off dates.  See 'bk help dates' for details.\n\
-    -C		produce comments for a changeset\n\
-    -i<d>	indent output by <d> spaces\n\
-    -p		show basenames instead of full pathnames.\n\
-    -r<r>	specify a revision or a part of a range.\n\
-    -v		be verbose about errors and processing\n\n\
-    Note that <date> may be a symbol, which implies the date of the\n\
-    delta which matches the symbol.\n\n\
-    Range specifications:\n\
-    -r+		    prints the most recent delta\n\
-    -r1.3..1.6	    prints all deltas 1.3 through 1.6\n\
-    -d9207..92	    prints all deltas from July 1 '92 to Dec 31 '92\n\
-    -d92..92	    prints all deltas from Jan 1 '92 to Dec 31 '92\n\n";
-
 private	int	compar(const void *a, const void *b);
 private	void	sortlog(int flags);
 private	void	printlog(int);
@@ -50,7 +33,7 @@ sccslog_main(int ac, char **av)
 	setmode(1, _O_BINARY);
 	debug_main(av);
 	if (ac == 2 && streq("--help", av[1])) {
-		fprintf(stderr, log_help);
+		system("bk help sccslog");
 		return (0);
 	}
 	while ((c = getopt(ac, av, "ACc;i;pr|v")) != -1) {
@@ -62,7 +45,7 @@ sccslog_main(int ac, char **av)
 		    case 'v': flags &= ~SILENT; break;
 		    RANGE_OPTS('c', 'r');
 		    default:
-usage:			fprintf(stderr, "sccslog: usage error, try --help.\n");
+usage:			system("bk help -s sccslog");
 			return (1);
 		}
 	}

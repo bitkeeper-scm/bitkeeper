@@ -13,12 +13,6 @@ WHATSTR("@(#)%K%");
  *
  * Copyright (c) 1999 L.W.McVoy
  */
-private	char	*sum_help = "\n\
-usage: rechksum [-cfo] file file | -\n\n\
-    -c		check existing checksums but do not correct them\n\
-    -f		force a regeneration of the checksum (dangerous, breaks keys)\n\
-    -o		go from v2 to old v1 sum format\n\
-    -v		verbose\n\n";
 
 private	int	resum(sccs *s, delta *d, int, int flags, int old7bit, int dont);
 private	int	sumit(char *path, int *old, int *new, int old7bit);
@@ -39,8 +33,8 @@ rechksum_main(int ac, char **av)
 	project	*proj = 0;
 
 	if (ac > 1 && streq("--help", av[1])) {
-usage:		fprintf(stderr, "%s", sum_help);
-		return (1);
+		system("bk help rechksum");
+		return (0);
 	}
 	while ((c = getopt(ac, av, "cfov")) != -1) {
 		switch (c) {
@@ -48,7 +42,8 @@ usage:		fprintf(stderr, "%s", sum_help);
 		    case 'f': flags |= GET_FORCE; break;
 		    case 'o': old++; break;
 		    case 'v': verbose++; break;
-		    default:  goto usage;
+		    default:  system("bk help -s rechksum");
+			      return (1);
 		}
 	}
 	for (name = sfileFirst("rechksum", &av[optind], 0);

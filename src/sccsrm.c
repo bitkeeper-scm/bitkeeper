@@ -17,21 +17,23 @@ rm_main(int ac, char **av)
 	int	c, errors = 0;
 	int 	useCommonDir = 0;
 
+	if (ac == 2 && streq("--help", av[1])) {
+		system("bk help rm");
+		return (0);
+	}
+
 	debug_main(av);
 	if (streq(basenm(av[0]), "rm")) useCommonDir = 1;
         while ((c = getopt(ac, av, "d")) != -1) {
                 switch (c) {
                     case 'd': useCommonDir++; break;
                     default:
-                        fprintf(stderr,
-			    "usage: %s [-d] file1 file2 ...\n", av[0]);
+usage:			system("bk help -s rm");
                         return (1);
                 }
         }
-	if (ac < 2) {
-		fprintf(stderr, "usage: %s [-d] file1 file2 ...\n", av[0]);
-		exit(1);
-	}
+	if (ac < 2) goto usage;
+
 	for (name = sfileFirst("sccsrm",&av[optind], 0);
 	    name; name = sfileNext()) {
 		errors |= sccs_rm(name, useCommonDir);
@@ -84,15 +86,25 @@ private char *root;
 int
 gone_main(int ac, char **av)
 {
-	int	error = 0;
+	int	c, error = 0;
 	int	quiet = 0;
 
-	if (av[1] && streq(av[1], "-q")) quiet++, av++;
-	unless (av[1]) {
-		fprintf(stderr, "usage: bk gone [-q] [-|key...]\n");
-		exit(1);
+	if (ac == 2 && streq("--help", av[1])) {
+		system("bk help gone");
+		return (1);
 	}
-	if (streq("-", av[1])) {
+
+	while ((c =  getopt(ac, av, "q")) != -1) { 
+		switch (c) {
+		    case 'q': quiet++; break;
+		    default: 
+usage:			      system("bk help -s gone");
+			      return (1);
+		}
+	}
+	unless (av[optind]) goto usage;
+
+	if (streq("-", av[optind])) {
 		char buf[MAXPATH];
 
 		while (fgets(buf, sizeof(buf), stdin)) {
@@ -107,7 +119,7 @@ gone_main(int ac, char **av)
 			}
 		}
 	} else {
-		int	i = 1;
+		int	i = optind;
 
 		while (av[i]) {
 			if (sccs_gone(av[i++])) {

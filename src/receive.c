@@ -13,6 +13,11 @@ receive_main(int ac,  char **av)
 		exit(1);
 	}
 
+	if (ac == 2 && streq("--help", av[1])) {
+		system("bk help receive");
+		return (0);
+	}
+
 	while ((c = getopt(ac, av, "acFiStv")) != -1) {
 		switch (c) { 
 		    case 'a': strcat(opts, " -a"); break;
@@ -23,7 +28,7 @@ receive_main(int ac,  char **av)
 		    case 't': strcat(opts, " -t"); break;
 		    case 'v': strcat(opts, " -v"); break;
 		    default :
-			fprintf(stderr, "unknown option <%c>\n", c);
+			system("bk help -s receive");
 			exit(1);
 		}
 	}

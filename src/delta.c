@@ -62,7 +62,8 @@ delta_main(int ac, char **av)
 	}
 
 	if (ac > 1 && streq("--help", av[1])) {
-help:		system("bk help delta");
+		sprintf(buf, "bk help %s", name);
+		system(buf);
 		return (1);
 	}
 
@@ -102,7 +103,7 @@ comment:		comments_save(optarg);
 		    case 'g':
 		    case 'r':
 			    fprintf(stderr, "-%c not implemented.\n", c);
-			    goto help;
+			    goto usage;
 
 		    /* LM flags */
 		    case 'a':
@@ -125,8 +126,8 @@ comment:		comments_save(optarg);
 		    case 'E': encp = optarg; break;
 
 		    default:
-usage:			fprintf(stderr, "%s: usage error, try --help.\n",
-				av[0]);
+usage:			sprintf(buf, "bk help -s %s", name);
+			system(buf);
 			return (1);
 		}
 	}

@@ -36,8 +36,8 @@ stripdel_main(int ac, char **av)
 
 	debug_main(av);
 	if (ac == 2 && streq("--help", av[1])) {
-usage:		fprintf(stderr, stripdel_help);
-		return (1);
+		system("bk help stripdel");
+		return (0);
 	}
 	while ((c = getopt(ac, av, "bcCqr;")) != -1) {
 		switch (c) {
@@ -47,9 +47,7 @@ usage:		fprintf(stderr, stripdel_help);
 		    case 'q': opts.quiet = 1; break;
 		    RANGE_OPTS('!', 'r');
 		    default:
-			fprintf(stderr,
-			    "%s -%c usage error, try %s --help\n",
-			    av[0], c, av[0]);
+usage:			system("bk help -s stripdel");
 			return (1);
 		}
 	}

@@ -26,12 +26,6 @@ private int	redo(sccs *s, delta *d, MDBM *db, int flags, ser_t *release,
 		    MDBM *lodDb, ser_t *map, ser_t thislod);
 private ser_t	whichlod(sccs *s, delta *d, MDBM *lodDb);
 
-private	char	*renumber_help = "\n\
-usage: renumber [-nqs] files (or -)\n\n\
-    -n		Do nothing.  Just talk about it\n\
-    -q		Run silently\n\
-    Useful idioms:\n\t\
-    bk -r renumber\n\n";
 
 int
 renumber_main(int ac, char **av)
@@ -44,8 +38,8 @@ renumber_main(int ac, char **av)
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
-usage:		fputs(renumber_help, stderr);
-		return (1);
+		system("bk help renumber");
+		return (0);
 	}
 	while ((c = getopt(ac, av, "nqs")) != -1) {
 		switch (c) {
@@ -53,7 +47,8 @@ usage:		fputs(renumber_help, stderr);
 		    case 's':
 		    case 'q': quiet++; flags |= SILENT; break;
 		    default:
-			goto usage;
+			system("bk help -s renumber");
+			return (1);
 		}
 	}
 	for (name = sfileFirst("renumber", &av[optind], 0);

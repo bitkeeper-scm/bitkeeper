@@ -3,27 +3,6 @@
 #include "sccs.h"
 #include "range.h"
 WHATSTR("@(#)%K%");
-private	char	*prs_help = "\n\
-usage: prs [-abhmMv] [-c<date>] [-C<rev>] [-r<rev>] [files...]\n\n\
-    -a		print info on all deltas, not just data deltas\n\
-    -b		reverse the order of the printed deltas\n\
-    -c<date>	Cut off dates.  See sccsrange(1) for details.\n\
-    -C<rev>	make the range be all revs that are the same cset as this\n\
-    -d<spec>    Specify output data specification\n\
-    -h		Suppress range header\n\
-    -m		print metadata, such as users and symbols.\n\
-    -M		do not include branch deltas which are not merged\n\
-    -o		print the set of not specified deltas\n\
-    -r<rev>	Specify a revision, or part of a range.\n\
-    -x<rev>	exclude rev from the selection in -r.\n\n\
-    -v		Complain about SCCS files that do not match the range.\n\n\
-    Note that <date> may be a symbol, which implies the date of the\n\
-    delta which matches the symbol.\n\n\
-    Range specifications:\n\
-    -r+		    prints the most recent delta\n\
-    -r1.3..1.6	    prints all deltas 1.3 through 1.6\n\
-    -c9207..92	    prints all deltas from July 1 '92 to Dec 31 '92\n\
-    -c92..92	    prints all deltas from Jan 1 '92 to Dec 31 '92\n\n";
 
 int
 prs_main(int ac, char **av)
@@ -45,7 +24,7 @@ prs_main(int ac, char **av)
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
-		fprintf(stderr, prs_help);
+		system("bk help prs");
 		return (1);
 	}
 	while ((c = getopt(ac, av, "abc;C;d:hmMor|x:vY")) != -1) {
@@ -69,7 +48,7 @@ prs_main(int ac, char **av)
 			      break;
 		    RANGE_OPTS('c', 'r');
 		    default:
-usage:			fprintf(stderr, "prs: usage error, try --help\n");
+usage:			system("bk help -s prs");
 			if (year4) free(year4);
 			return (1);
 		}

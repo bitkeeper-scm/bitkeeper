@@ -6,27 +6,9 @@
 #	cases.  We should fail if the repository is not empty.
 # %W% %@%
 
-usage() {
-	cat <<EOF
-Usage: import [-efirv] [-j<n>] [-l<list>] [-t<type] from_dir to_dir
-
-    -c<TAG>	do not import anything after <TAG> (RCS/CVS only)
-    -e		prompts for regular expression to exclude from file list
-    -f		force the import to not ask questions
-    -i		prompts for regular expression to include from file list
-    -j<n>	do <n>-way parallelism if possible (RCS/CVS only)
-    -l<l>	list of files to import is in <l>
-    -t<t>	type of imported files is <t> where t is plain|patch|RCS|CVS
-    -r		do not do renames when doing patch imports
-    -q		be less verbose
-    -v		be more verbose
-EOF
-	exit 0
-}
-
 import() {
 	if [ X"$1" = "X--help" ]
-	then	usage
+	then	bk help import; exit 0;
 	fi
 	INCLUDE=""
 	EXCLUDE=""
@@ -61,7 +43,7 @@ import() {
 	done
 	shift `expr $OPTIND - 1`
 	if [ X"$1" = X -o X"$2" = X -o X"$3" != X ]
-	then	usage
+	then	bk help -s import; exit 1;
 	fi
 	gettype $TYPE
 	if [ $TYPE = patch ]

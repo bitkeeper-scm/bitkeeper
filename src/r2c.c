@@ -23,8 +23,12 @@ r2c_main(int ac, char **av)
 	int	len;
 	RANGE_DECL;
 
+	if (ac == 2 && streq("--help", av[1])) {
+		system("bk help r2c");
+		return (0);
+	}
 	unless (av[1] && strneq(av[1], "-r", 2) && av[2] && !av[3]) {
-		fprintf(stderr, "Usage: r2c -r<rev> file\n");
+		system("bk help -s r2c");
 		exit(1);
 	}
 	name = name2sccs(av[2]);

@@ -10,24 +10,26 @@ help_main(int ac,  char **av)
 	char	buf[MAXLINE];
 	char	out[MAXPATH];
 	int	c, i = 0, use_pager = 1;
-	char	*opt = 0;
-	FILE	*f;
+	char	*opt = 0, *synopsis = "";
+	FILE	*f, *f1;
 	char	*file = 0;
 
-	if (ac == 1) {
+	if ((ac == 1) || (ac == 2 && streq("--help", av[1]))) {
 		sprintf(buf, "bk help help | %s", pager);
 		system(buf);
 		return (0);
 	}
-	while ((c = getopt(ac, av, "af:kp")) != -1) {
+
+	while ((c = getopt(ac, av, "af:kps")) != -1) {
 		switch (c) {
 		    case 'a': opt = "al"; break;
 		    case 'f': file = optarg; break;
 		    case 'k': opt = "l"; break;		/* like man -k */
+		    case 's': synopsis = "-s";
+			      /* fall thru */
 		    case 'p': use_pager = 0; break;
-		    defaults:
-			fprintf(stderr,
-			    "usage: bk help [-akp] [-f<helptxt>] [topic]\n");
+		    default:
+			system("bk help -s help");
 			return (1);
 		}
 	}
@@ -49,14 +51,13 @@ help_main(int ac,  char **av)
 		goto print;
 	}
 	for (av[i = optind]; av[i]; i++) {
-		sprintf(buf,
-		    "bk gethelp %s %s >> %s", av[i], bin, out);
 		if (file) {
 			sprintf(buf,
-			    "bk gethelp -f%s %s %s >> %s",
-			    file, av[i], bin, out);
+			    "bk gethelp %s -f%s %s %s >> %s",
+			     		synopsis, file, av[i], bin, out);
 		} else {
-			sprintf(buf, "bk gethelp %s %s >> %s", av[i], bin, out);
+			sprintf(buf, "bk gethelp %s %s %s >> %s",
+					synopsis, av[i], bin, out);
 		}
 		if (system(buf) != 0) {
 			if (is_command(av[optind])) {
@@ -81,8 +82,9 @@ print:
 		system(buf);
 	} else {
 		f = fopen(out, "rt");
+		f1 = (*synopsis) ? stderr : stdout;
 		while (fgets(buf, sizeof(buf), f)) {
-			fputs(buf, stdout);
+			fputs(buf, f1);
 		}
 		fclose(f);
 	

@@ -21,6 +21,10 @@ undo_main(int ac,  char **av)
 #define	BK_TMP  "BitKeeper/tmp"
 #define	BK_UNDO "BitKeeper/tmp/undo"
 
+	if (ac == 2 && streq("--help", av[1])) {
+		system("bk help undo");
+		return (0);
+	}
 	if (sccs_cd2root(0, 0) == -1) {
 		fprintf(stderr, "undo: cannot find package root.\n");
 		exit(1);
@@ -36,13 +40,11 @@ undo_main(int ac,  char **av)
 		    case 's': save = 0; break;
 		    default :
 			fprintf(stderr, "unknown option <%c>\n", c);
+usage:			system("bk help -s undo");
 			exit(1);
 		}
 	}
-	unless (rev) {
-		fprintf(stderr, "usage bk undo [-afqs] -rcset-revision\n");
-		exit(1);
-	}
+	unless (rev) goto usage;
 	if (ckRev) checkRev(rev);
 	sprintf(rev_list, "%s/bk_rev_list%d",  TMP_PATH, getpid());
 	fileList = mk_list(rev_list, rev);

@@ -28,18 +28,6 @@ WHATSTR("@(#)%K%");
  *
  * Repeats.
  */
-char *takepatch_help = "\n\
-usage: takepatch [-acFimStv] [-f file]\n\n\
-    -a		apply the changes (call resolve)\n\
-    -c		do not accept conflicts with this patch\n\
-    -F		(fast) do rebuild id cache when creating files\n\
-    -f<file>	take the patch from <file> and do not save it\n\
-    -i		initial patch, create a new repository\n\
-    -m		list deltas as they are read in the patch\n\
-    -S		save RESYNC and or PENDING directories even if errors\n\
-    -t		run in text only mode, do not talk to X11.\n\
-    -v		verbose level, more is more verbose, -vv is suggested.\n\n";
-
 #define	CLEAN_RESYNC	1	/* blow away the RESYNC dir */
 #define	CLEAN_PENDING	2	/* blow away the PENDING dir */
 #define	SHOUT() fputs("\n=================================== "\
@@ -104,6 +92,11 @@ takepatch_main(int ac, char **av)
 	int	fast = 0;	/* undocumented switch for scripts,
 				 * skips cache rebuilds on file creates */
 
+	if (ac == 2 && streq("--help", av[1])) {
+		system("bk help takepatch");
+		return (0);
+	}
+
 	platformSpecificInit(NULL);
 	input = "-";
 	debug_main(av);
@@ -129,7 +122,7 @@ takepatch_main(int ac, char **av)
 	}
 	if (getenv("TAKEPATCH_SAVEDIRS")) saveDirs++;
 	if (av[optind]) {
-usage:		fprintf(stderr, takepatch_help);
+usage:		system("bk help -s takepatch");
 		return (1);
 	}
 
