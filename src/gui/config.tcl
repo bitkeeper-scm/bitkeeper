@@ -14,6 +14,7 @@ proc getConfig {prog} \
 		#set _d(fixedFont -misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso8859-1
 		#set _d(fixedBoldFont -misc-fixed-bold-r-semicondensed--13-120-75-75-c-60-iso8859-1
 		set _d(buttonFont) {helvetica 9 roman bold}
+		set _d(noticeFont) {helvetica 10 roman bold}
 		set _d(cset.leftWidth) 40
 		set _d(cset.rightWidth) 80
 		set _d(scrollWidth) 18		;# scrollbar width
@@ -24,7 +25,8 @@ proc getConfig {prog} \
 	} else {
 		set _d(fixedFont) {6x13}
 		set _d(fixedBoldFont) {6x13bold}
-		set _d(buttonFont) {times 12 roman bold}
+		set _d(buttonFont) {helvetica 11 roman}
+		set _d(noticeFont) {helvetica 12 roman bold}
 		set _d(cset.leftWidth) 55
 		set _d(cset.rightWidth) 80
 		set _d(scrollWidth) 12		;# scrollbar width
