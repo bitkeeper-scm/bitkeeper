@@ -6,6 +6,25 @@
 #define	eof(s)		((s->encoding & E_GZIP) ? \
 			    zeof() : (s->where >= s->mmap + s->size))
 
+/* File-format version numbers.
+ * They work like this: For each file format which needs a version number,
+ * define FOO_VERSION_PREFIX to be the string identifying this as a version
+ * number for that file, and FOO_VERSION to be the concatenation of the
+ * prefix with the current version number.  Define FOO_OLDVERSION_whatever
+ * to be a similar concatenation for any old format version you want to
+ * recognize.
+ */
+
+#define PATCH_VERSION_PREFIX	"# Patch vers:\t"
+#define	PATCH_VERSION		PATCH_VERSION_PREFIX "0.6\n"
+#define PATCH_OLDVERSION_NOSUM	PATCH_VERSION_PREFIX "0.5\n"  /* no checksum */
+
+#define CSET_VERSION_PREFIX	"cset_version_"
+#define CSET_VERSION		CSET_VERSION_PREFIX "0"
+/* near future: CSET_VERSION is 1, CSET_OLDVERSION_SHORTKEY is 0 */
+
+/* XXX should have a file version for s.files */
+
 /*
  * Flags that modify some operation (passed to sccs_*).
  *
@@ -480,8 +499,6 @@ typedef struct patch {
 	int	flags;		/* local/remote /etc */
 	struct	patch *next;	/* guess */
 } patch;
-
-#define	PATCH_VERSION	"# Patch vers:\t0.6\n"
 
 #define	PATCH_LOCAL	0x0001	/* patch is from local file */
 #define	PATCH_REMOTE	0x0002	/* patch is from remote file */

@@ -572,6 +572,12 @@ Please commit pending changes with `bk commit' and reapply the patch.\n",
 	cleanup(CLEAN_RESYNC);
 }
 
+void
+oldformat(void)
+{
+	fputs("takepatch: warning: patch is in obsolete format\n", stderr);
+}
+
 /*
  * If the destination file does not exist, just apply the patches to create
  * the new file.
@@ -929,7 +935,7 @@ init(FILE *p, int flags, char **resyncRootp)
 	char	buf[MAXPATH];
 	char	file[MAXPATH];
 	char	*root;
-	int	i, len;
+	int	i, len, havexsum;
 	int	started = 0;
 	FILE	*f, *g;
 	uLong	sumC = 0, sumR = 0;
@@ -1052,7 +1058,17 @@ init(FILE *p, int flags, char **resyncRootp)
 		 * Save patch first, making sure it is on disk.
 		 */
 		while (fnext(buf, p)) {
-			if (!started && streq(buf, PATCH_VERSION)) started = 1;
+			if (!started
+			    && strneq(buf, PATCH_VERSION_PREFIX,
+				      sizeof PATCH_VERSION_PREFIX - 1)) {
+				if (streq(buf, PATCH_VERSION)) havexsum = 1;
+				else if (streq(buf, PATCH_OLDVERSION_NOSUM)) {
+					havexsum = 0;
+					oldformat();
+				}
+				started = 1;
+			}
+			    
 			if (started) {
 				if (fputs(buf, f) == EOF) {
 					perror("fputs on patch");
@@ -1083,22 +1099,29 @@ init(FILE *p, int flags, char **resyncRootp)
 	} else {
 		f = p;
 		fnext(buf, f);
-		if (!streq(buf, PATCH_VERSION)) noversline(infname);
-					do {
+		if (strneq(buf, PATCH_VERSION_PREFIX,
+			   sizeof PATCH_VERSION_PREFIX - 1)) {
+			if (streq(buf, PATCH_VERSION)) havexsum = 1;
+			else if (streq(buf, PATCH_OLDVERSION_NOSUM)) {
+				havexsum = 0;
+				oldformat();
+			}
+		} else noversline(infname);
+		do {
 			len = strlen(buf);
 			sumC = adler32(sumC, buf, len);
-			fnext(buf, f);
+			if (!fnext(buf, f)) break;
 		} while (!strneq(buf, "# Patch checksum=", 17));
 		sumR = strtoul(buf+17, 0, 16);
 	}
 
-	unless (sumR) {
+	if (havexsum && !sumR) {
 		SHOUT();
 		fputs("takepatch: missing trailer line on patch\n",
 		      stderr);
 		cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 	}
-	unless (sumR == sumC) badXsum(sumR, sumC);
+	if (havexsum && sumR != sumC) badXsum(sumR, sumC);
 
 	rewind(f);
 	fnext(buf, f);		/* skip version number */

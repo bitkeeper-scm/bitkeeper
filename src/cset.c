@@ -35,6 +35,7 @@ int	csetInit(sccs *cset, int flags, char *sym);
 void	csetlist(sccs *cset);
 void	csetList(sccs *cset, char *rev, int ignoreDeleted);
 void	csetDeltas(sccs *sc, delta *start, delta *d);
+sccs	*csetReformat(sccs *c, char *file);
 void	dump(MDBM *db, FILE *out);
 int	sameState(const char *file, const struct stat *sb);
 void	lock(char *);
@@ -186,7 +187,16 @@ usage:		fprintf(stderr, "%s", cset_help);
 	 * If we are initializing, then go create the file.
 	 * XXX - descriptive text.
 	 */
-	if (flags & NEWFILE) return (csetInit(cset, flags, sym));
+	if (flags & NEWFILE) {
+		if (sym) {
+			fprintf(stderr,
+				"%s: -S and -i may not be used together\n",
+				av[0]);
+			goto usage;
+		}
+		sym = CSET_VERSION;
+		return (csetInit(cset, flags, sym));
+	}
 
 	/*
 	 * List a specific rev.
@@ -1014,6 +1024,13 @@ csetCreate(sccs *cset, int flags, char *sym)
 	int	error = 0;
 	time_t	date;
 
+	/*
+	 * Check for the version tag on the 1.0 delta, and if it
+	 * isn't current, update the file format.
+	 */
+	d = sccs_getrev(cset, 0, CSET_VERSION, 0);
+	unless (d) cset = csetReformat(cset, csetFile);
+
 	d = mkChangeSet(cset);
 	date = d->date;
 	unless (cset = sccs_init(csetFile, flags, 0)) {
@@ -1024,11 +1041,9 @@ csetCreate(sccs *cset, int flags, char *sym)
 
 	/*
 	 * Make /dev/tty where we get input.
+	 * This has to be hidden from purify.
 	 */
-#undef	close
-#undef	open
-	close(0);
-	open("/dev/tty", 0, 0);
+	assert((freopen)("/dev/tty", "r", stdin));
 	if (flags & DELTA_DONTASK) d = getComments(d);
 	assert(d->sdate); /* this make sure d->date doesn't change */
 	if (sccs_delta(cset, flags, d, 0, 0) == -1) {
@@ -1045,7 +1060,7 @@ char	*
 file2str(char *f)
 {
 	struct	stat sb;
-	int	fd = open(f, 0);
+	int	fd = open(f, O_RDONLY, 0);
 	char	*s;
 
 	if ((fd == -1) || (fstat(fd, &sb) == -1) || (sb.st_size == 0)) {
@@ -1151,4 +1166,51 @@ sccs_patch(sccs *s)
 	}
 	ndeltas += deltas;
 	if (list) free(list);
+}
+
+/*
+ * Reformat a ChangeSet file which is in an obsolete format.
+ * Current code just tags the 1.0 delta with CSET_VERSION,
+ * but we will eventually need to handle e.g. updating all the keys
+ * to the extended key format.
+ */
+sccs *
+csetReformat(sccs *c, char *file)
+{
+	symbol *s;
+	delta *d;
+	admin a[2];
+	int warned = 0;
+
+	d = sccs_getrev(c, "1.0", 0, 0);
+	for (s = c->symbols; s; s = s->next) {
+		unless (s->metad == d) continue;
+		unless (strneq (s->name, CSET_VERSION_PREFIX,
+				sizeof CSET_VERSION_PREFIX - 1)) continue;
+
+		/*
+		 * Code to recognize specific obsolete formats goes here.
+		 */
+	}
+
+	unless(warned) fputs(
+"cset: warning: ChangeSet file format is obsolete.\n\
+The file will be reformatted to fit the current specification.\n\
+This may take some time...\n", stderr);
+
+	/* Do the symbol addition.
+	 */
+	a[0].flags = A_ADD;
+	a[0].thing = malloc(sizeof CSET_VERSION + sizeof ":1.0" - 1);
+	strcpy(a[0].thing, CSET_VERSION);
+	strcat(a[0].thing, ":1.0");
+	a[1].flags = 0;
+
+	if (sccs_admin(c, SILENT, 0, 0, 0, 0, 0, a, 0)) {
+		sccs_whynot("add tag", c);
+		exit(1);
+	}
+
+	sccs_restart(c);
+	return (c);
 }
