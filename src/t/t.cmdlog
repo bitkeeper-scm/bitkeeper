@@ -36,42 +36,51 @@ echo $N Check that bk cmdlog works with a missing repo_log ..........$NL
 cd $HERE/project/BitKeeper/log
 bk cmdlog -a > $$ 2>$$.err
 rm -f $$
-
 test -s $$.err && {
 	echo "Failed"
 	rm -f $$.err
 	exit 1
 }
-
 rm -f $$.err
-
 echo OK
 
 echo $N See if cmdlog handles junk lines ............................$NL
-
 cd $HERE/project/BitKeeper/log
 chmod +w cmd_log
 echo "me 1 @@@@ : junk" >> cmd_log
-
 OUT=`bk cmdlog -a | tr -dc '@'`
-
 test "$OUT" && {
 	echo "Failed"
 	exit 1
 }
-
 echo OK
 
 echo $N See if cmdlog handles junk log versions .....................$NL
-
 cd $HERE/project/BitKeeper/log
-
 echo "/me 1 @@@@ : junk" >> cmd_log
-
 OUT=`bk cmdlog -a | grep "cannot display"`
-
 test "$OUT" || { 
 	echo "Failed"
+	exit 1
+}
+echo OK
+
+echo $N Verify that repoids are saved in cmdlogs on pull ............$NL
+project_repoid=`bk identity -r`
+cd $HERE
+bk clone $Q project copy
+cd copy
+copy_repoid=`bk identity -r`
+bk pull $Q || exit 1
+tail -1 BitKeeper/log/repo_log | grep -q rmts=$project_repoid || {
+	echo wrong repid in log
+	tail -1 BitKeeper/log/repo_log
+	exit 1
+}
+cd $HERE/project
+tail -1 BitKeeper/log/repo_log | grep -q rmtc=$copy_repoid || {
+	echo wrong repid in log
+	tail -1 BitKeeper/log/repo_log
 	exit 1
 }
 echo OK

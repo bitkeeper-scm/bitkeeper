@@ -338,6 +338,7 @@
 #define	DFILE		"BitKeeper/etc/SCCS/x.dfile"
 #define	WEBMASTER	"BitKeeper/etc/webmaster"
 #define	CHECKED		"BitKeeper/log/checked"
+#define	REPO_ID		"BitKeeper/log/repo_id"
 #define	BKSKIP		".bk_skip"
 #define	TMP_MODE	0666
 #define	GROUP_MODE	0664
@@ -1024,8 +1025,9 @@ off_t	fsize(int fd);
 char	*separator(char *);
 int	trigger(char *cmd, char *when);
 void	cmdlog_start(char **av, int want_http_hdr);
-void	cmdlog_addnote(char *note);
+void	cmdlog_addnote(char *key, char *val);
 int	cmdlog_end(int ret);
+int	write_log(char *root, char *file, int rotate, char *format, ...);
 off_t	get_byte_count(void);
 void	save_byte_count(unsigned int byte_count);
 int	cat(char *file);
@@ -1148,6 +1150,8 @@ void	save_log_markers(void);
 void	update_log_markers(int verbose);
 int	isCaseFoldingFS(char *root);
 void	smerge_saveseq(u32 seq);
+char	*loadfile(char *file, int *size);
+char	*repo_id(void);
 
 extern char *bk_vers;
 extern char *bk_utc;

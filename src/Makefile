@@ -229,7 +229,7 @@ production_image: rebuild p image
 # Read the checkin comments on this delta before changing this.
 clean-obj: FORCE
 	-@rm -f bk bk.o shell.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) \
-		$(TOMCRYPTOBJ_) 
+		$(TOMCRYPTOBJ) 
 	-@rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
 	-@rm -f $(LIBS) shell.c bkdsubstr bkmsg.txt bkhelp.txt a.out
 	-@rm -f core $(WIN_TMP)

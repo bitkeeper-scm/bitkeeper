@@ -1,0 +1,30 @@
+.so ../bk-macros
+.TH "bk id" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk id \- display the identity of a package or repository
+.\" help://identity
+.SH SYNOPSIS
+.B bk id
+.B [\-r]
+.SH DESCRIPTION
+In \*[BK], each repository has two identities: a package
+identity and a repository identity.
+.LP
+The package identity is the same across all repository instances
+of the same package.  Two repositories may synchronize with each
+other if and only if they have the same package identity.  
+.B bk id
+displays the package identity.
+.LP
+The repository identity is different in each repository,
+regardless of the package.
+.B bk id \-r
+displays the repository identity.
+.LP
+.SH "SEE ALSO"
+.SA newroot 1
+.SA terms 1
+.SH CATEGORY
+.B Repository
+.br
+.B Admin

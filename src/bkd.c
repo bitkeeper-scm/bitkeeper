@@ -318,6 +318,12 @@ findcmd(int ac, char **av)
 			if (streq(av[0], "rclone_part2")) {
 				av[0] = "remote rclone part2";
 			}
+			if (streq(av[0], "chg_part1")) {
+				av[0] = "remote changes part 1";
+			}
+			if (streq(av[0], "chg_part2")) {
+				av[0] = "remote changes part 2";
+			}
 			return (i);
 		}
 	}

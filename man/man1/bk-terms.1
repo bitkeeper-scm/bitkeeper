@@ -81,6 +81,15 @@ bk -R prs -hr<rev> -nd:KEY: ChangeSet
 Each repository family has an identity unique to that repository family.
 Updates will fail if the two repositories do not have the same identity.
 .tp
+.B repo_id
+Each repository has a unique identifier that labels that particular
+directory. The
+.B repo_id
+can be found with the command:
+.DS
+bk identity -r
+.DE
+.tp
 .B pending
 Deltas which have been checked into a file but not yet
 committed to a changeset.
