@@ -13,6 +13,7 @@ CC_OUT	=-o $@
 LD_OUT	=-o $@
 LD	=cc
 G	=-g
+TRIAL	=0
 
 # -Wno-parentheses shuts up "suggest parentheses around assignment ...".
 #  Unfortunately it also turns off dangling else warnings.
@@ -204,6 +205,8 @@ gWall Wall:
 # production builds
 p:
 	$(MAKE) CFLAGS="$(CC_FAST) $(CF)" all
+trial:
+	$(MAKE) TRIAL=1 CFLAGS="$(CC_FAST) $(CF)" all
 ndebug:
 	$(MAKE) CFLAGS="$(CC_FAST) -DNDEBUG $(CC_NOFRAME)" all
 stats:
@@ -395,9 +398,14 @@ bk.ver: ../SCCS/s.ChangeSet utils/os utils/gnu-os
 	) >bk.v
 	mv -f bk.v bk.ver
 
-bkver.c: ../SCCS/s.ChangeSet
+# This must be rebuilt every time because it includes the build time
+bkver.c: FRC
 	bk prs -hr+ -d'char *bk_vers = "$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}";\nchar *bk_utc = ":UTC:";\nchar *bk_time = ":TIME_T:";\n' ../ChangeSet > bk.v
+	echo "unsigned build_timet = "`perl -e "print time"`";" >> bk.v
+	echo "int test_release = "$(TRIAL)";" >> bk.v
 	mv -f bk.v bkver.c
+
+bkver.o: bkver.c
 
 # Because we need the execute bit on
 utils/os utils/gnu-os: $(BK)
@@ -577,7 +585,7 @@ binlinks:
 		done; \
 	fi; \
 
-install-nolinks: all
+install-nolinks:
 	@test -d $(BINDIR) || mkdir -p $(BINDIR)
 	cp -f $(BINS) $(SCRIPTS) $(DATA) $(BINDIR)
 	@-rm -rf $(BINDIR)/t
@@ -605,20 +613,25 @@ install-nolinks: all
 	-@find $(BINDIR) -type d -print | xargs chmod ug+w
 	@true
 
+trial_image trial-image:
+	$(MAKE) -e trial _image
+
+image:
+	$(MAKE) -e all _image
+
 # Win32 note: Wise install script does not respect the BINDIR env variable
 # It picks up the image at C:/Program Files/BitKeeper
-image: all
+_image:
 	@if uname -s | grep _NT; \
-	then \
-	${MAKE} -e install-nolinks; \
-	cd utils && bk get -qS mkbk x86-win32.wse && ./mkbk; \
+	then	${MAKE} -e install-nolinks; \
+		cd utils && bk get -qS mkbk x86-win32.wse && ./mkbk; \
 	else \
-	rm -rf tmp/bitkeeper; \
-	DIR=`pwd`/tmp/bitkeeper; set -e; \
-	BINDIR=$$DIR ${MAKE} -e install-nolinks; \
-	BINDIR=$$DIR $(MAKE) -e bklinks; \
-	cd utils && BINDIR=$$DIR ${MAKE} -e image; \
-	rm -rf tmp; \
+		rm -rf tmp/bitkeeper; \
+		DIR=`pwd`/tmp/bitkeeper; set -e; \
+		BINDIR=$$DIR ${MAKE} -e install-nolinks; \
+		BINDIR=$$DIR $(MAKE) -e bklinks; \
+		cd utils && BINDIR=$$DIR ${MAKE} -e image; \
+		rm -rf tmp; \
 	fi
 
 # Rules for test builds.

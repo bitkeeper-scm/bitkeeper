@@ -48,3 +48,28 @@ cmp -s file ../file.bak || {
 	exit 1
 }
 echo OK
+
+echo $N Test exiting out a resolve early deleting files .............$NL
+bk unpull -f $Q || exit 1
+bk edit $Q file || exit 1
+bk pull $Q 2> OUT && {
+	echo should not pass
+	exit 1
+}
+grep -q 'Conflicts during automerge of file' OUT || {
+	echo pull should have had conflict
+	exit 1
+}
+echo q | bk resolve $Q -t 2>OUT && {
+	echo resolve should have failed
+	exit 1
+}
+test -w file || {
+	echo file should be writable
+	exit 1
+}
+test -f SCCS/p.file || {
+	echo file should be locked
+	exit 1
+}
+echo OK

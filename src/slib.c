@@ -7516,7 +7516,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 	/*
 	 * Add in default xflags if the 1.0 delta doesn't have them.
 	 */
-	if (s->bitkeeper) {
+	if (BITKEEPER(s)) {
 		unless (s->tree->xflags) {
 			s->tree->flags |= D_XFLAGS;
 			s->tree->xflags = X_DEFAULT;
@@ -7804,12 +7804,14 @@ SCCS:
 		fputmeta(s, "\n", out);
 	}
 	fputmeta(s, "\001U\n", out);
-	p = fmts(buf, "\001f e ");
-	p = fmtd(p, s->encoding);
-	*p++ = '\n';
-	*p   = '\0';
-	fputmeta(s, buf, out);
-	if (s->bitkeeper) {
+	if (BITKEEPER(s) || (s->encoding != E_ASCII)) {
+		p = fmts(buf, "\001f e ");
+		p = fmtd(p, s->encoding);
+		*p++ = '\n';
+		*p   = '\0';
+		fputmeta(s, buf, out);
+	}
+	if (BITKEEPER(s)) {
 		bits = sccs_xflags(sccs_top(s));
 		if (bits) {
 			sprintf(buf, "\001f x 0x%x\n", bits);
@@ -8945,17 +8947,19 @@ updatePending(sccs *s)
 	touch(sccsXfile(s, 'd'),  GROUP_MODE);
 }
 
-/* s/\r\n$/\n/ */
+/* s/\r+\n$/\n/ */
 private void
 fix_crnl(register char *s)
 {
 	char	*p = s;
 	while (*p) p++;
 	unless (p - s >= 2) return;
-	if (p[-2] == '\r' && p[-1] == '\n') {
-		p[-2] = '\n';
-		p[-1] = 0;
+	unless (p[-2] == '\r' && p[-1] == '\n') return;
+	for (p -= 2; p != s; p--) {
+		unless (p[-1] == '\r') break;
 	}
+	p[0] = '\n';
+	p[1] = 0;
 }
 
 /*
@@ -10530,19 +10534,6 @@ sccs_newchksum(sccs *s)
 	return (sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0));
 }
 
-private	void
-remove_comments(sccs *s)
-{
-	delta	*d;
-
-	for (d = s->table; d; d = d->next) {
-		if (d->comments && !(d->flags & D_XFLAGS)) {
-			freeLines(d->comments, free);
-			d->comments = 0;
-		}
-	}
-}
-
 /*
  * Reverse sort it, we want the ^A's, if any, at the end.
  */
@@ -10558,7 +10549,7 @@ obscure(int uu, char *buf)
 	int	len;
 	char	*new;
 
-	for (len = 0; buf[len] != '\n'; len++);
+	for (len = 0; buf[len] && (buf[len] != '\n'); len++);
 	new = malloc(len+2);
 	strncpy(new, buf, len+1);
 	new[len+1] = 0;
@@ -10570,6 +10561,22 @@ obscure(int uu, char *buf)
 	}
 	assert(*new != '\001');
 	return (new);
+}
+
+private	void
+obscure_comments(sccs *s)
+{
+	delta	*d;
+	char	*buf;
+	int	i;
+
+	for (d = s->table; d; d = d->next) {
+		EACH(d->comments) {
+			buf = obscure(0, d->comments[i]);
+			free(d->comments[i]);
+			d->comments[i] = buf;
+		}
+	}
 }
 
 /*
@@ -10590,6 +10597,7 @@ sccs_admin(sccs *sc, delta *p, u32 flags, char *new_encp, char *new_compp,
 	char	*t;
 	char	*buf;
 	delta	*d = 0;
+	int	obscure_it;
 
 	assert(!z); /* XXX used to be LOD item */
 
@@ -10645,6 +10653,9 @@ out:
 #endif
 	}
 	if (flags & (ADMIN_BK|ADMIN_FORMAT)) goto out;
+	if ((flags & ADMIN_OBSCURE) && sccs_clean(sc, (flags & SILENT))) {
+		goto out;
+	}
 
 	if (addSym("admin", sc, flags, s, &error)) {
 		flags |= NEWCKSUM;
@@ -10823,7 +10834,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	if ((flags & NEWCKSUM) == 0) {
 		goto out;
 	}
-	if (flags & ADMIN_OBSCURE) remove_comments(sc);
+	if (flags & ADMIN_OBSCURE) obscure_comments(sc);
 
 	/*
 	 * Do the delta table & misc.
@@ -10847,7 +10858,13 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	assert(sc->state & S_SOPEN);
 	seekto(sc, sc->data);
 	debug((stderr, "seek to %d\n", (int)sc->data));
-	if ((old_enc & E_GZIP) && (flags & ADMIN_OBSCURE)) {
+	obscure_it = (flags & ADMIN_OBSCURE);
+	/* ChangeSet can't be obscured, neither can the BitKeeper/etc files */
+	if (CSET(sc) ||
+	    (BITKEEPER(sc) && strneq(sc->tree->pathname,"BitKeeper/etc/",13))) {
+	    	obscure_it = 0;
+	}
+	if ((old_enc & E_GZIP) && obscure_it) {
 		fprintf(stderr, "admin: cannot obscure gzipped data.\n");
 		OUT;
 	}
@@ -10856,9 +10873,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	/* if old_enc == new_enc, this is slower but handles both cases */
 	sc->encoding = old_enc;
 	while (buf = nextdata(sc)) {
-		if (flags & ADMIN_OBSCURE) {
-			buf = obscure(old_enc & E_UUENCODE, buf);
-		}
+		if (obscure_it) buf = obscure(old_enc & E_UUENCODE, buf);
 		sc->encoding = new_enc;
 		if (flags & ADMIN_ADD1_0) {
 			fputbumpserial(sc, buf, 1, sfile);
@@ -10875,7 +10890,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			fputdata(sc, buf, sfile);
 		}
 		sc->encoding = old_enc;
-		if (flags & ADMIN_OBSCURE) free(buf);
+		if (obscure_it) free(buf);
 	}
 	if (flags & ADMIN_ADD1_0) {
 		sc->encoding = new_enc;
@@ -12493,14 +12508,14 @@ void
 fit(char *buf, unsigned int i)
 {
 	int	j;
-	float	f;
+	u32	f;
 	static	char *s[] = { "K", "M", "G", 0 };
 	if (i < 100000) {
 		sprintf(buf, "%05d\n", i);
 		return;
 	}
-	for (j = 0, f = 1000.; s[j]; j++, f *= 1000.) {
-		sprintf(buf, "%04.3g%s", i/f, s[j]);
+	for (j = 0, f = 1000; s[j]; j++, f *= 1000) {
+		sprintf(buf, "%04u%s", (i+(f-1))/f, s[j]);
 		if (strlen(buf) == 5) return;
 	}
 	sprintf(buf, "E2BIG");

@@ -216,6 +216,7 @@ doit_local(int nac, char **nav, char *url)
 	/*
 	 * What we want is: bk synckey -lk url | bk changes opts -
 	 */
+	nav[nac++] = strdup("-a");
 	nav[nac++] = strdup("-");
 	assert(nac < 30);
 	nav[nac] = 0;

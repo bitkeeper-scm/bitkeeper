@@ -50,7 +50,6 @@ private int	writeCheck(sccs *s, MDBM *db);
 private	void	listPendingRenames(void);
 private	int	noDiffs(void);
 private void	save_checkout_state(MDBM *DB, sccs *s);
-private void	restore_checkouts(opts *opts);
 
 private MDBM	*localDB;	/* real name cache for local tree */
 private MDBM	*resyncDB;	/* real name cache for resyn tree */
@@ -2792,7 +2791,7 @@ save_checkout_state(MDBM *DB, sccs *s)
  * After resolve is finished we look at every file that
  * we might have touched and restore the gfile if needed.
  */
-private void
+void
 restore_checkouts(opts *opts)
 {
 	kvpair	kv;

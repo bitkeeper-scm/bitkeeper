@@ -1,0 +1,107 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2003 BitMover, Inc.
+# %K%
+
+no_logging project
+echo $N Create some data ............................................$NL
+cat > INITX <<EOF
+D 1.1 97/05/28 23:49:57 joe_user@joes_hostname 0 0 0/0/0
+c This is revision 1.1
+P this/is/the/pathname
+------------------------------------------------
+EOF
+echo Please obscure me > foo
+bk delta $Q -i -IINITX foo
+test 'This is revision 1.1' = "`bk prs -hr1.1 -nd:C: foo`" || {
+	echo bad comment message
+	exit 1
+}
+test 'Please obscure me' = "`bk cat foo`" || {
+	echo bad contents
+	exit 1
+}
+echo OK
+
+echo $N Save a copy of the repository ...............................$NL
+bk -r get $Q
+tar cf ../TAR `bk sfiles -g | bk undos`
+echo OK
+
+echo $N Make sure that bk obscure fails .............................$NL
+bk obscure > OUT 2>&1 && { echo should have failed; exit 1; }
+test 'usage: bk obscure --I-know-this-destroys-my-tree' = "`cat OUT`" || {
+	echo bad output
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Obscure tree, check contents ................................$NL
+test -f foo || bk get $Q foo
+bk obscure --I-know-this-destroys-my-tree > OUT 2>&1 || exit 1
+test 'This is revision 1.1' = "`bk prs -hr1.1 -nd:C: foo`" && {
+	echo failed to obscure comments
+	cat OUT
+	exit 1
+}
+test 'Please obscure me' = "`bk get -kpq foo`" && {
+	echo failed to obscure sfile contents
+	cat OUT
+	exit 1
+}
+test 'Please obscure me' = "`bk cat foo`" && {
+	echo failed to clean gfile contents
+	cat OUT
+	exit 1
+}
+bk -r get -qS
+mkdir $HERE/data
+cd $HERE/data
+tar xf ../TAR
+find . -type f | while read x
+do	cmp -s $x ../project/$x && echo $x
+done | sort > ../SAME
+cat > ../WANT <<EOF
+./BitKeeper/etc/config
+./BitKeeper/etc/ignore
+./ChangeSet
+EOF
+cmp -s ../SAME ../WANT || {
+	echo failed to leave system files unobscured
+	diff ../SAME ../WANT
+	exit 1
+}
+find . -type f | while read x
+do	cmp -s $x ../project/$x || echo $x
+done | sort > ../DIFFERENT
+test "`cat ../DIFFERENT`" = ./foo || {
+	echo failed to obscure foo
+	exit 1
+}
+echo OK
+
+echo $N Make sure modified files fail the entire obscure ............$NL
+cd $HERE/project
+bk edit $Q foo
+echo blah >> foo
+echo foo > bar
+bk new $Q bar
+bk obscure --I-know-this-destroys-my-tree > OUT 2>&1 && {
+	echo should have failed
+	exit 1
+}
+test `bk cat bar` = foo || {
+	echo should not have obscured bar
+	exit 1
+}
+echo OK

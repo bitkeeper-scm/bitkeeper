@@ -115,12 +115,14 @@ void
 bkd_server(char **not_used)
 {
 	fd_set	fds;
-	int	sock = tcp_server(Opts.port ? Opts.port : BK_PORT, Opts.quiet);
+	int	sock;
 	int	maxfd;
 	time_t	now;
 	extern	int licenseServer[2];	/* bkweb license pipe */ 
 	extern	time_t licenseEnd;	/* when a temp bk license expires */
 
+	sock = tcp_server(Opts.port ? Opts.port : BK_PORT, Opts.quiet);
+	ids();
 	if (sock < 0) exit(-sock);
 	unless (Opts.debug) if (fork()) exit(0);
 	unless (Opts.debug) setsid();	/* lose the controlling tty */
@@ -132,7 +134,7 @@ bkd_server(char **not_used)
 			fclose(f);
 		}
 	}
-	ids();
+	if (Opts.logfile) Opts.log = fopen(Opts.logfile, "a");
 	signal(SIGCHLD, reap);
 	signal(SIGPIPE, SIG_IGN);
 	if (Opts.alarm) {
@@ -274,6 +276,7 @@ bkd_service_loop(int ac, char **av)
 			goto done;
 		}
 	}
+	if (Opts.logfile) Opts.log = fopen(Opts.logfile, "a");
 
 	/*
 	 * Main loop
