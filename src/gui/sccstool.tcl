@@ -575,6 +575,7 @@ proc setScrollRegion {} \
 	$w(graph) create text $x1 $y2 -anchor sw -text "  " -tags outside
 	$w(graph) create text $x2 $y1 -anchor ne -text "  " -tags outside
 	$w(graph) create text $x2 $y2 -anchor se -text "  " -tags outside
+	#puts "nw=$x1 $y1 sw=$x1 $y2 ne=$x2 $y1 se=$x2 $y2"
 	set bb [$w(graph) bbox outside]
 	$w(graph) configure -scrollregion $bb
 	$w(graph) xview moveto 1
@@ -591,6 +592,7 @@ proc setScrollRegion {} \
 	set cdim(s,y1) $y1; set cdim(s,y2) $y2
 	set cdim(a,x1) $a_x1; set cdim(a,x2) $a_x2
 	set cdim(a,y1) $a_y1; set cdim(a,y2) $a_y2
+	#puts "bb_all=>($bb_all)"
 }
 
 proc listRevs {file} \
@@ -658,9 +660,7 @@ proc listRevs {file} \
 
 	# If the time interval arg to 'bk lines' is too short, bail out
 	if {$lines == ""} {
-		puts "Error: No data. showHistory variable to short or"
-		puts "improperly formatted. showHistory=($gc(sccs.showHistory))"
-		exit 1
+		return 1
 	}
 	foreach s $lines {
 		line $s $len $ht
@@ -671,7 +671,8 @@ proc listRevs {file} \
 	if {$bad != 0} {
 		wm title . "sccstool: $file -- $bad bad revs"
 	}
-}
+	return 0
+} ;# proc listRevs
 
 # If called from the bottom selection mechanism, we give getLeftRev a
 # handle to the revision box
@@ -824,7 +825,7 @@ proc get { type {val {}}} \
 	set rev2 $rev1
 	switch $type {
 	    id		{ csetdiff2 }
-	    rev		{ csetdiff2 $rev }
+	    rev		{ csetdiff2 $rev1 }
 	}
 }
 
@@ -993,11 +994,9 @@ proc PaneCreate {} \
 	    -anchor center
 	frame .p.grip -background grey \
 		-width 13 -height 13 -bd 2 -relief raised -cursor double_arrow
-	place .p.grip -in .p -relx 1 -x -50 -rely $percent \
-	    -anchor center
+	place .p.grip -in .p -relx 1 -x -50 -rely $percent -anchor center
 	place .p.top -in .p -x 0 -rely 0.0 -anchor nw -relwidth 1.0 -height -2
-	place .p.b -in .p -x 0 -rely 1.0 -anchor sw \
-	    -relwidth 1.0 -height -2
+	place .p.b -in .p -x 0 -rely 1.0 -anchor sw -relwidth 1.0 -height -2
 
 	# Set up bindings for resize, <Configure>, and
 	# for dragging the grip.
@@ -1145,14 +1144,26 @@ proc widgets {fname} \
 		-text "Help" -command { exec bk helptool sccstool & }
 	    menubutton .menus.mb -font $gc(sccs.buttonFont) -relief raised \
 		-bg $gc(sccs.buttonColor) -pady $py -padx $px -borderwid $bw \
-		-text "Show History" -width 15 -state normal \
+		-text "Select Range" -width 15 -state normal \
 		-menu .menus.mb.menu
 		set m [menu .menus.mb.menu]
 		$m add command -label "Last Day" -command {sccstool $fname D}
-		$m add command -label "Last Week" -command {sccstool $fname W}
-		$m add command -label "Last Month" -command {sccstool $fname M}
-		$m add command -label "Last Year" -command {sccstool $fname Y}
-		$m add command -label "All Csets" -command {sccstool $fname A}
+		$m add command -label "Last Week" \
+		    -command {sccstool $fname W}
+		$m add command -label "Last Month" \
+		    -command {sccstool $fname 1M}
+		$m add command -label "Last Two Months" \
+		    -command {sccstool $fname 2M}
+		$m add command -label "Last Three Months" \
+		    -command {sccstool $fname 3M}
+		$m add command -label "Last Six Months" \
+		    -command {sccstool $fname 6M}
+		$m add command -label "Last Nine Months" \
+		    -command {sccstool $fname 9M}
+		$m add command -label "Last Year" \
+		    -command {sccstool $fname Y}
+		$m add command -label "All Changes" \
+		    -command {sccstool $fname A}
 	    button .menus.cset -font $gc(sccs.buttonFont) -relief raised \
 		-bg $gc(sccs.buttonColor) -pady $py -padx $px -borderwid $bw \
 		-text "View changeset " -width 15 -command r2c -state disabled
@@ -1329,7 +1340,7 @@ proc widgets {fname} \
 proc sccstool {fname {period {}}} \
 {
 	global	bad revX revY search dev_null rev2date serial2rev w
-	global  srev Opts gc file rev2rev_name
+	global  srev Opts gc file rev2rev_name cdim
 
 	busy 1
 	$w(graph) delete all
@@ -1351,20 +1362,30 @@ proc sccstool {fname {period {}}} \
 		wm title . "sccstool: $proot: $file"
 	}
 	switch $period {
-	    D { set Opts(line_time) "-R-1D" }
-	    W { set Opts(line_time) "-R-1W" }
-	    M { set Opts(line_time) "-R-1M" }
-	    Y { set Opts(line_time) "-R-1Y" }
-	    A { set Opts(line_time) "-R1.0.." }
+	    D  { set Opts(line_time) "-R-1D" }
+	    W  { set Opts(line_time) "-R-1W" }
+	    1M { set Opts(line_time) "-R-1M" }
+	    2M { set Opts(line_time) "-R-2M" }
+	    3M { set Opts(line_time) "-R-3M" }
+	    6M { set Opts(line_time) "-R-6M" }
+	    9M { set Opts(line_time) "-R-9M" }
+	    Y  { set Opts(line_time) "-R-1Y" }
+	    A  { set Opts(line_time) "-R1.0.." }
 	    default { set Opts(line_time) "-R-$gc(sccs.showHistory)"
 	    }
 	}
-	listRevs "$file"
-	revMap "$file"
-	dateSeparate
-	setScrollRegion
-
-	history
+	# If valid time range give, do the graph
+	if {[listRevs "$file"] == 0} {
+		revMap "$file"
+		dateSeparate
+		setScrollRegion
+		history
+	} else {
+		# XXX: Highlight this is a different color? Yellow?
+		$w(ap) configure -state normal; $w(ap) delete 1.0 end
+		$w(ap) insert end  "Error: No data. You've selected a period \
+of time that has no changes. \nPlease choose a longer amount of time. showHistory=($gc(sccs.showHistory))"
+	}
 	set search(prompt) "Welcome"
 	focus $w(graph)
 	busy 0
