@@ -240,42 +240,18 @@ logChangeSet(char *rev, int quiet)
         }             
 
 	sprintf(subject, "BitKeeper ChangeSet log: %s", package_name());
-#ifdef WIN32
-	/*
-	 * On win32, there is no portable email interface,
-	 * so we use HTTP to do open logging.
-	 */
 	if (is_open_logging(to)) {
-		if (spawnvp_ex(_P_NOWAIT, av[0], av) == -1) unlink(commit_log);
+		pid = spawnvp_ex(_P_NOWAIT, av[0], av);
+		if (pid == -1) unlink(commit_log);
+		fprintf(stdout, "Waiting for http...\n");
 	} else {
-		mail(to, subject, commit_log);
-		unlink(commit_log);
-	}
-#else
-	pid = mail(to, subject, commit_log);
-	if (pid == -1) {
-err:		fprintf(stdout, "can not mail ChangeSet log\n");
-		fflush(stdout); /* needed for citool */
-		unlink(commit_log);
-		return;
-	}
-	if (pid == -9) { /* -9 means skipped, only happen in regression test */
-		unlink(commit_log);
-		return;
-	}
-	while ((n = waitpid(pid, &status, WNOHANG)) == 0) {
+		pid = mail(to, subject, commit_log);
+		if (pid == -1) unlink(commit_log);
 		fprintf(stdout, "Waiting for mailer...\n");
-		fflush(stdout); /* needed for citool */
-		sleep(2);
-		if (try++ > 60) goto err;
 	}
-	if (n == -1) {
-		perror("waitpid");
-		goto err;
-	}
-	if (WEXITSTATUS(status) != 0) goto err;
+	fflush(stdout); /* needed for citool */
+	waitpid(pid, &status, 0);
 	unlink(commit_log);
-#endif
 }
 
 int

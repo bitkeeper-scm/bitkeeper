@@ -2,6 +2,9 @@
 # Copyright (c) 1999 by Larry McVoy; All rights reserved
 # %W% %@%
 
+#
+# Sets the global 'line' to the x'th line after 'line'
+#
 proc doNext {x} \
 {
 	global	line nTopics
@@ -58,6 +61,9 @@ proc doPixSelect {x y} \
 	doSelect 1
 }
 
+#
+# Selects the x'th line, tags it as selected, calls bkhelp for that topic
+#
 proc doSelect {x} \
 {
 	global	nTopics line
@@ -77,6 +83,8 @@ proc doSelect {x} \
 
 proc bkhelp {topic} \
 {
+	global line lines
+
 	if {$topic == ""} {
 		set msg "BitKeeper Help"
 	} else {
@@ -95,7 +103,21 @@ proc bkhelp {topic} \
 		} elseif {$seealso == 1} {
 			regsub "bk help " $help "" help
 		}
-		.text.help insert end "$help\n"
+
+		# If in the seealso section, insert text with two tags, one 
+		# tag being the name of the section, and the other a generic
+		# tag for all 'seealso' topics (used when highlighting)
+		if {($seealso == 1) && 
+		    [string compare "SEE ALSO" $help] != 0} {
+		    	set tag [string trim $help]
+			.text.help insert end "    "
+			.text.help insert end "$tag\n" "$tag seealso"
+			.text.help tag bind $tag <Button-1> \
+			    "getSelection $tag; doSelect 1"
+		} else {
+			.text.help insert end "$help\n"
+		}
+
 		if {$first == 1} {
 			set first 0
 			if {[regexp {^[ \t]*[-=]} $help]} {
@@ -108,6 +130,7 @@ proc bkhelp {topic} \
 	}
 	catch {close $f} dummy
 	.text.help configure -state disabled
+	.text.help tag configure seealso -foreground blue -underline true
 }
 
 proc scroll {what dir} \
@@ -249,10 +272,22 @@ proc busy {busy} \
 	}
 	update
 }
+proc getSelection {argv} \
+{
+	global line lines
+
+	set l ""
+	catch { set l $lines($argv) } dummy
+	if {"$l" == ""} {
+		puts "No help for $argv"
+		exit
+	}
+	set line [.ctrl.topics index "1.0 + $l lines"]
+}
 
 proc getHelp {} \
 {
-	global	nTopics argv line
+	global	nTopics argv line lines
 
 	set nTopics 0
 	set f [open "| bk gethelp help_topiclist"]
@@ -267,13 +302,7 @@ proc getHelp {} \
 	.ctrl.topics configure -state disabled
 	.text.help configure -state disabled
 	if {$argv != ""} {
-		set l ""
-		catch { set l $lines($argv) } dummy
-		if {"$l" == ""} {
-			puts "No help for $argv"
-			exit
-		}
-		set line [.ctrl.topics index "1.0 + $l lines"]
+		getSelection $argv
 	} else {
 		set line 1.0
 	}
