@@ -155,13 +155,13 @@ bk lock -r &
 while bk lock -s; do true; done
 mv BitKeeper/readers/* BitKeeper/readers/1234@nowhere.nowhere
 cd $HERE/clone
-bk pull -t $Q -r 2>/dev/null
+bk pull -t $Q -R 2>/dev/null
 if [ ! -d RESYNC ]; then echo pull failed; exit 1; fi
 bk resolve -t $Q
 echo OK
 echo $N Make sure pull works with existing read lock in source \#2 ...$NL
 cd $HERE/clone2
-bk pull -t -r  2>XXX
+bk pull -t -R  2>XXX
 if [ ! -d RESYNC ]; then echo pull failed; cat XXX; exit 1; fi
 bk resolve -t $Q
 echo OK

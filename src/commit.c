@@ -489,7 +489,7 @@ out:		if (commentFile) unlink(commentFile);
 		printf(
 "============================================================================\n"
 "Warning: Package name is Null or Blank. Please add an entry to the \n"
-"\"Description:\" field in the \"BitKeeper/config\" file\n"
+"\"Description:\" field in the \"BitKeeper/etc/config\" file\n"
 "The entry should be a short statement describing the nature of this package\n"
 "============================================================================\n"
 );
@@ -538,6 +538,7 @@ out:		if (commentFile) unlink(commentFile);
 		rc = 1;
 		goto done;
 	}
+	cset_lock();
 	i = 2;
 	if (opts.quiet) cset[i++] = "-q";
 	if (sym) {
@@ -574,6 +575,7 @@ out:		if (commentFile) unlink(commentFile);
 	} else if (rc = WEXITSTATUS(status)) {
 		putenv("BK_STATUS=FAILED");
 	}
+	cset_unlock();
 	trigger(av, "post");
 done:	if (unlink(commentFile)) perror(commentFile);
 	if (unlink(pendingFiles)) perror(pendingFiles);

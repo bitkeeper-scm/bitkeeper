@@ -65,11 +65,13 @@ bkd_main(int ac, char **av)
 			Opts.remove = 1; Opts.daemon = 1; break;
 		    case 't': Opts.alarm = atoi(optarg); break;	/* doc 2.0 */
 		    case 'u': Opts.uid = optarg; break;		/* doc 2.0 */
-		    case 'x': exclude(optarg); 
+		    case 'x':
+			exclude(optarg); 
+			if (streq(optarg, "cd")) Opts.nocd = 1;
 #ifdef WIN32
-			      xcmds = addLine(xcmds, strdup(optarg));
+			xcmds = addLine(xcmds, strdup(optarg));
 #endif
-			      break;		/* doc 2.0 */
+			break;					/* doc 2.0 */
 		    default: usage();
 	    	}
 	}
