@@ -33,6 +33,7 @@ private void	inherit(sccs *s, int flags, delta *d);
 private void	linktree(sccs *s, delta *l, delta *r);
 private sum_t	fputmeta(sccs *s, u8 *buf, FILE *out);
 private sum_t	fputdata(sccs *s, u8 *buf, FILE *out);
+private int	fflushdata(sccs *s, FILE *out);
 private void	putserlist(sccs *sc, ser_t *s, FILE *out);
 private ser_t*	getserlist(sccs *sc, int isSer, char *s, int *ep);
 private int	read_pfile(char *who, sccs *s, pfile *pf);
@@ -4410,60 +4411,72 @@ gzip_sum(void *p, u8 *buf, int len, FILE *out)
 /*
  * Like fputmeta, but optionally compresses the data stream.
  * This is used for the data section exclusively.
- * A call with 0 for a buffer means we're done.
  * Note that only the first line of the buffer is considered valid.
  */
+
+/* These will be hung off the sccs structure in the near future.  */
+static u8 data_block[8192];
+static u8 *data_next = data_block;
+
 private sum_t
 fputdata(sccs *s, u8 *buf, FILE *out)
 {
 	sum_t	sum = 0;
 	u8	*p, *q, c;
-	static	u8 block[8192];
-	static	u8 *next = block;
-
-	if (!buf) {	/* flush */
-		if (s->encoding & E_GZIP) {
-			if (next != block) {
-				zputs((void *)s, out, block, next - block,
-				      gzip_sum);
-			}
-			zputs_done((void *)s, out, gzip_sum);
-		} else {
-			if (next != block) {
-				fwrite(block, next - block, 1, out);
-			}
-		}
-		next = block;
-		debug((stderr, "SUM2 %u\n", s->cksum));
-		if (ferror(out) || fflush(out)) return (-1);
-		return (0);
-	}
 
 	/* Checksum up to and including the first newline
 	 * or the end of the string.
 	 */
+
 	p = buf;
-	q = next;
+	q = data_next;
 	for (;;) {
-		for (;;) {
-			c = *p++;
-			if (c == '\0') goto done;
-			sum += c;
-			*q++ = c;
-			if (q == &block[sizeof(block)]) break;
-			if (c == '\n') goto done;
-		}
-		if (s->encoding & E_GZIP) {
-			zputs((void *)s, out, block, sizeof(block), gzip_sum);
-		} else {
-			fwrite(block, sizeof(block), 1, out);
-		}
-		q = block;
-		if (c == '\n') break;
+		c = *p++;
+		if (c == '\0') break;
+		sum += c;
+		*q++ = c;
+		if (q == &data_block[sizeof(data_block)]) goto flush;
+flush_done:	if (c == '\n') break;
 	}
-done:	next = q;
+	data_next = q;
 	unless (s->encoding & E_GZIP) s->cksum += sum;
 	return (sum);
+
+	/* The compiler is too stupid to realize that if it puts
+	 * this code in the middle of the loop it trashes the cache
+	 * and the branch predictor.
+	 */
+flush:	if (s->encoding & E_GZIP) {
+		zputs((void *)s, out, data_block,
+		      sizeof(data_block), gzip_sum);
+	} else {
+		fwrite(data_block, sizeof(data_block), 1, out);
+	}
+	q = data_block;
+	goto flush_done;
+}
+
+/* Flush out data buffered by fputdata.  */
+private int
+fflushdata(sccs *s, FILE *out)
+{
+	if (s->encoding & E_GZIP) {
+		if (data_next != data_block) {
+			zputs((void *)s, out, data_block,
+			      data_next - data_block,
+			      gzip_sum);
+		}
+		zputs_done((void *)s, out, gzip_sum);
+	} else {
+		if (data_next != data_block) {
+			fwrite(data_block,
+			       data_next - data_block, 1, out);
+		}
+	}
+	data_next = data_block;
+	debug((stderr, "SUM2 %u\n", s->cksum));
+	if (ferror(out) || fflush(out)) return (-1);
+	return (0);
 }
 
 #define	ENC(c)	((((uchar)c) & 0x3f) + ' ')
@@ -8005,7 +8018,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	}
 	/* not really needed, we already wrote it */
 	sc->encoding = new_enc;
-	if (fputdata(sc, 0, sfile)) {
+	if (fflushdata(sc, sfile)) {
 		sccs_close(sc), fclose(sfile), sfile = NULL;
 		goto out;
 	}
@@ -8835,7 +8848,7 @@ abort:		fclose(sfile);
 	while (buf = nextdata(s)) {
 		fputdata(s, buf, sfile);
 	}
-	if (fputdata(s, 0, sfile)) goto abort;
+	if (fflushdata(s, sfile)) goto abort;
 	if (s->encoding & E_GZIP) zgets_done();
 	fseek(sfile, 0L, SEEK_SET);
 	fprintf(sfile, "\001h%05u\n", s->cksum);
@@ -9179,7 +9192,7 @@ end(sccs *s, delta *n, FILE *out, int flags, int add, int del, int same)
 	/*
 	 * Flush and make sure we have disk space.
 	 */
-	if (fputdata(s, 0, out)) return (-1);
+	if (fflushdata(s, out)) return (-1);
 	unless (flags & SILENT) {
 		int	lines = count_lines(n->parent) - del + add;
 
@@ -11262,7 +11275,7 @@ rmdelout:
 		    : delta_rm(s, d, sfile, flags)) {
 		RMDELOUT;
 	}
-	if (fputdata(s, 0, sfile)) {
+	if (fflushdata(s, sfile)) {
 		unlock(s, 'x');
 		goto rmdelout;
 	}
