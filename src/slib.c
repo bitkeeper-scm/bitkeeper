@@ -3773,17 +3773,27 @@ almostUnique(int harder)
 randomBits(char *buf)
 {
 	int	fd;
+    	u32	a, b;
 
-	buf[0] = 0;
 	if (((fd = open("/dev/urandom", 0, 0)) >= 0) ||
 	    ((fd = open("/dev/random", 0, 0)) >= 0)) {
-	    	u32	a, b;
-
 		read(fd, &a, 4);
 		read(fd, &b, 4);
-		sprintf(buf, "%x%x", a, b);
 		close(fd);
+	} else {
+		/* XXX This is not nearly as random as it should be.  */
+		struct timeval tv;
+		u32 x, y;
+
+		gettimeofday(&tv, NULL);
+		x = (u32)sbrk(0) ^ (u32)&a;
+		y = ((u32)getpid() << 16) + (u32)getuid();
+		y ^= tv.tv_usec;
+
+		a = (x & 0xAAAAAAAA) + (y & 0x55555555);
+		b = (y & 0xAAAAAAAA) + (x & 0x55555555);
 	}
+	sprintf(buf, "%x%x", a, b);
 }
 
 /* XXX - make this private once tkpatch is part of slib.c */
@@ -9065,6 +9075,8 @@ sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, char kind, FILE *out)
 		free_pfile(&pf);
 		return (-3);
 	}
+	if (!right) right = findrev(s, 0)->rev;
+	if (!left) left = findrev(s, 0)->rev;
 	strcpy(tmp2, s->gfile);		/* because dirname stomps */
 	sprintf(tmpfile, "%s", dirname(tmp2));
 	here = writable(tmpfile);
@@ -9113,8 +9125,6 @@ sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, char kind, FILE *out)
 		leftf = tmpfile;
 		rightf = s->gfile;
 	}
-	if (!right) right = findrev(s, 0)->rev;
-	if (!left) left = findrev(s, 0)->rev;
 	if (kind == DF_SDIFF) {
 		int	i, c = atoi(columns);
 

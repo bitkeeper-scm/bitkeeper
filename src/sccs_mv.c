@@ -146,7 +146,7 @@ int rmDir(char *dir)
 {
 	if (streq(".", dir) || sameDir(".", dir)) {
 		char cmd[1024];
-		sprintf(cmd, "/bin/rmdir %s", fullname(dir, 0));
+		sprintf(cmd, "cd .. && /bin/rmdir %s", fullname(dir, 0));
 		system(cmd);
 	} else {
 		rmdir(dir);
