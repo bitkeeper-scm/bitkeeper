@@ -9,7 +9,6 @@
 typedef struct {
 	u32	alreadyAsked:1;
 	u32	quiet:1;
-	u32	lod:1;
 	u32	resync:1;
 	u32	no_autoupgrade:1;
 } c_opts;
@@ -36,14 +35,13 @@ commit_main(int ac, char **av)
 	}
 
 	gettemp(commentFile, "bk_commit");
-	while ((c = getopt(ac, av, "aAdf:FLRqsS:y:Y:")) != -1) {
+	while ((c = getopt(ac, av, "aAdf:FRqsS:y:Y:")) != -1) {
 		switch (c) {
 		    case 'a':	opts.alreadyAsked = 1; break;	/* doc 2.0 */
 		    case 'd': 	doit = 1; break;	/* doc 2.0 */
 		    case 'f':	/* undoc 2.0 */
 			strcpy(pendingFiles, optarg); break;
 		    case 'F':	force = 1; break;	/* doc 2.0 */
-		    case 'L':	opts.lod = 1; break;	/* undoc 2.0  */
 		    case 'R':	BitKeeper = "../BitKeeper/";	/* doc 2.0 */
 				opts.resync = 1;
 				break;
@@ -66,15 +64,6 @@ commit_main(int ac, char **av)
 		}
 	}
 
-	/* XXX: stub out lod operations */
-	if (opts.lod) {
-		fprintf(stderr,
-		    "commit: commit -L currently non-operational.\n"
-		    "        To commit to a new lod, first run: bk createlod\n"
-		    "        Then commit as you normally would, without -L\n"
-		    "        See: bk createlod --help\n");
-		return(1);
-	}
 	if (sccs_cd2root(0, 0) == -1) {
 		printf("Cannot find root directory\n");
 		return (1);
@@ -389,7 +378,6 @@ out:		if (commentFile) unlink(commentFile);
 		goto done;
 	}
 	i = 2;
-	if (opts.lod ) cset[i++] = "-L";
 	if (opts.quiet) cset[i++] = "-q";
 	if (sym) {
 		sprintf(sym_opt, "-S%s", sym);

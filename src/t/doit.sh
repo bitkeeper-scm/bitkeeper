@@ -128,14 +128,6 @@ setup_env()
 	BK_LICENSE=ACCEPTED
 	BK_REGRESSION=$TST_DIR/.regression-$USER
 	BK_TMP=$BK_REGRESSION/.tmp
-
-	# check echo -n options
-	if [ '-n foo' = "`echo -n foo`" ]
-	then    NL='\c'
-		N=
-	else    NL=
-		N=-n
-	fi
 }
 
 
@@ -222,6 +214,17 @@ get_options()
 	done
 	if [ -z "$list" ]
 	then	list=`ls -1 t.* | egrep -v '.swp|~'`
+	fi
+	# check echo -n options
+	if [ '-n foo' = "`echo -n foo`" ]
+	then    NL='\c'
+		N=
+	else    NL=
+		N=-n
+	fi
+	if [ X$Q = X -o X$dashx = X-x ]
+	then	NL=
+		N=
 	fi
 }
 
