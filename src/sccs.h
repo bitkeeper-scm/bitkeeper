@@ -1112,6 +1112,7 @@ char	**getTriggers(char *dir, char *prefix);
 void	comments_cleancfile(char *file);
 int	comments_readcfile(sccs *s, int prompt, delta *d);
 int	comments_prompt(char *file);
+int	run_check(char *partial);
 
 extern char *bk_vers;
 extern char *bk_utc;

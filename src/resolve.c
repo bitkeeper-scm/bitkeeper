@@ -2396,9 +2396,9 @@ Got:\n\
 	}
 	fflush(save); /*  important */
 	if (strieq("yes", user_preference("partial_check"))) {
-		ret = check(APPLIED);
+		ret = run_check(APPLIED);
 	} else {
-		ret = check(0);
+		ret = run_check(0);
 	}
 	if (ret) {
 		fprintf(stderr, "Check failed.  Resolve not completed.\n");

@@ -1075,7 +1075,7 @@ unsafe_path(char *s)
  * Otherwise do a full check.
  */
 int
-check(char *partial)
+run_check(char *partial)
 {
 	int	ret;
 	struct	stat sb;

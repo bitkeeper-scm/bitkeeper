@@ -1272,6 +1272,15 @@ checkKeys(sccs *s, char *root)
 			mdbm_close(findkey);
 			return (1);
 		}
+		unless (mixed) continue;
+		*strrchr(key, '|') = 0;
+		k.dsize = strlen(key) + 1;
+		if (mdbm_store(findkey, k, v, MDBM_INSERT)) {
+			fprintf(stderr, "check: insert error for %s\n", key);
+			perror("insert");
+			mdbm_close(findkey);
+			return (1);
+		}
 	}
 	do {
 		assert(csetKeys.deltas[i]);

@@ -51,21 +51,6 @@
 #include "range.h"
 #include "zlib/zlib.h"
 
-
-private int
-atoi2(char **sp)
-{
-	register int val = 0;
-	register char *s = *sp;
-
-	if (!s) return (0);
-	while (*s && isdigit(*s)) {
-		val = val * 10 + *s++ - '0';
-	}
-	*sp = s;
-	return (val);
-}                    
-
 /*
  * Given an open sccs *, scan the data and map it.
  * Extras is the amount of extra space to allocate for the patch deltas.
@@ -73,11 +58,6 @@ atoi2(char **sp)
 int
 cset_map(sccs *s, int extras)
 {
-	char	*p;
-	int	len;
-	int	newline;
-	ser_t	ser;
-
 	assert(s);
 	assert(s->state & S_CSET);
 	assert(!s->locs);
