@@ -243,7 +243,7 @@ send_part1_msg(opts opts, remote *r, char rev_list[], char **envVar)
 private int
 push_part1(opts opts, remote *r, char rev_list[MAXPATH], char **envVar)
 {
-	char	buf[MAXPATH], s_cset[] = CHANGESET;
+	char	buf[MAXPATH], s_cset[] = CHANGESET, *p;
 	FILE 	*f;
 	int	fd, rc, n, local_only, remote_only;
 	sccs	*s;
@@ -253,9 +253,16 @@ push_part1(opts opts, remote *r, char rev_list[MAXPATH], char **envVar)
 
 	if (r->httpd) skip_http_hdr(r);
 	getline2(r, buf, sizeof(buf));
-	if (streq(buf, "@SERVER INFO@")) {
+	if (streq(buf, "ERROR-Unable to lock repository for update.")) {
+		if (opts.verbose) fprintf(stderr, "%s\n", buf);
+		return (-1);
+	} else if (streq(buf, "@SERVER INFO@")) {
 		getServerInfoBlock(r);
 		getline2(r, buf, sizeof(buf));
+	} else {
+#ifdef BKD_VERSION1_2
+		drain_bkd1_2_msg(r, buf, sizeof(buf));
+#endif
 	}
 	if (get_ok(r, buf, opts.verbose)) return (-1);
 
@@ -517,7 +524,13 @@ push_part2(char **av, opts opts,
 	}
 
 	if (r->httpd) skip_http_hdr(r);
-	getServerInfoBlock(r);
+	getline2(r, buf, sizeof(buf));
+	if (streq(buf, "ERROR-Unable to lock repository for update.")) {
+		if (opts.verbose) fprintf(stderr, "%s\n", buf);
+		return (-1);
+	} else if (streq(buf, "@SERVER INFO@")) {
+		getServerInfoBlock(r);
+	}
 	if (done) goto done;
 
 	/*

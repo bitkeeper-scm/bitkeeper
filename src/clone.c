@@ -124,15 +124,19 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 
 	if (r->httpd) skip_http_hdr(r);
 	getline2(r, buf, sizeof (buf));
-	if (streq(buf, "@SERVER INFO@")) {
+	if (streq(buf, "ERROR-Unable to lock repository for update.")) {
+		if (!opts.quiet) fprintf(stderr, "%s\n", buf);
+		return (-1);
+	} else if (streq(buf, "@SERVER INFO@")) {
 		getServerInfoBlock(r);
+		getline2(r, buf, sizeof(buf));
 	} else {
 #ifdef BKD_VERSION1_2
 		/* try bkd 1.2 protocol */
 		try_clone1_2(opts.quiet, gzip, opts.rev, r, local);
 #endif
 	}
-	if (get_ok(r, 0, !opts.quiet)) {
+	if (get_ok(r, buf, !opts.quiet)) {
 		disconnect(r, 2);
 		goto done;
 	}

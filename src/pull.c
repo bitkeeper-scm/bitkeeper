@@ -128,9 +128,16 @@ pull_part1(opts opts, remote *r, char probe_list[], char **envVar)
 
 	if (r->httpd) skip_http_hdr(r);
 	getline2(r, buf, sizeof (buf));
-	if (streq(buf, "@SERVER INFO@")) {
+	if (streq(buf, "ERROR-Can't get read lock on the repository")) {
+		if (!opts.quiet) fprintf(stderr, "%s\n", buf);
+		return (-1);
+	} else if (streq(buf, "@SERVER INFO@")) {
 		getServerInfoBlock(r);
-		getline2(r, buf, sizeof (buf));
+		getline2(r, buf, sizeof(buf));
+	} else {
+#ifdef BKD_VERSION1_2
+		drain_bkd1_2_msg(r, buf, sizeof(buf));
+#endif
 	}
 	if (get_ok(r, buf, !opts.quiet)) {
 		disconnect(r, 2);
@@ -207,9 +214,12 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 
 	if (r->httpd) skip_http_hdr(r);
 	getline2(r, buf, sizeof (buf));
-	if (streq(buf, "@SERVER INFO@")) {
+	if (streq(buf, "ERROR-Can't get read lock on the repository")) {
+		if (!opts.quiet) fprintf(stderr, "%s\n", buf);
+		return (-1);
+	} else if (streq(buf, "@SERVER INFO@")) {
 		getServerInfoBlock(r);
-		getline2(r, buf, sizeof (buf));
+		getline2(r, buf, sizeof(buf));
 	}
 	if (get_ok(r, buf, !opts.quiet)) {
 		rc = 1;

@@ -353,12 +353,6 @@ get_ok(remote *r, char *read_ahead, int verbose)
 	}
 
 	if (streq(p, "@OK@")) return (0); /* ok */
-	if (strneq(p, "ERROR-BAD CMD:", 14)) {
-		fprintf(stderr,
-			"Remote seems to be running a older BitKeeper release\n"
-			"Try \"bk opush\", \"bk opull\" or \"bk oclone\"\n");
-			return (1);
-	}
 	if (verbose) {
 		i = 0;
 		fprintf(stderr, "remote: %s\n", p);
@@ -468,3 +462,32 @@ flush2remote(remote *r)
 		flush_fd(r->wfd); /* this is a no-op on Unix */
 	}
 }
+
+
+#ifdef BKD_VERSION1_2
+void
+drain_bkd1_2_msg(remote *r, char *buf, int bsize)
+{
+
+	if (strneq("ERROR-BAD CMD: putenv", buf, 21)) {
+		while (getline2(r, buf, bsize) > 0) {
+			if (strneq("ERROR-BAD CMD: putenv", buf, 21)) continue;
+			break;
+		}
+	}
+
+	do {
+		if (strneq("ERROR-BAD CMD: pull_part1", buf, 25)) break;
+		if (strneq("ERROR-BAD CMD: @END@", buf, 20)) break; /*for push*/
+		if (strneq("ERROR-BAD CMD:", buf, 14)) continue;
+		if (streq("OK-root OK", buf)) continue;
+		fprintf(stderr, "%s\n", buf);
+		if (streq("ERROR-exiting", buf)) exit(1);
+	} while (getline2(r, buf, bsize) > 0);
+
+	fprintf(stderr,
+		"Remote seems to be running a older BitKeeper release\n"
+		"Try \"bk opush\", \"bk opull\" or \"bk oclone\"\n");
+	exit(1);
+}
+#endif
