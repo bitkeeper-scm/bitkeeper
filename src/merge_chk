@@ -10,8 +10,11 @@ DIFF=YES
 SDIFF=NO
 RGCA=NO
 LGCA=NO
-while getopts bc:flmnRrs opt
+PMERGE=
+while getopts bc:fglmnRrs opt
 do	case "$opt" in
+	    g)	PMERGE="-g $PMERGE"
+	    	;;
 	    r)	RGCA=YES
 	    	;;
 	    l)	LGCA=YES
@@ -47,7 +50,8 @@ do	F=`basename $i`
 		/usr/bin/merge /tmp/M-$F /tmp/G-$F /tmp/R-$F
 		mv /tmp/M-$F /tmp/RCS-$F
 		cp /tmp/L-$F /tmp/M-$F
-		bk pmerge /tmp/M-$F /tmp/G-$F /tmp/R-$F
+		echo "bk pmerge $PMERGE /tmp/M-$F /tmp/G-$F /tmp/R-$F"
+		bk pmerge $PMERGE /tmp/M-$F /tmp/G-$F /tmp/R-$F
 		mv /tmp/M-$F /tmp/PMERGE-$F
 		cmp -s /tmp/RCS-$F /tmp/PMERGE-$F
 		if [ $? != 0 ]
