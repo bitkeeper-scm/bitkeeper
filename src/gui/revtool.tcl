@@ -348,23 +348,17 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 		} else {
 			set comments_mapped 0
 		}
-		pack configure $w(cframe) \
-		    -fill x \
-		    -expand false \
-		    -anchor n \
-		    -before $w(apframe)
-		pack configure $w(apframe) \
-		    -fill both \
-		    -expand true \
-		    -anchor n
-		set prs [open "| bk prs {$dspec} -hr$rev \"$file\" 2>$dev_null"]
-		filltext $w(ctext) $prs 1 "ctext"
-		set wht [winfo height $w(cframe)]
-		set cht [font metrics $gc(rev.fixedFont) -linespace]
-		set adjust [expr {int($wht) / $cht}]
-		#puts "cheight=($wht) char_height=($cht) adj=($adjust)"
-		if {($curLine > $adjust) && ($comments_mapped == 0)} {
-			$w(aptext) yview scroll $adjust units
+		if {$bindtype == "B1"} {
+			commentsWindow show
+			set prs [open "| bk prs {$dspec} -hr$rev \"$file\" 2>$dev_null"]
+			filltext $w(ctext) $prs 1 "ctext"
+			set wht [winfo height $w(cframe)]
+			set cht [font metrics $gc(rev.fixedFont) -linespace]
+			set adjust [expr {int($wht) / $cht}]
+			#puts "cheight=($wht) char_height=($cht) adj=($adjust)"
+			if {($curLine > $adjust) && ($comments_mapped == 0)} {
+				$w(aptext) yview scroll $adjust units
+			}
 		}
 	    }
 	    "^.*_prs$" {
@@ -470,7 +464,7 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 			centerRev $revname
 			set id [$w(graph) gettag $revname]
 			if {$id == ""} { busy 0; return }
-			if {$bindtype == "B1"} {
+			if {$bindtype == "B1" || $bindtype == "D1"} {
 				getLeftRev $id
 			} elseif {$bindtype == "B3"} {
 				diff2 0 $id
@@ -500,7 +494,7 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 		centerRev $revname
 		set id [$w(graph) gettag $revname]
 		if {$id == ""} { busy 0; return }
-		if {$bindtype == "B1"} {
+		if {$bindtype == "B1" || $bindtype == "D1"} {
 			getLeftRev $id
 		} elseif {$bindtype == "B3"} {
 			diff2 0 $id
@@ -1082,10 +1076,6 @@ proc getLeftRev { {id {}} } \
 	global	rev1 rev2 w comments_mapped gc fname dev_null file
 	global anchor
 
-	# destroy comment window if user is using mouse to click on the canvas
-	if {$id == ""} {
-		catch {pack forget $w(cframe); set comments_mapped 0}
-	}
 	unsetNodes
 	.menus.cset configure -state disabled -text "View Changeset "
 	set rev1 [getRev "old" $id]
@@ -1174,18 +1164,30 @@ proc unsetNodes {} {
 	highlightAncestry ""
 }
 
+proc getId {} \
+{
+	global w
+
+	set tags [$w(graph) gettags current]
+	# Don't want to create boxes around items that are not
+	# graph nodes
+	if {([lsearch $tags date_*] >= 0) || ([lsearch $tags l_*] >= 0)} {
+		set id ""
+	} else {
+		set id [lindex $tags 0]
+	}
+
+	return $id
+}
+
 # Returns the revision number (without the -username portion)
 proc getRev {type {id {}} } \
 {
 	global w anchor
 
 	if {$id == ""} {
-		set id [$w(graph) gettags current]
-		# Don't want to create boxes around items that are not
-		# graph nodes
-		if {([lsearch $id date_*] >= 0) || ([lsearch $id l_*] >= 0)} {
-			return 
-		}
+		set id [getId]
+		if {$id == ""} return
 	}
 	set id [lindex $id 0]
 	if {("$id" == "current") || ("$id" == "")} { return "" }
@@ -1224,14 +1226,14 @@ proc filltext {win f clear {msg {}}} \
 #
 # Called from B1 binding -- selects a node and prints out the cset info
 #
-proc prs {} \
+proc prs {{id ""} } \
 {
 	global file rev1 dspec dev_null search w diffpair ttype 
 	global sem lock chgdspec
 
 	set lock "inprs"
 
-	getLeftRev
+	getLeftRev $id
 	if {"$rev1" != ""} {
 		set diffpair(left) $rev1
 		set diffpair(right) ""
@@ -1338,7 +1340,7 @@ proc selectNode { type {val {}}} \
 	} elseif {$type == "rev"} {
 		set rev1 $val
 	}
-	if {"$rev1" == ""} { return }
+	if {![info exists rev1] || "$rev1" == ""} { return }
 	busy 1
 	set base [file tail $file]
 	if {$base != "ChangeSet"} {
@@ -1562,6 +1564,10 @@ proc csetdiff2 {{rev {}}} \
 proc r2c {} \
 {
 	global file rev1 rev2 errorCode
+
+	# if the following is true it means there's nothing selected
+	# so we should just do nothing. 
+	if {![info exists rev1] || $rev1 == ""} return
 
 	busy 1
 	set csets ""
@@ -2065,14 +2071,43 @@ proc widgets {} \
 	grid columnconfigure .cmd 0 -weight 1
 	grid columnconfigure .cmd 1 -weight 2
 
-	bind $w(graph) <Button-1>	{ prs; currentMenu; break }
-	bind $w(graph) <Double-1>	{ selectNode "id"; break }
+	# schedule single-click for the future in case a double-click
+	# comes along. Otherwise the single-click processing could take
+	# so long the double-click is never noticed as a double-click.
+	bind $w(graph) <1> {
+		set id [getId]
+		set ::afterId [after $gc(rev.doubleclick) [format {
+			busy 1
+			commentsWindow hide
+			prs %%s
+			currentMenu
+			busy 0
+		} [list $id]]]
+	}
+	bind $w(graph) <Double-1> {
+		busy 1
+		if {[info exists ::afterId]} {
+			after cancel $::afterId
+			unset ::afterId
+		}
+		set id [getId]
+		getLeftRev $id
+		if {$rev1 != ""} {
+			set diffpair(left) $rev1
+			set diffpair(right) ""
+			selectNode "id"
+			currentMenu
+		}
+		busy 0
+	}
+
 	bind $w(graph) <3>		{ diff2 0; currentMenu; break }
+	bind $w(graph) <a>		{ selectNode "id" ; break }
+	bind $w(graph) <C>		{ r2c; break }
 	bind $w(graph) <h>		"history"
 	bind $w(graph) <t>		"history tags"
 	bind $w(graph) <d>		"doDiff"
 	bind $w(graph) <Button-2>	{ history; break }
-	bind $w(graph) <Double-2>	{ history tags; break }
 	bind $w(graph) <$gc(rev.quit)>	"done"
 	bind $w(graph) <s>		"sfile"
 	bind $w(graph) <c>		"sccscat"
@@ -2141,9 +2176,19 @@ proc widgets {} \
 	}
 	searchreset
 
-	bind $w(aptext) <Button-1> { selectTag %W %x %y "B1"; break}
+	bind $w(aptext) <Button-1> {
+		set ::afterId [after $gc(rev.doubleclick) [format {
+			selectTag %W %x %y B1
+		}]]
+	}
+	bind $w(aptext) <Double-1> {
+		if {[info exists ::afterId]} {
+			after cancel $::afterId
+			unset ::afterId
+		}
+		selectTag %W %x %y D1
+	}
 	bind $w(aptext) <Button-3> { selectTag %W %x %y "B3"; break}
-	bind $w(aptext) <Double-1> { selectTag %W %x %y "D1"; break }
 
 	# highlighting.
 	$w(aptext) tag configure "newTag" -background $gc(rev.newColor)
@@ -2195,6 +2240,24 @@ proc widgets {} \
 	focus $w(graph)
 	. configure -background $gc(BG)
 } ;# proc widgets
+
+proc commentsWindow {action} \
+{
+	global w comments_mapped
+	if {$action == "hide"} {
+		catch {pack forget $w(cframe); set comments_mapped 0}
+	} else {
+		pack configure $w(cframe) \
+		    -fill x \
+		    -expand false \
+		    -anchor n \
+		    -before $w(apframe)
+		pack configure $w(apframe) \
+		    -fill both \
+		    -expand true \
+		    -anchor n
+	}
+}
 
 #
 #

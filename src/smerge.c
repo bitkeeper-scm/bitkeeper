@@ -83,15 +83,18 @@ private	int	parse_range(char *range, u32 *start, u32 *end);
 private	int	show_seq;
 #endif
 
+private	int	emubugs = 0;	/* 301 or 302 */
+
 int
 smerge_main(int ac, char **av)
 {
 	int	c;
 	int	i;
 	u32	start = 0, end = ~0;
-	int	ret = 0;
+	int	ret = 2;
 	int	do_diff3 = 0;
 	int	identical = 0;
+	char	*p;
 	project	*proj;
 
 	proj = proj_init(av[ac-2]);
@@ -101,6 +104,10 @@ smerge_main(int ac, char **av)
 		do_diff3 = 1;
 	}
 	proj_free(proj);
+
+	if (p = getenv("SMERGE_EMULATE_BUGS")) {
+		emubugs = atoi(p);
+	}
 
 	mode = MODE_3WAY;
 	while ((c = getopt(ac, av, "234A:a:defghI:npr:s")) != -1) {
@@ -220,7 +227,7 @@ file_init(char *file, char *rev, char *anno, file_t *f)
 	int	flags = GET_SEQ|SILENT|PRINT;
 	int	i;
 	char	*sfile = name2sccs(file);
-	char	*inc, *exc;
+	char	*inc, *exc, *mrev;
 	char	tmp[MAXPATH];
 
 	if (anno) {
@@ -245,9 +252,23 @@ file_init(char *file, char *rev, char *anno, file_t *f)
 	unless (s && s->tree) return (-1);
 	free(sfile);
 	rev = strdup(rev);
+	mrev = 0;
 	if (inc = strchr(rev, '+')) *inc++ = 0;
 	if (exc = strchr(inc ? inc : rev, '-')) *exc++ = 0;
-	if (sccs_get(s, rev, 0, inc, exc, flags, f->tmpfile)) {
+
+	/*
+	 * Code to emulate bugs that were in the bk-3.0.2 and bk-3.0.1 releases
+	 */
+	if (emubugs == 302) {
+		mrev = inc;
+		inc = exc;
+		exc = 0;
+	} else if (emubugs == 301) {
+		inc = 0;
+		exc = 0;
+	}
+
+	if (sccs_get(s, rev, mrev, inc, exc, flags, f->tmpfile)) {
 		fprintf(stderr, "Fetch of revision %s failed!\n", rev);
 		return (-1);
 	}

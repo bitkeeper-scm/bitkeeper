@@ -1,4 +1,53 @@
 ===============================================================================
+Release notes for BitKeeper version 3.0.3.   These release notes cover
+the following topics:
+
+. Upgrade Notes
+. New Features
+. Noteworthy bug fixes
+
+Upgrade notes
+----------------------------------------------------------------------------
+
+IMPORTANT
+    This release corrects a rare problem where complicated merges could
+    be resolved sub-optimally.  Please upgrade to this release as soon
+    as possible.  To find out if any of your existing merges might have
+    been effected by this problem please run 'bk _find_merge_errors' on
+    each repository and follow the instructions given by that program.
+
+
+Nothing is required to upgrade from the 3.0.2 release.
+However when upgraded any running bkd's must be restarted.
+
+New Features
+----------------------------------------------------------------------------
+
+  Execution of triggers is now logged in the BitKeeper/log/cmd_log file.
+
+  In the triggers man page we provide a more complete example of the
+  paranoid trigger to avoid csets that try to introduce rogue triggers.
+
+
+Noteworthy Bug Fixes
+----------------------------------------------------------------------------
+
+  2003-08-26-001: stripdel asserts when edited gfile is missing
+  2003-08-28-002: fix instructions for running 'bk links' in installer
+  2003-08-15-001: 'bk pull -n' and 'bk pull -nl' returned different results
+  2003-08-28-001: 'bk changes -r+ -hnd:KEY: URL' didn't work
+  2003-03-04-002: RESYNC dir left in . if clone failed
+  2003-03-04-003: lclone -rBadRev makes a clone
+  2003-02-25-001: chmod -w . ; bk clone ../repo : bad message
+
+  Fix some problems when running on SCO's NFS client code.
+
+  Fixed 'bk export' so that csetkeys can be passed for the revision
+  argument. 
+
+  BitKeeper was broken in New Zealand because of a timezone problem.
+
+===============================================================================
 Release notes for BitKeeper version 3.0.2.   These release notes cover
 the following topics:
 

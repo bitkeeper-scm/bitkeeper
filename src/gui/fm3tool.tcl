@@ -781,9 +781,20 @@ proc smerge_highlight {t line off} \
 proc smerge {} \
 {
 	global  argc argv filename smerge tmps tmp_dir annotate force app gc
+	global outfile
 
 	set smerge [file join $tmp_dir bksmerge_[pid]]
 	set tmps [list $smerge]
+
+	# only if user specifies -o will we define the variable 'outfile';
+	# save() depends on this. save() will only write to this file	
+	# if the variable exists, otherwise it will write to $filename.
+	if {[lindex $argv 0] == "-o"} {
+		set outfile [lindex $argv 1]
+		set argv [lrange $argv 2 end]
+		set argc [expr $argc - 2]
+	}
+    
 	# set if we are annotated in the diffs window
 	set annotate $gc(fm3.annotate)
 	if {$argc == 1} {
@@ -803,7 +814,8 @@ proc smerge {} \
 		set force 0
 	}
 	if {$argc != 4} {
-		puts "Usage: fm3tool \[-f\] <local> <gca> <remote> <file>"
+		puts "Usage: fm3tool \[-o filename\] \[-f\]\
+		      <local> <gca> <remote> <file>"
 		exit 1
 	}
 	set l [lindex $argv 0]
@@ -1463,28 +1475,38 @@ proc cleanup {} \
 proc save {} \
 {
 	global	filename force
+	global outfile
 
-	set base [file tail $filename]
-	set dir [file dirname $filename]
-	set pfile "$dir/SCCS/p.$base"
-	if {[file exists $pfile] == 0} {
-		puts "The file is not edited, will not save"
-		exit 1
+	if {[info exists outfile]} {
+		# user specified "-o filename" on the command line...
+		if {$force == 0 && [file exists $outfile]} {
+			puts "Won't overwrite $filename"
+			return
+		}
+		set f [open $outfile w]
+	} else {
+		set base [file tail $filename]
+		set dir [file dirname $filename]
+		set pfile "$dir/SCCS/p.$base"
+		if {[file exists $pfile] == 0} {
+			puts "The file is not edited, will not save"
+			exit 1
+		}
+		catch { exec bk clean "$filename" } error
+		if {$force == 0 && \
+			[file exists $filename] && [file writable $filename]} {
+			puts "Won't overwrite modified $filename"
+			return
+		}
+		set f [open $filename "w"]
 	}
-	catch { exec bk clean "$filename" } error
-	if {$force == 0 && \
-	    [file exists $filename] && [file writable $filename]} {
-		puts "Won't overwrite modified $filename"
-		return
-	}
-	set f [open $filename "w"]
 	set buf [.merge.t get 1.0 "end - 1 char"]
 	set len [expr {[string length $buf] - 1}]
 	set last [string index $buf $len]
 	if {"$last" == "\n"} {
 		puts -nonewline $f $buf
 	} else {
-		puts $f $Text
+		puts $f $buf
 	}
 	close $f
 	exit

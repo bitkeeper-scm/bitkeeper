@@ -14237,6 +14237,84 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
+	if (streq(kw, "SETGCA")) {	/* print gca rev if a merge node */
+		char	*inc, *exc;
+
+		if (d->merge &&
+		    (d = gca3(s, sfind(s, d->merge), d->parent, &inc, &exc))) {
+			fs(d->rev);
+			if (inc) {
+				fc('+');
+				fs(inc);
+				free(inc);
+			}
+			if (exc) {
+				fc('-');
+				fs(exc);
+				free(exc);
+			}
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "GET_SETGCA")) {	/* print gca args for get*/
+		char	*inc, *exc;
+
+		if (d->merge &&
+		    (d = gca3(s, sfind(s, d->merge), d->parent, &inc, &exc))) {
+			fs("-r");
+			fs(d->rev);
+			if (inc) {
+				fs(" -i");
+				fs(inc);
+				free(inc);
+			}
+			if (exc) {
+				fs(" -x");
+				fs(exc);
+				free(exc);
+			}
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "GET_SETGCA301")) {	/* print gca args for get*/
+		char	*inc, *exc;
+
+		if (d->merge &&
+		    (d = gca3(s, sfind(s, d->merge), d->parent, &inc, &exc))) {
+			fs("-r");
+			fs(d->rev);
+			if (inc) free(inc);
+			if (exc) free(exc);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+	if (streq(kw, "GET_SETGCA302")) {	/* print gca args for get*/
+		char	*inc, *exc;
+
+		if (d->merge &&
+		    (d = gca3(s, sfind(s, d->merge), d->parent, &inc, &exc))) {
+			fs("-r");
+			fs(d->rev);
+			if (inc) {
+				fs(" -M");
+				fs(inc);
+				free(inc);
+			}
+			if (exc) {
+				fs(" -i");
+				fs(exc);
+				free(exc);
+			}
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
 	if (streq(kw, "PREV")) {
 		if (d->next) {
 			fs(d->next->rev);
