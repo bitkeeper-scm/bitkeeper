@@ -2,6 +2,8 @@
 char		*http_time(void);
 private	char	*type(char *name);
 private void	httphdr(char *file);
+private	char	*url(char *path);
+private void	http_error(int status, char *fmt, ...);
 private void	http_file(char *file);
 private void	http_index();
 private void	http_changes(char *rev);
@@ -31,6 +33,8 @@ private	char	*root;
 #define	COLOR_SRC	"lightblue"	/* src */
 #define	COLOR_DIFFS	"lightblue"	/* diffs */
 #define	COLOR_PATCH	"lightblue"	/* patch */
+
+#define BKWEB_SERVER_VERSION	"0.2"
 
 char arguments[MAXPATH] = { 0 };
 char navbar[MAXPATH] = { 0 };
@@ -83,31 +87,20 @@ cmd_httpget(int ac, char **av)
 	 */
 	if (*name == '/') {
 		unless (name = findRoot(name)) {
-			out("ERROR-can't find project root\n");
-			out(buf);
+			http_error(503, "Can't find project root");
 			exit(1);
 		}
-	} else {
-		static char url[MAXPATH];
-
-		if (Opts.port) {
-			sprintf(url, "http://%s:%d", sccs_gethost(), Opts.port);
-		} else {
-			sprintf(url, "http://%s", sccs_gethost());
-		}
-		root = url;
-	}
+	} else root = url(0);
 
 #if 0
 	unless (bk_options()&BKOPT_WEB) {
-		sprintf(buf, "ERROR-bkWeb option is disabled: %s", upgrade_msg);
-		out(buf);
+		http_error(503, "bkWeb option is disabled: %s", upgrade_msg);
 		exit(1);
 	}
 #endif
 
 	unless (av[1]) {
-		out("ERROR-get what?\n");
+		http_error(404, "get what?\n");
 		exit(1);
 	}
 	sprintf(buf, "BitKeeper/html/%s", name);
@@ -135,6 +128,8 @@ cmd_httpget(int ac, char **av)
 		http_anno(&name[5]);
 	} else if (strneq(name, "diffs/", 6)) {
 		http_diffs(&name[6]);
+	} else {
+		http_error(404, "Page &lt;%s&gt; not found", name);
 	}
 	exit(0);
 }
@@ -185,15 +180,17 @@ navbutton(int active, int tag, char *start, char *end)
 		   : "<font size=2 color=yellow>");
 
 	if (strneq(start,"ChangeSet", 9)) {
-		if (start[9] == '@') {
-			ct = atoi(&start[11]);
+		if (start[9] != '@') {
+			out("All ChangeSets");
+		} else if (start[10] == '+') {
+			out("Latest ChangeSet");
+		} else {
+			ct = atoi(start+11);
 			sprintf(buf,
 			    "Changesets in the last %d %s",
-			    ct, units(&start[11]));
+			    ct, units(start+11));
 			out(buf);
 		}
-		else
-			out("All ChangeSets");
 		start = 0;
 	} else if (strneq(start, "index.html", 10)) {
 		out("Home");
@@ -229,8 +226,10 @@ navbutton(int active, int tag, char *start, char *end)
 	    sprintf(buf, "%.*s", sep-start, start);
 	    out(buf);
 	}
-	out("</a></font>\n");
-	unless (active) out("<img src=arrow.gif>\n");
+	out("</font></a>\n");
+	unless (active) out("<font size=2 color=white>"
+			    "<img src=arrow.gif alt=&gt;&gt;>"
+			    "</font>\n");
 }
 
 
@@ -321,18 +320,11 @@ findRoot(char *name)
 	char	*s, *t;
 	char	path[MAXPATH];
 	int	tries = 256;
-	static	char url[MAXPATH*2];
 
 	sprintf(path, "%s/BitKeeper/etc", name);
 	if (isdir(path)) {
 		chdir(name);
-		if (Opts.port) {
-			sprintf(url, "http://%s:%d%s",
-			    sccs_gethost(), Opts.port, name-1);
-		} else {
-			sprintf(url, "http://%s%s", sccs_gethost(), name-1);
-		}
-		root = url;
+		root = url(name);
 		return ("index.html");
 	}
 	for (s = strrchr(name, '/'); s && (s != name); ) {
@@ -341,14 +333,7 @@ findRoot(char *name)
 		unless (--tries) break;		/* just in case */
 		if (isdir(path)) {
 			chdir(name);
-			if (Opts.port) {
-				sprintf(url, "http://%s:%d%s",
-				    sccs_gethost(), Opts.port, name-1);
-			} else {
-				sprintf(url,
-				    "http://%s%s", sccs_gethost(), name-1);
-			}
-			root = url;
+			root = url(name);
 			return (s + 1);
 		}
 		t = strrchr(name, '/');
@@ -366,11 +351,13 @@ httphdr(char *file)
 	sprintf(buf,
 	    "HTTP/1.0 200 OK\r\n"
 	    "%s\r\n"
-	    "Server: bkhttp/0.1\r\n"
+	    "Server: bkhttp/%s\r\n"
 	    "Content-Type: %s\r\n"
 	    "Last-Modified: %s\r\n"
 	    "\r\n",
-	    http_time(), type(file), http_time());
+	    http_time(),
+	    BKWEB_SERVER_VERSION,
+	    type(file), http_time());
 	out(buf);
 }
 
@@ -588,7 +575,7 @@ trailer(char *path)
 		    "<table border=0 bgcolor=white width=100%>\n"
 		    "<tr>\n"
 		    "<td align=left><img src=\"logo.gif\" alt=\"\"></img></td>\n"
-		    "<td align=right><a><img src=trailer.gif alt=\"Learn more about BitKeeper\"></a></td>\n"
+		    "<td align=right><a href=www.bitkeeper.com><img src=trailer.gif alt=\"Learn more about BitKeeper\"></a></td>\n"
 		    "</tr>\n"
 		    "</table>\n"
 		    "</font>\n");
@@ -944,7 +931,7 @@ http_patch(char *rev)
 
 	header("rev", COLOR_PATCH,
 	    "All diffs for ChangeSet %s",
-	    "<a href=cset@%s?%s>All diffs for ChangeSet %s</a>",
+	    0,
 	    rev, navbar, rev);
 
 	out("<pre><font size=2>");
@@ -1191,4 +1178,58 @@ type(char *name)
 		return "text/html";
 	}
 	return "text/plain";
+}
+
+
+private void
+http_error(int status, char *fmt, ...)
+{
+        char    buf[2048];
+	va_list	ptr;
+
+        sprintf(buf,
+            "HTTP/1.0 %d Error\r\n"
+            "%s\r\n"
+            "Server: bkhttp/%s\r\n"
+            "Content-Type: text/html\r\n"
+            "\r\n",
+            status, http_time(), BKWEB_SERVER_VERSION);
+        out(buf);
+
+	strcpy(buf, "<html><head><title>Error!</title></head>\n"
+		    "<body alink=black link=black bgcolor=white>\n"
+		    "<h2><center>\n");
+	va_start(ptr,fmt);
+	vsprintf(buf+strlen(buf), fmt, ptr);
+	va_end(ptr);
+	strcat(buf, "\n</h2></center>\n");
+	out(buf);
+	out("<hr>\n"
+	    "<table width=100%>\n"
+	    "<tr>\n"
+	    "<th valign=top align=left>bkhttp/" BKWEB_SERVER_VERSION " server on ");
+	out(url(0));
+	out("</th>\n"
+	    "<td align=right><a alink=white link=white href=www.bitkeeper.com>\n"
+	    "<img src=/trailer.gif alt=\"Learn more about BitKeeper\">\n"
+	    "</a></td>\n"
+	    "</tr>\n"
+	    "</table>\n");
+	out("</body>\n");
+}
+
+private char *
+url(char *path)
+{
+	static char buf[MAXPATH*2];
+
+	strcpy(buf, "http://");
+	strcat(buf, sccs_gethost());
+	if (Opts.port) sprintf(buf+strlen(buf), ":%d", Opts.port);
+	if (path) {
+		strcat(buf, "/");
+		strcat(buf, path);
+		unless (buf[strlen(buf)-1] == '/') strcat(buf, "/");
+	}
+	return buf;
 }
