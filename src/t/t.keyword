@@ -125,3 +125,24 @@ $Date: DATE $
 EOF
 bk diff -u CMP1 CMP2 || exit 1
 echo OK
+
+echo $N Check RCS and SCCS keyword expansion on the same line .......$NL
+cat > src/both <<EOF
+SCCS only %I%
+RCS only \$Revision\$
+Both %I% \$Revision\$
+EOF
+bk new $Q src/both
+bk admin -fRCS -FEOLN_NATIVE src/both
+bk get $Q src/both
+cat > WANT <<EOF
+SCCS only 1.2
+RCS only \$Revision: 1.2 \$
+Both 1.2 \$Revision: 1.2 \$
+EOF
+cmp -s src/both WANT || {
+	echo failed
+	bk diff src/both WANT
+	exit 1
+}
+echo OK

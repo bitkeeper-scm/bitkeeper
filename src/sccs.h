@@ -41,7 +41,7 @@
 #define	GET_REVNUMS	0x40000000	/* get -m: prefix each line with rev */
 #define GET_USER	0x80000000	/* get -u: prefix with user name */
 #define GET_SKIPGET	0x01000000	/* get -g: don't get the file */
-#define	GET_RCSEXPAND	0x02000000	/* do RCS keywords */
+/* available		0x02000000	   used to be GET_RCSEXPAND */
 #define	GET_ASCII	0x04000000	/* Do not gunzip/uudecode */
 #define	GET_LINENUM	0x08000000	/* get -N: show line numbers */
 #define	GET_MODNAME	0x00100000	/* get -n: prefix with %M */
