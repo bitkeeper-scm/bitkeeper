@@ -77,10 +77,10 @@ sub cpio_out
 {
 	local($q, $list) = ($_[0], $_[1]);
 
-	$cpioq = $q ? ' 2>/dev/null' : ' -v';
-	system("cpio -o -Hcrc $cpioq < $list")
-	and system("cpio -o -c $cpioq < $list")
-	and system("cpio -o $cpioq < $list")
+	$cpioq = $q ? ' 2>/dev/null' : 'v';
+	system("cpio -Hcrc -o$cpioq < $list")
+	and system("cpio -c -o$cpioq < $list")
+	and system("cpio -o$cpioq < $list")
 	and die "cpio unsuccessful exit $?\n";
 }
 
