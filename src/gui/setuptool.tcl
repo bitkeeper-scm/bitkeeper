@@ -205,9 +205,10 @@ proc read_bkrc {} \
     	}
 }
 
+# Generate etc/config file and then create the repository
 proc create_repo {} \
 {
-	global st_cinfo env st_repo_name tmp_dir
+	global st_cinfo env st_repo_name tmp_dir debug topics
 
 	regsub -all {\ } $st_cinfo(des) {\\ }  escaped_des
 	# save config info back to users .bkrc file
@@ -216,19 +217,18 @@ proc create_repo {} \
 	set pid [pid]
 	set cfile [file join $tmp_dir "config.$pid"]
 	set cfid [open "$cfile" w]
-	foreach el [array names st_cinfo] {
+	foreach el $topics {
 		puts $cfid "${el}: $st_cinfo($el)"
-		#puts "${el}: $st_cinfo($el)"
+		if {$debug} { puts "${el}: $st_cinfo($el)" }
 	}
-	# puts "===>Repo Name: ($st_cinfo(repository)) Desc: ($st_cinfo(des))"
-	# XXX wrap with catch and return valid return code
-	# probably should be an exec?!?
-	set fid [open "|bk setup -f -c$cfile -n'$escaped_des'  \
-	    $st_cinfo(repository)" w]
-	close $fid 
 	close $cfid
-	# clean up configfile
-	# file delete $cfile
+	set repo $st_cinfo(repository)
+	catch { exec bk setup -f -c$cfile -n'$escaped_des' $repo } msg
+	if { $msg != "" } {
+		puts "Repository creation failed: $msg"
+		exit 1
+	}
+	file delete $cfile
 	return 0
 }
 
@@ -318,8 +318,7 @@ proc check_config { widget } \
 
 proc create_config { w } \
 {
-
-	global st_cinfo st_bk_cfg rootDir st_dlg_button logo widget
+	global st_cinfo st_bk_cfg rootDir st_dlg_button logo widget topics
 
 	# Need to have global for w inorder to bind the keyRelease events
 	set widget $w
@@ -371,44 +370,31 @@ proc create_config { w } \
 	pack $w.t.l -side right -fill both  -ipadx 5
 	pack $w.t.info -side right -fill both -expand yes -ipady 10 -ipadx 10
 
-	foreach { description var } {
-		"Repository Name:" repository 
-		"description:" des 
-		"open logging server:" logging 
-		"Contact Name:" contact 
-		"Email:" email
-		"Street:" street 
-                "City:" city 
-		"Zip/Postal Code:" postal
-		"Country:" country 
-		"Phone:" phone 
-                "Pager:" pager 
-		"Cell:" cell
-		"Business Hours:" hours } {\
-		    #puts "desc: ($description) var: ($var)"
-		    label $w.t.l.$var -text "$description" -justify right \
+	foreach des $topics {
+		    #puts "desc: ($des) des: ($des)"
+		    label $w.t.l.$des -text "$des" -justify right \
 			-bg $bcolor
-		    entry $w.t.e.$var -width 30 -relief sunken -bd 2 \
-                        -bg $bcolor -textvariable st_cinfo($var)
-		    #pack $w.t.e.$var -side top -fill y -expand 1
-		    #pack $w.t.l.$var -side top -pady 1 -expand 1 -fill x
-		    grid $w.t.e.$var 
-		    grid $w.t.l.$var  -pady 1 -sticky e -ipadx 3
-		    bind $w.t.e.$var <FocusIn> \
+		    entry $w.t.e.$des -width 30 -relief sunken -bd 2 \
+                        -bg $bcolor -textvariable st_cinfo($des)
+		    #pack $w.t.e.$des -side top -fill y -expand 1
+		    #pack $w.t.l.$des -side top -pady 1 -expand 1 -fill x
+		    grid $w.t.e.$des 
+		    grid $w.t.l.$des  -pady 1 -sticky e -ipadx 3
+		    bind $w.t.e.$des <FocusIn> \
 			"$w.t.t.t configure -state normal;\ 
 			$w.t.t.t delete 1.0 end;\
-			$w.t.t.t insert insert \$st_bk_cfg($var);\
+			$w.t.t.t insert insert \$st_bk_cfg($des);\
 			$w.t.t.t configure -state disabled "
 	}
 	# Mandatory fields are highlighted
 	$w.t.e.repository config -bg $mcolor
-	$w.t.e.des config -bg $mcolor
+	$w.t.e.description config -bg $mcolor
 	$w.t.e.logging config -bg $mcolor
 	#puts "W in main is $w"
 	bind $w.t.e.repository <KeyRelease> {
 		check_config $widget
 	}
-	bind $w.t.e.des <KeyRelease> {
+	bind $w.t.e.description <KeyRelease> {
 		check_config $widget
 	}
 	bind $w.t.e.logging <KeyRelease> {
@@ -470,28 +456,20 @@ proc main {} \
 }
 
 #
-# Ideally, the text should be gotten out of the config file
+# Reads the bkhelp.doc file to generate a list of entries to be used in
+# the /etc/config file. Also, use bk gethelp on this list of entries to
+# get the help text which will be shown in the bottom panel of setuptool
 #
 proc getMessages {} \
 {
-	global st_bk_cfg
-
-	set st_bk_cfg(des) { Descriptive name for your project. }
-
-	set st_bk_cfg(repository) { You are about create a new repository.  \
- You may do this exactly once for each project stored in BitKeeper.  If a \
- BitKeeper repository for this project exists, do the following:
-
-    bk clone project_dir my_project_dir
-
- If you create a new project rather than resyncing a copy, you will not be \
- able to exchange work between the two projects. }
+	global st_bk_cfg topics
 
 	set fid [open "|bk gethelp config_template" "r"]
 	while { [ gets $fid topic ] != -1 } {
 		set found 0
 		set cfg_topic ""
 		set topic [string trim $topic]
+		lappend topics $topic 
 		append cfg_topic "config_" $topic
 		set hfid [open "|bk gethelp $cfg_topic" "r"]
 		while { [ gets $hfid help ] != -1 } {
