@@ -29,6 +29,8 @@ admin $Q -n empty 2> ERR
 if [ $? -eq 0 ]; then echo Bad exit code 0.; exit 1; fi
 echo OK
 ${RM} -f ERR
+# Note: this test could fail on slow/busy system
+# due to the optional date fudge entry
 echo $N Creating a file from foo ....................$NL
 cp SAVE foo
 admin $Q -ifoo foo

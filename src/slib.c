@@ -10500,7 +10500,16 @@ fprintDelta(FILE *out, char *vbuf,
 				fprintDelta(out, vbuf, cb, &cb[clen -1], s, d);
 				q = &b[clen + 1];
 			} else {
-				for (t = b; *t && *t != '}'; t++);
+				int bcount  = 1; /* brace count */
+				for (t = &b[len + 3]; bcount > 0 ; t++) {
+					if (*t == '{') {
+						bcount++;
+					} else if (*t == '}') {
+						if (--bcount == 0) break;			
+					} else if (*t == '\0') {
+						break;
+					}
+				}
 				if (t[0] != '}') {
 					/* syntax error */
 					fprintf(stderr,
