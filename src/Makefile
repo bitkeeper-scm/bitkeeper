@@ -502,7 +502,7 @@ gui-nowrap GUI-nowrap:
 
 install: installdir
 	tmp/bitkeeper/bk install -f $(BINDIR)
-	$(BINDIR)/bk links $(BINDIR) /usr/bin
+	-$(BINDIR)/bk links $(BINDIR) /usr/bin
 
 installdir: $(BKLINK)
 	rm -rf $(IMGDIR)

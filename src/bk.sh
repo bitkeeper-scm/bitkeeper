@@ -752,6 +752,10 @@ _links() {		# /* undoc? 2.0 - what is this for? */
 	then	BIN="$2"
 	else	BIN=/usr/bin
 	fi
+	test -w "$BIN" || {
+	    echo "bk links: can't write to $BIN"
+	    exit 1
+	}
 	for i in admin get delta unget rmdel prs bk
 	do	test -f "$BIN/$i" && {
 			echo Saving "$BIN/$i" in "$BIN/${i}.ORIG"
@@ -1158,7 +1162,8 @@ _install()
 	SRC=`bk bin`
 
 	test -d "$DEST" && {
-		test `cd "$DEST"; bk pwd` = "$SRC" && {
+		DEST=`cd "$DEST"; bk pwd`	
+		test "$DEST" = "$SRC" && {
 			echo "bk install: destination == souce"
 			exit 1
 		}
@@ -1169,10 +1174,11 @@ _install()
 		# uninstall can be missing
 		"$DEST"/bk which -i uninstall >/dev/null 2>&1 && {
 			"$DEST"/bk uninstall 2> /dev/null
-			rm -rf "$DEST" || {
-				echo "bk install: failed to remove $DEST"
-				exit 1
-			}
+		}
+		chmod -R +w "$DEST" 2> /dev/null
+		rm -rf "$DEST"/* || {
+		    echo "bk install: failed to remove $DEST"
+		    exit 1
 		}
 	}
 	mkdir -p "$DEST" || {
@@ -1185,28 +1191,23 @@ _install()
 	# binlinks
 	if [ "X$OSTYPE" = "Xmsys" ]
 	then	TARG=bklink.exe
+		EXT=.exe
 	else	TARG=bk
+		EXT=
 	fi
 	# This does the right thing on Windows (msys)
 	for prog in admin get delta unget rmdel prs; do
-		ln "$DEST"/$TARG "$DEST"/$prog
+		ln "$DEST"/$TARG "$DEST"/$prog$EXT
 	done
 	# permissions
-	bk _find "$DEST" -type f | while read f; do
-		chown root $f 2> /dev/null
-		chgrp root $f 2> /dev/null
-		chmod -w $f
-	done
-	bk _find "$DEST" -type d | while read f; do
-		chown root $f 2> /dev/null
-		chgrp root $f 2> /dev/null
-		chmod -w $f
-	done
+	cd "$DEST"
+	(find . | xargs chown root) 2> /dev/null
+	(find . | xargs chgrp root) 2> /dev/null
+	find . | xargs chmod -w
 }
 
 _uninstall()
 {
-	chmod -R +w `bk bin`
 	exit 0
 }
 
