@@ -1,32 +1,23 @@
 .so ../bk-macros
-.TH "bk config-gui" 1 2000/11/08 "\*(BC" "\*(UM"
+.TH "bk config-gui" 1 2003/06/13 "\*(BC" "\*(UM"
 .SH NAME 
 bk config-gui \- configuration for \*(BK graphical tools
 .SH DESCRIPTION
 .LP
 BitKeeper uses a configuration file called 
-.B bkgui
+.B config-gui
 for the 
 configuration of the \*(BK graphical tools.
 The configuration file is used to modify
 colors, fonts, and widget dimensions. 
 .LP
-On 
-.SM UNIX
-systems, this configuration file is searched for in
-.B $HOME/.bkgui
-where 
-.B $HOME 
-refers to the users home directory.
-.LP
-On Microsoft Windows NT and Windows 98 systems,
-.DS
-.B %SystemRoot%\eProfiles\e%User%\eApplication  Data\eBitKeeper\e_bkgui 
-.DE
-is the location of the config file; this path is usually
-.DS
-.B c:\ewinnt\eProfiles\e%User%\eApplication\ Data\eBitKeeper\e_bkgui
-.DE
+The location of this configuration file can be determined
+for your platform by running the command
+.BR bk\ dotbk .
+This command will return the pathname of the directory where
+the \*(BK graphical tools will look for the 
+.B config-gui
+file.
 .LP
 The config file must be a valid tcl program as it is
 evaluated by the \*(BK GUI tools (which are also tcl/tk programs).
@@ -47,8 +38,8 @@ if {[winfo screenwidth .] <= 1024} {
 .DE
 .LP
 The point of the
-.B .bkgui
-is to change configuration options.
+.B config-gui
+file is to change configuration options.
 A typical line looks like this:
 .ft R
 .DS
@@ -441,7 +432,6 @@ Default:\ #181818
 .SA renametool 1
 .\" help://GUI
 .\" help://gui
-.\" help://bkgui
 .\" help://GUI-config
 .\" help://gui-config
 .\" help://gui config

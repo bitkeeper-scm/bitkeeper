@@ -47,6 +47,12 @@ MDBM	*proj_config(project *p);
  * Return the root key of the ChangeSet file in the current project.
  */
 char	*proj_csetrootkey(project *p);
+char	*proj_csetmd5rootkey(project *p);
+
+/*
+ * Return a hash where we can stash random data that gets cached per repo.
+ */
+HASH	*proj_hash(project *p);
 
 /*
  * proj_chdir() is a wrapper for chdir() that also updates

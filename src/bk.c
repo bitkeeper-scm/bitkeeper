@@ -703,6 +703,7 @@ private	struct {
 } repolog[] = {
 	{"abort", CMD_FAST_EXIT},
 	{"check", CMD_FAST_EXIT},
+	{"license", CMD_FAST_EXIT},
 	{"pull", CMD_BYTES|CMD_WRLOCK|CMD_WRUNLOCK},
 	{"push", CMD_BYTES|CMD_RDLOCK|CMD_RDUNLOCK},
 	{"commit", CMD_WRLOCK|CMD_WRUNLOCK},

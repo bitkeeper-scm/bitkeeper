@@ -4042,7 +4042,7 @@ sccs_init(char *name, u32 flags)
 
 	signal(SIGPIPE, SIG_IGN); /* win32 platform does not have sigpipe */
 	if (sig_ignore() == 0) s->unblock = 1;
-	lease_check(s);
+	lease_check(s->proj);
 	return (s);
 }
 
@@ -15765,8 +15765,10 @@ smartUnlink(char *file)
 	strcpy(tmp, file); dir = dirname(tmp);
 	if (access(dir, W_OK) == -1) {
 		if (errno != ENOENT) {
+			char	*full = fullname(dir, 0);
 			fprintf(stderr,
-				"smartUnlink: dir %s not writable\n", dir);
+			    "Unable to unlink %s, dir %s not writable.\n",
+			    file, full);
 		}
 		errno = save;
 		return (-1);
@@ -15774,8 +15776,9 @@ smartUnlink(char *file)
 	chmod(file, 0700);
 	unless (rc = unlink(file)) return (0);
 	unless (access(file, 0)) {
-		fprintf(stderr, "smartUnlink:cannot unlink %s, errno = %d\n",
-		    file, save);
+		char	*full = fullname(file, 0);
+		fprintf(stderr,
+		    "unlink: cannot unlink %s, errno = %d\n", full, save);
 	}
 	errno = save;
 	return (rc);
@@ -15795,8 +15798,10 @@ smartRename(char *old, char *new)
 		    new, errno));
 	} else {
 		unless (rc = rename(old, new)) return (0);
+		old = fullname(old, 0);
+		new = fullname(new, 0);
 		fprintf(stderr,
-		    "smartRename: cannot rename from %s to %s, errno=%d\n",
+		    "rename: cannot rename from %s to %s, errno=%d\n",
 		    old, new, errno);
 	}
 	errno = save;

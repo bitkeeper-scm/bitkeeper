@@ -633,7 +633,7 @@ out_trigger(char *status, char *rev, char *when)
 	safe_putenv("_BK_HOST=%s", sccs_gethost());
 	safe_putenv("BK_REALUSER=%s", sccs_realuser());
 	safe_putenv("BK_REALHOST=%s", sccs_realhost());
-	safe_putenv("BK_PLATFORM=%s", bk_platform);
+	safe_putenv("BK_PLATFORM=%s", platform());
 	lic = licenses_accepted();
 	safe_putenv("BK_ACCEPTED=%s", lic);
 	free(lic);
@@ -658,7 +658,7 @@ in_trigger(char *status, char *rev, char *root, char *repoid)
 	safe_putenv("BKD_VERSION=%s", bk_vers);
 	safe_putenv("BKD_REALUSER=%s", sccs_realuser());
 	safe_putenv("BKD_REALHOST=%s", sccs_realhost());
-	safe_putenv("BKD_PLATFORM=%s", bk_platform);
+	safe_putenv("BKD_PLATFORM=%s", platform());
 	if (status) putenv(status);
 	if (rev) {
 		safe_putenv("BK_CSETS=1.0..%s", rev);

@@ -4,17 +4,13 @@
 
 proc bk_init {} \
 {
-	global env dev_null tmp_dir wish tcl_version
+	global env dev_null tmp_dir 
 	global bithelp difftool helptool sccstool sdiffw bk_prs file_rev
 	global file_start_stop file_stop line_rev bk_fs file_old_new keytmp
 
 	# init for WIN32 env
 	set sdiffw [list "diff" "-W" "1" "-y" "--" ]
 	set dev_null "nul"
-	# XXX wish shell change name with each release
-	#     we are now using tcl/tk 8.3
-	# TODO: get the wish shell name from registry
-	set wish "wish83.exe"
 	set tmp_dir $env(TEMP)
 	# XXX keytmp should match findTmp() in finddir.c
 	set keytmp "$tmp_dir"
@@ -35,15 +31,19 @@ proc bk_init {} \
 	# turn off pager in bk commands
 	set env(PAGER) "cat"
 
-	if {![info exists tcl_version]} {
-		puts "No tcl_version found?!?"
-		exit 1
-	}
-	if {$tcl_version < 8.0} {
-		puts "BitKeeper requires tcl/tk version 8.x or later."
-		exit 1
-	}
-
 	# make sure GUIs don't come up bigger than the screen
 	constrainSize
+
+	# Determine the bk icon to associate with toplevel windows. If
+	# we can't find the icon, don't set the global variable. This
+	# way code that needs the icon can check for the existence of
+	# the variable rather than checking the filesystem.
+	set f [file join [exec bk bin] bk.ico]
+	if {[file exists $f]} {
+		set ::wmicon $f
+		# N.B. on windows, wm iconbitmap supports a -default option
+		# that is not available on unix. Bummer. 
+		catch {wm iconbitmap . -default $::wmicon}
+	}
 }
+
