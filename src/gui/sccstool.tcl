@@ -539,12 +539,10 @@ proc diff2 {difftool} \
 		return
 	}
 	busy 1
-	set r1 [file join $tmp_dir $rev1[pid]]
-	set a [open "| get $getOpts -kPr$rev1 $file >$r1 2>$dev_null" "w"]
-	set r2 [file join $tmp_dir $rev2[pid]]
-	set b [open "| get $getOpts -kPr$rev2 $file >$r2 2>$dev_null" "w"]
-	catch { close $a; }
-	catch { close $b; }
+	set r1 [file join $tmp_dir $rev1-[pid]]
+	catch { exec bk get $getOpts -kPr$rev1 $file >$r1}
+	set r2 [file join $tmp_dir $rev2-[pid]]
+	catch {exec bk get $getOpts -kPr$rev2 $file >$r2}
 	if {$difftool == 1} {
 		difftool $r1 $r2
 		return

@@ -14,14 +14,14 @@
 
 R=1
 for D in '87/05/28 23:49:57' '97/05/28 23:49:57' '97/05/30 01:34:11' '97/06/23 01:33:45+06:30' '98/01/30 17:45:17-05:00'
-do	${CAT} > INITX <<EOF
+do	cat > INITX <<EOF
 D 1.$R $D $USER 0 0 0/0/0
 c This is revision 1.$R of $D
 c This the second comment of 1.$R
 P this/is/the/pathname.$R
 ------------------------------------------------
 EOF
-	${ECHO} 1.$R >> FILE
+	echo 1.$R >> FILE
 	if [ $R -eq 1 ]
 	then	bk delta $Q -i -IINITX FILE
 	else	bk delta $Q -IINITX FILE
@@ -31,25 +31,27 @@ EOF
 done
 bk unedit FILE
 echo $N checking file name :F: ......................................$NL
-${CAT} > CMP1 <<EOF
+cat > X <<EOF
 ======== FILE 1.5 ========
 s.FILE
 EOF
+bk undos X > CMP1
 bk prs -r1.5 -d":F:" FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N checking s file path name :PN: ..............................$NL
-${CAT} > CMP1 <<EOF
+cat > X <<EOF
 ======== FILE 1.5 ========
 SCCS/s.FILE
 EOF
+bk undos X > CMP1
 bk prs -r1.5 -d":PN:" FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N checking per delta path name :DPN: ..........................$NL
-${CAT} > CMP1 <<EOF
+cat > X <<EOF
 ======== FILE 1.1..1.5 ========
 this/is/the/pathname.5
 this/is/the/pathname.4
@@ -57,12 +59,13 @@ this/is/the/pathname.3
 this/is/the/pathname.2
 this/is/the/pathname.1
 EOF
+bk undos X > CMP1
 bk prs -r1.1..1.5 -d":DPN:" FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
 echo $N checking comment :C: ........................................$NL
-${CAT} > CMP1 <<EOF
+cat > X <<EOF
 ======== FILE 1.1..1.5 ========
 This is revision 1.5 of 98/01/30 17:45:17-05:00
 This the second comment of 1.5
@@ -75,53 +78,59 @@ This the second comment of 1.2
 This is revision 1.1 of 87/05/28 23:49:57
 This the second comment of 1.1
 EOF
+bk undos X > CMP1 
 bk prs -r1.1..1.5 -d":C:" FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP[12]; exit 1; fi
 echo OK
 echo $N checking delta type :DT: ....................................$NL
-${CAT} > CMP1 <<EOF
+cat > X <<EOF
 ======== FILE 1.5 ========
 D
 EOF
+bk undos X > CMP1
 bk prs -d ":DT:" -r1.5 FILE  >CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N checking rev id :I: .........................................$NL
-${CAT} > CMP1 <<EOF
+cat > X <<EOF
 ======== FILE 1.3 ========
 1.3
 EOF
+bk undos X > CMP1
 bk prs -d ":I:" -r1.3 FILE  >CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N checking date :Dy: :Dm: :Dd: ................................$NL
-${CAT} > CMP1 <<EOF
+cat > X <<EOF
 ======== FILE 1.1 ========
 87
 EOF
+bk undos X > CMP1
 bk prs -d":Dy:" -r1.1 FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
-${CAT} > CMP1 <<EOF
+cat > X <<EOF
 ======== FILE 1.4 ========
 06
 EOF
+bk undos X > CMP1
 bk prs -d":Dm:" -r1.4 FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
-${CAT} > CMP1 <<EOF
+cat > X <<EOF
 ======== FILE 1.4 ========
 23
 EOF
+bk undos X > CMP1
 bk prs -d":Dd:" -r1.4 FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N checking time :T: ...........................................$NL
-${CAT} > CMP1 <<EOF
+cat > X <<EOF
 ======== FILE 1.1..1.5 ========
 17:45:17
 01:33:45
@@ -129,15 +138,17 @@ ${CAT} > CMP1 <<EOF
 23:49:57
 23:49:57
 EOF
+bk undos X > CMP1
 bk prs -r1.1..1.5 -d":T:" FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N checking user :P: ...........................................$NL
-${CAT} > CMP1 <<EOF
+cat > X <<EOF
 ======== FILE 1.1 ========
 $USER
 EOF
+bk undos X > CMP1
 bk prs -r1.1 -d":P:" FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
@@ -146,69 +157,76 @@ echo $N checking host :HT: ..........................................$NL
 echo data > host
 bk ci -i host > ${DEV_NULL} 2>&1
 HOST=`bk gethost`
-${CAT} > CMP1 <<EOF
+cat > X <<EOF
 ======== host 1.1 ========
 ${HOST}
 EOF
+bk undos X > CMP1
 bk prs -d":HT:" -r1.1 host > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; else echo OK; fi
 echo $N checking lines inserted :Li: ................................$NL
-${CAT} > CMP1 <<EOF
+cat > X <<EOF
 ======== FILE 1.2 ========
 00001
 EOF
+bk undos X > CMP1
 bk prs -d":Li:" -r1.2 FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N checking lines deleted :Ld: .................................$NL
-${CAT} > CMP1 <<EOF
+cat > X <<EOF
 ======== FILE 1.2 ========
 00000
 EOF
+bk undos X > CMP1
 bk prs -d":Ld:" -r1.2 FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N checking lines unchanged :Lu: ...............................$NL
-${CAT} > CMP1 <<EOF
+cat > X <<EOF
 ======== FILE 1.3 ========
 00002
 EOF
+bk undos X > CMP1
 bk prs -d":Lu:" -r1.3 FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N checking module name :M: ....................................$NL
-${CAT} > CMP1 <<EOF
+cat > X <<EOF
 ======== FILE 1.4 ========
 FILE
 EOF
+bk undos X > CMP1
 bk prs -d":M:" -r1.4 FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N checking UTC TIME :UTC: .....................................$NL
-${CAT} > CMP1 <<EOF
+cat > X <<EOF
 ======== FILE 1.5 ========
 19980130224517
 EOF
+bk undos X > CMP1
 bk prs -d":UTC:" -r1.5 FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N checking body :GB: ..........................................$NL
-${CAT} > CMP1 <<EOF
+cat > X <<EOF
 1.1
 
 EOF
+bk undos X > CMP1
 bk prs -r1.1 -h -d':GB:' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N checking default output......................................$NL
-${CAT} > CMP1 <<EOF
+cat > X <<EOF
 ======== FILE 1.1..1.5 ========
 D 1.5 98/01/30 17:45:17-05:00 ${USER} 5 4 00001/00000/00004
 P this/is/the/pathname.5
@@ -236,12 +254,13 @@ C This is revision 1.1 of 87/05/28 23:49:57
 C This the second comment of 1.1
 ------------------------------------------------
 EOF
+bk undos X > CMP1
 bk prs FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
 echo $N checking conditional prefix/suffix...........................$NL
-${CAT} > CMP1 <<EOF
+cat > X <<EOF
 ======== FILE 1.1..1.5 ========
 1.5 This is revision 1.5 of 98/01/30 17:45:17-05:00
 1.5 This the second comment of 1.5
@@ -254,12 +273,13 @@ ${CAT} > CMP1 <<EOF
 1.1 This is revision 1.1 of 87/05/28 23:49:57
 1.1 This the second comment of 1.1
 EOF
+bk undos X > CMP1
 bk prs -r1.1..1.5 -d'$each(:C:){:I: (:C:)}' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N checking conditional with colon..............................$NL
-${CAT} > CMP1 <<EOF
+cat > X <<EOF
 ======== FILE 1.1..1.5 ========
 FOO Comment: This is revision 1.5 of 98/01/30 17:45:17-05:00
 Comment: This the second comment of 1.5
@@ -272,12 +292,13 @@ Comment: This the second comment of 1.2
 FOO Comment: This is revision 1.1 of 87/05/28 23:49:57
 Comment: This the second comment of 1.1
 EOF
+bk undos X > CMP1
 bk prs -r1.1..1.5 -d'FOO $each(:C:){Comment: (:C:)}' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N checking nested conditional..................................$NL
-${CAT} > CMP1 <<EOF
+cat > X <<EOF
 ======== FILE 1.1..1.5 ========
 this/is/the/pathname.5
 1.5 This is revision 1.5 of 98/01/30 17:45:17-05:00
@@ -295,16 +316,17 @@ this/is/the/pathname.1
 1.1 This is revision 1.1 of 87/05/28 23:49:57
 1.1 This the second comment of 1.1
 EOF
+bk undos X > CMP1
 bk prs -r1.1..1.5 -d'$if(:DPN:){:DPN:\n$each(:C:){:I: (:C:)}}' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N another test for nested conditional..........................$NL
 bk co $Q -l FILE
-${ECHO} "new data" > FILE
+echo "new data" > FILE
 bk ci $Q -y FILE
 bk prs -r1.5..1.6 -hd':I: Comments:\n$if(:C:){$each(:C:){  (:C:)}\n}------------'  FILE > CMP2
-${CAT} > CMP1 <<EOF
+cat > X <<EOF
 1.6 Comments:
 ------------
 1.5 Comments:
@@ -312,21 +334,23 @@ ${CAT} > CMP1 <<EOF
   This the second comment of 1.5
 ------------
 EOF
+bk undos X > CMP1
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 bk stripdel $Q -r1.6 FILE
 echo $N checking escape of control symbol............................$NL
-${CAT} > CMP1 <<EOF
+cat > X <<EOF
 ======== FILE 1.1 ========
 FOO \$if(PN){ BAR }
 EOF
+bk undos X > CMP1
 bk prs -d'FOO \$if(PN){ BAR }' -r1.1 FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N checking emulation of Sun prs................................$NL
-${CAT} > CMP1 <<EOF
+cat > X <<EOF
 D 1.5 98/01/30 17:45:17 ${USER} 5 4	00001/00000/00004
 MRs:
 COMMENTS:
@@ -358,6 +382,7 @@ This is revision 1.1 of 87/05/28 23:49:57
 This the second comment of 1.1
 
 EOF
+bk undos X > CMP1
 bk prs -h -r1.1.. -d':Dt:\t:Li:/:Ld:/:Lu:\nMRs:\n:MR:$if(:C:){COMMENTS:\n:C:}\n' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
@@ -369,32 +394,35 @@ cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N checking expression in '$if'...................................$NL
-${ECHO} "$USER D 1.3 97/05/30 01:34:11 $USER 3 2" > CMP1
+echo "$USER D 1.3 97/05/30 01:34:11 $USER 3 2" > X
+bk undos X > CMP1
 bk prs -h -d'$if(:I:=1.3){:P: :Dt:\n}\c' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N checking expression in '$if !='................................$NL
-${CAT} > CMP1 <<EOF
+cat > X <<EOF
 ${USER} D 1.5 98/01/30 17:45:17 ${USER} 5 4
 ${USER} D 1.4 97/06/23 01:33:45 ${USER} 4 3
 ${USER} D 1.2 97/05/28 23:49:57 ${USER} 2 1
 ${USER} D 1.1 87/05/28 23:49:57 ${USER} 1 0
 EOF
+bk undos X > CMP1
 bk prs -h -d'$if(:I:!=1.3){:P: :Dt:\n}\c' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N checking descriptive text :FD: ..............................$NL
-${ECHO} dtext1 > dtext
-${ECHO} dtext2 >> dtext
+echo dtext1 > dtext
+echo dtext2 >> dtext
 bk admin -tdtext FILE
-${CAT} > CMP1 <<EOF
+cat > X <<EOF
 <dtext1>
 <dtext2>
 EOF
+bk undos X > CMP1
 bk prs -h -r+ -d'$each(:FD:){<(:FD:)>}' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
-${RM} -f FILE SCCS/s.FILE
+rm -f FILE SCCS/s.FILE

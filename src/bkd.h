@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-#include <unistd.h>
 #include "lib_tcp.h"
 #include "system.h"
 #include "sccs.h"
@@ -73,8 +72,8 @@ extern	bkdopts Opts;
 
 remote	*remote_parse(char *url);
 char	*remote_unparse(remote *r);
-pid_t	bkd(int compress, remote *r, int *sock);
-void	bkd_reap(pid_t resync, int sock);
+pid_t	bkd(int compress, remote *r, int *r_pipe, int *w_pipe);
+void	bkd_reap(pid_t resync, int r_pipe, int w_pipe);
 int	getline(int in, char *buf, int size);
 int	gunzip2fd(char *input, int len, int fd);
 int	gzip2fd(char *input, int len, int fd);

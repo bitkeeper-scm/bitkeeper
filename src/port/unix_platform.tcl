@@ -5,12 +5,13 @@
 proc bk_init {} \
 {
 	global	tcl_platform dev_null tmp_dir wish sdiffw file_rev
-	global	file_start_stop file_stop line_rev
+	global	file_start_stop file_stop line_rev keytmp
 
 	set sdiffw [list "sdiff" "-w1" ]
 	set dev_null "/dev/null"
 	set wish "wish"
 	set tmp_dir  "/tmp"
+	set keytmp "/var/bitkeeper"
 	set file_rev {(.*)@([0-9].*)}
 	set file_start_stop {(.*)@(.*)\.\.(.*)}
 	set file_stop {(.*)@([0-9.]+$)}

@@ -115,6 +115,9 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 	} else if (streq("-", av[optind])) {
 		char	buf[MAXPATH];
 
+#ifdef WIN32
+		setmode(0, _O_TEXT); /* read file list in text mode */
+#endif
 		while (fnext(buf, stdin)) {
 			chop(buf);
 			path = xFlg ? buf : sPath(buf, 1);
@@ -417,7 +420,7 @@ rebuild()
 	}
 	close(i);	/* unlink it when we are done */
 	unlink(IDCACHE);
-	unless (id_cache = fopen(IDCACHE, "w")) {
+	unless (id_cache = fopen(IDCACHE, "wb")) {
 		perror(IDCACHE);
 		exit(1);
 	}

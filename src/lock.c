@@ -11,6 +11,8 @@ lock_main(int ac, char **av)
 {
 	int	c;
 	int	what = 0;
+	pid_t	pid;
+	char	*thisHost;
 
 	if (ac > 1 && streq("--help", av[1])) {
 usage:		fprintf(stderr,
@@ -32,6 +34,8 @@ usage:		fprintf(stderr,
 	}
 	if (av[optind]) chdir(av[optind]);
 	sccs_cd2root(0, 0);
+	pid = getpid();
+	thisHost = sccs_gethost();
 	switch (what) {
 	    case 'r':	/* read lock the repository */
 		if (repository_rdlock()) {
@@ -42,7 +46,7 @@ usage:		fprintf(stderr,
 		/* make ourselves go away after the lock is gone */
 		do {
 			usleep(1000000);
-		} while (repository_locked(0));
+		} while (isValidLock('r', pid, thisHost));
 		exit(0);
 	    
 	    case 'w':
@@ -54,7 +58,7 @@ usage:		fprintf(stderr,
 		/* make ourselves go away after the lock is gone */
 		do {
 			usleep(1000000);
-		} while (repository_locked(0));
+		} while (isValidLock('w', pid, thisHost));
 		exit(0);
 
 	    case 'l':

@@ -58,6 +58,9 @@ resolve_main(int ac, char **av)
 
 	opts.pass1 = opts.pass2 = opts.pass3 = opts.pass4 = 1;
 
+#ifdef WIN32
+	setmode(0, _O_TEXT);
+#endif
 	while ((c = getopt(ac, av, "l|y|m;aAcdFqrtv1234")) != -1) {
 		switch (c) {
 		    case 'a': opts.automerge = 1; break;
@@ -89,7 +92,7 @@ resolve_main(int ac, char **av)
 	unless (opts.mergeprog) opts.mergeprog = "bkmerge";
 	if ((av[optind] != 0) && isdir(av[optind])) chdir(av[optind]);
 
-	/* XXX - needs to be ifdefed for !Unix */
+#ifndef WIN32
 	if (opts.pass3 && !opts.textOnly && !getenv("DISPLAY")) {
 		fprintf(stderr, "%s %s\n",
 		    "resolve: no DISPLAY variable found, ",
@@ -100,6 +103,7 @@ resolve_main(int ac, char **av)
 		fprintf(stderr,
 		    "Using %s as graphical display\n", getenv("DISPLAY"));
 	}
+#endif
 
 	if (opts.automerge) {
 		unless (comment || opts.comment) opts.comment = "Automerge";
@@ -200,6 +204,7 @@ passes(opts *opts)
 			continue;
 		}
 
+		sccs_close(s);
 		pass1_renames(opts, s);
 	}
 	pclose(p);
@@ -480,6 +485,7 @@ pass2_renames(opts *opts)
 	}
 	while (fnext(path, f)) {
 		chop(path);
+		localName2bkName(path, path);
 
 		/* may have just been deleted it but be in readdir cache */
 		unless (exists(path)) continue;
@@ -625,6 +631,7 @@ again:	if (how = slotTaken(opts, rs->dname)) {
 			return (-1);
 		}
 
+		sccs_close(rs->s); /* for win32 */
 		ret = resolve_create(rs, how);
 		if (opts->debug) {
 			fprintf(stderr, "resolve_create = %d %s\n",
@@ -742,6 +749,7 @@ rename_file(resolve *rs)
 		to = 0;
 	}
 	if (to) {
+		sccs_close(rs->s); /* for win32 */
 		if (rename(rs->s->sfile, to)) return (-1);
 		if (opts->debug) {
 			fprintf(stderr, "rename(%s, %s)\n", rs->s->sfile, to);
@@ -760,6 +768,8 @@ rename_file(resolve *rs)
 				    "rename(%s, %s)\n",
 				    sccs_Xfile(rs->s, 'r'), rfile);
 			}
+			rs->s = sccs_restart(rs->s); 
+			assert(rs->s);
 			d = sccs_getrev(rs->s, rs->revs->local, 0, 0);
 			assert(d);
 			t = name2sccs(d->pathname);
@@ -1164,7 +1174,7 @@ slotTaken(opts *opts, char *slot)
 private	int
 pass3_resolve(opts *opts)
 {
-	char	buf[MAXPATH];
+	char	buf[MAXPATH], s_cset[MAXPATH] = CHANGESET;
 	FILE	*p;
 	int	n = 0;
 	int	mustCommit;
@@ -1260,7 +1270,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		sccs	*s;
 		resolve	*rs;
 		
-		s = sccs_init("SCCS/s.ChangeSet", INIT, opts->resync_proj);
+		s = sccs_init(s_cset, INIT, opts->resync_proj);
 		rs = resolve_init(opts, s);
 		edit(rs);
 		unlink(sccs_Xfile(s, 'r'));
@@ -1550,7 +1560,7 @@ automerge(resolve *rs, names *n)
 	 */
 	sprintf(cmd, "%s/%s %s %s %s %s", bin,
 	    rs->opts->mergeprog, n->local, n->gca, n->remote, rs->s->gfile);
-	ret = sys(cmd, rs->opts) & 0xffff;
+	ret = sys(cmd, rs->opts);
 	if (do_free) {
 		unlink(tmp.local);
 		unlink(tmp.gca);
@@ -1578,13 +1588,15 @@ automerge(resolve *rs, names *n)
 		unlink(sccs_Xfile(rs->s, 'r'));
 		return;
 	}
+#ifdef WIN32
 	if (ret == 0xff00) {
 	    	fprintf(stderr, "Can not execute '%s'\n", cmd);
 		rs->opts->errors = 1;
 		unlink(rs->s->gfile);
 		return;
 	}
-	if ((ret >> 8) == 1) {
+#endif
+	if (WEXITSTATUS(ret) == 1) {
 		fprintf(stderr,
 		    "Conflicts during automerge of %s\n", rs->s->gfile);
 		rs->opts->hadConflicts++;
@@ -1711,7 +1723,7 @@ commit(opts *opts)
 		cmds[++i] = cmt;
 	}
 	cmds[++i] = 0;
-	unless (spawnvp(_P_WAIT, "bk", cmds)) {
+	unless (spawnvp_ex(_P_WAIT, "bk", cmds)) {
 		if (cmt) free(cmt);
 		return;
 	}
@@ -1772,6 +1784,11 @@ pass4_apply(opts *opts)
 	void	unbackup(FILE *f);
 	int	create;
 	MDBM	*backups = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
+	char	*av[5] = {"bk", "-r", "check", "-a", 0};
+	char 	*av_r[4] = {"bk", "sfiles", ROOT2RESYNC, 0};
+	char 	*av_w[5] = {"bk", "get", "-s", "-", 0};
+	int	rfd, status;
+	pid_t	pid;
 
 	if (opts->log) fprintf(opts->log, "==== Pass 4 ====\n");
 	opts->pass = 4;
@@ -1819,6 +1836,7 @@ pass4_apply(opts *opts)
 			exit(1);	/* ??? */
 		}
 		sccs_sdelta(r, sccs_ino(r), key);
+		sccs_close(r);
 		if (l = sccs_keyinit(key, INIT, opts->local_proj, opts->idDB)) {
 			/*
 			 * This should not happen, the repository is locked.
@@ -1887,6 +1905,7 @@ pass4_apply(opts *opts)
 	/*
 	 * Pass 4c - apply the files.
 	 */
+#ifdef OLD
 	sprintf(key, "bk sfiles %s", ROOT2RESYNC);
 	unless (p = popen(key, "r")) {
 		unbackup(save);
@@ -1894,6 +1913,16 @@ pass4_apply(opts *opts)
 		perror("popen of bk sfiles");
 		exit (1);
 	}
+#else
+	pid = spawnvp_rPipe(av_r, &rfd);
+	unless (pid > (pid_t)-1) {
+		unbackup(save);
+		unlink(orig);
+		perror("spawn of bk sfiles");
+		exit (1);
+	}
+	p = fdopen(rfd, "rt");
+#endif
 	unless (get = popen("bk get -s -", "w")) {
 		unbackup(save);
 		unlink(orig);
@@ -1926,7 +1955,8 @@ pass4_apply(opts *opts)
 			fprintf(get, "%s\n", &buf[offset]);
 		}
 	}
-	pclose(p);
+	//pclose(p);
+	waitpid(pid, &status, 0);
 	pclose(get);
 	unless (opts->quiet) {
 		fprintf(stderr,
@@ -1936,7 +1966,7 @@ pass4_apply(opts *opts)
 		fprintf(stderr,
 		    "resolve: running consistency check, please wait...\n");
 	}
-	unless (sys("bk -r check -a", opts) == 0) {
+	unless (spawnvp_ex(_P_WAIT, av[0], av) == 0) { 
 		fprintf(stderr, "Check failed.  Resolve not completed.\n");
 		restore(save, opts);
 		fclose(save);

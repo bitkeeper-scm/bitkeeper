@@ -13,7 +13,7 @@ sub platformInit
 	$tty = "con";
 	$exe = ".exe";
 	$pager = $ENV{'PAGER'} || "less";
-	$editor = $ENV{'EDITOR'} || "vim";
+	$editor = $ENV{'EDITOR'} || "vi";
 	$bk_fs = "\@";
 
 	# needed for -w mode

@@ -31,7 +31,9 @@ P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
 echo $N Create files with and without newlines ......................$NL
-${ECHO} foo > foo.c; cp foo.c SAVEfoo.c
+echo foo > X; 
+bk undos -n X > foo.c
+cp foo.c SAVEfoo.c
 echo $N bar$NL > bar.c; cp bar.c SAVEbar.c
 bk ci $Q -i foo.c bar.c 
 if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
@@ -53,7 +55,8 @@ if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 echo OK
 echo $N Check resynced files for newline status .....................$NL
-${ECHO} foo > SAVEfoo.c
+echo foo > X
+bk undos -n X > SAVEfoo.c
 echo $N bar$NL > SAVEbar.c
 if [ ! -f SCCS/s.foo.c ]; then echo failed to resync history; exit 1; fi
 if [ ! -f SCCS/s.bar.c ]; then echo failed to resync history; exit 1; fi
@@ -64,36 +67,39 @@ echo OK
 echo $N Check including no newline deltas ...........................$NL
 bk get $Q -e foo.c bar.c
 echo $N trunk$NL >> foo.c
-${ECHO} >> bar.c
+echo >> bar.c
 echo $N trunk$NL >> bar.c
 bk delta $Q -ytrunk foo.c bar.c
 bk get $Q -e -r1.1 foo.c bar.c
 echo $N branch$NL >> foo.c
-${ECHO} >> bar.c
+echo >> bar.c
 echo $N branch$NL >> bar.c
 bk delta $Q -ybranch foo.c bar.c
-${ECHO} branch >> SAVEfoo.c
+echo branch >> SAVEfoo.c
 echo $N trunk$NL >> SAVEfoo.c
-${ECHO} >> SAVEbar.c
-${ECHO} branch >> SAVEbar.c
-${ECHO} bar >> SAVEbar.c
+echo >> SAVEbar.c
+echo branch >> SAVEbar.c
+echo bar >> SAVEbar.c
 echo $N trunk$NL >> SAVEbar.c
 bk get $Q -e -M1.1.1.1 foo.c
 bk get $Q -e -M1.1.1.1 bar.c
-cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1; }
-cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1; }
+bk undos -n SAVEfoo.c > X
+bk undos -n SAVEbar.c > Y
+cmp -s foo.c X || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1; }
+cmp -s bar.c Y || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1; }
 bk delta $Q -ymerge foo.c bar.c
 bk get $Q foo.c bar.c
-cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1; }
-cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1; }
+cmp -s foo.c X || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1; }
+cmp -s bar.c Y || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1; }
 echo OK
 bk commit $S -f -ywhatever
 echo $N Check for no newline changes back to project ................$NL
 cd $HERE
 bk resync $Q -at copy project
-cp copy/SAVEfoo.c project/SAVEfoo.c
-cp copy/SAVEbar.c project/SAVEbar.c
+cp copy/X project/SAVEfoo.c
+cp copy/Y project/SAVEbar.c
 cd project
-cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1; }
-cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1; }
+bk get $Q foo.c bar.c
+cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c X; exit 1; }
+cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c Y; exit 1; }
 echo OK

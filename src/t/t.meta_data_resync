@@ -14,7 +14,7 @@
 
 echo $N Create initial repository ...................................$NL
 HERE=`${CWD}`
-${ECHO} "logging: none" > $HERE/c
+echo "logging: none" > $HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
 if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
 cd project
@@ -86,7 +86,7 @@ P=`bk pending | wc -l`
 if [ $P -eq 0 ]; then echo "failed (Known bug)"; else echo OK; fi
 echo $N Check propagation of flags ..................................$NL
 cd $HERE
-${RM} -rf $HERE/copy
+rm -rf $HERE/copy
 bk clone $Q $HERE/project $HERE/copy
 cd $HERE/project/src
 bk admin $Q -fEXPAND1 -fRCS -fYEAR4 bar.c
@@ -145,11 +145,12 @@ cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.h.h  $HERE/copy/src/SCCS/s.h.h
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 bk prs -r+ -h -d":MODE:\n:FD:" h.h > CMP1
-${CAT} > CMP2 <<EOF
+cat > X <<EOF
 100722
 this is a text entry line 1
 this is a text entry line 2
 EOF
+bk undos X > CMP2
 cmp CMP1 CMP2
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
