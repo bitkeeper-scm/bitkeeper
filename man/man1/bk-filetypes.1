@@ -1,0 +1,84 @@
+.so ../bk-macros
+.TH "bk filetypes" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME 
+bk filetypes \- summary of BitKeeper file types
+.SH DESCRIPTION
+.LP
+For each file under revision control, there are a number of files
+associated with the main file.  
+The following list describes the purpose of each file:
+.if t .TP 1i
+.if n .TP 1.4i
+.I foo.c
+.I gfile
+(aka "gotten" file), this is your source file
+.\"this is your source file (aka "gotten" file)
+.TP
+.I SCCS/s.foo.c
+.IR s.file \ -
+the revision history of all versions of the gfile
+.TP
+.I SCCS/p.foo.c
+.IR p.file \ -
+the lock file, created when the file is edited.  The pfile
+contains the following columns:
+.nf
+.if n .ta .3i +0i +1.1i +1i +.8i
+.if n .sp
+.if t .ta .3i +0i +.75i +.75i +.75i
+.if t .in +2
+.if t .ft CW
+	parent	new	
+	revision	revision	user	date/time
+	1.5	1.6	lm	01/01/2000 12:43:54
+.fi
+.if n .sp
+.if t .in
+.if t .ft
+This file is an exclusive lock whose existence indicates 
+that the gfile has been checked out for editing.  Unlike 
+ATT SCCS, \*(BK allows only one locker at a time.
+.TP
+.I SCCS/z.foo.c
+.IR z.file \ -
+a lock file created when locking or checking 
+in a new version. This is an exclusive lock used when
+updating or locking the s.file.  
+.TP
+.I SCCS/x.foo.c
+.IR x.file \ -
+a temporary file which contains the new version
+of the s.file under construction.  When the check-in is
+finished, the s.file is removed and the x.file is moved
+into its place.
+.TP
+.I SCCS/c.foo.c
+.IR c.file \ -
+a temporary copy of check in comments, currently used only by
+.B bk
+.BR citool .
+.TP
+.I SCCS/d.foo.c
+.IR d.file \ -
+a temporary file that indicates there is at least one pending delta in the
+s.file.
+.SH FUTURE DIRECTIONS
+Depending on these files, other than the gfile, actually existing should
+not be done.
+In the future, all of the meta-files will be virtual.  At that point, 
+there will be interfaces to read them, test for their presence, and
+write them.
+.SH CATEGORY
+.B Overview
+.br
+.B File
+.\" help://File/filetype
+.\" help://File/gfile
+.\" help://File/sfile
+.\" help://File/pfile
+.\" help://File/cfile
+.\" help://File/s.file
+.\" help://File/p.file
+.\" help://File/c.file
+.\" help://File/x.file
+.\" help://File/z.file

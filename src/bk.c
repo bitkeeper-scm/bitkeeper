@@ -62,10 +62,11 @@ int	diffsplit_main(int, char **);
 int	dotbk_main(int, char **);
 int	exists_main(int, char **);
 int	export_main(int, char **);
-int	findcset_main(int, char **);
 int	f2csets_main(int, char **);
 int	fdiff_main(int, char **);
+int	files_main(int, char **);
 int	find_main(int, char **);
+int	findcset_main(int, char **);
 int	findkey_main(int, char **);
 int	fix_main(int, char **);
 int	fixlod_main(int, char **);
@@ -75,6 +76,7 @@ int	gethelp_main(int, char **);
 int	gethost_main(int, char **);
 int	getmsg_main(int, char **);
 int	getuser_main(int, char **);
+int	glob_main(int, char **);
 int	gnupatch_main(int, char **);
 int	gone_main(int, char **);
 int	graft_main(int, char **);
@@ -86,8 +88,8 @@ int	helptopics_main(int, char **);
 int	hostme_main(int, char **);
 int	idcache_main(int, char **);
 int	isascii_main(int, char **);
-int	key2rev_main(int, char **);
 int	key2path_main(int, char **);
+int	key2rev_main(int, char **);
 int	keycache_main(int, char **);
 int	keysort_main(int, char **);
 int	keyunlink_main(int, char **);
@@ -105,8 +107,8 @@ int	logging_main(int, char **);
 int	loggingaccepted_main(int ac, char **av);
 int	loggingask_main(int ac, char **av);
 int	loggingto_main(int, char **);
-int	mailsplit_main(int, char **);
 int	mail_main(int, char **);
+int	mailsplit_main(int, char **);
 int	makepatch_main(int, char **);
 int	mdiff_main(int, char **);
 int	merge_main(int, char **);
@@ -133,17 +135,17 @@ int	push_main(int, char **);
 int	pwd_main(int, char **);
 int	r2c_main(int, char **);
 int	range_main(int, char **);
-int	reviewmerge_main(int, char **);
 int	rcheck_main(int, char **);
 int	rclone_main(int, char **);
 int	rcs2sccs_main(int, char **);
 int	rcsparse_main(int, char **);
 int	receive_main(int, char **);
-int	renumber_main(int, char **);
 int	relink_main(int, char **);
+int	renumber_main(int, char **);
 int	repo_main(int, char **);
 int	resolve_main(int, char **);
 int	restore_main(int, char **);
+int	reviewmerge_main(int, char **);
 int	rm_main(int, char **);
 int	rmdel_main(int, char **);
 int	root_main(int, char **);
@@ -159,16 +161,16 @@ int	set_main(int, char **);
 int	setup_main(int, char **);
 int	sfiles_main(int, char **);
 int	sfio_main(int, char **);
+int	shellSplit_test_main(int ac, char **av);
 int	shrink_main(int, char **);
 int	sinfo_main(int, char **);
 int	smerge_main(int, char **);
-int	shellSplit_test_main(int ac, char **av);
 int	socket2pipe_main(int, char **);
 int	sort_main(int, char **);
 int	sortmerge_main(int, char **);
 int	status_main(int, char **);
-int	stripdel_main(int, char **);
 int	strings_main(int, char **);
+int	stripdel_main(int, char **);
 int	synckeys_main(int, char **);
 int	tagmerge_main(int, char **);
 int	takepatch_main(int, char **);
@@ -184,8 +186,8 @@ int	unpark_main(int, char **);
 int	unpull_main(int, char **);
 int	unwrap_main(int, char **);
 int	users_main(int, char **);
-int	uuencode_main(int, char **);
 int	uudecode_main(int, char **);
+int	uuencode_main(int, char **);
 int	val_main(int, char **);
 int	version_main(int, char **);
 int	what_main(int, char **);
@@ -263,6 +265,7 @@ struct	command cmdtbl[] = {
 	{"enter", delta_main},			/* doc 2.0 */
 	{"export", export_main},		/* doc 2.0 */
 	{"fdiff", fdiff_main},			/* undoc? 2.0 */
+	{"files", files_main},
 	{"findkey", findkey_main},		/* doc 2.0 */
 	{"fix", fix_main},			/* doc 2.0 */
 	{"_fix_lod1", fixlod_main},		/* undoc 2.0 */
@@ -274,6 +277,7 @@ struct	command cmdtbl[] = {
 	{"getuser", getuser_main},		/* doc 2.0 */
 	{"graft", graft_main},			/* undoc? 2.0 */
 	{"grep", grep_main},			/* doc 2.0 */
+	{"glob", glob_main},
 	{"gnupatch", gnupatch_main},		/* doc 2.0 */
 	{"gone", gone_main},			/* doc 2.0 */
 	{"help", help_main},			/* doc 2.0 */

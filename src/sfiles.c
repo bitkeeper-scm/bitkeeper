@@ -36,6 +36,7 @@ typedef struct {
 	u32     useronly:1;     	/* list user file only 	*/
 	u32	timestamps:1;		/* whether to use the timestamp DB */
 	FILE	*out;			/* send output here */
+	char	*glob;			/* only files which match this */
 } options;
 
 typedef struct winfo winfo;
@@ -236,6 +237,18 @@ usage:				system("bk help -s sfiles");
 	}
 	if (opts.modified && !getenv("BK_NO_TIMESTAMPS")) opts.timestamps = 1;
 
+	for (i = optind; av[i]; i++);
+	i--;
+	if (streq(av[i], "-")) i--;
+	if ((i >= optind) && sfiles_glob(av[i])) {
+		opts.glob = strdup(av[i]);
+		if (av[i+1]) {
+			av[i] = av[i+1];
+			av[i+1] = 0;
+		} else {
+			av[i] = 0;
+		}
+	}
 	if (!av[optind]) {
 		path = ".";
 		if (opts.names && !exists(BKROOT)) {
@@ -262,7 +275,7 @@ usage:				system("bk help -s sfiles");
 			    "sfiles -n must be run at project root.\n");
 			exit(1);
 		}
-                for (i = optind; i < ac; ++i) {
+                for (i = optind; av[i]; ++i) {
                         localName2bkName(av[i], av[i]);
                         if (isdir(av[i])) {
                                 path =  av[i];
@@ -830,7 +843,18 @@ error:				perror("output error");
 private void
 do_print(char state[5], char *file, char *rev)
 {
+	if (opts.glob) {
+		char	*p;
 
+		if (p = strrchr(file, '/')) {
+			p++;
+		} else {
+			p = file;
+		}
+		/* XXX - make this conditional on !directory */
+		if (streq("s.", p)) p += 2;
+		unless (match_one(p, opts.glob, 0)) return;
+	}
 	if (state[PSTATE] == 'p') p_count++;
 	if (state[NSTATE] == 'n') n_count++;
 	switch (state[CSTATE]) {
