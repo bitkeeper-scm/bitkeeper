@@ -565,11 +565,13 @@ error:			if (perfile) sccs_free(perfile);
 				sccs_restart(s);
 			}
 		} else if (s->state & S_PFILE) {
-			shout();
-			fprintf(stderr,
-			    "takepatch: %s is locked w/o writeable gfile?\n",
-			    s->sfile);
-			goto error;
+			if (unlink(s->pfile)) {
+				fprintf(stderr,
+				    "takepatch: unlink(%s): %s\n",
+				    s->pfile, strerror(errno));
+				goto error;
+			}
+			s->state &= ~S_PFILE; 
 		}
 		sccs_setpathname(s);
 		unless (isLogPatch || streq(s->spathname, s->sfile)) {
