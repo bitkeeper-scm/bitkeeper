@@ -4,8 +4,10 @@
 #ifndef WIN32
 #include <unistd.h>
 #endif
+#define	streq(a,b)	!strcmp(a,b)
+
 /*
- * Calculate the same as is used in BitKeeper.
+ * Calculate the same checksum as is used in BitKeeper.
  *
  * %W% %@%
  */
@@ -15,6 +17,11 @@ main(int ac, char **av)
 	int	sum, fd, i;
 	int	doit(int, int);
 	int	off = 0;
+
+	if (av[1] && streq(av[1], "--help")) {
+		fprintf(stderr, "usage: chksum [-o offset] [file]\n");
+		exit(1);
+	}
 
 	if (av[1] && (strcmp(av[1], "-o") == 0)) {
 		off = atoi(av[2]);

@@ -790,38 +790,8 @@ _undo() {
 	bk -r check -a
 }
 
-# Usage: r2c file rev
-_r2c() {
-	if [ "X$1" = X -o "X$2" = X -o "X$3" != X ]
-	then	echo usage r2c file rev
-		exit 1
-	fi
-	FILE=$1
-	REV=`${BIN}prs -hr$2 -d:CSETREV: $FILE`
-	if [ "X$REV" = X ]
-	then	echo can not find cset marker at or below $2
-		exit 1
-	fi
-	KEY=`${BIN}prs -hr$REV -d:KEY: $FILE`
-	bk -R sccscat -hm ChangeSet | grep "$KEY" > /tmp/r2c$$
-	if [ ! -s /tmp/r2c$$ ]
-	then	SKEY=`${BIN}prs -hr$REV -d:SHORTKEY: $FILE`
-		bk -R sccscat -hm ChangeSet | grep "$SKEY" > /tmp/r2c$$
-	fi
-	if [ ! -s /tmp/r2c$$ ]
-	then	echo Can not find "$KEY" or "$SKEY" in ChangeSet file
-		$RM /tmp/r2c$$
-		exit 1
-	fi
-	set `cat /tmp/r2c$$`
-	$RM /tmp/r2c$$
-	if [ "X$1" != X ]
-	then	echo $1
-	fi
-}
-
 _rev2cset() {
-	_r2c "$@"
+	${BIN}r2c "$@"
 }
 
 _pending() {
@@ -1211,16 +1181,18 @@ _sendbug() {
 	done
 }
 
-# Make links in /usr/bin
+# Make links in /usr/bin (or wherever they say).
 _links() {
 	test -x ${BK_BIN}sccslog || { echo Can not find bin directory; exit 1; }
-	echo Creating links from /usr/bin/ to $BK_BIN ...
+	if [ "X$1" != X ]
+	then	DIR=$1
+	else	DIR=/usr/bin
+	fi
 	for i in admin get delta unget rmdel prs bk
-	do	/bin/rm -f /usr/bin/$i
-		ln -s ${BK_BIN}$i /usr/bin/$i
-		echo "    $i"
+	do	/bin/rm -f ${DIR}/$i
+		echo "ln -s ${BK_BIN}$i ${DIR}/$i"
+		ln -s ${BK_BIN}$i ${DIR}/$i
 	done
-	echo Done.
 }
 
 # usage: regression [-s]

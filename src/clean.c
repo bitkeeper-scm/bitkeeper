@@ -8,7 +8,7 @@ char *clean_help =
     -p	print, i.e., show diffs of modified files\n\
     -q	quiet operation, do not complain about nonexistant files\n\
     -u	clean even modified files, discarding changes (DANGEROUS)\n\
-    -n  leave the working copy of the file in place\n\
+    -n  remove lock files, but leave the working copy of the file in place\n\
     -v	list files being cleaned\n\n\
 \n\
 The default behaviour is to clean up all checked out files,\n\

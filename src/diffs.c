@@ -33,7 +33,7 @@ usage: diffs [-acDMPsuU] [-d<d>] [-r<r>] [files...]\n\n\
     -M		prefix lines with revision numbers\n\
     -n		do RCS style diffs\n\
     -p		procedural diffs, like diff -p\n\
-    -P		produce diffs comaptible with GNU Patch command\n\
+    -P		produce patch diffs, similar to diff -Nur\n\
     -r<r>	diff revision <r>\n\
     -s		do side by side\n\
     -u		do unified diffs\n\

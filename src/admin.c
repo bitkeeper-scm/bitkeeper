@@ -21,7 +21,6 @@ usage: admin options [- | file file file...]\n\
 \n\
     -f<f><val>		set flag (value is optional)\n\
     -F<f>		delete flag\n\
-    -d<f>		delete flag (ATT compat)\n\
 \n\
     -m<mode>		set the mode of the file\n\
     -M<merge>		Merge branch <merge> into TOT or <rev>\n\
@@ -33,19 +32,16 @@ usage: admin options [- | file file file...]\n\
     -C			remove the changeset marks\n\
     -CC			remove the changeset marks and pointer\n\
     -Z[alg]		compress stored s.file with <alg>, which may be:\n\
-		gzip	like gzip(1) (default)\n\
-		none	no compression\n\
+	    gzip	like gzip(1) (default)\n\
+	    none	no compression\n\
     -E[enc]		treat file as encoded with <enc>, which may be:\n\
-		text	plain text\n\
-		ascii	same\n\
-		binary	binary file (must uuencode before diffing)\n\
-		uugzip	same, but compress before uuencode\n\
+	    text	plain text\n\
+	    ascii	same\n\
+	    binary	binary file (must uuencode before diffing)\n\
+	    uugzip	same, but compress before uuencode\n\
     -u			make sure that all dates are increasing\n\
 			(dangerous, this changes the keys)\n\
-\n\
-    -a<u>|<g>		add user/group (ATT compat)\n\
-    -e<u>|<g>		delete user/group (ATT compat)\n";
-
+\n";
 
 #define	OP(W, V, F) if (next##W < A_SZ-1) { \
 			W[next##W].thing = V; \

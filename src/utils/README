@@ -1,6 +1,6 @@
-This is a little tool to put a file into a .o as an array.
-It generates an object file called _data.o which you can link
-against.  The object file contains
+This is an installation tool.  It needs two arguments to run, an
+executable program and a data file.  It generates a program which
+will unpack the two files and run the first giving it the second as
+an argument.
 
-unsigned char program_data[];	/* this is the file */
-unsigned int program_size;	/* this is how big it is */
+See example.sh for more info.

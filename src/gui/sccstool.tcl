@@ -356,10 +356,10 @@ proc history {} \
 
 proc sfile {} \
 {
-	global	file
+	global	file bk_sfiles
 
 	busy 1
-	set sfile [exec bk sfiles $file]
+	set sfile [exec $bk_sfiles $file]
 	set f [open "$sfile" "r"]
 	filltext $f 1
 }
@@ -468,16 +468,16 @@ proc csetdiff2 {doDiffs} \
 
 proc cset {} \
 {
-	global file rev1 rev2 bk_prs dspec
+	global file rev1 rev2 bk_r2c bk_prs dspec
 
 	busy 1
 	set csets ""
 	.p.bottom.t configure -state normal
 	.p.bottom.t delete 1.0 end
 	if {[info exists rev2]} {
-		set revs [open "| bk prs -hbMr$rev1..$rev2 -d:I: $file"]
+		set revs [open "| $bk_prs -hbMr$rev1..$rev2 -d:I: $file"]
 		while {[gets $revs r] >= 0} {
-			set c [exec bk r2c $file $r]
+			set c [exec $bk_r2c -r$r $file]
 			set p [format "%s %s ==> cset %s\n" $file $r $c]
     			.p.bottom.t insert end "$p"
 			update
@@ -489,7 +489,7 @@ proc cset {} \
 		}
 		close $revs
 	} else {
-		set csets [exec bk r2c $file $rev1]
+		set csets [exec $bk_r2c -r$rev1 $file]
 	}
 	set p [open "|bk -R prs {$dspec} -r$csets ChangeSet" r]
 	filltext $p 1
@@ -497,14 +497,14 @@ proc cset {} \
 
 proc r2c {} \
 {
-	global file rev1 rev2
+	global file rev1 rev2 bk_r2c bk_prs
 
 	busy 1
 	set csets ""
 	if {[info exists rev2]} {
-		set revs [open "| bk prs -hbMr$rev1..$rev2 -d:I: $file"]
+		set revs [open "| $bk_prs -hbMr$rev1..$rev2 -d:I: $file"]
 		while {[gets $revs r] >= 0} {
-			set c [exec bk r2c $file $r]
+			set c [exec $bk_r2c -r$r $file]
 			if {$csets == ""} {
 				set csets $c
 			} else {
@@ -513,7 +513,7 @@ proc r2c {} \
 		}
 		close $revs
 	} else {
-		set csets [exec bk r2c $file $rev1]
+		set csets [exec $bk_r2c -r$rev1 $file]
 	}
 	exec bk csettool -r$csets &
 	busy 0
@@ -830,7 +830,7 @@ proc widgets {} \
 		pack .p.top.c -expand true -fill both
 
 	    frame .p.bottom -borderwidth 2 -relief sunken
-		text .p.bottom.t -width 80 -height 24 -font $font -wrap none \
+		text .p.bottom.t -width 80 -height 20 -font $font -wrap none \
 		    -xscrollcommand { .p.bottom.xscroll set } \
 		    -yscrollcommand { .p.bottom.yscroll set }
 		scrollbar .p.bottom.xscroll -orient horizontal \
@@ -848,15 +848,18 @@ proc widgets {} \
 
 	frame .cmd -borderwidth 2 -relief ridge
 		text .cmd.t -height 1 -width 30 -font $buttonFont
-		label .cmd.l -font $buttonFont -width 40 -relief groove \
+		label .cmd.l -font $buttonFont -width 30 -relief groove \
 		    -textvariable search(text)
-		pack .cmd.l -side left -fill x
-		pack .cmd.t -side left -fill x -expand true
+		grid .cmd.l -row 0 -column 0 -sticky ew
+		grid .cmd.t -row 0 -column 1 -sticky ew
 
-	pack .menus -side top -fill x
-	pack .p -side top -expand true -fill both
-	pack propagate .p off
-	pack .cmd -side left -expand yes -fill x
+	grid .menus -row 0 -column 0 -sticky ew
+	grid .p -row 1 -column 0 -sticky ewns
+	grid .cmd -row 2 -column 0 -sticky ew
+	grid rowconfigure . 1 -weight 1
+	grid columnconfigure . 0 -weight 1
+	grid columnconfigure .cmd 0 -weight 1
+	grid columnconfigure .cmd 1 -weight 2
 
 	# I don't want highlighting in that text widget.
 	bind .p.bottom.t <1> "break"
