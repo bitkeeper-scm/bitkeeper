@@ -424,3 +424,6 @@ if [ $rev != "1.1" ]; then
 	exit 1
 fi
 echo OK
+echo $N checking expression "\$if(:TAG:!='')" ..........................$NL
+bk prs -d"\$if(:TAG:!=''){:TAG:}" FILE > /dev/null || exit 1
+echo OK

@@ -1277,7 +1277,7 @@ scandiff(char *s, int *where, char *what, int *howmany)
  * Convert ascii 1.2.3.4 -> 1, 2, 3, 4
  */
 private inline int
-scanrev(char *s, u16 *a, u16 *b, u16 *c, u16 *d)
+scanrev(char *s, ser_t *a, ser_t *b, ser_t *c, ser_t *d)
 {
 	if (!isdigit(*s)) return (0);
 	*a = atoi_p(&s);
@@ -1368,7 +1368,7 @@ samebranch_bk(delta *a, delta *b, int bk_mode)
 private char *
 branchname(delta *d)
 {
-	u16	a1 = 0, a2 = 0, a3 = 0, a4 = 0;
+	ser_t	a1 = 0, a2 = 0, a3 = 0, a4 = 0;
 	static	char buf[6];
 
 	scanrev(d->rev, &a1, &a2, &a3, &a4);
@@ -1906,7 +1906,7 @@ sym2delta(sccs *s, char *sym)
 }
 
 private inline int
-samerev(u16 a[4], u16 b[4])
+samerev(ser_t a[4], ser_t b[4])
 {
 	return ((a[0] == b[0]) &&
 		(a[1] == b[1]) &&
@@ -1914,7 +1914,7 @@ samerev(u16 a[4], u16 b[4])
 		(a[3] == b[3]));
 }
 
-private u16	R[4];
+private ser_t	R[4];
 /*
  * This one uses the globals set up below.  This hack makes this library
  * !MT safe.  Which it wasn't anyway.
@@ -1975,8 +1975,8 @@ defbranch(sccs *s)
 delta *
 findrev(sccs *s, char *rev)
 {
-	u16	a = 0, b = 0, c = 0, d = 0;
-	u16	max = 0;
+	ser_t	a = 0, b = 0, c = 0, d = 0;
+	ser_t	max = 0;
 	delta	*e = 0, *f = 0;
 	char	buf[20];
 
@@ -2409,7 +2409,7 @@ private delta *
 getedit(sccs *s, char **revp)
 {
 	char	*rev = *revp;
-	u16	a = 0, b = 0, c = 0, d = 0;
+	ser_t	a = 0, b = 0, c = 0, d = 0;
 	delta	*e, *t;
 	static	char buf[MAXREV];
 
@@ -2587,7 +2587,7 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 	char	*tmp, *g;
 	time_t	now = 0;
 	struct	tm *tm = 0;
-	u16	a[4];
+	ser_t	a[4];
 	int hasKeyword = 0, buf_size;
 #define EXTRA 1024
 
@@ -2790,198 +2790,95 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 	return (buf);
 }
 
-
-/*
- * find s in t
- * s is '\0' terminated
- * t is '\n' terminated
- */
-private int
-strnlmatch(register char *s, register char *t)
-{
-	while (*s && (*t != '\n')) {
-		if (*t != *s) return (0);
-		t++, s++;
-	}
-	if (*s == 0) return (1);
-	return (0);
-}
-
 /*
  * This does standard RCS expansion.
- * Keywords to expand:
- *	$Revision$
- *	$Id$
- *	$Author$
- *	$Date$
- *	$Header$
- *	$Locker$
- *	$Log$		Not done
- *	$Name$
- *	$RCSfile$
- *	$Source$
- *	$State$
+ *
+ * This code recognizes RCS keywords and expands them.  This code can
+ * handle finding a keyword that is already expanded and reexpanding
+ * it to the correct value.  This is for when a RCS file gets added
+ * with the keywords already expanded.
+ *
+ * XXX In BitKeeper the contents of the weave and edited files are is
+ * normally not expanded. (ie: $Date$) However mistakes can happen.
+ * We should unexpand RCS keywords on delta if they happen...
  */
 private char *
-rcsexpand(sccs *s, delta *d, char *l, int *expanded)
+rcsexpand(sccs *s, delta *d, char *line, int *expanded)
 {
-	char *buf;
-	char	*t;
-	char	*tmp, *g;
-	delta	*h;
-	int	hasKeyword = 0, expn = 0, buf_size;
+	static const struct keys {
+		int	len;
+		char	*keyword;
+		char	*dspec;
+	} keys[] = {
+		/*   123456789 */
+		{6, "Author", ": :USER:@:HOST: "},
+		{4, "Date", ": :D: :T::TZ: "},
+		{6, "Header", ": :GFILE: :I: :D: :T::TZ: :USER:@:HOST: "},
+		{2, "Id", ": :G: :I: :D: :T::TZ: :USER:@:HOST: "},
+		{6, "Locker", ": <Not implemented> "},
+		{3, "Log", ": <Not implemented> "},
+		{4, "Name", ": <Not implemented> "}, /* almost :TAG: */
+		{8, "Revision", ": :I: "},
+		{7, "RCSfile", ": s.:G: "},
+		{6, "Source", ": :SFILE: "},
+		{5, "State", ": <unknown> "}
+	};
+	const	int	keyslen = sizeof(keys)/sizeof(struct keys);
+	char	*p, *prs;
+	char	*out = 0;
+	char	*outend = 0;
+	char	*last = line;
+	char	*ks;	/* start of keyword. */
+	char	*ke;	/* byte after keyword name */
+	int	i;
 
-	/* pre scan the line to determine if it needs keyword expansion */
 	*expanded = 0;
-	for (t = l; *t != '\n'; t++) {
-		if (hasKeyword) continue;
-		if (t[0] != '$' || t[1] == '\n') continue;
-		if (strnlmatch("$Author$", t) || strnlmatch("$Date$", t) ||
-		     strnlmatch("$Header$", t) || strnlmatch("$Id$", t) ||
-		     strnlmatch("$Locker$", t) || strnlmatch("$Log$", t) ||
-		     strnlmatch("$Name$", t) || strnlmatch("$RCSfile$", t) ||
-		     strnlmatch("$Revision$", t) || strnlmatch("$Source$", t) ||
-		     strnlmatch("$State$", t)) {
-			hasKeyword = 1;
-		}
-	}
-	unless (hasKeyword) return l;
-	buf_size = t - l + EXTRA; /* get extra memory for keyword expansion */
-	/* ok, we need to expand keyword, allocate a new buffer */
-	t = buf = malloc(buf_size);
-
-	while (*l != '\n') {
-		if (l[0] != '$') {
-			*t++ = *l++;
-			continue;
-		}
-		if (strneq("$Author$", l, 8)) {
-			strcpy(t, "$Author: "); t += 9;
-			strcpy(t, d->user);
-			t += strlen(d->user);
-			for (h = d; h && !h->hostname; h = h->parent);
-			if (h && h->hostname) {
-				*t++ = '@';
-				strcpy(t, h->hostname);
-				t += strlen(h->hostname);
-			}
-			*t++ = ' ';
-			*t++ = '$';
-			l += 8;
-			expn = 1;
-		} else if (strneq("$Date$", l, 6)) {
-			strcpy(t, "$Date: "); t += 7;
-			strncpy(t, d->sdate, 17); t += 17;
-			for (h = d; h && !h->zone; h = h->parent);
-			if (h && h->zone) {
-				strcpy(t, h->zone);
-				t += strlen(h->zone);
-			}
-			*t++ = ' ';
-			*t++ = '$';
-			l += 6;
-			expn = 1;
-		} else if (strneq("$Header$", l, 8)) {
-			strcpy(t, "$Header: "); t += 9;
-			tmp = s->sfile;
-			strcpy(t, tmp); t += strlen(tmp); *t++ = ' ';
-			strcpy(t, d->rev); t += strlen(d->rev);
-			*t++ = ' ';
-			strncpy(t, d->sdate, 17); t += 17;
-			for (h = d; h && !h->zone; h = h->parent);
-			if (h && h->zone) {
-				strcpy(t, h->zone);
-				t += strlen(h->zone);
-			}
-			*t++ = ' ';
-			strcpy(t, d->user);
-			t += strlen(d->user);
-			for (h = d; h && !h->hostname; h = h->parent);
-			if (h && h->hostname) {
-				*t++ = '@';
-				strcpy(t, h->hostname);
-				t += strlen(h->hostname);
-			}
-			*t++ = ' ';
-			*t++ = '$';
-			l += 8;
-			expn = 1;
-		} else if (strneq("$Id$", l, 4)) {
-			strcpy(t, "$Id: "); t += 5;
-			tmp = basenm(s->sfile);
-			strcpy(t, tmp); t += strlen(tmp); *t++ = ' ';
-			strcpy(t, d->rev); t += strlen(d->rev);
-			*t++ = ' ';
-			strncpy(t, d->sdate, 17); t += 17;
-			for (h = d; h && !h->zone; h = h->parent);
-			if (h && h->zone) {
-				strcpy(t, h->zone);
-				t += strlen(h->zone);
-			}
-			*t++ = ' ';
-			strcpy(t, d->user);
-			t += strlen(d->user);
-			for (h = d; h && !h->hostname; h = h->parent);
-			if (h && h->hostname) {
-				*t++ = '@';
-				strcpy(t, h->hostname);
-				t += strlen(h->hostname);
-			}
-			*t++ = ' ';
-			*t++ = '$';
-			l += 4;
-			expn = 1;
-		} else if (strneq("$Locker$", l, 8)) {
-			strcpy(t, "$Locker: <Not implemented> $"); t += 28;
-			l += 8;
-			expn = 1;
-		} else if (strneq("$Log$", l, 5)) {
-			strcpy(t, "$Log: <Not implemented> $"); t += 25;
-			l += 5;
-			expn = 1;
-		} else if (strneq("$Name$", l, 6)) {
-			strcpy(t, "$Name: <Not implemented> $"); t += 26;
-			l += 6;
-			expn = 1;
-		} else if (strneq("$RCSfile$", l, 9)) {
-			strcpy(t, "$RCSfile: "); t += 10;
-			tmp = basenm(s->sfile);
-			strcpy(t, tmp); t += strlen(tmp);
-			*t++ = ' '; *t++ = '$';
-			l += 9;
-			expn = 1;
-		} else if (strneq("$Revision$", l, 10)) {
-			strcpy(t, "$Revision: "); t += 11;
-			strcpy(t, d->rev); t += strlen(d->rev);
-			*t++ = ' ';
-			*t++ = '$';
-			l += 10;
-			expn = 1;
-		} else if (strneq("$Source$", l, 8)) {
-			strcpy(t, "$Source: "); t += 9;
-			g = sccs2name(s->sfile);
-			tmp = fullname(g, 1);
-			free(g);
-			strcpy(t, tmp); t += strlen(tmp);
-			*t++ = ' '; *t++ = '$';
-			l += 8;
-			expn = 1;
-		} else if (strneq("$State$", l, 7)) {
-			strcpy(t, "$State: "); t += 8;
-			*t++ = ' ';
-			strcpy(t, "<unknown>");
-			t += 9;
-			*t++ = ' '; *t++ = '$';
-			l += 7;
-			expn = 1;
+	p = line;
+	while (*p != '\n') {
+		/* Look for keyword */
+		while (*p != '\n' && *p != '$') p++;
+		if (*p == '\n') break;
+		ks = ++p;  /* $ */
+		while (isalpha(*p)) p++;
+		if (*p == '$') {
+			ke = p;
+		} else if (*p == ':') {
+			ke = p;
+			while (*p != '\n' && *p != '$') p++;
+			if (*p == '\n') break;
 		} else {
-			*t++ = *l++;
+		        continue;
 		}
+		/* found something that matches the pattern */
+		for (i = 0; i < keyslen; i++) {
+			if (keys[i].len == (ke-ks) &&
+			    strneq(keys[i].keyword, ks, ke-ks)) {
+				break;
+			}
+		}
+		if (i == keyslen) continue; /* try again */
+
+		unless (out) {
+			char	*nl = p;
+			while (*nl != '\n') nl++;
+			outend = out = malloc(nl - line + EXTRA);
+		}
+		*expanded = 1;
+		while (last < ke) *outend++ = *last++;
+		prs = sccs_prsbuf(s, d, 0, keys[i].dspec);
+		strcpy(outend, prs);
+		free(prs);
+		while (*outend) outend++;
+		last = p;
+		++p;
 	}
-	*t++ = '\n'; *t = 0;
-	assert((t - buf) <= buf_size);
-	if (expanded) *expanded = expn;
-	return (buf);
+	if (out) {
+		while (last <= p) *outend++ = *last++;
+		*outend = 0;
+	} else {
+		out = line;
+	}
+	return (out);
 }
 
 /*
@@ -9241,6 +9138,23 @@ singleUser(sccs *s)
 }
 
 /*
+ * If we are a single user config, make sure we use the right user/host.
+ */
+void
+checkSingle(void)
+{
+	char	*t;
+
+	t = user_preference("single_user");
+	if (streq(t, "")) return;
+	safe_putenv("BK_USER=%s", t);
+	t = user_preference("single_host");
+	safe_putenv("BK_HOST=%s", t);
+	sccs_resetuser();
+	sccs_resethost();
+}
+
+/*
  * Check in initial sfile.
  *
  * XXX - need to make sure that they do not check in binary files in
@@ -9347,6 +9261,10 @@ out:		sccs_unlock(s, 'z');
 		perror(sccsXfile(s, 'x'));
 		goto out;
 	}
+	if ((flags & DELTA_PATCH) || s->proj) {
+		s->bitkeeper = 1;
+		s->xflags |= X_BITKEEPER;
+	}
 	/*
 	 * Do a 1.0 delta unless
 	 * a) there is a init file (nodefault), or
@@ -9450,10 +9368,6 @@ out:		sccs_unlock(s, 'z');
 			    fullname(s->gfile, 0));
 			d->comments = addLine(d->comments, strdup(buf));
 		}
-	}
-	if ((flags & DELTA_PATCH) || s->proj) {
-		s->bitkeeper = 1;
-		s->xflags |= X_BITKEEPER;
 	}
 	if (BITKEEPER(s)) {
 		s->version = SCCS_VERSION;
@@ -11289,7 +11203,7 @@ doctrl(sccs *s, char *pre, int val, char *post, FILE *out)
 {
 	char	tmp[10];
 
-	sertoa(tmp, (unsigned short) val);
+	sertoa(tmp, (ser_t) val);
 	fputdata(s, pre, out);
 	fputdata(s, tmp, out);
 	fputdata(s, post, out);
@@ -12403,6 +12317,8 @@ out:
 	}
 #define	OUT	{ error = -1; s->state |= S_WARNED; goto out; }
 #define	WARN	{ error = -1; goto out; }
+
+	unless (flags & DELTA_PATCH) checkSingle();
 
 	if (init) {
 		int	e;
@@ -14587,7 +14503,7 @@ kw2buf(char *buf, const char *kw, sccs *s, delta *d)
 	rc = kw2val(0, buf ? &vbuf : 0, "", 0, kw, "", 0, s, d);
 	if (buf) {
 		char	*p = str_pullup(0, vbuf);
-		strcpy(buf, p);
+		strcpy(buf, notnull(p));
 		free(p);
 	}
 	return (rc);
