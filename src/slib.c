@@ -10284,7 +10284,7 @@ do_prs(sccs *s, delta *d, int flags, const char *dspec, FILE *out)
 {
 	const char *end;
 
-	if (d->type != 'D') return;
+	if (d->type != 'D' && !(flags & PRS_META)) return;
 	if ((s->state & S_SET) && !(d->flags & D_SET)) return;
 	if (fprintDelta(out, NULL,
 	    dspec, end = &dspec[strlen(dspec) - 1], s, d)) {
@@ -10488,8 +10488,9 @@ sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out)
 {
 	delta	*d;
 #define	DEFAULT_DSPEC \
-"D :I: :D: :T::TZ: :P:$if(:HT:){@:HT:} :DS: :DP: :Li:/:Ld:/:Lu:\n\
-$if(:DPN:){P :DPN:\n}$each(:C:){C (:C:)}\n\
+":DT: :I: :D: :T::TZ: :P:$if(:HT:){@:HT:} :DS: :DP: :Li:/:Ld:/:Lu:\n\
+$if(:DPN:){P :DPN:\n}$each(:SYMBOL:){S (:SYMBOL:)\n}\
+$if(:C:){$each(:C:){C (:C:)}\n}\
 ------------------------------------------------"
 
 	if (!dspec) dspec = DEFAULT_DSPEC;
@@ -10499,13 +10500,6 @@ $if(:DPN:){P :DPN:\n}$each(:C:){C (:C:)}\n\
 		    s->rstart ? s->rstart : s->tree,
 		    s->rstop ? s->rstop : 0, flags, out);
 		return (0);
-	}
-	/* print metadata if they asked */
-	if (flags & PRS_META) {
-		symbol	*sym;
-		for (sym = s->symbols; sym; sym = sym->next) {
-			fprintf(out, "S %s %s\n", sym->name, sym->rev);
-		}
 	}
 
 	if (reverse) {

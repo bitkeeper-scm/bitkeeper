@@ -811,7 +811,11 @@ apply:
 		    sccs_resolveFile(s,
 			noRfile, localPath, gcaPath, remotePath);
 	}
-	conflicts += confThisFile;
+	/* Conflicts in ChangeSet don't count.  */
+	if (confThisFile && !streq(s->sfile + strlen(s->sfile) - 9,
+				   "ChangeSet")) {
+		conflicts += confThisFile;
+	}
 	if (confThisFile && !(s->state & S_CSET)) {
 		assert(d);
 		unless (d->flags & D_CSET) {

@@ -40,7 +40,7 @@ main(int ac, char **av)
 		fprintf(stderr, prs_help);
 		return (1);
 	}
-	while ((c = getopt(ac, av, "bc;Cd:hmr|v")) != -1) {
+	while ((c = getopt(ac, av, "abc;Cd:hmr|v")) != -1) {
 		switch (c) {
 		    case 'b': reverse++; break;
 		    case 'C': expand = 3; break;
@@ -50,6 +50,7 @@ main(int ac, char **av)
 		    case 'h':
 			doheader = 0;
 			break;
+		    case 'a': /* ATT compat - same as 'm' */
 		    case 'm': flags |= PRS_META; break;
 		    case 'v': noisy = 1; break;
 		    RANGE_OPTS('c', 'r');
