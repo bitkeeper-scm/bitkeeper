@@ -14,7 +14,7 @@
 # %K%
 
 test "$PLATFORM" = "UNIX" || {
-	echo Not testing relink, operation not supported on this platform
+	echo "For non win32 only ..........................................skipped"
 	exit 0
 }
 

@@ -15,6 +15,8 @@ blat: $(OBJS)
 
 $(OBJS): GENSOCK/gensock.h
 
+$(OBJS): GENSOCK/gensock.h
+
 install:
 	@if [ X$(BINDIR) = X ]; then echo Must set BINDIR; exit 1; fi
 	cp blat.exe $(BINDIR)
