@@ -321,3 +321,21 @@ then	echo files should not be fetched
 	exit 1
 fi
 echo OK
+
+echo $N verify BK_CONFIG overrides ..................................$NL
+BK_CONFIG='foo:bar; foo2  : bar2 ; checkout : delete '
+export BK_CONFIG
+test X`bk _preference foo`X != XbarX && {
+	echo override failed
+	exit 1
+}
+test X`bk _preference foo2`X != Xbar2X && {
+	echo override failed
+	exit 1
+}
+test X`bk _preference checkout`X != XdeleteX && {
+	echo override failed
+	exit 1
+}
+unset BK_CONFIG
+echo OK

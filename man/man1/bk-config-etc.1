@@ -30,6 +30,15 @@ However, if a '!' is put at the end of the line in the System config file
 (/etc/BitKeeper/etc/config) then that setting will override any 
 matching key in local config files.  
 .LP
+Also configuration entries can be overridden with the
+.B BK_CONFIG
+environmental variable.  That variable can contain a list of key:value
+pairs seperated by semicolons.  For example:
+.DS
+.BR BK_CONFIG =\c
+.IR key1 : value2 ; key2 : value2 ; key3 : value3\c
+.DE
+.LP
 Minimum content requirements for the BitKeeper/etc/config file 
 are the key value pairs for 
 .DS

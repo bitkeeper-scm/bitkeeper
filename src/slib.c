@@ -476,6 +476,38 @@ joinLines(char *sep, char **space)
 	return (buf);
 }
 
+/*
+ * Split a C string into tokens like strtok()
+ *
+ * The string 'line' is seperated into tokens seperated
+ * by one of more characters from 'delim' and each token will
+ * be added to the 'tokens' line array.
+ * The tokens will be null terminated and will not contain characters
+ * from 'delim'
+ *
+ * REMOVE THIS FUNCTION in 4.0.  It is already in liblines.c.
+ */
+char   **
+splitLine(char *line, char *delim, char **tokens)
+{
+       while (1) {
+               int     len;
+               char    *p;
+
+               line += strspn(line, delim); /* skip delimiters */
+               len = strcspn(line, delim);
+               unless (len) break;
+
+               /* strndup() ... */
+               p = malloc(len+1);
+               strncpy(p, line, len);
+               p[len] = 0;
+               tokens = addLine(tokens, p);
+               line += len;
+       }
+       return (tokens);
+}
+
 #if 0
 /*
  * Compare up to and including the newline.  Both have to be on \n to match.
@@ -4158,7 +4190,7 @@ out:		free(config);
  * I.e local field have priority over global field.
  * If local field exists, it masks out the global counter part.
  */
-MDBM *
+private MDBM *
 loadGlobalConfig(MDBM *db)
 {
 	char 	*config;
@@ -4171,6 +4203,45 @@ loadGlobalConfig(MDBM *db)
 }
 
 /*
+ * Override the config db with values from the BK_CONFIG enviromental
+ * variable if it exists.
+ *
+ * BK_CONFIG='var1:value1;var2:values2'
+ */
+private MDBM *
+loadEnvConfig(MDBM *db)
+{
+	char	*env = getenv("BK_CONFIG");
+	char	**values;
+	int	i;
+	char	*k, *v, *p;
+
+	unless (env) return (db);
+	assert(db);
+	values = splitLine(env, ";", 0);
+	EACH (values) {
+		p = values[i];
+
+		while (isspace(*p)) p++;
+		k = p;
+		while (*p != ':' && *p) p++;
+		unless (*p) continue;
+		v = p+1;
+		while (isspace(p[-1])) --p;
+		*p = 0;
+		while (isspace(*v)) ++v;
+		unless (*v) continue;
+		p = v;
+		while (*p) ++p;
+		while (isspace(p[-1])) --p;
+		*p = 0;
+
+		mdbm_store_str(db, k, v, MDBM_REPLACE);
+	}
+	freeLines(values);
+	return (db);
+}
+/*
  * Load both local and global config
  */
 MDBM *
@@ -4180,7 +4251,9 @@ loadConfig(char *root)
 
 	db = loadRepoConfig(root);
 	unless (db) return (NULL);
-	return (loadGlobalConfig(db));
+	loadGlobalConfig(db);
+	loadEnvConfig(db);
+	return (db);
 }
 
 /*
