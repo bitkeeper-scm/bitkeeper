@@ -2918,6 +2918,9 @@ checkSymGraph(sccs *s, int flags)
 	delta	*l1 = 0, *l2 = 0;
 	symbol	*s1, *s2;
 
+	/* Allow open tag branch for logging repository */
+	if (s->state & S_LOGS_ONLY) return (0);
+
 	if (tagleaves(s, &l1, &l2)) return (128);
 	unless (l1 && l2) return (0);
 	for (s1 = s->symbols; s1; s1 = s1->next) {
@@ -8656,9 +8659,7 @@ checkOpenBranch(sccs *s, int flags)
 	u8	*lodmap = 0;
 	ser_t	next;
 
-	/*
-	 * Allows open branch for logging repository
-	 */
+	/* Allow open branch for logging repository */
 	if (s->state & S_LOGS_ONLY) return (0);
 
 	next = sccs_nextlod(s);

@@ -136,82 +136,35 @@ listPendingRenames()
 	dup2(fd1, 1); close(fd1);
 }
 
-#ifdef LOGGING_CONFLICT
-private int
-isLoggingRepository(opts *opts)
+private void
+setRepoType(opts *opts)
 {
-	sccs	*s;
-	char	s_cset[] = CHANGESET;
-	int	rc = 0;
-
-	s = sccs_init(s_cset, INIT_SAVEPROJ, opts->resync_proj);
-	assert(s);
-	if (s->state & S_LOGS_ONLY) rc = 1;
-	sccs_free(s);
-	return (rc);
+	if (exists(LOG_TREE)) opts->logging = 1;
 }
 
 /*
  * For logging repository, we defer resolving path conflict
  * by moving  the conflicting remote file to the BitKeeper/conflicts
  * directory.
- *
- * XXXX awc->lm: this code not fully tested
- * open issues:
- * a) when do we move the conflict files back to its regular path.
- * b) In BkWeb, when a user is browseing the logging tree,
- *    looking for a file,  how do we detect/show the path conflict status
  */
-private int
-deferr_path_conflict(opts *opts)
+private void
+removePathConflict(opts *opts, resolve *rs)
 {
-	DIR	*dh;
-	struct	dirent   *e;
-	char	buf[MAXPATH], buf1[MAXPATH];
-	char	tmp[MAXPATH];
-	char	*renames_dir = "BitKeeper/RENAMES/SCCS";
-	sccs	*s;
-	delta	*d;
+	char	path[MAXPATH];
 	int	n = 0;
 
-	if ((dh = opendir(renames_dir)) == NULL) {
-		perror(renames_dir);
+	sprintf(path, "BitKeeper/conflicts/SCCS/%s", basenm(rs->dname));
+	while (exists(path)) {
+		sprintf(path,
+		    "BitKeeper/conflicts/SCCS/%s~%d", basenm(rs->dname), n++);
 	}
-	while ((e = readdir(dh)) != NULL) {
-		char *p;
-
-		if (streq(e->d_name, ".") || streq(e->d_name, "..")) {
-			continue;
-		}
-		concat_path(buf, renames_dir, e->d_name);
-		s = sccs_init(buf, INIT_SAVEPROJ, opts->resync_proj);
-		assert(s && s->tree);
-		d = findrev(s, "1.0");
-		assert(d);
-		strcpy(tmp, d->pathname); /* because dirname stomp */
-		/*
-		 * park the conflict files in the BitKeeper/conflicts
-		 * directory using a path based on the root key
-		 */
-		sprintf(buf1,
-			"BitKeeper/conflicts/%s-%s-%s-%05u-%s/%s/SCCS/s.%s",
-			d->user,
-			d->hostname,
-			sccs_utctime(d),
-			d->sum,
-			d->random,
-			dirname(tmp),
-			basename(d->pathname));
-		cleanPath(buf1, buf1);
-		mkdirf(buf1);
-		if (rename(buf, buf1)) {
-			perror(buf1);
-			n++;
-		}
+	mkdirf(path);
+	if (rename(rs->s->sfile, path)) {
+		perror(path);
+		resolve_cleanup(opts, CLEAN_RESYNC);
 	}
-	return (n);
+	unlink(sccs_Xfile(rs->s, 'm'));
 }
-#endif /* LOGGING_CONFLICT */
 
 /*
  * Do the setup and then work through the passes.
@@ -264,6 +217,8 @@ passes(opts *opts)
 		freeStuff(opts);
 		exit(1);
 	}
+
+	setRepoType(opts);
 
 	/*
 	 * Pass 1 - move files to RENAMES and/or build up rootDB
@@ -346,10 +301,6 @@ that will work too, it just gets another patch.\n");
 			old = n;
 			n = pass2_renames(opts);
 		} while (n && ((old == -1) || (n < old)));
-		
-#ifdef LOGGING_CONFLICT
-		if (isLoggingRepository(opts)) n = deferr_path_conflict(opts);
-#endif
 
 		unless (n) {
 			unless (opts->quiet || !opts->renames2) {
@@ -652,6 +603,11 @@ pass2_renames(opts *opts)
 		}
 
 		rs = resolve_init(opts, s);
+
+		if (opts->logging) {
+			removePathConflict(opts, rs);
+			goto out;
+		}
 
 		/*
 		 * This code is ripped off from the create path.
@@ -1464,7 +1420,7 @@ pass3_resolve(opts *opts)
 	char	buf[MAXPATH], s_cset[] = CHANGESET;
 	FILE	*p;
 	int	n = 0;
-	int	isLoggingRepository = 0, mustCommit, pc, pe;
+	int	mustCommit, pc, pe;
 
 	if (opts->log) fprintf(opts->log, "==== Pass 3 ====\n");
 	opts->pass = 3;
@@ -1527,14 +1483,20 @@ can be resolved.  Please rerun resolve and fix these first.\n", n);
 			if (exists(buf)) continue;
 			t[1] = 's';
 		}
-		conflict(opts, buf);
+		if (opts->logging) {
+			t[1] = 'r';
+			unlink(buf);
+			t[1] = 's';
+		} else {
+			conflict(opts, buf);
+		}
 		if (opts->errors) {
 			pclose(p);
 			goto err;
 		}
 	}
 	pclose(p);
-	resolve_tags(opts);
+	unless (opts->logging) resolve_tags(opts);
 	unless (opts->quiet || !opts->resolved) {
 		fprintf(stdlog,
 		    "resolve: resolved %d conflicts in pass 3\n",
@@ -1563,11 +1525,8 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		sccs	*s;
 		resolve	*rs;
 		
-		s = sccs_init(s_cset, INIT, opts->resync_proj);
-		if (s->state & S_LOGS_ONLY) {
-			isLoggingRepository  = 1;
-			sccs_free(s);
-		} else {
+		unless (opts->logging) {
+			s = sccs_init(s_cset, INIT, opts->resync_proj);
 			rs = resolve_init(opts, s);
 			edit(rs);
 			unlink(sccs_Xfile(s, 'r'));
@@ -1606,7 +1565,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	/*
 	 * For logging repository, do not commit merge node
 	 */ 
-	if (isLoggingRepository) return (0);
+	if (opts->logging) return (0);
 
 
 	/*
@@ -1738,16 +1697,6 @@ conflict(opts *opts, char *sfile)
 	deltas	d;
 	
 	s = sccs_init(sfile, INIT, opts->resync_proj);
-
-	/*
-	 * If we are in a logging repository
-	 * do not try to resolve conflict
-	 * i.e we allow open branch
-	 */
-	if (s->state & S_LOGS_ONLY) {
-		sccs_free(s);
-		return;
-	}
 
 	rs = resolve_init(opts, s);
 	assert(streq(rs->dname, s->sfile));
@@ -2183,7 +2132,7 @@ pass4_apply(opts *opts)
 {
 	sccs	*r, *l;
 	int	offset = strlen(ROOT2RESYNC) + 1;	/* RESYNC/ */
-	int	eperm = 0, first = 1, isLoggingRepository = 0, flags;
+	int	eperm = 0, first = 1, flags;
 	FILE	*f;
 	FILE	*save;
 	char	buf[MAXPATH];
@@ -2239,9 +2188,6 @@ pass4_apply(opts *opts)
 			eperm = 1;
 		}
 		sccs_sdelta(r, sccs_ino(r), key);
-		if ((r->state&(S_CSET|S_LOGS_ONLY)) == (S_CSET|S_LOGS_ONLY)) {
-			isLoggingRepository = 1;
-		}
 		sccs_free(r);
 		if (l = sccs_keyinit(key, INIT, opts->local_proj, opts->idDB)) {
 			/*
@@ -2407,7 +2353,7 @@ Got:\n\
 		    "Consistency check passed, resolve complete.\n");
 	}
 	flags = CLEAN_OK|CLEAN_RESYNC|CLEAN_PENDING|DO_LOG;
-	unless (isLoggingRepository) flags |= DO_LOG;
+	unless (opts->logging) flags |= DO_LOG;
 	resolve_cleanup(opts, flags);
 	/* NOTREACHED */
 	return (0);
