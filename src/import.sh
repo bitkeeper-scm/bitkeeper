@@ -355,36 +355,46 @@ import_patch() {
 	if [ X$QUIET = X ]
 	then	cat ${TMP}plog$$
 	fi
+	grep '^Creating file ' ${TMP}plog$$ |
+	    sed 's/Creating file //' > ${TMP}creates$$
+	grep '^Removing file ' ${TMP}plog$$ |
+	    sed 's/Removing file //' > ${TMP}deletes$$
+	grep '^Patching file ' ${TMP}plog$$ |
+	    sed 's/Patching file //' > ${TMP}patching$$
+
 	bk sfiles -x | grep '=-PaTcH_BaCkUp!$' | bk _unlink
-	bk sfiles -x | grep '\.rej$' > ${TMP}rejects$$
+	while read x
+	do	test -f "$x".rej && echo "$x".rej
+	done < ${TMP}patching$$ > ${TMP}rejects$$
 	if [ $REJECTS = NO -a -s ${TMP}rejects$$ ]
 	then	patch_undo
 	fi
 	TRIES=0
 	while [ -s ${TMP}rejects$$ -a $TRIES -lt 5 ]
-	do 	echo "Patch rejects:"
-		cat ${TMP}rejects$$
-		echo 
-		echo ===============================================
+	do 	
+		echo ======================================================
 		echo Dropping you into a shell to clean the rejects.
 		echo Please fix the rejects and then exit the shell 
-		echo to continue the import
-		echo ===============================================
+		echo to continue the import.  The rejects you need to fix:
+		echo ""
+		while read x
+		do	echo "Reject: $x"
+		done < ${TMP}rejects$$
+		echo 
+		echo ======================================================
 		echo 
 		sh -i
-		bk sfiles -x | grep '\.rej$' > ${TMP}rejects$$
+		while read x
+		do	test -f "$x".rej && echo "$x".rej
+		done < ${TMP}patching$$ > ${TMP}rejects$$
 		TRIES=`expr $TRIES + 1`
 	done
 	test -s ${TMP}rejects$$ && {
 		echo Giving up, too many tries to clean up.
 		rm -f `cat ${TMP}rejects$$`
-		bk unedit `bk sfiles -l`
+		patch_undo
 		Done 1
 	}
-	grep '^Creating file ' ${TMP}plog$$ |
-	    sed 's/Creating file //' > ${TMP}creates$$
-	grep '^Removing file ' ${TMP}plog$$ |
-	    sed 's/Removing file //' > ${TMP}deletes$$
 	if [ $RENAMES = YES ]
 	then	msg Checking for potential renames in `pwd` ...
 		# Go look for renames
@@ -409,7 +419,7 @@ import_patch() {
 	fi
 	rm -f ${TMP}creates$$ ${TMP}deletes$$
 
-	bk -cr ci $VERBOSE -G "$COMMENTOPT"
+	bk ci $VERBOSE -G "$COMMENTOPT" - <  ${TMP}patching$$
 
 	if [ $COMMIT = NO ]
 	then	Done 0
@@ -623,7 +633,7 @@ validate_patch() {
 }
 
 Done() {
-	for i in patch rejects plog locked import sccs rm
+	for i in patch rejects plog locked import sccs rm patching
 	do	rm -f ${TMP}${i}$$
 	done
 	exit $1
