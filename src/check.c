@@ -267,7 +267,7 @@ The name above is both a %s and a revision controlled file.\n\
 The revision controlled file can not be checked out because the directory\n\
 is where the file wants to be.  To correct this:\n\
 1) Move the %s to a different name;\n\
-2) Check out the file \"bk get %s\"
+2) Check out the file \"bk get %s\"\n\
 3) If you want to get rid of the file, then use bk rm to get rid of it\n\
 ===========================================================================\n",
 		    s->gfile, type, type, s->gfile);
