@@ -237,7 +237,7 @@ _send() {
 	    Xhoser@nevdull.com)
 		MAIL=cat
 		;;
-	    *)	MAIL="${MAIL_CMD} -s 'BitKeeper patch' $TO"
+	    *)	MAIL="_mail $TO 'BitKeeper patch'"
 	    	;;
 	esac
 	( echo "This BitKeeper patch contains the following changesets:";
@@ -247,7 +247,7 @@ _send() {
 	  	${BIN}cset $D -m$REV $V | bk ${WRAPPER}wrap 
 	  else ${BIN}cset $D -m$REV $V 
 	  fi
-	) | eval "$MAIL"
+	) | $MAIL
 }
 
 _unwrap() {
@@ -579,7 +579,48 @@ _sendConfig() {
 	  echo "Date:		`date`"
 	  ${BIN}get -ps ${cfgDir}config | \
 	    grep -v '^#' ${cfgDir}config | grep -v '^$'
-	) | ${MAIL_CMD} -s "BitKeeper config: $P" $1
+	) | _mail $1 "BitKeeper config: $P"
+}
+
+# usage: _mail to subject
+# XXX - probably needs to be in port/mailto.sh and included.
+# DO NOT change how this works, IRIX is sensitive.
+_mail() {
+	TO=$1
+	shift
+	SUBJ="$@"
+
+	# Try to find sendmail, it works better, especially on IRIX.
+	for i in /usr/bin /usr/sbin /usr/lib /usr/etc /etc /bin
+	do	if [ -x "$i/sendmail" ]
+		then	(
+			echo "To: $TO"
+			if [ "X$SUBJ" != X ]
+			then	echo "Subject: $SUBJ"
+			fi
+			echo ""
+			cat
+			) | $i/sendmail -i $TO
+			exit 0
+		fi
+	done
+
+	# We know that the ``mail -s "$SUBJ"'' form doesn't work on IRIX
+	# Like lots of other things don't work on IRIX.
+	case "`uname -s`" in
+	    *IRIX*)
+		if [ -x /usr/bin/mailx ]
+		then	exec mailx $TO
+		else	exec mail $TO
+		fi
+		;;
+	esac
+
+	if [ -x /usr/bin/mailx ]
+	then	exec mailx -s "$SUBJ" $TO
+	else	exec mail -s "$SUBJ" $TO
+	fi
+	exit 1
 }
 
 _logAddr() {
@@ -626,11 +667,14 @@ s/@[a-z0-9.-]*\.\([a-z0-9-]*\.[a-z0-9-][a-z0-9-]\)\.\([a-z0-9-][a-z0-9-]\)$/\1.\
 # If they have agreed, then don't keep asking the question.
 # XXX - should probably ask once for each user.
 _checkLog() {
-	if [ `grep "^logging_ok:" ${cfgDir}config | wc -l` -eq 0 ]
+	# If we have a logging_ok message, then we are done.
+	if [ `grep "^logging_ok:" ${cfgDir}config | wc -l` -gt 0 ]
 	then	${BIN}clean ${cfgDir}config
 		return
 	fi
-	if [ `echo $LOGADDR | grep "@openlogging.org$" | wc -l` -eq 0 ]
+
+	# If we are sending to openlogging.org, then ask if OK first.
+	if [ `echo $LOGADDR | grep '@openlogging.org$' | wc -l` -gt 0 ]
 	then
 		_gethelp log_query $LOGADDR
 		echo $N "OK [y/n]? "$NL
@@ -678,7 +722,7 @@ _sendLog() {
 	fi
 
 	P=`${BIN}prs -hr1.0 -d:FD: ChangeSet | head -1`
-	${BIN}cset -c -r$R | ${MAIL_CMD} -s "BitKeeper log: $P" $LOGADDR
+	${BIN}cset -c -r$R | _mail $LOGADDR "BitKeeper log: $P" 
 }
 
 _remark() {
@@ -845,8 +889,8 @@ _sendbug() {
 	do	echo $N "(s)end, (e)dit, (q)uit? "$NL
 		read x
 		case X$x in
-		    Xs*) ${MAIL_CMD} -s "BitKeeper BUG" bitkeeper-bugs@bitmover.com \
-			    < ${TMP}bug$$
+		    Xs*) cat ${TMP}bug$$ |
+			    _mail bitkeeper-bugs@bitmover.com "BK Bug"
 		 	 ${RM} -f ${TMP}bug$$
 			 echo Your bug has been sent, thank you.
 	    	 	 exit 0;
