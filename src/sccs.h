@@ -840,6 +840,7 @@ delta	*sccs_dInit(delta *, char, sccs *, int);
 char	*sccs_getuser(void);
 int	sccs_markMeta(sccs *);
 
+int	newrev(sccs *s, pfile *pf);
 delta	*modeArg(delta *d, char *arg);
 FILE	*fastPopen(const char*, const char*);
 int	fastPclose(FILE*);

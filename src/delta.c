@@ -3,8 +3,6 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
-int	newrev(sccs *s, pfile *pf);
-
 private int
 hasKeyword(sccs *s)
 {

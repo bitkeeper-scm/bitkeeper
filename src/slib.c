@@ -1214,19 +1214,12 @@ fix_stime(sccs *s)
 	 * INIT_FIXSTIME flag.
 	 */
 	ut.actime = time(0);
-#ifdef WIN32
+
 	/*
 	 * For unknown reason, Win/Me round up the time by one second
 	 * so we need to set the mod time to gtime - 2 to compmensate.
 	 */
-	if (isWin98()) {
-		ut.modtime = s->gtime - 2; /* for Win/Me */
-	} else {
-		ut.modtime = s->gtime - 1;
-	}
-#else
-	ut.modtime = s->gtime - 1;
-#endif
+	ut.modtime = s->gtime - 2;
 	utime(s->sfile, &ut);
 }
 

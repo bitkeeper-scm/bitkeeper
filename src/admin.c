@@ -16,7 +16,6 @@ private	int	do_checkin(char *nm, char *ep, char *cp, int fl,
 		   char *rev, char *newf, char *com);
 private	void	clearCsets(sccs *s, int flags);
 private	int	setMerge(sccs *sc, char *merge, char *rev);
-extern	int     newrev(sccs *s, pfile *pf); 
 
 int
 admin_main(int ac, char **av)
@@ -192,7 +191,7 @@ admin_main(int ac, char **av)
 	unless (flags & NEWFILE) init_flags |= INIT_SAVEPROJ;
 
 	ckopts = user_preference("checkout");
-	if (streq("GET", ckopts) || streq("EDIT", ckopts)) {
+	if (strieq("get", ckopts) || strieq("edit", ckopts)) {
 		init_flags |= INIT_FIXSTIME;
 	}
 
