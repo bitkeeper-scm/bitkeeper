@@ -36,7 +36,7 @@ static struct headers {
 	{ "Date: " }
 };
 
-enum headers { FROM, SUBJECT, DATE, NRHEADERS };
+enum Headers { FROM, SUBJECT, DATE, NRHEADERS };
 
 static struct {
 	const char *name;
