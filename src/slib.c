@@ -3549,7 +3549,7 @@ now()
  * Returns the total number of deltas with D_SET on.
  */
 int
-sccs_addmeta(sccs *s)
+sccs_markMeta(sccs *s)
 {
 	int	n;
 	delta	*d, *e;
@@ -7692,7 +7692,7 @@ name2xflg(char *fl)
 		return X_YEAR4;
 	}
 	assert("bad flag" == 0);
-	return (-1); /* keep compiler happy */
+	return (0);			/* lint */
 }
 
 private delta *
@@ -10892,7 +10892,7 @@ $if(:C:){$each(:C:){C (:C:)}\n}\
 			if (d == s->rstart) break;
 		}
 	}
-	if (flags & PRS_ALL) sccs_addmeta(s);
+	if (flags & PRS_ALL) sccs_markMeta(s);
 
 	if (reverse) prs_reverse(s, s->table, flags, dspec, out);
 	else prs_forward(s, s->table, flags, dspec, out);
@@ -11296,18 +11296,15 @@ sccs_lodmap(sccs *s)
  * XXX - this is also where we would handle pathnames, symbols, etc.
  */
 int
-sccs_resolveFile(sccs *s, int noRfile, char *lpath, char *gpath, char *rpath)
+sccs_resolveFiles(sccs *s)
 {
 	FILE	*f = 0;
-	delta	*d, *a = 0, *b = 0;
+	delta	*p, *d, *g = 0, *a = 0, *b = 0;
 	char	*n[3];
 	u8	*lodmap = 0;
 	u16	next;
 	u16	defbranch;
 	int	retcode = -1;
-
-	/* XXX: before or after checking for LOD conflict?? */
-	if (noRfile) goto mfile;
 
 	next = sccs_nextlod(s);
 	/* next now equals one more than greatest that exists
@@ -11345,41 +11342,61 @@ sccs_resolveFile(sccs *s, int noRfile, char *lpath, char *gpath, char *rpath)
 			d->r[0]);
 		goto err;
 	}
-	if (b) {
-		d = gca(a, b);
-		assert(d);
-		unless (f = fopen(sccsXfile(s, 'r'), "w")) {
-			perror("r.file");
-			goto err;
-		}
-		/*
-		 * Always put the local stuff on the left, if there
-		 * is any.
-		 */
-		if (a->flags & D_LOCAL) {
-			fprintf(f, "merge deltas %s %s %s %s %s\n",
-				a->rev, d->rev, b->rev, getuser(), now());
-		} else {
-			fprintf(f, "merge deltas %s %s %s %s %s\n",
-				b->rev, d->rev, a->rev, getuser(), now());
-		}
-		fclose(f);
+
+	/*
+	 * If we have no conflicts, then make sure the paths are the same.
+	 */
+	unless (b) {
+		for (p = a->parent; p && (p->flags & D_REMOTE); p = p->parent);
+		if (!p || streq(p->pathname, a->pathname)) return (0);
+		b = a;
+		a = g = p;
+		retcode = 0;
+		goto rename;
+	} else {
+		retcode = 1;
 	}
-mfile:	if (lpath) {
+
+	g = gca2(s, a, b);
+	assert(g);
+
+	unless (f = fopen(sccsXfile(s, 'r'), "w")) {
+		perror("r.file");
+		goto err;
+	}
+	/*
+	 * Always put the local stuff on the left, if there
+	 * is any.
+	 */
+	if (a->flags & D_LOCAL) {
+		fprintf(f, "merge deltas %s %s %s %s %s\n",
+			a->rev, g->rev, b->rev, getuser(), now());
+	} else {
+		fprintf(f, "merge deltas %s %s %s %s %s\n",
+			b->rev, g->rev, a->rev, getuser(), now());
+	}
+	fclose(f);
+	unless (streq(g->pathname, a->pathname) &&
+	    streq(g->pathname, b->pathname)) {
+rename:		n[1] = name2sccs(g->pathname);
+		if (b->flags & D_LOCAL) {
+			n[2] = name2sccs(a->pathname);
+			n[0] = name2sccs(b->pathname);
+		} else {
+			n[0] = name2sccs(a->pathname);
+			n[2] = name2sccs(b->pathname);
+		}
 		unless (f = fopen(sccsXfile(s, 'm'), "w")) {
 			perror("m.file");
 			goto err;
 		}
-		n[0] = name2sccs(lpath);
-		n[1] = name2sccs(gpath);
-		n[2] = name2sccs(rpath);
 		fprintf(f, "rename %s %s %s\n", n[0], n[1], n[2]);
 		fclose(f);
 		free(n[0]);
 		free(n[1]);
 		free(n[2]);
 	}
-	retcode = (b ? 1 : 0);
+	/* retcode set above */
 err:
 	if (lodmap) free(lodmap);
 	return (retcode);

@@ -1117,7 +1117,7 @@ private void
 add(FILE *diffs, char *buf)
 {
 	sccs	*s;
-	char	*rev = 0;
+	char	*rev = 0;	/* lint */
 	delta	*d;
 
 	unless ((chop(buf) == '\n') && (rev = strrchr(buf, BK_FS))) {
@@ -1426,6 +1426,7 @@ file2str(char *f)
 
 /*
  * All the deltas we want are marked so print them out.
+ * Note: takepatch depends on table order so don't change that.
  */
 void
 sccs_patch(sccs *s, cset_t *cs)
@@ -1436,7 +1437,7 @@ sccs_patch(sccs *s, cset_t *cs)
 	delta	**list;
 
 	if (cs->verbose>1) fprintf(stderr, "makepatch: %s ", s->gfile);
-	n = sccs_addmeta(s);
+	n = sccs_markMeta(s);
 
 	/*
 	 * Build a list of the deltas we're sending
