@@ -55,7 +55,7 @@ private int	write_pfile(sccs *s, int flags, delta *d,
 private time_t	date2time(char *asctime, char *z, int roundup);
 private	char	*sccsrev(delta *d);
 private int	addSym(char *name, sccs *sc, int flags, admin *l, int *ep);
-private void	updatePending(sccs *s, delta *d);
+private void	updatePending(sccs *s);
 private int	fix_lf(char *gfile);
 private int	sameFileType(sccs *s, delta *d);
 private int	deflate_gfile(sccs *s, char *tmpfile);
@@ -3490,7 +3490,11 @@ sccs_init(char *name, u32 flags, project *proj)
 	localName2bkName(name, name);
 	if (sccs_filetype(name) == 's') {
 		s = calloc(1, sizeof(*s));
-		s->sfile = strdup(sPath(name, 0));
+		if (flags & INIT_ONEROOT) {
+			s->sfile = strdup(name);
+		} else {
+			s->sfile = strdup(sPath(name, 0));
+		}
 		s->gfile = sccs2name(name);
 	} else {
 		fprintf(stderr, "Not an SCCS file: %s\n", name);
@@ -3844,6 +3848,7 @@ ret:
  *
  * This returns the following:
  *	'c'	this is an SCCS pathname (whatever/SCCS/c.whatever)
+ *	'd'	this is an SCCS pathname (whatever/SCCS/d.whatever)
  *	'm'	this is an SCCS pathname (whatever/SCCS/m.whatever)
  *	'p'	this is an SCCS pathname (whatever/SCCS/p.whatever)
  *	'r'	this is an SCCS pathname (whatever/SCCS/r.whatever)
@@ -3866,6 +3871,7 @@ sccs_filetype(char *name)
 	unless (s[1] && (s[2] == '.')) return (0);
 	switch (s[1]) {
 	    case 'c':	/* comments files */
+	    case 'd':	/* delta pending */
 	    case 'm':	/* merge files */
 	    case 'p':	/* lock files */
 	    case 'r':	/* resolve files */
@@ -7859,41 +7865,11 @@ get_sroot(char *sfile, char *sroot)
 	free(g);
 }
 
-/*
- * TODO: split the x.pending file by LOD
- */
 private void
-updatePending(sccs *s, delta *d)
+updatePending(sccs *s)
 {
-#ifdef LATER
-	int fd;
-	char sRoot[1024], buf[2048];
-
-	// XXX
-	// Do not enable this until
-	// we fix "sfiles -C" or cset to consume the entries in x.pending
-	// This feature is need for performance only
-	assert(s); assert(d);
 	if (s->state & S_CSET) return;
-	get_sroot(s->sfile, sRoot);
-	unless (sRoot[0]) return;
-	concat_path(buf, sRoot, "SCCS");
-
-	/* should never happen, "bk setup" should have created it */
-	assert(exists(buf));
-
-	concat_path(buf, buf, "x.pending");
-	fd = open(buf, O_CREAT|O_APPEND|O_WRONLY, GROUP_MODE);
-	unless (fd > 0) return;
-	sccs_sdelta(s, sccs_ino(s), buf);
-	strcat(buf, " ");
-	sccs_sdelta(s, d, &buf[strlen(buf)]);
-	strcat(buf, "\n");
-	if (write(fd, buf, strlen(buf)) == -1) {
-		perror("Can't write to pending file");
-	}
-	close(fd);
-#endif
+	close(open(sccsXfile(s, 'd'),  O_CREAT|O_APPEND|O_WRONLY, GROUP_MODE));
 }
 
 /*
@@ -8194,7 +8170,7 @@ abort:		fclose(sfile);
 	unless (flags & DELTA_SAVEGFILE) unlinkGfile(s);	/* Careful */
 	Chmod(s->sfile, 0444);
 	fclose(sfile);
-	if (s->state & S_BITKEEPER) updatePending(s, n);
+	if (s->state & S_BITKEEPER) updatePending(s);
 	sccs_unlock(s, 'z');
 	return (0);
 }
@@ -9381,6 +9357,7 @@ out:
 #define	ALLOC_D()	\
 	unless (d) { \
 		unless (d = sccs_newDelta(sc, p, 1)) OUT; \
+		if (sc->state & S_BITKEEPER) updatePending(sc); \
 	}
 
 	unless (HAS_SFILE(sc)) {
@@ -11005,7 +10982,7 @@ out:
 	}
 	Chmod(s->sfile, 0444);
 	unlink(s->pfile);
-	if (s->state & S_BITKEEPER) updatePending(s, n);
+	if (s->state & S_BITKEEPER) updatePending(s);
 	goto out;
 #undef	OUT
 }

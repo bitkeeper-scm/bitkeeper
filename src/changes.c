@@ -1,24 +1,32 @@
 #include "system.h"
 #include "sccs.h"
 
-private int	doit(int verbose, char *rev, int dash);
+private int	doit(int verbose, char *rev, int indent, int dash);
 
 private void
 usage()
 {
+	fprintf(stderr,
+"usage: changes [-v<d>] [-r<rev>]\n\
+    -r<rev>	list changes for ChangeSet revision <rev>\n\
+    -v		long listing, showing per file comments\n\
+    -v<d>	as above, but indent per file <d> spaces\n");
     	exit(1);
 }
 
 int
 changes_main(int ac, char **av)
 {
-	int	c;
-	int	verbose = 0;
+	int	c, indent = 0, verbose = 0;
 	char	*rev = 0;
 
-	while ((c = getopt(ac, av, "r|v")) != -1) {
+	while ((c = getopt(ac, av, "r|v|")) != -1) {
 		switch (c) {
-		    case 'v': verbose = 1; break;
+		    case 'i': indent = atoi(optarg); break;
+		    case 'v':
+			verbose = 1;
+			indent = optarg ? atoi(optarg) : 2;
+			break;
 		    case 'r': rev = optarg; break;
 		    default:
 			usage();
@@ -28,13 +36,13 @@ changes_main(int ac, char **av)
 		fprintf(stderr, "Can't find package root\n");
 		exit(1);
 	}
-	exit(doit(verbose, rev, av[optind] && streq("-", av[optind])));
+	exit(doit(verbose, rev, indent, av[optind] && streq("-", av[optind])));
 }
 
 #define	DSPEC	":DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\n$each(:C:){  (:C:)}\n$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}"
 
 private int
-doit(int verbose, char *rev, int dash)
+doit(int verbose, char *rev, int indent, int dash)
 {
 	FILE	*f;
 	char	cmd[MAXKEY];
@@ -93,8 +101,9 @@ doit(int verbose, char *rev, int dash)
 			 * XXX - this part gets mucho faster when we have
 			 * the logging cache.
 			 */
-			sprintf(cmd, "bk cset -r%s | sort | bk sccslog - > %s",
-			    buf, tmpfile);
+			sprintf(cmd,
+			    "bk cset -r%s | sort | bk sccslog -i%d - > %s",
+			    buf, indent, tmpfile);
 			system(cmd);
 			if (cat(tmpfile)) break;
 		}
