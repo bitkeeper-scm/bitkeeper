@@ -467,7 +467,10 @@ error:			if (perfile) sccs_free(perfile);
 			s->sfile);
 		}
 		if (IS_EDITED(s)) {
-			if (sccs_clean(s, SILENT|CLEAN_SHUTUP)) {
+			int cleanflags = SILENT|CLEAN_SHUTUP;
+
+			if (isLogPatch) cleanflags |= CLEAN_SKIPPATH;
+			if (sccs_clean(s, cleanflags)) {
 				shout();
 				fprintf(stderr,
 				    "takepatch: %s is edited and modified; "

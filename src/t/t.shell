@@ -73,6 +73,8 @@ cd ..
 tar cf TAR copy
 cd copy
 echo OK
+
+test "X`uname -s`" = XDarwin || {
 echo $N Make sure shell escapes to an interactive shell work ........$NL
 # XXX WIN32 note: the following construct does not work on WIN32
 # If we redirect stdin, we will lost it after we spawn the cygwin shell
@@ -87,6 +89,7 @@ grep -q ESCAPE_FROM_NEW_YORK OUT || {
 	exit 1
 }
 echo OK
+}
 
 echo $N Make sure shell escapes to run a command work ...............$NL
 cd ..

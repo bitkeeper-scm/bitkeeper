@@ -67,6 +67,7 @@
 
 #define	CLEAN_UNEDIT	0x10000000	/* clean -u: discard changes */
 #define CLEAN_SHUTUP	0x20000000	/* clean -Q: quiet mode */
+#define	CLEAN_SKIPPATH	0x40000000	/* ignore path change; for log tree */
 
 #define	DELTA_AUTO	0x10000000	/* delta -a: auto check-in mode */
 #define	DELTA_SAVEGFILE	0x20000000	/* delta -n: save edited gfile */
@@ -924,7 +925,7 @@ int	fileCopy(char *from, char *to);
 off_t	size(char *s);
 int	sameFiles(char *file1, char *file2);
 int	gone(char *key, MDBM *db);
-int	sccs_mv(char *name, char *dest, int isDir, int isDelete);
+int	sccs_mv(char *, char *, int, int, int);
 delta	*sccs_gca(sccs *, delta *l, delta *r, char **i, char **x, int best);
 char	*_relativeName(char *gName, int isDir, int withsccs,
 	    int mustHaveRmarker, int wantRealName, project *proj, char *root);
@@ -1083,6 +1084,7 @@ void	dumpTimestampDB(project *p, MDBM* db);
 void	updateTimestampDB(char *gfile, char *sfile, MDBM *timestamps, int diff);
 struct tm
         *utc2tm(time_t t);
+void	fix_stime(sccs *s);
 
 extern char *bk_vers;
 extern char *bk_utc;

@@ -261,6 +261,10 @@ transfer() {
 			then	eval $editor ${TMP}import$$
 			else	eval $EDITOR ${TMP}import$$
 			fi
+			if [ $? -ne 0 ]; then
+			    echo ERROR: aborting...
+			    exit 1
+			fi
 			NFILES=`wc -l < ${TMP}import$$ | sed 's/ //g'`
 		esac
 	fi
@@ -335,11 +339,13 @@ import_patch() {
 		msg Checking in new or modified files in `pwd` ...
 		# Do the deletes automatically
 		if [ -s ${TMP}deletes$$ -a ! -s ${TMP}creates$$ ]
-		then	bk rm - < ${TMP}deletes$$
+		then	msg Removing `wc -l < ${TMP}deletes$$` files
+			bk rm - < ${TMP}deletes$$
 		fi
 		# Do the creates automatically
 		if [ ! -s ${TMP}deletes$$ -a -s ${TMP}creates$$ ]
-		then	bk new $Q -G -y"Import patch $PNAME" - < ${TMP}creates$$
+		then	msg Creating `wc -l < ${TMP}creates$$` files
+			bk new $Q -G -y"Import patch $PNAME" - < ${TMP}creates$$
 		fi
 	else	# Just delete and create
 		msg Checking in new or modified files in `pwd` ...

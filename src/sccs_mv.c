@@ -51,7 +51,7 @@ sccs_hasCsetDerivedKey(sccs *s)
 /*
  * Give a pathname to a file or a dir, remove the SCCS dir, the parent,
  * etc, up to the root of the repository.
- * XXX TODO: for split root, check the G tree too..
+ * TODO: do not remove under BitKeeper/deleted
  */
 void
 sccs_rmEmptyDirs(char *path)
@@ -75,7 +75,7 @@ sccs_rmEmptyDirs(char *path)
 }
 
 int
-sccs_mv(char *name, char *dest, int isDir, int isDelete)
+sccs_mv(char *name, char *dest, int isDir, int isDelete, int isUnDelete)
 {
 	char 	*p, *q, *t, *destfile, *oldpath, *newpath;
 	char	*gfile, *sfile;
@@ -86,9 +86,10 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 	int	error = 0, was_edited = 0;
 	int	flags = SILENT|DELTA_FORCE;
 	MMAP	*nulldiff;
+	time_t	gtime;
 
 //fprintf(stderr, "sccs_mv(%s, %s, %d, %d)\n", name, dest, isDir, isDelete);
-	unless (s = sccs_init(name, INIT_NOCKSUM, 0)) return (1);
+	unless (s = sccs_init(name, INIT_NOCKSUM|INIT_FIXSTIME, 0)) return (1);
 	unless (HAS_SFILE(s)) {
 		fprintf(stderr, "sccsmv: not an SCCS file: %s\n", name);
 		sccs_free(s);
@@ -163,6 +164,7 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 		free(q);
 	}
 	if (error) goto out;
+	gtime = s->gtime; /* save this, we need it later */
 	sccs_free(s);
 	/* For split root config; We recompute sfile here */
 	/* we don't want the sPath() adjustment		  */
@@ -204,7 +206,10 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 			goto out;
 		}
 	}
-	sccs_rmEmptyDirs(osfile);
+	s->gtime = gtime;
+	fix_stime(s);
+	
+	unless (isUnDelete) sccs_rmEmptyDirs(osfile);
 
 out:	if (s) sccs_free(s);
 	free(newpath);

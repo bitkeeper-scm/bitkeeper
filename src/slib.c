@@ -75,7 +75,6 @@ private int	checkGone(sccs *s, int bit, char *who);
 private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
 private void	singleUser(sccs *s, MDBM *m);
 private	int	parseConfig(char *buf);
-private void	fix_stime(sccs *s);
 
 int
 emptyDir(char *dir)
@@ -1109,7 +1108,7 @@ date2time(char *asctime, char *z, int roundup)
 /*
  * Force sfile's mod time to be one second before gfile's mod time
  */
-private void
+void
 fix_stime(sccs *s)
 {
 	struct	utimbuf	ut;
@@ -3105,6 +3104,7 @@ tagwalk(sccs *s, delta *d)
 {
 	unless (d) return ((delta*)1);	/* this is an error case */
 
+	/* note that the stripdel path has used D_RED */
 	if (d->flags & D_BLUE) return(0);
 	d->flags |= D_BLUE;
 
@@ -8324,11 +8324,11 @@ sccs_clean(sccs *s, u32 flags)
 			free_pfile(&pf);
 			return (1);
 		}
-		if (!streq(t, d->pathname)) {
+		if (!(flags & CLEAN_SKIPPATH) && (!streq(t, d->pathname))) {
 			unless (flags & PRINT) {
 				verbose((stderr,
-				   "%s has different pathnames, needs delta.\n",
-				    s->gfile));
+				   "%s has different pathnames: %s, needs delta.\n",
+				    s->gfile, t));
 			} else {
 				printf(
 				    "===== %s (pathnames) %s vs edited =====\n",
@@ -8820,6 +8820,13 @@ out:		sccs_unlock(s, 'z');
 		popened = openInput(s, flags, &gfile);
 		unless (gfile) {
 			perror(s->gfile);
+			goto out;
+		}
+	} else if (S_ISLNK(s->mode)) {
+		if ((s->encoding != E_ASCII) && (s->encoding != E_GZIP)) {
+			fprintf(stderr, 
+			    "%s: symlinks should not use BINARY mode!\n",
+			    s->gfile);
 			goto out;
 		}
 	}
@@ -10221,14 +10228,17 @@ insert_1_0(sccs *s)
 	d = sccs_dInit(d, 'D', s, 0);
 }
 
-void
+private int
 remove_1_0(sccs *s)
 {
-	delta	*d;
+	if (streq(s->tree->rev, "1.0") && !(s->state & S_FAKE_1_0)) {
+		delta	*d;
 
-	assert(streq(s->tree->rev, "1.0"));
-	s->tree->flags |= D_GONE;
-	for (d = s->table; d; d = d->next) adjust_serials(d, -1);
+		s->tree->flags |= D_GONE;
+		for (d = s->table; d; d = d->next) adjust_serials(d, -1);
+		return (1);
+	}
+	return (0);
 }
 
 int
@@ -10479,7 +10489,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	if (flags & ADMIN_ADD1_0) {
 		insert_1_0(sc);
 	} else if (flags & ADMIN_RM1_0) {
-		remove_1_0(sc);
+		unless (remove_1_0(sc)) flags &= ~ADMIN_RM1_0;
 	}
 
 	if ((flags & NEWCKSUM) == 0) {
@@ -10506,30 +10516,32 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	debug((stderr, "seek to %d\n", sc->data));
 	if (old_enc & E_GZIP) zgets_init(sc->where, sc->size - sc->data);
 	if (new_enc & E_GZIP) zputs_init();
-	if (new_enc != old_enc) {
+	/* if old_enc == new_enc, this is slower but handles both cases */
+	sc->encoding = old_enc;
+	while (buf = nextdata(sc)) {
+		sc->encoding = new_enc;
+		if (flags & ADMIN_ADD1_0) {
+			fputbumpserial(sc, buf, 1, sfile);
+		} else if (flags & ADMIN_RM1_0) {
+			if (strneq(buf, "\001I 1\n", 5)) {
+				sc->encoding = old_enc;
+				buf = nextdata(sc);
+				assert(strneq(buf, "\001E 1\n", 5));
+				assert(!nextdata(sc));
+				break;
+			}
+			fputbumpserial(sc, buf, -1, sfile);
+		} else {
+			fputdata(sc, buf, sfile);
+		}
 		sc->encoding = old_enc;
-		while (buf = nextdata(sc)) {
-			sc->encoding = new_enc;
-			if (flags & ADMIN_ADD1_0) {
-				fputbumpserial(sc, buf, 1, sfile);
-			} else if (flags & ADMIN_RM1_0) {
-				fputbumpserial(sc, buf, -1, sfile);
-			} else {
-				fputdata(sc, buf, sfile);
-			}
-			sc->encoding = old_enc;
-		}
-	} else {
-		while (buf = nextdata(sc)) {
-			if (flags & ADMIN_ADD1_0) {
-				fputbumpserial(sc, buf, 1, sfile);
-			} else if (flags & ADMIN_RM1_0) {
-				fputbumpserial(sc, buf, -1, sfile);
-			} else {
-				fputdata(sc, buf, sfile);
-			}
-		}
 	}
+	if (flags & ADMIN_ADD1_0) {
+		sc->encoding = new_enc;
+		fputdata(sc, "\001I 1\n", sfile);
+		fputdata(sc, "\001E 1\n", sfile);
+	}
+
 	/* not really needed, we already wrote it */
 	sc->encoding = new_enc;
 	if (fflushdata(sc, sfile)) {
@@ -10984,11 +10996,11 @@ newcmd:
 			while (howmany--) {
 				/* XXX: not break but error */
 				unless (b = mnext(diffs)) break;
-				/* Need a test case for the following line */
-				fix_cntl_a(s, &b[2], out);
 				if (what != 'i' && b[0] == '\\') {
+					fix_cntl_a(s, &b[1], out);
 					s->dsum += fputdata(s, &b[1], out);
 				} else {
+					fix_cntl_a(s, b, out);
 					s->dsum += fputdata(s, b, out);
 				}
 				debug2((stderr, "INS %.*s", linelen(b), b));

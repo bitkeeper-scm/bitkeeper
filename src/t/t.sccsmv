@@ -33,6 +33,7 @@ do
 	bk ci $Q -yrev1.$i -l A/file1 B/file2 A/file3 A/file4 B/file4 D/file5
 done
 bk sfiles -l A B | bk clean -
+sleep 1
 bk co $Q -l A/file1
 bk mv A/file1 B/file1
 # The file should have been moved, but not checked in.
@@ -43,6 +44,8 @@ if [ ! -f A/SCCS/s.file3 ]; then echo failed; exit 1; fi
 # XXX - I think this is right but am not sure.
 DPATH=`bk prs -hr1.5 -d:DPN: B/file1`
 if [ ${DPATH}X != "B/file1"X ]; then echo failed; exit 1; fi
+find B -newer B/file1 | grep -q B/SCCS/s.file
+if [ $? -eq 0 ]; then echo failed; exit 1; fi
 # Now check it in so later tests aren't confused.
 bk ci $Q -yrename B/file1
 bk -r check -a || { echo check exits $?; exit 1; }
@@ -159,10 +162,15 @@ bk sccsrm -d file5 || { echo failed.; exit 1; }
 if [ -d SCCS ]; then echo fail to remove empty SCCS; exit 1; fi
 echo OK
 cd ..
+echo $N Test bk unrm ................................................$NL
+bk unrm A/file3 > /dev/null
+if [ ! -f A/SCCS/s.file3 ]; then echo failed; exit; fi
+bk rm A/file3
+echo OK
 echo $N Test sccsmv to directory that does not exist ................$NL
 date > C/file6
 bk new $Q C/file6
-bk mv C CCCC
+bk mvdir C CCCC
 if [ ! -f CCCC/SCCS/s.file6 ]
 then	echo failed to move file; exit 1
 fi
@@ -267,4 +275,22 @@ else
 	    exit 1
     fi
     echo OK
+fi
+echo $N Test mv of directory ........................................$NL
+cd $HERE
+no_logging src
+mkdir foo
+cd foo
+echo bar > bar
+bk new $Q bar || exit 1
+mkdir sub1
+cd sub1
+echo sub > sub
+bk new $Q sub || exit 1
+cd ../..
+bk mvdir foo foo2 || exit 1
+if [ -f foo/sub1/SCCS/s.sub ]; then
+	echo 'failed (bug 2001-06-15-002)'
+else
+	echo OK
 fi

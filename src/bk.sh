@@ -469,6 +469,97 @@ _sdiffs() {		# /* doc 2.0 as diffs -s */
 	bk diffs -s "$@"
 }
 
+
+# Undelete a file
+_unrm () {
+	FORCE=no
+	if [ "$1" = "-f" ]; then FORCE=yes; shift; fi
+
+	if [ "$1" = "" ]; then echo "Usage: bk unrm file"; exit 1; fi
+	if [ "$2" != "" ]
+	then	echo "You can only unrm one file at a time"
+		return 1
+	fi
+
+	# Make sure we are inside a BK repository
+	bk root > /dev/null || return 1
+
+	# Assume the path name specified is relative to the current directory
+	rdir=`bk pwd -r`
+	if [ "$rdir" != "." ]; then rpath=$rdir/'.*'"$1"; else rpath=$1; fi
+
+	__cd2root
+	LIST=/tmp/LIST$$
+	DELDIR=BitKeeper/deleted
+	cd $DELDIR || { echo "Cannot cd to $DELDIR"; return 1; }
+	trap 'rm -f $LIST' 0
+
+	# Find all the possible files, sort with most recent delete first.
+	bk -r. prs -Dhnr+ -d':TIME_T:|:GFILE' | \
+		sort -r -n | cut -d'|' -f2 | \
+		prs -Dhnpr+ -d':GFILE:|:DPN:' - | \
+		grep '^.*|.*'"$rpath"'.*' >$LIST
+
+	NUM=`wc -l $LIST | sed -e's/ *//' | cut -d' ' -f1`
+	if [ "$NUM" -eq 0 ]
+	then
+		echo "---------------"
+		echo "no file found"
+		echo "---------------"
+		return 2
+	fi
+	if [ "$NUM" -gt 1 ]
+	then
+		echo "------------------------------------------------"
+		echo "$NUM possible files found"
+		echo "------------------------------------------------"
+		echo ""
+	fi
+
+	while read n
+	do
+		GFILE=`echo $n | cut -d'|' -f1 -`
+		RPATH=`echo $n | cut -d'|' -f2 -`
+
+		# If there is only one match, and it is a exact match,
+		# don't ask for confirmation.
+		if [ $NUM -eq 1 -a "$rpath" = "$RPATH" ]; then FORCE=yes; fi;
+
+		if [ "$FORCE" = "yes" ]
+		then
+			ans=y
+		else
+			echo "------------------------------------------------"
+			echo "File:		$DELDIR/$GFILE"
+			bk prs -hnr+ \
+			  -d'Deleted on:\t:D: :T::TZ: by :USER:@:HOST:' $GFILE
+			echo "---"
+			echo "Top delta before it is deleted:"
+			bk prs -hpr+ $GFILE
+
+			echo -n \
+			    "Undelete this file back to \"$RPATH\"? (y|n|q)> "
+			read ans < /dev/tty
+		fi
+
+		case "X$ans" in
+		    Xy|XY)
+			echo "Moving \"$DELDIR/$GFILE\" -> \"$RPATH\""
+			bk -R mv -u "$DELDIR/$GFILE" "$RPATH"
+			;;
+		    Xq|XQ)
+			break
+			;;
+		    *)
+			echo "File skipped."
+			echo ""
+			echo ""
+		esac
+	done < $LIST 
+	rm -f $LIST
+}
+
+
 _mvdir() {		# /* doc 2.0 */
 
 	case `bk version` in

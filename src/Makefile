@@ -43,7 +43,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o approve.o \
 	dir_gif.o dirname.o export.o fdiff.o file_gif.o \
 	find.o findkey.o fix.o g2sccs.o gca.o get.o gethelp.o \
 	gethost.o getopt.o gettemp.o getuser.o glob.o \
-	gnupatch.o graft.o grep.o has.o help.o host.o hostme.o http.o \
+	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \
 	isascii.o key2rev.o keysort.o kvfile.o level.o \
 	lib_tcp.o libcommit.o libdiff.o librange.o \
 	libsfiles.o libusers.o license.o lines.o \
@@ -74,7 +74,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o approve.o \
 	resolve_renames.o resolve_tags.o rmdel.o \
 	root.o rset.o scompress.o sane.o sccs.o sccs_mv.o sccs2bk.o sccscat.o \
 	sccslog.o sccsmv.o sccsrm.o send.o sendbug.o \
-	setup.o sfiles.o sfind.o sfio.o shrink.o sinfo.o \
+	set.o setup.o sfiles.o sfind.o sfio.o shrink.o sinfo.o \
 	slib.o smerge.o status.o stripdel.o synckeys.o sys.o \
 	tagmerge.o takepatch.o testdates.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \
@@ -280,9 +280,10 @@ t/doit: t/doit.sh substvars
 FORCE:
 
 gnu: $(BK) FORCE
+	@bk get -sS gnu/Makefile
 	@if uname -s | grep _NT; \
 	then cd gnu && $(MAKE) BINDIR=$(BINDIR) DIFF_BINS= DIRS=patch ;\
-	else cd gnu && bk get -s Makefile && $(MAKE) BINDIR=$(BINDIR) ;\
+	else cd gnu && $(MAKE) BINDIR=$(BINDIR) ;\
 	fi
 
 win32: FORCE

@@ -329,13 +329,12 @@ do	test -f subdir/$i || {
 done
 echo OK
 
-if [ "$PLATFORM" = "UNIX" ]
-then #-------------------------------------------------------------
 echo $N Test sccs get with foo.c -Gbar.c ............................$NL
-cp `bk bin`/bk sccs
+mkdir bin
+cp `bk bin`/bk bin/sccs
 rm -rf subdir T
-./sccs clean
-./sccs get $Q foo.c -Gbar.c || {
+./bin/sccs clean
+./bin/sccs get $Q foo.c -Gbar.c || {
 	echo failed to exit cleanly
 	exit 1
 }
@@ -352,7 +351,7 @@ echo OK
 echo $N Test sccs get with -Gsubdir foo.c ...........................$NL
 mkdir subdir
 rm bar.c
-./sccs get $Q -Gsubdir foo.c || {
+./bin/sccs get $Q -Gsubdir foo.c || {
 	echo failed to exit cleanly
 	exit 1
 }
@@ -371,15 +370,14 @@ test `cat subdir/foo.c` = foo.c || {
 }
 echo OK
 echo $N Test sccs get with -Gsubdir .................................$NL
-./sccs get $Q -Gsubdir || {
+./bin/sccs get $Q -Gsubdir || {
 	echo failed to exit cleanly
 	exit 1
 }
-for i in `./sccs sfiles -g SCCS/s.* | grep -v ChangeSet`
+for i in `./bin/sccs sfiles -g SCCS/s.* | grep -v ChangeSet`
 do	test -f subdir/$i || {
 		echo failed get $i
 		exit 1
 	}
 done
 echo OK
-fi #---------------------------------------------------------------

@@ -3,6 +3,7 @@
 #include "sccs.h"
 
 private project *proj;
+private	int	expandkeywords;
 
 private void
 mkgfile(sccs *s, char *rev, char *path, char *tmpdir, char *tag,
@@ -26,6 +27,7 @@ mkgfile(sccs *s, char *rev, char *path, char *tmpdir, char *tag,
 	check_gfile(s, 0);
 	mkdirf(tmp_path);
 	if (fix_mod_time) flags |= GET_DTIME;
+	if (expandkeywords) flags |= GET_EXPAND;
 	if (sccs_get(s, rev, 0, 0, 0, flags, "-")) {
 		fprintf(stderr, "Cannot get %s, rev %s\n",
 							s->sfile, rev);
@@ -185,8 +187,10 @@ gnupatch_main(int ac, char **av)
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "hTd|")) != -1) { 
+	while ((c = getopt(ac, av, "ehTd|")) != -1) { 
 		switch (c) {
+		    case 'e':
+			expandkeywords = 1; break;		/* doc 2.1 */
 		    case 'h':					/* doc 2.0 */
 			header = 0; break; /* disable header */
 		    case 'T':	fix_mod_time = 1; break;	/* doc 2.0 */
@@ -223,16 +227,23 @@ gnupatch_main(int ac, char **av)
 		chop(buf);
 		path0 = buf;
 		path1 = strchr(buf, BK_FS);
+		unless (path1) {
+		err:
+			fprintf(stderr, 
+"gnupatch ERROR: bad input format expected: <cur>%c<start>%c<rev>%c<end>%c<rev>\n",
+			    BK_FS, BK_FS, BK_FS, BK_FS);
+			exit(1);
+		}
 		assert(path1);
 		*path1++ = 0;
 		rev1 = strchr(path1, BK_FS);
-		assert(rev1);
+		unless (rev1) goto err;
 		*rev1++ = 0;
 		path2 = strchr(rev1, BK_FS);
-		assert(path2);
+		unless (path2) goto err;
 		*path2++ = 0;
 		rev2 = strchr(path2, BK_FS);
-		assert(rev2);
+		unless (rev2) goto err;
 		*rev2++ = 0;
 		if (header) print_entry(path1, rev1, path2, rev2);
 		if (streq(path0, "ChangeSet")) {

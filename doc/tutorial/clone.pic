@@ -1,0 +1,44 @@
+.ft H
+.ps 11
+.vs 12
+.PS
+define two {
+	w = .15
+	h = .2
+	box thick .5 wid w ht h 
+	box fill 0 thick .5 wid w ht h with .c at last box.c + .05,-.05
+}
+define files {
+	[
+	[two]
+	[two] with .w at last [].e + .2,0
+	]
+	[
+	[two]
+	[two] with .w at last [].e + .2,0
+	[two] with .w at last [].e + .2,0
+	] with .n at last [].s - 0,.08
+}
+	scale = 1.3
+	drop = .06
+	f = .5
+	w = 1.3
+	h = .7
+R:	ellipse thick 0 fill f wid 1.5 ht .75
+S:	ellipse thick 1 wid 1.5 ht .75 fill .1 "Project" "Repository" \
+	    with .n at last ellipse.n + (-drop, drop)
+
+W: [
+	ellipse thick 0 fill f wid w ht h
+	A: ellipse thick 1 wid w ht h fill .1 "Jill's" "Repository" \
+	    with .n at last ellipse.n + (-drop, drop)
+] with .n at R.s - -.03,.6
+arrowwid = .13
+arrowht = .15
+linethick = 1
+arc dashed rad .3 -> from R.sw to W.A.nw
+[files] with .e at last arc.w - .2,0
+.PE
+.ps \n[PS]
+.vs \n[VS]
+.ft R

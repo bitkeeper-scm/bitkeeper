@@ -268,30 +268,42 @@ echo $N Make sure ci -i works with checkout:get preference ..........$NL
 cp config.sav BitKeeper/etc/config
 echo "checkout:get" >> BitKeeper/etc/config
 echo mid > mid.c
-bk ci $Q -i -ymid mid.c
+echo low > low.c
+bk sfiles -x mid.c low.c | bk ci $Q -i -
 if [ ! -f mid.c ]; then echo failed; exit 1; fi
 if [ -f SCCS/p.mid.c ]; then echo failed; exit 1; fi
 if writable mid.c; then echo failed; exit 1; fi
+if [ ! -f low.c ]; then echo failed; exit 1; fi
+if [ -f SCCS/p.low.c ]; then echo failed; exit 1; fi
+if writable low.c; then echo failed; exit 1; fi
 echo OK
 echo $N Make sure ci works with checkout:get preference .............$NL
-bk edit $Q mid.c
+bk edit $Q low.c mid.c
 echo mid2 > mid.c
-bk ci $Q -ymid2 mid.c
+echo low2 > low.c
+bk sfiles -c mid.c low.c | bk ci $Q -ynew -
 if [ ! -f mid.c ]; then echo failed; exit 1; fi
 if [ -f SCCS/p.mid.c ]; then echo failed; exit 1; fi
 if writable mid.c; then echo failed; exit 1; fi
+if [ ! -f low.c ]; then echo failed; exit 1; fi
+if [ -f SCCS/p.low.c ]; then echo failed; exit 1; fi
+if writable low.c; then echo failed; exit 1; fi
 echo OK
 echo $N Make sure checkout:GET preserve modtime if no keyword .......$NL
 cp config.sav BitKeeper/etc/config
 echo "checkout:GET" >> BitKeeper/etc/config
-bk admin -FSCCS mid.c
-bk edit $Q mid.c
+bk admin -FSCCS mid.c 
+bk edit $Q mid.c low.c
 sleep 1
 echo mid3 > mid.c
-bk ci $Q -ymid2 mid.c
+echo low3 > low.c
+bk sfiles -c mid.c low.c | bk ci $Q -G -ynew3 -
 if [ ! -f mid.c ]; then echo failed; exit 1; fi
 if [ -f SCCS/p.mid.c ]; then echo failed; exit 1; fi
 if writable mid.c; then echo failed; exit 1; fi
+if [ ! -f low.c ]; then echo failed; exit 1; fi
+if [ -f SCCS/p.low.c ]; then echo failed; exit 1; fi
+if writable low.c; then echo failed; exit 1; fi
 find . -newer mid.c | grep -q ./SCCS/s.mid.c
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 echo OK
