@@ -49,6 +49,7 @@ private int	copyAndGet(char *from, char *to, project *proj);
 private int	writeCheck(sccs *s, MDBM *db);
 private MDBM	*localDB;	/* real name cache for local tree */
 private MDBM	*resyncDB;	/* real name cache for resyn tree */
+private	int	got_csetlock;	/* have a csetlock */
 
 
 int
@@ -2230,6 +2231,16 @@ pass4_apply(opts *opts)
 	}
 
 	/*
+	 * Lock the ChangeSet file against the log/config process.
+	 * This is the one in the real repo.
+	 */
+	if (cset_lock()) {
+		fprintf(stderr, "Unable to lock ChangeSet, aborting\n");
+		resolve_cleanup(opts, 0);
+	}
+	got_csetlock = 1;
+
+	/*
 	 * Pass 4b.
 	 * Save the list of files and then remove them.
 	 */
@@ -2573,6 +2584,7 @@ resolve_cleanup(opts *opts, int what)
 	FILE	*f;
 
 	unless (exists(ROOT2RESYNC)) chdir(RESYNC2ROOT);
+	if (got_csetlock) cset_unlock();
 	unless (exists(ROOT2RESYNC)) {
 		fprintf(stderr, "cleanup: can't find RESYNC dir\n");
 		fprintf(stderr, "cleanup: nothing removed.\n");
