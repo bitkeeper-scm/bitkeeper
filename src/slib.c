@@ -2896,18 +2896,23 @@ addsym(sccs *s, delta *d, delta *metad, char *rev, char *val)
 	return (1);
 }
 
+fileTypeOk(mode_t m)
+{
+	if ((S_ISREG(m)) || (S_ISLNK(m))) return 1;
+	return 0;
+}
+
 sccs *
 check_gfile(sccs *s, int flags)
 {
 	struct	stat sbuf;
 
 	if (lstat(s->gfile, &sbuf) == 0) {
-		if ((!S_ISREG(sbuf.st_mode)) && 
-		    (!S_ISLNK(sbuf.st_mode)))  /* sym link  */
+		unless (fileTypeOk(sbuf.st_mode))
 		{
 			verbose((stderr,
 				"unsupported file type: %s\n", s->gfile));
-			free(s->gfile);
+err:			free(s->gfile);
 			free(s->sfile);
 			free(s);
 			return (0);
@@ -2926,10 +2931,7 @@ check_gfile(sccs *s, int flags)
 			} else {
 				verbose((stderr,
 				    "can'nt read sym link: %s\n", s->gfile));
-				free(s->gfile);
-				free(s->sfile);
-				free(s);
-				return 0;
+				goto err;
 			}
 		}
 	} else {
@@ -3080,8 +3082,8 @@ sccs_restart(sccs *s)
 	struct	stat sbuf;
 
 	assert(s);
-	if (stat(s->gfile, &sbuf) == 0) {
-		if (!S_ISREG(sbuf.st_mode)) {
+	if (lstat(s->gfile, &sbuf) == 0) {
+		unless (fileTypeOk(sbuf.st_mode)) {
 bad:			sccs_free(s);
 			return (0);
 		}
@@ -5260,7 +5262,10 @@ diff_gfile(sccs *s, pfile *pf, char *tmpfile)
 	    case 0:	/* diff return no diffs, now check file type changes */
 		d = findrev(s, pf->oldrev);
 		unless (d->flags & D_MODE) return 1;
-		if (fileType(s->mode) != fileType(d->mode)) return 0;
+		if (s->state & GFILE) {
+			assert(s->mode);
+			if (fileType(s->mode) != fileType(d->mode)) return 0;
+		}
 		if (S_ISLNK(s->mode)) return streq(s->glink, d->glink);	
 		return (1);
 	    case 1:	/* diffs */
@@ -5332,7 +5337,7 @@ sccs_clean(sccs *s, int flags)
 	}
 	unless (s->tree) return (-1);
 	unless (HAS_PFILE(s)) {
-		if (!IS_WRITABLE(s)) {
+		if (!IS_WRITABLE(s) || S_ISLNK(s->mode)) {
 			verbose((stderr, "Clean %s\n", s->gfile));
 			unlinkGfile(s);
 			return (0);
@@ -5554,11 +5559,12 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 #endif
 #define SYM_LINK_AUTO_MODE
 #ifdef	SYM_LINK_AUTO_MODE
-		if (S_ISLNK(s->mode)) {
+		unless (d->flags & D_MODE) {
 			/*
 			 * auto update the mode if new delte is a sym-link
 			 */
-			if (s->state & GFILE) {
+			if ((s->state & GFILE) && S_ISLNK(s->mode)) {
+				assert(d->mode == 0);
 				d->mode = s->mode;
 				d->glink = s->glink;
 				s->glink = 0;
@@ -7785,9 +7791,12 @@ out:
 	/*
 	 * if file type changed, force a mode update
 	 */
-	if (fileType(d->mode) != fileType(s->mode)) {
-		n->mode = s->mode;
-		n->flags |= D_MODE;
+	if (s->state & GFILE) {
+		if (fileType(d->mode) != fileType(s->mode)) {
+			assert(s->mode);
+			n->mode = s->mode;
+			n->flags |= D_MODE;
+		}
 	}
 
 	if (!n->rev) {
