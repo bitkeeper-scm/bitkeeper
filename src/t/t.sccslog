@@ -203,7 +203,7 @@ ChangeSet
 
 EOF
 bk sccslog -f | grep -v butthead@free.bk | bk undos > CMP2
-diff -i CMP1 CMP2 > /dev/null
+bk diff -i CMP1 CMP2 > /dev/null
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 
 bk undos > CMP1 <<EOF
@@ -241,7 +241,7 @@ a/b/c/Data
 
 EOF
 bk sccslog -f a/b/c/Data | grep -v butthead@free.bk | bk undos > CMP2
-diff -i CMP1 CMP2 > /dev/null
+bk diff -i CMP1 CMP2 > /dev/null
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
 

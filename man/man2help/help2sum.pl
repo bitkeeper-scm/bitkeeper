@@ -26,9 +26,10 @@ sub main
 				$line .= "$_ ";
 				$_ = <>;
 			}
-			$line =~ s/Bit- Keeper/BitKeeper/m;
-			$line =~ s/\s*$//m;
-			print A "$line\n";
+			$line .= "\n";
+			$line =~ s/Bit- Keeper/BitKeeper/g;
+			$line =~ s/\s+\n/\n/g;
+			print A $line;
 		}
 		if (/^CATEGORY\s*$/) {
 			$_ = <>;
