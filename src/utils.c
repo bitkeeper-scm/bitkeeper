@@ -561,10 +561,13 @@ drainNonStandardMsg(remote *r, char *buf, int bsize)
 int
 remote_lock_fail(char *buf, int verbose)
 {
-	if (streq(buf, LOCK_WR_BUSY) || streq(buf, LOCK_RD_BUSY) ||
-	    streq(buf, LOCK_PERM) || streq(buf, LOCK_UNKNOWN)) {
+	if (streq(buf, LOCK_WR_BUSY) || streq(buf, LOCK_RD_BUSY)) {
 		if (verbose) fprintf(stderr, "%s\n", buf);
-		return (1);
+		return (-2);
+	}
+	if (streq(buf, LOCK_PERM) || streq(buf, LOCK_UNKNOWN)) {
+		if (verbose) fprintf(stderr, "%s\n", buf);
+		return (-1);
 	}
 	return (0);
 }

@@ -65,7 +65,7 @@ usage:			system("bk help -s push");
 	if (opts.debug) r->trace = 1;
 	for (;;) {
 		rc = pull(av, opts, r, envVar);
-		if (rc != 2) break;
+		if (rc != -2) break;
 		if (try == 0) break;
 		if (bk_mode() == BK_BASIC) {
 			if (try > 0) {
@@ -81,7 +81,7 @@ usage:			system("bk help -s push");
 		}
 		sleep(min((i++ * 2), 10));
 	}
-	if (rc == 2) rc = 1; /* if retry failed, rest exit code to 1 */
+	if (rc == -2) rc = 1; /* if retry failed, rest exit code to 1 */
 	remote_free(r);
 	freeLines(envVar);
 	return (rc);
@@ -119,14 +119,14 @@ private int
 pull_part1(opts opts, remote *r, char probe_list[], char **envVar)
 {
 	char	buf[MAXPATH];
-	int	n, fd;
+	int	rc, n, fd;
 
 	if (send_part1_msg(opts, r, probe_list, envVar)) return (-1);
 
 	if (r->httpd) skip_http_hdr(r);
 	if (getline2(r, buf, sizeof (buf)) <= 0) return (-1);
-	if (remote_lock_fail(buf, !opts.quiet)) {
-		return (-1);
+	if ((rc = remote_lock_fail(buf, !opts.quiet))) {
+		return (rc); /* -2 means lock busy */
 	} else if (streq(buf, "@SERVER INFO@")) {
 		getServerInfoBlock(r);
 		getline2(r, buf, sizeof(buf));
@@ -330,7 +330,7 @@ pull(char **av, opts opts, remote *r, char **envVar)
 	char	key_list[MAXPATH];
 	char	buf[MAXPATH];
 	char	*root;
-	int	gzip;
+	int	gzip, rc;
 
 	unless (r) usage();
 	gzip = opts.gzip && r->port;
@@ -355,7 +355,8 @@ pull(char **av, opts opts, remote *r, char **envVar)
 	sccs_free(cset);  /* for win32 */
 	root = strdup(buf);
 
-	if (pull_part1(opts, r, key_list, envVar)) return (1); /* fail */
+	rc = pull_part1(opts, r, key_list, envVar);
+	if (rc) return (rc); /* fail */
 	if (pull_part2(av, opts, r, key_list, envVar)) return (1); /* fail */
 	return (0);
 }

@@ -421,6 +421,9 @@ repository_wrunlock(int force)
 	rmdir(path);
 
 out:	proj_free(p);
+#ifdef WIN32
+	usleep(0); /* for NT cache problem */
+#endif
 	return (error);
 }
 

@@ -197,6 +197,12 @@ if [ -d B ]; then echo failed; exit 1; fi
 bk -r check -a
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
+echo $N Test bk rm on non bitkeeper file ............................$NL
+echo hi > non_bk_file 
+bk rm non_nk_file 2> rm.out
+grep -q "not a BitKeeper flle, ignored" rm.out
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
 echo $N Test check -ag ..............................................$NL
 echo y | bk commit $Q -ycset
 rm -f CCCC/SCCS/s.file6

@@ -84,32 +84,32 @@ _keycache() {	# /* undoc? 2.0 */
 
 _jove() {
 	bk get -qe "$@" 2> /dev/null
-	exec jove $@
+	exec jove "$@"
 }
 
 _joe() {
 	bk get -qe "$@" 2> /dev/null
-	exec joe $@
+	exec joe "$@"
 }
 
 _jed() {
 	bk get -qe "$@" 2> /dev/null
-	exec jed $@
+	exec jed "$@"
 }
 
 _vim() {
 	bk get -qe "$@" 2> /dev/null
-	exec vim $@
+	exec vim "$@"
 }
 
 _gvim() {
 	bk get -qe "$@" 2> /dev/null
-	exec gvim $@
+	exec gvim "$@"
 }
 
 _vi() {
 	bk get -qe "$@" 2> /dev/null
-	exec vi $@
+	exec vi "$@"
 }
 
 _sdiffs() {		# /* doc 2.0 as diffs -s */
