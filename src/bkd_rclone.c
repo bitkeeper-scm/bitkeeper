@@ -46,11 +46,7 @@ err:			drain();
 		}
 	}
 
-	unless (av[optind]) {
-		out("ERROR-path missing\n");
-		goto err;
-	}
-
+	unless (av[optind])  return (strdup("."));
 	return (strdup(av[optind]));
 }
 
@@ -63,14 +59,22 @@ cmd_rclone_part1(int ac, char **av)
 
 	unless (path = rclone_common(ac, av, &opts)) return (1);
 	if (exists(path)) {
-		p = aprintf("ERROR-path \"%s\" already exists\n", path);
-err:		out(p);
-		free(p);
-		free(path);
-		drain();
-		return (1);
-	}
-	if (mkdirp(path)) {
+		if (isdir(path)) {
+			if  (!emptyDir(path)) {
+				p = aprintf("ERROR-path \"%s\" is not empty\n",
+					path);
+err:				out(p);
+				free(p);
+				free(path);
+				drain();
+				return (1);
+			}
+		} else {
+			p = aprintf("ERROR-path \"%s\" is not a directory\n",
+				path);
+				goto err;
+		}
+	} else if (mkdirp(path)) {
 		p = aprintf(
 			"ERROR-cannot make directory %s: %s\n",
 			path, strerror(errno));
