@@ -112,8 +112,8 @@ _superset() {
 	QUIET=
 	CHANGES=-v
 	EXIT=0
-	TMP=/tmp/bksup$$
-	TMP2=/tmp/bksup2$$
+	TMP1=${TMP}/bksup$$
+	TMP2=${TMP}/bksup2$$
 	while getopts q opt
 	do
 		case "$opt" in
@@ -130,31 +130,31 @@ _superset() {
 	bk changes -La $CHANGES "$@" > $TMP2
 	test -s $TMP2 && {
 		test $LIST = NO && {
-			rm -f $TMP $TMP2
+			rm -f $TMP1 $TMP2
 			exit 1
 		}
-		echo === Local changesets === >> $TMP
+		echo === Local changesets === >> $TMP1
 		grep -ve --------------------- $TMP2 |
-		sed 's/^/    /'  >> $TMP
+		sed 's/^/    /'  >> $TMP1
 		EXIT=1
 	}
 	bk pending $QUIET > $TMP2 2>&1 && {
 		test $LIST = NO && {
-			rm -f $TMP $TMP2
+			rm -f $TMP1 $TMP2
 			exit 1
 		}
-		echo === Pending files === >> $TMP
-		sed 's/^/    /' < $TMP2 >> $TMP
+		echo === Pending files === >> $TMP1
+		sed 's/^/    /' < $TMP2 >> $TMP1
 		EXIT=1
 	}
 	bk sfiles -cg > $TMP2
 	test -s $TMP2 && {
 		test $LIST = NO && {
-			rm -f $TMP $TMP2
+			rm -f $TMP1 $TMP2
 			exit 1
 		}
-		echo === Modified files === >> $TMP
-		sed 's/^/    /' < $TMP2 >> $TMP
+		echo === Modified files === >> $TMP1
+		sed 's/^/    /' < $TMP2 >> $TMP1
 		EXIT=1
 	}
 	(bk sfiles -x
@@ -164,48 +164,48 @@ _superset() {
 	) | bk _sort > $TMP2
 	test -s $TMP2 && {
 		test $LIST = NO && {
-			rm -f $TMP $TMP2
+			rm -f $TMP1 $TMP2
 			exit 1
 		}
-		echo === Extra files === >> $TMP
-		sed 's/^/    /' < $TMP2 >> $TMP
+		echo === Extra files === >> $TMP1
+		sed 's/^/    /' < $TMP2 >> $TMP1
 		EXIT=1
 	}
 	find BitKeeper/tmp -name 'park*' -print > $TMP2
 	test -s $TMP2 && {
 		test $LIST = NO && {
-			rm -f $TMP $TMP2
+			rm -f $TMP1 $TMP2
 			exit 1
 		}
-		echo === Parked files === >> $TMP
-		sed 's/^/    /' < $TMP2 >> $TMP
+		echo === Parked files === >> $TMP1
+		sed 's/^/    /' < $TMP2 >> $TMP1
 		EXIT=1
 	}
 	rm -f $TMP2
 	test -d PENDING && find PENDING -type f -print > $TMP2
 	test -s $TMP2 && {
 		test $LIST = NO && {
-			rm -f $TMP $TMP2
+			rm -f $TMP1 $TMP2
 			exit 1
 		}
-		echo === Possible pending patches === >> $TMP
-		sed 's/^/    /' < $TMP2 >> $TMP
+		echo === Possible pending patches === >> $TMP1
+		sed 's/^/    /' < $TMP2 >> $TMP1
 		EXIT=1
 	}
 	rm -f $TMP2
 	test -d RESYNC && find RESYNC -type f -print > $TMP2
 	test -s $TMP2 && {
 		test $LIST = NO && {
-			rm -f $TMP $TMP2
+			rm -f $TMP1 $TMP2
 			exit 1
 		}
-		echo === Unresolved pull === >> $TMP
-		sed 's/^/    /' < $TMP2 >> $TMP
+		echo === Unresolved pull === >> $TMP1
+		sed 's/^/    /' < $TMP2 >> $TMP1
 		EXIT=1
 	}
 
 	test $EXIT = 0 && {
-		rm -f $TMP $TMP2
+		rm -f $TMP1 $TMP2
 		exit 0
 	}
 	if [ $# -eq 0 ]
@@ -214,8 +214,8 @@ _superset() {
 	fi
 	echo "Child:  `bk gethost`:`pwd`"
 	echo "Parent: $PARENT"
-	cat $TMP
-	rm -f $TMP $TMP2
+	cat $TMP1
+	rm -f $TMP1 $TMP2
 	exit 1
 }
 
