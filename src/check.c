@@ -170,7 +170,6 @@ usage:		fprintf(stderr, "%s", check_help);
 	mdbm_close(keys);
 	mdbm_close(marks);
 	if (proj) proj_free(proj);
-	purify_list();
 	if (errors && fix) {
 		if (names) {
 			fprintf(stderr, "check: trying to fix names...\n");
@@ -179,6 +178,20 @@ usage:		fprintf(stderr, "%s", check_help);
 		}
 	}
 	unlink(CTMP);
+	if (csetKeys.malloc) {
+		int	i;
+
+		free(csetKeys.malloc);
+		for (i = csetKeys.n;
+		    (--i > 0) && (csetKeys.deltas[i] != (char*)1); );
+		if ((i >= 0) && (csetKeys.deltas[i] == (char*)1)) {
+			for (i++; csetKeys.deltas[i] != (char*)1; i++) {
+				free(csetKeys.deltas[i]);
+			}
+		}
+	}
+	if (csetKeys.deltas) free(csetKeys.deltas);
+	purify_list();
 	return (errors);
 }
 
@@ -297,6 +310,9 @@ buildKeys()
 		fprintf(stderr, "Unable to create %s\n", CTMP);
 		exit(1);
 	}
+	/*
+ 	 * Note: malloc would return if sz == 0
+	 */
 	csetKeys.malloc = malloc(sz = size(CTMP));
 	fd = open(CTMP, 0, 0);
 	unless (read(fd, csetKeys.malloc, sz) == sz) {

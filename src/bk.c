@@ -322,8 +322,7 @@ main(int ac, char **av)
 	/*
 	 * Is it a known C program ?
 	 */
-	if (streq(av[0], "bkd") ||
-	    streq(av[0], "patch")) {
+	if (streq(av[0], "patch")) {
 		return (spawnvp_ex(_P_WAIT, av[0], av));
 	}
 
@@ -523,7 +522,8 @@ private void
 platformInit(char **av)
 {
 	char	*p, *t, *s;
-	char	buf[MAXPATH];
+	char	buf[MAXPATH], buf1[MAXPATH];
+	static	char bin_path[MAXPATH];
 
 	if (editor) return;
 #ifdef	WIN32
@@ -542,15 +542,14 @@ platformInit(char **av)
 		strcpy(buf, av[0]);
 		*t = '/';
 gotit:		
-		s = malloc(strlen(buf) + strlen(p) + 10);
-		sprintf(s, "PATH=%s:%s", buf, p);
-		putenv(s);
-		bin = strdup(buf);
+		sprintf(buf1, "PATH=%s:%s", buf, p);
+		putenv(buf1);
+		bin = strcpy(bin_path, buf);
 		return;
 	}
 
 	/* partially specified paths are respected */
-	if ((t = strchr(av[0], '/')) || exists(av[0])) {
+	if (t = strchr(av[0], '/')) {
 		getcwd(buf, sizeof(buf));
 		if (t && ((t-1) > av[0])) {
 			*t = 0;
@@ -579,9 +578,9 @@ gotit:
 				getcwd(buf, sizeof(buf));
 				strcat(buf, "/");
 				strcat(buf, s);
-				bin = strdup(buf);
+				bin = strcpy(bin_path, buf);
 			} else {
-				bin = strdup(s);
+				bin = strcpy(bin_path, s);
 			}
 			*t = ':';
 			return;
