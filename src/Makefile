@@ -479,6 +479,9 @@ crankit:
 crankturn: build crank
 	$(MAKE) HOSTS="$(HOSTS)" CRANKCMD=./crank crankit
 
+cranktry:
+	$(MAKE) HOSTS="$(HOSTS)" CRANKCMD="./crank 'make build;./build p;make test'" crankit
+
 cranktest:
 	$(MAKE) HOSTS="$(HOSTS)" CRANKCMD="bk regression" crankit
 
