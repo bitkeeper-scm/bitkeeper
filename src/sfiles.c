@@ -5,7 +5,8 @@
 #define LSTATE	0	/* lock state: l,u,j,x */
 #define CSTATE	1	/* change state: c,' ' */
 #define PSTATE	2	/* pending state: p,' ' */
-#define NSTATE	3	/* name state: n,' ' */
+#define	GSTATE	3	/* got state: g, ' ' */
+#define NSTATE	4	/* name state: n,' ' */
 
 WHATSTR("@(#)%K%");
 
@@ -25,6 +26,7 @@ typedef struct {
 					/* XXX -  seems wrong */
 	u32	pending:1;		/* -p: list pending files */
 	u32     gfile:1;     		/* print gfile name	*/
+	u32	got:1;
 	u32     Aflg:1;			/* use with -p show	*/
 					/* all pending deltas	*/
 	u32     Cflg:1;     		/* want file<BK_FS>rev format	*/
@@ -47,7 +49,7 @@ private u32	d_count, s_count, x_count; /* progress counter */
 private u32	s_last, x_last; /* progress counter */
 private u32	c_count, n_count, p_count;
 
-private void	do_print(char state[5], char *file, char *rev);
+private void	do_print(char state[6], char *file, char *rev);
 private void	walk(char *dir);
 private void	file(char *f);
 private	void	sccsdir(winfo *wi);
@@ -159,7 +161,7 @@ sfiles_main(int ac, char **av)
 		return (0);
 	}
 
-	while ((c = getopt(ac, av, "aAcCdDeEgijlno:p|P|s:SuUvx")) != -1) {
+	while ((c = getopt(ac, av, "aAcCdDeEgGijlno:p|P|s:SuUvx")) != -1) {
 		switch (c) {
 		    case 'a':	opts.all = 1; break;		/* doc 2.0 */
 		    case 'A':					/* undoc? 2.0 */
@@ -182,6 +184,7 @@ sfiles_main(int ac, char **av)
 				opts.show_markers = 1;
 				break;
 		    case 'g':	opts.gfile = 1; break;		/* doc 2.0 */
+		    case 'G':	opts.got = 1; break;
 		    case 'j':	opts.junk = 1; break;		/* doc 2.0 */
 		    case 'l':   opts.locked = 1; break;		/* doc 2.0 */
 		    case 'n':   opts.names = 1; break;		/* doc 2.0 */
@@ -230,7 +233,8 @@ usage:				system("bk help -s sfiles");
 	 * setup a default mode for them
 	 */
 	if (!opts.unlocked && !opts.locked && !opts.junk && !opts.extras &&
-	    !opts.modified && !opts.nflg && !opts.pending && !opts.names) {
+	    !opts.modified && !opts.nflg && !opts.pending && !opts.names &&
+	    !opts.got) {
 		opts.unlocked = 1;
 		opts.locked = 1;
 	}
@@ -278,7 +282,7 @@ usage:				system("bk help -s sfiles");
 }
 
 private sccs *
-chk_sfile(char *name, char state[5])
+chk_sfile(char *name, char state[6])
 {
 	char	*s;
 	sccs	*sc = 0;
@@ -327,7 +331,7 @@ chk_sfile(char *name, char state[5])
 }
 
 private void
-chk_pending(sccs *s, char *gfile, char state[5], MDBM *sDB, MDBM *gDB)
+chk_pending(sccs *s, char *gfile, char state[6], MDBM *sDB, MDBM *gDB)
 {
 	delta	*d;
 	int	local_s = 0, printed = 0;
@@ -433,7 +437,7 @@ private void
 file(char *f)
 {
 	char	name[MAXPATH], buf[MAXPATH];
-	char    *s, *sfile, state[5] = "    ";
+	char    *s, *sfile, state[6] = "     ";
 	sccs	*sc = 0;
 
 	if (strlen(f) >= sizeof(name)) {
@@ -620,7 +624,7 @@ sfiles_walk(char *file, struct stat *sb, void *data)
 			}
 		}
 		/* else just printit */
-		do_print("xxxx", file, 0);
+		do_print("xxxxxx", file, 0);
 	}
 	return (0);
 }
@@ -784,7 +788,7 @@ isTagFile(char *file)
 }
 
 private void
-print_it(char state[5], char *file, char *rev)
+print_it(char state[6], char *file, char *rev)
 {
 	char *sfile, *gfile;
 
@@ -804,7 +808,7 @@ error:				perror("output error");
 				longjmp(sfiles_exit, 1); /* back to sfiles_main */
 			}
 		} else {
-			if (fprintf(opts.out, "%s ", state) != 5) {
+			if (fprintf(opts.out, "%s ", state) != 6) {
 				goto error;
 			}
 		}
@@ -828,7 +832,7 @@ error:				perror("output error");
 }
 
 private void
-do_print(char state[5], char *file, char *rev)
+do_print(char state[6], char *file, char *rev)
 {
 
 	if (state[PSTATE] == 'p') p_count++;
@@ -860,6 +864,7 @@ do_print(char state[5], char *file, char *rev)
 	}
 
 	if ((state[NSTATE] == 'n') && opts.names) goto print;
+	if (opts.got && (state[GSTATE] == 'g')) goto print;
 	return;
 
 print:	print_it(state, file, rev);
@@ -907,7 +912,7 @@ sccsdir(winfo *wi)
 	 */
 	EACH (slist) {
 		char 	*file;
-		char	state[5] = "    ";
+		char	state[6] = "     ";
 
 		p = slist[i];
 		s = 0;
@@ -949,6 +954,7 @@ sccsdir(winfo *wi)
 				s = 0;
 			}
 		}
+		if (mdbm_fetch_str(gDB, gfile)) state[GSTATE] = 'g';
 
 		concat_path(buf, dir, gfile);
 		if (opts.pending) {
@@ -1030,7 +1036,7 @@ sccsdir(winfo *wi)
 			strcpy(&buf[2], k.dptr);
 			if (mdbm_fetch_str(sDB, buf)) continue;
 			concat_path(buf, dir, k.dptr);
-			do_print("xxxx", buf, 0);
+			do_print("xxxxxx", buf, 0);
 		}
 	}
 	mdbm_close(wi->gDB);
