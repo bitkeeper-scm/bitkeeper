@@ -1038,7 +1038,7 @@ char	*sccs_rmName(sccs *s, int useCommonDir);
 int	sccs_rm(char *name, char *del_name, int useCommonDir, int force);
 void	sccs_rmEmptyDirs(char *path);
 void	do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out);
-char 	**get_http_proxy(void);
+char 	**get_http_proxy(char *host);
 int	confirm(char *msg);
 int	csetCreate(sccs *cset, int flags, char *files, char **syms);
 int	cset_setup(int flags, int ask);
