@@ -567,6 +567,8 @@ sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 	int	i;
 	char	*root, *user, *host;
 
+	if (r->host)
+		fprintf(f, "putenv BK_VHOST=%s\n", r->host);
 	fprintf(f, "putenv BK_REMOTE_PROTOCOL=%s\n", BKD_VERSION);
 
 	fprintf(f, "putenv BK_VERSION=%s\n", bk_vers);
@@ -576,8 +578,6 @@ sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 	fprintf(f, "putenv _BK_USER=%s\n", user);
 	host = sccs_gethost();
 	fprintf(f, "putenv _BK_HOST=%s\n", host);
-	if (r->host)
-		fprintf(f, "putenv BK_VHOST=%s\n", r->host);
 
 	/*
 	 * We have no Package root when we clone, so skip root related variables
