@@ -14,6 +14,7 @@ proc widgets {} \
 	set g [wm geometry .]
 	wm title . "Diff Tool"
 
+	wm iconify .
 	if {$tcl_platform(platform) == "windows"} {
 		set gc(py) -2; set gc(px) 1; set gc(bw) 2
 		if {("$g" == "1x1+0+0") && ("$gc(diff.geometry)" != "")} {
@@ -24,7 +25,6 @@ proc widgets {} \
 		# We iconify here so that the when we finally deiconify, all
 		# of the widgets are correctly sized. Fixes irritating 
 		# behaviour on ctwm.
-		wm iconify .
 	}
 	frame .diffs
 	    frame .diffs.status
@@ -180,7 +180,6 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	if {("$g" == "1x1+0+0") && ("$gc(diff.geometry)" != "")} {
 		wm geometry . $gc(diff.geometry)
 	}
-	wm deiconify .
 }
 
 # Set up keyboard accelerators.
@@ -369,13 +368,13 @@ proc getFiles {} \
 		set rfile [getRev $file $rev2 0]
 		lappend tmps $rfile
 		if {[checkFiles $lfile $rfile]} {
-			#displayMessage "$lfile $rfile $file $rev1 $rev2"
 			set t "{$lfile} {$rfile} {$file} $rev1 $rev2"
 			lappend files $t
 		}
 	}
 	# Now add the menubutton items if necessary
 	if {[llength $files] >= 1} {
+		wm deiconify .
 		set menu(widget) [menu .menu.fmb.menu]
 		set item 1
 		foreach e $files {
@@ -395,7 +394,9 @@ proc getFiles {} \
 		set menu(selected) 1
 		$menu(widget) invoke 1
 	} else {
-		# didn't find any valid arguments...
+		# didn't find any valid arguments or there weren't any
+		# files that needed diffing...
+		puts stderr "There were no files available to diff"
 		cleanup
 	}
 }
