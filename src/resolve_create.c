@@ -239,6 +239,41 @@ res_vr(resolve *rs)
 	return (0);
 }
 
+int
+sccstool(char *name)
+{
+	char	*av[10];
+
+	av[0] = "bk";
+	av[1] = "sccstool";
+	av[2] = name;
+	av[3] = 0;
+	spawnvp_ex(_P_NOWAIT, "bk", av);
+	return (0);
+}
+
+int
+res_pl(resolve *rs)
+{
+	if (rs->res_screate) {
+		sccs	*s = (sccs*)rs->opaque;
+
+		chdir(RESYNC2ROOT);
+		sccstool(s->gfile);
+		chdir(ROOT2RESYNC);
+		return (0);
+	}
+	fprintf(stderr, "Don't know how to view the file.\n");
+	return (0);
+}
+
+int
+res_pr(resolve *rs)
+{
+	sccstool(rs->s->gfile);
+	return (0);
+}
+
 private	void
 setall(sccs *s)
 {
@@ -447,7 +482,7 @@ gc_remove(resolve *rs)
 	char	buf[MAXPATH];
 	opts	*opts = rs->opts;
 
-	unless (confirm("Remove local file?")) return (0);
+	unless (rs->opts->force || confirm("Remove local file?")) return (0);
 	sprintf(buf, "%s/%s", RESYNC2ROOT, rs->d->pathname);
 	unlink(buf);
 	if (opts->log) fprintf(stdlog, "unlink(%s)\n", buf);
@@ -484,7 +519,7 @@ dc_remove(resolve *rs)
 	char	path[MAXPATH];
 	opts	*opts = rs->opts;
 
-	unless (confirm("Remove local file?")) return (0);
+	unless (rs->opts->force || confirm("Remove local file?")) return (0);
 	getFileConflict(rs->d->pathname, path);
 	sprintf(buf, "%s/%s", RESYNC2ROOT, path);
 	unlink(buf);
@@ -806,36 +841,52 @@ sc_ml(resolve *rs)
 int
 sc_rml(resolve *rs)
 {
-	char	cmd[MAXPATH*2];
-	char	path[MAXPATH];
+	char	repo[MAXPATH*2];
+	char	resync[MAXPATH];
 	int	filenum = 0;
+	char	*nm = basenm(((sccs*)rs->opaque)->gfile);
+	char	*quiet = rs->opts->quiet ? "-q" : "";
 
-	unless (confirm("Remove local file?")) return (0);
+	unless (rs->opts->force || confirm("Remove local file?")) return (0);
 	unless (ok_local((sccs*)rs->opaque, 0)) {
 		return (0);
 	}
 	/*
 	 * OK, there is no conflict so we can actually move this file to
-	 * the resync directory.  What we do is copy it into the RENAMES
-	 * dir and then call bk rm to do the work.
+	 * the resync directory.
+	 * We emulate much of the work of bk rm here because we can't call
+	 * it directly in the local repository.
 	 */
-	do {
-		sprintf(path, "BitKeeper/RENAMES/SCCS/s.%d", ++filenum);
-	} while (exists(path));
-	sprintf(cmd, "cp -p %s/%s BitKeeper/RENAMES/SCCS/s.%d",
-	    RESYNC2ROOT, ((sccs*)rs->opaque)->sfile, filenum);
-	if (sys(cmd, rs->opts)) {
-		perror(cmd);
+	sprintf(resync, "BitKeeper/deleted/SCCS/s..del-%s", nm);
+	sprintf(repo, "%s/%s", RESYNC2ROOT, resync);
+	while (exists(resync) || exists(repo)) {
+		sprintf(resync,
+		    "BitKeeper/deleted/SCCS/s..del-%s~%d", nm, ++filenum);
+		sprintf(repo, "%s/%s", RESYNC2ROOT, resync);
+	}
+	sprintf(repo,
+	    "cp %s/%s %s", RESYNC2ROOT, ((sccs*)rs->opaque)->sfile, resync);
+	if (sys(repo, rs->opts)) {
+		perror(repo);
 		exit(1);
 	}
-	sprintf(cmd, "bk rm BitKeeper/RENAMES/SCCS/s.%d", filenum);
-	if (sys(cmd, rs->opts)) {
-		perror(cmd);
+
+	/*
+	 * Force a delta to lock it down to this name.
+	 */
+	sprintf(repo, "bk edit %s %s", quiet, resync);
+	if (sys(repo, rs->opts)) {
+		perror(repo);
 		exit(1);
 	}
-	sprintf(path, "BitKeeper/RENAMES/SCCS/s.%d", filenum);
-	sccs_sdelta((sccs*)rs->opaque, sccs_ino((sccs*)rs->opaque), cmd);
-	saveKey(rs->opts, cmd, path);
+	sprintf(repo, "bk delta %s -y'Delete: %s' %s",
+	    quiet, ((sccs*)rs->opaque)->gfile, resync);
+	if (sys(repo, rs->opts)) {
+		perror(repo);
+		exit(1);
+	}
+	sccs_sdelta((sccs*)rs->opaque, sccs_ino((sccs*)rs->opaque), repo);
+	saveKey(rs->opts, repo, resync);
 	return (EAGAIN);
 }
 
@@ -844,7 +895,7 @@ sc_rmr(resolve *rs)
 {
 	char	cmd[MAXPATH*2];
 
-	unless (confirm("Remove remote file?")) return (0);
+	unless (rs->opts->force || confirm("Remove remote file?")) return (0);
 	sccs_close(rs->s);
 	sprintf(cmd, "bk rm %s", rs->s->sfile);
 	if (sys(cmd, rs->opts)) {
@@ -895,6 +946,8 @@ rfuncs	sc_funcs[] = {
     { "ml", "move local", "move the local file to someplace else", sc_ml },
     { "mr", "move remote", "move the remote file to someplace else", res_mr },
     { "q", "quit", "immediately exit resolve", res_quit },
+    { "pl", "graphically view local", "view the local file", res_pl },
+    { "pr", "graphically view remote", "view the remote file", res_pr },
     { "rl", "remove local", "remove the local copy of the file", sc_rml },
     { "rr", "remove remote", "remove the remote copy of the file", sc_rmr },
     { "sd", "sdiff",

@@ -745,6 +745,10 @@ again:	if (how = slotTaken(opts, rs->dname)) {
 		mkdirf(rs->dname);
 		ret = rename(rs->s->sfile, rs->dname);
 	}
+	if (rs->opts->log) {
+		fprintf(rs->opts->log, "rename(%s, %s) = %d\n", 
+		    rs->s->gfile, rs->d->pathname, ret);
+	}
 	if (opts->debug) {
 		fprintf(stderr,
 		    "%s -> %s = %d\n", rs->s->gfile, rs->d->pathname, ret);
@@ -773,7 +777,6 @@ rename_file(resolve *rs)
 {
 	opts	*opts = rs->opts;
 	char	*to;
-	char 	realname[MAXPATH];
 
 	if (opts->debug) {
 		fprintf(stderr, ">> rename_file(%s)\n", rs->d->pathname);
@@ -831,9 +834,6 @@ rename_file(resolve *rs)
 			mkdirf(to);
 			if (rename(rs->s->sfile, to)) return (-1);
 		}
-		if (opts->debug) {
-			fprintf(stderr, "rename(%s, %s)\n", rs->s->sfile, to);
-		}
 		if (rs->revs) {
 			delta	*d;
 			char	rfile[MAXPATH];
@@ -864,6 +864,13 @@ rename_file(resolve *rs)
 				rename_delta(rs, to, d, rfile, REMOTE);
 			}
 			free(t);
+		}
+		if (rs->opts->log) {
+			fprintf(rs->opts->log,
+			    "rename(%s, %s)\n", rs->s->sfile, to);
+		}
+		if (opts->debug) {
+			fprintf(stderr, "rename(%s, %s)\n", rs->s->sfile, to);
 		}
 		opts->renames2++;
 		unlink(sccs_Xfile(rs->s, 'm'));
@@ -1213,7 +1220,7 @@ scanDir(char *dir, char *name, MDBM *db, char *realname)
 {
 	DIR *d;
 	struct dirent *e;
-	char path[MAXPATH], *p;
+	char path[MAXPATH];
 
 	realname[0] = 0;
 	d = opendir(dir);
@@ -1289,9 +1296,8 @@ getRealBaseName(char *path, char *realParentName, MDBM *db, char *realBaseName)
 int
 getRealName(char *path, MDBM *db, char *realname)
 {
-	char mypath[MAXPATH], name[MAXPATH], *p, *q, *r;
-	char *parent, *base, *dir;
-	int first = 1;
+	char	mypath[MAXPATH], name[MAXPATH], *p, *q, *r;
+	int	first = 1;
 
 	assert(path != realname); /* must be different buffer */
 	cleanPath(path, mypath);
@@ -1359,8 +1365,6 @@ getRealName(char *path, MDBM *db, char *realname)
 int
 slotTaken(opts *opts, char *slot)
 {
-	char realname[MAXPATH];
-
 	if (opts->debug) fprintf(stderr, "slotTaken(%s) = ", slot);
 
 	if (exists(slot)) {
