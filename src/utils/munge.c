@@ -16,19 +16,26 @@
 #define	OUTPUT	"_data.c"
 #define	OBJ	"_data.o"
 
+uchar	init[] = { 255, 6, 1, 2, 3, 4, 255, 3, 9, 62, 255, 10, 4, 61, 255, 0 };
+
+int
+writen(int fd, char *buf)
+{
+	return (write(fd, buf, strlen(buf)));
+}
+
 main(int ac, char **av)
 {
 	int	in, out;
 	uchar	buf[81920];
-	char	num[10];
-	int	size = 0, n, i;
-	char	*t, *cc;
+	int	n, i;
+	char	*cc;
 	char	*map;
-	char	*p;
+	uchar	*p;
 	struct	stat sb, sb2;
 
 	if (ac != 2) {
-		fprintf(stderr, "usage: %s input\n");
+		fprintf(stderr, "usage: %s input\n", av[0]);
 		exit(1);
 	}
 	if (!(in = open(av[1], O_RDONLY))) {
@@ -43,18 +50,17 @@ main(int ac, char **av)
 		perror("fstat");
 		exit(1);
 	}
-	sprintf(buf, "unsigned int program_size = %u;\n", sb.st_size);
+	sprintf(buf, "unsigned int program_size = %lu;\n",
+	    (long unsigned)sb.st_size);
 	writen(out, buf);
-	sprintf(buf, "unsigned int program_before = 0x%x;\n",
-	    (unsigned int)0xdeadbeef);
+	sprintf(buf, "unsigned char program_data[%lu] = {\n",
+	    (long unsigned)sb.st_size);
 	writen(out, buf);
-	sprintf(buf,
-	    "unsigned char program_data[%u] = { 0, 1, 2, 3, 4, 3, 9, 62 };\n",
-	    sb.st_size);
-	writen(out, buf);
-	sprintf(buf, "unsigned int program_after = 0x%x;\n", 
-	    (unsigned int)0xdeadbeef);
-	writen(out, buf);
+	for (i = 0; init[i]; i++) {
+		sprintf(buf, "\t%u,\n", (int)init[i]);
+		writen(out, buf);
+	}
+	writen(out, "};\n");
 	close(out);
 	if (!(cc = getenv("CC"))) cc = "cc";
 	sprintf(buf, "%s -c %s", cc, OUTPUT);
@@ -73,27 +79,14 @@ main(int ac, char **av)
 		perror("mmap");
 		exit(1);
 	}
-	for (p = map; p < (map + sb2.st_size); p++) {
-		int	*i = (int *)p;
-
-		if (*i == 0xdeadbeef) {
-			printf("Found marker at offset %u\n", p - map);
-			goto array;
+	for (p = (uchar*)map; p < (uchar*)(map + sb2.st_size); p++) {
+		if (*p != init[0]) continue;
+		for (i = 1; init[i]; i++) {
+			if (p[i] != init[i]) break;
 		}
-	}
-	fprintf(stderr, "Did not find marker\n");
-	exit(1);
-
-array:	for (p = p + 4; p < (map + sb2.st_size); p++) {
-		if (p[0] == 0 &&
-		    p[1] == 1 &&
-		    p[2] == 2 &&
-		    p[3] == 3 &&
-		    p[4] == 4 &&
-		    p[5] == 3 &&
-		    p[6] == 9 &&
-		    p[7] == 62) {
-		    	printf("Found array at offset %u\n", p - map);
+		if (!init[i]) {
+		    	printf("Found array at %u bytes into the file.\n",
+			    p - (uchar *)map);
 			goto fill;
 		}
 	}
@@ -107,11 +100,6 @@ fill:	writen(1, "Copying ");
 		p += n;
 	}
 	munmap(map, sb2.st_size);
-	write(1, "Done\n", 5);
+	write(1, " done.\n", 7);
 	exit(0);
-}
-
-writen(int fd, char *buf)
-{
-	return (write(fd, buf, strlen(buf)));
 }

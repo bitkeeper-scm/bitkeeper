@@ -19,5 +19,5 @@ image: munge extractor.c
 		)
 
 clean:
-	/bin/rm -f _data _data.c _data.o a.out munge testdata
+	/bin/rm -f _data _data.c _data.o a.out munge testdata core
 	bk -r . clean
