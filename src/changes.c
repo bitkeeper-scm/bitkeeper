@@ -114,14 +114,7 @@ usage:			system("bk help -s changes");
 		if (WIFEXITED(status)) return(WEXITSTATUS(status));
 		return (1); /* interrupted */
 	} else {
-		int	fd1;
-		pid_t	pid;
-
-		fd1 = mkpager(&pid);
-		rc = doit_remote(av, optind); 
-		if (fd1 >= 0) { dup2(fd1, 1); close(fd1); }
-		if (pid > 0) waitpid(pid, 0, 0);
-		return (rc);
+		return (doit_remote(av, optind)); 
 	}
 }
 
@@ -504,10 +497,15 @@ changes_part1(remote *r, char **av, int optind, char *key_list)
 	if (get_ok(r, buf, 1)) return (-1);
 
 	if (opts.rdiff == 0) {
+		pid_t	pid;
+		int	fd1;
+
+		
 		getline2(r, buf, sizeof(buf));
 		unless (streq("@CHANGES INFO@", buf)) {
 			return (0); /* protocal error */
 		}
+		fd1 = mkpager(&pid);
 		while (getline2(r, buf, sizeof(buf)) > 0) {
 			if (streq("@END@", buf)) break;
 			
@@ -518,6 +516,8 @@ changes_part1(remote *r, char **av, int optind, char *key_list)
 			if (write(1, &buf[1], strlen(buf) - 1) < 0) break;
 			if (write(1, "\n", 1) < 0) break;
 		}
+		if (fd1 >= 0) { dup2(fd1, 1); close(fd1); }
+		if (pid > 0) waitpid(pid, 0, 0);
 		return (0);
 	}
 
@@ -558,8 +558,9 @@ ChangeSet file do not match.  Please check the pathnames and try again.\n");
 private int
 changes_part2(remote *r, char **av, int optind, char *key_list, int ret)
 {
-	int	rc = 0;
+	int	fd1, rc = 0;
 	char	buf[MAXLINE];
+	pid_t	pid;
 
 	if ((r->type == ADDR_HTTP) && bkd_connect(r, 0, 0)) {
 		return (1);
@@ -586,6 +587,7 @@ changes_part2(remote *r, char **av, int optind, char *key_list, int ret)
 		rc = -1; /* protocal error */
 		goto done;
 	}
+	fd1 = mkpager(&pid);
 	while (getline2(r, buf, sizeof(buf)) > 0) {
 		if (streq("@END@", buf)) break;
 		if (write(1, &buf[1], strlen(buf) - 1) < 0) {
@@ -593,6 +595,8 @@ changes_part2(remote *r, char **av, int optind, char *key_list, int ret)
 		}
 		write(1, "\n", 1);
 	}
+	if (fd1 >= 0) { dup2(fd1, 1); close(fd1); }
+	if (pid > 0) waitpid(pid, 0, 0);
 	
 done:	unlink(key_list);
 	disconnect(r, 2);
