@@ -539,6 +539,7 @@ mkfile(char *file)
 "This usually happen when you transfer file from a case-sensitive file\n"
 "system (e.g. Unix) to a case insensitive file system (e.g FAT, NTFS)\n"
 "Please rename one of the file and retry (see also \"bk helptool mv\")\n"
+"Note: You must do the rename in the sending repository.\n"
 "==========================================================================\n",
 			file, realname);
 		  
