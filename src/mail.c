@@ -64,7 +64,11 @@ lconfig_main(int ac, char **av)
 			    adler32(0, package_name(), strlen(package_name())));
 
 	gettemp(config_log, "config");
-	unless (f = fopen(config_log, "wb")) return (1);
+	unless (f = fopen(config_log, "wb")) {
+		perror(config_log);
+		cset_unlock();
+		return (1);
+	}
 
 	fprintf(f, "To: %s\nFrom: %s\nSubject: %s\n\n", to, from, subject);
 	config(f);
