@@ -121,6 +121,9 @@ Rev is part of pathname, i.e.,
 Get this revision. (Or key or changeset revision. See 
 .B bk help terms
 under 'rev argument')
+If combined with -e (edit), \*(BK will check out the tip revision
+combined with a set of include and exclude deltas needed to produce
+the requested revision.
 .tp
 .B \-S
 If a gfile exists, don't check it out again.
