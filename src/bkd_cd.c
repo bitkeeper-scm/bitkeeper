@@ -46,6 +46,7 @@ rootkey2path(char *rootkey, char *log_root, char *buf)
  * Change to the directory, making sure it is at or below where we are.
  * On failure, do not tell them why, that's an information leak.
  */
+int
 unsafe_cd(char *path)
 {
 	char	a[MAXPATH];

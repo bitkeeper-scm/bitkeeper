@@ -86,7 +86,7 @@ parent_main(int ac,  char **av)
 	fprintf(f, "%s\n", remote_unparse(r));
 	fclose(f);
 	unless (quiet) printf("Set parent to %s\n", remote_unparse(r));
-	free(r);
+	remote_free(r);
 	return (0);
 }
 

@@ -1695,6 +1695,7 @@ freePatchList()
 			free(p->diffFile);
 		}
 		if (p->localFile) free(p->localFile);
+		if (p->initMmap) free(p->initMmap);
 		free(p->resyncFile);
 		if (p->pid) free(p->pid);
 		if (p->me) free(p->me);

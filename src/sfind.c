@@ -935,6 +935,7 @@ sccsdir(char *dir, int level, char **sdh, char buf[MAXPATH])
 skip:			mdbm_close(gDB);
 			mdbm_close(sDB);
 			freeLines(dh);
+			while (p = dequeue(&slist)) free(p);
 			return;
 		}
 

@@ -32,16 +32,16 @@ bkd_main(int ac, char **av)
 	/*
 	 * Win32 note: -u/-t options have no effect on win32; win32 cannot
 	 *	 support alarm and setuid.	 
-	 * Unix note: -E/-s/-S/-R options have no effect on Unix;
+	 * Unix note: -E/-s/-S/-R/-z options have no effect on Unix;
 	 * 	 These option are used by the win32 bkd service as internal
 	 *	 interface.
 	 * XXX Win32 note: WARNING: If you add a new optoin,  you _must_
 	 * XXX propagate the option in  bkd_install_service() and 
-	 * XXX bkd_service_loop(). The NT service is a 3 level spwaning
-	 * XXX architechture!! (The above function are in port/bkd_server.c)
+	 * XXX bkd_service_loop(). The NT service is a 3 level spawning
+	 * XXX architechture!! (The above functions are in port/bkd_server.c)
 	 */
 	while ((c = getopt(ac, av,
-			"c:CdDeE:g:hil|L:p:P:qRs:St:u:V:x:")) != -1) {
+			"c:CdDeE:g:hil|L:p:P:qRs:St:u:V:x:z")) != -1) {
 		switch (c) {
 		    case 'C': Opts.safe_cd = 1; break;		/* doc */
 		    case 'd': Opts.daemon = 1; break;		/* doc 2.0 */
@@ -74,6 +74,7 @@ bkd_main(int ac, char **av)
 		    case 'L': logRoot = strdup(optarg); break;	/* undoc */
 		    case 'q': Opts.quiet = 1; break; 		/* undoc */
 		    case 't': Opts.alarm = atoi(optarg); break;	/* undoc */
+		    case 'z': Opts.nt_service = 1; break;	/* undoc */
 		    default: usage();
 	    	}
 	}

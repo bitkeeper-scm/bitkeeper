@@ -280,6 +280,7 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 		out("\n");
 	}
 	out("@END@\n");
+	sccs_free(s);
 	return (0);
 }
 

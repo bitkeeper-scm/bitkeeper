@@ -34,7 +34,7 @@ clone_main(int ac, char **av)
 	int	c, rc;
 	opts	opts;
 	char	**envVar = 0;
-	remote 	*r = 0,  *l = 0;
+	remote 	*r = 0;
 	int	link = 0;
 
 	if (ac == 2 && streq("--help", av[1])) {
@@ -83,6 +83,7 @@ clone_main(int ac, char **av)
 		/* NOT REACHED */
 	}
 	if (av[optind + 1]) {
+		remote	*l;
 		l = remote_parse(av[optind + 1], 1);
 		unless (l) {
 err:		if (r) remote_free(r);
@@ -105,6 +106,7 @@ err:		if (r) remote_free(r);
 			av[0] = "_rclone";
 			return (rclone_main(ac, av));
 		}
+		remote_free(l);
 	}
 
 	if (opts.debug) r->trace = 1;
@@ -154,7 +156,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	int	gzip, rc = 1;
 
 	gzip = r->port ? opts.gzip : 0;
-	if (local && exists(local)) {
+	if (local && exists(local) && !emptyDir(local)) {
 		fprintf(stderr, "clone: %s exists already\n", local);
 		usage();
 	}
@@ -178,7 +180,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		if (!local && (local = getenv("BKD_ROOT"))) {
 			if (p = strrchr(local, '/')) local = ++p;
 		}
-		if (exists(local)) {
+		if (exists(local) && !emptyDir(local)) {
 			fprintf(stderr, "clone: %s exists already\n", local);
 			usage();
 		}

@@ -123,7 +123,7 @@ sort_main(int ac, char **av)
 		fprintf(stdout, "%s\n", lines[i]);
 		last = lines[i];
 	}
-	free(lines);
+	freeLines(lines);
 	return (0);
 }
 

@@ -1376,7 +1376,9 @@ chk_csetpointer(sccs *s)
 			s->tree->csetFile == NULL ? "NULL" : s->tree->csetFile,
 			csetkey);
 		csetpointer++;
+		free(csetkey);
 		return (1);
 	}
+	free(csetkey);
 	return (0);
 }

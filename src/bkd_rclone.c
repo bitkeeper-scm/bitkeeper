@@ -79,6 +79,18 @@ cmd_rclone_part1(int ac, char **av)
 	char	*path, *p;
 
 	unless (path = rclone_common(ac, av, &opts)) return (1);
+	if (isDaemon(Opts) || Opts.safe_cd) {
+		char	cwd[MAXPATH];
+		char	*new = fullname(path, 0);
+		getcwd(cwd, sizeof(cwd));
+		unless ((strlen(new) >= strlen(cwd)) && 
+		    strneq(cwd, new, strlen(cwd))) {
+			out("ERROR-illegal cd command\n");
+			free(path);
+			drain();
+			return (1);
+		}
+	}
 	if (exists(path)) {
 		if (isdir(path)) {
 			if  (!isEmptyDir(path)) {
@@ -115,7 +127,7 @@ cmd_rclone_part2(int ac, char **av)
 	int	fd2, rc = 0;
 
 	unless (path = rclone_common(ac, av, &opts)) return (1);
-	if (chdir(path)) {
+	if (unsafe_cd(path)) {
 		p = aprintf("ERROR-cannot chdir to \"%s\"\n", path);
 		out(p);
 		free(p);
