@@ -6028,7 +6028,7 @@ modeArg(delta *d, char *arg)
 	assert(d);
 	if (isdigit(*arg)) {
 		for (m = 0; isdigit(*arg); m <<= 3, m |= (*arg - '0'), arg++);
-		if (S_ISLNK(m)) d->glink = strnonldup(++arg);
+		m |= S_IFREG;
 	} else {
 		m = a2mode(arg);
 		if (S_ISLNK(m))	 {
@@ -8838,7 +8838,7 @@ sccs_perfile(sccs *s, FILE *out)
 	if (s->defbranch) fprintf(out, "f d %s\n", s->defbranch);
 	if (s->encoding) fprintf(out, "f e %d\n", s->encoding);
 	if (s->state & YEAR4) i |= X_YEAR4;
-	if (s->state & X_RCSEXPAND) i |= X_RCSEXPAND;
+	if (s->state & RCS) i |= X_RCSEXPAND;
 	if (i) fprintf(out, "f x %u\n", i);
 	EACH(s->text) fprintf(out, "T %s\n", s->text[i]);
 	fprintf(out, "\n");
