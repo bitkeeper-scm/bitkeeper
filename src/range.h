@@ -42,13 +42,22 @@
 			goto next; \
 		} \
 	} \
-	if (expand) { \
+	if (expand && !(s->state & S_SET)) { \
 		unless (things) { \
 			s->rstart = s->tree; \
 			s->rstop = s->table; \
 		} \
 		unless (s->rstart) s->rstart = s->rstop; \
 		unless (s->rstop) s->rstop = s->rstart; \
+	} \
+	if ((expand == 2) && !(s->state & S_SET)) { \
+		delta   *e; \
+		\
+		for (e = s->rstop; e; e = e->next) { \
+			e->flags |= D_SET; \
+			if (e == s->rstart) break; \
+		} \
+		s->state |= S_SET; \
 	}
 
 #endif

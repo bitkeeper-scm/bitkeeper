@@ -59,7 +59,7 @@ usage:		fprintf(stderr, clean_help);
 		name = sfileFirst("clean", &av[optind], SF_GFILE);
 	}
 	while (name) {
-		if ((s = sccs_init(name, INIT_NOCKSUM))) {
+		if ((s = sccs_init(name, SILENT|INIT_NOCKSUM))) {
 			(void)sccs_clean(s, flags);
 			sccs_free(s);
 		}
