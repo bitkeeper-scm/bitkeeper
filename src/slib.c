@@ -8103,7 +8103,7 @@ symArg(sccs *s, delta *d, char *name)
 	 * If this succeeds, then ALL keys must be in long key format
 	 */
 	if ((s->state & S_CSET) &&
-	    streq(d->rev, "1.0") && streq(name, KEY_FORMAT2)) {
+	    streq(d->rev, "1.0") && streq(sym->name, KEY_FORMAT2)) {
 	    	s->state |= S_KEY2;
 	}
 	return;
