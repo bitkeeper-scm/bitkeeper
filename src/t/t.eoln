@@ -1,0 +1,74 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+
+# Copyright (c) 2000 Andrew Chang
+# %K%
+
+if [ "$PLATFORM" != "WIN32" ]
+then
+	echo "For win32 only: This test is not applicable to this platform"
+	exit 0
+fi
+
+# Note: This test assumes the shell "echo" comamnd output in text mode
+echo $N Create initial repository ...................................$NL
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo OK
+echo $N Check ci co in EOLN_NATIVE mode .............................$NL
+#cp d:/projects/bk_install/Bitkeeper.wse data
+# create a file with line terminated with CRLF 
+echo "data" > data
+cp data data.ref
+bk  ci $Q -i data
+bk admin $Q -fEOLN_NATIVE data
+bk co $Q data
+cmp -s data data.ref
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+bk edit $Q data
+cmp -s data data.ref
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
+echo $N Check diffs in EOLN_NATIVE mode .............................$NL
+# in EOLN_NATIVE mode the diffs output is still LF terminated
+echo new_stuff > data
+bk diffs -h data > diffs.out
+bk undos > diffs.ref << EOF
+
+1c1
+< data
+---
+> new_stuff
+EOF
+cmp -s diffs.out diffs.ref
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
+echo $N Check ci a file with LF only ................................$NL
+bk undos  > data << EOF
+new1
+new2
+new3
+EOF
+bk ci $Q -ynew data
+bk get $Q data
+od -c data | bk undos > od.out
+bk undos > od.ref << EOF
+0000000   n   e   w   1  \r  \n   n   e   w   2  \r  \n   n   e   w   3
+0000020  \r  \n
+0000022
+EOF
+cmp -s od.ref od.out
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
