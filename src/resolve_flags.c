@@ -5,7 +5,6 @@
  */
 #include "resolve.h"
 
-/* XXX - this should be shared with the xflags.c & prs dspec code */
 private	char	*
 flags(int bits)
 {
@@ -40,9 +39,6 @@ flags(int bits)
 	}
 	if (bits & X_NOMERGE) {
 		if (comma) fs(","); fs("NOMERGE"); comma = 1;
-	}
-	if (bits & X_MONOTONIC) {
-		if (comma) fs(","); fs("MONOTONIC"); comma = 1;
 	}
 	unless (buf[0]) strcat(buf, "<none>");
 	assert(strlen(buf) < sizeof buf);
