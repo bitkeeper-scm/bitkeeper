@@ -1,6 +1,17 @@
-Release notes for BitKeeper version beta10.4.2
+Release notes for BitKeeper version 2.0.   These release notes cover
+the following topics:
 
-We have binary releases for Linux, Irix6, and FreeBSD 2.2.
+. Installation
+. Upgrade Notes
+. Changes from last release
+	. Interface changes
+	. New Features
+	. Noteworthy bug fixes 
+. Known Bugs
+
+
+We have binary releases for Linux, Irix6, and FreeBSD 2.2, HP-UX, AIX, 
+Solaris, Windows, and NT.
 
 Installation
 -----------------------------------------------------------------------------
@@ -104,6 +115,16 @@ Upgrade notes
 Changes from last release
 -----------------------------------------------------------------------------
 
+This section contains information on the following topics:
+
+. Interface changes
+. New features
+. Noteworthy bug fixes
+
+
+Interface Changes
+-----------------------------------------------------------------------------
+
 Two BitKeeper system files have been renamed:
 
 BitKeeper/etc/csets -> Bitkeeper/etc/csets-in
@@ -112,6 +133,13 @@ BitKeeper/etc/pushed -> BitKeeper/etc/csets-out
 Typically these files are accessed by the user supplied trigger scripts.
 This mean your trigger scripts must be updated when you upgrade to
 BitKeeper 2.0.
+
+New Features
+-----------------------------------------------------------------------------
+
+
+Noteworthy Bug Fixes
+-----------------------------------------------------------------------------
 
 
 Known bugs
@@ -138,3 +166,8 @@ propagate in resyncs.
 
 LODs are still not implemented.
 
+-----------------------------------------------------------------------------
+Linux is a trademark of Linux Torvalds.
+Windows and NT are trademarks of Microsoft.
+IRIX is a trademark of Silicon Graphics, Inc.
+Solaris is a trademark of Sun Corporation.
