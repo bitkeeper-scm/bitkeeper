@@ -206,6 +206,7 @@ getMsg(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf)
 				fputs("\t", outf);
 				fputs(buf, outf);
 			}
+			pclose(f1);
 			*p = 0;
 		} else {
 			fputs(buf, outf);

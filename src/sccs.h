@@ -186,8 +186,9 @@
 #define	X_KV		0x00002000	/* key value file */
 #define	X_NOMERGE	0x00004000	/* treat as binary even if ascii */
 					/* flags which can be changed */
+#define	X_MONOTONIC	0x00008000	/* file rolls forward only */
 #define	X_MAYCHANGE	(X_RCS | X_YEAR4 | X_SHELL | X_EXPAND1 | \
-			X_SCCS | X_EOLN_NATIVE | X_KV | X_NOMERGE)
+			X_SCCS | X_EOLN_NATIVE | X_KV | X_NOMERGE | X_MONOTONIC)
 /* default set of flags when we create a file */
 #define	X_DEFAULT	(X_BITKEEPER|X_CSETMARKED|X_EOLN_NATIVE)
 #define	X_REQUIRED	(X_BITKEEPER|X_CSETMARKED)
@@ -244,6 +245,7 @@
 #define	LONGKEY(s)	((s)->xflags & X_LONGKEY)
 #define	KV(s)		((s)->xflags & X_KV)
 #define	NOMERGE(s)	((s)->xflags & X_NOMERGE)
+#define	MONOTONIC(s)	((s)->xflags & X_MONOTONIC)
 
 /*
  * Flags (d->flags) that indicate some state on the delta.
@@ -380,6 +382,15 @@ typedef	char		**globv;
  * about reducing the size.  That means a 5K delta file takes 620K in
  * memory just for the graph.
  *
+ * Fri Nov 29 2002: and it keeps growing.  We need to rethink this a bit, we
+ * could lose the mr and ignore fields, we never use those, just turn the
+ * file to readonly if we ever see them.  We could also move infrequently
+ * used fields to a list hanging off of the sccs struct, i.e., random,
+ * csetFile, symlink.  We could lose sdate, we're going to have to
+ * eventually when the date is a time_t in the binary s.file.  That's at
+ * least 20 bytes.  And move the "type" to bit fields and put it down
+ * next to the other ones.  That's 260K for the kernel's cset file.
+ *
  * Something else we ought to do: our own allocator/deallocator which allocates
  * enough memory for all the data structures at init time.  That way we can
  * fail the init if there is no memory.
@@ -393,13 +404,10 @@ typedef struct delta {
 	char	*sdate;			/* ascii date in local time, i.e.,
 					 * 93/07/25 21:14:11 */
 	char	*user;			/* user name of delta owner */
-	char	type;			/* Delta or removed delta */
 	ser_t	serial;			/* serial number of this delta */
 	ser_t	pserial;		/* serial number of parent */
 	ser_t	*include;		/* include serial #'s */
 	ser_t	*exclude;		/* exclude serial #'s */
-	ser_t	*ignore;		/* ignore serial #'s */
-	char	**mr;			/* MR's are just passed through */
 	char	**comments;		/* Comment log */
 	/* New stuff in lm's sccs */
 	ser_t	ptag;			/* parent in tag graph */
@@ -424,10 +432,12 @@ typedef struct delta {
 	struct	delta *siblings;	/* pointer to other branches */
 	struct	delta *next;		/* all deltas in table order */
 	u32	flags;			/* per delta flags */
+	u32	dangling:1;		/* in MONOTONIC file, ahead of chgset */
 	u32	symGraph:1;		/* if set, I'm a symbol in the graph */
 	u32	symLeaf:1;		/* if set, I'm a symbol with no kids */
 					/* Needed for tag conflicts with 2 */
 					/* open tips, so maintained always */
+	char	type;			/* Delta or removed delta */
 } delta;
 #define	TAG(d)	((d)->type == 'R')
 

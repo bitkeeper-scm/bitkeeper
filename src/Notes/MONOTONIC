@@ -1,0 +1,73 @@
+Monotonically increasing files in BitKeeper
+-------------------------------------------
+Files in BitKeeper are currently TimeSafe which means if the repository
+rolls backwards, the files also roll backwards.  In almost all cases
+this is the correct behaviour, but there are exceptions.
+
+We'd like to have a file type which only increases for things like
+the config file (license keys, configuration changes) and tags.
+
+Implementation
+--------------
+X_MONOTONIC is a new xflag which can be added to an existing file.
+
+The effect is that committed deltas are not stripped on a clone -r, an
+undo, or a stripdel.   The non-stripped deltas have a new name, they are
+"dangling deltas".
+
+We allow edits on files with dangling deltas, but delta gets some
+additional features.  The behaviour we want is to maintain all the BK
+invariants but get the effect of modifying the rolled-foward delta.
+Here's how we do that.  We allow edit to run against a file with
+dangling deltas.  The p.file is as if there were no dangling deltas,
+which means that clean, diffs, et al just work.  The hard part is in
+sccs_delta().  There we have to get the diffs twice, once against the
+parent in the p.file to see if there is work to do and once against
+the non-dangling parent to get the real diffs.
+
+The only thing which is changes is delta.  The work is split between
+delta.c and slib.c; delta.c strips off the dangling deltas after the
+delta is complete.  slib.c makes sure we diff against the right baseline.
+sccs_hasDiffs() returns 0 if either parent results in no diffs.
+
+The reason it is done this way is that this way we end up with a
+file/ChangeSet relationship which makes sense.  If we added the new
+delta on top of the danglers, we'll commit it in a ChangeSet that is in
+the wrong place.  If we branched and merged, we're merging as a commit,
+also weird.
+
+Interface changes
+-----------------
+    bk admin -fMONOTONIC file
+    bk stripdel -d		strips deltas even on MONOTONIC files
+
+TESTING:
+    a) create a repo with a MONOTONIC file,
+       add some csets containing that file,
+       clone -r backwards.  Validate that
+       - the deltas were not stripped
+       - the deltas are marked (add a :DANGLING: dspec)
+    b) pull, make sure that the deltas are no longer marked.
+    c) add an uncommitted delta, clone that tree, make sure the pending
+       delta is removed.
+    d) create a pull which fills in part of the dangling deltas, make sure
+       that just the parts which are pulled have the marks removed.
+    e) edit/delta a dangling delta, make sure that all the danglers are 
+       stripped.
+    f) edit a file with dangling deltas, make sure that "clean" cleans
+    g) edit a file with dangling deltas, make sure that "diff" shows nothing
+    h) edit a file with dangling deltas, change the contents back to
+       what it was as of last non-dangler, "clean" should clean.
+    i) as above, run delta, only effect should be to stripdel the 
+       the deltas off.
+    j) make sure sfiles -c works
+
+XXX - make sure that we disallow diffs passed in on dangling deltas.
+
+XXX - if you have some dangling deltas, how do you find the delta which is
+not dangling to act as the basis for an edit?  I'm using the first I find
+in the table (XXX - make sure it is a 'D' type)
+
+XXX - what if we have a file that was always roll forwards and 100% of the
+deltas are dangling?  And we want to edit it?  That should fail.  [Later]
+No, it should succeed, the delta should fail.  Think checkout:edit.

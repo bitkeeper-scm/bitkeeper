@@ -25,7 +25,7 @@
 .	ds BS BitSCCS
 .	ds BK BitKeeper
 .	ds UM \*(BK User's Manual
-.	ds AT ATT SCCS
+.	ds ATT ATT SCCS
 .	ds SC SCCS
 .	ds R RCS
 .	ds UN UNIX
@@ -36,7 +36,7 @@
 .	ds BS \s-1B\s0\s-2IT\s0\s-1SCCS\s0
 .	ds BK B\s-3IT\s0K\s-3EEPER\s0
 .	ds UM \*(BK User's Manual
-.	ds AT \s-1ATT SCCS\s0
+.	ds ATT \s-1ATT SCCS\s0
 .	ds SC \s-1SCCS\s0
 .	ds R \s-1RCS\s0
 .	ds UN \s-1UNIX\s0

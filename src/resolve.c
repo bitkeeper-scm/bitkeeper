@@ -1277,6 +1277,7 @@ flags_delta(resolve *rs,
 	doit(X_SCCS, "SCCS");
 	doit(X_EOLN_NATIVE, "EOLN_NATIVE");
 	doit(X_NOMERGE, "NOMERGE");
+	doit(X_MONOTONIC, "MONOTONIC");
 	for (i = 0; i < f; ++i) av[++n] = fbuf[i];
 	av[++n] = sfile;
 	assert(n < 38);	/* matches 40 in declaration */
@@ -2325,6 +2326,7 @@ pass4_apply(opts *opts)
 	 */
 	chdir(RESYNC2ROOT);
 	save = fopen(BACKUP_LIST, "w+");
+	assert(save);
 	unlink(PASS4_TODO);
 	sprintf(key, "bk sfind %s > " PASS4_TODO, ROOT2RESYNC);
 	if (system(key) || !(f = fopen(PASS4_TODO, "r+")) || !save) {
@@ -2396,7 +2398,6 @@ pass4_apply(opts *opts)
 			fprintf(stderr,
 			    "Unable to create backup %s from %s\n",
 			    BACKUP_SFIO, BACKUP_LIST);
-			fclose(save);
 			resolve_cleanup(opts, 0);
 		}
 		save = fopen(BACKUP_LIST, "rt");
@@ -2671,12 +2672,14 @@ csets_in(opts *opts)
 		in = fopen(CSETS_IN, "r");	/* RESYNC one */
 		assert(in);
 		sprintf(buf, "%s/%s", RESYNC2ROOT, CSETS_IN);
-		out = fopen(buf, "w");		/* real one */
-		while (fnext(buf, in)) {
-			unless (streq(buf, "\n")) fputs(buf, out);
+		unlink(buf);
+		if (out = fopen(buf, "w")) {	/* real one */
+			while (fnext(buf, in)) {
+				unless (streq(buf, "\n")) fputs(buf, out);
+			}
+			fprintf(out, "%s\n", d->rev);
+			fclose(out);
 		}
-		fprintf(out, "%s\n", d->rev);
-		fclose(out);
 		fclose(in);
 		sccs_free(s);
 		unlink(CSETS_IN);

@@ -385,7 +385,7 @@ sccs_rmUncommitted(int quiet, FILE *f)
 		perror("popen of bk sfiles -pAC");
 		exit(1);
 	}
-	sprintf(buf, "bk stripdel %s -", (quiet ? "-q" : ""));
+	sprintf(buf, "bk stripdel -d %s -", (quiet ? "-q" : ""));
 	unless (out = popen(buf, "w")) {
 		perror("popen(bk stripdel -, w)");
 		exit(1);

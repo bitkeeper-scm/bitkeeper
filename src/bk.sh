@@ -497,6 +497,7 @@ _unrm () {
 			echo ""
 			echo ""
 		esac
+		bk -R unedit "$RPATH" 	# follow checkout modes
 	done < $LIST 
 	rm -f $LIST $TMPFILE
 }
@@ -890,6 +891,24 @@ _c2r() {	# undoc
 	fi
 	shift `expr $OPTIND - 1`
 	bk prs -r$REV -hnd:REV: "$@"
+}
+
+# XXX undocumented hack that wayne uses.
+#
+# clone a remote repo using a local tree as a baseline
+# assumes UNIX (clone -l)
+_clonemod() {
+	if [ $# -ne 3 ]
+	then
+		echo "usage: bk clonemod URL LOCAL NEW"
+		exit 1
+	fi
+
+	bk clone -lq $2 $3 || exit 1
+	cd $3 || exit 1
+	bk parent -q $1 || exit 1
+	bk undo -q -fa`bk repogca` || exit 1
+	bk pull
 }
 
 # ------------- main ----------------------
