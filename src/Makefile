@@ -1,17 +1,20 @@
+# Makefile for BitKeeper.
 
 BINS	= delta get admin diffs clean prs what sinfo sccssh sids \
 	  smoosh sccslog sfiles renumber lines rmdel takepatch \
 	  cset g2sccs range undos chksum rechksum \
 	  sccsmv sccsrm sccscat key2rev check fdiff adler32
-PRIVATE	= nextsecond mtime gethost zone
-SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge
-GUISCR	= gui/sccstool gui/citool gui/vitool gui/fm gui/fm3 \
-	  gui/bithelp gui/mkindex
+PRIVATE	= nextsecond mtime gethost zone install.sh
+SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
+	  sccstool citool vitool fm fm3 bithelp mkindex
 LIBS	= zlib/libz.a mdbm/libmdbm.a libsccs.a
 LINKS	= ci co edit unedit unget
+DATA	= bitkeeper.config bkhelp.txt
 
-ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(GUIBIN) $(GUISCR) $(LINKS) \
-	  $(PRIVATE) bitkeeper.config bkhelp.txt install.sh
+LINKTO	= delta:ci get:co get:edit clean:unedit clean:unget
+BINLINKS= bk admin get delta unget rmdel prs
+
+ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LINKS) $(PRIVATE) $(DATA)
 
 CFLAGS	= -g -O -Wall -Wno-parentheses -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM
 CPPFLAGS= -Izlib
@@ -41,27 +44,10 @@ BINOBJ  = admin.o key2rev.o rechksum.o sccsmv.o smoosh.o \
 	  diffs.o rmdel.o sccssh.o what.o g2sccs.o \
 	  prs.o sccs_mv.o sfind.o zone.o cset.o get.o rangemain.o \
 	  sccscat.o sids.o gethost.o rcs.o sccslog.o sinfo.o \
-	  fdiff.o check.o adler32.o undos.o chksum.o
+	  fdiff.o check.o adler32.o undos.o chksum.o nextsecond.o mtime.o
 
-SRCS	= slib.c range.c newrev.c getopt.c popen.c libdiff.c \
-	  sfiles.c purify.c zgets.c dirname.c gettemp.c mkdir.c \
-	  fdiff.c mdbm/mdbm.c mdbm/hash.c mdbm/debug.c \
-	  port/getinput.c port/gethost.c port/fullname.c port/platforminit.c \
-	  port/sccs_root.c port/randomBits.c port/spawn.c port/samepath.c \
-	  port/disksp.c \
-	  zlib/adler32.c zlib/compress.c zlib/crc32.c zlib/gzio.c \
-	  zlib/uncompr.c zlib/deflate.c zlib/trees.c zlib/zutil.c \
-	  zlib/inflate.c zlib/infblock.c zlib/inftrees.c zlib/infcodes.c \
-	  zlib/infutil.c zlib/inffast.c \
-	  delta.c get.c adler32.c admin.c diffs.c clean.c prs.c \
-	  what.c sinfo.c sccssh.c sids.c smoosh.c sccslog.c sfind.c \
-	  renumber.c lines.c rmdel.c takepatch.c \
-	  cset.c g2sccs.c rangemain.c zone.c gethost.c undos.c chksum.c \
-	  rechksum.c sccs_mv.c sccsmv.c sccsrm.c sccscat.c \
-	  key2rev.c rcs.c comments.c user.c host.c localtm.c \
-	  check.c bkhelp.txt config.h.in configure substvars.in \
-	  bitkeeper.config install.in nextsecond.c mtime.c filecopy.c \
-	  mmap.c
+SRCS	= $(PORTOBJ:.o=.c) $(SCCSOBJ:.o=.c) $(MDBMOBJ:.o=.c) \
+	  $(ZLIBOBJ:.o=.c) $(BINOBJ:.o=.c)
 HDRS	= sccs.h purify.h range.h system.h mdbm/common.h mdbm/mdbm.h \
 	  mdbm/tune.h zlib/zlib.h zlib/zutil.h zlib/zconf.h zlib/deflate.h \
 	  zlib/infblock.h zlib/infcodes.h zlib/inffast.h zlib/inffixed.h \
@@ -70,6 +56,8 @@ SCRSRCS	= rcs2sccs.perl testfast.perl bk.sh import.sh \
 	  resolve.perl gui/sccstool.tcl gui/citool.tcl gui/vitool.tcl \
 	  gui/fm.tcl gui/fm3.tcl gui/bithelp.tcl gui/mkindex.tcl \
 	  resync.perl uuwrap.sh unuuwrap.sh
+MISC	= bkhelp.txt config.h.in configure substvars.in install.in \
+	  bitkeeper.config
 
 all: $(ALL)
 
@@ -120,18 +108,18 @@ g:
 gO:
 	$(MAKE) CFLAGS="-g -O"
 
-# production must be last so the optimized binaries are the defaults.
 production_all:
-	$(MAKE) production_g libexecdir=$(prefix)/bitkeeper/g
-	$(MAKE) production_debug libexecdir=$(prefix)/bitkeeper/debug
-	$(MAKE) production_purify libexecdir=$(prefix)/bitkeeper/purify
-	$(MAKE) production libexecdir=$(prefix)/bitkeeper
+	$(MAKE) production_g prefix=$(prefix)/g
+	$(MAKE) production_debug prefix=$(prefix)/debug
+	$(MAKE) production_purify prefix=$(prefix)/purify
+	$(MAKE) production
+	$(MAKE) install-links
 
-production: rebuild p install
-production_g: rebuild gO install
-production_debug: rebuild debug install
-production_ndebug: rebuild ndebug install
-production_purify: rebuild purify install
+production: rebuild p install-bin
+production_g: rebuild gO install-bin
+production_debug: rebuild debug install-bin
+production_ndebug: rebuild ndebug install-bin
+production_purify: rebuild purify install-bin
 
 # Cleanup targets.
 clean-obj: FORCE
@@ -139,11 +127,11 @@ clean-obj: FORCE
 		$(LIBS) a.out core
 
 clean-bin: FORCE
-	-/bin/rm -f $(BINS) $(PRIVATE) $(SCRIPTS) $(GUIBIN) $(GUISCR) $(LINKS)
+	-/bin/rm -f $(BINS) $(PRIVATE) $(SCRIPTS) $(DATA) $(LINKS) MANIFEST
 
 clean-cfg: FORCE
 	-/bin/rm -f config.h stamp-h substvars install.sh config.status \
-	    config.cache config.log
+	    config.cache config.log bk.ver
 
 clean-src: FORCE
 	bk clean
@@ -158,7 +146,7 @@ cclean sccsclean nice: clean-obj clean-src
 
 clobber distclean: clean-obj clean-bin clean-cfg clean-src
 
-rebuild: clean-obj clean-bin clean-cfg
+rebuild: clean-obj clean-bin
 
 srcs src: FORCE
 	-get -s $(SRCS) $(HDRS) $(SCRSRCS)
@@ -256,6 +244,10 @@ undos: undos.o
 	$(CC) $(CFLAGS) undos.o -o undos
 chksum: chksum.o
 	$(CC) $(CFLAGS) chksum.o -o chksum
+nextsecond: nextsecond.o
+	$(CC) $(CFLAGS) nextsecond.o -o nextsecond
+mtime: mtime.o
+	$(CC) $(CFLAGS) mtime.o -o mtime
 
 # Links.
 ci: delta
@@ -285,107 +277,93 @@ testfast: testfast.perl substvars
 	chmod +x testfast.T
 	mv -f testfast.T testfast
 
-bk: bk.sh port/unix_platform.sh substvars prs
-	./prs -hr+ -d'$$if(:SYMBOL:){:SYMBOL: }:UTC:' ../ChangeSet >bk.ver
-	./substvars bk.sh | sed "s/VERSION=unknown/VERSION=\"`cat bk.ver`\"/" >bk.T
-	./substvars port/unix_platform.sh > unix_platform.sh.T
-	cat unix_platform.sh.T bk.T > bk.T2
-	chmod +x bk.T2
-	/bin/rm -f bk.ver unix_platform.sh.T bk.T
-	mv -f bk.T2 bk
+bk: bk.sh bk.ver port/unix_platform.sh substvars 
+	cat port/unix_platform.sh bk.sh | ./substvars | \
+		sed "s/VERSION=unknown/VERSION=\"`cat bk.ver`\"/" > bk.T
+	chmod +x bk.T
+	mv -f bk.T bk
+
+# XXX Must be changed when ChangeSet moves to BitKeeper/etc.
+bk.ver: prs ../SCCS/s.ChangeSet
+	./prs -hr+ -d'$$if(:SYMBOL:){:SYMBOL: }:UTC:' ../ChangeSet >bk.v
+	mv -f bk.v bk.ver
 
 uuwrap: uuwrap.sh substvars
-	./substvars uuwrap.sh >uuwrap.T
+	./substvars uuwrap.sh > uuwrap.T
 	chmod +x uuwrap.T
 	mv -f uuwrap.T uuwrap
 
 unuuwrap: unuuwrap.sh substvars
-	./substvars unuuwrap.sh >unuuwrap.T
+	./substvars unuuwrap.sh > unuuwrap.T
 	chmod +x unuuwrap.T
 	mv -f unuuwrap.T unuuwrap
 
 import: import.sh substvars
-	./substvars import.sh >import.T
+	./substvars import.sh > import.T
 	chmod +x import.T
 	mv -f import.T import
 
 pmerge: pmerge.perl port/unix_platform.perl substvars
-	./substvars pmerge.perl >pmerge.T
-	cat pmerge.T port/unix_platform.perl > pmerge.T2
-	/bin/rm -f pmerge.T
-	chmod +x pmerge.T2
-	mv -f pmerge.T2 pmerge
+	./substvars pmerge.perl port/unix_platform.perl > pmerge.T
+	chmod +x pmerge.T
+	mv -f pmerge.T pmerge
 
 resolve: resolve.perl port/unix_platform.perl substvars
-	./substvars resolve.perl >resolve.T
-	cat resolve.T port/unix_platform.perl > resolve.T2
-	/bin/rm -f resolve.T
-	chmod +x resolve.T2
-	mv -f resolve.T2 resolve
+	./substvars resolve.perl port/unix_platform.perl > resolve.T
+	chmod +x resolve.T
+	mv -f resolve.T resolve
 
 resync: resync.perl port/unix_platform.perl substvars
-	./substvars resync.perl >resync.T
-	cat resync.T port/unix_platform.perl > resync.T2
-	/bin/rm -f resync.T
-	chmod +x resync.T2
-	mv -f resync.T2 resync
+	./substvars resync.perl port/unix_platform.perl > resync.T
+	chmod +x resync.T
+	mv -f resync.T resync
 
-gui/sccstool: gui/sccstool.tcl port/unix_platform.tcl substvars
-	./substvars gui/sccstool.tcl >gui/sccstool.T
-	./substvars port/unix_platform.tcl > gui/unix_platform.T
-	cat gui/unix_platform.T gui/sccstool.T > gui/sccstool.T2
-	chmod +x gui/sccstool.T2
-	/bin/rm -f gui/unix_platform.T gui/sccstool.T 
-	mv -f gui/sccstool.T2 gui/sccstool
+sccstool: gui/sccstool.tcl port/unix_platform.tcl substvars
+	./substvars port/unix_platform.tcl gui/sccstool.tcl > sccstool.T
+	chmod +x sccstool.T
+	mv -f sccstool.T sccstool
 
-gui/citool: gui/citool.tcl port/unix_platform.tcl substvars
-	./substvars gui/citool.tcl >gui/citool.T
-	./substvars port/unix_platform.tcl > gui/unix_platform.T
-	cat gui/unix_platform.T gui/citool.T > gui/citool.T2
-	chmod +x gui/citool.T2
-	/bin/rm -f gui/unix_platform.T gui/citool.T 
-	mv -f gui/citool.T2 gui/citool
+citool: gui/citool.tcl port/unix_platform.tcl substvars
+	./substvars port/unix_platform.tcl gui/citool.tcl > citool.T
+	chmod +x citool.T
+	mv -f citool.T citool
 
-gui/vitool: gui/vitool.tcl substvars
-	./substvars gui/vitool.tcl >gui/vitool.T
-	chmod +x gui/vitool.T
-	mv -f gui/vitool.T gui/vitool
+vitool: gui/vitool.tcl substvars
+	./substvars gui/vitool.tcl > vitool.T
+	chmod +x vitool.T
+	mv -f vitool.T vitool
 
-gui/fm: gui/fm.tcl port/unix_platform.tcl substvars
-	./substvars gui/fm.tcl >gui/fm.T
-	./substvars port/unix_platform.tcl > gui/unix_platform.T
-	cat gui/unix_platform.T gui/fm.T > gui/fm.T2
-	chmod +x gui/fm.T2
-	/bin/rm -f gui/unix_platform.T gui/fm.T 
-	mv -f gui/fm.T2 gui/fm
+fm: gui/fm.tcl port/unix_platform.tcl substvars
+	./substvars port/unix_platform.tcl gui/fm.tcl > fm.T
+	chmod +x fm.T
+	mv -f fm.T fm
 
-gui/fm3: gui/fm3.tcl substvars
-	./substvars gui/fm3.tcl >gui/fm3.T
-	chmod +x gui/fm3.T
-	mv -f gui/fm3.T gui/fm3
+fm3: gui/fm3.tcl substvars
+	./substvars gui/fm3.tcl >fm3.T
+	chmod +x fm3.T
+	mv -f fm3.T fm3
 
-gui/bithelp: gui/bithelp.tcl substvars
-	./substvars gui/bithelp.tcl >gui/bithelp.T
-	chmod +x gui/bithelp.T
-	mv -f gui/bithelp.T gui/bithelp
+bithelp: gui/bithelp.tcl substvars
+	./substvars gui/bithelp.tcl >bithelp.T
+	chmod +x bithelp.T
+	mv -f bithelp.T bithelp
 
-gui/mkindex: gui/mkindex.tcl substvars
-	./substvars gui/mkindex.tcl >gui/mkindex.T
-	chmod +x gui/mkindex.T
-	mv -f gui/mkindex.T gui/mkindex
+mkindex: gui/mkindex.tcl substvars
+	./substvars gui/mkindex.tcl >mkindex.T
+	chmod +x mkindex.T
+	mv -f mkindex.T mkindex
 
 # Autoconf magic.
 # This is not the way this will work in the long run.
 # Unfortunately, there is no portable way to avoid running config.status
 # several times.
 
-prefix=/usr
-libexecdir=$(prefix)/bitkeeper
+prefix=/usr/bitkeeper
 
 # ATT SCCS doesn't respect the stored file mode.
 config.status: configure
 	chmod +x configure
-	./configure --no-create --prefix=$(prefix) --libexecdir=$(libexecdir)
+	./configure --no-create --prefix=$(prefix)
 
 config.h: stamp-h
 stamp-h: config.h.in config.status
@@ -396,12 +374,28 @@ substvars: substvars.in config.status
 	CONFIG_HEADERS= CONFIG_FILES=substvars ./config.status
 	chmod +x substvars
 
-install.sh: install.in config.status
-	CONFIG_HEADERS= CONFIG_FILES=install.sh:install.in ./config.status
-	chmod +x install.sh
+install.sh: install.in substvars
+	./substvars install.in > install.T
+	chmod +x install.T
+	mv install.T install.sh
 
-install: install.sh all FORCE
-	./install.sh $(prefix)
+install: all install-bin install-links
+
+install-bin: install.sh MANIFEST
+	./install.sh MANIFEST $(prefix)
+
+MANIFEST: Makefile
+	for file in $(BINS) $(SCRIPTS); do echo "$$file 0755"; done >M
+	for file in $(DATA); do echo "$$file 0644"; done >>M
+	for pair in $(LINKTO); do echo $${pair#*:} - $${pair%:*}; done >>M
+	mv -f M MANIFEST
+
+install-links:
+	cd /usr/bin; set -ex; \
+	for file in $(BINLINKS); do \
+	rm -f $$file; \
+	ln -s /usr/bitkeeper/$$file; \
+	done
 
 # The default .c.o rule is broken with some Makes.
 .c.o:
@@ -463,6 +457,8 @@ localtm.o:	localtm.c $(commondeps)
 undos.o:	undos.c
 chksum.o:	chksum.c
 gethost.o:	gethost.c
+nextsecond.o:	nextsecond.c
+mtime.o:	mtime.c
 
 mdbm/hash.o:	mdbm/hash.c mdbm/mdbm.h
 mdbm/mdbm.o:	mdbm/mdbm.c mdbm/common.h mdbm/tune.h mdbm/mdbm.h
