@@ -32,6 +32,28 @@ set test_tool [lindex $argv 0]
 set test_program [file join [exec bk bin] gui lib $test_tool]
 set test_toplevel .
 
+# simulate button click on a widget. Index is of the form @x,y.
+# if target is a text widget, index may also be of the form
+# "line.column" which will be converted to the x,y that is over
+# that character.
+proc test_buttonClick {button target index} \
+{
+	set x 0
+	set y 0
+	if {[winfo class $target] eq "Text"} {
+		$target see $index
+		set bbox [$target bbox $index]
+		set x [lindex $bbox 0]
+		set y [lindex $bbox 1]
+	} else {
+		regexp {@([0-9]+),([0-9]+)} $index -- x y
+	}
+	event generate $target <ButtonPress-$button> \
+	    -x $x -y $y
+	event generate $target <ButtonRelease-$button> \
+	    -x $x -y $y
+}
+
 # simulates pressing a button with the given label or pathname
 # If the button isn't visible, wait until it is.
 proc test_buttonPress {target {button 1}} \
@@ -281,8 +303,13 @@ proc test_invokeMenu {menu} \
 
 proc bgerror {string} {
 	global errorInfo
-	puts stderr "unexpected error: $string"
-	puts stderr $errorInfo
+	# citool adds some annoying cruft to the error message
+	if {[regsub {can't set "test_toplevel": } $string {} string]} {
+		puts stderr "unexpected error: $string"
+	} else {
+		puts stderr "unexpected error: $string"
+		puts stderr $errorInfo
+	}
 	exit 1
 }
 
