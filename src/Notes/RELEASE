@@ -1,0 +1,22 @@
+Release Process
+
+Possible preparation
+	make crankturn on fast machine - see that it works
+	make fixes, repeat
+
+When ready
+	tag tree
+	make crankturn on all build machines (bitmover.com is not included)
+		roughly, this does a ..
+			make production
+			make install
+			make test
+		it also makes an image file
+		and RPM if appropriate for the platform
+	Proposed release run on bitmover.com as logging server for a week
+		This checks stability of release under load - as well
+		as makes it easier to fix if something wrong.
+		Do a bkweb browser restart
+	dev team installs from stable 
+		Everybody run these bits to make sure they are fine
+	Load up on web site and roll them out

@@ -1,0 +1,34 @@
+RPM requirements for 2.2 stable
+
+RPMs will be available for Linux platforms that support RPMs.
+These will be generated automatically as part of a crankturn.
+
+1. The RPM will be able to:
+	a. be installed with: rpm -i <bitkeeper-whatever>.rpm
+	b. be uninstalled (erased) with: rpm -e <bitkeeper-whatever>
+	c. be upgraded with: rpm -U <bitkeeper-whatever>.rpm
+
+2. The RPM pre-installation will check for dependencies.
+	a. glibc - that there and correct revision (or compatible revision).
+	b. tcl/tk
+		Note on why this might be removed from the requirements:
+		Bitkeeper will work fine without tcl/tk so this is not a
+		strictly needed dependency.  By making tcl/tk a dep, you
+		will get less calls from the less informed, but the more
+		experienced might get annoyed with passing '--nodeps' to
+		the rpm installer. 
+3. Permissions and ownership
+	a. file permissions - not writable
+	b. directory permissions - not writable by other than installer
+	c. file and directory owndership - same as who installed.
+
+4. It will make links to /usr/bin/.. 
+	a. if it can, it will make links in /usr/bin for bk, get, prs, ...
+
+5. License display (an option to RPM)
+	a. show 'bk help license'
+
+== 
+Possible Requrements, but do not implement unless they get moved to above.
+	a. it will relocatable - user can specify root of installation
+	b. it will work for non-root - users can install in $HOME area
