@@ -1338,10 +1338,11 @@ http_index(char *page)
 	time_t	t4w, t8w, t12w, t6m, t9m, t1y, t2y, t3y;
 	int	c1h=0, c1d=0, c2d=0, c3d=0, c4d=0;
 	int	c1w=0, c2w=0, c3w=0, c4w=0, c8w=0, c12w=0, c6m=0, c9m=0;
-	int	c1y=0, c2y=0, c3y=0, c=0;
+	int	c1y=0, c2y=0, c3y=0, c=0, cm=0;
 	char	buf[MAXPATH*2];
 	char	titlebar[200];
-	char	*email, *desc, *contact, *category;
+	char	*email=0, *desc=0, *contact=0, *category=0;
+	char	*bkweb=0, *master=0, *homepage=0;
 	MDBM	*m;
 
 	time(&now);
@@ -1362,9 +1363,13 @@ http_index(char *page)
 	t2y = now - (2*365*24*60*60);
 	t3y = now - (3*365*24*60*60);
 	for (d = s->table; d; d = d->next) {
-		unless (d->added > 0) continue;
 		if (user[0] && !streq(user, d->user)) continue;
-		unless (d->type == 'D') continue;
+		unless (d->added > 0) {
+			cm++;
+			continue;
+		}
+		if (d->type == 'R') continue;
+		assert(d->type == 'D');
 		if (d->date >= t1h) c1h++;
 		if (d->date >= t1d) c1d++;
 		if (d->date >= t2d) c2d++;
@@ -1400,6 +1405,9 @@ http_index(char *page)
 			contact = mdbm_fetch_str(m, "contact");
 			email = mdbm_fetch_str(m, "email");
 			category = mdbm_fetch_str(m, "category");
+			bkweb = mdbm_fetch_str(m, "bkweb");
+			master = mdbm_fetch_str(m, "master");
+			homepage = mdbm_fetch_str(m, "homepage");
 		}
 
 		out("<html><head><title>\n");
@@ -1445,8 +1453,9 @@ http_index(char *page)
 		if (m) mdbm_close(m);
 	}
 
-	out("<table width=100%><tr><td valign=top width=50%>\n");
-	out("<table width=100%>\n");
+	out("<p><table bgcolor=#e0e0e0 border=1 align=middle>\n");
+	out("<tr><td align=middle valign=top width=50%>\n");
+	out("<table cellpadding=3>\n");
 #define	DOIT(c, l, u, t) \
 	if (c && (c != l)) { \
 		sprintf(buf, "<tr><td><a href=ChangeSet@-%s%s>", u, navbar); \
@@ -1474,25 +1483,47 @@ http_index(char *page)
 	DOIT(c3y, c2y, "3y", "three&nbsp;years");
 	sprintf(buf,"<tr><td><a href=ChangeSet%s>", navbar);
 	out(buf);
-	sprintf(buf, "All %d changesets", c);
+	if (cm) {
+		sprintf(buf, "All %d changesets (%d empty merges)", c+cm, cm);
+	} else {
+		sprintf(buf, "All %d changesets", c+cm);
+	}
 	out(buf);
-	out("</a></td></tr>");
-	out("</table>");
-	out("</td><td valign=top width=50%>");
-	out("<table width=100%>\n\n");
+	out("</a></td></tr></table>\n");
+	out("</td><td align=middle valign=top width=50%>\n");
+	out("<table cellpadding=3>\n\n");
 	unless (user[0]) {
+		out("<tr><td align=middle>");
 		sprintf(buf,
-		    "<tr><td><a href=stats%s>User statistics</a></td></tr>\n",
-		    navbar);
+		    "<a href=stats%s>User statistics</a></td></tr>\n", navbar);
 		out(buf);
 	}
-	sprintf(buf, "<tr><td><a href=tags%s>Tags</a></td></tr>\n", navbar);
+	out("<tr><td align=middle>");
+	sprintf(buf, "<a href=tags%s>Tags</a></td></tr>\n", navbar);
 	out(buf);
+	out("<tr><td align=middle>");
 	sprintf(buf,
-	    "<tr><td><a href=src%s>Browse the source tree</a></td></tr>",
-	    navbar);
+	    "<a href=src%s>Browse the source tree</a></td></tr>", navbar);
 	out(buf);
-	out("<tr><td>&nbsp;</td></tr>\n");
+	if (bkweb) {
+		out("<tr><td align=middle>");
+		sprintf(buf,
+		    "<a href=%s>BK/Web site for this package</a></td></tr>\n",
+		    bkweb);
+		out(buf);
+	}
+	if (homepage) {
+		out("<tr><td align=middle>");
+		sprintf(buf,
+		    "<a href=%s>Home page for this package</a></td></tr>\n",
+		    homepage);
+		out(buf);
+	}
+	if (master) {
+		out("<tr><td align=middle>");
+		sprintf(buf, "Master repository at %s</td></tr>\n", master);
+		out(buf);
+	}
 #ifdef notyet
 	out("<tr><td><a href=http://www.bitkeeper.com/bkweb/help.html>Help"
 	    "</a></td></tr>\n");
