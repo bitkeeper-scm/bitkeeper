@@ -291,14 +291,13 @@ goodPackageName(char *pname)
 }
 
 private int
-inGracePeriod(l)
+inGracePeriod(int l)
 {
-	if (getenv("_BK_FORCE_GRACE_PERIOD")) return (1);
 	/*
 	 * Eval licence and single-user license have no grace period
 	 */
-	if ((l&LOG_LIC_OK) && (l&LOG_LIC_GRACE) &&
-	    !(l&LOG_LIC_SINGLE) && !isEvalLicense()) {
+	if ((l&LOG_LIC_GRACE) && 
+	    !(l&LOG_LIC_EXPIRED) && !(l&LOG_LIC_SINGLE) && !isEvalLicense()) {
 		return (1);
 	}
 	return (0);
@@ -307,7 +306,6 @@ inGracePeriod(l)
 private int
 is_VIP(int l)
 {
-	if (getenv("_BK_FORCE_NO_VIP")) return (0);
 	if ((l&LOG_LIC_OK) && !(l&LOG_LIC_SINGLE) &&
 	    !inGracePeriod(l) && !(l&LOG_LIC_EXPIRED) &&
 	    !isEvalLicense()) {
@@ -317,7 +315,7 @@ is_VIP(int l)
 }
 
 private int
-hasPendingClog()
+hasPendingClog(void)
 {
 
 	if (getenv("_BK_FORCE_PENDING_CLOG")) return (1);
@@ -335,10 +333,8 @@ enforceConfigLog(int l)
 		printf(
 "============================================================================\n"
 "Warning:  You have config logs pending for a long time.\n\n" 
-"Your license key is currently in grace period. Bitkeeper will stop working\n"
-"when your grace period is over unless the pending logs are sent.\n"
 "\"commit\" will try to send the pending logs automatically before it exit.\n"
-"Please veriify the pending count is zero after bk commit is done\n"
+"Please verify the pending count is zero after bk commit is done.\n"
 "To get a count of the pending logs: use the following commnd:\n"
 "\t\"bk _lconfig -p\"\n\n"
 "If pedning count is still non-zero after bk commit is done,\n"
