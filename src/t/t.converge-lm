@@ -179,17 +179,24 @@ export BK_USER BK_HOST
 ls > LS
 bk new $Q LS
 echo y | bk commit $Q -ywhatever2 >/dev/null 2>&1
-DATE=`bk -R prs -hr1.0 '-d:D: :T:\n' BitKeeper/etc/logging_ok`
+DATE=`bk -R prs -hr1.0 '-dD :I: :D: :T:\n' BitKeeper/etc/logging_ok`
+UTC=`bk -R prs -hr1.0 '-d:UTC:\n' BitKeeper/etc/logging_ok`
 cd ../copy
 BK_USER=BBB
 date > date
 bk new $Q date
 echo y | bk commit $Q -ywhatever2 >/dev/null 2>&1
-JUNK=`bk -R prs -hr1.0 '-d:D: :T:\n' BitKeeper/etc/logging_ok`
+JUNK=`bk -R prs -hr1.0 '-dD :I: :D: :T:\n' BitKeeper/etc/logging_ok`
+J_UTC=`bk -R prs -hr1.0 '-d:UTC:\n' BitKeeper/etc/logging_ok`
 mv BitKeeper/etc/SCCS/s.logging_ok OLD
 sed "s|$JUNK BBB |$DATE BBB |" < OLD > BitKeeper/etc/SCCS/s.logging_ok
 bk admin -z BitKeeper/etc/logging_ok
-NEW=`bk -R prs -hr1.0 '-d:D: :T:\n' BitKeeper/etc/logging_ok`
+mv SCCS/s.ChangeSet OLD2
+sed "s?BitKeeper/etc/logging_ok|$J_UTC?BitKeeper/etc/logging_ok|$UTC?" < OLD2 >  SCCS/s.ChangeSet
+bk admin -z ChangeSet
+bk rechksum -f ChangeSet 2> /dev/null
+bk -r check -a
+NEW=`bk -R prs -hr1.0 '-dD :I: :D: :T:\n' BitKeeper/etc/logging_ok`
 if [ "$NEW" != "$DATE" ]
 then	echo failed to fix the dates
 	echo "NEW: $NEW"
