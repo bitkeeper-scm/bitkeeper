@@ -11935,10 +11935,6 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		int	comma = 0;
 		int	flags = sccs_getxflags(d);
 
-		if (flags & X_BITKEEPER) {
-			fs("BITKEEPER");
-			comma = 1;
-		}
 		if (flags & X_YEAR4) {
 			if (comma) fs(","); fs("YEAR4"); comma = 1;
 		}
@@ -11953,9 +11949,6 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		}
 		if (flags & X_EXPAND1) {
 			if (comma) fs(","); fs("EXPAND1"); comma = 1;
-		}
-		if (flags & X_CSETMARKED) {
-			if (comma) fs(","); fs("CSETMARKED"); comma = 1;
 		}
 		if (flags & X_HASH) {
 			if (comma) fs(","); fs("HASH"); comma = 1;
