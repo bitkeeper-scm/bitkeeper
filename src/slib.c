@@ -3813,9 +3813,8 @@ out:		free(config);
 		proj_free(proj);
 		goto out;
 	}
-	s->xflags |= X_HASH;
 	s->state |= S_CONFIG; /* This should really be stored on disk */
-	if (sccs_get(s, 0, 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
+	if (sccs_get(s, 0, 0, 0, 0, SILENT|GET_HASH|GET_HASHONLY, 0)) {
 		sccs_free(s);
 		goto out;
 	}
@@ -5881,10 +5880,13 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 		flags |= NEWCKSUM;
 	}
 	/* we're changing the meaning of the file, checksum would be invalid */
-	if (HASH(s) && (flags & GET_NOHASH)) {
-		flags &= ~NEWCKSUM;
+	if (HASH(s)) {
+		if (flags & GET_NOHASH) flags &= ~NEWCKSUM;
+	} else {
+		if (flags & GET_HASH) flags &= ~NEWCKSUM;
 	}
-	if (HASH(s) && !(flags & GET_NOHASH)) {
+
+	if ((HASH(s) && !(flags & GET_NOHASH)) || (flags & GET_HASH)) {
 		hash = 1;
 		if (CSET(s)) {
 			hashFlags = DB_KEYFORMAT;
