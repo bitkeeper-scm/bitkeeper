@@ -276,7 +276,6 @@ cmd_push_part2(int ac, char **av)
 	fflush(stdout);
 	/* Arrange to have stderr go to stdout */
 	fd2 = dup(2); dup2(1, 2);
-	if (metaOnly) resolve[3] = 0; /* allow conflict in logging patch */
 	putenv("POST_INCOMING_TRIGGER=NO");
 	pid = spawnvp_wPipe(resolve, &pfd, 0);
 	dup2(fd2, 2); close(fd2);
@@ -305,6 +304,6 @@ done:	/*
 	 * Fire up the post-trigger (for non-logging tree only)
 	 */
 	putenv("BK_RESYNC=FALSE");
-	trigger(av[0],  "post");
+	unless (metaOnly) trigger(av[0],  "post");
 	return (rc);
 }

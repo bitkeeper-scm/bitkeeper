@@ -202,7 +202,18 @@ usage:		system("bk help -s takepatch");
 		fclose(f);
 	}
 
-	unless (remote) cleanup(CLEAN_RESYNC | CLEAN_PENDING | CLEAN_OK);
+	unless (remote) {
+		/*
+		 * The patch didn't contain any new csets and so we don't
+		 * need to run resolve.
+		 * We should still run the post resolve trigger.
+		 */
+		if (resolve) {
+			putenv("BK_STATUS=REDUNDANT");
+			trigger("resolve", "post");
+		}
+		cleanup(CLEAN_RESYNC | CLEAN_PENDING | CLEAN_OK);
+	}
 
 	getConfig();	/* why do no conflict cases need this?
 			 * They do, t.logging will fail without it,
@@ -435,7 +446,13 @@ again:	s = sccs_keyinit(t, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB);
 	 *    it.
 	 */
 	unless (s || newProject || newFile) {
-		if (gone(t, goneDB)) goneError(t);
+		if (gone(t, goneDB)) {
+			if (isLogPatch || getenv("BK_GONE_OK")) {
+				goto skip;
+			} else {
+				goneError(t);
+			}
+		}
 		unless (rebuilt++) {
 			if (rebuild_id(t)) {
 				fprintf(stderr,
@@ -449,7 +466,7 @@ again:	s = sccs_keyinit(t, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB);
 			goto again;
 		}
 		if (!newFile && isLogPatch) {
-			skipPatch(p);
+	skip:		skipPatch(p);
 			return (0);
 		}
 		unless (newFile) {
