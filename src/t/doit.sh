@@ -272,11 +272,6 @@ clean_up()
 	# Make sure there are no stale files in $TMP
 	ls -a $TMP  > $TMP/T.${USER}-new
 	$DIFF $TMP/T.${USER}-new $TMP/T.${USER} | grep -v mutt-work
-
-	# Look for spare BK processes if we are Linux pased
-	test "`uname`" = Linux && {
-		ps -axu 2>/dev/null | grep bk | grep -v grep
-	}
 }
 
 init_main_loop()
