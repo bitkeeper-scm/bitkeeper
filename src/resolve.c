@@ -2384,7 +2384,12 @@ copyAndGet(char *from, char *to, project *proj)
 	sccs *s;
 
 	if (link(from, to)) {
-		mkdirf(to);
+		if (mkdirf(to)) {
+			fprintf(stderr,
+			    "mkdir: %s: %s\n",
+			    to, strerror(errno));
+			return (-1);
+		}
 		if (link(from, to)) {
 			unless (errno == EXDEV) return (-1);
 			/*
