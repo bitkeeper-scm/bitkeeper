@@ -271,7 +271,7 @@ _lclone() {
 		echo lclone failed
 		exit 1
 	}
-	bk parent "$Q" "$FROM"
+	bk parent $Q "$FROM"
 	rm -f /tmp/dirs$$
 	exit 0
 }
