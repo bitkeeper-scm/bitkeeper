@@ -99,3 +99,18 @@ cmd_abort(int ac, char **av)
 	out("@END@\n");
 	return (rc);
 }
+
+int
+cmd_check(int ac, char **av)
+{
+	int	rc;
+
+	out("@CHECK INFO@\n");
+	rc = system("bk -r check -a 2>&1");
+	fputc(BKD_NUL, stdout);
+	fputc('\n', stdout);
+	if (rc) printf("%c%d\n", BKD_RC, rc);
+	fflush(stdout);
+	out("@END@\n");
+	return (rc);
+}

@@ -116,6 +116,7 @@ int	push_main(int, char **);
 int	pwd_main(int, char **);
 int	r2c_main(int, char **);
 int	range_main(int, char **);
+int	rcheck_main(int, char **);
 int	rclone_main(int, char **);
 int	rcs2sccs_main(int, char **);
 int	rcsparse_main(int, char **);
@@ -271,6 +272,7 @@ struct command cmdtbl[] = {
 	{"pwd", pwd_main},/* regression test */ /* undoc? 2.0 */
 	{"r2c", r2c_main},			/* doc 2.0 */
 	{"range", range_main},		/* XXX - doc 2.0 it sucks*/
+	{"rcheck", rcheck_main},		/* doc 2.0 */
 	{"rcs2sccs", rcs2sccs_main},		/* doc 2.0 */
 	{"rcsparse", rcsparse_main},		/* doc 2.0 */
 	{"receive", receive_main},		/* doc 2.0 */
@@ -627,6 +629,7 @@ private	struct {
 	int	flags;
 } repolog[] = {
 	{"abort", CMD_FAST_EXIT},
+	{"check", CMD_FAST_EXIT},
 	{"pull", CMD_BYTES},
 	{"push", CMD_BYTES},
 	{"commit", CMD_WRLOCK|CMD_WRUNLOCK},

@@ -31,6 +31,7 @@ typedef	int (*func)(int, char **);
 int	cmd_abort(int ac, char **av);
 int	cmd_cd(int ac, char **av);
 int	cmd_clone(int ac, char **av);
+int	cmd_check(int ac, char **av);
 int	cmd_eof(int ac, char **av);
 int	cmd_help(int ac, char **av);
 int	cmd_httpget(int ac, char **av);

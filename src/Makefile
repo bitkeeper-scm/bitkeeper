@@ -66,7 +66,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o approve.o \
 	port/sccs_getuser.o port/sccs_lockfile.o \
 	port/sccs_root.o port/sig.o port/socket2pipe.o \
 	port/spawn.o prs.o pull.o purify.o push.o pwd.o \
-	r2c.o range.o rclone.o rcs.o rcs2sccs.o rcsparse.o \
+	r2c.o range.o rcheck.o rclone.o rcs.o rcs2sccs.o rcsparse.o \
 	receive.o renumber.o resolve.o \
 	resolve_binaries.o resolve_contents.o \
 	resolve_create.o resolve_filetypes.o \
@@ -670,6 +670,7 @@ r2c.o:		r2c.c $(H) range.h
 randomBits.o:	port/randomBits.c $(H)
 range.o:	range.c $(H) range.h
 rcs.o:		rcs.c $(H)
+rccheck.o:	rcheck.c $(B) $(H)
 rclone.o:	rclone.c $(B) $(H) $(Z)
 rcsparse.o:	rcsparse.c $(H) rcs.h
 rcs2sccs.o:	rcs2sccs.c $(H) rcs.h

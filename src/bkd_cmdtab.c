@@ -5,6 +5,7 @@ struct cmd cmds[] = {
   { "?", "?", "print this help", cmd_help },
   { "abort", "abort_1.3", "abort resolve", cmd_abort },
   { "cd", "cd_1.3", "change to a new repository root", cmd_cd },
+  { "check", "check_1.3", "check repository", cmd_check },
   { "clone", "clone_1.2", "clone the current repository", cmd_clone },
   { "help", "help_1.3", "print this help", cmd_help },
   { "httpget", "httpget_1.3", "http get command", cmd_httpget },

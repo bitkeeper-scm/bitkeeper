@@ -52,7 +52,7 @@ bk abort bk://localhost:$P/$HERE/copy
 cd $HERE/copy
 bk lock -s || { echo failed; exit 1; }
 echo OK
-echo $N rClone via http:// ..........................................$NL
+echo $N rabort via http:// ..........................................$NL
 cd $HERE
 bk clone $Q $HERE/project http://localhost:$P/$HERE/copy2
 [ -f copy2/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
