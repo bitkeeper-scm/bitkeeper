@@ -27,6 +27,7 @@ proc dot {} \
 	scrollDiffs $Diffs($lastDiff) $DiffsEnd($lastDiff)
 	highlightDiffs $Diffs($lastDiff) $DiffsEnd($lastDiff)
 	.diffs.status.middle configure -text "Diff $lastDiff of $diffCount"
+	.menu.dot configure -text "Goto diff $lastDiff"
 	if {$lastDiff == 1} {
 		.menu.prev configure -state disabled
 	} else {
@@ -324,7 +325,7 @@ proc computeHeight {} \
 proc widgets {} \
 {
 	global	leftColor rightColor scroll diffHeight
-	global	wish tcl_platform diffbFont
+	global	wish tcl_platform diffbFont search
 
 	set leftWidth 65
 	set rightWidth 65
@@ -333,6 +334,12 @@ proc widgets {} \
 	set leftColor orange
 	set rightColor yellow
 	set bcolor #d0d0d0
+	set search(prompt) "Search for:"
+	set search(dir) ""
+	set search(text) .menu.search
+	set search(widget) .diffs.right
+	set search(next) .menu.searchNext
+	set search(prev) .menu.searchPrev
 	if {$tcl_platform(platform) == "windows"} {
 		set py -2; set px 1; set bw 2
 		set diffFont {helvetica 9 roman}
@@ -356,7 +363,6 @@ proc widgets {} \
 	if {("$g" == "1x1+0+0") && ("$geometry" != "")} {
 		wm geometry . $geometry
 	}
-	keyboard_bindings
 	wm title . "Diff Tool"
 
 	frame .diffs
@@ -405,11 +411,35 @@ proc widgets {} \
 		-pady $py -padx $px -borderwid $bw \
 		-font $buttonFont -text "Help" \
 		-command { exec bk helptool difftool & }
+	    button .menu.dot -bg $bcolor \
+		-pady $py -padx $px -borderwid $bw \
+		-font $buttonFont -text "Current diff" \
+		-command dot
+	    label .menu.prompt -font $buttonFont -width 12 -relief groove \
+		-textvariable search(prompt)
+	    entry $search(text) -width 20 -font $buttonFont
+	    button .menu.searchPrev -font $buttonFont -bg $bcolor \
+		-pady $py -padx $px -borderwid $bw \
+		-text "Previous" -state disabled -command {
+			searchdir ?
+			searchnext
+		}
+	    button .menu.searchNext -font $buttonFont -bg $bcolor \
+		-pady $py -padx $px -borderwid $bw \
+		-text "Next" -state disabled -command {
+			searchdir /
+			searchnext
+		}
 	    pack .menu.quit -side left
 	    pack .menu.help -side left
 	    pack .menu.reread -side left
 	    pack .menu.prev -side left
 	    pack .menu.next -side left
+	    pack .menu.dot -side left
+	    pack $search(text) -side right
+	    pack .menu.prompt -side right
+	    pack .menu.searchNext -side right
+	    pack .menu.searchPrev -side right
 
 	grid .menu -row 0 -column 0 -sticky ew
 	grid .diffs -row 1 -column 0 -sticky nsew
@@ -436,11 +466,15 @@ proc widgets {} \
 
 	.diffs.left tag configure diff -background $leftColor
 	.diffs.right tag configure diff -background $rightColor
+
+	keyboard_bindings
 }
 
 # Set up keyboard accelerators.
 proc keyboard_bindings {} \
 {
+	global	search
+
 	bind all <Prior> { if {[Page "yview" -1 0] == 1} { break } }
 	bind all <Next> { if {[Page "yview" 1 0] == 1} { break } }
 	bind all <Up> { if {[Page "yview" -1 1] == 1} { break } }
@@ -468,6 +502,11 @@ proc keyboard_bindings {} \
 	bind all <space>	next
 	bind all <p>		prev
 	bind all <period>	dot
+	bind all <slash>	"search /"
+	bind all <question>	"search ?"
+	bind $search(text) <Return>	"searchstring"
+	$search(widget) tag configure search \
+	    -background #d0d0ff -relief groove -borderwid 0
 }
 
 proc getrev {file rev checkMods} \
@@ -552,6 +591,12 @@ proc getFiles {} \
 	}
 	readFiles $lfile $lname $rfile $rname
 	foreach tmp $tmps { file delete $tmp }
+}
+
+# Override searchsee definition so we scroll both windows
+proc searchsee {location} \
+{
+	scrollDiffs $location $location
 }
 
 widgets

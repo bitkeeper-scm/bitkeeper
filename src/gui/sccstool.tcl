@@ -980,7 +980,7 @@ proc widgets {} \
 	}
 
 	frame .cmd -borderwidth 2 -relief ridge
-		text $search(text) -height 1 -width 30 -font $font(button)
+		entry $search(text) -width 30 -font $font(button)
 		label .cmd.l -font $font(button) -width 30 -relief groove \
 		    -textvariable search(prompt)
 		grid .cmd.l -row 0 -column 0 -sticky ew
@@ -1034,7 +1034,7 @@ proc widgets {} \
 	bind .p.top.c <slash> "search /"
 	bind .p.top.c <question> "search ?"
 	bind .p.top.c <n> "searchnext"
-	bind .cmd.t <Return> "searchstring"
+	bind $search(text) <Return> "searchstring"
 	$search(widget) tag configure search \
 	    -background yellow -relief groove -borderwid 0
 

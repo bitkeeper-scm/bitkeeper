@@ -1,11 +1,41 @@
+proc searchbuttons {button state} \
+{
+	global	search
+
+	if {$button == "both"} {
+		if {[info exists search(next)]} {
+			$search(next) configure -state $state
+		}
+		if {[info exists search(prev)]} {
+			$search(prev) configure -state $state
+		}
+	} elseif {$button == "prev"} { 
+		if {[info exists search(prev)]} {
+			$search(prev) configure -state $state
+		}
+	} else {
+		if {[info exists search(next)]} {
+			$search(next) configure -state $state
+		}
+	}
+}
+
+proc searchdir {dir} \
+{
+	global	search
+
+	set search(dir) $dir
+}
+
 proc search {dir} \
 {
 	global	search
 
 	set search(dir) $dir
 	set search(prompt) "Search for:"
-	$search(text) delete 1.0 end
+	$search(text) delete 0 end
 	focus $search(text)
+	searchbuttons both disabled
 }
 
 proc searchreset {} \
@@ -17,13 +47,14 @@ proc searchreset {} \
 	} else {
 		set search(start) "end"
 	}
+	searchbuttons both disabled
 }
 
 proc searchstring {} \
 {
 	global	search
 
-	set string [$search(text) get 1.0 "end - 1 char"]
+	set string [$search(text) get]
 	if {"$string" == ""} {
 		if {[info exists search(string)] == 0} {
 			set search(prompt) "No search string"
@@ -46,23 +77,25 @@ proc searchnext {} \
 	if {$search(dir) == "/"} {
 		set w [$search(widget) \
 		    search -- $search(string) $search(start) "end"]
-		set where "bottom"
 	} else {
 		set i ""
 		catch { set i [$search(widget) index search.first] }
 		if {"$i" != ""} { set search(start) $i }
 		set w [$search(widget) \
 		    search -backwards -- $search(string) $search(start) "1.0"]
-		set where "top"
 	}
 	if {"$w" == ""} {
-		set search(prompt) "Search hit $where, $search(string) not found"
 		if {[info exists search(focus)]} { focus $search(focus) }
+		if {$search(dir) == "/"} {
+			searchbuttons next disabled
+		} else {
+			searchbuttons prev disabled
+		}
 		return
 	}
-	set search(prompt) "Found $search(string) at $w"
+	searchbuttons both normal
+	searchsee $w
 	set l [string length $search(string)]
-	$search(widget) see $w
 	set search(start) [$search(widget) index "$w + $l chars"]
 	$search(widget) tag remove search 1.0 end
 	$search(widget) tag add search $w "$w + $l chars"
@@ -70,9 +103,17 @@ proc searchnext {} \
 	if {[info exists search(focus)]} { focus $search(focus) }
 }
 
-proc widgets {} \
+# Default widget scroller
+proc searchsee {location} \
 {
-	global	search 
+	global	search
+
+	$search(widget) see $location
+}
+
+proc example_main_widgets {} \
+{
+	#global	search 
 
 	set search(prompt) ""
 	set search(dir) ""

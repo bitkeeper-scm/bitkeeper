@@ -375,8 +375,8 @@ setuptool: gui/setuptool.tcl gui/common.tcl port/$(SYS)_platform.tcl
 helptool: gui/helptool.tcl port/$(SYS)_platform.tcl
 	cat port/$(SYS)_platform.tcl gui/helptool.tcl > helptool
 
-difftool: gui/difftool.tcl port/$(SYS)_platform.tcl
-	cat port/$(SYS)_platform.tcl gui/difftool.tcl > difftool
+difftool: gui/search.tcl gui/difftool.tcl port/$(SYS)_platform.tcl
+	cat gui/search.tcl port/$(SYS)_platform.tcl gui/difftool.tcl > difftool
 
 csettool: gui/csettool.tcl gui/common.tcl port/$(SYS)_platform.tcl
 	cat port/$(SYS)_platform.tcl gui/common.tcl gui/csettool.tcl > csettool
