@@ -5,7 +5,6 @@ private	int	findcmd(int ac, char **av);
 private	int	getav(int *acp, char ***avp, int *httpMode);
 private	void	log_cmd(int ac, char **av);
 private	void	usage(void);
-private	char	**xcmds = 0;		/* excluded command */
 
 char 		*logRoot, *vRootPrefix;
 int		licenseServer[2];	/* bkweb license pipe */
@@ -65,9 +64,6 @@ bkd_main(int ac, char **av)
 		    case 'u': Opts.uid = optarg; break;		/* doc 2.0 */
 		    case 'x':					/* doc 2.0 */
 			exclude(optarg); 
-#ifdef WIN32
-			xcmds = addLine(xcmds, strdup(optarg));
-#endif
 			break;
 		    case 'c': Opts.count = atoi(optarg); break;	/* undoc */
 		    case 'e': break;				/* undoc */
@@ -104,7 +100,7 @@ bkd_main(int ac, char **av)
 	putenv("PAGER=cat");
 	if (Opts.daemon) {
 		if (tcp_pair(licenseServer) == 0) {
-			bkd_server(xcmds);
+			bkd_server(ac, av);
 		} else {
 			fprintf(stderr,
 			    "bkd: ``%s'' when initializing license server\n",

@@ -106,7 +106,7 @@ extern	bkdopts Opts;
 extern	char cmdlog_buffer[];
 extern	char *logRoot;
 
-void	bkd_server(char **);
+void	bkd_server(int, char **);
 remote	*remote_parse(const char *url, int is_clone);
 char	*remote_unparse(remote *r);
 pid_t	bkd(int compress, remote *r);
