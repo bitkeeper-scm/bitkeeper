@@ -956,14 +956,21 @@ _getLog()
 	LOGOK=`${BIN}get -kps ${BK_ETC}config | \
 					grep "^logging_ok:" | tr -d '[\t, ]'`
 	case X${LOGOK} in
+	Xlogging_ok:[nN][oO])
+		echo "no"
+		;;
+	Xlogging_ok:[Yy][eE][sS])
+		echo "yes"
+		;;
 	Xlogging_ok:t)
 		# Old syntax: "logging_ok: t" => "yes"
-		echo "yes";
+		echo "yes"
 		;;
-	Xlogging_ok:*)
-		echo ${LOGOK#*:}
+	Xlogging_ok:*@*)
+		# Old syntax: "logging_ok: mailbox@domain" => "yes"
+		echo "yes"
 		;;
-	*)	echo "not_set";
+	*)	echo "not_set"
 		;;
 	esac
 	return 0
