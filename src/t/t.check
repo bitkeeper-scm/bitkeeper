@@ -34,7 +34,7 @@ echo OK
 
 echo $N Commit the data .............................................$NL
 bk commit $S -a -yCset
-if [ `bk sfiles -C | wc -l` -ne 0 ];
+if [ `bk sfiles -pC | wc -l` -ne 0 ];
 then	echo failed to commit all files; exit 1; fi
 echo OK
 
@@ -45,7 +45,7 @@ do	echo more data >> $x
 done
 bk -r ci $Q -ycset2
 bk commit $S -a -yCset2
-if [ `bk sfiles -C | wc -l` -ne 0 ];
+if [ `bk sfiles -pC | wc -l` -ne 0 ];
 then	echo failed to commit all files; exit 1; fi
 echo OK
 
@@ -56,7 +56,7 @@ do	echo more data >> $x
 done
 bk -r ci $Q -ycset3
 bk commit $S -a -yCset3
-if [ `bk sfiles -C | wc -l` -ne 0 ];
+if [ `bk sfiles -pC | wc -l` -ne 0 ];
 then	echo failed to commit all files; exit 1; fi
 echo OK
 
@@ -72,7 +72,7 @@ do	echo more data >> $x
 done
 bk -r ci $Q -ycset4
 bk commit $S -a -yCset4
-if [ `bk sfiles -C | wc -l` -ne 0 ];
+if [ `bk sfiles -pC | wc -l` -ne 0 ];
 then	echo failed to commit all files; exit 1; fi
 echo OK
 

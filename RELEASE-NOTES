@@ -30,6 +30,58 @@ Noteworthy Bug Fixes
   when running bk in scripts or triggers.
 
 ===============================================================================
+Interface changes:
+    bk grep has been rewritten, it mimics GNU grep for the most part.  
+    Backwards compat is basically gone.
+
+    All commands which take options to enable annotations have had those 
+    options changed.  The commands are: grep, get, annotate, sccscat, diffs.
+    The new interface is in general:
+	-A<opts>
+	-a<opts>
+    where the first form is asking for aligned ("human readable") annotations
+    and the second one is asking for program readable output.  The option
+    argument specifies which annotations, see the get man page for a full
+    list.
+
+    sfiles has interface changes.  The unchanged interfaces are:
+    -a (consider all files)
+    -c (list changed files)
+    -d (list directories with BK controlled files)
+    -D (list directories without BK controlled files)
+    -g (list gfile name, not sfile name)
+    -j (list junk files)
+    -l (list locked files)
+    -n (list files not in the correct location)
+    -o (output)
+    -p (pending)
+    -P (pending)
+    -S (summary)
+    -u (unlocked)
+    -U (user files only)
+    -x (extras)
+
+    The changed interfaces are:
+    Old		New	Meaning
+    -e		-e	-dDGjluvx (adds -d -D -G)
+    -E		-E	-cdDGjlnpuvx (adds -d -D -G)
+    <none>	-G	list files which are checked out
+    -S		-S	now lists -d/-D/-G summaries as well
+    -v		-v	now a 6 column listing instead of 4 with slots for
+    			-l/-u/-c/-p/-G/-n/-d/-D/-j/-x (see man page)
+    -C		-pC	remove undocumented alias
+    -A		-pA	remove undocumented alias
+
+    Removed interfaces:
+    -s		<none>	we have options for everything now
+    -i			-e is pretty close
+
+    XXX - leave in -i as undocumented alias after making regressions work?
+
+    get -C is gone; use get -r@+ instead.  This @+ rev is special cased for
+    performance.
+
+===============================================================================
 Release notes for BitKeeper version 3.0.3.   These release notes cover
 the following topics:
 

@@ -34,7 +34,7 @@ echo OK
 
 echo $N Commit the data .............................................$NL
 bk commit $S -a -yCset
-test `bk sfiles -C | wc -l` -eq 0 || {
+test `bk sfiles -pC | wc -l` -eq 0 || {
 	echo failed to commit all files
 	exit 1
 }

@@ -316,10 +316,10 @@ proc getFiles {} \
 	if {$argc == 0} {
 		set fd [open "|bk sfiles -gcvU"]
 		# Sample output from 'bk sfiles -gcvU'
-		# lc   sane.c
-		# lc   gui/difflib.tcl
+		# lc---- Makefile
+		# lc---- annotate.c
 		while {[gets $fd str] >= 0} {
-			set fname [string range $str 5 [string length $str]]
+			set fname [string range $str 7 [string length $str]]
 			#puts "fname=($fname)"
 			set rfile $fname
 			set lfile [getRev $rfile "+" 1]

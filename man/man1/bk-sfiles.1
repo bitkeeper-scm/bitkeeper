@@ -4,7 +4,7 @@
 .SH NAME
 bk sfiles \- generates lists of revision control files
 .SH SYNOPSIS
-.Bc bk [-r] sfiles [\-1acdDeEgGijlnrSuUvx] [
+.Bc bk [-r] sfiles [\-1acdDeEgGjlnSuUvx] [
 .OPTreq \-o file
 .Bc ] [
 .OPTopt \-p A|C
@@ -36,10 +36,10 @@ with both kinds of files if you do.
 .LP
 If you want a one pass with different sorts of files listed, look at
 the 
-.B \-e/E/i/v
+.B \-e/E/v
 options.
-.if n .TP .9i
-.if t .TP .5i
+.if n .TP 1i
+.if t .TP .6i
 .B \-1
 Only examine one directory level.  Do not go into subdirectories.
 .tp
@@ -63,22 +63,17 @@ List directories with no (or empty) SCCS subdirs.
 .tp
 .B \-e
 shorthand for 
-.B \-jluvx
+.B \-dDGjluvx
 .tp
 .B \-E
 shorthand for 
-.B \-cjlnuvxp
+.B \-cdDGjlnuvxp
 .tp
 .B \-g
 List the gfile name, not the sfile name.
 .tp
 .B \-G
-List files where the gfile has already been fetched. (gotten)
-.tp
-.B \-i
-shorthand for 
-.B \-cjlvxp
-aka the interesting state.
+List files if and only if they are checked out ("gotten").
 .tp
 .B \-j
 List junk files, i.e., files in \*(SC subdirectories which are not 
@@ -131,38 +126,38 @@ file.
 Prefix the output with information about the state of the s.file.
 The information is in a 6 character field, followed by a space,
 then followed by the filename.  Each of the columns are described
-below:
+below, with the notation, then the option, then description.
 .RS
-.tp
-\f(CBl?????\fR
+.tp 1.4i
+\f(CBl-----\fR\ \ (-l)
 the file is locked
 .tp
-\f(CBu?????\fR
+\f(CBu-----\fR\ \ (-u)
 the file is unlocked
 .tp
-\f(CBjjjjjj\fR
-the file is junk (with -j)
+\f(CB-c----\fR\ \ (-c)
+the file is modified (changed)
 .tp
-\f(CBxxxxxx\fR
-the file is an extra (with -x)
+\f(CB--p---\fR\ \ (-p)
+the file has pending deltas
 .tp
-\f(CB?c????\fR
-the file is modified (changed) (with -c)
+\f(CB---G--\fR\ \ (-G)
+the file is checked out i.e., "gotten"
 .tp
-\f(CB??p???\fR
-the file has pending deltas (with -p)
+\f(CB----n-\fR\ \ (-n)
+the file is not in its recorded location
 .tp
-\f(CB???g??\fR
-the gfile has been fetched
+\f(CB-----d\fR\ \ (-d)
+a directory containing \*(BK files
 .tp
-\f(CB????n?\fR
-the sfile is currently in an "incorrect" location (with -n)
+\f(CB-----D\fR\ \ (-D)
+a directory containing no \*(BK files
 .tp
-\f(CB?????d\fR
-this is a directory with a SCCS subdirectory (with -d)
+\f(CBjjjjjj\fR\ \ (-j)
+the file is junk
 .tp
-\f(CB?????D\fR
-this is a directory not under SCCS control (with -D)
+\f(CBxxxxxx\fR\ \ (-x)
+file is not yet under \*(BK control
 .RE
 .tp
 .B \-x

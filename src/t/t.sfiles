@@ -28,6 +28,7 @@ touch "SCCS/c.gone${CFS}1.2"
 trap '' 0
 set +e
 echo OK
+
 echo $N Check the list of SCCS files ................................$NL
 bk sfiles | sort > SFILES
 sort <<EOF > LIST
@@ -59,6 +60,7 @@ EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
+
 echo $N Check the list of g-files ...................................$NL
 bk sfiles -g | sort > SFILES
 sort <<EOF > LIST
@@ -81,8 +83,9 @@ EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo list failed; diff SFILES LIST; exit 1; fi
 echo OK
+
 echo $N Check the list of pending files .............................$NL
-bk sfiles -C | sort > SFILES
+bk sfiles -pC | sort > SFILES
 sort <<EOF > LIST
 SCCS/s.foo${BK_FS}1.1
 SCCS/s.s.foo${BK_FS}1.1
@@ -91,8 +94,8 @@ bar/blech/SCCS/s.s.foo${BK_FS}1.1
 EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
-# XXX -C cannot be used with file lists.
-#bk sfiles -C - < .sfiles | sort > SFILES
+# XXX -pC cannot be used with file lists.
+#bk sfiles -pC - < .sfiles | sort > SFILES
 #sort <<EOF > LIST
 #SCCS/s.ChangeSet${BK_FS}1.1
 #SCCS/s.s.foo${BK_FS}1.1
@@ -101,6 +104,7 @@ if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 #cmp -s SFILES LIST
 #if [ $? -ne 0 ]; then echo list failed; diff SFILES LIST; exit 1; fi
 echo OK
+
 bk commit $Q -yblah - <SFILES
 bk co $Q -l s.foo bar/s.foo
 ls >> bar/s.foo
@@ -117,6 +121,7 @@ EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo list failed; diff SFILES LIST; exit 1; fi
 echo OK
+
 echo $N Check the list of locked files ..............................$NL
 bk sfiles -l | sort > SFILES
 sort <<EOF > LIST
@@ -132,6 +137,7 @@ EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo list failed; diff SFILES LIST; exit 1; fi
 echo OK
+
 echo $N Check the list of unlocked files ............................$NL
 bk sfiles -u | sort > SFILES
 sort <<EOF > LIST
@@ -151,6 +157,7 @@ EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo list failed; diff SFILES LIST; exit 1; fi
 echo OK
+
 echo $N Check the list of clean, unlocked files .....................$NL
 bk ci $Q -l -mfoo bar/s.foo
 ls -R >bar/s.foo
@@ -177,16 +184,18 @@ EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo list failed; diff SFILES LIST; exit 1; fi
 echo OK
+
 echo $N Check the list of pending files .............................$NL
-bk sfiles -C | sort > SFILES
+bk sfiles -pC | sort > SFILES
 sort <<EOF > LIST
 bar/SCCS/s.s.foo${BK_FS}1.3
 EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
+
 echo $N Check the list of pending files with -A .....................$NL
-bk sfiles -CA | sort > SFILES
+bk sfiles -pCA | sort > SFILES
 sort <<EOF > LIST
 bar/SCCS/s.s.foo${BK_FS}1.2
 bar/SCCS/s.s.foo${BK_FS}1.3
@@ -194,13 +203,15 @@ EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
+
 echo $N Commit work, check pending lists again ......................$NL
-bk sfiles -C | bk commit $Q -ysecond -
-bk sfiles -C | sort > SFILES
+bk sfiles -pC | bk commit $Q -ysecond -
+bk sfiles -pC | sort > SFILES
 if [ -s SFILES ]; then echo "Failed (short)"; cat SFILES; exit 1; fi
-bk sfiles -CA | sort > SFILES
+bk sfiles -pCA | sort > SFILES
 if [ -s SFILES ]; then echo "Failed (long)"; cat SFILES; exit 1; fi
 echo OK
+
 echo $N Look for directories under SCCS control .....................$NL
 mkdir -p bar/not bar/notquite/SCCS
 bk sfiles -d | sort > SFILES
@@ -213,6 +224,7 @@ EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
+
 echo $N Look for directories not under SCCS control .................$NL
 bk sfiles -D | grep -v BitKeeper | sort > SFILES
 sort <<EOF > LIST
@@ -222,6 +234,7 @@ EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
+
 echo $N Check the list of extra files ...............................$NL
 rm -f .sfiles
 bk sfiles -x | sort > SFILES
@@ -237,6 +250,7 @@ if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 X=`bk sfiles -x LIST SCCS/s.foo`
 if [ "X$X" != "XLIST" ]; then echo failed; echo $X; exit 1; fi
 echo OK
+
 echo $N Make sure garbage in SCCS dir behaves .......................$NL
 touch SCCS/OLD-s.foo
 bk sfiles -x | sort > SFILES
@@ -253,12 +267,14 @@ if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; cat SFILES; exit 1; fi
 X=`bk sfiles -x SCCS/OLD-s.foo`
 if [ "X$X" != "XSCCS/OLD-s.foo" ]; then echo failed; echo $X; exit 1; fi
 echo OK
+
 echo $N Make sure sfiles GFILE lists SCCS/s.GFILE ...................$NL
 if [ -f s.foo ]; then exit 1; fi
 if [ ! -f SCCS/s.s.foo ]; then exit 1; fi
 FOO="`bk sfiles s.foo`"
 if [ "$FOO" != "SCCS/s.s.foo" ]; then echo Failed - got $FOO.; exit 1; fi
 echo OK
+
 echo $N Test ignore lists with -x ...................................$NL
 bk edit $Q BitKeeper/etc/ignore
 cat <<EOF > BitKeeper/etc/ignore
@@ -280,6 +296,7 @@ bk sfiles -x | sort > SFILES
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
+
 echo $N Test disabling ignore lists with -au ........................$NL
 sort <<EOF > LIST
 BitKeeper/etc/SCCS/s.config
@@ -293,6 +310,7 @@ bk sfiles -au | sort > SFILES
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
+
 echo $N Test disabling ignore lists with -ax ........................$NL
 sort <<EOF > LIST
 LIST
@@ -307,6 +325,7 @@ bk sfiles -ax | grep -v Desktop.ini | sort > SFILES
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
+
 echo $N Test that tree walk does not follow symlinks ................$NL
 if [ $PLATFORM = "WIN32" ]
 then
@@ -330,6 +349,7 @@ rm -f bar/lib
 echo OK
 #----------------------------------------------------------- 
 fi
+
 echo $N Test naive mode with s.files in odd places ..................$NL
 date > impostor
 bk ci $Q -i -m'boo!' impostor
@@ -350,6 +370,7 @@ EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
+
 if false
 then
 	# This is disabled until I fix sfind_main() to handle it.
@@ -370,6 +391,8 @@ EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; sdiff -w80 SFILES LIST; exit 1; fi
 echo OK
+
+# XXX - this is just the same as -P
 echo $N Test truly paranoid mode ....................................$NL
 bk sfiles -PP
 bk sfiles -PP | sort > SFILES
@@ -387,7 +410,8 @@ cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
 fi
-echo $N Test sfile -i with s.file w no pathname .....................$NL
+
+echo $N Test sfile -cGjlnvxp with s.file w no pathname ..............$NL
 # create a s.file which has no pathname
 perl -ne 'print unless /^.cP/' SCCS/s.foo  | bk undos > SCCS/s.bad
 bk admin -z  SCCS/s.bad
@@ -399,14 +423,19 @@ jjjjjj SCCS/c.gone@1.1
 jjjjjj SCCS/c.gone@1.2
 xxxxxx BitKeeper/tmp/ROOTKEY
 xxxxxx SFILES
-lc g   BitKeeper/etc/SCCS/s.ignore
-u   n  SCCS/s.bad
+lc-G-- BitKeeper/etc/SCCS/s.ignore
+u---n- SCCS/s.bad
+u--G-- BitKeeper/etc/SCCS/s.config
 EOF
-bk sfiles -i | sort > $HERE/sfiles.out || { echo failed 1; exit 1; }
-cmp -s $HERE/sfiles.ref $HERE/sfiles.out || { echo failed 2; diff -u $HERE/sfiles.ref $HERE/sfiles.out; exit 1; }
+bk sfiles -cGjlnvxp | sort > $HERE/sfiles.out || { echo failed 1; exit 1; }
+cmp -s $HERE/sfiles.ref $HERE/sfiles.out || {
+	echo failed 2
+	sdiff -w80 $HERE/sfiles.ref $HERE/sfiles.out
+	exit 1
+}
 echo OK
 
-echo $N Test sfile -idD with s.file w no pathname ...................$NL
+echo $N Test sfile -cdDGjlnvxp with s.file w no pathname ............$NL
 sort > $HERE/sfiles.ref <<EOF
 jjjjjj SCCS/OLD-s.foo
 jjjjjj SCCS/c.gone
@@ -414,22 +443,27 @@ jjjjjj SCCS/c.gone@1.1
 jjjjjj SCCS/c.gone@1.2
 xxxxxx BitKeeper/tmp/ROOTKEY
 xxxxxx SFILES
-lc g   BitKeeper/etc/SCCS/s.ignore
-u   n  SCCS/s.bad
-     D BitKeeper
-     D BitKeeper/deleted
-     D BitKeeper/etc/.master
-     D BitKeeper/log
-     D BitKeeper/tmp
-     D bar/not
-     D bar/notquite
-     d .
-     d BitKeeper/etc
-     d bar
-     d bar/blech
+lc-G-- BitKeeper/etc/SCCS/s.ignore
+u--G-- BitKeeper/etc/SCCS/s.config
+u---n- SCCS/s.bad
+-----D BitKeeper
+-----D BitKeeper/deleted
+-----D BitKeeper/etc/.master
+-----D BitKeeper/log
+-----D BitKeeper/tmp
+-----D bar/not
+-----D bar/notquite
+-----d .
+-----d BitKeeper/etc
+-----d bar
+-----d bar/blech
 EOF
-bk sfiles -idD | sort > $HERE/sfiles.out || { echo failed 1; exit 1; }
-cmp -s $HERE/sfiles.ref $HERE/sfiles.out || { echo failed 2; diff -u $HERE/sfiles.ref $HERE/sfiles.out; exit 1; }
+bk sfiles -cdDGjlnvxp | sort > $HERE/sfiles.out || { echo failed 1; exit 1; }
+cmp -s $HERE/sfiles.ref $HERE/sfiles.out || {
+	echo failed 2
+	sdiff -w80 $HERE/sfiles.ref $HERE/sfiles.out
+	exit 1
+}
 echo OK
 
 echo $N Test limiting sfiles to one level ...........................$NL
@@ -439,13 +473,15 @@ jjjjjj SCCS/c.gone
 jjjjjj SCCS/c.gone@1.1
 jjjjjj SCCS/c.gone@1.2
 xxxxxx SFILES
-u   n  SCCS/s.bad
-     D BitKeeper
-     d .
-     d bar
+u---n- SCCS/s.bad
+-----D BitKeeper
+-----d .
+-----d bar
 EOF
-bk sfiles -1idD | sort > $HERE/sfiles.out || { echo failed 1; exit 1; }
-cmp -s $HERE/sfiles.ref $HERE/sfiles.out || { echo failed 2; diff -u $HERE/sfiles.ref $HERE/sfiles.out; exit 1; }
+bk sfiles -1cdDjlnvxp | sort > $HERE/sfiles.out || { echo failed 1; exit 1; }
+cmp -s $HERE/sfiles.ref $HERE/sfiles.out || {
+	echo failed 2
+	sdiff -w80 $HERE/sfiles.ref $HERE/sfiles.out
+	exit 1
+}
 echo OK
-
-set +e

@@ -497,13 +497,12 @@ main(int ac, char **av, char **env)
 	if (streq(prog, "sccs")) prog = "bk";
 	if (streq(prog, "bk")) {
 		is_bk = 1;
-		while ((c = getopt(ac, av, "acdDeEgijlnpr|RSuUvx")) != -1) {
+		while ((c = getopt(ac, av, "1acdDeEgGjlnpr|RSuUx")) != -1) {
 			switch (c) {
-			    case 'a': case 'c': case 'd': case 'D':
-			    case 'e': case 'E': case 'g': case 'i':
-			    case 'j': case 'l': case 'n': case 'p':
-			    case 'S': case 'u': case 'U': case 'v':
-			    case 'x':				/* doc 2.0 */
+			    case '1': case 'a': case 'c': case 'd': case 'D':
+			    case 'e': case 'E': case 'g': case 'G': case 'j':
+			    case 'l': case 'n': case 'p': case 'S': case 'u':
+			    case 'U': case 'x':
 				sopts[++si] = c;
 				break;
 			    case 'h':				/* undoc? 2.0 */
