@@ -45,7 +45,8 @@
 	    (GET_REVNUMS|GET_USER|GET_LINENUM|GET_MODNAME|GET_PREFIXDATE)
 #define	GET_DTIME	0x00080000	/* gfile get delta's mode time */
 
-#define	CLEAN_UNEDIT	0x10000000	/* clean -u: unedit - discard changes */
+#define	CLEAN_UNEDIT	0x10000000	/* clean -u: discard changes */
+#define CLEAN_UNLOCK	0x20000000	/* clean -n: just unlock */
 
 #define	DELTA_AUTO	0x10000000	/* delta -a: auto check-in mode */
 #define	DELTA_SAVEGFILE	0x20000000	/* delta -n: save edited gfile */
