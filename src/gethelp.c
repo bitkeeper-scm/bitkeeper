@@ -25,7 +25,7 @@ usage:		fprintf(stderr,
 		    "usage: gethelp [-f<helptxt>] topic[.section] bkarg\n");
 		exit(1);
 	}
-	return (gethelp(file, av[optind], av[optind+1], 0, stdout) == 0);
+	return (gethelp(file, av[optind], av[optind+1], 0, stdout));
 }
 
 /*
@@ -62,7 +62,7 @@ gethelp(char *helptxt, char *topic, char *bkarg, char *prefix, FILE *outf)
 			break;
 		}
 	}
-	unless (found) return (0);
+	unless (found) goto done;
 	if (bkarg == NULL) bkarg = "";
 	if (synopsis) {			/* print synopsis only */
 		int	first = 1;
@@ -109,7 +109,12 @@ gethelp(char *helptxt, char *topic, char *bkarg, char *prefix, FILE *outf)
 		}
 	}
 done:	fclose(f);
-	return (found);
+	if (fflush(outf) == EOF) {
+		fprintf(stderr, "gethelp: %s\n", strerror(errno));
+		return (2);
+	} else {
+		return (found == 0);
+	}
 }
 
 /*
