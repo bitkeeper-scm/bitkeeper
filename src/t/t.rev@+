@@ -10,13 +10,14 @@
 #    modifications under any license.
 
 echo $N Create initial repository ...................................$NL
-rm -f $BK_TMP/.bk_keys
+KEYS=`bk dotbk`/bk_keys
+rm -f "$KEYS"
 no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
-test -f $BK_TMP/.bk_keys -a ! -z $BK_TMP/.bk_keys || {
+test -f "$KEYS" -a ! -z "$KEYS" || {
 	echo failed to add keys to .bk_keys
 	exit 1
 }

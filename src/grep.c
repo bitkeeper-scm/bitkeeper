@@ -43,6 +43,7 @@ struct	grep {
 	short	fname;		/* if set, position in annotations of file */
 	short	user;		/* if set, position in annotations of user */
 	short	rev;		/* if set, position in annotations of revnums */
+	short	date;		/* if set, position in annotations of date */
 } opts;
 
 int
@@ -57,7 +58,7 @@ grep_main(int ac, char **av)
 	char	aopts[20];
 
 	opts.firstmatch = opts.name = 1;
-	while ((c = getopt(ac, av, "a;A:B:cC:d;hHilLnqr;R|vx")) != EOF) {
+	while ((c = getopt(ac, av, "a;A:B:cC|d;hHilLnqr;R|vx")) != EOF) {
 		switch (c) {
 		    case 'A':				/* GNU -A %d */
 			if (optarg && isdigit(*optarg)) {
@@ -88,7 +89,7 @@ grep_main(int ac, char **av)
 		    case 'B': opts.before = atoi(optarg); break;
 		    case 'c': opts.count = 1; break;	/* GNU compat */
 		    case 'C':				/* GNU compat */
-			if (opts.before = atoi(optarg)) {
+			if (optarg && (opts.before = atoi(optarg))) {
 				opts.after = opts.before;
 			} else {
 				opts.before = opts.after = 2;
@@ -149,8 +150,8 @@ grep_main(int ac, char **av)
 		aopts[1] = 'A';
 		aopts[2] = 0;
 		if (aflags & GET_PREFIXDATE)	strcat(aopts, "d");
-		if (aflags & GET_RELPATH)	strcat(aopts, "f");
-		if (aflags & GET_MODNAME)	strcat(aopts, "l");
+		if (aflags & GET_RELPATH)	strcat(aopts, "p");
+		if (aflags & GET_MODNAME)	strcat(aopts, "b");
 		if (aflags & GET_REVNUMS)	strcat(aopts, "r");
 		if (aflags & GET_USER)		strcat(aopts, "u");
 		cmd = addLine(cmd, aopts);
@@ -158,16 +159,22 @@ grep_main(int ac, char **av)
 			opts.Name = opts.name = 0;
 		}
 
-		opts.fname = opts.user = opts.rev = 1;
-		if (opts.name) opts.fname++, opts.user++, opts.rev++;
-		if (opts.lineno) opts.fname++, opts.user++, opts.rev++;
-		if (aflags & GET_RELPATH) opts.user++, opts.rev++;
-		if (aflags & GET_MODNAME) opts.user++, opts.rev++;
+		opts.date = opts.fname = opts.user = opts.rev = 1;
+		if (opts.name) {
+			opts.fname++, opts.user++, opts.rev++, opts.date++;
+		}
+		if (opts.lineno) {
+			opts.fname++, opts.user++, opts.rev++, opts.date++;
+		}
+		if (aflags & GET_RELPATH) opts.user++, opts.rev++, opts.date++;
+		if (aflags & GET_MODNAME) opts.user++, opts.rev++, opts.date++;
 		if (aflags & GET_PREFIXDATE) opts.user++, opts.rev++;
 		if (aflags & GET_USER) opts.rev++;
+
 		unless (aflags & GET_USER) opts.user = 0;
 		unless (aflags & GET_REVNUMS) opts.rev = 0;
 		unless (aflags & (GET_RELPATH|GET_MODNAME)) opts.fname = 0;
+		unless (aflags & GET_PREFIXDATE) opts.date = 0;
 	}
 	cmd = addLine(cmd, "-B");
 	while (av[optind]) {
@@ -264,7 +271,8 @@ pline(char *file, char *buf, char c, int lineno)
 			}
 			n++;
 			if (opts.align) {
-				if ((n == opts.fname) || (n == opts.user) || (n == opts.rev)) {
+				if ((n == opts.fname) || (n == opts.user) ||
+				    (n == opts.rev) || (n == opts.date)) {
 					len = 16 - len;
 					if (len > 0) {
 						printf("%*s", len, "");

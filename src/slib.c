@@ -6294,7 +6294,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 		int	len = 0;
 
 		if (flags&(GET_MODNAME|GET_RELPATH)) len += strlen(name) + 1;
-		if (flags&GET_PREFIXDATE) len += 9;
+		if (flags&GET_PREFIXDATE) len += YEAR4(s) ? 11 : 9;
 		if (flags&GET_USER) len += s->userLen + 1;
 		if (flags&GET_REVNUMS) len += s->revLen + 1;
 		if (flags&GET_LINENUM) len += 7;
@@ -6715,7 +6715,9 @@ getLinkBody(sccs *s,
 				if (flags&(GET_MODNAME|GET_RELPATH)) {
 					len += strlen(name) + 1;
 				}
-				if (flags&GET_PREFIXDATE) len += 9;
+				if (flags&GET_PREFIXDATE) {
+					len += YEAR4(s) ? 11 : 9;
+				}
 				if (flags&GET_USER) len += s->userLen + 1;
 				if (flags&GET_REVNUMS) len += s->revLen + 1;
 				if (flags&GET_LINENUM) len += 7;
@@ -6917,7 +6919,16 @@ prefix(sccs *s, delta *d, u32 flags, int lines, char *name, FILE *out)
 {
 	if (flags & GET_ALIGN) {
 		if (flags&(GET_MODNAME|GET_RELPATH)) fprintf(out, "%s ", name);
-		if (flags&GET_PREFIXDATE) fprintf(out, "%8.8s ", d->sdate);
+		if (flags&GET_PREFIXDATE) {
+			if (YEAR4(s)) {
+				if (atoi(d->sdate) > 69) {
+					fprintf(out, "19");
+				} else {
+					fprintf(out, "20");
+				}
+			}
+			fprintf(out, "%8.8s ", d->sdate);
+		}
 		if (flags&GET_USER) fprintf(out, "%-*s ", s->userLen, d->user);
 		if (flags&GET_REVNUMS) fprintf(out, "%-*s ", s->revLen, d->rev);
 		if (flags&GET_LINENUM) fprintf(out, "%6d ", lines);
@@ -6925,14 +6936,32 @@ prefix(sccs *s, delta *d, u32 flags, int lines, char *name, FILE *out)
 #if 0
 		/* maybe, need to think about it */
 		if (flags&(GET_MODNAME|GET_RELPATH)) fprintf(out, "%s|",name);
-		if (flags&GET_PREFIXDATE) fprintf(out, "%8.8s|", d->sdate);
+		if (flags&GET_PREFIXDATE) {
+			if (YEAR4(s)) {
+				if (atoi(d->sdate) > 69) {
+					fprintf(out, "19");
+				} else {
+					fprintf(out, "20");
+				}
+			}
+			fprintf(out, "%8.8s|", d->sdate);
+		}
 		if (flags&GET_USER) fprintf(out, "%s|", d->user);
 		if (flags&GET_REVNUMS) fprintf(out, "%s|", d->rev);
 		if (flags&GET_LINENUM) fprintf(out, "%d|", lines);
 #else
 		/* tab style */
 		if (flags&(GET_MODNAME|GET_RELPATH)) fprintf(out, "%s\t",name);
-		if (flags&GET_PREFIXDATE) fprintf(out, "%8.8s\t", d->sdate);
+		if (flags&GET_PREFIXDATE) {
+			if (YEAR4(s)) {
+				if (atoi(d->sdate) > 69) {
+					fprintf(out, "19");
+				} else {
+					fprintf(out, "20");
+				}
+			}
+			fprintf(out, "%8.8s\t", d->sdate);
+		}
 		if (flags&GET_USER) fprintf(out, "%s\t", d->user);
 		if (flags&GET_REVNUMS) fprintf(out, "%s\t", d->rev);
 		if (flags&GET_LINENUM) fprintf(out, "%6d\t", lines);

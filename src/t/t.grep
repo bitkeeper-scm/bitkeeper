@@ -12,6 +12,9 @@
 # Copyright (c) 2003 Andrew Isaacson
 # %k%
 
+BK_YEAR4=1
+export BK_YEAR4
+
 echo $N Create initial repository ...................................$NL
 no_logging project
 cat <<EOF > file1
@@ -28,6 +31,24 @@ the lazy
 dog
 EOF
 bk new $Q dir1/file2 || exit 1
+mkdir subdir
+cd subdir
+cat <<EOF > old
+blah blah blah
+yadda yadda
+bitkeeper rocks!
+I mean *rocks*
+EOF
+BK_DATE_TIME_ZONE="98/01/11 20:00:00.000-8:00" bk new $Q old
+cat <<EOF > user
+blah blah blah
+yadda yadda
+bitkeeper rocks!
+I mean *rocks*
+EOF
+BK_DATE_TIME_ZONE="04/08/23 13:16:43-8:00" BK_USER=joe BK_HOST=blow.com \
+    bk new $Q user
+cd ..
 echo OK
 
 echo $N grep ........................................................$NL
@@ -47,6 +68,133 @@ file1:fox
 dir1/file2:jumped foxily
 EOF
 checkfiles OUT expected
+echo OK
+
+echo $N annotated grep -ab ..........................................$NL
+bk grep -ab bitkeeper subdir > GOT
+cat <<EOF > WANT
+old:bitkeeper rocks!
+user:bitkeeper rocks!
+EOF
+checkfiles WANT GOT
+echo OK
+
+# XXX - year4
+echo $N annotated grep -ad ..........................................$NL
+bk grep -ad bitkeeper subdir/old > GOT
+cat <<EOF > WANT
+1998/01/11:bitkeeper rocks!
+EOF
+checkfiles WANT GOT
+echo OK
+
+echo $N annotated grep -ap ..........................................$NL
+bk grep -ap bitkeeper subdir > GOT
+cat <<EOF > WANT
+subdir/old:bitkeeper rocks!
+subdir/user:bitkeeper rocks!
+EOF
+checkfiles WANT GOT
+echo OK
+
+# XXX - need to have an extra delta
+echo $N annotated grep -ar ..........................................$NL
+bk grep -ar bitkeeper subdir > GOT
+cat <<EOF > WANT
+1.1:bitkeeper rocks!
+1.1:bitkeeper rocks!
+EOF
+checkfiles WANT GOT
+echo OK
+
+echo $N annotated grep -au ..........................................$NL
+bk grep -au bitkeeper subdir > GOT
+cat <<EOF > WANT
+bk:bitkeeper rocks!
+bk:bitkeeper rocks!
+EOF
+checkfiles WANT GOT
+echo OK
+
+echo $N annotated grep -abdru .......................................$NL
+bk grep -abdru bitkeeper subdir > GOT
+cat <<EOF > WANT
+old:1998/01/11:bk:1.1:bitkeeper rocks!
+user:2004/08/23:bk:1.1:bitkeeper rocks!
+EOF
+checkfiles WANT GOT
+echo OK
+
+echo $N annotated grep -abdru -n ....................................$NL
+bk grep -n -abdru bitkeeper subdir > GOT
+cat <<EOF > WANT
+3:old:1998/01/11:bk:1.1:bitkeeper rocks!
+3:user:2004/08/23:bk:1.1:bitkeeper rocks!
+EOF
+checkfiles WANT GOT
+echo OK
+
+echo $N annotated grep -adru -n -H ..................................$NL
+bk grep -n -H -adru bitkeeper subdir > GOT
+cat <<EOF > WANT
+subdir/old:3:1998/01/11:bk:1.1:bitkeeper rocks!
+subdir/user:3:2004/08/23:bk:1.1:bitkeeper rocks!
+EOF
+checkfiles WANT GOT
+echo OK
+
+echo $N annotated grep -adru -H .....................................$NL
+bk grep -H -adru bitkeeper subdir > GOT
+cat <<EOF > WANT
+subdir/old:1998/01/11:bk:1.1:bitkeeper rocks!
+subdir/user:2004/08/23:bk:1.1:bitkeeper rocks!
+EOF
+checkfiles WANT GOT
+echo OK
+
+echo $N annotated grep -adpru .......................................$NL
+bk grep -apdru bitkeeper subdir > GOT
+cat <<EOF > WANT
+subdir/old:1998/01/11:bk:1.1:bitkeeper rocks!
+subdir/user:2004/08/23:bk:1.1:bitkeeper rocks!
+EOF
+checkfiles WANT GOT
+echo OK
+
+echo $N annotated grep -adb .........................................$NL
+bk grep -adb bitkeeper subdir > GOT
+cat <<EOF > WANT
+old:1998/01/11:bitkeeper rocks!
+user:2004/08/23:bitkeeper rocks!
+EOF
+checkfiles WANT GOT
+echo OK
+
+echo $N annotated grep -aub .........................................$NL
+bk grep -aub bitkeeper subdir > GOT
+cat <<EOF > WANT
+old:bk:bitkeeper rocks!
+user:bk:bitkeeper rocks!
+EOF
+checkfiles WANT GOT
+echo OK
+
+echo $N annotated grep -adpru, recursive ............................$NL
+bk -r grep -apdru bitkeeper > GOT
+cat <<EOF > WANT
+subdir/old:1998/01/11:bk:1.1:bitkeeper rocks!
+subdir/user:2004/08/23:bk:1.1:bitkeeper rocks!
+EOF
+checkfiles WANT GOT
+echo OK
+
+echo $N annotated grep -i -adpru, recursive .........................$NL
+bk -Ur grep -i -apdru BITKEEPER > GOT
+cat <<EOF > WANT
+subdir/old:1998/01/11:bk:1.1:bitkeeper rocks!
+subdir/user:2004/08/23:bk:1.1:bitkeeper rocks!
+EOF
+checkfiles WANT GOT
 echo OK
 
 # echo $N recursive grep -a ...........................................$NL

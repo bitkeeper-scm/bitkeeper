@@ -22,6 +22,7 @@ get_main(int ac, char **av)
 	int	branch_ok = 0;
 	int	caseFoldingFS = 1;
 	int	skip_bin = 0;
+	int	pnames = getenv("BK_PRINT_EACH_NAME") != 0;
 	MDBM	*realNameCache = 0;
 	char	*out = "-";
 	char	realname[MAXPATH];
@@ -229,6 +230,9 @@ onefile:	fprintf(stderr,
 				goto next;
 			}
 			rev = 0;	/* Use tip below */
+		}
+		if (pnames) {
+			printf("|FILE|%s|CRC|%u\n", s->gfile, crc(s->gfile));
 		}
 		if ((flags & (GET_DIFFS|GET_BKDIFFS|GET_HASHDIFFS))
 		    ? sccs_getdiffs(s, rev, flags, out)

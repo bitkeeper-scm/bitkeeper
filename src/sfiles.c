@@ -127,9 +127,9 @@ sfiles_main(int ac, char **av)
 		switch (c) {
 		    case '1':	opts.onelevel = 1; break;
 		    case 'a':	opts.all = 1; break;		/* doc 2.0 */
-		    case 'c':	opts.modified = opts.timestamps = 1;
+		    case 'c':	opts.changed = opts.timestamps = 1;
 		    		break;
-		    case 'C':	opts.modified = 1;
+		    case 'C':	opts.changed = 1;
 				opts.timestamps = 0;
 				break;
 		    case 'd':	opts.dirs = 1; break;
@@ -575,9 +575,10 @@ sfiles_walk(char *file, struct stat *sb, void *data)
 		 */
 		if (sfiles_skipdir(file)) return (-1);
 
+		n = strlen(file);
+
 		/* Skip new repo */
 		if (wi->sccsdir) {
-			n = strlen(file);
 			strcpy(&file[n], "/" BKROOT);
 			if (exists(file)) return (-1);
 			file[n] = 0;

@@ -148,7 +148,9 @@ SRCS	= bk.c $(OBJ:.o=.c) \
 	zlib/uncompr.c zlib/zutil.c $(UWT_C)
 HDRS	= $(SYS).h $(UWT_H) bkd.h lib_tcp.h liblines.h logging.h mmap.h proj.h \
 	  purify.h range.h rcs.h redblack.h resolve.h sccs.h system.h zgets.h \
-	  mdbm/mdbm.h mdbm/memhash.h tomcrypt/mycrypt.h zlib/zlib.h
+	  mdbm/mdbm.h mdbm/memhash.h tomcrypt/mycrypt.h zlib/zlib.h \
+	  regex/regex.h
+
 SCRSRCS	= bk.sh import.sh uuwrap.sh unuuwrap.sh port/unix_platform.sh \
 	  port/unix_platform.perl port/win32_platform.perl \
 	  port/win32_platform.sh gzip_uuwrap.sh ungzip_uuwrap.sh \
@@ -327,8 +329,8 @@ zlib/libz.a: FORCE
 mdbm/libmdbm.a: FORCE
 	cd mdbm && $(MAKE) "CC=$(CC)" "CFLAGS=$(CFLAGS)"
 
-regex/regex.a: FORCE
-	cd regex && $(MAKE) "CC=$(CC" "CFLAGS=$(CFLAGS)"
+regex/libregex.a: FORCE
+	cd regex && $(MAKE) "CC=$(CC)" "CFLAGS=$(CFLAGS)"
 
 tomcrypt/libtomcrypt.a: FORCE
 	cd tomcrypt && $(MAKE) "CC=$(CC)" "CFLAGS=$(CFLAGS)"

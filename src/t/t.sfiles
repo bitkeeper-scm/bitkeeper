@@ -418,7 +418,6 @@ jjjjjj SCCS/OLD-s.foo
 jjjjjj SCCS/c.gone
 jjjjjj SCCS/c.gone@1.1
 jjjjjj SCCS/c.gone@1.2
-xxxxxx BitKeeper/tmp/ROOTKEY
 xxxxxx SFILES
 lc-G-- BitKeeper/etc/SCCS/s.ignore
 u---n- SCCS/s.bad
@@ -438,7 +437,6 @@ jjjjjj SCCS/OLD-s.foo
 jjjjjj SCCS/c.gone
 jjjjjj SCCS/c.gone@1.1
 jjjjjj SCCS/c.gone@1.2
-xxxxxx BitKeeper/tmp/ROOTKEY
 xxxxxx SFILES
 lc-G-- BitKeeper/etc/SCCS/s.ignore
 u--G-- BitKeeper/etc/SCCS/s.config
