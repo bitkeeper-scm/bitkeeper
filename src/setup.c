@@ -150,6 +150,8 @@ setup_main(int ac, char **av)
                 fprintf(stderr, "sendconfig: can not find package root.\n");
                 exit(1);
         }                           
+#ifdef OLD_LICENSE
 	sendConfig("setups@openlogging.org", 1, 0);
+#endif
 	return (0);
 }
