@@ -138,7 +138,7 @@ clean-obj: FORCE
 		$(LIBS) a.out core
 
 clean-bin: FORCE
-	-/bin/rm -f $(BINS) $(SCRIPTS) $(GUIBIN) $(GUISCR) $(LINKS)
+	-/bin/rm -f $(BINS) $(PRIVATE) $(SCRIPTS) $(GUIBIN) $(GUISCR) $(LINKS)
 
 clean-cfg: FORCE
 	-/bin/rm -f config.h stamp-h substvars install.sh config.status \
