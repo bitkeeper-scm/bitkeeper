@@ -539,7 +539,7 @@ sccs_keyinitAndCache(char *key, int flags,
  * It collect all the deltas inside a changeset and stuff them to "list".
  */
 private slog *
-collectDelta(sccs *s, delta *d, slog *list, char *dspec, int *n, char *dbuf)
+collectDelta(sccs *s, delta *d, slog *list, char *dspec, int *n)
 {
 	slog	*ll;
 	delta	*e;
@@ -550,11 +550,10 @@ collectDelta(sccs *s, delta *d, slog *list, char *dspec, int *n, char *dbuf)
 	 */
 	do {
 		d->flags |= D_SET;
-		dbuf[0] = '\0';
-		sccs_prsbuf(s, d, PRS_ALL, dspec, dbuf);
+
 		/* add delta to list */
 		ll = calloc(sizeof (slog), 1);
-		ll->log = strdup(dbuf);
+		ll->log = sccs_prsbuf(s, d, PRS_ALL, dspec);
 		ll->date = NOFUDGE(d);
 		ll->dateFudge = d->dateFudge;
 		ll->next = list;
@@ -565,7 +564,7 @@ collectDelta(sccs *s, delta *d, slog *list, char *dspec, int *n, char *dbuf)
 			e = sfind(s, d->merge);
 			assert(e);
 			unless (e->flags & (D_SET|D_CSET)) {
-				list = collectDelta(s, e, list, dspec, n, dbuf);
+				list = collectDelta(s, e, list, dspec, n);
 			}
 		}
 		
@@ -639,7 +638,6 @@ cset(sccs *cset, FILE *f, char *dspec)
 {
 	int	flags = PRS_ALL, iflags = INIT_NOCKSUM|INIT_SAVEPROJ;
 	int 	i, j, m = 0, n = 0;
-	char	*dbuf;
 	char	**keys;
 	slog	*list = 0, *ll, *ee;
 	slog 	**sorted;	
@@ -695,12 +693,6 @@ cset(sccs *cset, FILE *f, char *dspec)
 	assert(i == 0);
 	qsort(sorted, m, sizeof(sorted), opts.forwards ? forwards : compar);
 
-	dbuf = malloc(4096); /* XXX This should match VSIZE in slib.c */
-	assert(dbuf);	     /* life will be better when we go to the */
-			     /* 3.0 tree where prs vbuf is 	      */
-			     /* dynamically sized		      */
-
-
 	/*
 	 * Walk the sorted cset list and dump the file deltas contain in
 	 * each cset. The file deltas are also sorted on the fly in dumplog().
@@ -741,7 +733,7 @@ cset(sccs *cset, FILE *f, char *dspec)
 			 * when this function returns, "list" will contain
 			 * all member deltas/dspec in "s" for this cset
 			 */
-			list = 	collectDelta(s, d, list, dspec, &n, dbuf);
+			list = 	collectDelta(s, d, list, dspec, &n);
 		}
 		freeLines(keys, free); /* reduce mem foot print, could be huge */
 		free(ee);
@@ -776,7 +768,6 @@ cset(sccs *cset, FILE *f, char *dspec)
 	mdbm_close(idDB);
 	mdbm_close(goneDB);
 	mdbm_close(csetDB);
-	free(dbuf);
 	return;
 }
 
