@@ -8396,7 +8396,7 @@ out:
 			fprintf(stderr,
 			    "delta: diffs or gfile, but not both.\n");
 			s->state |= S_WARNED;
-			goto out;
+			OUT;
 		}
 	} else unless (diffs) {
 		goto out;
@@ -10193,6 +10193,10 @@ sccs_resolveFile(sccs *s, char *lpath, char *gpath, char *rpath)
 	delta	*d, *a = 0, *b = 0;
 	char	*n[3];
 	
+	/*
+	 * b is that branch which needs to be merged.
+	 * At any given point there should be exactly one of these.
+	 */
 	for (d = s->table; d; d = d->next) {
 		d->flags &= ~D_VISITED;
 		if ((d->flags & D_MERGED) || !isleaf(d)) continue;
