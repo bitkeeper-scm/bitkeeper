@@ -224,8 +224,30 @@ get_configs()
 	}
 	/* XXX - if this is edited, we don't get those changes */
 	if (exists("BitKeeper/etc/SCCS/s.gone")) {
-		system("cp BitKeeper/etc/SCCS/s.gone "
-		    "RESYNC/BitKeeper/etc/SCCS/s.gone");
+		unless (exists("RESYNC/BitKeeper/etc/SCCS/s.gone")) {
+			system("cp BitKeeper/etc/SCCS/s.gone "
+		    			"RESYNC/BitKeeper/etc/SCCS/s.gone");
+		} else {
+			/*
+			 * Both remote and local have the gone file
+			 * see if we need to merge them together
+			 */
+			system("bk get -qe RESYNC/BitKeeper/etc/gone"); 
+			system("bk get -qp BitKeeper/etc/gone >> \
+RESYNC/BitKeeper/etc/gone");
+			system("sort -u RESYNC/BitKeeper/etc/gone > \
+RESYNC/BitKeeper/etc/SCCS/x.gone");
+			unlink("RESYNC/BitKeeper/etc/gone");
+			system( "mv RESYNC/BitKeeper/etc/SCCS/x.gone \
+RESYNC/BitKeeper/etc/gone");
+			/*
+			 * We use ci here, because we do not want to
+			 * create a new delta if there is no diffs
+			 */
+			system("bk ci -qyauto-merge \
+RESYNC/BitKeeper/etc/gone"); 
+			
+		}
     	}
 }
 
