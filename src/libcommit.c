@@ -172,7 +172,6 @@ logChangeSet(char *rev, int quiet)
 	char	commit_log[MAXPATH], buf[MAXLINE], *p;
 	char	subject[MAXLINE];
 	char	start_rev[1024];
-	char	*to;
 	FILE	*f;
 	int	dotCount = 0, n;
 
@@ -301,13 +300,14 @@ notify()
 	unlink(notify_log);
 }
 
-
+//XXX TODO: move this function to the port directory
 void
 mail(char *to, char *subject, char *file)
 {
 	int	i = -1;
-	char	sendmail[MAXPATH], *mail;
 	char	buf[MAXLINE];
+#ifndef WIN32
+	char	sendmail[MAXPATH], *mail;
 	struct	utsname ubuf;
 	char	*paths[] = {
 		"/usr/bin",
@@ -318,6 +318,7 @@ mail(char *to, char *subject, char *file)
 		"/bin",
 		0
 	};
+#endif
 
 	if (strstr(project_name(), "BitKeeper Test repo") &&
 	    (bkusers(1, 1, 0) <= 5)) {
@@ -327,7 +328,7 @@ mail(char *to, char *subject, char *file)
 
 #ifdef WIN32
 	if (findprog("blat.exe") ) {
-		char *av[] = {"blat", file, "-t", to, "-s", subject, 0};
+		char *av[] = {"blat", file, "-t", to, "-s", subject, "-q", 0};
 
 		if (spawnvp_ex(_P_WAIT, av[0], av) == 0) return;
 	}

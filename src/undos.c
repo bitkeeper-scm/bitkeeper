@@ -1,9 +1,8 @@
 #include <stdio.h>
 #ifdef	WIN32
 #include <stdlib.h>
-#else
-#include <string.h>
 #endif
+#include <string.h>
 #define	private	static
 
 private	void	undos(char *s);

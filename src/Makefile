@@ -19,6 +19,7 @@ CC_FAST	=-O2
 CC_DEBUG=-g
 CC_FAST_DEBUG=-g -o
 CC_NOFRAME=-fomit-frame-pointer
+CC_WALL=-Wall -Wno-parentheses -Wno-char-subscripts
 #UWTLIB is used on win32 only - passed in from build.sh
 UWTLIB	=
 UWT_H	=
@@ -75,7 +76,7 @@ ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) \
 	  $(WIN_UTIL) gnu
 
 # FASTPURIFY does not do overrun/underrun checking at each alloc/free
-CFLAGS	= -g -O -Wall -Wno-parentheses -Wno-char-subscripts \
+CFLAGS	= $(CC_FAST_DEBUG) $(CC_WALL) \
 	  -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM -DFASTPURIFY
 CPPFLAGS= -Izlib -Imdbm
 # For extra libraries required by the system, e.g. libnsl.
@@ -144,9 +145,9 @@ Wall:
 p:
 	$(MAKE) CFLAGS="$(CC_FAST) $(CC_NOFRAME) $(CF)" all
 ndebug:
-	$(MAKE) CFLAGS="$(CC_FAST) -DNDEBUG -fomit-frame-pointer" all
+	$(MAKE) CFLAGS="$(CC_FAST) -DNDEBUG $(CC_NOFRAME)" all
 stats:
-	$(MAKE) CFLAGS="$(CC_FAST) -DPURIFY_STATS -fomit-frame-pointer" all
+	$(MAKE) CFLAGS="$(CC_FAST) -DPURIFY_STATS $(CC_NOFRAME)" all
 g:
 	$(MAKE) CFLAGS=$(CC_DEBUG) all
 gO:

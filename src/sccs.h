@@ -755,7 +755,7 @@ int	repository_rdlock(void);
 int	repository_wrlock(void);
 int	repository_rdunlock(int force);
 int	repository_wrunlock(int force);
-int	isVlaidLock(char, pid_t, char *);
+int	isValidLock(char, pid_t, char *);
 
 void	comments_save(char *s);
 int	comments_got(void);

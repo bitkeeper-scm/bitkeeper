@@ -66,7 +66,6 @@ compressed(int gzip)
 {
 	pid_t	pid;
 	int	n, rfd, status;
-	int	p[2];
 	char	buf[4096];
 
 #ifndef WIN32

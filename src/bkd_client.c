@@ -300,8 +300,6 @@ bkd(int compress, remote *r, int *r_pipe, int *w_pipe)
 void
 bkd_reap(pid_t resync, int r_pipe, int w_pipe)
 {
-	int	i;
-
 	close(w_pipe);
 	close(r_pipe);
 	if (resync > 0) {
@@ -309,6 +307,8 @@ bkd_reap(pid_t resync, int r_pipe, int w_pipe)
 	 * win32 does not support the WNOHANG options
 	 */
 #ifndef WIN32
+		int	i;
+
 		/* give it a bit for the protocol to close */
 		for (i = 0; i < 20; ++i) {
 			if (waitpid(resync, 0, WNOHANG) == resync) return;

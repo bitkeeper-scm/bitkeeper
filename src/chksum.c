@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <stdlib.h>
-#ifndef WIN32
+#ifdef WIN32
+#include <io.h>
+#else
 #include <unistd.h>
 #endif
 #define	streq(a,b)	!strcmp(a,b)

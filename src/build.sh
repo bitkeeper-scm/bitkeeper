@@ -28,6 +28,7 @@ case `uname -s` in
 		CC_FAST="-O2 $CC_COMMON"
 		CC_DEBUG="-ZI -Od $CC_COMMON"
 		CC_FAST_DEBUG=$CC_DEBUG
+		CC_WALL="-W3"
 		CC_NOFRAME=
 		CC_OUT='-Fo$@'
 		LD_OUT='-out:$@'
@@ -52,7 +53,7 @@ case `uname -s` in
 		AR=`pwd`/win32/util/mklib
 		BINDIR="C:/BitKeeper"
 		export SYS CFLAGS CC_OUT LD_OUT LD AR RANLIB UWTLIB LDFLAGS
-		export CC_FAST CC_DEBUG CC_NOFRAME LINK_LIB
+		export CC_FAST CC_DEBUG CC_NOFRAME CC_WALL LINK_LIB
 		export BK BKMERGE MORE UWT_H WIN_UTIL BINDIR
 		;;
 esac

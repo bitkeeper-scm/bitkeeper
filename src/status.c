@@ -6,9 +6,7 @@ status_main(int ac, char **av)
 {
 	int c;
 	int verbose = 0;
-	char status_log[MAXPATH], *project_path;
-	char buf[MAXLINE];
-	FILE *f;
+	char *project_path;
 
 	while ((c = getopt(ac, av, "v")) != -1) { 
 		switch (c) {

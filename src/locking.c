@@ -255,7 +255,9 @@ repository_wrlock()
 	char	path[MAXPATH];
 	char	lock[MAXPATH];
 	project	*p;
+#ifndef WIN32
 	struct	stat sbuf;
+#endif
 
 	unless (p = proj_init(0)) return (-1);
 	unless (p->root) {

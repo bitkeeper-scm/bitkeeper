@@ -72,7 +72,7 @@ private	void	doRange(cset_t *cs, sccs *sc);
 private	void	doEndpoints(cset_t *cs, sccs *sc);
 private	void	doSet(sccs *sc);
 private	void	doMarks(cset_t *cs, sccs *sc);
-private	void	doDiff(sccs *sc, int kind);
+private	void	doDiff(sccs *sc, char kind);
 private	void	sccs_patch(sccs *, cset_t *);
 private	void	cset_exit(int n);
 private void	mklod(sccs *s, delta *start, delta *stop);
@@ -875,7 +875,7 @@ fail:
  * Spit out the diffs.
  */
 private void
-doDiff(sccs *sc, int kind)
+doDiff(sccs *sc, char kind)
 {
 	delta	*d, *e = 0;
 

@@ -17,6 +17,7 @@
  * repeats, except for the version number.
  */
 #include "system.h"
+#include "sccs.h"
 #include "zlib/zlib.h"
 #undef	unlink		/* I know the files are writable, I created them */
 WHATSTR("@(#)%K%");
@@ -261,7 +262,7 @@ in_link(char *file, int pathlen, int extract)
 			}
 		}
 	}
-done:	if (readn(0, buf, 10) != 10) {
+	if (readn(0, buf, 10) != 10) {
 		perror("chksum read");
 		goto err;
 	}

@@ -359,7 +359,6 @@ private int
 sfiles(int ac, char **av)
 {
 	pid_t	pid;
-	int	p[2];
 	int	i;
 
 	int	j, pfd;

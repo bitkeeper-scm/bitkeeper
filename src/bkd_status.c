@@ -8,7 +8,6 @@ int
 cmd_status(int ac, char **av)
 {
 	static	char *cmd[] = { "bk", "status", 0, 0 };
-	pid_t	p;
 
 	if (!exists("BitKeeper/etc")) {
 		out("ERROR-Not at project root\n");

@@ -165,7 +165,7 @@ compressed(int gzip, char *tmpfile)
 {
 	pid_t	pid;
 	int	n;
-	int	p[2], rfd, status;
+	int	rfd, status;
 	char	buf[8192];
 
 #ifndef WIN32

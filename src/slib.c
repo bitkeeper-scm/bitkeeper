@@ -8559,7 +8559,7 @@ norev:			verbose((stderr, "admin: can't find rev %s in %s\n",
 	 * ^Ae
 	 */
 	n = sccs_dInit(0, 'R', sc, 0);
-	n->sum = almostUnique(1);
+	n->sum = (unsigned short) almostUnique(1);
 	if (n->date <= sc->table->date) {
 		time_t	tdiff;
 		tdiff = sc->table->date - n->date + 1;
@@ -8676,7 +8676,7 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 			n->next = sc->table;
 			sc->table = n;
 			n = sccs_dInit(n, 'R', sc, 0);
-			n->sum = almostUnique(1);
+			n->sum = (unsigned short) almostUnique(1);
 			n->rev = strdup(d->rev);
 			explode_rev(n);
 			n->pserial = d->serial;
@@ -9940,7 +9940,7 @@ read_pfile(char *who, sccs *s, pfile *pf)
 		fprintf(stderr, "Empty p.file %s - aborted.\n", s->pfile);
 		return (-1);
 	}
-	unless (tmp = fopen(s->pfile, "r")) {
+	if ((tmp = fopen(s->pfile, "r")) < 0)  {
 		fprintf(stderr, "pfile: can't open %s\n", s->pfile);
 		free(mRev);
 		return (-1);
