@@ -234,3 +234,27 @@ bk -r names $Q
 if [ ! \( -w hi -a -f SCCS/p.hi \) ]; then echo checkout failed; exit 1; fi
 echo OK
 
+echo $N checkout:EDIT w pull ........................................$NL
+cd $HERE/copy2
+bk pull $Q || exit 1
+if [ ! -w hi ]
+then	echo 'failed (bug 2002-05-10-002)'
+else	echo bug 2002-05-10-002 passing! update testcase.
+	exit 1
+fi
+
+echo $N checkout:EDIT w pull failure ................................$NL
+cd $HERE/project/src
+bk edit $Q foo.c bar.c   ## should NOT be needed!
+echo ss >> bar.c
+echo dd >> foo.c
+bk ci $Q -yy bar.c foo.c || exit 1
+bk commit $Q -ydf || exit 1
+cd $HERE/copy2/src
+echo fff >> bar.c
+bk pull $Q 2>OUT
+if [ ! -w foo.c ]
+then	echo 'failed (bug 2002-05-10-002)'
+else	echo bug 2002-05-10-002 passing! update testcase.
+	exit 1
+fi
