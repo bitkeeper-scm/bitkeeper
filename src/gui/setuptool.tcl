@@ -22,17 +22,13 @@
 
 set debug 0
 
-#if { [file type $argv0] == "link" } {
-#	set rootDir [file dirname [file readlink $argv0]]
-#} else {
-#	set rootDir [file dirname $argv0]
-#	puts "rootDir: $rootDir"
-#}
-#
-# Read descriptions for the config options
-#set st_messages [file join $rootDir setup_messages.tcl]
-#source $st_messages
-
+catch {exec bk bin} bin
+set image [file join $bin "bklogo.gif"]
+if {[file exists $image]} {
+        #set bklogo [image create photo -file $image]
+        image create photo bklogo -file $image
+        #label $w.logo -image $bklogo -bd 0
+}
 
 proc dialog_position { dlg width len } \
 {
@@ -265,10 +261,11 @@ proc create_repo {} \
 		#puts "${el}: $st_cinfo($el)"
 	}
 	
-	#puts "=========>Repo Name: ($st_repo_name) Description: ($des)"
+	# puts "===>Repo Name: ($st_cinfo(repository)) Desc: ($st_cinfo(des))"
 	# XXX wrap with catch and return valid return code
 	# probably should be an exec?!?
-	set fid [open "|bk setup -f -c$cfile -n'$escaped_des' $st_repo_name" w]
+	set fid [open "|bk setup -f -c$cfile -n'$escaped_des'  \
+	    $st_cinfo(repository)" w]
 
 	close $fid 
 	close $cfid
@@ -357,28 +354,30 @@ proc create_config { w } \
 
 	frame $w -bg $bcolor
 	    frame $w.t -bd 2 -relief raised -bg $bcolor
-		label $w.t.lable -text "Configuration Info" -bg $bcolor
+		label $w.t.label -text "Configuration Info" -bg $bcolor
 		frame $w.t.l -bg $bcolor
 		frame $w.t.e -bg $bcolor
 		frame $w.t.info -bg $bcolor
 		message $w.t.info.msg -width 200 -bg $bcolor  \
 		    -text "The items on the right that are highlited are \
 		           mandatory fields"
+		#image create photo bklogo -data $logo
+		#label $w.t.info.l -image bklogo
+		#pack $w.t.info.l -side top -pady 10
 
-	image create photo bklogo -data $logo
-	label $w.t.info.l -image bklogo
+		pack $w.t.info.msg -side bottom  -pady 10
 
-	pack $w.t.info.l -side top -pady 10
-	pack $w.t.info.msg -side bottom  -pady 10
-
-	# create button bar on bottom
-	frame $w.t.bb -bg $bcolor
-	    button $w.t.bb.b1 -text "Create Repository" -bg $bcolor \
-		-command "global st_dlg_button; set st_dlg_button 0"
-	    pack $w.t.bb.b1 -side left -expand 1 -padx 20 -pady 10
-	    button $w.t.bb.b2 -text "Exit" -bg $bcolor \
-		-command "global st_dlg_button; set st_dlg_button 1"
-	    pack $w.t.bb.b2 -side left -expand 1 -padx 20 -pady 10
+		# create button bar on bottom
+		frame $w.t.bb -bg $bcolor
+		    button $w.t.bb.b1 -text "Create Repository" -bg $bcolor \
+			-command "global st_dlg_button; set st_dlg_button 0" \
+			-state normal
+		    pack $w.t.bb.b1 -side left -expand 1 -padx 20 -pady 10
+		    label $w.t.bb.l -image bklogo
+		    pack $w.t.bb.l -side left -expand 1 -padx 20 -pady 10
+		    button $w.t.bb.b2 -text "Exit" -bg $bcolor \
+			-command "global st_dlg_button; set st_dlg_button 1"
+		    pack $w.t.bb.b2 -side left -expand 1 -padx 20 -pady 10
 
 	# text widget to contain info about config options
 	frame $w.t.t -bg $bcolor
@@ -398,6 +397,7 @@ proc create_config { w } \
 	pack $w.t.info -side right -fill both -expand yes -ipady 10 -ipadx 10
 
 	foreach { description var } {
+		"Repository Name:" repository 
 		"description:" des 
 		"open logging server:" logging 
 		"Contact Name:" contact 
@@ -422,25 +422,34 @@ proc create_config { w } \
 		    grid $w.t.e.$var 
 		    grid $w.t.l.$var  -pady 1 -sticky e -ipadx 3
 		    bind $w.t.e.$var <FocusIn> \
-			"$w.t.t.t delete 1.0 end;\
-			$w.t.t.t insert insert \$st_bk_cfg($var)"
+			"$w.t.t.t configure -state normal;\ 
+			$w.t.t.t delete 1.0 end;\
+			$w.t.t.t insert insert \$st_bk_cfg($var);\
+			$w.t.t.t configure -state disabled "
 	}
 
 	# Mandatory fields are highlighted
+	$w.t.e.repository config -bg $mcolor
 	$w.t.e.des config -bg $mcolor
 	$w.t.e.logging config -bg $mcolor
 
 	$w.t config -background black
 	bind $w.t.e <Tab> {tk_focusNext %W}
 	bind $w.t.e <Shift-Tab> {tk_focusPrev %W}
+	bind $w.t.e <Control-n> {tk_focusNext %W}
 
-	focus $w.t.e.des
+	focus $w.t.e.repository
 
 	#bind $w.t1.e <FocusIn> " $w.t.b1 config -bd 3 -relief groove "
 	#bind $w.t1.e <KeyPress-Return> " $w.t.b1 flash; $w.t.b1 invoke "
 
 	pack $w.t
 	pack $w
+
+	if { [$w.t.e.repository selection present] == 1 } {
+		puts "Repository selected"
+	}
+	#$w.t.e.repository get
 
 	tkwait variable st_dlg_button
 
@@ -463,7 +472,6 @@ proc main {} \
 
 	license_check
 
-
 	set swidth [winfo screenwidth .]
 	set sheight [winfo screenheight .]
 
@@ -473,7 +481,7 @@ proc main {} \
 	#wm geometry . ${width}x${len}+$x+$y
 	wm geometry . +$x+$y
 
-	get_repo_name .repo
+	#get_repo_name .repo
 	get_config_info
 	create_config .cconfig
 
@@ -494,15 +502,14 @@ proc getMessages {} \
 
 	set st_bk_cfg(des) { Descriptive name for your project. }
 
-	set st_bk_cfg(msg1) { You are about create a new repository.  You may \
- do this exactly once for each project stored in BitKeeper.  If a BitKeeper \
- repository for this project exists, do the following:
+	set st_bk_cfg(repository) { You are about create a new repository.  \
+ You may do this exactly once for each project stored in BitKeeper.  If a \
+ BitKeeper repository for this project exists, do the following:
 
     bk clone project_dir my_project_dir
 
  If you create a new project rather than resyncing a copy, you will not be \
  able to exchange work between the two projects. }
-
 
 	set fid [open "|bk gethelp config_template" "r"]
 
@@ -526,72 +533,6 @@ proc getMessages {} \
 	close $hfid
 }
 
-proc getLogo {} \
-{
-	global logo
-
-        set logo { R0lGODlhwgAkAOcAAP//////zP//mf//Zv//M///AP/M///MzP/Mmf/MZv/MM//MAP+Z//+Z
-zP+Zmf+ZZv+ZM/+ZAP9m//9mzP9mmf9mZv9mM/9mAP8z//8zzP8zmf8zZv8zM/8zAP8A//8A
-zP8Amf8AZv8AM/8AAMz//8z/zMz/mcz/Zsz/M8z/AMzM/8zMzMzMmczMZszMM8zMAMyZ/8yZ
-zMyZmcyZZsyZM8yZAMxm/8xmzMxmmcxmZsxmM8xmAMwz/8wzzMwzmcwzZswzM8wzAMwA/8wA
-zMwAmcwAZswAM8wAAJn//5n/zJn/mZn/Zpn/M5n/AJnM/5nMzJnMmZnMZpnMM5nMAJmZ/5mZ
-zJmZmZmZZpmZM5mZAJlm/5lmzJlmmZlmZplmM5lmAJkz/5kzzJkzmZkzZpkzM5kzAJkA/5kA
-zJkAmZkAZpkAM5kAAGb//2b/zGb/mWb/Zmb/M2b/AGbM/2bMzGbMmWbMZmbMM2bMAGaZ/2aZ
-zGaZmWaZZmaZM2aZAGZm/2ZmzGZmmWZmZmZmM2ZmAGYz/2YzzGYzmWYzZmYzM2YzAGYA/2YA
-zGYAmWYAZmYAM2YAADP//zP/zDP/mTP/ZjP/MzP/ADPM/zPMzDPMmTPMZjPMMzPMADOZ/zOZ
-zDOZmTOZZjOZMzOZADNm/zNmzDNmmTNmZjNmMzNmADMz/zMzzDMzmTMzZjMzMzMzADMA/zMA
-zDMAmTMAZjMAMzMAAAD//wD/zAD/mQD/ZgD/MwD/AADM/wDMzADMmQDMZgDMMwDMAACZ/wCZ
-zACZmQCZZgCZMwCZAABm/wBmzABmmQBmZgBmMwBmAAAz/wAzzAAzmQAzZgAzMwAzAAAA/wAA
-zAAAmQAAZgAAMwAAAP//////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////
-/////////////////////////////////yH+Dk1hZGUgd2l0aCBHSU1QACwAAAAAwgAkAAAI
-/gABCBxIsKDBgwgTKlzIsKHDhxAjSpxIsaLFggEuaoSYcaPHjx4DkAAgkuTIjihPqhRIImNL
-AC9jupwJk6bMmjhv6rRpU2AJn0AB/BQadKjRokiJKj26NClIjSOfSn3YcarVqwh/vlRatSdN
-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}
-
-}
-
 bk_init
-getLogo
 getMessages
 main
