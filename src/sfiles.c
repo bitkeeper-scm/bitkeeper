@@ -16,7 +16,7 @@ usage: sfiles [-aAcCdglpPrx] [directories]\n\n\
     -d		list directories under SCCS control (have SCCS subdir)\n\
     -D		list directories with no (or empty) SCCS subdirs\n\
     -g		list the gfile name, not the sfile name\n\
-    -l		list only locked files\n\
+    -l		list only locked files (p.file and/or z.file)\n\
     -k		update the host wide keys database\n\
     -p		(paranoid) opens each file to make sure it is an SCCS file\n\
 		but only if the pathname to the file is not ../SCCS/s.*\n\
@@ -261,7 +261,8 @@ process(const char *filename, int mode)
 	}
 	if (lFlg || cFlg || uFlg) {
 		*s = 'p';
-		if (exists(file)) {
+		/* Yes, I mean assignment, not equality in "*s = 'z'" */
+		if (exists(file) || ((*s = 'z') && exists(file))) {
 			*s = 's';
 			if (uFlg) return;
 			if (lFlg || (cFlg && hasDiffs(file))) {

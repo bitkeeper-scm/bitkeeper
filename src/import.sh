@@ -219,7 +219,7 @@ EOF
 		case "$type" in
 		    pa*) type=patch;;
 		    pl*) type=text;;
-		    R*) type=RCS;;
+		    R*|C*) type=RCS;;
 		    S*) type=SCCS;;
 		    *)	echo Please use one of plain, patch, RCS, CVS, or SCCS
 			TRY=yes

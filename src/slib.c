@@ -19,6 +19,7 @@ private int	samebranch_bk(delta *a, delta *b, int bk_mode);
 private char	*sccsXfile(sccs *sccs, char type);
 private int	badcksum(sccs *s);
 private int	printstate(const serlist *state, const ser_t *slist);
+private int	whatstate(const serlist *state);
 private int	visitedstate(const serlist *state, const ser_t *slist);
 private void	changestate(register serlist *state, char type, int serial);
 private serlist *allocstate(serlist *old, int oldsize, int n);
@@ -122,10 +123,7 @@ emptyDir(char *dir)
 	struct dirent *e;
 
 	d = opendir(dir);
-	unless (d) {
-		perror(dir);
-		return (0);
-	}
+	unless (d) return (0);
 
 	while (e = readdir(d)) {
 		if (streq(e->d_name, ".") || streq(e->d_name, "..")) continue;
@@ -1020,7 +1018,7 @@ scandiff(char *s, int *where, char *what, int *howmany)
 			*what = 'i';
 		else if (*s == 'd')
 			*what = 'x';
-		else unless (*s == 'D' || *s == 'I')
+		else unless (*s == 'D' || *s == 'I' || *s == 'N')
 			return (-1);
 		s++;
 		*where = atoi2(&s);
@@ -2380,6 +2378,20 @@ rcsexpand(sccs *s, delta *d, char *l, int *expanded)
 }
 
 /*
+ * We don't consider EPIPE an error since we hit it when we do stuff like
+ * get -p | whatever
+ * and whatever exits first.
+ */
+int
+flushFILE(FILE *out)
+{
+	if (fflush(out) && (errno != EPIPE)) {
+		return (-1);
+	}
+	return (ferror(out));
+}
+
+/*
  * We couldn't initialize an SCCS file.	 Tell the user why not.
  * Possible reasons we handle:
  *	no s.file
@@ -3086,6 +3098,8 @@ sccs_initProject(sccs *s)
 	 */
 	sprintf(path, "%s/RESYNC", root);
 	if (exists(path)) p->flags |= PROJ_RESYNC;
+	sprintf(path, "%s/%s", root, READER_LOCK_DIR);
+	if (exists(path) && !emptyDir(path)) p->flags |= PROJ_READER;
 	return (p);
 }
 
@@ -3104,9 +3118,15 @@ resync_locked(project *p)
 }
 
 private inline int
+reader_locked(project *p)
+{
+	return (p && (p->flags & PROJ_READER));
+}
+
+private inline int
 locked(project *p)
 {
-	return (resync_locked(p));
+	return (resync_locked(p) || reader_locked(p));
 }
 
 /* used to tell us who is blocking the lock */
@@ -3117,6 +3137,7 @@ lockers(project *p)
 	if (locked(p)) {
 		fprintf(stderr, "Entire repository is locked");
 		if (resync_locked(p)) fprintf(stderr, " by RESYNC directory");
+		if (reader_locked(p)) fprintf(stderr, " by READER lock");
 		fprintf(stderr, ".\n");
 	}
 }
@@ -3133,6 +3154,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	sccs	*s;
 	struct	stat sbuf;
 	char	*t;
+	static	int YEAR4;
 
 	platformSpecificInit(name);
 	if (u_mask == 0x5eadbeef) {
@@ -3258,6 +3280,12 @@ sccs_init(char *name, u32 flags, project *proj)
 	 * Don't go look for BK root if not a BK file.
 	 */
 	if (s->state & S_BITKEEPER) s->proj = proj ? proj : sccs_initProject(s);
+
+	/*
+	 * Let them force YEAR4
+	 */
+	unless (YEAR4) YEAR4 = getenv("BK_YEAR4") ? 1 : -1;
+	if (YEAR4 == 1) s->state |= S_YEAR4;
 
 #ifndef WIN32
 	signal(SIGPIPE, SIG_IGN); /* win32 platform does not have sigpipe */
@@ -4085,6 +4113,18 @@ visitedstate(const serlist *state, const ser_t *slist)
 	return (0);
 }
 
+private int
+whatstate(const serlist *state)
+{
+	register serlist *s;
+
+	/* Loop until an I */
+	for (s = state[SLIST].next; s; s = s->next) {
+		if (s->type == 'I') break;
+	}
+	return ((s) ? s->serial : 0);
+}
+
 /* calculate printstate using where we are (state)
  * and list of active deltas (slist)
  * return either the serial if active, or 0 if not
@@ -4113,6 +4153,27 @@ printstate(const serlist *state, const ser_t *slist)
 	debug2((stderr, "printstate {} = 0\n"));
 
 	return (0);
+}
+
+private void inline
+fnnlputs(char *buf, FILE *out)
+{
+	register char	*t = buf;
+	char		fbuf[MAXLINE];
+	register char	*p = fbuf;
+
+	while (*t && (*t != '\n')) {
+		*p++ = *t++;
+		if (p == &fbuf[MAXLINE-1]) {
+			*p = 0;
+			p = fbuf;
+			fputs(fbuf, out);
+		}
+	}
+	if (p != fbuf) {
+		*p = 0;
+		fputs(fbuf, out);
+	}
 }
 
 private void inline
@@ -4229,7 +4290,7 @@ fflushdata(sccs *s, FILE *out)
 	}
 	data_next = data_block;
 	debug((stderr, "SUM2 %u\n", s->cksum));
-	if (ferror(out) || fflush(out)) return (-1);
+	if (flushFILE(out)) return(-1);
 	return (0);
 }
 
@@ -4625,6 +4686,8 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	MDBM	*DB = 0;
 	int	hash = 0;
 	int sccs_expanded, rcs_expanded;
+	int	lf_pend = 0;
+	ser_t	serial;
 
 	slist = d ? serialmap(s, d, flags, iLst, xLst, &error)
 		  : setmap(s, D_SET, 0);
@@ -4700,7 +4763,17 @@ out:			if (slist) free(slist);
 
 		e1= e2 = 0;
 		if (isData(buf)) {
-			if (!print) continue;
+			if (!print) {
+				/* if we are skipping data from pending block */
+				if (lf_pend &&
+				    lf_pend == whatstate((const serlist*)state))
+				{
+					fputc('\n', out);
+					if (flags & NEWCKSUM) sum += '\n';
+					lf_pend = 0;
+				}
+				continue;
+			}
 			if (hash) {
 				if (getKey(DB, buf, flags) == 1) {
 					unless (flags & GET_HASHONLY) {
@@ -4716,6 +4789,11 @@ out:			if (slist) free(slist);
 				continue;
 			}
 			lines++;
+			if (lf_pend) {
+				fputc('\n', out);
+				if (flags & NEWCKSUM) sum += '\n';
+				lf_pend = 0;
+			}
 			if (flags & NEWCKSUM) {
 				for (e = buf; *e != '\n'; sum += *e++);
 				sum += '\n';
@@ -4771,7 +4849,9 @@ out:			if (slist) free(slist);
 			    }
 			    case E_ASCII:
 			    case E_GZIP:
-				fnlputs(e, out);
+				fnnlputs(e, out);
+				if (flags & NEWCKSUM) sum -= '\n';
+				lf_pend = print;
 				if (sccs_expanded) free(e1);
 				if (rcs_expanded) free(e2);
 				break;
@@ -4780,7 +4860,33 @@ out:			if (slist) free(slist);
 		}
 
 		debug2((stderr, "%.*s", linelen(buf), buf));
-		changestate(state, buf[1], atoi(&buf[3]));
+		serial = atoi(&buf[3]);
+		/* seek out E which closes text block for last line
+		 * printed.  serial for that block is in lf_pend.
+		 * whatstate returns serial of current text block
+		 * This is needed to make sure E isn't closing a D
+		 * The whatstate test isn't needed assuming diff
+		 * semantics of a replace is a delete followed
+		 * by an insert.  We know in that case, the condition
+		 * E and lf_pend == serial is enough because if E
+		 * is tagged 'N', there can be no 'D' following it.
+		 * If E isn't tagged, then lf_pend gets cleared.
+		 * In the name of robustness, that someday this
+		 * assumption might not be true, the whatstate check
+		 * is in there.
+		 */
+		if (buf[1] == 'E' && lf_pend == serial &&
+		    whatstate((const serlist*)state) == serial)
+		{
+			char	*n = &buf[3];
+			while (isdigit(*n)) n++;
+			unless (*n == 'N') {
+				fputc('\n', out);
+				lf_pend = 0;
+				if (flags & NEWCKSUM) sum += '\n';
+			}
+		}
+		changestate(state, buf[1], serial);
 		print = (d)
 		    ? printstate((const serlist*)state, (const ser_t*)slist)
 		    : visitedstate((const serlist*)state, (const ser_t*)slist);
@@ -4802,7 +4908,7 @@ out:			if (slist) free(slist);
 	if (flags & GET_HASHONLY) {
 		error = 0;
 	} else {
-		error = ferror(out) || fflush(out);
+		error = flushFILE(out);
 		if (popened) {
 			pclose(out);
 		} else if (flags & PRINT) {
@@ -5092,7 +5198,7 @@ err:		return (-1);
 
 private int
 outdiffs(sccs *s, int type, int side, int *left, int *right, int count,
-	FILE *in, FILE *out)
+	int no_lf, FILE *in, FILE *out)
 {
 	char	*prefix;
 
@@ -5100,7 +5206,8 @@ outdiffs(sccs *s, int type, int side, int *left, int *right, int count,
 
 	if (side == RIGHT) {
 		if (type == GET_BKDIFFS) {
-			fprintf(out, "I%d %d\n", *left, count);
+			fprintf(out, "%c%d %d\n", no_lf ? 'N' : 'I',
+				*left, count);
 			*right += count; /* not used, but easy to inc */
 			prefix = "";
 		} else {
@@ -5198,6 +5305,8 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	char	*buf;
 	char	tmpfile[100];
 	FILE	*lbuf = 0;
+	int	no_lf = 0;
+	ser_t	serial;
 	int	ret = -1;
 
 	unless (s->state & S_SOPEN) {
@@ -5275,7 +5384,15 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	while (buf = nextdata(s)) {
 		unless (isData(buf)) {
 			debug2((stderr, "%.*s", linelen(buf), buf));
-			changestate(state, buf[1], atoi(&buf[3]));
+			serial = atoi(&buf[3]);
+			if (buf[1] == 'E' && serial == with &&
+			    serial == d->serial)
+			{
+				char	*n = &buf[3];
+				while (isdigit(*n)) n++;
+				if (*n == 'N') no_lf = 1;
+			}
+			changestate(state, buf[1], serial);
 			with = printstate((const serlist*)state,
 					(const ser_t*)slist);
 			old = slist[d->serial];
@@ -5292,10 +5409,11 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		if (count &&
 		    nextside != side && (side == LEFT || side == RIGHT)) {
 			if (outdiffs(s, type,
-			    side, &left, &right, count, lbuf, out)) {
+			    side, &left, &right, count, no_lf, lbuf, out)) {
 				goto done;
 			}
 			count = 0;
+			no_lf = 0;
 		}
 		side = nextside;
 		switch (side) {
@@ -5311,9 +5429,13 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		}
 	}
 	if (count) { /* there is something left in the buffer */
-		if (outdiffs(s, type, side, &left, &right, count, lbuf, out))
+		if (outdiffs(s, type, side, &left, &right, count, no_lf,
+		    lbuf, out))
+		{
 			goto done;
+		}
 		count = 0;
+		no_lf = 0;
 	}
 	ret = 0;
 done:	if (s->encoding & E_GZIP) zgets_done();
@@ -5871,7 +5993,7 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 		fputmeta(s, "\n", out);
 	}
 	fputmeta(s, "\001T\n", out);
-	if (fflush(out) || ferror(out)) return (-1);
+	if (flushFILE(out)) return (-1);
 	return (0);
 }
 
@@ -5879,26 +6001,26 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
  * If we are trying to compare with expanded strings, do so.
  */
 private inline int
-expandnleq(sccs *s, delta *d, char *fbuf, char *sbuf, int flags)
+expandnleq(sccs *s, delta *d, MMAP *gbuf, char *fbuf, int *flags)
 {
 	char	*e = fbuf, *e1 = 0, *e2 = 0;
 	int sccs_expanded = 0 , rcs_expanded = 0, rc;
 
-	if (s->encoding != E_ASCII) return (0);
-	if (!(flags & (GET_EXPAND|GET_RCSEXPAND))) return 0;
-	if (flags & GET_EXPAND) {
+	if (s->encoding != E_ASCII) return (MCMP_DIFF);
+	if (!(*flags & (GET_EXPAND|GET_RCSEXPAND))) return (MCMP_DIFF);
+	if (*flags & GET_EXPAND) {
 		e = e1 = expand(s, d, e, &sccs_expanded);
 		if (s->state & S_EXPAND1) {
-			if (sccs_expanded) flags &= ~GET_EXPAND;
+			if (sccs_expanded) *flags &= ~GET_EXPAND;
 		}
 	}
-	if (flags & GET_RCSEXPAND) {
+	if (*flags & GET_RCSEXPAND) {
 		e = e2 = rcsexpand(s, d, e, &rcs_expanded);
 		if (s->state & S_EXPAND1) {
-			if (rcs_expanded) flags &= ~GET_RCSEXPAND;
+			if (rcs_expanded) *flags &= ~GET_RCSEXPAND;
 		}
 	}
-	rc = strnleq(e, sbuf);
+	rc = mcmp(gbuf, e);
 	if (sccs_expanded) free(e1);
 	if (rcs_expanded) free(e2);
 	return (rc);
@@ -5911,7 +6033,9 @@ expandnleq(sccs *s, delta *d, char *fbuf, char *sbuf, int flags)
 int
 sccs_hasDiffs(sccs *s, u32 flags)
 {
-	FILE	*tmp = 0;
+	MMAP	*tmp = 0;
+	MDBM	*ghash = 0;
+	MDBM	*shash = 0;
 	pfile	pf;
 	serlist *state = 0;
 	ser_t	*slist = 0;
@@ -5920,7 +6044,12 @@ sccs_hasDiffs(sccs *s, u32 flags)
 	char	sbuf[MAXLINE];
 	char	*name = 0, *mode = "rb";
 	int	tmpfile = 0;
+	int	mcmprc;
 	char	*fbuf;
+	int	no_lf = 0;
+	int	lf_pend = 0;
+	u32	eflags = flags; /* copy because expandnleq destroys bits */
+	int	serial;
 
 #define	RET(x)	{ different = x; goto out; }
 
@@ -5965,7 +6094,11 @@ sccs_hasDiffs(sccs *s, u32 flags)
 		mode = "rt";
 		name = strdup(s->gfile);
 	}
-	unless (tmp = fopen(name, mode)) {
+	if (s->state & S_HASH) {
+		ghash = loadDB(name, 0, DB_USEFIRST);
+		shash = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
+	}
+	else unless (tmp = mopen(name, mode)) {
 		verbose((stderr, "can't open %s\n", name));
 		RET(-1);
 	}
@@ -5976,34 +6109,140 @@ sccs_hasDiffs(sccs *s, u32 flags)
 	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
 	while (fbuf = nextdata(s)) {
 		if (fbuf[0] != '\001') {
-			if (!print) continue;
-			unless (fnext(sbuf, tmp)) {
-				debug((stderr, "diff because EOF on gfile\n"));
-				RET(1);
+			if (!print) {
+				/* if we are skipping data from pending block */
+				if (lf_pend &&
+				    lf_pend == whatstate((const serlist*)state))
+				{
+					lf_pend = 0;
+				}
+				continue;
 			}
-			unless (strnleq(fbuf, sbuf) ||
-			    expandnleq(s, d, fbuf, sbuf, flags)) {
+			if (s->state & S_HASH) {
+				char	*from, *to, *val;
+				/* XXX: hack to use sbuf, but it exists */
+				for (from = fbuf, to = sbuf;
+				    *from && *from != ' ';
+				    *to++ = *from++) /* null body */;
+				assert(*from == ' ');
+				*to++ = '\0';
+				from++;
+				val = to;
+				for ( ;
+				    *from && *from != '\n';
+				    *to++ = *from++) /* null body */;
+				assert(*from == '\n');
+				*to = '\0';
+				/* XXX: could use the MDBM_INSERT fails */
+				if (mdbm_fetch_str(shash, sbuf)) continue;
+				if (mdbm_store_str(shash, sbuf, "1",
+				    MDBM_INSERT))
+				{
+					fprintf(stderr, "sccs_hasDiffs: "
+						"key insert caused conflict "
+						"'%s'\n", sbuf);
+					RET(-1);
+				}
+				unless (to = mdbm_fetch_str(ghash, sbuf)) {
+#ifdef	WHEN_DELETE_KEY_SUPPORTED
+					debug((stderr, "diff because sfile "
+						"had key\n"));
+					RET(1);
+#else
+					continue;
+#endif
+				}
+				unless (streq(to, val)) {
+					debug((stderr, "diff because same "
+						"key diff value\n"));
+					RET(1);
+				}
+				mdbm_delete_str(ghash, sbuf);
+				continue;
+			}
+			mcmprc = mcmp(tmp, fbuf);
+			if (mcmprc == MCMP_DIFF) {
+				mcmprc = expandnleq(s, d, tmp, fbuf, &eflags);
+			}
+			no_lf = 0;
+			lf_pend = print;
+			switch (mcmprc) {
+			    case MCMP_ERROR:
+			    	fprintf(stderr, "sccs_hasDiffs: mcmp error\n");
+				exit(1);
+			    case MCMP_MATCH:
+			    	break;
+			    case MCMP_NOLF:
+			    	no_lf = print;
+				break;
+			    case MCMP_DIFF:
 				debug((stderr, "diff because diff data\n"));
 				RET(1);
+			    case MCMP_SFILE_EOF:
+			    case MCMP_BOTH_EOF:
+			    	fprintf(stderr, "sccs_hasDiffs: "
+				    "sfile has data and is EOF?\n");
+				RET(1);
+			    case MCMP_GFILE_EOF:
+				debug((stderr, "diff because EOF on gfile\n"));
+				RET(1);
+			    default:
+			    	fprintf(stderr,
+				    "sccs_hasDiffs: switch with no case %d\n",
+				    mcmprc);
+				exit(1);
 			}
 			debug2((stderr, "SAME %.*s", linelen(fbuf), fbuf));
 			continue;
 		}
-		changestate(state, fbuf[1], atoi(&fbuf[3]));
+		serial = atoi(&fbuf[3]);
+		if (fbuf[1] == 'E' && lf_pend == serial &&
+		    whatstate((const serlist*)state) == serial)
+		{
+			char	*n = &fbuf[3];
+			while (isdigit(*n)) n++;
+			if (*n == 'N') {
+				no_lf = (no_lf) ? 0 : 1; /* toggle */
+			}
+			else if (no_lf) {
+				/* sfile has newline when gfile had none */
+				debug((stderr, "diff because EOF on gfile\n"));
+				RET(1);
+			}
+			lf_pend = 0;
+		}
+		changestate(state, fbuf[1], serial);
 		debug2((stderr, "%.*s\n", linelen(fbuf), fbuf));
 		print = printstate((const serlist*)state, (const ser_t*)slist);
 	}
-	unless (fnext(sbuf, tmp)) {
+	if (s->state & S_HASH) {
+		kvpair	kv;
+		kv = mdbm_first(ghash);
+		if (kv.key.dsize) {
+			debug((stderr, "diff because gfile had key\n"));
+			RET(1);
+		}
+		debug((stderr, "hashes same\n"));
+		RET(0);
+	}
+	if (no_lf) {
+		/* gfile has newline when sfile had none */
+		debug((stderr, "diff because EOF on sfile\n"));
+		RET(1);
+	}
+	mcmprc = mcmp(tmp, 0);
+	if (mcmprc == MCMP_BOTH_EOF) {
 		debug((stderr, "same\n"));
 		RET(0);
 	}
-	debug((stderr, "diff because not EOF on both %s %s\n",
-	    eof(s) ? "sfile done" : "sfile not done",
-	    feof(tmp) ? "gfile done" : "gfile not done"));
+	assert(mcmprc == MCMP_SFILE_EOF);
+	debug((stderr, "diff because EOF on sfile\n"));
 	RET(1);
 out:
 	if (s->encoding & E_GZIP) zgets_done();
-	if (tmp) fclose(tmp); /* must close before we unlink */
+	if (tmp) mclose(tmp); /* must close before we unlink */
+	if (ghash) mdbm_close(ghash);
+	if (shash) mdbm_close(shash);
 	if (name) {
 		if (tmpfile) unlink(name);
 		free(name);
@@ -6067,6 +6306,8 @@ fix_lf(char *gfile)
 	int	fd;
 	struct	stat sb;
 	char	c;
+
+	return (0);
 
 	if (lstat(gfile, &sb)) {
 		fprintf(stderr, "lstat: ");
@@ -6816,6 +7057,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, MMAP *diffs, char *
 	char	*t;
 	char	buf[MAXLINE];
 	admin	l[2];
+	int	no_lf = 0;
 	int	error = 0;
 
 	assert(s);
@@ -7013,16 +7255,22 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, MMAP *diffs, char *
 			 */
 			len = strlen(buf);
 			if (len && (buf[len - 1] != '\n')) {
-				s->dsum += fputdata(s, "\n", sfile);
+				/* put lf in sfile, but not in dsum */
+				fputdata(s, "\n", sfile);
+				no_lf = 1;
 			}
 		}
 	}
 	if (n0) {
-		fputdata(s, "\001E 2\n", sfile);
+		fputdata(s, "\001E 2", sfile);
+		if (no_lf) fputdata(s, "N", sfile);
+		fputdata(s, "\n", sfile);
 		fputdata(s, "\001I 1\n", sfile);
 		fputdata(s, "\001E 1\n", sfile);
 	} else {
-		fputdata(s, "\001E 1\n", sfile);
+		fputdata(s, "\001E 1", sfile);
+		if (no_lf) fputdata(s, "N", sfile);
+		fputdata(s, "\n", sfile);
 	}
 	error = end(s, n, sfile, flags, added, 0, 0);
 	if (gfile && (gfile != stdin)) {
@@ -8399,14 +8647,67 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 
 
 private void
-doctrl(sccs *s, char *pre, int val, FILE *out)
+doctrl(sccs *s, char *pre, int val, char *post, FILE *out)
 {
 	char	tmp[10];
 
 	sertoa(tmp, (unsigned short) val);
 	fputdata(s, pre, out);
 	fputdata(s, tmp, out);
+	fputdata(s, post, out);
 	fputdata(s, "\n", out);
+}
+
+void
+finish(sccs *s, int *ip, int *pp, FILE *out, register serlist *state,
+	ser_t *slist)
+{
+	int	print = *pp, incr = *ip;
+	sum_t	sum;
+	register char	*buf;
+	ser_t	serial;
+	int	lf_pend = 0;
+
+	debug((stderr, "finish(incr=%d, sum=%d, print=%d) ",
+		incr, s->dsum, print));
+	while (!eof(s)) {
+		unless (buf = nextdata(s)) break;
+		debug2((stderr, "G> %.*s", linelen(buf), buf));
+		sum = fputdata(s, buf, out);
+		if (isData(buf)) {
+			if (!print) {
+				/* if we are skipping data from pending block */
+				if (lf_pend &&
+				    lf_pend == whatstate((const serlist*)state))
+				{
+					s->dsum += '\n';
+					lf_pend = 0;
+				}
+				continue;
+			}
+			unless (lf_pend) sum -= '\n';
+			lf_pend = print;
+			s->dsum += sum;
+			incr++;
+			continue;
+		}
+		serial = atoi(&buf[3]);
+		if (buf[1] == 'E' && lf_pend == serial &&
+		    whatstate((const serlist*)state) == serial)
+		{
+			char	*n = &buf[3];
+			while (isdigit(*n)) n++;
+			unless (*n == 'N') {
+				lf_pend = 0;
+				s->dsum += '\n';
+			}
+		}
+		changestate(state, buf[1], serial);
+		print = printstate((const serlist*)state, (const ser_t*)slist);
+	}
+	*ip = incr;
+	*pp = print;
+	debug((stderr, "incr=%d, sum=%d\n", incr, s->dsum));
 }
 
 #define	nextline(inc)	nxtline(s, &inc, 0, &lines, &print, out, state, slist)
@@ -8546,6 +8847,7 @@ delta_body(sccs *s, delta *n, MMAP *diffs, FILE *out, int *ap, int *dp, int *up)
 	int	added = 0, deleted = 0, unchanged = 0;
 	sum_t	sum;
 	char	*b;
+	int	no_lf = 0;
 
 	assert((s->state & S_READ_ONLY) == 0);
 	assert(s->state & S_ZFILE);
@@ -8578,9 +8880,12 @@ newcmd:
 		}
 		debug2((stderr, "where=%d what=%c\n", where, what));
 
-#define	ctrl(pre, val)	doctrl(s, pre, val, out)
+#define	ctrl(pre, val, post)	doctrl(s, pre, val, post, out)
 
-		if (what != 'a' && what != 'b' && what != 'I') where--;
+		if (what == 'c' || what == 'd' || what == 'D' || what == 'x')
+		{
+			where--;
+		}
 		while (lines < where) {
 			/*
 			 * XXX - this loops when I don't use the fudge as part
@@ -8589,49 +8894,35 @@ newcmd:
 			nextline(unchanged);
 		}
 		switch (what) {
-		    case 'a':
-			ctrl("\001I ", n->serial);
-			while (b = mnext(diffs)) {
-				if (isdigit(b[0])) {
-					ctrl("\001E ", n->serial);
-					goto newcmd;
-				}
-				s->dsum += fputdata(s, &b[2], out);
-				debug2((stderr,
-				    "INS %.*s", linelen(&b[2]), &b[2]));
-				added++;
-			}
-			break;
+		    case 'c':
 		    case 'd':
 			beforeline(unchanged);
-			ctrl("\001D ", n->serial);
+			ctrl("\001D ", n->serial, "");
 			sum = s->dsum;
 			while (b = mnext(diffs)) {
+				if (strneq(b, "---\n", 4)) break;
+				if (strneq(b, "\\ No", 4)) continue;
 				if (isdigit(b[0])) {
-					ctrl("\001E ", n->serial);
+					ctrl("\001E ", n->serial, "");
 					s->dsum = sum;
 					goto newcmd;
 				}
 				nextline(deleted);
 			}
 			s->dsum = sum;
-			break;
-		    case 'c':
-			beforeline(unchanged);
-			ctrl("\001D ", n->serial);
-			sum = s->dsum;
-			/* Toss the old stuff */
+			if (what != 'c') break;
+			ctrl("\001E ", n->serial, "");
+			/* fall through to */
+		    case 'a':
+			ctrl("\001I ", n->serial, "");
 			while (b = mnext(diffs)) {
-				if (strneq(b, "---\n", 4)) break;
-				nextline(deleted);
-			}
-			s->dsum = sum;
-			ctrl("\001E ", n->serial);
-			/* add the new stuff */
-			ctrl("\001I ", n->serial);
-			while (b = mnext(diffs)) {
+				if (strneq(b, "\\ No", 4)) {
+					s->dsum -= '\n';
+					no_lf = 1;
+					break;
+				}
 				if (isdigit(b[0])) {
-					ctrl("\001E ", n->serial);
+					ctrl("\001E ", n->serial, "");
 					goto newcmd;
 				}
 				s->dsum += fputdata(s, &b[2], out);
@@ -8640,13 +8931,14 @@ newcmd:
 				added++;
 			}
 			break;
+		    case 'N':
 		    case 'I':
 		    case 'i':
-			ctrl("\001I ", n->serial);
+			ctrl("\001I ", n->serial, "");
 			while (howmany--) {
 				/* XXX: not break but error */
 				unless (b = mnext(diffs)) break;
-				if (what == 'I' && b[0] == '\\') {
+				if (what != 'i' && b[0] == '\\') {
 					s->dsum += fputdata(s, &b[1], out);
 				} else {
 					s->dsum += fputdata(s, b, out);
@@ -8654,27 +8946,25 @@ newcmd:
 				debug2((stderr, "INS %.*s", linelen(b), b));
 				added++;
 			}
+			if (what == 'N') {
+				s->dsum -= '\n';
+				no_lf = 1;
+			}
 			break;
 		    case 'D':
 		    case 'x':
 			beforeline(unchanged);
-			ctrl("\001D ", n->serial);
+			ctrl("\001D ", n->serial, "");
 			sum = s->dsum;
 			while (howmany--) {
-				if (isdigit(b[0])) {
-					ctrl("\001E ", n->serial);
-					goto newcmd;
-				}
 				nextline(deleted);
 			}
 			s->dsum = sum;
 			break;
 		}
-		ctrl("\001E ", n->serial);
+		ctrl("\001E ", n->serial, no_lf ? "N" : "");
 	}
-	while (!eof(s)) {
-		nextline(unchanged);
-	}
+	finish(s, &unchanged, &print, out, state, slist);
 	*ap = added;
 	*dp = deleted;
 	*up = unchanged;
@@ -9655,7 +9945,7 @@ Fucks up citool
 	}
 	fseek(out, 0L, SEEK_SET);
 	fprintf(out, "\001h%05u\n", s->cksum);
-	if (fflush(out) || ferror(out)) return (-1);
+	if (flushFILE(out)) return (-1);
 	return (0);
 }
 
@@ -12396,7 +12686,7 @@ sccs_keyinit(char *key, u32 flags, project *proj, MDBM *idDB)
 	/* Id cache contains long and short keys */
 	k.dptr = key;
 	k.dsize = strlen(key) + 1;
-	v = mdbm_fetch(idDB, k);
+	v  = mdbm_fetch(idDB, k);
 	if (v.dsize) {
 		p = name2sccs(v.dptr);
 	} else {

@@ -502,7 +502,31 @@ proc restart {} \
 	next
 }
 
-# Get the sdiff, making sure it has no \r's from fucking dos in it.
+# Open the file, look for \r and an trailing newline.
+proc ok_file {f} \
+{
+	set fd [open "$f" "r"]
+	fconfigure $fd -translation binary
+	set c [read $fd 1]
+	while {"$c" != ""} {
+		if {$c == "\r" || $c == "\n"} { break; }
+		set c [read $fd 1]
+	}
+	if {$c == "\r"} {
+		close $fd
+		return 0
+	}
+	seek $fd -1 end
+	set c [read $fd 1]
+	close $fd
+	if {$c != "\n"} {
+		return 0
+	}
+	return 1
+}
+
+# Get the sdiff, making sure it has no \r's from donkey dos in it.
+# Check to make sure it is newline terminated.
 proc sdiff {L R} \
 {
 	global	rmList sdiffw bin
@@ -511,15 +535,11 @@ proc sdiff {L R} \
 	set undos [file join $bin undos]
 	# we need the extra quote arounf $R $L
 	# because win32 path may have space in it
-	set a [open "| grep {\r$} \"$L\"" r]
-	set b [open "| grep {\r$} \"$R\"" r]
-	if { ([gets $a dummy] < 0) && ([gets $b dummy] < 0)} {
-		catch { close $a }
-		catch { close $b }
+	set a_ok [ok_file $L]
+	set b_ok [ok_file $R]
+	if {($a_ok == 1) && ($b_ok == 1)} {
 		return [open "| $sdiffw \"$L\" \"$R\"" r]
 	}
-	catch { close $a }
-	catch { close $b }
 	set dir [file dirname $L]
 	if {"$dir" == ""} {
 		set dotL .$L

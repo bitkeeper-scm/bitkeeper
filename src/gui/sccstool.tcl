@@ -350,7 +350,7 @@ proc history {} \
 	global	file dspec dev_null bk_prs
 
 	busy 1
-	set f [open "| $bk_prs -m {$dspec} $file 2>$dev_null"]
+	set f [open "| $bk_prs -h {$dspec} $file 2>$dev_null"]
 	filltext $f 1
 }
 
@@ -410,7 +410,7 @@ proc csettool {} \
 
 proc diff2 {difftool} \
 {
-	global file rev1 rev2 diffOpts getOpts dspecnonl dev_null
+	global file rev1 rev2 diffOpts getOpts dev_null
 	global bk_cset tmp_dir
 
 	if {[info exists rev1] != 1} { return }
@@ -753,13 +753,11 @@ proc busy {busy} \
 proc widgets {} \
 {
 	global	font bfont arrow background search swid diffOpts getOpts
-	global	lineOpts dspec dspecnonl wish yspace paned file
+	global	lineOpts dspec wish yspace paned file
 	global	tcl_platform
 
 	set dspec \
-"-d:I:\t:D: :T::TZ: :P:\$if(:HT:){@:HT:}  :DPN:\n\$each(:C:){\t(:C:)}\n"
-	set dspecnonl \
-"-d:I:\t:D: :T::TZ: :P:\$if(:HT:){@:HT:}  :DPN:\n\$each(:C:){\t(:C:)}"
+"-d:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)}\n\$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}"
 	set diffOpts "-u"
 	set getOpts "-um"
 	set lineOpts "-u"
@@ -959,7 +957,7 @@ proc sccstool {name} \
 proc init {} \
 {
 	global bin bk_sccslog bk_prs bk_cset bk_get bk_renumber bk_sfiles
-	global bk_lines
+	global bk_lines env
 
 	bk_init
 	set bk_prs [file join $bin prs]
@@ -969,6 +967,7 @@ proc init {} \
 	set bk_sfiles [file join $bin sfiles]
 	set bk_lines [file join $bin lines]
 	set bk_sccslog [file join $bin sccslog]
+	set env(BK_YEAR4) 1
 }
 
 init
