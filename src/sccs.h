@@ -89,6 +89,8 @@
 #define	ADMIN_RM1_0	0x08000000	/* remove a 1.0 delta */
 #define	ADMIN_OBSCURE	0x00100000	/* remove comments, obscure data */
 #define	ADMIN_FORCE	0x00200000	/* use Z lock; for pull/cweave */
+#define	ADMIN_NEWPATH	0x00400000	/* path changed, add a new null delta */
+#define	ADMIN_DELETE	0x00400000	/* file deleted, add a new null delta */
 
 #define	ADMIN_CHECKS	(ADMIN_FORMAT|ADMIN_ASCII|ADMIN_TIME|ADMIN_BK)
 
@@ -1144,6 +1146,7 @@ void	notice(char *key, char *arg, char *type);
 pid_t	findpid(pid_t pid);
 void	save_log_markers(void);
 void	update_log_markers(int verbose);
+delta	*getedit(sccs *s, char **revp);
 
 extern char *bk_vers;
 extern char *bk_utc;
