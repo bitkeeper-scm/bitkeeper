@@ -386,16 +386,21 @@ proc createDiffWidgets {w} \
 	    .diffs.left tag configure diffline -background $gc($app.newColor)
 	    .diffs.left tag configure gca -background $gc($app.oldColor)
 	    .diffs.left tag configure gcaline -background $gc($app.oldColor)
-	    .diffs.left tag configure hand -background lightyellow
-	    .diffs.left tag configure space -background black
-	    .diffs.left tag configure reverse -background orange
+	    .diffs.left tag configure un -background $gc($app.sameColor)
+	    .diffs.left tag configure unline -background $gc($app.sameColor)
+	    .diffs.left tag configure space -background $gc($app.spaceColor)
+	    .diffs.left tag configure reverse -background $gc($app.charColor)
+	    .diffs.left tag configure hand -background $gc($app.handColor)
+
 	    .diffs.right tag configure diff -background $gc($app.newColor)
 	    .diffs.right tag configure diffline -background $gc($app.newColor)
 	    .diffs.right tag configure gca -background $gc($app.oldColor)
 	    .diffs.right tag configure gcaline -background $gc($app.oldColor)
-	    .diffs.right tag configure hand -background lightyellow
-	    .diffs.right tag configure space -background black
-	    .diffs.right tag configure reverse -background orange
+	    .diffs.right tag configure un -background $gc($app.sameColor)
+	    .diffs.right tag configure unline -background $gc($app.sameColor)
+	    .diffs.right tag configure space -background $gc($app.spaceColor)
+	    .diffs.right tag configure reverse -background $gc($app.charColor)
+	    .diffs.right tag configure hand -background $gc($app.handColor)
 
 	    bind .diffs <Configure> { computeHeight "diffs" }
 }
@@ -427,12 +432,12 @@ proc prev {conflict} \
 
 proc status {} \
 {
-	global	diffCount lastDiff conf_this conf_todo 
+	global	diffCount lastDiff conf_todo conflicts
 
-	catch { .diffs.left index "c$lastDiff" } ret
-	if {[string first "bad text" $ret]} {
+	if {[info exists conflicts($lastDiff)]} {
+		set c $conflicts($lastDiff)
 		.merge.menu.l configure -text \
-		    "Conflict $conf_this, diff $lastDiff/$diffCount ($conf_todo unresolved)"
+		    "Conflict $c, diff $lastDiff/$diffCount ($conf_todo unresolved)"
 	} else {
 		.merge.menu.l configure -text \
 		    "Diff $lastDiff/ $diffCount ($conf_todo unresolved)"
@@ -441,7 +446,7 @@ proc status {} \
 
 proc dot {} \
 {
-	global	diffCount lastDiff conf_this conf_todo 
+	global	diffCount lastDiff conf_todo 
 	global	app gc UNMERGED restore undo
 
 	searchreset
@@ -489,36 +494,54 @@ proc dot {} \
 	} else {
 		.merge.t tag add handline $d $e
 	}
-	set help .merge.menu.t
-	$help configure -state normal
-	$help delete 1.0 end
+	set w .merge.menu.t
+	$w configure -state normal
+	$w delete 1.0 end
 	set msg \
-"\"$gc($app.nextdiff)\" for the next diff,
-\"$gc($app.prevdiff)\" for the previous diff,
-\"$gc($app.nextconflict)\" for the next conflict,
-\"$gc($app.prevconflict)\" for the previous conflict,
-\"$gc($app.firstdiff)\" for the first diff,
-\"$gc($app.lastdiff)\" for the last diff,
-\"space\" is an alias for \"$gc($app.nextconflict)\"."
-	catch { .diffs.left index "c$lastDiff" } ret
-	if {[string first "bad text" $ret] == -1 } {
+"
+
+\"$gc($app.nextDiff)\" for the next diff,
+\"$gc($app.prevDiff)\" for the previous diff,
+\"$gc($app.nextConflict)\" for the next conflict,
+\"$gc($app.prevConflict)\" for the previous conflict,
+\"$gc($app.firstDiff)\" for the first diff,
+\"$gc($app.lastDiff)\" for the last diff,
+\"space\" is an alias for \"$gc($app.nextConflict)\"."
+
+	if {[isConflict $lastDiff]} {
 		set buf [.merge.t get $d $e]
 		if {$buf == $UNMERGED} {
 			.merge.menu.l configure -bg red
-			$help insert end \
-"This is an unmerged conflict.
-Merge it by clicking on the lines
-that you want.
+			$w insert end "Merge this conflict by clicking on\n"
+			$w insert end "the lines that you want.\n"
+			$w insert end "-Deleted lines start with \"-\".\n" gca
+			$w insert end "+Added lines start with \"+\".\n" diff
+			$w insert end " Unchanged lines start with \" \".\n" un
+			$w insert end "+" reverse
+			$w insert end "The " diff
+			$w insert end "changed parts" reverse
+			$w insert end " have " diff
+			$w insert end "this color." reverse
+			$w insert end "\n" diff
+			$w insert end "Hand merges have this color.\n" hand
+			$w insert end \
+"
 Left-mouse selects a block,
 Right-mouse selects a line,
 adding a shift with the click will
 replace whatever has been done so far,
 no shift means add at the bottom.
 \"$gc($app.undo)\" will undo the last click.
-To hand edit, click the merge window."
+To hand edit, click the merge window.
+
+\"$gc($app.prevDiff)\" / \"$gc($app.nextDiff)\" for the previous/next diff,
+\"$gc($app.prevConflict)\" / \"$gc($app.nextConflict)\" for the prev/next conflict,
+\"$gc($app.firstDiff)\" / \"$gc($app.lastDiff)\" for the first/last diff,
+\"space\" is an alias for \"$gc($app.nextConflict)\"."
+			set msg ""
 		} else {
-			.merge.menu.l configure -bg lightyellow
-			$help insert end \
+			.merge.menu.l configure -bg $gc($app.handColor)
+			$w insert end \
 {This conflict has been hand merged.
 You may remerge by clicking on the
 lines that you want (use shift).
@@ -531,12 +554,12 @@ To hand edit, click the merge window.}
 		}
 	} else {
 		.merge.menu.l configure -bg white
-		$help insert end \
+		$w insert end \
 {This conflict has been automerged.
 To hand edit, click the merge window.}
 	}
-	$help insert end "\n\n$msg"
-	$help configure -state disabled
+	$w insert end "$msg"
+	$w configure -state disabled
 }
 
 proc topLine {} \
@@ -592,11 +615,12 @@ proc scrollDiffs {start stop} \
 
 proc diffstart {conflict} \
 {
-	global	diffCount conf_todo
+	global	diffCount conf_todo conflicts
 
 	incr diffCount
 	if {$conflict} {
 		incr conf_todo
+		set conflicts($diffCount) $conf_todo
 		set marks [list "d$diffCount" "c$diffCount"]
 	} else {
 		set marks [list "d$diffCount"]
@@ -633,7 +657,7 @@ proc both {both off} \
 
 proc readSmerge {} \
 {
-	global	UNMERGED conf_todo errorCode smerge annotate
+	global	UNMERGED conf_todo errorCode smerge annotate conflicts
 
 	set fd [open $smerge r]
 	set merged 0
@@ -703,10 +727,6 @@ proc readSmerge {} \
 		} elseif {$state == "R"} {
 			set text .diffs.right
 		}
-		if {$what == " "} {
-			$text insert end " $line\n"
-			continue
-		}
 		if {$what == "h"} {
 			smerge_highlight $text $line $off
 			continue
@@ -715,14 +735,14 @@ proc readSmerge {} \
 		set l [string range $line 1 end]
 		if {$what == "-"} {
 			$text insert end " $c" gca
-			$text insert end "$l\n" 
 		} elseif {$what == "+"} {
 			$text insert end " $c" diff
-			$text insert end "$l\n" 
 		} elseif {$what == "s"} {
 			$text insert end " $c" space
-			$text insert end "$l\n" 
+		} elseif {$what == " "} {
+			$text insert end " $c" un
 		}
+		$text insert end "$l\n" 
 	}
 	if {[llength $both]} { both $both $off }
 	close $fd
@@ -797,7 +817,7 @@ proc smerge {} \
 
 proc readFile {} \
 {
-	global	diffCount lastDiff conf_todo conf_this conf_total dev_null 
+	global	diffCount lastDiff conf_todo conf_total dev_null 
 	global  app gc restore dir filename undo click
 
 	set dir "forward"
@@ -812,10 +832,10 @@ proc readFile {} \
 	update
 	set undo 0
 	array set click {}
+	array set conflicts {}
 	set diffCount 0
 	set conf_todo 0
 	set conf_total 0
-	set conf_this 0
 	set lastDiff 0
 	readSmerge 
 
@@ -1042,25 +1062,25 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		-text "Goto" -menu $m
 	    menu $m
 		$m add command -label "Prev diff" \
-		    -accelerator [shortname $gc($app.prevdiff)] \
+		    -accelerator [shortname $gc($app.prevDiff)] \
 		    -state disabled -command { prevDiff 0 }
 		$m add command -label "Next diff" \
-		    -accelerator [shortname $gc($app.nextdiff)] \
+		    -accelerator [shortname $gc($app.nextDiff)] \
 		    -state disabled -command { nextDiff 0 }
 		$m add command -label "Center on current diff" \
 		    -accelerator "." \
 		    -command dot
 		$m add command -label "Prev conflict" \
-		    -accelerator [shortname $gc($app.prevconflict)] \
+		    -accelerator [shortname $gc($app.prevConflict)] \
 		    -command { prevDiff 1 }
 		$m add command -label "Next conflict" \
-		    -accelerator [shortname $gc($app.nextconflict)] \
+		    -accelerator [shortname $gc($app.nextConflict)] \
 		    -command { nextDiff 1 }
 		$m add command -label "First diff" \
-		    -accelerator $gc($app.firstdiff) \
+		    -accelerator [shortname $gc($app.firstDiff)] \
 		    -command firstDiff
 		$m add command -label "Last diff" \
-		    -accelerator $gc($app.lastdiff) \
+		    -accelerator [shortname $gc($app.lastDiff)] \
 		    -command lastDiff
 	    button .menu.prevdiff -font $gc(fm3.buttonFont) \
 		-bg $gc(fm3.buttonColor) \
@@ -1237,13 +1257,18 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	$prs.right tag configure new -background $gc($app.newColor)
 	$prs.right tag configure old -background $gc($app.oldColor)
 	.merge.t tag configure auto -background $gc($app.mergeColor)
-	.merge.t tag configure hand -background lightyellow
-	.merge.t tag configure handline -background lightyellow
+	.merge.t tag configure hand -background $gc($app.mergeColor)
+	.merge.t tag configure handline -background $gc($app.mergeColor)
 	.merge.t tag configure next -background $gc($app.mergeColor)
 	.merge.hi tag configure auto -background $gc($app.mergeColor)
-	.merge.hi tag configure hand -background lightyellow
-	.merge.hi tag configure handline -background lightyellow
+	.merge.hi tag configure hand -background $gc($app.mergeColor)
+	.merge.hi tag configure handline -background $gc($app.mergeColor)
 	.merge.hi tag configure next -background $gc($app.mergeColor)
+	.merge.menu.t tag configure diff -background $gc($app.newColor)
+	.merge.menu.t tag configure gca -background $gc($app.oldColor)
+	.merge.menu.t tag configure un -background $gc($app.sameColor)
+	.merge.menu.t tag configure reverse -background $gc($app.charColor)
+	.merge.menu.t tag configure hand -background $gc($app.handColor)
 
 	foreach w {.diffs.left .diffs.right} {
 		bind $w <Button-1> {click %W 1 0; break}
@@ -1279,6 +1304,8 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 
 proc shortname {long} {
 	foreach {k n} {
+	    "+" "plus"
+	    "-" "minus"
 	    "{" "braceleft"
 	    "}" "braceright"
 	    "[" "bracketleft"
@@ -1318,11 +1345,13 @@ proc keyboard_bindings {} \
 		break
 	}
 	bind all	<$gc($app.quit)>		{ cleanup }
-	bind all	<$gc($app.nextdiff)>		{ next 0; break }
-	bind all	<$gc($app.prevdiff)>		{ prev 0; break }
-	bind all	<$gc($app.nextconflict)>	{ next 1; break }
-	bind all	<$gc($app.prevconflict)>	{ prev 1; break }
-	foreach f {nextdiff prevdiff nextconflict prevconflict} {
+	bind all	<$gc($app.nextDiff)>		{ next 0; break }
+	bind all	<$gc($app.prevDiff)>		{ prev 0; break }
+	bind all	<$gc($app.nextConflict)>	{ next 1; break }
+	bind all	<$gc($app.prevConflict)>	{ prev 1; break }
+	bind all	<$gc($app.firstDiff)>		{ firstDiff }
+	bind all	<$gc($app.lastDiff)>		{ lastDiff }
+	foreach f {firstDiff lastDiff nextDiff prevDiff nextConflict prevConflict} {
 		set gc($app.$f) [shortname $gc($app.$f)]
 	}
 	bind all	<space>				{ next 1; break }
@@ -1341,8 +1370,6 @@ proc keyboard_bindings {} \
 	}
 	bind all	<u>				{ undo }
 	bind all	<period>			{ dot; break }
-	bind all	<minus>				{ firstDiff }
-	bind all	<plus>				{ lastDiff }
 	if {$tcl_platform(platform) == "windows"} {
 		bind all <MouseWheel> {
 		    if {%D < 0} { next 0 } else { prev 0 }
@@ -1365,9 +1392,12 @@ proc edit_merge {x y} \
 	bind .merge.t <Button-1> {}
 	bind .merge.t <Escape> { edit_done }
 	bindtags .merge.t {.merge.t Text}
-	event generate .merge.t <Button-1> -when tail -x $x -y $y
+	.merge.t mark set insert [.merge.t index @$x,$y]
+	edit_save
 }
 
+# XXX - this could alias "u" to be "restore automerge" for this diff,
+# but that gets a bit complicated.
 proc edit_done {} \
 {
 	global	lastDiff diffCount conf_todo UNMERGED
@@ -1415,8 +1445,7 @@ proc edit_done {} \
 	# This catches all cases where they fixed a merge (we hope)
 	set n 0
 	for {set i 1} {$i <= $diffCount} {incr i} {
-		catch { .diffs.left index "c$i" } ret
-		if {[string first "bad text" $ret] == 0 } { continue }
+		if {[isConflict $i] == 0} { continue }
 		catch { set buf [.merge.t get "d$i" "e$i"] } ret
 		if {[string first "bad text" $ret] == 0 } { continue }
 		if {$buf == $UNMERGED} { incr n }
@@ -1467,37 +1496,44 @@ proc save {} \
 
 proc firstDiff {} \
 {
-	global	lastDiff conf_this
+	global	lastDiff
 
 	set lastDiff 0
-	set conf_this 0
 	nextDiff 0
 }
 
 proc lastDiff {} \
 {
-	global	lastDiff diffCount conf_total conf_this
+	global	lastDiff diffCount
 
-	set conf_this [expr $conf_total + 1]
 	set lastDiff [expr $diffCount - 1]
 	nextDiff 0
 }
 
+proc isConflict {diff} \
+{
+	global	conflicts
+
+	if {[info exists conflicts($diff)]} {
+		return 1
+	} else {
+		return 0
+	}
+}
+
 proc prevDiff {conflict} \
 {
-	global	lastDiff conf_this
+	global	lastDiff
 
 	if {$lastDiff == 1} { return }
 	if {$conflict} {
 		set diff $lastDiff
 		while {$diff >= 1} {
 			incr diff -1
-			catch { .diffs.left index "c$diff" } ret
-			if {[string first "bad text" $ret] == -1 } { break }
+			if {[isConflict $diff]} { break }
 		}
 		if {$diff == 0} { return }
 		set lastDiff $diff
-		incr conf_this -1
 	} else {
 		incr lastDiff -1
 	}
@@ -1506,19 +1542,17 @@ proc prevDiff {conflict} \
 
 proc nextDiff {conflict} \
 {
-	global	lastDiff diffCount conf_this
+	global	lastDiff diffCount
 
 	if {$lastDiff == $diffCount} { return }
 	if {$conflict} {
 		set diff $lastDiff
 		while {$diff <= $diffCount} {
 			incr diff
-			catch { .diffs.left index "c$diff" } ret
-			if {[string first "bad text" $ret] == -1 } { break }
+			if {[isConflict $diff]} { break }
 		}
 		if {$diff > $diffCount} { return }
 		set lastDiff $diff
-		incr conf_this
 	} else {
 		incr lastDiff
 	}
@@ -1569,12 +1603,13 @@ proc nextCommon {} \
 
 proc difflight {t d e} \
 {
+	$t tag remove unline 1.0 end
 	$t tag remove gcaline 1.0 end
 	$t tag remove diffline 1.0 end
 	$t tag remove reverse 1.0 end
 	set l 0
 	while {[$t compare "$d + $l lines" < $e]} {
-		foreach {tag tagline} {gca gcaline diff diffline} {
+		foreach {tag tagline} {un unline gca gcaline diff diffline} {
 			set range [$t tag nextrange $tag \
 			    "$d + $l lines"  "$d + $l lines lineend"]
 			if {$range != ""} {
@@ -1684,8 +1719,7 @@ proc edit_restore {c} \
 	if {[info exists restore("$c$lastDiff")] == 0} { return }
 
 	# see if it is a conflict
-	catch { .diffs.left index "c$lastDiff" } ret
-	if {[string first "bad text" $ret]} {
+	if {[isConflict $lastDiff]} {
 		if {$c == "a"} {
 			incr conf_todo
 			.merge.menu.l configure -bg red
@@ -1800,17 +1834,23 @@ proc click {win block replace} \
 {
 	global	lastDiff annotate click undo
 
-	incr undo
-	.menu.edit.m entryconfigure "Undo" -state normal
-	set click("w$undo") $win
+	set here [$win index current]
+	foreach t [$win tag names $here] {
+		if {$t == "hand"} {
+			puts "Already selected"
+			return
+		}
+	}
 	set d "d$lastDiff"
 	set e "e$lastDiff"
-	set here [$win index current]
 	if {[$win compare $here < $d] || \
 	    [$win compare $here > "$e - 1 chars"]} {
 		puts "Not in the current diff!"
 		return
 	}
+	incr undo
+	.menu.edit.m entryconfigure "Undo" -state normal
+	set click("w$undo") $win
 	if {$replace} {
 		foreach t {.diffs.left .diffs.right} {
 			$t tag remove hand $d $e
@@ -1837,10 +1877,12 @@ proc click {win block replace} \
 		if {$c != $char} { break }
 		# Break out if we hit stuff that we already selected
 		set ok 1
+		set tagged 0
 		foreach t [$win tag names $tmp] {
+			set tagged 1
 			if {$t == "hand"} { set ok 0 }
 		}
-		if {$ok == 0} { break }
+		if {$ok == 0 || $tagged == 0} { break }
 		set line $tmp
 	}
 	set l 1
@@ -1855,10 +1897,12 @@ proc click {win block replace} \
 		if {$c != $char} { break }
 		# Break out if we hit stuff that we already selected
 		set ok 1
+		set tagged 0
 		foreach t [$win tag names $tmp] {
+			set tagged 1
 			if {$t == "hand"} { set ok 0 }
 		}
-		if {$ok == 0} { break }
+		if {$ok == 0 || $tagged == 0} { break }
 		incr l
 	}
 	set a [$win index "$line linestart"]
