@@ -5608,9 +5608,12 @@ openOutput(sccs *s, int encode, char *file, FILE **op)
 		 * Note: This has no effect when we print to stdout
 		 * We want this becuase we want diff_gfile() to
 		 * diffs file with normlized to LF.
+		 *
+		 * Win32 note: t.bkd regression failed if ChangeSet have
+		 * have CRLF terminattion.
 		 */
 		if (((encode == E_ASCII) || (encode == E_GZIP)) &&
-		    (s->xflags & X_EOLN_NATIVE)) {
+		    !CSET(s) && (s->xflags&X_EOLN_NATIVE)) {
 			mode = "wt";
 		}
 		*op = toStdout ? stdout : fopen(file, mode);
@@ -6292,18 +6295,25 @@ out:			if (slist) free(slist);
 		}
 	}
 	unless (hash && (flags&GET_HASHONLY)) {
+		int 	rc = 0;
+
 		if (flags&GET_EDIT) {
 			if (d->mode) {
-				chmod(s->gfile, d->mode);
+				rc = chmod(s->gfile, d->mode);
 			} else {
-				chmod(s->gfile, 0666);
+				rc = chmod(s->gfile, 0666);
 			}
 		} else if (!(flags&PRINT)) {
 			if (d->mode) {
-				chmod(s->gfile, d->mode & ~0222);
+				rc = chmod(s->gfile, d->mode & ~0222);
 			} else {
-				chmod(s->gfile, 0444);
+				rc = chmod(s->gfile, 0444);
 			}
+		}
+		if (rc) {
+			fprintf(stderr,
+				"getRegBody: cannot chmod %s\n", s->gfile);
+			perror(s->gfile);
 		}
 	}
 
@@ -7929,12 +7939,12 @@ out:	if (n) mdbm_close(n);
  *	in the delta body. Note that, by definition, the delta body
  *	of non-regular file is empty.
  */
-private int
-diff_gfile(sccs *s, pfile *pf, char *tmpfile)
+int
+diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 {
 	char	old[MAXPATH];	/* the version from the s.file */
 	char	new[MAXPATH];	/* the new file, usually s->gfile */
-	int	ret;
+	int	ret, flags;
 	delta *d;
 
 	debug((stderr, "diff_gfile(%s, %s)\n", pf->oldrev, s->gfile));
@@ -7970,10 +7980,12 @@ diff_gfile(sccs *s, pfile *pf, char *tmpfile)
 	 */
 	d = findrev(s, pf->oldrev);
 	assert(d);
+	flags =  GET_ASCII|SILENT|PRINT;
+	if (expandKeyWord) flags |= GET_EXPAND;
 	if (isRegularFile(d->mode)) {
 		if (gettemp(old, "get")) return (-1);
 		if (sccs_get(s, pf->oldrev, pf->mRev, pf->iLst, pf->xLst,
-		    GET_ASCII|SILENT|PRINT, old)) {
+		    flags, old)) {
 			unlink(old);
 			return (-1);
 		}
@@ -8025,14 +8037,14 @@ diff_g(sccs *s, pfile *pf, char **tmpfile)
 	    case 0: 		/* no mode change */
 		if (!isRegularFile(s->mode)) return 1;
 		*tmpfile  = tmpnam(0);
-		return (diff_gfile(s, pf, *tmpfile));
+		return (diff_gfile(s, pf, 0, *tmpfile));
 	    case 2:		/* meta mode field changed */
 		return 0;
 	    case 3:		/* path changed */
 	    case 1:		/* file type changed */
 		*tmpfile  = tmpnam(0);
 		assert(*tmpfile);
-		if (diff_gfile(s, pf, *tmpfile) == -1) return (-1);
+		if (diff_gfile(s, pf, 0, *tmpfile) == -1) return (-1);
 		return 0;
 	    default:
 		return -1;
@@ -8212,7 +8224,7 @@ sccs_clean(sccs *s, u32 flags)
 	 * And it's faster.
 	 */
 	unless (sccs_hasDiffs(s, flags, 1)) goto nodiffs;
-	switch (diff_gfile(s, &pf, tmpfile)) {
+	switch (diff_gfile(s, &pf, 0, tmpfile)) {
 	    case 1:		/* no diffs */
 nodiffs:	verbose((stderr, "Clean %s\n", s->gfile));
 		unlink(s->pfile);
@@ -8726,19 +8738,19 @@ out:		sccs_unlock(s, 'z');
 	explode_rev(n);
 	if (nodefault) {
 		if (prefilled) s->xflags |= prefilled->xflags;
-	} else if (s->encoding == E_ASCII) {
+	} else if ((s->encoding == E_ASCII) || (s->encoding == E_GZIP)) {
 		unless (CSET(s)) {
 			/* check eoln preference */
+			s->xflags |= X_DEFAULT;
 			if (s->proj) {
 				db = loadConfig(s->proj->root, 0);
 				if (db) {
 					char *p = mdbm_fetch_str(db, "eoln");
-					if (p && streq("native", p)) {
-						s->xflags |= X_EOLN_NATIVE;
+					if (p && streq("unix", p)) {
+						s->xflags &= ~X_EOLN_NATIVE;
 					}
 				}
 			}
-			s->xflags |= X_DEFAULT;
 		}
 	}
 	n->serial = s->nextserial++;

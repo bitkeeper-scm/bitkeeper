@@ -24,7 +24,7 @@ echo $N Create some data ............................................$NL
 for dir in d1 d2 d3 d1/sub1 d2/sub1 d3/sub d3/sub2
 do	mkdir $dir
 	for file in a b c d 
-	do	echo I am $dir/$file > $dir/$file
+	do	echo "I am $dir/$file: %I%" > $dir/$file
 	done
 done
 bk sfiles -x | bk ci $Q -i -
@@ -117,6 +117,7 @@ echo OK
 
 echo $N Make sure it complains about locked files w/ RO gfile........$NL
 bk edit $Q d1/sub1/SCCS/s.a
+echo "new stuff" > d1/sub1/a
 chmod 444 d1/sub1/a
 bk -r check -a > OUT 2>&1 && {
 	echo should have exited with a failure
@@ -133,6 +134,16 @@ echo $N Make sure unedit will fix the above problem .................$NL
 bk unedit d1/sub1/SCCS/s.a
 bk -r check -a > OUT 2>&1 || {
 	echo should have exited cleanly
+	exit 1
+}
+echo OK
+
+echo $N Make sure it fixes locked files w/ unchanged RO gfile........$NL
+bk edit $Q d1/sub1/SCCS/s.a
+bk get $Q -r+ -p d1/sub1/a > d1/sub1/a
+chmod 444 d1/sub1/a
+bk -r check -a > OUT 2>&1 || {
+	echo should have exited with ok status
 	exit 1
 }
 echo OK

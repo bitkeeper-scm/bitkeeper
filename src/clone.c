@@ -231,7 +231,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	 */
 	if (bk_proj) proj_free(bk_proj);
 	bk_proj = proj_init(0);
-	p = user_preference("checkout", buf);
+	p = user_preference("checkout");
 	if (streq(p, "edit")) {
 		sys("bk", "-r", "edit", "-q", SYS);
 	} else if (streq(p, "get")) {

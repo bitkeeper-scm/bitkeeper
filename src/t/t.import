@@ -111,7 +111,9 @@ cd $HERE
 ( echo SCCS; echo no ) | bk import import_sccs project  > import.out 2>&1
 cd $HERE/project/src
 bk get $Q bar.c $HERE/import_sccs/src/bar.c
-cmp -s bar.c $HERE/import_sccs/src/bar.c
+bk undos bar.c > X
+bk undos $HERE/import_sccs/src/bar.c > Y
+cmp -s X Y
 echo OK
 if [ $PLATFORM != "WIN32" ]
 then #----------------------------------------------------------------

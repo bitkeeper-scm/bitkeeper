@@ -26,6 +26,7 @@ private int	chk_dfile(sccs *s);
 private int	writable_gfile(sccs *s);
 private int	readonly_gfile(sccs *s);
 private int	no_gfile(sccs *s);
+private int	chk_eoln(sccs *s, int eoln_unix);
 
 private	int	verbose;
 private	int	all;		/* if set, check every entry in the ChangeSet */
@@ -35,6 +36,7 @@ private	int	goneKey;	/* if set, list gone key only */
 private	int	badWritable;	/* if set, list bad writable file only */
 private	int	names;		/* if set, we need to fix names */
 private	int	mixed;		/* mixed short/long keys */
+private	int	check_eoln;
 private	project	*proj;
 private	sccs	*cset;		/* the initialized cset file */
 private int	flags = SILENT|INIT_SAVEPROJ|INIT_NOGCHK|INIT_NOCKSUM;
@@ -73,7 +75,7 @@ check_main(int ac, char **av)
 	MDBM	*db;
 	MDBM	*keys = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	sccs	*s;
-	int	errors = 0, want_dfile;
+	int	errors = 0, eoln_native = 1, want_dfile;
 	int	e;
 	char	*name;
 	char	buf[MAXKEY];
@@ -86,12 +88,13 @@ check_main(int ac, char **av)
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "acfgpRvw")) != -1) {
+	while ((c = getopt(ac, av, "acefgpRvw")) != -1) {
 		switch (c) {
 		    case 'a': all++; break;			/* doc 2.0 */
 		    case 'f': fix++; break;			/* doc 2.0 */
 		    case 'g': goneKey++; break;			/* doc 2.0 */
 		    case 'c': flags &= ~INIT_NOCKSUM; break;	/* doc 2.0 */
+		    case 'e': check_eoln++; break;
 		    case 'p': polyList++; break;		/* doc 2.0 */
 		    case 'R': resync++; break;			/* doc 2.0 */
 		    case 'v': verbose++; break;			/* doc 2.0 */
@@ -129,6 +132,10 @@ check_main(int ac, char **av)
 	/* XXX - I don't know for sure I always need this */
 	goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
 
+	if (check_eoln) {
+		eoln_native = !streq(user_preference("eoln"), "unix"); 
+	}
+
 	want_dfile = exists(DFILE);
 	for (name = sfileFirst("check", &av[optind], 0);
 	    name; name = sfileNext()) {
@@ -159,6 +166,7 @@ check_main(int ac, char **av)
 		errors |= readonly_gfile(s);
 		errors |= writable_gfile(s);
 		if (want_dfile) errors |= chk_dfile(s);
+		if (check_eoln) errors |= chk_eoln(s, eoln_native);
 
 		/*
 		 * Store the full length key and only if we are in mixed mode,
@@ -380,10 +388,41 @@ and then removed without being unlocked.\n\
 }
 
 private int
+gfile_unchanged(sccs *s)
+{
+	pfile pf;
+
+	if (sccs_read_pfile("check", s, &pf)) {
+		fprintf(stderr, "%s: cannot read pfile\n", s->gfile);
+		return (1);
+	}
+	
+	if (diff_gfile(s, &pf, 0, DEV_NULL) == 1) return (1);
+
+	/*
+	 * If RCS/SCCS keyword enabled, try diff it with keyword expanded
+	 */
+	if (SCCS(s) || RCS(s)) return (diff_gfile(s, &pf, 1, DEV_NULL));
+	return (0); /* changed */
+}
+
+private int
 readonly_gfile(sccs *s)
 {
 	if ((HAS_PFILE(s) && exists(s->gfile) && !writable(s->gfile))) {
-		fprintf(stderr,
+		if (gfile_unchanged(s)) {
+			char	*p, buf[MAXLINE];
+
+			unlink(s->pfile);
+			s->state &= ~S_PFILE;
+			if (resync) return (0);
+			p = user_preference("checkout");
+			if (streq(p, "edit") || streq(p, "EDIT")) {
+				sccs_get(s, 0, 0, 0, 0, SILENT|GET_EDIT, "-");
+			}
+			return (0);
+		} else {
+			fprintf(stderr,
 "===========================================================================\n\
 check: %s is locked but not writable.\n\
 You need to go look at the file to see why it is read-only;\n\
@@ -392,8 +431,86 @@ right answer as it may contain expanded keywords.\n\
 It may also contain changes to the file which you may want.\n\
 If the file is unneeded, a \"bk unedit %s\" will fix the problem.\n\
 ===========================================================================\n",
-		    s->gfile, s->gfile);
-		return (128);
+		    		s->gfile, s->gfile);
+			return (128);
+		}
+	}
+	return (0);
+}
+
+private int
+vrfy_eoln(sccs *s, int want_cr)
+{
+	MMAP 	*m;
+	char 	*p;
+
+	unless (HAS_GFILE(s)) return (0);
+	unless (m = mopen(s->gfile, "b")) return (256);
+
+	if (m->size == 0) {
+		mclose(m);
+		return (0);
+	}
+
+	/*
+	 * check the first line
+	 */
+	p = m->where;
+	while (p <= m->end) {
+		if (*p == '\n') break;
+		p++;
+	}
+
+	if (*p != '\n') return (0); /* incomplete line */
+	if (want_cr) {
+		if ((p > m->where) && (p[-1] == '\r')) {
+			mclose(m);
+			return (0);
+		}
+		fprintf(stderr,
+		    "Warning: %s: missing CR in eoln\n", s->gfile);
+	} else {
+		if ((p == m->where) || (p[-1] != '\r')) {
+			mclose(m);
+			return (0);
+		}
+		fprintf(stderr,
+		    "Warning: %s: extra CR in eoln?\n", s->gfile);
+	}
+	mclose(m);
+	return (256);
+}
+
+private
+chk_eoln(sccs *s, int eoln_native)
+{
+	/*
+	 * Skip non-user file and binary file
+	 */
+	if (CSET(s) ||
+	    ((strlen(s->gfile) > 10) && strneq(s->gfile, "BitKeeper/", 10)) ||
+	    ((s->encoding != E_ASCII) && (s->encoding != E_GZIP))) {
+		return (0);
+	}
+
+#ifdef WIN32 /* eoln */
+	vrfy_eoln(s, EOLN_NATIVE(s));
+#else
+	vrfy_eoln(s, 0); /* on unix, we do not want CRLF */
+#endif
+
+	if (eoln_native) {
+		unless (EOLN_NATIVE(s)) {
+			fprintf(stderr,
+			    "Warning: %s : EOLN_NATIVE is off\n", s->gfile);
+			return (256);
+		}
+	} else {
+		if (EOLN_NATIVE(s)) {
+			fprintf(stderr,
+			    "Warning: %s : EOLN_NATIVE is on\n", s->gfile);
+			return (256);
+		}
 	}
 	return (0);
 }
