@@ -605,11 +605,16 @@ not be asked again.
 $
 #repo_new_preamble
 In order to use BitKeeper in this repository, you need to accept the
-associated Repository license.  The Repository license is part of the the
-repository and it is a condition of the BitKeeper license that you agree
-with the Repository license.  Please read the license carefully, it is a
-contract and you must abide by the terms.  Your acceptance will be recorded
-on this machine and you will not be asked again.
+associated Repository license.  The Repository license is part of the
+the repository and it is a condition of the BitKeeper license that you
+agree with the Repository license.  Please read the license carefully,
+it is a contract and you must abide by the terms.  Your acceptance will
+be recorded on this machine and you will not be asked again.
+
+This license was associated with this repository by the party who
+initially created the repository.  Unless BitMover, Inc. created this
+repository, this license was not written by BitMover and BitMover is
+not responsible for the content of the license.
 $
 #repo_upgrade_preamble
 The Repository license associated with the use of this repository has
