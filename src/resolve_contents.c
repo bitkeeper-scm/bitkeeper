@@ -66,7 +66,7 @@ c_dlm(resolve *rs)
 {
 	names	*n = rs->tnames;
 
-	do_diff(rs, n->gca, rs->s->gfile, 1);
+	do_diff(rs, n->local, rs->s->gfile, 1);
 	return (0);
 }
 
