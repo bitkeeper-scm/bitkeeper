@@ -1,0 +1,50 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2001 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2001 Larry McVoy
+# %K%
+
+no_logging project
+echo $N Create initial repository ...................................$NL
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo OK
+echo $N Clone the repo, create data, merge ..........................$NL
+echo foo > foo
+bk new $Q foo
+bk commit $Q -yproject
+bk clone $Q $HERE/project $HERE/clone
+bk edit $Q foo
+echo foo foo >> foo
+bk ci $Q -yfoo foo
+bk commit $Q -yproject
+cd $HERE/clone
+bk edit $Q foo
+echo fu fu >> foo
+bk ci $Q -yfoo foo
+bk commit $Q -yclone
+bk pull $Q
+echo
+echo
+echo Just comment and commit
+echo
+(echo ul; echo C; echo q) | bk resolve $Q -l
+cat <<EOF > CMP
+1.3
+1.4
+EOF
+cmp CMP BitKeeper/etc/csets-in || {
+	echo failed to update csets-in properly
+	cat BitKeeper/etc/csets-in
+}
+echo OK

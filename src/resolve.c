@@ -1599,6 +1599,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 			    "Failed to check in/commit all files, aborting.\n");
 			resolve_cleanup(opts, 0);
 		}
+		opts->didMerge = opts->willMerge;
 		return (0);
 	}
 		
@@ -2339,7 +2340,6 @@ Got:\n\
 		    "Consistency check passed, resolve complete.\n");
 	}
 	flags = CLEAN_OK|CLEAN_RESYNC|CLEAN_PENDING;
-	unless (opts->logging) flags |= DO_LOG;
 	resolve_cleanup(opts, flags);
 	/* NOTREACHED */
 	return (0);
@@ -2483,10 +2483,13 @@ csets_in(opts *opts)
 		assert(s && s->tree);
 		d = sccs_top(s);
 		assert(d && d->merge);
-		in = fopen(CSETS_IN, "r");
+		in = fopen(CSETS_IN, "r");	/* RESYNC one */
 		assert(in);
 		sprintf(buf, "%s/%s", RESYNC2ROOT, CSETS_IN);
-		out = fopen(buf, "a");
+		out = fopen(buf, "w");		/* real one */
+		while (fnext(buf, in)) {
+			unless (streq(buf, "\n")) fputs(buf, out);
+		}
 		fprintf(out, "%s\n", d->rev);
 		fclose(out);
 		fclose(in);
@@ -2498,7 +2501,6 @@ csets_in(opts *opts)
 		/* May not exist if we pulled in tags only */
 		if (exists(buf)) rename(buf, CSETS_IN);
 	}
-	if (opts->log) fprintf(stdlog, "update(%s, %s)\n", buf, CSETS_IN);
 }
 
 /*
@@ -2607,6 +2609,8 @@ resolve_cleanup(opts *opts, int what)
 		SHOUT2();
 		exit(1);
 	}
-	if (what & DO_LOG) logChangeSet(logging(0, 0, 0) , 0, 1);
+	if (opts->didMerge && !opts->logging) {
+		logChangeSet(logging(0, 0, 0) , 0, 1);
+	}
 	exit(0);
 }
