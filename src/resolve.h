@@ -3,10 +3,11 @@
 
 #define	stdlog	opts->log ? opts->log : stderr
 #define	INIT	(INIT_SAVEPROJ|INIT_NOCKSUM)
-#define	CLEAN_RESYNC	1	/* blow away the RESYNC dir */
-#define	CLEAN_PENDING	2	/* blow away the PENDING dir */
-#define	CLEAN_OK	4	/* quietly exit 0 */
-#define	CLEAN_MVRESYNC	8	/* mv RESYNC RESYNC-YYYY-MM-DD-%03d */
+#define	CLEAN_RESYNC	0x01	/* blow away the RESYNC dir */
+#define	CLEAN_PENDING	0x02	/* blow away the PENDING dir */
+#define	CLEAN_OK	0x04	/* quietly exit 0 */
+#define	CLEAN_MVRESYNC	0x08	/* mv RESYNC RESYNC-YYYY-MM-DD-%03d */
+#define	CLEAN_NOSHOUT	0x10	/* No shouting */
 #define	SHOUT() \
 	fputs("===================== ERROR ========================\n", stderr);
 #define	SHOUT2() \

@@ -4671,7 +4671,7 @@ sccs_lock(sccs *s, char type)
 	
 	verbose = (s->state & SILENT) ? 0 : 1;
 	if ((type == 'z') && repository_locked(s->proj) &&
-	    (repository_cleanLocks(s->proj, 1, 1, 0, verbose) != 0)) {
+	    (repository_cleanLocks(s->proj, 1, 1, verbose) != 0)) {
 		return (0);
 	}
 

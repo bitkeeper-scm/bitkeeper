@@ -11,9 +11,12 @@ gethost_main(int ac, char **av)
 		system("bk help gethost");
 		return (1);
 	}
-
-	host = sccs_gethost();
-	if ((host == NULL) || (*host == '\0')) return (1);
+	if (ac == 2 && streq("-r", av[1])) {
+		host = sccs_realhost();
+	} else {
+		host = sccs_gethost();
+	}
+	unless (host && *host) return (1);
 	printf("%s\n", host);
 	/* make sure we have a good domain name */
 	unless (strchr(host, '.')) return (1);

@@ -190,7 +190,6 @@ do_cmds()
 	int	ac;
 	char	**av;
 	int	i, ret, httpMode;
-	int	flags = 0;
 	int	debug = getenv("BK_DEBUG") != 0;
 
 	httpMode = Opts.http_hdr_out;
@@ -210,7 +209,7 @@ do_cmds()
 			}
 
 			if (Opts.http_hdr_out) http_hdr(Opts.daemon);
-			flags = cmdlog_start(av, httpMode);
+			cmdlog_start(av, httpMode);
 
 			/*
 			 * Do the real work
@@ -218,9 +217,7 @@ do_cmds()
 			ret = cmds[i].cmd(ac, av);
 			if (debug) ttyprintf("cmds[%d] = %d\n", i, ret);
 
-			flags = cmdlog_end(ret, flags);
-
-			if (flags & CMD_FAST_EXIT) {
+			if (cmdlog_end(ret) & CMD_FAST_EXIT) {
 				drain();
 				exit(ret);
 			}
@@ -230,7 +227,6 @@ do_cmds()
 				}
 				if (Opts.errors_exit) {
 					out("ERROR-exiting\n");
-
 					drain();
 					exit(ret);
 				}
@@ -243,6 +239,7 @@ do_cmds()
 			out("ERROR-Try help\n");
 		}
 	}
+	repository_unlock(0);
 }
 
 private	void

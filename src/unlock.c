@@ -3,8 +3,6 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
-#undef	BLOCK
-#define	BLOCK	0x0001
 #define	PLOCK	0x0002
 #define	XLOCK	0x0004
 #define	ZLOCK	0x0008
@@ -14,10 +12,6 @@ WHATSTR("@(#)%K%");
 
 #define	REPO	(RLOCK|STALE|WLOCK)
 
-private char	*unlock_help = 
-"\nusage: unlock [-bfpxz] files...\n\
-or\n\
-	unlock [-frsw]\n";
 private	int	doit(sccs *s, char which);
 private int	repo(u32 flags);
 private void	dont(sccs *s, char c);
@@ -35,9 +29,8 @@ unlock_main(int ac, char **av)
 		system("bk help unlock");
 		return (0);
 	}
-	while ((c = getopt(ac, av, "bfprswxz")) != -1) {
+	while ((c = getopt(ac, av, "fprswxz")) != -1) {
 		switch (c) {
-		    case 'b': flags |= BLOCK; break;	/* doc 2.0 */
 		    case 'f': force = 1; break;		/* doc 2.0 */
 		    case 'p': flags |= PLOCK; break;	/* doc 2.0 */
 		    case 'r': flags |= RLOCK; break;	/* doc 2.0 */
@@ -60,7 +53,10 @@ usage:			system("bk help -s unlock");
 		goto usage;
 	}
 	
-	if (flags & REPO) return (repo(flags));
+	if (flags & REPO) {
+		if (av[optind]) chdir(av[optind]);
+		return (repo(flags));
+	}
 
 	/*
 	 * Too dangerous to unlock everything automagically,
@@ -77,7 +73,6 @@ usage:			system("bk help -s unlock");
 		s = sccs_init(name, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, proj);
 		if (s) {
 			unless (proj) proj = s->proj;
-			if (flags & BLOCK) c |= doit(s, 'b'); else dont(s, 'b');
 			if (flags & PLOCK) {
 				if (!force && HAS_GFILE(s)) {
 					fprintf(stderr,
@@ -127,7 +122,8 @@ repo(u32 flags)
 	int	error = 0;
 
 	if (flags & RLOCK) {
-		if (repository_rdunlock(1)) {
+		repository_rdunlock(1);
+		if (repository_hasLocks(READER_LOCK_DIR)) {
 			fprintf(stderr, "read unlock failed.\n");
 			repository_lockers(0);
 			error++;
@@ -135,7 +131,8 @@ repo(u32 flags)
 	}
 
 	if (flags & WLOCK) {
-		if (repository_wrunlock(1)) {
+		repository_wrunlock(1);
+		if (repository_hasLocks(WRITER_LOCK_DIR)) {
 			fprintf(stderr, "write unlock failed.\n");
 			repository_lockers(0);
 			error++;

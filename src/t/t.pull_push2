@@ -94,20 +94,26 @@ cd copy
 bk stripdel $Q -Cr+ ChangeSet
 bk pull $Q || exit 1
 echo OK
+
 OS=`uname -s`
 if [ "$OS" = "Linux" ]
 then #-----------------------------------------------------------------
 echo $N Make sure pull via pipe does not leave zombie process .......$NL
 bk clone $Q $HERE/project $HERE/copy2
 cd $HERE/project
+bk lock -U
 bk lock -w &
 LOCK_PID=$!
+bk lock -L
 cd $HERE/copy2
+bk lock -U
 bk pull $HERE/project 2> /dev/null &
 PULL_PID=$!
 sleep 1
 ps alx  | grep ${PULL_PID} | grep -q "defunc"
 if [ $? -eq 0 ]; then echo failed; kill -9 ${LOCK_PID} ${PULL_PID}; exit 1; fi
+bk unlock -w $HERE/project
+bk unlock -w $HERE/copy2
 kill -9 ${LOCK_PID} ${PULL_PID}
 echo OK
 fi #---------------------------------------------------------------------

@@ -202,6 +202,16 @@ clean_up()
                 file `cat $BK_REGRESSION/junk`
                 exit 11
 	fi
+
+	# Make sure there are no lockfiles left
+	find $BK_REGRESSION -type f -print |
+	    egrep 'BitKeeper/readers/|BitKeeper/writer/' > $BK_REGRESSION/junk
+	test -s $BK_REGRESSION/junk && {
+		echo Stale lock files
+		cat $BK_REGRESSION/junk
+		exit 12
+	}
+
 	rm -rf $BK_REGRESSION
 
 	if [ -d $BK_REGRESSION ];
@@ -211,6 +221,7 @@ clean_up()
 	# Make sure there are no stale files in $TMP
 	ls -a $TMP  > $TMP/T.${USER}-new
 	/usr/bin/diff $TMP/T.${USER}-new $TMP/T.${USER} | grep -v mutt-work
+
 }
 
 init_main_loop()

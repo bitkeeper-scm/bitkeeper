@@ -70,14 +70,6 @@ bk unlock X 2>/dev/null
 if [ $? != 1 ]; then echo failed to exit 1; exit 1; fi
 if [ ! -f SCCS/p.X ]; then echo failed to leave p.file; exit 1; fi
 echo OK
-echo $N unlock -b should work .......................................$NL
-touch SCCS/x.X SCCS/z.X SCCS/b.X
-bk unlock -b X 2>/dev/null
-if [ ! -f X ]; then echo failed; exit 1; fi
-if [ -f SCCS/b.X ]; then echo failed - left b; exit 1; fi
-if [ ! -f SCCS/x.X -o ! -f SCCS/z.X -o ! -f SCCS/p.X ]
-then echo failed - deleted other lock files; exit 1; fi
-echo OK
 echo $N unlock -x should work .......................................$NL
 touch SCCS/x.X SCCS/z.X SCCS/b.X
 bk unlock -x X  2> /dev/null
@@ -94,19 +86,19 @@ if [ -f SCCS/z.X ]; then echo failed - left z; exit 1; fi
 if [ ! -f SCCS/b.X -o ! -f SCCS/x.X -o ! -f SCCS/p.X ]
 then echo failed - deleted other lock files; exit 1; fi
 echo OK
-echo $N unlock -bzx should work .....................................$NL
-touch SCCS/x.X SCCS/z.X SCCS/b.X
-bk unlock -bxz X 2>/dev/null
+echo $N unlock -zx should work ......................................$NL
+touch SCCS/x.X SCCS/z.X 
+bk unlock -xz X 2>/dev/null
 if [ ! -f X ]; then echo failed; exit 1; fi
-if [ -f SCCS/z.X -o -f SCCS/b.X -o -f SCCS/x.X ]
+if [ -f SCCS/z.X -o -f SCCS/x.X ]
 then echo failed - left lock files; exit 1; fi
 echo OK
-echo $N unlock -fpbzx should work ...................................$NL
-touch SCCS/x.X SCCS/z.X SCCS/b.X
-bk unlock -fpbxz X 2>/dev/null
+echo $N unlock -fpzx should work ....................................$NL
+touch SCCS/x.X SCCS/z.X
+bk unlock -fpxz X 2>/dev/null
 if [ ! -f X ]; then echo failed; exit 1; fi
 if [ ! -f SCCS/s.X ]; then echo failed; exit 1; fi
-if [ -f SCCS/z.X -o -f SCCS/b.X -o -f SCCS/x.X -o -f SCCS/p.X ]
+if [ -f SCCS/z.X -o -f SCCS/x.X -o -f SCCS/p.X ]
 then echo failed - left lock files; exit 1; fi
 echo OK
 rm -f CMP1 CMP2 X Y SCCS/?.X SCCS/?.Y

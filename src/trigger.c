@@ -108,6 +108,9 @@ trigger(char **av, char *when)
 	unless (isdir(triggerDir)) return (0);
 	sys("bk", "get", "-q", triggerDir, SYS);
 
+	/* run post-triggers with a read lock */
+	if (streq(when, "post")) repository_downgrade();
+
 	/* Run the incoming trigger in the RESYNC dir if there is one.  */
 	resolve = (triggerDir != tbuf) && streq(what, "resolve");
 	if (resolve) {

@@ -4,9 +4,9 @@
 .SH NAME
 bk unlock \- remove \*(BK file locks
 .SH SYNOPSIS
-.B bk unlock [\-rsw]
+.B bk unlock [\-rsw] [directory]
 .br
-.B bk unlock [\-bfpxz]
+.B bk unlock [\-fpxz]
 .FILES
 .SH DESCRIPTION
 .LP
@@ -69,10 +69,6 @@ The default behavior of unlock is to remove the p.file only if the checked
 out file does not exist, i.e., like the scenario described above.
 .SH "FILE UNLOCK OPTIONS"
 .TP
-.B \-b
-Removes the b.file lock which is created as part of the resolve
-process.
-.tp
 .B \-f
 Force the unlink of the p.file even if the checked out file exists.
 .tp
@@ -81,7 +77,8 @@ Removes the p.file lock which is created by bk edit.
 .tp
 .B \-x
 Removes the x.file lock which is created during a check\-in. x.file
-contains the new s.file.
+contains the new s.file.  Use with care, the presence of this file 
+means that an update in progress failed.
 .tp
 .B \-z
 Removes the z.file lock which is created to prevent check\-in and

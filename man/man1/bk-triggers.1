@@ -265,6 +265,13 @@ The time stamp of the server side BK binary expressed as YYYYMMDDHHMMSS.
 The version of the client side BK binary as the symbolic name or the UTC.
 .ip BKD_VERSION
 The version of the server side BK binary as the symbolic name or the UTC.
+.SS
+LOCKING
+.LP
+When a post trigger is called, the repository is read locked.  A read
+lock will allow the trigger to do outgoing events, such as a push,
+but will prevent incoming events.  Pre-incoming and pre-commit triggers
+will be called with a write locked repository.
 .SH EXAMPLE
 .DS
 .ft CW

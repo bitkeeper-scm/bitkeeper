@@ -2176,7 +2176,7 @@ pass4_apply(opts *opts)
 		    default: flags = CLEAN_RESYNC|CLEAN_PENDING; break;
 		}
 		mdbm_close(permDB);
-		resolve_cleanup(opts, flags);
+		resolve_cleanup(opts, CLEAN_NOSHOUT|flags);
 	}
 	
 	/*
@@ -2647,7 +2647,7 @@ resolve_cleanup(opts *opts, int what)
 
 	freeStuff(opts);
 	unless (what & CLEAN_OK) {
-		SHOUT2();
+		unless (what & CLEAN_NOSHOUT) SHOUT2();
 		exit(1);
 	}
 
