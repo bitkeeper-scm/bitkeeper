@@ -2,7 +2,7 @@
 #include "sccs.h"
 
 int
-main(int ac, char **av)
+status_main(int ac, char **av)
 {
 	int c;
 	int verbose = 0;

@@ -99,7 +99,7 @@ char	*spin = "|/-\\";
  * cset.c - changeset command
  */
 int
-main(int ac, char **av)
+cset_main(int ac, char **av)
 {
 	sccs	*cset;
 	int	flags = 0;
@@ -331,8 +331,8 @@ spawn_checksum_child(void)
 {
 	int	p[2], fd0, rc;
 	pid_t	pid;
-	char	cmd[MAXPATH];
-	char	*av[2] = {cmd, 0};
+	char	bk_path[MAXPATH];
+	char	*av[3] = {bk_path, "adler32", 0};
 
 	/* the strange syntax is to hide the call from purify */
 	if ((pipe)(p)) {
@@ -348,7 +348,7 @@ spawn_checksum_child(void)
 	/* for Child.
 	 * Replace stdin with the read end of the pipe.
 	 */
-	sprintf(cmd, "%s%s", getenv("BK_BIN"), ADLER32);
+	sprintf(bk_path, "%sbk", getenv("BK_BIN"));
 	rc = (close)(0);
 	if (rc == -1) perror("close");
 	assert(rc != -1);
@@ -357,7 +357,7 @@ spawn_checksum_child(void)
 	assert(rc != -1);
 
 	/* Now go do the real work... */
-	pid = spawnvp_ex(_P_NOWAIT, cmd, av );
+	pid = spawnvp_ex(_P_NOWAIT, bk_path, av );
 	if (pid == -1) return -1;
 
 	/*

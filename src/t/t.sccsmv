@@ -12,7 +12,7 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
-cset -i -s .
+bk cset -i -s .
 echo $N Test sccsmv w/ p locked file ................................$NL
 rm -rf A B C D
 mkdir A B D E
@@ -22,7 +22,7 @@ echo "This is file 3" > A/file3
 echo "This is file 4" > A/file4
 echo "This is file 4" > B/file4
 echo "This is file 5" > D/file5
-ci $Q -i -l A/file1 B/file2 A/file3 A/file4 B/file4 D/file5
+bk ci $Q -i -l A/file1 B/file2 A/file3 A/file4 B/file4 D/file5
 for i in 2 3 4
 do
 	echo "This is file 1, rev 1.$i" > A/file1
@@ -31,110 +31,113 @@ do
 	echo "This is file 4, rev 1.$i" > A/file4
 	echo "This is file 4, rev 1.$i" > B/file4
 	echo "This is file 5, rev 1.$i" > D/file5
-	ci $Q -yrev1.$i -l A/file1 B/file2 A/file3 A/file4 B/file4 D/file5
+	bk ci $Q -yrev1.$i -l A/file1 B/file2 A/file3 A/file4 B/file4 D/file5
 done
-sfiles -l A B | clean -
-co $Q -l -r1.2  A/file1
-sccsmv A/file1 B/file1
+bk sfiles -l A B | bk clean -
+bk co $Q -l -r1.2  A/file1
+bk mv A/file1 B/file1
 # The file should have been moved, but not checked in.
 if [ ! -f B/file1 ]; then echo failed; exit 1; fi
 if [ ! -f B/SCCS/s.file1 ]; then echo failed; exit 1; fi
 if [ ! -f B/SCCS/p.file1 ]; then echo failed; exit 1; fi
 if [ ! -f A/SCCS/s.file3 ]; then echo failed; exit 1; fi
-DPATH=`prs -hr1.2.1.1 -d:DPN: B/file1`
+DPATH=`bk prs -hr1.2.1.1 -d:DPN: B/file1`
 if [ ${DPATH}X != ""X ]; then echo failed; exit 1; fi
 # Now check it in so later tests aren't confused.
-ci $Q -yrename B/file1
+bk ci $Q -yrename B/file1
 echo OK
 echo $N Test sccsmv w/ unlocked file ................................$NL
-sccsmv B/file2 C/file3
+bk mv B/file2 C/file3
 if [ -f C/file3 ]; then echo failed; exit 1; fi
 if [ ! -f C/SCCS/s.file3 ]; then echo failed; exit 1; fi
 if [ -f C/SCCS/p.file3 ]; then echo failed; exit 1; fi
-DPATH=`prs -hr+ -d:DPN: C/file3`
+DPATH=`bk prs -hr+ -d:DPN: C/file3`
 if [ ${DPATH}X != "C/file3"X ]; then echo failed; exit 1; fi
-DPATH=`prs -hr1.1 -d:DPN: C/file3`
+DPATH=`bk prs -hr1.1 -d:DPN: C/file3`
 if [ ${DPATH}X != "B/file2"X ]; then echo failed; exit 1; fi
 echo OK
 echo $N Test sccsmv to directory ....................................$NL
-sccsmv B/file1 B/file4 C
+bk mv B/file1 B/file4 C
 if [ ! -f C/SCCS/s.file1 ]; then echo failed; exit 1; fi
 if [ ! -f C/SCCS/s.file4 ]; then echo failed; exit 1; fi
 if [ -d B ]; then echo failed; exit 1; fi
 mkdir B
-sccsmv C/file1 C/file4 B
+bk mv C/file1 C/file4 B
 if [ ! -d C ]; then echo failed; exit 1; fi
 echo OK
 echo $N Test sccsmv to directory that does not exist ................$NL
 cp -rp B BBB
-sccsmv BBB BBBB
+bk mv BBB BBBB
 if [ ! -f BBBB/SCCS/s.file4 ]
 then	echo failed to move file; exit 1
 fi
 echo OK
 echo $N Test sccsrm w/ p locked file ................................$NL
-get $Q -e B/file1
-sccsrm B/file1
+bk get $Q -e B/file1
+bk sccsrm B/file1
 if [ -f B/SCCS/p..del-file1 ]; then echo failed 1; exit 1; fi
 if [ ! -f B/SCCS/s..del-file1 ]; then echo failed 2; exit 1; fi
-REV=`prs -hr+ -d:I: B/.del-file1`
+REV=`bk prs -hr+ -d:I: B/.del-file1`
 if [ ${REV}X != "1.7"X ]; then echo failed 3 $REV; exit 1; fi
 echo OK
 echo $N Test sccsrm w non p-locked file .............................$NL
-sccsrm C/file3
+bk sccsrm C/file3
 if [ -f C/SCCS/p..del-file3 ]; then echo failed; exit 1; fi
 if [ ! -f C/SCCS/s..del-file3 ]; then echo failed; exit 1; fi
-DPATH=`prs -hr+ -d:DPN: C/.del-file3`
+DPATH=`bk prs -hr+ -d:DPN: C/.del-file3`
 if [ ${DPATH}X != "C/.del-file3"X ]; then echo failed; exit 1; fi
 echo OK
 echo $N Check implied file lists for rm-ed files ....................$NL
 cd C
-co $Q
+bk co $Q
 if [ -f .del-file3 ]; then echo Failed - file was gotten; exit 1; fi
 echo OK
 echo $N Explicitly get a removed file ...............................$NL
-co $Q .del-file3
+bk co $Q .del-file3
 if [ ! -f .del-file3 ]; then echo Failed to get file; exit 1; fi
 echo OK
 echo $N Clean all including rm-ed file ..............................$NL
-clean
+bk clean
 if [ -f .del-file3 ]; then echo Failed to clean file; exit 1; fi
 echo OK
 cd ..
 echo $N Test sccsrm w/ -d option ....................................$NL
 # this directory should be created by "bk setup"
 mkdir -p BitKeeper/deleted/SCCS
-clean A
-sccsrm -d A/file3
+bk clean A
+#bk sccsrm -d A/file3
+bk rm A/file3
 DDIR=BitKeeper/deleted
 if [ ! -f ${DDIR}/SCCS/s..del-file3 ]; then echo failed; exit 1; fi
 if [ -f ${DDIR}/SCCS/p..del-file3 ]; then echo failed; exit 1; fi
-DPATH=`prs -hr+ -d:DPN: ${DDIR}/.del-file3`
+DPATH=`bk prs -hr+ -d:DPN: ${DDIR}/.del-file3`
 if [ ${DPATH}X != "${DDIR}/.del-file3"X ]; then echo failed; exit 1; fi
 echo OK
 echo $N Test sccsrm w/ -d \& p locked file ...........................$NL
-get $Q -e A/file4
-REV=`prs -hr+ -d:I: A/file4`
-sccsrm -d A/file4
+bk get $Q -e A/file4
+REV=`bk prs -hr+ -d:I: A/file4`
+#bk sccsrm -d A/file4
+bk rm A/file4
 if [ ! -f ${DDIR}/SCCS/s..del-file4 ]; then echo failed; exit 1; fi
 if [ -f ${DDIR}/SCCS/p..del-file4 ]; then echo failed; exit 1; fi
-REV=`prs -hr+ -d:I: ${DDIR}/.del-file4`
+REV=`bk prs -hr+ -d:I: ${DDIR}/.del-file4`
 if [ ${REV}X != "1.5"X ]; then echo failed; exit 1; fi
-DPATH=`prs -hr+ -d:DPN: ${DDIR}/.del-file4`
+DPATH=`bk prs -hr+ -d:DPN: ${DDIR}/.del-file4`
 if [ ${DPATH}X != "${DDIR}/.del-file4"X ]; then echo failed; exit 1; fi
 echo OK
 echo $N Test sccsrm w/ -d \& duplicate name ..........................$NL
-sccsrm -d B/file4
+#bk sccsrm -d B/file4
+bk rm B/file4
 if [ ! -f ${DDIR}/SCCS/s..del-file4~1 ]; then echo failed; exit 1; fi
-REV=`prs -hr+ -d:I: ${DDIR}/.del-file4~1`
+REV=`bk prs -hr+ -d:I: ${DDIR}/.del-file4~1`
 if [ ${REV}X != "1.7"X ]; then echo failed; exit 1; fi
-DPATH=`prs -hr+ -d:DPN: ${DDIR}/.del-file4~1`
+DPATH=`bk prs -hr+ -d:DPN: ${DDIR}/.del-file4~1`
 if [ ${DPATH}X != "${DDIR}/.del-file4~1"X ]; then echo failed; exit 1; fi
 echo OK
 echo $N Test sccsrm \& empty directory ...............................$NL
 HERE=`pwd`
 cd D
-sccsrm -d file5 || { echo failed.; exit 1; }
+bk sccsrm -d file5 || { echo failed.; exit 1; }
 if [ -d SCCS ]; then echo fail to remove empty SCCS; exit 1; fi
 echo OK
 echo $N Edit G, rm G, bk mv G, should create rm delta ...............$NL

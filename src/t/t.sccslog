@@ -12,16 +12,16 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
-cset -i -s .
+bk cset -i -s .
 ${RM} -rf a
 mkdir -p a/b/c
 ${ECHO} 1.1 > a/b/c/Data
-admin -q -n -ia/b/c/Data a/b/c/Data
+bk admin -q -n -ia/b/c/Data a/b/c/Data
 ${RM} -f a/b/c/Data
 # D 1.2 93/03/11 00:50:40.000 butthead 2 1  9/2/44
 # C added 4.x etc targets
 for i in 2 3 4 5 6 7 8 9 10
-do	co $Q -l a/b/c/Data
+do	bk co $Q -l a/b/c/Data
 	${ECHO} 1.$i >> a/b/c/Data
 	${ECHO} "D 1.$i 20/03/11 00:00:0$i butthead a b c/d/e" > Init
 	${ECHO} "c Rev $i" >> Init
@@ -29,7 +29,7 @@ do	co $Q -l a/b/c/Data
 	delta $Q -IInit a/b/c/Data
 done
 echo $N Checking sccslog with -p option .............................$NL
-HOST=`gethost`
+HOST=`bk gethost`
 if [ X$HOST != X ]
 then	HOST=@$HOST
 fi
@@ -63,7 +63,7 @@ Data 1.2 20/03/11 00:00:02 butthead${HOST} +1 -0
 
 
 EOF
-sccslog -p a/b/c/Data | grep -v ${USER}@ | grep -v 'created on' | ${CAT} > CMP2
+bk sccslog -p a/b/c/Data | grep -v ${USER}@ | grep -v 'created on' | ${CAT} > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
@@ -106,7 +106,7 @@ a/b/c/Data
   Rev 2
 
 EOF
-sccslog a/b/c/Data | head -36 | ${CAT} > CMP2
+bk sccslog a/b/c/Data | head -36 | ${CAT} > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
@@ -117,7 +117,7 @@ a/b/c/Data
   Rev 2
 
 EOF
-sccslog -r1.2 a/b/c/Data > CMP2
+bk sccslog -r1.2 a/b/c/Data > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
@@ -160,7 +160,7 @@ a/b/c/Data
   Rev 2
 
 EOF
-sccslog -c20/03..20/04 a/b/c/Data | ${CAT} > CMP2
+bk sccslog -c20/03..20/04 a/b/c/Data | ${CAT} > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
@@ -179,7 +179,7 @@ a/b/c/Data
   Rev 2
 
 EOF
-sccslog -c20/03 -r1.4 a/b/c/Data | ${CAT} > CMP2
+bk sccslog -c20/03 -r1.4 a/b/c/Data | ${CAT} > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK

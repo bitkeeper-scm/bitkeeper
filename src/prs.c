@@ -21,11 +21,11 @@ usage: prs [-abhmMv] [-c<date>] [-C<rev>] [-r<rev>] [files...]\n\n\
     Range specifications:\n\
     -r+		    prints the most recent delta\n\
     -r1.3..1.6	    prints all deltas 1.3 through 1.6\n\
-    -d9207..92	    prints all deltas from July 1 '92 to Dec 31 '92\n\
-    -d92..92	    prints all deltas from Jan 1 '92 to Dec 31 '92\n\n";
+    -c9207..92	    prints all deltas from July 1 '92 to Dec 31 '92\n\
+    -c92..92	    prints all deltas from Jan 1 '92 to Dec 31 '92\n\n";
 
 int
-main(int ac, char **av)
+prs_main(int ac, char **av)
 {
 	sccs	*s;
 	delta	*e;

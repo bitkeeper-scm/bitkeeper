@@ -4,7 +4,7 @@
 extern char *bin;
 
 int
-main(int ac,  char **av)
+unwrap_main(int ac,  char **av)
 {
 	char buf[MAXLINE];
 

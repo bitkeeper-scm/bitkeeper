@@ -10,7 +10,7 @@ WHATSTR("@(#)%K%");
  * usage: mv a [b c d ...] dir
  */
 int
-main(int ac, char **av)
+mv_main(int ac, char **av)
 {
 	char	*name, *name2 = 0, *dest;
 	int	isDir;

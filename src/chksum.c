@@ -12,10 +12,10 @@
  * %W% %@%
  */
 int
-main(int ac, char **av)
+chksum_main(int ac, char **av)
 {
 	int	sum, fd, i;
-	int	doit(int, int);
+	int	do_chksum(int, int);
 	int	off = 0;
 
 #ifdef WIN32
@@ -32,14 +32,14 @@ main(int ac, char **av)
 		ac -= 2;
 	}
 	if (ac == 1) {
-		sum = doit(0, off);
+		sum = do_chksum(0, off);
 		printf("%d\n", sum);
 	} else for (i = 1; i < ac; ++i) {
 		fd = open(av[i], 0);
 		if (fd == -1) {
 			perror(av[i]);
 		} else {
-			sum = doit(fd, off);
+			sum = do_chksum(fd, off);
 			close(fd);
 			printf("%-20s %d\n", av[i], sum);
 		}
@@ -48,7 +48,7 @@ main(int ac, char **av)
 }
 
 int
-doit(int fd, int off)
+do_chksum(int fd, int off)
 {
 	unsigned char buf[16<<10];
 	register unsigned char *p;

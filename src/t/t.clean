@@ -14,33 +14,33 @@
 
 echo some text >X
 echo other text >Y
-delta $Q -i X Y
+bk delta $Q -i X Y
 echo $N Remove all unmodified files .................................$NL
-get $Q X
-get $Q -e Y
-clean
+bk get $Q X
+bk get $Q -e Y
+bk clean
 if [ -f X ] || [ -f Y ]; then	echo failed; exit 1; fi
 echo OK
 echo $N Remove only files on command line ...........................$NL
-get $Q X Y
-clean X
+bk get $Q X Y
+bk clean X
 if [ -f X ] || [ ! -f Y ]; then	echo failed; exit 1; fi
 echo OK
 echo $N With -u remove even modified files ..........................$NL
-get $Q -e X
+bk get $Q -e X
 echo more text >>X
-clean 2>/dev/null
+bk clean 2>/dev/null
 if [ ! -f X ] || [ -f Y ]; then echo Modified file removed w/o -u; exit 1; fi
-clean -u X
+bk clean -u X
 if [ -f X ]; then echo failed; exit 1; fi
 if [ -f SCCS/p.X ]; then echo failed - still locked; exit 1; fi
 echo OK
 echo $N With -n leave gfiles alone ..................................$NL
-get $Q X
-get $Q -e Y
+bk get $Q X
+bk get $Q -e Y
 echo more text >>Y
 ls -li X Y >CMP1
-clean -un X Y
+bk clean -un X Y
 ls -li X Y >CMP2
 if cmp CMP1 CMP2; then :; else echo failed; cat CMP1 CMP2; exit 1; fi
 if [ -f SCCS/p.X ]; then echo failed - still locked; exit 1; fi
@@ -51,116 +51,116 @@ rm -f CMP1 CMP2 X Y SCCS/?.X SCCS/?.Y
 fail=no
 echo $N No change to a regular file .................................$NL
 echo reg > reg
-ci $Q -i reg
-get $Q -e reg
-clean $Q reg
+bk ci $Q -i reg
+bk get $Q -e reg
+bk clean $Q reg
 if [ $? -ne 0 ] ; then echo failed; fail=yes; else echo OK; fi
 echo $N No change to a no newline ending file .......................$NL
 echo $N nonl$NL > nonl
-ci $Q -i nonl
-get $Q -e nonl
-clean $Q nonl
+bk ci $Q -i nonl
+bk get $Q -e nonl
+bk clean $Q nonl
 if [ $? -ne 0 ] ; then echo failed; fail=yes; else echo OK; fi
 echo $N No change to a longline file ................................$NL
 str=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 str=${str}${str}${str}${str}${str}${str}${str}${str}${str}${str}${str}${str}
 str=${str}${str}${str}${str}${str}${str}${str}${str}${str}${str}${str}${str}
 echo $str > long
-ci $Q -i long
-get $Q -e long
-clean $Q long
+bk ci $Q -i long
+bk get $Q -e long
+bk clean $Q long
 if [ $? -ne 0 ] ; then echo failed; fail=yes; else echo OK; fi
 echo $N No change to a hash file ....................................$NL
 echo hash first > hash
-ci $Q -i -h hash
-get $Q -e hash
+bk ci $Q -i -h hash
+bk get $Q -e hash
 echo hash second > hash
-delta $Q -yhash hash
-get $Q -e hash
-clean $Q hash
+bk delta $Q -yhash hash
+bk get $Q -e hash
+bk clean $Q hash
 if [ $? -ne 0 ] ; then echo failed; fail=yes; else echo OK; fi
 echo $N No change to SCCS expand file .. check sfiles -c ............$NL
 echo %""K% > sccsexp
-ci $Q -i sccsexp
-get $Q sccsexp
+bk ci $Q -i sccsexp
+bk get $Q sccsexp
 mv sccsexp sccsexp.ro
-get $Q -e sccsexp
+bk get $Q -e sccsexp
 rm -f sccsexp
 mv sccsexp.ro sccsexp
-result=`sfiles -c sccsexp | wc -l`
+result=`bk sfiles -c sccsexp | wc -l`
 if [ $result -ne 1 ] ; then echo failed; fail=yes; else echo OK; fi
 echo $N No change to SCCS expand file .. check clean ................$NL
-clean $Q sccsexp
+bk clean $Q sccsexp
 if [ $? -ne 0 ] ; then echo failed; fail=yes; else echo OK; fi
 echo $N No change to RCS expand file ....check sfiles -c ............$NL
 echo '$Revision$' > rcsexp
-ci $Q -i rcsexp
-admin -fRCS rcsexp
-get $Q rcsexp
+bk ci $Q -i rcsexp
+bk admin -fRCS rcsexp
+bk get $Q rcsexp
 mv rcsexp rcsexp.ro
-get $Q -e rcsexp
+bk get $Q -e rcsexp
 rm -f rcsexp
 mv rcsexp.ro rcsexp
-result=`sfiles -c rcsexp | wc -l`
+result=`bk sfiles -c rcsexp | wc -l`
 if [ $result -ne 1 ] ; then echo failed; fail=yes; else echo OK; fi
 echo $N No change to RCS expand file ....check clean ................$NL
-clean $Q rcsexp
+bk clean $Q rcsexp
 if [ $? -ne 0 ] ; then echo failed; fail=yes; else echo OK; fi
 echo $N No change to expand first keyword only .. check sfiles -c ...$NL
 echo %""@% > exp1 
 echo %""K% >> exp1 
-ci $Q -i exp1
-admin -fEXPAND1 exp1
-get $Q exp1
+bk ci $Q -i exp1
+bk admin -fEXPAND1 exp1
+bk get $Q exp1
 mv exp1 exp1.ro
-get $Q -e exp1
+bk get $Q -e exp1
 rm -f exp1
 mv exp1.ro exp1
-result=`sfiles -c exp1 | wc -l`
+result=`bk sfiles -c exp1 | wc -l`
 if [ $result -ne 1 ] ; then echo failed; fail=yes; else echo OK; fi
 echo $N No change to expand first keyword only .. check clean .......$NL
-clean $Q exp1
+bk clean $Q exp1
 if [ $? -ne 0 ] ; then echo failed; fail=yes; else echo OK; fi
 echo $N Removing the newline from a file which used to have one .....$NL
 echo hadnl > hadnl
-ci $Q -i hadnl
-get $Q -e hadnl
+bk ci $Q -i hadnl
+bk get $Q -e hadnl
 echo $N hadnl$NL > hadnl
-clean $Q hadnl
+bk clean $Q hadnl
 if [ $? -eq 0 ] ; then echo failed; fail=yes; else echo OK; fi
 echo $N Adding a newline to a file which did not have one ...........$NL
 echo $N nothadnl$NL > nothadnl
-ci $Q -i nothadnl
-get $Q -e nothadnl
+bk ci $Q -i nothadnl
+bk get $Q -e nothadnl
 echo nothadnl > nothadnl
-clean $Q nothadnl
+bk clean $Q nothadnl
 if [ $? -eq 0 ] ; then echo failed; fail=yes; else echo OK; fi
 echo $N No change to a file which initially had no newline ..........$NL
 echo $N initnonl$NL > initnonl
-ci $Q -i initnonl
-get $Q -e initnonl
+bk ci $Q -i initnonl
+bk get $Q -e initnonl
 echo initnonl > initnonl
-delta $Q -yinitnonl initnonl
-get $Q -e initnonl
-clean $Q initnonl
+bk delta $Q -yinitnonl initnonl
+bk get $Q -e initnonl
+bk clean $Q initnonl
 if [ $? -ne 0 ] ; then echo failed; fail=yes; else echo OK; fi
 echo $N Initially had no newline, then deleted last line ............$NL
 echo first > initdel
 echo $N initdel$NL >> initdel
-ci $Q -i initdel
-get $Q -e initdel
+bk ci $Q -i initdel
+bk get $Q -e initdel
 echo first > initdel
-delta $Q -yinitdel initdel
-get $Q -e initdel
-clean $Q initdel
+bk delta $Q -yinitdel initdel
+bk get $Q -e initdel
+bk clean $Q initdel
 if [ $? -ne 0 ] ; then echo failed; fail=yes; else echo OK; fi
 echo $N Hash change new key in gfile ................................$NL
 echo newkey first > newkey
-ci $Q -i -h newkey
-get $Q -e newkey
+bk ci $Q -i -h newkey
+bk get $Q -e newkey
 echo morenewkey second > newkey
 echo newkey first >> newkey
-clean $Q newkey
+bk clean $Q newkey
 if [ $? -eq 0 ] ; then echo failed; fail=yes; else echo OK; fi
 #NOTE: deleted keys not supported at this time
 #echo $N Hash change del key in gfile ................................$NL
@@ -173,18 +173,18 @@ if [ $? -eq 0 ] ; then echo failed; fail=yes; else echo OK; fi
 #if [ $? -eq 0 ] ; then echo failed; fail=yes; else echo OK; fi
 echo $N Hash change val in gfile ....................................$NL
 echo newval first > newval
-ci $Q -i -h newval
-get $Q -e newval
+bk ci $Q -i -h newval
+bk get $Q -e newval
 echo newval last > newval
-clean $Q newval
+bk clean $Q newval
 if [ $? -eq 0 ] ; then echo failed; fail=yes; else echo OK; fi
 echo $N Hash diff is order independent ..............................$NL
 echo orderind first > orderind
 echo morekey next >> orderind
-ci $Q -i -h orderind
-get $Q -e orderind
+bk ci $Q -i -h orderind
+bk get $Q -e orderind
 echo morekey next > orderind
 echo orderind first >> orderind
-clean $Q orderind
+bk clean $Q orderind
 if [ $? -ne 0 ] ; then echo failed; fail=yes; else echo OK; fi
 if [ $fail = yes ] ; then exit 1; fi

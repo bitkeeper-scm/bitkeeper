@@ -2,7 +2,7 @@
  * sfio - SCCS file transfer, kind of like cpio
  *
  * This:
- *	sfiles | sfio -o | (cd /some/place/else && sfio -i)
+ *	bk sfiles | bk sfio -o | (cd /some/place/else && sfio -i)
  * will move a bunch of files.  When it is done, all the sfiles are owned
  * by uid/gid of the caller, and are 0444 mode.
  *
@@ -57,7 +57,7 @@ static	int doModes;
 #define M_LIST	3
 
 int
-main(int ac, char **av)
+sfio_main(int ac, char **av)
 {
 	int	c, mode = 0;
 
@@ -142,6 +142,7 @@ out(char *file)
 	return (0);
 }
 
+#ifdef OLD
 char
 chop(register char *s)
 {
@@ -153,6 +154,7 @@ chop(register char *s)
 	s[-2] = 0;
 	return (c);
 }
+#endif
 
 int
 sfio_in(int extract)
@@ -289,6 +291,8 @@ again:	fd = open(file, O_CREAT|O_EXCL|O_WRONLY, 0666);
 	return (-1);
 }
 
+
+#ifdef OLD
 /*
  * Given a pathname, make the directory.
  */
@@ -327,6 +331,7 @@ mkdirf(char *file)
 	return (ret);
 }
 
+
 int
 isdir(char *s)
 {
@@ -335,6 +340,7 @@ isdir(char *s)
 	if (lstat(s, &sbuf) == -1) return 0;
 	return (S_ISDIR(sbuf.st_mode));
 }
+#endif
 
 int
 readn(int from, char *buf, int size)

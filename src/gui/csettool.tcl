@@ -346,7 +346,7 @@ proc file_history {} \
 proc dotFile {} \
 {
 	global	lastFile fileCount Files tmp_dir file_start_stop file_stop
-	global	bk_get bk_prs RealFiles
+	global	RealFiles
 
 	busy 1
 	if {$lastFile == 1} {
@@ -370,15 +370,15 @@ proc dotFile {} \
 		set start $stop
 		set file $f
 	}
-	set p [open "| $bk_prs -hr$start -d:PARENT: $file"]
+	set p [open "| bk prs -hr$start -d:PARENT: $file"]
 	gets $p parent
 	close $p
 	if {$parent == ""} { set parent "1.0" }
 	set tmp [file tail $file]
 	set l [file join $tmp_dir $tmp-$parent[pid]]
 	set r [file join $tmp_dir $tmp-$stop[pid]]
-	exec $bk_get -qkpr$parent $file > $l
-	exec $bk_get -qkpr$stop $file > $r
+	exec bk get -qkpr$parent $file > $l
+	exec bk get -qkpr$stop $file > $r
 	readFiles $l $r
 	file delete $l $r
 
@@ -393,7 +393,7 @@ proc dotFile {} \
 
 	set dspec \
 	    "-d:GFILE: :I: :D: :T: :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)}"
-	set prs [open "| $bk_prs {$dspec} -hr$crev ChangeSet" r]
+	set prs [open "| bk prs {$dspec} -hr$crev ChangeSet" r]
 	set first 1
 	while { [gets $prs buf] >= 0 } {
 		if {$first == 1} {
@@ -405,7 +405,7 @@ proc dotFile {} \
 	}
 	catch { close $prs }
 
-	set prs [open "| $bk_prs -bhC$stop {$dspec} $file" r]
+	set prs [open "| bk prs -bhC$stop {$dspec} $file" r]
 	set save ""
 	while { [gets $prs buf] >= 0 } {
 		if {$buf == "  "} { continue }
@@ -434,20 +434,20 @@ proc dotFile {} \
 proc getFiles {revs} \
 {
 	global	fileCount lastFile Files line2File file_start_stop bk_fs
-	global	bk_prs bk_cset RealFiles
+	global  RealFiles
 
 	busy 1
 	.filelist.t configure -state normal
 	.filelist.t delete 1.0 end
 	set fileCount 0
 	set line 0
-	set r [open "| $bk_prs -bhr$revs -d:I: ChangeSet" r]
+	set r [open "| bk prs -bhr$revs -d:I: ChangeSet" r]
 	while {[gets $r cset] > 0} {
 		.diffs.status.middle configure -text "Getting cset $cset"
 		update
 		incr line
 		.filelist.t insert end "ChangeSet $cset\n" cset
-		set c [open "| $bk_cset -hr$cset | sort" r]
+		set c [open "| bk cset -hr$cset | sort" r]
 		while { [gets $c buf] >= 0 } {
 			incr fileCount
 			incr line

@@ -11,7 +11,7 @@ int	sort;	/* append -timet */
 int	ser;
 
 int
-main(int ac, char **av)
+lines_main(int ac, char **av)
 {
 	int	c;
 	char	*name;

@@ -129,15 +129,15 @@ cp -rp project copy
 cd project
 echo "I am the project file" > CONFLICT
 bk new $Q CONFLICT
-commit $Q -ywhatever
+bk commit $Q -ywhatever
 cd $HERE/copy
 echo "I am the copy file" > CONFLICT
 cd $HERE
-resync $Q project copy
+bk resync $Q project copy
 tar cf SAVE.copy copy
 echo OK
 echo $N '  resolve by removing local file ............................'$NL
-resolve -t $Q $L copy 2>/dev/null <<EOF
+bk resolve -t $Q $L copy 2>/dev/null <<EOF
 r
 y
 EOF
@@ -157,7 +157,7 @@ echo OK
 echo $N '  resolve by renaming local file ............................'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-resolve -t $Q $L copy 2>/dev/null <<EOF
+bk resolve -t $Q $L copy 2>/dev/null <<EOF
 ml
 LOCAL
 EOF
@@ -356,7 +356,7 @@ echo $N '  try to rename remote to existing local gfile ..............'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
-resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
 GFILE
 q
@@ -387,11 +387,11 @@ commit $Q -ywhatever
 cd $HERE/copy
 echo "I am the copy file" > CONFLICT
 cd $HERE
-resync $Q project copy
+bk resync $Q project copy
 tar cf SAVE.copy copy
 echo OK
 echo $N '  resolve by removing local file ............................'$NL
-resolve -t $Q $L copy 2>/dev/null <<EOF
+bk resolve -t $Q $L copy 2>/dev/null <<EOF
 r
 y
 EOF
@@ -597,7 +597,7 @@ echo OK
 
 echo $N '  resolve by removing local file ............................'$NL
 cd $HERE
-resolve -t $Q $L -t -yMerge copy 2>/dev/null <<EOF
+bk resolve -t $Q $L -t -yMerge copy 2>/dev/null <<EOF
 r
 y
 q
@@ -611,7 +611,7 @@ fi
 if [ "`cat CONFLICT`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `prs -hr+ -d:I: CONFLICT` != "1.1" ]
+if [ `bk prs -hr+ -d:I: CONFLICT` != "1.1" ]
 then	echo 'Added new rev to CONFLICT?'; exit 1
 fi
 if [ ! -f BitKeeper/deleted/SCCS/s..del-2 ]
@@ -812,13 +812,13 @@ cd $HERE/copy
 echo "I am the copy file" > CONFLICT
 bk new $Q CONFLICT
 cd $HERE
-resync $Q project copy
+bk resync $Q project copy
 tar cf SAVE.copy copy
 echo OK
 
 echo $N '  resolve by removing local file ............................'$NL
 cd $HERE
-resolve $Q $L -t -yMerge copy 2>/dev/null <<EOF
+bk resolve $Q $L -t -yMerge copy 2>/dev/null <<EOF
 r
 y
 q
@@ -875,19 +875,19 @@ cd project
 echo "I am the project file" > OLDNAME
 bk new $Q OLDNAME
 bk mv OLDNAME CONFLICT
-commit $Q -ywhatever
+bk commit $Q -ywhatever
 cd $HERE/copy
 echo "I am the copy file" > CONFLICT
 bk new $Q CONFLICT
-commit $Q -ywhatever
+bk commit $Q -ywhatever
 cd $HERE
-resync $Q project copy
+bk resync $Q project copy
 tar cf SAVE.copy copy
 echo OK
 
 echo $N '  resolve by removing local file ............................'$NL
 cd $HERE
-resolve $Q $L -t -yMerge copy 2>/dev/null <<EOF
+bk resolve $Q $L -t -yMerge copy 2>/dev/null <<EOF
 r
 y
 q
@@ -901,7 +901,7 @@ fi
 if [ "`cat CONFLICT`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `prs -hr+ -d:I: CONFLICT` != "1.2" ]
+if [ `bk prs -hr+ -d:I: CONFLICT` != "1.2" ]
 then	echo 'Added new rev to CONFLICT?'; exit 1
 fi
 if [ ! -f BitKeeper/deleted/SCCS/s..del-2 ]
@@ -938,7 +938,7 @@ fi
 if [ "`cat CONFLICT`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `prs -hr+ -d:I: CONFLICT` != "1.2" ]
+if [ `bk prs -hr+ -d:I: CONFLICT` != "1.2" ]
 then	echo 'Added new rev to CONFLICT?'; exit 1
 fi
 echo OK
@@ -1029,7 +1029,7 @@ echo OK
 echo $N '  try to rename to an existing sfile in local repository ....'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
 C
 q
@@ -1089,7 +1089,7 @@ cd project
 bk mv A MOVED
 touch A
 bk new $Q A
-commit $Q -ywhatever
+bk commit $Q -ywhatever
 cd $HERE
 resync $Q project copy
 # Rework the patch to be in the order we want.  We want A first and MOVED 2nd.
@@ -1115,7 +1115,7 @@ cd ..
 rm -rf RESYNC
 VV=
 if [ X$Q = X ]; then VV=-vv; fi
-takepatch $VV -f PENDING/PATCH
+bk takepatch $VV -f PENDING/PATCH
 if [ $? != 0 ]
 then	echo takepatch failed;
 	cat -n PENDING/$FILE
@@ -1123,11 +1123,11 @@ then	echo takepatch failed;
 	exit 1
 fi
 cd $HERE
-resolve -t $Q $L copy
+bk resolve -t $Q $L copy
 if [ $? != 0 ]
 then	echo resolved did not exit 0; exit 1
 fi
-get -s copy/MOVED copy/A project/MOVED project/A
+bk get -s copy/MOVED copy/A project/MOVED project/A
 if ! cmp -s copy/MOVED project/MOVED
 then	echo MOVED does not match; exit 1
 fi
@@ -1151,13 +1151,13 @@ cp -rp project copy
 cd project
 echo Hi there, I am a conflict file > CONFLICT
 bk new $Q CONFLICT
-commit $Q -ywhatever
+bk commit $Q -ywhatever
 cd $HERE/copy
 echo Hi there, I am a conflict file > CONFLICT
 bk new $Q CONFLICT
-commit $Q -ywhatever
+bk commit $Q -ywhatever
 cd $HERE
-resync $Q project copy
+bk resync $Q project copy
 tar cf SAVE.copy copy
 echo OK
 
@@ -1166,7 +1166,7 @@ cd $HERE
 /bin/rm -rf copy
 tar xf SAVE.copy
 cd copy
-resolve $Q $L -t -yMerge 2>/dev/null <<EOF
+bk resolve $Q $L -t -yMerge 2>/dev/null <<EOF
 ml
 LOCAL
 q
@@ -1321,14 +1321,14 @@ rm -rf project copy
 tar xf SAVE
 cp -rp project copy
 cd project
-sccsmv A Z
-commit $S -f -y'A->Z'
+bk sccsmv A Z
+bk commit $S -f -y'A->Z'
 cd ..
-resync $Q project copy
+bk resync $Q project copy
 cd copy
 BK_IGNORELOCK=YES get -e $Q A
 echo modified >> A
-resolve -t -q 2>../ERR
+bk resolve -t -q 2>../ERR
 if [ $? != 1 ]
 then	echo Resolve did not exit 1; exit 1
 fi
@@ -1357,9 +1357,9 @@ then	echo Failed to leave PENDING dir
 fi
 echo OK
 echo $N Clean the edit and try the first pass of resolve ............$NL
-unedit $Q A
-takepatch $Q -f PENDING/*
-resolve -t $L $Q -234
+bk unedit $Q A
+bk takepatch $Q -f PENDING/*
+bk resolve -t $L $Q -234
 if [ -f RESYNC/SCCS/s.Z -o ! -f RESYNC/BitKeeper/RENAMES/SCCS/s.1 ]
 then	echo Failed to move renamed s.file to RENAMES; exit 1
 fi
@@ -1368,7 +1368,7 @@ then	echo Failed to move renamed m.file to RENAMES; exit 1
 fi
 echo OK
 echo $N Run resolve to completion and make sure it moves A to Z .....$NL
-resolve -t $Q $L
+bk resolve -t $Q $L
 if [ -f SCCS/s.A ]
 then	echo failed to move A; exit 1
 fi
@@ -1403,7 +1403,7 @@ fi
 echo OK
 
 echo $N Run pass 1 of resolve and make sure m/r files move ..........$NL
-resolve -t $L $Q -234 
+bk resolve -t $L $Q -234 
 if [ -f RESYNC/SCCS/s.Z -o ! -f RESYNC/BitKeeper/RENAMES/SCCS/s.1 ]
 then	echo Failed to move renamed s.file to RENAMES; exit 1
 fi
@@ -1415,7 +1415,7 @@ then	echo Failed to move renamed r.file to RENAMES; exit 1
 fi
 echo OK
 echo $N Run pass 2 of resolve and make sure r file moves back .......$NL
-resolve -t $L $Q -134 
+bk resolve -t $L $Q -134 
 if [ ! -f RESYNC/SCCS/s.Z ]
 then	echo Failed to move renamed s.file from RENAMES; exit 1
 fi
@@ -1424,7 +1424,7 @@ then	echo Failed to move renamed r.file from RENAMES; exit 1
 fi
 echo OK
 echo $N Run resolve in no conflict mode and make sure it fails ......$NL
-resolve -t $L $Q -c 2>ERR
+bk resolve -t $L $Q -c 2>ERR
 if [ $? = 0 ]
 then	echo Failed to return an error
 fi
@@ -1434,7 +1434,7 @@ echo OK
 
 # Start testing conflicts.
 echo $N Run resolve in automerge mode and make sure it merges .......$NL
-resolve -t $L $Q -a
+bk resolve -t $L $Q -a
 if [ $? != 0 ]
 then	echo failed; exit 1
 fi

@@ -36,11 +36,11 @@ bk ci $Q -i foo.c bar.c h.h
 if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
 echo OK
 echo $N check disabling of user \& group data ........................$NL
-admin -aawc foo.c 2> admin.out
+bk admin -aawc foo.c 2> admin.out
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 grep -q "not supported" admin.out
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
-admin -eawc foo.c 2> admin.out
+bk admin -eawc foo.c 2> admin.out
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 grep -q "not supported" admin.out
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
@@ -49,7 +49,7 @@ echo OK
 echo $N check disabling of adding null delta to ChangeSet file ......$NL
 cd $HERE/project
 if [ ! -f "SCCS/s.ChangeSet" ]; then echo ChangeSet file not found; exit 1; fi
-admin -T ChangeSet 2> admin.out
+bk admin -T ChangeSet 2> admin.out
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 grep -q "Can not create null delta in ChangeSet file" admin.out 
 if [ $? -ne 0 ]; then echo failed; exit 1; fi

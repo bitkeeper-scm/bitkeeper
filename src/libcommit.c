@@ -78,7 +78,7 @@ sendConfig(char *to)
 	time_t tm;
 	extern int bkusers();
 
-	if (bkusers(1, 1) <= 1) return;
+	if (bkusers(1, 1, 0) <= 1) return;
 	sprintf(config_log, "%s/bk_config_log%d", TMP_PATH, getpid());
 	if (exists(config_log)) {
 		fprintf(stderr, "Error %s already exist", config_log);
@@ -108,10 +108,7 @@ sendConfig(char *to)
 	fclose(f1);
 	unlink(config);
 	fprintf(f, "User List:\n");
-	fclose(f);
-	sprintf(buf, "%sbkusers >> %s", bin, config_log);
-	system(buf);
-	f = fopen(config_log, "a");
+	bkusers(0, 0, f);
 	fprintf(f, "=====\n");
 	fclose(f);
 	sprintf(buf, "%setc/SCCS/s.aliases", bk_dir);
@@ -202,14 +199,14 @@ logChangeSet(char *rev)
 	header(f);
 	fprintf(f, "---------------------------------\n");
 	fclose(f);
-	sprintf(buf, "%ssccslog -r%s ChangeSet >> %s", bin, rev, commit_log);
+	sprintf(buf, "%sbk sccslog -r%s ChangeSet >> %s", bin, rev, commit_log);
 	system(buf);
-	sprintf(buf, "%scset -r+ | %ssccslog - >> %s", bin, bin, commit_log);
+	sprintf(buf, "%sbk cset -r+ | %sbk sccslog - >> %s", bin, bin, commit_log);
 	system(buf);
 	f = fopen(commit_log, "ab");
 	fprintf(f, "---------------------------------\n");
 	fclose(f);
-	sprintf(buf, "%scset -c -r%s..%s >> %s",
+	sprintf(buf, "%sbk cset -c -r%s..%s >> %s",
 					bin, start_rev, rev, commit_log);
 	system(buf);
 	if (getenv("BK_TRACE_LOG") && streq(getenv("BK_TRACE_LOG"), "YES")) {
@@ -236,7 +233,7 @@ get(char *path, int flags, char *output)
 	unless (s) return (-1);
 	ret = sccs_get(s, 0, 0, 0, 0, flags, output);
 	sccs_free(s);
-	return (ret ? -1 : -0);
+	return (ret ? -1 : 0);
 }
 
 char *
@@ -273,9 +270,9 @@ notify()
 	f = fopen(notify_log, "wb");
 	header(f);
 	fclose(f);
-	sprintf(buf, "%ssccslog -r+ ChangeSet >> %s", bin, notify_log);
+	sprintf(buf, "%sbk sccslog -r+ ChangeSet >> %s", bin, notify_log);
 	system(buf);
-	sprintf(buf, "%scset -r+ | %ssccslog - >> %s", bin, bin, notify_log);
+	sprintf(buf, "%sbk cset -r+ | %sbk sccslog - >> %s", bin, bin, notify_log);
 	system(buf);
 	projectname = project_name();
 	if (projectname[0]) {
@@ -311,7 +308,7 @@ mail(char *to, char *subject, char *file)
 	};
 
 	if (streq("BitKeeper Test repository", project_name()) &&
-	    (bkusers(1,1) <= 5)) {
+	    (bkusers(1, 1, 0) <= 5)) {
 		return;
 	}
 
@@ -355,7 +352,7 @@ remark(int quiet)
 
 	if (exists("BitKeeper/etc/SCCS/x.marked")) return;
 	unless (quiet) gethelp("consistency_check", "", stdout);
-	sprintf(buf, "%scset -M1.0..", bin);
+	sprintf(buf, "%sbk cset -M1.0..", bin);
 	system(buf);
 	close(open("BitKeeper/etc/SCCS/x.marked", O_CREAT|O_TRUNC, 0664));
 	unless(quiet) {
@@ -389,28 +386,30 @@ status(int verbose, char *status_log)
 
 	sprintf(tmp_file, "%s/bl_tmp%d", TMP_PATH, getpid());
 	if (verbose) {
-		sprintf(buf, "%sbkusers > %s", bin, tmp_file);
-		system(buf);
+		f1 = fopen(tmp_file, "wb");
+		assert(f1);
+		bkusers(0, 0, f1);
+		fclose(f1);
 		f1 = fopen(tmp_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) {
 			fprintf(f, "User:\t%s", buf);
 		}
 		fclose(f1);
-		sprintf(buf, "%ssfiles -x > %s", bin, tmp_file);
+		sprintf(buf, "%sbk sfiles -x > %s", bin, tmp_file);
 		system(buf);
-		f1 = fopen(buf, "rt");
+		f1 = fopen(tmp_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) {
 			fprintf(f, "Extra:\t%s", buf);
 		}
 		fclose(f1);
-		sprintf(buf, "%ssfiles -cg > %s", bin, tmp_file);
+		sprintf(buf, "%sbk sfiles -cg > %s", bin, tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) {
 			fprintf(f, "Modified:\t%s", buf);
 		}
 		fclose(f1);
-		sprintf(buf, "%ssfiles -Cg > %s", bin, tmp_file);
+		sprintf(buf, "%sbk sfiles -Cg > %s", bin, tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) {
@@ -420,26 +419,26 @@ status(int verbose, char *status_log)
 	} else {
 		int i;
 
-		fprintf(f, "%d people have made deltas.\n", bkusers(1, 0));
-		sprintf(buf, "%ssfiles > %s", bin, tmp_file);
+		fprintf(f, "%d people have made deltas.\n", bkusers(1, 0, 0));
+		sprintf(buf, "%sbk sfiles > %s", bin, tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		for(i = 0;  fgets(buf, sizeof(buf), f1); i++);
 		fclose(f1);
 		fprintf(f, "%d files under revision control.\n", i);
-		sprintf(buf, "%ssfiles -x > %s", bin, tmp_file);
+		sprintf(buf, "%sbk sfiles -x > %s", bin, tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		for(i = 0;  fgets(buf, sizeof(buf), f1); i++);
 		fclose(f1);
 		fprintf(f, "%d files not under revision control.\n", i);
-		sprintf(buf, "%ssfiles -c > %s", bin, tmp_file);
+		sprintf(buf, "%sbk sfiles -c > %s", bin, tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		for(i = 0;  fgets(buf, sizeof(buf), f1); i++);
 		fclose(f1);
 		fprintf(f, "%d files modified and not checked in.\n", i);
-		sprintf(buf, "%ssfiles -C > %s", bin, tmp_file);
+		sprintf(buf, "%sbk sfiles -C > %s", bin, tmp_file);
 		f1 = fopen(tmp_file, "rt");
 		for(i = 0;  fgets(buf, sizeof(buf), f); i++);
 		fclose(f1);
@@ -527,7 +526,7 @@ platformInit()
 	if ((editor = getenv("EDITOR")) == NULL) editor="vi";
 	if ((pager = getenv("PAGER")) == NULL) pager="more";
 
-#define TAG_FILE "sccslog"
+#define TAG_FILE "bk"
 	if ((bin = getenv("BK_BIN")) != NULL) {
 		char buf[MAXPATH];
 		sprintf(buf, "%s%s", bin, TAG_FILE);

@@ -20,7 +20,7 @@ sub doMerge
 	local($out, $opt) = ("", "");
 
 	$opt = "-d" if $debug;
-	open(PIPE_FD, "${BIN}fdiff -s $opt $lfile $gca $rfile |")
+	open(PIPE_FD, "${BIN}bk fdiff -s $opt $lfile $gca $rfile |")
 	    || die "can not popen fdiff\n";
 
 	@flist = &getdiff();

@@ -37,32 +37,32 @@ do	case "$D" in
 	if [ X$D != X ]; then mkdir -p $D; fi
 	${RM} -rf SCCS ${D}foo ${D}SCCS ${D}s.foo
 	echo $N Create initial changeset ....................................$NL
-	cset -si .
+	bk cset -si .
 	if [ ! -f SCCS/s.ChangeSet ]; then echo failed; exit 1; fi
 	echo OK
 	cp SAVE ${D}foo
 	echo $N checkin with ${D}SCCS/s.foo ${DOTS}.............................$NL
-	ci $Q -i ${D}foo
+	bk ci $Q -i ${D}foo
 	if [ ! -f ${D}SCCS/s.foo ]; then echo Failed to create s.foo.; exit 1; fi
 	if [ -f ${D}foo ]; then echo Failed to get foo.; exit 1; fi
 	echo OK
 	echo $N checkout with ${D}SCCS/s.foo ${DOTS}............................$NL
-	co $Q ${D}foo
+	bk co $Q ${D}foo
 	if [ ! -f ${D}foo ]; then echo Failed to get foo.; exit 1; fi
 	if writable ${D}foo; then echo foo is writable; exit 1; fi
 	echo OK
 	echo $N Verifying data checksum .....................................$NL
-	A=`prs -r1.1 -hd:CHKSUM: ${D}foo`
-	B=`chksum < SAVE`
+	A=`bk prs -r1.1 -hd:CHKSUM: ${D}foo`
+	B=`bk chksum < SAVE`
 	if [ $A -ne $B ]; then echo Failed - chksums $A $B differ; exit 1; fi
 	echo OK
 	echo $N "cleaning ${D}" ${DOTS}...........................................$NL
-	clean ${D}
+	bk clean ${D}
 	if [ -f ${D}foo ]; then echo Failed to clean foo.; exit 1; fi
 	echo OK
 	# XXX - this looks up to far for the pending file
 	echo $N "checkout of the directory ${D}" ${DOTS}..........................$NL
-	co $Q ${D}
+	bk co $Q ${D}
 	if [ ! -f ${D}foo ]; then echo Failed to get foo.; exit 1; fi
 	if writable ${D}foo; then echo foo is writable; exit 1; fi
 	echo OK
@@ -72,22 +72,22 @@ do	case "$D" in
 	    echo $N checkin with ${D}s.foo ${DOTS}..................................$NL
 	    ${RM} -rf ${D}foo ${D}SCCS
 	    cp SAVE ${D}foo
-	    ci $Q -i ${D}s.foo
+	    bk ci $Q -i ${D}s.foo
 	    if [ ! -f ${D}s.foo ]; then echo Failed to create s.foo.; exit 1; fi
 	    if [ -f ${D}foo ]; then echo Failed to get foo.; exit 1; fi
 	    echo OK
 	    echo $N checkout with ${D}s.foo ${DOTS}.................................$NL
-	    co $Q ${D}s.foo
+	    bk co $Q ${D}s.foo
 	    if [ ! -f ${D}foo ]; then echo Failed to get foo.; exit 1; fi
 	    if writable ${D}foo; then echo foo is writable; exit 1; fi
 	    echo OK
 	fi
 	echo $N "cleaning ${D}" ${DOTS}...........................................$NL
-	clean ${D}
+	bk clean ${D}
 	if [ -f ${D}foo ]; then echo Failed to clean foo.; exit 1; fi
 	echo OK
 	echo $N "checkout of the directory ${D}" ${DOTS}..........................$NL
-	co $Q ${D}
+	bk co $Q ${D}
 	if [ ! -f ${D}foo ]; then echo Failed to get foo.; exit 1; fi
 	if writable ${D}foo; then echo foo is writable; exit 1; fi
 	echo OK
@@ -99,26 +99,26 @@ mkdir -p bar/blech
 echo foo > s.foo
 echo foo > bar/s.foo
 echo foo > bar/blech/s.foo
-find . -name s.foo -print | ci $S -i -
+find . -name s.foo -print | bk ci $S -i -
 if [ ! -f SCCS/s.s.foo ]; then echo failed on s.s.foo; exit 1; fi
 if [ ! -f bar/SCCS/s.s.foo ]; then echo failed on bar/SCCS/s.s.foo; exit 1; fi
 if [ ! -f bar/blech/SCCS/s.s.foo ]; then echo failed on bar/blech/s.foo; exit 1; fi
 echo OK
 echo $N Clean files named s.something ...............................$NL
-clean; clean bar; clean bar/blech
+bk clean; bk clean bar; bk clean bar/blech
 if [ -f s.foo ]; then echo failed on s.s.foo; exit 1; fi
 if [ -f bar/s.foo ]; then echo failed on bar/SCCS/s.s.foo; exit 1; fi
 if [ -f bar/blech/s.foo ]; then echo failed on bar/blech/s.foo; exit 1; fi
 echo OK
 echo $N Check out files named s.something ...........................$NL
-co $Q s.foo bar/s.foo bar/blech/s.foo
+bk co $Q s.foo bar/s.foo bar/blech/s.foo
 if [ ! -f s.foo ]; then echo failed on s.foo; exit 1; fi
 if [ ! -f bar/s.foo ]; then echo failed on bar/s.foo; exit 1; fi
 if [ ! -f bar/blech/s.foo ]; then echo failed on bar/blech/s.foo; exit 1; fi
 echo OK
-clean; clean bar; clean bar/blech
+bk clean; bk clean bar; bk clean bar/blech
 echo $N get files named s.something using - .........................$NL
-co $Q - <<EOF
+bk co $Q - <<EOF
 s.foo
 bar/s.foo
 bar/blech/s.foo
@@ -127,9 +127,9 @@ if [ ! -f s.foo ]; then echo failed on s.foo; exit 1; fi
 if [ ! -f bar/s.foo ]; then echo failed on bar/s.foo; exit 1; fi
 if [ ! -f bar/blech/s.foo ]; then echo failed on bar/blech/s.foo; exit 1; fi
 echo OK
-clean; clean bar; clean bar/blech
+bk clean; bk clean bar; bk clean bar/blech
 echo $N get files named SCCS/s.something using - ....................$NL
-co $Q - <<EOF
+bk co $Q - <<EOF
 SCCS/s.s.foo
 bar/SCCS/s.s.foo
 bar/blech/SCCS/s.s.foo
@@ -140,13 +140,13 @@ if [ ! -f bar/blech/s.foo ]; then echo failed on bar/blech/s.foo; exit 1; fi
 echo OK
 echo $N get -S should not check out files again .....................$NL
 before="`ls -li s.foo`"
-co $Q -S s.foo
+bk co $Q -S s.foo
 after="`ls -li s.foo`"
 if [ x"$before" != x"$after" ]; then echo failed; exit 1; fi
 echo OK
 echo $N get -S should ignore modified files .........................$NL
-co $Q -e s.foo
-co $Q -S s.foo 2>${DEV_NULL}
+bk co $Q -e s.foo
+bk co $Q -S s.foo 2>${DEV_NULL}
 if [ $? != 0 ]
 then	echo failed to ignore modified file; exit 1
 fi

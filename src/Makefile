@@ -20,8 +20,7 @@ LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a
 LINKS	= ci co edit unedit unget
 DATA	= bitkeeper.config bkhelp.txt
 
-LINKTO	= ci delta co get edit get unedit clean unget clean fmtool fm \
-	  fm3tool fm3
+LINKTO	= fmtool fm fm3tool fm3
 BINLINKS= bk admin get delta unget rmdel prs
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LINKS) $(PSCR) $(DATA) gnu
 
@@ -159,13 +158,13 @@ clobber distclean: clean-obj clean-bin clean-cfg clean-src
 rebuild: clean-obj clean-bin
 
 srcs src: FORCE
-	-get -s $(HDRS) $(SRCS) $(SCRSRCS) $(MISC)
+	-bk get -s $(HDRS) $(SRCS) $(SCRSRCS) $(MISC)
 
 wc: $(HDRS) $(SRCS) $(SCRSRCS) $(MISC)
 	wc -l $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
 
 get-e: FORCE
-	-@get -es `echo $(HDRS) $(SRCS) $(SCRSRCS) $(MISC) | fmt -1 | sort -u`
+	-@bk get -es `echo $(HDRS) $(SRCS) $(SCRSRCS) $(MISC) | fmt -1 | sort -u`
 	$(MAKE) tags
 
 log: FORCE
@@ -173,7 +172,7 @@ log: FORCE
 
 tags: FORCE
 	@for i in $(SRCS) $(HDRS) $(SCRSRCS) $(MISC); \
-	do	if [ ! -f $$i ]; then get -s $$i; fi; \
+	do	if [ ! -f $$i ]; then bk get -s $$i; fi; \
 	done
 	@ctags -nm $(SRCS) $(HDRS)
 	@echo ctags completed
@@ -181,7 +180,7 @@ tags: FORCE
 
 TAGS: srcs
 	@for i in $(SRCS) $(HDRS) $(SCRSRCS) $(MISC); \
-	do	if [ ! -f $$i ]; then get -s $$i; fi; \
+	do	if [ ! -f $$i ]; then bk get -s $$i; fi; \
 	done
 	@etags $(SRCS) $(HDRS)
 	@echo etags completed
@@ -193,7 +192,7 @@ test tests rsh rshtest:
 	PREFER_RSH=yes $(MAKE) realtest
 
 realtest: $(ALL) t/doit
-	-./get -q t/SCCS/s.t.* t/setup t/cleanup
+	-./bk get -q t/SCCS/s.t.* t/setup t/cleanup
 	cd t && ./doit
 
 t/doit: t/doit.sh substvars
@@ -367,13 +366,9 @@ testfast: testfast.perl substvars
 	chmod +x testfast.T
 	mv -f testfast.T testfast
 
-bk: bk.sh port/unix_platform.sh substvars 
-	./substvars port/unix_platform.sh bk.sh > bk
-	chmod +x bk
-
 bkhelp.txt: bkhelp.doc bk.ver
 	sed "s/@version@/`cat bk.ver`/" bkhelp.doc | \
-	sed "s?@builder@?`./getuser`@`./gethost`?" | \
+	sed "s?@builder@?`./bk getuser`@`./bk gethost`?" | \
 	sed "s/@built_date@/`date`/" > bkhelp.txt
 
 lodset: lodset.sh
@@ -386,17 +381,17 @@ lodset: lodset.sh
 bk.ver: stamp-ver
 stamp-ver:: ../SCCS/s.ChangeSet utils/os utils/gnu-os
 	( echo \
-	  `./prs -hr+ -d'$$if(:SYMBOL:){:SYMBOL: }:UTC:' ../ChangeSet;` \
+	  `./bk prs -hr+ -d'$$if(:SYMBOL:){:SYMBOL: }:UTC:' ../ChangeSet;` \
 	  for \
 	  `utils/os` \
 	) >bk.v
 	mv -f bk.v bk.ver
 	touch stamp-ver
-stamp-ver:: prs
+stamp-ver:: bk
 	touch stamp-ver
 
 # Because we need the execute bit on
-utils/os utils/gnu-os: get
+utils/os utils/gnu-os: bk
 	./get utils/os utils/gnu-os
 
 uuwrap: uuwrap.sh substvars
@@ -550,7 +545,7 @@ install: install-nolinks
 	-set -e; \
 	for file in $(BINLINKS); \
 	do	rm -f /usr/bin/$$file; \
-		ln -s $(BK_BIN)/$$file /usr/bin/$$file; \
+		ln -s $(BK_BIN)/bk /usr/bin/$$file; \
 	done
 	-if [ ! -d /var/bitkeeper ]; \
 	then	mkdir /var/bitkeeper; chmod 777 /var/bitkeeper; \
@@ -563,7 +558,7 @@ install-nolinks: all
 	if [ ! -d $(BK_BIN)/t ]; \
 	then	mkdir $(BK_BIN)/t; \
 	fi
-	-./get -q t/SCCS/s.t.* t/setup t/cleanup
+	-./bk get -q t/SCCS/s.t.* t/setup t/cleanup
 	cp -f t/doit t/t.* t/setup t/cleanup $(BK_BIN)/t
 	./chksum $(BINS) $(SCRIPTS) $(DATA) t/doit t/t.* t/setup t/cleanup \
 		| sort > $(BK_BIN)/MANIFEST

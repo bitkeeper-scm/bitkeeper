@@ -33,10 +33,10 @@ echo OK
 echo $N Create files with and without newlines ......................$NL
 ${ECHO} foo > foo.c; cp foo.c SAVEfoo.c
 echo $N bar$NL > bar.c; cp bar.c SAVEbar.c
-ci $Q -i foo.c bar.c 
+bk ci $Q -i foo.c bar.c 
 if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
 if [ ! -f SCCS/s.bar.c ]; then echo failed to create history; exit 1; fi
-get $Q foo.c bar.c
+bk get $Q foo.c bar.c
 cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1; }
 cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1; }
 echo OK
@@ -57,33 +57,33 @@ ${ECHO} foo > SAVEfoo.c
 echo $N bar$NL > SAVEbar.c
 if [ ! -f SCCS/s.foo.c ]; then echo failed to resync history; exit 1; fi
 if [ ! -f SCCS/s.bar.c ]; then echo failed to resync history; exit 1; fi
-get $Q foo.c bar.c
+bk get $Q foo.c bar.c
 cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1; }
 cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1; }
 echo OK
 echo $N Check including no newline deltas ...........................$NL
-get $Q -e foo.c bar.c
+bk get $Q -e foo.c bar.c
 echo $N trunk$NL >> foo.c
 ${ECHO} >> bar.c
 echo $N trunk$NL >> bar.c
-delta $Q -ytrunk foo.c bar.c
-get $Q -e -r1.1 foo.c bar.c
+bk delta $Q -ytrunk foo.c bar.c
+bk get $Q -e -r1.1 foo.c bar.c
 echo $N branch$NL >> foo.c
 ${ECHO} >> bar.c
 echo $N branch$NL >> bar.c
-delta $Q -ybranch foo.c bar.c
+bk delta $Q -ybranch foo.c bar.c
 ${ECHO} branch >> SAVEfoo.c
 echo $N trunk$NL >> SAVEfoo.c
 ${ECHO} >> SAVEbar.c
 ${ECHO} branch >> SAVEbar.c
 ${ECHO} bar >> SAVEbar.c
 echo $N trunk$NL >> SAVEbar.c
-get $Q -e -M1.1.1.1 foo.c
-get $Q -e -M1.1.1.1 bar.c
+bk get $Q -e -M1.1.1.1 foo.c
+bk get $Q -e -M1.1.1.1 bar.c
 cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1; }
 cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1; }
-delta $Q -ymerge foo.c bar.c
-get $Q foo.c bar.c
+bk delta $Q -ymerge foo.c bar.c
+bk get $Q foo.c bar.c
 cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1; }
 cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1; }
 echo OK

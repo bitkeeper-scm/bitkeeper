@@ -29,12 +29,12 @@ int	all;		/* if set, check every darn entry in the ChangeSet */
 int	fix;		/* if set, fix up anything we can */
 int	names;		/* if set, we need to fix names */
 int	mixed;
-char	csetFile[] = CHANGESET;
+static char	csetFile[] = CHANGESET;
 project	*proj;
 int	flags = INIT_SAVEPROJ|INIT_NOCKSUM;
 
 int
-main(int ac, char **av)
+check_main(int ac, char **av)
 {
 	int	c;
 	MDBM	*db;

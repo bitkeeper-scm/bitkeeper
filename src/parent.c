@@ -3,7 +3,7 @@
 
 #define PARENT "BitKeeper/log/parent"
 
-main(int ac,  char **av)
+parent_main(int ac,  char **av)
 {
 	char buf[MAXLINE];
 	FILE *f;

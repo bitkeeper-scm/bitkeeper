@@ -259,7 +259,7 @@ proc getHelp {} \
 
 	set nTopics 0
 	set bk [file join $bin bk]
-	set f [open "| $bk topics"]
+	set f [open "| $bk gethelp help_topiclist"]
 	.ctrl.topics configure -state normal
 	while {[gets $f topic] >= 0} {
 		.ctrl.topics insert end "$topic\n"

@@ -12,33 +12,33 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
-admin $Q -n include
+bk admin $Q -n include
 touch big_i
 for i in 1 2 3 4 5 6 7 8 9 10
-do	co $Q -l include
+do	bk co $Q -l include
 	${ECHO} $i >> include
 	${ECHO} $i >> big_i
-	ci $Q -y"Rev $i" include
+	bk ci $Q -y"Rev $i" include
 done
-co $Q include
+bk co $Q include
 echo $N Making sure of contents .....................................$NL
 cmp -s big_i include
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
-co $Q -r1 include
+bk co $Q -r1 include
 echo $N Making sure of contents w/ -r1 ..............................$NL
 cmp -s big_i include
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Including a rev in the middle ...............................$NL
-get $S -r1.1 -i1.3 include
+bk get $S -r1.1 -i1.3 include
 ${ECHO} 1 > big_i
 ${ECHO} 3 >> big_i
 cmp -s big_i include
 if [ $? -ne 0 ]; then echo Failed - files differ.; sdiff -w80 big_i include; exit 1; fi
 echo OK
 echo $N Including two revs in the middle ............................$NL
-get $S -r1.1 -i1.3,1.5 include
+bk get $S -r1.1 -i1.3,1.5 include
 ${ECHO} 1 > big_i
 ${ECHO} 3 >> big_i
 ${ECHO} 5 >> big_i
@@ -46,58 +46,58 @@ cmp -s big_i include
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Including all revs -i1.1-1.10 ...............................$NL
-get $S -r1.0 -i1.1-1.10 include
+bk get $S -r1.0 -i1.1-1.10 include
 ${RM} -f big_i; for i in 1 2 3 4 5 6 7 8 9 10; do ${ECHO} $i >> big_i; done
 cmp -s big_i include
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
-admin $Q -STOT include
+bk admin $Q -STOT include
 echo $N Including all revs -i1.1-TOT ................................$NL
 ${RM} -f include
-get $S -r1.0 -i1.1-TOT include
+bk get $S -r1.0 -i1.1-TOT include
 cmp -s big_i include
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Including all revs -i1.1,1.2,1.3-TOT ........................$NL
 ${RM} -f include
-get $S -r1.0 -i1.1,1.2,1.3-TOT include
+bk get $S -r1.0 -i1.1,1.2,1.3-TOT include
 cmp -s big_i include
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Excluding one rev in the middle .............................$NL
 ${RM} -f big_i; for i in 1 2 3 4 6 7 8 9 10; do ${ECHO} $i >> big_i; done
-get $S -x1.5 include
+bk get $S -x1.5 include
 cmp -s big_i include
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Excluding last rev -xTOT ....................................$NL
 ${RM} -f big_i; for i in 1 2 3 4 5 6 7 8 9; do ${ECHO} $i >> big_i; done
-get $S -xTOT include
+bk get $S -xTOT include
 cmp -s big_i include
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Checking exclude lists in s.file ............................$NL
 ${RM} -f big_i; for i in 1 2 3 4 5 6 7 8 9; do ${ECHO} $i >> big_i; done
-get $S -exTOT include
+bk get $S -exTOT include
 cmp -s big_i include
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
-ci $Q -fy include
+bk ci $Q -fy include
 X=`sed -n 4p < SCCS/s.include`
 if [ "$X" != "x 11" ]; then echo Failed - bad exclude list $X; exit 1; fi
 echo OK
 echo $N Checking include lists in s.file ............................$NL
 ${RM} -f big_i; for i in 1 2 3 4; do ${ECHO} $i >> big_i; done
-get $S -r1.0 -ei1.1-1.4 include
+bk get $S -r1.0 -ei1.1-1.4 include
 cmp -s big_i include
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 ${RM} -f SAVE
 cp include SAVE
-ci $Q -fy include
+bk ci $Q -fy include
 X=`sed -n 4p < SCCS/s.include`
 if [ "$X" != "i 2 3 4 5" ]; then echo Failed - bad include list $X; exit 1; fi
 echo OK
 echo $N Making sure the includes worked .............................$NL
-co $Q -r1.0.1.1 include
+bk co $Q -r1.0.1.1 include
 cmp -s include SAVE
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
@@ -106,22 +106,22 @@ echo $N Include/exclude ixg0 ........................................$NL
 ${RM} -rf SCCS
 # Build up a file with 1.1 .. 1.4
 ${ECHO} 1.1 > i
-admin $Q -n -ii i
+bk admin $Q -n -ii i
 ${RM} i
 for i in 2 3 4
 do	get -s -e i
 	${ECHO} 1.$i >> i
-	delta -s -y'' i
+	bk delta -s -y'' i
 done
 # Make a branch
-get -s -e -r1.2 i
+bk get -s -e -r1.2 i
 ${ECHO} 1.2.1.1 >> i
-delta -s -y'' i
+bk delta -s -y'' i
 # Make a different branch which includes the previous branch
-get -s -e -r1.2 -i1.2.1.1 i
+bk get -s -e -r1.2 -i1.2.1.1 i
 ${ECHO} 1.2.2.1 >> i
-delta -s -y'' i
-get -s -r1.2.2.1 i
+bk delta -s -y'' i
+bk get -s -r1.2.2.1 i
 ${CAT} >big_i <<EOF
 1.1
 1.2
@@ -131,14 +131,14 @@ EOF
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg0 failure 1; exit 1; fi
 # Make a child that includes the second branch
-get -s -e -i1.2.2.1 i
+bk get -s -e -i1.2.2.1 i
 ${ECHO} 1.5 >> i
-delta -s -y'' i
+bk delta -s -y'' i
 # Make a branch which includes the second but excludes the first
-get -s -e -r1.2 -i1.2.2.1 -x1.2.1.1 i
+bk get -s -e -r1.2 -i1.2.2.1 -x1.2.1.1 i
 ${ECHO} 1.2.3.1 >> i
-delta -s -y'' i
-get -s -r1.2.3.1 i
+bk delta -s -y'' i
+bk get -s -r1.2.3.1 i
 ${CAT} >big_i <<EOF
 1.1
 1.2
@@ -148,10 +148,10 @@ EOF
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg0 failure 2; exit 1; fi
 # Make a child that includes that last branch and see what we get.
-get -s -e -i1.2.3.1 i
+bk get -s -e -i1.2.3.1 i
 ${ECHO} 1.6 >> i
-delta -s -y'' i
-get -s i
+bk delta -s -y'' i
+bk get -s i
 ${CAT} >big_i <<EOF
 1.1
 1.2
@@ -172,31 +172,31 @@ echo $N Include/exclude ixg1 ........................................$NL
 ${RM} -rf SCCS i
 # Build up a file with 1.1 1.2
 ${ECHO} 1.1 > i
-admin -n -ii i 2>${DEV_NULL}
+bk admin -n -ii i 2>${DEV_NULL}
 ${RM} i
-get -s -e i
+bk get -s -e i
 ${ECHO} 1.2 >> i
-delta -s -y'' i
+bk delta -s -y'' i
 # Make a branch
-get -s -e -r1.1 i
+bk get -s -e -r1.1 i
 ${ECHO} A >> i
-delta -s -y'' i
+bk delta -s -y'' i
 # Continue the branch
-get -s -e -r1.1.1 i
+bk get -s -e -r1.1.1 i
 ${ECHO} B >> i
-delta -s -y'' i
+bk delta -s -y'' i
 # Continue the branch
-get -s -e -r1.1.1 i
+bk get -s -e -r1.1.1 i
 ${ECHO} C >> i
-delta -s -y'' i
+bk delta -s -y'' i
 # Make a child that includes the branch
-get -s -e -i1.1.1.3 i
+bk get -s -e -i1.1.1.3 i
 ${ECHO} 1.3 >> i
-delta -s -y'' i
+bk delta -s -y'' i
 # If this has A/B/C in it, then an include implies to the root.
 # In SUN SCCS, this gets just C.
 # echo Should have at least C, and maybe C/B/A
-get -s i
+bk get -s i
 ${CAT} >big_i <<EOF
 1.1
 C
@@ -206,11 +206,11 @@ EOF
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg1 failure 1; exit 1; fi
 # Force the whole branch onto the trunk
-get -s -e -i1.1.1.3,1.1.1.2,1.1.1.1 i
+bk get -s -e -i1.1.1.3,1.1.1.2,1.1.1.1 i
 ${ECHO} 1.4 >> i
-delta -s -y'' i
+bk delta -s -y'' i
 # echo Should have C/B/A
-get -s i
+bk get -s i
 ${CAT} >big_i <<EOF
 1.1
 A
@@ -238,42 +238,42 @@ echo $N Include/exclude ixg2 ........................................$NL
 ${RM} -rf SCCS i
 # Build up a file with 1.1 1.2
 ${ECHO} 1.1 > i
-admin -n -ii i 2>${DEV_NULL}
+bk admin -n -ii i 2>${DEV_NULL}
 ${RM} i
-get -s -e i
+bk get -s -e i
 ${ECHO} 1.2 >> i
-delta -s -y'' i
+bk delta -s -y'' i
 # Make a branch
-get -s -e -r1.1 i
+bk get -s -e -r1.1 i
 ${ECHO} A >> i
-delta -s -y'' i
+bk delta -s -y'' i
 # Make another branch and include the first branch
-get -s -e -r1.1 -i1.1.1.1 i
-delta -s -y'' i
+bk get -s -e -r1.1 -i1.1.1.1 i
+bk delta -s -y'' i
 # Make another branch and include the first branch
-get -s -e -r1.1 -i1.1.1.1 i
-delta -s -y'' i
+bk get -s -e -r1.1 -i1.1.1.1 i
+bk delta -s -y'' i
 # Continue the branch but exclude the first branch
-get -s -e -r1.1.3.1 -x1.1.1.1 i
-delta -s -y'' i
+bk get -s -e -r1.1.3.1 -x1.1.1.1 i
+bk delta -s -y'' i
 # Make a child that includes both branches.
-get -s -e -i1.1.2.1,1.1.3.2 i
+bk get -s -e -i1.1.2.1,1.1.3.2 i
 ${ECHO} 1.3 >> i
-delta -s -y'' i
-get -s -r1.1.2.1 i
+bk delta -s -y'' i
+bk get -s -r1.1.2.1 i
 ${CAT} >big_i <<EOF
 1.1
 A
 EOF
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg2 failure 1; exit 1; fi
-get -s -r1.1.3.2 i
+bk get -s -r1.1.3.2 i
 ${CAT} >big_i <<EOF
 1.1
 EOF
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg2 failure 2; exit 1; fi
-get -s i
+bk get -s i
 ${CAT} >big_i <<EOF
 1.1
 1.2
@@ -299,42 +299,42 @@ echo $N Include/exclude ixg3 ........................................$NL
 ${RM} -rf SCCS i
 # Build up a file with 1.1 1.2
 ${ECHO} 1.1 > i
-admin -n -ii i 2>${DEV_NULL}
+bk admin -n -ii i 2>${DEV_NULL}
 ${RM} i
-get -s -e i
+bk get -s -e i
 ${ECHO} 1.2 >> i
-delta -s -y'' i
+bk delta -s -y'' i
 # Make a branch
-get -s -e -r1.1 i
+bk get -s -e -r1.1 i
 ${ECHO} A >> i
-delta -s -y'' i
+bk delta -s -y'' i
 # Make another branch and include the first branch
-get -s -e -r1.1 -i1.1.1.1 i
-delta -s -y'' i
+bk get -s -e -r1.1 -i1.1.1.1 i
+bk delta -s -y'' i
 # Continue the branch but exclude the first branch
-get -s -e -r1.1.2.1 -x1.1.1.1 i
-delta -s -y'' i
+bk get -s -e -r1.1.2.1 -x1.1.1.1 i
+bk delta -s -y'' i
 # Make another branch and include the first branch
-get -s -e -r1.1 -i1.1.1.1 i
-delta -s -y'' i
+bk get -s -e -r1.1 -i1.1.1.1 i
+bk delta -s -y'' i
 # Make a child that includes both branches.
-get -s -e -i1.1.2.2,1.1.3.1 i
+bk get -s -e -i1.1.2.2,1.1.3.1 i
 ${ECHO} 1.3 >> i
-delta -s -y'' i
-get -s -r1.1.3.1 i
+bk delta -s -y'' i
+bk get -s -r1.1.3.1 i
 ${CAT} >big_i <<EOF
 1.1
 A
 EOF
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg3 failure 1; exit 1; fi
-get -s -r1.1.2.2 i
+bk get -s -r1.1.2.2 i
 ${CAT} >big_i <<EOF
 1.1
 EOF
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg3 failure 2; exit 1; fi
-get -s i
+bk get -s i
 ${CAT} >big_i <<EOF
 1.1
 A
@@ -362,26 +362,26 @@ echo $N Include/exclude ixg4 ........................................$NL
 ${RM} -rf SCCS i
 # Build up a file with 1.1 1.2
 ${ECHO} 1.1 > i
-admin -n -ii i 2>${DEV_NULL}
+bk admin -n -ii i 2>${DEV_NULL}
 ${RM} i
-get -s -e i
+bk get -s -e i
 ${ECHO} 1.2 >> i
-delta -s -y'' i
+bk delta -s -y'' i
 # Make a branch
-get -s -e -r1.1 i
+bk get -s -e -r1.1 i
 ${ECHO} A >> i
-delta -s -y'' i
+bk delta -s -y'' i
 # Make a 1.1.2 branch and include the first branch
-get -s -e -r1.1 -i1.1.1.1 i
-delta -s -y'' i
+bk get -s -e -r1.1 -i1.1.1.1 i
+bk delta -s -y'' i
 # Make a 1.1.3 branch and include the second branch
-get -s -e -r1.1 -i1.1.2.1 i
-delta -s -y'' i
+bk get -s -e -r1.1 -i1.1.2.1 i
+bk delta -s -y'' i
 # Make a 1.1.4 branch and exclude the second branch
-get -s -e -r1.1 -x1.1.2.1 i
-delta -s -y'' i
+bk get -s -e -r1.1 -x1.1.2.1 i
+bk delta -s -y'' i
 # Make a child that includes both branches.
-get -s -e -i1.1.3.1,1.1.4.1 i
+bk get -s -e -i1.1.3.1,1.1.4.1 i
 ${ECHO} 1.3 >> i
 ${CAT} >big_i <<EOF
 1.1
@@ -390,19 +390,19 @@ ${CAT} >big_i <<EOF
 EOF
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg4 failure 0; exit 1; fi
-delta -s -y'' i
-get -s -r1.1.3.1 i
+bk delta -s -y'' i
+bk get -s -r1.1.3.1 i
 ${CAT} >big_i <<EOF
 1.1
 A
 EOF
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg4 failure 1; exit 1; fi
-get -s -r1.1.4.1 i
+bk get -s -r1.1.4.1 i
 ${ECHO} 1.1 > big_i
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg4 failure 2; exit 1; fi
-get -s i
+bk get -s i
 ${CAT} >big_i <<EOF
 1.1
 1.2
@@ -428,35 +428,35 @@ echo $N Include/exclude ixg5 ........................................$NL
 ${RM} -rf SCCS i
 # Build up a file with 1.1 1.2
 ${ECHO} 1.1 > i
-admin -n -ii i 2>${DEV_NULL}
+bk admin -n -ii i 2>${DEV_NULL}
 ${RM} i
-get -s -e i
+bk get -s -e i
 ${ECHO} 1.2 >> i
-delta -s -y'' i
+bk delta -s -y'' i
 # Make a branch
-get -s -e -r1.1 i
+bk get -s -e -r1.1 i
 ${ECHO} A >> i
-delta -s -y'' i
+bk delta -s -y'' i
 # Make another branch and exclude the first branch
-get -s -e -r1.1 -x1.1.1.1 i
-delta -s -y'' i
+bk get -s -e -r1.1 -x1.1.1.1 i
+bk delta -s -y'' i
 # Make another branch and include the first branch
-get -s -e -r1.1 -i1.1.1.1 i
-delta -s -y'' i
+bk get -s -e -r1.1 -i1.1.1.1 i
+bk delta -s -y'' i
 # Make a child that includes both branches.
-get -s -e -i1.1.2.1,1.1.3.1 i
+bk get -s -e -i1.1.2.1,1.1.3.1 i
 ${ECHO} 1.3 >> i
-delta -s -y'' i
-get -s -r1.1.3.1 i
+bk delta -s -y'' i
+bk get -s -r1.1.3.1 i
 ${ECHO} 1.1 > big_i
 ${ECHO} A >> big_i
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg5 failure 1; exit 1; fi
-get -s -r1.1.2.1 i
+bk get -s -r1.1.2.1 i
 ${ECHO} 1.1 > big_i
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg5 failure 2; exit 1; fi
-get -s i
+bk get -s i
 ${CAT} >big_i <<EOF
 1.1
 A
@@ -480,26 +480,26 @@ echo $N Exclude/exclude xxg1 ........................................$NL
 ${RM} -rf SCCS i
 # Build up a file with 1.1 1.2
 ${ECHO} 1.1 > i
-admin -n -ii i 2>${DEV_NULL}
+bk admin -n -ii i 2>${DEV_NULL}
 ${RM} i
-get -s -e i
+bk get -s -e i
 ${ECHO} 1.2 >> i
-delta -s -y'' i
+bk delta -s -y'' i
 # Make a branch
-get -s -e -r1.1 i
+bk get -s -e -r1.1 i
 ${ECHO} A >> i
-delta -s -y'' i
+bk delta -s -y'' i
 # Make a child that includes branch and excludes parent
-get -s -e -i1.1.1.1 -x1.2 i
+bk get -s -e -i1.1.1.1 -x1.2 i
 ${ECHO} 1.3 >> i
-delta -s -y'' i
-get -s i
+bk delta -s -y'' i
+bk get -s i
 ${ECHO} 1.1 > big_i
 ${ECHO} A >> big_i
 ${ECHO} 1.3 >> big_i
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo xxg1 failure 1; exit 1; fi
-get -s -x1.3 i
+bk get -s -x1.3 i
 ${ECHO} 1.1 > big_i
 ${ECHO} 1.2 >> big_i
 cmp -s i big_i
@@ -528,10 +528,10 @@ ${CAT} >i <<EOF
 3
 4
 EOF
-admin -n -ii i 2>${DEV_NULL}
+bk admin -n -ii i 2>${DEV_NULL}
 ${RM} i
 # Make a 1.2
-get -s -e i
+bk get -s -e i
 ${CAT} >i <<EOF
 1
 1.2A
@@ -542,18 +542,18 @@ ${CAT} >i <<EOF
 4
 1.2D
 EOF
-delta -s -y'' i
+bk delta -s -y'' i
 # Make a branch on 1.1 which deletes 2 3 leaving 1 4
 # Append a 1.1.1.1 to end of that
-get -s -e -r1.1 i
+bk get -s -e -r1.1 i
 ${CAT} >i <<EOF
 1
 4
 1.1.1.1
 EOF
-delta -s -y'' i
+bk delta -s -y'' i
 # Make 1.3 Adding entry after 1.2B
-get -s -e i
+bk get -s -e i
 ${CAT} >i <<EOF
 1
 1.2A
@@ -565,9 +565,9 @@ ${CAT} >i <<EOF
 4
 1.2D
 EOF
-delta -s -y'' i
+bk delta -s -y'' i
 # Finally, compute the test file
-get -s -i1.1.1.1 i
+bk get -s -i1.1.1.1 i
 ${CAT} >big_i <<EOF
 1
 1.2A

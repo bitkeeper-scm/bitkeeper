@@ -14,9 +14,9 @@
 
 export BK_USER=bk
 ${RM} -rf bar SCCS
-cset -i -s .
+bk cset -i -s .
 ${ECHO} Hallo > date
-admin $Q -n -idate date; ${RM} date
+bk admin $Q -n -idate date; ${RM} date
 echo $N Check for path in initial checkin ...........................$NL
 grep -q '^.cP.*date$' SCCS/s.date
 if [ $? -ne 0 ]; then echo No path found.; exit 1; fi
@@ -26,7 +26,7 @@ echo OK
 mkdir -p aa/bb/cc/dd
 cd aa/bb/cc/dd
 ${ECHO} Hallo > date
-admin $Q -n -idate date; ${RM} date
+bk admin $Q -n -idate date; ${RM} date
 echo $N Check for path in sub dir1 ..................................$NL
 grep -q '^.cP.*date$' SCCS/s.date
 if [ $? -ne 0 ]; then echo No path found.; exit 1; fi
@@ -35,22 +35,22 @@ if [ $? -ne 0 ]; then echo Wrong path found.; exit 1; fi
 echo OK
 cd ../../../..
 ${ECHO} Hallo > aa/bb/cc/dd/date2
-admin $Q -n -iaa/bb/cc/dd/date2 aa/bb/cc/dd/date2; ${RM} aa/bb/cc/dd/date2
+bk admin $Q -n -iaa/bb/cc/dd/date2 aa/bb/cc/dd/date2; ${RM} aa/bb/cc/dd/date2
 echo $N Check for path in sub dir2 ..................................$NL
 grep -q '^.cP.*date2$' aa/bb/cc/dd/SCCS/s.date2
 if [ $? -ne 0 ]; then echo No path found.; exit 1; fi
 grep -q '^.cPaa/bb/cc/dd/date2$' aa/bb/cc/dd/SCCS/s.date2
 if [ $? -ne 0 ]; then echo Wrong path found.; exit 1; fi
 echo OK
-co $Q -l date
+bk co $Q -l date
 ${ECHO} Hi >> date
-ci $Q -y date
-co $Q -l date
+bk ci $Q -y date
+bk co $Q -l date
 ${ECHO} Hi >> date
-ci $Q -y date
+bk ci $Q -y date
 echo $N Make sure -Gname works ......................................$NL
-get $S -GA -r1.1 date
-get $S -G B -r1.2 date
+bk get $S -GA -r1.1 date
+bk get $S -G B -r1.2 date
 if [ ! -f A ]; then echo Failed to creat A.; exit 1; fi
 if [ ! -f B ]; then echo Failed to creat B.; exit 1; fi
 if writable B; then echo B is writable; exit 1; fi
@@ -67,8 +67,8 @@ echo OK
 ${RM} -f A B
 echo $N Make sure -Ga/b/c/name works ................................$NL
 mkdir -p a/b/c
-get $S -Ga/b/c/A -r1.1 date
-get $S -G a/b/c/B -r1.2 date
+bk get $S -Ga/b/c/A -r1.1 date
+bk get $S -G a/b/c/B -r1.2 date
 if [ ! -f a/b/c/A ]; then echo Failed to creat a/b/c/A.; exit 1; fi
 if [ ! -f a/b/c/B ]; then echo Failed to creat a/b/c/A.; exit 1; fi
 if [ -f date ]; then echo Created date and it should not have; exit 1; fi
@@ -87,14 +87,14 @@ grep -q '^.cP.*date$' SCCS/s.date
 if [ $? -ne 0 ]; then echo No path found.; exit 1; fi
 echo OK
 echo $N Check hosts in file .........................................$NL
-hostname=`gethost`
+hostname=`bk gethost`
 grep -q "^.cH.*$hostname\$" SCCS/s.date
 if [ $? -ne 0 ]; then echo No host found.; exit 1; fi
 X=`grep -c "^.cH.*$hostname\$" SCCS/s.date`
 if [ $X -ne 1 ]; then echo Duplicate hosts.; exit 1; fi
 echo OK
 echo $N Check zones in file .........................................$NL
-zone=`zone`
+zone=`bk zone`
 grep -q "^.cZ.*$zone\$" SCCS/s.date
 if [ $? -ne 0 ]; then echo No zone found.; exit 1; fi
 X=`grep -c "^.cZ.*$zone\$" SCCS/s.date`
@@ -102,85 +102,85 @@ if [ $X -ne 1 ]; then echo Duplicate zones; exit 1; fi
 echo OK
 echo $N Check paths in moved file ...................................$NL
 cp SCCS/s.date SCCS/s.moved
-get $Q -e moved
-delta $Q -y moved
+bk get $Q -e moved
+bk delta $Q -y moved
 grep -q '^.cP.*date$' SCCS/s.moved
 if [ $? -ne 0 ]; then echo Lost old path.; exit 1; fi
 grep -q '^.cP.*moved$' SCCS/s.moved
 if [ $? -ne 0 ]; then echo Did not add new path.; exit 1; fi
 echo OK
 echo $N Make sure get -b works w/ no -b flag ........................$NL
-get $S -eb date
+bk get $S -eb date
 grep -q '1.3 1.4 ' SCCS/p.date
 if [ $? -ne 0 ]; then echo Failed, bad rev.; exit 1; fi
-clean date
+bk clean date
 echo OK
 echo $N Make sure get -r1.1 works w/ no b flag ......................$NL
-get $S -er1.1 date
+bk get $S -er1.1 date
 if [ ! -f SCCS/p.date ]; then echo Failed, did not edit file.; exit 1; fi
 grep -q '1.1 1.1.1.1 ' SCCS/p.date
 if [ $? -ne 0 ]; then echo Failed, bad rev.; exit 1; fi
-clean date
+bk clean date
 echo OK
 echo $N Make sure get -b works with -b flag .........................$NL
-admin $Q -fb date
-get $S -eb date
+bk admin $Q -fb date
+bk get $S -eb date
 grep -q '1.3 1.3.1.1 ' SCCS/p.date
 if [ $? -ne 0 ]; then echo Failed, bad rev.; exit 1; fi
-clean date
+bk clean date
 echo OK
 echo $N Make sure get -g does not get file ..........................$NL
-get $S -g date
+bk get $S -g date
 if [ -f date ]; then echo Failed, got file.; exit 1; fi
 echo OK
 echo $N Make sure get -k does not expand keywords ...................$NL
-get $S -e date
+bk get $S -e date
 if [ -f core ]; then echo core dumped; exit 1; fi
 echo '@A@ @B@ @D@ @E@ @F@ @G@ @H@ @I@ @L@ @M@ @P@ @R@ @S@ @T@ @U@ @W@ @Y@ @Z@ @@@' | sed s/@/%/g > date
 X=`wc date`
-ci $Q -y date
-get $S -k date
+bk ci $Q -y date
+bk get $S -k date
 if [ -f core ]; then echo core dumped; exit 1; fi
 if writable date; then echo date is writable and should not be; exit 1; fi
 if [ "$X" != "`wc date`" ]; then echo Failed - wrong size.; exit 1; fi
 echo OK
 echo $N Make sure get does expand keywords ..........................$NL
-get $S date
+bk get $S date
 if [ -f core ]; then echo core dumped; exit 1; fi
 if writable date; then echo date is writable and should not be; exit 1; fi
 if [ "$X" = "`wc date`" ]; then echo Failed - wrong size.; exit 1; fi
 echo OK
 echo $N RCS keywords should fail w/o -fRCS ..........................$NL
-get $S -e date
+bk get $S -e date
 ${ECHO} '$Id$' > date
-ci $S -y date
-get $S date
+bk ci $S -y date
+bk get $S date
 if writable date; then echo date is writable and should not be; exit 1; fi
 if [ '$Id$' != "`cat date`" ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N RCS keywords should work w/ -fRCS ...........................$NL
-admin $Q -fRCS date
-get $S date
+bk admin $Q -fRCS date
+bk get $S date
 if writable date; then echo date is writable and should not be; exit 1; fi
 if [ '$Id$' = "`cat date`" ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N Get -ep should fail .........................................$NL
-get $S -ep date > junk 2>junk2
+bk get $S -ep date > junk 2>junk2
 if [ -f "SCCS/p.date" ]; then echo failed, created p.file; exit 1; fi
 echo OK
 echo $N Get -eg should remove readonly gfile ........................$NL
-get $S -eg date
+bk get $S -eg date
 if [ -f "date" ]; then echo failed, did not remove file; exit 1; fi
 if writable date; then echo failed, added writable file; exit 1; fi
 echo OK
 echo $N Make sure get -n works ......................................$NL
 ${ECHO} HI > T
-ci $Q -i T
-if [ "`get $S -pn T`" != "T     | HI" ]; then echo Failed.; exit 1; fi
+bk ci $Q -i T
+if [ "`bk get $S -pn T`" != "T     | HI" ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N Make sure get -m works ......................................$NL
-if [ "`get $S -pm T`" != "1.1   | HI" ]; then echo Failed.; exit 1; fi
+if [ "`bk get $S -pm T`" != "1.1   | HI" ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N Make sure get -u works ......................................$NL
-if [ "`get $S -pu T`" != "bk    | HI" ]; then echo Failed.; exit 1; fi
+if [ "`bk get $S -pu T`" != "bk    | HI" ]; then echo Failed.; exit 1; fi
 echo OK

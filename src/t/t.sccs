@@ -22,16 +22,16 @@ c This is revision 1.$R of $D
 EOF
 	${ECHO} 1.$R >> FILE
 	if [ $R -eq 1 ]
-	then	delta $Q -i -IINITX FILE
-	else	delta $Q -R -IINITX FILE
+	then	bk delta $Q -i -IINITX FILE
+	else	bk delta $Q -R -IINITX FILE
 	fi
 	if [ -f core ]; then echo CORE; exit 1; fi
 	R=`expr $R + 1`
-	co $Q -l FILE
+	bk co $Q -l FILE
 done
-ci $Q FILE	# clean it
-admin -qh FILE 2> $DEV_NULL
-if [ $? != 0 ]; then echo admin -h failed; admin -h FILE; echo $?; exit 1; fi
-admin -qH FILE 2> $DEV_NULL
-if [ $? != 1 ]; then echo admin -H failed to error; admin -H FILE; exit 1; fi
+bk ci $Q FILE	# clean it
+bk admin -qh FILE 2> $DEV_NULL
+if [ $? != 0 ]; then echo admin -h failed; bk admin -h FILE; echo $?; exit 1; fi
+bk admin -qH FILE 2> $DEV_NULL
+if [ $? != 1 ]; then echo admin -H failed to error; bk admin -H FILE; exit 1; fi
 echo OK

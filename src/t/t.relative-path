@@ -15,15 +15,15 @@
 echo $N checking pathname w/o cset file .............................$NL
 ${RM} -rf BitKeeper SCCS/s.ChangeSet
 echo "1234" > path
-ci $Q -l -i path
-P=`prs -h -d':DPN:' path`
+bk ci $Q -l -i path
+P=`bk prs -h -d':DPN:' path`
 if [ X$P != X`$CWD`/path ]; then echo Failed; exit 1; fi
 echo OK
 echo $N checking pathname w/ cset file ..............................$NL
-cset -i -s .
+bk cset -i -s .
 echo 5678 > path
-ci $Q -y path
-P=`prs -r1.2 -h -d':DPN:' path`
+bk ci $Q -y path
+P=`bk prs -r1.2 -h -d':DPN:' path`
 if [ X$P != X"path" ]; then echo Failed; exit 1; fi
 echo OK
 if [ "$PLATFORM" != "WIN32" ]
@@ -32,18 +32,18 @@ echo $N checking pathname w/ symlink directory ......................$NL
 mkdir src
 touch src/foo
 ln -s src symlink
-ci $Q -i symlink/foo
-P=`prs -r1.1 -h -d':DPN:' symlink/foo`
+bk ci $Q -i symlink/foo
+P=`bk prs -r1.1 -h -d':DPN:' symlink/foo`
 if [ X$P != X"src/foo" ]; then echo Failed; exit 1; fi
-co $Q -l src/foo
-delta $Q -ysym-path symlink/foo
-P=`prs -r1.2 -h -d':DPN:' symlink/foo`
+bk co $Q -l src/foo
+bk delta $Q -ysym-path symlink/foo
+P=`bk prs -r1.2 -h -d':DPN:' symlink/foo`
 if [ X$P != X"src/foo" ]; then echo Failed; exit 1; fi
-co $Q -l symlink/foo
+bk co $Q -l symlink/foo
 echo "new-stuff" > symlink/foo
 HERE=`${CWD}`
-delta $Q -ysym-path $HERE/symlink/foo
-P=`prs -r1.3 -h -d':DPN:' symlink/foo`
+bk delta $Q -ysym-path $HERE/symlink/foo
+P=`bk prs -r1.3 -h -d':DPN:' symlink/foo`
 if [ X$P != X"src/foo" ]; then echo Failed; exit 1; fi
 echo OK
 fi

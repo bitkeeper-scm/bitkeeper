@@ -46,9 +46,9 @@ host=`bk gethost`
 echo OK
 echo $N Pull with no changes in child ...............................$NL
 cd project/src
-get $Q -e foo.c
+bk get $Q -e foo.c
 echo delta two >> foo.c
-delta $Q -y2 foo.c
+bk delta $Q -y2 foo.c
 bk commit $Q -y2
 cd $HERE/copy
 bk pull -t $Q || { echo failed; exit 1; }
@@ -87,17 +87,17 @@ revs=`prs -hd:I: foo.c | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
 echo OK
 echo $N Pull with mergeable changes in child ........................$NL
-get $Q -e bar.c
+bk get $Q -e bar.c
 echo line three >>bar.c
-delta $Q -ythree bar.c
+bk delta $Q -ythree bar.c
 bk commit $Q -ythree
 cd $HERE/project/src
-get $Q -e bar.c
+bk get $Q -e bar.c
 mv bar.c bar.x
 echo line zero >bar.c
 cat bar.x >>bar.c
 rm -f bar.x
-delta $Q -yzero
+bk delta $Q -yzero
 bk commit $Q -y0
 cd $HERE/copy
 bk pull -t $Q || { echo failed; exit 1; }
@@ -107,32 +107,32 @@ line zero
 bar
 line three
 EOF
-get $Q bar.c
+bk get $Q bar.c
 cmp -s ref-bar.c bar.c
 [ $? -eq 0 ] || { echo failed; diff ref-bar.c bar.c; exit 1; }
 echo OK
-clean 
+bk clean 
 echo $N Push with no upstream deltas ................................$NL
 bk push $Q || { echo failed; exit 1; }
 mv ref-bar.c $HERE/project/src
 cd $HERE/project/src
-get $Q bar.c
+bk get $Q bar.c
 cmp -s ref-bar.c bar.c
 [ $? -eq 0 ] || { echo failed; diff ref-bar.c bar.c; exit 1; }
 echo OK
-clean 
+bk clean 
 rm -f ref-bar.c
 echo $N Push with an unrelated upstream delta .......................$NL
 cd ..
 date > stamp
-delta $Q -i stamp
+bk delta $Q -i stamp
 bk commit $Q -ytime
 KEY="`bk prs -hd:KEY: -r+ ChangeSet`"
 cd $HERE/copy/src
-get $Q -e h.h
+bk get $Q -e h.h
 sed 's/h/qwerty/' <h.h >h.x
 mv h.x h.h
-delta $Q -ydvorak h.h
+bk delta $Q -ydvorak h.h
 cd ..
 bk commit $Q -yzxcvbnm
 bk push -a $Q || { echo push w/ autopull failed; exit 1; }
@@ -142,10 +142,10 @@ KEY2="`bk prs -hd:KEY: -r+ ChangeSet`"
 echo OK
 echo $N Push with a conflicting upstream delta ......................$NL
 cd src
-get $Q -e h.h
+bk get $Q -e h.h
 sed 's/h/yuhjklbn/' <h.h >h.x
 mv h.x h.h
-delta $Q -yrogue h.h
+bk delta $Q -yrogue h.h
 cd ..
 bk commit $Q -yrogue
 KEY="`bk prs -hd:KEY: -r+ ChangeSet`"

@@ -5,7 +5,7 @@
 void do_checksum(void);
 
 int
-main(void)
+adler32_main(void)
 {
 	platformSpecificInit(NULL);
 	do_checksum();

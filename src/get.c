@@ -39,7 +39,7 @@ usage: get [-qkepdmunN] [-r<rev> | -c<date>] [files... | -]\n\
  * The weird setup is so that I can #include this file into sccssh.c
  */
 int
-get_main(int ac, char **av, char *out)
+_get_main(int ac, char **av, char *out)
 {
 	sccs	*s;
 	int	iflags = 0, flags = GET_EXPAND, c, errors = 0;
@@ -228,7 +228,7 @@ usage:			fprintf(stderr, "%s: usage error, try get --help\n",
 }
 
 int
-main(int ac, char **av)
+get_main(int ac, char **av)
 {
-	return (get_main(ac, av, "-"));
+	return (_get_main(ac, av, "-"));
 }

@@ -13,7 +13,7 @@ char *sym = 0;
 
 void make_comment(char *cmt);
 
-main(int ac, char **av)
+commit_main(int ac, char **av)
 {
 	int c, doit = 0;
 	int rc;
@@ -46,7 +46,7 @@ main(int ac, char **av)
 	cd2root();
 	unless(resync) remark(quiet);
 	sprintf(list, "%s/bk_list%d", TMP_PATH, getpid());
-	sprintf(buf, "%ssfiles -CA > %s", bin, list);
+	sprintf(buf, "%sbk sfiles -CA > %s", bin, list);
 	if (system(buf) != 0) {
 		unlink(list);
 		unlink(commit_file);
@@ -124,9 +124,9 @@ do_commit()
 	}
 	sprintf(commit_list, "%s/commit_list%d", TMP_PATH, getpid());
 	if (sym) sprintf(sym_opt, "-S\"%s\"", sym);
-	sprintf(buf, "%ssfiles -C > %s", bin, commit_list);
+	sprintf(buf, "%sbk sfiles -C > %s", bin, commit_list);
 	system(buf);
-	sprintf(buf, "%scset %s %s %s %s%s < %s",
+	sprintf(buf, "%sbk cset %s %s %s %s%s < %s",
 		bin, lod ? "-L": "", quiet ? "-q" : "", sym_opt,
 		hasComment? "-Y" : "", hasComment ? commit_file : "", commit_list);
 	rc = system(buf);

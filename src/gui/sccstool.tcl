@@ -241,7 +241,7 @@ proc mergeArrow {m ht} \
 
 proc listRevs {file} \
 {
-	global	bad bfont lineOpts merges dev_null bk_lines line_rev
+	global	bad bfont lineOpts merges dev_null line_rev
 
 	# Put something in the corner so we get our padding.
 	# XXX - should do it in all corners.
@@ -250,7 +250,7 @@ proc listRevs {file} \
 	# Figure out the biggest size of any node.
 	# XXX - this could be done on a per column basis.  Probably not
 	# worth it until we do LOD names.
-	set d [open "| $bk_lines $lineOpts $file 2>$dev_null" "r"]
+	set d [open "| bk lines $lineOpts $file 2>$dev_null" "r"]
 	set len 0
 	set big ""
 	while {[gets $d s] >= 0} {
@@ -350,12 +350,12 @@ proc filltext {f clear} \
 
 proc prs {} \
 {
-	global file rev1 dspec dev_null bk_prs search
+	global file rev1 dspec dev_null search
 
 	getLeftRev
 	if {"$rev1" != ""} {
 		busy 1
-		set prs [open "| $bk_prs {$dspec} -r$rev1 $file 2>$dev_null"]
+		set prs [open "| bk prs {$dspec} -r$rev1 $file 2>$dev_null"]
 		filltext $prs 1
 	} else {
 		set search(text) "Click on a revision"
@@ -364,33 +364,33 @@ proc prs {} \
 
 proc history {} \
 {
-	global	file dspec dev_null bk_prs
+	global	file dspec dev_null
 
 	busy 1
-	set f [open "| $bk_prs -h {$dspec} $file 2>$dev_null"]
+	set f [open "| bk prs -h {$dspec} $file 2>$dev_null"]
 	filltext $f 1
 }
 
 proc sfile {} \
 {
-	global	file bk_sfiles
+	global	file
 
 	busy 1
-	set sfile [exec $bk_sfiles $file]
+	set sfile [exec bk sfiles $file]
 	set f [open "$sfile" "r"]
 	filltext $f 1
 }
 
 proc get {} \
 {
-	global file dev_null bk_cset bk_get rev1 rev2 getOpts
+	global file dev_null rev1 rev2 getOpts
 
 	getLeftRev
 	if {"$rev1" == ""} { return }
 	busy 1
 	set base [file tail $file]
 	if {$base != "ChangeSet"} {
-		set get [open "| $bk_get $getOpts -Pr$rev1 $file 2>$dev_null"]
+		set get [open "| bk get $getOpts -Pr$rev1 $file 2>$dev_null"]
 		filltext $get 1
 		return
 	}
@@ -466,7 +466,7 @@ proc diff2 {difftool} \
 
 proc csetdiff2 {doDiffs} \
 {
-	global file rev1 rev2 diffOpts dev_null bk_cset bk_sccslog
+	global file rev1 rev2 diffOpts dev_null 
 
 	busy 1
 	set l 3
@@ -475,9 +475,9 @@ proc csetdiff2 {doDiffs} \
 
 	set revs [open "| bk -R prs -hbMr$rev1..$rev2 -d:I: ChangeSet"]
 	while {[gets $revs r] >= 0} {
-		set c [open "|$bk_sccslog -r$r ChangeSet" r]
+		set c [open "| bk sccslog -r$r ChangeSet" r]
 		filltext $c 0
-		set log [open "|$bk_cset -r$r | sort | $bk_sccslog -" r]
+		set log [open "| bk cset -r$r | sort | bk sccslog -" r]
 		filltext $log 0
 	}
 	busy 0
@@ -485,16 +485,16 @@ proc csetdiff2 {doDiffs} \
 
 proc cset {} \
 {
-	global file rev1 rev2 bk_r2c bk_prs dspec
+	global file rev1 rev2 dspec
 
 	busy 1
 	set csets ""
 	.p.bottom.t configure -state normal
 	.p.bottom.t delete 1.0 end
 	if {[info exists rev2]} {
-		set revs [open "| $bk_prs -hbMr$rev1..$rev2 -d:I: $file"]
+		set revs [open "| bk prs -hbMr$rev1..$rev2 -d:I: $file"]
 		while {[gets $revs r] >= 0} {
-			set c [exec $bk_r2c -r$r $file]
+			set c [exec bk r2c -r$r $file]
 			set p [format "%s %s ==> cset %s\n" $file $r $c]
     			.p.bottom.t insert end "$p"
 			update
@@ -506,7 +506,7 @@ proc cset {} \
 		}
 		close $revs
 	} else {
-		set csets [exec $bk_r2c -r$rev1 $file]
+		set csets [exec bk r2c -r$rev1 $file]
 	}
 	set p [open "|bk -R prs {$dspec} -r$csets ChangeSet" r]
 	filltext $p 1
@@ -514,14 +514,14 @@ proc cset {} \
 
 proc r2c {} \
 {
-	global file rev1 rev2 bk_r2c bk_prs
+	global file rev1 rev2
 
 	busy 1
 	set csets ""
 	if {[info exists rev2]} {
-		set revs [open "| $bk_prs -hbMr$rev1..$rev2 -d:I: $file"]
+		set revs [open "| bk prs -hbMr$rev1..$rev2 -d:I: $file"]
 		while {[gets $revs r] >= 0} {
-			set c [exec $bk_r2c -r$r $file]
+			set c [exec bk r2c -r$r $file]
 			if {$csets == ""} {
 				set csets $c
 			} else {
@@ -530,7 +530,7 @@ proc r2c {} \
 		}
 		close $revs
 	} else {
-		set csets [exec $bk_r2c -r$rev1 $file]
+		set csets [exec bk r2c -r$rev1 $file]
 	}
 	exec bk csettool -r$csets &
 	busy 0
@@ -953,14 +953,14 @@ proc next {inc} \
 
 proc sccstool {name} \
 {
-	global	file bad revX revY search dev_null bk_sfiles
+	global	file bad revX revY search dev_null 
 
 	busy 1
 	.p.top.c delete all
 	if {[info exists revX]} { unset revX }
 	if {[info exists revY]} { unset revY }
 	set bad 0
-	set file [exec $bk_sfiles -g $name 2>$dev_null]
+	set file [exec bk sfiles -g $name 2>$dev_null]
 	if {$file == ""} {
 		puts "No such file $name"
 		exit 0
@@ -975,17 +975,9 @@ proc sccstool {name} \
 
 proc init {} \
 {
-	global bin bk_sccslog bk_prs bk_cset bk_get bk_renumber bk_sfiles
-	global bk_lines env
+	global env
 
 	bk_init
-	set bk_prs [file join $bin prs]
-	set bk_cset [file join $bin cset]
-	set bk_get [file join $bin get]
-	set bk_renumber [file join $bin renumber]
-	set bk_sfiles [file join $bin sfiles]
-	set bk_lines [file join $bin lines]
-	set bk_sccslog [file join $bin sccslog]
 	set env(BK_YEAR4) 1
 }
 

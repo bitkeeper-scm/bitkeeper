@@ -19,7 +19,7 @@ so \"bk get -e; bk clean\" is a null operation.\n";
  * This works even if there isn't a gfile.
  */
 int
-main(int ac, char **av)
+clean_main(int ac, char **av)
 {
 	sccs	*s = 0;
 	int	flags = SILENT;
@@ -35,6 +35,8 @@ usage:		fputs(clean_help, stderr);
 	}
 	if (streq("unedit", av[0]) || streq("unget", av[0])) {
 		flags |= CLEAN_UNEDIT;
+	} else if (streq("unlock", av[0])) {
+		flags |= CLEAN_UNLOCK; sflags &= ~SF_GFILE;
 	}
 	while ((c = getopt(ac, av, "npqsuv")) != -1) {
 		switch (c) {

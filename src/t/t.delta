@@ -14,12 +14,12 @@
 
 echo $N Make sure delta -i works ....................................$NL
 ${ECHO} hi there > init
-delta $S -i init
+bk delta $S -i init
 if [ ! -f SCCS/s.init ]; then echo Failed to create s.file; exit 1; fi
 echo OK
 echo $N Check delta -i works w/ existing file .......................$NL
 ${ECHO} hi there again > init
-delta $S -i init > ${DEV_NULL} 2>&1
+bk delta $S -i init > ${DEV_NULL} 2>&1
 if [ $? -eq 0 ]; then echo Failed; exit 1; fi
 if [ -f SCCS/z.init ]; then echo Failed, fail to clean zlock; exit 1; fi
 rm -f init
@@ -27,9 +27,9 @@ echo OK
 echo $N Make sure delta -l works ....................................$NL
 cp SCCS/s.init SCCS/s.T
 X=`wc SCCS/s.T`
-get $S -e T
+bk get $S -e T
 if writable T; then :; else echo Get failed to get file writeable; exit 1; fi
-delta $S -ly T
+bk delta $S -ly T
 if [ "`wc SCCS/s.T`" = "$X" ]; then echo Failed to create delta; exit 1; fi
 if [ ! -f SCCS/p.T ]; then echo Failed to leave file locked; exit 1; fi
 if [ ! -f T ]; then echo Failed to get file; exit 1; fi
@@ -37,10 +37,10 @@ if writable T; then :; else echo Failed to leave file writeable; exit 1; fi
 echo OK
 echo $N Make sure delta -il works ...................................$NL
 echo delta -il > init2
-delta $S -il init2
+bk delta $S -il init2
 if [ ! -f SCCS/s.init2 ]; then echo failed to create file; exit 1; fi
 if [ ! -f SCCS/p.init2 ]; then echo failed to lock file; exit 1; fi
-clean init2
+bk clean init2
 echo OK
 ${RM} -f SCCS/p.T T
 echo $N Make sure delta -I works with good file .....................$NL
@@ -51,7 +51,7 @@ P this/is/the/pathname
 ------------------------------------------------
 EOF
 ls > init_test
-delta $Q -i -IINITX init_test
+bk delta $Q -i -IINITX init_test
 if [ $? != 0 ]; then echo Failed - delta returned an error; exit 1; fi
 grep -q '^.c This is revision 1.1$' SCCS/s.init_test
 if [ $? -ne 0 ]; then echo Failed to add comment; exit 1; fi
@@ -60,9 +60,9 @@ if [ $? -ne 0 ]; then echo Failed to add path; exit 1; fi
 echo OK
 echo $N Make sure delta -I fails with bad file ......................$NL
 ls > INITX
-co -l $Q init_test
+bk co -l $Q init_test
 ls >> init_test
-delta $Q -IINITX init_test 2>${DEV_NULL}
+bk delta $Q -IINITX init_test 2>${DEV_NULL}
 if [ $? != 0 ]; then echo Failed - delta did not error; cat INITX; exit 1; fi
 echo OK
 echo $N Make sure delta -I works w/ blank comments ..................$NL
@@ -73,7 +73,7 @@ c
 c This is the line after the blank line.
 ------------------------------------------------
 EOF
-delta $Q -IINITX init_test
+bk delta $Q -IINITX init_test
 if [ $? != 0 ]; then echo Failed - delta returned an error; exit 1; fi
 grep -q '^.c This is revision 1.2$' SCCS/s.init_test
 if [ $? -ne 0 ]; then echo Failed to add comment; exit 1; fi
@@ -83,21 +83,21 @@ grep -q '^.c This is the line after the blank line.$' SCCS/s.init_test
 if [ $? -ne 0 ]; then echo Failed to add last line in comment; exit 1; fi
 echo OK
 echo $N Make sure delta -n works ....................................$NL
-get $S -e T
-delta $S -ny T
+bk get $S -e T
+bk delta $S -ny T
 if [ ! -f T ]; then echo Failed to save file; exit 1; fi
 if writable T; then :; else echo Failed to save file writeable; exit 1; fi
 echo OK
 echo $N Make sure delta prompts for comments ........................$NL
 ${RM} -f T
-get $S -e T
+bk get $S -e T
 echo "I am the comment" | delta $S T 2> ${DEV_NULL}
 grep -q '^.c I am the comment$' SCCS/s.T
 if [ $? -ne 0 ]; then echo Failed to add comment; exit 1; fi
 echo OK
 echo $N Make sure delta prompts once with -Y ........................$NL
-get $S -e T
-get $S -e init
+bk get $S -e T
+bk get $S -e init
 (echo "first comment"; echo ".";
 echo "second comment"; echo ".") | delta $S -Y 2>${DEV_NULL}
 grep -q '^.c first comment$' SCCS/s.T
@@ -110,34 +110,34 @@ grep -q '^.c second comment$' SCCS/s.init
 if [ $? -eq 0 ]; then echo Added unwanted second comment to init; exit 1; fi
 echo OK
 echo $N Make sure delta can add symbols .............................$NL
-get $S -e init2
-delta $S -SSYM -y init2
+bk get $S -e init2
+bk delta $S -SSYM -y init2
 grep -q '^.cSSYM$' SCCS/s.init2
 if [ $? -ne 0 ]; then echo Failed to add symbol.; exit 1; fi
 echo OK
 echo $N Make sure ci can add symbols ................................$NL
-get $S -e init2
-ci $S -SBAR -fy init2
+bk get $S -e init2
+bk ci $S -SBAR -fy init2
 grep -q '^.cSBAR$' SCCS/s.init2
 if [ $? -ne 0 ]; then echo Failed to add symbol.; exit 1; fi
 echo OK
 echo $N Make sure ci can add multiple symbols in one run ............$NL
-get $S -e init2
-ci $S -Sone -Stwo -fy init2
+bk get $S -e init2
+bk ci $S -Sone -Stwo -fy init2
 grep -q '^.cSone' SCCS/s.init2
 if [ $? -ne 0 ]; then echo Failed to add symbol one.; exit 1; fi
 grep -q '^.cStwo' SCCS/s.init2
 if [ $? -ne 0 ]; then echo Failed to add symbol two.; exit 1; fi
 echo OK
 echo $N Make sure ci can not add same symbol twice ..................$NL
-get $S -e init2
-ci $S -SBAR -fy init2 2> ${DEV_NULL}
+bk get $S -e init2
+bk ci $S -SBAR -fy init2 2> ${DEV_NULL}
 X=`grep -c '^.cSBAR$' SCCS/s.init2`
 if [ $X -ne 1 ]; then echo Added symbol twice.; exit 1; fi
 echo OK
 echo $N Make sure ci -u with no change works ........................$NL
-get $S -e init2
-ci $Q -u init2 2> ${DEV_NULL}
+bk get $S -e init2
+bk ci $Q -u init2 2> ${DEV_NULL}
 if [ ! -f init2 ]; then echo File not checked out.; exit 1; fi
 if writable init2; then echo File not read only.; exit 1; fi
 echo OK
@@ -146,18 +146,18 @@ echo $N Make sure delta -G works ....................................$NL
 ${ECHO} "G change data" > init3
 touch -t 0102030489 init3 > ${DEV_NULL} 2>&1
 TOUCH=NO
-if [ `mtime init3` != 1989-01-02-03:04:00 ]
+if [ `bk mtime init3` != 1989-01-02-03:04:00 ]
 then	touch -t 8901020304.00 init3 > ${DEV_NULL} 2>&1
-	if [ `mtime init3` != 1989-01-02-03:04:00 ]
-	then	echo Your touch command seems busted `mtime init3`
+	if [ `bk mtime init3` != 1989-01-02-03:04:00 ]
+	then	echo Your touch command seems busted `bk mtime init3`
 	else	TOUCH=YES
 	fi
 else	TOUCH=YES
 fi
 if [ $TOUCH = YES ]
-then	delta $Q -i -G init3
+then	bk delta $Q -i -G init3
 	echo "89/01/02 03:04:00" > CMP1
-	prs -h -d":D: :T:" init3 > CMP2
+	bk prs -h -d":D: :T:" init3 > CMP2
 	# on NT, cygwin added 02 seconds
 	case X`uname -s` in
 	    XCYGWIN*)	sed -e"s/:02$/:00/" CMP2 >  CMPX
@@ -189,39 +189,39 @@ fi
 echo $N Make sure delta -a new file work ............................$NL
 mkdir A
 echo "echo this is a new file" > A/data
-sfiles -x A | delta $Q -a -l -y"new file" -
-REV=`prs -r+ -hd:I: A/data`
+bk sfiles -x A | bk delta $Q -a -l -y"new file" -
+REV=`bk prs -r+ -hd:I: A/data`
 if [ ${REV}X != "1.1"X ]; then echo failed; exit 1; fi
 echo OK
 echo $N Make sure delta -a unchanged file work ......................$NL
-sfiles A | delta $Q -a -l -y"unchanged file" -
-REV=`prs -r+ -hd:I: A/data`
+bk sfiles A | bk delta $Q -a -l -y"unchanged file" -
+REV=`bk prs -r+ -hd:I: A/data`
 if [ ${REV}X != "1.1"X ]; then echo failed; exit 1; fi
 echo OK
 echo $N Make sure delta -a changed file work ........................$NL
 echo "echo this is changed file" > A/data
-sfiles A | delta $Q -l -a -y"changed file" -
-REV=`prs -r+ -hd:I: A/data`
+bk sfiles A | bk delta $Q -l -a -y"changed file" -
+REV=`bk prs -r+ -hd:I: A/data`
 if [ ${REV}X != "1.2"X ]; then echo failed $REV; exit 1; fi
 echo OK
 echo $N Make sure delta -a symlink dir works ........................$NL
 mkdir A/dir
 ln -s A/dir A/symdir
-sfiles -x A | delta $Q -a -l -y"new symlink dir" -
-REV=`prs -r+ -hd:I: A/symdir`
+bk sfiles -x A | bk delta $Q -a -l -y"new symlink dir" -
+REV=`bk prs -r+ -hd:I: A/symdir`
 if [ ${REV}X != "1.1"X ]; then echo failed; exit 1; fi
 echo OK
 echo $N Make sure delta -i does not check in ........................$NL
 mkdir garbage; cd garbage; touch a b c d e s.c s.f
-delta $Q -i
+bk delta $Q -i
 if [ -d "SCCS" ]; then	echo failed - it did check stuff in; exit 1; fi
 echo OK
 echo $N Make sure ci -i does not check in ...........................$NL
-ci $Q -i
+bk ci $Q -i
 if [ -d "SCCS" ]; then	echo failed - it did check stuff in; exit 1; fi
 echo OK
 echo $N Make sure delta -i a b c d does check in ....................$NL
-delta $Q -i a b c d e
+bk delta $Q -i a b c d e
 if [ ! -d "SCCS" ]; then	echo failed; exit 1; fi
 echo OK
 cd ..

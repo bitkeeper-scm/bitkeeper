@@ -24,7 +24,7 @@ int	resum(sccs *s, delta *d, int flags, int old7bit, int dont);
 int	sumit(char *path, int *old, int *new, int old7bit);
 
 int
-main(int ac, char **av)
+rechksum_main(int ac, char **av)
 {
 	sccs	*s;
 	delta	*d;

@@ -11,7 +11,7 @@ WHATSTR("@(#)%K%");
  * XXX - expects to be standalone, one shot, does not free resources.
  */
 int
-main(int ac, char **av)
+r2c_main(int ac, char **av)
 {
 	char	*name;
 	delta	*e;

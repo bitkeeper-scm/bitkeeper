@@ -264,7 +264,7 @@ transfer() {
 	echo "	from $FROM"
 	echo "	to   $TO"
 	cd $FROM
-	sfio -omq < ${TMP}import$$ | (cd $TO && sfio -im $QUIET ) || exit 1
+	bk sfio -omq < ${TMP}import$$ | (cd $TO && bk sfio -im $QUIET ) || exit 1
 }
 
 import_patch() {
@@ -354,7 +354,7 @@ import_text () {
 
 	cd $2
 	echo Checking in plain text files...
-	ci -i $Q - < ${TMP}import$$ || exit 1
+	bk ci -i $Q - < ${TMP}import$$ || exit 1
 }
 
 import_RCS () {
@@ -369,7 +369,7 @@ import_RCS () {
 import_SCCS () {
 	cd $2
 	echo Checking for and fixing Teamware corruption...
-	sfiles | renumber -q -
+	bk sfiles | bk renumber -q -
 	if [ -s ${TMP}reparent$$ ]
 	then	echo Reparenting files from some other BitKeeper project...
 		sed 's/ BitKeeper$//' < ${TMP}reparent$$ | \
@@ -377,15 +377,15 @@ import_SCCS () {
 		do	if [ -f $x ]
 			then	echo $x
 			fi
-		done | admin -CC -
+		done | bk admin -CC -
 		echo OK
 	fi
 	rm -f ${TMP}reparent$$
 	echo Making sure all files have pathnames, proper dates, and checksums
-	sfiles -g | while read x
-	do	admin -0q $x
-		admin -q -u -p$x $x
-		rechksum -f $x
+	bk sfiles -g | while read x
+	do	bk admin -0q $x
+		bk admin -q -u -p$x $x
+		bk rechksum -f $x
 	done
 }
 
@@ -393,7 +393,7 @@ import_finish () {
 	cd $1
 	echo ""
 	echo Validating all SCCS files
-	sfiles | admin -hhhq - > ${TMP}admin$$
+	bk sfiles | bk admin -hhhq - > ${TMP}admin$$
 	if [ -s ${TMP}admin$$ ]
 	then	echo Import failed because
 		cat ${TMP}admin$$
@@ -402,7 +402,7 @@ import_finish () {
 	echo OK
 	
 	rm -f ${TMP}import$$ ${TMP}admin$$
-	sfiles -r
+	bk sfiles -r
 	# So it doesn't run consistency check.
 	touch BitKeeper/etc/SCCS/x.marked
 	echo "Creating initial changeset (should have $NFILES + 1 lines)"
@@ -427,7 +427,7 @@ validate_SCCS () {
 		mv ${TMP}sccs$$ ${TMP}import$$
 	fi
 	rm -f ${TMP}notsccs$$ ${TMP}sccs$$
-	sfiles -cg $FROM > ${TMP}changed$$
+	bk sfiles -cg $FROM > ${TMP}changed$$
 	if [ -s ${TMP}changed$$ ]
 	then	echo The following files are locked and modified in $FROM
 		cat ${TMP}changed$$

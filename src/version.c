@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-main()
+version_main()
 {
 	platformInit(); 
 	gethelp("version", 0, stdout);

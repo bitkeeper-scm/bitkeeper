@@ -12923,8 +12923,8 @@ sccs_reCache(void)
 	char	*av[4];
 
 	/* sfiles -r */
-	sprintf(buf, "%s%s", getenv("BK_BIN"), SFILES);
-	av[0] = SFILES; av[1] = "-r"; av[2] = 0;
+	sprintf(buf, "%sbk", getenv("BK_BIN"));
+	av[0] = buf,   av[1] = "sfiles"; av[2] = "-r"; av[3] = 0;
 	return spawnvp_ex(_P_WAIT, buf, av);
 }
 

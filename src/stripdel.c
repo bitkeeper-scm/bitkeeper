@@ -15,7 +15,7 @@ usage: stripdel [-bcq] -r<rev> filename\n\n\
 delta	*checkCset(sccs *s);
 
 int
-main(int ac, char **av)
+stripdel_main(int ac, char **av)
 {
 	sccs	*s;
 	char	*name;
