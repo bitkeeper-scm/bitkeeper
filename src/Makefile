@@ -467,7 +467,9 @@ install-nolinks: all
 		shift; shift; \
 	done
 	@cd gnu && $(MAKE) BINDIR=$(BINDIR) install
-	@cd win32 && $(MAKE) BINDIR=$(BINDIR) install
+	@if uname -s | grep _NT; \
+	then cd win32 && $(MAKE) BINDIR=$(BINDIR) install; \
+	fi
 
 image: all
 	-rm -rf tmp/bitkeeper
