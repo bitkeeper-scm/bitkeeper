@@ -175,7 +175,7 @@ touch NEWFILE
 bk new $Q NEWFILE
 bk commit $Q -yNEWFILE 
 cd $HERE/copy
-chmod -w src
+chmod 555 src
 bk pull $Q > OUT 2>&1
 grep -q 'No write permission: src' OUT || {
 	echo bad error message from pull

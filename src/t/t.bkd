@@ -221,7 +221,7 @@ bk new $Q JUNK
 (cd $HERE/copy; bk _loggingaccepted; )
 bk commit $Q -ywhatever
 bk push -t bk://localhost:$P$HERE/copy 2> bk.out
-grep -q "csets only in" bk.out
+grep -q "pushing to is 6 changesets" bk.out
 if [ $? -ne 0 ]; then echo failed; cat bk.out; exit 1; fi
 echo OK
 echo $N Make sure bk/basic allows pull from master repository .......$NL

@@ -554,6 +554,7 @@ typedef	struct sccs {
 	u32	io_warned:1;	/* we told them about the error */
 	u32	prs_output:1;	/* prs printed something */
 	u32	bitkeeper:1;	/* bitkeeper file */
+	u32	prs_odd:1;	/* for :ODD: :EVEN: in dspecs */
 } sccs;
 
 typedef struct {

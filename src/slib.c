@@ -12551,6 +12551,14 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	/* ======== BITKEEPER SPECIFIC KEYWORDS ========== */
+	if (streq(kw, "ODD")) {
+		return (s->prs_odd ? strVal : nullVal);
+	}
+
+	if (streq(kw, "EVEN")) {
+		return (s->prs_odd ? nullVal : strVal);
+	}
+
 	if (streq(kw, "G")) {
 		/* g file basename */
 		if (s->gfile) {
@@ -13466,7 +13474,10 @@ sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out)
 	end = &dspec[strlen(dspec) - 1];
 	s->prs_output = 0;
 	fprintDelta(out, NULL, dspec, end, s, d);
-	if (s->prs_output && (flags & PRS_LF)) fputc('\n', out);
+	if (s->prs_output) {
+		s->prs_odd = !s->prs_odd;
+		if (flags & PRS_LF) fputc('\n', out);
+	}
 	return (0);
 }
 
@@ -13694,6 +13705,7 @@ sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out)
 	delta	*d;
 
 	if (!dspec) dspec = ":DEFAULT:";
+	s->prs_odd = 0;
 	GOODSCCS(s);
 	if (flags & PRS_PATCH) {
 		assert(s->rstart == s->rstop);
