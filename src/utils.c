@@ -674,15 +674,19 @@ disconnect(remote *r, int how)
 	assert((how >= 0) && (how <= 2));
 
 	switch (how) {
-	    case 0:	if (r->rfd == -1) return;
+	    case 0:	if (r->rfd == -1) break;
 			if (r->isSocket) {
+				assert(!r->rf);
 				shutdown(r->rfd, 0);
+			} else if (r->rf) {
+				fclose(r->rf);
+				r->rf = 0;
 			} else {
 				close(r->rfd);
 			}
 			r->rfd = -1;
 			break;
-	    case 1: 	if (r->wfd == -1) return;
+	    case 1: 	if (r->wfd == -1) break;
 			if (r->isSocket) {
 				shutdown(r->wfd, 1);
 			} else {
@@ -690,8 +694,13 @@ disconnect(remote *r, int how)
 			}
 			r->wfd = -1;
 			break;
-	    case 2:	if (r->rfd >= 0) close(r->rfd);
-			if (r->wfd >= 0) close(r->wfd);
+	    case 2:	if (r->rf) {
+				fclose(r->rf);
+				r->rf = 0;
+			} else if (r->rfd >= 0) {
+				close(r->rfd);
+			}
+			if ((r->wfd >= 0) && (r->wfd != r->rfd)) close(r->wfd);
 			r->rfd = r->wfd = -1;
 			break;
 	}
@@ -1401,6 +1410,7 @@ progressbar(int n, int max, char *msg)
 	float	elapsed;
 	int	percent = max ? (n * 100) / max : 100;
 	int	i, want;
+	int	barlen = 65;
 	struct	timeval tv;
 
 	if (percent > 100) percent = 100;
@@ -1418,21 +1428,20 @@ progressbar(int n, int max, char *msg)
 	last = percent;
 	lastup = elapsed;
 
-	want = (percent * 65) / 100;
-	fprintf(stderr, "%3u%% |", percent);
-	for (i = 1; i <= want; ++i) fputc('=', stderr);
-	for (; i <= 65; ++i) fputc(' ', stderr);
-	fputc('|', stderr);
-	if (msg) {
-		fprintf(stderr, " %-20s\n", msg);
-	} else {
-		if ((elapsed > 10.0) && (n < max)) {
-			int	remain = elapsed * (((float)max/n) - 1.0);
+	fprintf(stderr, "%3u%% ", percent);
+	if ((elapsed > 10.0) && (n < max)) {
+		int	remain = elapsed * (((float)max/n) - 1.0);
 
-			fprintf(stderr, " %dm%ds remaining",
-			    remain / 60, remain % 60);
-		}
-		fputc('\r', stderr);
+		barlen -= fprintf(stderr, "%dm%02ds ", remain/60, remain%60);
+	}
+	fputc('|', stderr);
+	want = (percent * barlen) / 100;
+	for (i = 1; i <= want; ++i) fputc('=', stderr);
+	for (; i <= barlen; ++i) fputc(' ', stderr);
+	if (msg) {
+		fprintf(stderr, "| %-20s\n", msg);
+	} else {
+		fprintf(stderr, "|\r");
 	}
 }
 
