@@ -686,7 +686,7 @@ proc main {} \
 	}
 	set bin "/usr/bitkeeper"
 	set dev_null "/dev/null"
-	platformInit
+	bk_init
 	widgets
 	getFiles $revs
 }
