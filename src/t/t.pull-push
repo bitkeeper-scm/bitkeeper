@@ -51,7 +51,7 @@ echo delta two >> foo.c
 delta $Q -y2 foo.c
 bk commit $Q -y2
 cd $HERE/copy
-bk pull $Q || { echo failed; exit 1; }
+bk pull -t $Q || { echo failed; exit 1; }
 revs=`prs -hd:I: src/foo.c | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
 echo OK
@@ -100,7 +100,7 @@ rm -f bar.x
 delta $Q -yzero
 bk commit $Q -y0
 cd $HERE/copy
-bk pull $Q || { echo failed; exit 1; }
+bk pull -t $Q || { echo failed; exit 1; }
 cd src
 ${CAT} >ref-bar.c <<EOF
 line zero

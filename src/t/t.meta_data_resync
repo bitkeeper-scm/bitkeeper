@@ -55,7 +55,7 @@ cd $HERE/project/src
 admin -m-rwx------ foo.c
 bk commit $S -yperm1
 bk resync $Q $HERE/project $HERE/copy
-bk resolve $Q $HERE/copy
+bk resolve -t $Q $HERE/copy
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.foo.c  $HERE/copy/src/SCCS/s.foo.c
 if [ $? -ne 0 ]; then echo failed to propagate permissions; exit 1; fi
@@ -92,7 +92,7 @@ cd $HERE/project/src
 admin $Q -fEXPAND1 -fRCS -fYEAR4 bar.c
 bk commit $Q -yabc
 bk resync $Q $HERE/project $HERE/copy
-bk resolve $Q $HERE/copy
+bk resolve -t $Q $HERE/copy
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.bar.c  $HERE/copy/src/SCCS/s.bar.c
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
@@ -100,7 +100,7 @@ cd $HERE/project/src
 admin $Q -FRCS -FYEAR4 bar.c
 bk commit $Q -yabc
 bk resync $Q $HERE/project $HERE/copy
-bk resolve $Q $HERE/copy
+bk resolve -t $Q $HERE/copy
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.bar.c  $HERE/copy/src/SCCS/s.bar.c
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
@@ -110,7 +110,7 @@ cd $HERE/project/src
 admin $Q -fRCS -m-rwx-r--r-- bar.c
 bk commit $Q -yabc
 bk resync $Q $HERE/project $HERE/copy
-bk resolve $Q $HERE/copy
+bk resolve -t $Q $HERE/copy
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.bar.c  $HERE/copy/src/SCCS/s.bar.c
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
@@ -122,7 +122,7 @@ echo "this is a text entry line 2" >> text
 admin -ttext h.h
 bk commit $Q -yabc
 bk resync $Q $HERE/project $HERE/copy
-bk resolve $Q $HERE/copy
+bk resolve -t $Q $HERE/copy
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.h.h  $HERE/copy/src/SCCS/s.h.h
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
@@ -130,7 +130,7 @@ cd $HERE/project/src
 admin -T h.h
 bk commit $Q -yabc
 bk resync $Q $HERE/project $HERE/copy
-bk resolve $Q $HERE/copy
+bk resolve -t $Q $HERE/copy
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.h.h  $HERE/copy/src/SCCS/s.h.h
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
@@ -140,7 +140,7 @@ cd $HERE/project/src
 admin -ttext -fYEAR4 -m-rwx-w--w- h.h
 bk commit $Q -yabc
 bk resync $Q $HERE/project $HERE/copy
-bk resolve $Q $HERE/copy
+bk resolve -t $Q $HERE/copy
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.h.h  $HERE/copy/src/SCCS/s.h.h
 if [ $? -ne 0 ]; then echo failed; exit 1; fi

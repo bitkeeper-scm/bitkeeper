@@ -118,7 +118,7 @@ if [ $? -ne 0 ]; then echo failed; diff long1 long1.ref; exit 1; fi
 bk commit $S -f -yCset
 bk send $Q -r1.3 - | (cd $HERE/copy; takepatch) 
 cd $HERE/copy/src
-bk resolve $Q
+bk resolve -t $Q
 co $Q long1
 cmp -s long1 $HERE/project/src/long1.ref
 if [ $? -ne 0 ]; then echo failed; exit 1; fi

@@ -11,13 +11,14 @@ main(int ac,  char **av)
 
 	platformInit();  
 
-	while ((c = getopt(ac, av, "acFiSv")) != -1) {
+	while ((c = getopt(ac, av, "acFiStv")) != -1) {
 		switch (c) { 
 		    case 'a': strcat(opts, " -a"); break;
 		    case 'c': strcat(opts, " -c"); break;
 		    case 'F': strcat(opts, " -F"); break;
 		    case 'i': strcat(opts, " -i"); new =1; break;
 		    case 'S': strcat(opts, " -S"); break;
+		    case 't': strcat(opts, " -t"); break;
 		    case 'v': strcat(opts, " -v"); break;
 		    default :
 			fprintf(stderr, "unknow option <%c>\n", c);

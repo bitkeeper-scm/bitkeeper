@@ -54,7 +54,7 @@ if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 echo OK
 echo $N Create a copy of the project using send / receive ...........$NL
 cd $HERE/project
-bk send $Q -  | bk receive -ia ../copy
+bk send $Q -  | bk receive -iat ../copy
 if [ ! -d ../copy/BitKeeper ]; then echo failed to receive; exit 1; fi
 if [ ! -f ../copy/src/SCCS/s.h.h ]; then echo failed to receive; exit 1; fi
 cd $HERE/project; bk -r clean
@@ -86,7 +86,7 @@ ${RM} -f p1 p2
 echo OK
 echo $N Create copy using send / receive and wrappers ...............$NL
 cd $HERE/project
-bk send $Q -wuu -  | bk receive -ia ../uu
+bk send $Q -wuu -  | bk receive -iat ../uu
 if [ ! -d ../uu/BitKeeper ]; then echo failed to receive; exit 1; fi
 cd $HERE/project; bk -r clean
 cd $HERE/uu; bk -r clean
@@ -102,10 +102,10 @@ if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
 echo OK
 echo $N Create copy using send / receive 1 cset at a time ...........$NL
 cd $HERE/project
-bk send $Q -r..1.1 -  | bk receive -ia ../csets
+bk send $Q -r..1.1 -  | bk receive -iat ../csets
 if [ ! -d ../csets/BitKeeper ]; then echo failed to receive; exit 1; fi
 for i in 2 3 4 5 6 7
-do	bk send $Q -r1.$i -  | bk receive -a ../csets
+do	bk send $Q -r1.$i -  | bk receive -at ../csets
 done
 cd $HERE/project; bk -r clean
 cd $HERE/csets; bk -r clean
