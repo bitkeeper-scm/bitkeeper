@@ -175,6 +175,7 @@ runit(char *file, char *output)
 
 	my_av[j++] = file;
 	my_av[j] = 0;
+	signal(SIGCHLD, SIG_DFL); /* for solaris */
 	status = spawnvp_ex(_P_WAIT, my_av[0], my_av);
 	if (output) {
 		close(1);

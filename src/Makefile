@@ -280,9 +280,10 @@ t/doit: t/doit.sh substvars
 FORCE:
 
 gnu: $(BK) FORCE
+	@bk get -sS gnu/Makefile
 	@if uname -s | grep _NT; \
 	then cd gnu && $(MAKE) BINDIR=$(BINDIR) DIFF_BINS= DIRS=patch ;\
-	else cd gnu && bk get -s Makefile && $(MAKE) BINDIR=$(BINDIR) ;\
+	else cd gnu && $(MAKE) BINDIR=$(BINDIR) ;\
 	fi
 
 win32: FORCE

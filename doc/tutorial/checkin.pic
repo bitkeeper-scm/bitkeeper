@@ -1,0 +1,35 @@
+.ft H
+.ps 11
+.vs 12
+.PS
+define two {
+	w = .15
+	h = .2
+	box thick .5 wid w ht h 
+	box fill 0 thick .5 wid w ht h with .c at last box.c + .05,-.05
+}
+define files {
+	[
+	[two]
+	[two] with .w at last [].e + .2,0
+	]
+}
+	scale = 1.3
+	drop = .06
+	f = .5
+	w = 1.3
+	h = .7
+W: [
+	D: ellipse thick 0 fill f wid w ht h
+	A: ellipse thick 1 wid w ht h fill .1 "Jill's" "Repository" \
+	    with .n at last ellipse.n + (-drop, drop)
+]
+arrowwid = .13
+arrowht = .15
+linethick = 1
+[files] with .n at W.s - 0,.3
+arc dashed -> rad .5 from last [].ne + .1,0 to W.D.se
+.PE
+.ps \n[PS]
+.vs \n[VS]
+.ft

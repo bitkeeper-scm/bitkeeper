@@ -1,4 +1,4 @@
-#! @FAST_SH@
+#! @TEST_SH@
 
 # All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
 # and are not licensed under the terms of the BKL (BitKeeper License).
@@ -283,7 +283,7 @@ init_main_loop
 for i in $list
 do	echo ------------ ${i#t.} test
 	mkdir -p $BK_REGRESSION/.tmp || exit 1
-	cat setup $i | @FAST_SH@ $dashx
+	cat setup $i | @TEST_SH@ $dashx
 	EXIT=$?
 	if [ $EXIT != 0 ]
 	then	echo Test exited with error $EXIT

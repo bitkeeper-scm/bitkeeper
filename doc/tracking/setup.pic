@@ -1,0 +1,16 @@
+.ft H
+.ps 11
+.vs 12
+.PS
+	scale = 1.3
+	drop = .06
+	f = .5
+	w = 1.3
+	h = .7
+R:	ellipse thick 0 fill f wid w ht h
+S:	ellipse thick 1 wid w ht h fill .1 "Tracking" "repository" \
+	    with .n at last ellipse.n + (-drop, drop)
+.PE
+.ps \n[PS]
+.vs \n[VS]
+.ft

@@ -1,4 +1,4 @@
-_OS=`sh os`
+_OS=`cat os`
 DIRS=patch diffutils
 EXE=`sh exe`
 PATCH_BINS=patch/$(_OS)/patch$(EXE)
@@ -17,9 +17,9 @@ all: os exe
 	for i in $(DIRS); \
 	do	test -d $$i/$$OS || mkdir $$i/$$OS; \
 		( \
-		if [ $${OS} = "BIN-CYGWIN_NT-4.0-x86" -o \
-		     $${OS} = "BIN-CYGWIN_NT-5.0-x86" ];\
+		if [ $${OS} = "x86-cygwin" ]; \
 		then unset MAKEFLAGS CFLAGS LDFLAGS LD; CC=gcc; \
+		     export MAKEFLAGS CFLAGS LDFLAGS LD CC; \
 		fi;\
 		echo $$i; \
 		cd $$i; ../../bk get -q checkout; sh checkout; \
@@ -40,6 +40,11 @@ install: all
 		(cd $$D && ../../../bk chksum $$F); \
 	done >> $(BINDIR)/MANIFEST; \
 
+os: ../utils/os ../utils/gnu-os
+	(cd ../utils && ./os) > _os
+	echo BIN-`cat _os` > os
+	/bin/rm -f _os
+
 # win32, can not clean the current Makefile when we are
 # running this make file
 clean clean-obj: os
@@ -50,9 +55,10 @@ clean clean-obj: os
 	-@rm -rf bin
 	-@bk sfiles | grep -v "^SCCS/s.Makefile" | bk clean -
 clobber: clean clean-obj
-	@for i in $(DIRS); \
+	-@OS=$(_OS); \
+	for i in $(DIRS); \
 	do	(cd $$i && \
 		 rm -rf config.log config.cache config.status \
-		    configure config.h Makefile stamp-h *.exe *.o); \
+		    configure config.h Makefile stamp-h *.exe *.o $$OS); \
 	done
-	@rm -f config.cache
+	@rm -f config.cache os
