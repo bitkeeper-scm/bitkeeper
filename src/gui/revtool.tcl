@@ -2,6 +2,23 @@
 # Copyright (c) 1998 by Larry McVoy; All rights reserved.
 #
 # %W% %@%
+#
+
+array set month {
+	""	"bad"
+	"01"	"JAN"
+	"02"	"FEB"
+	"03"	"MAR"
+	"04"	"APR"
+	"05"	"MAY"
+	"06"	"JUN"
+	"07"	"JUL"
+	"08"	"AUG"
+	"09"	"SEP"
+	"10"	"OCT"
+	"11"	"NOV"
+	"12"	"DEC"
+}
 
 # Return width of text widget
 proc wid {id} \
@@ -483,6 +500,7 @@ proc centerRev {revname} \
 proc dateSeparate { } { \
 
 	global serial2rev rev2date revX revY ht screen gc w
+	global month
 
 	set curday ""
 	set prevday ""
@@ -513,35 +531,42 @@ proc dateSeparate { } { \
 		} else {
 			set x $revX($rev)
 			set date_array [split $prevday "/"]
-			set day [lindex $date_array 1]
-			set mon [lindex $date_array 2]
+			set mon [lindex $date_array 1]
+			set day [lindex $date_array 2]
 			set yr [lindex $date_array 0]
 			set tz [lindex $date_array 3]
-			set date "$day/$mon\n$yr\n$tz"
+			set tmon $month($mon)
+			set date "$day$tmon\n$yr\n$tz"
 
-			# place vertical line short dx behind revision bbox
-			set lx [ expr {$x - 15}]
-			$w(graph) create line $lx $miny $lx $maxy -width 1 \
-			    -fill "lightblue" -tags date_line
+			if {$mon != ""} {
+				# place vertical line short distance behind 
+				# the revision bbox
+				set lx [ expr {$x - 15}]
+				$w(graph) create line $lx $miny $lx $maxy \
+				    -width 1 \
+				    -fill "lightblue" \
+				    -tags date_line
 
-			# Attempt to center datestring between verticals
-			set tx [expr {$x - (($x - $lastx)/2) - 13}]
-			$w(graph) create text $tx $ty \
-			    -fill $gc(rev.dateColor) \
-			    -justify center \
-			    -anchor n -text "$date" -font $gc(rev.fixedFont) \
-			    -tags date_text
-
+				# Attempt to center datestring between verticals
+				set tx [expr {$x - (($x - $lastx)/2) - 13}]
+				$w(graph) create text $tx $ty \
+				    -fill $gc(rev.dateColor) \
+				    -justify center \
+				    -anchor n -text "$date" \
+				    -font $gc(rev.fixedFont) \
+				    -tags date_text
+			}
 			set prevday $curday
 			set lastx $x
 		}
 	}
 	set date_array [split $curday "/"]
-	set day [lindex $date_array 1]
-	set mon [lindex $date_array 2]
+	set mon [lindex $date_array 1]
+	set day [lindex $date_array 2]
 	set yr [lindex $date_array 0]
 	set tz [lindex $date_array 3]
-	set date "$day/$mon\n$yr\n$tz"
+	set tmon $month($mon)
+	set date "$day$tmon\n$yr\n$tz"
 
 	set tx [expr {$screen(maxx) - (($screen(maxx) - $x)/2) + 20}]
 	$w(graph) create text $tx $ty -anchor n \
