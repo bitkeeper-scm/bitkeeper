@@ -198,8 +198,7 @@ done:
 private int
 getsfio(int verbose, int gzip)
 {
-	int	n, status;
-	pid_t	pid;
+	int	status;
 	FILE	*fh;
 	
 	fh = popen("bk sfio -ieq | bk _clonedo -q -", "w");

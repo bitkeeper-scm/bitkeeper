@@ -276,7 +276,7 @@ initProject(char *root)
 private int
 sfio(opts opts, int gzip, remote *r)
 {
-	int	n, status;
+	int	status;
 	char	*cmd;
 	FILE	*fh;
 
@@ -441,7 +441,7 @@ perfile_work(char *sfile)
 	}
 
 	/* get gfile if needed */
-	if (checkout_mode) {
+	if (checkout_mode == -1) {
 		char	*p = user_preference("checkout");
 		if (strieq(p, "edit")) {
 			checkout_mode = 2;
@@ -509,12 +509,13 @@ clonedo_main(int ac, char **av)
 	for (name = sfileFirst("clonedo", &av[optind], 0);
 	     name; name = sfileNext()) {
 		if (ok >= 2) {
-			if (perfile_work(name)) fprintf(fd, "%s\n", name);
+			perfile_work(name);
+			fprintf(fd, "%s\n", name);
 		} else {
 			list = addLine(list, strdup(name));
 			
 			if (streq(name, CHANGESET)) ++ok;
-			if (strneq(name, "BitKeeper", 9)) {
+			if (strneq(name, "BitKeeper/", 10)) {
 				inbk = 1;
 			} else {
 				if (inbk) {

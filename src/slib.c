@@ -5874,7 +5874,6 @@ sccs_adjustSet(sccs *sc, sccs *scb, delta *d)
 	ser_t	*slist;
 	delta	*n;
 	char	*inc, *exc;
-	int	i;
 
 	errp = 0;
 	n = sfind(scb, d->serial);	/* get 'd' from backup */
@@ -15654,6 +15653,7 @@ parseTimestamps(char *buf, tsrec *ts)
 	*rover = '\0';
 
 	/* now got the relative path name to file at the start */
+	return (1);
 }
 
 /*
@@ -15701,7 +15701,6 @@ dumpTimestampDB(project *p, MDBM* db)
 	FILE	*f = 0;
 	char	*tsname;
 	kvpair	kv;
-	int	fh;
 
 	if (!timestampDBChanged) return;
 
