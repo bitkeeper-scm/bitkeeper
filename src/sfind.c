@@ -64,7 +64,7 @@ private project *proj;
 private options	opts;
 private globv	ignore; 
 
-private void do_print(char state[4], char *file, char *rev);
+private int do_print(char state[4], char *file, char *rev);
 private void walk(char *dir, int level);
 private void file(char *f);
 private void sccsdir(char *dir, int level, DIR *sccs_dh);
@@ -505,12 +505,10 @@ chk_diffs(sccs *s)
 	return (0);  
 }
 
-private void
-print_it(char state[4], char *file, char *rev)
+int
+isIgnored(char *file)
 {
-	char *sfile = 0, *gfile;
-	char *name, tmp[MAXPATH];
-
+	char *gfile, *name, tmp[MAXPATH];
 	/*
 	 * For backward compat with "bk sfiles"
 	 * pre-pend "./" before we match against ignore list
@@ -524,7 +522,7 @@ print_it(char state[4], char *file, char *rev)
 	}
 	if (!opts.aflg && match_globs(name, ignore)) {
 		debug((stderr, "SKIP\t%s\n", file));
-		return;
+		return (1);
 	}
 	/*
 	 * For backward compat with "bk sfiles"
@@ -533,7 +531,7 @@ print_it(char state[4], char *file, char *rev)
 	gfile =  strneq("./",  file, 2) ? &file[2] : file;
 	if (!opts.aflg && match_globs(gfile, ignore)) {
 		debug((stderr, "SKIP\t%s\n", gfile));
-		return;
+		return (1);
 	}
 
 	/*
@@ -542,18 +540,26 @@ print_it(char state[4], char *file, char *rev)
 	 */
 	if (!opts.aflg && match_globs(basenm(gfile), ignore)) {
 		debug((stderr, "SKIP\t%s\n", gfile));
-		return;
+		return (1);
 	}
-
 	/*
 	 * HACK to hide stuff in the log directory & BitKeeper/etc/SCCS/x.*
 	 * This assumes the sfind is ran from project root
 	 * If you run "bk sfind" under <project root>/BitKeeper directory
 	 * These file will show up. It is probably OK.
 	 */
-	if (strneq("BitKeeper/log/", gfile, 14)) return;
-	if (strneq("BitKeeper/etc/SCCS/x.", gfile, 21)) return;
+	if (strneq("BitKeeper/log/", gfile, 14)) return (1);
+	if (strneq("BitKeeper/etc/SCCS/x.", gfile, 21)) return (1);
+	return (0);
+}
 
+private void
+print_it(char state[4], char *file, char *rev)
+{
+	char *sfile = 0, *gfile;
+	char *name, tmp[MAXPATH];
+
+	gfile =  strneq("./",  file, 2) ? &file[2] : file;
 	if (opts.show_markers) printf("%s ", state);
 	if (opts.gflg || (state[CSTATE] == 'x') || (state[CSTATE] == 'j'))  {
 		fputs(gfile, stdout); 			 /* print gfile name */
@@ -565,23 +571,25 @@ print_it(char state[4], char *file, char *rev)
 	if (sfile) free(sfile);
 }
 
-private void
+private int
 do_print(char state[4], char *file, char *rev)
 {
+
 	switch (state[LSTATE]) {
-	    case 'l':	if (opts.lflg) goto print; break;
+	    case 'l':	if (opts.lflg) goto chk_ig; break;
 	    case 'u':	if (opts.uflg) goto print; break;
 	}
 
 	switch (state[CSTATE]) {
-	    case 'c':	if (opts.cflg) goto print; break;
-	    case 'n':	if (opts.nflg) goto print; break;
-	    case 'j':	if (opts.jflg) goto print; break;
-	    case 'x':	if (opts.xflg) goto print; break;
+	    case 'c':	if (opts.cflg) goto chk_ig; break;
+	    case 'n':	if (opts.nflg) goto chk_ig; break;
+	    case 'j':	if (opts.jflg) goto chk_ig; break;
+	    case 'x':	if (opts.xflg) goto chk_ig; break;
 	}
-	if ((state[PSTATE] == 'p') && opts.pflg) goto print;
+	if ((state[PSTATE] == 'p') && opts.pflg) goto chk_ig;
 	return;
 
+chk_ig: if (isIgnored(file)) return (0);
 print:	print_it(state, file, rev);
 }
 
@@ -676,6 +684,12 @@ sccsdir(char *dir, int level, DIR *sccs_dh)
 			enqueue(&slist, e->d_name);
 		} else {
 			if (strneq("c.", e->d_name, 2)) {
+				/*
+				 * XXX TODO; store the @rev part
+				 * as the value field * so we can report
+				 * the c.file@rev name * if it turns out
+				 * to be a junk file
+				 */
 				p = strrchr(e->d_name, '@');
 				if (p) *p = 0;
 			}
