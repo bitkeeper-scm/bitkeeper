@@ -1,7 +1,7 @@
 # Makefile for BitKeeper.
 # @(#) %K%
 
-# You can set this to anywhere you like and do a "make production" and you'll
+# You can set this to anywhere you like and do a "build production" and you'll
 # have an installed BitKeeper.
 BINDIR	= /usr/libexec/bitkeeper
 
@@ -322,10 +322,10 @@ bkhelp.txt: build FRC
 	@cp ../man/man2help/helptxt bkhelp.txt
 
 ../doc/bk_refcard.pdf: build FRC
-	@cd ../doc/ && make pdf
+	@cd ../doc/ && $(MAKE) pdf
 
 ../doc/bk_refcard.ps: build FRC
-	@cd ../doc/ && make ps
+	@cd ../doc/ && $(MAKE) ps
 
 FRC:
 

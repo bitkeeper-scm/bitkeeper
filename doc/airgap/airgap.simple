@@ -70,7 +70,7 @@ outside repository.
 .NH 3
 Solution diagram
 .LP
-.imgc gifs/airgap.gif
+.imgc ${gifs}gifs/airgap.gif
 .LP
 A flow chart of the proposed solution is above.  The following sections
 provide more detailed information about how this would work.

@@ -3,6 +3,7 @@
 .bgcolor white
 ..
 .top_navbar
+.topbar black
 .bgcolor black
 .active yellow
 .unactive white
@@ -15,21 +16,21 @@
 .bgcolor #304080
 .active yellow
 .unactive white
-.between gifs/blk100x5.gif
-.image2 gifs/100x1.gif
+.between ${gifs}gifs/blk100x5.gif
+.image2 ${gifs}gifs/100x1.gif
 .navbar
 .backnext
 ..
 .PT align=center bgcolor=white
-<img src="gifs/BK2.gif">
+<img src="${gifs}gifs/BK2.gif">
 .sp
 ..
 .CB align=middle
-<img src=gifs/bkpowered.gif>
+<img src=${gifs}gifs/bkpowered.gif>
 <br>
 <font size=1 face="Verdana, Arial, Helvetica">
 <b>&copy; 2001, BitMover, Inc.</b></font>
 ..
 .PB
-<img src=gifs/webroff.gif>
+<img src=${gifs}gifs/webroff.gif>
 ..
