@@ -1116,7 +1116,7 @@ int	sccs_scompress(sccs *s);
 int	hasRootFile(char *gRoot, char *sRoot);
 int	mkBkRootIcon(char *path);
 int	unmkBkRootIcon(char *path);
-void	fast_getcwd(char *buf, int len);
+char	*fast_getcwd(char *buf, int len);
 void	sccs_tagcolor(sccs *s, delta *d);
 int	checkXflags(sccs *s, delta *d, int what);
 int	sccs_istagkey(char *key);
