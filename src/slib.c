@@ -2469,10 +2469,6 @@ void
 sccs_whynot(char *who, sccs *s)
 {
 	if (BEEN_WARNED(s)) return;
-	if (diskfull(s->sfile)) {
-		fprintf(stderr, "No disk space for %s\n", s->sfile);
-		return;
-	}
 	unless (HAS_SFILE(s)) {
 		fprintf(stderr, "%s: No such file: %s\n", who, s->sfile);
 		return;
@@ -2492,6 +2488,10 @@ sccs_whynot(char *who, sccs *s)
 	}
 	if (HAS_PFILE(s)) {
 		fprintf(stderr, "%s: %s is edited\n", who, s->gfile);
+		return;
+	}
+	if (errno == ENOSPC) {
+		fprintf(stderr, "No disk space for %s\n", s->sfile);
 		return;
 	}
 	fprintf(stderr, "%s: %s: unknown error.\n", who, s->sfile);
@@ -5428,10 +5428,6 @@ out:			if (slist) free(slist);
 	}
 
 	if (error) {
-		if (diskfull(s->gfile)) {
-			fprintf(stderr, "No disk space for %s\n", s->gfile);
-			s->state |= S_WARNED;
-		}
 		unless (flags & PRINT) unlink(s->gfile);
 		if (DB) mdbm_close(DB);
 		return (1);

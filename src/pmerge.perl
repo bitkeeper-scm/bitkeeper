@@ -1,4 +1,5 @@
-#! /usr/bin/perl -w
+eval 'exec perl -S $0 "$@"'
+        if 0;
 
 # @(#) %K%
 # Copyright (c) 1999 Andrew Chang

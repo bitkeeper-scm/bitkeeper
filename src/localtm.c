@@ -22,10 +22,10 @@ localtimez(time_t tt, struct tm *tmz)
 	 */
 	*tmz = *tm;
 
-#if defined HAVE_TM_GMTOFF
+#if	defined(__linux__) || defined(__FreeBSD__)
 	offset	= tm->tm_gmtoff;
 
-#elif defined HAVE_EXTERN_TIMEZONE
+#elif defined(__sgi__) || defined(__sun__)
 	/* Note that configure will not define HAVE_EXTERN_TIMEZONE unless
 	 * both timezone and altzone exist.  This is because we will
 	 * get the offset wrong everywhere but in the USA if we try
