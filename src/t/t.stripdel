@@ -122,6 +122,7 @@ bk admin $Q -Sleft ChangeSet
 bk pull -t $Q $HERE/copy1 || exit 1
 if [ $? -ne 0 ]; then echo failed pull; exit 1; fi
 echo OK
+
 echo $N Check stripdel managing tree with twice merged cset -1- .....$NL
 cd $HERE
 bk clone $Q -rright proj right
@@ -129,12 +130,13 @@ cd right
 bk get $Q foo bar
 echo right > X
 bk undos X > CMPBAR
-echon "" > CMPFOO
+touch CMPFOO
 cmp -s foo CMPFOO
 if [ $? -ne 0 ]; then echo failed foo diff; exit 1; fi
 cmp -s bar CMPBAR
 if [ $? -ne 0 ]; then echo failed bar diff; exit 1; fi
 echo OK
+
 echo $N Check stripdel managing tree with twice merged cset -2- .....$NL
 cd $HERE
 bk clone $Q -rleft proj left
@@ -142,9 +144,39 @@ cd left
 bk get $Q foo bar
 echo left > X
 bk undos X > CMPFOO
-echon '' >  CMPBAR
+touch CMPBAR
 cmp -s foo CMPFOO
 if [ $? -ne 0 ]; then echo failed foo diff; exit 1; fi
 cmp -s bar CMPBAR
 if [ $? -ne 0 ]; then echo failed bar diff; exit 1; fi
+echo OK
+
+echo $N Try stripdel of edited file .................................$NL
+bk edit $Q bar || exit 1
+echo junk >> bar
+bk ci -l -y"add junk" $Q bar || exit 1
+echo more junk >> bar
+bk stripdel $Q -r1.2 bar 2>ERR && {
+	echo stripdel should have failed
+	exit 1
+}
+grep -q "can't strip an edited file" ERR || {
+	echo wrong error message
+	exit 1
+}
+echo OK
+
+echo $N Try stripdel of edited file w/o gfile........................$NL
+echo junk >> bar
+bk ci -l -y"add junk" $Q bar || exit 1
+rm bar
+bk stripdel $Q -r1.2 bar 2>ERR && {
+	echo stripdel should have failed
+	exit 1
+}
+grep -q "can't strip an edited file" ERR || {
+	echo wrong error message
+	cat ERR
+	exit 1
+}
 echo OK

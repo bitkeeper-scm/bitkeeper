@@ -3,6 +3,7 @@
 #Set up environment for Microsoft VC++ compiler
 ms_env()
 {
+	PATH='/cygdrive/c/Program Files/BitKeeper':$PATH
 	SYS=win32
 	CC=cl
 	LD=link

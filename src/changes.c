@@ -72,6 +72,10 @@ changes_main(int ac, char **av)
 	opts.urls = opts.noempty = 1;
 	nav[nac++] = "bk";
 	nav[nac++] = "changes";
+	/*
+	 * XXX Warning: The 'changes' command can NOT use the -K
+	 * option.  that is used internally by the bkd command.
+	 */
 	while ((c = getopt(ac, av, "ac;Dd;efhkLmnqRr|tTu;U;v/;")) != -1) {
 		unless (c == 'L' || c == 'R') {
 			if (optarg) {
@@ -92,6 +96,7 @@ changes_main(int ac, char **av)
 		    case 'e': opts.noempty = !opts.noempty; break;
 		    case 'f': opts.forwards = 1; break;
 		    case 'h': opts.html = 1; break;
+		    /* case 'K': reserved */
 		    case 'k':
 			opts.keys = opts.all = 1;
 			opts.urls = opts.noempty = 0;

@@ -100,6 +100,10 @@ admin_main(int ac, char **av)
 			csetFile = optarg; newCset++; flags |= NEWCKSUM; break;
 		    case 'D':					/* doc 2.0 */
 			rmCsets = 1; flags |= NEWCKSUM; break;
+		    /*
+		     * XXX: no way to set ADMIN_TIME in the following code.
+		     * is it needed?
+		     */
 		    case 'h':	if (flags & ADMIN_FORMAT) {	/* doc 2.0 */
 		    			flags |= ADMIN_BK;
 				} else if (flags & ADMIN_BK) {
@@ -183,6 +187,8 @@ admin_main(int ac, char **av)
 	if (strieq("get", ckopts) || strieq("edit", ckopts)) {
 		init_flags |= INIT_FIXSTIME;
 	}
+
+	checkSingle();
 
 	while (name) {
 		if (flags & NEWFILE) {

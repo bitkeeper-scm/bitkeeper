@@ -96,7 +96,7 @@ push_main(int ac, char **av)
 	unless (licenseAccept(1)) {
 		fprintf(stderr, "push: failed to accept license, aborting.\n");
 		exit(1);
-	}                                                                       
+	}
 
 	unless (urls) {
 		urls = parent_pushp();

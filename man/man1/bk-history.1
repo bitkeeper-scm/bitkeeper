@@ -28,10 +28,10 @@ To see the most recent check\-in for every file in the current directory:
 .DS
 $ bk prs \-r+
 .DE
-To see all changes from Alpha to Beta, (assuming you tagged the files
+To see all changes from Alpha to Beta, (assuming you tagged the changesets
 with those tags) try:
 .DS
-$ bk prs \-cAlpha..Beta
+$ bk prs \-c@Alpha..@Beta
 .DE
 The 
 .B bk sccslog
@@ -41,18 +41,21 @@ The
 .B bk sccslog 
 command sorts all the changes based on date, so you see deltas 
 from different files in chronological order.  This process can take 
-substantial CPU and memory resources, but the following is a very useful 
-thing to see:
+substantial CPU and memory resources in large trees,
+but the following is a very useful thing to see:
 .DS
-$ bk sfiles | bk sccslog - | more
+$ bk -r sccslog 
 .DE
 .B bk sccslog 
 supports the same range notation as prs.
 .SH "SEE ALSO"
 .SA changes 1
+.SA grep 1
 .SA prs 1
 .SA range 1
+.SA revtool 1
 .SA sccslog 1
+.SA set 1
 .SH CATEGORY
 .B Overview
 .br
