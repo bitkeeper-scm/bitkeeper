@@ -32,6 +32,7 @@ WHATSTR("@(#)%K%");
  */
 #define	CLEAN_RESYNC	1	/* blow away the RESYNC dir */
 #define	CLEAN_PENDING	2	/* blow away the PENDING dir */
+#define	CLEAN_OK	4	/* but exit 0 anyway */
 #define	SHOUT() fputs("\n=================================== "\
 		    "ERROR ====================================\n", stderr);
 #define	SHOUT2() fputs("======================================="\
@@ -58,11 +59,12 @@ private	void	freePatchList(void);
 private	void	fileCopy2(char *from, char *to);
 private	void	badpath(sccs *s, delta *tot);
 private void	merge(char *gfile);
-private	sccs	*expand(sccs *s, project *proj);
-private	sccs	*unexpand(sccs *s);
 private	int	skipPatch(MMAP *p);
 private	void	getConfig(void);
-private	void	getGone(void);
+private	void	getGone(int isLogPatch);
+private void	metaUnion(void);
+private void	metaUnionFile(char *file, char *cmd);
+private void	metaUnionResyncFile(char *from, char *to);
 
 private	int	isLogPatch = 0;	/* is a logging patch */
 private	int	echo = 0;	/* verbose level, more means more diagnostics */
@@ -84,6 +86,17 @@ private	char	*input;		/* input file name,
 private	int	encoding;	/* encoding before we started */
 private	char	*spin = "|/-\\";
 private	int	compat;		/* we are eating a compat patch, fail on tags */
+
+/*
+ * Structure for keys we skip when incoming, used for old LOD keys that
+ * we do not want in the open logging tree.
+ */
+typedef	struct s {
+	char	*rkey;		/* file inode */
+	char	**dkeys;	/* lines array of delta keys */
+	struct	s *next;	/* next file */
+} skips;
+private	skips	*skiplist;
 
 int
 takepatch_main(int ac, char **av)
@@ -138,6 +151,27 @@ usage:		system("bk help -s takepatch");
 
 	p = init(input, flags, &proj);
 
+	if (streq(input, "-") && isLogPatch) {
+		if (newProject) {
+			/*
+			 * We will handle creating new logging repos
+			 * directly, so we won't be needing the .env
+			 * file.
+			 */
+			char	*env = aprintf("%s.env", pendingFile);
+			unlink(env);
+			free(env);
+		} else {
+			char	*applyall[] = {"bk", "_applyall", 0};
+
+			mclose(p);
+			mdbm_close(goneDB);
+			mdbm_close(idDB);
+
+			spawnvp_ex(_P_NOWAIT, "bk", applyall);
+			return(0);
+		}
+	}
 	/*
 	 * Find a file and go do it.
 	 */
@@ -192,7 +226,18 @@ usage:		system("bk help -s takepatch");
 		fclose(f);
 	}
 
-	unless (remote) cleanup(CLEAN_RESYNC | CLEAN_PENDING);
+	unless (remote) {
+		/*
+		 * The patch didn't contain any new csets and so we don't
+		 * need to run resolve.
+		 * We should still run the post resolve trigger.
+		 */
+		if (resolve) {
+			putenv("BK_STATUS=REDUNDANT");
+			trigger("resolve", "post");
+		}
+		cleanup(CLEAN_RESYNC | CLEAN_PENDING | CLEAN_OK);
+	}
 
 	getConfig();
 
@@ -214,6 +259,7 @@ usage:		system("bk help -s takepatch");
 			fnext(gfile, f);
 			unless (streq(q, "BitKeeper/etc/gone") ||
 				streq(q, "BitKeeper/etc/ignore") ||
+				streq(q, "BitKeeper/etc/skipkeys") ||
 				streq(q, "BitKeeper/etc/logging_ok")) {
 				continue;
 			}
@@ -225,7 +271,7 @@ usage:		system("bk help -s takepatch");
 		chdir(RESYNC2ROOT);
 	}
 
-	getGone(); /* 
+	getGone(isLogPatch); /* 
 		    * We need the Gone file even for no conflict case
 		    * Because user may have deleted the sfile in the
 		    * local tree,
@@ -268,9 +314,14 @@ getConfig(void)
 }
 
 private void
-getGone(void)
+getGone(int isLogPatch)
 {
-	
+	if (isLogPatch) {
+		chdir(ROOT2RESYNC);
+		metaUnionFile(GONE, "bk meta_union gone");
+		chdir(RESYNC2ROOT);
+		metaUnionResyncFile(GONE, "RESYNC/" GONE);
+	}
 	/* XXX - if this is edited, we don't get those changes */
 	if (exists("BitKeeper/etc/SCCS/s.gone")) {
 		unless (exists("RESYNC/BitKeeper/etc/SCCS/s.gone")) {
@@ -422,9 +473,8 @@ again:	s = sccs_keyinit(t, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB);
 	 */
 	unless (s || newProject || newFile) {
 		if (gone(t, goneDB)) {
-			if (getenv("BK_GONE_OK")) {
-				skipPatch(p);
-				return (0);
+			if (isLogPatch || getenv("BK_GONE_OK")) {
+				goto skip;
 			} else {
 				goneError(t);
 			}
@@ -442,7 +492,7 @@ again:	s = sccs_keyinit(t, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB);
 			goto again;
 		}
 		if (!newFile && isLogPatch) {
-			skipPatch(p);
+	skip:		skipPatch(p);
 			return (0);
 		}
 		unless (newFile) {
@@ -580,6 +630,189 @@ sccscopy(sccs *to, sccs *from)
 	}
 	return (0);
 }
+/*
+ * MetaUnion is a set of functions to aid the logging tree
+ * to have a useful gfile of 'gone' and 'skipkeys' available
+ * at the right time.  skipkeys is only used by takepatch,
+ * and so needs to be correct before takepatch starts.
+ * gone is used by checking and needs to be correct in
+ * both the takepatch and resolve side of things.
+ * there was already a function getGone() to do the setup
+ * of the gone file for resolve.
+ *
+ * In resolve, modifications where to the pass4_apply function
+ * to get a good copy of the files out of the resync directory
+ * but because of clean() being called a number of times on a
+ * file, it couldn't really be put into place.  At the end of
+ * pass4_apply(), a call is made into here (metaUnionResync2())
+ * to move the files into place.
+ *
+ * the whole code path, with skipkeys and all is a hack to help
+ * out in switching lod design and make the logging tree work better.
+ *
+ */
+#define METAUNIONHEAD  "# Automatically generated by BK.  Do not edit.\n"
+private void
+metaUnionFile(char *file, char *cmd)
+{
+	FILE	*f, *w;
+	char	buf[2 * MAXKEY];
+	int	ok;
+
+	ok = 0;
+	if (exists(file)) {
+		f = fopen(file, "rt");
+		assert(f);
+		if (fnext(buf, f)) {
+			if (buf[0] == '#') ok = 1;
+		}
+		fclose(f);
+	}
+	unless (ok) {
+		unlink(file);
+		w = fopen(file, "wb");
+		assert(w);
+		fputs(METAUNIONHEAD, w);
+		f = popen(cmd, "r");
+		while (fnext(buf, f)) {
+			if (buf[0] == '#') continue;
+			fputs(buf, w);
+		}
+		fclose(w);
+		fclose(f);
+		chmod(file, 0444);
+	}
+}
+
+#define SKIPKEYS	"BitKeeper/etc/skipkeys"
+
+private void
+metaUnion(void)
+{
+	metaUnionFile(GONE, "bk meta_union gone");
+	metaUnionFile(SKIPKEYS, "bk meta_union skipkeys");
+}
+
+private void
+metaUnionResyncFile(char *from, char *to)
+{
+	char	temp[MAXPATH];
+	char	buf[MAXLINE];
+	FILE	*f, *w;
+
+	unless (exists(from)) return;
+
+	unless (exists(to)) {
+		sprintf(buf, "cp %s %s", from, to);
+		system(buf);
+		chmod(to, 0444);
+		return;
+	}
+
+	sprintf(temp, "%s.cp", to);
+	unlink(temp);
+	sprintf(buf, "cat %s %s | bk sort -u", from, to);
+	w = fopen(temp, "wb");
+	f = popen(buf, "r");
+	fputs(METAUNIONHEAD, w);
+	while (fnext(buf, f)) {
+		if (buf[0] == '#') continue;
+		fputs(buf, w);
+	}
+	fclose(f);
+	fclose(w);
+	chmod(temp, 0444);
+	unlink(to);
+	sprintf(buf, "cp %s %s", temp, to);
+	system(buf);
+}
+
+private void
+metaUnionCopy(char *file)
+{
+	char	temp[MAXPATH];
+
+	sprintf(temp, "%s.cp", file);
+	unless (exists(temp)) return;
+	unlink(file);
+	rename(temp, file);
+}
+
+void
+metaUnionResync1(void)
+{
+	metaUnion();
+	chdir(RESYNC2ROOT);
+	metaUnionResyncFile("RESYNC/" GONE, GONE);
+	metaUnionResyncFile("RESYNC/" SKIPKEYS, SKIPKEYS);
+	chdir(ROOT2RESYNC);
+}
+
+void
+metaUnionResync2(void)
+{
+	metaUnionCopy(GONE);
+	metaUnionCopy(SKIPKEYS);
+}
+
+/*
+ * Read in the BitKeeper/etc/skipkeys file
+ * Format is alphabetized:
+ * rootkey1 deltakey1
+ * rootkey1 deltakey2
+ * rootkey2 deltakey1
+ * rootkey2 deltakey2
+ */
+private void
+loadskips(void)
+{
+	FILE	*f;
+	char	buf[2 * MAXKEY];
+	char	*dkey;
+	skips	*s = 0;
+
+	f = popen("bk cat " SKIPKEYS, "r");
+	while (fnext(buf, f)) {
+		chomp(buf);
+		if (buf[0] == '#') continue;
+		unless (dkey = separator(buf)) {
+			fprintf(stderr, "Garbage in skipfiles: %s\n", buf);
+			continue;
+		}
+		*dkey++ = '\0';
+		unless (s && streq(buf, s->rkey)) {
+			s = calloc(1, sizeof(*s));
+			assert(s);
+			s->next = skiplist;
+			skiplist = s;
+			s->rkey = strdup(buf);
+		}
+		assert(s);
+		s->dkeys = addLine(s->dkeys, strdup(dkey));
+	}
+	pclose(f);
+}
+
+private int
+skipkey(sccs *s, char *dkey)
+{
+	char	rkey[MAXKEY];
+	skips	*sk;
+	int	i;
+
+	unless (s && skiplist) return (0);
+	sccs_sdelta(s, sccs_ino(s), rkey);
+	for (sk = skiplist; sk; sk = sk->next) {
+		unless (streq(sk->rkey, rkey)) continue;
+		EACH(sk->dkeys) {
+			if (streq(sk->dkeys[i], dkey)) {
+				return (1);
+			}
+		}
+		return (0);
+	}
+	return (0);
+}
 
 /*
  * Extract one delta from the patch file.
@@ -618,6 +851,13 @@ delta1:	off = mtell(f);
 			fprintf(stderr,
 			    "takepatch: delta %s already in %s, skipping it.\n",
 			    tmp->rev, s->sfile);
+		}
+		skip++;
+	} else if (skipkey(s, buf)) {
+		if (echo>6) {
+			fprintf(stderr,
+			    "takepatch: skipping marked delta in %s\n",
+			    s->sfile);
 		}
 		skip++;
 	} else {
@@ -894,8 +1134,6 @@ chkEmpty(sccs *s, MMAP *dF)
  * So by building a table of blocks to weave, as well as a way to
  * know how to increment the serial number of existing blocks, it
  * is possible to only write the file once.
- *
- * What we do in this files: 
  */
 private	int
 applyCsetPatch(char *localPath,
@@ -964,7 +1202,7 @@ applyCsetPatch(char *localPath,
 	}
 apply:
 	p = patchList;
-	if (p && p->pid) cset_map(s, nfound);
+	if (p && p->pid) cweave_init(s, nfound);
 	while (p) {
 		if (echo == 3) fprintf(stderr, "%c\b", spin[n % 4]);
 		n++;
@@ -1028,7 +1266,7 @@ apply:
 				s->xflags |= X_LOGS_ONLY;
 				if (chkEmpty(s, dF)) return -1;
 			}
-			cset_map(s, nfound);
+			cweave_init(s, nfound);
 			cset_insert(s, iF, dF, p->pid);
 			s->bitkeeper = 1;
 		}
@@ -1157,7 +1395,7 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 		if (mkdirf(p->resyncFile) == -1) {
 			if (errno == EINVAL) {
 				getMsg(
-				    "reserved_name", p->resyncFile, 0, stderr);
+				    "reserved", p->resyncFile, 0, '=', stderr);
 				return (-1);
 			}
 		}
@@ -1199,7 +1437,7 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 		}
 	}
 	/* convert to uncompressed, it's faster, we saved the mode above */
-	if (s->encoding & E_GZIP) s = expand(s, proj);
+	if (s->encoding & E_GZIP) s = sccs_unzip(s);
 	unless (s) return (-1);
 	unless (tableGCA) goto apply;
 	/*
@@ -1395,7 +1633,7 @@ apply:
 	s->proj = 0; sccs_free(s);
 	s = sccs_init(patchList->resyncFile, SILENT, proj);
 	assert(s);
-	if (encoding & E_GZIP) s = unexpand(s);
+	if (encoding & E_GZIP) s = sccs_gzip(s);
 	for (d = 0, p = patchList; p; p = p->next) {
 		assert(p->me);
 		d = sccs_findKey(s, p->me);
@@ -1627,6 +1865,7 @@ resync_lock(void)
 		unless (errno == EEXIST) break;
 		if (slept > (20*60)) break;
 		sleep(s);
+		slept += s;
 		s += 15;
 		errno = 0;
 	}
@@ -1684,6 +1923,8 @@ init(char *inputFile, int flags, project **pp)
 		u32	diffsblank:1;	/* previous line was \n after diffs */
 	}	st;
 	int	line = 0, j = 0;
+	char	*note;
+	char	incoming[MAXPATH];
 
 	bzero(&st, sizeof(st));
 	st.preamble = 1;
@@ -1747,7 +1988,7 @@ init(char *inputFile, int flags, project **pp)
 		 * Save the patch in the pending dir
 		 * and record we're working on it.
 		 */
-		unless (savefile("PENDING", 0, pendingFile)) {
+		unless (savefile("PENDING", ".incoming", pendingFile)) {
 			SHOUT();
 			perror("PENDING");
 			cleanup(CLEAN_RESYNC);
@@ -1974,6 +2215,17 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			perror("fclose on patch");
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 		}
+		strcpy(incoming, pendingFile);
+		unless (savefile("PENDING", 0, pendingFile)) {
+			SHOUT();
+			perror("PENDING");
+			cleanup(CLEAN_RESYNC);
+		}
+		if (isLogPatch) saveEnviroment(pendingFile);
+		note = aprintf("psize=%u", size(incoming));
+		cmdlog_addnote(note);
+		free(note);
+		rename(incoming, pendingFile);
 		unless (flags & SILENT) {
 			NOTICE();
 			fprintf(stderr,
@@ -1985,7 +2237,7 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			perror(pendingFile);
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 		}
-		if (isLogPatch) {
+		if (isLogPatch && newProject) {
 			resync_lock();
 			assert(exists("BitKeeper/etc"));
 			close(creat(LOG_TREE, 0666));
@@ -1993,12 +2245,14 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			mkdirp(ROOT2RESYNC "/BitKeeper/etc");
 			close(creat(t, 0666));
 		}
-		unless (g = fopen("RESYNC/BitKeeper/tmp/patch", "wb")) {
-			perror("RESYNC/BitKeeper/tmp/patch");
-			exit(1);
+		unless (isLogPatch && !newProject) {
+			unless (g = fopen("RESYNC/BitKeeper/tmp/patch", "wb")) {
+				perror("RESYNC/BitKeeper/tmp/patch");
+				exit(1);
+			}
+			fprintf(g, "%s\n", pendingFile);
+			fclose(g);
 		}
-		fprintf(g, "%s\n", pendingFile);
-		fclose(g);
 	} else {
 		resync_lock();
 		unless (m = mopen(inputFile, "b")) {
@@ -2071,8 +2325,13 @@ missing:
 		return (m);
 	}
 
+	/* before loading up special dbs, update gfile is logging tree */
+	if (isLogPatch) metaUnion();
+
 	/* OK if this returns NULL */
 	goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
+
+	loadskips();
 
 	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
 		perror("SCCS/x.id_cache");
@@ -2087,11 +2346,12 @@ fileCopy2(char *from, char *to)
 	if (fileCopy(from, to)) cleanup(CLEAN_RESYNC);
 }
 
-private	sccs *
-expand(sccs *s, project *proj)
+sccs *
+sccs_unzip(sccs *s)
 {
 	s = sccs_restart(s);
-	if (sccs_admin(s, 0, NEWCKSUM, 0, "none", 0, 0, 0, 0, 0, 0)) {
+	if (sccs_admin(s,
+	    0, ADMIN_FORCE|NEWCKSUM, 0, "none", 0, 0, 0, 0, 0, 0)) {
 		sccs_free(s);
 		return (0);
 	}
@@ -2099,11 +2359,12 @@ expand(sccs *s, project *proj)
 	return (s);
 }
 
-private	sccs *
-unexpand(sccs *s)
+sccs *
+sccs_gzip(sccs *s)
 {
 	s = sccs_restart(s);
-	if (sccs_admin(s, 0, NEWCKSUM, 0, "gzip", 0, 0, 0, 0, 0, 0)) {
+	if (sccs_admin(s,
+	    0, ADMIN_FORCE|NEWCKSUM, 0, "gzip", 0, 0, 0, 0, 0, 0)) {
 		sccs_whynot("admin", s);
 	}
 	s = sccs_restart(s);
@@ -2144,13 +2405,14 @@ rebuild_id(char *id)
 private	void
 cleanup(int what)
 {
+	int	rc = 1;
+
 	if (patchList) freePatchList();
 	if (idDB) mdbm_close(idDB);
 	if (goneDB) mdbm_close(goneDB);
 	if (saveDirs) {
 		fprintf(stderr, "takepatch: neither directory removed.\n");
-		SHOUT2();
-		exit(1);
+		goto done;
 	}
 	if (what & CLEAN_RESYNC) {
 		char cmd[1024];
@@ -2160,10 +2422,7 @@ cleanup(int what)
 	} else {
 		fprintf(stderr, "takepatch: RESYNC directory left intact.\n");
 	}
-	unless (streq(input, "-")) {
-		SHOUT2();
-		exit(1);
-	}
+	unless (streq(input, "-")) goto done;
 	if (what & CLEAN_PENDING) {
 		assert(exists("PENDING"));
 		assert(pendingFile);
@@ -2178,6 +2437,8 @@ cleanup(int what)
 			    pendingFile);
 		}
 	}
+ done:
 	SHOUT2();
-	exit(1);
+	if (what & CLEAN_OK) rc = 0;
+	exit(rc);
 }

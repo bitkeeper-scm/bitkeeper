@@ -92,12 +92,12 @@ import() {
 		then	echo import: no include/excludes allowed with patch files
 			exit 1
 		fi
-		export BK_PATCH_IMPORT=YES
+		export BK_IMPORTER=`bk getuser -r`
 	else	if [ ! -d "$1" ]
 		then	echo import: "$1" is not a directory
 			exit 1
 		fi
-		unset BK_PATCH_IMPORT
+		unset BK_IMPORTER
 	fi
 	if [ ! -d "$2" ]
 	then	echo import: "$2" is not a directory, run setup first

@@ -114,21 +114,22 @@ sccs_d2tag(sccs *s, delta *d)
 	return (NULL); /* we should never get here */
 }
 
-private void
-addLogKey(delta *d)
-{
-	FILE	*f = fopen(LOG_KEYS, "a");
-
-	fprintf(f, "%s\n", d->rev);
-	fclose(f);
-}
-
+/*
+ * Called on the server side of a keysync operation.  It read the log2
+ * probe on stdin and returns the closest match and a list of other
+ * keys on stdout.
+ *
+ * When this is called on openlogging.org for part1 of the meta push
+ * operation, the repository will not be locked.  So this function
+ * needs to be safe in that case.  Only open ChangeSet once, don't
+ * read other files, etc...
+ */
 int
 listkey_main(int ac, char **av)
 {
 	sccs	*s;
 	delta	*d = 0;
-	int	i, c, debug = 0, quiet = 0, nomatch = 1, fastkey;
+	int	i, c, debug = 0, quiet = 0, nomatch = 1;
 	int	sndRev = 0;
 	int	metaOnly = 0;
 	int	matched_tot = 0;
@@ -137,6 +138,8 @@ listkey_main(int ac, char **av)
 	char	s_cset[] = CHANGESET;
 	char	**lines = 0;
 	char	*tag;
+	int	sum;
+	char	*note;
 
 #define OUT(s)  unless(ForceFullPatch) out(s)
 
@@ -156,11 +159,6 @@ listkey_main(int ac, char **av)
 		fprintf(stderr, "Can't init changeset\n");
 		return(3); /* cset error */
 	}
-
-	/*
-	 * Turn off fast key algorithm when in BK_BASIC mode
-	 */
-	fastkey = (bk_mode() == BK_BASIC) ? 0 : 1;
 	sccs_sdelta(s, sccs_ino(s), rootkey);
 
 	/*
@@ -181,20 +179,25 @@ listkey_main(int ac, char **av)
 	}
 
 	if (debug) fprintf(stderr, "listkey: looking for match key\n");
-	if (exists(LOG_TREE)) unlink(LOG_KEYS);
 
 	/*
 	 * Save the data in a lines list and then reprocess it.
 	 * We need two passes because we need to know if the root key
 	 * matched.
 	 */
+	sum = i = 0;
 	while (getline(0, key, sizeof(key)) > 0) {
 		lines = addLine(lines, strdup(key));
+		++i;
+		sum += strlen(key);
 		if (streq("@END PROBE@", key) || streq("@TAG PROBE@", key)) {
 			break;
 		}
 	}
 	unless (lines && lines[1]) goto mismatch;	/* sort of */
+	note = aprintf("keysin=%u(%u)", sum, i);
+	cmdlog_addnote(note);
+	free(note);
 
 	/*
 	 * Make sure that one of the keys match the root key and that the
@@ -226,9 +229,7 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 			d = 0;
 			continue;
 		}
-		if (!fastkey && !streq(lines[i], rootkey)) continue;
 		if (!d && (d = sccs_findKey(s, lines[i]))) {
-			if (exists(LOG_TREE)) addLogKey(d);
 			if (i == 1) matched_tot = 1;
 			sccs_color(s, d);
 			if (debug) {
@@ -274,6 +275,7 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 	/*
 	 * Phase 2, send the non marked keys.
 	 */
+	sum = i = 0;
 	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_RED) continue;
 		/*
@@ -300,9 +302,14 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 		sccs_sdelta(s, d, key);
 		OUT(key);
 		OUT("\n");
+		++i;
+		sum += strlen(key);
 	}
 	out("@END@\n");
 	sccs_free(s);
+	note = aprintf("keysout=%u(%u)", sum, i);
+	cmdlog_addnote(note);
+	free(note);
 	return (0);
 }
 

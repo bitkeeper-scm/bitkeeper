@@ -6,7 +6,6 @@
 
 WHATSTR("@(#)%K%");
 
-
 typedef	struct cset {
 	/* bits */
 	int	mixed;		/* if set, then both long and short keys */
@@ -48,6 +47,8 @@ private	void	cset_exit(int n);
 private	char	csetFile[] = CHANGESET; /* for win32, need writable buffer */
 private	cset_t	copts;
 private char	*spin = "|/-\\";
+int		cset_main(int ac, char **av);
+extern	int	sane_main(int ac, char **av);
 
 int
 makepatch_main(int ac, char **av)
@@ -473,7 +474,7 @@ sameFile(cset_t *cs, char *key1, char *key2)
 }
 
 private int
-doKey(cset_t *cs, char *key, char *val)
+doKey(cset_t *cs, char *key, char *val, MDBM *goneDB)
 {
 	static	MDBM *idDB;
 	static	int doneFullRebuild;
@@ -513,6 +514,7 @@ doKey(cset_t *cs, char *key, char *val)
 	 */
 	if (lastkey && sameFile(cs, lastkey, key)) {
 		unless (d = sccs_findKey(sc, val)) {
+			if (gone(val, goneDB)) return (0);
 			return (cs->force ? 0 : -1);
 		}
 		markThisCset(cs, sc, d);
@@ -539,6 +541,12 @@ doKey(cset_t *cs, char *key, char *val)
 	lastkey = strdup(key);
 retry:	sc = sccs_keyinit(lastkey, INIT_FIXSTIME, 0, idDB);
 	unless (sc) {
+		if (gone(lastkey, goneDB)) {
+			free(lastkey);
+			lastkey = 0;
+			return (0);
+		}
+
 		/* cache miss, rebuild cache */
 		unless (doneFullRebuild) {
 			mdbm_close(idDB);
@@ -560,6 +568,9 @@ retry:	sc = sccs_keyinit(lastkey, INIT_FIXSTIME, 0, idDB);
 	}
 
 	unless (d = sccs_findKey(sc, val)) {
+		/* OK to have missing keys if the gone file told us so */
+		if (gone(val, goneDB)) return (0);
+
 		fprintf(stderr,
 		    "cset: cannot find\n\t%s in\n\t%s\n", val, sc->sfile);
 		return (-1);
@@ -603,12 +614,12 @@ marklist(char *file)
 		t = separator(&buf[2]);
 		assert(t);
 		*t++ = 0;
-		if (doKey(&cs, &buf[2], t)) {
+		if (doKey(&cs, &buf[2], t, 0)) {
 			fclose(list);
 			return (-1);
 		}
 	}
-	doKey(&cs, 0, 0);
+	doKey(&cs, 0, 0, 0);
 	fclose(list);
 	return (0);
 }
@@ -724,7 +735,7 @@ again:	/* doDiffs can make it two pass */
 	for (d = cset->table; d; d = d->next) {
 		if (d->flags & D_SET) {
 			sccs_sdelta(cset, d, buf);
-			if (doKey(cs, csetid, buf)) goto fail;
+			if (doKey(cs, csetid, buf, goneDB)) goto fail;
 		}
 	}
 
@@ -735,7 +746,7 @@ again:	/* doDiffs can make it two pass */
 		chop(buf);
 		t = separator(buf); *t++ = 0;
 		if (sameFile(cs, csetid, buf)) continue;
-		if (doKey(cs, buf, t) && !gone(buf, goneDB)) {
+		if (doKey(cs, buf, t, goneDB)) {
 			fprintf(stderr,
 			    "File named by key\n\t%s\n\tis missing and key is "
 			    "not in a committed gone delta, aborting.\n", buf);
@@ -744,7 +755,7 @@ again:	/* doDiffs can make it two pass */
 		}
 	}
 	if (cs->doDiffs && cs->makepatch) {
-		doKey(cs, 0, 0);
+		doKey(cs, 0, 0, goneDB);
 		cs->doDiffs = 0;
 		fputs(PATCH_END, stdout);
 		rewind(list);
@@ -752,7 +763,7 @@ again:	/* doDiffs can make it two pass */
 	}
 	fclose(list);
 	list = 0;
-	doKey(cs, 0, 0);
+	doKey(cs, 0, 0, goneDB);
 	if (cs->verbose && cs->makepatch) {
 		fprintf(stderr,
 		    "makepatch: patch contains %d revisions from %d files\n",
@@ -1150,7 +1161,7 @@ sccs_patch(sccs *s, cset_t *cs)
 {
 	delta	*d;
 	int	deltas = 0, prs_flags = (PRS_PATCH|SILENT);
-	int	i, n, newfile, empty; 
+	int	i, n, newfile, empty, encoding = 0;
 	delta	**list;
 
         if (sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0, 0)) {
@@ -1158,6 +1169,10 @@ sccs_patch(sccs *s, cset_t *cs)
 		fprintf(stderr,
 		    "Run ``bk -r check -a'' for more information.\n");
 		cset_exit(1);
+	}
+	if (s->state & S_CSET) {
+		encoding = s->encoding;
+		if (encoding & E_GZIP) sccs_unzip(s);
 	}
 	if (cs->compat) prs_flags |= PRS_COMPAT;
 
@@ -1241,10 +1256,7 @@ sccs_patch(sccs *s, cset_t *cs)
 			int	rc = 0;
 
 			if (s->state & S_CSET) {
-				if (d->added) {
-					rc = sccs_getdiffs(s,
-					    d->rev, GET_HASHDIFFS, "-");
-				}
+				if (d->added) rc = cset_diffs(s, d->serial);
 			} else unless (empty) {
 				rc = sccs_getdiffs(s, d->rev, GET_BKDIFFS, "-");
 			}
@@ -1266,6 +1278,7 @@ sccs_patch(sccs *s, cset_t *cs)
 	}
 	cs->ndeltas += deltas;
 	if (list) free(list);
+	if ((s->state & S_CSET) && (encoding & E_GZIP)) sccs_gzip(s);
 }
 
 

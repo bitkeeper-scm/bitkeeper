@@ -57,9 +57,87 @@ bk pull -t $Q 2>MSGS || {
 	find . -type f -print
 	exit 1
 }
-grep -q 'It is marked as gone but exists in your repository, missing' MSGS || {
+grep -q 'Marked gone (chk1): foo.c' MSGS || {
 	echo Bad or no warning message from pull
 	cat MSGS
+	exit 1
+}
+echo OK
+
+echo $N Do the setup of a bunch of repos ............................$NL
+cd $HERE
+no_logging gonebase
+cd BitKeeper/etc
+bk edit $Q config
+if grep -q "^checkout" config; then
+	sed 's/^checkout.*/checkout: edit/' config
+else
+	echo 'checkout: edit/' >> config
+fi
+bk ci $Q -m'checkout: edit' config
+cd ../../
+touch A B C D
+bk new $Q A B C D
+bk commit $Q -y'setups'
+bk makepatch -e1.0.. > ../gone.e
+cd $HERE
+mkdir gonelog
+cd gonelog
+bk takepatch -ia -f ../gone.e
+cd $HERE
+bk clone -l $Q gonebase gone1
+bk clone -l $Q gonebase gone2
+echo OK
+
+echo $N propogate info about a gone file ............................$NL
+cd gone1
+rm -f A SCCS/*.A
+bk -r check -ag | bk gone $Q -
+bk commit $Q -y'gone'
+bk push $Q -e ../gonelog 1>OUT 2>ERR || {
+	echo Failed
+	echo STDOUT
+	cat OUT
+	echo STDERR
+	cat ERR
+	exit 1
+}
+cd ../gone2
+bk edit $Q A
+bk delta $Q -y'none' A
+bk commit $Q -y'none'
+# NOTE: this passes: pushing info to a gone file which exists is fine
+bk push $Q -e ../gonelog 1>OUT 2>ERR || {
+	echo Failed
+	echo STDOUT
+	cat OUT
+	echo STDERR
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N propogate info about truly gone file ........................$NL
+# logging file already has 'gone' file entry for A
+# now remove it from logging tree
+rm -f ../gonelog/SCCS/s.A
+bk edit $Q A
+bk delta $Q -y'none' A
+bk commit $Q -y'none'
+bk push -e ../gonelog 1>OUT 2>ERR || {
+	echo Failed
+	echo STDOUT
+	cat OUT
+	echo STDERR
+	cat ERR
+	exit 1
+}
+cd ../gonelog
+while [ -f PENDING/2*[0-9] -o -f PENDING/lock ]
+do	sleep 1
+done
+test -f PENDING/BAD.*.log && {
+	cat PENDING/BAD.*.log
 	exit 1
 }
 echo OK

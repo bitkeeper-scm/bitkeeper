@@ -99,7 +99,7 @@ commit_main(int ac, char **av)
 		    pendingFiles, 0, "bk", "sfind", "-s,,p", "-C", SYS)) {
 			unlink(pendingFiles);
 			unlink(commentFile);
-			getMsg("duplicate_IDs", 0, 0, stdout);
+			getMsg("duplicate_IDs", 0, 0, 0, stdout);
 			return (1);
 		}
 	}

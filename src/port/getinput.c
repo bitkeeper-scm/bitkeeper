@@ -109,7 +109,7 @@ getParkComment(int *err)
 {
         char    buf2[1024];
 	char	**comments = NULL;
-	handler old;
+	handler old = sig_catch((handler)abort_park);
 
         fprintf(stderr,
             "End comments with \".\" by itself, "
@@ -122,7 +122,6 @@ getParkComment(int *err)
 		*err = 1;
 		return (NULL);
         }
-        old = sig_catch((handler)abort_park);
         while (getline(0, buf2, sizeof(buf2)) > 0) {
                 if ((buf2[0] == 0) || streq(buf2, "."))
                         break;

@@ -1,0 +1,114 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+
+# Copyright (c) 2002 Rick Smith
+# %K%
+
+echo $N Create initial repository ...................................$NL
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo OK
+
+echo $N Create some data ............................................$NL
+for dir in d1 d2
+do	mkdir $dir
+	for file in a b
+	do	echo "I am $dir/$file" > $dir/$file
+	done
+done
+bk sfiles -x | bk ci $Q -i -
+if [ ! -f d2/SCCS/s.b ]; then echo failed to create files; exit 1; fi
+echo OK
+
+echo $N Commit the data .............................................$NL
+bk commit $S -a -yCset
+test `bk sfiles -C | wc -l` -eq 0 || {
+	echo failed to commit all files
+	exit 1
+}
+echo OK
+
+echo $N Make version 1 LOD structures ...............................$NL
+bk edit $Q d1/a || exit 1
+bk delta $Q -y'new lod' d1/a || exit 1
+bk commit $S -a -yCset || exit 1
+rev=`bk prs -r+ -hnd:I: ChangeSet`
+sed "s/ D $rev / D 2.1 /" SCCS/s.ChangeSet > tmp
+mv SCCS/s.ChangeSet old-s.ChangeSet
+chmod 444 tmp
+mv tmp SCCS/s.ChangeSet
+bk admin -z SCCS/s.ChangeSet
+rev=`bk prs -r+ -hnd:I: d1/a`
+sed "s/ D $rev / D 2.1 /" d1/SCCS/s.a > tmp
+mv d1/SCCS/s.a old-d1-s.a
+chmod 444 tmp
+mv tmp d1/SCCS/s.a
+bk admin -z d1/SCCS/s.a
+test `bk prs -r2 -hd:I: ChangeSet` = 2.1 || {
+	echo Failed: could not create fake lod
+	exit 1
+}
+echo OK
+
+# use cp because clone will not work since it has illegal structures
+cd $HERE
+cp -r project clone
+
+echo $N Fix version 1 LOD structures ................................$NL
+cd project
+bk _fix_lod1 > out1 2> err1 || {
+	echo Failed fix
+	echo STDOUT:
+	cat out1
+	echo
+	echo STDERR:
+	cat err1
+	exit 1
+}
+bk -r prs -hnd'$if(:R:!=1){:GFILE:|:I:}' > results
+test `wc -l < results` -eq 0 || {
+	echo Failed: could not erase fake lod
+	echo Non main LOD data
+	cat results
+	exit 1
+}
+echo OK
+
+echo $N Converge to repos which each fixed lod ......................$NL
+cd $HERE/clone
+bk _fix_lod1 > out1 2> err1 || {
+	echo Failed fix
+	exit 1
+}
+bk -r prs -hnd'$if(:R:!=1){:GFILE:|:I:}' > results
+test `wc -l < results` -eq 0 || {
+	echo Failed: could not erase fake lod
+	echo Non main LOD data
+	cat results
+	exit 1
+}
+bk pull $Q ../project > pull.out 2> pull.err || {
+	echo Pull failed.
+	echo STDOUT
+	cat pull.out
+	echo
+	echo STDERR
+	cat pull.err
+}
+ls BitKeeper/deleted/SCCS | grep -q skipkeys || {
+	echo Failed: no skipkeys in deleted
+	exit 1
+}
+echo OK

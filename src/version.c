@@ -13,9 +13,9 @@ version_main(int ac, char **av)
 	}
 
 	if (sccs_cd2root(0, 0) == -1) {
-		getMsg("version", " ", 0, stdout);
+		getMsg("version", " ", 0, 0, stdout);
 		return (0);
 	}
-	getMsg("version", bk_model(buf, sizeof(buf)), 0, stdout);
+	getMsg("version", bk_model(buf, sizeof(buf)), 0, 0, stdout);
 	return (0);
 }

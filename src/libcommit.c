@@ -78,7 +78,7 @@ remark(int quiet)
 	int i;
 
 	if (exists("BitKeeper/etc/SCCS/x.marked")) return;
-	unless (quiet) getMsg("consistency_check", 0, 0, stdout);
+	unless (quiet) getMsg("consistency_check", 0, 0, 0, stdout);
 	system("bk cset -M1.0..");
 	i = open("BitKeeper/etc/SCCS/x.marked", O_CREAT|O_TRUNC|O_WRONLY, 0664);
 	if (i < 0) {
@@ -100,7 +100,7 @@ status(int verbose, FILE *f)
 
 	fprintf(f, "Status for BitKeeper repository %s:%s\n",
 	    sccs_gethost(), fullname(".", 0));
-	getMsg("version", bk_model(buf, sizeof(buf)), 0, f);
+	getMsg("version", bk_model(buf, sizeof(buf)), 0, 0, f);
 	sprintf(parent_file, "%slog/parent", BitKeeper);
 	if (exists(parent_file)) {
 		fprintf(f, "Parent repository is ");
@@ -156,9 +156,17 @@ status(int verbose, FILE *f)
 	}
 }
 
+private void
+line(char b, FILE *f)
+{
+	int	i;
+
+	for (i = 0; i < 79; ++i) fputc(b, f);
+	fputc('\n', f);
+}
 
 int
-getMsg(char *msg_name, char *bkarg, char *prefix, FILE *outf)
+getMsg(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf)
 {
 	char	buf[MAXLINE], pattern[MAXLINE];
 	FILE	*f, *f1;
@@ -179,6 +187,7 @@ getMsg(char *msg_name, char *bkarg, char *prefix, FILE *outf)
 			break;
 		}
 	}
+	if (found && b) line(b, outf);
 	while (fgets(buf, sizeof(buf), f)) {
 		char	*p;
 
@@ -203,5 +212,6 @@ getMsg(char *msg_name, char *bkarg, char *prefix, FILE *outf)
 		}
 	}
 	fclose(f);
+	if (found && b) line(b, outf);
 	return (found);
 }

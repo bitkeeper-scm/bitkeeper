@@ -868,6 +868,17 @@ _repogca() {
 	rm -f /tmp/LOCAL.$$
 }
 
+# Union the contents of all meta files which match the base name.
+# Optimized to not look in any files which do not match the base name.
+_meta_union() {
+	__cd2root
+	for d in etc etc/union conflicts deleted
+	do	test -d BitKeeper/$d/SCCS || continue
+		ls -1 BitKeeper/$d/SCCS/s.${1}* 2>/dev/null
+	done | bk prs -hr1.0 -nd'$if(:DPN:=BitKeeper/etc/'$1'){:GFILE:}' - |
+		bk sccscat - | bk _sort -u
+}
+
 # Convert a changeset revision, tag, or key to the file rev 
 # for a given file
 # The inverse of r2c that people expect to find.

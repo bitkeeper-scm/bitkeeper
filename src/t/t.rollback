@@ -88,12 +88,11 @@ rm RESYNC/SCCS/s.LS
 bk resolve -t $Q 2>ERRORS
 if [ $? -eq 0 ]; then echo failed to exit with an error; exit 1; fi
 if [ ! -d RESYNC ]; then echo failed to leave RESYNC; exit 1; fi
-grep -q 'ERROR: missing or corrupted file' ERRORS
-if [ $? != 0 ]
-then	echo Bad error message
+grep -q 'Missing file (chk3) bk@free.bk' ERRORS || {
+	echo Bad error message
 	cat ERRORS
 	exit 1
-fi
+}
 echo OK
 
 echo $N Check for corrupted file in RESYNC dir ......................$NL

@@ -15,6 +15,8 @@ grep_main(int ac, char **av)
 	char	rev[200];
 	char	range[200];
 	pid_t	pid;
+	extern	int get_main(int ac, char **av);
+	extern	int sccscat_main(int ac, char **av);
 
 	if (ac == 2 && streq("--help", av[1])) {	
 usage:		system("bk help -s grep");

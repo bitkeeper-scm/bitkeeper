@@ -19,12 +19,38 @@ cmd_push_part1(int ac, char **av)
 			if (gzip < 0 || gzip > 9) gzip = 6;
 			break;
 		    case 'd': debug = 1; break;
-		    case 'e': metaOnly = 1; break;
+		    case 'e':
+			metaOnly = 1;
+			putenv("BK_TRIGGER_PATH=/etc");
+			break;
 		    case 'n': putenv("BK_STATUS=DRYRUN"); break;
 		    default: break;
 		}
 	}
 
+	if (metaOnly) {
+		struct	stat	statbuf;
+		char	lockf[MAXPATH];
+
+		unless (getcwd(lockf, sizeof(lockf))) {
+	lock:		out(LOCK_RD_BUSY "\n");
+			drain();
+			return (1);
+		}
+		strcat(lockf, ".lock");
+		if (exists(CHANGESET)) {
+			unlink(lockf);
+		} else if (!stat(lockf, &statbuf) &&
+		    time(0) - statbuf.st_ctime < 60*60) {
+			/*
+			 * When the project doesn't exist yet, only accept a
+			 * new client to create the project once an hour.
+			 */
+			goto lock;
+		} else {
+			touch(lockf, 0666);
+		}
+	}
 	if (debug) fprintf(stderr, "cmd_push_part1: sending server info\n");
 	setmode(0, _O_BINARY); /* needed for gzip mode */
 	sendServerInfoBlock(metaOnly);  /* tree might be missing */
@@ -74,7 +100,7 @@ cmd_push_part1(int ac, char **av)
 		return (1);
 	}
 		
-	if (!metaOnly && trigger(av[0], "pre")) {
+	if (trigger(av[0], "pre")) {
 		drain();
 		return (1);
 	}
@@ -137,7 +163,10 @@ cmd_push_part2(int ac, char **av)
 			if (gzip < 0 || gzip > 9) gzip = 6;
 			break;
 		    case 'd': debug = 1; break;
-		    case 'e': metaOnly = 1; break;
+		    case 'e':
+			metaOnly = 1;
+			putenv("BK_TRIGGER_PATH=/etc");
+			break;
 		    case 'G': takepatch[2] = "-vv"; break;
 		    case 'n': putenv("BK_STATUS=DRYRUN"); break;
 		    case 'q': quiet = 1; break;
@@ -193,16 +222,11 @@ cmd_push_part2(int ac, char **av)
 	unless (quiet) takepatch[i++] = "-vvv";
 	unless (metaOnly) takepatch[i++] = "-c"; /* normal patch no conflict */
 	/*
-	 * Allow conflicts in logging patch by stomping on "-c".
-	 * Tell takepatch it's logging so we drop the write lock while
-	 * getting the patch.  We don't bother getting the write lock
-	 * back because takepatch will have locked the tree with the
-	 * RESYNC directory, which is a long lived write lock.
+	 * Tell takepatch to recieve a logging patch.  It will just
+	 * save the patch and spawn inself in the background.  to
+	 * apply and resolve the changes.
 	 */
-	if (metaOnly) {
-		repository_wrunlock(0);
-		takepatch[i++] = "-L";
-	}
+	if (metaOnly) takepatch[i++] = "-aL";
 	takepatch[i] = 0;
 	pid = spawnvp_wPipe(takepatch, &pfd, BIG_PIPE);
 	dup2(fd2, 2); close(fd2);
@@ -221,6 +245,7 @@ cmd_push_part2(int ac, char **av)
 		fflush(stdout);
 	}
 	fputs("@END@\n", stdout);
+	fflush(stdout);
 	if (!WIFEXITED(status)) {
 		putenv("BK_STATUS=SIGNALED");
 		rc = 1;
@@ -231,14 +256,15 @@ cmd_push_part2(int ac, char **av)
 		rc = 1;
 		goto done;
 	}
-	unless (bk_proj) bk_proj = proj_init(0); /* for new logging tree */
+	if (metaOnly) goto done; /* no need for resolve */
+	unless (bk_proj) bk_proj = proj_init(0);
 
 	/*
 	 * Fire up the pre-trigger (for non-logging tree only)
 	 */
 	putenv("BK_CSETLIST=BitKeeper/etc/csets-in");
 	putenv("BK_REMOTE=YES");
-	if (!metaOnly && (c = trigger("remote resolve",  "pre"))) {
+	if (c = trigger("remote resolve",  "pre")) {
 		if (c == 2) {
 			system("bk abort -fp");
 		} else {
@@ -257,7 +283,6 @@ cmd_push_part2(int ac, char **av)
 	fflush(stdout);
 	/* Arrange to have stderr go to stdout */
 	fd2 = dup(2); dup2(1, 2);
-	if (metaOnly) resolve[3] = 0; /* allow conflict in logging patch */
 	putenv("FROM_PULLPUSH=YES");
 	pid = spawnvp_wPipe(resolve, &pfd, 0);
 	dup2(fd2, 2); close(fd2);
@@ -283,12 +308,9 @@ cmd_push_part2(int ac, char **av)
 	}
 
 done:	/*
-	 * Note: in the logging tree case, if there was an error, we do not
-	 * have a write lock on the repository unless the error path left the
-	 * RESYNC directory.
+	 * Fire up the post-trigger (for non-logging tree only)
 	 */
-	if (metaOnly) av[0] = "remote log push";
 	putenv("BK_RESYNC=FALSE");
-	trigger(av[0],  "post");
+	unless (metaOnly) trigger(av[0],  "post");
 	return (rc);
 }

@@ -861,31 +861,39 @@ char	*
 savefile(char *dir, char *prefix, char *pathname)
 {
 	int	i, fd;
+	struct	tm *tm;
+	time_t	now = time(0);
+	char	path[MAXPATH];
+	char	*p;
 
 	/*
 	 * Save the file in the passed in dir.
 	 */
 	if (!isdir(dir) && (mkdir(dir, 0777) == -1)) return (0);
-	
+
 	/* Force this group writable */
 	(void)chmod(dir, 0775);
 	if (access(dir, W_OK)) return (0);
 
-	for (i = 1; ; i++) {				/* CSTYLED */
-		struct	tm *tm;
-		time_t	now = time(0);
-		char	buf[MAXPATH];
-		char	path[MAXPATH];
+	p = path;
+	p += sprintf(p, "%s/", dir);
+	if (prefix) p += sprintf(p, "%s", prefix);
+	tm = localtimez(&now, 0);
+	p += strftime(p, 20, "%Y-%m-%d", tm);
 
-		tm = localtimez(&now, 0);
-		strftime(buf, sizeof(buf), "%Y-%m-%d", tm);
-		if (prefix) {
-			sprintf(path, "%s/%s%s.%02d", dir, prefix, buf, i);
-		} else {
-			sprintf(path, "%s/%s.%02d", dir, buf, i);
-		}
+	for (i = 1; i < 500000; i++) {
+		sprintf(p, ".%02d", i);
 		fd = open(path, O_CREAT|O_EXCL|O_WRONLY, 0666);
-		if ((fd == -1) || (close(fd) != 0)) continue;
+		if (fd == -1) {
+			if (errno == EEXIST) continue;	/* name taken */
+			if (errno == ENOENT &&
+			    ((mkdir)(dir, 0777) == 0)) {
+				/* dir missing, applyall race? */
+				continue;
+			}
+			return (0);
+		}
+		if (close(fd)) return (0);
 		if (pathname) {
 			strcpy(pathname, path);
 			return (pathname);
@@ -893,6 +901,7 @@ savefile(char *dir, char *prefix, char *pathname)
 			return (strdup(path));
 		}
 	}
+	assert(0);
 }
 
 void
