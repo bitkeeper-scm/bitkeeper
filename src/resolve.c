@@ -1842,6 +1842,16 @@ automerge(resolve *rs, names *n)
 	
 	if (rs->opts->debug) fprintf(stderr, "automerge %s\n", name);
 
+	if (rs->s->encoding & E_BINARY) {
+		unless (rs->opts->quiet) {
+			fprintf(stderr,
+			    "Not automerging binary '%s'\n", rs->s->gfile);
+		}
+		rs->opts->hadConflicts++;
+		unlink(rs->s->gfile);
+		return;
+	}
+
 	unless (n) {
 		sprintf(cmd, "BitKeeper/tmp/%s@%s", name, rs->revs->local);
 		tmp.local = strdup(cmd);

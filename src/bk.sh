@@ -61,6 +61,11 @@ _flags() {		# /* undoc? 2.0 */
 }
 
 # shorthand
+_encoding() {		# /* undoc? 2.0 */
+	bk prs -hr+ -nd':GFILE: :ENC:' "$@"
+}
+
+# shorthand
 _tags() {
 	bk changes -t
 }

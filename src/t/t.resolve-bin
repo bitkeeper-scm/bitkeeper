@@ -1,0 +1,68 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2002 Larry McVoy
+# %K%
+if [ X$PLATFORM = X"WIN32" ]
+then
+	binary_data="`bk bin`/bk.exe"
+	binary_data2="`bk bin`/diff.exe"
+else 
+	binary_data="/bin/ls"
+	binary_data2="/bin/rm"
+fi
+data="data"
+
+no_logging proj
+echo $N Trying to check in some binary data .........................$NL
+cp ${binary_data} ${data}
+chmod u+w ${data}
+# This makes sure we aren't expanding keywords.
+echo '@A@ @B@ @D@ @E@ @F@ @G@ @H@ @I@ @L@ @M@ @P@ @R@ @S@ @T@ @U@ @W@ @Y@ @Z@ @@@' | sed s/@/%/g >> $data
+cp $data saved_bin
+binary_data=saved_bin
+bk admin $Q -i${data} -Ebinary uuencode
+bk co $Q -l uuencode
+cmp -s ${binary_data} uuencode
+if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
+echo OK
+
+echo $N Trying to merge some binary data ............................$NL
+bk commit $Q -ywhatever
+cd $HERE
+bk clone $Q proj child
+cd $HERE/proj
+bk edit $Q uuencode
+cat $binary_data2 >> uuencode
+bk delta $Q -yappend uuencode
+bk commit $Q -yappend
+cd $HERE/child
+bk edit $Q uuencode
+cat $binary_data2 > uuencode
+bk delta $Q -yreplace uuencode
+bk commit $Q -yreplace
+bk pull $Q -R
+echo q | bk resolve -a -t > OUT 2>&1
+grep -q "Not automerging binary 'uuencode'" OUT || {
+	echo failed to fail the automerge
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure we get to the binary menu .........................$NL
+(echo ''; echo q) | bk resolve -t > OUT 2>&1
+grep -q "binary conflict" OUT || {
+	echo failed to get to binary menu
+	cat OUT
+	exit 1
+}
+echo OK
