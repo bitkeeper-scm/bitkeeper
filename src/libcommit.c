@@ -167,7 +167,7 @@ int
 getmsg(char *msg_name, char *bkarg, char *prefix, FILE *outf)
 {
 	char	buf[MAXLINE], pattern[MAXLINE];
-	FILE	*f;
+	FILE	*f, *f1;
 	int	found = 0;
 	int	first = 1;
 
@@ -192,12 +192,18 @@ getmsg(char *msg_name, char *bkarg, char *prefix, FILE *outf)
 		first = 0;
 		if (streq("$\n", buf)) break;
 		if (prefix) fputs(prefix, outf);
-		p = strstr(buf, "#BKARG#");
-		if (p) {
+		if (p = strstr(buf, "#BKARG#")) {
 			*p = 0;
 			fputs(buf, outf);
 			fputs(bkarg, outf);
 			fputs(&p[7], outf);
+		} else if (p = strstr(buf, "#BKEXEC#")) {
+			f1 = popen(&p[8], "r");
+			while (fgets(buf, sizeof (buf), f1)) {
+				fputs("\t", outf);
+				fputs(buf, outf);
+			}
+			*p = 0;
 		} else {
 			fputs(buf, outf);
 		}
