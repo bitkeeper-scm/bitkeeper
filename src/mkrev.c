@@ -118,7 +118,7 @@ process(char *root, char *start, char *end,
 		}
 		if (gone(root, *goneDB)) {
 			fprintf(stderr,
-				"Warning: \"%s\" is a gone key\n", root);
+				"Warning: \"%s\" is a gone key, ignored\n", root);
 			return;
 		}
 		fprintf(stderr, "Cannot keyinit %s\n", root);

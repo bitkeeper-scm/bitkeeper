@@ -53,6 +53,9 @@ process(char *sfile, char *path1, char *rev1,
 	s = sccs_init(sfile, SILENT|INIT_SAVEPROJ, proj);
 	assert(s);
 	unless (proj) proj = s->proj;
+	unless ((s->encoding == E_ASCII) || (s->encoding == E_GZIP)) {
+		fprintf(stderr, "Warning: %s is not a text file\n", s->sfile);
+	}
 	mkgfile(s, rev1, path1, tmpdir, "a", fix_mod_time, db);
 	mkgfile(s, rev2, path2, tmpdir, "b", fix_mod_time, db);
 	sccs_close(s);

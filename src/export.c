@@ -101,6 +101,14 @@ usage:			fprintf(stderr,
 		free(q);
 		d = findrev(s, p);
 		assert(d);
+		/*
+		 * Do not export file under the BitKeeper directory
+		 */
+		if ((strlen(d->pathname) >= 10) &&
+		    strneq("BitKeeper/", d->pathname, 10)) {
+			sccs_free(s);
+			continue;
+		}
 		sprintf(output, "%s/%s", dst_path, d->pathname);
 		unless (vflag) flags |= SILENT;
 		unless (kflag) flags |= GET_EXPAND;
