@@ -10,17 +10,19 @@ int
 lock_main(int ac, char **av)
 {
 	int	c;
-	int	what = 0;
+	int	what = 0, silent = 0;
 	pid_t	pid;
 	char	*thisHost;
 
 	if (ac > 1 && streq("--help", av[1])) {
 usage:		fprintf(stderr,
-		    "usage: %s -b|l|r|w [repository root]\n", av[0]);
+		    "usage: %s [-s] -b|l|r|w [repository root]\n", av[0]);
 		return (1);
 	}
-	while ((c = getopt(ac, av, "lrw")) != -1) {
+	while ((c = getopt(ac, av, "lqrsw")) != -1) {
 		switch (c) {
+		    case 'q': /* fall thru */
+		    case 's': silent = 1; break;
 		    case 'l':
 		    case 'r':
 		    case 'w':
@@ -32,6 +34,7 @@ usage:		fprintf(stderr,
 		    default: goto usage;
 		}
 	}
+	unless (what) what = 'l';
 	if (av[optind]) chdir(av[optind]);
 	sccs_cd2root(0, 0);
 	pid = getpid();
@@ -62,12 +65,15 @@ usage:		fprintf(stderr,
 		exit(0);
 
 	    case 'l':
-		repository_lockers(0);
-		/* fall through */
-	    
-	    default:
+		unless (silent) repository_lockers(0);
 		if (repository_locked(0)) exit(1);
+		unless (silent) {
+			fprintf(stderr, "No active lock in repository\n");
+		}
 		exit(0);
+
+	    default: /* we should never get here */
+		goto usage;
 	}
 }
 
