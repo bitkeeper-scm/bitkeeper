@@ -157,7 +157,7 @@ _mvdir() {
 	rmdir $2
 	mv $1 $2
 	cd $2
-	bk sfiles | bk edit -q -
+	bk sfiles -u | bk edit -q -
 	bk sfiles | bk delta -q -ymvdir -
 	# update id cache
 	bk sfiles -r

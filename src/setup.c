@@ -157,7 +157,7 @@ defaultIgnore()
 		return;
 	}
 	close(fd);
-	system("bk new -q BitKeeper/etc/ignore");
+	system("bk new -Pq BitKeeper/etc/ignore");
 }
 
 private void
