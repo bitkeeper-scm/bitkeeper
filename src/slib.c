@@ -7510,8 +7510,8 @@ checkin(sccs *s,
 			}
 		}
 	}
-	s->state |= S_SCCS;		/* default to SCCS keywords */
-	s->version = SCCS_VERSION;
+	unless (nodefault) s->state |= S_SCCS;	/* default to SCCS keywords */
+	s->version = SCCS_VERSION;		/* auto upgrades in patch */
 	n->serial = s->nextserial++;
 	s->table = n;
 	if (n->flags & D_BADFORM) {
