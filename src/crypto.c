@@ -332,13 +332,9 @@ check_licensesig(char *key, char *sign)
 	loadkey(pubkey, &rsakey);
 
 	outlen = sizeof(signbin);
-	if (base64_decode(sign, strlen(sign), signbin, &outlen)) {
- err:		fprintf(stderr, "licsign: %s\n", crypt_error);
-		return (-1);
-	}
-
-	if (rsa_verify(signbin, key, strlen(key), &stat, &rsakey)) goto err;
-	return (stat ? 0 : -1);
+	if (base64_decode(sign, strlen(sign), signbin, &outlen)) return (-1);
+	if (rsa_verify(signbin, key, strlen(key), &stat, &rsakey)) return (-1);
+	return (stat ? 0 : 1);
 }
 
 private	int

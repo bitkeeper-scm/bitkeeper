@@ -76,15 +76,19 @@ supported triggers are as follows:
 .EV pre-commit
 called before a changeset is committed.
 .LI
-non-zero exit status fails the commit.
+exit 0 allows the commit. 
 .LI
-typically used for integrity checks.
+exit 1 fails the commit. If the commit was initiated from citool, 
+citool will not exit. This allows the user to try the commit again. 
+See example below.
+.LI
+exit 2 Reserved for future use (see pre-delta) and should not be used.
 .EV post-commit
 called after a changeset is committed or attempted to be committed.
 .LI
 typically used for notification.
 .EV pre-delta
-called before a delta is created.
+called before a delta is created. Can be use for triggers that check code style
 .LI
 exit 0 allows the delta.
 .LI
@@ -201,6 +205,10 @@ pre-resolve, pre-apply, and post-incoming triggers.
 .ip BK_CSETS
 If set, contains the list of changesets being sent.
 Valid only in pre-outgoing and post-outgoing clone events.
+.ip BK_COMMENTFILE
+Location of the comment file for the changeset. Useful when writing
+triggers that need to parse the changeset comments. See example
+below.
 .ip BK_EVENT
 The event from the point of view of the trigger.  The full list of values
 for this variable is
@@ -293,10 +301,13 @@ When a post trigger is called, the repository is read locked.  A read
 lock will allow the trigger to do outgoing events, such as a push,
 but will prevent incoming events.  Pre-incoming and pre-commit triggers
 will be called with a write locked repository.
-.SH EXAMPLE
+.SH "EXAMPLE 1"
 .DS
 .ft CW
+.LP
 #!/bin/sh
+
+# Display info about incoming and outgoing csets.
 
 if [ X$BK_STATUS = XDRYRUN -o X$BK_STATUS = XNOTHING ]
 then	exit 0
@@ -357,10 +368,34 @@ fi
 ) | mail -s "$BK_EVENT in ${H}:${R}" notify@bitmover.com
 .ft
 .DE
+.SH "EXAMPLE 2"
+.DS
+.ft CW
+.LP
+#!/bin/sh
+#
+# Using pre-commit trigger to verify changeset comment
+# BitKeeper/trigger/pre-commit.cset_comments
+#
+
+grep -q 'BUGID:' $BK_COMMENTFILE && exit 0
+
+msg="A 'BUGID:' field is needed in the checkin comments"
+
+# Bring up an external program to browse bugs so that the
+# engineer can add a valid bugid to the changeset comments.
+
+#/opt/bugtrack/bin/bugviewer 'http://server.host.com/bugs?status=open' &
+
+# Ask user if he needs to enter a bugid.  returning a non-zero exit
+# code from the trigger will allow user to retry the commit from
+# within citool.
+bk prompt -y"Reenter bugid" -n"No bugid is required" "$msg" && exit 1
+
+exit 0
+.ft
+.DE
 .SH SEE ALSO
 .SA prompt 1
-.SH AVAILABILITY
-Pull, push, resolve, and apply triggers are available
-with \*(BK Professional only.
 .SH CATEGORY
 .B Repository
