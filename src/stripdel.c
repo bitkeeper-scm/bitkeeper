@@ -76,6 +76,7 @@ usage:		fprintf(stderr, stripdel_help);
 
 	unless (opts.stripBranches) RANGE("stripdel", s, 2, 1);
 	rc = doit(s, opts);
+	sccs_free(s);
 	sfileDone();
 	purify_list();
 	return (rc);
@@ -93,13 +94,11 @@ doit(sccs *s, s_opts opts)
 	if ((s->state & S_BITKEEPER) && opts.stripBranches) {
 		fprintf(stderr,
 		    "stripdel: can't strip branches from a BitKeeper file.\n");
-		sccs_free(s);
 		return (1);
 	}
 
 	if (HAS_PFILE(s)) {
 		fprintf(stderr, "stripdel: can't strip an edited file.\n");
-		sccs_free(s);
 		return (1);
 	}
 
@@ -107,7 +106,6 @@ doit(sccs *s, s_opts opts)
 		fprintf(stderr,
     			"stripdel: can't remove committed delta %s@%s\n",
 		    s->gfile, e->rev);
-		sccs_free(s);
 		return (1);
 	}
 
@@ -117,14 +115,12 @@ doit(sccs *s, s_opts opts)
 		if (sccs_clean(s, SILENT)) {
 			fprintf(stderr,
 			    "stripdel: can't remove edited %s\n", s->gfile);
-			sccs_free(s);
 			return (1);
 		}
 		/* see ya! */
 		verbose((stderr, "stripdel: remove file %s\n", s->sfile));
 		sccs_close(s); /* for win32 */
 		unlink(s->sfile);
-		sccs_free(s);
 		return (0);
 	}
 
@@ -133,11 +129,9 @@ doit(sccs *s, s_opts opts)
 			fprintf(stderr,
 		    "stripdel of %s failed.\n", s->sfile);
 		}
-		sccs_free(s);
 		return (1); /* failed */
 	}
 	verbose((stderr, "stripdel: removed %d deltas from %s\n", n, s->gfile));
-	sccs_free(s);
 	return 0;
 }
 
@@ -148,7 +142,6 @@ do_check(sccs *s, int flags)
 	int	error;
 
 	error = sccs_admin(s, 0, f, 0, 0, 0, 0, 0, 0, 0, 0);
-	sccs_free(s);
 	return(error? 1 : 0);
 }
 
@@ -198,6 +191,7 @@ strip_list(s_opts opts)
 							name = sfileNext()) {
 		if (!s || !streq(s->sfile, name)) {
 			if (s && doit(s, opts)) goto fail;
+			if (s) sccs_free(s);
 			s = sccs_init(name, SILENT|INIT_SAVEPROJ, proj);
 			assert(s);
 			unless(proj) proj = s->proj;
@@ -208,7 +202,8 @@ strip_list(s_opts opts)
 	}
 	if (s && doit(s, opts)) goto fail;
 	rc = 0;
-fail:	if (proj) proj_free(proj);
+fail:	if (s) sccs_free(s);
+	if (proj) proj_free(proj);
 	sfileDone();
 	return (rc);
 }
