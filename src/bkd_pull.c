@@ -331,15 +331,17 @@ cmd_pull_part1(int ac, char **av)
 int
 cmd_pull_part2(int ac, char **av)
 {
-	int	c, rc = 0, fd, local, rem, debug = 0;
+	int	c, n, rc = 0, fd, fd0, rfd, status, local, rem, debug = 0;
 	int	gzip = 0, metaOnly = 0, dont = 0, verbose = 1, list = 0;
 	char	buf[4096], s_cset[] = CHANGESET;
 	char	*revs = bktmpfile();
 	char	*serials = bktmpfile();
+	char	*makepatch[10] = { "bk", "makepatch", 0 };
 	sccs	*s;
 	delta	*d;
 	remote	r;
 	FILE	*f;
+	pid_t	pid;
 
 	while ((c = getopt(ac, av, "delnqz|")) != -1) {
 		switch (c) {
@@ -429,11 +431,31 @@ cmd_pull_part2(int ac, char **av)
 
 	fputs("@PATCH@\n", stdout);
 	fflush(stdout); 
-	sprintf(buf, "bk makepatch -s %s - < %s | bk _gzip -z%d",
-				metaOnly ? "-e" : "", serials, gzip);
-	if (system(buf)) {
-		fprintf(stderr, "cmd_pull_part2: makepatch failed\n");
+
+	n = 2;
+	if (metaOnly) makepatch[n++] = "-e";
+	makepatch[n++] = "-s";
+	makepatch[n++] = "-";
+	makepatch[n] = 0;
+	/*
+	 * What we want is: serails =>  bk makepatch => gzip => remote
+	 */
+	fd0 = dup(0); close(0);
+	fd = open(serials, O_RDONLY, 0);
+	if (fd < 0) perror(serials);
+	assert(fd == 0);
+	pid = spawnvp_rPipe(makepatch, &rfd, 0);
+	dup2(fd0, 0); close(fd0);
+	gzipAll2fd(rfd, 1, gzip, 0, 0, 1, 0);
+	close(rfd);
+	waitpid(pid, &status, 0);
+	if (!WIFEXITED(status)) {
+		fprintf(stderr, "cmd_pull_part2: makepatch interrupted\n");
+	} else if (n = WEXITSTATUS(status)) {
+		fprintf(stderr,
+			"cmd_pull_part2: makepatch failed; status = %d\n", n);
 	}
+
 	flushSocket(1); /* This has no effect for pipe, should be OK */
 
 done:	unlink(serials); free(serials);
