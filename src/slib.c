@@ -3218,6 +3218,8 @@ sccs_init(char *name, u32 flags, project *proj)
 		}
 	}
 
+	if (flags & INIT_SAVEPROJ) s->state |= S_SAVEPROJ;
+
 	if (s->mmap == (caddr_t)-1) {
 		if (errno == ENOENT) {
 			/* Not an error if the file doesn't exist yet.  */
@@ -3247,7 +3249,6 @@ sccs_init(char *name, u32 flags, project *proj)
 	debug((stderr, "mkgraph found %d deltas\n", s->numdeltas));
 	if (s->tree) {
 		if (misc(s)) {
-			if (flags & INIT_SAVEPROJ) s->proj = 0;
 			sccs_free(s);
 			return (0);
 		}
@@ -3383,7 +3384,7 @@ sccs_free(sccs *s)
 	freeLines(s->usersgroups);
 	freeLines(s->flags);
 	freeLines(s->text);
-	if (s->proj) sccs_freeProject(s->proj);
+	if (s->proj && !(s->state & S_SAVEPROJ)) sccs_freeProject(s->proj);
 	if (s->random) free(s->random);
 	if (s->symlink) free(s->symlink);
 	if (s->mdbm) mdbm_close(s->mdbm);
@@ -9827,19 +9828,15 @@ sccs_diffs(sccs *s, char *r1, char *r2,
 private void
 mkTag(char kind, char *label, char *rev, char *path, char tag[])
 {
-	if ((kind == DF_UNIFIED) || (kind == DF_CONTEXT)) {
-		sprintf(tag, "%s %s", path, rev);
-	} else  if (kind == DF_GNU_PATCH) {
-		/*
-		 * 1.0 => create (or reverse create in a reverse pacth )
-		 * DEV_NULL => delete (i.e. sccsrm)
-		 */
-		if (streq(rev, "1.0") || streq(path, NULL_FILE)) {
-			sprintf(tag, "%s", "/dev/null");
-		} else {
-			sprintf(tag, "%s/%s", label? label : rev, path);
-		}
-	} else tag[0]= 0;
+	/*
+	 * 1.0 => create (or reverse create in a reverse pacth )
+	 * DEV_NULL => delete (i.e. sccsrm)
+	 */
+	if (streq(rev, "1.0") || streq(path, NULL_FILE)) {
+		sprintf(tag, "%s", "/dev/null");
+	} else {
+		sprintf(tag, "%s/%s", label? label : rev, path);
+	}
 }
 
 
@@ -10109,12 +10106,8 @@ normal_diff(sccs *s, char *lrev, char *rrev, u32 flags, char kind,
 	if (mkDiffTarget(s, lrev, kind, flags, here, lfile, pf)) goto done;
 	if (mkDiffTarget(s, rrev, kind, flags, here, rfile, 0 )) goto done;
 
-	if (kind == DF_GNU_PATCH) {
-		lpath = getHistoricPath(s, lrev); assert(lpath);
-		rpath = getHistoricPath(s, rrev); assert(rpath);
-	} else {
-		lpath = rpath = s->gfile;
-	}
+	lpath = getHistoricPath(s, lrev); assert(lpath);
+	rpath = getHistoricPath(s, rrev); assert(rpath);
 
 	/*
 	 * make the tag string to label the diff output, e.g.
@@ -12428,7 +12421,6 @@ sccs_keyinit(char *key, u32 flags, project *proj, MDBM *idDB)
 	return (s);
 
 out:	if (s) {
-		if (flags & INIT_SAVEPROJ) s->proj = 0;
 		sccs_free(s);
 	}
 	if (localkey) free(localkey);

@@ -174,6 +174,44 @@ __track_update() {
 	if [ -n "$V" ]; then echo Merge complete.; fi
 }
 
+# Move all deleted files to the deleted directory.
+_fix_deletes() {
+	__cd2root
+	DIDONE=NO
+	${BIN}sfiles | grep 'SCCS/s\.\.del-' | grep -v BitKeeper/deleted/SCCS |
+	while read FILE
+	do	BASE=`basename $FILE`
+		SUFFIX=
+		N=0
+		while [ -f "BitKeeper/deleted/SCCS/$BASE$SUFFIX" ]
+		do	N=`expr $N + 1`
+			OLD="$SUFFIX"
+			SUFFIX="~$N"
+			echo "$BASE$OLD is taken, trying $BASE$SUFFIX"
+		done
+		echo "Moving $BASE to BitKeeper/deleted/SCCS/$BASE$SUFFIX"
+		bk mv $FILE "BitKeeper/deleted/SCCS/$BASE$SUFFIX"
+		if [ ! -f "BitKeeper/deleted/SCCS/$BASE$SUFFIX" ]
+		then	echo Move failed, abort.
+			exit 1
+		fi
+		DIDONE=YES
+	done
+	if [ $DIDONE=YES ]
+	then	echo Commiting the moves to a changeset.
+		echo Warning - this will pick up any other uncommitted deltas.
+		echo $N 'Do commit? '$NL
+		read x
+		case X$x in
+		    Xy*|XY*)
+			bk commit -F -y'Move deletes to BitKeeper/deleted'
+			;;
+		    *)	echo "OK, but do a commit before pull/resync"
+		    	;;
+		esac
+	fi
+}
+
 # This will go find the root if we aren't at the top
 _changes() {
 	__cd2root
@@ -560,7 +598,7 @@ _mv() {
 }
 
 _rm() {
-	${BIN}sccsrm "$@"
+	${BIN}sccsrm -d "$@"
 }
 
 _info() {
@@ -936,7 +974,6 @@ _export() {
 	K=
 	R=
 	T=
-	D=
 	WRITE=NO
 	INCLUDE=
 	EXCLUDE=
@@ -947,7 +984,6 @@ _export() {
 		v)	Q=;;
 		k)	K=-k;;
 		t)	T=-T;;
-		D)	D=-D;;
 		w)	WRITE=YES;;
 		r|d)	if [ x$R != x ]
 			then	echo "export: use only one -r or -d option"
@@ -988,9 +1024,9 @@ _export() {
 		exit 1
 	fi
 	
-	${BIN}cset $D -t`${BIN}prs $R -hd:I: ChangeSet` \
-	| eval egrep -v "'^(BitKeeper|ChangeSet)'" $INCLUDE $EXCLUDE \
-	| sed 's/[@:]/ /' | while read file rev
+	${BIN}cset -D -t`${BIN}prs $R -hd:I: ChangeSet` \
+	| eval egrep -v "'^ChangeSet'" $INCLUDE $EXCLUDE \
+	| sed 's/[@]/ /' | while read file rev
 	do
 		PN=`${BIN}prs -r$rev -hd:DPN: $SRC/$file`
 		if ${BIN}get $T $K $Q -r$rev -G$DST/$PN $SRC/$file
