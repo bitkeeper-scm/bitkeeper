@@ -1,14 +1,14 @@
 .so bk-macros
 .TH "bk mv" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME 
-bk mv \- move file[s]
+bk mv \- rename file[s]
 .SH SYNOPSIS
 .B bk mv
 .ARG "source file[s]"
 .ARG "destination file or directory"
 .SH DESCRIPTION
 .LP
-To move a file from
+To rename a file from
 .ARG A
 to
 .ARG B
@@ -19,8 +19,8 @@ $ bk mv A B
 .ft R
 The
 .B mv
-command will move the checked out file (if any) as well as the
-revision control file.  Edited files are also moved and then redited,
+command will rename the checked out file (if any) as well as the
+revision control file.  Edited files are also renamed and then redited,
 preserving any changes made but not yet checked in.
 The rename
 will appear as an additional change to the file when you commit the
@@ -28,12 +28,12 @@ next changeset.
 .LP
 Renames propogate just like content changes,
 i.e., they happen automatically when you pull changes into your 
-repository from another repository unless you have also moved the file.
+repository from another repository unless you have also renamed the file.
 In that case, the resolver will prompt you to choose a name.
 .SH NOTES
 .LP
 .B bk mv
-will not move directories, please use
+will not rename directories, please use
 .B bk mvdir
 for that. 
 .SH SEE ALSO

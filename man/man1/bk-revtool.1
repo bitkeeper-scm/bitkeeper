@@ -7,6 +7,12 @@
 bk revtool \- \*(BK graphical history browser
 .SH SYNOPSIS
 .Bc bk revtool [
+.OPTreq -G rev_gca
+\ 
+.OPTreq -l rev_local
+\ 
+.OPTreq -r rev_remote
+.B ] [
 .ARGc filename
 .B ]
 .SH DESCRIPTION
@@ -133,7 +139,10 @@ Scroll the graph up or down.
 Show the raw SCCS file.
 .TP
 .B c
-Show the sccscat output. Defaults to -aum style output
+Show an annotated listing of all versions of the file.
+The data shown is the union of all lines ever added to the file
+in any version, deletes are ignored.  Lines which were created at
+a particular spot in the file tend to be grouped together.
 .tp
 .B d
 Show the differences between the selected item and its parent. If
