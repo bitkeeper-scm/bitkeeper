@@ -137,7 +137,7 @@ EOF
 			exit 1
 		fi
 	done < /tmp/import$$
-	bk g2sccs < /tmp/import$$ > /tmp/sccs$$
+	g2sccs < /tmp/import$$ > /tmp/sccs$$
 	while read x
 	do	if [ -e $x ]
 		then	echo import: $x exists, entire import aborted
@@ -187,6 +187,26 @@ import_doimport_text () {
 
 import_doimport_RCS () {
 	cd $1
+	echo Relocating contents of Attic directories.
+	find . -name Attic | sed 's!^\./!!; s!/Attic$!!' |
+	while read dir
+	do (	echo $dir
+		cd $dir
+		for f in Attic/*,v Attic/.*,v
+		do	[ -e "$f" ] || continue
+			t=.del-${f#Attic/}
+			if [ ! -e $t ]
+			then	mv $f $t
+				echo $dir/$t >> /tmp/attic$$
+			else	echo WARNING: skipping $f
+			fi
+		done
+		rmdir Attic
+	)
+	done
+	grep -v Attic /tmp/import$$ >/tmp/notattic$$
+	sort /tmp/attic$$ /tmp/notattic$$ >/tmp/import$$
+	rm /tmp/attic$$ /tmp/notattic$$
 	echo Converting RCS files.
 	echo WARNING: Branches will be discarded.
 	echo Ignore errors relating to missing newlines at EOF.
@@ -220,7 +240,7 @@ import_finish () {
 	cd $1
 	echo ""
 	echo Validating all SCCS files
-	bk -r admin -qhh > /tmp/admin$$
+	sfiles | admin -qhh > /tmp/admin$$
 	if [ -s /tmp/admin$$ ]
 	then	echo Import failed because
 		cat /tmp/admin$$
@@ -229,7 +249,7 @@ import_finish () {
 	echo OK
 	
 	rm -f /tmp/import$$ /tmp/admin$$
-	bk sfiles -r
+	sfiles -r
 	echo "Creating initial changeset (should have $NFILES + 1 lines)"
 	bk commit -f -y'Import changeset'
 }
@@ -252,7 +272,7 @@ import_validate_SCCS () {
 		mv /tmp/sccs$$ /tmp/import$$
 		rm -f /tmp/notsccs$$
 	fi
-	bk sfiles -cg $FROM > /tmp/changed$$
+	sfiles -cg $FROM > /tmp/changed$$
 	if [ -s /tmp/changed$$ ]
 	then	echo The following files are locked and modified in $FROM
 		cat /tmp/changed$$
@@ -261,7 +281,7 @@ import_validate_SCCS () {
 		exit 1
 	fi
 	rm -f /tmp/changed$$
-	grep 'SCCS/s\.' /tmp/import$$ | bk prs -hr -d':PN: :TYPE:' - | grep ' BitKeeper' > /tmp/reparent$$
+	grep 'SCCS/s\.' /tmp/import$$ | prs -hr -d':PN: :TYPE:' - | grep ' BitKeeper' > /tmp/reparent$$
 	if [ -s /tmp/reparent$$ ]
 	then	cat <<EOF
 
