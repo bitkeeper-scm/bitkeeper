@@ -2697,7 +2697,8 @@ csets_in(opts *opts)
 			while (fnext(buf, in)) {
 				unless (streq(buf, "\n")) fputs(buf, out);
 			}
-			fprintf(out, "%s\n", d->rev);
+			sccs_sdelta(s, d, buf);
+			fprintf(out, "%s\n", buf);
 			fclose(out);
 		}
 		fclose(in);
