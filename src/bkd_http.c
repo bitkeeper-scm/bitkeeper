@@ -783,6 +783,9 @@ htmlify(char *str, int len)
 			buf[h++] = (*str == '<') ? 'l': 'g';
 			buf[h++] = 't';
 			buf[h++] = ';';
+		} else if (*str == '&') {
+			strcpy(&buf[h], "&amp;");
+			h += 5;
 		}
 		else
 			buf[h++] = *str;
