@@ -547,7 +547,7 @@ out1:		remote_free(r);
 
 	/* Make sure the rev exists before we get started */
 	if (opts.rev) {
-		if (s = sccs_csetInit(SILENT, 0)) {
+		if (s = sccs_csetInit(SILENT)) {
 			hasrev = (sccs_getrev(s, opts.rev, 0, 0) != 0);
 			sccs_free(s);
 			unless (hasrev) {
