@@ -1254,6 +1254,16 @@ sccs_mkroot(char *path)
 		perror(buf);
 		exit(1);
 	}
+	sprintf(buf, "%s/BitKeeper/deleted", path);
+	if ((mkdir(buf, 0775) == -1) && (errno != EEXIST)) {
+		perror(buf);
+		exit(1);
+	}
+	sprintf(buf, "%s/BitKeeper/deleted/SCCS", path);
+	if ((mkdir(buf, 0775) == -1) && (errno != EEXIST)) {
+		perror(buf);
+		exit(1);
+	}
 	sprintf(buf, "%s/BitKeeper/tmp", path);
 	if ((mkdir(buf, 0775) == -1) && (errno != EEXIST)) {
 		perror(buf);
