@@ -3124,7 +3124,7 @@ err:			free(s->gfile);
 /*
  * Parse a line from the config file
  * a) reject all line without a ':' character
- * b) remove all whitespaces
+ * b) remove all whitespace between ':' and first !whitespace
  * c) replace ':' with space as field seperator.
  * d) reject the "logging_ok" field; MDBM does not like dup keys.
  */
@@ -3135,20 +3135,13 @@ parseConfig(char *buf)
 	
 	p = strchr(buf, ':');
 	unless (p) return 0;
-	p = q =  buf;
-	while (*p) {
-		if (*p == ':') {
-			*q++ = ' ';
-			p++;
-		} else if ((*p == ' ') || (*p == '\t')) {
-			p++;
-		} else {
-			*q++ = *p++;
-		}
-	}
-	*q = 0;
+	*p++ = ' ';
 	if (strneq(buf, "logging_ok ", 11)) return 0;
-	return 1;
+	unless (isspace(*p)) return (1);	/* we're done */
+	for (q = p; *q && isspace(*q); q++);
+	unless (*q) return (0);			/* garbage */
+	while (*p++ = *q++);			/* leftshift over the spc */
+	return (1);
 }
 
 
