@@ -48,12 +48,6 @@ cmd_httpget(int ac, char **av)
 			state = 0;
 	    	}
 	}
-	unless (bk_options()&BKOPT_WEB) {
-		sprintf(buf, "ERROR-bkWeb option is disabled: %s", upgrade_msg);
-		out(buf);
-		exit(1);
-	}
-
 	unless (*name) name = "index.html";
 	if ((strlen(name) + sizeof("BitKeeper/html") + 2) >= MAXPATH) exit(1);
 
@@ -76,6 +70,12 @@ cmd_httpget(int ac, char **av)
 			sprintf(url, "http://%s", sccs_gethost());
 		}
 		root = url;
+	}
+
+	unless (bk_options()&BKOPT_WEB) {
+		sprintf(buf, "ERROR-bkWeb option is disabled: %s", upgrade_msg);
+		out(buf);
+		exit(1);
 	}
 
 	unless (av[1]) {
