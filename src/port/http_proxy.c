@@ -210,10 +210,11 @@ _get_socks_proxy(char **proxies)
 		proxies = addLine(proxies, strdup(buf));
 	}
 
-	p = getenv("SOCKS_SERVER");
-	q = NULL;
-	if (p && *p) {
-		sprintf(buf, "SOCKS %s:%s", p, q ? q : "1080");
+	p = getenv("SOCKS_SERVER"); /* <host>:<port> */
+	if (p && *p && (q = strchr(p, ':'))) {
+		*q++ = 0;
+		sprintf(buf, "SOCKS %s:%s", p, q);
+		q[-1] = ':';
 		proxies = addLine(proxies, strdup(buf));
 	}
 	return (proxies);
