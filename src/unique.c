@@ -17,6 +17,11 @@
  * values in the last TIMEWINDOW seconds.  We'll start out with a TIMEWINDOW
  * of 4 hours and see if we need to shrink it.
  * 
+ * W A R N I N G
+ * -------------
+ *	This code must never core dump or have any fatal error.  This code is
+ *	called after we have started writing the s.file.  poor design.
+ *
  * LOCKING
  * -------
  * 
@@ -26,7 +31,7 @@
  *     2) the lock file contains the pid (in ascii) of the locking process
  *     3) if the pid is gone, the lock is broken
  *
- * Copyright (c) 1999 Larry McVoy
+ * Copyright (c) 1999-2000 Larry McVoy
  */
 #include "system.h"
 #include "sccs.h"
@@ -54,10 +59,6 @@ uniq_lock()
 	int	retry = 0;
 #endif
 
-	if (db) {
-		fprintf(stderr, "keys: db already locked\n");
-		return (-1);
-	}
 	unless (tmp = findTmp()) {
 		fprintf(stderr, "Can not find BitKeeper tmp directory\n");
 		return (-1);
@@ -195,6 +196,34 @@ uniq_drift()
 	return (t);
 }
 
+private	int
+uniq_regen()
+{
+	char	cmd[MAXPATH+100];
+	char	*tmp = findTmp();
+
+	/*
+	 * Only called with a locked cache, so we can overwrite it.
+	 */
+	unless (tmp) {
+		fprintf(stderr, "Can not find tmp dir for keys\n");
+		return (-1);
+	}
+	sprintf(cmd, "bk -R sfiles -k > %s/keys", tmp);
+	system(cmd);
+	uniq_unlock();
+	return (uniq_open());
+}
+
+private	u32
+u32sum(u8 *buf)
+{
+	u32	sum = 0;
+
+	while (*buf) sum += *buf++;
+	return (sum);
+}
+
 int
 uniq_open()
 {
@@ -202,6 +231,7 @@ uniq_open()
 	FILE	*f;
 	time_t	t, cutoff = time(0) - uniq_drift();
 	datum	k, v;
+	u32	sum = 0;
 	char	path[MAXPATH*2];
 
 	unless (uniq_lock() == 0) return (-1);
@@ -213,15 +243,24 @@ uniq_open()
 	db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	unless (f = fopen(path, "r")) return (0);
 	while (fnext(path, f)) {
-		s = strchr(path, ' ');
-		if ((chop(path) != '\n') || !s) {
-			fprintf(stderr,
-			    "bad data: <%s> in %stmp/keys\n", path, tmp);
+		if (strneq(path, "u32checksum=", 12)) {
+			u32	filesum = 0;
+
+			sscanf(path, "u32checksum=%u\n", &filesum);
+			if ((sum == filesum) && !fnext(path, f)) {
+				fclose(f);
+				return (0);
+			}
+bad:			fprintf(stderr, "%s/keys is corrupted, fixing.\n", tmp);
 			mdbm_close(db);
-			return (-1);
+			fclose(f);
+			return (uniq_regen());
 		}
+		sum += u32sum(path);
+		s = strchr(path, ' ');
+		if ((chop(path) != '\n') || !s) goto bad;
 		*s++ = 0;
-		t = atoi(s);
+		t = (time_t)strtoul(s, 0, 0);
 
 		/*
 		 * This will prune the old keys.
@@ -251,8 +290,13 @@ uniq_open()
 			if (t > t2) mdbm_store(db, k, v, MDBM_REPLACE);
 		}
 	}
+	
+	/*
+	 * Whoops, hit a DB without a checksum.
+	 */
+	mdbm_close(db);
 	fclose(f);
-	return (0);
+	return (uniq_regen());
 }
 
 /*
@@ -287,6 +331,17 @@ uniq_update(char *key, time_t t)
 	return (0);
 }
 
+private	inline u32
+fputsum(FILE *f, u8 *buf)
+{
+	u8	*p;
+	u32	sum;
+
+	for (p = buf, sum = 0; *p; sum += *p++);
+	fputs(buf, f);
+	return (sum);
+}
+
 /*
  * Rewrite the file.  The database is locked.
  */
@@ -296,8 +351,9 @@ uniq_close()
 	FILE	*f;
 	kvpair	kv;
 	time_t	t;
+	u32	sum = 0;
 	char	*tmp;
-	char	path[MAXPATH];
+	u8	path[MAXKEY];
 
 	unless (dirty) goto close;
 	unless (tmp = findTmp()) {
@@ -313,12 +369,14 @@ uniq_close()
 	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
 		assert(sizeof(time_t) == kv.val.dsize);
 		memcpy(&t, kv.val.dptr, sizeof(time_t));
-		fprintf(f, "%s %lu\n", kv.key.dptr, t);
+		sprintf(path, "%s %lu\n", kv.key.dptr, t);
+		sum += fputsum(f, path);
 	}
+	fprintf(f, "u32checksum=%u\n", sum);
 	fclose(f);
-close:  uniq_unlock();  //XXX should'nt we close before we unlock ?
-	mdbm_close(db);
+close:  mdbm_close(db);
 	db = 0;
 	dirty = 0;
+	uniq_unlock();
 	return (0);
 }

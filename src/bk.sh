@@ -123,11 +123,6 @@ _tag() {
 	bk admin -S${1}$REV ChangeSet
 }
 
-_keys() {
-	__cd2root
-	bk sfiles -k
-}
-
 # usage: gone key [key ...]
 _gone() {
 	__cd2root
