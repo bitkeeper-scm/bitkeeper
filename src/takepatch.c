@@ -27,7 +27,7 @@ char *takepatch_help = "usage: takepatch [-v] [-i]\n";
 #define	CLEAN_PENDING	2
 
 delta	*getRecord(FILE *f);
-int	extractPatch(FILE *p, int flags);
+int	extractPatch(FILE *p, int flags, int compat);
 int	extractDelta(char *name, sccs *s, int newFile, FILE *f, int flags);
 int	applyPatch(int flags);
 int	getLocals(sccs *s, delta *d, char *name);
@@ -55,10 +55,12 @@ main(int ac, char **av)
 	FILE	*p;
 	int	c;
 	int	flags = SILENT;
+	int	compat = 0;
 
 	debug_main(av);
-	while ((c = getopt(ac, av, "iv")) != -1) {
+	while ((c = getopt(ac, av, "civ")) != -1) {
 		switch (c) {
+		    case 'c': compat++; break;
 		    case 'i': newProject++; break;
 		    case 'v': echo++; flags &= ~SILENT; break;
 		    default: goto usage;
@@ -81,14 +83,17 @@ usage:		fprintf(stderr, takepatch_help);
 			fprintf(stderr, "skipping: %s", buf);
 			continue;
 		}
-		extractPatch(p, flags);
+		extractPatch(p, flags, compat);
 	}
 	fclose(p);
 	purify_list();
 	if (echo) {
 		fprintf(stderr,
 		    "takepatch: %d new revision%s, %d conflicts in %d files\n",
-		    remote, remote > 1 ? "s" : "", conflicts, files);
+		    remote, remote == 1 ? "" : "s", conflicts, files);
+	}
+	unless (remote) {
+		cleanup(CLEAN_RESYNC | CLEAN_PENDING);
 	}
 	exit(0);
 }
@@ -114,7 +119,7 @@ getRecord(FILE *f)
  * Extract a contiguous set of deltas for a single file from the patch file.
  */
 int
-extractPatch(FILE *p, int flags)
+extractPatch(FILE *p, int flags, int compat)
 {
 	delta	*tmp;
 	sccs	*s = 0;
@@ -135,31 +140,47 @@ extractPatch(FILE *p, int flags)
 	 * Patch format for new file:
 	 * == filename == 
 	 * New file: filename as of creation time
+	 * lm||19970518232929
 	 * D 1.1 99/02/23 00:29:01-08:00 lm@lm.bitmover.com +128 -0
 	 * etc.
 	 */
 	files++;
 	fnext(buf, p); chop(buf);
 	line++;
+	if (strneq("New file: ", buf, 10)) {
+		newFile = 1;
+		name = name2sccs(&buf[10]);
+		unless (compat) {
+			fnext(buf, p);
+			chop(buf);
+			line++;
+		}
+	}
 	if (echo>3) fprintf(stderr, "%s\n", buf);
-	if (strneq("New file: ", buf, 10)) newFile = 1;
 	k.dptr = buf;
 	k.dsize = strlen(buf) + 1;
 	v = mdbm_fetch(idDB, k);
-	unless (v.dptr) {
-		unless (newFile) {
-			fprintf(stderr,
-			    "takepatch: can't find key '%s' in id cache\n",
-			    buf);
-			exit(1);
-		}
+	unless (v.dptr || newFile) {
+		fprintf(stderr,
+		    "takepatch: can't find key '%s' in id cache\n", buf);
+		cleanup(CLEAN_RESYNC);
 	}
-	unless (newFile) {
+
+	/*
+	 * They may have sent us a patch from 1.1, so the patch looks like a
+	 * new file.  But if we have a match, we want to use it.
+	 * This only works if we are not in compat mode.
+	 */
+	if (v.dptr) {
 		name = name2sccs(v.dptr);
 		unless ((s = sccs_init(name, flags)) && HAS_SFILE(s)) {
 			fprintf(stderr,
 			    "takepatch: can't find file '%s'\n", name);
 			exit(1);
+		}
+		if (newFile && (echo > 3)) {
+			fprintf(stderr,
+			    "takepatch: new file %s already exists.\n", name);
 		}
 		if (IS_EDITED(s)) {
 			fprintf(stderr,
@@ -183,10 +204,13 @@ extractPatch(FILE *p, int flags)
 			exit(1);
 		}
 	} else {	/* create a new file */
-		name = name2sccs(&buf[10]);
 		s = sccs_init(name, NEWFILE);
 		unless (s) perror(name);
 		assert(s);
+		if (echo > 2) {
+			fprintf(stderr,
+			    "takepatch: new file %s\n", name);
+		}
 	}
 	gca = 0;
 	nfound = 0;
@@ -198,7 +222,7 @@ extractPatch(FILE *p, int flags)
 	if (echo>1) {
 		fprintf(stderr,
 		    "takepatch: %d new revision%s in %s ",
-		    nfound, nfound > 1 ? "s" : "", gfile);
+		    nfound, nfound == 1 ? "" : "s", gfile);
 		if (echo != 2) fprintf(stderr, "\n");
 	}
 	if (patchList && gca) getLocals(s, gca, name);
@@ -253,9 +277,11 @@ delta:	off = ftell(f);
 	d = getRecord(f);
 	sccs_sdelta(buf, d);
 	if (tmp = sccs_findKey(s, buf)) {
-		fprintf(stderr,
-		    "takepatch: delta %s already in %s, skipping it.\n",
-		    tmp->rev, s->sfile);
+		if (echo > 2) {
+			fprintf(stderr,
+			    "takepatch: delta %s already in %s, skipping it.\n",
+			    tmp->rev, s->sfile);
+		}
 		skip++;
 	} else {
 		no++;
@@ -738,14 +764,14 @@ tree:
 		tm = localtime(&now);
 		strftime(buf, sizeof(buf), "%Y-%m-%d", tm);
 		sprintf(pendingFile, "PENDING/%s.%02d", buf, i);
+		if (exists(pendingFile)) continue;
 		if (f = fopen(pendingFile, "w+")) {
 			break;
 		}
-		if (i > 10) {
-			fprintf(stderr, "Unknown error, can't save patch.\n");
+		if (i > 100) {
+			fprintf(stderr, "takepatch: too many patches.\n");
 			exit(1);
 		}
-		sleep(1);
 	}
 	unless (g = fopen("RESYNC/BitKeeper/tmp/patch", "w")) {
 		perror("RESYNC/BitKeeper/tmp/patch");
@@ -828,7 +854,11 @@ cleanup(int what)
 	}
 	if (what & CLEAN_PENDING) {
 		assert(exists("PENDING"));
-		system("/bin/rm -rf PENDING");
+		unlink(pendingFile);
+		if (rmdir("PENDING")) {
+			fprintf(stderr,
+			    "takepatch: other patches left in PENDING\n");
+		}
 	} else {
 		if (exists(pendingFile)) {
 			fprintf(stderr, "takepatch: patch left in %s\n",

@@ -743,10 +743,16 @@ function changes {
 }
 
 function send {
+	V=-v
+	case X$1 in
+	    X-v*)
+	    	V=$1; shift
+		;;
+	esac
 	case X$2 in
-	    X-)	${BIN}cset -l$1 | ${BIN}makepatch -v - 
+	    X-)	${BIN}cset -l$1 | ${BIN}makepatch $V - 
 	    	;;
-	    *)	${BIN}cset -l$1 | ${BIN}makepatch -v - | \
+	    *)	${BIN}cset -l$1 | ${BIN}makepatch $V - | \
 	    	mail -s "BitKeeper patch" $2
 	    	;;
 	esac
@@ -989,11 +995,7 @@ EOF
 }
 
 function gui {
-	if [ X"$DISPLAY" = X ]
-	then	echo Using localhost as your display
-	else	echo Using $DISPLAY as your display
-	fi
-	exec "$@"
+	exec "${BIN}$@"
 }
 
 function commandHelp {
@@ -1060,24 +1062,20 @@ if [ X"$1" = X ]
 then	usage
 fi
 case "$1" in
-    admin|ci|clean|co|delta|diffs|edit|get|makepatch|prs|\
-    renumber|rmdel|sccslog|sdiffs|sfiles|sids|sinfo|\
-    smark|smoosh|takepatch|unedit|what|import|cset|resolve|g2sccs)
-	cmd=$1
-	shift
-    	exec ${BIN}$cmd "$@"
-	;;
     regression)
 	PATH=${BIN}:$PATH regression
+	exit $?
 	;;
     citool|sccstool|vitool|fm|fm3)
     	gui "$@"
+	exit $?
 	;;
     setup|changes|pending|commit|commitmerge|sendbug|send|take|\
     sccsmv|mv|resync)
 	cmd=$1
     	shift
 	eval $cmd "$@"
+	exit $?
 	;;
     g|debug)
     	DBIN="${BIN}$1/"
@@ -1094,9 +1092,15 @@ case "$1" in
     -h*|help)
 	shift
     	commandHelp $*
-	;;
-    *)
-    	usage
+	exit $?
 	;;
 esac
-exit $?
+
+# Run our stuff first if we can find it, else
+# we don't know what it is, try running it and hope it is out there somewhere.
+cmd=$1
+shift
+if [ -x ${BIN}$cmd ]
+then	exec ${BIN}$cmd "$@"
+else	exec $cmd "$@"
+fi
