@@ -12,7 +12,7 @@ private void	http_diffs(char *pathrev);
 private void	http_src(char *pathrev);
 private void	http_hist(char *pathrev);
 private void	http_patch(char *rev);
-private void	http_bkpowered();
+private void	http_gif(char *path);
 private void	title(char *title);
 private void	pwd_title(char *t);
 private void	learn();
@@ -26,6 +26,7 @@ cmd_httpget(int ac, char **av)
 	char	buf[MAXPATH];
 	char	*name = &av[1][1];
 	int	state = 0;
+	char	*s;
 
 	/*
 	 * Ignore the rest of the http header, we don't care.
@@ -59,8 +60,8 @@ cmd_httpget(int ac, char **av)
 		http_file(buf);
 	} else if (streq(name, "index.html")) {
 		http_index();
-	} else if (streq(name, "bkpowered.gif")) {
-		http_bkpowered();
+	} else if ((s = strrchr(name, '.')) && streq(s, ".gif")) {
+		http_gif(name);
 	} else if (strneq(name, "ChangeSet", 9)) {
 		http_changes(name[9] == '@' ? &name[10] : 0);
 	} else if (streq(name, "src")) {
@@ -339,6 +340,7 @@ http_src(char *path)
 	time_t	now;
 	char	*dspec =
 	    "<tr bgcolor=lightyellow>"
+	    "<td><img src=/file.gif></td>"
 	    "<td>"
 	      "$if(:GFILE:=ChangeSet){<a href=/ChangeSet@+>:G:</a>}"
 	      "$if(:GFILE:!=ChangeSet){<a href=/hist/:GFILE:>:G:</a>}"
@@ -374,7 +376,7 @@ http_src(char *path)
 	if (m) mdbm_close(m);
 	out("<table border=1 cellpadding=2 cellspacing=0 width=100% ");
 	out("bgcolor=white>\n");
-	out("<tr><th align=left>File&nbsp;name</th>");
+	out("<tr><th>&nbsp;</th><th align=left>File&nbsp;name</th>");
 	out("<th>Rev</th>");
 	out("<th>Age</th>");
 	out("<th>Author</th>");
@@ -406,7 +408,8 @@ http_src(char *path)
 		*t = 0;
 		if (S_ISDIR(sbuf.st_mode)) {
 			sprintf(html, "%s%s&nbsp;%s/%s%s%s\n",
-			  "<tr bgcolor=lightblue><td>",
+			  "<tr bgcolor=lightblue>"
+			  "<td><img src=/dir.gif></td><td>",
 			  buf,
 			  e->d_name,			/* file */
 			  "</td>"
@@ -572,13 +575,26 @@ http_patch(char *rev)
 }
 
 private void
-http_bkpowered()
+http_gif(char *name)
 {
 	extern	char bkpowered_gif[];
 	extern	int bkpowered_len;
+	extern	char file_gif[];
+	extern	int file_len;
+	extern	char dir_gif[];
+	extern	int dir_len;
 
-	httphdr("BK.gif");
-	writen(1, bkpowered_gif, bkpowered_len);
+	if (*name == '/')  name++;
+	if (streq(name, "bkpowered.gif") || streq(name, "logo.gif")) {
+		httphdr("BK.gif");
+		writen(1, bkpowered_gif, bkpowered_len);
+	} else if (streq(name, "file.gif")) {
+		httphdr("BK.gif");
+		writen(1, file_gif, file_len);
+	} else if (streq(name, "dir.gif")) {
+		httphdr("BK.gif");
+		writen(1, dir_gif, dir_len);
+	}
 }
 
 private void
