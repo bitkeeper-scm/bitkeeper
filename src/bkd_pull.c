@@ -374,6 +374,23 @@ cmd_pull_part1(int ac, char **av)
 	return (0);
 }
 
+/*
+ * Set up env variables for trigger
+ */
+private void
+triggerEnv(int dont, int local_count, char *rev_list, char *envbuf)
+{
+	if (dont) {
+		putenv("BK_OUTGOING=DRYRUN");
+	} else if (local_count == 0) {
+		putenv("BK_OUTGOING=NOTHING");
+	} else {
+		putenv("BK_OUTGOING=OK");
+	}
+	sprintf(envbuf, "BK_REVLISTFILE=%s", rev_list);
+	putenv(envbuf);
+}
+
 
 int
 cmd_pull_part2(int ac, char **av)
@@ -381,7 +398,7 @@ cmd_pull_part2(int ac, char **av)
 	int	c, rc = 0, fd, local_count, remote_count, debug = 0;
 	int	gzip = 0, metaOnly = 0, dont = 0, verbose = 1, list = 0;
 	char	buf[4096], rev_list[MAXPATH], s_cset[] = CHANGESET;
-	char	gzip_str[30] = "";
+	char	envbuf[MAXPATH], gzip_str[30] = "";
 	FILE 	*f;
 	sccs	*s;
 	remote	r;
@@ -443,6 +460,16 @@ cmd_pull_part2(int ac, char **av)
 
 next:	sccs_free(s);
 
+	/*
+	 * Fire up the pre-trigger (for non-logging tree only)
+	 * Set up the BK_REVLISTFILE env variable for the trigger script
+	 */
+	triggerEnv(dont, local_count, rev_list, envbuf);
+	if (!metaOnly && trigger(av,  "pre")) {
+		rc = 1;
+		goto done;
+	}
+
 	if (dont) {
 		fflush(stdout);
 		rc = 0;
@@ -456,18 +483,6 @@ next:	sccs_free(s);
 		goto done;
 	}
 
-	/*
-	 * Fire up the pre-trigger (for non-logging tree only)
-	 * Set up the BK_REVLISTFILE env variable for the trigger script
-	 */
-	sprintf(buf, "BK_REVLISTFILE=%s", rev_list);
-	putenv(buf);
-	if (!metaOnly && trigger(av,  "pre", 0)) {
-		putenv("BK_REVLISTFILE=");
-		rc = 1;
-		goto done;
-	}
-	putenv("BK_REVLISTFILE=");
 
 	fputs("@PATCH@\n", stdout);
 	fflush(stdout);
@@ -481,7 +496,13 @@ next:	sccs_free(s);
 	/*
 	 * Fire up the post-trigger (for non-logging tree only)
 	 */
-done:	if (!metaOnly) trigger(av,  "post", rc);
+done:	if (!metaOnly) {
+		if (rc) {
+			sprintf(buf, "BK_OUTGOING=ERROR %d", rc);
+			putenv(buf);
+		}
+		trigger(av, "post");
+	}
 	unlink(rev_list);
 	return (rc);
 }

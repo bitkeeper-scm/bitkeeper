@@ -264,7 +264,7 @@ do_commit(char **av, c_opts opts, char *sym,
 				char *pendingFiles, char *commentFile)
 {
 	int	hasComment = (exists(commentFile) && (size(commentFile) > 0));
-	int	rc;
+	int	status, rc;
 	int	l, ptype;
 	char	buf[MAXLINE], sym_opt[MAXLINE] = "";
 	char	pendingFiles2[MAXPATH] = "";
@@ -332,7 +332,8 @@ do_commit(char **av, c_opts opts, char *sym,
 	/*
 	 * XXX Do we want to fire the trigger when we are in RESYNC ?
 	 */
-	if (trigger(av, "pre", 0)) {
+	putenv("COMMIT=OK");
+	if (trigger(av, "pre")) {
 		rc = 1;
 		goto done;
 	}
@@ -341,8 +342,16 @@ do_commit(char **av, c_opts opts, char *sym,
 		opts.lod ? "-L": "", opts.quiet ? "-q" : "", sym_opt,
 		hasComment? "-Y" : "", hasComment ? commentFile : "",
 		pendingFiles2[0]? pendingFiles2 : pendingFiles);
-	rc = system(buf);
-	trigger(av, "post", 0);
+	status = system(buf);
+	if (!WIFEXITED(status)) {
+		putenv("COMMIT=SIGNALED");
+		rc = 1;
+	} else {
+		rc = WEXITSTATUS(status);
+		sprintf(buf, "COMMIT=ERROR %d", rc);
+		putenv(buf);
+	}
+	trigger(av, "post");
 /*
  * Do not enable this until
  * new BK binary is fully deployed

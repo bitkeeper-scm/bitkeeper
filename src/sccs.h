@@ -942,7 +942,7 @@ int	ok_commit(int l, int alreadyAsked);
 int	cset_setup(int flags);
 off_t	fsize(int fd);
 char	*separator(char *);
-int	trigger(char **av, char *when, int status);
+int	trigger(char **av, char *when);
 int	cmdlog_start(char **av, int want_http_hdr);
 int	cmdlog_end(int ret, int flags);
 off_t	get_byte_count();
