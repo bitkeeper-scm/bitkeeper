@@ -2569,6 +2569,9 @@ misc(sccs *s)
 			if (bits & X_BITKEEPER) s->state |= BITKEEPER;
 			if (bits & X_YEAR4) s->state |= YEAR4;
 			if (bits & X_RCSEXPAND) s->state |= RCS;
+#ifdef ISSHELL
+			if (bits & X_ISSHELL) s->state |= ISSHELL;
+#endif
 			continue;
 		} else if (strneq(buf, "\001f &", 4) ||
 		    strneq(buf, "\001f z _", 6)) {	/* XXX - obsolete */
@@ -3371,17 +3374,20 @@ out:	if (streq(host, "localhost") || streq(host, "localhost.localdomain")) {
 ser_t *
 addSerial(ser_t *space, ser_t s)
 {
-	int	i, j;
+	int	i, j, size;
+	ser_t	*tmp;
 
 	if (!space) {
 		space = calloc(16, sizeof(ser_t));
 		assert(space);
 		space[0] = (ser_t)16;
 		space[1] = s;
-	} else if (space[(int)space[0]-1]) {	/* full up, dude */
-		int	size = (int)space[0];
-		ser_t	*tmp = calloc(size*2, sizeof(ser_t));
+		return (space);
+	} 
 
+	size = (int) space[0];
+	if (space[size -1]) {	/* full up, dude */
+		tmp = calloc(size*2, sizeof(ser_t));
 		assert(tmp);
 		if (space[size - 1] < s)  {
 			/* s is the largest, stick it at the end */
@@ -3397,23 +3403,18 @@ addSerial(ser_t *space, ser_t s)
 		}
 		tmp[0] = (ser_t)(size * 2);
 		free(space);
-		space = tmp;
-	} else {
-		int last = space[0] - 1;
+		return (tmp);
+	} 
 
-		EACH(space) if (space[i] > s) break; 
-		assert((i >= 1) && (i <= last));
-		if (space[i] > s) {
-			/*
-			 * we have a "insert", skip the zero's
-			 * then move stuff up one slot
-			 */
-			for (j = last - 1; (j >= i) & !space[j]; j--);
-			memmove(&space[i + 1],
-				&space[i], (j - i + 1) * sizeof(ser_t));
-		}
-		space[i] = s; 
+	EACH(space) if (space[i] > s) break; 
+	if (space[i] > s) {
+		/* we have a "insert", move stuff up one slot */
+		for (j = i; space[j]; j++);
+		assert(j <= (size - 1));
+		tmp = &space[i + 1];
+		memmove(tmp, &tmp[-1], (j - i) * sizeof(ser_t));
 	}
+	space[i] = s; 
 	return (space);
 }
 
@@ -4307,6 +4308,19 @@ err:		if (slist) free(slist);
 		else
 			chmod(s->gfile, UMASK(0444));
 	}
+#ifdef ISSHELL
+	if ((s->state & ISSHELL) && ((flags & PRINT) == 0)) {
+		char cmd[1024], *t;
+
+		t = strrchr(s->gfile, '/');
+		if (t) {
+			*t = 0;
+			sprintf(cmd, "cd %s; sh %s -o", s->gfile, &t[1]);
+			*t = '/';
+		} else  sprintf(cmd, "sh %s -o", s->gfile);
+		system(cmd);
+	}
+#endif
 skip_get:
 	if (flags&EDIT) {
 		unlock(s, 'z');
@@ -4780,6 +4794,9 @@ delta_table(sccs *s, FILE *out, int willfix)
 	if (s->state & BITKEEPER) bits |= X_BITKEEPER;
 	if (s->state & YEAR4) bits |= X_YEAR4;
 	if (s->state & RCS) bits |= X_RCSEXPAND;
+#ifdef ISSHELL
+	if (s->state & ISSHELL) bits |= X_ISSHELL;
+#endif
 	if (bits) {
 		char	buf[40];
 
@@ -6466,6 +6483,13 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 				else
 					sc->state &= ~YEAR4;
 				break;
+#ifdef ISSHELL
+		    case 'X':	if (add)
+					sc->state |= ISSHELL;
+				else
+					sc->state &= ~ISSHELL;
+				break;
+#endif
 		    default:	sprintf(buf, "%c %s", v[-1], v);
 				if (add) {
 					sc->flags =
