@@ -178,11 +178,16 @@ export_patch(char *diff_style, char *rev,
 {
 	FILE	*f, *f1;
 	char	buf[MAXLINE], file_rev[MAXPATH];
+	int	status;
 
 	unless (diff_style) diff_style = "u";
 	sprintf(file_rev, "%s/bk_file_rev%d", TMP_PATH, getpid());
 	sprintf(buf, "bk rset -hr%s > %s", rev ? rev : "+", file_rev);
-	system(buf);
+	status = system(buf);
+	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+		unlink(file_rev);
+		return (1);
+	}
 	sprintf(buf, "bk gnupatch -d%c %s %s",
 	    diff_style[0], hflag ? "-h" : "", tflag ? "-T" : "");
 	f1 = popen(buf, "w");

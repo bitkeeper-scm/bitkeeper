@@ -19,6 +19,7 @@ if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
+
 echo $N Create 2 change set \& export ................................$NL
 # commit the config file
 mkdir src
@@ -27,12 +28,12 @@ echo foo > foo_init.c
 bk admin $Q -r1.1 -ifoo_init.c  foo.c
 rm foo_init.c
 bk co $Q -l foo.c
-bk commit $S -a -y"This is \"Change Set\" A"
+bk commit $S -a -y"This is \"Change Set\" A" -SCSET_A
 echo foo-new >> foo.c
 bk ci $Q -y foo.c
 date > $HERE/project/BitKeeper/etc/data
 bk ci $Q -i $HERE/project/BitKeeper/etc/data
-bk commit $S -a -y"This is a \"Change Set\" B"
+bk commit $S -a -y"This is a \"Change Set\" B" -SCSET_B
 cd $HERE/project
 # the sed script filters off the time which might not match
 bk export -hT -tpatch -r1.2,1.3 | sed -e 's/foo\.c.*/foo.c/' > $HERE/CMP1
@@ -45,6 +46,7 @@ diff -c CMP1 CMP2
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 rm -rf $HERE/a $HERE/b
+
 echo $N Test file w no 1.0 delta ....................................$NL
 cd $HERE/project/src
 echo bar > bar_init.c
@@ -56,7 +58,7 @@ rm bar2_init.c
 bk co $Q -l bar2.c
 echo bar2-new >> bar2.c
 bk ci $Q -y bar2.c
-bk commit $S -a -y"This is a \"Change Set\" C"
+bk commit $S -a -y"This is a \"Change Set\" C" -SCSET_C
 cd $HERE/project
 bk export -T -k -r1.3 $HERE/a
 bk export -hT -tpatch -r1.3,1.4 > patch
@@ -65,6 +67,7 @@ bk export -T -k -r1.4 $HERE/b
 diff -r $HERE/a $HERE/b
 if [ $? -ne 0 ]; then echo failed; else echo OK; fi
 rm -rf $HERE/a $HERE/b
+
 echo $N Test chaining rename ........................................$NL
 cd $HERE/project/src
 bk mv bar.c moo.c
@@ -81,6 +84,7 @@ diff -r $HERE/a $HERE/b
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
 echo OK
 rm -rf $HERE/a $HERE/b
+
 echo $N Test delete .................................................$NL
 cd $HERE/project/src
 bk rm bar.c
@@ -94,6 +98,7 @@ diff -r $HERE/a $HERE/b
 if [ $? -ne 0 ]; then echo failed; exit 1;  fi
 echo OK
 rm -rf $HERE/a $HERE/b
+
 echo $N Test reverse patch \& un-delete ..............................$NL
 bk export -T -k -r1.6 $HERE/a
 bk export -hT -tpatch -r1.6,1.5 > patch
@@ -103,6 +108,7 @@ diff -r $HERE/a $HERE/b
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 rm -rf $HERE/a $HERE/b
+
 echo $N Test reverse patch \& reverse-rename .........................$NL
 cd $HERE/project
 bk export -T -k -r1.5 $HERE/a
@@ -113,6 +119,7 @@ diff -r $HERE/a $HERE/b
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
 echo OK
 rm -rf $HERE/a $HERE/b
+
 echo $N Test non-adjacent ChangeSet .................................$NL
 cd $HERE/project
 bk export -T -k -r1.1 $HERE/a
@@ -123,6 +130,7 @@ diff -r $HERE/a $HERE/b
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
 echo OK
 rm -rf $HERE/a $HERE/b
+
 echo $N Test reverse non-adjacent ChangeSet .........................$NL
 cd $HERE/project
 bk export -T -k -r1.5 $HERE/a
@@ -133,6 +141,7 @@ diff -r $HERE/a $HERE/b
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
 echo OK
 rm -rf $HERE/a $HERE/b
+
 echo $N Test file transposition .....................................$NL
 cd $HERE/project/src
 bk co $Q -l  foo.c moo.c
@@ -152,6 +161,7 @@ diff -r $HERE/a $HERE/b
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
 echo OK
 rm -rf $HERE/a $HERE/b
+
 echo $N Create a new file with the same name as a deleted file ......$NL
 cd $HERE/project/src
 echo dup > dup.c
@@ -177,4 +187,25 @@ bk patch -sp 1 -d $HERE/a < mkdiffs.out
 bk export -T -k -r1.10 $HERE/b
 diff -r $HERE/a $HERE/b
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
+echo OK
+
+echo $N Test patch with non-existant tag ............................$NL
+bk export -tpatch -rCSET_B,BADCSET 2> OUT && {
+	echo export should not have worked
+	exit 1
+}
+grep -q "Cannot find revision.*BADCSET" OUT || {
+	echo Didn\'t find expected error message
+	cat OUT
+	exit 1
+}
+bk export -tpatch -rBADCSET,CSET_B 2> OUT && {
+	echo export should not have worked
+	exit 1
+}
+grep -q "Cannot get ChangeSet for revision.*BADCSET" OUT || {
+	echo Didn\'t find expected error message
+	cat OUT
+	exit 1
+}
 echo OK

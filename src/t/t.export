@@ -19,6 +19,7 @@ if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
+
 echo $N Create first changeset with foo.c and bar.c .................$NL
 cd $HERE/project
 echo foo.c > foo.c
@@ -26,12 +27,14 @@ echo bar.c > bar.c
 bk new $Q foo.c bar.c
 bk commit $S -a -SCSET1 -y'foo.c and bar.c'
 echo OK
+
 echo $N Create 2nd changeset with a change to bar.c .................$NL
 bk edit $Q bar.c
 echo bar.c version 2 > bar.c
 bk delta $Q -ywhatever bar.c
 bk commit $S -a -SCSET2 -y'bar.c v2'
 echo OK
+
 echo $N Create 3rd changeset in which we bk rm foo.c ................$NL
 bk rm foo.c
 bk commit $S -a -y'rm foo.c'
@@ -39,12 +42,14 @@ if [ -f SCCS/s.foo.c ]
 then	echo failed to remove foo.c; exit 1
 fi
 echo OK
+
 echo $N Export 2nd cset and make sure foo.c is there ................$NL
 bk export -rCSET2 ../EXPORT
 if [ ! -f ../EXPORT/foo.c ]
 then	echo failed to get foo.c; exit 1
 fi
 echo OK
+
 echo $N Create 4th changeset in which we bk rm -d bar.c .............$NL
 bk rm -d bar.c
 bk commit $S -a -y'rm -d bar.c'
@@ -55,6 +60,7 @@ if [ -f SCCS/s..del-bar.c ]
 then	echo failed to remove bar.c into deleted dir; exit 1
 fi
 echo OK
+
 echo $N Export 2nd cset and make sure bar.c is there ................$NL
 rm -rf ../EXPORT
 bk export -rCSET2 ../EXPORT
