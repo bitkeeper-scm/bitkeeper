@@ -344,9 +344,7 @@ sleep 1
 bk ci $Q -y merge.c
 bk commit $S -y"abc"
 bk resync $Q $HERE/project $HERE/copy 
-bk resolve $Q -f - $HERE/copy <<EOF  > /dev/null 2>&1
-m
-C
+bk resolve $Q -a -f - $HERE/copy  << EOF
 EOF
 if [ ! -f "SCCS/s..del-delete.c" ]
 then	echo failed to delete delete.c;
@@ -428,6 +426,38 @@ EOF
 bk pending | grep -q "aaa.c"
 if [ $? -eq 0 ]; then echo "fail: disappeared"; exit 1; fi
 echo OK
+
+echo $N Check resolve w/ auto merge and overlap change ..............$NL
+cd $HERE/project/src
+cat > overlap.c << EOF
+111
+222
+333
+EOF
+bk ci $Q -i overlap.c
+bk commit $S -y"abc"
+bk resync $Q $HERE/project $HERE/copy 
+bk resolve $Q $HERE/copy
+bk co $Q -l overlap.c
+sed -e"s/222/222-left/" overlap.c > overlap.tmp
+mv overlap.tmp overlap.c
+bk ci $Q -y overlap.c
+bk commit $S -y"abc"
+bk co $Q -l overlap.c
+cd $HERE/copy/src
+bk co $Q -l overlap.c
+sed -e "s/222/222-right/"  overlap.c > overlap.tmp
+mv overlap.tmp overlap.c
+# make sure time stamp is different
+sleep 1
+bk ci $Q -y overlap.c
+bk commit $S -y"abc"
+bk resync $Q $HERE/project $HERE/copy 
+bk resolve $Q -a -f - $HERE/copy >/dev/null 2> resolve.out
+grep "Overlap change detected" resolve.out > /dev/null
+if [ $? -ne 0 ]; then echo failed; exit 1; fi 
+echo OK
+rm -f resolve.out  
 
 
 #echo XXX - need to have little tests which check each of

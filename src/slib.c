@@ -5266,7 +5266,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		unless (hash) s->state &= ~S_HASH;
 		unless (set) d->flags &= ~D_SET;
 		unless ((ret == 0) && (lines != 0)) {
-		    	goto done2;
+		    	goto done3;
 		}
 		unless (lbuf = fopen(tmpfile, "r")) {
 			perror(tmpfile);
@@ -5341,7 +5341,7 @@ done:	if (s->encoding & E_GZIP) zgets_done();
 done2:	/* for GET_HASHDIFFS, the encoding has been handled in getRegBody() */
 	if (lbuf) {
 		fclose(lbuf);
-		unlink(tmpfile);
+done3:		unlink(tmpfile);
 	}
 	if (popened) {
 		pclose(out);
