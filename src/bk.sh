@@ -218,7 +218,12 @@ _lclone() {
 	then	echo Usage: $0 from to
 		exit 1
 	else	cd "$1" || exit 1
-		FROM=`pwd`
+		FROM=`bk root`
+		if [ $FROM != `bk pwd` ]
+		then
+		    echo ERROR-$FROM is not a package root
+		    exit 1
+		fi
 		cd "$HERE"
 	fi
 	if [ "X$2" = X ]
