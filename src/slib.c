@@ -4757,6 +4757,11 @@ out:			if (slist) free(slist);
 				continue;
 			}
 			lines++;
+			if (lf_pend) {
+				fputc('\n', out);
+				if (flags & NEWCKSUM) sum += '\n';
+				lf_pend = 0;
+			}
 			if (flags & NEWCKSUM) {
 				for (e = buf; *e != '\n'; sum += *e++);
 				sum += '\n';
@@ -4812,10 +4817,6 @@ out:			if (slist) free(slist);
 			    }
 			    case E_ASCII:
 			    case E_GZIP:
-				if (lf_pend) {
-					fputc('\n', out);
-					if (flags & NEWCKSUM) sum += '\n';
-				}
 				fnnlputs(e, out);
 				if (flags & NEWCKSUM) sum -= '\n';
 				lf_pend = print;
