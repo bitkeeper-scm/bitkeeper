@@ -13971,7 +13971,14 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 		sccs_pdelta(s, e, out);
 		fprintf(out, "\n");
 	}
-	if (d->flags & D_CKSUM) fprintf(out, "K %u\n", d->sum);
+	if (d->flags & D_CKSUM) {
+		fprintf(out, "K %u", d->sum);
+		if (d->published) {
+			fputs(d->ptype ? "\t\n" : " \n", out);
+		} else {
+			fputs("\n", out);
+		}
+	}
 	if (d->merge) {
 		delta	*e = sfind(s, d->merge);
 		assert(e);
