@@ -82,61 +82,64 @@ keysHome()
 	return (keysFile = (strdup)(path));
 }
 
-/*
- * Note: This locking scheme will not work if the lock directory is
- * is NFS mounted, and two processes are running on different hosts.
- */
 /* -1 means error, 0 means OK */
 int
 uniq_lock()
 {
-	pid_t	pid = 0;
-	int	fd;
-	int	uslp = 1000;
-	char	buf[MAXPATH];
+	FILE	*f;
+	int	slept = 0;
+	char	linkpath[MAXPATH];
 	char	*lock = lockHome();
+	int	me = getpid();
+	static	int flags = -1;
 
-	while ((fd = open(lock, O_CREAT|O_EXCL|O_RDWR, 0666)) == -1) {
-		if (errno != EEXIST) {
-			perror(lock);
-			return (-1);
+	if (flags == -1) {
+		if (getenv("_BK_SHUT_UP")) {
+			flags = SILENT;
+		} else {
+			flags = 0;
 		}
-		if ((fd = open(lock, O_RDONLY, 0)) >= 0) {
-			int	n;
+	}
 
-			n = read(fd, buf, sizeof(buf));
-			close(fd);
-			if (n > 0) {
-				buf[n] = 0;
-				if (sscanf(buf, "%d", &pid) != 1) {
-stale:					fprintf(stderr,
-					   "removing stale lock %s\n", lock);
-					if (unlink(lock) != 0) perror(lock);
-					assert(!exists(lock));
-					continue;
-				}
-			}
-			unless (pid) goto stale;
-			if (pid == getpid()) {
-				fprintf(stderr, "recursive lock??\n");
-				break;
-			}
-			if (kill(pid, 0) == 0) {
-				usleep(uslp);
-				if (uslp < 1000000) uslp <<= 1;
-			} else {
-				goto stale;
-			}
-			if (uslp >= 1000000) {
+	sprintf(linkpath, "%s.%d", lock, me);
+	assert(!exists(linkpath));
+	f = fopen(linkpath, "w");
+	fprintf(f, "%d\n", me);
+	fclose(f);
+	while (link(linkpath, lock) != 0) {
+		if (f = fopen(lock, "r")) {
+			int	pid = 0;
+
+			fscanf(f, "%d\n", &pid);
+			fclose(f);
+			unless (pid) continue;	/* must be gone */
+			assert(pid != me);
+			if (kill(pid, 0) != 0) {
 				fprintf(stderr,
-				    "Waiting for process %d who has lock %s\n",
-				    pid, lock);
+				   "removing stale lock %s\n", lock);
+				(void)unlink(lock);
+				continue;	/* go around again */
+			}
+			/* bitch every second */
+			if ((slept >= 1000) && !(slept % 1000)) {
+				verbose((stderr,
+				"%d: waiting for process %d who has lock %s\n",
+				    me, pid, lock));
+			}
+			/*
+			 * Randomize this a bit based on pids.
+			 */
+			unless (slept) {
+				/* 99 * 1000 = .1 seconds */
+				usleep((me % 100) * 1000);
+				slept = 1000;	/* fake but OK */
+			} else {
+				usleep(200000);
+				slept += 200;
 			}
 		}
 	}
-	sprintf(buf, "%u", getpid());
-	write(fd, buf, strlen(buf));
-	close(fd);
+	unlink(linkpath);
 	return (0);
 }
 
