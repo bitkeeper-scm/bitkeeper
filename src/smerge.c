@@ -392,7 +392,13 @@ popLine(char **lines)
 			free(lines[1]);
 		}
 	}
-	EACH(lines) lines[i] = lines[i + 1];
+	/* shift array down by one */
+	i = 1;
+	while (VALID(lines, i+1)) {
+		lines[i] = lines[i + 1];
+		++i;
+	}
+	lines[i] = 0;
 	return(ret);
 }
 	
