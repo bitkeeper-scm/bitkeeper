@@ -58,6 +58,7 @@ typedef struct {
 	int	applied;	/* count of files processed in pass 4 */
 	MDBM	*rootDB;	/* db{ROOTKEY} = pathname in RESYNC */
 	MDBM	*idDB;		/* for the local repository, not RESYNC */
+	MDBM	*checkoutDB;	/* Save the original checkout state files */
 	project	*local_proj;	/* for the local repository, not RESYNC */
 	project	*resync_proj;	/* for RESYNC project */
 	FILE	*log;		/* if set, log to here */

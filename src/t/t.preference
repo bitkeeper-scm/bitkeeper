@@ -124,7 +124,8 @@ echo new2 >> foo.c
 bk delta $Q -ynew2 foo.c
 bk commit $Q -ynew2
 cd $HERE/edit_2/src
-bk pull $Q $HERE/edit_1
+if [ ! -f $HERE/edit_2/src/foo.c ]; then echo failed 1; exit 1; fi
+bk pull $Q $HERE/edit_1 || exit 1
 if [ ! -f $HERE/edit_2/src/foo.c ]; then echo failed 1; exit 1; fi
 if [ ! -w $HERE/edit_2/src/foo.c ]; then echo failed 2; exit 1; fi
 if [ ! -f $HERE/edit_2/src/SCCS/p.foo.c ]; then echo failed; exit 1; fi
@@ -239,13 +240,13 @@ cd $HERE/copy2
 bk pull $Q || exit 1
 if [ ! -w hi ]
 then	echo 'failed (bug 2002-05-10-002)'
-else	echo bug 2002-05-10-002 passing! update testcase.
 	exit 1
 fi
+echo OK
 
 echo $N checkout:EDIT w pull failure ................................$NL
 cd $HERE/project/src
-bk edit $Q foo.c bar.c   ## should NOT be needed!
+bk -Uur edit $Q
 echo ss >> bar.c
 echo dd >> foo.c
 bk ci $Q -yy bar.c foo.c || exit 1
@@ -255,6 +256,49 @@ echo fff >> bar.c
 bk pull $Q 2>OUT
 if [ ! -w foo.c ]
 then	echo 'failed (bug 2002-05-10-002)'
-else	echo bug 2002-05-10-002 passing! update testcase.
 	exit 1
 fi
+bk abort -f 2> OUT
+echo OK
+
+echo $N checkout:EDIT w pull again ..................................$NL
+bk unedit bar.c
+bk pull $Q
+if [ ! -w foo.c ]
+then	echo failed
+	exit 1
+fi
+if [ ! -w bar.c ]
+then	echo failed
+	exit 1
+fi
+echo OK
+
+echo $N checkout:none w pull ........................................$NL
+cd $HERE
+no_logging pp
+cd $HERE
+bk clone $Q pp cc || exit 1
+cd $HERE/pp
+echo hi > file1
+echo bye > file2
+bk new $Q file1 file2
+bk commit $Q -yy || exit 1
+cd $HERE/cc
+bk pull $Q || exit
+if [ -f file1 -o -f file2 ]
+then	echo files should not be fetched
+	exit 1
+fi
+cd $HERE/pp
+bk edit $Q file1
+echo junk >> file1
+bk ci $Q -yy file1
+bk commit $Q -yy || exit 1
+cd $HERE/cc
+bk pull $Q || exit
+if [ -f file1 -o -f file2 ]
+then	echo files should not be fetched
+	exit 1
+fi
+echo OK
