@@ -76,8 +76,8 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	lib_tcp.o libcommit.o libdiff.o liblines.o librange.o \
 	libsfiles.o libusers.o license.o lines.o \
 	localtm.o lock.o locking.o lod.o logflags.o \
-	logging.o mail.o merge.o mkdir.o mklock.o \
-	mailsplit.o mmap.o mtime.o multiuser.o names.o newrev.o \
+	logging.o mail.o mdiff.o merge.o mkdir.o mklock.o \
+	mailsplit.o mmap.o mtime.o multiuser.o names.o \
 	opark.o parent.o park.o \
 	pending.o preference.o proj.o \
 	port/bkd_client.o port/bkd_server.o \
@@ -123,7 +123,7 @@ TOMCRYPTOBJ = tomcrypt/rsa.o tomcrypt/rsa_sys.o tomcrypt/mpi.o \
 	tomcrypt/sprng.o tomcrypt/bits.o tomcrypt/crypt.o tomcrypt/base64.o \
 	tomcrypt/yarrow.o tomcrypt/demos/test.o tomcrypt/hmac.o
 GUI	= revtool citool helptool difftool csettool fmtool fm3tool msgtool \
-	  renametool setuptool 
+	  renametool setuptool newdifftool
 SCRIPTS	= applypatch bk.script import resync $(GUI) bugform \
 	uuwrap unuuwrap gzip_uuwrap ungzip_uuwrap \
 	b64wrap unb64wrap gzip_b64wrap ungzip_b64wrap \
@@ -134,7 +134,7 @@ UWTOBJ	= win32/uwtlib/wapi_intf.o win32/uwtlib/wcrt_intf.o
 LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a tomcrypt/libtomcrypt.a $(UWTLIB)
 LINKS	= ci co edit unget
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt bklogo.gif \
-	../doc/bk_refcard.ps ../doc/bk_refcard.pdf bklicense.pub
+	../doc/bk_refcard.ps ../doc/bk_refcard.pdf
 LINKTO	= fm fmtool fm3 fm3tool
 BINLINKS= admin get delta unget rmdel prs
 # Note: $(XTRA) must be listed after "gnu"
@@ -363,7 +363,7 @@ libsccs.a: $(OBJ) shell.o
 bk.res: win32/data/bk.rc win32/data/bk.ico
 	rc.exe -fo bk.res -r win32/data/bk.rc
 
-$(BK): bk.o $(LIBS) $(RESOURCE) bklicense.pub
+$(BK): bk.o $(LIBS) $(RESOURCE)
 	$(LD) $(LDFLAGS) $(LD_OUT) bk.o $(LINK_LIB) $(RESOURCE)
 	if [ $(SYS) = win32 ]; \
 	then	$(MAKE) link; \
@@ -540,6 +540,17 @@ helptool: tclwrap gui/helptool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
 	     gui/appState.tcl \
 	     gui/helptool.tcl)\
 	 | $(TCLWRAP) > helptool
+
+newdifftool: tclwrap gui/config.tcl gui/common.tcl port/$(SYS)_platform.tcl \
+	gui/lib/newdifflib.tcl gui/lib/bktalk.tcl gui/lib/comm.tcl \
+	gui/lib/tooltip.tcl gui/lib/actions.tcl gui/newdifftool.tcl \
+	gui/appState.tcl gui/lib/newsearchlib.tcl 
+	(echo "wm withdraw ." ; \
+	 cat gui/config.tcl gui/common.tcl port/$(SYS)_platform.tcl \
+	 gui/lib/newdifflib.tcl gui/lib/comm.tcl gui/lib/bktalk.tcl \
+	 gui/lib/actions.tcl gui/lib/tooltip.tcl gui/appState.tcl \
+	 gui/lib/newsearchlib.tcl gui/newdifftool.tcl) \
+	| $(TCLWRAP) > newdifftool
 
 difftool: tclwrap gui/search.tcl gui/config.tcl gui/difftool.tcl \
 	port/$(SYS)_platform.tcl gui/common.tcl gui/difflib.tcl \

@@ -12,6 +12,8 @@
  * The second is for flags which are function specific.
  * Be VERY CAREFUL to not mix and match.  If I see a DELTA_ in sccs_get()
  * I will be coming after you with a blowtorch.
+ * We've hit problems with flags being passed to sccs_init() being used for
+ * lower level functions that want different flags.  See WACKGRAPH.
  */
 #define	SILENT		0x00000001	/* do work quietly */
 #define	PRINT		0x00000002	/* get/delta/clean [diffs] to stdout */
@@ -21,7 +23,6 @@
 #define	INIT_avail	0x10000000	/* OLD: map the file read/write */
 #define	INIT_NOCKSUM	0x20000000	/* don't do the checksum */
 #define	INIT_FIXDTIME	0x40000000	/* use g file mod time as delat time */
-#define	INIT_SHUTUP	0x80000000	/* pass ADMIN_SHUTUP to checkrevs() */
 #define	INIT_NOSTAT	0x01000000	/* do not look for {p,x,z,c} files */
 #define	INIT_HAScFILE	0x02000000	/* has c.file */
 #define	INIT_HASgFILE	0x04000000	/* has g.file */
@@ -30,6 +31,7 @@
 #define	INIT_HASzFILE	0x00200000	/* has z.file */
 #define	INIT_NOGCHK	0x00800000	/* do not fail on gfile checks */
 #define	INIT_FIXSTIME	0x00010000	/* force sfile mtime < gfile mtime */
+#define	INIT_WACKGRAPH	0x00020000	/* we're wacking the graph, no errors */
 
 /* shared across get/diffs/getdiffs */
 #define	GET_EDIT	0x10000000	/* get -e: get for editting */
@@ -56,11 +58,12 @@
 #define	GET_HASHDIFFS	0x00000100	/* get -DDD, 0a0 hash style diffs */
 #define	GET_SUM		0x00000200	/* used to force dsum in getRegBody */
 #define GET_NOREGET	0x00000400	/* get -S: skip gfiles that exist */
-#define GET_DIFFTOT	0x00000800	/* hasDiffs() false if !TOT */
+#define	GET_LINENAME	0x00000800	/* get -O: prefix with line name */
 #define	GET_FULLPATH	0x00000010	/* like GET_MODNAME but full relative */
 #define	GET_HASH	0x00000020	/* force hash file, ignore ~S_HASH */
 #define	GET_SEQ		0x00000040	/* sccs_get: prefix with sequence no */
-#define	GET_LINENAME	0x00000080	/* get -O: prefix with line name */
+#define	GET_COMMENTS	0x00000080	/* diffs -H: prefix diffs with hist */
+#define	DIFF_COMMENTS	GET_COMMENTS
 #define	GET_PREFIX	\
     (GET_REVNUMS|GET_USER|GET_LINENUM|GET_MODNAME|\
      GET_FULLPATH|GET_PREFIXDATE|GET_SEQ|GET_LINENAME)
@@ -153,6 +156,7 @@
 #define	DF_UNIFIED	'u'
 #define	DF_PDIFF	'p'
 #define	DF_RCS		'n'
+#define	DF_IFDEF	'I'
 
 /*
  * Date handling.
@@ -356,12 +360,6 @@
 
 #define	UNKNOWN_USER	"anon"
 #define	UNKNOWN_HOST	"nowhere"
-
-#define BK_FREE		0
-/* #define BK_BASIC	1  -not used */
-#define BK_PRO		2
-#define BK_BADMODE	999
-int	bk_mode(void);
 
 #define	CNTLA_ESCAPE	'\001'	/* escape character for ^A is also a ^A */
 #define	isData(buf)	((buf[0] != '\001') || \
@@ -801,7 +799,7 @@ int	sccs_smoosh(char *left, char *right);
 delta	*sccs_parseArg(delta *d, char what, char *arg, int defaults);
 void	sccs_whynot(char *who, sccs *s);
 void	sccs_ids(sccs *s, u32 flags, FILE *out);
-void	sccs_inherit(sccs *s, u32 flags, delta *d);
+void	sccs_inherit(sccs *s, delta *d);
 int	sccs_hasDiffs(sccs *s, u32 flags, int inex);
 void	sccs_print(delta *d);
 delta	*sccs_getInit(sccs *s, delta *d, MMAP *f, int patch,
@@ -950,9 +948,6 @@ char	*_relativeName(char *gName, int isDir, int withsccs,
 	    int mustHaveRmarker, int wantRealName, project *proj);
 void	rcs(char *cmd, int argc, char **argv);
 char	*findBin(void);
-project	*chk_proj_init(sccs *s, char *file, int line);
-MDBM	*proj_config(project *p);
-void	proj_free(project *p);
 int 	prompt(char *msg, char *buf);
 void	parse_url(char *url, char *host, char *path);
 char	*sccs_Xfile(sccs *s, char type);
@@ -1178,6 +1173,16 @@ void	close_gaps(u8 *vec, int n, int (*compare)(int a, int b));
 int	diff_algor(int m, int n, u8 *lchg, u8 *rchg,
     int (*compare)(int a, int b));
 int   diffline(char *left, char *right);
+typedef	void (*set_pfunc)(sccs *, delta *);
+ser_t	*set_get(sccs *s, char *rev);
+void	set_list(sccs *s, char *rev, set_pfunc p);
+void	set_member(sccs *s, char *rev, ser_t *map, set_pfunc p);
+void	set_diff(sccs *s, ser_t *a, ser_t *b, set_pfunc p);
+void	set_and(sccs *s, ser_t *a, ser_t *b, set_pfunc p);
+void	set_or(sccs *s, ser_t *a, ser_t *b, set_pfunc p);
+void	set_xor(sccs *s, ser_t *a, ser_t *b, set_pfunc p);
+void	set_set(sccs *s, char *rev, set_pfunc p);
+int	saveStdin(char *tmpfile);
 
 extern char *bk_vers;
 extern char *bk_utc;

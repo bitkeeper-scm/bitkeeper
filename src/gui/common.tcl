@@ -283,6 +283,19 @@ proc restoreGeometry {app {w .} {force 0}} \
 	catch {grid propagate $w 0}
 	catch {pack propagate $w 0}
 
+	# The MacOSX X11 implementation has a bug when saving
+	# and restoring geometry, such that repeated saving/restoring
+	# causes the window to get progressively taller. Subtracting
+	# the size of the window manager border works around this
+	# annoyance.
+	# For the time being we'll hide this in an undocumented
+	# gc variable since no customers have complained about this
+	# and the problem may go away in the next release of MacOSX.
+	# (for the record, "22" is the magic number for MacOS 10.2.x)
+	if {[info exists gc($app.geometryHack)]} {
+		incr height $gc($app.geometryHack)
+	}
+
 	# Instead of using [wm geometry] we directly configure the width
 	# and height of the window. This is because "wm geometry" will 
 	# treat its arguments as grid units if "gridding" is turned on. We

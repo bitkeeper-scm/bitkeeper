@@ -15,9 +15,10 @@ version_main(int ac, char **av)
 		system("bk help version");
 		return (0);
 	}
-	lease_check((project *)-1);	/* disable lease check */
+	lease_checking(0);
 	if (proj_cd2root()) {
 		getMsg("version", " ", 0, 0, stdout);
+		lease_checking(1);
 		return (0);
 	}
 	getMsg("version", bk_model(buf, sizeof(buf)), 0, 0, stdout);
@@ -29,5 +30,6 @@ version_main(int ac, char **av)
 			printf("Expired (test release).\n");
 		}
 	}
+	lease_checking(1);
 	return (0);
 }

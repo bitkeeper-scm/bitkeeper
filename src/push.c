@@ -80,6 +80,10 @@ push_main(int ac, char **av)
 
 	loadNetLib();
 	has_proj("push");
+	unless (licenseAccept(1)) {
+		fprintf(stderr, "push: failed to accept license, aborting.\n");
+		exit(1);
+	}                                                                       
 
 	/*
 	 * Get push parent(s)

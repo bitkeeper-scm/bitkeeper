@@ -3,8 +3,6 @@
 #include "sccs.h"
 #include "range.h"
 
-WHATSTR("@(#)%K%");
-
 /*
  * range.c - get endpoints of a range of deltas or a list of deltas
  *
@@ -83,7 +81,7 @@ rangeCutOff(char *spec)
  * Return 0 if OK, -1 if not.
  */
 int
-rangeAdd(sccs *sc, char *rev, char *date)
+rangeAdd(sccs *sc, char *rev, char *date, int empty)
 {
 	char	*s = rev ? rev : date;
 	char	save;
@@ -134,7 +132,7 @@ rangeAdd(sccs *sc, char *rev, char *date)
 	if (s && *s) {
 		save = *s;
 		*s = 0;
-		if (rangeAdd(sc, rev, date)) {
+		if (rangeAdd(sc, rev, date, empty)) {
 			*s = save;
 			return (-1);
 		}
@@ -145,7 +143,7 @@ rangeAdd(sccs *sc, char *rev, char *date)
 		} else {
 			date = &s[2];
 		}
-		if (rangeAdd(sc, rev, date)) return (-1);
+		if (rangeAdd(sc, rev, date, empty)) return (-1);
 		if ((save == ',') && sc->rstart->kid) {
 			sc->rstart = sc->rstart->kid;
 		}
@@ -155,16 +153,8 @@ rangeAdd(sccs *sc, char *rev, char *date)
 		return (0);
 	}
 	tmp = sccs_getrev(sc, rev, date, sc->rstart ? ROUNDUP: ROUNDDOWN);
-	if (!tmp && rev && streq(rev , "1.0")) {
-		/*
-		 * If this file does not have 1.0 delta
-		 * make a fake one. 
-		 * XXX This should be move to sccs_init()/mkgraph()
-		 * in the next major release.
-		 * I put it here beacuse this is less disruptive.
-		 */
-		tmp = mkOneZero(sc);
-	}
+debug((stderr, "getrev(%s, %s) = %s\n", rev, date, tmp?tmp->rev:"NULL"));
+	if (empty && !tmp) tmp = sc->tree;
 	unless (tmp) return (-1);
 	unless (sc->rstart) {
 		sc->rstart = tmp;
@@ -317,7 +307,7 @@ rangeList(sccs *sc, char *rev)
 			if (strneq(r, "..", 2)) break;
 		}
 		if (r && *r) {
-			if (rangeAdd(sc, t, 0)) {
+			if (rangeAdd(sc, t, 0, 0)) {
 				if (s) *s = ',';
 				return (-1);
 			}
@@ -380,8 +370,8 @@ closedRange(char *s)
  * Returns 1 if we are to 'goto next' in the caller, 0 if not.
  */
 int
-rangeProcess(char *me, sccs *s, int expand, int noisy,
-	     int *tp, int rd, char **r, char **d)
+rangeProcess(char *me, sccs *s,
+	int expand, int noisy, int empty, int *tp, int rd, char **r, char **d)
 {
 	int	things = *tp;
 	int	used = 0;
@@ -394,7 +384,7 @@ rangeProcess(char *me, sccs *s, int expand, int noisy,
 		used = 1;
 	}
 	if (things) {
-		if (rangeAdd(s, r[0], d[0])) {
+		if (rangeAdd(s, r[0], d[0], empty)) {
 			if (noisy) {
 				fprintf(stderr,
 				    "%s: no such delta ``%s'' in %s\n",
@@ -408,7 +398,7 @@ rangeProcess(char *me, sccs *s, int expand, int noisy,
 		s->rstart = sccs_getrev(s, sfileRev(), 0, 0);
 	}
 	if (things == 2) {
-		if ((r[1] || d[1]) && (rangeAdd(s, r[1], d[1]) == -1)) {
+		if ((r[1] || d[1]) && (rangeAdd(s, r[1], d[1], empty) == -1)) {
 			s->state |= S_RANGE2;
 			if (noisy) {
 				fprintf(stderr,
@@ -451,5 +441,12 @@ rangeProcess(char *me, sccs *s, int expand, int noisy,
 	}
 	if ((expand == 3) && !(s->state & S_SET)) rangeConnect(s);
 	sccs_markMeta(s);
+	debug((stderr,
+	    "RANGE(%s, %s, %d, %d) -> ", me, s->gfile, expand, noisy));
+	if (s->rstart && s->rstop) {
+		debug((stderr, "%s .. %s\n", s->rstart->rev, s->rstop->rev));
+	} else {
+		debug((stderr, "???\n"));
+	}
 	return 0;
 }

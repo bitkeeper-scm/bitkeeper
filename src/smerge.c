@@ -1,5 +1,6 @@
 #include "system.h"
 #include "sccs.h"
+#include "logging.h"
 
 typedef struct conflct	conflct;
 typedef struct ld	ld_t;
@@ -91,12 +92,15 @@ smerge_main(int ac, char **av)
 	int	ret = 0;
 	int	do_diff3 = 0;
 	int	identical = 0;
+	project	*proj;
 
-	unless (bk_mode() == BK_PRO) {
+	proj = proj_init(av[ac-2]);
+	unless (bk_mode(proj) == BK_PRO) {
 		enable_mergefcns("all", 0);
 		enable_mergefcns("1,2,3", 1);
 		do_diff3 = 1;
 	}
+	proj_free(proj);
 
 	mode = MODE_3WAY;
 	while ((c = getopt(ac, av, "234A:a:defghI:npr:s")) != -1) {

@@ -199,7 +199,8 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		goto done;
 	}
 	if ((lic = getenv("BKD_LICTYPE")) && !licenseAcceptOne(1, lic)) {
-		fprintf(stderr, "clone: failed to accept license '%s'\n", getenv("BKD_LICTYPE"));
+		fprintf(stderr, "clone: failed to accept license '%s'\n",
+		    getenv("BKD_LICTYPE"));
 		disconnect(r, 2);
 		goto done;
 	}
@@ -650,9 +651,10 @@ out_trigger(char *status, char *rev, char *when)
 	safe_putenv("BK_REALUSER=%s", sccs_realuser());
 	safe_putenv("BK_REALHOST=%s", sccs_realhost());
 	safe_putenv("BK_PLATFORM=%s", platform());
-	lic = licenses_accepted();
-	safe_putenv("BK_ACCEPTED=%s", lic);
-	free(lic);
+	if (lic = licenses_accepted()) {
+		safe_putenv("BK_ACCEPTED=%s", lic);
+		free(lic);
+	}
 	if (status) putenv(status);
 	if (rev) {
 		safe_putenv("BK_CSETS=1.0..%s", rev);

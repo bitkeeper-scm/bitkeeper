@@ -1,3 +1,11 @@
+#diffs-C
+The diffs -C option has been replaced with the -r@rev syntax.  To get the
+same effect as
+
+	bk diffs -C1.123
+try
+	bk -r diffs -r@1.123 -r=
+$
 #monotonic
 If a file is marked as monotonically increasing, and that file has "dangling
 deltas", i.e., deltas which are ahead of the top changeset, then the monotonic
@@ -821,7 +829,9 @@ $
 In order to use BitKeeper in this repository, you need to accept the
 BitKeeper Commercial license.  This license is what grants you the right
 to use BitKeeper on this repository.  Please read the license carefully,
-it is a contract and you must abide by the terms.  Your acceptance will
+it is a contract and you must abide by the terms.  The license text below
+does not include all of the referenced "schedules" because these include
+pricing information negotiated by your management.  Your acceptance will
 be recorded on this machine and you will not be asked again.
 $
 #bkl_upgrade_preamble

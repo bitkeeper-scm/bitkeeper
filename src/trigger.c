@@ -21,9 +21,10 @@ trigger_env(char *prefix, char *event, char *what)
 
 	if (streq("BK", prefix)) {
 		put_trigger_env("BK", "SIDE", "client");
-		lic = licenses_accepted();
-		safe_putenv("BK_ACCEPTED=%s", lic);
-		free(lic);
+		if (lic = licenses_accepted()) {
+			safe_putenv("BK_ACCEPTED=%s", lic);
+			free(lic);
+		}
 	} else {
 		put_trigger_env("BK", "SIDE", "server");
 		put_trigger_env("BK", "HOST", getenv("_BK_HOST"));

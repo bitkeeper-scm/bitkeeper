@@ -56,10 +56,11 @@ int
 diffs_main(int ac, char **av)
 {
 	int	flags = DIFF_HEADER|SILENT, verbose = 0, rc, c;
-	int	errors = 0;
-	char	kind;
+	int	empty = 0, errors = 0;
+	int	kind, fd, mdiff = 0;
+	pid_t	pid = 0; /* lint */
 	char	*name;
-	char	*Rev = 0, *cset = 0, *boundaries = 0;
+	char	*Rev = 0, *boundaries = 0;
 	char	*opts, optbuf[20];
 	RANGE_DECL;
 
@@ -77,19 +78,27 @@ diffs_main(int ac, char **av)
 	opts = optbuf;
 	*opts++ = '-';
 	*opts = 0;
-	while ((c = getopt(ac, av, "bBcC|d;Dfhl|Mnpr|R|suUvw")) != -1) {
+	while ((c = getopt(ac, av, "AbBcC|d;DefhHIl|Mmnpr|R|suUvw")) != -1) {
 		switch (c) {
+		    case 'A': flags |= GET_ALIGN; break;
 		    case 'b': /* fall through */		/* doc 2.0 */
 		    case 'B': *opts++ = c; *opts = 0; break;	/* doc 2.0 */
-		    case 'h': flags &= ~DIFF_HEADER; break;	/* doc 2.0 */
 		    case 'c': kind = DF_CONTEXT; break;		/* doc 2.0 */
-		    case 'C': cset = optarg; break;		/* doc */
+		    case 'C': getMsg("diffs-C", 0, 0, 0, stdout); exit(0);
 		    case 'D': flags |= GET_PREFIXDATE; break;	/* doc 2.0 */
+		    case 'e': empty = 1; break;
 		    case 'f': flags |= GET_MODNAME; break;	/* doc 2.0 */
+		    case 'h': flags &= ~DIFF_HEADER; break;	/* doc 2.0 */
+		    case 'H':
+			flags |= DIFF_COMMENTS;
+			putenv("BK_YEAR4=YES");  /* rm when YEAR4 is default */
+			break;
+		    case 'I': kind = DF_IFDEF; break;
 		    case 'l': boundaries = optarg; break;	/* doc 2.0 */
 		    case 'M': flags |= GET_REVNUMS; break;	/* doc 2.0 */
-		    case 'p': kind = DF_PDIFF; break;		/* doc 2.0 */
+		    case 'm': kind = DF_IFDEF; mdiff = 1; break;
 		    case 'n': kind = DF_RCS; break;		/* doc 2.0 */
+		    case 'p': kind = DF_PDIFF; break;		/* doc 2.0 */
 		    case 'R': Rev = optarg; break;		/* doc 2.0 */
 		    case 's': kind = DF_SDIFF; break;		/* doc 2.0 */
 		    case 'u': kind = DF_UNIFIED; break;		/* doc 2.0 */
@@ -122,31 +131,24 @@ usage:			system("bk help -s diffs");
 		return (1);
 	}
 
-	if (cset) {
-		char	*rev = aprintf("-r%s", cset);
-		char	*diff_opt;
-		int	rc;
-
-		/*
-		 * "bk diffs -u -Crev1,rev2" is same as
-		 * "bk export -tpatch -h -du -rrev1,rev2"
-		 */
-		switch (kind) { /* translate diff style option for bk export */
-		    default:		assert("bad diff style" == 0);
-		    case DF_DIFF:	/*
-					 * Force the "null" diff style
-					 * we need this becuase bk export
-					 * default to -du
-					 */
-					diff_opt = "-d?";
-					break;
-		    case DF_RCS:	diff_opt = "-dn"; break;
-		    case DF_UNIFIED:	diff_opt = "-du"; break;
-		    case DF_SDIFF:	diff_opt = "-dy"; break;
+	if (mdiff) {
+		char	*mav[20];
+		int	i;
+		
+		mav[i=0] = "bk";
+		mav[++i] = "mdiff";
+		if (flags & (GET_PREFIXDATE|GET_MODNAME|GET_REVNUMS|GET_USER)) {
+			flags |= GET_ALIGN;
+			mav[++i] = "-A";
+		} else {
+			assert(!(flags & GET_ALIGN));
 		}
-		rc = sys("bk", "export", "-tpatch", "-h", diff_opt, rev, SYS);
-		free(rev);
-		return (rc);
+		mav[++i] = 0;
+		if ((pid = spawnvp_wPipe(mav, &fd, BIG_PIPE)) == -1) {
+			perror("mdiff");
+			exit(1);
+		}
+		close(1); dup(fd); close(fd);
 	}
 	name = sfileFirst("diffs", &av[optind], 0);
 	while (name) {
@@ -193,11 +195,16 @@ usage:			system("bk help -s diffs");
 					r[0] = "+";
 				}
 			}
-			RANGE("diffs", s, 0, (flags & SILENT) == 0);
+			if (rangeProcess("diffs", s, 0,
+			    (flags & SILENT) == 0, 1, &things, rd, r, d)) {
+				unless (empty) goto next;
+				s->rstart = s->tree;
+			}
 			if (restore) r[0] = "=";
 		}
 		if (things) {
 			unless (s->rstart && (r1 = s->rstart->rev)) goto next;
+			if ((things == 2) && (s->rstart == s->rstop)) goto next;
 			if (s->rstop) r2 = s->rstop->rev;
 			/*
 			 * If we did a date specification and that covered only
@@ -244,13 +251,15 @@ usage:			system("bk help -s diffs");
 		 */
 		if (!things && IS_WRITABLE(s) && HAS_PFILE(s) &&
 		    !MONOTONIC(s) && !Rev &&
-		    !sccs_hasDiffs(s, GET_DIFFTOT|flags|ex, 1)) {
+		    !sccs_hasDiffs(s, flags|ex, 1)) {
 			goto next;
 		}
 		
 		/*
 		 * Errors come back as -1/-2/-3/0
 		 * -2/-3 means it couldn't find the rev; ignore.
+		 *
+		 * XXX - need to catch a request for annotations w/o 2 revs.
 		 */
 		rc = sccs_diffs(s, r1, r2, ex|flags, kind, opts, stdout);
 		switch (rc) {
@@ -276,6 +285,14 @@ next:		if (s) {
 		things = save;
 	}
 	sfileDone();
+	if (mdiff) {
+		u32	status;
+
+		fflush(stdout);		/* just in case */
+		close(1);
+		waitpid(pid, &status, 0);
+		if (WIFEXITED(status)) errors = WEXITSTATUS(status);
+	}
 	return (errors);
 }
 
