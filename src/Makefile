@@ -442,7 +442,8 @@ citool: gui/citool.tcl gui/config.tcl gui/common.tcl gui/search.tcl \
 	    gui/citool.tcl > citool
 
 setuptool: gui/setuptool.tcl gui/lib/tkwizard.tcl \
-	   port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl
+	   port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
+	   bkmsg.txt
 	cat port/$(SYS)_platform.tcl gui/config.tcl \
 	gui/common.tcl gui/lib/tkwizard.tcl gui/setuptool.tcl > setuptool
 

@@ -16,38 +16,27 @@ proc main {} \
 	app_init
 	widgets
 
-	# these numbers are sort-of pulled out of a hat, but work well
-	# on my system. If we don't set a specific size, each step of
-	# the wizard may grow or shrink, which is annoying. And there's
-	# no good way to find the biggest page without incurring the
-	# overhead of actually creating each step. This seems to be
-	# the lesser of the evils.
-	centerWindow . 500 400
-	wm minsize . 500 400
-
 	. configure -step Begin
 	. show
 
 	bind . <<WizCancel>> {
+		# This causes the main program to exit
 		set ::done 1
 	}
 
 	bind . <<WizFinish>> {
-		# for some reason, on my mac I don't see the cursor change.
-		# Bummer. Need to check the other platforms to see if this
-		# is a X11-on-mac issue, or a tkwizard issue.
 		. configure -state busy
 
 		if {![createRepo error]} {
-			catch {exec bk msgtool $error}
+			popupMessage $error
 			# the break is necessary, because tkwidget's
 			# default binding for <<WizFinish>> is to
 			# withdraw the window. That would be bad.
 			. configure -state normal
 			break
 		} else {
-			catch {exec bk msgtool \
-				   "The repository was successfully created."}
+			popupMessage "The repository was successfully created."
+
 			if {$::wizData(closeOnCreate)} {
 				set ::done 1
 			} else {
@@ -85,6 +74,9 @@ proc app_init {} \
 #	option add *Menu.background       $gc(setup.BG)          startupFile
 #	option add *Label.background      $gc(setup.BG)          startupFile
 #	option add *Menubutton.background $gc(setup.buttonColor) startupFile
+	option add *Checkbutton.font      $gc(setup.noticeFont)  startupFile
+	option add *Radiobutton.font      $gc(setup.noticeFont)  startupFile
+	option add *Menubutton.font       $gc(setup.noticeFont)  startupFile
 	option add *Button.font           $gc(setup.buttonFont)  startupFile
 	option add *Label.font            $gc(setup.noticeFont)  startupFile
 	option add *Entry.background      $gc(setup.entryColor)  startupFile
@@ -107,6 +99,9 @@ proc app_init {} \
 		compression   "gzip"
 		country       ""
 		hours         ""
+		keyword,sccs  0
+		keyword,rcs   0
+		keyword,expand1 0
 		keyword       "none"
 		license       ""
 		licenseType   "Commercial"
@@ -145,7 +140,7 @@ proc app_init {} \
 	set argc [llength $argv]
 	if {$argc == 0} {
 		if {$option(-F)} {
-			exec bk msgtool "you must supply a name with -F"
+			popupMessage "you must supply a name with -F"
 			exit 1
 		}
 		set wizData(repository) ""
@@ -156,9 +151,23 @@ proc app_init {} \
 	} else {
 		# This is lame; what should we do here? We need to
 		# standardize this type of stuff
-		exec bk msgtool "unknown option [lindex $argv 0]"
+		popupMessage "unknown option [lindex $argv 0]"
 		exit 1
 	}
+
+	# we know that if the window was large enough to show 70x28
+	# characters, that would be big enough to show every wizard
+	# step. So, we create a dummy label of that size, ask tk what
+	# that size is, then fix and center the window based on that
+	# size. This appears to be a bit more robust and tolerant of 
+	# font differences than simply hard-coding pixel values.
+	label .bogus -width 70 -height 28
+	set width [winfo reqwidth .bogus]
+	set height [winfo reqheight .bogus]
+	destroy .bogus
+
+	centerWindow . $width $height
+
 }
 
 proc widgets {} \
@@ -174,9 +183,7 @@ proc widgets {} \
 	} 
 
 
-	# This is more cumbersome than it ought to be. I need to modify
-	# the wizard code to make it easier to manage steps within a
-	# path...
+	set pre {Begin LicenseType}
 	set post {
 		RepoInfo ContactInfo 
 		KeywordExpansion CheckoutMode 
@@ -184,10 +191,9 @@ proc widgets {} \
 	}
 	if {[info exists ::env(BK_LICENSE)] &&
 	    [string match "ACCEPTED" $::env(BK_LICENSE)]} {
-		set pre {Begin LicenseType}
 		set wizData(licenseAccept) 1
 	} else {
-		set pre {Begin EndUserLicense LicenseType}
+		lappend pre EndUserLicense
 	}
 	. add path commercial  -steps [concat $pre LicenseKey $post]
 	. add path openlogging -steps [concat $pre $post]
@@ -276,7 +282,7 @@ proc widgets {} \
 		    -command {. configure -path commercial}
 
 		button $w.commercialHelp -text "More info" -bd 1 \
-		    -command {moreInfo commercial_license_info}
+		    -command {popupMessage [getmsg commercial_license_info]}
 
 		radiobutton $w.singleRadiobutton \
 		    -text "Single User / Single Host" \
@@ -285,7 +291,7 @@ proc widgets {} \
 		    -command {. configure -path singleuser}
 
 		button $w.singleHelp -text "More info" -bd 1 \
-		    -command {moreInfo single_user_license_info}
+		    -command {popupMessage [getmsg single_user_license_info]}
 
 		radiobutton $w.openloggingRadiobutton \
 		    -text "Open Logging" \
@@ -294,7 +300,7 @@ proc widgets {} \
 		    -command {. configure -path openlogging}
 
 		button $w.openloggingHelp -text "More info" -bd 1 \
-		    -command {moreInfo open_logging_license_info}
+		    -command {popupMessage [getmsg open_logging_license_info]}
 		
 		grid $w.commercialRadiobutton -row 0 -column 0 -sticky w
 		grid $w.singleRadiobutton     -row 1 -column 0 -sticky w
@@ -334,11 +340,14 @@ proc widgets {} \
 		button $w.fileButton -text "From file..." \
 		    -command {parseLicenseData file}
 		label $w.licsign1Label -text "Key Signature #1:"
-		entry $w.licsign1Entry -textvariable wizData(licsign1)
+		entry $w.licsign1Entry -textvariable wizData(licsign1) \
+		    -background $gc(setup.mandatoryColor)
 		label $w.licsign2Label -text "Key Signature #2:"
-		entry $w.licsign2Entry -textvariable wizData(licsign2)
+		entry $w.licsign2Entry -textvariable wizData(licsign2) \
+		    -background $gc(setup.mandatoryColor)
 		label $w.licsign3Label -text "Key Signature #3:"
-		entry $w.licsign3Entry -textvariable wizData(licsign3)
+		entry $w.licsign3Entry -textvariable wizData(licsign3) \
+		    -background $gc(setup.mandatoryColor)
 
 		grid $w.keyLabel       -row 0 -column 0 -sticky e
 		grid $w.keyEntry       -row 0 -column 1 -sticky ew -pady 2
@@ -366,6 +375,9 @@ proc widgets {} \
 		# a license, go to the next step, then come back.
 		validate license
 		trace variable wizData(license) w [list validate license $w]
+		trace variable wizData(licsign1) w [list validate license $w]
+		trace variable wizData(licsign2) w [list validate license $w]
+		trace variable wizData(licsign3) w [list validate license $w]
 
 		after idle [list focusEntry $w.keyEntry]
 	}
@@ -433,10 +445,6 @@ proc widgets {} \
 		$this configure -defaultbutton next
 
 		set w [$this info workarea]
-
-		# running the validate command will set the wizard buttons to 
-		# the proper state
-		validate userhost
 
 		trace variable wizData(description) w {validate repoInfo}
 		trace variable wizData(email) w {validate repoInfo}
@@ -530,6 +538,11 @@ proc widgets {} \
 		} else {
 			after idle [list focusEntry $w.repoPathEntry]
 		}
+
+		# running the validate command will set the wizard buttons to 
+		# the proper state
+		validate repoInfo
+
 	}
 
 	#-----------------------------------------------------------------------
@@ -620,15 +633,56 @@ proc widgets {} \
 
 		$this configure -defaultbutton next
 
-		label $w.keywordLabel -text "Keyword Expansion:"
-		tk_optionMenu $w.keywordOptionMenu wizData(keyword) \
-		    "none" "rcs" "rcs, expand1" "sccs" "sccs, expand1"
+		# keywords is a weird beast, in that the mechanics to 
+		# represent the value is a set of checkboxes rather 
+		# than a single entry or optionmenu. So, we need to parse 
+		# the keyword value to set some variables used by the 
+		# checkboxes.
+		set ::wizData(keyword,sccs) 0
+		set ::wizData(keyword,rcs) 0
+		set ::wizData(keyword,expand1) 0
+		if {$::wizData(keyword) != "none"} {
+			foreach value [split $::wizData(keyword) ", "] {
+				set value [string trim $value]
+				if {$value == "sccs" || 
+				    $value == "rcs" ||
+				    $value == "expand1"} {
+					set ::wizData(keyword,$value) 1
+				}
+			}
+		}
 
-		grid $w.keywordLabel      -row 0 -column 0 -sticky e
-		grid $w.keywordOptionMenu -row 0 -column 1 -sticky w
+		label $w.keywordLabel -text "Keyword Expansion:"
+		checkbutton $w.sccsCheckbutton \
+		    -text "sccs" \
+		    -onvalue 1 \
+		    -offvalue 0 \
+		    -variable wizData(keyword,sccs) \
+		    -command updateKeyword
+		checkbutton $w.rcsCheckbutton \
+		    -text "rcs" \
+		    -onvalue 1 \
+		    -offvalue 0 \
+		    -variable wizData(keyword,rcs) \
+		    -command updateKeyword
+		checkbutton $w.expand1Checkbutton \
+		    -text "expand1" \
+		    -onvalue 1 \
+		    -offvalue 0 \
+		    -variable wizData(keyword,expand1) \
+		    -command updateKeyword
+
+		grid $w.keywordLabel       -row 0 -column 0 -sticky e -pady 4
+		grid $w.expand1Checkbutton -row 1 -column 0 -sticky w -padx 16
+		grid $w.rcsCheckbutton     -row 2 -column 0 -sticky w -padx 16
+		grid $w.sccsCheckbutton    -row 3 -column 0 -sticky w -padx 16
 
 		grid rowconfigure $w 0 -weight 0
-		grid rowconfigure $w 1 -weight 1
+		grid rowconfigure $w 1 -weight 0
+		grid rowconfigure $w 2 -weight 0
+		grid rowconfigure $w 3 -weight 0
+		grid rowconfigure $w 4 -weight 1
+
 		grid columnconfigure $w 0 -weight 0
 		grid columnconfigure $w 1 -weight 1
 	}
@@ -723,17 +777,20 @@ proc widgets {} \
 		    -onvalue 0 \
 		    -offvalue 1 \
 		    -variable wizData(closeOnCreate)
+		frame $w.sep -height 2 -borderwidth 0
 
-		grid $w.text -row 0 -column 0 -sticky nsew
-		grid $w.vsb -row 0 -column 1 -sticky ns
-		grid $w.closeOnFinish -row 2 -column 0 -sticky w -columnspan 2 \
+		grid $w.text          -row 0 -column 0 -sticky nsew
+		grid $w.vsb           -row 0 -column 1 -sticky ns
+		grid $w.sep           -row 1 -column 0 -columnspan 2
+		grid $w.closeOnFinish -row 2 -column 0 -sticky w -columnspan 2
 
 		grid rowconfigure    $w 0 -weight 1
 		grid rowconfigure    $w 1 -weight 0 -minsize 3
 		grid rowconfigure    $w 2 -weight 0
+		grid rowconfigure    $w 3 -weight 0
 		grid columnconfigure $w 0 -weight 1
 		grid columnconfigure $w 1 -weight 0
-
+		grid columnconfigure $w 2 -weight 0
 
 		# createConfigData doesn't include the repository name
 		# (path, whatever). So to give the user some piece of
@@ -753,33 +810,22 @@ proc validate {which args} \
 	global gc
 
 	switch $which {
-		license {
+		"license" {
 			# it would be nice if we could truly verify
 			# the license and signatures, but there's no
-			# cheap way to do that. 
-			if {[string length $wizData(license)] == 0 ||
-			    ![string match "BKL*" $wizData(license)]} {
+			# cheap way to do that yet.
+			if {([string length $wizData(license)] == 0) ||
+			    ([string length $wizData(licsign1)] == 0) ||
+			    ([string length $wizData(licsign2)] == 0) ||
+			    ([string length $wizData(licsign3)] == 0) ||
+			    (![string match "BKL*" $wizData(license)])} {
 				. configure -state pending
 			} else {
-				# we could also enable/disable the signature
-				# fields, but I've got bigger fish to fry
-				# right now
 				. configure -state normal
-			}
-			if {[string match "BKL5*" $wizData(license)]} {
-				set color $gc(setup.mandatoryColor)
-			} else {
-				set color $gc(setup.entryColor)
-			}
-
-			catch {
-				$::widgets(licsign1) configure -background $color
-				$::widgets(licsign2) configure -background $color
-				$::widgets(licsign3) configure -background $color
 			}
 		}
 
-		user/host {
+		"user/host" {
 			if {([string length $wizData(single_user)] == 0) ||
 			    ([string length $wizData(single_host)] == 0) } {
 				. configure -state pending
@@ -787,7 +833,8 @@ proc validate {which args} \
 				. configure -state normal
 			}
 		}
-		repoInfo {
+
+		"repoInfo" {
 			if {([string length $wizData(repository)] == 0) ||
 			    ([string length $wizData(description)] == 0) ||
 			    ([string length $wizData(email)] == 0) ||
@@ -840,11 +887,6 @@ proc parseLicenseData {type} \
 	}
 }
 
-proc moreInfo {which} \
-{
-	exec bk msgtool [getmsg $which] &
-}
-
 proc readConfig {type {filename {}}} \
 {
 
@@ -876,7 +918,7 @@ proc readConfig {type {filename {}}} \
 		while {[gets $f line] != -1} {
 			if {[regexp {^ *#} $line]} continue
 			if {[regexp {([^:]+) *: *(.*)} $line -> key value]} {
-				set result($key) $value
+				set result($key) [string trim $value]
 			}
 		}
 	}
@@ -969,6 +1011,12 @@ proc createRepo {errorVar} \
 	if {$option(-e)} {lappend command -e}
 	lappend command -f -c$filename $wizData(repository)
 
+	# Danger Will Robinson! bk setup will prompt the user to accept
+	# the license unless we do something to prevent that. The easiest
+	# thing is to set the BK_LICENSE environment variable, though this
+	# only solves this tool's problem and is not a persistent solution
+	# for the user. 
+	set ::env(BK_LICENSE) "ACCEPTED"
 	set err [catch { eval exec $command} message]
 
 	catch {file delete $filename}
@@ -976,14 +1024,47 @@ proc createRepo {errorVar} \
 	if {$message != ""} {
 		# It's annoying this gets appended to the real message.
 		# Oh well. 
-		regsub -all "\n*\[Cc\]hild process exited.*" $message {} message
+		regsub -all "\n*\[Cc\]hild process exited.*" \
+		    $message {} message
 		return 0
+	}
+
+	return 1
+}
+
+proc updateKeyword {} \
+{
+	global wizData
+
+	set keywords [list]
+
+	if {$wizData(keyword,rcs)}     {lappend keywords rcs}
+	if {$wizData(keyword,sccs)}    {lappend keywords sccs}
+	if {$wizData(keyword,expand1)} {lappend keywords expand1}
+
+	if {[llength $keywords] == 0} {
+		set wizData(keyword) "none"
 	} else {
-		return 1
+		set wizData(keyword) [join $keywords ", "]
 	}
 }
 
-# this not only sets the focus, but attempts to put the cursor in
+proc popupMessage {message} \
+{
+	# export BK_MSG_GEOM so the popup will show in the right
+	# place...
+	if {[winfo viewable .]} {
+		set x [expr {[winfo rootx .] + 40}]
+		set y [expr {[winfo rooty .] + 40}]
+		set ::env(BK_MSG_GEOM) "+${x}+${y}"
+	}
+
+	# hopefully someday we'll turn the msgtool code into a library
+	# so we don't have to exec. For now, though, exec works just fine.
+	exec bk msgtool $message
+}
+
+# This not only sets the focus, but attempts to put the cursor in
 # the right place
 proc focusEntry {w} \
 {
