@@ -1,0 +1,97 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Test unpull:
+# 1) create a tree, clone it, pull a new file, unpull and check that it's gone
+# 2) do a pull with an automerge delta, unpull, make sure that both are gone
+# 3) pull, add a cset, make sure unpull fails
+# 4) undo the locally added cset, unpull again, should succeed
+echo $N Setup test case .............................................$NL
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo bar > bar.c
+bk ci $Q -i bar.c 
+bk commit $S -a -yCset
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
+cd $HERE
+bk clone $Q $HERE/project $HERE/copy || { echo failed; exit 1; }
+test -f copy/BitKeeper/log/parent || { echo no parent; exit 1; }
+echo OK
+
+echo $N Pull new file, unpull, make sure it is gone .................$NL
+cd $HERE/project
+echo foo > foo.c
+bk ci $Q -i foo.c 
+bk edit $Q bar.c
+bk delta $Q -ynull bar.c
+bk commit $S -a -yCset
+cd $HERE/copy
+bk pull $Q || exit 1
+test -f SCCS/s.foo.c || { echo no foo.c; exit 1; }
+bk unpull -f $Q || exit 1
+test -f SCCS/s.foo.c && { echo failed to remove foo.c; exit 1; }
+grep -q 'D 1.2' SCCS/s.bar.c && {
+	echo failed to remove 1.2 delta in bar.c
+	exit 1
+}
+echo OK
+
+echo $N Pull with automerge, unpull, make sure both are gone ........$NL
+cd $HERE/copy
+echo snafu > snafu.c
+bk ci $Q -i snafu.c 
+bk commit $S -a -yCset
+bk pull $Q || exit 1
+test -f SCCS/s.foo.c || { echo no foo.c; exit 1; }
+bk unpull -f $Q || exit 1
+test -f SCCS/s.foo.c && { echo failed to remove foo.c; exit 1; }
+grep -q 'D 1.2' SCCS/s.bar.c && {
+	echo failed to remove 1.2 delta in bar.c
+	exit 1
+}
+test -f SCCS/s.snafu.c || { echo snafu.c got removed; exit 1; }
+bk -r check -ac || exit 1
+echo OK
+
+# 3) pull, add a cset, make sure unpull fails
+echo $N Pull, add local cset, unpull should fail ....................$NL
+cd $HERE/copy
+bk pull $Q || exit 1
+test -f SCCS/s.foo.c || { echo no foo.c; exit 1; }
+bk edit $Q snafu.c
+bk delta $Q -ynull snafu.c
+bk commit $Q -yhoho
+bk unpull -f $Q 2> OUT && {
+	echo unpull should have failed
+	exit 1
+}
+grep -q 'unpull: will not unpull local changeset 1.5' OUT || {
+	echo bad error message
+	cat OUT
+}
+echo OK
+
+# 4) undo the locally added cset, unpull again, should succeed
+echo $N Undo locally added cset, try unpull, should succeed .........$NL
+bk undo $Q -fr+ || exit 1
+bk unpull -f $Q || exit 1
+test -f SCCS/s.foo.c && { echo failed to remove foo.c; exit 1; }
+grep -q 'D 1.2' SCCS/s.bar.c && {
+	echo failed to remove 1.2 delta in bar.c
+	exit 1
+}
+test -f SCCS/s.snafu.c || { echo snafu.c got removed; exit 1; }
+bk -r check -ac || exit 1
+echo OK

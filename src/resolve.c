@@ -129,7 +129,7 @@ listPendingRenames()
 {
 	int fd1;
 
-	fprintf(stderr, "List of name conflict:\n");
+	fprintf(stderr, "List of name conflicts:\n");
 	fflush(stderr);
 	fd1 = dup(1); dup2(2, 1); /* redirect stdout to stderr */
 	system("bk _find . -name 'm.*' | xargs cat");
@@ -1572,6 +1572,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 			edit(rs);
 			unlink(sccs_Xfile(s, 'r'));
 			resolve_free(rs);
+			opts->willMerge = 1;
 		}
 	} else if (exists("SCCS/p.ChangeSet")) {
 		/*
@@ -2090,7 +2091,7 @@ commit(opts *opts)
 	i = spawnvp_ex(_P_WAIT, "bk", cmds);
 	if (WIFEXITED(i) && !WEXITSTATUS(i)) {
 		if (cmt) free(cmt);
-		// XXX TODO update CSETS_IN here; for bk undo -l 
+		opts->didMerge = opts->willMerge;
 		return;
 	}
 	if (cmt) free(cmt);
@@ -2518,6 +2519,44 @@ freeStuff(opts *opts)
 	if (opts->idDB) mdbm_close(opts->idDB);
 }
 
+private void
+csets_in(opts *opts)
+{
+	sccs	*s;
+	delta	*d;
+	FILE	*in, *out;
+	int	c;
+	char	s_cset[] = CHANGESET;
+	char	buf[MAXPATH];
+
+	if (opts->didMerge) {
+		chdir(ROOT2RESYNC);
+		s = sccs_init(s_cset, 0, 0);
+		assert(s && s->tree);
+		d = sccs_top(s);
+		assert(d && d->merge);
+		in = fopen(CSETS_IN, "r");
+		assert(in);
+		sprintf(buf, "%s/%s", RESYNC2ROOT, CSETS_IN);
+		out = fopen(buf, "w");
+		while ((c = fgetc(in)) != EOF) {
+			if ((c == '\r') || (c == '\n')) break;
+			fputc(c, out);
+		}
+		fprintf(out, ",%s\n", d->rev);
+		fclose(out);
+		fclose(in);
+		sccs_free(s);
+		unlink(CSETS_IN);
+		chdir(RESYNC2ROOT);
+	} else {
+		sprintf(buf, "%s/%s", ROOT2RESYNC, CSETS_IN);
+		/* May not exist if we pulled in tags only */
+		if (exists(buf)) rename(buf, CSETS_IN);
+	}
+	if (opts->log) fprintf(stdlog, "update(%s, %s)\n", buf, CSETS_IN);
+}
+
 void
 resolve_cleanup(opts *opts, int what)
 {
@@ -2548,15 +2587,7 @@ resolve_cleanup(opts *opts, int what)
 	/*
 	 * If we are done, save the csets file.
 	 */
-	sprintf(buf, "%s/%s", ROOT2RESYNC, CSETS_IN);
-	if ((what & CLEAN_OK) && exists(buf)) {
-		rename(buf, CSETS_IN);
-		if (opts->log) {
-			fprintf(stdlog,
-			    "rename(%s, %s)\n", buf, CSETS_IN);
-		}
-	}
-
+	if ((what & CLEAN_OK) && exists(buf)) csets_in(opts);
 	if (what & CLEAN_RESYNC) {
 		assert(exists("RESYNC"));
 		sys(RM, "-rf", "RESYNC", SYS);

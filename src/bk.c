@@ -131,6 +131,7 @@ int unedit_main(int, char **);
 int unlink_main(int, char **);
 int unlock_main(int, char **);
 int unpark_main(int, char **);
+int unpull_main(int, char **);
 int unwrap_main(int, char **);
 int users_main(int, char **);
 int version_main(int, char **);
@@ -259,6 +260,7 @@ struct command cmdtbl[] = {
 	{"unget", unedit_main},		/* aliases */	/* doc 2.0 as unedit */
 	{"unlock", unlock_main },	/* doc 2.0 */
 	{"unpark", unpark_main},	/* doc 2.0 */
+	{"unpull", unpull_main},
 	{"unwrap", unwrap_main},	/* doc 2.0 */
 	{"users", users_main},		/* doc 2.0 */
 	{"version", version_main},	/* doc 2.0 */

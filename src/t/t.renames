@@ -266,6 +266,7 @@ mr
 REMOTE
 u
 EOF
+cores
 if [ ! -f copy/'B%A!#$%^&)(-_+=];,' ]
 then	echo Failed to leave local file; exit 1
 fi

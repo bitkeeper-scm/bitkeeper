@@ -43,6 +43,8 @@ typedef struct {
 	u32	force:1;	/* for forcing commits with unmerged changes */
 	u32	advance:1;	/* advance after merging if commit works */
 	u32	verbose:1;	/* be verbose on gets, etc */
+	u32	willMerge:1;	/* set if we will create a merge delta */
+	u32	didMerge:1;	/* set if we created a cset merge delta */
 	int	hadConflicts;	/* conflicts during automerge */
 	int	pass;		/* which pass are we in now */
 	char	*comment;	/* checkin comment for commit */
