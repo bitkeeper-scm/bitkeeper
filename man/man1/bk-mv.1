@@ -45,6 +45,16 @@ for that.
 .SA rm 1
 .SA rmdir
 .SH AVAILABILITY
-\*(BK Professional
+.BU
+Fully supported in \*(BK Professional in all repositories.
+.BU
+Limited functionality in \*(BK Basic.
+bk mv should only be used in the master repository 
+since the resolver can not merge rename conflicts in \*(BK Basic.
+The actual requirement is that it is only
+used in one repository, then all repositories must sync with
+that repository.  The easiest way to accomplish this is to
+establish policy which says that bk mv may only be used in the
+master repository.
 .SH CATEGORY
 .B Basics
