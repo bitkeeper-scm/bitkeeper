@@ -1,3 +1,11 @@
+make the range stuff take lists of rev,rev,rev..rev and mark
+the sccs* with D_VISITED (actually, maybe D_SET), and make the
+sccs* with S_SET.
+
+Redo the bits so that we have global bits as well as per function bits.
+I think we can do this in one int, with the global stuff getting 1/2 and the
+per function getting the other half.
+
 make/take patch and unique identifiers
 	Work harder on ChangeSet to make sure it is OK
 	BitKeeper flag for type of checksum per delta

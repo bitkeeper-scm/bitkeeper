@@ -240,7 +240,7 @@ usage:			fprintf(stderr,
 	}
 	for (name = sfileFirst("range", &av[optind], 0);
 	    name; name = sfileNext()) {
-	    	unless (s = sccs_init(name, NOCKSUM)) {
+	    	unless (s = sccs_init(name, INIT_NOCKSUM)) {
 			continue;
 		}
 		if (!s->tree) goto next;

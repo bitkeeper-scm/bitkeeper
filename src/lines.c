@@ -18,7 +18,7 @@ main(int ac, char **av)
 
 	while ((c = getopt(ac, av, "u")) != -1) {
 		switch (c) {
-		    case 'u': flags |= USER; break;
+		    case 'u': flags |= GET_USER; break;
 		    default:
 			fprintf(stderr,
 			    "lines: usage error, try --help.\n");
@@ -126,7 +126,7 @@ branches(delta *d)
 pd(char *prefix, delta *d)
 {
 	printf("%s%s", prefix, d->rev);
-	if (flags & USER) printf("-%s", d->user);
+	if (flags & GET_USER) printf("-%s", d->user);
 	if (d->flags & D_BADREV) printf("-BAD");
 	if (d->merge) {
 		extern	delta *sfind();
@@ -134,7 +134,7 @@ pd(char *prefix, delta *d)
 
 		assert(p);
 		printf(":%s", p->rev);
-		if (flags & USER) printf("-%s", p->user);
+		if (flags & GET_USER) printf("-%s", p->user);
 	}
 }
 

@@ -65,7 +65,7 @@ usage:			fprintf(stderr, "sccslog: usage error, try --help.\n");
 
 	for (name = sfileFirst("sccslog", &av[optind], 0);
 	    name; name = sfileNext()) {
-again:		unless (s = sccs_init(name, NOCKSUM|flags)) {
+again:		unless (s = sccs_init(name, INIT_NOCKSUM|flags)) {
 			continue;
 		}
 		if (!s->tree) {

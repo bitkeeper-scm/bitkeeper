@@ -179,7 +179,7 @@ extractPatch(char *name, FILE *p, int flags)
 	if (newProject && !newFile) notfirst();
 
 	if (echo>3) fprintf(stderr, "%s\n", buf);
-again:	s = sccs_keyinit(buf, NOCKSUM, idDB);
+again:	s = sccs_keyinit(buf, INIT_NOCKSUM, idDB);
 	/*
 	 * Unless it is a brand new workspace, or a new file,
 	 * rebuild the id cache if look up failed.
@@ -209,7 +209,6 @@ again:	s = sccs_keyinit(buf, NOCKSUM, idDB);
 		if (newFile && (echo > 3)) {
 			fprintf(stderr,
 			    "takepatch: new file %s already exists.\n", name);
-			newFile = 0;
 		}
 		if (echo > 6) {
 			fprintf(stderr, "takepatch: file %s found.\n",
@@ -488,7 +487,7 @@ applyPatch(char *localPath, char *remotePath, int flags, sccs *perfile)
 		perror("cp");
 		cleanup(CLEAN_RESYNC);
 	}
-	unless (s = sccs_init(p->resyncFile, NOCKSUM|flags)) {
+	unless (s = sccs_init(p->resyncFile, INIT_NOCKSUM|flags)) {
 		fprintf(stderr, "takepatch: can't open %s\n", p->resyncFile);
 		cleanup(CLEAN_RESYNC);
 	}
@@ -522,7 +521,7 @@ applyPatch(char *localPath, char *remotePath, int flags, sccs *perfile)
 	/* sccs_restart does not rebuild the graph and we just pruned it,
 	 * so do a hard restart.
 	 */
-	unless (s = sccs_init(p->resyncFile, NOCKSUM|flags)) {
+	unless (s = sccs_init(p->resyncFile, INIT_NOCKSUM|flags)) {
 		fprintf(stderr,
 		    "takepatch: can't open %s\n", p->resyncFile);
 		cleanup(CLEAN_RESYNC);
@@ -546,8 +545,8 @@ apply:
 				}
 			} else {
 				newflags = (echo > 5) ?
-				    NOCKSUM|SKIPGET|EDIT :
-				    NOCKSUM|SILENT|SKIPGET|EDIT;
+				    GET_SKIPGET|GET_EDIT :
+				    SILENT|GET_SKIPGET|GET_EDIT;
 				/* CSTYLED */
 				if (sccs_get(s, d->rev, 0,0,0, newflags, "-")) {
 				    	perror("get");
@@ -564,8 +563,8 @@ apply:
 				iF = fopen(p->initFile, "r");
 				dF = fopen(p->diffFile, "r");
 				newflags = (echo > 2) ?
-				    NOCKSUM|FORCE|PATCH :
-				    NOCKSUM|FORCE|PATCH|SILENT;
+				    DELTA_FORCE|DELTA_PATCH :
+				    DELTA_FORCE|DELTA_PATCH|SILENT;
 				if (sccs_delta(s, newflags, 0, iF, dF)) {
 					perror("delta");
 					cleanup(CLEAN_RESYNC);
@@ -588,8 +587,8 @@ apply:
 			dF = fopen(p->diffFile, "r");
 			d = 0;
 			newflags = (echo > 2) ?
-			    NOCKSUM|NEWFILE|FORCE|PATCH :
-			    NOCKSUM|NEWFILE|FORCE|PATCH|SILENT;
+			    NEWFILE|DELTA_FORCE|DELTA_PATCH :
+			    NEWFILE|DELTA_FORCE|DELTA_PATCH|SILENT;
 			if (sccs_delta(s, newflags, d, iF, dF)) {
 				perror("delta");
 				cleanup(CLEAN_RESYNC);
@@ -597,7 +596,7 @@ apply:
 			if (s->state & S_BAD_DSUM) cleanup(CLEAN_RESYNC);
 			fclose(iF);	/* dF done by delta() */
 			sccs_free(s);
-			s = sccs_init(p->resyncFile, NOCKSUM);
+			s = sccs_init(p->resyncFile, INIT_NOCKSUM);
 		}
 		p = p->next;
 	}
@@ -639,7 +638,6 @@ apply:
 	}
 	patchList = 0;
 	no = 0;
-	line = 0;
 	if (gcaPath) free(gcaPath);
 	return (0);
 }
@@ -669,7 +667,7 @@ getLocals(sccs *s, delta *g, char *name)
 		}
 		s->rstart = s->rstop = d;
 		sccs_restart(s);
-		sccs_prs(s, PATCH|SILENT, 0, NULL, t);
+		sccs_prs(s, PRS_PATCH|SILENT, 0, NULL, t);
 		if (ferror(t)) {
 			perror("error on init file");
 			cleanup(CLEAN_RESYNC);

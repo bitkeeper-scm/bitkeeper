@@ -29,7 +29,7 @@ main(int ac, char **av)
 
 	while ((c = getopt(ac, av, "fo")) != -1) {
 		switch (c) {
-		    case 'f': flags |= FORCE; break;
+		    case 'f': flags |= GET_FORCE; break;
 		    case 'o': old++; break;
 		}
 	}
@@ -87,7 +87,7 @@ resum(sccs *s, delta *d, int flags, int old7bit)
 	}
 
 	/* flags can't have EXPAND in them */
-	if (sccs_get(s, d->rev, 0, 0, 0, SHUTUP|SILENT, "-")) {
+	if (sccs_get(s, d->rev, 0, 0, 0, GET_SHUTUP|SILENT, "-")) {
 		unless (BEEN_WARNED(s)) {
 			fprintf(stderr,
 			    "co of %s:%s failed, skipping it.\n",
@@ -106,7 +106,7 @@ resum(sccs *s, delta *d, int flags, int old7bit)
 
 	if (d->sum == new) return (0);
 	if (d->sum != old) {
-		if ((d->flags & D_CKSUM) && !(flags & FORCE)) {
+		if ((d->flags & D_CKSUM) && !(flags & GET_FORCE)) {
 			fprintf(stderr,
 			    "Bad checksum %d:%d:%d in %s:%s NOT corrected\n",
 			    d->sum, old, new, s->sfile, d->rev);

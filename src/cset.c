@@ -82,7 +82,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 		    case 'd': doDiffs++; break;
 		    case 'D': ignoreDeleted++; break;
 		    case 'i':
-			flags |= EMPTY|NEWFILE;
+			flags |= DELTA_EMPTY|NEWFILE;
 			break;
 		    case 'R':
 			range++;
@@ -116,11 +116,11 @@ usage:		fprintf(stderr, "%s", cset_help);
 		    case 'y':
 			comment = optarg;
 			gotComment = 1;
-			flags |= DONTASK;
+			flags |= DELTA_DONTASK;
 			break;
 		    case 'Y':
 			comment = file2str(optarg);
-			flags |= DONTASK;
+			flags |= DELTA_DONTASK;
 			gotComment = 1;
 			cFile++;
 			break;
@@ -230,7 +230,7 @@ csetInit(sccs *cset, int flags, char *sym)
 		fprintf(stderr, "cset: must be -i ChangeSet\n");
 		exit(1);
 	}
-	if (flags & DONTASK) unless (d = getComments(d)) goto intr;
+	if (flags & DELTA_DONTASK) unless (d = getComments(d)) goto intr;
 	unless(d = getHostName(d)) goto intr;
 	unless(d = getUserName(d)) goto intr;
 
@@ -418,7 +418,7 @@ again:	/* doDiffs makes it two pass */
 	do {
 		for (t = buf; *t != ' '; t++);
 		*t++ = 0;
-retry:		sc = sccs_keyinit(buf, NOCKSUM, idDB);
+retry:		sc = sccs_keyinit(buf, INIT_NOCKSUM, idDB);
 		unless (sc) {
 			/* cache miss, rebuild cache */
 			unless (doneFullRebuild) {
@@ -520,7 +520,6 @@ void
 doDiff(sccs *sc, int kind)
 {
 	delta	*d, *e = 0;
-	int	ex = 0;
 
 	if (sc->state & S_CSET) return;	/* no changeset diffs */
 	for (d = sc->table; d; d = d->next) {
@@ -541,8 +540,7 @@ doDiff(sccs *sc, int kind)
 	}
 	e = e->parent;
 	if (e == d) return;
-	if (HAS_GFILE(sc) && !IS_WRITABLE(sc)) ex = EXPAND;
-	sccs_diffs(sc, e->rev, d->rev, ex, kind, stdout);
+	sccs_diffs(sc, e->rev, d->rev, 0, kind, stdout);
 }
 
 void
@@ -627,7 +625,7 @@ add(MDBM *csDB, char *buf)
 		exit(1);
 	}
 	*rev++ = 0;
-	unless (s = sccs_init(buf, NOCKSUM|SILENT)) {
+	unless (s = sccs_init(buf, INIT_NOCKSUM|SILENT)) {
 		fprintf(stderr, "cset: can't init %s\n", buf);
 		system("bk clean -u ChangeSet");
 		exit(1);
@@ -669,7 +667,7 @@ mkChangeSet(sccs *cset)
 	 * If the edit flag is off, then make sure the file is already edited.
 	 */
 	unless (IS_EDITED(cset)) {
-		if (sccs_get(cset, 0, 0, 0, 0, EDIT|SILENT, "-")) {
+		if (sccs_get(cset, 0, 0, 0, 0, GET_EDIT|SILENT, "-")) {
 			unless (BEEN_WARNED(cset)) {
 				fprintf(stderr,
 				    "cset: get -e of ChangeSet failed\n");
@@ -805,7 +803,7 @@ csetCreate(sccs *cset, int flags, char *sym)
 #undef	open
 	close(0);
 	open("/dev/tty", 0, 0);
-	if (flags & DONTASK) d = getComments(d);
+	if (flags & DELTA_DONTASK) d = getComments(d);
 	assert(d->sdate); /* this make sure d->date doesn't change */
 	if (sccs_delta(cset, flags, d, 0, 0) == -1) {
 		sccs_whynot("cset", cset);
@@ -913,7 +911,7 @@ sccs_patch(sccs *s)
 			printf("\n");
 		}
 		s->rstop = s->rstart = d;
-		sccs_prs(s, PATCH|SILENT, 0, NULL, stdout);
+		sccs_prs(s, PRS_PATCH|SILENT, 0, NULL, stdout);
 		printf("\n");
 		if (d->type == 'D') sccs_getdiffs(s, d->rev, 0, "-");
 		printf("\n");

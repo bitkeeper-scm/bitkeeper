@@ -46,7 +46,7 @@ int
 get_main(int ac, char **av, char *out)
 {
 	sccs	*s;
-	int	flags = EXPAND, c, errors = 0;
+	int	iflags = 0, flags = GET_EXPAND, c, errors = 0;
 	char	*iLst = 0, *xLst = 0, *name, *rev = 0, *cdate = 0, *Gname = 0;
 	char	*mRev = 0;
 	delta	*d;
@@ -59,32 +59,32 @@ get_main(int ac, char **av, char *out)
 		fprintf(stderr, get_help);
 		return (1);
 	}
-	if (streq(av[0], "edit")) flags |= EDIT;
+	if (streq(av[0], "edit")) flags |= GET_EDIT;
 	while ((c = getopt(ac, av, "bc;dDeFgG:Hi;kmM|nNpPqr;Rstux;")) != -1) {
 		switch (c) {
-		    case 'b': flags |= FORCEBRANCH; break;
+		    case 'b': flags |= GET_BRANCH; break;
 		    case 'c': cdate = optarg; break;
-		    case 'd': flags |= PREFIXDATE; break;
+		    case 'd': flags |= GET_PREFIXDATE; break;
 		    case 'D': getdiff = 1; break;
-		    case 'e': flags |= EDIT; break;
-		    case 'F': flags |= NOCKSUM; break;
-		    case 'g': flags |= SKIPGET; break;
+		    case 'e': flags |= GET_EDIT; break;
+		    case 'F': iflags |= INIT_NOCKSUM; break;
+		    case 'g': flags |= GET_SKIPGET; break;
 		    case 'G': Gname = optarg; break;
-		    case 'H': flags |= DELTA_PATH; break;
+		    case 'H': flags |= GET_PATH; break;
 		    case 'i': iLst = optarg; break;
-		    case 'k': flags &= ~EXPAND; break;
-		    case 'm': flags |= REVNUMS; break;
+		    case 'k': flags &= ~GET_EXPAND; break;
+		    case 'm': flags |= GET_REVNUMS; break;
 		    case 'M': mRev = optarg; break;
-		    case 'n': flags |= MODNAME; break;
-		    case 'N': flags |= LINENUM; break;
+		    case 'n': flags |= GET_MODNAME; break;
+		    case 'N': flags |= GET_LINENUM; break;
 		    case 'p': flags |= PRINT; break;
-		    case 'P': flags |= PRINT|FORCE; break;
+		    case 'P': flags |= PRINT|GET_FORCE; break;
 		    case 'q': flags |= SILENT; break;
 		    case 'r': rev = optarg; break;
 		    case 'R': hasrevs = SF_HASREVS; break;
 		    case 's': flags |= SILENT; break;
 		    case 't': break;	/* compat, noop */
-		    case 'u': flags |= USER; break;
+		    case 'u': flags |= GET_USER; break;
 		    case 'x': xLst = optarg; break;
 
 		    default:
@@ -92,16 +92,16 @@ usage:			fprintf(stderr, "get: usage error, try get --help\n");
 			return (1);
 		}
 	}
-	if (flags & (MODNAME|PREFIXDATE|REVNUMS|USER|LINENUM)) {
-		if (flags & EDIT) {
+	if (flags & GET_PREFIX) {
+		if (flags & GET_EDIT) {
 			fprintf(stderr, "get: can't mix -e with -dNum\n");
 			exit(1);
 		}
 	}
-	if (flags & EDIT) flags &= ~EXPAND;
+	if (flags & GET_EDIT) flags &= ~GET_EXPAND;
 	name = sfileFirst("get", &av[optind], hasrevs);
 	gdir = Gname && isdir(Gname);
-	if (Gname && (flags & EDIT)) {
+	if (Gname && (flags & GET_EDIT)) {
 		fprintf(stderr, "get: can't edit and rename at same time.\n");
 		return (1);
 	}
@@ -112,13 +112,13 @@ usage:			fprintf(stderr, "get: usage error, try get --help\n");
 			goto usage;
 		}
 	}
-	if (flags & DELTA_PATH) {
+	if (flags & GET_PATH) {
 		if (Gname) {
 			fprintf(stderr,
 			    "get: can't use -G and -H at the same time.\n");
 			return (1);
 		}
-		if (flags & (EDIT|PRINT)) {
+		if (flags & (GET_EDIT|PRINT)) {
 			fprintf(stderr,
 			    "get: can't use -e|p and -H at the same time.\n");
 			return (1);
@@ -130,7 +130,7 @@ usage:			fprintf(stderr, "get: usage error, try get --help\n");
 		return (1);
 	}
 	for (; name; name = sfileNext()) {
-		unless (s = sccs_init(name, flags)) continue;
+		unless (s = sccs_init(name, iflags)) continue;
 		if (Gname) {
 			if (gdir) {
 				char	buf[1024];
