@@ -9,6 +9,7 @@
  */
 #include "system.h"
 #include "sccs.h"
+#include "zgets.h"
 WHATSTR("@(#)%K%");
 
 delta	*sfind(sccs *s, int serial);
@@ -2196,8 +2197,6 @@ fastnext(sccs *s)
 private inline char *
 nextdata(sccs *s)
 {
-	extern	char *zgets();
-
 	if (s->encoding != E_GZIP) return (fastnext(s));
 	return (zgets());
 }
@@ -2589,7 +2588,7 @@ void
 sccs_whynot(char *who, sccs *s)
 {
 	if (BEEN_WARNED(s)) return;
-	if (full(s->sfile)) {
+	if (diskfull(s->sfile)) {
 		fprintf(stderr, "No disk space for %s\n", s->sfile);
 		return;
 	}
@@ -4872,7 +4871,7 @@ out:		if (slist) free(slist);
 	}
 
 	if (error) {
-		if (full(s->gfile)) {
+		if (diskfull(s->gfile)) {
 			fprintf(stderr, "No disk space for %s\n", s->gfile);
 			s->state |= S_WARNED;
 		}
@@ -6454,26 +6453,6 @@ updatePending(sccs *s, delta *d)
 	}
 	close(fd);
 #endif
-}
-
-/*
- * Given a pathname, figure out if disk is full.
- */
-full(char *path)
-{
-	struct	statfs sf;
-	char	*s = 0;
-
-	sf.f_bsize = 0;
-	sf.f_bfree = 0;
-	if (statfs(path, &sf) == -1) {
-		if (s = strrchr(path, '/')) {
-			*s = 0;
-		}
-		statfs(path, &sf);
-		if (s) *s = '/';
-	}
-	return ((sf.f_bsize * sf.f_bfree) > 0);
 }
 
 /*
