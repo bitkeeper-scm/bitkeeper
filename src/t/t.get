@@ -178,12 +178,23 @@ echo OK
 echo $N Make sure get -n works ......................................$NL
 ${ECHO} HI > T
 bk ci $Q -i T
-if [ "`bk get $S -pn T`" != "T     | HI" ]; then echo Failed.; exit 1; fi
+if [ "`bk get $S -pn T`" != "T	HI" ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N Make sure get -m works ......................................$NL
-if [ "`bk get $S -pm T`" != "1.1   | HI" ]; then echo Failed.; exit 1; fi
+if [ "`bk get $S -pm T`" != "1.1	HI" ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N Make sure get -u works ......................................$NL
-if [ "`bk get $S -pu T`" != "bk    | HI" ]; then echo Failed.; exit 1; fi
+if [ "`bk get $S -pu T`" != "bk	HI" ]; then echo Failed.; exit 1; fi
+echo OK
+BK_USER=$SAVE
+echo $N Make sure get -na works .....................................$NL
+${ECHO} HI > T
+if [ "`bk get $S -pan T`" != "T     | HI" ]; then echo Failed.; exit 1; fi
+echo OK
+echo $N Make sure get -m works ......................................$NL
+if [ "`bk get $S -pam T`" != "1.1   | HI" ]; then echo Failed.; exit 1; fi
+echo OK
+echo $N Make sure get -u works ......................................$NL
+if [ "`bk get $S -pau T`" != "bk    | HI" ]; then echo Failed.; exit 1; fi
 echo OK
 BK_USER=$SAVE
