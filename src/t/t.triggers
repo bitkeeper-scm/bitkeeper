@@ -180,6 +180,8 @@ echo "OK"
 echo $N Clone w/failure triggers ....................................$NL
 cd $HERE
 bk clone $Q $HERE/project $HERE/dontcopy && { echo failed; exit 1; }
+cd $HERE/project
+while ! bk lock -s; do true; done
 echo OK
 
 echo $N Commit w/failure triggers ...................................$NL

@@ -8,8 +8,7 @@ lconfig_main(int ac, char **av)
 {
 	char	from[MAXPATH], subject[MAXLINE], config_log[MAXPATH];
 	char	url[] = BK_WEBMAIL_URL;
-	//char	*to = "config@openlogging.org";
-char *to="awc@dnai.com"; //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+	char	*to = "config@openlogging.org";
 	FILE	*f;
 	int	pflag = 0, debug = 0, c, n, rc;
 	remote	*r;
