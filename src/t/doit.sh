@@ -52,6 +52,10 @@ unix_common_setup()
 	if [ -d /usr/xpg4/bin ]; then PATH=/usr/xpg4/bin:$PATH; fi
 	BK_FS="|"
 
+	if [ X$USER = X ]; then USER=`bk getuser`; fi
+	# root user is special, remap to a differnt user before we run the test
+	if [ X$USER = Xroot ]; then USER=root-test; fi
+
 	# only a symlink to 'bk' appears on PATH
 	BK_BIN=/build/.bkbin-$USER
 	rm -rf $BK_BIN
@@ -60,13 +64,6 @@ unix_common_setup()
 	PATH=$BK_BIN:$PATH:/usr/local/bin:/usr/freeware/bin:/usr/gnu/bin
 
 	unset CDPATH PAGER
-	if [ X$USER = X ]; then USER=`bk getuser`; fi
-	# root user is special, remap to a differnt user before we run the test
-	if [ X$USER = Xroot ]; then USER=root-test; fi
-
-	# for freebsd, malloc() interface
-	MALLOC_OPTIONS=Z
-	export MALLOC_OPTIONS
 
 	# do run remote regressions on UNIX
 	if [ -z "$DO_REMOTE" ]; then DO_REMOTE=YES; fi
