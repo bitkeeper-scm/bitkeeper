@@ -17,10 +17,6 @@ mv_main(int ac, char **av)
 	int	errors = 0;
 	int	dofree = 0;
 
-	if (bk_mode() == BK_BASIC) {
-		fprintf(stderr, upgrade_msg);
-		return(1);
-	}
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help mv");
 		return (0);
