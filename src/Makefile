@@ -468,6 +468,7 @@ smoosh.o:	smoosh.c $(sccsdeps)
 takepatch.o:	takepatch.c $(sccsdeps)
 what.o:		what.c $(sccsdeps)
 glob.o:		glob.c $(sccsdeps)
+sfio.o:		sfio.c $(commondeps)
 
 zgets.o:	zgets.c zgets.h zlib/zlib.h zlib/zconf.h
 purify.o:	purify.c $(commondeps)
@@ -478,7 +479,6 @@ chksum.o:	chksum.c
 gethost.o:	gethost.c
 nextsecond.o:	nextsecond.c
 mtime.o:	mtime.c
-sfio.o:		sfio.c
 
 mdbm/hash.o:	mdbm/hash.c mdbm/mdbm.h
 mdbm/mdbm.o:	mdbm/mdbm.c mdbm/common.h mdbm/tune.h mdbm/mdbm.h

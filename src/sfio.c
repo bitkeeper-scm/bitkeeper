@@ -16,11 +16,8 @@
  * repeats, except for the version number.
  */
 #include "system.h"
-#include "sccs.h"
-
+WHATSTR("@(#)%K%");
 #define	SFIO_VERS	"SFIO v 1.0"
-
-char	*vers = "%K%";
 
 int	sfio_out(void);
 int	out(char *file);
