@@ -272,5 +272,16 @@ diff -u expect chgs || {
 }
 echo OK
 
+echo $N Change changes on a remote repository .......................$NL
+key=`bk prs -r+ -hnd:KEY: ChangeSet`
+cd $HERE
+key2=`bk changes -r+ -nd:KEY: clone`
+if [ "$key" != "$key2" ]
+then	echo Remote changes failed
+	echo $key vs $key2
+	exit 1
+fi
+echo OK
+
 # wait for bkd locks
 bk lock -U $HERE/project
