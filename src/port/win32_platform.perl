@@ -51,8 +51,17 @@ sub exitStatus
 sub doExec
 {
 	local ($cmd) = "";	
+	local ($bin) = "";	
+
+	foreach (split(/;/, $ENV{'PATH'})) {
+		if (-x "$_/$_[0]") {
+			$bin = "$_/$_[0]";
+			last;
+		}
+	}
+	return -2 if ($bin eq "");
 	foreach (@_) {$cmd = "$cmd $_" };
-	system($cmd);
+	exit(system($cmd));
 }
 
 # Convert path to "standard" format

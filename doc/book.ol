@@ -10,13 +10,17 @@ TOC
 BK Overview
 	Basic model
 		repository of revision files
-		lock locally, check in locally
-		talk about what clean does
-		talk about make knowing about SCCS
+		Simple project
+			shared master repository
+			private per user working repositories
 	Working with others
 		each user gets a repository
 		work happens locally
+			lock locally, check in locally
 		use resync to move work between repositories
+	SCCS model
+		talk about what clean does
+		talk about make knowing about SCCS
 Creating repositories
 	Who should do this?
 	Starting from scratch
@@ -33,6 +37,15 @@ Working within your repository
 	editing files
 	checking in files
 	committing files
+ChangeSets
+	What is a ChangeSet?
+		captures what has changed
+		captures the state of the repository as of that change
+		allows you to reproduce the repository as of the change
+			resync -r..<rev> from to
+	When do you create a changeset?
+		commit creates them
+		must do this before others can see your work
 Resyncing changes between repositories
 	resyncing
 	update/publish

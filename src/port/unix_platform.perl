@@ -37,12 +37,19 @@ sub exitStatus
 	$_[0] >> 8;
 }
 
-# Unix exec
-# We need this becuase perl exec on win32 runs new program in "background"
 sub doExec
 {
+	local ($bin) = "";	
+
+	foreach (split(/:/, $ENV{'PATH'})) {
+		if (-x "$_/$_[0]") {
+			$bin = "$_/$_[0]";
+			last;
+		}
+	}
+	return -2 if ($bin eq "");
 	exec @_;
-	die "doExec: exec failed: $!\n"; 
+	# I'd like to return -1 here but perl doesn't like that.
 }
 
 # Convert path to "standard" format
