@@ -2,7 +2,14 @@
 #include "../sccs.h"
 WHATSTR("@(#)%K%");
 
-
+#ifdef WIN32
+/*
+ * For better performance, do not use getRealCwd(), use the
+ * raw nt_getcwd() interface instead
+ */
+#undef getcwd
+#define getcwd(a, b)	nt_getcwd(a, b)
+#endif
 
 void
 platformInit(char **av)
@@ -15,9 +22,6 @@ platformInit(char **av)
 	int	flags = SILENT;	/* for debugging */
 	mode_t	m;
 	extern char    *editor, *pager, *bin;
-#ifdef WIN32
-	extern	int _fmode;
-#endif
 
 
 	if (bin) return;
@@ -27,14 +31,40 @@ platformInit(char **av)
 	umask(m);
 
 	unless (p = getenv("PATH")) return;	/* and pray */
+
 #ifdef WIN32
+	/*
+	 * Force mkstemp() in uwtlib to use dir argument
+	 */
+	putenv("TMP=");
+
+ 	/*
+	 * Default to binary mode on all files
+	 */
 	_fmode = _O_BINARY;
 	setmode(1, _O_BINARY);
 	setmode(2, _O_BINARY);
+
 	for (n = 0; n < 3; n++) make_fd_uninheritable(n);
 
-	localName2bkName(av[0], av[0]);
 	localName2bkName(p, p);
+	localName2bkName(av[0], av[0]);
+
+	/*
+	 * convert to lower case: because W98 gives us upper case av
+	 */
+	for (t = av[0]; *t; t++) *t = tolower(*t);
+
+	/*
+	 * strip .exe .com suffix
+	 */
+	for (--t; t > av[0]; t--)  {
+		if (*t == '/') break;
+		if (*t == '.') {
+			*t = 0;
+			break;
+		}
+	}
 #endif
 
 	/*
@@ -70,15 +100,6 @@ gotit:
 			    		buf, PATH_DELIM, buf, PATH_DELIM, p);
 			putenv(s);
 		}
-#ifdef WIN32
-#undef getcwd
-#define getcwd(a, b)	nt_getcwd(a, b)
-		/* convert to lower case: because W98 gives us upper case av */
-		p = av[0];
-		while (*p) { *p = tolower(*p); p++; }
-		p = strrchr(av[0], '.');
-		if (p && streq(".exe", p)) *p = 0; /* remove .exe */
-#endif
 		return;
 	}
 

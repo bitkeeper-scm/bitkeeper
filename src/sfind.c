@@ -444,7 +444,7 @@ out:	unless (printed) do_print(state, gfile, 0);
 		unless (state[PSTATE] == 'p') {
 			unlink(dfile);
 		} else {
-			close(open(dfile, O_CREAT|O_WRONLY, 0666));
+			touch(dfile, 0666);
 		}
 	}
 	if (dfile) free(dfile);
@@ -1138,5 +1138,5 @@ skip:			mdbm_close(gDB);
 void
 enableFastPendingScan()
 {
-	close(open(DFILE, O_CREAT|O_WRONLY, 0666));
+	touch(DFILE, 0666);
 }

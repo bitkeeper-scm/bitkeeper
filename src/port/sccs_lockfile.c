@@ -11,9 +11,7 @@ sccs_lockfile(char *lockfile, int tries)
 
 	for ( ;; ) {
 		//XXX TODO: make sure this works on network drive
-		if ((close(open(lockfile,
-			O_CREAT|O_WRONLY|O_EXCL, GROUP_MODE))) == 0) return (0);
-		
+		if (touch(lockfile, GROUP_MODE) == 0) return (0);
 		if (tries && (--tries == 0)) {
 			fprintf(stderr, "timed out waiting for %s\n", lockfile);
 			return (-1);

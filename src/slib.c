@@ -8236,7 +8236,7 @@ private void
 updatePending(sccs *s)
 {
 	if (CSET(s)) return;
-	close(open(sccsXfile(s, 'd'),  O_CREAT|O_APPEND|O_WRONLY, GROUP_MODE));
+	touch(sccsXfile(s, 'd'),  GROUP_MODE);
 }
 
 private void

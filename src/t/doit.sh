@@ -133,12 +133,17 @@ setup_env()
 
 clean_up()
 {
-        find $BK_REGRESSION -name core -print > $BK_REGRESSION/cores
-        if [ -s $BK_REGRESSION/cores ]
-        then    ls -l `cat $BK_REGRESSION/cores`
-                file `cat $BK_REGRESSION/cores`
-                exit 10
+	# Win32 have no cire file
+	if [ "$PLATFORM" = "UNIX" ]
+	then
+		find $BK_REGRESSION -name core -print > $BK_REGRESSION/cores
+		if [ -s $BK_REGRESSION/cores ]
+		then    ls -l `cat $BK_REGRESSION/cores`
+			file `cat $BK_REGRESSION/cores`
+			exit 10
+		fi
 	fi
+
 	for i in 1 2 3 4 5
 	do	find $BK_REGRESSION -name bk'*' -print |
 		    grep BitKeeper/tmp > $BK_REGRESSION/junk
@@ -238,11 +243,6 @@ init_main_loop
 for i in $list
 do	echo ------------ ${i#t.} test
 	mkdir -p $BK_REGRESSION/.tmp || exit 1
-	# Someone reported that ksh on solaris will
-	# pick the $HOME/.profile and override our $PATH setting
-	# which is intended to pick up  /usr/xpg4/bin/grep
-	# This is not yet reproducable on BitMover's solaris
-	# platform.
 	cat setup $i | @FAST_SH@ $dashx
 	EXIT=$?
 	if [ $EXIT != 0 ]

@@ -15,7 +15,7 @@ WHATSTR("@(#)%K%");
 private	int	do_checkin(char *nm, char *ep, char *cp, int fl,
 		   char *rev, char *newf, char *com);
 private	void	clearCsets(sccs *s, int flags);
-private	void	touch(sccs *s);
+private	void	sccs_touch(sccs *s);
 private	int	setMerge(sccs *sc, char *merge, char *rev);
 extern	int     newrev(sccs *s, pfile *pf); 
 
@@ -289,7 +289,7 @@ admin_main(int ac, char **av)
 			sccs_whynot("admin", sc);
 			error = 1;
 		}
-		if (touchGfile) touch(sc);
+		if (touchGfile) sccs_touch(sc);
 		/*
 		 * re init so sccs_get would work
 		 */
@@ -450,7 +450,7 @@ setMerge(sccs *sc, char *merge, char *rev)
 }
 
 private	void
-touch(sccs *s)
+sccs_touch(sccs *s)
 {
 	struct utimbuf ut;
 
