@@ -246,6 +246,7 @@ echo $N Make sure we can see the data in the pre-resolve trigger ....$NL
 cat > BitKeeper/triggers/pre-resolve <<EOF
 #!/bin/sh
 bk changes - < \$BK_CSETLIST > $HERE/changes
+cp \$BK_CSETLIST $HERE/csets-out
 exit 1
 EOF
 chmod +x BitKeeper/triggers/*
@@ -265,8 +266,35 @@ grep -q ChangeSet@1.3 $HERE/changes || {
 	echo failed to list the ChangeSet
 	exit 1
 }
+if [ `wc -l < $HERE/csets-out` -ne 2 ]; then
+	echo csets-out contains extra junk
+	exit 1
+fi
+if [ `grep '^ChangeSet' $HERE/changes | wc -l` -ne 2 ]; then
+	echo listed extra changes
+	exit 1
+fi
 echo OK
 
+echo $N Check bk changes -v - .......................................$NL
+echo 1.1 > list
+echo junk >> list
+bk changes - < list > /dev/null 2>&1 && {
+	echo failed to reject junk
+	exit 1
+}
+echo 1.1 > list
+echo \#junk >> list
+echo >> list
+bk changes - < list > out || {
+	echo didn\'t ignore blanks and comments
+	exit 1
+}
+if [ `grep '^ChangeSet' out | wc -l` -ne 1 ]; then
+	echo returned extra junk
+	exit 1
+fi
+echo OK
 echo $N Make sure we can see the data in the post-incoming trigger ..$NL
 rm BitKeeper/triggers/* $HERE/changes
 cat > BitKeeper/triggers/post-incoming <<EOF
