@@ -703,7 +703,7 @@ _commandHelp() {
 			;;
 		# this is the list of commands which have better help in the
 		# helptext file than --help yields.
-		check)
+		unedit|check)
 			_gethelp help_$i $BIN | $PAGER
 			;;
 		*)

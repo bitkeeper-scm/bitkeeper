@@ -53,7 +53,7 @@ SRCS	= slib.c range.c newrev.c getopt.c popen.c libdiff.c \
 	  cset.c g2sccs.c rangemain.c zone.c gethost.c undos.c chksum.c \
 	  rechksum.c cset_todo.c sccs_mv.c sccsmv.c sccsrm.c sccscat.c \
 	  csetmark.c key2rev.c rcs.c comments.c user.c host.c localtm.c \
-	  check.c
+	  check.c bkhelp.txt
 HDRS	= sccs.h purify.h sccs.h range.h system.h mdbm/common.h mdbm/mdbm.h \
 	  mdbm/tune.h zlib/zlib.h zlib/zutil.h zlib/zconf.h zlib/deflate.h \
 	  zlib/infblock.h zlib/infcodes.h zlib/inffast.h zlib/inffixed.h \
