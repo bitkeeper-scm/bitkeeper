@@ -1,6 +1,10 @@
 #include "../system.h"
 #include "../sccs.h"
 
+/*
+ * Copyright (c) 2001 Larry McVoy & Andrew Chang       All rights reserved.
+ */
+
 #ifndef WIN32
 /*
  * Dig out more information to make the file unique and stuff it in buf.

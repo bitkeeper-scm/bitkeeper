@@ -1,6 +1,11 @@
 #include "../system.h"
 #include "../sccs.h"
 
+
+/*
+ * Copyright (c) 2001 Larry McVoy & Andrew Chang       All rights reserved.
+ */
+
 char	*
 sccs_getuser(void)
 {

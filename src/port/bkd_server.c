@@ -1,5 +1,9 @@
 #include "../bkd.h"
 
+/*
+ * Copyright (c) 2001 Larry McVoy & Andrew Chang       All rights reserved.
+ */
+
 #define Respond(s)	write(licenseServer[1], s, 4)
 
 extern	time_t	requestEnd;

@@ -3,6 +3,10 @@
 #include "../sccs.h"
 
 /*
+ * Copyright (c) 2001 Andrew Chang       All rights reserved.
+ */
+
+/*
  * -------------------------------------------------------------
  * 		Unix  version  of sccs_getXXXX
  * -------------------------------------------------------------

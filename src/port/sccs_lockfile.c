@@ -1,6 +1,10 @@
 #include "../system.h"
 #include "../sccs.h"
 
+/*
+ * Copyright (c) 2001 Larry McVoy & Andrew Chang       All rights reserved.
+ */
+
 #ifdef WIN32
 int
 sccs_lockfile(char *lockfile, int tries)

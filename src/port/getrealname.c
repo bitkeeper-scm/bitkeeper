@@ -1,6 +1,10 @@
 #include "../system.h"
 #include "../sccs.h"
 
+/*
+ * Copyright (c) 2001 Andrew Chang       All rights reserved.
+ */
+
 private int
 scanDir(char *dir, char *name, MDBM *db, char *realname)
 {

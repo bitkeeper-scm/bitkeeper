@@ -1,6 +1,10 @@
 #include "../system.h"
 #include "../sccs.h"
 
+/*
+ * Copyright (c) 2001 Larry McVoy & Andrew Chang       All rights reserved.
+ */
+
 void
 bkd_reap(pid_t resync, int r_pipe, int w_pipe)
 {

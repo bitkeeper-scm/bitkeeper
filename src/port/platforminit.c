@@ -2,6 +2,10 @@
 #include "../sccs.h"
 WHATSTR("@(#)%K%");
 
+/*
+ * Copyright (c) 2001 Andrew Chang       All rights reserved.
+ */
+
 #ifdef WIN32
 /*
  * For better performance, do not use getRealCwd(), use the
@@ -103,7 +107,9 @@ gotit:
 		return;
 	}
 
-	/* partially specified paths are respected */
+	/*
+	 * partially specified paths are respected
+	 */
 	if (t = strchr(av[0], '/')) {
 		verbose((stderr, "USING partial %s\n", av[0]));
 		getcwd(buf, sizeof(buf));
@@ -112,6 +118,11 @@ gotit:
 		goto gotit;
 	}
 	
+	/*
+	 * Win32 note: TODO: We need to handle both ':' and ';'
+	 * as path delimiter, becuase we get defferent delimiter
+	 * from bash shell and cmd.exe.
+	 */
 	for (t = s = p; *s;) {
 		t = strchr(s, PATH_DELIM);
 		if (t) *t = 0;

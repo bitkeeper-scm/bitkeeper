@@ -1,6 +1,10 @@
 #include "../system.h"
 #include "../sccs.h"
 
+/*
+ * Copyright (c) 2001 Larry McVoy       All rights reserved.
+ */
+
 int
 findprog(char *prog)
 {

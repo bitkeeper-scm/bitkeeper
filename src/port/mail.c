@@ -1,6 +1,10 @@
 #include "../system.h"
 #include "../sccs.h"
 
+/*
+ * Copyright (c) 2001 Andrew Chang       All rights reserved.
+ */
+
 #ifndef WIN32
 pid_t
 mail(char *to, char *subject, char *file)

@@ -1,6 +1,10 @@
 #include "../system.h"
 #include "../sccs.h"
 
+/*
+ * Copyright (c) 2001 Andrew Chang       All rights reserved.
+ */
+
 #define CACHED_PROXY "BitKeeper/etc/.cached_proxy"
 
 void
