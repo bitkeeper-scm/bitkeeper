@@ -215,3 +215,19 @@ if [ $DO_REMOTE = YES -a X$NO_TTY = X ]; then
 else
  echo Push with explicit remote parent ............................skipped
 fi
+echo $N Push with conflict in uncomitted remote delta ...............$NL
+cd $HERE/copy/src
+bk get $Q -e foo.c
+sed 's/delta two/delta two-local/' foo.c  > x
+mv x foo.c
+bk delta $Q -y foo.c
+cd $HERE/project/src
+bk get $Q -e foo.c
+sed 's/delta two/delta two-remote/' foo.c  > x
+mv x foo.c
+bk delta $Q -y foo.c
+bk commit $Q -ytest
+bk push $HERE/copy > push.out 2>&1
+grep -q "not to accept conflicts" push.out
+if [ $? -ne 0 ]; then echo failed; fi
+echo OK

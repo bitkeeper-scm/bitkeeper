@@ -109,7 +109,7 @@ rd:	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
 }
 
 /*
- * Try to unlock a project.
+ * Try to unlock a package.
  * Returns 0 if successful.
  */
 int
@@ -348,7 +348,7 @@ repository_rdunlock(int force)
 }
 
 
-/* This function assumes we are at the project root */
+/* This function assumes we are at the package root */
 int
 repository_locker(char type, pid_t pid, char *host)
 {

@@ -2,8 +2,8 @@
  * In order to ensure that delta keys are unique, we're going to try the
  * following:
  * 
- * Create in $BK_TMP/keys.mdbm an mdbm where db{ROOTKEY} = timestamp
- * of TOT if the timestamp is less than TIMEWINDOW seconds ago, again only
+ * Create in $HOME/.bk_keys an mdbm where db{ROOTKEY} = timestamp
+ * of TOT if the timestamp is less than CLOCK_DRIFT seconds ago, again only
  * for those keys created on this host.
  * 
  * The database is updated whenever we create a delta, and whenever a new
@@ -13,9 +13,8 @@
  * creating a new root key which matches some other root key.  
  * 
  * Note that the list is not going to grow without bound - we are only
- * interested in keys which were created on this host, and for timestamp
- * values in the last TIMEWINDOW seconds.  We'll start out with a TIMEWINDOW
- * of 4 hours and see if we need to shrink it.
+ * interested in keys which were created on this host, by this user,
+ * and for timestamp values in the last CLOCK_DRIFT seconds.
  * 
  * W A R N I N G
  * -------------
@@ -27,7 +26,9 @@
  * 
  * The rules for locking are:
  * 
- *     1) the lock file is $BK_TMP/keys.lock
+ *     1) the lock file is /tmp/.bk_kl$USER  so that it is in a local file
+ *	  system (locking is busted over NFS).  It's different for each
+ *	  user so that we don't have unlink problems in sticky bit /tmp's.
  *     2) the lock file contains the pid (in ascii) of the locking process
  *     3) if the pid is gone, the lock is broken
  *
@@ -37,13 +38,76 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
-extern	char	*findTmp();
-private	int	dirty;	/* set if we updated the db */
+private	int	dirty;			/* set if we updated the db */
 private	MDBM	*db;
+private	char	*lockFile;		/* cache it */
+private	char	*keysFile;		/* cache it */
+
+char	*
+lockHome()
+{
+	char	path[MAXPATH];
+
+	if (lockFile) return (lockFile);
+	sprintf(path, "%s/.bk_kl%s", TMP_PATH, sccs_getuser());
+	return (lockFile = strdup(path));
+}
+
+char *
+getHomeDir()
+{
+        char *homeDir;
+
+        homeDir = getenv("HOME");
+#ifdef WIN32
+        if (homeDir == NULL) {
+                char *home_drv, *home_path;
+                char home_buf[2048];
+
+                home_drv = getenv("HOMEDRIVE");
+                home_path = getenv("HOMEPATH");
+
+                if (home_drv && home_path) {
+                        sprintf(home_buf, "%s%s", home_drv, home_path);
+                        homeDir = strdup(home_buf);
+                        nt2bmfname(homeDir, homeDir);
+                }
+        }
+#endif
+        return homeDir;
+}
 
 /*
- * XXX Note: This locking scheme will not work if the lock directory is
- *     is NFS mounted, and two process is runing on different host
+ * Use BK_TMP first, we set that for the regression tests.
+ */
+char	*
+keysHome()
+{
+	char	*t;
+	char	path[MAXPATH];
+
+	if (keysFile) return (keysFile);
+	if ((t = getenv("BK_TMP")) && isdir(t)) {
+		sprintf(path, "%s/.bk_keys", t);
+		return (keysFile = strdup(path));
+	}
+	t = getHomeDir();
+	if (t) {
+		sprintf(path, "%s/.bk_keys", t);
+		return (keysFile = strdup(path));
+	}
+#ifndef WIN32
+	if (exists("/var/bitkeeper/keys")) {
+		return (keysFile = strdup("/var/bitkeeper/keys"));
+	}
+#endif
+	sprintf(path, "%s/.bk_keys", TMP_PATH);
+	return (lockFile = strdup(path));
+}
+
+/*
+ * Note: This locking scheme will not work if the lock directory is
+ * is NFS mounted, and two processes are running on different hosts.
  */
 /* -1 means error, 0 means OK */
 int
@@ -53,69 +117,16 @@ uniq_lock()
 	pid_t	pid = 0;
 	int	fd;
 	int	first = 1;
-	int	slept = 0;
-	char	path[MAXPATH];
-#ifdef WIN32
-	int	retry = 0;
-#endif
+	int	uslp = 1000;
+	char	buf[MAXPATH];
+	char	*lock = lockHome();
 
-	unless (tmp = findTmp()) {
-		fprintf(stderr, "Can not find BitKeeper tmp directory\n");
-		return (-1);
-	}
-	sprintf(path, "%s/keys.lock", tmp);
-#ifdef WIN32
-	while ((fd = _sopen(path, _O_CREAT|_O_EXCL|_O_WRONLY|_O_SHORT_LIVED,
-					_SH_DENYRW, _S_IREAD | _S_IWRITE)) == -1) {
-		if (first && (errno == ENOENT)) {
-			first = 0;
-			mkdirf(path);
-			continue;
-		}
+	while ((fd = open(lock, O_CREAT|O_EXCL|O_RDWR, 0666)) == -1) {
 		if (errno != EEXIST) {
-			perror(path);
+			perror(lock);
 			return (-1);
 		}
-
-		if ((fd = open(path, O_RDONLY, 0)) >= 0) {
-			char	buf[20];
-			int	n;
-
-			n = read(fd, buf, sizeof(buf));
-			close(fd);
-			if (n > 0) {
-				buf[n] = 0;
-				pid = atoi(buf);
-			}
-			if (pid == getpid()) {
-				fprintf(stderr, "recursive lock ??");
-				break;
-			}
-		}
-		if (retry++ > 10) {
-			fprintf(stderr, "stale_lock: removed\n");
-			unlink(path);
-		} else {
-			sleep(1);
-		}
-	}
-	sprintf(path, "%u", getpid());
-	write(fd, path, strlen(path));
-	close(fd);
-	return 0;
-#else
-	while ((fd = open(path, O_CREAT|O_EXCL|O_RDWR, 0666)) == -1) {
-		if (first && (errno == ENOENT)) {
-			first = 0;
-			mkdirf(path);
-			continue;
-		}
-		if (errno != EEXIST) {
-			perror(path);
-			return (-1);
-		}
-		if ((fd = open(path, O_RDONLY, 0)) >= 0) {
-			char	buf[20];
+		if ((fd = open(lock, O_RDONLY, 0)) >= 0) {
 			int	n;
 
 			n = read(fd, buf, sizeof(buf));
@@ -124,45 +135,47 @@ uniq_lock()
 				buf[n] = 0;
 				if (sscanf(buf, "%d", &pid) != 1) {
 stale:					fprintf(stderr,
-					   "removing stale lock %s\n", path);
-					unlink(path);
+					   "removing stale lock %s\n", lock);
+					if (unlink(lock) != 0) perror(lock);
+					assert(!exists(lock));
 					continue;
 				}
 				assert(pid > 0);
 			}
 			unless (pid) goto stale;
-			if (kill(pid, 0) == 0) {
-				slept++;
-				sleep(slept);
-			} else {
-				unlink(path);
+			if (pid == getpid()) {
+				fprintf(stderr, "recursive lock??\n");
+				break;
 			}
-			if (slept > 4) {
+			if (kill(pid, 0) == 0) {
+				usleep(uslp);
+				if (uslp < 1000000) uslp <<= 1;
+			} else {
+				goto stale;
+			}
+			if (uslp >= 1000000) {
 				fprintf(stderr,
 				    "Waiting for process %d who has lock %s\n",
-				    pid, path);
+				    pid, lock);
 			}
 		}
 	}
-	sprintf(path, "%u", getpid());
-	write(fd, path, strlen(path));
+	sprintf(buf, "%u", getpid());
+	write(fd, buf, strlen(buf));
 	close(fd);
 	return (0);
-#endif
 }
+
 
 int
 uniq_unlock()
 {
 	char	*tmp;
-	char	path[MAXPATH];
 
-	unless (tmp = findTmp()) {
-		fprintf(stderr, "Can not find BitKeeper tmp directory");
-		return (-2);
-	}
-	sprintf(path, "%s/keys.lock", tmp);
-	return (unlink(path));
+	unless (tmp = lockHome()) return (-2);
+	if (unlink(tmp) != 0) perror(tmp);
+	assert(!exists(tmp));
+	return 0;
 }
 
 /*
@@ -200,16 +213,13 @@ private	int
 uniq_regen()
 {
 	char	cmd[MAXPATH+100];
-	char	*tmp = findTmp();
+	char	*tmp = keysHome();
 
 	/*
 	 * Only called with a locked cache, so we can overwrite it.
 	 */
-	unless (tmp) {
-		fprintf(stderr, "Can not find tmp dir for keys\n");
-		return (-1);
-	}
-	sprintf(cmd, "bk -R sfiles -k > %s/keys", tmp);
+	unless (tmp) return (-1);
+	sprintf(cmd, "bk -R sfiles -k > %s", tmp);
 	system(cmd);
 	uniq_unlock();
 	return (uniq_open());
@@ -222,24 +232,20 @@ uniq_open()
 	FILE	*f;
 	time_t	t, cutoff = time(0) - uniq_drift();
 	datum	k, v;
-	char	path[MAXPATH*2];
+	char	buf[MAXPATH*2];
 	int	pipes;
 
 	unless (uniq_lock() == 0) return (-1);
-	unless (tmp = findTmp()) {
-		fprintf(stderr, "Can not find BitKeeper tmp directory");
-		return (-1);
-	}
-	sprintf(path, "%s/keys", tmp);
+	unless (tmp = keysHome()) return (-1);
 	db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
-	unless (f = fopen(path, "r")) return (0);
-	while (fnext(path, f)) {
-		for (pipes = 0, s = path; *s && (*s != ' '); s++) {
+	unless (f = fopen(tmp, "r")) return (0);
+	while (fnext(buf, f)) {
+		for (pipes = 0, s = buf; *s && (*s != ' '); s++) {
 			if (*s == '|') pipes++;
 		}
 		unless ((pipes == 2) &&
-		    s && isdigit(s[1]) && (chop(path) == '\n')) {
-bad:			fprintf(stderr, "%s/keys is corrupted, fixing.\n", tmp);
+		    s && isdigit(s[1]) && (chop(buf) == '\n')) {
+bad:			fprintf(stderr, "%s is corrupted, fixing.\n", tmp);
 			mdbm_close(db);
 			fclose(f);
 			return (uniq_regen());
@@ -254,8 +260,8 @@ bad:			fprintf(stderr, "%s/keys is corrupted, fixing.\n", tmp);
 			dirty = 1;
 			continue;
 		}
-		k.dptr = path;
-		k.dsize = strlen(path) + 1;
+		k.dptr = buf;
+		k.dsize = strlen(buf) + 1;
 		v.dptr = (char *)&t;
 		v.dsize = sizeof(time_t);
 
@@ -267,8 +273,8 @@ bad:			fprintf(stderr, "%s/keys is corrupted, fixing.\n", tmp);
 			time_t	t2;
 
 			fprintf(stderr,
-			    "Warning: duplicate key '%s' in %stmp/keys\n",
-			    path, tmp);
+			    "Warning: duplicate key '%s' in %s\n",
+			    buf, tmp);
 		    	v2 = mdbm_fetch(db, k);
 			assert(v2.dsize == sizeof(time_t));
 			memcpy(&t2, v2.dptr, sizeof(time_t));
@@ -321,17 +327,15 @@ uniq_close()
 	kvpair	kv;
 	time_t	t;
 	char	*tmp;
-	u8	path[MAXKEY];
 
 	unless (dirty) goto close;
-	unless (tmp = findTmp()) {
-		fprintf(stderr, "Can not find BitKeeper tmp directory");
+	unless (tmp = keysHome()) {
+		fprintf(stderr, "uniq_close:  can not find keyHome");
 		return (-1);
 	}
-	sprintf(path, "%s/keys", tmp);
-	unlink(path);
-	unless (f = fopen(path, "w")) {
-		perror(path);
+	unlink(tmp);
+	unless (f = fopen(tmp, "w")) {
+		perror(tmp);
 		return (-1);
 	}
 	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {

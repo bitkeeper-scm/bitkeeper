@@ -13,7 +13,7 @@ parent_main(int ac,  char **av)
 	int	c, do_remove = 0, quiet = 0;
 
 	if (sccs_cd2root(0, 0) == -1) {
-		fprintf(stderr, "parent: can not find project root.\n");
+		fprintf(stderr, "parent: can not find package root.\n");
 		exit(1);
 	}
 
@@ -68,7 +68,7 @@ parent_main(int ac,  char **av)
 	}
 	sprintf(buf, "%s/BitKeeper/etc", av[optind]);
 	unless (isdir(buf)) {
-		printf("%s is not a BitKeeper project root\n", av[optind]);
+		printf("%s is not a BitKeeper package root\n", av[optind]);
 		exit(1);
 	}
 

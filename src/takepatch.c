@@ -545,7 +545,8 @@ noconflicts(void)
 	SHOUT();
 	fputs(
 "takepatch was instructed not to accept conflicts into this tree.\n\
-Please resync in the opposite direction and then reapply this patch.\n",
+Please make sure all pending deltas are comitted in this tree,\n\
+resync in the opposite direction and then reapply this patch.\n",
 stderr);
 	cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 }
@@ -555,7 +556,7 @@ notfirst(void)
 {
 	SHOUT();
 	fputs(
-"takepatch: when creating a project, as you are currently doing, you have\n\
+"takepatch: when creating a package, as you are currently doing, you have\n\
 to resync from version 1.0 forward.  Please try again, with a command like\n\
 \n\
 \tbk resync -r1.0.. from to\n\
@@ -1195,7 +1196,7 @@ init(char *inputFile, int flags, project **pp)
 			newProject = 1;
 		} else if (sccs_cd2root(0, root)) {
 			SHOUT();
-			fputs("takepatch: can't find project root.\n", stderr);
+			fputs("takepatch: can't find package root.\n", stderr);
 			SHOUT2();
 			exit(1);
 		} else {

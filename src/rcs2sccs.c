@@ -253,6 +253,7 @@ verifyFiles(sccs *s, RCS *rcs, rdelta *d, char *g)
 		dup(rcspipe[1]);
 		close(rcspipe[1]);
 		close(rcspipe[0]);
+		close(0);
 		execv(av[0], av);
 		perror(av[0]);
 		exit(1);
@@ -276,6 +277,7 @@ verifyFiles(sccs *s, RCS *rcs, rdelta *d, char *g)
 		dup(sccspipe[1]);
 		close(sccspipe[1]);
 		close(sccspipe[0]);
+		close(0);
 		sccs_restart(s);
 		if (sccs_get(s, d->sccsrev, 0, 0, 0, SILENT|PRINT, "-")) {
 			fprintf(stderr, "Get -p of %s failed\n", s->gfile);

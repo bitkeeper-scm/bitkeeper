@@ -17,7 +17,7 @@ cmd_cd(int ac, char **av)
 	unless (exists("BitKeeper/etc")) {
 		out("ERROR-directory '");
 		out(av[1]);
-		out("' is not a project root\n");
+		out("' is not a package root\n");
 		return (-1);
 	}
 	out("OK-root OK\n");

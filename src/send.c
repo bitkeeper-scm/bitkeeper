@@ -92,7 +92,7 @@ send_main(int ac,  char **av)
 	}
 
 	if (sccs_cd2root(0, 0) == -1) {
-		fprintf(stderr, "send: can not find project root.\n");
+		fprintf(stderr, "send: can not find package root.\n");
 		exit(1);
 	}
 	if (!streq(to, "-") && !force) {

@@ -1285,7 +1285,7 @@ cleanPath(char *path, char cleanPath[])
  */
 
 /*
- * Change directories to the project root or return -1.  If the second
+ * Change directories to the package root or return -1.  If the second
  * arg is non-null, then that's the root, and we aren't to call
  * sccs_root to find it.  The only place that does that is
  * takepatch.c, and it probably shouldn't.
@@ -3525,7 +3525,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	if (flags & INIT_SAVEPROJ) s->state |= S_SAVEPROJ;
 
 	if (s->mmap == (caddr_t)-1) {
-		if (errno == ENOENT) {
+		if ((errno == ENOENT) || (errno == ENOTDIR)) {
 			/* Not an error if the file doesn't exist yet.  */
 			debug((stderr, "%s doesn't exist\n", s->sfile));
 			s->cksumok = -1;
@@ -7615,7 +7615,6 @@ openInput(sccs *s, int flags, FILE **inp)
 	switch (s->encoding & E_DATAENC) {
 	    default:
 	    case E_ASCII:
-		mode = "rt"; /* read in text mode */
 		/* fall through, check if we are really ascii */
 	    case E_UUENCODE:
 		if (streq("-", file)) {
@@ -7623,8 +7622,13 @@ openInput(sccs *s, int flags, FILE **inp)
 			return (0);
 		}
 		*inp = fopen(file, mode);
-		if (((s->encoding & E_DATAENC)== E_ASCII) && ascii(*inp))
+		if (((s->encoding & E_DATAENC)== E_ASCII) && ascii(*inp)) {
+#ifdef WIN32
+			/* read text file in text mode */
+			setmode(fileno(*inp), _O_TEXT);
+#endif
 			return (0);
+		}
 		s->encoding = compress | E_UUENCODE;
 		return (0);
 	    case E_UUGZIP:

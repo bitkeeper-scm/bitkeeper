@@ -24,6 +24,12 @@ names_main(int ac, char **av)
 	int	error = 0;
 	u32	flags = 0;
 
+	/* this should be redundant, we should always be at the package root */
+	if (sccs_cd2root(0, 0)) {
+		fprintf(stderr, "names: can not find package root.\n");
+		return (1);
+	}
+
 	optind = 1;
 	names_init();
 	for (n = sfileFirst("names", &av[optind], 0); n; n = sfileNext()) {

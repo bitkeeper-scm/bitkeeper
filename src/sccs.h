@@ -771,7 +771,7 @@ int	is_open_logging(char *logaddr);
 void	status(int verbose, FILE *out);
 void	notify();
 char	*logAddr();
-char	*project_name();
+char	*package_name();
 int	bkusers(int countOnly, int raw, FILE *out);
 globv	read_globs(FILE *f, globv oldglobs);
 char	*match_globs(char *string, globv globs);
@@ -804,6 +804,7 @@ delta	*host_get(delta *);
 
 void	user_done();
 delta	*user_get(delta *);
+char	*shell();
 
 /* lod.c */
 struct lod;

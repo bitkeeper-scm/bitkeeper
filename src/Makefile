@@ -38,7 +38,7 @@ OBJ	= abort.o adler32.o admin.o bkd.o bkd_cd.o bkd_client.o \
 	  bkd_version.o bk.o bkusers.o check.o chksum.o \
 	  clean.o clone.o comments.o commit.o compress.o \
 	  cset.o delta.o diffs.o dirname.o export.o fdiff.o \
-	  filecopy.o find.o finddirs.o fix.o g2sccs.o \
+	  filecopy.o find.o fix.o g2sccs.o \
 	  gca.o get.o gethelp.o gethost.o getlog.o getopt.o \
 	  gettemp.o getuser.o glob.o graft.o help.o host.o isascii.o \
 	  key2rev.o lib_tcp.o libcommit.o libdiff.o librange.o \
@@ -178,8 +178,8 @@ production_image: rebuild p image
 
 # Cleanup targets.
 clean clean-obj: FORCE
-	-rm -f bk.o bkmerge.o $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) 
-	-rm -f $(LIBS) bkdsubstr bkhelp.txt a.out core $(WIN_TMP)
+	-rm -f bk.o bkmerge.o shell.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) 
+	-rm -f $(LIBS) shell.c bkdsubstr bkhelp.txt a.out core $(WIN_TMP)
 	-cd gnu && $(MAKE) clean-obj
 	-cd win32 && $(MAKE) clean-obj
 
@@ -266,8 +266,8 @@ zlib/libz.a: $(ZLIBOBJ)
 mdbm/libmdbm.a: $(MDBMOBJ)
 	$(AR) cr mdbm/libmdbm.a $(MDBMOBJ)
 	-$(RANLIB) mdbm/libmdbm.a
-libsccs.a: $(OBJ)
-	$(AR) cr libsccs.a $(OBJ)
+libsccs.a: $(OBJ) shell.o
+	$(AR) cr libsccs.a $(OBJ) shell.o
 	-$(RANLIB) libsccs.a
 $(BK): bk.o $(LIBS)
 	$(LD) $(LDFLAGS) $(LD_OUT) bk.o $(LINK_LIB)
@@ -275,6 +275,7 @@ $(BKMERGE): bkmerge.o $(LIBS)
 	$(LD) $(LDFLAGS) $(LD_OUT) bkmerge.o $(LINK_LIB)
 
 testfast: testfast.perl
+	rm -f testfast
 	cp testfast.perl testfast
 	chmod +x testfast
 
@@ -304,22 +305,27 @@ utils/os utils/gnu-os: $(BK)
 	@if [ ! -x utils/gnu-os ]; then ./bk get utils/gnu-os; fi
 
 substvars: substvars.sh
+	rm -f substvars
 	cp substvars.sh substvars
 	chmod +x substvars
 
 uuwrap: uuwrap.sh
+	rm -f uuwrap
 	cp uuwrap.sh uuwrap
 	chmod +x uuwrap
 
 unuuwrap: unuuwrap.sh
+	rm -f unuuwrap
 	cp unuuwrap.sh unuuwrap
 	chmod +x unuuwrap
 
 gzip_uuwrap: gzip_uuwrap.sh
+	rm -f gzip_uuwrap
 	cp gzip_uuwrap.sh gzip_uuwrap
 	chmod +x gzip_uuwrap
 
 ungzip_uuwrap: ungzip_uuwrap.sh
+	rm -f ungzip_uuwrap
 	cp ungzip_uuwrap.sh ungzip_uuwrap
 	chmod +x ungzip_uuwrap
 
@@ -467,6 +473,11 @@ B=bkd.h lib_tcp.h
 M=mdbm/common.h mdbm/tune.h mdbm/mdbm.h
 Z=zlib/zlib.h zlib/zconf.h
 
+shell.o: substvars
+	echo 'char *shell() { return ("@FEATURE_SH@"); }' | \
+							./substvars > shell.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c shell.c $(CC_OUT)
+
 abort.o:	abort.c $(H) $(Z)
 adler32.o:	adler32.c $(H) $(Z)
 admin.o:	admin.c $(H)
@@ -499,8 +510,6 @@ export.o:	export.c $(H)
 fdiff.o:	fdiff.c $(H)
 files.o:	files.c $(H)
 filecopy.o:	filecopy.c $(H)
-finddirs.o:	finddirs.c $(H)
-findprog.o:	port/findprog.c $(H) 
 fix.o:		fix.c $(H)
 fullname.o:	port/fullname.c $(H)
 g2sccs.o:	g2sccs.c $(H)

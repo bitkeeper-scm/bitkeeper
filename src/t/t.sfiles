@@ -238,7 +238,7 @@ bk sfiles -x | sort > SFILES
 sort <<EOF > LIST
 LIST
 SFILES
-.tmp/keys
+.tmp/.bk_keys
 EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
@@ -252,7 +252,7 @@ sort <<EOF > LIST
 LIST
 SCCS/OLD-s.foo
 SFILES
-.tmp/keys
+.tmp/.bk_keys
 EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
@@ -293,7 +293,7 @@ echo $N Test ignore lists with -x ...................................$NL
 sort <<EOF > LIST
 SCCS/OLD-s.foo
 SFILES
-.tmp/keys
+.tmp/.bk_keys
 EOF
 bk sfiles -x | sort > SFILES
 cmp -s SFILES LIST
@@ -318,7 +318,7 @@ BitKeeper/etc/ignore
 LIST
 SCCS/OLD-s.foo
 SFILES
-.tmp/keys
+.tmp/.bk_keys
 EOF
 bk sfiles -ax | sort > SFILES
 cmp -s SFILES LIST
@@ -335,7 +335,7 @@ sort <<EOF > LIST
 SCCS/OLD-s.foo
 SFILES
 bar/lib
-.tmp/keys
+.tmp/.bk_keys
 EOF
 bk sfiles -x | sort > SFILES
 cmp -s SFILES LIST

@@ -7,6 +7,7 @@ int	do_diff(resolve *rs, char *left, char *right);
 int	do_sdiff(resolve *rs, char *left, char *right);
 int	do_difftool(resolve *rs, char *left, char *right);
 int	prs_common(resolve *rs, sccs *s, char *a, char *b);
+private void getFileConflict(char *gfile, char *path);
 
 int
 res_abort(resolve *rs)
@@ -363,16 +364,16 @@ The local file is not under revision control.\n\
 	return (0);
 }
 
-int
-gc_ml(resolve *rs)
+private int
+common_ml(resolve *rs, char *buf)
 {
-	char	buf[MAXPATH];
+	char	path[MAXPATH];
 	char	*t;
 
-	unless (prompt("Move local file to:", buf)) return (0);
+	unless (prompt("Move local file to:", buf)) return (1);
 	if ((buf[0] == '/') || strneq("../", buf, 3)) {
 		fprintf(stderr, "Destination must be in repository.\n");
-		return (0);
+		return (1);
 	}
 	if (sccs_filetype(buf) != 's') {
 		t = name2sccs(buf);
@@ -382,16 +383,30 @@ gc_ml(resolve *rs)
 	switch (slotTaken(rs->opts, buf)) {
 	    case SFILE_CONFLICT:
 		fprintf(stderr, "%s exists locally already\n", buf);
-		return (0);
+		return (1);
+	    case DIR_CONFLICT:
+		getFileConflict(buf, path);
+		fprintf(stderr, "file %s exists locally already\n", path);
+		return (1);
 	    case GFILE_CONFLICT:
 		t = sccs2name(buf);
 		fprintf(stderr, "%s exists locally already\n", t);
 		free(t);
-		return (0);
+		return (1);
 	    case RESYNC_CONFLICT:
 		fprintf(stderr, "%s exists in RESYNC already\n", buf);
-		return (0);
+		return (1);
 	}
+	return (0);
+}
+
+int
+gc_ml(resolve *rs)
+{
+	char	buf[MAXPATH];
+	char	*t;
+
+	if (common_ml(rs, buf)) return (0);
 	chdir(RESYNC2ROOT);
 	t = sccs2name(buf);
 	if (rs->opts->debug) {
@@ -407,6 +422,26 @@ gc_ml(resolve *rs)
 }
 
 int
+dc_ml(resolve *rs)
+{
+	char	buf[MAXPATH];
+	char	path[MAXPATH];
+
+	if (common_ml(rs, buf)) return (0);
+	getFileConflict(rs->d->pathname, path);
+	chdir(RESYNC2ROOT);
+	if (rs->opts->debug) {
+		fprintf(stderr, "rename(%s, %s)\n", path, buf);
+	}
+	if (rename(path, buf)) {
+		perror("rename");
+		exit(1);
+	}
+	chdir(ROOT2RESYNC);
+	return (EAGAIN);
+}
+
+int
 gc_remove(resolve *rs)
 {
 	char	buf[MAXPATH];
@@ -417,6 +452,108 @@ gc_remove(resolve *rs)
 	unlink(buf);
 	if (opts->log) fprintf(stdlog, "unlink(%s)\n", buf);
 	return (EAGAIN);
+}
+
+private void
+getFileConflict(char *gfile, char *path)
+{
+	char	*t, *s;
+	
+	chdir(RESYNC2ROOT);
+	for (t = strrchr(gfile, '/'); t; ) {
+		*t = 0;
+		if (exists(gfile) && !isdir(gfile)) {
+			strcpy(path, gfile);
+			*t = '/';
+			chdir(ROOT2RESYNC);
+			return;
+		}
+		s = t;
+		t = strrchr(t, '/');
+		*s = '/';
+	}
+	path[0] = 0;
+	chdir(ROOT2RESYNC);
+	return;
+}
+
+int
+dc_remove(resolve *rs)
+{
+	char	buf[MAXPATH];
+	char	path[MAXPATH];
+	opts	*opts = rs->opts;
+
+	unless (confirm("Remove local file?")) return (0);
+	getFileConflict(rs->d->pathname, path);
+	sprintf(buf, "%s/%s", RESYNC2ROOT, path);
+	unlink(buf);
+	if (opts->log) fprintf(stdlog, "unlink(%s)\n", buf);
+	return (EAGAIN);
+}
+
+int
+dc_explain(resolve *rs)
+{
+	char	path[MAXPATH];
+
+	getFileConflict(rs->d->pathname, path);
+	fprintf(stderr,
+"The path of the remote file: ``%s''\n\
+conflicts with a local file: ``%s''\n\
+Your choices are:\n\
+a) do not move the local file, which means that the entire patch will\n\
+   be aborted, discarding any other merges you may have done.  You can\n\
+   then check in the local file and retry the patch.  This is the best\n\
+   choice if you have done no merge work yet.\n\
+b) remove the local file after making sure it is not something that you\n\
+   need.\n\
+c) remove the remote file after making sure it is not something that you\n\
+   need.\n\
+d) move the local file to some other pathname.\n\
+e) move the remote file to some other pathname.\n\
+\n\
+The choices b, c, d, or e will allow the file in the patch to be created\n\
+and you to continue with the rest of the patch.\n\
+\n\
+Warning: choices b and d are not recorded because there is no SCCS file\n\
+associated with the local file.  So if the rest of the resolve does not\n\
+complete for some reason, it is up to you to go find that file and move it\n\
+back by hand, if that is what you want.\n\n", rs->d->pathname, path);
+	return (0);
+}
+
+int
+dc_help(resolve *rs)
+{
+	int	i;
+	sccs	*local;
+	char	path[MAXPATH];
+	char	buf[MAXKEY];
+
+	getFileConflict(rs->d->pathname, path);
+	sccs_sdelta(rs->s, sccs_ino(rs->s), buf);
+	chdir(RESYNC2ROOT);
+	local = sccs_keyinit(buf, INIT, rs->opts->local_proj, rs->opts->idDB);
+	chdir(ROOT2RESYNC);
+	fprintf(stderr,
+"---------------------------------------------------------------------------\n\
+Remote file:\n\t``%s''\n", rs->d->pathname);
+	if (local) {
+		fprintf(stderr, "which matches file\n\t``%s''\n", local->gfile);
+		sccs_free(local);
+	}
+	fprintf(stderr,
+"wants to be in same place as local file\n\t``%s''\n\
+---------------------------------------------------------------------------\n",
+	    path);
+	fprintf(stderr, "Commands are:\n\n");
+	for (i = 0; rs->funcs[i].spec; i++) {
+		fprintf(stderr, "  %-4s - %s\n", 
+		    rs->funcs[i].spec, rs->funcs[i].help);
+	}
+	fprintf(stderr, "\n");
+	return (0);
 }
 
 int
@@ -628,6 +765,19 @@ rfuncs	gc_funcs[] = {
     { 0, 0, 0, 0 }
 };
 
+rfuncs	dc_funcs[] = {
+    { "?", "help", "print this help", dc_help },
+    { "a", "abort", "abort the patch, DISCARDING all merges", res_abort },
+    { "ml", "move local", "move the local file to someplace else", dc_ml },
+    { "mr", "move remote", "move the remote file to someplace else", res_mr },
+    { "q", "quit", "immediately exit resolve", res_quit },
+    { "rl", "remove local", "remove the local file", dc_remove },
+    { "rr", "remove remote", "remove the remote file", sc_rmr },
+    { "vr", "view remote", "view the remote file", res_vr },
+    { "x", "explain", "explain the choices", dc_explain },
+    { 0, 0, 0, 0 }
+};
+
 rfuncs	sc_funcs[] = {
     { "?", "help", "print this help", sc_help },
     { "a", "abort", "abort the patch, DISCARDING all merges", res_abort },
@@ -662,12 +812,17 @@ resolve_create(resolve *rs, int type)
 	switch (type) {
 	    case GFILE_CONFLICT:
 		if (rs->opts->debug) fprintf(stderr, "GFILE\n");
-		rs->prompt = rs->dname;
+		rs->prompt = rs->d->pathname;
 		rs->res_gcreate = 1;
 		return (resolve_loop("resolve_create gc", rs, gc_funcs));
+	    case DIR_CONFLICT:
+		if (rs->opts->debug) fprintf(stderr, "DIR\n");
+		rs->prompt = rs->d->pathname;
+		rs->res_dirfile = 1;
+		return (resolve_loop("resolve_create dc", rs, dc_funcs));
 	    case SFILE_CONFLICT:
 		if (rs->opts->debug) fprintf(stderr, "SFILE\n");
-		rs->prompt = rs->dname;
+		rs->prompt = rs->d->pathname;
 		rs->res_screate = 1;
 		chdir(RESYNC2ROOT);
 		rs->opaque = (void*)sccs_init(rs->dname, 0, 0);

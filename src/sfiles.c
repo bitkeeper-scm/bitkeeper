@@ -29,7 +29,7 @@ usage: sfiles [-aAcCdDglkpPRrux] [directories]\n\n\
     		Note 2: revision control files must look like SCCS/s.*,\n\
 		not foo/bar/blech/s.*\n\
 \n\
-    The -r option can take an optional project root but not any other\n\
+    The -r option can take an optional package root but not any other\n\
     directories.\n\
 \n";
 
@@ -628,7 +628,7 @@ lftw_inner(char *path, char *base, struct stat *sb,
 
 		if (!S_ISDIR(mode)) continue;
 
-		/* Do not cross into other project roots (e.g. RESYNC).  */
+		/* Do not cross into other package roots (e.g. RESYNC).  */
 		n = strlen(base);
 		strcat(base, "/" BKROOT);
 		if (exists(path)) {

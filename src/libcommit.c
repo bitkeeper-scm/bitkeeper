@@ -131,7 +131,13 @@ sendConfig(char *to, int quiet, int quota)
 	if (getenv("BK_TRACE_LOG") && streq(getenv("BK_TRACE_LOG"), "YES")) {
 		printf("sending config file...\n");
 	}
-	sprintf(subject, "BitKeeper config: %s", project_name());
+        if (strstr(package_name(), "BitKeeper Test repo") &&
+            (bkusers(1, 1, 0) <= 5)) {
+                /* TODO : make sure our root dir is /tmp/.regression... */
+		unlink(config_log);
+                return ;
+        }             
+	sprintf(subject, "BitKeeper config: %s", package_name());
 	if (spawnvp_ex(_P_NOWAIT, av[0], av) == -1) unlink(config_log);
 }
 
@@ -156,7 +162,7 @@ header(FILE *f)
 		}
 		fclose(f1);
 	}
-	p = project_name();
+	p = package_name();
 	if (p[0]) {
 		fprintf(f,
 		    "Changeset in %s by %s\n", p, sccs_getuser());
@@ -225,10 +231,18 @@ logChangeSet(char *rev, int quiet)
 		printf("Sending ChangeSet to %s...\n", logAddr());
 		fflush(stdout);
 	}
-	sprintf(subject, "BitKeeper ChangeSet log: %s", project_name());
+
+        if (strstr(package_name(), "BitKeeper Test repo") &&
+            (bkusers(1, 1, 0) <= 5)) {
+                /* TODO : make sure our root dir is /tmp/.regression... */
+		unlink(commit_log);
+                return ;
+        }             
+
+	sprintf(subject, "BitKeeper ChangeSet log: %s", package_name());
 #ifdef WIN32
 	/*
-	 * On win32, there is not portable email interface,
+	 * On win32, there is no portable email interface,
 	 * so we use HTTP to do open logging.
 	 */
 	if (is_open_logging(to)) {
@@ -285,7 +299,7 @@ get(char *path, int flags, char *output)
 }
 
 char *
-project_name()
+package_name()
 {
 	sccs	*s;
 	static	char pname[MAXLINE] = "";
@@ -293,7 +307,7 @@ project_name()
 
 	if (pname[0]) return(pname); /* cached */
 	if ((root = sccs_root(0)) == NULL) {
-		fprintf(stderr, "project name: Can not find project root\n");
+		fprintf(stderr, "package name: Can not find package root\n");
 		return (pname);
 	}
 	sprintf(s_cset, "%s/%s", root, CHANGESET);
@@ -308,7 +322,7 @@ void
 notify()
 {
 	char	buf[MAXPATH], notify_file[MAXPATH], notify_log[MAXPATH];
-	char	subject[MAXLINE], *projectname;
+	char	subject[MAXLINE], *packagename;
 	FILE	*f;
 	int 	status;
 	pid_t 	pid;
@@ -332,10 +346,10 @@ notify()
 	system(buf);
 	sprintf(buf, "bk cset -r+ | bk sccslog - >> %s", notify_log);
 	system(buf);
-	projectname = project_name();
-	if (projectname[0]) {
+	packagename = package_name();
+	if (packagename[0]) {
 		sprintf(subject, "BitKeeper changeset in %s by %s",
-		    projectname, sccs_getuser());
+		    packagename, sccs_getuser());
 	} else {
 		sprintf(subject, "BitKeeper changeset by %s", sccs_getuser());
 	}

@@ -12,7 +12,8 @@
 	fputs("====================================================\n", stderr);
 #define	SFILE_CONFLICT	1
 #define	GFILE_CONFLICT	2
-#define	RESYNC_CONFLICT	3
+#define	DIR_CONFLICT	3
+#define	RESYNC_CONFLICT	4
 #define	LOCAL		1
 #define	REMOTE		2
 
@@ -101,6 +102,7 @@ typedef	struct resolve {
 	/* the following tell us which resolve loop we are in */
 	u32	res_gcreate:1;	/* new file conflicts with local gfile */
 	u32	res_screate:1;	/* new file conflicts with gfile */
+	u32	res_dirfile:1;	/* pathname component conflicts w/ file */
 	u32	res_resync:1;	/* conflict in the RESYNC dir */
 	u32	res_contents:1;	/* content conflict */
 } resolve;

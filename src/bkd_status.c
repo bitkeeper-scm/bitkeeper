@@ -10,7 +10,7 @@ cmd_status(int ac, char **av)
 	static	char *cmd[] = { "bk", "status", 0, 0 };
 
 	if (!exists("BitKeeper/etc")) {
-		out("ERROR-Not at project root\n");
+		out("ERROR-Not at package root\n");
 		return (-1);
 	}
 	if ((ac == 2) && streq("-v", av[1])) cmd[2] = "-v";

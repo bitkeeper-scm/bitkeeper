@@ -20,12 +20,6 @@ mail(char *to, char *subject, char *file)
 		0
 	};
 
-	if (strstr(project_name(), "BitKeeper Test repo") &&
-	    (bkusers(1, 1, 0) <= 5)) {
-		/* TODO : make sure our root dir is /tmp/.regression... */
-		return (-9);
-	}
-
 	while (paths[++i]) {
 		sprintf(sendmail, "%s/sendmail", paths[i]);
 		if (exists(sendmail)) {
@@ -72,12 +66,6 @@ mail(char *to, char *subject, char *file)
 	char	buf[MAXLINE];
 	pid_t	pid;
 	extern	char *bin;
-
-	if (strstr(project_name(), "BitKeeper Test repo") &&
-	    (bkusers(1, 1, 0) <= 5)) {
-		/* TODO : make sure our root dir is /tmp/.regression... */
-		return (-9);
-	}
 
 	if (findprog("blat.exe") ) {
 		char *av[] = {"blat", file, "-t", to, "-s", subject, "-q", 0};
