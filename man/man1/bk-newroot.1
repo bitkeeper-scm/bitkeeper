@@ -1,0 +1,24 @@
+.so bk-macros
+.TH "bk newroot" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk newroot \- change the identity of a repository
+.SH SYNOPSIS
+.B bk newroot
+.SH DESCRIPTION
+.LP
+.B newroot
+is used to generate a new 
+.I identity
+for a repository.
+The identity of a repository is used each time a repository is updated from
+another repository.  If the identities are not the same then the update will
+fail.  Changing a repository identity effectively creates a new, unique
+repository with all of the existing history.
+.SH "SEE ALSO"
+.SA clone
+.SA pull
+.SA push
+.SH CATEGORY
+.B Repository
+.br
+.B Admin

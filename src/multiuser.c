@@ -1,35 +1,54 @@
 /* Copyright (c) 2001 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
+private int	newroot(int single);
 WHATSTR("@(#)%K%");
 
 /*
  * multiuser - convert a repository to multi-user from single user.
- *
- * Start with the ChangeSet file, bail if it is not single.
- * Generate a new ROOTKEY by changing the first char of the random bits to "+".
- * Update the csetfile pointer in all files.
- * Update all xflags.
- * Update the config file.
- * Create a changeset.
  */
 int
 multiuser_main(int ac, char **av)
 {
+	if (((ac == 2) && streq("--help", av[1])) || (ac != 1)) {
+		close(0);
+		system("bk help -s multiuser");
+		return (1);
+	}
+	exit(newroot(1));
+}
+
+int
+newroot_main(int ac, char **av)
+{
+	if (((ac == 2) && streq("--help", av[1])) || (ac != 1)) {
+		close(0);
+		system("bk help -s newroot");
+		return (1);
+	}
+	exit(newroot(0));
+}
+
+/*
+ * Start with the ChangeSet file, bail if it is not single && want single.
+ * Generate a new ROOTKEY by adding "+" to the end of random bits.
+ * Update the csetfile pointer in all files.
+ * Update all xflags (single case).
+ * Update the config file (single case).
+ * Create a changeset (single case).
+ */
+private int
+newroot(int single)
+{
 	sccs	*s;
 	delta	*d;
-	char	cset[] = CHANGESET;
 	project	*proj = 0;
 	int	rc = 0;
+	char	cset[] = CHANGESET;
 	char	buf[MAXPATH];
 	char	key[MAXKEY];
 	FILE	*f;
 
-	debug_main(av);
-	if (ac > 1 && streq("--help", av[1])) {
-		system("bk help multiuser");
-		return (1);
-	}
 	if (sccs_cd2root(0, 0)) {
 		fprintf(stderr, "Cannot find package root.\n");
 		exit(1);
@@ -38,11 +57,11 @@ multiuser_main(int ac, char **av)
 		fprintf(stderr, "Cannot init ChangeSet.\n");
 		exit(1);
 	}
-	unless (s->tree->xflags & X_SINGLE) {
+	if (single && !(s->tree->xflags & X_SINGLE)) {
 		fprintf(stderr, "Already converted.\n");
 		exit(0);
 	}
-	sprintf(buf, "+%s", s->tree->random);
+	sprintf(buf, "%s+", s->tree->random);
 	free(s->tree->random);
 	s->tree->random = strdup(buf);
 	sccs_sdelta(s, s->tree, key);
@@ -59,13 +78,14 @@ multiuser_main(int ac, char **av)
 		unless (proj) proj = s->proj;
 		free(s->tree->csetFile);
 		s->tree->csetFile = strdup(key);
-		for (d = s->table; d; d = d->next) {
+		for (d = s->table; d && single; d = d->next) {
 			if (d->xflags & X_SINGLE) d->xflags &= ~X_SINGLE;
 		}
 		if (sccs_newchksum(s)) rc = 1;
 		sccs_free(s);
 	}
 	pclose(f);
+	unless (single) return (rc);
 	system("bk get -egq BitKeeper/etc/config; "
 	    "bk get -qkp BitKeeper/etc/config | "
 	    "grep -v '^single_' > BitKeeper/etc/config;"

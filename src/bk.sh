@@ -51,6 +51,11 @@ _inode() {		# /* undoc? 2.0 */
 }
 
 # shorthand
+_identity() {		# /* undoc? 2.0 */
+	bk -R prs -hr+ -nd':ROOTKEY:' ChangeSet
+}
+
+# shorthand
 _flags() {		# /* undoc? 2.0 */
 	bk prs -hr+ -nd':GFILE: :FLAGS:' "$@"
 }
@@ -58,12 +63,6 @@ _flags() {		# /* undoc? 2.0 */
 # shorthand
 _tags() {
 	bk changes -t
-}
-
-# This removes the tag graph.  Use with care.
-_striptags() {
-	__cd2root
-	_BK_STRIPTAGS=Y bk admin -z ChangeSet
 }
 
 # Hard link based clone.

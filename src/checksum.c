@@ -17,10 +17,8 @@ checksum_main(int ac, char **av)
 	delta	*d;
 	int	doit;
 	char	*name;
-	int	fix = 0;
-	int	diags = 0;
+	int	fix = 0, diags = 0, bad = 0, do_sccs = 0, ret = 0;
 	int	c;
-	int	do_sccs = 0, exit = 0;
 	char	*off;
 	project	*proj = 0;
 
@@ -59,20 +57,20 @@ checksum_main(int ac, char **av)
 		}
 		for (doit = 0, d = s->table; d; d = d->next) {
 			if (d->type == 'D') {
-				if (sccs_resum(s, d, diags, fix) & 1) {
-					doit++;
-				}
+				c = sccs_resum(s, d, diags, fix);
+				if (c & 1) doit++;
+				if (c & 2) bad++;
 			}
 		}
 		if (diags) {
-			fprintf(stderr, "%s: %d bad delta checksums\n",
-			    s->gfile, doit);
+			fprintf(stderr,
+			    "%s: %d bad delta checksums\n", s->gfile, bad);
 		}
 		if ((doit || !s->cksumok) && fix) {
 			unless (sccs_restart(s)) { perror("restart"); exit(1); }
 			if (sccs_admin(
 			    s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0)) {
-			    	exit = 2;
+			    	ret = 2;
 				unless (BEEN_WARNED(s)) {
 					fprintf(stderr,
 					    "admin -z of %s failed.\n",
@@ -84,7 +82,7 @@ checksum_main(int ac, char **av)
 	}
 	sfileDone();
 	if (proj) proj_free(proj);
-	return (exit ? exit : (doit ? 1 : 0));
+	return (ret ? ret : (doit ? 1 : 0));
 }
 
 int
@@ -104,8 +102,8 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 		for (t = d->symlink; *t; sum += *t++);
 		if ((d->flags & D_CKSUM) && (d->sum == sum)) return (0);
 		unless (fix) {
-			fprintf(stderr, "Bad symlink checksum %d:%d in %s:%s\n",
-			    d->sum, sum, s->sfile, d->rev);
+			fprintf(stderr, "Bad symlink checksum %d:%d in %s|%s\n",
+			    d->sum, sum, s->gfile, d->rev);
 			return (2);
 		} else {
 			if (diags > 1) {
@@ -164,8 +162,8 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 	if ((d->flags & D_CKSUM) && (d->sum == s->dsum)) return (0);
 	unless (fix) {
 		fprintf(stderr,
-		    "Bad checksum %d:%d in %s:%s\n",
-		    d->sum, s->dsum, s->sfile, d->rev);
+		    "Bad checksum %d:%d in %s|%s\n",
+		    d->sum, s->dsum, s->gfile, d->rev);
 		return (2);
 	}
 	if (diags > 1) {
