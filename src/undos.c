@@ -24,7 +24,7 @@ main(int ac, char **av)
 	}
 	while (fgets(buf, sizeof(buf), f)) {
 		undos(buf);
-		puts(buf);
+		fputs(buf, stdout);
 	}
 
 	return (0);
@@ -33,12 +33,20 @@ main(int ac, char **av)
 /* kill the newline and the \r */
 void
 undos(register char *s)
-{
+{	
+	static char last = '\0';
 	if (!s[0]) return;
+	/*
+	 * This code is strange because we need to
+	 * handle lines longer than the 1K buffer size 
+	 */
+	if ((last == '\r') && (s[0] == '\n')) return;
 	while (s[1]) s++;
-	if (s[-1] == '\r') {
-		s[-1] = 0;
+	last = s[0];
+	if (last == '\r') *s-- = 0;
+	if ((s[-1] == '\r') && (s[0] == '\n')) {
+		s[-1] = '\n';
+		s[0] = '\0';
+		return;
 	}
-	if (s[0] == '\n')
-	    s[0] = 0;
 }

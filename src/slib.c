@@ -282,6 +282,7 @@ mkline(char *p)
 	unless (p) return (0);
 	for (s = buf; (*s++ = *p++) != '\n'; );
 	s[-1] = 0;
+	assert((s - buf) < MAXLINE);
 	return (buf);
 }
 
@@ -1983,14 +1984,28 @@ nextdata(sccs *s)
 private char *
 expand(sccs *s, delta *d, char *l, int *expanded)
 {
-	static	char buf[MAXLINE];
-	char	*t = buf;
+	char 	*buf;
+	char	*t;
 	char	*tmp, *g;
 	time_t	now = 0;
 	struct	tm *tm = 0;
 	u16	a[4];
-	int	expn = 0;
+	int hasKeyword = 0, buf_size;
+#define EXTRA 1024
 
+	/* pre scan the line to determine if it needs keyword expansion */
+	*expanded = 0;
+	for (t = l; *t != '\n'; t++) {
+		if (hasKeyword) continue;
+		if (t[0] != '%' || t[1] == '\n' || t[2] != '%') continue;
+		/* NOTE: this string *must* match the case label below */
+		if (strchr("ABCDEFGHIKLMPQRSTUWYZ@", t[1])) hasKeyword = 1;
+	}
+	unless (hasKeyword) return l;
+	buf_size = t - l + EXTRA; /* get extra memory for keyword expansion */
+
+	/* ok, we need to expand keyword, allocate a new buffer */
+	t = buf = malloc(buf_size);
 	while (*l != '\n') {
 		if (l[0] != '%' || l[1] == '\n' || l[2] != '%') {
 			*t++ = *l++;
@@ -2004,17 +2019,14 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 			strcpy(t, tmp); t += strlen(tmp); *t++ = ' ';
 			strcpy(t, d->rev); t += strlen(d->rev);
 			strcpy(t, "@(#)"); t += 4;
-			expn = 1;
 			break;
 
 		    case 'B':	/* branch name: XXX */
 			tmp = branchname(d); strcpy(t, tmp); t += strlen(tmp);
-			expn = 1;
 			break;
 
 		    case 'C':	/* line number - XXX */
 			*t++ = '%'; *t++ = 'C'; *t++ = '%';
-			expn = 1;
 			break;
 
 		    case 'D':	/* today: 97/06/22 */
@@ -2032,7 +2044,6 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 				    tm->tm_year, tm->tm_mon+1, tm->tm_mday);
 				t += 8;
 			}
-			expn = 1;
 			break;
 
 		    case 'E':	/* most recent delta: 97/06/22 */
@@ -2044,14 +2055,12 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 				}
 			}
 			strncpy(t, d->sdate, 8); t += 8;
-			expn = 1;
 			break;
 
 		    case 'F':	/* s.file name */
 			strcpy(t, "SCCS/"); t += 5;
 			tmp = basenm(s->sfile);
 			strcpy(t, tmp); t += strlen(tmp);
-			expn = 1;
 			break;
 
 		    case 'G':	/* most recent delta: 06/22/97 */
@@ -2065,7 +2074,6 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 				}
 			}
 			*t++ = d->sdate[0]; *t++ = d->sdate[1];
-			expn = 1;
 			break;
 
 		    case 'H':	/* today: 06/22/97 */
@@ -2085,29 +2093,24 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 				    tm->tm_mon+1, tm->tm_mday, tm->tm_year);
 				t += 8;
 			}
-			expn = 1;
 			break;
 
 		    case 'I':	/* name of revision: 1.1 or 1.1.1.1 */
 			strcpy(t, d->rev); t += strlen(d->rev);
-			expn = 1;
 			break;
 
 		    case 'K':	/* BitKeeper Key */
 		    	t += sccs_sdelta(s, d, t);
-			expn = 1;
 			break;
 
 		    case 'L':	/* 1.2.3.4 -> 2 */
 			scanrev(d->rev, &a[0], &a[1], 0, 0);
 			sprintf(t, "%d", a[1]); t += strlen(t);
-			expn = 1;
 			break;
 
 		    case 'M':	/* mflag or filename: slib.c */
 			tmp = basenm(s->gfile);
 			strcpy(t, tmp); t += strlen(tmp);
-			expn = 1;
 			break;
 
 		    case 'P':	/* full: /u/lm/smt/sccs/SCCS/s.slib.c */
@@ -2115,25 +2118,21 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 			tmp = fullname(g, 1);
 			free(g);
 			strcpy(t, tmp); t += strlen(tmp);
-			expn = 1;
 			break;
 
 		    case 'Q':	/* qflag */
 			*t++ = '%'; *t++ = 'Q'; *t++ = '%';
-			expn = 1;
 			break;
 
 		    case 'R':	/* release 1.2.3.4 -> 1 */
 			scanrev(d->rev, &a[0], 0, 0, 0);
 			sprintf(t, "%d", a[0]); t += strlen(t);
-			expn = 1;
 			break;
 
 		    case 'S':	/* rev number: 1.2.3.4 -> 4 */
 			a[3] = 0;
 			scanrev(d->rev, &a[0], &a[1], &a[2], &a[3]);
 			sprintf(t, "%d", a[3]); t += strlen(t);
-			expn = 1;
 			break;
 
 		    case 'T':	/* time: 23:04:04 */
@@ -2142,12 +2141,10 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 			sprintf(t, "%02d:%02d:%02d",
 			    tm->tm_hour, tm->tm_min, tm->tm_sec);
 			t += 8;
-			expn = 1;
 			break;
 
 		    case 'U':	/* newest delta: 23:04:04 */
 			strcpy(t, &d->sdate[9]); t += 8;
-			expn = 1;
 			break;
 
 		    case 'W':	/* @(#)%M% %I%: @(#)slib.c 1.1 */
@@ -2155,17 +2152,14 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 			tmp = basenm(s->gfile);
 			strcpy(t, tmp); t += strlen(tmp); *t++ = ' ';
 			strcpy(t, d->rev); t += strlen(d->rev);
-			expn = 1;
 			break;
 
 		    case 'Y':	/* tflag */
 			*t++ = '%'; *t++ = 'Y'; *t++ = '%';
-			expn = 1;
 			break;
 
 		    case 'Z':	/* @(#) */
 			strcpy(t, "@(#)"); t += 4;
-			expn = 1;
 			break;
 
 		    case '@':	/* user@host */
@@ -2176,7 +2170,6 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 				strcpy(t, d->hostname);
 				t += strlen(d->hostname);
 			}
-			expn = 1;
 			break;
 
 		    default:	t[0] = l[0];
@@ -2188,8 +2181,27 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 		l += 3;
 	}
 	*t++ = '\n'; *t = 0;
-	if (expanded) *expanded = expn;
+	assert((t - buf) <= buf_size);
+	*expanded = 1;  /* Note: if expanded flag is set	 */
+					/* caller must free buffer when done */			
 	return (buf);
+}
+
+
+/*
+ * find s in t
+ * s is '\0' terminated
+ * t is '\n' terminated
+ */
+private int
+strnlmatch(register char *s, register char *t)
+{
+	while (*s && (*t != '\n')) {
+		if (*t != *s) return (0);
+		t++, s++;
+	}
+	if (*s == 0) return (1);
+	return (0);
 }
 
 /*
@@ -2210,11 +2222,30 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 private char *
 rcsexpand(sccs *s, delta *d, char *l, int *expanded)
 {
-	static	char buf[MAXLINE];
-	char	*t = buf;
+	char *buf;
+	char	*t;
 	char	*tmp, *g;
 	delta	*h;
-	int	expn = 0;
+	int	hasKeyword = 0, expn = 0, buf_size;
+
+	/* pre scan the line to determine if it needs keyword expansion */
+	*expanded = 0;
+	for (t = l; *t != '\n'; t++) {
+		if (hasKeyword) continue;
+		if (t[0] != '$' || t[1] == '\n') continue;
+		if (strnlmatch("$Author$", t) || strnlmatch("$Date$", t) ||
+		     strnlmatch("$Header$", t) || strnlmatch("$Id$", t) ||
+		     strnlmatch("$Locker$", t) || strnlmatch("$Log$", t) ||
+		     strnlmatch("$Name$", t) || strnlmatch("$RCSfile$", t) ||
+		     strnlmatch("$Revision$", t) || strnlmatch("$Source$", t) ||
+		     strnlmatch("$State$", t)) {
+			hasKeyword = 1;
+		}
+	}
+	unless (hasKeyword) return l;
+	buf_size = t - l + EXTRA; /* get extra memory for keyword expansion */
+	/* ok, we need to expand keyword, allocate a new buffer */
+	t = buf = malloc(buf_size);
 
 	while (*l != '\n') {
 		if (l[0] != '$') {
@@ -2345,6 +2376,7 @@ rcsexpand(sccs *s, delta *d, char *l, int *expanded)
 		}
 	}
 	*t++ = '\n'; *t = 0;
+	assert((t - buf) <= buf_size);
 	if (expanded) *expanded = expn;
 	return (buf);
 }
@@ -4587,6 +4619,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	char	*buf, *base = 0, *f;
 	MDBM	*DB = 0;
 	int	hash = 0;
+	int sccs_expanded, rcs_expanded;
 
 	slist = d ? serialmap(s, d, flags, iLst, xLst, &error)
 		  : setmap(s, D_SET, 0);
@@ -4658,8 +4691,9 @@ out:			if (slist) free(slist);
 	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
 	sum = 0;
 	while (buf = nextdata(s)) {
-		register u8 *e;
+		register u8 *e, *e1, *e2;
 
+		e1= e2 = 0;
 		if (isData(buf)) {
 			if (!print) continue;
 			if (hash) {
@@ -4696,12 +4730,12 @@ out:			if (slist) free(slist);
 					fprintf(out, "%6d\t", lines);
 			}
 			e = buf;
+			sccs_expanded = rcs_expanded = 0;
 			if (flags & GET_EXPAND) {
 				for (e = buf; *e != '%' && *e != '\n'; e++);
 				if (*e == '%') {
-					int didit;
-					e = expand(s, d, buf, &didit);
-					if (didit && (s->state & S_EXPAND1)) {
+					e = e1= expand(s, d, buf, &sccs_expanded);
+					if (sccs_expanded && (s->state & S_EXPAND1)) {
 						flags &= ~GET_EXPAND;
 					}
 				} else {
@@ -4714,12 +4748,13 @@ out:			if (slist) free(slist);
 				for (t = buf; *t != '$' && *t != '\n'; t++);
 				if (*t == '$') {
 					int didit;
-					e = rcsexpand(s, d, e, &didit);
-					if (didit && (s->state & S_EXPAND1)) {
+					e = e2 = rcsexpand(s, d, e, &rcs_expanded);
+					if (rcs_expanded && (s->state & S_EXPAND1)) {
 						flags &= ~GET_RCSEXPAND;
 					}
 				}
-			}
+			} 
+
 			switch (encoding) {
 			    case E_GZIP|E_UUENCODE:
 			    case E_UUENCODE:
@@ -4733,6 +4768,8 @@ out:			if (slist) free(slist);
 			    case E_ASCII:
 			    case E_GZIP:
 				fnlputs(e, out);
+				if (sccs_expanded) free(e1);
+				if (rcs_expanded) free(e2);
 				break;
 			}
 			continue;
@@ -5106,6 +5143,22 @@ outdiffs(sccs *s, int type, int side, int *left, int *right, int count,
 					fputs("\\", out);
 				}
 				fputs(buf, out);
+
+				/*
+				 * This loop is here to handle line
+				 * that is longer than the MAXLINE buffer size
+				 *
+				 * XXX TODO: should mmap the tmp file
+				 */
+				while (buf[strlen(buf) - 1] != '\n') {
+					unless (fnext(buf, in)) {
+						fprintf(stderr,
+		    "get: getdiffs temp file has no line-feed termination\n");
+						fputs(buf, out);
+						break;
+					}
+					fputs(buf, out);
+				}
 			} else {
 				fprintf(stderr,
 				    "get: getdiffs temp file early EOF\n");
@@ -5201,7 +5254,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		}
 		goto done2;
 	}
-	unless (lbuf = fopen(tmpfile, "w+")) {
+	unless (lbuf = fopen(tmpfile, "w+b")) {
 		perror(tmpfile);
 		fprintf(stderr, "getdiffs: couldn't open %s\n", tmpfile);
 		s->state |= S_WARNED;
@@ -5822,24 +5875,27 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 private inline int
 expandnleq(sccs *s, delta *d, char *fbuf, char *sbuf, int flags)
 {
-	char	*e = fbuf;
-	int expanded;
+	char	*e = fbuf, *e1, *e2;
+	int sccs_expanded = 0 , rcs_expanded = 0, rc;
 
 	if (s->encoding != E_ASCII) return (0);
 	if (!(flags & (GET_EXPAND|GET_RCSEXPAND))) return 0;
 	if (flags & GET_EXPAND) {
-		e = expand(s, d, e, &expanded);
+		e = e1 = expand(s, d, e, &sccs_expanded);
 		if (s->state & S_EXPAND1) {
-			if (expanded) flags &= ~GET_EXPAND;
+			if (sccs_expanded) flags &= ~GET_EXPAND;
 		}
 	}
 	if (flags & GET_RCSEXPAND) {
-		e = rcsexpand(s, d, e, &expanded);
+		e = e2 = rcsexpand(s, d, e, &rcs_expanded);
 		if (s->state & S_EXPAND1) {
-			if (expanded) flags &= ~GET_RCSEXPAND;
+			if (rcs_expanded) flags &= ~GET_RCSEXPAND;
 		}
 	}
-	return strnleq(e, sbuf);
+	rc = strnleq(e, sbuf);
+	if (sccs_expanded) free(e1);
+	if (rcs_expanded) free(e2);
+	return (rc);
 }
 
 /*

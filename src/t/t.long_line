@@ -1,0 +1,135 @@
+#!/bin/sh
+
+# Copyright (c) 1999 Andrew Chang
+# %K%
+
+echo $N Create initial repository ...................................$NL
+HERE=`${CWD}`
+echo "logging: /dev/null" > $HERE/c
+echo "logging_ok: no" >>$HERE/c
+bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
+if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
+cd project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo OK
+echo $N Create long data w/ no keyword ..............................$NL
+mkdir src
+cd src
+COUNT=1
+while true
+do
+	echo $N 12345678901234567890123456789012345678901234567890$NL >> long
+	echo $N 12345678901234567890123456789012345678901234567890$NL >> long
+	echo $N 12345678901234567890123456789012345678901234567890$NL >> long
+	echo $N 12345678901234567890123456789012345678901234567890$NL >> long
+	COUNT=`expr $COUNT + 1`
+	if [ $COUNT -ge 40 ]; then break; fi
+done
+${ECHO} 12345678901234567890123456789012345678901234567890 >> long
+cp long long.sav
+ci $Q -i long
+if [ ! -f SCCS/s.long ]; then echo failed to create history; exit 1; fi
+co $Q long
+cmp -s long long.sav
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
+echo $N Create long data w/ sccs keyword ............................$NL
+rm -f tmp
+COUNT=1
+while true
+do
+	echo $N 12345678901234567890@I@123456789012345678901234567$NL >> tmp
+	echo $N 12345678901234567890123456789012345678901234567890$NL >> tmp
+	echo $N 12345678901234567890123456789012345678901234567890$NL >> tmp
+	echo $N 12345678901234567890123456789012345678901234567890$NL >> tmp
+	COUNT=`expr $COUNT + 1`
+	if [ $COUNT -ge 40 ]; then break; fi
+done
+echo 12345678901234567890123456789012345678901234567890 >> tmp
+sed -e's/@/%/g' < tmp > long1
+sed -e's/@I@/1.1/g' < tmp > X
+undos X > long1.ref 
+cp long1 long1_1.1.sav
+ci $Q -i long1
+if [ ! -f SCCS/s.long1 ]; then echo failed to create history; exit 1; fi
+co $Q long1
+cmp -s long1 long1.ref
+if [ $? -ne 0 ]; then echo failed; diff long1 long1.ref; exit 1; fi
+echo OK
+echo $N Create long data w/ rcs keyword .............................$NL
+#rm -f tmp
+COUNT=1
+while true
+do
+	echo $N 12345678901234567890\$RCSfile\$1234567890123456789$NL >> long2
+	echo $N 12345678901234567890123456789012345678901234567890$NL >> long2
+	echo $N 12345678901234567890123456789012345678901234567890$NL >> long2
+	echo $N 12345678901234567890123456789012345678901234567890$NL >> long2
+	COUNT=`expr $COUNT + 1`
+	if [ $COUNT -ge 40 ]; then break; fi
+done
+${ECHO} 12345678901234567890123456789012345678901234567890 >> long2
+sed -e's/\$RCSfile\$/\$RCSfile: s.long2 \$/g' < long2 > X
+undos X > long2.ref 
+ci $Q -i long2
+admin -fRCS long2
+if [ ! -f SCCS/s.long2 ]; then echo failed to create history; exit 1; fi
+co $Q long2
+cmp -s long2 long2.ref
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
+echo $N Create a change set .........................................$NL
+bk commit $S -f -yCset
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
+echo OK
+cores
+echo $N Create a copy of the project ................................$NL
+cd $HERE
+bk resync $Q project copy
+bk resolve $Q copy
+if [ ! -d copy ]; then echo failed to make top level directory; exit 1; fi
+cd copy
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+echo OK
+echo $N Check propagation of delta w/ long line .....................$NL
+cd $HERE/project/src
+co $Q -l long1
+sed -e's/1/X/g' < long1 > tmp
+undos tmp > long1
+cp long1 long1_1.2.sav
+ci $Q -y long1
+co $Q long1
+sed -e's/\%I\%/1.2/g' < tmp > X
+undos X > long1.ref
+cmp -s long1 long1.ref
+if [ $? -ne 0 ]; then echo failed; diff long1 long1.ref; exit 1; fi
+bk commit $S -f -yCset
+bk send $Q -r1.3 - | (cd $HERE/copy; takepatch) 
+cd $HERE/copy/src
+bk resolve $Q
+co $Q long1
+cmp -s long1 $HERE/project/src/long1.ref
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
+echo $N Check clone of workspace w/ long line .......................$NL
+cd $HERE/project
+bk clone $Q $HERE/project $HERE/copy2
+mkdir $HERE/copy3
+bk resync $Q -a -E $HERE/copy2 $HERE/copy3
+cd $HERE/copy2/src
+co $Q long1
+cmp -s long1 $HERE/project/src/long1.ref
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
+echo $N Check diffs with long line ..................................$NL
+cd $HERE/project/src
+diffs -h -r1.1 -r1.2 long1 | grep -v "^$" > diff
+diff long1_1.1.sav long1_1.2.sav > diff.ref
+diff diff diff.ref  
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
