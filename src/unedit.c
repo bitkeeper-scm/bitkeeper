@@ -45,6 +45,5 @@ unedit_main(int ac, char **av)
 	}
 	sfileDone();
 	if (proj) proj_free(proj);
-	purify_list();
 	return (ret);
 }

@@ -134,11 +134,13 @@ passes(opts *opts)
 	unless (exists("BitKeeper/etc")) sccs_cd2root(0, 0);
 	unless (exists("BitKeeper/etc")) {
 		fprintf(stderr, "resolve: can't find package root.\n");
+		freeStuff(opts);
 		exit(1);
 	}
 	unless (exists(ROOT2RESYNC)) {
 	    	fprintf(stderr,
 		    "resolve: can't find RESYNC dir, nothing to resolve?\n");
+		freeStuff(opts);
 		exit(0);
 	}
 
@@ -146,6 +148,7 @@ passes(opts *opts)
 		unless (opts->idDB =
 		    loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
 			fprintf(stderr, "resolve: can't open %s\n", IDCACHE);
+			freeStuff(opts);
 			exit(1);
 		}
 	} else {
@@ -164,6 +167,7 @@ passes(opts *opts)
 	unless (sys("bk -r check -cR", opts) == 0) {
 		fprintf(stderr, "Check failed.  Resolve not even started.\n");
 		/* XXX - better help message */
+		freeStuff(opts);
 		exit(1);
 	}
 
@@ -270,6 +274,7 @@ that will work too, it just gets another patch.\n");
 		if (n && opts->pass4) {
 			fprintf(stderr,
 			    "Did not resolve %d renames, abort\n", n);
+			freeStuff(opts);
 			exit(1);
 		}
 		unless (opts->quiet) {
@@ -311,6 +316,7 @@ saveKey(opts *opts, char *key, char *file)
 		fprintf(stderr, "\twanted by %s\n", file);
 		fprintf(stderr,
 		    "\tused by %s\n", mdbm_fetch_str(opts->rootDB, key));
+		freeStuff(opts);
 		exit(1);
 	} else if (opts->debug) {
 		fprintf(stderr, "saveKey(%s)->%s\n", key, file);
@@ -434,6 +440,7 @@ pass1_renames(opts *opts, sccs *s)
 	}
 	if (rename(s->sfile, path)) {
 		fprintf(stderr, "Unable to rename(%s, %s)\n", s->sfile, path);
+		freeStuff(opts);
 		exit(1);
 	} else if (opts->log) {
 		fprintf(opts->log, "rename(%s, %s)\n", s->sfile, path);
@@ -443,6 +450,7 @@ pass1_renames(opts *opts, sccs *s)
 		if (rename(mfile, path)) {
 			fprintf(stderr,
 			    "Unable to rename(%s, %s)\n", mfile, path);
+			freeStuff(opts);
 			exit(1);
 		} else if (opts->log) {
 			fprintf(opts->log, "rename(%s, %s)\n", mfile, path);
@@ -453,6 +461,7 @@ pass1_renames(opts *opts, sccs *s)
 		if (rename(rfile, path)) {
 			fprintf(stderr,
 			    "Unable to rename(%s, %s)\n", rfile, path);
+			freeStuff(opts);
 			exit(1);
 		} else if (opts->log) {
 			fprintf(opts->log, "rename(%s, %s)\n", rfile, path);
@@ -980,6 +989,7 @@ type_delta(resolve *rs,
 		sprintf(buf, "bk get -kpq -r%s %s > %s", n->rev, sfile, g);
 		if (sys(buf, rs->opts)) {
 			fprintf(stderr, "%s failed\n", buf);
+			freeStuff(rs->opts);
 			exit(1);
 		}
 		chmod(g, n->mode);
@@ -987,11 +997,13 @@ type_delta(resolve *rs,
 		assert(n->symlink);
 		if (symlink(n->symlink, g)) {
 			perror(g);
+			freeStuff(rs->opts);
 			exit(1);
 		}
 	} else {
 		fprintf(stderr,
 		    "type_delta called on unknown file type %o\n", n->mode);
+		freeStuff(rs->opts);
 		exit(1);
 	}
 	free(g);
@@ -999,6 +1011,7 @@ type_delta(resolve *rs,
 	    mode2FileType(o->mode), mode2FileType(n->mode), sfile);
 	if (sys(buf, rs->opts)) {
 		fprintf(stderr, "%s failed\n", buf);
+		freeStuff(rs->opts);
 		exit(1);
 	}
 	strcpy(buf, sfile);	/* it's from the sccs we are about to free */
@@ -1035,6 +1048,7 @@ mode_delta(resolve *rs, char *sfile, delta *d, mode_t m, char *rfile, int which)
 	    rs->opts->log ? "" : "-q", a, a, sfile);
 	if (sys(buf, rs->opts)) {
 		fprintf(stderr, "%s failed\n", buf);
+		freeStuff(rs->opts);
 		exit(1);
 	}
 	strcpy(buf, sfile);	/* it's from the sccs we are about to free */
@@ -1086,6 +1100,7 @@ flags_delta(resolve *rs,
 
 	if (sys(buf, rs->opts)) {
 		fprintf(stderr, "%s failed\n", buf);
+		freeStuff(rs->opts);
 		exit(1);
 	}
 	strcpy(buf, sfile);	/* it's from the sccs we are about to free */
@@ -1272,7 +1287,8 @@ pass3_resolve(opts *opts)
 	 */
 	unless (p = popen("bk _find . -name 'm.*'", "r")) {
 		perror("popen of find");
-		exit (1);
+		freeStuff(opts);
+		exit(1);
 	}
 	while (fnext(buf, p)) {
 		fprintf(stderr, "Needs rename: %s", buf);
@@ -1283,6 +1299,7 @@ pass3_resolve(opts *opts)
 		fprintf(stderr,
 "There are %d pending renames which need to be resolved before the conflicts\n\
 can be resolved.  Please rerun resolve and fix these first.\n", n);
+		freeStuff(opts);
 		exit(1);
 	}
 
@@ -1296,7 +1313,8 @@ can be resolved.  Please rerun resolve and fix these first.\n", n);
 	 */
 	unless (p = popen("bk sfiles .", "r")) {
 		perror("popen of sfiles");
-		exit (1);
+		freeStuff(opts);
+		exit(1);
 	}
 	while (fnext(buf, p)) {
 		char	*t = strrchr(buf, '/');
@@ -1336,6 +1354,7 @@ can be resolved.  Please rerun resolve and fix these first.\n", n);
 
 	if (opts->errors) {
 err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
+		freeStuff(opts);
 		exit(1);
 	}
 
@@ -1343,6 +1362,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		fprintf(stderr,
 		    "resolve: %d unresolved conflicts, nothing is applied.\n",
 		    opts->hadConflicts);
+		freeStuff(opts);
 		exit(1);
 	}
 
@@ -1368,7 +1388,8 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	 */
 	unless (p = popen("bk sfiles .", "r")) {
 		perror("popen of sfiles");
-		exit (1);
+		freeStuff(opts);
+		exit(1);
 	}
 	while (fnext(buf, p)) {
 		char	*t = strrchr(buf, '/');
@@ -1405,11 +1426,13 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 
 		if (ret) {
 			fprintf(stderr, "citool failed, aborting.\n");
+			freeStuff(opts);
 			exit(1);
 		}
 		if (pending() || pendingCheckins()) {
 			fprintf(stderr,
 			    "Failed to check in/commit all files, aborting.\n");
+			freeStuff(opts);
 			exit(1);
 		}
 		return (0);
@@ -1422,7 +1445,8 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	 */
 	unless (p = popen("bk sfiles -c", "r")) {
 		perror("popen of find");
-		exit (1);
+		freeStuff(opts);
+		exit(1);
 	}
 	while (fnext(buf, p)) {
 		chop(buf);
@@ -1432,12 +1456,14 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	
 	if (opts->errors) {
 		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
+		freeStuff(opts);
 		exit(1);
 	}
 
 	unless (p = popen("bk sfiles -C", "r")) {
 		perror("popen of find");
-		exit (1);
+		freeStuff(opts);
+		exit(1);
 	}
 	n = 0;
 	while (fnext(buf, p)) n++;
@@ -1472,6 +1498,7 @@ do_delta(opts *opts, sccs *s)
 	sccs_restart(s);
 	if (sccs_delta(s, flags, 0, 0, 0, 0)) {
 		fprintf(stderr, "Delta of %s failed\n", s->gfile);
+		freeStuff(opts);
 		exit(1);
 	}
 }
@@ -1844,6 +1871,7 @@ commit(opts *opts)
 	unless (ok_commit(logging(0, 0, 0), 1)) {
 		fprintf(stderr,
 		   "Commit aborted because of licensing, no changes applied\n");
+		freeStuff(opts);
 		exit(1);
 	}
 
@@ -1864,6 +1892,7 @@ commit(opts *opts)
 	}
 	if (cmt) free(cmt);
 	fprintf(stderr, "Commit aborted, no changes applied.\n");
+	freeStuff(opts);
 	exit(1);
 }
 
@@ -1927,17 +1956,24 @@ pass4_apply(opts *opts)
 	if (opts->log) fprintf(opts->log, "==== Pass 4 ====\n");
 	opts->pass = 4;
 
-	if (pendingRenames()) exit(1);
+	if (pendingRenames()) {
+		freeStuff(opts);
+		exit(1);
+	}
 	unless (p = popen("bk _find . -name '[mr].*'", "r")) {
 		perror("popen of find");
-		exit (1);
+		freeStuff(opts);
+		exit(1);
 	}
 	while (fnext(buf, p)) {
 		fprintf(stderr, "Pending: %s", buf);
 		n++;
 	}
 	pclose(p);
-	if (n) exit(1);
+	if (n) {
+		freeStuff(opts);
+		exit(1);
+	}
 
 	/*
 	 * Pass 4a - check for edited files and remove old files.
@@ -1952,7 +1988,8 @@ pass4_apply(opts *opts)
 	unless (p = popen(key, "r")) {
 		perror("popen of bk sfiles");
 		fclose(save); unlink(orig);
-		exit (1);
+		freeStuff(opts);
+		exit(1);
 	}
 	while (fnext(buf, p)) {
 		chop(buf);
@@ -1962,11 +1999,13 @@ pass4_apply(opts *opts)
 			restore(save, opts);
 			unlink(orig);
 			fprintf(stderr, "resolve: no files were applied.\n");
+			freeStuff(opts);
 			exit(1);
 		}
 		if (sccs_admin(r, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0, 0)) {
 			restore(save, opts);
 			unlink(orig);
+			freeStuff(opts);
 			exit(1);	/* ??? */
 		}
 		sccs_sdelta(r, sccs_ino(r), key);
@@ -1981,12 +2020,14 @@ pass4_apply(opts *opts)
 				    l->gfile);
 				restore(save, opts);
 				unlink(orig);
+				freeStuff(opts);
 				exit(1);
 			}
 			sccs_clean(l, SILENT); 
 			sccs_close(l);
 			if (backup(opts, l->sfile, backups, save)) {
 				unlink(orig);
+				freeStuff(opts);
 				exit(1);
 			}
 			sccs_free(l);
@@ -2003,6 +2044,7 @@ pass4_apply(opts *opts)
 		if (exists(&buf[offset])) {
 			if (backup(opts, &buf[offset], backups, save)) {
 				unlink(orig);
+				freeStuff(opts);
 				exit(1);
 			}
 			create = 0;
@@ -2025,6 +2067,7 @@ pass4_apply(opts *opts)
 				    key);
 				restore(save, opts);
 				unlink(orig);
+				freeStuff(opts);
 				exit(1);
 			}
 			close(creat(key, 0666));
@@ -2045,14 +2088,16 @@ pass4_apply(opts *opts)
 		unbackup(save);
 		unlink(orig);
 		perror("spawn of bk sfiles");
-		exit (1);
+		freeStuff(opts);
+		exit(1);
 	}
 	p = fdopen(rfd, "rt");
 	unless (get = popen("bk get -s -", "w")) {
 		unbackup(save);
 		unlink(orig);
 		perror("popen of get -");
-		exit (1);
+		freeStuff(opts);
+		exit(1);
 	}
 	while (fnext(buf, p)) {
 		chop(buf);
@@ -2070,6 +2115,7 @@ pass4_apply(opts *opts)
 				    buf, &buf[offset]);
 				restore(save, opts);
 				unlink(orig);
+				freeStuff(opts);
 				exit(1);
 			} else {
 				opts->applied++;
@@ -2095,6 +2141,7 @@ pass4_apply(opts *opts)
 		restore(save, opts);
 		fclose(save);
 		unlink(orig);
+		freeStuff(opts);
 		exit(1);
 	}
 	unbackup(save);
@@ -2193,7 +2240,6 @@ freeStuff(opts *opts)
 	if (opts->log && (opts->log != stderr)) fclose(opts->log);
 	if (opts->rootDB) mdbm_close(opts->rootDB);
 	if (opts->idDB) mdbm_close(opts->idDB);
-	purify_list();
 }
 
 void

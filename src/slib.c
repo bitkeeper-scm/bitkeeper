@@ -3394,7 +3394,7 @@ check:	if (convert && (t = mdbm_fetch_str(DB, "CONVERT")) &&
  * Seems to me that the check for locking should be at delta time.
  */
 project	*
-proj_init(sccs *s)
+chk_proj_init(sccs *s, char *file, int line)
 {
 	char	*root;
 	project	*p;
@@ -3402,7 +3402,7 @@ proj_init(sccs *s)
 	assert((s == 0) || (s->proj == 0));
 
 	unless (root = sccs_root(s)) return (0);
-	p = calloc(1, sizeof(*p));
+	p = chk_calloc(1, sizeof(*p), file, line);
 	p->root = root;
 #ifdef	NOT_USED
 	p->config = loadConfig(root);

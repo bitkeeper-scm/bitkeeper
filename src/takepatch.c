@@ -176,7 +176,6 @@ usage:		fprintf(stderr, takepatch_help);
 		/* XXX: Save?  Purge? */
 		cleanup(0);
 	}
-	purify_list();
 	if (echo) {
 		fprintf(stderr,
 		    "takepatch: %d new revision%s, %d conflicts in %d files\n",
@@ -1609,7 +1608,6 @@ cleanup(int what)
 	if (patchList) freePatchList();
 	if (idDB) mdbm_close(idDB);
 	if (goneDB) mdbm_close(goneDB);
-	purify_list(); /* win32 note: if we get here, all fd must be closed */
 	if (saveDirs) {
 		fprintf(stderr, "takepatch: neither directory removed.\n");
 		SHOUT2();

@@ -43,20 +43,15 @@ cores
 echo $N Create trivial triggers .....................................$NL
 cd $HERE
 mkdir project/BitKeeper/triggers || exit 1
-
-TOPDIR=`pwd`
 cd project/BitKeeper/triggers
-
 echo "#! /bin/sh"                > good
 echo "exit 0"                   >> good
 chmod +x good
-
 for x in pre post;do
 	for y in commit incoming outgoing;do
-		ln good $x-$y
+		cp good $x-$y
 	done
 done
-
 cd $HERE
 echo "OK"
 
@@ -83,7 +78,6 @@ if [ X$BK_TESTGUI != X ]; then
     echo OK
 fi
 
-
 echo $N Pull w/trivial triggers .....................................$NL
 cd $HERE/copy
 bk pull -t $Q || { echo failed; exit 1; }
@@ -96,19 +90,13 @@ echo OK
 echo $N Create failure triggers .....................................$NL
 cd $HERE
 cd project/BitKeeper/triggers
-
+rm -f *
 echo "#! /bin/sh"                > bad
 echo "exit 1"                   >> bad
 chmod +x bad
-
-rm -f post-*
-for x in pre;do
-	for y in commit incoming outgoing;do
-		ln -f bad $x-$y
-	done
+for y in commit incoming outgoing;do
+	cp -f bad pre-$y
 done
-
-cd $HERE
 echo "OK"
 
 echo $N Clone w/failure triggers ....................................$NL

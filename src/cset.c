@@ -242,7 +242,6 @@ usage:		fprintf(stderr, "%s", cset_help);
 	if (list && (things < 1) && !copts.dash) {
 		fprintf(stderr, "cset: must specify a revision.\n");
 		sccs_free(cset);
-		purify_list();
 		cset_exit(1);
 	}
 	switch (list) {
@@ -269,14 +268,12 @@ usage:		fprintf(stderr, "%s", cset_help);
 next:		sccs_free(cset);
 		if (cFile) free(cFile);
 		freeLines(syms);
-		purify_list();
 		return (0);
 	    case 2:
 	    	csetList(cset, r[0], ignoreDeleted);
 		sccs_free(cset);
 		if (cFile) free(cFile);
 		freeLines(syms);
-		purify_list();
 		return (0);
 	}
 
@@ -289,7 +286,6 @@ next:		sccs_free(cset);
 	c = csetCreate(cset, flags, syms);
 	if (cFile) free(cFile);
 	freeLines(syms);
-	purify_list();
 	return (c);
 }
 
@@ -352,7 +348,6 @@ intr:		sccs_whynot("cset", cset);
 		host_done();
 		user_done();
 		freeLines(syms);
-		purify_list();
 		return (1);
 	}
 	close(creat(IDCACHE, GROUP_MODE));
@@ -362,7 +357,6 @@ intr:		sccs_whynot("cset", cset);
 	user_done();
 	freeLines(syms);
 	sfileDone();
-	purify_list();
 	return (0);
 }
 

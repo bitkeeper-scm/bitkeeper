@@ -767,7 +767,7 @@ char	*_relativeName(char *gName,
 	    int isDir, int withsccs, int mustHaveRmarker, char *root);
 void	rcs(char *cmd, int argc, char **argv);
 char	*findBin();
-project	*proj_init(sccs *s);
+project	*chk_proj_init(sccs *s, char *file, int line);
 void	proj_free(project *p);
 int 	prompt(char *msg, char *buf);
 void	parse_url(char *url, char *host, char *path);

@@ -75,6 +75,7 @@ keysort_main(int ac, char **av)
 	for (mem = memlist; mem; ) {
 		memlist = mem->next;
 		free(mem->data);
+		free(mem);
 		mem = memlist;
 	}
 	return (0);

@@ -190,6 +190,5 @@ next:		if (s) sccs_free(s);
 	}
 	if (proj) proj_free(proj);
 	sfileDone();
-	purify_list();
 	return (0);
 }

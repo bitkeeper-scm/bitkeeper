@@ -52,6 +52,5 @@ again:		errors |= sccs_mv(name, dest, isDir, 0);
 	}
 	if (dofree) free(dest);
 	sfileDone();
-	purify_list();
 	return (errors);
 }

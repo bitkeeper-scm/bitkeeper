@@ -327,7 +327,6 @@ next:		sccs_free(sc);
 	}
 	sfileDone();
 	if (proj) proj_free(proj);
-	purify_list();
 	return (error);
 usage:	fprintf(stderr, "admin: usage error, try `admin --help' for info.\n");
 	return (1);

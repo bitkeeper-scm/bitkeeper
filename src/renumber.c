@@ -83,7 +83,6 @@ usage:		fputs(renumber_help, stderr);
 	}
 	sfileDone();
 	if (proj) proj_free(proj);
-	purify_list();
 	return (0);
 }
 

@@ -42,10 +42,10 @@ trigger(char *action, char *when, int status)
 
 		if (status) {
 			sprintf(cmd, "%s=ERROR %d", var, status);
-			putenv(strdup(cmd));
+			putenv((strdup)(cmd));
 		} else unless (t = getenv(var)) {
 			sprintf(cmd, "%s=OK", var);
-			putenv(strdup(cmd));
+			putenv((strdup)(cmd));
 		}
 		sprintf(file, "%s/%s-%s", TRIGGERS, when, what);
 		if (streq(when, "post")) {

@@ -418,6 +418,7 @@ main(int ac, char **av)
 void
 cmdlog_exit(void)
 {
+	purify_list();
 	if (cmdlog_buffer[0]) cmdlog_end(LOG_BADEXIT);
 }
 
@@ -479,6 +480,7 @@ cmdlog_end(int ret)
 	char	*user, *file;
 	char	path[MAXPATH];
 
+	purify_list();
 	unless (cmdlog_buffer[0] && bk_proj && bk_proj->root) return;
 	if (cmdlog_repo) {
 		file = "repo_log";

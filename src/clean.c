@@ -54,6 +54,5 @@ usage:		fputs(clean_help, stderr);
 	}
 	sfileDone();
 	if (proj) proj_free(proj);
-	purify_list();
 	return (ret);
 }
