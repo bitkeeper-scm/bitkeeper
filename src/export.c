@@ -27,7 +27,7 @@ export_main(int ac,  char **av)
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "d:hkp:t:Twvi|x|r:S")) != -1) {
+	while ((c = getopt(ac, av, "d:hkp:t:Twvi:x:r:S")) != -1) {
 		switch (c) {
 		    case 'v':	vflag = 1; break;		/* doc 2.0 */
 		    case 'q':					/* undoc 2.0 */
