@@ -24,6 +24,13 @@ enum {
 	MODE_3WAY,
 	MODE_NEWONLY
 };
+ 
+enum {
+	AUTO_NONE = 0,
+	AUTO_LEFT = 1,
+	AUTO_RIGHT = 2,
+	AUTO_BOTH = 3
+};
 
 enum {
 	LOCAL,
@@ -179,9 +186,9 @@ printline(char *line, int preserve_char, int automerged)
 	}
 	unless (show_seq) line = skipseq(line);
 	if (fdiff) {
-		fputc(automerged ? 'a' : ' ', fl);
+		fputc((automerged & AUTO_LEFT) ? 'a' : ' ', fl);
 		fputs(line, fl);
-		fputc(automerged ? 'a' : ' ', fr);
+		fputc((automerged & AUTO_RIGHT) ? 'a' : ' ', fr);
 		fputs(line, fr);
 	} else {
 		fputs(line, stdout);
@@ -402,7 +409,7 @@ merge_same_changes(char **lines[3])
 	int	i;
 
 	if (sameLines(lines[LOCAL], lines[REMOTE])) {
-		EACH(lines[LOCAL]) printline(lines[LOCAL][i], 0, 1);
+		EACH(lines[LOCAL]) printline(lines[LOCAL][i], 0, AUTO_BOTH);
 		return (2);
 	}
 	return (0);
@@ -416,11 +423,11 @@ merge_only_one(char **lines[3])
 {
 	int	i;
 	if (sameLines(lines[LOCAL], lines[GCA])) {
-		EACH(lines[REMOTE]) printline(lines[REMOTE][i], 0, 1);
+		EACH(lines[REMOTE]) printline(lines[REMOTE][i], 0, AUTO_RIGHT);
 		return (2);
 	}
 	if (sameLines(lines[REMOTE], lines[GCA])) {
-		EACH(lines[LOCAL]) printline(lines[LOCAL][i], 0, 1);
+		EACH(lines[LOCAL]) printline(lines[LOCAL][i], 0, AUTO_LEFT);
 		return (2);
 	}
 	return (0);
@@ -629,7 +636,7 @@ unidiff(char **gca, char **new)
 	EACH(new) fputs(new[i], f);
 	fclose(f);
 	
-	cmd = aprintf("diff --rcs %s %s", gcafile, newfile);
+	cmd = aprintf("diff --rcs --minimal %s %s", gcafile, newfile);
 	f = popen(cmd, "r");
 	line = 0;
 	while (fnext(buf, f)) {
@@ -838,7 +845,9 @@ merge_content(char **lines[3])
 	r = 1;
 	EACH(left) {
 		while (VALID(right, r) && seq(right[r]) < seq(left[i])) {
-			if (right[i][0] == '+') printline(right[r] + 1, 0, 1);
+			if (right[i][0] == '+') {
+				printline(right[r] + 1, 0, AUTO_RIGHT);
+			}
 			++r;
 		}
 		if (VALID(right, r) && seq(right[r]) == seq(left[i])) {
@@ -851,11 +860,11 @@ merge_content(char **lines[3])
 			r++;
 		} else {
 			assert(left[i][0] == '+');
-			printline(left[i] + 1, 0, 1);
+			printline(left[i] + 1, 0, AUTO_LEFT);
 		}
 	}
 	while (VALID(right, r)) {
-		if (right[r][0] == '+') printline(right[r] + 1, 0, 1);
+		if (right[r][0] == '+') printline(right[r] + 1, 0, AUTO_RIGHT);
 		++r;
 	}
 	ret = 2;
@@ -873,7 +882,8 @@ lines_trim_head(char **lines, int num)
 	EACH (lines);
 	
 	assert(num <= (i-1));
-	
+	unless (lines) return;
+
 	/* free lines to be removed */
 	for (i = 1; i <= num; i++) free(lines[i]);
 
@@ -901,7 +911,7 @@ merge_common_header(char **lines[3])
 		unless (streq(al, bl)) break;
 	}
 	if (i == 1) return (0);
-	for (j = 1; j < i; j++) printline(a[j], 0, 1);
+	for (j = 1; j < i; j++) printline(a[j], 0, AUTO_BOTH);
 	
 	last_seq = seq(a[i-1]);
 
