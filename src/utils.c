@@ -14,7 +14,7 @@ out(char *buf)
 int
 outfd(int to, char *buf)
 {
-	return (write(to, buf, strlen(buf)));
+	return (writen(to, buf, strlen(buf)));
 }
 
 int
