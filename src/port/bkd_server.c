@@ -112,7 +112,7 @@ requestWebLicense()
 
 #ifndef WIN32
 void
-bkd_server(char **not_used)
+bkd_server(int ac, char **av)
 {
 	fd_set	fds;
 	int	sock;
@@ -226,9 +226,83 @@ static void WINAPI bkd_service_ctrl(DWORD dwCtrlCode);
 static char *getError(char *buf, int len);
 void reportStatus(SERVICE_STATUS_HANDLE, int, int, int);
 void bkd_remove_service();
-void bkd_install_service(bkdopts *opts, char **xcmds);
+void bkd_install_service(bkdopts *opts, int ac, char **av);
 void bkd_start_service(void (*service_func)(int, char**));
 void logMsg(char *msg);
+
+private void
+save_av(int ac, char **av, char **bkd_av, int j)
+{
+	int	c;
+
+	/*
+	 * Parse the av[] to decide which one we should pass down stream
+	 * XXX Note: the option string below must matches the one in bkd_main()
+	 */
+	getoptReset();
+	while ((c =
+	    getopt(ac, av, "c:CdDeE:g:hi:l|L:p:P:qRs:St:u:V:x:z")) != -1) {
+		switch (c) {
+		    case 'C':	bkd_av[j++] = strdup("-C"); break;
+		    case 'd':	break;				/* ignore */
+		    case 'D':	bkd_av[j++] = strdup("-D"); break;
+		    case 'i':	bkd_av[j++] = strdup("-i");
+				bkd_av[j++] = strdup(optarg);
+				break;
+		    case 'g':	break;				/* ignore */
+		    case 'h':	bkd_av[j++] = strdup("-h"); break;
+		    case 'l':
+				bkd_av[j++] = 
+				    aprintf( "-l%s", optarg ? optarg : "");
+				break;
+		    case 'V':	bkd_av[j++] = strdup("-V");
+				bkd_av[j++] = strdup(optarg);
+				break;
+		    case 'p': 	break;				/* ignore */
+		    case 'P':	bkd_av[j++] = strdup("-P");
+				bkd_av[j++] = strdup(optarg);
+				break;
+		    case 's':	break;				/* ignore */
+		    case 'S':	break;				/* ignore */
+		    case 'R': 	break;				/* ignore */
+		    case 'u':	break;				/* ignore */
+		    case 'x':	bkd_av[j++] = strdup("-x");
+				bkd_av[j++] = strdup(optarg);
+				break;
+		    case 'c':	break;				/* ignore */
+		    case 'e':	break;				/* ignore */
+		    case 'E':	break;				/* ignore */
+		    case 'L':	bkd_av[j++] = strdup("-L");
+				bkd_av[j++] = strdup(optarg);
+				break;
+		    case 'q':	bkd_av[j++] = strdup("-q");
+				break;
+		    case 't':	break;				/* ignore */
+		    case 'z':	break;				/* ignore */
+		    default:	_exit(1);
+	    	}
+	}
+	bkd_av[j] = 0;
+}
+
+private void
+free_av(char **bkd_av, int j)
+{
+	unless (bkd_av) return;
+	while (bkd_av[j]) free(bkd_av[j++]);
+}
+
+
+private int
+size_av(char **bkd_av)
+{
+	
+	int 	j = 0, len = 0;
+
+ 	/* allow for space and quoting */
+	while (bkd_av[j]) len += (strlen(bkd_av[j++]) + 3);
+	return (len);
+}
 
 
 
@@ -236,7 +310,7 @@ void
 bkd_service_loop(int ac, char **av)
 {
 	SOCKET	sock = 0;
-	int	i, j, n, err = 0;
+	int	c, i, j, n, err = 0;
 	char	pipe_size[50], socket_handle[20];
 	char	*bkd_av[100] = {
 		"bk", "_socket2pipe",
@@ -278,13 +352,7 @@ bkd_service_loop(int ac, char **av)
 	 * Main loop
 	 */
 	sprintf(pipe_size, "%d", BIG_PIPE);
-	for (i = 1, j = 9; i < ac; i++, j++) {
-		bkd_av[j++] = aprintf("-x%s", av[i]);
-		assert(j < 100);
-	}
-	if (Opts.safe_cd) bkd_av[j++] = "-C";
-	bkd_av[j] = 0;
-
+	save_av(ac, av, bkd_av, 9);
 	while (1)
 	{
 		n = accept(sock, 0 , 0);
@@ -324,6 +392,7 @@ bkd_service_loop(int ac, char **av)
 
 done:	if (sock) CloseHandle((HANDLE)sock);
 	if (sHandle) reportStatus(sHandle, SERVICE_STOPPED, NO_ERROR, 0);
+	free_av(bkd_av, 9);
 	_exit(0); /* We don't want to process atexit() in this */
 		  /* env. otherwise XP will flag an error      */
 }
@@ -340,7 +409,7 @@ done:	if (sock) CloseHandle((HANDLE)sock);
  *    work on socket.
  */
 void
-bkd_server(char **xcmds)
+bkd_server(int ac, char **av)
 {
 	extern void bkd_service_loop(int, char **);
 
@@ -351,7 +420,7 @@ bkd_server(char **xcmds)
 		bkd_remove_service(1); /* shut down and remove bkd service */
 		exit(0);
 	} else {
-		bkd_install_service(&Opts, xcmds); /* install and start bkd service */
+		bkd_install_service(&Opts, ac, av); /* install and start bkd service */
 	}
 }
 
@@ -361,24 +430,23 @@ bkd_server(char **xcmds)
  * Install and start bkd service
  */
 void
-bkd_install_service(bkdopts *opts, char **xcmds)
+bkd_install_service(bkdopts *opts, int ac, char **av)
 {
-	SC_HANDLE   schService;
-	SC_HANDLE   schSCManager;
+	SC_HANDLE   schService = 0;
+	SC_HANDLE   schSCManager = 0;
 
 	char	path[1024], here[1024];
 	char	*start_dir, *cmd, *p, *q;
+	char	**new_av;
 	int	i, j, len, try = 0;
 
 	if (GetModuleFileName(NULL, path, sizeof(path)) == 0) {
-		fprintf(stderr, "Unable to install %s - %s\n",
-					SERVICEDISPLAYNAME, getError(err, 256));
+		fprintf(stderr,
+		    "Unable to install %s - %s\n",
+		    SERVICEDISPLAYNAME, getError(err, 256));
 		return;
 	}
 
-	/*
-	 * XXX TODO need to encode other bkd options here
-	 */
 	if (opts->startDir) {
 		start_dir = opts->startDir;
 	}  else {
@@ -391,11 +459,11 @@ bkd_install_service(bkdopts *opts, char **xcmds)
 	 */
 	p = aprintf("\"%s\"  bkd -S -p %d -c %d \"-s%s\" -E \"PATH=%s\"",
 		    path, opts->port, opts->count, start_dir, getenv("PATH"));
-	len = strlen(p) + 200;
-
-	if (opts->safe_cd) len += 3; /* " -C" */
+	len = strlen(p);
 	if (getenv("BK_REGRESSION")) len += 30;
-	EACH (xcmds) len += strlen(xcmds[i]) + 8;
+	new_av = malloc(sizeof av);
+	save_av(ac, av, new_av, 0);
+	len += size_av(new_av);
 
 	/*
 	 * Build command line
@@ -403,78 +471,66 @@ bkd_install_service(bkdopts *opts, char **xcmds)
 	cmd = malloc(len);
 	strcpy(cmd, p);
 	free(p);
-	if (opts->safe_cd) strcat(cmd, " -C");
 	if (getenv("BK_REGRESSION")) strcat(cmd, " -E \"BK_REGRESSION=YES\"");
-	p = &cmd[strlen(cmd)];
-	EACH (xcmds) {
-		*p++ = ' ';
-		*p++ = '\"';
-		*p++ = '-';
-		*p++ = 'x';
-		for (q = xcmds[i]; *q; ) *p++ = *q++;
-		*p++ = '\"';
+	while (*new_av) {
+		strcat(cmd, " \"");
+		strcat(cmd, *new_av);
+		strcat(cmd, "\"");
+		new_av++;
 	}
-	*p = 0;
 
-	schSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
-	if ( schSCManager )
-	{
-		schService = OpenService(schSCManager, SERVICENAME, SERVICE_ALL_ACCESS);
-		if (schService) { /* if there is a old entry remove it */
-			CloseServiceHandle(schService);
-			bkd_remove_service(0);
-		}
-retry:        	schService = CreateService(schSCManager, SERVICENAME,
-            			SERVICEDISPLAYNAME, SERVICE_ALL_ACCESS,
-            			SERVICE_WIN32_OWN_PROCESS, SERVICE_AUTO_START,
-            			SERVICE_ERROR_NORMAL, cmd, NULL, NULL,
-				DEPENDENCIES, NULL, NULL);
-
-		if ( schService ) {
-			char	**av;
-
-			/*
-			 * XXX If the bk binary is on a network drive
-			 * NT refused to start the bkd service
-			 * as "permission denied". The fix is
-			 * currently unknown. User must
-			 * make sure the bk binary is on a local disk
-			 */
-			unless (Opts.quiet) {
-				fprintf(stderr,
-					"%s installed.\n", SERVICEDISPLAYNAME);
-			}
-			av = xcmds ? &(xcmds[1]) : 0;
-			EACH (xcmds); /* compute i */
-			if (StartService(schService, i - 1, av) == 0) {
-				fprintf(stderr,
-					"%s can not start service. %s\n",
-					SERVICEDISPLAYNAME,
-					getError(err, 256));
-			} else {
-				unless (Opts.quiet) {
-					fprintf(stderr, "%s started.\n",
-							    SERVICEDISPLAYNAME);
-				}
-			}
-			CloseServiceHandle(schService);
-		}
-		else {
-			if (try++ < 3) {
-				usleep(0);
-				goto retry;
-			} else {
-				fprintf(stderr,
-				    "CreateService failed - %s\n",
-							    getError(err, 256));
-			}
-		}
-        	CloseServiceHandle(schSCManager);
-    	} else {
-        	fprintf(stderr, "OpenSCManager failed - %s\n",
-							getError(err,256));
+	unless (schSCManager = OpenSCManager(0, 0, SC_MANAGER_ALL_ACCESS)) {
+        	fprintf(stderr,
+		    "OpenSCManager failed - %s\n", getError(err, 256));
+out:		if (cmd) free(cmd);
+		if (schService) CloseServiceHandle(schService);
+       		if (schSCManager) CloseServiceHandle(schSCManager);
+		free_av(new_av, 0);
+		return;
 	}
-	if (cmd) free(cmd);
+
+	schService = OpenService(schSCManager, SERVICENAME, SERVICE_ALL_ACCESS);
+	if (schService) { /* if there is a old entry remove it */
+		CloseServiceHandle(schService);
+		bkd_remove_service(0);
+	}
+
+	/*
+	 * XXX If the bk binary is on a network drive
+	 * NT refuse to start the bkd service
+	 * as "permission denied". The fix is
+	 * currently unknown. User must
+	 * make sure the bk binary is on a local disk
+	 */
+	while (!(schService = CreateService(schSCManager, SERVICENAME,
+			SERVICEDISPLAYNAME, SERVICE_ALL_ACCESS,
+			SERVICE_WIN32_OWN_PROCESS, SERVICE_AUTO_START,
+			SERVICE_ERROR_NORMAL, cmd, NULL, NULL,
+			DEPENDENCIES, NULL, NULL))) {
+		if (try++ > 3) {
+			fprintf(stderr,
+			    "CreateService failed - %s\n", getError(err, 256));
+			goto out;
+		}
+		usleep(0);
+	}
+	unless (Opts.quiet) {
+		fprintf(stderr, "%s installed.\n", SERVICEDISPLAYNAME);
+	}
+
+	/*
+	 * Here is where we enter the bkd_service_loop()
+	 */
+	if (StartService(schService, --ac, ++av) == 0) {
+		fprintf(stderr, "%s can not start service. %s\n",
+		    SERVICEDISPLAYNAME,
+		    getError(err, 256));
+		goto out;
+	}
+	unless (Opts.quiet) { 
+		fprintf(stderr, "%s started.\n", SERVICEDISPLAYNAME);
+	}
+	goto out;
 }
 
 /*
