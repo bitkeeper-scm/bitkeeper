@@ -91,28 +91,18 @@ proc initGlobals {} \
 
 proc hasAdminPrivs {} \
 {
-	# registry command isn't available to bkgui, so we have to 
-	# spawn tclsh
-	set script {
-		if {[catch {
-			set key "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet"
-			append key "\\Control\\Session Manager\\Environment"
-			set path [registry get $key Path]
-			# if this fails, it's almost certainly because the
-			# user doesn't have admin privs.
-			registry set $key Path $path
-		} result]} {
-			puts 0
-		} else {
-			puts 1
-		}
-		exit 0
+	set key "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet"
+	append key "\\Control\\Session Manager\\Environment"
+	set path [registry get $key Path]
+	# if this fails, it's almost certainly because the
+	# user doesn't have admin privs.
+	if {[catch {registry set $key Path $path}]} {
+		return 0
+	} else {
+		return 1
 	}
-	set exe [info nameofexecutable]
-	set tclsh [string map {bkgui tclsh} [info nameofexecutable]]
-	set hasAdminPrivs [exec $tclsh << $script]
-	return $hasAdminPrivs
 }
+
 # this is where the actual install takes place
 proc install {} \
 {
