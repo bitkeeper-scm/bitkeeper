@@ -48,6 +48,7 @@ private	int	applyCsetPatch(char *localPath, int nfound, int flags,
 						sccs *perfile, project *proj);
 private	int	getLocals(sccs *s, delta *d, char *name);
 private	void	insertPatch(patch *p);
+private	void	reversePatch(void);
 private	void	initProject(void);
 private	MMAP	*init(char *file, int flags, project **p);
 private	int	rebuild_id(char *id);
@@ -1183,6 +1184,7 @@ applyCsetPatch(char *localPath,
 	FILE	*csets = 0;
 	char	csets_in[MAXPATH];
 
+	reversePatch();
 	unless (p = patchList) return (0);
 
 	if (echo == 3) fprintf(stderr, "%c\b", spin[n++ % 4]);
@@ -1334,6 +1336,10 @@ apply:
 	s = sccs_init(patchList->resyncFile, SILENT, proj);
 	assert(s && s->tree);
 
+	unless (sccs_findKeyDB(s, 0)) {
+		assert("takepatch: could not build findKeyDB" == 0);
+	}
+
 	p = patchList;
 	sprintf(csets_in, "%s/%s", ROOT2RESYNC, CSETS_IN);
 	csets = fopen(csets_in, "w");
@@ -1402,7 +1408,7 @@ apply:
 private	int
 applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 {
-	patch	*p = patchList;
+	patch	*p;
 	MMAP	*iF;
 	MMAP	*dF;
 	sccs	*s = 0;
@@ -1413,6 +1419,8 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 	int	confThisFile;
 	FILE	*csets = 0;
 
+	reversePatch();
+	p = patchList;
 	if (!p && localPath) {
 		/* 
 		 * an existing file that was in the patch but didn't
@@ -1821,7 +1829,7 @@ insertPatch(patch *p)
 {
 	patch	*t;
 
-	if (!patchList || earlier(p, patchList)) {
+	if (!patchList || earlier(patchList, p)) {
 		p->next = patchList;
 		patchList = p;
 		return;
@@ -1830,7 +1838,7 @@ insertPatch(patch *p)
 	 * We know that t is pointing to a node that is older than us.
 	 */
 	for (t = patchList; t->next; t = t->next) {
-		if (earlier(p, t->next)) {
+		if (earlier(t->next, p)) {
 			p->next = t->next;
 			t->next = p;
 			return;
@@ -1840,8 +1848,27 @@ insertPatch(patch *p)
 	/*
 	 * There is no next field and we know that t->order is < date.
 	 */
-	assert(earlier(t, p));
+	assert(earlier(p, t));
 	t->next = p;
+}
+
+/*
+ * Reverse order to optimize reading
+ */
+private	void
+reversePatch(void)
+{
+	/* t - temp; f - forward; p - previous */
+	patch	*t, *f, *p;
+
+	if (!patchList) return;
+	for (p = 0, t = patchList; t; t = f) {
+		f = t->next;
+		t->next = p;
+		p = t;
+	}
+	assert(p);
+	patchList = p;
 }
 
 private	void

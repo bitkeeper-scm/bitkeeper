@@ -578,6 +578,7 @@ typedef	struct sccs {
 	off_t	sumOff;		/* offset of the new delta cksum */
 	time_t	gtime;		/* gfile modidification time */
 	MDBM	*mdbm;		/* If state & S_HASH, put answer here */
+	MDBM	*findkeydb;	/* Cache a map of delta key to delta* */
 	project	*proj;		/* If in BK mode, pointer to project */
 	u16	version;	/* file format version */
 	u16	userLen;	/* maximum length of any user name */
@@ -832,6 +833,7 @@ int	tokens(char *s);
 delta	*findrev(sccs *, char *);
 delta	*sccs_top(sccs *);
 delta	*sccs_findKey(sccs *, char *);
+MDBM	*sccs_findKeyDB(sccs *, u32);
 delta	*sccs_dInit(delta *, char, sccs *, int);
 char	*sccs_getuser(void);
 void	sccs_resetuser(void);
