@@ -2006,7 +2006,7 @@ rfind(sccs *s, char *rev)
 private char *
 defbranch(sccs *s)
 {
-	if (BITKEEPER(s)) return ("65535");
+	if (BITKEEPER(s)) return ("1");
 	if (s->defbranch) return (s->defbranch);
 	return ("65535");
 }
