@@ -142,6 +142,11 @@ check_main(int ac, char **av)
 	if (check_eoln) {
 		eoln_native = !streq(user_preference("eoln"), "unix"); 
 	}
+	unless (fix) {
+		if (t = user_preference("autofix")) {
+			fix = streq(t, "yes") || streq(t, "on");
+		}
+	}
 
 	want_dfile = exists(DFILE);
 	for (n = 0, name = sfileFirst("check", &av[optind], 0);
@@ -255,8 +260,11 @@ check_main(int ac, char **av)
 		if (csetpointer) {
 			char	buf[MAXKEY + 20];
 			char	*csetkey = getCSetFile(bk_proj);
-			fprintf(stderr, "check: fixing %d incorrect cset file pointers...\n",
-				csetpointer);
+
+			fprintf(stderr,
+			    "check: "
+			    "fixing %d incorrect cset file pointers...\n",
+			    csetpointer);
 			sprintf(buf, "bk -r admin -C'%s'", csetkey);
 			system(buf);
 		}
@@ -427,6 +435,23 @@ writable_gfile(sccs *s)
 		if (badWritable) {
 			printf("%s\n", s->gfile);
 			return (0);
+		}
+		unless (fix) {
+			fprintf(stderr,
+			    "===================================="
+			    "=====================================\n"
+			    "check: ``%s'' writable but not checked out.\n"
+			    "This means that a file has been modified "
+			    "without first doing a \"bk edit\".\n"
+			    "\tbk -R edit -g %s\n"
+			    "will fix the problem by changing the  "
+			    "file to checked out status.\n"
+			    "Running \"bk -r check -acf\" will "
+			    "fix most problems automatically.\n"
+			    "===================================="
+			    "=====================================\n",
+			    s->gfile, s->gfile);
+			return (32);
 		}
 
 		/*

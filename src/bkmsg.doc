@@ -355,12 +355,21 @@ Default compression algorithm for stored s.files is gzip.
 If you want no compression, set this to "none".
 
 $
+#config_autofix
+
+Default is to autofix problems found by check.
+If you want to manually fix them, set this to "no".
+
+$
 #config_template
 description
 category
 logging
+license
 single_user
 single_host
+compression
+autofix
 contact
 email
 street
@@ -372,8 +381,6 @@ phone
 cell
 pager
 hours
-license
-compression
 $
 #warn_poly
 Warning: this repository has been found to have deltas which
