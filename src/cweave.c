@@ -68,6 +68,79 @@ cweave_init(sccs *s, int extras)
 }
 
 /*
+ * Given an open sccs *, scan the data and map it.
+ * Extras is the amount of extra space to allocate for the patch deltas.
+ */
+int
+cset_map(sccs *s, int extras)
+{
+	char	*p;
+	int	len;
+	int	newline;
+	ser_t	ser;
+
+	assert(s);
+	assert(s->state & S_CSET);
+	assert(!s->locs);
+	s->nloc = s->nextserial + extras;
+	s->locs = calloc(s->nloc, sizeof(loc));
+	assert(s->encoding == E_ASCII);
+	unless (s->size) return (0);
+
+	p = s->mmap + s->data; /* set p to start of delta body */
+	while (p < (s->mmap + s->size)) {
+		assert(strneq(p, "\001I ", 3));
+		p += 3;
+		ser = atoi_p(&p);
+		assert(ser < s->nloc);
+		assert(*p == '\n');
+		p++;
+		s->locs[ser].p = p;
+		for (len = newline = 1; p < (s->mmap + s->size); p++, len++) {
+			if (newline) {
+				if (*p == '\001') break;
+				newline = 0;
+			}
+			if (*p == '\n') newline = 1;
+		}
+		assert(strneq(p, "\001E ", 3));
+		if (len) s->locs[ser].len = len - 1;
+		while (*p++ != '\n');
+	}
+	return (0);
+}
+
+/*
+ * Spit out the diffs for makepatch.
+ * Using this drops generating the Linux kernel tree logging patch
+ * from 19 minutes to 8 seconds.
+ */
+int
+cset_diffs(sccs *s, ser_t ser)
+{
+	int	len, line;
+	char	*p, *start;
+
+	assert(s);
+	assert(s->state & S_CSET);
+	unless (s->locs) cset_map(s, 0);
+	printf("0a0\n");
+	p = s->locs[ser].p;
+	len = s->locs[ser].len;
+	assert(len);
+	do {
+		fputs("> ", stdout);
+		start = p;
+		line = 0;
+		do {
+			line++;
+		} while (--len && (*p++ != '\n'));
+		fwrite(start, line, 1, stdout);
+	} while (len);
+	return (0);
+}
+
+/*
  * Return true if 'a' is earlier than 'b'
  */
 private int
