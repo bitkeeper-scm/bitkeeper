@@ -402,7 +402,7 @@ _jed() {
 
 _vim() {
 	bk get -qe "$@" 2> /dev/null
-	PATH="$BK_OLDPATH"
+	PATH="$BK_OLDPATH":`bk bin`/gnu/bin
 	exec vim "$@"
 }
 
@@ -414,7 +414,7 @@ _gvim() {
 
 _vi() {
 	bk get -qe "$@" 2> /dev/null
-	PATH="$BK_OLDPATH"
+	PATH="$BK_OLDPATH":`bk bin`/gnu/bin
 	exec vi "$@"
 }
 
@@ -1137,6 +1137,13 @@ __keysort()
 # ------------- main ----------------------
 __platformInit
 __init
+
+# On Windows convert the original Windows PATH variable to
+# something that will map the same in the shell.
+test "X$OSTYPE" = "Xmsys" && {
+	BK_OLDPATH=$(echo $BK_OLDPATH | \
+		sed -e 's,\(.\):,/\1,g' -e 's,;,:,g' -e 's,\\,/,g')
+}
 
 if type "_$1" >/dev/null 2>&1
 then	cmd=_$1
