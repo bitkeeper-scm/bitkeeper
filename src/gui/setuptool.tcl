@@ -280,12 +280,11 @@ proc computeSize {wvar hvar} \
 
 proc widgets {} \
 {
-	global bkuser
-	global readonly
+	global	bkuser readonly env
 
 	::tkwizard::tkwizard . -title "BK Setup Assistant" -sequential 1 
 
-	catch {exec bk bin} bin
+	set bin $env(BK_BIN)
 	set image [file join $bin "bklogo.gif"]
 	if {[file exists $image]} {
 		set bklogo [image create photo -file $image]

@@ -1033,7 +1033,7 @@ proc mscroll { a args } \
 
 proc widgets {} \
 {
-	global	scroll wish tcl_platform search gc d app DSPEC UNMERGED argv
+	global	scroll wish tcl_platform search gc d app DSPEC UNMERGED argv env
 
 	set UNMERGED "<<<<<<\nUNMERGED\n>>>>>>\n"
 
@@ -1202,7 +1202,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		    -background $gc(fm3.textBG) -fg $gc(fm3.textFG) \
 		    -wrap word -font $gc($app.fixedFont) \
 		    -borderwidth 2 -state disabled
-		catch {exec bk bin} bin
+		set bin $env(BK_BIN)
 		set logo [file join $bin "bklogo.gif"]
 		if {[file exists $logo]} {
 		    image create photo bklogo -file $logo

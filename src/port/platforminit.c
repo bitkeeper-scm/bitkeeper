@@ -188,6 +188,7 @@ platformInit(char **av)
 	freeLines(newpath, free);
 	safe_putenv("PATH=%s", p);
 	free(p);
+	safe_putenv("BK_BIN=%s", bin);
 }
 
 #ifdef WIN32

@@ -2,13 +2,15 @@ set usage "Usage: bk msgtool ?-T title? ?-Y YES-label? ?-N NO-label? message"
 
 proc main {} \
 {
+	global	env
+
 	init
 	widgets
 
 	after idle [list wm deiconify .]
 	after idle [list focus -force .]
 	
-	catch {wm iconbitmap . [exec bk bin]/bk16.ico} 
+	catch {wm iconbitmap . $env(BK_BIN)/bk16.ico} 
 }
 
 proc init {} \
@@ -146,8 +148,7 @@ proc widgets {} \
 	set widgets(no) $widgets(buttonFrame).no
 
 	## Bk Logo
-	catch {exec bk bin} bin
-	set image [file join $bin "bklogo.gif"]
+	set image [file join $env(BK_BIN) "bklogo.gif"]
 	if {[file exists $image]} {
 		set bklogo [image create photo -file $image]
 		label $widgets(logo) \
