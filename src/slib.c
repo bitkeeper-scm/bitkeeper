@@ -14509,6 +14509,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 	if (streq(kw, "DIFFS") || streq(kw, "UDIFFS")) {
 		int	kind = streq(kw, "DIFFS") ? DF_DIFF : DF_UNIFIED;
 
+		if (d == s->tree) return (nullVal);
 		if (out) {
 			sccs_diffs(s, d->rev, d->rev, SILENT, kind, out);
 		} else {

@@ -68,8 +68,11 @@ bkd_main(int ac, char **av)
 		    case 's': Opts.startDir = optarg; break;	/* doc 2.0 */
 		    case 'S': 					/* undoc 2.0 */
 			Opts.start = 1; Opts.daemon = 1; break;
+
 		    case 'R': 					/* doc 2.0 */
-			Opts.remove = 1; Opts.daemon = 1; break;
+			unless (win32()) usage;
+			Opts.remove = Opts.daemon = 1;
+			break;
 		    case 'u': Opts.uid = optarg; break;		/* doc 2.0 */
 		    case 'x': exclude(optarg, 1); break;	/* doc 2.0 */
 		    case 'c': Opts.count = atoi(optarg); break;	/* undoc */

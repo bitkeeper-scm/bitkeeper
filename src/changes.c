@@ -351,8 +351,8 @@ recurse(delta *d)
 		"+:LI: -:LD:\n" \
 		"$each(:C:){$if(:DPN:!=ChangeSet){  }  (:C:)\n}" \
 		"$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n"
-#define	VSPEC	"$if(:DPN:!=ChangeSet){\n}" \
-		"==== :DPN: =====\n" \
+#define	VSPEC	"$if(:DPN:=ChangeSet){\n#### :DPN: ####\n}" \
+		"$if(:DPN:!=ChangeSet){\n==== :DPN: ====\n}" \
 		":Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:} " \
 		"$if(:DPN:!=ChangeSet){+:LI: -:LD:}" \
 		"\n" \
@@ -472,7 +472,7 @@ doit(int dash)
 		fflush(stdout);
 	}
 	if (opts.verbose) {
-		cset(s, stderr, spec);
+		cset(s, stdout, spec);
 	} else {
 		opts.f = stdout;
 		opts.s = s;
@@ -566,7 +566,7 @@ strforw(const void *a, const void *b)
 
 
 private slog *
-dumplog(slog *list, int *n)
+dumplog(slog *list, int *n, FILE *f)
 {
 	slog	*ll;
 	slog 	**sorted;	
@@ -593,8 +593,8 @@ dumplog(slog *list, int *n)
 	 */
 	for (i = 0; i < *n; ++i) {
 		ll = sorted[i];
-		printf("%s", ll->log);
-		if (opts.newline) fputc('\n', stdout);
+		fprintf(f, "%s", ll->log);
+		if (opts.newline) fputc('\n', f);
 		free(ll->log);
 		free(ll);
 	}
@@ -823,7 +823,7 @@ cset(sccs *cset, FILE *f, char *dspec)
 
 		/* print cset dspec */
 		e = ee->delta;
-		sccs_prsdelta(cset, e, flags, dspec, stdout);
+		sccs_prsdelta(cset, e, flags, dspec, f);
 
 		/* get key list */
 		k.dptr = e->rev;
@@ -854,10 +854,13 @@ cset(sccs *cset, FILE *f, char *dspec)
 			 */
 			list = collectDelta(s, d, list, dspec, &n);
 		}
-		freeLines(keys, free); /* reduce mem foot print, could be huge */
+		/* reduce mem foot print, could be huge */
+		freeLines(keys, free);
 		free(ee);
-		list = dumplog(list, &n); /* sort file dspec and print it */
-		if (fflush(stdout)) break;
+
+		/* sort file dspec and print it */
+		list = dumplog(list, &n, f);
+		if (fflush(f)) break;
 	}
 
 	/*
