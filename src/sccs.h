@@ -1153,6 +1153,7 @@ void	saveEnviroment(char *patch);
 void	restoreEnviroment(char *patch);
 int	run_check(char *partial);
 char	*key2path(char *key, MDBM *idDB);
+int	check_licensesig(char *key, char *sign);
 int	write_log(char *root, char *file, int rotate, char *format, ...);
 void	delete_cset_cache(char *rootpath, int save);
 void	set_timestamps(sccs *s);
