@@ -455,6 +455,7 @@ err:		system("bk help -s prompt");
 		EACH(lines) {
 			fprintf(stderr, "%s", lines[i]);
 		}
+		fflush(stderr); /* for win32 */
 	} else {
 		FILE	*out;
 
