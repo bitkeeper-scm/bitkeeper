@@ -38,6 +38,10 @@ cmd_push(int ac, char **av)
 			break;
 	    	}
 	}
+
+#ifndef WIN32
+	signal(SIGCHLD, SIG_DFL);
+#endif
 	
 #define	OUT	{ error = 1; goto out; }
 	pid = spawnvp_ex(_P_NOWAIT, prs[0], prs);
@@ -45,9 +49,6 @@ cmd_push(int ac, char **av)
 		out("@END@\n");
 		goto out;
 	}
-#ifndef WIN32
-	signal(SIGCHLD, SIG_DFL);
-#endif
 	waitpid(pid, &status, 0);
 	out("@END@\n");
 	if (WIFEXITED(status)) {
