@@ -54,6 +54,7 @@ int	cp_main(int, char **);
 int	create_main(int, char **);
 int	createlod_main(int, char **);
 int	cset_main(int, char **);
+int	csetprune_main(int, char **);
 int	deledit_main(int, char **);
 int	delget_main(int, char **);
 int	delta_main(int, char **);
@@ -84,6 +85,7 @@ int	idcache_main(int, char **);
 int	isascii_main(int, char **);
 int	key2rev_main(int, char **);
 int	keysort_main(int, char **);
+int	keyunlink_main(int, char **);
 int	lconfig_main(int, char **);
 int	level_main(int, char **);
 int	lines_main(int, char **);
@@ -191,6 +193,7 @@ struct	command cmdtbl[] = {
 	{"_get", get_main},
 	{"_gzip", gzip_main }, 
 	{"_keysort", keysort_main},
+	{"_keyunlink", keyunlink_main },
 	{"_lconfig", lconfig_main},	
 	{"_lines", lines_main},	
 	{"_link", link_main},	
@@ -235,6 +238,7 @@ struct	command cmdtbl[] = {
 	{"createlod", createlod_main},		/* undoc? 2.0 */
 	{"create", create_main},		/* doc 2.0 */
 	{"cset", cset_main},			/* doc 2.0 */
+	{"csetprune", csetprune_main},
 	{"f2csets", f2csets_main},		/* undoc? 2.0 */
 	{"delta", delta_main},			/* doc 2.0 */
 	{"deledit", deledit_main},		/* doc 2.0 */
