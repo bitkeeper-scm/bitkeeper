@@ -400,7 +400,7 @@ _diffr() {
 		then	if [ $D = YES ]
 			then	${BIN}sfiles -c
 			fi
-			${BIN}sfiles -CRa
+			${BIN}sfiles -CRA
 		fi
 		for i in $LREVS
 		do	if [ $D = YES ]
@@ -431,7 +431,7 @@ _diffr() {
 		then	if [ $D = YES ]
 			then	${BIN}sfiles -c
 			fi
-			${BIN}sfiles -CRa
+			${BIN}sfiles -CRA
 		fi
 		for i in $RREVS
 		do	if [ $D = YES ]
@@ -623,7 +623,7 @@ _undo() {
 }
 
 _pending() {
-	exec ${BIN}sfiles -Ca | ${BIN}sccslog - | $PAGER
+	exec ${BIN}sfiles -CA | ${BIN}sccslog - | $PAGER
 }
 
 _chkConfig() {
@@ -850,7 +850,7 @@ _commit() {
 	shift `expr $OPTIND - 1`
 	_cd2root
 	if [ $RESYNC = "NO" ]; then _remark $QUIET; fi
-	${BIN}sfiles -Ca > ${TMP}list$$
+	${BIN}sfiles -CA > ${TMP}list$$
 	if [ $? != 0 ]
 	then	${RM} -f ${TMP}list$$ ${TMP}commit$$
 		_gethelp duplicate_IDs

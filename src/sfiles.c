@@ -9,8 +9,8 @@ WHATSTR("@(#)%K%");
  */
 char *sfiles_usage = "\n\
 usage: sfiles [-aAcCdglpPrx] [directories]\n\n\
-    -a		when used with -C, list all revs, not just the tip\n\
-    -A		examine all files, even if listed in BitKeeper/etc/ignore\n\
+    -a		examine all files, even if listed in BitKeeper/etc/ignore\n\
+    -A		when used with -C, list all revs, not just the tip\n\
     -c		list only changed files (locked and modified)\n\
     -C		list leaves which are not in a changeset as file:1.3\n\
     -d		list directories under SCCS control (have SCCS subdir)\n\
@@ -73,7 +73,7 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		    case 'a': aFlg++; break;
 		    case 'A': Aflg++; break;
 		    case 'c': cFlg++; break;
-		    case 'C': Cflg++; rFlg++; break;
+		    case 'C': Cflg++; break;
 		    case 'd': dFlg++; break;
 		    case 'D': Dflg++; break;
 		    case 'g': gFlg++; break;
@@ -88,13 +88,14 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		    default: goto usage;
 		}
 	}
-	if (xFlg && (aFlg|cFlg|Cflg|dFlg|Dflg|lFlg|pFlg|Pflg|uFlg)) {
+	if (xFlg && (Aflg|cFlg|Cflg|dFlg|Dflg|lFlg|pFlg|Pflg|uFlg)) {
 		fprintf(stderr, "sfiles: -x must be standalone.\n");
 		exit(1);
 	}
 	if (rFlg || Cflg) {
 		if (av[optind]) {
-			fprintf(stderr, "%s: -r must be stand alone.\n", av[0]);
+			fprintf(stderr, "%s: -%c must be stand alone.\n",
+				av[0], rFlg ? 'r' : 'C');
 			exit(1);
 		}
 		/* perror is in sccs_root, don't do it twice */
@@ -109,9 +110,17 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 	if (!av[optind]) {
 		path = xFlg ? "." : sPath(".", 1);
 		lftw(path, process);
+	} else if (streq("-", av[optind])) {
+		char	buf[MAXPATH];
+
+		while (fnext(buf, stdin)) {
+			chop(buf);
+			path = xFlg ? buf : sPath(buf, 1);
+			file(path, process);
+		}
 	} else {
 		/*
-		 * XXX - why ca't we used sfileFirst/next to expand these?
+		 * XXX - why can't we used sfileFirst/next to expand these?
 		 */
 		for (i = optind; i < ac; ++i) {
 			localName2bkName(av[i], av[i]);
@@ -459,7 +468,7 @@ caches(const char *filename, int mode)
 	 * If we are looking for diff output and not -a style,
 	 * go find the previous cset.
 	 */
-	if (Rflg && !aFlg) {
+	if (Rflg && !Aflg) {
 		delta	*p;
 
 		printf("%s:", gFlg ? sc->gfile : sc->sfile);
@@ -475,7 +484,7 @@ caches(const char *filename, int mode)
 	do {
 		printf("%s:%s\n", gFlg ? sc->gfile : sc->sfile, d->rev);
 		d = d->parent;
-	} while (aFlg && d && !(d->flags & D_CSET));
+	} while (Aflg && d && !(d->flags & D_CSET));
 
 out:
 	sccs_free(sc);
@@ -570,7 +579,7 @@ lftw(const char *dir, lftw_func func)
 	char		path[MAXPATH];
 	struct stat	st;
 
-	unless (Aflg || (root = sccs_root(0)) == NULL) {
+	unless (aFlg || (root = sccs_root(0)) == NULL) {
 		sprintf(path, "%s/BitKeeper/etc/ignore", root);
 		if ((ignoref = fopen(path, "r")) != NULL) {
 			ignore = read_globs(ignoref, 0);
