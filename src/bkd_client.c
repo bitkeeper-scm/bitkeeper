@@ -324,6 +324,8 @@ remote_print(remote *r, FILE *f)
  * Return the pid of a connected to daemon with stdin/out put in fds[].
  * Stderr is left alone, we don't want to touch that - ssh needs it for
  * password prompts and other commands may use it for status.
+ * 
+ * **Win32 note: ssh does not work with BitKeeper when CYGWIN=tty is set,
  */
 pid_t
 bkd(int compress, remote *r)
