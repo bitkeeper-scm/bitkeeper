@@ -12,7 +12,14 @@ private	void	log_cmd(int i, int ac, char **av);
 private	void	reap(int sig);
 private	void	usage();
 private	void	ids();
-char 	*logRoot;
+private void	requestWebLicense();
+
+char 		*logRoot;
+int		licenseServer[2];	/* bkweb license pipe */
+time_t		licenseEnd = 0;		/* when a temp bk license expires */
+time_t		requestEnd = 0;
+
+#define	Respond(s)	write(licenseServer[1], s, 4)
 
 
 int
@@ -27,7 +34,6 @@ bkd_main(int ac, char **av)
 	}
 
 	loadNetLib();
-
 
 	while ((c = getopt(ac, av, "c:dDeE:hHil|L:p:P:Rs:St:u:x:")) != -1) {
 		switch (c) {
@@ -77,7 +83,13 @@ bkd_main(int ac, char **av)
 #endif
 	putenv("PAGER=cat");
 	if (Opts.daemon) {
-		bkd_server();
+		if (socketpair(AF_UNIX, SOCK_STREAM, 0, licenseServer) == 0) {
+			bkd_server();
+		} else {
+			fprintf(stderr,
+			    "bkd: ``%s'' when initializing license server\n",
+			    strerror(errno));
+		}
 		exit(1);
 		/* NOTREACHED */
 	} else {
@@ -118,8 +130,11 @@ reap(int sig)
 private	void
 bkd_server()
 {
+	fd_set	fds;
 	int	sock = tcp_server(Opts.port ? Opts.port : BK_PORT);
 	remote	r;
+	int	maxfd;
+	time_t	now;
 
 	if (Opts.http_hdr_in) {
 		bzero(&r, sizeof(r));
@@ -140,10 +155,51 @@ bkd_server()
 		fprintf(f, "%u\n", getpid());
 		fclose(f);
 	}
-	while (1) {
-		int	n = tcp_accept(sock);
 
-		if (n == -1) continue;
+	maxfd = (sock > licenseServer[1]) ? sock : licenseServer[1];
+
+	while (1) {
+		int n;
+		struct timeval delay;
+
+		FD_ZERO(&fds);
+		FD_SET(licenseServer[1], &fds);
+		FD_SET(sock, &fds);
+		delay.tv_sec = 60;
+		delay.tv_usec = 0;
+
+		unless (select(maxfd+1, &fds, 0, 0, &delay) > 0) continue;
+
+		if (FD_ISSET(licenseServer[1], &fds)) {
+			char req[5];
+
+			if (read(licenseServer[1], req, 4) == 4) {
+				if (strneq(req, "MMI?", 4)) {
+					/* get current license (YES/NO) */
+					time(&now);
+
+					if (now < licenseEnd) {
+						Respond("YES\0");
+					} else {
+						if (requestEnd < now)
+							requestWebLicense();
+						Respond("NO\0\0");
+					}
+				} else if (req[0] == 'S') {
+					/* set license: usage is Sddd */
+					req[4] = 0;
+					fprintf(stderr,
+					    "license expires in %d minutes\n",
+					    atoi(1+req));
+
+					licenseEnd = now + (60*atoi(1+req));
+				}
+			}
+		}
+
+		unless (FD_ISSET(sock, &fds)) continue;
+
+		if ( (n = tcp_accept(sock)) == -1) continue;
 
 		if (fork()) {
 		    	close(n);
@@ -545,3 +601,11 @@ ids(char *uid)
 	}
 }
 #endif /* WIN32 */
+
+private void
+requestWebLicense()
+{
+	fprintf(stderr, "requestWebLicense (ha ha you lose)\n");
+	/* later on this will set a flag, fork off, and send a web page
+	 * to somewhere @bitmover */
+}

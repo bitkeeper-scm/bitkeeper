@@ -20,6 +20,7 @@ private void	http_patch(char *rev);
 private void	http_gif(char *path);
 private void	http_stats(char *path);
 private void	http_related(char *path);
+private void	http_license(char *path);
 private void	title(char *title, char *desc, char *color);
 private void	pwd_title(char *t, char *color);
 private void	header(char *path, char *color, char *title, char *header, ...);
@@ -32,6 +33,7 @@ private char	*findRoot(char *name);
 private int	has_temp_license();
 private	char	root[MAXPATH];
 private int	embedded = 0;
+private int	expires = 0;
 
 #define	COLOR_TOP	"lightblue"	/* index.html */
 #define	COLOR_CHANGES	"lightblue"	/* ChangeSet */
@@ -66,19 +68,20 @@ private struct pageref {
 #define HAS_ARG 0x01
     char *arg;
 } pages[] = {
-    { http_index,   "index.html",     "index.html" },
-    { http_changes, "changeset.html", "ChangeSet", 0, HAS_ARG, 0 },
-    { http_changes, "changeset.html", "ChangeSet@", 10 },
-    { http_src,     "source.html",    "src", 0, HAS_ARG, "." },
-    { http_src,     "source.html",    "src/", 4 },
-    { http_hist,    "hist.html",      "hist/", 5 },
-    { http_cset,    "cset.html",      "cset@", 5 },
-    { http_patch,   "patch.html",     "patch@", 6 },
-    { http_both,    "both.html",      "both/", 5 },
-    { http_anno,    "anno.html",      "anno/", 5 },
-    { http_diffs,   "diffs.html",     "diffs/", 6 },
-    { http_stats,   "stats.html",     "stats",  0, HAS_ARG, 0 },
-    { http_related, "related.html",   "related/", 8 },
+    { http_index,   "index",     "index.html" },
+    { http_changes, "changeset", "ChangeSet", 0, HAS_ARG, 0 },
+    { http_changes, "changeset", "ChangeSet@", 10 },
+    { http_src,     "source",    "src", 0, HAS_ARG, "." },
+    { http_src,     "source",    "src/", 4 },
+    { http_hist,    "hist",      "hist/", 5 },
+    { http_cset,    "cset",      "cset@", 5 },
+    { http_patch,   "patch",     "patch@", 6 },
+    { http_both,    "both",      "both/", 5 },
+    { http_anno,    "anno",      "anno/", 5 },
+    { http_diffs,   "diffs",     "diffs/", 6 },
+    { http_stats,   "stats",     "stats",  0, HAS_ARG, 0 },
+    { http_related, "related",   "related/", 8 },
+    { http_license, 0,           "license" },
     { 0 },
 };
 
@@ -138,8 +141,12 @@ cmd_httpget(int ac, char **av)
 	if (user[0]) sprintf(root+strlen(root), "user=%s/", user);
 	unless (*name) name = "index.html";
 
-	unless (bk_options()&BKOPT_WEB || has_temp_license()) {
-		http_error(503, "bkWeb option is disabled: %s", upgrade_msg);
+	unless (bk_options()&BKOPT_WEB) {
+		unless (streq(name, "license") || has_temp_license()) {
+			http_error(503,
+			    "bkWeb option is disabled: %s",
+			    upgrade_msg);
+		}
 	}
 
 	sprintf(buf, "BitKeeper/html/%s", name);
@@ -1585,10 +1592,10 @@ http_page(char *page, vfn content, char *argument)
 {
     static char buf[MAXPATH];
     int arglen = strlen(arguments), navlen = strlen(navbar);
-    int i;
+    int i = -1;
     FILE *f;
 
-    i = snprintf(buf, sizeof buf, "BitKeeper/html/%s", page);
+    if (page) i = snprintf(buf, sizeof buf, "BitKeeper/html/%s.html", page);
 
     if (i != -1 && isreg(buf) && (f = fopen(buf, "r")) != 0) {
 	    embedded = 1;
@@ -1612,7 +1619,50 @@ http_page(char *page, vfn content, char *argument)
 private int
 has_temp_license()
 {
-    return 1;
+	fd_set fds;
+	struct timeval delay;
+	char ack[5];
+	int fd;
+	int timeleft = 30;
+
+	extern int licenseServer[2];
+	extern time_t licenseEnd;
+
+	fd = licenseServer[0];
+
+	if (time(0) < licenseEnd) return 1;
+
+    again:
+	FD_ZERO(&fds);
+	FD_SET(fd, &fds);
+	delay.tv_sec = 5;
+	delay.tv_usec = 0;
+
+	unless (select(fd+1, 0, &fds, 0, &delay) > 0 && FD_ISSET(fd, &fds))
+		return 0;
+
+	if (write(fd, "MMI?", 4) == 4) {
+		ack[4] = 0;
+		FD_ZERO(&fds);
+		FD_SET(fd, &fds);
+		delay.tv_sec = 1;
+		delay.tv_usec = 0;
+
+		unless (select(fd+1, &fds, 0, 0, &delay)) return 0;
+
+		if (FD_ISSET(fd, &fds) && read(fd, ack, 4) == 4) {
+			if (strneq(ack, "YES\0", 4)) return 1;
+
+			if (strneq(ack, "NO\0\0", 4) && --timeleft > 0) {
+				sleep(1);
+				goto again;
+			}
+
+			return 0;
+		}
+	}
+
+	return 0;
 }
 
 
@@ -1629,6 +1679,9 @@ parseurl(char *url)
 		if (strneq(s, "?nav=", 5)) {
 			strcpy(arguments, s);
 			strcpy(navbar, s);
+		}
+		else if (strneq(s, "?expires=", 8)) {
+			expires=atoi(s+9);
 		}
 		*s = 0;
 	}
@@ -1768,4 +1821,19 @@ _f2csets_main(int argc, char **argv)
 		}
 	}
 	pclose(f);
+}
+
+
+private void
+http_license(char *page)
+{
+	char arg[5];
+	extern int licenseServer[2];
+
+	if (expires > 0 && expires < 480) {
+		/* also check the ip address we're coming from */
+		sprintf(arg, "S%03d", expires);
+		write(licenseServer[0], arg, 4);
+	}
+	exit(0);
 }
