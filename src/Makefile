@@ -58,7 +58,7 @@ OBJ	= abort.o adler32.o admin.o bkd.o bkd_cd.o bkd_client.o \
 	  sfiles.o sfio.o sids.o sinfo.o slib.o smoosh.o \
 	  status.o stripdel.o takepatch.o undo.o undos.o \
 	  unique.o unedit.o unlink.o unlock.o unwrap.o user.o utils.o \
-	  version.o what.o zgets.o zone.o license.o
+	  version.o what.o zgets.o zone.o license.o trigger.o
 
 MDBMOBJ	= mdbm/mdbm.o mdbm/hash.o mdbm/debug.o mdbm/byte_order.o
 ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
@@ -172,9 +172,10 @@ production_purify: rebuild purify $(INSTALL)
 production_image: rebuild p image
 
 # Cleanup targets.
-clean clean-obj: FORCE
+clean clean-obj clean-cfg: FORCE
 	-rm -f bk.o shell.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) 
 	-rm -f $(LIBS) shell.c bkdsubstr bkhelp.txt a.out core $(WIN_TMP)
+	-rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
 	-cd gnu && $(MAKE) clean-obj
 	-cd win32 && $(MAKE) clean-obj
 
@@ -183,9 +184,6 @@ clean-bin: FORCE
 	cd gnu && $(MAKE) clean
 	cd win32 && $(MAKE) clean
 	cd t && rm -f doit
-
-clean-cfg: FORCE
-	-rm -f bk.ver substvars gnu/config.cache
 
 clean-src: FORCE
 	-bk -r . clean
@@ -467,6 +465,10 @@ B=bkd.h lib_tcp.h
 M=mdbm/common.h mdbm/tune.h mdbm/mdbm.h
 Z=zlib/zlib.h zlib/zconf.h
 
+# check for library-specific things
+config.h: configure.sh configure.inc
+	./configure.sh
+
 shell.o: substvars
 	echo 'char *shell() { return ("@FEATURE_SH@"); }' | \
 							./substvars > shell.c
@@ -501,7 +503,7 @@ cset.o:		cset.c $(H) range.h $(Z)
 cset_inex.o:	cset_inex.c $(H) $(Z)
 delta.o:	delta.c $(H)
 diffs.o:	diffs.c $(H) range.h
-dirname.o:	dirname.c 
+dirname.o:	dirname.c config.h
 export.o:	export.c $(H)
 fdiff.o:	fdiff.c $(H)
 files.o:	files.c $(H)
@@ -533,7 +535,7 @@ libsfiles.o:	libsfiles.c $(H)
 libusers.o:	libusers.c $(H) range.h
 license.o:	license.c $(H)
 lines.o:	lines.c $(H)
-localtm.o:	localtm.c $(H)
+localtm.o:	localtm.c $(H) config.h
 lock.o:		lock.c $(H)
 locking.o:	locking.c $(H)
 log.o:		log.c $(H)
@@ -600,6 +602,7 @@ spawn.o:	port/spawn.c $(H)
 status.o:	status.c $(H)
 stripdel.o:	stripdel.c $(H) range.h
 takepatch.o:	takepatch.c $(H) $(Z)
+trigger.o:	trigger.c $(H)
 undo.o:		undo.c $(H)
 undos.o:	undos.c
 unedit.o:	unedit.c $(H)

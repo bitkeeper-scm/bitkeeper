@@ -267,7 +267,9 @@
 #define	SCCSTMP		"SCCS/T.SCCSTMP"
 #define	BKROOT		"BitKeeper/etc"
 #define	GONE		"BitKeeper/etc/gone"
+#define	LASTPUSH	"BitKeeper/etc/pushed"
 #define	SGONE		"BitKeeper/etc/SCCS/s.gone"
+#define	TRIGGERS	"BitKeeper/triggers"
 #define	CHANGESET	"SCCS/s.ChangeSet"
 #define	GCHANGESET	"ChangeSet"
 #define	LOGGING_OK	"BitKeeper/etc/SCCS/s.logging_ok"
@@ -849,5 +851,6 @@ int	ok_commit(int l, int alreadyAsked);
 int	cset_setup(int flags);
 off_t	fsize(int fd);
 char	*separator(char *);
+int	trigger(char *action, char *when, int status);
 
 #endif	/* _SCCS_H_ */

@@ -2,6 +2,7 @@
 
 private	remote	*nfs_parse(char *p);
 private	remote	*url_parse(char *p);
+extern	char	cmdlog_buffer[];
 
 /*
  * Turn either
@@ -15,6 +16,7 @@ remote_parse(char *p)
 {
 	char	buf[MAXPATH+256];
 	static	echo = -1;
+	int	append = 0;
 	remote	*r;
 
 	if (echo == -1) echo = getenv("BK_REMOTE_PARSE") != 0;
@@ -31,6 +33,7 @@ remote_parse(char *p)
 			assert(strncmp("Parent repository is ", buf, 21) == 0);
 			p = &buf[21];
 			chop(p);
+			append = 1;
 		}
 		pclose(f);
 	}
@@ -39,6 +42,13 @@ remote_parse(char *p)
 		r = url_parse(p + 5);
 	} else {
 		r = nfs_parse(p);
+	}
+	if (r && append && cmdlog_buffer[0]) {
+		char	*rem = remote_unparse(r);
+
+		strcat(cmdlog_buffer, " ");
+		strcat(cmdlog_buffer, rem);
+		free(rem);
 	}
 	if (echo && r) fprintf(stderr, "RP[%s]->[%s]\n", p, remote_unparse(r));
 	return (r);

@@ -131,7 +131,6 @@ bk get $Q boo.c
 cmp -s boo.c $HERE/import_dir/src/boo.c || { echo failed; exit 1; }
 echo OK
 
-set +e
 echo $N Test RCS import of a file with spaces in the name ...........$NL
 cd $HERE
 rm -rf project import_dir
@@ -164,9 +163,122 @@ text
 @06:37:07 PM Wed May 24 2000
 @
 EOF
-set -e
 ( echo RCS; echo no ) | bk import import_dir project > import.out 2>&1
 cd $HERE/project/src
 test -f SCCS/s.'S P A C E S' || { echo failed; exit 1; }
 test -f 'S P A C E S,v' && { echo failed to remove ,v file; ls; exit 1; }
+echo OK
+
+echo $N Test RCS import of a file with a backslash in the name ......$NL
+cd $HERE
+rm -rf project import_dir
+no_logging project
+cd $HERE
+mkdir -p import_dir/src
+cat > import_dir/src/'I\ m,v' <<EOF
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	2000.05.25.01.37.15;	author lm;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@06:37:07 PM Wed May 24 2000
+@
+EOF
+( echo RCS; echo no ) | bk import import_dir project > import.out 2>&1
+cd $HERE/project/src
+test -f SCCS/s.'I\ m' || { echo failed; exit 1; }
+test -f 'I\ m,v' && { echo failed to remove ,v file; ls; exit 1; }
+echo OK
+
+echo $N Test RCS import of a file starting with - ...................$NL
+cd $HERE
+rm -rf project import_dir
+no_logging project
+cd $HERE
+mkdir -p import_dir/src
+cat > import_dir/src/-dash,v <<EOF
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	2000.05.25.01.37.15;	author lm;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@06:37:07 PM Wed May 24 2000
+@
+EOF
+( echo RCS; echo no ) | bk import import_dir project > import.out 2>&1
+cd $HERE/project/src
+test -f SCCS/s.-dash || { echo failed; exit 1; }
+test -f "-dash,v" && { echo failed to remove ,v file; ls; exit 1; }
+echo OK
+
+echo $N Test RCS import of a file with double quotes in the name ....$NL
+cd $HERE
+rm -rf project import_dir
+no_logging project
+cd $HERE
+mkdir -p import_dir/src
+cat > import_dir/src/'I"m a little teacup,v' <<EOF
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	2000.05.25.01.37.15;	author lm;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@06:37:07 PM Wed May 24 2000
+@
+EOF
+( echo RCS; echo no ) | bk import import_dir project > import.out 2>&1
+cd $HERE/project/src
+test -f SCCS/s.'I"m a little teacup' || { echo failed; exit 1; }
+test -f 'I"m a little teacup,v' && { echo failed to remove ,v file; ls; exit 1; }
 echo OK
