@@ -13,7 +13,7 @@ OBJ	= adler32.o admin.o bkd.o bkd_cd.o bkd_client.o bkd_clone.o \
 	  bkd_rootkey.o bkd_status.o bkd_version.o bk.o \
 	  bkusers.o check.o chksum.o clean.o clone.o comments.o \
 	  commit.o compress.o cset.o delta.o diffs.o dirname.o \
-	  export.o fdiff.o filecopy.o finddirs.o fix.o g2sccs.o \
+	  export.o fdiff.o filecopy.o files.o finddirs.o fix.o g2sccs.o \
 	  gca.o get.o gethelp.o gethost.o getlog.o getopt.o gettemp.o \
 	  getuser.o glob.o help.o host.o isascii.o key2rev.o lib_tcp.o \
 	  libcommit.o libdiff.o librange.o libsfiles.o libusers.o \

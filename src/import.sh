@@ -111,14 +111,14 @@ import() {
 	else	if [ $TYPE != patch ]
 		then	echo Finding files in $FROM
 			cd $FROM
-			cmd="find . -follow -type f -print"
+			cmd="bk files"
 			if [ X"$INCLUDE" != X ]
 			then	cmd="$cmd | egrep '$INCLUDE'"
 			fi
 			if [ X"$EXCLUDE" != X ]
 			then	cmd="$cmd | egrep -v '$EXCLUDE'"
 			fi
-			eval "$cmd" | sed 's|^\./||' > ${TMP}import$$
+			eval "$cmd" > ${TMP}import$$
 			echo OK
 		else	echo "" > ${TMP}import$$
 		fi

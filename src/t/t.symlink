@@ -335,7 +335,7 @@ if [ $? -ne 0 ]
 then	echo resolve failed; cat RESOLVE; exit 1
 fi
 bk co $Q link
-if [ ! -L link ]
+if [ ! -h link ]
 then	echo failed to leave link a link; ls -l link; cat RESOLVE; exit 1
 fi
 echo OK
@@ -392,7 +392,7 @@ if [ $? -ne 0 ]
 then	echo resolve failed; cat RESOLVE; exit 1
 fi
 bk co $Q link
-if [ ! -L link ]
+if [ ! -h link ]
 then	echo failed to leave link a link; ls -l link; cat RESOLVE; exit 1
 fi
 echo OK
@@ -415,7 +415,7 @@ if [ $? -ne 0 ]
 then	echo resolve failed; cat RESOLVE; exit 1
 fi
 bk co $Q renamed
-if [ ! -L renamed ]
+if [ ! -h renamed ]
 then	echo failed to leave renamed a link; ls -l renamed; cat RESOLVE; exit 1
 fi
 echo OK
@@ -485,7 +485,7 @@ if [ $? -ne 0 ]
 then	echo resolve failed; cat RESOLVE; exit 1
 fi
 bk co $Q SL
-if [ ! -L SL ]
+if [ ! -h SL ]
 then	echo failed to make SL a file; exit 1
 fi
 if [ "`bk get -pq SL`" != 'SYMLINK -> a/different/pointer' ]
