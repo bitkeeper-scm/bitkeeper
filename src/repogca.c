@@ -18,7 +18,7 @@ repogca_main(int ac, char **av)
 	parent = av[1] ? av[1] : getParent();
 	s = sccs_init(s_cset, SILENT, 0);
 	assert(s && s->tree);
-	sprintf(buf, "bk changes -L -end:REV: %s", parent);
+	sprintf(buf, "bk changes -L -end:KEY: %s", parent);
 	unless (f = popen(buf, "r")) {
 		perror(buf);
 		exit(1);
