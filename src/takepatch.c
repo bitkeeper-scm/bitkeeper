@@ -957,6 +957,7 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 		return -1;
 	}
 apply:
+
 	p = patchList;
 	while (p) {
 		if (echo == 2) fprintf(stderr, "%c\b", spin[n++ % 4]);
@@ -1169,14 +1170,15 @@ getLocals(sccs *s, delta *g, char *name)
 			perror(tmpf);
 			exit(1);
 		}
-		s->rstart = s->rstop = d;
 		sccs_restart(s);
+		s->rstart = s->rstop = d;
 		sccs_prs(s, PRS_PATCH|SILENT, 0, NULL, t);
 		if (ferror(t)) {
 			perror("error on init file");
 			cleanup(CLEAN_RESYNC);
 		}
 		fclose(t);
+
 		p = calloc(1, sizeof(patch));
 		p->flags = PATCH_LOCAL;
 		p->initFile = strdup(tmpf);
@@ -1569,8 +1571,7 @@ error:					fprintf(stderr, "GOT: %s", buf);
 					st.metadata = 0;
 					st.metaline = 1;
 				}
-				if (compat && strneq("S ", buf, 2) &&
-				    !streq("S BK key2\n", buf)) { 
+				if (compat && strneq("s ", buf, 2)) {
 				    	fprintf(stderr,
 "\ntakepatch: will not accept tags in compatibility mode, please upgrade.\n");
 					goto error;
@@ -1689,6 +1690,11 @@ error:					fprintf(stderr, "GOT: %s", buf);
 		while (t = mnext(m)) {
 			if (strneq(t, PATCH_CURRENT, strsz(PATCH_CURRENT))) {
 				i++;
+				break;
+			}
+			if (strneq(t, PATCH_COMPAT, strsz(PATCH_COMPAT))) {
+				i++;
+				compat=1;
 				break;
 			}
 		}

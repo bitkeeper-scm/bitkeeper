@@ -109,32 +109,6 @@ if [ $? -eq 0 ]; then echo Added unwanted second comment to T; exit 1; fi
 grep -q '^.c second comment$' SCCS/s.init
 if [ $? -eq 0 ]; then echo Added unwanted second comment to init; exit 1; fi
 echo OK
-echo $N Make sure delta can add symbols .............................$NL
-bk get $S -e init2
-bk delta $S -SSYM -y init2
-grep -q '^.cSSYM$' SCCS/s.init2
-if [ $? -ne 0 ]; then echo Failed to add symbol.; exit 1; fi
-echo OK
-echo $N Make sure ci can add symbols ................................$NL
-bk get $S -e init2
-bk ci $S -SBAR -fy init2
-grep -q '^.cSBAR$' SCCS/s.init2
-if [ $? -ne 0 ]; then echo Failed to add symbol.; exit 1; fi
-echo OK
-echo $N Make sure ci can add multiple symbols in one run ............$NL
-bk get $S -e init2
-bk ci $S -Sone -Stwo -fy init2
-grep -q '^.cSone' SCCS/s.init2
-if [ $? -ne 0 ]; then echo Failed to add symbol one.; exit 1; fi
-grep -q '^.cStwo' SCCS/s.init2
-if [ $? -ne 0 ]; then echo Failed to add symbol two.; exit 1; fi
-echo OK
-echo $N Make sure ci can not add same symbol twice ..................$NL
-bk get $S -e init2
-bk ci $S -SBAR -fy init2 2> ${DEV_NULL}
-X=`grep -c '^.cSBAR$' SCCS/s.init2`
-if [ $X -ne 1 ]; then echo Added symbol twice.; exit 1; fi
-echo OK
 echo $N Make sure ci -u with no change works ........................$NL
 bk get $S -e init2
 bk ci $Q -u init2 2> ${DEV_NULL}

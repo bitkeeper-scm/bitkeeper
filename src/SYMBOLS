@@ -1,3 +1,108 @@
+[ Tue Dec  5 15:39:58 PST 2000 ]
+
+We can't ever convert the existing symbols, those are stuck because 
+we can't know if we have them all and we have to have them all to construct
+a graph.  So they are always just dangling.
+
+Graph vs old format
+
+    Both old and new do the symbolic names like so
+
+	^AcSi_am_the_symbol_name
+
+    Symbols in the graph also have a line like one of the following:
+
+    leaf node, not a merge: 
+	^AcS22 l
+    leaf node, merged serials 10 and 20: 
+	^AcS10 20 l
+    none leaf node, non merge, someone points at me, my parent is 24:
+	^Ac24
+    none leaf node, merges 101, someone points at me, my parent is 99:
+	^Ac99 101
+    top level node, points at non-existent parent
+	^AcS0
+
+Data structures:
+    d->ptag		/* set if I'm in the graph and have a real parent */
+    d->mtag		/* set if I am a symbol merge delta */
+    d->symLeaf		/* set if I am a leaf node in the sym graph */
+    d->symGraph		/* set if I participate in the sym graph */
+
+    IN_SYMGRAPH(d)	(d->ptag || d->symLeaf)
+
+Patch format:
+    S name		/* this is the name of the symbol */
+    s g			/* delta is part of the symbol graph */
+    s l			/* delta is a leaf in the tag graph */
+    s key		/* key for the parent delta */
+    s key		/* key for the merge parent delta */
+
+Adding an old style symbol:
+    just add the entry to the symbol table as usual
+
+Adding a new style symbol
+    add to symbol table,
+    if there is a leaf, find it, clear it, point to it
+    else point to 1
+    set symLeaf flag
+
+Note: we do not handle LODs yet.
+
+Compat issues:
+    A) old tags stay as they are regardless of what code touches them
+    B) if old code pulls from a new code
+       . translate the file format back to V3
+       . do not transmit any new tags
+    C) if new code does an opush then
+       . translate file format back to V3
+       . do not transmit any new tags
+       . do warn about none transmitted tags
+
+Variables are
+    BK version:		1.x | 2.x
+    file version:	V3 | V4
+    tags:		original | graph
+    cmd:		1.x pull|push | 2.x opull|opush | 2x pull|push
+
+Tests:
+    Make sure we can create old style tags using new code 	[x]
+    Make sure we can 1.x pull from new to old
+    - get the csets 						[x]
+    - get the old style tags 					[x]
+    - don't get the new style tags 				[x]
+    Make sure we can 2.x opull from new to old
+    - get the csets 						[x]
+    - get the old style tags 					[x]
+    - don't get the new style tags 				[x]
+    Make sure we can 1.x push from old to new
+    - send the csets						[x]
+    - send the old style tags					[x]
+    Same idea using opush from old to old (hence no new tags present)
+    - send the csets						[x]
+    - send the old style tags					[x]
+    Same idea using opush from new to old tree
+    - send the csets						[x]
+    - send the old style tags					[x]
+    - don't send the new style tags				[x]
+    - translate file versions back to V3			[x]
+
+TODO:
+
+.. Allow _BK_NO_TAG_GRAPH to override adding nodes to the graph, just add
+   them without the pointers.
+   Needs test case [x]
+
+.. Always use the 1.0 delta as the ultimate graph root for the symbol tree.
+   This means any time we add a tag with the new code, we root it there.
+   Needs test case [ ]
+
+.. Need to make sure admin doesn't whine about tags not in the graph.
+   Needs test case [ ]
+
+.. May want to have a file flags mode which doesn't allow a tag graph for
+   transition period.
+
 Symbol graph notes, Sun Oct 29 11:29:36 PST 2000
 
 We have numerous problems resulting from the symbols not participating in 
@@ -30,6 +135,9 @@ COVERSION FROM EXISTING FORMAT
     table in table order (newest to oldest) and for each delta which
     has a tag, find the next delta which has a tag, and then  use that
     as the ptag value.
+    [ Tue Dec  5 15:40:05 PST 2000 ]
+    This turned out to be WRONG.  You can't autoconvert without having all
+    the data and you can never know that you have all the data.  Wrong.
 
 LOD IMPLICATIONS
     We need to allow multiple open tips so long as the there is exactly one

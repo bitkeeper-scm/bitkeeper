@@ -89,7 +89,7 @@
 #define	PRS_LF		0x02000000	/* terminate non-empty output with LF */
 #define	PRS_LFLF	0x04000000	/* terminate non-empty record with LF */
 #define	PRS_PLACEHOLDER	0x08000000	/* make a place holder patch */
-#define	PRS_NOTAGS	0x00100000	/* for makepatch -C, send no tags */
+#define	PRS_COMPAT	0x00100000	/* for makepatch -C, send old tags */
 
 #define SINFO_TERSE	0x10000000	/* print in terse format: sinfo -t */
 
@@ -130,7 +130,7 @@
 #define	S_YEAR4		0x00000400	/* print out the year as 4 digits */
 #define	S_BADREVS	0x00000800	/* has corrupted revisions */
 #define	S_BIGPAD	0x00001000	/* admin -B: make the landing pad big */
-#define	S_REINHERIT	0x00002000	/* found stuff in flags, reinherit */
+/*			0x00002000	AVAILABLE */
 #define	S_BITKEEPER	0x00004000	/* X_BITKEEPER flag */
 #define	S_CSET		0x00008000	/* this is a changeset file */
 /* AVALIABLE		0x00010000	*/
@@ -142,7 +142,7 @@
 #define	S_SET		0x00400000	/* the tree is marked with a set */
 #define	S_CSETMARKED	0x00800000	/* X_CSETMARKED match */
 #define S_CACHEROOT	0x01000000	/* don't free the root entry */
-#define	S_KEY2		0x02000000	/* all keys are version 2 format */
+#define	S_LONGKEY	0x02000000	/* all keys are version 2 format */
 #define	S_HASH		0x04000000	/* this file is an MDBM file */
 #define	S_FAKE_1_0	0x08000000	/* the 1.0 delta is a fake */
 #define	S_SAVEPROJ	0x10000000	/* do not free the project struct */
@@ -198,6 +198,8 @@
 #endif
 #define	X_LOGS_ONLY	0x00000400	/* this is a logging repository */
 #define	X_EOLN_NATIVE	0x00000800	/* use eoln native to this OS */
+#define	X_LONGKEY	0x00001000	/* all keys are long format */
+					/* flags which can be changed */
 #define X_XFLAGS	(X_RCS|X_YEAR4|X_ISSHELL|X_EXPAND1|X_HASH|\
 			 X_SCCS|X_SINGLE|X_EOLN_NATIVE)
 
@@ -413,6 +415,7 @@ typedef struct delta {
 	struct	delta *next;		/* all deltas in table order */
 	u32	flags;			/* per delta flags */
 	u32	symLeaf:1;		/* if set, I'm a symbol with no kids */
+	u32	symGraph:1;		/* if set, I'm a symbol in the graph */
 	u32	published:1;	
 	u32	ptype:1;	
 } delta;

@@ -39,10 +39,55 @@ P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 echo OK
 cores
+echo $N Add old style tags ..........................................$NL
+cd $HERE
+cp -rp project tags
+cd tags
+_BK_NO_TAG_GRAPH=YES bk tag $Q OLD
+grep -q '^.cS l' SCCS/s.ChangeSet && {
+	echo added a leaf
+	cat SCCS/s.ChangeSet
+	exit 1
+}
+grep -q '^.cS[0-9]' SCCS/s.ChangeSet && {
+	echo added a tag graph node
+	cat SCCS/s.ChangeSet
+	exit 1
+}
+bk admin -hhhq || exit 1
+echo OK
+echo $N Add new style tags ..........................................$NL
+bk tag $Q NEW
+grep -q '^.cS0' SCCS/s.ChangeSet || {
+	echo did not add tag pointing to the root node
+	cat SCCS/s.ChangeSet
+	exit 1
+}
+bk tag $Q 'NEW TAG'
+grep -q '^.cS0' SCCS/s.ChangeSet || {
+	echo lost tag pointing to the root node
+	cat SCCS/s.ChangeSet
+	exit 1
+}
+grep -q '^.cS5 l' SCCS/s.ChangeSet || {
+	echo Did not add tag pointing to previous tag
+	cat SCCS/s.ChangeSet
+	exit 1
+}
+cp SCCS/s.ChangeSet SAVE
+bk admin -z ChangeSet
+cmp -s SCCS/s.ChangeSet SAVE || {
+	echo admin -z stomped on tags
+	diff SCCS/s.ChangeSet SAVE
+	exit 1
+}
+bk admin -hhhq || exit 1
+echo OK
 echo $N Clone repository ............................................$NL
 cd $HERE
 bk clone $Q $HERE/project $HERE/copy || { echo failed; exit 1; }
 bk clone $Q $HERE/project $HERE/copy2 || { echo failed; exit 1; }
+bk clone $Q $HERE/project $HERE/copy3 || { echo failed; exit 1; }
 [ -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
 [ -f copy/BitKeeper/log/parent ] || { echo no parent; exit 1; }
 parent=`cat copy/BitKeeper/log/parent`
@@ -50,26 +95,46 @@ host=`bk gethost`
 [ x$parent = x${host}:$HERE/project ] || { echo wrong parent $parent; exit 1; }
 cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
 echo OK
-echo $N Pull a new changeset with a tag using opull .................$NL
+echo $N Create a changeset in compat mode with a tag ................$NL
 cd $HERE/project/src
 bk get $Q -e 'F!O#O$ B%A^R&RR(R)RR'
 echo delta two >> 'F!O#O$ B%A^R&RR(R)RR'
 bk delta $Q -ywhatever 'F!O#O$ B%A^R&RR(R)RR'
-bk commit $Q -yopull_cset -STAG1
+_BK_NO_TAG_GRAPH=YES bk commit $Q -yopull_cset -S'NOT IN TAG GRAPH'
+cd ..
+grep -q '^.cS[0-9]' SCCS/s.ChangeSet && {
+	echo added a tag graph node
+	cat SCCS/s.ChangeSet
+	exit 1
+}
+bk admin -hhhq || exit 1
+bk admin -z
+grep -q '^.cS[0-9]' SCCS/s.ChangeSet && {
+	echo added a tag graph node after the admin -z
+	cat SCCS/s.ChangeSet
+	exit 1
+}
+echo OK
+echo $N Pull a new changeset with an old tag using opull ............$NL
 cd $HERE/copy
+cp SCCS/s.ChangeSet CSET
 bk opull -t $Q || { echo failed; exit 1; }
 revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
-grep -q TAG1 SCCS/s.ChangeSet && { echo propogated tag; exit 1; }
-cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
+grep -q '^.cS[0-9]' SCCS/s.ChangeSet && {
+	echo added a tag graph node
+	bk difftool CSET SCCS/s.ChangeSet
+	exit 1
+}
+bk admin -hhhq || exit 1
 echo OK
-echo $N Pull a new changeset with a tag using pull ..................$NL
+echo $N Pull a new changeset with an old tag using pull .............$NL
 cd $HERE/copy2
 bk pull -t $Q || { echo failed; exit 1; }
 revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
-grep -q TAG1 SCCS/s.ChangeSet || { echo did not propogate tag; exit 1; }
-cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
+grep -q 'NOT IN TAG' SCCS/s.ChangeSet || { echo did not propogate tag; exit 1; }
+bk admin -hhhq || exit 1
 echo OK
 
 echo $N Resolve a tag conflict, pick remote, see if it sticks .......$NL
@@ -94,6 +159,8 @@ LOCAL=`bk prs -hrTAG -d:KEY: ChangeSet`
 cp SCCS/s.ChangeSet CSET
 bk resync $Q
 (
+echo ""
+echo "x"
 echo r
 ) | bk resolve -t $Q 2>OUT
 KEY=`bk prs -hrTAG -d:KEY: ChangeSet`
@@ -102,6 +169,7 @@ then	echo Whoops, used local instead of remote
 	echo "REMOTE:	$REMOTE"
 	echo "LOCAL:	$LOCAL"
 	bk prs -d':I: :KEY:\n' ChangeSet
+	cat OUT
 	exit 1
 fi
 if [ "$KEY" != "$REMOTE" ]
@@ -179,79 +247,243 @@ grep -q '1 tags only in' OUT || {
 }
 echo OK
 
-test -d /usr/libexec/bitkeeper-1.2 && {
-    echo $N Create a bk 1.2.9 tree, update w/ current, pull w/ old ......$NL
-    cd $HERE
-    rm -rf project copy
-    SAVE=$PATH
-    PATH=/usr/libexec/bitkeeper-1.2:$PATH
-    no_logging project
-    PATH=$SAVE
-    P=50000
-    bk bkd -d -p$P -P$HERE/pid 2>/dev/null
-    while [ $? -eq 2 ]
-    do      P=`expr $P + 1`
-	    bk bkd -d -p$P -P$HERE/pid 2>/dev/null
-    done
-    cd ..
-    bk clone $Q bk://localhost:$P copy
-    cd project
-    ls > LS
-    bk new $Q LS
-    bk idcache -q
-    bk commit $Q -ycset1 -STAG1
-    grep -q '^.cV4' SCCS/s.ChangeSet || {
-    	echo bad version in the Changeset, maybe we have bumped it again
+test -d /usr/libexec/bitkeeper-1.2 || exit 0
+
+echo $N Create a 1.x style tree and copies of it ....................$NL
+cd $HERE
+rm -rf c* p* t*
+SAVE=$PATH
+PATH=/usr/libexec/bitkeeper-1.2:$PATH
+no_logging old
+PATH=$SAVE
+cd $HERE
+bk clone $Q old new
+tar cf TAR new old
+cd new
+bk admin -qhhh ChangeSet || { bk admin -hhh ChangeSet; exit 1; }
+P=50000
+bk bkd -d -p$P -P$HERE/pid 2>/dev/null
+while [ $? -eq 2 ]
+do      P=`expr $P + 1`
+	bk bkd -d -p$P -P$HERE/pid 2>/dev/null
+done
+echo OK
+
+echo $N Create a new changeset with an old tag, 1.x pull it, works ..$NL
+cd $HERE/new
+ls > LS
+bk new $Q LS
+_BK_NO_TAG_GRAPH=YES bk commit $Q -ycset1 -S'OLD STYLE'
+grep -q 'cS0' SCCS/s.ChangeSet && { echo added new tag; exit 1; }
+cd $HERE/old
+/usr/libexec/bitkeeper-1.2/bk pull -t $Q bk://localhost:$P || exit 1
+grep -q 'OLD STYLE' SCCS/s.ChangeSet || { echo no tag; exit 1; }
+grep -q '^.cV4' SCCS/s.ChangeSet && { echo propogated version; exit 1; }
+echo OK
+
+echo $N Create a new changeset with an new tag, 1.x pull it, no tag .$NL
+cd $HERE/new
+ls > XYZ
+bk new $Q XYZ
+bk commit $Q -ycset1 -S'NEW TAG'
+grep -q 'cS0' SCCS/s.ChangeSet || { echo No tag graph found; exit 1; }
+KEY=`bk prs -hr+ -d:KEY: ChangeSet`
+cd $HERE/old
+/usr/libexec/bitkeeper-1.2/bk pull -t $Q bk://localhost:$P || exit 1
+grep -q 'NEW TAG' SCCS/s.ChangeSet && { echo tag was sent; exit 1; }
+grep -q '^.cV4' SCCS/s.ChangeSet && { echo propogated version; exit 1; }
+GOT=`bk prs -hr+ -d:KEY: ChangeSet`
+if [ X"$KEY" != X"$GOT" ]
+then	echo "KEY $KEY"
+	echo "GOT $GOT"
 	exit 1
-    }
-    cd $HERE/copy
-    /usr/libexec/bitkeeper-1.2/bk pull -t $Q bk://localhost:$P || exit 1
-    grep -q TAG1 SCCS/s.ChangeSet && { echo propogated tag; exit 1; }
-    grep -q '^.cV4' SCCS/s.ChangeSet && { echo propogated version; exit 1; }
-    echo OK
+fi
+echo OK
 
-    echo $N Push a new changeset created using 1.2.9 ....................$NL
-    ls > AAA
-    /usr/libexec/bitkeeper-1.2/bk new $Q AAA
-    /usr/libexec/bitkeeper-1.2/bk commit $Q -yAAA
-    /usr/libexec/bitkeeper-1.2/bk push -t $Q || exit 1
-    cd $HERE/project
-    grep -q 'c AAA' SCCS/s.ChangeSet || { echo failed to push; exit 1; }
-    echo OK
+echo $N Create a new changeset with an old tag, opull it, works .....$NL
+cd $HERE
+rm -rf new old
+tar xf TAR
+kill -9 `cat $HERE/pid`
+cd new
+P=50000
+bk bkd -d -p$P -P$HERE/pid 2>/dev/null
+while [ $? -eq 2 ]
+do      P=`expr $P + 1`
+	bk bkd -d -p$P -P$HERE/pid 2>/dev/null
+done
+cd $HERE/new
+ls > LS
+bk new $Q LS
+_BK_NO_TAG_GRAPH=YES bk commit $Q -ycset1 -S'OLD STYLE'
+grep -q 'cS0' SCCS/s.ChangeSet && { echo added new tag; exit 1; }
+cd $HERE/old
+bk idcache -q
+bk opull -t $Q bk://localhost:$P || exit 1
+grep -q 'OLD STYLE' SCCS/s.ChangeSet || { echo no tag; exit 1; }
+# The following test is if and only if we maintain the old file version #.
+# grep -q '^.cV4' SCCS/s.ChangeSet && { echo propogated version; exit 1; }
+echo OK
 
-    echo $N Tag a cset and push with 1.2.9 client, should fail ..........$NL
-    cd $HERE/copy
-    ls > BBB
-    /usr/libexec/bitkeeper-1.2/bk new $Q BBB
-    /usr/libexec/bitkeeper-1.2/bk commit $Q -ycset1 -STAG2
-    /usr/libexec/bitkeeper-1.2/bk push -t bk://localhost:$P > OUT 2>&1
-    grep -q 'will not accept tags in compatibility mode' OUT || {
-	    echo bad error message
-	    cat OUT
-	    exit 1
-    }
-    cd $HERE/project
-    grep -q TAG2 SCCS/s.ChangeSet && { echo propogated tag; exit 1; }
-    echo OK
-    
-    echo $N Create a new changeset, then try old code, should fail ......$NL
-    cd $HERE/copy
-    ls > LS2
-    bk new $Q LS2
-    bk idcache -q
-    bk commit $Q -yNEW
-    /usr/libexec/bitkeeper-1.2/bk push -t > OUT 2>&1
-    grep -q 'will not accept tags in compatibility mode' OUT || {
-	    echo bad error message
-	    cat OUT
-	    exit 1
-    }
-    cd $HERE/project
-    grep -q TAG2 SCCS/s.ChangeSet && { echo propogated tag; exit 1; }
-    echo OK
-    kill -9 `cat $HERE/pid`
+echo $N Create a new changeset with an new tag, opull it, no tag ....$NL
+cd $HERE/new
+ls > XYZ
+bk new $Q XYZ
+bk commit $Q -ycset1 -S'NEW TAG'
+grep -q 'cS0' SCCS/s.ChangeSet || { echo No tag graph found; exit 1; }
+KEY=`bk prs -hr+ -d:KEY: ChangeSet`
+cd $HERE/old
+bk opull -t $Q bk://localhost:$P || exit 1
+grep -q 'NEW TAG' SCCS/s.ChangeSet && { echo tag was sent; exit 1; }
+# The following test is if and only if we maintain the old file version #.
+# grep -q '^.cV4' SCCS/s.ChangeSet && { echo propogated version; exit 1; }
+GOT=`bk prs -hr+ -d:KEY: ChangeSet`
+if [ X"$KEY" != X"$GOT" ]
+then	echo "KEY $KEY"
+	echo "GOT $GOT"
+	exit 1
+fi
+echo OK
+
+echo $N Test 1.x push from old to new with old style tag ............$NL
+cd $HERE
+rm -rf new old
+tar xf TAR
+kill -9 `cat $HERE/pid`
+cd new
+P=50000
+bk bkd -d -p$P -P$HERE/pid 2>/dev/null
+while [ $? -eq 2 ]
+do      P=`expr $P + 1`
+	bk bkd -d -p$P -P$HERE/pid 2>/dev/null
+done
+cd $HERE/old
+ls > LS
+/usr/libexec/bitkeeper-1.2/bk new $Q LS
+/usr/libexec/bitkeeper-1.2/bk commit $Q -ycset1 -S'OLD STYLE'
+KEY=`bk prs -hr+ -d:KEY: ChangeSet`
+/usr/libexec/bitkeeper-1.2/bk push -t $Q bk://localhost:$P || exit 1
+cd $HERE/new
+grep -q 'OLD STYLE' SCCS/s.ChangeSet || { echo no tag; exit 1; }
+GOT=`bk prs -hr+ -d:KEY: ChangeSet`
+if [ X"$KEY" != X"$GOT" ]
+then	echo "KEY $KEY"
+	echo "GOT $GOT"
+	exit 1
+fi
+echo OK
+
+echo $N Test 2.x opush from old to old server with old tag ..........$NL
+cd $HERE
+rm -rf new old
+tar xf TAR
+mv new older
+kill -9 `cat $HERE/pid`
+cd older
+P=50000
+/usr/libexec/bitkeeper-1.2/bk bkd -d -p$P -P$HERE/pid 2>/dev/null
+while [ $? -eq 2 ]
+do      P=`expr $P + 1`
+	/usr/libexec/bitkeeper-1.2/bk bkd -d -p$P -P$HERE/pid 2>/dev/null
+done
+cd $HERE/old
+ls > LS
+/usr/libexec/bitkeeper-1.2/bk new $Q LS
+/usr/libexec/bitkeeper-1.2/bk commit $Q -ycset1 -S'OLD STYLE'
+KEY=`/usr/libexec/bitkeeper-1.2/bk prs -hr+ -d:KEY: ChangeSet`
+bk idcache -q
+bk opush -t $Q bk://localhost:$P || exit 1
+cd $HERE/older
+grep -q 'OLD STYLE' SCCS/s.ChangeSet || { echo no tag; exit 1; }
+GOT=`bk prs -hr+ -d:KEY: ChangeSet`
+if [ X"$KEY" != X"$GOT" ]
+then	echo "KEY $KEY"
+	echo "GOT $GOT"
+	exit 1
+fi
+echo OK
+
+echo $N Test 2.x opush from new to old server with old tag ..........$NL
+cd $HERE
+rm -rf new old
+tar xf TAR
+kill -9 `cat $HERE/pid`
+cd old
+P=50000
+/usr/libexec/bitkeeper-1.2/bk bkd -d -p$P -P$HERE/pid 2>/dev/null
+while [ $? -eq 2 ]
+do      P=`expr $P + 1`
+	/usr/libexec/bitkeeper-1.2/bk bkd -d -p$P -P$HERE/pid 2>/dev/null
+done
+cd $HERE/new
+bk idcache -q
+ls > LS
+bk new $Q LS
+bk commit $Q -ycset1
+_BK_NO_TAG_GRAPH=YES bk tag -q 'OLD OLD'
+KEY=`bk prs -hr+ -d:KEY: ChangeSet`
+bk opush -t $Q bk://localhost:$P 2>OUT || exit 1
+cat OUT
+cores
+cd $HERE/old
+grep -q 'NEW NEW' SCCS/s.ChangeSet && { echo sent new tag; exit 1; }
+#xterm -n OLD -geom +1+1 -e vi SCCS/s.ChangeSet &
+grep -q 'OLD OLD' SCCS/s.ChangeSet || { echo did not send old tag; exit 1; }
+GOT=`bk prs -hr+ -d:KEY: ChangeSet`
+if [ X"$KEY" != X"$GOT" ]
+then	echo "KEY $KEY"
+	echo "GOT $GOT"
+	exit 1
+fi
+grep -q '^.cV4' SCCS/s.LS && { echo propogated version in LS; exit 1; }
+grep -q '^.cV4' SCCS/s.ChangeSet && { echo propogated version in Cset; exit 1; }
+echo OK
+
+echo $N Test 2.x opush from new to old with both new and old tag ....$NL
+cd $HERE
+rm -rf new old
+tar xf TAR
+kill -9 `cat $HERE/pid`
+cd old
+P=50000
+/usr/libexec/bitkeeper-1.2/bk bkd -d -p$P -P$HERE/pid 2>/dev/null
+while [ $? -eq 2 ]
+do      P=`expr $P + 1`
+	/usr/libexec/bitkeeper-1.2/bk bkd -d -p$P -P$HERE/pid 2>/dev/null
+done
+cd $HERE/new
+bk idcache -q
+ls > LS
+bk new $Q LS
+bk commit $Q -ycset1 -S'NEW NEW'
+bk commit $Q -ycset1 -SNEWBIE
+_BK_NO_TAG_GRAPH=YES bk tag -q 'OLD OLD'
+_BK_NO_TAG_GRAPH=YES bk tag -q 'OLDY'
+KEY=`bk prs -hr+ -d:KEY: ChangeSet`
+BK_GETLINE=YES bk opush -t $Q bk://localhost:$P 2>OUT || exit 1
+grep -q 'not sending new tags in compat mode' OUT || {
+	echo failed to warn about compat mode tags
+	cat OUT
+	exit 1
 }
-exit 0
+cores
+cd $HERE/old
+grep -q 'NEW NEW' SCCS/s.ChangeSet && { echo sent new tag; exit 1; }
+grep -q 'NEWBIE' SCCS/s.ChangeSet && { echo sent new tag; exit 1; }
+grep -q 'OLD OLD' SCCS/s.ChangeSet || { echo did not send old tag; exit 1; }
+grep -q 'OLDY' SCCS/s.ChangeSet || { echo did not send old tag; exit 1; }
+GOT=`bk prs -hr+ -d:KEY: ChangeSet`
+if [ X"$KEY" != X"$GOT" ]
+then	echo "KEY $KEY"
+	echo "GOT $GOT"
+	exit 1
+fi
+grep -q '^.cV4' SCCS/s.LS && { echo propogated version in LS; exit 1; }
+grep -q '^.cV4' SCCS/s.ChangeSet && { echo propogated version in Cset; exit 1; }
+echo OK
+
+kill -9 `cat $HERE/pid`
+
 #echo $N Create the same tag in a new place ..........................$NL
 #cd $HERE/copy/src
 #bk get $Q -e 'F!O#O$ B%A^R&RR(R)RR'

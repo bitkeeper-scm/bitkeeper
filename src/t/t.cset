@@ -21,11 +21,6 @@ P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
 
-echo $N Check for long keys only ....................................$NL
-grep -q "BK key2" SCCS/s.ChangeSet 
-if [ $? -ne 0 ]; then echo Failed to add long key symbol.; exit 1; fi
-echo OK
-
 echo $N Make sure that we can remove an earlier cset ................$NL
 for file in A B C
 do	for line in 1 2 3 4 5 6 7 8

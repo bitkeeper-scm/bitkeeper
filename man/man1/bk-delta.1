@@ -4,12 +4,10 @@
 bk delta \- check in modified files
 .SH SYNOPSIS
 .if n \{\
-.	ds Ss s
 .	ds Sz z
 .	ds Sy c
 .\}
 .if t \{
-.	ds Ss sym
 .	ds Sz alg
 .	ds Sy comment
 .\}
@@ -81,11 +79,6 @@ Print differences before prompting for comments.
 .tp
 .B \-q
 Run silently.
-.tp
-.OPTreq \-S sym
-Add the symbol
-.ARG sym
-as a symbolic tag on the revision created.
 .tp
 .B \-u
 Follow check in with an unlocked check out like bk get.

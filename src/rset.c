@@ -416,7 +416,7 @@ usage:				system("bk help -s rset");
 		opts.show_diffs = 1;
 	}
 	proj = s->proj;
-	mixed = !(s->state & S_KEY2);
+	mixed = !(s->state & S_LONGKEY);
 	sccs_close(s);
 
 	idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS);

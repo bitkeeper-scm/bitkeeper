@@ -114,7 +114,7 @@ check_main(int ac, char **av)
 		exit(1);
 	}
 	proj = cset->proj;
-	mixed = (cset->state & S_KEY2) == 0;
+	mixed = (cset->state & S_LONGKEY) == 0;
 	db = buildKeys();
 	if (all) init_idcache();
 
@@ -771,8 +771,9 @@ check(sccs *s, MDBM *db, MDBM *marks)
 	 *  - no open branches (unless we are in a logging repository)
 	 *  - xflags implied by s->state matches top-of-trunk delta.
 	 */
-	if (!resync && sccs_admin(s, 0,
-	    SILENT|ADMIN_BK|ADMIN_FORMAT|ADMIN_TIME, 0, 0, 0, 0, 0, 0, 0, 0)) {
+#define	FL	ADMIN_BK|ADMIN_FORMAT|ADMIN_TIME
+	if (!resync && sccs_admin(s, 0, SILENT|FL, 0, 0, 0, 0, 0, 0, 0, 0)) {
+		sccs_admin(s, 0, FL, 0, 0, 0, 0, 0, 0, 0, 0);
 	    	errors++;
 	}
 

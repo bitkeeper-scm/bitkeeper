@@ -35,7 +35,6 @@ delta_main(int ac, char **av)
 	char	*initFile = 0;
 	char	*diffsFile = 0;
 	char	*name;
-	char	**syms = 0;
 	char	*compp = 0, *encp = 0, *p;
 	char	*mode = 0, buf[MAXPATH];
 	MMAP	*diffs = 0;
@@ -68,7 +67,7 @@ delta_main(int ac, char **av)
 	}
 
 	while ((c = getopt(ac, av,
-			   "1abcdD:E|fg;GhI;ilm|M;npPqRrS;suy|YZ|")) != -1) {
+			   "1abcdD:E|fg;GhI;ilm|M;npPqRrsuy|YZ|")) != -1) {
 		switch (c) {
 		    /* SCCS flags */
 		    case 'n': dflags |= DELTA_SAVEGFILE; break;	/* undoc? 2.0 */
@@ -129,7 +128,6 @@ comment:		comments_save(optarg);
 		    case 'M': mode = optarg; break; /* doc 2.0 */
 		    case 'P': ignorePreference = 1;  break;	/* undoc? 2.0 */
 		    case 'R': dflags |= DELTA_PATCH; break;	/* undoc? 2.0 */
-		    case 'S': syms = addLine(syms, strdup(optarg)); break; /* doc 2.0 */
 		    case 'Y': dflags |= DELTA_DONTASK; break; /* doc 2.0 */
 		    case 'Z': compp = optarg ? optarg : "gzip"; break; /* doc 2.0 */
 		    case 'E': encp = optarg; break; /* doc 2.0 */
@@ -229,7 +227,7 @@ usage:			sprintf(buf, "bk help -s %s", name);
 			if (checkout && (gflags &GET_EDIT)) nrev = pf.newrev;
 		}
 		s->encoding = sccs_encoding (s, encp, compp);
-		rc = sccs_delta(s, dflags, d, init, diffs, syms);
+		rc = sccs_delta(s, dflags, d, init, diffs, 0);
 		if (rc == -2) goto next; /* no diff in file */
 		if (rc == -1) {
 			sccs_whynot("delta", s);
@@ -237,7 +235,6 @@ usage:			sprintf(buf, "bk help -s %s", name);
 			sccs_free(s);
 			comments_done();
 			sfileDone();
-			freeLines(syms);
 			return (1);
 		}
 		if (checkout) {
@@ -283,7 +280,6 @@ next:		if (init) mclose(init);
 	}
 	sfileDone();
 	comments_done();
-	freeLines(syms);
 	if (proj) proj_free(proj);
 	return (0);
 }

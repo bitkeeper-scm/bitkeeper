@@ -275,7 +275,7 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 
 	cset = sccs_init(csetFile, flags & SILENT, 0);
 	if (!cset) return (101);
-	copts.mixed = !(cset->state & S_KEY2);
+	copts.mixed = !(cset->state & S_LONGKEY);
 
 	if (list) {
 #ifdef  ANSIC
@@ -356,23 +356,20 @@ cset_setup(int flags)
 	sccs	*cset;
 	delta	*d = 0;
 	int	fd;
-	char	**syms = 0;
 
 	cset = sccs_init(csetFile, flags & SILENT, 0);
 
 	if (flags & DELTA_DONTASK) unless (d = comments_get(d)) goto intr;
 	unless (d = host_get(d)) goto intr;
 	unless (d = user_get(d)) goto intr;
-	syms = addLine(0, strdup(KEY_FORMAT2));
-	cset->state |= S_CSET|S_KEY2;
-	if (sccs_delta(cset, flags|DELTA_EMPTY|NEWFILE, d, 0, 0, syms) == -1) {
+	cset->state |= S_CSET|S_LONGKEY;
+	if (sccs_delta(cset, flags|DELTA_EMPTY|NEWFILE, d, 0, 0, 0) == -1) {
 intr:		sccs_whynot("cset", cset);
 		sccs_free(cset);
 		sfileDone();
 		comments_done();
 		host_done();
 		user_done();
-		freeLines(syms);
 		return (1);
 	}
 	fd = creat(IDCACHE, GROUP_MODE);
@@ -382,7 +379,6 @@ intr:		sccs_whynot("cset", cset);
 	comments_done();
 	host_done();
 	user_done();
-	freeLines(syms);
 	sfileDone();
 	return (0);
 }
@@ -461,7 +457,7 @@ markThisCset(cset_t *cs, sccs *s, delta *d)
 
 /*
  * Return true if the two keys describe the same file.
- * If we are in KEY_FORMAT2 it's easy, they match or they don't.
+ * If we are in S_LONGKEY it's easy, they match or they don't.
  * Otherwise we'll try short versions.
  */
 private int
@@ -1196,7 +1192,7 @@ sccs_patch(sccs *s, cset_t *cs)
 		    "Run ``bk -r check -a'' for more information.\n");
 		cset_exit(1);
 	}
-	if (cs->compat) prs_flags |= PRS_NOTAGS;
+	if (cs->compat) prs_flags |= PRS_COMPAT;
 
 	if (cs->verbose>1) fprintf(stderr, "makepatch: %s ", s->gfile);
 
@@ -1237,6 +1233,10 @@ sccs_patch(sccs *s, cset_t *cs)
 			printf("== %s ==\n", s->gfile);
 			if (newfile) {
 				printf("New file: %s\n", d->pathname);
+				if (cs->compat) {
+					s->state |= S_READ_ONLY;
+					s->version = SCCS_VERSION_COMPAT;
+				}
 				sccs_perfile(s, stdout);
 			}
 			s->rstop = s->rstart = s->tree;
@@ -1267,7 +1267,7 @@ sccs_patch(sccs *s, cset_t *cs)
 				prs_flags |= PRS_PLACEHOLDER;
 			}
 		}
-		sccs_prs(s, prs_flags, 0, NULL, stdout);
+		if (sccs_prs(s, prs_flags, 0, NULL, stdout)) cset_exit(1);
 		printf("\n");
 		if (d->type == 'D') {
 			if (s->state & S_CSET) {

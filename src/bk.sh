@@ -28,6 +28,52 @@ _inode() {		# /* undoc? 2.0 */
 	bk prs -hr+ -d':ROOTKEY:\n' "$@"
 }
 
+# This removes the tag graph
+_fixtags() {		# /* undoc 2.0 */
+	__cd2root
+	_BK_PRUNE_TAGS=Y bk admin -z ChangeSet
+}
+
+# For each file which is modified,
+# call fmtool on the latest vs the checked out file,
+# if they create the merge file,
+# then	save the edited file in file~
+#	put the merge on top of the edited file
+# fi
+_fixtool() {
+	__cd2root
+	bk sfiles -cg > /tmp/fix$$
+	test -s /tmp/fix$$ || {
+		echo Nothing to fix
+		rm -f /tmp/fix$$
+		exit 0
+	}
+	# XXX - this does not work if the filenames have spaces, etc.
+	for x in `cat /tmp/fix$$`
+	do	bk diffs $x | more 
+		echo $N "Fix ${x}? y)es q)uit n)o: "$NL
+		read ans 
+		DOIT=YES
+		case "X$ans" in
+		    X[Yy]*) ;;
+		    X[q]*)
+		    	rm -f /tmp/merge$$ /tmp/previous$$ 2>/dev/null
+		    	exit 0
+			;;
+		    *) DOIT=NO;;
+		esac
+		test $DOIT = YES || continue
+		bk get -kpr+ "$x" > /tmp/previous$$
+		rm -f /tmp/merge$$
+		bk fmtool /tmp/previous$$ "$x" /tmp/merge$$
+		test -s /tmp/merge$$ || continue
+		mv -f "$x" "${x}~"
+		# Cross file system probably
+		cp /tmp/merge$$ "$x"
+	done
+	rm -f /tmp/merge$$ /tmp/previous$$ 2>/dev/null
+}
+
 # Run csettool on the list of csets, if any
 _csets() {		# /* doc 2.0 */
 	if [ X$1 = X"--help" ]; then bk help csets; exit 0; fi
@@ -179,7 +225,7 @@ _rmdir() {		# /* doc 2.0 */
 
 # usage: tag [r<rev>] symbol
 _tag() {		# /* doc 2.0 */
-	if [ X$1 = X"--help" ]; then bk help tag; exit 0; fi
+	if [ "X$1" = X"--help" ]; then bk help tag; exit 0; fi
 	__cd2root
 	REV=
 	OPTS=
@@ -194,7 +240,7 @@ _tag() {		# /* doc 2.0 */
 	then	bk help -s tag
 		exit 1
 	fi
-	bk admin $OPTS -S${1}$REV ChangeSet
+	bk admin $OPTS -S"${1}$REV" ChangeSet
 }
 
 # usage: ignore glob [glob ...]
