@@ -6287,11 +6287,12 @@ sccs_get(sccs *s, char *rev,
 	debug((stderr, "get(%s, %s, %s, %s, %s, %x, %s)\n",
 	    s->sfile, notnull(rev), notnull(mRev),
 	    notnull(iLst), notnull(xLst), flags, printOut));
-	if (!!LOGS_ONLY(s) && !(flags & (PRINT|GET_SKIPGET))) {
-		unless (s->tree->pathname) {
-			fprintf(stderr, "get: no pathname for %s\n", s->sfile);
-			return (-1);
-		}
+	if (BITKEEPER(s) && !s->tree->pathname) {
+		fprintf(stderr, "get: no pathname for %s\n", s->sfile);
+		return (-1);
+	}
+	if (LOGS_ONLY(s) && !(flags & (PRINT|GET_SKIPGET))) {
+		assert(BITKEEPER(s));
 		unless (streq("ChangeSet", s->tree->pathname) ||
 		    strneq("BitKeeper/etc/", s->tree->pathname, 14)) {
 			return (0);
@@ -8822,6 +8823,7 @@ checkOpenBranch(sccs *s, int flags)
 		unless (isleaf(s, d)) continue;
 		unless (lodmap[d->r[0]] > 1) continue;
 		verbose((stderr, "%s: unmerged leaf %s\n", s->sfile, d->rev));
+		ret = 1;
 	}
 	if (lodmap) free(lodmap);
 	return (ret);
