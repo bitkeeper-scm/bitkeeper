@@ -1,3 +1,167 @@
+2000.03.19
+
+LODs are at the alpha release stage:
+  + I'm the only user to date
+  + A complete path is implemented: from creating a lod, to switching
+    between them to pushing and pulling to repositories set to different
+    LODs.
+  + bk help lod and bk helptool documentation
+  + An incomplete interface is in place:
+      + must have no open or pending
+      + doesn't refresh gfiles when switching state
+  + Functionality missing:
+      + Can't merge LODs
+      + Can't create a LOD.1 that is the same as LOD.0 (no empty
+        changesets).  LOD.0 doesn't push or pull because no record
+	of the LOD is made until the LOD.1 delta in the ChangeSet
+	file is created.
+      + Can't selectively include ChangeSets from another LOD into
+        the current one.
+      + No LOD Symbolic naming or LOD symbol namespaces.
+
+But that aside, here's some docs which go under the hood a little
+about what is there.
+
+
+What Are They?
+  
+  A line of development (LOD) is a named branch.  It can be used like
+  a trunk, to have a repository that contains many trunks (working
+  contexts).  It can be used in the telephone pole model, to make
+  branches used to stabilize a release while main development continues
+  on a trunk.  And there are other uses, all based on it being a named
+  branch.
+
+How are They Implemented?
+
+  LODs are stored using the first digit in an SCCS revision.
+  SCCS revisions can either be R.L or R.L.X.Y .  The R in SCCS
+  documentation stands for release.  In Bitkeeper, it means LOD.
+
+  Each LOD has a .0 node and zero or more .1 nodes.
+
+  1.0
+   |
+  1.1
+   |
+  1.2
+   |
+  1.3+
+   |  \
+  1.4 2.1
+
+  In this example, there are two LODs: 1 and 2.  The 2.0 node is 1.3 .
+  That is, the x.0 delta isn't named x.0, but is the parent
+  of the x.1 delta.  The one exception is 1.0 is named 1.0 .
+
+  The x.1 delta may take the form: x.0.y.1
+
+  1.2
+   |
+  1.3+ -----+
+   |  \     |
+  1.4 2.1  2.0.1.1
+       |  /
+      2.2
+
+  LODs are implemented using the default branch facility in SCCS.
+  This can be set externally with admin -fd<rev>, like -fd2 to set
+  LOD 2 as active.  When defbranch is in the form R or R.L.X, then
+  the version referenced will be the tip of that branch.  Since there
+  is not R.L.X branch in Bitkeeper (that users can access directly),
+  the R.L.X is illegal in Bitkeeper.  If the defbranch is a revision
+  in the form R.L or R.L.X.Y, then it references a particular revision
+  (the X.0 revision of a LOD).  Bitkeeper has been modified from SCCS
+  in that checking in new work based on a defbranch of R.L or R.L.X.Y
+  will clear the defbranch and check in the new work on a new LOD x.1 .
+
+  Example: say I have the above graph in foo.c and the default branch
+  is set to 1.2 .  Then when I 'bk edit foo', I'll see "1.2 -> 3.1"
+  as the message, meaning it is checking out the LOD.0 delta and will
+  check it in as the x.1 delta of the LOD.
+
+  If no default branch is set, then the picks the LOD with the biggest
+  number.
+
+The ChangeSet file is the LOD coordinator
+
+  Really LODs only exist in the ChangeSet file.  The mechanism for
+  implementing LODs is the same for all files, but the notion of
+  a named branch is central to the ChangeSet file.  For example,
+  if I have two files: foo and bar.  I could have LOD 2 which contains
+  files foo@4.2 and bar@1.1 .  Not all the first digits will match.
+  The only one that matters is the one in the ChangeSet file.  When
+  figuring out what LOD a delta is on, it will be done by checking
+  which LOD in the ChangeSet file that delta is part of.
+
+  There is one and only one x.1 delta for each LOD in the ChangeSet
+  file.  The keyname for this delta is the LOD name.
+
+Not-In-View (NIV) files
+
+  When a file is added to LOD 2 and I'm working in LOD 1, that file
+  is such that it doesn't exist in my view.  Yet the sfile does exist
+  and we need to do something with it.  Change set theory has a notion
+  that all inodes exist in all time, even if NIV.  Their active state
+  is a not exist state.  For Bitkeeper, the 1.0 delta was chosen to
+  be this NIV state.  This is a nice choice for ATT SCCS compatability.
+  ATT SCCS with defbranch of 1.0 will not error, but return an empty file.
+  BK has been modified such that get ignores any file with a 1.0 revision.
+
+  How to name these files?  What I chose is to use the filekeyname with
+  atsign and pipe characters changed to hyphen and file appearing first:
+    foo@bar|src/here|20000303121220|23113 ->
+    BitKeeper/other/src/here-foo-bar-20000303121220-23113
+
+  Larry says that it is not a valid assumption to have unique keys, so
+  this will need to be revisited before production release.
+
+Switching LODs:
+
+  bk setlod is the function to switch between LODs.  This can either
+  configure an existing LOD or set up the repository for the creation
+  of a new LOD.  If the repository was set to LOD 2 and I wanted to
+  start a new LOD based on 1.2: bk setlod -n1.2
+
+Referencing LODs:
+
+  The revision numbers are from the ChangeSet file.  Symbolic
+  referencing of revisions works as well.  If I have a delta tagged
+  alpha2, then "bk setlod -lalpha2" will set the LOD on which that
+  revision exists.  While the long term plan is to have a global name
+  space for LODs and each LOD has its own symbol name space.
+
+Issue with resyncing:
+
+  There is no LOD marker on a file delta.  What is used is the revision
+  number that gets passed.  What is checked is to see if it is a X.1
+  or X.0.Y.1 form of a revision in the source repository.  If so, then
+  a new LOD is started in the destination.  Now you may realize that
+  X.1 and X.0.Y.1 are on the same LOD, yet what happens is that a new
+  LOD is created for each.  This is because there is not enough
+  information to figure out what LOD a delta is on.  Remember that the
+  ChangeSet file must be referenced.  The delta in the ChangeSet file
+  may be the X.3 delta (multi delta changeset).  So at the time we
+  are processing the X.1 delta, we don't have enough information
+  available to figure it out.  So a new LOD is started.  At the end
+  of the takepatch process, just before resolveFile() is called,
+  a routine fixLod() is called which figures out if separate LODs
+  are really the same LOD and does the renumbering (code is in
+  sccs_renumber() in renumber.c).
+
+  If the source repository is in LOD 1 and the destination repository is
+  in LOD 2, then the names of the sfiles in RESYNC doesn't really
+  correspond to anything useful.  There isn't enough information to get
+  what the files would like if the source repository were in LOD 2. The
+  files after fixLod() have been run have their defbranch set to LOD 2,
+  but the name hasn't been changed.  So what is done is nameOK() in
+  resolve.c is modified to check to see if the desired name is the same
+  as the sfile name.  If not, then it fails nameOK() and goes through
+  the rename process.  This will handle files going into and out of
+  being NIV files.   There currently isn't any logic to handle conflict
+  in NIV files.
+======= previous notes
+
 The LOD stuff needs to get symbol semantics
 	- each LOD is either (a) part of a checkin, or (b) a meta data node
 	  like a symbol.
