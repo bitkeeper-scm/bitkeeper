@@ -341,7 +341,7 @@ nameOK(opts *opts, sccs *s)
 {
 	char	path[MAXPATH], realname[MAXPATH];
 	char	buf[MAXPATH];
-	sccs	*local;
+	sccs	*local = 0;
 
 	/*
 	 * Are we in the right sfile? (through LOD shuffling, might not be)
@@ -2247,15 +2247,15 @@ pass4_apply(opts *opts)
 		if (strcasecmp(&buf[offset], realname) == 0) {
 			fprintf(stderr,
 "==========================================================================\n\
-BitKeeper have detected a \"case folding file system\", What this mean\n\
-is that your file system ignore case differences when it looks for \n\
+BitKeeper have detected a \"case folding file system\". What this mean\n\
+is that your file system ignore case differences when it looks for\n\
 directories and files. This also means that it is not possible to rename\n\
 a path which only has upper/lower case changes. BitKeeper wants to rename:\n\
     %s -> %s\n\
 Your file system is changing it to:\n\
     %s -> %s\n\
 BitKeeper consider this an error, since this may not be what you have\n\
-inteded. The recommended work around for this problem is as follows:\n\
+intended. The recommended work around for this problem is as follows:\n\
 a) exit from this resolve session\n\
 b) move the directory or file with upper/lower case changes to a\n\
    temporary location\n\
