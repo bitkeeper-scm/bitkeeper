@@ -41,7 +41,9 @@ install: all
 	done >> $(BINDIR)/MANIFEST; \
 
 os: ../utils/os ../utils/gnu-os
-	(cd ../utils && ./os) > os
+	(cd ../utils && ./os) > _os
+	echo BIN-`cat _os` > os
+	/bin/rm -f _os
 
 # win32, can not clean the current Makefile when we are
 # running this make file
