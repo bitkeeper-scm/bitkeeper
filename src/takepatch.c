@@ -421,7 +421,7 @@ again:	s = sccs_keyinit(t, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB);
 	 */
 	unless (s || newProject || newFile) {
 		if (gone(t, goneDB)) {
-			if (strieq("yes", user_preference("pull_gone"))) {
+			if (getenv("BK_GONE_OK")) {
 				skipPatch(p);
 				return (0);
 			} else {
