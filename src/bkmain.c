@@ -144,7 +144,7 @@ struct command cmdtbl[100] = {
 	{"pending", pending_main},
 	{"resolve", resolve_main},
 	{"push", push_main},
-	{"names", push_main},
+	{"names", names_main},
 	0
 };
 

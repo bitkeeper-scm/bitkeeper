@@ -703,9 +703,6 @@ __platformInit
 __init
 __logCommand "$@"
 
-PATH=${BIN%/}:$PATH
-export PATH
-
 if type "_$1" >/dev/null 2>&1
 then	cmd=_$1
 	shift
