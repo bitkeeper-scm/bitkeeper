@@ -241,10 +241,10 @@ _get_http_proxy(char **proxies)
 		/*
 		 * When we get here:
 		 * 	 h points to host
-		 * 	 q points to por
+		 * 	 q points to port
 		 * 	 cr points to user:passwd
 	 	 */
-		sprintf(buf, "PROXY %s:%s", h, q);
+		sprintf(buf, "PROXY %s:%-d", h, atoi(q));
 		if (cr) {
 			strcat(buf, " ");
 			strcat(buf, cr);
