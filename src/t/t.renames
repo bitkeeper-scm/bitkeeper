@@ -1,0 +1,230 @@
+# Copyright (c) 1999 Zack Weinberg
+# %K%
+
+# Tests for as many rename possibilities as I can think of.
+# Each test starts out with two repositories (s and d) each
+# of which contains three files: A, B, C.  d is a clone of s.
+# We use special notation to describe each test; this is 
+# translated to commands below.
+# Each test is done four times - once just as is, once with A
+# modified in the destination repository, once with the
+# resync run in the other direction, and once with A modified
+# and the resync run in the other direction.
+
+# The entire set of tests is disabled until resolve catches up.
+if false
+then
+
+cat >tests <<'^D'
+#t name of test
+#s source moves
+#d dest moves	(optional)
+#r resolve operations
+#x what to expect
+
+# No change on destination side...
+t trivial case ................................................
+s A-X
+r
+x A-X B C
+
+t move and replace ............................................
+s A-X +A
+r
+x A A-X B C
+
+t order dependent rename ......................................
+s A-X B-A
+r
+x A-X B-A C
+
+t circular rename .............................................
+s A-T B-A T-B
+r
+x A-B B-A C
+
+# Nonconflicting changes on each side
+t one move each repo ..........................................
+s A-X
+d B-Y
+r
+x A-X B-Y C
+
+t same move each repo .........................................
+s A-X
+d A-X
+r
+x A-X B C
+
+# Basic conflict cases
+t normal conflict .............................................
+s A-X
+d A-Y
+r Y
+x A-Y B C
+
+t inverse conflict ............................................
+s A-X
+d B-X
+r A X
+x A B-X C
+
+t inverse conflict caused by create ...........................
+s A-X
+d +X
+r X Y
+x A-X B C X-Y
+
+t inverse conflict caused by resolve ..........................
+s A-X B-A
+d A-Y
+r A X
+x A B-X C
+
+# Hairier conflict cases
+t order dependent conflict ....................................
+s A-X B-A
+d A-Y
+r Y
+x A-Y B-A C
+
+t order dependent inverse conflict ............................
+s A-X B-A
+d A-X C-A
+r B A
+x A-X B C-A
+
+t circular rename with conflict ...............................
+s A-T B-A T-B
+d A-X
+r B
+x A-B B-A C
+
+t geartooth rename ............................................
+s C-T B-C A-B T-A
+d A-T B-A C-B T-C
+r C A B
+x A-C B-A C-B
+
+^D
+
+echo $N set up ......................................................$NL
+HERE=`pwd`
+echo "logging: /dev/null" > c
+echo "logging_ok: t" >> c
+bk setup -f -n'BitKeeper Test repository' -c$HERE/c s
+if [ ! -d s ]; then echo failed; exit 1; fi
+set -e
+trap 'echo failed' 0
+cd s
+echo 1 > A
+echo 2 > B
+echo 3 > C
+delta $S -i A B C
+bk commit $S -f -ybase
+cd ..
+bk clone $Q s d
+cmp s/SCCS/s.A d/SCCS/s.A
+tar cf base.tar s d
+echo OK
+
+# Core operations.
+_setup()
+{
+	echo $N "$*"$NL
+	cd $HERE
+	rm -rf s d
+	tar xf base.tar
+}
+
+_modifyA()
+{
+	get $S -e A
+	echo 2 >> A
+	delta $S -ycontent A
+}
+
+_moves()
+{
+	for arg
+	do	case $arg in
+		  +?)	echo plus > ${arg#+}
+			delta $S -i ${arg#+}
+			;;
+		  ?-?)	sccsmv ${arg%-?} ${arg#?-}
+			;;
+		  *)	echo Mangled move operation $arg >&2
+			exit 1
+			;;
+		esac
+	done
+	bk commit $Q -f -ymoves
+}
+
+_resolve()
+{
+	if [ $# -eq 0 ]
+	then	bk resolve $Q -a
+	else	for arg
+		do echo $arg
+		done | bk resolve $Q -f -
+	fi
+}
+
+_inspect()
+{
+	for arg
+	do	case $arg in
+		  ?)	# This file exists and has the same
+			# name that it did when it was created.
+			OX=$arg
+			NX=$arg
+			;;
+		  ?-?)	# This file exists, was created as
+			# the first letter, and is now named
+			# the second letter.
+			OX=${arg%-?}
+			NX=${arg#?-}
+			;;
+		esac
+		[ -f SCCS/s.$NX ]
+		ON=`prs -h -r1.0 -d:DPN: $NX`
+		NN=`prs -h -r+   -d:DPN: $NX`
+		[ x$ON = x$OX ]
+		[ x$NN = x$NX ]
+	done
+	echo OK
+}
+
+# Pass 1.
+echo ------------ renames alone, s to d
+t() { _setup "$@"; }
+s() { cd $HERE/s; _moves "$@"; }
+d() { cd $HERE/d; _moves "$@"; }
+r() { cd $HERE; bk resync $Q s d; cd $HERE/d; _resolve "$@"; }
+x() { cd $HERE/d; _inspect "$@"; }
+. $HERE/tests
+
+# Pass 2.
+echo ------------ renames alone, d to s
+r() { cd $HERE; bk resync $Q d s; cd $HERE/s; _resolve "$@"; }
+x() { cd $HERE/s; _inspect "$@"; }
+. $HERE/tests
+
+# Pass 3.
+echo ------------ renames with modified file, s to d
+t() { _setup "$@"; cd d; _modifyA; }
+r() { cd $HERE; bk resync $Q s d; cd $HERE/d; _resolve "$@"; }
+x() { cd $HERE/d; _inspect "$@"; }
+. $HERE/tests
+
+# Pass 4.
+echo ------------ renames with modified file, d to s
+t() { _setup "$@"; cd s; _modifyA; }
+r() { cd $HERE; bk resync $Q d s; cd $HERE/s; _resolve "$@"; }
+x() { cd $HERE/s; _inspect "$@"; }
+. $HERE/tests
+
+trap '' 0
+
+fi

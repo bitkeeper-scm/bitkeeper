@@ -1313,8 +1313,9 @@ _export() {
 	| sed 's/:/ /' | while read file rev
 	do
 		PN=`${BIN}prs -r$rev -hd:DPN: $SRC/$file`
-		if ! ${BIN}get $K $Q -r$rev -G$DST/$PN $SRC/$file
-		then	DIR=`dirname $DST/$PN`
+		if ${BIN}get $K $Q -r$rev -G$DST/$PN $SRC/$file
+		then :
+		else	DIR=`dirname $DST/$PN`
 			mkdir -p $DIR || exit 1
 			${BIN}get $K $Q -r$rev -G$DST/$PN $SRC/$file
 		fi
