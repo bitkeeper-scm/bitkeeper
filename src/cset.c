@@ -11,6 +11,7 @@ typedef	struct cset {
 	/* bits */
 	int	mixed;		/* if set, then both long and short keys */
 	int	csetOnly;	/* if set, do logging ChangeSet */
+	int     metaOnly;	/* if set, do only metadata */
 	int	makepatch;	/* if set, act like makepatch */
 	int	listeach;	/* if set, list revs 1/line */
 	int	mark;		/* act like csetmark used to act */
@@ -120,7 +121,7 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 
 	while (
 	    (c =
-	    getopt(ac, av, "c|Cd|DfHhi;m|M|pqr|sS;vx;y|Y|")) != -1) {
+	    getopt(ac, av, "ce|Cd|DfHhi;m|M|pqr|sS;vx;y|Y|")) != -1) {
 		switch (c) {
 		    case 'D': ignoreDeleted++; break;
 		    case 'f': copts.force++; break;
@@ -137,6 +138,12 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 		    case 'd':
 			if (c == 'd') copts.doDiffs++;
 		    	/* fall through */
+		    case 'e':
+			if (c == 'e') {
+				copts.metaOnly++;
+				copts.makepatch++;
+			}
+			/* fall through */
 		    case 'c':
 			if (c == 'c') {
 				copts.csetOnly++;
@@ -190,7 +197,7 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 		}
 	}
 
-	if (copts.doDiffs && copts.csetOnly) {
+	if (copts.doDiffs && (copts.csetOnly || copts.metaOnly)) {
 		fprintf(stderr, "Warning: ignoring -d option\n");
 		copts.doDiffs = 0;
 	}
@@ -201,7 +208,7 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 	if ((copts.include || copts.exclude) &&
 	    (copts.doDiffs || copts.csetOnly || copts.makepatch ||
 	    copts.listeach || copts.mark || copts.force || copts.remark ||
-	    copts.historic || av[optind])) {
+	    copts.historic || copts.metaOnly || av[optind])) {
 	    	fprintf(stderr, "cset -x|-i must be stand alone.\n");
 		goto usage;
 	}
@@ -1191,7 +1198,7 @@ sccs_patch(sccs *s, cset_t *cs)
 		s->rstop = s->rstart = d;
 		sccs_prs(s, PRS_PATCH|SILENT, 0, NULL, stdout);
 		printf("\n");
-		if (d->type == 'D') {
+		if (d->type == 'D' && !cs->metaOnly) {
 			if (s->state & S_CSET) {
 				if (d->added) {
 					sccs_getdiffs(s,
