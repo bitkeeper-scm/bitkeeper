@@ -6627,7 +6627,6 @@ out:			if (slist) free(slist);
 	s->deleted = deleted;
 	s->same = same;
 
-	if (s->encoding & E_GZIP) zgets_done();
 	if (flags & GET_HASHONLY) {
 		error = 0;
 	} else {
@@ -6650,6 +6649,12 @@ out:			if (slist) free(slist);
 			unless (streq("-", printOut)) fclose(out);
 		} else {
 			fclose(out);
+		}
+	}
+	if (s->encoding & E_GZIP) {
+		if (zgets_done()) {
+			error = 1;
+			s->io_error = s->io_warned = 1;
 		}
 	}
 
@@ -7248,7 +7253,13 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		no_lf = 0;
 	}
 	ret = 0;
-done:	if (s->encoding & E_GZIP) zgets_done();
+done:   
+	if (s->encoding & E_GZIP) {
+		if (zgets_done()) {
+			s->io_error = 1;
+			ret = -1; /* compression failure */
+		}
+	}		
 done2:	/* for GET_HASHDIFFS, the encoding has been handled in getRegBody() */
 	if (lbuf) {
 		if (flushFILE(lbuf)) {
@@ -10842,7 +10853,9 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	badcksum(sc, flags);
 #endif
 	sccs_close(sc), fclose(sfile), sfile = NULL;
-	if (old_enc & E_GZIP) zgets_done();
+	if (old_enc & E_GZIP) {
+		if (zgets_done()) OUT;
+	}
 	t = sccsXfile(sc, 'x');
 	if (rename(t, sc->sfile)) {
 		fprintf(stderr,
@@ -10959,7 +10972,9 @@ out:
 	fseek(sfile, 0L, SEEK_SET);
 	fprintf(sfile, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
 	sccs_close(s), fclose(sfile), sfile = NULL;
-	if (s->encoding & E_GZIP) zgets_done();
+	if (s->encoding & E_GZIP) {
+		if (zgets_done()) OUT;
+	}
 	t = sccsXfile(s, 'x');
 	if (rename(t, s->sfile)) {
 		fprintf(stderr,
@@ -11321,7 +11336,9 @@ newcmd:
 	*up = unchanged;
 	if (state) free(state);
 	if (slist) free(slist);
-	if (s->encoding & E_GZIP) zgets_done();
+	if (s->encoding & E_GZIP) {
+		if (zgets_done()) return (-1);
+	}
 	if (HASH(s) && (getHashSum(s, n, diffs) != 0)) {
 		return (-1);
 	}
@@ -11884,7 +11901,9 @@ abort:		fclose(sfile);
 		fputdata(s, buf, sfile);
 	}
 	if (fflushdata(s, sfile)) goto abort;
-	if (s->encoding & E_GZIP) zgets_done();
+	if (s->encoding & E_GZIP) {
+		if (zgets_done()) goto abort;
+	}
 	fseek(sfile, 0L, SEEK_SET);
 	fprintf(sfile, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
 	sccs_close(s); fclose(sfile); sfile = NULL;
@@ -15599,7 +15618,9 @@ stripDeltas(sccs *s, FILE *out)
 	free(state);
 	free(slist);
 	if (fflushdata(s, out)) return (1);
-	if (s->encoding & E_GZIP) zgets_done();
+	if (s->encoding & E_GZIP) {
+		if (zgets_done()) return (1);
+	}
 	fseek(out, 0L, SEEK_SET);
 	fprintf(out, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
 	sccs_close(s);
