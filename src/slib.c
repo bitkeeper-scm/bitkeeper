@@ -1469,8 +1469,6 @@ sPath(char *name, int isDir)
 	if (IsFullPath(path)) return path; /* no root marker */
 	if (hasRootFile(gRoot, sRoot)) {
 		concat_path(buf, sRoot, path);
-	} else {
-		concat_path(buf, gRoot, path);
 	}
 	cleanPath(buf, buf);
 	debug((stderr, "sPath(%s) -> %s\n", name, buf));
