@@ -45,16 +45,20 @@ fi
 echo $N Create test CVS repository ..................................$NL
 mkdir cvsroot
 export CVSROOT=$HERE/cvsroot
+test $WINDOWS = YES && CVSROOT=`pwd`/cvsroot
 cvs init || exit 1
 mkdir $CVSROOT/test
 cvs $Q co test || exit 1
 cd test
 # include yucky filename
-echo hi > "\\"
-cvs -Q new "\\" >/dev/null 2>&1 || exit 1
-cvs -Q commit -m"funny file" > /dev/null || exit 1
-rm "\\"
-cvs remove "\\" 2> /dev/null || exit 1
+if [ $WINDOWS = NO ]
+then
+	echo hi > "\\"
+	cvs -Q new "\\" >/dev/null 2>&1 || exit 1
+	cvs -Q commit -m"funny file" > /dev/null || exit 1
+	rm "\\"
+	cvs remove "\\" 2> /dev/null || exit 1
+fi
 
 cvsbuild()
 {

@@ -9,6 +9,11 @@
 #    constitutes your permission for BitMover, Inc. to distribute  the
 #    modifications under any license.
 
+case "$HERE" in
+    [CD]:/*)	PREFIX=file://$HERE;;
+    *)		PREFIX=file:/$HERE;;
+esac
+
 # Tests for parent manipulation
 echo $N Create initial repositories .................................$NL
 no_logging project
@@ -24,7 +29,7 @@ cd src
 bk parent -iq || exit 1
 bk parent -oq || exit 1
 bk parent -q || exit 1
-PARENT=file:/$HERE/project
+PARENT=$PREFIX/project
 test "$PARENT" = "`bk parent -il`" || exit 1
 test "$PARENT" = "`bk parent -ol`" || exit 1
 test "$PARENT" = "`bk parent -l`" || exit 1
@@ -72,7 +77,7 @@ test `bk parent -l` = bk://somewhere.org || exit 1
 echo OK
 
 echo $N Set several parents, make sure they are all recorded ........$NL
-PARENT=file:/$HERE/project
+PARENT=$PREFIX/project
 bk parent -sq $PARENT bozo@somewhere.com:/tmp bk://ibm.com/a/b/c || exit 1
 bk parent -l > GOT
 cat > WANT <<EOF
@@ -517,7 +522,7 @@ echo OK
 
 echo $N Make sure we normalize parent pointers by default ...........$NL
 bk parent -q ../project || exit 1
-PARENT=file:/$HERE/project
+PARENT=$PREFIX/project
 test "$PARENT" = "`bk parent -il`" || exit 1
 test "$PARENT" = "`bk parent -ol`" || exit 1
 test "$PARENT" = "`bk parent -l`" || exit 1
@@ -538,7 +543,7 @@ echo $N Make sure the addition of a normalized one is not factored ..$NL
 bk parent -aq ../project || exit 1
 cat > WANT <<EOF
 ../project
-file:/$HERE/project
+$PREFIX/project
 EOF
 bk parent -l > GOT
 cmp -s WANT GOT || {
@@ -548,7 +553,7 @@ cmp -s WANT GOT || {
 }
 cat > WANT <<EOF
 Push/pull parent: ../project
-Push/pull parent: file:/$HERE/project
+Push/pull parent: $PREFIX/project
 EOF
 bk parent > GOT
 cmp -s WANT GOT || {
