@@ -30,6 +30,7 @@ int
 main(int ac, char **av)
 {
 	int	c;
+	int	comment = 0;	/* set if they used -y */
 	static	opts opts;	/* so it is zero */
 	extern	char *bk_dir;
 
@@ -37,7 +38,7 @@ main(int ac, char **av)
 
 	opts.pass1 = opts.pass2 = opts.pass3 = opts.pass4 = 1;
 
-	while ((c = getopt(ac, av, "l|y;m;aAcdFqrtv1234")) != -1) {
+	while ((c = getopt(ac, av, "l|y|m;aAcdFqrtv1234")) != -1) {
 		switch (c) {
 		    case 'a': opts.automerge = 1; break;
 		    case 'A': opts.advance = 1; break;
@@ -55,7 +56,7 @@ main(int ac, char **av)
 		    case 'q': opts.quiet = 1; break;
 		    case 'r': opts.remerge = 1; break;
 		    case 't': opts.textOnly = 1; break;
-		    case 'y': opts.comment = optarg; break;
+		    case 'y': opts.comment = optarg; comment = 1; break;
 		    case '1': opts.pass1 = 0; break;
 		    case '2': opts.pass2 = 0; break;
 		    case '3': opts.pass3 = 0; break;
@@ -81,10 +82,10 @@ main(int ac, char **av)
 	}
 
 	if (opts.automerge) {
-		unless (opts.comment) opts.comment = "Automerge";
+		unless (comment || opts.comment) opts.comment = "Automerge";
 		opts.textOnly = 1;	/* Good idea??? */
 	}
-	unless (opts.comment) {
+	unless (comment || opts.comment) {
 		opts.comment = "Merge";
 	}
 

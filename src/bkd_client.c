@@ -14,6 +14,10 @@ remote *
 remote_parse(char *p)
 {
 	char	buf[MAXPATH+256];
+	static	echo = -1;
+	remote	*r;
+
+	if (echo == -1) echo = getenv("BK_REMOTE_PARSE") != 0;
 
 	unless (p) {
 		FILE	*f = popen("bk parent", "r");
@@ -32,11 +36,12 @@ remote_parse(char *p)
 	}
 	unless (p) return (0);
 	if (strneq("bk://", p, 5)) {
-		p += 5;
-		return (url_parse(p));
+		r = url_parse(p + 5);
 	} else {
-		return (nfs_parse(p));
+		r = nfs_parse(p);
 	}
+	if (echo && r) fprintf(stderr, "RP[%s]->[%s]\n", p, remote_unparse(r));
+	return (r);
 }
 
 /* [[user@]host:]path */
@@ -173,11 +178,12 @@ bkd(int compress, remote *r, int *sock)
 	char	*t;
 	char	*remsh = "ssh";
 	char	*remopts = compress ? "-C" : 0;
-	char	*cmd[100];
+	char	*cmd[100], bkd_path[MAXPATH];
 	int	i;
 	pid_t	p;
 	int	inout[2];
 	int	findprog(char *);
+	extern	char *bin;
 
 	if (r->port) {
 		assert(r->host);
@@ -219,7 +225,19 @@ bkd(int compress, remote *r, int *sock)
 			cmd[++i] = "-l";
 			cmd[++i] = r->user;
 		}
-		cmd[++i] = "bk bkd -e";
+		/* for regression tests */
+		if (bin && streq(r->host, "localhost")) {
+			/*
+			 * Pick up the bkd in the $BK_BIN directory
+			 * In regression test $BK_BIN is set to the
+			 * test directory.
+			 */
+			sprintf(bkd_path, "%sbkd -e", bin);
+			cmd[++i] = bkd_path;
+		} else {
+			/* pick up the bkd in the installed directory */
+			cmd[++i] = "bk bkd -e";
+		}
 		cmd[++i] = 0;
 	} else {
 		cmd[0] = "bk";

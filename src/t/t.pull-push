@@ -191,7 +191,7 @@ echo OK
 if [ $DO_REMOTE = YES -a X$NO_TTY = X ]; then
  echo $N Push with explicit remote parent ............................$NL
  cd $HERE/copy
- bk push -g $Q localhost:$HERE/project2 || { echo failed; exit 1; }
+ bk push -t $Q localhost:$HERE/project2 || { echo failed; exit 1; }
  KEY2="`cd $HERE/project2 && bk prs -hd:KEY: -r+ ChangeSet`"
  [ "$KEY" = "$KEY2" ] || { echo no push; exit 1; }
  cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks

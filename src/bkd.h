@@ -10,7 +10,7 @@
 #include "sccs.h"
 #include "zlib/zlib.h"
 
-#define	BKD_VERSION	"bkd version 1"
+#define	BKD_VERSION	"BKD version 1.1"
 
 /*
  * Functions take (int ac, char **av)

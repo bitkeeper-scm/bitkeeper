@@ -49,4 +49,6 @@ if [ $? != 0 ]
 then	echo commit failed
 	exit 1
 fi
+bk sccsrm bar.c
+bk commit $S -f -y"rm"
 echo OK
