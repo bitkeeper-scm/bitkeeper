@@ -329,9 +329,9 @@ proc widgets {L R} \
 	global	leftColor rightColor scroll diffHeight
 	global	wish tcl_platform diffbFont
 
-	set leftWidth 51
-	set rightWidth 70
-	set diffHeight 30
+	set leftWidth 65
+	set rightWidth 65
+	set diffHeight 50
 	set tcolor lightseagreen
 	set leftColor orange
 	set rightColor yellow

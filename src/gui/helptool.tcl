@@ -66,7 +66,7 @@ proc doPixSelect {x y} \
 #
 proc doSelect {x} \
 {
-	global	nTopics line
+	global	line
 
 	busy 1
 	.ctrl.topics see $line
@@ -84,39 +84,20 @@ proc doSelect {x} \
 
 proc bkhelp {topic} \
 {
-	global line
+	global line line2full
 
-	if {$topic == ""} {
-		set msg "BitKeeper Help"
-	} else {
-		regsub "^  " $topic "" topic
-		set msg "BitKeeper help -- $topic"
-	}
+	set topic $line2full($line)
+	set msg "BitKeeper help -- $topic"
 	wm title . $msg
 	set f [open "| bk help -p $topic"]
 	.text.help configure -state normal
 	.text.help delete 1.0 end
 	set first 1
-	set seealso 0
 	while {[gets $f help] >= 0} {
-		if {($seealso == 0) && [regexp {^SEE ALSO} $help]} {
-			set seealso 1
-		} elseif {$seealso == 1} {
-			regsub "bk help " $help "" help
-		}
-
-		# If in the seealso section, insert text with two tags, one 
-		# tag being the name of the section, and the other a generic
-		# tag for all 'seealso' topics (used when highlighting)
-		if {($seealso == 1) && 
-		    [string compare "SEE ALSO" $help] != 0} {
-		    	set tag [string trim $help]
-			.text.help insert end "    "
-			.text.help insert end "$tag\n" "$tag seealso"
-			.text.help tag bind $tag <Button-1> \
-			    "getSelection $tag; doSelect 1"
-		} else {
+		if {[string first "bk " $help] == -1} {
 			.text.help insert end "$help\n"
+		} else {
+			embedded_tag "$help"
 		}
 
 		if {$first == 1} {
@@ -134,18 +115,48 @@ proc bkhelp {topic} \
 	.text.help tag configure seealso -foreground blue -underline true
 }
 
+# Find each occurrence of bk <cmd> or bk help <cmd> and tag cmd.
+proc embedded_tag {line} \
+{
+		#puts "LINE=$line"
+	while {$line != ""} {
+		set start [string first "bk " $line]
+		if {$start == -1} { break }
+		set end [expr $start + 7]
+		set t [string range $line $start $end]
+		#puts "  big?=$t"
+		if {$t == "bk help "} { incr start 5 }
+		incr start 2
+		set t [string range $line 0 $start]
+		#puts "  chop=$t"
+		.text.help insert end "$t"
+		incr start
+		set line [string range $line $start end]
+		#puts "  line=$line"
+		set end [string wordend $line 0]
+		incr end -1
+		set tag [string range $line 0 $end]
+		#puts "  tag=$tag"
+		if {[topic2line $tag] != ""} {
+			.text.help insert end "$tag" "$tag seealso"
+			.text.help tag bind $tag <Button-1> \
+			    "getSelection $tag; doSelect 1"
+			incr end
+			set line [string range $line $end end]
+		}
+	}
+	# Even if it is empty, we want the newline.
+	.text.help insert end "$line\n"
+}
+
 proc topic2line {key} \
 {
-	global lines aliases
+	global lines aliases full
 
 	set l ""
 	catch { set l $lines($key) } dummy
 	if {"$l" == ""} { catch { set l $lines($aliases($key)) } dummy }
-	if {"$l" != ""} {
-		# XXX - why was the lines array off by one?
-		incr l
-		set l "$l.0"
-	}
+	if {"$l" != ""} { set l "$l.0" }
 	return $l
 }
 
@@ -163,7 +174,7 @@ proc search {} \
 	.ctrl.topics tag remove "search" 1.0 end
 	.text.help configure -state normal
 	.text.help delete 1.0 end
-	set f [open "| bk helpsearch -lh $search_word" "r"]
+	set f [open "| bk helpsearch -l $search_word" "r"]
 	set last ""
 	while {[gets $f line] >= 0} {
 		set tab [string first "\t" $line"]
@@ -187,6 +198,18 @@ proc search {} \
 	catch {close $f} dummy
 	.text.help configure -state disabled
 	.text.help tag configure seealso -foreground blue -underline true
+}
+
+proc clearSearch {} \
+{
+	global search_word
+
+	set search_word ""
+	.ctrl.topics tag remove "search" 1.0 end
+	.text.help configure -state normal
+	.text.help delete 1.0 end
+	.text.help configure -state disabled
+	doSelect 1
 }
 
 proc scroll {what dir} \
@@ -248,21 +271,13 @@ proc widgets {} \
 		-pady $py -background $bcolor -command {
 			global	line
 
+			clearSearch
 			set line [topic2line helptool]
 			doSelect 1
 		}
 	    button .menu.clear -text "Clear search" -font $buttonFont \
 		-borderwid 1 -pady $py -background $bcolor \
-		-command {
-			global search_word
-
-			set search_word ""
-			.ctrl.topics tag remove "search" 1.0 end
-			.text.help configure -state normal
-			.text.help delete 1.0 end
-			.text.help configure -state disabled
-			doSelect 1
-		}
+		-command { clearSearch }
 	    button .menu.search -text "Search:" -font $buttonFont -borderwid 1 \
 		-pady $py -background $bcolor -command { search }
 	    entry .menu.entry -font $buttonFont -borderwid 1 \
@@ -376,30 +391,49 @@ proc getSelection {argv} \
 		puts "No help for $argv"
 		exit
 	}
+	incr l -1
 	set line [.ctrl.topics index "1.0 + $l lines"]
 }
 
 proc getHelp {} \
 {
-	global	nTopics argv line lines aliases
+	global	nTopics argv line lines aliases line2full
 
 	set nTopics 0
 	set f [open "| bk helptopiclist"]
 	.ctrl.topics configure -state normal
+	set section ""
 	while {[gets $f topic] >= 0} {
 		if {$topic == "Aliases"} { break }
 		.ctrl.topics insert end "$topic\n"
-		regsub "^  " $topic "" topic
-		# XXX - since section headings and topics can share the name
-		# space, this should only do it for topics, not headings.
-		set lines($topic) $nTopics
+		if {[string index $topic 0] != " "} {
+			set section $topic
+			set topic ""
+		} else {
+			set topic [string trim $topic]
+		}
 		incr nTopics 1
+		set lines($topic) $nTopics
+		if {$topic != ""} {
+			set full "$section/$topic"
+		} else {
+			set full $section
+		}
+		set lines($full) $nTopics
+		set index "$nTopics.0"
+		set line2full($index) $full
 	}
 	while {[gets $f topic] >= 0} {
 		set l [split $topic \t]
 		set key [lindex $l 0]
 		set val [lindex $l 1]
 		set aliases($key) $val
+		# Store the short key as well.  This can cause problems
+		# if there are name space collisions, but then use full names.
+		set slash [string first "/" $key]
+		incr slash
+		set short [string range $key $slash end]
+		set aliases($short) $val
 	}
 	catch {close $f} dummy
 	.ctrl.topics configure -state disabled
