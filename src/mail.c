@@ -3,30 +3,6 @@
  */    
 #include "bkd.h"
 
-/*
- * Return ture if reposirory have less than BK_MAX_FILES file
- */
-private int
-smallTree()
-{
-#define MAX_BK_FILES 100
-	FILE	*f;
-	int	i = 0;
-	char	buf[ 2 * MAXKEY + 10];
-
-	f = popen("bk -R get -qkp ChangeSet", "r");
-	assert(f);
-	while (fnext(buf, f)) {
-		if (++i > MAX_BK_FILES) {
-			pclose(f);
-			return (0);
-		}
-	}
-	pclose(f);
-	return (1);
-}
-
-
 int
 lconfig_main(int ac, char **av)
 {
@@ -57,7 +33,7 @@ lconfig_main(int ac, char **av)
 	/*
 	 * Do not send config log for small single user tree
 	 */
-	if (smallTree() && (bkusers(1, 1, 0, NULL) <= 1)) {
+	if (smallTree(BK_CONFIG_THRESHOLD) && (bkusers(1, 1, 0, NULL) <= 1)) {
 		if (debug) {
 			fprintf(stderr,
 			    "skipping config log for small single user tree\n");

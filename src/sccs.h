@@ -338,6 +338,9 @@
 #define BK_BASIC	1
 #define BK_PRO		2
 
+#define	BK_CONFIG_THRESHOLD 100	 /* single user tree config log threshold */
+#define	BK_SINGLE_THRESHOLD 1000 /* single user tree close logging threshold */
+
 #define BKOPT_WEB	0x0001
 #define BKOPT_ALL	0xffff
 
@@ -988,6 +991,7 @@ int	bktemp(char *buf);
 char	*bktmpfile();	/* return a char* to a just created temp file */
 void	updLogMarker(int ptype, int verbose);
 char	*getRealCwd(char *, size_t);
+int	smallTree(int threshold);
 
 extern char *bk_vers;
 extern char *bk_utc;

@@ -280,7 +280,7 @@ do_commit(char **av, c_opts opts, char *sym,
 
 	l = logging(0, 0, 0);
 	unless (ok_commit(l, opts.alreadyAsked)) {
-		if (commentFile) unlink(commentFile);
+out:		if (commentFile) unlink(commentFile);
 		if (pendingFiles) unlink(pendingFiles);
 		return (1);
 	}
@@ -334,8 +334,19 @@ do_commit(char **av, c_opts opts, char *sym,
 "\t\"bk -R inode ChangeSet\" command.\n"
 "============================================================================\n"
 , MAX_PENDING_LOG);
-				return (1);
+				goto out;
 			}
+		}
+		if (!(l&LOG_OPEN) && (l&LOG_LIC_SINGLE) &&
+					!smallTree(BK_SINGLE_THRESHOLD)) {
+			printf(
+"============================================================================\n"
+"Error: Single user repositories are limited to %d files. If you need more\n"
+"files than that in one repository, you need to buy a commercial license or\n"
+"turn on open logging.\n"
+"============================================================================\n"
+, BK_SINGLE_THRESHOLD);
+			goto out;
 		}
 	}
 	if (pending(s_logging_ok)) {
