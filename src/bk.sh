@@ -274,6 +274,44 @@ __track_update() {
 	if [ -n "$V" ]; then echo Merge complete.; fi
 }
 
+# Move all deleted files to the deleted directory.
+_fix_deletes() {
+	__cd2root
+	DIDONE=NO
+	${BIN}sfiles | grep 'SCCS/s\.\.del-' | grep -v BitKeeper/deleted/SCCS |
+	while read FILE
+	do	BASE=`basename $FILE`
+		SUFFIX=
+		N=0
+		while [ -f "BitKeeper/deleted/SCCS/$BASE$SUFFIX" ]
+		do	N=`expr $N + 1`
+			OLD="$SUFFIX"
+			SUFFIX="~$N"
+			echo "$BASE$OLD is taken, trying $BASE$SUFFIX"
+		done
+		echo "Moving $BASE to BitKeeper/deleted/SCCS/$BASE$SUFFIX"
+		bk mv $FILE "BitKeeper/deleted/SCCS/$BASE$SUFFIX"
+		if [ ! -f "BitKeeper/deleted/SCCS/$BASE$SUFFIX" ]
+		then	echo Move failed, abort.
+			exit 1
+		fi
+		DIDONE=YES
+	done
+	if [ $DIDONE=YES ]
+	then	echo Commiting the moves to a changeset.
+		echo Warning - this will pick up any other uncommitted deltas.
+		echo $N 'Do commit? '$NL
+		read x
+		case X$x in
+		    Xy*|XY*)
+			bk commit -F -y'Move deletes to BitKeeper/deleted'
+			;;
+		    *)	echo "OK, but do a commit before pull/resync"
+		    	;;
+		esac
+	fi
+}
+
 # This will go find the root if we aren't at the top
 _changes() {
 	__cd2root
