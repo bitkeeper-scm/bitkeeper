@@ -14,6 +14,7 @@ ifeq "$(OSTYPE)" "msys"
 	LD=$(CC)
 	LIBS = ../win32/uwtlib/libuwt.a -lws2_32
 	STRIP=strip
+	RESOURCES=resources.o
 else
         SYS=unix
 	EXE=
@@ -22,6 +23,7 @@ else
 	CFLAGS=-O
 	LD=$(CC)
 	STRIP=strip
+	RESOURCES=
 endif
 SFIO_OBJS=sfio.o sfio_utils.o
 SYSTEM_OBJS=../port/system.o ../port/spawn.o ../liblines.o ../purify.o ../libc/libc.a
@@ -45,12 +47,15 @@ _data.o: sfio$(EXE) munge$(EXE) zz$(EXE) sfioball
 	@./zz sfioball.zz < sfioball
 	@./munge sfio.zz sfioball.zz
 
-$(IMAGE): extractor.o $(SYSTEM_OBJS) _data.o 
+$(IMAGE): extractor.o $(SYSTEM_OBJS) _data.o $(RESOURCES)
 	$(LD) $(LDFLAGS) extractor.o $(SYSTEM_OBJS) _data.o $(LIBS) \
-	    ../zlib/libz.a -o $@
+	    ../zlib/libz.a $(RESOURCES) -o $@
 
 extractor.o: extractor.c
 	$(CC) $(CFLAGS) -c extractor.c
+
+resources.o: resources.rc ../win32/data/box_software.ico
+	windres -o $@ resources.rc
 
 sfio.o: ../sfio.c sfio.h
 	$(CC) -c $(CFLAGS) -DSFIO_STANDALONE ../sfio.c
