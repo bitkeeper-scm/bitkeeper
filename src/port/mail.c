@@ -38,6 +38,7 @@ mail(char *to, char *subject, char *file)
 			if (subject && *subject) {
 				fprintf(pipe, "Subject: %s\n", subject);
 			}
+			fputs("\n", pipe);
 			f = fopen(file, "r");
 			while (fgets(buf, sizeof(buf), f)) fputs(buf, pipe);
 			fclose(f);
