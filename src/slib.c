@@ -8759,9 +8759,9 @@ sccs_diffs(sccs *s, char *r1, char *r2, int flags, char kind, FILE *out)
 	char	*left, *right;
 	char	*leftf, *rightf;
 	char	tmpfile[MAXPATH];
-	char	diffFile[30];
+	char	diffFile[MAXPATH];
 	char	*columns;
-	char	tmp2[32];
+	char	tmp2[MAXPATH];
 	char	buf[MAXLINE];
 	pfile	pf;
 	int	first = 1;
