@@ -258,6 +258,8 @@ bk edit $Q BitKeeper/etc/config
 echo checkout:GET >> BitKeeper/etc/config 
 bk admin $Q -FSCCS moved
 touch ref
+# force a mod; for NFS
+echo "new_stuff" > ref
 sleep 1
 bk edit $Q moved
 find . -newer ref | grep -q "^./moved$"
