@@ -9770,7 +9770,6 @@ checkRev(sccs *s, char *file, delta *d, int flags)
 				fprintf(stderr,
 				    "%s: rev %s has incorrect parent %s\n",
 				    file, d->rev, d->parent->rev);
-abort(); //XXXXXXXXX DEBUG
 			}
 			error = 1;
 		}
@@ -9810,6 +9809,20 @@ time:	if (d->parent && (d->date < d->parent->date)) {
 			error |= 2;
 		}
 	}
+
+	/* Make sure the table order is sorted */
+	if (BITKEEPER(s) && d->next) {
+		unless (d->next->date <= d->date) {
+			unless (flags & ADMIN_SHUTUP) {
+				fprintf(stderr,
+				    "\t%s: %s,%s dates do not "
+				    "increase in table\n",
+				    s->sfile, d->rev, d->next->rev);
+			}
+			error |= 2;
+		}
+	}
+
 	/* Make sure we have no duplicate keys, assuming table sorted by date */
 	if (BITKEEPER(s) &&
 	    d->next &&
