@@ -9,6 +9,7 @@ lconfig_main(int ac, char **av)
 	char	from[MAXPATH], subject[MAXLINE], config_log[MAXPATH];
 	char	url[] = BK_WEBMAIL_URL;
 	char	*to = "config@openlogging.org";
+	char	*p;
 	FILE	*f;
 	int	pflag = 0, debug = 0, c, n, rc;
 	remote	*r;
@@ -43,12 +44,13 @@ lconfig_main(int ac, char **av)
 	}
 
 	sprintf(from, "%s@%s", sccs_getuser(), sccs_gethost());
-	sprintf(subject, "BitKeeper config: %s", package_name());
+	sprintf(subject, "BitKeeper config: %u",
+			    adler32(0, package_name(), strlen(package_name())));
 
 	gettemp(config_log, "config");
 	unless (f = fopen(config_log, "wb")) return (1);
+
 	fprintf(f, "To: %s\nFrom: %s\nSubject: %s\n\n", to, from, subject);
-	status(0, f);
 	config(f);
 	fclose(f);
 

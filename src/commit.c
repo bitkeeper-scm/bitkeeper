@@ -520,7 +520,6 @@ logChangeSet(int l, char *rev, int quiet)
 	system(buf);
 	f = fopen(commit_log, "ab");
 	fprintf(f, "---------------------------------\n\n");
-	status(0, f);
 	config(f);
 	fclose(f);
 	sprintf(buf, "bk cset -c -r%s..%s >> %s", start_rev, rev, commit_log);
@@ -540,23 +539,33 @@ config(FILE *f)
 	time_t	tm;
 	FILE	*f1;
 	MDBM	*db = loadConfig(".", 1);
-	char	buf[MAXLINE], aliases[MAXPATH], *dspec;
+	char	buf[MAXLINE], aliases[MAXPATH];
 	char	s_cset[MAXPATH] = CHANGESET;
+	char	*p, *dspec;
 	sccs	*s;
 	delta	*d;
+
+	fprintf(f,
+	   "%6d people have made deltas.\n", bkusers(1, 0, 0, 0));
+	f1 = popen("bk sfind -S -sx,c,p,n", "r");
+	while (fgets(buf, sizeof (buf), f1)) fputs(buf, f);
+	pclose(f1);
+	fputs("\n", f);
 
 	dspec = "$each(:FD:){Proj:      (:FD:)\\n}ID:        :KEY:\n";
 	do_prsdelta(s_cset, "1.0", 0, dspec, f);
 	fprintf(f, "%-10s %s", "User:", sccs_getuser());
 	fprintf(f, "\n%-10s %s", "Host:", sccs_gethost());
-	fprintf(f, "\n%-10s %s\n", "Root:", fullname(".", 0));
+	p = sccs_root(0);
+	fprintf(f, "\n%-10s %u\n", "Root:", adler32(0, p, strlen(p)));
+	free(p);
 	sprintf(buf, "%slog/parent", BitKeeper);
 	if (exists(buf)) {
-		FILE	*f1;
-
 		f1 = fopen(buf, "rt");
 		if (fgets(buf, sizeof(buf), f1)) {
-			fprintf(f, "%-10s %s", "Parent:", buf);
+			chop(buf);
+			fprintf(f, "%-10s %u\n",
+				    "Parent:", adler32(0, buf, strlen(buf)));
 		}
 		fclose(f1);
 	}
@@ -573,8 +582,12 @@ config(FILE *f)
 	fprintf(f, "%-10s %s", "Date:", ctime(&tm));
 	assert(db);
 	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
-		sprintf(buf, "%s:", kv.key.dptr);
-		fprintf(f, "%-10s %s\n", buf, kv.val.dptr);
+		if (streq("description", kv.key.dptr)) {
+			fprintf(f, "%-10s: %u\n", kv.key.dptr,
+					adler32(0, kv.val.dptr, kv.val.dsize));
+		} else {
+			fprintf(f, "%-10s: %s\n", kv.key.dptr, kv.val.dptr);
+		}
 	}
 	mdbm_close(db);
 	if (db = loadOK()) {
