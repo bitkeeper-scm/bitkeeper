@@ -135,12 +135,8 @@ trigger(char *cmd, char *when)
 	} else if (strneq(cmd, "commit", 6)) {
 		what = event = "commit";
 	} else if (strneq(cmd, "merge", 5)) {
-		char	dir[MAXPATH];
-
-		getcwd(dir, sizeof(dir));
-		dir[strlen(dir) - (strlen(ROOT2RESYNC) + 1)] = 0;
-		sprintf(triggerDir, "%s/BitKeeper/triggers", dir);
 		what = event = "commit";
+		strcpy(triggerDir, RESYNC2ROOT "/BitKeeper/triggers");
 	} else if (strneq(cmd, "delta", 5)) {
 		what = event = "delta";
 	} else {
