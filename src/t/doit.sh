@@ -130,7 +130,7 @@ clean_up()
 
 init_main_loop()
 {
-	touch $TST_DIR/T.${USER} $TST_DIR/T.${USER}-new
+	touch $TMP/T.${USER} $TMP/T.${USER}-new
 	if [ -d $BK_REGRESSION ]; then rm -rf $BK_REGRESSION; fi
 
 	# XXX: Do we really need this ?
@@ -140,7 +140,7 @@ init_main_loop()
 
 	# Save the list of file currently in $TMP
 	# check it again for tmp file leak when we are in clean_up()
-	ls -a $TMP > $TST_DIR/T.${USER}
+	ls -a $TMP > $TMP/T.${USER}
 
 	export PATH PLATFORM DEV_NULL TST_DIR CWD BK_LICENSE
 	export USER BK_REGRESSION BK_TMP NL N Q S CORES
@@ -193,7 +193,7 @@ do	echo ------------ ${i#t.} test
 	fi
 	clean_up
 done
-rm -f $TST_DIR/T.${USER} $TST_DIR/T.${USER}-new
+rm -f $TMP/T.${USER} $TMP/T.${USER}-new
 echo ------------------------------------------------
 echo All requested tests passed, must be my lucky day
 echo ------------------------------------------------
