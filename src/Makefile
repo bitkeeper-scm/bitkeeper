@@ -339,7 +339,9 @@ testfast: testfast.perl substvars
 
 bk: bk.sh bk.ver port/unix_platform.sh substvars 
 	./substvars port/unix_platform.sh bk.sh | \
-		sed "s/VERSION=unknown/VERSION=\"`cat bk.ver`\"/" > bk.T
+		sed "s/VERSION=unknown/VERSION=\"`cat bk.ver`\"/" | \
+		sed "s?BUILDER=unknown?BUILDER=\"`./getuser`@`./gethost`\"?" | \
+		sed "s/BUILT_DATE=unknown/BUILT_DATE=\"`date`\"/" > bk.T
 	chmod +x bk.T
 	mv -f bk.T bk
 

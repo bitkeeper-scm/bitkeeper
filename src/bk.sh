@@ -1398,6 +1398,8 @@ _man() {
 
 _version() {
 	echo "BitKeeper version is $VERSION"
+	echo "Built by: $BUILDER"
+	echo "Built date: $BUILT_DATE"
 }
 
 _root() {
@@ -1605,6 +1607,8 @@ __init() {
 	fi
 
 	VERSION=unknown
+	BUILDER=unknown
+	BUILT_DATE=unknown
 }
 
 __platformPath() {
