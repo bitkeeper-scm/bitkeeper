@@ -356,10 +356,10 @@ proc history {} \
 
 proc sfile {} \
 {
-	global	file
+	global	file bk_sfiles
 
 	busy 1
-	set sfile [exec bk sfiles $file]
+	set sfile [exec $bk_sfiles $file]
 	set f [open "$sfile" "r"]
 	filltext $f 1
 }
@@ -468,16 +468,16 @@ proc csetdiff2 {doDiffs} \
 
 proc cset {} \
 {
-	global file rev1 rev2 bk_prs dspec
+	global file rev1 rev2 bk_r2c bk_prs dspec
 
 	busy 1
 	set csets ""
 	.p.bottom.t configure -state normal
 	.p.bottom.t delete 1.0 end
 	if {[info exists rev2]} {
-		set revs [open "| bk prs -hbMr$rev1..$rev2 -d:I: $file"]
+		set revs [open "| $bk_prs -hbMr$rev1..$rev2 -d:I: $file"]
 		while {[gets $revs r] >= 0} {
-			set c [exec bk r2c $file $r]
+			set c [exec $bk_r2c -r$r $file]
 			set p [format "%s %s ==> cset %s\n" $file $r $c]
     			.p.bottom.t insert end "$p"
 			update
@@ -489,7 +489,7 @@ proc cset {} \
 		}
 		close $revs
 	} else {
-		set csets [exec bk r2c $file $rev1]
+		set csets [exec $bk_r2c -r$rev1 $file]
 	}
 	set p [open "|bk -R prs {$dspec} -r$csets ChangeSet" r]
 	filltext $p 1
@@ -497,14 +497,14 @@ proc cset {} \
 
 proc r2c {} \
 {
-	global file rev1 rev2
+	global file rev1 rev2 bk_r2c bk_prs
 
 	busy 1
 	set csets ""
 	if {[info exists rev2]} {
-		set revs [open "| bk prs -hbMr$rev1..$rev2 -d:I: $file"]
+		set revs [open "| $bk_prs -hbMr$rev1..$rev2 -d:I: $file"]
 		while {[gets $revs r] >= 0} {
-			set c [exec bk r2c $file $r]
+			set c [exec $bk_r2c -r$r $file]
 			if {$csets == ""} {
 				set csets $c
 			} else {
@@ -513,7 +513,7 @@ proc r2c {} \
 		}
 		close $revs
 	} else {
-		set csets [exec bk r2c $file $rev1]
+		set csets [exec $bk_r2c -r$rev1 $file]
 	}
 	exec bk csettool -r$csets &
 	busy 0

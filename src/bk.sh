@@ -790,38 +790,8 @@ _undo() {
 	bk -r check -a
 }
 
-# Usage: r2c file rev
-_r2c() {
-	if [ "X$1" = X -o "X$2" = X -o "X$3" != X ]
-	then	echo usage r2c file rev
-		exit 1
-	fi
-	FILE=$1
-	REV=`${BIN}prs -hr$2 -d:CSETREV: $FILE`
-	if [ "X$REV" = X ]
-	then	echo can not find cset marker at or below $2
-		exit 1
-	fi
-	KEY=`${BIN}prs -hr$REV -d:KEY: $FILE`
-	bk -R sccscat -hm ChangeSet | grep "$KEY" > /tmp/r2c$$
-	if [ ! -s /tmp/r2c$$ ]
-	then	SKEY=`${BIN}prs -hr$REV -d:SHORTKEY: $FILE`
-		bk -R sccscat -hm ChangeSet | grep "$SKEY" > /tmp/r2c$$
-	fi
-	if [ ! -s /tmp/r2c$$ ]
-	then	echo Can not find "$KEY" or "$SKEY" in ChangeSet file
-		$RM /tmp/r2c$$
-		exit 1
-	fi
-	set `cat /tmp/r2c$$`
-	$RM /tmp/r2c$$
-	if [ "X$1" != X ]
-	then	echo $1
-	fi
-}
-
 _rev2cset() {
-	_r2c "$@"
+	${BIN}r2c "$@"
 }
 
 _pending() {

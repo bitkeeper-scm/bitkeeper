@@ -328,9 +328,25 @@ proc prevCset {} \
 {
 }
 
+proc file_history {} \
+{
+	global	lastFile Files file_start_stop file_stop
+
+	set line $Files($lastFile)
+	set line "$line.0"
+	set file [.filelist.t get $line "$line lineend"]
+	if {[regexp "^  $file_start_stop" $file dummy file start stop] == 0} {
+		regexp "^  $file_stop" $file dummy f stop
+		set start $stop
+		set file $f
+	}
+	exec bk -R sccstool $file &
+}
+
 proc dotFile {} \
 {
 	global	lastFile fileCount Files tmp_dir file_start_stop file_stop
+	global	bk_get bk_prs
 
 	busy 1
 	if {$lastFile == 1} {
@@ -354,16 +370,17 @@ proc dotFile {} \
 		set start $stop
 		set file $f
 	}
-	set p [open "| bk -R prs -hr$start -d:PARENT: $file"]
+	set p [open "| $bk_prs -hr$start -d:PARENT: $file"]
 	gets $p parent
 	close $p
 	if {$parent == ""} { set parent "1.0" }
 	set tmp [file tail $file]
 	set l [file join $tmp_dir $tmp-$parent]
 	set r [file join $tmp_dir $tmp-$stop]
-	exec bk -R get -qkpr$parent $file > $l
-	exec bk -R get -qkpr$stop $file > $r
+	exec $bk_get -qkpr$parent $file > $l
+	exec $bk_get -qkpr$stop $file > $r
 	readFiles $l $r
+	file delete $l $r
 
 	set buf ""
 	set line [lindex [split $line "."] 0]
@@ -376,7 +393,7 @@ proc dotFile {} \
 
 	set dspec \
 	    "-d:GFILE: :I: :D: :T: :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)}"
-	set prs [open "| bk -R prs {$dspec} -hr$crev ChangeSet" r]
+	set prs [open "| $bk_prs {$dspec} -hr$crev ChangeSet" r]
 	set first 1
 	while { [gets $prs buf] >= 0 } {
 		if {$first == 1} {
@@ -388,7 +405,7 @@ proc dotFile {} \
 	}
 	catch { close $prs }
 
-	set prs [open "| bk -R prs -bhC$stop {$dspec} $file" r]
+	set prs [open "| $bk_prs -bhC$stop {$dspec} $file" r]
 	set save ""
 	while { [gets $prs buf] >= 0 } {
 		if {$buf == "  "} { continue }
@@ -417,19 +434,20 @@ proc dotFile {} \
 proc getFiles {revs} \
 {
 	global	fileCount lastFile Files line2File file_start_stop bk_fs
+	global	bk_prs bk_cset
 
 	busy 1
 	.filelist.t configure -state normal
 	.filelist.t delete 1.0 end
 	set fileCount 0
 	set line 0
-	set r [open "| bk -R prs -bhr$revs -d:I: ChangeSet" r]
+	set r [open "| $bk_prs -bhr$revs -d:I: ChangeSet" r]
 	while {[gets $r cset] > 0} {
 		.diffs.status.middle configure -text "Getting cset $cset"
 		update
 		incr line
 		.filelist.t insert end "ChangeSet $cset\n" cset
-		set c [open "| bk cset -r$cset | sort" r]
+		set c [open "| $bk_cset -r$cset | sort" r]
 		while { [gets $c buf] >= 0 } {
 			incr fileCount
 			incr line
@@ -457,15 +475,9 @@ proc busy {busy} \
 	if {$busy == 1} {
 		. configure -cursor watch
 		.filelist.t configure -cursor watch
-		.sccslog.t configure -cursor watch
-		.diffs.left configure -cursor watch
-		.diffs.right configure -cursor watch
 	} else {
 		. configure -cursor hand2
 		.filelist.t configure -cursor hand2
-		.sccslog.t configure -cursor gumby
-		.diffs.left configure -cursor gumby
-		.diffs.right configure -cursor gumby
 	}
 	update
 }
@@ -652,9 +664,12 @@ proc widgets {} \
 	    button .menu.next -font $buttonFont -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-text ">> Diff" -width $menuwid -state disabled -command next
-	    button .menu.history -font $buttonFont -bg $bcolor \
+	    button .menu.cset_history -font $buttonFont -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-text "ChangeSet History" -command "exec bk sccstool &"
+	    button .menu.file_history -font $buttonFont -bg $bcolor \
+		-pady $py -padx $px -borderwid $bw \
+		-text "File History" -command file_history
 	    button .menu.quit -font $buttonFont -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Quit" -width $menuwid -command exit 
@@ -668,9 +683,10 @@ proc widgets {} \
 	    grid .menu.nextFile -row 1 -column 1
 	    grid .menu.prev  -row 2 -column 0
 	    grid .menu.next -row 2 -column 1
-	    grid .menu.history -row 3 -column 0 -columnspan 2 -sticky ew
-	    grid .menu.quit -row 4 -column 0 
-	    grid .menu.help -row 4 -column 1
+	    grid .menu.cset_history -row 3 -column 0 -columnspan 2 -sticky ew
+	    grid .menu.file_history -row 4 -column 0 -columnspan 2 -sticky ew
+	    grid .menu.quit -row 5 -column 0 
+	    grid .menu.help -row 5 -column 1
 
 	grid .menu -row 0 -column 0 -sticky n
 	grid .filelist -row 0 -column 1 -sticky nsew
@@ -708,6 +724,9 @@ proc widgets {} \
 	.sccslog.t tag configure cset -background #c0c0c0
 	#.sccslog.t tag configure file_tag -background #b0b0f0
 	.sccslog.t tag configure file_tag -underline true
+	.sccslog.t configure -cursor gumby
+	.diffs.left configure -cursor gumby
+	.diffs.right configure -cursor gumby
 }
 
 # Set up keyboard accelerators.
@@ -755,6 +774,7 @@ proc main {} \
 		exit 1
 	}
 	bk_init
+	cd2root
 	widgets
 	getFiles $revs
 }

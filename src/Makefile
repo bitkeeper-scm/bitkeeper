@@ -9,7 +9,7 @@ BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  get gethost getuser key2rev lines prs range rechksum renumber	 \
 	  rmdel sccscat sccslog sccsmv sccsrm sccssh sfiles sfio sids	 \
 	  sinfo stripdel smoosh takepatch undos what gca mtime zone	 \
-	  isascii resyncwrap
+	  isascii resyncwrap r2c
 SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 mkindex \
 	  renametool mkdiffs
@@ -256,6 +256,8 @@ check: check.o $(LIBS)
 	$(CC) $(CFLAGS) check.o $(LINK) -o check
 sccslog: sccslog.o $(LIBS)
 	$(CC) $(CFLAGS) sccslog.o $(LINK) -o sccslog
+r2c: r2c.o $(LIBS)
+	$(CC) $(CFLAGS) r2c.o $(LINK) -o r2c
 gca: gca.o $(LIBS)
 	$(CC) $(CFLAGS) gca.o $(LINK) -o gca
 smoosh: smoosh.o $(LIBS)
@@ -400,8 +402,9 @@ difftool: gui/difftool.tcl port/unix_platform.tcl substvars
 	chmod +x difftool.T
 	mv -f difftool.T difftool
 
-csettool: gui/csettool.tcl port/unix_platform.tcl substvars
-	./substvars port/unix_platform.tcl gui/csettool.tcl > csettool.T
+csettool: gui/csettool.tcl gui/common.tcl port/unix_platform.tcl substvars
+	./substvars port/unix_platform.tcl \
+	    gui/common.tcl gui/csettool.tcl > csettool.T
 	chmod +x csettool.T
 	mv -f csettool.T csettool
 
