@@ -4,6 +4,10 @@ proc getConfig {prog} \
 
 	set app $prog
 
+	option add *Scrollbar.borderWidth 1 100
+	option add *Label.borderWidth 1 100
+	option add *Button.borderWidth 1 100
+
 	if {$tcl_platform(platform) == "windows"} {
 		set f {Courier New}
 		set ps 8
@@ -11,8 +15,8 @@ proc getConfig {prog} \
 		set _d(fixedBoldFont) [list $f $ps bold]
 		set _d(fm.activeOldFont) [list $f $ps normal]
 		set _d(fm.activeNewFont) [list $f $ps normal]
-		set _d(buttonFont) {Arial 8 roman}
-		set _d(noticeFont) {Arial 8 roman bold}
+		set _d(buttonFont) {Arial 8 normal}
+		set _d(noticeFont) {Arial 8 normal bold}
 		set _d(cset.leftWidth) 40
 		set _d(cset.rightWidth) 80
 		set _d(scrollWidth) 12		;# scrollbar width
