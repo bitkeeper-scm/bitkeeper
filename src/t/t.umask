@@ -53,3 +53,12 @@ then	echo failed to set permissions properly
 fi
 echo OK
 
+echo $N Make sure owner/group get read/write ........................$NL
+ls > LS
+bk new $Q LS
+if [ `bk prs -d:RWXMODE: -h -r+ LS` != "-rw-rw----" ]
+then	echo Bad mode `bk prs -d:RWXMODE: -h -r+ LS`, wanted -rw-rw----
+	exit 1
+fi
+echo OK
+

@@ -22,7 +22,7 @@ echo $N Check in an executable file .................................$NL
 touch prog
 chmod 0751 prog
 bk ci -i $Q prog
-grep -q '^.cO-rwxr-x--x' SCCS/s.prog
+grep -q '^.cO-rwxrwx--x' SCCS/s.prog
 if [ $? -ne 0 ]; then echo Failed to add permissions; exit 1; fi
 echo OK
 echo $N Check permissions on checked out file .......................$NL
@@ -40,7 +40,7 @@ echo $N Check permissions on locked file ............................$NL
 bk co -l $Q prog
 P=`/bin/ls -l prog`
 case "$P" in
-    -rwxr-x--x*)
+    -rwxrwx--x*)
     	;;
     *)
     	echo failed to set permissions correctly; ls -l prog; exit 1
@@ -48,9 +48,9 @@ case "$P" in
 esac
 echo OK
 echo $N Change permissions and check in .............................$NL
-chmod 775 prog
+chmod 777 prog
 bk delta $S -yperms prog
-grep -q '^.cO-rwxrwx--x' SCCS/s.prog
+grep -q '^.cO-rwxrwxrwx' SCCS/s.prog
 if [ $? -eq 0 ]; then echo added permissions and should not have; exit 1; fi
 if [ -f "SCCS/p.prog" ]; then echo Failed to remove p.prog; exit 1; fi
 echo OK

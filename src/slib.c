@@ -7847,7 +7847,10 @@ checkin(sccs *s,
 		n->next = n0;
 	}
 	n = sccs_dInit(n, 'D', s, nodefault);
-	unless (s->mode & S_IWUSR) s->mode |= S_IWUSR;
+	if (s->mode & 0111) s->mode |= 0110;	/* force user/group execute */
+	s->mode |= 0220;			/* force user/group write */
+	s->mode |= 0440;			/* force user/group read */
+
 	updMode(s, n, 0);
 	if (!n->rev) n->rev = n0 ? strdup("1.1") : strdup("1.0");
 	explode_rev(n);
@@ -12028,6 +12031,14 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		char	buf[20];
 
 		sprintf(buf, "%o", (int)d->mode);
+		fs(buf);
+		return (strVal);
+	}
+
+	if (streq(kw, "RWXMODE")) {
+		char	buf[20];
+
+		sprintf(buf, "%s", mode2a(d->mode));
 		fs(buf);
 		return (strVal);
 	}
