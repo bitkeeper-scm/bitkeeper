@@ -214,6 +214,9 @@ runit(char *file, char *output)
 	} else {
 		rc = 100;
 	}
+	if (getenv("BK_SHOWPROC")) {
+		ttyprintf("TRIGGER %s => %d\n", basenm(file), rc);
+	}
 	return (rc);
 }
 

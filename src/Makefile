@@ -283,6 +283,9 @@ ssh sshtest:
 test tests rsh rshtest:
 	PREFER_RSH=YES $(MAKE) realtest
 
+nonet nonet_test localtest:
+	BK_NONET=YES PREFER_RSH=YES $(MAKE) realtest
+
 realtest: $(ALL) t/doit
 	-./bk get -q t/SCCS/s.t.* t/setup t/x.chk_env
 	cd t && ./doit
