@@ -604,6 +604,7 @@ int	getopt(int ac, char **av, char *opts);
 
 int	sccs_admin(sccs *sc, int flgs, int *encoding,
 	    admin *f, admin *l, admin *u, admin *s, char *txt);
+int	sccs_cat(sccs *s, int flags, char *printOut);
 int	sccs_checkin(sccs *s, int flags, delta *d);
 int	sccs_delta(sccs *s, int flags, delta *d, FILE *init, FILE *diffs);
 int	sccs_diffs(sccs *s, char *r1, char *r2, int flags, char kind, FILE *);

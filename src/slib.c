@@ -17,6 +17,7 @@ private int	samebranch(delta *a, delta *b);
 private char	*sccsXfile(sccs *sccs, char type);
 private int	badcksum(sccs *s);
 private int	printstate(const serlist *state, const ser_t *slist);
+private int	visitedstate(const serlist *state, const ser_t *slist);
 private void	changestate(register serlist *state, char type, int serial);
 private serlist *allocstate(serlist *old, int oldsize, int n);
 private int	end(sccs *, delta *, FILE *, int, int, int, int);
@@ -3991,6 +3992,28 @@ putlodlist(sccs *sc, ser_t *s, FILE *out)
 }
 
 /*
+ * Generate a list of serials marked with D_VISITED tag
+ */
+
+private ser_t *
+visitedmap(sccs *s)
+{
+	ser_t	*slist;
+	delta	*t;
+
+	slist = calloc(s->nextserial, sizeof(ser_t));
+	assert(slist);
+
+	for (t = s->table; t; t = t->next) {
+		if (t->type != 'D') continue;
+ 		assert(t->serial <= s->numdeltas);
+		if (t->flags & D_VISITED) 
+			slist[t->serial] = 1;
+	}
+	return (slist);
+}
+
+/*
  * Generate a list of serials to use to get a particular delta and
  * allocate & return space with the list in the space.
  * The 0th entry is contains the maximum used entry.
@@ -4180,6 +4203,22 @@ allocstate(serlist *old, int oldsize, int n)
 	s[SLIST].next = 0;
 	s[SLIST].serial = 0;
 	return (s);
+}
+
+private int
+visitedstate(const serlist *state, const ser_t *slist)
+{
+	register serlist *s;
+
+	/* Find the first not D and return serial if it is active */
+	for (s = state[SLIST].next; s; s = s->next) {
+		if (s->type != 'D') break;
+	}
+
+	if (s && slist[s->serial])
+		return (s->serial);
+
+	return (0);
 }
 
 /* calculate printstate using where we are (state)
@@ -4667,7 +4706,9 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	BUF	(buf);
 	char 	*base, *f;
 
-	slist = serialmap(s, d, flags, iLst, xLst, &error);
+	slist = (d)
+		? serialmap(s, d, flags, iLst, xLst, &error)
+		: visitedmap(s);
 	if (error == 1) {
 		assert(!slist);
 		fprintf(stderr,
@@ -4686,7 +4727,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	}
 
 	if ((s->state & S_RCS) && (flags & EXPAND)) flags |= RCSEXPAND;
-	if ((s->state & S_BITKEEPER) && d->sum && !iLst && !xLst) {
+	if (d && (s->state & S_BITKEEPER) && d->sum && !iLst && !xLst) {
 		flags |= NEWCKSUM;
 	}
 	/* Think carefully before changing this */
@@ -4696,7 +4737,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	state = allocstate(0, 0, s->nextserial);
 	if (flags & MODNAME) base = basenm(s->gfile);
 	
-	f = setupOutput(s, printOut, flags, d);
+	f = (d) ? setupOutput(s, printOut, flags, d) : printOut;
 	unless (f) {
 out:		if (slist) free(slist);
 		if (state) free(state);
@@ -4778,9 +4819,12 @@ out:		if (slist) free(slist);
 
 		debug2((stderr, "%.*s", linelen(buf), buf));
 		changestate(state, buf[1], atoi(&buf[3]));
-		print = printstate((const serlist*)state, (const ser_t*)slist);
+		print = (d)
+		    ? printstate((const serlist*)state, (const ser_t*)slist)
+		    : visitedstate((const serlist*)state, (const ser_t*)slist);
 	}
-	if ((flags & NEWCKSUM) && !(flags&SHUTUP) && lines && (sum != d->sum)) {
+	if (d && (flags & NEWCKSUM) && !(flags&SHUTUP) && \
+	    lines && (sum != d->sum)) {
 		fprintf(stderr,
 		    "get: bad delta cksum %u:%u for %s in %s, gotten anyway.\n",
 		    d->sum, sum, d->rev, s->sfile);
@@ -4803,13 +4847,13 @@ out:		if (slist) free(slist);
 		return (1);
 	}
 
-	if (flags&EDIT) {
+	if (d && flags&EDIT) {
 		if (d->mode) {
 			chmod(s->gfile, UMASK(d->mode));
 		} else {
 			chmod(s->gfile, UMASK(0666));
 		}
-	} else if (!(flags&PRINT)) {
+	} else if (d && !(flags&PRINT)) {
 		if (d->mode) {
 			chmod(s->gfile, UMASK(d->mode & ~0222));
 		} else {
@@ -4968,6 +5012,43 @@ skip_get:
 		fprintf(stderr, "\n");
 	}
 	if (i2) free(i2);
+	return (0);
+}
+
+/*
+ * cat the delta body formatted according to flags.
+ */
+int
+sccs_cat(sccs *s, int flags, char *printOut)
+{
+	int	lines = 0, locked = 0, error;
+
+	debug((stderr, "sccscat(%s, %s, %s, %s, %s, %x, %s)\n",
+	    s->sfile, flags, printOut));
+	unless (s->state & S_SOPEN) {
+		fprintf(stderr, "sccscat: couldn't open %s\n", s->sfile);
+err:		return (-1);
+	}
+	unless (s->cksumok) {
+		fprintf(stderr, "sccscat: bad chksum on %s\n", s->sfile);
+		goto err;
+	}
+	unless (s->tree) {
+		fprintf(stderr, "sccscat: no/bad delta tree in %s\n", s->sfile);
+		goto err;
+	}
+	if ((s->state & S_BADREVS) && !(flags & FORCE)) {
+		fprintf(stderr,
+		    "get: bad revisions, run renumber on %s\n", s->sfile);
+		s->state |= S_WARNED;
+		goto err;
+	}
+
+	error = getRegBody(s, printOut, flags, 0, &lines, 0, 0);
+	if (error) return (-1);
+
+	debug((stderr, "SCCSCAT done\n"));
+
 	return (0);
 }
 
