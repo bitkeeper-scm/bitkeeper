@@ -1,0 +1,19 @@
+.so ../bk-macros
+.TH "bk cp" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk cp \- create a copy of a file preserving its revision history
+.SH SYNOPSIS
+.\"
+.B bk cp 
+.ARG oldfile
+.ARG newfile
+.SH DESCRIPTION
+.LP
+Use bk cp to copy an existing file and its revision history to a new file.
+The new file will have a changed root identifier so that it is a different
+inode.
+.SH "SEE ALSO"
+.SA mv 1
+man cp
+.SH CATEGORY
+.B File
