@@ -13,18 +13,19 @@ PS4:
 	a2ps -4 -o PS4 < PS
 
 get:
-	-@bk get -q .
-	-@bk get -q man1
+	-@bk -r. get -Sq
 
-manball:
-	@make get
+manball: get
 	rm -rf bk-man; mkdir -p bk-man/man1
 	cd man1; \
 	for i in *.1;\
 	do (cat ../bk-macros; grep -v bk-macros $$i) > ../bk-man/man1/$$i; \
 	done
 	cd bk-man/man1; \
-	ls -1 | sed s/bk-// | while read x; do ln -s bk-$$x $$x; done
+	ls -1 bk-* | sed s/bk-// | while read x; do ln -s bk-$$x $$x; done
+
+install: manball
+	cp -R bk-man $(BINDIR)/man
 
 dist:
 	@rm -f PS PS2

@@ -63,16 +63,41 @@ unix_common_setup()
 	export DO_REMOTE
 }
 
+bad_mount()
+{
+	echo "======================================================="
+	echo "/tmp must be mounted in binary mode."
+	echo "This problem usually happen when you skip the install-cygwin"
+	echo "option when installing BitKeeper, otherwise the" 
+	echo "BitKeeper install script should have set this up"
+	echo "correctly."
+	echo "Note: To run the regression test, you must install the"
+	echo "cygwin package shipped with BitKeeper, since there are"
+	echo "bug fixes not in the official cygwin release yet."
+	echo "======================================================="
+	exit
+}
+
+check_mount_mode()
+{
+	mount | grep -q "on /tmp "
+	if [ $? = 0 ]
+	then
+		mount | grep 'on /tmp type' | grep -q 'binmode'
+		if [ $? = 0 ]; then return; else bad_mount; fi
+	fi
+
+	mount | grep 'on / type' | grep -q 'binmode'
+	if [ $? != 0 ]; then bad_mount; fi
+}
+
 # Make sure we don't pick up the DOS "find" command in the PATH
 # We want the unix "find" command.
 check_path()
 {
 	# Note this test must be done this way to be portable
 	# between NT and WIN98
-	find . -maxdepth 0 > $TMP/cmp1$$
-	echo "." > $TMP/cmp2$$
-	cmp -s $TMP/cmp1$$ $TMP/cmp2$$
-	if [ $? != 0 ]
+	if [ "." != `find . -maxdepth 0` ]
 	then
 		echo "======================================================="
 		echo "Your \"find\" command failed to produce the expected"
@@ -82,10 +107,8 @@ check_path()
 		echo "\"find\" command; please fix your path variable to"
 		echo "support this."
 		echo "======================================================="
-		rm -f $TMP/cmp1$$ $TMP/cmp2$$
 		exit 1
 	fi
-	rm -f $TMP/cmp1$$ $TMP/cmp2$$
 }
 
 check_tar()
@@ -137,6 +160,25 @@ check_w()
 	rm -f $TMP/data$$
 }
 
+
+chech_enclosing_repo()
+{
+	for i in . .. ../.. ../../.. ../../..
+	do	if [ -d ${TST_DIR}/${i}/BitKeeper/etc ]
+		then	cat <<EOF
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Found an enclosing BitKeeper repository at ${TST_DIR}/${i}/BitKeeper - this is
+probably an error, please check it out and if so, remove it.  Some tests
+can not run with that BitKeeper directory there.
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+EOF
+			exit 1
+		fi
+	done
+}
+
 # setup env variables for regression test
 setup_env()
 {
@@ -146,34 +188,22 @@ setup_env()
 		win32_common_setup
 		BK_BIN=`cd .. && ./bk pwd -sc`
 		PATH=$BK_BIN:$BK_BIN/gnu/bin:$PATH
+		check_mount_mode
 		check_path
 		check_tar
-		;;
-	    Xmks)
-		win32_common_setup
-		BK_BIN=`cd .. && ./bk pwd -s`
-		# MKS uses semi colon as path delimiter
-		PATH="$BK_BIN;$BK_BIN/gnu/bin;$PATH"
-		check_path;
-		;;
-	    Xuwin)
-		# /dev/null in uwin does not always work
-		# uwin seems to map all file name to lower case
-		# uwin cp command adds .exe for binary files
-		win32_common_setup
-		BK_BIN=`cd .. && ./bk pwd -s`
-		PATH=$BK_BIN:$BK_BIN/gnu/bin:$PATH
-		check_path;
 		;;
 	    *)	# assumes everything else is unix
 		unix_common_setup
 		;;
 	esac
 	check_w
+	chech_enclosing_repo
+
 
 	unset BK_BIN _BK_GMODE_DEBUG
 	BK_LICENSE=ACCEPTED
 	BK_REGRESSION=`bk _cleanpath $TST_DIR/.regression-$USER`
+	HERE=$BK_REGRESSION
 	BK_TMP=$BK_REGRESSION/.tmp
 	BK_LIC_P=BKL43f70314800p0ffc8f0b7b0010ffe
 	BK_LIC_B=BKL43f70314800b0ffc8f0b7b0010ffe
@@ -182,7 +212,7 @@ setup_env()
 
 clean_up()
 {
-	# Win32 have no cire file
+	# Win32 have no core file
 	if [ "$PLATFORM" = "UNIX" ]
 	then
 		find $BK_REGRESSION -name core -print > $BK_REGRESSION/cores
@@ -237,18 +267,13 @@ init_main_loop()
 	then echo "failed to rm $BK_REGRESSION"; exit 1;
 	fi
 
-	# XXX: Do we really need this ?
-	if [ -d $BK_REGRESSION/SCCS ]
-	then echo "There should be no SCCS directory here."; exit 1;
-	fi
-
 	# Save the list of file currently in $TMP
 	# check it again for tmp file leak when we are in clean_up()
 	ls -a $TMP > $TMP/T.${USER}
 
 	BK_PATH=$PATH
 	export PATH BK_PATH PLATFORM DEV_NULL TST_DIR CWD BK_LICENSE
-	export USER BK_FS BK_REGRESSION BK_TMP NL N Q S CORES
+	export USER BK_FS BK_REGRESSION HERE BK_TMP NL N Q S CORES
 	export NXL NX
 	export BK_LIC_P BK_LIC_B
 }

@@ -187,7 +187,14 @@ gotit:
 					cygwinPath(), PATH_DELIM,
 					p);
 		} else {
-			insertCygwinPath(buf, p);
+			/*
+			 * Optimization for regression test
+			 * We already got the cygwin path in the regression
+			 * test environemnt
+			 */
+			unless (getenv("BK_REGRESSION")) {
+				insertCygwinPath(buf, p);
+			}
 		}
 #else
 		if (add2path) {
@@ -211,7 +218,7 @@ gotit:
 	
 	/*
 	 * Win32 note: TODO: We need to handle both ':' and ';'
-	 * as path delimiter, becuase we get defferent delimiter
+	 * as path delimiter, becuase we get different delimiter
 	 * from bash shell and cmd.exe.
 	 */
 	for (t = s = p; *s;) {

@@ -399,6 +399,23 @@ bad_name:	getMsg("reserved_name", file, 0, stderr);
 		return (-1);
 	}
 
+#ifdef WIN32
+	/*
+	 * Check trailing dot, this only happen when we clone
+	 * from Unix to Windows
+	 */
+	if (file[strlen(file) -1 ] == '.') {
+		fprintf(stderr,
+"\n"
+"==========================================================================\n"
+"%s:\n"
+"warning: trailing dot in file name will be stripped by the\n"
+"Windows file system.\n"
+"==========================================================================\n",
+file);
+	}
+#endif
+
 	if (access(file, F_OK) == 0) {
 		char	realname[MAXPATH];
 

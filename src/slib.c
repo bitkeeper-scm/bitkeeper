@@ -77,6 +77,7 @@ private	int	parseConfig(char *buf, char **k, char **v);
 private	delta	*delta_lmarker;	/* old-style log marker */
 private	delta	*delta_cmarker;	/* old-style config marker */
 
+#ifndef WIN32
 int
 emptyDir(char *dir)
 {
@@ -94,6 +95,30 @@ emptyDir(char *dir)
 	closedir(d);
 	return (1);
 }
+#else
+int
+emptyDir(char *dir)
+{
+
+	struct  _finddata_t found_file;
+	char	*file = found_file.name;
+	char	buf[MAXPATH];
+	long	dh;
+
+	bm2ntfname(dir, buf);
+	strcat(buf, "\\*.*");
+	if ((dh =  _findfirst(buf, &found_file)) == -1L) return (0);
+
+	do {
+		if (streq(file, ".") || streq(file, "..")) continue;
+		_findclose(dh);
+		return (0);
+	} while (_findnext(dh, &found_file) == 0);
+	_findclose(dh);
+	return (1);
+
+}
+#endif
 
 /*
  * Convert lrwxrwxrwx -> 0120777, etc.

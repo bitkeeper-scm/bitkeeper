@@ -630,7 +630,7 @@ sendServerInfoBlock(int is_rclone)
 
 	/*
 	 * When we are doing a rclone, there is no tree in the bkd sode yet
-	 * Do not get to get the level of the server tree.
+	 * Do not try to get the level of the server tree.
 	 */
 	unless (is_rclone) {
         	sprintf(buf, "LEVEL=%d\n", getlevel());
@@ -826,7 +826,7 @@ aprintf(char *fmt, ...)
 void
 ttyprintf(char *fmt, ...)
 {
-	FILE	*f = fopen("/dev/tty", "w");
+	FILE	*f = fopen(DEV_TTY, "w");
 	va_list	ptr;
 
 	unless (f) f = stderr;
@@ -910,6 +910,7 @@ spawn_cmd(int flag, char **av)
 
 
 
+#ifndef WIN32
 /*
  * The semantics of this interface is that it must return a NON-NULL list
  * even if the list is empty.  The NULL return value is reserved for errors.
@@ -964,6 +965,48 @@ again:	if (lstat(dir, &sb1)) {
 	}
 	return (lines);
 }
+#else
+char	**
+getdir(char *dir)
+{
+	struct  _finddata_t found_file;
+	char	*file = found_file.name;
+	char	**lines = 0;
+	char	buf[MAXPATH];
+	long	dh;
+
+	bm2ntfname(dir, buf);
+	strcat(buf, "\\*.*");
+	if ((dh =  _findfirst(buf, &found_file)) == -1L) {
+		if (errno == ENOENT) return (NULL);
+		perror(dir);
+		return (NULL);
+	}
+	lines = addLine(lines, strdup("f"));
+	assert(streq("f", lines[1]));
+	removeLineN(lines, 1);
+
+	do {
+		unless (streq(file, ".") || streq(file, "..")) {
+			localName2bkName(file, file);
+			lines = addLine(lines, strdup(file));
+		}
+	} while (_findnext(dh, &found_file) == 0);
+	_findclose(dh);
+
+#if	0
+	sortLines(lines);
+
+	/* Remove duplicate files that can result on some filesystems.  */
+	EACH(lines) {
+		while ((i > 1) && streq(lines[i-1], lines[i])) {
+			removeLineN(lines, i);
+	}
+#endif
+	return (lines);
+	
+}
+#endif
 
 #define	MAXARGS	100
 /*
@@ -994,10 +1037,6 @@ mkpager()
 
 /*
  * Convert a command line to a av[] vector
- *
- * This function is copied from win32/uwtlib/wapi_intf.c
- * XXX TODO we should propably move this to util.c if used by
- * other code.
  */
 private void
 line2av(char *cmd, char **av)
@@ -1051,7 +1090,6 @@ int
 unsafe_path(char *s)
 {
 	char	buf[MAXPATH];
-	struct	stat sb;
 
 	strcpy(buf, s);
 	unless (s = strrchr(buf, '/')) return (0);
@@ -1059,9 +1097,8 @@ unsafe_path(char *s)
 		/* no .. components */
 		if (streq(s, "/..")) return (1);
 		*s = 0;
-		if (lstat(buf, &sb)) return (1);
 		/* we've chopped the last component, it must be a dir */
-		unless (S_ISDIR(sb.st_mode)) return (1);
+		unless (isdir(buf)) return (1); /* this call lstat() */
 		unless (s = strrchr(buf, '/')) {
 			/* might have started with ../someplace */
 			return (streq(buf, ".."));
