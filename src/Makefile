@@ -319,25 +319,34 @@ resync: resync.perl substvars
 	chmod +x resync.T
 	mv -f resync.T resync
 
-gui/sccstool: gui/sccstool.tcl substvars
+gui/sccstool: gui/sccstool.tcl port/platform.tcl substvars
 	./substvars gui/sccstool.tcl >gui/sccstool.T
-	chmod +x gui/sccstool.T
-	mv -f gui/sccstool.T gui/sccstool
+	./substvars port/platform.tcl > gui/platform.T
+	cat gui/platform.T gui/sccstool.T > gui/sccstool.T2
+	chmod +x gui/sccstool.T2
+	/bin/rm -f gui/platform.T gui/sccstool.T 
+	mv -f gui/sccstool.T2 gui/sccstool
 
-gui/citool: gui/citool.tcl substvars
+gui/citool: gui/citool.tcl port/platform.tcl substvars
 	./substvars gui/citool.tcl >gui/citool.T
-	chmod +x gui/citool.T
-	mv -f gui/citool.T gui/citool
+	./substvars port/platform.tcl > gui/platform.T
+	cat gui/platform.T gui/citool.T > gui/citool.T2
+	chmod +x gui/citool.T2
+	/bin/rm -f gui/platform.T gui/citool.T 
+	mv -f gui/citool.T2 gui/citool
 
 gui/vitool: gui/vitool.tcl substvars
 	./substvars gui/vitool.tcl >gui/vitool.T
 	chmod +x gui/vitool.T
 	mv -f gui/vitool.T gui/vitool
 
-gui/fm: gui/fm.tcl substvars
+gui/fm: gui/fm.tcl port/platform.tcl substvars
 	./substvars gui/fm.tcl >gui/fm.T
-	chmod +x gui/fm.T
-	mv -f gui/fm.T gui/fm
+	./substvars port/platform.tcl > gui/platform.T
+	cat gui/platform.T gui/fm.T > gui/fm.T2
+	chmod +x gui/fm.T2
+	/bin/rm -f gui/platform.T gui/fm.T 
+	mv -f gui/fm.T2 gui/fm
 
 gui/fm3: gui/fm3.tcl substvars
 	./substvars gui/fm3.tcl >gui/fm3.T

@@ -1,5 +1,3 @@
-#! @WISH@
-
 # fm - a file merging program
 # Copyright (c) 1998 by Larry McVoy; All rights reserved
 # %A% %@%
@@ -1016,8 +1014,7 @@ proc main {} \
 		exit
 	}
 	platformPath
-	set platformfile [file join $bin platform.tcl]
-	source $platformfile
+	platformInit
 	set lfile ""
 	set rfile ""
 	set outputFile ""

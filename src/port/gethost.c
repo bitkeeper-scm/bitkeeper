@@ -50,7 +50,10 @@ sccs_gethost(void)
 
 out:	
 #ifdef WIN32
-	unless (host[0]) GetComputerName(host, &len);
+	unless (host[0]) {
+		int len = sizeof(host);
+		GetComputerName(host, &len);
+	}
 #endif
 	if (streq(host, "localhost") || streq(host, "localhost.localdomain")) {
 		host[0] = 0;

@@ -1,5 +1,3 @@
-#! @WISH@
-
 # sccstool - a tool for viewing SCCS files graphically.
 # Copyright (c) 1998 by Larry McVoy; All rights reserved.
 #
@@ -800,8 +798,7 @@ proc init {} \
 }
 
 platformPath
-set platformfile [join [list $bin platform.tcl ] "/" ]
-source $platformfile
+platformInit
 init
 widgets
 if {"$argv" != ""} {
