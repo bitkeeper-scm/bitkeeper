@@ -22,7 +22,7 @@ usage: admin options [-] OR [file file file...]\n\n\
     -i<file>		initial text in <file> or stdin for -n\n\
     -l<a|r, r>		unlock releases (not implemented)\n\
     -L<lod>:<rev>	creat a new LOD parented at <rev>\n\
-    -m<mrlist>		MR lists (not implemented)\n\
+    -m<mode>		set the mode of the file\n\
     -M<merge>		Merge branch <merge> into TOT or <rev>\n\
     -n			create a new SCCS file\n\
     -p<path>		set the initial pathname of the file to <path>\n\
@@ -65,6 +65,7 @@ main(int ac, char **av, char **ev)
 	int	bigpad = 0;
 	int	fastSymOK = 1, fastSym, dopath = 0, rmCset = 0, rmPath = 0;
 	int	doDates = 0;
+	mode_t	m = 0;
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
@@ -76,7 +77,7 @@ main(int ac, char **av, char **ev)
 	bzero(s, sizeof(s));
 	bzero(l, sizeof(l));
 	while ((c =
-	    getopt(ac, av, "a;A;e;f;F;d;i|L;M;np|r;y|s;STt|BbCghHPquz")) != -1) {
+	    getopt(ac, av, "a;A;e;f;F;d;i|L;m;M;np|r;y|s;STt|BbCghHPquz")) != -1) {
 		switch (c) {
 		/* user|group */
 		    case 'a':	OP(u, optarg, A_ADD); break;
@@ -93,10 +94,10 @@ main(int ac, char **av, char **ev)
 		    case 'r':	rev = optarg; break;
 		    case 'y':	comment = optarg; break;
 		    case 'M':	merge = optarg; flags |= NEWCKSUM; break;
-		/* MR lists - XXX */
-		    case 'm':	fprintf(stderr,
-				    "admin: MR's not implemented.\n");
-				exit(1);
+		/* mode */
+		    case 'm':	sscanf(optarg, "%o", &m);
+		   		flags |= NEWCKSUM;
+				break;
 		/* pathname */
 		    case 'p':	path = optarg;
 		    		flags |= SHUTUP|NEWCKSUM;
@@ -147,10 +148,10 @@ main(int ac, char **av, char **ev)
 		    "admin: comment may only be specifed with -i and/or -n\n");
 		goto usage;
 	}
-	if (rev && (!(flags & NEWFILE) && !merge)) {
+	if (rev && (!(flags & NEWFILE) && !merge && !m)) {
 		fprintf(stderr, "%s %s\n",
 		    "admin: revision may only be specified with",
-		    "-i and/or -n or -M\n");
+		    "-i and/or -n or -M or -m\n");
 		goto usage;
 	}
 	if ((flags & NEWFILE) && text && !text[0]) {
@@ -211,6 +212,15 @@ main(int ac, char **av, char **ev)
 		if (rmCset) clearCset(sc, flags);
 		if (rmPath) clearPath(sc, flags);
 		if (doDates) sccs_fixDates(sc);
+		if (m) {
+			delta	*d;
+			
+			sc->state |= RANGE2;
+			if (d = sccs_getrev(sc, rev, 0, 0)) {
+				d->flags |= D_MODE;
+				d->mode = m;
+			}
+		}
 		if (merge) {
 			if (setMerge(sc, merge, rev) == -1) {
 				error = 1;
@@ -295,6 +305,10 @@ clearPath(sccs *s, int flags)
  *	-r
  *	-y
  * XXX - have a way of including a symbol?
+ *
+ * XXX - this is really yucky.  The only reason this is here is because the
+ * gfile name can be different than the init file.  The real answer should be
+ * to stuff the initFile into the sccs* and have checkin() respect that.
  */
 int
 do_checkin(char *name, int encoding,
@@ -323,6 +337,15 @@ do_checkin(char *name, int encoding,
 		    s->gfile, newfile);
 		sccs_free(s);
 		return (-1);
+	}
+
+	/* extract the modes */
+	if (newfile) {
+		struct	stat sb;
+
+		if (stat(newfile, &sb) == 0) s->mode = sb.st_mode & 0777;
+	} else {
+		s->mode = 0664;
 	}
 	if (rev) {
 		d = sccs_parseArg(d, 'R', rev, 0);

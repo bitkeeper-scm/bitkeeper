@@ -180,13 +180,13 @@ extern	char *strdup(char *s);
 #define	GFILE		0x00000002	/* s->gfile exists as a regular file */
 #define	PFILE		0x00000004	/* SCCS/p.file exists */
 #define	ZFILE		0x00000008	/* SCCS/z.file exists */
-#define	WRITABLE	0x00000010	/* s->gfile is writable */
+#define	WRITE_OK	0x00000010	/* s->gfile is writable */
 #define	SOPEN		0x00000020	/* s->sfile is open */
-#define	SEXECUTABLE	0x00000040	/* s->sfile is executable */
-#define	GEXECUTABLE	0x00000080	/* s->gfile is executable */
+/*			0x00000040	AVAILABLE */
+/*			0x00000080	AVAILABLE */
 #define	WARNED		0x00000100	/* error message already sent */
 #define	KEYWORDS	0x00000200	/* last line gotten has %x% */
-#define EDITED		(SFILE|PFILE|GFILE|WRITABLE)
+#define EDITED		(SFILE|PFILE|GFILE)
 #define	RCS		0x00000400	/* expand RCS keywords */
 #define	BRANCHOK	0x00000800	/* branching allowed */
 #define	NOEXPAND	0x00001000	/* don't auto expand in sccs_files */
@@ -246,10 +246,8 @@ extern	char *strdup(char *s);
 #define	HAS_ZFILE(s)	((s)->state & ZFILE)
 #define	HAS_SFILE(s)	((s)->state & SFILE)
 #define	BEEN_WARNED(s)	((s)->state & WARNED)
-#define	IS_WRITABLE(s)	((s)->state & WRITABLE)
-#define IS_EDITED(s)	(((s)->state & EDITED) == EDITED)
-#define	IS_SEXEC(s)	((s)->state & SEXECUTABLE)
-#define	IS_GEXEC(s)	((s)->state & GEXECUTABLE)
+#define	IS_WRITABLE(s)	((s)->mode & 0200)
+#define IS_EDITED(s)	((((s)->state & EDITED) == EDITED) && IS_WRITABLE(s))
 
 #define	GOODSCCS(s)	assert(s); unless (s->tree && s->cksumok) return (-1)
 
@@ -283,6 +281,7 @@ extern	char *strdup(char *s);
 #define	D_LODSTR	0x00400000	/* lod pointer is a string: getInit() */
 #define	D_GONE		0x00800000	/* this delta is gone, don't print */
 #define D_ICKSUM	0x01000000	/* use checksum from init file */
+#define	D_MODE		0x02000000	/* permissions in d->mode are valid */
 
 /*
  * Signal handling.
@@ -357,6 +356,7 @@ typedef struct delta {
 	ser_t	merge;			/* serial number merged into here */
 	sum_t	sum;			/* checksum of gfile */
 	time_t	dateFudge;		/* make dates go forward */
+	mode_t	mode;			/* 0777 style modes */
 	/* In memory only stuff */
 	u16	r[4];			/* 1.2.3 -> 1, 2, 3, 0 */
 	u16	lodr[3];		/* Same as above for LODs */
@@ -496,6 +496,7 @@ typedef	struct sccs {
 	char	**flags;	/* flags in the middle that we didn't grok */
 	char	**text;		/* descriptive text */
 	int	state;		/* GFILE/SFILE etc */
+	mode_t	mode;		/* mode of the gfile */
 	off_t	data;		/* offset to data in file */
 	int	nextserial;	/* next unused serial # */
 	delta	*rstart;	/* start of a range (1.1 - oldest) */

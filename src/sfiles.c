@@ -230,7 +230,7 @@ oksccs(char *sfile, int flags, int complain)
 		free(g);
 		return (0);
 	}
-	if ((flags&WRITABLE) && access(g, W_OK) != 0) {
+	if ((flags&WRITE_OK) && access(g, W_OK) != 0) {
 		if (complain)
 			verbose((stderr,
 			    "%s: %s: no write permission\n", prog, g));
