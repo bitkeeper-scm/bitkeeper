@@ -74,7 +74,7 @@ _setup() {
 			else	break
 			fi
 		done
-	else	echo "$NAME" > Description
+	else	${ECHO} "$NAME" > Description
 	fi
 	${BIN}cset -si .
 	${BIN}admin -qtDescription ChangeSet
@@ -84,7 +84,7 @@ _setup() {
 	then logsetup=
 	else logsetup=yes
 	fi
-	/bin/rm -f Description D.save
+	${RM} -f Description D.save
 	cd BitKeeper/etc
 	if [ "X$CONFIG" = X ]
 	then	_gethelp setup_3
@@ -114,7 +114,7 @@ _setup() {
 	# Check in the initial changeset.
 	${BIN}sfiles -C | ${BIN}cset -s -y"Initial repository create" -
 	EXIT=$?
-	/bin/rm -f /tmp/comments$$
+	${RM} -f ${TMP}comments$$
 	${BIN}csetmark -r+
 	exit $EXIT
 }
@@ -150,19 +150,19 @@ _send() {
 		if [ X$OUTPUT != X- ]
 		then	LOG=BitKeeper/log/$1
 			if [ -f $LOG ]
-			then	sort -u < $LOG > /tmp/has$$
-				${BIN}prs -hd:KEY: ChangeSet| sort > /tmp/here$$
+			then	sort -u < $LOG > ${TMP}has$$
+				${BIN}prs -hd:KEY: ChangeSet| sort > ${TMP}here$$
 				FIRST=yes
-				comm -23 /tmp/here$$ /tmp/has$$ |
+				comm -23 ${TMP}here$$ ${TMP}has$$ |
 				${BIN}key2rev ChangeSet | while read x
 				do	if [ $FIRST != yes ]
 					then	echo $N ",$x"$NL
 					else	echo $N "$x"$NL
 						FIRST=no
 					fi
-				done > /tmp/rev$$
-				REV=`cat /tmp/rev$$`
-				/bin/rm -f /tmp/here$$ /tmp/has$$ /tmp/rev$$
+				done > ${TMP}rev$$
+				REV=`cat ${TMP}rev$$`
+				${RM} -f ${TMP}here$$ ${TMP}has$$ ${TMP}rev$$
 				if [ "X$REV" = X ]
 				then	echo Nothing new to send to $OUTPUT
 					exit 0
@@ -175,16 +175,16 @@ _send() {
 		LOG=BitKeeper/log/$OUTPUT
 		if [ -f $LOG ]
 		then	(cat $LOG; ${BIN}prs -hd:KEY: -r$REV ChangeSet) |
-			    sort -u > /tmp/log$$
-		    	cat /tmp/log$$ > $LOG
-			/bin/rm -f /tmp/log$$
+			    sort -u > ${TMP}log$$
+		    	cat ${TMP}log$$ > $LOG
+			${RM} -f ${TMP}log$$
 		else	${BIN}prs -hd:KEY: -r$REV ChangeSet > $LOG
 		fi
 	fi
 	case X$OUTPUT in
 	    X-)	MAIL=cat
 	    	;;
-	    *)	MAIL="mail -s 'BitKeeper patch' $OUTPUT"
+	    *)	MAIL="${MAIL_CMD} -s 'BitKeeper patch' $OUTPUT"
 	    	;;
 	esac
 	( if [ "X$PIPE" != Xcat ]
@@ -340,16 +340,16 @@ _oldresync() {
 	esac
 
 	if [ "X$INIT" = "X-i" ]
-	then	touch /tmp/to$$
-	else	eval $PRS2 > /tmp/to$$
+	then	touch ${TMP}to$$
+	else	eval $PRS2 > ${TMP}to$$
 	fi
-	eval $PRS  > /tmp/from$$
-	REV=`${BIN}cset_todo /tmp/from$$ /tmp/to$$`
-	/bin/rm /tmp/from$$ /tmp/to$$
+	eval $PRS  > ${TMP}from$$
+	REV=`${BIN}cset_todo ${TMP}from$$ ${TMP}to$$`
+	${RM} ${TMP}from$$ ${TMP}to$$
 	if [ "X$REV" != X ]
 	then	if [ X$V != X ]
 		then	echo --------- ChangeSets being sent -----------
-			echo "$REV" | fmt -42
+			${ECHO} "$REV" | fmt -42
 			echo -------------------------------------------
 		fi
 		echo "$REV" | eval $GEN_LIST | eval $TKPATCH
@@ -400,29 +400,29 @@ _undo() {
 	then	echo usage bk undo cset-revision
 		exit 1
 	fi
-	bk cset -lr"$@" > /tmp/rmdel$$
-	if [ ! -s /tmp/rmdel$$ ]
+	bk cset -lr"$@" > ${TMP}rmdel$$
+	if [ ! -s ${TMP}rmdel$$ ]
 	then	echo undo: nothing to undo in "$@"
 		exit 0
 	fi
 	if [ $ASK = YES ]
 	then	echo ---------------------------------------------------------
-		cat /tmp/rmdel$$ 
+		cat ${TMP}rmdel$$ 
 		echo ---------------------------------------------------------
 		echo $N "Remove these [y/n]? "$NL
 		read x
 		case X"$x" in
 		    Xy*)	;;
-		    *)		/bin/rm -f /tmp/rmdel$$
+		    *)		${RM} -f ${TMP}rmdel$$
 		    		exit 0;;
 		esac
 	fi
-	bk rmdel -S $V - < /tmp/rmdel$$
+	bk rmdel -S $V - < ${TMP}rmdel$$
 	if [ $? != 0 ]
 	then	echo Undo of "$@" failed
 	else	echo Undo of "$@" succeeded
 	fi
-	/bin/rm -f /tmp/rmdel$$
+	${RM} -f ${TMP}rmdel$$
 }
 
 _pending() {
@@ -434,14 +434,14 @@ _chkConfig() {
 	if [ ! -f  ${cfgDir}SCCS/s.config ]
 	then
 		_gethelp chkconfig_missing $BIN
-		/bin/rm -f /tmp/comments$$
+		${RM} -f ${TMP}comments$$
 		exit 1
 	fi
 	${BIN}get -q ${cfgDir}config 
 	cmp -s ${cfgDir}config ${BIN}bitkeeper.config
 	if [ $? -eq 0 ]
 	then	_gethelp chkconfig_inaccurate $BIN
-		/bin/rm -f /tmp/comments$$
+		${RM} -f ${TMP}comments$$
 		exit 1
 	fi
 }
@@ -461,7 +461,7 @@ _sendConfig() {
 	  echo "Date:		`date`"
 	  ${BIN}get -ps ${cfgDir}config | \
 	    grep -v '^#' ${cfgDir}config | grep -v '^$'
-	) | mail -s "BitKeeper config: $P" $1
+	) | ${MAIL_CMD} -s "BitKeeper config: $P" $1
 }
 
 _logAddr() {
@@ -471,7 +471,7 @@ _logAddr() {
 	Xlogging:*)
 		;;
 	*)	echo "Bad config file, can not find logging entry"
-		/bin/rm -f /tmp/comments$$
+		${RM} -f ${TMP}comments$$
 		${BIN}clean ${cfgDir}config
 		exit 1 
 		;;
@@ -487,14 +487,14 @@ _logAddr() {
 # This is not always right (consider .to) but works most of the time.
 # We are fascist about the letters allowed on the RHS of an address.
 _checkMultiuser() {
-	${BIN}prs -hd:HT: ChangeSet >/tmp/hosts$$
-	${BIN}prs -hd:P: ChangeSet >/tmp/users$$
-	tr A-Z a-z </tmp/hosts$$ | sed '
+	${BIN}prs -hd:HT: ChangeSet >${TMP}hosts$$
+	${BIN}prs -hd:P: ChangeSet >${TMP}users$$
+	tr A-Z a-z <${TMP}hosts$$ | sed '
 s/^[a-z0-9.-]*\.\([a-z0-9-]*\)\.\([a-z0-9-][a-z0-9-][a-z0-9-]\)$/\1.\2/
 s/^[a-z0-9.-]*\.\([a-z0-9-]*\.[a-z0-9-][a-z0-9-]\)\.\([a-z0-9-][a-z0-9-]\)$/\1.\2/
-' > /tmp/shosts$$
-	paste -d@ /tmp/users$$ /tmp/shosts$$ | sort | uniq | wc -l
-	rm -f /tmp/hosts$$ /tmp/users$$ /tmp/shosts$$
+' > ${TMP}shosts$$
+	paste -d@ ${TMP}users$$ ${TMP}shosts$$ | sort | uniq | wc -l
+	rm -f ${TMP}hosts$$ ${TMP}users$$ ${TMP}shosts$$
 }
 
 # Log the changeset to openlogging.org or wherever they said to send it.
@@ -525,7 +525,7 @@ logging_ok:	to '$LOGADDR > ${cfgDir}config
 			;;
 		esac
 		_gethelp log_abort
-	 	/bin/rm -f /tmp/comments$$
+	 	${RM} -f ${TMP}comments$$
 		${BIN}clean ${cfgDir}config
 		exit 1
 	else
@@ -556,7 +556,7 @@ _sendLog() {
 	fi
 
 	P=`${BIN}prs -hr1.0 -d:FD: ChangeSet | head -1`
-	${BIN}cset -c -r$R | mail -s "BitKeeper log: $P" $LOGADDR
+	${BIN}cset -c -r$R | ${MAIL_CMD} -s "BitKeeper log: $P" $LOGADDR
 }
 
 _commit() {
@@ -573,41 +573,41 @@ _commit() {
 		R) cfgDir="../BitKeeper/etc/";; # called from RESYNC dir
 		s) COPTS="-s $COPTS";;
 		S) COPTS="-S$OPTARG $COPTS";;
-		y) DOIT=yes; GETCOMMENTS=no; echo "$OPTARG" > /tmp/comments$$;;
-		Y) DOIT=yes; GETCOMMENTS=no; cp "$OPTARG" /tmp/comments$$;;
+		y) DOIT=yes; GETCOMMENTS=no; ${ECHO} "$OPTARG" > ${TMP}comments$$;;
+		Y) DOIT=yes; GETCOMMENTS=no; cp "$OPTARG" ${TMP}comments$$;;
 		esac
 	done
 	shift `expr $OPTIND - 1`
 	_cd2root
-	${BIN}sfiles -Ca > /tmp/list$$
+	${BIN}sfiles -Ca > ${TMP}list$$
 	if [ $? != 0 ]
-	then	/bin/rm -f /tmp/list$$
+	then	${RM} -f ${TMP}list$$
 		_gethelp duplicate_IDs
 		exit 1
 	fi
 	if [ $GETCOMMENTS = yes ]
 	then	
-		if [ $FORCE = NO -a ! -s /tmp/list$$ ]
+		if [ $FORCE = NO -a ! -s ${TMP}list$$ ]
 		then	echo Nothing to commit
-			/bin/rm -f /tmp/list$$
+			${RM} -f ${TMP}list$$
 			exit 0
 		fi
-		${BIN}sccslog -C - < /tmp/list$$ > /tmp/comments$$
+		${BIN}sccslog -C - < ${TMP}list$$ > ${TMP}comments$$
 	else	if [ $FORCE = NO ]
-		then	N=`wc -l < /tmp/list$$`
+		then	N=`wc -l < ${TMP}list$$`
 			if [ $N -eq 0 ]
 			then	echo Nothing to commit
-				/bin/rm -f /tmp/list$$
+				${RM} -f ${TMP}list$$
 				exit 0
 			fi
 		fi
 	fi
-	/bin/rm -f /tmp/list$$
+	${RM} -f ${TMP}list$$
 	COMMENTS=
 	L=----------------------------------------------------------------------
 	if [ $DOIT = yes ]
-	then	if [ -f /tmp/comments$$ ]
-		then	COMMENTS="-Y/tmp/comments$$"
+	then	if [ -f ${TMP}comments$$ ]
+		then	COMMENTS="-Y${TMP}comments$$"
 		fi
 		LOGADDR=`_logAddr` || exit 1
 		export LOGADDR
@@ -617,7 +617,7 @@ _commit() {
 		fi
 		${BIN}sfiles -C | ${BIN}cset "$COMMENTS" $COPTS $@ -
 		EXIT=$?
-		/bin/rm -f /tmp/comments$$
+		${RM} -f ${TMP}comments$$
 		# Assume top of trunk is the right rev
 		# XXX TODO: Needs to account for LOD when it is implemented
 		REV=`${BIN}prs -hr+ -d:I: ChangeSet`
@@ -630,15 +630,15 @@ _commit() {
 	do	
 		echo ""
 		echo "---------$L"
-		cat /tmp/comments$$
+		cat ${TMP}comments$$
 		echo "---------$L"
 		echo ""
 		echo $N "Use these comments (e)dit, (a)bort, (u)se? "
 		read x
 		case X$x in
 		    X[uy]*) 
-			if [ -s /tmp/comments$$ ]
-			then	COMMENTS="-Y/tmp/comments$$"
+			if [ -s ${TMP}comments$$ ]
+			then	COMMENTS="-Y${TMP}comments$$"
 			fi
 			LOGADDR=`_logAddr` || exit 1
 			export LOGADDR
@@ -649,7 +649,7 @@ _commit() {
 			${BIN}sfiles -C |
 			    eval ${BIN}cset "$COMMENTS" $COPTS $@ -
 			EXIT=$?
-			/bin/rm -f /tmp/comments$$
+			${RM} -f ${TMP}comments$$
 			# Assume top of trunk is the right rev
 			# XXX TODO: Needs to account for LOD 
 			REV=`${BIN}prs -hr+ -d:I: ChangeSet`
@@ -658,9 +658,9 @@ _commit() {
 			fi
 	    	 	exit $EXIT;
 		 	;;
-		    Xe*) $EDITOR /tmp/comments$$
+		    Xe*) $EDITOR ${TMP}comments$$
 			;;
-		    Xa*) /bin/rm -f /tmp/comments$$
+		    Xa*) ${RM} -f ${TMP}comments$$
 			echo Commit aborted.
 			exit 0
 			;;
@@ -695,21 +695,21 @@ _root() {
 }
 
 _sendbug() {
-	_gethelp bugtemplate >/tmp/bug$$
-	$EDITOR /tmp/bug$$
+	_gethelp bugtemplate >${TMP}bug$$
+	$EDITOR ${TMP}bug$$
 	while true
 	do	echo $N "(s)end, (e)dit, (q)uit? "$NL
 		read x
 		case X$x in
-		    Xs*) mail -s "BitKeeper BUG" bitkeeper-bugs@bitmover.com \
-			    < /tmp/bug$$
-		 	 /bin/rm -f /tmp/bug$$
+		    Xs*) ${MAIL_CMD} -s "BitKeeper BUG" bitkeeper-bugs@bitmover.com \
+			    < ${TMP}bug$$
+		 	 ${RM} -f ${TMP}bug$$
 			 echo Your bug has been sent, thank you.
 	    	 	 exit 0;
 		 	 ;;
-		    Xe*) $EDITOR /tmp/bug$$
+		    Xe*) $EDITOR ${TMP}bug$$
 			 ;;
-		    Xq*) /bin/rm -f /tmp/bug$$
+		    Xq*) ${RM} -f ${TMP}bug$$
 			 echo No bug sent.
 			 exit 0
 			 ;;
@@ -858,15 +858,11 @@ _init() {
 	else    NL=
 		N=-n
 	fi
-	if [ X$EDITOR = X ]
-	then	EDITOR=vi
-	fi
-	if [ X$PAGER = X ]
-	then	PAGER=more
-	fi
 
 	VERSION=unknown
+}
 
+_platformPath() {
 	# XXXX Must be last.
 	# We find the internal binaries like this:  If BK_BIN is set
 	# and points at a directory containing an `sccslog' executable,
@@ -874,16 +870,23 @@ _init() {
 	# executables might be found, and use the first one that exists.
 	# In both cases we export BK_BIN so that subcommands don't have to
 	# go through all this rigmarole.  (See e.g. resolve.perl.)
+
+	# XXX TODO bk_tagfile should be a config varibale
+	#     On NT, bk_tagfile should be "sccslog.exe"
+        bk_tagfile="sccslog"
+
 	BIN=
 	if [ X$BK_BIN != X -a -x $BK_BIN/sccslog ]
 	then	BIN="$BK_BIN/"
 		export BK_BIN
 		return
 	fi
+	# The following  path  list only works in unix, on win32 we must find it
+	# in @libexecdir@/bitkeeper 
 	for i in @libexecdir@/bitkeeper /usr/bitkeeper /usr/bitsccs \
 	    /usr/local/bitkeeper /usr/local/bin/bitkeeper /usr/bin/bitkeeper \
 	    /usr/bin
-	do	if [ -x $i/sccslog ]
+	do	if [ -x $i/$bk_tagfile ]
 		then	BIN="$i/"
 			BK_BIN=$BIN
 			export BK_BIN
@@ -896,6 +899,11 @@ _init() {
 }
 
 # ------------- main ----------------------
+_platformPath
+if [ -f ${BIN}platform.sh ]
+then source ${BIN}platform.sh
+else source ${BIN}/port/platform.sh		# for regression env
+fi
 _init
 
 if [ X"$1" = X ]
@@ -956,14 +964,17 @@ shift
 
 # Run our stuff first if we can find it, else
 # we don't know what it is, try running it and hope it is out there somewhere.
-if [ -x ${BIN}$cmd -a ! -d ${BIN}$cmd ]
-then	for w in citool sccstool vitool fm fm3
-	do	if [ $cmd = $w ]
-		then	if [ -x ${BIN}wish ]
-			then	exec ${BIN}wish -f ${BIN}$cmd "$@"
-			fi
-		fi
-	done
+# win32 note: we test for the tcl script first, because it has .tcl suffix
+for w in citool sccstool vitool fm fm3
+do	if [ $cmd = $w ]
+	then	
+		# pick up our own wish shell if it exist
+		BKBIN=$BIN PATH=$BIN:$PATH exec $wish -f ${BIN}${cmd}${tcl} "$@"
+	fi
+done
+
+if [ -x ${BIN}$cmd${ext} -a ! -d ${BIN}$cmd ]
+then	
 	exec ${BIN}$cmd "$@"
 else	exec $cmd "$@"
 fi
