@@ -95,6 +95,7 @@ int resolve_main(int, char **);
 int rset_main(int, char **);
 int rm_main(int, char **);
 int rmdel_main(int, char **);
+int sane_main(int, char **);
 int sccscat_main(int, char **);
 int sccslog_main(int, char **);
 int send_main(int, char **);
@@ -200,6 +201,7 @@ struct command cmdtbl[] = {
 	{"rset", rset_main},
 	{"rm", rm_main},
 	{"rmdel", rmdel_main},
+	{"sane", sane_main},
 	{"sccscat", sccscat_main},
 	{"sccslog", sccslog_main},
 	{"sccsmv", mv_main},

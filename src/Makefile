@@ -56,7 +56,7 @@ OBJ	= abort.o adler32.o admin.o annotate.o \
 	  resolve.o resolve_contents.o resolve_create.o \
 	  resolve_flags.o resolve_generic.o resolve_modes.o \
 	  resolve_renames.o resolve_filetypes.o rmdel.o rset.o \
-	  sccs_mv.o sccscat.o sccslog.o sccsmv.o sccsrm.o \
+	  sane.o sccs_mv.o sccscat.o sccslog.o sccsmv.o sccsrm.o \
 	  send.o sendbug.o setup.o \
 	  sfiles.o sfind.o sfio.o sids.o sinfo.o slib.o smoosh.o \
 	  status.o stripdel.o takepatch.o undo.o undos.o \
@@ -599,6 +599,7 @@ resolve_renames.o:	resolve_renames.c resolve.h $(H)
 resolve_filetypes.o:	resolve_filetypes.c resolve.h $(H)
 rmdel.o:	rmdel.c $(H)
 samepath.o:	port/samepath.c $(H)
+sane.o:		sane.c $(H)
 sccs_mv.o:	sccs_mv.c $(H)
 sccs_root.o:	port/sccs_root.c $(H)
 sccscat.o:	sccscat.c $(H) range.h

@@ -57,7 +57,7 @@ private	int	getLocals(sccs *s, delta *d, char *name);
 private	void	insertPatch(patch *p);
 private	void	initProject(void);
 private	MMAP	*init(char *file, int flags, project **p);
-private	void	rebuild_id(char *id);
+private	int	rebuild_id(char *id);
 private	void	cleanup(int what);
 private	void	changesetExists(void);
 private	void	notfirst(void);
@@ -216,8 +216,8 @@ get_configs()
 		    "RESYNC/BitKeeper/etc/SCCS/s.config");
 		assert(exists("RESYNC/BitKeeper/etc/SCCS/s.config"));
 	}
-	unless (exists("RESYNC/BitKeeper/etc/SCCS/s.logging_ok")) {
-		unless (exists("BitKeeper/etc/SCCS/s.logging_ok")) return;
+	if (exists("BitKeeper/etc/SCCS/s.logging_ok") &&
+	    !exists("RESYNC/BitKeeper/etc/SCCS/s.logging_ok")) {
 		system("cp BitKeeper/etc/SCCS/s.logging_ok "
 		    "RESYNC/BitKeeper/etc/SCCS/s.logging_ok");
 		assert(exists("RESYNC/BitKeeper/etc/SCCS/s.logging_ok"));
@@ -226,27 +226,25 @@ get_configs()
 	if (exists("BitKeeper/etc/SCCS/s.gone")) {
 		unless (exists("RESYNC/BitKeeper/etc/SCCS/s.gone")) {
 			system("cp BitKeeper/etc/SCCS/s.gone "
-		    			"RESYNC/BitKeeper/etc/SCCS/s.gone");
+			    "RESYNC/BitKeeper/etc/SCCS/s.gone");
 		} else {
 			/*
 			 * Both remote and local have the gone file
 			 * see if we need to merge them together
 			 */
 			system("bk get -qe RESYNC/BitKeeper/etc/gone"); 
-			system("bk get -qp BitKeeper/etc/gone >> \
-RESYNC/BitKeeper/etc/gone");
-			system("sort -u RESYNC/BitKeeper/etc/gone > \
-RESYNC/BitKeeper/etc/SCCS/x.gone");
+			system("bk get -qp BitKeeper/etc/gone >> "
+			    "RESYNC/BitKeeper/etc/gone");
+			system("sort -u RESYNC/BitKeeper/etc/gone > "
+			    "RESYNC/BitKeeper/etc/SCCS/x.gone");
 			unlink("RESYNC/BitKeeper/etc/gone");
-			system( "mv RESYNC/BitKeeper/etc/SCCS/x.gone \
-RESYNC/BitKeeper/etc/gone");
+			system( "mv RESYNC/BitKeeper/etc/SCCS/x.gone "
+			    "RESYNC/BitKeeper/etc/gone");
 			/*
 			 * We use ci here, because we do not want to
 			 * create a new delta if there is no diffs
 			 */
-			system("bk ci -qyauto-merge \
-RESYNC/BitKeeper/etc/gone"); 
-			
+			system("bk ci -qyauto-merge RESYNC/BitKeeper/etc/gone");
 		}
     	}
 }
@@ -339,7 +337,11 @@ again:	s = sccs_keyinit(t, INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB);
 	unless (s || newProject || (newFile && fast)) {
 		if (gone(t, goneDB)) goneError(t);
 		unless (rebuilt++) {
-			rebuild_id(t);
+			if (rebuild_id(t)) {
+				fprintf(stderr,
+				    "ID cache problem causes abort.\n");
+				goto cleanup;
+			}
 			goto again;
 		}
 		unless (newFile) {
@@ -1601,7 +1603,7 @@ fileCopy2(char *from, char *to)
 	if (fileCopy(from, to)) cleanup(CLEAN_RESYNC);
 }
 
-private	void
+private	int
 rebuild_id(char *id)
 {
 	char	*s = 0;
@@ -1619,16 +1621,17 @@ rebuild_id(char *id)
 "takepatch: miss in idcache while looking for\n\t     \"%s\",\n\
 \t     rebuilding (this can take a while)...", id);
 	}
-	sccs_reCache();
+	if (sccs_reCache()) return (1);
 	if (idDB) mdbm_close(idDB);
 	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
 		perror("SCCS/x.id_cache");
-		exit(1);
+		return (1);
 	}
 	if (echo > 0) {
 		*s = '|';
 		fprintf(stderr, "done\n");
 	}
+	return (0);
 }
 
 private	void

@@ -210,6 +210,11 @@ usage:		fprintf(stderr, "%s", check_help);
 	}
 	if (csetKeys.deltas) free(csetKeys.deltas);
 	if (poly) warnPoly();
+	if (resync) {
+		if (system("cd .. && bk sane")) errors |= 16;
+	} else {
+		if (system("bk sane")) errors |= 16;
+	}
 	return (errors);
 }
 

@@ -12,17 +12,18 @@ mail(char *to, char *subject, char *file)
 	struct	utsname ubuf;
 	char	*paths[] = {
 		"/usr/bin",
+		"/bin",
 		"/usr/sbin",
-		"/usr/lib",
 		"/usr/etc",
 		"/etc",
-		"/bin",
+		"/usr/lib",
+		"/usr/local/bin",
 		0
 	};
 
 	while (paths[++i]) {
 		sprintf(sendmail, "%s/sendmail", paths[i]);
-		if (exists(sendmail)) {
+		if (access(sendmail, X_OK) == 0) {
 			FILE *f, *pipe;
 			char *av[] = {sendmail, "-i", to, 0};
 
@@ -46,7 +47,8 @@ mail(char *to, char *subject, char *file)
 	assert(fd == 0);
 	mail = exists("/usr/bin/mailx") ? "/usr/bin/mailx" : "mail";
 	/* `mail -s subject" form doesn't work on IRIX */
-	assert(uname(&ubuf) == 0);
+	i = uname(&ubuf);
+	assert(i == 0);
 	if (strstr(ubuf.sysname, "IRIX")) {
 		char *av[] = {mail, to};
 		pid = spawnvp_wPipe(av, &wfd);
