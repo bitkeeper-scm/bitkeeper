@@ -4443,12 +4443,12 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 		if (WRITABLE(s) && writable(s->gfile)) {
 			fprintf(stderr, "Writeable %s exists\n", s->gfile);
 			s->state |= S_WARNED;
-			return (char *)-1;
+			return ((flags & GET_NOREGET) ? 0 : (char *)-1);
 		} else if ((flags & GET_NOREGET) && exists(s->gfile)) {
 			verbose((stderr,
 			    "%s is already checked out\n", s->gfile));
 			s->state |= S_WARNED;
-			return 0;
+			return (0);
 		}
 		f = s->gfile;
 		unlinkGfile(s);

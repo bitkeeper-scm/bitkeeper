@@ -134,3 +134,10 @@ co $Q -S s.foo
 after="`ls -li s.foo`"
 if [ x"$before" != x"$after" ]; then echo failed; exit 1; fi
 echo OK
+echo $N get -S should ignore modified files .........................$NL
+co $Q -e s.foo
+co $Q -S s.foo 2>${DEV_NULL}
+if [ $? != 0 ]
+then	echo failed to ignore modified file; exit 1
+fi
+echo OK
