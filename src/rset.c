@@ -280,26 +280,30 @@ rel_list(MDBM *db, MDBM *idDB, char *rev, options opts)
 /*
  * For a given rev, compute the parent (revP) and the merge parent (RevM)
  */
-void
+int
 sccs_parent_revs(sccs *s, char *rev, char **revP, char **revM)
 {
 	delta *d, *p, *m;
 
 	d = findrev(s, rev);
 	unless (d) {
-		fprintf(stderr, "Cannot find rev %s\n", rev);
-		return;
+		fprintf(stderr, "diffs: cannot find rev %s\n", rev);
+		return (-1);
 	}
 	/*
 	 * XXX TODO: Could we get meta delta in cset?, should we skip them?
 	 */
-	p = d->parent;
+	unless (p = d->parent) {
+		fprintf(stderr, "diffs: rev %s has no parent\n", rev);
+		return (-1);
+	}
 	assert(p->type != 'R'); /* parent should not be a meta delta */
 	*revP = (p ? strdup(p->rev) : NULL);
 	if (d->merge) {
 		m = sfind(s, d->merge);
 		*revM = (m ? strdup(m->rev) : NULL);
 	}
+	return (0);
 }
 
 void
@@ -331,9 +335,7 @@ parse_rev(sccs *s, char *args,
 	} else {
 		*rev2 = args;
 		fix_rev(s, rev2, rev_buf);
-		sccs_parent_revs(s, *rev2, rev1, revM);
-		unless (*rev1) {
-			fprintf(stderr, "rev %s has no parent delta\n", rev2);
+		if (sccs_parent_revs(s, *rev2, rev1, revM)) {
 			return (1); /* failed */
 		}
 	}

@@ -817,7 +817,7 @@ void	sccs_fixDates(sccs *);
 int	sccs_getxflags(delta *d);
 void	sccs_mkroot(char *root);
 char	*sccs_nivPath(sccs *s);
-void	sccs_parent_revs(sccs *s, char *rev, char **revP, char **revM);
+int	sccs_parent_revs(sccs *s, char *rev, char **revP, char **revM);
 char	*sccs_setpathname(sccs *s);
 char	*sPath(char *name, int isDir);
 delta	*sccs_next(sccs *s, delta *d);

@@ -11712,7 +11712,9 @@ mapRev(sccs *s, u32 flags, char *r1, char *r2,
 
 	if (r1 && r2) {
 		if (r1 == r2) { /* r1 == r2 means diffs against parent(s) */
-			sccs_parent_revs(s, r2, &lrev, &lrevM);
+			if (sccs_parent_revs(s, r2, &lrev, &lrevM)) {
+				return (-1);
+			}
 		} else {
 			lrev = r1;
 		}
@@ -11723,7 +11725,9 @@ mapRev(sccs *s, u32 flags, char *r1, char *r2,
 			rrev = "edited";
 		} else {
 			rrev = r1;
-			sccs_parent_revs(s, r1, &lrev, &lrevM);
+			if (sccs_parent_revs(s, r1, &lrev, &lrevM)) {
+				return (-1);
+			}
 		}
 	} else if (HAS_PFILE(s)) {
 		if (sccs_read_pfile("diffs", s, pf)) return (-1);

@@ -161,7 +161,7 @@ usage:			system("bk help -s diffs");
 		switch (rc = sccs_diffs(s, r1, r2, ex|flags, kind, stdout)) {
 		    case -1:
 			fprintf(stderr,
-			    "diffs -s of %s failed.\n", s->gfile);
+			    "diffs of %s failed.\n", s->gfile);
 			break;
 		    case -2:
 		    case -3:
