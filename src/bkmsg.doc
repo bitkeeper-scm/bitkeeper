@@ -875,3 +875,24 @@ an error occured.  The current operation cannot be completed.
 The error was:
    #BKARG#
 $
+#lease-nonet
+Unable to obtain permission to use this version of BitKeeper (#BKARG#) 
+from lease.openlogging.org.  That server issues certificates to use BK
+for openlogging for 30 days at a time.  The bk binary needs to be able
+to make a http connection to lease.openlogging.org at least once a month.
+
+Look at 'bk help url' if you need to tell 'bk' about a proxy.
+$
+#lease-unsupported-version
+The version of BK that you are currently using (#BKARG#) is no longer
+supported by Bitmover.  Since you are using BitKeeper with in 
+openlogging mode, you must upgrade to the current version before
+continuing.
+Goto http://www.bitkeeper.com for the latest version.
+$
+#lease-other-error
+BitKeeper was unable to validate this version of BitKeeper.
+The error code returned from BitMover was:
+	#BKARG#
+Contact support@bitmover.com for assistance.
+$

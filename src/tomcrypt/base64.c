@@ -84,7 +84,7 @@ int base64_decode(const unsigned char *in,  unsigned long len,
        if (c == 254) { c = 0; g--; }
        t = (t<<6)|c;
        if (++y == 4) {
-	  if (z + g > *outlen) goto error;
+	  if (z + g + 1 > *outlen) goto error;
           out[z++] = (unsigned char)((t>>16)&255);
           if (g > 1) out[z++] = (unsigned char)((t>>8)&255);
           if (g > 2) out[z++] = (unsigned char)(t&255);
@@ -95,6 +95,7 @@ int base64_decode(const unsigned char *in,  unsigned long len,
        crypt_error = "Input buffer not complete in base64_decode().";
        return CRYPT_ERROR;
    }
+   out[z] = 0;
    *outlen = z;
    return CRYPT_OK;
 error:

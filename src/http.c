@@ -401,7 +401,7 @@ http_send(remote *r, char *msg,
 {
 	unsigned int start, len, l;
 	int	n = 0;
-	char	bk_url[MAXPATH], *header = 0;
+	char	*header = 0;
 	char	*spin = "|/-\\";
 	char	*proxy_auth = "";
 
@@ -411,7 +411,6 @@ http_send(remote *r, char *msg,
 	 */
 	assert(r);
 	assert(r->host);
-	sprintf(bk_url, "http://%s:%d/cgi-bin/%s", r->host, r->port, cgi_script);
 	if (r->cred) {
 		if (r->trace){
 			fprintf(stderr, "Proxy Authorization => (%s)\n",
@@ -420,14 +419,14 @@ http_send(remote *r, char *msg,
 		proxy_auth = proxyAuthHdr(r->cred);
 	}
 	header = aprintf(
-	    "POST %s HTTP/1.0\n"
+	    "POST /cgi-bin/%s HTTP/1.0\n"
 	    "%s"			/* optional proxy authentication */
 	    "User-Agent: %s\n"
 	    "Accept: text/html\n"
 	    "Host: %s:%d\n"
 	    "Content-type: %s\n"
 	    "Content-length: %u\n\n",
-	    bk_url, proxy_auth, user_agent, 
+	    cgi_script, proxy_auth, user_agent, 
 	    r->host, r->port,
 	    BINARY, mlen + extra);
 

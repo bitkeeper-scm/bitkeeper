@@ -193,6 +193,9 @@ setup_env()
 	esac
 	chech_enclosing_repo
 
+	BK_HOST=bk_regression.bk
+	export BK_HOST
+
 	# turn off pager
 	BK_PAGER=cat
 	export BK_PAGER

@@ -65,7 +65,8 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o approve.o \
 	find.o findkey.o fix.o fixlod.o g2sccs.o gca.o get.o gethelp.o \
 	gethost.o getopt.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \
-	isascii.o key2rev.o key2path.o keysort.o kvfile.o level.o \
+	isascii.o key2rev.o key2path.o keysort.o kvfile.o \
+	lease.o level.o \
 	lib_tcp.o libcommit.o libdiff.o liblines.o librange.o \
 	libsfiles.o libusers.o license.o lines.o \
 	localtm.o lock.o locking.o lod.o logflags.o \
@@ -113,7 +114,7 @@ TOMCRYPTOBJ = tomcrypt/rsa.o tomcrypt/rsa_sys.o tomcrypt/mpi.o \
 	tomcrypt/ampi.o tomcrypt/prime.o tomcrypt/mem.o tomcrypt/packet.o \
 	tomcrypt/md5.o tomcrypt/ctr.o tomcrypt/aes.o tomcrypt/hash.o \
 	tomcrypt/sprng.o tomcrypt/bits.o tomcrypt/crypt.o tomcrypt/base64.o \
-	tomcrypt/yarrow.o tomcrypt/demos/test.o
+	tomcrypt/yarrow.o tomcrypt/demos/test.o tomcrypt/hmac.o
 GUI	= revtool citool helptool difftool csettool fmtool fm3tool msgtool \
 	  renametool setuptool 
 SCRIPTS	= applypatch bk.script import resync $(GUI) bugform \
@@ -617,7 +618,7 @@ trial_image trial-image:
 	$(MAKE) -e trial _image
 
 image:
-	$(MAKE) -e all _image
+	LDFLAGS=-s $(MAKE) -e all _image
 
 # Win32 note: Wise install script does not respect the BINDIR env variable
 # It picks up the image at C:/Program Files/BitKeeper

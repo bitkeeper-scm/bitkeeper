@@ -239,7 +239,7 @@ rm -rf A garbage
 echo $N Make sure delta works with checkout:edit preference .........$NL
 HERE=`bk pwd`
 no_logging project
-BK_USER=one; BK_HOST=one.com
+BK_USER=one; BK_HOST=one.com.bk_regression.bk
 export BK_USER BK_HOST
 cd $HERE/project
 echo hi > hi.c
@@ -248,8 +248,8 @@ if [ -f SCCS/p.hi.c ]; then echo failed; exit 1; fi
 bk edit $Q BitKeeper/etc/config
 cp BitKeeper/etc/config config.sav
 bk co $Q -l hi.c
-for i in "" "one" "one@one.com" "one@one.com:$HERE/project" \
-	"@one.com" "@one.com:$HERE/project" \
+for i in "" "one" "one@$BK_HOST" "one@$BK_HOST:$HERE/project" \
+	"@$BK_HOST" "@$BK_HOST:$HERE/project" \
 	":$HERE/project" "one:$HERE/project" 
 do
 	cp config.sav BitKeeper/etc/config

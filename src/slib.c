@@ -4316,6 +4316,7 @@ sccs_init(char *name, u32 flags, project *proj)
 
 	signal(SIGPIPE, SIG_IGN); /* win32 platform does not have sigpipe */
 	if (sig_ignore() == 0) s->unblock = 1;
+	lease_check(s);
 	return (s);
 }
 
@@ -15487,28 +15488,14 @@ sccs_sdelta(sccs *s, delta *d, char *buf)
 void
 sccs_md5delta(sccs *s, delta *d, char *b64)
 {
+	char	*hash;
 	char	key[MAXKEY+16];
-	char	md5[32];
-	int	hash = register_hash(&md5_desc);
-#define	ul	unsigned long	/* XXX - tomcrypt api sucks */
-	ul	md5len, b64len;
-	char	*p;
 
 	sccs_sdelta(s, d, key);
 	if (s->tree->random) strcat(key, s->tree->random);
-	hash_memory(hash, key, strlen(key), md5);
-	b64len = 30;
-	md5len = hash_descriptor[hash].hashsize;
-	base64_encode(md5, md5len, key, &b64len);
-	for (p = key; *p; p++) {
-		if (*p == '/') *p = '-';	/* dash */
-		if (*p == '+') *p = '_';	/* underscore */
-		if (*p == '=') {
-			*p = 0;
-			break;
-		}
-	}
-	sprintf(b64, "%08x%s", (u32)d->date, key);
+	hash = hashstr(key);
+	sprintf(b64, "%08x%s", (u32)d->date, hash);
+	free(hash);
 }
 
 void

@@ -151,7 +151,7 @@
 #endif
 
 /* include HMAC support */
-//#define HMAC
+#define HMAC
 
 #ifdef MPI
    #include "mpi.h"

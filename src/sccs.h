@@ -314,11 +314,13 @@
 #define	OPENLOG_BACKUP	"http://config2.openlogging.org:80////LOG_ROOT///"
 #define	OPENLOG_HOST	"config.openlogging.org"
 #define	OPENLOG_HOST1   "config2.openlogging.org"
+#define	OPENLOG_LEASE	"http://lease.openlogging.org:80"
 #define	BK_WEBMAIL_URL	"http://webmail.bitkeeper.com:80"
 #define	BK_HOSTME_SERVER "hostme.bkbits.net"
 #define	WEB_BKD_CGI	"web_bkd"
 #define	HOSTME_CGI	"hostme_cgi"
 #define	WEB_MAIL_CGI	"web_mail"
+#define	LEASE_CGI	"bk_lease"
 #define	BK_CONFIG_URL	"http://config.bitkeeper.com:80"
 #define	BK_CONFIG_BCKUP	"http://config2.bitkeeper.com:80"
 #define	BK_CONFIG_CGI	"bk_config"
@@ -1148,9 +1150,10 @@ void	restoreEnviroment(char *patch);
 int	run_check(char *partial, int fix);
 char	*key2path(char *key, MDBM *idDB);
 int	check_licensesig(char *key, char *sign);
+char	*hashstr(char *str);
+char	*secure_hashstr(char *str, char *key);
 void	delete_cset_cache(char *rootpath, int save);
 int	nFiles(void);
-u32	bk_license(char *user);
 void	notice(char *key, char *arg, char *type);
 pid_t	findpid(pid_t pid);
 void	save_log_markers(void);
