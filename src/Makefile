@@ -372,7 +372,7 @@ bk.script: bk.sh port/$(SYS)_platform.sh substvars
 
 bkmsg.txt: bkmsg.doc bk.ver Makefile
 	sed "s/@version@/`cat bk.ver`/" bkmsg.doc | \
-	sed "s?@builder@?`./bk getuser`@`./bk gethost` in `pwd`?" | \
+	sed "s?@builder@?`./bk getuser`@`./bk gethost -r` in `pwd`?" | \
 	sed "s/@built_date@/`date`/" > bkmsg.txt
 
 bkhelp.txt: build FRC
@@ -405,6 +405,8 @@ bk.ver: ../SCCS/s.ChangeSet utils/os utils/gnu-os
 # This must be rebuilt every time because it includes the build time
 bkver.c: FRC
 	bk prs -hr+ -d'char *bk_vers = "$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}";\nchar *bk_utc = ":UTC:";\nchar *bk_time = ":TIME_T:";\n' ../ChangeSet > bk.v
+	@if [ ! -x utils/os ]; then bk get utils/os; fi
+	echo "char *bk_platform = \""`./utils/os`"\";" >> bk.v
 	echo "unsigned build_timet = "`perl -e "print time"`";" >> bk.v
 	echo "int test_release = "$(TRIAL)";" >> bk.v
 	mv -f bk.v bkver.c

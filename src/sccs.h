@@ -934,6 +934,7 @@ size_t	msize(MMAP *m);
 MMAP	*mrange(char *start, char *stop, char *mode);
 int	linelen(char *s);
 int 	licenseAccept(int prompt);
+char	*licenses_accepted(void);
 char	*mkline(char *mmap);
 int	mkdirp(char *dir);
 int	mkdirf(char *file);
@@ -1181,6 +1182,7 @@ int   diffline(char *left, char *right);
 extern char *bk_vers;
 extern char *bk_utc;
 extern char *bk_time;
+extern char *bk_platform;
 
 int	getMsg(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf);
 #endif	/* _SCCS_H_ */
