@@ -12,11 +12,6 @@ mkgfile(sccs *s, char *rev, char *path, char *tmpdir, char *tag,
 	delta *d;
 	int flags = SILENT;
 
-	/*
-	 * Ignore file under the BitKeeper directory
-	 */
-	if ((strlen(path) >= 10) && strneq(path, "BitKeeper/", 10)) return;
-
 	sprintf(tmp_path, "%s/%s/%s", tmpdir, tag, path);
 	if (isNullFile(rev, path))  return;
 	d = findrev(s, rev);
