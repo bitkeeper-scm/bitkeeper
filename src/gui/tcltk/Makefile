@@ -34,6 +34,10 @@ configure: tcl/$S/configure tk/$S/configure
 		test -f configure || bk -Ur get -qS; \
 		CFLAGS=-O2 ./configure --disable-load --disable-shared; \
 		sed -e s/X11R4/X11R6/ < Makefile > MK; \
+		if [ "X$(OSTYPE)" = Xhpux11.00 ]; then \
+			sed -e 's|^X11_LIB_SWITCHES.*|X11_LIB_SWITCHES        = -L/usr/lib/X11R6 -l:libX11.3|' < MK > MK2; \
+			mv -f MK2 MK; \
+		fi; \
 		mv -f MK Makefile; \
 	done
 

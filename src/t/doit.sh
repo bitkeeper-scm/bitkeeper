@@ -1,4 +1,4 @@
-#! @TEST_SH@
+#!@TEST_SH@
 
 # All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
 # and are not licensed under the terms of the BKL (BitKeeper License).
@@ -195,7 +195,7 @@ EOF
 # setup env variables for regression test
 setup_env()
 {
-	if [ -x $OSTYPE ]; then OSTYPE=`uname -s`; fi
+	test "X$OSTYPE" = X && OSTYPE=`uname -s`
 	case X$OSTYPE in
 	    Xcygwin|Xcygwin32|XCYGWIN*)
 		BK_BIN=`cd .. && ./bk pwd -s`
@@ -439,15 +439,18 @@ done
 rm -f $TMPDIR/T.${USER} $TMPDIR/T.${USER}-new
 test $BK_LIMITPATH && rm -rf $BK_LIMITPATH
 echo
+EXIT=2	# Because I'm paranoid
 echo ------------------------------------------------
 if [ "X$FAILED" = X ]
 then
 	echo All requested tests passed, must be my lucky day
+	EXIT=0
 else
 	echo Not your lucky day, the following tests failed:
 	for i in $FAILED
 	do	echo "	$i"
 	done
+	EXIT=1
 fi
 echo ------------------------------------------------
 test "X$BADOUTPUT" != X && {
@@ -459,3 +462,4 @@ test "X$BADOUTPUT" != X && {
 	done
 	echo ------------------------------------------------
 }
+exit $EXIT

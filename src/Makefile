@@ -494,7 +494,7 @@ gui-nowrap GUI-nowrap:
 	@cd gui && make nowrap
 
 install: installdir
-	tmp/bitkeeper/bk install -f $(BINDIR)
+	tmp/bitkeeper/bk install -d -f $(BINDIR)
 	-$(BINDIR)/bk links $(BINDIR) /usr/bin
 
 installdir: $(BKLINK)
