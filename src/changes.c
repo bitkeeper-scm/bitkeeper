@@ -18,6 +18,7 @@ private struct {
 	u32	timesort:1;	/* force sorting based on time, not dspec */
 	u32	urls:1;		/* list each URL for local/remote */
 	u32	verbose:1;	/* list the file checkin comments */
+	u32	diffs:1;	/* show diffs with verbose mode */
 
 	search	search;		/* -/pattern/[i] matches comments w/ pattern */
 	char	*date;		/* list this range of dates */
@@ -111,7 +112,10 @@ changes_main(int ac, char **av)
 		    case 'U': opts.others = 1;
 		    	/* fall through to u */
 		    case 'u': opts.user = optarg; break;
-		    case 'v': opts.verbose = 1; break;		/* doc 2.0 */
+		    case 'v':
+		    	if (opts.verbose) opts.diffs = 1;
+			opts.verbose =1 ;
+			break;
 		    case 'r': opts.rev = optarg; break;		/* doc 2.0 */
 		    case '/': opts.search = searchParse(optarg);
 			      opts.doSearch = 1;
@@ -347,6 +351,14 @@ recurse(delta *d)
 		"+:LI: -:LD:\n" \
 		"$each(:C:){$if(:DPN:!=ChangeSet){  }  (:C:)\n}" \
 		"$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n"
+#define	VSPEC	"$if(:DPN:!=ChangeSet){\n}" \
+		"==== :DPN: =====\n" \
+		":Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:} " \
+		"$if(:DPN:!=ChangeSet){+:LI: -:LD:}" \
+		"\n" \
+		"$each(:C:){  (:C:)\n}" \
+		"$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}" \
+		"$if(:DPN:!=ChangeSet){:UDIFFS:}"
 #define	HSPEC	"<tr bgcolor=lightblue><td font size=4>" \
 		"&nbsp;:Dy:-:Dm:-:Dd: :Th:::Tm:&nbsp;&nbsp;" \
 		":P:@:HT:&nbsp;&nbsp;:I:</td></tr>\n" \
@@ -391,7 +403,7 @@ doit(int dash)
 	} else if (opts.html) {
 		spec = opts.verbose ? HSPECV : HSPEC;
 	} else {
-		spec = DSPEC;
+		spec = opts.diffs ? VSPEC : DSPEC;
 	}
 	s = sccs_init(s_cset, SILENT|INIT_NOCKSUM);
 	unless (s && HASGRAPH(s)) {

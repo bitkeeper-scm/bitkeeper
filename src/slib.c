@@ -14506,6 +14506,29 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
+	if (streq(kw, "DIFFS") || streq(kw, "UDIFFS")) {
+		int	kind = streq(kw, "DIFFS") ? DF_DIFF : DF_UNIFIED;
+
+		if (out) {
+			sccs_diffs(s, d->rev, d->rev, SILENT, kind, out);
+		} else {
+			char	*cmd;
+			FILE	*f;
+			char	buf[BUFSIZ];
+			
+			cmd = aprintf("bk diffs -%shR%s '%s'",
+			    kind == DF_DIFF ? "" : "u", d->rev, s->gfile);
+			unless (f = popen(cmd, "r")) {
+				free(cmd);
+				return (nullVal);
+			}
+			while (fnext(buf, f)) fs(buf);
+			pclose(f);
+			free(cmd);
+		}
+		return (strVal);
+	}
+
 	return notKeyword;
 }
 
