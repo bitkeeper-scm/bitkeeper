@@ -340,6 +340,7 @@ EOF
 bk sfiles -x | sort > SFILES
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
+rm -f bar/lib
 echo OK
 #----------------------------------------------------------- 
 fi
@@ -413,7 +414,6 @@ jjjj SCCS/c.gone@1.2
 xxxx SFILES
 lc   BitKeeper/etc/SCCS/s.ignore
 u  n SCCS/s.bad
-xxxx bar/lib
 EOF
 bk sfiles -i | sort > $HERE/sfiles.out || { echo failed 1; exit 1; }
 cmp -s $HERE/sfiles.ref $HERE/sfiles.out || { echo failed 2; diff -u $HERE/sfiles.ref $HERE/sfiles.out; exit 1; }
