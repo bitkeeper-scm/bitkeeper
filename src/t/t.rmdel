@@ -45,7 +45,7 @@ cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
 echo $N Check rmdel -n TOT ..........................................$NL
-echo "rmdel: remove FILE:1.5" > CMP1
+${ECHO} "rmdel: remove FILE:1.5" > CMP1
 rmdel -nr1.5 FILE 2> CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi

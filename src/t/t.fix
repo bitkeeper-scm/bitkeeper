@@ -10,7 +10,7 @@ ci -i $Q BitKeeper/etc/config
 date > FILE
 ci $Q -i FILE
 co $Q -l FILE
-echo "New changes that I want to modify" >> FILE
+${ECHO} "New changes that I want to modify" >> FILE
 cp FILE SAVE
 ci $Q -y'Oops' FILE
 bk fix $Q FILE
@@ -18,13 +18,13 @@ if [ ! -f SCCS/p.FILE ]; then echo Failed to edit FILE; exit 1; fi
 if [ ! -w FILE ]; then echo Failed to edit FILE; exit 1; fi
 cmp -s SAVE FILE
 if [ $? != 0 ]; then echo failed to restore FILE; diff FILE SAVE; exit 1; fi
-set `$CAT SCCS/p.FILE`
+set `cat SCCS/p.FILE`
 if [ "X$1" != "X1.1" ]; then echo failed to restore revision; exit 1; fi
 echo OK
 echo $N Make sure that we can not fix a committed delta .............$NL
 ci $Q -y'OK' FILE
 bk commit $Q -y'commit'
-echo "rmdel: can't remove committed delta FILE:1.2" > CMP1
+${ECHO} "rmdel: can't remove committed delta FILE:1.2" > CMP1
 bk fix $Q FILE 2> CMP2
 cmp -s CMP1 CMP2
 if [ $? != 0 ]; then echo failed to fail rmdel; exit 1; fi

@@ -7,9 +7,13 @@ sub platformInit
 
 	$SIG{'HUP'} = $SIG{'TERM'} = $SIG{'INT'} = 'IGNORE';
 	$tmp = "/tmp/";
+	$dev_null = "/dev/null";
 	$tty = "/dev/tty";
 	$pager = $ENV{'PAGER'} || "more";
 	$editor = $ENV{'EDITOR'} || "vi";
+	$exe = "";   # win3 has ".exe" extension for executable, unix does'nt
+	$dev_null = "" if 0;
+	$exe = "" if 0;
 }
 
 sub cd2root

@@ -3089,7 +3089,6 @@ sccs_init(char *name, u32 flags, char *root)
 			free(s->sfile);
 			free(s->gfile);
 			free(s->pfile);
-			free(s->sfile);
 			free(s);
 			return (0);
 		}
@@ -3392,16 +3391,17 @@ int
 sccs_lock(sccs *sccs, char type)
 {
 	char	*s;
-	int	islock;
+	int	lockfd;
 
 	if ((type == 'z') && (sccs->state & S_READ_ONLY)) return (0);
 	s = sccsXfile(sccs, type);
-	islock =
+	lockfd =
 	    open(s, O_CREAT|O_WRONLY|O_EXCL, type == 'z' ? 0444 : GROUP_MODE);
-	close(islock);
-	if (islock > 0) sccs->state |= S_ZFILE;
-	debug((stderr, "lock(%s) = %d\n", sccs->sfile, islock > 0));
-	return (islock > 0);
+
+	if (lockfd >= 0) close(lockfd);
+	if ((lockfd >= 0) && (type == 'z')) sccs->state |= S_ZFILE;
+	debug((stderr, "lock(%s) = %d\n", sccs->sfile, lockfd >= 0));
+	return (lockfd >= 0);
 }
 
 /*
