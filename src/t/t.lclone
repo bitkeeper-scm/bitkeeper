@@ -112,3 +112,20 @@ test -f $HERE/markers/BitKeeper/etc/SCCS/x.dummy || {
 	exit 1
 }
 echo OK
+
+echo $N Check the s.file updates break links ........................$NL
+cd $HERE
+h1=project/src/SCCS/s.h.h
+h2=markers/src/SCCS/s.h.h
+h3=trigger/src/SCCS/s.h.h
+test $h1 -ef $h2 || exit 1
+test $h2 -ef $h3 || exit 1
+cd project
+bk admin -z src/h.h
+cd $HERE
+test $h1 -ef $h2 && { 
+	echo failed to break link
+	exit 1
+}
+test $h2 -ef $h3 || exit 1
+echo OK

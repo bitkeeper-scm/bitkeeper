@@ -228,7 +228,9 @@ bk co $Q -l symlink
 bk clean
 if [ -f SCCS/p.symlink ]; then echo failed; exit 1; fi;
 echo OK
-rm -rf symlink symfile newlink file file1 file2 file3 dir1 SCCS
+
+cd $HERE
+rm -rf project
 
 # Test resyncing and resolving symlink <-> file conflicts
 echo $N Create initial repository for symlink resync ................$NL
@@ -547,3 +549,47 @@ bk diffs link > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff -u CMP1 CMP2; exit 1; fi
 echo OK
+
+echo $N Check renaming a dir and replacing with symlink .............$NL
+cd $HERE
+no_logging project
+mkdir dir
+cd dir
+echo hi > file
+bk new $Q file
+bk commit $Q -ywhat || exit 1
+cd $HERE
+bk clone $Q project copy2 || exit 1
+cd copy2
+bk mvdir dir dir2 || exit 1
+if [ -d dir ]; then echo failed; exit 1; fi
+ln -s dir2 dir || exit 1
+bk new $Q dir || exit 1
+bk commit $Q -ywhy || exit 1
+bk push $Q 2> ERRS
+if [ $? -ne 0 ]; then	
+	echo 'failed (bug 2002-02-11-001)'
+else
+	echo 'bug 2002-02-11-001 fixed! update test.'
+	exit 1
+fi
+cat ERRS
+
+echo $N Undo last cset ..............................................$NL
+bk undo $Q -f -r+ || exit 1
+if [ -d dir2 ]; then echo failed; exit 1; fi
+echo OK
+
+echo $N Check renaming a dir and replacing with file ................$NL
+bk mvdir dir dir2 || exit 1
+if [ -d dir ]; then echo failed; exit 1; fi
+echo hi > dir
+bk new $Q dir || exit 1
+bk commit $Q -ywhy || exit 1
+bk push -d $Q 2> ERRS
+if [ $? -ne 0 ]; then	
+	echo 'failed (bug 2002-02-11-001)'
+else
+	echo 'bug 2002-02-11-001 fixed! update test.'
+	exit 1
+fi
