@@ -3,8 +3,11 @@ proc getConfig {prog} \
 	global tcl_platform gc
 
 	if {$tcl_platform(platform) == "windows"} {
-		set _d(fixedFont) {helvetica 9 roman}
-		set _d(fixedBoldFont) {helvetica 9 roman bold}
+		set _d(fixedFont) {{Lucida Console} 9}
+		set _d(fixedBoldFont) {{Lucida Console} 9 bold}
+		#set _d(fixedBoldFont) {helvetica 9 roman bold}
+		#set _d(fixedFont -misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso8859-1
+		#set _d(fixedBoldFont -misc-fixed-bold-r-semicondensed--13-120-75-75-c-60-iso8859-1
 		set _d(buttonFont) {helvetica 9 roman bold}
 		set _d(cset.leftWidth) 40
 		set _d(cset.rightWidth) 80
