@@ -203,8 +203,8 @@ cd $HERE/copy2
 bk makepatch $Q -e1.3 > $HERE/patch
 cd $HERE/proj_log
 bk takepatch  $Q -a < $HERE/patch
-cd $HERE/proj_log
-bk -r check -a
+while [ -d PENDING ]; do sleep 1; done
+bk -r check -a || exit 1
 bk lock -U
 echo OK
 
