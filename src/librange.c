@@ -210,6 +210,23 @@ rangeSetExpand(sccs *s)
 }
 
 /*
+ * given a delta, go forward and backwards until we hit cset boundries.
+ * XXX - this definitely wants to be a set, not a range.
+ */
+void
+rangeCset(sccs *s, delta *d)
+{
+	delta	*save = d;
+	delta	*e = d;
+
+	assert(d);
+	for (d = d->parent; d && !(d->flags & D_CSET); e = d, d = d->parent);
+	s->rstart = d ? e : s->tree;
+	for (d = save; d->kid && !(d->flags & D_CSET); d = d->kid);
+	s->rstop = d;
+}
+
+/*
  * Take a list, split it up in the list items, and mark the tree.
  * If there are any ranges, clear the rstart/rstop and call the
  * range code, then walk the range and mark the tree.

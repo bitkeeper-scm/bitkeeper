@@ -4,13 +4,14 @@
 #include "range.h"
 WHATSTR("@(#)%K%");
 char	*prs_help = "\n\
-usage: prs [-hmv] [-c<d>] [-I<rev>] [-r<r>] [files...]\n\n\
+usage: prs [-bhmv] [-c<d>] [-r<r>] [files...]\n\n\
     -b		reverse the order of the printed deltas\n\
     -c<date>	Cut off dates.  See sccsrange(1) for details.\n\
-    -C		do not include branch deltas which are not merged\n\
+    -C<rev>	make the range be all revs that are the same cset as this\n\
     -d<spec>    Specify output data specification\n\
-    -h		Suppress range header.\n\
+    -h		Suppress range header\n\
     -m		print metadata, such as users and symbols.\n\
+    -M		do not include branch deltas which are not merged\n\
     -r<rev>	Specify a revision, or part of a range.\n\
     -v		Complain about SCCS files that do not match the range.\n\n\
     Note that <date> may be a symbol, which implies the date of the\n\
@@ -30,6 +31,7 @@ main(int ac, char **av)
 	int	flags = 0;
 	int	c;
 	char	*name;
+	char	*cset = 0;
 	int	noisy = 0;
 	int	expand = 1;
 	char	*dspec = NULL;
@@ -40,17 +42,14 @@ main(int ac, char **av)
 		fprintf(stderr, prs_help);
 		return (1);
 	}
-	while ((c = getopt(ac, av, "bc;Cd:hmr|v")) != -1) {
+	while ((c = getopt(ac, av, "bc;C;d:hmMr|v")) != -1) {
 		switch (c) {
 		    case 'b': reverse++; break;
-		    case 'C': expand = 3; break;
-		    case 'd':
-			dspec = optarg;
-			break;
-		    case 'h':
-			doheader = 0;
-			break;
+		    case 'C': cset = optarg; break;
+		    case 'd': dspec = optarg; break;
+		    case 'h': doheader = 0; break;
 		    case 'm': flags |= PRS_META; break;
+		    case 'M': expand = 3; break;
 		    case 'v': noisy = 1; break;
 		    RANGE_OPTS('c', 'r');
 		    default:
@@ -58,12 +57,24 @@ usage:			fprintf(stderr, "prs: usage error, try --help\n");
 			return (1);
 		}
 	}
+	if (things && cset) {
+		fprintf(stderr, "prs: -r or -C but not both.\n");
+		exit(1);
+	}
 	for (name = sfileFirst("prs", &av[optind], 0);
 	    name; name = sfileNext()) {
 		unless (s = sccs_init(name, init_flags, 0)) continue;
 		if (!s->tree) goto next;
-		RANGE("prs", s, expand, noisy);
-		unless(s->rstart) goto next; /* happen when we have only 1.0 delta */
+		if (cset) {
+			delta	*d = sccs_getrev(s, cset, 0, 0);
+
+			if (!d) goto next;
+			rangeCset(s, d);
+		} else {
+			RANGE("prs", s, expand, noisy);
+			/* happens when we have only 1.0 delta */
+			unless(s->rstart) goto next;
+		}
 		assert(s->rstop);
 		if (doheader) {
 			printf("======== %s %s", s->gfile, s->rstart->rev);
