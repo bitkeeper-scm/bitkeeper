@@ -42,7 +42,17 @@ Copyright \(co 2000 BitMover, Inc.
 .	nr HEIGHT \\n[nl]u-\\n[a]u
 .	nr WIDTH \\n[LL]u+.1i
 .	po -.05i
+\\D't .1'
+.	sp -1
 \\D'p 0 0 \\n[WIDTH]u 0 0 -\\n[HEIGHT]u -\\n[WIDTH]u 0'
+.	po +\\n[WIDTH]u
+.	sp -1
+.	nr HEIGHT -.05i
+\\D'P 0 0 .05i 0 0 -\\n[HEIGHT]u -.05i 0'
+.	po
+.	po +.05i
+.	sp -.7
+\\D'P 0 0 \\n[WIDTH]u 0 0 -.05i -\\n[WIDTH]u 0'
 .	po
 ..
 .\" Section header with optional size adjust
