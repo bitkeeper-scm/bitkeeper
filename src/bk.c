@@ -917,6 +917,7 @@ cmdlog_end(int ret)
 	kvpair	kv;
 
 	purify_list();
+	bktmpcleanup();
 	unless (cmdlog_buffer[0] && bk_proj && bk_proj->root) {
 		return (flags);
 	}
