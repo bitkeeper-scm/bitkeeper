@@ -360,8 +360,9 @@ proc getFiles {} \
 
 proc DeleteAll {} \
 {
-	global	leftLine leftFile leftCount rightCount
+	global	leftLine leftFile leftCount rightCount isBusy
 
+	if {$isBusy} { return }
 	busy 1
 	.files.l tag delete select
 	.files.l configure -state normal
@@ -380,14 +381,16 @@ proc DeleteAll {} \
 	.menu.delete configure -state disabled
 	.menu.history configure -state disabled
 	.menu.guess configure -state disabled
+	.menu.rename configure -state disabled
 	clear disabled
 	busy 0
 }
 
 proc CreateAll {} \
 {
-	global	rightLine rightFile rightCount leftCount
+	global	rightLine rightFile rightCount leftCount isBusy
 
+	if {$isBusy} { return }
 	busy 1
 	.files.r tag delete select
 	.files.r configure -state normal
@@ -402,14 +405,17 @@ proc CreateAll {} \
 	.files.r configure -state disabled
 	.menu.createAll configure -state disabled
 	.menu.create configure -state disabled
+	.menu.guess configure -state disabled
+	.menu.rename configure -state disabled
 	clear disabled
 	busy 0
 }
 
 proc Delete {doit} \
 {
-	global	leftLine leftFile leftCount rightFile
+	global	leftLine leftFile leftCount rightFile isBusy
 
+	if {($isBusy == 1) && ($doit == 1)} { return }
 	busy 1
 	if {$doit == 1} { sh "bk rm $leftFile\n" }
 	.files.l tag delete select
@@ -434,8 +440,9 @@ proc Delete {doit} \
 
 proc Create {doit} \
 {
-	global	rightLine rightFile rightCount leftFile
+	global	rightLine rightFile rightCount leftFile isBusy
 
+	if {($isBusy == 1) && ($doit == 1)} { return }
 	busy 1
 	if {$doit == 1} { sh "bk new $rightFile\n" }
 	.files.r tag delete select
@@ -460,8 +467,9 @@ proc Create {doit} \
 
 proc Rename {} \
 {
-	global	leftFile rightFile
+	global	leftFile rightFile isBusy
 
+	if {$isBusy == 1} { return }
 	busy 1
 	sh "bk mv $leftFile $rightFile\n"
 	Create 0
@@ -678,7 +686,10 @@ proc history {} \
 # --------------- Window stuff ------------------
 proc busy {busy} \
 {
+	global isBusy
+
 	if {$busy == 1} {
+		set isBusy 1
 		. configure -cursor watch
 		.files.l configure -cursor watch
 		.files.r configure -cursor watch
@@ -694,6 +705,7 @@ proc busy {busy} \
 		.files.sh configure -cursor left_ptr
 		.diffs.l configure -cursor left_ptr
 		.diffs.r configure -cursor left_ptr
+		set isBusy 0
 	}
 	update
 }
@@ -701,7 +713,11 @@ proc busy {busy} \
 proc pixSelect {which line file x y} \
 {
 	set l [$which index "@$x,$y linestart"]
-	Select $which $line $file $l
+
+	## Protect against selecting below the end of the list
+	if { $l + 1 < [ $which index "end linestart" ] } {
+		Select $which $line $file $l
+	}
 }
 
 proc Select {which line file l} \
@@ -734,9 +750,7 @@ proc Select {which line file l} \
 			diffFiles $leftFile $rightFile
 			.menu.rename configure -state normal
 		}
-		if {$rightFile != ""} { 
-			.menu.delete configure -state normal
-		}
+		if {$leftFile != ""} { .menu.delete configure -state normal }
 		if {$rightFile != ""} { .menu.create configure -state normal }
 		if {$file == "undoFile"} { .menu.undo configure -state normal }
 	}
