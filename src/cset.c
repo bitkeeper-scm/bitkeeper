@@ -188,16 +188,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 	 * If we are initializing, then go create the file.
 	 * XXX - descriptive text.
 	 */
-	if (flags & NEWFILE) {
-		if (sym) {
-			fprintf(stderr,
-				"%s: -S and -i may not be used together\n",
-				av[0]);
-			goto usage;
-		}
-		sym = CSET_VERSION;
-		return (csetInit(cset, flags, sym));
-	}
+	if (flags & NEWFILE) return (csetInit(cset, flags, sym));
 
 	/*
 	 * List a specific rev.
@@ -256,7 +247,7 @@ do_checksum(void)
 	uLong sum = 0;
 
 	while (fnext(buf, stdin)) {
-		if (streq(buf, PATCH_VERSION)) {
+		if (streq(buf, PATCH_CURRENT)) {
 			if (!doXsum) doXsum = 1;
 			else {
 				printf("# Human readable diff checksum=%.8lx\n", sum);
@@ -713,7 +704,7 @@ csetlist(sccs *cset)
 	}
 again:	/* doDiffs can make it two pass */
 	if (!doDiffs && makepatch) {
-		printf("%s", PATCH_VERSION);
+		printf("%s", PATCH_CURRENT);
 	}
 	while (fnext(buf, list)) {
 		chop(buf);
@@ -1049,13 +1040,6 @@ csetCreate(sccs *cset, int flags, char *sym)
 	int	error = 0;
 	time_t	date;
 
-	/*
-	 * Check for the version tag on the 1.0 delta, and if it
-	 * isn't current, update the file format.
-	 */
-	d = sccs_getrev(cset, 0, CSET_VERSION, 0);
-	unless (d) cset = csetReformat(cset, csetFile);
-
 	d = mkChangeSet(cset);
 	date = d->date;
 	unless (cset = sccs_init(csetFile, flags, 0)) {
@@ -1193,51 +1177,4 @@ sccs_patch(sccs *s)
 	}
 	ndeltas += deltas;
 	if (list) free(list);
-}
-
-/*
- * Reformat a ChangeSet file which is in an obsolete format.
- * Current code just tags the 1.0 delta with CSET_VERSION,
- * but we will eventually need to handle e.g. updating all the keys
- * to the extended key format.
- */
-sccs *
-csetReformat(sccs *c, char *file)
-{
-	symbol *s;
-	delta *d;
-	admin a[2];
-	int warned = 0;
-
-	d = sccs_getrev(c, "1.0", 0, 0);
-	for (s = c->symbols; s; s = s->next) {
-		unless (s->metad == d) continue;
-		unless (strneq (s->name, CSET_VERSION_PREFIX,
-				sizeof CSET_VERSION_PREFIX - 1)) continue;
-
-		/*
-		 * Code to recognize specific obsolete formats goes here.
-		 */
-	}
-
-	unless(warned) fputs(
-"cset: warning: ChangeSet file format is obsolete.\n\
-The file will be reformatted to fit the current specification.\n\
-This may take some time...\n", stderr);
-
-	/* Do the symbol addition.
-	 */
-	a[0].flags = A_ADD;
-	a[0].thing = malloc(sizeof CSET_VERSION + sizeof ":1.0" - 1);
-	strcpy(a[0].thing, CSET_VERSION);
-	strcat(a[0].thing, ":1.0");
-	a[1].flags = 0;
-
-	if (sccs_admin(c, SILENT, 0, 0, 0, 0, 0, a, 0)) {
-		sccs_whynot("add tag", c);
-		exit(1);
-	}
-
-	sccs_restart(c);
-	return (c);
 }

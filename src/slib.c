@@ -71,7 +71,7 @@ private int	deflate_gfile(sccs *s, char *tmpfile);
 private int	isRegularFile(mode_t m);
 private void	sccs_freetable(delta *d);
 delta *		sccs_kid(sccs *s, delta *d);  /* In range.c */
-private	sum_t	getCksumDelta(sccs *s, delta *d);
+private	delta*	getCksumDelta(sccs *s, delta *d);
 
 private unsigned int u_mask = 0x5eadbeef;
 
@@ -4803,18 +4803,21 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 	return f;
 } 
 
-/* Get the checksum of the last non null delta */
-/* XXX include and exclude may be benign.  Want a way to
- * know if check sum is different from parent
+/* 
+ * Get the checksum of the first delta found with a real checksum, not
+ * a made up one from almostUnique().
+ * We depend on the fact that includes/excludes force a data checksum,
+ * not an almostUnique() value.
  */
-
-private	sum_t
+private	delta *
 getCksumDelta(sccs *s, delta *d)
 {
 	delta	*t;
+
 	for (t = d; t; t = t->parent) {
-		if (t->include || t->exclude || t->added || t->deleted)
-			return (t->sum);
+		if (t->include || t->exclude || t->added || t->deleted) {
+			return (t);
+		}
 	}
 	return (0);
 }
@@ -4951,12 +4954,13 @@ out:		if (slist) free(slist);
 		    : visitedstate((const serlist*)state, (const ser_t*)slist);
 	}
 	if (d && (flags & NEWCKSUM) && !(flags&GET_SHUTUP) && lines) {
-		sum_t	z = getCksumDelta(s, d);
+		delta	*z = getCksumDelta(s, d);
 
-		unless (z == sum) {
+		if (!z || (sum != z->sum)) {
 		    fprintf(stderr,
-		    "get: bad delta cksum %u:%u for %s in %s, gotten anyway.\n",
-		    z, sum, d->rev, s->sfile);
+			"get: bad delta cksum %u:%d for %s in %s, %s\n",
+			sum, z ? z->sum : -1, d->rev, s->sfile,
+			"gotten anyway.");
 		}
 	}
 
@@ -5995,6 +5999,8 @@ sccs_hasDiffs(sccs *s, u32 flags)
 	BUF	(fbuf);
 
 #define	RET(x)	{ different = x; goto out; }
+
+	unless (HAS_GFILE(s) && HAS_PFILE(s)) return (0);
 
 	bzero(&pf, sizeof(pf));
 	if (read_pfile("hasDiffs", s, &pf)) return (-1);
@@ -7193,7 +7199,7 @@ time:	if (d->parent && (d->date < d->parent->date)) {
 		unless (strcmp(parent, me) < 0) {
 			fprintf(stderr,
 			    "\t%s: %s,%s have same date and bad key order\n",
-			    d->rev, d->parent->rev);
+			    s->sfile, d->rev, d->parent->rev);
 		}
 	}
 
@@ -9315,20 +9321,36 @@ end(sccs *s, delta *n, FILE *out, int flags, int add, int del, int same)
 	fputmeta(s, buf, out);
 	if (s->state & S_BITKEEPER) {
 		if ((add || del || same) && (n->flags & D_ICKSUM)) {
-			sum_t 	sum = getCksumDelta(s, n);
-			if (s->dsum != sum) {
+			delta	*z = getCksumDelta(s, n);
+
+			if (!z || (s->dsum != z->sum)) {
 				fprintf(stderr,
-				    "%s: bad delta checksum: %u:%u for %s\n",
-				    s->sfile, s->dsum, sum, n->rev);
+				    "%s: bad delta checksum: %u:%d for %s\n",
+				    s->sfile, s->dsum, 
+				    z ? z->sum : -1, n->rev);
 				s->state |= S_BAD_DSUM;
 			}
 		}
 		unless (n->flags & D_ICKSUM) {
-			/* XXX: would like "if cksum is same as parent" */
-			if (!add && !del && !n->include && !n->exclude) {
-				n->sum = almostUnique(0);
-			} else {
+			/*
+			 * XXX: would like "if cksum is same as parent"
+			 * but we can't do that because we use the inc/ex
+			 * in getCksumDelta().
+			 */
+			if (add || del || n->include || n->exclude) {
 				n->sum = s->dsum;
+			} else {
+				n->sum = almostUnique(0);
+			}
+			/*
+			 * XXX - should this be fatal for cset?
+			 * It probably should but only if the
+			 * full keys are the same.
+			 */
+			if (n->parent && (n->parent->sum == n->sum)) {
+				fprintf(stderr,
+				    "%s: warning %s & %s have same sum\n",
+				    s->sfile, n->parent->rev, n->rev);
 			}
 		}
 		fseek(out, s->sumOff, SEEK_SET);
@@ -10534,7 +10556,6 @@ private void
 do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 {
 	int	i;	/* used by EACH */
-	lod	*lod;
 	symbol	*sym;
 	char	type;
 
@@ -11297,10 +11318,10 @@ again:
 	unless (first) {	/* dump and recompute long key cache */
 		if (DB) mdbm_close(DB);
 		if (idDB) mdbm_close(idDB);
-		unlink(ID);	/* XXX: careful throwing away files */
+		unlink(IDCACHE);	/* XXX: careful throwing away files */
 	}
 
-	DB = loadDB(ID, 0);	/* slurp the id_cache file */
+	DB = loadDB(IDCACHE, 0);	/* slurp the id_cache file */
 	assert(DB);
 
 	idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
@@ -11326,15 +11347,15 @@ again:
 		}
 		*t = 0;	/* k is now short key */
 		if (rc = mdbm_store_str(idDB, k, v, MDBM_INSERT)) {
-			if (rc == 1) {
-				char *old = mdbm_fetch_str(idDB, k);
+			if (errno == EEXIST) {
+				char	*old = mdbm_fetch_str(idDB, k);
+
 				assert(old);
 				fprintf(stderr,
-				  "Duplicate short keys: %s for %s and %s\n",
-				  k, v, old);
+				    "Duplicate short keys: %s for %s and %s\n",
+				      k, v, old);
 				mdbm_delete_str(idDB, k); 
-			}
-			else {
+			} else {
 				assert("loadIdDB: fail in store idDB" == 0);
 			}
 		}
@@ -11344,7 +11365,7 @@ again:
 	return (idDB);
 }
 
-int
+inline int
 findpipe(register char *s)
 {
 	while (*s) if (*s++ == '|') return (1);
@@ -11360,7 +11381,6 @@ findpipe(register char *s)
 MDBM	*
 csetIds(sccs *s, char *rev, int all)
 {
-	FILE	*f;
 	MDBM	*db;
 	char	name[MAXPATH];
 	char	key[MAXPATH];
@@ -11368,22 +11388,20 @@ csetIds(sccs *s, char *rev, int all)
 
 	sprintf(name, "/tmp/cs%d", getpid());
 	assert(all);
-
 	unless (d = findrev(s, rev)) {
 		perror(rev);
 		exit(1);
 	}
-
 	if (sccs_get(s, rev, 0, 0, 0, SILENT|PRINT, name)) {
 		sccs_whynot("get", s);
 		exit(1);
 	}
 	db = loadDB(name, findpipe);
 	unlink(name);
-	/* add cset key , val */
+	/* add cset key, val */
 	sccs_sdelta(s, sccs_ino(s), key);
 	sccs_sdelta(s, d, name);
-	if (mdbm_store_str(db, key, name, MDBM_REPLACE) == -1) {
+	if (mdbm_store_str(db, key, name, MDBM_INSERT) == -1) {
 		perror("mdbm_store_str");
 		exit(1);
 	}
@@ -11398,12 +11416,10 @@ csetIds(sccs *s, char *rev, int all)
  * to make a short key).
  */
 char *
-sccs_iskeylong(char *key)
+sccs_iskeylong(char *t)
 {
-	char	*t;
-
-	assert(key);
-	for (t = key; *t && *t != '|'; t++);
+	assert(t);
+	for ( ; *t && *t != '|'; t++);
 	assert(t);
 	for (t++; *t && *t != '|'; t++);
 	assert(t);

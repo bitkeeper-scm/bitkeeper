@@ -24,7 +24,7 @@ int
 main(int ac, char **av)
 {
 	sccs	*s;
-	int	reverse = 0, doheader = 1, didone = 0;
+	int	reverse = 0, doheader = 1;
 	int	init_flags = INIT_NOCKSUM;
 	int	flags = 0;
 	int	c;

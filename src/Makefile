@@ -1,6 +1,6 @@
 
 BINS	= delta get ci co admin diffs clean prs what sinfo sccssh sids \
-	  smoosh sccslog sfiles renumber lines rmdel makepatch takepatch \
+	  smoosh sccslog sfiles renumber lines rmdel takepatch \
 	  smark cset g2sccs range zone gethost undos chksum rechksum \
 	  cset_todo sccsmv sccsrm sccscat csetmark key2rev edit unedit sdiffs \
 	  check
@@ -35,7 +35,7 @@ ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/gzio.o \
 	  zlib/infutil.o zlib/inffast.o
 BINOBJ  = admin.o csetmark.o key2rev.o rechksum.o sccsmv.o smoosh.o \
 	  ci.o delta.o lines.o renumber.o sccsrm.o takepatch.o clean.o \
-	  diffs.o makepatch.o rmdel.o sccssh.o what.o co.o g2sccs.o \
+	  diffs.o rmdel.o sccssh.o what.o co.o g2sccs.o \
 	  prs.o sccs_mv.o sfind.o zone.o cset.o get.o rangemain.o \
 	  sccscat.o sids.o cset_todo.o gethost.o rcs.o sccslog.o sinfo.o \
 	  gui/fdiff.o check.o
@@ -49,7 +49,7 @@ SRCS	= slib.c range.c newrev.c getopt.c popen.c libdiff.c \
 	  zlib/infutil.c zlib/inffast.c gui/fdiff.c \
 	  delta.c get.c ci.c co.c admin.c diffs.c clean.c prs.c what.c \
 	  sinfo.c sccssh.c sids.c smoosh.c sccslog.c sfind.c \
-	  renumber.c lines.c rmdel.c makepatch.c takepatch.c smark.c \
+	  renumber.c lines.c rmdel.c takepatch.c smark.c \
 	  cset.c g2sccs.c rangemain.c zone.c gethost.c undos.c chksum.c \
 	  rechksum.c cset_todo.c sccs_mv.c sccsmv.c sccsrm.c sccscat.c \
 	  csetmark.c key2rev.c rcs.c comments.c user.c host.c localtm.c \
@@ -218,8 +218,6 @@ gethost: gethost.o $(LIBS)
 	$(CC) $(CFLAGS) gethost.o $(LINK) -o gethost
 takepatch: takepatch.o $(LIBS)
 	$(CC) $(CFLAGS) takepatch.o $(LINK) -o takepatch
-makepatch: makepatch.o $(LIBS)
-	$(CC) $(CFLAGS) makepatch.o $(LINK) -o makepatch
 sfiles: sfind.o $(LIBS)
 	$(CC) $(CFLAGS) sfind.o $(LINK) -o sfiles
 renumber: renumber.o $(LIBS)
@@ -433,7 +431,6 @@ sfind.o: system.h purify.h mdbm/mdbm.h config.h sccs.h
 renumber.o: system.h purify.h mdbm/mdbm.h config.h sccs.h
 lines.o: system.h purify.h mdbm/mdbm.h config.h sccs.h
 rmdel.o: system.h purify.h mdbm/mdbm.h config.h sccs.h
-makepatch.o: system.h purify.h mdbm/mdbm.h config.h sccs.h
 takepatch.o: system.h purify.h mdbm/mdbm.h config.h sccs.h
 cset.o: system.h purify.h mdbm/mdbm.h config.h sccs.h range.h comments.c
 cset.o: host.c user.c

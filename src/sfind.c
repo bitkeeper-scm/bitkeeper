@@ -358,8 +358,9 @@ caches(const char *filename, const struct stat *sb, int flag)
 	register char *file = (char *)filename;
 	sccs	*sc;
 	register delta *d, *e;
-	datum	k, v;
 	char	buf[MAXPATH*2];
+	char	*t;
+	int	n;
 
 	if (S_ISDIR(sb->st_mode)) return (0);
 	if ((file[0] == '.') && (file[1] == '/')) file += 2;
@@ -375,24 +376,21 @@ caches(const char *filename, const struct stat *sb, int flag)
 		delta	*ino = sccs_ino(sc);
 
 		sccs_sdelta(sc, sccs_ino(sc), buf);
-		/* update the id cache if 
-		 * a) there is no path for the root - BAD, or
-		 * b) if the root path != current path.
-		 */
-		if (!ino->pathname || !streq(ino->pathname, sc->gfile)) {
+		/* update the id cache only if root path != current path. */
+		assert(ino->pathname);
+		unless (streq(ino->pathname, sc->gfile)) {
 			fprintf(id_cache, "%s %s\n", buf, sc->gfile);
 		}
-		/* XXX: could use mdbm_store_str and mdbm_fetch_str */
-		k.dptr = buf;
-		k.dsize = strlen(buf) + 1;
-		v.dptr = sc->gfile;
-		v.dsize = strlen(sc->gfile) + 1;
-		if (mdbm_store(idDB, k, v, MDBM_INSERT)) {
-			v = mdbm_fetch(idDB, k);
-			fprintf(stderr,
-		    	"Duplicate id '%s' for %s\n  Used by %s\n",
-		    	buf, sc->gfile, v.dptr);
+		if (mdbm_store_str(idDB, buf, sc->gfile, MDBM_INSERT)) {
+			if (errno == EEXIST) {
+				fprintf(stderr,
+				    "Duplicate id '%s' for %s\n  Used by %s\n",
+				    buf, sc->gfile, buf);
 				dups++;
+			} else {
+				perror("mdbm_store");
+				exit(1);
+			}
 		}
 	}
 
@@ -408,13 +406,16 @@ caches(const char *filename, const struct stat *sb, int flag)
 		return (0);
 	}
 
-	/* Go look for it in the cset */
+	/* Go look for long and short versions in the cset */
 	sccs_sdelta(sc, sccs_ino(sc), buf);
-	k.dptr = buf;
-	k.dsize = strlen(buf) + 1;
-	v = mdbm_fetch(csetDB, k);
-	if (v.dsize) {
-		if (e = sccs_findKey(sc, v.dptr)) {
+	unless (t = mdbm_fetch_str(csetDB, buf)) {
+		if (t = sccs_iskeylong(buf)) {
+			*t = 0;
+			t = mdbm_fetch_str(csetDB, buf);
+		}
+	}
+	if (t) {
+		if (e = sccs_findKey(sc, t)) {
 			while (e && (e->type != 'D')) e = e->parent;
 			if (e != d) {
 				if (aFlg) {
@@ -435,9 +436,6 @@ caches(const char *filename, const struct stat *sb, int flag)
 	sccs_free(sc);
 	return (0);
 }
-
-
-
 
 _ftw_get_flag(const char *dir, struct stat *sb)
 {

@@ -531,7 +531,7 @@ nothingtodo(void)
 "takepatch: nothing to do in patch, which probably means a patch version\n\
 mismatch.  You need to make sure that the software generating the patch is\n\
 the same as the software accepting the patch.  We were looking for\n\
-%s", PATCH_VERSION);
+%s", PATCH_CURRENT);
 	cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 }
 
@@ -544,7 +544,7 @@ noversline(char *name)
 format understood by this program.\n\
 You need to make sure that the software generating the patch is\n\
 the same as the software accepting the patch.  We were looking for\n\
-%s", name, PATCH_VERSION);
+%s", name, PATCH_CURRENT);
 	cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 }
 
@@ -1058,15 +1058,14 @@ init(FILE *p, int flags, char **resyncRootp)
 		 * Save patch first, making sure it is on disk.
 		 */
 		while (fnext(buf, p)) {
-			if (!started
-			    && strneq(buf, PATCH_VERSION_PREFIX,
-				      sizeof PATCH_VERSION_PREFIX - 1)) {
-				if (streq(buf, PATCH_VERSION)) havexsum = 1;
-				else if (streq(buf, PATCH_OLDVERSION_NOSUM)) {
+			if (!started) {
+				if (streq(buf, PATCH_CURRENT)) {
+					havexsum = 1;
+					started = 1;
+				} else if (streq(buf, PATCH_NOSUM)) {
 					havexsum = 0;
 					oldformat();
 				}
-				started = 1;
 			}
 			    
 			if (started) {
@@ -1099,14 +1098,14 @@ init(FILE *p, int flags, char **resyncRootp)
 	} else {
 		f = p;
 		fnext(buf, f);
-		if (strneq(buf, PATCH_VERSION_PREFIX,
-			   sizeof PATCH_VERSION_PREFIX - 1)) {
-			if (streq(buf, PATCH_VERSION)) havexsum = 1;
-			else if (streq(buf, PATCH_OLDVERSION_NOSUM)) {
-				havexsum = 0;
-				oldformat();
-			}
-		} else noversline(infname);
+		if (streq(buf, PATCH_CURRENT)) {
+			havexsum = 1;
+		} else if (streq(buf, PATCH_NOSUM)) {
+			havexsum = 0;
+			oldformat();
+		} else {
+			noversline(infname);
+		}
 		do {
 			len = strlen(buf);
 			sumC = adler32(sumC, buf, len);

@@ -357,6 +357,10 @@ _unedit() {
 	${BIN}clean -u "$@"
 }
 
+_unlock() {
+	${BIN}clean -u "$@"
+}
+
 _mv() {
 	${BIN}sccsmv "$@"
 }
@@ -703,7 +707,7 @@ _commandHelp() {
 			;;
 		# this is the list of commands which have better help in the
 		# helptext file than --help yields.
-		unedit|check)
+		unlock|unedit|check)
 			_gethelp help_$i $BIN | $PAGER
 			;;
 		*)
