@@ -370,7 +370,7 @@
 			    zeof() : ((s)->where >= (s)->mmap + (s)->size))
 #define	new(p)		p = calloc(1, sizeof(*p))
 
-typedef	unsigned short	ser_t;
+typedef	u32		ser_t;
 typedef	unsigned short	sum_t;
 typedef	char		**globv;
 
