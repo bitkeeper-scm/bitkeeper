@@ -197,18 +197,6 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	/* remove any uncommited stuff */
 	sccs_rmUncommitted(opts.quiet);
 
-	/* set up correct lod while the revision number is accurate */
-	if (opts.rev) {
-		if (lod(opts.quiet, opts.rev)) {
-			fprintf(stderr,
-				    "clone: cannot set lod, aborting ...\n");
-			fprintf(stderr, "clone: removing %s ...\n", local);
-			sprintf(buf, "rm -rf %s", local);
-			system(buf); /* clean up local tree */
-			goto done;
-		}
-	}
-
 	/* remove any later stuff */
 	if (opts.rev && after(opts.quiet, opts.rev)) {
 		fprintf(stderr, "Undo failed, repository left locked.\n");
@@ -389,29 +377,6 @@ after(int quiet, char *rev)
 	if (quiet) cmds[++i] = "-q";
 	cmds[++i] = p = malloc(strlen(rev) + 3);
 	sprintf(cmds[i], "-a%s", rev);
-	cmds[++i] = 0;
-	i = spawnvp_ex(_P_WAIT, "bk", cmds);
-	free(p);
-	unless (WIFEXITED(i))  return (-1);
-	return (WEXITSTATUS(i));
-}
-
-int
-lod(int quiet, char *rev)
-{
-	char	*cmds[10];
-	char	*p;
-	int	i;
-
-	unless (quiet) {
-		fprintf(stderr,
-		    "Setting repository to correct lod for %s...\n", rev);
-	}
-	cmds[i = 0] = "bk";
-	cmds[++i] = "setlod";
-	if (quiet) cmds[++i] = "-q";
-	cmds[++i] = p = malloc(strlen(rev) + 3);
-	sprintf(cmds[i], "-l%s", rev);
 	cmds[++i] = 0;
 	i = spawnvp_ex(_P_WAIT, "bk", cmds);
 	free(p);
