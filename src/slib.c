@@ -10005,10 +10005,12 @@ out:	if (d) {
 			type = 'R';
 		}
 		d->type = type;
+#ifdef	GRAFT_BREAKS_LOD
 		if (patch) {
 			free(d->rev);
 			d->rev = 0;
 		}
+#endif
 	}
 	*errorp = error;
 	if (linesp) *linesp += lines;
@@ -10266,6 +10268,7 @@ chknewlod(sccs *s, delta *d)
 {
 	u16	lod;
 	char	buf[MAXPATH];
+	delta	*p;
 
 	unless (d->rev) return (0);
 
@@ -10277,10 +10280,19 @@ chknewlod(sccs *s, delta *d)
 		((d->r[1] == 1 && d->r[2] == 0) ||
 		(d->r[1] == 0 && d->r[2] != 0 && d->r[3] == 1))))
 	{
+no_new:
 		free(d->rev);
 		d->rev = 0;
 		return (0);
 	}
+	/* If parent is a grafted root, then not a new lod
+	 * Graft root in the form X.0.Y.0 where Y != 0 
+	 */
+	p = d->parent;
+	if (p && p->r[1] == 0 && p->r[2] != 0 && p->r[3] == 0) {
+		goto no_new;
+	}
+
 	unless (lod = sccs_nextlod(s)) {
 		fprintf(stderr, "chknewlod: ran out of lods\n");
 		return (-1);
@@ -10416,7 +10428,6 @@ out:
 				}
 			}
 			unless (flags & NEWFILE) {
-#ifdef	BREAKS_GRAFTING
 				/* except the very first delta   */
 				/* all rev are subject to rename */
 				/* if x.1 then ensure new LOD */
@@ -10427,7 +10438,6 @@ out:
 				/* free(prefilled->rev);
 				 * prefilled->rev = 0;
 				 */
-#endif
 
 				/*
 				 * If we have random bits, we are the root of
