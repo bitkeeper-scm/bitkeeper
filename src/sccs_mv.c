@@ -269,7 +269,7 @@ err:		if (sname) free(sname);
 			free(n_path);
 		}
 	}
-	freeLines(xlist);
+	freeLines(xlist, free);
 	unless (isUnDelete) sccs_rmEmptyDirs(osfile);
 
 out:	if (s) sccs_free(s);

@@ -628,7 +628,7 @@ http_cset(char *rev)
 	pclose(f);
 
 	if (lines) {
-		sortLines(lines);
+		sortLines(lines, 0);
 
 		av[i=0] = "bk";
 		av[++i] = "prs";
@@ -663,7 +663,7 @@ http_cset(char *rev)
 		sccs_free(cset);
 		fflush(stdout);
 		EACH(lines) write(fd, lines[i], strlen(lines[i]));
-		freeLines(lines);
+		freeLines(lines, free);
 		close(fd);
 		waitpid(child, &i, 0);
 	}
@@ -970,11 +970,11 @@ http_src(char *path)
 		names = addLine(names, strdup(buf));
 	}
 	pclose(f);
-	sortLines(names);
+	sortLines(names, 0);
 	EACH(names) {
 		out(names[i]);
 	}
-	freeLines(names);
+	freeLines(names, free);
 	out(INNER_END OUTER_END);
 	if (!embedded) trailer("src");
 }

@@ -641,7 +641,7 @@ walk(char *dir, int level)
 				enqueue(&dlist, buf);
 			}
 		}
-		freeLines(dh);
+		freeLines(dh, free);
 		while (p = dequeue(&dlist)) {
 			walk(p, level + 1);
 			free(p);
@@ -928,7 +928,7 @@ sccsdir(char *dir, int level, char **sdh, char buf[MAXPATH])
 			mdbm_store_str(sDB, sdh[i], p, MDBM_REPLACE);
 		}
 	}
-	freeLines(sdh);
+	freeLines(sdh, free);
 
 	/*
 	 * Get all the gfiles
@@ -950,7 +950,7 @@ sccsdir(char *dir, int level, char **sdh, char buf[MAXPATH])
 		    isBKRoot(dir)) {
 skip:			mdbm_close(gDB);
 			mdbm_close(sDB);
-			freeLines(dh);
+			freeLines(dh, free);
 			while (p = dequeue(&slist)) free(p);
 			return;
 		}
@@ -973,7 +973,7 @@ skip:			mdbm_close(gDB);
 			mdbm_store_str(gDB, dh[i], "", MDBM_INSERT);
 		}
 	}
-	freeLines(dh);
+	freeLines(dh, free);
 	d_count++;
 	if (opts.progress) progress(1);
 

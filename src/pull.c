@@ -110,7 +110,7 @@ pull_main(int ac, char **av)
 	}
 	if (rc == -2) rc = 1; /* if retry failed, rest exit code to 1 */
 	remote_free(r);
-	freeLines(envVar);
+	freeLines(envVar, free);
 	return (rc);
 }
 

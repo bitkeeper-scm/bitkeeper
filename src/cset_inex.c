@@ -78,7 +78,7 @@ cset_inex(int flags, char *op, char *revs)
 				rlist = addLine(rlist, strdup(&t[1]));
 			} else {		/* flush file, start again */
 				revbuf = joinLines(",", rlist);
-				freeLines(rlist);
+				freeLines(rlist, free);
 				rlist = 0;
 				if (doit(flags, file, op, revbuf)) {
 					kill(pid, SIGKILL);
@@ -105,7 +105,7 @@ cset_inex(int flags, char *op, char *revs)
 	}
 	if (file[0]) {
 		revbuf = joinLines(",", rlist);
-		freeLines(rlist);
+		freeLines(rlist, free);
 		rlist = 0;
 		if (doit(flags, file, op, revbuf)) {
 			kill(pid, SIGKILL);

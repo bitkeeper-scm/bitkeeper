@@ -34,7 +34,7 @@ find_main(int ac, char **av)
 			files(av[i]);
 		}
 	}
-	if (globs) freeLines(globs);
+	if (globs) freeLines(globs, free);
 	exit(0);
 }
 

@@ -292,7 +292,7 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 		csetlist(&copts, cset);
 next:		sccs_free(cset);
 		if (cFile) free(cFile);
-		freeLines(syms);
+		freeLines(syms, free);
 		return (0);
 	}
 
@@ -304,7 +304,7 @@ next:		sccs_free(cset);
 	 */
 	c = csetCreate(cset, dflags|flags, syms);
 	if (cFile) free(cFile);
-	freeLines(syms);
+	freeLines(syms, free);
 	return (c);
 }
 

@@ -368,11 +368,11 @@ http_connect(remote *r, char *cgi_script)
 			}
 			/* Save the credential, needed in http_send() */
 			if (cred) r->cred = strdup(cred);
-			freeLines(proxies);
+			freeLines(proxies, free);
 			return (0);
 		}
 	}
-	freeLines(proxies);
+	freeLines(proxies, free);
 
  no_proxy:
 	/*

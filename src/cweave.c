@@ -305,7 +305,7 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 	 * to dump the sysmbol information. It does not use rev in that process.
 	 */
 	EACH (syms) addsym(s, d, d, 0, NULL, syms[i]);
-	if (syms) freeLines(syms);
+	if (syms) freeLines(syms, free);
 	return (d);
 }
 

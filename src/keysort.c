@@ -34,7 +34,6 @@ keysort_main(int ac, char **av)
 	int	next = 1;
 	int	bytes = 0;
 	int	i;
-	int	string_sort(const void *a, const void *b);
 	mem_t	*memlist = calloc(sizeof(mem_t), 1);
 	mem_t	*mem = memlist;
 
@@ -96,7 +95,6 @@ sort_main(int ac, char **av)
 	char	*last = 0, **lines = 0;
 	int	i, c, uflag = 0;
 	size_t	n = 0;
-	int	string_sort(const void *a, const void *b);
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help sort");
@@ -123,16 +121,6 @@ sort_main(int ac, char **av)
 		fprintf(stdout, "%s\n", lines[i]);
 		last = lines[i];
 	}
-	freeLines(lines);
+	freeLines(lines, free);
 	return (0);
-}
-
-int
-string_sort(const void *a, const void *b)
-{
-	char	*l, *r;
-
-	l = *(char**)a;
-	r = *(char**)b;
-	return (strcmp(l, r));
 }

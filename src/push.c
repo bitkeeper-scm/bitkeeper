@@ -101,7 +101,7 @@ usage:			system("bk help -s push");
 	}
 	if (rc == -2) rc = 1; /* if retry failed, reset exit code to 1 */
 	remote_free(r);
-	freeLines(envVar);
+	freeLines(envVar, free);
 	if (opts.debug) {
 		fprintf(opts.out, "lcsets=%d rcsets=%d rtags=%d\n",
 		    opts.lcsets, opts.rcsets, opts.rtags);
