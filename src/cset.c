@@ -621,7 +621,14 @@ retry:	sc = sccs_keyinit(lastkey, INIT_NOCKSUM, idDB);
 		fprintf(stderr, "cset: missing id %s, sfile removed?\n", key);
 		return (-1);
 	}
-	unless (sc->state & S_CSETMARKED) {
+
+	/*
+ 	 * Unless we are here to mark the file, if it isn't marked,
+	 * go do that first.  We skip ChangeSet files because the code
+	 * path which does the work also seems to skip them (because it
+	 * is used for other operations which don't want them).
+	 */
+	if (!(sc->state & S_CSET) && !(sc->state & S_CSETMARKED) && !mark) {
 		char	buf[MAXPATH];
 
 		if (doneFullRemark) {
@@ -630,6 +637,8 @@ retry:	sc = sccs_keyinit(lastkey, INIT_NOCKSUM, idDB);
 			    sc->sfile);
 			return (-1);
 		}
+		fprintf(stderr,
+		    "cset: %s has no ChangeSet marks\n\n", sc->sfile);
 		fputs(
 "\nBitKeeper has found a file which is missing some metadata.  That metadata\n\
 is being automatically generated and added to all files.  If your repository\n\
@@ -741,6 +750,7 @@ again:	/* doDiffs can make it two pass */
 			if (doKey(csetid, buf)) goto fail;
 		}
 	}
+
 	/*
 	 * Now do the real data.
 	 */
@@ -861,9 +871,16 @@ doMarks(sccs *s)
 			}
 		}
 	}
-	if (did) sccs_admin(s, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0);
-	if (verbose > 1) {
-		fprintf(stderr, "Marked %d csets in %s\n", did, s->gfile);
+	if (did || !(s->state & S_CSETMARKED)) {
+		s->state |= S_CSETMARKED;
+		sccs_admin(s, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0);
+		if ((verbose > 1) && did) {
+			fprintf(stderr,
+			    "Marked %d csets in %s\n", did, s->gfile);
+		} else if (verbose > 1) {
+			fprintf(stderr,
+			    "Set CSETMARKED flag in %s\n", s->sfile);
+		}
 	}
 }
 

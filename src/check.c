@@ -378,6 +378,7 @@ check(sccs *s, MDBM *db)
 {
 	delta	*d;
 	int	errors = 0;
+	int	marked = 0;
 	kvpair	kv;
 	int	ksize;
 	char	*a;
@@ -392,6 +393,7 @@ check(sccs *s, MDBM *db)
 			fprintf(stderr, "Check %s;%s\n", s->sfile, d->rev);
 		}
 		unless (d->flags & D_CSET) continue;
+		marked++;
 		sccs_sdelta(s, d, buf);
 		unless (val = mdbm_fetch_str(db, buf)) {
 			char	*term;
@@ -412,6 +414,20 @@ check(sccs *s, MDBM *db)
 		}
 	}
 	
+	/* Make sure that we think we have cset marks */
+	unless (s->state & S_CSETMARKED) {
+		if (marked) {
+			fprintf(stderr,
+			    "check: %s has marked deltas without marked file\n",
+			    s->sfile);
+		} else {
+			fprintf(stderr,
+		        "check: %s has neither marked file nor marked deltas\n",
+			    s->sfile);
+		}
+		errors++;
+	}
+
 	/*
 	 * Foreach value in ChangeSet DB, skip if not this file.
 	 * Otherwise, make sure we can find that delta in this file.
