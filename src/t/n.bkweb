@@ -1,0 +1,74 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2000 David Parsons
+# Copyright (c) 2000 Larry McVoy
+
+D=`pwd`
+
+NUM=0
+FILE=test$NUM
+
+echo $N Create initial repository ...................................$NL
+echo "logging: logging@openlogging.org" > $D/c
+echo "description: BitKeeper Test repository" >> $D/c
+echo "email:		nobody@nowhere.bk" >> $D/c
+bk setup -f -c$D/c project
+echo OK
+
+bk bkd >$FILE << EOF
+get /$D/project/index.html
+EOF
+
+if grep "ERROR-bkWeb" $FILE >/dev/null; then
+    echo "You do not have a BKweb license; test skipped"
+    exit 0
+fi
+
+echo $N Examine standard web pages ..................................$NL
+
+grep logo.gif $FILE >/dev/null && { echo failed; exit 1; }
+
+echo OK
+
+echo $N Examine customized index page ...............................$NL
+
+mkdir project/BitKeeper/html
+echo "HOMEPAGE" > project/BitKeeper/html/homepage.txt
+echo "HEADER" > project/BitKeeper/html/header.txt
+echo "TRAILER" > project/BitKeeper/html/trailer.txt
+echo "GIF!" > project/BitKeeper/html/logo.gif
+
+bk bkd >$FILE << EOF
+get /$D/project/index.html
+EOF
+
+grep HOMEPAGE $FILE >/dev/null || { echo failed; exit 1; }
+grep TRAILER $FILE >/dev/null || { echo failed; exit 1; }
+
+echo OK
+
+echo $N Examine customized logo .....................................$NL
+
+bk bkd  > $FILE << EOF
+get /$D/project/logo.gif
+EOF
+
+grep 'GIF!' $FILE >/dev/null || { echo failed; exit 1; }
+echo OK
+
+echo $N Examine src page for custom header ..........................$NL
+
+bk bkd > $FILE << EOF
+get /$D/project/src
+EOF
+grep HEADER $FILE >/dev/null || { echo failed; exit 1; }
+echo OK
