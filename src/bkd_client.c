@@ -159,10 +159,11 @@ remote_unparse(remote *r)
 				sprintf(port, "%u", r->port);
 				strcat(buf, port);
 		    	}
-		} else {
-			strcat(buf, ":");
 		}
-		if (r->path) strcat(buf, r->path);
+		if (r->path) {
+			strcat(buf, ":");
+			strcat(buf, r->path);
+		}
 		return (strdup(buf));
 	}
 	if (r->user) {
