@@ -266,11 +266,62 @@ found(delta *start, delta *stop)
 	return ((stop->flags & D_RED) != 0);
 }
 
+/*
+ * recurse the graph, terminating on already in symGraph
+ * Side affect: color things BLUE.  This is used by main rebuildTags()
+ * to hit multiple tips if there are multiple tips in content graph.
+ */
+
+private delta *
+_rebuildTags(sccs *s, delta *d)
+{
+	delta	*p = 0;
+	delta	*m = 0;
+
+	if (!d || d->symGraph) return (d);
+	d->flags |= D_BLUE;	/* side affect needed for rebuildTags() */
+
+	/* recurse down parent, then merge */
+	if (d->parent) p = _rebuildTags(s, d->parent);
+	if (d->merge)  {
+		m = sfind(s, d->merge);
+		assert(m);
+		m = _rebuildTags(s, m);
+	}
+
+	/* if only one side has value, make sure it is in p */
+	if (!p) {
+		p = m;
+		m = 0;
+	}
+	/* if both sides, may have to make this a merge node in tag graph */
+	else if (m) {
+		/* if neither in the path of the other: this is a merge */
+		unless (found(p, m)) {
+			d->ptag = p->serial;
+			d->mtag = m->serial;
+			d->symGraph = 1;
+			return (d);
+		}
+		/* else one contains the other, so only use newer */
+		if (m->serial > p->serial) p = m;
+		m = 0;
+	}
+
+	/* p now equals the next symGraph'd node up the graph */
+
+	if (d->flags & D_SYMBOLS) {
+		if (p) d->ptag = p->serial;
+		d->symGraph = 1;
+		return (d);
+	}
+	return (p);
+}
+
 private void
 rebuildTags(sccs *s)
 {
 	delta	*d, *md;
-	delta	*last = 0;
 	symbol	*sym;
 	MDBM	*symdb = mdbm_mem();
 
@@ -307,25 +358,23 @@ rebuildTags(sccs *s)
 		d->flags |= D_SYMBOLS;
 	}
 	/*
-	 * symbols above could now be out of order.
-	 * Use table order to build tag graph.
-	 * D_GONE all 'R' nodes in graph.
+	 * Symbols are now marked, but not connected.
+	 * Prepare structure for building symbol graph.
+	 * and D_GONE all 'R' nodes in graph.
 	 */
 	for (d = s->table; d; d = d->next) {
-		if (d->type == 'R') {
-			assert(!(d->flags & D_SYMBOLS));
-			MK_GONE(s, d);
-			continue;
-		}
-		unless (d->flags & D_SYMBOLS) continue;
-		assert(!(d->flags & D_GONE));
-		if (last) {
-			last->ptag = d->serial;
-		} else {
-			d->symLeaf = 1;
-		}
-		last = d;
-		d->symGraph = 1;
+		d->flags &= ~D_BLUE;	/* reset for use in next for loop */
+		unless (d->type == 'R') continue;
+		assert(!(d->flags & D_SYMBOLS));
+		MK_GONE(s, d);
+	}
+	for (d = s->table; d; d = d->next) {
+		if (d->flags & D_GONE) continue;
+		assert(d->type == 'D');
+		if (d->flags & D_BLUE) continue;
+		/* XXX: if single tip, could assert following only run once */
+		md = _rebuildTags(s, d);
+		if (md) md->symLeaf = 1;
 	}
 	mdbm_close(symdb);
 }
