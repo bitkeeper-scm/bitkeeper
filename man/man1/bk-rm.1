@@ -13,15 +13,15 @@ To delete a file, do this:
 $ bk rm foo.c
 .DE
 Removing the file actually moves it to
-.if t .IR BitKeeper/deleted/del-foo.c .
-.if n BitKeeper/deleted/del-foo.c.
+.if t .IR BitKeeper/deleted/.del-foo.c~293843edf341df .
+.if n BitKeeper/deleted/.del-foo.c~293843edf341df.
 All future operations will ignore the file unless you name it
 explicitly, but it will still exist in the repository and will still be
 propagated by
 .BR  resync .
 To resurrect the file, simply rename it again:
 .DS
-$ bk -R mv BitKeeper/deleted/.del-foo.c `pwd`/foo.c
+$ bk -R mv BitKeeper/deleted/.del-foo.c~293843edf341df `pwd`/foo.c
 .DE
 Edited files can not be deleted, you must check them in first.
 .LP
