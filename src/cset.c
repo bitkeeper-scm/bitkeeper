@@ -121,7 +121,7 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 
 	while (
 	    (c =
-	    getopt(ac, av, "ce|Cd|DfHhi;m|M|pqr|sS;vx;y|Y|")) != -1) {
+	    getopt(ac, av, "c|e|Cd|DfHhi;m|M|pqr|sS;vx;y|Y|")) != -1) {
 		switch (c) {
 		    case 'D': ignoreDeleted++; break;
 		    case 'f': copts.force++; break;
@@ -1198,13 +1198,13 @@ sccs_patch(sccs *s, cset_t *cs)
 		s->rstop = s->rstart = d;
 		sccs_prs(s, PRS_PATCH|SILENT, 0, NULL, stdout);
 		printf("\n");
-		if (d->type == 'D' && !cs->metaOnly) {
+		if (d->type == 'D') {
 			if (s->state & S_CSET) {
 				if (d->added) {
 					sccs_getdiffs(s,
 					    d->rev, GET_HASHDIFFS, "-");
 				}
-			} else {
+			} else if (!cs->metaOnly || match_one(d->pathname, BKROOT "/*" ) ) {
 				sccs_getdiffs(s, d->rev, GET_BKDIFFS, "-");
 			}
 		}

@@ -6,6 +6,8 @@ bk makepatch \- creates \*(BK patches
 .Bc bk makepatch [\-v] [
 .OPTreq \-c range
 .Bc ] [
+.OPTreq \-e range
+.Bc ] [
 .OPTreq \-d range
 .Bc ] [
 .OPTreq \-r range
@@ -18,6 +20,9 @@ The makepatch command is a low level command used to generate \*(BK patches.
 .if n .TP 1i
 .B \-c
 Like \-r, except generate only ChangeSet diffs.  Used for logging only.
+.tp
+.B \-e
+Like \-r, except generate only metadata diffs.  Used for logging only.
 .tp
 .OPTreq \-d range
 Do unified diffs for 

@@ -833,6 +833,7 @@ char	*logAddr();
 char	*package_name();
 int	bkusers(int countOnly, int raw, char *prefix, FILE *out);
 globv	read_globs(FILE *f, globv oldglobs);
+int	match_one(char *string, char *glob);
 char	*match_globs(char *string, globv globs);
 void	free_globs(globv globs);
 char	*prog2path(char *prog);
