@@ -253,6 +253,8 @@ then	echo failed with bracket - got bad range $X; exit 1
 fi
 echo OK
 
+ls > FILE3
+bk new $Q FILE3
 for i in 1 2 3
 do	bk co -ql FILE3
 	ls >> FILE3
