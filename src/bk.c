@@ -185,11 +185,11 @@ main(int ac, char **av)
 
 	platformInit(av); 
 	if (av[1] && streq(av[1], "bin") && !av[2]) {
-		fprintf(stderr, "%s\n", bin ? bin : "no path found");
+		printf("%s\n", bin ? bin : "no path found");
 		exit(0);
 	}
 	if (av[1] && streq(av[1], "path") && !av[2]) {
-		fprintf(stderr, "%s\n", getenv("PATH"));
+		printf("%s\n", getenv("PATH"));
 		exit(0);
 	}
 	argv[0] = "help";
