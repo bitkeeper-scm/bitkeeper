@@ -48,6 +48,7 @@
 #define	GET_BKDIFFS	0x00008000	/* get -DD, BK (rick's) diffs */
 #define	GET_HASHDIFFS	0x00000100	/* get -DDD, 0a0 hash style diffs */
 #define	GET_SUM		0x00000200	/* used to force dsum in getRegBody */
+#define GET_NOREGET	0x00000400	/* get -S: skip gfiles that exist */
 
 #define	CLEAN_UNEDIT	0x10000000	/* clean -u: discard changes */
 #define CLEAN_UNLOCK	0x20000000	/* clean -n: just unlock */

@@ -29,6 +29,7 @@ usage: get [-qkepdmunN] [-r<rev> | -c<date>] [files... | -]\n\
    -R		rev is part of pathname\n\
    -r<rev>	get this revision\n\
    -s		same as -q\n\
+   -S		if a gfile exists, don't check it out again\n\
    -t		ignored, SCCS compat\n\
    -T		set the gfile's mod time to the delta's creation time\n\
    -u		prefix each line with the user who last modified it\n\
@@ -68,7 +69,7 @@ get_main(int ac, char **av, char *out)
 		return (1);
 	}
 	if (streq(av[0], "edit")) flags |= GET_EDIT;
-	while ((c = getopt(ac, av, "bc;dDeFgG:hHi;klmM|nNpPqr;RstTux;")) != -1) {
+	while ((c = getopt(ac, av, "bc;dDeFgG:hHi;klmM|nNpPqr;RSstTux;")) != -1) {
 		switch (c) {
 		    case 'b': flags |= GET_BRANCH; break;
 		    case 'c': cdate = optarg; break;
@@ -93,6 +94,7 @@ get_main(int ac, char **av, char *out)
 		    case 'r': rev = optarg; break;
 		    case 'R': hasrevs = SF_HASREVS; break;
 		    case 's': flags |= SILENT; break;
+		    case 'S': flags |= GET_NOREGET; break;
 		    case 't': break;	/* compat, noop */
 		    case 'T': flags |= GET_DTIME; break;
 		    case 'u': flags |= GET_USER; break;

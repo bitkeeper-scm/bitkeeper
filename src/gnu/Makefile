@@ -2,36 +2,41 @@ OS=`sh os`
 DIRS=patch
 BINS=patch/$(OS)/patch
 BKBIN=/usr/bitkeeper
+CACHE=--cache-file=../../../config.cache
 
 all: os
-	@PATH="..:../..:$(PATH)"; \
-	OS=$(OS); \
+	@PATH="..:../..:$(PATH)"; export PATH; \
+	OS=$(OS); set -x; \
 	for i in $(DIRS); \
-	do	\
-		test -d $$i/$$OS || mkdir $$i/$$OS; \
-		bk sfiles -g $$i | while read x; \
-		do	test -f $$x || echo $$x; \
-		done | bk co -; \
-		test -f $$i/$$OS/Makefile || (cd $$i/$$OS && ../configure); \
-		(cd $$i/$$OS && $(MAKE)); \
+	do	test -d $$i/$$OS || mkdir $$i/$$OS; \
+		( \
+		cd $$i; bk get -q checkout; sh checkout; \
+		cd $$OS; test -f Makefile || ../configure $(CACHE); \
+		$(MAKE) \
+		); \
 	done
-	@rm -rf bin
-	@mkdir bin
-	@cp $(BINS) bin
+	rm -rf bin
+	mkdir bin
+	cp $(BINS) bin
 
-install:
-	@make all
-	@cp $(BINS) $(BKBIN)
-	@for i in $(BINS); \
+install: all
+	cp $(BINS) $(BKBIN)
+	@set -x; for i in $(BINS); \
 	do	D=`dirname $$i`; \
 		F=`basename $$i`; \
 		(cd $$D && ../../../chksum $$F); \
 	done >> $(BKBIN)/MANIFEST; \
 
-clean clean-obj clobber: os
+clean clean-obj: os
 	-@OS=$(OS); \
 	for i in $(DIRS); \
-	do	rm -rf $$i/$$OS; (cd $$i && bk clean); \
+	do	test -f $$i/$$OS/Makefile || continue; \
+		(cd $$i && make clean); \
 	done
-	-@rm -rf bin
-	-@bk clean
+
+clobber: os
+	-@OS=$(OS); set -x; \
+	for i in $(DIRS); \
+	do	(cd $$i && { rm -rf $$OS; bk -r clean; }; ); \
+	done
+	-bk clean
