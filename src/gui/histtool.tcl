@@ -752,6 +752,8 @@ proc getRev {type {id {}} } \
 
 	if {$id == ""} {
 		set id [$w(graph) gettags current]
+		# Don't want to create boxes around date_text or date_line
+		if {[lsearch $id date_*] >= 0} { return }
 	}
 	set id [lindex $id 0]
 	if {("$id" == "current") || ("$id" == "")} { return "" }
