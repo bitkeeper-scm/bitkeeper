@@ -3,6 +3,11 @@
 #Set up environment for Microsoft VC++ compiler
 ms_env()
 {
+	test "$MSYSBUILDENV" || {
+		echo ERROR not running in official MSYS build environment
+		exit 1
+	}
+
 	SYS=win32
 	BK="bk.exe"
 
