@@ -1,0 +1,185 @@
+This file outline the version 1.3 bkd protocol. It shows the protocol exchange
+for the most comman case. Error cases are not shown. The protocol will be
+short circuited if a error is encountered at various stage.
+
+The protocol is organized into the follwing "information block"
+a) client info blcck
+b) server info block
+c) probe key block
+d) match block (for matched proble key)
+e) patch block
+f) takepatch info block
+g) trigger  block
+h) resolev info block
+i) rev list block
+j) change list block
+
+All block are started by @block name@
+and terminated with @END@.
+The data area of "f", "g", "h" and "j"
+are prefixed a character 'D' (.e BKD_DATA) to disambiguate
+a possible "@END@" string in the data stream.
+For data area which are not the normal one line per entry format
+(e.g takepath's status spinner output) We preceed the @END@ string with a
+null marker (BKD_NUL) to make it easy to find the @END@ string.
+For trigger block, the trigger exit status is transmitted with
+a 'R' prefix (i.e BKD_RC), just before we send the @END@ block
+termination string.
+
+ 
++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Push Protocol
+=============
+
+client side				server side
+-----------				-----------
+setClientInfo
+@CLIENT INFO@
+PROTOCOL=1.3
+RELEASE=2.0
+USER=awc
+HOST=etp2.bitmover.com
+@END@
+cd /project/root/path
+push_part1 [-z[0..9]] [-d] [-e]
+@PROBE KEY@
+key
+key
+...
+root key
+@END@
+	==================>
+					@SERVER INFO@
+					PROTOCOL=1.3
+					RELEASE=2.0
+					@END@
+					@OK@
+					@MATCH@	
+					matched key
+					key
+					key
+					...
+					@END@
+			<==================
+
+
+
+						
+setClientInfo
+@CLIENT INFO@
+PROTOCOL=1.3
+RELEASE=2.0
+USER=awc
+HOST=etp2.bitmover.com
+@END@
+cd /project/root/path
+push_part2 [-z[0..9]] [-d] [-e] 
+@PATCH@
+--- optional compression start --
+bitkeeper patch
+--- optional compression end --
+EOF
+	==================>
+					@SERVER INFO@
+					PROTOCOL=1.3
+					RELEASE=2.0
+					@END@
+					@TAKEPATCH INFO@
+					D<takepatch output>
+					D<takepatch output>
+					D<takepatch output>
+					D<takepatch output>
+					0	/* null termination byte */
+					@END@
+					@TRIGGER INFO@ /* optional block */
+					D<remote trigger output>
+					D<remote trigger output>
+					...
+					R<remote trigger exit status>
+					@END@
+					@RESOLVE INFO@
+					D<resolve output>
+					D<resolve output>
+					D<resolve output>
+					D<resolve output>
+					0	/* null termination byte */
+					@END@
+			<==================
+
+
+					
+=======================================================================
+Pull Protocol
+=============
+
+client					server
+------					------
+
+setClientInfo
+@CLIENT INFO@
+PROTOCOL=1.3
+RELEASE=2.0
+USER=awc
+HOST=etp2.bitmover.com
+@END@
+pull_part1 [-z[0..9]] [-d] [-e] [-n] [-l] [-q]
+	==================>
+
+					
+					@SERVER INFO@
+					PROTOCOL=1.3
+					RELEASE=2.0
+					@END@
+					@OK@
+					@PROBE KEY@
+					key
+					key
+					...
+					root key
+					@END@
+			<==================
+					
+
+setClientInfo
+@CLIENT INFO@
+PROTOCOL=1.3
+RELEASE=2.0
+USER=awc
+HOST=etp2.bitmover.com
+@END@
+pull_part2 [-z[0..9]] [-d] [-e] [-n] [-l] [-q]
+@MATCH@
+matched key
+key
+key
+...
+@END@
+	==================>
+					@SERVER INFO@
+					PROTOCOL=1.3
+					RELEASE=2.0
+					@END@
+					@OK@
+					@REV LIST@ /* optional block */
+					D<rev>
+					D<rev>
+					...
+					@END@
+					@CHANGE LIST@ /* optional block */
+					D<cset info line>
+					D<cset info line>
+					...
+					@END@
+					@TRIGGER INFO@ /* optional block */
+					D<remote trigger output>
+					D<remote trigger output>
+					...
+					R<remote trigger exit status>
+					@END@
+					@PATCH@
+					--- optional compression start --
+					BitKeeper patch
+					--- optional compression end --
+					EOF
+			<==================

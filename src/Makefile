@@ -23,6 +23,7 @@ UWTLIB	=
 UWT_H	=
 WIN_TMP	=*.idb *.pdb *.ilk *.exe *~bkp
 BINS	= $(BK)
+RESOURCE=
 
 # Override Solaris make.rules
 .SCCS_GET:
@@ -294,8 +295,13 @@ mdbm/libmdbm.a: $(MDBMOBJ)
 libsccs.a: $(OBJ) shell.o
 	$(AR) cr libsccs.a $(OBJ) shell.o
 	-$(RANLIB) libsccs.a
-$(BK): bk.o $(LIBS)
-	$(LD) $(LDFLAGS) $(LD_OUT) bk.o $(LINK_LIB)
+
+# complie win32 resource file
+bk.res: win32/data/bk.rc win32/data/bk.ico
+	rc.exe -fo bk.res -r win32/data/bk.rc
+
+$(BK): bk.o $(LIBS) $(RESOURCE)
+	$(LD) $(LDFLAGS) $(LD_OUT) bk.o $(LINK_LIB) $(RESOURCE)
 
 testfast: testfast.perl
 	rm -f testfast
