@@ -19,7 +19,10 @@ cmd_push_part1(int ac, char **av)
 			if (gzip < 0 || gzip > 9) gzip = 6;
 			break;
 		    case 'd': debug = 1; break;
-		    case 'e': metaOnly = 1; break;
+		    case 'e':
+			metaOnly = 1;
+			putenv("BK_TRIGGER_PATH=/etc");
+			break;
 		    case 'n': putenv("BK_STATUS=DRYRUN"); break;
 		    default: break;
 		}
@@ -97,7 +100,7 @@ cmd_push_part1(int ac, char **av)
 		return (1);
 	}
 		
-	if (!metaOnly && trigger(av[0], "pre")) {
+	if (trigger(av[0], "pre")) {
 		drain();
 		return (1);
 	}
@@ -159,7 +162,10 @@ cmd_push_part2(int ac, char **av)
 			if (gzip < 0 || gzip > 9) gzip = 6;
 			break;
 		    case 'd': debug = 1; break;
-		    case 'e': metaOnly = 1; break;
+		    case 'e':
+			metaOnly = 1;
+			putenv("BK_TRIGGER_PATH=/etc");
+			break;
 		    case 'G': takepatch[2] = "-vv"; break;
 		    case 'n': putenv("BK_STATUS=DRYRUN"); break;
 		    default: break;
@@ -251,7 +257,7 @@ cmd_push_part2(int ac, char **av)
 	 */
 	putenv("BK_CSETLIST=BitKeeper/etc/csets-in");
 	putenv("BK_REMOTE=YES");
-	if (!metaOnly && (c = trigger("remote resolve",  "pre"))) {
+	if (c = trigger("remote resolve",  "pre")) {
 		if (c == 2) {
 			system("bk abort -fp");
 		} else {
@@ -298,7 +304,6 @@ cmd_push_part2(int ac, char **av)
 done:	/*
 	 * Fire up the post-trigger (for non-logging tree only)
 	 */
-	if (metaOnly) av[0] = "remote log push";
 	putenv("BK_RESYNC=FALSE");
 	trigger(av[0],  "post");
 	return (rc);

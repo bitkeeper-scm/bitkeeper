@@ -164,13 +164,17 @@ listPendingRenames()
 private void
 setRepoType(opts *opts)
 {
-	if (exists(LOG_TREE)) opts->logging = 1;
+	if (exists(LOG_TREE)) {
+		opts->logging = 1;
+		putenv("BK_TRIGGER_PATH=/etc");
+	}
 }
 
 /*
  * For logging repository, we defer resolving path conflict
  * by moving  the conflicting remote file to the BitKeeper/conflicts
  * directory.
+ * XXX - the older file should win, I suspect.
  */
 private void
 removePathConflict(opts *opts, resolve *rs)
@@ -636,7 +640,7 @@ pass2_renames(opts *opts)
 		n++;
 		rs = resolve_init(opts, s);
 
-		if (opts->logging) {
+		if (opts->resolveNames && opts->logging) {
 			removePathConflict(opts, rs);
 			goto out;
 		}
@@ -2268,7 +2272,7 @@ pass4_apply(opts *opts)
 	if (getenv("BK_REMOTE") && streq(getenv("BK_REMOTE"), "YES")) {
 		cmd = "remote apply";
 	}
-	if (!opts->logging && (ret = trigger(cmd,  "pre"))) {
+	if (ret = trigger(cmd,  "pre")) {
 		switch (ret) {
 		    case 3: flags = CLEAN_MVRESYNC; break;
 		    case 2: flags = CLEAN_RESYNC; break;

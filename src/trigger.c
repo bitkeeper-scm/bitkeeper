@@ -52,7 +52,13 @@ trigger(char *cmd, char *when)
 	int	rc = 0;
 
 	if (getenv("BK_NO_TRIGGERS")) return (0);
-	if (bk_proj && bk_proj->root) {
+	/*
+	 * For right now, if you set this at all, it means /etc.
+	 * In the 3.0 tree, we'll actually respect it.
+	 */
+	if (getenv("BK_TRIGGER_PATH")) {
+		t = strdup("/etc");
+	} else if (bk_proj && bk_proj->root) {
 		t = strdup(bk_proj->root);
 	} else unless (t = sccs_root(0)) {
 		ttyprintf("No root for triggers!\n");
@@ -99,17 +105,9 @@ trigger(char *cmd, char *when)
 		what = event = "commit";
 	} else if (strneq(cmd, "delta", 5)) {
 		what = event = "delta";
-	} else if (strneq(cmd, "remote log push", 15)) {
-		/*
-		 * logs triggers are global over all logging trees
-		 */
-		unless (logRoot) return (0);
-		sprintf(triggerDir, "%s/triggers", logRoot);
-		what = "incoming-log";
-		event = "incoming log";
 	} else {
 		fprintf(stderr,
-			"Warning: Unknown trigger event: %s, ignored\n", cmd);
+		    "Warning: Unknown trigger event: %s, ignored\n", cmd);
 		return (0);
 	}
 
