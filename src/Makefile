@@ -15,7 +15,6 @@ DATA	= bitkeeper.config bkhelp.txt
 
 LINKTO	= ci:delta co:get edit:get unedit:clean unget:clean
 BINLINKS= bk admin get delta unget rmdel prs
-SUBDIRS	= utils/afio
 
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LINKS) $(PRIVATE) $(DATA)
 
@@ -47,7 +46,8 @@ BINOBJ  = admin.o key2rev.o rechksum.o sccsmv.o smoosh.o \
 	  diffs.o rmdel.o sccssh.o what.o g2sccs.o \
 	  prs.o sccs_mv.o sfind.o zone.o cset.o get.o rangemain.o \
 	  sccscat.o sids.o gethost.o rcs.o sccslog.o sinfo.o \
-	  fdiff.o check.o adler32.o undos.o chksum.o nextsecond.o mtime.o
+	  fdiff.o check.o adler32.o undos.o chksum.o nextsecond.o mtime.o \
+	  sfio.o
 
 SRCS	= $(PORTOBJ:.o=.c) $(SCCSOBJ:.o=.c) $(MDBMOBJ:.o=.c) \
 	  $(ZLIBOBJ:.o=.c) $(BINOBJ:.o=.c)
@@ -130,15 +130,9 @@ production_purify: rebuild purify install-bin
 clean-obj: FORCE
 	-/bin/rm -f $(PORTOBJ) $(SCCSOBJ) $(MDBMOBJ) $(ZLIBOBJ) $(BINOBJ) \
 		$(LIBS) a.out core
-	for i in $(SUBDIRS); \
-	do	(cd $$i && make clean); \
-	done
 
 clean-bin: FORCE
 	-/bin/rm -f $(BINS) $(PRIVATE) $(SCRIPTS) $(LINKS) MANIFEST
-	for i in $(SUBDIRS); \
-	do	(cd $$i && make clean); \
-	done
 
 clean-cfg: FORCE
 	-/bin/rm -f config.h stamp-h substvars install.sh config.status \
@@ -151,9 +145,6 @@ clean-src: FORCE
 	bk clean mdbm
 	bk clean zlib
 	bk clean t
-	for i in $(SUBDIRS); \
-	do	(cd $$i && bk clean); \
-	done
 
 # This would be called "clean" but that's a command name.
 cclean sccsclean nice: clean-obj clean-src
@@ -373,13 +364,6 @@ mkindex: gui/mkindex.tcl substvars
 	./substvars gui/mkindex.tcl >mkindex.T
 	chmod +x mkindex.T
 	mv -f mkindex.T mkindex
-
-afio: utils/afio/afio
-	/bin/rm -f afio
-	ln utils/afio/afio .
-
-utils/afio/afio: utils/afio/afio.c
-	cd utils/afio && make "CC=$(CC)" "CFLAGS=$(CFLAGS)" afio
 
 # Autoconf magic.
 # This is not the way this will work in the long run.
