@@ -18,6 +18,17 @@
 .if n .sp
 .if t .sp .5
 ..
+.de Vb
+.ft CW
+.nf
+.nh
+.ne \\$1
+..
+.de Ve
+.ft R
+.hy
+.fi
+..
 .de XR
 \&\\fB\\$1\\fR\\s-1(\\$2)\\s0\\$3
 ..

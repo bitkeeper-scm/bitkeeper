@@ -102,6 +102,8 @@ KEY2="`bk prs -hd:LONGKEY: -r+ ChangeSet`"
 [ "$KEY" = "$KEY2" ] || { echo bad push; exit 1; }
 echo OK
 echo $N Push with a conflicting upstream delta ......................$NL
+nextsecond
+nextsecond
 cd src
 get $Q -e h.h
 sed 's/h/yuhjklbn/' <h.h >h.x
@@ -111,8 +113,8 @@ cd ..
 bk commit $Q -yrogue
 KEY="`bk prs -hd:LONGKEY: -r+ ChangeSet`"
 cd $HERE/copy
-bk push $Q 2> resolve.out || { echo failed; exit 1; }
-grep -q 'Overlap change' resolve.out || { echo no conflict; exit 1; }
+bk push $Q 2> resolve.out || { echo failed; cat resolve.out; exit 1; }
+grep -q 'Overlap change' resolve.out || { echo no conflict; cat resolve.out; exit 1; }
 KEY2="`bk prs -hd:LONGKEY: -r+ $HERE/project/ChangeSet`"
 [ "$KEY" = "$KEY2" ] || { echo bad push; exit 1; }
 echo OK
@@ -122,7 +124,7 @@ then
 	echo "test skip. \"ed\" command not yet avaliable on NT"
 else
 # ------------------------------------------------
-EDITOR=ed bk resolve $Q -f - <<EOF >/dev/null 2>&1
+EDITOR=ed bk resolve $Q -f - <<EOF 2>resolve.out
 m
 e
 g/^[<>=]/d
@@ -130,7 +132,7 @@ w
 q
 C
 EOF
-[ $? -eq 0 ] || { echo resolve failed; exit 1; }
+[ $? -eq 0 ] || { echo resolve failed; cat resolve.out; exit 1; }
 L=`get $Q -p src/h.h | wc -l`
 [ $L -eq 2 ] || { echo merge failed; exit 1; }
 KEY="`bk prs -hd:LONGKEY: -r+ ChangeSet`"
