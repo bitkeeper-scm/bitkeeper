@@ -14710,7 +14710,7 @@ explodeKey(char *key, char *parts[6])
 
 	/* go back and split user@host to user and host */
 	for (key = parts[0]; *key && (*key != '@'); key++);
-	if (*key == '@') {
+	if (key = strrchr(parts[0], '@')) {
 		*key++ = 0;
 		parts[1] = key;
 	} else {
