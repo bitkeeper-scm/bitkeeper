@@ -230,6 +230,7 @@ echo OK
 echo $N Test ignore lists with -x ...................................$NL
 bk edit $Q BitKeeper/etc/ignore
 cat <<EOF > BitKeeper/etc/ignore
+Desktop.ini
 LIST
 s.*
 *ore
@@ -262,7 +263,7 @@ LIST
 SCCS/OLD-s.foo
 SFILES
 EOF
-bk sfind -a -sjx | sort > SFILES
+bk sfind -a -sjx | grep -v Desktop.ini | sort > SFILES
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; sdiff -w80 SFILES LIST; exit 1; fi
 echo OK

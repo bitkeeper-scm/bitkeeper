@@ -120,7 +120,7 @@ again:		printf("Editor to use [%s] ", editor);
 		fclose(f1);
 	}
 
-	unless (m = loadConfig(".", 0)) {
+	unless (m = loadConfig(".")) {
 		fprintf(stderr, "No config file found\n");
 		exit(1);
 	}
@@ -160,13 +160,13 @@ err:			unlink("BitKeeper/etc/config");
 	}
 	if ((t = mdbm_fetch_str(m, "single_user")) && strchr(t, '@')) {
 		fprintf(stderr, "Setup: single_user should not have a hostname.\n");
-		if (config_path[0]) goto err;
+		if (config_path) goto err;
 		goto again;
 	}
 	if ((mdbm_fetch_str(m, "single_user") != 0) ^
 	    (mdbm_fetch_str(m, "single_host") != 0)) {
 		fprintf(stderr, "Setup: single_user and single_host must appear together.\n");
-		if (config_path[0]) goto err;
+		if (config_path) goto err;
 		goto again;
 	}		
 #if 0	/* this makes setuptool appear to hang up when a non-approved
@@ -237,6 +237,7 @@ err:		perror("write");
 		return;
 	}
 	if (write(fd, "PENDING/*\n", 10) != 10) goto err;
+	if (write(fd, "Desktop.ini\n", 12) != 12) goto err; /* for win32 */
 	close(fd);
 	system("bk new -Pq BitKeeper/etc/ignore");
 }

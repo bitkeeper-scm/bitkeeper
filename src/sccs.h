@@ -67,6 +67,7 @@
 
 #define	CLEAN_UNEDIT	0x10000000	/* clean -u: discard changes */
 #define CLEAN_SHUTUP	0x20000000	/* clean -Q: quiet mode */
+#define	CLEAN_SKIPPATH	0x40000000	/* ignore path change; for log tree */
 
 #define	DELTA_AUTO	0x10000000	/* delta -a: auto check-in mode */
 #define	DELTA_SAVEGFILE	0x20000000	/* delta -n: save edited gfile */
@@ -731,6 +732,7 @@ typedef struct {
 	char	*user;		/* remote user if set */
 	char	*host;		/* remote host if set */
 	char	*path;		/* pathname (must be set) */
+	int	contentlen;	/* len from http header (recieve only) */
 } remote;
 
 #define	ADDR_NFS	0x000	/* host:/path */
@@ -854,6 +856,7 @@ char	**addLine(char **space, char *line);
 void	freeLines(char **space);
 int	removeLine(char **space, char *s);
 void	removeLineN(char **space, int rm);
+char	*joinLines(char *sep, char **space);
 int	check_gfile(sccs*, int);
 void	platformSpecificInit(char *);
 MDBM	*loadDB(char *file, int (*want)(char *), int style);
@@ -1000,7 +1003,7 @@ int	names_rename(char *old_spath, char *new_spath, u32 flags);
 void	names_cleanup(u32 flags);
 int	bk_sfiles(char *opts, int ac, char **av);
 int	outc(char c);
-MDBM	*loadConfig(char *root, int convert);
+MDBM	*loadConfig(char *root);
 int	ascii(char *file);
 char	*sccs_rmName(sccs *s, int useCommonDir);
 int	sccs_rm(char *name, char *del_name, int useCommonDir);
@@ -1094,6 +1097,8 @@ int	check_rsh(char *remsh);
 int	smartMkdir(char *pathname, mode_t mode);
 int	cset_lock(void);
 void	cset_unlock(void);
+void	sccs_color(sccs *s, delta *d);
+int	bk_options(void);
 
 extern char *bk_vers;
 extern char *bk_utc;

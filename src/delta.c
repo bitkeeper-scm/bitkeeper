@@ -14,6 +14,12 @@ hasKeyword(sccs *s)
 private int
 fix_gmode(sccs *s, int gflags)
 {
+	/*
+	 * Do not fix mode of symlink target, the file may not be 
+	 * under BK control.
+	 */
+	if (S_ISLNK(s->mode)) return (0);
+
 	if ((gflags&GET_EDIT) && IS_WRITABLE(s))  return (0);
 	if (!(gflags&GET_EDIT) && !IS_WRITABLE(s))  return (0);
 

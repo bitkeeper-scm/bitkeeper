@@ -322,15 +322,17 @@ http_send(remote *r, char *msg,
 	 */
 	assert(r);
 	assert(r->host);
-	sprintf(bk_url, "http://%s/cgi-bin/%s", r->host, cgi_script);
+	sprintf(bk_url, "http://%s:%d/cgi-bin/%s", r->host, r->port, cgi_script);
 	header = aprintf(
 	    "POST %s HTTP/1.0\n"
 	    "User-Agent: %s\n"
 	    "Accept: text/html\n"
-	    "Host: %s\n"
+	    "Host: %s:%d\n"
 	    "Content-type: %s\n"
 	    "Content-length: %u\n\n",
-	    bk_url, user_agent, sccs_gethost(), BINARY, mlen + extra);
+	    bk_url, user_agent, 
+	    r->host, r->port,
+	    BINARY, mlen + extra);
 
 	if (r->trace) fprintf(stderr, "Sending http header:\n%s", header);
 

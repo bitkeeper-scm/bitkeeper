@@ -407,7 +407,7 @@ header(char *path, char *color, char *titlestr, char *headerstr, ...)
 	printnavbar();
 
 	unless (include(path, "header.txt")) {
-		m = loadConfig(".", 0);
+		m = loadConfig(".");
 		if (m && (t = mdbm_fetch_str(m, "description")) && strlen(t) < 2000) {
 			title(fmt, t, color);
 		} else {
@@ -1405,7 +1405,7 @@ http_index(char *page)
 		/* don't use header() here; this is one place where the regular
 		 * header.txt is not needed
 		 */
-		if (m = loadConfig(".", 0)) {
+		if (m = loadConfig(".")) {
 			desc = mdbm_fetch_str(m, "description");
 			contact = mdbm_fetch_str(m, "contact");
 			email = mdbm_fetch_str(m, "email");

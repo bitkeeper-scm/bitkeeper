@@ -532,3 +532,17 @@ bk -r check -a 2>OUT || {
 }
 echo OK
 
+echo $N Check diff of edited symlinks ...............................$NL
+bk diffs link || exit 1
+ln -sf foobar link
+cat > CMP1 << EOF
+===== link 1.2 vs edited =====
+1c1
+< SYMLINK -> a/different/pointer
+---
+> SYMLINK -> foobar
+EOF
+bk diffs link > CMP2
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]; then echo Failed.; diff -u CMP1 CMP2; exit 1; fi
+echo OK

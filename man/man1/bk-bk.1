@@ -47,10 +47,10 @@ Starting at
 .ARG dir ,
 or the repository root if 
 .ARG dir
-was not specified, generate a list of sfiles and pass them to the command.  
-The command is run in
+was not specified, apply the command recursively to
 .ARG dir
-or the root of the repository if no directory was specified.
+and all subdirectories.  This works by
+generating a list of sfiles and passing them to the command.  
 .tp
 .B \-sfiles_opts
 Used as a shortcut for sfiles.  The following sfiles options may be passed:

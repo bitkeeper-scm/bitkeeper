@@ -18,7 +18,7 @@ is accessed following each form.
 .head
 .ARG pathname
 .br
-access is all local, through the local file system.
+Access is all local, through the local file system.
 .head
 .ARGc host :
 .ARG pathname
@@ -30,6 +30,25 @@ is what
 returns or is
 .BR localhost .
 In either of those cases, this form is the same as the above form.
+.SS RSH
+.in +4
+.head
+\fBrsh\fR://\c
+.ARGc host :
+.ARG pathname
+.br
+.head
+\fBrsh\fR://\c
+.ARGc user @
+.ARGc host :
+.ARG pathname
+.br
+Uses
+.B rsh
+to access
+.ARG host ,
+and starts a temporary
+.BR bkd .
 .SS SSH
 .in +4
 .head
@@ -55,6 +74,23 @@ If no
 .B ssh
 is found then falls back to
 .BR rsh.
+.head
+\fBssh\fR://\c
+.ARGc host :
+.ARG pathname
+.br
+.head
+\fBssh\fR://\c
+.ARGc user @
+.ARGc host :
+.ARG pathname
+.br
+Uses
+.B ssh
+to access
+.ARG host ,
+and starts a temporary
+.BR bkd .
 .head
 \fBbk\fR://\c
 .ARGc user @

@@ -405,7 +405,10 @@ skip_http_hdr(remote *r)
 {
 	char	buf[1024];
 
+	r->contentlen = -1;
+
 	while (getline2(r, buf, sizeof(buf)) >= 0) {
+		sscanf(buf, "Content-Length: %d", &r->contentlen);
 		if (buf[0] == 0) return (0); /*ok */
 	}
 	return (-1); /* failed */

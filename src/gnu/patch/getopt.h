@@ -27,6 +27,15 @@
 extern "C" {
 #endif
 
+#ifdef	__APPLE__
+#define	getopt		gnu_getopt
+#define	getopt_long	gnu_getopt_long
+#define	optind		gnu_optind
+#define	optarg		gnu_optarg
+#define	opterr		gnu_opterr
+#define	optopt		gnu_optopt
+#endif
+
 /* For communication from `getopt' to the caller.
    When `getopt' finds an option that takes an argument,
    the argument value is returned here.

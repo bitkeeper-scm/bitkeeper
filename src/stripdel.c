@@ -88,7 +88,10 @@ usage:			system("bk help -s stripdel");
 	sfileDone();
 done:   
 	if (!opts.checkOnly && logmarker_needed) {
-		updLogMarker(logmarker_ptype, !opts.quiet, stderr);
+		unless (cset_lock()) {
+			updLogMarker(logmarker_ptype, !opts.quiet, stderr);
+			cset_unlock();
+		}
 	}
 	return (rc);
 next:	return (1);
@@ -174,6 +177,11 @@ private int
 marktags(sccs *s, delta *d)
 {
 	assert(d);
+
+	/* note that the tagwalk path will use D_BLUE */
+	if (d->flags & D_RED) return (d->flags & D_GONE);
+	d->flags |= D_RED;
+
 	if (d->ptag && marktags(s, sfind(s, d->ptag))) d->flags |= D_SET|D_GONE;
 	if (d->mtag && marktags(s, sfind(s, d->mtag))) d->flags |= D_SET|D_GONE;
 	return (d->flags & D_GONE);

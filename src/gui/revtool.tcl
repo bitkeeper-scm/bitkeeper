@@ -153,6 +153,7 @@ proc revMap {file} \
 		set rev2date($rev) $date
 		set serial2rev($serial) $rev
 	}
+	catch { close $fid }
 }
 
 # If in annotated diff output, find parent and diff between parent 
@@ -1339,9 +1340,9 @@ proc currentMenu {} \
 			$gc(current) add command -label "${f}@${rev}" \
 			    -command "gotoRev $f $rev"
 		}
+		catch {close $log}
 	}
 	catch {close $revs}
-	catch {close $log}
 	busy 0
 	return
 }

@@ -136,6 +136,8 @@ cmp -s GOT WANT || {
 }
 echo OK
 
+if [ "$PLATFORM" != "WIN32" ]
+then #-----------------------------------------------------------------
 echo $N Make sure permissions are preserved .........................$NL
 bk unedit FILE
 rm ORDER
@@ -153,3 +155,4 @@ test -x FILE || {
 	exit 1
 }
 echo OK
+fi #------------------------------------------------------------------

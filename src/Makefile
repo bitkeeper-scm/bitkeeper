@@ -60,6 +60,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o approve.o \
 	port/getrealcwd.o port/getrealname.o port/globalroot.o port/gui.o \
 	port/hostColonPath.o port/http_proxy.o \
 	port/lock.o port/mail.o port/mnext.o \
+	port/mkBkRootIcon.o \
 	port/ns_sock_host2ip.o port/platforminit.o \
 	port/popen.o port/randomBits.o \
 	port/rlimit.o port/runable.o port/samepath.o \
@@ -280,9 +281,10 @@ t/doit: t/doit.sh substvars
 FORCE:
 
 gnu: $(BK) FORCE
+	@bk get -sS gnu/Makefile
 	@if uname -s | grep _NT; \
 	then cd gnu && $(MAKE) BINDIR=$(BINDIR) DIFF_BINS= DIRS=patch ;\
-	else cd gnu && bk get -s Makefile && $(MAKE) BINDIR=$(BINDIR) ;\
+	else cd gnu && $(MAKE) BINDIR=$(BINDIR) ;\
 	fi
 
 win32: FORCE
@@ -317,7 +319,7 @@ bk.script: bk.sh port/$(SYS)_platform.sh substvars
 
 bkmsg.txt: bkmsg.doc bk.ver Makefile
 	sed "s/@version@/`cat bk.ver`/" bkmsg.doc | \
-	sed "s?@builder@?`./bk getuser`@`./bk gethost`?" | \
+	sed "s?@builder@?`./bk getuser`@`./bk gethost` in `pwd`?" | \
 	sed "s/@built_date@/`date`/" > bkmsg.txt
 
 bkhelp.txt: build FRC

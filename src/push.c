@@ -232,6 +232,11 @@ updLogMarker(int ptype, int verbose, FILE *vf)
 	char	s_cset[] = CHANGESET, rev[MAXREV+1];
 	int	i;
 
+	unless (exists(BKTMP "/csetlock")) {
+		fprintf(stderr, "No lock on ChangeSet, skipping log update\n");
+		assert(0);
+		return;
+	}
 	if (s = sccs_init(s_cset, INIT_NOCKSUM, 0)) {
 
 		/*
@@ -248,17 +253,15 @@ updLogMarker(int ptype, int verbose, FILE *vf)
 		sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
 		sccs_free(s);
 		if (verbose) {
-			fprintf(vf,
-				"Log marker updated: pending count = %d\n",
-				logs_pending(ptype, 0, 0));
+			fprintf(vf, "Log marker updated: pending count = %d\n",
+			    logs_pending(ptype, 0, 0));
 		}
 	} else {
 		if (verbose) {
 			char buf[MAXPATH];
 
 			getcwd(buf, sizeof (buf));
-			fprintf(vf,
-			    "updLogMarker: cannot access %s, pwd=%s\n",
+			fprintf(vf, "updLogMarker: cannot access %s, pwd=%s\n",
 			    s_cset, buf);
 		}
 	}
@@ -448,7 +451,10 @@ tags:			fprintf(opts.out,
 	 * if opts.lcsets > 0, we update the log marker in push part 2
 	 */
 	if ((opts.lcsets == 0) && (needLogMarker(r))) {
-		updLogMarker(0, opts.debug, opts.out);
+		unless (cset_lock()) {
+			updLogMarker(0, opts.debug, opts.out);
+			cset_unlock();
+		}
 	}
 	if ((opts.lcsets == 0) || !opts.doit) return (0);
 	if ((opts.rcsets || opts.rtags) && !opts.metaOnly) {
@@ -763,7 +769,12 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar)
 	if (opts.debug) fprintf(opts.out, "Remote terminated\n");
 
 	if (opts.metaOnly) {
-		if (needLogMarker(r)) updLogMarker(0, opts.debug, opts.out);
+		if (needLogMarker(r)) {
+			unless (cset_lock()) {
+				updLogMarker(0, opts.debug, opts.out);
+				cset_unlock();
+			}
+		}
 	} else {
 		unlink(CSETS_OUT);
 		rename(rev_list, CSETS_OUT);

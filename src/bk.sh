@@ -61,6 +61,11 @@ _flags() {		# /* undoc? 2.0 */
 }
 
 # shorthand
+_encoding() {		# /* undoc? 2.0 */
+	bk prs -hr+ -nd':GFILE: :ENC:' "$@"
+}
+
+# shorthand
 _tags() {
 	bk changes -t
 }
@@ -490,14 +495,15 @@ _unrm () {
 
 	__cd2root
 	LIST=/tmp/LIST$$
+	TMPFILE=/tmp/BKUNRM$$
 	DELDIR=BitKeeper/deleted
 	cd $DELDIR || { echo "Cannot cd to $DELDIR"; return 1; }
-	trap 'rm -f $LIST' 0
+	trap 'rm -f $LIST $TMPFILE' 0
 
 	# Find all the possible files, sort with most recent delete first.
 	bk -r. prs -Dhnr+ -d':TIME_T:|:GFILE' | \
 		sort -r -n | cut -d'|' -f2 | \
-		prs -Dhnpr+ -d':GFILE:|:DPN:' - | \
+		bk prs -Dhnpr+ -d':GFILE:|:DPN:' - | \
 		grep '^.*|.*'"$rpath"'.*' >$LIST
 
 	NUM=`wc -l $LIST | sed -e's/ *//' | cut -d' ' -f1`
@@ -518,8 +524,9 @@ _unrm () {
 
 	while read n
 	do
-		GFILE=`echo $n | cut -d'|' -f1 -`
-		RPATH=`echo $n | cut -d'|' -f2 -`
+		echo $n > $TMPFILE
+		GFILE=`cut -d'|' -f1 $TMPFILE`
+		RPATH=`cut -d'|' -f2 $TMPFILE`
 
 		# If there is only one match, and it is a exact match,
 		# don't ask for confirmation.
@@ -556,7 +563,7 @@ _unrm () {
 			echo ""
 		esac
 	done < $LIST 
-	rm -f $LIST
+	rm -f $LIST $TMPFILE
 }
 
 

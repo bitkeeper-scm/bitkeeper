@@ -57,15 +57,6 @@ usage:		system("bk help sccs2bk");
 	return (errors);
 }
 
-private void
-sccs_color(sccs *s, delta *d)
-{
-        unless (d && !(d->flags & D_RED)) return;
-        sccs_color(s, d->parent);
-        if (d->merge) sccs_color(s, sfind(s, d->merge));
-        d->flags |= D_RED;
-}                 
-
 /*
  * sccs2bk to BK.
  * 1. Reorder the date timestamps such that we will keep the same graph.

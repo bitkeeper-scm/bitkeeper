@@ -199,7 +199,7 @@ logs_pending(int ptype, int skipRecentCset, int grace)
 }
 
 private int
-csetCount()
+csetCount(void)
 {
 	sccs 	*s;
 	delta	*d;
@@ -701,7 +701,7 @@ printConfig(FILE *f, char *root, char *header)
 	MDBM *db;
 	kvpair	kv;
 
-	unless (db = loadConfig(root, 1)) return;
+	unless (db = loadConfig(root)) return;
 	fputs(header, f);
 	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
 		if (streq("description", kv.key.dptr) ||
@@ -783,14 +783,22 @@ config(FILE *f)
 	char	*p, *license;
 	sccs	*s;
 	delta	*d;
+	int	i;
 
 	fprintf(f, "Time_t:\t%s\n", bk_time);
 	getMsg("version", bk_model(buf, sizeof(buf)), 0, f);
 	fprintf(f,
 	   "%6d people have made deltas.\n", bkusers(1, 0, 0, 0));
-	f1 = popen("bk sfind -S -sx,c,p,n", "r");
-	while (fgets(buf, sizeof (buf), f1)) fputs(buf, f);
-	pclose(f1);
+
+ 	s = sccs_init(s_cset, INIT_NOCKSUM, NULL);
+	assert(s && HASGRAPH(s));
+	fprintf(f, "ChangeSet_size: %lu %s\n", s->size, 
+	    (s->encoding & E_GZIP) ? "gzipped" : "");
+	sccs_get(s, 0, 0, 0, 0, SILENT|GET_HASHONLY, 0);
+	i = 0;
+	EACH_KV(s->mdbm) ++i;
+	fprintf(f, "ChangeSet_lines: %d\n", i);
+	fprintf(f, "ChangeSet_nextserial: %d\n", s->nextserial);
 
 	tm = time(0);
 	fprintf(f, "Date:\t%s", ctime(&tm));
@@ -819,8 +827,6 @@ config(FILE *f)
 		}
 	}
 
- 	s = sccs_init(s_cset, INIT_NOCKSUM, NULL);
-	assert(s && HASGRAPH(s));
 	fprintf(f, "ID:\t");
 	sccs_pdelta(s, sccs_ino(s), f);
 	fputs("\n", f);
@@ -842,8 +848,8 @@ config(FILE *f)
 		if (d->flags & D_RED) continue; 
 		fprintf(f, "Cset:\t");
 		sccs_pdelta(s, d, f);
-		fprintf(f," %u", d->dateFudge);
-		fputs("\n", f);
+		fprintf(f," %lu +%d%s\n", 
+		    d->dateFudge, d->added, d->merge ? "M" : "");
 		cset_user(f, s, d, tmpfile);
 		fclose(fopen(tmpfile,  "w")); /* truncate it */
 	}
@@ -864,20 +870,6 @@ config(FILE *f)
 	}
 	fprintf(f, "User List:\n");
 	bkusers(0, 0, "\t", f);
-	sprintf(buf, "%setc/SCCS/s.aliases", BitKeeper);
-	if (exists(buf)) {
-		fprintf(f, "Alias  List:\n");
-		gettemp(tmpfile, "bk_aliases");
-		sprintf(buf, "%setc/SCCS/s.aliases", BitKeeper);
-		get(buf, SILENT|PRINT, tmpfile);
-		f1 = fopen(tmpfile, "r");
-		while (fgets(buf, sizeof(buf), f1)) {
-			if ((buf[0] == '#') || (buf[0] == '\n')) continue;
-			fprintf(f, "\t%s", buf);
-		}
-		fclose(f1);
-		unlink(tmpfile);
-	}
 }
 
 int

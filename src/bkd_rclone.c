@@ -171,18 +171,6 @@ cmd_rclone_part2(int ac, char **av)
 	/* remove any uncommited stuff */
 	sccs_rmUncommitted(!opts.verbose);
 
-
-	/* set up correct lod while the revision number is accurate */
-	if (opts.rev) {
-		if (lod(!opts.verbose, opts.rev)) {
-			fprintf(stderr,
-				    "clone: cannot set lod, aborting ...\n");
-			fputc(BKD_NUL, stdout);
-			rc = 1;
-			goto done;
-		}
-	}
-
 	/* remove any later stuff */
 	if (opts.rev) after(!opts.verbose, opts.rev);
 

@@ -467,7 +467,10 @@ error:			if (perfile) sccs_free(perfile);
 			s->sfile);
 		}
 		if (IS_EDITED(s)) {
-			if (sccs_clean(s, SILENT|CLEAN_SHUTUP)) {
+			int cleanflags = SILENT|CLEAN_SHUTUP;
+
+			if (isLogPatch) cleanflags |= CLEAN_SKIPPATH;
+			if (sccs_clean(s, cleanflags)) {
 				shout();
 				fprintf(stderr,
 				    "takepatch: %s is edited and modified; "
@@ -1204,7 +1207,23 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 	int	confThisFile;
 	FILE	*csets = 0;
 
-	unless (p) return (0);
+	if (!p && localPath) {
+		/* 
+		 * an existing file that was in the patch but didn't
+		 * get any deltas.  Usually an error, but we should
+		 * handle this better.
+		 */
+		char    *resync = aprintf("RESYNC/%s", localPath);
+		int	i = 0;
+		
+		while (exists(resync)) {
+                  	free(resync);
+			resync = aprintf("RESYNC/BitKeeper/RENAMES/s.%d", i++);
+		}
+		fileCopy2(localPath, resync);
+		free(resync);
+		return (0);
+	}
 	lodkey[0] = 0;
 	if (echo == 3) fprintf(stderr, "%c\b", spin[n++ % 4]);
 	if (echo > 7) {
