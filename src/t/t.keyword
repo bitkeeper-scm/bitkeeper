@@ -48,3 +48,13 @@ if [ X"$FLAGS" != "XBITKEEPER,CSETMARKED,SCCS,SINGLE,EOLN_NATIVE" ]
 then echo faied; exit 1;
 fi
 echo OK
+
+echo $N Check files get keywords expanded by \'bk new\' ...............$NL
+echo 'checkout:get' >> BitKeeper/etc/config
+echo %F% > fff
+bk new $Q fff || exit 1
+if [ `cat fff` != "SCCS/s.fff" ]; then
+	echo keyword expansion failed
+	exit 1
+fi
+echo OK
