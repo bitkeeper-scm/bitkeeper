@@ -444,7 +444,7 @@ proc getFiles {revs} \
 		update
 		incr line
 		.filelist.t insert end "ChangeSet $cset\n" cset
-		set c [open "| bk cset -hr$cset | grep -v ^ChangeSet@ | sort" r]
+		set c [open "| bk cset -Hhr$cset | sort" r]
 		while { [gets $c buf] >= 0 } {
 			incr fileCount
 			incr line

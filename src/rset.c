@@ -6,6 +6,7 @@ typedef struct {
 	u32 	show_all:1;	/* show deleted files */
 	u32	show_diffs:1;	/* output in rev diff format */
 	u32	show_path:1;	/* show d->pathname */
+	u32	hide_cset:1;	/* hide ChangeSet file from file list */
 } options;
 
 private project *proj;
@@ -200,10 +201,13 @@ rel_diffs(MDBM *db1, MDBM *db2, MDBM *idDB, char *rev1, char *rev2,
 	 * XXX If we move the ChangeSet file,
 	 * XXX this need to be updated
 	 */
-	unless (opts.show_path) {
-		printf("ChangeSet@%s..%s\n", rev1, rev2);
-	} else {
-		printf("ChangeSet@ChangeSet@%s@ChangeSet@%s\n", rev1, rev2);
+	unless (opts.hide_cset) {
+		unless (opts.show_path) {
+			printf("ChangeSet@%s..%s\n", rev1, rev2);
+		} else {
+			printf("ChangeSet@ChangeSet@%s@ChangeSet@%s\n",
+								rev1, rev2);
+		}
 	}
 	for (kv = mdbm_first(db1); kv.key.dsize != 0; kv = mdbm_next(db1)) {
 		char root_key2[MAXKEY];
@@ -247,10 +251,12 @@ rel_list(MDBM *db, MDBM *idDB, char *rev, options opts)
 	char	*root_key, *end_key;
 	kvpair	kv;
 
-	unless (opts.show_path) {
-		printf("ChangeSet@%s\n", rev);
-	} else {
-		printf("ChangeSet@ChangeSet@%s\n", rev);
+	unless (opts.hide_cset) {
+		unless (opts.show_path) {
+			printf("ChangeSet@%s\n", rev);
+		} else {
+			printf("ChangeSet@ChangeSet@%s\n", rev);
+		}
 	}
 	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
 		root_key = kv.key.dptr;
@@ -275,18 +281,20 @@ rset_main(int ac, char **av)
 	MDBM	*db1, *db2, *idDB, *goneDB = 0, *short2long = 0;
 	kvpair	kv;
 	datum	k;
-	options	opts = { 0, 0, 0 };
+	options	opts = { 0, 0, 0, 0};
 	
 	if (sccs_cd2root(0, 0)) {
 		fprintf(stderr, "mkrev: cannot find package root.\n");
 		exit(1);
 	} 
 
-	while ((c = getopt(ac, av, "ahr:")) != -1) {
+	while ((c = getopt(ac, av, "ahHr:")) != -1) {
 		switch (c) {
-		case 'a':	opts.show_all = 1;  /* show all files */
+		case 'a':	opts.show_all = 1;  /* show deleted files */
 				break;
 		case 'h':	opts.show_path = 1; /* show historic path */
+				break;
+		case 'H':	opts.hide_cset = 1; /* hide ChangeSet file */
 				break;
 		case 'r':	rev1 = optarg;
 				rev2 = strchr(rev1, ',');
@@ -294,7 +302,7 @@ rset_main(int ac, char **av)
 				break;
 		default:
 usage:				fprintf(stderr,
-				    "Usage: mkrev [-a] [-h] -rrev1,rev2\n");
+				"Usage: rset [-a] [-h] [-H] -rrev1[,rev2]\n");
 				return (1);
 		}
 	}

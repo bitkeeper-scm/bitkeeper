@@ -12,6 +12,7 @@ usage: cset [opts]\n\n\
     -d<range>	do unified diffs for the range\n\
     -C		clear and remark all ChangeSet boundries\n\
     -h		With -r listing, show historic path\n\
+    -H		With -r listing, hide Changeset file from file list\n\
     -i<list>	create a new cset on TOT that includes the csets in <list>\n\
     -l<range>	List each rev in range as file@rev (may be multiline per file)\n\
     -m<range>	Generate a patch of the changes in <range>\n\
@@ -30,13 +31,14 @@ typedef	struct cset {
 	int	mixed;		/* if set, then both long and short keys */
 	int	csetOnly;	/* if set, do logging ChangeSet */
 	int	makepatch;	/* if set, act like makepatch */
-	int	listeach;	/* if set, like -r except list revs 1/line */
+	int	listeach;	/* if set, list revs 1/line */
 	int	mark;		/* act like csetmark used to act */
 	int	doDiffs;	/* prefix with unified diffs */
 	int	force;		/* if set, then force past errors */
 	int	remark;		/* clear & redo all the ChangeSet marks */
 	int	dash;
-	int	historic;	/* list the historic name if different */
+	int	historic;	/* list the historic name */
+	int	hide_cset;	/* exclude cset from file@rev list */
 	int	include;	/* create new cset with includes */
 	int	exclude;	/* create new cset with excludes */
 
@@ -55,7 +57,7 @@ private	int	marklist(char *file);
 private	void	csetDeltas(cset_t *cs, sccs *sc, delta *start, delta *d);
 private	delta	*mkChangeSet(sccs *cset, FILE *diffs);
 private	char	*file2str(char *f);
-private	void	doRange(cset_t *cs, sccs *sc);
+//private	void	doRange(cset_t *cs, sccs *sc);
 private	void	doEndpoints(cset_t *cs, sccs *sc);
 private	void	doSet(sccs *sc);
 private	void	doMarks(cset_t *cs, sccs *sc);
@@ -92,11 +94,12 @@ usage:		fprintf(stderr, "%s", cset_help);
 
 	while (
 	    (c =
-	    getopt(ac, av, "c|Cd|Dfhi;m|M|pqr|sS;vx;y|Y|")) != -1) {
+	    getopt(ac, av, "c|Cd|DfHhi;m|M|pqr|sS;vx;y|Y|")) != -1) {
 		switch (c) {
 		    case 'D': ignoreDeleted++; break;
 		    case 'f': copts.force++; break;
 		    case 'h': copts.historic++; break;
+		    case 'H': copts.hide_cset++; break;
 		    case 'i':
 			if (copts.include || copts.exclude) goto usage;
 			copts.include++;
@@ -839,6 +842,7 @@ doSet(sccs *sc)
 {
 	delta	*d;
 
+	if (copts.hide_cset  && streq(CHANGESET, sc->sfile))  return;
 	for (d = sc->table; d; d = d->next) {
 		if (d->flags & D_SET) {
 		    	if (copts.historic) {
