@@ -2,6 +2,7 @@
 #include "sccs.h"
 
 private	void	undos(char *s);
+private void	doit(FILE *f, int auto_new_line);
 extern	void	platformSpecificInit(char *);
 
 int
@@ -9,7 +10,7 @@ undos_main(int ac, char **av)
 {
 	FILE	*f;
 	char	buf[1024];
-	int 	c;
+	int 	fd, c;
 	int	auto_new_line = 1;
 
 	if (ac == 2 && !strcmp("--help", av[1])) {
@@ -27,22 +28,22 @@ undos_main(int ac, char **av)
 		}
 	}
 
-	if ((ac - optind) != 1) {
-		system("bk help -s undos");
-		exit(1);
+	unless (av[optind]) {
+		doit(stdin, auto_new_line);
+	} else {
+		while (av[optind]) {
+			f = fopen(av[optind], "rb");
+			unless (f) {
+				perror(av[optind]);
+				exit(1);
+			}
+			doit(f, auto_new_line);
+			fclose(f);
+			optind++;
+		}
 	}
-	f = fopen(av[optind], "rb");
-	if (!f) {
-		perror(av[optind]);
-		exit(1);
-	}
-	buf[0] = 0;
-	while (fgets(buf, sizeof(buf), f)) {
-		undos(buf);
-		fputs(buf, stdout);
-	}
-	if (auto_new_line && !strchr(buf, '\n')) fputc('\n', stdout);
 	return (0);
+
 }
 
 /* kill the newline and the \r */
@@ -64,4 +65,17 @@ undos(register char *s)
 		s[0] = '\0';
 		return;
 	}
+}
+
+private void
+doit(FILE *f, int auto_new_line)
+{
+	char	buf[1024];
+
+	buf[0] = 0;
+	while (fgets(buf, sizeof(buf), f)) {
+		undos(buf);
+		fputs(buf, stdout);
+	}
+	if (auto_new_line && !strchr(buf, '\n')) fputc('\n', stdout);
 }
