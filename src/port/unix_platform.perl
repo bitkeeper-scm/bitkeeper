@@ -64,22 +64,3 @@ sub localName2bkName
 {
         return $_[0];
 }        
-
-# The nonsense with /dev/null is because there is no portable way to
-# stop cpio from printing "42 blocks" at the end of its run.
-sub cpio_out
-{
-	local($q, $list) = ($_[0], $_[1]);
-
-	$cpioq = $q ? ' 2>/dev/null' : 'v';
-	system("cpio -o$cpioq < $list")
-		&& die "cpio -o: unsuccessful exit $?\n";
-}
-
-sub cpio_in
-{
-	#system("cpio -icdm 2>/dev/null") 
-	system("cpio -idm 2>/dev/null") 
-		&& die "cpio -i: unsuccessful exit $?\n";
-}
-
