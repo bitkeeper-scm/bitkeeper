@@ -694,7 +694,7 @@ checkAll(MDBM *db)
 			goto full;
 		}
 		sprintf(buf,
-		    "bk sccscat -h %s/ChangeSet | bk _keysort", RESYNC2ROOT);
+		    "bk sccscat -h %s/ChangeSet | bk _sort", RESYNC2ROOT);
 		f = popen(buf, "r");
 		while (fgets(buf, sizeof(buf), f)) {
 			if (mdbm_store_str(local, buf, "", MDBM_INSERT)) {
@@ -822,7 +822,7 @@ buildKeys(MDBM *idDB)
 		fprintf(stderr, "bktmp failed to get temp file\n");
 		exit(1);
 	}
-	sprintf(buf, "bk sccscat -h ChangeSet | bk _keysort > %s", ctmp);
+	sprintf(buf, "bk sccscat -h ChangeSet | bk _sort > %s", ctmp);
 	system(buf);
 	unless ((sz = size(ctmp)) > 0) {
 		fprintf(stderr, "Unable to create %s\n", ctmp);

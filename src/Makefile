@@ -70,10 +70,11 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
 	dirs.o delta.o diffs.o diffsplit.o dir_gif.o dirname.o \
 	export.o fdiff.o file_gif.o \
-	find.o findkey.o fix.o fixlod.o g2sccs.o gca.o get.o gethelp.o \
+	find.o findkey.o fix.o fixlod.o \
+	g2sccs.o gca.o get.o gethelp.o \
 	gethost.o getopt.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \
-	isascii.o key2rev.o key2path.o keysort.o kvfile.o \
+	isascii.o key2rev.o key2path.o kvfile.o \
 	lease.o level.o \
 	lib_tcp.o libcommit.o libdiff.o liblines.o librange.o \
 	libsfiles.o libusers.o license.o lines.o \
@@ -84,7 +85,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	pending.o preference.o port/bkd_client.o port/bkd_server.o \
 	port/check_gfile.o port/executable.o \
 	port/filecopy.o port/fileinfo.o port/findpid.o \
-	port/findprog.o port/flushsocket.o \
+	port/flushsocket.o \
 	port/fullname.o port/gethomedir.o \
 	port/gethost.o port/getinput.o port/getnull.o \
 	port/getrealcwd.o port/getrealname.o port/globalroot.o port/gui.o \
@@ -106,11 +107,11 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	root.o rset.o scompress.o sane.o sccs.o sccs_mv.o sccs2bk.o sccscat.o \
 	sccslog.o sccsmv.o sccsrm.o send.o sendbug.o \
 	set.o setup.o sfiles.o sfind.o sfio.o shrink.o sinfo.o \
-	slib.o smerge.o status.o stripdel.o synckeys.o sys.o \
+	slib.o smerge.o sort.o status.o stripdel.o synckeys.o sys.o \
 	tagmerge.o takepatch.o testdates.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \
 	unique.o unlink.o unlock.o unpull.o unwrap.o \
-	user.o utils.o uu.o version.o what.o xflags.o zgets.o \
+	user.o utils.o uu.o version.o what.o which.o xflags.o zgets.o \
 	zone.o
 
 MDBMOBJ	= mdbm/mdbm.o mdbm/hash.o mdbm/debug.o mdbm/byte_order.o

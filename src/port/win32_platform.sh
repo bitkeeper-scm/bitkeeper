@@ -30,5 +30,6 @@ __platformInit()
 	tcl=".tcl"
 	test "X$EDITOR" = X && EDITOR=notepad.exe
 	test "X$PAGER" = X && PAGER=more
-	export PAGER EDITOR TMP DEV_NULL AWK wish
+	RM=rm
+	export PAGER EDITOR TMP DEV_NULL AWK RM wish
 }

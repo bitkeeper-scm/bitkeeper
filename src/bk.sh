@@ -149,7 +149,7 @@ _superset() {
 	 bk sfiles -xa BitKeeper/triggers
 	 bk sfiles -xa BitKeeper/etc |
 	    egrep -v 'etc/SCCS|etc/csets-out|etc/csets-in|etc/level'
-	) | sort > $TMP2
+	) | bk _sort > $TMP2
 	test -s $TMP2 && {
 		test $LIST = NO && {
 			rm -f $TMP $TMP2
@@ -443,11 +443,11 @@ _unrm () {
 
 	# Find all the possible files, sort with most recent delete first.
 	bk -r. prs -Dhnr+ -d':TIME_T:|:GFILE' | \
-		sort -r -n | cut -d'|' -f2 | \
+		bk _sort -r -n | awk -F'|' '{print $2}' | \
 		bk prs -Dhnpr+ -d':GFILE:|:DPN:' - | \
 		grep '^.*|.*'"$rpath"'.*' >$LIST
 
-	NUM=`wc -l $LIST | sed -e's/ *//' | cut -d' ' -f1`
+	NUM=`wc -l $LIST | sed -e's/ *//' | awk -F' ' '{print $1}'`
 	if [ "$NUM" -eq 0 ]
 	then
 		echo "---------------"
@@ -466,8 +466,8 @@ _unrm () {
 	while read n
 	do
 		echo $n > $TMPFILE
-		GFILE=`cut -d'|' -f1 $TMPFILE`
-		RPATH=`cut -d'|' -f2 $TMPFILE`
+		GFILE=`awk -F'|' '{print $1}' $TMPFILE`
+		RPATH=`awk -F'|' '{print $2}' $TMPFILE`
 
 		# If there is only one match, and it is a exact match,
 		# don't ask for confirmation.
@@ -613,7 +613,7 @@ _rmdir() {		# /* doc 2.0 */
 		exit 1
 	fi
 	bk sfiles "$1" | bk clean -q -
-	bk sfiles "$1" | sort | bk sccsrm -d -
+	bk sfiles "$1" | bk _sort | bk sccsrm -d -
 	SNUM=`bk sfiles "$1" | wc -l`
 	if [ "$SNUM" -ne 0 ]; 
 	then
@@ -895,7 +895,7 @@ _meta_union() {
 	__cd2root
 	for d in etc etc/union conflicts deleted
 	do	test -d BitKeeper/$d/SCCS || continue
-		ls -1 BitKeeper/$d/SCCS/s.${1}* 2>/dev/null
+		bk _find BitKeeper/$d/SCCS -name "s.${1}*"
 	done | bk prs -hr1.0 -nd'$if(:DPN:=BitKeeper/etc/'$1'){:GFILE:}' - |
 		bk sccscat - | bk _sort -u
 }
@@ -1118,6 +1118,13 @@ EOF
 		X) help=1;;
 		esac
 		done
+}
+
+# XXX the old 'bk _keysort' has been removed, but we keep this just
+# in case someone calls _keysort after some merge or something.
+__keysort()
+{
+    bk _sort "$@"
 }
 
 # ------------- main ----------------------

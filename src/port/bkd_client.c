@@ -139,7 +139,7 @@ check_rsh(char *remsh)
 {
 	char *t;
 
-	if (!(t = prog2path(remsh)) ||
+	if (!(t = whichp(remsh, 0, 1)) ||
 	    strstr(t, "system32/rsh")) {
 		fprintf(stderr, "Cannot find %s.\n", remsh);
 		fprintf(stderr,

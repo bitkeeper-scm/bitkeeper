@@ -213,6 +213,13 @@ gotit:
 			safe_putenv("PATH=%s%c%s/gnu/bin%c%s",
 			    		buf, PATH_DELIM, buf, PATH_DELIM, p);
 		}
+		/*
+		 * The regressions set this variable when they want to
+		 * limit which programs can be run from within bk.
+		 */
+		if (p = getenv("BK_LIMITPATH")) {
+			safe_putenv("PATH=%s:%s/gnu/bin:%s", buf, buf, p);
+		}
 #endif
 		return;
 	}

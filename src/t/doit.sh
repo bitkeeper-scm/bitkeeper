@@ -15,7 +15,8 @@
 
 win32_common_setup()
 {
-	DIFF=/usr/bin/diff
+	DIFF="bk diff"
+	RM=rm
 	PLATFORM="WIN32"
 	DEV_NULL="nul"
 	if [ -z "$TST_DIR" ]; then TST_DIR=`../bk _nativepath /tmp`; fi
@@ -49,6 +50,7 @@ win32_common_setup()
 unix_common_setup()
 {
 	DIFF=diff
+	RM=/bin/rm
 	PLATFORM="UNIX"
 	DEV_NULL="/dev/null"
 	if [ -z "$TST_DIR" ]; then TST_DIR="/tmp"; fi
@@ -81,6 +83,21 @@ unix_common_setup()
 	test -r $BIN3 || BIN3=/usr/gnu/bin/wc
 	test -r $BIN3 || exit 1
 	export BIN1 BIN2 BIN3
+
+	BK_LIMITPATH=/tmp/.bktools-$USER
+	rm -rf $BK_LIMITPATH
+	mkdir $BK_LIMITPATH
+	for f in awk expr sh grep egrep sed \
+	    basename dirname cat cp ln mkdir mv rm rmdir touch wc xargs \
+	    co rcs ssh rsh gzip gunzip
+	do	p=`bk which -e $f`
+		if [ $? -eq 0 ]
+		then	echo ln -s $p $BK_LIMITPATH/$f
+			ln -s $p $BK_LIMITPATH/$f
+		else	echo WARNING: could not find a $f binary.
+		fi
+	done
+	export BK_LIMITPATH
 }
 
 bad_mount()
@@ -223,7 +240,7 @@ clean_up()
 	# Win32 have no core file
 	if [ "$PLATFORM" = "UNIX" ]
 	then
-		find $BK_REGRESSION -name core -print > $BK_REGRESSION/cores
+		bk _find $BK_REGRESSION -name core > $BK_REGRESSION/cores
 		if [ -s $BK_REGRESSION/cores ]
 		then    ls -l `cat $BK_REGRESSION/cores`
 			file `cat $BK_REGRESSION/cores`
@@ -232,7 +249,7 @@ clean_up()
 	fi
 
 	for i in 1 2 3 4 5
-	do	find $BK_REGRESSION -name bk'*' -print |
+	do	bk _find $BK_REGRESSION -name 'bk*' |
 		    grep BitKeeper/tmp > $BK_REGRESSION/junk
 		if [ ! -s $BK_REGRESSION/junk ]
 		then	break
@@ -246,7 +263,7 @@ clean_up()
 	fi
 
 	# Make sure there are no lockfiles left
-	find $BK_REGRESSION -type f -print |
+	bk _find $BK_REGRESSION |
 	    egrep 'BitKeeper/readers/|BitKeeper/writer/' > $BK_REGRESSION/junk
 	test -s $BK_REGRESSION/junk && {
 		echo Stale lock files
@@ -283,6 +300,7 @@ init_main_loop()
 	BK_PATH=$PATH
 	export PATH BK_PATH PLATFORM DEV_NULL TST_DIR CWD BK_LICENSE
 	export USER BK_FS BK_REGRESSION HERE BK_TMP TMPDIR NL N Q S CORES
+	export RM
 	export NXL NX
 	export BKL_P BKL_EX BKL_B
 	export BKL_P1 BKL_P2 BKL_P3
@@ -383,6 +401,7 @@ do	echo ------------ ${i#t.} test
 	clean_up
 done
 rm -f $TMPDIR/T.${USER} $TMPDIR/T.${USER}-new
+test $BK_LIMITPATH && rm -rf $BK_LIMITPATH
 test "X$FAILED" = X && {
 	echo ------------------------------------------------
 	echo All requested tests passed, must be my lucky day
