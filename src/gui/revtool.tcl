@@ -1193,7 +1193,8 @@ proc filltext {win f clear {msg {}}} \
 #
 proc prs {} \
 {
-	global file rev1 dspec dev_null search w diffpair ttype sem lock
+	global file rev1 dspec dev_null search w diffpair ttype 
+	global sem lock chgdspec
 
 	set lock "inprs"
 
@@ -1204,7 +1205,7 @@ proc prs {} \
 		busy 1
 		set base [file tail $file]
 		if {$base == "ChangeSet"} {
-			set cmd "|bk changes -evr$rev1 2>$dev_null"
+			set cmd "|bk changes {$chgdspec} -evr$rev1 2>$dev_null"
 			set ttype "cset_prs"
 		} else {
 			set cmd "|bk prs {$dspec} -r$rev1 \"$file\" 2>$dev_null"
@@ -1510,13 +1511,14 @@ proc updateCurrentMenu {fd {cleanup 0}} \
 proc csetdiff2 {{rev {}}} \
 {
 	global file rev1 rev2 Opts dev_null w ttype anchor
+	global chgdspec
 
 	busy 1
 	if {$rev != ""} { set rev1 $rev; set rev2 $rev; set anchor $rev1 }
 	$w(aptext) configure -state normal; $w(aptext) delete 1.0 end
 	$w(aptext) insert end "ChangeSet history for $rev1..$rev2\n\n"
 
-	set revs [open "|bk changes -fv -er$rev1..$rev2"]
+	set revs [open "|bk changes {$chgdspec} -fv -er$rev1..$rev2"]
 	filltext $w(aptext) $revs 0 "sccslog for files"
 	set ttype "cset_prs"
 	catch {close $revs}
@@ -1767,12 +1769,18 @@ proc busy {busy} \
 proc widgets {} \
 {
 	global	search Opts gc stacked d w dspec wish yspace paned 
-	global  tcl_platform fname app ttype sem
+	global  tcl_platform fname app ttype sem chgdspec
 
 	set sem "start"
 	set ttype ""
 	set dspec \
 "-d:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)\n}\$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n"
+	# this one is used when calling 'bk changes'; its distinguishing
+	# feature is slighly different indentation and the fact that the
+	# filename is on a line by itself. The key bindings for changeset
+	# history depend on this (see selectTag)
+	set chgdspec \
+"-d\$if(:DPN:!=ChangeSet){  }:DPN:\n    :I: :Dy:/:Dm:/:Dd: :T: :P:\$if(:HT:){@:HT:} +:LI: -:LD: \n\$each(:C:){    (:C:)\n}\$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n"
 	set Opts(diff) "-u"
 	set Opts(get) "-aum"
 	set Opts(line) "-u -t"
