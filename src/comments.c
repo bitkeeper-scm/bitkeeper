@@ -74,7 +74,7 @@ comments_get(delta *d)
 int
 comments_prompt(char *file)
 {
-	char	buf[10];
+	char	*cmd, buf[10];
 	extern	char *editor;
 
 	unless (editor || (editor = getenv("EDITOR"))) editor = "vi";
@@ -91,8 +91,9 @@ comments_prompt(char *file)
 		    case 'u':
 			return (0);
 		    case 'e':
-			sprintf(buf, "%s %s", editor, file);
-			system(buf);
+			cmd = aprintf("%s %s", editor, file);
+			system(cmd);
+			free(cmd);
 			break;
 		    case 'a':
 		    case 'q':

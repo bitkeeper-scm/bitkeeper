@@ -339,7 +339,6 @@ usage:			sprintf(buf, "bk help -s %s", name);
 			errors |= 4;
 			goto next;
 		}
-		comments_cleancfile(s->gfile);
 
 		s = sccs_restart(s);
 		unless (s) {

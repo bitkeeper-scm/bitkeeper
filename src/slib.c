@@ -12347,6 +12347,7 @@ out:
 		OUT;
 	}
 	unlink(s->pfile);
+	comments_cleancfile(s->gfile);
 	if ((flags & DELTA_SAVEGFILE) &&
 	    (s->initFlags & INIT_FIXSTIME) &&
 	    HAS_GFILE(s)) {
