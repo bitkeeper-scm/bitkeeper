@@ -5,7 +5,7 @@
 private int	do_merge(int start, int end, FILE *inputs[3]);
 private void	usage(void);
 private char	*fagets(FILE *fh);
-private int	resolve_conflict(char **lines[3]);
+private int	resolve_conflict(char **lines[3], u32 start, u32 end);
 private char	**unidiff(char **gca, char **new);
 private void	show_examples(void);
 private	int	parse_range(char *range, int *start, int *end);
@@ -46,7 +46,6 @@ private	char	*file;
 private	int	mode;
 private	int	show_seq;
 private	int	fdiff;
-private	FILE	*fl, *fr;
 private	char	*anno = 0;
 
 int
@@ -116,18 +115,6 @@ smerge_main(int ac, char **av)
 		inputs[i] = popen(buf, "r");
 		assert(inputs[i]);
 	}
-	if (fdiff) {
-		char *left = aprintf("/tmp/left.%d", getpid());
-		char *right = aprintf("/tmp/right.%d", getpid());
-
-		puts(left);
-		puts(right);
-		fl = fopen(left, "w");
-		fr = fopen(right, "w");
-		assert(fl && fr);
-		free(left);
-		free(right);
-	}
 	ret = do_merge(start, end, inputs);
 	for (i = 0; i < 3; i++) {
 		int	status;
@@ -138,10 +125,6 @@ smerge_main(int ac, char **av)
 				revs[i], file);
 			ret = 2;
 		}
-	}
-	if (fdiff) {
-		fclose(fl);
-		fclose(fr);
 	}
 	return (ret);
 }
@@ -179,14 +162,8 @@ printline(char *line, int preserve_char)
 		++line;
 	}
 	unless (show_seq) line = skipseq(line);
-	if (fdiff) {
-		fputc(' ', fl);
-		fputs(line, fl);
-		fputc(' ', fr);
-		fputs(line, fr);
-	} else {
-		fputs(line, stdout);
-	}
+	if (fdiff) fputc(' ', stdout);
+	fputs(line, stdout);
 }
 			
 private int
@@ -197,6 +174,7 @@ do_merge(int start, int end, FILE *inputs[3])
 	int	i;
 	char	*curr[3];
 	int	ret = 0;
+	u32	last_match = 0;
 	
 #define NEWLINE(fh) (seq[i] = (curr[i] = fagets(fh)) ? atoi(curr[i]) : ~0)
 	for (i = 0; i < 3; i++) {
@@ -218,11 +196,13 @@ do_merge(int start, int end, FILE *inputs[3])
 		    seq[2] == max) {
 			if (max > start) {
 				if (lines[0] || lines[1] || lines[2]) {
-					if (resolve_conflict(lines)) {
+					if (resolve_conflict(lines, 
+					    last_match, max)) {
 						ret = 1;
 					}
 					lines[0] = lines[1] = lines[2] = 0;
 				}
+				last_match = max;
 				if (end && max >= end) break;
 				if (max == ~0) break;
 				printline(curr[0], 0);
@@ -305,6 +285,8 @@ struct region {
 	char	**right;
 	char	**merged;
 	int	automerged;
+	u32	start;
+	u32	end;
 	region	*next;
 };
 private region *regions = 0;
@@ -421,7 +403,7 @@ to change the way smerge will automerge.  Starred entries are on by default.\n")
 }
 
 private int
-resolve_conflict(char **lines[3])
+resolve_conflict(char **lines[3], u32 start, u32 end)
 {
 	int	i;
 	region	*r;
@@ -431,6 +413,8 @@ resolve_conflict(char **lines[3])
 	r->left = lines[LEFT];
 	r->gca = lines[GCA];
 	r->right = lines[RIGHT];
+	r->start = start;
+	r->end = end;
 	push_region(r);
 	while (regions) {
 		int	changed;
@@ -447,10 +431,10 @@ resolve_conflict(char **lines[3])
 			/* This region was automerged */
 			if (fdiff) {
 				user_conflict_fdiff(r);
-			} else {
-				EACH(r->merged) {
-					printline(r->merged[i], 0);
-				}
+				fputs("Merge\n", stdout);
+			} 
+			EACH(r->merged) {
+				printline(r->merged[i], 0);
 			}
 			freeLines(r->merged);
 		} else {
@@ -462,6 +446,13 @@ resolve_conflict(char **lines[3])
 				user_conflict_fdiff(r);
 			} else {
 				user_conflict(r);
+			}
+		}
+		if (fdiff) {
+			if (r->end) {
+				printf("End %d\n", r->end);
+			} else {
+				printf("End\n");
 			}
 		}
 		freeLines(r->left);
@@ -583,6 +574,7 @@ user_conflict_fdiff(region *r)
 	int	i;
 	char	**left = 0, **right = 0;
 	char	**diffs;
+	char	**out_right = 0;
 	u32	sl, sr;
 
 	switch (mode) {
@@ -611,26 +603,34 @@ user_conflict_fdiff(region *r)
 		free(diffs);
 		break;
 	}
-	EACH(left) if (r->automerged && left[i][0] == '+') left[i][0] = 'a';
-	EACH(right) if (r->automerged && right[i][0] == '+') right[i][0] = 'a';
+	if (r->start) {
+		printf("Left %d\n", r->start);
+	} else {
+		printf("Left\n");
+	}
 	sl = left ? seq(left[1]) : 0;
 	sr = right ? seq(right[1]) : 0;
 	while (sl && sr) {
 		while (sl < sr) {
-			fputs(popLine(left), fl);
-			fputs("s\n", fr);
+			char	*line = popLine(left);
+			fputs(line, stdout);
+			free(line);
+			out_right = addLine(out_right, strdup("s\n"));
 			sl = seq(left[1]);
 			unless (sl) goto done;
 		}
- 		while (sl > sr) {
-			fputs("s\n", fl);
-			fputs(popLine(right), fr);
+		while (sl > sr) {
+			fputs("s\n", stdout);
+			out_right = addLine(out_right, popLine(right));
 			sr = seq(right[1]);
 			unless(sr) goto done;
 		}
+		
 		while (sl == sr) {
-			fputs(popLine(left), fl);
-			fputs(popLine(right), fr);
+			char	*line = popLine(left);
+			fputs(line, stdout);
+			free(line);
+			out_right = addLine(out_right, popLine(right));
 			sl = seq(left[1]);
 			sr = seq(right[1]);
 			unless (sl && sr) goto done;
@@ -638,15 +638,20 @@ user_conflict_fdiff(region *r)
 	}
  done:
 	while (sl) {
-		fputs(popLine(left), fl);
-		fputs("s\n", fr);
+		char	*line = popLine(left);
+		fputs(line, stdout);
+		free(line);
+		out_right = addLine(out_right, strdup("s\n"));
 		sl = seq(left[1]);
 	}
 	while (sr) {
-		fputs("s\n", fl);
-		fputs(popLine(right), fr);
+		fputs("s\n", stdout);
+		out_right = addLine(out_right, popLine(right));
 		sr = seq(right[1]);
 	}
+	fputs("Right\n", stdout);
+	EACH (out_right) fputs(out_right[i], stdout);
+	freeLines(out_right);
 	freeLines(left);
 	freeLines(right);
 }
@@ -1021,6 +1026,8 @@ merge_common_header(region *r)
 			r->gca[i] = 0;
 		}
 	}
+	newr->end = r->end;
+	r->end = 0;
 	push_region(newr);
 
 	return (1);
@@ -1073,6 +1080,8 @@ merge_common_footer(region *r)
 			r->gca[i] = 0;
 		}
 	}
+	newr->end = r->end;
+	r->end = 0;
 	push_region(newr);
 
 	return (1);
@@ -1134,6 +1143,8 @@ merge_common_deletes(region *r)
 						    r->gca[i]);
 				r->gca[i] = 0;
 			}
+			newr->end = r->end;
+			r->end = 0;
 			push_region(newr);
 			ret = 1;
 		}
