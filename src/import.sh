@@ -362,7 +362,7 @@ import_patch() {
 	# Do the creates automatically
 	if [ ! -s ${TMP}deletes$$ -a -s ${TMP}creates$$ ]
 	then	msg Creating `wc -l < ${TMP}creates$$` files
-		bk new $Q -G $COMMENTOPT - < ${TMP}creates$$
+		bk new $Q -G "$COMMENTOPT" - < ${TMP}creates$$
 	fi
 	rm -f ${TMP}creates$$ ${TMP}deletes$$
 
