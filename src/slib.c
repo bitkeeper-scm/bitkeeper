@@ -7011,6 +7011,7 @@ err:		if (i2) free(i2);
 		// could be empty (see t.merge for example)
 		unless (tmp) goto err;
 #endif
+		/* XXX this is bogus if tmp==0 and iLst is set */
 		i2 = strconcat(tmp, iLst, ",");
 		if (tmp && i2 != tmp) free(tmp);
 	}
