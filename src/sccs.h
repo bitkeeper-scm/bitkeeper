@@ -139,6 +139,7 @@
 #define	S_FAKE_1_0	0x08000000	/* the 1.0 delta is a fake */
 #define	S_SAVEPROJ	0x10000000	/* do not free the project struct */
 #define	S_SCCS		0x20000000	/* expand SCCS keywords */
+#define	S_SINGLE	0x40000000	/* inherit user/host */
 
 #define	S_KEYWORDS	(S_SCCS|S_RCS)	/* any sort of keyword */
 
@@ -181,6 +182,7 @@
 #define	X_CSETMARKED	0x00000020	/* ChangeSet boundries are marked */
 #define	X_HASH		0x00000040	/* mdbm file */
 #define	X_SCCS		0x00000080	/* SCCS keywords */
+#define	X_SINGLE	0x00000100	/* single user, inherit user/host */
 
 			/* users can change these */
 #define	X_USER		(X_RCS|X_YEAR4|X_EXPAND1|X_SCCS)
@@ -253,10 +255,11 @@
 /*
  * Hash behaviour.  Bitmask.
  */
-#define DB_NODUPS       1		/* keys must be unique */
-#define DB_USEFIRST     2		/* use the first key found */
-#define DB_USELAST      4		/* use the last key found */
-#define	DB_KEYSONLY	8		/* boolean hashes */
+#define DB_NODUPS       0x01		/* keys must be unique */
+#define DB_USEFIRST     0x02		/* use the first key found */
+#define DB_USELAST      0x04		/* use the last key found */
+#define	DB_KEYSONLY	0x08		/* boolean hashes */
+#define	DB_NOBLANKS	0x10		/* keys must have values or skip */
 
 #define	MAXREV	24	/* 99999.99999.99999.99999 */
 
@@ -275,8 +278,6 @@
 
 #define	UNKNOWN_USER	"anon"
 #define	UNKNOWN_HOST	"nowhere"
-#define	BK_FREEUSER	"bk"
-#define	BK_FREEHOST	"free.bk"
 
 #define	isData(buf)	(buf[0] != '\001')
 #define	seekto(s,o)	s->where = (s->mmap + o)
@@ -822,7 +823,7 @@ int	names_rename(char *old_spath, char *new_spath, u32 flags);
 void	names_cleanup(u32 flags);
 int	bk_sfiles(int ac, char **av);
 int	outc(char c);
-MDBM	*loadConfig(char *root);
+MDBM	*loadConfig(char *root, int convert);
 int	ascii(char *file);
 int	sccs_rm(char *name, int useCommonDir);
 int	mkconfig(FILE *out);
@@ -834,5 +835,7 @@ int	confirm(char *msg);
 int	setlod_main(int ac, char **av);
 MDBM *	loadOK();
 void	config(char *rev, FILE *f);
+int	ok_commit(int l, int alreadyAsked);
+int	cset_setup(int flags);
 
 #endif	/* _SCCS_H_ */

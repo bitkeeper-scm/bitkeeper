@@ -332,16 +332,14 @@ config(char *rev, FILE *f)
 	kvpair	kv;
 	time_t	tm;
 	FILE	*f1;
-	MDBM	*db = loadConfig(".");
+	MDBM	*db = loadConfig(".", 1);
 	char	buf[MAXLINE], aliases[MAXPATH];
 	char	s_cset[MAXPATH] = CHANGESET;
 
 	dspec = "$each(:FD:){Proj:      (:FD:)}\\nID:        :KEY:";
 	do_prsdelta(s_cset, "1.0", 0, dspec, f);
-	fprintf(f, "%-10s %s", "User:", sccs_realuser());
-	if (streq(sccs_getuser(), BK_FREEUSER)) fprintf(f, " (free use)");
-	fprintf(f, "\n%-10s %s", "Host:", sccs_realhost());
-	if (streq(sccs_gethost(), BK_FREEHOST)) fprintf(f, " (free use)");
+	fprintf(f, "%-10s %s", "User:", sccs_getuser());
+	fprintf(f, "\n%-10s %s", "Host:", sccs_gethost());
 	fprintf(f, "\n%-10s %s\n", "Root:", fullname(".", 0));
 	sprintf(buf, "%slog/parent", BitKeeper);
 	if (exists(buf)) {

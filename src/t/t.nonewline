@@ -20,12 +20,7 @@
 #	1.2 file with newline
 
 echo $N Create initial repository ...................................$NL
-HERE=`${CWD}`
-BK_USER=bk; BK_HOST=free.bk; export BK_USER BK_HOST
-echo "logging: none" > $HERE/c
-bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
-if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
-cd project
+no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`

@@ -1928,7 +1928,7 @@ pass4_apply(opts *opts)
 		exit (1);
 	}
 	while (fnext(buf, p)) {
-		fprintf(stderr, "Pending: %s", buf[2]);
+		fprintf(stderr, "Pending: %s", buf);
 		n++;
 	}
 	pclose(p);

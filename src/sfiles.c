@@ -670,9 +670,6 @@ lftw(const char *dir, lftw_func func)
 		free(root);
 		root = 0;
 	}
-if (root != 0) {
-	fprintf(stderr, "aflg=%d\n", aFlg);
-}
 
 	strcpy(path, dir);
 	/*

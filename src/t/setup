@@ -47,4 +47,15 @@ checkLocks () {
 	fi
 }
 
+no_logging() {
+	echo "logging: none" > c
+	echo "single_user: bk" >> c
+	echo "single_host: free.bk" >> c
+	echo "description: BitKeeper Test repository" >> c
+	echo "email: nobody@nowhere.bk" >> c
+	bk setup -f -cc $1
+	cd $1
+}
+
 cd "$BK_REGRESSION" || exit 1
+HERE=`pwd`

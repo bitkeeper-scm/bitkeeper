@@ -53,21 +53,19 @@ get(char *path, int flags, char *output)
 char *
 package_name()
 {
-	sccs	*s;
-	static	char pname[MAXLINE] = "";
-	char	*root, s_cset[MAXPATH] = CHANGESET;
+	MDBM	*m;
+	char	*n;
+	static	char *name = 0;
 
-	if (pname[0]) return(pname); /* cached */
-	if ((root = sccs_root(0)) == NULL) {
-		fprintf(stderr, "package name: Can not find package root\n");
-		return (pname);
+	if (name) return (name);
+	unless (m = loadConfig(".", 0)) return ("");
+	unless (n = mdbm_fetch_str(m, "description")) {
+		mdbm_close(m);
+		return ("");
 	}
-	sprintf(s_cset, "%s/%s", root, CHANGESET);
-
-	s = sccs_init(s_cset, 0, 0);
-	if (s && s->text && (int)(s->text[0])  >= 1) strcpy(pname, s->text[1]);
-	sccs_free(s);
-	return (pname);
+	mdbm_close(m);
+	name = (strdup)(n);	/* hide it from purify */
+	return (name);
 }
 
 void
