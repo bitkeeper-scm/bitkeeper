@@ -2615,8 +2615,16 @@ resolve_cleanup(opts *opts, int what)
 		SHOUT2();
 		exit(1);
 	}
-	if (opts->didMerge && !opts->logging) {
-		logChangeSet(logging(0, 0, 0) , 0, 1);
-	}
+
+	/*
+	 * Force a logging process even if we did not create a merge node
+	 * This is needed because we do not carry the log marker in
+	 * external patch, csets from remote tree would look like they
+	 * have pending logs. If we don't force a loggging process now,
+	 * we will get a bogus warning message on the next commit.
+	 *
+	 * if (opts->didMerge && !opts->logging) ...
+	 */
+	if (!opts->logging) logChangeSet(logging(0, 0, 0) , 0, 1);
 	exit(0);
 }
