@@ -20,8 +20,6 @@ then
 	exit 0
 fi
 
-
-# Note: This test assumes the shell "echo" comamnd output in binary mode
 echo $N Create initial repository ...................................$NL
 #no_logging project
 echo "logging: none" > $HERE/c
@@ -40,7 +38,7 @@ echo OK
 echo $N Check new and co with files having termination CRLF .........$NL
 # create a file with line terminated with CRLF 
 # reference file with only LF
-echo -e 'data\r' > data
+printf 'data\r\n' > data
 echo 'data' > data.ref
 bk ci $Q -i data
 bk co $Q data
@@ -52,7 +50,7 @@ if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N Check edit and co with files having termination CRLF ........$NL
 # File is checked out edit already
-echo -e 'last line\r' >> data
+printf 'last line\r\n' >> data
 echo 'last line' >> data.ref
 bk ci $Q -m'newlastline' data
 bk co $Q data
