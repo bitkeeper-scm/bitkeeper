@@ -289,7 +289,7 @@ void
 bkd_service_loop(int ac, char **av)
 {
 	SOCKET	sock = 0;
-	int	c, n;
+	int	n;
 	char	pipe_size[50], socket_handle[20];
 	char	*nav[100] = {
 		"bk", "_socket2pipe",

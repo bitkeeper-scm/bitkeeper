@@ -144,9 +144,9 @@ SRCS	= bk.c $(OBJ:.o=.c) \
 	zlib/gzio.c zlib/infblock.c zlib/infcodes.c zlib/inffast.c \
 	zlib/inflate.c zlib/inftrees.c zlib/infutil.c zlib/trees.c \
 	zlib/uncompr.c zlib/zutil.c
-HDRS	= $(SYS).h $(UWT_H) bkd.h lib_tcp.h liblines.h logging.h mmap.h \
+HDRS	= $(SYS).h $(UWT_H) bkd.h lib_tcp.h liblines.h logging.h mmap.h proj.h \
 	  purify.h range.h rcs.h redblack.h resolve.h sccs.h system.h zgets.h \
-	  mdbm/mdbm.h tomcrypt/mycrypt.h zlib/zlib.h
+	  mdbm/mdbm.h mdbm/memhash.h tomcrypt/mycrypt.h zlib/zlib.h
 SCRSRCS	= bk.sh import.sh uuwrap.sh unuuwrap.sh port/unix_platform.sh \
 	  port/unix_platform.perl port/win32_platform.perl \
 	  port/win32_platform.sh gzip_uuwrap.sh ungzip_uuwrap.sh \

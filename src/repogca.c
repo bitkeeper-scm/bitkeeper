@@ -8,16 +8,23 @@ repogca_main(int ac, char **av)
 	sccs	*s;
 	delta	*d;
 	FILE	*f;
+	char	**urls;
 	char	buf[MAXKEY];
 	char	s_cset[] = CHANGESET;
 
-	if (sccs_cd2root(0, 0)) {
+	if (proj_cd2root()) {
 		fprintf(stderr, "repogca: must be run in a repository\n");
 		exit(1);
 	}
-	parent = av[1] ? av[1] : getParent();
-	s = sccs_init(s_cset, SILENT, 0);
-	assert(s && s->tree);
+	if (av[1]) {
+		parent = av[1];
+	} else {
+		urls = parent_pullp();
+		parent = popLine(urls);
+		freeLines(urls, free);
+	}
+	s = sccs_init(s_cset, SILENT);
+	assert(s && HASGRAPH(s));
 	sprintf(buf, "bk changes -L -end:REV: %s", parent);
 	unless (f = popen(buf, "r")) {
 		perror(buf);

@@ -155,7 +155,7 @@ addProxy(char *type, char *line, char **proxies)
 	unless (line) return proxies;
 	q = strchr(line, ':');
 	unless (q) {
-		getMsg("unknown_proxy", line, 0, '=', stderr);
+		getMsg("unknown_proxy", line, '=', stderr);
 		return (proxies);
 	}
 	*q = 0;
