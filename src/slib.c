@@ -173,6 +173,28 @@ a2mode(char *mode)
 	return (m);
 }
 
+mode_t
+getMode(char *arg)
+{
+	mode_t	m;
+
+	if (isdigit(*arg)) {
+		for (m = 0; isdigit(*arg); m <<= 3, m |= (*arg - '0'), arg++);
+		m |= S_IFREG;
+	} else {
+		m = a2mode(arg);
+	}
+	unless (m & 0200) {
+		fprintf(stderr, "Warning: adding owner write permission\n");
+		m |= 0200;
+	}
+	unless (m & 0400) {
+		fprintf(stderr, "Warning: adding owner read permission\n");
+		m |= 0400;
+	}
+	return (m);
+}
+
 /* value is overwritten on each call */
 char	*
 mode2a(mode_t m)
@@ -2186,6 +2208,7 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 				    y, tm->tm_mon+1, tm->tm_mday);
 				t += 10;
 			} else {
+				while (tm->tm_year > 100) tm->tm_year -= 100;
 				sprintf(t, "%02d/%02d/%02d",
 				    tm->tm_year, tm->tm_mon+1, tm->tm_mday);
 				t += 8;
@@ -2235,6 +2258,7 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 				    tm->tm_mon+1, tm->tm_mday, y);
 				t += 10;
 			} else {
+				while (tm->tm_year > 100) tm->tm_year -= 100;
 				sprintf(t, "%02d/%02d/%02d",
 				    tm->tm_mon+1, tm->tm_mday, tm->tm_year);
 				t += 8;
@@ -2554,10 +2578,6 @@ void
 sccs_whynot(char *who, sccs *s)
 {
 	if (BEEN_WARNED(s)) return;
-	if (diskfull(s->sfile)) {
-		fprintf(stderr, "No disk space for %s\n", s->sfile);
-		return;
-	}
 	unless (HAS_SFILE(s)) {
 		fprintf(stderr, "%s: No such file: %s\n", who, s->sfile);
 		return;
@@ -2577,6 +2597,10 @@ sccs_whynot(char *who, sccs *s)
 	}
 	if (HAS_PFILE(s)) {
 		fprintf(stderr, "%s: %s is edited\n", who, s->gfile);
+		return;
+	}
+	if (errno == ENOSPC) {
+		fprintf(stderr, "No disk space for %s\n", s->sfile);
 		return;
 	}
 	fprintf(stderr, "%s: %s: unknown error.\n", who, s->sfile);
@@ -5591,10 +5615,6 @@ out:			if (slist) free(slist);
 	}
 
 	if (error) {
-		if (diskfull(s->gfile)) {
-			fprintf(stderr, "No disk space for %s\n", s->gfile);
-			s->state |= S_WARNED;
-		}
 		unless (flags & PRINT) unlink(s->gfile);
 		if (DB) mdbm_close(DB);
 		return (1);
@@ -8502,16 +8522,13 @@ modeArg(delta *d, char *arg)
 	unsigned int m;
 
 	if (!d) d = (delta *)calloc(1, sizeof(*d));
-	if (isdigit(*arg)) {
-		for (m = 0; isdigit(*arg); m <<= 3, m |= (*arg - '0'), arg++);
-		m |= S_IFREG;
-	} else {
-		m = a2mode(arg);
-		if (S_ISLNK(m))	 {
-			char *p = strchr(arg , ' ');
-			d->symlink = strnonldup(++p);
-			assert(!(d->flags & D_DUPLINK));
-		}
+	m = getMode(arg);
+	if (S_ISLNK(m))	 {
+		char *p = strchr(arg , ' ');
+		
+		assert(p);
+		d->symlink = strnonldup(++p);
+		assert(!(d->flags & D_DUPLINK));
 	}
 	if (d->mode = m) d->flags |= D_MODE;
 	return (d);
@@ -8923,12 +8940,16 @@ private void
 addMode(char *me, sccs *sc, delta *n, char *mode)
 {
 	char	buf[50];
+	mode_t	m;
+	char	*newmode;
 
 	assert(mode);
 	assert(n);
-	sprintf(buf, "Change mode to %s", mode);
+	m = getMode(mode);
+	newmode = mode2a(m);
+	sprintf(buf, "Change mode to %s", newmode);
 	n->comments = addLine(n->comments, strdup(buf));
-	n = modeArg(n, mode);
+	n = modeArg(n, newmode);
 }
 
 private u32

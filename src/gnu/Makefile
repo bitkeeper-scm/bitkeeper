@@ -1,10 +1,11 @@
 _OS=`sh os`
 DIRS=patch diffutils
 EXE=`sh exe`
-BINS=patch/$(_OS)/patch$(EXE) diffutils/$(_OS)/diff$(EXE) \
-	diffutils/$(_OS)/diff3$(EXE) diffutils/$(_OS)/sdiff$(EXE) \
-	diffutils/$(_OS)/cmp$(EXE)
-CONFIG=--cache-file=../../../config.cache --quiet
+PATCH_BINS=patch/$(_OS)/patch$(EXE)
+DIFF_BINS= diffutils/$(_OS)/diff$(EXE) diffutils/$(_OS)/diff3$(EXE) \
+	diffutils/$(_OS)/sdiff$(EXE)  diffutils/$(_OS)/cmp$(EXE)
+BINS=$(PATCH_BINS) $(DIFF_BINS)
+CONFIG=--cache-file=../../config.cache --quiet
 
 # Override Solaris make.rules
 .SCCS_GET:
@@ -53,3 +54,4 @@ clobber: clean clean-obj
 		 rm -rf config.log config.cache config.status \
 		    configure config.h Makefile stamp-h *.exe *.o); \
 	done
+	rm -f config.cache

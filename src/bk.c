@@ -16,7 +16,7 @@ private void platformInit(char **av);
 
 int unedit_main(int, char **);
 int unlock_main(int, char **);
-int files_main(int, char **);
+int find_main(int, char **);
 int bkd_main(int, char **);
 int setup_main(int, char **);
 int commit_main(int, char **);
@@ -96,7 +96,7 @@ int rcs2sccs_main(int, char **);
 
 struct command cmdtbl[100] = {
 	{"unlock", unlock_main },
-	{"files", files_main },
+	{"_find", find_main }, /* internal helper function */
 	{"bkd", bkd_main },
 	{"setup", setup_main },
 	{"commit", commit_main},
@@ -529,14 +529,17 @@ private void
 platformInit(char **av)
 {
 	char	*p, *t, *s;
-	static	char buf[MAXPATH], buf1[MAXPATH];
-	char	buf2[10 * MAXPATH], link[MAXPATH];
+	static	char buf[MAXPATH];
+	char	link[MAXPATH];
 	int	add2path = 1;
 	int	n;
 	int	flags = SILENT;	/* for debugging */
+#ifdef WIN32
+	char	buf2[10 * MAXPATH], buf1[MAXPATH];
+#endif
 
 	if (bin) return;
-	if ((editor = getenv("EDITOR")) == NULL) editor = strdup("vi");
+	if ((editor = getenv("EDITOR")) == NULL) editor = strdup(EDITOR);
 	if ((pager = getenv("PAGER")) == NULL) pager = strdup(PAGER);
 
 	unless (p = getenv("PATH")) return;	/* and pray */
@@ -616,14 +619,29 @@ gotit:
 				strcat(buf, "/");
 				strcat(buf, av[0]);
 			} else {
+#ifdef WIN32
+				/*
+				 * On win32, If the BitKeeper path is not
+				 * the first path , add it to the fornt.
+				 * This ensure we pick up the correct binary
+				 * such as "patch.exe" and "diff.exe"
+				 *
+				 * XXX We should probably do this for Unix too
+				 * but we don't want to change the unix code
+				 * until after release 1.0
+				 */
+				int len = strlen(buf);
+				add2path = (strncmp(s, p, len) != 0);
+#else
 				add2path = 0;
+#endif
 			}
 			if (t) *t = PATH_DELIM;
 			goto gotit;
 			
 		}
 		if (t) {
-			*t = ':';
+			*t = PATH_DELIM;
 			s = t + 1;
 		} else {
 			break;

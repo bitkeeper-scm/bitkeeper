@@ -197,15 +197,17 @@ _chmod() {
 	MODE=$1
 	shift
 	for i
-	do	if [ -w $i ]
-		then 	echo $i is edited, skipping it
+	do	bk clean $i || {
+			echo Can not clean $i, skipping it
 			continue
-		fi
+		}
 		bk get -qe $i
 		omode=`ls -l $i | sed 's/[ \t].*//'`
+		bk clean $i
+		touch $i
 		chmod $MODE $i
 		mode=`ls -l $i | sed 's/[ \t].*//'`
-		bk clean $i
+		rm -f $i
 		if [ $omode = $mode ]
 		then	continue
 		fi

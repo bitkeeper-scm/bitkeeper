@@ -96,3 +96,17 @@ case "$P" in
 	;;
 esac
 echo OK
+
+echo $N Make sure we can not remove owner read/write permission .....$NL
+bk clean prog
+bk chmod 0 prog 2>/dev/null
+bk edit $Q prog
+P=`/bin/ls -l prog`
+case "$P" in
+    -rw-------*)
+    	;;
+    *)
+    	echo failed to set permissions correctly; ls -l prog; exit 1
+	;;
+esac
+echo OK

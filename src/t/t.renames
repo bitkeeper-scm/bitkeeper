@@ -143,7 +143,7 @@ y
 EOF
 if [ ! -f copy/CONFLICT ]
 then	echo Failed to get CONFLICT file
-	find copy -type f -print
+	bk _find copy 
 	exit 1
 fi
 if [ "`cat copy/CONFLICT`" != "I am the project file" ]
@@ -169,7 +169,7 @@ then	echo Bad data in local file; cat copy/LOCAL; exit 1
 fi
 if [ ! -f copy/CONFLICT ]
 then	echo Failed to get CONFLICT file
-	find copy -type f -print
+	bk _find copy
 	exit 1
 fi
 if [ "`cat copy/CONFLICT`" != "I am the project file" ]
@@ -276,7 +276,7 @@ then	echo Bad data in local file; cat copy/CONFLICT; exit 1
 fi
 if [ ! -f copy/REMOTE ]
 then	echo Failed to get REMOTE file
-	find copy -type f -print
+	bk _find copy
 	exit 1
 fi
 if [ "`cat copy/REMOTE`" != "I am the project file" ]
@@ -305,7 +305,7 @@ then	echo Bad data in local file; cat copy/CONFLICT; exit 1
 fi
 if [ ! -f copy/REMOTE ]
 then	echo Failed to get REMOTE file
-	find copy -type f -print
+	bk _find copy
 	exit 1
 fi
 if [ "`cat copy/REMOTE`" != "I am the project file" ]
@@ -403,7 +403,7 @@ y
 EOF
 if [ ! -f copy/CONFLICT ]
 then	echo Failed to get CONFLICT file
-	find copy -type f -print
+	bk _find copy
 	exit 1
 fi
 if [ "`cat copy/CONFLICT`" != "I am the project file" ]
@@ -431,7 +431,7 @@ then	echo Bad data in local file; cat copy/LOCAL; exit 1
 fi
 if [ ! -f copy/CONFLICT ]
 then	echo Failed to get CONFLICT file
-	find copy -type f -print
+	bk _find copy
 	exit 1
 fi
 if [ "`cat copy/CONFLICT`" != "I am the project file" ]
@@ -512,7 +512,7 @@ then	echo Bad data in local file; cat copy/CONFLICT; exit 1
 fi
 if [ ! -f copy/REMOTE ]
 then	echo Failed to get REMOTE file
-	find copy -type f -print
+	bk _find copy
 	exit 1
 fi
 if [ "`cat copy/REMOTE`" != "I am the project file" ]
@@ -611,7 +611,7 @@ EOF
 cd copy
 if [ ! -f CONFLICT ]
 then	echo Failed to get CONFLICT file
-	find . -type f -print
+	bk _find .
 	exit 1
 fi
 if [ "`cat CONFLICT`" != "I am the project file" ]
@@ -622,7 +622,7 @@ then	echo 'Added new rev to CONFLICT?'; exit 1
 fi
 if [ ! -f BitKeeper/deleted/SCCS/s..del-2 ]
 then	echo Deleted file missing
-	find . -type f -print
+	bk _find .
 	exit 1
 fi
 if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-2`" != "I am the copy file" ]
@@ -645,7 +645,7 @@ cd copy
 bk get $Q CONFLICT
 if [ ! -f CONFLICT ]
 then	echo Failed to get CONFLICT file
-	find . -type f -print
+	bk _find .
 	exit 1
 fi
 if [ "`cat CONFLICT`" != "I am the copy file" ]
@@ -655,7 +655,7 @@ then	echo Failed to leave old file in place
 fi
 if [ ! -f BitKeeper/deleted/SCCS/s..del-1 ]
 then	echo Deleted file missing
-	find . -type f -print
+	bk _find .
 	exit 1
 fi
 if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-1`" != "I am the project file" ]
@@ -684,7 +684,7 @@ then	echo Bad data in local file; cat LOCAL; exit 1
 fi
 if [ ! -f CONFLICT ]
 then	echo Failed to get CONFLICT file
-	find . -type f -print
+	bk _find .
 	exit 1
 fi
 if [ "`cat CONFLICT`" != "I am the project file" ]
@@ -770,7 +770,7 @@ then	echo Bad data in local file; cat copy/CONFLICT; exit 1
 fi
 if [ ! -f copy/REMOTE ]
 then	echo Failed to get REMOTE file
-	find copy -type f -print
+	bk _find .
 	exit 1
 fi
 if [ "`cat copy/REMOTE`" != "I am the project file" ]
@@ -865,7 +865,7 @@ EOF
 cd copy
 if [ ! -f CONFLICT ]
 then	echo Failed to get CONFLICT file
-	find . -type f -print
+	bk _find .
 	exit 1
 fi
 if [ "`cat CONFLICT`" != "I am the project file" ]
@@ -876,7 +876,7 @@ then	echo 'Added new rev to CONFLICT?'; exit 1
 fi
 if [ ! -f BitKeeper/deleted/SCCS/s..del-2 ]
 then	echo Deleted file missing
-	find . -type f -print
+	bk _find .
 	exit 1
 fi
 if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-2`" != "I am the copy file" ]
@@ -934,7 +934,7 @@ EOF
 cd copy
 if [ ! -f CONFLICT ]
 then	echo Failed to get CONFLICT file
-	find . -type f -print
+	bk _find .
 	exit 1
 fi
 if [ "`cat CONFLICT`" != "I am the project file" ]
@@ -945,7 +945,7 @@ then	echo 'Added new rev to CONFLICT?'; exit 1
 fi
 if [ ! -f BitKeeper/deleted/SCCS/s..del-2 ]
 then	echo Deleted file missing
-	find . -type f -print
+	bk _find .
 	exit 1
 fi
 if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-2`" != "I am the copy file" ]
@@ -971,7 +971,7 @@ then	echo Bad data in local file; cat LOCAL; exit 1
 fi
 if [ ! -f CONFLICT ]
 then	echo Failed to get CONFLICT file
-	find . -type f -print
+	bk _find .
 	exit 1
 fi
 if [ "`cat CONFLICT`" != "I am the project file" ]
@@ -1054,7 +1054,7 @@ then	echo Bad data in local file; cat copy/CONFLICT; exit 1
 fi
 if [ ! -f copy/REMOTE ]
 then	echo Failed to get REMOTE file
-	find copy -type f -print
+	bk _find copy
 	exit 1
 fi
 if [ "`cat copy/REMOTE`" != "I am the project file" ]
@@ -1149,7 +1149,7 @@ FILE=`echo *`
 		echo "$x"
 	done
 )
-cat TOP A MOVED | bk adler32 > PATCH
+cat TOP A MOVED | bk adler32 -w > PATCH
 cd ..
 rm -rf RESYNC
 VV=
@@ -1219,7 +1219,7 @@ then	echo Failed to rename local file; cat XXX; exit 1
 fi
 if [ ! -f CONFLICT ]
 then	echo Failed to get CONFLICT file
-	find . -type f -print
+	bk _find .
 	exit 1
 fi
 if [ `bk prs -hr+ -d:I: CONFLICT` != "1.1" ]
@@ -1296,7 +1296,7 @@ then	echo Failed to leave local file; exit 1
 fi
 if [ ! -f copy/REMOTE ]
 then	echo Failed to get REMOTE file
-	find copy -type f -print
+	bk _find copy
 	exit 1
 fi
 if [ `bk prs -hr+ -d:I: copy/REMOTE` != "1.2" ]

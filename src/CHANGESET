@@ -1,3 +1,19 @@
+Smaller changeset file
+----------------------
+    Non-SCCS graph format:
+      No ^A
+      Hex or base 64 format for serial
+      Added/Deleted/Same - compress out 0 or remove altogether
+         d->same only used in smoosh
+    Non-SCCS body format:
+      file_key {list of serials in descending order}
+      Example:
+        lm@work.bitmover.com|src/t/t.renumber|19991006215716 8 4 1
+        awc@etp2.bitmover.com|src/bkmain.c|20000205002200 5 3
+    To find out a specific delta, take the largest serial number present
+    in the serialmap set and look for the corresponding back pointer in
+    the pointed to file. 
+
 Hidden changesets
 -----------------
 

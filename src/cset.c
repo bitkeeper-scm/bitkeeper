@@ -455,11 +455,8 @@ csetList(sccs *cset, char *rev, int ignoreDeleted)
 private void
 doit(cset_t *cs, sccs *sc)
 {
-	static	int first = 1;
-
 	unless (sc) {
 		if (cs->doDiffs && cs->makepatch) printf("\n");
-		first = 1;
 		return;
 	}
 	cs->nfiles++;
@@ -794,9 +791,18 @@ csetlist(cset_t *cs, sccs *cset)
 		if (cs->pid == -1) goto fail;
 	}
 	if (cs->makepatch || cs->doDiffs) header(cset, cs->doDiffs);
+	if (cs->doDiffs && cs->makepatch) {
+		fputs("\n", stdout);
+		fputs(PATCH_DIFFS, stdout);
+	}
 again:	/* doDiffs can make it two pass */
 	if (!cs->doDiffs && cs->makepatch) {
-		printf("\n%s\n", PATCH_CURRENT);
+		unless (cs->csetOnly) {
+			fputs("\n", stdout);
+			fputs(PATCH_PATCH, stdout);
+		}
+		fputs(PATCH_CURRENT, stdout);
+		fputs("\n", stdout);
 	}
 
 	sccs_close(cset); /* for win32 */
@@ -824,6 +830,7 @@ again:	/* doDiffs can make it two pass */
 	if (cs->doDiffs && cs->makepatch) {
 		doKey(cs, 0, 0);
 		cs->doDiffs = 0;
+		fputs(PATCH_END, stdout);
 		rewind(list);
 		goto again;
 	}
@@ -840,7 +847,8 @@ again:	/* doDiffs can make it two pass */
 		    cs->ndeltas, cs->nfiles);
 	}
 	if (cs->makepatch && !cs->csetOnly) {
-		printf(PATCH_OK);
+		fputs(PATCH_END, stdout);
+		fflush(stdout);
 		fclose(stdout);
 		if (waitpid(cs->pid, &status, 0) != cs->pid) {
 			perror("waitpid");

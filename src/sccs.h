@@ -549,13 +549,21 @@ typedef struct patch {
  *
  * 0.8 = 0x flags and V version.
  * 0.9 = Positive termination.
- * 1.0 = Support embedded patches
- * 1.1 = Changed random bits to be per delta;
+ * 1.0 = state machine in takepatch
+ * 1.1 = state machine in adler32
+ * 1.2 = Changed random bits to be per delta;
  *	 Add grafted file support.
  */
-#define PATCH_CURRENT	"# Patch vers:\t1.1\n"
-#define	PATCH_ABORT	"# Patch abort\n"
-#define	PATCH_OK	"# Patch OK\n"
+#define PATCH_CURRENT	"# Patch vers:\t1.2\n"
+
+/*
+ * Patch envelops for adler32.
+ */
+#define	PATCH_DIFFS	"\001 Diff start\n"
+#define	PATCH_PATCH	"\001 Patch start\n"
+#define	PATCH_END	"\001 End\n"
+#define	PATCH_ABORT	"\001 Patch abort\n"
+#define	PATCH_OK	"\001 Patch OK\n"
 
 /*
  * Internal to takepatch
