@@ -53,7 +53,7 @@ main(int ac, char **av)
 	char	*lod = 0;
 	char	*compp = 0, *encp = 0;
 	MMAP	*diffs = 0;
-	FILE	*init = 0;
+	MMAP	*init = 0;
 	pfile	pf;
 
 	debug_main(av);
@@ -167,7 +167,7 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 			av[0], diffsFile, strerror(errno));
 	       return (1);
 	}
-	if (initFile && !(init = fopen(initFile, "r"))) {
+	if (initFile && !(init = mopen(initFile))) {
 		fprintf(stderr,"%s: init file '%s': %s.\n",
 			av[0], initFile, strerror(errno));
 		return (1);
@@ -214,7 +214,7 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 		if (rc == -2) goto next; /* no diff in file */
 		if (rc == -1) {
 			sccs_whynot("delta", s);
-			if (init) fclose(init);
+			if (init) mclose(init);
 			if (diffs) mclose(diffs);
 			sccs_free(s);
 			commentsDone(saved);
@@ -238,7 +238,7 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 				}
 			}
 		}
-next:		if (init) fclose(init);
+next:		if (init) mclose(init);
 		/*
 		 * No, sccs_diffs() does this.
 		 * if (diffs) fclose(diffs);

@@ -91,6 +91,21 @@ fi
 REGRESSION=$TST_DIR/.regression-$USER
 export TST_DIR CORES BK_BIN REGRESSION
 
+cores()
+{
+	if [ "X$REGRESSION" = X ]
+	then	echo REGRESSION not set
+		exit 1
+	fi
+	find $REGRESSION -name core -print > cores
+	if [ -s cores ]
+	then	ls -l `cat cores`
+		file `cat cores`
+		exit 10
+	fi
+	${RM} -f cores
+}
+
 if [ X$1 = X-t ]
 then
 	shift

@@ -679,23 +679,6 @@ Please stand by.\n\n", stderr);
 	return (0);
 }
 
-/* Convenience wrapper around mkstemp().  */
-static void
-gettemp(char *buf, const char *tmpl)
-{
-	int fd;
-	
-	strcpy(buf, tmpl);
-	fd = mkstemp(buf);
-	if (fd != -1) {
-		close(fd);
-		return;
-	}
-
-	perror("mkstemp");
-	exit(1);
-}
-
 /*
  * Mark the deltas listed in the diff file.  Ignore first line.
  * XXX: change from 0a0 format to I0 0 format
@@ -769,8 +752,8 @@ csetlist(cset_t *cs, sccs *cset)
 	sccs_sdelta(cset, sccs_ino(cset), buf);
 	csetid = strdup(buf);
 
-	gettemp(cat, "/tmp/catZXXXXXX");
-	gettemp(csort, "/tmp/csortXXXXXX");
+	gettemp(cat, "catZ");
+	gettemp(csort, "csort");
 	unless (cs->csetOnly) {
 		/*
 		 * Get the list of key tuples in a sorted file.
@@ -1184,7 +1167,7 @@ csetCreate(sccs *cset, int flags, char *sym)
 	FILE	*fdiffs;
 	char	filename[30];
 
-	gettemp(filename, "/tmp/cdifXXXXXX");
+	gettemp(filename, "cdif");
 	unless (fdiffs = fopen(filename, "w+")) {
 		perror(filename);
 		exit(1);

@@ -130,7 +130,7 @@ getRelativeName(char *name)
 
 	/* TODO: we should cache the root value for faster lookup */
 	t = sccs2name(name);
-	rpath = strdup((char *) _relativeName(t, 0, 0, 0, 0));
+	rpath = strdup(_relativeName(t, 0, 0, 0, 0));
 	free(t);
 	return rpath;
 }
@@ -140,17 +140,10 @@ mv(char *src, char *dest)
 {
 	//fprintf(stderr, "moving %s -> %s\n", src, dest);
 	if (rename(src, dest)) {	/* try mv(1) */
-		char	*p, cmd[MAXPATH*2 + 5];
+		char	cmd[MAXPATH*2 + 5];
 
-		p = strrchr(dest, '/');
-		
-		if (p) {
-			*p = 0;
-			if (!exists(dest)) {
-				if (mkdir_p(dest)) return (1);
-			}
-			*p = '/';
-		}
+		/* try making the dir and see if that helps */
+		mkdirf(dest);
 #ifdef WIN32
 		/* win32 rename works across devices */
 		if (rename(src, dest)) return (1);

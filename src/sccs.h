@@ -391,7 +391,9 @@ typedef	struct {
 	size_t	size;			/* go for this much */
 	char	*where;			/* we are here in mapping */
 	char	*end;			/* == map + len */
+	int	flags;
 } MMAP;
+#define	MMAP_OURS		1
 
 /*
  * Rap on project roots.  In BitKeeper, lots of stuff wants to know
@@ -509,8 +511,10 @@ typedef struct patch {
 	char	*pid;		/* unique key of parent */
 				/* NULL if the new delta is the root. */
 	char	*me;		/* unique key of this delta */
-	char	*initFile;	/* RESYNC/BitKeeper/init-1 */
-	char	*diffFile;	/* RESYNC/BitKeeper/diff-1 */
+	char	*initFile;	/* RESYNC/BitKeeper/init-1, only if !initMmap */
+	MMAP	*initMmap;	/* points into mmapped patch */
+	char	*diffFile;	/* RESYNC/BitKeeper/diff-1, only if !diffMmap */
+	MMAP	*diffMmap;	/* points into mmapped patch */
 	time_t	order;		/* ordering over the whole list, oldest first */
 	int	flags;		/* local/remote /etc */
 	struct	patch *next;	/* guess */
@@ -532,7 +536,7 @@ typedef struct patch {
 int	sccs_admin(sccs *sc, u32 flgs, char *encoding, char *compress,
 	    admin *f, admin *l, admin *u, admin *s, char *txt);
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
-int	sccs_delta(sccs *s, u32 flags, delta *d, FILE *init, MMAP *diffs);
+int	sccs_delta(sccs *s, u32 flags, delta *d, MMAP *init, MMAP *diffs);
 int	sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, char kind, FILE *);
 int	sccs_encoding(sccs *s, char *enc, char *comp);
 int	sccs_get(sccs *s,
@@ -556,7 +560,7 @@ void	sccs_ids(sccs *s, u32 flags, FILE *out);
 int	sccs_hasDiffs(sccs *s, u32 flags);
 void	sccs_print(delta *d);
 delta	*sccs_getInit(sccs *s,
-		delta *d, FILE *f, int patch, int *errorp, int *linesp);
+		delta *d, MMAP *f, int patch, int *errorp, int *linesp);
 delta	*sccs_ino(sccs *);
 int	sccs_rmdel(sccs *s, delta *d, int destroy, u32 flags);
 int	sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut);
@@ -567,7 +571,7 @@ delta	*sccs_key2delta(sccs *sc, char *key);
 char	*sccs_impliedList(sccs *s, char *who, char *base, char *rev);
 int	sccs_sdelta(sccs *s, delta *, char *);
 void	sccs_perfile(sccs *, FILE *);
-sccs	*sccs_getperfile(FILE *, int *);
+sccs	*sccs_getperfile(MMAP *, int *);
 char	*sccs_gethost(void);
 int	sccs_getComments(char *, char *, delta *); 
 int	sccs_getHostName(char *, char *, delta *);
@@ -621,7 +625,7 @@ void	sccs_fixDates(sccs *);
 void	sccs_mkroot(char *root);
 char	*sPath(char *name, int isDir);
 delta	*sccs_next(sccs *s, delta *d);
-int	sccs_meta(sccs *s, delta *parent, char *initFile);
+int	sccs_meta(sccs *s, delta *parent, MMAP *initFile);
 int	sccs_resolveFile(sccs *s, char *lpath, char *gpath, char *rpath);
 sccs	*sccs_keyinit(char *key, u32 flags, MDBM *idDB);
 delta	*sfind(sccs *s, ser_t ser);
@@ -630,9 +634,30 @@ int	sccs_unlock(sccs *, char);
 char 	*sccs_iskeylong(char *key);
 MMAP	*mopen(char *file);
 void	mclose(MMAP *);
-
-/* Utility functions also in slib.c.  */
+char	*mnext(MMAP *);
+int	mpeekc(MMAP *);
+void	mseekto(MMAP *m, off_t off);
+off_t	mtell(MMAP *m);
+MMAP	*mrange(char *start, char *stop);
+int	linelen(char *s);
+char	*mkline(char *mmap);
+int	mkdirp(char *dir);
+int	mkdirf(char *file);
+int	gettemp(char *file, const char *template);
+void	explodeKey(char *key, char *parts[6]);
+int	smartUnlink(char *name);
+int	smartRename(char *old, char *new);
+void	concat_path(char *buf, char *first, char *second);
+void	free_pfile(pfile *pf);
+delta	*sccs_kid(sccs *s, delta *d);  /* In range.c */
 int	exists(char *file);
 int	emptyDir(char *dir);
+char	*dirname(char *path);
+int	fileCopy(char *from, char *to);
+off_t	size(char *s);
+int	gone(char *key, MDBM *db);
+int	sccs_mv(char *name, char *dest, int isDir, int isDelete);
+char	*_relativeName(char *gName,
+	    int isDir, int withsccs, int mustHaveRmarker, char *root);
 
 #endif	/* _SCCS_H_ */

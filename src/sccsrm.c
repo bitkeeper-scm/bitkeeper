@@ -3,6 +3,8 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
+int	sccs_rm(char *name, int useCommonDir);	/* XXX - mv to slib.c? */
+
 /*
  * Emulate rm(1)
  *

@@ -7,9 +7,10 @@ int	rangeConnect(sccs *s);
 void	rangeSetExpand(sccs *s);
 int	rangeList(sccs *sc, char *rev);
 
-#define	RANGE_DECL	int	things = 0, rd = 0; \
+#define	RANGE_DECL	int	things = 0, rd = 1; \
 			char	*r[2], *d[2]; \
 			\
+			rd--; /* lint - I want it to be 0 */ \
 			r[0] = r[1] = d[0] = d[1] = 0
 
 #define	RANGE_OPTS(date, rev) \

@@ -61,7 +61,7 @@ main(int ac, char **av)
 	char	*path;
 	
 	platformSpecificInit(NULL); 
-	if (ac > 1 && streq("--help", av[1])) {
+	if ((ac > 1) && streq("--help", av[1])) {
 usage:		fprintf(stderr, "%s", sfiles_usage);
 		exit(0);
 	}
@@ -152,7 +152,7 @@ xfile(char *file)
 int
 file(char *f, int (*func)())
 {
-	struct	stat sb;
+	struct	stat sb, fb;
 	char	*s;
 	char	*sfile = 0;
 	int	ret;
@@ -161,14 +161,14 @@ file(char *f, int (*func)())
 	 * If they gave us a name and it doesn't exist and it is not an SCCS
 	 * file name, then try and expand it and if that works keep going.
 	 */
-	if (lstat(f, &sb) != 0) {
+	if (lstat(f, &fb) != 0) {
 		if (sccs_filetype(f)) return (-1);
 		sfile = name2sccs(f);
 		if (lstat(sfile, &sb) != 0) return (-1);
 		f = sfile;
 	}
 	if (sccs_filetype(f)) {
-		ret = func(f, &sb);
+		ret = func(f, &fb);
 		if (sfile) free(sfile);
 		return (ret);
 	}
@@ -196,7 +196,7 @@ file(char *f, int (*func)())
 	}
 	if (s) free(s);
 	if (sfile) free(sfile);
-	return (func(f, &sb));
+	return (func(f, &fb));
 }
 
 int
@@ -204,7 +204,6 @@ func(const char *filename, const struct stat *sb, int flag)
 {
 	register char *file = (char *)filename;
 	register char *s;
-	char	*sfile, *gfile;
 
 	debug((stderr, "sfind func(%s)\n", filename));
 	if ((file[0] == '.') && (file[1] == '/')) file += 2;
@@ -415,10 +414,9 @@ caches(const char *filename, const struct stat *sb, int flag)
 {
 	char	*file = (char *)filename;
 	sccs	*sc;
-	delta	*d, *e;
+	delta	*d;
 	char	buf[MAXPATH*2];
 	char	*t;
-	int	n;
 
 	if (S_ISDIR(sb->st_mode)) return (0);
 	if ((file[0] == '.') && (file[1] == '/')) file += 2;

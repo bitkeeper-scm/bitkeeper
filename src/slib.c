@@ -49,24 +49,18 @@ private int	delta_rm(sccs *s, delta *d, FILE *sfile, int flags);
 private int	delta_rmchk(sccs *s, delta *d);
 private int	delta_destroy(sccs *s, delta *d, int flags);
 private int	delta_strip(sccs *s, delta *d, FILE *sfile, int flags);
-void		explodeKey(char *key, char *parts[6]);
 private time_t	getDate(delta *d);
 private	void	unlinkGfile(sccs *s);
 private time_t	date2time(char *asctime, char *z, int roundup);
 private	char	*sccsrev(delta *d);
 private int	addLod(char *name, sccs *sc, int flags, admin *l, int *ep);
 private int	addSym(char *name, sccs *sc, int flags, admin *l, int *ep);
-int		smartUnlink(char *name);
-int		smartRename(char *old, char *new);
 private void	updatePending(sccs *s, delta *d);
-void		concat_path(char *buf, char *first, char *second);
 private int	fix_lf(char *gfile);
-void		free_pfile(pfile *pf);
 private int	sameFileType(sccs *s, delta *d);
 private int	deflate_gfile(sccs *s, char *tmpfile);
 private int	isRegularFile(mode_t m);
 private void	sccs_freetable(delta *d);
-delta *		sccs_kid(sccs *s, delta *d);  /* In range.c */
 private	delta*	getCksumDelta(sccs *s, delta *d);
 private int	fprintDelta(FILE *,
 			char *, const char *, const char *, sccs *, delta *);
@@ -113,7 +107,7 @@ writable(char *s)
 	return (access(s, W_OK) == 0);
 }
 
-int
+off_t
 size(char *s)
 {
 	struct	stat sbuf;
@@ -296,9 +290,26 @@ chop(register char *s)
 }
 
 /*
+ * Convert the pointer into something we can write.
+ * We trim the newline since most of the time that's what we want anyway.
+ * This pointer points into a readonly mmapping.
+ */
+char	*
+mkline(char *p)
+{
+	static	char buf[MAXLINE];
+	char	*s;
+
+	unless (p) return (0);
+	for (s = buf; (*s++ = *p++) != '\n'; );
+	s[-1] = 0;
+	return (buf);
+}
+
+/*
  * Return the length of the buffer until a newline.
  */
-private int
+int
 linelen(char *s)
 {
 	char	*t = s;
@@ -312,12 +323,21 @@ mnext(register MMAP *m)
 {
 	register char	*s, *t;
 
+	assert(m);
 	if (m->where >= m->end) return (0);
 	for (s = m->where; (s < m->end) && (*s++ != '\n'); );
 	assert(s[-1] == '\n');		/* XXX - what if no newline? */
 	t = m->where;
 	m->where = s;
 	return (t);
+}
+
+int
+mpeekc(MMAP *m)
+{
+	assert(m);
+	if (m->where >= m->end) return (EOF);
+	return (*m->where);
 }
 
 MMAP	*
@@ -346,9 +366,25 @@ mopen(char *file)
 		close(fd);
 		return (0);
 	}
+	m->flags |= MMAP_OURS;
 	m->where = m->mmap;
 	m->end = m->mmap + m->size;
 	close(fd);
+	return (m);
+}
+
+/*
+ * Map somebody else's data.
+ */
+MMAP	*
+mrange(char *start, char *stop)
+{
+	MMAP	*m = calloc(1, sizeof(*m));
+
+	if (start == stop) return (m);
+	m->where = m->mmap = start;
+	m->end = stop;
+	m->size = stop - start;
 	return (m);
 }
 
@@ -356,14 +392,22 @@ void
 mclose(MMAP *m)
 {
 	unless (m) return;
-	if (m->mmap) munmap(m->mmap, m->size);
+	if ((m->flags & MMAP_OURS) && m->mmap) munmap(m->mmap, m->size);
 	free(m);
 }
 
-mrewind(MMAP *m)
+void
+mseekto(MMAP *m, off_t off)
 {
 	assert(m);
-	m->where = m->mmap;
+	m->where = m->mmap + off;
+}
+
+off_t
+mtell(MMAP *m)
+{
+	assert(m);
+	return (off_t)(m->where - m->mmap);
 }
 
 /*
@@ -2733,7 +2777,7 @@ mkgraph(sccs *s, int flags)
 	int	i;
 	int	line = 1;
 	char	*expected = "?";
-	BUF(	buf);			/* CSTYLED */
+	char	*buf;
 
 	seekto(s, 0);
 	fastnext(s);			/* checksum */
@@ -2959,7 +3003,7 @@ done:		;	/* CSTYLED */
 private int
 misc(sccs *s)
 {
-	BUF(	buf);	/* CSTYLED */
+	char	*buf;
 
 	/* Save the users / groups list */
 	for (; (buf = fastnext(s)) && !strneq(buf, "\001U\n", 3); ) {
@@ -3618,7 +3662,7 @@ mksccsdir(char *sfile)
 	    s[-1] == 'S' && s[-2] == 'C' && s[-3] == 'C' && s[-4] == 'S') {
 		*s = 0;
 #if defined(SPLIT_ROOT)
-		unless (exists(sfile)) mkdir_p(sfile);
+		unless (exists(sfile)) mkdirp(sfile);
 #else
 		mkdir(sfile, 0775);
 #endif
@@ -4479,7 +4523,7 @@ openOutput(int encode, char *file, FILE **op)
 			char *s = rindex(file, '/');
 			if (s) {
 				*s = 0; /* split off the file part */
-				unless (exists(file)) mkdir_p(file);
+				unless (exists(file)) mkdirp(file);
 				*s = '/';
 			}                                          
 		}
@@ -4669,7 +4713,7 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 		//unlinkGfile(s);
 		if (p) { /* if parent dir does not exist, creat it */
 			*p = 0; /* split off the file part */
-			unless (exists(f)) mkdir_p(f);
+			unless (exists(f)) mkdirp(f);
 			*p = '/';
 		}                                          
 	}
@@ -5979,7 +6023,7 @@ sccs_hasDiffs(sccs *s, u32 flags)
 	char	sbuf[MAXLINE];
 	char	*name = 0, *mode = "rb";
 	int	tmpfile = 0;
-	BUF	(fbuf);
+	char	*fbuf;
 
 #define	RET(x)	{ different = x; goto out; }
 
@@ -6012,8 +6056,7 @@ sccs_hasDiffs(sccs *s, u32 flags)
 	 */
 	if ((s->encoding != E_ASCII) && (s->encoding != E_GZIP)) {
 		tmpfile = 1;
-		sprintf(sbuf, "%s/getUXXXXXX", TMP_PATH);
-		unless (maketmp(sbuf)) RET(-1);
+		if (gettemp(sbuf, "getU")) RET(-1);
 		name = strdup(sbuf);
 		if (deflate_gfile(s, name)) {
 			unlink(name);
@@ -6267,8 +6310,7 @@ diff_gfile(sccs *s, pfile *pf, char *tmpfile)
 	 */
 	if (isRegularFile(s->mode)) {
 		if ((s->encoding != E_ASCII) && (s->encoding != E_GZIP)) {
-			sprintf(new, "%s/getUXXXXXX", TMP_PATH);
-			unless (maketmp(new)) return (-1);
+			if (gettemp(new, "getU")) return (-1);
 			if (IS_WRITABLE(s)) {
 				if (deflate_gfile(s, new)) {
 					unlink(new);
@@ -6296,8 +6338,7 @@ diff_gfile(sccs *s, pfile *pf, char *tmpfile)
 	d = findrev(s, pf->oldrev);
 	assert(d);
 	if (isRegularFile(d->mode)) {
-		sprintf(old, "%s/getXXXXXX", TMP_PATH);
-		unless (maketmp(old)) return (-1);
+		if (gettemp(old, "get")) return (-1);
 		if (sccs_get(s, pf->oldrev, pf->mRev, pf->iLst, pf->xLst,
 		    GET_ASCII|SILENT|PRINT, old)) {
 			unlink(old);
@@ -6505,8 +6546,7 @@ sccs_clean(sccs *s, u32 flags)
 			if (s->state & S_RCS) flags |= GET_RCSEXPAND;
 		}
 	}
-	sprintf(tmpfile, "%s/diffgXXXXXX", TMP_PATH);
-	unless (maketmp(tmpfile)) return (1);
+	if (gettemp(tmpfile, "diffg")) return (1);
 	/*
 	 * hasDiffs() ignores keyword expansion differences.
 	 * And it's faster.
@@ -8054,7 +8094,7 @@ sccs_admin(sccs *sc, u32 flags, char *new_encp, char *new_compp,
 	FILE	*sfile = 0;
 	int	new_enc, error = 0, locked = 0, i, old_enc = 0;
 	char	*t;
-	BUF	(buf);
+	char	*buf;
 
 	new_enc = sccs_encoding(sc, new_encp, new_compp);
 	if (new_enc == -1) return -1;
@@ -8364,7 +8404,7 @@ nxtline(sccs *s, int *ip, int before, int *lp, int *pp, FILE *out,
 {
 	int	print = *pp, incr = *ip, lines = *lp;
 	sum_t	sum;
-	register BUF	(buf);
+	register char	*buf;
 
 	debug((stderr, "nxtline(@%d, before=%d print=%d, sum=%d) ",
 	    lines, before, print, s->dsum));
@@ -8430,7 +8470,7 @@ getHashSum(sccs *sc, delta *n, MMAP *diffs)
 		}
 		sum = sc->dsum;
 	}
-	mrewind(diffs);
+	mseekto(diffs, 0);
 	unless (buf = mnext(diffs)) {
 		/* there are no diffs, we have the checksum, it's OK */
 		return (0);
@@ -8633,10 +8673,10 @@ newcmd:
  * XXX - this needs to track do_prs/do_patch closely.
  */
 delta *
-sccs_getInit(sccs *sc, delta *d, FILE *f, int patch, int *errorp, int *linesp)
+sccs_getInit(sccs *sc, delta *d, MMAP *f, int patch, int *errorp, int *linesp)
 {
 	char	*s, *t;
-	char	buf[500];
+	char	*buf;
 	int	nocomments = d && d->comments;
 	int	error = 0;
 	int	lines = 0;
@@ -8648,13 +8688,12 @@ sccs_getInit(sccs *sc, delta *d, FILE *f, int patch, int *errorp, int *linesp)
 	}
 
 #define	WANT(c) ((buf[0] == c) && (buf[1] == ' '))
-	unless (fnext(buf, f)) {
+	unless (buf = mkline(mnext(f))) {
 		fprintf(stderr, "Warning: no delta line in init file.\n");
 		error++;
 		goto out;
 	}
 	lines++;
-	chop(buf);
 	unless (WANT('R') || WANT('D') || WANT('M')) {
 		fprintf(stderr, "Warning: no D/R/M line in init file.\n");
 		error++;
@@ -8715,18 +8754,18 @@ sccs_getInit(sccs *sc, delta *d, FILE *f, int patch, int *errorp, int *linesp)
 	}
 
 skip:
-	fnext(buf, f); chop(buf); lines++;
+	buf = mkline(mnext(f)); lines++;
 
 	/* Cset file ID */
 	if (WANT('B')) {
 		unless (d->csetFile) d = csetFileArg(d, &buf[2]);
-		unless (fnext(buf, f)) goto out; lines++; chop(buf);
+		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
 	/* Cset marker */
 	if ((buf[0] == 'C') && !buf[1]) {
 		d->flags |= D_CSET;
-		unless (fnext(buf, f)) goto out; lines++; chop(buf);
+		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
 	/*
@@ -8737,16 +8776,14 @@ skip:
 		unless (nocomments) {
 			d->comments = addLine(d->comments, strdup(&buf[2]));
 		}
-		unless (fnext(buf, f)) goto out; lines++; chop(buf);
+		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
 	/* date fudges are optional */
 	if (WANT('F')) {
 		d->dateFudge = atoi(&buf[2]);
 		d->date += d->dateFudge;
-		unless (fnext(buf, f)) goto out;
-		lines++;
-		chop(buf);
+		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
 	/* Includes are optional and are specified as keys.
@@ -8765,27 +8802,21 @@ skip:
 				d->include = addSerial(d->include, e->serial);
 			}
 		}
-		unless (fnext(buf, f)) goto out;
-		lines++;
-		chop(buf);
+		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
 	/* cksums are optional but shouldn't be */
 	if (WANT('K')) {
 		d = sumArg(d, &buf[2]);
-		unless (fnext(buf, f)) goto out;
+		unless (buf = mkline(mnext(f))) goto out; lines++;
 		d->flags |= D_ICKSUM;
-		lines++;
-		chop(buf);
 	}
 
 	/* lods are optional */
 	if (WANT('L')) {
 		d->lod = (lod *)strdup(&buf[2]);
 		d->flags |= D_LODSTR;
-		unless (fnext(buf, f)) goto out;
-		lines++;
-		chop(buf);
+		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
 	/* merge deltas are optional */
@@ -8802,33 +8833,25 @@ skip:
 				d->merge = e->serial;
 			}
 		}
-		unless (fnext(buf, f)) goto out;
-		lines++;
-		chop(buf);
+		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
 	/* modes are optional */
 	if (WANT('O')) {
 		unless (d->mode) d = modeArg(d, &buf[2]);
-		unless (fnext(buf, f)) goto out;
-		lines++;
-		chop(buf);
+		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
 	/* pathnames are optional */
 	if (WANT('P')) {
 		unless (d->pathname) d = pathArg(d, &buf[2]);
-		unless (fnext(buf, f)) goto out;
-		lines++;
-		chop(buf);
+		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
 	/* symbols are optional */
 	if (WANT('S')) {
 		d->sym = strdup(&buf[2]);
-		unless (fnext(buf, f)) goto out;
-		lines++;
-		chop(buf);
+		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
 	/* Excludes are optional and are specified as keys.
@@ -8847,9 +8870,7 @@ skip:
 				d->exclude = addSerial(d->exclude, e->serial);
 			}
 		}
-		unless (fnext(buf, f)) goto out;
-		lines++;
-		chop(buf);
+		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
 	/* closing line is not optional. */
@@ -9029,15 +9050,14 @@ isValidUser(char *u)
  * which can handle all of those cases.
  */
 int
-sccs_meta(sccs *s, delta *parent, char *initFile)
+sccs_meta(sccs *s, delta *parent, MMAP *iF)
 {
 	delta	*m;
 	int	e = 0;
-	FILE	*iF;
 	FILE	*sfile = 0;
 	char	*sccsXfile();
 	char	*t;
-	BUF	(buf);
+	char	*buf;
 
 	unless (sccs_lock(s, 'z')) {
 		fprintf(stderr,
@@ -9046,12 +9066,12 @@ sccs_meta(sccs *s, delta *parent, char *initFile)
 		debug((stderr, "meta returns -1\n"));
 		return (-1);
 	}
-	unless (iF = fopen(initFile, "r")) {
+	unless (iF) {
 		sccs_unlock(s, 'z');
 		return (-1);
 	}
 	m = sccs_getInit(s, 0, iF, 1, &e, 0);
-	fclose(iF);
+	mclose(iF);
 	if (m->rev) free(m->rev);
 	m->rev = strdup(parent->rev);
 	bcopy(parent->r, m->r, sizeof(m->r));
@@ -9122,7 +9142,7 @@ abort:		fclose(sfile);
  *	-3 = not DELTA_AUTO or DELTA_FORCE and no diff in gfile (gfile unlinked)
  */
 int
-sccs_delta(sccs *s, u32 flags, delta *prefilled, FILE *init, MMAP *diffs)
+sccs_delta(sccs *s, u32 flags, delta *prefilled, MMAP *init, MMAP *diffs)
 {
 	FILE	*sfile = 0;	/* the new s.file */
 	int	error = 0, fixDate = 1;
@@ -9641,8 +9661,7 @@ sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, char kind, FILE *out)
 		diffFile[0] = 0;
 	} else {
 		strcpy(spaces, "=====");
-		sprintf(diffFile, "%s/diffsXXXXXX", TMP_PATH);
-		unless (maketmp(diffFile)) return (-1);
+		if (gettemp(diffFile, "diffs")) return (-1);
 		diff(leftf, rightf, kind, diffFile);
 		diffs = fopen(diffFile, "rt");
 	}
@@ -10683,15 +10702,14 @@ sccs_perfile(sccs *s, FILE *out)
 		(buf[2] == c) && (buf[3] == ' '))
 
 sccs	*
-sccs_getperfile(FILE *in, int *lp)
+sccs_getperfile(MMAP *in, int *lp)
 {
 	sccs	*s = calloc(1, sizeof(sccs));
 	int	unused = 1;
-	char	buf[200];
+	char	*buf;
 
 	s->state |= S_BITKEEPER;		/* duh */
-	unless (fnext(buf, in)) goto err;
-	chop(buf);
+	unless (buf = mkline(mnext(in))) goto err;
 	unless (buf[0]) {
 		free(s);
 		return (0);
@@ -10700,18 +10718,18 @@ sccs_getperfile(FILE *in, int *lp)
 	if (FLAG('d')) {
 		unused = 0;
 		s->defbranch = strdup(&buf[4]);
-		unless (fnext(buf, in)) {
+		unless (buf = mkline(mnext(in))) {
 err:			fprintf(stderr,
 			    "takepatch: file format error near line %d\n", *lp);
 			free(s);
 			return (0);
 		}
-		chop(buf); (*lp)++;
+		(*lp)++;
 	}
 	if (FLAG('e')) {
 		unused = 0;
 		s->encoding = atoi(&buf[4]);
-		unless (fnext(buf, in)) goto err; chop(buf); (*lp)++;
+		unless (buf = mkline(mnext(in))) goto err; (*lp)++;
 	}
 	if (FLAG('x')) {
 		int	bits = atoi(&buf[4]);
@@ -10726,17 +10744,17 @@ err:			fprintf(stderr,
 		if (bits & X_ISSHELL) s->state |= S_ISSHELL;
 #endif
 		if (bits & X_HASH) s->state |= S_HASH;
-		unless (fnext(buf, in)) goto err; chop(buf); (*lp)++;
+		unless (buf = mkline(mnext(in))) goto err; (*lp)++;
 	}
 	if (strneq(buf, "R ", 2)) {
 		unused = 0;
 		s->random = strnonldup(&buf[2]);
-		unless (fnext(buf, in)) goto err; chop(buf); (*lp)++;
+		unless (buf = mkline(mnext(in))) goto err; (*lp)++;
 	}
 	while (strneq(buf, "T ", 2)) {
 		unused = 0;
 		s->text = addLine(s->text, strnonldup(&buf[2]));
-		unless (fnext(buf, in)) goto err; chop(buf); (*lp)++;
+		unless (buf = mkline(mnext(in))) goto err; (*lp)++;
 	}
 	if (buf[0]) goto err;		/* should be empty */
 
@@ -11856,7 +11874,7 @@ delta_rmchk(sccs *s, delta *d)
 private int
 delta_rm(sccs *s, delta *d, FILE *sfile, int flags)
 {
-	register BUF	(buf);
+	register char	*buf;
 	ser_t 		serial = d->serial;
 
 	/* XXX: What kind of graceful failure would be desired?
@@ -11929,7 +11947,7 @@ delta_destroy(sccs *s, delta *d, int flags)
 private int
 delta_strip(sccs *s, delta *d, FILE *sfile, int flags)
 {
-	register BUF	(buf);
+	register char	*buf;
 	ser_t		serial = d->serial;
 	ser_t		stop;
 

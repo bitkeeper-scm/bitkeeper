@@ -276,7 +276,7 @@ undo(sccs *s)
 		}
 		sprintf(zero, "UNDO/%s", s->sfile);
 		fd = creat(zero, GROUP_MODE);
-		if (fd == -1) mkdirp(zero);
+		if (fd == -1) mkdirf(zero);
 		close(creat(zero, GROUP_MODE));
 		assert(exists(zero) && (size(zero) == 0));
 		if (undo_v > 1) fprintf(stderr, "%s: remove all\n", s->sfile);
@@ -342,7 +342,7 @@ getfiles(sccs *s, char *rev)
 		assert(t && (t[1] == 's'));
 		t[1] = 'U';
 		unless (f = fopen(path, "w")) {
-			mkdirp(path);
+			mkdirf(path);
 			unless (f = fopen(path, "w")) {
 				perror(path);
 				cleanup();
@@ -398,9 +398,9 @@ applyfiles(char *file, char *lastrev)
 {
 	sccs	*s;
 	char	path[MAXPATH];
-	char	key[MAXPATH];
-	FILE	*f;
-	MMAP	*m;
+	char	*key;
+	MMAP	*init;
+	MMAP	*diffs;
 	int	error = 0, n;
 	delta	*d, *e;
 	char	*t;
@@ -434,8 +434,8 @@ applyfiles(char *file, char *lastrev)
 		t = strrchr(path, '/');
 		assert(t && (t[1] == 's'));
 		t[1] = 'U';
-		unless (f = fopen(path, "r")) break;
-		unless (fnext(key, f)) {
+		unless (init = mopen(path)) break;
+		unless (key = mkline(mnext(init))) {
 			perror("key read from init file");
 			return (-1);
 		}
@@ -450,7 +450,7 @@ Please check the list and try again.\n");
 			return (-1);
 		}
 		unless (sccs_restart(s)) { perror("restart"); exit(1); } 
-		e = sccs_getInit(s, 0, f, 1, &error, 0);
+		e = sccs_getInit(s, 0, init, 1, &error, 0);
 		unless (e && !error) {
 			unless (BEEN_WARNED(s)) {
 				fprintf(stderr, "undo: can't init %s in %s\n",
@@ -458,7 +458,7 @@ Please check the list and try again.\n");
 			}
 			return (-1);
 		}
-		fclose(f);
+		mclose(init);
 		free(e->rev);
 		e->rev = 0;
 		unlink(path);
@@ -467,20 +467,20 @@ Please check the list and try again.\n");
 		assert(t && (t[1] == 's'));
 		t[1] = 'U';
 		if (e->flags & D_META) {
-			if (sccs_meta(s, d, path)) {
+			if (sccs_meta(s, d, mopen(path))) {
 				perror("meta");
 				return (-1);
 			}
 		} else {
-			m = mopen(path);
-			assert(f);
+			diffs = mopen(path);
+			assert(diffs);
 			if (sccs_get(s, d->rev,
 			    0, 0, 0, SILENT|GET_SKIPGET|GET_EDIT, "-")) {
 				perror("get");
 				return (-1);
 			}
 			if (sccs_delta(s,
-			    SILENT|DELTA_FORCE|DELTA_PATCH, e, 0, m)) {
+			    SILENT|DELTA_FORCE|DELTA_PATCH, e, 0, diffs)) {
 				perror("delta");
 				return (-1);
 			}
@@ -490,60 +490,6 @@ Please check the list and try again.\n");
 	}
 	if (sccs_admin(s, ADMIN_BK, 0, 0, 0, 0, 0, 0, 0)) return (1);
 	sccs_free(s);
-	return (0);
-}
-
-int
-mkdirp(char *file)
-{
-	char	*s;
-	char	*t;
-	char	buf[MAXPATH];
-
-	strcpy(buf, file);	/* for !writable string constants */
-	unless (s = strrchr(buf, '/')) return (0);
-	*s = 0;
-	if (isdir(buf)) return (0);
-	for (t = buf; t < s; ) {
-		if (t > buf) *t++ = '/';
-		if (t < s) {
-			while ((*t != '/') && (t < s)) t++;
-			*t = 0;
-		}
-		mkdir(buf, 0775);
-	}
-	*s = '/';
-	return (0);
-}
-
-int
-fileCopy(char *from, char *to)
-{
-	char	buf[8192];
-	int	n, from_fd, to_fd;
-	struct	stat sb;
-
-	mkdirp(to);
-	if ((from_fd = open(from, 0, 0)) == -1) {
-		perror(from);
-		return (-1);
-	}
-	if (fstat(from_fd, &sb) == -1) {
-		perror(from);
-		return (-1);
-	}
-	if ((to_fd = creat(to, sb.st_mode & 0777)) == -1) {
-		perror(to);
-		return (-1);
-	}
-	while ((n = read(from_fd, buf, sizeof(buf))) > 0) {
-		if (write(to_fd, buf, n) != n) {
-			perror(to);
-			return (-1);
-		}
-	}
-	close(from_fd);
-	close(to_fd);
 	return (0);
 }
 
