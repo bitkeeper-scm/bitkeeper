@@ -70,7 +70,7 @@ probekey_main(int ac, char **av)
 	}
 	for (i = 1; i <= 0xffff; ++i) {
 		sprintf(rev, "%d.1", i);
-		unless (d = findrev(s, rev)) break;
+		unless (d = sccs_findrev(s, rev)) break;
 		while (d->kid && (d->kid->type == 'D')) d = d->kid;
 		fputs("@LOD PROBE@\n", stdout);
 		lod_probekey(s, d, stdout);
@@ -611,13 +611,11 @@ synckeys(remote *r, int flags)
 	if (rc < 0) {
 		switch (rc) {
 		    case -2:
-			printf(
-"You are trying to sync to an unrelated package. The root keys for the\n\
-ChangeSet file do not match.  Please check the pathnames and try again.\n");
+			getMsg("unrelated_repos", 0, '=', stderr);
 			sccs_free(s);
 			return (1); /* needed to force bkd unlock */
 		    case -3:
-			printf("You are syncing to an empty directory\n");
+			getMsg("no_repo", 0, '=', stderr);
 			sccs_free(s);
 			return (1); /* empty dir */
 			break;

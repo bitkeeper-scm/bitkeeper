@@ -41,6 +41,7 @@ WHATSTR("@(#)%K%");
 		    "---------------------------------------\n", stderr);
 
 private	delta	*getRecord(MMAP *f);
+private void	errorMsg(char *msg, char *arg1, char *arg2);
 private	int	extractPatch(char *name, MMAP *p, int flags);
 private	int	extractDelta(char *name, sccs *s, int newFile, MMAP *f, int, int*);
 private	int	applyPatch(char *local, int flags, sccs *perfile);
@@ -53,9 +54,6 @@ private	void	initProject(void);
 private	MMAP	*init(char *file, int flags);
 private	int	rebuild_id(char *id);
 private	void	cleanup(int what);
-private	void	changesetExists(void);
-private	void	notfirst(void);
-private	void	goneError(char *key);
 private	void	freePatchList(void);
 private	void	fileCopy2(char *from, char *to);
 private	void	badpath(sccs *s, delta *tot);
@@ -209,7 +207,7 @@ usage:		system("bk help -s takepatch");
 		unless (strncmp(buf, "== ", 3) == 0) {
 			if (echo > 7) {
 				fprintf(stderr, "skipping: %*s",
-				    strchr(buf, '\n') - buf, buf);
+				    (int)(strchr(buf, '\n') - buf), buf);
 			}
 			continue;
 		}
@@ -296,11 +294,12 @@ usage:		system("bk help -s takepatch");
 		chdir(RESYNC2ROOT);
 	}
 
-	getGone(isLogPatch); /* 
-		    * We need the Gone file even for no conflict case
-		    * Because user may have deleted the sfile in the
-		    * local tree,
-		    */
+	/* 
+	 * We need the Gone file even for no conflict case
+	 * Because user may have deleted the sfile in the
+	 * local tree,
+	 */
+	getGone(isLogPatch); 
 
 	if (resolve) {
 		char 	*resolve[7] = {"bk", "resolve", "-q", 0, 0, 0, 0};
@@ -484,7 +483,7 @@ extractPatch(char *name, MMAP *p, int flags)
 		t = mkline(mnext(p));
 		line++;
 	}
-	if (newProject && !newFile) notfirst();
+	if (newProject && !newFile) errorMsg("tp_notfirst", 0, 0);
 
 	if (echo>4) fprintf(stderr, "%s\n", t);
 again:	s = sccs_keyinit(t, SILENT|INIT_NOCKSUM, idDB);
@@ -504,7 +503,7 @@ again:	s = sccs_keyinit(t, SILENT|INIT_NOCKSUM, idDB);
 			if (isLogPatch || getenv("BK_GONE_OK")) {
 				goto skip;
 			} else {
-				goneError(t);
+				errorMsg("tp_gone_error", t, 0);
 			}
 		}
 		unless (rebuilt++) {
@@ -600,7 +599,7 @@ error:			if (perfile) sccs_free(perfile);
 		 */
 		if (streq(name, "SCCS/s.ChangeSet") &&
 		    exists("SCCS/s.ChangeSet")) {
-			changesetExists();
+			errorMsg("tp_changeset_exists", 0, 0);
 		}
 		if (echo > 3) {
 			fprintf(stderr,
@@ -619,8 +618,7 @@ error:			if (perfile) sccs_free(perfile);
 		if ((echo != 2) && (echo != 3)) fprintf(stderr, "\n");
 	}
 	if ((s && CSET(s)) || (!s && streq(name, CHANGESET))) {
-		rc = applyCsetPatch(s ? s->sfile : 0 ,
-						nfound, flags, perfile);
+		rc = applyCsetPatch(s ? s->sfile : 0 , nfound, flags, perfile);
 	} else {
 		if (patchList && tableGCA) getLocals(s, tableGCA, name);
 		rc = applyPatch(s ? s->sfile : 0, flags, perfile);
@@ -638,9 +636,7 @@ error:			if (perfile) sccs_free(perfile);
 	}
 	free(gfile);
 	free(name);
-	if (s) {
-		sccs_free(s);
-	}
+	if (s) sccs_free(s);
 	if (rc < 0) {
 		cleanup(CLEAN_RESYNC);
 		return (rc);
@@ -990,140 +986,35 @@ skipPatch(MMAP *p)
 	return (0);
 }
 
-private	void
-changesetExists(void)
+private void
+errorMsg(char *msg, char *arg1, char *arg2)
 {
 	SHOUT();
-	fputs(
-"You are trying to create a ChangeSet file in a repository which already has\n\
-one.  This usually means you are trying to apply a patch intended for a\n\
-different repository.  You can find the correct repository by running the\n\
-following command at the top of each repository until you get a match with\n\
-the changeset ID at the top of the patch:\n\
-    bk prs -hr1.0 -d':KEY:\\n' ChangeSet\n\n", stderr);
+	getMsg2(msg, arg1, arg2, 0, stderr);
     	cleanup(CLEAN_RESYNC|CLEAN_PENDING);
-}
-
-private	void
-goneError(char *buf)
-{
-	SHOUT();
-	fprintf(stderr,
-"File %s\n\
-is marked as gone in this repository and therefor cannot accept updates.\n\
-The fact that you are getting updates indicates that the file is not gone\n\
-in the other repository and could be restored in this repository.\n\
-if you want to \"un-gone\" the file(s) using the s.file from a remote\n\
-repository, try \"bk repair <remote repository>\"\n", buf);
-	cleanup(CLEAN_PENDING|CLEAN_RESYNC);
-}
-
-private	void
-noconflicts(void)
-{
-	SHOUT();
-	fputs(
-"takepatch was instructed not to accept conflicts into this tree.\n\
-Please make sure all pending deltas are committed in this tree,\n\
-resync in the opposite direction and then reapply this patch.\n",
-stderr);
-	cleanup(CLEAN_PENDING|CLEAN_RESYNC);
-}
-
-private	void
-notfirst(void)
-{
-	SHOUT();
-	fputs(
-"takepatch: when creating a package, as you are currently doing, you have\n\
-to resync from version 1.0 forward.  Please try again, with a command like\n\
-\n\
-\tbk resync -r1.0.. from to\n\
-or\n\
-\tbk send -r1.0.. user@host.com\n\
-\n\
-takepatch has not cleaned up your destination, you need to do that.\n",
-stderr);
-	cleanup(CLEAN_RESYNC|CLEAN_PENDING);
-}
-
-private	void
-ahead(char *pid, char *sfile)
-{
-	SHOUT();
-	fprintf(stderr,
-	    "takepatch: can't find parent ID\n\t%s\n\tin %s\n", pid, sfile);
-	fputs(
-"This patch is ahead of your tree, you need to get an earlier patch first.\n\
-Look at your tree with a ``bk changes'' and do the same on the other tree,\n\
-and get a patch that is based on a common ancestor.\n", stderr);
-	cleanup(CLEAN_RESYNC|CLEAN_PENDING);
 }
 
 private	void
 badpath(sccs *s, delta *tot)
 {
 	SHOUT();
-	fprintf(stderr, "takepatch: file %s%c%s has %s as recorded pathname\n",
-	    s->gfile, BK_FS, tot->rev, tot->pathname);
-	fputs(
-"This file is not where BitKeeper thinks it should be.  If the file is in\n\
-what you consider to be the right place, update it's name with the following\n\
-command:\n\tbk names <filename>\n\n\
-and retry the patch.  The patch has been saved in the PENDING directory\n",
-stderr);
-}
-
-private	void
-nothingtodo(void)
-{
-	SHOUT();
-	fprintf(stderr,
-"takepatch: nothing to do in patch, which probably means a patch version\n\
-mismatch.  You need to make sure that the software generating the patch is\n\
-the same as the software accepting the patch.  We were looking for\n\
-%s", PATCH_CURRENT);
-	if (exists("RESYNC") && exists("PENDING")) {
-		cleanup(CLEAN_PENDING|CLEAN_RESYNC);
-	} else if (exists("PENDING")) {
-		cleanup(CLEAN_PENDING);
-	}
-}
-
-private	void
-noversline(char *name)
-{
-	SHOUT();
-	fprintf(stderr,
-"takepatch: the version line on %s is missing or does not match the\n\
-format understood by this program.\n\
-You need to make sure that the software generating the patch is\n\
-the same as the software accepting the patch.  We were looking for\n\
-%s", name, PATCH_CURRENT);
-	cleanup(CLEAN_PENDING|CLEAN_RESYNC);
+	getMsg2("tp_badpath", s->gfile, tot->pathname, 0, stderr);
 }
 
 private	void
 badXsum(int a, int b)
 {
 	SHOUT();
-	fputs("takepatch: patch checksum is invalid", stderr);
-	if (echo > 3) fprintf(stderr,  " (%x != %x)", a, b);
-	fputs(".\nThe patch was probably corrupted in transit,\n", stderr);
-	fputs("sometimes mailers do this.\n", stderr);
-	fputs("Please get a new copy and try again.\n", stderr);
+	if (echo > 3) {
+		char	*p = aprintf(" (%x != %x)", a, b);
+
+		getMsg("tp_badXsum", p, 0, stderr);
+		free(p);
+	} else {
+		getMsg("tp_badXsum", "", 0, stderr);
+	}
 	cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 	/* XXX - should clean up everything if this was takepatch -i */
-}
-
-private	void
-uncommitted(char *file)
-{
-	SHOUT();
-	fprintf(stderr,
-"takepatch: %s has uncommitted changes\n\
-Please commit pending changes with `bk commit' and reapply the patch.\n",
-		file);
 }
 
 /*
@@ -1182,8 +1073,7 @@ chkEmpty(sccs *s, MMAP *dF)
  * is possible to only write the file once.
  */
 private	int
-applyCsetPatch(char *localPath,
-			int nfound, int flags, sccs *perfile)
+applyCsetPatch(char *localPath, int nfound, int flags, sccs *perfile)
 {
 	patch	*p;
 	MMAP	*iF;
@@ -1263,8 +1153,8 @@ apply:
 				if ((echo == 2) || (echo == 3)) {
 					fprintf(stderr, " \n");
 				}
-				ahead(p->pid, s->sfile);
-				/* Can not reach */
+				errorMsg("tp_ahead", p->pid, s->sfile);
+				/*NOTREACHED*/
 			}
 			if (isLogPatch) {
 				s->state |= S_FORCELOGGING;
@@ -1284,8 +1174,7 @@ apply:
 			d = cset_insert(s, iF, dF, p->pid);
 		} else {
 			assert(s == 0);
-			unless (s =
-			    sccs_init(p->resyncFile, NEWFILE|SILENT)) {
+			unless (s = sccs_init(p->resyncFile, NEWFILE|SILENT)) {
 				SHOUT();
 				fprintf(stderr,
 				    "takepatch: can't create %s\n",
@@ -1356,11 +1245,7 @@ apply:
 	csets = fopen(csets_in, "w");
 	assert(csets);
 	while (p) {
-		delta	*d;
-
-		d = sccs_findKey(s, p->me);
-		assert(d);
-		unless (p->meta) fprintf(csets, "%s\n", d->rev);
+		fprintf(csets, "%s\n", p->me);
 		/*
 		 * XXX: mclose take a null arg?
 		 * meta doesn't have a diff block
@@ -1403,7 +1288,7 @@ apply:
 	}
 	conflicts += confThisFile;
 	sccs_free(s);
-	if (noConflicts && conflicts) noconflicts();
+	if (noConflicts && conflicts) errorMsg("tp_noconflicts", 0, 0);
 	freePatchList();
 	patchList = 0;
 	fileNum = 0;
@@ -1457,8 +1342,8 @@ applyPatch(char *localPath, int flags, sccs *perfile)
 	unless (localPath) {
 		if (mkdirf(p->resyncFile) == -1) {
 			if (errno == EINVAL) {
-				getMsg(
-				    "reserved", p->resyncFile, 0, '=', stderr);
+				getMsg("reserved_name",
+				    p->resyncFile, '=', stderr);
 				return (-1);
 			}
 		}
@@ -1513,7 +1398,7 @@ applyPatch(char *localPath, int flags, sccs *perfile)
 		fprintf(stderr,
 		    "stripdel %s from %s\n", tableGCA->rev, s->sfile);
 	}
-	if (d = sccs_next(s, sccs_getrev(s, tableGCA->rev, 0, 0))) {
+	if (d = sccs_next(s, sccs_findrev(s, tableGCA->rev))) {
 		delta	*e;
 
 		for (e = s->table; e; e = e->next) {
@@ -1565,7 +1450,8 @@ apply:
 				if ((echo == 2) || (echo == 3)) {
 					fprintf(stderr, " \n");
 				}
-				ahead(p->pid, s->sfile);
+				errorMsg("tp_ahead", p->pid, s->sfile);
+				/*NOTREACHED*/
 			}
 			unless (sccs_restart(s)) { perror("restart"); exit(1); }
 			if (isLogPatch) {
@@ -1636,8 +1522,7 @@ apply:
 			}
 		} else {
 			assert(s == 0);
-			unless (s =
-			    sccs_init(p->resyncFile, NEWFILE|SILENT)) {
+			unless (s = sccs_init(p->resyncFile, NEWFILE|SILENT)) {
 				SHOUT();
 				fprintf(stderr,
 				    "takepatch: can't create %s\n",
@@ -1699,7 +1584,15 @@ apply:
 	sccs_free(s);
 	s = sccs_init(patchList->resyncFile, SILENT);
 	assert(s);
-	if (encoding & E_GZIP) s = sccs_gzip(s);
+
+	/*
+	 * Never gzip the ChangeSet file.
+	 * Honor gzip on all files.
+	 * Always gzip !commercial files.
+	 */
+	if (!CSET(s) && ((encoding&E_GZIP) || !bkcl(0))) {
+		s = sccs_gzip(s);
+	}
 	for (d = 0, p = patchList; p; p = p->next) {
 		assert(p->me);
 		d = sccs_findKey(s, p->me);
@@ -1719,8 +1612,9 @@ apply:
 	}
 	if (pending) {
 		sccs_free(s);
-		uncommitted(localPath);
-		return -1;
+		SHOUT();
+		getMsg("tp_uncommitted", localPath, 0, stderr);
+		return (-1);
 	}
 	if ((confThisFile = sccs_resolveFiles(s)) < 0) {
 		sccs_free(s);
@@ -1732,8 +1626,8 @@ apply:
 		/* yeah, the count is slightly off if there were conflicts */
 	}
 	conflicts += confThisFile;
-	 sccs_free(s);
-	if (noConflicts && conflicts) noconflicts();
+	sccs_free(s);
+	if (noConflicts && conflicts) errorMsg("tp_noconflicts", 0, 0);
 	freePatchList();
 	patchList = 0;
 	fileNum = 0;
@@ -2039,7 +1933,7 @@ init(char *inputFile, int flags)
 				exit(0);
 			}
 		} else {
-			nothingtodo();
+			errorMsg("tp_nothingtodo", 0, 0);
 		}
 	}
 
@@ -2294,7 +2188,7 @@ error:					fprintf(stderr, "GOT: %s", buf);
 				goto missing;
 			}
 		}
-		if (st.preamble) nothingtodo();
+		if (st.preamble) errorMsg("tp_nothingtodo", 0, 0);
 		if (mkpatch) {
 			if (echo == 3) fprintf(stderr, "\b");
 			verbose((stderr, ": %d deltas\n", j));
@@ -2377,7 +2271,7 @@ error:					fprintf(stderr, "GOT: %s", buf);
 				break;
 			}
 		}
-		unless (i) noversline(input);
+		unless (i) errorMsg("tp_noversline", input, 0);
 		do {
 			len = linelen(t);
 			sumC = adler32(sumC, t, len);
@@ -2396,8 +2290,7 @@ missing:
 		SHOUT();
 		fputs("takepatch: missing checksum line in patch, aborting.\n",
 		      stderr);
-		/* truncated log patches may not create RESYNC */
-		cleanup(CLEAN_PENDING|(isdir(ROOT2RESYNC) ? CLEAN_RESYNC : 0));
+		cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 	}
 	if (sumR != sumC) badXsum(sumR, sumC);
 
@@ -2482,19 +2375,14 @@ cleanup(int what)
 		goto done;
 	}
 	if (what & CLEAN_RESYNC) {
-		char cmd[1024];
-		assert(exists("RESYNC"));
-		sprintf(cmd, "%s -rf RESYNC", RM);
-		system(cmd);
+		sys(RM, "-rf", ROOT2RESYNC, SYS);
 	} else {
 		fprintf(stderr, "takepatch: RESYNC directory left intact.\n");
 	}
 	unless (streq(input, "-")) goto done;
 	if (what & CLEAN_PENDING) {
-		assert(exists("PENDING"));
-		assert(pendingFile);
 		unlink(pendingFile);
-		if (rmdir("PENDING")) {
+		if (rmdir("PENDING") && (errno == ENOTEMPTY)) {
 			fprintf(stderr,
 			    "takepatch: other patches left in PENDING\n");
 		}

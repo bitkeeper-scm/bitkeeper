@@ -34,7 +34,7 @@ renumber_main(int ac, char **av)
 {
 	sccs	*s = 0;
 	char	*name;
-	int	c, dont = 0, quiet = 0, flags = INIT_SHUTUP;
+	int	c, dont = 0, quiet = 0, flags = INIT_WACKGRAPH;
 	delta	*leaf(delta *tree);
 
 	debug_main(av);

@@ -10,8 +10,11 @@ import() {
 	if [ X"$1" = "X--help" ]
 	then	bk help import; Done 0;
 	fi
+	__platformInit
 	COMMENTS=
 	COMMIT=YES
+	BRANCH=
+	FINDCSET=YES
 	CUTOFF=
 	EX=NO
 	EXCLUDE=""
@@ -30,9 +33,13 @@ import() {
 	VERBOSE=-q
 	VERIFY=-h
 	LOCKPID=
-	while getopts ACc:efFHij:l:qRrS:t:uvxy: opt
+	GAP=10
+	TAGS=YES
+	SKIP_OPT=""
+	while getopts Ab:c:CefFg:hH:ij:kl:qRrS:t:Tuvxy: opt
 	do	case "$opt" in
-		A) FIX_ATTIC=YES;;		# doc 2.0
+		A) ;;				# undoc 2.0 - old
+		b) BRANCH=-b$OPTARG;;		# undoc 3.0
 		c) CUTOFF=-c$OPTARG;;		# doc 2.0
 		C) COMMIT=NO;;
 		e) EX=YES;;			# undoc 2.0 - same as -x
@@ -40,14 +47,18 @@ import() {
 		f) FORCE=YES;;			# doc 2.0
 		F) CLOCK_DRIFT=5
 		   export CLOCK_DRIFT;;		# doc 2.1
-		H) VERIFY=;;			# doc 2.0
+		g) GAP=$OPTARG;;		# doc 2.1
+		h) VERIFY=;;			# doc 2.0
+		H) export BK_HOST=$OPTARG;;
 		i) INC=YES;;			# doc 2.0
 		j) PARALLEL=$OPTARG;;		# doc 2.0
+		k) SKIP_OPT="-k";;
 		l) LIST=$OPTARG;;		# doc 2.0
 		S) SYMBOL=-S$OPTARG;;		# doc 2.0
 		r) RENAMES=NO;;			# doc 2.0
 		R) REJECTS=NO;;
 		t) TYPE=$OPTARG;;		# doc 2.0
+		T) TAGS=NO;;			# doc 2.1
 		q) QUIET=-qq; export _BK_SHUT_UP=YES;;	# doc 2.0
 		u) UNDOS=-u;;			# doc 2.0
 		v) VERBOSE=;;			# doc 2.0
@@ -58,6 +69,9 @@ import() {
 		echo Parallel imports may not set CLOCK_DRIFT
 		Done 1
 	}
+	if [ $GAP -eq 0 ]
+	then	FINDCSET=NO
+	fi
 	shift `expr $OPTIND - 1`
 	gettype $TYPE
 	if [ $TYPE = email ]
@@ -80,6 +94,10 @@ import() {
 	if [ X"$1" = X -o X"$2" = X -o X"$3" != X ]
 	then	bk help -s import; Done 1;
 	fi
+	case "$TYPE" in
+	text|patch)	FINDCSET=NO;;
+	CVS)		FIX_ATTIC=YES; TYPE=RCS;;
+	esac
 	if [ $TYPE = patch ]
 	then	if [ ! -f "$1" ]
 		then	echo import: "$1" is not a patch file
@@ -100,6 +118,22 @@ import() {
 		fi
 		unset BK_IMPORTER
 	fi
+
+	case $TYPE in
+	    SCCS|RCS|CVS|MKS)
+		test "$BK_HOST" || {
+			echo Must set host with "-H<hostname>" when importing
+			Done 1
+		}
+		;;
+	esac
+
+	# disable checkout:edit mode
+	if [ X"$BK_CONFIG" != X ]
+	then	BK_CONFIG="$BK_CONFIG;checkout:none"
+	else	BK_CONFIG="checkout:none"
+	fi
+	export BK_CONFIG
 	if [ ! -d "$2" ]
 	then	echo import: "$2" is not a directory, run setup first
 		Done 1
@@ -113,17 +147,18 @@ import() {
 	fi
 	HERE=`bk pwd`
 	if [ $TYPE != patch ]
-	then	cd "$1"
+	then	mycd "$1"
 		FROM=`bk pwd`
-		cd "$HERE"
+		mycd "$HERE"
 	else	FROM="$1"
 		test -f "$FROM" || {
 			echo "No such file $FROM"
 			Done 1
 		}
 	fi
-	cd "$2"
+	mycd "$2"
 	TO="`bk pwd`"
+	bk sane || Done 1	# verifiy hostname from -H is OK
 	bk lock -w &
 	LOCKPID=$!
 	bk lock -L
@@ -132,7 +167,7 @@ import() {
 
 	getIncExc
 	if [ X"$LIST" != X ]
-	then	cd "$HERE"
+	then	mycd "$HERE"
 		if [ ! -s "$LIST" ]
 		then	echo Empty file $LIST
 			Done 1
@@ -143,18 +178,18 @@ import() {
 	    "Absolute pathnames are disallowed, they should relative to $FROM"
 		    Done 1;;
 		esac
-		cd "$FROM"
+		mycd "$FROM"
 		if [ ! -f "$path" ]
 		then	echo No such file: $FROM/$path
 			Done 1
 		fi
-		cd "$HERE"
+		mycd "$HERE"
 		sed 's|^\./||'< $LIST > ${TMP}import$$
 	else	if [ $TYPE != patch ]
 		then	if [ X$QUIET = X ]
 			then	echo Finding files in $FROM
 			fi
-			cd "$FROM"
+			mycd "$FROM"
 			cmd="bk _find"
 			if [ X"$INCLUDE" != X ]
 			then	cmd="$cmd | egrep '$INCLUDE'"
@@ -162,6 +197,7 @@ import() {
 			if [ X"$EXCLUDE" != X ]
 			then	cmd="$cmd | egrep -v '$EXCLUDE'"
 			fi
+			test $TYPE = MKS && cmd="$cmd | grep /rcs/"
 			eval "$cmd" > ${TMP}import$$
 			if [ X$QUIET = X ]; then echo OK; fi
 		else	touch ${TMP}import$$
@@ -172,7 +208,7 @@ import() {
 		then	echo Checking to make sure there are no files already in
 			echo "	$TO"
 		fi
-		cd "$TO"
+		mycd "$TO"
 		x=`bk _exists < ${TMP}import$$` && {
 			echo "import: $x exists, entire import aborted"
 			/bin/rm -f ${TMP}import$$
@@ -189,10 +225,11 @@ import() {
 		fi
 	fi
 	/bin/rm -f ${TMP}sccs$$
-	cd "$TO"
-	eval validate_$type \"$FROM\" \"$TO\"
-	transfer_$type "$FROM" "$TO" "$TYPE"
-	eval import_$type \"$FROM\" \"$TO\"
+	mycd "$TO"
+	eval validate_$TYPE \"$FROM\" \"$TO\"
+	transfer_$TYPE "$FROM" "$TO" "$TYPE"
+	test $TYPE = MKS && TYPE=RCS
+	eval import_$TYPE \"$FROM\" \"$TO\"
 	import_finish "$TO"
 }
 
@@ -238,7 +275,9 @@ gettype() {
 		    plain)	type=text;;
 		    patch)	type=patch;;
 		    mail|email)	type=email;;
-		    RCS|CVS)	type=RCS;;
+		    CVS)	type=CVS;;
+		    MKS)	type=MKS;;
+		    RCS)	type=RCS;;
 		    SCCS)	type=SCCS;;
 		esac
 		if [ X$type != X ]
@@ -256,6 +295,7 @@ BitKeeper can currently handle the following types of imports:
     SCCS	- SCCS files which are not presently under BitKeeper
     RCS		- files controlled by RCS
     CVS		- files controlled by CVS
+    MKS		- files controlled by MKS Source Integrity
 
 If the files you wish to import do not match any of these forms, you will
 have to write your own conversion scripts.  See the rcs2sccs program for
@@ -271,7 +311,7 @@ EOF
 		case "$type" in
 		    pa*) type=patch;;
 		    pl*) type=text;;
-		    R*|C*) type=RCS;;
+		    R*|C*) ;;
 		    S*) type=SCCS;;
 		    *)	echo Invalid file type.
 			echo Valid choices: plain patch RCS CVS SCCS
@@ -284,6 +324,50 @@ EOF
 
 
 transfer_RCS() { transfer "$@"; }
+
+transfer_MKS () {
+	transfer "$@"
+	mycd "$2" || exit 1
+	# Double check we are in the BK tree.
+	test -f "BitKeeper/etc/SCCS/s.config" || exit 1
+	find . -type f | perl -w -e '
+		while (<>) {
+			next if m|/SCCS/|i;
+			next if m|^./BitKeeper/|i;
+			chop;
+			unlink $_ unless m|/rcs/|i;
+		}'
+	find . -type f | perl -w -e '
+		while ($old = <>) {
+			$old =~ s|^\./||;
+			next if $old =~ m|/SCCS/|i;
+			next if $old =~ m|^SCCS/|i;
+			next if $old =~ m|^BitKeeper/|i;
+			chop($old);
+			$new = $old;
+			$new =~ s|/rcs/||;
+			$new =~ s|$|,v|;
+			open(IN, "$old") || die "$old";
+			open(OUT, ">$new") || die "$new";
+	    		while (<IN>) {
+				$sym = 1 if /^symbols\s/;
+				$sym = 0 if /^locks\s*;/;
+				s/%2E/./g if $sym;
+				unless (/^ext$/) {
+					print OUT;
+					next;
+				}
+				while (<IN>) {
+					last if /^\@$/;
+				}
+			}
+			close(IN);
+			close(OUT);
+			unlink($old);
+			print "$new\n";
+		}' > ${TMP}import$$
+}
+
 transfer_SCCS() { transfer "$@"; }
 transfer_text() { transfer "$@"; }
 transfer_patch() { return; }
@@ -291,7 +375,6 @@ transfer_patch() { return; }
 transfer() {
 	FROM="$1"
 	TO="$2"
-	TYPE="$3"
 	NFILES=`wc -l < ${TMP}import$$ | sed 's/ //g'`
 	if [ $FORCE = NO ]
 	then	echo
@@ -319,8 +402,8 @@ transfer() {
 		echo "	from $FROM"
 		echo "	to   $TO"
 	fi
-	cd "$FROM"
-	bk sfio -omq < ${TMP}import$$ | (cd "$TO" && bk sfio -im $VERBOSE ) || Done 1
+	mycd "$FROM"
+	bk sfio -omq < ${TMP}import$$ | (mycd "$TO" && bk sfio -im $VERBOSE ) || Done 1
 }
 
 patch_undo() {
@@ -333,14 +416,14 @@ import_patch() {
 	PATCH=$1
 	PNAME=`basename $PATCH`
 	Q=$QUIET
-	cd "$2"
+	mycd "$TO"
 
 	if [ "X$COMMENTS" != X ]
 	then	COMMENTOPT=-y"$COMMENTS"
 	else	COMMENTOPT=-y"Import patch $PNAME"
 	fi
 	
-	# This must be done after we cd to $2
+	# This must be done after we cd to $TO
 	case `bk version` in
 	*Basic*)	RENAMES=NO
 			;;
@@ -349,7 +432,7 @@ import_patch() {
 	msg Patching...
 	# XXX TODO For gfile with a sfile, patch -E option should translates
 	#          delete event to "bk rm"
-	(cd "$HERE"; cat "$PATCH") > ${TMP}patch$$
+	(mycd "$HERE"; cat "$PATCH") > ${TMP}patch$$
 
 	# Make sure the target files are not in modified state
 	bk patch --dry-run --lognames -g1 -f -p1 -ZsE < ${TMP}patch$$ \
@@ -404,7 +487,7 @@ import_patch() {
 	grep '^Patching file ' ${TMP}plog$$ |
 	    sed 's/Patching file //' | sort -u > ${TMP}patching$$
 
-	bk sfiles -x | grep '=-PaTcH_BaCkUp!$' | bk _unlink
+	bk sfiles -x | grep '=-PaTcH_BaCkUp!$' | bk _unlink -
 	while read x
 	do	test -f "$x".rej && echo "$x".rej
 	done < ${TMP}patching$$ > ${TMP}rejects$$
@@ -488,6 +571,7 @@ import_patch() {
 	if [ $COMMIT = NO ]
 	then	Done 0
 	fi
+
 	# Ask about logging before commit, commit reads stdin.
 	bk _loggingask
 	if [ $? -eq 1 ]
@@ -513,35 +597,51 @@ import_patch() {
 	    $QUIET $SYMBOL -a -y"`basename $PNAME`" - < ${TMP}commit$$
 
 	msg Done.
+	unset BK_CONFIG
+	o=`bk _preference checkout`
+	test X$o = Xedit && bk -Ur edit -q
+	test X$o = Xget && bk -Ur get -qS
 	Done 0
 }
 
 import_text () {
 	Q=$QUIET
 
-	cd "$2"
+	mycd "$TO"
 	if [ X$QUIET = X ]; then msg Checking in plain text files...; fi
 	bk ci -i $VERBOSE - < ${TMP}import$$ || Done 1
 }
 
+mvup() {
+	find . -type f | perl -w -e '
+		while (<STDIN>) {
+			next unless m|,v$|;
+			chop;
+			if (-f "../$_") {
+				if ($ARGV[0] eq "unlink") {
+					unlink($_);
+				} else {
+					die "Name conflict on $_";
+				}
+			} else {
+				rename("$_", "../$_") || warn "rename of $_";
+			}
+		}
+		' $1
+}
+
 import_RCS () {
-	cd "$2"
+	mycd "$TO"
 	if [ $FIX_ATTIC = YES ]
-	then	HERE=`pwd`
+	then
 		grep Attic/ ${TMP}import$$ | while read x
-		do	d=`dirname $x`
-			test -d $d || continue	# done already
-			cd $d || Done 1
-			# If there is a name conflict, do NOT use the Attic file
-			find . -name '*,v' -print | while read i
-			do	if [ -e "../$i" ] 
-				then	/bin/rm -f "$i"
-				else	mv "$i" ..
-				fi
-			done
-			cd ..
+		do	d=`dirname "$x"`
+			test -d "$d" || continue	# done already
+			mycd "$d" || Done 1
+			mvup unlink
+			mycd ..
 			rmdir Attic || { touch ${TMP}failed$$; Done 1; }
-			cd $HERE
+			mycd "$TO"
 		done
 		test -f ${TMP}failed$$ && {
 			echo Attic processing failed, aborting.
@@ -552,25 +652,62 @@ import_RCS () {
 		/bin/rm -f ${TMP}Attic$$
 	fi
 	if [ $TYPE = RCS ]
-	then	msg Moving RCS files out of RCS directories
+	then	msg Moving RCS files out of any RCS subdirectories
 		HERE=`pwd`
 		find . -type d | grep 'RCS$' | while read x
-		do	cd $x
-			mv *,v ..
-			cd ..
+		do	mycd $x
+			mvup error_if_conflict
+			mycd ..
 			rmdir RCS
-			cd $HERE
+			mycd $HERE
 		done
 		mv ${TMP}import$$ ${TMP}rcs$$
 		sed 's!RCS/!!' < ${TMP}rcs$$ > ${TMP}import$$
 		/bin/rm -f ${TMP}rcs$$
 	fi
 	msg Converting RCS files.
-	msg WARNING: Branches will be discarded.
-	if [ $PARALLEL -eq 1 ]
-	then	bk rcs2sccs $UNDOS $CUTOFF $VERIFY $QUIET - < ${TMP}import$$ ||
+	if [ "X$BRANCH" != "X" ]
+	then	msg "Only files on branch $BRANCH will be imported"
+	else    msg "Only mainline revisions will be imported (use -b for branches)"
+	fi
+	TAGFILE=BitKeeper/tmp/tags
+	
+	# Capture the "path" of branches to the branch the user
+	# wants to import.
+	if [ "X$BRANCH" != "X" ]
+	then	BRANCH=-b`bk rcsparse -g $BRANCH - < ${TMP}import$$`
+	fi
+	bk rcsparse -t $BRANCH - < ${TMP}import$$ > ${TAGFILE}.raw || {
+		echo 'rcsparse failed!'
+		rm -f ${TAGFILE}.raw
+		Done 1
+	}
+	sort +1n < ${TAGFILE}.raw | grep -v 'X$' > $TAGFILE
+	rm -f ${TAGFILE}.raw
+	
+	if [ "X$BRANCH" != "X" ]
+	then	B=`echo $BRANCH | sed -e 's/-b//' -e 's/,.*//'`
+		grep -q "^${B}_BASE" $TAGFILE || {
+		    echo ERROR: the branch $B cannot be imported.
+		    explain_tag_problem
+		    bk _unlink - < ${TMP}import$$
+		    rm ${TMP}import$$
 		    Done 1
-		bk _unlink < ${TMP}import$$
+		}
+		# -b option with timestamps now...
+		BRANCH=-b`grep "^=" $TAGFILE | sed 's/^=//'`
+		mv $TAGFILE ${TAGFILE}.bak
+		grep -v '^=' < ${TAGFILE}.bak > $TAGFILE
+		rm -f ${TAGFILE}.bak
+	fi    
+	ARGS="$BRANCH $UNDOS $CUTOFF $VERIFY $QUIET"
+	if [ $PARALLEL -eq 1 ]
+	then	bk rcs2sccs $ARGS - < ${TMP}import$$ ||
+		{
+		    echo rcs2sccs exited with an error code, aborting
+		    Done 1
+		}
+		bk _unlink - < ${TMP}import$$
 		return
 	fi
 	LINES=`wc -l < ${TMP}import$$`
@@ -578,22 +715,35 @@ import_RCS () {
 	test $LINES -eq 0 && LINES=1
 	split -$LINES ${TMP}import$$ ${TMP}split$$
 	for i in ${TMP}split$$*
-	do	bk rcs2sccs $UNDOS $CUTOFF $VERIFY $QUIET -q - < $i &
+	do	bk rcs2sccs $ARGS -q - < $i &
 	done
 	wait
-	bk _unlink < ${TMP}import$$
+	bk _unlink - < ${TMP}import$$
+}
+
+explain_tag_problem ()
+{
+    	bk rcsparse -d -t $BRANCH - < ${TMP}import$$ |
+		grep "^-${B}_BASE " > ${TMP}tagdbg$$
+
+	file1=`sort +1nr < ${TMP}tagdbg$$ | head -1 | sed -e 's/.*|//'`
+	file2=`sort +2n < ${TMP}tagdbg$$ | head -1 | sed -e 's/.*|//'`
+	echo "       The files $file1 and $file2 don't agree when"
+	echo "       the branch $B was created!"
+	rm -f ${TMP}tagdbg$$
 }
 
 import_SCCS () {
-	cd "$2"
+	mycd "$TO"
 	msg Converting SCCS files...
 	bk sccs2bk $VERIFY -c`bk prs -hr+ -nd:ROOTKEY: ChangeSet` - < ${TMP}import$$ ||
 	    Done 1
 	/bin/rm -f ${TMP}cmp$$
+	test -f SCCS/FAILED && Done 1
 }
 
 import_finish () {
-	cd "$1"
+	mycd "$1"
 	if [ X$QUIET = X ]; then echo ""; fi
 	if [ X$QUIET = X ]; then echo Final error checks...; fi
 	bk sfiles | bk admin -hhhq - > ${TMP}admin$$
@@ -608,21 +758,36 @@ import_finish () {
 	bk idcache -q
 	# So it doesn't run consistency check.
 	touch BitKeeper/etc/SCCS/x.marked
-	if [ $COMMIT != NO ]
-	then	
-		if [ X$QUIET = X ]
+	if [ $FINDCSET = NO ]
+	then	if [ X$QUIET = X ]
 		then echo "Creating initial changeset (should be +$NFILES)"
 		fi
 		BK_NO_REPO_LOCK=YES bk commit \
 		    $QUIET $SYMBOL -y'Import changeset'
+	else	
+		tag=
+		if [ $GAP -gt 0 -a $TAGS = "YES" -a -s $TAGFILE ]
+		then	tag=-T$TAGFILE
+		fi
+		if [ X$QUIET = X ]
+		then	echo "Looking for changeset boundaries.."
+			bk -r _findcset -v -t$GAP $SKIP_OPT $tag
+		else
+			bk -r _findcset -t$GAP $SKIP_OPT $tag
+		fi
+		bk -r admin -C`bk identity`
 	fi
 	bk -r check -ac
+	unset BK_CONFIG
+	o=`bk _preference checkout`
+	test X$o = Xedit && bk -Ur edit -q
+	test X$o = Xget && bk -Ur get -qS
 }
 
 validate_SCCS () {
 	FROM="$1"
 	TO="$2"
-	cd "$FROM"
+	mycd "$FROM"
 	grep 'SCCS/s\.' ${TMP}import$$ > ${TMP}sccs$$
 	grep -v 'SCCS/s\.' ${TMP}import$$ > ${TMP}notsccs$$
 	if [ -s ${TMP}sccs$$ -a -s ${TMP}notsccs$$ ]
@@ -689,10 +854,14 @@ validate_RCS () {
 	/bin/rm -f ${TMP}notrcs$$
 }
 
+validate_MKS () {
+	return
+}
+
 validate_text () {
 	FROM="$1"
 	TO="$2"
-	cd "$FROM"
+	mycd "$FROM"
 	egrep 'SCCS/s\.|,v$' ${TMP}import$$ > ${TMP}nottext$$
 	egrep -v 'SCCS/s\.|,v$' ${TMP}import$$ > ${TMP}text$$
 	if [ -s ${TMP}text$$ -a -s ${TMP}nottext$$ ]
@@ -729,6 +898,26 @@ Done() {
 		trap '' 0 2 3 15
 	}
 	exit $1
+}
+
+mycd() {
+	cd "$1" >/tmp/cd$$ 2>&1
+	STAT=$?
+	if [ $STAT -ne 0 ]
+	then	cat /tmp/cd$$
+		rm -f /tmp/cd$$
+		return $STAT
+	fi
+	rm -f /tmp/cd$$
+	return 0
+}
+
+core() {
+	test -f core && {
+		echo Someone dumped core
+		file core
+		Done 1
+	}
 }
 
 init() {

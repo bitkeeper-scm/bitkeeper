@@ -531,10 +531,15 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 #
 # revname:  revision-username (e.g. 1.832-akushner)
 #
-proc centerRev {revname} \
+proc centerRev {revname {doit 0}} \
 {
-	global cdim w
+	global cdim w afterId
 
+	if {!$doit} {
+		catch {after cancel $afterId}
+		set afterId [after idle [list centerRev $revname 1]]
+		return
+	}
 	set bbox [$w(graph) bbox $revname]
 	set b_x1 [lindex $bbox 0]
 	set b_x2 [lindex $bbox 2]
@@ -1046,22 +1051,26 @@ proc highlightAncestry {rev1} \
 	$w(graph) itemconfigure "mline" -fill $gc(rev.arrowColor)
 	$w(graph) itemconfigure "hline" -fill $gc(rev.arrowColor)
 
+	if {$rev1 == ""} return
+
+	set dspec {-dKIDS\n:KIDS:\nKID\n:KID:\nMPD\n:MPARENT:\n}
+	catch {exec bk prs -hr$rev1 $dspec $fname} tmp
+	array set attrs [split $tmp \n]
+
 	# Highlight the kids
-	catch {exec bk prs -hr$rev1 -d:KIDS: $fname} kids
-	foreach r $kids {
+	foreach r [split $attrs(KIDS)] {
 		$w(graph) itemconfigure "l_$rev1-$r" -fill $gc(rev.hlineColor)
 	}
 	# Highlight the kid (XXX: There was a reason why I did this)
-	catch {exec bk prs -hr$rev1 -d:KID: $fname} kid
-	if {$kid != ""} {
+	if {$attrs(KID) != ""} {
+		set kid $attrs(KID)
 		$w(graph) itemconfigure "l_$kid" -fill $gc(rev.hlineColor)
 	}
 	# NOTE: I am only interested in the first MPARENT
-	set mpd [open "|bk prs -hr$rev1 {-d:MPARENT:} $fname"]
-	if {[gets $mpd mp]} {
-		$w(graph) itemconfigure "l_$mp-$rev1" -fill $gc(rev.hlineColor)
+	set mpd [split $attrs(MPD)]
+	if {[llength $mpd] >= 1} {
+		$w(graph) itemconfigure "l_$mpd-$rev1" -fill $gc(rev.hlineColor)
 	}
-	catch { close $mpd }
 	$w(graph) itemconfigure "l_$rev1" -fill $gc(rev.hlineColor)
 }
 
@@ -1097,6 +1106,7 @@ proc getLeftRev { {id {}} } \
 			    -text "View Changeset "
 		}
 		.menus.difftool configure -state normal
+		updateShortcutMenu
 	}
 	if {[info exists rev2]} { unset rev2 }
 }
@@ -1129,6 +1139,7 @@ proc getRightRev { {id {}} } \
 
 	if {$rev2 != ""} {
 		.menus.difftool configure -state normal
+		updateShortcutMenu
 		catch {exec bk prs -hr$rev2 -d:CSETKEY: $file} info
 		if {$info == ""} {
 			.menus.cset configure \
@@ -1159,6 +1170,7 @@ proc unsetNodes {} {
 	set anchor ""
 	$w(graph) delete anchor new old
 	.menus.difftool configure -state disabled
+	updateShortcutMenu
 	highlightAncestry ""
 }
 
@@ -1194,10 +1206,15 @@ proc filltext {win f clear {msg {}}} \
 
 	$win configure -state normal
 	if {$clear == 1} { $win delete 1.0 end }
+	set noOutput 1
 	while { [gets $f str] >= 0 } {
 		$win insert end "$str\n"
+		set noOutput 0
 	}
 	catch {close $f} ignore
+	if {$clear == 1 && $noOutput} {
+		$win insert end $msg
+	}
 	$win configure -state disabled
 	if {$clear == 1 } { busy 0 }
 	searchreset
@@ -1767,7 +1784,15 @@ proc PaneStop {} \
 
 proc busy {busy} \
 {
-	global	paned w
+	global	paned w currentBusyState
+
+	# No reason to do any work if the state isn't changing. This
+	# actually makes a subtle performance boost.
+	if {[info exists currentBusyState] &&
+	    $busy == $currentBusyState} {
+		return
+	}
+	set currentBusyState $busy
 
 	if {$busy == 1} {
 		. configure -cursor watch
@@ -1779,7 +1804,11 @@ proc busy {busy} \
 		$w(aptext) configure -cursor left_ptr
 	}
 	if {$paned == 0} { return }
-	update
+
+	# only need to call update if we are transitioning to the
+	# busy state; becoming "unbusy" will take care of itself
+	# when the GUI goes idle. Another subtle performance boost.
+	if {$busy} {update idletasks}
 }
 
 proc widgets {} \
@@ -1811,6 +1840,7 @@ proc widgets {} \
 	set w(ctext)	.p.b.c.t
 	set w(apframe)	.p.b.p
 	set w(aptext)	.p.b.p.t
+	set w(shortcutMenu) .menus.bk.bkMenu
 	set stacked 1
 
 	getConfig "rev"
@@ -1919,6 +1949,23 @@ proc widgets {} \
 		    pack .menus.quit .menus.help .menus.difftool \
 			.menus.mb .menus.cset .menus.fmb -side left -fill y
 	    }
+
+	    # shortcut menu
+	    menubutton .menus.bk \
+	        -font $gc(rev.buttonFont) \
+		-bg $gc(rev.buttonColor) \
+	        -borderwidth 1 \
+	        -relief raised \
+	    	-indicatoron 1 \
+	        -text "Shortcuts" \
+	        -menu $w(shortcutMenu)
+	
+	    menu $w(shortcutMenu) -bd 1 -relief raised \
+	        -title "Revtool shortcuts menu" \
+	        -postcommand updateShortcutMenu
+
+	    pack .menus.bk -side left -after .menus.help
+
 	frame .p
 	    frame .p.top -borderwidth 1 -relief sunken
 		scrollbar .p.top.xscroll -wid $gc(rev.scrollWidth) \
@@ -2114,6 +2161,33 @@ proc widgets {} \
 	bind Bk <Shift-B1-Motion>	"[bind Text <B1-Motion>]"
 	bind Bk <ButtonRelease-1>	"[bind Text <ButtonRelease-1>]"
 
+	# populate shortcut menu; this needs to be done after
+	# the bindings are created, as we use the bindings 
+	# themselves to define the menu items
+	populateShortcutMenu .menus.bk.bkMenu rev {
+		$w(graph) <d> d
+			{Diff parent or selected nodes}
+		$w(graph) <h> h
+			{Show all revision history comments}
+		$w(graph) <t> t
+			{Show csets that have tags}
+		$w(graph) <c> c
+			{Show annotated listing of all versions}
+		$w(graph) <s> s
+			{Show raw SCCS file}
+		-- -- -- --
+		.	<question> ? 
+			{Reverse search}
+		. 	<slash> / 
+			{Forward search}
+		. 	<p> p 
+			{Search for previous occurance}
+		. 	<n> n 
+			{Search for next occurance}
+		-- -- -- --
+		$w(graph) _quit_ {} {Quit revtool}
+	}
+		
 	# In the search window, don't listen to "all" tags. (This is now done
 	# in the search.tcl lib) <remove if all goes well> -ask
 	#bindtags $search(text) { .cmd.search Entry }
@@ -2257,6 +2331,7 @@ The file $lfname was last modified ($ago) ago."
 	set search(prompt) "Welcome"
 	focus $w(graph)
 	currentMenu
+	updateShortcutMenu
 	busy 0
 	return
 } ;#revtool
@@ -2277,6 +2352,7 @@ proc init {} \
 proc arguments {} \
 {
 	global anchor rev1 rev2 dfile argv argc fname gca errorCode
+	global searchString startingLineNumber
 
 	set rev1 ""
 	set rev2 ""
@@ -2303,6 +2379,18 @@ proc arguments {} \
 		    "^-d.*" {
 			set dfile [string range $arg 2 end]
 		    }
+		    {^\-@[0-9]+$} {
+			    set startingLineNumber \
+				[string range $arg 2 end]
+		    }
+		    {^-/.+/?$} {
+			    # we're a bit forgiving and don't strictly
+			    # require the trailing slash. 
+			    if {![regexp -- {-/(.+)/$} $arg -- searchString]} {
+				    set searchString \
+					[string range $arg 2 end]
+			    }
+		    }
 		    default {
 		    	incr fnum
 			set opts(file,$fnum) $arg
@@ -2320,6 +2408,22 @@ proc arguments {} \
 		set rev2 ""
 	}
 
+	# By the time we get to here, rev1 will be set if either -l or
+	# -r was specified on the command line, and rev2 will be set
+	# if _both_ -l and -r were specified on the command line.
+	if {($rev2 != "" ) && 
+	    ([info exists startingLineNumber] ||
+	     [info exists searchString])} {
+		if {[info exists startingLineNumber]} {
+			puts stderr "error: you cannot specify a\
+				     line number with both -l and -r"
+		} else {
+			puts stderr "error: you cannot specify a\
+				      search string with both -l and -r"
+		}
+		exit
+	}
+
 	# regexes for valid revision numbers. This probably should be
 	# a function that uses a bk command to check whether the revision
 	# exists.
@@ -2328,14 +2432,16 @@ proc arguments {} \
 	set d1 ""; set d2 ""
 	if {[info exists rev1] && $rev1 != ""} {
 		if {![regexp -- $r2 $rev1 d1] &&
-		    ![regexp -- $r4 $rev1 d2]} {
+		    ![regexp -- $r4 $rev1 d2] &&
+		    $rev1 != "+"} {
 			puts stderr "\"$rev1\" is not a valid revision number."
 			exit 1
 		}
 	}
 	if {[info exists rev2] && $rev2 != ""} {
 		if {![regexp -- $r2 $rev2 d1] &&
-		    ![regexp -- $r4 $rev2 d2]} {
+		    ![regexp -- $r4 $rev2 d2] &&
+		    $rev2 != "+"} {
 			puts stderr "\"$rev2\" is not a valid revision number."
 			exit 1
 		}
@@ -2354,6 +2460,12 @@ proc arguments {} \
 		}
 	} elseif {$fnum == 1} {
 		set fname $opts(file,1)
+
+		catch {file type $fname} ftype
+		if {[string equal $ftype "link"] && 
+		    [string equal [exec bk sfiles -g $fname] ""]} {
+			set fname [resolveSymlink $fname]
+		}
 		if {[file isdirectory $fname]} {
 			catch {cd $fname} err
 			if {$err != ""} {
@@ -2397,6 +2509,7 @@ proc startup {} \
 	global fname rev2rev_name w rev1 rev2 gca errorCode gc dev_null
 	global file merge diffpair dfile
 	global State percent preferredGraphSize
+	global startingLineNumber searchString
 
 	if {$gca != ""} {
 		set merge(G) $gca
@@ -2408,7 +2521,36 @@ proc startup {} \
 		if {$rev2 != ""} {set diffpair(right) $rev2}
 		revtool $fname $rev1
 	}
-	if {[info exists diffpair(left)]} {
+	if {[info exists startingLineNumber] ||
+	    [info exists searchString]} {
+
+		# if the user is viewing the history of a file we want
+		# to display the annotated listing before doing the 
+		# search or goto-line. We won't do this for the ChangeSet
+		# file
+		set base [file tail $file]
+		if {![string equal $base "ChangeSet"]} {
+			if {![info exists rev1]} {
+				set rev1 "+"
+			}
+			selectNode id
+		}
+
+		if {[info exists startingLineNumber]} {
+			if {![info exists searchString]} {
+				searchnew : $startingLineNumber
+			}
+			set index $startingLineNumber.0
+			centerTextLine $w(aptext) $index
+		} else {
+			set index 1.0
+		}
+
+		if {[info exists searchString]} {
+			after idle [list searchnew / $searchString $index]
+		}
+
+	} elseif {[info exists diffpair(left)]} {
 		doDiff
 	}
 	if {[info exists dfile] && ($dfile != "")} {
@@ -2483,6 +2625,43 @@ proc saveState {} \
 	# up a message dialog.
 	if {[catch {::appState save rev tmp} result]} {
 		puts stderr "error writing config file: $result"
+	}
+}
+
+proc updateShortcutMenu {} \
+{
+	global rev1 rev2 w anchor file
+
+	set changeset [expr {"$file" == "ChangeSet"}]
+	set first 0
+	if {[$w(shortcutMenu) cget -tearoff]} {
+		set first 1
+	}
+
+	if {[info exists rev2] && "$rev2" != ""} {
+		if {$changeset} {
+			$w(shortcutMenu) entryconfigure $first \
+			    -label "Show history between selected nodes" \
+			    -state normal
+		} else {
+			$w(shortcutMenu) entryconfigure $first \
+			    -label "Diff selected nodes" \
+			    -state normal
+		}
+	} else {
+		if {$changeset} {
+			$w(shortcutMenu) entryconfigure $first \
+			    -label "Show history of node and its parent" \
+			    -state normal
+		} else {
+			$w(shortcutMenu) entryconfigure $first \
+			    -label "Diff node against parent" \
+			    -state normal
+		}
+		if {![info exists anchor] || "$anchor" == ""} {
+			$w(shortcutMenu) entryconfigure $first \
+			    -state disabled
+		}
 	}
 }
 

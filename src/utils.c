@@ -3,6 +3,27 @@
 
 bkdopts	Opts;	/* has to be declared here, other people use this code */
 
+int
+saveStdin(char *tmpfile)
+{
+	int	fd, n;
+	char	buf[BUFSIZ];
+
+	if ((fd = open(tmpfile, O_CREAT|O_TRUNC|O_WRONLY, 0664)) == -1) {
+		perror(tmpfile);
+		return (-1);
+	}
+	while ((n = read(0, buf, sizeof(buf))) > 0) {
+		if (write(fd, buf, n) != n) {
+			perror(tmpfile);
+			close(fd);
+			return (-1);
+		}
+	}
+	close(fd);
+	return (0);
+}
+
 #ifndef WIN32
 int
 cat(char *file)
@@ -326,7 +347,7 @@ prompt(char *msg, char *buf)
 int
 confirm(char *msg)
 {
-	char	buf[100];
+	char	*p, buf[100];
 	int	gotsome;
 
 	caught = 0;
@@ -341,7 +362,9 @@ confirm(char *msg)
 		assert(!gotsome);
 	}
 	sig_restore();
-	return (gotsome && ((buf[0] == 'y') || (buf[0] == 'Y')));
+	unless (gotsome) return (0);
+	for (p = buf; *p && isspace(*p); p++);
+	return ((*p == 'y') || (*p == 'Y'));
 }
 
 /*
@@ -350,7 +373,7 @@ confirm(char *msg)
 int
 prompt_main(int ac, char **av)
 {
-	int	i, c, ret, ask = 1, nogui = 0;
+	int	i, c, ret, ask = 1, nogui = 0, gui = 0;
 	char	*prog = 0, *file = 0, *no = "NO", *yes = "OK", *title = 0;
 	char	*type = 0;
 	char	*cmd;
@@ -360,11 +383,12 @@ prompt_main(int ac, char **av)
 	extern	char *pager;
 	char	**lines = 0;
 
-	while ((c = getopt(ac, av, "cegiowxf:n:p:t:y:")) != -1) {
+	while ((c = getopt(ac, av, "cegGiowxf:n:p:t:y:")) != -1) {
 		switch (c) {
 		    case 'c': ask = 0; break;
 		    case 'e': type = "-E"; break;
 		    case 'g': nogui = 1; break;
+		    case 'G': gui = 1; break;
 		    case 'i': type = "-I"; break;
 		    case 'w': type = "-W"; break;
 		    case 'x': /* ignored, see notice() for why */ break;
@@ -393,7 +417,7 @@ err:		system("bk help -s prompt");
 		if (system(cmd)) goto err;
 		free(cmd);
 	}
-	if (getenv("BK_GUI") && !nogui) {
+	if ((gui || getenv("BK_GUI")) && !nogui) {
 		char	*nav[19];
 
 		nav[i=0] = "bk";
@@ -547,12 +571,17 @@ bkd_connect(remote *r, int compress, int verbose)
 
 
 
-int 
+int
 send_msg(remote *r, char *msg, int mlen, int extra, int compress)
 {
+	char	*cgi = WEB_BKD_CGI;
+
 	assert(r->wfd != -1);
 	if (r->type == ADDR_HTTP) {
-		if (http_send(r, msg, mlen, extra, "BitKeeper", WEB_BKD_CGI)) {
+		if (r->path && strneq(r->path, "cgi-bin/", 8)) {
+			cgi = r->path + 8;
+		}
+		if (http_send(r, msg, mlen, extra, "BitKeeper", cgi)) {
 			fprintf(stderr, "http_send failed\n");
 			return (-1);
 		}
@@ -773,9 +802,10 @@ sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 		fprintf(f, "putenv BK_REPO_ID=%s\n", repo);
 		free(repo);
 	}
-	lic = licenses_accepted();
-	fprintf(f, "putenv BK_ACCEPTED=%s\n", lic);
-	free(lic);
+	if (lic = licenses_accepted()) {
+		fprintf(f, "putenv BK_ACCEPTED=%s\n", lic);
+		free(lic);
+	}
 	fprintf(f, "putenv BK_REALUSER=%s\n", sccs_realuser());
 	fprintf(f, "putenv BK_REALHOST=%s\n", sccs_realhost());
 	fprintf(f, "putenv BK_PLATFORM=%s\n", platform());
@@ -844,7 +874,7 @@ sendServerInfoBlock(int is_rclone)
         	sprintf(buf, "LEVEL=%d\n", getlevel());
 		out(buf);
 		out("LICTYPE=");
-		out(is_commercial(0) ? "bkcl\n" : "bkl\n");
+		out(bkcl(0) ? "bkcl\n" : "bkl\n");
 	}
 	out("ROOT=");
 	getcwd(buf, sizeof(buf));
@@ -924,12 +954,7 @@ drainErrorMsg(remote *r, char *buf, int bsize)
 
 	while (1) {
 		if (strneq("ERROR-BAD CMD: pull_part1", buf, 25)) {
-			fprintf(stderr,
-			    "Remote dose not understand \"pull_part1\""
-			    "command\n"
-			    "There are two possibilities:\n"
-			    "a) Remote bkd has disabled \"pull\" command.\n"
-			    "b) We are talking to a old 1.x bkd.\n");
+			getMsg("no_pull_part1", 0, 0, stderr);
 			break;
 		}
 		if (strneq("ERROR-BAD CMD: @END", buf, 19)) break; /*for push*/
@@ -954,10 +979,7 @@ next:		if (getline2(r, buf, bsize) <= 0) break;
 		lines = addLine(lines, strdup(buf));
 	}
 
-	if (bkd_msg) {
-		fprintf(stderr,
-		    "Remote seems to be running a older BitKeeper release\n");
-	}
+	if (bkd_msg) getMsg("upgrade_remote", 0, 0, stderr);
 	freeLines(lines, free);
 	return;
 }
@@ -1054,6 +1076,23 @@ ttyprintf(char *fmt, ...)
 	vfprintf(f, fmt, ptr);
 	va_end(ptr);
 	if (f != stderr) fclose(f);
+}
+
+char *
+strdup_tochar(const char *s, int c)
+{
+	char	*p;
+	char	*ret;
+
+	if (p = strchr(s, c)) {
+		ret = malloc(p - s + 1);
+		p = ret;
+		while (*s != c) *p++ = *s++;
+		*p = 0;
+	} else {
+		ret = strdup(s);
+	}
+	return (ret);
 }
 
 int
@@ -1268,4 +1307,44 @@ run_check(char *partial, int fix, int quiet)
 		goto again;
 	}
 	return (ret);
+}
+
+/*
+ * Portable way to print a pointer.  Results are returned in a static buffer
+ * and you may use up to N of these in one call to printf() or whatever
+ * before you start stomping on yourself.
+ */
+char *
+p2str(void *p)
+{
+#define N	10
+#define PTRLEN	((sizeof(void *) / 4) + 3)
+	static	char bufs[N][PTRLEN];
+	static	int w = 0;
+	char	*b;
+
+	w = (w + 1) % N;
+	b = bufs[w];
+	if (sizeof(void *) == sizeof(int)) {
+		int	n = sizeof(int) * 2;
+
+		sprintf(b, "0x%.*x", n, (unsigned)p);
+	} else if (sizeof(void *) == sizeof(u64)) {
+		u64	a = (u64)p;
+		u32	top, bot;
+
+		top = (u32)(a >> 32);
+		bot = a & 0xffffffff;
+		sprintf(b, "0x%8x%8x", top, bot);
+	} else {
+		assert("Pointers are too big" == 0);
+	}
+	return (b);
+#undef N
+}
+
+u32
+crc(char *str)
+{
+	return (adler32(0, str, strlen(str)));
 }

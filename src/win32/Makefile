@@ -9,6 +9,7 @@ clean clean-obj:
 		cd uwtlib && make $@ && cd ..; \
 		cd pub/blat && make $@ && cd ../../; \
 		cd pub/winctl && make $@ && cd ../../; \
+		cd pub/diffutils && make $@ && cd ../..; \
 	fi
 
 FORCE:

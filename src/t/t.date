@@ -1,0 +1,82 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2003, BitMover, Inc.
+
+no_logging project
+echo $N Create a file with an old date, check that it did it ........$NL
+ZONE=`bk zone`
+DATE="97/05/20 18:48:02"
+echo foo > foo
+BK_DATE_TIME_ZONE=$DATE bk new $Q foo
+test "${DATE}$ZONE" = "`bk prs -hr+ -nd':D: :T::TZ' foo`" || {
+	echo bad date
+	bk prs -hr1.1 -nd':D: :T::TZ' foo
+	exit 1
+}
+echo OK
+
+echo $N Make sure delta also respects BK_DATE_TIME_ZONE .............$NL
+DATE="98/05/20 18:48:02"
+bk edit $Q foo
+BK_DATE_TIME_ZONE=$DATE bk delta -ydate $Q foo
+test "${DATE}$ZONE" = "`bk prs -hr+ -nd':D: :T::TZ:' foo`" || {
+	echo bad date
+	bk prs -hr+ -nd':D: :T::TZ' foo
+	exit 1
+}
+echo OK
+
+echo $N See if we can set a different timezone ......................$NL
+DATE="98/05/21 18:48:02"
+ZONE="-09:00"
+bk edit $Q foo
+BK_DATE_TIME_ZONE="$DATE$ZONE" bk delta -ydate $Q foo
+test "${DATE}$ZONE" = "`bk prs -hr+ -nd':D: :T::TZ:' foo`" || {
+	echo bad date, wanted vs got
+	echo ${DATE}$ZONE
+	bk prs -hr+ -nd':D: :T::TZ' foo
+	head SCCS/s.foo
+	exit 1
+}
+echo OK
+
+echo $N Set a time backwards, check fudge ...........................$NL
+DATE="98/05/21 18:47:01"
+ZONE="-09:00"
+bk edit $Q foo
+BK_DATE_TIME_ZONE="$DATE$ZONE" bk delta -ydate $Q foo
+test "${DATE}$ZONE" = "`bk prs -hr+ -nd':D: :T::TZ:' foo`" || {
+	echo bad date, wanted vs got
+	echo ${DATE}$ZONE
+	bk prs -hr+ -nd':D: :T::TZ' foo
+	head SCCS/s.foo
+	exit 1
+}
+test "62" = "`bk prs -hr+ -nd':FUDGE:' foo`" || {
+	echo bad fudged, wanted vs got is 62 `bk prs -hr+ -nd':FUDGE:' foo`
+	head SCCS/s.foo
+	exit 1
+}
+echo OK
+
+echo $N Make sure commit works ......................................$NL
+DATE="02/05/21 18:47:01"
+ZONE="+02:00"
+BK_DATE_TIME_ZONE="$DATE$ZONE" bk commit -ydate $Q foo
+test "${DATE}$ZONE" = "`bk prs -hr+ -nd':D: :T::TZ:' ChangeSet`" || {
+	echo bad date, wanted vs got
+	echo ${DATE}$ZONE
+	bk prs -hr+ -nd':D: :T::TZ' ChangeSet
+	head SCCS/s.ChangeSet
+	exit 1
+}
+echo OK

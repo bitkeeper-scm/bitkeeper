@@ -63,6 +63,15 @@ proc search {dir} \
 	searchbuttons both disabled
 }
 
+proc searchdisable {} \
+{
+	global search
+
+	searchbuttons both disabled
+	$search(menu) configure -state disabled
+	$search(text) configure -state disabled
+}
+
 proc searchreset {} \
 {
 	global	search
@@ -121,6 +130,26 @@ proc searchactive {} \
 	return 0
 }
 
+# initiates a new search on the given string starting at the given index
+proc searchnew {direction string {startIndex ""}} {
+	global search 
+
+	search $direction
+
+	$search(text) delete 0 end
+	$search(text) insert 0 $string
+
+	if {$startIndex != ""} {
+		set search(start) $startIndex
+	} elseif {$search(dir) == "?"} {
+		set search(start) "end"
+	} else {
+		set search(start) "1.0"
+	}
+
+	searchstring
+}
+
 proc searchstring {} \
 {
 	global	search lastDiff
@@ -135,11 +164,23 @@ proc searchstring {} \
 		searchreset
 		return
 	} elseif {("$string" != "") && ($search(dir) == ":")} {
+		set i [$search(widget) index "end-1c linestart"]
+		set end [lindex [split $i .] 0]
+		if {$string == "end" || $string == "last"} {
+			set string $end
+		}
+			
 		if {[string match {[0-9]*} $string]} {
-		    $search(widget) see "$string.0"
-		} elseif {[string match {[0-9]*} $string] || 
-		    ($string == "end") || ($string == "last")} {
-			$search(widget) see end
+			if {[$search(widget) compare "$string.0" > "end-1c"]} {
+				set msg "beyond end of data"
+				$search(status) configure -text $msg
+			} else {
+				$search(widget) tag remove search 1.0 end
+				$search(widget) tag add search \
+				    "$string.0" "$string.end+1c"
+				$search(widget) tag raise search
+				searchsee $string.0
+			}
 		} else {
 			$search(status) configure -text "$string not integer"
 		}

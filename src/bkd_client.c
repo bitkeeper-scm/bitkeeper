@@ -19,8 +19,7 @@ remote_parse(const char *url, int skip_checks)
 	remote	*r;
 	char	*p;
 
-	unless (url) return (0);
-	assert(*url);
+	unless (url && *url) return (0);
 
 	if (echo == -1) echo = getenv("BK_REMOTE_PARSE") != 0;
 
@@ -62,7 +61,7 @@ remote_parse(const char *url, int skip_checks)
 			if (r) r->type = ADDR_FILE;;
 		} else if (strneq("file:/", p, 6)) {
 			fprintf(stderr,
-			    "\"file\" is a illegal host name.\n"
+			    "\"file\" is an illegal host name.\n"
 			    "Did you mean \"file://path\"?\n");
 			r = NULL;
 		} else {
@@ -294,7 +293,7 @@ void
 remote_print(remote *r, FILE *f)
 {
 	unless (r) return;
-	fprintf(f, "R=0x%x ", (unsigned int)r);
+	fprintf(f, "R=%s ", p2str(r));
 	if (r->user) fprintf(f, "USER=%s ", r->user);
 	if (r->host) fprintf(f, "HOST=%s ", r->host);
 	if (r->port) fprintf(f, "PORT=%u ", r->port);

@@ -41,14 +41,14 @@ typedef struct {
 	u32	fixdfile:1;		/* fix up  the dfile tag */
 	u32	onelevel:1;
 	u32	progress:1;		/* if set, send progress to stdout */
-	FILE	*out;			/* send output here */
 	u32     summarize:1;     	/* summarize output only */
 	u32     useronly:1;     	/* list user file only 	*/
 	u32	timestamps:1;		/* whether to use the timestamp DB */
+	FILE	*out;			/* send output here */
 } options;
 
 private	jmp_buf	sfiles_exit;
-private MDBM	*timestamps = 0;
+private HASH	*timestamps = 0;
 private options	opts;
 private char	**ignore, **dont_ignore;
 private u32	d_count, s_count, x_count; /* progress counter */
@@ -212,7 +212,7 @@ sfiles_main(int ac, char **av)
 				break;
 		    case 's':	parse_select(optarg); break;	/* undoc? 2.0 */
 		    case 'S':	opts.summarize = 1; break;	/* doc 2.0 */
-		    case 't':	opts.timestamps = 1; break;	/* doc 2.3 */
+		    case 't':	break;
 		    case 'u':	opts.unlocked = 1; break;	/* doc 2.0 */
 		    case 'U':	opts.useronly = 1; break;	/* doc 2.0 */
 		    case 'v':	opts.show_markers = 1; break;	/* doc 2.0 */
@@ -238,6 +238,7 @@ usage:				system("bk help -s sfiles");
 		opts.unlocked = 1;
 		opts.locked = 1;
 	}
+	if (opts.modified && !getenv("BK_NO_TIMESTAMPS")) opts.timestamps = 1;
 
 	if (!av[optind]) {
 		path = ".";
@@ -386,7 +387,7 @@ chk_pending(sccs *s, char *gfile, STATE state, MDBM *sDB, MDBM *gDB)
 	 * check for pending deltas
 	 */
 	state[PSTATE] = ' ';
-	unless (d = sccs_getrev(s, "+", 0, 0))  goto out;
+	unless (d = sccs_top(s))  goto out;	
 	if (d->flags & D_CSET) goto out;
 
 	/*
@@ -689,6 +690,8 @@ walk(char *dir)
 	if (dont_ignore) free_globs(dont_ignore);  dont_ignore = 0;
 	if (opts.timestamps && timestamps && wi.proj) {
 		dumpTimestampDB(wi.proj, timestamps);
+		hash_free(timestamps);
+		timestamps = 0;
 	}
 	if (opts.summarize) print_summary();
 	if (wi.proj) proj_free(wi.proj);
@@ -723,9 +726,6 @@ chk_diffs(sccs *s)
 	int different;
 
 	if (!s) return (0);
-	if (opts.timestamps && !timestamps) {
-		timestamps = generateTimestampDB(s->proj);
-	}
 	different = (sccs_hasDiffs(s, 0, 1) >= 1);
 	if (timestamps) {
 		updateTimestampDB(s, timestamps, different);
@@ -956,6 +956,9 @@ sccsdir(winfo *wi)
 			sfile = buf;
 			if (strneq(sfile, "./", 2)) sfile += 2;
 			gfile = sccs2name(sfile);
+			if (opts.modified && opts.timestamps && !timestamps) {
+				timestamps = generateTimestampDB(wi->proj);
+			}
 			if (opts.modified &&
 			    (!timestamps ||
 				!timeMatch(wi->proj, gfile, sfile,

@@ -1,0 +1,199 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+#
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2002 Wayne Scott
+
+for i in /usr/bin /usr/gnu/bin
+do	test -x $i/cvs && touch CVS
+done
+test -f CVS || {
+	echo "cvs not installed on this client: test skipped"
+	exit 0
+}
+
+# build a sample CVS repository with branches and branches of
+# branches.
+#
+# Here is a picture of what the CVS repository that gets created
+# looks like: (time is represented vertically)
+#
+# trunk		branch2		branch1		branch1_1
+# -----		-------		_______		---------
+#
+# start --------------------------\
+#  |           	       	       	  |
+# next ------------\   	       	  |
+#  |		   |		  |
+# end		   |		  |
+#   		   |   		  |
+# 		   |   		branch1
+#              	   |   	       	  |
+# 		   |   		next2 ------------\
+# 		   |   		  |  		  |
+# 		   |   		next3		  |
+# 		   |   		     		  |
+# 		   |   				branch1_1
+# 		   |
+# 		branch2
+
+echo $N Create test CVS repository ..................................$NL
+mkdir cvsroot
+export CVSROOT=$HERE/cvsroot
+test $WINDOWS = YES && CVSROOT=`pwd`/cvsroot
+cvs init || exit 1
+mkdir $CVSROOT/test
+cvs $Q co test || exit 1
+cd test
+# include yucky filename
+if [ $WINDOWS = NO ]
+then
+	echo hi > "\\"
+	cvs -Q new "\\" >/dev/null 2>&1 || exit 1
+	cvs -Q commit -m"funny file" > /dev/null || exit 1
+	rm "\\"
+	cvs remove "\\" 2> /dev/null || exit 1
+fi
+
+cvsbuild()
+{
+	f="new_$1"
+	echo $NUM > $f
+	cvs -Q new $f >/dev/null 2>&1 || exit 1
+	for p in $*
+	do	f="sub_$p"
+		if [ \! -f $f ]
+		then	echo $NUM > $f
+ 			cvs -Q new $f >/dev/null 2>&1 || exit 1
+		else
+			echo $NUM >> $f
+		fi
+	done
+	cvs -Q commit -m"commit $1" > /dev/null || exit 1
+	cvs -Q tag "tag_$1" || exit 1
+	NUM=`expr $NUM + 1`
+}
+
+
+NUM=0
+cvsbuild start
+cvs -Q tag -b branch1 || exit 1
+sleep 1
+cvsbuild next1 start
+cvs -Q tag -b branch2 || exit 1
+sleep 1
+cvsbuild end next1 start
+cd $HERE
+cvs -Q co -dtest.branch1 -rbranch1 test || exit 1
+cd test.branch1
+cvsbuild branch1 start
+sleep 1
+cvsbuild next2 branch1 start
+cvs -Q tag -b branch1_1 || exit 1
+sleep 1
+cvsbuild next3 next2 branch1 start
+cd $HERE
+cvs -Q co -dtest.branch1_1 -rbranch1_1 test || exit 1
+cd test.branch1_1
+cvsbuild branch1_1 next2 branch1 start
+cd $HERE
+cvs -Q co -dtest.branch2 -rbranch2 test || exit 1
+cd test.branch2
+cvsbuild branch2 next1 start
+echo OK
+
+echo $N Import CVS trunk ............................................$NL
+cd $HERE
+no_logging import_trunk
+# verify that checkout:edit doesn't break anything
+bk edit $Q BitKeeper/etc/config || exit 1
+echo "checkout:edit" >> BitKeeper/etc/config
+bk import $Q -f -tCVS -g1 -k -Hfree.bk $CVSROOT/test . || exit 1
+bk -Ur get $Q
+bk treediff . $HERE/test || exit 1
+bk pending $Q && {
+	echo shouldn\'t have files pending...
+	exit 1
+}
+bk -r check -a || exit 1
+echo OK
+
+echo $N Import CVS branch1...........................................$NL
+cd $HERE
+bk clone $Q -r1.1 $HERE/import_trunk $HERE/import_branch1
+cd $HERE/import_branch1
+bk import -bbranch1 $Q -f -tCVS -g1 -k  -Hfree.bk $CVSROOT/test . || exit 1
+bk -Ur get $Q
+bk treediff . $HERE/test.branch1 || exit 1
+bk pending $Q && {
+	echo shouldn\'t have files pending...
+	exit 1
+}
+bk -r check -a || exit 1
+echo OK
+
+echo $N Import CVS branch2...........................................$NL
+cd $HERE
+bk clone $Q -r1.1 $HERE/import_trunk $HERE/import_branch2
+cd $HERE/import_branch2
+bk import -bbranch2 $Q -f -tCVS -g1 -k  -Hfree.bk $CVSROOT/test . || exit 1
+bk -Ur get $Q
+bk treediff . $HERE/test.branch2 || exit 1
+bk pending $Q && {
+	echo shouldn\'t have files pending...
+	exit 1
+}
+bk -r check -a || exit 1
+echo OK
+
+echo $N Import CVS branch1_1.........................................$NL
+cd $HERE
+bk clone $Q -r1.1 $HERE/import_trunk $HERE/import_branch1_1
+cd $HERE/import_branch1_1
+bk import -bbranch1_1 $Q -f -tCVS -g1 -k -Hfree.bk $CVSROOT/test . || exit 1
+bk -Ur get $Q
+bk treediff . $HERE/test.branch1_1 || exit 1
+bk pending $Q && {
+	echo shouldn\'t have files pending...
+	exit 1
+}
+bk -r check -a || exit 1
+echo OK
+
+echo $N Try pulling branch2 into trunk...............................$NL
+cd $HERE/import_trunk
+bk edit $Q sub_next1 sub_start
+# fix up the content so we can get a auto merge
+echo 1 > sub_next1
+echo 1 > sub_start
+bk delta $Q -yfix sub_next1 sub_start
+bk commit $Q -yfix
+bk pull $Q ../import_branch2 || exit 1
+echo OK
+
+echo $N Try setting up the file1 and file2 do not agree error .......$NL
+cd $HERE/test
+echo new >> sub_start
+echo other >> new_start
+cvs -Q commit -mjunk > /dev/null || exit 1
+cvs -Q tag -b fakebranch || exit 1
+cvs -Q admin -Nfakebranch:1.2.0.2 sub_start >/dev/null 2>&1 || exit 1
+cd $HERE
+bk clone $Q -r1.1 $HERE/import_trunk $HERE/import_fake
+cd $HERE/import_fake
+bk import -bfakebranch $Q -f -tCVS -g1 -k  -Hfree.bk $CVSROOT/test . > OUT && {
+	echo should have errored
+	exit 1
+}
+grep -q 'The files new_start,v and sub_start,v don' OUT || {
+	echo wrong error message
+	exit 1
+}
+echo OK

@@ -85,6 +85,14 @@ echon() {
 # args: GOT WANT
 checkfiles() {
         cmp -s "$1" "$2" || {
+		test $WINDOWS = YES && {
+			bk undos < "$1" > /tmp/A$$
+			bk undos < "$2" > /tmp/B$$
+			cmp /tmp/A$$ /tmp/B$$
+			STATUS=$?
+			rm -f /tmp/[AB]$$
+			test $STATUS -eq 0 && return
+		}
                 echo "$1" and "$2" don\'t match
                 diff -u "$1" "$2"
                 exit 1

@@ -62,7 +62,7 @@ rclone_main(int ac, char **av)
 		exit(1);
 	}
 	unless (exists(BKROOT)) {
-		fprintf(stderr, "%s is not a Bitkeeper root\n", av[optind]);
+		fprintf(stderr, "%s is not a BitKeeper root\n", av[optind]);
 		exit(1);
 	}
 	r = remote_parse(av[optind + 1], 0);
@@ -272,8 +272,7 @@ send_sfio_msg(opts opts, remote *r, char **envVar)
 	n = gensfio(opts, opts.verbose, gzip, r->wfd);
 	if ((r->type == ADDR_HTTP) && (m != n)) {
 		fprintf(stderr,
-			"Error: sfio file have change size from %d to %d\n",
-			m, n);
+		    "Error: sfio file changed size from %d to %d\n", m, n);
 		disconnect(r, 2);
 		return (-1);
 	}

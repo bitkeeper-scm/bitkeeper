@@ -88,6 +88,7 @@ proc getConfig {prog} \
 
 	set _d(cset.listHeight) 12
 	set _d(cset.annotation) ""   ;# annotation options (eg: "-aum")
+	set _d(cset.doubleclick) 100 ;# XXX: NOTDOC
 
 	set _d(diff.diffHeight) 50
 	set _d(diff.searchColor) $LIGHTBLUE	;# highlight for search matches
@@ -120,6 +121,14 @@ proc getConfig {prog} \
 	set _d(help.width) 72		;# number of columns to display
 	set _d(help.helptext) ""	;# -f<helptextfile> - undocumented
 	set _d(help.exact) 0		;# helpsearch, allows partial matches
+
+	set _d(newdifftool.minThumbHeight) 30 ;# min height of custom scrollbar thumb
+	set _d(newdifftool.topMargin) 2
+	set _d(newdifftool.bottomMargin) 1
+	set _d(newdifftool.newColor) $BKGREEN1
+	set _d(newdifftool.oldColor) $BKGREEN1
+	set _d(newdifftool.diffColor) $GRAY88
+	set _d(newdifftool.highlight) $YELLOW
 
 	set _d(rename.listHeight) 8
 
@@ -203,11 +212,13 @@ proc initFonts-windows {app var} \
 	set width [winfo screenwidth .]
 
 	if {$width <= 1024} {
+		set _d(boldFont)		{Arial 8 bold}
 		set _d(buttonFont)		{Arial 8 normal}
 		set _d(noticeFont)		{Arial 8 normal bold}
 		set _d(fixedFont)  		{{Courier New} 8 normal}
 		set _d(fixedBoldFont)	{{Courier New} 8 normal bold}
 	}  else {
+		set _d(boldFont)		{Arial 10 bold}
 		set _d(buttonFont)		{Arial 10 normal}
 		set _d(noticeFont)		{Arial 10 normal bold}
 		set _d(fixedFont)  		{{Courier New} 10 normal}
@@ -228,9 +239,11 @@ proc initFonts-unix {app var} \
 	}
 
 	if {$width <= 1024} {
+		set _d(boldFont)   {Helvetica 10 bold}
 		set _d(buttonFont) {Helvetica 10}
 		set _d(noticeFont) {Helvetica 10 bold}
 	} else {
+		set _d(boldFont)   {Helvetica 12 bold}
 		set _d(buttonFont) {Helvetica 12}
 		set _d(noticeFont) {Helvetica 12 bold}
 	}
@@ -299,6 +312,7 @@ proc defineSymbolicColors {} \
 		set DARKBLUE		#00008b
 		set GRAY50		#7f7f7f
 		set GRAY85		#d9d9d9
+		set GRAY88		#e0e0e0
 		set GRAY91		#e8e8e8
 		set GRAY94		#f0f0f0
 		set GREEN		#00ff00
@@ -328,8 +342,11 @@ proc defineSymbolicColors {} \
 		set BKBLACK1		#181818
 		set BKBLUE1		#b0b0e0
 		set BKBLUE2		#a8d8e0
+		set BKBLUE3		#b4e0ff
 		set BKCADETBLUE	#9fb6b8
+		set BKGREEN1		#2fedad
 		set BKPALEOLIVE	#e8f8a6 
+		set BKPLUM		#dfafdf
 		set BKSLATEBLUE1	#a0a0ff
 		set BKSLATEBLUE2	#c0c0ff
 		set BKSLATEGRAY1	#deeaf4

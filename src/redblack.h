@@ -1,0 +1,10 @@
+typedef	struct RBtree RBtree;
+RBtree	*RBtree_new(int size, int (*compare)(void *a, void *b));
+void	RBtree_free(RBtree *t);
+void	*RBtree_first(RBtree *t);
+void	*RBtree_last(RBtree *t);
+void	*RBtree_find(RBtree *t, void *data);
+void	*RBtree_next(RBtree *t, void *data);
+void	*RBtree_prev(RBtree *t, void *data);
+void	RBtree_insert(RBtree *t, void *data);
+void	RBtree_delete(RBtree *t, void *data);

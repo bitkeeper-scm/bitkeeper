@@ -85,6 +85,16 @@ The above command is equivalent to doing the following:
 .DS
 bk difftool src/filename.c ../../repo/src/filename.c
 .DE
+.SH "DISCARDING FILES"
+When a file that is being viewed is in the checked out state, a button
+labelled "discard" will be enabled. You may click this button to
+discard your changes (see bk unedit). To perform the discard you must
+click on the discard button twice. After the first click you will be
+prompted to make a second click. If you click anywhere other than the
+discard button, or wait 10 seconds, the discard will be cancelled.
+.LP
+Once a file has been discarded, it's corresponding entry in the Files
+menu will be disabled. 
 .SH "KEY BINDINGS"
 .TP 1.2i
 .B Home

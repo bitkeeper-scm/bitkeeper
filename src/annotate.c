@@ -13,8 +13,9 @@ int
 annotate_main(int ac, char **av)
 {
 	sccs	*s;
-	int	iflags = 0, flags = BASE_FLAGS;
+	int	flags = BASE_FLAGS;
 	int	c, errors = 0;
+	int	pnames = getenv("BK_PRINT_EACH_NAME") != 0;
 	char	*t, *name, *rev = 0, *cdate = 0;
 	delta	*d;
 
@@ -36,19 +37,21 @@ annotate_main(int ac, char **av)
 		    case 'u': flags |= GET_USER; break;
 		}
 	}
-	while ((c = getopt(ac, av, "ac;dkmnNr;u")) != -1) {
+	while ((c = getopt(ac, av, "A;a;c;kr;")) != -1) {
 		switch (c) {
-		    case 'a': flags |= GET_ALIGN; break;	/* doc 2.0 */
+		    case 'A':
+			flags |= GET_ALIGN;
+			/*FALLTHROUGH*/
+		    case 'a':
+			flags = annotate_args(flags, optarg);
+			if (flags == -1) goto usage;
+			break;
 		    case 'c': cdate = optarg; break;		/* doc 2.0 */
-		    case 'd': flags |= GET_PREFIXDATE; break;	/* doc 2.0 */
 		    case 'k': flags &= ~GET_EXPAND; break;	/* doc 2.0 */
-		    case 'm': flags |= GET_REVNUMS; break;	/* doc 2.0 */
-		    case 'n': flags |= GET_MODNAME; break;	/* doc 2.0 */
-		    case 'N': flags |= GET_LINENUM; break;	/* doc 2.0 */
 		    case 'r': rev = optarg; break;		/* doc 2.0 */
-		    case 'u': flags |= GET_USER; break;		/* doc 2.0 */
 
 		    default:
+		usage:
 			system("bk help -s annotate");
 			return (1);
 		}
@@ -56,7 +59,7 @@ annotate_main(int ac, char **av)
 	if (flags == BASE_FLAGS) flags |= GET_REVNUMS|GET_USER;
 	name = sfileFirst("get", &av[optind], SF_HASREVS);
 	for (; name; name = sfileNext()) {
-		unless (s = sccs_init(name, iflags)) continue;
+		unless (s = sccs_init(name, 0)) continue;
 		unless (HASGRAPH(s)) {
 			sccs_free(s);
 			continue;
@@ -79,6 +82,9 @@ annotate_main(int ac, char **av)
 			rev = d->rev;
 		} else unless (rev) {
 			rev = sfileRev();
+		}
+		if (pnames) {
+			printf("FILE|%s|CRC|%x\n", s->gfile, crc(s->gfile));
 		}
 		if (sccs_get(s, rev, 0, 0, 0, flags, "-")) {
 			unless (BEEN_WARNED(s)) {

@@ -9,7 +9,7 @@ typedef struct {
 	u32	hide_cset:1;	/* hide ChangeSet file from file list */
 	u32	rflg:1;		/* diff two rset */
 	u32	lflg:1;		/* list a rset */
-	u32	isDot:1;	/* we got a rev  = "." */
+	u32	useGfile:1;	/* we got a rev  = "=" */
 } options;
 
 private int mixed; /* if set, handle long and short keys */
@@ -35,13 +35,13 @@ private void
 upd_s2l(MDBM *s2l,  char *key)
 {
 	char	*q, tmp[MAXLINE];
+
 	q = sccs_iskeylong(key);
 	if (q) {
 		strcpy(tmp, key);
 		assert(*q == '|');
 		*q = 0; 	/* convert to short root key */
-		if (mdbm_store_str(s2l, key, tmp,
-						MDBM_INSERT)) {
+		if (mdbm_store_str(s2l, key, tmp, MDBM_INSERT)) {
 			fprintf(stderr, "key conflict\n");
 			exit(1);
 		}
@@ -52,15 +52,13 @@ upd_s2l(MDBM *s2l,  char *key)
 private MDBM *
 mk_s2l(MDBM *db)
 {
-	MDBM *short2long;
+	MDBM	*short2long = mdbm_mem();
 	datum	k;
 
-	short2long = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
-	for (k = mdbm_firstkey(db); k.dsize != 0;
-					k = mdbm_nextkey(db)) {
+	for (k = mdbm_firstkey(db); k.dsize != 0; k = mdbm_nextkey(db)) {
 		upd_s2l(short2long,  k.dptr);
 	}
-	return short2long;
+	return (short2long);
 }
 
 /*
@@ -72,7 +70,7 @@ mk_s2l(MDBM *db)
 private char *
 find_key(MDBM *db, char *rootkey, MDBM **s2l)
 {
-	char *p, *q;
+	char	*p, *q;
 
 	p = mdbm_fetch_str(db, rootkey); 
 	/*
@@ -113,19 +111,17 @@ isNullFile(char *rev, char *file)
  * Convert root/start/end keys to sfile^Apath1^Arev1^Apath2^Arev2 format
  */
 private void
-process(char *root, char *start, char *end,
-				MDBM *idDB, MDBM **goneDB, options opts)
+process(char	*root,
+	char	*start, char *end, MDBM *idDB, MDBM **goneDB, options opts)
 {
 	sccs	*s;
 	delta 	*d1, *d2;
 	char	*rev1, *rev2, *path1, *path2;
 	char	c = BK_FS; /* field seperator */
 
-	if (is_same(start, end) && !opts.isDot)  return;
+	if (is_same(start, end) && !opts.useGfile) return;
 
-	s = sccs_keyinit(root,
-	    INIT_NOGCHK|INIT_NOCKSUM, idDB);
-	unless (s) {
+	unless (s = sccs_keyinit(root, INIT_NOGCHK|INIT_NOCKSUM, idDB)) {
 		unless (*goneDB) {
 			*goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
 		}
@@ -133,7 +129,7 @@ process(char *root, char *start, char *end,
 		fprintf(stderr, "Cannot keyinit %s\n", root);
 		return;
 	}
-	if (opts.isDot && is_same(start, end) && !sccs_hasDiffs(s, 0, 0)) {
+	if (opts.useGfile && is_same(start, end) && !sccs_hasDiffs(s, 0, 0)) {
 		goto done;
 	}
 
@@ -141,7 +137,8 @@ process(char *root, char *start, char *end,
 		d1 = sccs_findKey(s, start);
 		unless (d1) {
 			fprintf(stderr,
-"ERROR: rset: Can't find key '%s'\n\tin %s, run 'bk -r check -a'\n",
+			    "ERROR: rset: Can't find key '%s'\n"
+			    "\tin %s, run 'bk -r check -a'\n",
 			    start, s->sfile);
 			exit (1);
 		}
@@ -152,14 +149,15 @@ process(char *root, char *start, char *end,
 		path1 = s->tree->pathname;
 	}
 	if (end && *end) {
-		if (opts.isDot) {
+		if (opts.useGfile) {
 			rev2 = ".";
 			path2 = s->gfile; /* in case of un-delta'ed rename */
 		} else {
 			d2 = sccs_findKey(s, end);
 			unless (d2) {
 				fprintf(stderr,
-"ERROR: rset: Can't find key '%s'\n\tin %s, run 'bk -r check -a'\n",
+				    "ERROR: rset: Can't find key '%s'\n"
+				    "\tin %s, run 'bk -r check -a'\n",
 				    end, s->sfile);
 				exit (1);
 			}
@@ -176,7 +174,7 @@ process(char *root, char *start, char *end,
 	 * Do not print the ChangeSet file
 	 * we already printed it as the first entry
 	 */
-	if (streq(s->sfile, CHANGESET))  goto done; 
+	if (streq(s->sfile, CHANGESET)) goto done; 
 
 	if (opts.show_diffs) {
 		/*
@@ -195,7 +193,6 @@ process(char *root, char *start, char *end,
 		}
 	} else {
 		if (!opts.show_all && isNullFile(rev2, path2)) goto done;
-
 		unless (opts.show_path) {
 			printf("%s%c%s\n", s->gfile, c, rev2);
 		} else {
@@ -209,8 +206,8 @@ done:	sccs_free(s);
  * Compute diffs of  rev1 and rev2
  */
 private void
-rel_diffs(MDBM *db1, MDBM *db2, MDBM *idDB,
-			char *rev1, char *revM, char *rev2, options opts)
+rel_diffs(MDBM	*db1, MDBM *db2,
+	MDBM	*idDB, char *rev1, char *revM, char *rev2, options opts)
 {
 	MDBM	*goneDB = 0, *short2long = 0;
 	char	*root_key, *start_key, *end_key, parents[100];
@@ -223,7 +220,7 @@ rel_diffs(MDBM *db1, MDBM *db2, MDBM *idDB,
 	 * Print the ChangeSet file first
 	 * XXX This assumes the Changset file never moves.
 	 * XXX If we move the ChangeSet file,
-	 * XXX this need to be updated
+	 * XXX this needs to be updated.
 	 */
 	unless (opts.hide_cset) {
 		if (revM) {
@@ -235,7 +232,7 @@ rel_diffs(MDBM *db1, MDBM *db2, MDBM *idDB,
 			printf("ChangeSet%c%s..%s\n", BK_FS, parents, rev2);
 		} else {
 			printf("ChangeSet%cChangeSet%c%s%cChangeSet%c%s\n",
-				BK_FS, BK_FS, parents, BK_FS, BK_FS, rev2);
+			    BK_FS, BK_FS, parents, BK_FS, BK_FS, rev2);
 		}
 	}
 	for (kv = mdbm_first(db1); kv.key.dsize != 0; kv = mdbm_next(db1)) {
@@ -246,6 +243,7 @@ rel_diffs(MDBM *db1, MDBM *db2, MDBM *idDB,
 		strcpy(root_key2, root_key); /* because find_key stomps */
 		end_key = find_key(db2, root_key2, &short2long);
 		process(root_key, start_key, end_key, idDB, &goneDB, opts);
+
 		/*
 		 * Delete the entry from db2, so we don't 
 		 * re-process it in the next loop
@@ -268,7 +266,7 @@ rel_diffs(MDBM *db1, MDBM *db2, MDBM *idDB,
 	mdbm_close(idDB);
 	if (short2long) mdbm_close(short2long);
 	if (goneDB) mdbm_close(goneDB);
-	if (opts.isDot) {
+	if (opts.useGfile) {
 		//XX TODO list the extra files...
 		FILE	*f;
 		char	buf[MAXPATH];
@@ -307,7 +305,6 @@ rel_list(MDBM *db, MDBM *idDB, char *rev, options opts)
 		end_key = kv.val.dptr;
 		process(root_key, NULL, end_key, idDB, &goneDB, opts);
 	}
-
 	mdbm_close(db);
 	mdbm_close(idDB);
 	if (short2long) mdbm_close(short2long);
@@ -320,9 +317,9 @@ rel_list(MDBM *db, MDBM *idDB, char *rev, options opts)
 int
 sccs_parent_revs(sccs *s, char *rev, char **revP, char **revM)
 {
-	delta *d, *p, *m;
+	delta	*d, *p, *m;
 
-	d = findrev(s, rev);
+	d = sccs_findrev(s, rev);
 	unless (d) {
 		fprintf(stderr, "diffs: cannot find rev %s\n", rev);
 		return (-1);
@@ -346,12 +343,12 @@ sccs_parent_revs(sccs *s, char *rev, char **revP, char **revM)
 private int
 fix_rev(sccs *s, char **rev, char rev_buf[])
 {
-	delta *d;
+	delta	*d;
 
-	d = sccs_getrev(s, (*rev && **rev) ? *rev : "+", 0, 0);
+	d = sccs_findrev(s, (*rev && **rev) ? *rev : "+");
 	unless (d) {
 		fprintf(stderr, "Cannot find revision \"%s\"\n", 
-				(*rev && **rev) ? *rev : "+");
+		    (*rev && **rev) ? *rev : "+");
 		return (-1); /* failed */
 	}
 	assert(d);
@@ -361,10 +358,10 @@ fix_rev(sccs *s, char **rev, char rev_buf[])
 }
 
 private int
-parse_rev(sccs *s, char *args,
-			char **rev1, char **revM, char **rev2, char rev_buf[])
+parse_rev(sccs	*s,
+	char	*args, char **rev1, char **revM, char **rev2, char rev_buf[])
 {
-	char *p;
+	char	*p;
 
 	unless (args) args = "+";
 	p = strchr(args, ',');
@@ -392,7 +389,6 @@ parse_rev(sccs *s, char *args,
 	return (0); /* ok */
 }
 
-
 int
 rset_main(int ac, char **av)
 {
@@ -402,7 +398,6 @@ rset_main(int ac, char **av)
 	char	rbuf[20];
 	sccs	*s = 0;
 	MDBM	*db1, *db2 = 0, *idDB;
-	//options	opts = { 0, 0, 0, 0};
 	options	opts;
 
 	bzero(&opts, sizeof (options));
@@ -464,7 +459,7 @@ usage:				system("bk help -s rset");
 
 		if (streq(".", rev2)) {
 			r = "+";
-			opts.isDot = 1;
+			opts.useGfile = 1;
 		} else {
 			r = rev2;
 		}

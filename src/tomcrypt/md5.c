@@ -237,7 +237,7 @@ int  md5_test(void)
       md5_process(&md, tests[i].msg, strlen(tests[i].msg));
       md5_done(&md, tmp);
       if (memcmp(tmp, tests[i].hash, 16)) {
-         printf("MD5 Test %d (len == %d) failed\nGot (as a result): ", i, strlen(tests[i].msg));
+         printf("MD5 Test %d (len == %d) failed\nGot (as a result): ", i, (int)strlen(tests[i].msg));
          for (j = 0; j < 16; j++) { 
              printf("%02x ", tmp[j]);
          }

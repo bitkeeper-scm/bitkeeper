@@ -1,5 +1,14 @@
 #include "system.h"
 #include "sccs.h"
+#include "logging.h"
+
+/*
+ * This file contains a series of accessor functions for the project
+ * struct that caches information about the current repository.  There
+ * is a global project struct that always matches the current
+ * directory.  This struct is private to proj.c and it used whenever 0
+ * is passed to these functions.
+ */
 
 /*
  * Don't treat chdir() special here.
@@ -17,24 +26,29 @@ struct dirlist {
 
 struct project {
 	char	*root;		/* fullpath root of the project */
-	char	*csetrootkey;	/* Root key of ChangeSet file */
-	char	*csetmd5rootkey;/* MD5 root key of ChangeSet file */
+	char	*rootkey;	/* Root key of ChangeSet file */
+	char	*md5rootkey;	/* MD5 root key of ChangeSet file */
 	MDBM	*config;	/* config DB */
-	HASH	*hash;		/* misc data, stored per tree */
-	project	*parent;	/* set if this is a RESYNC proj */
+	project	*rparent;	/* if RESYNC, point at enclosing repo */
+
+	/* per proj cache data */
+	char	*license;	/* filled from lease_licenseKey() */
+	u32	licensebits;	/* LOG_* and LIC_* from fetchLicenseBits() */
+	u8	leaseok:1;
 
 	/* internal state */
     	int	refcnt;
-	project	*next;
 	dirlist	*dirs;
 };
 
 private char	*find_root(char *dir);
 
-private project	*proj_curr = 0;
-private project	*proj_last = 0;
-private	project *proj_master_list = 0;
-private HASH	*projcache = 0;
+private struct {
+	project	*curr;
+	project	*last;
+	HASH	*cache;
+	char	cwd[MAXPATH];
+} proj;
 
 private project *
 projcache_lookup(char *dir)
@@ -42,8 +56,8 @@ projcache_lookup(char *dir)
 	project	*ret = 0;
 	project	**p;
 
-	unless (projcache) projcache = hash_new();
-	if (p = hash_fetch(projcache, dir, 0, 0)) ret = *p;
+	unless (proj.cache) proj.cache = hash_new();
+	if (p = hash_fetch(proj.cache, dir, 0, 0)) ret = *p;
 	return (ret);
 }
 
@@ -58,7 +72,7 @@ projcache_store(char *dir, project *p)
 		dl->next = p->dirs;
 		p->dirs = dl;
 	}
-	*(project **)hash_alloc(projcache, dir, 0, sizeof(p)) = p;
+	*(project **)hash_alloc(proj.cache, dir, 0, sizeof(p)) = p;
 }
 
 private void
@@ -66,12 +80,12 @@ projcache_delete(project *p)
 {
 	dirlist	*dl;
 
-	hash_delete(projcache, p->root, 0);
+	hash_delete(proj.cache, p->root, 0);
 	dl = p->dirs;
 	while (dl) {
 		dirlist	*tmp = dl;
 
-		hash_delete(projcache, dl->dir, 0);
+		hash_delete(proj.cache, dl->dir, 0);
 
 		free(dl->dir);
 		dl = dl->next;
@@ -79,23 +93,36 @@ projcache_delete(project *p)
 	}
 }
 
+/*
+ * Return a project struct for the project that contains the given
+ * directory.
+ */
 project *
 proj_init(char *dir)
 {
 	project	*ret;
 	char	*root;
 	char	*t;
+	char	*fdir, *cwd;
+	char	buf[MAXPATH];
 
-	if (ret = projcache_lookup(dir)) goto done;
+	if (IsFullPath(dir)) {
+		fdir = dir;
+	} else {
+		unless (cwd = proj_cwd()) return (0);
+		concat_path(buf, cwd, dir);
+		fdir = buf;
+	}
+	if (ret = projcache_lookup(fdir)) goto done;
 
 	/* missed the cache */
 	unless (root = find_root(fullname(dir, 0))) return (0);
 
-	unless (streq(root, dir)) {
-		/* I wasn't in root, was root it cache? */
+	unless (streq(root, fdir)) {
+		/* fdir is not a root, was root in cache? */
 		if (ret = projcache_lookup(root)) {
 			/* yes, make a new mapping */
-			if (IsFullPath(dir)) projcache_store(dir, ret);
+			projcache_store(fdir, ret);
 			goto done;
 		}
 	}
@@ -103,20 +130,18 @@ proj_init(char *dir)
 	/* Totally new project */
 	new(ret);
 	ret->root = root;
-	ret->next = proj_master_list;
-	proj_master_list = ret;
 
 	projcache_store(root, ret);
-	if (!streq(root, dir) && IsFullPath(dir)) projcache_store(dir, ret);
+	unless (streq(root, fdir)) projcache_store(fdir, ret);
 done:
 	++ret->refcnt;
 
 	if ((t = strrchr(ret->root, '/')) && streq(t, "/RESYNC")) {
 		*t = 0;
-		ret->parent = proj_init(ret->root);
-		if (ret->parent && !streq(ret->parent->root, ret->root)) {
-			proj_free(ret->parent);
-			ret->parent = 0;
+		ret->rparent = proj_init(ret->root);
+		if (ret->rparent && !streq(ret->rparent->root, ret->root)) {
+			proj_free(ret->rparent);
+			ret->rparent = 0;
 		}
 		*t = '/';
 	}
@@ -126,25 +151,18 @@ done:
 void
 proj_free(project *p)
 {
-	project	**m;
 	assert(p);
 
 	unless (--p->refcnt == 0) return;
 
-	if (p->parent) {
-		proj_free(p->parent);
-		p->parent = 0;
+	if (p->rparent) {
+		proj_free(p->rparent);
+		p->rparent = 0;
 	}
 	projcache_delete(p);
 
 	proj_reset(p);
 	free(p->root);
-	/* unlink p from master list */
-	m = &proj_master_list;
-	while (*m && *m != p) {
-		m = &(*m)->next;
-	}
-	if (*m) *m = p->next;
 	free(p);
 }
 
@@ -184,10 +202,15 @@ find_root(char *dir)
 private project *
 curr_proj(void)
 {
-	unless (proj_curr) proj_curr = proj_init(".");
-	return (proj_curr);
+	unless (proj.curr) proj.curr = proj_init(".");
+	return (proj.curr);
 }
 
+/*
+ * Return the full path to the root directory in the current project.
+ * Data is calculated the first time this function in called. And the
+ * old data is returned from then on.
+ */
 char *
 proj_root(project *p)
 {
@@ -197,13 +220,27 @@ proj_root(project *p)
 	return (p->root);
 }
 
+/*
+ * chdir to the root of the current tree we are in
+ */
 int
 proj_cd2root(void)
 {
-	if (proj_root(0) && (chdir(proj_root(0)) == 0)) return (0);
+	char	*root = proj_root(0);
+
+	if (root && (chdir(root) == 0)) {
+		strcpy(proj.cwd, root);
+		return (0);
+	}
 	return (-1);
 }
 
+/*
+ * When given a pathname to a file, this function returns the pathname
+ * to the file relative to the current project.  If the file is not under
+ * the current project then, NULL is returned.
+ * The returned path is allocated with malloc() and the user must free().
+ */
 char *
 proj_relpath(project *p, char *path)
 {
@@ -223,7 +260,10 @@ proj_relpath(project *p, char *path)
 	}
 }
 
-// remove all other calls to loadConfig ??
+/*
+ * Return a populated MDBM for the config file in the current project.
+ * XXX - remove all other calls to loadConfig ??
+ */
 MDBM *
 proj_config(project *p)
 {
@@ -233,11 +273,9 @@ proj_config(project *p)
 	return (p->config);
 }
 
-/*
- * Return the ChangeSet file id.
- */
+/* Return the root key of the ChangeSet file in the current project. */
 char	*
-proj_csetrootkey(project *p)
+proj_rootkey(project *p)
 {
 	sccs	*sc;
 	FILE	*f;
@@ -251,98 +289,105 @@ proj_csetrootkey(project *p)
 	/*
 	 * Use cached copy if available
 	 */
-	if (p->csetrootkey) return (p->csetrootkey);
-	if (p->parent && (ret = proj_csetrootkey(p->parent))) return (ret);
+	if (p->rootkey) return (p->rootkey);
+	if (p->rparent && (ret = proj_rootkey(p->rparent))) return (ret);
 
 	sprintf(rkfile, "%s/BitKeeper/tmp/ROOTKEY", p->root);
 	if (f = fopen(rkfile, "rt")) {
 		fnext(buf, f);
 		chomp(buf);
-		p->csetrootkey = strdup(buf);
+		p->rootkey = strdup(buf);
 		fnext(buf, f);
 		chomp(buf);
-		p->csetmd5rootkey = strdup(buf);
+		p->md5rootkey = strdup(buf);
 		fclose(f);
 	} else {
 		sprintf(buf, "%s/%s", p->root, CHANGESET);
 		if (exists(buf)) {
 			sc = sccs_init(buf,
-			    INIT_NOCKSUM|INIT_NOSTAT|INIT_SHUTUP);
+			    INIT_NOCKSUM|INIT_NOSTAT|INIT_WACKGRAPH);
 			assert(sc->tree);
 			sccs_sdelta(sc, sc->tree, buf);
-			p->csetrootkey = strdup(buf);
+			p->rootkey = strdup(buf);
 			sccs_md5delta(sc, sc->tree, buf);
-			p->csetmd5rootkey = strdup(buf);
+			p->md5rootkey = strdup(buf);
 			sccs_free(sc);
 			if (f = fopen(rkfile, "wt")) {
-				fputs(p->csetrootkey, f);
+				fputs(p->rootkey, f);
 				putc('\n', f);
-				fputs(p->csetmd5rootkey, f);
+				fputs(p->md5rootkey, f);
 				putc('\n', f);
 				fclose(f);
 			}
 		}
 	}
-	return (p->csetrootkey);
+	return (p->rootkey);
 }
 
+/* Return the root key of the ChangeSet file in the current project. */
 char *
-proj_csetmd5rootkey(project *p)
+proj_md5rootkey(project *p)
 {
 	char	*ret;
 
 	unless (p || (p = curr_proj())) return (0);
 
-	unless (p->csetmd5rootkey) proj_csetrootkey(p);
-	if (p->parent && (ret = proj_csetmd5rootkey(p->parent))) return (ret);
-	return (p->csetmd5rootkey);
+	unless (p->md5rootkey) proj_rootkey(p);
+	if (p->rparent && (ret = proj_md5rootkey(p->rparent))) return (ret);
+	return (p->md5rootkey);
 }
 
-HASH *
-proj_hash(project *p)
-{
-	unless (p || (p = curr_proj())) return (0);
-
-	unless (p->hash) p->hash = hash_new();
-	return (p->hash);
-}
-
+/*
+ * Clear any data cached for the current project root.
+ * Call this function whenever the current data is made invalid.
+ * When passed an explicit project then only that project is cleared.
+ * Otherwise, all projects are flushed.
+ */
 void
 proj_reset(project *p)
 {
+	kvpair	kv;
+
 	if (p) {
-		if (p->csetrootkey) {
-			free(p->csetrootkey);
-			p->csetrootkey = 0;
-			free(p->csetmd5rootkey);
-			p->csetmd5rootkey = 0;
+		if (p->rootkey) {
+			free(p->rootkey);
+			p->rootkey = 0;
+			free(p->md5rootkey);
+			p->md5rootkey = 0;
 		}
 		if (p->config) {
 			mdbm_close(p->config);
 			p->config = 0;
 		}
-		if (p->hash) {
-			hash_free(p->hash);
-			p->hash = 0;
+		if (p->license) {
+			free(p->license);
+			p->license = 0;
 		}
+		p->licensebits = 0;
+		p->leaseok = 0;
 	} else {
-		p = proj_master_list;
-		while (p) {
-			proj_reset(p);
-			p = p->next;
+		kv = hash_first(proj.cache);
+		while (kv.key.dptr) {
+			proj_reset(*(project **)kv.val.dptr);
+			kv = hash_next(proj.cache);
 		}
 		/* free the current project for purify */
-		if (proj_curr) {
-			proj_free(proj_curr);
-			proj_curr = 0;
+		if (proj.curr) {
+			proj_free(proj.curr);
+			proj.curr = 0;
 		}
-		if (proj_last) {
-			proj_free(proj_last);
-			proj_last = 0;
+		if (proj.last) {
+			proj_free(proj.last);
+			proj.last = 0;
 		}
 	}
 }
 
+/*
+ * proj_chdir() is a wrapper for chdir() that also updates
+ * the current default project.
+ * We map chdir() to this function by default.
+ */
 int
 proj_chdir(char *newdir)
 {
@@ -350,13 +395,28 @@ proj_chdir(char *newdir)
 
 	ret = chdir(newdir);
 	unless (ret) {
-		if (proj_curr) {
-			if (proj_last) proj_free(proj_last);
-			proj_last = proj_curr;
-			proj_curr = 0;
+		unless (getcwd(proj.cwd, sizeof(proj.cwd))) proj.cwd[0] = 0;
+		if (proj.curr) {
+			if (proj.last) proj_free(proj.last);
+			proj.last = proj.curr;
+			proj.curr = 0;
 		}
 	}
 	return (ret);
+}
+
+/*
+ * proj_cwd() just returns a pointer to the current working directory.
+ * That information is saved by proj_chdir() so this function is very
+ * fast.
+ */
+char *
+proj_cwd(void)
+{
+	unless (proj.cwd[0]) {
+		if (proj_chdir(".")) return (0);
+	}
+	return (proj.cwd);
 }
 
 /*
@@ -368,10 +428,47 @@ proj_fakenew(void)
 {
 	project	*ret;
 
+	if (ret = projcache_lookup("/")) return (ret);
 	new(ret);
 	ret->root = strdup("/");
-	ret->csetrootkey = strdup("SCCS");
-	ret->csetmd5rootkey = strdup("SCCS");
+	ret->rootkey = strdup("SCCS");
+	ret->md5rootkey = strdup("SCCS");
+	projcache_store("/", ret);
 
 	return (ret);
+}
+
+char *
+proj_license(project *p)
+{
+	/*
+	 * If we are outside of any repository then we must get a
+	 * licence from the global config or a license server.
+	 */
+	unless (p || (p = curr_proj())) p = proj_fakenew();
+
+	unless (p->license) p->license = lease_licenseKey(p);
+	return (p->license);
+}
+
+u32
+proj_licensebits(project *p)
+{
+	/*
+	 * If we are outside of any repository then we must get a
+	 * licence from the global config or a license server.
+	 */
+	unless (p || (p = curr_proj())) p = proj_fakenew();
+
+	unless (p->licensebits) p->licensebits = fetchLicenseBits(p);
+	return (p->licensebits);
+}
+
+int
+proj_leaseOK(project *p, int *newok)
+{
+	unless (p || (p = curr_proj())) return (0);
+
+	if (newok) p->leaseok = *newok;
+	return (p->leaseok);
 }

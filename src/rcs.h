@@ -9,7 +9,8 @@
 /*
  * Struct delta - describes a single delta entry.
  */
-typedef struct rdelta {
+typedef struct rdelta rdelta;
+struct rdelta {
 	char	*rev;			/* revision number */
 	char	*sccsrev;		/* new revision number */
 	char	*sdate;			/* ascii date, 93.07.25.21.14.11 */
@@ -17,26 +18,28 @@ typedef struct rdelta {
 	char	*comments;		/* Comment log */
 	time_t	date;			/* date - conversion from sdate/zone */
 	time_t	dateFudge;		/* make dates go forward */
-	struct	rdelta *parent;		/* parent delta above me */
-	struct	rdelta *kid;		/* next delta on this branch */
-	struct	rdelta *next;		/* all deltas in table order */
-	struct	rdelta *prev;		/* all deltas in reverse table order */
+	rdelta	*parent;		/* parent delta above me */
+	rdelta	*kid;			/* next delta on this branch */
+	rdelta	*next;			/* all deltas in table order */
+	rdelta	*prev;			/* all deltas in reverse table order */
 	char	*snext;			/* next as a revision */
 	u32	ingraph:1;		/* inserted in the graph */
 	u32	printed:1;		/* been here */
-	u32	head:1;			/* branch head */
-} rdelta;
+	u32	dead:1;			/* file deleted */
+};
 
-typedef	struct sym {
+typedef	struct sym sym;
+struct sym {
 	char	*name;
 	char	*rev;
-	struct	sym *next;
-} sym;
+	sym	*next;
+};
 
 /*
  * struct RCS
  */
-typedef	struct {
+typedef	struct RCS RCS;
+struct RCS {
 	rdelta	*tree;		/* the delta tree after mkgraph() */
 	rdelta	*table;		/* the delta table list, 1.99 .. 1.0 */
 	rdelta	*lastinsert;	/* pointer to the last delta inserted */
@@ -44,14 +47,31 @@ typedef	struct {
 	sym	*symbols;	/* symbolic tags */
 	char	*defbranch;	/* defbranch, if set */
 	char	*text;		/* descriptive text */
-	char	*file;		/* file name */
+	char	*rcsfile;	/* RCS file name */
+	char	*workfile;	/* working file name */
 	char	*kk;		/* -kk is default; -kb for binary */
-} RCS;
+	char	*rootkey;	/* root key */
+};
 
-RCS	*rcs_init(char *file);
-rdelta	*rcs_defbranch(RCS *rcs);
-rdelta	*rcs_findit(RCS *rcs, char *rev);
+typedef struct RCSlist RCSlist;
+struct RCSlist {
+	RCSlist	*next;
+	RCS	*file;
+	rdelta	*lastver;  /* The last version added to BK */
+};
+
+typedef struct CVS CVS;
+struct CVS {
+	char	*server;
+	char	*module;
+	RCSlist	*files;
+};
+
+RCS	*rcs_init(char *file, char *branch);
+rdelta	*rcs_findit(const RCS *rcs, char *rev);
 void	rcs_free(RCS *r);
+
+CVS	*cvs_init(char *file);
 
 #ifdef	RCS_DEBUG
 #define	rcsdebug(x)	fprintf x

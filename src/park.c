@@ -45,7 +45,6 @@ park_main(int ac, char **av)
 	char	sfio_list[MAXPATH], parkfile[MAXPATH], buf[MAXPATH];
 	char	changedfile[MAXPATH], parkedfile[MAXPATH];
 	char	*tname = 0, *sname = 0;
-	char	*p;
 	char 	**comments = NULL, **ccomments = NULL;
 	int 	lflag = 0, qflag = 0, purge = 0, try = 0, force = 0;
 	int	rc = 0, clean = 0, aflag = 0, unedit = 1, ask = 1;
@@ -81,8 +80,7 @@ park_main(int ac, char **av)
 
 	sfio_list[0] = parkfile[0] = changedfile[0] = parkedfile[0] = 0;
 
-	p = _relativeName(".", 1, 0, 1, 0, 0);
-	unless (p) {
+	unless (proj_root(0)) {
 		fprintf(stderr, "Can't find package root\n");
 err:		if (s) sccs_free(s);
 		if (tname) free(tname);
@@ -100,7 +98,6 @@ err:		if (s) sccs_free(s);
 		fprintf(stderr, "Can't chdir to package root\n");
 		goto err;
 	}
-	strcpy(buf, p);
 
 	if (lflag) return (listParkFile());
 	if (purge) return (purgeParkFile(purge));
@@ -210,8 +207,7 @@ err:		if (s) sccs_free(s);
 			fprintf(out, "%s\n", s->symlink);
 		} else if (diffable_text(s, top)) {
 			rc |= parkfile_header(s, top, "TEXT_DIFFS", out);
-			rc |= sccs_diffs(s, NULL, NULL,
-					DIFF_HEADER, DF_UNIFIED, NULL, out);
+			rc |= sccs_diffs(s, 0, 0, DIFF_HEADER, DF_UNIFIED, out);
 		} else if (S_ISLNK(s->mode)) {
 			rc |= parkfile_header(s, top, "SYMLINK", out);
 			fprintf(out, "%s\n", s->symlink);
@@ -326,7 +322,7 @@ err:		if (s) sccs_free(s);
 	sprintf(buf, "bk  sfio -qo < %s/%s > %s/%s",
 		PARK2ROOT, sfio_list, PARK2ROOT, parkfile);
 	if (system(buf)) {
-		fprintf(stderr, "failed to create %s, i/o error ?\n", parkfile);
+		fprintf(stderr, "failed to create %s, i/o error?\n", parkfile);
 		goto err;
 	}
 
@@ -397,16 +393,25 @@ printComments(char *parkfile)
 {
 	FILE	*f;
 	char	buf[MAXLINE];
-	char	*commentHdr;
+	char	*commentHdr, *p;
 	int	compat_mode = 0;
 
 	f = fopen(parkfile, "rb");
 	assert(f);
 	fnext(buf, f);
+	chomp(buf);
 
-	switch (check_compat(buf)) {
+	/*
+	 * Parkfile is a sfio file, so we need to account for sfio header.
+	 * Look first char in parkfile header;
+	 * It should look like:
+	 * <sfio header># BITKEEPER PARKFILE VERSION: 2.1
+	 */
+	p = strrchr(buf, '#');
+
+	switch (check_compat(p)) {
 	    case -1:
-		fprintf(stderr, "Bad park file , version mismatch ?\n");
+		fprintf(stderr, "Bad park file, version mismatch?\n");
 		return;
 	    case 1: compat_mode = 1;
 		break;
@@ -491,7 +496,7 @@ copyFileOrLink(char *from, char *to)
 		} else if (isSymlnk(from)) {
 			symlnkCopy(from, to);
 		} else {
-			fprintf(stderr, "%s: unsopported from type\n", from);
+			fprintf(stderr, "%s: unsupported from type\n", from);
 			rc = -1;
 		}
 	}
@@ -651,7 +656,7 @@ copyGSPfile(char *oldpath, char *key,
 	} else {
 		newGpath = key2Gpath(key, idDB);
 		if (!newGpath) {
-			fprintf(stderr, "can not find path for key %s\n", key);
+			fprintf(stderr, "cannot find path for key %s\n", key);
 			return (-1);
 		}
 	}
@@ -1147,7 +1152,7 @@ err:		if (sfio_list[0]) unlink(sfio_list);
 
 	switch (check_compat(path)) {
 	    case -1:
-		fprintf(stderr, "Bad park file , version mismatch ?\n");
+		fprintf(stderr, "Bad park file, version mismatch?\n");
 		fclose(f);
 		goto err;
 	    case 1: compat_mode = 1;
@@ -1215,7 +1220,7 @@ err:		if (sfio_list[0]) unlink(sfio_list);
 							force, &idDB, f3);
 		} else {
 			error |= 1;
-			fprintf(stderr, "Unknow file type: %s\n", buf2);
+			fprintf(stderr, "Unknown file type: %s\n", buf2);
 		}
 		mclose(m);
 	}

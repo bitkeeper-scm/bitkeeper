@@ -1,6 +1,8 @@
 /* Copyright (c) 1997 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
+#include "logging.h"
+
 WHATSTR("@(#)%K%");
 
 private int
@@ -80,24 +82,35 @@ delta_trigger(sccs *s)
 private int
 strip_danglers(char *name, u32 flags)
 {
-	char	*p;
-	char	*q = (flags&SILENT) ? "-q" : "";
-	int	ret;
+	char	*p, **revs = 0;
+	int	i;
+	sccs	*s;
+	delta	*d;
+	FILE	*f;
 
-	p = aprintf("bk renumber %s %s", q, name);
-	if (ret = system(p)) {
-err:		fprintf(stderr, "%s failed\n", p);
+	s = sccs_init(name, INIT_WACKGRAPH);
+	assert(s);
+	for (d = s->table; d; d = d->next) {
+		if (d->dangling) revs = addLine(revs, strdup(d->rev));
+	}
+	sccs_free(s);
+	p = aprintf("bk stripdel -%sdC -", (flags&SILENT) ? "q" : "");
+	f = popen(p, "w");
+	EACH(revs) {
+		fprintf(f, "%s|%s\n", name, revs[i]);
+	}
+	freeLines(revs, free);
+	if (i = pclose(f)) {
+		fprintf(stderr, "%s failed\n", p);
 		free(p);
-		return (ret);
+		return (i);	// XXX - need to get exit status
 	}
 	free(p);
-	p = aprintf("bk prs -hnd'$if(:DANGLING:){:GFILE:|:I:}' %s"
-	    " | bk stripdel %s -dC -", name, q);
-	if (ret = system(p)) goto err;
-	free(p);
-	p = aprintf("bk renumber %s %s", q, name);
-	if (ret = system(p)) goto err;
-	free(p);
+	s = sccs_init(name, INIT_WACKGRAPH);
+	assert(s);
+	sccs_renumber(s, (flags&SILENT)|INIT_WACKGRAPH);
+	sccs_admin(s, 0, NEWCKSUM|ADMIN_FORCE, 0, 0, 0, 0, 0, 0, 0, 0);
+	sccs_free(s);
 	return (0);
 }
 
@@ -116,6 +129,7 @@ delta_main(int ac, char **av)
 	char	*diffsFile = 0;
 	char	*name;
 	char	*compp = 0, *encp = 0, *ckopts = "";
+	char	*def_compp;
 	char	*mode = 0, buf[MAXPATH];
 	MMAP	*diffs = 0;
 	MMAP	*init = 0;
@@ -232,15 +246,8 @@ usage:			sprintf(buf, "bk help -s %s", name);
 		iflags |= INIT_FIXSTIME;
 	}
 
-	if (dflags & NEWFILE) {
-		if (bk_mode() != BK_PRO) {
-			compp = "gzip";
-		}
-		unless (ignorePreference || compp) { 
-			compp  = user_preference("compression");
-			unless (compp && *compp) compp = NULL;
-		}
-	}
+	def_compp  = user_preference("compression");
+	unless (def_compp && *def_compp) def_compp = NULL;
 
 	if ((encp || compp) && !(dflags & NEWFILE)) {
 		fprintf(stderr, "-Z is allowed with -i option only\n");
@@ -317,6 +324,12 @@ usage:			sprintf(buf, "bk help -s %s", name);
 				df |= NEWFILE;
 			}
 		}
+		if (dflags & NEWFILE) {
+			if (bk_mode(s->proj) != BK_PRO) {
+				compp = "gzip";
+			}
+			unless (ignorePreference || compp) compp = def_compp;
+		}
 
 		/*
 		 * Checkout option does not applies to ChangeSet file
@@ -341,11 +354,11 @@ usage:			sprintf(buf, "bk help -s %s", name);
 
 		nrev = NULL;
 		if (HAS_PFILE(s)) {
-			if (newrev(s, &pf) == -1) {
+			if (sccs_read_pfile("delta", s, &pf)) {
 				errors |= 2;
 				goto next;
 			}
-			if (co && (gf & GET_EDIT)) nrev = pf.newrev;
+			nrev = pf.newrev;
 		}
 
 		if (fire) {
@@ -378,16 +391,13 @@ usage:			sprintf(buf, "bk help -s %s", name);
 		}
 
 		if (dangling) {
-			delta	*d = sccs_getrev(s, nrev, 0, 0);
-			char	key[MAXKEY];
-
-			assert(d);
-			sccs_sdelta(s, d, key);
 			sccs_free(s);
 			strip_danglers(name, dflags);
 			s = sccs_init(name, iflags);
-			d = sccs_findKey(s, key);
+			assert(s);
+			d = s->table;
 			assert(d);
+			assert(d->type == 'D');
 			nrev = d->rev;
 		} else {
 			s = sccs_restart(s);
@@ -415,12 +425,14 @@ usage:			sprintf(buf, "bk help -s %s", name);
 		}
 
 		if (co == 1) {
+			// XXX - what if we are dangling?
+			// The pf.oldrev is definitely wrong.
 			if (rc == -3) nrev = pf.oldrev;
 			if (sccs_get(s, nrev, 0, 0, 0, gf, "-")) {
 				unless (BEEN_WARNED(s)) {
 					fprintf(stderr,
-					"get of %s failed, skipping it.\n",
-					name);
+					    "get of %s failed, skipping it.\n",
+					    name);
 				}
 			}
 		}

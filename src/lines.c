@@ -49,7 +49,7 @@ usage:			fprintf(stderr,
 	name = sfileFirst("lines", &av[optind], 0);
 	if (sfileNext() || !name) goto usage;
 
-	if (name && (s = sccs_init(name, INIT_NOCKSUM))) {
+	if (name && (s = sccs_init(name, INIT_NOCKSUM)) && HASGRAPH(s)) {
 		ser = 0;
 		renumber(s->table);
 		if (n) {
@@ -63,7 +63,7 @@ usage:			fprintf(stderr,
 			e->merge = 0;
 			prevs(e);
 		} else if (rev) {
-			e = sccs_getrev(s, rev, 0, 0);
+			e = sccs_findrev(s, rev);
 			unless (e) {
 				fprintf(stderr, "bad rev %s\n", rev);
 				rc = 1;

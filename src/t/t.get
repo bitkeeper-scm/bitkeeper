@@ -153,27 +153,31 @@ if [ -f "date" ]; then echo failed, did not remove file; exit 1; fi
 if writable date; then echo failed, added writable file; exit 1; fi
 bk unlock -p date
 echo OK
-echo $N Make sure get -n works ......................................$NL
+echo $N Make sure get -an works .....................................$NL
 echo HI > T
 bk ci $Q -i T
-if [ "`bk get $S -pn T`" != "T	HI" ]; then echo Failed.; exit 1; fi
+if [ "`bk get $S -pan T`" != "T	HI" ]; then echo Failed.; exit 1; fi
 echo OK
-echo $N Make sure get -m works ......................................$NL
-if [ "`bk get $S -pm T`" != "1.1	HI" ]; then echo Failed.; exit 1; fi
+echo $N Make sure get -am works .....................................$NL
+if [ "`bk get $S -pam T`" != "1.1	HI" ]; then echo Failed.; exit 1; fi
 echo OK
-echo $N Make sure get -u works ......................................$NL
-if [ "`bk get $S -pu T`" != "bk	HI" ]; then echo Failed.; exit 1; fi
+echo $N Make sure get -aO works .....................................$NL
+name=`bk prs -r+ -hnd:MD5KEY: T`
+if [ "`bk get $S -paO T`" != "$name.1	HI" ]; then echo Failed.; exit 1; fi
 echo OK
-echo $N Make sure get -na works .....................................$NL
+echo $N Make sure get -au works .....................................$NL
+if [ "`bk get $S -pau T`" != "bk	HI" ]; then echo Failed.; exit 1; fi
+echo OK
+echo $N Make sure get -An works .....................................$NL
 echo HI > T
 chmod -w T
-if [ "`bk get $S -pan T`" != "T     | HI" ]; then echo Failed.; exit 1; fi
+if [ "`bk get $S -pAn T`" != "T     | HI" ]; then echo Failed.; exit 1; fi
 echo OK
-echo $N Make sure get -m works ......................................$NL
-if [ "`bk get $S -pam T`" != "1.1   | HI" ]; then echo Failed.; exit 1; fi
+echo $N Make sure get -Am works .....................................$NL
+if [ "`bk get $S -pAm T`" != "1.1   | HI" ]; then echo Failed.; exit 1; fi
 echo OK
-echo $N Make sure get -u works ......................................$NL
-if [ "`bk get $S -pau T`" != "bk    | HI" ]; then echo Failed.; exit 1; fi
+echo $N Make sure get -Au works .....................................$NL
+if [ "`bk get $S -pAu T`" != "bk    | HI" ]; then echo Failed.; exit 1; fi
 echo OK
 
 echo $N Make sure get does not get ChangeSet ........................$NL
@@ -331,7 +335,13 @@ echo OK
 
 echo $N Test sccs get with foo.c -Gbar.c ............................$NL
 mkdir bin
-cp `bk bin`/bk bin/sccs
+BK=`bk bin`/bk
+SCCS=bin/sccs
+test -f ${BK}.exe && {
+	BK=${BK}.exe
+	SCCS=bin/sccs.exe
+}
+cp $BK $SCCS
 rm -rf subdir T
 ./bin/sccs clean
 ./bin/sccs get $Q foo.c -Gbar.c || {

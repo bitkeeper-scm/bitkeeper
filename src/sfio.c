@@ -412,7 +412,7 @@ mkfile(char *file)
 	int	first = 1;
 
 	if (reserved(basenm(file))) {
-bad_name:	getMsg("reserved", file, 0, '=', stderr);
+bad_name:	getMsg("reserved_name", file, '=', stderr);
 		errno = EINVAL;
 		return (-1);
 	}
@@ -423,14 +423,7 @@ bad_name:	getMsg("reserved", file, 0, '=', stderr);
 	 * from Unix to Windows
 	 */
 	if (file[strlen(file) -1 ] == '.') {
-		fprintf(stderr,
-"\n"
-"==========================================================================\n"
-"%s:\n"
-"warning: trailing dot in file name will be stripped by the\n"
-"Windows file system.\n"
-"==========================================================================\n",
-file);
+		getMsg("win_trailing_dot", file, '=', stderr);
 	}
 #endif
 
@@ -439,16 +432,7 @@ file);
 
 		getRealName(file, NULL, realname);
 		unless (streq(file, realname)) {
-			fprintf(stderr,
-"\n"
-"==========================================================================\n"
-"Sfio has detected a name conflict between \"%s\" and \"%s\";\n"
-"This usually happens when you transfer file from a case-sensitive file\n"
-"system (e.g. Unix) to a case insensitive file system (e.g FAT, NTFS)\n"
-"Please rename one of the files and retry (see also \"bk helptool mv\")\n"
-"Note: You must do the rename in the sending repository.\n"
-"==========================================================================\n",
-			file, realname);
+			getMsg2("case_conflict", file, realname, '=', stderr);
 			errno = EINVAL;
 		} else { 
 			errno = EEXIST;

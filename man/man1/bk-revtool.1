@@ -7,13 +7,24 @@
 bk revtool \- \*(BK graphical history browser
 .SH SYNOPSIS
 .Bc bk revtool [
-.OPTreq -G rev_gca
+.OPTreq -G gca
 \ 
-.OPTreq -l rev_local
+.OPTreq -l local
 \ 
-.OPTreq -r rev_remote
+.OPTreq -r remote
 .B ] [
-.ARGc filename
+.ARGc file
+.B ]
+.br
+.Bc bk revtool [
+.OPTreq -r rev
+.Bc ] [
+.OPTreq \-/ string /
+.Bc ] [
+.OPTreq \-@ number
+.B ] 
+.Bc [
+.ARGc file
 .B ]
 .SH DESCRIPTION
 .LP
@@ -32,7 +43,17 @@ differences between versions.
 .SH "HISTORY AND DIFFERENCES"
 .LP
 Upon startup, the bottom window displays the last month's revision
-history for the file or project.
+history for the file or project. If a line number (-@<number>) 
+or search string (-/<string>/)
+is specified on the command line along with a file name an annotated 
+listing of the filename will be displayed instead.
+.LP
+If a search string is given, the first occurence of the search string
+on or after the given line number will be highlighted and the text
+will be scrolled so that it is in view; if no line number is given the
+search begins with the first line. If a line number is given without a
+search string, that line will be highlighted and centered on the
+screen.
 .LP
 To view the comments for just one revision, left click once on that
 revision in the graph.

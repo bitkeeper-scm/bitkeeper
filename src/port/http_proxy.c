@@ -153,13 +153,7 @@ addProxy(char *type, char *line, char **proxies)
 	unless (line) return proxies;
 	q = strchr(line, ':');
 	unless (q) {
-		fprintf(stderr,
-"===========================================================================\n"
-"Unknown proxy entry: \"%s\"\n"
-"If you believe this entry is legal, please file a bug report and\n"
-"ask Bitmover to add support for it.\n"
-"===========================================================================\n",
-		 line);
+		getMsg("unknown_proxy", line, 0, '=', stderr);
 		return (proxies);
 	}
 	*q = 0;

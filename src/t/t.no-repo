@@ -1,0 +1,262 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2003 BitMover, Inc.
+
+# This should have everything in bk.c and bk.sh
+# Except stuff like editor/vi/etc that needs a tty
+cat > INTERFACES <<EOF
+_adler32
+_applyall
+_cleanpath
+_converge
+_exists
+_find
+_findcset
+_fix_lod1
+_g2sccs
+_get
+_gzip
+_key2path
+_keysort
+_keyunlink
+_lconfig
+_lines
+_link
+_listkey
+_log
+_logflags
+_logging
+_loggingaccepted
+_loggingask
+_loggingto
+_mail
+_preference
+_probekey
+_prunekey
+_rclone
+_reviewmerge
+_scompress
+_socket2pipe
+_sort
+_sortmerge
+_strings
+_unlink
+abort
+add
+admin
+after
+annotate
+base64
+bkd
+c2r
+cat
+changes
+check
+checksum
+chmod
+ci
+clean
+clone
+clonemod
+co
+comment
+comments
+commit
+compression
+config
+copying
+cp
+create
+crypto
+cset
+csetprune
+csets
+deledit
+delget
+delta
+diffs
+diffsplit
+dotbk
+edit
+encoding
+enter
+export
+extra
+extras
+f2csets
+fdiff
+findkey
+fix
+fixtool
+flags
+gca
+get
+gethelp
+gethost
+getmsg
+getuser
+gfiles
+gnupatch
+gone
+graft
+grep
+help
+helpsearch
+helptopics
+hostme
+id
+idcache
+identity
+ignore
+info
+inode
+isascii
+key2rev
+keycache
+keysync
+lclone
+leaseflush
+level
+license
+links
+lock
+lod
+log
+mailsplit
+makepatch
+man
+mdiff
+merge
+meta_union
+mklock
+mode
+mtime
+multiuser
+mv
+mvdir
+mydiff
+names
+new
+newroot
+obscure
+opark
+ounpark
+parent
+park
+pending
+prompt
+prs
+pull
+push
+pwd
+r2c
+range
+rcheck
+rcs2sccs
+rcsparse
+receive
+rechksum
+reedit
+relink
+renames
+renumber
+repair
+repo
+repo_license
+repogca
+resolve
+restore
+rev2cset
+rm
+rmdel
+rmdir
+rmgone
+root
+rset
+sane
+sccs2bk
+sccscat
+sccsdiff
+sccslog
+sccsmv
+sccsrm
+sdiffs
+send
+set
+setup
+sfiles
+sfind
+sfio
+shrink
+sinfo
+smerge
+status
+stripdel
+superset
+synckeys
+tag
+tagmerge
+tags
+takepatch
+timestamp
+treediff
+unbk
+undo
+undos
+unedit
+unget
+unlock
+unpark
+unpull
+unrm 
+unwrap
+user
+users
+uudecode
+uuencode
+val
+version
+what
+xflags
+zone
+EOF
+
+dotest()
+{
+	line="Simple interface test: $@ "
+	len=`echo "$line" | wc -c`
+	len=`expr 62 - $len`
+	fill=`printf "%${len}s\n" "" | sed -e 's/ /./g' 2> /dev/null`
+	echo $N "$line$fill" $NL
+	bk "$@" > OUT 2>&1 < /dev/null
+	bk "$@" -r+ > OUT 2>&1 < /dev/null
+	bk "$@" XYZ > OUT 2>&1 < /dev/null
+	bk "$@" "" > OUT 2>&1 < /dev/null
+	echo XYZ  | bk "$@" - > OUT 2>&1 < /dev/null
+	find . -type f -name 'core*' > XXX
+	test -s XXX && {
+		cat OUT
+		return 1
+	}
+	echo OK
+	return 0
+}
+
+BK_EDITOR=cat
+EDITOR=$BK_EDITOR
+export BK_EDITOR EDITOR
+while read i
+do
+	dotest $i || break
+done < INTERFACES
+test -s XXX && exit 1
+exit 0

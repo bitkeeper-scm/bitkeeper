@@ -42,7 +42,6 @@ admin_main(int ac, char **av)
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
-		//fprintf(stderr, "%s", help);
 		system("bk help admin");
 		return (1);
 	}
@@ -155,10 +154,6 @@ admin_main(int ac, char **av)
 		    "admin: comment may only be specified with -i and/or -n\n");
 		goto usage;
 	}
-	if (compp && streq(compp, "none") && (bk_mode() != BK_PRO)) {
-		/* fail silently */
-		return (0);
-	}
 	/* All of these need to be here: m/nextf are for resolve,
 	 * newfile is for !BK mode.
 	 */
@@ -229,7 +224,7 @@ admin_main(int ac, char **av)
 			continue;
 		}
 		if (dopath) {
-			delta	*top = findrev(sc, 0);
+			delta	*top = sccs_top(sc);
 			sccs_parseArg(top, 'P', path ? path : sc->gfile, 0); 
 		}
 		if (newCset) {
@@ -247,7 +242,7 @@ admin_main(int ac, char **av)
 		if (new_delta) {
 			if (IS_EDITED(sc)) {
 				was_edited = 1;
-				newrev(sc, &pf);
+				sccs_read_pfile("admin", sc, &pf);
 				if (unlink(sc->pfile)) {
 					fprintf(stderr,
 					"admin: cannot unlink %s\n", sc->pfile);
@@ -257,7 +252,7 @@ admin_main(int ac, char **av)
 				was_edited = 0;
 			}
 		}
-		if (rev) d = findrev(sc, rev);
+		if (rev) d = sccs_findrev(sc, rev);
 		if (sccs_admin(
 			    sc, d, flags, encp, compp, f, 0, u, s, m, text)) {
 			sccs_whynot("admin", sc);
@@ -273,7 +268,8 @@ admin_main(int ac, char **av)
 
 			sccs_free(sc);
 			sc = sccs_init(name, init_flags);
-			nrev = findrev(sc, pf.newrev) ? pf.newrev: pf.oldrev;
+			nrev =
+			    sccs_findrev(sc, pf.newrev) ? pf.newrev: pf.oldrev;
 			if (sccs_get(sc, nrev, 0, 0, 0, gflags, "-")) {
 				fprintf(stderr, "cannot adjust p file\n");	
 			}
@@ -408,12 +404,12 @@ setMerge(sccs *sc, char *merge, char *rev)
 {
 	delta *d, *p;
 
-	unless (d = findrev(sc, rev)) {
+	unless (d = sccs_findrev(sc, rev)) {
 		fprintf(stderr, "admin: can't find %s in %s\n",
 		    rev, sc->sfile);
 		return -1;
 	}
-	unless (p = findrev(sc, merge)) {
+	unless (p = sccs_findrev(sc, merge)) {
 		fprintf(stderr, "admin: can't find %s in %s\n",
 		    merge, sc->sfile);
 		return -1;

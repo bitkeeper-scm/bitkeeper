@@ -30,7 +30,6 @@ preference_main(int ac, char **av)
 	return (0);
 }
 
-
 char *
 user_preference(char *what)
 {
@@ -38,7 +37,12 @@ user_preference(char *what)
 	MDBM	*db;
 
 	unless (db = proj_config(0)) return ("");
-	unless (p = mdbm_fetch_str(db, what)) p = "";
+	unless (p = mdbm_fetch_str(db, what)) {
+		if (streq(what, "clock_skew")) {
+			if (p = mdbm_fetch_str(db, "trust_window")) return (p);
+		}
+		p = "";
+	}
 	return (p);
 }
 

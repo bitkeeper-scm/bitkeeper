@@ -253,7 +253,7 @@ bk mv bar b
 bk mv b foo
 bk mv foo fee
 bk commit $Q -yy
-files=`bk changes -r+ -v -d:DPN:`
+files=`bk changes -T -r+ -v -d:DPN:`
 if [ "$files" != "ChangeSetfeefoobbarfoofoo" ]
 then	echo failed; exit 1;
 else	echo OK
@@ -290,6 +290,16 @@ test X$revs != X1.5 && {
 	echo failed
 	exit 1
 }
+echo OK
+
+echo $N "Make sure no auto indent for -d<dspec>"  ......................$NL
+bk changes -r+ -v -d':DPN:\n' > changes.out
+bk undos <<EOF > ref
+ChangeSet
+LS
+LS
+EOF
+cmp -s ref changes.out || { echo failed; exit 1; }
 echo OK
 
 echo $N Verify changes -L works with tags ...........................$NL

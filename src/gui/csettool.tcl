@@ -63,7 +63,6 @@ proc dotFile {{line {}}} \
 	global	RealFiles file finfo
 	global gc
 
-	busy 1
 	set finfo(lt) ""
 	set finfo(rt) ""
 	if {$line != ""} { set lastFile $line }
@@ -83,6 +82,13 @@ proc dotFile {{line {}}} \
 	.l.filelist.t tag remove select 1.0 end
 	.l.filelist.t tag add select $line "$line lineend + 1 char"
 	set file $RealFiles($lastFile)
+
+	clearInfo "Working..."
+
+	# busy is put after we change the selection. This is because busy
+	# causes a screen update and we want the selection set quickly to make
+	# the user think we're responsive.
+	busy 1
 	if {[regexp "^  $file_start_stop" "$file" dummy file start stop] == 0} {
 		regexp "^  $file_stop" "$file" dummy f stop
 		set start $stop
@@ -115,11 +121,6 @@ proc dotFile {{line {}}} \
 	} else {
 		set annotate ""
 	}
-	catch { exec bk get -qkpr$parent $annotate "$file" > $l}
-	catch { exec bk get -qkpr$stop $annotate "$file" > $r}
-	displayInfo $file $file $parent $stop 
-	readFiles $l $r
-	catch {file delete $l $r}
 
 	set buf ""
 	set line [lindex [split $line "."] 0]
@@ -166,6 +167,19 @@ proc dotFile {{line {}}} \
 	.l.sccslog.t configure -state disabled
 	.l.sccslog.t see end
 	.l.sccslog.t xview moveto 0
+	update idletasks
+
+	if {$annotate == ""} {
+		catch { exec bk get -qkpr$parent "$file" > $l}
+		catch { exec bk get -qkpr$stop "$file" > $r}
+	} else {
+		catch { exec bk get -qkpr$parent $annotate "$file" > $l}
+		catch { exec bk get -qkpr$stop $annotate "$file" > $r}
+	}
+	displayInfo $file $file $parent $stop 
+	readFiles $l $r
+	catch {file delete $l $r}
+
 	busy 0
 }
 
@@ -195,44 +209,62 @@ proc getFiles {revs {file_rev {}}} \
 	set found ""
 	set match ""
 	if {$revs == "-"} {
-		set r "stdin"
+		set r [open "| bk changes -faevnd:GFILE:|\$if(:DT:!=D)\{TAGS:\$each(:TAG:)\{(:TAG:),\}\}\$if(:DT:=D)\{:DPN:\}|:I: -" r]
 	} else {
-		set r [open "| bk prs -bhr$revs {-d:I:\n} ChangeSet" r]
+		set r [open "| bk changes -fvnd:GFILE:|:DPN:|:REV: -r$revs" r]
 	}
-	while {[gets $r cset] > 0} {
-		.diffs.status.middle configure -text "Getting cset $cset"
-		update
-		incr line
-		.l.filelist.t insert end "ChangeSet $cset\n" cset
-		set c [open "| bk cset -Hhr$cset | bk _sort" r]
-		while { [gets $c buf] >= 0 } {
-			regexp  $file_old_new $buf dummy name oname rev
-			if {[string match "1.0" $rev]} continue
-
-			incr fileCount
-			incr line
-			set line2File($line) $fileCount
-			set Files($fileCount) $line
-
-			set RealFiles($fileCount) "  $name@$rev"
-			set buf "$oname@$rev"
-			if {[string first $file_rev $buf] >= 0} {
-				set found $fileCount
+	set csets 0
+	set tags 0
+	set t [clock clicks -milliseconds]
+	while {[gets $r buf] > 0} {
+		regexp  $file_old_new $buf dummy name oname rev
+		if {[string match "1.0" $rev]} continue
+		if {$name == "ChangeSet"} {
+			if {[string match TAGS:* $oname]} {
+				incr tags
+				continue
+		    	}
+			.diffs.status.middle \
+			    configure -text "Getting cset $csets"
+			set now [clock clicks -milliseconds]
+			if {$now - $t > 200} {
+				update
+				set t $now
 			}
-			.l.filelist.t insert end "  $buf\n"
-			$fmenu(widget) add command -label "$buf" \
-			    -command  "dotFile $fileCount"
+			.l.filelist.t insert end "ChangeSet $rev\n" cset
+			incr csets
+			incr line
+			continue
 		}
-		catch { close $c }
+		incr line
+		incr fileCount
+		set line2File($line) $fileCount
+		set Files($fileCount) $line
+
+		set RealFiles($fileCount) "  $name@$rev"
+		set buf "$oname@$rev"
+		if {[string first $file_rev $buf] >= 0} {
+			set found $fileCount
+		}
+		.l.filelist.t insert end "  $buf\n"
+		$fmenu(widget) add command -label "$buf" \
+		    -command  "dotFile $fileCount"
 	}
 	catch { close $r }
+	if {($tags > 0) && ($csets == 0)} {
+		global	env
+
+		set x [expr [winfo rootx .diffs.status.middle] - 50]
+		set y [expr [winfo rooty .diffs.status.middle] + 10]
+		set env(BK_MSG_GEOM) "+$x+$y"
+		exec bk prompt -i -o -G "No changesets found, only tags"
+	}
 	if {$fileCount == 0} {
-		#displayMessage \ 
-		#"ChangeSet doesn't contain files since it is a merge ChangeSet."
 		exit
 	}
 	.l.filelist.t configure -state disabled
 	set lastFile 1
+	wm title . "Cset Tool - viewing $csets changesets"
 	if {$found != ""} {
 		dotFile $found
 	} else {
@@ -242,6 +274,25 @@ proc getFiles {revs {file_rev {}}} \
 }
 
 # --------------- Window stuff ------------------
+
+# the purpose is to clear out all the widgets; typically right before
+# filling them back up again.
+proc clearInfo {{message ""}} \
+{
+	.diffs.status.middle configure -text $message
+	.diffs.status.l configure -text ""
+	.diffs.status.r configure -text ""
+	.diffs.left configure -state normal
+	.diffs.right configure -state normal
+	.l.sccslog.t configure -state normal
+	.diffs.left delete 1.0 end
+	.diffs.right delete 1.0 end
+	.l.sccslog.t delete 1.0 end
+	.diffs.left configure -state disabled
+	.diffs.right configure -state disabled
+	.l.sccslog.t configure -state disabled
+}
+
 proc busy {busy} \
 {
 	set oldCursor [. cget -cursor]
@@ -266,7 +317,7 @@ proc busy {busy} \
 	}
 }
 
-proc pixSelect {x y {bindtype {}}} \
+proc pixSelect {x y} \
 {
 	global	lastFile line2File file
 
@@ -274,13 +325,11 @@ proc pixSelect {x y {bindtype {}}} \
 	set x [.l.filelist.t get "$line linestart" "$line linestart +2 chars"]
 	if {$x != "  "} { return }
 	set line [lindex [split $line "."] 0]
+	# if we aren't changing which line we're on there's no point in
+	# calling dotFile since it is a time consuming process
+	if {$line2File($line) == $lastFile} {return}
 	set lastFile $line2File($line)
-	if {$bindtype == "B1"} {	
-		dotFile
-	} else {
-		#puts stderr "D1 lastFile=($lastFile) file=($file)"
-		file_history
-	}
+	dotFile
 }
 
 proc adjustHeight {diff list} \
@@ -293,6 +342,27 @@ proc adjustHeight {diff list} \
 	incr gc(cset.diffHeight) $diff
 	.diffs.left configure -height $gc(cset.diffHeight)
 	.diffs.right configure -height $gc(cset.diffHeight)
+}
+
+proc fontSize {dir} \
+{
+	global	gc app
+
+	foreach t {.l.filelist.t .l.sccslog.t \
+	    .diffs.right .diffs.left .diffs.status.l .diffs.status.l_lnum \
+	    .diffs.status.r .diffs.status.r_lnum .diffs.status.middle} {
+		set junk [split [$t cget -font]]
+		set font [lindex $junk 0]
+		set size [lindex $junk 1]
+		incr size $dir
+		$t configure -font [list $font $size]
+	}
+	set junk [split $gc($app.fixedBoldFont)]
+	set font [lindex $junk 0]
+	set size [lindex $junk 1]
+	incr size $dir
+	set gc($app.fixedBoldFont) [list $font $size bold]
+	dot
 }
 
 proc widgets {} \
@@ -440,8 +510,23 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		-font $gc(cset.buttonFont) -text "Current diff" \
 		-command dot
 
+	    menubutton .menu.shortcuts \
+	        -bg $gc(cset.buttonColor) \
+    		-highlightthickness 1 \
+    		-padx $gc(px) \
+		-pady $gc(py) \
+    		-borderwidth 1 \
+		-relief raised \
+    		-indicatoron 1 \
+		-font $gc(cset.buttonFont) \
+		-text " Shortcuts" \
+    		-menu .menu.shortcuts.menu
+	    menu .menu.shortcuts.menu \
+	        -title "Csettool shortcuts menu" \
+    		-borderwidth 1
 	    pack .menu.quit -side left -fill y
 	    pack .menu.help -side left -fill y
+	    pack .menu.shortcuts -side left -fill y
 	    pack .menu.mb -side left -fill y
 	    pack .menu.prevFile -side left -fill y
 	    pack .menu.fmb -side left -fill y
@@ -485,15 +570,71 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	foreach w {.diffs.left .diffs.right} {
 		bindtags $w {all Text .}
 	}
+
+	# populate shortcut menu; this needs to be done after
+	# the bindings are created, as we use the bindings 
+	# themselves to define the menu items
+	populateShortcutMenu .menu.shortcuts.menu cset {
+		all <Control-p> 	{Control-p}
+			{Go to previous file}
+		all <Control-n>	{Control-n}
+			{Go to next file}
+		-- --  -- --
+		all <p>		{p}
+			{Go to previous diff}
+		all <space>		{n or space}
+			{Go to next diff}
+		all <period> 		{.}
+			{Center current diff on screen}
+		-- --  -- --
+		all <Home>		{Home}
+		        {Scroll to top}
+		all <End>		{End}
+			{Scroll to the bottom}
+		all <Prior>		{PageUp or Control-b}
+			{Scroll up 1 screen}
+		all <Next>		{PageDown or Control-f}
+			{Scroll down 1 screen}
+		all <Up>		{Up Arrow or Control-y}
+			{Scroll up 1 line}
+		all <Down>		{Down Arrow or Control-e}
+			{Scroll down 1 line}
+		all <Right>		{Right Arrow}
+			{Scroll to the right}
+		all <Left>		{Left Arrow}
+			{Scroll to the left}
+		-- --  -- --
+		all <Alt-Up>		{Alt-Up Arrow}
+			{Make diffs window one line bigger}
+		all <Alt-Down>	{Alt-Down Arrow}
+			{Make diffs window one line smaller}
+		-- --  -- --
+		.	<question> ? 
+			{Reverse search}
+		. 	<slash> / 
+			{Forward search}
+		all 	<p> p 
+			{Search for previous occurance}
+		all 	<n> n 
+			{Search for next occurance}
+		-- --  -- --
+		all  _quit_ {} {Quit}
+	}
+
+	# Whenever notification is sent that the current diff has
+	# changed, the shortcut menu needs to be updated. 
+	bind . <<DiffChanged>> {
+		updateShortcutMenu
+	}
+
 	computeHeight "diffs"
 
 	.l.filelist.t tag configure select -background $gc(cset.selectColor) \
 	    -relief groove -borderwid 1
 	.l.filelist.t tag configure cset \
 	    -background $gc(cset.listBG) -foreground $gc(cset.textFG)
-	.l.sccslog.t tag configure cset \
-	    -background $gc(cset.listBG) -foreground $gc(cset.textFG)
-	.l.sccslog.t tag configure file_tag -underline true
+	.l.sccslog.t tag configure cset -background $gc(cset.selectColor) 
+	.l.sccslog.t tag configure file_tag -background $gc(cset.selectColor) 
 	. configure -cursor left_ptr
 	.l.sccslog.t configure -cursor left_ptr
 	.l.filelist.t configure -cursor left_ptr
@@ -504,10 +645,32 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	focus .l.filelist
 }
 
+proc updateShortcutMenu {} \
+{
+	global lastDiff diffCount lastFile fileCount
+
+	if {$lastFile == 1} {
+		.menu.shortcuts.menu entryconfigure "Go to previous file" \
+		    -state disabled
+	} else {
+		.menu.shortcuts.menu entryconfigure "Go to previous file" \
+		    -state normal
+	}
+
+	if {$lastFile == $fileCount} {
+		.menu.shortcuts.menu entryconfigure "Go to next file" \
+		    -state disabled
+	} else {
+		.menu.shortcuts.menu entryconfigure "Go to next file" \
+		    -state normal
+	}
+}
+
 # Set up keyboard accelerators.
 proc keyboard_bindings {} \
 {
 	global gc search tcl_platform
+	global afterId
 
 	bind all <Control-b> { if {[Page "yview" -1 0] == 1} { break } }
 	bind all <Control-f> { if {[Page "yview"  1 0] == 1} { break } }
@@ -541,9 +704,13 @@ proc keyboard_bindings {} \
 	bind all <space>		next
 	bind all <n>			next
 	bind all <p>			prev
+	bind all <r>			file_history
 	bind all <period>		dot
 	bind all <Control-n>		nextFile
 	bind all <Control-p>		prevFile
+	bind all <Control-plus>		{ fontSize 1 }
+	bind all <Control-equal>	{ fontSize 1 }
+	bind all <Control-minus>	{ fontSize -1 }
 
 	if {$tcl_platform(platform) == "windows"} {
 		bind all <MouseWheel> {
@@ -553,8 +720,25 @@ proc keyboard_bindings {} \
 		bind all <Button-4>	prev
 		bind all <Button-5>	next
 	}
-	bind .l.filelist.t <Button-1> { pixSelect %x %y "B1"; break}
-	bind .l.filelist.t <Double-1> { pixSelect %x %y "D1"; break }
+	# note that the "after" is required for windows. Without
+	# it we often never see the double-1 events. 
+	bind .l.filelist.t <1> { 
+		set afterId \
+		    [after idle [list after $gc(cset.doubleclick) \
+				     pixSelect %x %y]]
+		break
+	}
+	# the idea is, if we detect a double click we'll cancel the 
+	# single click, then make sure we perform the single and double-
+	# click actions in order
+	bind .l.filelist.t <Double-1> {
+		if {[info exists afterId]} {
+			after cancel $afterId
+		}
+		pixSelect %x %y
+		file_history
+		break
+	}
 	# In the search window, don't listen to "all" tags.
 	bindtags $search(text) { .menu.search Entry . }
 }

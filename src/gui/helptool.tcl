@@ -169,7 +169,7 @@ proc bkhelp {topic} \
 	set lineno 1
 	while {[gets $f help] >= 0} {
 		.text.help insert end "$help\n"
-		if {[regexp {^[A-Z][ \t\nA-Z.?\-\|]+$} $help]} {
+		if {[regexp {^[A-Z][ \t\nA-Z.!?|()-]+$} $help]} {
 			set i "$lineno.0"
 			.text.help tag add "bold" $i "$i lineend"
 		}

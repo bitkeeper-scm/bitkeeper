@@ -22,11 +22,11 @@ __platformInit()
 	# WIN32 specific stuff
 	TMP=`__nativepath /tmp`/
 	DEV_NULL=nul
-	wish=${_TCL_BIN}/wish83.exe
+	WINDOWS=YES
 	AWK=awk
 	ext=".exe"
 	tcl=".tcl"
 	test "X$EDITOR" = X && EDITOR=notepad.exe
 	test "X$PAGER" = X && PAGER=more
-	export PAGER EDITOR TMP DEV_NULL AWK wish
+	export PAGER EDITOR TMP DEV_NULL AWK WINDOWS
 }

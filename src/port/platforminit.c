@@ -83,7 +83,7 @@ insertTclCygwinPath(char *bkpath, char *pathList)
 		if (streq(t, tcl_cygwin)) {
 			return(0); /* already got it */
 		}
-		safe_putenv("PATH=%s;%s;%s;%s",
+		safe_putenv("PATH=%s;%s;%s",
 					pathList, tcl_cygwin, t);
 		free(tcl_cygwin);
 		return (0);

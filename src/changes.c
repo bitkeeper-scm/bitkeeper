@@ -2,25 +2,28 @@
 #include "range.h"
 
 private struct {
-	search	search;		/* -/pattern/[i] matches comments w/ pattern */
-	u32	doSearch:1;	/* search the comments list */
-	u32	forwards:1;	/* like prs -f */
-	char	*date;		/* list this range of dates */
-	char	*dspec;		/* override dspec */
 	u32	all:1;		/* list all, including tags etc */
-	u32	noempty:1;	/* do not list empty merge deltas */
+	u32	doSearch:1;	/* search the comments list */
+	u32	dups:1;		/* do not filter duplicates when multi-parent */
+	u32	forwards:1;	/* like prs -f */
 	u32	html:1;		/* do html style output */
 	u32	keys:1;		/* just list the keys */
 	u32	local:1;	/* want the new local csets */
-	u32	nomerge:1;	/* do not list _any_ merge deltas */
 	u32	newline:1;	/* add a newline after each record, like prs */
-	char	*rev;		/* list this rev or range of revs */
-	u32	remote:1;	/* want the new remote csets */
-	u32	remote2:1;	/* bk changes url */
-	u32	tagOnly:1;	/* only show items which are tagged */
-	char	*user;		/* only from this user */
+	u32	noempty:1;	/* do not list empty merge deltas */
+	u32	nomerge:1;	/* do not list _any_ merge deltas */
 	u32	others:1;	/* -U<user> everyone except <user> */
+	u32	remote:1;	/* want the new remote csets */
+	u32	tagOnly:1;	/* only show items which are tagged */
+	u32	timesort:1;	/* force sorting based on time, not dspec */
+	u32	urls:1;		/* list each URL for local/remote */
 	u32	verbose:1;	/* list the file checkin comments */
+
+	search	search;		/* -/pattern/[i] matches comments w/ pattern */
+	char	*date;		/* list this range of dates */
+	char	*dspec;		/* override dspec */
+	char	*rev;		/* list this rev or range of revs */
+	char	*user;		/* only from this user */
 
 	/* not opts */
 	FILE	*f;		/* global for recursion */
@@ -35,8 +38,6 @@ typedef struct slog {
 	delta	*delta;
 	struct	slog *next;
 } slog;
-	
-	
 
 private int	doit(int dash);
 private int	want(sccs *s, delta *e);
@@ -50,15 +51,15 @@ private int	doit_remote(char **nav, char *url);
 private int	doit_local(int nac, char **nav, char *url);
 private void	cset(sccs *s, FILE *f, char *dspec);
 
-private	MDBM	*seen; /* key list */
+private	MDBM	*seen; /* list of keys seen already */
 
 int
 changes_main(int ac, char **av)
 {
-	int	c;
+	int	i, c;
 	int	rc = 0, nac = 0;
 	char	*nav[30];
-	char	*url = NULL, *freeme = NULL;
+	char	**urls = 0;
 	char	buf[MAXPATH];
 	pid_t	pid = 0; /* pager */
 
@@ -68,10 +69,10 @@ changes_main(int ac, char **av)
 	}
 
 	bzero(&opts, sizeof(opts));
-	opts.noempty = 1;
+	opts.urls = opts.noempty = 1;
 	nav[nac++] = "bk";
 	nav[nac++] = "changes";
-	while ((c = getopt(ac, av, "ac;d;efhkLmnRr|tu;U;v/;")) != -1) {
+	while ((c = getopt(ac, av, "ac;Dd;efhkLmnqRr|tTu;U;v/;")) != -1) {
 		unless (c == 'L' || c == 'R') {
 			if (optarg) {
 				nav[nac++] = aprintf("-%c%s", c, optarg);
@@ -87,13 +88,19 @@ changes_main(int ac, char **av)
 		    case 'a': opts.all = 1; opts.noempty = 0; break;
 		    case 'c': opts.date = optarg; break;
 		    case 'd': opts.dspec = optarg; break;
+		    case 'D': opts.dups = 1; break;
 		    case 'e': opts.noempty = !opts.noempty; break;
 		    case 'f': opts.forwards = 1; break;
 		    case 'h': opts.html = 1; break;
-		    case 'k': opts.keys = opts.all = 1; opts.noempty = 0; break;
+		    case 'k':
+			opts.keys = opts.all = 1;
+			opts.urls = opts.noempty = 0;
+			break;
 		    case 'm': opts.nomerge = 1; break;
 		    case 'n': opts.newline = 1; break;
+		    case 'q': opts.urls = 0; break;
 		    case 't': opts.tagOnly = 1; break;		/* doc 2.0 */
+		    case 'T': opts.timesort = 1; break;
 		    case 'U': opts.others = 1;
 		    	/* fall through to u */
 		    case 'u': opts.user = optarg; break;
@@ -114,43 +121,16 @@ usage:			system("bk help -s changes");
 	if ((opts.local || opts.remote) && opts.rev) goto usage;
 	if (opts.keys && (opts.verbose||opts.html||opts.dspec)) goto usage;
 
-	if (!opts.local && !opts.remote &&
-		av[optind] && !streq("-", av[optind])) {
-		opts.remote2 = 1;	/* bk changes url */
-	}
-
-	if (proj_cd2root()) {
-		if (!opts.remote2) {
-			fprintf(stderr, "Can't find package root\n");
-			exit(1);
-		}
-		/* otherwise we don't really care */
-	}
-
 	/*
 	 * There are 4 major cases
-	 * 1) bk changes -L url
+	 * 1) bk changes -L (url_list | -)
 	 * 2) bk changes -R (url_list | -)
 	 * 3) bk changes url
 	 * 4) bk changes [-]
-	 * Note: the dash in case "2" is a url list,
+	 * Note: the dash in case "1 & 2" is a url list,
 	 *       the dash in case "4" is a key list.
 	 */
-	if (opts.local) {
-		/* bk changes -L url */
-		unless (url = av[optind]) {
-			unless (url = freeme = getParent()) {
-				fprintf(stderr, "No repository specified?!\n");
-out:				for (c = 2; c < nac; c++) free(nav[c]);
-				if (freeme) free(freeme);
-				if (seen) mdbm_close(seen);
-				return (1);
-			}
-		}
-		rc = doit_local(nac, nav, url);
-	} else if (opts.remote) {
-		pid = mkpager();
-		seen = mdbm_mem();
+	if (opts.local || opts.remote) {
 		if (av[optind] && streq("-", av[optind])) {
 			/*
 			 * bk changes -R -
@@ -158,35 +138,55 @@ out:				for (c = 2; c < nac; c++) free(nav[c]);
 			 */
 			while (fnext(buf, stdin)) {
 				chomp(buf);
-				rc |= doit_remote(nav, buf);
+				urls = addLine(urls, strdup(buf));
 			}
-		} else if (av[optind] == NULL) {
-			/* bk changes -R */
-			unless (url = freeme = getParent()) {
-				fprintf(stderr, "No repository specified?!\n");
-				if (pid > 0)  {
-					fclose(stdout);
-					waitpid(pid, 0, 0);
-				}
-				goto out;
-			}
-			rc = doit_remote(nav, url);
-		} else {
-			/* bk changes -R url_list */
+		} else if (av[optind]) {
 			while (av[optind]) {
-				rc |= doit_remote(nav, av[optind++]);
+				char	*normal;
+
+				normal = parent_normalize(av[optind++]);
+				urls = addLine(urls, normal);
 			}
+		} else {
+			urls = opts.local ? parent_pushp() : parent_pullp();
 		}
-		mdbm_close(seen);
-		if (pid > 0)  {
-			fclose(stdout);
-			waitpid(pid, 0, 0);
+		unless (urls) goto usage;
+		seen = mdbm_mem();
+		pid = mkpager();
+		putenv("BK_PAGER=cat");
+	}
+
+	if (proj_cd2root()) {
+		/* If they are doing bk changes URL that's OK */
+		if (opts.local || opts.remote ||
+		    (av[optind] && streq(av[optind], "-"))) {
+			fprintf(stderr, "Can't find package root\n");
+			exit(1);
 		}
-	} else if (opts.remote2) {
+		/* otherwise we don't really care */
+	}
+
+	if (opts.local) {
+		EACH(urls) {
+			if (opts.urls && (nLines(urls) > 1)) {
+				printf("==== changes -L %s ====\n", urls[i]);
+				fflush(stdout);
+			}
+			rc |= doit_local(nac, nav, urls[i]);
+		}
+	} else if (opts.remote) {
+		EACH(urls) {
+			if (opts.urls && (nLines(urls) > 1)) {
+				printf("==== changes -R %s ====\n", urls[i]);
+				fflush(stdout);
+			}
+			rc |= doit_remote(nav, urls[i]);
+		}
+	} else if (av[optind] && !streq(av[optind], "-")) {
 		/* bk changes url */
 		rc = doit_remote(nav, av[optind]);
 	} else {
-		if (!av[optind]) {
+		unless (av[optind]) {
 			rc = doit(0); /* bk changes */
 		} else {
 			assert(streq(av[optind], "-"));
@@ -194,24 +194,31 @@ out:				for (c = 2; c < nac; c++) free(nav[c]);
 			rc = doit(1); /* bk changes - */
 		}
 	}
+	if (opts.local || opts.remote) {
+		if (pid > 0)  {
+			fclose(stdout);
+			waitpid(pid, 0, 0);
+		}
+		mdbm_close(seen);
+	}
 
 	/*
 	 * clean up
 	 */
 	for (c = 2; c < nac; c++) free(nav[c]);
-	if (freeme) free(freeme);
+	freeLines(urls, free);
 	return (rc);
 }
 
 private int
 doit_local(int nac, char **nav, char *url)
 {
-	int	wfd, fd1, status;
+	int	wfd, status;
 	pid_t	pid;
+	FILE	*p;
+	char	buf[MAXKEY];
 
-	if (opts.remote) {
-		fprintf(stderr, "warning: -R option ignored\n");
-	}
+	if (opts.remote) fprintf(stderr, "warning: -R option ignored\n");
 
 	/*
 	 * What we want is: bk synckey -lk url | bk changes opts -
@@ -223,12 +230,19 @@ doit_local(int nac, char **nav, char *url)
 	pid = spawnvp_wPipe(nav, &wfd, 0);
 
 	/*
-	 * Send "bk synckey" stdout into the pipe
+	 * Send "bk synckey" stdout into the pipe after removing anything we've
+	 * already seen.
 	 */
-	fd1 = dup(1); close(1);
-	dup2(wfd, 1); close(wfd);
-	sys("bk", "synckeys", "-lk", url, SYS);
-	close(1); dup2(fd1, 1); /* restore fd1, just in case */
+	sprintf(buf, "bk synckeys -lk %s", url);
+	p = popen(buf, "r");
+	assert(p);
+	while (fnext(buf, p)) {
+		if (mdbm_fetch_str(seen, buf)) continue;
+		unless (opts.dups) mdbm_store_str(seen, buf, "", MDBM_INSERT);
+		write(wfd, buf, strlen(buf));
+	}
+	close(wfd);
+	pclose(p);
 	waitpid(pid, &status, 0);
 	if (WIFEXITED(status)) return (WEXITSTATUS(status));
 	return (1); /* interrupted */
@@ -266,7 +280,11 @@ recurse(delta *d)
 /*
  * XXX May need to change the @ to BK_FS in the following dspec
  */
-#define	DSPEC	":DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\n$each(:C:){  (:C:)\n}$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n"
+#define	DSPEC	"$if(:DPN:!=ChangeSet){  }" \
+		":DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:} " \
+		"+:LI: -:LD:\n" \
+		"$each(:C:){$if(:DPN:!=ChangeSet){  }  (:C:)\n}" \
+		"$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n"
 #define	HSPEC	"<tr bgcolor=lightblue><td font size=4>" \
 		"&nbsp;:Dy:-:Dm:-:Dd: :Th:::Tm:&nbsp;&nbsp;" \
 		":P:@:HT:&nbsp;&nbsp;:I:</td></tr>\n" \
@@ -314,7 +332,10 @@ doit(int dash)
 		spec = DSPEC;
 	}
 	s = sccs_init(s_cset, SILENT|INIT_NOCKSUM);
-	assert(s && HASGRAPH(s));
+	unless (s && HASGRAPH(s)) {
+		system("bk help -s changes");
+		exit(1);
+	}
 	if (opts.rev || opts.date) {
 		if (opts.rev) {
 			r[0] = notnull(opts.rev);
@@ -343,7 +364,7 @@ doit(int dash)
 			/* ignore blank lines and comments */
 			if ((*cmd == '#') || (*cmd == '\n')) continue;
 			chomp(cmd);
-			e = sccs_getrev(s, cmd, 0, 0);
+			e = sccs_findrev(s, cmd);
 			unless (e) {
 				fprintf(stderr,
 				    "changes: can't find key: %s\n", cmd);
@@ -408,7 +429,7 @@ next:	return (1);
  * Note that these two are identical except for the d1/d2 assignment.
  */
 private int
-compar(const void *a, const void *b)
+dateback(const void *a, const void *b)
 {
         register        slog *d1, *d2;
 
@@ -421,7 +442,7 @@ compar(const void *a, const void *b)
 }
 
 private int
-forwards(const void *a, const void *b)
+dateforw(const void *a, const void *b)
 {
         register        slog *d1, *d2;
 
@@ -433,48 +454,72 @@ forwards(const void *a, const void *b)
         return (d2->date - d1->date);
 }
 
+/*
+ * Note that these two are identical except for the d1/d2 assignment.
+ */
+private int
+strback(const void *a, const void *b)
+{
+        slog	*d1, *d2;
+	int	cmp;
+
+        d1 = *((slog**)a);
+        d2 = *((slog**)b);
+	cmp = strcmp(d1->log, d2->log);
+	if (cmp) return (cmp);
+	if (d1->date == d2->date) {
+        	return (d2->dateFudge - d1->dateFudge);
+	}
+        return (d2->date - d1->date);
+}
+
+private int
+strforw(const void *a, const void *b)
+{
+        slog	*d1, *d2;
+	int	cmp;
+
+        d1 = *((slog**)a);
+        d2 = *((slog**)b);
+	cmp = strcmp(d1->log, d2->log);
+	if (cmp) return (cmp);
+	if (d1->date == d2->date) {
+        	return (d2->dateFudge - d1->dateFudge);
+	}
+        return (d2->date - d1->date);
+}
+
+
 private slog *
 dumplog(slog *list, int *n)
 {
 	slog	*ll;
 	slog 	**sorted;	
 	int	i = *n;
-	int	indent = 2;
-	char 	*p, *q;
 
-	if (i == 0) return (NULL);
+	unless (i) return (0);
 	assert(i > 0);
 
 	/*
-	 * Stuff the list in a array so we can sort it
+	 * Stuff the list in an array so we can sort it.
 	 */
 	sorted = malloc(i * sizeof(sorted));
 	for (ll = list; ll; ll = ll->next) sorted[--i] = ll;
 	assert(i == 0);
-	qsort(sorted, *n, sizeof(sorted), opts.forwards ? forwards : compar);
+	if (opts.timesort) {
+		qsort(sorted,
+		    *n, sizeof(sorted), opts.forwards ? dateforw : dateback);
+	} else {
+		qsort(sorted, *n, sizeof(sorted), strforw);
+	}
 
 	/*
 	 * Print the sorted list
 	 */
 	for (i = 0; i < *n; ++i) {
 		ll = sorted[i];
-		p = ll->log;
-
-		/* indent each non-empty line */
-		while (p) {
-			q = strchr(p, '\n');
-			/* do not indent empty line */
-			if (indent && (q > p)) printf("%*s", indent, "");
-			if (q) {
-				*q++ = '\0';
-				printf("%s\n", p);
-			} else {
-				printf("%s", p);
-			}
-			p = q;
-		}
+		printf("%s", ll->log);
 		if (opts.newline) fputc('\n', stdout);
-
 		free(ll->log);
 		free(ll);
 	}
@@ -484,15 +529,15 @@ dumplog(slog *list, int *n)
 	 */
 	free(sorted);
 	*n = 0;
-	return (NULL);
+	return (0);
 }
 
 /*
  * Cache the sccs struct to avoid re-initing the same sfile
  */
 private sccs *
-sccs_keyinitAndCache(char *key, int flags,
-    MDBM **idDB, MDBM *graphDB, MDBM *goneDB)
+sccs_keyinitAndCache(char *key,
+	int	flags, MDBM **idDB, MDBM *graphDB, MDBM *goneDB)
 {
 	static	int	rebuilt = 0;
 	datum	k, v;
@@ -690,7 +735,7 @@ cset(sccs *cset, FILE *f, char *dspec)
 	sorted = malloc(m * sizeof(sorted));
 	for (i = m, ll = list; ll; ll = ll->next) sorted[--i] = ll;
 	assert(i == 0);
-	qsort(sorted, m, sizeof(sorted), opts.forwards ? forwards : compar);
+	qsort(sorted, m, sizeof(sorted), opts.forwards ? dateforw : dateback);
 
 	/*
 	 * Walk the sorted cset list and dump the file deltas contain in
@@ -723,7 +768,7 @@ cset(sccs *cset, FILE *f, char *dspec)
 			*dkey++ = 0;
 			s = sccs_keyinitAndCache(
 				keys[i], iflags, &idDB, graphDB, goneDB);
-			unless (s) continue;
+			unless (s && !CSET(s)) continue;
 			d = sccs_findKey(s, dkey);
 			assert(d);
 
@@ -732,7 +777,7 @@ cset(sccs *cset, FILE *f, char *dspec)
 			 * when this function returns, "list" will contain
 			 * all member deltas/dspec in "s" for this cset
 			 */
-			list = 	collectDelta(s, d, list, dspec, &n);
+			list = collectDelta(s, d, list, dspec, &n);
 		}
 		freeLines(keys, free); /* reduce mem foot print, could be huge */
 		free(ee);
@@ -891,7 +936,7 @@ send_part2_msg(remote *r, char **av, char *key_list)
 		write_blk(r, buf, strlen(buf));
 		chomp(buf);
 		/* mark the seen key, so we can skip it on next repo */
-		mdbm_store_str(seen, buf, "", MDBM_INSERT);
+		unless (opts.dups) mdbm_store_str(seen, buf, "", MDBM_INSERT);
 	}
 	write_blk(r, "@END@\n", 6);
 	fclose(f);
@@ -961,14 +1006,12 @@ changes_part1(remote *r, char **av, char *key_list)
 	if (rc < 0) {
 		switch (rc) {
 		    case -2:
-			printf(
-"You are trying to sync to an unrelated package. The root keys for the\n\
-ChangeSet file do not match.  Please check the pathnames and try again.\n");
+			getMsg("unrelated_repos", 0, '=', stderr);
 			close(fd);
 			sccs_free(s);
 			return (1); /* needed to force bkd unlock */
 		    case -3:
-			printf("You are syncing to an empty directory\n");
+			getMsg("no_repo", 0, '=', stderr);
 			sccs_free(s);
 			return (1); /* empty dir */
 			break;
@@ -1039,7 +1082,6 @@ _doit_remote(char **av, char *url)
 	remote	*r;
 
 	loadNetLib();
-	if (opts.remote) has_proj("changes");
 	r = remote_parse(url, 1);
 	unless (r) {
 		fprintf(stderr, "invalid url: %s\n", url);

@@ -1,5 +1,6 @@
 #include "system.h"
 #include "sccs.h"
+#include "logging.h"
 
 typedef struct conflct	conflct;
 typedef struct ld	ld_t;
@@ -13,7 +14,6 @@ private void	merge_conflicts(conflct *head);
 private void	usage(void);
 private int	resolve_conflict(conflct *curr);
 private diffln	*unidiff(conflct *curr, int left, int right);
-private void	show_examples(void);
 private int	sameline(ld_t *left, ld_t *right);
 private	int	file_init(char *file, char *rev, char *anno, file_t *f);
 private	void	file_free(file_t *f);
@@ -91,12 +91,15 @@ smerge_main(int ac, char **av)
 	int	ret = 0;
 	int	do_diff3 = 0;
 	int	identical = 0;
+	project	*proj;
 
-	unless (bk_mode() == BK_PRO) {
+	proj = proj_init(av[ac-2]);
+	unless (bk_mode(proj) == BK_PRO) {
 		enable_mergefcns("all", 0);
 		enable_mergefcns("1,2,3", 1);
 		do_diff3 = 1;
 	}
+	proj_free(proj);
 
 	mode = MODE_3WAY;
 	while ((c = getopt(ac, av, "234A:a:defghI:npr:s")) != -1) {
@@ -125,7 +128,7 @@ smerge_main(int ac, char **av)
 			fdiff = 1;
 			break;
 		    case 'e': /* show examples */
-			show_examples();
+			getMsg("smerge_examples", 0, 0, stdout);
 			return(2);
 #ifdef	SHOW_SEQ
 /*
@@ -200,7 +203,7 @@ static	char	**seqlist = 0;
 void
 smerge_saveseq(u32 seq)
 {
-	seqlist = addLine(seqlist, (char *)seq);
+	seqlist = addLine(seqlist, int2p(seq));
 }
 
 /*
@@ -219,21 +222,7 @@ file_init(char *file, char *rev, char *anno, file_t *f)
 	char	*inc, *exc;
 	char	tmp[MAXPATH];
 
-	if (anno) {
-		flags |= GET_ALIGN;
-		p = anno;
-		while (*p) {
-			switch (*p++) {
-			    case 'd': flags |= GET_PREFIXDATE; break;
-			    case 'f': flags |= GET_FULLPATH; break;
-			    case 'H': flags |= GET_PATH; break;
-			    case 'm': flags |= GET_REVNUMS; break;
-			    case 'n': flags |= GET_MODNAME; break;
-			    case 'N': flags |= GET_LINENUM; break;
-			    case 'u': flags |= GET_USER; break;
-			}
-		}
-	}
+	if (anno) flags = annotate_args(flags|GET_ALIGN, anno);
 
 	bktmp(tmp, "smerge");
 	f->tmpfile = strdup(tmp);
@@ -262,7 +251,7 @@ file_init(char *file, char *rev, char *anno, file_t *f)
 	f->n = nLines(seqlist);
 	f->lines = calloc(f->n+1, sizeof(ld_t));
 	EACH (seqlist) {
-		f->lines[i-1].seq = (u32)seqlist[i];
+		f->lines[i-1].seq = p2int(seqlist[i]);
 		seqlist[i] = 0;
 	}
 	freeLines(seqlist, 0);
@@ -330,13 +319,13 @@ find_gca(char *file, char *left, char *right)
 		perror(file);
 		exit(2);
 	}
-	dl = sccs_getrev(s, left, 0, 0);
+	dl = sccs_findrev(s, left);
 	unless (dl) {
 		fprintf(stderr, "ERROR: couldn't find %s in %s\n", left, file);
 		sccs_free(s);
 		exit(2);
 	}
-	dr = sccs_getrev(s, right, 0, 0);
+	dr = sccs_findrev(s, right);
 	unless (dr) {
 		fprintf(stderr, "ERROR: couldn't find %s in %s\n", right, file);
 		sccs_free(s);
@@ -1513,65 +1502,6 @@ highlight_diff(diffln *diff)
 		}
 		a = b;
 	}
-}
-
-private void
-show_examples(void)
-{
-	fputs(
-"Summary of bk smerge output formats\n\
-default		(3 way format (shows gca))\n\
-    <<<<<<< gca slib.c 1.642.1.6\n\
-    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);\n\
-    		  assert(sc->tree);\n\
-    		  sccs_sdelta(sc, sc->tree, file);\n\
-    <<<<<<< local slib.c 1.645\n\
-    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);\n\
-    		  assert(HASGRAPH(sc));\n\
-    		  sccs_sdelta(sc, sccs_ino(sc), file);\n\
-    <<<<<<< remote slib.c 1.642.2.1\n\
-    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, p);\n\
-    		  assert(sc->tree);\n\
-    		  sccs_sdelta(sc, sc->tree, file);\n\
-    >>>>>>>\n\
-\n\
--g	(Shows local and remove files as a diff from the GCA)\n\
-    <<<<<<< local slib.c 1.642.1.6 vs 1.645\n\
-    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);\n\
-    -             assert(sc->tree);\n\
-    -             sccs_sdelta(sc, sc->tree, file);\n\
-    +             assert(HASGRAPH(sc));\n\
-    +             sccs_sdelta(sc, sccs_ino(sc), file);\n\
-    <<<<<<< remote slib.c 1.642.1.6 vs 1.642.2.1\n\
-    -             sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);\n\
-    +             sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, p);\n\
-    		  assert(sc->tree);\n\
-    		  sccs_sdelta(sc, sc->tree, file);\n\
-    >>>>>>>\n\
-", stdout);
-	fputs(
-"-2	(2 way format (like diff3))\n\
-    <<<<<<< local slib.c 1.645\n\
-    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);\n\
-    		  assert(HASGRAPH(sc));\n\
-    		  sccs_sdelta(sc, sccs_ino(sc), file);\n\
-    <<<<<<< remote slib.c 1.642.2.1\n\
-    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, p);\n\
-    		  assert(sc->tree);\n\
-    		  sccs_sdelta(sc, sc->tree, file);\n\
-    >>>>>>>\n\
-\n\
--n	(newonly (like -2 except marks added lines))\n\
-    <<<<<<< local slib.c 1.642.1.6 vs 1.645\n\
-    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);\n\
-    +             assert(HASGRAPH(sc));\n\
-    +             sccs_sdelta(sc, sccs_ino(sc), file);\n\
-    <<<<<<< remote slib.c 1.642.1.6 vs 1.642.2.1\n\
-    +             sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, p);\n\
-    		  assert(sc->tree);\n\
-    		  sccs_sdelta(sc, sc->tree, file);\n\
-    >>>>>>>\n\
-", stdout);
 }
 
 #ifdef SHOW_SEQ

@@ -1,7 +1,7 @@
 .so ../bk-macros
 .TH "bk push" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
-bk push \- send local changes to the parent repository
+bk push \- send local changes to parent repository
 .SH SYNOPSIS
 .Bc bk push [\-agqt] [
 .OPTequal \-E env var
@@ -11,11 +11,12 @@ bk push \- send local changes to the parent repository
 .OPTreq \-c n
 .Bc ] [
 .ARGc parent
+ ...\c
 .B ]
 .SH DESCRIPTION
-Push sends changes in the current repository back to its parent if
+Push sends changes in the current repository back to its parent[s] if
 and only if the current repository is a superset of the parent.
-When the parent has changes not found in the current repository,
+When a parent has changes not found in the current repository,
 push will fail and you will need to do a bk pull, merge those changes,
 and retry the push.  The idea is that the parent is typically a shared
 resource and should not be locked for merging.
@@ -23,8 +24,13 @@ resource and should not be locked for merging.
 If there is no new work in the parent, then all changes in the child
 will be sent to the parent and auto\-applied.
 .LP
+To see what would be pushed run
+.DS
+bk changes -L
+.DE
+.LP
 You can override the default parent by specifying a different one.
-Doing so changes the parent for the duration of this command only.
+Doing so changes the parent[s] for the duration of this command only.
 .LP
 You can override the no\-merge policy by going to the parent and doing
 a 
@@ -34,8 +40,8 @@ and specify the child as the
 .SH OPTIONS
 .TP
 .B \-a
-If the parent is a superset of the current repository,
-then automatically pull that work into the current repository.
+If the parent is ahead of your repository, turn the push into a pull
+to merge the new work in your repository.
 .tp
 .OPTreq \-c n
 Try to get the remote lock 
@@ -47,14 +53,6 @@ Export environment variable to remote site.
 .tp
 .B -g
 Allow the use of GUI tools during the resolve (unlike resolve -t).
-.tp
-.B \-l 
-This option has been obsoleted by bk changes.  
-Please see bk help changes (-R/-L options)
-for more information on getting repository differences.
-.tp
-.B \-n
-This option has been obsoleted.  Please use bk changes.
 .tp
 .B \-q
 Run quietly.

@@ -16,7 +16,7 @@ do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out)
 	s = sccs_init(file, INIT_NOCKSUM);
 	assert(s);
 	s->state &= ~S_SET;
-	d = findrev(s, rev);
+	d = sccs_findrev(s, rev);
 	sccs_prsdelta(s, d, flags, dspec, out);
 	sccs_free(s);
 }
@@ -78,7 +78,7 @@ remark(int quiet)
 	int i;
 
 	if (exists("BitKeeper/etc/SCCS/x.marked")) return;
-	unless (quiet) getMsg("consistency_check", 0, 0, 0, stdout);
+	unless (quiet) getMsg("consistency_check", 0, 0, stdout);
 	system("bk cset -M1.0..");
 	i = open("BitKeeper/etc/SCCS/x.marked", O_CREAT|O_TRUNC|O_WRONLY, 0664);
 	if (i < 0) {
@@ -100,7 +100,7 @@ status(int verbose, FILE *f)
 
 	fprintf(f, "Status for BitKeeper repository %s:%s\n",
 	    sccs_gethost(), fullname(".", 0));
-	getMsg("version", bk_model(buf, sizeof(buf)), 0, 0, f);
+	getMsg("version", bk_model(buf, sizeof(buf)), 0, f);
 	sprintf(parent_file, "%slog/parent", BitKeeper);
 	if (exists(parent_file)) {
 		fprintf(f, "Parent repository is ");
@@ -166,17 +166,50 @@ line(char b, FILE *f)
 }
 
 int
-getMsg(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf)
+getMsg(char *msg_name, char *bkarg, char b, FILE *outf)
 {
-	char	buf[MAXLINE], pattern[MAXLINE];
+	char	**args;
+	int	rc;
+	
+	unless (bkarg) bkarg = "";
+	args = addLine(0, bkarg);
+	rc = getMsgv(msg_name, args, 0, b, outf);
+	freeLines(args, 0);
+	return (rc);
+}
+
+int
+getMsgP(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf)
+{
+	char	**args;
+	int	rc;
+	
+	unless (bkarg) bkarg = "";
+	args = addLine(0, bkarg);
+	rc = getMsgv(msg_name, args, prefix, b, outf);
+	freeLines(args, 0);
+	return (rc);
+}
+
+int
+getMsg2(char *msg_name, char *arg1, char *arg2, char b, FILE *outf)
+{
+	char	*args[3] = { int2p(3), arg1, arg2 };
+	
+	return (getMsgv(msg_name, args, 0, b, outf));
+}
+
+int
+getMsgv(char *msg_name, char **bkargs, char *prefix, char b, FILE *outf)
+{
 	FILE	*f, *f1;
 	int	found = 0;
 	int	first = 1;
+	int	n;
+	char	buf[MAXLINE], pattern[MAXLINE];
 
-	if (bkarg == NULL) bkarg = "";
 	sprintf(buf, "%s/bkmsg.txt", bin);
-	f = fopen(buf, "rt");
-	unless (f) {
+	unless (f = fopen(buf, "rt")) {
 		fprintf(stderr, "Unable to open %s\n", buf);
 		exit(1);
 	}
@@ -195,11 +228,27 @@ getMsg(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf)
 		first = 0;
 		if (streq("$\n", buf)) break;
 		if (prefix) fputs(prefix, outf);
+
+		/*
+		 * #BKARG# or #BKARG#1# is the first entry.
+		 * #BKARG#%d# is the Nth arg.
+		 */
 		if (p = strstr(buf, "#BKARG#")) {
 			*p = 0;
+			p += 7;
+			/* #BKARG#%d# */
+			if (isdigit(*p)) {
+				n = atoi(p);
+				p = strchr(p, '#');
+				assert(p);
+				p++;
+			} else {
+				n = 1;
+			}
+			assert(n <= nLines(bkargs));
 			fputs(buf, outf);
-			fputs(bkarg, outf);
-			fputs(&p[7], outf);
+			fputs(bkargs[n], outf);
+			fputs(p, outf);
 		} else if (p = strstr(buf, "#BKEXEC#")) {
 			f1 = popen(&p[8], "r");
 			while (fgets(buf, sizeof (buf), f1)) {

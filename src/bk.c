@@ -14,9 +14,6 @@ char	**bk_environ;
 jmp_buf	exit_buf;
 char	cmdlog_buffer[MAXPATH*4];
 int	cmdlog_flags;
-char 	*upgrade_msg =
-"This feature is not available in this version of BitKeeper, to upgrade\n\
-please contact sales@bitmover.com\n"; 
 
 private char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
 #define	LOGVER	0
@@ -65,6 +62,7 @@ int	diffsplit_main(int, char **);
 int	dotbk_main(int, char **);
 int	exists_main(int, char **);
 int	export_main(int, char **);
+int	findcset_main(int, char **);
 int	f2csets_main(int, char **);
 int	fdiff_main(int, char **);
 int	find_main(int, char **);
@@ -109,6 +107,7 @@ int	loggingto_main(int, char **);
 int	mailsplit_main(int, char **);
 int	mail_main(int, char **);
 int	makepatch_main(int, char **);
+int	mdiff_main(int, char **);
 int	merge_main(int, char **);
 int	mklock_main(int, char **);
 int	mtime_main(int, char **);
@@ -133,6 +132,7 @@ int	push_main(int, char **);
 int	pwd_main(int, char **);
 int	r2c_main(int, char **);
 int	range_main(int, char **);
+int	reviewmerge_main(int, char **);
 int	rcheck_main(int, char **);
 int	rclone_main(int, char **);
 int	rcs2sccs_main(int, char **);
@@ -142,6 +142,7 @@ int	renumber_main(int, char **);
 int	relink_main(int, char **);
 int	repo_main(int, char **);
 int	resolve_main(int, char **);
+int	restore_main(int, char **);
 int	rm_main(int, char **);
 int	rmdel_main(int, char **);
 int	root_main(int, char **);
@@ -197,6 +198,7 @@ struct	command cmdtbl[] = {
 	{"_cleanpath", cleanpath_main},
 	{"_exists", exists_main},
 	{"_find", find_main },
+	{"_findcset", findcset_main },
 	{"_g2sccs", _g2sccs_main},
 	{"_get", get_main},
 	{"_gzip", gzip_main }, 
@@ -218,13 +220,13 @@ struct	command cmdtbl[] = {
 	{"_probekey", probekey_main},
 	{"_prunekey", prunekey_main},
 	{"_rclone", rclone_main},
+	{"_reviewmerge", reviewmerge_main},
 	{"_scompress", scompress_main},		/* undoc? 2.0 */
 	{"_socket2pipe", socket2pipe_main},	/* for win32 only */
 	{"_sort", sort_main},
 	{"_sortmerge", sortmerge_main},
 	{"_shellSplit_test", shellSplit_test_main},
 	{"_strings", strings_main},
-	{"_timestamp", timestamp_main},
 	{"_unlink", unlink_main },
 	{"abort", abort_main},			/* doc 2.0 */	
 	{"add", delta_main},			/* doc 2.0 */
@@ -288,6 +290,7 @@ struct	command cmdtbl[] = {
 	{"log", log_main},
 	{"mailsplit", mailsplit_main},
 	{"makepatch", makepatch_main},		/* doc 2.0 */
+	{"mdiff", mdiff_main},
 	{"merge", merge_main},			/* doc 2.0 */
 	{"mklock", mklock_main},	/* regression test */ /* undoc 2.0 */
 	{"mtime", mtime_main},		/* regression test */ /* undoc 2.0 */
@@ -319,6 +322,7 @@ struct	command cmdtbl[] = {
 	{"renumber", renumber_main},		/* doc 2.0 */
 	{"repo", repo_main},	/* obsolete */ 	/* undoc 2.0 */
 	{"resolve", resolve_main},		/* doc 2.0 */
+	{"restore", restore_main},
 	{"rev2cset", r2c_main},	/* alias */	/* doc 2.0 as r2c */
 	{"root", root_main},			/* doc 2.0 */
 	{"rset", rset_main},			/* doc 2.0 */
@@ -347,6 +351,7 @@ struct	command cmdtbl[] = {
 	{"tagmerge", tagmerge_main},		/* */
 	{"takepatch", takepatch_main},		/* doc 2.0 */
 	{"testdates", testdates_main},		/* undoc 2.0 */
+	{"timestamps", timestamp_main},
 	{"unbk", unbk_main},			/* undoc? 2.0 */
 	{"undo", undo_main},			/* doc 2.0 */
 	{"undos", undos_main},			/* doc 2.0 */
@@ -602,6 +607,7 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 	    streq(prog, "fm2tool") ||
 	    streq(prog, "fm3tool") ||
 	    streq(prog, "difftool") ||
+	    streq(prog, "newdifftool") ||
 	    streq(prog, "helptool") ||
 	    streq(prog, "csettool") ||
 	    streq(prog, "renametool") ||
@@ -913,9 +919,7 @@ cmdlog_end(int ret)
 
 	purify_list();
 	bktmpcleanup();
-	unless (cmdlog_buffer[0] && proj_root(0)) {
-		return (flags);
-	}
+	unless (cmdlog_buffer[0]) return (flags);
 
 	/* add last minute notes */
 	if (cmdlog_repo && (cmdlog_flags&CMD_BYTES)) {
@@ -932,6 +936,10 @@ cmdlog_end(int ret)
 		fprintf(f, " %s = %d\n", cmdlog_buffer, ret);
 		fclose(f);
 	}
+
+	/* If we have no project root then bail out */
+	unless (proj_root(0)) goto out;
+
 	len = strlen(cmdlog_buffer) + 20;
 	EACH_KV (notes) len += kv.key.dsize + kv.val.dsize;
 	log = malloc(len);
@@ -976,6 +984,7 @@ cmdlog_end(int ret)
 	}
 	if (cmdlog_flags & (CMD_WRUNLOCK|CMD_RDUNLOCK)) repository_unlock(0);
 
+out:
 	cmdlog_buffer[0] = 0;
 	cmdlog_repo = 0;
 	cmdlog_flags = 0;
@@ -1141,15 +1150,6 @@ find_wish(void)
 
 	if (path) return (path);
 
-	if (path = getenv("BK_WISH")) {
-		unless (exists(path)) {
-			fprintf(stderr, "bk: bad value for BK_WISH (%s)\n",
-				path);
-			exit(1);
-		}
-		return (path);
-	}
-
 	/* If they set this, they can set TCL_LIB/TK_LIB as well */
 	if ((path = getenv("BK_WISH")) && executable(path)) return (path);
 
@@ -1161,6 +1161,12 @@ find_wish(void)
 	}
 	free(path);
 	path = "/build/.wish/tk/bin/bkgui";
+	if (executable(path)) {
+		putenv("TCL_LIBRARY=/build/.wish/tk/lib/tcl8.3");
+		putenv("TK_LIBRARY=/build/.wish/tk/lib/tk8.3");
+		return (path);
+	}
+	path = "c:/cygwin/build/.wish/tk/bin/bkgui";
 	if (executable(path)) {
 		putenv("TCL_LIBRARY=/build/.wish/tk/lib/tcl8.3");
 		putenv("TK_LIBRARY=/build/.wish/tk/lib/tk8.3");

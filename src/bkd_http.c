@@ -151,8 +151,7 @@ cmd_httpget(int ac, char **av)
 	unless (streq(name, "license") || bk_options()&BKOPT_WEB) {
 		unless (has_temp_license()) {
 			http_error(503,
-			    "bkWeb option is disabled: %s",
-			    upgrade_msg);
+			    "BK/Web option has not been purchased.");
 		}
 	}
 
@@ -266,7 +265,7 @@ navbutton(int active, int tag, char *start, char *end)
 		if (arguments[ct-1] == '|') --ct;
 
 		sprintf(buf, "href=\"%.*s?%.*s\">",
-		    sep-start, start, ct, arguments);
+		    (int)(sep-start), start, ct, arguments);
 	} else {
 		sprintf(buf, "href=\"%.*s\">", sep-start,start);
 	}
@@ -275,7 +274,7 @@ navbutton(int active, int tag, char *start, char *end)
 		   : "<font size=2 color=yellow>");
 
 	if (sep < end) {
-		sprintf(buf, "%.*s", end-sep, sep);
+		sprintf(buf, "%.*s", (int)(end-sep), sep);
 		out(buf);
 		start = 0;
 	} else if (strneq(start,"ChangeSet", 9)) {
@@ -347,7 +346,7 @@ navbutton(int active, int tag, char *start, char *end)
 		}
 	}
 	if (start) {
-		sprintf(buf, "%.*s", sep-start, start);
+		sprintf(buf, "%.*s", (int)(sep-start), start);
 		out(buf);
 	}
 	out("</font></a>\n");
@@ -661,7 +660,7 @@ http_cset(char *rev)
 	if (lines) {
 		char	changeset[] = CHANGESET;
 		sccs	*cset = sccs_init(changeset, 0);
-		delta	*d = findrev(cset, rev);
+		delta	*d = sccs_findrev(cset, rev);
 
 		cset->rstart = cset->rstop = d;
 		sccs_prs(cset, 0, 0, &dspec[2], stdout);
@@ -2050,7 +2049,7 @@ http_search(char *junk)
 		    "-d'$each(:C:){:GFILE:\t:I:\t(:C:)\n}' ChangeSet");
 		break;
 	    case SEARCH_CONTENTS:
-		sprintf(buf, "bk -Ur grep -r+ -fm '%s'", expr);
+		sprintf(buf, "bk -Ur grep -r+ -nnm '%s'", expr);
 		break;
 	    case SEARCH_COMMENTS:
 		sprintf(buf, "bk -Ur prs -h "

@@ -39,18 +39,13 @@ When only one revision is supplied with -r, then that revision is
 compared to the working file or the top of trunk if the file is not
 edited.
 .LP
-You can use this to diff your entire tree, including edits against an
-existing changeset revision or tag in your repository.
-The following forms are available:
+You can use bk diffs to diff your entire tree, including edits against an
+existing changeset revision or tag in your repository.  The second form
+below, -r@<rev>, means use the revision as of changeset <rev>.
 .DS
-$ bk rset -l<rev> | bk -R diffs -u -
-$ bk -r diffs -r@<rev> -u
+$ bk -r diffs -u
+$ bk -r diffs -u -r@<rev>
 .DE
-The two forms are shown because it is sometimes useful to diff a subset,
-which may be accomplished by filtering the output of bk rset.
-The first form ignores file renames and always outputs diffs relative
-to the same s.file.  The second form accounts for renames, i.e.,
-the diffs may be from files extracted from different s.files.
 .SH OPTIONS
 .if t .TP
 .if n .TP 1i
@@ -62,25 +57,6 @@ Ignore  changes  that  just  insert or delete blank lines.
 .tp
 .B \-c
 Do context diffs.
-.tp
-.OPTreq \-C rev1,rev2
-Diff the changeset 
-.ARG rev2
-against changeset 
-.ARG rev1 .
-If
-.ARG rev2
-is absent,
-diff changeset
-.ARG rev1
-against its parent. If
-.ARG rev2
-is ".", diff the checked
-out files against changeset
-.ARG rev1 .
-The last form is useful if you want to
-capture the checked changes as well the work in progress (modified files).
-"bk diffs -Crev1,rev2 -u" is same as "bk export -tpatch -h -du -rrev1,rev2"
 .tp
 .B \-D
 Prefix lines with dates.

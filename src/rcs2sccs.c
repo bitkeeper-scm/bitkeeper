@@ -9,7 +9,8 @@ private	int	encoding(char *file);
 private	mode_t	mode(char *file);
 private	int	newDelta(RCS *rcs, rdelta *d, sccs *s, int rev, int flags);
 private int	verifyFiles(sccs *s, RCS *rcs, rdelta *d, char *g);
-private	void	doit(char *file);
+private	void	doit(char *file, char *cvsbranch);
+private	rdelta *first_rdelta(RCS *rcs);
 
 private	int	verify;
 private	int	undos;
@@ -18,19 +19,23 @@ private	int	Flags;
 private	char	*co_prog;
 private	char	*cutoff;
 
+extern	int	in_rcs_import;
+
 int
 rcs2sccs_main(int ac, char **av)
 {
 	int	c, i;
 	char	buf[MAXPATH];
+	char	*cvsbranch = 0;
 
 	Flags = SILENT;
 	verify = 0;
 	verbose = 2;
 	co_prog = cutoff = 0;
 
-	while ((c = getopt(ac, av, "c;dhqu")) != -1) {
+	while ((c = getopt(ac, av, "b;c;dhqu")) != -1) {
 		switch (c) {
+		    case 'b': cvsbranch = optarg; break;	/* undoc 3.0 */
 		    case 'c': cutoff = optarg; break;		/* doc 2.0 */
 		    case 'd': Flags = 0; break;			/* undoc? 2.0 */
 		    case 'q': if (verbose) verbose--; break;	/* doc 2.0 */
@@ -38,7 +43,7 @@ rcs2sccs_main(int ac, char **av)
 		    case 'u': undos++; break;			/* doc 2.0 */
 		    default:
 			    system("bk help -s rcs2sccs");
-			    return(1);
+			    return (1);
 		}
 	}
 	unless (co_prog = getenv("BK_RCS_CO")) {
@@ -51,28 +56,29 @@ rcs2sccs_main(int ac, char **av)
 	}
 	unless (co_prog && executable(co_prog)) {
 		fprintf(stderr,
-    "rcs2sccs needs the RCS program co, which was not found in your PATH.\n");
-    		exit(1);
+"rcs2sccs needs the RCS program co, which was not found in your PATH.\n");
+		exit(1);
 	}
 
 	if (av[optind] && streq("-", av[optind]) && !av[optind+1]) {
 		while (fgets(buf, sizeof(buf), stdin)) {
 			chop(buf);
-			doit(buf);
+			doit(buf, cvsbranch);
 		}
 	} else {
 		for (i = optind; av[i]; ++i) {
-			doit(av[i]);
+			doit(av[i], cvsbranch);
 		}
 	}
 	return (0);
 }
 
 private void
-doit(char *file)
+doit(char *file, char *cvsbranch)
 {
 	RCS	*r;
 	char	*sfile;
+	sccs	*s;
 
 	sfile = sccsname(file);
 	if (exists(sfile)) {
@@ -102,11 +108,49 @@ doit(char *file)
 			chmod(file, m);
 		}
 	}
-	unless (r = rcs_init(file)) {
+	unless (r = rcs_init(file, cvsbranch)) {
 		fprintf(stderr, "Can't parse %s\n", file);
 		exit(1);
 	}
-	if (rcs2sccs(r, sfile)) exit(1);
+	/*
+	 * File created on a branch will never create a sccs file
+	 * and can be ignored.
+	 */
+	if (first_rdelta(r)) {
+		if (rcs2sccs(r, sfile)) exit(1);
+		/*
+		 * After file is completed, determine if the sfile needs
+		 * to be moved to the BitKeeper/deleted directory.
+		 */
+		s = sccs_init(sfile, 0);
+		unless (sccs_setpathname(s)) assert(0);
+		unless (streq(s->spathname, sfile)) {
+			char	*p;
+			int	ret;
+			if (sccs_clean(s, SILENT)) {
+				sccs_clean(s, 0);
+				fprintf(stderr, "Failed to clean %s\n",
+				    s->gfile);
+				exit(1);
+			}
+			sccs_close(s);
+			ret = rename(sfile, s->spathname);
+			assert(ret == 0);
+			/*
+			 * move the d.file
+			 */
+			p = sccs_Xfile(s, 'd');
+			if (exists(p)) {
+				char	*q = strdup(s->spathname);
+				char	*t = rindex(q, '/') + 1;
+				*t = 'd';
+				ret = rename(p, q);
+				assert(ret == 0);
+				free(q);
+			}
+		}
+		sccs_free(s);
+	}
 	rcs_free(r);
 	free(sfile);
 }
@@ -119,7 +163,7 @@ sccsname(char *path)
 {
 	char	*t = strrchr(path, ',');
 	char	*s;
-	
+
 	if (t && (t[1] == 'v') && (t[2] == 0)) {
 		*t = 0;
 		s = name2sccs(path);
@@ -131,6 +175,17 @@ sccsname(char *path)
 
 }
 
+private rdelta *
+first_rdelta(RCS *rcs)
+{
+	rdelta	*d;
+
+	d = rcs->tree;
+	while (d->dead && d->kid) d = d->kid;
+
+	return (d->dead ? 0 : d);
+}
+
 private	int
 rcs2sccs(RCS *rcs, char *sfile)
 {
@@ -139,37 +194,37 @@ rcs2sccs(RCS *rcs, char *sfile)
 	int	len = 0, rev = 1;
 	char	*g = sccs2name(sfile);
 	int	ret;
+	sym	*sym;
 
 	/*
 	 * If we are only doing a partial, make sure the tag is here,
 	 * otherwise this file shouldn't be done at all.
 	 */
 	if (cutoff) {
-		sym	*s;
-
-		for (s = rcs->symbols; s; s = s->next) {
-			if (streq(s->name, cutoff)) break;
+		for (sym = rcs->symbols; sym; sym = sym->next) {
+			if (streq(sym->name, cutoff)) break;
 		}
-		unless (s && (stop = rcs_findit(rcs, s->rev))) {
+		unless (sym && (stop = rcs_findit(rcs, sym->rev))) {
 			unless (Flags & SILENT) {
 				fprintf(stderr,
 				    "%s not found in %s, skipping this file\n",
-				    cutoff, rcs->file);
+					cutoff, rcs->rcsfile);
 			}
 			free(g);
-		    	return (0);
+			return (0);
 		}
-		for (d = rcs_defbranch(rcs); d && (d != stop); d = d->kid);
+		for (d = first_rdelta(rcs); d && (d != stop); d = d->kid);
 		unless (d == stop) {
 			fprintf(stderr,
 			"%s is not on the trunk in %s, skipping this file.\n",
-			    cutoff, rcs->file);
+			    cutoff, rcs->rcsfile);
 			free(g);
-		    	return (0);
+			return (0);
 		}
 		stop = stop->kid;	/* we want stop, so go one more */
 	}
 
+	in_rcs_import = 1;
 	if (exists(g)) unlink(g);	// DANGER
 	if (create(sfile, Flags, rcs)) return (1);
 	if (verbose > 1) {
@@ -177,14 +232,14 @@ rcs2sccs(RCS *rcs, char *sfile)
 		fflush(stdout);
 		len = 3;
 	}
-
-	for (d = rcs_defbranch(rcs); d && (d != stop); d = d->kid, rev++) {
-		unless (s = sccs_init(sfile, 0)) return (1);
+	unless (s = sccs_init(sfile, 0)) return (1);
+	for (d = first_rdelta(rcs); d && (d != stop); d = d->kid, rev++) {
 		if (newDelta(rcs, d, s, rev, Flags)) {
 			sccs_free(s);
 			free(g);
 			return (1);
 		}
+		sccs_restart(s);
 		d->sccsrev = strdup(s->table->rev);
 		if (verbose > 1) {
 			while (len--) putchar('\b');
@@ -192,8 +247,9 @@ rcs2sccs(RCS *rcs, char *sfile)
 			fflush(stdout);
 			len = strlen(s->table->rev);
 		}
-		sccs_free(s);
 	}
+	sccs_free(s);
+	in_rcs_import = 0;
 	unless (verify) {
 		if (verbose > 1) {
 			printf(" converted\n");
@@ -209,7 +265,7 @@ rcs2sccs(RCS *rcs, char *sfile)
 		len = 0;
 	}
 	unless (s = sccs_init(sfile, 0)) return (1);
-	for (d = rcs_defbranch(rcs); d && (d != stop); d = d->kid) {
+	for (d = first_rdelta(rcs); d && (d != stop); d = d->kid) {
 		if (verbose > 1) {
 			while (len--) putchar('\b');
 			printf("%s<->%s", d->rev, d->sccsrev);
@@ -238,19 +294,20 @@ private int
 verifyFiles(sccs *s, RCS *rcs, rdelta *d, char *g)
 {
 	char	tmpfile[MAXPATH];
-	char	*rev;
-	int     ret;
-	
+	char	*cmd;
+	int	ret;
+
 	if (exists(g)) unlink(g);	// DANGER
 	/* our version of diff cannot handlle "-" */
-	rev = aprintf("-r%s", d->rev);
-	sys(co_prog, "-q", rcs->kk, rev, g, SYS);
-	free(rev);
-	bktmp(tmpfile, "rcs");
-	rev = aprintf("-r%s", d->sccsrev);
-	sysio(0, tmpfile, 0, "bk", "get", "-kqp", rev, g, SYS);
-	free(rev);
-	
+	bktmp(tmpfile, "rcs2bk");
+	cmd = aprintf("%s -q '%s' '-p%s' '%s,v' > %s",
+	    co_prog, rcs->kk, d->rev, g, tmpfile);
+	system(cmd);
+	free(cmd);
+	cmd = aprintf("bk _get -kq '-r%s' '%s'", d->sccsrev, g);
+	system(cmd);
+	free(cmd);
+
 	ret = sys("diff", "--ignore-trailing-cr", tmpfile, g, SYS);
 
 	unlink(tmpfile);
@@ -273,7 +330,7 @@ newDelta(RCS *rcs, rdelta *d, sccs *s, int rev, int flags)
 	unlink(s->gfile); //DANGER
 	sprintf(buf, "-r%s", d->rev);
 	if (sysio(0, s->gfile, 0, co_prog, "-q",
-			"-p", rcs->kk, buf, rcs->file, SYS) != 0) {
+			"-p", rcs->kk, buf, rcs->rcsfile, SYS) != 0) {
 		fprintf(stderr, "[%s] failed\n", buf);
 		return (1);
 	}
@@ -297,7 +354,7 @@ newDelta(RCS *rcs, rdelta *d, sccs *s, int rev, int flags)
 		av[++i] = rcs->kk;
 		sprintf(buf, "-r%s", d->rev);
 		av[++i] = buf;
-		av[++i] = rcs->file;
+		av[++i] = rcs->rcsfile;
 		av[++i] = 0;
 		execv(co_prog, av);
 		perror(co_prog);
@@ -325,7 +382,7 @@ again:
 				*q++ = ' ';
 			}
 			if (q >= &buf[buflen / 2]) {
-realloc:			
+realloc:
 				fprintf(stderr, "Buffer overflow, realloc.\n");
 				free(buf);
 				buflen <<= 1;
@@ -341,7 +398,17 @@ realloc:
 		sprintf(q, "F %u\n", (unsigned int)d->dateFudge);
 		q = strchr(q, '\n'); assert(q && !q[1]); q++;
 	}
-	sprintf(q, "P %s\n", s->gfile);
+	if (d->dead) {
+		char	*p;
+		char	*rmName = sccs_rmName(s, 1);
+
+		p = proj_relpath(0, rmName);
+		free(rmName);
+		sprintf(q, "P %s\n", p);
+		free(p);
+	} else {
+		sprintf(q, "P %s\n", s->gfile);
+	}
 	if (q >= &buf[buflen / 2]) goto realloc;
 	q = strchr(q, '\n'); assert(q && !q[1]); q++;
 	for (sy = rcs->symbols; sy; sy = sy->next) {
@@ -353,7 +420,7 @@ realloc:
 	strcpy(q, "------------------------------------------------\n");
 	init = mrange(buf, &buf[strlen(buf)], "b");
 //fprintf(stderr, "%.*s\n", init->size, init->mmap);
-	
+
 	/* bk delta $Q -cRI.init $gfile */
 	if (sccs_delta(s, flags|DELTA_FORCE|DELTA_PATCH, 0, init, 0, 0)) {
 		fprintf(stderr, "Delta of %s failed\n", s->gfile);
@@ -367,27 +434,50 @@ realloc:
 private	int
 create(char *sfile, int flags, RCS *rcs)
 {
-	static	u16 seq;
 	sccs	*s = sccs_init(sfile, 0);
 	char	*g = sccs2name(sfile);
-	int	enc = encoding(rcs->file);
+	int	enc = encoding(rcs->rcsfile);
 	int	expand;
-	mode_t	m = mode(rcs->file);
-	char	r[20];
+	mode_t	m = mode(rcs->rcsfile);
 	MMAP	*init;
 	char	*f, *t;
 	char	buf[32<<10];
+	char	*delta_csum;
+	char	*random;
+	char	*date;
+
+	assert(rcs->rootkey);
+	delta_csum = index(rcs->rootkey, '|') + 1;
+	assert(delta_csum);
+	delta_csum = index(delta_csum, '|') + 1;
+	assert(delta_csum);
+	delta_csum = index(delta_csum, '|') + 1;
+	assert(delta_csum);
+	random = index(delta_csum, '|') + 1;
+	assert(random);
 
 	if (exists(g)) unlink(g);	// DANGER
 	close(creat(g, m));
-	randomBits(r);
+
+	t = index(rcs->rootkey, '|');
+	*t = 0;
+	date = index(t+1, '|') + 1;
 	sprintf(buf,
-"D 1.0 70/01/01 03:09:62 BK \n\
+"D 1.0 %.2s/%.2s/%.2s %.2s:%.2s:%.2s %s \n\
 c RCS to BitKeeper\n\
-K %u\n\
+K %.5s\n\
 O 0%o\n\
 P %s\n\
-R %s\n", ++seq, m, g, r);
+R %.8s\n",
+		&date[2],
+		&date[4],
+		&date[6],
+		&date[8],
+		&date[10],
+		&date[12],
+		rcs->rootkey,	/* user@host */
+		delta_csum, m, g, random);
+	*t = '|';		/* restore key */
 	t = &buf[strlen(buf)];
 	if (rcs->text) {
 		*t++ = 'T';
@@ -407,9 +497,8 @@ R %s\n", ++seq, m, g, r);
 	expand = streq(rcs->kk, "-kv") ||
 	    streq(rcs->kk, "-kk") || streq(rcs->kk, "-kkv");
 	sprintf(t,
-	    "X 0x%x\n------------------------------------------------\n",
-	    expand ? 
-	    X_BITKEEPER|X_RCS|X_CSETMARKED : X_BITKEEPER|X_CSETMARKED);
+		"X 0x%x\n------------------------------------------------\n",
+		X_REQUIRED | (expand ? X_RCS : 0));
 	init = mrange(buf, &buf[strlen(buf)], "b");
 
 	/* bk delta $Q $enc -ciI.onezero $gfile */
@@ -420,6 +509,17 @@ R %s\n", ++seq, m, g, r);
 		fprintf(stderr, "Create of %s failed\n", g);
 		return (1);
 	}
+#if	0
+	/*
+	 * I can't control the username because the repository might
+	 * be single_user.
+	 */
+	sccs_sdelta(s, sccs_ino(s), buf);
+	if (strcmp(buf, rcs->rootkey) != 0) {
+		printf("missmatch:\n\t%s\n!=\t%s\n", buf, rcs->rootkey);
+		exit(1);
+	}
+#endif
 	sccs_free(s);
 	free(g);
 	mclose(init);
@@ -432,11 +532,11 @@ R %s\n", ++seq, m, g, r);
 private	mode_t
 mode(char *file)
 {
-        struct  stat sbuf;
+	struct	stat	sbuf;
 
-        if (stat(file, &sbuf) == -1) return 0;
+	if (stat(file, &sbuf) == -1) return 0;
 	sbuf.st_mode |= 0664;
-        return (sbuf.st_mode & 0777);
+	return (sbuf.st_mode & 0777);
 }
 
 private	int
@@ -449,6 +549,6 @@ encoding(char *file)
 	av[2] = 0;
 	if (isascii_main(2, av) == 0) {
 		return (E_ASCII);
-	} 
+	}
 	return (E_UUENCODE);
 }

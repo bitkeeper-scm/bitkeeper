@@ -193,6 +193,11 @@ proc dot {} \
 	} else {
 		.menu.next configure -state normal
 	}
+
+	# this lets calling programs know that a different file was
+	# diffed, or a different diff was selected for the current
+	# file. 
+	event generate . <<DiffChanged>>
 }
 
 proc highlightDiffs {start stop} \
@@ -439,8 +444,6 @@ proc displayInfo {lfile rfile {parent {}} {stop {}}} \
 	foreach {side f r} $files {
 		catch {set fd [open "| bk sfiles -g \"$f\"" r]} err
 		if { ([gets $fd fname] <= 0)} {
-			set text($side) \
-			    "Not a BitKeeper revision controlled file"
 			set bkfile($side) 0
 		} else {
 			if {$r != "1.0"} {
@@ -476,14 +479,9 @@ proc displayInfo {lfile rfile {parent {}} {stop {}}} \
 	.diffs.right configure -state normal
 	.diffs.left delete 1.0 end
 	.diffs.right delete 1.0 end
-	.diffs.left insert end "$text(left)\n" select
-	.diffs.right insert end "$text(right)\n" select
-	# Pad out info lines
-	if {($bkfile(left) == 0) && ($bkfile(right) == 1)} {
-		.diffs.left insert end "\n\n" select
-	}
-	if {($bkfile(left) == 1) && ($bkfile(right) == 0)} {
-		.diffs.right insert end "\n\n" select
+	if {$bkfile(left) == 1 && $bkfile(right) == 1} {
+		.diffs.left insert end "$text(left)\n" select
+		.diffs.right insert end "$text(right)\n" select
 	}
 	# XXX: Check differences between the info lines
 	return
@@ -549,7 +547,7 @@ proc readFiles {L R {O {}}} \
 	}; #end fmtool stuff
 
 	. configure -cursor watch
-	update
+	update idletasks
 	set lineNo 1; set diffCount 0; set nextDiff 1; set saved 0
 	array set DiffsEnd {}
 	array set Diffs {}
@@ -715,24 +713,26 @@ proc xscroll { a args } \
 
 proc Page {view dir one} \
 {
-	set p [winfo pointerxy .]
-	set x [lindex $p 0]
-	set y [lindex $p 1]
-	set w [winfo containing $x $y]
-	#puts "window=($w)"
-	if {[regexp {^.diffs} $w] || [regexp {^.menu} $w]} {
-		page ".diffs" $view $dir $one
-		return 1
+	global app
+
+	# fmtool wants different windows to scroll depending on where
+	# the mouse pointer is; other tools aren't quite so particular.
+	if {"$app" == "fm"} {
+		set p [winfo pointerxy .]
+		set x [lindex $p 0]
+		set y [lindex $p 1]
+		set w [winfo containing $x $y]
+		#puts "window=($w)"
+		if {[regexp {^.merge} $w]} {
+			page ".merge" $view $dir $one
+			return 1
+		} else {
+			page ".diffs" $view $dir $one
+			return 1
+		}
 	}
-	if {[regexp {^.l.filelist.t} $w]} {
-		page ".diffs" $view $dir $one
-		return 1
-	}
-	if {[regexp {^.merge} $w]} {
-		page ".merge" $view $dir $one
-		return 1
-	}
-	return 0
+	page ".diffs" $view $dir $one
+	return 1
 }
 
 proc page {w xy dir one} \

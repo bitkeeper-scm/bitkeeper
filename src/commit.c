@@ -78,7 +78,7 @@ commit_main(int ac, char **av)
 	 * of subprocesses.  This process will need the result anyway so
 	 * this isn't any slower.
 	 */
-	lease_check(0);
+	proj_license(0);
 
 	unless(opts.resync) remark(opts.quiet);
 	if (pendingFiles[0]) {
@@ -110,7 +110,7 @@ commit_main(int ac, char **av)
 			if (sysio(0, pendingFiles, 0,
 				"bk", "sfind", "-s,,p", "-C", SYS)) {
 				unlink(pendingFiles);
-				getMsg("duplicate_IDs", 0, 0, 0, stdout);
+				getMsg("duplicate_IDs", 0, 0, stdout);
 				return (1);
 			}
 		}

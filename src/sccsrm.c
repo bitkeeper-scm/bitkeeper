@@ -176,8 +176,10 @@ sccs_gone(int quiet, FILE *f)
 	/* eat the keys first because check will complain if we edit the file */
 	while (fnext(key, f)) mdbm_store_str(db, key, "", MDBM_INSERT);
 
-	root = proj_root(0);
-	assert(root);
+	unless (root = proj_root(0)) {
+		fprintf(stderr, "Can't find package root\n");
+		exit(1);
+	}
 	sprintf(s_gone, "%s/BitKeeper/etc/SCCS/s.gone", root);
 	sprintf(g_gone, "%s/BitKeeper/etc/gone", root);
 

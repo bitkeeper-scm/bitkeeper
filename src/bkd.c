@@ -9,8 +9,7 @@ private	int	getav(int *acp, char ***avp, int *httpMode);
 private	void	log_cmd(int ac, char **av);
 private	void	usage(void);
 
-private	char	**xcmds = 0;		/* excluded command */
-char 		*logRoot, *vRootPrefix;
+char 		*logRoot;
 int		licenseServer[2];	/* bkweb license pipe */
 time_t		licenseEnd = 0;		/* when a temp bk license expires */
 time_t		requestEnd = 0;
@@ -62,7 +61,7 @@ bkd_main(int ac, char **av)
 			Opts.logfile = optarg;
 			break;
 		    case 'V':	/* XXX - should be documented */
-			vRootPrefix = strdup(optarg); break;
+			Opts.vhost_dirpath = strdup(optarg); break;
 		    case 'p': Opts.port = atoi(optarg); break;	/* doc 2.0 */
 		    case 'P': Opts.pidfile = optarg; break;	/* doc 2.0 */
 		    case 's': Opts.startDir = optarg; break;	/* doc 2.0 */
@@ -91,18 +90,14 @@ bkd_main(int ac, char **av)
 		return (1);
 	}
 
-	if (vRootPrefix && !IsFullPath(vRootPrefix)) {
-		fprintf(stderr,
-		    "bad vroot: %s: must be a full path name\n", vRootPrefix);
-		return (1);
-	}
+	unless (Opts.vhost_dirpath) Opts.vhost_dirpath = strdup(".");
 
 	if (Opts.port) Opts.daemon = 1;
 	core();
 	putenv("PAGER=cat");
 	if (Opts.daemon) {
 		if (tcp_pair(licenseServer) == 0) {
-			bkd_server(xcmds);
+			bkd_server(ac, av);
 		} else {
 			fprintf(stderr,
 			    "bkd: ``%s'' when initializing license server\n",
@@ -197,7 +192,7 @@ do_cmds()
 {
 	int	ac;
 	char	**av;
-	int	i, ret, httpMode;
+	int	i, ret, httpMode, log;
 	int	debug = getenv("BK_DEBUG") != 0;
 	char	*peer = 0;
 
@@ -215,7 +210,8 @@ do_cmds()
 			proj_reset(0); /* XXX needed? */
 
 			if (Opts.http_hdr_out) http_hdr(Opts.daemon);
-			cmdlog_start(av, httpMode);
+			log = !streq(av[0], "putenv");
+			if (log) cmdlog_start(av, httpMode);
 
 			/*
 			 * Do the real work
@@ -223,12 +219,12 @@ do_cmds()
 			ret = cmds[i].cmd(ac, av);
 			if (peer) {
 				/* first command records peername */
-				cmdlog_addnote("peer", peer);
+				if (log) cmdlog_addnote("peer", peer);
 				peer = 0;
 			}
 			if (debug) ttyprintf("cmds[%d] = %d\n", i, ret);
 
-			if (cmdlog_end(ret) & CMD_FAST_EXIT) {
+			if (log && (cmdlog_end(ret) & CMD_FAST_EXIT)) {
 				drain();
 				exit(ret);
 			}
@@ -266,6 +262,7 @@ log_cmd(int ac, char **av)
 	tp = localtimez(&t, 0);
 	if (putenv) {
 		fprintf(Opts.log, "%s %.24s ", Opts.remote, asctime(tp));
+		sortLines(putenv, 0);
 		EACH(putenv) {
 			if (strneq("_BK_", putenv[i], 4) ||
 			    strneq("BK_", putenv[i], 3)) {
@@ -317,9 +314,6 @@ exclude(char *cmd_prefix, int verbose)
 	cmds[i].name = 0;
 	cmds[i].realname = 0;
 	cmds[i].cmd = 0;
-#ifdef WIN32
-	xcmds = addLine(xcmds, strdup(optarg));
-#endif
 }
 
 private	int
@@ -388,7 +382,7 @@ getav(int *acp, char ***avp, int *httpMode)
 			return (0);
 		}
 		if (ac >= MAX_AV - 1) {
-			out("ERROR-too many argument\n");
+			out("ERROR-too many arguments\n");
 			return (0);
 		}
 		if (inQuote) {

@@ -39,7 +39,7 @@ push_main(int ac, char **av)
 	int	try = -1; /* retry forever */
 	int	rc = 0, print_title = 0;
 	char	**envVar = 0;
-	char	**pList = NULL;
+	char	**urls = 0;
 	remote 	*r;
 
 	if (ac == 2 && streq("--help", av[1])) {
@@ -79,31 +79,39 @@ push_main(int ac, char **av)
 	}
 
 	loadNetLib();
-	has_proj("push");
-
 	/*
 	 * Get push parent(s)
+	 * Must do this before we chdir()
 	 */
 	if (av[optind]) {
 		while (av[optind]) {
-			pList = addLine(pList, strdup(av[optind++]));
+			urls = addLine(urls, parent_normalize(av[optind++]));
 		}
-	} else {
-		pList = getParentList(PARENT, pList);
-		pList = getParentList(PUSH_PARENT, pList);
+	}
+
+	if (proj_cd2root()) {
+		fprintf(opts.out, "push: cannot find package root.\n");
+		exit(1);
+	}
+	unless (licenseAccept(1)) {
+		fprintf(stderr, "push: failed to accept license, aborting.\n");
+		exit(1);
+	}                                                                       
+
+	unless (urls) {
+		urls = parent_pushp();
 		if (opts.verbose) print_title = 1;
 	}
 
-	unless (pList) {
+	unless (urls) {
 err:		freeLines(envVar, free);
 		usage();
 		if (opts.out && (opts.out != stderr)) fclose(opts.out);
 		return (1);
 	}
 	
-
-	EACH (pList) {
-		r = remote_parse(pList[i], 0);
+	EACH (urls) {
+		r = remote_parse(urls[i], 0);
 		unless (r) goto err;
 		if (opts.debug) r->trace = 1;
 		opts.lcsets = opts.rcsets = opts.rtags = 0;
@@ -140,7 +148,7 @@ err:		freeLines(envVar, free);
 		if (rc) break;
 	}
 
-	freeLines(pList, free);
+	freeLines(urls, free);
 	freeLines(envVar, free);
 	if (opts.out && (opts.out != stderr)) fclose(opts.out);
 	return (rc);
@@ -245,22 +253,18 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 	fd = open(rev_list, O_CREAT|O_WRONLY, 0644);
 	assert(fd >= 0);
 	s = sccs_init(s_cset, 0);
-	rc = prunekey(s, r, NULL, fd, PK_LSER,
+	rc = prunekey(s, r, NULL, fd, PK_LKEY,
 		!opts.verbose, &opts.lcsets, &opts.rcsets, &opts.rtags);
 	if (rc < 0) {
 		switch (rc) {
-		    case -2:	fprintf(opts.out,
-"You are trying to push to an unrelated package. The root keys for the\n\
-ChangeSet file do not match.  Please check the pathnames and try again.\n");
+		    case -2:	getMsg("unrelated_repos", 0, 0, opts.out);
 				close(fd);
 				unlink(rev_list);
 				sccs_free(s);
 				if (r->type == ADDR_HTTP) disconnect(r, 2);
 				return (1); /* needed to force bkd unlock */
-		    case -3:	unless  (opts.forceInit) {
-					fprintf(opts.out,
-					    "You are pushing to an a empty "
-					    "directory\n");
+		    case -3:	unless (opts.forceInit) {
+		    			getMsg("no_repo", 0, 0, opts.out);
 					sccs_free(s);
 					if (r->type == ADDR_HTTP) {
 						disconnect(r, 2);
@@ -295,9 +299,12 @@ tags:			fprintf(opts.out,
 			    opts.rtags, url);
 		} else if (opts.lcsets > 0) {
 			fprintf(opts.out, opts.doit ?
-"----------------------- Sending the following csets -----------------------\n":
-"---------------------- Would send the following csets ---------------------\n")
-			;
+			    "----------------------- "
+			    "Sending the following csets "
+			    "---------------------------\n":
+			    "----------------------- "
+			    "Would send the following csets "
+			    "------------------------\n");
 			if (opts.list) {
 				listIt(s, opts.list);
 			} else {
@@ -317,8 +324,8 @@ tags:			fprintf(opts.out,
 				if (n) fputs("\n", opts.out);
 			}
 			fprintf(opts.out,
-"---------------------------------------------------------------------------\n")
-			;
+			    "------------------------------------------"
+			    "-------------------------------------\n");
 			if (opts.rcsets && !opts.metaOnly) {
 				fprintf(opts.out, "except that the");
 				goto csets;
@@ -359,7 +366,6 @@ genpatch(int level, int wfd, char *rev_list)
 	opts.inBytes = opts.outBytes = 0;
 	n = opts.verbose ? 3 : 2;
 	if (opts.metaOnly) makepatch[n++] = "-e";
-	makepatch[n++] = "-s";
 	makepatch[n++] = "-";
 	makepatch[n] = 0;
 	/*
@@ -493,8 +499,7 @@ send_patch_msg(remote *r, char rev_list[], int ret, char **envVar)
 	n = genpatch(gzip, r->wfd, rev_list);
 	if ((r->type == ADDR_HTTP) && (m != n)) {
 		fprintf(opts.out,
-			"Error: patch have change size from %d to %d\n",
-			m, n);
+		    "Error: patch has changed size from %d to %d\n", m, n);
 		disconnect(r, 2);
 		return (-1);
 	}
@@ -515,10 +520,7 @@ send_patch_msg(remote *r, char rev_list[], int ret, char **envVar)
 	if (opts.debug) {
 		fprintf(opts.out, "Send done, waiting for remote\n");
 		if (r->type == ADDR_HTTP) {
-			fprintf(opts.out,
-				"Note: since httpd batches a large block of\n"
-				"output together before it sends back a reply,\n"
-				"this can take a while, please wait...\n");
+			getMsg("http_delay", 0, 0, opts.out);
 		}
 	}
 	return (0);
@@ -551,7 +553,6 @@ maybe_trigger(remote *r)
 private int
 push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar)
 {
-
 	char	buf[4096];
 	int	n, rc = 0, done = 0, do_pull = 0;
 
@@ -707,10 +708,6 @@ push(char **av, remote *r, char **envVar)
 	char 	buf[MAXKEY];
 
 	gzip = opts.gzip && r->port;
-	if (proj_cd2root()) {
-		fprintf(opts.out, "push: cannot find package root.\n");
-		exit(1);
-	}
 	if (opts.debug) fprintf(opts.out, "Root Key = \"%s\"\n", rootkey(buf));
 
 	ret = push_part1(r, rev_list, envVar);

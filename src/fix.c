@@ -74,7 +74,7 @@ do_cset(char *qflag)
 			    "fix: no graph in %s?\n", s->gfile);
 			exit(1);
 		}
-		d = sccs_getrev(s, "+", 0, 0);
+		d = sccs_top(s);
 		if (CSET(s) && d->merge) {
 			fprintf(stderr, "Unable to fix merge changesets.\n");
 			sccs_free(s);
@@ -148,7 +148,7 @@ check(char *path, char *rev)
 	n = name2sccs(path);
 	s = sccs_init(n, 0);
 	assert(s && HASGRAPH(s));
-	d = sccs_getrev(s, "+", 0, 0);
+	d = sccs_top(s);
 	assert(d && streq(rev, d->rev));
 	if (p) *p = ',';
 	assert(sccs_clean(s, SILENT) == 0);
@@ -176,7 +176,7 @@ doit(char *file, char *revs, char *qflag, char *force)
 	p = name2sccs(file);
 	s = sccs_init(p, SILENT);
 	unless (s && HASGRAPH(s)) {
-		fprintf(stderr, "%s does not exists\n", s->sfile);
+		fprintf(stderr, "%s does not exist or is not a BK file.\n", p);
 		sccs_free(s);
 		return;
 	}
@@ -189,7 +189,7 @@ doit(char *file, char *revs, char *qflag, char *force)
 	}
 	unless (cset) {
 		get(p, SILENT|PRINT, fixfile);
-		d = sccs_getrev(s, "+", 0, 0);
+		d = sccs_top(s);
 		mode = d->mode;
 	}
 	cfile(s, revs);

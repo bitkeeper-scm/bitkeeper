@@ -624,7 +624,7 @@ csetlist(cset_t *cs, sccs *cset)
 			if (copts.serial) {
 				d = sfind(cset, atoi(buf));
 			} else {
-				d = sccs_getrev(cset, buf, NULL, 0);
+				d = sccs_findrev(cset, buf);
 			}
 			unless (d) {
 				fprintf(stderr,
@@ -811,7 +811,7 @@ doDiff(sccs *sc, char kind)
 	}
 	e = e->parent;
 	if (e == d) return;
-	sccs_diffs(sc, e->rev, d->rev, 0, kind, 0, stdout);
+	sccs_diffs(sc, e->rev, d->rev, 0, kind, stdout);
 }
 
 #if 0
@@ -964,7 +964,7 @@ add(FILE *diffs, char *buf)
 		sccs_free(s);
 		return;
 	}
-	unless (d = sccs_getrev(s, rev, 0, 0)) {
+	unless (d = sccs_findrev(s, rev)) {
 		fprintf(stderr, "cset: can't find %s in %s\n", rev, buf);
 		system("bk clean -u ChangeSet");
 		cset_exit(1);

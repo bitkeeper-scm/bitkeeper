@@ -21,13 +21,8 @@ __platformInit()
 	fi
 	ext=""	# Unlike win32, Unix binary does not have .exe extension
 	tcl=""
-	if type wish8.2 >/dev/null 2>&1
-	then wish=wish8.2
-	elif type wish8.0 >/dev/null 2>&1
-	then wish=wish8.0
-	else wish=wish
-	fi
 	test "X$EDITOR" = X && EDITOR=vi
 	test "X$PAGER" = X && PAGER=more
-	export PAGER EDITOR GUI_BIN RM ECHO TMP DEV_NULL MAIL_CMD AWK wish
+	WINDOWS=NO
+	export PAGER EDITOR GUI_BIN RM ECHO TMP DEV_NULL MAIL_CMD AWK WINDOWS
 }

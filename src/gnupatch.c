@@ -4,7 +4,6 @@
 
 private	void	print_title(void);
 
-private project *proj;
 private	int	expandkeywords;
 
 private void
@@ -34,11 +33,12 @@ mkgfile(sccs *s, char *rev, char *path, char *tmpdir, char *tag,
 		char	*r = streq(".", rev) ? "+": rev;
 		char	*ogfile;
 
-		d = findrev(s, r);
+		d = sccs_findrev(s, r);
 		assert(d);
 		unless ((d->mode == 0) || S_ISREG(d->mode)) {
 			fprintf(stderr,
-	    "%s is not regular file, converted to empty file\n", d->pathname);
+			    "%s is not a regular file, using empty file.\n",
+			    d->pathname);
 			return;
 		}
 
@@ -50,8 +50,7 @@ mkgfile(sccs *s, char *rev, char *path, char *tmpdir, char *tag,
 		if (expandkeywords) flags |= GET_EXPAND;
 		if (sccs_get(s, r, 0, 0, 0, flags, "-")) {
 			free(ogfile);
-			fprintf(stderr, "Cannot get %s, rev %s\n",
-								s->sfile, r);
+			fprintf(stderr, "Cannot get %s|%s\n", s->sfile, r);
 			exit(1);
 		}
 		free(s->gfile);
@@ -312,7 +311,6 @@ gnupatch_main(int ac, char **av)
 	 * all done, clean up
 	 */
 	mdbm_close(db);
-	if (proj) proj_free(proj);
 	if (cset1) free(cset1);
 	if (cset2) free(cset2);
 	chdir((char *) TMP_PATH);

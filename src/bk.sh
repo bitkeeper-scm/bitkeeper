@@ -31,6 +31,10 @@ __cd2root() {
 	done
 }
 
+_preference() {
+	bk _preference "$@"
+}
+
 # shorthand to dig out renames
 _renames() {
 	case "X$1" in
@@ -112,9 +116,9 @@ _superset() {
 	shift `expr $OPTIND - 1`
 	export PAGER=cat
 	test "X$@" = X && {
-		test "X`bk parent -qp`" = "X" && exit 1
+		test "X`bk parent -il1`" = "X" && exit 1
 	}
-	bk changes -La $CHANGES "$@" > $TMP2
+	bk changes -Laq $CHANGES "$@" > $TMP2
 	test -s $TMP2 && {
 		test $LIST = NO && {
 			rm -f $TMP $TMP2
@@ -196,11 +200,13 @@ _superset() {
 		exit 0
 	}
 	if [ $# -eq 0 ]
-	then	PARENT=`bk parent | awk '{print $NF}'`
+	then	PARENT=`bk parent -il1`
 	else	PARENT="$@"
 	fi
 	echo "Child:  `bk gethost`:`pwd`"
-	echo "Parent: $PARENT"
+	for i in $PARENT
+	do	echo "Parent: $i"
+	done
 	cat $TMP
 	rm -f $TMP $TMP2
 	exit 1
@@ -449,16 +455,16 @@ _unrm () {
 	NUM=`wc -l $LIST | sed -e's/ *//' | cut -d' ' -f1`
 	if [ "$NUM" -eq 0 ]
 	then
-		echo "---------------"
-		echo "no file found"
-		echo "---------------"
+		echo "------------------------"
+		echo "No matching files found."
+		echo "------------------------"
 		return 2
 	fi
 	if [ "$NUM" -gt 1 ]
 	then
-		echo "------------------------------------------------"
+		echo "-------------------------"
 		echo "$NUM possible files found"
-		echo "------------------------------------------------"
+		echo "-------------------------"
 		echo ""
 	fi
 
@@ -481,7 +487,7 @@ _unrm () {
 			bk prs -hnr+ \
 			  -d'Deleted on:\t:D: :T::TZ: by :USER:@:HOST:' $GFILE
 			echo "---"
-			echo "Top delta before it is deleted:"
+			echo "Top delta before it was deleted:"
 			bk prs -hpr+ $GFILE
 
 			echo -n \
@@ -510,24 +516,17 @@ _unrm () {
 # For fixing delete/gone files that re-appear in the patch when we pull
 _repair()
 {
-	_MASTER=$1  # MASTER should have the supper set of the local tree
-	echo "Fixing up renames..."
+	_MASTER=$1  # MASTER should have the super set of the local tree
+	echo "Fixing renames..."
 	bk -r names
 	bk idcache 	# Must be up-to-date
 		 	# Otherwise we get false resolve conflict
-	echo "Parking edited files"
+	echo "Parking any edited files"
 	bk park	-y"park for repair"	# otherwise edited file will
 					# failed the pull
-	echo "pulling a jumbo patch.."
-	bk pull -F ${_MASTER} || exit 1
-	echo "bk repair has resurrected all files not-gone in the remote"
-	echo "repository."
-	echo "If you intend to resurrect the deleted file, please"
-	echo "make sure its key is not in Bitkeeper/etc/gone."
-	echo "If you want a file stay in \"gone\" status, you may need to"
-	echo "run bk rmgone, and push BitKeeper/etc/gone file update to"
-	echo "the remote repositories."
-	
+	echo "Pulling a jumbo patch..."
+	bk pull -F "${_MASTER}" || exit 1
+	echo "Repair is complete."
 }
 
 # For sending repositories back to BitMover, this removes all comments
@@ -702,7 +701,7 @@ _man() {
 _links() {		# /* undoc? 2.0 - what is this for? */
 	if [ X"$1" = X ]
 	then	echo "usage: bk links bk-bin-dir [public-dir]"
-		echo "Typical is bk links /usr/libexec/bitkeeper /usr/bin"
+		echo "Typical usage is bk links /usr/libexec/bitkeeper /usr/bin"
 		exit 1
 	fi
 	test -x "$1/bk" || { echo Can not find bin directory; exit 1; }
@@ -748,7 +747,7 @@ _regression() {		# /* doc 2.0 */
 	tdir=`bk bin`/t
 
 	test -x "$tdir"/doit || {
-	    echo The regression suite is not included with this release of Bitkeeper
+	    echo The regression suite is not included with this release of BitKeeper
 	    exit 1
 	}
 	# Do not use "exec" to invoke "./doit", it causes problem on cygwin
@@ -846,7 +845,7 @@ _rmgone() {
 # remote tree.
 _repogca() {
 	if [ "X$1" = "X" ]; then
-	    remote=`bk parent -qp`
+	    remote=`bk parent -1il`
 	else
 	    remote=$1
 	fi
@@ -897,9 +896,9 @@ _clonemod() {
 
 	bk clone -lq $2 $3 || exit 1
 	cd $3 || exit 1
-	bk parent -q $1 || exit 1
+	bk parent -siq $1 || exit 1
 	bk undo -q -fa`bk repogca` || exit 1
-	bk pull
+	bk pull `bk parent -il1`
 }
 
 _leaseflush() {

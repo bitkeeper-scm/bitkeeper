@@ -40,19 +40,18 @@ export_main(int ac,  char **av)
 		    case 'k':	kflag = 1; break;		/* doc 2.0 */
 		    case 'p':	trim = atoi(optarg); break;
 		    case 'S':   sysfiles = 1; break;		/* undoc 2.2 */
-		    case 'r':	if (!rev) {			/* doc 2.0 */
+		    case 'r':	unless (rev) {			/* doc 2.0 */
 					rev  = optarg;
 				} else {
 					fprintf(stderr,
-					    "bk export: You can only specifies "
-					    "the  -r option once.\n");
+					    "bk export: only one -r allowed\n");
 					goto usage;
 				}
 				break;
 		    case 't':	if (type) goto usage;		/* doc 2.0 */
 				type = optarg; 
-				if (!streq(type, "patch") &&
-				    !streq(type, "plain")) {
+				unless (streq(type, "patch") ||
+				    streq(type, "plain")) {
 					goto usage;
 				}
 				break;
@@ -115,7 +114,7 @@ usage:			system("bk help -s export");
 		f = popen("bk sfiles -luxg", "r");
 		while (fnext(buf, f)) {
 			chomp(buf);
-			if (!included(buf, include)) continue;
+			unless (included(buf, include)) continue;
 			if (excluded(buf, exclude)) continue;
 			if (!sysfiles && strneq(buf, "BitKeeper/", 10)) {
 				continue;
@@ -145,7 +144,7 @@ usage:			system("bk help -s export");
 		struct	stat sb;
 
 		chop(buf);
-		if (!included(buf, include)) continue;
+		unless (included(buf, include)) continue;
 		if (excluded(buf, exclude)) continue;
 		p = strchr(buf, BK_FS);
 		assert(p);
@@ -161,16 +160,15 @@ usage:			system("bk help -s export");
 		q = strchr(p, BK_FS); 
 		assert(q);
 		*q++ = '\0';
-		d = findrev(s, q);
+		d = sccs_findrev(s, q);
 		assert(d);
 		p_sav = p;
 		for (i = 0; i < trim; i++) {
 			p = strchr(p, '/');
 			unless (p) {
 				fprintf(stderr,
-				    "%s: Cannot trim path; path too short. "
-				    "File skipped.\n",
-				    p_sav);
+				    "Cannot trim short path, "
+				    "file %s skipped.\n", p_sav);
 				goto next;
 			}
 			p++;
@@ -204,23 +202,9 @@ next:		;
 	return (0);
 }
 
-private void
-fix_diff_opt(char *diff_style, char *diff_opt)
-{
-	if (!diff_style) {
-		strcpy(diff_opt, "-du"); /* default */
-	}  else if (diff_style[0] == '?') { /* for bk diffs -C */
-		diff_opt[0] = '\0';
-	} else { 
-		strcpy(diff_opt, "-d ");
-		diff_opt[2] = diff_style[0];
-	}
-	return;
-}
-
 private int
-export_patch(char *diff_style, char *rev,
-			char *include, char *exclude, int hflag, int tflag)
+export_patch(char *diff_style,
+	char	*rev, char *include, char *exclude, int hflag, int tflag)
 {
 	FILE	*f, *f1;
 	char	buf[MAXLINE], file_rev[MAXPATH];
@@ -236,7 +220,12 @@ export_patch(char *diff_style, char *rev,
 		return (1);
 	}
 
-	fix_diff_opt(diff_style, diff_opt);
+	unless (diff_style) {
+		strcpy(diff_opt, "-du"); /* default */
+	} else { 
+		strcpy(diff_opt, "-d ");
+		diff_opt[2] = diff_style[0];
+	}
 	sprintf(buf, "bk gnupatch %s %s %s",
 	    diff_opt, hflag ? "-h" : "", tflag ? "-T" : "");
 
@@ -247,7 +236,7 @@ export_patch(char *diff_style, char *rev,
 		char	*fstart, *fend;
 
 		chop(buf);
-		if (!included(buf, include)) continue;
+		unless (included(buf, include)) continue;
 		if (excluded(buf, exclude)) continue;
 		/*
 		 * Skip BitKeeper/ files (but pass deletes..)

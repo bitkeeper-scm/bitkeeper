@@ -6,8 +6,6 @@ WHATSTR("@(#)%K%");
 
 private	int	cset_boundries(sccs *s, char *rev);
 
-private int	cset_boundries(sccs *s, char *rev);
-
 /*
  * diffs - show differences of SCCS revisions.
  *
@@ -51,16 +49,15 @@ private int	cset_boundries(sccs *s, char *rev);
  *
  *  XXX - need a -N which makes diffs more like diff -Nr, esp. w/ diffs -r@XXX
  */
-
 int
 diffs_main(int ac, char **av)
 {
-	int	flags = DIFF_HEADER|SILENT, verbose = 0, rc, c;
-	int	errors = 0;
-	char	kind;
+	int	verbose = 0, rc, c;
+	int	empty = 0, errors = 0, mdiff = 0;
+	u32	flags = DIFF_HEADER|SILENT, kind;
+	pid_t	pid = 0; /* lint */
 	char	*name;
-	char	*Rev = 0, *cset = 0, *boundaries = 0;
-	char	*opts, optbuf[20];
+	char	*Rev = 0, *boundaries = 0;
 	RANGE_DECL;
 
 	debug_main(av);
@@ -74,35 +71,48 @@ diffs_main(int ac, char **av)
 	} else {
 		kind = streq(av[0], "sdiffs") ? DF_SDIFF : DF_DIFF;
 	}
-	opts = optbuf;
-	*opts++ = '-';
-	*opts = 0;
-	while ((c = getopt(ac, av, "bBcC|d;Dfhl|Mnpr|R|suUvw")) != -1) {
+	while ((c = getopt(ac, av, "a;A;bBcC|d;ehHIl|m|npr|R|suvw")) != -1) {
 		switch (c) {
-		    case 'b': /* fall through */		/* doc 2.0 */
-		    case 'B': *opts++ = c; *opts = 0; break;	/* doc 2.0 */
+		    case 'A':
+			flags |= GET_ALIGN;
+			/*FALLTHROUGH*/
+		    case 'a':
+			flags = annotate_args(flags, optarg);
+			if (flags == -1) goto usage;
+			break;
+		    case 'b': kind |= DF_GNUb; break;		/* doc 2.0 */
+		    case 'B': kind |= DF_GNUB; break;		/* doc 2.0 */
+		    case 'c': kind |= DF_CONTEXT; break;	/* doc 2.0 */
+		    case 'C': getMsg("diffs_C", 0, 0, stdout); exit(0);
+		    case 'e': empty = 1; break;
 		    case 'h': flags &= ~DIFF_HEADER; break;	/* doc 2.0 */
-		    case 'c': kind = DF_CONTEXT; break;		/* doc 2.0 */
-		    case 'C': cset = optarg; break;		/* doc */
-		    case 'D': flags |= GET_PREFIXDATE; break;	/* doc 2.0 */
-		    case 'f': flags |= GET_MODNAME; break;	/* doc 2.0 */
+		    case 'H':
+			flags |= DIFF_COMMENTS;
+			putenv("BK_YEAR4=YES");  /* rm when YEAR4 is default */
+			break;
+		    case 'I': kind |= DF_IFDEF; break;
 		    case 'l': boundaries = optarg; break;	/* doc 2.0 */
-		    case 'M': flags |= GET_REVNUMS; break;	/* doc 2.0 */
-		    case 'p': kind = DF_PDIFF; break;		/* doc 2.0 */
-		    case 'n': kind = DF_RCS; break;		/* doc 2.0 */
+		    case 'm':
+			kind |= DF_IFDEF;
+			mdiff = 1;
+			if (optarg && (*optarg == 'r')) flags |= GET_LINENAME;
+			break;
+		    case 'n': kind |= DF_RCS; break;		/* doc 2.0 */
+		    case 'p': kind |= DF_GNUp; break;		/* doc 2.0 */
 		    case 'R': Rev = optarg; break;		/* doc 2.0 */
-		    case 's': kind = DF_SDIFF; break;		/* doc 2.0 */
-		    case 'u': kind = DF_UNIFIED; break;		/* doc 2.0 */
-		    case 'U': flags |= GET_USER; break;		/* doc 2.0 */
+		    case 's':					/* doc 2.0 */
+			kind &= ~DF_DIFF;
+			kind |= DF_SDIFF;
+			break;
+		    case 'u': kind |= DF_UNIFIED; break;	/* doc 2.0 */
 		    case 'v': verbose = 1; break;		/* doc 2.0 */
-		    case 'w': *opts++ = c; *opts = 0; break;	/* doc 2.0 */
+		    case 'w': kind |= DF_GNUw; break;		/* doc 2.0 */
 		    RANGE_OPTS('d', 'r');			/* doc 2.0 */
 		    default:
 usage:			system("bk help -s diffs");
 			return (1);
 		}
 	}
-	if (opts[-1] == '-') opts = 0; else opts = optbuf;
 
 	if ((things && (boundaries || Rev)) || (boundaries && Rev)) {
 		fprintf(stderr, "%s: -C/-R must be alone\n", av[0]);
@@ -116,37 +126,32 @@ usage:			system("bk help -s diffs");
 	 * If we specified no revs then there must be a gfile.
 	 */
 	if (boundaries) things = 2;
-	if ((flags & GET_PREFIX) && (things != 2) && !streq("-", av[ac-1])) {
+	if ((flags & GET_PREFIX) &&
+	    !Rev && (things != 2) && !streq("-", av[ac-1])) {
 		fprintf(stderr,
-		    "%s: must have both revisions with -d|u|m|s\n", av[0]);
+		    "%s: must have both revisions with -A|U|M|O\n", av[0]);
 		return (1);
 	}
 
-	if (cset) {
-		char	*rev = aprintf("-r%s", cset);
-		char	*diff_opt;
-		int	rc;
+	if (mdiff) {
+		char	*mav[20];
+		int	i, fd;
 
-		/*
-		 * "bk diffs -u -Crev1,rev2" is same as
-		 * "bk export -tpatch -h -du -rrev1,rev2"
-		 */
-		switch (kind) { /* translate diff style option for bk export */
-		    default:		assert("bad diff style" == 0);
-		    case DF_DIFF:	/*
-					 * Force the "null" diff style
-					 * we need this becuase bk export
-					 * default to -du
-					 */
-					diff_opt = "-d?";
-					break;
-		    case DF_RCS:	diff_opt = "-dn"; break;
-		    case DF_UNIFIED:	diff_opt = "-du"; break;
-		    case DF_SDIFF:	diff_opt = "-dy"; break;
+		mav[i=0] = "bk";
+		mav[++i] = "mdiff";
+		if (flags & GET_PREFIX) {
+			flags |= GET_ALIGN;
+			mav[++i] = "-A";
+		} else {
+			assert(!(flags & GET_ALIGN));
 		}
-		rc = sys("bk", "export", "-tpatch", "-h", diff_opt, rev, SYS);
-		free(rev);
-		return (rc);
+		if (flags & GET_LINENAME) mav[++i] = "-r";
+		mav[++i] = 0;
+		if ((pid = spawnvp_wPipe(mav, &fd, BIG_PIPE)) == -1) {
+			perror("mdiff");
+			exit(1);
+		}
+		dup2(fd, 1); close(fd);
 	}
 	name = sfileFirst("diffs", &av[optind], 0);
 	while (name) {
@@ -182,9 +187,9 @@ usage:			system("bk help -s diffs");
 			/*
 			 * XXX - if there are other commands which want the
 			 * edited file as an arg, we should make this code
-			 * be a function.
+			 * be a function.  export/rset/gnupatch use it.
 			 */
-			if (r[0] && (things == 1) && streq(r[0], "=")) {
+			if (r[0] && (things == 1) && streq(r[0], ".")) {
 				restore = 1;
 				if (HAS_GFILE(s) && IS_WRITABLE(s)) {
 					things = 0;
@@ -193,11 +198,16 @@ usage:			system("bk help -s diffs");
 					r[0] = "+";
 				}
 			}
-			RANGE("diffs", s, 0, (flags & SILENT) == 0);
-			if (restore) r[0] = "=";
+			if (rangeProcess("diffs", s, 0,
+			    (flags & SILENT) == 0, 1, &things, rd, r, d)) {
+				unless (empty) goto next;
+				s->rstart = s->tree;
+			}
+			if (restore) r[0] = ".";
 		}
 		if (things) {
 			unless (s->rstart && (r1 = s->rstart->rev)) goto next;
+			if ((things == 2) && (s->rstart == s->rstop)) goto next;
 			if (s->rstop) r2 = s->rstop->rev;
 			/*
 			 * If we did a date specification and that covered only
@@ -244,15 +254,17 @@ usage:			system("bk help -s diffs");
 		 */
 		if (!things && IS_WRITABLE(s) && HAS_PFILE(s) &&
 		    !MONOTONIC(s) && !Rev &&
-		    !sccs_hasDiffs(s, GET_DIFFTOT|flags|ex, 1)) {
+		    !sccs_hasDiffs(s, flags|ex, 1)) {
 			goto next;
 		}
 		
 		/*
 		 * Errors come back as -1/-2/-3/0
 		 * -2/-3 means it couldn't find the rev; ignore.
+		 *
+		 * XXX - need to catch a request for annotations w/o 2 revs.
 		 */
-		rc = sccs_diffs(s, r1, r2, ex|flags, kind, opts, stdout);
+		rc = sccs_diffs(s, r1, r2, ex|flags, kind, stdout);
 		switch (rc) {
 		    case -1:
 			fprintf(stderr,
@@ -276,13 +288,21 @@ next:		if (s) {
 		things = save;
 	}
 	sfileDone();
+	if (mdiff) {
+		u32	status;
+
+		fflush(stdout);		/* just in case */
+		close(1);
+		waitpid(pid, &status, 0);
+		errors |= WIFEXITED(status) ? WEXITSTATUS(status) : 1;
+	}
 	return (errors);
 }
 
 private int
 cset_boundries(sccs *s, char *rev)
 {
-	delta	*d = sccs_getrev(s, rev, 0, 0);
+	delta	*d = sccs_findrev(s, rev);
 
 	unless (d) {
 		fprintf(stderr, "No delta %s in %s\n", rev, s->gfile);

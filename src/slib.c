@@ -18,7 +18,7 @@ WHATSTR("@(#)%K%");
 #define	VSIZE 4096
 
 private delta	*rfind(sccs *s, char *rev);
-private void	dinsert(sccs *s, int flags, delta *d, int fixDate);
+private void	dinsert(sccs *s, delta *d, int fixDate);
 private int	samebranch(delta *a, delta *b);
 private int	samebranch_bk(delta *a, delta *b, int bk_mode);
 private char	*sccsXfile(sccs *sccs, char type);
@@ -42,6 +42,7 @@ private int	checkRev(sccs *s, char *file, delta *d, int flags);
 private int	checkrevs(sccs *s, int flags);
 private int	stripChecks(sccs *s, delta *d, char *who);
 private delta*	csetFileArg(delta *d, char *name);
+private delta*	dateArg(delta *d, char *arg, int defaults);
 private delta*	hostArg(delta *d, char *arg);
 private delta*	pathArg(delta *d, char *arg);
 private delta*	randomArg(delta *d, char *arg);
@@ -578,7 +579,7 @@ sccs_freetable(delta *t)
  * Make sure to keep this up for all inherited fields.
  */
 void
-sccs_inherit(sccs *s, u32 flags, delta *d)
+sccs_inherit(sccs *s, delta *d)
 {
 	delta	*p;
 
@@ -693,7 +694,7 @@ sccs_reDup(sccs *s)
  * invariant that a delta in the graph is always correct.
  */
 private void
-dinsert(sccs *s, int flags, delta *d, int fixDate)
+dinsert(sccs *s, delta *d, int fixDate)
 {
 	delta	*p;
 
@@ -746,7 +747,7 @@ dinsert(sccs *s, int flags, delta *d, int fixDate)
 		debug((stderr, " -> %s (kid, moved sib %s)\n",
 		    p->rev, d->siblings->rev));
 	}
-	sccs_inherit(s, flags, d);
+	sccs_inherit(s, d);
 	if (fixDate) uniqDelta(s);
 }
 
@@ -1045,6 +1046,17 @@ uniqDelta(sccs *s)
 		d->date += tdiff;
 		d->dateFudge += tdiff;
 	}
+
+	/*
+	 * We want the import convertor to produce the same tree
+	 * when ran multiple times. Do not enforce unique key
+	 * across different repository; 
+	 */
+	if (IMPORT(s)) {
+		uniq_close();
+		return;
+	}
+
 	sccs_shortKey(s, d, buf);
 	while (!unique(buf)) {
 //fprintf(stderr, "COOL: caught a duplicate key: %s\n", buf);
@@ -1190,14 +1202,14 @@ date2time(char *asctime, char *z, int roundup)
 }
 
 /*
- * Force sfile's mod time to be one second before gfile's mod time
+ * Force sfile's mod time to be 2 seconds before gfile's mod time
  */
-void
-fix_stime(sccs *s)
+int
+sccs_setStime(sccs *s)
 {
 	struct	utimbuf	ut;
 
-	unless (s->gtime) return;
+	unless (s->gtime) return (-1);
 	/*
 	 * To prevent the "make" command from doing a "get" due to 
 	 * sfile's newer modification time, and then fail due to the
@@ -1217,10 +1229,7 @@ fix_stime(sccs *s)
 	 * so we need to set the mod time to gtime - 2 to compmensate.
 	 */
 	ut.modtime = s->gtime - 2;
-	if (utime(s->sfile, &ut)) {
-		fprintf(stderr, "fix_stime: failed\n");
-		perror(s->sfile);
-	}
+	return (utime(s->sfile, &ut));
 }
 
 /*
@@ -1559,8 +1568,8 @@ sccs_unmkroot(char *path)
  * I need to cache changeset lookups.
  */
 char	*
-_relativeName(char *gName, int isDir, int withsccs,
-	    int mustHaveRmarker, int wantRealName, project *proj)
+_relativeName(char *gName, int isDir, int mustHaveRmarker, int wantRealName,
+    project *proj)
 {
 	char	*t, *s;
 	char	*root;
@@ -1616,13 +1625,6 @@ _relativeName(char *gName, int isDir, int withsccs,
 		if (buf2[0] == 0) strcpy(buf2, ".");
 		return (buf2);
 	}
-	if (withsccs) {
-		char *sName;
-
-		sName = name2sccs(buf2);
-		strcpy(buf2, sName);
-		free(sName);
-	}
 	return(buf2);
 }
 
@@ -1630,15 +1632,14 @@ _relativeName(char *gName, int isDir, int withsccs,
 /*
  * Trim off the RESYNC/ part of the pathname, that's garbage.
  */
-char	*
-relativeName(sccs *sc, int withsccs, int mustHaveRmarker)
+private char	*
+relativeName(sccs *sc, int mustHaveRmarker)
 {
 	char	*s, *g;
 
 	g = sccs2name(sc->sfile);
-	s = _relativeName(g, 0, withsccs, mustHaveRmarker, 1, sc->proj);
+	s = _relativeName(g, 0, mustHaveRmarker, 1, sc->proj);
 	free(g);
-
 	unless (s) return (0);
 
 	if (strncmp("RESYNC/", s, 7) == 0) s += 7;
@@ -1769,7 +1770,7 @@ defbranch(sccs *s)
  *	d.d.d	get top of branch that matches those three digits
  *	d.d.d.d get that revision or error if not there.
  */
-delta *
+private delta *
 findrev(sccs *s, char *rev)
 {
 	u16	a = 0, b = 0, c = 0, d = 0;
@@ -1789,6 +1790,9 @@ findrev(sccs *s, char *rev)
 		}
 		rev = defbranch(s);
 	}
+
+	/* 1.0 == s->tree even if s->tree is 1.1 */
+	if (streq(rev, "1.0")) return (s->tree);
 
 	if (name2rev(s, &rev)) return (0);
 	switch (scanrev(rev, &a, &b, &c, &d)) {
@@ -1854,6 +1858,29 @@ delta	*
 sccs_top(sccs *s)
 {
 	return (findrev(s,0));
+}
+
+delta	*
+sccs_findrev(sccs *s, char *rev)
+{
+	delta	*d;
+
+	unless (rev && *rev) return (findrev(s, 0));
+again:	if (rev[0] == '@') {
+		if (rev[1] == '@') {
+			d = 0;
+		} else if (CSET(s)) {
+			++rev;
+			goto again;
+		} else {
+			d = cset2rev(s, rev+1);
+		}
+	} else if (isKey(rev)) {
+		d = sccs_findKey(s, rev);
+	} else {
+		d = findrev(s, rev);
+	}
+	return (d);
 }
 
 /*
@@ -1995,24 +2022,7 @@ sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
 	/*
 	 * If it's a revision, go find it and use it.
 	 */
-	if (rev) {
-	again:
-		if (s[0] == '@') {
-			if (s[1] == '@') {
-				d = 0;
-			} else if (CSET(sc)) {
-				++s;
-				goto again;
-			} else {
-				d = cset2rev(sc, s+1);
-			}
-		} else if (isKey(s)) {
-			d = sccs_findKey(sc, s);
-		} else {
-			d = findrev(sc, s);
-		}
-		return (d);
-	}
+	if (rev) return (sccs_findrev(sc, s));
 
 	/*
 	 * If it is a symbol, then just go get that delta and return it.
@@ -2359,8 +2369,7 @@ chk_nlbug(sccs *s)
 			p = buf + 3;
 			while (isdigit(*p)) p++;
 			if (*p == 'N' && sawblank) {
-				getMsg("saw_blanknonl", s->sfile,
-				    0, 0, stderr);
+				getMsg("saw_blanknonl", s->sfile, 0, stderr);
 				ret = 1;
 			}
 		}
@@ -3320,28 +3329,6 @@ sccs_next(sccs *s, delta *d)
 }
 
 /*
- * make a fake 1.0 delta and insert it into the graph
- */
-delta	*
-mkOneZero(sccs *s)
-{
-	delta *d =  calloc(sizeof(*d), 1); 
-
-	assert(d);
-	d->next = s->table;
-	s->table = d;
-	d->kid = s->tree;
-	assert(d->kid->parent == 0);
-	d->kid->parent = d;
-	s->tree = d;
-	d->rev = strdup("1.0");
-	explode_rev(d);
-	s->numdeltas++;
-	s->state |= S_FAKE_1_0;       
-	return d;
-}
-
-/*
  * Read in an sfile and build the delta table graph.
  * Scanf caused problems here when there are corrupted files.
  */
@@ -3540,18 +3527,18 @@ done:		if (CSET(s) && (d->type == 'R') &&
 	 * XXX - the above comment is incorrect, we no longer support that.
 	 */
 	s->tree = d;
-	sccs_inherit(s, flags, d);
+	sccs_inherit(s, d);
 	d = d->kid;
 	s->tree->kid = 0;
 	while (d) {
 		delta	*therest = d->kid;
 
 		d->kid = 0;
-		dinsert(s, flags, d, 0);
+		dinsert(s, d, 0);
 		d = therest;
 	}
-	if (checkrevs(s, (flags & INIT_SHUTUP) ? ADMIN_SHUTUP : 0) & 1) {
-		s->state |= S_BADREVS;
+	unless (flags & INIT_WACKGRAPH) {
+		if (checkrevs(s, 0)) s->state |= S_BADREVS|S_READ_ONLY;
 	}
 
 	/*
@@ -4153,7 +4140,7 @@ sccs_init(char *name, u32 flags)
 			/* Not an error if the file doesn't exist yet.  */
 			debug((stderr, "%s doesn't exist\n", s->sfile));
 			s->cksumok = 1;		/* but not done */
-			return (s);
+			goto out;
 		} else {
 			fputs("sccs_init: ", stderr);
 			perror(s->sfile);
@@ -4168,7 +4155,7 @@ sccs_init(char *name, u32 flags)
 	debug((stderr, "mapped %s for %d at 0x%p\n",
 	    s->sfile, (int)s->size, s->mmap));
 	if (((flags&INIT_NOCKSUM) == 0) && badcksum(s, flags)) {
-		return (s);
+		goto out;
 	} else {
 		s->cksumok = 1;
 	}
@@ -4219,7 +4206,8 @@ sccs_init(char *name, u32 flags)
 
 	signal(SIGPIPE, SIG_IGN); /* win32 platform does not have sigpipe */
 	if (sig_ignore() == 0) s->unblock = 1;
-	lease_check(s->proj);
+	lease_check(s->proj, s);
+ out:
 	return (s);
 }
 
@@ -6188,6 +6176,30 @@ getKey(MDBM *DB, char *buf, int flags, char *root)
 	}
 }
 
+private char	*
+get_lineName(sccs *s, ser_t ser, MDBM *db, u32 lnum, char *buf)
+{
+	datum	k, v;
+
+	/* see if ser is in mdbm, if not, gen an md5 name and stick in buf */
+	k.dptr = (void *)&ser;
+	k.dsize = sizeof(ser_t);
+	v = mdbm_fetch(db, k);
+	if (v.dsize) {
+		strcpy(buf, v.dptr);
+	} else {
+		sccs_md5delta(s, sfind(s, ser), buf);
+		v.dptr = (void *)buf;
+		v.dsize = strlen(buf) + 1;
+		if (mdbm_store(db, k, v, MDBM_INSERT)) {
+			fprintf(stderr, "lineName cache: insert error\n");
+			return (0);
+		}
+	}
+	sprintf(&buf[v.dsize - 1], ".%u", lnum);
+	return (buf);
+}
+
 private int
 getRegBody(sccs *s, char *printOut, int flags, delta *d,
 		int *ln, char *iLst, char *xLst)
@@ -6212,6 +6224,9 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	int	lf_pend = 0;
 	ser_t	serial;
 	char	align[16];
+	char	lnamebuf[64]; /* md5sum + '.' + linenumber */
+	MDBM	*namedb = 0;
+	u32	*lnum = 0;
 
 	slist = d ? serialmap(s, d, iLst, xLst, &error)
 		  : setmap(s, D_SET, 0);
@@ -6271,8 +6286,16 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	unless (SCCS(s)) flags &= ~(GET_EXPAND);
 	unless (RCS(s)) flags &= ~(GET_RCSEXPAND);
 
-	if (flags & GET_MODNAME) base = basenm(s->gfile);
-	else if (flags & GET_FULLPATH) base = s->gfile;
+	if (flags & GET_LINENAME) {
+		lnum = calloc(s->nextserial, sizeof(*lnum));
+		namedb = mdbm_mem();
+	}
+	if (flags & GET_MODNAME) {
+		base = basenm(s->gfile);
+	} else if (flags & GET_FULLPATH) {
+		base = d ? d->pathname : sccs_top(s)->pathname;
+	}
+
 	/*
 	 * We want the data to start on a tab aligned boundry
 	 */
@@ -6333,6 +6356,10 @@ out:			if (slist) free(slist);
 		if (isData(buf)) {
 			++seq;
 			(*counter)++;
+			if (lnum) { /* count named lines */
+				lnum[print ? print
+				    : whatstate((const serlist*)state)]++;
+			}
 			if (buf[0] == CNTLA_ESCAPE) {
 				assert((encoding == E_ASCII) ||
 							(encoding == E_GZIP));
@@ -6393,6 +6420,16 @@ out:			if (slist) free(slist);
 					    "%-*s ", s->revLen, tmp->rev);
 				if (flags&GET_LINENUM)
 					fprintf(out, "%6d ", lines);
+				/* GET_LINENAME must be last for mdiff */
+				if (flags&GET_LINENAME) {
+					char	*p;
+
+					p = get_lineName(s, print,
+					    namedb, lnum[print], lnamebuf);
+					assert(p &&
+					    strlen(p) < sizeof(lnamebuf));
+					fprintf(out, "%-36s", p);
+				}
 				fprintf(out, align);
 			} else if (flags & GET_PREFIX) {
 				delta *tmp = sfind(s, (ser_t) print);
@@ -6407,6 +6444,15 @@ out:			if (slist) free(slist);
 					fprintf(out, "%s\t", tmp->rev);
 				if (flags&GET_LINENUM)
 					fprintf(out, "%6d\t", lines);
+				if (flags&GET_LINENAME) {
+					char	*p;
+
+					p = get_lineName(s, print,
+					    namedb, lnum[print], lnamebuf);
+					assert(p &&
+					    strlen(p) < sizeof(lnamebuf));
+					fprintf(out, "%s\t", p);
+				}
 			}
 			e = buf;
 			sccs_expanded = rcs_expanded = 0;
@@ -6570,20 +6616,31 @@ out:			if (slist) free(slist);
 
 	/* Win32 restriction, must do this before we chmod to read only */
 	if (d && (flags&GET_DTIME)){
-		struct utimbuf ut;
-		char *fname = (flags&PRINT) ? printOut : s->gfile;
+		struct	utimbuf ut;
+		char	*fname = (flags&PRINT) ? printOut : s->gfile;
+		int	doit = !(flags & PRINT);
 
-		assert(d->sdate);
-		ut.actime = ut.modtime = date2time(d->sdate, d->zone, EXACT);
-		if (!streq(fname, "-") && (utime(fname, &ut) != 0)) {
-			char msg[1024];
+		/*
+		 * If we are doing a regular SCCS/s.foo -> foo get then
+		 * we set the gfile time iff we can set the sfile time.
+		 * This keeps make happy.
+		 */
+		ut.actime = ut.modtime = d->date - d->dateFudge;
+		unless (flags & PRINT) {
+			s->gtime = ut.modtime;
+			if (sccs_setStime(s)) doit = 0;
+		}
+		if (doit && !streq(fname, "-") && (utime(fname, &ut) != 0)) {
+			char	*msg;
 
-			sprintf(msg, "%s: Cannot set mod time; ", fname);
+			msg = aprintf("Cannot set mod time on %s:", fname);
 			perror(msg);
+			free(msg);
 			s->state |= S_WARNED;
 			goto out;
 		}
 	}
+
 	unless (hash && (flags&GET_HASHONLY)) {
 		int 	rc = 0;
 
@@ -6624,6 +6681,8 @@ out:			if (slist) free(slist);
 	*ln = lines;
 	if (slist) free(slist);
 	if (state) free(state);
+	if (namedb) mdbm_close(namedb);
+	if (lnum) free(lnum);
 	if (DB) {
 		if (s->mdbm) mdbm_close(s->mdbm);
 		s->mdbm = DB;
@@ -6678,11 +6737,7 @@ getLinkBody(sccs *s,
 	} else {
 		unless (symlink(d->symlink, f) == 0 ) {
 #ifdef WIN32
-			fprintf(stderr,
-"===========================================================================\n"
-"%s: You are trying to create a symlink on a win32 file system.\n"
-"This file type is not supported on this platform.\n"
-"===========================================================================\n",
+			getMsg("symlink", s->gfile, '=', stderr);
 			s->gfile);
 #else
 			perror(f);
@@ -6776,7 +6831,7 @@ err:		if (i2) free(i2);
 			d = 0;
 		}
 	} else {
-		d = sccs_getrev(s, rev ? rev : "+", 0, 0);
+		d = sccs_findrev(s, rev ? rev : "+");
 		unless (d) {
 			verbose((stderr,
 			    "get: can't find revision like %s in %s\n",
@@ -7850,8 +7905,6 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 #define	RET(x)	{ different = x; goto out; }
 
 	if (inex && (pf->mRev || pf->iLst || pf->xLst)) RET(2);
-	/* A questionable feature for diffs */
-	if ((flags & GET_DIFFTOT) && (d != findrev(s, 0))) RET(1);
 
 	/* If the file type changed, it is a diff */
 	if (d->flags & D_MODE) {
@@ -7861,7 +7914,7 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 
 	/* If the path changed, it is a diff */
 	if (d->pathname) {
-		char *r = _relativeName(s->gfile, 0, 0, 1, 1, s->proj);
+		char *r = _relativeName(s->gfile, 0, 1, 1, s->proj);
 		if (r && !streq(d->pathname, r)) RET(1);
 	}
 
@@ -8134,7 +8187,7 @@ diff_gmode(sccs *s, pfile *pf)
 
 	/* If the path changed, it is a diff */
 	if (d->pathname) {
-		char *q, *r = _relativeName(s->sfile, 0, 0, 1, 1, s->proj);
+		char *q, *r = _relativeName(s->sfile, 0, 1, 1, s->proj);
 
 		if (r) {
 			q = sccs2name(r);
@@ -8291,7 +8344,7 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 	if (HASH(s)) {
 		ret = diffMDBM(s, old, new, tmpfile);
 	} else {
-		ret = diff(old, new, DF_DIFF, 0, tmpfile);
+		ret = diff(old, new, DF_DIFF, tmpfile);
 	}
 	unless (streq(old, DEV_NULL)) unlink(old);
 	if (!streq(new, s->gfile) && !streq(new, DEV_NULL)){
@@ -8414,7 +8467,7 @@ sccs_clean(sccs *s, u32 flags)
 		}
 		fprintf(stderr, "%s writable but not edited?\n", s->gfile);
 		unless (flags & PRINT) return (1);
-		sccs_diffs(s, 0, 0, DIFF_HEADER|SILENT, DF_DIFF, 0, stdout);
+		sccs_diffs(s, 0, 0, DIFF_HEADER|SILENT, DF_DIFF, stdout);
 		return (1);
 	}
 
@@ -8452,7 +8505,7 @@ sccs_clean(sccs *s, u32 flags)
 	}
 
 	if (BITKEEPER(s)) {
-		char *t = relativeName(s, 0, 1);
+		char *t = relativeName(s, 1);
 
 		unless (t) {
 			fprintf(stderr,
@@ -8775,14 +8828,18 @@ openInput(sccs *s, int flags, FILE **inp)
 delta *
 sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 {
-	int i;
+	int	i;
+	char	*t;
 
-	if (!d) d = calloc(1, sizeof(*d));
+	unless (d) d = calloc(1, sizeof(*d));
 	d->type = type;
 	assert(s);
 	if (BITKEEPER(s) && (type == 'D')) d->flags |= D_CKSUM;
 	unless (d->sdate) {
-		if (s->initFlags & INIT_FIXDTIME) {
+		if (t = getenv("BK_DATE_TIME_ZONE")) {
+			dateArg(d, t, 1);
+			assert(!(d->flags & D_ERROR));
+		} else if (s->initFlags & INIT_FIXDTIME) {
 			date(d, s->gtime);
 
 			/*
@@ -8822,8 +8879,8 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 			 * because we cannot trust the gfile name on
 			 * win32 case-folding file system.
 			 */
-			p = _relativeName(s->sfile, 0, 0, 0, 1, s->proj);
-			q = sccs2name(p);		
+			p = _relativeName(s->sfile, 0, 0, 1, s->proj);
+			q = sccs2name(p);
 			pathArg(d, q);
 			free(q);
 		}
@@ -9052,7 +9109,7 @@ out:		sccs_unlock(s, 'z');
 	}
 
 	buf[0] = 0;
-	t = relativeName(s, 0, 0);
+	t = relativeName(s, 0);
 	if (CSET(s) || (t && !IsFullPath(t))) {
 		if ((strlen(t) > 14) &&
 		    strneq("BitKeeper/etc/", t, 14)) {
@@ -9095,7 +9152,7 @@ out:		sccs_unlock(s, 'z');
 		n0 = sccs_dInit(n0, 'D', s, nodefault);
 		n0->flags |= D_CKSUM;
 		n0->sum = (unsigned short) almostUnique(1);
-		dinsert(s, flags, n0, !(flags & DELTA_PATCH));
+		dinsert(s, n0, !(flags & DELTA_PATCH));
 
 		n = prefilled ? prefilled : calloc(1, sizeof(*n));
 		n->pserial = n0->serial;
@@ -9149,7 +9206,7 @@ out:		sccs_unlock(s, 'z');
 	} else {
 		l[0].flags = 0;
 	}
-	dinsert(s, flags, n, !(flags & DELTA_PATCH));
+	dinsert(s, n, !(flags & DELTA_PATCH));
 	s->numdeltas++;
 	EACH (syms) {
 		addsym(s, n, n, !(flags & DELTA_PATCH), n->rev, syms[i]);
@@ -9192,7 +9249,7 @@ out:		sccs_unlock(s, 'z');
 			first->flags |= D_CKSUM;
 		} else {
 			unless (first->csetFile) {
-				char	*c = proj_csetrootkey(s->proj);
+				char	*c = proj_rootkey(s->proj);
 
 				if (c) first->csetFile = strdup(c);
 			}
@@ -9296,7 +9353,7 @@ out:		sccs_unlock(s, 'z');
 	if ((flags & DELTA_SAVEGFILE) &&
 	    (s->initFlags & INIT_FIXSTIME) &&
 	    HAS_GFILE(s)) {
-		fix_stime(s);
+		sccs_setStime(s);
 	}
 	chmod(s->sfile, 0444);
 	if (BITKEEPER(s)) updatePending(s);
@@ -10198,7 +10255,7 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 		n->flags |= D_SYMBOLS;
 		d->flags |= D_SYMBOLS;
 		sc->numdeltas++;
-		dinsert(sc, 0, n, 1);
+		dinsert(sc, n, 1);
 		if (addsym(sc, d, n, 1, rev, sym)) {
 			verbose((stderr,
 			    "%s: won't add identical symbol %s to %s\n",
@@ -10252,7 +10309,7 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
 		n->sum = (unsigned short) almostUnique(0);
 		n->flags |= D_CKSUM;
 	}
-	dinsert(sc, 0, n, 1);
+	dinsert(sc, n, 1);
 	return (n);
 }
 
@@ -10367,7 +10424,8 @@ sccs_encoding(sccs *sc, char *encp, char *compp)
 		enc = 0;
 	}
 
-	if (sc && CSET(sc)) comp = 0;	/* never compress ChangeSet file */
+	/* never compress ChangeSet file */
+	if (sc && CSET(sc)) compp = "none";
 
 	if (compp) {
 		if (streq(compp, "gzip")) {
@@ -10375,8 +10433,8 @@ sccs_encoding(sccs *sc, char *encp, char *compp)
 		} else if (streq(compp, "none")) {
 			comp = 0;
 		} else {
-			fprintf(stderr, "admin: unknown compression format %s\n",
-				compp);
+			fprintf(stderr,
+			    "admin: unknown compression format %s\n", compp);
 			return (-1);
 		}
 	} else if (sc) {
@@ -10456,7 +10514,7 @@ insert_1_0(sccs *s)
 private int
 remove_1_0(sccs *s)
 {
-	if (streq(s->tree->rev, "1.0") && !(s->state & S_FAKE_1_0)) {
+	if (streq(s->tree->rev, "1.0")) {
 		delta	*d;
 
 		MK_GONE(s, s->tree);
@@ -10540,8 +10598,10 @@ sccs_admin(sccs *sc, delta *p, u32 flags, char *new_encp, char *new_compp,
 	assert(!z); /* XXX used to be LOD item */
 
 	new_enc = sccs_encoding(sc, new_encp, new_compp);
-	if (new_enc == -1) return -1;
-
+	if (new_enc == -1) return (-1);
+	unless ((flags & ADMIN_FORCE) || CSET(sc) || bkcl(0)) {
+		new_enc |= E_GZIP;
+	}
 	debug((stderr, "new_enc is %d\n", new_enc));
 	GOODSCCS(sc);
 	unless (flags & (ADMIN_BK|ADMIN_FORMAT|ADMIN_GONE)) {
@@ -10599,7 +10659,7 @@ out:
 		flags |= NEWCKSUM;
 	}
 	if (mode) {
-		delta *n = sccs_getrev(sc, "+", 0, 0);
+		delta *n = sccs_top(sc);
 		mode_t m;
 
 		assert(n);
@@ -10898,7 +10958,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		OUT;
 	}
 
-	if (HAS_GFILE(sc) && (sc->initFlags&INIT_FIXSTIME)) fix_stime(sc);
+	if (HAS_GFILE(sc) && (sc->initFlags&INIT_FIXSTIME)) sccs_setStime(sc);
 	chmod(sc->sfile, 0444);
 	goto out;
 #undef	OUT
@@ -12028,7 +12088,7 @@ sccs_meta(sccs *s, delta *parent, MMAP *iF, int fixDate)
 	m->next = s->table;
 	s->table = m;
 	s->numdeltas++;
-	dinsert(s, 0, m, fixDate);
+	dinsert(s, m, fixDate);
 	EACH (syms) {
 		addsym(s, m, m, 0, m->rev, syms[i]);
 	}
@@ -12398,7 +12458,7 @@ out:
 			goto out;
 		}
 	}
-	dinsert(s, flags, n, !(flags & DELTA_PATCH));
+	dinsert(s, n, !(flags & DELTA_PATCH));
 	s->numdeltas++;
 
 	/* Uses n->parent, has to be after dinsert() */
@@ -12472,7 +12532,7 @@ out:
 	if ((flags & DELTA_SAVEGFILE) &&
 	    (s->initFlags & INIT_FIXSTIME) &&
 	    HAS_GFILE(s)) {
-		fix_stime(s);
+		sccs_setStime(s);
 	}
 	chmod(s->sfile, 0444);
 	if (BITKEEPER(s) && !(flags & DELTA_NOPENDING)) {
@@ -12613,7 +12673,7 @@ Breaks up citool
 }
 
 private void
-mkTag(char kind, char *rev, char *revM, pfile *pf, char *path, char tag[])
+mkTag(char *rev, char *revM, pfile *pf, char *path, char tag[])
 {
 	/*
 	 * 1.0 => create (or reverse create in a reverse pacth )
@@ -12647,11 +12707,11 @@ mkTag(char kind, char *rev, char *revM, pfile *pf, char *path, char tag[])
  * helper function for sccs_diffs
  */
 private void
-mkDiffHdr(char kind, char tag[], char *buf, FILE *out)
+mkDiffHdr(u32 kind, char tag[], char *buf, FILE *out)
 {
 	char	*marker, *date;
 
-	unless ((kind == DF_UNIFIED) || (kind == DF_CONTEXT)) {
+	unless (kind & (DF_UNIFIED|DF_CONTEXT)) {
 		fputs(buf, out);
 		return; 
 	}
@@ -12670,8 +12730,52 @@ mkDiffHdr(char kind, char tag[], char *buf, FILE *out)
 	} else	fputs(buf, out);
 }
 
+/*
+ * set_comments(), diffComments():
+ * Print out the comments for the diff range passed in.
+ */
+private	char	**h;
+
+private void
+set_comments(sccs *s, delta *d)
+{
+	char	*buf;
+	char	*p;
+
+	buf = sccs_prsbuf(s, d, 0, 
+	    ":D: :T: :P:$if(:HT:){@:HT:} :I: +:LI: -:LD:\n"
+	    "$each(:C:){   (:C:)\n}");
+	if (buf &&
+	    (p = strchr(buf, '\n')) && !streq(p, "\n   Auto merged\n")) {
+		h = addLine(h, strdup(buf));
+	}
+}
+
+private void
+diffComments(u32 kind, FILE *out, sccs *s, char *lrev, char *rrev)
+{
+	int	i;
+
+	unless (rrev) rrev = "+";
+	if (streq(rrev, "edited")) rrev = "+";	/* XXX - what about edit??? */
+	set_diff(s, set_get(s, rrev), set_get(s, lrev), set_comments);
+	if ((kind & DF_IFDEF) && h) fputs("#ifdef !!COMMENTS!!\n", out);
+	EACH(h) {
+		fputs(h[i], out);
+	}
+	if (h) {
+		if (kind & DF_IFDEF) {
+			fputs("#endif !!COMMENTS!!\n", out);
+		} else {
+			fputs("\n", out);
+		}
+		freeLines(h, free);
+		h = 0;
+	}
+}
+
 private int
-doDiff(sccs *s, u32 flags, char kind, char *opts, char *leftf, char *rightf,
+doDiff(sccs *s, u32 flags, u32 kind, char *leftf, char *rightf,
 	FILE *out, char *lrev, char *rrev, char *ltag, char *rtag)
 {
 	FILE	*diffs = 0;
@@ -12681,7 +12785,7 @@ doDiff(sccs *s, u32 flags, char kind, char *opts, char *leftf, char *rightf,
 	int	first = 1;
 	char	*error = "";
 
-	if (kind == DF_SDIFF) {
+	if (kind & DF_SDIFF) {
 		int	i, c;
 		char	*columns = 0;
 
@@ -12696,7 +12800,7 @@ doDiff(sccs *s, u32 flags, char kind, char *opts, char *leftf, char *rightf,
 	} else {
 		strcpy(spaces, "=====");
 		unless (bktmp(diffFile, "diffs")) return (-1);
-		diff(leftf, rightf, kind, opts, diffFile);
+		diff(leftf, rightf, kind, diffFile);
 		diffs = fopen(diffFile, "rt");
 	}
 	if (IS_WRITABLE(s) && !IS_EDITED(s)) {
@@ -12704,19 +12808,32 @@ doDiff(sccs *s, u32 flags, char kind, char *opts, char *leftf, char *rightf,
 	}
 	while (fnext(buf, diffs)) {
 		if (first) {
-			if (flags & DIFF_HEADER) {
+			if ((flags & DIFF_HEADER) && (kind & DF_IFDEF)) {
+				fprintf(out, "#ifdef !!HEADER!!\n");
+				fprintf(out, "< %s %s\n", s->gfile, lrev);
+				fprintf(out, "> %s %s\n", s->gfile, rrev);
+				fprintf(out, "#endif !!HEADER!!\n");
+			} else if (flags & DIFF_HEADER) {
 				fprintf(out, "%s %s %s vs %s%s %s\n",
-				    spaces, s->gfile, lrev, rrev, error, spaces);
-			} else {
-				fprintf(out, "\n");
+				   spaces, s->gfile, lrev, rrev, error, spaces);
 			}
+			if (flags & DIFF_COMMENTS) {
+				diffComments(kind, out, s, lrev, rrev);
+			}
+			unless (flags & DIFF_HEADER) fprintf(out, "\n");
 			first = 0;
 			mkDiffHdr(kind, ltag, buf, out);
 			unless (fnext(buf, diffs)) break;
 			mkDiffHdr(kind, rtag, buf, out);
-		} else	fputs(buf, out);
+		} else {
+			fputs(buf, out);
+		}
 	}
-	if (kind == DF_SDIFF) {
+	/* XXX - gross but useful hack to get spacers */
+	if ((flags & DIFF_COMMENTS) && !(kind & DF_IFDEF) && !first) {
+		fprintf(out, "\n");
+	}
+	if (kind & DF_SDIFF) {
 		pclose(diffs);
 	} else {
 		fclose(diffs);
@@ -12795,7 +12912,7 @@ getHistoricPath(sccs *s, char *rev)
 
 private int
 mkDiffTarget(sccs *s,
-	char *rev, char *revM, char kind, u32 flags, char *target , pfile *pf)
+	char *rev, char *revM, u32 flags, char *target , pfile *pf)
 {
 	if (streq(rev, "1.0")) {
 		strcpy(target, NULL_FILE);
@@ -12832,7 +12949,7 @@ mkDiffTarget(sccs *s,
 
 private int
 normal_diff(sccs *s, char *lrev, char *lrevM,
-	char *rrev, u32 flags, char kind, char *opts, FILE *out, pfile *pf)
+	char *rrev, u32 flags, u32 kind, FILE *out, pfile *pf)
 {
 	char	lfile[MAXPATH], rfile[MAXPATH];
 	char	ltag[MAXPATH],	rtag[MAXPATH], 	tmp[MAXPATH];
@@ -12845,10 +12962,10 @@ normal_diff(sccs *s, char *lrev, char *lrevM,
 	/*
 	 * Create the lfile & rfile for diff
 	 */
-	if (mkDiffTarget(s, lrev, lrevM, kind, flags, lfile, pf)) {
+	if (mkDiffTarget(s, lrev, lrevM, flags, lfile, pf)) {
 		goto done;
 	}
-	if (mkDiffTarget(s, rrev, NULL,  kind, flags, rfile, 0 )) {
+	if (mkDiffTarget(s, rrev, NULL,  flags, rfile, 0 )) {
 		goto done;
 	}
 
@@ -12860,14 +12977,13 @@ normal_diff(sccs *s, char *lrev, char *lrevM,
 	 * 
 	 * +++ bk.sh 1.34  Thu Jun 10 21:22:08 1999
 	 */
-	mkTag(kind, lrev, lrevM, pf, lpath, ltag);
-	mkTag(kind, rrev, NULL, NULL, rpath, rtag);
+	mkTag(lrev, lrevM, pf, lpath, ltag);
+	mkTag(rrev, NULL, NULL, rpath, rtag);
 
 	/*
 	 * Now diff the lfile & rfile
 	 */
-	rc = doDiff(s,
-	    flags, kind, opts, lfile, rfile, out, lrev, rrev, ltag, rtag);
+	rc = doDiff(s, flags, kind, lfile, rfile, out, lrev, rrev, ltag, rtag);
 done:	unless (streq(lfile, NULL_FILE)) unlink(lfile);
 	unless (streq(rfile, s->gfile) || streq(rfile, NULL_FILE)) unlink(rfile);
 	return (rc);
@@ -12877,8 +12993,7 @@ done:	unless (streq(lfile, NULL_FILE)) unlink(lfile);
  * diffs - diff the gfile or the specified (or implied) rev
  */
 int
-sccs_diffs(sccs *s,
-	char *r1, char *r2, u32 flags, char kind, char *opts, FILE *out)
+sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, u32 kind, FILE *out)
 {
 	char	*lrev, *lrevM, *rrev;
 	pfile	pf;
@@ -12895,7 +13010,7 @@ sccs_diffs(sccs *s,
 		goto done;
 	}
 
-	rc = normal_diff(s, lrev, lrevM, rrev, flags, kind, opts, out, &pf);
+	rc = normal_diff(s, lrev, lrevM, rrev, flags, kind, out, &pf);
 
 done:	free_pfile(&pf);
 	return (rc);
@@ -13442,7 +13557,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 
 	if (streq(kw, "BF")) {
 		/* branch flag */
-		/* Bitkeeper does not have a branch flag */
+		/* BitKeeper does not have a branch flag */
 		/* but we can derive the value		 */
 		// re-check this when LOD is done
 		if (d->rev) {
@@ -15429,6 +15544,26 @@ sccs_md5delta(sccs *s, delta *d, char *b64)
 	free(hash);
 }
 
+/*
+ * Identify SCCS files that the user creates.  Seperate from
+ * BK files.  Basicly the ChangeSet file and anything created
+ * in BitKeeper/ is a system file.  The "created" is because of
+ * BitKeeper/deleted...
+ */
+int
+sccs_userfile(sccs *s)
+{
+	char	*pathname;
+
+	if (CSET(s))		/* ChangeSet */
+		return 0;
+
+	pathname = sccs_ino(s)->pathname;
+	if (strneq(pathname, "BitKeeper/", 10))
+		return 0;
+	return 1;
+}
+
 void
 sccs_shortKey(sccs *s, delta *d, char *buf)
 {
@@ -16061,50 +16196,39 @@ smartMkdir(char *dir, mode_t mode)
  * existing entries are modified or new ones added. This does not matter
  * as the checks that caused the entry to be deleted will fail next time
  */
+#define	TIMESTAMPS	"BitKeeper/log/timestamps"
+
 private int timestampDBChanged = 0;
 
 /*
  * we need to parse the timestamp file. Its format is:
- * relative/file/path gfile_mtime gfile_size permissions sfile_mtime sfile_size
- *
- * This must be parsed backwards to cope with spaces in file names
+ * relative/file/path|gfile_mtime|gfile_size|permissions|sfile_mtime|sfile_size
  */
 private int
 parseTimestamps(char *buf, tsrec *ts)
 {
-	char	*rover;
+	char	*p;
 
-	/* parse sfile_size */
-	rover = strrchr(buf, ' ');
-	if (!rover) return 0;	/* bogus entry */
-	ts->sfile_size = strtoul(rover + 1, 0, 0);
-	*rover = '\0';
-
-	/* parse sfile_mtime */
-	rover = strrchr(buf, ' ');
-	if (!rover) return 0;	/* bogus entry */
-	ts->sfile_mtime = strtoul(rover + 1, 0, 0);
-	*rover = '\0';
-
-	/* parse permissions */
-	rover = strrchr(buf, ' ');
-	if (!rover) return 0;	/* bogus entry */
-	ts->permissions = strtoul(rover + 1, 0, 0);
-	*rover = '\0';
+	/* parse gfile_mtime */
+	ts->gfile_mtime = strtoul(buf, &p, 16);
+	unless (p && (*p == BK_FS)) return (0);		/* bogus entry */
 
 	/* parse gfile size */
-	rover = strrchr(buf, ' ');
-	if (!rover) return 0;	/* bogus entry */
-	ts->gfile_size = strtoul(rover + 1, 0, 0);
-	*rover = '\0';
+	ts->gfile_size = strtoul(p + 1, &p, 10);
+	unless (p && (*p == BK_FS)) return (0);		/* bogus entry */
+
+	/* parse permissions */
+	ts->permissions = strtoul(p + 1, &p, 8);
+	unless (p && (*p == BK_FS)) return (0);		/* bogus entry */
 
 	/* parse sfile_mtime */
-	rover = strrchr(buf, ' ');
-	if (!rover) return 0;	/* bogus entry */
-	ts->gfile_mtime = strtoul(rover + 1, 0, 0);
-	*rover = '\0';
+	ts->sfile_mtime = strtoul(p + 1, &p, 16);
+	unless (p && (*p == BK_FS)) return (0);		/* bogus entry */
 
-	/* now got the relative path name to file at the start */
+	/* parse sfile_size */
+	ts->sfile_size = strtoul(p + 1, &p, 10);
+	unless (p && (*p == 0)) return (0);		/* bogus entry */
+
 	return (1);
 }
 
@@ -16112,70 +16236,66 @@ parseTimestamps(char *buf, tsrec *ts)
  * generate a timestamp database - cannot use loadDB as it can't cope with
  * this format - or I couldn't figure out how! (andyc).
  */
-MDBM*
+HASH *
 generateTimestampDB(project *p)
 {
 	/* want to use the timestamp database */
 	FILE	*f = 0;
-	MDBM	*db;
+	HASH	*db;
 	char	*tsname;
 	char	buf[MAXLINE];
-	char	*pref;
 
-	if ((pref = user_preference("trust_window")) &&
-	    streq(pref, "none")) {
-		return (0);
-	}
+	if (streq(user_preference("clock_skew"), "off")) return (0);
 
-	tsname = aprintf("%s/BitKeeper/tmp/TIMESTAMPS", proj_root(p));
-
-	db = mdbm_mem();
+	tsname = aprintf("%s/%s", proj_root(p), TIMESTAMPS);
+	db = hash_new();
 	assert(db);
 	if (f = fopen(tsname, "r")) {
 		while (fnext(buf, f)) {
-			tsrec	ts;
-			if (parseTimestamps(buf, &ts)) {
-				datum k;
-				datum v;
-				k.dptr = buf;
-				k.dsize = strlen(buf);
-				v.dptr = (char*) &ts;
-				v.dsize = sizeof(ts);
-				mdbm_store(db, k, v, MDBM_INSERT);
-			} else
-				/* the database has invalid information in it
+			tsrec	*ts;
+			char	*p;
+
+			chomp(buf);
+			unless (p = strchr(buf, BK_FS)) {
+bad:				/* the database has invalid information in it
 				 * so get it regenerated
 				 */
 				timestampDBChanged = 1;
+				continue;
+			}
+			*p++ = 0;
+			ts = hash_fetchAlloc(db, buf, 0, sizeof(tsrec));
+			unless (parseTimestamps(p, ts)) goto bad;
 		}
 		fclose(f);
 	}
 	free(tsname);
-	return db;
+	return (db);
 }
 
 void
-dumpTimestampDB(project *p, MDBM* db)
+dumpTimestampDB(project *p, HASH *db)
 {
 	FILE	*f = 0;
 	char	*tsname;
 	kvpair	kv;
 
-	if (!timestampDBChanged) return;
+	unless (timestampDBChanged) return;
 
-	tsname = aprintf("%s/BitKeeper/tmp/TIMESTAMPS", proj_root(p));
-	f = fopen(tsname, "w");
-	if (!f) {
+	tsname = aprintf("%s/%s", proj_root(p), TIMESTAMPS);
+	unless (f = fopen(tsname, "w")) {
 		free(tsname);
-		return; /* leave stale timestamp file there */
+		return;			/* leave stale timestamp file there */
 	}
-	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
-		tsrec	*ts = (tsrec*) kv.val.dptr;
+	for (kv = hash_first(db); kv.key.dptr; kv = hash_next(db)) {
+		tsrec	*ts = (tsrec *)kv.val.dptr;
+
 		assert(kv.val.dsize == sizeof(*ts));
-		fwrite(kv.key.dptr, sizeof(char), kv.key.dsize, f);
-		fprintf(f, " %ld %ld 0%o %ld %ld\n",
-			ts->gfile_mtime, ts->gfile_size,
-			ts->permissions, ts->sfile_mtime, ts->sfile_size);
+		fprintf(f, "%s%c%lx%c%ld%c0%o%c%lx%c%ld\n",
+		    kv.key.dptr, BK_FS,
+		    ts->gfile_mtime, BK_FS, ts->gfile_size, BK_FS,
+		    ts->permissions, BK_FS,
+		    ts->sfile_mtime, BK_FS, ts->sfile_size);
 		if (ferror(f)) {
 			/* some error writing the timestamp db so delete it */
 			unlink(tsname);
@@ -16191,10 +16311,8 @@ dumpTimestampDB(project *p, MDBM* db)
  * of the given file
  */
 int
-timeMatch(project *proj, char *gfile, char *sfile, MDBM *timestamps)
+timeMatch(project *proj, char *gfile, char *sfile, HASH *timestamps)
 {
-	datum	k;
-	datum	v;
 	tsrec	*ts;
 	char	*relpath;
 	int	ret = 0;
@@ -16202,74 +16320,65 @@ timeMatch(project *proj, char *gfile, char *sfile, MDBM *timestamps)
 
 	unless (proj) return (0);
 	relpath = proj_relpath(proj, gfile);
-	k.dptr = relpath;
-	k.dsize = strlen(relpath) + 1;
-	v = mdbm_fetch(timestamps, k);
-	if (v.dsize == 0) goto out;	/* no entry for file */
-	assert(v.dsize == sizeof(*ts));
-	ts = (tsrec*) v.dptr;
+	ts = (tsrec *)hash_fetch(timestamps, relpath, 0, 0);
+	free(relpath);
+	unless (ts) goto out;			/* no entry for file */
 
 	if (lstat(gfile, &sb) != 0) goto out;	/* might not exist */
 
-	if (sb.st_mtime != ts->gfile_mtime
-	    || sb.st_size != ts->gfile_size
-	    || sb.st_mode != ts->permissions) {
-		goto out;		    /* gfile doesn't match */
+	if ((sb.st_mtime != ts->gfile_mtime) ||
+	    (sb.st_size != ts->gfile_size) ||
+	    (sb.st_mode != ts->permissions)) {
+		goto out;			/* gfile doesn't match */
 	}
 	if (lstat(sfile, &sb) != 0) {
 		/* We should never get here */
 		perror(sfile);
 		goto out;
 	}
-	if (sb.st_mtime != ts->sfile_mtime || sb.st_size != ts->sfile_size) {
-		goto out;		    /* sfile doesn't match */
+	if ((sb.st_mtime != ts->sfile_mtime) ||
+	    (sb.st_size != ts->sfile_size)) {
+		goto out;			/* sfile doesn't match */
 	}
 
 	/* as far as we're concerned, the file hasn't changed */
 	ret = 1;
- out:
-	free(relpath);
-	return (ret);
+ out:	return (ret);
 }
 
 void
-updateTimestampDB(sccs *s, MDBM *timestamps, int different)
+updateTimestampDB(sccs *s, HASH *timestamps, int different)
 {
-	datum	k;
-	datum	v;
-	tsrec	ts;
+	tsrec	ts, *tsp;
 	struct	stat	sb;
 	char	*relpath;
 	const time_t one_week = 7 * 24 * 60 * 60;   /* # of seconds in week */
-	static time_t trust_window = 0;
+	static time_t clock_skew = 0;
 	time_t now;
 
-	if (!trust_window) {
-		char *p = user_preference("trust_window");
+	unless (clock_skew) {
+		char	*p = user_preference("clock_skew");
+
 		if (streq(p, "off")) {
-			trust_window = 2147483647;  /* 2^31 */
+			clock_skew = 2147483647;  /* 2^31 */
 		} else {
-			trust_window = strtoul(p, 0, 0);
+			clock_skew = strtoul(p, 0, 0);
 		}
-		if (!trust_window) trust_window = one_week;
+		unless (clock_skew) clock_skew = one_week;
 	}
 
 	relpath = proj_relpath(s->proj, s->gfile);
-	k.dptr = relpath;
-	k.dsize = strlen(relpath) + 1;
-
 	if (different) {
-		mdbm_delete(timestamps, k);
+		hash_delete(timestamps, relpath, 0);
 		goto out;
 	}
 
-	if (lstat(s->gfile, &sb) != 0) goto out; /* might not exist */
+	if (lstat(s->gfile, &sb) != 0) goto out;	/* might not exist */
 	ts.gfile_mtime = sb.st_mtime;
 	ts.gfile_size = sb.st_size;
 	ts.permissions = sb.st_mode;
 
-	if (lstat(s->sfile, &sb) != 0) {
-		/* We should never get here */
+	if (lstat(s->sfile, &sb) != 0) {	/* We should never get here */
 		perror(s->sfile);
 		goto out;
 	}
@@ -16277,29 +16386,18 @@ updateTimestampDB(sccs *s, MDBM *timestamps, int different)
 	ts.sfile_size = sb.st_size;
 
 	now = time(0);
-	if ((now - ts.gfile_mtime) < trust_window)
-		mdbm_delete(timestamps, k);
-	else {
-		v = mdbm_fetch(timestamps, k);
-		if (v.dsize == 0) {
-			/* no entry for file */
-			v.dptr = (char*) &ts;
-			v.dsize = sizeof(ts);
-			mdbm_store(timestamps, k, v, MDBM_INSERT);
-		} else {
-			v.dptr = (char*) &ts;
-			v.dsize = sizeof(ts);
-			mdbm_store(timestamps, k, v, MDBM_REPLACE);
-		}
+	if ((now - ts.gfile_mtime) < clock_skew) {
+		hash_delete(timestamps, relpath, 0);
+	} else {
+		tsp = hash_fetchAlloc(timestamps, relpath, 0, sizeof(tsrec));
+		memcpy(tsp, &ts, sizeof(ts));
 		timestampDBChanged = 1;
 	}
-out:
-	free(relpath);
+out:	free(relpath);
 }
 
 #if	defined(linux) && defined(sparc)
 #undef	fclose
-
 sparc_fclose(FILE *f)
 {
 	int	ret;
@@ -16312,5 +16410,4 @@ sparc_fclose(FILE *f)
 	unless (getenv("BK_NO_SPARC_FLUSH")) flushDcache();
 	return (ret);
 }
-
 #endif

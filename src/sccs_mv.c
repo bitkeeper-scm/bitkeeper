@@ -15,17 +15,18 @@ int
 sccs_hasCsetDerivedKey(sccs *s)
 {
 	sccs	*sc;
-	char 	buf1[MAXKEY], buf2[MAXKEY], *p;
 	delta	*d1, *d2;
+	char 	*p;
+	char	buf1[MAXKEY], buf2[MAXKEY];
 
-	d1 = findrev(s, "1.0");
+	d1 = sccs_findrev(s, "1.0");
 	assert(d1);
 	sccs_sdelta(s, d1, buf1);
 
 	sprintf(buf2, "%s/%s", proj_root(s->proj), CHANGESET);
 	sc = sccs_init(buf2, 0);
 	assert(sc);
-	d2 = findrev(sc, "1.0");
+	d2 = sccs_findrev(sc, "1.0");
 	assert(d2);
 	p = d2->pathname;
 	d2->pathname = d1->pathname;
@@ -64,19 +65,18 @@ sccs_rmEmptyDirs(char *path)
 }
 
 int
-sccs_mv(char *name,
-	char *dest, int isDir, int isDelete, int isUnDelete, int force)
+sccs_mv(char	*name,
+	char	*dest, int isDir, int isDelete, int isUnDelete, int force)
 {
 	char 	*t, *destfile, *oldpath, *newpath, *rev;
 	char	*sname = 0, *gfile = 0, *sfile = 0, *ogfile = 0, *osfile = 0;
 	char	**xlist = NULL;
-	char	buf[1024];
 	sccs	*s = 0;
 	int	error = 0, was_edited = 0, has_diffs = 0;
-	int	flags = SILENT|DELTA_FORCE;
-	int	i;
+	int	i, flags;
 	time_t	gtime;
 	pfile   pf;
+	char	buf[1024];
 
 //ttyprintf("sccs_mv(%s, %s, %d, %d, %d)\n", name, dest, isDir, isDelete,force);
 	sname = name2sccs(name);
@@ -134,7 +134,7 @@ err:		if (sname) free(sname);
 
 	if (HAS_PFILE(s)) {
 		was_edited = 1;
-		has_diffs = sccs_hasDiffs(s, flags, 1);
+		has_diffs = sccs_hasDiffs(s, SILENT, 1);
 		if (sccs_read_pfile("mvdir", s, &pf)) {
 			error |= 1;
 			fprintf(stderr, "%s: bad pfile\n", s->gfile);
@@ -208,6 +208,8 @@ err:		if (sname) free(sname);
 
 	if (isDelete && was_edited) {
 		if (has_diffs) {
+			flags = SILENT|DELTA_FORCE;
+
 			if (sccs_delta(s, flags, 0, 0, 0, 0) == -1) {
 				sccs_whynot("mv", s);
 				sccs_free(s);
@@ -237,7 +239,7 @@ err:		if (sname) free(sname);
 		free_pfile(&pf);
 	}
 	s->gtime = gtime;
-	fix_stime(s);
+	sccs_setStime(s);
 	unless (isUnDelete) sccs_rmEmptyDirs(osfile);
 
 out:	if (s) sccs_free(s);
@@ -265,13 +267,13 @@ private	int
 update_idcache(sccs *s, char *old, char *new)
 {
 	char	*root;
-	char	path[MAXPATH*2];
-	char	path2[MAXPATH];
-	char	key[MAXKEY];
 	kvpair	kv;
 	char	*t;
 	FILE	*f;
 	MDBM	*idDB;
+	char	path[MAXPATH*2];
+	char	path2[MAXPATH];
+	char	key[MAXKEY];
 
 	unless (root = proj_root(s->proj)) {
 		fprintf(stderr,
@@ -352,7 +354,7 @@ getRelativeName(char *name, project *proj)
 
 	/* TODO: we should cache the root value for faster lookup */
 	t = sccs2name(name);
-	rpath = strdup(_relativeName(t, 0, 0, 0, 0, proj));
+	rpath = strdup(_relativeName(t, 0, 0, 0, proj));
 	free(t);
 	return rpath;
 }
@@ -393,11 +395,11 @@ rmDir(char *dir)
 private char **
 xfileList(char *sfile)
 {
-	char	buf[MAXPATH];
 	char 	*dir, *p, *xname;
 	char	**xlist = NULL;
 	DIR	*dh;
 	struct  dirent *e;
+	char	buf[MAXPATH];
 
 	strcpy(buf, sfile);
 	dir =  dirname(buf);

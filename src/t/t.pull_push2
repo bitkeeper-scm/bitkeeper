@@ -27,6 +27,7 @@ P=`bk pending | wc -l`
 if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 bk commit $S -a -yCset
 echo OK
+
 echo $N pull to a repo with edited files ............................$NL
 bk clone $Q $HERE/project $HERE/copy
 cd $HERE/project/src
@@ -44,12 +45,14 @@ bk pull  > pull.out 2>&1
 grep -q "bar.c is edited" pull.out || { echo failed; exit 1; }
 grep -q "h.h is edited" pull.out || { echo failed; cat pull.out; exit 1; }
 echo OK
+
 echo $N push to a repo with edited files ............................$NL
 cd $HERE/project
 bk push $HERE/copy > push.out 2>&1
 grep -q "bar.c is edited" push.out || { echo failed; exit 1; }
 grep -q "h.h is edited" push.out || { echo failed; exit 1; }
 echo OK
+
 echo $N pull into repo with edited non-locked files overwrites.......$NL
 cd $HERE
 rm -rf *
@@ -77,6 +80,7 @@ else
 	echo 'buf 2001-05-11-001 passing! update testcase.'
 	exit 1
 fi
+
 echo $N check pull into busted repo containing part of a change......$NL
 cd $HERE
 rm -rf *
@@ -107,15 +111,24 @@ bk lock -w &
 LOCKPID=$!
 bk lock -L
 cd $HERE/copy2
-bk lock -U
 bk pull $HERE/project > /dev/null 2>&1 &
 PULL_PID=$!
+# Wait for pull to lock the repo
+bk lock -L
 sleep 1
 ps alx  | grep ${PULL_PID} | grep -q "defunc"
-if [ $? -eq 0 ]; then echo failed; kill -9 ${LOCKPID} ${PULL_PID}; exit 1; fi
-bk unlock -w $HERE/project
-waitForUnlock $HERE/project
-bk unlock -w $HERE/copy2
-waitForUnlock $HERE/copy2
+if [ $? -eq 0 ]
+then	echo failed
+	kill -9 ${LOCKPID} ${PULL_PID}
+	exit 1
+fi
+# unlock the repo so pull can finish
+cd $HERE/project/BitKeeper
+rm -rf readers writer
+# Now go back and wait for pull to exit, it drops the lock
+# We need to do this because on slow machines we can remove all this stuff,
+# go to the next test, and have the pull lock the new repo.  Lovely, that.
+cd $HERE/copy2
+bk lock -U
 echo OK
 fi #---------------------------------------------------------------------

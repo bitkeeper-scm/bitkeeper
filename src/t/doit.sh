@@ -17,6 +17,7 @@ win32_common_setup()
 {
 	DIFF=/usr/bin/diff
 	PLATFORM="WIN32"
+	WINDOWS=YES
 	DEV_NULL="nul"
 	TMP=`../bk _nativepath $TEMP`
 	if [ -z "$TST_DIR" ]; then TST_DIR=`../bk _nativepath /tmp`; fi
@@ -45,12 +46,15 @@ win32_common_setup()
 	# i.e. It has no effect on the "doit" process itself.
 	CYGWIN=nontsec
 	export CYGWIN
+
+	export WINDOWS
 }
 
 unix_common_setup()
 {
 	DIFF=diff
 	PLATFORM="UNIX"
+	WINDOWS=NO
 	DEV_NULL="/dev/null"
 	TMP="/tmp"
 	if [ -z "$TST_DIR" ]; then TST_DIR="/tmp"; fi
@@ -83,6 +87,7 @@ unix_common_setup()
 	test -r $BIN3 || BIN3=/usr/gnu/bin/wc
 	test -r $BIN3 || exit 1
 	export BIN1 BIN2 BIN3
+	export WINDOWS
 }
 
 bad_mount()

@@ -217,7 +217,7 @@ check_main(int ac, char **av)
 		 * also store the short key.  We want all of them to be unique.
 		 */
 		sccs_sdelta(s, sccs_ino(s), buf);
-		if (hash_store_str(keys, buf, s->gfile)) {
+		if (hash_storeStr(keys, buf, s->gfile)) {
 			fprintf(stderr, "Same key %s used by\n\t%s\n\t%s\n",
 			    buf, s->gfile, (char *)hash_fetch(keys, buf, 0, 0));
 			errors |= 1;
@@ -226,7 +226,7 @@ check_main(int ac, char **av)
 			t = sccs_iskeylong(buf);
 			assert(t);
 			*t = 0;
-			if (hash_store_str(keys, buf, s->gfile)) {
+			if (hash_storeStr(keys, buf, s->gfile)) {
 				fprintf(stderr,
 				    "Same key %s used by\n\t%s\n\t%s\n",
 				    buf, s->gfile,
@@ -276,7 +276,7 @@ check_main(int ac, char **av)
 		}
 		if (csetpointer) {
 			char	buf[MAXKEY + 20];
-			char	*csetkey = proj_csetrootkey(0);
+			char	*csetkey = proj_rootkey(0);
 
 			fprintf(stderr,
 			    "check: "
@@ -375,7 +375,7 @@ chk_dfile(sccs *s)
 	delta	*d;
 	char	*p;
 
-	d = sccs_getrev(s, "+", 0, 0);
+	d = sccs_top(s);
 	unless (d) return (0);
 
        /*
@@ -390,12 +390,7 @@ chk_dfile(sccs *s)
 	*p = 'd';
 	if  (!(d->flags & D_CSET) && !exists(s->sfile)) { 
 		*p = 's';
-		fprintf(stderr,
-"===========================================================================\n"
-"check: %s has pending deltas but no d.file\n"
-"You can fix this by running \"bk -R sfiles -P\"\n"
-"===========================================================================\n",
-			s->gfile);
+		getMsg("missing_dfile", s->gfile, '=', stdout);
 		return (1);
 	}
 	*p = 's';
@@ -408,21 +403,16 @@ chk_gfile(sccs *s)
 {
 	char	*type;
 
-	unless (exists(s->gfile)) return (0);
+	unless (HAS_GFILE(s)) return (0);
+	/*
+	 * XXX when running in checkout:get mode, these checks are still
+	 * too expensive. Need to do ONE stat.
+	 */
 	if (isreg(s->gfile) || isSymlnk(s->gfile)) return (0);
 	if (isdir(s->gfile)) {
+
 		type = "directory";
-err:		fprintf(stderr,
-"===========================================================================\n\
-file/directory conflict: %s\n\
-The name above is both a %s and a revision controlled file.\n\
-The revision controlled file can not be checked out because the directory\n\
-is where the file wants to be.  To correct this:\n\
-1) Move the %s to a different name;\n\
-2) Check out the file \"bk get %s\"\n\
-3) If you want to get rid of the file, then use bk rm to get rid of it\n\
-===========================================================================\n",
-		    s->gfile, type, type, s->gfile);
+err:		getMsg2("file_dir_conflict", s->gfile, type, '=', stderr);
 		return (1);
 	} else {
 		type = "unknown-file-type";
@@ -511,7 +501,7 @@ writable_gfile(sccs *s)
 private int
 no_gfile(sccs *s)
 {
-	if (HAS_PFILE(s) && !exists(s->gfile)) {
+	if (HAS_PFILE(s) && !HAS_GFILE(s)) {
 		if (unlink(sccs_Xfile(s, 'p'))) return (1);
 		s->state &= ~S_PFILE;
 	}
@@ -528,7 +518,6 @@ gfile_unchanged(sccs *s)
 		fprintf(stderr, "%s: cannot read pfile\n", s->gfile);
 		return (1);
 	}
-	
 	rc = diff_gfile(s, &pf, 0, DEV_NULL);
 	if (rc == 1) return (1); /* no changed */
 	if (rc != 0) return (rc); /* error */
@@ -543,7 +532,8 @@ gfile_unchanged(sccs *s)
 private int
 readonly_gfile(sccs *s)
 {
-	if ((HAS_PFILE(s) && exists(s->gfile) && !writable(s->gfile))) {
+	/* XXX slow in checkout:edit mode */
+	if ((HAS_PFILE(s) && HAS_GFILE(s) && !writable(s->gfile))) {
 		if (gfile_unchanged(s) == 1) {
 			unlink(s->pfile);
 			s->state &= ~S_PFILE;
@@ -647,7 +637,7 @@ chk_eoln(sccs *s, int eoln_native)
 private void
 warnPoly(void)
 {
-	getMsg("warn_poly", 0, 0, 0, stdout);
+	getMsg("warn_poly", 0, 0, stdout);
 	touch(POLY, 0664);
 }
 
@@ -695,7 +685,7 @@ checkAll(HASH *db)
 		sprintf(buf, "%s.p", ctmp);
 		keys = fopen(buf, "w");
 		while (fgets(buf, sizeof(buf), f)) {
-			unless (hash_fetch_str(local, buf)) fputs(buf, keys);
+			unless (hash_fetchStr(local, buf)) fputs(buf, keys);
 		}
 		fclose(f);
 		fclose(keys);
@@ -713,7 +703,7 @@ full:		keys = fopen(ctmp, "rt");
 		t = separator(buf);
 		assert(t);
 		*t = 0;
-		if (hash_fetch_str(db, buf)) continue;
+		if (hash_fetchStr(db, buf)) continue;
 		if (mdbm_fetch_str(goneDB, buf)) continue;
 		hash_alloc(warned, buf, 0, 0);
 		found++;
@@ -732,16 +722,14 @@ listFound(HASH *db)
 	kvpair	kv;
 
 	if (goneKey & 1) { /* -g option => key only, no header */
-		for (kv = hash_first(db); kv.key.dsize; kv = hash_next(db)) {
-			printf("%s\n", kv.key.dptr);
-		}
+		EACH_HASH(db) printf("%s\n", kv.key.dptr);
 		return;
 	}
 
 	/* -gg, don't want file keys, just delta keys */
 	if (goneKey) return;
 
-	for (kv = hash_first(db); kv.key.dsize; kv = hash_next(db)) {
+	EACH_HASH(db) {
 		fprintf(stderr, "Missing file (chk3) %s\n", kv.key.dptr);
 	}
 }
@@ -846,9 +834,9 @@ buildKeys(MDBM *idDB)
 		r = strchr(t, '\n');
 		*r++ = 0;
 		assert(t);
-		if (hash_store_str(db, t, s)) {
+		if (hash_storeStr(db, t, s)) {
 			char	*a, *b;
-			char	*root = hash_fetch_str(db, t);
+			char	*root = hash_fetchStr(db, t);
 
 			fprintf(stderr,
 			    "Duplicate delta found in ChangeSet\n");
@@ -891,7 +879,7 @@ buildKeys(MDBM *idDB)
 	for (d = cset->table; d; d = d->next) {
 		unless ((d->type == 'D') && (d->flags & D_CSET)) continue;
 		sccs_sdelta(cset, d, buf);
-		if (hash_store_str(db, buf, key)) {
+		if (hash_storeStr(db, buf, key)) {
 			char	*root = hash_fetch(db, t, 0, 0);
 			unless (streq(root, key)) {
 				fprintf(stderr,
@@ -982,7 +970,9 @@ getRev(char *root, char *key, MDBM *idDB)
 private void
 markCset(sccs *s, delta *d)
 {
-	time_t	now = time(0);
+	static time_t	now;
+
+	unless (now) now = time(0);
 
 	do {
 		if (d->flags & D_SET) {
@@ -1030,6 +1020,7 @@ idsum(u8 *s)
 private int
 check(sccs *s, HASH *db)
 {
+	static	int	haspoly = -1;
 	delta	*d, *ino;
 	int	errors = 0;
 	int	i;
@@ -1056,7 +1047,7 @@ check(sccs *s, HASH *db)
 
 		unless (d->flags & D_CSET) continue;
 		sccs_sdelta(s, d, buf);
-		unless (t = hash_fetch_str(db, buf)) {
+		unless (t = hash_fetchStr(db, buf)) {
 			char	*term;
 
 			if (mixed && (term = sccs_iskeylong(buf))) {
@@ -1126,7 +1117,7 @@ check(sccs *s, HASH *db)
 	}
 
 	/*
-	 * Check Bitkeeper invariants, such as:
+	 * Check BitKeeper invariants, such as:
 	 *  - no open branches (unless we are in a logging repository)
 	 *  - xflags implied by s->state matches top-of-trunk delta.
 	 */
@@ -1178,7 +1169,8 @@ check(sccs *s, HASH *db)
 	/* If we are not already marked as a repository having poly
 	 * cseted deltas, then check to see if it is the case
 	 */
-	if (!exists(POLY) && CSETMARKED(s)) {
+	if (haspoly == -1) haspoly = (exists(POLY) != 0);
+	if (!haspoly && CSETMARKED(s)) {
 		for (d = s->table; d; d = d->next) {
 			d->flags &= ~D_SET;
 		}
@@ -1239,12 +1231,10 @@ checkKeys(sccs *s, char *root)
 	for (d = s->table; d; d = d->next) {
 		unless (d->flags & D_CSET) continue;
 		sccs_sdelta(s, d, key);
-		*(delta **)hash_fetch_alloc(findkey, key, 0,
-		    sizeof(delta *)) = d;
+		*(delta**)hash_fetchAlloc(findkey, key, 0, sizeof(delta *)) = d;
 		unless (mixed) continue;
 		*strrchr(key, '|') = 0;
-		*(delta **)hash_fetch_alloc(findkey, key, 0,
-		    sizeof(delta *)) = d;
+		*(delta**)hash_fetchAlloc(findkey, key, 0, sizeof(delta *)) = d;
 	}
 	do {
 		assert(csetKeys.deltas[i]);
@@ -1336,14 +1326,12 @@ listMarks(HASH *db)
 	kvpair	kv;
 	int	n = 0;
 
-	for (kv = hash_first(db); kv.key.dsize != 0; kv = hash_next(db)) {
+	EACH_HASH(db) {
 		n++;
 		fprintf(stderr,
 		    "check: %s is missing cset marks,\n", kv.key.dptr);
 	}
-	if (n) {
-		fprintf(stderr, "   run ``bk cset -fvM1.0..'' to correct.\n");
-	}
+	if (n) fprintf(stderr, "   run ``bk cset -fvM1.0..'' to correct.\n");
 }
 #endif
 
@@ -1379,7 +1367,7 @@ csetFind(char *key)
 private int
 chk_csetpointer(sccs *s)
 {
-	char	*csetkey = proj_csetrootkey(s->proj);
+	char	*csetkey = proj_rootkey(s->proj);
 
 	if (s->tree->csetFile == NULL ||
 	    !(streq(csetkey, s->tree->csetFile))) {
@@ -1419,7 +1407,7 @@ update_idcache(MDBM *idDB, HASH *keys)
 	char	*found;		/* where we found the gfile */
 	int	inkeyloc;	/* is gfile in inode location? */
 
-	for (kv = hash_first(keys); kv.key.dsize != 0; kv = hash_next(keys)) {
+	EACH_HASH(keys) {
 		p = strchr(kv.key.dptr, '|');
 		assert(p);
 		p++;

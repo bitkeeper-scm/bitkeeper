@@ -12,6 +12,8 @@
  * The second is for flags which are function specific.
  * Be VERY CAREFUL to not mix and match.  If I see a DELTA_ in sccs_get()
  * I will be coming after you with a blowtorch.
+ * We've hit problems with flags being passed to sccs_init() being used for
+ * lower level functions that want different flags.  See WACKGRAPH.
  */
 #define	SILENT		0x00000001	/* do work quietly */
 #define	PRINT		0x00000002	/* get/delta/clean [diffs] to stdout */
@@ -21,7 +23,6 @@
 #define	INIT_avail	0x10000000	/* OLD: map the file read/write */
 #define	INIT_NOCKSUM	0x20000000	/* don't do the checksum */
 #define	INIT_FIXDTIME	0x40000000	/* use g file mod time as delat time */
-#define	INIT_SHUTUP	0x80000000	/* pass ADMIN_SHUTUP to checkrevs() */
 #define	INIT_NOSTAT	0x01000000	/* do not look for {p,x,z,c} files */
 #define	INIT_HAScFILE	0x02000000	/* has c.file */
 #define	INIT_HASgFILE	0x04000000	/* has g.file */
@@ -30,6 +31,7 @@
 #define	INIT_HASzFILE	0x00200000	/* has z.file */
 #define	INIT_NOGCHK	0x00800000	/* do not fail on gfile checks */
 #define	INIT_FIXSTIME	0x00010000	/* force sfile mtime < gfile mtime */
+#define	INIT_WACKGRAPH	0x00020000	/* we're wacking the graph, no errors */
 
 /* shared across get/diffs/getdiffs */
 #define	GET_EDIT	0x10000000	/* get -e: get for editting */
@@ -56,13 +58,15 @@
 #define	GET_HASHDIFFS	0x00000100	/* get -DDD, 0a0 hash style diffs */
 #define	GET_SUM		0x00000200	/* used to force dsum in getRegBody */
 #define GET_NOREGET	0x00000400	/* get -S: skip gfiles that exist */
-#define GET_DIFFTOT	0x00000800	/* hasDiffs() false if !TOT */
+#define	GET_LINENAME	0x00000800	/* get -O: prefix with line name */
 #define	GET_FULLPATH	0x00000010	/* like GET_MODNAME but full relative */
 #define	GET_HASH	0x00000020	/* force hash file, ignore ~S_HASH */
-#define	GET_SEQ		0x00000040	/* get -O: prefix with sequence no */
+#define	GET_SEQ		0x00000040	/* sccs_get: prefix with sequence no */
+#define	GET_COMMENTS	0x00000080	/* diffs -H: prefix diffs with hist */
+#define	DIFF_COMMENTS	GET_COMMENTS
 #define	GET_PREFIX	\
     (GET_REVNUMS|GET_USER|GET_LINENUM|GET_MODNAME|\
-     GET_FULLPATH|GET_PREFIXDATE|GET_SEQ)
+     GET_FULLPATH|GET_PREFIXDATE|GET_SEQ|GET_LINENAME)
 
 #define CLEAN_SHUTUP	0x20000000	/* clean -Q: quiet mode */
 #define	CLEAN_SKIPPATH	0x40000000	/* ignore path change; for log tree */
@@ -140,18 +144,23 @@
 #define	S_FAKE_1_0	0x00008000	/* the 1.0 delta is a fake */
 #define	S_FORCELOGGING	0x00020000	/* Yuck - force it to logging */
 #define S_CONFIG	0x00040000	/* this is a config file */
+#define S_IMPORT	0x00080000	/* import mode */
 
 #define	KEY_FORMAT2	"BK key2"	/* sym in csets created w/ long keys */
 
 /*
  * Options to sccs_diffs()
  */
-#define	DF_DIFF		'd'
-#define	DF_SDIFF	's'
-#define	DF_CONTEXT	'c'
-#define	DF_UNIFIED	'u'
-#define	DF_PDIFF	'p'
-#define	DF_RCS		'n'
+#define	DF_DIFF		0x00000001
+#define	DF_SDIFF	0x00000002
+#define	DF_CONTEXT	0x00000004
+#define	DF_UNIFIED	0x00000008
+#define	DF_RCS		0x00000010
+#define	DF_IFDEF	0x00000020
+#define	DF_GNUb		0x00000040
+#define	DF_GNUB		0x00000080
+#define	DF_GNUp		0x00000100
+#define	DF_GNUw		0x00000200
 
 /*
  * Date handling.
@@ -227,6 +236,7 @@
 #define	CONFIG(s)	((s)->state & S_CONFIG)
 #define	READ_ONLY(s)	((s)->state & S_READ_ONLY)
 #define	SET(s)		((s)->state & S_SET)
+#define	IMPORT(s)	((s)->state & S_IMPORT)
 #define	MK_GONE(s, d)	(s)->hasgone = 1; (d)->flags |= D_GONE
 
 #define	GOODSCCS(s)	assert(s); unless ((s)->tree&&(s)->cksumok) return (-1)
@@ -315,14 +325,13 @@
 #define	OPENLOG_BACKUP	"http://config2.openlogging.org:80////LOG_ROOT///"
 #define	OPENLOG_HOST	"config.openlogging.org"
 #define	OPENLOG_HOST1   "config2.openlogging.org"
-#define	OPENLOG_LEASE	"http://lease.openlogging.org:80"
-#define	OPENLOG_LEASE2	"http://lease2.openlogging.org:80"
+#define	OPENLOG_LEASE	"http://lease.openlogging.org/cgi-bin/bk_lease"
+#define	OPENLOG_LEASE2	"http://lease2.openlogging.org/cgi-bin/bk_lease"
 #define	BK_WEBMAIL_URL	"http://webmail.bitkeeper.com:80"
 #define	BK_HOSTME_SERVER "hostme.bkbits.net"
 #define	WEB_BKD_CGI	"web_bkd"
 #define	HOSTME_CGI	"hostme_cgi"
 #define	WEB_MAIL_CGI	"web_mail"
-#define	LEASE_CGI	"bk_lease"
 #define	BK_CONFIG_URL	"http://config.bitkeeper.com:80"
 #define	BK_CONFIG_BCKUP	"http://config2.bitkeeper.com:80"
 #define	BK_CONFIG_CGI	"bk_config"
@@ -346,21 +355,12 @@
 #define	WEBMASTER	"BitKeeper/etc/webmaster"
 #define	CHECKED		"BitKeeper/log/checked"
 #define	REPO_ID		"BitKeeper/log/repo_id"
-#define PARENT		"BitKeeper/log/parent"
-#define PUSH_PARENT	"BitKeeper/log/push-parent"
-#define PULL_PARENT	"BitKeeper/log/pull-parent"
 #define	BKSKIP		".bk_skip"
 #define	TMP_MODE	0666
 #define	GROUP_MODE	0664
 
 #define	UNKNOWN_USER	"anon"
 #define	UNKNOWN_HOST	"nowhere"
-
-#define BK_FREE		0
-/* #define BK_BASIC	1  -not used */
-#define BK_PRO		2
-#define BK_BADMODE	999
-int	bk_mode(void);
 
 #define	CNTLA_ESCAPE	'\001'	/* escape character for ^A is also a ^A */
 #define	isData(buf)	((buf[0] != '\001') || \
@@ -773,7 +773,7 @@ int	sccs_admin(sccs *sc, delta *d, u32 flgs, char *encoding, char *compress,
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
 int	sccs_delta(sccs *s, u32 flags, delta *d, MMAP *init, MMAP *diffs,
 		   char **syms);
-int	sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, char kind, char *opts, FILE *);
+int	sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, u32 kind, FILE *);
 int	sccs_encoding(sccs *s, char *enc, char *comp);
 int	sccs_get(sccs *s,
 	    char *rev, char *mRev, char *i, char *x, u32 flags, char *out);
@@ -800,12 +800,13 @@ int	sccs_smoosh(char *left, char *right);
 delta	*sccs_parseArg(delta *d, char what, char *arg, int defaults);
 void	sccs_whynot(char *who, sccs *s);
 void	sccs_ids(sccs *s, u32 flags, FILE *out);
-void	sccs_inherit(sccs *s, u32 flags, delta *d);
+void	sccs_inherit(sccs *s, delta *d);
 int	sccs_hasDiffs(sccs *s, u32 flags, int inex);
 void	sccs_print(delta *d);
 delta	*sccs_getInit(sccs *s, delta *d, MMAP *f, int patch,
 		      int *errorp, int *linesp, char ***symsp);
 delta	*sccs_ino(sccs *);
+int	sccs_userfile(sccs *);
 int	sccs_rmdel(sccs *s, delta *d, u32 flags);
 int	sccs_stripdel(sccs *s, char *who);
 int	sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut);
@@ -833,7 +834,7 @@ char	*sfileRev(void);
 char	*sfileFirst(char *cmd, char **Av, int Flags);
 void	sfileDone(void);
 int	tokens(char *s);
-delta	*findrev(sccs *, char *);
+delta	*sccs_findrev(sccs *, char *);
 delta	*sccs_top(sccs *);
 delta	*sccs_findKey(sccs *, char *);
 MDBM	*sccs_findKeyDB(sccs *, u32);
@@ -846,13 +847,13 @@ char	*sccs_realuser(void);
 char	*sccs_user(void);
 int	sccs_markMeta(sccs *);
 
-int	newrev(sccs *s, pfile *pf);
 delta	*modeArg(delta *d, char *arg);
 char    *fullname(char *, int);
 int	fileType(mode_t m);
 char	chop(char *s);
 void	chomp(char *s);
 int	atoi_p(char **p);
+char	*p2str(void *p);
 int	sccs_filetype(char *name);
 void	concat_path(char *, char *, char *);
 void	cleanPath(char *path, char cleanPath[]);
@@ -868,7 +869,7 @@ int	executable(char *f);
 char	*basenm(char *);
 char	*sccs2name(char *);
 char	*name2sccs(char *);
-int	diff(char *lfile, char *rfile, char kind, char *opts, char *out);
+int	diff(char *lfile, char *rfile, u32 kind, char *out);
 int	check_gfile(sccs*, int);
 void	platformSpecificInit(char *);
 MDBM	*loadDB(char *file, int (*want)(char *), int style);
@@ -945,13 +946,10 @@ int	sameFiles(char *file1, char *file2);
 int	gone(char *key, MDBM *db);
 int	sccs_mv(char *, char *, int, int, int, int);
 delta	*sccs_gca(sccs *, delta *l, delta *r, char **i, char **x, int best);
-char	*_relativeName(char *gName, int isDir, int withsccs,
+char	*_relativeName(char *gName, int isDir,
 	    int mustHaveRmarker, int wantRealName, project *proj);
 void	rcs(char *cmd, int argc, char **argv);
 char	*findBin(void);
-project	*chk_proj_init(sccs *s, char *file, int line);
-MDBM	*proj_config(project *p);
-void	proj_free(project *p);
 int 	prompt(char *msg, char *buf);
 void	parse_url(char *url, char *host, char *path);
 char	*sccs_Xfile(sccs *s, char type);
@@ -1055,6 +1053,7 @@ int	smallTree(int threshold);
 MDBM	*csetDiff(MDBM *, int);
 char	*aprintf(char *fmt, ...);
 char	*vaprintf(const char *fmt, va_list ptr);
+char	*strdup_tochar(const char *s, int c);
 void	ttyprintf(char *fmt, ...);
 void	enableFastPendingScan(void);
 char	*isHostColonPath(char *);
@@ -1082,16 +1081,13 @@ char	**getdir(char *);
 typedef	int	(*walkfn)(char *file, struct stat *statbuf, void *data);
 int	walkdir(char *dir, walkfn fn, void *data);
 int	walksfiles(char *dir, walkfn fn, void *data);
-char	*getParent(void);
-char	**getParentList(char *, char **);
 delta	*getSymlnkCksumDelta(sccs *s, delta *d);
-MDBM	*generateTimestampDB(project *p);
-int	timeMatch(project *proj, char *gfile, char *sfile, MDBM *timestamps);
-void	dumpTimestampDB(project *p, MDBM* db);
-void	updateTimestampDB(sccs *s, MDBM *timestamps, int diff);
-struct tm
-        *utc2tm(time_t t);
-void	fix_stime(sccs *s);
+HASH	*generateTimestampDB(project *p);
+int	timeMatch(project *proj, char *gfile, char *sfile, HASH *timestamps);
+void	dumpTimestampDB(project *p, HASH *db);
+void	updateTimestampDB(sccs *s, HASH *timestamps, int diff);
+struct tm *utc2tm(time_t t);
+int	sccs_setStime(sccs *s);
 int	isLocalHost(char *h);
 void	do_cmds(void);
 void	core(void);
@@ -1177,11 +1173,32 @@ void	close_gaps(u8 *vec, int n, int (*compare)(int a, int b));
 int	diff_algor(int m, int n, u8 *lchg, u8 *rchg,
     int (*compare)(int a, int b));
 int   diffline(char *left, char *right);
+typedef	void (*set_pfunc)(sccs *, delta *);
+ser_t	*set_get(sccs *s, char *rev);
+void	set_list(sccs *s, char *rev, set_pfunc p);
+void	set_member(sccs *s, char *rev, ser_t *map, set_pfunc p);
+void	set_diff(sccs *s, ser_t *a, ser_t *b, set_pfunc p);
+void	set_and(sccs *s, ser_t *a, ser_t *b, set_pfunc p);
+void	set_or(sccs *s, ser_t *a, ser_t *b, set_pfunc p);
+void	set_xor(sccs *s, ser_t *a, ser_t *b, set_pfunc p);
+void	set_set(sccs *s, char *rev, set_pfunc p);
+int	saveStdin(char *tmpfile);
+char	**parent_pullp(void);
+char	**parent_pushp(void);
+char	**parent_allp(void);
+int	restore_backup(char *backup_sfio);
+char	*parent_normalize(char *);
+u32	crc(char *s);
+
+int	annotate_args(int flags, char *args);
 
 extern char *bk_vers;
 extern char *bk_utc;
 extern char *bk_time;
 extern char *bk_platform;
 
-int	getMsg(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf);
+int	getMsg(char *msg_name, char *bkarg, char b, FILE *outf);
+int	getMsg2(char *msg_name, char *arg, char *arg2, char b, FILE *outf);
+int	getMsgP(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf);
+int	getMsgv(char *msg_name, char **bkarg, char *prefix, char b, FILE *outf);
 #endif	/* _SCCS_H_ */

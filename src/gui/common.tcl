@@ -20,6 +20,17 @@ proc cd2root { {startpath {}} } \
 	return -1
 }
 
+proc resolveSymlink {filename} {
+	catch {
+		set original_path [file dirname $filename]
+		set link_path [file readlink $filename]
+		set filename [file join $original_path $link_path]
+		# once we upgrade to tcl 8.4 we should also call 
+		# [file normalize]...
+	}
+	return $filename
+}
+
 proc displayMessage {msg {exit {}}} \
 {
 	global tcl_platform
@@ -141,6 +152,24 @@ proc centerWindow {w args} \
 	bindtags $w $bindtags
 }
 
+# this proc attempts to center a given line number in a text widget;
+# similar to the widget's "see" option but with the requested line
+# always centered, if possible. The text widget "see" command only
+# attempts to center a line if it is "far out of view", so we first
+# try to scroll the requested line as far away as possible, then
+# scroll it back. Kludgy, but it seems to work.
+proc centerTextLine {w line} \
+{
+	set midline "[expr {int([$w index end-1c] / 2)}].0"
+	if {$line > $midline} {
+		$w see 1.0
+	} else {
+		$w see end
+	}
+	update idletasks
+	$w see $line
+}
+
 # From a Cameron Laird post on usenet
 proc print_stacktrace {} \
 {
@@ -170,6 +199,38 @@ proc _parray {a {pattern *}} \
 		    [format "%-*s = %s\n" $maxl $nameString $array($name)]
 	}
 	return $answer
+}
+
+proc populateShortcutMenu {menu app menuspec} \
+{
+	global gc
+
+	foreach {widget event accelerator label} $menuspec {
+
+		if {[string match {$*} $widget]} {
+			set widget [uplevel subst $widget]
+		}
+		if {$event == "--"} {
+			$menu add separator
+		} else {
+
+			if {$event == "_quit_"} {
+				set accelerator $gc($app.quit)
+				set event <$accelerator>
+				set cmd [bind $widget $event]
+			} else {
+				set cmd [bind $widget $event]
+				regsub -all {(; *)?break} $cmd {} cmd
+				if {[regexp break $cmd]} {
+					puts "feh: $cmd"
+				}
+			}
+			$menu add command \
+			    -label $label \
+			    -accelerator $accelerator \
+			    -command $cmd
+		}
+	}
 }
 
 # usage: constrainSize ?toplevel? ?maxwidth? ?maxheight?
@@ -282,6 +343,19 @@ proc restoreGeometry {app {w .} {force 0}} \
 	# geometry propagation off
 	catch {grid propagate $w 0}
 	catch {pack propagate $w 0}
+
+	# The MacOSX X11 implementation has a bug when saving
+	# and restoring geometry, such that repeated saving/restoring
+	# causes the window to get progressively taller. Subtracting
+	# the size of the window manager border works around this
+	# annoyance.
+	# For the time being we'll hide this in an undocumented
+	# gc variable since no customers have complained about this
+	# and the problem may go away in the next release of MacOSX.
+	# (for the record, "22" is the magic number for MacOS 10.2.x)
+	if {[info exists gc($app.geometryHack)]} {
+		incr height $gc($app.geometryHack)
+	}
 
 	# Instead of using [wm geometry] we directly configure the width
 	# and height of the window. This is because "wm geometry" will 
