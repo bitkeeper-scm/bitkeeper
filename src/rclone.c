@@ -116,7 +116,7 @@ send_part1_msg(opts opts, remote *r)
 	gettemp(buf, "rclone");
 	f = fopen(buf, "w");
 	assert(f);
-	sendEnv(f, NULL, 0);
+	sendEnv(f, NULL, r, 0);
 	fprintf(f, "rclone_part1");
 	if (gzip) fprintf(f, " -z%d", gzip);
 	if (opts.verbose) fprintf(f, " -v");
@@ -200,7 +200,7 @@ send_sfio_msg(opts opts, remote *r)
 	gettemp(buf, "rclone");
 	f = fopen(buf, "w");
 	assert(f);
-	sendEnv(f, NULL, 0);
+	sendEnv(f, NULL, r, 0);
 	fprintf(f, "rclone_part2");
 	if (gzip) fprintf(f, " -z%d", gzip);
 	if (opts.verbose) fprintf(f, " -v");
