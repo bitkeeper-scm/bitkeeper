@@ -443,6 +443,6 @@ echo $N Checking Y2K date expansion on old delta ....................$NL
 # We should get 2 digit year.
 get $S -r1.3 YEAR4
 if [ '01/10/01' != "`cat YEAR4`" ]
-then echo "Failed (Known bug)";
+then echo "Failed (Known bug)"; #The soultion now is resync -rold_rev
 else ecoh OK
 fi

@@ -752,6 +752,22 @@ sub cp
         $OK;
 }
 
+# mkdir -p
+sub mkdirp
+{
+	local($path, $mode) = ($_[0], $_[1]);
+	local($chopped);
+
+	printf "mkdirp %s %o\n", $path, $mode if ($debug);
+	return $OK if $doNothing;
+	(mkdir($path, $mode) || $! == $EEXIST) && return $OK;
+	return $ERROR if $! != $ENOENT;
+	($chopped = $path) =~ s|/[^/]+$||o;
+	return $ERROR if $chopped eq $path;
+	&mkdirp($chopped, $mode) || return $ERROR;
+	mkdir($path, $mode);
+}
+
 sub usage
 {
         print <<EOF;
@@ -790,6 +806,7 @@ sub init
 {
 	$BIN = &platformPath();
 	&platformInit;
+	$ENOENT = 2; $EEXIST = 17;      # errnos for mkdirp
 	$OK = 1; $debug = $quiet = $hideMarker = $wantGca = 0;
 	$wantAllMarker = $wantBigBlock = 0;
 	$um = "=";
