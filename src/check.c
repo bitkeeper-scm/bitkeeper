@@ -40,6 +40,7 @@ private	int	goneKey;	/* if set, list gone key only */
 private	int	badWritable;	/* if set, list bad writable file only */
 private	int	names;		/* if set, we need to fix names */
 private	int	csetpointer;	/* if set, we need to fix cset pointers */
+private	int	lod;		/* if set, we need to fix lod data */
 private	int	mixed;		/* mixed short/long keys */
 private	int	check_eoln;
 private	project	*proj;
@@ -281,7 +282,11 @@ check_main(int ac, char **av)
 			sprintf(buf, "bk -r admin -C'%s'", csetkey);
 			system(buf);
 		}
-		if (names || xflags_failed || csetpointer) return (2);
+		if (lod) {
+			fprintf(stderr, "check: trying to fix lods...\n");
+			system("bk _fix_lod1");
+		}
+		if (names || xflags_failed || csetpointer || lod) return (2);
 	}
 	if (csetKeys.malloc) {
 		int	i;
@@ -1080,6 +1085,19 @@ check(sccs *s, MDBM *db)
 		if (verbose > 3) {
 			fprintf(stderr, "Check %s@%s\n", s->sfile, d->rev);
 		}
+		/* check for V1 LOD */
+		if (d->r[0] != 1) {
+			lod = 1;	/* global tag */
+			errors++;
+			unless (fix) {
+				fprintf(stderr,
+		    		    "%s|%s: has deltas outside primary LOD.  "
+		    		    "To fix, run check with -f: "
+				    "bk -r check -af\n",
+		    		    s->gfile, d->rev);
+			}
+		}
+
 		unless (d->flags & D_CSET) continue;
 		sccs_sdelta(s, d, buf);
 		unless (t = mdbm_fetch_str(db, buf)) {
