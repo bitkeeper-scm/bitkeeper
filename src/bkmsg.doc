@@ -87,6 +87,12 @@ safely run
 
 to fix up your repository.  If it is not, contact BitMover.
 $
+#cset1
+An attempt was made to include or exclude a merge changeset.
+This is not currently supported.
+If you would like to be able to exclude one side
+of the merge, then please contact BitMover.
+$
 #write_perms
 One or more directories which need updating do not have write permission.
 Please examine the list and fix the permissions.
