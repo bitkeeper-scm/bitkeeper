@@ -51,3 +51,23 @@ test $rev = '1.2' || {
 	exit 1
 }
 echo OK
+
+echon Try pulling files will really long lines and edited gfile ...
+bk pull $Q || exit 1
+cd $HERE/project
+LONGER=$HERE/longer
+awk 'BEGIN {for (i = 0; i < 7000; i++) printf "."; printf "\n"}' > $LONGER
+bk edit $Q foo || exit 1
+cat $LONGER > foo
+bk delta $Q -ylonger foo || exit 1
+bk commit $Q -ylonger || exit 1
+cd $HERE/copy
+bk edit $Q foo || exit 1
+echo 1 > foo
+bk pull $Q 2>ERR && {
+	echo should have failed
+	exit 1
+}
+grep -q "SCCS/s.foo is edited and modified" ERR || exit 1
+grep -q "Assertion" ERR && exit 1
+echo OK
