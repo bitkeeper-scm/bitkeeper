@@ -35,7 +35,8 @@ cmd_clone(int ac, char **av)
 		return (1); /*
 			     * XXX Must "return()", "exit()" does not
 			     * clear repo lock, becuase the longjmp()
-			     * does have flags info.
+			     * does not have flags info.
+			     * Problem shows up in win32 t.bkd test
 			     */
 	}
 

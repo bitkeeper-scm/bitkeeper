@@ -35,8 +35,7 @@ int
 delta_main(int ac, char **av)
 {
 	sccs	*s;
-	int	iflags = INIT_SAVEPROJ|INIT_FIXSTIME;
-	int	Lflag = 0;
+	int	iflags = INIT_SAVEPROJ;
 	int	dflags = 0;
 	int	gflags = 0;
 	int	sflags = SF_GFILE|SF_WRITE_OK;
@@ -80,7 +79,7 @@ delta_main(int ac, char **av)
 	}
 
 	while ((c = getopt(ac, av,
-			   "1abcdD:E|fg;GhI;ilLm|M;npPqRrsuy|YZ|")) != -1) {
+			   "1abcdD:E|fg;GhI;ilLm|M;npPqRrsuUy|YZ|")) != -1) {
 		switch (c) {
 		    /* SCCS flags */
 		    case 'n': dflags |= DELTA_SAVEGFILE; break;	/* undoc? 2.0 */
@@ -98,14 +97,14 @@ comment:		comments_save(optarg);
 		    case 'i': dflags |= NEWFILE; 		/* doc 2.0 */
 			      sflags |= SF_NODIREXPAND;
 			      break;
-		    case 'L': Lflag = 1;;
-			      /* fall thru */
-		    case 'l': gflags |= GET_SKIPGET|GET_EDIT; 	/* doc 2.0 */
-		    	      dflags |= DELTA_SAVEGFILE;
+		    case 'L': ckopts = "EDIT";
+			      break;
+		    case 'l': ckopts = "edit";			/* doc 2.0 */ 
 			      checkout = 1;
 			      break;
-		    case 'u': gflags |= GET_EXPAND;		 /* doc 2.0 */
-			      checkout = 1;
+		    case 'U': ckopts = "GET";
+			      break;
+		    case 'u': ckopts = "get";			/* doc 2.0 */
 			      break;
 
 		    /* flags with different meaning in RCS and SCCS */
@@ -156,8 +155,12 @@ usage:			sprintf(buf, "bk help -s %s", name);
 		}
 	}
 
-	unless (ignorePreference || checkout) {
+	unless (ignorePreference || *ckopts) { 
 		ckopts  = user_preference("checkout");
+	}
+
+	if (streq("GET", ckopts) || streq("EDIT", ckopts)) {
+		iflags |= INIT_FIXSTIME;
 	}
 
 	if ((encp || compp) && !(dflags & NEWFILE)) {
@@ -239,9 +242,8 @@ usage:			sprintf(buf, "bk help -s %s", name);
 			if (streq(ckopts, "edit")) {
 				gflags |= GET_SKIPGET|GET_EDIT;
 				dflags |= DELTA_SAVEGFILE;
-				s->initFlags &= ~INIT_FIXSTIME;
 				checkout = 1;
-			} else if (streq(ckopts, "EDIT")) { /* edit+fixmtime */
+			} else if (streq(ckopts, "EDIT")) {
 				gflags |= GET_SKIPGET|GET_EDIT;
 				dflags |= DELTA_SAVEGFILE;
 				checkout = 1;
@@ -257,8 +259,6 @@ usage:			sprintf(buf, "bk help -s %s", name);
 					checkout = 2;
 					dflags |= DELTA_SAVEGFILE;
 				}
-			} else unless (Lflag) {
-				s->initFlags &= ~INIT_FIXSTIME;
 			}
 		}
 
