@@ -3,7 +3,7 @@
 .SH NAME
 bk new \- add a file to the repository
 .SH SYNOPSIS
-.B bk new [-q]
+.B bk new [-bq]
 .ARG file
 .br
 .B bk sfiles \-x | bk new 
@@ -43,6 +43,10 @@ Unix make command know about SCCS and will automatically check out
 files as they are needed.
 .SH OPTIONS
 .TP
+.B \-b
+check in a binary file.  This forces binary encoding with no keyword expansion
+and is recommended for all binaries and Postscript files.
+.tp
 .B \-q
 be quiet.
 .SH SEE ALSO

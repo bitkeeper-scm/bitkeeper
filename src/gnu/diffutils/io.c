@@ -244,6 +244,16 @@ find_and_hash_each_line (current)
 		/* C is now the first non-space.  */
 		h = HASH (h, ISUPPER (c) ? tolower (c) : c);
 	      }
+	  else if (ignore_trailing_cr_flag)
+	    while ((c = *p++) != '\n')
+	      {
+		if ((c == '\r') && (*p == '\n'))
+		  {
+			p++;
+			goto hashing_done;
+		   }
+		h = HASH (h, ISUPPER (c) ? tolower (c) : c);
+	      }
 	  else
 	    while ((c = *p++) != '\n')
 	      h = HASH (h, ISUPPER (c) ? tolower (c) : c);
@@ -272,6 +282,16 @@ find_and_hash_each_line (current)
 		    h = HASH (h, ' ');
 		  }
 		/* C is now the first non-space.  */
+		h = HASH (h, c);
+	      }
+	  else if (ignore_trailing_cr_flag)
+	    while ((c = *p++) != '\n')
+	      {
+		if ((c == '\r') && (*p == '\n'))
+		  {
+			p++;
+			goto hashing_done;
+		   }
 		h = HASH (h, c);
 	      }
 	  else

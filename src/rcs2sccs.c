@@ -206,121 +206,29 @@ rcs2sccs(RCS *rcs, char *sfile)
 	return (0);
 }
 
-#ifdef	WIN32
 private int
 verifyFiles(sccs *s, RCS *rcs, rdelta *d, char *g)
 {
 	char    cmd[MAXPATH*3];
+	char	path[MAXPATH];
 	int     ret;
+	char	*p, *t;
 	
+	path[0] = '\'';
+	for (t = g, p = path + 1; *t; ) {
+		if (*t == '\'') *p++ = '\\';
+		*p++ = *t++;
+	}
+	*p++ = '\'';
+	*p = 0;
 	if (exists(g)) unlink(g);	// DANGER
-	sprintf(cmd, "co -q -kk -r%s %s && bk get -kpqr%s %s | diff %s -",
-	    d->rev, g, d->sccsrev, g, g);
+	sprintf(cmd, "co -q %s -r%s %s && bk get -kpqr%s %s |"
+	    " diff --ignore-trailing-cr %s -",
+	    rcs->kk, d->rev, path, d->sccsrev, path, path);
 	ret = system(cmd);
 	if (exists(g)) unlink(g);	// DANGER
 	return (ret);
 }
-#else
-private int
-verifyFiles(sccs *s, RCS *rcs, rdelta *d, char *g)
-{
-	int	i, n, ret;
-	int	rcspipe[2], sccspipe[2];
-	pid_t	rcspid, sccspid;
-	char	*av[100];
-	char	buf[4096];
-	char	buf2[4096];
-
-	/*
-	 * Spawn the RCS child with it's output coming to stdout.
-	 */
-	av[i = 0] = co_prog;
-	av[++i] = "-q";
-	av[++i] = "-p";
-	av[++i] = "-kk";
-	sprintf(buf, "-r%s", d->rev);
-	av[++i] = buf;
-	av[++i] = g;
-	av[++i] = 0;
-	if (pipe(rcspipe)) {
-		perror("pipe");
-		exit(1);
-	}
-	rcspid = fork();
-	if (rcspid == -1) {
-		perror("fork");
-		exit(1);
-	}
-	if (rcspid == 0) {
-		close(1);
-		dup(rcspipe[1]);
-		close(rcspipe[1]);
-		close(rcspipe[0]);
-		close(0);
-		execv(av[0], av);
-		perror(av[0]);
-		exit(1);
-	}
-	close(rcspipe[1]);
-
-	/*
-	 * Fork an SCCS child with it's output coming to stdout.
-	 */
-	if (pipe(sccspipe)) {
-		perror("pipe");
-		exit(1);
-	}
-	sccspid = fork();
-	if (sccspid == -1) {
-		perror("fork");
-		exit(1);
-	}
-	if (sccspid == 0) {
-		close(1);
-		dup(sccspipe[1]);
-		close(sccspipe[1]);
-		close(sccspipe[0]);
-		close(0);
-		sccs_restart(s);
-		if (sccs_get(s, d->sccsrev, 0, 0, 0, SILENT|PRINT, "-")) {
-			fprintf(stderr, "Get -p of %s failed\n", s->gfile);
-			exit(1);
-		}
-		exit(0);
-	}
-	close(sccspipe[1]);
-
-	/*
-	 * Now read all the bytes from both pipes and figure out if they are
-	 * the same.
-	 */
-	n = ret = 0;
-	while ((i = read(rcspipe[0], buf, sizeof(buf))) > 0) {
-		if (readn(sccspipe[0], buf2, i) != i) {
-			fprintf(stderr,
-			    "\n%s different because EOF on SCCS\n", s->gfile);
-			ret = 1;
-			break;
-		}
-		if (bcmp(buf, buf2, i)) {
-			fprintf(stderr, "\n%s@%s differ\n", s->gfile, d->rev);
-			ret = 1;
-			break;
-		}
-		n += i;
-	}
-	if (read(sccspipe[0], buf2, 1) == 1) {
-		fprintf(stderr,
-		    "\n%s different because EOF on RCS\n", s->gfile);
-		ret = 1;
-	}
-	close(sccspipe[0]);
-	close(rcspipe[0]);
-	waitpid(rcspid, 0, 0);
-	waitpid(sccspid, 0, 0);
-	return (ret);
-}
-#endif
 
 private	int
 newDelta(RCS *rcs, rdelta *d, sccs *s, int rev, int flags)
@@ -334,7 +242,8 @@ newDelta(RCS *rcs, rdelta *d, sccs *s, int rev, int flags)
 
 	unless (buf) buf = malloc(buflen = 64<<10);
 #ifdef	WIN32
-	sprintf(buf, "co -q -p -kk -r%s %s > %s", d->rev, rcs->file, s->gfile);
+	sprintf(buf,
+	    "co -q -p %s -r%s %s > %s", rcs->kk, d->rev, rcs->file, s->gfile);
 	if (system(buf) != 0) {
 		fprintf(stderr, "[%s] failed\n", buf);
 		return (1);
@@ -356,7 +265,7 @@ newDelta(RCS *rcs, rdelta *d, sccs *s, int rev, int flags)
 		av[i = 0] = co_prog;
 		av[++i] = "-q";
 		av[++i] = "-p";
-		av[++i] = "-kk";
+		av[++i] = rcs->kk;
 		sprintf(buf, "-r%s", d->rev);
 		av[++i] = buf;
 		av[++i] = rcs->file;
@@ -466,7 +375,9 @@ R %s\n", ++seq, m, g, r);
 		unless (t[-1] == '\n') *t++ = '\n';
 		*t = 0;
 	}
-	sprintf(t, "X 0x3\n------------------------------------------------\n");
+	sprintf(t,
+	    "X 0x%x\n------------------------------------------------\n",
+	    streq(rcs->kk, "kk") ? 3 : 1);
 //fprintf(stderr, "%s", buf);
 	init = mrange(buf, &buf[strlen(buf)], "b");
 

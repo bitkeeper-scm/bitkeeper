@@ -211,6 +211,8 @@
 #define	E_UUENCODE	1		/* uuenecode it (traditional) */
 #define	E_GZIP		4		/* gzip the data */
 
+#define	E_BINARY	E_UUENCODE	/* default binary encoding */
+
 #define	HAS_GFILE(s)	((s)->state & S_GFILE)
 #define	HAS_PFILE(s)	((s)->state & S_PFILE)
 #define	HAS_ZFILE(s)	((s)->state & S_ZFILE)
