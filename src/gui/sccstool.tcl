@@ -1067,7 +1067,11 @@ proc sccstool {name} \
 		puts "No such file $name"
 		exit 0
 	}
-	wm title . "sccstool: $file"
+	if {[catch {exec bk root $file} proot]} {
+		wm title . "sccstool: $file"
+	} else {
+		wm title . "sccstool: $proot: $file"
+	}
 	listRevs "$file"
 
 	revMap "$file"
