@@ -1,0 +1,22 @@
+echo $N Make sure we check for '~' in PATH ............................$NL
+OLDPATH=$PATH
+PATH='~/.':/no/such/path
+HOME=${BK_BIN}
+export PATH HOME
+# The shell on some OS (e.g, freebsd, solaris) does not expand "~" in $PATH.
+# Skip this test it cannot process "~".
+(trap '' 6; _BK_FORCE_BASE_PATH=YES bk bin)  2> bin.out > /dev/null
+PATH=$OLDPATH
+grep -q 'bk:.*not found' bin.out
+if [ $? -ne 0 ]
+then
+	rm -f core 	# for Solaris
+	grep -q 'Please expand ~ when setting your path' bin.out || {
+		echo failed 2
+		exit 1
+	}
+	echo OK
+else
+	echo skipped
+fi
+

@@ -227,7 +227,7 @@ setup_env()
 	BK_GEOM=+1+1
 	export BK_GEOM
 
-	unset BK_BIN _BK_GMODE_DEBUG
+	unset _BK_GMODE_DEBUG
 	BK_REGRESSION=`bk _cleanpath $TST_DIR/.regression-$USER`
 	HERE=`cd $TST_DIR; bk pwd -s`/.regression-$USER
 	BK_TMP=$BK_REGRESSION/.tmp
@@ -323,6 +323,7 @@ init_main_loop()
 	export BKL_B1 BKL_B2 BKL_B3
 	export BKL_EX1 BKL_EX2 BKL_EX3
 	export BK_GLOB_TRANSLATE_EQUAL
+	export BK_BIN
 }
 
 #
