@@ -41,13 +41,14 @@ proc highlight {id type {rev ""}} \
 {
 	global gc w
 
-	# Added two pixels in height to fix lm complaint that the bbox 
-	# was touching the characters -- might want to increase more
+	# Added a pixel at the top and removed a pixel at the bottom to fix 
+	# lm complaint that the bbox was touching the characters at top
+	# -- lm doesn't mind that the bottoms of the letters touch, though
 	set bb [$w(cvs) bbox $id]
 	set x1 [lindex $bb 0]
 	set y1 [expr [lindex $bb 1] - 1]
 	set x2 [lindex $bb 2]
-	set y2 [expr [lindex $bb 3] - 2]
+	set y2 [expr [lindex $bb 3] - 1]
 
 	#puts "highlight: REV ($rev)"
 	switch $type {
@@ -678,21 +679,29 @@ proc getRev {type {id {}} } \
 	return $id
 }
 
-proc filltext {win f clear} \
+# msg -- optional argument -- use msg to pass in text to print
+# if file handle f returns no data
+#
+proc filltext {win f clear {msg {}}} \
 {
-	global search w
+	global search w file
 
 	$win configure -state normal
 	if {$clear == 1} { $win delete 1.0 end }
 	while { [gets $f str] >= 0 } {
 		$win insert end "$str\n"
-		#puts "str=($str)"
 	}
 	catch {close $f} ignore
-	set line [$win get "end - 1 char linestart" end]
-	while {"$line" == "\n"} {
-		$win delete "end - 1 char linestart" end
+	set numLines [$win index "end -1 chars linestart" ]
+	if {$numLines > 1.0} {
 		set line [$win get "end - 1 char linestart" end]
+		while {"$line" == "\n"} {
+			$win delete "end - 1 char linestart" end
+			set line [$win get "end - 1 char linestart" end]
+		}
+		$win insert end "\n"
+	} else {
+		if {$msg != ""} {$win insert end "$msg\n"}
 	}
 	$win configure -state disabled
 	searchreset
@@ -724,10 +733,11 @@ proc history {{opt {}}} \
 		set tags \
 "-d\$if(:TAG:){:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)}\n\$each(:TAG:){  TAG: (:TAG:)\n}\n}"
 		set f [open "| bk prs -h {$tags} \"$file\" 2>$dev_null"]
+		filltext $w(ap) $f 1 "There are no tags for $file"
 	} else {
 		set f [open "| bk prs -h {$dspec} \"$file\" 2>$dev_null"]
+		filltext $w(ap) $f 1 "There is no history"
 	}
-	filltext $w(ap) $f 1
 }
 
 proc sfile {} \
@@ -868,7 +878,6 @@ proc r2c {} \
 	busy 1
 	set csets ""
 	if {[info exists rev2]} {
-		puts "rev2  file=($file)"
 		set revs [open "| bk prs -hbMr$rev1..$rev2 {-d:I:\n} \"$file\""]
 		while {[gets $revs r] >= 0} {
 			set c [exec bk r2c -r$r "$file"]
@@ -1238,9 +1247,9 @@ proc widgets {} \
         bind . <Control-Button-5> 	"$w(cvs) yview scroll 1 units"
         bind . <Button-4> 		"$w(ap) yview scroll -5 units"
         bind . <Button-5>		"$w(ap) yview scroll 5 units"
-	bind $w(ap) <Button-1> { selectTag %W %x %y "" "B1" }
-	bind $w(ap) <Button-3> { selectTag %W %x %y "" "B3" }
-	bind $w(ap) <Double-1> { selectTag %W %x %y "" "D1" }
+	bind $w(ap) <Button-1> { selectTag %W %x %y "" "B1"; break}
+	bind $w(ap) <Button-3> { selectTag %W %x %y "" "B3"; break}
+	bind $w(ap) <Double-1> { selectTag %W %x %y "" "D1"; break }
 
 	# Command window bindings.
 	bind $w(cvs) <slash> "search /"
