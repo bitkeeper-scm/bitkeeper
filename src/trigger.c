@@ -48,6 +48,7 @@ trigger(char *action, char *when, int status)
 		} else {
 			sprintf(env, "%s=OK", var);
 		}
+		sprintf(file, "%s/%s-%s", TRIGGERS, when, what);
 		if (streq(when, "post")) {
 			sprintf(cmd, "cd %s; env %s %s %s %s",
 			    bk_proj->root, env, file, when, action, status);

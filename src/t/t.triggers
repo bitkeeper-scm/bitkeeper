@@ -1,0 +1,92 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+if [ X$PLATFORM = X"WIN32" ]
+then
+        # It is unlikely in that ssh/rsh to localhost will work on NT.
+        # We let the user tell us otherwise.
+        if [ -z "$DO_REMOTE" ]; then DO_REMOTE=NO; fi
+else
+	if [ -z "$DO_REMOTE" ]; then DO_REMOTE=YES; fi
+fi
+
+# Tests to see if triggers work.
+echo $N Create initial repository ...................................$NL
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+mkdir src
+cd src
+echo foo > foo.c
+echo bar > bar.c
+echo h > h.h
+bk ci $Q -i foo.c bar.c h.h
+if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 18 ]; then echo wrong pending result $P; bk pending; exit 1; fi
+bk commit $S -a -yCset
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
+echo OK
+cores
+
+echo $N Create triggers .............................................$NL
+cd $HERE
+mkdir project/BitKeeper/triggers || exit 1
+
+TOPDIR=`pwd`
+cd project/BitKeeper/triggers
+
+echo "#! /bin/sh"                > good
+echo "exit 0"                   >> good
+chmod +x good
+
+for x in pre post;do
+	for y in commit incoming outgoing;do
+		ln good $x-$y
+	done
+done
+
+cd $HERE
+echo "OK"
+
+echo $N Clone .......................................................$NL
+cd $HERE
+bk clone $Q $HERE/project $HERE/copy || { echo failed; exit 1; }
+echo OK
+
+echo $N Commit triggers .............................................$NL
+cd $HERE/project/src
+bk get $Q -e foo.c
+echo delta two >> foo.c
+bk delta $Q -y2 foo.c
+bk commit $Q -y2 || { echo failed; exit 1; }
+echo OK
+
+echo $N Pull triggers ...............................................$NL
+cd $HERE/copy
+bk pull -t $Q || { echo failed; exit 1; }
+revs=`bk prs -hd:I: src/foo.c | wc -l`
+[ $revs -eq 2 ] || { echo failed; exit 1; }
+cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
+echo OK
+
+echo $N Push triggers ...............................................$NL
+bk push $Q || { echo failed; exit 1; }
+mv ref-bar.c $HERE/project/src
+cd $HERE/project/src
+bk get $Q bar.c
+cmp -s ref-bar.c bar.c
+[ $? -eq 0 ] || { echo failed; diff ref-bar.c bar.c; exit 1; }
+cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
+echo OK
