@@ -331,9 +331,9 @@ proc scrollDiffs {where} \
 	.diffs.left tag add highLight $Diff $End
 	.diffs.right tag add highLight $Diff $End
 	.diffs.left tag configure highLight -font $diffbFont \
-	    -foreground black -background lightyellow
+	    -foreground black -background #e0e0e0
 	.diffs.right tag configure highLight -font $diffbFont \
-	    -foreground black -background lightyellow
+	    -foreground black -background #e0e0e0
 }
 
 proc resolved {n} \
@@ -668,7 +668,7 @@ proc readFiles {L R O} \
 	set maxBoth [expr [llength $rBoth] - 2]
 	.diffs.left configure -state disabled
 	.diffs.right configure -state disabled
-	. configure -cursor arrow
+	. configure -cursor left_ptr
 }
 
 # --------------- Window stuff ------------------
@@ -797,11 +797,12 @@ proc widgets {L R O} \
 		set swid 12
 	}
 	set textBG #c0c0d0
+	set textBG white
 	set diffWidth 65
 	set diffHeight 30
 	set mergeWidth 80
 	set mergeHeight 20
-	set tcolor lightseagreen
+	set tcolor #d0d0d0
 	set leftColor orange
 	set rightColor yellow
 	set bcolor #d0d0d0
