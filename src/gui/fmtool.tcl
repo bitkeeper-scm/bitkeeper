@@ -36,7 +36,9 @@ proc undo {} \
 {
 	global rBoth rDiff rSame nextBoth nextDiff nextSame
 	global maxBoth maxDiff maxSame nextMark Marks LastDelete
+	global done
 
+	if {$done == 0} {return}
 	if {[llength $Marks] < 1} { return }
 	set m [pop Marks]
 	if {! [string match Skipped* $m]} {
@@ -308,6 +310,7 @@ proc scrollDiffs {where} \
 {
 	global	rDiff nextDiff gc
 
+	if {$where == ""} { return }
 	.diffs.left see "$where.0"
 	.diffs.right see "$where.0"
 
@@ -358,7 +361,7 @@ proc resolved {n} \
 		.merge.menu.left configure -state disabled
 		.merge.menu.right configure -state disabled
 		.merge.menu.skip configure -state disabled
-	} elseif {$done == 0} { ;# not stated yet
+	} elseif {$done == 0} { ;# not started yet
 		.merge.menu.undo configure -state disabled
 		.merge.menu.redo configure -state disabled
 	} elseif {$done == $diffCount} { ;# we are done
@@ -379,13 +382,17 @@ proc resolved {n} \
 
 proc cmd_done {} \
 {
-	global done diffCount saved
+	global done diffCount saved exiting
 
+	if {[info exists exiting]} {return}
+	set exiting 1
+	.merge.menu.quit configure -state disabled
 	if {$done == 0} { exit }
 	if {$done < $diffCount} {
-		confirm "Only $done out of $diffCount merged" "Keep merging"
+		confirm_done \
+		    "Only $done out of $diffCount merged" "Keep merging"
 	} elseif {$saved == 0} {
-		confirm "Discard all $done merges?" "Cancel"
+		confirm_done "Discard all $done merges?" "Cancel"
 	} else {
 		exit
 	}
@@ -673,11 +680,13 @@ proc keyboard_bindings {} \
 	bind all <Control-Right> {useRight}
 	bind all <Control-Down> {skip}
 	bind all <Control-Up> {undo}
-	bind all $gc(fm.quit)	cmd_done 
+	bind all $gc(fm.quit) cmd_done 
 }
 
-proc confirm {msg l} \
+proc confirm_done {msg l} \
 {
+	global exiting
+
 	toplevel .c
 	    frame .c.top
 		label .c.top.icon -bitmap questhead
@@ -687,7 +696,11 @@ proc confirm {msg l} \
 	    frame .c.sep -height 2 -borderwidth 1 -relief sunken
 	    frame .c.controls
 		button .c.controls.discard -text "Discard merges" -command exit
-		button .c.controls.cancel -text $l -command "destroy .c"
+		button .c.controls.cancel -text $l -command {
+		    unset exiting
+		    .merge.menu.quit configure -state normal
+		    destroy .c
+		}
 		grid .c.controls.discard -row 0 -column 0 -padx 4
 		grid .c.controls.cancel -row 0 -column 2 -padx 4
 	    pack .c.top -padx 8 -pady 8
@@ -698,7 +711,6 @@ proc confirm {msg l} \
 	wm geometry .c "+$x+$y"
 	wm transient .c .
 }
-
 
 # --------------- main ------------------
 proc startup {{buildwidgets {}}} \
