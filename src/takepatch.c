@@ -1417,7 +1417,7 @@ initProject()
 private	MMAP	*
 init(char *inputFile, int flags, project **pp)
 {
-	char	buf[MAXPATH];		/* used ONLY for input I/O */
+	char	buf[MAXLINE];		/* used ONLY for input I/O */
 	char	*root, *t;
 	int	i, len;
 	FILE	*f, *g;
@@ -1707,6 +1707,11 @@ error:					fprintf(stderr, "GOT: %s", buf);
 					perror("fnext");
 					goto missing;
 				}
+				unless (strchr(buf, '\n')) {
+					fprintf(stderr,
+					    "Line overflow.\n%s\n", buf);
+					cleanup(CLEAN_RESYNC);
+				}
 				continue;
 			}
 
@@ -1740,6 +1745,10 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			unless (fnext(buf, stdin)) {
 				perror("fnext");
 				goto missing;
+			}
+			unless (strchr(buf, '\n')) {
+				fprintf(stderr, "Line overflow.\n%s\n", buf);
+				cleanup(CLEAN_RESYNC);
 			}
 		}
 		if (st.preamble) nothingtodo();
