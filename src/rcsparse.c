@@ -772,6 +772,7 @@ select_branch(RCS *rcs, char *cvsbranch)
 			while (v) {
 				rdelta	*k = v->kid;
 
+				if (k == v12) break;	/* already linked */
 				if (!k || k->date > v12->date) {
 					v->kid = v12;
 					v12->parent = v;
@@ -867,16 +868,29 @@ select_branch(RCS *rcs, char *cvsbranch)
 				}
 			}
 		}
-		/*
-		 * If we didn't find the main branch, then the file is
-		 * deleted.
-		 */
-		unless (i == 1) s = 0;
 		freeLines(branches, free);
 
 		/* find end time on trunk */
 		for (lastd = rcs->tree; lastd->kid; lastd = lastd->kid);
 		etime = lastd->dead ? lastd->date : LASTTIME;
+
+		/*
+		 * If we found a branch tag, but it was from an
+		 * eariler branch, then we assume this file must have
+		 * been deleted before the final branch was tagged.
+		 * (or created on eariler branch after target branch
+		 * was tagged)
+		 */
+		if (s && i != 1) {
+			unless (stime > branchtime_s || etime < branchtime_e) {
+				fprintf(stderr,
+"WARNING: file %s is missing branch %s,\n"
+"         but it looks like it should have been active when that\n"
+"         branch was tagged.\n",
+				    rcs->rcsfile, cvsbranch);
+			}
+			s = 0;
+		}
 
 		if (s) {
 			strcpy(brev, s->rev);
@@ -885,7 +899,8 @@ select_branch(RCS *rcs, char *cvsbranch)
 			rcs->tree->dead = 1;
 			rcs->tree->kid = 0;
 			goto skip_branch;
-		} else if (stime > branchtime_s && etime < branchtime_e) {
+		} else if (branchtime_s &&
+			   (stime > branchtime_s) && (etime < branchtime_e)) {
 			/*
 			 * XXX if a file is created and deleted during the
 			 * time window when the branch could have been tagged
