@@ -943,8 +943,10 @@ uniqDelta(sccs *s)
 	unless (uniq_open() == 0) return;
 	CHKDATE(next);
 	if (d->date <= next->date) {
-		d->dateFudge += (next->date - d->date) + 1;
-		d->date += d->dateFudge;
+		time_t	tdiff;
+		tdiff = next->date - d->date + 1;
+		d->date += tdiff;
+		d->dateFudge += tdiff;
 	}
 	sccs_shortKey(s, d, buf);
 	while (!unique(buf)) {
