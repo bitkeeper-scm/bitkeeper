@@ -6,7 +6,7 @@ private project *proj;
 
 private void
 mkgfile(sccs *s, char *rev, char *path, char *tmpdir, char *tag,
-							int fix_mod_time)
+					int fix_mod_time, MDBM *db)
 {
 	char *p, tmp_path[MAXPATH];
 	delta *d;
@@ -36,11 +36,13 @@ mkgfile(sccs *s, char *rev, char *path, char *tmpdir, char *tag,
 							s->sfile, rev);
 		exit(1);
 	}
+	sprintf(tmp_path, "%s/%s", tag, path);
+	mdbm_store_str(db, tmp_path, "", MDBM_INSERT);
 }
 
 private void
 process(char *sfile, char *path1, char *rev1,
-		char *path2, char *rev2, char *tmpdir, int fix_mod_time)
+	char *path2, char *rev2, char *tmpdir, int fix_mod_time, MDBM *db)
 {
 	sccs *s;
 
@@ -50,8 +52,8 @@ process(char *sfile, char *path1, char *rev1,
 	unless ((s->encoding == E_ASCII) || (s->encoding == E_GZIP)) {
 		fprintf(stderr, "Warning: %s is not a text file\n", s->sfile);
 	}
-	mkgfile(s, rev1, path1, tmpdir, "a", fix_mod_time);
-	mkgfile(s, rev2, path2, tmpdir, "b", fix_mod_time);
+	mkgfile(s, rev1, path1, tmpdir, "a", fix_mod_time, db);
+	mkgfile(s, rev2, path2, tmpdir, "b", fix_mod_time, db);
 	sccs_close(s);
 }
 
@@ -60,7 +62,7 @@ process(char *sfile, char *path1, char *rev1,
  * fix the "diff -Nur" header line to show "/dev/null ..."
  */
 private void
-fix_header(char *buf)
+fix_header(char *buf, MDBM *db)
 {
 	char *p, *line;
 
@@ -82,7 +84,7 @@ fix_header(char *buf)
 	buf[3] = 0;
 	fputs(buf, stdout); fputs(" ", stdout);
 	*p = 0;
-	unless (exists(line)) {
+	unless (mdbm_fetch_str(db, line)) {
 		/* /dev/null must be printed with EPOC time */
 		fputs("/dev/null\t", stdout);
 		memmove(++p,"Wed Dec 31 16:00:00 1969", 24);
@@ -169,6 +171,7 @@ gnupatch_main(int ac, char **av)
 	char *clean_av[] = { "rm", "-rf", tmpdir, 0 };
 	int  c, rfd, header = 1, fix_mod_time = 0, got_start_header = 0;
 	FILE *pipe;
+	MDBM *db;
 
 	while ((c = getopt(ac, av, "hTd:")) != -1) { 
 		switch (c) {
@@ -198,6 +201,7 @@ gnupatch_main(int ac, char **av)
                 fprintf(stderr, "gnupatch: cannot mkdir%s.\n", buf);
 		exit(1);
 	}
+	db = mdbm_open(NULL, 0, 0, GOOD_PSIZE); /* db for null file */
 	if (header) print_title();
 
 	/*
@@ -227,7 +231,8 @@ gnupatch_main(int ac, char **av)
 		/*
 		 * populate the left & right tree
 		 */
-		process(sfile, path1, rev1, path2, rev2, tmpdir, fix_mod_time);
+		process(sfile, path1, rev1, path2, rev2, tmpdir,
+							fix_mod_time, db);
 	}
 
 	if (header) print_cset_log(cset1, cset2);
@@ -248,7 +253,7 @@ gnupatch_main(int ac, char **av)
 #endif
 		if (got_start_header) {
 			got_start_header--;
-			fix_header(buf);
+			fix_header(buf, db);
 			continue;
 		}
 	
@@ -265,6 +270,7 @@ gnupatch_main(int ac, char **av)
 	/*
 	 * all done, clean up
 	 */
+	mdbm_close(db);
 	if (proj) proj_free(proj);
 	if (cset1) free(cset1);
 	if (cset2) free(cset2);
