@@ -11,7 +11,7 @@ endif
 REPO   := $(shell basename `bk root`)
 LIBDIR	= lib
 GUIS	= revtool citool helptool difftool csettool fmtool fm3tool \
-	  msgtool renametool setuptool bugform supportform
+	  msgtool renametool setuptool bugform supportform newdifftool
 TCLWRAP	= ../tclwrap
 DOIT	= ../t/doit
 BK	= $(REPO)/src/bk
@@ -21,7 +21,8 @@ SRC	= appState.tcl bugform.tcl buglib.tcl ciedit.tcl citool.tcl \
 	  common.tcl config.tcl csettool.tcl difflib.tcl difftool.tcl \
 	  fm3tool.tcl fmtool.tcl helptool.tcl msgtool.tcl progress.tcl \
 	  renametool.tcl revtool.tcl search.tcl setuptool.tcl \
-	  ../port/$(SYS)_platform.tcl supportform.tcl supportlib.tcl
+	  ../port/$(SYS)_platform.tcl supportform.tcl supportlib.tcl \
+	  newdifftool.tcl
 
 default: notes/BUILD
 	@cat notes/BUILD
@@ -116,3 +117,7 @@ revtool: $(COMMON) search.tcl appState.tcl revtool.tcl
 setuptool: $(COMMON) tkwizard.tcl setuptool.tcl
 	(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/setuptool
 
+newdifftool: $(COMMON) search.tcl appState.tcl newdifflib.tcl \
+	comm.tcl bktalk.tcl actions.tcl tooltip.tcl appState.tcl \
+	 newsearchlib.tcl newdifftool.tcl
+	(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/newdifftool

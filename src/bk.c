@@ -389,6 +389,7 @@ struct tool guis[] = {
 	{ "citool", 0 },
 	{ "csettool", "csetool" },
 	{ "difftool", 0 },
+	{ "newdifftool", 0 },
 	{ "fm3tool", "fm3" },
 	{ "fmtool", "fm" },
 	{ "fmtool", "fm2tool" },
