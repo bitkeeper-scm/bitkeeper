@@ -297,7 +297,7 @@ test `cat bar.c` = foo.c || {
 echo OK
 echo $N Test get with -Gsubdir foo.c ................................$NL
 mkdir subdir
-rm bar.c
+rm -f bar.c
 bk get $Q -Gsubdir foo.c || {
 	echo failed to exit cleanly
 	exit 1
@@ -350,7 +350,7 @@ test `cat bar.c` = foo.c || {
 echo OK
 echo $N Test sccs get with -Gsubdir foo.c ...........................$NL
 mkdir subdir
-rm bar.c
+rm -f bar.c
 ./bin/sccs get $Q -Gsubdir foo.c || {
 	echo failed to exit cleanly
 	exit 1

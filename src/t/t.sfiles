@@ -405,7 +405,7 @@ echo $N Test sfile -i with s.file w no pathname .....................$NL
 # create a s.file which has no pathname
 grep -v '^.cP' SCCS/s.foo  > SCCS/s.bad
 bk admin -z  SCCS/s.bad
-rm SCCS/?.impostor
+rm -f SCCS/?.impostor
 sort > $HERE/sfiles.ref <<EOF
 jjjj SCCS/OLD-s.foo
 jjjj SCCS/c.gone

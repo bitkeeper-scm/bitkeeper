@@ -84,7 +84,7 @@ bk pull -R $Q $HERE/project
 cd $HERE
 tar cf copy.tar copy 2> /dev/null
 cd copy
-rm RESYNC/SCCS/s.LS
+rm -f RESYNC/SCCS/s.LS
 bk resolve -t $Q 2>ERRORS
 if [ $? -eq 0 ]; then echo failed to exit with an error; exit 1; fi
 if [ ! -d RESYNC ]; then echo failed to leave RESYNC; exit 1; fi

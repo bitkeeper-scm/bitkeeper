@@ -384,7 +384,7 @@ echo $N In clone, unlink logging_ok add to gone and pull as OK user .$NL
 cd $HERE/copy
 bk prs -hr1.0 -d':KEY:\n' BitKeeper/etc/logging_ok > BitKeeper/etc/gone
 bk clean BitKeeper/etc/logging_ok
-rm BitKeeper/etc/SCCS/s.logging_ok
+rm -f BitKeeper/etc/SCCS/s.logging_ok
 BK_USER=jane
 BK_HOST=kick.dork
 echo n | bk pull $Q -t ../project >/dev/null 2>&1
@@ -406,7 +406,7 @@ tar xf TAR
 cd $HERE/copy
 bk prs -hr1.0 -d':KEY:\n' BitKeeper/etc/logging_ok > BitKeeper/etc/gone
 bk clean BitKeeper/etc/logging_ok
-rm BitKeeper/etc/SCCS/s.logging_ok
+rm -f BitKeeper/etc/SCCS/s.logging_ok
 # User from removed file
 BK_USER=joe
 BK_HOST=blow.dork
