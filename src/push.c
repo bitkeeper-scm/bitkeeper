@@ -240,7 +240,7 @@ private int
 push_part1(opts opts, remote *r, char rev_list[MAXPATH], char **envVar)
 {
 	char	buf[MAXPATH], s_cset[] = CHANGESET, *p;
-	int	fd, rc, n, local_only, remote_only;
+	int	fd, rc, n, lcsets, rcsets, rtags;
 	sccs	*s;
 	delta	*d;
 
@@ -249,8 +249,7 @@ push_part1(opts opts, remote *r, char rev_list[MAXPATH], char **envVar)
 
 	if (r->httpd) skip_http_hdr(r);
 	if (getline2(r, buf, sizeof(buf)) <= 0) return (-1);
-	if (streq(buf, "ERROR-Unable to lock repository for update.")) {
-		if (opts.verbose) fprintf(stderr, "%s\n", buf);
+	if (remote_lock_fail(buf, opts.verbose)) {
 		return (-1);
 	} else if (streq(buf, "@SERVER INFO@")) {
 		getServerInfoBlock(r);
@@ -269,7 +268,7 @@ push_part1(opts opts, remote *r, char rev_list[MAXPATH], char **envVar)
 	fd = open(rev_list, O_CREAT|O_WRONLY, 0644);
 	assert(fd >= 0);
 	s = sccs_init(s_cset, 0, 0);
-	rc = prunekey(s, r, fd, !opts.verbose, &local_only, &remote_only);
+	rc = prunekey(s, r, fd, !opts.verbose, &lcsets, &rcsets, &rtags);
 	if (rc < 0) {
 		switch (rc) {
 		    case -2:	fprintf(stderr,
@@ -296,11 +295,15 @@ ChangeSet file do not match.  Please check the pathnames and try again.\n");
 	 * Spit out the set of keys we would send.
 	 */
 	if (opts.verbose || opts.list) {
-		if ((remote_only > 0) && (!opts.metaOnly)) {
+		if (rcsets && !opts.metaOnly) {
 			fprintf(stderr,
-				"Not pushing because of %d csets only in %s\n",
-				remote_only, remote_unparse(r));
-		} else if (local_only > 0) {
+			    "Not pushing because of %d csets only in %s\n",
+			    rcsets, remote_unparse(r));
+		} else if (rtags && !opts.metaOnly) {
+			fprintf(stderr,
+			    "Not pushing because of %d tags only in %s\n",
+			    rtags, remote_unparse(r));
+		} else if (lcsets > 0) {
 			fprintf(stderr, opts.doit ?
 "----------------------- Sending the following csets -----------------------\n":
 "---------------------- Would send the following csets ---------------------\n")
@@ -321,12 +324,12 @@ ChangeSet file do not match.  Please check the pathnames and try again.\n");
 						fputs(" ", stderr);
 					}
 				}
-				fputs("\n", stderr);
+				if (n) fputs("\n", stderr);
 			}
 			unless (opts.doit) fprintf(stderr,
 "---------------------------------------------------------------------------\n")
 			;
-		} else if (local_only == 0) {
+		} else if (lcsets == 0) {
 			fprintf(stderr,
 "----------------------------- Nothing to send -----------------------------\n"
 "---------------------------------------------------------------------------\n")
@@ -336,11 +339,13 @@ ChangeSet file do not match.  Please check the pathnames and try again.\n");
 	sccs_free(s);
 	if (r->httpd) disconnect(r, 2);
 	/*
-	 * if local_only > 0, we update the log marker in push part 2
+	 * if lcsets > 0, we update the log marker in push part 2
 	 */
-	if ((local_only == 0) && (needLogMarker)) updLogMarker(0);
-	if ((local_only == 0) || !opts.doit) return (0);
-	if ((remote_only > 0) && (!opts.metaOnly)) return (1);
+	if ((lcsets == 0) && (needLogMarker)) updLogMarker(0);
+	if ((lcsets == 0) || !opts.doit) return (0);
+	if ((rcsets || rtags) && !opts.metaOnly) {
+		return (opts.autopull ? 1 : -1);
+	}
 	return (2);
 }
 
@@ -520,8 +525,7 @@ push_part2(char **av, opts opts,
 
 	if (r->httpd) skip_http_hdr(r);
 	getline2(r, buf, sizeof(buf));
-	if (streq(buf, "ERROR-Unable to lock repository for update.")) {
-		if (opts.verbose) fprintf(stderr, "%s\n", buf);
+	if (remote_lock_fail(buf, opts.verbose)) {
 		return (-1);
 	} else if (streq(buf, "@SERVER INFO@")) {
 		getServerInfoBlock(r);
@@ -619,7 +623,10 @@ push(char **av, opts opts, remote *r, char **envVar)
 		exit(1);
 	}
 	ret = push_part1(opts, r, rev_list, envVar);
-	if (ret < 0) return (1); /* failed */
+	if (ret < 0) {
+		unlink(rev_list);
+		return (1); /* failed */
+	}
 	return (push_part2(av, opts, r, rev_list, ret, envVar));
 }
 

@@ -593,15 +593,30 @@ cmdlog_start(char **av, int httpMode)
 			strcpy(cmdlog_buffer, av[i]);
 		}
 	}
+
 	if (cflags & CMD_WRLOCK) {
-		if (repository_wrlock()) {
-			out("ERROR-Unable to lock repository for update.\n");
+		if (i = repository_wrlock()) {
+			if (i == -1) {
+				out(LOCK_WR_BUSY);
+			} else if (i == -2) {
+				out(LOCK_PERM);
+			} else {
+				out(LOCK_UNKNOWN);
+			}
+			out("\n");
 			exit(1);
 		}
 	}
 	if (cflags & CMD_RDLOCK) {
-		if (repository_rdlock()) {
-			out("ERROR-Can't get read lock on the repository.\n");
+		if (i = repository_rdlock()) {
+			if (i == -1) {
+				out(LOCK_RD_BUSY);
+			} else if (i == -2) {
+				out(LOCK_PERM);
+			} else {
+				out(LOCK_UNKNOWN);
+			}
+			out("\n");
 			exit(1);
 		}
 	}

@@ -480,6 +480,7 @@ typedef struct serial {
 typedef struct {
 	int	flags;		/* PROJ_* */
 	char	*root;		/* to the root of the project */
+	char	*csetFile;	/* Root key of ChangeSet file */
 	MDBM	*config;	/* config DB */
 } project;
 
@@ -492,6 +493,11 @@ extern	char *upgrade_msg;
 #define	READER_LOCK_DIR	"BitKeeper/readers"
 #define	WRITER_LOCK_DIR	"BitKeeper/writer"
 #define	WRITER_LOCK	"BitKeeper/writer/lock"
+
+#define	LOCK_WR_BUSY	"ERROR-Unable to lock repository for update."
+#define	LOCK_RD_BUSY	"ERROR-Can't get read lock on the repository."
+#define	LOCK_PERM	"ERROR-Lock fail: possible permission problem."
+#define	LOCK_UNKNOWN	"ERROR-Unknown lock error."
 
 /*
  * Bumped whenever we change any file format.

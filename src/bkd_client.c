@@ -22,7 +22,7 @@ remote_parse(char *p, int is_clone)
 
 	if (echo == -1) echo = getenv("BK_REMOTE_PARSE") != 0;
 
-	unless (p) {
+	unless (p && *p) {
 		FILE	*f = popen("bk parent", "r");
 
 		if (fgets(buf, sizeof(buf), f)) {

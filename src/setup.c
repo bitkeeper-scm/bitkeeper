@@ -90,8 +90,7 @@ again:		printf("Editor to use [%s] ", editor);
 			fprintf(stderr, "You need to use a fullpath\n");
 			exit(1);
 	    	}
-		sprintf(buf, "cp %s BitKeeper/etc/config", config_path);
-		system(buf);
+		sys("cp", config_path, "BitKeeper/etc/config", SYS);
 	}
 
 	unless (m = loadConfig(".", 0)) {

@@ -209,6 +209,7 @@ update_idcache(sccs *s, char *old, char *new)
 {
 	project	*p;
 	char	path[MAXPATH*2];
+	char	path2[MAXPATH];
 	char	key[MAXKEY];
 	kvpair	kv;
 	char	*t;
@@ -279,8 +280,9 @@ again:
 	}
 	sprintf(path, "%s/%s", p->root, IDCACHE);
 	unlink(path);
-	sprintf(path, "mv %s/%s.new %s/%s", p->root, IDCACHE, p->root, IDCACHE);
-	system(path);
+	sprintf(path2, "%s/%s.new", p->root, IDCACHE);
+	sprintf(path, "%s/%s", p->root, IDCACHE);
+	sys("mv", path2, path, SYS);
 	sprintf(path, "%s/%s", p->root, IDCACHE_LOCK);
 	unlink(path);
 	sprintf(path, "%s/%s", p->root, IDCACHE);
@@ -314,8 +316,9 @@ mv(char *src, char *dest)
 #else
 		if (rename(src, dest)) { 	/* try mv(1) */
 			char	cmd[MAXPATH*2 + 5];
-			sprintf(cmd, "/bin/mv %s %s", src, dest);
-			if (system(cmd)) return (1);
+			int	status;
+			status = sys("/bin/mv", src, dest, SYS);
+			if (WEXITSTATUS(status)) return (1);
 		}
 #endif
 	}

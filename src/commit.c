@@ -99,8 +99,8 @@ commit_main(int ac, char **av)
 		}
 	} else {
 		gettemp(pendingFiles, "bk_pending");
-		sprintf(buf, "bk sfind -s,,p -C > %s", pendingFiles);
-		if (system(buf) != 0) {
+		if (sysio(0, pendingFiles,  0,
+					"bk", "sfind", "-s,,p", "-C", SYS)) {
 			unlink(pendingFiles);
 			unlink(commentFile);
 			getmsg("duplicate_IDs", 0, 0, stdout);
@@ -114,9 +114,8 @@ commit_main(int ac, char **av)
 		return (0);
 	}
 	if (getcomment) {
-		sprintf(buf,
-		    "bk sccslog -CA - < %s > %s", pendingFiles, commentFile);
-		system(buf);
+		sysio(pendingFiles, commentFile, 0,
+					"bk", "sccslog", "-CA", "-", SYS);
 	}
 	do_clean(s_cset, SILENT);
 	if (doit) return (do_commit(av, opts, sym, pendingFiles, commentFile));
@@ -249,11 +248,12 @@ do_commit(char **av, c_opts opts, char *sym,
 				char *pendingFiles, char *commentFile)
 {
 	int	hasComment = (exists(commentFile) && (size(commentFile) > 0));
-	int	status, rc;
-	int	l, ptype;
-	char	buf[MAXLINE], sym_opt[MAXLINE] = "";
+	int	status, rc, i;
+	int	l, ptype, fd, fd0;
+	char	buf[MAXLINE], sym_opt[MAXLINE] = "", cmt_opt[MAXPATH + 3], *p;
 	char	pendingFiles2[MAXPATH] = "";
 	char    s_logging_ok[] = LOGGING_OK;
+	char	*cset[10] = {"bk", "cset", 0};
 	sccs	*s;
 	delta	*d;
 	FILE 	*f, *f2;
@@ -322,12 +322,25 @@ do_commit(char **av, c_opts opts, char *sym,
 		rc = 1;
 		goto done;
 	}
-	if (sym) sprintf(sym_opt, "-S\"%s\"", sym);
-	sprintf(buf, "bk cset %s %s %s %s%s < %s",
-		opts.lod ? "-L": "", opts.quiet ? "-q" : "", sym_opt,
-		hasComment? "-Y" : "", hasComment ? commentFile : "",
-		pendingFiles2[0]? pendingFiles2 : pendingFiles);
-	status = system(buf);
+	p = pendingFiles2[0] ? pendingFiles2 : pendingFiles;
+	i = 2;
+	if (opts.lod ) cset[i++] = "-L";
+	if (opts.quiet) cset[i++] = "-q";
+	if (sym) {
+		sprintf(sym_opt, "-S%s", sym);
+		cset[i++] = sym_opt;
+	}
+	if (hasComment) {
+		sprintf(cmt_opt, "-Y%s", commentFile);
+		cset[i++] = cmt_opt;
+	}
+	cset[i] = 0;
+	fd0 = dup(0); close(0);
+	fd = open(p, O_RDONLY, 0);
+	assert(fd == 0);
+	status = spawnvp_ex(_P_WAIT, cset[0], cset);
+	close(0); dup2(fd0, 0); close(fd0);
+
 	if (!WIFEXITED(status)) {
 		putenv("COMMIT=SIGNALED");
 		rc = 1;

@@ -49,7 +49,7 @@ t_local(resolve *rs)
 {
 	tags	*t = (tags *)rs->opaque;
 
-	sccs_tagMerge(rs->s, t->local, 0);
+	sccs_tagMerge(rs->s, t->local, t->name);
 	return (1);
 }
 
@@ -58,7 +58,7 @@ t_remote(resolve *rs)
 {
 	tags	*t = (tags *)rs->opaque;
 
-	sccs_tagMerge(rs->s, t->remote, 0);
+	sccs_tagMerge(rs->s, t->remote, t->name);
 	return (1);
 }
 

@@ -57,8 +57,8 @@ usage:			system("bk help -s prs");
 
 	switch (nflag) {
 	    case 0: break; /* no op */
-	    case 1: flags = PRS_LF; break;
-	    case 2: flags = PRS_LFLF; break;
+	    case 1: flags |= PRS_LF; break;
+	    case 2: flags |= PRS_LFLF; break;
 	    default: goto usage;
 	}
 
@@ -80,12 +80,16 @@ usage:			system("bk help -s prs");
 			}
 			rangeCset(s, d);
 		} else {
+			if (flags & PRS_ALL) s->state |= S_SET;
 			RANGE("prs", s, expand, noisy);
 			/* happens when we have only 1.0 delta */
 			unless (s->rstart) goto next;
 		}
 		assert(s->rstop);
-		if (flags & PRS_ALL) sccs_markMeta(s);
+		if (flags & PRS_ALL) {
+			assert(s->state & S_SET);
+			sccs_markMeta(s);
+		}
 		if (doheader) {
 			printf("======== %s %s%s%s",
 			    s->gfile,

@@ -427,10 +427,27 @@ rootkey()
 void
 add_cd_command(FILE *f, remote *r)
 {
+	int	needQuote = 0;
+	char	*k;
+
+	/*
+	 * XXX TODO need to handle embeded quote in pathname
+	 */
+	if (strchr(r->path, ' ')) needQuote = 1;
 	if (streq(r->path, "///LOG_ROOT///")) {
-		fprintf(f, "cd %s%s\n", r->path, rootkey());
+		k = rootkey(); assert(k);
+		if (strchr(k, ' ')) needQuote = 1;
+		if (needQuote) {
+			fprintf(f, "cd \"%s%s\"\n", r->path, rootkey());
+		} else {
+			fprintf(f, "cd %s%s\n", r->path, rootkey());
+		}
 	} else {
-		fprintf(f, "cd %s\n", r->path);
+		if (needQuote) {
+			fprintf(f, "cd \"%s\"\n", r->path);
+		} else {
+			fprintf(f, "cd %s\n", r->path);
+		}
 	}
 }
 
@@ -532,3 +549,14 @@ drain_bkd1_2_msg(remote *r, char *buf, int bsize)
 	exit(1);
 }
 #endif
+
+int
+remote_lock_fail(char *buf, int verbose)
+{
+	if (streq(buf, LOCK_WR_BUSY) || streq(buf, LOCK_RD_BUSY) ||
+	    streq(buf, LOCK_PERM) || streq(buf, LOCK_UNKNOWN)) {
+		if (verbose) fprintf(stderr, "%s\n", buf);
+		return (1);
+	}
+	return (0);
+}

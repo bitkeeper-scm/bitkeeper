@@ -33,6 +33,7 @@ undo_main(int ac,  char **av)
 		switch (c) {
 		    case 'a':
 		    	rev = getrev(optarg);
+			unless (rev) return (0); /* we are done */
 			break;
 		    case 'f': force  =  1; break;
 		    case 'q': qflag = "-q"; vflag = ""; break;

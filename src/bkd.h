@@ -123,7 +123,7 @@ void	disconnect(remote *r, int how);
 void	drain();
 char	**getClientInfoBlock();
 void	sendServerInfoBlock();
-int	prunekey(sccs *, remote *, int, int, int *, int *);
+int	prunekey(sccs *, remote *, int, int, int *, int *, int *);
 int	buf2fd(int gzip, char *buf, int len, int fd);
 void	add_cd_command(FILE *f, remote *r);
 int	skip_http_hdr(remote *r);
@@ -132,4 +132,5 @@ void	sendEnv(FILE *f, char **envVar);
 void	wait_eof(remote *r, int verbose);
 void	flush2remote(remote *r);
 void	try_clone1_2(int quiet, int gzip, char *rev, remote *r, char *local);
+int	remote_lock_fail(char *buf, int verbose);
 #endif
