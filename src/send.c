@@ -24,11 +24,11 @@ getNewRevs(char *to, char *rev, char *url)
 
 	unless (isdir(BK_LOG)) mkdirp(BK_LOG);
 	sprintf(x_sendlog, "%s/send-%s", BK_LOG, to);
-	sprintf(keysFile, "%s/bk_keys%u", TMP_PATH, getpid());
+	bktmp(keysFile, "keys");
 	touch(x_sendlog, 0660);
 
 	if (url) {
-		sprintf(buf, "bk synckeys -lk %s > %s", url, keysFile);
+		sprintf(buf, "bk synckeys -lk %s > '%s'", url, keysFile);
 		status = system(buf);
 		unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) {
 			fprintf(stderr, "send: synckeys failed\n");
@@ -194,7 +194,7 @@ send_main(int ac,  char **av)
 		f = stdout;
 		out = "";
 	} else {
-		patch = aprintf("%s/bk_patch%u", TMP_PATH, getpid());
+		patch = bktmp(0, "patch");
 		f = fopen(patch, "w");
 		assert(f);
 		out = aprintf(" >> %s", patch);

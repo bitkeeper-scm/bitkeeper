@@ -57,7 +57,7 @@ sendbug_main(int ac,  char **av)
 		return (spawn_cmd(_P_WAIT, argv));
 	}
 
-	sprintf(bug, "%s/bk_bug%u", TMP_PATH, getpid());
+	bktmp(bug, "bug");
 	f = fopen(bug, "wt");
 	if (webmail) {
 		fprintf(f,

@@ -52,6 +52,16 @@ setup_tmpdirs(void)
 	}
 }
 
+void
+bktmpenv(void)
+{
+	char	*p;
+
+	unless (tmpdirs_len) setup_tmpdirs();
+	p = aprintf("BK_TMP=%s", tmpdirs[0]);
+	putenv(p);
+}
+
 char *
 bktmp(char *buf, const char *template)
 {
@@ -71,9 +81,38 @@ bktmp(char *buf, const char *template)
 			return(buf);
 		}
 	}
-	perror("mkstemp() failed:");
+	perror("mkstemp() failed");
 	buf[0] = 0;
-	return 0;
+	return (0);
+}
+
+char *
+bktmpdir(char *buf, const char *template)
+{
+	int	i, c, pid = getpid();
+
+	unless (tmpdirs_len) setup_tmpdirs();
+	unless (template) template = "none";
+	unless (buf) buf = malloc(tmpdirs_max + strlen(template) + 12);
+
+	for (i = 0; i < tmpdirs_len; i++) {
+		for(c=0; c < INT_MAX; c++) {
+			sprintf(buf, "%s/bk_%s_%d%d",
+					tmpdirs[i], template, pid, c);
+			if (mkdir(buf, 0777) == -1) {
+				if (errno == EEXIST) {
+					continue;
+				} else {
+					break;
+				}
+			}
+			tmpfiles = addLine(tmpfiles, strdup(buf));
+			return (buf);
+		}
+	}
+	perror("mkdir() failed");
+	buf[0] = 0;
+	return (0);
 }
 
 /*
@@ -107,7 +146,8 @@ bktmp_local(char *buf, const char *template)
 
 /*
  * To be called right before the program exits.  This verifies that
- * all the tempary files created during program execution are deleted.
+ * all the temporary files created during program execution are deleted,
+ * and warns the user about undeleted temporary directories.
  */
 void
 bktmpcleanup(void)
@@ -116,7 +156,12 @@ bktmpcleanup(void)
 
 	unless (tmpfiles) return;
 	EACH(tmpfiles) {
-		if (exists(tmpfiles[i])) {
+		unless (exists(tmpfiles[i])) continue;
+		if (isdir(tmpfiles[i])) {
+			fprintf(stderr,
+			    "WARNING: not deleting orphan directory %s\n",
+			    tmpfiles[i]);
+		} else {
 			fprintf(stderr, "WARNING: deleting orphan file %s\n",
 				tmpfiles[i]);
 			unlink(tmpfiles[i]);

@@ -94,11 +94,11 @@ usage:			system("bk help -s export");
 	}
 	strcpy(src_path, fullname(".", 0));
 
-	sprintf(file_rev, "%s/bk_file_rev%u", TMP_PATH, getpid());
+	bktmp(file_rev, "file_rev");
 	if (rev) {
-		sprintf(buf, "bk rset -hl'%s' > %s", rev, file_rev);
+		sprintf(buf, "bk rset -hl'%s' > '%s'", rev, file_rev);
 	} else {
-		sprintf(buf, "bk rset -hl+ > %s", file_rev);
+		sprintf(buf, "bk rset -hl+ > '%s'", file_rev);
 	}
 	system(buf);
 
@@ -181,8 +181,8 @@ export_patch(char *diff_style,
 	int	status;
 
 	unless (diff_style) diff_style = "u";
-	sprintf(file_rev, "%s/bk_file_rev%u", TMP_PATH, getpid());
-	sprintf(buf, "bk rset -hr'%s' > %s", rev ? rev : "+", file_rev);
+	bktmp(file_rev, "file_rev");
+	sprintf(buf, "bk rset -hr'%s' > '%s'", rev ? rev : "+", file_rev);
 	status = system(buf);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
 		unlink(file_rev);

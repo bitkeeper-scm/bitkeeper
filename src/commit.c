@@ -98,7 +98,7 @@ commit_main(int ac, char **av)
 			}
 			fclose(f);
 		} else {
-			bktmp(pendingFiles, "bk_pending");
+			bktmp(pendingFiles, "pending");
 			if (sysio(0, pendingFiles, 0,
 				"bk", "sfind", "-s,,p", "-C", SYS)) {
 				unlink(pendingFiles);
@@ -204,7 +204,7 @@ out:		if (pendingFiles) unlink(pendingFiles);
 		 * So we open the file in read mode close it and re-open
 		 * it in write mode
 		 */
-		bktmp(pendingFiles2, "bk_pending2");
+		bktmp(pendingFiles2, "pending2");
 		f = fopen(pendingFiles, "r");
 		f2 = fopen(pendingFiles2, "w");
 		assert(f); assert(f2);

@@ -453,6 +453,7 @@ main(int ac, char **av, char **env)
 		fclose(f);
 	}
 
+	unless (getenv("BK_TMP")) bktmpenv();
 	/*
 	 * Windows seems to have a problem with stderr under rxvt's.
 	 * Force unbuffered mode.

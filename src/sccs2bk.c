@@ -215,17 +215,17 @@ regen(sccs *s, char *key)
 	for (i = 0; i < n; ++i) {
 		d = table[i];
 		a1 = aprintf("-kpr%s", rev(revs, d->rev));
-		a2 = aprintf("/tmp/A%u", pid);
+		a2 = bktmp(0, "regenA");
 		sysio(0, a2, 0, "bk", "get", "-q", a1, gfile, SYS);
 
 		free(a1);
 		a1 = aprintf("-kpr%s", d->rev);
-		a3 = aprintf("/tmp/B%u", pid);
+		a3 = bktmp(0, "regenB");
 		sysio(0, a3, 0, "bk", "get", "-q", a1, tmp, SYS);
 		unless (sameFiles(a2, a3)) {
 			fprintf(stderr, "%s@%s != orig@%s\n\n",
 			    gfile, rev(revs, d->rev), d->rev);
-			a1 = aprintf("bk diff /tmp/A%u /tmp/B%u", pid, pid);
+			a1 = aprintf("bk diff '%s' '%s'", a2, a3);
 			system(a1);
 			//exit(1);
 		}
