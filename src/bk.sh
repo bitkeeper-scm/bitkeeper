@@ -1145,6 +1145,26 @@ __keysort()
     bk _sort "$@"
 }
 
+__register_dll()
+{
+	# look for the path to regsvr32.exe
+	for drv in c d e f g h i j k l m n o p q r s t vu v w x y z
+	do
+		for dir in WINDOWS/system32 WINDOWS/system WINNT/system32
+		do
+			if [ -f "$drv:/$dir/regsvr32.exe" ]
+			then
+				REGSVR32="$drv:/$dir/regsvr32.exe"
+				break;
+			fi
+		done
+		test X"$REGSVR32" != X && break; 
+	done
+	test X"$REGSVR32" = X && return; 
+
+	"$REGSVR32" -s "$1"
+}
+
 # usage: install dir
 # installs bitkeeper in directory <dir> such that the new
 # bk will be located at <dir>/bk
@@ -1195,6 +1215,17 @@ _install()
 		"$DEST"/bk which -i uninstall >/dev/null 2>&1 && {
 			"$DEST"/bk uninstall 2> /dev/null
 		}
+
+		# We use bkuninstall.exe on Windows
+		test -f "$DEST"/bkuninstall.exe && \
+		   test -f "$DEST/install.log" && {
+		       mkdir uninstall_tmp
+		       cp "$DEST"/bkuninstall.exe uninstall_tmp/bkuninstall.exe
+
+		       # Note: bkuninstall.exe may cause a reboot
+		       uninstall_tmp/bkuninstall.exe -i "$DEST"/install.log
+		       rm -rf uninstall_tmp
+		}
 		chmod -R +w "$DEST" 2> /dev/null
 		rm -rf "$DEST"/* || {
 		    echo "bk install: failed to remove $DEST"
@@ -1228,6 +1259,20 @@ _install()
 		test $VERBOSE = YES && echo ln "$DEST"/bk$EXE "$DEST"/$prog$EXE
 		ln "$DEST"/bk$EXE "$DEST"/$prog$EXE
 	done
+
+	if [ "X$OSTYPE" = "Xmsys" ]
+	then
+		# On Windows we want a install.log file
+		INSTALL_LOG="$DEST"/install.log
+		echo "Installdir=\"$DEST\"" > "$INSTALL_LOG"
+		(cd "$SRC"; find .) >> "$INSTALL_LOG";
+		for prog in admin get delta unget rmdel prs
+		do
+			echo $prog$EXE >> "$INSTALL_LOG"
+		done
+
+	fi
+
 	# permissions
 	cd "$DEST"
 	test $CHMOD = YES && {
@@ -1240,14 +1285,11 @@ _install()
 	then
 		test $VERBOSE = YES && echo "updating registry..."
 		gui/bin/tclsh gui/lib/registry.tcl $DLLOPTS "$DEST" 
+		test -z "$DLLOPTS" || __register_dll "$DEST"/BkShellX.dll
 	fi
 	exit 0
 }
 
-_uninstall()
-{
-	exit 0
-}
 
 # ------------- main ----------------------
 __platformInit

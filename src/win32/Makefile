@@ -49,9 +49,12 @@ msys: ./msysver.sh MSYSKEY FORCE
 	fi
 
 install: all blat data/bk.ico
+	@if [ X$(BINDIR) = X ]; then echo Must set BINDIR; exit 1; fi
 	cp -f data/bk.ico $(BINDIR)/bk.ico
 	cd pub/blat && make BINDIR=$(BINDIR) install
 	cd pub/diffutils && make BINDIR=$(BINDIR) install
 	cd pub/patch && make BINDIR=$(BINDIR) install
 	cd pub/winctl && make BINDIR=$(BINDIR) install
+	cd util && make BINDIR=$(BINDIR) install
+	cd dlls && make BINDIR=$(BINDIR) install
 	make MSYSBIN=$(BINDIR)/gnu msys	
