@@ -42,7 +42,6 @@ proc highlight {id type {rev ""}} \
 
 	catch {set bb [$w(graph) bbox $id]} err
 	#puts "In highlight: id=($id) err=($err)"
-	#displayMessage "In highlight: id=($id) err=($err)"
 	# If node to highlight is not in view, err=""
 	if {$err == ""} { return "$err" }
 	# Added a pixel at the top and removed a pixel at the bottom to fix 
@@ -524,7 +523,6 @@ proc addline {y xspace ht l} \
 		set tmp [split $rev "-"]
 		set tuser [lindex $tmp 1]; set trev [lindex $tmp 0]
 		set rev2rev_name($trev) $rev
-		#displayMessage "rev2rev_name($rev)"
 		# determing whether to make revision box two lines 
 		if {$stacked} {
 			set txt "$tuser\n$trev"
@@ -833,7 +831,7 @@ proc getLeftRev { {id {}} } \
 	}
 	$w(graph) delete new
 	$w(graph) delete old
-	.menus.cset configure -state disabled -text "View changeset "
+	.menus.cset configure -state disabled -text "View Changeset "
 	.menus.difftool configure -state disabled
 	set rev1 [getRev "old" $id]
 	if {[info exists rev2]} { unset rev2 }
@@ -848,7 +846,7 @@ proc getRightRev { {id {}} } \
 	set rev2 [getRev "new" $id]
 	if {$rev2 != ""} {
 		.menus.difftool configure -state normal
-		.menus.cset configure -text "View changesets"
+		.menus.cset configure -text "View Changesets"
 	}
 }
 
@@ -1055,6 +1053,51 @@ proc displayDiff {rev1 rev2} \
 	busy 0
 }
 
+# hrev : revision to highlight
+#
+proc gotoRev {f hrev} \
+{
+	global srev rev1 rev2
+
+	set rev1 $hrev
+	#displayMessage "gotoRev hrev=($hrev) f=($f) rev1=($rev1)"
+	histtool $f $hrev
+	set hrev [lineOpts $hrev]
+	highlight $hrev "old"
+	catch {exec bk prs -hr$hrev -d:I:-:P: $f 2>$dev_null} out
+	if {$out != ""} {centerRev $out}
+	if {[info exists rev2]} { unset rev2 }
+}
+
+proc currentMenu {} \
+{
+	global file gc rev1 rev2 dev_null 
+
+	if {$file != "ChangeSet"} {return}
+	cd2root
+	if {$rev1 == ""} {return}
+	if {![info exists rev2] || ($rev2 == "")} { 
+		set end $rev1 
+	} else {
+		# don't want to modifey global rev2 in this procedure
+		set end $rev2
+	}
+	$gc(current) delete 1 end
+	set revs [open "| bk -R prs -hbMr$rev1..$end {-d:I:\n} ChangeSet"]
+	while {[gets $revs r] >= 0} {
+		set log [open "| bk cset -Hr$r" r]
+		while {[gets $log file_rev] >= 0} {
+			set f [lindex [split $file_rev "@"] 0]
+			set rev [lindex [split $file_rev "@"] 1]
+			$gc(current) add command -label "$file_rev" \
+			    -command "gotoRev $f $rev"
+		}
+	}
+	catch {close $revs}
+	catch {close $log}
+	return
+}
+
 #
 # Display the comments for the changeset and all of the files that are
 # part of the cset
@@ -1098,11 +1141,14 @@ proc r2c {} \
 	set csets ""
 	set c ""
 	set errorCode [list]
-
-	# XXX: When called from "View changeset", rev1 has the name appended
+	if {$file == "ChangeSet"} {
+		busy 0
+		csettool
+		return
+	}
+	# XXX: When called from "View Changeset", rev1 has the name appended
 	#      need to track down the reason -- this is a hack
 	set rev1 [lindex [split $rev1 "-"] 0]
-	#displayMessage "rev1=($rev1) file=($file)"
 	if {[info exists rev2]} {
 		set revs [open "| bk prs -hbMr$rev1..$rev2 {-d:I:\n} \"$file\""]
 		while {[gets $revs r] >= 0} {
@@ -1122,6 +1168,7 @@ proc r2c {} \
 		}
 		catch {close $revs} err
 	} else {
+		#displayMessage "rev1=($rev1) file=($file)"
 		catch {set csets [exec bk r2c -r$rev1 "$file"]} c
 		if {[lindex $errorCode 2] == 1} {
 			displayMessage \
@@ -1164,7 +1211,7 @@ proc diffs {diffs l} \
 
 proc done {} \
 {
-	saveHistory
+	#saveHistory
 	exit
 }
 
@@ -1402,7 +1449,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	    button .menus.cset -font $gc(hist.buttonFont) -relief raised \
 		-bg $gc(hist.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "View changeset " -width 15 -command r2c -state disabled
+		-text "View Changeset " -width 15 -command r2c -state disabled
 	    button .menus.difftool -font $gc(hist.buttonFont) -relief raised \
 		-bg $gc(hist.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
@@ -1413,6 +1460,8 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		-text "Select File" -width 12 -state normal \
 		-menu .menus.fmb.menu
 		set gc(fmenu) [menu .menus.fmb.menu]
+		set gc(current) $gc(fmenu).current
+		set gc(recent) $gc(fmenu).recent
 		$gc(fmenu) add command -label "Open new file" \
 		    -command { 
 		    	set fname [selectFile]
@@ -1420,18 +1469,24 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 				histtool $fname "-$gc(hist.showHistory)"
 			}
 		    }
-		#$gc(fmenu) add command -label "ChangeSet" \
-		#    -command {
-		#	cd2root
-		#	set fname ChangeSet
-		#    	histtool ChangeSet -$gc(hist.showHistory)
-		#    }
+		$gc(fmenu) add command -label "Project History" \
+		    -command {
+			cd2root
+			set fname ChangeSet
+		    	histtool ChangeSet -$gc(hist.showHistory)
+		    }
 		$gc(fmenu) add separator
-		$gc(fmenu) add command -label "$fname" \
+		$gc(fmenu) add cascade -label "Current ChangeSet" \
+		    -menu $gc(current)
+		$gc(fmenu) add cascade -label "Recently Viewed Files" \
+		    -menu $gc(recent)
+		menu $gc(recent) 
+		menu $gc(current) 
+		$gc(recent) add command -label "$fname" \
 		    -command "histtool $fname -$gc(hist.showHistory)"
 		getHistory
 	    if {"$fname" == "ChangeSet"} {
-		    .menus.cset configure -command csettool
+		    #.menus.cset configure -command csettool
 		    pack .menus.quit .menus.help .menus.mb .menus.cset \
 			.menus.fmb -side left -fill y
 	    } else {
@@ -1524,8 +1579,9 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	grid columnconfigure .cmd 0 -weight 1
 	grid columnconfigure .cmd 1 -weight 2
 
-	bind $w(graph) <1>		{ prs; break }
-	bind $w(graph) <3>		"diff2 0; break"
+	bind $w(graph) <1>		{ prs; currentMenu; break }
+	#bind $w(graph) <1>		{ prs; break }
+	bind $w(graph) <3>		"diff2 0; currentMenu; break"
 	bind $w(graph) <Double-1>	{get "id"; break}
 	bind $w(graph) <h>		"history"
 	bind $w(graph) <t>		"history tags"
@@ -1640,7 +1696,7 @@ proc selectFile {} \
 		if {$fname == "ChangeSet"} {
 			#pack forget .menus.difftool
 		} else {
-			$gc(fmenu) add command -label "$fname" \
+			$gc(recent) add command -label "$fname" \
 			    -command "histtool $fname -$gc(hist.showHistory)" 
 		}
 	}
@@ -1654,7 +1710,7 @@ proc saveHistory {} \
 {
 	global gc
 
-	set num [$gc(fmenu) index end]
+	set num [$gc(recent) index end]
 	set h [open "$gc(histfile)" w]
 	if {[catch {open $gc(histfile) w} fid]} {
 		puts stderr "Cannot open $bkrc"
@@ -1667,8 +1723,8 @@ proc saveHistory {} \
 		}
 		for {set i $start} {$i <= $num} {incr i 1} {
 			set index $i
-			set fname [$gc(fmenu) entrycget $index -label]
-			#puts [$gc(fmenu) entryconfigure $index]
+			set fname [$gc(recent) entrycget $index -label]
+			#puts [$gc(recent) entryconfigure $index]
 			#puts "i=($i) label=($fname)"
 			puts $fid "$fname"
 		}
@@ -1688,7 +1744,7 @@ proc getHistory {} \
 	set h [open "$gc(histfile)"]
 	while {[gets $h file] >= 0} {
 		if {$file == "ChangeSet"} {continue}
-		$gc(fmenu) add command -label "$file" \
+		$gc(recent) add command -label "$file" \
 		    -command "histtool $file -$gc(hist.showHistory)" 
 	}
 	catch {close $h}
@@ -1711,6 +1767,8 @@ proc histtool {lfname R} \
 	$w(graph) delete all
 	if {[info exists revX]} { unset revX }
 	if {[info exists revY]} { unset revY }
+	if {[info exists rev1]} { unset rev1 }
+	if {[info exists rev2]} { unset rev2 }
 	if {[info exists rev2date]} { unset rev2date }
 	if {[info exists serial2rev]} { unset serial2rev }
 	if {[info exists rev2rev_name]} { unset rev2rev_name }
@@ -1773,6 +1831,7 @@ The file $lfname was last modified ($ago) ago."
 	set search(prompt) "Welcome"
 	focus $w(graph)
 	busy 0
+	return
 } ;#histool
 
 proc init {} \
@@ -1881,12 +1940,10 @@ proc startup {} \
 
 	#displayMessage "srev=($srev) rev1=($rev1) rev2=($rev2) gca=($gca)"
 	if {$srev != ""} {
-		#displayMessage "rev1=($rev1) srev=($srev)"
 		histtool $fname "-$srev"
 		set rev1 [lineOpts $srev]
 		highlight $rev1 "old"
 		set file [exec bk sfiles -g $fname 2>$dev_null]
-		#displayMessage "fname=($fname) file=($file)"
 		.menus.cset configure -state normal 
 	} elseif {$rev1 == ""} {
 		histtool $fname "-$gc(hist.showHistory)"
