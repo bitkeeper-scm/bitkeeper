@@ -190,7 +190,7 @@ clean-bin: FORCE
 	cd t && rm -f doit
 
 clean-cfg: FORCE
-	-rm -f bk.ver substvars
+	-rm -f bk.ver substvars gnu/config.cache
 
 clean-src: FORCE
 	-bk -r . clean
