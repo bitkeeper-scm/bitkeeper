@@ -11,6 +11,8 @@
 
 /*
  * Version 1.2 - removes the @DONE@ in the push path.
+ *	We slipped the "to/from host:path" into the pull/push in this
+ *	version without bumping the version number; it caused no problems.
  */
 #define	BKD_VERSION	"BKD version 1.2"
 

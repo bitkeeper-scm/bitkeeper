@@ -8,16 +8,16 @@ char	*BitKeeper = "BitKeeper/";	/* XXX - reset this? */
 project	*bk_proj = 0;
 jmp_buf	exit_buf;
 
-private	char log_buffer[MAXPATH*4];
+private	char cmdlog_buffer[MAXPATH*4];
 
 char	*find_wish();
 char	*find_perl5();
-extern	void	getoptReset();
-private	void	log_start(char **av);
-private	void	log_end(int ret);
-private	void	log_dump();
-private	void	log_exit(void);
+void	cmdlog_start(char **av);
+void	cmdlog_end(int ret);
+void	cmdlog_exit(void);
+private	void	cmdlog_dump();
 
+extern	void	getoptReset();
 int _createlod_main(int, char **);
 int abort_main(int, char **);
 int adler32_main(int, char **);
@@ -218,13 +218,13 @@ main(int ac, char **av)
 	int	ret;
 	char	*prog;
 
-	log_buffer[0] = 0;
+	cmdlog_buffer[0] = 0;
 	if (i = setjmp(exit_buf)) {
 		i -= 1000;
-		log_end(i);
+		cmdlog_end(i);
 		return (i >= 0 ? i : 1);
 	}
-	atexit(log_exit);
+	atexit(cmdlog_exit);
 	platformInit(av); 
 	assert(bin);
 	if (av[1] && streq(av[1], "bin") && !av[2]) {
@@ -291,7 +291,7 @@ main(int ac, char **av)
 	getoptReset();
 
 	if (streq(prog, "cmdlog")) {
-		log_dump();
+		cmdlog_dump();
 		return (0);
 	}
 
@@ -300,9 +300,9 @@ main(int ac, char **av)
 	 */
 	for (i = 0; cmdtbl[i].name; i++) {
 		if (streq(cmdtbl[i].name, prog)){
-			log_start(av);
+			cmdlog_start(av);
 			ret = cmdtbl[i].func(ac, av);
-			log_end(ret);
+			cmdlog_end(ret);
 			exit(ret);
 		}
 	}
@@ -320,9 +320,9 @@ main(int ac, char **av)
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
 		argv[i] = 0;
-		log_start(argv);
+		cmdlog_start(argv);
 		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
-		log_end(ret);
+		cmdlog_end(ret);
 		exit(ret);
 	}
 
@@ -335,9 +335,9 @@ main(int ac, char **av)
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
 		argv[i] = 0;
-		log_start(argv);
+		cmdlog_start(argv);
 		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
-		log_end(ret);
+		cmdlog_end(ret);
 		exit(ret);
 	}
 
@@ -360,9 +360,9 @@ main(int ac, char **av)
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
 		argv[i] = 0;
-		log_start(argv);
+		cmdlog_start(argv);
 		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
-		log_end(ret);
+		cmdlog_end(ret);
 		exit(ret);
 	}
 
@@ -377,9 +377,9 @@ main(int ac, char **av)
 			argv[i] = av[j];
 		}
 		argv[i] = 0;
-		log_start(argv);
+		cmdlog_start(argv);
 		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
-		log_end(ret);
+		cmdlog_end(ret);
 		exit(ret);
 	}
 
@@ -387,9 +387,9 @@ main(int ac, char **av)
 	 * Is it a known C program ?
 	 */
 	if (streq(prog, "patch") || streq(prog, "diff3")) {
-		log_start(av);
+		cmdlog_start(av);
 		ret = spawnvp_ex(_P_WAIT, av[0], av);
-		log_end(ret);
+		cmdlog_end(ret);
 		exit(ret);
 	}
 
@@ -406,7 +406,7 @@ main(int ac, char **av)
 	for (i = 2, j = 0; av[j]; i++, j++) argv[i] = av[j];
 	argv[i] = 0;
 	ret = spawnvp_ex(_P_WAIT, argv[0], argv);
-	log_end(ret);
+	cmdlog_end(ret);
 	exit(ret);
 }
 
@@ -414,37 +414,38 @@ main(int ac, char **av)
 #define	LOG_BADEXIT	-100000		/* some non-valid exit */
 
 void
-log_exit(void)
+cmdlog_exit(void)
 {
-	if (log_buffer[0]) log_end(LOG_BADEXIT);
+	if (cmdlog_buffer[0]) cmdlog_end(LOG_BADEXIT);
 }
 
-private	void
-log_start(char **av)
+void
+cmdlog_start(char **av)
 {
 	int	i, len = 0;
 
+	cmdlog_buffer[0] = 0;
 	unless (bk_proj && bk_proj->root) return;
 	for (i = 0; av[i]; i++) {
 		len += strlen(av[i]);
-		if (len >= sizeof(log_buffer)) continue;
+		if (len >= sizeof(cmdlog_buffer)) continue;
 		if (i) {
-			strcat(log_buffer, " ");
-			strcat(log_buffer, av[i]);
+			strcat(cmdlog_buffer, " ");
+			strcat(cmdlog_buffer, av[i]);
 		} else {
-			strcpy(log_buffer, av[i]);
+			strcpy(cmdlog_buffer, av[i]);
 		}
 	}
 }
 
-private	void
-log_end(int ret)
+void
+cmdlog_end(int ret)
 {
 	FILE	*f;
 	char	*user;
 	char	path[MAXPATH];
 
-	unless (log_buffer[0] && bk_proj && bk_proj->root) return;
+	unless (cmdlog_buffer[0] && bk_proj && bk_proj->root) return;
 	sprintf(path, "%s/BitKeeper/log/cmd_log", bk_proj->root);
 	unless (f = fopen(path, "a")) {
 		sprintf(path, "%s/%s", bk_proj->root, BKROOT);
@@ -456,9 +457,9 @@ log_end(int ret)
 	user = sccs_getuser();
 	fprintf(f, "%s@%u: ", user ? user : "Phantom User", time(0));
 	if (ret == LOG_BADEXIT) {
-		fprintf(f, "%s = ?\n", log_buffer);
+		fprintf(f, "%s = ?\n", cmdlog_buffer);
 	} else {
-		fprintf(f, "%s = %d\n", log_buffer, ret);
+		fprintf(f, "%s = %d\n", cmdlog_buffer, ret);
 	}
 	if (fsize(fileno(f)) > LOG_MAXSIZE) {
 		char	old[MAXPATH];
@@ -469,11 +470,11 @@ log_end(int ret)
 	} else {
 		fclose(f);
 	}
-	log_buffer[0] = 0;
+	cmdlog_buffer[0] = 0;
 }
 
 private	void
-log_dump()
+cmdlog_dump()
 {
 	FILE	*f;
 	time_t	t;
@@ -512,19 +513,19 @@ bk_sfiles(int ac, char **av)
 		fprintf(stderr, "can not spawn %s %s\n", cmds[0], cmds[1]);
 		return(1);
 	} 
-	log_start(sav);
+	cmdlog_start(sav);
 	close(1); dup(pfd); close(pfd);
 	if (status = sfiles_main(1, sav)) {
 		kill(pid, SIGTERM);
 		waitpid(pid, 0, 0);
-		log_end(status);
+		cmdlog_end(status);
 		exit(status);
 	}
 	fflush(stdout);
 	close(1);
 	waitpid(pid, &status, 0);
 	if (WIFEXITED(status)) {
-		log_end(WEXITSTATUS(status));
+		cmdlog_end(WEXITSTATUS(status));
 		exit(WEXITSTATUS(status));
 	}
 #ifndef WIN32
@@ -532,11 +533,11 @@ bk_sfiles(int ac, char **av)
 		fprintf(stderr,
 		    "Child was signaled with %d\n",
 		    WTERMSIG(status));
-		log_end(WTERMSIG(status));
+		cmdlog_end(WTERMSIG(status));
 		exit(WTERMSIG(status));
 	}
 #endif
-	log_end(100);
+	cmdlog_end(100);
 	exit(100);
 }
 
