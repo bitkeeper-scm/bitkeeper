@@ -76,7 +76,7 @@ case "$P" in
 esac
 echo OK
 echo $N Check old permissions on checked out file ...................$NL
-bk co -r1.1 $Q prog
+bk co -r1.1 $Q -Gprog prog
 P=`/bin/ls -l prog`
 case "$P" in
     -r-xr-x--x*)

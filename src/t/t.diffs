@@ -25,17 +25,6 @@ do	bk co $Q -l Mydiffs
 	echo "------------------------------------------------" >> Init
 	bk delta $Q -IInit Mydiffs
 done
-echo $N Checking diffs against readonly file ........................$NL
-bk co $Q -r1.9 Mydiffs
-bk diffs Mydiffs > D
-bk undos > W << EOF
-===== Mydiffs 1.10 vs ? =====
-10d9
-< 1.10
-EOF
-cmp -s D W
-if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
-echo OK
 echo $N Checking diff against edited file ...........................$NL
 bk co $Q -l Mydiffs
 echo foo >> Mydiffs

@@ -50,7 +50,7 @@ diffs_main(int ac, char **av)
 	opts = optbuf;
 	*opts++ = '-';
 	*opts = 0;
-	while ((c = getopt(ac, av, "bBcC|d;DfhMnpr|R|suUv")) != -1) {
+	while ((c = getopt(ac, av, "bBcC|d;DfhMnpr|R|suUvw")) != -1) {
 		switch (c) {
 		    case 'b': /* fall through */		/* doc 2.0 */
 		    case 'B': *opts++ = c; *opts = 0; break;	/* doc 2.0 */
@@ -67,6 +67,7 @@ diffs_main(int ac, char **av)
 		    case 'u': kind = DF_UNIFIED; break;		/* doc 2.0 */
 		    case 'U': flags |= GET_USER; break;		/* doc 2.0 */
 		    case 'v': verbose = 1; break;		/* doc 2.0 */
+		    case 'w': *opts++ = c; *opts = 0; break;	/* doc 2.0 */
 		    RANGE_OPTS('d', 'r');			/* doc 2.0 */
 		    default:
 usage:			system("bk help -s diffs");
@@ -139,27 +140,18 @@ usage:			system("bk help -s diffs");
 		}
 
 		/*
+		 * Optimize out the case where we we are readonly and diffing
+		 * TOT.
+		 */
+		if (!things && !IS_EDITED(s)) goto next;
+
+		/*
 		 * Optimize out the case where we have a locked file with
 		 * no changes at TOT.
 		 */
 		if (!things && !Rev && IS_EDITED(s) && 
 		    !sccs_hasDiffs(s, GET_DIFFTOT|flags|ex, 1)) goto next;
 		
-		/*
-		 * Optimize out the case where we we are readonly and diffing
-		 * TOT.
-		 *
-		 * This makes the following fail when foo.c TOT is 1.10:
-		 *	bk get -r1.5 foo.c
-		 *	bk diffs
-		 * It's questionable but for now we'll leave it.
-		 *
-		 * If we eliminate get -r without -p or -r+ then we can
-		 * put this back.
-		 *
-		if (!things && !IS_EDITED(s)) goto next;
-		 */
-
 		/*
 		 * Errors come back as -1/-2/-3/0
 		 * -2/-3 means it couldn't find the rev; ignore.

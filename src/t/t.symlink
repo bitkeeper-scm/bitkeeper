@@ -157,7 +157,7 @@ bk clean .
 if [ -h symlink ]; then echo failed; exit 1; fi
 echo OK
 echo $N Make sure text data is preserved.............................$NL
-bk co $Q -r1.3 symlink
+bk co $Q -r1.3 -Gsymlink symlink
 cmp -s symlink.ref symlink
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK

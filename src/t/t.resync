@@ -457,7 +457,7 @@ tar xf chkpoint.tar
 cd $HERE/project/src
 cp $binary_data data
 bk admin $Q -idata -Ebinary bdata
-bk get $Q -r1.1 bdata
+bk get $Q -r1.1 -Gbdata bdata
 cmp -s bdata $binary_data
 if [ $? -ne 0 ]; then echo failed test 1; cmp bdata $binary_data; exit 1; fi
 bk commit $S -Sbinary1 -ybinary1

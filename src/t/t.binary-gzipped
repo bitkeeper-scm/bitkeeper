@@ -56,7 +56,7 @@ cmp -s ${binary_data2} uuencode
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Checking that revision 1.1 is still OK ......................$NL
-bk co -r1.1 $Q uuencode
+bk co -r1.1 $Q -Guuencode uuencode
 cmp -s ${binary_data} uuencode
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
@@ -68,7 +68,7 @@ if [ -f uuencode ]; then echo Clean failed ; exit 1; fi
 echo OK
 echo $N Verifying data checksum .....................................$NL
 bk admin $Q -fe0 uuencode
-bk co $Q -kr1.1 uuencode
+bk co $Q -kr1.1 -Guuencode uuencode
 bk admin $Q -fe1 uuencode
 A=`bk prs -r1.1 -hd:DSUM: uuencode`
 B=`bk chksum < uuencode`
@@ -76,7 +76,7 @@ if [ $A -ne $B ]; then echo Failed - chksums $A $B differ.; exit 1; fi
 echo OK
 echo $N Trying to compress uuencoded data ...........................$NL
 bk admin -Z uuencode
-bk co -r1.1 $Q uuencode
+bk co -r1.1 $Q -Guuencode uuencode
 cmp -s ${binary_data} uuencode
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
@@ -128,7 +128,7 @@ cmp -s ll gzipped
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Verifying data checksum .....................................$NL
-bk co $Q -kr1.1 gzipped
+bk co $Q -kr1.1 -Ggzipped gzipped
 A=`bk prs -r1.1 -hd:DSUM: gzipped`
 B=`bk chksum < gzipped`
 if [ $A -ne $B ]; then echo Failed - chksums $A $B differ.; exit 1; fi

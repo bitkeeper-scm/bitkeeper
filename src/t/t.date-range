@@ -273,7 +273,7 @@ echo OK
 echo -------------- misc:
 echo $N Getting the first delta with -c .............................$NL
 rm -f FILE
-bk get $S -c90 FILE
+bk get $S -c90 -GFILE FILE
 echo 1.1 > X
 bk undos X > F
 cmp -s F FILE
@@ -281,7 +281,7 @@ if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Getting the second delta with -c ............................$NL
 rm -f FILE
-bk get $S -c970529 FILE
+bk get $S -c970529 -GFILE FILE
 echo 1.1 > X
 bk undos X > F
 echo 1.2 >> X
@@ -291,7 +291,7 @@ if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Getting the all but last delta with -c ......................$NL
 rm -f FILE
-bk get $S -c970624 FILE
+bk get $S -c970624 -GFILE FILE
 cat > X <<EOF
 1.1
 1.2
@@ -303,18 +303,18 @@ cmp -s F FILE
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Same thing with round down -c-98 ............................$NL
-bk get $S -c-98 FILE
+bk get $S -c-98 -GFILE FILE
 cmp -s F FILE
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Attempting a bad date with -c80 .............................$NL
 rm -f FILE
-bk get $S -c80 FILE 2>${DEV_NULL}
+bk get $S -c80 -GFILE FILE 2>${DEV_NULL}
 if [ -f FILE ]; then echo Failed - found a delta that is not there.; exit 1; fi
 echo OK
 echo $N Attempting a bad date with -c01 .............................$NL
 rm -f FILE
-bk get $S -c72 FILE 2>${DEV_NULL}
+bk get $S -c72 -GFILE FILE 2>${DEV_NULL}
 if [ -f FILE ]; then echo Failed - found a delta that is not there.; exit 1; fi
 echo OK
 echo $N Adding dates after 2000 .....................................$NL
@@ -336,7 +336,7 @@ if [ -s OUT ]; then echo Error - found a delta.; exit 1; fi
 echo OK
 echo $N Getting the last delta with -c ..............................$NL
 rm -f FILE
-bk get $S -c02 FILE
+bk get $S -c02 -GFILE FILE
 cat > X <<EOF
 1.1
 1.2
@@ -353,7 +353,7 @@ if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Getting a delta in year 2000 with -c ........................$NL
 rm -f FILE
-bk get $S -c00 FILE
+bk get $S -c00 -GFILE FILE
 cat > X <<EOF
 1.1
 1.2
@@ -368,7 +368,7 @@ if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Getting a delta in year 2001 with -c ........................$NL
 rm -f FILE
-bk get $S -c01 FILE
+bk get $S -c01 -GFILE FILE
 cat > X <<EOF
 1.1
 1.2
@@ -420,7 +420,7 @@ EOF
 done
 bk ci $Q YEAR4	# clean it
 echo $N Checking Y2K date expansion w/o -fYEAR4 .....................$NL
-bk get $S -r1.1 YEAR4
+bk get $S -r1.1 -GYEAR4 YEAR4
 if [ '06/23/97' != "`cat YEAR4`" ]; then echo Failed on 1.1.; exit 1; fi
 bk get $S YEAR4
 if [ '01/10/01' != "`cat YEAR4`" ]; then echo Failed on 1.3.; exit 1; fi
@@ -434,7 +434,7 @@ c This is revision 1.5
 ------------------------------------------------
 EOF
 bk delta $Q -IINITX YEAR4
-bk get $S -r1.5 YEAR4
+bk get $S -r1.5 -GYEAR4 YEAR4
 if [ '02/22/2001' != "`cat YEAR4`" ]
 then	echo Failed on 1.5.
 	cat YEAR4
@@ -446,8 +446,8 @@ echo OK
 echo $N Checking Y2K date expansion on old delta ....................$NL
 # We set the YEAR4 flag in delta 1.4, when we access delta 1.3
 # We should get 2 digit year.
-bk get $S -r1.3 YEAR4
+bk get $S -r1.3 -GYEAR4 YEAR4
 if [ '01/10/01' != "`cat YEAR4`" ]
 then echo "Failed (Known bug)"; #The soultion now is clone -rold_rev
-else ecoh OK
+else echo OK
 fi

@@ -50,35 +50,35 @@ _get_main(int ac, char **av, char *out)
 	    getopt(ac, av, "ac;CdDefFgG:hHi;klmM|nNpPqr;RSstTux;")) != -1) {
 		switch (c) {
 		    case 'a': flags |= GET_ALIGN; break;	/* doc 2.0 */
-		    case 'c': cdate = optarg; break;	/* doc 2.0 */
-		    case 'C': commitedOnly = 1; break;	/* doc 2.0 */
+		    case 'c': cdate = optarg; break;		/* doc 2.0 */
+		    case 'C': commitedOnly = 1; break;		/* doc 2.0 */
 		    case 'd': flags |= GET_PREFIXDATE; break;	/* doc 2.0 */
-		    case 'D': getdiff++; break;	/* doc 2.0 */
-		    case 'l':	/* undoc in get, doc-ed in co */
-		    case 'e': flags |= GET_EDIT; break;	/* doc 2.0 */
+		    case 'D': getdiff++; break;			/* doc 2.0 */
+		    case 'l':		/* undoc in get, doc-ed in co */
+		    case 'e': flags |= GET_EDIT; break;		/* doc 2.0 */
 		    case 'f': flags |= GET_FULLPATH; break;
 		    case 'F': iflags |= INIT_NOCKSUM; break;	/* doc 2.0 */
 		    case 'g': flags |= GET_SKIPGET; break;	/* doc 2.0 */
-		    case 'G': Gname = optarg; break;	/* doc 2.0 */
-		    case 'h': dohash = 1; break;	/* doc 2.0 */
-		    case 'H': flags |= GET_PATH; break;	/* doc 2.0 */
-		    case 'i': iLst = optarg; break;	/* doc 2.0 */
+		    case 'G': Gname = optarg; break;		/* doc 2.0 */
+		    case 'h': dohash = 1; break;		/* doc 2.0 */
+		    case 'H': flags |= GET_PATH; break;		/* doc 2.0 */
+		    case 'i': iLst = optarg; break;		/* doc 2.0 */
 		    case 'k': flags &= ~GET_EXPAND; break;	/* doc 2.0 */
 		    case 'm': flags |= GET_REVNUMS; break;	/* doc 2.0 */
-		    case 'M': mRev = optarg; break;	/* doc 2.0 */
+		    case 'M': mRev = optarg; break;		/* doc 2.0 */
 		    case 'n': flags |= GET_MODNAME; break;	/* doc 2.0 */
 		    case 'N': flags |= GET_LINENUM; break;	/* doc 2.0 */
-		    case 'p': flags |= PRINT; break;	/* doc 2.0 */
+		    case 'p': flags |= PRINT; break;		/* doc 2.0 */
 		    case 'P': flags |= PRINT|GET_FORCE; break;	/* doc 2.0 */
-		    case 'q': flags |= SILENT; break;	/* doc 2.0 */
-		    case 'r': rev = optarg; break;	/* doc 2.0 */
+		    case 'q': flags |= SILENT; break;		/* doc 2.0 */
+		    case 'r': rev = optarg; break;		/* doc 2.0 */
 		    case 'R': hasrevs = SF_HASREVS; break;	/* doc 2.0 */
-		    case 's': flags |= SILENT; break;	/* undoc */
+		    case 's': flags |= SILENT; break;		/* undoc */
 		    case 'S': flags |= GET_NOREGET; break;	/* doc 2.0 */
-		    case 't': break;	/* compat, noop, undoc */
+		    case 't': break;		/* compat, noop, undoc */
 		    case 'T': flags |= GET_DTIME; break;	/* doc 2.0 */
-		    case 'u': flags |= GET_USER; break;	/* doc 2.0 */
-		    case 'x': xLst = optarg; break;	/* doc 2.0 */
+		    case 'u': flags |= GET_USER; break;		/* doc 2.0 */
+		    case 'x': xLst = optarg; break;		/* doc 2.0 */
 
 		    default:
 usage:			sprintf(realname, "bk help -s %s", prog);
@@ -135,8 +135,8 @@ onefile:	fprintf(stderr,
 		goto usage;
 	}
 	if ((rev || cdate) && hasrevs) {
-		fprintf(stderr, "%s: can't specify more than one rev.\n",
-			av[0]);
+		fprintf(stderr,
+		    "%s: can't specify more than one rev.\n", av[0]);
 		goto usage;
 	}
 	switch (getdiff) {
@@ -227,6 +227,14 @@ onefile:	fprintf(stderr,
 			sccs_free(s);
 			continue;
 			
+		}
+		if (BITKEEPER(s) && rev && !branch_ok && !streq(rev, "+")) {
+			unless ((flags & PRINT) || Gname) {
+				fprintf(stderr,
+				    "%s: can't specify revisions without -p\n",
+				    av[0]);
+				goto usage;
+			}
 		}
 		if ((flags & (GET_DIFFS|GET_BKDIFFS|GET_HASHDIFFS))
 		    ? sccs_getdiffs(s, rev, flags, out)
