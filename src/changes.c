@@ -176,7 +176,6 @@ out:		for (c = 2; c < nac; c++) free(nav[c]);
 private int
 pdelta(delta *e)
 {
-	if (feof(opts.f)) return (1); /* for early pager exit */
 	unless (e->flags & D_SET) return(0);
 	if (opts.keys) {
 		sccs_pdelta(opts.s, e, opts.f);
@@ -189,8 +188,7 @@ pdelta(delta *e)
 			if (opts.newline) fputc('\n', opts.f);
 		}
 	}
-	fflush(opts.f);
-	return (0);
+	return (fflush(opts.f));
 }
 
 private int
