@@ -70,7 +70,7 @@ private u32	xflags2state(u32 xflags);
 private delta	*gca3(sccs *s, delta *left, delta *right, char **i, char **e);
 private int	compressmap(sccs *s, delta *d, ser_t *set, char **i, char **e);
 
-private unsigned int u_mask = 0x5eadbeef;
+private unsigned int u_mask;
 
 int
 executable(char *f)
@@ -3121,6 +3121,84 @@ err:			free(s->gfile);
 	return (0);
 }
 
+private int
+parseConfig(char *buf)
+{
+	char *p, *q;
+	
+	p = strchr(buf, ':');
+	unless (p) return 0;
+	p = q =  buf;
+	while (*p) {
+		if (*p == ':') {
+			*q++ = ' ';
+			p++;
+		} else if ((*p == ' ') || (*p == '\t')) {
+			p++;
+		} else {
+			*q++ = *p++;
+		}
+	}
+	*q = 0;
+	if (strneq(buf, "logging_ok ", 11)) return 0;
+	return 1;
+}
+
+
+/*
+ * Load config file into a MDBM DB
+ * This function is called (indirectly) from sccs_init()
+ * It also call sccs_init() itself, i.e potential mutual recursion.
+ * Another form of potetial recursion is:
+ * 	opening the config file (from upper level) may
+ * 	trigger this code path.
+ */
+ 
+private MDBM *
+loadConfig(sccs *s, char *root)
+{
+	MDBM	*DB = 0;
+	char 	s_config[MAXPATH];
+	char 	g_config[MAXPATH];
+	sccs 	*s1 = 0;
+	project *proj;
+
+	/*
+	 * Hand make a project struct, so sccs_init(s_config, ..)
+	 * won'nt call us againt, otherwise we end up in a loop.
+	 */
+	proj = calloc(1, sizeof(*proj));
+	proj->root = strdup(root);
+
+	sprintf(s_config, "%s/BitKeeper/etc/SCCS/s.config", root);
+	sprintf(g_config, "%s/BitKeeper/etc/config", root);
+	/*
+	 * If the config is already checked out, use that.
+	 * Otherwise, get it into a temp file.
+	 */
+	if (exists(s_config) && !exists(g_config)) {
+		s1 = sccs_init(s_config, SILENT, proj);
+		unless (s1) return 0;
+		if (sccs_get(s1, 0, 0, 0, 0, SILENT, 0)) {
+			sccs_free(s1);
+			return (0);
+		}
+	}
+	unless (exists(g_config)) return (0);
+	DB = loadDB(g_config, parseConfig, DB_NODUPS);
+	if (s1) {
+		/*
+		 * If it has a p file, someone (e.g) setup/commit
+		 * may be trying to update the config. Clean up
+		 * our gfile so we do'nt get in their way.
+		 */
+		//if (HAS_PFILE(s1)) unlink(g_config);
+		unlink(g_config);
+		sccs_free(s1);
+	}
+	return DB;
+}
+
 /*
  * Initialize the project struct.
  * We don't put it in the sccs in case there isn't one, the caller can do it.
@@ -3142,6 +3220,7 @@ proj_init(sccs *s)
 	unless (root = sccs_root(s)) return (0);
 	p = calloc(1, sizeof(*p));
 	p->root = root;
+	p->config = loadConfig(s, root);
 	return (p);
 }
 
@@ -3150,6 +3229,7 @@ proj_free(project *p)
 {
 	unless (p) return;
 	if (p->root) free(p->root);
+	if (p->config) mdbm_close(p->config);
 	free(p);
 }
 
@@ -3164,14 +3244,11 @@ sccs_init(char *name, u32 flags, project *proj)
 {
 	sccs	*s;
 	struct	stat sbuf;
-	char	*t;
+	char	*t, *val;
 	static	int YEAR4;
+	unsigned int i;
 
 	platformSpecificInit(name);
-	if (u_mask == 0x5eadbeef) {
-		u_mask = ~umask(0);
-		umask(~u_mask);
-	}
 	if (sccs_filetype(name) == 's') {
 		s = calloc(1, sizeof(*s));
 		s->sfile = strdup(sPath(name, 0));
@@ -3180,6 +3257,18 @@ sccs_init(char *name, u32 flags, project *proj)
 		fprintf(stderr, "Not an SCCS file: %s\n", name);
 		return (0);
 	}
+
+	s->proj = proj ? proj : proj_init(s);
+	if (s->proj && s->proj->config && 
+	    (val = mdbm_fetch_str(s->proj->config, "umask")) &&
+	    (sscanf(val, "%o", &i) == 1)) {
+		u_mask = ~i;
+		umask(i);
+	} else {
+		u_mask = ~umask(0);
+		umask(~u_mask); 
+	}
+
 	t = strrchr(s->sfile, '/');
 	if (t && streq(t, "/s.ChangeSet")) s->state |= S_HASH|S_CSET;
 	unless (t && (t >= s->sfile + 4) && strneq(t - 4, "SCCS/s.", 7)) {
@@ -3261,7 +3350,7 @@ sccs_init(char *name, u32 flags, project *proj)
 			 * This is a little bogus - we are looking for a
 			 * a project when there may not be one.
 			 */
-			s->proj = proj ? proj : proj_init(s);
+			//s->proj = proj ? proj : proj_init(s);
 			return (s);
 		} else {
 			fputs("sccs_init: ", stderr);
@@ -3290,11 +3379,6 @@ sccs_init(char *name, u32 flags, project *proj)
 		}
 	}
 	
-	/*
-	 * Don't go look for BK root if not a BK file.
-	 */
-	if (s->state & S_BITKEEPER) s->proj = proj ? proj : proj_init(s);
-
 	/*
 	 * Let them force YEAR4
 	 */
@@ -3533,7 +3617,7 @@ mksccsdir(char *sfile)
 #if defined(SPLIT_ROOT)
 		unless (exists(sfile)) mkdirp(sfile);
 #else
-		mkdir(sfile, 0775);
+		mkdir(sfile, 0777);
 #endif
 		*s = '/';
 	}

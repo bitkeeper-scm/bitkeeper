@@ -117,10 +117,10 @@ setup_main(int ac, char **av)
 	// XXX FIXME: This should be replaced with a direct C function call
 	sprintf(buf, "%sbk ci -qi config", bin);
 	system(buf);
+	sprintf(buf, "%sbk get -q config", bin);
+	system(buf);
 
 	if (logsetup) {
-		sprintf(buf, "%sbk get -q config", bin);
-		system(buf);
 		sprintf(buf, "%sbk sendconfig setups@openlogging.org", bin);
 	}
 	sprintf(setup_files, "%s/setup_files%d", TMP_PATH, getpid());

@@ -34,7 +34,7 @@ usage:		fprintf(stderr, "usage: %s from to\n", av[0]);
 	 * and the last arg doesn't exist, create it as a directory.
 	 */
 	if (isdir(av[1]) || (name2 = sfileNext())) {
-		unless (isdir(dest)) mkdir(dest, 0775);
+		unless (isdir(dest)) mkdir(dest, 0777);
 		/* mvdir includes deleted files */
 		if (isdir(av[1])) sflags |= SF_DELETES; 
 	}
