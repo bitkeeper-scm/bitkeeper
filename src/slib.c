@@ -1475,12 +1475,16 @@ _relativeName(char *gName, int isDir, int withsccs,
 	static  char buf2[MAXPATH];
 
 	strcpy(tmp, fullname(gName, 0));
-	if (!IsFullPath(tmp)) return (0);
+	unless (IsFullPath(tmp)) return (0);
 	tmp[strlen(tmp)+1] = 0;	/* for code below */
 	t = tmp;
 
 	unless (proj) proj = freeproj = proj_init(t);
-	unless (proj) return (mustHaveRmarker ? 0 : tmp);
+	unless (proj) {
+		if (mustHaveRmarker) return (0);
+		strcpy(buf2, tmp);
+		return (buf2);
+	}
 
 	root = proj_root(proj);
 	len = strlen(root);

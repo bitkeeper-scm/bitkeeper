@@ -79,7 +79,7 @@ no_logging() {
 }
 
 echon() {
-	echo $NX "$*" $NXL
+        echo $NX ${1+"$@"}$NXL
 }
 
 # args: GOT WANT
