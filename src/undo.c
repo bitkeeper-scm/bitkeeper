@@ -1,5 +1,6 @@
 #include "system.h"
 #include "sccs.h"
+#include "logging.h"
 
 #define	BACKUP_SFIO "BitKeeper/tmp/undo_backup_sfio"
 
@@ -8,11 +9,13 @@ private char	*getrev(char *);
 private char	**mk_list(char *, char *);
 private int	clean_file(char **);
 private	int	moveAndSave(char **fileList);
-private int	move_file();
+private int	move_file(void);
 private int	do_rename(char **, char *);
 private void	checkRev(char *);
-private int	check_patch();
+private int	check_patch(void);
 private int	doit(char **fileList, char *rev_list, char *qflag);
+private	void	save_log_markers(void);
+private	void	update_log_markers(int verbose);
 
 int
 undo_main(int ac,  char **av)
@@ -52,6 +55,7 @@ usage:			system("bk help -s undo");
 		}
 	}
 	unless (rev) goto usage;
+	save_log_markers();
 	unlink(BACKUP_SFIO); /* remove old backup file */
 	if (ckRev) checkRev(rev);
 	sprintf(rev_list, "%s/bk_rev_list%d",  TMP_PATH, getpid());
@@ -154,6 +158,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 
 	freeLines(fileList);
 	unlink(rev_list); unlink(undo_list);
+	update_log_markers(streq(qflag, ""));
 	if (rc) return (rc); /* do not remove backup if check failed */
 	unlink(BACKUP_SFIO);
 	sys(RM, "-rf", "RESYNC", SYS);
@@ -473,4 +478,60 @@ move_file()
 	}
 	pclose(f);
 	return (rc);
+}
+
+private	char	*markfile[] = { LMARK, CMARK };
+private	int	valid_marker[2];
+
+private void
+save_log_markers(void)
+{
+	int	i;
+	sccs	*s = sccs_csetInit(0, 0);
+	unless (s) return;
+	
+	for (i = 0; i < 2; i++) {
+		FILE	*f;
+		char	key[MAXKEY];
+		valid_marker[i] = 0;
+		f = fopen(markfile[i], "rb");
+		if (f) {
+			if (fnext(key, f)) {
+				chomp(key);
+				if (sccs_findKey(s, key)) valid_marker[i] = 1;
+			}
+			fclose(f);
+		}
+	}
+	sccs_free(s);
+}
+
+private void
+update_log_markers(int verbose)
+{
+	int	i;
+	sccs	*s = sccs_csetInit(0, 0);
+	unless (s) return;
+	
+	/* Clear marks that are still valid */
+	for (i = 0; i < 2; i++) {
+		FILE	*f;
+		char	key[MAXKEY];
+		
+		unless (valid_marker[i]) continue;
+		f = fopen(markfile[i], "rb");
+		if (f) {
+			if (fnext(key, f)) {
+				chomp(key);
+				if (sccs_findKey(s, key)) valid_marker[i] = 0;
+			}
+			fclose(f);
+		}
+	}
+	sccs_free(s);
+
+	/* Any remaing mark must have been deleted by the undo */
+	for (i = 0; i < 2; i++) {
+		if (valid_marker[i]) updLogMarker(i, verbose, stderr);
+	}
 }
