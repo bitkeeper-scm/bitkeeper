@@ -358,12 +358,10 @@ proc getFiles {} \
 	busy 0
 }
 
-proc DeleteAll {} \
+proc doDeleteAll {} \
 {
-	global	leftLine leftFile leftCount rightCount isBusy
+	global	leftLine leftFile leftCount
 
-	if {$isBusy} { return }
-	busy 1
 	.files.l tag delete select
 	.files.l configure -state normal
 	while {$leftCount > 0} {
@@ -383,15 +381,23 @@ proc DeleteAll {} \
 	.menu.guess configure -state disabled
 	.menu.rename configure -state disabled
 	clear disabled
-	busy 0
 }
 
-proc CreateAll {} \
+proc DeleteAll {} \
 {
-	global	rightLine rightFile rightCount leftCount isBusy
+	global	isBusy
 
 	if {$isBusy} { return }
 	busy 1
+	doDeleteAll
+	busy 0
+}
+
+
+proc doCreateAll {} \
+{
+	global	rightLine rightFile rightCount
+
 	.files.r tag delete select
 	.files.r configure -state normal
 	while {$rightCount > 0} {
@@ -408,6 +414,14 @@ proc CreateAll {} \
 	.menu.guess configure -state disabled
 	.menu.rename configure -state disabled
 	clear disabled
+}
+proc CreateAll {} \
+{
+	global	isBusy
+
+	if {$isBusy} { return }
+	busy 1
+	doCreateAll
 	busy 0
 }
 
@@ -415,7 +429,10 @@ proc Delete {doit} \
 {
 	global	leftLine leftFile leftCount rightFile isBusy
 
-	if {($isBusy == 1) && ($doit == 1)} { return }
+	if {$doit == 1} {
+		if {$isBusy == 1} { return }
+		busy 1
+	}
 	busy 1
 	if {$doit == 1} { sh "bk rm $leftFile\n" }
 	.files.l tag delete select
@@ -423,7 +440,7 @@ proc Delete {doit} \
 	.files.l delete $leftLine "$leftLine lineend + 1 char"
 	incr leftCount -1
 	# Reuse that code.
-	if {$leftCount == 0} { DeleteAll; return }
+	if {$leftCount == 0} { doDeleteAll; if {$doit == 1} {busy 0}; return }
 
 	Select .files.l leftLine leftFile $leftLine
 	if {$doit == 1} {
@@ -442,15 +459,17 @@ proc Create {doit} \
 {
 	global	rightLine rightFile rightCount leftFile isBusy
 
-	if {($isBusy == 1) && ($doit == 1)} { return }
-	busy 1
+	if {$doit == 1} {
+		if {$isBusy == 1} { return }
+		busy 1
+	}
 	if {$doit == 1} { sh "bk new $rightFile\n" }
 	.files.r tag delete select
 	.files.r configure -state normal
 	.files.r delete $rightLine "$rightLine lineend + 1 char"
 	incr rightCount -1
 	# Reuse that code.
-	if {$rightCount == 0} { CreateAll; return }
+	if {$rightCount == 0} { doCreateAll; if {$doit == 1} {busy 0}; return }
 
 	Select .files.r rightLine rightFile $rightLine
 	if {$doit == 1} {
@@ -715,7 +734,7 @@ proc pixSelect {which line file x y} \
 	set l [$which index "@$x,$y linestart"]
 
 	## Protect against selecting below the end of the list
-	if { $l + 1 < [ $which index "end linestart" ] } {
+	if { ($l + 1) < [ $which index "end linestart" ] } {
 		Select $which $line $file $l
 	}
 }
@@ -750,7 +769,14 @@ proc Select {which line file l} \
 			diffFiles $leftFile $rightFile
 			.menu.rename configure -state normal
 		}
-		if {$leftFile != ""} { .menu.delete configure -state normal }
+		if {$leftFile != ""} {
+			.menu.delete configure -state normal
+			if {$rightCount != 0} {
+				.menu.guess configure -state normal
+			} else {
+				.menu.guess configure -state disabled
+			}
+		}
 		if {$rightFile != ""} { .menu.create configure -state normal }
 		if {$file == "undoFile"} { .menu.undo configure -state normal }
 	}
