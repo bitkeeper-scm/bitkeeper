@@ -6115,9 +6115,9 @@ err:		if (i2) free(i2);
 	} else {
 		d = findrev(s, rev);
 		if (!d) {
-			fprintf(stderr,
+			verbose((stderr,
 			    "get: can't find revision like %s in %s\n",
-			rev, s->sfile);
+			rev, s->sfile));
 			s->state |= S_WARNED;
 		}
 	}

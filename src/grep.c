@@ -10,8 +10,10 @@ grep_main(int ac, char **av)
 	char	*s = sccscat_opts, *g = grep_opts;
 	char	**sav = malloc(sizeof(char*) * (ac + 10));
 	char	*gav[10];
-	int	c, i, fd, status;
-	char	buf[200];
+	char	*grep = "grep";
+	int	c, i, fd, none = 0, status;
+	char	rev[200];
+	char	range[200];
 	pid_t	pid;
 
 	if (ac == 2 && streq("--help", av[1])) {	
@@ -21,17 +23,30 @@ grep_main(int ac, char **av)
 
 	*s++ = '-';
 	*g++ = '-';
-	buf[0] = 0;
-	while ((c = getopt(ac, av, "dimnur|")) != -1) {
+	rev[0] = range[0] = 0;
+	while ((c = getopt(ac, av, "ac|deimnNur|R|")) != -1) {
 		switch (c) {
+		    case 'a':
+			none = 1;
+			break;
 		    case 'd':
 		    case 'm':
 		    case 'n':
+		    case 'N':
 		    case 'u':
 			*s++ = c;
 			break;
+		    case 'e':
+		    	grep = "egrep";
+			break;
 		    case 'r':
-			sprintf(buf, "-r%s", optarg);
+			sprintf(rev, "-r%s", optarg);
+			break;
+		    case 'c':
+			sprintf(range, "-c%s", optarg);
+			break;
+		    case 'R':
+			sprintf(range, "-r%s", optarg);
 			break;
 		    case 'i':
 			*g++ = c;
@@ -47,7 +62,7 @@ grep_main(int ac, char **av)
 	/*
 	 * Set up the grep part of the command line and spawn it.
 	 */
-	gav[i=0] = "grep";
+	gav[i=0] = grep;
 	if (g) gav[++i] = grep_opts;
 	gav[++i] = av[optind++];
 	gav[++i] = 0;
@@ -56,20 +71,24 @@ grep_main(int ac, char **av)
 		exit(1);
 	}
 
-	/*
-	 * Set up the sccscat part of the command line.
-	 */
-	if (buf[0]) {
+	if (rev[0] && range[0]) {
+		fprintf(stderr, "bk grep: can not mix -r with -R\n");
+		exit(1);
+	}
+
+	if (rev[0]) {
 		sav[i=0] = "get";
-		sav[++i] = buf;
+		sav[++i] = rev;
 		sav[++i] = "-kqp";
 	} else {
 		sav[i=0] = "sccscat";
+		sav[++i] = "-q";
+		if (range[0]) sav[++i] = range;
 	}
 	if (s) {
 		sav[++i] = sccscat_opts;
 	} else {
-		sav[++i] = buf[0] ? "-n" : "-nm";
+		unless (none) sav[++i] = "-nm";
 	}
 	while (sav[++i] = av[optind++]);
 
@@ -78,7 +97,7 @@ grep_main(int ac, char **av)
 	 */
 	close(1); dup(fd); close(fd);
 	getoptReset();
-	if (buf[0]) {
+	if (rev[0]) {
 		i = get_main(i, sav);
 	} else {
 		i = sccscat_main(i, sav);

@@ -15,7 +15,7 @@ SUM=	\
 
 all: html 
 
-html:
+html: man2help.pl bk-macros
 	@make links
 	./man2help.pl -debug bk-macros bk- $(SRC)
 
@@ -31,7 +31,8 @@ cp:
 	cp *.html $(DIR)
 
 links:
-	-bk co -q ../man1 ../bk-macros
+	-bk co -q ../man1
+	-bk co -q ../bk-macros
 	/bin/rm -rf data
 	mkdir data
 	cd data && ln -s ../../man1/*.1 .
@@ -41,4 +42,4 @@ FRC:
 clobber clean:
 	/bin/rm -rf data
 	/bin/rm -f *.html *.fmt *.sum helptxt
-	bk clean
+	-bk clean

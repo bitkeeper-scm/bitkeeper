@@ -1,35 +1,84 @@
 .so bk-macros
 .TH "bk grep" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
-bk grep \- search all revisions for a pattern
+bk grep \- search some/all revisions for a pattern
 .SH SYNOPSIS
-.B bk grep [\-dimnu] [
+.Bc bk grep [\-adeimnNu] [
+.OPTreq \-c dates
+.Bc ] | [
 .OPTreq \-r rev
-.B ]
+.Bc ] | [
+.OPTreq \-R rev
+]
 .ARG pattern
 .BKARGS
+.if n .ll 
 .SH DESCRIPTION
 .LP
-If you need to find a string which you know was present in some version
+If you need to find a string which you think may be present in some version
 of some file, you can use the 
 .B bk grep
 command to do that.
 .LP
-The 
+By default,
 .B bk grep
-command uses
+uses
 .B bk sccscat
 to show the concatenation of all
 lines in all versions of a file.  The listing can be annotated with dates,
-revision numbers, file names, and/or user names.  If no annotations are
-selected, the default is to do "\-mn".
+revision numbers, file names, and/or user names.  
+.LP
+If no annotations are
+selected, the default is to do "\-mn" (revision numbers and file names).
+.LP
+If a revision is specified with
+.BR \-r ,
+then 
+.B bk get
+is used to annotate just that version of the file.
+.LP
+If a range of revisions are specified with
+.BR \-R ,
+or a range of dates are specified with
+.BR \-c ,
+then
+.B bk sccscat
+is used to get the changes made by that range of revisions.
+.B Note:
+just the additions made by the selected versions are annotated in this case.
+.LP
+If you are looking to see if a pattern occurs anywhere in the most recent
+version of the tree, you want 
+.BR \-r+ ;
+If you are looking to see if a pattern was added in the changes made
+by the most recent
+version of the tree, you want
+.BR \-R+ .
+.LP
+The output found is passed through the native
+.BR grep (1)
+command.
 .SH OPTIONS
-.TP .8i
+.if n .TP 1i
+.if t .TP .7i
+.B \-a
+Suppress all annotations.
+.tp
+.OPTreq \-c dates
+Specify the versions as a range of dates.
+.tp
 .B \-d
 Prefix each line with the date it was last modified.
 .tp
+.B \-e
+Use 
+.B egrep
+instead of
+.BR grep .
+.tp
 .B \-i
-Ignore the case of letters in making comparisons.
+Ignore the case of letters in making comparisons (passed through to
+.BR grep (1)).
 .tp
 .B \-m
 Prefix each line with the rev it was last modified in.
@@ -37,17 +86,55 @@ Prefix each line with the rev it was last modified in.
 .B \-n
 Prefix each line with the filename.
 .tp
+.B \-N
+Prefix each line with the line number.
+.tp
 .OPTreq \-r rev
-only look in revision
+Only look in revision
 .ARG rev
 for the pattern.  A common revision is "+" which means the most recent
 revision.
 .tp
+.OPTreq \-R rev
+Only look in range of revisions
+.ARG rev
+for the pattern.  A common revision is "+" which means the most recent
+revision.  The difference between this option and the previous option
+is that in this case, a "+" means look in the lines 
+.B added
+by the most recent revision, but in the 
+.B \-r
+case, the entire contents of the most recent version is searched.
+.tp
 .B \-u
 Prefix each line with the user who last modified it.
+.SH EXAMPLES
+To see if 
+.ARG pattern
+occurs anywhere in your tree, you can try:
+.DS
+$ bk -r grep pattern
+.DE
+To see if it occurs in the most recent version of your tree:
+.DS
+$ bk -r grep -r+ pattern
+.DE
+To see if it was added in the most recent delta made in any file:
+.DS
+$ bk -r grep -R+ pattern
+.DE
+.SH BUGS
+There really ought to be a way to grep changes made by a changeset
+or range of changesets.
+.LP
+When looking through annotated files, the if the annotation contains
+the string but the line data does not, it still matches.  In other
+words, if you look for "foo" and you have a file named "foobar", all
+lines in that file will be printed.
 .SH "SEE ALSO"
 .BR grep (1)
 .br
+.SA range 1
 .SA sccscat 1
 .SH CATEGORY
 .B File
