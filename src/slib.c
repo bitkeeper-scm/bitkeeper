@@ -3175,8 +3175,6 @@ sccs_init(char *name, u32 flags, project *proj)
 	s->zfile = strdup(sccsXfile(s, 'z'));
 	if (isreg(s->pfile)) s->state |= S_PFILE;
 	if (isreg(s->zfile)) s->state |= S_ZFILE;
-	s->proj = proj ? proj : sccs_initProject(s);
-	if (sccs_locked(s->proj)) s->state |= S_READ_ONLY;
 	debug((stderr, "init(%s) -> %s, %s\n", name, s->sfile, s->gfile));
 	s->nextserial = 1;
 	s->fd = -1;
@@ -3224,7 +3222,15 @@ sccs_init(char *name, u32 flags, project *proj)
 			/* Not an error if the file doesn't exist yet.  */
 			debug((stderr, "%s doesn't exist\n", s->sfile));
 			s->cksumok = -1;
-			s->proj = proj ? proj : sccs_initProject(s);
+			/*
+			 * This is a little bogus - we are looking for a
+			 * a project when there may not be one.
+			 */
+			if (s->proj = proj ? proj : sccs_initProject(s)) {
+				if (sccs_locked(s->proj)) {
+					s->state |= S_READ_ONLY;
+				}
+			}
 			return (s);
 		} else {
 			fputs("sccs_init: ", stderr);
@@ -3257,7 +3263,10 @@ sccs_init(char *name, u32 flags, project *proj)
 	/*
 	 * Don't go look for BK root if not a BK file.
 	 */
-	if (s->state & S_BITKEEPER) s->proj = proj ? proj : sccs_initProject(s);
+	if (s->state & S_BITKEEPER) {
+		s->proj = proj ? proj : sccs_initProject(s);
+		if (sccs_locked(s->proj)) s->state |= S_READ_ONLY;
+	}
 
 #ifndef WIN32
 	signal(SIGPIPE, SIG_IGN); /* win32 platform does not have sigpipe */
