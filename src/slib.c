@@ -12662,10 +12662,20 @@ smartUnlink(char *file)
 {
 	int	rc;
 	int	save = 0;
+	char 	*dir, tmp[MAXPATH];
 
 #undef	unlink
 	unless (rc = unlink(file)) return (0);
 	save = errno;
+	strcpy(tmp, file); dir = dirname(tmp);
+	if (access(dir, W_OK) == -1) {
+		if (errno != ENOENT) {
+			fprintf(stderr,
+				"smartUnlink: dir %s not writable\n", dir);
+		}
+		errno = save;
+		return (-1);
+	}
 	chmod(file, S_IWRITE);
 	unless (rc = unlink(file)) return (0);
 	unless (access(file, 0)) {
