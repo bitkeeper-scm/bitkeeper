@@ -10,26 +10,28 @@ import() {
 	if [ X"$1" = "X--help" ]
 	then	bk help import; exit 0;
 	fi
-	INCLUDE=""
-	EXCLUDE=""
-	LIST=""
-	INC=NO
-	EX=NO
-	TYPE=
-	RENAMES=YES
-	QUIET=
-	SYMBOL=
-	FORCE=NO
-	PARALLEL=1
-	VERIFY=-h
-	VERBOSE=-q
+	COMMIT=YES
 	CUTOFF=
-	UNDOS=
+	EX=NO
+	EXCLUDE=""
 	FIX_ATTIC=NO
+	FORCE=NO
+	INC=NO
+	INCLUDE=""
+	LIST=""
+	PARALLEL=1
+	QUIET=
+	RENAMES=YES
+	SYMBOL=
+	TYPE=
+	UNDOS=
+	VERBOSE=-q
+	VERIFY=-h
 	while getopts Ac:efHij:l:rS:t:uvxq opt
 	do	case "$opt" in
 		A) FIX_ATTIC=YES;;		# doc 2.0
 		c) CUTOFF=-c$OPTARG;;		# doc 2.0
+		C) COMMIT=NO;;
 		e) EX=YES;;			# undoc 2.0 - same as -x
 		x) EX=YES;;			# doc 2.0
 		f) FORCE=YES;;			# doc 2.0
@@ -127,23 +129,18 @@ import() {
 			echo "	$TO"
 		fi
 		cd "$TO"
-		while read x
-		do	if [ -e "$x" ]
-			then	echo "import: $x exists, entire import aborted"
-				rm -f ${TMP}import$$
-				exit 1
-			fi
-		done < ${TMP}import$$
+		x=`bk _exists < ${TMP}import$$` && {
+			echo "import: $x exists, entire import aborted"
+			rm -f ${TMP}import$$
+			exit 1
+		}
 		if [ $TYPE != SCCS ]
 		then	bk _g2sccs < ${TMP}import$$ > ${TMP}sccs$$
-			while read x
-			do	if [ -e "$x" ]
-				then	echo \
-				    "import: $x exists, entire import aborted"
-					rm -f ${TMP}sccs$$ ${TMP}import$$
-					exit 1
-				fi
-			done < ${TMP}sccs$$
+			x=`bk _exists < ${TMP}sccs$$` && {
+				echo "import: $x exists, entire import aborted"
+				rm -f .x ${TMP}sccs$$ ${TMP}import$$
+				exit 1
+			}
 			if [ X$QUIET = X ]; then echo OK; fi
 		fi
 	fi
@@ -230,7 +227,8 @@ EOF
 		    pl*) type=text;;
 		    R*|C*) type=RCS;;
 		    S*) type=SCCS;;
-		    *)	echo Please use one of plain, patch, RCS, CVS, or SCCS
+		    *)	echo Invalid file type.
+			echo Valid choices: plain patch RCS CVS SCCS
 			TRY=yes
 		    	;;
 		esac
@@ -393,6 +391,9 @@ EOF
 		Done 1
     	fi
 
+	if [ $COMMIT = NO ]
+	then	Done 0
+	fi
 	USER=$SAVE
 	# Ask about logging before commit, commit reads stdin.
 	bk _loggingask
@@ -460,31 +461,34 @@ import_RCS () {
 
 import_SCCS () {
 	cd "$2"
-	msg Checking for and fixing Teamware corruption...
-	bk sfiles | bk renumber -q -
-	if [ -s ${TMP}reparent$$ ]
-	then	msg Reparenting files from some other BitKeeper package...
-		sed 's/ BitKeeper$//' < ${TMP}reparent$$ | \
-		while read x
-		do	if [ -f "$x" ]
-			then	echo "$x"
-			fi
-		done | bk admin -CC -
-		msg OK
-	fi
-	rm -f ${TMP}reparent$$
-	msg Making sure all files have pathnames, proper dates, and checksums
-	bk sfiles -g | while read x
-	do	bk admin -0q "$x"
-		bk admin -q -u -p"$x" "$x"
-		bk rechksum -f "$x"
-	done
+	msg Making sure all files have pathnames, proper dates...
+	bk sccs2bk -c`bk prs -hr+ -nd:ROOTKEY: ChangeSet` - < ${TMP}import$$ ||
+	    exit 1
+	msg Adding checksums...
+	bk rechksum -f - < ${TMP}import$$
+	bk sfiles -P > /dev/null
+	test X$VERIFY = X && return
+	# XXX - this needs to be a C program
+	echo Verifying each rev in each SCCS file, please wait...
+	while read x
+	do	bk prs -hnd:I: $x | while read rev
+		do	bk get -Fqkpr$rev $FROM/$x > ${TMP}cmp$$
+			bk get -qkpr$rev $x | cmp -s ${TMP}cmp$$ - || {
+				echo ============= ERROR ==============
+				echo "Rev $rev in $x has differences"
+				bk get -qkpr$rev $x | diff ${TMP}cmp$$ -
+				exit 1
+			}
+		done 
+		echo "$x OK"
+	done < ${TMP}import$$
+	rm -f ${TMP}cmp$$
 }
 
 import_finish () {
 	cd "$1"
 	if [ X$QUIET = X ]; then echo ""; fi
-	if [ X$QUIET = X ]; then echo Validating all SCCS files; fi
+	if [ X$QUIET = X ]; then echo Final error checks...; fi
 	bk sfiles | bk admin -hhhq - > ${TMP}admin$$
 	if [ -s ${TMP}admin$$ ]
 	then	echo Import failed because
@@ -501,6 +505,7 @@ import_finish () {
 	then echo "Creating initial changeset (should be +$NFILES)"
 	fi
 	bk commit $QUIET $SYMBOL -y'Import changeset'
+	bk -r check -ac
 }
 
 validate_SCCS () {
@@ -513,7 +518,7 @@ validate_SCCS () {
 	then	NOT=`wc -l < ${TMP}notsccs$$ | sed 's/ //g'`
 		echo
 		echo Skipping $NOT non-SCCS files
-		echo $N "Do you want to see this list of files? [No] " $NL
+		echo $N "Do you want to see this list of skipped files? [No] " $NL
 		read x
 		case "$x" in
 		y*)	sed 's/^/	/' < ${TMP}notsccs$$ | more ;;
@@ -521,21 +526,13 @@ validate_SCCS () {
 		mv ${TMP}sccs$$ ${TMP}import$$
 	fi
 	rm -f ${TMP}notsccs$$ ${TMP}sccs$$
-	bk sfiles -cg $FROM > ${TMP}changed$$
-	if [ -s ${TMP}changed$$ ]
-	then	echo The following files are locked and modified in $FROM
-		cat ${TMP}changed$$
-		echo
-		echo Can not import unchecked in SCCS files
-		exit 1
-	fi
-	rm -f ${TMP}changed$$
-	grep 'SCCS/s\.' ${TMP}import$$ | prs -hr -d':PN: :TYPE:' - | grep ' BitKeeper' > ${TMP}reparent$$
+	echo Looking for BitKeeper files, please wait...
+	grep 'SCCS/s\.' ${TMP}import$$ | prs -hr -nd':PN: :TYPE:' - | grep ' BitKeeper' > ${TMP}reparent$$
 	if [ -s ${TMP}reparent$$ ]
 	then	cat <<EOF
 
 You are trying to import BitKeeper files into a BitKeeper package.
-We can do this, but it means that you are goint to "reparent" these
+We can do this, but it means that you are going to "reparent" these
 files under a new ChangeSet file.  In general, that's not a good idea,
 because you will lose all the old ChangeSet history in the copied files.
 We can do it, but don't do it unless you know what you are doing.
@@ -560,6 +557,7 @@ EOF
 		esac
 		echo OK
 	fi
+	rm -f ${TMP}reparent$$
 }
 
 validate_RCS () {

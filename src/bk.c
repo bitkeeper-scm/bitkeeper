@@ -49,12 +49,13 @@ int	converge_main(int, char **);
 int	create_main(int, char **);
 int	createlod_main(int, char **);
 int	cset_main(int, char **);
-int	f2csets_main(int, char **);
 int	deledit_main(int, char **);
 int	delget_main(int, char **);
 int	delta_main(int, char **);
 int	diffs_main(int, char **);
+int	exists_main(int, char **);
 int	export_main(int, char **);
+int	f2csets_main(int, char **);
 int	fdiff_main(int, char **);
 int	find_main(int, char **);
 int	fix_main(int, char **);
@@ -123,6 +124,7 @@ int	rmdel_main(int, char **);
 int	root_main(int, char **);
 int	rset_main(int, char **);
 int	sane_main(int, char **);
+int	sccs2bk_main(int, char **);
 int	sccscat_main(int, char **);
 int	sccslog_main(int, char **);
 int	send_main(int, char **);
@@ -142,6 +144,7 @@ int	status_main(int, char **);
 int	stripdel_main(int, char **);
 int	strings_main(int, char **);
 int	takepatch_main(int, char **);
+int	unbk_main(int, char **);
 int	undo_main(int, char **);
 int	undos_main(int, char **);
 int	unedit_main(int, char **);
@@ -162,6 +165,7 @@ struct command cmdtbl[] = {
 	{"_converge", converge_main},
 	{"_cleanpath", cleanpath_main},
 	{"_createlod", _createlod_main},
+	{"_exists", exists_main},	
 	{"_find", find_main },
 	{"_g2sccs", _g2sccs_main},
 	{"_get", get_main},
@@ -267,6 +271,7 @@ struct command cmdtbl[] = {
 	{"rm", rm_main},			/* doc 2.0 */
 	{"rmdel", rmdel_main},			/* doc 2.0 */
 	{"sane", sane_main},			/* doc 2.0 */
+	{"sccs2bk", sccs2bk_main},		/* undoc? 2.0 */
 	{"sccscat", sccscat_main},		/* doc 2.0 as annotate */
 	{"sccsdiff", diffs_main},		/* doc 2.0 */
 	{"sccslog", sccslog_main},		/* doc 2.0 */
@@ -284,6 +289,7 @@ struct command cmdtbl[] = {
 	{"status", status_main},		/* doc 2.0 */
 	{"stripdel", stripdel_main},		/* doc 2.0 */
 	{"takepatch", takepatch_main},		/* doc 2.0 */
+	{"unbk", unbk_main},			/* undoc? 2.0 */
 	{"undo", undo_main},			/* doc 2.0 */
 	{"undos", undos_main},			/* doc 2.0 */
 	{"unedit", unedit_main},		/* doc 2.0 */

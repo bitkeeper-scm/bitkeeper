@@ -3825,6 +3825,7 @@ sccs_init(char *name, u32 flags, project *proj)
 		return (0);
 	}
 
+	s->initFlags = flags;
 	s->proj = proj ? proj : proj_init(s);
 	t = strrchr(s->sfile, '/');
 	if (t && streq(t, "/s.ChangeSet")) {
@@ -3972,8 +3973,7 @@ sccs_init(char *name, u32 flags, project *proj)
 /*
  * Restart an sccs_init because we've changed the state of the file.
  *
- * This does not reread the delta table, if you want that, open and close the
- * file.
+ * This does not reread the delta table, if you want that, use sccs_reopen().
  */
 sccs*
 sccs_restart(sccs *s)
@@ -4031,6 +4031,21 @@ bad:		sccs_free(s);
 		s->mdbm = 0;
 	}
 	return (s);
+}
+
+sccs	*
+sccs_reopen(sccs *s)
+{
+	sccs	*s2;
+	project	*proj;
+
+	assert(s);
+	proj = (s->initFlags & INIT_SAVEPROJ) ? s->proj : 0;
+	sccs_close(s);
+	s2 = sccs_init(s->sfile, s->initFlags, proj);
+	assert(s2);
+	sccs_free(s);
+	return (s2);
 }
 
 /*
@@ -5149,10 +5164,10 @@ gzip_sum(void *p, u8 *buf, int len, FILE *out)
 
 /*
  * If the data isn't a control line, just dump it.
- * Otherwise, put it out there after incrementing the serial.
+ * Otherwise, put it out there after adjusting the serial.
  */
 private sum_t
-fputbumpserial(sccs *s, u8 *buf, FILE *out)
+fputbumpserial(sccs *s, u8 *buf, int inc, FILE *out)
 {
 	u8	tmp[20];
 	u8	*t;
@@ -5169,7 +5184,7 @@ fputbumpserial(sccs *s, u8 *buf, FILE *out)
 	sum += fputdata(s, tmp, out);
 	sum += fputdata(s, " ", out);
 	ser = atoi(&buf[3]);
-	sprintf(tmp, "%u", ser + 1);
+	sprintf(tmp, "%u", ser + inc);
 	sum += fputdata(s, tmp, out);
 	for (t = &buf[3]; isdigit(*t); t++);
 	sum += fputdata(s, t, out);
@@ -7249,10 +7264,12 @@ SCCS:
 	*p++ = '\n';
 	*p   = '\0';
 	fputmeta(s, buf, out);
-	bits = sccs_xflags(sccs_top(s));
-	if (bits) {
-		sprintf(buf, "\001f x 0x%x\n", bits);
-		fputmeta(s, buf, out);
+	if (s->bitkeeper) {
+		bits = sccs_xflags(sccs_top(s));
+		if (bits) {
+			sprintf(buf, "\001f x 0x%x\n", bits);
+			fputmeta(s, buf, out);
+		}
 	}
 	if (s->defbranch) {
 		p = fmts(buf, "\001f d ");
@@ -9827,6 +9844,26 @@ insert_1_0(sccs *s)
 	d = sccs_dInit(d, 'D', s, 0);
 }
 
+void
+remove_1_0(sccs *s)
+{
+	delta	*d;
+	int	i;
+
+	assert(streq(s->tree->rev, "1.0"));
+	s->tree->flags |= D_GONE;
+	for (d = s->table; d; d = d->next) {
+		d->serial--;
+		d->pserial--;
+		if (d->ptag) d->ptag--;
+		if (d->mtag) d->mtag--;
+		if (d->merge) d->merge--;
+		EACH(d->include) d->include[i]--;
+		EACH(d->exclude) d->exclude[i]--;
+		EACH(d->ignore) d->ignore[i]--;
+	}
+}
+
 int
 sccs_resum(sccs *s)
 {
@@ -10070,6 +10107,8 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 
 	if (flags & ADMIN_ADD1_0) {
 		insert_1_0(sc);
+	} else if (flags & ADMIN_RM1_0) {
+		remove_1_0(sc);
 	}
 
 	if ((flags & NEWCKSUM) == 0) {
@@ -10101,7 +10140,9 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		while (buf = nextdata(sc)) {
 			sc->encoding = new_enc;
 			if (flags & ADMIN_ADD1_0) {
-				fputbumpserial(sc, buf, sfile);
+				fputbumpserial(sc, buf, 1, sfile);
+			} else if (flags & ADMIN_RM1_0) {
+				fputbumpserial(sc, buf, -1, sfile);
 			} else {
 				fputdata(sc, buf, sfile);
 			}
@@ -10110,7 +10151,9 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	} else {
 		while (buf = nextdata(sc)) {
 			if (flags & ADMIN_ADD1_0) {
-				fputbumpserial(sc, buf, sfile);
+				fputbumpserial(sc, buf, 1, sfile);
+			} else if (flags & ADMIN_RM1_0) {
+				fputbumpserial(sc, buf, -1, sfile);
 			} else {
 				fputdata(sc, buf, sfile);
 			}
