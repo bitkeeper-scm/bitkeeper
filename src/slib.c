@@ -397,11 +397,13 @@ getuser(void)
 	if (!s || !s[0] ) {
 		s = getlogin();
 	}
+#ifndef WIN32
 	if (!s || !s[0] ) {
 		struct	passwd	*p = getpwuid(getuid());
 
 		s = p->pw_name;
 	}
+#endif
 	if (!s || !s[0] ) {
 		s = UNKNOWN_USER;
 	}

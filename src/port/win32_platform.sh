@@ -60,4 +60,10 @@ _platformInit()
 		fi
 }
 
+# Log whatever they wanted to run in the logfile if we can find the root
+_logCommand() {
+	# this function will be implemented in C on win32 platform
+	echo "" > nul	#stub
+}
+
 

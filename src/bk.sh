@@ -19,37 +19,6 @@ _cd2root() {
 	done
 }
 
-# Log whatever they wanted to run in the logfile if we can find the root
-_logCommand() {
-	DIR="BitKeeper/etc"
-	PREFIX=""
-	for i in 1 2 3 4 5 6 7 8 9 0
-	do	if [ -d $PREFIX$DIR ]
-		then	LDIR=${PREFIX}BitKeeper/log
-			if [ ! -d $LDIR ]
-			then	mkdir $LDIR
-			fi
-			if [ ! -f ${LDIR}/cmd ]
-			then	touch ${LDIR}/cmd
-				chmod 666 ${LDIR}/cmd
-			fi
-		       if [ ! -w ${LDIR} -a -f ${LDIR}/cmd -a ! -w ${LDIR}/cmd ]
-		    	then	echo No write permission on BitKeeper/log/cmd
-				return
-			fi
-			if [ ! -w ${LDIR}/cmd ]
-			then	mv ${LDIR}/cmd ${LDIR}/ocmd
-				cp ${LDIR}/ocmd ${LDIR}/cmd 
-				chmod 666 ${LDIR}/cmd
-				rm ${LDIR}/ocmd
-			fi
-			echo "${USER}: $@" >> ${LDIR}/cmd
-			return
-		fi
-		PREFIX="../$PREFIX"
-	done
-}
-
 _setup() { 
 	CONFIG=
 	NAME=
