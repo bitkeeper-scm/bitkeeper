@@ -4415,7 +4415,7 @@ chk_gmode(sccs *s)
 			fprintf(stderr,
 			    "ERROR: %s: writable gfile with no p.file\n",
 			    gfile);
-			assert("writable gfile wilth no p.file" == 0);
+			assert("writable gfile with no p.file" == 0);
 		};
 	}
 
@@ -5969,7 +5969,7 @@ write_pfile(sccs *s, int flags, delta *d,
 
 	if (WRITABLE(s) && !(flags & GET_SKIPGET)) {
 		verbose((stderr,
-		    "Writeable %s exists, skipping it.\n", s->gfile));
+		    "Writable %s exists, skipping it.\n", s->gfile));
 		s->state |= S_WARNED;
 		return (-1);
 	}
@@ -6096,7 +6096,7 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 		/* With -G/somewhere/foo.c we need to check the gfile again */
 		if (flags & GET_NOREGET) flags |= SILENT;
 		if (WRITABLE(s) && writable(s->gfile)) {
-			verbose((stderr, "Writeable %s exists\n", s->gfile));
+			verbose((stderr, "Writable %s exists\n", s->gfile));
 			s->state |= S_WARNED;
 			return ((flags & GET_NOREGET) ? 0 : (char*)-1);
 		} else if ((flags & GET_NOREGET) &&

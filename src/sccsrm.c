@@ -100,7 +100,7 @@ sccs_rm(char *name, char *del_name, int useCommonDir, int force)
 	s = sccs_init(sfile, 0, 0);
 	unless (s && HASGRAPH(s) && BITKEEPER(s)) {
 		fprintf(stderr,
-		    "Warning: %s is not a BitKeeper flle, ignored\n", name);
+		    "Warning: %s is not a BitKeeper file, ignored\n", name);
 		sccs_free(s);
 		return (1);
 	}

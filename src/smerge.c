@@ -297,7 +297,7 @@ getrev(char *verstr)
 	v += len;
 	if (*v == '+' || *v == '-') {
 		fprintf(stderr, 
-"ERROR: Includes and excludes are temporarly disabled in smerge.\n");
+"ERROR: Includes and excludes are temporarily disabled in smerge.\n");
 		exit(2);
 	}
 	while (*v == '+' || *v == '-') {
@@ -1089,7 +1089,7 @@ mergefcns_help(void)
 	int	i;
 
 	fprintf(stderr,
-"The following is a list of merge algorthms which may be enabled or disabled\n\
+"The following is a list of merge algorithms which may be enabled or disabled\n\
 to change the way smerge will automerge.  Starred entries are on by default.\n");
 	for (i = 0; i < N_MERGEFCNS; i++) {
 		fprintf(stderr, "%2s%c %s\n",

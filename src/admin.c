@@ -159,7 +159,7 @@ admin_main(int ac, char **av)
 	}
 	if (comment && !(flags & NEWFILE)) {
 		fprintf(stderr,
-		    "admin: comment may only be specifed with -i and/or -n\n");
+		    "admin: comment may only be specified with -i and/or -n\n");
 		goto usage;
 	}
 	if (compp && streq(compp, "gzip") && (bk_mode() == BK_BASIC)) {

@@ -93,8 +93,8 @@ chk_host(void)
 			  fprintf(stderr,
 "================================================================\n"
 "sane: bad host name: \"%s\".\n"
-"BitKeeper requires a vaild hostname.\n"
-"These consist of [a-z0-9-]+ seperated by '.'.\n"
+"BitKeeper requires a valid hostname.\n"
+"These consist of [a-z0-9-]+ separated by '.'.\n"
 "See http://www.ietf.org/rfc/rfc952.txt\n"
 "================================================================\n",
 		    host ? host : "<empty>");
