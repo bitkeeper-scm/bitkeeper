@@ -63,6 +63,34 @@ unix_common_setup()
 	export DO_REMOTE
 }
 
+bad_mount()
+{
+	echo "======================================================="
+	echo "/tmp must be mounted in binary mode."
+	echo "This problem usually happen when you skip the install-cygwin"
+	echo "option when installing BitKeeper, otherwise the" 
+	echo "BitKeeper install script should have set this up"
+	echo "correctly."
+	echo "Note: To run the regression test, you must install the"
+	echo "cygwin package shipped with BitKeeper, since there are"
+	echo "bug fixes not in the official cygwin release yet."
+	echo "======================================================="
+	exit
+}
+
+check_mount_mode()
+{
+	mount | grep -q "on /tmp "
+	if [ $? = 0 ]
+	then
+		mount | grep 'on /tmp type' | grep -q 'binmode'
+		if [ $? = 0 ]; then return; else bad_mount; fi
+	fi
+
+	mount | grep 'on / type' | grep -q 'binmode'
+	if [ $? != 0 ]; then bad_mount; fi
+}
+
 # Make sure we don't pick up the DOS "find" command in the PATH
 # We want the unix "find" command.
 check_path()
@@ -160,6 +188,7 @@ setup_env()
 		win32_common_setup
 		BK_BIN=`cd .. && ./bk pwd -sc`
 		PATH=$BK_BIN:$BK_BIN/gnu/bin:$PATH
+		check_mount_mode
 		check_path
 		check_tar
 		;;
