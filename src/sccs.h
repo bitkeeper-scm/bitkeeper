@@ -592,7 +592,7 @@ int	diff(char *lfile, char *rfile, char kind, char *out);
 char	**addLine(char **space, char *line);
 int	roundType(char *r);
 sccs	*check_gfile(sccs*, int);
-void	platformSpecificInit(char *, int);
+void	platformSpecificInit(char *);
 MDBM	*loadDB(char *file, int (*want)(char *), int style);
 MDBM	*csetIds(sccs *cset, char *rev, int all);
 void	sccs_fixDates(sccs *);

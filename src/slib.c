@@ -3189,7 +3189,7 @@ sccs_init(char *name, u32 flags, char *root)
 
 	/* this should just go away and be the default */
 	assert(s);
-	platformSpecificInit(name, flags); 
+	platformSpecificInit(name); 
 	if (u_mask == 0x5eadbeef) {
 		u_mask = ~umask(0);
 		umask(~u_mask);
