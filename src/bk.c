@@ -84,6 +84,8 @@ int repo_main(int, char **);
 int pull_main(int, char **);
 int log_main(int, char **);
 int abort_main(int, char **);
+int rcsparse_main(int, char **);
+int rcs2sccs_main(int, char **);
 
 struct command cmdtbl[100] = {
 	{"unlock", unlock_main },
@@ -167,6 +169,8 @@ struct command cmdtbl[100] = {
 	{"pull", pull_main},
 	{"log", log_main},
 	{"abort", abort_main},
+	{"rcsparse", rcsparse_main},
+	{"rcs2sccs", rcs2sccs_main},
 	{0, 0},
 };
 

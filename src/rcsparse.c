@@ -1,15 +1,17 @@
 #include "rcs.h"
 
-int	eatlog(RCS *rcs, MMAP *m);
-int	eatdelta(RCS *rcs, MMAP *m);
-int	eatsym(RCS *rcs, MMAP *m);
-void	mkgraph(RCS *rcs);
-void	dates(RCS *rcs);
+private	int	eatlog(RCS *rcs, MMAP *m);
+private	int	eatdelta(RCS *rcs, MMAP *m);
+private	int	eatsym(RCS *rcs, MMAP *m);
+private	void	mkgraph(RCS *rcs);
+private	void	dates(RCS *rcs);
+private	rdelta	*rcs_findit(RCS *rcs, char *rev);
+private	void	doit(char *f);
+private	void	rcs_prs(RCS *rcs);
+private	void	rcs_table(RCS *rcs);
 
-#ifdef	MAIN
-void	doit(char *f);
 int
-main(int ac, char **av)
+rcsparse_main(int ac, char **av)
 {
 	int	i;
 	char	buf[MAXPATH];
@@ -24,25 +26,34 @@ main(int ac, char **av)
 			doit(av[i]);
 		}
 	}
+	fputc('\n', stderr);
 	return (0);
 }
 
-void
+private	void
 doit(char *f)
 {
 	RCS	*r;
+	int	i;
+	static	int len = 0;
+	static	int n = 0;
 
-	fprintf(stderr, "[%s]\n", f);
-	if (r = rcsparse(f)) {
-		//branch(r);
-		//prs(r);
-		//table(r);
-		rcsfree(r);
+	if (1) {
+		fputc('\r', stderr);
+		fprintf(stderr, "%d ", ++n);
+		fprintf(stderr, "%s", f);
+		for (i = strlen(f); i < len; i++) fputc(' ', stderr);
+		len = strlen(f);
+	}
+	if (r = rcs_init(f)) {
+		//rcs_branch(r);
+		//rcs_prs(r);
+		rcs_table(r);
+		rcs_free(r);
 	}
 }
-#endif
 
-int
+private	int
 advance(MMAP *m, char what)
 {
 	char	*p = m->where;
@@ -56,7 +67,7 @@ advance(MMAP *m, char what)
 	return (1);
 }
 
-void
+private	void
 skip_white(MMAP *m)
 {
 	char	*p = m->where;
@@ -65,7 +76,7 @@ skip_white(MMAP *m)
 	m->where = p;
 }
 
-char	*
+private	char	*
 mwhere(MMAP *m)
 {
 	if (m->where >= m->end) return (0);
@@ -74,7 +85,7 @@ mwhere(MMAP *m)
 }
 
 RCS	*
-rcsparse(char *file)
+rcs_init(char *file)
 {
 	MMAP	*m;
 	char	*p, *t;
@@ -191,7 +202,7 @@ acc:	unless (p = mwhere(m)) goto err;
 }
 
 rdelta	*
-findit(RCS *rcs, char *rev)
+rcs_findit(RCS *rcs, char *rev)
 {
 	rdelta	*d;
 
@@ -200,15 +211,15 @@ findit(RCS *rcs, char *rev)
 }
 
 rdelta	*
-defbranch(RCS *rcs)
+rcs_defbranch(RCS *rcs)
 {
 	rdelta	*d;
 	char	buf[1000];
 
 	unless (rcs->defbranch) return (rcs->tree);
-	if (d = findit(rcs, rcs->defbranch)) return (d);
+	if (d = rcs_findit(rcs, rcs->defbranch)) return (d);
 	sprintf(buf, "%s.1", rcs->defbranch);
-	unless (d = findit(rcs, buf)) {
+	unless (d = rcs_findit(rcs, buf)) {
 		fprintf(stderr, "Can't find defbranch %s\n", rcs->defbranch);
 		return (0);
 	}
@@ -219,7 +230,7 @@ defbranch(RCS *rcs)
 /*
  * Put the deltas into a graph
  */
-void
+private	void
 mkgraph(RCS *rcs)
 {
 	rdelta	*d, *k, *p, *start;
@@ -266,7 +277,7 @@ mkgraph(RCS *rcs)
 		strcpy(buf, d->rev);
 		t = strrchr(buf, '.'); assert(t); *t = 0;
 		t = strrchr(buf, '.'); assert(t); *t = 0;
-		p = findit(rcs, buf);
+		p = rcs_findit(rcs, buf);
 		assert(p);
 		d->parent = p;
 		d->head = 1;
@@ -278,7 +289,7 @@ mkgraph(RCS *rcs)
 			if (streq(d->prev->rev, d->snext)) {	/* cool */
 				d->kid = d->prev;
 			} else {
-				d->kid = findit(rcs, d->snext);
+				d->kid = rcs_findit(rcs, d->snext);
 				assert(d->kid);
 			}
 			d->kid->parent = d;
@@ -289,20 +300,21 @@ mkgraph(RCS *rcs)
 	}
 }
 
-void
-branch(RCS *rcs)
+private void
+rcs_branch(RCS *rcs)
 {
 	rdelta	*d;
 
 	printf("== %s ==\n", rcs->file);
-	for (d = defbranch(rcs); d; d = d->kid) {
+	for (d = rcs_defbranch(rcs); d; d = d->kid) {
 		printf("%s ", d->rev);
 	}
 	printf("\n");
 }
 
-void
-prs(RCS *rcs)
+#ifdef	THIS_CODE_IS_BUSTED
+private	void
+rcs_prs(RCS *rcs)
 {
 	rdelta	*d;
 	int	n = rcs->n;
@@ -327,8 +339,9 @@ prs(RCS *rcs)
 		printf("\n");
 	}
 }
+#endif
 
-void
+private	void
 dates(RCS *rcs)
 {
 	rdelta	*d;
@@ -362,14 +375,16 @@ fprintf(stderr, "%s@%s %u\n", rcs->file, d->rev, (unsigned)d->dateFudge);
 	}
 }
 
-void
-table(RCS *rcs)
+private	void
+rcs_table(RCS *rcs)
 {
 	rdelta	*d;
 	char	*p;
 
 	printf("== %s ==\n", rcs->file);
 	for (d = rcs->table; d; d = d->next) {
+		assert(d->rev);
+		assert(d->author);
 		printf("D %s %s %s\n", d->rev, d->sdate, d->author);
 		//if (d->snext) printf("N %s\n", d->snext);
 		if (0 && d->comments) {
@@ -388,7 +403,7 @@ table(RCS *rcs)
 /*
  * Eat a log entry and the text.
  */
-int
+private	int
 eatlog(RCS *rcs, MMAP *m)
 {
 	rdelta	*d;
@@ -447,7 +462,7 @@ err:		perror("EOF in log?");
 /*
  * Eat a delta, returning 1 if there are more, 0 if we hit the ;
  */
-int
+private	int
 eatdelta(RCS *rcs, MMAP *m)
 {
 	rdelta	*d;
@@ -480,6 +495,16 @@ err:		perror("EOF in delta?");
 	if (p >= m->end) goto err;
 	*t = 0;
 	d->sdate = strdup(buf);
+	/*
+	 * Make sure the date and the time have a space between them.
+	 * 99.12.1.10.43.55
+	 * 2001.12.01.10.43.55
+	 */
+	for (t = d->sdate; isdigit(*t); t++);	/* t -> first . */
+	for (t++; isdigit(*t); t++);		/* t -> second . */
+	for (t++; isdigit(*t); t++);		/* t -> third . */
+	*t = ' ';
+
 	m->where = p;
 	advance(m, ';');
 	skip_white(m);
@@ -531,7 +556,7 @@ err:		perror("EOF in delta?");
 /*
  * Eat a symbol, returning 1 if there are more, 0 if we hit the ;
  */
-int
+private	int
 eatsym(RCS *rcs, MMAP *m)
 {
 	sym	*s;
@@ -576,7 +601,7 @@ done:		m->where = p + 1;
 }
 
 void
-rcsfree(RCS *r)
+rcs_free(RCS *r)
 {
 	rdelta	*d, *next;
 	sym	*s, *snext;

@@ -741,6 +741,7 @@ int	bkusers(int countOnly, int raw, FILE *out);
 globv	read_globs(FILE *f, globv oldglobs);
 char	*match_globs(char *string, globv globs);
 void	free_globs(globv globs);
+char	*prog2path(char *prog);
 void	remark(int quiet);
 int	readn(int from, char *buf, int size);
 void	sendConfig(char *, int, int);

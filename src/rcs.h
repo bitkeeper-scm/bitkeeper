@@ -48,10 +48,6 @@ typedef	struct {
 	mode_t	mode;		/* mode of the gfile */
 } RCS;
 
-RCS	*rcsparse(char *file);
-rdelta	*findit(RCS *rcs, char *rev);
-rdelta	*defbranch(RCS *rcs);
-void	branch(RCS *rcs);
-void	prs(RCS *rcs);
-void	table(RCS *rcs);
-void	rcsfree(RCS *r);
+RCS	*rcs_init(char *file);
+rdelta	*rcs_defbranch(RCS *rcs);
+void	rcs_free(RCS *r);
