@@ -217,12 +217,12 @@ httphdr(char *file)
 	char	buf[2048];
 
 	sprintf(buf,
-	    "HTTP/1.0 200 OK\n"
-	    "%s\n"
-	    "Server: bkhttp/0.1\n"
-	    "Content-Type: %s\n"
-	    "Last-Modified: %s\n"
-	    "\n",
+	    "HTTP/1.0 200 OK\r\n"
+	    "%s\r\n"
+	    "Server: bkhttp/0.1\r\n"
+	    "Content-Type: %s\r\n"
+	    "Last-Modified: %s\r\n"
+	    "\r\n",
 	    http_time(), type(file), http_time());
 	out(buf);
 }
@@ -426,8 +426,9 @@ trailer(char *path)
 	out("<hr>\n"
 	    "<p align=right>\n"
 	    "<a href=http://www.bitkeeper.com>\n"
-	    "<font color=black size=-2>Learn more about BitKeeper</font>\n"
-	    "<img src=trailer.gif alt=\"\"></a>\n"
+	    "<font color=black size=-2>\n"
+	    "<img src=trailer.gif alt=\"Learn more about BitKeeper\"></a>\n"
+	    "</font>\n"
 	    "</p>");
 	out("</body></html>\n");
 }

@@ -437,9 +437,11 @@ getav(int *acp, char ***avp)
 		if ((buf[i] == '\r') || (buf[i] == '\n')) {
 			buf[i] = 0;
 			av[ac] = 0;
+#if 0
 			if ((ac > 2) && strneq("HTTP/1", av[2], 6)) {
 				av[0] = "httpget";
 			}
+#endif
 			*acp = ac;
 			*avp = av;
 			return (1);
