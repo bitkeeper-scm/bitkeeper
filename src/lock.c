@@ -48,9 +48,15 @@ usage:			system("bk help -s lock");
 			exit(1);
 		}
 		/* make ourselves go away after the lock is gone */
+		catch();
 		do {
-			usleep(1000000);
+			usleep(500000);
+			if (caught()) {
+				repository_rdunlock(0);
+				break;
+			}
 		} while (repository_locker('r', pid, thisHost));
+		uncatch();
 		exit(0);
 	    
 	    case 'w':
@@ -60,9 +66,15 @@ usage:			system("bk help -s lock");
 			exit(1);
 		}
 		/* make ourselves go away after the lock is gone */
+		catch();
 		do {
-			usleep(1000000);
+			usleep(500000);
+			if (caught()) {
+				repository_wrunlock(0);
+				break;
+			}
 		} while (repository_locker('w', pid, thisHost));
+		uncatch();
 		exit(0);
 
 	    case 'l':

@@ -79,6 +79,7 @@ int	keysort_main(int, char **);
 int	lconfig_main(int, char **);
 int	level_main(int, char **);
 int	lines_main(int, char **);
+int	link_main(int, char **);
 int	listkey_main(int, char **);
 int	lock_main(int, char **);
 int	lod_main(int, char **);
@@ -169,6 +170,7 @@ struct command cmdtbl[] = {
 	{"_keysort", keysort_main},
 	{"_lconfig", lconfig_main},	
 	{"_lines", lines_main},	
+	{"_link", link_main},	
 	{"_listkey", listkey_main},	
 	{"_log", log_main},
 	{"_logflags", logflags_main},

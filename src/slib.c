@@ -1775,7 +1775,7 @@ _rfind(delta *d)
 
 	debug((stderr,
 	    "\t_rfind(%d.%d.%d.%d)\n", d->r[0], d->r[1], d->r[2], d->r[3]));
-	if (samerev(d->r, R)) {
+	if (samerev(d->r, R) && !TAG(d)) {
 		return (d);
 	}
 	if (d->kid && (t = _rfind(d->kid))) {
@@ -6360,7 +6360,7 @@ err:		if (i2) free(i2);
 		}
 	} else {
 		d = findrev(s, rev);
-		if (!d) {
+		unless (d) {
 			verbose((stderr,
 			    "get: can't find revision like %s in %s\n",
 			rev, s->sfile));

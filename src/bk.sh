@@ -93,6 +93,19 @@ _lclone() {
 	fi
 	test -d "$TO" && { echo $2 exists; exit 1; }
 	cd $FROM
+	while ! bk lock -s
+	do	bk lock -l
+		echo Sleeping 5 seconds and trying again...
+		sleep 5
+	done
+	bk lock -r &
+	LOCKPID="$!"
+	LOCK="${LOCKPID}@`bk gethost`"
+	sleep 1
+	test -f BitKeeper/readers/$LOCK || {
+		echo Lost read lock race, please retry again later.
+		exit 1
+	}
 	qecho Finding SCCS directories...
 	bk sfiles -d > /tmp/dirs$$
 	cd $HERE
@@ -107,28 +120,15 @@ _lclone() {
 		fi
 		qecho Linking $x ...
 		mkdir -p $x/SCCS
-		# This loop is to prevent arg list too long errors
-		# and avoid running ln for every individual file.
-		# Instead we group them up five at a time.
-		# The if block after the loop is to pick up any
-		# remaing sfiles.
-		# All this replaces: ln $FROM/$x/SCCS/s.* $x/SCCS
-		for sfile in $FROM/$x/SCCS/s.*
-		do
-			sfiles="$sfiles $sfile"
-			count=${count}X
-			if [ "$count" = "XXXXX" ]
-			then
-				ln $sfiles $x/SCCS
-				unset sfiles count
-			fi
-		done
-		if [ "$sfiles" ]
-		then
-			ln $sfiles $x/SCCS
-			unset sfiles count
-		fi
+		find $FROM/$x/SCCS -type f -name 's.*' -print | bk _link $x/SCCS
 	done < /tmp/dirs$$
+	while [ -d $FROM/BitKeeper/readers ]
+	do	kill $LOCKPID 2>/dev/null
+		kill -0 $LOCKPID 2>/dev/null || {
+			echo Waiting for reader lock process to go away...
+			sleep 1
+		}
+	done
 	bk sane
 	qecho Looking for and removing any uncommitted deltas
 	bk sfiles -pA | bk stripdel -
