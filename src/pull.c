@@ -308,6 +308,12 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 
 done:	trigger(av, "post", rc);
 	unlink(probe_list);
+	/*
+	 * Wait for remote to disconnect
+	 * This is important when trigger/error condition 
+	 * short circuit the code path
+	 */
+	wait_eof(r, opts.debug);
 	disconnect(r, 2);
 	return (rc);
 }

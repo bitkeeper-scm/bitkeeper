@@ -1357,18 +1357,25 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		-bg $gc(hist.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "Diff tool" -command "diff2 1" -state disabled
-	    #button .menus.file -font $gc(hist.buttonFont) -relief raised \
-		#-bg $gc(hist.buttonColor) \
-		#-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		#-text "Select File" -command { selectFile }
 	    menubutton .menus.fmb -font $gc(hist.buttonFont) -relief raised \
 		-bg $gc(hist.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "Select File" -width 12 -state normal \
 		-menu .menus.fmb.menu
 		set gc(fmenu) [menu .menus.fmb.menu]
-		$gc(fmenu) add command -label "Get new file" \
-		    -command { selectFile }
+		$gc(fmenu) add command -label "View new file" \
+		    -command { 
+		    	set fname [selectFile]
+			if {$fname != ""} {
+				histtool $fname "-$gc(hist.showHistory)"
+			}
+		    }
+		#$gc(fmenu) add command -label "ChangeSet" \
+		#    -command {
+		#	cd2root
+		#	set fname ChangeSet
+		#    	histtool ChangeSet -$gc(hist.showHistory)
+		#    }
 		$gc(fmenu) add separator
 		$gc(fmenu) add command -label "$fname" \
 		    -command "histtool $fname -$gc(hist.showHistory)"
@@ -1569,16 +1576,19 @@ proc selectFile {} \
 	if {$file == ""} {return}
 	catch {set f [open "| bk sfiles -g \"$file\"" r]} err
 	if { ([gets $f fname] <= 0)} {
-		displayMessage "$file is not under revision control.\n
-Please select a revision controled file"
+		set rc [tk_dialog .new "Error" "$file is not under revision control.\nPlease select a revision controled file" "" 0 "Cancel" "Select Another File" "Exit BitKeeper"]
+		if {$rc == 2} {exit} elseif {$rc == 1} { selectFile }
 	} else {
-		#XXX: add item to the list of known files
 		#displayMessage "file=($file) err=($err)"
-		$gc(fmenu) add command -label "$fname" \
-		    -command "histtool $fname -$gc(hist.showHistory)" 
-		histtool $fname "-$gc(hist.showHistory)"
+		# XXX: Need to add in a function so that we can check for
+		# duplicates
+		if {$fname != "ChangeSet"} {
+			$gc(fmenu) add command -label "$fname" \
+			    -command "histtool $fname -$gc(hist.showHistory)" 
+		}
 	}
 	close $f
+	return $fname
 }
 
 # XXX: Should only save the most recent (10?) files that were looked at
@@ -1638,6 +1648,8 @@ proc histtool {lfname R} \
 	global	bad revX revY search dev_null rev2date serial2rev w
 	global  srev Opts gc file rev2rev_name cdim firstnode fname
 
+	# Set global so that other procs know what file we should be
+	# working on. Need this when menubutton is selected
 	set fname $lfname
 
 	busy 1
@@ -1651,8 +1663,11 @@ proc histtool {lfname R} \
 
 	set bad 0
 	set file [exec bk sfiles -g $lfname 2>$dev_null]
-	if {"$file" == ""} {
-		displayMessage "No such file \"$lfname\" rev=($R)" 0
+	while {"$file" == ""} {
+		displayMessage "No such file \"$lfname\" rev=($R) \nPlease \
+select a new file to view"
+		set lfname [selectFile]
+		set file [exec bk sfiles -g $lfname 2>$dev_null]
 	}
 	if {[catch {exec bk root $file} proot]} {
 		wm title . "histtool: $file $R"
@@ -1766,6 +1781,13 @@ if {$fname == ""} {
 	if {[lindex $errorCode 2] == 1} {
 		displayMessage "$err" 0
 	}
+} else {
+	# If we haven't brought up the gui yet, die if a bad file was given
+	set file [exec bk sfiles -g $fname 2>$dev_null]
+	if {"$file" == ""} {
+		puts stderr "No such file \"$fname\""
+		exit
+	}
 }
 
 widgets
@@ -1780,7 +1802,7 @@ if {$rev1 == ""} {
 	set rev1 [lineOpts $rev1]
 	highlight $rev1 "old"
 }
-if {$rev2 != ""} {
+if {[info exists rev2] && ($rev2 != "")} {
 	set rev2 [lineOpts $rev2]
 	highlight $rev2 "new"
 	diff2 2

@@ -17,6 +17,7 @@ int
 trigger(char **av, char *when, int status)
 {
 	char	*what, *var, *t, **triggers = 0, buf[MAXPATH*4], file[MAXPATH];
+	char	*triggerDir = TRIGGERS, tbuf[MAXPATH];
 	int	i, len, rc = 0;
 	struct	dirent *e;
 	DIR	*dh;
@@ -24,17 +25,26 @@ trigger(char **av, char *when, int status)
 	t = av[0];
 
 	if (strneq(t, "remote pull", 11) || strneq(t, "push", 4) ||
-	    strneq(t, "clone", 5) || strneq(t, "remote clone", 12)) {
+	    strneq(t, "remote clone", 12)) {
 		what = "outgoing";
 		var = "BK_OUTGOING";
 	} else if (
-	    strneq(t, "remote push", 11) ||
+	    strneq(t, "remote push", 11) || strneq(t, "clone", 5) ||
 	    strneq(t, "pull", 4)) {
 		what = "incoming";
 		var = "BK_INCOMING";
 	} else if (strneq(t, "commit", 6)) {
 		what = "commit";
 		var = "BK_COMMIT";
+	} else if (strneq(t, "remote log push", 15)) {
+		/*
+		 * logs triggers are global over all logging trees
+		 */
+		unless (logRoot) return (0);
+		triggerDir = tbuf;
+		concat_path(tbuf, logRoot, "triggers");
+		what = "incoming-log";
+		var = "BK_INCOMING_LOG";
 	} else {
 		fprintf(stderr,
 			"Warning: Unknown trigger event: %s, ignored\n", av[0]);
@@ -57,8 +67,8 @@ trigger(char **av, char *when, int status)
 		strcat(buf, " ");
 		strcat(buf, av[i]);
 	}
-	unless (isdir(TRIGGERS)) return (0);
-	sys("bk", "get", "-q", TRIGGERS, SYS);
+	unless (isdir(triggerDir)) return (0);
+	sys("bk", "get", "-q", triggerDir, SYS);
 	sprintf(file, "%s-%s", when, what);
 	len = strlen(file);
 
@@ -66,12 +76,12 @@ trigger(char **av, char *when, int status)
 	 * Find all the trigger scripts associated with this event.
 	 * XXX TODO need to think about the spilt root case
 	 */
-	dh = opendir(TRIGGERS);
+	dh = opendir(triggerDir);
 	assert(dh);
 	while ((e = readdir(dh)) != NULL) {
 		if ((strlen(e->d_name) >= len) &&
 		    strneq(e->d_name, file, len)) {
-			sprintf(file, "%s/%s",  TRIGGERS, e->d_name);
+			sprintf(file, "%s/%s",  triggerDir, e->d_name);
 			triggers = addLine(triggers, strdup(file));
 		}
 	}
@@ -111,6 +121,7 @@ runable(char *file)
 private int
 runit(char *file, char *when, char *event, char *output)
 {
+	int	status, rc;
 #ifdef	WIN32
 		char *p;
 
@@ -120,19 +131,26 @@ runit(char *file, char *when, char *event, char *output)
 		 * so feed it to the bash shell
 		 */
 		unless (p) {
-			return (sysio(0, output, 0,
-					"bash", "-c", file, when, event, SYS));
+			status = sysio(0, output, 0,
+					"bash", "-c", file, when, event, SYS);
+		} else {
+			/*
+			 * XXX TODO: If suffix is .pl or .perl, run the perl
+			 * interpretor. Win32 ".bat" file should just work
+			 * with no special handling.
+			 */
+			status = sysio(0, output, 0, file, when, event, SYS);
 		}
-		/*
-		 * XXX TODO: If suffix is .pl or .perl, run the perl interpretor
-		 * Win32 ".bat" file should just work with no special handling.
-		 */
-		return (sysio(0, output, 0, file, when, event, SYS));
 #else
-		return (sysio(0, output, 0, file, when, event, SYS));
+		status = sysio(0, output, 0, file, when, event, SYS);
 #endif
+		rc = WEXITSTATUS(status);
+		return (rc);
 }
 
+/*
+ * Both pre and post client triggers are handled here
+ */
 private int
 run_client_trigger(char **triggers, char *when, char *what, char *event)
 {
@@ -159,6 +177,9 @@ run_bkd_pre_trigger(char **triggers, char *when, char *what, char *event)
 	 * This means using popen() does not work on NT, you almost always
 	 * get back a undefined status when you a call pclose();
 	 * Note: waitpid() is hiden inside sysio() which is called from runit();
+	 * One way to fix the NT popen/pclose implementation is to
+	 * create a thread at popen time to wait for child exit status.
+	 * This is not done yet.
 	 */
 	gettemp(output, "trigger");
 	EACH(triggers) {

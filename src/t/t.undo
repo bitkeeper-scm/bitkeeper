@@ -65,3 +65,21 @@ if [ $? -ne 0 ]; then echo "failed1"; exit 1; fi
 grep -q "Undo aborted" undo.out
 if [ $? -ne 0 ]; then echo "failed2"; exit 1; fi
 echo OK
+bk unedit foo.c
+echo $N Check undo of circular renames ..............................$NL
+echo bar > bar.c
+echo woo > woo.c
+bk ci $Q -i bar.c
+bk ci $Q -i woo.c
+bk commit $S -y"new file"
+bk mv foo.c tmp.c
+bk mv bar.c foo.c
+bk mv woo.c bar.c
+bk mv tmp.c woo.c
+bk commit $S -y"circular rename"
+bk get $Q -p bar.c | grep -q woo
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+bk undo $Q -fr+
+bk get $Q -p bar.c | grep -q bar
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
