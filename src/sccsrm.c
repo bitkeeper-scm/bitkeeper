@@ -102,7 +102,7 @@ sccs_rm(char *name, char *del_name, int useCommonDir)
 	sccs_close(s);
 	rmName = sccs_rmName(s, useCommonDir);
 	if (del_name) strcpy(del_name, rmName);
-	error |= sccs_mv(sfile, rmName, 0, 1);
+	error |= sccs_mv(sfile, rmName, 0, 1, 0);
 	sccs_free(s);
 	free(rmName);
 	free(sfile);

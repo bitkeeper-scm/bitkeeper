@@ -481,15 +481,17 @@ _unrm () {
 		return 1
 	fi
 
+	# Make sure we are inside a BK repository
 	bk root > /dev/null || return 1
 
 	# Assume the path name specified is relative to the current directory
-	rpath=`bk pwd -r`'/.*'"$1"
+	rdir=`bk pwd -r`
+	if [ "$rdir" != "." ]; then rpath=$rdir/'.*'"$1"; else rpath=$1; fi
 
 	__cd2root
 	LIST=/tmp/LIST$$
 	DELDIR=BitKeeper/deleted
-	cd $DELDIR
+	cd $DELDIR || { echo "Cannot cd to $DELDIR"; return 1; }
 	trap 'rm -f $LIST' 0
 
 	# Find all the possible files, sort with most recent delete first.
@@ -542,8 +544,8 @@ _unrm () {
 
 		case "X$ans" in
 		    Xy|XY)
-			echo "Moving \"DELDIR/$GFILE\" -> \"$RPATH\""
-			bk -R mv "$DELDIR/$GFILE" "$RPATH"
+			echo "Moving \"$DELDIR/$GFILE\" -> \"$RPATH\""
+			bk -R mv -u "$DELDIR/$GFILE" "$RPATH"
 			;;
 		    Xq|XQ)
 			break
