@@ -7,7 +7,8 @@ x: $(ALLSRC)
 	xroff $(OPTS) $(SRC)
 
 ps: $(ALLSRC)
-	groff -Tps $(OPTS) $(SRC) > ps
+	groff -Tps $(OPTS) $(SRC) > airgap.ps
+	ps2pdf airgap.ps
 
 gv g: $(ALLSRC)
 	g groff -Tps $(OPTS) $(SRC) 

@@ -106,6 +106,9 @@ delim $$
 .ps +6
 \*[title]
 .ps
+.br
+.ps 8
+Revision %I% of 20%E%
 .AB
 Defense contractors and other customers with similar constraints may
 face situations wherein they need to maintain multiple versions of
@@ -212,7 +215,7 @@ Internal development
 .LP
 At this point testing may begin in the classified area.  There are no
 restrictions placed by the SCM system on the internal usage.  If 
-multiple tests need to happen, each test could clone a copy of the
+multiple tests are required, each engineer could clone a copy of the
 internal master and go to work.  If old versions are needed for a 
 demonstration, for comparison, or for debugging purposes, rollback to 
 any version is easily accomplished with a one line clone command.
@@ -237,8 +240,9 @@ on the inside.
 .NH 2
 Moving changes back out
 .LP
-At some regular interval, any internal bug fixes need to be moved back
-out.  This poses two problems:
+At some regular interval, any internal bug fixes need to be moved 
+to the unclassified area.
+This poses two problems:
 .IP a) 4
 How does one know what to send out?
 .IP b) 
@@ -246,7 +250,7 @@ How does one get this data reviewed and sent out?
 .LP
 The usefulness of the BK master 1 copy repository will become apparent
 as we examine how \*(BK moves data.  A pull operation is actually 
-made up of several sub operations.  Pull starts by comparing the 
+made up of several sub-operations.  Pull starts by comparing the 
 changeset identifiers in each repository to determine what changes
 are in the source but not in the destination.  The list, if any,
 is used by a program called makepatch which generates a special 
