@@ -135,11 +135,23 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 
 	    search_widgets .menu .diffs.right
 
+	#frame .line
+	    #text .line.diff \
+		#-width [expr $gc(diff.diffWidth) * 2 + $gc(diff.scrollWidth)] \
+		#-height 3 \
+		#-bg $gc(diff.textBG) -fg $gc(diff.textFG) -state disabled \
+		#-borderwidth 0 \
+		#-wrap none -font $gc(diff.fixedFont)
+	    #pack .line.diff -side left -fill both
+
 	grid .menu -row 0 -column 0 -sticky ew
 	grid .diffs -row 1 -column 0 -sticky nsew
+	#grid .line -row 2 -column 0 -sticky nsew
 	grid rowconfigure .diffs 1 -weight 1
+	#grid rowconfigure .line 2 -weight 1
 	grid rowconfigure . 0 -weight 0
 	grid rowconfigure . 1 -weight 1
+	#grid rowconfigure . 2 -weight 0
 	grid columnconfigure .diffs.status 0 -weight 1
 	grid columnconfigure .diffs.status 2 -weight 1
 	grid columnconfigure .diffs 0 -weight 1
@@ -152,9 +164,12 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	.diffs.status.middle configure -text "Welcome to difftool!"
 
 	bind .diffs <Configure> { computeHeight }
-	foreach w {.diffs.left .diffs.right} {
-		bindtags $w {all Text .}
-	}
+	#bind .diffs.left <Button-1> {stackedDiff %W %x %y "B1"; break}
+	#bind .diffs.right <Button-1> {stackedDiff %W %x %y "B1"; break}
+
+	#foreach w {.diffs.left .diffs.right} {
+	#	bindtags $w {all Text .}
+	#}
 	computeHeight
 
 	.diffs.left tag configure diff -background $gc(diff.oldColor)
@@ -312,14 +327,21 @@ proc getFiles {} \
 		set a [lindex $argv 0]
 		if {[regexp -- {-r(.*)} $a junk rev1]} {
 			set rfile [lindex $argv 1]
-			if {[file exists $rfile] != 1} { usage }
 			set lfile [getRev $rfile $rev1 0]
-			set rev2 "+"
+			# If bk file and not checked out, check it out ro
+			#displayMessage "lfile=($lfile) rfile=($rfile)"
+			if {[exec bk sfiles -g $rfile] != ""} {
+				if {![file exists $rfile]} {
+					#displayMessage "checking out $rfile"
+					catch {exec bk get $rfile} err
+				}
+			}
 			if {[checkFiles $lfile $rfile]} {
-				set t "$lfile $rfile $rfile $rev1 +"
+				set t "$lfile $rfile $rfile $rev1"
 				lappend files $t
 			}
 			lappend tmps $lfile
+			if {[file exists $rfile] != 1} { usage }
 		} else { ;# bk difftool file file2"
 			set lfile [lindex $argv 0]
 			set rfile [lindex $argv 1]
