@@ -19,6 +19,7 @@ private void	http_hist(char *pathrev);
 private void	http_patch(char *rev);
 private void	http_gif(char *path);
 private void	http_stats(char *path);
+private void	http_related(char *path);
 private void	title(char *title, char *desc, char *color);
 private void	pwd_title(char *t, char *color);
 private void	header(char *path, char *color, char *title, char *header, ...);
@@ -71,6 +72,7 @@ private struct pageref {
     { http_anno,    "anno.html",      "anno/", 5 },
     { http_diffs,   "diffs.html",     "diffs/", 6 },
     { http_stats,   "stats.html",     "stats",  0, HAS_ARG, 0 },
+    { http_related, "related.html",   "related/", 8 },
     { 0 },
 };
 
@@ -779,6 +781,7 @@ http_hist(char *pathrev)
 	if (!embedded) trailer("hist");
 }
 
+
 /* pathname */
 private void
 http_src(char *path)
@@ -804,11 +807,15 @@ http_src(char *path)
 	    " <td>"
 	      "$if(:GFILE:=ChangeSet){<a href=ChangeSet@+%s>&nbsp;:G:</a>}"
 	      "$if(:GFILE:!=ChangeSet){<a href=hist/:GFILE:%s>&nbsp;:G:</a>}"
-	    "</td>"
+	    " </td>"
 	    " <td align=center>"
 	      "$if(:GFILE:=ChangeSet){<a href=cset@:REV:%s>&nbsp;:REV:</a>}"
 	      "$if(:GFILE:!=ChangeSet){<a href=anno/:GFILE:@:REV:%s>:REV:</a>}"
-	    "</td>"
+	    " </td>"
+	    " <td align=center>"
+	      "$if(:GFILE:=ChangeSet){&nbsp;}"
+	      "$if(:GFILE:!=ChangeSet){<a href=related/:GFILE:>CSets</a>}"
+	    " </td>"
 	    " <td align=right><font size=2>:HTML_AGE:</font></td>"
 	    " <td align=center>:USER:</td>"
 	    " <td>:HTML_C:&nbsp;</td>"
@@ -829,14 +836,15 @@ http_src(char *path)
 		    path[1] ? path : "project root");
 	}
 
-	out("<table border=1 cellpadding=2 cellspacing=0 width=100% ");
-	out("bgcolor=white>\n");
-	out("<tr><th>&nbsp;</th><th align=left>File&nbsp;name</th>");
-	out("<th>Rev</th>");
-	out("<th>Age</th>");
-	out("<th>Author</th>");
-	out("<th align=left>&nbsp;Comments</th>");
-	out("</tr>\n");
+	out("<table border=1 cellpadding=2 cellspacing=0 width=100% "
+	    "bgcolor=white>\n"
+	    "<tr><th>&nbsp;</th><th align=left>File&nbsp;name</th>\n"
+	    "<th>Rev</th>\n"
+	    "<th>&nbsp;</th>\n"
+	    "<th>Age</th>\n"
+	    "<th>Author</th>\n"
+	    "<th align=left>&nbsp;Comments</th>\n"
+	    "</tr>\n");
 
 	now = time(0);
 	while (e = readdir(d)) {
@@ -858,6 +866,7 @@ http_src(char *path)
 			  "<tr bgcolor=lightblue>"
 			  "<td><img src=%s></td><td>&nbsp;"
 			  "%s%s</td><td>&nbsp;</td>"		/* rev */
+			  "<td>&nbsp;</td>"
 			  "<td align=right>&nbsp;</td>"
 			  "<td>&nbsp;</td>"			/* user */
 			  "<td>&nbsp;</td></tr>\n",		/* comments */
@@ -888,6 +897,7 @@ http_src(char *path)
 	out("</table><br>\n");
 	if (!embedded) trailer("src");
 }
+
 
 private void
 http_anno(char *pathrev)
