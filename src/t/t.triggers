@@ -251,3 +251,4 @@ do
 done
 if [ ! -f $HERE/backup/src/SCCS/s.car.c ]; then echo failed; exit 1; fi
 echo OK
+## XXX TODO need test for trigger env variables

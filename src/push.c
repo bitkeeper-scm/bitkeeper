@@ -396,7 +396,7 @@ patch_size (opts opts, int gzip, char *rev_list)
 }
 
 private int
-send_done_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
+send_end_msg(opts opts, remote *r, char *msg, char *rev_list, char **envVar)
 {
 	char	msgfile[MAXPATH];
 	MMAP    *m;
@@ -420,7 +420,7 @@ send_done_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
 	if (opts.metaOnly) fprintf(f, " -e");
 	fputs("\n", f);
 
-	fprintf(f, "@NOTHING TO SEND@\n");
+	fputs(msg, f);
 	fclose(f);
 	m = mopen(msgfile, "r");
 	rc = send_msg(r, m->where,  msize(m), 0, opts.gzip);
@@ -430,43 +430,6 @@ send_done_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
 	disconnect(r, 2);
 	unless (opts.autopull) return (0);
 	pull(opts, r); /* pull does not return */
-	return (0);
-}
-
-
-private int
-send_abort_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
-{
-	char	msgfile[MAXPATH];
-	MMAP    *m;
-	FILE	*f;
-	int	rc;
-	int	gzip;
-
-	/*
-	 * If we are using ssh/rsh do not do gzip ourself
-	 * Let ssh do it
-	 */
-	gzip = r->port ? opts.gzip : 0;
-
-	bktemp(msgfile);
-	f = fopen(msgfile, "wb");
-	assert(f);
-	sendEnv(f, envVar);
-	if (r->path) add_cd_command(f, r);
-	fprintf(f, "push_part2");
-	if (gzip) fprintf(f, " -z%d", opts.gzip);
-	if (opts.metaOnly) fprintf(f, " -e");
-	fputs("\n", f);
-
-	fprintf(f, "@ABORT@\n");
-	fclose(f);
-	m = mopen(msgfile, "r");
-	rc = send_msg(r, m->where,  msize(m), 0, opts.gzip);
-	mclose(m);
-	unlink(msgfile);
-	unlink(rev_list);
-	disconnect(r, 2);
 	return (0);
 }
 
@@ -539,8 +502,13 @@ push_part2(char **av, opts opts,
 	char	buf[4096];
 	int	n, status, rc = 0;
 
-	if ((ret == 0) || (ret == 1)){
-		send_done_msg(opts, r, rev_list, ret, envVar);
+	if (ret == 0){
+		putenv("BK_OUTGOING=NOTHING");
+		send_end_msg(opts, r, "@NOTHING TO SEND@\n", rev_list, envVar);
+		goto done;
+	} else if (ret == 1) {
+		putenv("BK_OUTGOING=CONFLICT");
+		send_end_msg(opts, r, "@CONFLICT@\n", rev_list, envVar);
 		goto done;
 	} else {
 		/*
@@ -550,13 +518,11 @@ push_part2(char **av, opts opts,
 		 */
 		sprintf(buf, "BK_REVLISTFILE=%s", rev_list);
 		putenv(buf); 
-		if (!opts.metaOnly && trigger(av, "pre", 0)) {
-			putenv("BK_REVLISTFILE="); /* free env varible */
-			send_abort_msg(opts, r, rev_list, ret, envVar);
+		if (!opts.metaOnly && trigger(av, "pre")) {
+			send_end_msg(opts, r, "@ABORT@\n", rev_list, envVar);
 			rc = 1;
 			goto done;
 		}
-		putenv("BK_REVLISTFILE=");	/* free env variable */
 		if (send_patch_msg(opts, r, rev_list, ret, envVar)) {
 			rc = 1;
 			goto done;
@@ -572,7 +538,10 @@ push_part2(char **av, opts opts,
 	getline2(r, buf, sizeof(buf));
 	if (streq(buf, "@TAKEPATCH INFO@")) {
 		while ((n = read_blk(r, buf, 1)) > 0) {
-			if (buf[0] == BKD_RC) rc = atoi(&buf[1]);
+			if (buf[0] == BKD_RC) {
+				rc = atoi(&buf[1]);
+				continue;
+			}
 			if (buf[0] == BKD_NUL) break;
 			if (opts.verbose) write(2, buf, n);
 		}
@@ -592,7 +561,10 @@ push_part2(char **av, opts opts,
 	}
 	if (streq(buf, "@RESOLVE INFO@")) {
 		while ((n = read_blk(r, buf, 1)) > 0) {
-			if (buf[0] == BKD_RC) rc = atoi(&buf[1]);
+			if (buf[0] == BKD_RC) {
+				rc = atoi(&buf[1]);
+				continue;
+			}
 			if (buf[0] == BKD_NUL) break;
 			if (opts.verbose) write(2, buf, n);
 		}
@@ -612,8 +584,12 @@ push_part2(char **av, opts opts,
 		rename(rev_list, CSETS_OUT);
 		rev_list[0] = 0;
 	}
+	putenv("BK_OUTGOING=OK");
 
-done:	if (!opts.metaOnly) trigger(av, "post", rc);
+done:	if (!opts.metaOnly) {
+		if (rc) putenv("BK_OUTGOING=CONFLICT");
+		trigger(av, "post");
+	}
 	if (rev_list[0]) unlink(rev_list);
 	wait_eof(r, opts.debug); /* wait for remote to disconnect */
 	disconnect(r, 2);

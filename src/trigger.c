@@ -14,9 +14,9 @@ private int run_bkd_post_trigger(char **, char *, char *, char *);
  * calling this function.
  */
 int
-trigger(char **av, char *when, int status)
+trigger(char **av, char *when)
 {
-	char	*what, *var, *t, **triggers = 0, buf[MAXPATH*4], file[MAXPATH];
+	char	*what, *t, **triggers = 0, buf[MAXPATH*4], file[MAXPATH];
 	char	*triggerDir = TRIGGERS, tbuf[MAXPATH];
 	int	i, len, rc = 0;
 	struct	dirent *e;
@@ -27,15 +27,12 @@ trigger(char **av, char *when, int status)
 	if (strneq(t, "remote pull", 11) || strneq(t, "push", 4) ||
 	    strneq(t, "remote clone", 12)) {
 		what = "outgoing";
-		var = "BK_OUTGOING";
 	} else if (
 	    strneq(t, "remote push", 11) || strneq(t, "clone", 5) ||
 	    strneq(t, "pull", 4)) {
 		what = "incoming";
-		var = "BK_INCOMING";
 	} else if (strneq(t, "commit", 6)) {
 		what = "commit";
-		var = "BK_COMMIT";
 	} else if (strneq(t, "remote log push", 15)) {
 		/*
 		 * logs triggers are global over all logging trees
@@ -44,7 +41,6 @@ trigger(char **av, char *when, int status)
 		triggerDir = tbuf;
 		concat_path(tbuf, logRoot, "triggers");
 		what = "incoming-log";
-		var = "BK_INCOMING_LOG";
 	} else {
 		fprintf(stderr,
 			"Warning: Unknown trigger event: %s, ignored\n", av[0]);
@@ -52,13 +48,6 @@ trigger(char **av, char *when, int status)
 	}
 
 	if ((bk_mode() == BK_BASIC) && !strneq("commit", t, 6)) return (0);
-	if (status) {
-		sprintf(buf, "%s=ERROR %d", var, status);
-		putenv((strdup)(buf));
-	} else unless (getenv(var)) {
-		sprintf(buf, "%s=OK", var);
-		putenv((strdup)(buf));
-	}
 
 	sprintf(buf, "%s:%s", sccs_gethost(), fullname(".", 0));
 	for (len = 1, i = 0; av[i]; i++) {
