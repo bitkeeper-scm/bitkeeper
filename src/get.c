@@ -22,6 +22,7 @@ _get_main(int ac, char **av, char *out)
 	int	commitedOnly = 0;
 	int	branch_ok = 0;
 	int	caseFoldingFS = 1;
+	int	pnames = getenv("BK_PRINT_EACH_NAME") != 0;
 	MDBM	*realNameCache = 0;
 	char	realname[MAXPATH];
 
@@ -48,12 +49,17 @@ _get_main(int ac, char **av, char *out)
 	if (streq(av[0], "edit")) flags |= GET_EDIT;
 	if (streq("GET", user_preference("checkout"))) flags |= GET_NOREGET;
 	while ((c =
-	    getopt(ac, av, "ac;CdDeFgG:hHi;klmM|nNOpPqr;RSstTux;")) != -1) {
+	    getopt(ac, av, "A;a;c;CDeFgG:hHi;klM|pPqr;RSstTx;")) != -1) {
 		switch (c) {
-		    case 'a': flags |= GET_ALIGN; break;	/* doc 2.0 */
+		    case 'A':
+			flags |= GET_ALIGN;
+			/*FALLTHROUGH*/
+		    case 'a':
+			flags = annotate_args(flags, optarg);
+			if (flags == -1) goto usage;
+			break;
 		    case 'c': cdate = optarg; break;		/* doc 2.0 */
 		    case 'C': commitedOnly = 1; break;		/* doc 2.0 */
-		    case 'd': flags |= GET_PREFIXDATE; break;	/* doc 2.0 */
 		    case 'D': getdiff++; break;			/* doc 2.0 */
 		    case 'l':					/* doc 2.0 co */
 		    case 'e': flags |= GET_EDIT; break;		/* doc 2.0 */
@@ -64,18 +70,7 @@ _get_main(int ac, char **av, char *out)
 		    case 'H': flags |= GET_PATH; break;		/* doc 2.0 */
 		    case 'i': iLst = optarg; break;		/* doc 2.0 */
 		    case 'k': flags &= ~GET_EXPAND; break;	/* doc 2.0 */
-		    case 'm': flags |= GET_REVNUMS; break;	/* doc 2.0 */
 		    case 'M': mRev = optarg; break;		/* doc 2.0 */
-		    case 'n': 					/* doc 2.1 */
-			unless (flags & GET_MODNAME) {
-				flags |= GET_MODNAME;
-				break;
-			}
-			flags &= ~GET_MODNAME;
-			flags |= GET_FULLPATH;
-			break;
-		    case 'N': flags |= GET_LINENUM; break;	/* doc 2.0 */
-		    case 'O': flags |= GET_LINENAME; break;	/* doc 2.0 */
 		    case 'p': flags |= PRINT; break;		/* doc 2.0 */
 		    case 'P': flags |= PRINT|GET_FORCE; break;	/* doc 2.0 */
 		    case 'q': flags |= SILENT; break;		/* doc 2.0 */
@@ -85,7 +80,6 @@ _get_main(int ac, char **av, char *out)
 		    case 'S': flags |= GET_NOREGET; break;	/* doc 2.0 */
 		    case 't': break;		/* compat, noop, undoc 2.0 */
 		    case 'T': flags |= GET_DTIME; break;	/* doc 2.0 */
-		    case 'u': flags |= GET_USER; break;		/* doc 2.0 */
 		    case 'x': xLst = optarg; break;		/* doc 2.0 */
 
 		    default:
@@ -184,6 +178,9 @@ onefile:	fprintf(stderr,
 			name = realname;
 		}
 		unless (s = sccs_init(name, iflags)) continue;
+		if (pnames) {
+			printf("|FILE|%s|CRC|%u\n", s->gfile, crc(s->gfile));
+		}
 		if (Gname) {
 			if (gdir) {
 				char	buf[1024];
@@ -201,8 +198,8 @@ onefile:	fprintf(stderr,
 		}
 		unless (HASGRAPH(s)) {
 			if (!(s->state & S_SFILE)) {
-				fprintf(stderr, "%s: %s doesn't exist.\n",
-				    prog, s->sfile);
+				verbose((stderr, "%s: %s doesn't exist.\n",
+				    prog, s->sfile));
 			} else {
 				perror(s->sfile);
 			}
@@ -280,6 +277,32 @@ onefile:	fprintf(stderr,
 	sfileDone();
 	if (realNameCache) mdbm_close(realNameCache);
 	return (errors);
+}
+
+/*
+ * Parse file annotation command line arguemnts.
+ * It would be nice if the order of the characters could control
+ * the order that the fields appear.  But that would require
+ * a different way to pass arguments to sccs_get().
+ */
+int
+annotate_args(int flags, char *args)
+{
+	while (*args) {
+		switch (*args) {
+		    case 'd': flags |= GET_PREFIXDATE; break;
+		    case 'f': flags |= GET_FULLPATH; break;
+		    case 'm': flags |= GET_REVNUMS; break;
+		    case 'n': flags |= GET_MODNAME; break;
+		    case 'N': flags |= GET_LINENUM; break;
+		    case 'O': flags |= GET_LINENAME; break;
+		    case 'u': flags |= GET_USER; break;
+		    default:
+			flags = -1;
+		}
+		++args;
+	}
+	return (flags);
 }
 
 int

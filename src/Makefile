@@ -134,7 +134,8 @@ SCRIPTS	= applypatch bk.script import resync $(GUI) bugform \
 LOCALSCR= testfast build
 PSCR	= t/doit
 UWTOBJ	= win32/uwtlib/wapi_intf.o win32/uwtlib/wcrt_intf.o
-LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a tomcrypt/libtomcrypt.a $(UWTLIB)
+LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a tomcrypt/libtomcrypt.a \
+	  $(UWTLIB) regex/libregex.a
 LINKS	= ci co edit unget
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt bklogo.gif \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf
@@ -148,11 +149,12 @@ CFLAGS	= $(CC_FAST)
 CPPFLAGS= -Izlib -Imdbm
 # For extra libraries required by the system, e.g. libnsl.
 XLIBS	=
-LINK_LIB= $(XLIBS) $(LSCCS) $(LMDBM) $(LZLIB) $(LTOMCRYPT)
+LINK_LIB= $(XLIBS) $(LSCCS) $(LMDBM) $(LZLIB) $(LTOMCRYPT) $(LREGEX)
 LSCCS	= -L. -lsccs
 LMDBM	= -Lmdbm -lmdbm
 LZLIB	= -Lzlib -lz
 LTOMCRYPT = -Ltomcrypt -ltomcrypt
+LREGEX	 = -Lregex -lregex
 # Override this if you don't have it.
 RANLIB	= ranlib
 SRCS	= $(OBJ:.o=.c) $(MDBMOBJ:.o=.c) $(ZLIBOBJ:.o=.c) $(TOMCRYPTOBJ:.o=.c)
@@ -164,7 +166,7 @@ HDRS	= $(SYS).h $(UWT_H) bkd.h lib_tcp.h logging.h \
 	  liblines.h resolve.h sccs.h system.h \
 	  tomcrypt/mpi-config.h tomcrypt/mpi.h tomcrypt/mycrypt_cfg.h \
 	  tomcrypt/mpi-types.h tomcrypt/mycrypt.h \
-	  redblack.h \
+	  redblack.h regex/regex.h \
 	  zgets.h zlib/deflate.h \
 	  zlib/infblock.h zlib/infcodes.h zlib/inffast.h \
 	  zlib/inffixed.h zlib/inftrees.h zlib/infutil.h zlib/trees.h \
@@ -357,6 +359,9 @@ tomcrypt/libtomcrypt.a: $(TOMCRYPTOBJ)
 	$(RM) $@
 	$(AR) cr $@ $(TOMCRYPTOBJ)
 	-$(RANLIB) $@
+
+regex/libregex.a:
+	cd regex && $(MAKE)
 
 libsccs.a: $(OBJ) shell.o
 	rm -f $@

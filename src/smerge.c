@@ -222,21 +222,7 @@ file_init(char *file, char *rev, char *anno, file_t *f)
 	char	*inc, *exc;
 	char	tmp[MAXPATH];
 
-	if (anno) {
-		flags |= GET_ALIGN;
-		p = anno;
-		while (*p) {
-			switch (*p++) {
-			    case 'd': flags |= GET_PREFIXDATE; break;
-			    case 'f': flags |= GET_FULLPATH; break;
-			    case 'H': flags |= GET_PATH; break;
-			    case 'm': flags |= GET_REVNUMS; break;
-			    case 'n': flags |= GET_MODNAME; break;
-			    case 'N': flags |= GET_LINENUM; break;
-			    case 'u': flags |= GET_USER; break;
-			}
-		}
-	}
+	if (anno) flags = annotate_args(flags|GET_ALIGN, anno);
 
 	bktmp(tmp, "smerge");
 	f->tmpfile = strdup(tmp);
