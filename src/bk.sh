@@ -115,7 +115,6 @@ _setup() {
 	${BIN}sfiles -C | ${BIN}cset -s -y"Initial repository create" -
 	EXIT=$?
 	/bin/rm -f /tmp/comments$$
-	${BIN}csetmark -r+
 	exit $EXIT
 }
 
