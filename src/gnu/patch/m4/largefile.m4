@@ -12,8 +12,8 @@ dnl AC_SYS_LARGEFILE_FLAGS(FLAGSNAME)
 AC_DEFUN(AC_SYS_LARGEFILE_FLAGS,
   [AC_CACHE_CHECK([for $1 value to request large file support],
      ac_cv_sys_largefile_$1,
-     [ac_cv_sys_largefile_$1=`($GETCONF LFS_$1) 2>/dev/null` || {
-	ac_cv_sys_largefile_$1=no
+     [ac_cv_sys_largefile_$1=`($GETCONF LFS_$1) 2>/dev/null`
+      if test x$ac_cv_largefile_$1 = x; then
 	ifelse($1, CFLAGS,
 	  [case "$host_os" in
 	   # IRIX 6.2 and later require cc -n32.
@@ -23,21 +23,23 @@ changequote([, ])dnl
 	     if test "$GCC" != yes; then
 	       ac_cv_sys_largefile_CFLAGS=-n32
 	     fi
+	     ac_save_CC="$CC"
+	     CC="$CC $ac_cv_sys_largefile_CFLAGS"
+	     AC_TRY_LINK(, , , ac_cv_sys_largefile_CFLAGS=no)
+	     CC="$ac_save_CC"
            ;;
 	   # HP/UX 10.20 and later, with GCC, require -D__STDC_EXT__.
 changequote(, )dnl
 	   hpux10.[2-9][0-9]* | hpux1[1-9]* | hpux[2-9][0-9]*)
 changequote([, ])dnl
-	     if test "$GCC" != yes; then
+	     if test "$GCC" = yes; then
 	       ac_cv_sys_largefile_CFLAGS=-D__STDC_EXT__
 	     fi
 	   ;; 
-	   esac
-	   ac_save_CC="$CC"
-	   CC="$CC $ac_cv_sys_largefile_CFLAGS"
-	   AC_TRY_LINK(, , , ac_cv_sys_largefile_CFLAGS=no)
-	   CC="$ac_save_CC"])
-      }])])
+	   *) ac_cv_sys_largefile_CFLAGS=no
+	   ;;
+	   esac], [ac_cv_sys_largefile_$1=no])
+      fi])])
 
 dnl Internal subroutine of AC_SYS_LARGEFILE.
 dnl AC_SYS_LARGEFILE_SPACE_APPEND(VAR, VAL)

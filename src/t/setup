@@ -90,6 +90,7 @@ else
 	else USR_TMP=`pwd`	# better than nothing.
 	fi
 	unset CDPATH
+	if [ X$DO_REMOTE != XNO ]; then
 	if [ X$PREFER_RSH != X ]
 	then	if type rsh >/dev/null 2>&1
 		then	DO_REMOTE=YES
@@ -101,6 +102,7 @@ else
 		then	DO_REMOTE=YES
 		else	DO_REMOTE=NO
 		fi
+	fi
 	fi
 fi
 export TST_DIR CORES BK_BIN

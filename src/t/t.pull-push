@@ -58,8 +58,8 @@ if [ $DO_REMOTE = YES ]; then
  [ $revs -eq 2 ] || { echo failed; exit 1; }
  echo OK
 else
- echo Pull with explicit remote parent ...............................skipped
- echo Pull with explicit remote parent and username...................skipped
+ echo Pull with explicit remote parent ............................skipped
+ echo Pull with explicit remote parent and username................skipped
 fi
 # For the 'local' tests, we want to verify that we don't go through
 # ssh.
@@ -186,6 +186,6 @@ if [ $DO_REMOTE = YES ]; then
  [ "$KEY" = "$KEY2" ] || { echo no push; exit 1; }
  echo OK
 else
- echo Push with explicit remote parent ...............................skipped
- echo Bare resync with remote destination ............................skipped
+ echo Push with explicit remote parent ............................skipped
+ echo Bare resync with remote destination .........................skipped
 fi
