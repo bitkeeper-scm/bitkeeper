@@ -14,15 +14,16 @@
 no_logging project
 echo $N Test bk cp ..................................................$NL
 echo "This is file 1" > file1
-bk new file1
+bk new $Q file1
 for i in 2 3
 do
-	bk edit file1
+	bk edit $Q file1
 	echo "This is file 1, rev 1.$i" > file1
-	bk delta -y"comment $i" file1
+	bk delta $Q -y"comment $i" file1
 done
-bk cp file1 file2
+bk cp file1 file2 2> /dev/null
 if [ ! -f SCCS/s.file2 ]; then echo Failed to create an s.file; exit 1; fi
+bk get $Q file1 file2 
 diff file1 file2
 if [ $? -ne 0 ]; then echo Failed to copy content correctly; exit 1; fi 
 echo OK
