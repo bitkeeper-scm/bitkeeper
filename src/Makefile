@@ -130,11 +130,11 @@ production_purify: rebuild purify install
 clean-obj: FORCE
 	-/bin/rm -f $(PORTOBJ) $(SCCSOBJ) $(MDBMOBJ) $(ZLIBOBJ) $(BINOBJ) \
 		$(LIBS) a.out core
-	-cd gnu && make clean-obj
+	-cd gnu && $(MAKE) clean-obj
 
 clean-bin: FORCE
 	-/bin/rm -f $(BINS) $(SCRIPTS) $(PSCR) $(LINKS) MANIFEST
-	-cd gnu && make clean
+	-cd gnu && $(MAKE) clean
 
 clean-cfg: FORCE
 	-/bin/rm -f config.h stamp-h substvars config.status \

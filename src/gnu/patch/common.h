@@ -289,6 +289,12 @@ GENERIC_OBJECT *realloc ();
 #if HAVE_FCNTL_H
 # include <fcntl.h>
 #endif
+/* If neither _O_BINARY nor O_BINARY is defined, then don't use setmode
+   even if configure thinks it exists.  4.4BSD has a setmode() which is
+   not the function we want.  */
+#if !defined(_O_BINARY) && !defined(O_BINARY)
+# undef HAVE_SETMODE
+#endif
 #ifndef O_RDONLY
 #define O_RDONLY 0
 #endif

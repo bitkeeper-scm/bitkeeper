@@ -20,11 +20,11 @@
    If not, write to the Free Software Foundation,
    59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 
+#include <argmatch.h>
 #define XTERN
 #include <common.h>
 #undef XTERN
 #define XTERN extern
-#include <argmatch.h>
 #include <backupfile.h>
 #include <getopt.h>
 #include <inp.h>

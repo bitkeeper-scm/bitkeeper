@@ -201,7 +201,7 @@ in(char *file, int todo, int extract)
 	char	buf[1024];
 	int	n;
 	int	fd = -1;
-	mode_t	mode;
+	mode_t	mode = 0;
 	u32	sum = 0, sum2 = 0;
 
 	unless (todo) {
@@ -234,11 +234,13 @@ in(char *file, int todo, int extract)
 		goto err;
 	}
 	if (doModes) {
+		unsigned int imode;  /* mode_t might be a short */
 		if (readn(0, buf, 3) != 3) {
 			perror("mode read");
 			goto err;
 		}
-		sscanf(buf, "%03o", &mode);
+		sscanf(buf, "%03o", &imode);
+		mode = imode;
 	}
 	if (extract) {
 		close(fd);
