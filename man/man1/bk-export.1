@@ -36,8 +36,8 @@ options.
 .LP
 If you are trying the export a patch for a sub-directory, and
 some of the files in that directory have been moved out of the
-directory. You want to make sure the out-of-view file looks
-like deleted file. This is done by replacing the 
+directory, make the out-of-view file look like a deleted file.
+This is done by replacing the 
 .I |rev 
 part of the out-of-view file to 
 .IR |1.0 . 
@@ -70,24 +70,32 @@ Do not expand keywords (default is to expand keywords).
 .OPTreq \-r rev
 Export the tree as of revision 
 .ARG rev .
-if rev equal to ".", it means export the checked out file.
-If option "-tpatch" is specified,
+if
+.ARG rev
+is equal to ".", it means export the checked out file.
+If option 
+.ARG tpatch
+is specified,
 .ARG rev
 should be in the form
 .ARG rev1,rev2 ;
-this cause bk export to
-output the diffs between revison
+this causes
+.B bk export
+to output the diffs between revison
 .ARG rev1
 and
 .ARG rev2 .
-if
+If
 .ARG rev2
 is absent,
-bk export output the diffs of
+.B bk export
+outputs the diffs of
 .ARG rev1
-against its parent revision. if
+against its parent revision.  If
 .ARG rev2
-is ".", bk export output the diffs of the checked out files against
+is ".",
+.B bk export
+outputs the diffs of the checked out files against
 revision
 .ARG rev1 . 
 .tp
@@ -121,7 +129,7 @@ Note that
 .B \-i
 and
 .B \-x
-take a file glob like used by 
+take a file glob the same as used by
 .B bk ignore
 which is matched against the partial pathname from the root.
 .LP
