@@ -87,7 +87,7 @@ MDBM	*idDB = 0;
 char	csetFile[] = CHANGESET; /* for win32, need writable	*/
 				/* buffer for name convertion	*/
 
-cset_t	cs;		/* an easy way to create a local that is zeroed */
+cset_t	cs1;		/* an easy way to create a local that is zeroed */
 char	*spin = "|/-\\";
 
 /*
@@ -111,7 +111,7 @@ main(int ac, char **av)
 usage:		fprintf(stderr, "%s", cset_help);
 		return (1);
 	}
-	if (streq(av[0], "makepatch")) cs.makepatch++;
+	if (streq(av[0], "makepatch")) cs1.makepatch++;
 
 	while ((c = getopt(ac, av, "c|Cd|Dfi|l|Lm|M|pqr|R|sS;t;vy|Y|")) != -1) {
 		switch (c) {
@@ -120,30 +120,30 @@ usage:		fprintf(stderr, "%s", cset_help);
 			flags |= DELTA_EMPTY|NEWFILE;
 			text = optarg;
 			break;
-		    case 'f': cs.force++; break;
+		    case 'f': cs1.force++; break;
 		    case 'R':
-			cs.range++;
+			cs1.range++;
 			/* fall through */
 		    case 'r':
-		    	cs.range++;
+		    	cs1.range++;
 		    	/* fall through */
 		    case 'l':
-			if (c == 'l') cs.listeach++;
+			if (c == 'l') cs1.listeach++;
 		    	/* fall through */
 		    case 'd':
-			if (c == 'd') cs.doDiffs++;
+			if (c == 'd') cs1.doDiffs++;
 		    	/* fall through */
 		    case 'c':
 			if (c == 'c') {
-				cs.csetOnly++;
-				cs.makepatch++;
+				cs1.csetOnly++;
+				cs1.makepatch++;
 			}
 			/* fall through */
 		    case 'M':
-			if (c == 'M') cs.mark++;
+			if (c == 'M') cs1.mark++;
 			/* fall through */
 		    case 'm':
-			if (c == 'm') cs.makepatch++;
+			if (c == 'm') cs1.makepatch++;
 		    	list |= 1;
 			if (optarg) {
 				r[rd++] = notnull(optarg);
@@ -153,9 +153,9 @@ usage:		fprintf(stderr, "%s", cset_help);
 		    case 'C':
 			/* XXX - this stomps on everyone else */
 		    	list |= 1;
-			cs.mark++;
-			cs.remark++;
-			cs.force++;
+			cs1.mark++;
+			cs1.remark++;
+			cs1.force++;
 			r[0] = allRevs;
 			rd = 1;
 			things = tokens(notnull(optarg));
@@ -168,7 +168,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 		    case 'p': flags |= PRINT; break;
 		    case 'q':
 		    case 's': flags |= SILENT; break;
-		    case 'v': cs.verbose++; break;
+		    case 'v': cs1.verbose++; break;
 		    case 'y':
 			comment = optarg;
 			gotComment = 1;
@@ -188,9 +188,9 @@ usage:		fprintf(stderr, "%s", cset_help);
 		}
 	}
 
-	if (cs.doDiffs && cs.csetOnly) {
+	if (cs1.doDiffs && cs1.csetOnly) {
 		fprintf(stderr, "Warning: ignoring -d option\n");
-		cs.doDiffs = 0;
+		cs1.doDiffs = 0;
 	}
 	if (list == 3) {
 		fprintf(stderr,
@@ -203,7 +203,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 	}
 	if (av[optind] && streq(av[optind], "-")) {
 		optind++;
-		cs.dash++;
+		cs1.dash++;
 	}
 	if (av[optind]) {
 		unless (isdir(av[optind])) {
@@ -227,7 +227,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 	}
 	cset = sccs_init(csetFile, flags, 0);
 	if (!cset) return (101);
-	cs.mixed = !(cset->state & S_KEY2);
+	cs1.mixed = !(cset->state & S_KEY2);
 
 	/*
 	 * If we are initializing, then go create the file.
@@ -250,7 +250,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 #endif
 	}
 
-	if (list && (things < 1) && !cs.dash) {
+	if (list && (things < 1) && !cs1.dash) {
 		fprintf(stderr, "cset: must specify a revision.\n");
 		sccs_free(cset);
 		purify_list();
@@ -258,8 +258,8 @@ usage:		fprintf(stderr, "%s", cset_help);
 	}
 	switch (list) {
 	    case 1:
-		RANGE("cset", cset, cs.dash ? 0 : 2, 1);
-		csetlist(&cs, cset);
+		RANGE("cset", cset, cs1.dash ? 0 : 2, 1);
+		csetlist(&cs1, cset);
 next:		sccs_free(cset);
 		if (cFile) free(comment);
 		purify_list();
@@ -287,9 +287,9 @@ next:		sccs_free(cset);
 void
 cset_exit(int n)
 {
-	if (cs.pid) {
+	if (cs1.pid) {
 		fprintf(stderr, "cset: failed to wait for adler32\n");
-		waitpid(cs.pid, 0, 0);
+		waitpid(cs1.pid, 0, 0);
 	}
 	fflush(stdout);
 	_exit(n);
