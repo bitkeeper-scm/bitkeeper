@@ -32,6 +32,7 @@ WHATSTR("@(#)%K%");
  */
 #define	CLEAN_RESYNC	1	/* blow away the RESYNC dir */
 #define	CLEAN_PENDING	2	/* blow away the PENDING dir */
+#define	CLEAN_OK	4	/* but exit 0 anyway */
 #define	SHOUT() fputs("\n=================================== "\
 		    "ERROR ====================================\n", stderr);
 #define	SHOUT2() fputs("======================================="\
@@ -58,8 +59,6 @@ private	void	freePatchList(void);
 private	void	fileCopy2(char *from, char *to);
 private	void	badpath(sccs *s, delta *tot);
 private void	merge(char *gfile);
-private	sccs	*expand(sccs *s, project *proj);
-private	sccs	*unexpand(sccs *s);
 private	int	skipPatch(MMAP *p);
 private	void	getConfig(void);
 private	void	getGone(int isLogPatch);
@@ -152,6 +151,16 @@ usage:		system("bk help -s takepatch");
 
 	p = init(input, flags, &proj);
 
+	if (streq(input, "-") && isLogPatch && !newProject) {
+		char	*applyall[] = {"bk", "_applyall", 0};
+
+		mclose(p);
+		mdbm_close(goneDB);
+		mdbm_close(idDB);
+
+		spawnvp_ex(_P_NOWAIT, "bk", applyall);
+		return(0);
+	}
 	/*
 	 * Find a file and go do it.
 	 */
@@ -206,7 +215,18 @@ usage:		system("bk help -s takepatch");
 		fclose(f);
 	}
 
-	unless (remote) cleanup(CLEAN_RESYNC | CLEAN_PENDING);
+	unless (remote) {
+		/*
+		 * The patch didn't contain any new csets and so we don't
+		 * need to run resolve.
+		 * We should still run the post resolve trigger.
+		 */
+		if (resolve) {
+			putenv("BK_STATUS=REDUNDANT");
+			trigger("resolve", "post");
+		}
+		cleanup(CLEAN_RESYNC | CLEAN_PENDING | CLEAN_OK);
+	}
 
 	getConfig();
 
@@ -442,9 +462,8 @@ again:	s = sccs_keyinit(t, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB);
 	 */
 	unless (s || newProject || newFile) {
 		if (gone(t, goneDB)) {
-			if (getenv("BK_GONE_OK")) {
-				skipPatch(p);
-				return (0);
+			if (isLogPatch || getenv("BK_GONE_OK")) {
+				goto skip;
 			} else {
 				goneError(t);
 			}
@@ -462,7 +481,7 @@ again:	s = sccs_keyinit(t, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB);
 			goto again;
 		}
 		if (!newFile && isLogPatch) {
-			skipPatch(p);
+	skip:		skipPatch(p);
 			return (0);
 		}
 		unless (newFile) {
@@ -1102,8 +1121,6 @@ chkEmpty(sccs *s, MMAP *dF)
  * So by building a table of blocks to weave, as well as a way to
  * know how to increment the serial number of existing blocks, it
  * is possible to only write the file once.
- *
- * What we do in this files: 
  */
 private	int
 applyCsetPatch(char *localPath,
@@ -1172,7 +1189,7 @@ applyCsetPatch(char *localPath,
 	}
 apply:
 	p = patchList;
-	if (p && p->pid) cset_map(s, nfound);
+	if (p && p->pid) cweave_init(s, nfound);
 	while (p) {
 		if (echo == 3) fprintf(stderr, "%c\b", spin[n % 4]);
 		n++;
@@ -1236,7 +1253,7 @@ apply:
 				s->xflags |= X_LOGS_ONLY;
 				if (chkEmpty(s, dF)) return -1;
 			}
-			cset_map(s, nfound);
+			cweave_init(s, nfound);
 			cset_insert(s, iF, dF, p->pid);
 			s->bitkeeper = 1;
 		}
@@ -1407,7 +1424,7 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 		}
 	}
 	/* convert to uncompressed, it's faster, we saved the mode above */
-	if (s->encoding & E_GZIP) s = expand(s, proj);
+	if (s->encoding & E_GZIP) s = sccs_unzip(s);
 	unless (s) return (-1);
 	unless (tableGCA) goto apply;
 	/*
@@ -1603,7 +1620,7 @@ apply:
 	s->proj = 0; sccs_free(s);
 	s = sccs_init(patchList->resyncFile, SILENT, proj);
 	assert(s);
-	if (encoding & E_GZIP) s = unexpand(s);
+	if (encoding & E_GZIP) s = sccs_gzip(s);
 	for (d = 0, p = patchList; p; p = p->next) {
 		assert(p->me);
 		d = sccs_findKey(s, p->me);
@@ -1835,6 +1852,7 @@ resync_lock(void)
 		unless (errno == EEXIST) break;
 		if (slept > (20*60)) break;
 		sleep(s);
+		slept += s;
 		s += 15;
 		errno = 0;
 	}
@@ -1892,6 +1910,8 @@ init(char *inputFile, int flags, project **pp)
 		u32	diffsblank:1;	/* previous line was \n after diffs */
 	}	st;
 	int	line = 0, j = 0;
+	char	*note;
+	char	incoming[MAXPATH];
 
 	bzero(&st, sizeof(st));
 	st.preamble = 1;
@@ -1955,7 +1975,7 @@ init(char *inputFile, int flags, project **pp)
 		 * Save the patch in the pending dir
 		 * and record we're working on it.
 		 */
-		unless (savefile("PENDING", 0, pendingFile)) {
+		unless (savefile("PENDING", ".incoming", pendingFile)) {
 			SHOUT();
 			perror("PENDING");
 			cleanup(CLEAN_RESYNC);
@@ -2182,6 +2202,17 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			perror("fclose on patch");
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 		}
+		strcpy(incoming, pendingFile);
+		unless (savefile("PENDING", 0, pendingFile)) {
+			SHOUT();
+			perror("PENDING");
+			cleanup(CLEAN_RESYNC);
+		}
+		if (isLogPatch) saveEnviroment(pendingFile);
+		note = aprintf("psize=%u", size(incoming));
+		cmdlog_addnote(note);
+		free(note);
+		rename(incoming, pendingFile);
 		unless (flags & SILENT) {
 			NOTICE();
 			fprintf(stderr,
@@ -2193,7 +2224,7 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			perror(pendingFile);
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 		}
-		if (isLogPatch) {
+		if (isLogPatch && newProject) {
 			resync_lock();
 			assert(exists("BitKeeper/etc"));
 			close(creat(LOG_TREE, 0666));
@@ -2201,12 +2232,14 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			mkdirp(ROOT2RESYNC "/BitKeeper/etc");
 			close(creat(t, 0666));
 		}
-		unless (g = fopen("RESYNC/BitKeeper/tmp/patch", "wb")) {
-			perror("RESYNC/BitKeeper/tmp/patch");
-			exit(1);
+		unless (isLogPatch && !newProject) {
+			unless (g = fopen("RESYNC/BitKeeper/tmp/patch", "wb")) {
+				perror("RESYNC/BitKeeper/tmp/patch");
+				exit(1);
+			}
+			fprintf(g, "%s\n", pendingFile);
+			fclose(g);
 		}
-		fprintf(g, "%s\n", pendingFile);
-		fclose(g);
 	} else {
 		resync_lock();
 		unless (m = mopen(inputFile, "b")) {
@@ -2300,11 +2333,12 @@ fileCopy2(char *from, char *to)
 	if (fileCopy(from, to)) cleanup(CLEAN_RESYNC);
 }
 
-private	sccs *
-expand(sccs *s, project *proj)
+sccs *
+sccs_unzip(sccs *s)
 {
 	s = sccs_restart(s);
-	if (sccs_admin(s, 0, NEWCKSUM, 0, "none", 0, 0, 0, 0, 0, 0)) {
+	if (sccs_admin(s,
+	    0, ADMIN_FORCE|NEWCKSUM, 0, "none", 0, 0, 0, 0, 0, 0)) {
 		sccs_free(s);
 		return (0);
 	}
@@ -2312,11 +2346,12 @@ expand(sccs *s, project *proj)
 	return (s);
 }
 
-private	sccs *
-unexpand(sccs *s)
+sccs *
+sccs_gzip(sccs *s)
 {
 	s = sccs_restart(s);
-	if (sccs_admin(s, 0, NEWCKSUM, 0, "gzip", 0, 0, 0, 0, 0, 0)) {
+	if (sccs_admin(s,
+	    0, ADMIN_FORCE|NEWCKSUM, 0, "gzip", 0, 0, 0, 0, 0, 0)) {
 		sccs_whynot("admin", s);
 	}
 	s = sccs_restart(s);
@@ -2357,13 +2392,14 @@ rebuild_id(char *id)
 private	void
 cleanup(int what)
 {
+	int	rc = 1;
+
 	if (patchList) freePatchList();
 	if (idDB) mdbm_close(idDB);
 	if (goneDB) mdbm_close(goneDB);
 	if (saveDirs) {
 		fprintf(stderr, "takepatch: neither directory removed.\n");
-		SHOUT2();
-		exit(1);
+		goto done;
 	}
 	if (what & CLEAN_RESYNC) {
 		char cmd[1024];
@@ -2373,10 +2409,7 @@ cleanup(int what)
 	} else {
 		fprintf(stderr, "takepatch: RESYNC directory left intact.\n");
 	}
-	unless (streq(input, "-")) {
-		SHOUT2();
-		exit(1);
-	}
+	unless (streq(input, "-")) goto done;
 	if (what & CLEAN_PENDING) {
 		assert(exists("PENDING"));
 		assert(pendingFile);
@@ -2391,6 +2424,8 @@ cleanup(int what)
 			    pendingFile);
 		}
 	}
+ done:
 	SHOUT2();
-	exit(1);
+	if (what & CLEAN_OK) rc = 0;
+	exit(rc);
 }

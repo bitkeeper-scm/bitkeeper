@@ -180,15 +180,17 @@ listPendingRenames()
 private void
 setRepoType(opts *opts)
 {
-	if (exists(LOG_TREE)) opts->logging = 1;
+	if (exists(LOG_TREE)) {
+		opts->logging = 1;
+		putenv("BK_TRIGGER_PATH=/etc");
+	}
 }
 
 /*
  * For logging repository, we defer resolving path conflict
  * by moving  the conflicting remote file to the BitKeeper/conflicts
  * directory.
- * XXX - the older file should win, I suspect.
- *       but until then, metaUnion is used to union all files together
+ * XXX - older inode should win so we converge?
  */
 private void
 removePathConflict(opts *opts, resolve *rs)
@@ -196,12 +198,16 @@ removePathConflict(opts *opts, resolve *rs)
 	char	*t, path[MAXPATH], encpath[MAXPATH];
 	int	n = 0;
 
-	sprintf(path, "BitKeeper/conflicts/SCCS/%s", basenm(rs->dname));
-	sprintf(encpath, "%s/%s", RESYNC2ROOT, path);
-	while (exists(path) || exists(encpath)) {
-		sprintf(path,
-		    "BitKeeper/conflicts/SCCS/%s~%d", basenm(rs->dname), n++);
+	if (slotTaken(opts, rs->dname)) {
+		sprintf(path, "BitKeeper/conflicts/SCCS/%s", basenm(rs->dname));
 		sprintf(encpath, "%s/%s", RESYNC2ROOT, path);
+		while (exists(path) || exists(encpath)) {
+			sprintf(path, "BitKeeper/conflicts/SCCS/%s~%d",
+			    basenm(rs->dname), n++);
+			sprintf(encpath, "%s/%s", RESYNC2ROOT, path);
+		}
+	} else {
+		strcpy(path, rs->dname);
 	}
 	mkdirf(path);
 	sccs_close(rs->s); /* for win32 */
@@ -2292,7 +2298,7 @@ pass4_apply(opts *opts)
 	if (getenv("BK_REMOTE") && streq(getenv("BK_REMOTE"), "YES")) {
 		cmd = "remote apply";
 	}
-	if (!opts->logging && (ret = trigger(cmd,  "pre"))) {
+	if (ret = trigger(cmd,  "pre")) {
 		switch (ret) {
 		    case 3: flags = CLEAN_MVRESYNC; break;
 		    case 2: flags = CLEAN_RESYNC; break;
