@@ -180,7 +180,7 @@ connect_srv(char *srv, int port, int trace)
 	inaddr.sin_addr.s_addr	= host2ip(srv, trace);
 	inaddr.sin_family	= AF_INET;
 
-	inaddr.sin_port = htons(port);
+	inaddr.sin_port = htons(SOCK_PORT_CAST port);
 
 	if ((fd = socket(inaddr.sin_family, SOCK_STREAM, 0)) < 0) {
 		if (trace) {
