@@ -103,6 +103,16 @@ then	echo $N Try sccstool on the file ....................................$NL
 	echo OK
 fi
 
+GOT_IT=NO
+for i in `echo $PATH | sed 's/[:;]/ /g'`
+do	if [ -x "$i/co" ]
+	then	GOT_IT=YES
+		break
+	fi
+done
+if [ $GOT_IT = NO ]
+then	exit 0
+fi
 echo $N Test import of a file with spaces in the name ...............$NL
 cd $HERE
 rm -rf project
