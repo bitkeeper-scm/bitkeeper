@@ -86,6 +86,7 @@
 #define	PRS_PATCH	0x40000000	/* print in patch format */
 #define PRS_ALL		0x80000000	/* scan all revs, not just type D */
 #define	PRS_GRAFT	0x01000000	/* put the perfile in the patch */
+#define	PRS_PLACEHOLDER	0x02000000	/* make a place holder patch */
 
 #define SINFO_TERSE	0x10000000	/* print in terse format: sinfo -t */
 
@@ -144,6 +145,7 @@
 #define	S_SAVEPROJ	0x10000000	/* do not free the project struct */
 #define	S_SCCS		0x20000000	/* expand SCCS keywords */
 #define	S_SINGLE	0x40000000	/* inherit user/host */
+#define	S_LOGS_ONLY	0x80000000	/* this is a logging repository */
 #define S_XFLAGS	(S_RCS|S_YEAR4|S_ISSHELL|S_EXPAND1|S_HASH|\
 			 S_SCCS|S_SINGLE)
 
@@ -188,8 +190,10 @@
 #define	X_SINGLE	0x00000100	/* single user, inherit user/host */
 #if 0
 /* Do not re-use this bit until we are sure no production repository use it. */
+/* This is a undocumented feature shiped in release pre2-2.0		     */
 #define	X_ALWAYS_EDIT	0x00000200	/* stays in edit mode after delta/ci */
 #endif
+#define	X_LOGS_ONLY	0x00000400	/* this is a logging repository */
 #define X_XFLAGS	(X_RCS|X_YEAR4|X_ISSHELL|X_EXPAND1|X_HASH|\
 			 X_SCCS|X_SINGLE)
 
@@ -235,8 +239,11 @@
 #define	D_VISITED	0x00008000	/* and had a nice cup of tea */
 #define	D_CKSUM		0x00010000	/* delta has checksum */
 #define	D_MERGED	0x00020000	/* set on branch tip which is merged */
-#define	D_GONE		0x00800000	/* this delta is gone, don't print */
-#define D_ICKSUM	0x01000000	/* use checksum from init file */
+#define	D_GONE		0x00040000	/* this delta is gone, don't print */
+#define	D_PLACEHOLDER	0x00080000	/* metadata only, no contents */
+#define	D_NO_TRANSMIT	0x00100000	/* do not transmit - not used yet */
+/*			0x00?00000	   AVAILABLE */
+#define	D_ICKSUM	0x01000000	/* use checksum from init file */
 #define	D_MODE		0x02000000	/* permissions in d->mode are valid */
 #define	D_SET		0x04000000	/* range.c: marked as part of a set */
 #define	D_CSET		0x08000000	/* this delta is marked in cset file */
@@ -244,6 +251,17 @@
 #define	D_LOCAL		0x20000000	/* for resolve; this is a local delta */
 #define D_XFLAGS	0x40000000	/* delta has updated file flags */
 #define D_TEXT		0x80000000	/* delta has updated text */
+#define D_DT_ALL	(D_PLACEHOLDER|D_NO_TRANSMIT)
+
+/*
+ * Bits for the per delta d flag in the delta table. (^AcE d 0x????)
+ *
+ * Nota bene: these can not change once the product is shipped.  Ever.
+ * They are stored on disk.
+ */
+#define DT_PLACEHOLDER	0x00000001	/* metadata only, no contents */
+#define DT_NO_TRANSMIT	0x00000002	/* do not transmit - not used yet */
+#define DT_ALL		(DT_PLACEHOLDER|DT_NO_TRANSMIT)
 
 /*
  * Flags for command log
@@ -455,8 +473,9 @@ extern	char *upgrade_msg;
  *
  * 2 - bumped to invalidate old binaries with bad date code.
  * 3 - because random bits can now be on a per delta basis.
+ * 4 - added X_LOGS_ONLY, DT_PLACEHOLDER & DT_NO_TRANSMIT flags
  */
-#define	SCCS_VERSION	3
+#define	SCCS_VERSION	4
 
 /*
  * struct sccs - the delta tree, the data, and associated junk.
@@ -591,8 +610,13 @@ typedef struct patch {
  * 1.1 = state machine in adler32
  * 1.2 = Changed random bits to be per delta;
  *	 Add grafted file support.
+ * 1.3 = add logging patch type
  */
 #define PATCH_CURRENT	"# Patch vers:\t1.2\n"
+#define PATCH_NEXT	"# Patch vers:\t1.3\n"
+
+#define PATCH_LOGGING	"# Patch type:\tLOGGING\n"
+#define PATCH_REGULAR	"# Patch type:\tREGULAR\n"
 
 /*
  * Patch envelops for adler32.

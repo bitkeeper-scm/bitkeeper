@@ -39,6 +39,7 @@ private int	checkRev(sccs *s, char *file, delta *d, int flags);
 private int	checkrevs(sccs *s, int flags);
 private int	stripChecks(sccs *s, delta *d, char *who);
 private delta*	csetFileArg(delta *d, char *name);
+private delta*	dtflagsArg(delta *, char *arg);
 private delta*	hostArg(delta *d, char *arg);
 private delta*	pathArg(delta *d, char *arg);
 private delta*	randomArg(delta *d, char *arg);
@@ -67,6 +68,8 @@ private int	fprintDelta(FILE *,
 private	void	fitCounters(char *buf, int a, int d, int s);
 private delta	*gca(delta *left, delta *right);
 private delta	*gca2(sccs *s, delta *left, delta *right);
+private u32	dt2dflags(u32 dt);
+private u32	dflags2dt(u32 dflags);
 private u32	state2xflags(u32 state);
 private u32	xflags2state(u32 xflags);
 private delta	*gca3(sccs *s, delta *left, delta *right, char **i, char **e);
@@ -2804,6 +2807,15 @@ meta(sccs *s, delta *d, char *buf)
 	    case 'C':
 		d->flags |= D_CSET;
 		break;
+	    case 'E':
+		if ((buf[3] == ' ') && (buf[4] == 'd') && (buf[5] == ' ')) {
+			dtflagsArg(d, &buf[6]);
+		} else {
+			fprintf(stderr,
+			    "unknown entry <%s>, forcing read only\n", buf);
+			s->state |= S_READ_ONLY;
+		}
+		break;
 	    case 'K':
 		sumArg(d, &buf[3]);
 		break;
@@ -3177,6 +3189,7 @@ misc(sccs *s)
 
 			if (bits & X_BITKEEPER) s->state |= S_BITKEEPER;
 			if (bits & X_CSETMARKED) s->state |= S_CSETMARKED;
+			if (bits & X_LOGS_ONLY) s->state |= S_LOGS_ONLY;
 			s->state |= xflags2state(bits);
 			continue;
 		} else if (strneq(buf, "\001f &", 4) ||
@@ -6871,6 +6884,15 @@ delta_table(sccs *s, FILE *out, int willfix)
 		if (d->flags & D_CSET) {
 			fputmeta(s, "\001cC\n", out);
 		}
+		/*
+		 * Output the per delta flags
+		 */
+		bits = 0;
+		bits |= dflags2dt(d->flags & D_DT_ALL);
+		if (bits) {
+			sprintf(buf, "\001cE d 0x%x\n", bits);
+			fputmeta(s, buf, out);
+		}
 		if (d->dateFudge) {
 			p = fmts(buf, "\001cF");
 			p = fmttt(p, d->dateFudge);
@@ -7019,12 +7041,12 @@ delta_table(sccs *s, FILE *out, int willfix)
 	*p++ = '\n';
 	*p   = '\0';
 	fputmeta(s, buf, out);
+	bits = 0;
 	if (s->state & S_BITKEEPER) bits |= X_BITKEEPER;
 	if (s->state & S_CSETMARKED) bits |= X_CSETMARKED;
+	if (s->state & S_LOGS_ONLY) bits |= X_LOGS_ONLY;
 	bits |= state2xflags(s->state);
 	if (bits) {
-		char	buf[40];
-
 		sprintf(buf, "\001f x 0x%x\n", bits);
 		fputmeta(s, buf, out);
 	}
@@ -8913,6 +8935,21 @@ pathArg(delta *d, char *arg) { ARG(pathname, D_NOPATH, D_DUPPATH); }
 private delta *
 randomArg(delta *d, char *arg) { ARG(random, 0, 0); }
 
+private delta *
+dtflagsArg(delta *d, char *arg)
+{
+	int	bits = 0;
+
+	if (!d) d = (delta *)calloc(1, sizeof(*d));
+	if ((arg[0] == '0') && (arg[1] == 'x')) {
+		bits = strtol(&arg[2], 0, 16);
+	} else {
+		bits = atoi(arg);
+	}
+	d->flags |= dt2dflags(bits);
+	return (d);
+}
+
 /*
  * Handle either 0664 style or -rw-rw-r-- style.
  */
@@ -9363,6 +9400,28 @@ addMode(char *me, sccs *sc, delta *n, char *mode)
 	sprintf(buf, "Change mode to %s", newmode);
 	n->comments = addLine(n->comments, strdup(buf));
 	n = modeArg(n, newmode);
+}
+
+private u32
+dt2dflags(u32 dt_flags)
+{
+	u32 dflags = 0;
+
+	if (dt_flags & DT_PLACEHOLDER) dflags |= D_PLACEHOLDER;
+	if (dt_flags & DT_NO_TRANSMIT) dflags |= D_NO_TRANSMIT;
+
+	return dflags;
+}
+
+private u32
+dflags2dt(u32 dflags)
+{
+	u32 dt = 0;
+
+	if (dflags & D_PLACEHOLDER) dt |= DT_PLACEHOLDER;
+	if (dflags & D_NO_TRANSMIT) dt |= DT_NO_TRANSMIT;
+
+	return dt;
 }
 
 private u32
@@ -10317,6 +10376,17 @@ skip:
 			d->comments = addLine(d->comments, strdup(p));
 		}
 		unless (buf = mkline(mnext(f))) goto out; lines++;
+	}
+
+	if (WANT('E')) {
+		if ((buf[1] == ' ') && (buf[2] == 'd') && (buf[3] == ' ')) {
+			d = dtflagsArg(d, &buf[4]);
+			unless (buf = mkline(mnext(f))) goto out; lines++;
+		} else {
+			fprintf(stderr, "%s: Bad E line: %s\n", sc->sfile, buf);
+			sc->state |= S_WARNED;
+			error++;
+		}
 	}
 
 	/* date fudges are optional */
@@ -12998,6 +13068,14 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 	EACH(start->comments) {
 		assert(start->comments[i][0] != '\001');
 		fprintf(out, "c %s\n", start->comments[i]);
+	}
+	/*
+	 * For now, we only print the E line for logging patch
+	 * This may change when we start using other DT flags
+	 * such as DT_NO_TRANSMIT
+	 */
+	if (flags&PRS_PLACEHOLDER) {
+		fprintf(out, "E d 0x%x\n", DT_PLACEHOLDER);
 	}
 	if (start->dateFudge) fprintf(out, "F %d\n", (int)start->dateFudge);
 	EACH(start->include) {
