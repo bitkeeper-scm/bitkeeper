@@ -73,7 +73,7 @@ diffs_main(int ac, char **av)
 	}
 	while ((c = getopt(ac, av, "acC|d;DfhMnpr|R|suU")) != -1) {
 		switch (c) {
-		    case 'a': all = 1; break;
+		    case 'a': all = 1; break;	/* undocumented, unused??? */
 		    case 'h': flags &= ~DIFF_HEADER; break;
 		    case 'c': kind = DF_CONTEXT; break;
 		    case 'C': cset = optarg; break;

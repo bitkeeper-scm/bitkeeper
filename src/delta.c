@@ -2,37 +2,8 @@
 #include "system.h"
 #include "sccs.h"
 WHATSTR("@(#)%K%");
-/* undocumented:
-   -n		preserve gfile, kill pfile; SCCS compat\n\
-   -r		obsolete, SCCS compat\n\
-   -R		respect rev (?)\n\
-   -s		same as -q\n\
-*/
-private	char	*delta_help = "\n\
-usage: delta [-iluYpq] [-S<sym>] [-Z<alg>] [-y<c>] [files...]\n\n\
-   -1		force one-root mode\n\
-   -a		check in new work automatically\n\
-   -c		don't verify file checksum\n\
-   -D<file>	take diffs from <file>\n\
-   -E		set file encoding (like admin)\n\
-   -f		force creation of a null delta when invoked as ci\n\
-   -h		invert sense of file's hash flag\n\
-   -i		initial checkin, create a new revision history\n\
-   -I<file>	use init file for meta data\n\
-   -l		follow check in with a locked check out like ``get -e''\n\
-   -M<mode>	set the permissions on the new delta to <mode>\n\
-   -p		print differences before prompting for comments\n\
-   -q		run silently.\n\
-   -S<sym>	set the symbol <sym> to be the revision created\n\
-   -u		follow check in with an unlocked check out like ``get''\n\
-   -Y		prompt for one comment, then use it for all the files\n\n\
-   -y<comment>	sets the revision comment to <comment>\n\
-   -Z, -Z<alg>	compress stored s.file with <alg>, which may be:\n\
-		gzip	like gzip(1)\n\
-		none	no compression\n";
 
 int	newrev(sccs *s, pfile *pf);
-
 
 char *
 user_preference(char *what, char buf[MAXPATH])
@@ -91,7 +62,7 @@ delta_main(int ac, char **av)
 	}
 
 	if (ac > 1 && streq("--help", av[1])) {
-help:		fputs(delta_help, stderr);
+help:		system("bk help delta");
 		return (1);
 	}
 

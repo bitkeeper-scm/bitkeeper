@@ -111,7 +111,7 @@ takepatch_main(int ac, char **av)
 		switch (c) {
 		    case 'q':
 		    case 's':
-			/* Ignored for option consistency.  */
+			/* undoc, Ignored for option consistency.  */
 			break;
 		    case 'a': resolve++; break;
 		    case 'c': noConflicts++; break;

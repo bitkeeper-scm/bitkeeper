@@ -18,7 +18,7 @@ export_main(int ac,  char **av)
 	FILE	*f;
 	char	*type = 0;
 
-	while ((c = getopt(ac, av, "d:Dhkqt:Twvi:x:r:")) != -1) {
+	while ((c = getopt(ac, av, "d:hkt:Twvi:x:r:")) != -1) {
 		switch (c) {
 		    case 'v':	vflag = 1; break;
 		    case 'q':	break; /* no op; for interface consistency */
@@ -48,6 +48,10 @@ usage:			fprintf(stderr,
 		}
 	}
 
+	if (sccs_cd2root(0, 0) == -1) {
+		fprintf(stderr, "export: can not find package root.\n");
+		exit(1);
+	}
 	unless (type) type = "plain";
 	if (streq(type, "patch")) {
 		unless (diff_style) diff_style = "u";
