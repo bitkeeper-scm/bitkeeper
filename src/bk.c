@@ -443,8 +443,6 @@ private	struct {
 	int	len;
 } repolog[] = {
 	{"clone", 5 },
-	{"commit", 6 },
-	{"export", 6 },
 	{"pull", 4 },
 	{"push", 4 },
 	{"remote", 6 },
