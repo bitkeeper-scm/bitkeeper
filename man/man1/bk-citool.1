@@ -24,13 +24,29 @@ and have to follow the restrictions imposed by
 .B bk
 .BR sfiles .
 .LP
-Citool has three main windows.  The top window contains the list of
-files that can be checked in to a changeset.  The middle window is for entering 
-comments and the bottom window displays differences for modified files and 
-the contents for new files. 
+Citool has three main windows that are positioned vertically.
+The top window contains the list of files that can be checked in to a
+changeset.  The middle window is used for entering comments about the
+selected file while the bottom window displays different things depending
+on whether viewing a modified file or a file not under revision
+control. For modified files, the differences between the modified file
+and its parent are shown and for new files, the file contents are
+shown.
+.LP
+Along the upper right side of the upper two windows are a group
+of buttons. Some of the buttons have different purposes depending
+on what the user is doing.  For example, the Checkin/Commit button
+becomes the Commit button when there are comments for the ChangeSet
+file. Otherwise, the button is the Checkin button which signifies that
+the files will be checked in, but no ChangeSet will be created. The
+Checkin feature is useful when checkpointing files to save state when
+you know you want to make changes that may break things. Other times
+you want to checkpoint when you've created distinct new work and want
+to get back to it in the future.
 .LP
 Typical usage is to move to each file, add comments, and repeat
-until done. When all files are commented, the
+until done. When all files are commented and a comment exists for
+the ChangeSet file, the
 .B commit
 button is pressed to make the changes part of a ChangeSet. Citool's
 default behavior is to exit after the commit finishes. However, the

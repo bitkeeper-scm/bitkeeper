@@ -133,11 +133,11 @@ if [ ! -f SCCS/s.coo.c ]; then echo failed; exit 1; fi
 echo OK
 echo $N check a push to bkd with a gfile conflict ...................$NL
 P=50000
-cd $HERE
-bk bkd -q -d -p$P -c2 
+cd $HERE/project
+bk bkd -q -d -p$P -xcd -c6 
 while [ $? -eq 2 ]
 do	P=`expr $P + 1`
-	bk bkd -q -d -p$P -c2 
+	bk bkd -q -d -p$P -xcd -c6 
 done
 cd $HERE/project
 echo data1 > conflict.c
@@ -145,17 +145,34 @@ cd $HERE/copy
 echo data2 > old.c
 bk new $Q old.c
 bk commit $Q -yold.c
-bk push -c1 $Q bk://localhost:$P$HERE/project
+bk push -c1 $Q http://localhost:$P
 cd $HERE/project
 while ! bk lock -s; do true; done
 cd $HERE/copy
 bk mv old.c conflict.c
 bk commit $Q -ygconflict
-echo "" | bk push -c1 bk://localhost:$P$HERE/project 2> bk.out 
-grep -q "Did not resolve 2 renames, abort" bk.out
+echo "" | bk push -c1 bk://localhost:$P 2> bk.out 
+grep -q "Did not resolve 1 renames, no conflicts causing abort." bk.out
 if [ $? -ne 0 ]; then echo failed; cat bk.out; exit 1; fi
 rm -f  $HERE/project/conflict.c
 echo OK
+echo $N check http pull from bkd ....................................$NL
+waitForUnlock $HERE/project
+cd $HERE/project/src
+bk edit $Q bar.c
+echo data3 > bar.c
+bk delta $Q -ydata3 bar.c
+bk commit $Q -ydata3
+cd $HERE/copy
+bk pull $Q http://localhost:$P
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
+echo $N check http clone from bkd ...................................$NL
+cd $HERE
+bk clone $Q http://localhost:$P $HERE/project2
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
+
 # Check bk basic mode behaviour
 echo $N Make sure bk/basic limits access to master repository only ..$NL
 cd $HERE/copy/BitKeeper/etc
@@ -198,7 +215,7 @@ bk new $Q JUNK
 (cd $HERE/copy; bk _loggingaccepted; )
 bk commit $Q -ywhatever
 bk push -t bk://localhost:$P$HERE/copy 2> bk.out
-grep -q "4 csets only in" bk.out
+grep -q "6 csets only in" bk.out
 if [ $? -ne 0 ]; then echo failed; cat bk.out; exit 1; fi
 echo OK
 echo $N Make sure bk/basic allows pull from master repository .......$NL

@@ -65,7 +65,6 @@ typedef struct {
 	u32	start:1;		/* start NT bkd service */
 	u32	remove:1;		/* remove NT bkd service */
 	u32	http_hdr_out:1;		/* print http header to output */
-	u32	http_hdr_in:1;		/* strip http header on input */
 	u32	quiet:1;		/* quiet mode */
 	FILE	*log;			/* if set, log commands to here */
 	int	alarm;			/* exit after this many seconds */

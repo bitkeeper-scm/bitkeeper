@@ -308,6 +308,15 @@ proc getFiles {} \
 		} else { ;# bk difftool file file2"
 			set lfile [lindex $argv 0]
 			set rfile [lindex $argv 1]
+			if {[file isdirectory $rfile]} {
+				set tfile [file tail $lfile]
+				#set rfile [file join $rfile $lfile]
+				set rfile [file join $rfile $tfile]
+				# XXX: Should be a real predicate type func
+				if {![file exists $rfile]} {
+					catch {exec bk co $rfile} err
+				}
+			}
 			if {[checkFiles $lfile $rfile]} {
 				set t "{$lfile} {$rfile} {$lfile}"
 				lappend files $t

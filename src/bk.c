@@ -36,13 +36,17 @@ int changes_main(int, char **);
 int check_main(int, char **);
 int chksum_main(int, char **);
 int clean_main(int, char **);
+int cleanpath_main(int, char **);
 int clone_main(int, char **);
+int create_main(int, char **);
 int commit_main(int, char **);
 int config_main(int, char **);
 int _createlod_main(int, char **);
 int createlod_main(int, char **);
 int cset_main(int, char **);
 int delta_main(int, char **);
+int deledit_main(int, char **);
+int delget_main(int, char **);
 int diffs_main(int, char **);
 int export_main(int, char **);
 int fdiff_main(int, char **);
@@ -93,6 +97,7 @@ int parent_main(int, char **);
 int park_main(int, char **);
 int pending_main(int, char **);
 int probekey_main(int, char **);
+int prunekey_main(int, char **);
 int prs_main(int, char **);
 int pull_main(int, char **);
 int push_main(int, char **);
@@ -138,6 +143,7 @@ int unpark_main(int, char **);
 int unpull_main(int, char **);
 int unwrap_main(int, char **);
 int users_main(int, char **);
+int val_main(int, char **);
 int version_main(int, char **);
 int what_main(int, char **);
 int zone_main(int, char **);
@@ -147,6 +153,7 @@ int _f2csets_main(int, char **);
 struct command cmdtbl[] = {
 	{"_adler32", adler32_main},
 	{"_converge", converge_main},
+	{"_cleanpath", cleanpath_main},
 	{"_createlod", _createlod_main},
 	{"_f2csets", _f2csets_main},
 	{"_find", find_main },
@@ -164,6 +171,7 @@ struct command cmdtbl[] = {
 	{"_loggingto", loggingto_main},
 	{"_mail", mail_main},
 	{"_probekey", probekey_main},
+	{"_prunekey", prunekey_main},
 #ifdef WIN32
 	{"_socket2pipe", socket2pipe_main},
 #endif
@@ -171,6 +179,7 @@ struct command cmdtbl[] = {
 	{"_sortmerge", sortmerge_main},
 	{"_unlink", unlink_main },
 	{"abort", abort_main},		/* doc 2.0 */	
+	{"add", delta_main},		
 	{"admin", admin_main},		/* doc 2.0 */
 	{"annotate", annotate_main},	/* doc 2.0 */
 	{"bkd", bkd_main },		/* doc 2.0 */
@@ -185,10 +194,14 @@ struct command cmdtbl[] = {
 	{"commit", commit_main},	/* doc 2.0 */
 	{"config", config_main},	/* doc 2.0 */
 	{"createlod", createlod_main},	/* undoc? 2.0 */
+	{"create", create_main},	
 	{"cset", cset_main},		/* doc 2.0 */
 	{"delta", delta_main},		/* doc 2.0 */
+	{"deledit", deledit_main},	
+	{"delget", delget_main},	
 	{"diffs", diffs_main},		/* doc 2.0 */
 	{"edit", get_main},		/* aliases */	/* doc 2.0 */
+	{"enter", delta_main},
 	{"export", export_main},	/* doc 2.0 */
 	{"fdiff", fdiff_main},		/* undoc? 2.0 */
 	{"fix", fix_main},		/* doc 2.0 */
@@ -245,6 +258,7 @@ struct command cmdtbl[] = {
 	{"rmdel", rmdel_main},		/* doc 2.0 */
 	{"sane", sane_main},		/* doc 2.0 */
 	{"sccscat", sccscat_main},	/* doc 2.0 as annotate */
+	{"sccsdiff", diffs_main},
 	{"sccslog", sccslog_main},	/* doc 2.0 */
 	{"sccsmv", mv_main},		/* alias */	/* doc 2.0 as mv */
 	{"sccsrm", rm_main},		/* alias */	/* doc 2.0 as mv */
@@ -268,6 +282,7 @@ struct command cmdtbl[] = {
 	{"unpull", unpull_main},
 	{"unwrap", unwrap_main},	/* doc 2.0 */
 	{"users", users_main},		/* doc 2.0 */
+	{"val", val_main},	
 	{"version", version_main},	/* doc 2.0 */
 	{"what", what_main},		/* doc 2.0 */
 	{"zone", zone_main},		/* doc 2.0 */

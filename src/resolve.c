@@ -150,7 +150,7 @@ setRepoType(opts *opts)
 private void
 removePathConflict(opts *opts, resolve *rs)
 {
-	char	path[MAXPATH];
+	char	*t, path[MAXPATH];
 	int	n = 0;
 
 	sprintf(path, "BitKeeper/conflicts/SCCS/%s", basenm(rs->dname));
@@ -164,7 +164,14 @@ removePathConflict(opts *opts, resolve *rs)
 		perror(path);
 		resolve_cleanup(opts, CLEAN_RESYNC);
 	}
+	if (opts->log) {
+		fprintf(opts->log, "rename(%s, %s)\n", rs->s->sfile, path);
+	}
 	unlink(sccs_Xfile(rs->s, 'm'));
+	t = strrchr(path, '/');
+	t[1] = 'r';
+	/* OK if this fails because the file isn't there */
+	rename(sccs_Xfile(rs->s, 'r'), path);
 }
 
 /*
@@ -184,8 +191,7 @@ passes(opts *opts)
 	unless (exists("BitKeeper/etc")) sccs_cd2root(0, 0);
 	unless (exists("BitKeeper/etc")) {
 		fprintf(stderr, "resolve: can't find package root.\n");
-		freeStuff(opts);
-		exit(1);
+		resolve_cleanup(opts, 0);
 	}
 	unless (exists(ROOT2RESYNC)) {
 	    	fprintf(stderr,
@@ -198,8 +204,7 @@ passes(opts *opts)
 		unless (opts->idDB =
 		    loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
 			fprintf(stderr, "resolve: can't open %s\n", IDCACHE);
-			freeStuff(opts);
-			exit(1);
+			resolve_cleanup(opts, 0);
 		}
 	} else {
 		/* fake one for new repositories */
@@ -215,8 +220,7 @@ passes(opts *opts)
 	unless (sys("bk", "-r", "check", "-cR", SYS) == 0) {
 		syserr("failed.  Resolve not even started.\n");
 		/* XXX - better help message */
-		freeStuff(opts);
-		exit(1);
+		resolve_cleanup(opts, 0);
 	}
 
 	setRepoType(opts);
@@ -315,10 +319,10 @@ that will work too, it just gets another patch.\n");
 		if (opts->noconflicts) {
 			SHOUT();
 			fprintf(stderr,
-			    "Did not resolve %d renames, abort\n", n);
+			    "Did not resolve %d renames, "
+			    "no conflicts causing abort.\n", n);
 			listPendingRenames();
 			resolve_cleanup(opts, CLEAN_RESYNC|CLEAN_PENDING);
-			exit(1);
 		}
 
 		if (bk_mode() == BK_BASIC) {
@@ -327,7 +331,6 @@ that will work too, it just gets another patch.\n");
 			   "BitKeeper/Basic should not have rename conflict\n");
 			listPendingRenames();
 			resolve_cleanup(opts, CLEAN_RESYNC|CLEAN_PENDING);
-			exit(1);
 		}
 
 		/*
@@ -342,8 +345,8 @@ that will work too, it just gets another patch.\n");
 		if (n && opts->pass4) {
 			fprintf(stderr,
 			    "Did not resolve %d renames, abort\n", n);
-			freeStuff(opts);
-			exit(1);
+			listPendingRenames();
+			resolve_cleanup(opts, 0);
 		}
 		unless (opts->quiet) {
 			fprintf(stdlog,
@@ -384,8 +387,7 @@ saveKey(opts *opts, char *key, char *file)
 		fprintf(stderr, "\twanted by %s\n", file);
 		fprintf(stderr,
 		    "\tused by %s\n", mdbm_fetch_str(opts->rootDB, key));
-		freeStuff(opts);
-		exit(1);
+		resolve_cleanup(opts, 0);
 	} else if (opts->debug) {
 		fprintf(stderr, "saveKey(%s)->%s\n", key, file);
 	}
@@ -512,8 +514,7 @@ pass1_renames(opts *opts, sccs *s)
 	}
 	if (rename(s->sfile, path)) {
 		fprintf(stderr, "Unable to rename(%s, %s)\n", s->sfile, path);
-		freeStuff(opts);
-		exit(1);
+		resolve_cleanup(opts, 0);
 	} else if (opts->log) {
 		fprintf(opts->log, "rename(%s, %s)\n", s->sfile, path);
 	}
@@ -522,8 +523,7 @@ pass1_renames(opts *opts, sccs *s)
 		if (rename(mfile, path)) {
 			fprintf(stderr,
 			    "Unable to rename(%s, %s)\n", mfile, path);
-			freeStuff(opts);
-			exit(1);
+			resolve_cleanup(opts, 0);
 		} else if (opts->log) {
 			fprintf(opts->log, "rename(%s, %s)\n", mfile, path);
 		}
@@ -533,8 +533,7 @@ pass1_renames(opts *opts, sccs *s)
 		if (rename(rfile, path)) {
 			fprintf(stderr,
 			    "Unable to rename(%s, %s)\n", rfile, path);
-			freeStuff(opts);
-			exit(1);
+			resolve_cleanup(opts, 0);
 		} else if (opts->log) {
 			fprintf(opts->log, "rename(%s, %s)\n", rfile, path);
 		}
@@ -586,8 +585,6 @@ pass2_renames(opts *opts)
 		/* may have just been deleted it but be in readdir cache */
 		unless (exists(path)) continue;
 
-		/* Yes, I want this increment before the continue */
-		n++;
 		t = strrchr(path, '/');
 		unless (t[1] == 's') continue;
 
@@ -603,6 +600,7 @@ pass2_renames(opts *opts)
 				opts->resolveNames, path, opts->renames2);
 		}
 
+		n++;
 		rs = resolve_init(opts, s);
 
 		if (opts->logging) {
@@ -1090,22 +1088,19 @@ type_delta(resolve *rs,
 		sprintf(buf, "-kpqr%s", n->rev);
 		if (sysio(0, g, 0, "bk", "_get", buf, sfile, SYS)) {
 			fprintf(stderr, "%s failed\n", buf);
-			freeStuff(rs->opts);
-			exit(1);
+			resolve_cleanup(rs->opts, 0);
 		}
 		chmod(g, n->mode);
 	} else if (S_ISLNK(n->mode)) {
 		assert(n->symlink);
 		if (symlink(n->symlink, g)) {
 			perror(g);
-			freeStuff(rs->opts);
-			exit(1);
+			resolve_cleanup(rs->opts, 0);
 		}
 	} else {
 		fprintf(stderr,
 		    "type_delta called on unknown file type %o\n", n->mode);
-		freeStuff(rs->opts);
-		exit(1);
+		resolve_cleanup(rs->opts, 0);
 	}
 	free(g);
 	/* bk delta -qPy'Merge file types: {o->mode} {n->mode} sfile */
@@ -1113,8 +1108,7 @@ type_delta(resolve *rs,
 	    mode2FileType(o->mode), mode2FileType(n->mode));
 	if (sys("bk", "delta", buf, sfile, SYS)) {
 		syserr("failed\n");
-		freeStuff(rs->opts);
-		exit(1);
+		resolve_cleanup(rs->opts, 0);
 	}
 	strcpy(buf, sfile);	/* it's from the sccs we are about to free */
 	sfile = buf;
@@ -1152,8 +1146,7 @@ mode_delta(resolve *rs, char *sfile, delta *d, mode_t m, char *rfile, int which)
 	if (sys("bk",
 	    "delta", rs->opts->log ? "" : "-q", buf, opt, sfile, SYS)) {
 		syserr("failed\n");
-		freeStuff(rs->opts);
-		exit(1);
+		resolve_cleanup(rs->opts, 0);
 	}
 	strcpy(buf, sfile);	/* it's from the sccs we are about to free */
 	sfile = buf;
@@ -1217,8 +1210,7 @@ flags_delta(resolve *rs,
 	if (!WIFEXITED(n) || WEXITSTATUS(n)) {
 		for (i = 0; av[i]; ++i) fprintf(stderr, "%s ", av[i]);
 		fprintf(stderr, "failed\n");
-		freeStuff(rs->opts);
-		exit(1);
+		resolve_cleanup(rs->opts, 0);
 	}
 	strcpy(buf, sfile);	/* it's from the sccs we are about to free */
 	sfile = buf;
@@ -1259,7 +1251,7 @@ edit_tip(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 	sprintf(opt, "-r%s", d->rev);
 	if (sys("bk", "_get", buf, opt, sfile, SYS)) {
 		syserr("failed\n");
-		exit(1);
+		resolve_cleanup(rs->opts, 0);
 	}
 	if (which) {
 		t = strrchr(sfile, '/');
@@ -1432,8 +1424,7 @@ pass3_resolve(opts *opts)
 	 */
 	unless (p = popen("bk _find . -name 'm.*'", "r")) {
 		perror("popen of find");
-		freeStuff(opts);
-		exit(1);
+		resolve_cleanup(opts, 0);
 	}
 	while (fnext(buf, p)) {
 		fprintf(stderr, "Needs rename: %s", buf);
@@ -1444,8 +1435,7 @@ pass3_resolve(opts *opts)
 		fprintf(stderr,
 "There are %d pending renames which need to be resolved before the conflicts\n\
 can be resolved.  Please rerun resolve and fix these first.\n", n);
-		freeStuff(opts);
-		exit(1);
+		resolve_cleanup(opts, 0);
 	}
 
 	/*
@@ -1458,8 +1448,7 @@ can be resolved.  Please rerun resolve and fix these first.\n", n);
 	 */
 	unless (p = popen("bk sfiles .", "r")) {
 		perror("popen of sfiles");
-		freeStuff(opts);
-		exit(1);
+		resolve_cleanup(opts, 0);
 	}
 	while (fnext(buf, p)) {
 		char	*t = strrchr(buf, '/');
@@ -1506,16 +1495,14 @@ can be resolved.  Please rerun resolve and fix these first.\n", n);
 
 	if (opts->errors) {
 err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
-		freeStuff(opts);
-		exit(1);
+		resolve_cleanup(opts, 0);
 	}
 
 	if (opts->hadConflicts) {
 		fprintf(stderr,
 		    "resolve: %d unresolved conflicts, nothing is applied.\n",
 		    opts->hadConflicts);
-		freeStuff(opts);
-		exit(1);
+		resolve_cleanup(opts, 0);
 	}
 
 	/*
@@ -1549,8 +1536,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	 */
 	unless (p = popen("bk sfiles .", "r")) {
 		perror("popen of sfiles");
-		freeStuff(opts);
-		exit(1);
+		resolve_cleanup(opts, 0);
 	}
 	while (fnext(buf, p)) {
 		char	*t = strrchr(buf, '/');
@@ -1606,14 +1592,12 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	unless (opts->textOnly) {
 		if (sys("bk", "citool", "-R", SYS)) {
 			syserr("failed, aborting.\n");
-			freeStuff(opts);
-			exit(1);
+			resolve_cleanup(opts, 0);
 		}
 		if (pending() || pendingEdits()) {
 			fprintf(stderr,
 			    "Failed to check in/commit all files, aborting.\n");
-			freeStuff(opts);
-			exit(1);
+			resolve_cleanup(opts, 0);
 		}
 		return (0);
 	}
@@ -1626,8 +1610,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	checkins(opts, 0);
 	if (opts->errors) {
 		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
-		freeStuff(opts);
-		exit(1);
+		resolve_cleanup(opts, 0);
 	}
 
 	if (pending(0)) {
@@ -1655,8 +1638,7 @@ do_delta(opts *opts, sccs *s, char *comment)
 	sccs_restart(s);
 	if (sccs_delta(s, flags, d, 0, 0, 0)) {
 		fprintf(stderr, "Delta of %s failed\n", s->gfile);
-		freeStuff(opts);
-		exit(1);
+		resolve_cleanup(opts, 0);
 	}
 }
 
@@ -1669,8 +1651,7 @@ checkins(opts *opts, char *comment)
 
 	unless (p = popen("bk sfiles -c", "r")) {
 		perror("popen of find");
-		freeStuff(opts);
-		exit(1);
+		resolve_cleanup(opts, 0);
 	}
 	while (fnext(buf, p)) {
 		chop(buf);
@@ -2023,8 +2004,7 @@ commit(opts *opts)
 	unless (ok_commit(logging(0, 0, 0), 1)) {
 		fprintf(stderr,
 		   "Commit aborted because of licensing, no changes applied\n");
-		freeStuff(opts);
-		exit(1);
+		resolve_cleanup(opts, 0);
 	}
 
 	cmds[i = 0] = "bk";
@@ -2046,8 +2026,7 @@ commit(opts *opts)
 	}
 	if (cmt) free(cmt);
 	fprintf(stderr, "Commit aborted, no changes applied.\n");
-	freeStuff(opts);
-	exit(1);
+	resolve_cleanup(opts, 0);
 }
 
 private void
@@ -2057,24 +2036,17 @@ unfinished(opts *opts)
 	int	n = 0;
 	char	buf[MAXPATH];
 
-	if (pendingRenames()) {
-		freeStuff(opts);
-		exit(1);
-	}
+	if (pendingRenames()) resolve_cleanup(opts, 0);
 	unless (p = popen("bk _find . -name '[mr].*'", "r")) {
 		perror("popen of find");
-		freeStuff(opts);
-		exit(1);
+		resolve_cleanup(opts, 0);
 	}
 	while (fnext(buf, p)) {
 		fprintf(stderr, "Pending: %s", buf);
 		n++;
 	}
 	pclose(p);
-	if (n) {
-		freeStuff(opts);
-		exit(1);
-	}
+	if (n) resolve_cleanup(opts, 0);
 }
 
 private int
@@ -2156,9 +2128,8 @@ pass4_apply(opts *opts)
 	if (system(key) || !(f = fopen(TODO, "r+")) || !save) {
 		fprintf(stderr, "Unable to create|open " TODO);
 		fclose(save);
-		freeStuff(opts);
 		mdbm_close(permDB);
-		exit(1);
+		resolve_cleanup(opts, 0);
 	}
 	while (fnext(buf, f)) {
 		chop(buf);
@@ -2171,8 +2142,7 @@ pass4_apply(opts *opts)
 			    "resolve: can't init %s - abort.\n", buf);
 			fclose(save);
 			fprintf(stderr, "resolve: no files were applied.\n");
-			freeStuff(opts);
-			exit(1);
+			resolve_cleanup(opts, 0);
 		}
 #define	F ADMIN_FORMAT|ADMIN_TIME|ADMIN_BK
 		if (sccs_admin(r, 0, SILENT|F, 0, 0, 0, 0, 0, 0, 0, 0)) {
@@ -2181,8 +2151,7 @@ pass4_apply(opts *opts)
 			fprintf(stderr, "resolve: no files were applied.\n");
 			fclose(save);
 			mdbm_close(permDB);
-			freeStuff(opts);
-			exit(1);
+			resolve_cleanup(opts, 0);
 		}
 		if (writeCheck(r, permDB) && first) {
 			first = 0;
@@ -2199,8 +2168,7 @@ pass4_apply(opts *opts)
 				    "\nWill not overwrite edited %s\n",
 				    l->gfile);
 				fclose(save); 
-				freeStuff(opts);
-				exit(1);
+				resolve_cleanup(opts, 0);
 			}
 			fprintf(save, "%s\n", l->sfile);
 			sccs_free(l);
@@ -2211,8 +2179,7 @@ pass4_apply(opts *opts)
 
 	if (eperm) {
 		getMsg("write_perms", 0, 0, stderr);
-		freeStuff(opts);
-		exit(1);
+		resolve_cleanup(opts, 0);
 	}
 
 	/*
@@ -2225,8 +2192,7 @@ pass4_apply(opts *opts)
 			    "Unable to create backup %s from %s\n",
 			    BACKUP_SFIO, BACKUP_LIST);
 			fclose(save);
-			freeStuff(opts);
-			exit(1);
+			resolve_cleanup(opts, 0);
 		}
 		save = fopen(BACKUP_LIST, "rt");
 		assert(save);
@@ -2243,8 +2209,7 @@ pass4_apply(opts *opts)
 	 */
 	unless (save = fopen(APPLIED, "w+")) {
 		restore(opts);
-		freeStuff(opts);
-		exit(1);
+		resolve_cleanup(opts, 0);
 	}
 	fflush(f);
 	rewind(f);
@@ -2259,8 +2224,7 @@ pass4_apply(opts *opts)
 			    &buf[offset]);
 			unapply(save);
 			restore(opts);
-			freeStuff(opts);
-			exit(1);
+			resolve_cleanup(opts, 0);
 		}
 		if (opts->log) {
 			fprintf(stdlog, "copy(%s, %s)\n", buf, &buf[offset]);
@@ -2271,8 +2235,7 @@ pass4_apply(opts *opts)
 			    "copy(%s, %s) failed\n", buf, &buf[offset]);
 			unapply(save);
 			restore(opts);
-			freeStuff(opts);
-			exit(1);
+			resolve_cleanup(opts, 0);
 		} else {
 			opts->applied++;
 		}
@@ -2321,7 +2284,7 @@ Got:\n\
 			}
 			unapply(save);
 			restore(opts);
-			exit(1);
+			resolve_cleanup(opts, 0);
 		}
 	}
 	fclose(f);
@@ -2341,8 +2304,7 @@ Got:\n\
 		system("bk clean BitKeeper/etc");
 		unapply(save);
 		restore(opts);
-		freeStuff(opts);
-		exit(1);
+		resolve_cleanup(opts, 0);
 	}
 	fclose(save);
 	unlink(BACKUP_LIST);
@@ -2504,6 +2466,48 @@ csets_in(opts *opts)
 	if (opts->log) fprintf(stdlog, "update(%s, %s)\n", buf, CSETS_IN);
 }
 
+/*
+ * Move the RESYNC dir off to the side and try an undo if we can.
+ */
+private void
+log_cleanup()
+{
+	int	i = 0;
+	FILE	*f;
+	char	buf[MAXPATH];
+	char	subject[MAXPATH*2];
+	struct  tm *tm;
+	char    save[100];
+	time_t  now = time(0);
+
+	do {
+		sprintf(save, "RESYNC-%u", now);
+	} while (exists(save) && (++i < 100));
+	if (rename("RESYNC", save)) return;
+	unless (f = fopen(LOG_KEYS, "r")) return;
+	strcpy(buf, "-a");
+	while (fgets(&buf[2], sizeof(buf) - 2, f)) {
+		chop(&buf[2]);
+		if (sys("bk", "undo", "-f", buf, SYS)) {
+			sprintf(subject, "LOGGING: undo -f %s in ", buf);
+			getcwd(buf, sizeof(buf));
+			strcat(subject, buf);
+			strcat(subject, " failed; left ");
+			strcat(subject, save);
+			mail("dev@bitmover.com", subject, LOG_KEYS);
+		} else {
+			sprintf(subject, "LOGGING: undo -f %s in ", buf);
+			getcwd(buf, sizeof(buf));
+			strcat(subject, buf);
+			strcat(subject, " worked; left ");
+			strcat(subject, save);
+			mail("dev@bitmover.com", subject, LOG_KEYS);
+		}
+	}
+	fclose(f);
+	unlink(LOG_KEYS);
+}
+
 void
 resolve_cleanup(opts *opts, int what)
 {
@@ -2539,7 +2543,12 @@ resolve_cleanup(opts *opts, int what)
 		assert(exists("RESYNC"));
 		sys(RM, "-rf", "RESYNC", SYS);
 	} else {
-		fprintf(stderr, "resolve: RESYNC directory left intact.\n");
+		if (exists(LOG_TREE)) {
+			log_cleanup();
+		} else {
+			fprintf(stderr,
+			    "resolve: RESYNC directory left intact.\n");
+		}
 	}
 	
 	if (what & CLEAN_PENDING) {

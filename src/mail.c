@@ -62,7 +62,7 @@ lconfig_main(int ac, char **av)
 			fprintf(stderr,
 			    "skipping config log for small single user tree\n");
 		}
-		updLogMarker(1);
+		updLogMarker(1, debug);
 		return (1);
 	}
 
@@ -100,7 +100,7 @@ lconfig_main(int ac, char **av)
 	unless (rc) rc = get_ok(r, 0, 0);
 	disconnect(r, 2);
 	unlink(config_log);
-	updLogMarker(1);
+	updLogMarker(1, debug);
 	return (rc);
 }
 

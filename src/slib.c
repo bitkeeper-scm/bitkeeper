@@ -108,6 +108,7 @@ isreg(char *s)
 int isSymlnk(char *s)
 {
 	struct	stat sbuf;
+
 	if (lstat(s, &sbuf) == -1) return 0;
 	return (S_ISLNK(sbuf.st_mode));
 }
@@ -115,7 +116,11 @@ int isSymlnk(char *s)
 inline int
 writable(char *s)
 {
-	return (access(s, W_OK) == 0);
+	struct	stat sbuf;
+
+	if (lstat(s, &sbuf) == -1) return 0;
+	if (S_ISLNK(sbuf.st_mode)) return (1);
+	return ((sbuf.st_mode & 0222) != 0);
 }
 
 off_t
@@ -1311,7 +1316,7 @@ basenm(char *s)
 }
 
 /*
- * clean up ".." and "." in a path name
+ * clean up "..", "." and "//" in a path name
  */
 void
 cleanPath(char *path, char cleanPath[])
@@ -1325,10 +1330,15 @@ cleanPath(char *path, char cleanPath[])
 
 	/* for win32 path */
 	top = (path[1] == ':')  ? top = &path[2] : path;
-	/* trim trailing '/' */
-	if ((*p == '/') && (p != top))  p--;
+
+	/* trim trailing slash(s) */
+	while ((p >= top) && (*p == '/')) p--;
+
 	while (p >= top) { 	/* scan backward */
-		if (p == &top[1] && (p[-1] == '.') && (p[0] == '.')) {
+		if ((p == top) && (p[0] == '.')) {
+			p = &p[-1];		/* process "." in the front */
+			break;
+		} else if (p == &top[1] && (p[-1] == '.') && (p[0] == '.')) {
 			dotCnt++; p = &p[-2];	/* process ".." in the front */
 			break;
 		} else if ((p >= &top[2]) && (p[-2] == '/') &&
@@ -1337,26 +1347,25 @@ cleanPath(char *path, char cleanPath[])
 		} else if ((p >= &top[1]) && (p[-1] == '/') &&
 		    	 (p[0] == '.')) {
 			p = &p[-2];		/* process "/." */
-		} else if ((p == top) && (p[0] == '.')) {
-			p = &p[-1];		/* process "." */
 		} else {
 			if (dotCnt) {
 				/* skip dir impacted by ".." */
 				while ((p >= top) && (*p != '/')) p--;
-				p--; dotCnt--;
+				dotCnt--;
 			} else {
 				/* copy regular directory */
 				unless (isEmpty(buf, r)) *r-- = '/';
 				while ((p >= top) && (*p != '/')) *r-- = *p--;
-				p--;
 			}
 		}
+		/* skip "/", "//" etc.. */
+		while ((p >= top) && (*p == '/')) p--;
 	}
 
-	if (!isEmpty(buf, r) && (top[0] != '/')) {
+	if (isEmpty(buf, r) || (top[0] != '/')) {
 		/* put back any ".." with no known parent directory  */
 		while (dotCnt--) {
-			unless (isEmpty(buf, r)) *r-- = '/';
+			if (!isEmpty(buf, r) && (r[1] != '/')) *r-- = '/';
 			*r-- = '.'; *r-- = '.';
 		}
 	}
@@ -2869,14 +2878,14 @@ sccs_tagConflicts(sccs *s)
 	unless (db) db = mdbm_mem();
 	sccs_tagcolor(s, l1);
 	for (sy1 = s->symbols; sy1; sy1 = sy1->next) {
-		unless (sy1->metad->flags & D_VISITED) continue;
-		sy1->metad->flags &= ~D_VISITED;
+		unless (sy1->metad->flags & D_RED) continue;
+		sy1->metad->flags &= ~D_RED;
 		sy1->left = 1;
 	}
 	sccs_tagcolor(s, l2);
 	for (sy1 = s->symbols; sy1; sy1 = sy1->next) {
-		unless (sy1->metad->flags & D_VISITED) continue;
-		sy1->metad->flags &= ~D_VISITED;
+		unless (sy1->metad->flags & D_RED) continue;
+		sy1->metad->flags &= ~D_RED;
 		sy1->right = 1;
 	}
 
@@ -2909,6 +2918,40 @@ sccs_tagConflicts(sccs *s)
 	return (db);
 }
 
+private delta *
+tagwalk(sccs *s, delta *d)
+{
+	unless (d) return ((delta*)1);	/* this is an error case */
+	if (d->ptag) if (tagwalk(s, sfind(s, d->ptag))) return (d);
+	if (d->mtag) if (tagwalk(s, sfind(s, d->mtag))) return (d);
+	return (0);
+}
+
+private int
+checktags(sccs *s, delta *leaf, int flags)
+{
+	delta	*d, *e;
+
+	unless (leaf) return(0);
+	unless (d = tagwalk(s, leaf)) return (0);
+	if (d == (delta*)1) {
+		verbose((stderr,
+		    "Corrupted tag graph in %s\n", s->gfile));
+		return (1);
+	}
+	unless (e = sfind(s, d->ptag)) {
+		verbose((stderr,
+		    "Cannot find serial %u, tag parent for %s:%u, in %s\n",
+		    d->ptag, d->rev, d->serial, s->gfile));
+	} else {
+		assert(d->mtag);
+		verbose((stderr,
+		    "Cannot find serial %u, tag parent for %s:%u, in %s\n",
+		    d->mtag, d->rev, d->serial, s->gfile));
+	}
+	return (1);
+}
+
 /*
  * Make sure that the tag graph has one open tip per lod.
  */
@@ -2922,7 +2965,9 @@ checkSymGraph(sccs *s, int flags)
 	if (s->state & S_LOGS_ONLY) return (0);
 
 	if (tagleaves(s, &l1, &l2)) return (128);
+	if (checktags(s, l1, flags) || checktags(s, l2, flags)) return (128);
 	unless (l1 && l2) return (0);
+	if ((l1->flags & D_GONE) || (l2->flags & D_GONE)) return (0);
 	for (s1 = s->symbols; s1; s1 = s1->next) {
 		if (s1->metad == l1) break;
 	}
@@ -3093,7 +3138,7 @@ mkgraph(sccs *s, int flags)
 	line++;
 	debug((stderr, "mkgraph(%s)\n", s->sfile));
 	for (;;) {
-nextdelta:	unless (buf = fastnext(s)) {
+		unless (buf = fastnext(s)) {
 bad:
 			fprintf(stderr,
 			    "%s: bad delta on line %d, expected `%s'",
@@ -3215,7 +3260,7 @@ bad:
 				d->ignore = getserlist(s, 1, &buf[3], 0);
 				break;
 			    case 'e':
-				goto nextdelta;
+				goto done;
 			    case 'm':	/* save MR's and pass them through */
 				d->mr = addLine(d->mr, strnonldup(buf));
 				break;
@@ -3255,7 +3300,10 @@ comment:		switch (buf[1]) {
 				goto bad;
 			}
 		}
-done:		;	/* CSTYLED */
+done:		if ((s->state & S_CSET) && (d->type == 'R') &&
+		    !d->symGraph && !(d->flags & D_SYMBOLS)) {
+			d->flags |= D_GONE;
+		}
 	}
 
 	/*
@@ -3350,7 +3398,6 @@ misc(sccs *s)
 			if (bits & X_BITKEEPER) s->state |= S_BITKEEPER;
 			if (bits & X_CSETMARKED) s->state |= S_CSETMARKED;
 			if (bits & X_LOGS_ONLY) s->state |= S_LOGS_ONLY;
-			s->state |= xflags2state(bits);
 			continue;
 		} else if (strneq(buf, "\001f &", 4) ||
 		    strneq(buf, "\001f z _", 6)) {	/* XXX - obsolete */
@@ -3979,10 +4026,19 @@ sccs_init(char *name, u32 flags, project *proj)
 	mkgraph(s, flags);
 	debug((stderr, "mkgraph found %d deltas\n", s->numdeltas));
 	if (s->tree) {
+		u32 bits;
+
 		if (misc(s)) {
 			sccs_free(s);
 			return (0);
 		}
+
+		/*
+		 * get the xflags from the delta graph
+		 * instaed of the sccs flag section
+		 */
+		bits = sccs_getxflags(sccs_top(s));
+		s->state |= xflags2state(bits);
 	}
 
 	/*
@@ -6916,8 +6972,22 @@ delta_table(sccs *s, FILE *out, int willfix)
 	char	*p, *t;
 	int	bits = 0;
 	int	gonechkd = 0;
-	int	prune_tags = (s->state & S_CSET) && getenv("_BK_PRUNE_TAGS");
+	int	strip_tags = (s->state & S_CSET) && getenv("_BK_STRIPTAGS");
+	int	version = SCCS_VERSION;
 
+	if (getenv("_BK_SCCS_VERSION")) {
+		version = atoi(getenv("_BK_SCCS_VERSION"));
+		switch (version) {
+		    case SCCS_VERSION:
+			break;
+		    case SCCS_VERSION_COMPAT:
+			strip_tags = 1;
+			break;
+		    default:
+			fprintf(stderr,
+			    "Bad version %s, defaulting to current\n", version);
+		}
+	}
 	assert((s->state & S_READ_ONLY) == 0);
 	assert(s->state & S_ZFILE);
 	fputs("\001hXXXXX\n", out);
@@ -6929,6 +6999,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			assert(streq(s->table->rev, "1.0"));
 			break;
 		}
+		if (strip_tags && (d->type == 'R')) d->flags |= D_GONE;
 		if (d->flags & D_GONE) {
 			/* This delta has been deleted - it is not to be
 			 * written out at all.
@@ -7136,15 +7207,18 @@ delta_table(sccs *s, FILE *out, int willfix)
 
 			for (sym = s->symbols; sym; sym = sym->next) {
 				unless (sym->metad == d) continue;
-				p = fmts(buf, "\001cS");
-				p = fmts(p, sym->name);
-				*p++ = '\n';
-				*p   = '\0';
-				fputmeta(s, buf, out);
+				if (!strip_tags || 
+				    streq(KEY_FORMAT2, sym->name)) {
+					p = fmts(buf, "\001cS");
+					p = fmts(p, sym->name);
+					*p++ = '\n';
+					*p   = '\0';
+					fputmeta(s, buf, out);
+				}
 			}
 		}
-		/* automagically prune tag serials from non-csetfiles */
-		if (!prune_tags && d->symGraph && (s->state & S_CSET)) {
+		/* automagically strip tag serials from non-csetfiles */
+		if (!strip_tags && d->symGraph && (s->state & S_CSET)) {
 			p = fmts(buf, "\001cS");
 			if (d->ptag) {
 				p = fmtd(p, d->ptag);
@@ -7178,7 +7252,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			}
 		}
 		if (!d->next) {
-			sprintf(buf, "\001cV%u\n", SCCS_VERSION);
+			sprintf(buf, "\001cV%u\n", version);
 			fputmeta(s, buf, out);
 		}
 		if (d->flags & D_XFLAGS) {
@@ -8653,38 +8727,13 @@ sccs_isleaf(sccs *s, delta *d)
 }
 
 /*
- * Verify xflag implied by s->state is the same as 
- * the xflags implied by the top-of-trunk delta.
- */
-private int
-check_xflags(sccs *s, int flags)
-{
-	delta	*d;
-	int x1, x2;
-
-	d = sccs_top(s);
-	if (d) {
-		x1 = state2xflags(s->state) & X_XFLAGS;
-		x2 = sccs_getxflags(d) & X_XFLAGS;
-		if (x2 && (x1 != x2)) {
-			verbose((stderr,
-				"%s: inconsistent xflags: "
-				"s->state => %x, d->xflags => %x\n",
-				s->sfile, x1, x2));
-			return (1); /* failed */
-		}
-	}
-	return (0); /* ok */
-}
-
-/*
  * Check open branch
  */
 private int
 checkOpenBranch(sccs *s, int flags)
 {
 	delta	*d;
-	int	error =0, tips = 0;
+	int	ret = 0, tips = 0;
 	u8	*lodmap = 0;
 	ser_t	next;
 
@@ -8698,12 +8747,27 @@ checkOpenBranch(sccs *s, int flags)
 	 */
 	unless (lodmap = calloc(next, sizeof(lodmap))) {
 		perror("calloc lodmap");
-		return (1);
+		return (ret);
 	}
 
 	for (d = s->table; d; d = d->next) {
-		if (d->flags & D_GONE) continue;
+		/*
+		 * This order is important:
+		 * Skip 1.0,
+		 * check for bad R delta even if it is marked gone so we warn,
+		 * then skip the rest if they are GONE.
+		 */
 		if (streq(d->rev, "1.0")) continue;
+		if (s->state & S_CSET) {
+			if (!d->added && !d->deleted && !d->same &&
+			    !(d->flags & D_SYMBOLS) && !d->symGraph) {
+				verbose((stderr,
+				    "%s: illegal removed delta %s\n",
+				    s->sfile, d->rev));
+				ret = 1;
+			}
+		}
+		if (d->flags & D_GONE) continue;
 		unless (isleaf(s, d)) continue;
 		unless (lodmap[d->r[0]]++) continue; /* first leaf OK */
 		tips++;
@@ -8711,7 +8775,7 @@ checkOpenBranch(sccs *s, int flags)
 
 	unless (tips) {
 		if (lodmap) free(lodmap);
-		return (0);
+		return (ret);
 	}
 
 	for (d = s->table; d; d = d->next) {
@@ -8722,7 +8786,7 @@ checkOpenBranch(sccs *s, int flags)
 		verbose((stderr, "%s: unmerged leaf %s\n", s->sfile, d->rev));
 	}
 	if (lodmap) free(lodmap);
-	return (1);
+	return (ret);
 }
 
 
@@ -8736,7 +8800,6 @@ checkInvariants(sccs *s, int flags)
 {
 	int	error = 0;
 
-	error |= check_xflags(s, flags);
 	error |= checkOpenBranch(s, flags);
 	error |= checkSymGraph(s, flags);
 	return (error);
@@ -11461,14 +11524,7 @@ out:
 	s->numdeltas++;
 
 	EACH (syms) {
-		if (!(flags & DELTA_PATCH) && dupSym(s->symbols, syms[i], 0)) {
-			fprintf(stderr,
-			    "delta: symbol %s exists in %s\n",
-			    syms[i], s->sfile);
-			fprintf(stderr, "use admin to override old value\n");
-		} else {
-			addsym(s, n, n, !(flags&DELTA_PATCH), n->rev, syms[i]);
-		}
+		addsym(s, n, n, !(flags&DELTA_PATCH), n->rev, syms[i]);
 	}
 
 	/*
@@ -11959,11 +12015,11 @@ done:	free_pfile(&pf);
 }
 
 private void
-show_d(delta *d, FILE *out, char *vbuf, char *format, int num)
+show_d(sccs *s, delta *d, FILE *out, char *vbuf, char *format, int num)
 {
 	if (out) {
 		fprintf(out, format, num);
-		d->flags |= D_SET; /* for PRS_LF or PRS_LFLF */
+		s->prs_output = 1;
 	}
 	if (vbuf) {
 		char	dbuf[512];
@@ -11976,11 +12032,11 @@ show_d(delta *d, FILE *out, char *vbuf, char *format, int num)
 }
 
 private void
-show_s(delta *d, FILE *out, char *vbuf, char *str) {
+show_s(sccs *s, delta *d, FILE *out, char *vbuf, char *str) {
 
 	if (out) {
 		fputs(str, out);
-		d->flags |= D_SET; /* for PRS_LF or PRS_LFLF */
+		s->prs_output = 1;
 	}
 	if (vbuf) {
 		strcat(vbuf, str);
@@ -12012,11 +12068,11 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 {
 	char	*p, *q;
 #define	KW(x)	kw2val(out, vbuf, "", 0, x, "", 0, s, d)
-#define	fc(c)	show_d(d, out, vbuf, "%c", c)
-#define	fd(n)	show_d(d, out, vbuf, "%d", n)
-#define	fx(n)	show_d(d, out, vbuf, "0x%x", n)
-#define	f5d(n)	show_d(d, out, vbuf, "%05d", n)
-#define	fs(str)	show_s(d, out, vbuf, str)
+#define	fc(c)	show_d(s, d, out, vbuf, "%c", c)
+#define	fd(n)	show_d(s, d, out, vbuf, "%d", n)
+#define	fx(n)	show_d(s, d, out, vbuf, "0x%x", n)
+#define	f5d(n)	show_d(s, d, out, vbuf, "%05d", n)
+#define	fs(str)	show_s(s, d, out, vbuf, str)
 
 	if (streq(kw, "Dt")) {
 		/* :Dt: = :DT::I::D::T::P::DS::DP: */
@@ -12175,7 +12231,11 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 
 	if (streq(kw, "DT")) {
 		/* delta type */
-		fc(d->type);
+		if ((d->type == 'R') && d->symGraph) {
+			fc('T');
+		} else {
+			fc(d->type);
+		}
 		return (strVal);
 	}
 
@@ -12782,6 +12842,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		int	j = 0;
 
 		unless (d && (d->flags & D_SYMBOLS)) return (nullVal);
+		while (d->type == 'R') d = d->parent;
 		for (sym = s->symbols; sym; sym = sym->next) {
 			unless (sym->d == d) continue;
 			if (!plen && !slen && j++) fc(' ');
@@ -13088,6 +13149,30 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 			return (strVal);
 		}
 		return (nullVal);
+	}
+
+	if (streq(kw, "KIDS")) {
+		int	space = 0;
+
+		if (d->flags & D_MERGED) {
+			delta	*m;
+
+			for (m = s->table; m; m = m->next) {
+				if (m->merge == d->serial) {
+					if (space) fs(" ");
+					fs(m->rev);
+					space = 1;
+				}
+			}
+		}
+		unless (d = d->kid) return (space ? strVal : nullVal);
+		if (space) fs(" ");
+		fs(d->rev);
+		while (d = d->siblings) {
+			fs(" ");
+			fs(d->rev);
+		}
+		return (strVal);
 	}
 
 	if (streq(kw, "TIP")) {
@@ -13419,13 +13504,9 @@ sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out)
 	if (d->type != 'D' && !(flags & PRS_ALL)) return (0);
 	if ((s->state & S_SET) && !(d->flags & D_SET)) return (0);
 	end = &dspec[strlen(dspec) - 1];
-	d->flags &= ~D_SET; /* clear the D_SET flag */
+	s->prs_output = 0;
 	fprintDelta(out, NULL, dspec, end, s, d);
-	if (d->flags&D_SET) { /* re-check D_SET after fprinDelta return */
-		if (flags&PRS_LFLF) fputc('\n', out);
-		return (1);
-	}
-	d->flags |= D_SET; /* restore old D_SET value, just in case */
+	if (s->prs_output && (flags & PRS_LF)) fputc('\n', out);
 	return (0);
 }
 
@@ -13525,12 +13606,12 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 	symbol	*sym;
 	char	type;
 
-	if (!d) return;
+	if (!d) return (0);
 	type = d->type;
-	if ((d->type == 'R') &&
-	    d->parent && streq(d->rev, d->parent->rev)) {
+	if ((d->type == 'R') && d->parent && streq(d->rev, d->parent->rev)) {
 	    	type = 'M';
 	}
+
 	fprintf(out, "%c %s %s%s %s%s%s +%u -%u\n",
 	    type, d->rev, d->sdate,
 	    d->zone ? d->zone : "",
@@ -13586,6 +13667,12 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 	if (d->random) fprintf(out, "R %s\n", d->random);
 	if ((d->flags & D_SYMBOLS) || d->symGraph) {
 		if ((flags & PRS_COMPAT) && d->symGraph) {
+			if (d->type == 'D') {
+				fprintf(stderr,
+				    "This tree may not be sent in " 
+				    "compatibility mode due to tags.\n");
+				return (1);
+			}
 			fprintf(stderr,
 			    "Warning: not sending new tags in compat mode\n");
 			goto text;
@@ -13640,35 +13727,25 @@ text:	if (d->flags & D_TEXT) {
 	return (0);
 }
 
-private int
+private void
 prs_reverse(sccs *s, delta *d, int flags, char *dspec, FILE *out)
 {
-	int non_empty = 0;
-
-	if (d->next) non_empty = prs_reverse(s, d->next, flags, dspec, out);
-	if (d->flags & D_SET) {
-		non_empty |= sccs_prsdelta(s, d, flags, dspec, out);
-	}
-	return (non_empty);
+	if (d->next) prs_reverse(s, d->next, flags, dspec, out);
+	if (d->flags & D_SET) sccs_prsdelta(s, d, flags, dspec, out);
 }
 
-private int
+private void
 prs_forward(sccs *s, delta *d, int flags, char *dspec, FILE *out)
 {
-	int non_empty = 0;
 	for (; d; d = d->next) {
-		if (d->flags & D_SET) {
-			non_empty |= sccs_prsdelta(s, d, flags, dspec, out);
-		}
+		if (d->flags & D_SET) sccs_prsdelta(s, d, flags, dspec, out);
 	}
-	return (non_empty);
 }
 
 int
 sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out)
 {
 	delta	*d;
-	int	i;
 
 	if (!dspec) dspec = ":DEFAULT:";
 	GOODSCCS(s);
@@ -13690,12 +13767,10 @@ sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out)
 		}
 	}
 	if (reverse) {
-		 i = prs_reverse(s, s->table, flags, dspec, out);
+		 prs_reverse(s, s->table, flags, dspec, out);
 	} else {
-		 i = prs_forward(s, s->table, flags, dspec, out);
+		 prs_forward(s, s->table, flags, dspec, out);
 	}
-	/* i is ture if there is at least one non-empty record */
-	if (i && (flags& PRS_LF)) putc('\n', out);
 	return (0);
 }
 
@@ -13890,10 +13965,10 @@ gca(delta *left, delta *right)
 	 * Clear the visited flag up to the root via one path,
 	 * set it via the other path, then go look for it.
 	 */
-	for (d = left; d; d = d->parent) d->flags &= ~D_VISITED;
-	for (d = right; d; d = d->parent) d->flags |= D_VISITED;
+	for (d = left; d; d = d->parent) d->flags &= ~D_RED;
+	for (d = right; d; d = d->parent) d->flags |= D_RED;
 	for (d = left; d; d = d->parent) {
-		if (d->flags & D_VISITED) return (d);
+		if (d->flags & D_RED) return (d);
 	}
 	return (0);
 }
@@ -14688,11 +14763,11 @@ sccs_ids(sccs *s, u32 flags, FILE *out)
 void
 sccs_color(sccs *s, delta *d)
 {
-        unless (d && !(d->flags & D_VISITED)) return;
+        unless (d && !(d->flags & D_RED)) return;
         assert(d->type == 'D');
         sccs_color(s, d->parent);
         if (d->merge) sccs_color(s, sfind(s, d->merge));
-        d->flags |= D_VISITED;
+        d->flags |= D_RED;
 }                 
 
 #ifdef	DEBUG

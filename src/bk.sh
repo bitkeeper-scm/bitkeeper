@@ -28,10 +28,89 @@ _inode() {		# /* undoc? 2.0 */
 	bk prs -hr+ -d':ROOTKEY:\n' "$@"
 }
 
-# This removes the tag graph
-_fixtags() {		# /* undoc 2.0 */
+# This removes the tag graph.  Use with care.
+_striptags() {
 	__cd2root
-	_BK_PRUNE_TAGS=Y bk admin -z ChangeSet
+	_BK_STRIPTAGS=Y bk admin -z ChangeSet
+}
+
+# Hard link based clone.
+# Usage: lclone from [to]
+_lclone() {
+	HERE=`pwd`
+	if [ "X$1" = X ]
+	then	echo Usage: $0 from to
+		exit 1
+	else	cd $1 || exit 1
+		FROM=`pwd`
+		cd $HERE
+	fi
+	if [ "X$2" = X ]
+	then	TO=`basename $FROM`
+	else	if [ "X$3" != X ]; then	echo Usage: $0 from to; exit 1; fi
+		TO="$2"
+	fi
+	test -d "$TO" && { echo $2 exists; exit 1; }
+	cd $FROM
+	echo Finding SCCS directories...
+	bk sfiles -d > /tmp/dirs$$
+	cd $HERE
+	mkdir $TO
+	cd $TO
+	while read x
+	do	echo Linking $x ...
+		mkdir -p $x/SCCS
+		ln $FROM/$x/SCCS/s.* $x/SCCS
+	done < /tmp/dirs$$
+	bk sane
+	echo Looking for and removing any uncommitted deltas
+	bk sfiles -pA | bk stripdel -
+	echo Running a sanity check
+	bk -r check -ac || {
+		echo lclone failed
+		exit 1
+	}
+	bk parent $FROM
+	rm -f /tmp/dir$$
+	exit 0
+}
+
+# Show what would be sent
+_keysync() {
+	if [ "X$1" = X -o "X$2" = X -o "X$3" != X ]
+	then	echo usage root1 root2
+		exit 1
+	fi
+	test -d "$1" -a -d "$2" || {
+		echo usage root1 root2
+		exit 1
+	}
+	HERE=`pwd`
+	__keysync "$1" "$2" > /tmp/sync$$
+	__keysync "$2" "$1" >> /tmp/sync$$
+	if [ X$PAGER != X ]
+	then	$PAGER /tmp/sync$$
+	else	more /tmp/sync$$
+	fi
+	/bin/rm -f /tmp/sync$$
+}
+
+__keysync() {
+	cd "$1" >/dev/null
+	bk _probekey > /tmp/sync1$$
+	cd $HERE >/dev/null
+	cd "$2" >/dev/null
+	bk _listkey < /tmp/sync1$$ > /tmp/sync2$$
+	cd $HERE >/dev/null
+	cd $1 >/dev/null
+	bk _prunekey < /tmp/sync2$$ > /tmp/sync3$$
+	if [ -s /tmp/sync3$$ ]
+	then	echo ===== Found in $1 but not in $2 =======
+		cat /tmp/sync3$$
+	else	echo ===== $2 is a superset of $1 =====
+		echo ""
+	fi
+	/bin/rm -f /tmp/sync[123]$$
 }
 
 # For each file which is modified,

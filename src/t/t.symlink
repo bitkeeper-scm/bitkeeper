@@ -519,3 +519,16 @@ then	echo bad link contents: `bk get -pq SL`
 fi
 echo OK
 
+echo $N Make sure edited symlinks do not fail checks ................$NL
+cd $HERE
+rm -rf SL copy
+tar xf SAVE2
+cd copy
+bk -r edit $Q
+bk -r check -a 2>OUT || {
+	echo check failed
+	cat OUT
+	exit 1
+}
+echo OK
+

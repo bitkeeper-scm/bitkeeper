@@ -189,10 +189,10 @@ cset_boundries(sccs *s, char *rev)
 		fprintf(stderr, "No delta %s in %s\n", rev, s->gfile);
 		return (1);
 	}
-	d->flags |= D_VISITED;
+	d->flags |= D_RED;
 	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_CSET) s->rstop = d;
-		if (d->flags & D_VISITED) break;
+		if (d->flags & D_RED) break;
 	}
 	unless (d) {
 		fprintf(stderr, "No csets in %s?\n", s->gfile);

@@ -61,11 +61,10 @@ usage:			system("bk help -s push");
 	}
 
 	loadNetLib();
+	r = remote_parse(av[optind], 0);
+	unless (r) goto usage;
+	if (opts.debug) r->trace = 1;
 	for (;;) {
-		r = remote_parse(av[optind], 0);
-		unless (r) goto usage;
-		if (opts.debug) r->trace = 1;
-
 		rc = push(av, opts, r, envVar);
 		if (rc != -2) break; /* -2 means locked */
 		if (try == 0) break;
@@ -81,11 +80,11 @@ usage:			system("bk help -s push");
 			fprintf(stderr,
 				"push: remote locked, trying again...\n");
 		}
-		remote_free(r);
-
+		disconnect(r, 2); /* close fd before we retry */
 		sleep(min((i++ * 2), 10)); /* auto back off */
 	}
 	if (rc == -2) rc = 1; /* if retry failed, reset exit code to 1 */
+	remote_free(r);
 	freeLines(envVar);
 	return (rc);
 }
@@ -170,40 +169,60 @@ log_main(int ac, char **av)
 private void
 unPublish(sccs *s, delta *d)
 {
-	unless (d && !(d->flags & D_VISITED)) return;
+	unless (d && !(d->flags & D_RED)) return;
 	assert(d->type == 'D');
 	unPublish(s, d->parent);
 	if (d->merge) unPublish(s, sfind(s, d->merge));
-	d->flags |= D_VISITED; 
+	d->flags |= D_RED; 
 	d->published = 0;
 }
 
 void
-updLogMarker(int ptype)
+updLogMarker(int ptype, int verbose)
 {
 	sccs	*s;
 	delta	*d;
-	char	s_cset[] = CHANGESET;
+	char	s_cset[] = CHANGESET, rev[MAXREV+1];
+	int	i;
 
-	/*
-	 * LOD Note:
-	 * XXX TODO: We should mark the tip of each lod
-	 */
 	if (s = sccs_init(s_cset, INIT_NOCKSUM, 0)) {
-		d = findrev(s, 0);
-		assert(d);
-		unPublish(s, d);
-		d->published = 1;
-		d->ptype = ptype;
+
+		/*
+		 * Update log marker for each LOD
+		 */
+		for (i = 1; i <= 0xffff; ++i) {
+			sprintf(rev, "%d.1", i);
+			unless (d = findrev(s, rev)) break;
+			while (d->kid && (d->kid->type == 'D')) d = d->kid;
+			unPublish(s, d);
+			d->published = 1;
+			d->ptype = ptype;
+		}
 		sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
 		sccs_free(s);
+		if (verbose) {
+			fprintf(stderr,
+				"Log marker updated: pending count = %d\n",
+				logs_pending(ptype, 0));
+		}
+	} else {
+		if (verbose) {
+			char buf[MAXPATH];
+
+			getcwd(buf, sizeof (buf));
+			fprintf(stderr,
+				"updLogMarker: cannot access %s, pwd=%s\n",
+				s_cset, buf);
+		}
 	}
 }
 
 private int
 needLogMarker(opts opts, remote *r)
 {
-	return (opts.metaOnly && streq(OPENLOG_URL, remote_unparse(r)));
+	return (opts.metaOnly && 
+		(streq(OPENLOG_URL, remote_unparse(r)) ||
+		 streq(OPENLOG_IP, remote_unparse(r))));
 }
 
 private void
@@ -324,7 +343,7 @@ ChangeSet file do not match.  Please check the pathnames and try again.\n");
 			} else {
 				n = 0;
 				for (d = s->table; d; d = d->next) {
-					if (d->flags & D_VISITED) continue;
+					if (d->flags & D_RED) continue;
 					unless (d->type == 'D') continue;
 					n += strlen(d->rev) + 1;
 					fprintf(stderr, "%s", d->rev);
@@ -352,7 +371,9 @@ ChangeSet file do not match.  Please check the pathnames and try again.\n");
 	/*
 	 * if lcsets > 0, we update the log marker in push part 2
 	 */
-	if ((lcsets == 0) && (needLogMarker(opts, r))) updLogMarker(0);
+	if ((lcsets == 0) && (needLogMarker(opts, r))) {
+		updLogMarker(0, opts.debug);
+	}
 	if ((lcsets == 0) || !opts.doit) return (0);
 	if ((rcsets || rtags) && !opts.metaOnly) {
 		return (opts.autopull ? 1 : -1);
@@ -419,7 +440,12 @@ send_end_msg(opts opts, remote *r, char *msg, char *rev_list, char **envVar)
 	f = fopen(msgfile, "wb");
 	assert(f);
 	sendEnv(f, envVar);
-	if (r->path) add_cd_command(f, r);
+
+	/*
+	 * No need to do "cd" again if we have a non-http connection
+	 * becuase we already did a "cd" in pull part 1
+	 */
+	if (r->path && r->httpd) add_cd_command(f, r);
 	fprintf(f, "push_part2");
 	if (gzip) fprintf(f, " -z%d", opts.gzip);
 	if (opts.metaOnly) fprintf(f, " -e");
@@ -454,7 +480,12 @@ send_patch_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
 	f = fopen(msgfile, "wb");
 	assert(f);
 	sendEnv(f, envVar);
-	if (r->path) add_cd_command(f, r);
+
+	/*
+	 * No need to do "cd" again if we have a non-http connection
+	 * becuase we already did a "cd" in pull part 1
+	 */
+	if (r->path && r->httpd) add_cd_command(f, r);
 	fprintf(f, "push_part2");
 	if (gzip) fprintf(f, " -z%d", opts.gzip);
 	if (opts.debug) fprintf(f, " -d");
@@ -601,7 +632,7 @@ push_part2(char **av, opts opts,
 	if (opts.debug) fprintf(stderr, "Remote terminated\n");
 
 	if (opts.metaOnly) {
-		if (needLogMarker(opts, r)) updLogMarker(0);
+		if (needLogMarker(opts, r)) updLogMarker(0, opts.debug);
 	} else {
 		unlink(CSETS_OUT);
 		rename(rev_list, CSETS_OUT);
@@ -680,7 +711,7 @@ listIt(sccs *s, int list)
 	assert(f);
 	for (d = s->table; d; d = d->next) {
 		unless (d->type == 'D') continue;
-		if (d->flags & D_VISITED) continue;
+		if (d->flags & D_RED) continue;
 		fprintf(f, "%s\n", d->rev);
 	}
 	pclose(f);

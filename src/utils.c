@@ -292,6 +292,11 @@ send_msg(remote *r, char *msg, int mlen, int extra, int compress)
 	if (r->httpd) {
 		assert((r->rfd == -1) && (r->wfd == -1));
 		bkd(compress, r);
+		if (r->trace) {
+			fprintf(stderr,
+				"send_msg: r->rfd = %d, r->wfd = %d\n",
+				r->rfd, r->wfd);
+		}
 		if ((r->wfd < 0) && r->trace) {
 			fprintf(stderr,
 				"send_msg: cannot connect to %s:%d\n",
@@ -350,24 +355,19 @@ disconnect(remote *r, int how)
 				shutdown(r->rfd, 0);
 			} else {
 				close(r->rfd);
+				r->rfd = -1;
 			}
-			r->rfd = -1;
 			break;
 	    case 1: 	if (r->wfd == -1) return;
 			if (r->isSocket) {
 				shutdown(r->wfd, 1);
 			} else {
 				close(r->wfd);
+				r->wfd = -1;
 			}
-			r->wfd = -1;
 			break;
-	    case 2:	if (r->rfd == -1) return;
-			if (r->isSocket) {
-				shutdown(r->rfd, 2);
-			} else {
-				close(r->rfd);
-				close(r->wfd);
-			}
+	    case 2:	if (r->rfd >= 0) close(r->rfd);
+			if (r->wfd >= 0) close(r->wfd);
 			r->rfd = r->wfd = -1;
 			break;
 	}

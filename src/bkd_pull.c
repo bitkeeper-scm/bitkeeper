@@ -273,7 +273,7 @@ listIt2(sccs *s, int list)
 	f = popen(cmd, "w");
 	for (d = s->table; d; d = d->next) {
 		unless (d->type == 'D') continue;
-		if (d->flags & D_VISITED) continue;
+		if (d->flags & D_RED) continue;
 		fprintf(f, "%s\n", d->rev);
 	}
 	pclose(f);
@@ -383,7 +383,7 @@ cmd_pull_part2(int ac, char **av)
 			listIt2(s, list);
 		} else {
 			for (d = s->table; d; d = d->next) {
-				if (d->flags & D_VISITED) continue;
+				if (d->flags & D_RED) continue;
 				unless (d->type == 'D') continue;
 				printf("%c%s\n", BKD_DATA, d->rev);
 			}
@@ -393,7 +393,7 @@ cmd_pull_part2(int ac, char **av)
 	fflush(stdout);
 	f = fopen(revs, "w");
 	for (d = s->table; d; d = d->next) {
-		if (d->flags & D_VISITED) continue;
+		if (d->flags & D_RED) continue;
 		unless (d->type == 'D') continue;
 		fprintf(f, "%s\n", d->rev);
 	}

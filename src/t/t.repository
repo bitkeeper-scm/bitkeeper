@@ -125,7 +125,7 @@ cd $HERE/copy
 bk takepatch -a < $HERE/patch 2> tk.out
 if [ $? -eq 0 ]; then echo faile; exit 1; fi
 grep -q "can't apply a logging patch to a regular file" tk.out
-if [ $? -ne 0 ]; then echo faile; exit 1; fi
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N Make sure we reject regular patch in a logging repository ...$NL
 cd $HERE/project

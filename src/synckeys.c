@@ -2,6 +2,7 @@
  * Copyright (c) 2000, Larry McVoy & Andrew Chang
  */
 #include "bkd.h"
+#include "logging.h"
 
 /*
  * Send the probe keys for this lod.
@@ -48,7 +49,6 @@ tag_probekey(sccs *s, FILE *f)
 		for (j = i; d->ptag && --j; d = sfind(s, d->ptag));
 		sccs_sdelta(s, d, key);
 		fprintf(f, "%s\n", key);
-//fprintf(f, "%s (%s)\n", key, d->rev);
 		unless (d->ptag) return;
 	}
 }
@@ -79,14 +79,27 @@ probekey_main(int ac, char **av)
 	return (0);
 }
 
+/*
+ * This one must be called after we have done sccs_color and must
+ * not stop at an already colored node because a node can be both
+ * a regular and/or a tag node.
+ */
 void
 sccs_tagcolor(sccs *s, delta *d)
 {
-//fprintf(stderr, "TC(%s, %d)\n", d->rev, d->serial);
         if (d->ptag) sccs_tagcolor(s, sfind(s, d->ptag));
         if (d->mtag) sccs_tagcolor(s, sfind(s, d->mtag));
-        d->flags |= D_VISITED;
+        d->flags |= D_RED;
 }                 
+
+private void
+addLogKey(delta *d)
+{
+	FILE	*f = fopen(LOG_KEYS, "a");
+
+	fprintf(f, "%s\n", d->rev);
+	fclose(f);
+}
 
 int
 listkey_main(int ac, char **av)
@@ -134,6 +147,7 @@ listkey_main(int ac, char **av)
 	}
 
 	if (debug) fprintf(stderr, "listkey: looking for match key\n");
+	if (exists(LOG_TREE)) unlink(LOG_KEYS);
 	while (getline(0, key, sizeof(key)) > 0) {
 		if (streq("@END PROBE@", key)) break;
 		if (streq("@TAG PROBE@", key)) break;
@@ -143,6 +157,7 @@ listkey_main(int ac, char **av)
 		}
 		if (!fastkey && !streq(key, rootkey)) continue;
 		if (!d && (d = sccs_findKey(s, key))) {
+			if (exists(LOG_TREE)) addLogKey(d);
 			sccs_color(s, d);
 			if (debug) {
 				fprintf(stderr, "listkey: found a match key\n");
@@ -150,7 +165,6 @@ listkey_main(int ac, char **av)
 			if (nomatch) out("@LOD MATCH@\n");	/* aka first */
 			sccs_sdelta(s, d, key);
 			out(key);
-//out(" ("); out(d->rev); out(" "); out(d->type == 'D' ? "D":"R"); out(")");
 			out("\n");
 			nomatch = 0;
 
@@ -172,7 +186,6 @@ listkey_main(int ac, char **av)
 				out("@TAG MATCH@\n");
 				sccs_sdelta(s, d, key);
 				out(key);
-//out(" ("); out(d->rev); out(" "); out(d->type == 'D' ? "D":"R"); out(")");
 				out("\n");
 			}
 		}
@@ -183,10 +196,9 @@ listkey_main(int ac, char **av)
 	 * Phase 2, send the non marked keys.
 	 */
 	for (d = s->table; d; d = d->next) {
-		if (d->flags & D_VISITED) continue;
+		if (d->flags & D_RED) continue;
 		sccs_sdelta(s, d, key);
 		out(key);
-//out(" ("); out(d->rev); out(" "); out(d->type == 'D' ? "D":"R"); out(")");
 		out("\n");
 	}
 	out("@END@\n");
@@ -275,7 +287,7 @@ prunekey(sccs *s, remote *r, int outfd,
 		}
 		if (streq("@END@", key)) break;
 		if (d = sccs_findKey(s, key)) {
-			d->flags |= D_VISITED;
+			d->flags |= D_RED;
 		} else {
 			if (sccs_istagkey(key)) {
 				rtags++;
@@ -286,7 +298,7 @@ prunekey(sccs *s, remote *r, int outfd,
 	}
 
 empty:	for (d = s->table; d; d = d->next) {
-		if (d->flags & D_VISITED) continue;
+		if (d->flags & D_RED) continue;
 		sprintf(key, "%u\n", d->serial);
 		write(outfd, key, strlen(key));
 		local++;
@@ -297,4 +309,39 @@ empty:	for (d = s->table; d; d = d->next) {
 	rc = local; 
 
 done:	return (rc);
+}
+
+/*
+ * For debugging, set things up to get the key list.
+ */
+prunekey_main(int ac, char **av)
+{
+	remote	r;
+	sccs	*s;
+	delta	*d;
+	char	path[] = CHANGESET;
+	char	*dspec =
+		    "$if(:DT:=D){C}$unless(:DT:=D){:DT:} "
+		    ":I: :D: :T::TZ: :P:@:HOST:"
+		    // " :DS: :DP: :TAG_PSERIAL: :TAG_MSERIAL:"
+		    "\n"
+		    "$each(:TAG:){T (:TAG:)\n}"
+		    "$each(:C:){  (:C:)\n}"
+		    "\n";
+
+	bzero(&r, sizeof(r));
+	r.rfd = 0;
+	r.wfd = -1;
+	sccs_cd2root(0, 0);
+	s = sccs_init(path, 0, 0);
+	prunekey(s, &r, -1, 0, 0, 0, 0);
+	s->state &= ~S_SET;
+	for (d = s->table; d; d = d->next) {
+		if (d->flags & D_RED) continue;
+		s->rstart = s->rstop = d;
+		sccs_prs(s, PRS_ALL, 0, dspec, stdout);
+		d->flags &= ~D_SET;
+	}
+	sccs_free(s);
+	exit(0);
 }

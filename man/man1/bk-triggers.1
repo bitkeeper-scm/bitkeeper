@@ -12,14 +12,19 @@ and/or to implement control over the events.
 .LP
 When a trigger is called, it is called at the root of the
 repository.  When an event occurs, if there exists a 
-file BitKeeper/triggers/
+file BitKeeper/triggers/\c
 .ARG event_class
 in the repository root that corresponds to the event, 
-\*(BK will execute that trigger.
+\*(BK will execute that trigger.  For example, if there is
+a push from repository B going into repository A 
+and repository A has a file BitKeeper/triggers/pre-incoming 
+the pre-incoming script will be run before the push event 
+applies to repository A.
 .LP
 There are three event classes which activate triggers: incoming
 events, outgoing events, and commits, and they can be set up to
-trigger before, or after, those events.   The difference between
+trigger before or after those events, pre- and post-,
+respectively.   The difference between
 pre- and post- event triggers is that pre-triggers may cause events
 to fail, but post-triggers are strictly informational.   The event
 classes are as follows:
@@ -202,7 +207,7 @@ present in the local repository.
 If set, contains status about the command associated with the trigger.
 .tp
 .B BK_TRIGGER
-Set the the trigger class (but not instance).  I.e., pre-incoming.
+Set to the trigger class (but not instance).  I.e., pre-incoming.
 .\" help://Repository/notification
 .\" help://Repository/notify
 .SH AVAILABILITY

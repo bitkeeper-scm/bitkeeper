@@ -55,7 +55,8 @@ delta_main(int ac, char **av)
 		isci = 1;
 	} else if (streq(name, "delta")) {
 		dflags = DELTA_FORCE;
-	} else if (streq(name, "new")) {
+	} else if (streq(name, "new") ||
+	    streq(name, "enter") || streq(name, "add")) {
 		dflags |= NEWFILE;
 		sflags |= SF_NODIREXPAND;
 	}

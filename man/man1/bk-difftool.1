@@ -25,6 +25,10 @@ bk difftool \- \*(BK Graphical Diff Tool
 .B bk difftool
 .ARG file1
 .ARG file2
+.br
+.B bk difftool
+.ARG /path/file1
+.ARG ../someother/path/
 .SH DESCRIPTION
 .LP
 The
@@ -63,6 +67,21 @@ diffs those two versions of the file.
 If two files are specified,
 .B difftool
 diffs those two files.
+.LP
+If a file (or a path with a filename) are given as the first argument
+and a directory is given as the second argument, then the basename of
+the first argument is appended to the second argument. The purpose
+of this calling convention is to save typing. For example, if I have
+multiple-related repositories at the same level in the filesystem
+and I want to diff a file in the local repository against the same
+file in another version of the repository, I can do the following:
+.DS
+bk difftool src/filename.c ../../repo/src
+.DE
+The above command is equivalent to doing the following:
+.DS
+bk difftool src/filename.c ../../repo/src/filename.c
+.DE
 .SH "KEY BINDINGS"
 .TP 1.2i
 .B Home

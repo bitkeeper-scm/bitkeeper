@@ -127,7 +127,7 @@ _prevs(delta *d)
 		printf("\n");
 	}
 	for (d = d->siblings; d; d = d->siblings) {
-		unless (d->flags & D_VISITED) _prevs(d);
+		unless (d->flags & D_RED) _prevs(d);
 	}
 }
 
@@ -154,7 +154,7 @@ pd(char *prefix, delta *d)
 			if (sort) printf("-%u", p->pserial);
 		}
 	}
-	d->flags |= D_VISITED;
+	d->flags |= D_RED;
 }
 
 /*

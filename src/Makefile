@@ -36,7 +36,7 @@ OBJ	= abort.o adler32.o admin.o annotate.o \
 	  bkd_http.o bkd_misc.o bkd_pull.o \
 	  bkd_push.o bkd_pwd.o bkd_rootkey.o bkd_status.o \
 	  bkd_version.o bk.o bkusers.o cat.o changes.o check.o chksum.o \
-	  clean.o clone.o comments.o commit.o compress.o converge.o \
+	  clean.o cleanpath.o clone.o comments.o commit.o compress.o converge.o \
 	  cset.o cset_inex.o delta.o diffs.o dirname.o export.o fdiff.o \
 	  filecopy.o find.o fix.o g2sccs.o \
 	  gca.o get.o gethelp.o gethost.o getopt.o \
@@ -59,7 +59,7 @@ OBJ	= abort.o adler32.o admin.o annotate.o \
 	  lock.o resolve.o resolve_contents.o resolve_create.o \
 	  resolve_flags.o resolve_generic.o resolve_modes.o resolve_tags.o \
 	  resolve_renames.o resolve_filetypes.o rmdel.o root.o rset.o \
-	  sane.o sccs_mv.o sccscat.o sccslog.o sccsmv.o sccsrm.o \
+	  sane.o sccs.o sccs_mv.o sccscat.o sccslog.o sccsmv.o sccsrm.o \
 	  send.o sendbug.o setup.o \
 	  sfiles.o sfind.o sfio.o sinfo.o slib.o \
 	  status.o stripdel.o synckeys.o sys.o takepatch.o undo.o undos.o \
@@ -418,7 +418,9 @@ rpm:	bk.spec production
 	rpm -bb bk.spec
 
 # Touch this and die.  --lm
-install: install-nolinks
+install: install-nolinks bklinks binlinks
+
+bklinks:
 	@if uname -s | grep _NT; \
 	then	LN=cp; EXE=.exe; \
 	else	LN=ln; EXE=; \
@@ -428,7 +430,13 @@ install: install-nolinks
 		then	rm -f $(BINDIR)/$$file$$EXE; \
 			$$LN $(BINDIR)/bk$$EXE $(BINDIR)/$$file$$EXE; \
 		fi; \
-	done; \
+	done
+
+binlinks:
+	@if uname -s | grep _NT; \
+	then	LN=cp; EXE=.exe; \
+	else	LN=ln; EXE=; \
+	fi; \
 	if [ -w /usr/bin ]; \
 	then	for file in $(BINLINKS); \
 		do	rm -f /usr/bin/$$file; \
@@ -438,7 +446,7 @@ install: install-nolinks
 
 install-nolinks: all
 	@test -d $(BINDIR) || mkdir -p $(BINDIR)
-	@cp -f $(BINS) $(SCRIPTS) $(DATA) $(BINDIR)
+	cp -f $(BINS) $(SCRIPTS) $(DATA) $(BINDIR)
 	@-rm -rf $(BINDIR)/t/t.*
 	@if [ ! -d $(BINDIR)/t ]; \
 	then	mkdir $(BINDIR)/t; \
@@ -466,6 +474,7 @@ image: all
 	@-rm -rf tmp
 	DIR=`pwd`/tmp/bitkeeper; set -e; \
 	BINDIR=$$DIR $(MAKE) -e install-nolinks; \
+	BINDIR=$$DIR $(MAKE) -e bklinks; \
 	cd utils && BINDIR=$$DIR $(MAKE) -e image 
 	@-rm -rf tmp
 
