@@ -125,8 +125,6 @@ _sdiffs() {
 
 _mvdir() {
 
-	# XXX TODO: Make sure resolve clean up empty dir
-	# XXX       after applying mvdir cset
 	case `bk version` in
 	*Basic*)
 		echo "bk mvdir is not supported in this BitKeeper Basic"
@@ -137,6 +135,7 @@ _mvdir() {
 	if [ ! -d $1 ]; then echo $1 is not a directory; exit 1; fi
 	if [ -e $2 ]; then echo $2 already exist; exit 1; fi
 	
+	bk -r check -a || exit 1;
 	# Win32 note: must use relative path or drive:/path
 	# because cygwin mv interprete /path relative to mount tables.
 	mkdir -p $2
@@ -153,6 +152,7 @@ _rmdir() {
 
 	if [ X$2 != X ]; then echo "usage bk rmdir dir"; exit 1; fi
 	if [ ! -d "$1" ]; then echo "$1 is not a directory"; exit 1; fi
+	bk -r check -a || exit 1;
 	XNUM=`bk sfiles -x $1 | wc -l`
 	if [ "$XNUM" -ne 0 ]
 	then
