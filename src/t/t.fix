@@ -164,7 +164,7 @@ test -x FILE || {
 	exit 1
 }
 bk clean FILE
-bk fix -c
+bk fix -c $Q
 test -x FILE || {
 	echo Did not preserve execute
 	exit 1
@@ -203,7 +203,7 @@ cp -rp clone pending
 cd pending
 bk mv FILE RENAME
 bk commit $Q -yrename
-bk fix -c || {
+bk fix -c $Q || {
 	echo fix should not have failed
 	exit 1
 }
@@ -227,7 +227,7 @@ ls > NEW
 cp NEW SAVE
 bk new $Q NEW
 bk commit $Q -ynew
-bk fix -c || exit 1
+bk fix -c $Q || exit 1
 test -f NEW || {
 	echo failed to leave NEW
 	exit 1
@@ -272,7 +272,7 @@ cp foo bar
 bk new $Q foo
 bk commit $Q -ybasefoo
 bk get $Q foo
-bk fix -c
+bk fix -c $Q
 cmp -s foo bar || {
 	echo should not have expanded keywords
 	sdiff -w40 foo bar
@@ -288,7 +288,7 @@ bk edit $Q 'new file'
 echo bye >> 'new file'
 bk ci $Q -ybye 'new file'
 bk commit $Q -ybye
-bk fix -c || {
+bk fix -c $Q || {
 	echo fix should not have failed
 	exit 1
 }

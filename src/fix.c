@@ -1,15 +1,15 @@
 #include "system.h"
 #include "sccs.h"
 private void cfile(sccs *s, char *rev);
-private	void do_cset(char *qflag, int save);
-private void doit(char *file, char *rev, char *qflag, char *force);
-private	int simple(sccs *s, delta *top);
+private	void do_cset(char *qflag, int flags, int save);
+private void doit(char *file, char *rev, char *qflag, int flags, char *force);
+private	int simple(sccs *s, delta *top, int flags);
 
 int
 fix_main(int ac,  char **av)
 {
 	int	c, i;
-	int	save = 1, cset = 0;
+	int	save = 1, cset = 0, flags = 0;
 	char	*qflag = "-q";
 
 	if (ac == 2 && streq("--help", av[1])) {
@@ -19,7 +19,7 @@ fix_main(int ac,  char **av)
 	while ((c = getopt(ac, av, "cqsv")) != -1) {
 		switch (c) {
 		    case 'c': cset = 1; break;
-		    case 'q': break;				/* undoc 2.0 */
+		    case 'q': flags |= SILENT; break;		/* undoc 2.0 */
 		    case 's': save = 0; break;
 		    case 'v': qflag = ""; break;		/* doc 2.0 */
 		    default :
@@ -28,18 +28,18 @@ fix_main(int ac,  char **av)
 		}
 	}
 	if (cset) {
-		do_cset(qflag, save);
+		do_cset(qflag, flags, save);
 	} else {
 		i =  optind - 1;
 		while (av[++i]) {
-			doit(av[i], "+", qflag, "");
+			doit(av[i], "+", qflag, flags, "");
 		}
 	}
 	return (0);
 }
 
 private void
-do_cset(char *qflag, int save)
+do_cset(char *qflag, int flags, int save)
 {
 	int	c, i;
 	char	*revs, *n, *p;
@@ -123,7 +123,7 @@ do_cset(char *qflag, int save)
 		p = strchr(lines[i], '|');
 		assert(p);
 		*p++ = 0;
-		doit(lines[i], p, qflag, "-C");
+		doit(lines[i], p, qflag, flags, "-C");
 	}
 	freeLines(lines, free);
 	update_log_markers(streq(qflag, ""));
@@ -142,7 +142,7 @@ do_cset(char *qflag, int save)
  * moment we end up refetching the gfile.
  */
 private void
-doit(char *file, char *rev, char *qflag, char *force)
+doit(char *file, char *rev, char *qflag, int flags, char *force)
 {
 	char	buf[MAXLINE];
 	char	fixfile[MAXPATH];
@@ -174,7 +174,7 @@ doit(char *file, char *rev, char *qflag, char *force)
 	}
 	unless (cset) {
 		d = sccs_top(s);
-		unless (simple(s, d)) {
+		unless (simple(s, d, flags)) {
 			free(p);
 			p = sccs_Xfile(s, 'd');
 			close(creat(p, 0664));
@@ -247,14 +247,48 @@ doit(char *file, char *rev, char *qflag, char *force)
  * Exception: we allow mode changes, we can catch those.
  */
 private	int
-simple(sccs *s, delta *top)
+simple(sccs *s, delta *top, int flags)
 {
-	unless (streq(top->pathname, top->parent->pathname)) return (0);
-	if (top->symlink) return (0);
-	if (top->include || top->exclude || top->merge) return (0);
-	if (top->flags & D_XFLAGS) return (0);
-	if (top->flags & D_TEXT) return (0);
-	unless (top->added || top->deleted) return (0);
+	unless (streq(top->pathname, top->parent->pathname)) {
+		verbose((stderr,
+		    "Not fixing %s because of pathname change.\n", s->gfile));
+		return (0);
+	}
+	if (top->symlink) {
+		verbose((stderr,
+		    "Not fixing %s because it is a symlink.\n", s->gfile));
+		return (0);
+	}
+	if (top->include) {
+		verbose((stderr,
+		    "Not fixing %s because it has includes.\n", s->gfile));
+		return (0);
+	}
+	if (top->exclude) {
+		verbose((stderr,
+		    "Not fixing %s because it has excludes.\n", s->gfile));
+		return (0);
+	}
+	if (top->merge) {
+		verbose((stderr,
+		    "Not fixing %s because tip is a merge delta.\n", s->gfile));
+		return (0);
+	}
+	if (top->flags & D_XFLAGS) {
+		verbose((stderr,
+		    "Not fixing %s because it has xflags change.\n", s->gfile));
+		return (0);
+	}
+	if (top->flags & D_TEXT) {
+		verbose((stderr,
+		    "Not fixing %s because it has text change.\n", s->gfile));
+		return (0);
+	}
+	unless (top->added || top->deleted) {
+		verbose((stderr,
+		    "Not fixing %s because it has no changes.\n", s->gfile));
+		return (0);
+	}
 	assert(!top->dangling);
 	return (1);
 }
