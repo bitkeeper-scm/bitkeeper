@@ -41,7 +41,7 @@ echo $N Make sure we generated the right keys in single user mode ...$NL
 bk sort < $BK_TMP/.bk_keys | while read k junk
 do echo "$k"
 done > GOT
-bk -r prs -r1.0.. -hnd:SHORTKEY: | sort > WANT
+bk -r prs -c90.. -hnd:SHORTKEY: | sort > WANT
 cmp -s WANT GOT || {
 	echo failed to regenerate the same keycache
 	diff WANT GOT
