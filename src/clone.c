@@ -73,7 +73,14 @@ clone_main(int ac, char **av)
 	r = remote_parse(av[optind], 1);
 	unless (r) usage();
 	if (link) {
+#ifdef WIN32
+		fprintf(stderr,
+		    "clone: sorry, -l option is not supported on "
+		    "this platform\n");
+		return (1);
+#else
 		lclone(opts, r, av[optind+1]);
+#endif
 		/* NOT REACHED */
 	}
 	if (av[optind + 1]) {

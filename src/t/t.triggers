@@ -248,6 +248,8 @@ test -z "$DUMP_VARS" || {
 	cat $HERE/post-incoming-clone
 }
 
+if [ "$PLATFORM" != "WIN32" ]
+then #-----------------------------------------------------------------
 # Make a post-incoming trigger be checked in, see if clone -l runs it.
 echo $N Test post-incoming in a clone -l ............................$NL
 cd $HERE/parent
@@ -281,6 +283,7 @@ cmp -s $HERE/post-incoming-clone $HERE/post-incoming-clone-l || {
 	exit 1
 }
 echo OK
+fi #-------------------------------------------------------------------
 cd $HERE
 rm -rf parent clone2
 
