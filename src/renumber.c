@@ -142,7 +142,7 @@ oldest(delta *d)
 delta *
 leaf(delta *tree)
 {
-	delta	*d, *p;
+	delta	*d;
 
 	for (d = tree; d; d = d->next) {
 		if ((d->type == 'D') && !d->r[2] &&
@@ -151,11 +151,6 @@ leaf(delta *tree)
 		}
 	}
 	assert(d);
-#if 0
-	for (p = d; p->parent; p = p->parent) {
-		oldest(p);
-	}
-#endif
 	return (d);
 }
 

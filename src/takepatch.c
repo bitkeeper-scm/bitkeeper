@@ -23,18 +23,21 @@ WHATSTR("%W%");
  */
 char *takepatch_help = "usage: takepatch [-v] [-i]\n";
 
+delta	*getRecord(FILE *f);
+int	extractPatch(FILE *p, int flags);
+int	extractDelta(char *name, sccs *s, int newFile, FILE *f, int flags);
+int	applyPatch(int flags);
+int	getLocals(sccs *s, delta *d, char *name);
+void	insertPatch(patch *p);
+void	initProject(void);
+FILE	*init(FILE *p, int flags);
+int	mkdirp(char *file);
+int	fileCopy(char *from, char *to);
+
 int	echo = 0;
 int	line;
 int	no;
 patch	*patchList = 0;
-FILE	*init(FILE *, int);
-delta	*getRecord(FILE *f);
-int	extractPatch(FILE *p, int flags);
-int	applyPatch();
-int	extractDelta(char *name, sccs *s, int nf, FILE *f, int flags);
-int	getLocals(sccs *s, delta *d, char *name);
-void	insertPatch(patch *p);
-int	fileCopy(char *from, char *to);
 int	files, remote, conflicts;
 int	newProject;
 MDBM	*idDB;
@@ -91,7 +94,6 @@ getRecord(FILE *f)
 {
 	int	e = 0;
 	delta	*d = sccs_getInit(0, 0, f, 1, &e, 0);
-	int	c;
 
 	if (!d || e) {
 		fprintf(stderr,
@@ -112,9 +114,8 @@ extractPatch(FILE *p, int flags)
 {
 	delta	*tmp;
 	sccs	*s = 0;
-	long	off;
 	datum	k, v;
-	char	*name, *t;
+	char	*name;
 	int	newFile = 0;
 	char	*gfile;
 	char	buf[1200];
@@ -324,13 +325,13 @@ int
 applyPatch(int flags)
 {
 	patch	*p = patchList;
-	FILE	*f;
+	patch	*p2;
 	FILE	*iF, *dF;
 	sccs	*s = 0;
 	delta	*d;
-	char	*t;
 	int	newflags;
 	char	*getuser(), *now();
+	char	*localPath = 0, *remotePath = 0;
 
 	unless (p) return (0);
 	unless (gca) {
@@ -356,6 +357,7 @@ applyPatch(int flags)
 	}
 	assert(gca);
 	assert(gca->rev);
+	assert(gca->pathname);
 	if (echo > 5) fprintf(stderr, "rmdel %s from %s\n", gca->rev, s->sfile);
 	if (sccs_rmdel(s, gca->rev, 1, 0)) {
 		unless (BEEN_WARNED(s)) {
@@ -375,8 +377,6 @@ applyPatch(int flags)
 apply:
 	p = patchList;
 	while (p) {
-		char	cmd[2048];
-
 		if (p->pid) {
 			assert(s);
 			unless (d = sccs_findKey(s, p->pid)) {
@@ -459,7 +459,34 @@ apply:
 	sccs_free(s);
 	s = sccs_init(patchList->resyncFile, 0);
 	assert(s);
-	conflicts += sccs_resolveFile(s);
+	for (p2 = 0, p = patchList; p; p = p->next) {
+		if (p->flags & PATCH_LOCAL) p2 = p;
+	}
+	if (p2) {
+		assert(p2->me);
+		d = sccs_findKey(s, p2->me);
+	} else {
+		if (gca) {
+			d = gca;
+		} else {
+			d = sccs_findKey(s, patchList->me);
+		}
+	}
+	assert(d);
+	localPath = d->pathname;
+	for (p2 = 0, p = patchList; p; p = p->next) {
+		if (p->flags & PATCH_REMOTE) p2 = p;
+	}
+	assert(p2 && p2->me);
+	d = sccs_findKey(s, p2->me);
+	assert(d);
+	remotePath = d->pathname;
+	unless(streq(localPath, remotePath)) {
+		conflicts += sccs_resolveFile(s, localPath,
+			gca ? gca->pathname : localPath, remotePath);
+	} else {
+		conflicts += sccs_resolveFile(s, 0, 0, 0);
+	}
 	sccs_free(s);
 	for (p = patchList; p; ) {
 		patch	*next = p->next;
@@ -568,6 +595,7 @@ insertPatch(patch *p)
 /*
  * Create enough stuff that the tools can find the project root.
  */
+void
 initProject()
 {
 	if (mkdir("BitKeeper", 0775) || mkdir("BitKeeper/etc", 0775)) {
@@ -713,51 +741,19 @@ tree:
 	fsync(fileno(f));
 	fseek(f, 0, 0);
 
-	unless (idDB = mdbm_open(NULL, 0, 0, 4096)) {
-		perror("mdbm_open");
-		exit(1);
-	}
-	mdbm_pre_split(idDB, 1<<10);
-	if (newProject) return (f);
-
-	/*
-	 * Make sure the caches are there.
-	 */
-	unless (exists("SCCS/x.id_cache") && exists("SCCS/x.pending_cache")) {
-		verbose((stderr, "takepatch: rebuilding name cache.\n"));
-		system("sfiles -r");
+	if (newProject) {
+		unless (idDB = mdbm_open(NULL, 0, 0, 4096)) {
+			perror("mdbm_open");
+			exit(1);
+		}
+		mdbm_pre_split(idDB, 1<<10);
+		return (f);
 	}
 
-	/*
-	 * Build the in memory name cache.
-	 */
-	unless (g = fopen("SCCS/x.id_cache", "r")) {
+	unless (idDB = loadDB("SCCS/x.id_cache", 0)) {
 		perror("SCCS/x.id_cache");
 		exit(1);
 	}
-	while (fnext(buf, g)) {
-		char	*s = strchr(buf, ' ');
-		datum	k, v;
-
-		/* Ignore comments */
-		if (buf[0] == '#') continue;
-		if (!s) {
-			fprintf(stderr, "takepatch: corrupted name cache\n");
-			fprintf(stderr, "takepatch: '%s'\n", buf);
-			exit(1);
-		}
-		*s++ = 0;
-		k.dptr = buf;
-		k.dsize = strlen(buf) + 1;
-		chop(s);
-		v.dptr = s;
-		v.dsize = strlen(s) + 1;
-		if (mdbm_store(idDB, k, v, MDBM_INSERT)) {
-			fprintf(stderr, "Duplicate key in name cache\n");
-			exit(1);
-		}
-	}
-	fclose(g);
 	return (f);
 }
 

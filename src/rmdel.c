@@ -37,7 +37,7 @@ rmdel_main(int ac, char **av, char *out)
 		    case 's': flags |= SILENT; break;
 
 		    default:
-usage:			fprintf(stderr,
+			fprintf(stderr,
 			    "rmdel: usage error, try rmdel --help\n");
 			return (1);
 		}

@@ -1,0 +1,34 @@
+	Local		Remote		Case #
+	not moved	not moved	1
+	not moved	moved		2
+	moved		not moved	3
+	moved		moved		4
+
+Case #
+	a) does the user get involved?
+	b) what happens?
+
+Case 1
+	Do nothing, no renames in either
+
+Case 2
+	a) user is not involved, but is warned that move is happening
+	b) Somehow, I need to remember that the local file needs to be
+	   moved and do that as part of the apply process.
+
+Case 3
+	a) user is not involved, but is warned
+	b) move the RESYNC file into the same location as the local file,
+	   for now, error if that location is in use.
+
+Case 4
+	a) user needs to be consulted to see which to use
+	b) if (use local name) {
+		treat like case 3
+	   } else {
+	   	treat like case 2
+	   }
+
+The format of the rename (R.file) is
+
+	local	gca	remote

@@ -113,7 +113,6 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 int
 file(char *f, int (*func)(), int depth)
 {
-	sccs	*s;
 	struct	stat sb;
 	char	*sfile, *gfile;
 

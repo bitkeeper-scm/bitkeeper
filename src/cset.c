@@ -13,18 +13,17 @@ usage: cset [-ps] [-i [-y<msg>] root] [-l<rev> OR -t<rev>] [-S<sym>] [-]\n\n\
     -p		print the list of deltas being added to the cset\n\
     -y<msg>	Sets the changeset comment to <msg>.\n\
     -S<sym>	Set <sym> to be a symbolic tag for this revision\n\
-    -s		Run silently\n\n";
+    -s		Run silently\n\n\
+    Ranges of revisions may be specified with the -l option.\n\
+    -l1.3..1.5 does 1.3, 1.4, and 1.5\n\n";
 
 int	csetCreate(sccs *cset, int flags, char *sym);
 int	csetInit(sccs *cset, int flags, char *sym);
-void	csetlist(sccs *cset, char *rev);
+void	csetlist(sccs *cset);
 void	csetList(sccs *cset, char *rev);
 void	csetDeltas(sccs *sc, delta *start, delta *d);
 void	dump(MDBM *db, FILE *out);
 int	sameState(const char *file, const struct stat *sb);
-MDBM	*loadIdCache(void);
-MDBM	*loadChangSetDB(void); 
-MDBM	*csetIds();
 void	lock(char *);
 void	unlock(char *);
 delta	*mkChangeSet(sccs *cset);
@@ -47,7 +46,8 @@ main(int ac, char **av)
 	int	flags = BRANCHOK;
 	int	c, list = 0;
 	char	*sym = 0;
-	char	*rev = 0;
+	char	*rev;
+	int	things = 0;
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
@@ -60,8 +60,16 @@ usage:		fprintf(stderr, "%s", cset_help);
 		    case 'i':
 			flags |= EMPTY|NEWFILE;
 			break;
-		    case 'l': list = 1; rev = optarg; break;
-		    case 't': list = 2; rev = optarg; break;
+		    case 'l':
+		    	list |= 1;
+			rev = optarg;
+			things += tokens(optarg);
+			break;
+		    case 't':
+			list |= 2;
+			rev = optarg;
+			things += tokens(optarg);
+			break;
 		    case 'p': flags |= PRINT; break;
 		    case 's': flags |= SILENT; break;
 		    case 'y':
@@ -76,6 +84,16 @@ usage:		fprintf(stderr, "%s", cset_help);
 		}
 	}
 
+	if (list == 3) {
+		fprintf(stderr,
+		    "%s: -l and -t are mutually exclusive\n", av[0]);
+		goto usage;
+	}
+	if ((things > 1) && (list != 1)) {
+		fprintf(stderr,
+		    "%s: only one rev allowed with -t\n", av[0]);
+		goto usage;
+	}
 	if (av[optind] && streq(av[optind], "-")) optind++;
 
 	if (av[optind]) {
@@ -103,7 +121,10 @@ usage:		fprintf(stderr, "%s", cset_help);
 	 * List a specific rev.
 	 */
 	switch (list) {
-	    case 1: csetlist(cset, rev); return (0);
+	    case 1:
+		rangeAdd(cset, rev, 0);
+		csetlist(cset);
+		return (0);
 	    case 2: csetList(cset, rev); return (0);
 	}
 
@@ -206,7 +227,7 @@ csetList(sccs *cset, char *rev)
 		exit(1);
 	}
 
-	unless (idDB = loadIdCache()) {
+	unless (idDB = loadDB("SCCS/x.id_cache", 0)) {
 		perror("idcache");
 		exit(1);
 	}
@@ -220,7 +241,7 @@ retry:		v = mdbm_fetch(idDB, k);
 				fprintf(stderr, "Rebuilding caches...\n");
 				system("bk sfiles -r");
 				doneFullRebuild = 1;
-				unless (idDB = loadIdCache()) {
+				unless (idDB = loadDB("SCCS/x.id_cache", 0)) {
 					perror("idcache");
 					exit(1);
 				}
@@ -250,11 +271,11 @@ retry:		v = mdbm_fetch(idDB, k);
 }
 
 void
-csetlist(sccs *cset, char *rev)
+csetlist(sccs *cset)
 {
-	MDBM	*db = csetIds(cset, rev, 0);	/* db{fileId} = csetId */
+	MDBM	*db;			/* db{fileId} = csetId */
 	MDBM	*pdb;
-	MDBM	*idDB;				/* db{fileId} = pathname */
+	MDBM	*idDB;			/* db{fileId} = pathname */
 	kvpair	kv;
 	datum	k, v;
 	char	*t;
@@ -262,22 +283,25 @@ csetlist(sccs *cset, char *rev)
 	delta	*d, *prev;
 	int  	doneFullRebuild = 0;
 	int	first = 1;
+	char	*rev;
 	char	buf[1024];
 
+	assert(cset->rstart);
+	unless (cset->rstop) cset->rstop = cset->rstart;
+	db = csetIds(cset, rev = cset->rstop->rev, 1);
 	if (!db) {
 		fprintf(stderr,
 		    "Can't find changeset %s in %s\n", rev, cset->sfile);
 		exit(1);
 	}
-	d = findrev(cset, rev);	/* csetIds would have failed if this would */
-	if (d->parent) {
+	if (cset->rstart->parent) {
 		unless (sccs_restart(cset)) { perror("restart"); exit(1); }
-		pdb = csetIds(cset, d->parent->rev, 1);
+		pdb = csetIds(cset, cset->rstart->parent->rev, 1);
 	} else {
 		pdb = 0;
 	}
 
-	unless (idDB = loadIdCache()) {
+	unless (idDB = loadDB("SCCS/x.id_cache", 0)) {
 		perror("idcache");
 		exit(1);
 	}
@@ -300,7 +324,7 @@ retry:		v = mdbm_fetch(idDB, k);
 				fprintf(stderr, "Rebuilding caches...\n");
 				system("bk sfiles -r");
 				doneFullRebuild = 1;
-				unless (idDB = loadIdCache()) {
+				unless (idDB = loadDB("SCCS/x.id_cache", 0)) {
 					perror("idcache");
 					exit(1);
 				}
@@ -379,56 +403,6 @@ csetDeltas(sccs *sc, delta *start, delta *d)
 	if (d->type == 'D') printf("%s:%s\n", sc->gfile, d->rev);
 }
 
-MDBM	*
-loadIdCache()
-{
-	MDBM	*idDB = 0;
-	FILE	*f = 0;
-	char	*k, *v;
-	char	*parts[4];
-	char	buf[1024];
-	char	buf2[1024];
-	int	first = 1;
-
-	// XXX - does not locking on the changeset files.  XXX
-again:	unless (f = fopen("SCCS/x.id_cache", "r")) {
-		if (first) {
-			first = 0;
-			fprintf(stderr, "Rebuilding caches...\n");
-			system("bk sfiles -r");
-			goto again;
-		}
-		fprintf(stderr, "cset: can't open id_cache, run sfiles -r\n");
-out:		if (f) fclose(f);
-		if (idDB) mdbm_close(idDB);
-		return (0);
-	}
-	idDB = mdbm_open(NULL, 0, 0, 4096);
-	assert(idDB);
-	mdbm_pre_split(idDB, 1<<10);
-	while (fnext(buf, f)) {
-		if (buf[0] == '#') continue;
-		if (chop(buf) != '\n') {
-			fprintf(stderr, "bad path: <%s>\n", buf);
-			assert("cset: pathname overflow in id cache" == 0);
-		}
-		if ((v = strchr(buf, ' '))) {
-			k = buf; *v++ = 0;
-		} else {
-			strcpy(buf2, buf);
-			explodeKey(buf, parts);
-			k = buf2; v = parts[2];
-		}
-		if (mdbm_store_str(idDB, k, v, MDBM_INSERT)) {
-			fprintf(stderr,
-			    "Duplicate name '%s' in id_cache.\n", buf);
-			goto out;
-		}
-	}
-	fclose(f);
-	return (idDB);
-}
-
 /*
  * Add a delta to the cset db.
  *
@@ -494,7 +468,7 @@ mkChangeSet(sccs *cset)
 			exit(1);
 		}
 	}
-	unless (csDB = loadChangSetDB()) {
+	unless (csDB = loadDB("ChangeSet", 0)) {
 		fprintf(stderr, "cset: load of ChangeSet failed\n");
 		system("bk clean -u ChangeSet");
 		exit(1);
@@ -555,41 +529,6 @@ updateIdCacheEntry(sccs *sc, const char *filename)
 		path = sc->gfile;
 	}
 	fprintf(id_cache, "%s %s\n", buf, path);
-}
-
-MDBM *
-loadChangSetDB()
-{
-	FILE	*f;
-	char	buf[1024], *v;
-	MDBM 	*csDB;
-
-	csDB = mdbm_open(NULL, 0, 0, 4096);
-	assert(csDB);
-	mdbm_pre_split(csDB, 1<<10);
-	unless (f = fopen("ChangeSet", "r")) {
-		fprintf(stderr,
-		    "cset: can't open ChangeSet\n");
-		mdbm_close(csDB);
-		return NULL;
-	}
-	while (fnext(buf, f)) {
-		if (buf[0] == '#') continue;
-		if (chop(buf) != '\n') {
-			fprintf(stderr,
-				"Bad Path name in ChangeSet : <%s>\n", buf);
-			continue;
-		}
-		v = strchr(buf, ' ');
-		assert(v);
-		*v++ = 0;
-		if (mdbm_store_str(csDB, buf, v, MDBM_INSERT)) {
-			fprintf(stderr, "Duplicate name in ChangeSet.\n");
-			continue;
-		}
-	}
-	fclose(f);
-	return csDB;
 }
 
 /*

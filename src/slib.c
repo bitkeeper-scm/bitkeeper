@@ -55,6 +55,9 @@ private time_t	date2time(char *asctime, char *z, int roundup);
 private	char	*sccsrev(delta *d);
 private int	addLod(char *name, sccs *sc, int flags, admin *l, int *ep);
 private int	addSym(char *name, sccs *sc, int flags, admin *l, int *ep);
+int		smartUnlink(char *name);
+int		smartRename(char *old, char *new);
+private void	updatePending(sccs *s, delta *d);
 
 private unsigned int u_mask = 0x5eadbeef;
 
@@ -338,6 +341,7 @@ sccs_freetree(delta *tree)
  * Generate the rev numbers for the lod.
  * Also sets d->lod to the lod to which this delta belongs.
  */
+void
 lodrevs(delta *d, delta *zero)
 {
 	assert(d);
@@ -372,6 +376,7 @@ lodrevs(delta *d, delta *zero)
  * numbering is inherited but stops when you run into the next LOD. 
  * So the first thing we do is tag all the heads/branches in each LOD.
  */
+void
 lods(sccs *s)
 {
 	lod	*l;
@@ -1493,6 +1498,7 @@ findlod(sccs *s, char *rev)
 		}
 		return (0);
 	}
+	return (0);	/* NOTREACHED: gcc -Wall */
 }
 
 /*
@@ -3241,31 +3247,30 @@ date(delta *d, time_t tt)
 	tm = localtime(&tt);
 	strftime(tmp, sizeof(tmp), "%y/%m/%d %H:%M:%S", tm);
 	d->sdate = strdup(tmp);
-#ifdef	ZONE_VODOO
-	/*
-	 * What I want is to have 8 hours west of GMT to be -08:00.
-	 */
-	hwest = timezone / 3600;
-	mwest = timezone % 3600;
-	if (hwest < 0) {
-		sign = '+';
-		hwest = -hwest;
-		mwest = -mwest;
-	}
-	/*
-	 * XXX - I have not thought this through.
-	 * This is blindly following what /bin/date does.
-	 */
-	if (daylight) hwest--;
-	sprintf(tmp, "%c%02d:%02d", sign, hwest, mwest);
-#else
 	strftime(tmp, sizeof(tmp), "%z", tm);
-	assert(strlen(tmp) == 5);
-	tmp[6] = 0;
-	tmp[5] = tmp[4];
-	tmp[4] = tmp[3];
-	tmp[3] = ':';
-#endif
+	if (strlen(tmp) == 5) {
+		tmp[6] = 0;
+		tmp[5] = tmp[4];
+		tmp[4] = tmp[3];
+		tmp[3] = ':';
+	} else {
+		/*
+		 * What I want is to have 8 hours west of GMT to be -08:00.
+		 */
+		hwest = timezone / 3600;
+		mwest = timezone % 3600;
+		if (hwest < 0) {
+			sign = '+';
+			hwest = -hwest;
+			mwest = -mwest;
+		}
+		/*
+		 * XXX - I have not thought this through.
+		 * This is blindly following what /bin/date does.
+		 */
+		if (daylight) hwest--;
+		sprintf(tmp, "%c%02d:%02d", sign, hwest, mwest);
+	}
 	zoneArg(d, tmp);
 	getDate(d);
 }
@@ -3543,7 +3548,6 @@ private ser_t *
 serialmap(sccs *s, delta *d, int flags, char *iLst, char *xLst, int *errp)
 {
 	ser_t	*slist;
-	ielist	*ie;
 	delta	*t, *n = d;
 	int	i;
 
@@ -3994,6 +3998,7 @@ strconcat(char *a, char *b, char *sep)
 	return (tmp);
 }
 
+int
 write_pfile(sccs *s, int flags, delta *d,
 	char *rev, char *lrev, char *iLst, char *i2, char *xLst, char *mRev)
 {
@@ -5231,6 +5236,7 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 	return (d);
 }
 
+private void
 updatePending(sccs *s, delta *d)
 {
 	int fd;
@@ -6212,7 +6218,7 @@ sym_err:		error = 1; sc->state |= WARNED;
 		if (isdigit(s[i].thing[0])) {
 			fprintf(stderr,
 			    "%s: %s: can't start with a digit.\n",
-			    sym);
+			    me, sym);
 			goto sym_err;
 		}
 		if (dupSym(sc->symbols, sym, rev)) {
@@ -6268,7 +6274,6 @@ sccs_admin(sccs *sc, int flags,
 	FILE	*sfile = 0;
 	int	error = 0, locked, i;
 	char	*t;
-	delta	*d, *n;
 	BUF	(buf);
 
 	GOODSCCS(sc);
@@ -8231,8 +8236,20 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
+	if (streq(kw, "SPN")) {
+		/* per delta SCCS path name */
+		if (d->pathname) {
+			char	*p = name2sccs(d->pathname);
+
+			fs(p);
+			free(p);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
 	if (streq(kw, "MGP")) {
-		/* merge parent's serail number */
+		/* merge parent's serial number */
 		fd(d->merge);
 		return (strVal);
 	}
@@ -8756,8 +8773,6 @@ dcmp(const void *a, const void *b)
 void
 addNodes(sccs *s, delta **list, int j, delta *d)
 {
-	delta	*e;
-
 	if (!d || (d->type != 'D')) return;
 	list[j++] = d;
 	addNodes(s, list, j, d->kid);
@@ -8895,9 +8910,9 @@ isleaf(register delta *d)
  * XXX - this is also where we would handle pathnames, symbols, etc.
  */
 int
-sccs_resolveFile(sccs *s)
+sccs_resolveFile(sccs *s, char *lpath, char *gpath, char *rpath)
 {
-	FILE	*f;
+	FILE	*f = 0;
 	delta	*d, *a = 0, *b = 0;
 	
 	for (d = s->table; d; d = d->next) {
@@ -8912,6 +8927,7 @@ sccs_resolveFile(sccs *s)
 		}
 	}
 	if (b) {
+		/* find the GCA and put it in d */
 		for (d = b; d; d = d->parent) d->flags |= D_VISITED;
 		for (d = a; d; d = d->parent) {
 			if (d->flags & D_VISITED) break;
@@ -8929,7 +8945,27 @@ sccs_resolveFile(sccs *s)
 				b->rev, d->rev, a->rev, getuser(), now());
 		}
 		fclose(f);
+		if (lpath) {
+			unless (f = fopen(sccsXfile(s, 'R'), "w")) {
+				perror("R.file");
+				return (-1);
+			}
+			fprintf(f, "rename %s %s %s\n",
+			    name2sccs(lpath),
+			    name2sccs(gpath),
+			    name2sccs(rpath));
+			fclose(f);
+		}
 		return (1);
+	}
+	if (lpath) {
+		unless (f = fopen(sccsXfile(s, 'R'), "w")) {
+			perror("R.file");
+			return (-1);
+		}
+		fprintf(f, "rename %s %s %s\n",
+		    name2sccs(lpath), name2sccs(gpath), name2sccs(rpath));
+		fclose(f);
 	}
 	return (0);
 }
@@ -9060,6 +9096,56 @@ sccs_ino(sccs *s)
 	return (d);
 }
 
+MDBM	*
+loadDB(char *file, int (*want)(char *))
+{
+	MDBM	*DB = 0;
+	FILE	*f = 0;
+	char	*v;
+	char	buf[1024];
+	int	first = 1;
+
+again:	unless (f = fopen(file, "rt")) {
+		if (first) {
+			first = 0;
+			fprintf(stderr, "Rebuilding caches...\n");
+			system("bk sfiles -r");
+			goto again;
+		}
+out:		if (f) fclose(f);
+		if (DB) mdbm_close(DB);
+		return (0);
+	}
+	DB = mdbm_open(NULL, 0, 0, 4096);
+	assert(DB);
+	mdbm_pre_split(DB, 1<<10);
+	while (fnext(buf, f)) {
+		if (buf[0] == '#') continue;
+		if (want && !want(buf)) continue;
+		if (chop(buf) != '\n') {
+			fprintf(stderr, "bad path: <%s>\n", buf);
+			assert("pathname overflow in cache" == 0);
+		}
+		v = strchr(buf, ' ');
+		assert(v);
+		*v++ = 0;
+		if (mdbm_store_str(DB, buf, v, MDBM_INSERT)) {
+			fprintf(stderr,
+			    "Duplicate name '%s' in %s.\n", buf, file);
+			goto out;
+		}
+	}
+	fclose(f);
+	return (DB);
+}
+
+int
+findpipe(register char *s)
+{
+	while (*s) if (*s++ == '|') return (1);
+	return (0);
+}
+
 /*
  * Get all the ids associated with a changeset.
  * The db is db{fileId} = csetId.
@@ -9070,11 +9156,8 @@ MDBM	*
 csetIds(sccs *s, char *rev, int all)
 {
 	FILE	*f;
-	char	*n;
-	datum	k, v;
 	MDBM	*db;
 	char	name[1024];
-	char	buf[2048];
 
 	sprintf(name, "/tmp/cs%d", getpid());
 	if (all) {
@@ -9097,32 +9180,7 @@ all:		if (sccs_get(s, rev, 0, 0, 0, SILENT|PRINT, name)) {
 		}
 		fclose(f);
 	}
-	db = mdbm_open(NULL, 0, 0, 4096);
-	assert(db);
-	mdbm_pre_split(db, 1<<10);
-	unless (f = fopen(name, "rt")) {
-		perror(name);
-		exit(1);
-	}
-	while (fnext(buf, f)) {
-		if (buf[0] == '#') continue;
-		unless (strchr(buf, '|')) continue;
-		if (chop(buf) != '\n') {
-			assert("cset: pathname overflow in ChangeSet" == 0);
-		}
-		n = strchr(buf, ' ');
-		assert(n);
-		*n++ = 0;
-//printf("db(%s) = '%s'\n", buf, n);
-		k.dptr = buf;
-		k.dsize = strlen(buf) + 1;
-		v.dptr = n;
-		v.dsize = strlen(n) + 1;
-		if (mdbm_store(db, k, v, MDBM_INSERT)) {
-			perror("mdbm_store failed in csetIds");
-			exit(1);
-		}
-	}
+	db = loadDB(name, findpipe);
 	unlink(name);
 	return (db);
 }

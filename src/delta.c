@@ -31,6 +31,7 @@ usage: delta [-cGilnpqs] [-I<f>] [-S<sym>] [-y<c>] [files...]\n\n\
  */
 
 #include "comments.c"
+int	newrev(sccs *s, pfile *pf);
 
 int
 main(int ac, char **av)
@@ -147,7 +148,7 @@ usage:			fprintf(stderr, "delta: usage error, try --help.\n");
 		}
 		if (sccs_delta(s, flags, d, init, diffs) == -1) {
 			sccs_whynot("delta", s);
-out:			if (init) fclose(init);
+			if (init) fclose(init);
 			if (diffs) fclose(diffs);
 			sccs_free(s);
 			commentsDone(saved);

@@ -651,6 +651,9 @@ sccs	*check_gfile(sccs*, int);
 void	*chk_malloc(size_t s, char *, int);
 void	*chk_calloc(size_t n, size_t s, char *, int);
 void	platformSpecificInit(char *, int);
+MDBM	*loadDB(char *file, int (*want)(char *));
+MDBM	*csetIds(sccs *cset, char *rev, int all);
+void	sccs_fixDates(sccs *);
 #ifdef	WIN32
 /*
  * Most of the WIN32 stuff is defined in re_def.h

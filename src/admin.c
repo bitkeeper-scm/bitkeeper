@@ -45,6 +45,9 @@ usage: admin options [-] OR [file file file...]\n\n\
 		    }
 
 int	do_checkin(char *nm, int enc, int fl, char *rev, char *newf, char *com);
+void	clearCset(sccs *s, int flags);
+void	clearPath(sccs *s, int flags);
+int	setMerge(sccs *sc, char *merge, char *rev);
 
 int
 main(int ac, char **av, char **ev)
@@ -232,6 +235,7 @@ usage:	fprintf(stderr, "admin: usage error, try `admin --help' for info.\n");
 	return (1);
 }
 
+void
 clearCset(sccs *s, int flags)
 {
 	delta	*d;
@@ -263,6 +267,7 @@ clearCset(sccs *s, int flags)
 	}
 }
 
+void
 clearPath(sccs *s, int flags)
 {
 	delta	*d;

@@ -1,3 +1,14 @@
+It would be nice if the ChangeSet file had hints where the hint is a rev 
+number after the key.  Then you could look up the rev number and see if
+the key matched.  Might be a perf win, might not.
+
+Need a cset(sccs *s, char *id, char *rev) interface which returns an
+MDBM database with the {file id, tip id} pairs of all files in the cset.
+
+The cset command needs to be able to read the list on stdin.
+The sfiles command needs to be able to generate the list of tips on
+stdout.
+
 Ordering of deltas
 	The latest delta is TOT.
 	If TOT has multiple metadata deltas, it is the latest meta.
