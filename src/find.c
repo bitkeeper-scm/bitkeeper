@@ -16,7 +16,6 @@ int
 find_main(int ac, char **av)
 {
 	int	i, optind = 1;
-	char	pwd[MAXPATH];
 
 	debug_main(av);
 	platformSpecificInit(NULL);

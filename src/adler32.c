@@ -2,18 +2,31 @@
 #include "sccs.h"
 #include "zlib/zlib.h"
 
-private	void do_checksum(void);
+private	int	do_checksum(int);
 
 int
-adler32_main(void)
+adler32_main(int ac, char **av)
 {
 	platformSpecificInit(NULL);
-	do_checksum();
-	exit(0);
+	return (do_checksum((ac == 2) && streq(av[1], "-w")));
 }
 
 /*
- * Compute a checksum over the interesting part of the output.
+ * Compute a checksum envelop over a data stream.
+ * There are two possible data sections, the human and the BK part.
+ * The human part comes first as
+ *	^A Diff start
+ *	diff -u output
+ *	^A end
+ * and then we ignore data until we see a 
+ *	^A Patch start
+ *	patch output
+ *	^A end
+ *
+ * Because the diffs can contain stuff that will screw up the unpacker, we
+ * preceed all the human readable diffs with "#";  It's up to the other side
+ * to strip that after checksumming the diffs.
+ *
  * This is from the PATCH_VERSION line (inclusive) all the way to the end.
  * The "# Patch checksum=..." line is not checksummed.
  *
@@ -22,60 +35,85 @@ adler32_main(void)
  *
  * adler32() is in zlib.
  */
-private void
-do_checksum(void)
+private int
+do_checksum(int dataOnly)
 {
 	char	buf[MAXLINE];
-	int	len;
-	int	doXsum = 0;
-	uLong	sum = 0;
-	int	type = 0;
+	int	doDiffs = 0;
+	uLong	sum;
 
+	if (dataOnly) goto patch;
+
+	/*
+	 * Just pass through anything up until a patch or diffs start.
+	 */
 	while (fnext(buf, stdin)) {
 		if (streq(buf, PATCH_ABORT)) {
-			type = -1;
-		} else if (streq(buf, PATCH_OK)) {
-			type = 1;
-		} else {
-			type = 0;
+abort:			fprintf(stderr, "adler32 aborting\n");
+			while (fnext(buf, stdin));
+			return (1);
 		}
-
-		/*
-		 * Might be embedded data, in which case we pass it.
-		 */
-		if (type && fnext(buf, stdin)) {
-			char	*t = (type == -1) ? PATCH_ABORT : PATCH_OK;
-			if (doXsum) {
-				len = strlen(t);
-				sum = adler32(sum, t, len);
-			}
-			fputs(t, stdout);
-		} else if (type == -1) {
-			fprintf(stderr, "adler32: aborting\n");
-			exit(1);
-		} else if (type == 1) {
+		if (streq(buf, PATCH_DIFFS)) {
+			doDiffs = 1;
 			break;
 		}
-
-		if (streq(buf, PATCH_CURRENT)) {
-			if (!doXsum) doXsum = 1;
-			else {
-				printf("# Human readable diff checksum=%.8lx\n", sum);
-				sum = 0;
-			}
-		} else if (streq(buf,
-		 "# that BitKeeper cares about, is below these diffs.\n")) {
-			doXsum = 1;
-		}
-		if (doXsum) {
-			len = strlen(buf);
-			sum = adler32(sum, buf, len);
+		if (streq(buf, PATCH_PATCH)) {
+			goto patch;
 		}
 		fputs(buf, stdout);
 		if (feof(stdin)) {
-			fprintf(stderr, "adler32: did not see patch EOF\n");
-			exit(1);
+eof:			fprintf(stderr, "adler32: did not see patch EOF\n");
+			return (1);
 		}
 	}
-	printf("# Patch checksum=%.8lx\n", sum);
+
+	/*
+	 * Wrap the diffs in their own envelope.
+	 */
+	if (doDiffs) {
+		sum = 0;
+		while (fnext(buf, stdin)) {
+			if (streq(buf, PATCH_ABORT)) goto abort;
+			if (streq(buf, PATCH_END)) {
+				/* the \n is important, we need a blank line. */
+				printf("\n# Diff checksum=%.8lx\n\n", sum);
+				break;
+			}
+			sum = adler32(sum, "#", 1);
+			fputs("#", stdout);
+			sum = adler32(sum, buf, strlen(buf));
+			fputs(buf, stdout);
+			if (feof(stdin)) goto eof;
+		}
+	}
+
+	/*
+	 * Just pass through anything up until a patch start.
+	 */
+	while (fnext(buf, stdin)) {
+		if (streq(buf, PATCH_PATCH)) break;
+		fputs(buf, stdout);
+		if (feof(stdin)) goto eof;
+	}
+
+	/*
+	 * Wrap the patch in it's own envelope.
+	 */
+patch:
+	sum = 0;
+	while (fnext(buf, stdin)) {
+		if (streq(buf, PATCH_ABORT)) goto abort;
+		if (streq(buf, PATCH_END)) {
+end:			printf("# Patch checksum=%.8lx\n", sum);
+			fflush(stdout);
+			while (fnext(buf, stdin));
+			return (0);
+		}
+		sum = adler32(sum, buf, strlen(buf));
+		fputs(buf, stdout);
+		if (feof(stdin)) goto eof;
+	}
+	unless (dataOnly) goto eof;
+	goto end;
+	/* gotta love them thar gotos */
 }

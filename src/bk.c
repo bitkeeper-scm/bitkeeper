@@ -522,11 +522,14 @@ private void
 platformInit(char **av)
 {
 	char	*p, *t, *s;
-	static	char buf[MAXPATH], buf1[MAXPATH];
-	char	buf2[10 * MAXPATH], link[MAXPATH];
+	static	char buf[MAXPATH];
+	char	link[MAXPATH];
 	int	add2path = 1;
 	int	n;
 	int	flags = SILENT;	/* for debugging */
+#ifdef WIN32
+	char	buf2[10 * MAXPATH], buf1[MAXPATH];
+#endif
 
 	if (bin) return;
 	if ((editor = getenv("EDITOR")) == NULL) editor = strdup(EDITOR);

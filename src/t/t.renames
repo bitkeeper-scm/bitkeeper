@@ -1149,7 +1149,7 @@ FILE=`echo *`
 		echo "$x"
 	done
 )
-cat TOP A MOVED | bk adler32 > PATCH
+cat TOP A MOVED | bk adler32 -w > PATCH
 cd ..
 rm -rf RESYNC
 VV=
