@@ -88,6 +88,7 @@ doit(int verbose, char *rev)
 	}
 	close(1);
 	pclose(f);
+	waitpid(pid, 0, 0);
 	unlink(tmpfile);
 	return (0);
 }
