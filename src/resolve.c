@@ -45,7 +45,7 @@ private	int	rename_file(resolve *rs);
 private	int	rename_file(resolve *rs);
 private	void	restore(opts *o);
 private void	unapply(FILE *f);
-private int	copyAndGet(char *from, char *to, project *proj);
+private int	copyAndGet(char *from, char *to, project *proj, int getFlags);
 private int	writeCheck(sccs *s, MDBM *db);
 private MDBM	*localDB;	/* real name cache for local tree */
 private MDBM	*resyncDB;	/* real name cache for resyn tree */
@@ -2137,6 +2137,7 @@ pass4_apply(opts *opts)
 	sccs	*r, *l;
 	int	offset = strlen(ROOT2RESYNC) + 1;	/* RESYNC/ */
 	int	eperm = 0, first = 1, flags, ret;
+	int	getFlags = GET_EXPAND;
 	FILE	*f;
 	FILE	*save;
 	char	buf[MAXPATH];
@@ -2267,6 +2268,12 @@ pass4_apply(opts *opts)
 	}
 	fflush(f);
 	rewind(f);
+
+	/*
+	 * Get user preference from the local config file
+	 */
+	if (strieq("edit", user_preference("checkout"))) getFlags = GET_EDIT;
+
 	while (fnext(buf, f)) {
 		chop(buf);
 		/*
@@ -2283,7 +2290,7 @@ pass4_apply(opts *opts)
 		if (opts->log) {
 			fprintf(stdlog, "copy(%s, %s)\n", buf, &buf[offset]);
 		}
-		if (copyAndGet(buf, &buf[offset], opts->local_proj)) {
+		if (copyAndGet(buf, &buf[offset], opts->local_proj, getFlags)) {
 			perror("copy");
 			fprintf(stderr,
 			    "copy(%s, %s) failed\n", buf, &buf[offset]);
@@ -2409,7 +2416,7 @@ writeCheck(sccs *s, MDBM *db)
 }
 
 private int
-copyAndGet(char *from, char *to, project *proj)
+copyAndGet(char *from, char *to, project *proj, int getFlags)
 {
 	sccs *s;
 
@@ -2435,7 +2442,7 @@ copyAndGet(char *from, char *to, project *proj)
 	}
 	s = sccs_init(to, INIT_SAVEPROJ, proj);
 	assert(s && HASGRAPH(s));
-	sccs_get(s, 0, 0, 0, 0, SILENT|GET_EXPAND, "-");
+	sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-");
 	sccs_free(s);
 	return (0);
 }

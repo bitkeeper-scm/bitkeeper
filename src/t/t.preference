@@ -101,4 +101,85 @@ if [ ! -f $HERE/copy2/src/foo.c ]; then echo failed 1; exit 1; fi
 if [ ! -w $HERE/copy2/src/foo.c ]; then echo failed 2; exit 1; fi
 if [ ! -f $HERE/copy2/src/SCCS/p.foo.c ]; then echo failed; exit 1; fi
 echo OK
+echo $N checkout:EDIT w resolve simple content change ...............$NL
+cd $HERE/project
+bk unedit BitKeeper/etc/config
+bk edit $Q BitKeeper/etc/config
+echo "checkout:EDIT" >> BitKeeper/etc/config
+bk delta $Q -yEDIT BitKeeper/etc/config
+bk commit $Q -yEDIT 
+cd $HERE
+bk clone $Q project edit_1
+bk clone $Q project edit_2
+cd $HERE/edit_1/src
+echo new2 >> foo.c
+bk delta $Q -ynew2 foo.c
+bk commit $Q -ynew2
+cd $HERE/edit_2/src
+bk pull $Q $HERE/edit_1
+if [ ! -f $HERE/edit_2/src/foo.c ]; then echo failed 1; exit 1; fi
+if [ ! -w $HERE/edit_2/src/foo.c ]; then echo failed 2; exit 1; fi
+if [ ! -f $HERE/edit_2/src/SCCS/p.foo.c ]; then echo failed; exit 1; fi
+echo OK
+echo $N checkout:EDIT w resolve simple flag change ..................$NL
+cd $HERE/edit_1/src
+bk admin $Q -fEXPAND1 foo.c
+bk commit $Q -yflags_chg
+cd $HERE/edit_2/src
+bk pull $Q $HERE/edit_1
+if [ ! -f $HERE/edit_2/src/foo.c ]; then echo failed 1; exit 1; fi
+if [ ! -w $HERE/edit_2/src/foo.c ]; then echo failed 2; exit 1; fi
+if [ ! -f $HERE/edit_2/src/SCCS/p.foo.c ]; then echo failed; exit 1; fi
+echo OK
+echo $N checkout:EDIT w resolve simple rename change ................$NL
+cd $HERE/edit_1/src
+bk mv foo.c foo1.c
+bk commit $Q -yrename
+cd $HERE/edit_2/src
+bk pull $Q $HERE/edit_1
+if [ ! -f $HERE/edit_2/src/foo1.c ]; then echo failed 1; exit 1; fi
+if [ ! -w $HERE/edit_2/src/foo1.c ]; then echo failed 2; exit 1; fi
+if [ ! -f $HERE/edit_2/src/SCCS/p.foo1.c ]; then echo failed; exit 1; fi
+echo OK
+echo $N checkout:EDIT w resolve automerge content change ............$NL
+cd $HERE/edit_1/src
+echo new3 >> foo1.c
+bk delta $Q -ynew2 foo1.c
+bk commit $Q -ynew2
+cd $HERE/edit_2/src
+grep -v "^new$" foo1.c > foo.tmp
+cp foo.tmp foo1.c
+bk delta $Q -ydelete_line_1 foo1.c
+bk commit $Q -ydelete_line_1
+bk pull $Q $HERE/edit_1
+if [ ! -f $HERE/edit_2/src/foo1.c ]; then echo failed 1; exit 1; fi
+if [ ! -w $HERE/edit_2/src/foo1.c ]; then echo failed 2; exit 1; fi
+if [ ! -f $HERE/edit_2/src/SCCS/p.foo1.c ]; then echo failed; exit 1; fi
+echo OK
+echo $N checkout:EDIT w resolve automerge flag change ...............$NL
+cd $HERE/edit_1/src
+bk admin $Q -FEXPAND1 foo1.c
+bk commit $Q -yflags_chg
+cd $HERE/edit_2/src
+bk admin -fEOLN_NATIVE foo1.c
+bk commit $Q -yflags_chg
+bk pull $Q $HERE/edit_1
+if [ ! -f $HERE/edit_2/src/foo1.c ]; then echo failed 1; exit 1; fi
+if [ ! -w $HERE/edit_2/src/foo1.c ]; then echo failed 2; exit 1; fi
+if [ ! -f $HERE/edit_2/src/SCCS/p.foo1.c ]; then echo failed; exit 1; fi
+echo OK
+echo $N checkout:EDIT w resolve rename conflict .....................$NL
+cd $HERE/edit_1/src
+bk mv foo1.c foo2.c
+bk commit $Q -yrename
+cd $HERE/edit_2/src
+bk mv foo1.c foo3.c
+bk commit $Q -yrename
+bk pull -t $Q $HERE/edit_1 2> /dev/null <<EOF
+r
+EOF
+if [ ! -f $HERE/edit_2/src/foo2.c ]; then echo failed 1; exit 1; fi
+if [ ! -w $HERE/edit_2/src/foo2.c ]; then echo failed 2; exit 1; fi
+if [ ! -f $HERE/edit_2/src/SCCS/p.foo2.c ]; then echo failed; exit 1; fi
+echo OK
 # TODO add support for bk undo ?
