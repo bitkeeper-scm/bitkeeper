@@ -1,0 +1,28 @@
+
+# Copright (c) 1999 Larry McVoy
+# %K%
+
+echo ---- Handling of E flag %M% ------
+echo $N Test add E flag .............................$NL
+echo 'XX@W@YY' | sed s/@/%/g > test.c
+echo 'YY@W@ZZ' | sed s/@/%/g >> test.c
+admin $Q -n -fE -itest.c test.c
+${RM} -f test.c
+get $Q test.c
+${ECHO} "XX@(#)test.c 1.1YY" > ref.c
+${ECHO} 'YY@W@ZZ' | sed s/@/%/g >> ref.c
+cmp -s test.c ref.c
+if [ $? -ne 0 ]; then echo Failed; cat test.c; exit 1; fi
+echo OK
+admin $Q -FE test.c
+echo $N Test delete E flag ..........................$NL
+get $Q test.c
+${CAT}  << EOF > ref.c 
+XX@(#)test.c 1.1YY
+YY@(#)test.c 1.1ZZ
+EOF
+cmp -s test.c ref.c
+if [ $? -ne 0 ]; then echo Failed; cat test.c; exit 1; fi
+echo OK
+rm -f ref.c test.c SCCS/s.test.c
+

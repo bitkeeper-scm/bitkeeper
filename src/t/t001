@@ -1,0 +1,221 @@
+
+# Copright (c) 1999 Larry McVoy
+# %K%
+
+${CAT} > foo <<EOF
+Hi there, this is file foo.
+Hi there, this is file foo.
+Hi there, this is file foo.
+Hi there, this is file foo.
+Hi there, this is file foo.
+Hi there, this is file foo.
+Hi there, this is file foo.
+Hi there, this is file foo.
+Hi there, this is file foo.
+EOF
+mv foo SAVE
+echo --------------- Basic tests %M% -------------------
+ATT=no
+for D in "" A/ A/A/A/A/
+do	case "$D" in
+	"") DOTS=........
+	   ;;
+	"A/") DOTS=......
+	   ;;
+	*) DOTS=
+	   ;;
+	esac
+	if [ X$D != X ]; then mkdir -p $D; fi
+	${RM} -rf SCCS ${D}foo ${D}SCCS ${D}s.foo
+	echo $N Create initial changeset ....................$NL
+	cset -si .
+	if [ ! -f SCCS/s.ChangeSet ]; then echo failed; exit 1; fi
+	echo OK
+	cp SAVE ${D}foo
+	echo $N checkin with ${D}SCCS/s.foo ${DOTS}.............$NL
+	ci $Q -i ${D}foo
+	if [ ! -f ${D}SCCS/s.foo ]; then echo Failed to create s.foo.; exit 1; fi
+	if [ -f ${D}foo ]; then echo Failed to get foo.; exit 1; fi
+	echo OK
+	echo $N checkout with ${D}SCCS/s.foo ${DOTS}............$NL
+	co $Q ${D}foo
+	if [ ! -f ${D}foo ]; then echo Failed to get foo.; exit 1; fi
+	if [ -w ${D}foo ]; then echo foo is writable; exit 1; fi
+	echo OK
+	echo $N Verifying data checksum .....................$NL
+	A=`prs -r1.1 -hd:CHKSUM: ${D}foo`
+	B=`chksum < SAVE`
+	if [ $A -ne $B ]; then echo Failed - chksums $A $B differ; exit 1; fi
+	echo OK
+	echo $N "cleaning ${D}" ${DOTS}...........................$NL
+	clean ${D}
+	if [ -f ${D}foo ]; then echo Failed to clean foo.; exit 1; fi
+	echo OK
+	# XXX - this looks up to far for the pending file
+	echo $N "checkout of the directory ${D}" ${DOTS}..........$NL
+	co $Q ${D}
+	if [ ! -f ${D}foo ]; then echo Failed to get foo.; exit 1; fi
+	if [ -w ${D}foo ]; then echo foo is writable; exit 1; fi
+	echo OK
+	if [ $ATT = YES ]
+	then
+	    # OK, now try it with s.names, no SCCS/
+	    echo $N checkin with ${D}s.foo ${DOTS}..................$NL
+	    ${RM} -rf ${D}foo ${D}SCCS
+	    cp SAVE ${D}foo
+	    ci $Q -i ${D}s.foo
+	    if [ ! -f ${D}s.foo ]; then echo Failed to create s.foo.; exit 1; fi
+	    if [ -f ${D}foo ]; then echo Failed to get foo.; exit 1; fi
+	    echo OK
+	    echo $N checkout with ${D}s.foo ${DOTS}.................$NL
+	    co $Q ${D}s.foo
+	    if [ ! -f ${D}foo ]; then echo Failed to get foo.; exit 1; fi
+	    if [ -w ${D}foo ]; then echo foo is writable; exit 1; fi
+	    echo OK
+	fi
+	echo $N "cleaning ${D}" ${DOTS}...........................$NL
+	clean ${D}
+	if [ -f ${D}foo ]; then echo Failed to clean foo.; exit 1; fi
+	echo OK
+	echo $N "checkout of the directory ${D}" ${DOTS}..........$NL
+	co $Q ${D}
+	if [ ! -f ${D}foo ]; then echo Failed to get foo.; exit 1; fi
+	if [ -w ${D}foo ]; then echo foo is writable; exit 1; fi
+	echo OK
+done
+${RM} -rf foo SCCS A
+
+echo $N Check in files named s.something ............$NL
+mkdir -p bar/blech
+echo foo > s.foo
+echo foo > bar/s.foo
+echo foo > bar/blech/s.foo
+find . -name s.foo -print | ci $S -i -
+if [ ! -f SCCS/s.s.foo ]; then echo failed on s.s.foo; exit 1; fi
+if [ ! -f bar/SCCS/s.s.foo ]; then echo failed on bar/SCCS/s.s.foo; exit 1; fi
+if [ ! -f bar/blech/SCCS/s.s.foo ]; then echo failed on bar/blech/s.foo; exit 1; fi
+echo OK
+echo $N Clean files named s.something ...............$NL
+clean; clean bar; clean bar/blech
+if [ -f s.foo ]; then echo failed on s.s.foo; exit 1; fi
+if [ -f bar/s.foo ]; then echo failed on bar/SCCS/s.s.foo; exit 1; fi
+if [ -f bar/blech/s.foo ]; then echo failed on bar/blech/s.foo; exit 1; fi
+echo OK
+echo $N Check out files named s.something ...........$NL
+co $Q s.foo bar/s.foo bar/blech/s.foo
+if [ ! -f s.foo ]; then echo failed on s.foo; exit 1; fi
+if [ ! -f bar/s.foo ]; then echo failed on bar/s.foo; exit 1; fi
+if [ ! -f bar/blech/s.foo ]; then echo failed on bar/blech/s.foo; exit 1; fi
+echo OK
+clean; clean bar; clean bar/blech
+echo $N get files named s.something using - .........$NL
+co $Q - <<EOF
+s.foo
+bar/s.foo
+bar/blech/s.foo
+EOF
+if [ ! -f s.foo ]; then echo failed on s.foo; exit 1; fi
+if [ ! -f bar/s.foo ]; then echo failed on bar/s.foo; exit 1; fi
+if [ ! -f bar/blech/s.foo ]; then echo failed on bar/blech/s.foo; exit 1; fi
+echo OK
+clean; clean bar; clean bar/blech
+echo $N get files named SCCS/s.something using - ....$NL
+co $Q - <<EOF
+SCCS/s.s.foo
+bar/SCCS/s.s.foo
+bar/blech/SCCS/s.s.foo
+EOF
+if [ ! -f s.foo ]; then echo failed on s.foo; exit 1; fi
+if [ ! -f bar/s.foo ]; then echo failed on bar/s.foo; exit 1; fi
+if [ ! -f bar/blech/s.foo ]; then echo failed on bar/blech/s.foo; exit 1; fi
+echo OK
+
+echo ---------------- sfiles tests ------------------
+echo $N Check the list of SCCS files ................$NL
+sfiles | sort > SFILES
+sort <<EOF > LIST
+SCCS/s.s.foo
+bar/SCCS/s.s.foo
+bar/blech/SCCS/s.s.foo
+EOF
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo Failed.; diff SFILES LIST; exit 1; fi
+echo OK
+co $Q -l s.foo bar/s.foo
+ls >> bar/s.foo
+echo $N Check the list of changed files .............$NL
+sfiles -c | sort > SFILES
+sort <<EOF > LIST
+bar/SCCS/s.s.foo
+EOF
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo Failed.; diff SFILES LIST; exit 1; fi
+echo OK
+echo $N Look for directories under SCCS control .....$NL
+mkdir -p bar/not bar/notquite/SCCS
+sfiles -d | sort > SFILES
+sort <<EOF > LIST
+.
+bar
+bar/blech
+EOF
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo Failed.; diff SFILES LIST; exit 1; fi
+echo OK
+echo $N Look for directories not under SCCS control .$NL
+sfiles -D | grep -v BitKeeper | sort > SFILES
+sort <<EOF > LIST
+bar/not
+bar/notquite
+EOF
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo Failed.; diff SFILES LIST; exit 1; fi
+echo OK
+echo $N Check the list of gfiles ....................$NL
+sfiles -g | sort > SFILES
+sort <<EOF > LIST
+s.foo
+bar/s.foo
+bar/blech/s.foo
+EOF
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo Failed.; diff SFILES LIST; exit 1; fi
+echo OK
+echo $N Check the list of locked files ..............$NL
+sfiles -l | sort > SFILES
+sort <<EOF > LIST
+SCCS/s.s.foo
+bar/SCCS/s.s.foo
+EOF
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo Failed.; diff SFILES LIST; exit 1; fi
+echo OK
+echo $N Check the list of unlocked files ............$NL
+sfiles -u | sort > SFILES
+sort <<EOF > LIST
+bar/blech/SCCS/s.s.foo
+EOF
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo Failed.; diff SFILES LIST; exit 1; fi
+echo OK
+sfiles | clean -u -
+echo $N Check the list of clean, unlocked files .....$NL
+sfiles -u | sort > SFILES
+sort <<EOF > LIST
+SCCS/s.s.foo
+bar/SCCS/s.s.foo
+bar/blech/SCCS/s.s.foo
+EOF
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo Failed.; diff SFILES LIST; exit 1; fi
+echo OK
+echo $N Check the list of extra files ...............$NL
+sfiles -x | sort > SFILES
+sort <<EOF > LIST
+LIST
+SAVE
+SFILES
+EOF
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo Failed.; diff SFILES LIST; exit 1; fi
+echo OK

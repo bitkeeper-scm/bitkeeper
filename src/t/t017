@@ -1,0 +1,32 @@
+
+# Copright (c) 1999 Larry McVoy
+# %K%
+
+echo ---------- sccs_restart tests %M% ------------
+cset -is .
+${RM} -rf FILE SCCS
+echo $N Check ci -i -l ..............................$NL
+echo HHHH > FILE
+ci $Q -i -l FILE
+if [ ! -w FILE ]; then echo Failed; exit 1; fi 
+${CAT} > CMP1 << EOF
+======== FILE 1.1 ========
+1.1
+EOF
+prs -d":I:" FILE > CMP2
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+echo OK
+echo $N Check ci -l .................................$NL
+echo JJJ >>FILE
+ci $Q -y -l FILE
+${CAT} > CMP1 << EOF
+======== FILE 1.1..1.2 ========
+1.2
+1.1
+EOF
+if [ ! -w FILE ]; then echo Failed; exit 1; fi 
+prs -r1.1.. -d":I:" FILE  > CMP2
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+echo OK

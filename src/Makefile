@@ -4,7 +4,7 @@ BINS	= delta get ci co admin diffs clean prs what sinfo sccssh sids \
 	  smark cset g2sccs range zone gethost undos chksum rechksum \
 	  cset_todo sccsmv sccsrm sccscat csetmark key2rev edit unedit sdiffs \
 	  check
-SCRIPTS	= rcs2sccs testfast regression bk import resolve resync
+SCRIPTS	= rcs2sccs testfast bk import resolve resync
 GUIBIN	= gui/fdiff
 GUISCR	= gui/sccstool gui/citool gui/vitool gui/fm gui/fm3 \
 	  gui/bithelp gui/mkindex
@@ -58,7 +58,7 @@ HDRS	= sccs.h purify.h sccs.h range.h system.h mdbm/common.h mdbm/mdbm.h \
 	  mdbm/tune.h zlib/zlib.h zlib/zutil.h zlib/zconf.h zlib/deflate.h \
 	  zlib/infblock.h zlib/infcodes.h zlib/inffast.h zlib/inffixed.h \
 	  zlib/inftrees.h zlib/infutil.h zlib/trees.h zgets.h
-SCRSRCS	= rcs2sccs.perl testfast.perl regression.sh bk.sh import.sh \
+SCRSRCS	= rcs2sccs.perl testfast.perl bk.sh import.sh \
 	  resolve.perl gui/sccstool.tcl gui/citool.tcl gui/vitool.tcl \
 	  gui/fm.tcl gui/fm3.tcl gui/bithelp.tcl gui/mkindex.tcl
 
@@ -104,6 +104,8 @@ fullwarn:
 
 p:
 	$(MAKE) CFLAGS="-O2 -fomit-frame-pointer" all
+g:
+	$(MAKE) CFLAGS="-g" all
 gO:
 	$(MAKE) CFLAGS="-g -O"
 
@@ -163,9 +165,8 @@ tags: srcs
 TAGS: srcs
 	etags $(SRCS) $(HDRS)
 
-test: regression #testfast SFILES
-	./regression
-#	./testfast -sccssh -sccs < SFILES
+check test: 
+	cd t && make
 
 # This uses bk-prefixed commands so it works even if you haven't
 # built anything yet (assuming bk is installed already).
@@ -282,11 +283,6 @@ testfast: testfast.perl substvars
 	./substvars testfast.perl >testfast.T
 	chmod +x testfast.T
 	mv -f testfast.T testfast
-
-regression: regression.sh substvars
-	./substvars regression.sh >regression.T
-	chmod +x regression.T
-	mv -f regression.T regression
 
 bk: bk.sh substvars prs
 	./prs -hr+ -d'$$if(:SYMBOL:){(:SYMBOL:) }:UTC:' ../ChangeSet >bk.ver

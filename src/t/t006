@@ -1,0 +1,39 @@
+
+# Copright (c) 1999 Larry McVoy
+# %K%
+
+echo ---------------- clean tests %M% ------------------
+echo some text >X
+echo other text >Y
+delta $Q -i X Y
+echo $N Remove all unmodified files .................$NL
+get $Q X
+get $Q -e Y
+clean
+if [ -f X ] || [ -f Y ]; then	echo failed; exit 1; fi
+echo OK
+echo $N Remove only files on command line ...........$NL
+get $Q X Y
+clean X
+if [ -f X ] || [ ! -f Y ]; then	echo failed; exit 1; fi
+echo OK
+echo $N With -u remove even modified files ..........$NL
+get $Q -e X
+echo more text >>X
+clean 2>/dev/null
+if [ ! -f X ] || [ -f Y ]; then echo Modified file removed w/o -u; exit 1; fi
+clean -u X
+if [ -f X ]; then echo failed; exit 1; fi
+if [ -f SCCS/p.X ]; then echo failed - still locked; exit 1; fi
+echo OK
+echo $N With -n leave gfiles alone ..................$NL
+get $Q X
+get $Q -e Y
+echo more text >>Y
+ls -li X Y >CMP1
+clean -un X Y
+ls -li X Y >CMP2
+if cmp CMP1 CMP2; then :; else echo failed; cat CMP1 CMP2; exit 1; fi
+if [ -f SCCS/p.X ]; then echo failed - still locked; exit 1; fi
+echo OK
+rm -f CMP1 CMP2 X Y SCCS/?.X SCCS/?.Y

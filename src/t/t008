@@ -1,0 +1,47 @@
+
+# Copright (c) 1999 Larry McVoy
+# %K%
+
+echo -------------- Time Zone tests %M% ----------------
+echo $N Checking Delta in Negative Time zone ........$NL
+echo "some data" > TIME
+TZ=UTC+8 delta $S -i  TIME
+${CAT} > CMP1 <<EOF
+======== TIME 1.1 ========
+-08:00
+EOF
+prs -d":TZ:" TIME > CMP2
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+echo OK
+echo $N Checking Delta in Positive Time zone ........$NL
+get $S -e TIME
+echo "more data" >> TIME
+TZ=UTC-8 delta $S -y"" TIME
+${CAT} > CMP1 <<EOF
+======== TIME 1.2 ========
++08:00
+EOF
+prs -d":TZ:" -r1.2 TIME  > CMP2
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+echo OK
+echo $N Checking Delta in 'GMT(UTC)' Time zone ........$NL
+get $S -e TIME
+echo "more data" >> TIME
+TZ=UTC delta $S -y"" TIME
+${CAT} > CMP1 <<EOF
+======== TIME 1.3 ========
++00:00
+EOF
+prs -d":TZ:" -r1.3 TIME  > CMP2
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]
+then	${CAT} > CMP1 <<EOF
+======== TIME 1.3 ========
+-00:00
+EOF
+fi
+if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+echo OK
+unset TZ

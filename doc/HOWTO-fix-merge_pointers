@@ -1,0 +1,26 @@
+Suppose that you have a tree which has open merge pointers (resolve
+can give you this if it gets wacked in the middle of a resolve).
+
+A) Run "bk csetmark -c" to see if there are any such pointers
+
+B) Make the following tree
+
+	RESYNC/BitKeeper/etc
+	RESYNC/BitKeeper/tmp
+	RESYNC/SCCS
+   
+C) Copy the s.ChangeSet file into RESYNC/SCCS
+
+D) Copy the unmerged s.files into the appropriate place in the RESYNC tree
+
+E) Run "bk sccstool" on each of the files and find the left/gca/right
+   and put a r.file next to the s.file in the RESYNC tree.  The
+   r.file should look like
+
+   merge deltas 1.4 1.2 1.2.1.3 lm 99/08/05 12:43:12
+
+   assuming that 1.4/1.2/1.2.1.3 are left/gca/right
+
+You have now reproduced what a resync would have done.  Run resolve.
+Before running resolve, you might back up the repository in case you
+forgot something and want to go add it.

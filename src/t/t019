@@ -1,0 +1,82 @@
+
+# Copright (c) 1999 Larry McVoy
+# %K%
+
+echo ---------- merge tests %M% ------------
+${RM} -rf FILE SCCS
+R=1
+for D in '87/05/28 23:49:57' '97/05/28 23:49:57' '97/05/30 01:34:11' '97/06/23 01:33:45+06:30' '98/01/30 17:45:17-05:00'
+do	${CAT} > INITX <<EOF
+D 1.$R $D $USER 0 0 0/0/0
+c This is revision 1.$R of $D
+c This the second comment of 1.$R
+P this/is/the/pathname.$R
+------------------------------------------------
+EOF
+	echo 1.$R >> FILE
+	if [ $R -eq 1 ] 
+	then	delta $Q -i -IINITX FILE
+	else	delta $Q -IINITX FILE
+	fi
+	R=`expr $R + 1`
+	co $Q -l FILE
+done
+clean FILE
+co  $Q -l -r1.3 FILE
+echo "added in 1.3.1.1" >> FILE
+ci $Q -y FILE
+co $Q -l -r1.3.1 FILE
+echo "added in 1.3.1.2" >> FILE
+ci $Q -y FILE
+echo $N 'Check get -M (1 node from GCA)...............'$NL
+get $Q -e -r1.5 -M1.3.1.1 FILE
+delta $Q -y FILE
+${ECHO} 6 > CMP1
+prs -h -r1.6 -d':MGP:' FILE > CMP2
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+echo OK
+echo $N 'Check get -M (2 node from GCA)...............'$NL
+${CAT} > CMP1 << EOF
+1.1
+1.2
+1.3
+added in 1.3.1.1
+added in 1.3.1.2
+1.4
+1.5
+EOF
+get $Q -e -r1.6 -M1.3.1.2 FILE
+cmp -s CMP1 FILE
+if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+delta $Q -y FILE
+${ECHO} 7 > CMP1
+prs -h -r1.7 -d':MGP:' FILE > CMP2
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+echo OK
+echo $N 'Check co -M (2 node from GCA)................'$NL
+co $Q -l -r1.7 -M1.3.1.2 FILE
+ci $Q -y FILE
+${ECHO} 7 > CMP1
+prs -h -r1.8 -d':MGP:' FILE > CMP2
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+echo OK
+echo $N Check admin -M ..............................$NL
+get $Q -e -i1.3.1.1 FILE
+delta $Q -y FILE
+admin -M1.3.1.1 FILE
+${ECHO} 6 > CMP1
+prs -h -r1.9 -d':MGP:' FILE > CMP2
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+echo OK
+echo $N Check admin -r -M ...........................$NL
+admin -r1.8 -M1.3.1.1 FILE
+${ECHO} 6 > CMP1
+prs -h -r1.8 -d':MGP:' FILE > CMP2
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+echo OK
+
