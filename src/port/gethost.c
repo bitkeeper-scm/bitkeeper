@@ -46,7 +46,7 @@ sccs_gethost(void)
 			if (strchr(hp->h_aliases[i], '.') &&
 			    !streq(hp->h_aliases[i], "localhost.localdomain")) {
 				strcpy(host, hp->h_aliases[i]);
-				break;
+				goto out;
 			}
 		}
 		if (getdomainname(domain, sizeof(domain)) == 0) {
