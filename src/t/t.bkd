@@ -67,6 +67,7 @@ while [ $? -eq 2 ]
 do	P=`expr $P + 1`
 	bk bkd -q -d -p$P -c1 
 done
+waitForUnlock $HERE/copy        # needed on Freebsd4
 cd $HERE/copy/src
 bk pull $Q -t -z0 bk://localhost:$P
 if [ ! -f SCCS/s.zoo.c ]; then echo failed; exit 1; fi
