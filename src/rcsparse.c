@@ -395,7 +395,6 @@ dates(RCS *rcs)
 		if (d->parent && (d->parent->date >= d->date)) {
 			d->dateFudge = (d->parent->date - d->date) + 1;
 			d->date += d->dateFudge;
-fprintf(stderr, "%s@%s %u\n", rcs->file, d->rev, (unsigned)d->dateFudge);
 		}
 	}
 	while (n) {
@@ -409,7 +408,6 @@ fprintf(stderr, "%s@%s %u\n", rcs->file, d->rev, (unsigned)d->dateFudge);
 			if (d->parent && (d->parent->date >= d->date)) {
 				d->dateFudge = (d->parent->date - d->date) + 1;
 				d->date += d->dateFudge;
-fprintf(stderr, "%s@%s %u\n", rcs->file, d->rev, (unsigned)d->dateFudge);
 			}
 			d = d->kid;
 		}

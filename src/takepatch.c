@@ -1417,7 +1417,7 @@ initProject()
 private	MMAP	*
 init(char *inputFile, int flags, project **pp)
 {
-	char	buf[MAXLINE];		/* used ONLY for input I/O */
+	char	buf[BUFSIZ];		/* used ONLY for input I/O */
 	char	*root, *t;
 	int	i, len;
 	FILE	*f, *g;
@@ -1694,23 +1694,26 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			}
 			
 			unless (st.preamble) {
-				if (fputs(buf, f) == EOF) {
-					perror("fputs on patch");
-					cleanup(CLEAN_PENDING|CLEAN_RESYNC);
+				for (;;) {
+					if (fputs(buf, f) == EOF) {
+						perror("fputs on patch");
+						cleanup(
+						    CLEAN_PENDING|CLEAN_RESYNC);
+					}
+					len = strlen(buf);
+					sumC = adler32(sumC, buf, len);
+					if (strchr(buf, '\n')) break;
+					unless (fnext(buf, stdin)) {
+						perror("fnext");
+						goto missing;
+					}
 				}
-				len = strlen(buf);
-				sumC = adler32(sumC, buf, len);
 			}
 
 			unless (mkpatch) {
 				unless (fnext(buf, stdin)) {
 					perror("fnext");
 					goto missing;
-				}
-				unless (strchr(buf, '\n')) {
-					fprintf(stderr,
-					    "Line overflow.\n%s\n", buf);
-					cleanup(CLEAN_RESYNC);
 				}
 				continue;
 			}
@@ -1745,10 +1748,6 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			unless (fnext(buf, stdin)) {
 				perror("fnext");
 				goto missing;
-			}
-			unless (strchr(buf, '\n')) {
-				fprintf(stderr, "Line overflow.\n%s\n", buf);
-				cleanup(CLEAN_RESYNC);
 			}
 		}
 		if (st.preamble) nothingtodo();
