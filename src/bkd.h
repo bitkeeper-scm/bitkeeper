@@ -46,6 +46,7 @@ int	cmd_check(int ac, char **av);
 int	cmd_eof(int ac, char **av);
 int	cmd_help(int ac, char **av);
 int	cmd_httpget(int ac, char **av);
+int	cmd_license(int ac, char **av);
 int	cmd_pwd(int ac, char **av);
 int	cmd_rootkey(int ac, char **av);
 int	cmd_status(int ac, char **av);
