@@ -42,8 +42,8 @@ private int	embedded = 0;
 #define	COLOR_DIFFS	"lightblue"	/* diffs */
 #define	COLOR_PATCH	"lightblue"	/* patch */
 
-#define	OUTER_TABLE "<table width=100% bgcolor=darkgray cellspacing=0 border=0 cellpadding=2><tr><td>\n"
-#define INNER_TABLE	"<table width=100% cellpadding=0 cellspacing=2 border=1 bgcolor=white>"
+#define	OUTER_TABLE "<table width=100% bgcolor=darkgray cellspacing=0 border=0 cellpadding=0><tr><td>\n"
+#define INNER_TABLE	"<table width=100% cellpadding=3 cellspacing=1 border=0 bgcolor=white>"
 #define OUTER_END	"</td></tr></table>\n"
 #define	INNER_END	"</table>"
 
@@ -544,38 +544,27 @@ http_cset(char *rev)
 
 	i = snprintf(dspec, sizeof dspec,
 	    "-d%s"
-	    "<tr><td>\n"
-	    "  <table border=0 cellpadding=0 cellspacing=0"
-	    "   width=100%% bgcolor=white>\n"
-	    "  <tr bgcolor=#d8d8f0>\n"
-	    "    <td colspan=2>&nbsp;"
-	    "    :GFILE:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\n"
-	    "$if(:DOMAIN:){@:DOMAIN:}"
+	    "<tr bgcolor=#e0e0e0><td><font size=2>\n"
+	    ":GFILE:@:I:&nbsp;&nbsp;:Dy:-:Dm:-:Dd: :T::TZ:&nbsp;&nbsp;:P:"
+	    "$if(:DOMAIN:){@:DOMAIN:}</font><br>\n"
 	    "$if(:GFILE:=ChangeSet){"
-	      "     &nbsp;&nbsp;<a href=patch@:REV:%s>\n"
-	      "    <font color=darkblue>[all diffs]</font></a>\n"
+	      "<a href=patch@:REV:%s>\n"
+	      "<font size=2 color=darkblue>all diffs</font></a>\n"
 	    "}"
 	    "$if(:GFILE:!=ChangeSet){"
-	      "     &nbsp;&nbsp;<a href=hist/:GFILE:%s>"
-	      "    <font color=darkblue>[history]</font></a>\n"
-	      "     &nbsp;&nbsp;<a href=anno/:GFILE:@:REV:%s>\n"
-	      "    <font color=darkblue>[annotate]</font></a>\n"
-	      "     &nbsp;&nbsp;<a href=diffs/:GFILE:@:REV:%s>\n"
-	      "    <font color=darkblue>[diffs]</font></a>\n"
+	      "<a href=hist/:GFILE:%s>\n"
+	      "<font size=2 color=darkblue>history</font></a>\n"
+	      "&nbsp;&nbsp;"
+	      "<a href=anno/:GFILE:@:REV:%s>\n"
+	      "<font size=2 color=darkblue>annotate</font></a>\n"
+	      "&nbsp;&nbsp;"
+	      "<a href=diffs/:GFILE:@:REV:%s>\n"
+	      "<font size=2 color=darkblue>diffs</font></a>\n"
 	    "}"
-	    "    </td>\n"
-	    "  </tr>\n"
-	    "$each(:TAG:){\n"
-	      "  <tr bgcolor=yellow>\n"
-	      "    <td colspan=2>&nbsp;&nbsp;&nbsp;&nbsp;tag:&nbsp;&nbsp;(:TAG:)</td>\n"
-	      "  </tr>\n"
-	    "}"
-	    "  <tr bgcolor=white>\n"
-	    "    <td width=5%%></td>"
-	    "    <td>:HTML_C:</td>\n"
-	    "  </tr>\n"
-	    "  </table>\n"
 	    "</td></tr>\n"
+	    "$each(:TAG:){<tr bgcolor=yellow><td>(:TAG:)</td></tr>\n}"
+	    "<tr bgcolor=white>\n"
+	    "<td>:HTML_C:</td></tr>\n"
 	    "%s",
 	    prefix,
 	    navbar, navbar, navbar, navbar,
@@ -594,7 +583,7 @@ http_cset(char *rev)
 	}
 
 	while (fnext(buf, f)) {
-		if (strneq("ChangeSet@", buf, 10)) continue;
+		//if (strneq("ChangeSet@", buf, 10)) continue;
 		d = strrchr(buf, '@');
 		if (streq(d, "@1.0\n")) continue;
 		lines = addLine(lines, strdup(buf));
@@ -622,7 +611,10 @@ http_cset(char *rev)
 		header("cset", COLOR_CSETS, "Changeset details for %s", 0, rev);
 	}
 
-	out(OUTER_TABLE INNER_TABLE);
+	out("<table width=100% bgcolor=black cellspacing=0 border=0 "
+	    "cellpadding=0><tr><td>\n"
+	    "<table width=100% bgcolor=darkgray cellspacing=1 "
+	    "border=0 cellpadding=4>\n");
 
 	EACH(lines) write(fd, lines[i], strlen(lines[i]));
 	freeLines(lines);
