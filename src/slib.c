@@ -40,6 +40,7 @@ private delta*	csetFileArg(delta *d, char *name);
 private delta*	hostArg(delta *d, char *arg);
 private delta*	pathArg(delta *d, char *arg);
 private delta*	zoneArg(delta *d, char *arg);
+private delta*	modeArg(delta *d, char *arg);
 private delta*	mergeArg(delta *d, char *arg);
 private delta*	sumArg(delta *d, char *arg);
 private	void	symArg(sccs *s, delta *d, char *name);
@@ -467,6 +468,10 @@ inherit(sccs *s, int flags, delta *d)
 	CHK_DUP(hostname, D_DUPHOST, "host");
 	CHK_DUP(zone, D_DUPZONE, "zone");
 	CHK_DUP(csetFile, D_DUPCSETFILE, "csetFile");
+	if ((p->flags & D_MODE) && !(d->flags & D_MODE)) {
+		d->flags |= D_MODE;
+		d->mode = p->mode;
+	}
 	getDate(d);
 	if (d->merge) {
 		d = sfind(s, d->merge);
@@ -2275,6 +2280,9 @@ meta(sccs *s, delta *d, char *buf)
 	    case 'P':
 		pathArg(d, &buf[3]);
 		break;
+	    case 'O':
+		modeArg(d, &buf[3]);
+		break;
 	    case 'S':
 		symArg(s, d, &buf[3]);
 		break;
@@ -2776,11 +2784,10 @@ check_gfile(sccs *s, int flags)
 			return (0);
 		}
 		s->state |= GFILE;
-		if (sbuf.st_mode & 0222) s->state |= WRITABLE;
-		if (sbuf.st_mode & 0111) s->state |= GEXECUTABLE;
+		s->mode = sbuf.st_mode & 0777;
 		if (flags & GTIME) s->gtime = sbuf.st_mtime;
 	} else {
-		s->state &= ~(GFILE|WRITABLE|GEXECUTABLE);
+		s->state &= ~GFILE;
 	}
 	return (s);
 }
@@ -2842,7 +2849,6 @@ sccs_init(char *name, int flags)
 #ifndef	USE_STDIO
 		s->size = sbuf.st_size;
 #endif
-		if (sbuf.st_mode & 0111) s->state |= SEXECUTABLE;
 	}
 	s->pfile = strdup(sccsXfile(s, 'p'));
 	s->zfile = strdup(sccsXfile(s, 'z'));
@@ -2934,14 +2940,12 @@ bad:			sccs_free(s);
 			return (0);
 		}
 		s->state |= GFILE;
-		if (sbuf.st_mode & 0222) s->state |= WRITABLE;
-		if (sbuf.st_mode & 0111) s->state |= GEXECUTABLE;
+		s->mode = sbuf.st_mode & 0777;
 	}
 	if (stat(s->sfile, &sbuf) == 0) {
 		if (!S_ISREG(sbuf.st_mode)) goto bad;
 		if (sbuf.st_size == 0) goto bad;
 		s->state |= SFILE;
-		if (sbuf.st_mode & 0111) s->state |= SEXECUTABLE;
 	}
 #ifndef	USE_STDIO
 	if ((s->size != sbuf.st_size) || (s->fd == -1)) {
@@ -4267,15 +4271,17 @@ err:		if (slist) free(slist);
 		fclose(out);
 	}
 	if (flags&EDIT) {
-		if (IS_SEXEC(s))
-			chmod(s->gfile, UMASK(0777));
-		else
+		if (d->mode) {
+			chmod(s->gfile, UMASK(d->mode));
+		} else {
 			chmod(s->gfile, UMASK(0666));
+		}
 	} else if (!(flags&PRINT)) {
-		if (IS_SEXEC(s))
-			chmod(s->gfile, UMASK(0555));
-		else
+		if (d->mode) {
+			chmod(s->gfile, UMASK(d->mode & ~0222));
+		} else {
 			chmod(s->gfile, UMASK(0444));
+		}
 	}
 skip_get:
 	if (flags&EDIT) {
@@ -4702,6 +4708,12 @@ delta_table(sccs *s, FILE *out, int willfix)
 			fputsum(s, d->pathname, out);
 			fputsum(s, "\n", out);
 		}
+		if (d->flags & D_MODE) {
+		    	unless (d->parent && (d->parent->mode == d->mode)) {
+				sprintf(buf, "\001cO%o\n", d->mode);
+				fputsum(s, buf, out);
+			}
+		}
 		if (d->flags & D_SYMBOLS) {
 			symbol	*sym;
 
@@ -5015,7 +5027,7 @@ private void
 unlinkGfile(sccs *s)
 {
 	unlink(s->gfile);	/* Careful */
-	s->state &= ~WRITABLE;
+	s->mode = 0;
 }
 
 private void
@@ -5261,7 +5273,7 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 	d->type = type;
 	assert(s);
 	if ((s->state & BITKEEPER) && (type == 'D')) d->flags |= D_CKSUM;
-	if (!d->sdate) {
+	unless (d->sdate) {
 		if (s->gtime) {
 			date(d, s->gtime);
 		} else {
@@ -5269,11 +5281,24 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 		}
 	}
 	if (nodefault) {
-		if (!d->user) d->user = strdup("Anon");
+		unless (d->user) d->user = strdup("Anon");
 	} else {
-		if (!d->user) d->user = strdup(getuser());
-		if (!d->hostname && sccs_gethost()) hostArg(d, sccs_gethost());
-		if (!d->pathname && s) pathArg(d, relativeName(s, 0, 0));
+		unless (d->user) d->user = strdup(getuser());
+		unless (d->hostname && sccs_gethost()) {
+			hostArg(d, sccs_gethost());
+		}
+		unless (d->pathname && s) pathArg(d, relativeName(s, 0, 0));
+#ifdef	AUTO_MODE
+		assert("no" == 0);
+		unless (d->flags & D_MODE) {
+			if (s->state & GFILE) {
+				d->mode = s->mode;
+				d->flags |= D_MODE;
+			} else {
+				modeArg(d, "0664");
+			}
+		}
+#endif
 	}
 	return (d);
 }
@@ -5297,7 +5322,7 @@ updatePending(sccs *s, delta *d)
 	sccs_sdelta(&buf[strlen(buf)], d);
 	strcat(buf, "\n");
 	if (write(fd, buf, strlen(buf)) == -1) {
-		perror("Can'nt write to pending file");
+		perror("Can't write to pending file");
 	}
 	close(fd);
 }
@@ -5350,6 +5375,12 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 		n = calloc(1, sizeof(*n));
 	}
 	n = sccs_dInit(n, 'D', s, nodefault);
+	unless (n->flags & D_MODE) {
+		if (s->state & GFILE) {
+			n->mode = s->mode;
+			n->flags |= D_MODE;
+		}
+	}
 	if (!n->rev) n->rev = strdup("1.1");
 	explode_rev(n);
 	unless (s->state & NOSCCSDIR) {
@@ -5466,7 +5497,6 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 	}
 #endif
 	Chmod(s->sfile, 0444);
-	if (IS_GEXEC(s)) mkexecutable(s->sfile);
 	fclose(sfile);
 	if (s->state & BITKEEPER) updatePending(s, n);
 	unlock(s, 'z');
@@ -5808,6 +5838,17 @@ private delta *
 pathArg(delta *d, char *arg) { ARG(pathname, D_NOPATH, D_DUPPATH); }
 
 private delta *
+modeArg(delta *d, char *arg)
+{
+	unsigned int m;
+
+	assert(d);
+	for (m = 0; isdigit(*arg); m <<= 3, m |= (*arg - '0'), arg++);
+	if (d->mode = m) d->flags |= D_MODE;
+	return (d);
+}
+
+private delta *
 sumArg(delta *d, char *arg)
 {
 	assert(d);
@@ -5971,6 +6012,8 @@ sccs_parseArg(delta *d, char what, char *arg, int defaults)
 		return (hostArg(d, arg));
 	    case 'P':	/* pathname */
 		return (pathArg(d, arg));
+	    case 'O':	/* mode */
+		return (modeArg(d, arg));
 	    case 'C':	/* comments - one string, possibly multi line */
 		return (commentArg(d, arg));
 	    case 'R':	/* 1 or 1.2 or 1.2.3 or 1.2.3.4 */
@@ -6497,7 +6540,6 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 
 	Chmod(sc->sfile, 0444);
 
-	if (IS_GEXEC(sc) || IS_SEXEC(sc)) mkexecutable(sc->sfile);
 	goto out;
 #undef	OUT
 }
@@ -6853,6 +6895,14 @@ comments:
 				d->merge = e->serial;
 			}
 		}
+		unless (fnext(buf, f)) goto out;
+		lines++;
+		chop(buf);
+	}
+
+	/* modes are optional */
+	if (WANT('O')) {
+		unless (d->mode) d = modeArg(d, &buf[2]);
 		unless (fnext(buf, f)) goto out;
 		lines++;
 		chop(buf);
@@ -7281,7 +7331,6 @@ sccs_meta(sccs *s, delta *parent, char *initFile)
 		exit(1);
 	}
 	Chmod(s->sfile, 0444);
-	if (IS_GEXEC(s) || IS_SEXEC(s)) mkexecutable(s->sfile);
 	unlock(s, 'z');
 	return (0);
 }
@@ -7543,7 +7592,6 @@ out:
 	}
 	Chmod(s->sfile, 0444);
 	unlink(s->pfile);
-	if (IS_GEXEC(s)) mkexecutable(s->sfile);
 	if (s->state & BITKEEPER) updatePending(s, n);
 	goto out;
 }
@@ -8279,6 +8327,14 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
+	if (streq(kw, "MODE")) {
+		char	buf[20];
+
+		sprintf(buf, "%o", (int)d->mode);
+		fs(buf);
+		return (strVal);
+	}
+
 	if (streq(kw, "TYPE")) {
 		if (s->state & BITKEEPER) { 
 			fs("BitKeeper");
@@ -8566,7 +8622,6 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 	int	i;	/* used by EACH */
 	lod	*lod;
 	symbol	*sym;
-	delta	*d;
 	char	type;
 
 	/*
@@ -8595,7 +8650,7 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 		fprintf(out, "C %s\n", start->comments[i]);
 	}
 	EACH(start->exclude) {
-		d = sfind(s, start->exclude[i]);
+		delta	*d = sfind(s, start->exclude[i]);
 		assert(d);
 		fprintf(out, "E ");
 		sccs_pdelta(d, out);
@@ -8605,7 +8660,7 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 		fprintf(out, "F %d\n", (int)start->dateFudge);
 	}
 	EACH(start->include) {
-		d = sfind(s, start->include[i]);
+		delta	*d = sfind(s, start->include[i]);
 		assert(d);
 		fprintf(out, "I ");
 		sccs_pdelta(d, out);
@@ -8618,12 +8673,13 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 		fprintf(out, "L %s\n", start->lod->name);
 	}
 	if (start->merge) {
-		d = sfind(s, start->merge);
+		delta	*d = sfind(s, start->merge);
 		assert(d);
 		fprintf(out, "M ");
 		sccs_pdelta(d, out);
 		fprintf(out, "\n");
 	}
+	if (start->flags & D_MODE) fprintf(out, "O %o\n", start->mode);
 	if (s->tree->pathname) assert(start->pathname);
 	if (start->pathname) fprintf(out, "P %s\n", start->pathname);
 	if (start->flags & D_SYMBOLS) {
@@ -9368,7 +9424,6 @@ rmdelout:
 		RMDELOUT;
 	}
 	Chmod(s->sfile, 0444);
-	if (IS_SEXEC(s)) mkexecutable(s->sfile);
 	goto rmdelout;
 }
 
