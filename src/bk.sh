@@ -1132,6 +1132,45 @@ __keysort()
     bk _sort "$@"
 }
 
+__findRegsvr32()
+{
+	REGSVR32=""
+	if [ X$SYSTEMROOT != X ]
+	then
+		SYS=`bk pwd "$SYSTEMROOT"`
+		for i in system32 system
+		do
+			REGSVR32="$SYS/$i/regsvr32.exe" 
+			if [ -e "$REGSVR32" ]
+			then echo "$REGSVR32";
+			     return;
+			fi
+		done
+	fi
+
+	for drv in c d e f g h i j k l m n o p q r s t vu v w x y z
+	do
+		for dir in WINDOWS/system32 WINDOWS/system WINNT/system32
+		do
+			if [ -f "$drv:/$dir/regsvr32.exe" ]
+			then
+				REGSVR32="$drv:/$dir/regsvr32.exe"
+				break;
+			fi
+		done
+		test X"$REGSVR32" != X && break; 
+	done
+	echo "$REGSVR32";
+}
+
+__register_dll()
+{
+	REGSVR32=`__findRegsvr32`
+	test X"$REGSVR32" = X && return; 
+
+	"$REGSVR32" -s "$1"
+}
+
 # usage: install dir
 # installs bitkeeper in directory <dir> such that the new
 # bk will be located at <dir>/bk
@@ -1145,9 +1184,13 @@ _install()
 	FORCE=0
 	CHMOD=YES
 	VERBOSE=NO
-	while getopts dfv opt
+	DLLOPTS=""
+	while getopts dfvlns opt
 	do
 		case "$opt" in
+		l) DLLOPTS="-l $DLLOPTS";; # enable bkshellx for local drives
+		n) DLLOPTS="-n $DLLOPTS";; # enable bkshellx for network drives
+		s) DLLOPTS="-s $DLLOPTS";; # enable bkscc dll
 		d) CHMOD=NO;;	# do not change permissions, dev install
 		f) FORCE=1;;	# force
 		v) VERBOSE=YES;;
@@ -1174,15 +1217,24 @@ _install()
 			exit 1
 		}
 		test $VERBOSE = YES && echo Uninstalling $DEST
-		# uninstall can be missing
-		"$DEST"/bk which -i uninstall >/dev/null 2>&1 && {
-			"$DEST"/bk uninstall 2> /dev/null
-		}
 		chmod -R +w "$DEST" 2> /dev/null
-		rm -rf "$DEST"/* || {
-		    echo "bk install: failed to remove $DEST"
-		    exit 1
-		}
+		if [ "X$OSTYPE" = "Xmsys" ]
+		then
+			OBK="$DEST.old$$"
+			ODLL="$OBK/BkShellX.dll"
+			mv "$DEST" "$OBK"
+			rm -rf "$OBK" 2> /dev/null
+			if [ -f "$ODLL" ]
+			then "$SRC/gui/bin/tclsh" "$SRC/runonce.tcl" \
+			     "BitKeeper" \
+			     "\"$DEST/bkuninstall.exe\" -R \"$ODLL\" \"$OBK\""
+			fi
+		else
+			rm -rf "$DEST"/* || {
+			    echo "bk install: failed to remove $DEST"
+			    exit 1
+			}
+		fi
 	}
 	mkdir -p "$DEST" || {
 		echo "bk install: Unable to mkdir $DEST, failed"
@@ -1211,6 +1263,20 @@ _install()
 		test $VERBOSE = YES && echo ln "$DEST"/bk$EXE "$DEST"/$prog$EXE
 		ln "$DEST"/bk$EXE "$DEST"/$prog$EXE
 	done
+
+	if [ "X$OSTYPE" = "Xmsys" ]
+	then
+		# On Windows we want a install.log file
+		INSTALL_LOG="$DEST"/install.log
+		echo "Installdir=\"$DEST\"" > "$INSTALL_LOG"
+		(cd "$SRC"; find .) >> "$INSTALL_LOG";
+		for prog in admin get delta unget rmdel prs
+		do
+			echo $prog$EXE >> "$INSTALL_LOG"
+		done
+
+	fi
+
 	# permissions
 	cd "$DEST"
 	test $CHMOD = YES && {
@@ -1218,13 +1284,16 @@ _install()
 		(find . | xargs chgrp root) 2> /dev/null
 		find . | xargs chmod -w
 	}
+	# registry
+	if [ "X$OSTYPE" = "Xmsys" ]
+	then
+		test $VERBOSE = YES && echo "updating registry..."
+		gui/bin/tclsh gui/lib/registry.tcl $DLLOPTS "$DEST" 
+		test -z "$DLLOPTS" || __register_dll "$DEST"/BkShellX.dll
+	fi
 	exit 0
 }
 
-_uninstall()
-{
-	exit 0
-}
 
 # ------------- main ----------------------
 __platformInit
