@@ -20,6 +20,7 @@ proc ht {id} \
 	global w
 
 	set bb [$w(graph) bbox $id]
+	if {$bb == ""} {return 200}
 	set y1 [lindex $bb 1]
 	set y2 [lindex $bb 3]
 	return [expr {$y2 - $y1}]
@@ -311,6 +312,8 @@ proc dateSeparate { } { \
 	# set y-position of text
 	set ty [expr {$maxy - $ht}]
 
+	if {[array size serial2rev] <= 1} {return}
+
         foreach ser [lsort -integer [array names serial2rev]] {
 
                 set rev $serial2rev($ser)
@@ -363,7 +366,7 @@ proc dateSeparate { } { \
 proc addline {y xspace ht l} \
 {
 	global	bad wid revX revY gc merges parent line_rev screen
-	global  stacked rev2rev_name w
+	global  stacked rev2rev_name w firstnode
 
 	set last -1
 	set ly [expr {$y - [expr {$ht / 2}]}]
@@ -410,6 +413,7 @@ proc addline {y xspace ht l} \
 			set id [$w(graph) create text $x $y -fill #241e56 \
 			    -anchor sw -text "$txt" -justify center \
 			    -font $gc(sccs.fixedBoldFont) -tags "$rev revtext"]
+			if {![info exists firstnode]} { set firstnode $id }
 			if {$m == 1} { 
 				highlight $id "merge" $rev
 			} else {
@@ -1340,7 +1344,7 @@ proc widgets {fname} \
 proc sccstool {fname {period {}}} \
 {
 	global	bad revX revY search dev_null rev2date serial2rev w
-	global  srev Opts gc file rev2rev_name cdim
+	global  srev Opts gc file rev2rev_name cdim firstnode
 
 	busy 1
 	$w(graph) delete all
@@ -1349,6 +1353,7 @@ proc sccstool {fname {period {}}} \
 	if {[info exists rev2date]} { unset rev2date }
 	if {[info exists serial2rev]} { unset serial2rev }
 	if {[info exists rev2rev_name]} { unset rev2rev_name }
+	if {[info exists firstnode]} { unset firstnode }
 
 	set bad 0
 	set file [exec bk sfiles -g $fname 2>$dev_null]
@@ -1379,12 +1384,17 @@ proc sccstool {fname {period {}}} \
 		revMap "$file"
 		dateSeparate
 		setScrollRegion
+		set first [$w(graph) gettags $firstnode]
+		# If first is not 1.0, create a dummy node that indicates
+		# that there is more data to the left
 		history
 	} else {
+		set ago [exec bk prs -hr+ -d:AGE: $fname]
 		# XXX: Highlight this is a different color? Yellow?
 		$w(ap) configure -state normal; $w(ap) delete 1.0 end
-		$w(ap) insert end  "Error: No data. You've selected a period \
-of time that has no changes. \nPlease choose a longer amount of time. showHistory=($gc(sccs.showHistory))"
+		$w(ap) insert end  "Error: No data within the given time\
+period; please choose a longer amount of time.\n
+The file $fname was last modified $ago ago."
 	}
 	set search(prompt) "Welcome"
 	focus $w(graph)
