@@ -9,9 +9,9 @@
 #include "system.h"
 #include "sccs.h"
 
-private	 void	pass1(sccs *s);
+private	 void	pass1(char *spath);
 private	 void	pass2(u32 flags);
-private	 int	try_rename(sccs *s, int dopass1, u32 flags);
+private	 int	try_rename(char *old, char *new, int dopass1, u32 flags);
 
 private	int filenum;
 
@@ -24,12 +24,6 @@ names_main(int ac, char **av)
 	int	error = 0;
 	u32	flags = 0;
 
-	/* this should be redundant, we should always be at the project root */
-	if (sccs_cd2root(0, 0)) {
-		fprintf(stderr, "names: can not find project root.\n");
-		return (1);
-	}
-
 	optind = 1;
 	names_init();
 	for (n = sfileFirst("names", &av[optind], 0); n; n = sfileNext()) {
@@ -41,7 +35,7 @@ names_main(int ac, char **av)
 			sccs_free(s);
 			continue;
 		}
-		if (streq(s->pathname, s->gfile)) {
+		if (streq(s->spathname, s->sfile)) {
 			sccs_free(s);
 			continue;
 		}
@@ -53,7 +47,7 @@ names_main(int ac, char **av)
 			error |= 2;
 			continue;
 		}
-		todo += names_rename(s, flags);
+		todo += names_rename(s->sfile, s->spathname, flags);
 		sccs_free(s);
 	}
 	sfileDone();
@@ -65,13 +59,19 @@ names_main(int ac, char **av)
 void
 names_init(void)
 {
+	/* this should be redundant, we should always be at the project root */
+
+	if (sccs_cd2root(0, 0)) {
+		fprintf(stderr, "names: can not find project root.\n");
+		exit(1);
+	}
 	filenum = 0;
 }
 
 int
-names_rename(sccs *s, u32 flags)
+names_rename(char *pathold, char *pathnew, u32 flags)
 {
-	return(try_rename(s, 1, flags));
+	return(try_rename(pathold, pathnew, 1, flags));
 }
 
 void
@@ -81,7 +81,7 @@ names_cleanup(u32 flags)
 }
 
 private	void
-pass1(sccs *s)
+pass1(char *spath)
 {
 	char	path[MAXPATH];
 
@@ -90,8 +90,8 @@ pass1(sccs *s)
 		mkdir("BitKeeper/RENAMES/SCCS", 0777);
 	}
 	sprintf(path, "BitKeeper/RENAMES/SCCS/s.%d", ++filenum);
-	if (rename(s->sfile, path)) {
-		fprintf(stderr, "Unable to rename(%s, %s)\n", s->sfile, path);
+	if (rename(spath, path)) {
+		fprintf(stderr, "Unable to rename(%s, %s)\n", spath, path);
 	}
 }
 
@@ -119,9 +119,9 @@ pass2(u32 flags)
 			failed++;
 			continue;
 		}
-		if (try_rename(s, 0, flags)) {
+		if (try_rename(path, s->spathname, 0, flags)) {
 			fprintf(stderr, "Can't rename %s -> %s\n",
-			    s->gfile, s->pathname);
+			    path, s->spathname);
 			fprintf(stderr, "ERROR: File left in %s\n", path);
 			sccs_free(s);
 			failed++;
@@ -142,28 +142,22 @@ pass2(u32 flags)
  * If not, just move it there.  We should be clean so just do the s.file.
  */
 private	int
-try_rename(sccs *s, int dopass1, u32 flags)
+try_rename(char *spathold, char *spathnew, int dopass1, u32 flags)
 {
-	char	*sfile;
-
-	sfile = name2sccs(s->pathname);
-
-	assert(sfile);
-	if (exists(sfile)) {
+	assert(spathold);
+	assert(spathnew);
+	if (exists(spathnew)) {
 		/* circular or deadlock */
-		free(sfile);
-		if (dopass1) pass1(s);
+		if (dopass1) pass1(spathold);
 		return (1);
 	}
-	mkdirf(sfile);
-	if (rename(s->sfile, sfile)) {
-		free(sfile);
-		if (dopass1) pass1(s);
+	mkdirf(spathnew);
+	if (rename(spathold, spathnew)) {
+		if (dopass1) pass1(spathold);
 		return (1);
 	}
 	unless (flags & SILENT) {
-		fprintf(stderr, "names: %s -> %s\n", s->sfile, sfile);
+		fprintf(stderr, "names: %s -> %s\n", spathold, spathnew);
 	}
-	free(sfile);
 	return (0);
 }

@@ -436,7 +436,7 @@ typedef	struct sccs {
 	char	*zfile;		/* SCCS/z.foo.c */
 	char	*gfile;		/* foo.c */
 	char	*symlink;	/* if gfile is a sym link, the destination */
-	char	*pathname;	/* current pathname in view or not in view */
+	char	*spathname;	/* current spathname in view or not in view */
 	char	**usersgroups;	/* lm, beth, staff, etc */
 	int	encoding;	/* ascii, uuencode, gzip, etc. */
 	char	**flags;	/* flags in the middle that we didn't grok */
@@ -776,7 +776,7 @@ delta	*user_get(delta *);
 
 /* names.c */
 void	names_init(void);
-int	names_rename(sccs *s, u32 flags);
+int	names_rename(char *old_spath, char *new_spath, u32 flags);
 void	names_cleanup(u32 flags);
 
 /* bk.c */

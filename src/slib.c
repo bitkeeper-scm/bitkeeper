@@ -1790,7 +1790,7 @@ sccs_nivPath(sccs *s)
 		*p++ = '-';
 		strcpy(p, parts[5]);
 	}
-	strdup(path);
+	name2sccs(path);
 }
 
 /*
@@ -1804,15 +1804,15 @@ sccs_setpathname(sccs *s)
 	delta	*d;
 
 	assert(s);
-	if (s->pathname) free(s->pathname);
+	if (s->spathname) free(s->spathname);
 	if (s->defbranch && streq(s->defbranch, "1.0")) {
-		s->pathname = sccs_nivPath(s);
+		s->spathname = sccs_nivPath(s);
 	}
 	else {
 		unless (d = sccs_getrev(s, "+", 0, 0)) return (0);
-		s->pathname = strdup(d->pathname);
+		s->spathname = name2sccs(d->pathname);
 	}
-	return (s->pathname);
+	return (s->spathname);
 }
 
 /*
@@ -3633,7 +3633,7 @@ sccs_free(sccs *s)
 	if (s->random) free(s->random);
 	if (s->symlink) free(s->symlink);
 	if (s->mdbm) mdbm_close(s->mdbm);
-	if (s->pathname) free(s->pathname);
+	if (s->spathname) free(s->spathname);
 	bzero(s, sizeof(*s));
 	free(s);
 #ifdef	ANSIC
@@ -7908,6 +7908,7 @@ checkdups(sccs *s)
 private inline int
 isleaf(register delta *d)
 {
+	if (d->flags & D_MERGED) return (0);
 	if (d->type != 'D') return (0);
 	for (d = d->kid; d; d = d->siblings) {
 		if (d->flags & D_GONE) continue;
@@ -7951,7 +7952,7 @@ checkInvariants(sccs *s)
 
 	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_GONE) continue;
-		unless (!(d->flags & D_MERGED) && isleaf(d)) continue;
+		unless (isleaf(d)) continue;
 		unless (lodmap[d->r[0]]++) continue; /* first leaf OK */
 		tips++;
 	}
@@ -7963,7 +7964,7 @@ checkInvariants(sccs *s)
 
 	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_GONE) continue;
-		unless (!(d->flags & D_MERGED) && isleaf(d)) continue;
+		unless (isleaf(d)) continue;
 		unless (lodmap[d->r[0]] > 1) continue;
 		fprintf(stderr, "%s: unmerged leaf %s\n", s->sfile, d->rev);
 	}
@@ -12903,7 +12904,7 @@ sccs_resolveFiles(sccs *s)
 	 */
 	for (d = s->table; d; d = d->next) {
 		if (d->type != 'D') continue;
-		if ((d->flags & D_MERGED) || !isleaf(d)) continue;
+		unless (isleaf(d)) continue;
 		if (d->r[0] == defbranch) {
 			if (!a) {
 				a = d;
