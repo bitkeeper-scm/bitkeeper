@@ -1223,13 +1223,19 @@ _install()
 		if [ "X$OSTYPE" = "Xmsys" ]
 		then
 			OBK="$DEST.old$$"
+			OLOG="$OBK/install.log"
 			ODLL="$OBK/BkShellX.dll"
 			mv "$DEST" "$OBK"
-			rm -rf "$OBK" 2> /dev/null
-			if [ -f "$ODLL" ]
-			then "$SRC/gui/bin/tclsh" "$SRC/runonce.tcl" \
-			     "BitKeeper$$" \
-			     "\"$DEST/bkuninstall.exe\" -R \"$ODLL\" \"$OBK\""
+			if [ -f "$OBK/bkuninstall.exe" -a -f "$OLOG" ]
+			then
+				"$OBK/bkuninstall.exe" -i -S -f "$OBK" "$OLOG" 2> /dev/null 1>&2
+			else
+				rm -rf "$OBK" 2> /dev/null
+				if [ -f "$ODLL" ]
+				then "$SRC/gui/bin/tclsh" "$SRC/runonce.tcl" \
+				     "BitKeeper$$" "\"$DEST/bkuninstall.exe\" \
+							-R \"$ODLL\" \"$OBK\""
+				fi
 			fi
 		else
 			rm -rf "$DEST"/* || {
@@ -1288,7 +1294,7 @@ _install()
 	test $CHMOD = YES && {
 		(find . | xargs chown root) 2> /dev/null
 		(find . | xargs chgrp root) 2> /dev/null
-		find . | xargs chmod -w
+		find . | grep -v bkuninstall.exe | xargs chmod -w
 	}
 	# registry
 	if [ "X$OSTYPE" = "Xmsys" ]
@@ -1298,7 +1304,7 @@ _install()
 		test -z "$DLLOPTS" || __register_dll "$DEST"/BkShellX.dll
 
 		test -f "$ODLL" && {
-			"$DEST"/bkuninstall.exe -i -b 2>nul 1>&2 &
+			"$DEST"/bkuninstall.exe -b 2>nul 1>&2 &
 			exit 2		# this forces installtool to exit
 		}
 	fi
