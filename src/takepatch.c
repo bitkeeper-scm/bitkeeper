@@ -2283,7 +2283,7 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			 * Status.
 			 */
 			if (st.filename) {
-				char	*t = strchr(&buf[3], ' ');
+				char	*t = strrchr(&buf[3], ' ');
 
 				*t = 0;
 				unless (st.first) {
