@@ -78,7 +78,9 @@ cmd_httpget(int ac, char **av)
 		arguments[0] = 0;
 	}
 
-	if ((strlen(name) + sizeof("BitKeeper/html") + 2) >= MAXPATH) exit(1);
+	if ((strlen(name) + sizeof("BitKeeper/html") + 2) >= MAXPATH) {
+		http_error(500, "path too long for bkweb");
+	}
 	unless (*name) name = "index.html";
 
 	/*
@@ -88,20 +90,17 @@ cmd_httpget(int ac, char **av)
 	if (*name == '/') {
 		unless (name = findRoot(name)) {
 			http_error(503, "Can't find project root");
-			exit(1);
 		}
 	} else root = url(0);
 
 #if 0
 	unless (bk_options()&BKOPT_WEB) {
 		http_error(503, "bkWeb option is disabled: %s", upgrade_msg);
-		exit(1);
 	}
 #endif
 
 	unless (av[1]) {
 		http_error(404, "get what?\n");
-		exit(1);
 	}
 	sprintf(buf, "BitKeeper/html/%s", name);
 	if (isreg(buf)) {
@@ -390,7 +389,7 @@ http_changes(char *rev)
 		whoami("ChangeSet");
 	}
 
-	sprintf(dspec,  "-d<tr>\n"
+	i = snprintf(dspec, sizeof dspec, "-d<tr>\n"
 			" <td align=right>:HTML_AGE:</td>\n"
 			" <td align=center>:USER:</td>\n"
 			" <td align=center"
@@ -401,13 +400,17 @@ http_changes(char *rev)
 			" <td>:HTML_C:</td>\n"
 			"</tr>\n", navbar);
 
+	if (i == -1) {
+		http_error(500, "buffer overflow in http_changes");
+	}
+
 	httphdr(".html");
 	header(0, COLOR_CHANGES, "ChangeSet Summaries", 0);
 
-	out("<table width=100% border=1 cellpadding=2 cellspacing=0 bgcolor=white>\n");
-	out("<tr bgcolor=#d0d0d0>\n");
-    	out("<th>Age</th><th>Author</th><th>Rev</th>");
-	out("<th align=left>&nbsp;Comments</th></tr>\n");
+	out("<table width=100% border=1 cellpadding=2 cellspacing=0 bgcolor=white>\n"
+	    "<tr bgcolor=#d0d0d0>\n"
+    	    "<th>Age</th><th>Author</th><th>Rev</th>"
+	    "<th align=left>&nbsp;Comments</th></tr>\n");
 
 	av[i=0] = "bk";
 	av[++i] = "prs";
@@ -438,7 +441,7 @@ http_cset(char *rev)
 
 	whoami("cset@%s", rev);
 
-	sprintf(dspec,
+	i = snprintf(dspec, sizeof dspec,
 	    "<tr bgcolor=#d8d8f0><td>&nbsp;"
 	    ":GFILE:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:"
 	    "$if(:DOMAIN:){@:DOMAIN:}"
@@ -464,16 +467,18 @@ http_cset(char *rev)
 	    "}"
 	    "<tr><td>&nbsp;</td></tr>\n", navbar, navbar, navbar, navbar);
 
-	httphdr("cset.html");
-
-	header("cset", COLOR_CSETS, "Changeset details for %s", 0, rev);
-
-	out("<table border=0 cellpadding=0 cellspacing=0 width=100% ");
-	out("bgcolor=white>\n");
+	if (i == -1) {
+		http_error(500, "buffer overflow in http_cset");
+	}
 
 	putenv("BK_YEAR4=1");
 	sprintf(buf, "bk cset -r%s", rev);
-	unless (f = popen(buf, "r")) exit(1);
+	unless (f = popen(buf, "r")) {
+		http_error(500,
+		    "bk cset -r%s failed: %s",
+		    rev, strerror(errno));
+	}
+
 	while (fnext(buf, f)) {
 		if (strneq("ChangeSet@", buf, 10)) continue;
 		d = strrchr(buf, '@');
@@ -481,18 +486,35 @@ http_cset(char *rev)
 		lines = addLine(lines, strdup(buf));
 	}
 	pclose(f);
-	unless (lines) exit(1);
-	sortLines(lines);
-	gettemp(path, "cset");
-	f = fopen(path, "w");
-	fprintf(f, "ChangeSet@%s\n", rev);
-	EACH(lines) fputs(lines[i], f);
-	fclose(f);
-	sprintf(buf, "bk prs -h -d'%s' - < %s", dspec, path);
-	unless (f = popen(buf, "r")) exit(1);
-	while (fnext(buf, f)) out(buf);
-	pclose(f);
-	unlink(path);
+
+	if (lines) {
+		sortLines(lines);
+
+		gettemp(path, "cset");
+		f = fopen(path, "w");
+		fprintf(f, "ChangeSet@%s\n", rev);
+		EACH(lines) fputs(lines[i], f);
+		fclose(f);
+
+		sprintf(buf, "bk prs -h -d'%s' - < %s", dspec, path);
+		unless (f = popen(buf, "r")) { 
+			unlink(path);
+			http_error(500, "%s: %s", buf, strerror(errno));
+		}
+	}
+
+	httphdr("cset.html");
+
+	header("cset", COLOR_CSETS, "Changeset details for %s", 0, rev);
+
+	out("<table border=0 cellpadding=0 cellspacing=0 width=100% ");
+	out("bgcolor=white>\n");
+
+	if (lines) {
+		while (fnext(buf, f)) out(buf);
+		pclose(f);
+		unlink(path);
+	}
 	out("</table>\n");
 	trailer("cset");
 }
@@ -576,9 +598,9 @@ trailer(char *path)
 		    "<tr>\n"
 		    "<td align=left>"
 		    "<img src=\"logo.gif\" alt=\"\"></img></td>\n"
-		    "<td align=right><a href=http://www.bitkeeper.com>"
-		    "<img src=trailer.gif alt=\"Learn more about BitKeeper\">"
-		    "</a></td></tr></table></font>\n");
+		    "<td align=right><a href=http://www.bitkeeper.com>\n"
+		    "<img src=trailer.gif alt=\"Learn more about BitKeeper\"></a>\n"
+		    "</td></tr></table></font>\n");
 	} else {
 		out("<hr>\n"
 		    "<p align=center>\n"
@@ -623,11 +645,12 @@ http_hist(char *pathrev)
 	char	*s, *d;
 	FILE	*f;
 	MDBM	*m;
+	int	i;
 	char	dspec[MAXPATH*2];
 
 	whoami("hist/%s", pathrev);
 
-	sprintf(dspec,
+	i = snprintf(dspec, sizeof(dspec),
 		"<tr>\n"
 		" <td align=right>:HTML_AGE:</td>\n"
 		" <td align=center>:USER:</td>\n"
@@ -638,6 +661,10 @@ http_hist(char *pathrev)
 		"$if(:TAG:){$each(:TAG:){<br>(:TAG:)}}"
 		"</td>\n <td>:HTML_C:</td>\n"
 		"</tr>\n", navbar);
+
+	if (i == -1) {
+		http_error(500, "buffer overflow in http_hist");
+	}
 
 	httphdr(".html");
 	header("hist", COLOR_HIST, "Revision history for %s", 0, pathrev);
@@ -683,7 +710,7 @@ http_src(char *path)
 
 	whoami("src/%s", path);
 
-	sprintf(dspec, 
+	i = snprintf(dspec, sizeof dspec,
 	    "<tr bgcolor=lightyellow>"
 	    " <td><img src=file.gif></td>"
 	    " <td>"
@@ -699,12 +726,15 @@ http_src(char *path)
 	    " <td>:HTML_C:&nbsp;</td>"
 	    "</tr>\n", navbar, navbar, navbar, navbar);
 
+	if (i == -1) {
+		http_error(500, "buffer overflow in http_src");
+	}
 
 	if (!path || !*path) path = ".";
 	unless (d = opendir(path)) {
-		perror(path);
-		exit(1);
+		http_error(500, "%s: %s", path, strerror(errno));
 	}
+
 	httphdr(".html");
 	header("src", COLOR_SRC, "Source directory &lt;%s&gt;", 0,
 	    path[1] ? path : "project root");
@@ -779,15 +809,22 @@ http_anno(char *pathrev)
 	char	*s, *d;
 	MDBM	*m;
 
+	/* pick up the separator in the revision, but cut it apart after
+	 * all the headers have been displayed
+	 */
+	unless (s = strrchr(pathrev, '@')) {
+		http_error(503, "malformed rev %s", pathrev);
+	}
+
 	httphdr(".html");
 
 	whoami("anno/%s", pathrev);
 
 	header("anno", COLOR_ANNO, "Annotated listing of %s", 0, pathrev);
 
-	out("<pre><font size=2>");
-	unless (s = strrchr(pathrev, '@')) exit(1);
 	*s++ = 0;
+
+	out("<pre><font size=2>");
 	sprintf(buf, "bk annotate -uma -r%s %s", s, pathrev);
 
 	/*
@@ -863,12 +900,13 @@ http_diffs(char *pathrev)
 	char	*s;
 	MDBM	*m;
 	int	n;
+	int	i;
 	char	dspec[MAXPATH*2];
 
 
 	whoami("diffs/%s", pathrev);
 
-	sprintf(dspec,
+	i = snprintf(dspec, sizeof dspec,
 		"<tr>\n"
 		" <td align=right>:HTML_AGE:</td>\n"
 		" <td align=center>:USER:$if(:DOMAIN:){@:DOMAIN:}</td>\n"
@@ -876,10 +914,16 @@ http_diffs(char *pathrev)
 		" <td>:HTML_C:</td>\n"
 		"</tr>\n", navbar);
 
+	if (i == -1) {
+		http_error(500, "buffer overflow in http_diffs");
+	}
+	unless (s = strrchr(pathrev, '@')) {
+		http_error(503, "malformed rev %s", pathrev);
+	}
+
 	httphdr(".html");
 	header("diffs", COLOR_DIFFS, "Changes for %s", 0, pathrev);
 
-	unless (s = strrchr(pathrev, '@')) exit(1);
 	*s++ = 0;
 	out("<table border=1 cellpadding=1 cellspacing=0 width=100% ");
 	out("bgcolor=white>\n");
@@ -1186,6 +1230,8 @@ http_error(int status, char *fmt, ...)
 {
         char    buf[2048];
 	va_list	ptr;
+	int     size;
+	int     ct;
 
         sprintf(buf,
             "HTTP/1.0 %d Error\r\n"
@@ -1199,12 +1245,20 @@ http_error(int status, char *fmt, ...)
 	strcpy(buf, "<html><head><title>Error!</title></head>\n"
 		    "<body alink=black link=black bgcolor=white>\n"
 		    "<h2><center>\n");
+	sprintf(buf+strlen(buf), "Error %d</h2>\n", status);
+	size = strlen(buf);
+
 	va_start(ptr,fmt);
-	vsprintf(buf+strlen(buf), fmt, ptr);
+	ct = vsnprintf(buf+size, sizeof buf-size, fmt, ptr);
 	va_end(ptr);
-	strcat(buf, "\n</h2></center>\n");
+
+	if (ct == -1)	/* message overflow -- just print the error code */
+		buf[size] = 0;
+
 	out(buf);
-	out("<hr>\n"
+	out("\n"
+	    "</center>\n"
+	    "<hr>\n"
 	    "<table width=100%>\n"
 	    "<tr>\n"
 	    "<th valign=top align=left>bkhttp/" BKWEB_SERVER_VERSION " server on ");
@@ -1216,6 +1270,7 @@ http_error(int status, char *fmt, ...)
 	    "</tr>\n"
 	    "</table>\n");
 	out("</body>\n");
+	exit(1);
 }
 
 private char *
