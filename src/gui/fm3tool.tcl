@@ -1417,7 +1417,8 @@ proc edit_done {} \
 	for {set i 1} {$i <= $diffCount} {incr i} {
 		catch { .diffs.left index "c$i" } ret
 		if {[string first "bad text" $ret] == 0 } { continue }
-		set buf [.merge.t get "d$i" "e$i"]
+		catch { set buf [.merge.t get "d$i" "e$i"] } ret
+		if {[string first "bad text" $ret] == 0 } { continue }
 		if {$buf == $UNMERGED} { incr n }
 	}
 	set conf_todo $n
