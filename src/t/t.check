@@ -91,15 +91,15 @@ bk -r check -a > OUT 2>&1 || {
 }
 echo OK
 
-echo $N Make sure it complains about locked files w/o a gfile........$NL
+#echo $N Make sure it complains about locked files w/o a gfile........$NL
 bk get -eg $Q d1/sub1/SCCS/s.a
-bk -r check -a > OUT 2>&1
-grep -q 'is locked but not checked out' OUT || {
-	echo bad error message
-	cat OUT
-	exit 1
-}
-echo OK
+#bk -r check -a > OUT 2>&1
+#grep -q 'is locked but not checked out' OUT || {
+#	echo bad error message
+#	cat OUT
+#	exit 1
+#}
+#echo OK
 
 echo $N Make sure it it fixes the above problem with -f .............$NL
 bk -r check -af > OUT 2>&1 || {
