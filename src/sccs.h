@@ -217,6 +217,8 @@
 #define	IS_WRITABLE(s)	((s)->mode & 0200)
 #define IS_EDITED(s)	((((s)->state&S_EDITED) == S_EDITED) && IS_WRITABLE(s))
 #define IS_LOCKED(s)	(((s)->state&S_LOCKED) == S_LOCKED)
+#define IS_TEXT(s)	(((s)->encoding & E_DATAENC) == E_ASCII)
+#define IS_BINARY(s)	(((s)->encoding & E_DATAENC) == E_UUENCODE)
 #define WRITABLE(s)	(IS_WRITABLE(s) && isRegularFile(s->mode))
 #define	CSET(s)		((s)->state & S_CSET)
 #define	CONFIG(s)	((s)->state & S_CONFIG)
@@ -830,6 +832,7 @@ delta	*sccs_findKey(sccs *, char *);
 delta	*sccs_dInit(delta *, char, sccs *, int);
 char	*sccs_getuser(void);
 void	sccs_resetuser(void);
+char	*sccs_realuser(void);
 int	sccs_markMeta(sccs *);
 
 delta	*modeArg(delta *d, char *arg);
@@ -982,6 +985,7 @@ void	repository_unlock(int all);
 int	repository_wrlock(void);
 int	repository_wrunlock(int all);
 int	repository_hasLocks(char *root, char *dir);
+void	repository_lockcleanup(void);
 void	comments_save(char *s);
 int	comments_got(void);
 void	comments_done(void);
@@ -1116,6 +1120,7 @@ void	comments_cleancfile(char *file);
 int	comments_readcfile(sccs *s, int prompt, delta *d);
 int	comments_prompt(char *file);
 int	run_check(char *partial);
+char	*key2path(char *key, MDBM *idDB);
 
 extern char *bk_vers;
 extern char *bk_utc;

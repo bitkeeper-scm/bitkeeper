@@ -21,8 +21,8 @@ private char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
 
 char	*find_wish(void);
 char	*find_perl5(void);
-void	cmdlog_exit(void);
-int	cmdlog_repo;
+private	void	cmdlog_exit(void);
+private	int	cmdlog_repo;
 private	void	cmdlog_dump(int, char **);
 private int	run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av);
 private int	usage(void);
@@ -83,6 +83,7 @@ int	hostme_main(int, char **);
 int	idcache_main(int, char **);
 int	isascii_main(int, char **);
 int	key2rev_main(int, char **);
+int	key2path_main(int, char **);
 int	keysort_main(int, char **);
 int	keyunlink_main(int, char **);
 int	lconfig_main(int, char **);
@@ -109,6 +110,8 @@ int	mv_main(int, char **);
 int	mydiff_main(int, char **);
 int	names_main(int, char **);
 int	newroot_main(int, char **);
+int	opark_main(int, char **);
+int	ounpark_main(int, char **);
 int	parent_main(int, char **);
 int	park_main(int, char **);
 int	pending_main(int, char **);
@@ -187,6 +190,7 @@ struct	command cmdtbl[] = {
 	{"_get", get_main},
 	{"_gzip", gzip_main }, 
 	{"_keysort", keysort_main},
+	{"_key2path", key2path_main},
 	{"_keyunlink", keyunlink_main },
 	{"_lconfig", lconfig_main},	
 	{"_lines", lines_main},	
@@ -276,6 +280,8 @@ struct	command cmdtbl[] = {
 	{"names", names_main},			/* doc 2.0 */
 	{"newroot", newroot_main},		/* doc 2.0 */
 	{"new", delta_main},	/* aliases */	/* doc 2.0 */
+	{"opark", opark_main},			/* doc 2.0 */
+	{"ounpark", ounpark_main},			/* doc 2.0 */
 	{"parent", parent_main},		/* doc 2.0 */
 	{"park", park_main},			/* doc 2.0 */
 	{"pending", pending_main},		/* doc 2.0 */
@@ -645,11 +651,12 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 #define	LOG_MAXSIZE	(1<<20)
 #define	LOG_BADEXIT	-100000		/* some non-valid exit */
 
-void
+private void
 cmdlog_exit(void)
 {
 	purify_list();
 	if (cmdlog_buffer[0]) cmdlog_end(LOG_BADEXIT);
+	repository_lockcleanup();
 }
 
 private	struct {

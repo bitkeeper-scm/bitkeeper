@@ -8,7 +8,6 @@
 #define HDRLEN	256
 
 private int line, outfd = 2;
-private char buffer[LINELEN];
 
 private char *myname = "mailsplit";
 private char **argv;
@@ -70,10 +69,10 @@ static void parse_args(int argc, char **arg)
 	}
 }
 
-static int read_line(void)
+static int read_line(char *buffer, int len)
 {
 	int retval = 0;
-	if (fgets(buffer, sizeof(buffer), stdin) != NULL) {
+	if (fgets(buffer, len, stdin) != NULL) {
 		line++;
 		retval = strlen(buffer);
 	}
@@ -124,8 +123,10 @@ static int is_from_line(const char *buffer)
  */
 static int skip_space(void)
 {
+	char buffer[LINELEN];
+
 	for (;;) {
-		int len = read_line();
+		int len = read_line(buffer, sizeof(buffer));
 		if (!len)
 			return 0;
 		if (is_from_line(buffer))
@@ -192,7 +193,8 @@ static void parse_from(const char *from)
 
 static int parse_headers(void)
 {
-	int i;
+	int	i;
+	char	buffer[LINELEN];
 
 	from_name[0] = 0;
 	from_domain[0] = 0;
@@ -202,7 +204,7 @@ static int parse_headers(void)
 	for (;;) {
 		int len, i;
 
-		len = read_line();
+		len = read_line(buffer, sizeof(buffer));
 		if (!len)
 			return 0;
 		if (!remove_space(buffer, len))
@@ -224,14 +226,15 @@ static int parse_headers(void)
 static int parse_mail(void)
 {
 	int retval, status;
+	pid_t	pid;
 
 	if (!parse_headers())
 		syntax("mail header error");
-	spawnvp_wPipe(argv, &outfd, 0);
+	pid = spawnvp_wPipe(argv, &outfd, 0);
 	retval = skip_space();
 	close(outfd);
 	outfd = 2;
-	if (wait(&status) < 0)
+	if (waitpid(pid, &status, 0) < 0)
 		syntax("unable to wait for child");
 	if (WIFSIGNALED(status))
 		syntax("child killed");

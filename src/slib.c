@@ -6723,7 +6723,7 @@ getLinkBody(sccs *s,
 	unless (f) return 2;
 	
 	/*
-	 * What we want is to just checksum the symnlink.
+	 * What we want is to just checksum the symlink.
 	 * However due two bugs in old binary, we do not have valid check if:
 	 * a) It is a 1.1 delta
 	 * b) It is 1.1.* delta (the 1.1 delta got moved after a merge)
@@ -9787,6 +9787,23 @@ time:	if (d->parent && (d->date < d->parent->date)) {
 			fprintf(stderr,
 			    "\t%s: %s,%s have same date and bad key order\n",
 			    s->sfile, d->rev, d->parent->rev);
+			error |= 2;
+		}
+	}
+	/* Make sure we have no duplicate keys, assuming table sorted by date */
+	if (BITKEEPER(s) &&
+	    d->next &&
+	    (d->date == d->next->date) &&
+	    (d->next != d->parent)) { /* parent already checked above */
+		char	me[MAXPATH], next[MAXPATH];
+
+		sccs_sdelta(s, d, me);
+		sccs_sdelta(s, d->next, next);
+		if (streq(next, me)) {
+			fprintf(stderr,
+			    "\t%s: %s,%s have same key\n",
+			    s->sfile, d->rev, d->next->rev);
+			error |= 2;
 		}
 	}
 

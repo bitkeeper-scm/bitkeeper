@@ -7,17 +7,18 @@ bk newroot \- change the identity of a repository
 .SH DESCRIPTION
 .LP
 .B newroot
-is used to generate a new 
+is an administrative command used to generate a new 
 .I identity
-for a repository.
-The identity of a repository is used each time a repository is updated from
-another repository.  If the identities are not the same then the update will
-fail.  Changing a repository identity effectively creates a new, unique
-repository with all of the existing history.
+for a repository.  It is typically used only after having repaired a
+repository.  After running
+.B newroot
+that repository will not be able to push to or pull from it's parent or
+any other related repository.
 .SH "SEE ALSO"
 .SA clone
 .SA pull
 .SA push
+.SA terms
 .SH CATEGORY
 .B Repository
 .br

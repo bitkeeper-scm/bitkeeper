@@ -13,11 +13,11 @@ extern unsigned char installer_data[];
 extern unsigned int data_size;
 extern unsigned char data_data[];
 
-main()
+main(int ac, char **av)
 {
 	char	installer_name[200];
 	char	data_name[200];
-	char	cmd[2048];
+	char	cmd[4096];
 	int	fd;
 
 	fprintf(stderr, "Please wait while we unpack the installer...");
@@ -46,7 +46,15 @@ main()
 	}
 	close(fd);
 	fprintf(stderr, "done.\n");
-	sprintf(cmd, "%s %s %s", installer_name, installer_name, data_name);
+	strcpy(cmd, installer_name);
+	for (fd = 1; av[fd]; fd++) {
+		strcat(cmd, " ");
+		strcat(cmd, av[fd]);
+	}
+	strcat(cmd, " ");
+	strcat(cmd, installer_name);
+	strcat(cmd, " ");
+	strcat(cmd, data_name);
 	system(cmd);
 	exit(0);
 }
