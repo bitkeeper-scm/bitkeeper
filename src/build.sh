@@ -2,7 +2,7 @@
 
 CC=gcc
 MAKE=gmake
-PATH=/usr/local/bin:/usr/freeware/bin:/usr/ccs/bin:$PATH
+PATH=/opt/gnu/bin:/usr/local/bin:/usr/freeware/bin:/usr/ccs/bin:$PATH
 export PATH
 case `uname -s` in
 	SunOS)	XLIBS="-lnsl -lsocket"
