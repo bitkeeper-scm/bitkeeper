@@ -10,7 +10,10 @@ _platformInit()
 	RM=/bin/rm
 	ECHO=echo
 	TMP=/tmp/
-	MAIL_CMD=mail
+	if [ -x /usr/bin/mailx ]
+	then	MAIL_CMD=mailx
+	else	MAIL_CMD=mail
+	fi
 	ext=""	# Unlike win32, Unix binary does not have .exe extension
 	tcl=""
 	wish=wish

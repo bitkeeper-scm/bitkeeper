@@ -190,7 +190,7 @@ _send() {
 	  then	echo "Wrapped with $PIPE"
 	  fi
 	  echo "This patch contains the following changesets:";
-	  echo "$REV" | sed 's/,/ /g' | fmt -1 | sort -n | fmt;
+	  echo "$REV" | sed 's/,/ /g';
 	  ${BIN}cset $D -m$REV $V | eval $PIPE ) | eval $MAIL
 }
 
@@ -565,7 +565,7 @@ _commit() {
 		cat ${TMP}comments$$
 		echo "---------$L"
 		echo ""
-		echo $N "Use these comments (e)dit, (a)bort, (u)se? "
+		echo $N "Use these comments (e)dit, (a)bort, (u)se? "$NL
 		read x
 		case X$x in
 		    X[uy]*) 
