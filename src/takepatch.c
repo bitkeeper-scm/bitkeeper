@@ -377,7 +377,7 @@ extractDelta(char *name, sccs *s, int newFile, FILE *f, int flags, int *np)
 	/* go get the delta table entry for this delta */
 delta:	off = ftell(f);
 	d = getRecord(f);
-	sccs_sdelta(buf, d);
+	sccs_sdelta(s, d, buf);
 	if (tmp = sccs_findKey(s, buf)) {
 		if (echo > 2) {
 			fprintf(stderr,
@@ -417,7 +417,7 @@ delta:	off = ftell(f);
 		p = calloc(1, sizeof(patch));
 		p->flags = PATCH_REMOTE;
 		p->pid = pid;
-		sccs_sdelta(buf, d);
+		sccs_sdelta(s, d, buf);
 		p->me = strdup(buf);
 		p->initFile = strdup(tmpf);
 		p->localFile = s ? strdup(s->sfile) : 0;
@@ -808,9 +808,9 @@ getLocals(sccs *s, delta *g, char *name)
 		unless (d->date || streq("70/01/01 00:00:00", d->sdate)) {
 			assert(d->date);
 		}
-		sccs_sdelta(tmpf, d->parent);
+		sccs_sdelta(s, d->parent, tmpf);
 		p->pid = strdup(tmpf);
-		sccs_sdelta(tmpf, d);
+		sccs_sdelta(s, d, tmpf);
 		p->me = strdup(tmpf);
 		p->order = d->date;
 		if (echo>5) {
@@ -1067,7 +1067,7 @@ init(FILE *p, int flags, char **resyncRootp)
 		return (f);
 	}
 
-	unless (idDB = loadDB("SCCS/x.id_cache", 0)) {
+	unless (idDB = loadIdDB()) {
 		perror("SCCS/x.id_cache");
 		exit(1);
 	}
@@ -1138,7 +1138,7 @@ rebuild_id(char *id)
 \trebuilding (this can take a while)...", id);
 	system("bk sfiles -r");
 	if (idDB) mdbm_close(idDB);
-	unless (idDB = loadDB("SCCS/x.id_cache", 0)) {
+	unless (idDB = loadIdDB()) {
 		perror("SCCS/x.id_cache");
 		exit(1);
 	}
