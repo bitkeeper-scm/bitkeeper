@@ -1654,95 +1654,6 @@ relativeName(sccs *sc, int withsccs, int mustHaveRmarker)
 	return (s);
 }
 
-#ifdef SPLIT_ROOT
-
-/*
- * If we get a rootfile, (i.e split root),
- * copy the the new sroot from the root file, return 1;
- * otherwise return 0
- */
-int
-hasRootFile(char *gRoot, char *sRoot)
-{
-	FILE	*f;
-	char 	*p, rootfile[1024], buf[1024];
-#define ROOTFILE  "BitKeeper/etc/RootFile"
-
-	/*
-	 * TODO:
-	 * we need to cache the sRoot value
-	 */
-	concat_path(rootfile, gRoot, ROOTFILE);
-	unless (exists(rootfile)) return 0;
-	f = fopen(rootfile, "rt");
-	unless (f) {
-		perror(rootfile);
-		return 0;
-	}
-
-	while(fnext(buf, f)) {
-		if (buf[0] == '#') continue; /* skip comment */
-		if (chop(buf) != '\n') {
-			assert("line too long in rootfile" == 0);
-		}
-		p = strchr(buf, ' '); assert(p);
-		*p++ = 0;
-		if (streq(buf, "SROOT")) {
-			strcpy(sRoot, p);
-			localName2bkName(sRoot, sRoot);
-			fclose(f);
-			return 1;
-		}
-	}
-	fclose(f);
-	fprintf(stderr, "Warning: %s has no SROOT entry, ignored\n", rootfile);
-	return 0;
-}
-
-/*
- * Given a file/dir name , return its path in the S root tree
- * return value is in local static buffer
- * user must copy it before calling other function
- */
-char *
-sPath(char *name, int isDir)
-{
-	static	char buf[1024];
-	char	*path, gRoot[1024], sRoot[1024];
-
-	/*
-	 *  If there is a local SCCS directory, use it
-	 */
-	cleanPath(name, buf);
-	unless (isDir) {
-		path = name2sccs(buf);
-		assert(path);
-		strrchr(path, '/')[0] = 0;
-		assert(streq("SCCS", basenm(path)));
-		if (isdir(path)) {
-			free(path);
-			debug((stderr, "sPath(%s) -> %s\n", name, name));
-			return (name);
-		}
-		free(path);
-	}
-
-	path = _relativeName(name, isDir, 0, 0, 0, 0, gRoot);
-	if (IsFullPath(path)) return path; /* no root marker */
-	if (hasRootFile(gRoot, sRoot)) {
-		concat_path(buf, sRoot, path);
-	} else {
-		return (name);
-	}
-	cleanPath(buf, buf);
-	debug((stderr, "sPath(%s) -> %s\n", name, buf));
-	return buf;
-}
-#else
-char *
-sPath(char *name, int isDir) { return name; }
-#endif /* SPLIT_ROOT */
-
 private inline symbol *
 findSym(symbol *s, char *name)
 {
@@ -4205,11 +4116,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	localName2bkName(name, name);
 	if (sccs_filetype(name) == 's') {
 		s = calloc(1, sizeof(*s));
-		if (flags & INIT_ONEROOT) {
-			s->sfile = strdup(name);
-		} else {
-			s->sfile = strdup(sPath(name, 0));
-		}
+		s->sfile = strdup(name);
 		s->gfile = sccs2name(name);
 	} else {
 		fprintf(stderr, "Not an SCCS file: %s\n", name);
@@ -4725,11 +4632,7 @@ mksccsdir(char *sfile)
 	if ((s >= sfile + 4) &&
 	    s[-1] == 'S' && s[-2] == 'C' && s[-3] == 'C' && s[-4] == 'S') {
 		*s = 0;
-#if defined(SPLIT_ROOT)
-		unless (exists(sfile)) mkdirp(sfile);
-#else
 		mkdir(sfile, 0777);
-#endif
 		*s = '/';
 	}
 }
@@ -5905,16 +5808,6 @@ openOutput(sccs *s, int encode, char *file, FILE **op)
 	    case E_UUENCODE:
 	    case E_GZIP:
 	    case (E_GZIP|E_UUENCODE):
-#ifdef SPLIT_ROOT
-		unless (toStdout) {
-			char *s = rindex(file, '/');
-			if (s) {
-				*s = 0; /* split off the file part */
-				unless (exists(file)) mkdirp(file);
-				*s = '/';
-			}
-		}
-#endif
 		/*
 		 * Note: This has no effect when we print to stdout
 		 * We want this becuase we want diff_gfile() to
@@ -6249,17 +6142,6 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 		f = s->gfile;
 		unlinkGfile(s);
 	}
-#ifdef SPLIT_ROOT
-	unless (flags & PRINT) {
-		char *p = rindex(f, '/');
-		//unlinkGfile(s);
-		if (p) { /* if parent dir does not exist, creat it */
-			*p = 0; /* split off the file part */
-			unless (exists(f)) mkdirp(f);
-			*p = '/';
-		}
-	}
-#endif
 	return f;
 }
 

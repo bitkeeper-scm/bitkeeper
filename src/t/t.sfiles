@@ -194,23 +194,6 @@ EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
-echo $N Check the list of pending files with -R .....................$NL
-bk sfiles -CR | sort > SFILES
-sort <<EOF > LIST
-bar/SCCS/s.s.foo${BK_FS}1.1..1.3
-EOF
-cmp -s SFILES LIST
-if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
-echo OK
-echo $N Check the list of pending files with -AR ....................$NL
-bk sfiles -CAR | sort > SFILES
-sort <<EOF > LIST
-bar/SCCS/s.s.foo${BK_FS}1.1..1.2
-bar/SCCS/s.s.foo${BK_FS}1.2..1.3
-EOF
-cmp -s SFILES LIST
-if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
-echo OK
 echo $N Commit work, check pending lists again ......................$NL
 bk sfiles -C | bk commit $Q -ysecond -
 bk sfiles -C | sort > SFILES

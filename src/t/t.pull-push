@@ -49,16 +49,16 @@ cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
 echo OK
 echo $N Clone a nested repository ...................................$NL
 cd $HERE/project/src
-bk clone $Q $HERE/project sub_proj
+bk clone $Q $HERE/project sub_proj || exit 1
 if [ ! -d $HERE/project/src/sub_proj ]; then echo failed; exit 1; fi
 rm -rf $HERE/project/src/sub_proj
 echo OK
 echo $N Pull with no changes in child ...............................$NL
 cd $HERE/project/src
-bk get $Q -e 'F!O#O$ B%A^R&RR(R)RR'
+bk get $Q -e 'F!O#O$ B%A^R&RR(R)RR' || exit 1
 echo delta two >> 'F!O#O$ B%A^R&RR(R)RR'
-bk delta $Q -y2 'F!O#O$ B%A^R&RR(R)RR'
-bk commit $Q -y2
+bk delta $Q -y2 'F!O#O$ B%A^R&RR(R)RR' || exit 1
+bk commit $Q -y2 || exit 1
 cd $HERE/copy
 bk pull -t $Q || { echo failed; exit 1; }
 revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
