@@ -395,7 +395,7 @@ getRev(char *root, char *key, MDBM *idDB)
 	sccs	*s = sccs_keyinit(root, 0, idDB);
 	delta	*d;
 
-	unless (s) return("[can not init]");
+	unless (s) return (strdup("[can not init]"));
 	unless (d = sccs_findKey(s, key)) {
 		sccs_free(s);
 		return (strdup("[can not find key]"));

@@ -83,6 +83,8 @@ else
 	USR_TMP=/usr/tmp
 	unset CDPATH
 fi
+REGRESSION=$TST_DIR/.regression-$USER
+export TST_DIR CORES BK_BIN REGRESSION
 
 if [ X$1 = X-t ]
 then
@@ -120,9 +122,9 @@ if [ X$USER = X ]; then
 	echo Can not figure out user name.
 	exit 1
 fi
-if [ -d .regression-$USER ]; then ${RM} -rf .regression-$USER; fi
-mkdir .regression-$USER || exit 1
-cd .regression-$USER || exit 1
+if [ -d $REGRESSION ]; then ${RM} -rf $REGRESSION; fi
+mkdir $REGRESSION || exit 1
+cd $REGRESSION || exit 1
 if [ -d SCCS ]; then echo "There should be no SCCS directory here."; exit 1; fi
 # save the list of file cuurently in $TMP
 # check it when again when we are in clean up

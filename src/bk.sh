@@ -653,13 +653,13 @@ _commit() {
 	FORCE=NO
 	RESYNC=NO
 	QUIET=NO
-	while getopts dfFRsS:y:Y: opt
+	while getopts dfFRqsS:y:Y: opt
 	do	case "$opt" in
 		d) DOIT=YES;;
 		f) CHECKLOG=:;;
 		F) FORCE=YES;;
 		R) RESYNC=YES; cfgDir="../BitKeeper/etc/";; # called from RESYNC
-		s) QUIET=YES; COPTS="-s $COPTS";;
+		s|q) QUIET=YES; COPTS="-s $COPTS";;
 		S) COPTS="-S$OPTARG $COPTS";;
 		y) DOIT=YES; GETCOMMENTS=NO; ${ECHO} "$OPTARG" > ${TMP}commit$$;;
 		Y) DOIT=YES; GETCOMMENTS=NO; cp "$OPTARG" ${TMP}commit$$;;
