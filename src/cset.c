@@ -116,7 +116,7 @@ int
 cset_main(int ac, char **av)
 {
 	sccs	*cset;
-	int	flags = 0;
+	int	dflags = 0, flags = 0;
 	int	c, list = 0;
 	char	**syms = 0;
 	int	ignoreDeleted = 0;
@@ -208,11 +208,11 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 			break;
 		    case 'y':					/* doc 2.0 */
 			comments_save(optarg);
-			flags |= DELTA_DONTASK;
+			dflags |= DELTA_DONTASK;
 			break;
 		    case 'Y':					/* doc 2.0 */
 			comments_save(cFile = file2str(optarg));
-			flags |= DELTA_DONTASK;
+			dflags |= DELTA_DONTASK;
 			break;
 		    case 'S': 					/* doc 2.0 */
 				syms = addLine(syms, strdup(optarg)); break;
@@ -304,7 +304,7 @@ next:		sccs_free(cset);
 	 * XXX - should allow them to pick and choose for multiple
 	 * changesets from one pending file.
 	 */
-	c = csetCreate(cset, flags, syms);
+	c = csetCreate(cset, dflags|flags, syms);
 	if (cFile) free(cFile);
 	freeLines(syms);
 	return (c);
