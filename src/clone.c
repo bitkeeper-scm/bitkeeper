@@ -174,7 +174,11 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	if (remote_lock_fail(buf, !opts.quiet)) {
 		return (-1);
 	} else if (streq(buf, "@SERVER INFO@")) {
-		getServerInfoBlock(r);
+		if (getServerInfoBlock(r)) {
+			fprintf(stderr, "clone: premature disconnect?\n");
+			disconnect(r, 2);
+			goto done;
+		}
 		getline2(r, buf, sizeof(buf));
 		/* use the basename of the src if no dest is specified */
 		if (!local && (local = getenv("BKD_ROOT"))) {

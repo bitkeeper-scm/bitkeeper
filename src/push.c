@@ -227,7 +227,7 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 	if ((rc = remote_lock_fail(buf, opts.verbose))) {
 		return (rc); /* -2 means locked */
 	} else if (streq(buf, "@SERVER INFO@")) {
-		getServerInfoBlock(r);
+		if (getServerInfoBlock(r)) return (-1);
 		if (!opts.metaOnly && getenv("BKD_LEVEL") &&
 		    (atoi(getenv("BKD_LEVEL")) < getlevel())) {
 			fprintf(opts.out,
@@ -609,7 +609,10 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar)
 		unlink(rev_list);
 		return (-1);
 	} else if (streq(buf, "@SERVER INFO@")) {
-		getServerInfoBlock(r);
+		if (getServerInfoBlock(r)) {
+			rc = 1;
+			goto done;
+		}
 	}
 	if (done) goto done;
 

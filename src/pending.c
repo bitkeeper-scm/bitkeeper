@@ -294,7 +294,7 @@ pending_part1(options *opts, remote *r, char *key_list)
 	if ((rc = remote_lock_fail(buf, 1))) {
 		return (rc); /* -2 means locked */
 	} else if (streq(buf, "@SERVER INFO@")) {
-		getServerInfoBlock(r);
+		if (getServerInfoBlock(r)) return (-1);
 		getline2(r, buf, sizeof(buf));
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
@@ -355,12 +355,12 @@ pending_part2(options *opts, remote *r, char *key_list, int rcsets)
 		fprintf(stderr, "locking error %d\n", rc_lock);
 		goto done;
 	} else if (streq(buf, "@SERVER INFO@")) {
-		getServerInfoBlock(r);
+		if (getServerInfoBlock(r)) goto err;
 	}
 
 	getline2(r, buf, sizeof(buf));
 	unless (streq("@PENDING INFO@", buf)) {
-		fprintf(stderr, "protocol  error %d\n", rc_lock);
+ err:		fprintf(stderr, "protocol  error %d\n", rc_lock);
 		goto done;
 	}
 	while (getline2(r, buf, sizeof(buf)) > 0) {
