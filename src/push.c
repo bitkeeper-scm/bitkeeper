@@ -61,11 +61,10 @@ usage:			system("bk help -s push");
 	}
 
 	loadNetLib();
+	r = remote_parse(av[optind], 0);
+	unless (r) goto usage;
+	if (opts.debug) r->trace = 1;
 	for (;;) {
-		r = remote_parse(av[optind], 0);
-		unless (r) goto usage;
-		if (opts.debug) r->trace = 1;
-
 		rc = push(av, opts, r, envVar);
 		if (rc != -2) break; /* -2 means locked */
 		if (try == 0) break;
@@ -82,11 +81,10 @@ usage:			system("bk help -s push");
 				"push: remote locked, trying again...\n");
 		}
 		disconnect(r, 2); /* close fd before we retry */
-		remote_free(r);
-
 		sleep(min((i++ * 2), 10)); /* auto back off */
 	}
 	if (rc == -2) rc = 1; /* if retry failed, reset exit code to 1 */
+	remote_free(r);
 	freeLines(envVar);
 	return (rc);
 }
