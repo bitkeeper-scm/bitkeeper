@@ -156,6 +156,14 @@ check(char *path, char *rev)
 	free(n);
 }
 
+/*
+ * Strip revs off sfile and leave the contents of the top delta edited
+ * in the gfile.
+ *
+ * XXX Ideally this function would leave the gfile untouched so the
+ * user doesn't need to rebuild after running 'bk fix -c'.  At the
+ * moment we end up refetching the gfile.
+ */
 private void
 doit(char *file, char *revs, char *qflag, char *force)
 {
@@ -211,6 +219,7 @@ doit(char *file, char *revs, char *qflag, char *force)
 		unless (cset) {
 			if (rename(fixfile, file) == -1) perror(file);
 			if (mode) chmod(file, mode);
+			utime(file, 0);	/* touch gfile */
 		}
 	}
 	free(p);
