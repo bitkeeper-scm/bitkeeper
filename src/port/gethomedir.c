@@ -68,5 +68,6 @@ getBkDir(void)
 	t = strrchr(dir, '/');
 	*t = 0;
 	chmod(dir, 0777);	/* make /tmp/.bk world writable */
+	*t = '/';
 	return (dir);
 }
