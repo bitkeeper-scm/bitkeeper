@@ -11,26 +11,25 @@ usage: cset [opts]\n\n\
     -c		like -m, except generate only ChangeSet diffs\n\
     -d<range>	do unified diffs for the range\n\
     -C		clear and remark all ChangeSet boundries\n\
-    -h		When listing, in the file name as of the cset is not the\n\
+    -h		With -r listing, if the file name as of the cset is not the\n\
     		same as the current file name, list as\n\
-		<cset name> <current name>:rev\n\
-    -l<range>	List each rev in range as file:rev,rev,rev (set format)\n\
+		<old name> <current name>@rev\n\
+    -i<list>	create a new cset on TOT that includes the csets in <list>\n\
+    -l<range>	List each rev in range as file@rev (may be multiline per file)\n\
     -m<range>	Generate a patch of the changes in <range>\n\
     -M<range>	Mark the files included in the range of csets\n\
     -n		Create a new change set history rooted at <root>\n\
     -p		print the list of deltas being added to the cset\n\
+    -q		Run silently\n\
     -r<range>	List the filenames:rev..rev which are included in  <range>\n\
+    -r<A>..<B>	List the differences between cset A and B, for sccslog\n\
     -R<A>..<B>	List the differences between cset A and B, for diffs\n\
-    -s		Run silently\n\
     -S<sym>	Set <sym> to be a symbolic tag for this revision\n\
     -t<rev>	List the filenames:revisions of the repository as of rev\n\
+    -x<list>	create a new cset on TOT that excludes the csets in <list>\n\
     -y<msg>	Sets the changeset comment to <msg>\n\
     -Y<file>	Sets the changeset comment to the contents of <file>\n\
-    \nRanges of revisions may be specified with the -l or the -r options.\n\
-    -l1.3..1.5 does 1.3, 1.4, and 1.5\n\n\
-    Useful idioms:\n\t\
-    bk cset -Ralpha..beta | bk diffs -\n\t\
-    bk cset -ralpha..beta | bk sccslog -\n\n";
+";
 
 typedef	struct cset {
 	/* bits */
@@ -44,6 +43,8 @@ typedef	struct cset {
 	int	remark;		/* clear & redo all the ChangeSet marks */
 	int	dash;
 	int	historic;	/* list the historic name if different */
+	int	include;	/* create new cset with includes */
+	int	exclude;	/* create new cset with excludes */
 
 	/* numbers */
 	int	verbose;
@@ -72,10 +73,8 @@ private	void	doDiff(sccs *sc, char kind);
 private	void	sccs_patch(sccs *, cset_t *);
 private	void	cset_exit(int n);
 extern	void	explodeKey(char *key, char *parts[4]);
-private	char	csetFile[] = CHANGESET; /* for win32, need writable	*/
-				/* buffer for name convertion	*/
-
-private	cset_t	copts;	/* an easy way to create a local that is zeroed */
+private	char	csetFile[] = CHANGESET; /* for win32, need writable buffer */
+private	cset_t	copts;
 private char	*spin = "|/-\\";
 
 /*
@@ -102,7 +101,8 @@ usage:		fprintf(stderr, "%s", cset_help);
 	if (streq(av[0], "makepatch")) copts.makepatch++;
 
 	while (
-	    (c = getopt(ac, av, "c|Cd|Dfhl|m|M|n|pqr|R|sS;t;vy|Y|")) != -1) {
+	    (c =
+	    getopt(ac, av, "c|Cd|Dfhi;l|m|M|n|pqr|R|sS;t;vx;y|Y|")) != -1) {
 		switch (c) {
 		    case 'D': ignoreDeleted++; break;
 		    case 'n':
@@ -111,6 +111,11 @@ usage:		fprintf(stderr, "%s", cset_help);
 			break;
 		    case 'f': copts.force++; break;
 		    case 'h': copts.historic++; break;
+		    case 'i':
+			if (copts.include || copts.exclude) goto usage;
+			copts.include++;
+			r[rd++] = optarg;
+			break;
 		    case 'R':
 			copts.range++;
 			/* fall through */
@@ -159,6 +164,11 @@ usage:		fprintf(stderr, "%s", cset_help);
 		    case 'q':
 		    case 's': flags |= SILENT; break;
 		    case 'v': copts.verbose++; break;
+		    case 'x':
+			if (copts.include || copts.exclude) goto usage;
+			copts.exclude++;
+			r[rd++] = optarg;
+			break;
 		    case 'y':
 			comments_save(optarg);
 			flags |= DELTA_DONTASK;
@@ -187,6 +197,13 @@ usage:		fprintf(stderr, "%s", cset_help);
 		fprintf(stderr, "%s: only one rev allowed with -t\n", av[0]);
 		goto usage;
 	}
+	if ((copts.include || copts.exclude) &&
+	    (copts.doDiffs || copts.csetOnly || copts.makepatch ||
+	    copts.listeach || copts.mark || copts.force || copts.remark ||
+	    copts.historic || av[optind])) {
+	    	fprintf(stderr, "cset -x|-i must be stand alone.\n");
+		goto usage;
+	}
 	if (av[optind] && streq(av[optind], "-")) {
 		optind++;
 		copts.dash++;
@@ -208,6 +225,13 @@ usage:		fprintf(stderr, "%s", cset_help);
 		fprintf(stderr, "cset: can not find package root.\n");
 		return (1);
 	}
+
+	/*
+	 * If doing include/exclude, go do it.
+	 */
+	if (copts.include) return (cset_inex(flags, "-i", r[0]));
+	if (copts.exclude) return (cset_inex(flags, "-x", r[0]));
+
 	cset = sccs_init(csetFile, flags & SILENT, 0);
 	if (!cset) return (101);
 	copts.mixed = !(cset->state & S_KEY2);

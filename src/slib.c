@@ -4487,30 +4487,30 @@ serialmap(sccs *s, delta *d, int flags, char *iLst, char *xLst, int *errp)
 
 	/* initialize with iLst and xLst */
 	if (iLst) {
-		verbose((stderr, "Included:"));
+		debug((stderr, "Included:"));
 		for (t = walkList(s, iLst, errp);
 		    !*errp && t; t = walkList(s, 0, errp)) {
-			verbose((stderr, " %s", t->rev));
+			debug((stderr, " %s", t->rev));
 			assert(t->serial <= s->nextserial);
 			slist[t->serial] = S_INC;
  		}
-		verbose((stderr, "\n"));
+		debug((stderr, "\n"));
 		if (*errp) goto bad;
 	}
 
 	if (xLst) {
-		verbose((stderr, "Excluded:"));
+		debug((stderr, "Excluded:"));
 		for (t = walkList(s, xLst, errp);
 		    !*errp && t; t = walkList(s, 0, errp)) {
 			assert(t->serial <= s->nextserial);
-			verbose((stderr, " %s", t->rev));
+			debug((stderr, " %s", t->rev));
 			if (slist[t->serial] == S_INC)
 				*errp = 3;
 			else {
 				slist[t->serial] = S_EXCL;
 			}
  		}
-		verbose((stderr, "\n"));
+		debug((stderr, "\n"));
 		if (*errp) goto bad;
  	}
 

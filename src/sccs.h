@@ -265,6 +265,7 @@
 #define	GONE		"BitKeeper/etc/gone"
 #define	SGONE		"BitKeeper/etc/SCCS/s.gone"
 #define	CHANGESET	"SCCS/s.ChangeSet"
+#define	GCHANGESET	"ChangeSet"
 #define	IDCACHE		"BitKeeper/etc/SCCS/x.id_cache"
 #define	IDCACHE_LOCK	"BitKeeper/etc/SCCS/z.id_cache"
 #define	TMP_MODE	0666
@@ -687,6 +688,7 @@ int     sig(int, int);
 #endif
 int	csetIds(sccs *cset, char *rev);
 int	csetIds_merge(sccs *cset, char *rev, char *merge);
+int	cset_inex(int flags, char *op, char *revs);
 void	sccs_fixDates(sccs *);
 int	sccs_getxflags(delta *d);
 void	sccs_mkroot(char *root);

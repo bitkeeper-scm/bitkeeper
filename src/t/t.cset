@@ -23,6 +23,7 @@ echo $N Check for long keys only ....................................$NL
 grep -q "BK key2" SCCS/s.ChangeSet 
 if [ $? -ne 0 ]; then echo Failed to add long key symbol.; exit 1; fi
 echo OK
+
 cd ..
 mkdir hard
 cd hard
@@ -37,7 +38,33 @@ if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
+
 echo $N Check for long keys only ....................................$NL
 grep -q "BK key2" SCCS/s.ChangeSet 
 if [ $? -ne 0 ]; then echo Failed to add long key symbol.; exit 1; fi
+echo OK
+
+echo $N Make sure that we can remove an earlier cset ................$NL
+for line in 1 2 3 4 5 6 7 8
+do	echo $line A >> A
+done
+bk new $Q A
+bk commit $Q -ywhatever
+bk cset $Q -x+
+bk co $Q A
+if [ "`cat A`" != "" ]
+then	echo failed to remove A contents
+	exit 1
+fi
+echo OK
+
+echo $N Make sure that we can include it back again .................$NL
+bk cset $Q -i1.2
+bk get $Q -r1.1 -pm A > A.1
+bk get $Q -pm A > A.+
+cmp -s A.1 A.+
+if [ $? != 0 ]
+then	echo failed to return A contents correctly
+	exit 1
+fi
 echo OK
