@@ -63,27 +63,29 @@ clone_main(int ac, char **av)
 	 */
 	r = remote_parse(av[optind], 1);
 	unless (r) usage();
-	l = remote_parse(av[optind + 1], 1);
-	unless (l) {
+	if (av[optind + 1]) {
+		l = remote_parse(av[optind + 1], 1);
+		unless (l) {
 err:		if (r) remote_free(r);
-		if (l) remote_free(l);
-		usage();
-	}
-	/*
-	 * Source and destination cannot both be remote 
-	 */
-	if (l->host && r->host) goto err;
+			if (l) remote_free(l);
+			usage();
+		}
+		/*
+		 * Source and destination cannot both be remote 
+		 */
+		if (l->host && r->host) goto err;
 
-	/*
-	 * If the destination address is remote, call bk _rclone instead;
-	 */
-	if (l->host) {
-		remote_free(r);
-		remote_free(l);
-		freeLines(envVar);
-		getoptReset();
-		av[0] = "_rclone";
-		return (rclone_main(ac, av));
+		/*
+		 * If the destination address is remote, call bk _rclone instead
+		 */
+		if (l->host) {
+			remote_free(r);
+			remote_free(l);
+			freeLines(envVar);
+			getoptReset();
+			av[0] = "_rclone";
+			return (rclone_main(ac, av));
+		}
 	}
 
 	if (opts.debug) r->trace = 1;

@@ -41,6 +41,11 @@ echo OK
 cores
 echo $N Clone repository ............................................$NL
 if [ X$PLATFORM = X"WIN32" ]; then SLASH="//"; else SLASH="/"; fi
+mkdir -p $HERE/tst
+cd $HERE/tst
+bk clone $Q $HERE/project || { echo failed; exit 1; }
+[ -f $HERE/tst/project/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || \
+							{ echo failed; exit 1; }
 cd $HERE
 bk clone $Q $HERE/project $HERE/copy || { echo failed; exit 1; }
 [ -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
