@@ -4,7 +4,7 @@
 
 private	char	**readFile(char *file);
 private char	**getfiles(char *csetrev);
-private void	write_editfile(FILE *f, char **files);
+private void	write_editfile(FILE *f, char **files, int to_stdout);
 private void	read_editfile(FILE *f);
 
 extern	char	*editor;
@@ -116,7 +116,7 @@ comments_main(int ac, char **av)
 			fprintf(tf, "\n");
 		}
 	} else {
-		write_editfile(tf, files);
+		write_editfile(tf, files, to_stdout);
 	}
 	fclose(tf);
 	if (to_stdout) {
@@ -217,7 +217,7 @@ getfiles(char *csetrev)
 }
 
 private void
-write_editfile(FILE *f, char **files)
+write_editfile(FILE *f, char **files, int to_stdout)
 {
 	int	i;
 	
@@ -238,8 +238,13 @@ write_editfile(FILE *f, char **files)
 			fprintf(stderr, "%s|%s not found\n", s->gfile, t);
 			goto next;
 		}
-		fprintf(f, "### Change the comments to %s%c%s below\n",
-		    s->gfile, BK_FS, d->rev);
+		if (to_stdout) {
+			fprintf(f, "### Comments for %s%c%s\n",
+			    s->gfile, BK_FS, d->rev);
+		} else {
+			fprintf(f, "### Change the comments to %s%c%s below\n",
+			    s->gfile, BK_FS, d->rev);
+		}
 		EACH_INDEX(d->comments, j) {
 			fprintf(f, "%s\n", d->comments[j]);
 		}
@@ -296,7 +301,9 @@ read_editfile(FILE *f)
 
 		chomp(buf);
 		if (sscanf(buf,
-		    "### Change the comments to %s below", file) == 1) {
+			"### Change the comments to %s below", file) == 1 ||
+		    sscanf(buf,
+			"### Comments for %s", file) == 1) {
 			rev = strchr(file, BK_FS);
 			if (rev) {
 				*rev++ = 0;
