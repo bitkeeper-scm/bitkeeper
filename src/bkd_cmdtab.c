@@ -29,5 +29,11 @@ struct cmd cmds[] = {
   { "pull_part2", "pull_1.3_part2",
     "pull remote changes from current repository into client repository",
     cmd_pull_part2 },
+  { "rclone_part1", "rclone_1.3_part1", 
+    "clone local repository to remote repositiry",
+    cmd_rclone_part1 },
+  { "rclone_part2", "rclone_1.3_part2", 
+    "clone local repository to remote repositiry",
+    cmd_rclone_part2 },
   { 0, 0, 0 }
 };

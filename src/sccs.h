@@ -1026,6 +1026,10 @@ char	*rootkey(char *buf);
 int	isEvalLicense();
 char	*globalroot();
 void	sccs_touch(sccs *s);
+int	setlevel(int);
+int	consistency(int quiet);
+int	rmUncommitted(int quiet);
+void	rmEmptyDirs(int quiet);    
 
 extern char *bk_vers;
 extern char *bk_utc;

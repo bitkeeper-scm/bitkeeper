@@ -117,6 +117,7 @@ drain()
 	char	buf[1024];
 	int	i = 0;
 
+	shutdown(1, 1); /* We need this for local bkd */
 	close(1); /* in case remote is waiting for input */
 	while (getline(0, buf, sizeof(buf))) {
 		if (streq("@END@", buf)) break;
@@ -296,6 +297,12 @@ findcmd(int ac, char **av)
 			}
 			if (streq(av[0], "push_part2")) {
 				av[0] = "remote push part2";
+			}
+			if (streq(av[0], "rclone_part1")) {
+				av[0] = "remote rclone part1";
+			}
+			if (streq(av[0], "rclone_part2")) {
+				av[0] = "remote rclone part2";
 			}
 			return (i);
 		}

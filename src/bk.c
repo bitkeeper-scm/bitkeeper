@@ -115,6 +115,7 @@ int	push_main(int, char **);
 int	pwd_main(int, char **);
 int	r2c_main(int, char **);
 int	range_main(int, char **);
+int	rclone_main(int, char **);
 int	rcs2sccs_main(int, char **);
 int	rcsparse_main(int, char **);
 int	receive_main(int, char **);
@@ -187,6 +188,7 @@ struct command cmdtbl[] = {
 	{"_mail", mail_main},
 	{"_probekey", probekey_main},
 	{"_prunekey", prunekey_main},
+	{"_rclone", rclone_main},
 	{"_scompress", scompress_main},		/* undoc? 2.0 */
 	{"_socket2pipe", socket2pipe_main},	/* for win32 only */
 	{"_sort", sort_main},
@@ -630,6 +632,8 @@ private	struct {
 	{"remote push part1", CMD_BYTES|CMD_WRLOCK},
 	{"remote push part2", CMD_BYTES|CMD_FAST_EXIT|CMD_WRUNLOCK},
 	{"remote clone", CMD_BYTES|CMD_FAST_EXIT|CMD_RDLOCK|CMD_RDUNLOCK},
+	{"remote rclone part1", CMD_BYTES},
+	{"remote rclone part2", CMD_BYTES|CMD_FAST_EXIT|CMD_WRUNLOCK},
 	{ 0, 0 },
 };
 
