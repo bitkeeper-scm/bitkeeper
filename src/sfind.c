@@ -26,8 +26,9 @@ usage: sfiles [-acCdglpPrx] [directories]\n\n\
     -r		rebuild the id to pathname cache\n\
     -u		list only unlocked files\n\
     -x		list files which have no revision control files\n\
-    		Note: revision control files must look like SCCS/s.*, not\n\
-		foo/bar/blech/s.*\n\
+		Note 1: files in BitKeeper/log/ are ignored\n\
+    		Note 2: revision control files must look like SCCS/s.*,\n\
+		not foo/bar/blech/s.*\n\
 \n\
     The -i and -r options can take an optional project root but not any other\n\
     directories.\n\
@@ -103,6 +104,9 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		path = xFlg ? "." : sPath(".", 1);
 		lftw(path, func, 15);
 	} else {
+		/*
+		 * XXX - why ca't we used sfileFirst/next to expand these?
+		 */
 		for (i = optind; i < ac; ++i) {
 			localName2bkName(av[i], av[i]);
 			if (isdir(av[i])) {
@@ -119,37 +123,55 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 }
 
 /*
+ * Skip files which we don't want to consider as crud.
+ */
+inline void
+xprint(char *f)
+{
+	if (!strneq("BitKeeper/log/", f, 14)) printf("%s\n", f);
+}
+
+xfile(char *file)
+{
+	char	*sfile = name2sccs(file);
+	char	*gfile = sccs2name(sfile);
+
+	if (streq(gfile, file) && !exists(sfile)) {
+		xprint(file);
+	}
+	free(sfile);
+	free(gfile);
+}
+
+/*
  * Handle a single file.
- * Convert to s.file first, if possible.
- * XXX - this is incomplete.
  */
 int
 file(char *f, int (*func)())
 {
 	struct	stat sb;
-	char	*s, *sfile, *gfile;
+	char	*s;
+
+	if (lstat(f, &sb) != 0) return (-1);
+	if (sccs_filetype(f)) return (func(f, &sb));
+
+	s = strrchr(f, '/');
+	if ((s >= f + 4) && strneq(s - 4, "SCCS/", 5) && !sccs_filetype(f)) {
+		if (xFlg) xprint(f);
+	    	return (0);
+	}
 
 	/*
-	 * This catches garbage like SCCS/OLD-junk.
+	 * OK, try and convert it to a sfile and do that.
 	 */
-	s = rindex(f, '/');
-	if ((s >= f + 4) && strneq(s - 4, "SCCS/", 5) && !sccs_filetype(f)) {
-		if (xFlg) printf("%s\n", f);
+	s = name2sccs(f);
+	if (s && (lstat(s, &sb) == 0)) {
+		func(s, &sb);
+		free(s);
 		return (0);
 	}
-
-	sfile = name2sccs(f);
-	gfile = sccs2name(sfile);
-	if (lstat(sfile, &sb) == -1) {
-		if ((lstat(gfile, &sb) == 0) && xFlg) {
-			printf("%s\n", f);
-		}
-	} else if (!xFlg) {
-		func(sfile, &sb);
-	}
-	free(sfile);
-	free(gfile);
-	return (0);
+	if (s) free(s);
+	return (func(f, &sb));
 }
 
 int
@@ -159,6 +181,7 @@ func(const char *filename, const struct stat *sb, int flag)
 	register char *s;
 	char	*sfile, *gfile;
 
+	debug((stderr, "sfind func(%s)\n", filename));
 	if ((file[0] == '.') && (file[1] == '/')) file += 2;
 	if (dFlg || Dflg) {
 		if (S_ISDIR(sb->st_mode)) {
@@ -191,24 +214,20 @@ func(const char *filename, const struct stat *sb, int flag)
 		return (0);
 	}
 	if (S_ISDIR(sb->st_mode)) return (0);
+	s = strrchr(file, '/');
+
+	if ((s >= file + 4) &&
+	    strneq(s - 4, "SCCS/", 5) && !sccs_filetype(file)) {
+		if (xFlg) xprint(file);
+	    	return (0);
+	}
+
 	if (xFlg) {
-		unless (sccs_filetype(file)) {
-			printf("%s\n", file);
-		} else {
-			sfile = name2sccs(file);
-			gfile = sccs2name(sfile);
-			unless (gfile && sfile) {
-				printf("%s\n", file);
-			}
-			if (streq(gfile, file) && !exists(sfile)) {
-				printf("%s\n", gfile);
-			}
-			if (sfile) free(sfile);
-			if (gfile) free(gfile);
-		}
+		xfile(file);
 		return (0);
 	}
 	unless (sccs_filetype(file) == 's') return 0;
+	debug((stderr, "sfind func2(%s)\n", filename));
 	s = strrchr(file, '/');
 	assert(s);
 	s++;

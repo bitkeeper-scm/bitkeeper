@@ -1,0 +1,20 @@
+Adding logging to BitKeeper.
+----------------------------
+
+resync
+
+	The last thing resync does is move RESYNC -> RESOLVE .
+	The existance of a RESYNC directory means the resync
+	didn't get done or is in progress.  If in progress,
+	RESYNC/BitKeeper/tmp/pid should be the process id.
+
+resolve
+	
+	When resolve is done,
+
+	a) create a lock file in repository, fsync it
+	b) move old ChangeSet out of the way
+	c) move the new s.ChangeSet into place, fsync it
+	d) start moving the files into place
+	e) remove lock file and old ChangeSet
+
