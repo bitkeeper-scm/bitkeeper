@@ -79,8 +79,7 @@ help:		fputs(delta_help, stderr);
 		    case 'n': dflags |= DELTA_SAVEGFILE; break;
 		    case 'p': dflags |= PRINT; break;
 		    case 'y':
-		    comment:
-			comment = optarg;
+comment:		comment = optarg;
 			gotComment = 1;
 			dflags |= DELTA_DONTASK;
 			break;

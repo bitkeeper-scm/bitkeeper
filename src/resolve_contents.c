@@ -10,14 +10,13 @@ c_help(resolve *rs)
 
 	fprintf(stderr,
 "---------------------------------------------------------------------------\n\
-New work has been added locally and remotely and must be merged.
-File:   %s\n\
-GCA:    %s (greatest common ancestor)\n\
+File:   %s\n\n\
+New work has been added locally and remotely and must be merged.\n\n\
+GCA:    %s\n\
 Local:  %s\n\
 Remote: %s\n\
 ---------------------------------------------------------------------------\n",
-	    rs->d->pathname, 
-	    rs->revs->gca, rs->revs->local, rs->revs->remote);
+	    rs->d->pathname, rs->revs->gca, rs->revs->local, rs->revs->remote);
 	fprintf(stderr, "Commands are:\n\n");
 	for (i = 0; rs->funcs[i].spec; i++) {
 		fprintf(stderr, "  %-4s - %s\n", 
@@ -47,10 +46,6 @@ c_dgl(resolve *rs)
 	names	*n = rs->tnames;
 	char	cmd[MAXPATH*2];
 
-	unless (n) {
-		fprintf(stderr, "temp files not set up, can not diff\n");
-		return (0);
-	}
 	sprintf(cmd, "bk diff %s %s | %s", n->gca, n->local, rs->pager);
 	system(cmd);
 	return (0);
@@ -62,10 +57,6 @@ c_dgr(resolve *rs)
 	names	*n = rs->tnames;
 	char	cmd[MAXPATH*2];
 
-	unless (n) {
-		fprintf(stderr, "temp files not set up, can not diff\n");
-		return (0);
-	}
 	sprintf(cmd, "bk diff %s %s | %s", n->gca, n->remote, rs->pager);
 	system(cmd);
 	return (0);
@@ -77,10 +68,6 @@ c_dlm(resolve *rs)
 	names	*n = rs->tnames;
 	char	cmd[MAXPATH*2];
 
-	unless (n) {
-		fprintf(stderr, "temp files not set up, can not diff\n");
-		return (0);
-	}
 	sprintf(cmd, "bk diff %s %s | %s", n->local, rs->s->gfile, rs->pager);
 	system(cmd);
 	return (0);
@@ -92,10 +79,6 @@ c_drm(resolve *rs)
 	names	*n = rs->tnames;
 	char	cmd[MAXPATH*2];
 
-	unless (n) {
-		fprintf(stderr, "temp files not set up, can not diff\n");
-		return (0);
-	}
 	sprintf(cmd, "bk diff %s %s | %s", n->remote, rs->s->gfile, rs->pager);
 	system(cmd);
 	return (0);
@@ -125,25 +108,42 @@ c_helptool(resolve *rs)
 	return (0);
 }
 
+/*
+ * Unedit the file if we are quiting.
+ */
+int
+c_quit(resolve *rs)
+{
+	names	*n = rs->tnames;
+	int	ret;
+	char	cmd[MAXPATH*4];
+
+	/* IS_EDITED doesn't work - XXX */
+	if (exists(sccs_Xfile(rs->s, 'p'))) {
+		fprintf(stderr, "Unedit %s\n", rs->s->gfile);
+		sccs_clean(rs->s, CLEAN_UNEDIT);
+	}
+	exit(1);
+}
+
 int
 c_merge(resolve *rs)
 {
-	names	*n = (names*)rs->opaque;
+	names	*n = rs->tnames;
 	int	ret;
 	char	cmd[MAXPATH*4];
 
 	sprintf(cmd, "bk %s %s %s %s %s",
 	    rs->opts->mergeprog, n->local, n->gca, n->remote, rs->s->gfile);
+	unless (IS_EDITED(rs->s)) {
+		if (edit(rs)) return (-1);
+	}
 	ret = system(cmd) & 0xffff;
 	if (ret == 0) {
 		unless (rs->opts->quiet) {
-			fprintf(rs->opts->log,
-			    "merge of %s OK\n", rs->s->gfile);
+			fprintf(stderr, "merge of %s OK\n", rs->s->gfile);
 		}
-		if (edit(rs)) return (-1);
-	    	rs->opts->resolved++;
-		unlink(sccs_Xfile(rs->s, 'r'));
-		return (1);
+		return (rs->opts->advance);
 	}
 	if (ret == 0xff00) {
 	    	fprintf(stderr, "Can not execute '%s'\n", cmd);
@@ -151,6 +151,7 @@ c_merge(resolve *rs)
 		return (0);
 	}
 	if ((ret >> 8) == 1) {
+		if (rs->opts->advance && rs->opts->force) return (1);
 		fprintf(stderr, "Conflicts during merge of %s\n", rs->s->gfile);
 		return (0);
 	}
@@ -177,17 +178,17 @@ int
 c_fmtool(resolve *rs)
 {
 	char	*av[10];
-	names	*n = (names*)rs->opaque;
+	names	*n = rs->tnames;
 
+	assert(exists(n->local));
+	assert(exists(n->remote));
 	av[0] = "bk";
 	av[1] = "fmtool";
 	av[2] = n->local;
-	av[3] = n->gca;
-	av[4] = n->remote;
-	av[5] = rs->s->gfile;
-	av[6] = 0;
+	av[3] = n->remote;
+	av[4] = rs->s->gfile;
+	av[5] = 0;
 	spawnvp_ex(_P_NOWAIT, "bk", av);
-	return (0);
 	return (0);
 }
 
@@ -200,14 +201,61 @@ c_vm(resolve *rs)
 		fprintf(stderr, "%s hasn't been merged yet.\n", rs->s->gfile);
 		return (0);
 	}
-	sprintf(cmd, "%s %s", rs->pager, rs->s->gfile);
+	more(rs, rs->s->gfile);
 	return (0);
+}
+
+needs_merge(resolve *rs)
+{
+	MMAP	*m;
+	char	*t;
+
+	unless (exists(rs->s->gfile)) return (0);
+
+	unless (m = mopen(rs->s->gfile, "r")) {
+		fprintf(stderr, "%s can not be opened\n", rs->s->gfile);
+		return (0);
+	}
+	while ((t = mnext(m)) && ((m->end - t) > 7)) {
+		if (strneq(t, "<<<<<<", 6)) {
+			mclose(m);
+			return (1);
+		}
+	}
+	mclose(m);
+	return (0);
+}
+
+int
+c_commit(resolve *rs)
+{
+	unless (exists(rs->s->gfile)) {
+		fprintf(stderr, "%s has not been merged\n", rs->s->gfile);
+		return (0);
+	}
+
+	if (rs->opts->force) goto doit;
+
+	if (needs_merge(rs)) {
+		fprintf(stderr, "%s %s\n",
+		    "The file has unresolved conflicts. ",
+		    "Use 'e' to edit the file and resolve.");
+		return (0);
+	}
+	
+	/*
+	 * If in text only mode, then check in the file now.
+	 * Otherwise, leave it for citool.
+	 */
+doit:	if (rs->opts->textOnly) do_delta(rs->opts, rs->s);
+	rs->opts->resolved++;
+	return (1);
 }
 
 rfuncs	c_funcs[] = {
     { "?", "help", "print this help", c_help },
     { "a", "abort", "abort the patch", res_abort },
-    { "C", "commit", "commit to the merged file" },
+    { "C", "commit", "commit to the merged file", c_commit },
     { "cl", "clear", "clear the screen", res_clear },
     { "d", "diff", "diff the local file against the remote file", res_diff },
     { "D", "difftool",
@@ -215,7 +263,7 @@ rfuncs	c_funcs[] = {
     { "dl", "diff local", "diff the GCA vs local file", c_dgl },
     { "dr", "diff remote", "diff the GCA vs remote file", c_dgr },
     { "dlm", "diff local merge", "diff the local file vs merge file", c_dlm },
-    { "dlm", "diff remote merge", "diff the remote file vs merge file", c_drm },
+    { "drm", "diff remote merge", "diff the remote file vs merge file", c_drm },
     { "e", "edit merge", "edit the merge file", c_em },
     { "f", "fmtool", "merge with graphical filemerge", c_fmtool },
     { "hl", "hist local", "revision history of the local file", res_hl },
@@ -223,9 +271,11 @@ rfuncs	c_funcs[] = {
     { "H", "helptool", "show merge help in helptool", c_helptool },
     { "m", "merge", "automerge the two files", c_merge },
     { "p", "sccstool", "graphical picture of the file history", c_sccstool },
-    { "q", "quit", "immediately exit resolve", res_quit },
+    { "q", "quit", "immediately exit resolve", c_quit },
+    { "sd", "sdiff",
+      "side by side diff of the local file vs. the remote file", res_sdiff },
     { "vl", "view local", "view the local file", res_vl },
-    { "vm", "view merge", "view the merge file", c_vm },
+    { "v", "view merge", "view the merge file", c_vm },
     { "vr", "view remote", "view the remote file", res_vr },
     { "x", "explain", "explain the choices", c_explain },
     { 0, 0, 0, 0 }
@@ -233,7 +283,7 @@ rfuncs	c_funcs[] = {
 
 /*
  * Given an SCCS file, resolve the contents.
- * Set up the list of temp files in the opaque pointer,
+ * Set up the list of temp files,
  * get the various versions into the temp files,
  * do the resolve,
  * and then clean them up.
@@ -261,12 +311,15 @@ resolve_contents(resolve *rs)
 	n->remote = strdup(buf);
 	rs->tnames = n;
 	rs->prompt = rs->s->gfile;
+	rs->res_contents = 1;
 	if (get_revs(rs, n)) {
 		rs->opts->errors = 1;
 		freenames(n, 1);
 		return (-1);
 	}
 	ret = resolve_loop("resolve_contents", rs, c_funcs);
-	freenames(n, 1);
+	unlink(n->local);
+	unlink(n->gca);
+	unlink(n->remote);
 	return (ret);
 }

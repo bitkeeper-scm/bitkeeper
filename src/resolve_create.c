@@ -46,43 +46,100 @@ res_getlocal(char *gfile)
 
 /*
  * Diff the local against the remote;
- * The local may be just a gfile, if it is, use it,
- * otherwise get the local file into a temp file without keywords.
  */
 int
-res_diff(resolve *rs)
+res_diffCommon(resolve *rs, rfunc differ)
 {
-	char	cmd[MAXPATH*3];
-	char	*left;
-
-	unless (left = res_getlocal(rs->d->pathname)) {
-		fprintf(stderr, "diff: can't find %s\n", rs->d->pathname);
+	if (rs->tnames) {
+		differ(rs, rs->tnames->local, rs->tnames->remote);
 		return (0);
 	}
-	sprintf(cmd, "bk get -ksp %s | bk diff %s - | %s",
-	    left, RESYNC2ROOT, rs->d->pathname, rs->pager);
-	system(cmd);
-	unlink(left);
-	free(left);
+	if (rs->res_gcreate) {
+		char	right[MAXPATH];
+
+		gettemp(right, "right");
+		if (sccs_get(rs->s, 0, 0, 0, 0, SILENT, right)) {
+		    	fprintf(stderr, "get failed, can't diff.\n");
+			return (0);
+		}
+		chdir(RESYNC2ROOT);
+		differ(rs->dname, right);
+		chdir(ROOT2RESYNC);
+		unlink(right);
+		return (0);
+	}
+	if (rs->res_screate) {
+		char	left[MAXPATH];
+		char	right[MAXPATH];
+		sccs	*s = (sccs*)rs->opaque;
+
+		gettemp(left, "left");
+		gettemp(right, "right");
+		if (sccs_get(s, 0, 0, 0, 0, SILENT, left) ||
+		    sccs_get(rs->s, 0, 0, 0, 0, SILENT, right)) {
+		    	fprintf(stderr, "get failed, can't diff.\n");
+			unlink(left);
+			return (0);
+		}
+		differ(rs, left, right);
+		unlink(left);
+		unlink(right);
+	}
+	fprintf(stderr, "Don't know how to diff the files.\n");
 	return (0);
 }
 
+do_diff(resolve *rs, char *left, char *right)
+{
+	char	cmd[MAXPATH*3];
+
+	sprintf(cmd, "bk diff %s %s | %s", left, right, rs->pager);
+	system(cmd);
+}
+
+do_sdiff(resolve *rs, char *left, char *right)
+{
+	char	cmd[MAXPATH*3];
+	FILE	*p = popen("tput cols", "r");
+	int	cols;
+
+	unless (p && fnext(cmd, p) && (cols = atoi(cmd))) cols = 80;
+	if (p) pclose(p);
+
+	sprintf(cmd, "bk sdiff -w %d %s %s | %s", cols, left, right, rs->pager);
+	system(cmd);
+}
+
 int	
-res_difftool(resolve *rs)
+do_difftool(resolve *rs, char *left, char *right)
 {
 	char	*av[10];
 
-	unless (rs->tnames) {
-		fprintf(stderr, "No temp names setup, can not run difftool\n");
-		return (0);
-	}
 	av[0] = "bk";
 	av[1] = "difftool";
-	av[2] = rs->tnames->local;
-	av[3] = rs->tnames->remote;
+	av[2] = left;
+	av[3] = right;
 	av[4] = 0;
 	spawnvp_ex(_P_NOWAIT, "bk", av);
 	return (0);
+}
+
+int
+res_diff(resolve *rs)
+{
+	return (res_diffCommon(rs, do_diff));
+}
+
+int
+res_sdiff(resolve *rs)
+{
+	return (res_diffCommon(rs, do_sdiff));
+}
+
+int
+res_difftool(resolve *rs)
+{
+	return (res_diffCommon(rs, do_difftool));
 }
 
 int
@@ -117,21 +174,41 @@ res_mr(resolve *rs)
 	return (1);
 }
 
+more(resolve *rs, char *file)
+{
+	char	cmd[MAXPATH];
+
+	sprintf(cmd, "%s %s", rs->pager, file);
+	system(cmd);
+	return (0);
+}
+
 int
 res_vl(resolve *rs)
 {
-	char	cmd[MAXPATH];
-	char	*left;
-
-	unless (left = res_getlocal(rs->d->pathname)) {
-		fprintf(stderr, "diff: can't find %s\n", rs->d->pathname);
+	if (rs->tnames) {
+		more(rs, rs->tnames->local);
 		return (0);
 	}
-	fprintf(stderr, "--- Viewing %s ---\n", rs->d->pathname);
-	sprintf(cmd, "%s %s", rs->pager, left);
-	system(cmd);
-	unlink(left);
-	free(left);
+	if (rs->res_gcreate) {
+		chdir(RESYNC2ROOT);
+		more(rs, rs->dname);
+		chdir(ROOT2RESYNC);
+		return (0);
+	}
+	if (rs->res_screate) {
+		char	left[MAXPATH];
+		sccs	*s = (sccs*)rs->opaque;
+
+		gettemp(left, "left");
+		if (sccs_get(s, 0, 0, 0, 0, SILENT, left)) {
+		    	fprintf(stderr, "get failed, can't view.\n");
+			return (0);
+		}
+		more(rs, left);
+		unlink(left);
+	}
+	fprintf(stderr, "Don't know how to view the file.\n");
 	return (0);
 }
 
@@ -473,6 +550,8 @@ rfuncs	gc_funcs[] = {
     { "mr", "move remote", "move the remote file to someplace else", res_mr },
     { "q", "quit", "immediately exit resolve", res_quit },
     { "r", "remove local", "remove the local file", gc_remove },
+    { "sd", "sdiff",
+      "side by side diff of the local file vs. the remote file", res_sdiff },
     { "vl", "view local", "view the local file", res_vl },
     { "vr", "view remote", "view the remote file", res_vr },
     { 0, 0, 0, 0 }
@@ -490,6 +569,8 @@ rfuncs	sc_funcs[] = {
     { "mr", "move remote", "move the remote file to someplace else", res_mr },
     { "q", "quit", "immediately exit resolve", res_quit },
     { "r", "remove local", "remove the local file", sc_remove },
+    { "sd", "sdiff",
+      "side by side diff of the local file vs. the remote file", res_sdiff },
     { "vl", "view local", "view the local file", res_vl },
     { "vr", "view remote", "view the remote file", res_vr },
     { 0, 0, 0, 0 }
@@ -508,9 +589,11 @@ resolve_create(resolve *rs, int type)
 	switch (type) {
 	    case GFILE_CONFLICT:
 		rs->prompt = rs->dname;
+		rs->res_gcreate = 1;
 		return (resolve_loop("resolve_create gc", rs, gc_funcs));
 	    case SFILE_CONFLICT:
 		rs->prompt = rs->dname;
+		rs->res_screate = 1;
 		chdir(RESYNC2ROOT);
 		rs->opaque = (void*)sccs_init(rs->dname, 0, 0);
 		chdir(ROOT2RESYNC);
@@ -518,6 +601,7 @@ resolve_create(resolve *rs, int type)
 		if (rs->opaque) sccs_free((sccs*)rs->opaque);
 		return (ret);
 	    case RESYNC_CONFLICT:
+		rs->res_resync = 1;
 	    	fprintf(stderr, "RESYNC sfile conflicts not done.\n");
 		exit(1);
 	}

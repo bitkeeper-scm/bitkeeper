@@ -33,11 +33,13 @@ main(int ac, char **av)
 
 	opts.pass1 = opts.pass2 = opts.pass3 = opts.pass4 = 1;
 
-	while ((c = getopt(ac, av, "l|y;m;acdqt1234")) != -1) {
+	while ((c = getopt(ac, av, "l|y;m;aAcdFqrtv1234")) != -1) {
 		switch (c) {
 		    case 'a': opts.automerge = 1; break;
+		    case 'A': opts.advance = 1; break;
 		    case 'd': opts.debug = 1; break;
 		    case 'c': opts.noconflicts = 1; break;
+		    case 'F': opts.force = 1; break;
 		    case 'l':
 		    	if (optarg) {
 				opts.log = fopen(optarg, "a");
@@ -47,7 +49,9 @@ main(int ac, char **av)
 			break;
 		    case 'm': opts.mergeprog = optarg; break;
 		    case 'q': opts.quiet = 1; break;
+		    case 'r': opts.remerge = 1; break;
 		    case 't': opts.textOnly = 1; break;
+		    case 'v': opts.verbose = 1; break;
 		    case 'y': opts.comment = optarg; break;
 		    case '1': opts.pass1 = 0; break;
 		    case '2': opts.pass2 = 0; break;
@@ -869,7 +873,8 @@ slotTaken(opts *opts, char *slot)
  * Handle committing anything which needs a commit.
  *
  * Idempotency is handled as follows:
- * a) if there is an r.file, we know that we need to do a merge.
+ * a) if there is an r.file, we know that we need to do a merge unless there
+ *    is also a p.file, in which case we've been here already.
  * b) if there is not an r.file, we should validate that there are no
  *    open branches in this LOD - if there are, reconstruct the r.file.
  *    XXX - not currently implemented.
@@ -921,14 +926,34 @@ can be resolved.  Please rerun resolve and fix these first.\n", n);
 	 * do an sfiles, open up each file, check for conflicts, and
 	 * reconstruct the r.file if necessary.  XXX - not done.
 	 */
-	unless (p = popen("find . -type f -name 'r.*' -print", "r")) {
-		perror("popen of find");
+	unless (p = popen("bk sfiles .", "r")) {
+		perror("popen of sfiles");
 		exit (1);
 	}
 	while (fnext(buf, p)) {
+		char	*t = strrchr(buf, '/');
+
+		if (opts->debug) fprintf(stderr, "pass3: %s", buf);
+
 		chop(buf);
-		if (streq("SCCS/r.ChangeSet", &buf[2])) continue;
-		conflict(opts, &buf[2]);
+		assert(t[1] == 's');
+		t[1] = 'r';
+		unless (exists(buf)) continue;
+		t[1] = 's';
+
+		if (streq("SCCS/s.ChangeSet", buf)) continue;
+
+		/*
+		 * We leave the r.files there but ignore them if we've
+		 * already merged these files.
+		 * We also allow you to remerge if you want.
+		 */
+		unless (opts->remerge) {
+			t[1] = 'p';
+			if (exists(buf)) continue;
+			t[1] = 's';
+		}
+		conflict(opts, buf);
 		if (opts->errors) {
 			pclose(p);
 			goto err;
@@ -943,6 +968,12 @@ can be resolved.  Please rerun resolve and fix these first.\n", n);
 
 	if (opts->errors) {
 err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
+		exit(1);
+	}
+
+	if (opts->hadConflicts) {
+		fprintf(stderr,
+		    "resolve: unresolved conflicts, nothing is applied.\n");
 		exit(1);
 	}
 
@@ -962,6 +993,24 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	}
 
 	/*
+	 * Since we are about to commit, clean up the r.files
+	 */
+	unless (p = popen("bk sfiles .", "r")) {
+		perror("popen of sfiles");
+		exit (1);
+	}
+	while (fnext(buf, p)) {
+		char	*t = strrchr(buf, '/');
+
+		chop(buf);
+		assert(t[1] == 's');
+		t[1] = 'r';
+		unless (exists(buf)) continue;
+		unlink(buf);
+	}
+	pclose(p);
+
+	/*
 	 * Always do autocommit if there are no pending changes.
 	 */
 	unless (!mustCommit || pending() || pendingCheckins()) {
@@ -976,7 +1025,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	 * out of citool, it exits !0.
 	 */
 	unless (opts->textOnly) {
-		int	ret = system("bk citool");
+		int	ret = system("bk citool -R");
 
 		if (ret) {
 			fprintf(stderr, "citool failed, aborting.\n");
@@ -1001,7 +1050,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	}
 	while (fnext(buf, p)) {
 		chop(buf);
-		do_delta(opts, buf);
+		open_and_delta(opts, buf);
 	}
 	pclose(p);
 	if (opts->errors) {
@@ -1014,9 +1063,15 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	return (0);
 }
 
-do_delta(opts *opts, char *sfile)
+open_and_delta(opts *opts, char *sfile)
 {
 	sccs	*s = sccs_init(sfile, INIT, opts->resync_proj);
+
+	do_delta(opts, s);
+}
+
+do_delta(opts *opts, sccs *s)
+{
 	int	flags = DELTA_FORCE;
 
 	gotComment = 0;
@@ -1031,16 +1086,12 @@ do_delta(opts *opts, char *sfile)
  * Merge a conflict, manually or automatically.
  */
 void
-conflict(opts *opts, char *rfile)
+conflict(opts *opts, char *sfile)
 {
-	char	*t;
 	sccs	*s;
 	resolve	*rs;
 	
-	t = strrchr(rfile, '/');
-	assert(t[1] == 'r');
-	t[1] = 's';
-	s = sccs_init(rfile, INIT, opts->resync_proj);
+	s = sccs_init(sfile, INIT, opts->resync_proj);
 	rs = resolve_init(opts, s);
 	assert(streq(rs->dname, s->sfile));
 
@@ -1068,7 +1119,7 @@ conflict(opts *opts, char *rfile)
 int
 get_revs(resolve *rs, names *n)
 {
-	int	flags = PRINT | (rs->opts->quiet ? SILENT : 0);
+	int	flags = PRINT | (rs->opts->debug ? 0 : SILENT);
 
 	if (sccs_get(rs->s, rs->revs->local, 0, 0, 0, flags, n->local)) {
 		fprintf(stderr, "Unable to get %s\n", n->local);
@@ -1123,17 +1174,19 @@ automerge(resolve *rs)
 	unlink(tmp.remote);
 	freenames(&tmp, 0);
 	if (ret == 0) {
-		unless (rs->opts->quiet) {
-			fprintf(rs->opts->log,
-			    "automerge of %s OK\n", rs->s->gfile);
+		delta	*d;
+
+		if (rs->opts->verbose) {
+			fprintf(stderr, "automerge of %s OK\n", rs->s->gfile);
 		}
 		if (edit(rs)) return;
-		comment = "automerge";
+		comment = "Auto merged";
 		gotComment = 1;
+		d = getComments(0);
 		sccs_restart(rs->s);
 		flags =
-		    DELTA_DONTASK|DELTA_FORCE|(rs->opts->quiet ? SILENT : 0);
-		if (sccs_delta(rs->s, flags, 0, 0, 0, 0)) {
+		    DELTA_DONTASK|DELTA_FORCE|(rs->opts->verbose ? 0: SILENT);
+		if (sccs_delta(rs->s, flags, d, 0, 0, 0)) {
 			sccs_whynot("delta", rs->s);
 			rs->opts->errors = 1;
 			return;
@@ -1148,8 +1201,9 @@ automerge(resolve *rs)
 		return;
 	}
 	if ((ret >> 8) == 1) {
-		fprintf(stderr, "Conflicts during merge of %s\n", rs->s->gfile);
-		rs->opts->errors = 1;
+		fprintf(stderr,
+		    "Conflicts during automerge of %s\n", rs->s->gfile);
+		rs->opts->hadConflicts = 1;
 		return;
 	}
 	fprintf(stderr,
@@ -1174,13 +1228,14 @@ edit(resolve *rs)
 	} else {
 		branch = rs->revs->remote;
 	}
-	if (rs->opts->quiet) flags |= SILENT;
+	if (rs->opts->quiet || !rs->opts->verbose) flags |= SILENT;
 	if (sccs_get(rs->s, 0, branch, 0, 0, flags, "-")) {
 		fprintf(stderr,
 		    "resolve: can not edit/merge %s\n", rs->s->sfile);
 		rs->opts->errors = 1;
 		return (1);
 	}
+	sccs_restart(rs->s);
 	return (0);
 }
 

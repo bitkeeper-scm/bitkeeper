@@ -28,6 +28,11 @@ typedef struct {
 	u32	errors:1;	/* set if there are errors, don't apply */
 	u32	quiet:1;	/* no output except for errors */
 	u32	textOnly:1;	/* no GUI tools allowed */
+	u32	remerge:1;	/* redo already merged content conflicts */
+	u32	force:1;	/* for forcing commits with unmerged changes */
+	u32	advance:1;	/* advance after merging if commit works */
+	u32	verbose:1;	/* be verbose on gets, etc */
+	u32	hadConflicts:1;	/* conflicts during automerge */
 	int	pass;		/* which pass are we in now */
 	char	*comment;	/* checkin comment for commit */
 	char	*mergeprog;	/* program to merge with */
@@ -82,6 +87,11 @@ typedef	struct resolve {
 	char	*editor;	/* $EDITOR or vi */
 	rfuncs	*funcs;		/* the ops vector */
 	void	*opaque;	/* a pointer on which to hang state */
+	/* the following tell us which resolve loop we are in */
+	u32	res_gcreate:1;	/* new file conflicts with local gfile */
+	u32	res_screate:1;	/* new file conflicts with gfile */
+	u32	res_resync:1;	/* conflict in the RESYNC dir */
+	u32	res_contents:1;	/* content conflict */
 } resolve;
 
 
@@ -119,6 +129,7 @@ int	move_remote(resolve *rs, char *sfile);
 int	res_abort(resolve *rs);
 char	*res_getlocal(char *gfile);
 int	res_diff(resolve *rs);
+int	res_sdiff(resolve *rs);
 int	res_difftool(resolve *rs);
 int	res_mr(resolve *rs);
 int	res_vl(resolve *rs);
