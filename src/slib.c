@@ -16,7 +16,7 @@
 WHATSTR("@(#)%K%");
 
 private delta	*rfind(sccs *s, char *rev);
-private void	dinsert(sccs *s, int flags, delta *d, int fixDate);
+private void	dinsert(sccs *s, delta *d, int fixDate);
 private int	samebranch(delta *a, delta *b);
 private int	samebranch_bk(delta *a, delta *b, int bk_mode);
 private char	*sccsXfile(sccs *sccs, char type);
@@ -141,35 +141,37 @@ a2mode(char *mode)
 		return (0);
 	}
 	mode++;
-	/* owner bits - does not handle setuid/setgid */
 	if (*mode++ == 'r') m |= S_IRUSR;
 	if (*mode++ == 'w') m |= S_IWUSR;
-	if (*mode++ == 'x') m |= S_IXUSR;
+	switch (*mode++) {
+#ifdef	S_ISUID
+	    case 'S': m |= S_ISUID; break;
+	    case 's': m |= S_ISUID; /* fall-through */
+#endif
+	    case 'x': m |= S_IXUSR; break;
+	}
 
 	/* group - XXX, inherite these on DOS? */
 	if (*mode++ == 'r') m |= S_IRGRP;
 	if (*mode++ == 'w') m |= S_IWGRP;
-	if (*mode++ == 'x') m |= S_IXGRP;
+	switch (*mode++) {
+#ifdef	S_ISGID
+	    case 'S': m |= S_ISGID; break;
+	    case 's': m |= S_ISGID; /* fall-through */
+#endif
+	    case 'x': m |= S_IXGRP; break;
+	}
 
 	/* other */
 	if (*mode++ == 'r') m |= S_IROTH;
 	if (*mode++ == 'w') m |= S_IWOTH;
 	if (*mode++ == 'x') m |= S_IXOTH;
-
 	return (m);
 }
 
 private mode_t
-getMode(char *arg)
+fixModes(mode_t m)
 {
-	mode_t	m;
-
-	if (isdigit(*arg)) {
-		for (m = 0; isdigit(*arg); m <<= 3, m |= (*arg - '0'), arg++);
-		m |= S_IFREG;
-	} else {
-		m = a2mode(arg);
-	}
 	unless (m & 0200) {
 		fprintf(stderr, "Warning: adding owner write permission\n");
 		m |= 0200;
@@ -179,6 +181,94 @@ getMode(char *arg)
 		m |= 0400;
 	}
 	return (m);
+}
+
+private mode_t
+getMode(char *arg)
+{
+	mode_t	m;
+
+	if (isdigit(*arg)) {
+		char	*p = arg;
+		for (m = 0; isdigit(*p); m <<= 3, m |= (*p - '0'), p++) {
+			unless ((*p >= '0') && (*p <= '7')) {
+				fprintf(stderr, "Illegal octal file mode: %s\n",
+				    arg);
+				return (0);
+			}
+		}
+		if (!S_ISLNK(m) && !S_ISDIR(m)) m |= S_IFREG;
+	} else {
+		m = a2mode(arg);
+	}
+	return (fixModes(m));
+}
+
+/*
+ * chmod [ugoa]+rwxs
+ * chmod [ugoa]-rwxs
+ * chmod [ugoa]=rwxs
+ *
+ * Yes, this code knows the values of the bits.  Tough.
+ */
+private mode_t
+newMode(delta *d, char *p)
+{
+	mode_t	mode, or = 0;
+	int	op = 0, setid = 0, u = 0, g = 0, o = 0;
+
+	assert(p && *p);
+	if (isdigit(*p) || (strlen(p) == 10)) return (getMode(p));
+
+	for ( ; *p; p++) {
+		switch (*p) {
+		    case 'u': u = 1; break;
+		    case 'g': g = 1; break;
+		    case 'o': o = 1; break;
+		    case 'a': u = g = o = 1; break;
+		    default: goto plusminus;
+		}
+	}
+plusminus:
+	unless (u || g || o) u = g = o = 1;
+	switch (*p) {
+	    case '+': case '-': case '=': op = *p++; break;
+	    default: return (0);
+	}
+
+	setid = mode = 0;
+	while (*p) {
+		switch (*p++) {
+		    case 'r': or |= 4; break;
+		    case 'w': or |= 2; break;
+		    case 'x': or |= 1; break;
+		    case 's': setid = 1; break;
+		    default: return (0);
+		}
+	}
+	if (u) {
+		mode |= (or << 6);
+		if (setid) mode |= 04000;
+	}
+	if (g) {
+		mode |= (or << 3);
+		if (setid) mode |= 02000;
+	}
+	if (o) mode |= or;
+#ifndef	S_ISUID
+	mode &= 0777;	/* no setgid if no setuid */
+#endif
+	switch (op) {
+	    case '-':	mode = (d->mode & ~mode); break;
+	    case '+':	mode = (d->mode | mode); break;
+	    case '=':
+		unless (u) mode |= (d->mode & 0700);
+		unless (g) mode |= (d->mode & 0070);
+		unless (o) mode |= (d->mode & 0007);
+		break;
+	}
+	mode |= (d->mode & S_IFMT);	/* don't lose file type */
+	return (fixModes(mode));
 }
 
 /* value is overwritten on each call */
@@ -200,10 +290,20 @@ mode2a(mode_t m)
 	}
 	*s++ = (m & S_IRUSR) ? 'r' : '-';
 	*s++ = (m & S_IWUSR) ? 'w' : '-';
+#ifndef	S_ISUID
 	*s++ = (m & S_IXUSR) ? 'x' : '-';
+#else
+	*s++ = (m & S_IXUSR) ? ((m & S_ISUID) ? 's' : 'x')
+			     : ((m & S_ISUID) ? 'S' : '-');
+#endif
 	*s++ = (m & S_IRGRP) ? 'r' : '-';
 	*s++ = (m & S_IWGRP) ? 'w' : '-';
+#ifndef	S_ISGID
 	*s++ = (m & S_IXGRP) ? 'x' : '-';
+#else
+	*s++ = (m & S_IXGRP) ? ((m & S_ISGID) ? 's' : 'x')
+			     : ((m & S_ISGID) ? 'S' : '-');
+#endif
 	*s++ = (m & S_IROTH) ? 'r' : '-';
 	*s++ = (m & S_IWOTH) ? 'w' : '-';
 	*s++ = (m & S_IXOTH) ? 'x' : '-';
@@ -476,7 +576,7 @@ sccs_freetable(delta *t)
  * Make sure to keep this up for all inherited fields.
  */
 void
-sccs_inherit(sccs *s, u32 flags, delta *d)
+sccs_inherit(sccs *s, delta *d)
 {
 	delta	*p;
 
@@ -591,7 +691,7 @@ sccs_reDup(sccs *s)
  * invariant that a delta in the graph is always correct.
  */
 private void
-dinsert(sccs *s, int flags, delta *d, int fixDate)
+dinsert(sccs *s, delta *d, int fixDate)
 {
 	delta	*p;
 
@@ -644,7 +744,7 @@ dinsert(sccs *s, int flags, delta *d, int fixDate)
 		debug((stderr, " -> %s (kid, moved sib %s)\n",
 		    p->rev, d->siblings->rev));
 	}
-	sccs_inherit(s, flags, d);
+	sccs_inherit(s, d);
 	if (fixDate) uniqDelta(s);
 }
 
@@ -1064,10 +1164,10 @@ date2time(char *asctime, char *z, int roundup)
 #if	0
 {	struct  tm tm2 = tm;
 	struct  tm *tp;
-	fprintf(stderr, "%s%s %02d/%02d/%02d %02d:%02d:%02d = %u = ",
+	fprintf(stderr, "%s%s %04d/%02d/%02d %02d:%02d:%02d = %u = ",
 	asctime,
 	z ? z : "",
-	tm.tm_year,
+	tm.tm_year + 1900,
 	tm.tm_mon + 1,
 	tm.tm_mday,
 	tm.tm_hour,
@@ -1075,8 +1175,8 @@ date2time(char *asctime, char *z, int roundup)
 	tm.tm_sec,
 	tm2utc(&tm2));
 	tp = utc2tm(tm2utc(&tm2));
-	fprintf(stderr, "%02d/%02d/%02d %02d:%02d:%02d\n",
-	tp->tm_year,
+	fprintf(stderr, "%04d/%02d/%02d %02d:%02d:%02d\n",
+	tp->tm_year + 1900,
 	tp->tm_mon + 1,
 	tp->tm_mday,
 	tp->tm_hour,
@@ -1177,7 +1277,7 @@ scandiff(char *s, int *where, char *what, int *howmany)
  * Convert ascii 1.2.3.4 -> 1, 2, 3, 4
  */
 private inline int
-scanrev(char *s, u16 *a, u16 *b, u16 *c, u16 *d)
+scanrev(char *s, ser_t *a, ser_t *b, ser_t *c, ser_t *d)
 {
 	if (!isdigit(*s)) return (0);
 	*a = atoi_p(&s);
@@ -1268,7 +1368,7 @@ samebranch_bk(delta *a, delta *b, int bk_mode)
 private char *
 branchname(delta *d)
 {
-	u16	a1 = 0, a2 = 0, a3 = 0, a4 = 0;
+	ser_t	a1 = 0, a2 = 0, a3 = 0, a4 = 0;
 	static	char buf[6];
 
 	scanrev(d->rev, &a1, &a2, &a3, &a4);
@@ -1806,7 +1906,7 @@ sym2delta(sccs *s, char *sym)
 }
 
 private inline int
-samerev(u16 a[4], u16 b[4])
+samerev(ser_t a[4], ser_t b[4])
 {
 	return ((a[0] == b[0]) &&
 		(a[1] == b[1]) &&
@@ -1814,7 +1914,7 @@ samerev(u16 a[4], u16 b[4])
 		(a[3] == b[3]));
 }
 
-private u16	R[4];
+private ser_t	R[4];
 /*
  * This one uses the globals set up below.  This hack makes this library
  * !MT safe.  Which it wasn't anyway.
@@ -1875,8 +1975,8 @@ defbranch(sccs *s)
 private delta *
 findrev(sccs *s, char *rev)
 {
-	u16	a = 0, b = 0, c = 0, d = 0;
-	u16	max = 0;
+	ser_t	a = 0, b = 0, c = 0, d = 0;
+	ser_t	max = 0;
 	delta	*e = 0, *f = 0;
 	char	buf[20];
 
@@ -2315,7 +2415,7 @@ private delta *
 getedit(sccs *s, char **revp)
 {
 	char	*rev = *revp;
-	u16	a = 0, b = 0, c = 0, d = 0;
+	ser_t	a = 0, b = 0, c = 0, d = 0;
 	delta	*e, *t;
 	static	char buf[MAXREV];
 
@@ -2439,6 +2539,48 @@ nextdata(sccs *s)
 }
 
 /*
+ * Look for a bug in the weave that could be created by bitkeeper
+ * versions 3.0.1 or older.  It happens when a file is delta'ed on
+ * Windows when it ends in a bare \r without a trailing \n.
+ *
+ * This function gets run from check.c if checksums are being verified
+ * right after we have walked the weave to check checksums.  If a
+ * 'no-newline' marker is seen in the file then getRegBody() sets
+ * s->has_nonl.  And we skip this call if s->has_nonl is not set, that
+ * way the weave is only extracted twice on a subset of the files.
+ *
+ * This code is a simple pattern match that looks for a blank line
+ * followed by end marker with a no-newline flag.
+ *
+ * The function should be removed after all customers have upgraded
+ * beyond 3.0.1.
+ */
+int
+chk_nlbug(sccs *s)
+{
+	char	*buf, *p;
+	int	sawblank = 0;
+	int	ret = 0;
+
+	seekto(s, s->data);
+	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
+	while (buf = nextdata(s)) {
+		if (buf[0] == '\001' && buf[1] == 'E') {
+			p = buf + 3;
+			while (isdigit(*p)) p++;
+			if (*p == 'N' && sawblank) {
+				getMsg("saw_blanknonl", s->sfile,
+				    0, 0, stderr);
+				ret = 1;
+			}
+		}
+		sawblank = (buf[0] == '\n');
+	}
+	if ((s->encoding & E_GZIP) && zgets_done()) ret = 1;
+	return (ret);
+}
+
+/*
  * This does standard SCCS expansion, it's almost 100% here.
  * New stuff added:
  * %@%	user@host
@@ -2451,7 +2593,7 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 	char	*tmp, *g;
 	time_t	now = 0;
 	struct	tm *tm = 0;
-	u16	a[4];
+	ser_t	a[4];
 	int hasKeyword = 0, buf_size;
 #define EXTRA 1024
 
@@ -2654,198 +2796,95 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 	return (buf);
 }
 
-
-/*
- * find s in t
- * s is '\0' terminated
- * t is '\n' terminated
- */
-private int
-strnlmatch(register char *s, register char *t)
-{
-	while (*s && (*t != '\n')) {
-		if (*t != *s) return (0);
-		t++, s++;
-	}
-	if (*s == 0) return (1);
-	return (0);
-}
-
 /*
  * This does standard RCS expansion.
- * Keywords to expand:
- *	$Revision$
- *	$Id$
- *	$Author$
- *	$Date$
- *	$Header$
- *	$Locker$
- *	$Log$		Not done
- *	$Name$
- *	$RCSfile$
- *	$Source$
- *	$State$
+ *
+ * This code recognizes RCS keywords and expands them.  This code can
+ * handle finding a keyword that is already expanded and reexpanding
+ * it to the correct value.  This is for when a RCS file gets added
+ * with the keywords already expanded.
+ *
+ * XXX In BitKeeper the contents of the weave and edited files are is
+ * normally not expanded. (ie: $Date$) However mistakes can happen.
+ * We should unexpand RCS keywords on delta if they happen...
  */
 private char *
-rcsexpand(sccs *s, delta *d, char *l, int *expanded)
+rcsexpand(sccs *s, delta *d, char *line, int *expanded)
 {
-	char *buf;
-	char	*t;
-	char	*tmp, *g;
-	delta	*h;
-	int	hasKeyword = 0, expn = 0, buf_size;
+	static const struct keys {
+		int	len;
+		char	*keyword;
+		char	*dspec;
+	} keys[] = {
+		/*   123456789 */
+		{6, "Author", ": :USER:@:HOST: "},
+		{4, "Date", ": :D: :T::TZ: "},
+		{6, "Header", ": :GFILE: :I: :D: :T::TZ: :USER:@:HOST: "},
+		{2, "Id", ": :G: :I: :D: :T::TZ: :USER:@:HOST: "},
+		{6, "Locker", ": <Not implemented> "},
+		{3, "Log", ": <Not implemented> "},
+		{4, "Name", ": <Not implemented> "}, /* almost :TAG: */
+		{8, "Revision", ": :I: "},
+		{7, "RCSfile", ": s.:G: "},
+		{6, "Source", ": :SFILE: "},
+		{5, "State", ": <unknown> "}
+	};
+	const	int	keyslen = sizeof(keys)/sizeof(struct keys);
+	char	*p, *prs;
+	char	*out = 0;
+	char	*outend = 0;
+	char	*last = line;
+	char	*ks;	/* start of keyword. */
+	char	*ke;	/* byte after keyword name */
+	int	i;
 
-	/* pre scan the line to determine if it needs keyword expansion */
 	*expanded = 0;
-	for (t = l; *t != '\n'; t++) {
-		if (hasKeyword) continue;
-		if (t[0] != '$' || t[1] == '\n') continue;
-		if (strnlmatch("$Author$", t) || strnlmatch("$Date$", t) ||
-		     strnlmatch("$Header$", t) || strnlmatch("$Id$", t) ||
-		     strnlmatch("$Locker$", t) || strnlmatch("$Log$", t) ||
-		     strnlmatch("$Name$", t) || strnlmatch("$RCSfile$", t) ||
-		     strnlmatch("$Revision$", t) || strnlmatch("$Source$", t) ||
-		     strnlmatch("$State$", t)) {
-			hasKeyword = 1;
-		}
-	}
-	unless (hasKeyword) return l;
-	buf_size = t - l + EXTRA; /* get extra memory for keyword expansion */
-	/* ok, we need to expand keyword, allocate a new buffer */
-	t = buf = malloc(buf_size);
-
-	while (*l != '\n') {
-		if (l[0] != '$') {
-			*t++ = *l++;
-			continue;
-		}
-		if (strneq("$Author$", l, 8)) {
-			strcpy(t, "$Author: "); t += 9;
-			strcpy(t, d->user);
-			t += strlen(d->user);
-			for (h = d; h && !h->hostname; h = h->parent);
-			if (h && h->hostname) {
-				*t++ = '@';
-				strcpy(t, h->hostname);
-				t += strlen(h->hostname);
-			}
-			*t++ = ' ';
-			*t++ = '$';
-			l += 8;
-			expn = 1;
-		} else if (strneq("$Date$", l, 6)) {
-			strcpy(t, "$Date: "); t += 7;
-			strncpy(t, d->sdate, 17); t += 17;
-			for (h = d; h && !h->zone; h = h->parent);
-			if (h && h->zone) {
-				strcpy(t, h->zone);
-				t += strlen(h->zone);
-			}
-			*t++ = ' ';
-			*t++ = '$';
-			l += 6;
-			expn = 1;
-		} else if (strneq("$Header$", l, 8)) {
-			strcpy(t, "$Header: "); t += 9;
-			tmp = s->sfile;
-			strcpy(t, tmp); t += strlen(tmp); *t++ = ' ';
-			strcpy(t, d->rev); t += strlen(d->rev);
-			*t++ = ' ';
-			strncpy(t, d->sdate, 17); t += 17;
-			for (h = d; h && !h->zone; h = h->parent);
-			if (h && h->zone) {
-				strcpy(t, h->zone);
-				t += strlen(h->zone);
-			}
-			*t++ = ' ';
-			strcpy(t, d->user);
-			t += strlen(d->user);
-			for (h = d; h && !h->hostname; h = h->parent);
-			if (h && h->hostname) {
-				*t++ = '@';
-				strcpy(t, h->hostname);
-				t += strlen(h->hostname);
-			}
-			*t++ = ' ';
-			*t++ = '$';
-			l += 8;
-			expn = 1;
-		} else if (strneq("$Id$", l, 4)) {
-			strcpy(t, "$Id: "); t += 5;
-			tmp = basenm(s->sfile);
-			strcpy(t, tmp); t += strlen(tmp); *t++ = ' ';
-			strcpy(t, d->rev); t += strlen(d->rev);
-			*t++ = ' ';
-			strncpy(t, d->sdate, 17); t += 17;
-			for (h = d; h && !h->zone; h = h->parent);
-			if (h && h->zone) {
-				strcpy(t, h->zone);
-				t += strlen(h->zone);
-			}
-			*t++ = ' ';
-			strcpy(t, d->user);
-			t += strlen(d->user);
-			for (h = d; h && !h->hostname; h = h->parent);
-			if (h && h->hostname) {
-				*t++ = '@';
-				strcpy(t, h->hostname);
-				t += strlen(h->hostname);
-			}
-			*t++ = ' ';
-			*t++ = '$';
-			l += 4;
-			expn = 1;
-		} else if (strneq("$Locker$", l, 8)) {
-			strcpy(t, "$Locker: <Not implemented> $"); t += 28;
-			l += 8;
-			expn = 1;
-		} else if (strneq("$Log$", l, 5)) {
-			strcpy(t, "$Log: <Not implemented> $"); t += 25;
-			l += 5;
-			expn = 1;
-		} else if (strneq("$Name$", l, 6)) {
-			strcpy(t, "$Name: <Not implemented> $"); t += 26;
-			l += 6;
-			expn = 1;
-		} else if (strneq("$RCSfile$", l, 9)) {
-			strcpy(t, "$RCSfile: "); t += 10;
-			tmp = basenm(s->sfile);
-			strcpy(t, tmp); t += strlen(tmp);
-			*t++ = ' '; *t++ = '$';
-			l += 9;
-			expn = 1;
-		} else if (strneq("$Revision$", l, 10)) {
-			strcpy(t, "$Revision: "); t += 11;
-			strcpy(t, d->rev); t += strlen(d->rev);
-			*t++ = ' ';
-			*t++ = '$';
-			l += 10;
-			expn = 1;
-		} else if (strneq("$Source$", l, 8)) {
-			strcpy(t, "$Source: "); t += 9;
-			g = sccs2name(s->sfile);
-			tmp = fullname(g, 1);
-			free(g);
-			strcpy(t, tmp); t += strlen(tmp);
-			*t++ = ' '; *t++ = '$';
-			l += 8;
-			expn = 1;
-		} else if (strneq("$State$", l, 7)) {
-			strcpy(t, "$State: "); t += 8;
-			*t++ = ' ';
-			strcpy(t, "<unknown>");
-			t += 9;
-			*t++ = ' '; *t++ = '$';
-			l += 7;
-			expn = 1;
+	p = line;
+	while (*p != '\n') {
+		/* Look for keyword */
+		while (*p != '\n' && *p != '$') p++;
+		if (*p == '\n') break;
+		ks = ++p;  /* $ */
+		while (isalpha(*p)) p++;
+		if (*p == '$') {
+			ke = p;
+		} else if (*p == ':') {
+			ke = p;
+			while (*p != '\n' && *p != '$') p++;
+			if (*p == '\n') break;
 		} else {
-			*t++ = *l++;
+		        continue;
 		}
+		/* found something that matches the pattern */
+		for (i = 0; i < keyslen; i++) {
+			if (keys[i].len == (ke-ks) &&
+			    strneq(keys[i].keyword, ks, ke-ks)) {
+				break;
+			}
+		}
+		if (i == keyslen) continue; /* try again */
+
+		unless (out) {
+			char	*nl = p;
+			while (*nl != '\n') nl++;
+			outend = out = malloc(nl - line + EXTRA);
+		}
+		*expanded = 1;
+		while (last < ke) *outend++ = *last++;
+		prs = sccs_prsbuf(s, d, 0, keys[i].dspec);
+		strcpy(outend, prs);
+		free(prs);
+		while (*outend) outend++;
+		last = p;
+		++p;
 	}
-	*t++ = '\n'; *t = 0;
-	assert((t - buf) <= buf_size);
-	if (expanded) *expanded = expn;
-	return (buf);
+	if (out) {
+		while (last <= p) *outend++ = *last++;
+		*outend = 0;
+	} else {
+		out = line;
+	}
+	return (out);
 }
 
 /*
@@ -3608,17 +3647,19 @@ done:		if (CSET(s) && (d->type == 'R') &&
 	 * XXX - the above comment is incorrect, we no longer support that.
 	 */
 	s->tree = d;
-	sccs_inherit(s, flags, d);
+	sccs_inherit(s, d);
 	d = d->kid;
 	s->tree->kid = 0;
 	while (d) {
 		delta	*therest = d->kid;
 
 		d->kid = 0;
-		dinsert(s, flags, d, 0);
+		dinsert(s, d, 0);
 		d = therest;
 	}
-	if (checkrevs(s, flags) & 1) s->state |= S_BADREVS;
+	unless (flags & INIT_WACKGRAPH) {
+		if (checkrevs(s, 0)) s->state |= S_BADREVS|S_READ_ONLY;
+	}
 
 	/*
 	 * For all the metadata nodes, go through and propogate the data up to
@@ -4257,7 +4298,7 @@ sccs_init(char *name, u32 flags, project *proj)
 			/* Not an error if the file doesn't exist yet.  */
 			debug((stderr, "%s doesn't exist\n", s->sfile));
 			s->cksumok = 1;		/* but not done */
-			return (s);
+			goto out;
 		} else {
 			fputs("sccs_init: ", stderr);
 			perror(s->sfile);
@@ -4271,7 +4312,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	debug((stderr, "mapped %s for %d at 0x%p\n",
 	    s->sfile, (int)s->size, s->mmap));
 	if (((flags&INIT_NOCKSUM) == 0) && badcksum(s, flags)) {
-		return (s);
+		goto out;
 	} else {
 		s->cksumok = 1;
 	}
@@ -4322,7 +4363,7 @@ sccs_init(char *name, u32 flags, project *proj)
 
 	signal(SIGPIPE, SIG_IGN); /* win32 platform does not have sigpipe */
 	if (sig_ignore() == 0) s->unblock = 1;
-	lease_check(s);
+out:	lease_check(s);
 	return (s);
 }
 
@@ -6614,6 +6655,7 @@ out:			if (slist) free(slist);
 			char	*n = &buf[3];
 			while (isdigit(*n)) n++;
 			unless (*n == 'N') {
+				s->has_nonl = 1;
 				unless (flags & GET_SUM) fputc('\n', out);
 				lf_pend = 0;
 				if (flags & NEWCKSUM) sum += '\n';
@@ -9102,6 +9144,23 @@ singleUser(sccs *s)
 }
 
 /*
+ * If we are a single user config, make sure we use the right user/host.
+ */
+void
+checkSingle(void)
+{
+	char	*t;
+
+	t = user_preference("single_user");
+	if (streq(t, "")) return;
+	safe_putenv("BK_USER=%s", t);
+	t = user_preference("single_host");
+	safe_putenv("BK_HOST=%s", t);
+	sccs_resetuser();
+	sccs_resethost();
+}
+
+/*
  * Check in initial sfile.
  *
  * XXX - need to make sure that they do not check in binary files in
@@ -9208,6 +9267,10 @@ out:		sccs_unlock(s, 'z');
 		perror(sccsXfile(s, 'x'));
 		goto out;
 	}
+	if ((flags & DELTA_PATCH) || s->proj) {
+		s->bitkeeper = 1;
+		s->xflags |= X_BITKEEPER;
+	}
 	/*
 	 * Do a 1.0 delta unless
 	 * a) there is a init file (nodefault), or
@@ -9237,7 +9300,7 @@ out:		sccs_unlock(s, 'z');
 		n0 = sccs_dInit(n0, 'D', s, nodefault);
 		n0->flags |= D_CKSUM;
 		n0->sum = (unsigned short) almostUnique(1);
-		dinsert(s, flags, n0, !(flags & DELTA_PATCH));
+		dinsert(s, n0, !(flags & DELTA_PATCH));
 
 		n = prefilled ? prefilled : calloc(1, sizeof(*n));
 		n->pserial = n0->serial;
@@ -9291,7 +9354,7 @@ out:		sccs_unlock(s, 'z');
 	} else {
 		l[0].flags = 0;
 	}
-	dinsert(s, flags, n, !(flags & DELTA_PATCH));
+	dinsert(s, n, !(flags & DELTA_PATCH));
 	s->numdeltas++;
 	EACH (syms) {
 		addsym(s, n, n, !(flags & DELTA_PATCH), n->rev, syms[i]);
@@ -9311,10 +9374,6 @@ out:		sccs_unlock(s, 'z');
 			    fullname(s->gfile, 0));
 			d->comments = addLine(d->comments, strdup(buf));
 		}
-	}
-	if ((flags & DELTA_PATCH) || s->proj) {
-		s->bitkeeper = 1;
-		s->xflags |= X_BITKEEPER;
 	}
 	if (BITKEEPER(s)) {
 		s->version = SCCS_VERSION;
@@ -10074,11 +10133,11 @@ modeArg(delta *d, char *arg)
 	unsigned int m;
 
 	if (!d) d = (delta *)calloc(1, sizeof(*d));
-	m = getMode(arg);
+	unless (m = getMode(arg)) return (0);
 	if (S_ISLNK(m))	 {
 		char *p = strchr(arg , ' ');
 		
-		assert(p);
+		unless (p) return (0);
 		d->symlink = strnonldup(++p);
 		assert(!(d->flags & D_DUPLINK));
 	}
@@ -10338,7 +10397,7 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 		n->flags |= D_SYMBOLS;
 		d->flags |= D_SYMBOLS;
 		sc->numdeltas++;
-		dinsert(sc, 0, n, 1);
+		dinsert(sc, n, 1);
 		if (addsym(sc, d, n, 1, rev, sym)) {
 			verbose((stderr,
 			    "%s: won't add identical symbol %s to %s\n",
@@ -10391,7 +10450,7 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
 		n->sum = (unsigned short) almostUnique(0);
 		n->flags |= D_CKSUM;
 	}
-	dinsert(sc, 0, n, 1);
+	dinsert(sc, n, 1);
 	return (n);
 }
 
@@ -10423,19 +10482,16 @@ name2xflg(char *fl)
 }
 
 private void
-addMode(char *me, sccs *sc, delta *n, char *mode)
+addMode(char *me, sccs *sc, delta *n, mode_t m)
 {
 	char	buf[50];
-	mode_t	m;
 	char	*newmode;
 
-	assert(mode);
 	assert(n);
-	m = getMode(mode);
 	newmode = mode2a(m);
 	sprintf(buf, "Change mode to %s", newmode);
 	n->comments = addLine(n->comments, strdup(buf));
-	n = modeArg(n, newmode);
+	(void)modeArg(n, newmode);
 }
 
 private int
@@ -10509,7 +10565,8 @@ sccs_encoding(sccs *sc, char *encp, char *compp)
 		enc = 0;
 	}
 
-	if (sc && CSET(sc)) comp = 0;	/* never compress ChangeSet file */
+	/* never compress ChangeSet file */
+	if (sc && CSET(sc)) compp = "none";
 
 	if (compp) {
 		if (streq(compp, "gzip")) {
@@ -10517,8 +10574,8 @@ sccs_encoding(sccs *sc, char *encp, char *compp)
 		} else if (streq(compp, "none")) {
 			comp = 0;
 		} else {
-			fprintf(stderr, "admin: unknown compression format %s\n",
-				compp);
+			fprintf(stderr,
+			    "admin: unknown compression format %s\n", compp);
 			return (-1);
 		}
 	} else if (sc) {
@@ -10682,8 +10739,10 @@ sccs_admin(sccs *sc, delta *p, u32 flags, char *new_encp, char *new_compp,
 	assert(!z); /* XXX used to be LOD item */
 
 	new_enc = sccs_encoding(sc, new_encp, new_compp);
-	if (new_enc == -1) return -1;
-
+	if (new_enc == -1) return (-1);
+	unless ((flags & ADMIN_FORCE) || CSET(sc) || bkcl(0)) {
+		new_enc |= E_GZIP;
+	}
 	debug((stderr, "new_enc is %d\n", new_enc));
 	GOODSCCS(sc);
 	unless (flags & (ADMIN_BK|ADMIN_FORMAT|ADMIN_GONE)) {
@@ -10741,7 +10800,8 @@ out:
 		flags |= NEWCKSUM;
 	}
 	if (mode) {
-		delta *n = sccs_top(sc);
+		delta	*n = sccs_top(sc);
+		mode_t	m;
 
 		assert(n);
 		if ((n->flags & D_MODE) && n->symlink) {
@@ -10750,10 +10810,29 @@ out:
 				sc->gfile);
 			OUT;
 		} 
+		unless (m = newMode(n, mode)) {
+			fprintf(stderr, "admin: %s: Illegal file mode: %s\n",
+			    sc->gfile, mode);
+			OUT;
+		}
+		/* No null deltas for nothing */
+		if (m == n->mode) goto skipmode;
+		if (S_ISLNK(m) || S_ISDIR(m)) {
+			fprintf(stderr, "admin: %s: Cannot change mode to/of "
+			    "%s\n", sc->gfile,
+			    S_ISLNK(m) ? "symlink" : "directory");
+			OUT;
+		}
 		ALLOC_D();
-		addMode("admin", sc, d, mode);
+		addMode("admin", sc, d, m);
+		if (HAS_GFILE(sc) && HAS_PFILE(sc)) {
+			chmod(sc->gfile, m);
+		} else if (HAS_GFILE(sc)) {
+			chmod(sc->gfile, m & ~0222);
+		}
 		flags |= NEWCKSUM;
 	}
+skipmode:
 
 	if (text) {
 		FILE	*desc;
@@ -11130,7 +11209,7 @@ doctrl(sccs *s, char *pre, int val, char *post, FILE *out)
 {
 	char	tmp[10];
 
-	sertoa(tmp, (unsigned short) val);
+	sertoa(tmp, (ser_t) val);
 	fputdata(s, pre, out);
 	fputdata(s, tmp, out);
 	fputdata(s, post, out);
@@ -12133,7 +12212,7 @@ sccs_meta(sccs *s, delta *parent, MMAP *iF, int fixDate)
 	m->next = s->table;
 	s->table = m;
 	s->numdeltas++;
-	dinsert(s, 0, m, fixDate);
+	dinsert(s, m, fixDate);
 	EACH (syms) {
 		addsym(s, m, m, 0, m->rev, syms[i]);
 	}
@@ -12244,6 +12323,8 @@ out:
 	}
 #define	OUT	{ error = -1; s->state |= S_WARNED; goto out; }
 #define	WARN	{ error = -1; goto out; }
+
+	unless (flags & DELTA_PATCH) checkSingle();
 
 	if (init) {
 		int	e;
@@ -12503,7 +12584,7 @@ out:
 			goto out;
 		}
 	}
-	dinsert(s, flags, n, !(flags & DELTA_PATCH));
+	dinsert(s, n, !(flags & DELTA_PATCH));
 	s->numdeltas++;
 
 	/* Uses n->parent, has to be after dinsert() */
@@ -14238,6 +14319,84 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
+	if (streq(kw, "SETGCA")) {	/* print gca rev if a merge node */
+		char	*inc, *exc;
+
+		if (d->merge &&
+		    (d = gca3(s, sfind(s, d->merge), d->parent, &inc, &exc))) {
+			fs(d->rev);
+			if (inc) {
+				fc('+');
+				fs(inc);
+				free(inc);
+			}
+			if (exc) {
+				fc('-');
+				fs(exc);
+				free(exc);
+			}
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "GET_SETGCA")) {	/* print gca args for get*/
+		char	*inc, *exc;
+
+		if (d->merge &&
+		    (d = gca3(s, sfind(s, d->merge), d->parent, &inc, &exc))) {
+			fs("-r");
+			fs(d->rev);
+			if (inc) {
+				fs(" -i");
+				fs(inc);
+				free(inc);
+			}
+			if (exc) {
+				fs(" -x");
+				fs(exc);
+				free(exc);
+			}
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "GET_SETGCA301")) {	/* print gca args for get*/
+		char	*inc, *exc;
+
+		if (d->merge &&
+		    (d = gca3(s, sfind(s, d->merge), d->parent, &inc, &exc))) {
+			fs("-r");
+			fs(d->rev);
+			if (inc) free(inc);
+			if (exc) free(exc);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+	if (streq(kw, "GET_SETGCA302")) {	/* print gca args for get*/
+		char	*inc, *exc;
+
+		if (d->merge &&
+		    (d = gca3(s, sfind(s, d->merge), d->parent, &inc, &exc))) {
+			fs("-r");
+			fs(d->rev);
+			if (inc) {
+				fs(" -M");
+				fs(inc);
+				free(inc);
+			}
+			if (exc) {
+				fs(" -i");
+				fs(exc);
+				free(exc);
+			}
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
 	if (streq(kw, "PREV")) {
 		if (d->next) {
 			fs(d->next->rev);
@@ -14350,7 +14509,7 @@ kw2buf(char *buf, const char *kw, sccs *s, delta *d)
 	rc = kw2val(0, buf ? &vbuf : 0, "", 0, kw, "", 0, s, d);
 	if (buf) {
 		char	*p = str_pullup(0, vbuf);
-		strcpy(buf, p);
+		strcpy(buf, notnull(p));
 		free(p);
 	}
 	return (rc);
@@ -15419,8 +15578,12 @@ sccs_findKey(sccs *s, char *key)
 	user = parts[0];
 	host = parts[1];
 	path = parts[2];
+	/*
+	 * We allow date2time to return 0 because of old Teamware deltas we
+	 * did not fudge in the 3pardata import.
+	 */
 	date = date2time(&parts[3][2], 0, EXACT);
-	if (date == 0) return (0); /* date == 0 => bad key */
+	if (!date && !streq(&parts[3][2], "700101000000")) return (0);
 	if (parts[4]) {
 		cksum = atoi(parts[4]);
 		cksump = &cksum;

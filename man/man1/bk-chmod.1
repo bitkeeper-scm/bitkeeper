@@ -4,9 +4,24 @@
 bk chmod \- change the mode of a file and save it
 .SH SYNOPSIS
 .B bk chmod 
-.ARG mode
+.ARG [ugoa]+rwxs
 .ARG file
-.BKARGS
+.FILES
+.br
+.B bk chmod 
+.ARG [ugoa]-rwxs
+.ARG file
+.FILES
+.br
+.B bk chmod 
+.ARG [ugoa]=rwxs
+.ARG file
+.FILES
+.br
+.B bk chmod 
+.ARG octal
+.ARG file
+.FILES
 .SH DESCRIPTION
 .LP
 The
@@ -14,22 +29,44 @@ The
 command changes the stored file modes for files in the
 repository.  File modes are normally whatever the file was when it was
 checked in to BitKeeper.  When changes to the mode need to be made,
-use 
+the
 .B bk chmod
-command and not the system's
-.B chmod
-command.
+command is used to record the new permissions.
 .LP
-The command respects whatever syntax your native
-.B chmod
-command uses.
-It does this by running
-.B chmod
-on the file and then copies the resulting
-modes into the revision history.
+The permission syntax is one of
+.SP
+.tp
+[ugoa]+rwxs
+A symbolic way of adding permissions.  The prefix before the "+"
+indicates the users to which the permissions apply: "u" is user, "g"
+is group, "o" is other, "a" is all.  If none are specified the default
+is "a".  
+The postfix after the "+" indicates the permission to add: "r" is read,
+"w" is write, "x" is execute, "s" is setuid or setgid depending on the
+prefix.
+.SP
+.tp
+[ugoa]-rwxs
+A symbolic way of removing permissions.  As above.
+.SP
+.tp
+[ugoa]=rwxs
+A symbolic way of setting permissions absolutely.  As above.
+.SP
+.tp
+octal
+A 4 digit octal number wherein 04000 means setuid, 02000 means setgid,
+and in the following 3 digits 4 means read permission, 2 means write
+permission, and 1 means execute permission.  The last three digits are for
+user, group, other permissions respectively.  This form sets the permission
+absolutely, it is not relative to the previously recorded permission.
+.SH NOTE
+Write permission is somewhat pointless since \*[BK] will remove write
+permission if the file is checked out unlocked and add write permission
+if the file is checked out with a lock.
 .SH SEE ALSO
 .LP
 .SA admin 1
-.BR chmod (1)
+.SA prs 1
 .SH CATEGORY
 .B File

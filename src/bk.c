@@ -427,6 +427,12 @@ main(int ac, char **av, char **env)
 		fclose(f);
 	}
 
+	/*
+	 * Windows seems to have a problem with stderr under rxvt's.
+	 * Force unbuffered mode.
+	 */
+	setbuf(stderr, 0);
+
 	cmdlog_buffer[0] = 0;
 	cmdlog_flags = 0;
 	if (i = setjmp(exit_buf)) {

@@ -7,8 +7,10 @@ LOG	:= $(shell echo LOG-`bk getuser`)
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
 ifeq "$(OSTYPE)" "cygwin"
 	SYS=win32
+	EXE=.exe
 else
 	SYS=unix
+	EXE=
 endif
 
 # You can set this to anywhere you like and do a "build production" and you'll
@@ -77,7 +79,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	libsfiles.o libusers.o license.o lines.o \
 	localtm.o lock.o locking.o lod.o logflags.o \
 	logging.o mail.o merge.o mkdir.o mklock.o \
-	mailsplit.o mmap.o mtime.o multiuser.o names.o newrev.o \
+	mailsplit.o mmap.o mtime.o multiuser.o names.o \
 	opark.o parent.o park.o \
 	pending.o preference.o port/bkd_client.o port/bkd_server.o \
 	port/check_gfile.o port/executable.o \
@@ -133,9 +135,9 @@ UWTOBJ	= win32/uwtlib/wapi_intf.o win32/uwtlib/wcrt_intf.o
 LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a tomcrypt/libtomcrypt.a $(UWTLIB)
 LINKS	= ci co edit unget
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt bklogo.gif \
-	../doc/bk_refcard.ps ../doc/bk_refcard.pdf bklicense.pub
+	../doc/bk_refcard.ps ../doc/bk_refcard.pdf
 LINKTO	= fm fmtool fm3 fm3tool
-BINLINKS= admin get delta unget rmdel prs
+BINLINKS= admin$(EXE) get$(EXE) delta$(EXE) unget$(EXE) rmdel$(EXE) prs$(EXE)
 # Note: $(XTRA) must be listed after "gnu"
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) gnu $(XTRA)
 
@@ -269,7 +271,7 @@ clean clobber distclean: rebuild FORCE
 	-@cd ../man/man2help && $(MAKE) clobber
 
 rebuild:
-	-@rm -f *.bb *.bbg *.da *.gcov
+	-@rm -f *.bb *.bbg *.da *.gcov bklink.[eo]??
 	-@rm -f bk.o shell.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) \
 		$(TOMCRYPTOBJ)
 	-@rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
@@ -358,13 +360,16 @@ libsccs.a: $(OBJ) shell.o
 bk.res: win32/data/bk.rc win32/data/bk.ico
 	rc.exe -fo bk.res -r win32/data/bk.rc
 
-$(BK): bk.o $(LIBS) $(RESOURCE) bklicense.pub
+bklink: bklink.c
+	$(CC) bklink.c
+
+$(BK): bk.o $(LIBS) $(RESOURCE)
 	$(LD) $(LDFLAGS) $(LD_OUT) bk.o $(LINK_LIB) $(RESOURCE)
 	if [ $(SYS) = win32 ]; \
-	then	$(MAKE) link; \
+	then	$(MAKE) bklink; \
 		for file in $(BINLINKS); \
 		do	rm -f $$file; \
-			cp link.exe $$file.exe; \
+			cp bklink.exe $$file; \
 		done; \
 	else \
 		for file in $(BINLINKS); \

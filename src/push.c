@@ -73,6 +73,10 @@ usage:			system("bk help -s push");
 	r = remote_parse(av[optind], 0);
 	unless (r) goto usage;
 	if (opts.debug) r->trace = 1;
+	unless (licenseAccept(1)) {
+		fprintf(stderr, "push: failed to accept license, aborting.\n");
+		exit(1);
+	}
 	for (;;) {
 		if (opts.verbose) fromTo("Push", 0, r);
 		rc = push(av, r, envVar);

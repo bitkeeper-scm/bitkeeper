@@ -73,6 +73,11 @@ _flags() {		# /* undoc? 2.0 */
 }
 
 # shorthand
+_mode() {		# /* undoc? 2.0 */
+	bk prs -hr+ -nd':GFILE: :RWXMODE:' "$@"
+}
+
+# shorthand
 _encoding() {		# /* undoc? 2.0 */
 	bk prs -hr+ -nd':GFILE: :ENC:' "$@"
 }
@@ -357,7 +362,7 @@ _extras() {		# /* doc 2.0 */
 }
 
 _keycache() {	# /* undoc? 2.0 */
-	bk sfiles -k
+	bk -R sfiles -k
 }
 
 
@@ -674,27 +679,24 @@ _chmod() {		# /* doc 2.0 */
 	fi
 	MODE=$1
 	shift
-	for i in `bk sfiles -g ${1+"$@"}`
+	ROOT=`bk root`
+	rm -f "$ROOT/BitKeeper/tmp/err$$"
+	bk gfiles ${1+"$@"} | while read i
 	do	bk clean "$i" || {
 			echo Can not clean "$i," skipping it
 			continue
 		}
-		bk get -qe "$i" || {
-			echo Can not edit "$i," skipping it
-			continue
+		bk admin -m$MODE "$i" || {
+			echo "$i" > "$ROOT/BitKeeper/tmp/err$$"
+			break
 		}
-		omode=`ls -l "$i" | sed 's/[ \t].*//'`
-		bk clean "$i"
-		touch "$i"
-		chmod $MODE "$i"
-		mode=`ls -l "$i" | sed 's/[ \t].*//'`
-		rm -f "$i"
-		bk unedit "$i"	# follow checkout modes
-		if [ $omode = $mode ]
-		then	continue
-		fi
-		bk admin -m$mode "$i"
+		bk unedit "$i"
 	done
+	test -f "$ROOT/BitKeeper/tmp/err$$" && {
+		rm -f "$ROOT/BitKeeper/tmp/err$$"
+		exit 1
+	}
+	exit 0
 }
 
 _after() {		# /* undoc? 2.0 */
@@ -931,6 +933,190 @@ _clonemod() {
 	bk parent -q $1 || exit 1
 	bk undo -q -fa`bk repogca` || exit 1
 	bk pull
+}
+
+_leaseflush() {
+	rm -f `bk dotbk`/lease/`bk gethost -r`
+}
+
+__find_merge_errors() {
+	__cd2root
+	NEW=$TMP/bk.NEW.$$
+	O1=$TMP/bk.OLD301.$$
+	O2=$TMP/bk.OLD302.$$
+	LIST=$TMP/bk.LIST.$$
+
+	echo Searching for merges with possible problems from old versions of bitkeeper...
+	IFS="|"
+	bk sfiles | grep -v SCCS/s.ChangeSet |
+	bk prs -hnd'$if(:MERGE:){:GFILE:|:REV:|:PARENT:|:MPARENT:|:GCA2:|:SETGCA:|:TIME_T:|:LI:|:LD:|:LU:}' - |
+	while read g r p m gca setgca timet LI LD LU
+	do	test "$gca" = "$setgca" && continue
+		test $timet -lt 1042681071 && continue    # 3.0.1 release date
+
+		# it was possible for bk-3.0.1 to replace a merge
+		# with an empty file.  If this happened, flag it.
+		if [ $LU -eq 0 -a $LI -eq 0 -a $LD -gt 0 ]; then 
+			echo "$g|$r|$p|$m|3.0.1 <empty merge>"
+			continue
+		fi
+
+		bk smerge -g "$g" $p $m > $NEW
+		bk get -qkpr$r "$g" > $O1
+		# if the new smerge automerges and matches user merge, then
+		# no problems.
+		cmp -s $NEW $O1 && continue
+
+		# if user's merge matches SCCS merge, then skip
+		if [ $LI -eq 0 -a $LD -eq 0 ]; then
+			continue
+		fi
+
+		SMERGE_EMULATE_BUGS=301 bk smerge -g "$g" $p $m > $O1
+		SMERGE_EMULATE_BUGS=302 bk smerge -g "$g" $p $m > $O2
+		bad1=0
+		bad2=0
+		cmp -s $O1 $NEW || bad1=1
+		cmp -s $O2 $NEW || bad2=1
+		test $timet -lt 1060807265 && bad2=0	# 3.0.2 release date
+
+		# if we think the merge MIGHT have been bad from 3.0.1 and
+		# it has more then one include, then it couldn't have been
+		# 3.0.1 because the output would be empty and it would have
+		# been caught above.
+		if [ $bad1 -ne 0 ]; then
+			echo "$setgca" | grep -q "," && bad1=0
+		fi
+
+		if [ $bad1 -ne 0 -a $bad2 -ne 0 ]; then
+		    echo "$g|$r|$p|$m|3.0.1+3.0.2"
+		elif [ $bad1 -ne 0 ]; then
+		    echo "$g|$r|$p|$m|3.0.1"
+		elif [ $bad2 -ne 0 ]; then
+		    echo "$g|$r|$p|$m|3.0.2"
+		fi
+	done > $LIST
+	rm -f $O1 $O2 $NEW
+
+	errors=`wc -l < $LIST`
+
+	if [ "$errors" -eq 0 ]; then
+	    echo no errors found!
+	    rm -f $LIST
+	    exit 0
+	fi
+
+	echo $errors errors found.
+	echo
+	cat $LIST | sed 's/|/	/g'
+cat <<EOF
+
+The $errors merges listed above are merges that are potentially
+incorrect because of limitations of earlier versions of BitKeeper.
+Each line is a merge and it contains the following fields:
+  <gfile>   The file that contains the merge.  Because of renames
+            the file might have had a different name during the
+            merge.
+  <rev>     The revision of the merge node
+  <parent>  The parent of the merge node
+  <mparent> The other revision being merged
+  <version> Which version(s) of BitKeeper may have merged this
+            revision incorrectly.
+
+EOF
+	grep -q "empty" $LIST && cat <<EOF
+The lines that contain <empty merge> are merges where BitKeeper
+version 3.0.1 incorrectly wrote an empty file when it tried to
+automerge that file.
+
+EOF
+cat <<EOF
+For each of these merges here is a diff between the corrected merge
+output and merge results that the user of the tool created last time.
+
+Read each diff and look for problems.  It is quite possible that no
+errors will be found.  Futher information about a merge can be found
+by running 'bk explore_merge FILE REV'
+
+If you have any questions or need help fixing a problem, please send
+email to support@bitmover.com and we will assist you.
+--------------------------------------------------
+EOF
+	grep -v empty < $LIST |
+	while read g r p m ver
+	do
+	        echo $g $r $p $m
+		bk smerge -g "$g" $p $m > $O1
+		bk get -qkpr$r "$g" > $NEW
+		bk diff -u $O1 $NEW
+		echo --------------------------------------------------
+	done
+	rm -f $LIST
+	rm -f $O1 $NEW
+}
+
+_explore_merge()
+{
+	test "$#" -eq 2 || {
+		echo "Usage: bk explore_merge FILE REV"
+		exit 1
+	}
+	FILE="$1"
+	REV=`bk prs -r"$2" -hnd:MERGE: "$FILE"`
+
+	test "$REV" != "" || {
+	    echo rev $2 of $FILE is not a merge
+	    exit 1
+	}
+	bk clean -q $FILE || {
+	    echo $FILE can not be modified
+	    exit 1
+	}
+	MERGE=$TMP/bk.merge.$$
+	REAL=$TMP/bk.real.$$
+
+	p=`bk prs -r$REV -hnd:PARENT: "$FILE"`
+	m=`bk prs -r$REV -hnd:MPARENT: "$FILE"`
+
+	bk smerge -g "$FILE" $p $m > $MERGE
+	bk get -qkpr$REV "$FILE" > $REAL
+
+	help=1
+	while true
+	do
+		test $help -eq 1 && {
+		    help=0
+		    echo Show merge $REV of $FILE
+		    echo
+		    bk prs -r$REV "$FILE"
+		    echo
+		    cat <<EOF
+d - diff merge file with original merge
+D - use GUI diff
+e - edit merge file
+f - run fm3tool on merge file
+m - recreate merge with BitKeeper's merge tool
+s - recreate merge with SCCS' algorithm
+r - display merge in revtool
+h - display this help again
+q - quit
+EOF
+		}
+		echo $N ${FILE}">>"$NL
+		read x
+		case "X$x" in
+		Xd*) bk diff -u $MERGE $REAL;;
+		XD*) bk difftool $MERGE $REAL;;
+		Xe*) bk editor $MERGE;;
+		Xf*) bk fm3tool -o $MERGE -f $p 1.1 $m "$FILE";;
+	        Xm*) bk smerge -g "$FILE" $p $m > $MERGE;;
+		Xs*) bk get -kpM$m -r$p "$FILE" > $MERGE;;
+		Xr*) bk revtool -l$m -r$p "$FILE";;
+		Xh*) help=1;;
+		Xq*) rm -f $MERGE $REAL; exit 0;;
+		X) help=1;;
+		esac
+		done
 }
 
 # ------------- main ----------------------

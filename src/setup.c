@@ -127,7 +127,9 @@ again:		flush_fd0(); /* for Win/98 and Win/ME */
 		fprintf(stderr, "No config file found\n");
 		exit(1);
 	}
-	unless (licenseAccept(1)) exit(1);
+	bk_proj = proj_init(0);
+	checkSingle();
+	unless (licenseAccept(2)) exit(1);
 	unless (mdbm_fetch_str(m, "description")) {
 		fprintf(stderr, "Setup: must provide a description.\n");
 		if (config_path) {
@@ -205,6 +207,7 @@ err:			unlink("BitKeeper/etc/config");
 
 	mdbm_close(m);
 
+	lease_checking(0);
 	if (cset_setup(SILENT, ask)) goto err;
 	s = sccs_init(s_config, SILENT, NULL);
 	assert(s);
@@ -214,6 +217,7 @@ err:			unlink("BitKeeper/etc/config");
 	sccs_get(s, 0, 0, 0, 0, SILENT|GET_EXPAND, 0);
 	sccs_free(s);
 	defaultIgnore();
+	lease_checking(1);
 
 	status = sys("bk", "commit", "-qFyInitial repository create", SYS);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) {

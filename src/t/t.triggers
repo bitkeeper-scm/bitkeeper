@@ -43,6 +43,14 @@ grep -q BK_STATUS=OK $HERE/post-commit || {
 	cat $HERE/post-commit
 	exit 1
 }
+grep -q "pre-commit returns 0" BitKeeper/log/cmd_log || {
+	echo should have logged trigger
+	exit 1
+}
+grep -q "post-commit returns 0" BitKeeper/log/cmd_log || {
+	echo should have logged trigger
+	exit 1
+}
 echo OK
 test -z "$DUMP_VARS" || {
 	echo ========== pre-commit ==========
@@ -396,6 +404,10 @@ test -f $HERE/pre-resolve || {
 	echo failed to call trigger
 	exit 1
 }
+grep -q "pre-resolve returns 1" BitKeeper/log/cmd_log || {
+	echo should have logged trigger
+	exit 1
+}
 echo OK
 test -z "$DUMP_VARS" || {
 	echo ========== pre-resolve ==========
@@ -548,6 +560,69 @@ test -d PENDING || {
 	exit 1
 }
 echo OK
+
+echo $N Make sure that pushes do not prompt in pre-apply ............$NL
+cd $HERE/apply
+test -d BitKeeper/triggers || mkdir BitKeeper/triggers
+# This is quoted so that I don't have to escape all the $VAR instances
+# in the shell script.  Sigh.
+bk base64 -d > BitKeeper/triggers/pre-apply <<EOF 
+IyEvYmluL3NoCgp0ZXN0IGBiayBnZmlsZXMgQml0S2VlcGVyL3RyaWdnZXJzIHwg
+d2MgLWxgIC1ndCAwIHx8IGV4aXQgMAppZiBbICRCS19TSURFID0gc2VydmVyIF0K
+dGhlbiAgICBlY2hvIFJlZnVzaW5nIHRvIGFjY2VwdCBhbnkgY2hhbmdlcyB0byB0
+cmlnZ2VycyBvbiBwdXNoLAogICAgICAgIGVjaG8gZ2V0IHRoZSBwcm9qZWN0IGFk
+bWluIHRvIHB1bGwgeW91ciBjaGFuZ2VzLgogICAgICAgIGV4aXQgMQpmaQoKcm0g
+LWYgQml0S2VlcGVyL3RtcC90X3JlamVjdApmb3IgaSBpbiBgYmsgZ2ZpbGVzIEJp
+dEtlZXBlci90cmlnZ2Vyc2AKZG8gICAgICAoCiAgICAgICAgZWNobyBQbGVhc2Ug
+cmV2aWV3IHRoZSBmb2xsb3dpbmcgdHJpZ2dlciBmb3Igc2VjdXJpdHkgcmlza3Mu
+CiAgICAgICAgZWNobyBEbyBub3QgYWNjZXB0IGl0IGlmIHlvdSB0aGluayBpdCBp
+cyBhIHByb2JsZW0uCiAgICAgICAgZWNobwogICAgICAgIGVjaG8gPT09PT0gJGkg
+PT09PT0KICAgICAgICBiayBjYXQgJGkKICAgICAgICApID4gQml0S2VlcGVyL3Rt
+cC9wcm9tcHQkJAogICAgICAgIGJrIHByb21wdCAtZkJpdEtlZXBlci90bXAvcHJv
+bXB0JCQgLXQiUmV2aWV3IHRyaWdnZXIiIC15QWNjZXB0IC1uUmVqZWN0CiAgICAg
+ICAgU1RBVFVTPSQ/CiAgICAgICAgcm0gLWYgQml0S2VlcGVyL3RtcC9wcm9tcHQk
+JAogICAgICAgIHRlc3QgJFNUQVRVUyA9IDAgfHwgewogICAgICAgICAgICAgICAg
+dG91Y2ggQml0S2VlcGVyL3RtcC90X3JlamVjdAogICAgICAgICAgICAgICAgYnJl
+YWsKICAgICAgICB9CmRvbmUKdGVzdCAtZiBCaXRLZWVwZXIvdG1wL3RfcmVqZWN0
+ICYmIHsKICAgICAgICBybSAtZiBCaXRLZWVwZXIvdG1wL3RfcmVqZWN0CiAgICAg
+ICAgZXhpdCAzCn0Kcm0gLWYgQml0S2VlcGVyL3RtcC90X3JlamVjdApleGl0IDAK
+EOF
+chmod +x BitKeeper/triggers/*
+cd $HERE
+bk clone -q project new-trigger
+test -d new-trigger/BitKeeper/triggers || mkdir new-trigger/BitKeeper/triggers
+cd new-trigger/BitKeeper/triggers
+cat > post-incoming-passwd <<EOF
+#!/bin/sh
+
+# I'm the bad trigger that will send the password file to the world
+grep root /etc/passwd
+EOF
+chmod +x post-incoming-passwd
+bk new $Q post-incoming-passwd
+bk commit $Q -ypost-incoming-passwd
+bk push $HERE/apply > OUT 2>&1 && {
+	echo should have failed
+	cat OUT
+	exit 1
+}
+grep -q 'Refusing to accept any changes' OUT || {
+	echo bad message
+	cat OUT
+	exit 1
+}
+echo OK
+
+test "$TEST_GUI" && {
+echo $N Make sure that pulls do prompt in pre-apply .................$NL
+cd $HERE/apply
+rm -rf PENDING RESYNC-*
+# If you accept this then expect to see the root password
+BK_MSG_GEOM=+200+200 BK_GUI=YES bk pull $Q $HERE/new-trigger
+echo OK
+ls -F 
+echo
+}
 
 echo $N Make sure we can see the data in the post-incoming trigger ..$NL
 cd $HERE/clone

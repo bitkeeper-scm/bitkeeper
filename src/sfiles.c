@@ -356,17 +356,17 @@ keys(char *file)
 {
 	sccs	*s;
 	delta	*d;
-	static	time_t	cutoff;
-	static	char *host;
+	time_t	cutoff;
+	char	*host;
 
-	unless (s = init(file, SILENT|INIT_NOCKSUM)) return;
-	unless (s->table) {
+	checkSingle();
+	unless (s = sccs_init(file, SILENT|INIT_NOCKSUM, 0)) return;
+	unless (HASGRAPH(s)) {
 		sccs_free(s);
 		return;
 	}
-	unless (cutoff) cutoff = time(0) - uniq_drift();
-	unless (host) host = sccs_gethost();
-	unless (host) {
+	cutoff = time(0) - uniq_drift();
+	unless (host = sccs_gethost()) {
 		fprintf(stderr, "sfiles: cannot figure out host name\n");
 		exit(1);
 	}
@@ -375,13 +375,11 @@ keys(char *file)
 		if (d->hostname && streq(d->hostname, host)) {
 			u8	buf[MAXPATH+100];
 
-			sccs_shortKey(s, sccs_ino(s), buf);
+			sccs_shortKey(s, d, buf);
 			printf("%s %lu\n", buf, d->date);
-			break;
 		}
 	}
 	sccs_free(s);
-	return;
 }
 
 /*

@@ -12,6 +12,8 @@
  * The second is for flags which are function specific.
  * Be VERY CAREFUL to not mix and match.  If I see a DELTA_ in sccs_get()
  * I will be coming after you with a blowtorch.
+ * We've hit problems with flags being passed to sccs_init() being used for
+ * lower level functions that want different flags.  See WACKGRAPH.
  */
 #define	SILENT		0x00000001	/* do work quietly */
 #define	PRINT		0x00000002	/* get/delta/clean [diffs] to stdout */
@@ -31,6 +33,7 @@
 #define	INIT_ONEROOT	0x00400000	/* one root mode i.e not split root */
 #define	INIT_NOGCHK	0x00800000	/* do not fail on gfile checks */
 #define	INIT_FIXSTIME	0x00010000	/* force sfile mtime < gfile mtime */
+#define	INIT_WACKGRAPH	0x00020000	/* we're wacking the graph, no errors */
 
 /* shared across get/diffs/getdiffs */
 #define	GET_EDIT	0x10000000	/* get -e: get for editting */
@@ -355,6 +358,7 @@
 #define BK_FREE		0
 #define BK_BASIC	1
 #define BK_PRO		2
+#define BK_SINGLE	3
 #define BK_BADMODE	999
 int	bk_mode(void);
 
@@ -420,7 +424,7 @@ typedef struct delta {
 	char 	*symlink;		/* sym link target */
 	u32	xflags;			/* timesafe x flags */
 	/* In memory only stuff */
-	u16	r[4];			/* 1.2.3 -> 1, 2, 3, 0 */
+	ser_t	r[4];			/* 1.2.3 -> 1, 2, 3, 0 */
 	time_t	date;			/* date - conversion from sdate/zone */
 	struct	delta *parent;		/* parent delta above me */
 	struct	delta *kid;		/* next delta on this branch */
@@ -604,6 +608,7 @@ typedef	struct sccs {
 	u32	prs_odd:1;	/* for :ODD: :EVEN: in dspecs */
 	u32	unblock:1;	/* sccs_free: only if set */
 	u32	hasgone:1;	/* this graph has D_GONE deltas */
+	u32	has_nonl:1;	/* set by getRegBody() if a no-NL is seen */
 } sccs;
 
 typedef struct {
@@ -803,7 +808,7 @@ delta	*sccs_parseArg(delta *d, char what, char *arg, int defaults);
 void	sccs_whynot(char *who, sccs *s);
 int	sccs_addSym(sccs *, u32 flags, char *);
 void	sccs_ids(sccs *s, u32 flags, FILE *out);
-void	sccs_inherit(sccs *s, u32 flags, delta *d);
+void	sccs_inherit(sccs *s, delta *d);
 int	sccs_hasDiffs(sccs *s, u32 flags, int inex);
 void	sccs_print(delta *d);
 delta	*sccs_getInit(sccs *s, delta *d, MMAP *f, int patch,
@@ -847,8 +852,10 @@ delta	*sccs_findMD5(sccs *s, char *md5);
 delta	*sccs_dInit(delta *, char, sccs *, int);
 char	*sccs_getuser(void);
 void	sccs_resetuser(void);
+void	sccs_resethost(void);
 char	*sccs_realuser(void);
 char	*sccs_user(void);
+void	checkSingle(void);
 int	sccs_markMeta(sccs *);
 
 delta	*modeArg(delta *d, char *arg);
@@ -978,7 +985,7 @@ int	gethelp(char *helptxt, char *help_name, char *bkarg, char *prefix, FILE *f);
 void	status(int verbose, FILE *out);
 void	notify(void);
 char	*package_name(void);
-int	bkusers(int countOnly, int raw, char *prefix, FILE *out);
+int	bkusers(sccs *s, char *prefix, FILE *out);
 globv	read_globs(FILE *f, globv oldglobs);
 int	match_one(char *string, char *glob, int ignorecase);
 char	*match_globs(char *string, globv globs, int ignorecase);
@@ -1139,6 +1146,7 @@ void	sccs_reDup(sccs *s);
 void	sccs_adjustSet(sccs *sc, sccs *scb, delta *d);
 int	chk_host(void);
 int	chk_user(void);
+int	chk_nlbug(sccs *s);
 int	fix_gmode(sccs *s, int gflags);
 int	do_checkout(sccs *s);
 int	unsafe_path(char *s);

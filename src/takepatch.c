@@ -146,7 +146,7 @@ takepatch_main(int ac, char **av)
 		}
 	}
 	if (getenv("TAKEPATCH_SAVEDIRS")) saveDirs++;
-	if (getenv("BK_NOTTY") && (echo == 3)) echo = 2;
+	if (!isatty(1) && (echo == 3)) echo = 2;
 	if (av[optind]) {
 usage:		system("bk help -s takepatch");
 		return (1);
@@ -1694,7 +1694,15 @@ apply:
 	s->proj = 0; sccs_free(s);
 	s = sccs_init(patchList->resyncFile, SILENT, proj);
 	assert(s);
-	if (encoding & E_GZIP) s = sccs_gzip(s);
+
+	/*
+	 * Never gzip the ChangeSet file.
+	 * Honor gzip on all files.
+	 * Always gzip !commercial files.
+	 */
+	if (!CSET(s) && ((encoding&E_GZIP) || !bkcl(0))) {
+		s = sccs_gzip(s);
+	}
 	for (d = 0, p = patchList; p; p = p->next) {
 		assert(p->me);
 		d = sccs_findKey(s, p->me);

@@ -1,4 +1,5 @@
 #include "bkd.h"
+#include "logging.h"
 
 bkdopts	Opts;	/* has to be declared here, other people use this code */
 
@@ -312,7 +313,7 @@ prompt(char *msg, char *buf)
 int
 confirm(char *msg)
 {
-	char	buf[100];
+	char	*p, buf[100];
 	int	gotsome;
 
 	caught = 0;
@@ -327,7 +328,9 @@ confirm(char *msg)
 		assert(!gotsome);
 	}
 	sig_restore();
-	return (gotsome && ((buf[0] == 'y') || (buf[0] == 'Y')));
+	unless (gotsome) return (0);
+	for (p = buf; *p && isspace(*p); p++);
+	return ((*p == 'y') || (*p == 'Y'));
 }
 
 /*
@@ -761,9 +764,10 @@ sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 		fprintf(f, "putenv BK_REPO_ID=%s\n", repo);
 		free(repo);
 	}
-	lic = licenses_accepted();
-	fprintf(f, "putenv BK_ACCEPTED=%s\n", lic);
-	free(lic);
+	if (lic = licenses_accepted()) {
+		fprintf(f, "putenv BK_ACCEPTED=%s\n", lic);
+		free(lic);
+	}
 	fprintf(f, "putenv BK_REALUSER=%s\n", sccs_realuser());
 	fprintf(f, "putenv BK_REALHOST=%s\n", sccs_realhost());
 	fprintf(f, "putenv BK_PLATFORM=%s\n", platform());
@@ -841,7 +845,7 @@ sendServerInfoBlock(int is_rclone)
         	sprintf(buf, "LEVEL=%d\n", getlevel());
 		out(buf);
 		out("LICTYPE=");
-		out(is_commercial(0) ? "bkcl\n" : "bkl\n");
+		out(bkcl(0) ? "bkcl\n" : "bkl\n");
 	}
 	out("ROOT=");
 	getcwd(buf, sizeof(buf));
@@ -1264,3 +1268,25 @@ run_check(char *partial, int fix, int quiet)
 	}
 	return (ret);
 }
+
+#undef	isatty
+
+int
+myisatty(int fd)
+{
+	int	ret;
+	char	*p;
+	char	buf[16];
+
+	sprintf(buf, "BK_ISATTY%d", fd);
+	if (p = getenv(buf)) {
+		ret = atoi(p);
+	} else if (getenv("BK_NOTTY")) {
+		ret = 0;
+	} else {
+		ret = isatty(fd);
+	}
+	return (ret);
+}
+
+#define	isatty	myisatty

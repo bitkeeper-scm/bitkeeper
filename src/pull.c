@@ -193,9 +193,8 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	}
 	if (getenv("BKD_LEVEL") &&
 	    (atoi(getenv("BKD_LEVEL")) > getlevel())) {
-	    	fprintf(stderr,
-"pull: cannot pull to lower level repository (remote level == %s)\n",
-		    getenv("BKD_LEVEL"));
+	    	fprintf(stderr, "pull: cannot pull to lower level "
+		    "repository (remote level == %s)\n", getenv("BKD_LEVEL"));
 		disconnect(r, 2);
 		return (1);
 	}
@@ -448,6 +447,10 @@ pull(char **av, opts opts, remote *r, char **envVar)
 	    !isLocalHost(r->host) && exists(BKMASTER)) {
 		fprintf(stderr, "Cannot pull from master repository: %s",
 			upgrade_msg);
+		exit(1);
+	}
+	unless (licenseAccept(1)) {
+		fprintf(stderr, "pull: failed to accept license, aborting.\n");
 		exit(1);
 	}
 	rc = pull_part1(av, opts, r, key_list, envVar);

@@ -68,3 +68,60 @@ test "X$str" != 'X% @(#)gil' && {
 	exit 1
 }
 echo OK
+
+
+echo $N Check RCS keyword expansion .................................$NL
+bk admin -FEXPAND1 data || exit 1
+mkdir src
+bk mv data src/data || exit 1
+bk edit $Q src/data || exit 1
+cat > src/data <<'EOF'
+$Date$
+# $Author$ $Author:  foofsdf$
+# $Date$ $Date: dljf4ljd $
+# $Header$
+# $Id$
+# $A$
+# $Locker$
+# $Log$
+# $Name$
+# $Revision$
+# $RCSfile$
+# $Source$
+# $State$
+#
+# garbage
+# $Mykey$
+# $Author: ljdfdsfdf
+# $Author* sldjkf$
+# $Author sdljf $Author: sldfj $
+# $Author$$Author $Author: df $
+EOF
+bk ci $Q -yjj src/data || exit 1
+bk get $Q src/data
+date=`head -1 src/data | sed -e 's/\$Date: //' -e 's/ \$$//' -e 's/\//\\\\\//g'`
+sed -e "s/$date/DATE/g" < src/data > CMP1
+cat > CMP2 <<'EOF'
+$Date: DATE $
+# $Author: bk@free.bk $ $Author: bk@free.bk $
+# $Date: DATE $ $Date: DATE $
+# $Header: src/data 1.4 DATE bk@free.bk $
+# $Id: data 1.4 DATE bk@free.bk $
+# $A$
+# $Locker: <Not implemented> $
+# $Log: <Not implemented> $
+# $Name: <Not implemented> $
+# $Revision: 1.4 $
+# $RCSfile: s.data $
+# $Source: src/SCCS/s.data $
+# $State: <unknown> $
+#
+# garbage
+# $Mykey$
+# $Author: ljdfdsfdf
+# $Author* sldjkf$
+# $Author sdljf $Author: bk@free.bk $
+# $Author: bk@free.bk $$Author $Author: bk@free.bk $
+EOF
+diff -u CMP1 CMP2 || exit 1
+echo OK

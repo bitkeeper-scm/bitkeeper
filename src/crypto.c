@@ -331,19 +331,45 @@ validatedata(rsa_key *key, char *signfile)
 	return (ret);
 }
 
+private char *
+publickey(void)
+{
+	static	char *key;
+	unsigned long keylen;
+	int	i, len;
+	int	tmp;
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~h
+
+	if (key) return (key);
+	coded = strdup(coded);
+	len = strlen(coded);
+	for (i = 0; i < len/2; i++) {
+		tmp = coded[i];
+		coded[i] = coded[len-i-1];
+		coded[len-i-1] = tmp;
+	}
+	keylen = len;
+	key = malloc(keylen);
+	base64_decode(coded, len, key, &keylen);
+	free(coded);
+	return (key);
+}
+
 int
 check_licensesig(char *key, char *sign)
 {
 	char	signbin[256];
 	unsigned long	outlen;
 	rsa_key	rsakey;
-	char	*pubkey;
+	char	*pubkey = publickey();
 	int	stat;
 
 	register_hash(&md5_desc);
 
-	pubkey = aprintf("%s/bklicense.pub", bin);
-	loadkey(pubkey, &rsakey);
+	if (rsa_import(pubkey, &rsakey) == CRYPT_ERROR) {
+		fprintf(stderr, "crypto rsa_import: %s\n", crypt_error);
+		exit(1);
+	}
 
 	outlen = sizeof(signbin);
 	if (base64_decode(sign, strlen(sign), signbin, &outlen)) return (-1);

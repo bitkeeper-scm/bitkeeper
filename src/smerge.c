@@ -6,7 +6,6 @@ typedef struct ld	ld_t;
 typedef struct diffln	diffln;
 typedef struct file	file_t;
 
-private char	*getrev(char *verstr);
 private char	*find_gca(char *file, char *left, char *right);
 private int	do_weave_merge(u32 start, u32 end);
 private conflct	*find_conflicts(void);
@@ -83,20 +82,27 @@ private	int	parse_range(char *range, u32 *start, u32 *end);
 private	int	show_seq;
 #endif
 
+private	int	emubugs = 0;	/* 301 or 302 */
+
 int
 smerge_main(int ac, char **av)
 {
 	int	c;
 	int	i;
 	u32	start = 0, end = ~0;
-	int	ret = 0;
+	int	ret = 2;
 	int	do_diff3 = 0;
 	int	identical = 0;
+	char	*p;
 
 	unless (bk_mode() == BK_PRO) {
 		enable_mergefcns("all", 0);
 		enable_mergefcns("1,2,3", 1);
 		do_diff3 = 1;
+	}
+
+	if (p = getenv("SMERGE_EMULATE_BUGS")) {
+		emubugs = atoi(p);
 	}
 
 	mode = MODE_3WAY;
@@ -157,8 +163,8 @@ smerge_main(int ac, char **av)
 	if (fdiff && mode == MODE_3WAY) mode = MODE_GCA;
 
 	file = av[optind];
-	revs[LEFT] = getrev(av[optind + 1]);
-	revs[RIGHT] = getrev(av[optind + 2]);
+	revs[LEFT] = strdup(av[optind + 1]);
+	revs[RIGHT] = strdup(av[optind + 2]);
 	revs[GCA] = find_gca(file, revs[LEFT], revs[RIGHT]);
 
 	for (i = 0; i < 3; i++) {
@@ -217,6 +223,7 @@ file_init(char *file, char *rev, char *anno, file_t *f)
 	int	flags = GET_SEQ|SILENT|PRINT;
 	int	i;
 	char	*sfile = name2sccs(file);
+	char	*inc, *exc, *mrev;
 	char	tmp[MAXPATH];
 
 	if (anno) {
@@ -240,10 +247,29 @@ file_init(char *file, char *rev, char *anno, file_t *f)
 	s = sccs_init(sfile, 0, 0);
 	unless (s && s->tree) return (-1);
 	free(sfile);
-	if (sccs_get(s, rev, 0, 0, 0, flags, f->tmpfile)) {
+	rev = strdup(rev);
+	mrev = 0;
+	if (inc = strchr(rev, '+')) *inc++ = 0;
+	if (exc = strchr(inc ? inc : rev, '-')) *exc++ = 0;
+
+	/*
+	 * Code to emulate bugs that were in the bk-3.0.2 and bk-3.0.1 releases
+	 */
+	if (emubugs == 302) {
+		mrev = inc;
+		inc = exc;
+		exc = 0;
+	} else if (emubugs == 301) {
+		inc = 0;
+		exc = 0;
+	}
+
+	if (sccs_get(s, rev, mrev, inc, exc, flags, f->tmpfile)) {
 		fprintf(stderr, "Fetch of revision %s failed!\n", rev);
 		return (-1);
 	}
+	free(rev);
+	rev = 0;
 	sccs_free(s);
 
 	f->m = mopen(f->tmpfile, "r");
@@ -310,53 +336,6 @@ file_free(file_t *f)
 	}
 }
 
-/*
- * convert the version string for the input fine into arguments that
- * can be passed to get.
- *   from 1.7+2.1,2.2-1.6
- *     to 1.7 -i2.1,2.2 -x1.6
- */
-private char *
-getrev(char *verstr)
-{
-	char	*ret = 0;
-	char	*v;
-	char	*p;
-	int	len;
-
-	/* Allocate buffer for return string */
-	ret = malloc(strlen(verstr) + 16);
-	p = ret;
-	v = verstr;
-	len = strspn(v, "0123456789.");
-	unless (len) goto err;
-	strncpy(p, v, len);
-	p += len;
-	v += len;
-	if (*v == '+' || *v == '-') {
-		fprintf(stderr, 
-"ERROR: Includes and excludes are temporarily disabled in smerge.\n");
-		exit(2);
-	}
-	while (*v == '+' || *v == '-') {
-		p += sprintf(p, " -%c", (*v == '+') ? 'i' : 'x');
-		++v;
-		len = strspn(v, "0123456789.,");
-		unless (len) goto err;
-		strncpy(p, v, len);
-		p += len;
-		v += len;
-	}
-	if (*v) {
-err:		fprintf(stderr, "ERROR: Unable to parse version number: %s\n", verstr);
-		exit(2);
-	}
-
-	*p = 0;
-	assert(strlen(ret) < strlen(verstr) + 16);
-	return (ret);
-}
-
 private char *
 find_gca(char *file, char *left, char *right)
 {
@@ -387,18 +366,18 @@ find_gca(char *file, char *left, char *right)
 	dg = sccs_gca(s, dl, dr, &inc, &exc, 1);
 	strcpy(buf, dg->rev);
 	if (inc) {
-		strcat(buf, " -i");
+		strcat(buf, "+");
 		strcat(buf, inc);
 		free(inc);
 	}
 	if (exc) {
-		strcat(buf, " -x");
+		strcat(buf, "-");
 		strcat(buf, exc);
 		free(exc);
 	}
 	sccs_free(s);
 	return (strdup(buf));
-}	
+}
 
 private void
 usage(void)

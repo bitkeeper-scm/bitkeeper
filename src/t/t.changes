@@ -272,5 +272,39 @@ diff -u expect chgs || {
 }
 echo OK
 
+echo $N Change changes on a remote repository .......................$NL
+key=`bk prs -r+ -hnd:KEY: ChangeSet`
+cd $HERE
+key2=`bk changes -r+ -nd:KEY: clone`
+if [ "$key" != "$key2" ]
+then	echo Remote changes failed
+	echo $key vs $key2
+	exit 1
+fi
+echo OK
+
+echo $N Demonstrate how pull -nl works ..............................$NL
+cd $HERE
+bk clone $Q project merge
+cd merge
+bk pull $Q ../clone
+cd ../project
+bk pull $Q ../clone
+# XXX strange -q suppress all output
+bk pull -n ../merge >junk 2> out
+grep -q "1.6" out || {
+	echo bk pull -n had wrong output:
+	cat out
+	exit 1
+}
+# XXX but -q "works" here
+bk pull -nl $Q ../merge 2> out
+grep -q "1.6" out || {
+	echo bk pull -nl had wrong output:
+	cat out
+	exit 1
+}
+echo OK
+
 # wait for bkd locks
 bk lock -U $HERE/project

@@ -267,6 +267,7 @@ log_cmd(int ac, char **av)
 	tp = localtimez(&t, 0);
 	if (putenv) {
 		fprintf(Opts.log, "%s %.24s ", Opts.remote, asctime(tp));
+		sortLines(putenv, 0);
 		EACH(putenv) {
 			if (strneq("_BK_", putenv[i], 4) ||
 			    strneq("BK_", putenv[i], 3)) {

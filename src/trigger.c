@@ -21,9 +21,10 @@ trigger_env(char *prefix, char *event, char *what)
 
 	if (streq("BK", prefix)) {
 		put_trigger_env("BK", "SIDE", "client");
-		lic = licenses_accepted();
-		safe_putenv("BK_ACCEPTED=%s", lic);
-		free(lic);
+		if (lic = licenses_accepted()) {
+			safe_putenv("BK_ACCEPTED=%s", lic);
+			free(lic);
+		}
 	} else {
 		put_trigger_env("BK", "SIDE", "server");
 		put_trigger_env("BK", "HOST", getenv("_BK_HOST"));
@@ -151,7 +152,7 @@ trigger(char *cmd, char *when)
 	if (streq(when, "post") && streq(event, "resolve")) what = "incoming";
 
 	/* Run the incoming trigger in the RESYNC dir if there is one.  */
-	if (streq(what, "resolve") && !streq(when, "post")) {
+	if (streq(what, "resolve")) {
 		strcpy(triggerDir, RESYNC2ROOT "/BitKeeper/triggers");
 		assert(isdir(ROOT2RESYNC));
 	    	chdir(ROOT2RESYNC);
@@ -212,17 +213,20 @@ getTriggers(char *dir, char *prefix)
 }
 
 private int
-runit(char *file, char *output)
+runit(char *file, char *what, char *output)
 {
 	int	status, rc;
+	char	*root = streq(what, "resolve") ? RESYNC2ROOT : ".";
 
 	safe_putenv("BK_TRIGGER=%s", basenm(file));
+	write_log(root, "cmd_log", 0, "Running trigger %s", file);
 	status = sysio(0, output, 0, file, SYS);
 	if (WIFEXITED(status)) {
 		rc = WEXITSTATUS(status);
 	} else {
 		rc = 100;
 	}
+	write_log(root, "cmd_log", 0, "Trigger %s returns %d", file, rc);
 	if (getenv("BK_SHOWPROC")) {
 		ttyprintf("TRIGGER %s => %d\n", basenm(file), rc);
 	}
@@ -246,7 +250,7 @@ localTrigger(char *event, char *what, char **triggers)
 
 	EACH(triggers) {
 		unless (runable(triggers[i])) continue;
-		rc = runit(triggers[i], 0);
+		rc = runit(triggers[i], what, 0);
 		if (rc) break;
 	}
 	return (rc);
@@ -270,7 +274,7 @@ remotePreTrigger(char *event, char *what, char **triggers)
 	unless (lclone) fputs("@TRIGGER INFO@\n", stdout);
 	EACH(triggers) {
 		unless (runable(triggers[i])) continue;
-		rc = runit(triggers[i], output);
+		rc = runit(triggers[i], what, output);
 		f = fopen(output, "rt");
 		assert(f);
 		while (fnext(buf, f)) {
@@ -344,7 +348,7 @@ remotePostTrigger(char *event, char *what, char **triggers)
 	if (dup2(2, 1) < 0) perror("trigger: dup2");
 	EACH(triggers) {
 		unless (runable(triggers[i])) continue;
-		rc = runit(triggers[i], 0);
+		rc = runit(triggers[i], what, 0);
 		if (rc) break;
 	}
 	dup2(fd1, 1); close(fd1);

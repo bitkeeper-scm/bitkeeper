@@ -10,6 +10,7 @@ typedef struct {
 	u32	checkOnly:1;
 	u32	quiet:1;
 	u32	forward:1;
+	u32	iflags;
 } s_opts;
 
 private	delta	*checkCset(sccs *s);
@@ -28,7 +29,7 @@ stripdel_main(int ac, char **av)
 	int	c, rc;
 	MDBM	*config;
 	char	*co;
-	s_opts	opts = {1, 0, 0, 0};
+	s_opts	opts = {1, 0, 0, 0, 0};
 	RANGE_DECL;
 
 	debug_main(av);
@@ -41,7 +42,10 @@ stripdel_main(int ac, char **av)
 		    case 'b': opts.stripBranches = 1; break;	/* doc 2.0 */
 		    case 'c': opts.checkOnly = 1; break;	/* doc 2.0 */
 		    case 'C': opts.respectCset = 0; break;	/* doc 2.0 */
-		    case 'd': opts.forward = 1; break;
+		    case 'd':
+			opts.forward = 1;
+			opts.iflags = INIT_WACKGRAPH;
+			break;
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
 		    RANGE_OPTS('!', 'r');			/* doc 2.0 */
 		    default:
@@ -78,7 +82,7 @@ usage:			system("bk help -s stripdel");
 		return (1);
 	}
 
-	unless ((s = sccs_init(name, 0, 0)) && HASGRAPH(s)) {
+	unless ((s = sccs_init(name, opts.iflags, 0)) && HASGRAPH(s)) {
 		fprintf(stderr, "stripdel: can't init %s\n", name);
 		return (1);
 	}
@@ -107,7 +111,7 @@ doit(sccs *s, s_opts opts)
 	}
 
 	if (HAS_PFILE(s)) {
-		if (sccs_clean(s, SILENT)) {
+		if (!HAS_GFILE(s) || sccs_clean(s, SILENT)) {
 			fprintf(stderr, 
 			    "stripdel: can't strip an edited file.\n");
 			return (1);
@@ -296,13 +300,14 @@ strip_list(s_opts opts)
 	delta	*d;
 	project *proj = 0;
 	int 	rc = 1;
+	int	iflags = opts.iflags|SILENT|INIT_SAVEPROJ;
 
 	for (name = sfileFirst("stripdel", av, SF_HASREVS);
 	    name; name = sfileNext()) {
 		if (!s || !streq(s->sfile, name)) {
 			if (s && doit(s, opts)) goto fail;
 			if (s) sccs_free(s);
-			s = sccs_init(name, SILENT|INIT_SAVEPROJ, proj);
+			s = sccs_init(name, iflags, proj);
 			unless (s && HASGRAPH(s)) {
 				fprintf(stderr,
 					    "stripdel: can't init %s\n", name);
