@@ -1086,9 +1086,8 @@ HASH	*generateTimestampDB(project *p);
 int	timeMatch(project *proj, char *gfile, char *sfile, HASH *timestamps);
 void	dumpTimestampDB(project *p, HASH *db);
 void	updateTimestampDB(sccs *s, HASH *timestamps, int diff);
-struct tm
-        *utc2tm(time_t t);
-void	fix_stime(sccs *s);
+struct tm *utc2tm(time_t t);
+int	sccs_setStime(sccs *s);
 int	isLocalHost(char *h);
 void	do_cmds(void);
 void	core(void);

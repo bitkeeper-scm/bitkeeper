@@ -239,7 +239,7 @@ err:		if (sname) free(sname);
 		free_pfile(&pf);
 	}
 	s->gtime = gtime;
-	fix_stime(s);
+	sccs_setStime(s);
 	unless (isUnDelete) sccs_rmEmptyDirs(osfile);
 
 out:	if (s) sccs_free(s);
