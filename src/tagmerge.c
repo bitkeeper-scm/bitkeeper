@@ -135,7 +135,7 @@ m(sccs *s, delta *l, delta *r)
 		}
 	} while (d);
 	while (p->parent && (p->type != 'D')) p = p->parent;
-	tm = localtime(&tt);
+	tm = localtimez(&tt, 0);
 	sprintf(buf, "# Patch vers:\t1.3\n# Patch type:\tREGULAR\n\n");
 	sum = doit(sum, buf);
 	sprintf(buf, "== %s ==\n", s->gfile);

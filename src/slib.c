@@ -2339,7 +2339,7 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 			break;
 
 		    case 'D':	/* today: 97/06/22 */
-			if (!now) { time(&now); tm = localtime(&now); }
+			if (!now) { time(&now); tm = localtimez(&now, 0); }
 			assert(tm);
 			if (YEAR4(s)) {
 				int	y = tm->tm_year;
@@ -2387,7 +2387,7 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 			break;
 
 		    case 'H':	/* today: 06/22/97 */
-			if (!now) { time(&now); tm = localtime(&now); }
+			if (!now) { time(&now); tm = localtimez(&now, 0); }
 			assert(tm);
 			if (YEAR4(s)) {
 				int	y = tm->tm_year;
@@ -2447,7 +2447,7 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 			break;
 
 		    case 'T':	/* time: 23:04:04 */
-			if (!now) { time(&now); tm = localtime(&now); }
+			if (!now) { time(&now); tm = localtimez(&now, 0); }
 			assert(tm);
 			sprintf(t, "%02d:%02d:%02d",
 			    tm->tm_hour, tm->tm_min, tm->tm_sec);
@@ -4632,15 +4632,15 @@ sccs_Xfile(sccs *s, char type)
 private void
 date(delta *d, time_t tt)
 {
-	struct	tm tm;
+	struct	tm *tm;
 	char	tmp[50];
 	long   	seast;
 	int	mwest, hwest;
 	char	sign = '+';
 
 	// XXX - fix this before release 1.0 - make it be 4 digits
-	seast = localtimez(tt, &tm);
-	strftime(tmp, sizeof(tmp), "%y/%m/%d %H:%M:%S", &tm);
+	tm = localtimez(&tt, &seast);
+	strftime(tmp, sizeof(tmp), "%y/%m/%d %H:%M:%S", tm);
 	d->sdate = strdup(tmp);
 
 	if (seast < 0) {
@@ -4649,6 +4649,7 @@ date(delta *d, time_t tt)
 	}
 	hwest = seast / 3600;
 	mwest = (seast % 3600) / 60;
+	assert(seast - hwest * 3600 - mwest * 60 == 0);
 	sprintf(tmp, "%c%02d:%02d", sign, hwest, mwest);
 
 	zoneArg(d, tmp);
@@ -4656,6 +4657,7 @@ date(delta *d, time_t tt)
 	if (d->date != tt) {
 		fprintf(stderr, "Date=[%s%s] d->date=%u tt=%u\n",
 		    d->sdate, d->zone, d->date, tt);
+		fprintf(stderr, "Fudge = %d\n", d->dateFudge);
 		fprintf(stderr, "Internal error on dates, aborting.\n");
 		assert(d->date == tt);
 	}
@@ -4664,16 +4666,16 @@ date(delta *d, time_t tt)
 char	*
 testdate(time_t t)
 {
-	struct	tm tm;
 	static char	date[50];
+	struct	tm *tm;
 	char	zone[50];
 	long   	seast;
 	int	mwest, hwest;
 	char	sign = '+';
 
 	// XXX - fix this before release 1.0 - make it be 4 digits
-	seast = localtimez(t, &tm);
-	strftime(date, sizeof(date), "%y/%m/%d %H:%M:%S", &tm);
+	tm = localtimez(&t, &seast);
+	strftime(date, sizeof(date), "%y/%m/%d %H:%M:%S", tm);
 
 	if (seast < 0) {
 		sign = '-';
@@ -4701,7 +4703,7 @@ now()
 	time_t	tt = time(0);
 	static	char	tmp[50];
 
-	tm = localtime(&tt);
+	tm = localtimez(&tt, 0);
 	bzero(tmp, sizeof(tmp));
 	/* XXX - timezone correction? */
 	strftime(tmp, sizeof(tmp), "%y/%m/%d %H:%M:%S", tm);
@@ -9381,11 +9383,11 @@ out:		fprintf(stderr, "sccs: can't parse date format %s at %s\n",
 		 * So we assume here.
 		 * XXX - maybe not the right answer?
 		 */
-		struct tm dummy;
-		long seast;
+		long	seast;
+		time_t	t = time(0);
 
 		gotZone++;
-		seast = localtimez(time(0), &dummy);
+		localtimez(&t, &seast);
 		if (seast < 0) {
 			seast = -seast;
 			sign = '-';
