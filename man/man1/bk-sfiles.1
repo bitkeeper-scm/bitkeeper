@@ -4,7 +4,7 @@
 .SH NAME
 bk sfiles \- generates lists of revision control files
 .SH SYNOPSIS
-.Bc bk [-r] sfiles [\-acdDeEgijlnrSuUvx] [
+.Bc bk [-r] sfiles [\-acCdDeEgijlnrSuUvx] [
 .OPTreq \-o file
 .Bc ] [
 .OPTopt \-p A|C
@@ -49,8 +49,11 @@ If clock_skew is set in the config file then the file timestamps
 and other attributes are used to speed scanning.
 The acceptible clock skew can be configured, see 'clock_skew' in
 bk help config-etc.
-For debugging purposes, the timestamp DB may be disabled by
-setting the environment variable BK_NO_TIMESTAMPS.
+.tp
+.B \-C
+Identical to 
+.B \-c
+except the timestamp DB is not consulted.
 .tp
 .B \-d
 List directories under \*(BK control (SCCS subdir exists).

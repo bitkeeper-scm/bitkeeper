@@ -163,10 +163,13 @@ sfiles_main(int ac, char **av)
 		switch (c) {
 		    case 'a':	opts.all = 1; break;		/* doc 2.0 */
 		    case 'A':					/* undoc? 2.0 */
-				opts.pending = opts.Aflg = 1; break;
-		    case 'c':	opts.modified = 1; break;	/* doc 2.0 */
-		    case 'C':					/* undoc? 2.0 */
-				opts.pending = opts.Cflg = 1; break;
+			fprintf(stderr, "sfiles: use -pA, -A is gone.\n");
+			exit(1);
+		    case 'c':	opts.modified = opts.timestamps = 1;
+		    		break;
+		    case 'C':	opts.modified = 1;
+				opts.timestamps = 0;
+				break;
 		    case 'd':	dflg = 1; break;		/* doc 2.0 */
 		    case 'D':	Dflg = 1; break;		/* doc 2.0 */
 		    case 'i':	/* see below */	/* doc 2.0 */
@@ -216,6 +219,12 @@ usage:				system("bk help -s sfiles");
 				return (1);
 		}
 	}
+	/* backwards compat, remove in 4.0 */
+	if (getenv("BK_NO_TIMESTAMPS")) {
+		fprintf(stderr,
+		    "Use bk sfiles -C instead of BK_NO_TIMESTAMPS\n");
+		opts.timestamps = 0;
+	}
 
 	if (dflg || Dflg) {
 		handle_dflg(ac - optind, &av[optind], dflg);
@@ -235,7 +244,6 @@ usage:				system("bk help -s sfiles");
 		opts.unlocked = 1;
 		opts.locked = 1;
 	}
-	if (opts.modified && !getenv("BK_NO_TIMESTAMPS")) opts.timestamps = 1;
 
 	for (i = optind; av[i]; i++);
 	i--;

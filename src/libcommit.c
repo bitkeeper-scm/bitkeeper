@@ -121,7 +121,7 @@ status(int verbose, FILE *f)
 			fprintf(f, "Modified:\t%s", buf);
 		}
 		fclose(f1);
-		sprintf(buf, "bk sfiles -g -s,,p -C > %s", tmp_file);
+		sprintf(buf, "bk sfiles -g -s,,p -pC > %s", tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) {

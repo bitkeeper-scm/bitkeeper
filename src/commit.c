@@ -107,7 +107,7 @@ commit_main(int ac, char **av)
 		} else {
 			bktmp(pendingFiles, "pending");
 			if (sysio(0, pendingFiles, 0,
-				"bk", "sfind", "-s,,p", "-C", SYS)) {
+				"bk", "sfind", "-s,,p", "-pC", SYS)) {
 				unlink(pendingFiles);
 				getMsg("duplicate_IDs", 0, 0, stdout);
 				return (1);

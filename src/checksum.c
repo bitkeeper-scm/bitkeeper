@@ -366,7 +366,8 @@ cset_resum(sccs *s, int diags, int fix, int spinners)
 {
 	HASH	*root2map = hash_new();
 	ser_t	ins_ser = 0;
-	char	*p, *q, *e;
+	char	*p, *q;
+	u8	*e;
 	char	*end = s->mmap + s->size;
 	u16	sum;
 	int	cnt, i, added, n = 0;
@@ -392,7 +393,7 @@ cset_resum(sccs *s, int diags, int fix, int spinners)
 			sum = 0;
 			e = p;
 			do {
-				sum += *(unsigned char *)e;
+				sum += *e;
 			} while (*e++ != '\n');
 			add_ins(root2map, p, q-p, ins_ser, sum);
 		}
@@ -410,13 +411,10 @@ cset_resum(sccs *s, int diags, int fix, int spinners)
 
 	/* foreach delta */
 	slist = 0;
-	for (d = s->table; d; d = d->next) {
+	for (d = s->table; d; d->flags &= ~D_SET, d = d->next) {
 		unless (d->type == 'D') continue;
 		unless (d->added || d->include || d->exclude) continue;
-		if (SET(s) && !(d->flags & D_SET)) {
-			d->flags &= ~D_SET;	/* clean up as we go */
-			continue;
-		}
+		if (SET(s) && !(d->flags & D_SET)) continue;
 
 		/* Is this serialmap a simple extension of the last one? */
 		if (slist && (slist[0] == d->serial+1)) {
