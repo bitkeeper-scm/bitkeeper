@@ -11280,6 +11280,12 @@ gca2(sccs *s, delta *left, delta *right)
 	return (d);
 }
 
+delta	*
+sccs_gca(sccs *s, delta *left, delta *right, int best)
+{
+	return (best ? gca2(s, left, right) : gca(left, right));
+}
+
 private int
 samelod(sccs *s, delta *a, delta *b)
 {

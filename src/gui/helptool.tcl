@@ -91,7 +91,13 @@ proc bkhelp {topic} \
 	.text.help configure -state normal
 	.text.help delete 1.0 end
 	set first 1
+	set seealso 0
 	while {[gets $f help] >= 0} {
+		if {($seealso == 0) && [regexp {^SEE ALSO} $help]} {
+			set seealso 1
+		} elseif {$seealso == 1} {
+			regsub "bk help " $help "" help
+		}
 		.text.help insert end "$help\n"
 		if {$first == 1} {
 			set first 0
