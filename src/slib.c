@@ -5966,7 +5966,7 @@ sccs_adjustSet(sccs *sc, sccs *scb, delta *d)
 	int	errp;
 	ser_t	*slist;
 	delta	*n;
-	ser_t	*inc, *exc;
+	ser_t	*inc = 0, *exc = 0;
 
 	errp = 0;
 	n = sfind(scb, d->serial);	/* get 'd' from backup */
