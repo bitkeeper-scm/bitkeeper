@@ -854,12 +854,4 @@ sub platformPath
         return ($BIN);
 }
 
-# just to keep perl -w shutup
-sub dummy
-{
-	$pager = "";
-	$tty = "";
-	$editor = "";
-}
-
 
