@@ -214,7 +214,6 @@ recurse(delta *d)
 private int
 doit(int dash)
 {
-	FILE	*f;
 	char	cmd[MAXKEY];
 	char	s_cset[] = CHANGESET;
 	char	*spec;
@@ -289,7 +288,7 @@ doit(int dash)
 		    "<table align=center bgcolor=black cellspacing=0 "
 		    "border=0 cellpadding=0><tr><td>\n"
 		    "<table width=100% cellspacing=1 border=0 cellpadding=1>"
-		    "<tr><td>\n", f);
+		    "<tr><td>\n", stdout);
 		fflush(stdout);
 	}
 	s->xflags |= X_YEAR4;

@@ -190,12 +190,12 @@ echo OK
 
 echo $N Check remote verbose listing ................................$NL
 cd $HERE/clone
-bk changes -vr+ > WANT
+bk changes -vr+ | bk undos > WANT
 cd $HERE
 bk changes -vr+ $HERE/clone > GOT
 cmp -s clone/WANT GOT || {
 	echo wrong answer
-	diff WANT GOT
+	diff clone/WANT GOT
 	exit 1
 }
 echo OK
