@@ -40,7 +40,7 @@ delta_main(int ac, char **av)
 	MMAP	*diffs = 0;
 	MMAP	*init = 0;
 	pfile	pf;
-	int	dash;
+	int	dash, errors = 0;
 	project	*proj = 0;
 
 	debug_main(av);
@@ -212,6 +212,7 @@ usage:			sprintf(buf, "bk help -s %s", name);
 		unless (s = sccs_init(name, iflags, proj)) {
 			if (d) sccs_freetree(d);
 			name = sfileNext();
+			errors |= 1;
 			continue;
 		}
 		unless (proj) proj = s->proj;
@@ -225,7 +226,10 @@ usage:			sprintf(buf, "bk help -s %s", name);
 
 		nrev = NULL;
 		if (HAS_PFILE(s)) {
-			if (newrev(s, &pf) == -1) goto next;
+			if (newrev(s, &pf) == -1) {
+				errors |= 2;
+				goto next;
+			}
 			if (checkout && (gflags &GET_EDIT)) nrev = pf.newrev;
 		}
 		s->encoding = sccs_encoding (s, encp, compp);
@@ -233,17 +237,15 @@ usage:			sprintf(buf, "bk help -s %s", name);
 		if (rc == -2) goto next; /* no diff in file */
 		if (rc == -1) {
 			sccs_whynot("delta", s);
-			if (init) mclose(init);
-			sccs_free(s);
-			comments_done();
-			sfileDone();
-			return (1);
+			errors |= 4;
+			goto next;
 		}
 		if (checkout) {
 			s = sccs_restart(s);
 			unless (s) {
 				fprintf(stderr,
 				    "%s: can't restart %s\n", av[0], name);
+				errors |= 8;
 				goto next;
 			}
 			if (rc == -3) nrev = pf.oldrev;
@@ -260,6 +262,7 @@ usage:			sprintf(buf, "bk help -s %s", name);
 					(gflags&GET_EDIT) && !IS_WRITABLE(s)) {
 				if (chmod(s->gfile, s->mode|0200)) {
 					perror(s->gfile);
+					errors |= 16;
 				}
 				s->mode |= 0200;
 			}
@@ -283,7 +286,7 @@ next:		if (init) mclose(init);
 	sfileDone();
 	comments_done();
 	if (proj) proj_free(proj);
-	return (0);
+	return (errors);
 }
 
 

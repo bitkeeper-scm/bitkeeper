@@ -153,6 +153,12 @@ import() {
 	import_finish "$TO"
 }
 
+msg() {
+	if [ X$QUIET = X ]
+	then	echo "$*"
+	fi
+}
+
 getIncExc () {
 	if [ "$INC" = YES ]
 	then	echo End patterns with "." by itself or EOF
@@ -283,23 +289,28 @@ import_patch() {
 			;;
 	esac
 	
-	echo Patching...
+	msg Patching...
 	# XXX TODO For gfile with a sfile, patch -E option should translates
 	#          delete event to "bk rm"
 	(cd "$HERE" && cat "$PATCH") |
 	    bk patch -g1 -f -p1 -ZsE \
 		-z '=-PaTcH_BaCkUp!' --forcetime --lognames > ${TMP}plog$$ 2>&1
-	cat ${TMP}plog$$
+	if [ X$QUIET = X ]
+	then	cat ${TMP}plog$$
+	fi
 	bk sfiles -x | grep '=-PaTcH_BaCkUp!$' | bk _unlink
 	REJECTS=NO
 	find .  -name '*.rej' -print > ${TMP}rejects$$
 	while [ -s ${TMP}rejects$$ ]
 	do 	echo "Patch rejects:"
 		cat ${TMP}rejects$$
-		echo
+		echo 
+		echo ===============================================
 		echo Dropping you into a shell to clean the rejects.
 		echo Please fix the rejects and then exit the shell 
 		echo to continue the import
+		echo ===============================================
+		echo 
 		sh -i
 		find .  -name '*.rej' -print > ${TMP}rejects$$
 	done
@@ -308,20 +319,20 @@ import_patch() {
 	grep '^Removing file ' ${TMP}plog$$ |
 	    sed 's/Removing file //' > ${TMP}deletes$$
 	if [ $RENAMES = YES ]
-	then	echo Checking for potential renames in `pwd` ...
+	then	msg Checking for potential renames in `pwd` ...
 		# Go look for renames
 		if [ -s ${TMP}deletes$$ -a -s ${TMP}creates$$ ]
 		then	(
 			if [ -s ${TMP}deletes$$ ]
 			then	cat ${TMP}deletes$$
 			fi
-			echo ""
+			msg ""
 			if [ -s ${TMP}creates$$ ]
 			then	cat ${TMP}creates$$
 	    		fi ) | bk renametool $Q
 		fi
 
-		echo Checking in new or modified files in `pwd` ...
+		msg Checking in new or modified files in `pwd` ...
 		# Do the deletes automatically
 		if [ -s ${TMP}deletes$$ -a ! -s ${TMP}creates$$ ]
 		then	bk rm - < ${TMP}deletes$$
@@ -331,7 +342,7 @@ import_patch() {
 		then	bk new $Q -G -y"Import patch $PNAME" - < ${TMP}creates$$
 		fi
 	else	# Just delete and create
-		echo Checking in new or modified files in `pwd` ...
+		msg Checking in new or modified files in `pwd` ...
 		bk rm - < ${TMP}deletes$$
 		bk new $Q -G -y"Import patch $PNAME" - < ${TMP}creates$$
 	fi
@@ -341,10 +352,42 @@ import_patch() {
 
 	bk sfiles -x | grep -v '^BitKeeper/' > ${TMP}extras$$
 	if [ -s ${TMP}extras$$ ]
-	then	echo There were extra files, patch aborted, here is the list
+	then	echo =========================================================
+		echo There were extra files, patch aborted, here is the list
+		echo ===================== extra files =========================
 		cat ${TMP}extras$$
-		echo
-		echo "Patch aborted, you must clean up by hand, XXX"
+		echo =========================================================
+		cat <<EOF
+
+For some reason, possible an error reported above, one or more files did not
+get checked in.  You need to figure out why this happened and remove the 
+cause.  
+
+To get back to where you were before, just clone this repository to someplace
+else and try again, the clone will throw away and partial work.
+
+EOF
+		Done 1
+    	fi
+
+	bk sfiles -c > ${TMP}extras$$
+	if [ -s ${TMP}extras$$ ]
+	then	echo ===========================================================
+		echo There are modified files, patch aborted, here is the list
+		echo ===================== modified files ======================
+		cat ${TMP}extras$$
+		echo ===========================================================
+		cat <<EOF
+
+For some reason, probably an error reported above, one or more files did not
+get checked in.  If the problem is one caused by your patch (an example is
+a patch which is invalid, for instance, a patch which contains nulls), then
+you need to fix the patch and try again.
+
+To get back to where you were before, just clone this repository to someplace
+else and try again, the clone will throw away and partial work.
+
+EOF
 		Done 1
     	fi
 
@@ -354,9 +397,9 @@ import_patch() {
 	if [ $? -eq 1 ]
 	then 	Done 1
 	fi
-	echo Creating changeset for $PNAME in `pwd` ...
-	bk sfiles -C | bk commit $SYMBOL -a -y"`basename $PNAME`" -
-	echo Done.
+	msg Creating changeset for $PNAME in `pwd` ...
+	bk sfiles -C | bk commit $QUIET $SYMBOL -a -y"`basename $PNAME`" -
+	msg Done.
 	Done 0
 }
 
@@ -364,14 +407,14 @@ import_text () {
 	Q=$QUIET
 
 	cd "$2"
-	if [ X$QUIET = X ]; then echo Checking in plain text files...; fi
+	if [ X$QUIET = X ]; then msg Checking in plain text files...; fi
 	CLOCK_DRIFT=1 bk ci -1i $VERBOSE - < ${TMP}import$$ || exit 1
 }
 
 import_RCS () {
 	cd "$2"
-	echo Converting RCS files.
-	echo WARNING: Branches will be discarded.
+	msg Converting RCS files.
+	msg WARNING: Branches will be discarded.
 	if [ $PARALLEL -eq 1 ]
 	then	bk rcs2sccs $UNDOS $CUTOFF $VERIFY $QUIET - < ${TMP}import$$ ||
 		    exit 1
@@ -390,20 +433,20 @@ import_RCS () {
 
 import_SCCS () {
 	cd "$2"
-	echo Checking for and fixing Teamware corruption...
+	msg Checking for and fixing Teamware corruption...
 	bk sfiles | bk renumber -q -
 	if [ -s ${TMP}reparent$$ ]
-	then	echo Reparenting files from some other BitKeeper package...
+	then	msg Reparenting files from some other BitKeeper package...
 		sed 's/ BitKeeper$//' < ${TMP}reparent$$ | \
 		while read x
 		do	if [ -f "$x" ]
 			then	echo "$x"
 			fi
 		done | bk admin -CC -
-		echo OK
+		msg OK
 	fi
 	rm -f ${TMP}reparent$$
-	echo Making sure all files have pathnames, proper dates, and checksums
+	msg Making sure all files have pathnames, proper dates, and checksums
 	bk sfiles -g | while read x
 	do	bk admin -0q "$x"
 		bk admin -q -u -p"$x" "$x"
@@ -534,14 +577,14 @@ validate_text () {
 # Make sure there are no locked/extra files
 validate_patch() {
 	cd "$2"
-	echo Make sure there are no locked files in `pwd` ...
+	msg Make sure there are no locked files in `pwd` ...
 	bk sfiles -l | grep -v BitKeeper/ > ${TMP}locked$$
 	if [ -s ${TMP}locked$$ ]
 	then	echo Not patching because of locked files:
 		cat ${TMP}locked$$
 		Done 1
     	fi
-	echo Make sure there are no extra files in `pwd` ...
+	msg Make sure there are no extra files in `pwd` ...
 	bk sfiles -x | grep -v BitKeeper/ > ${TMP}extras$$
 	if [ -s ${TMP}extras$$ ]
 	then	echo Not patching because of extra files:

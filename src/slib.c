@@ -8258,6 +8258,17 @@ fix_crnl(register char *s)
 	}
 }
 
+private int
+nullCheck(MMAP *m)
+{
+	register u8 *p, *end;
+
+	for (p = m->mmap, end = m->end; p < end; p++) {
+		unless (*p) return (1);
+	}
+	return (0);
+}
+
 /*
  * Check in initial sfile.
  *
@@ -8287,12 +8298,19 @@ checkin(sccs *s,
 	unless (flags & NEWFILE) {
 		verbose((stderr,
 		    "%s not checked in, use -i flag.\n", s->gfile));
-		sccs_unlock(s, 'z');
+out:		sccs_unlock(s, 'z');
 		if (prefilled) sccs_freetree(prefilled);
 		s->state |= S_WARNED;
 		return (-1);
 	}
-	if (!diffs && isRegularFile(s->mode)) {
+	if (diffs) {
+		if (nullCheck(diffs)) {
+			fprintf(stderr,
+			    "%s has nulls (\\0) in diffs, checkin aborted.\n",
+			    s->gfile);
+			goto out;
+		}
+	} else if (isRegularFile(s->mode)) {
 		popened = openInput(s, flags, &gfile);
 		unless (gfile) {
 			perror(s->gfile);
@@ -10335,6 +10353,18 @@ bad:		fprintf(stderr, "bad diffs: '%.*s'\n", linelen(buf), buf);
 	return (0);
 }
 
+/*
+ * The s.file should be an ascii file and the gfile should be binary.
+ */
+private void
+binaryMismatch(sccs *s)
+{
+	assert(!(s->encoding & E_BINARY));
+	fprintf(stderr,
+	    "%s: file format is ascii, delta is binary.", s->sfile);
+	fprintf(stderr, "  Unsupported operation.\n");
+}
+
 int
 delta_body(sccs *s, delta *n, MMAP *diffs, FILE *out, int *ap, int *dp, int *up)
 {
@@ -10347,6 +10377,11 @@ delta_body(sccs *s, delta *n, MMAP *diffs, FILE *out, int *ap, int *dp, int *up)
 	char	*b, cntlA_escape[2] = { CNTLA_ESCAPE, 0 };
 	int	no_lf = 0;
 
+	if (nullCheck(diffs)) {
+		fprintf(stderr,
+		    "%s has nulls (\\0) in diffs, delta aborted.\n", s->gfile);
+		return (-1);
+	}
 	assert((s->state & S_READ_ONLY) == 0);
 	assert(s->state & S_ZFILE);
 	*ap = *dp = *up = 0;
@@ -10369,9 +10404,14 @@ delta_body(sccs *s, delta *n, MMAP *diffs, FILE *out, int *ap, int *dp, int *up)
 
 newcmd:
 		if (scandiff(b, &where, &what, &howmany) != 0) {
-			fprintf(stderr,
-			    "delta: can't figure out '%.*s'\n",
-			    linelen(b), b);
+			int	len = linelen(b);
+
+			if ((len > 13) && strneq("Binary files ", b, 13)) {
+				binaryMismatch(s);
+			} else {
+				fprintf(stderr,
+				    "delta: can't figure out '%.*s'\n", len, b);
+			}
 			if (state) free(state);
 			if (slist) free(slist);
 			return (-1);

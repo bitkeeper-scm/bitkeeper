@@ -167,7 +167,7 @@ grep -q 'Bitkeeper is aborting this commit' OUT || {
 	exit 1
 }
 cd $HERE
-echo yes | bk import $Q -tpatch P SAVE > OUT 2>&1
+echo yes | bk import -tpatch P SAVE > OUT 2>&1
 grep -q 'Creating changeset for P' OUT || {
 	echo failed to produce OK message
 	cat OUT

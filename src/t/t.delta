@@ -62,8 +62,14 @@ echo $N Make sure delta -I fails with bad file ......................$NL
 ls > INITX
 bk co -l $Q init_test
 ls >> init_test
-bk delta $Q -IINITX init_test 2>${DEV_NULL}
-if [ $? != 1 ]; then echo Failed - delta did not error; cat INITX; exit 1; fi
+bk delta $Q -IINITX init_test 2>OUT && {
+	echo Failed - delta did not error
+	echo =============== INIT file ===================
+	cat INITX
+	echo =============== Output ===================
+	cat OUT
+	exit 1
+}
 echo OK
 echo $N Make sure delta -I works w/ blank comments ..................$NL
 cat > INITX <<EOF
@@ -269,9 +275,60 @@ if [ ! -f mid.c ]; then echo failed; exit 1; fi
 if [ -f SCCS/p.mid.c ]; then echo failed; exit 1; fi
 if writable mid.c; then echo failed; exit 1; fi
 echo OK
-echo $N Make sure "bk new -b" force binary encoding for text file .....$NL
+echo $N Make sure "bk new -b" forces binary encoding for text file ....$NL
 echo "this is text" > text
 bk new $Q -b text
 ENC=`bk prs -hr+ -d:ENC: text`
 if [ "$ENC" != "binary" ]; then echo failed; exit 1; fi
 echo OK;
+
+echo $N Small ascii files with nulls should be caught ...............$NL
+echo baseline > baseline
+bk new $Q baseline
+bk edit $Q baseline
+echo 'There is a null right here X>' | tr X '\000' >> baseline
+echo "" >> baseline
+echo and another line after that >> baseline
+bk delta -q -yfail baseline 2>OUT && {
+	echo failed to error
+	exit 1
+}
+grep -q 'file format is ascii, delta is binary' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Large ascii files with nulls should be caught ...............$NL
+cat >tmp <<EOF
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+EOF
+cat tmp tmp tmp tmp tmp tmp tmp tmp tmp tmp > tmp10
+mv tmp10 tmp
+cat tmp tmp > big
+bk new $Q big
+bk edit $Q big
+echo 'There is a null right here X>' | tr X '\000' >> big
+echo "" >> big
+echo and another line after that >> big
+bk delta -q -yfail big 2>OUT && {
+	echo failed to error
+	exit 1
+}
+grep -q 'big has nulls' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+echo OK
