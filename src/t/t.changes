@@ -271,3 +271,6 @@ diff -u expect chgs || {
 	exit 1
 }
 echo OK
+
+# wait for bkd locks
+bk lock -U $HERE/project

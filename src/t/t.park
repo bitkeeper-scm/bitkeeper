@@ -210,9 +210,9 @@ cmp -s new_me new_me.ref || { echo failed; exit 1; }
 echo OK
 echo $N Make sure park -a handle symlink ............................$NL
 bk park -y -a 2> /dev/null
-if [ -L "sym" ]; then echo failed; exit 1; fi
+if [ -h "sym" ]; then echo failed; exit 1; fi
 bk unpark 2> /dev/null 1>&2
-if [ ! -L "sym" ]; then echo failed; exit 1; fi
+if [ ! -h "sym" ]; then echo failed; exit 1; fi
 ls -l sym | grep -q "\-> foo.c" || { echo failed; exit 1; }
 echo OK
 echo $N Make sure park -a handle symlink to Text case  ...............$NL
@@ -230,7 +230,7 @@ ln -s foo.c extra_sym
 bk park -y -a 2> /dev/null
 if [ -e extra_sym ]; then echo failed; exit 1; fi
 bk unpark 2> /dev/null 1>&2
-if [ ! -L "extra_sym" ]; then echo failed; exit 1; fi
+if [ ! -h "extra_sym" ]; then echo failed; exit 1; fi
 ls -l extra_sym | grep -q "\-> foo.c" || { echo failed; exit 1; }
 echo OK
 fi   #--------------------------------------------------------------------
