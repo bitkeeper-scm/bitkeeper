@@ -921,6 +921,28 @@ sccs_fixDates(sccs *s)
 	fixDates(0, s->table);
 }
 
+/*
+ * Fix the date in a new delta.
+ * Make sure date is increasing realtive to the parent (on the same barnch)
+ */
+void
+fixNewDate(sccs *s)
+{
+	delta *parent, *d;	
+
+	d = s->table;
+	unless (d->date) (void)getDate(d);
+	parent = d->parent;
+	unless (parent) return;
+	assert(parent->date);
+	if (d->date <= parent->date) {
+		d->dateFudge = (parent->date - d->date) + 1;
+		d->date += d->dateFudge;
+	}
+}
+
+
+
 private int
 monthDays(int year, int month)
 {
@@ -5492,7 +5514,7 @@ sameFileType(sccs *s, delta *d)
  * New in Feb, '99: remove duplicates of metadata.
  */
 private int
-delta_table(sccs *s, FILE *out, int willfix)
+delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 {
 	delta	*d;
 	int	i;	/* used by EACH */
@@ -5504,6 +5526,8 @@ delta_table(sccs *s, FILE *out, int willfix)
 	assert(s->state & S_ZFILE);
 	fprintf(out, "\001hXXXXX\n");
 	s->cksum = 0;
+
+	if (fixDate) fixNewDate(s);
 	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_GONE) {
 			/* This delta has been deleted - it is not to be
@@ -5525,12 +5549,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 		}
 		    
 		assert(d->date);
-		if (d->next) {
-			assert(d->next->date);
-			if (d->date <= d->next->date) {
-				sccs_fixDates(s);
-			}
-		}
+		if (d->parent) assert(d->date > d->parent->date);
 		sprintf(buf, "\001s %05d/%05d/%05d\n",
 		    d->added, d->deleted, d->same);
 		if (first)
@@ -6651,7 +6670,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 			n->comments = addLine(n->comments, strdup(buf));
 		}
 	}
-	if (delta_table(s, sfile, 1)) {
+	if (delta_table(s, sfile, 1, 1)) {
 		error++;
 		goto abort;
 	}
@@ -7778,7 +7797,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	}
 	old_enc = sc->encoding;
 	sc->encoding = new_enc;
-	if (delta_table(sc, sfile, 0)) {
+	if (delta_table(sc, sfile, 0, 1)) {
 		unlock(sc, 'x');
 		goto out;	/* we don't know why so let sccs_why do it */
 	}
@@ -8617,7 +8636,7 @@ sccs_meta(sccs *s, delta *parent, char *initFile)
 		unlock(s, 'z');
 		exit(1);
 	}
-	if (delta_table(s, sfile, 0)) {
+	if (delta_table(s, sfile, 0, 1)) {
 abort:		fclose(sfile);
 		unlock(s, 'x');
 		return (-1);
@@ -8665,7 +8684,7 @@ int
 sccs_delta(sccs *s, u32 flags, delta *prefilled, FILE *init, FILE *diffs)
 {
 	FILE	*sfile = 0;	/* the new s.file */
-	int	error = 0;
+	int	error = 0, fixDate = 1;
 	char	*t;
 	delta	*d = 0, *n = 0;
 	char	*tmpfile = 0;
@@ -8704,6 +8723,7 @@ out:
 		}
 		debug((stderr, "delta got prefilled %s\n", prefilled->rev));
 		if (flags & DELTA_PATCH) {
+			fixDate = 0;
 			if (prefilled->pathname &&
 			    streq(prefilled->pathname, "ChangeSet")) {
 				s->state |= S_CSET;
@@ -8895,7 +8915,8 @@ out:
 		perror("");
 		OUT;
 	}
-	if (delta_table(s, sfile, 1)) {
+
+	if (delta_table(s, sfile, 1, fixDate)) {
 		unlock(s, 'x');
 		goto out;	/* not OUT - we want the warning */
 	}
@@ -11041,7 +11062,7 @@ rmdelout:
 	}
 
 	/* write out upper half */
-	if (delta_table(s, sfile, 0)) {  /* 0 means as-is, so checksum works */
+	if (delta_table(s, sfile, 0, 1)) {  /* 0 means as-is, so checksum works */
 		unlock(s, 'x');
 		goto rmdelout;
 	}

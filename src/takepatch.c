@@ -790,6 +790,23 @@ getLocals(sccs *s, delta *g, char *name)
 	return (n);
 }
 
+
+/*
+ * Return true if 'a' is earlier than 'b'
+ */
+int
+earlier(patch *a, patch *b)
+{
+	int ret;
+
+	if (a->order < b->order) return 1;
+	if (a->order > b->order) return 0;
+	ret = strcmp(a->me, b->me); 
+	if (ret < 0)   return 1;
+	if (ret > 0)   return 0;
+	assert("Can't figure out the order of deltas\n" == 0); 
+}
+
 /*
  * Insert the delta in the list in sorted time order.
  */
@@ -798,7 +815,7 @@ insertPatch(patch *p)
 {
 	patch	*t;
 
-	if (!patchList || (patchList->order > p->order)) {
+	if (!patchList || earlier(p, patchList)) {
 		p->next = patchList;
 		patchList = p;
 		return;
@@ -807,7 +824,7 @@ insertPatch(patch *p)
 	 * We know that t is pointing to a node that is older than us.
 	 */
 	for (t = patchList; t->next; t = t->next) {
-		if (t->next->order > p->order) {
+		if (earlier(p, t->next)) {
 			p->next = t->next;
 			t->next = p;
 			return;
@@ -817,7 +834,7 @@ insertPatch(patch *p)
 	/*
 	 * There is no next field and we know that t->order is < date.
 	 */
-	assert(t->order <= p->order);
+	assert(earlier(t, p));
 	t->next = p;
 }
 
