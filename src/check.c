@@ -23,6 +23,7 @@ private	void	listMarks(MDBM *db);
 private	int	checkAll(MDBM *db);
 private	void	listFound(MDBM *db);
 private	void	listCsetRevs(char *key);
+private void	init_idcache();
 
 private	int	verbose;
 private	int	all;	/* if set, check every darn entry in the ChangeSet */
@@ -32,6 +33,24 @@ private	int	mixed;
 private	project	*proj;
 private char	csetFile[] = CHANGESET;
 private int	flags = INIT_SAVEPROJ|INIT_NOCKSUM;
+private	FILE	*idcache;
+
+/*
+ * This data structure is so we don't have to search through all tuples in
+ * the ChangeSet file for every file.  Instead, we sort the ChangeSet hash
+ * and read in the sorted list of tuples into "malloc".  Then we walk the
+ * data, putting the delta keys (the second part) into deltas[].  The first
+ * key from each file is recorded in r2i{rootkey} = index into deltas[].
+ * The list in deltas is separated by (char*1) between each file.
+ *
+ * Going to this structure was about a 20x speedup for the Linux kernel.
+ */
+private	struct {
+	char	*malloc;	/* the whole cset file read in */
+	char	**deltas;	/* sorted on root key */
+	int	n;		/* deltas[n] == 0 */
+	MDBM	*r2i;		/* {rootkey} = start in roots[] list */
+} csetKeys;
 
 int
 check_main(int ac, char **av)
@@ -44,7 +63,7 @@ check_main(int ac, char **av)
 	int	errors = 0;
 	int	e;
 	char	*name;
-	char	buf[MAXPATH];
+	char	buf[MAXKEY];
 	char	*t;
 
 
@@ -81,6 +100,7 @@ usage:		fprintf(stderr, "%s", check_help);
 	mixed = (s->state & S_KEY2) == 0;
 	db = buildKeys();
 	sccs_free(s);
+	if (all) init_idcache();
 	for (name = sfileFirst("check", &av[optind], 0);
 	    name; name = sfileNext()) {
 		s = sccs_init(name, flags, proj);
@@ -110,7 +130,7 @@ usage:		fprintf(stderr, "%s", check_help);
 			} else {
 				perror("mdbm_store_str");
 			}
-			errors++;
+			errors = 1;
 		}
 		if (mixed) {
 			t = sccs_iskeylong(buf);
@@ -125,11 +145,12 @@ usage:		fprintf(stderr, "%s", check_help);
 				} else {
 					perror("mdbm_store_str");
 				}
-				errors++;
+				errors = 1;
 			}
 		}
+
 		if (e = check(s, db, marks)) {
-			errors += e;
+			errors |= 4;		/* 2 is reserved */
 		} else {
 			if (verbose) fprintf(stderr, "%s is OK\n", s->sfile);
 		}
@@ -137,7 +158,11 @@ usage:		fprintf(stderr, "%s", check_help);
 	}
 	listMarks(marks);
 	sfileDone();
-	if (all) errors += checkAll(keys);
+	if (all) {
+		fclose(idcache);
+		unlink(IDCACHE_LOCK);
+	}
+	if (all && checkAll(keys)) errors |= 8;
 	mdbm_close(db);
 	mdbm_close(keys);
 	mdbm_close(marks);
@@ -150,7 +175,8 @@ usage:		fprintf(stderr, "%s", check_help);
 			return (2);
 		}
 	}
-	return (errors ? 1 : 0);
+fprintf(stderr, "check says %d\n", errors);
+	return (errors);
 }
 
 /*
@@ -161,12 +187,10 @@ usage:		fprintf(stderr, "%s", check_help);
 private int
 checkAll(MDBM *db)
 {
-	FILE	*keys = popen("bk sccscat -h ChangeSet", "r");
+	FILE	*keys = fopen("BitKeeper/tmp/ChangeSet-all", "r");
 	char	*t;
-	int	errors = 0;
 	MDBM	*idDB, *goneDB;
 	MDBM	*warned = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
-	sccs	*s;
 	int	found = 0;
 	char	buf[MAXPATH*3];
 
@@ -183,39 +207,18 @@ checkAll(MDBM *db)
 	while (fnext(buf, keys)) {
 		t = strchr(buf, ' ');
 		assert(t);
-		*t++ = 0;
+		*t = 0;
 		if (mdbm_fetch_str(db, buf)) continue;
 		if (mdbm_fetch_str(goneDB, buf)) continue;
 		mdbm_store_str(warned, buf, "", MDBM_INSERT);
-		errors++;
 		found++;
 	}
-	pclose(keys);
-	keys = popen("bk get -skp ChangeSet", "r");
-	unless (keys) {
-		perror("checkAll");
-		exit(1);
-	}
-	while (fnext(buf, keys)) {
-		t = strchr(buf, ' ');
-		assert(t);
-		*t++ = 0;
-		unless (s = sccs_keyinit(buf, flags, proj, idDB)) {
-			unless (gone(buf, goneDB) ||
-			    mdbm_fetch_str(warned, buf)) {
-				fprintf(stderr, "keyinit(%s) failed.\n", buf);
-				errors++;
-			}
-			continue;
-		}
-		sccs_free(s);
-	}
+	fclose(keys);
 	if (found) listFound(warned);
-	pclose(keys);
 	mdbm_close(idDB);
 	mdbm_close(warned);
 	if (goneDB) mdbm_close(goneDB);
-	return (errors);
+	return (found != 0);
 }
 
 private void
@@ -232,6 +235,23 @@ listFound(MDBM *db)
 	    "Add keys to BitKeeper/etc/gone if the files are gone for good.\n");
 }
 
+private void
+init_idcache()
+{
+	int	e;
+
+	unless ((e = open(IDCACHE_LOCK, O_CREAT|O_EXCL, GROUP_MODE)) > 0) {
+		fprintf(stderr, "check: can't lock id cache\n");
+		exit(1);
+	}
+	unlink(IDCACHE);
+	unless (idcache = fopen(IDCACHE, "w")) {
+		perror(IDCACHE);
+		unlink(IDCACHE_LOCK);
+		exit(1);
+	}
+}
+
 /*
  * Open up the ChangeSet file and get every key ever added.
  * Build an mdbm which is indexed by key (value is root key).
@@ -242,17 +262,19 @@ private MDBM	*
 buildKeys()
 {
 	MDBM	*db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
+	MDBM	*r2i = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	MDBM	*idDB;
-	FILE	*keys = popen("bk sccscat -h ChangeSet", "r");
-	char	*t = 0;
+	char	*s, *t, *r;
 	int	n = 0;
 	int	e = 0;
+	int	fd, sz;
 	char	buf[MAXPATH*3];
 	char	key[MAXPATH*2];
 	sccs	*cset;
 	delta	*d;
+	datum	k, v;
 
-	unless (db && keys) {
+	unless (db && r2i) {
 		perror("buildkeys");
 		exit(1);
 	}
@@ -260,17 +282,40 @@ buildKeys()
 		perror("idcache");
 		exit(1);
 	}
+	unless (cset = sccs_init(csetFile, flags, proj)) {
+		fprintf(stderr, "check: ChangeSet file not inited\n");
+		exit (1);
+	}
+	unless (exists("BitKeeper/tmp")) mkdir("BitKeeper/tmp", 0777);
+	unlink("BitKeeper/tmp/ChangeSet-all");
+	system("bk sccscat -h ChangeSet | sort > BitKeeper/tmp/ChangeSet-all");
+	unless (exists("BitKeeper/tmp/ChangeSet-all")) {
+		fprintf(stderr, "Unable to create BitKeeper/tmp/ChangeSet-all");
+		exit(1);
+	}
+	csetKeys.malloc = malloc(sz = size("BitKeeper/tmp/ChangeSet-all"));
+	fd = open("BitKeeper/tmp/ChangeSet-all", 0, 0);
+	unless (read(fd, csetKeys.malloc, sz) == sz) {
+		perror("read on BitKeeper/tmp/ChangeSet-all");
+		exit(1);
+	}
+	for (fd = 0, d = cset->table; d; d = d->next) {
+		fd += d->added;
+	}
+	fd *= 2;	/* in case there is exactly one delta per file */
+	csetKeys.deltas = malloc(fd * sizeof(char*));
+	csetKeys.r2i = r2i;
 
-	/* XXX - pre split based on cset size */
-	while (fnext(buf, keys)) {
-		if (chop(buf) != '\n') {
-			fprintf(stderr, "bad data: <%s>\n", buf);
-			return (0);
-		}
-		t = strchr(buf, ' ');
-		assert(t);
+	buf[0] = 0;
+	csetKeys.n = 0;
+	for (s = csetKeys.malloc; s < csetKeys.malloc + sz; ) {
+		t = strchr(s, ' ');
 		*t++ = 0;
-		if (mdbm_store_str(db, t, buf, MDBM_INSERT)) {
+		assert(t);
+		r = strchr(t, '\n');
+		*r++ = 0;
+		assert(t);
+		if (mdbm_store_str(db, t, s, MDBM_INSERT)) {
 			char	*a, *b;
 
 			if (errno == EEXIST) {
@@ -278,17 +323,17 @@ buildKeys()
 
 				fprintf(stderr,
 				    "Duplicate delta found in ChangeSet\n");
-				a = getRev(buf, t, idDB);
+				a = getRev(s, t, idDB);
 				fprintf(stderr, "\tRev: %s  Key: %s\n", a, t);
 				free(a);
-				if (streq(root, buf)) {
+				if (streq(root, s)) {
 					a = getFile(root, idDB);
 					fprintf(stderr,
 					    "\tBoth keys in file %s\n", a);
 					free(a);
 				} else {
 					a = getFile(root, idDB);
-					b = getFile(buf, idDB);
+					b = getFile(s, idDB);
 					fprintf(stderr,
 					    "\tIn different files %s and %s\n",
 					    a, b);
@@ -297,20 +342,34 @@ buildKeys()
 				}
 				listCsetRevs(t);
 			} else {
-				fprintf(stderr, "KEY='%s' VAL='%s'\n", t, buf);
+				fprintf(stderr, "KEY='%s' VAL='%s'\n", t, s);
 				perror("mdbm_store_str");
 			}
 			e++;
 		}
+		unless (streq(buf, s)) {
+			/* mark the file boundries */
+			if (buf[0]) csetKeys.deltas[csetKeys.n++] = (char*)1;
+			k.dptr = s;
+			k.dsize = strlen(s) + 1;
+			v.dptr = (void*)&csetKeys.n;
+			v.dsize = sizeof(csetKeys.n);
+			mdbm_store(r2i, k, v, MDBM_INSERT);
+			strcpy(buf, s);
+		}
+		csetKeys.deltas[csetKeys.n++] = t;
 		n++;
+		s = r;
 	}
-	pclose(keys);
+
 	/* Add in ChangeSet keys */
-	unless (cset = sccs_init(csetFile, flags, proj)) {
-		fprintf(stderr, "check: ChangeSet file not inited\n");
-		exit (1);
-	}
 	sccs_sdelta(cset, sccs_ino(cset), key);
+	csetKeys.deltas[csetKeys.n++] = (char*)1;
+	k.dptr = key;
+	k.dsize = strlen(key) + 1;
+	v.dptr = (void*)&csetKeys.n;
+	v.dsize = sizeof(csetKeys.n);
+	mdbm_store(r2i, k, v, MDBM_INSERT);
 	for (d = cset->table; d; d = d->next) {
 		unless (d->type == 'D' && (d->flags & D_CSET)) continue;
 		sccs_sdelta(cset, d, buf);
@@ -327,8 +386,10 @@ buildKeys()
 				perror("mdbm_store_str");
 			}
 		}
+		csetKeys.deltas[csetKeys.n++] = strdup(buf);
 	}
 	sccs_free(cset);
+	csetKeys.deltas[csetKeys.n] = (char*)1;
 
 	if (verbose > 1) {
 		fprintf(stderr, "check: found %d keys in ChangeSet\n", n);
@@ -414,26 +475,28 @@ getRev(char *root, char *key, MDBM *idDB)
 	   file and that one - if it exists - must be top of trunk.
 	
 	4) check that the file is in the recorded location
+
+	5) rebuild the idcache if in -a mode.
 */
 private int
 check(sccs *s, MDBM *db, MDBM *marks)
 {
-	delta	*d;
+	delta	*d, *ino;
 	int	errors = 0;
 	int	marked = 0;
-	kvpair	kv;
-	int	ksize;
-	char	*a;
-	char	buf[MAXPATH];
-	char	*val;
 	int	missing = 0;
+	datum	k, v;
+	int	i;
+	char	*a;
+	char	*val;
+	char	buf[MAXKEY];
 
 	/*
 	 * Make sure that all marked deltas are found in the ChangeSet
 	 */
 	for (d = s->table; d; d = d->next) {
 		if (verbose > 2) {
-			fprintf(stderr, "Check %s%c%s\n", s->sfile, BK_FS, d->rev);
+			fprintf(stderr, "Check %s@%s\n", s->sfile, d->rev);
 		}
 		unless (d->flags & D_CSET) continue;
 		marked++;
@@ -470,6 +533,15 @@ check(sccs *s, MDBM *db, MDBM *marks)
 		names = 1;
 	}
 
+	sccs_sdelta(s, ino = sccs_ino(s), buf);
+
+	/*
+	 * Rebuild the id cache if we are running in -a mode.
+	 */
+	if (all && !streq(ino->pathname, d->pathname)) {
+		fprintf(idcache, "%s %s\n", buf, s->gfile);
+	}
+
 	/* Make sure that we think we have cset marks */
 	unless (s->state & S_CSETMARKED) {
 		mdbm_store_str(marks, s->sfile, "", 0);
@@ -478,33 +550,33 @@ check(sccs *s, MDBM *db, MDBM *marks)
 	}
 
 	/*
-	 * Foreach value in ChangeSet DB, skip if not this file.
-	 * Otherwise, make sure we can find that delta in this file.
+	 * Go through all the deltas that were foound in the ChangeSet
+	 * hash and belong to this file.
+	 * Make sure we can find the deltas in this file.
 	 */
-	sccs_sdelta(s, sccs_ino(s), buf);
-	ksize = strlen(buf) + 1;	/* strings include null in DB */
-	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
-		/* key is delta key, val is root key */
-		unless ((kv.val.dsize == ksize) && streq(buf, kv.val.dptr)) {
-		    	continue;
-		}
-		unless (d = sccs_findKey(s, kv.key.dptr)) {
-			a = csetFind(kv.key.dptr);
+	k.dptr = buf;
+	k.dsize = strlen(buf) + 1;
+	v = mdbm_fetch(csetKeys.r2i, k);
+	assert(v.dsize);
+	bcopy(v.dptr, &i, sizeof(i));
+	do {
+		unless (d = sccs_findKey(s, csetKeys.deltas[i])) {
+			a = csetFind(csetKeys.deltas[i]);
 			fprintf(stderr,
 			    "key %s is in\n\tChangeSet:%s\n\tbut not in %s\n",
-			    kv.key.dptr, a, s->sfile);
+			    csetKeys.deltas[i], a, s->sfile);
 			free(a);
 		    	errors++;
 		} else unless (d->flags & D_CSET) {
 			fprintf(stderr,
-			    "%s%c%s is in ChangeSet but not marked\n",
-			   s->gfile, BK_FS, d->rev);
+			    "%s@%s is in ChangeSet but not marked\n",
+			   s->gfile, d->rev);
 		    	errors++;
 		} else if (verbose > 1) {
 			fprintf(stderr, "%s: found %s from ChangeSet\n",
 			    s->sfile, d->rev);
 		}
-	}
+	} while (csetKeys.deltas[++i] != (char*)1);
 
 	/*
 	 * Make sure we have no open branches

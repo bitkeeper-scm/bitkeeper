@@ -1260,42 +1260,47 @@ sccs_mkroot(char *path)
 	char	buf[MAXPATH];
 
 	sprintf(buf, "%s/SCCS", path);
-	if ((mkdir(buf, 0775) == -1) && (errno != EEXIST)) {
+	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
 		perror(buf);
 		exit(1);
 	}
 	sprintf(buf, "%s/BitKeeper", path);
-	if ((mkdir(buf, 0775) == -1) && (errno != EEXIST)) {
+	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
 		perror(buf);
 		exit(1);
 	}
 	sprintf(buf, "%s/BitKeeper/etc", path);
-	if ((mkdir(buf, 0775) == -1) && (errno != EEXIST)) {
+	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
 		perror(buf);
 		exit(1);
 	}
 	sprintf(buf, "%s/BitKeeper/etc/SCCS", path);
-	if ((mkdir(buf, 0775) == -1) && (errno != EEXIST)) {
+	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
 		perror(buf);
 		exit(1);
 	}
 	sprintf(buf, "%s/BitKeeper/deleted", path);
-	if ((mkdir(buf, 0775) == -1) && (errno != EEXIST)) {
+	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
 		perror(buf);
 		exit(1);
 	}
 	sprintf(buf, "%s/BitKeeper/deleted/SCCS", path);
-	if ((mkdir(buf, 0775) == -1) && (errno != EEXIST)) {
+	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
 		perror(buf);
 		exit(1);
 	}
 	sprintf(buf, "%s/BitKeeper/tmp", path);
-	if ((mkdir(buf, 0775) == -1) && (errno != EEXIST)) {
+	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
 		perror(buf);
 		exit(1);
 	}
 	sprintf(buf, "%s/BitKeeper/log", path);
-	if ((mkdir(buf, 0775) == -1) && (errno != EEXIST)) {
+	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
+		perror(buf);
+		exit(1);
+	}
+	sprintf(buf, "%s/BitKeeper/tmp", path);
+	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
 		perror(buf);
 		exit(1);
 	}

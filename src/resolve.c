@@ -1909,9 +1909,7 @@ pass4_apply(opts *opts)
 	unless (opts->quiet) {
 		fprintf(stderr,
 		    "resolve: applied %d files in pass 4\n", opts->applied);
-		fprintf(stdlog, "resolve: rebuilding caches...\n");
 	}
-	system("bk sfiles -r");
 	unless (opts->quiet) {
 		fprintf(stderr,
 		    "resolve: running consistency check, please wait...\n");
