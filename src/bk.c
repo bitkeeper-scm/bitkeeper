@@ -652,7 +652,6 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 	return (spawn_cmd(_P_WAIT, argv));
 }
 
-#define	LOG_MAXSIZE	(1<<20)
 #define	LOG_BADEXIT	-100000		/* some non-valid exit */
 
 private void
@@ -835,33 +834,55 @@ retry:		if (i = repository_wrlock()) {
 }
 
 int
-cmdlog_end(int ret)
+write_log(char *root, char *file, int rotate, char *format, ...)
 {
 	FILE	*f;
-	char	*user, *file;
+	char	*user;
 	char	path[MAXPATH];
+	va_list	ap;
+
+	sprintf(path, "%s/BitKeeper/log/%s", root, file);
+	unless (f = fopen(path, "a")) {
+		unless (mkdirf(path)) return (1);
+		unless (f = fopen(path, "a")) {
+			fprintf(stderr, "Cannot open %s\n", path);
+			return (1);
+		}
+	}
+	user = sccs_getuser();
+	fprintf(f, "%c%s %lu %s: ",
+	    log_versions[LOGVER],
+	    user ? user : "Phantom User", time(0), bk_vers);
+	va_start(ap, format);
+	vfprintf(f, format, ap);
+	va_end(ap);
+	fputc('\n', f);
+
+#define	LOG_MAXSIZE	(1<<20)
+	if (rotate && fsize(fileno(f)) > LOG_MAXSIZE) {
+		char	old[MAXPATH];
+
+		sprintf(old, "%s-older", path);
+		fclose(f);
+		rename(path, old);
+	} else {
+		fclose(f);
+		chmod(path, 0666);
+	}
+	return (0);
+}
+
+int
+cmdlog_end(int ret)
+{
 	int	flags = cmdlog_flags & CMD_FAST_EXIT;
+	char	*file;
+	int	rotate;
+	char	log[MAXLINE];
 
 	purify_list();
 	unless (cmdlog_buffer[0] && bk_proj && bk_proj->root) {
 		return (flags);
-	}
-
-	if (cmdlog_repo) {
-		file = "repo_log";
-	} else {
-		file = "cmd_log";
-	}
-	sprintf(path, "%s/BitKeeper/log/%s", bk_proj->root, file);
-	unless (f = fopen(path, "a")) {
-		sprintf(path, "%s/%s", bk_proj->root, BKROOT);
-		unless (exists(path)) return (flags);
-		sprintf(path, "%s/BitKeeper/log/%s", bk_proj->root, file);
-		mkdirf(path);
-		unless (f = fopen(path, "a")) {
-			fprintf(stderr, "Cannot open %s\n", path);
-			return (flags);
-		}
 	}
 
 	if (getenv("BK_SHOWPROC")) {
@@ -871,28 +892,24 @@ cmdlog_end(int ret)
 		fprintf(f, " %s = %d\n", cmdlog_buffer, ret);
 		fclose(f);
 	}
-	user = sccs_getuser();
-	fprintf(f, "%c%s %lu %s: ",
-	    log_versions[LOGVER],
-	    user ? user : "Phantom User", time(0), bk_vers);
 	if (ret == LOG_BADEXIT) {
-		fprintf(f, "%s = ?\n", cmdlog_buffer);
+		sprintf(log, "%s = ?", cmdlog_buffer);
 	} else {
-		fprintf(f, "%s = %d", cmdlog_buffer, ret);
-		if (cmdlog_flags&CMD_BYTES) {
-			fprintf(f, " xfered=%u", (u32)get_byte_count());
-		}
-		fputs("\n", f);
+		sprintf(log, "%s = %d", cmdlog_buffer, ret);
 	}
-	if (!cmdlog_repo && (fsize(fileno(f)) > LOG_MAXSIZE)) {
-		char	old[MAXPATH];
-
-		sprintf(old, "%s-older", path);
-		fclose(f);
-		rename(path, old);
+	if (cmdlog_repo) {
+		file = "repo_log";
+		rotate = 0;
+		if (cmdlog_flags&CMD_BYTES) {
+			sprintf(&log[strlen(log)],
+			    " xfered=%u", (u32)get_byte_count());
+		}
 	} else {
-		fclose(f);
-		chmod(path, 0666);
+		file = "cmd_log";
+		rotate = LOG_MAXSIZE;
+	}
+	if (write_log(bk_proj->root, file, rotate, log)) {
+		return (flags);
 	}
 
 	/*
