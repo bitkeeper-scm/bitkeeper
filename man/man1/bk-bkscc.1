@@ -6,13 +6,13 @@ bk bkscc \- BitKeeper and SCC API
 .LP
 The bkscc.dll is a dynamic library which allows BitKeeper to integrate with
 any IDE which supports the Microsoft SCC API interface. In this document
-we will assume the IDE is VC++, since this is the IDE we have tested.
-After bkscc.dll is installed VC++ will discover the library automatically
-by looking it up in the registry.  VC++ will automatically add a
+we will assume the IDE is Microsoft Visual C++, since this is the IDE we
+have tested. After bkscc.dll is installed VC++ will discover the library
+automatically by looking it up in the registry.  VC++ will automatically add a
 "source control" entry under the "project" menu. Most of the BitKeeper
 functions can be accessed via the new menu entry.
 .LP
-If you are a BitKeeper user, you will notice there some conflicts
+If you are a BitKeeper user, you will notice there are some conflicts
 between BitKeeper terminology and VC++ terminology.
 What the SCC API calls a "project" is not the same as a BitKeeper
 Project.  A typical SCC API Project usually contains one binary for
@@ -27,7 +27,7 @@ top-level) Makefile.
 A VC++ project is equivalent to a sub-directory in a BitKeeper
 repository.
 .LP
-A VC++ project file is roughly equivalent to a mini Makefile sitting
+A VC++ project file is roughly equivalent to a mini Makefile sitting in
 a sub-directory of a BitKeeper repository.
 .LP
 While it is possible to create a different mapping of VC++ concepts to
@@ -35,8 +35,8 @@ BitKeeper concepts, the above mapping is the cleanest and simplest.
 Staying within the above model is strongly recommended.
 .SH RECOMMENDED USAGE
 .LP
-As a consequence of the above model, the workspace must be the first
-file created.  It must be placed at the BitKeeper root directory and
+As a consequence of the above model, the workspace file must be created first.
+It must be placed at the BitKeeper root directory and
 it must be the first file added to the repository. A typical usage
 scenario is as follows:
 .TP
@@ -44,12 +44,12 @@ scenario is as follows:
 Start up the VC++ GUI
 .tp
 .B 2
-Left  click on file->new-workspace
+Left  click on file->new->workspace
 .tp
 .B 3
-After the workspace file is created, add text to the workspace file
-and select "add to source control".  A BitKeeper
-setup screen to create a Master repository will pop-up. 
+After the workspace file is created, right click on 
+the workspace file icon and select "add to source control".
+A BitKeeper setup screen to create a Master repository will pop-up. 
 Fill in the form and left click the "create repository" button. 
 This automatically creates a BitKeeper root directory as the 
 parent directory the workspace file.
@@ -66,7 +66,7 @@ Left click on file->new->project;
 .B IMPORTANT: 
 always select "add to current workspace",
 when this menu is used.  This will create a sub-directory
-under the BitKeeper root where all project files will go.
+under the BitKeeper root where all files associated with the project will go.
 .tp
 .B 6
 Follow the usual VC++ procedure to create the type of VC++ project
