@@ -4,7 +4,7 @@
 
 proc bk_init {} \
 {
-	global env dev_null tmp_dir wish auto_path unix_bin bin
+	global env dev_null tmp_dir wish  
 	global bithelp difftool helptool sccstool sdiffw bk_prs file_rev
 	global file_start_stop file_stop line_rev bk_fs keytmp
 
