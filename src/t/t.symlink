@@ -18,7 +18,7 @@ then
 	exit 0
 fi
 
-HERE=`pwd`
+HERE=`bk pwd`
 echo $N Create a symlink ............................................$NL
 umask 0
 bk cset -n -s .

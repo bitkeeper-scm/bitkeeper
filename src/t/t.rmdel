@@ -12,7 +12,7 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
-HERE=`pwd`
+HERE=`bk pwd`
 bk cset -n -s .
 rm -rf FILE SCCS
 R=1

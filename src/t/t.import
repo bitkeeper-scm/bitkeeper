@@ -13,7 +13,7 @@
 # %K%
 
 echo $N Test import of a plain file .................................$NL
-HERE=`pwd`
+HERE=`bk pwd`
 BK_USER=bk; BK_HOST=free.bk; export BK_USER BK_HOST
 echo "logging: none" > $HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c project

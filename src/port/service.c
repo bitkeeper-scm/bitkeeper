@@ -57,8 +57,8 @@ bkd_install_service(bkdopts *opts)
 		getcwd(here, sizeof(here));
 		start_dir = here;
 	}
-	sprintf(cmd, "\"%s\"  bkd -S -p %d -c %d \"-s%s\"",
-				path, opts->port, opts->count, start_dir);
+	sprintf(cmd, "\"%s\"  bkd -S -p %d -c %d \"-s%s\" -E \"PATH=%s\"",
+		    path, opts->port, opts->count, start_dir, getenv("PATH"));
 	schSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
 	if ( schSCManager )
 	{

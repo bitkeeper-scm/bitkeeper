@@ -234,17 +234,21 @@ checkAll(MDBM *db)
 	MDBM	*idDB, *goneDB;
 	MDBM	*warned = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	int	found = 0;
-	char	buf[MAXPATH*3];
+	char	buf[MAXPATH*3], ctmp_l[MAXPATH], ctmp_p[MAXPATH];
 
 	if (resync) {
 		sprintf(buf, "%s/%s", RESYNC2ROOT, CHANGESET);
 		unless (exists(buf)) goto full;
+		sprintf(ctmp_l, "%s.l", CTMP);
+		sprintf(ctmp_p, "%s.p", CTMP);
 		sprintf(buf,
-		    "bk sccscat -h %s/ChangeSet | sort | comm -13 - %s > %s.p",
-		    RESYNC2ROOT, CTMP, CTMP);
+		    "bk sccscat -h %s/ChangeSet | sort > %s",
+		    RESYNC2ROOT, ctmp_l);
 		system(buf);
-		sprintf(buf, "%s.p", CTMP);
-		keys = fopen(buf, "rt");
+		sprintf(buf, "comm -13 %s %s > %s", ctmp_l, CTMP, ctmp_p);
+		system(buf);
+		unlink(ctmp_l);
+		keys = fopen(ctmp_p, "rt");
 	} else {
 full:		keys = fopen(CTMP, "rt");
 	}

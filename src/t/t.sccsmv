@@ -141,7 +141,7 @@ DPATH=`bk prs -hr+ -d:DPN: ${DDIR}/.del-file4~1`
 if [ ${DPATH}X != "${DDIR}/.del-file4~1"X ]; then echo failed; exit 1; fi
 echo OK
 echo $N Test sccsrm \& empty directory ...............................$NL
-HERE=`pwd`
+HERE=`bk pwd`
 cd D
 bk sccsrm -d file5 || { echo failed.; exit 1; }
 if [ -d SCCS ]; then echo fail to remove empty SCCS; exit 1; fi
