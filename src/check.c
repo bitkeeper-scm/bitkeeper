@@ -135,6 +135,7 @@ check_main(int ac, char **av)
 		fprintf(stderr, "Can't init ChangeSet\n");
 		exit(1);
 	}
+	unless (cset = cset_fixLinuxKernelChecksum(cset)) return (1);
 	proj = cset->proj;
 	mixed = LONGKEY(cset) == 0;
 	if (verbose == 1) {
