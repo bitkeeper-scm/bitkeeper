@@ -75,7 +75,6 @@ struct cmd {
 };
 
 typedef struct {
-	u32	interactive:1;		/* show prompts, etc */
 	u32	errors_exit:1;		/* exit on any error */
 	u32	debug:1;		/* don't fork for daemons, etc. */
 	u32	daemon:1;		/* listen for TCP connections */

@@ -3,7 +3,7 @@
 .SH NAME
 bk bkd \- the \*(BK daemon
 .SH SYNOPSIS
-.Bc bk bkd [\-CdDhiR] [more opts]
+.Bc bk bkd [\-CdDhR] [more opts]
 .SH DESCRIPTION
 .LP
 The \*(BK daemon, bkd, is used to synchronize and query repositories.
@@ -213,6 +213,11 @@ This option implies \-d.
 Attempt to run with group id
 .ARG gid 
 (POSIX compatible systems only).
+.tp
+.OPTreq \-i cmd
+Include
+.ARG cmd
+from the by default excluded command list.
 .tp
 .OPTreq \-u uid
 Attempt to run with user id
