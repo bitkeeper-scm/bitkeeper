@@ -25,7 +25,7 @@ blat: FORCE
 	cd pub/blat && make
 
 diffutils: FORCE
-	cd pub/diffutils && make
+	cd pub/diffutils && unset MAKEFLAGS && make
 
 install: all blat diffutils pub/vim/src/vim.exe
 	cd util && make BINDIR=$(BINDIR) install
