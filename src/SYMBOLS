@@ -1,3 +1,96 @@
+Symbol graph notes, Sun Oct 29 11:29:36 PST 2000
+
+We have numerous problems resulting from the symbols not participating in 
+the graph the way the regular deltas do.  We can't merge conflicts, we
+can't brobe the symbol space for fast pulls, etc.
+
+Proposed fix:
+
+add a graph structure as follows
+	^AcS<parent serial>
+	^AcS<parent serial> <merge parent serial>
+
+The structure defines a graph similar to the regular graph.
+
+C DATA STRUCTURES
+    struct delta {
+    	...
+	ser_t	ptag;	/* the parent of this tag */
+	ser_t	mtag;	/* the merge parent of this tag */
+    	...
+    }
+
+    When we read in the delta table, we fill these in; when we write it out,
+    we save these as described above.
+
+    0 in these fields means there is no parent/merge parent.
+
+COVERSION FROM EXISTING FORMAT
+    Construct a straightline graph in time order.  So just walk the
+    table in table order (newest to oldest) and for each delta which
+    has a tag, find the next delta which has a tag, and then  use that
+    as the ptag value.
+
+LOD IMPLICATIONS
+    We need to allow multiple open tips so long as the there is exactly one
+    open tip per lod.  In other words, when we write a resolver for this
+    stuff, we need to not merge across lod boundries.
+
+PULL / PUSH
+    We have to probe the tag graph the same we probe the delta graph.
+
+BACKWARDS COMPAT
+    This has to be a file format rev.
+
+TODO
+    + Pass the tags pointers in the patch file.
+    + Bump the version number
+    + Make sure the tag parent gets set when you add a tag (I think there
+      are multiple ways to add a tag).
+      [done, I think]
+    + admin -hhh needs to check the tag graph for multiple open tips
+    + need an admin command to fake merge nodes for the tags; autoinvoke
+      this when bumping the file format.
+
+INVARIANTS
+    Once a tag has a parent/merge parent, those links never change, just like
+    in the regular graph.
+
+RESOLVER
+    We need to walk both branches and if there is the same tag on both,
+    invoke an interactive resolver.
+    If there is not, we can "automerge".
+
+    We need some sort of interface to do a tag merge delta.
+
+IMPLEMENTATION NOTES
+    I need to make public the interface which tells me there are tag 
+    conflicts so if that is the only thing which changed, I know it.
+
+    We need a multiple tip probe protocol sort of
+
+    @PROBE@
+    key
+    key
+    key
+    @PROBE@
+    key
+    key
+    @PROBE@
+    key
+    key
+    @PROBE END@
+
+    Eventually we may want this to be smart about not probing up the trunk
+    each time.
+
+    For the match[es] we just respond with all the matches we found and color
+    up from each of the matches.
+
+QUESTIONS
+    
+
+==========
 In lmsccs, symbols are used in one of two ways:
 
 	. to name an absolute revision, i.e., 1.1 or 1.9.2.2 but not 1 or 1.2.1

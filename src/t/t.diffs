@@ -81,9 +81,8 @@ EOF
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
-echo $N Checking diff -dSSS -r1.9 ...................................$NL
-bk admin $Q -SSSS:1.7 Mydiffs
-bk diffs -dSSS -r1.9 Mydiffs > D
+echo $N Checking diff -r1.7 -r1.9 ...................................$NL
+bk diffs -r1.7 -r1.9 Mydiffs > D
 bk undos > W <<EOF
 ===== Mydiffs 1.7 vs 1.9 =====
 7a8,9
@@ -93,12 +92,14 @@ EOF
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; diff D W; exit 1; fi
 echo OK
-echo $N Checking diff -dSSS .........................................$NL
-bk diffs -dSSS Mydiffs > D
+echo $N Checking diff -r1.7 .........................................$NL
+bk diffs -r1.7 Mydiffs > D
 bk undos > W <<EOF
-===== Mydiffs 1.6 vs 1.7 =====
-6a7
-> 1.7
+===== Mydiffs 1.7 vs 1.10 =====
+7a8,10
+> 1.8
+> 1.9
+> 1.10
 EOF
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi

@@ -1,0 +1,68 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2000 Larry McVoy
+# %K%
+
+# Make sure that tags obey graph like invariants.
+
+HERE=`bk pwd`
+echo $N Create initial repository with a tagged cset ................$NL
+no_logging project
+echo foo > foo.c
+bk ci $Q -i foo.c 
+if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
+bk commit $S -yCset -SCSET
+bk get $S -p ChangeSet > TOT
+bk get $S -prCSET ChangeSet > SYM
+cmp -s TOT SYM
+if [ $? != 0 ]
+then	echo failed
+	diff TOT SYM
+	exit 1
+fi
+echo OK
+echo $N Clone and create tags in each of the repositories ...........$NL
+cd $HERE
+bk clone $Q project copy
+cd project
+bk edit $Q foo.c
+bk delta $Q -ywhatever foo.c
+bk commit -y'PROJECT tag' $Q -SPROJECT 
+cd $HERE/copy
+bk edit $Q foo.c
+bk delta $Q -ywhatever foo.c
+bk commit -y'COPY tag' $Q -SCOPY
+bk pull $Q
+if [ -d RESYNC ]
+then	echo Failed to finish resolve
+	exit 1
+fi
+bk admin -qhhh ChangeSet || exit 1
+echo OK
+echo $N Add the same tag in each repository, creating conflict ......$NL
+cd $HERE/project
+bk edit $Q foo.c
+bk delta $Q -ywhatever foo.c
+bk commit -y'project CONFLICT' $Q -SCONFLICT
+cd $HERE/copy
+bk edit $Q foo.c
+bk delta $Q -ywhatever foo.c
+bk commit -y'copy CONFLICT' $Q -SCONFLICT
+(echo '?'; echo x; echo l; echo q; ) | bk pull $Q 2> OUT
+if [ -d RESYNC ]
+then	echo Failed to finish pull
+	cat OUT
+	exit 1
+fi
+echo OK
+# XXX - need a tag only case where we try a push and it fails because of
+# the conflict.

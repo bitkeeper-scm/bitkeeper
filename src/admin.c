@@ -272,12 +272,12 @@ admin_main(int ac, char **av)
 		/*
 		 * re init so sccs_get would work
 		 */
-		sccs_free(sc);
-		sc = sccs_init(name, init_flags, proj);
 		if (new_delta && was_edited) {
 			int gflags = SILENT|GET_SKIPGET|GET_EDIT;
 			char *nrev;
 
+			sccs_free(sc);
+			sc = sccs_init(name, init_flags, proj);
 			nrev = findrev(sc, pf.newrev) ? pf.newrev: pf.oldrev;
 			if (sccs_get(sc, nrev, 0, 0, 0, gflags, "-")) {
 				fprintf(stderr, "cannot adjust p file\n");	

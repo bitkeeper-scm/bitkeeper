@@ -76,10 +76,8 @@ then	echo failed with mode $MODE
 fi
 echo OK
 echo $N Check propagation of symbol .................................$NL
-cd $HERE/project/src
-bk admin $Q -SBASE_LINE:1.1 bar.c
-P=`bk pending | wc -l`
-if [ $P -eq 0 ]; then echo "failed (Known bug)"; else echo OK; fi
+echo TODO
+echo 'Need to add a test case here when the new pull code is added'
 echo $N Check propagation of flags ..................................$NL
 cd $HERE
 rm -rf $HERE/copy

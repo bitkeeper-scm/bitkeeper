@@ -147,6 +147,15 @@ do_check(sccs *s, int flags)
 	return(error? 1 : 0);
 }
 
+private int
+noparent(delta *e)
+{
+	delta	*f;
+
+	for (f = e->parent; f->type != 'D'; f = f->parent);
+	return (f->flags & D_SET);
+}
+
 int
 set_meta(sccs *s, int stripBranches, int *count)
 {
@@ -157,16 +166,17 @@ set_meta(sccs *s, int stripBranches, int *count)
 	for (n = left = 0, e = s->table; e; e = e->next) {
 		if (stripBranches && e->r[2]) e->flags |= D_SET;
 
+		/* Mark metas if their true parent is marked. */
 		if (e->type != 'D') {
-			/* Mark metas if their true parent is marked. */
-			delta	*f;
 
-			for (f = e->parent; f->type != 'D'; f = f->parent);
-			if (f->flags & D_SET) {
-				e->flags |= D_SET;
-			} else {
-				continue;
+			/* if either of these is marked, then this one is too */
+			if (e->ptag && e->mtag &&
+			    (noparent(sfind(s, e->ptag)) ||
+			    noparent(sfind(s, e->mtag)))) {
+			    	e->flags |= D_SET;
 			}
+			if (noparent(e)) e->flags |= D_SET;
+			unless (e->flags & D_SET) continue;
 		}
 		if (e->flags & D_SET) {
 			n++;

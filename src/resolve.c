@@ -985,9 +985,6 @@ again:
 			fprintf(rs->opts->log,
 			    "rename(%s, %s)\n", rs->s->sfile, to);
 		}
-		if (opts->debug) {
-			fprintf(stderr, "rename(%s, %s)\n", rs->s->sfile, to);
-		}
 		opts->renames2++;
 		unlink(sccs_Xfile(rs->s, 'm'));
 	    	return (0);
@@ -1676,6 +1673,7 @@ can be resolved.  Please rerun resolve and fix these first.\n", n);
 		}
 	}
 	pclose(p);
+	resolve_tags(opts);
 	unless (opts->quiet || !opts->resolved) {
 		fprintf(stdlog,
 		    "resolve: resolved %d conflicts in pass 3\n",
@@ -2354,7 +2352,7 @@ pass4_apply(opts *opts)
 			exit(1);
 		}
 		if (sccs_admin(r, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0, 0)) {
-			fprintf(stderr, "resolve: corrupt file %s\n", r->sfile);
+			fprintf(stderr, "resolve: bad file %s;\n", r->sfile);
 			fprintf(stderr, "resolve: no files were applied.\n");
 			fclose(save);
 			mdbm_close(permDB);
