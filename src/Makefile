@@ -466,9 +466,11 @@ helptool: gui/helptool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
 	    gui/helptool.tcl > helptool
 
 difftool: gui/search.tcl gui/config.tcl gui/difftool.tcl \
-	port/$(SYS)_platform.tcl gui/common.tcl gui/difflib.tcl
+	port/$(SYS)_platform.tcl gui/common.tcl gui/difflib.tcl \
+	gui/appState.tcl
 	cat gui/search.tcl port/$(SYS)_platform.tcl gui/config.tcl \
-	    gui/common.tcl gui/difflib.tcl gui/difftool.tcl > difftool
+	    gui/common.tcl gui/difflib.tcl gui/appState.tcl  \
+	    gui/difftool.tcl> difftool
 
 bugform: gui/search.tcl gui/config.tcl gui/bugform.tcl \
 	port/$(SYS)_platform.tcl gui/common.tcl gui/buglib.tcl
