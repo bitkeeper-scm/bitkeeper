@@ -105,7 +105,10 @@ do	P=`expr $P + 1`
 	bk bkd -d -p$P -c1 2>/dev/null
 done
 cd $HERE
-bk clone $Q bk://localhost:$P clone 2>/dev/null
+bk clone bk://localhost:$P clone 2> clone.out
+echo "ERROR-Can't get read lock on the repository." > ref
+cmp -s clone.out ref
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
 if [ -d clone ]; then echo clone failed to clean up; exit 1; fi
 echo OK
 echo $N Make sure clone works with existing read lock in source .....$NL
