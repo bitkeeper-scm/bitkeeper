@@ -6651,7 +6651,7 @@ getLinkBody(sccs *s,
 	u16 dsum = 0;
 	delta	*e;
 
-	unless (f) return 1;
+	unless (f) return 2;
 	
 	/*
 	 * What we want is to just checksum the symnlink.
