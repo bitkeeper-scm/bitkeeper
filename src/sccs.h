@@ -488,6 +488,11 @@ typedef struct patch {
 #define	PATCH_REMOTE	0x0002	/* patch is from remote file */
 #define	PATCH_META	0x0004	/* delta is metadata */
 
+/*
+ * The amount of clock drift we handle when generating keys.
+ */
+#define	CLOCK_DRIFT	(2*24*60*60)
+
 int	sccs_admin(sccs *sc, delta *d, u32 flgs, char *encoding, char *compress,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
@@ -624,6 +629,14 @@ int	sccs_mv(char *name, char *dest, int isDir, int isDelete);
 char	*_relativeName(char *gName,
 	    int isDir, int withsccs, int mustHaveRmarker, char *root);
 void	rcs(char *cmd, int argc, char **argv);
+char	*findBin();
+int	uniq_lock(void);
+int	uniq_unlock(void);
+int	uniq_open(void);
+time_t	uniq_time(char *key);
+int	uniq_update(char *key, time_t t);
+int	uniq_root(char *key);
+int	uniq_close(void);
 
 typedef	char **globv;
 globv	read_globs(FILE *f, globv oldglobs);

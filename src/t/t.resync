@@ -496,8 +496,6 @@ done
 bk commit $S -yab << EOF
 y
 EOF
-# make sure the time stamp is different
-nextsecond
 cd $HERE/copy/src
 for i in bbb.c ccc.c
 do

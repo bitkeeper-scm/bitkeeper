@@ -17,6 +17,7 @@ usage: sfiles [-aAcCdglpPrx] [directories]\n\n\
     -D		list directories with no (or empty) SCCS subdirs\n\
     -g		list the gfile name, not the sfile name\n\
     -l		list only locked files\n\
+    -k		update the host wide keys database\n\
     -p		(paranoid) opens each file to make sure it is an SCCS file\n\
 		but only if the pathname to the file is not ../SCCS/s.*\n\
     -P		(paranoid) opens each file to make sure it is an SCCS file\n\
@@ -37,10 +38,11 @@ usage: sfiles [-aAcCdglpPrx] [directories]\n\n\
  * and then we can easily check for the combinations we accept.
  */
 int	aFlg, cFlg, Cflg, dFlg, gFlg, lFlg, pFlg, Pflg, rFlg, vFlg, xFlg, uFlg;
-int	Dflg, Aflg, Rflg;
+int	Dflg, Aflg, Rflg, kFlg;
 int	error;
 FILE	*pending_cache;
 FILE	*id_cache;
+void	keys(char *file);
 MDBM	*idDB;
 int	dups;
 int	mixed;		/* running in mixed long/short mode */
@@ -68,7 +70,7 @@ main(int ac, char **av)
 usage:		fprintf(stderr, "%s", sfiles_usage);
 		exit(0);
 	}
-	while ((c = getopt(ac, av, "aAcCdDglpPrRuvx")) != -1) {
+	while ((c = getopt(ac, av, "aAcCdDgklpPrRuvx")) != -1) {
 		switch (c) {
 		    case 'a': aFlg++; break;
 		    case 'A': Aflg++; break;
@@ -77,6 +79,7 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		    case 'd': dFlg++; break;
 		    case 'D': Dflg++; break;
 		    case 'g': gFlg++; break;
+		    case 'k': kFlg++; break;
 		    case 'l': lFlg++; break;
 		    case 'p': pFlg++; break;
 		    case 'P': Pflg++; break;
@@ -133,6 +136,7 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 			}
 		}
 	}
+	if (kFlg) uniq_close();
 	purify_list();
 	exit(0);
 }
@@ -251,6 +255,10 @@ process(const char *filename, int mode)
 	s = strrchr(file, '/');
 	if (s) s++;
 	else s = file;
+	if (kFlg) {
+		keys(file);
+		return;
+	}
 	if (lFlg || cFlg || uFlg) {
 		*s = 'p';
 		if (exists(file)) {
@@ -322,6 +330,47 @@ isSccs(char *s)
 	return ((buf[0] == '\001') && (buf[1] == 'h') &&
 	    isdigit(buf[2]) && isdigit(buf[3]) && isdigit(buf[4]) &&
 	    isdigit(buf[5]) && isdigit(buf[6]) && (buf[7] == '\n'));
+}
+
+/*
+ * XXX - not lib safe.  Needs to have state reset.
+ */
+void
+keys(char *file)
+{
+	sccs	*s = sccs_init(file, INIT_NOCKSUM, 0);
+	delta	*d;
+	static	time_t	cutoff;
+	static	char *host;
+	static	first = 1;
+
+	unless (s) return;
+	unless (s->table) {
+		sccs_free(s);
+		return;
+	}
+	unless (cutoff) cutoff = time(0) - CLOCK_DRIFT;
+	unless (host) host = sccs_gethost();
+	unless (host) {
+		fprintf(stderr, "sfiles: can not figure out host name\n");
+		exit(1);
+	}
+	if (first) {
+		if (uniq_open()) exit(0);
+		first = 0;
+	}
+	for (d = s->table; d; d = d->next) {
+		if (d->date < cutoff) break;
+		if (d->hostname && streq(d->hostname, host)) {
+			char	buf[MAXPATH+100];
+
+			sccs_sdelta(s, sccs_ino(s), buf);
+			uniq_update(buf, d->date);
+			break;
+		}
+	}
+	sccs_free(s);
+	return;
 }
 
 /*
