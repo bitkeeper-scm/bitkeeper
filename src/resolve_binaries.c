@@ -156,7 +156,7 @@ resolve_binary(resolve *rs)
 		if (edit(rs)) return (-1);
 	}
 	if (sameFiles(n->local, n->remote)) {
-		automerge(rs);
+		automerge(rs, n);
 		ret = 1;
 	} else {
 		ret = resolve_loop("binary conflict", rs, b_funcs);
