@@ -91,7 +91,8 @@ if [ -f src/SCCS/s.foo ]
 then	echo Failed to remove file
 	exit 1
 fi
-if [ ! -f BitKeeper/deleted/SCCS/s..del-foo.c ]
+ls BitKeeper/deleted/SCCS | grep -q "^s..del-foo.c" 
+if [ $? -ne 0 ]
 then	echo Can not find deleted file
 	exit 1
 fi
@@ -173,13 +174,8 @@ grep -q 'Creating changeset for P' OUT || {
 	exit 1
 }
 cd SAVE/BitKeeper
-test -f deleted/SCCS/s..del-logging_ok || {
-	echo failed to delete logging ok file
-	find .
-	exit 1
-}
 test -f etc/SCCS/s.logging_ok || {
-	echo failed to create logging ok file
+	echo failed to preserve logging ok file
 	exit 1
 }
 echo OK
