@@ -92,9 +92,7 @@ notify()
 	}
 	if (size(notify_file) <= 0) return;
 	sprintf(notify_log, "%s/bk_notify%d", TMP_PATH, getpid());
-	sprintf(buf, "bk sccslog -r+ ChangeSet > %s", notify_log);
-	system(buf);
-	sprintf(buf, "bk cset -r+ | bk sccslog - >> %s", notify_log);
+	sprintf(buf, "bk cset -r+ | bk sccslog - > %s", notify_log);
 	system(buf);
 	f = fopen(notify_log, "ab");
 	status(0, f);

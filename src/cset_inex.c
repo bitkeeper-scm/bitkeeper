@@ -15,7 +15,7 @@ private void	unedit();
  * cset_inex.c - changeset include/exclude processing.
  *
  * Something like this:
- *	bk cset -l<revs> | while read file rev
+ *	bk cset -r<revs> | while read file rev
  *	do	bk get -e -i<rev> <file>
  *		bk delta <file>
  *	done
@@ -36,7 +36,7 @@ cset_inex(int flags, char *op, char *revs)
 
 	av[i = 0] = "bk";
 	av[++i] = "cset";
-	sprintf(buf, "-l%s", revs);
+	sprintf(buf, "-r%s", revs);
 	av[++i] = buf;
 	av[++i] = 0;
 	pid = spawnvp_rPipe(av, &fd);

@@ -317,8 +317,6 @@ logChangeSet(int l, char *rev, int quiet)
 	f = fopen(commit_log, "wb");
 	fprintf(f, "---------------------------------\n");
 	fclose(f);
-	sprintf(buf, "bk sccslog -r%s ChangeSet >> %s", rev, commit_log);
-	system(buf);
 	sprintf(buf, "bk cset -r+ | bk sccslog - >> %s", commit_log);
 	system(buf);
 	f = fopen(commit_log, "ab");

@@ -89,9 +89,13 @@ echo OK
 echo $N Check the cset -r1.2 output .................................$NL
 bk cset -hr1.2 > GOT
 cat > X <<EOF
-src/I am foo.c@1.0..1.1
-src/bar.c@1.0..1.1
-src/h.h@1.0..1.1
+ChangeSet@ChangeSet@1.2
+src/I am foo.c@src/I am foo.c@1.1
+src/I am foo.c@src/I am foo.c@1.0
+src/bar.c@src/bar.c@1.1
+src/bar.c@src/bar.c@1.0
+src/h.h@src/h.h@1.1
+src/h.h@src/h.h@1.0
 EOF
 bk undos X > WANT
 cmp -s GOT WANT || { echo failed; diff WANT GOT; exit 1; }

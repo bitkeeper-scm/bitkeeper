@@ -660,7 +660,7 @@ proc csetdiff2 {doDiffs} \
 	while {[gets $revs r] >= 0} {
 		set c [open "| bk sccslog -r$r ChangeSet" r]
 		filltext $c 0
-		set log [open "| bk cset -r$r | sort | bk sccslog -" r]
+		set log [open "| bk cset -Hr$r | sort | bk sccslog -" r]
 		filltext $log 0
 	}
 	busy 0
