@@ -135,6 +135,7 @@ commit_main(int ac, char **av)
 		free(cmd);
 	}
 	do_clean(s_cset, SILENT);
+	license();
 	if (doit) return (do_commit(av, opts, sym, pendingFiles, commentFile));
 	switch (comments_prompt(commentFile)) {
 	    case 0:
