@@ -2,7 +2,6 @@
 # Copright (c) 1999 Larry McVoy
 # %K%
 
-echo ------ Fully specified date range tests %M% -------
 echo $N Building up file with dates .................$NL
 R=1
 for D in '87/05/28 23:49:57' '97/05/28 23:49:57' '97/05/30 01:34:11' '97/06/23 01:33:45' '98/01/30 17:45:17'
@@ -30,6 +29,8 @@ DATE3=97/05/3001:34:11
 DATE4=97/06/2301:33:45
 DATE5=98/01/3017:45:17
 REV=1.2
+
+echo -------------- fully specified date range:
 echo $N Test exact date matches .....................$NL
 X=`prs -c${DATE1} FILE | head -1`
 if [ "$X" != "======== FILE 1.1 ========" ]
@@ -102,7 +103,7 @@ fi
 echo OK
 # end of fully specified date ranges (partially specifed below revisions)
 
-echo ---------- Revision range tests ------------
+echo -------------- revision range:
 REV1=1.1
 REV2=1.2
 REV3=1.3
@@ -174,7 +175,7 @@ fi
 echo OK
 # ---------------------- end of revision ranges
 
-echo ------ Partially specified date range tests -------
+echo -------------- partially specified date range:
 echo $N Everything before the end of 1987 ...........$NL
 X=`prs -c..87 FILE | head -1`
 if [ "$X" != "======== FILE 1.1 ========" ]
@@ -242,7 +243,7 @@ then	echo failed with bracket - got bad range $X; exit 1
 fi
 echo OK
 
-echo ---------- Multiple file range tests ------------
+echo -------------- in multiple files:
 # Make sure the same thing works with multiple files
 # We're testing to make sure that splitting dates get unsplit across each file.
 # Test D..D and (D,D]
@@ -281,7 +282,7 @@ cmp -s PRS PRS2
 if [ $? -ne 0 ]; then echo Failed.; diff PRS PRS2; exit 1; fi
 echo OK
 
-echo ---------- Misc date tests ------------
+echo -------------- misc:
 echo $N Getting the first delta with -c .............$NL
 ${RM} -f FILE
 get $S -c90 FILE

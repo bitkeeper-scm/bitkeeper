@@ -2,7 +2,6 @@
 # Copright (c) 1999 Larry McVoy
 # %K%
 
-echo ---------- relative path test %M% ------------
 echo $N checking pathname w/o cset file .............$NL
 ${RM} -rf BitKeeper SCCS/s.ChangeSet
 echo "1234" > path

@@ -4,24 +4,20 @@
 # %K%
 
 if [ X"$*" != X ]
-then	for i in $*
-	do	cat setup $i cleanup | sh
-		EXIT=$?
-		if [ $EXIT != 0 ]
-		then	echo Test exited with error $EXIT
-			exit $EXIT
-		fi
-	done
-else
-	for i in t???
-	do	cat setup $i cleanup | sh
-		EXIT=$?
-		if [ $EXIT != 0 ]
-		then	echo Test exited with error $EXIT
-			exit $EXIT
-		fi
-	done
+then	list="$*"
+else	list=`echo t.*`
 fi
+
+for i in $list
+do	n=${i#t.}
+	echo ------------ $n tests
+	cat setup $i cleanup | sh
+	EXIT=$?
+	if [ $EXIT != 0 ]
+	then	echo Test exited with error $EXIT
+		exit $EXIT
+	fi
+done
 echo ------------------------------------------------
 echo All requested tests passed, must be my lucky day
 echo ------------------------------------------------

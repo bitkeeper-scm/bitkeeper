@@ -2,7 +2,6 @@
 # Copright (c) 1999 Larry McVoy
 # %K%
 
-echo ---- Check sccsmv %M% ------
 cset -is .
 echo $N Test sccsmv w/ p locked file ................$NL
 rm -rf A B C D

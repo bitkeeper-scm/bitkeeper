@@ -2,7 +2,6 @@
 # Copright (c) 1999 Larry McVoy
 # %K%
 
-echo ---------------- Get tests %M% --------------------
 ${RM} -rf bar SCCS
 cset -is .
 ${ECHO} Hallo > date

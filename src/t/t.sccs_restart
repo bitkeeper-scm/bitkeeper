@@ -2,7 +2,6 @@
 # Copright (c) 1999 Larry McVoy
 # %K%
 
-echo ---------- sccs_restart tests %M% ------------
 cset -is .
 ${RM} -rf FILE SCCS
 echo $N Check ci -i -l ..............................$NL

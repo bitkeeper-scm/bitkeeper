@@ -2,7 +2,6 @@
 # Copright (c) 1999 Larry McVoy
 # %K%
 
-echo ---------- Rmdel tests %M% ------------
 cset -is .
 ${RM} -rf FILE SCCS
 R=1

@@ -2,7 +2,6 @@
 # Copright (c) 1999 Larry McVoy
 # %K%
 
-echo --------------- Branch tests %M% ------------------
 echo $N Set the default branch ......................$NL
 ls > branch
 ci -i $Q branch

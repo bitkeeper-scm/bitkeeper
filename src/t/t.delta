@@ -2,7 +2,6 @@
 # Copright (c) 1999 Larry McVoy
 # %K%
 
-echo ---------------- Delta tests %M% ------------------
 echo $N Make sure delta -i works ....................$NL
 ${ECHO} hi there > init
 delta $S -i init

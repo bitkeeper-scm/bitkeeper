@@ -2,7 +2,6 @@
 # Copright (c) 1999 Larry McVoy
 # %K%
 
-echo ---------------- clean tests %M% ------------------
 echo some text >X
 echo other text >Y
 delta $Q -i X Y

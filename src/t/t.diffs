@@ -2,7 +2,6 @@
 # Copright (c) 1999 Larry McVoy
 # %K%
 
-echo ---------- diffs tests %M% ------------
 ${ECHO} 1.1 > Mydiffs
 admin -q -n -iMydiffs Mydiffs
 ${RM} -f Mydiffs

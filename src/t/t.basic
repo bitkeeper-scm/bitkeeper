@@ -14,7 +14,6 @@ Hi there, this is file foo.
 Hi there, this is file foo.
 EOF
 mv foo SAVE
-echo --------------- Basic tests %M% -------------------
 ATT=no
 for D in "" A/ A/A/A/A/
 do	case "$D" in
@@ -130,7 +129,7 @@ if [ ! -f bar/s.foo ]; then echo failed on bar/s.foo; exit 1; fi
 if [ ! -f bar/blech/s.foo ]; then echo failed on bar/blech/s.foo; exit 1; fi
 echo OK
 
-echo ---------------- sfiles tests ------------------
+echo ------------ sfiles tests
 echo $N Check the list of SCCS files ................$NL
 sfiles | sort > SFILES
 sort <<EOF > LIST

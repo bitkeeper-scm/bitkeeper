@@ -2,7 +2,6 @@
 # Copright (c) 1999 Larry McVoy
 # %K%
 
-echo ------------- Permissions tests %M% ---------------
 echo $N Check in an executable file .................$NL
 touch prog
 chmod 0751 prog

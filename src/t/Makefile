@@ -3,7 +3,7 @@
 # Copyright (c) 1999 BitMover, Inc.
 # %K%
 all: 
-	if [ ! -f t001 ]; then bk co -q; fi
+	-bk co -q
 	./doit
 
 clean:

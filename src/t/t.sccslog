@@ -2,7 +2,6 @@
 # Copright (c) 1999 Larry McVoy
 # %K%
 
-echo ---------- sccslog tests %M% ------------
 cset -is .
 ${RM} -rf a
 mkdir -p a/b/c

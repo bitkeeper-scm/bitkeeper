@@ -2,7 +2,6 @@
 # Copright (c) 1999 Larry McVoy
 # %K%
 
-echo ---------- Include/exclude tests %M% ------------
 admin $Q -n include
 touch big_i
 for i in 1 2 3 4 5 6 7 8 9 10
@@ -251,7 +250,6 @@ delta -s -y'' i
 get -s -e -i1.1.2.1,1.1.3.2 i
 ${ECHO} 1.3 >> i
 delta -s -y'' i
-# echo ----------- Branch w/ include -------------
 get -s -r1.1.2.1 i
 ${CAT} >big_i <<EOF
 1.1
@@ -259,14 +257,12 @@ A
 EOF
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg2 failure 1; exit 1; fi
-# echo ----------- Branch w/o include -------------
 get -s -r1.1.3.2 i
 ${CAT} >big_i <<EOF
 1.1
 EOF
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg2 failure 2; exit 1; fi
-# echo ----------- Result --------------
 get -s i
 ${CAT} >big_i <<EOF
 1.1
@@ -315,7 +311,6 @@ delta -s -y'' i
 get -s -e -i1.1.2.2,1.1.3.1 i
 ${ECHO} 1.3 >> i
 delta -s -y'' i
-# echo ----------- Branch w/ include -------------
 get -s -r1.1.3.1 i
 ${CAT} >big_i <<EOF
 1.1
@@ -323,14 +318,12 @@ A
 EOF
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg3 failure 1; exit 1; fi
-# echo ----------- Branch w/o include -------------
 get -s -r1.1.2.2 i
 ${CAT} >big_i <<EOF
 1.1
 EOF
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg3 failure 2; exit 1; fi
-# echo ----------- Result --------------
 get -s i
 ${CAT} >big_i <<EOF
 1.1
@@ -388,7 +381,6 @@ EOF
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg4 failure 0; exit 1; fi
 delta -s -y'' i
-# echo ----------- Branch w/ include -------------
 get -s -r1.1.3.1 i
 ${CAT} >big_i <<EOF
 1.1
@@ -396,12 +388,10 @@ A
 EOF
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg4 failure 1; exit 1; fi
-# echo ----------- Branch w/ exclude -------------
 get -s -r1.1.4.1 i
 ${ECHO} 1.1 > big_i
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg4 failure 2; exit 1; fi
-# echo ----------- Result --------------
 get -s i
 ${CAT} >big_i <<EOF
 1.1
@@ -447,18 +437,15 @@ delta -s -y'' i
 get -s -e -i1.1.2.1,1.1.3.1 i
 ${ECHO} 1.3 >> i
 delta -s -y'' i
-# echo ----------- Branch w/ include -------------
 get -s -r1.1.3.1 i
 ${ECHO} 1.1 > big_i
 ${ECHO} A >> big_i
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg5 failure 1; exit 1; fi
-# echo ----------- Branch w/ exclude -------------
 get -s -r1.1.2.1 i
 ${ECHO} 1.1 > big_i
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg5 failure 2; exit 1; fi
-# echo ----------- Result --------------
 get -s i
 ${CAT} >big_i <<EOF
 1.1
@@ -496,20 +483,17 @@ delta -s -y'' i
 get -s -e -i1.1.1.1 -x1.2 i
 ${ECHO} 1.3 >> i
 delta -s -y'' i
-# echo ----------- Exclude and include  -------------
 get -s i
 ${ECHO} 1.1 > big_i
 ${ECHO} A >> big_i
 ${ECHO} 1.3 >> big_i
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo xxg1 failure 1; exit 1; fi
-# echo ----------- Result --------------
 get -s -x1.3 i
 ${ECHO} 1.1 > big_i
 ${ECHO} 1.2 >> big_i
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo xxg1 failure 2; exit 1; fi
-# echo ----------- Exclude excluded  -------------
 echo OK
 # The above should show the result of an excluded branch
 # not including or excluding other nodes

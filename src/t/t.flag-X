@@ -4,7 +4,6 @@
 
 # Do not use this feature.
 # This features is likely to be removed in the future
-echo ---- Handling of X flag %M% ------
 echo $N Test x flag .................................$NL
 echo "echo this is a shell script > CMP1" > test_script.sh
 admin $Q -n -fX -itest_script.sh test_script.sh

@@ -2,7 +2,6 @@
 # Copright (c) 1999 Larry McVoy
 # %K%
 
-echo --------------- Symlink tests %M% -------------------
 echo $N Create a symlink ............................$NL
 umask 0
 cset -is .

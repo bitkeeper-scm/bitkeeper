@@ -2,7 +2,6 @@
 # Copright (c) 1999 Larry McVoy
 # %K%
 
-echo ---- Handling of E flag %M% ------
 echo $N Test add E flag .............................$NL
 echo 'XX@W@YY' | sed s/@/%/g > test.c
 echo 'YY@W@ZZ' | sed s/@/%/g >> test.c

@@ -2,7 +2,6 @@
 # Copright (c) 1999 Larry McVoy
 # %K%
 
-echo ---------- Binary/gzipped tests %M% ------------
 ${RM} -rf foo SCCS A
 mkdir SCCS; cset -is .
 echo $N Trying to check in some binary data .........$NL
@@ -136,7 +135,7 @@ co $Q gzipped
 cmp -s ll gzipped
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
-echo $N Trying to clean gzipped data ..............$NL
+echo $N Trying to clean gzipped data ................$NL
 co $Q -l gzipped
 clean gzipped
 if [ $? -ne 0 ]; then echo Clean failed ; exit 1; fi

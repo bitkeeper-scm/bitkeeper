@@ -4,7 +4,6 @@
 
 BASE=37
 BASE2=`expr $BASE + 71`
-echo ---------- Admin tests %M% ------------
 ${RM} -rf foo SCCS A
 mkdir SCCS; cset -is .
 ${CAT} > SAVE <<EOF

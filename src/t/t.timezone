@@ -2,7 +2,6 @@
 # Copright (c) 1999 Larry McVoy
 # %K%
 
-echo -------------- Time Zone tests %M% ----------------
 echo $N Checking Delta in Negative Time zone ........$NL
 echo "some data" > TIME
 TZ=UTC+8 delta $S -i  TIME
