@@ -25,7 +25,7 @@ typedef struct {
 	u32     gfile:1;     		/* print gfile name	*/
 	u32     Aflg:1;			/* use with -p show	*/
 					/* all pending deltas	*/
-	u32     Cflg:1;     		/* want file@rev format	*/
+	u32     Cflg:1;     		/* want file<BK_FS>rev format	*/
 	u32     splitRoot:1;   		/* split root mode	*/
 	u32     dfile:1;   		/* use d.file to find 	*/
 					/* pending delta	*/
@@ -792,7 +792,8 @@ error:				perror("output error");
 		free(sfile);
 	}
 	if (rev) {
-		if (fprintf(opts.out, "@%s", rev) != (strlen(rev) + 1)) {
+		int rlen = strlen(rev) + 1;
+		if (fprintf(opts.out, "%c%s", BK_FS, rev) != rlen) {
 			goto error;
 		}
 	}

@@ -79,19 +79,19 @@ echo OK
 echo $N Check the list of pending files .............................$NL
 bk sfind -s,,p -C | sort > SFILES
 sort <<EOF > LIST
-SCCS/s.foo@1.1
-SCCS/s.s.foo@1.1
-bar/SCCS/s.s.foo@1.1
-bar/blech/SCCS/s.s.foo@1.1
+SCCS/s.foo${BK_FS}1.1
+SCCS/s.s.foo${BK_FS}1.1
+bar/SCCS/s.s.foo${BK_FS}1.1
+bar/blech/SCCS/s.s.foo${BK_FS}1.1
 EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 # XXX -C cannot be used with file lists.
 #bk sfind -C - < .sfind | sort > SFILES
 #sort <<EOF > LIST
-#SCCS/s.ChangeSet@1.1
-#SCCS/s.s.foo@1.1
-#SCCS/bar/blech/s.s.foo@1.1
+#SCCS/s.ChangeSet${BK_FS}1.1
+#SCCS/s.s.foo${BK_FS}1.1
+#SCCS/bar/blech/s.s.foo${BK_FS}1.1
 #EOF
 #cmp -s SFILES LIST
 #if [ $? -ne 0 ]; then echo list failed; diff SFILES LIST; exit 1; fi
@@ -175,7 +175,7 @@ echo OK
 echo $N Check the list of pending files .............................$NL
 bk sfind -s,,p -C | sort > SFILES
 sort <<EOF > LIST
-bar/SCCS/s.s.foo@1.3
+bar/SCCS/s.s.foo${BK_FS}1.3
 EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
@@ -183,8 +183,8 @@ echo OK
 echo $N Check the list of pending files with -A .....................$NL
 bk sfind -s,,p -CA | sort > SFILES
 sort <<EOF > LIST
-bar/SCCS/s.s.foo@1.2
-bar/SCCS/s.s.foo@1.3
+bar/SCCS/s.s.foo${BK_FS}1.2
+bar/SCCS/s.s.foo${BK_FS}1.3
 EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi

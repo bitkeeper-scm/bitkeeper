@@ -86,7 +86,7 @@ test -f $HERE/BK_PENDING || {
 	echo failed to copy the file
 	exit 1
 }
-test SCCS/s.c.c@1.1 = `cat $HERE/BK_PENDING` || {
+test SCCS/s.c.c${BK_FS}1.1 = `cat $HERE/BK_PENDING` || {
 	echo bad file list
 	cat $HERE/BK_PENDING
 	exit 1
@@ -507,7 +507,7 @@ echo "post-incoming trigger: user=\$BK_REMOTE_USER"
 REV=\`cat RESYNC/BitKeeper/etc/csets-in\`
 echo "incoming rev=\$REV"
 for i in $REV
-do	echo ChangeSet@$i
+do	echo ChangeSet${BK_FS}$i
 done | bk prs -h -
 exit 0
 EOF

@@ -149,7 +149,7 @@ proc dotFile {{line {}}} \
 proc getFiles {revs file_rev} \
 {
 	global	fileCount lastFile Files line2File file_start_stop
-	global  RealFiles fmenu
+	global  RealFiles fmenu file_old_new bk_fs
 
 	busy 1
 
@@ -183,8 +183,8 @@ proc getFiles {revs file_rev} \
 			incr line
 			set line2File($line) $fileCount
 			set Files($fileCount) $line
-			regexp  "(.*)@(.*)@(.*)" $buf dummy name oname rev
-			set RealFiles($fileCount) "  $name@$rev"
+			regexp  $file_old_new $buf dummy name oname rev
+			set RealFiles($fileCount) "  $name$bk_fs$rev"
 			set buf "$oname@$rev"
 			if {[string first $file_rev $buf] >= 0} {
 				set found $fileCount

@@ -944,10 +944,10 @@ doSet(sccs *sc)
 	for (d = sc->table; d; d = d->next) {
 		if (d->flags & D_SET) {
 		    	if (copts.historic) {
-				printf("%s@%s@%s\n", sc->gfile,
-							d->pathname, d->rev);
+				printf("%s%c%s%c%s\n", sc->gfile, BK_FS,
+						d->pathname, BK_FS, d->rev);
 			} else {
-				printf("%s@%s\n", sc->gfile, d->rev);
+				printf("%s%c%s\n", sc->gfile, BK_FS, d->rev);
 			}
 		}
 	}

@@ -6,7 +6,7 @@ proc bk_init {} \
 {
 	global env dev_null tmp_dir wish  
 	global bithelp difftool helptool sccstool sdiffw bk_prs file_rev
-	global file_start_stop file_stop line_rev bk_fs keytmp
+	global file_start_stop file_stop line_rev bk_fs file_old_new keytmp
 
 	# init for WIN32 env
 	set sdiffw [list "diff" "-W" "1" "-y" "--" ]
@@ -18,9 +18,12 @@ proc bk_init {} \
 	set tmp_dir $env(TEMP)
 	# XXX keytmp should match findTmp() in finddir.c
 	set keytmp "$tmp_dir"
-	set file_rev {(.*)@([0-9].*)}
-	set file_start_stop {(.*)@(.*)\.\.(.*)}
-	set file_stop {(.*)@([0-9.]+$)}
-	set line_rev {([^@]*)@(.*)}
-	set bk_fs @
+
+	# Stuff related to the bk field seperator: ^A 
+	set bk_fs 
+	set file_rev {(.*)([0-9].*)}
+	set file_start_stop {(.*)(.*)\.\.(.*)}
+	set file_stop {(.*)([0-9.]+$)}
+	set file_old_new {(.*)(.*)(.*)} 
+	set line_rev {([^]*)(.*)}
 }

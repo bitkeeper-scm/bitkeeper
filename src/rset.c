@@ -109,7 +109,7 @@ isNullFile(char *rev, char *file)
 }
 
 /*
- * Convert root/start/end keys to sfile@path1@rev1@path2@rev2 format
+ * Convert root/start/end keys to sfile^Apath1^Arev1^Apath2^Arev2 format
  */
 private void
 process(char *root, char *start, char *end,
@@ -118,7 +118,7 @@ process(char *root, char *start, char *end,
 	sccs	*s;
 	delta 	*d1, *d2;
 	char	*rev1, *rev2, *path1, *path2;
-	char	c = '@'; /* field seperator */
+	char	c = BK_FS; /* field seperator */
 
 	s  = sccs_keyinit(root, INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB);
 	unless (s) {
@@ -210,10 +210,10 @@ rel_diffs(MDBM *db1, MDBM *db2, MDBM *idDB,
 			strcpy(parents, rev1);
 		}
 		unless (opts.show_path) {
-			printf("ChangeSet@%s..%s\n", parents, rev2);
+			printf("ChangeSet%c%s..%s\n", BK_FS, parents, rev2);
 		} else {
-			printf("ChangeSet@ChangeSet@%s@ChangeSet@%s\n",
-								parents, rev2);
+			printf("ChangeSet%cChangeSet%c%s%cChangeSet%c%s\n",
+				BK_FS, BK_FS, parents, BK_FS, BK_FS, rev2);
 		}
 	}
 	for (kv = mdbm_first(db1); kv.key.dsize != 0; kv = mdbm_next(db1)) {
@@ -260,9 +260,9 @@ rel_list(MDBM *db, MDBM *idDB, char *rev, options opts)
 
 	unless (opts.hide_cset) {
 		unless (opts.show_path) {
-			printf("ChangeSet@%s\n", rev);
+			printf("ChangeSet%c%s\n", BK_FS, rev);
 		} else {
-			printf("ChangeSet@ChangeSet@%s\n", rev);
+			printf("ChangeSet%cChangeSet%c%s\n", BK_FS, BK_FS, rev);
 		}
 	}
 	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {

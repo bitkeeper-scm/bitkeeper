@@ -311,7 +311,7 @@ uncommitted(opts opts)
 	}
 	while (fnext(buf, in)) {
 		chop(buf);
-		s = strrchr(buf, '@');
+		s = strrchr(buf, BK_FS);
 		assert(s);
 		*s++ = 0;
 		cmds[i = 0] = "bk";

@@ -8330,7 +8330,8 @@ out:		sccs_unlock(s, 'z');
 		return (-1);
 	}
 	/*
-	 * Disallow '@' character in file name.
+	 * Disallow BK_FS character in file name.
+	 * Some day we may allow caller to escape the BK_FS character
 	 */
 	t = basenm(s->sfile);
 	if (strchr(t, BK_FS)) {

@@ -42,6 +42,9 @@ changes_main(int ac, char **av)
 	    rev, indent, tagOnly, av[optind] && streq("-", av[optind])));
 }
 
+/*
+ * XXX May need to change the @ to BK_FS in the following dspec
+ */
 #define	DSPEC	":DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\n$each(:C:){  (:C:)\n}$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n"
 #define	TSPEC	"$if(:TAG:){:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\n$each(:C:){  (:C:)\n}$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n}"
 
@@ -66,7 +69,7 @@ doit(int verbose, char *rev, int indent, int tagOnly, int dash)
 		gettemp(dashfile, "dash");
 		f = fopen(dashfile, "w");
 		while (fgets(cmd, sizeof(cmd), stdin)) {
-			fprintf(f, "ChangeSet@%s", cmd);
+			fprintf(f, "ChangeSet%c%s", BK_FS, cmd);
 		}
 		fclose(f);
 		sprintf(cmd, "bk prs -Yhd'%s' - < %s", spec, dashfile);

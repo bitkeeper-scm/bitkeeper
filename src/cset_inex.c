@@ -69,7 +69,7 @@ cset_inex(int flags, char *op, char *revs)
 		}
 #endif
 		chop(buf);
-		t = strchr(buf, '@');
+		t = strchr(buf, BK_FS);
 		assert(t);
 		*t = 0;
 		if (file[0]) {
@@ -299,7 +299,7 @@ undoit(MDBM *m)
 	}
 	while (fgets(buf, sizeof(buf), f)) {
 		chop(buf);
-		t = strchr(buf, '@');
+		t = strchr(buf, BK_FS);
 		assert(t);
 		*t = 0;
 		unless (mdbm_fetch_str(m, buf)) continue;

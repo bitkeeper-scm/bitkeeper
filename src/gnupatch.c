@@ -222,16 +222,16 @@ gnupatch_main(int ac, char **av)
 	while (fgets(buf, sizeof(buf), stdin)) {
 		chop(buf);
 		path0 = buf;
-		path1 = strchr(buf, '@');
+		path1 = strchr(buf, BK_FS);
 		assert(path1);
 		*path1++ = 0;
-		rev1 = strchr(path1, '@');
+		rev1 = strchr(path1, BK_FS);
 		assert(rev1);
 		*rev1++ = 0;
-		path2 = strchr(rev1, '@');
+		path2 = strchr(rev1, BK_FS);
 		assert(path2);
 		*path2++ = 0;
-		rev2 = strchr(path2, '@');
+		rev2 = strchr(path2, BK_FS);
 		assert(rev2);
 		*rev2++ = 0;
 		if (header) print_entry(path1, rev1, path2, rev2);

@@ -101,6 +101,11 @@ again:
 		localName2bkName(buf, buf);
 		debug((stderr, "sfiles::AV got %s\n", buf));
 	}
+
+	/*
+	 * XXX TODO someday we'll handle escaped BK_FS in the filename
+	 * But why would anyone want ^A in their file name ?
+	 */
 	if (flags & SF_HASREVS)  {
 		char	*r = strrchr(buf, BK_FS);
 

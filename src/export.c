@@ -10,7 +10,7 @@ export_main(int ac,  char **av)
 	char	file_rev[MAXPATH];
 	char	buf[MAXLINE], buf1[MAXPATH];
 	char	include[MAXLINE] = "";
-	char	exclude[MAXLINE] =  "| egrep -v '.*@BitKeeper/[^@]*@[^@]*$' ";
+	char	exclude[MAXLINE];
 	char	*src, *dst;
 	char	*p, *q;
 	char	src_path[MAXPATH], dst_path[MAXPATH];
@@ -23,6 +23,10 @@ export_main(int ac,  char **av)
 		system("bk help export");
 		return (1);
 	}
+
+	sprintf(exclude,
+		 "| egrep -v '.*%cBitKeeper/[^%c]*%c[^%c]*$' ",
+		 BK_FS, BK_FS, BK_FS, BK_FS);
 
 	while ((c = getopt(ac, av, "d:hkt:Twvi|x|r:")) != -1) {
 		switch (c) {
@@ -112,7 +116,7 @@ usage:			system("bk help -s export");
 		struct	stat sb;
 
 		chop(buf);
-		p = strchr(buf, '@');
+		p = strchr(buf, BK_FS);
 		assert(p);
 		*p++ = '\0';
 		if (streq(buf, "ChangeSet")) continue;
@@ -121,7 +125,7 @@ usage:			system("bk help -s export");
 		s = sccs_init(t, SILENT, 0);
 		free(t);
 		assert(s && s->tree);
-		q = strchr(p, '@'); 
+		q = strchr(p, BK_FS); 
 		assert(q);
 		*q++ = '\0';
 		d = findrev(s, q);

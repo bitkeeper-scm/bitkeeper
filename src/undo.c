@@ -193,9 +193,9 @@ mk_list(char *rev_list, char *rev)
 	DB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	assert(f); assert(DB);
 	while (fgets(buf, sizeof(buf), f)) {
-		p = strchr(buf, '@');
+		p = strchr(buf, BK_FS);
 		assert(p);
-		*p = 0; /* remove @rev part */
+		*p = 0; /* remove rev part */
 		mdbm_store_str(DB, buf, "", MDBM_INSERT);
 	}
 	fclose(f);

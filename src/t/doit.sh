@@ -123,6 +123,7 @@ setup_env()
 	check_w
 
 	unset BK_BIN
+	BK_FS=
 	BK_LICENSE=ACCEPTED
 	BK_REGRESSION=$TST_DIR/.regression-$USER
 	BK_TMP=$BK_REGRESSION/.tmp
@@ -188,7 +189,7 @@ init_main_loop()
 	ls -a $TMP > $TMP/T.${USER}
 
 	export PATH PLATFORM DEV_NULL TST_DIR CWD BK_LICENSE
-	export USER BK_REGRESSION BK_TMP NL N Q S CORES
+	export USER BK_FS BK_REGRESSION BK_TMP NL N Q S CORES
 }
 
 #

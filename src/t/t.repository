@@ -66,9 +66,9 @@ bk -R sfiles -C | bk commit $Q -ycmt3 -
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 cat > X <<EOF
-ChangeSet@ChangeSet@1.2@ChangeSet@1.3
-src/h.h@src/h.h@1.1@src/h.h@1.2
-src/t.c@src/t.c@1.0@src/t.c@1.1
+ChangeSet${BK_FS}ChangeSet${BK_FS}1.2${BK_FS}ChangeSet${BK_FS}1.3
+src/h.h${BK_FS}src/h.h${BK_FS}1.1${BK_FS}src/h.h${BK_FS}1.2
+src/t.c${BK_FS}src/t.c${BK_FS}1.0${BK_FS}src/t.c${BK_FS}1.1
 EOF
 bk undos X > CMP1
 bk -R rset -hr1.2,1.3 > CMP2
@@ -88,9 +88,9 @@ bk commit $Q -ycmt4 -f$HERE/flist
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 cat > X <<EOF
-ChangeSet@ChangeSet@1.3@ChangeSet@1.4
-src/h.h@src/h.h@1.2@src/h.h@1.3
-src/q.c@src/q.c@1.0@src/q.c@1.1
+ChangeSet${BK_FS}ChangeSet${BK_FS}1.3${BK_FS}ChangeSet${BK_FS}1.4
+src/h.h${BK_FS}src/h.h${BK_FS}1.2${BK_FS}src/h.h${BK_FS}1.3
+src/q.c${BK_FS}src/q.c${BK_FS}1.0${BK_FS}src/q.c${BK_FS}1.1
 EOF
 bk undos X > CMP1
 bk -R rset -hr1.3,1.4 > CMP2

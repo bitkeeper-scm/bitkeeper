@@ -357,12 +357,13 @@ do_commit(char **av, c_opts opts, char *sym,
 			 * Skip the logging_ok files
 			 * We'll add it back when we exit this loop
 			 */
-			if (strneq(s_logging_ok, buf, len) && buf[len] == '@') {
+			if (strneq(s_logging_ok, buf, len) &&
+							buf[len] == BK_FS) {
 				continue;
 			}
 			fputs(buf, f2);
 		}
-		fprintf(f2, "%s@+\n", s_logging_ok); 
+		fprintf(f2, "%s%c+\n", s_logging_ok, BK_FS); 
 		fclose(f);
 		fclose(f2);
 	}
