@@ -421,25 +421,6 @@ cmdlog_exit(void)
 	if (cmdlog_buffer[0]) cmdlog_end(LOG_BADEXIT);
 }
 
-void
-cmdlog_start(char **av)
-{
-	int	i, len = 0;
-
-	cmdlog_buffer[0] = 0;
-	unless (bk_proj && bk_proj->root) return;
-	for (i = 0; av[i]; i++) {
-		len += strlen(av[i]);
-		if (len >= sizeof(cmdlog_buffer)) continue;
-		if (i) {
-			strcat(cmdlog_buffer, " ");
-			strcat(cmdlog_buffer, av[i]);
-		} else {
-			strcpy(cmdlog_buffer, av[i]);
-		}
-	}
-}
-
 private	struct {
 	char	*name;
 	int	len;
@@ -450,6 +431,37 @@ private	struct {
 	{"remote", 6 },
 	{ 0, 0 },
 };
+
+void
+cmdlog_start(char **av)
+{
+	int	i, repo = 0, len = 0;
+
+	cmdlog_buffer[0] = 0;
+	unless (bk_proj && bk_proj->root) return;
+
+	for (i = 0; av[i]; i++) {
+		len += strlen(av[i]);
+		if (len >= sizeof(cmdlog_buffer)) continue;
+		if (i) {
+			strcat(cmdlog_buffer, " ");
+			strcat(cmdlog_buffer, av[i]);
+		} else {
+			strcpy(cmdlog_buffer, av[i]);
+		}
+	}
+	for (i = 0; repolog[i].name; i++)
+		if (strneq(repolog[i].name, av[0], strlen(repolog[i].name))) {
+			repo = 1;
+			break;
+		    }
+
+	if ( repo || strneq(cmdlog_buffer, "commit", 6) ) {
+		int ret = trigger(cmdlog_buffer, "pre", 0);
+		unless (ret == 0) exit(ret);
+	}
+
+}
 
 void
 cmdlog_end(int ret)
@@ -466,6 +478,8 @@ cmdlog_end(int ret)
 			break;
 		}
 	}
+	if (repo || strneq(cmdlog_buffer, "commit", 6))
+		trigger(cmdlog_buffer, "post", ret);
 	if (repo) {
 		file = "repo_log";
 	} else {

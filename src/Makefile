@@ -58,7 +58,7 @@ OBJ	= abort.o adler32.o admin.o bkd.o bkd_cd.o bkd_client.o \
 	  sfiles.o sfio.o sids.o sinfo.o slib.o smoosh.o \
 	  status.o stripdel.o takepatch.o undo.o undos.o \
 	  unique.o unedit.o unlink.o unlock.o unwrap.o user.o utils.o \
-	  version.o what.o zgets.o zone.o license.o
+	  version.o what.o zgets.o zone.o license.o trigger.o
 
 MDBMOBJ	= mdbm/mdbm.o mdbm/hash.o mdbm/debug.o mdbm/byte_order.o
 ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
@@ -604,6 +604,7 @@ spawn.o:	port/spawn.c $(H)
 status.o:	status.c $(H)
 stripdel.o:	stripdel.c $(H) range.h
 takepatch.o:	takepatch.c $(H) $(Z)
+trigger.o:	trigger.c $(H)
 undo.o:		undo.c $(H)
 undos.o:	undos.c
 unedit.o:	unedit.c $(H)
