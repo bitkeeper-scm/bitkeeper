@@ -404,6 +404,10 @@ file(char *f)
 	char    *s, *sfile, state[5] = "    ";
 	sccs	*sc = 0;
 
+	if (strlen(f) >= sizeof(name)) {
+		fprintf(stderr, "sfiles: name too long: [%s]\n", f);
+		return;
+	}
 	strcpy(name, f);
 	s = rindex(name, '/');
 	/*

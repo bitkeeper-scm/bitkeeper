@@ -481,7 +481,7 @@ private	struct {
 int
 cmdlog_start(char **av)
 {
-	int	i, len = 0, cflags = 0;
+	int	i, len, cflags = 0;
 
 	cmdlog_buffer[0] = 0;
 	cmdlog_repo = 0;
@@ -499,8 +499,8 @@ cmdlog_start(char **av)
 		sprintf(cmdlog_buffer,
 		    "%s:%s", sccs_gethost(), fullname(bk_proj->root, 0));
 	}
-	for (i = 0; av[i]; i++) {
-		len += strlen(av[i]);
+	for (len = 1, i = 0; av[i]; i++) {
+		len += strlen(av[i]) + 1;
 		if (len >= sizeof(cmdlog_buffer)) continue;
 		if (i || cmdlog_repo) {
 			strcat(cmdlog_buffer, " ");
