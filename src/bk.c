@@ -1139,53 +1139,21 @@ find_prog(char *prog)
 }
 
 char *
-find_wish()
+find_wish(void)
 {
-	char *p, *s;
-	char path[MAXLINE];
 	static char wish_path[MAXPATH];
-	int more = 1;
 
-#ifdef	__APPLE__
-	strcpy(wish_path,
-	    "/Applications/Wish Shell.app/Contents/MacOS/Wish Shell");
-	if (exists(wish_path)) return (wish_path);
-#endif
-	p  = getenv("PATH");
-	if (p) {;
-		sprintf(path, "%s%c/usr/local/bin", p, PATH_DELIM);
-		localName2bkName(path, path);
-	} else {
-		strcpy(path, "/usr/local/bin");
+	sprintf(wish_path, "%s/tk/bin/wish", bin);
+	if (exists(wish_path)) {
+		safe_putenv("TCL_LIBRAY=%s/tk/lib/tcl8.3", bin);
+		safe_putenv("TK_LIBRAY=%s/tk/lib/tk8.3", bin);
+		return (wish_path);
 	}
-	p = path;
-	while (more) {
-		for (s = p; (*s != PATH_DELIM) && (*s != '\0');  s++);
-		if (*s == '\0') more = 0;
-		*s = '\0';
-		sprintf(wish_path, "%s/wish83%s", p, EXE);
-		if (exists(wish_path)) return (wish_path);
-		sprintf(wish_path, "%s/wish8.3%s", p, EXE);
-		if (exists(wish_path)) return (wish_path);
-		sprintf(wish_path, "%s/wish82%s", p, EXE);
-		if (exists(wish_path)) return (wish_path);
-		sprintf(wish_path, "%s/wish8.2%s", p, EXE);
-		if (exists(wish_path)) return (wish_path);
-		sprintf(wish_path, "%s/wish81%s", p, EXE);
-		if (exists(wish_path)) return (wish_path);
-		sprintf(wish_path, "%s/wish8.1%s", p, EXE);
-		if (exists(wish_path)) return (wish_path);
-		sprintf(wish_path, "%s/wish80%s", p, EXE);
-		if (exists(wish_path)) return (wish_path);
-		sprintf(wish_path, "%s/wish8.0%s", p, EXE);
-		if (exists(wish_path)) return (wish_path);
-		sprintf(wish_path, "%s/wish%s", p, EXE);
-		if (exists(wish_path)) return (wish_path);
-		p = ++s;
+	strcpy(wish_path, "/build/.wish/bin/wish");
+	if (exists(wish_path)) {
+		putenv("TCL_LIBRAY=/build/.wish/lib/tcl8.3");
+		putenv("TK_LIBRAY=/build/.wish/lib/tk8.3");
+		return (wish_path);
 	}
-	fprintf(stderr,
-		"Cannot find the \"wish\" interpreter, this usually means\n"
-		"the Tcl/Tk package is not installed on your system or it\n"
-		"is not in your path\n");
-	exit(1);
+	fprintf(stderr, "Cannot find the \"wish\" interpreter\n");
 }

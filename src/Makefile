@@ -481,68 +481,73 @@ bkdsubstr: bkd.h
 # Quick and dirty target so we can make all the gui tools without the rest
 Gui GUI: $(GUI)
 
-revtool: gui/search.tcl gui/config.tcl gui/revtool.tcl gui/common.tcl \
+revtool: tclwrap gui/search.tcl gui/config.tcl gui/revtool.tcl gui/common.tcl \
 	port/$(SYS)_platform.tcl gui/appState.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	    gui/search.tcl gui/appState.tcl gui/revtool.tcl > revtool
+	    gui/search.tcl gui/appState.tcl gui/revtool.tcl \
+	    | ./tclwrap > revtool
 
-citool: gui/citool.tcl gui/config.tcl gui/common.tcl gui/search.tcl \
+citool: tclwrap gui/citool.tcl gui/config.tcl gui/common.tcl gui/search.tcl \
 	gui/progress.tcl port/$(SYS)_platform.tcl gui/ciedit.tcl \
 	gui/appState.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
 	    gui/progress.tcl gui/search.tcl gui/ciedit.tcl \
-	    gui/appState.tcl gui/citool.tcl > citool
+	    gui/appState.tcl gui/citool.tcl | ./tclwrap > citool
 
-setuptool: gui/setuptool.tcl gui/lib/tkwizard.tcl \
+setuptool: tclwrap gui/setuptool.tcl gui/lib/tkwizard.tcl \
 	   port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
 	   bkmsg.txt
 	cat port/$(SYS)_platform.tcl gui/config.tcl \
-	gui/common.tcl gui/lib/tkwizard.tcl gui/setuptool.tcl > setuptool
+	   gui/common.tcl gui/lib/tkwizard.tcl gui/setuptool.tcl \
+	   | ./tclwrap > setuptool
 
-helptool: gui/helptool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
+helptool: tclwrap gui/helptool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
 	gui/common.tcl gui/appState.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
 	    gui/appState.tcl \
-	    gui/helptool.tcl > helptool
+	    gui/helptool.tcl | ./tclwrap > helptool
 
-difftool: gui/search.tcl gui/config.tcl gui/difftool.tcl \
+difftool: tclwrap gui/search.tcl gui/config.tcl gui/difftool.tcl \
 	port/$(SYS)_platform.tcl gui/common.tcl gui/difflib.tcl \
 	gui/appState.tcl
 	cat gui/search.tcl port/$(SYS)_platform.tcl gui/config.tcl \
 	    gui/common.tcl gui/difflib.tcl gui/appState.tcl  \
-	    gui/difftool.tcl> difftool
+	    gui/difftool.tcl | ./tclwrap > difftool
 
-bugform: gui/search.tcl gui/config.tcl gui/bugform.tcl \
+bugform: tclwrap gui/search.tcl gui/config.tcl gui/bugform.tcl \
 	port/$(SYS)_platform.tcl gui/common.tcl gui/buglib.tcl \
 	gui/appState.tcl 
 	cat gui/search.tcl port/$(SYS)_platform.tcl gui/config.tcl \
 	    gui/common.tcl gui/buglib.tcl gui/appState.tcl \
-	    gui/bugform.tcl > bugform
+	    gui/bugform.tcl | ./tclwrap > bugform
 
-csettool: gui/csettool.tcl gui/config.tcl gui/common.tcl \
+csettool: tclwrap gui/csettool.tcl gui/config.tcl gui/common.tcl \
 	port/$(SYS)_platform.tcl gui/search.tcl gui/difflib.tcl \
 	gui/appState.tcl
 	cat gui/search.tcl port/$(SYS)_platform.tcl gui/config.tcl \
 	    gui/common.tcl gui/difflib.tcl gui/appState.tcl \
-	    gui/csettool.tcl > csettool
+	    gui/csettool.tcl | ./tclwrap > csettool
 
-renametool: gui/renametool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
+renametool: tclwrap \
+	gui/renametool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
 	gui/common.tcl gui/appState.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	    gui/appState.tcl gui/renametool.tcl > renametool
+	    gui/appState.tcl gui/renametool.tcl \
+	    ./tclwrap > renametool
 
-fmtool: gui/fmtool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
+fmtool: tclwrap gui/fmtool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
 	gui/common.tcl gui/difflib.tcl gui/appState.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	    gui/appState.tcl gui/difflib.tcl gui/fmtool.tcl > fmtool
+	    gui/appState.tcl gui/difflib.tcl gui/fmtool.tcl \
+	    ./tclwrap > fmtool
 
-fm3tool: gui/fm3tool.tcl gui/config.tcl gui/common.tcl \
+fm3tool: tclwrap gui/fm3tool.tcl gui/config.tcl gui/common.tcl \
 	port/$(SYS)_platform.tcl gui/appState.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	    gui/appState.tcl gui/fm3tool.tcl > fm3tool
+	    gui/appState.tcl gui/fm3tool.tcl | ./tclwrap > fm3tool
 
-msgtool: gui/msgtool.tcl
-	cat gui/msgtool.tcl > msgtool
+msgtool: tclwrap gui/msgtool.tcl
+	./tclwrap <  gui/msgtool.tcl > msgtool
 
 #rpm:	bk.spec production
 #	rpm -bb bk.spec
@@ -673,3 +678,9 @@ shell.o: substvars
 
 $(TOMCRYPTOBJ): tomcrypt/mpi-config.h tomcrypt/mpi-types.h tomcrypt/mpi.h \
 		tomcrypt/mycrypt.h tomcrypt/mycrypt_cfg.h tomcrypt/aes_tab.c
+
+tclwrap: blowfish.o tclwrap.o
+	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ tclwrap.o blowfish.o
+
+blowfish.o: blowfish.h
+tclwrap.o: blowfish.h
