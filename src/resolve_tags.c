@@ -104,7 +104,7 @@ resolve_tags(opts *opts)
 		return (1);
 	}
 	chdir(RESYNC2ROOT);
-	local = sccs_init(CHANGESET, 0, 0);
+	local = sccs_init(s_cset, 0, 0);
 	chdir(ROOT2RESYNC);
 	rs = resolve_init(opts, s);
 	rs->prompt = "Tag conflict";

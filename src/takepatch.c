@@ -889,6 +889,7 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 	        		"takepatch: can't apply a logging "
 				"patch to a regular file %s\n",
 				p->resyncFile);
+			sccs_free(s);
 			return -1;
 		}
 	} else {
@@ -897,6 +898,7 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 	        		"takepatch: can't apply a regular "
 				"patch to a logging file %s\n",
 				p->resyncFile);
+			sccs_free(s);
 			return -1;
 		}
 	}
