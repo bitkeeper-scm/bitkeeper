@@ -15,6 +15,7 @@ repository_locked(project *p)
 	int	freeit = 0;
 	int	ret = 0;
 	int	first = 1;
+	char	*s;
 	char	path[MAXPATH];
 
 	unless (p) {
@@ -35,7 +36,7 @@ again:	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
 			ret = exists(path) && !emptyDir(path);
 		}
 	}
-	if (ret && getenv("BK_IGNORELOCK")) {
+	if (ret && (s = getenv("BK_IGNORELOCK")) && streq(s, "YES")) {
     		if (freeit) proj_free(p);
 		return (0);
 	}
@@ -316,7 +317,7 @@ fail:		proj_free(p);
 	    	goto fail;
 	}
 	proj_free(p);
-	setenv("BK_IGNORELOCK", "YES", 1);
+	putenv("BK_IGNORELOCK=YES");
 	return (0);
 }
 
@@ -374,8 +375,7 @@ repository_wrunlock(int force)
 	char	*t;
 	int	error = 0;
 
-	unsetenv("BK_IGNORELOCK");
-	assert(!getenv("BK_IGNORELOCK"));
+	putenv("BK_IGNORELOCK=NO");
 	unless (p = proj_init(0)) return (-1);
 	unless (p->root) {
 		proj_free(p);

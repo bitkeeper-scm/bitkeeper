@@ -1,0 +1,12 @@
+In order to get the sorting that Beth wants (and CVSweb does), we need to
+wack sccslog.  There are two changes needed:
+
+a) -r<rev>, this needs to be a range enabled rev.  In the BKweb case,
+   we would always do -r+.
+
+b) -s<sort field> where <sort field> is rev|user|date|filename
+
+c) prs dspec usage for the printing of the results.  This one is a little
+   more complicated, we need to save the sccs *s to make it work.  In order
+   to not run out of memory, we need to sccs_close(s) to do the unmmaps.
+   Then we need a way of going from delta to sccs* so we can pass that in.
