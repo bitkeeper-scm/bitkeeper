@@ -29,7 +29,7 @@ WHATSTR("@(#)%K%");
  * Repeats.
  */
 char *takepatch_help = "\n\
-usage: takepatch [-cFiv] [-f file]\n\n\
+usage: takepatch [-acFimStv] [-f file]\n\n\
     -a		apply the changes (call resolve)\n\
     -c		do not accept conflicts with this patch\n\
     -F		(fast) do rebuild id cache when creating files\n\
@@ -37,6 +37,7 @@ usage: takepatch [-cFiv] [-f file]\n\n\
     -i		initial patch, create a new repository\n\
     -m		list deltas as they are read in the patch\n\
     -S		save RESYNC and or PENDING directories even if errors\n\
+    -t		run in text only mode, do not talk to X11.\n\
     -v		verbose level, more is more verbose, -vv is suggested.\n\n";
 
 #define	CLEAN_RESYNC	1	/* blow away the RESYNC dir */

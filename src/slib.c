@@ -883,7 +883,6 @@ private void
 uniqDelta(sccs *s)
 {
 	delta	*next, *d;
-	time_t	last;
 	char	buf[MAXPATH+100];
 
 	assert(s->tree != s->table);
@@ -1290,6 +1289,16 @@ sccs_cd2root(sccs *s, char *root)
 		perror(BKROOT);
 		return (-1);
 	}
+
+	/*
+	 * This is a hack for locking problems but for now we are
+	 * leaving it.
+	 * Eventually we will want to lift this out.
+	 */
+	chmod("BitKeeper", 0777);
+	chmod("BitKeeper/tmp", 0777);
+	chmod("BitKeeper/log", 0777);
+
 	return (0);
 }
 
@@ -3768,7 +3777,7 @@ sccs_lock(sccs *s, char type)
 	
 	verbose = (s->state & SILENT) ? 0 : 1;
 	if ((type == 'z') && repository_locked(s->proj) &&
-	    (repository_cleanLocks(s->proj, 0, verbose) != 0)) {
+	    (repository_cleanLocks(s->proj, 1, 1, 0, verbose) != 0)) {
 		return (0);
 	}
 

@@ -38,7 +38,7 @@ usage: commit  [-dFRqS:y:Y:]\n\n\
 int
 commit_main(int ac, char **av)
 {
-	int	c, doit = 0, force = 0, resync = 0, getcomment = 1;
+	int	c, doit = 0, force = 0, getcomment = 1;
 	char	buf[MAXLINE], s_cset[MAXPATH] = CHANGESET;
 	char	commentFile[MAXPATH], pendingDeltas[MAXPATH];
 	char	*sym = 0;

@@ -252,6 +252,7 @@ uniq_open()
 /*
  * Return true if this key is unique.
  */
+int
 unique(char *key)
 {
 	datum	k, v;
