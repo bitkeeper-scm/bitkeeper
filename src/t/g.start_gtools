@@ -1,0 +1,99 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2001 Aaron Kushner
+# %K%
+
+# Things that need to be added
+# 
+MYHOST=`bk gethost`
+
+echo $N Test setuptool ..............................................$NL
+bk setuptool > /dev/null 2>&1
+echo OK
+echo $N Create initial repository ...................................$NL
+HERE=`${CWD}`
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo OK
+echo $N Create some data ............................................$NL
+cd $HERE/project/BitKeeper/etc
+mkdir $HERE/project/src
+cd $HERE/project/src
+ed <<EOF >/dev/null 2>&1
+a
+Test File %W%
+stuff
+stuff
+stuff
+stuff
+stuff
+.
+2,\$t.
+2,\$t.
+2,\$t.
+2,\$t.
+2,\$t.
+2,\$t.
+2,\$t.
+w foo
+EOF
+bk ci $Q -i foo 
+if [ ! -f SCCS/s.foo ]; then echo failed to create history; exit 1; fi
+bk edit $Q foo
+ed foo <<EOF >/dev/null 2>&1
+100,120s/stuff/more stuff/
+200,300s/stuff/more stuff with a really long line/
+400,420s/stuff/yuck/
+w
+EOF
+bk ci $Q  -y"test of difftool" foo 
+bk commit $Q -y"test of difftool"
+echo OK
+echo $N Test revtool  ...............................................$NL
+bk revtool
+echo OK
+echo $N Test citool   ...............................................$NL
+bk edit $Q foo
+echo foo > foo
+bk citool
+echo OK
+echo $N Test difftool ...............................................$NL
+bk difftool
+echo OK
+echo $N Test renametool .............................................$NL
+echo -e "foo\nbar" | bk renametool
+echo OK
+echo $N Test fmtool  ................................................$NL
+cd $HERE/project/src
+bk edit $Q
+echo foo >> foo
+echo foo > foobar
+echo foo > foobaz
+echo foobaz >> foobaz
+echo foobar >> foobar
+bk ci $Q -i foobar foobaz
+bk ci $Q -y"added a line" foo
+if [ ! -f SCCS/s.foo ]; then echo failed to create history; exit 1; fi
+bk co $Q
+bk fmtool foo foobar out > /dev/null 2>&1
+echo OK
+echo $N Test fm3tool  ...............................................$NL
+cd $HERE/project/src
+bk fm3tool foobar foo foobaz foo_output
+echo OK
+echo $N Test csettool ...............................................$NL
+cd $HERE/project/src
+bk csettool -r1.2 > /dev/null 2>&1
+echo OK

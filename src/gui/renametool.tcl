@@ -1079,6 +1079,7 @@ proc widgets {} \
 	.diffs.l tag configure diff -background $gc(rename.oldColor)
 	.diffs.r tag configure diff -background $gc(rename.newColor)
 	. configure -background $gc(BG)
+	wm deiconify .
 }
 
 # Set up keyboard accelerators.
