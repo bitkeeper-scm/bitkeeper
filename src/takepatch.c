@@ -85,6 +85,17 @@ private	int	encoding;	/* encoding before we started */
 private	char	*spin = "|/-\\";
 private	int	compat;		/* we are eating a compat patch, fail on tags */
 
+/*
+ * Structure for keys we skip when incoming, used for old LOD keys that
+ * we do not want in the open logging tree.
+ */
+typedef	struct s {
+	char	*rkey;		/* file inode */
+	char	**dkeys;	/* lines array of delta keys */
+	struct	s *next;	/* next file */
+} skips;
+private	skips	*skiplist;
+
 int
 takepatch_main(int ac, char **av)
 {
@@ -214,6 +225,7 @@ usage:		system("bk help -s takepatch");
 			fnext(gfile, f);
 			unless (streq(q, "BitKeeper/etc/gone") ||
 				streq(q, "BitKeeper/etc/ignore") ||
+				streq(q, "BitKeeper/etc/skipkeys") ||
 				streq(q, "BitKeeper/etc/logging_ok")) {
 				continue;
 			}
@@ -582,6 +594,62 @@ sccscopy(sccs *to, sccs *from)
 }
 
 /*
+ * Read in the BitKeeper/etc/skipkeys file
+ * Format is alphabetized:
+ * rootkey1 deltakey1
+ * rootkey1 deltakey2
+ * rootkey2 deltakey1
+ * rootkey2 deltakey2
+ */
+private void
+loadskips(void)
+{
+	FILE	*f;
+	char	buf[2 * MAXKEY];
+	char	*dkey;
+	skips	*s = 0;
+
+	f = popen("bk cat BitKeeper/etc/skipkeys", "r");
+	while (fnext(buf, f)) {
+		chomp(buf);
+		dkey = separator(buf);
+		assert(dkey);
+		*dkey++ = '\0';
+		unless (s && streq(buf, s->rkey)) {
+			s = calloc(1, sizeof(*s));
+			assert(s);
+			s->next = skiplist;
+			skiplist = s;
+			s->rkey = strdup(buf);
+		}
+		assert(s);
+		s->dkeys = addLine(s->dkeys, strdup(dkey));
+	}
+	pclose(f);
+}
+
+private int
+skipkey(sccs *s, char *dkey)
+{
+	char	rkey[MAXKEY];
+	skips	*sk;
+	int	i;
+
+	unless (s && skiplist) return (0);
+	sccs_sdelta(s, sccs_ino(s), rkey);
+	for (sk = skiplist; sk; sk = sk->next) {
+		unless (streq(sk->rkey, rkey)) continue;
+		EACH(sk->dkeys) {
+			if (streq(sk->dkeys[i], dkey)) {
+				return (1);
+			}
+		}
+		return (0);
+	}
+	return (0);
+}
+
+/*
  * Extract one delta from the patch file.
  * Deltas end on the first blank line.
  */
@@ -618,6 +686,13 @@ delta1:	off = mtell(f);
 			fprintf(stderr,
 			    "takepatch: delta %s already in %s, skipping it.\n",
 			    tmp->rev, s->sfile);
+		}
+		skip++;
+	} else if (skipkey(s, buf)) {
+		if (echo>6) {
+			fprintf(stderr,
+			    "takepatch: skipping marked delta in %s\n",
+			    s->sfile);
 		}
 		skip++;
 	} else {
@@ -2073,6 +2148,8 @@ missing:
 
 	/* OK if this returns NULL */
 	goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
+
+	loadskips();
 
 	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
 		perror("SCCS/x.id_cache");
