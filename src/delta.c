@@ -38,6 +38,7 @@ main(int ac, char **av)
 {
 	sccs	*s;
 	int	flags = FORCE;
+	int	sflags = SF_GFILE|SF_WRITE_OK;
 	int	c, rc;
 	char	*initFile = 0;
 	char	*diffsFile = 0;
@@ -74,10 +75,10 @@ help:		fprintf(stderr, delta_help);
 		    /* LM flags */
 		    case 'a': flags |= AUTO_CHECKIN; flags &= ~FORCE; break;
 		    case 'c': flags |= NOCKSUM; break;
-		    case 'D': diffsFile = optarg; break;
+		    case 'D': diffsFile = optarg; sflags &= ~SF_GFILE; break;
 		    case 'G': flags |= GTIME; break;
 		    case 'I': initFile = optarg; break;
-		    case 'i': flags |= NEWFILE; break;
+		    case 'i': flags |= NEWFILE; sflags |= SF_NODIREXPAND; break;
 		    case 'l': flags |= SKIPGET|SAVEGFILE|EDIT; break;
 		    case 'L': lod = optarg; break;
 		    case 'q': flags |= SILENT; break;
@@ -91,7 +92,7 @@ usage:			fprintf(stderr, "delta: usage error, try --help.\n");
 		}
 	}
 
-	name = sfileFirst("delta", &av[optind], 0);
+	name = sfileFirst("delta", &av[optind], sflags);
 	/* They can only have an initFile for one file...
 	 * So we go get the next file and error if there
 	 * is one.

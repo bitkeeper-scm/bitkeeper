@@ -362,9 +362,7 @@ caches(const char *filename, const struct stat *sb, int flag)
 
 	if (S_ISDIR(sb->st_mode)) return (0);
 	if ((file[0] == '.') && (file[1] == '/')) file += 2;
-	for (s = file; *s; s++);
-	for ( ; s > file; s--) if (s[-1] == '/') break;		/* CSTYLED */
-	if ((s[0] != 's') || (s[1] != '.')) return (0);
+	unless (is_sccs(file)) return (0);
 	unless (sc = sccs_init(file, NOCKSUM|SHUTUP)) return (0);
 	unless (HAS_SFILE(sc) && sc->cksumok) {
 		sccs_free(sc);

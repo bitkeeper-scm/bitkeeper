@@ -596,7 +596,7 @@ proc widgets {} \
 	global	lineOpts dspec 
 
 	set dspec \
-"-d:I:\t:D: :T::TZ: :P:\$if(:HT:){@:HT:}\$if(:PN:){  :PN:}\n\$each(C){\t(C)}\n"
+"-d:I:\t:D: :T::TZ: :P:\$if(:HT:){@:HT:}\$if(:PN:){  :PN:}\n\$each(:C:){\t(:C:)}\n"
 	set diffOpts "-u"
 	set getOpts "-m"
 	set cmd_text ""

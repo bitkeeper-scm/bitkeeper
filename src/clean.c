@@ -49,7 +49,7 @@ usage:		fprintf(stderr, clean_help);
 	if (flags & UNEDIT) {
 		unless (name =
 		    sfileFirst("clean",
-				&av[optind], SF_GFILE|SF_NOEXPAND)) {
+				&av[optind], SF_GFILE|SF_NODIREXPAND)) {
 			fprintf(stderr,
 			    "clean: must have explicit list "
 			    "when discarding changes.\n");

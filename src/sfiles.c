@@ -143,7 +143,7 @@ sfileFirst(char *cmd, char **Av, int Flags)
 			return (sfileNext());
 		}
 		if (isdir(Av[0])) {
-			if (flags & SF_NOEXPAND) return (0);
+			if (flags & SF_NODIREXPAND) return (0);
 			if (Av[1]) {
 				fprintf(stderr,
 				    "%s: directory must be alone.\n", prog);
@@ -167,7 +167,7 @@ sfileFirst(char *cmd, char **Av, int Flags)
 		ac = 0;
 		return (sfileNext());
 	}
-	if (flags & SF_NOEXPAND) return (0);
+	if (flags & SF_NODIREXPAND) return (0);
 	if (!d) {
 		strcpy(prefix, "SCCS");
 		d = opendir(sPath("SCCS", 1));
@@ -213,12 +213,7 @@ oksccs(char *sfile, int flags, int complain)
 	int	ok;
 	struct	stat sbuf;
 
-	if ((s = rindex(sfile, '/'))) {
-		s++;
-	} else {
-		s = sfile;
-	}
-	if (s[0] != 's' || s[1] != '.') {
+	unless (is_sccs(sfile)) {
 		if (complain)
 			fprintf(stderr, "%s: not an s.file: %s\n", prog, sfile);
 		return (0);
