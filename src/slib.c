@@ -3901,13 +3901,6 @@ sccs_init(char *name, u32 flags, project *proj)
 		int mapmode = (flags & INIT_MAPWRITE)
 			? PROT_READ|PROT_WRITE
 			: PROT_READ;
-#define T_FILE "s.ChangeSet"
-#ifdef FD_DEBUG
-	if (strstr(s->sfile, T_FILE)) {
-		fprintf(stderr, ">>%d: sccs_init(%s), fd=%d\n", getpid(), T_FILE, s->fd); 
-	}
-#endif
-
 		debug((stderr, "Attempting map: %d for %u, %s\n",
 		       s->fd, s->size, (mapmode & PROT_WRITE) ? "rw" : "ro"));
 
@@ -4016,12 +4009,6 @@ bad:		sccs_free(s);
 
 		if (s->fd == -1) {
 			s->fd = open(s->sfile, 0, 0);
-#ifdef FD_DEBUG
-			if (strstr(s->sfile, T_FILE)) {
-				fprintf(stderr,
-				 ">>%d: sccs_restart(%s)\n", getpid(), T_FILE); 
-			}
-#endif
 		}
 		if (s->mmap != (caddr_t)-1L) munmap(s->mmap, s->size);
 		s->size = sbuf.st_size;
@@ -4073,17 +4060,6 @@ sccs_close(sccs *s)
 		assert(s->fd == -1);
 		assert(s->mmap == (caddr_t)-1L);
 	}
-#ifdef FD_DEBUG
-	if (strstr(s->sfile, T_FILE)) {
-		if (s->state & S_SOPEN) { 
-			fprintf(stderr,
-		 "<<%d: sccs_close(%s), fd =%d\n", getpid(), T_FILE, s->fd); 
-		} else {
-			fprintf(stderr,
-			"<<%d: sccs_close(%s), skipped\n", getpid(), T_FILE);
-		}
-	}
-#endif
 	unless (s->state & S_SOPEN) return;
 	munmap(s->mmap, s->size);
 #if	defined(linux) && defined(sparc)

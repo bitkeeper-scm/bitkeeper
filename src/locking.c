@@ -191,7 +191,7 @@ write:	sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
 	}
 	closedir(D);
 	sprintf(path, "%s/%s", p->root, WRITER_LOCK);
-	if ((stat(path, &sbuf) == 0) && (sbuf.st_nlink == 1)) unlink(path);
+	if (onelink(path)) unlink(path);
 	sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
 	rmdir(path);
 
