@@ -129,6 +129,8 @@ production_debug: rebuild debug install
 production_ndebug: rebuild ndebug install
 production_purify: rebuild purify install
 
+production_image: rebuild p image
+
 # Platform specific production builds
 freebsd bsd irix sgi hpux hp-ux hp:
 	gmake CC=gcc p install
@@ -195,7 +197,7 @@ test tests rsh rshtest:
 	PREFER_RSH=yes $(MAKE) realtest
 
 realtest: $(ALL) t/doit
-	-get -q t/SCCS/s.t.* t/setup t/cleanup
+	-./get -q t/SCCS/s.t.* t/setup t/cleanup
 	cd t && ./doit
 
 t/doit: t/doit.sh substvars
@@ -462,32 +464,40 @@ substvars: substvars.in config.status
 	chmod +x substvars
 
 # Touch this and die.  --lm
-install: all 
+install: install-nolinks
+	-set -e; \
+	for file in $(BINLINKS); \
+	do	rm -f /usr/bin/$$file; \
+		ln -s $(BK_BIN)/$$file /usr/bin/$$file; \
+	done
+	-if [ ! -d /var/bitkeeper ]; \
+	then	mkdir /var/bitkeeper; chmod 777 /var/bitkeeper; \
+	fi
+
+install-nolinks: all
 	test -d $(BK_BIN) || mkdir -p $(BK_BIN)
 	cp -f $(BINS) $(SCRIPTS) $(DATA) $(BK_BIN)
-	@if [ ! -d $(BK_BIN)/t ]; \
+	if [ ! -d $(BK_BIN)/t ]; \
 	then	mkdir $(BK_BIN)/t; \
 	fi
-	-get -q t/SCCS/s.t.* t/setup t/cleanup
+	-./get -q t/SCCS/s.t.* t/setup t/cleanup
 	cp -f t/doit t/t.* t/setup t/cleanup $(BK_BIN)/t
 	./chksum $(BINS) $(SCRIPTS) $(DATA) t/doit t/t.* t/setup t/cleanup \
 		| sort > $(BK_BIN)/MANIFEST
-	@set `echo $(LINKTO)`; \
+	set `echo $(LINKTO)`; \
 	while [ "X$$1" != X ]; \
 	do	rm -f $(BK_BIN)/$$1; \
 		ln $(BK_BIN)/$$2 $(BK_BIN)/$$1; \
 		shift; shift; \
 	done
-	@if [ ! -d $(BK_BIN)/tmp ]; \
-	then	mkdir $(BK_BIN)/tmp; chmod 777 $(BK_BIN)/tmp; \
-	fi
-	-@set -e; \
-	for file in $(BINLINKS); \
-	do	rm -f /usr/bin/$$file; \
-		ln -s $(BK_BIN)/$$file /usr/bin/$$file; \
-	done
 	cd gnu && $(MAKE) BK_BIN=$(BK_BIN) install
 
+image: all
+	-rm -rf tmp/bitkeeper
+	DIR=`pwd`/tmp/bitkeeper; set -e; \
+	$(MAKE) install-nolinks BK_BIN=$$DIR; \
+	cd utils && $(MAKE) image BK_BIN=$$DIR
+	
 # The default .c.o rule is broken with some Makes.
 .c.o:
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
