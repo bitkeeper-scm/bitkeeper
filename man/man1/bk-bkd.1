@@ -209,13 +209,15 @@ Write the pid of daemon process into this file at startup.
 Specify an alternative port.  The default port is 0x3962 (aka 14690).
 This option implies \-d.
 .tp
-.OPTreq \-g uid
-Run with effective group id
-.ARG gid "(POSIX compatible systems only)."
+.OPTreq \-g gid
+Attempt to run with group id
+.ARG gid 
+(POSIX compatible systems only).
 .tp
 .OPTreq \-u uid
-Run with effective user id
-.ARG uid "(POSIX compatible systems only)."
+Attempt to run with user id
+.ARG uid
+(POSIX compatible systems only).
 .tp
 .OPTreq \-x cmd
 Exclude 
