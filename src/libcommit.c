@@ -173,6 +173,7 @@ getMsg(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf)
 	int	found = 0;
 	int	first = 1;
 
+	unless (msg_name) return (0);
 	if (bkarg == NULL) bkarg = "";
 	sprintf(buf, "%s/bkmsg.txt", bin);
 	f = fopen(buf, "rt");
