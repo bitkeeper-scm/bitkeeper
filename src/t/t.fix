@@ -128,19 +128,23 @@ cmp -s C SCCS/c.ChangeSet || {
 }
 echo OK
 
-echo $N Make sure multiple comments are left for multiple deltas ....$NL
+echo $N Make sure multiple deltas in same cset undoes top only ......$NL
+test `bk prs -hnd:REV: -r+ ORDER` = 1.4 || {
+	echo Should have left rev 1.4
+	bk prs ORDER
+	exit 1
+}
+echo OK
+
+echo $N Make sure multiple deltas in same cset leaves top c.file ....$NL
 test -f SCCS/c.ORDER || {
 	echo No comment file found
 	exit 1
 }
 cat > WANT <<EOF
 whatever5
-whatever4
-whatever3
-whatever2
 EOF
-grep -v 'BitKeeper file' SCCS/c.ORDER > GOT
-cmp -s GOT WANT || {
+cmp -s SCCS/c.ORDER WANT || {
 	echo Incorrect comments
 	cat GOT
 	exit 1
@@ -189,6 +193,89 @@ bk fix -c 2>OUT && {
 grep -q 'fix merge changesets' OUT || {
 	echo bad error message
 	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure renames are not stripped but are left pending .....$NL
+cd $HERE
+cp -rp clone pending
+cd pending
+bk mv FILE RENAME
+bk commit $Q -yrename
+bk fix -c || {
+	echo fix should not have failed
+	exit 1
+}
+test "`bk sfiles -gp`" = RENAME || {
+	echo bad pending list from sfiles -p
+	bk sfiles -p
+	exit 1
+}
+test "`bk sfiles -gP`" = RENAME || {
+	echo bad pending list from sfiles -P
+	bk sfiles -P
+	exit 1
+}
+echo OK
+
+echo $N Make sure bk new-ed files are left but s.file is removed ....$NL
+cd $HERE
+cp -rp clone new
+cd new
+ls > NEW
+cp NEW SAVE
+bk new $Q NEW
+bk commit $Q -ynew
+bk fix -c || exit 1
+test -f NEW || {
+	echo failed to leave NEW
+	exit 1
+}
+test -w NEW || {
+	echo failed to leave NEW with write permission
+	exit 1
+}
+cmp -s NEW SAVE || {
+	echo different contents
+	exit 1
+}
+test -f SCCS/s.NEW && {
+	echo should have removed s.NEW
+	exit 1
+}
+test -f SCCS/c.NEW || {
+	echo should have left a c.NEW
+	exit 1
+}
+test -s SCCS/c.NEW || {
+	echo should have left a non-empty c.NEW
+	exit 1
+}
+test -z "$BK_TESTGUI" || {
+	echo ""
+	cat SCCS/c.NEW
+	echo click commit, it should have NEW marked new
+	bk citool
+}
+echo OK
+
+echo $N Make sure bk new-ed files are left without keywords expanded.$NL
+cd $HERE
+cp -rp clone keywords
+cd keywords
+bk edit $Q BitKeeper/etc/config
+echo "keywords: sccs" >> BitKeeper/etc/config
+bk delta $Q -y'sccs keywords' BitKeeper/etc/config
+echo '%A%' > foo
+cp foo bar
+bk new $Q foo
+bk commit $Q -ybasefoo
+bk get $Q foo
+bk fix -c
+cmp -s foo bar || {
+	echo should not have expanded keywords
+	sdiff -w40 foo bar
 	exit 1
 }
 echo OK

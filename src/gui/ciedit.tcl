@@ -38,7 +38,9 @@ proc cmd_edit {which} \
 			fileevent $fd readable "eat $fd"
 			vwait edit_busy
 			if {[file readable $merge]} {
+				set rwx [file attributes $filename -permissions]
 				catch {file rename -force $merge $filename}
+				file attributes $filename -permissions $rwx
 			} 
 			catch {file delete $old $merge}
 		} else {
@@ -338,9 +340,11 @@ proc edit_save {} \
 		set backup [join [list $filename "bkp"] "~"]
 		file copy -force $filename $backup
 	}
+	set rwx [file attributes $filename -permissions]
 	set d [open "$filename" "w"]
 	puts -nonewline $d [.edit.t.t get 1.0 end]
 	catch {close $d} err
+	file attributes $filename -permissions $rwx
 	set edit_changed ""
 	edit_exit
 	cmd_refresh 1
