@@ -192,7 +192,9 @@ do_commit(c_opts opts, char *sym, char *commentFile)
 	assert(d);
 	strcpy(buf, d->rev);
 	sccs_free(s);
+#ifdef OLD_LICENSE
 	logChangeSet(buf, opts.quiet);
+#endif
 	return (rc);
 }
 
@@ -440,5 +442,165 @@ setlog(char *user)
 	do_delta(s_config, comment);
 	unlink(x_config);
 	return (0);
+}
+
+void
+logChangeSet(char *rev, int quiet)
+{
+	char	commit_log[MAXPATH], buf[MAXLINE], *p;
+	char	subject[MAXLINE];
+	char	start_rev[1024];
+	char	*to = logAddr();
+	FILE	*f;
+	int	dotCount = 0, try = 0, n, status;
+	pid_t	pid;
+	char 	*av[] = {
+		"bk",
+		"log",
+		"http://www.bitkeeper.com/cgi-bin/logit",
+		to,
+		subject, 
+		commit_log,
+		0
+	};
+
+	unless(is_open_logging(to)) {
+		sendConfig("config@openlogging.org", 1, 1);
+	}
+	if (streq("none", to)) return;
+
+	// XXX TODO  Determine if this is the first rev where logging is active.
+	// if so, send all chnage log from 1.0
+
+	strcpy(start_rev, rev);
+	p = start_rev;
+	while (*p) { if (*p++ == '.') dotCount++; }
+	p--;
+	while (*p != '.') p--;
+	p++;
+	if (dotCount == 4) {
+		n = atoi(p) - 5;
+	} else {
+		n = atoi(p) - 10;
+	}
+	if (n < 0) n = 1;
+	sprintf(p, "%d", n);
+	sprintf(commit_log, "%s/commit_log%d", TMP_PATH, getpid());
+	f = fopen(commit_log, "wb");
+	header(f);
+	fprintf(f, "---------------------------------\n");
+	fclose(f);
+	sprintf(buf, "bk sccslog -r%s ChangeSet >> %s", rev, commit_log);
+	system(buf);
+	sprintf(buf, "bk cset -r+ | bk sccslog - >> %s", commit_log);
+	system(buf);
+	f = fopen(commit_log, "ab");
+	fprintf(f, "---------------------------------\n");
+	fclose(f);
+	sprintf(buf, "bk cset -c -r%s..%s >> %s", start_rev, rev, commit_log);
+	system(buf);
+	if (getenv("BK_TRACE_LOG") && streq(getenv("BK_TRACE_LOG"), "YES")) {
+		printf("Sending ChangeSet to %s...\n", logAddr());
+		fflush(stdout);
+	}
+
+        if (strstr(package_name(), "BitKeeper Test repo") &&
+            (bkusers(1, 1, 0) <= 5)) {
+                /* TODO : make sure our root dir is /tmp/.regression... */
+		unlink(commit_log);
+                return ;
+        }             
+
+	sprintf(subject, "BitKeeper ChangeSet log: %s", package_name());
+	if (is_open_logging(to)) {
+		pid = spawnvp_ex(_P_NOWAIT, av[0], av);
+		if (pid == -1) unlink(commit_log);
+		fprintf(stdout, "Waiting for http...\n");
+	} else {
+		pid = mail(to, subject, commit_log);
+		if (pid == -1) unlink(commit_log);
+		fprintf(stdout, "Waiting for mailer...\n");
+	}
+	fflush(stdout); /* needed for citool */
+	waitpid(pid, &status, 0);
+	unlink(commit_log);
+}
+
+void
+sendConfig(char *to, int quiet, int quota)
+{
+	char	*dspec, subject[MAXLINE];
+	char	config_log[MAXPATH], buf[MAXLINE];
+	char	config[MAXPATH], aliases[MAXPATH];
+	char	s_cset[MAXPATH] = CHANGESET;
+	FILE *f, *f1;
+	time_t tm;
+	char 	*av[] = {
+		"bk",
+		"log",
+		"http://www.bitkeeper.com/cgi-bin/logit",
+		to,
+		subject, 
+		config_log,
+		0
+	};
+
+	if (bkusers(1, 1, 0) <= quota) return;
+	sprintf(config_log, "%s/bk_config_log%d", TMP_PATH, getpid());
+	if (exists(config_log)) {
+		fprintf(stderr, "Error %s already exist", config_log);
+		exit(1);
+	}
+	f = fopen(config_log, "wb");
+	status(0, f);
+
+	dspec = "$each(:FD:){Proj:\\t(:FD:)}\\nID:\\t:KEY:";
+	do_prsdelta(s_cset, "1.0", 0, dspec, f);
+	fprintf(f, "User:\t%s\n", sccs_getuser());
+	fprintf(f, "Host:\t%s\n", sccs_gethost());
+	fprintf(f, "Root:\t%s\n", fullname(".", 0));
+	tm = time(0);
+	fprintf(f, "Date:\t%s", ctime(&tm));
+	sprintf(config, "%s/bk_configX%d", TMP_PATH, getpid());
+	sprintf(buf, "%setc/SCCS/s.config", BitKeeper);
+	get(buf, SILENT|PRINT, config);
+	f1 = fopen(config, "rt");
+	while (fgets(buf, sizeof(buf), f1)) {
+		if ((buf[0] == '#') || (buf[0] == '\n')) continue;
+		fputs(buf, f);
+	}
+	fclose(f1);
+	unlink(config);
+	fprintf(f, "User List:\n");
+	bkusers(0, 0, f);
+	fprintf(f, "=====\n");
+	sprintf(buf, "%setc/SCCS/s.aliases", BitKeeper);
+	if (exists(buf)) {
+		fprintf(f, "Alias  List:\n");
+		sprintf(aliases, "%s/bk_aliasesX%d", TMP_PATH, getpid());
+		sprintf(buf, "%setc/SCCS/s.aliases", BitKeeper);
+		get(buf, SILENT|PRINT, aliases);
+		f1 = fopen(aliases, "r");
+		while (fgets(buf, sizeof(buf), f1)) {
+			if ((buf[0] == '#') || (buf[0] == '\n')) continue;
+			fputs(buf, f);
+		}
+		fclose(f1);
+		unlink(aliases);
+		fprintf(f, "=====\n");
+	}
+	fclose(f);
+
+	if (getenv("BK_TRACE_LOG") && streq(getenv("BK_TRACE_LOG"), "YES")) {
+		printf("sending config file...\n");
+	}
+        if (strstr(package_name(), "BitKeeper Test repo") &&
+            (bkusers(1, 1, 0) <= 5)) {
+                /* TODO : make sure our root dir is /tmp/.regression... */
+		unlink(config_log);
+                return ;
+        }             
+	sprintf(subject, "BitKeeper config: %s", package_name());
+	if (spawnvp_ex(_P_NOWAIT, av[0], av) == -1) unlink(config_log);
 }
 #endif
