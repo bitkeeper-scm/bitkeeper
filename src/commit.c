@@ -99,7 +99,7 @@ commit_main(int ac, char **av)
 		}
 		fclose(f);
 	} else {
-		sprintf(buf, "bk sfind -C > %s", pendingFiles);
+		sprintf(buf, "bk sfind -s,,p -C > %s", pendingFiles);
 		if (system(buf) != 0) {
 			unlink(pendingFiles);
 			unlink(commentFile);
