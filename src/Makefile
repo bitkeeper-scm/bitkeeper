@@ -70,7 +70,7 @@ ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
 	  zlib/inflate.o zlib/inftrees.o zlib/infutil.o zlib/trees.o \
 	  zlib/uncompr.o zlib/zutil.o
 SCRIPTS	= bk.script import resync uuwrap unuuwrap pmerge \
-	  sccstool citool _citool helptool difftool csettool fmtool fm3tool \
+	  histtool citool _citool helptool difftool csettool fmtool fm3tool \
 	  renametool setuptool gzip_uuwrap ungzip_uuwrap
 LOCALSCR= testfast build crank
 PSCR	= t/doit
@@ -102,7 +102,7 @@ HDRS	= bkd.h lib_tcp.h mmap.h logging.h purify.h range.h resolve.h sccs.h \
 	  zlib/inffixed.h zlib/inftrees.h zlib/infutil.h zlib/trees.h \
 	  zlib/zconf.h zlib/zlib.h zlib/zutil.h
 SCRSRCS	= testfast.perl bk.sh import.sh clone.sh \
-	  gui/sccstool.tcl gui/citool.tcl gui/difftool.tcl \
+	  gui/histtool.tcl gui/citool.tcl gui/difftool.tcl \
 	  gui/vitool.tcl gui/fmtool.tcl gui/fm3tool.tcl \
 	  gui/helptool.tcl uuwrap.sh gui/setuptool.tcl \
 	  gui/_citool.tcl gui/progress.tcl gui/search.tcl \
@@ -358,10 +358,10 @@ bkdsubstr: bkd.h
 	rm _bkdvers
 	chmod +x bkdsubstr
 
-sccstool: gui/search.tcl gui/config.tcl gui/sccstool.tcl gui/common.tcl \
+histtool: gui/search.tcl gui/config.tcl gui/histtool.tcl gui/common.tcl \
     	port/$(SYS)_platform.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	    gui/search.tcl gui/sccstool.tcl > sccstool
+	    gui/search.tcl gui/histtool.tcl > histtool
 
 citool: gui/citool.tcl gui/common.tcl gui/progress.tcl port/$(SYS)_platform.tcl
 	cat port/$(SYS)_platform.tcl gui/common.tcl gui/progress.tcl \

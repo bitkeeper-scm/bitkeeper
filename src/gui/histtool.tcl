@@ -1,4 +1,4 @@
-# sccstool - a tool for viewing SCCS files graphically.
+# histtool - a tool for viewing SCCS files graphically.
 # Copyright (c) 1998 by Larry McVoy; All rights reserved.
 #
 # %W% %@%
@@ -29,12 +29,12 @@ proc ht {id} \
 #
 # Set highlighting on the bounding box containing the revision number
 #
-# revision - (default style box) gc(sccs.revOutline)
+# revision - (default style box) gc(hist.revOutline)
 # merge -
 # red - do a red rectangle
 # arrow - do a $arrow outline
-# old - do a rectangle in gc(sccs.oldColor)
-# new - do a rectangle in gc(sccs.newColor)
+# old - do a rectangle in gc(hist.oldColor)
+# new - do a rectangle in gc(hist.newColor)
 # black - do a black rectangle
 proc highlight {id type {rev ""}} \
 {
@@ -54,19 +54,19 @@ proc highlight {id type {rev ""}} \
 	    revision {\
 		#puts "highlight: revision ($rev)"
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
-		    -fill $gc(sccs.revColor) \
-		    -outline $gc(sccs.revOutline) \
+		    -fill $gc(hist.revColor) \
+		    -outline $gc(hist.revOutline) \
 		    -width 1 -tags [list $rev revision]]}
 	    merge   {\
 		#puts "highlight: merge ($rev)"
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
-		    -fill $gc(sccs.revColor) \
-		    -outline $gc(sccs.mergeOutline) \
+		    -fill $gc(hist.revColor) \
+		    -outline $gc(hist.mergeOutline) \
 		    -width 1 -tags [list $rev revision]]}
 	    arrow   {\
 		#puts "highlight: arrow ($rev)"
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
-		    -outline $gc(sccs.arrowColor) -width 1]}
+		    -outline $gc(hist.arrowColor) -width 1]}
 	    red     {\
 		#puts "highlight: red ($rev)"
 	        set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
@@ -74,11 +74,11 @@ proc highlight {id type {rev ""}} \
 	    old  {\
 		#puts "highlight: old ($rev) id($id)"
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
-		    -outline $gc(sccs.revOutline) -fill $gc(sccs.oldColor) \
+		    -outline $gc(hist.revOutline) -fill $gc(hist.oldColor) \
 		    -tags old]}
 	    new   {\
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
-		    -outline $gc(sccs.revOutline) -fill $gc(sccs.newColor) \
+		    -outline $gc(hist.revOutline) -fill $gc(hist.newColor) \
 		    -tags new]}
 	    black  {\
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
@@ -135,7 +135,7 @@ proc revMap {file} \
 #
 #    B1 - calls getLeftRev
 #    B3 - calls getRightRev
-#    D1 - if in annotate, brings up sccstool, else gets file annotation
+#    D1 - if in annotate, brings up histtool, else gets file annotation
 #
 proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 {
@@ -187,7 +187,7 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 		set annotated 1
 		$w(ap) configure -height 15
 		#.p.b configure -background green
-		$w(ctext) configure -height $gc(sccs.commentHeight) 
+		$w(ctext) configure -height $gc(hist.commentHeight) 
 		$w(ap) configure -height 50
 		pack configure $w(cframe) -fill x -expand true \
 		    -anchor n -before $w(apframe)
@@ -227,7 +227,7 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 		for {set x 0} {$x < 50} {incr x} {
 			.menus.mb configure -background green
 			update
-			.menus.mb configure -background $gc(sccs.buttonColor)
+			.menus.mb configure -background $gc(hist.buttonColor)
 		}
 		$w(graph) xview moveto 0 
 		# XXX: This can be done cleaner -- coalesce this
@@ -339,9 +339,9 @@ proc dateSeparate { } { \
                        # Attempt to center datestring between verticals
                         set tx [expr {$x - (($x - $lastx)/2) - 13}]
                         $w(graph) create text $tx $ty \
-			    -fill $gc(sccs.dateColor) \
+			    -fill $gc(hist.dateColor) \
 			    -justify center \
-			    -anchor n -text "$date" -font $gc(sccs.fixedFont) \
+			    -anchor n -text "$date" -font $gc(hist.fixedFont) \
 			    -tags date_text
 
                         set prevday $curday
@@ -357,8 +357,8 @@ proc dateSeparate { } { \
 
 	set tx [expr {$screen(maxx) - (($screen(maxx) - $x)/2) + 20}]
 	$w(graph) create text $tx $ty -anchor n \
-		-fill $gc(sccs.dateColor) \
-		-text "$date" -font $gc(sccs.fixedFont) \
+		-fill $gc(hist.dateColor) \
+		-text "$date" -font $gc(hist.fixedFont) \
 		-tags date_text
 }
 
@@ -401,18 +401,18 @@ proc addline {y xspace ht l} \
 			set a [expr {$last + 2}]
 			$w(graph) create line $a $ly $b $ly \
 			    -arrowshape {4 4 2} -width 1 \
-			    -fill $gc(sccs.arrowColor) -arrow last
+			    -fill $gc(hist.arrowColor) -arrow last
 		}
 		if {[regsub -- "-BAD" $rev "" rev] == 1} {
 			set id [$w(graph) create text $x $y -fill "red" \
 			    -anchor sw -text "$txt" -justify center \
-			    -font $gc(sccs.fixedBoldFont) -tags "$rev revtext"]
+			    -font $gc(hist.fixedBoldFont) -tags "$rev revtext"]
 			highlight $id "red" $rev
 			incr bad
 		} else {
 			set id [$w(graph) create text $x $y -fill #241e56 \
 			    -anchor sw -text "$txt" -justify center \
-			    -font $gc(sccs.fixedBoldFont) -tags "$rev revtext"]
+			    -font $gc(hist.fixedBoldFont) -tags "$rev revtext"]
 			if {![info exists firstnode]} { set firstnode $id }
 			if {$m == 1} { 
 				highlight $id "merge" $rev
@@ -525,7 +525,7 @@ proc line {s width ht} \
 	incr y [expr {$ht / -2}]
 	incr x -4
 	set id [$w(graph) create line $px $py $x $y -arrowshape {4 4 4} \
-	    -width 1 -fill $gc(sccs.arrowColor) -arrow last]
+	    -width 1 -fill $gc(hist.arrowColor) -arrow last]
 	$w(graph) lower $id
 }
 
@@ -557,7 +557,7 @@ proc mergeArrow {m ht} \
 		incr px 2
 	}
 	$w(graph) lower [$w(graph) create line $px $py $x $y \
-	    -arrowshape {4 4 4} -width 1 -fill $gc(sccs.arrowColor) \
+	    -arrowshape {4 4 4} -width 1 -fill $gc(hist.arrowColor) \
 	    -arrow last]
 }
 
@@ -655,9 +655,9 @@ proc listRevs {file} \
 		}
 	}
 	catch {close $d} err
-	set len [font measure $gc(sccs.fixedBoldFont) "$big"]
-	set ht [font metrics $gc(sccs.fixedBoldFont) -ascent]
-	incr ht [font metrics $gc(sccs.fixedBoldFont) -descent]
+	set len [font measure $gc(hist.fixedBoldFont) "$big"]
+	set ht [font metrics $gc(hist.fixedBoldFont) -ascent]
+	incr ht [font metrics $gc(hist.fixedBoldFont) -descent]
 
 	set ht [expr {$ht * 2}]
 	set len [expr {$len + 10}]
@@ -674,7 +674,7 @@ proc listRevs {file} \
 		mergeArrow $m $ht
 	}
 	if {$bad != 0} {
-		wm title . "sccstool: $file -- $bad bad revs"
+		wm title . "histtool: $file -- $bad bad revs"
 	}
 	return 0
 } ;# proc listRevs
@@ -988,7 +988,7 @@ proc PaneCreate {} \
 	set ysize [expr {[winfo reqheight .p.top] + [winfo reqheight .p.b.p]}]
 	set percent [expr {[winfo reqheight .p.b] / double($ysize)}]
 	.p configure -height $ysize -width $xsize -background black
-	frame .p.fakesb -height $gc(sccs.scrollWidth) -background grey \
+	frame .p.fakesb -height $gc(hist.scrollWidth) -background grey \
 	    -borderwid 1.25 -relief sunken
 	    label .p.fakesb.l -text "<-- scrollbar -->"
 	    pack .p.fakesb.l -expand true -fill x
@@ -1132,66 +1132,66 @@ proc widgets {fname} \
 	} else {
 		set py 1; set px 4; set bw 2
 	}
-	getConfig "sccs"
+	getConfig "hist"
 	option add *background $gc(BG)
 
-	set Opts(line_time)  "-R-$gc(sccs.showHistory)"
-	if {"$gc(sccs.geometry)" != ""} {
-		wm geometry . $gc(sccs.geometry)
+	set Opts(line_time)  "-R-$gc(hist.showHistory)"
+	if {"$gc(hist.geometry)" != ""} {
+		wm geometry . $gc(hist.geometry)
 	}
-	wm title . "sccstool"
+	wm title . "histtool"
 	frame .menus
-	    button .menus.quit -font $gc(sccs.buttonFont) -relief raised \
-		-bg $gc(sccs.buttonColor) -pady $py -padx $px -borderwid $bw \
+	    button .menus.quit -font $gc(hist.buttonFont) -relief raised \
+		-bg $gc(hist.buttonColor) -pady $py -padx $px -borderwid $bw \
 		-text "Quit" -command done
-	    button .menus.help -font $gc(sccs.buttonFont) -relief raised \
-		-bg $gc(sccs.buttonColor) -pady $py -padx $px -borderwid $bw \
-		-text "Help" -command { exec bk helptool sccstool & }
-	    menubutton .menus.mb -font $gc(sccs.buttonFont) -relief raised \
-		-bg $gc(sccs.buttonColor) -pady $py -padx $px -borderwid $bw \
+	    button .menus.help -font $gc(hist.buttonFont) -relief raised \
+		-bg $gc(hist.buttonColor) -pady $py -padx $px -borderwid $bw \
+		-text "Help" -command { exec bk helptool histtool & }
+	    menubutton .menus.mb -font $gc(hist.buttonFont) -relief raised \
+		-bg $gc(hist.buttonColor) -pady $py -padx $px -borderwid $bw \
 		-text "Select Range" -width 15 -state normal \
 		-menu .menus.mb.menu
 		set m [menu .menus.mb.menu]
-		$m add command -label "Last Day" -command {sccstool $fname -1D}
+		$m add command -label "Last Day" -command {histtool $fname -1D}
 		$m add command -label "Last 2 Days" \
-		    -command {sccstool $fname -2D}
+		    -command {histtool $fname -2D}
 		$m add command -label "Last 3 Days" \
-		    -command {sccstool $fname -3D}
+		    -command {histtool $fname -3D}
 		$m add command -label "Last 4 Days" \
-		    -command {sccstool $fname -4D}
+		    -command {histtool $fname -4D}
 		$m add command -label "Last 5 Days" \
-		    -command {sccstool $fname -5D}
+		    -command {histtool $fname -5D}
 		$m add command -label "Last 6 Days" \
-		    -command {sccstool $fname -6D}
+		    -command {histtool $fname -6D}
 		$m add command -label "Last Week" \
-		    -command {sccstool $fname -W}
+		    -command {histtool $fname -W}
 		$m add command -label "Last 2 Weeks" \
-		    -command {sccstool $fname -2W}
+		    -command {histtool $fname -2W}
 		$m add command -label "Last 3 Weeks" \
-		    -command {sccstool $fname -3W}
+		    -command {histtool $fname -3W}
 		$m add command -label "Last 4 Weeks" \
-		    -command {sccstool $fname -4W}
+		    -command {histtool $fname -4W}
 		$m add command -label "Last 5 Weeks" \
-		    -command {sccstool $fname -5W}
+		    -command {histtool $fname -5W}
 		$m add command -label "Last 6 Weeks" \
-		    -command {sccstool $fname -6W}
+		    -command {histtool $fname -6W}
 		$m add command -label "Last 2 Months" \
-		    -command {sccstool $fname -2M}
+		    -command {histtool $fname -2M}
 		$m add command -label "Last 3 Months" \
-		    -command {sccstool $fname -3M}
+		    -command {histtool $fname -3M}
 		$m add command -label "Last 6 Months" \
-		    -command {sccstool $fname -6M}
+		    -command {histtool $fname -6M}
 		$m add command -label "Last 9 Months" \
-		    -command {sccstool $fname -9M}
+		    -command {histtool $fname -9M}
 		$m add command -label "Last Year" \
-		    -command {sccstool $fname -1Y}
+		    -command {histtool $fname -1Y}
 		$m add command -label "All Changes" \
-		    -command {sccstool $fname 1.1..}
-	    button .menus.cset -font $gc(sccs.buttonFont) -relief raised \
-		-bg $gc(sccs.buttonColor) -pady $py -padx $px -borderwid $bw \
+		    -command {histtool $fname 1.1..}
+	    button .menus.cset -font $gc(hist.buttonFont) -relief raised \
+		-bg $gc(hist.buttonColor) -pady $py -padx $px -borderwid $bw \
 		-text "View changeset " -width 15 -command r2c -state disabled
-	    button .menus.difftool -font $gc(sccs.buttonFont) -relief raised \
-		-bg $gc(sccs.buttonColor) -pady $py -padx $px -borderwid $bw \
+	    button .menus.difftool -font $gc(hist.buttonFont) -relief raised \
+		-bg $gc(hist.buttonColor) -pady $py -padx $px -borderwid $bw \
 		-text "Diff tool" -command "diff2 1" -state disabled
 	    if {"$fname" == "ChangeSet"} {
 		    .menus.cset configure -command csettool
@@ -1204,17 +1204,17 @@ proc widgets {fname} \
 
 	frame .p
 	    frame .p.top -borderwidth 2 -relief sunken
-		scrollbar .p.top.xscroll -wid $gc(sccs.scrollWidth) \
+		scrollbar .p.top.xscroll -wid $gc(hist.scrollWidth) \
 		    -orient horiz \
 		    -command "$w(graph) xview" \
-		    -background $gc(sccs.scrollColor) \
-		    -troughcolor $gc(sccs.troughColor)
-		scrollbar .p.top.yscroll -wid $gc(sccs.scrollWidth)  \
+		    -background $gc(hist.scrollColor) \
+		    -troughcolor $gc(hist.troughColor)
+		scrollbar .p.top.yscroll -wid $gc(hist.scrollWidth)  \
 		    -command "$w(graph) yview" \
-		    -background $gc(sccs.scrollColor) \
-		    -troughcolor $gc(sccs.troughColor)
+		    -background $gc(hist.scrollColor) \
+		    -troughcolor $gc(hist.troughColor)
 		canvas $w(graph) -width 500 \
-		    -background $gc(sccs.canvasBG) \
+		    -background $gc(hist.canvasBG) \
 		    -xscrollcommand ".p.top.xscroll set" \
 		    -yscrollcommand ".p.top.yscroll set"
 		pack .p.top.yscroll -side right -fill y
@@ -1224,38 +1224,38 @@ proc widgets {fname} \
 	    frame .p.b -borderwidth 2 -relief sunken
 	    	# prs and annotation window
 		frame .p.b.p
-		    text .p.b.p.t -width $gc(sccs.textWidth) \
-			-height $gc(sccs.textHeight) \
-			-font $gc(sccs.fixedFont) \
+		    text .p.b.p.t -width $gc(hist.textWidth) \
+			-height $gc(hist.textHeight) \
+			-font $gc(hist.fixedFont) \
 			-xscrollcommand { .p.b.p.xscroll set } \
 			-yscrollcommand { .p.b.p.yscroll set } \
-			-bg $gc(sccs.textBG) -fg $gc(sccs.textFG) -wrap none 
+			-bg $gc(hist.textBG) -fg $gc(hist.textFG) -wrap none 
 		    scrollbar .p.b.p.xscroll -orient horizontal \
-			-wid $gc(sccs.scrollWidth) -command { .p.b.p.t xview } \
-			-background $gc(sccs.scrollColor) \
-			-troughcolor $gc(sccs.troughColor)
+			-wid $gc(hist.scrollWidth) -command { .p.b.p.t xview } \
+			-background $gc(hist.scrollColor) \
+			-troughcolor $gc(hist.troughColor)
 		    scrollbar .p.b.p.yscroll -orient vertical \
-			-wid $gc(sccs.scrollWidth) \
+			-wid $gc(hist.scrollWidth) \
 			-command { .p.b.p.t yview } \
-			-background $gc(sccs.scrollColor) \
-			-troughcolor $gc(sccs.troughColor)
+			-background $gc(hist.scrollColor) \
+			-troughcolor $gc(hist.troughColor)
 		# change comment window
 		frame .p.b.c
-		    text .p.b.c.t -width $gc(sccs.textWidth) \
-			-height $gc(sccs.commentHeight) \
-			-font $gc(sccs.fixedFont) \
+		    text .p.b.c.t -width $gc(hist.textWidth) \
+			-height $gc(hist.commentHeight) \
+			-font $gc(hist.fixedFont) \
 			-xscrollcommand { .p.b.c.xscroll set } \
 			-yscrollcommand { .p.b.c.yscroll set } \
-			-bg $gc(sccs.commentBG) -fg $gc(sccs.textFG) -wrap none 
+			-bg $gc(hist.commentBG) -fg $gc(hist.textFG) -wrap none 
 		    scrollbar .p.b.c.xscroll -orient horizontal \
-			-wid $gc(sccs.scrollWidth) -command { .p.b.c.t xview } \
-			-background $gc(sccs.scrollColor) \
-			-troughcolor $gc(sccs.troughColor)
+			-wid $gc(hist.scrollWidth) -command { .p.b.c.t xview } \
+			-background $gc(hist.scrollColor) \
+			-troughcolor $gc(hist.troughColor)
 		    scrollbar .p.b.c.yscroll -orient vertical \
-			-wid $gc(sccs.scrollWidth) \
+			-wid $gc(hist.scrollWidth) \
 			-command { .p.b.c.t yview } \
-			-background $gc(sccs.scrollColor) \
-			-troughcolor $gc(sccs.troughColor)
+			-background $gc(hist.scrollColor) \
+			-troughcolor $gc(hist.troughColor)
 
 		pack .p.b.c.yscroll -side right -fill y
 		pack .p.b.c.xscroll -side bottom -fill x
@@ -1277,8 +1277,8 @@ proc widgets {fname} \
 	}
 
 	frame .cmd -borderwidth 2 -relief ridge
-		entry $search(text) -width 30 -font $gc(sccs.fixedBoldFont)
-		label .cmd.l -font $gc(sccs.fixedBoldFont) -width 30 \
+		entry $search(text) -width 30 -font $gc(hist.fixedBoldFont)
+		label .cmd.l -font $gc(hist.fixedBoldFont) -width 30 \
 		    -relief groove \
 		    -textvariable search(prompt)
 		grid .cmd.l -row 0 -column 0 -sticky ew
@@ -1299,7 +1299,7 @@ proc widgets {fname} \
 	bind $w(graph) <t>		"history tags"
 	bind . <Button-2>		{history}
 	bind . <Double-2>		{history tags}
-	bind $w(graph) $gc(sccs.quit)	"exit"
+	bind $w(graph) $gc(hist.quit)	"exit"
 	bind $w(graph) <s>		"sfile"
 	bind $w(graph) <Prior>		"$w(ap) yview scroll -1 pages"
 	bind $w(graph) <Next>		"$w(ap) yview scroll  1 pages"
@@ -1339,12 +1339,12 @@ proc widgets {fname} \
 	bind $w(graph) <n> "searchnext"
 	bind $search(text) <Return> "searchstring"
 	$search(widget) tag configure search \
-	    -background $gc(sccs.searchColor) -relief groove -borderwid 0
+	    -background $gc(hist.searchColor) -relief groove -borderwid 0
 
 	# highlighting.
-	$w(ap) tag configure "newTag" -background $gc(sccs.newColor)
-	$w(ap) tag configure "oldTag" -background $gc(sccs.oldColor)
-	$w(ap) tag configure "select" -background $gc(sccs.selectColor)
+	$w(ap) tag configure "newTag" -background $gc(hist.newColor)
+	$w(ap) tag configure "oldTag" -background $gc(hist.oldColor)
+	$w(ap) tag configure "select" -background $gc(hist.selectColor)
 
 	bindtags $w(ap) {.p.b.p.t . all}
 	bindtags $w(ctext) {.p.b.c.t . all}
@@ -1360,7 +1360,7 @@ proc widgets {fname} \
 # This variable is a placeholder -- I expect that we will put an
 # option/menu in that will allow the user to select last month, week, etc.
 #
-proc sccstool {fname R} \
+proc histtool {fname R} \
 {
 	global	bad revX revY search dev_null rev2date serial2rev w
 	global  srev Opts gc file rev2rev_name cdim firstnode
@@ -1381,9 +1381,9 @@ proc sccstool {fname R} \
 		exit 0
 	}
 	if {[catch {exec bk root $file} proot]} {
-		wm title . "sccstool: $file $R"
+		wm title . "histtool: $file $R"
 	} else {
-		wm title . "sccstool: $proot: $file $R"
+		wm title . "histtool: $proot: $file $R"
 	}
 	set Opts(line_time) "-R$R"
 	# If valid time range give, do the graph
@@ -1481,7 +1481,7 @@ if {$fname == ""} {
 	set fname ChangeSet
 }
 widgets $fname
-sccstool $fname "-$gc(sccs.showHistory)"
+histtool $fname "-$gc(hist.showHistory)"
 
 if {$rev1 != ""} {
 	set rev1 [lineOpts $rev1]

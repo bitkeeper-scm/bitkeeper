@@ -370,6 +370,8 @@ main(int ac, char **av)
 	    streq(prog, "citool") ||
 	    streq(prog, "_citool") ||
 	    streq(prog, "sccstool") ||
+	    streq(prog, "histtool") ||
+	    streq(prog, "histool") ||
 	    streq(prog, "setuptool") ||
 	    streq(prog, "fmtool") ||
 	    streq(prog, "fm3tool") ||
@@ -383,6 +385,8 @@ main(int ac, char **av)
 #endif
 		signal(SIGTERM, SIG_IGN);
 		argv[0] = find_wish();
+		if (streq(prog, "sccstool")) prog = "histtool";
+		if (streq(prog, "histool")) prog = "histtool";
 		sprintf(cmd_path, "%s/%s", bin, prog);
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) {

@@ -61,19 +61,19 @@ proc getConfig {prog} \
 
 	set _d(rename.listHeight) 8
 
-	set _d(sccs.canvasBG) #9fb6b8	   ;# graph background
-	set _d(sccs.commentBG) lightblue   ;# background of comment text
-	set _d(sccs.arrowColor) darkblue   ;# arrow color
-	set _d(sccs.mergeOutline) darkblue ;# merge rev outlines
-	set _d(sccs.revOutline) darkblue   ;# regular rev outlines
-	set _d(sccs.revColor) #9fb6b8	   ;# unselected box fills
-	set _d(sccs.tagColor) red	   ;# tag box fills
-	set _d(sccs.selectColor) #adb8f6   ;# highlight color for selected tag
-	set _d(sccs.dateColor) #181818	   ;# dates at the bottom of graph
-	set _d(sccs.commentHeight) 5       ;# height of comment text widget
-	set _d(sccs.textWidth) 92	   ;# width of text windows
-	set _d(sccs.textHeight) 30	   ;# height of lower window
-	set _d(sccs.showHistory) "1M"	   ;# History to show in graph on start
+	set _d(hist.canvasBG) #9fb6b8	   ;# graph background
+	set _d(hist.commentBG) lightblue   ;# background of comment text
+	set _d(hist.arrowColor) darkblue   ;# arrow color
+	set _d(hist.mergeOutline) darkblue ;# merge rev outlines
+	set _d(hist.revOutline) darkblue   ;# regular rev outlines
+	set _d(hist.revColor) #9fb6b8	   ;# unselected box fills
+	set _d(hist.tagColor) red	   ;# tag box fills
+	set _d(hist.selectColor) #adb8f6   ;# highlight color for selected tag
+	set _d(hist.dateColor) #181818	   ;# dates at the bottom of graph
+	set _d(hist.commentHeight) 5       ;# height of comment text widget
+	set _d(hist.textWidth) 92	   ;# width of text windows
+	set _d(hist.textHeight) 30	   ;# height of lower window
+	set _d(hist.showHistory) "1M"	   ;# History to show in graph on start
 
 	if {$tcl_platform(platform) == "windows"} {
 		package require registry
