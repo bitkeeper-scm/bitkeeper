@@ -337,12 +337,14 @@ resync: resync.perl port/unix_platform.perl substvars
 	mv -f resync.T resync
 
 sccstool: gui/sccstool.tcl port/unix_platform.tcl substvars
-	./substvars port/unix_platform.tcl gui/sccstool.tcl > sccstool.T
+	./substvars port/unix_platform.tcl \
+				gui/common.tcl gui/sccstool.tcl > sccstool.T
 	chmod +x sccstool.T
 	mv -f sccstool.T sccstool
 
 citool: gui/citool.tcl port/unix_platform.tcl substvars
-	./substvars port/unix_platform.tcl gui/citool.tcl > citool.T
+	./substvars port/unix_platform.tcl \
+				gui/common.tcl gui/citool.tcl > citool.T
 	chmod +x citool.T
 	mv -f citool.T citool
 

@@ -763,8 +763,6 @@ proc sccstool {name} \
 	focus .p.top.c
 }
 
-
-
 proc platformPath {} \
 {
 	global bin env
@@ -805,6 +803,7 @@ if {"$argv" != ""} {
 	set next 0
 	sccstool [lindex $argv $next]
 } else {
-	puts "Usage: sccstool file"
-	exit
+	cd2root
+	# This should match the CHANGESET path defined in sccs.h
+	sccstool "SCCS/s.ChangeSet"
 }
