@@ -3238,6 +3238,20 @@ proj_free(project *p)
 	free(p);
 }
 
+#if	defined(linux) && defined(sparc)
+flushDcache()
+{
+	u32	i, j;
+#define	SZ	(17<<8)	/* 17KB buffer of ints */
+	u32	buf[SZ];
+
+	for (i = j = 0; i < SZ; i++) {
+		j += buf[i];
+	}
+	fchmod(-1, j);	/* use the result */
+}
+#endif
+
 /*
  * Initialize an SCCS file.  Do this before anything else.
  * If the file doesn't exist, the graph isn't set up.
@@ -3342,6 +3356,16 @@ sccs_init(char *name, u32 flags, project *proj)
 			    mmap(0, s->size, mapmode, MAP_PRIVATE, s->fd, 0);
 			s->state |= S_MAPPRIVATE;
 		}
+#if	defined(linux) && defined(sparc)
+		/*
+		 * Sparc linux has an aliasing bug where the data gets
+		 * screwed up.  We can work around it by invalidating the
+		 * dache by stepping through it.
+		 */
+		else {
+			flushDcache();
+		}
+#endif
 	}
 
 	if (flags & INIT_SAVEPROJ) s->state |= S_SAVEPROJ;
@@ -3428,6 +3452,9 @@ bad:		sccs_free(s);
 		s->size = sbuf.st_size;
 		s->mmap = mmap(0, s->size, PROT_READ, MAP_SHARED, s->fd, 0);
 		if (s->mmap != (caddr_t)-1L) s->state |= S_SOPEN;
+#if	defined(linux) && defined(sparc)
+		flushDcache();
+#endif
 		seekto(s, 0);
 		for (; (buf = fastnext(s)) && !strneq(buf, "\001T\n", 3); );
 		s->data = sccstell(s);
@@ -3457,6 +3484,9 @@ sccs_close(sccs *s)
 {
 	unless (s->state & S_SOPEN) return;
 	munmap(s->mmap, s->size);
+#if	defined(linux) && defined(sparc)
+	flushDcache();
+#endif
 	close(s->fd);
 	s->mmap = (caddr_t) -1;
 	s->fd = -1;
@@ -5921,6 +5951,9 @@ badcksum(sccs *s)
 	register unsigned int sum = 0;
 	int	filesum;
 
+#ifdef	PURIFY
+	assert(size(s->sfile) == s->size);
+#endif
 	debug((stderr, "Checking sum from %x to %x (%d)\n",
 	    s->mmap + 8, end, (char*)end - s->mmap - 8));
 	assert(s);
@@ -13487,3 +13520,20 @@ smartRename(char *old, char *new)
 	errno = save;
 	return (rc);
 }
+
+#if	defined(linux) && defined(sparc)
+#undef	fclose
+
+sparc_fclose(FILE *f)
+{
+	int	ret;
+
+#ifdef	PURIFY_FILES
+	ret = purify_fclose(f, "sparc me, baby", 666);
+#else
+	ret = fclose(f);
+#endif
+	flushDcache();
+	return (ret);
+}
+#endif
