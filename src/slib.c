@@ -5194,9 +5194,8 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 			ret = -1;
 			goto done2;
 		}
-		fputs("0a0\n", out);
+		fprintf(out, "I0 %u\n", lines);
 		while (fnext(b, lbuf)) {
-			fputs("> ", out);
 			fputs(b, out);
 		}
 		goto done2;
@@ -6083,30 +6082,38 @@ diffMDBM(sccs *s, char *old, char *new, char *tmpfile)
 	FILE	*f = fopen(tmpfile, "w");
 	MDBM	*o = loadDB(old, 0, DB_USEFIRST);
 	MDBM	*n = loadDB(new, 0, DB_USEFIRST);
+	/* 'p' is not used as hash, but has simple storage */
+	MDBM	*p = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	kvpair	kv;
 	int	items = 0;
 	int	ret;
 	char	*val;
 
-	unless (n && o && f) {
+	unless (n && o && p && f) {
 		ret = 2;
 		unlink(tmpfile);
 		goto out;
 	}
-	fputs("0a0\n", f);
 	for (kv = mdbm_first(n); kv.key.dsize; kv = mdbm_next(n)) {
 		if ((val = mdbm_fetch_str(o, kv.key.dptr)) &&
 		    streq(val, kv.val.dptr)) {
 		    	continue;
 		}
-		fputs("> ", f);
-		fputs(kv.key.dptr, f);
-		fputc(' ', f);
-		fputs(kv.val.dptr, f);
-		fputc('\n', f);
+		if (mdbm_store(p, kv.key, kv.val, MDBM_INSERT)) {
+			ret = 2;
+			fprintf(stderr, "diffMDBM: mdbm store failed\n");
+			goto out;
+		}
 		items++;
 	}
 	if (items) {
+		fprintf(f, "I0 %u\n", items);
+		for (kv = mdbm_first(p); kv.key.dsize; kv = mdbm_next(p)) {
+			fputs(kv.key.dptr, f);
+			fputc(' ', f);
+			fputs(kv.val.dptr, f);
+			fputc('\n', f);
+		}
 		ret = 1;
 		if (s->mdbm) mdbm_close(s->mdbm);
 		s->mdbm = o;
@@ -6116,6 +6123,7 @@ diffMDBM(sccs *s, char *old, char *new, char *tmpfile)
 	}
 out:	if (n) mdbm_close(n);
 	if (o) mdbm_close(o);
+	if (p) mdbm_close(p);
 	if (f) fclose(f);
 	return (ret);
 }
@@ -8392,6 +8400,7 @@ getHashSum(sccs *sc, delta *n, MMAP *diffs)
 	int	lines = 0;
 	int	flags = SILENT|GET_HASHONLY|GET_SUM|GET_SHUTUP;
 	delta	*d;
+	int	offset;
 
 	assert(sc->state & S_HASH);
 	assert(diffs);
@@ -8416,14 +8425,19 @@ getHashSum(sccs *sc, delta *n, MMAP *diffs)
 		/* there are no diffs, we have the checksum, it's OK */
 		return (0);
 	}
-	unless (strneq(buf, "0a0\n", 4)) {
-		fprintf(stderr, "Missing 0a0, ");
+	offset = 0;
+	if (strneq(buf, "0a0\n", 4)) {
+		offset = 2;
+	}
+	else unless (strneq(buf, "I0 ", 3)) {
+		fprintf(stderr, "Missing '0a0' or 'I0 #lines', ");
 bad:		fprintf(stderr, "bad diffs: '%.*s'\n", linelen(buf), buf);
 		return (-1);
 	}
 	while (buf = mnext(diffs)) {
-		unless (buf[0] == '>') goto bad;
-		for (t = key, v = &buf[2]; (v < diffs->end) && (*v != ' '); ) {
+		unless (offset == 0 || buf[0] == '>') goto bad;
+		for (t = key, v = &buf[offset];
+		    (v < diffs->end) && (*v != ' '); ) {
 			*t++ = *v++;
 		}
 		unless (*v == ' ') goto bad;
