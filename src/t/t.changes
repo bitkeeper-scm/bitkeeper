@@ -253,7 +253,7 @@ bk mv bar b
 bk mv b foo
 bk mv foo fee
 bk commit $Q -yy
-files=`bk changes -r+ -v -d:DPN:`
+files=`bk changes -T -r+ -v -d:DPN:`
 if [ "$files" != "ChangeSetfeefoobbarfoofoo" ]
 then	echo failed; exit 1;
 else	echo OK

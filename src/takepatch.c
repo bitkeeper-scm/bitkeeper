@@ -1351,11 +1351,7 @@ apply:
 	csets = fopen(csets_in, "w");
 	assert(csets);
 	while (p) {
-		delta	*d;
-
-		d = sccs_findKey(s, p->me);
-		assert(d);
-		unless (p->meta) fprintf(csets, "%s\n", d->rev);
+		fprintf(csets, "%s\n", p->me);
 		/*
 		 * XXX: mclose take a null arg?
 		 * meta doesn't have a diff block

@@ -15,6 +15,7 @@ private struct {
 	u32	others:1;	/* -U<user> everyone except <user> */
 	u32	remote:1;	/* want the new remote csets */
 	u32	tagOnly:1;	/* only show items which are tagged */
+	u32	timesort:1;	/* force sorting based on time, not dspec */
 	u32	urls:1;		/* list each URL for local/remote */
 	u32	verbose:1;	/* list the file checkin comments */
 
@@ -71,7 +72,7 @@ changes_main(int ac, char **av)
 	opts.urls = opts.noempty = 1;
 	nav[nac++] = "bk";
 	nav[nac++] = "changes";
-	while ((c = getopt(ac, av, "ac;Dd;efhkLmnqRr|tu;U;v/;")) != -1) {
+	while ((c = getopt(ac, av, "ac;Dd;efhkLmnqRr|tTu;U;v/;")) != -1) {
 		unless (c == 'L' || c == 'R') {
 			if (optarg) {
 				nav[nac++] = aprintf("-%c%s", c, optarg);
@@ -99,6 +100,7 @@ changes_main(int ac, char **av)
 		    case 'n': opts.newline = 1; break;
 		    case 'q': opts.urls = 0; break;
 		    case 't': opts.tagOnly = 1; break;		/* doc 2.0 */
+		    case 'T': opts.timesort = 1; break;
 		    case 'U': opts.others = 1;
 		    	/* fall through to u */
 		    case 'u': opts.user = optarg; break;
@@ -427,7 +429,7 @@ next:	return (1);
  * Note that these two are identical except for the d1/d2 assignment.
  */
 private int
-compar(const void *a, const void *b)
+dateback(const void *a, const void *b)
 {
         register        slog *d1, *d2;
 
@@ -440,7 +442,7 @@ compar(const void *a, const void *b)
 }
 
 private int
-forwards(const void *a, const void *b)
+dateforw(const void *a, const void *b)
 {
         register        slog *d1, *d2;
 
@@ -451,6 +453,42 @@ forwards(const void *a, const void *b)
 	}
         return (d2->date - d1->date);
 }
+
+/*
+ * Note that these two are identical except for the d1/d2 assignment.
+ */
+private int
+strback(const void *a, const void *b)
+{
+        slog	*d1, *d2;
+	int	cmp;
+
+        d1 = *((slog**)a);
+        d2 = *((slog**)b);
+	cmp = strcmp(d1->log, d2->log);
+	if (cmp) return (cmp);
+	if (d1->date == d2->date) {
+        	return (d2->dateFudge - d1->dateFudge);
+	}
+        return (d2->date - d1->date);
+}
+
+private int
+strforw(const void *a, const void *b)
+{
+        slog	*d1, *d2;
+	int	cmp;
+
+        d1 = *((slog**)a);
+        d2 = *((slog**)b);
+	cmp = strcmp(d1->log, d2->log);
+	if (cmp) return (cmp);
+	if (d1->date == d2->date) {
+        	return (d2->dateFudge - d1->dateFudge);
+	}
+        return (d2->date - d1->date);
+}
+
 
 private slog *
 dumplog(slog *list, int *n)
@@ -468,7 +506,12 @@ dumplog(slog *list, int *n)
 	sorted = malloc(i * sizeof(sorted));
 	for (ll = list; ll; ll = ll->next) sorted[--i] = ll;
 	assert(i == 0);
-	qsort(sorted, *n, sizeof(sorted), opts.forwards ? forwards : compar);
+	if (opts.timesort) {
+		qsort(sorted,
+		    *n, sizeof(sorted), opts.forwards ? dateforw : dateback);
+	} else {
+		qsort(sorted, *n, sizeof(sorted), strforw);
+	}
 
 	/*
 	 * Print the sorted list
@@ -692,7 +735,7 @@ cset(sccs *cset, FILE *f, char *dspec)
 	sorted = malloc(m * sizeof(sorted));
 	for (i = m, ll = list; ll; ll = ll->next) sorted[--i] = ll;
 	assert(i == 0);
-	qsort(sorted, m, sizeof(sorted), opts.forwards ? forwards : compar);
+	qsort(sorted, m, sizeof(sorted), opts.forwards ? dateforw : dateback);
 
 	/*
 	 * Walk the sorted cset list and dump the file deltas contain in
@@ -725,7 +768,7 @@ cset(sccs *cset, FILE *f, char *dspec)
 			*dkey++ = 0;
 			s = sccs_keyinitAndCache(
 				keys[i], iflags, &idDB, graphDB, goneDB);
-			unless (s) continue;
+			unless (s && !CSET(s)) continue;
 			d = sccs_findKey(s, dkey);
 			assert(d);
 
