@@ -264,5 +264,5 @@ getmsg_main(int ac, char **av)
 		fprintf(stderr, "usage: getmsg msg_name bkarg\n");
 		exit(1);
 	}
-	return (getmsg(av[1], av[2], 0, stdout) == 0);
+	return (getMsg(av[1], av[2], 0, stdout) == 0);
 }

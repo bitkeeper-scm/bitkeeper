@@ -49,7 +49,7 @@ setup_main(int ac, char **av)
 	}
 	license();
 	unless(force) {
-		getmsg("setup_1", 0, 0, stdout);
+		getMsg("setup_1", 0, 0, stdout);
 		printf("Create new package? [no] ");
 		if (fgets(buf, sizeof(buf), stdin) == NULL) buf[0] = 'n';
 		if ((buf[0] != 'y') && (buf[0] != 'Y')) exit (0);
@@ -66,7 +66,7 @@ setup_main(int ac, char **av)
 	if (config_path == NULL) {
 		FILE 	*f;
 
-		getmsg("setup_3", 0, 0, stdout);
+		getMsg("setup_3", 0, 0, stdout);
 		/* notepad.exe wants text mode */
 		f = fopen("BitKeeper/etc/config", "wt");
 		assert(f);
@@ -129,7 +129,7 @@ again:		printf("Editor to use [%s] ", editor);
 	if ( (t = mdbm_fetch_str(m, "category")) && strlen(t) > 0) {
 		gettemp(buf, "cat");
 		if (f = fopen(buf, "wt")) {
-			getmsg("setup_categories", 0, 0, f);
+			getMsg("setup_categories", 0, 0, f);
 			fclose(f);
 		}
 		if (f = fopen(buf, "rt")) {

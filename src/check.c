@@ -343,7 +343,7 @@ If the file is unneeded, a \"bk unedit %s\" will fix the problem.\n\
 private void
 warnPoly(void)
 {
-	getmsg("warn_poly", 0, 0, stdout);
+	getMsg("warn_poly", 0, 0, stdout);
 	close(open(POLY, O_CREAT|O_TRUNC|O_WRONLY, 0664));
 }
 

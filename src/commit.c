@@ -104,7 +104,7 @@ commit_main(int ac, char **av)
 					"bk", "sfind", "-s,,p", "-C", SYS)) {
 			unlink(pendingFiles);
 			unlink(commentFile);
-			getmsg("duplicate_IDs", 0, 0, stdout);
+			getMsg("duplicate_IDs", 0, 0, stdout);
 			return (1);
 		}
 	}
@@ -152,7 +152,7 @@ notice(char *key)
 {
 	printf(
 	    "==============================================================\n");
-	getmsg(key, 0, 0, stdout);
+	getMsg(key, 0, 0, stdout);
 	printf(
 	    "==============================================================\n");
 }

@@ -2263,7 +2263,7 @@ pass4_apply(opts *opts)
 	mdbm_close(permDB);
 
 	if (eperm) {
-		getmsg("write_perms", 0, 0, stderr);
+		getMsg("write_perms", 0, 0, stderr);
 		freeStuff(opts);
 		exit(1);
 	}

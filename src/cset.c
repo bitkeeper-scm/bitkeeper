@@ -80,13 +80,8 @@ usage:		system("bk help makepatch");
 		    case 'c':
 		    case 'e':
 			if (range[0]) goto usage;
-			c = snprintf(range,
-			    RSIZ,  "-%c%s", c, optarg ? optarg : "");
-			if (c >= RSIZ) {
-				fprintf(stderr,
-				    "makepatch: arg size overflow\n");
-				goto usage;
-			}
+			sprintf(range, "-%c%s", c, optarg ? optarg : "");
+			assert(strlen(range) < RSIZ);
 			nav[++i] = range;
 		    	break;
 		    case 's':
