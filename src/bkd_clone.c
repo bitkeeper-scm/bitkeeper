@@ -26,9 +26,11 @@ cmd_clone(int ac, char **av)
 		out("ERROR-Clone is not supported in compatibility mode.\n");
 	}
 
-	if (!exists("BitKeeper/etc")) {
+	unless (isdir("BitKeeper/etc")) {
 		out("ERROR-Not at package root\n");
-		exit(1);
+		out("@END@\n");
+		drain();
+		return (1);
 	}
 	if ((bk_mode() == BK_BASIC) && !exists(BKMASTER)) {
 		out("ERROR-bkd std cannot access non-master repository\n");

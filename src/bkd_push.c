@@ -28,6 +28,12 @@ cmd_push_part1(int ac, char **av)
 	if (debug) fprintf(stderr, "cmd_push_part1: sending server info\n");
 	setmode(0, _O_BINARY); /* needed for gzip mode */
 	sendServerInfoBlock(0);
+	unless (isdir("BitKeeper/etc")) {
+		out("ERROR-Not at package root\n");
+		out("@END@\n");
+		drain();
+		return (1);
+	}
 
 	if (getenv("BKD_LEVEL") && (atoi(getenv("BKD_LEVEL")) > getlevel())) {
 		/* they got sent the level so they are exiting already */

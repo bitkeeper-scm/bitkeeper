@@ -14,6 +14,13 @@ cmd_synckeys(int ac, char **av)
 	setmode(0, _O_BINARY); /* needed for gzip mode */
 	sendServerInfoBlock(0);
 
+	unless (isdir("BitKeeper/etc")) {
+		out("ERROR-Not at package root\n");
+		out("@END@\n");
+		drain();
+		return (1);
+	}
+
 	p = getenv("BK_REMOTE_PROTOCOL");
 	unless (p && streq(p, BKD_VERSION)) {
 		out("ERROR-protocol version mismatch, want: ");

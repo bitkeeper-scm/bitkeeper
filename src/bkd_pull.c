@@ -35,6 +35,12 @@ cmd_pull_part1(int ac, char **av)
 	FILE	*f;
 
 	sendServerInfoBlock(0);
+	unless (isdir("BitKeeper/etc")) {
+		out("ERROR-Not at package root\n");
+		out("@END@\n");
+		drain();
+		return (1);
+	}
 	p = getenv("BK_REMOTE_PROTOCOL");
 	unless (p && streq(p, BKD_VERSION)) {
 		out("ERROR-protocol version mismatch, want: ");
