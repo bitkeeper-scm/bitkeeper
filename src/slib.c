@@ -66,7 +66,6 @@ private int	fprintDelta(FILE *,
 private	void	fitCounters(char *buf, int a, int d, int s);
 private delta	*gca(delta *left, delta *right);
 private delta	*gca2(sccs *s, delta *left, delta *right);
-private u16	getnextlod(sccs *s);
 
 private unsigned int u_mask = 0x5eadbeef;
 
@@ -1581,8 +1580,7 @@ private char *
 defbranch(sccs *s)
 {
 	if (s->defbranch) return (s->defbranch);
-	if (s->state & S_BITKEEPER) return ("1");
-	return ("100000");
+	return ("65535");
 }
 
 /*
@@ -1846,7 +1844,7 @@ getedit(sccs *s, char **revp, int branch)
 ok:
 	/* if BK, and no rev and default is x.x or x.x.x.x, then newlod */
 	if ((s->state & S_BITKEEPER) && !rev && defIsVer(s)) {
-		unless (a = getnextlod(s)) {
+		unless (a = sccs_nextlod(s)) {
 			fprintf(stderr, "getedit: no next lod\n");
 			exit(1);
 		}
@@ -8555,8 +8553,8 @@ abort:		fclose(sfile);
 
 /* return the next available release */
 
-private u16
-getnextlod(sccs *s)
+u16
+sccs_nextlod(sccs *s)
 {
 	u16	lod = 0;
 	delta	*d;
@@ -8585,7 +8583,7 @@ chknewlod(sccs *s, delta *d)
 		d->rev = 0;
 		return (0);
 	}
-	lod = getnextlod(s);
+	lod = sccs_nextlod(s);
 	sprintf(buf, "%d.1", lod);
 	free(d->rev);
 	d->rev = strdup(buf);
@@ -10831,7 +10829,7 @@ sccs_lodmap(sccs *s)
 	delta	**lodmap;
 	delta	*d;
 	u16	next;
-	next = getnextlod(s);
+	next = sccs_nextlod(s);
 	/* next now equals one more than greatest that exists
 	 * make room for having a lodmap[next] slot by extending it by one
 	 */
