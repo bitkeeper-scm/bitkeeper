@@ -607,7 +607,7 @@ proc diff2 {difftool} \
 	global file rev1 rev2 diffOpts getOpts dev_null
 	global bk_cset tmp_dir
 
-	if {[info exists rev1] != 1} { return }
+	if {![info exists rev1] || ($rev1 == "")} { return }
 	if {$difftool == 0} { getRightRev }
 	if {"$rev2" == ""} { return }
 	set base [file tail $file]
