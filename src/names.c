@@ -125,6 +125,7 @@ pass2(u32 flags)
 			failed++;
 			continue;
 		}
+		sccs_close(s); /* for Win32 NTFS */
 		if (try_rename(path, s->spathname, 0, flags)) {
 			fprintf(stderr, "Can't rename %s -> %s\n",
 			    path, s->spathname);
