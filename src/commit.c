@@ -148,10 +148,10 @@ notice(char *key)
 	    "==============================================================\n");
 }
 
-private int
-ok_commit(int l, c_opts opts)
+int
+ok_commit(int l, int alreadyAsked)
 {
-	if (opts.alreadyAsked) {	/* has to be OK or error */
+	if (alreadyAsked) {	/* has to be OK or error */
 		/* if open, then OK */
 		if ((l & (LOG_OPEN|LOG_OK)) == (LOG_OPEN|LOG_OK)) return (1);
 		/* if logging, then must have OKed or error */
@@ -206,7 +206,7 @@ do_commit(c_opts opts, char *sym, char *commentFile)
 	sccs	*s;
 	delta	*d;
 
-	unless (ok_commit(l, opts)) {
+	unless (ok_commit(l, opts.alreadyAsked)) {
 		if (commentFile) unlink(commentFile);
 		return (1);
 	}

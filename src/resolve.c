@@ -1377,6 +1377,11 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	pclose(p);
 
 	/*
+	 * Go ask about logging if we need to.  We never ask on a push.
+	 */
+	ok_commit(logging(0, 0, 0), opts->noconflicts);
+
+	/*
 	 * Always do autocommit if there are no pending changes.
 	 * We supply a default comment because there is little point
 	 * in bothering a user for a merge.
@@ -1829,15 +1834,12 @@ commit(opts *opts)
 {
 	int	i;
 	char	*cmds[10], *cmt = 0;
-	extern	char *BitKeeper;
 
-	BitKeeper = "../BitKeeper/";
-#ifdef OLD_LICENSE
-	if (checkLog(opts->quiet, 1)) {
-		fprintf(stderr, "Commit aborted, no changes applied");
+	unless (ok_commit(logging(0, 0, 0), opts->noconflicts)) {
+		fprintf(stderr,
+		   "Commit aborted because of licensing, no changes applied\n");
 		exit(1);
 	}
-#endif
 
 	cmds[i = 0] = "bk";
 	cmds[++i] = "commit";
