@@ -4,7 +4,6 @@
 #
 # %W%
 #
-#
 # TODO: 
 #
 # 	Is there an environment variable so we know how to get files from the
@@ -13,8 +12,6 @@
 #	Add error checking for:
 #		ensure repository name does not have spaces
 #		validate all fields in entry widgets
-#
-#	Ask Larry about normalizing the config file for easy parsing
 #
 # Arguments:
 #
@@ -103,15 +100,18 @@ proc license_check {}  \
 	if {[info exists env(BK_LICENSE)] && \
 	    [string compare $env(BK_LICENSE) "ACCEPTED"] == 0} {
 		return
-	} elseif {[ info exists env(HOME)] } {
+	} elseif {[info exists env(HOME)]} {
 		set bkaccepted [file join $env(HOME) .bkaccepted]
-		if {[file exists $bkaccepted]} {
-			return 
-		} else {
-			puts ".bkaccepted does not exist"
-		}
-        } else {
-		puts "\$HOME not defined: Possibly NT????"
+		if {[file exists $bkaccepted]} {return}
+        } elseif {$tcl_platform(platform) == "windows"} {
+		package require registry
+		set appdir [registry get {HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders} AppData]
+		set bkdir [file join $appdir BitKeeper]
+		if {![file isdirectory $bkdir]} { file mkdir $bkdir }
+		set bkaccepted [file join $bkdir _bkgui]
+		if {[file exists $bkaccepted]} {return}
+	} else {
+		puts "Error: HOME not defined"
 	}
 	# open modal dialogue box
 	dialog .lic "License" 1
@@ -210,7 +210,7 @@ proc create_repo {} \
 {
 	global st_cinfo env st_repo_name tmp_dir debug topics
 
-	regsub -all {\ } $st_cinfo(des) {\\ }  escaped_des
+	regsub -all {\ } $st_cinfo(description) {\\ }  escaped_desc
 	# save config info back to users .bkrc file
 	save_config_info
 	# write out config file from user-entered data
@@ -223,12 +223,12 @@ proc create_repo {} \
 	}
 	close $cfid
 	set repo $st_cinfo(repository)
-	catch { exec bk setup -f -c$cfile -n'$escaped_des' $repo } msg
+	catch { exec bk setup -f -c$cfile $repo } msg
 	if {$msg != ""} {
 		puts "Repository creation failed: $msg"
 		exit 1
 	}
-	file delete $cfile
+	catch {file delete $cfile}
 	return 0
 }
 
@@ -237,7 +237,6 @@ proc get_config_info {} \
 	global env st_cinfo
 
 	if {[info exists env(HOME)]} {
-		#puts "Home exists"
 		set bkrc [file join $env(HOME) .bkrc]
 		if {[file exists $bkrc]} {
 			#puts "found file .bkrc"
@@ -247,7 +246,7 @@ proc get_config_info {} \
 			#puts "didn't find file .bkrc"
 		}
         } else {
-		#puts "\$HOME not defined"
+		puts "\$HOME not defined"
 		return 1
 	}
 }
@@ -274,60 +273,62 @@ proc check_config { widget } \
         } else {
                 set log 0
         }
-        if {"$st_cinfo(des)" != ""} {
-                #puts "descripton: $st_cinfo(des)"
-                set des 1
+        if {"$st_cinfo(description)" != ""} {
+                #puts "descripton: $st_cinfo(description)"
+                set desc 1
         } else {
-                set des 0
+                set desc 0
         }
-        if {($repo == 1) && ($log == 1) && ($des == 1)} {
+        if {($repo == 1) && ($log == 1) && ($desc == 1)} {
                 $widget.t.bb.b1 configure -state normal
         } else {
                 $widget.t.bb.b1 configure -state disabled
         }
 }
 
-proc create_config { w } \
+proc create_config {w} \
 {
 	global st_cinfo st_bk_cfg rootDir st_dlg_button logo widget topics
+	global gc
+
+        getConfig "setup"
 
 	# Need to have global for w inorder to bind the keyRelease events
 	set widget $w
 	set st_cinfo(logging) "logging@openlogging.org"
-	set bcolor #ffffff
-	set mcolor #deeaf4	;# color for mandatory fields
 	set swidth [winfo screenwidth .]
 	set sheight [winfo screenheight .]
 	set x [expr {($swidth/2) - 100}]
 	set y [expr {($sheight/2) - 100}]
 	wm geometry . +$x+$y
 
-	frame $w -bg $bcolor
-	    frame $w.t -bd 2 -relief raised -bg $bcolor
-		label $w.t.label -text "Configuration Info" -bg $bcolor
-		frame $w.t.l -bg $bcolor
-		frame $w.t.e -bg $bcolor
-		frame $w.t.info -bg $bcolor
-		message $w.t.info.msg -width 200 -bg $bcolor  \
+	frame $w -bg $gc(setup.BG)
+	    frame $w.t -bd 2 -relief raised -bg $gc(setup.BG)
+		label $w.t.label -text "Configuration Info" -bg $gc(setup.BG)
+		frame $w.t.l -bg $gc(setup.BG)
+		frame $w.t.e -bg $gc(setup.BG)
+		frame $w.t.info -bg $gc(setup.BG)
+		message $w.t.info.msg -width 200 -bg $gc(setup.BG) \
 		    -text "The items on the right that are highlited are \
 		           mandatory fields"
 		pack $w.t.info.msg -side bottom  -pady 10
 		# create button bar on bottom
-		frame $w.t.bb -bg $bcolor
-		    button $w.t.bb.b1 -text "Create Repository" -bg $bcolor \
-			-command "global st_dlg_button; set st_dlg_button 0" \
-			-state disabled
+		frame $w.t.bb -bg $gc(setup.BG)
+		    button $w.t.bb.b1 -text "Create Repository" \
+			-bg $gc(setup.BG) -state disabled \
+			-command "global st_dlg_button; set st_dlg_button 0"
 		    pack $w.t.bb.b1 -side left -expand 1 -padx 20 -pady 10
 		    label $w.t.bb.l -image bklogo
 		    pack $w.t.bb.l -side left -expand 1 -padx 20 -pady 10
-		    button $w.t.bb.b2 -text "Quit" -bg $bcolor \
+		    button $w.t.bb.b2 -text "Quit" -bg $gc(setup.BG) \
 			-command "global st_dlg_button; set st_dlg_button 1"
 		    pack $w.t.bb.b2 -side left -expand 1 -padx 20 -pady 10
 	# text widget to contain info about config options
-	frame $w.t.t -bg $bcolor
-	    text $w.t.t.t -width 80 -height 10 -wrap word -background $mcolor \
+	frame $w.t.t -bg $gc(setup.BG)
+	    text $w.t.t.t -width 80 -height 10 -wrap word \
+		-background $gc(setup.mandatoryColor) \
 		-yscrollcommand " $w.t.t.scrl set " 
-	    scrollbar $w.t.t.scrl -bg $bcolor \
+	    scrollbar $w.t.t.scrl -bg $gc(setup.BG) \
 	    -command "$w.t.t.t yview"
 	pack $w.t.t.t -fill both -side left -expand 1
         pack $w.t.t.scrl -side left -fill both
@@ -337,28 +338,33 @@ proc create_config { w } \
 	pack $w.t.l -side right -fill both  -ipadx 5
 	pack $w.t.info -side right -fill both -expand yes -ipady 10 -ipadx 10
 
-	foreach des $topics {
-		    #puts "desc: ($des) des: ($des)"
-		    label $w.t.l.$des -text "$des" -justify right \
-			-bg $bcolor
-		    entry $w.t.e.$des -width 30 -relief sunken -bd 2 \
-                        -bg $bcolor -textvariable st_cinfo($des)
-		    grid $w.t.e.$des 
-		    grid $w.t.l.$des  -pady 1 -sticky e -ipadx 3
-		    bind $w.t.e.$des <FocusIn> \
-			"$w.t.t.t configure -state normal;\ 
+	foreach desc $topics {
+		    #puts "desc: ($desc) desc: ($desc)"
+		    label $w.t.l.$desc -text "$desc" -justify right \
+			-bg $gc(setup.BG)
+		    entry $w.t.e.$desc -width 30 -relief sunken -bd 2 \
+                        -bg $gc(setup.BG) -textvariable st_cinfo($desc)
+		    grid $w.t.e.$desc 
+		    grid $w.t.l.$desc  -pady 1 -sticky e -ipadx 3
+		    bind $w.t.e.$desc <FocusIn> "
+			$w.t.t.t configure -state normal;\
 			$w.t.t.t delete 1.0 end;\
-			$w.t.t.t insert insert \$st_bk_cfg($des);\
+			$w.t.t.t insert insert \$st_bk_cfg($desc);\
 			$w.t.t.t configure -state disabled"
 	}
 	# Highlight mandatory fields
-	$w.t.e.repository config -bg $mcolor
-	$w.t.e.description config -bg $mcolor
-	$w.t.e.logging config -bg $mcolor
+	$w.t.e.repository config -bg $gc(setup.mandatoryColor)
+	$w.t.e.description config -bg $gc(setup.mandatoryColor)
+	$w.t.e.logging config -bg $gc(setup.mandatoryColor)
+	$w.t.e.email config -bg $gc(setup.mandatoryColor)
+
 	bind $w.t.e.repository <KeyRelease> {
-		check_config $widget
+		#check_config $widget
 	}
 	bind $w.t.e.description <KeyRelease> {
+		check_config $widget
+	}
+	bind $w.t.e.email <KeyRelease> {
 		check_config $widget
 	}
 	bind $w.t.e.logging <KeyRelease> {
@@ -371,12 +377,13 @@ proc create_config { w } \
 	bind $w.t.e <Tab> {tk_focusNext %W}
 	bind $w.t.e <Shift-Tab> {tk_focusPrev %W}
 	bind $w.t.e <Control-n> {tk_focusNext %W}
+	bind $w.t.e <Control-p> {tk_focusPrev %W}
 	focus $w.t.e.repository
 	pack $w.t
 	pack $w
-	if {[$w.t.e.repository selection present] == 1} {
-		puts "Repository selected"
-	}
+	#if {[$w.t.e.repository selection present] == 1} {
+	#	puts "Repository selected"
+	#}
 	tkwait variable st_dlg_button
 	if {$st_dlg_button != 0} {
 		puts stderr "Cancelling creation of repository"
@@ -395,12 +402,15 @@ proc main {} \
 	set sheight [winfo screenheight .]
 	set x [expr {($swidth/2) - 100}]
 	set y [expr {($sheight/2) - 100}]
-	#wm geometry . ${width}x${len}+$x+$y
+
 	wm geometry . +$x+$y
 	get_config_info
+
 	# Override the repo name found in the .bkrc file if argc is set
 	if {$argc == 1} {
 		set st_cinfo(repository) [lindex $argv 0]
+	} else {
+		set st_cinfo(repository) ""
 	}
 	create_config .cconfig
 	if {[create_repo] == 0} {
@@ -420,15 +430,18 @@ proc getMessages {} \
 {
 	global st_bk_cfg topics
 
-	set fid [open "|bk gethelp config_template" "r"]
-	while { [ gets $fid topic ] != -1 } {
+	set topics "repository"
+	set st_bk_cfg(repository) "Repository name"
+
+	set fid [open "|bk getmsg config_template" "r"]
+	while {[gets $fid topic] != -1} {
 		set found 0
 		set cfg_topic ""
 		set topic [string trim $topic]
 		lappend topics $topic 
 		append cfg_topic "config_" $topic
-		set hfid [open "|bk gethelp $cfg_topic" "r"]
-		while { [ gets $hfid help ] != -1 } {
+		set hfid [open "|bk getmsg $cfg_topic" "r"]
+		while {[gets $hfid help] != -1} {
 			set found 1
 			#puts "$topic: $help"
 			append st_bk_cfg($topic) $help " "
@@ -438,8 +451,8 @@ proc getMessages {} \
 			set st_bk_cfg($topic) ""
 		}	
 	}
-	close $fid
-	close $hfid
+	catch {close $fid}
+	catch {close $hfid}
 }
 
 bk_init

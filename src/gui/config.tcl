@@ -75,6 +75,8 @@ proc getConfig {prog} \
 	set _d(hist.textHeight) 30	   ;# height of lower window
 	set _d(hist.showHistory) "1M"	   ;# History to show in graph on start
 
+	set _d(setup.mandatoryColor) #deeaf4 ;# Color of mandatory fields
+
 	if {$tcl_platform(platform) == "windows"} {
 		package require registry
 		set appdir [registry get {HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders} AppData]
