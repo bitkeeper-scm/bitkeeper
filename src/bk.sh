@@ -279,6 +279,11 @@ _keycache() {	# /* undoc? 2.0 */
 }
 
 
+_reedit() {
+	bk unedit -q "$@" 2> /dev/null
+	exec bk editor "$@"
+}
+
 _editor() {
 	if [ "X$EDITOR" = X ]
 	then	echo You need to set your EDITOR env variable

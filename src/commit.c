@@ -254,8 +254,8 @@ goodPackageName(char *pname)
 }
 
 private int
-do_commit(char **av, c_opts opts, char *sym,
-				char *pendingFiles, char *commentFile)
+do_commit(char **av,
+	c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 {
 	int	hasComment = (exists(commentFile) && (size(commentFile) > 0));
 	int	status, rc, i;
@@ -266,6 +266,9 @@ do_commit(char **av, c_opts opts, char *sym,
 	char	*cset[100] = {"bk", "cset", 0};
 	FILE 	*f, *f2;
 #define	MAX_PENDING_LOG 20
+	int	max_pending = MAX_PENDING_LOG;
+
+	if (getenv("BK_NEEDMORECSETS")) max_pending += 10;
 
 	l = logging(0, 0, 0);
 	unless (ok_commit(l, opts.alreadyAsked)) {
@@ -295,14 +298,14 @@ out:		if (commentFile) unlink(commentFile);
 	 */
 	ptype = (l&LOG_OPEN) ? 0 : 1;
 	unless (opts.resync) {
-		if (logs_pending(ptype, 1) >= MAX_PENDING_LOG) {
+		if (logs_pending(ptype, 1) >= max_pending) {
 			printf("Commit: forcing pending logs\n");
 			if (l&LOG_OPEN) {
 				system("bk _log -qc2");
 			} else {
 				system("bk _lconfig");
 			}
-			if ((logs_pending(ptype, 1) >= MAX_PENDING_LOG)) {
+			if ((logs_pending(ptype, 1) >= max_pending)) {
 				printf(
 "============================================================================\n"
 "Error: Max pending log exceeded, commit aborted\n\n"
