@@ -475,7 +475,7 @@ applyPatch(int flags)
 	assert(gca->pathname);
 	if (echo > 5) fprintf(stderr, "rmdel %s from %s\n", gca->rev, s->sfile);
 	if (d = sccs_next(s, sccs_getrev(s, gca->rev, 0, 0))) {
-		if (sccs_rmdel(s, d, 1, 0)) {
+		if (sccs_rmdel(s, d, 1, SILENT)) {
 			unless (BEEN_WARNED(s)) {
 				fprintf(stderr,
 				    "rmdel of %s failed.\n", p->resyncFile);

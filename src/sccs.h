@@ -278,7 +278,7 @@ extern	char *strdup(char *s);
 #define	D_DUPCSETFILE	0x00004000	/* this changesetFile is shared */
 #define	D_VISITED	0x00008000	/* and had a nice cup of tea */
 #define	D_CKSUM		0x00010000	/* delta has checksum */
-#define	D_MERGED	0x00020000	/* some delta has merged this one */
+#define	D_MERGED	0x00020000	/* set on branch tip which is merged */
 #define	D_LODZERO	0x00040000	/* a .0 delta of an LOD */
 #define	D_LODHEAD	0x00080000	/* a .1 delta of an LOD */
 #define	D_LODCONT	0x00100000	/* LOD continuation down a branch */
@@ -629,7 +629,7 @@ char	*sccs_root(sccs *, char *optional_root);
 int	sccs_cd2root(sccs *, char *optional_root);
 delta	*sccs_key2delta(sccs *sc, char *key);
 char	*sccs_impliedList(sccs *s, char *who, char *base, char *rev);
-void	sccs_sdelta(char *, delta *);
+int	sccs_sdelta(char *, delta *);
 sccs	*sccs_getperfile(FILE *, int *);
 void	sfileUnget(void);
 char	*sfileNext(void);

@@ -8,7 +8,7 @@
  * Copyright (c) 1997-1998 Larry McVoy.	 All rights reserved.
  */
 #include "sccs.h"
-WHATSTR("%W%");
+WHATSTR("%W% %K%");
 
 delta	*sfind(sccs *s, int serial);
 private delta	*rfind(sccs *s, char *rev);
@@ -2189,6 +2189,10 @@ expand(sccs *s, delta *d, char *l)
 
 		    case 'I':	/* name of revision: 1.1 or 1.1.1.1 */
 			strcpy(t, d->rev); t += strlen(d->rev);
+			break;
+
+		    case 'K':	/* BitKeeper Key */
+		    	t += sccs_sdelta(t, d);
 			break;
 
 		    case 'L':	/* 1.2.3.4 -> 2 */
@@ -10115,16 +10119,16 @@ sccs_pdelta(delta *d, FILE *out)
 	    sccs_utctime(d));
 }
 
-void
+int
 sccs_sdelta(char *buf, delta *d)
 {
 	assert(d);
-	sprintf(buf, "%s%s%s|%s|%s",
+	return (sprintf(buf, "%s%s%s|%s|%s",
 	    d->user,
 	    d->hostname ? "@" : "",
 	    d->hostname ? d->hostname : "",
 	    d->pathname ? d->pathname : "",
-	    sccs_utctime(d));
+	    sccs_utctime(d)));
 }
 
 /*
