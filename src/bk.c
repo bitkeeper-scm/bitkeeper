@@ -67,7 +67,6 @@ int loggingask_main(int ac, char **av);
 int loggingto_main(int, char **);
 int merge_main(int, char **);
 int mklock_main(int, char **);
-int mkrev_main(int, char **);
 int mtime_main(int, char **);
 int mv_main(int, char **);
 int names_main(int, char **);
@@ -85,6 +84,7 @@ int rechksum_main(int, char **);
 int renumber_main(int, char **);
 int repo_main(int, char **);
 int resolve_main(int, char **);
+int rset_main(int, char **);
 int rm_main(int, char **);
 int rmdel_main(int, char **);
 int sccscat_main(int, char **);
@@ -94,6 +94,7 @@ int sendbug_main(int, char **);
 int setlod_main(int, char **);
 int setup_main(int, char **);
 int sfiles_main(int, char **);
+int sfind_main(int, char **);
 int sfio_main(int, char **);
 int sids_main(int, char **);
 int sinfo_main(int, char **);
@@ -160,7 +161,6 @@ struct command cmdtbl[] = {
 	{"log", log_main},
 	{"merge", merge_main},
 	{"mklock", mklock_main}, /* for regression test only */
-	{"mkrev", mkrev_main},
 	{"mtime", mtime_main},
 	{"mv", mv_main},
 	{"names", names_main},
@@ -180,6 +180,7 @@ struct command cmdtbl[] = {
 	{"repo", repo_main},
 	{"resolve", resolve_main},
 	{"rev2cset", r2c_main},
+	{"rset", rset_main},
 	{"rm", rm_main},
 	{"rmdel", rmdel_main},
 	{"sccscat", sccscat_main},
@@ -191,6 +192,7 @@ struct command cmdtbl[] = {
 	{"setlod", setlod_main},
 	{"setup", setup_main },
 	{"sfiles", sfiles_main},
+	{"sfind", sfind_main},
 	{"sfio", sfio_main},
 	{"sids", sids_main},
 	{"sinfo", sinfo_main},
@@ -330,21 +332,6 @@ main(int ac, char **av)
 	 */
 	if (streq(prog, "pmerge")) {
 		argv[0] = "perl"; 
-		sprintf(cmd_path, "%s/%s", bin, prog);
-		argv[1] = cmd_path;
-		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
-		argv[i] = 0;
-		cmdlog_start(argv);
-		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
-		cmdlog_end(ret);
-		exit(ret);
-	}
-
-	/*
-	 * Is it a perl 5 script ?
-	 */
-	if (streq(prog, "mkdiffs")) {
-		argv[0] = find_perl5();
 		sprintf(cmd_path, "%s/%s", bin, prog);
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
@@ -681,42 +668,3 @@ find_wish()
 	fprintf(stderr, "Cannot find wish to run\n");
 	exit(1);
 }
-
-char *
-find_perl5()
-{
-	char buf[MAXLINE];
-	char *p, *s;
-	char path[MAXLINE];
-	static char perl_path[MAXPATH];
-	int more = 1;
-
-	p  = getenv("PATH");
-	if (p) {;
-		sprintf(path, "%s:/usr/local/bin", p);
-		localName2bkName(path, path);
-	} else {
-		strcpy(path, "/usr/local/bin");
-	}
-	p = path;
-	while (more) {
-		for (s = p; (*s != PATH_DELIM) && (*s != '\0');  s++);
-		if (*s == '\0') more = 0;
-		*s = '\0';
-#ifdef WIN32
-		sprintf(perl_path, "%s/perl.exe", p);
-		unless (exists(perl_path)) goto next;
-		return(perl_path); /* win32 perl is version 5 */
-#else
-		sprintf(perl_path, "%s/perl", p);
-		unless (executable(perl_path)) goto next;
-#endif
-		sprintf(buf, "%s -v | grep -E '(version 5.0)|(perl, v5.[0-9])' > %s",
-			perl_path, DEV_NULL);
-		if (system(buf) == 0)	return(perl_path);
-next:		p = ++s;
-	}
-	fprintf(stderr, "Cannot find perl5 to run\n");
-	exit(1);
-}
-

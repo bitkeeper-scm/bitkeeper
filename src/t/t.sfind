@@ -1,0 +1,302 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+echo $N Setup .......................................................$NL
+set -e
+trap 'echo failed' 0
+no_logging project
+mkdir bar
+mkdir bar/blech
+touch foo
+touch s.foo
+touch bar/s.foo
+touch bar/blech/s.foo
+bk delta $Q -i foo s.foo bar/s.foo bar/blech/s.foo
+trap '' 0
+set +e
+echo OK
+echo $N Check the list of SCCS files ................................$NL
+bk sfind | sort > SFILES
+sort <<EOF > LIST
+SCCS/s.ChangeSet
+BitKeeper/etc/SCCS/s.config
+SCCS/s.foo
+SCCS/s.s.foo
+bar/SCCS/s.s.foo
+bar/blech/SCCS/s.s.foo
+EOF
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
+echo OK
+echo $N Check explicit list with some files left out ................$NL
+sort <<EOF > X
+SCCS/s.ChangeSet
+SCCS/s.s.foo
+bar/blech/s.foo
+EOF
+bk undos X > .sfind
+rm -f X
+bk sfind `cat .sfind` | sort > SFILES
+sort <<EOF > LIST
+SCCS/s.ChangeSet
+SCCS/s.s.foo
+bar/blech/SCCS/s.s.foo
+EOF
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
+echo OK
+echo $N Check the list of g-files ...................................$NL
+bk sfind -g | sort > SFILES
+sort <<EOF > LIST
+ChangeSet
+BitKeeper/etc/config
+foo
+s.foo
+bar/s.foo
+bar/blech/s.foo
+EOF
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
+bk sfind -g - < .sfind | sort > SFILES
+sort <<EOF > LIST
+ChangeSet
+s.foo
+bar/blech/s.foo
+EOF
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo list failed; diff SFILES LIST; exit 1; fi
+echo OK
+echo $N Check the list of pending files .............................$NL
+bk sfind -C | sort > SFILES
+sort <<EOF > LIST
+SCCS/s.foo@1.1
+SCCS/s.s.foo@1.1
+bar/SCCS/s.s.foo@1.1
+bar/blech/SCCS/s.s.foo@1.1
+EOF
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
+# XXX -C cannot be used with file lists.
+#bk sfind -C - < .sfind | sort > SFILES
+#sort <<EOF > LIST
+#SCCS/s.ChangeSet@1.1
+#SCCS/s.s.foo@1.1
+#SCCS/bar/blech/s.s.foo@1.1
+#EOF
+#cmp -s SFILES LIST
+#if [ $? -ne 0 ]; then echo list failed; diff SFILES LIST; exit 1; fi
+echo OK
+bk cset $Q -yblah - <SFILES
+bk co $Q -l s.foo bar/s.foo
+ls >> bar/s.foo
+echo $N Check the list of changed files .............................$NL
+bk sfind -c | sort > SFILES
+sort <<EOF > LIST
+bar/SCCS/s.s.foo
+EOF
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
+bk sfind -c - < .sfind | sort > SFILES
+sort <<EOF > LIST
+EOF
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo list failed; diff SFILES LIST; exit 1; fi
+echo OK
+echo $N Check the list of locked files ..............................$NL
+bk sfind -l | sort > SFILES
+sort <<EOF > LIST
+SCCS/s.s.foo
+bar/SCCS/s.s.foo
+EOF
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
+bk sfind -l - < .sfind | sort > SFILES
+sort <<EOF > LIST
+SCCS/s.s.foo
+EOF
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo list failed; diff SFILES LIST; exit 1; fi
+echo OK
+echo $N Check the list of unlocked files ............................$NL
+bk sfind -u | sort > SFILES
+sort <<EOF > LIST
+BitKeeper/etc/SCCS/s.config
+SCCS/s.ChangeSet
+SCCS/s.foo
+bar/blech/SCCS/s.s.foo
+EOF
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo list failed; diff SFILES LIST; exit 1; fi
+bk sfind -u - < .sfind | sort > SFILES
+sort <<EOF > LIST
+SCCS/s.ChangeSet
+bar/blech/SCCS/s.s.foo
+EOF
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo list failed; diff SFILES LIST; exit 1; fi
+echo OK
+echo $N Check the list of clean, unlocked files .....................$NL
+bk ci $Q -l -mfoo bar/s.foo
+ls -R >bar/s.foo
+bk ci $Q -mfoo-R bar/s.foo
+bk ci $Q -mblech s.foo
+bk sfind -u | sort > SFILES
+sort <<EOF > LIST
+BitKeeper/etc/SCCS/s.config
+SCCS/s.ChangeSet
+SCCS/s.foo
+SCCS/s.s.foo
+bar/SCCS/s.s.foo
+bar/blech/SCCS/s.s.foo
+EOF
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
+bk sfind -u - < .sfind | sort > SFILES
+sort <<EOF > LIST
+SCCS/s.ChangeSet
+SCCS/s.s.foo
+bar/blech/SCCS/s.s.foo
+EOF
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo list failed; diff SFILES LIST; exit 1; fi
+echo OK
+echo $N Check the list of pending files .............................$NL
+bk sfind -C | sort > SFILES
+sort <<EOF > LIST
+bar/SCCS/s.s.foo@1.3
+EOF
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
+echo OK
+echo $N Check the list of pending files with -A .....................$NL
+bk sfind -CA | sort > SFILES
+sort <<EOF > LIST
+bar/SCCS/s.s.foo@1.2
+bar/SCCS/s.s.foo@1.3
+EOF
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
+echo OK
+echo $N Commit work, check pending lists again ......................$NL
+bk sfind -C | bk cset $Q -ysecond -
+bk sfind -C | sort > SFILES
+if [ -s SFILES ]; then echo "Failed (short)"; cat SFILES; exit 1; fi
+bk sfind -CA | sort > SFILES
+if [ -s SFILES ]; then echo "Failed (long)"; cat SFILES; exit 1; fi
+echo OK
+echo $N Check the list of extra files ...............................$NL
+rm -f .sfind
+bk sfind -x | sort > SFILES
+sort <<EOF > LIST
+LIST
+SFILES
+EOF
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
+X=`bk sfind -x LIST SCCS/s.foo`
+if [ "X$X" != "XLIST" ]; then echo failed; echo $X; exit 1; fi
+echo OK
+echo $N Make sure garbage in SCCS dir behaves .......................$NL
+touch SCCS/OLD-s.foo
+bk sfind -xj | sort > SFILES
+sort <<EOF > LIST
+LIST
+SCCS/OLD-s.foo
+SFILES
+EOF
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
+X=`bk sfind -j SCCS/OLD-s.foo`
+if [ "X$X" != "XSCCS/OLD-s.foo" ]; then echo failed; echo $X; exit 1; fi
+echo OK
+echo $N Make sure sfind GFILE lists SCCS/s.GFILE ....................$NL
+if [ -f s.foo ]; then exit 1; fi
+if [ ! -f SCCS/s.s.foo ]; then exit 1; fi
+FOO="`bk sfind s.foo`"
+if [ "$FOO" != "SCCS/s.s.foo" ]; then echo Failed - got $FOO.; exit 1; fi
+echo OK
+echo $N Test ignore lists with -x ...................................$NL
+cat <<EOF > BitKeeper/etc/ignore
+LIST
+s.*
+*ore
+config
+EOF
+sort <<EOF > LIST
+SCCS/OLD-s.foo
+SFILES
+EOF
+bk sfind -xj | sort > SFILES
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
+echo OK
+echo $N Test disabling ignore lists with -au ........................$NL
+sort <<EOF > LIST
+BitKeeper/etc/SCCS/s.config
+SCCS/s.ChangeSet
+SCCS/s.foo
+SCCS/s.s.foo
+bar/SCCS/s.s.foo
+bar/blech/SCCS/s.s.foo
+EOF
+bk sfind -au | sort > SFILES
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
+echo OK
+echo $N Test disabling ignore lists with -ax ........................$NL
+sort <<EOF > LIST
+BitKeeper/etc/ignore
+LIST
+SCCS/OLD-s.foo
+SFILES
+EOF
+bk sfind -ajx | sort > SFILES
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
+echo OK
+echo $N Test that tree walk does not follow symlinks ................$NL
+if [ $PLATFORM = "WIN32" ]
+then
+	echo skipped
+else
+#----------------------------------------------------------- 
+ln -s /usr/lib bar/lib || { echo ln failed; exit 1; }
+sort <<EOF > LIST
+SCCS/OLD-s.foo
+SFILES
+bar/lib
+EOF
+bk sfind -xj | sort > SFILES
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
+echo OK
+#----------------------------------------------------------- 
+fi
+echo $N Test naive mode with s.files in odd places ..................$NL
+date > impostor
+bk ci $Q -i -m'boo!' impostor
+bk co $Q impostor
+mv SCCS/s.impostor s.impostor
+mv impostor SCCS/s.impostor
+bk sfind | sort > SFILES
+sort <<EOF > LIST
+BitKeeper/etc/SCCS/s.config
+SCCS/s.s.foo
+bar/SCCS/s.s.foo
+bar/blech/SCCS/s.s.foo
+SCCS/s.foo
+SCCS/s.ChangeSet
+SCCS/s.impostor
+EOF
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
+echo OK
+set +e

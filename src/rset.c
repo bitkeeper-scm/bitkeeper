@@ -2,6 +2,13 @@
 #include "system.h"
 #include "sccs.h"
 
+typedef struct {
+	u32 	show_all:1;	/* show deleted files */
+	u32	show_diffs:1;	/* output in rev diff format */
+	u32	show_path:1;	/* show d->pathname */
+	u32	hide_cset:1;	/* hide ChangeSet file from file list */
+} options;
+
 private project *proj;
 private int mixed; /* if set, handle long and short keys */
 
@@ -104,7 +111,7 @@ isNullFile(char *rev, char *file)
  */
 private void
 process(char *root, char *start, char *end,
-				MDBM *idDB, MDBM **goneDB, int show_all)
+				MDBM *idDB, MDBM **goneDB, options opts)
 {
 	sccs	*s;
 	delta 	*d1, *d2;
@@ -147,74 +154,43 @@ process(char *root, char *start, char *end,
 	 */
 	if (streq(s->sfile, CHANGESET))  goto done; 
 
-	/*
-	 * If the file is null in both Change Sets, skip it
-	 */
-	if (!show_all && isNullFile(rev1, path1) && isNullFile(rev2, path2)) {
-		goto done;
-	}
+	if (opts.show_diffs) {
+		/*
+		 * If the file is null in both Change Sets, skip it
+		 */
+		if (!opts.show_all &&
+		    isNullFile(rev1, path1) &&
+		    isNullFile(rev2, path2)) {
+			goto done;
+		}
+		unless (opts.show_path) {
+			printf("%s%c%s..%s\n", s->gfile, c, rev1, rev2);
+		} else {
+			printf("%s%c%s%c%s%c%s%c%s\n",
+			     s->gfile, c, path1, c, rev1, c, path2, c, rev2);
+		}
+	} else {
+		if (!opts.show_all && isNullFile(rev2, path2)) goto done;
 
-	printf("%s%c%s%c%s%c%s%c%s\n",
-				s->sfile, c, path1, c, rev1, c, path2, c, rev2);
+		unless (opts.show_path) {
+			printf("%s%c%s\n", s->gfile, c, rev2);
+		} else {
+			printf("%s%c%s%c%s\n", s->gfile, c, path2, c, rev2);
+		}
+	}
 done:	sccs_close(s);
 }
 
-
 /*
- * XXX This should probably be a option in the "bk cset" command
+ * Compute diffs of  rev1 and rev2
  */
-mkrev_main(int ac, char **av)
+private void
+rel_diffs(MDBM *db1, MDBM *db2, MDBM *idDB, char *rev1, char *rev2,
+								options opts)
 {
-	int	c, show_all = 0;
-	char	*rev1, *rev2, tmpf1[MAXPATH], tmpf2[MAXPATH];
-	char	*root_key, *start_key, *end_key, s_cset[] = CHANGESET;
-	sccs	*s;
-	MDBM	*db1, *db2, *idDB, *goneDB = 0, *short2long = 0;
+	MDBM	*goneDB = 0, *short2long = 0;
+	char	*root_key, *start_key, *end_key;
 	kvpair	kv;
-	datum	k;
-	
-	if (sccs_cd2root(0, 0)) {
-		fprintf(stderr, "mkrev: cannot find package root.\n");
-		exit(1);
-	} 
-
-	while ((c = getopt(ac, av, "ar:")) != -1) {
-		switch (c) {
-		case 'a':	show_all = 1; break; /* show all files */
-		case 'r':	rev1 = optarg;
-				unless (rev2 = strchr(rev1, ',')) {
-					goto usage;
-				}
-				*rev2++ = 0;
-				break;
-		default:
-usage:				fprintf(stderr,
-					"Usage: mkrev [-a] -rrev1,rev2\n");
-				return (1);
-		}
-	}
-
-	unless (rev1 && rev2) goto usage;
-
-	/*
-	 * load the two ChangeSet 
-	 */
-	s = sccs_init(s_cset, SILENT|INIT_SAVEPROJ, 0);
-	assert(s);
-	if (csetIds(s, rev1)) {
-		fprintf(stderr, "Cannot get ChangeSet for revision %s\n", rev1);
-		return (1);
-	}
-	db1 = s->mdbm; s->mdbm = NULL;
-	if (csetIds(s, rev2)) {
-		fprintf(stderr, "Cannot get ChangeSet for revsion %s\n", rev2);
-		return (1);
-	}
-	db2 = s->mdbm; s->mdbm = NULL;
-	proj = s->proj;
-	mixed = !(s->state & S_KEY2);
-	sccs_close(s);
-	assert(db1 && db2);
 
 	/*
 	 * OK, here is the 2 main loops where we produce the
@@ -225,9 +201,14 @@ usage:				fprintf(stderr,
 	 * XXX If we move the ChangeSet file,
 	 * XXX this need to be updated
 	 */
-	printf("%s@ChangeSet@%s@ChangeSet@%s\n", CHANGESET, rev1, rev2);
-	idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS);
-	assert(idDB);
+	unless (opts.hide_cset) {
+		unless (opts.show_path) {
+			printf("ChangeSet@%s..%s\n", rev1, rev2);
+		} else {
+			printf("ChangeSet@ChangeSet@%s@ChangeSet@%s\n",
+								rev1, rev2);
+		}
+	}
 	for (kv = mdbm_first(db1); kv.key.dsize != 0; kv = mdbm_next(db1)) {
 		char root_key2[MAXKEY];
 
@@ -237,7 +218,7 @@ usage:				fprintf(stderr,
 		end_key = find_key(db2, root_key2, &short2long);
 		unless (is_same(start_key, end_key))  {
 			process(root_key, start_key, end_key,
-						    idDB, &goneDB, show_all);
+						    idDB, &goneDB, opts);
 		}
 		/*
 		 * Delete the entry from db2, so we don't 
@@ -253,13 +234,114 @@ usage:				fprintf(stderr,
 	for (kv = mdbm_first(db2); kv.key.dsize != 0; kv = mdbm_next(db2)) {
 		root_key = kv.key.dptr;
 		end_key = kv.val.dptr;
-		process(root_key, NULL, end_key, idDB, &goneDB, show_all);
+		process(root_key, NULL, end_key, idDB, &goneDB, opts);
 	}
+
 	mdbm_close(db1);
 	mdbm_close(db2);
 	mdbm_close(idDB);
-	mdbm_close(short2long);
+	if (short2long) mdbm_close(short2long);
 	if (goneDB) mdbm_close(goneDB);
+}
+
+private void
+rel_list(MDBM *db, MDBM *idDB, char *rev, options opts)
+{
+	MDBM	*goneDB = 0, *short2long = 0;
+	char	*root_key, *end_key;
+	kvpair	kv;
+
+	unless (opts.hide_cset) {
+		unless (opts.show_path) {
+			printf("ChangeSet@%s\n", rev);
+		} else {
+			printf("ChangeSet@ChangeSet@%s\n", rev);
+		}
+	}
+	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
+		root_key = kv.key.dptr;
+		end_key = kv.val.dptr;
+		process(root_key, NULL, end_key, idDB, &goneDB, opts);
+	}
+
+	mdbm_close(db);
+	mdbm_close(idDB);
+	if (short2long) mdbm_close(short2long);
+	if (goneDB) mdbm_close(goneDB);
+}
+
+
+int
+rset_main(int ac, char **av)
+{
+	int	c, show_all = 0;
+	char	*rev1 = 0, *rev2 = 0 , tmpf1[MAXPATH], tmpf2[MAXPATH];
+	char	*root_key, *start_key, *end_key, s_cset[] = CHANGESET;
+	sccs	*s;
+	MDBM	*db1, *db2, *idDB, *goneDB = 0, *short2long = 0;
+	kvpair	kv;
+	datum	k;
+	options	opts = { 0, 0, 0, 0};
+	
+	if (sccs_cd2root(0, 0)) {
+		fprintf(stderr, "mkrev: cannot find package root.\n");
+		exit(1);
+	} 
+
+	while ((c = getopt(ac, av, "ahHr:")) != -1) {
+		switch (c) {
+		case 'a':	opts.show_all = 1;  /* show deleted files */
+				break;
+		case 'h':	opts.show_path = 1; /* show historic path */
+				break;
+		case 'H':	opts.hide_cset = 1; /* hide ChangeSet file */
+				break;
+		case 'r':	rev1 = optarg;
+				rev2 = strchr(rev1, ',');
+				if (rev2) *rev2++ = 0;
+				break;
+		default:
+usage:				fprintf(stderr,
+				"Usage: rset [-a] [-h] [-H] -rrev1[,rev2]\n");
+				return (1);
+		}
+	}
+
+	unless (rev1) goto usage;
+
+	/*
+	 * load the two ChangeSet 
+	 */
+	s = sccs_init(s_cset, SILENT|INIT_SAVEPROJ, 0);
+	assert(s);
+	if (csetIds(s, rev1)) {
+		fprintf(stderr,
+			"Cannot get ChangeSet for revision %s\n", rev1);
+		return (1);
+	}
+	db1 = s->mdbm; s->mdbm = NULL;
+	assert(db1);
+	if (rev2) {
+		if (csetIds(s, rev2)) {
+			fprintf(stderr,
+			    "Cannot get ChangeSet for revision %s\n", rev2);
+			return (1);
+		}
+		db2 = s->mdbm; s->mdbm = NULL;
+		assert(db2);
+		opts.show_diffs = 1;
+	}
+	proj = s->proj;
+	mixed = !(s->state & S_KEY2);
+	sccs_close(s);
+
+	idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS);
+	assert(idDB);
+	if (rev1 && rev2) {
+		rel_diffs(db1, db2, idDB, rev1, rev2, opts);
+	} else {
+		rel_list(db1, idDB, rev1, opts);
+	}
 	if (proj) proj_free(proj);
 	return (0);
 }
