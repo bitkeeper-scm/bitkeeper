@@ -428,6 +428,7 @@ typedef	struct sccs {
 	char	*zfile;		/* SCCS/z.foo.c */
 	char	*gfile;		/* foo.c */
 	char	*symlink;	/* if gfile is a sym link, the destination */
+	char	*pathname;	/* current pathname in view or not in view */
 	char	**usersgroups;	/* lm, beth, staff, etc */
 	int	encoding;	/* ascii, uuencode, gzip, etc. */
 	char	**flags;	/* flags in the middle that we didn't grok */
@@ -653,6 +654,8 @@ int	csetIds(sccs *cset, char *rev);
 void	sccs_fixDates(sccs *);
 int	sccs_getxflags(delta *d);
 void	sccs_mkroot(char *root);
+char	*sccs_nivPath(sccs *s);
+char	*sccs_setpathname(sccs *s);
 char	*sPath(char *name, int isDir);
 delta	*sccs_next(sccs *s, delta *d);
 int	sccs_reCache(void);

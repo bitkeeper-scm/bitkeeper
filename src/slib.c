@@ -1721,6 +1721,77 @@ findDate(delta *d, time_t date)
 }
 
 /*
+ * Calculate the Out Of View (OOV) path corresponding to s
+ */
+
+#define	NIVROOT	"BitKeeper/other/"
+
+char	*
+sccs_nivPath(sccs *s)
+{
+	char	buf[MAXKEY];
+	char	path[MAXKEY];
+	char	*parts[6];
+	char	*p;
+	delta	*d;
+
+	assert(s);
+	d = s->tree;
+
+	sccs_sdelta(s, d, buf);
+	explodeKey(buf, parts);
+
+	/* the use of conditions on parts 1,4 and 5 comes from
+	 * seeing code in samekeystr
+	 */
+	strcpy(path, NIVROOT);
+	strcat(path, parts[2]);
+	p = path + strlen(path);
+	*p++ = '-';
+	strcpy(p, parts[0]);
+	if (parts[1]) {
+		strcat(p, "-at-");
+		strcat(p, parts[1]);
+	}
+	p = path + strlen(path);
+	*p++ = '-';
+	strcpy(p, parts[3]);
+	if (parts[4]) {
+		p = path + strlen(path);
+		*p++ = '-';
+		strcpy(p, parts[4]);
+	}
+	if (parts[5]) {
+		p = path + strlen(path);
+		*p++ = '-';
+		strcpy(p, parts[5]);
+	}
+	strdup(path);
+}
+
+/*
+ * set the s->pathname variable to be the name of the file at
+ * tip of current or to a special Not In View (NIV) name
+ */
+
+char	*
+sccs_setpathname(sccs *s)
+{
+	delta	*d;
+
+	assert(s);
+	if (s->pathname) free(s->pathname);
+	if (s->defbranch && streq(s->defbranch, "1.0")) {
+		s->pathname = sccs_nivPath(s);
+	}
+	else {
+		unless (d = sccs_getrev(s, "+", 0, 0)) return (0);
+		s->pathname = strdup(d->pathname);
+	}
+	return (s->pathname);
+}
+
+/*
  * Take either a revision or date/symbol and return the delta.
  *
  * Date tokens may have a prefix of "+" or "-" to imply rounding direction.
@@ -3514,6 +3585,7 @@ sccs_free(sccs *s)
 	if (s->random) free(s->random);
 	if (s->symlink) free(s->symlink);
 	if (s->mdbm) mdbm_close(s->mdbm);
+	if (s->pathname) free(s->pathname);
 	bzero(s, sizeof(*s));
 	free(s);
 #ifdef	ANSIC
