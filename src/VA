@@ -28,6 +28,11 @@ a) deletes & renames.  Need a modifed version of patch which does not delete
 
 b) big chunks which fail - postpone this for now.
 
+c) --norejects (also --search) options to patch.  Suppose that we had a wrapper
+   around patch which could take a patch file and wander through the tree 
+   looking for the versions of files which take the whole patch cleanly.
+   
+
 WORKING PRACTICE
 ----------------
 
