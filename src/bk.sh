@@ -1437,7 +1437,7 @@ _man() {
 _version() {
 	echo "BitKeeper version is $VERSION"
 	echo "Built by: $BUILDER"
-	echo "Built date: $BUILT_DATE"
+	echo "Built on: $BUILT_DATE"
 }
 
 _root() {
