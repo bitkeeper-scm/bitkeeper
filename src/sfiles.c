@@ -593,15 +593,14 @@ sfiles_walk(char *file, struct stat *sb, void *data)
 		/*
 		 * Special processing for .bk_skip file
 		 */
-		strcpy(&file[n], "/" BKSKIP);
-		if (exists(file)) return (-1);
+		file[n] = 0;
+		if (sfiles_skipdir(file)) return (-1);
 
 		/* Skip new repo */
 		if (wi->sccsdir) {
 			strcpy(&file[n], "/" BKROOT);
 			if (exists(file)) return (-1);
 		}
-		file[n] = 0;
 
 		/* if SCCS dir start new processing */
 		p = 0;
@@ -1109,6 +1108,31 @@ enableFastPendingScan()
 	touch(DFILE, 0666);
 }
 
+/*
+ * Return true if we should skip this directory (it contains .bk_skip).
+ * If there is an SCCS directory then complain, and return false,
+ * because that is likely to be a mistake.
+ *
+ * The intent is, if users need to be able to .bk_skip a directory with
+ * SCCS/, then this should be extended to check for $d/.bk_skip and
+ * $d/SCCS/.bk_skip.  The workaround is to rename SCCS/, or to move it to
+ * a subdirectory, at the same time as creating a .bk_skip.
+ */
+int
+sfiles_skipdir(char *dir)
+{
+	char	buf[MAXPATH];
+
+	snprintf(buf, sizeof(buf), "%s/%s", dir, BKSKIP);
+	unless (exists(buf)) return (0);
+	snprintf(buf, sizeof(buf), "%s/%s", dir, "SCCS");
+	if (isdir(buf)) {
+		getMsg("bk_skip_and_sccs", dir, 0, 0, stderr);
+		return (0);
+	}
+	return (1);
+}
+
 private	int
 walk_dflg(char *file, struct stat *sb, void *data)
 {
@@ -1150,8 +1174,8 @@ walk_dflg(char *file, struct stat *sb, void *data)
 		/*
 		 * Skip directory containing .bk_skip file
 		 */
-		strcpy(&file[n], "/" BKSKIP);
-		if (exists(file)) return (-1);
+		file[n] = 0;
+		if (sfiles_skipdir(file)) return (-1);
 	}
 	return (0);
 }
@@ -1201,7 +1225,8 @@ findsfiles(char *file, struct stat *sb, void *data)
 			/*
 			 * Skip directory containing a .bk_skip file
 			 */
-			return (-2);
+			p[1] = 0;
+			if (sfiles_skipdir(file)) return (-2);
 		}
 	}
 	return (0);

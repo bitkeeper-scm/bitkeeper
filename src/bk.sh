@@ -1284,7 +1284,11 @@ _install()
 			exit 1
 		}
 		test $FORCE -eq 0 && {
-			echo "bk install: destination exists, failed (add -f to force)"
+			echo "bk install: destination exists, failed"
+			exit 1
+		}
+		test -f "$DEST"/bkhelp.txt || {
+			echo "bk install: destination is not an existing bk tree, failed"
 			exit 1
 		}
 		test $VERBOSE = YES && echo Uninstalling $DEST

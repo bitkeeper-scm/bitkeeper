@@ -1026,7 +1026,7 @@ char	*sccs_rmName(sccs *s, int useCommonDir);
 int	sccs_rm(char *name, char *del_name, int useCommonDir, int force);
 void	sccs_rmEmptyDirs(char *path);
 void	do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out);
-char 	**get_http_proxy(void);
+char 	**get_http_proxy(char *host);
 int	confirm(char *msg);
 int	csetCreate(sccs *cset, int flags, char *files, char **syms);
 int	cset_setup(int flags, int ask);
@@ -1183,6 +1183,7 @@ char	*platform(void);
 char	*find_prog(char *);
 char	*pager(void);
 int	bkmail(char *url, char **to, char *subject, char *file);
+int	sfiles_skipdir(char *dir);
 void	set_timestamps(char *sfile);
 
 void	align_diffs(u8 *vec, int n, int (*compare)(int a, int b),

@@ -5,41 +5,6 @@
  * Copyright (c) 2001 Andrew Chang       All rights reserved.
  */
 
-#define CACHED_PROXY "BitKeeper/etc/.cached_proxy"
-
-void
-save_cached_proxy(char *proxy)
-{
-	char *p = proj_root(0);
-	char cached_proxy[MAXPATH];
-	FILE *f;
-	
-	unless (p) return;
-	sprintf(cached_proxy, "%s/%s", p, CACHED_PROXY);
-	f = fopen(cached_proxy, "wb");
-	fputs(proxy, f);
-	fclose(f);
-}
-
-char **
-_get_cached_proxy(char **proxies)
-{
-	char *p = proj_root(0);
-	char buf[MAXPATH];
-	FILE *f;
-
-	unless (p) return NULL;
-	sprintf(buf, "%s/%s", p, CACHED_PROXY);
-	f = fopen(buf, "rb");
-	unless (f) return NULL;
-	buf[0] = 0;
-	fgets(buf, sizeof(buf), f);
-	fclose(f);
-	unless (buf[0]) return NULL;
-	return (addLine(proxies, strdup(buf)));
-}
-
-
 private char **
 _get_http_proxy_env(char **proxies)
 {
@@ -146,7 +111,7 @@ getRegDWord(HKEY hive, char *key, char *valname, DWORD *val)
         return (1);
 }
 
-char **
+private char **
 addProxy(char *type, char *line, char **proxies)
 {
 	char	*q, buf[MAXLINE], proxy_host[MAXPATH];
@@ -172,20 +137,22 @@ addProxy(char *type, char *line, char **proxies)
  * Get proxy from windows registry
  * Note: This works for both IE and netscape on win32
  */
-char **
-_get_http_proxy_reg(char **proxies)
+private char **
+_get_http_proxy_reg(char **proxies, char *host)
 {
 #define KEY "Software\\Microsoft\\Windows\\CurrentVersion\\internet Settings"
-	char	*p, *q, buf[MAXLINE] = "";
-	int	len = sizeof(buf);
+	char	*p, *q;
+	int	len;
 	int	proxyEnable = 0;
+	char	buf[MAXLINE];
 
 	if (getRegDWord(HKEY_CURRENT_USER,
 			KEY, "ProxyEnable", (DWORD *)&proxyEnable) == 0) {
 		goto done;
 	}
-	if (proxyEnable == 0) goto done;
+	unless (proxyEnable) goto done;
 
+	len = sizeof(buf);  /* important */
 	getReg(HKEY_CURRENT_USER, KEY, "AutoConfigURL", buf, &len);
 	if (buf[0]) {
 		/*
@@ -195,56 +162,47 @@ _get_http_proxy_reg(char **proxies)
 		 * Windows. So just skip the pac and make the user set up
 		 * their proxy with envronment variable.
 		 */
-		return (proxies);
-	} else {
-		len = sizeof(buf);  /* important */
-		if (getReg(HKEY_CURRENT_USER,
-					KEY, "ProxyServer", buf, &len) == 0) {
-			return (proxies);
+		goto done;
+	}
+
+	len = sizeof(buf);  /* important */
+	if (getReg(HKEY_CURRENT_USER, KEY, "ProxyOverride", buf, &len)) {
+		q = buf;
+		while (q) {
+			if (p = strchr(q, ';')) *p++ = 0;
+			if (*q && match_one(host, q, 1)) goto done;
+			q = p;
 		}
-		/*
-		 * We support 3 froms:
-		 * 1) host:port
-		 * 2) http=host:port
-		 * 3) http://host:port
-		 * form 1 can only exist in a single field line
-		 * form 2 and 3 can be part of a multi-field line
-		 */
-		if (getenv("BK_HTTP_PROXY_DEBUG")) {
-			fprintf(stderr, "ProxyServer= \"%s\"\n", buf);
+	}
+	
+	len = sizeof(buf);  /* important */
+	if (getReg(HKEY_CURRENT_USER, KEY, "ProxyServer", buf, &len) == 0) {
+		goto done;
+	}
+	/*
+	 * We support 3 froms:
+	 * 1) host:port
+	 * 2) http=host:port
+	 * 3) http://host:port
+	 * form 1 can only exist in a single field line
+	 * form 2 and 3 can be part of a multi-field line
+	 */
+	if (getenv("BK_HTTP_PROXY_DEBUG")) {
+		fprintf(stderr, "ProxyServer= \"%s\"\n", buf);
+	}
+	q = buf;
+	while (q) {
+		if (p = strchr(q, ';')) *p++ = 0;
+		if (strneq("http://", q, 7)) {
+			proxies = addProxy("PROXY", &q[7], proxies);
+		} else if (strneq("http=", q, 5)) {
+			proxies = addProxy("PROXY", &q[5], proxies);
+		} else if (strneq("socks=", q, 6)) {
+			proxies = addProxy("SOCKS", &q[6], proxies);
+		} else if (!p) {
+			proxies = addProxy("PROXY", q, proxies);
 		}
-		if (strchr(buf, ';') == 0) {
-			if (strneq("http://", buf, 7)) {
-				proxies = addProxy("PROXY", &buf[7], proxies);
-			} else if (strneq("http=", buf, 5)) {
-				proxies = addProxy("PROXY", &buf[5], proxies);
-			} else if (strneq("socks=", buf, 6)) {
-				proxies = addProxy("SOCKS", &buf[6], proxies);
-			} else {
-				proxies = addProxy("PROXY", buf, proxies);
-			}
-		} else {
-			q = buf;
-			p = strchr(q, ';'); 
-			if (p) *p++ = 0;
-			while (q) {
-				if (strneq("http://", q, 7)) {
-					proxies =
-					    addProxy("PROXY", &q[7], proxies);
-				} else if (strneq("http=", q, 5)) {
-					proxies =
-					    addProxy("PROXY", &q[5], proxies);
-				} else if (strneq("socks=", q, 6)) {
-					proxies =
-					    addProxy("SOCKS", &q[6], proxies);
-				} 
-				q = p;
-				if (q) {
-					p = strchr(q, ';');
-					if (p) *p++ = 0;
-				}
-			}
-		}
+		q = p;
 	}
 done:	return (proxies);
 }
@@ -255,15 +213,14 @@ done:	return (proxies);
  *		socks DNS (yet).
  */ 
 char **
-get_http_proxy()
+get_http_proxy(char *host)
 {
-	char	**proxies = NULL;
+	char	**proxies = 0;
 	
-	//proxies = _get_cached_proxy(proxies);
 	proxies = _get_http_proxy_env(proxies);
 	proxies = _get_socks_proxy(proxies);
 #ifdef WIN32
-	proxies = _get_http_proxy_reg(proxies);
+	proxies = _get_http_proxy_reg(proxies, host);
 #endif
 	return (proxies);
 }

@@ -218,6 +218,7 @@ private	void	reportStatus(SERVICE_STATUS_HANDLE, int, int, int);
 private	void	bkd_remove_service(int verbose);
 private	void	bkd_install_service(bkdopts *opts, int ac, char **av);
 private	void	bkd_start_service(void (*service_func)(int, char**));
+private	int	bkd_register_ctrl(void);
 private	void	logMsg(char *msg);
 
 private void

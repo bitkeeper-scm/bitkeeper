@@ -597,8 +597,8 @@ out:		chdir(from);
 			sprintf(skip, "%s/%s/%s", from, buf, BKROOT);
 			if (exists(skip)) continue;
 		}
-		sprintf(skip, "%s/%s/%s", from, buf, BKSKIP);
-		if (exists(skip)) continue;
+		sprintf(skip, "%s/%s", from, buf);
+		if(sfiles_skipdir(skip)) continue;
 		unless (opts.quiet || streq(".", buf)) {
 			fprintf(stderr, "Linking %s\n", buf);
 		}

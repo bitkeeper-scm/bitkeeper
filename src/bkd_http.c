@@ -1187,7 +1187,7 @@ http_patch(char *rev)
 	}
 
 	out("<pre><font size=2>");
-	sprintf(buf, "bk export -T -h -x -tpatch -r'%s'", rev);
+	sprintf(buf, "bk export -T -h -S -tpatch -r'%s'", rev);
 	f = popen(buf, "r");
 	color(0);
 	while (fgets(buf, sizeof(buf), f)) {
