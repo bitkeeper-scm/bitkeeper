@@ -203,7 +203,7 @@ usage:		system("bk help -s takepatch");
 	 * 
 	 * Note: BK_NO_CONVERGE is for used in regression test only
 	 */
-	if (conflicts && !getenv("BK_NO_CONVERGE")) {
+	if (conflicts && !isLogPatch && !getenv("BK_NO_CONVERGE")) {
 		char key[MAXKEY], gfile[MAXPATH];
 		chdir(ROOT2RESYNC);
 		f = popen("bk sfiles BitKeeper/etc BitKeeper/deleted | "
@@ -820,8 +820,8 @@ chkEmpty(sccs *s, MMAP *dF)
 {
 	if ((dF->size > 0) &&
 	    !(s->state & S_CSET) &&
-	    (strlen(s->sfile) > 19) &&
-	    !strneq(s->sfile, "RESYNC/BitKeeper/etc/", 19)) {
+	    (strlen(s->sfile) > 17) &&
+	    !strneq(s->sfile, "RESYNC/BitKeeper/", 17)) {
 		fprintf(stderr,
 			"Logging patch should not have source content\n");
 		return (1); /* failed */

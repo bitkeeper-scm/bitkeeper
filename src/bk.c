@@ -55,6 +55,7 @@ int gnupatch_main(int, char **);
 int graft_main(int, char **);
 int grep_main(int, char **);
 int gone_main(int, char **);
+int gzip_main(int, char **);
 int help_main(int, char **);
 int helpsearch_main(int, char **);
 int helptopics_main(int, char **);
@@ -63,6 +64,7 @@ int isascii_main(int, char **);
 int key2rev_main(int, char **);
 int keysort_main(int, char **);
 int lines_main(int, char **);
+int listkey_main(int, char **);
 int lock_main(int, char **);
 int lod_main(int, char **);
 int log_main(int, char **);
@@ -78,8 +80,12 @@ int mklock_main(int, char **);
 int mtime_main(int, char **);
 int mv_main(int, char **);
 int names_main(int, char **);
+int oclone_main(int, char **);
+int opull_main(int, char **);
+int opush_main(int, char **);
 int parent_main(int, char **);
 int pending_main(int, char **);
+int probekey_main(int, char **);
 int prs_main(int, char **);
 int pull_main(int, char **);
 int push_main(int, char **);
@@ -120,6 +126,7 @@ int unlock_main(int, char **);
 int unwrap_main(int, char **);
 int users_main(int, char **);
 int version_main(int, char **);
+int webmail_main(int, char **);
 int what_main(int, char **);
 int zone_main(int, char **);
 
@@ -127,9 +134,12 @@ int zone_main(int, char **);
 struct command cmdtbl[] = {
 	{"_adler32", adler32_main},
 	{"_createlod", _createlod_main},
-	{"_find", find_main }, 		/* internal helper function */
+	{"_find", find_main },
+	{"_gzip", gzip_main }, 
 	{"_keysort", keysort_main},
 	{"_lines", lines_main},	
+	{"_listkey", listkey_main},	
+	{"_log", log_main},
 	{"_logging", logging_main},
 	{"_loggingaccepted", loggingaccepted_main},
 	{"_loggingask", loggingask_main},
@@ -138,8 +148,10 @@ struct command cmdtbl[] = {
 	{"_mail", mail_main},
 	{"_get", get_main},
 	{"_sort", sort_main},
+	{"_probekey", probekey_main},
 	{"_sortmerge", sortmerge_main},
 	{"_unlink", unlink_main },
+	{"_webmail", webmail_main},
 	{"abort", abort_main},
 	{"admin", admin_main},
 	{"annotate", annotate_main},
@@ -181,7 +193,6 @@ struct command cmdtbl[] = {
 	{"key2rev", key2rev_main},
 	{"lock", lock_main},
 	{"lod", lod_main},
-	{"log", log_main},
 	{"makepatch", makepatch_main},
 	{"merge", merge_main},
 	{"mklock", mklock_main},	/* for regression test only, undoc */
@@ -189,6 +200,9 @@ struct command cmdtbl[] = {
 	{"mv", mv_main},
 	{"names", names_main},
 	{"new", delta_main},		/* aliases */
+	{"oclone", oclone_main},
+	{"opull", opull_main},		/* old pull protocol */
+	{"opush", opush_main},		/* old pull protocol */
 	{"parent", parent_main},
 	{"pending", pending_main},
 	{"prs", prs_main},
@@ -232,6 +246,7 @@ struct command cmdtbl[] = {
 	{"unwrap", unwrap_main},
 	{"users", users_main},
 	{"version", version_main},
+	{"web_bkd", bkd_main},		/* aliases, for cgi environment */
 	{"what", what_main},
 	{"zone", zone_main},
 
@@ -338,7 +353,7 @@ main(int ac, char **av)
 		return (0);
 	}
 
-	flags = cmdlog_start(av);
+	flags = cmdlog_start(av, 0);
 	ret = run_cmd(prog, is_bk, ac, av);
 	cmdlog_end(ret, flags);
 	exit(ret);
@@ -361,7 +376,7 @@ spawn_cmd(int flag, char **av)
 private int
 run_cmd(char *prog, int is_bk, int ac, char **av)
 {
-	int	i, j, flags, ret;
+	int	i, j, ret;
 	char	cmd_path[MAXPATH];
 	char	*argv[MAXARGS];
 	static	int trace = -1;
@@ -502,15 +517,19 @@ private	struct {
 } repolog[] = {
 	{"pull", CMD_BYTES},
 	{"push", CMD_BYTES},
-	{"commit", CMD_WRLOCK},
-	{"remote pull", CMD_BYTES|CMD_FAST_EXIT|CMD_RDLOCK},
-	{"remote push", CMD_BYTES|CMD_FAST_EXIT|CMD_WRLOCK},
-	{"remote clone", CMD_BYTES|CMD_FAST_EXIT|CMD_RDLOCK},
+	{"commit", CMD_WRLOCK|CMD_WRUNLOCK},
+	{"remote pull", CMD_BYTES|CMD_FAST_EXIT|CMD_RDLOCK|CMD_RDUNLOCK},
+	{"remote push", CMD_BYTES|CMD_FAST_EXIT|CMD_WRLOCK|CMD_WRUNLOCK},
+	{"remote pull part1", CMD_BYTES|CMD_RDLOCK},
+	{"remote pull part2", CMD_BYTES|CMD_FAST_EXIT|CMD_RDUNLOCK},
+	{"remote push part1", CMD_BYTES|CMD_WRLOCK},
+	{"remote push part2", CMD_BYTES|CMD_FAST_EXIT|CMD_WRUNLOCK},
+	{"remote clone", CMD_BYTES|CMD_FAST_EXIT|CMD_RDLOCK|CMD_RDUNLOCK},
 	{ 0, 0 },
 };
 
 int
-cmdlog_start(char **av)
+cmdlog_start(char **av, int want_http_hdr)
 {
 	int	i, len, cflags = 0;
 
@@ -524,6 +543,20 @@ cmdlog_start(char **av)
 			break;
 		}
 	}
+
+	/*
+	 * When in http mode, since push/pull part 1 and part 2 run in
+	 * seperate process and the lock is tied to a process id, we must
+	 * complete the lock unlock cycle in part 1. Restart the lock when
+	 * we enter part 2, with the up-to-date pid.
+	 */
+	if (want_http_hdr) {
+		if (cflags & CMD_WRLOCK) cflags |= CMD_WRUNLOCK;
+		if (cflags & CMD_WRUNLOCK) cflags |= CMD_WRLOCK;
+		if (cflags & CMD_RDLOCK) cflags |= CMD_RDUNLOCK;
+		if (cflags & CMD_RDUNLOCK) cflags |= CMD_RDLOCK;
+	}            
+
 	unless (bk_proj && bk_proj->root) return (cflags);
 
 	if (cmdlog_repo) {
@@ -553,26 +586,11 @@ cmdlog_start(char **av)
 		}
 	}
 	if (cflags & CMD_BYTES) save_byte_count(0); /* init to zero */
-
-	if (cmdlog_repo) {
-		int ret ;
-
-		if ((bk_mode() == BK_BASIC)  && !streq("commit", av[0])) {
-			return (cflags);
-		}
-		ret = trigger(cmdlog_buffer, "pre", 0);
-
-		unless (ret == 0) {
-			if (cflags & CMD_WRLOCK) repository_wrunlock(0);
-			if (cflags & CMD_RDLOCK) repository_rdunlock(0);
-			exit(ret);
-		}
-	}
 	return (cflags);
 
 }
 
-void
+int
 cmdlog_end(int ret, int flags)
 {
 	FILE	*f;
@@ -580,10 +598,8 @@ cmdlog_end(int ret, int flags)
 	char	path[MAXPATH];
 
 	purify_list();
-	unless (cmdlog_buffer[0] && bk_proj && bk_proj->root) return;
+	unless (cmdlog_buffer[0] && bk_proj && bk_proj->root) return (flags);
 
-	if (flags & CMD_WRLOCK) repository_wrunlock(0);
-	if (flags & CMD_RDLOCK) repository_rdunlock(0);
 
 	if (cmdlog_repo) {
 		file = "repo_log";
@@ -593,15 +609,15 @@ cmdlog_end(int ret, int flags)
 	sprintf(path, "%s/BitKeeper/log/%s", bk_proj->root, file);
 	unless (f = fopen(path, "a")) {
 		sprintf(path, "%s/%s", bk_proj->root, BKROOT);
-		unless (exists(path)) return;
+		unless (exists(path)) return(flags);
 		sprintf(path, "%s/BitKeeper/log/%s", bk_proj->root, file);
 		mkdirf(path);
 		unless (f = fopen(path, "a")) {
 			fprintf(stderr, "Cannot open %s\n", path);
-			return;
+			return (flags);
 		}
 	}
-	if (cmdlog_repo) trigger(cmdlog_buffer, "post", ret);
+
 	user = sccs_getuser();
 	fprintf(f, "%s %lu: ", user ? user : "Phantom User", time(0));
 	if (ret == LOG_BADEXIT) {
@@ -621,8 +637,24 @@ cmdlog_end(int ret, int flags)
 		fclose(f);
 		chmod(path, 0666);
 	}
+
+	/*
+	 * If error and repo command, force unlock, force exit
+	 */
+	if ((flags & CMD_WRLOCK) && ret) {
+		flags |= CMD_WRUNLOCK;
+		flags |= CMD_FAST_EXIT;
+	}
+	if ((flags & CMD_RDLOCK) && ret) {
+		flags |= CMD_RDUNLOCK;
+		flags |= CMD_FAST_EXIT;
+	}
+	if (flags & CMD_WRUNLOCK) repository_wrunlock(0);
+	if (flags & CMD_RDUNLOCK) repository_rdunlock(0);
+
 	cmdlog_buffer[0] = 0;
 	cmdlog_repo = 0;
+	return (flags);
 }
 
 private	void
@@ -683,7 +715,7 @@ bk_sfiles(int ac, char **av)
 		fprintf(stderr, "cannot spawn %s %s\n", cmds[0], cmds[1]);
 		return(1);
 	} 
-	cmdlog_start(sav);
+	cmdlog_start(sav, 0);
 	close(1); dup(pfd); close(pfd);
 	if (status = sfind_main(1, sav)) {
 		kill(pid, SIGTERM);

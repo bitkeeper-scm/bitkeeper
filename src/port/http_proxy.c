@@ -62,7 +62,7 @@ http_get_file(char *host, char *path, char **proxies)
 	int fd;
 	char header[1024], buf[MAXLINE];
 
-	fd = connect_srv(host, 80);
+	fd = connect_srv(host, 80, 0);
 	if (fd < 0) {
 		fprintf(stderr,
 			"http_get_file: cannot connect to to host %s\n", host);
@@ -73,7 +73,7 @@ http_get_file(char *host, char *path, char **proxies)
 User-Agent: BitKeeper\n\
 Accept: text/html\n\n",
 path);
-	send_request(fd, header, strlen(header));
+	writen(fd, header, strlen(header));
 	while (recv(fd, buf, sizeof(buf), 0)) {
 		proxies = extract(buf, "\"PROXY ", proxies);
 		proxies = extract(buf, "\"SOCKS ", proxies);

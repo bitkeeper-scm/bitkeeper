@@ -18,7 +18,7 @@ extern	char	*editor, *bin, *BitKeeper;
 extern	int	do_clean(char *, int);
 extern	int	loggingask_main(int, char**);
 private	int	make_comment(char *cmt, char *commentFile);
-private int	do_commit(c_opts opts, char *sym,
+private int	do_commit(char **av, c_opts opts, char *sym,
 					char *pendingFiles, char *commentFile);
 
 int
@@ -120,7 +120,7 @@ commit_main(int ac, char **av)
 		system(buf);
 	}
 	do_clean(s_cset, SILENT);
-	if (doit) return (do_commit(opts, sym, pendingFiles, commentFile));
+	if (doit) return (do_commit(av, opts, sym, pendingFiles, commentFile));
 
 	while (1) {
 		printf("\n-------------------------------------------------\n");
@@ -132,7 +132,8 @@ commit_main(int ac, char **av)
 		switch (buf[0]) {
 		    case 'y':  /* fall thru */
 		    case 'u':
-			return(do_commit(opts, sym, pendingFiles, commentFile));
+			return(do_commit(av, opts, sym,
+						pendingFiles, commentFile));
 			break;
 		    case 'e':
 			sprintf(buf, "%s %s", editor, commentFile);
@@ -169,6 +170,31 @@ notice(char *key)
 	getmsg(key, 0, 0, stdout);
 	printf(
 	    "==============================================================\n");
+}
+
+int
+logs_pending(int resync)
+{
+	sccs 	*s;
+	delta	*d;
+	char 	key[MAXKEY], s_cset[] = CHANGESET;
+	FILE	*f;
+	int	i = 0;
+
+	if (resync) chdir(RESYNC2ROOT);
+	s = sccs_init(s_cset, 0, 0);
+	assert(s && s->tree);
+	for (d = sccs_top(s); d; d = d->next) {
+		if (d->published) sccs_color(s, d);
+	}
+count:	for (d = s->table; d; d = d->next) {
+		if (d->type != 'D') continue; 
+		if (d->flags & D_VISITED) continue; 
+		i++;
+	}
+	sccs_free(s);
+	if (resync) chdir(ROOT2RESYNC);
+	return (i);
 }
 
 int
@@ -236,24 +262,37 @@ pending(char *sfile)
 }
 
 private int
-do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
+do_commit(char **av, c_opts opts, char *sym,
+				char *pendingFiles, char *commentFile)
 {
 	int	hasComment = (exists(commentFile) && (size(commentFile) > 0));
 	int	rc;
 	int	l;
 	char	buf[MAXLINE], sym_opt[MAXLINE] = "";
 	char	pendingFiles2[MAXPATH] = "";
-	char	s_cset[MAXPATH] = CHANGESET;
 	char    s_logging_ok[] = LOGGING_OK;
 	sccs	*s;
 	delta	*d;
 	FILE 	*f, *f2;
+#define	MAX_PENDING_LOG 10
 
 	l = logging(0, 0, 0);
 	unless (ok_commit(l, opts.alreadyAsked)) {
 		if (commentFile) unlink(commentFile);
 		if (pendingFiles) unlink(pendingFiles);
 		return (1);
+	}
+	/*
+	 * Note: We print to stdout, not stderr, because citool
+	 * 	 monitors our stdout via a pipe.
+	 */
+	if ((l&LOG_OPEN) && (logs_pending(opts.resync) >= MAX_PENDING_LOG)) {
+		printf("Commit: forcing pending logs\n");
+		system("bk _log -qc2");
+		if ((logs_pending(opts.resync) >= MAX_PENDING_LOG)) {
+			printf("max pending log exceeded, commit aborted\n");
+			return (1);
+		}
 	}
 	if (pending(s_logging_ok)) {
 		int     len = strlen(s_logging_ok); 
@@ -284,12 +323,17 @@ do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 		fclose(f);
 		fclose(f2);
 	}
+	/*
+	 * XXX Do we want to fire the trigger when we are in RESYNC ?
+	 */
+	trigger(av, "pre", 0);
 	if (sym) sprintf(sym_opt, "-S\"%s\"", sym);
 	sprintf(buf, "bk cset %s %s %s %s%s < %s",
 		opts.lod ? "-L": "", opts.quiet ? "-q" : "", sym_opt,
 		hasComment? "-Y" : "", hasComment ? commentFile : "",
 		pendingFiles2[0]? pendingFiles2 : pendingFiles);
 	rc = system(buf);
+	trigger(av, "post", 0);
 /*
  * Do not enable this until
  * new BK binary is fully deployed
@@ -307,13 +351,13 @@ do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 	}
 	if (rc) return (rc); /* if commit failed do not send log */
 	notify();
-	s = sccs_init(s_cset, 0, 0);
-	assert(s);
-	d = findrev(s, 0);
-	assert(d);
-	strcpy(buf, d->rev);
-	sccs_free(s);
-	logChangeSet(l, buf, opts.quiet);
+	/*
+	 * If we are doing a commit in RESYNC
+	 * do not log the cset. Let the resolver
+	 * do it after it moves the stuff in RESYNC to
+	 * the real tree. 
+	 */
+	unless (opts.resync) logChangeSet(l, 0, 0);
 	return (rc ? 1 : 0);
 }
 
@@ -338,42 +382,56 @@ make_comment(char *cmt, char *commentFile)
 void
 logChangeSet(int l, char *rev, int quiet)
 {
-	char	commit_log[MAXPATH], buf[MAXLINE], *p;
-	char	subject[MAXLINE];
+	char	commit_log[MAXPATH], buf[MAXLINE], rev_buf[20], *p;
+	char	s_cset[] = CHANGESET, subject[MAXLINE];
 	char	start_rev[1024];
 	char	*to = logAddr();
 	FILE	*f;
-	int	dotCount = 0, junk, n;
+	int	dotCount = 0, n;
 	pid_t	pid;
-	char 	*http_av[] = {
-		"bk",
-		"log",
-		"http://www.bitkeeper.com/cgi-bin/logit",
-		to,
-		subject, 
-		commit_log,
-		0
-	};
-	char	*mail_av[] = {
-		"bk",
-		"_mail",
-		to,
-		subject,
-		commit_log,
-		0
-	};
+	sccs	*s;
+	delta	*d;
+	char	*log_av[] = {"bk", "_log", "-q", OPENLOG_URL, 0};
+	char	*mail_av[] = {"bk", "_mail", to, subject, commit_log, 0};
 
 	/*
 	 * Allow up to 20 ChangeSets with $REGRESSION set to not be logged.
 	 */
-	if (getenv("BK_REGRESSION") &&
-	    (sscanf(rev, "%d.%d", &junk, &n) == 2)) {
-		if (n <= 20) return;
+	if (getenv("BK_REGRESSION") && (logs_pending(0) < 20)) return;
+
+	unless (rev) {
+		s = sccs_init(s_cset, 0, 0);
+		assert(s);
+		d = sccs_top(s);
+		assert(d);
+		rev = rev_buf;
+		strcpy(rev_buf, d->rev);
+		sccs_free(s);
 	}
 
 	unless (l & LOG_OPEN) sendConfig("config@openlogging.org", rev);
 	if (streq("none", to)) return;
+	if (getenv("BK_TRACE_LOG") && streq(getenv("BK_TRACE_LOG"), "YES")) {
+		printf("Sending ChangeSet to %s...\n", logAddr());
+		fflush(stdout);
+	}
+	if (l & LOG_OPEN) {
+		pid = spawnvp_ex(_P_NOWAIT, log_av[0], log_av);
+		unless (quiet) {
+			if (pid == -1) {
+				printf("Error: cannot spawn bk _log\n");
+			} else {
+				printf("Sending ChangeSet log ...\n");
+			}
+		}
+		fflush(stdout);
+		return;
+	}
 
+	/*
+	 * If we get here, we are doing old style mail base logging
+	 * (for close logging project)
+	 */
 	strcpy(start_rev, rev);
 	p = start_rev;
 	while (*p) { if (*p++ == '.') dotCount++; }
@@ -400,19 +458,10 @@ logChangeSet(int l, char *rev, int quiet)
 	fclose(f);
 	sprintf(buf, "bk cset -c -r%s..%s >> %s", start_rev, rev, commit_log);
 	system(buf);
-	if (getenv("BK_TRACE_LOG") && streq(getenv("BK_TRACE_LOG"), "YES")) {
-		printf("Sending ChangeSet to %s...\n", logAddr());
-		fflush(stdout);
-	}
 
 	sprintf(subject, "BitKeeper ChangeSet log: %s", package_name());
-	if (l & LOG_OPEN) {
-		pid = spawnvp_ex(_P_NOWAIT, http_av[0], http_av);
-		fprintf(stdout, "Sending ChangeSet log via http...\n");
-	} else {
-		pid = spawnvp_ex(_P_NOWAIT, mail_av[0], mail_av);
-		fprintf(stdout, "Sending ChangeSet log via mail...\n");
-	}
+	pid = spawnvp_ex(_P_NOWAIT, mail_av[0], mail_av);
+	unless (quiet) fprintf(stdout, "Sending ChangeSet log via mail...\n");
 	if (pid == -1) unlink(commit_log);
 	fflush(stdout); /* needed for citool */
 }
@@ -500,33 +549,26 @@ config_main(int ac, char **av)
 void
 sendConfig(char *to, char *rev)
 {
-	char	subject[MAXLINE], config_log[MAXPATH];
+	char	from[MAXPATH], subject[MAXLINE], config_log[MAXPATH];
 	FILE	*f;
-	int	n, junk;
-	char 	*av[] = {
-		"bk",
-		"log",
-		"http://www.bitkeeper.com/cgi-bin/logit",
-		to,
-		subject, 
-		config_log,
-		0
-	};
+	int	n;
+	char 	*av[] = { "bk", "_webmail", config_log, 0 };
 
 	/*
 	 * Allow up to 20 ChangeSets with $REGRESSION set to not be logged.
 	 */
-	if (getenv("BK_REGRESSION") &&
-	    (sscanf(rev, "%d.%d", &junk, &n) == 2)) {
-		if (n <= 20) return;
-	}
+	if (getenv("BK_REGRESSION") && (logs_pending(0) < 20)) return;
+
+	assert(to);
+	sprintf(from, "%s@%s", sccs_getuser(), sccs_gethost());
+	sprintf(subject, "BitKeeper config: %s", package_name());
 
 	gettemp(config_log, "config");
 	unless (f = fopen(config_log, "wb")) return;
+	fprintf(f, "To: %s\nFrom: %s\nSubject: %s\n\n", to, from, subject);
 	status(0, f);
 	config(rev, f);
 	fclose(f);
-	sprintf(subject, "BitKeeper config: %s", package_name());
 	n = spawnvp_ex(_P_NOWAIT, av[0], av);
 	if (n == -1) unlink(config_log);
 }

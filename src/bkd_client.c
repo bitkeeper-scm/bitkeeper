@@ -16,7 +16,7 @@ remote *
 remote_parse(char *p, int is_clone)
 {
 	char	buf[MAXPATH+256];
-	static	echo = -1;
+	static	int echo = -1;
 	int	append = 0;
 	remote	*r;
 
@@ -41,6 +41,9 @@ remote_parse(char *p, int is_clone)
 	unless (p) return (0);
 	if (strneq("bk://", p, 5)) {
 		r = url_parse(p + 5);
+	} else if (strneq("http://", p, 7)) {
+		r = url_parse(p + 7);
+		if (r) r->httpd = 1;
 	} else {
 		if (!is_clone && (bk_mode() == BK_BASIC)) {
 			fprintf(stderr,
@@ -70,6 +73,7 @@ nfs_parse(char *p)
 	
 	unless (*p) return (0);
 	new(r);
+	r->rfd = r->wfd = -1;
 	/* user@host:path */
 	if (s = strchr(p, '@')) {
 		*s = 0; r->user = strdup(p); p = s + 1; *s = '@';
@@ -117,6 +121,7 @@ url_parse(char *p)
 
 	unless (*p) return (0);
 	new(r);
+	r->rfd = r->wfd = -1;
 	if (s = strchr(p, '@')) {		/* user@host[:path] */
 		r->loginshell = 1;
 		*s = 0; r->user = strdup(p); p = s + 1; *s = '@';
@@ -157,7 +162,7 @@ remote_unparse(remote *r)
 	char	port[10];
 
 	if (r->port || r->loginshell) {
-		strcpy(buf, "bk://");
+		strcpy(buf, r->httpd ? "http://" : "bk://");
 		if (r->user) {
 			strcat(buf, r->user);
 			strcat(buf, "@");
@@ -235,7 +240,7 @@ tcp_pipe(char *host, int port, int *r_pipe, int *w_pipe)
  * password prompts and other commands may use it for status.
  */
 pid_t
-bkd(int compress, remote *r, int *r_pipe, int *w_pipe)
+bkd(int compress, remote *r)
 {
 	char	*t, *freeme = 0;
 	char	*remsh = "ssh";
@@ -243,22 +248,11 @@ bkd(int compress, remote *r, int *r_pipe, int *w_pipe)
 	char	*cmd[100];
 	int	i;
 	pid_t	p;
-	int	wpipe[2];
-	int	rpipe[2];
 	int	findprog(char *);
-	int	fd0, fd1;
 
 	if (r->port) {
 		assert(r->host);
-#ifdef WIN32
-		p = tcp_pipe(r->host, r->port, r_pipe, w_pipe);
-		if (p == ((pid_t) -1)) {
-			fprintf(stderr, "cannot create socket_helper\n");
-			return (-1);
-		}
-#else
-		*r_pipe = *w_pipe = tcp_connect(r->host, r->port);
-#endif
+		r->rfd = r->wfd = tcp_connect(r->host, r->port);
 		return ((pid_t)0);
 	}
 	t = sccs_gethost();
@@ -345,29 +339,15 @@ not compatible with Unix rshd.\n\
 			fprintf(stderr, "CMD[%d]=%s\n", i, cmd[i]);
 		}
 	}
-	if (pipe(wpipe) == -1) return ((pid_t)-1);
-	if (pipe(rpipe) == -1) return ((pid_t)-1);
-	fd0 = dup(0); close(0);
-	fd1 = dup(1); close(1);
-	dup2(wpipe[0], 0); close(wpipe[0]);
-	dup2(rpipe[1], 1); close(rpipe[1]);
-	make_fd_uninheritable(wpipe[1]);
-	make_fd_uninheritable(rpipe[0]);
+
 #ifndef WIN32
 	signal(SIGCHLD, SIG_DFL);
 #endif
-	p = spawnvp_ex(_P_NOWAIT, cmd[0], cmd);
-	/*
-	 * for parent: restore fd0 fd1
-	 */
-	close(0); dup2(fd0, 0);
-	close(1); dup2(fd1, 1);
-
-	*w_pipe = wpipe[1];
-	*r_pipe = rpipe[0];
+	p = spawnvp_rwPipe(cmd, &(r->rfd), &(r->wfd));
 	if (freeme) free(freeme);
 	return (p);
 }
+
 
 void
 bkd_reap(pid_t resync, int r_pipe, int w_pipe)

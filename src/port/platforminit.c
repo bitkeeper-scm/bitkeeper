@@ -35,6 +35,15 @@ platformInit(char **av)
 #endif
 	extern char    *editor, *pager, *bin;
 
+	/*
+	 * For cgi environment
+	 */
+	if (streq("web_bkd", av[0])) {
+		getcwd(buf, MAXPATH);
+		concat_path(buf, buf, "web_bkd");
+		av[0] = strdup(buf);
+	}
+
 	if (bin) return;
 	unless (editor || (editor = getenv("EDITOR"))) editor = EDITOR;
 	unless (pager || (pager = getenv("PAGER"))) pager = PAGER;

@@ -110,6 +110,87 @@ err:				buf[i] = 0;
 }
 
 /*
+ * We need this becuase on win32, read() does not work on socket
+ */
+int
+read_blk(remote *r, char *buf, int len)
+{
+	if (r->port) {
+		return (recv(r->rfd, buf, len, 0));
+	} else {
+		return (read(r->rfd, buf, len));
+	}
+}
+
+/*
+ * We need this becuase on win32, write() does not work on socket
+ */
+int
+write_blk(remote *r, char *buf, int len)
+{
+	if (r->port) {
+		return (send(r->wfd, buf, len, 0));
+	} else {
+		return (write(r->wfd, buf, len));
+	}
+}
+
+/*
+ * 
+ * Get a line : Unlke the getline() above, '\r' by itself is _not_ considered
+ * as a line terminator, `\r' is striped if it is followed by the `\n`
+ * character.
+ * This version uses the read_blk() instead of read() interface
+ * On WIN32, read() does not work a socket.
+ * TODO: This function should be merged with the getline() function above
+ */
+int
+getline2(remote *r, char *buf, int size)
+{
+	int	ret, i = 0;
+	char	c;
+	int	sigs = sigcaught(SIGINT);
+	static	int echo = -1;
+
+	if (echo == -1) {
+		echo = getenv("BK_GETLINE") != 0;
+		if (getenv("BK_GETCHAR")) echo = 2;
+	}
+	buf[0] = 0;
+	size--;
+	unless (size) return (-3);
+	for (;;) {
+		switch (ret = read_blk(r, &c, 1)) {
+		    case 1:
+			if (echo == 2) fprintf(stderr, "[%c]\n", c);
+			if (((buf[i] = c) == '\n')) {
+				if ((i > 0) && (buf[i-1] == '\r')) i--;
+				buf[i] = 0;
+				if (echo) fprintf(stderr, "[%s]\n", buf);
+				return (i + 1);	/* we did read a newline */
+			}
+			if (++i == size) {
+				buf[i] = 0;
+				return (-2);
+			}
+			break;
+
+		    default:
+			unless (errno == EINTR) {	/* for !SIGINT */
+err:				buf[i] = 0;
+				if (echo) {
+					perror("getline");
+					fprintf(stderr, "[%s]=%d\n", buf, ret);
+				}
+				return (-1);
+			} else if (sigs != sigcaught(SIGINT)) {
+				goto err;
+			}
+		}
+	}
+}
+
+/*
  * Prompt the user and get an answer.
  * The buffer has to be MAXPATH bytes long.
  */
@@ -162,4 +243,248 @@ csetKeys(MDBM *not)
 	if (n) return (db);
 	mdbm_close(db);
 	return (0);
+}
+
+
+
+int 
+send_msg(remote *r, char *msg, int mlen, int extra, int compress)
+{
+	if (r->httpd) {
+		assert((r->rfd == -1) && (r->wfd == -1));
+		bkd(compress, r);
+		if ((r->wfd < 0) && r->trace) {
+			fprintf(stderr,
+				"send_msg: cannot connect to %s:%d\n",
+				r->host, r->port);
+			return (-1);
+		}
+		http_send(r, msg, mlen, extra, "BitKeeper", WEB_BKD_CGI);
+	} else {
+		if (r->wfd == -1) bkd(compress, r);
+		if (r->port) {
+			send(r->wfd, msg, mlen, 0);
+		} else {
+			write(r->wfd, msg, mlen);
+		}
+	}
+	return 0;
+}
+
+int 
+skip_http_hdr(remote *r)
+{
+	char	buf[1024];
+	int	i =0;
+
+	while (getline2(r, buf, sizeof(buf)) >= 0) {
+		if (buf[0] == 0) return (0); /*ok */
+	}
+	return (-1); /* failed */
+}
+
+void
+disconnect(remote *r, int how)
+{
+	assert((how >= 0) && (how <= 2));
+	switch (how) {
+	    case 0:	if (r->rfd == -1) return;
+			if (r->port) {
+				shutdown(r->rfd, 0);
+			} else {
+				close(r->rfd);
+			}
+			r->rfd = -1;
+			break;
+	    case 1: 	if (r->wfd == -1) return;
+			if (r->port) {
+				shutdown(r->wfd, 1);
+			} else {
+				close(r->wfd);
+			}
+			r->wfd = -1;
+			break;
+	    case 2:	if (r->rfd == -1) return;
+			if (r->port) {
+				shutdown(r->rfd, 2);
+			} else {
+				close(r->rfd);
+				close(r->wfd);
+			}
+			r->rfd = r->wfd = -1;
+			break;
+	}
+}
+
+private void
+updLogMarker()
+{
+	FILE	*f;
+	sccs	*s;
+	delta	*d;
+	char	s_cset[] = CHANGESET;
+
+	/*
+	 * LOD Note:
+	 * TODO: We should log the tip of each lod
+	 */
+	if (s = sccs_init(s_cset, INIT_NOCKSUM, 0)) {
+		f = fopen(OPENLOG_LOG, "wb");
+		assert(f);
+		d = findrev(s, 0);
+		assert(d);
+		sccs_pdelta(s, d, f);
+		fputs("\n", f);
+		fclose(f);
+		sccs_free(s);
+	}
+}
+
+
+int
+get_ok(remote *r, int verbose)
+{
+	int 	i, ret;
+	char	buf[200] = "";
+
+	ret = getline2(r, buf, sizeof(buf));
+	if (ret <= 0) {
+		if (verbose) fprintf(stderr, "Got EOF.\n");
+		return (1); /* failed */
+	}
+	if (streq(buf, "@OK@")) return (0); /* ok */
+	if (strneq(buf, "ERROR-BAD CMD:", 14)) {
+		fprintf(stderr,
+			"Remote seems to be running a older BitKeeper release\n"
+			"Try \"bk opush\", \"bk opull\" or \"bk oclone\"\n");
+			return (1);
+	}
+	if (verbose) {
+		i = 0;
+		fprintf(stderr, "remote: %s\n", buf);
+		while (getline2(r, buf, sizeof(buf)) > 0) {
+			fprintf(stderr, "remote: %s\n", buf);
+			if (streq(buf, "@END@")) break;
+			/*
+			 * 20 lines of error message should be enough
+			 */
+			if (i++ > 20) break;
+		}
+	}
+	return (1); /* failed */
+}
+
+
+private char *
+rootkey()
+{
+	static char key[MAXKEY] = "";
+	char	s_cset[] = CHANGESET;
+	sccs	*s;
+
+	s = sccs_init(s_cset, INIT_NOCKSUM, 0);
+	assert(s);
+	sccs_sdelta(s, sccs_ino(s), key);
+	sccs_free(s);
+	return (key);
+}
+
+void
+add_cd_command(FILE *f, remote *r)
+{
+	if (streq(r->path, "///LOG_ROOT///")) {
+		fprintf(f, "cd %s%s\n", r->path, rootkey());
+	} else {
+		fprintf(f, "cd %s\n", r->path);
+	}
+}
+
+void
+sendEnv(FILE *f, char **envVar)
+{
+	int i;
+
+	fprintf(f, "putenv BK_CLIENT_PROTOCOL=%s\n", BKD_VERSION);
+	fprintf(f, "putenv BK_CLIENT_RELEASE=%s\n", BK_RELEASE);
+	fprintf(f, "putenv BK_CLIENT_USER=%s\n", sccs_getuser());
+	fprintf(f, "putenv BK_CLIENT_HOST=%s\n", sccs_gethost());
+	EACH(envVar) {
+		fprintf(f, "putenv %s\n", envVar[i]);
+	}
+}
+
+int
+getServerInfoBlock(remote *r)
+{
+	char	*p, buf[4096];
+	int	len;
+
+	while (getline2(r, buf, sizeof(buf)) > 0) {
+		if (streq(buf, "@END@")) return (0); /* ok */
+		if (r->trace) fprintf(stderr, "Server info:%s\n", buf);
+		len = strlen(buf); 
+		/*
+		 * 11 is the length of prefix + null termination byte
+	 	 * Note: This memory is de-allocated at exit
+		 */
+		p = (char *) malloc(len + 11); assert(p); 
+		sprintf(p, "BK_SERVER_%s", buf);
+		putenv(p);
+	}
+	return (1); /* protocol error */
+}
+
+int
+getTriggerInfoBlock(remote *r, int verbose)
+{
+	char	buf[4096];
+	int	i =0, rc = 0;
+
+	while (getline2(r, buf, sizeof(buf)) > 0) {
+		if (buf[0] == BKD_DATA) {
+			unless (i++) {
+				if (verbose) fprintf(stderr,
+"------------------------- Remote trigger message --------------------------\n"
+				);
+			}
+			if (verbose) fprintf(stderr, "%s\n", &buf[1]);
+		} else if (buf[0] == BKD_RC) {
+			rc = atoi(&buf[1]);
+			if (rc && r->trace) {
+				fprintf(stderr, "trigger failed rc=%d\n", rc);
+			}
+		}
+		if (streq(buf, "@END@")) break;
+	}
+	if (i && verbose) {
+		fprintf(stderr, 
+"---------------------------------------------------------------------------\n"
+		);
+	}
+	return (rc);
+}
+
+void
+sendServerInfoBlock()
+{
+	char buf[100];
+
+	out("@SERVER INFO@\n");
+        sprintf(buf, "PROROCOL=%s\n", BKD_VERSION);	/* protocol version */
+	out(buf);
+        sprintf(buf, "RELEASE=%s\n", BK_RELEASE);	/* binary version   */
+	out(buf);
+	out("@END@\n");
+} 
+
+void
+http_hdr()
+{
+	static done = 0;
+	
+	if (done) return; /* do not send it twice */
+	out("Cache-Control: no-cache\n");	/* for http 1.1 */
+	out("Pragma: no-cache\n");		/* for http 1.0 */
+	out("Content-type: text/plain\n\n"); 
+	done = 1;
 }

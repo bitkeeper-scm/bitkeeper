@@ -246,3 +246,5 @@ bk pull $Q -t $HERE/project
 if [ ! -f src2/src3/SCCS/s.bar.c ]; then echo failed; exit 1; fi
 if [ ! -f src2/src3/SCCS/s.h.h ]; then echo failed; exit 1; fi
 echo OK
+
+# XXX TODO need test case for push/pull -n

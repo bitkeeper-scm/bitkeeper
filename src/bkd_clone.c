@@ -12,6 +12,14 @@ cmd_clone(int ac, char **av)
 {
 	int	c;
 	int	gzip = 0;
+	char 	*p;
+
+	/*
+	 * If BK_CLIENT_PROTOCOL is not defined,
+	 * assumes bkd protocol version 1.2
+	 */
+	p = getenv("BK_CLIENT_PROTOCOL");
+	if (p) sendServerInfoBlock();
 
 	if (!exists("BitKeeper/etc")) {
 		out("ERROR-Not at package root\n");
@@ -34,12 +42,27 @@ cmd_clone(int ac, char **av)
 			break;
 	    	}
 	}
-	out("OK-read lock granted\n");
+	if (!p) {
+		out("OK-read lock granted\n");
+	} else if (streq(p, BKD_VERSION)) {
+		out("@OK@\n");
+	} else {
+		out("ERROR-protocol version mismatch, want: ");
+		out(BKD_VERSION); 
+		out(", got ");
+		out(p ? p : "");
+		out("\n");
+		drain();
+		exit(1);
+	}
+	if (p && trigger(av, "pre", 0)) exit (1);
+	if (p) out("@SFIO@\n");
 	if (gzip) {
 		return (compressed(gzip));
 	} else {
 		return (uncompressed());
 	}
+	if (p && trigger(av, "post", 0)) exit (1);
 }
 	    
 private int

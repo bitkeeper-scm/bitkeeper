@@ -676,9 +676,13 @@ csetlist(cset_t *cs, sccs *cset)
 			system(buf);
 		}
 		if (exists(SGONE)) {
-			system("bk get -kpsC " GONE " > BitKeeper/tmp/gone");
+			char tmp_gone[MAXPATH];
+
+			bktemp(tmp_gone);
+			sysio(0, tmp_gone, 0, "bk", "get", "-kpsC", GONE, SYS);
 			goneDB =
-			 loadDB("BitKeeper/tmp/gone", 0, DB_KEYSONLY|DB_NODUPS);
+			loadDB(tmp_gone, 0, DB_KEYSONLY|DB_NODUPS);
+			unlink(tmp_gone);
 		}
 	} else {
 		close(creat(csort, TMP_MODE));
@@ -705,7 +709,7 @@ again:	/* doDiffs can make it two pass */
 			fputs("\n", stdout);
 			fputs(PATCH_PATCH, stdout);
 		}
-		if (cs->metaOnly) {
+		if (cs->metaOnly || (cset->state & S_LOGS_ONLY)) {
 			fputs(PATCH_NEXT, stdout);
 			fputs(PATCH_LOGGING, stdout);
 		} else {
