@@ -30,8 +30,8 @@ usage: takepatch [-cFiv] [-f file]\n\n\
     -i		initial patch, create a new repository\n\
     -v		verbose level, more is more verbose, -vv is suggested.\n\n";
 
-#define	CLEAN_RESYNC	1
-#define	CLEAN_PENDING	2
+#define	CLEAN_RESYNC	1	/* blow away the RESYNC dir */
+#define	CLEAN_PENDING	2	/* blow away the PENDING dir */
 
 delta	*getRecord(FILE *f);
 int	extractPatch(char *name, FILE *p, int flags, int fast);
@@ -298,6 +298,10 @@ sccscopy(sccs *to, sccs *from)
 	unless (to->text) {
 		to->text = from->text;
 		from->text = 0;
+	}
+	unless (to->random || !from->random) {
+		to->random = from->random;
+		from->random = 0;
 	}
 	return (0);
 }
@@ -774,6 +778,10 @@ initProject()
 	unless (emptyDir(".")) {
 		fprintf(stderr,
 		    "takepatch: -i can only be used in an empty directory\n");
+		/*
+		 * We MUST exit here.  It is an invariant that if we are not
+		 * empty we abort.  See cleanup().
+		 */
 		exit(1);
 	}
 	sccs_mkroot(".");
@@ -801,7 +809,7 @@ init(FILE *p, int flags)
 
 	if (sccs_cd2root(0, 0)) {
 		fprintf(stderr, "takepatch: can't find project root.\n");
-		exit(1);
+		cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 	}
 
 tree:
@@ -812,7 +820,7 @@ tree:
 		unless ((f = fopen("RESYNC/BitKeeper/tmp/pid", "r")) &&
 		    fnext(buf, f)) {
 			fprintf(stderr, "takepatch: RESYNC dir exists\n");
-			exit(1);
+			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 		}
 		fclose(f);
 		chop(buf);
@@ -826,16 +834,16 @@ tree:
 			fprintf(stderr,
 			    "takepatch: RESYNC dir locked by %s\n", buf);
 		}
-		exit(1);
+		cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 	}
 	unless (mkdir("RESYNC/SCCS", 0775) == 0) {
 		perror("mkdir");
-		exit(1);
+		cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 	}
 	sccs_mkroot("RESYNC");
 	unless (f = fopen("RESYNC/BitKeeper/tmp/pid", "w")) {
 		perror("RESYNC/BitKeeper/tmp/pid");
-		exit(1);
+		cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 	}
 	fprintf(f, "%d\n", getpid());
 	fclose(f);
@@ -847,7 +855,7 @@ tree:
 		 */
 		if (!isdir("PENDING") && (mkdir("PENDING", 0775) == -1)) {
 			perror("PENDING");
-			exit(1);
+			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 		}
 		for (i = 1; ; i++) {				/* CSTYLED */
 			struct	tm *tm;
@@ -863,7 +871,7 @@ tree:
 			if (i > 100) {
 				fprintf(stderr,
 				    "takepatch: too many patches.\n");
-				exit(1);
+				cleanup(CLEAN_RESYNC);
 			}
 		}
 		unless (g = fopen("RESYNC/BitKeeper/tmp/patch", "w")) {
@@ -914,7 +922,7 @@ the same as the software accepting the patch.  We were looking for\n\
 	if (newProject) {
 		unless (idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) {
 			perror("mdbm_open");
-			exit(1);
+			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 		}
 		return (f);
 	}

@@ -461,9 +461,10 @@ sendConfig() {
 	P=`${BIN}prs -hr1.0 -d:FD: ChangeSet | head -1`
 	( ${BIN}prs -hr1.0 \
 	-d'$each(:FD:){Project:\t(:FD:)}\nChangeSet ID:\t:LONGKEY:' ChangeSet;
+	  echo "User:		$USER"
 	  echo "Host:		`hostname`"
 	  echo "Root:		`pwd`"
-	  echo "User:		$USER"
+	  echo "Date:		`date`"
 	  grep -v '^#' BitKeeper/etc/config | grep -v '^$'
 	) | mail -s "BitKeeper config: $P" $1
 	${BIN}clean BitKeeper/etc/config
@@ -524,14 +525,7 @@ logging_ok:	to '$LOGADDR > BitKeeper/etc/config
 
 sendLog() {
 	P=`${BIN}prs -hr1.0 -d:FD: ChangeSet | head -1`
-	( ${BIN}prs -hr1.0 \
-	    -d'$each(:FD:){# Project:\t(:FD:)}\n# ChangeSet ID: :LONGKEY:' \
-	    ChangeSet;
-	  echo "# Host:		`hostname`"
-	  echo "# Root:		`pwd`"
-	  echo "# User:		$USER"
-	  ${BIN}cset -c$REV
-	) | mail -s "BitKeeper log: $P" $LOGADDR
+	${BIN}cset -c$REV | mail -s "BitKeeper log: $P" $LOGADDR
 }
 
 commit() {

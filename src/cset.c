@@ -132,6 +132,10 @@ usage:		fprintf(stderr, "%s", cset_help);
 		}
 	}
 
+	if (doDiffs && csetOnly) {
+		fprintf(stderr, "Warning: ignoring -d option\n");
+		doDiffs = 0;
+	}
 	if (list == 3) {
 		fprintf(stderr,
 		    "%s: -l and -t are mutually exclusive\n", av[0]);
@@ -329,30 +333,13 @@ doit(sccs *sc)
 	static	first = 1;
 
 	unless (sc) {
+		if (doDiffs && makepatch) printf("\n");
 		first = 1;
 		return;
 	}
 	if (doDiffs) {
-		if (first && makepatch) {
-			time_t	t = time(0);
-
-			printf("\
-# This is a BitKeeper patch.  What follows are the unified diffs for the\n\
-# set of deltas contained in the patch.  The rest of the patch, the part\n\
-# that BitKeeper cares about, are below these diffs.  These diffs are\n\
-# mostly here so Linus can edit them :-)\n");
-			printf("#\n# Patch created by %s@%s on %s\n", 
-			    getuser(),
-			    sccs_gethost() ? sccs_gethost() : "?",
-			    ctime(&t));
-			first = 0;
-		}
 		doDiff(sc, DF_UNIFIED);
 	} else if (makepatch) {
-		if (first) {
-			printf("%s", PATCH_VERSION);
-			first = 0;
-		}
 		if (!csetOnly || (sc->state & S_CSET)) {
 			sccs_patch(sc);
 		}
@@ -361,6 +348,31 @@ doit(sccs *sc)
 	} else {
 		doList(sc);
 	}
+}
+
+header(sccs *cset, int diffs)
+{
+	char	*dspec =
+		"$each(:FD:){# Project:\t(:FD:)}\n# ChangeSet ID: :LONGKEY:";
+	int	save = cset->state;
+	time_t	t = time(0);
+	char	pwd[MAXPATH];
+
+	if (diffs) {
+		printf("\
+# This is a BitKeeper patch.  What follows are the unified diffs for the\n\
+# set of deltas contained in the patch.  The rest of the patch, the part\n\
+# that BitKeeper cares about, is below these diffs.\n");
+	} 
+	cset->rstart = cset->rstop = cset->tree;
+	cset->state &= ~S_SET;
+	sccs_prs(cset, 0, 0, dspec, stdout);
+	printf("# User:\t\t%s\n", getuser());
+	printf("# Host:\t\t%s\n", sccs_gethost() ? sccs_gethost() : "?");
+	getcwd(pwd, sizeof(pwd));
+	printf("# Root:\t\t%s\n", pwd);
+	printf("# Date:\t\t%s", ctime(&t));
+	cset->state = save;
 }
 
 mark(sccs *s, delta *d)
@@ -394,11 +406,18 @@ doKey(char *key, char *val)
 	 * Cleanup code, called to reset state.
 	 */
 	unless (key) {
-		if (idDB) mdbm_close(idDB);
-		if (lastkey) free(lastkey);
+		if (idDB) {
+			mdbm_close(idDB);
+			idDB = 0;
+		}
+		if (lastkey) {
+			free(lastkey);
+			lastkey = 0;
+		}
 		if (sc) {
 			doit(sc);
 			sccs_free(sc);
+			sc = 0;
 		}
 		doneFullRebuild = 0;
 		doneFullRemark = 0;
@@ -487,6 +506,7 @@ csetlist(sccs *cset)
 	char	buf[MAXPATH*2];
 	char	*csetid;
 	char	*lastkey = 0;
+	int	didHeader = 0;
 
 	if (dash) {
 		delta	*d;
@@ -537,6 +557,14 @@ again:	/* doDiffs can make it two pass */
 		perror(buf);
 		exit(1);
 	}
+	if (doDiffs) {
+		header(cset, 1);
+		didHeader++;
+	}
+	if (!doDiffs && makepatch) {
+		unless (didHeader) header(cset, 0);
+		printf("%s", PATCH_VERSION);
+	}
 	while(fnext(buf, list)) {
 		for (t = buf; *t != ' '; t++);
 		*t++ = 0;
@@ -547,11 +575,13 @@ again:	/* doDiffs can make it two pass */
 		}
 
 	}
-	fclose(list);
 	if (doDiffs && makepatch) {
+		doKey(0, 0);
 		doDiffs = 0;
+		fclose(list);
 		goto again;
 	}
+	fclose(list);
 	doKey(0, 0);
 	sprintf(buf, "/tmp/csort%d", getpid());
 	unlink(buf);
