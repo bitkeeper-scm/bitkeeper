@@ -229,7 +229,7 @@ done:	if (rc) {
 	/*
 	 * Don't bother to fire trigger if we have no tree.
 	 */
-	if (bk_proj) trigger(av, "post");
+	if (bk_proj) trigger(av[0], "post");
 
 	/*
 	 * XXX This is a workaround for a csh fd lead:
@@ -595,8 +595,6 @@ out:		chdir(from);
 private int
 out_trigger(char *status, char *rev, char *when)
 {
-	char	*av[2] = { "remote clone", 0 };
-
 	putenv(aprintf("BK_REMOTE_PROTOCOL=%s", BKD_VERSION));
 	putenv(aprintf("BK_VERSION=%s", bk_vers));
 	putenv(aprintf("BK_UTC=%s", bk_utc));
@@ -610,14 +608,12 @@ out_trigger(char *status, char *rev, char *when)
 		putenv("BK_CSETS=1.0..");
 	}
 	putenv("BK_LCLONE=YES");
-	return (trigger(av, when));
+	return (trigger("remote clone", when));
 }
 
 private int
 in_trigger(char *status, char *rev, char *root)
 {
-	char	*av[2] = { "clone", 0 };
-
 	putenv(aprintf("BKD_HOST=%s", sccs_gethost()));
 	putenv(aprintf("BKD_ROOT=%s", root));
 	putenv(aprintf("BKD_TIME_T=%s", bk_time));
@@ -631,7 +627,7 @@ in_trigger(char *status, char *rev, char *root)
 		putenv("BK_CSETS=1.0..");
 	}
 	putenv("BK_LCLONE=YES");
-	return (trigger(av, "post"));
+	return (trigger("clone", "post"));
 }
 
 private int

@@ -152,7 +152,7 @@ cmd_pull_part2(int ac, char **av)
 		putenv("BK_STATUS=NOTHING");
 	}
 
-	if (!metaOnly && trigger(av,  "pre")) {
+	if (!metaOnly && trigger(av[0],  "pre")) {
 		rc = 1;
 		goto done;
 	}
@@ -234,7 +234,7 @@ done:	unlink(serials); free(serials);
 	/*
 	 * Fire up the post-trigger (for non-logging tree only)
 	 */
-	if (!metaOnly) trigger(av, "post");
+	if (!metaOnly) trigger(av[0], "post");
 	if (delay > 0) sleep(delay);
 	return (rc);
 }

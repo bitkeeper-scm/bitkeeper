@@ -22,13 +22,8 @@ proc msg {msg OK} \
 
 set msg ""
 set arg [lindex $argv 0]
-if {[regexp -- {-p(.*)} $arg junk prefix]} {
-	set msg "$prefix\n"
-	set arg [lindex $argv 1]
-}
-if {[regexp -- {-f(.*)} $arg junk file]} {
-	set fd [open $file r]
-	while {[gets $fd buf] >= 0} {
+if {$arg == "-"} {
+	while {[gets stdin buf] >= 0} {
 		if {$msg == ""} {
 			set msg $buf
 		} else {

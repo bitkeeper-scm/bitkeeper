@@ -93,7 +93,7 @@ rclone(char **av, opts opts, remote *r, char **envVar)
 	} else {
 		putenv("BK_CSETS=1.0..");
 	}
-	if (rc = trigger(av, "pre"))  goto done;
+	if (rc = trigger(av[0], "pre"))  goto done;
 	if (rc = rclone_part1(opts, r, envVar))  goto done;
 	rc = rclone_part2(av, opts, r, envVar);
 
@@ -102,7 +102,7 @@ rclone(char **av, opts opts, remote *r, char **envVar)
 	} else {
 		putenv("BK_STATUS=OK");
 	}
-	trigger(av, "post");
+	trigger(av[0], "post");
 
 done:	putenv("BK_CSETS=");
 	if (ebuf) free(ebuf);

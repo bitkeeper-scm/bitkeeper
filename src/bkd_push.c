@@ -74,7 +74,7 @@ cmd_push_part1(int ac, char **av)
 		return (1);
 	}
 		
-	if (!metaOnly && trigger(av, "pre")) {
+	if (!metaOnly && trigger(av[0], "pre")) {
 		drain();
 		return (1);
 	}
@@ -124,7 +124,6 @@ cmd_push_part2(int ac, char **av)
 	pid_t	pid;
 	char	buf[4096];
 	char	bkd_nul = BKD_NUL;
-	char	*pr[2] = { "remote resolve", 0 };
 	static	char *takepatch[] = { "bk", "takepatch", "-vvv", "-c", 0};
 	static	char *resolve[7] = { "bk", "resolve", "-t", "-c", 0, 0, 0};
 
@@ -221,7 +220,7 @@ cmd_push_part2(int ac, char **av)
 	 */
 	putenv("BK_CSETLIST=BitKeeper/etc/csets-in");
 	putenv("BK_REMOTE=YES");
-	if (!metaOnly && (c = trigger(pr,  "pre"))) {
+	if (!metaOnly && (c = trigger("remote resolve",  "pre"))) {
 		if (c == 2) {
 			system("bk abort -fp");
 		} else {
@@ -270,6 +269,6 @@ done:	/*
 	 */
 	if (metaOnly) av[0] = "remote log push";
 	putenv("BK_RESYNC=FALSE");
-	trigger(av,  "post");
+	trigger(av[0],  "post");
 	return (rc);
 }

@@ -44,68 +44,80 @@ trigger_env(char *prefix, char *event, char *what)
  * calling this function.
  */
 int
-trigger(char **av, char *when)
+trigger(char *cmd, char *when)
 {
-	char	buf[MAXPATH], tbuf[MAXPATH];
+	char	buf[MAXPATH], triggerDir[MAXPATH];
 	char	*what, *t, **triggers = 0;
-	char	*triggerDir = "BitKeeper/triggers";
 	char	*event = 0;
-	int	len, resolve, rc = 0;
-	struct	dirent *e;
-	DIR	*dh;
+	int	rc = 0;
 
 	if (getenv("BK_NO_TRIGGERS")) return (0);
+	if (bk_proj && bk_proj->root) {
+		t = strdup(bk_proj->root);
+	} else unless (t = sccs_root(0)) {
+		ttyprintf("No root for triggers!\n");
+		return (0);
+	}
+	unless (streq(t, ".")) {
+		sprintf(triggerDir, "%s/BitKeeper/triggers", t);
+	} else {
+		strcpy(triggerDir, "BitKeeper/triggers");
+	}
+	free(t);
 
-	t = av[0];
-	if (strneq(t, "remote pull", 11)) {
+	if (strneq(cmd, "remote pull", 11)) {
 		what = "outgoing";
 		event = "outgoing pull";
-	} else if (strneq(t, "push", 4)) {
+	} else if (strneq(cmd, "push", 4)) {
 		what = "outgoing";
 		event = "outgoing push";
-	} else if (strneq(t, "remote clone", 12)) {
+	} else if (strneq(cmd, "remote clone", 12)) {
 		what = "outgoing";
 		event = "outgoing clone";
-	} else if (strneq(t, "remote push", 11)) {
+	} else if (strneq(cmd, "remote push", 11)) {
 		what = "incoming";
 		event = "incoming push";
-	} else if (strneq(t, "remote rclone", 12)) {
+	} else if (strneq(cmd, "remote rclone", 12)) {
 		what = "incoming";
 		event = "incoming clone";
-	} else if (streq(t, "resolve") || streq(t, "remote resolve")) {
+	} else if (streq(cmd, "resolve") || streq(cmd, "remote resolve")) {
 		what = event = "resolve";
-	} else if (strneq(t, "clone", 5)) {
+	} else if (strneq(cmd, "clone", 5)) {
 		/* XXX - can this happen?  Where's the trigger? */
 		what = "incoming";
 		event = "incoming clone";
-	} else if (strneq(t, "_rclone", 6)) {
+	} else if (strneq(cmd, "_rclone", 6)) {
 		what = "outgoing";
 		event = "outgoing clone";
-	} else if (strneq(t, "pull", 4)) {
+	} else if (strneq(cmd, "pull", 4)) {
 		what = "incoming";
 		event = "incoming pull";
-	} else if (strneq(t, "apply", 5) || strneq(t, "remote apply", 12)) {
+	} else if (strneq(cmd, "apply", 5) || strneq(cmd, "remote apply", 12)) {
 		what = event = "apply";
-		sprintf(tbuf, "%s/%s", RESYNC2ROOT, triggerDir);
-		triggerDir = tbuf;
-	} else if (strneq(t, "commit", 6)) {
+		strcpy(triggerDir, RESYNC2ROOT "/BitKeeper/triggers");
+	} else if (strneq(cmd, "commit", 6)) {
 		what = event = "commit";
-	} else if (strneq(t, "remote log push", 15)) {
+	} else if (strneq(cmd, "delta", 5)) {
+		what = event = "delta";
+	} else if (strneq(cmd, "remote log push", 15)) {
 		/*
 		 * logs triggers are global over all logging trees
 		 */
 		unless (logRoot) return (0);
-		triggerDir = tbuf;
-		concat_path(triggerDir, logRoot, "triggers");
+		sprintf(triggerDir, "%s/triggers", logRoot);
 		what = "incoming-log";
 		event = "incoming log";
 	} else {
 		fprintf(stderr,
-			"Warning: Unknown trigger event: %s, ignored\n", av[0]);
+			"Warning: Unknown trigger event: %s, ignored\n", cmd);
 		return (0);
 	}
 
 	unless (isdir(triggerDir)) return (0);
+	/*
+	 * XXX - we should see if we need to fork this process before
+	 * doing so.  FIXME.
+	 */
 	sys("bk", "get", "-q", triggerDir, SYS);
 
 	/* run post-triggers with a read lock */
@@ -115,11 +127,10 @@ trigger(char **av, char *when)
 	if (streq(when, "post") && streq(event, "resolve")) what = "incoming";
 
 	/* Run the incoming trigger in the RESYNC dir if there is one.  */
-	resolve = (triggerDir != tbuf) && streq(what, "resolve");
-	if (resolve && !streq(when, "post")) {
+	if (streq(what, "resolve") && !streq(when, "post")) {
+		strcpy(triggerDir, RESYNC2ROOT "/BitKeeper/triggers");
 		assert(isdir(ROOT2RESYNC));
 	    	chdir(ROOT2RESYNC);
-		triggerDir = RESYNC2ROOT "/BitKeeper/triggers";
 	}
 
 	/*
@@ -127,23 +138,9 @@ trigger(char **av, char *when)
 	 * XXX TODO need to think about the split root case
 	 */
 	sprintf(buf, "%s-%s", when, what);
-	len = strlen(buf);
-	unless (dh = opendir(triggerDir)) {
-		if (resolve) chdir(RESYNC2ROOT);
-		return (0);
-	}
-	while (e = readdir(dh)) {
-		if ((strlen(e->d_name) >= len) &&
-		    strneq(e->d_name, buf, len)) {
-			char	file[MAXPATH];
-
-			sprintf(file, "%s/%s",  triggerDir, e->d_name);
-			triggers = addLine(triggers, strdup(file));
-		}
-	}
-	closedir(dh);
+	triggers = getTriggers(triggerDir, buf);
 	unless (triggers) {
-		if (resolve) chdir(RESYNC2ROOT);
+		if (streq(what, "resolve")) chdir(RESYNC2ROOT);
 		return (0);
 	}
 
@@ -152,7 +149,7 @@ trigger(char **av, char *when)
 	 */
 	unless (getenv("BK_STATUS")) putenv("BK_STATUS=UNKNOWN");
 	sortLines(triggers);
-	unless (strneq(av[0], "remote ", 7))  {
+	unless (strneq(cmd, "remote ", 7))  {
 		rc = localTrigger(event, what, triggers);
 	} else if (streq(when, "pre")) {
 		rc = remotePreTrigger(event, what, triggers);
@@ -160,8 +157,30 @@ trigger(char **av, char *when)
 		rc = remotePostTrigger(event, what, triggers);
 	}
 	freeLines(triggers);
-	if (resolve) chdir(RESYNC2ROOT);
+	if (streq(what, "resolve")) chdir(RESYNC2ROOT);
 	return (rc);
+}
+
+char	**
+getTriggers(char *dir, char *prefix)
+{
+	struct	dirent *e;
+	DIR	*dh;
+	int	len = strlen(prefix);
+	char	**lines = 0;
+
+	unless (dh = opendir(dir)) return (0);
+	while (e = readdir(dh)) {
+		if ((strlen(e->d_name) >= len) &&
+		    strneq(e->d_name, prefix, len)) {
+			char	file[MAXPATH];
+
+			sprintf(file, "%s/%s",  dir, e->d_name);
+			lines = addLine(lines, strdup(file));
+		}
+	}
+	closedir(dh);
+	return (lines);
 }
 
 private int

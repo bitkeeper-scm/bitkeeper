@@ -136,30 +136,14 @@ commit_main(int ac, char **av)
 	}
 	do_clean(s_cset, SILENT);
 	if (doit) return (do_commit(av, opts, sym, pendingFiles, commentFile));
-
-	while (1) {
-		printf("\n-------------------------------------------------\n");
-		cat(commentFile);
-		printf("-------------------------------------------------\n");
-		printf("Use these comments (e)dit, (a)bort, (u)se? ");
-		fflush(stdout);
-		unless (getline(0, buf, sizeof(buf)) > 0) goto Abort;
-		switch (buf[0]) {
-		    case 'y':  /* fall thru */
-		    case 'u':
-			return(do_commit(av, opts, sym,
-						pendingFiles, commentFile));
-			break;
-		    case 'e':
-			sprintf(buf, "%s %s", editor, commentFile);
-			system(buf);
-			break;
-		    case 'a':
-Abort:			printf("Commit aborted.\n");
-			unlink(pendingFiles);
-			unlink(commentFile);
-			return(1);
-		}
+	switch (comments_prompt(commentFile)) {
+	    case 0:
+		return (do_commit(av, opts, sym, pendingFiles, commentFile));
+	    default:
+		printf("Commit aborted.\n");
+		unlink(pendingFiles);
+		unlink(commentFile);
+		return (1);
 	}
 }
 
@@ -264,7 +248,7 @@ out:		if (commentFile) unlink(commentFile);
 	p = pendingFiles2[0] ? pendingFiles2 : pendingFiles;
 	sprintf(buf, "BK_PENDING=%s", p);
 	putenv((strdup)(buf));
-	if (trigger(av, "pre")) {
+	if (trigger(av[0], "pre")) {
 		rc = 1;
 		goto done;
 	}
@@ -304,7 +288,7 @@ out:		if (commentFile) unlink(commentFile);
 	} else if (rc = WEXITSTATUS(status)) {
 		putenv("BK_STATUS=FAILED");
 	}
-	trigger(av, "post");
+	trigger(av[0], "post");
 done:	if (unlink(commentFile)) perror(commentFile);
 	if (unlink(pendingFiles)) perror(pendingFiles);
 	if (pendingFiles2[0]) {

@@ -65,3 +65,69 @@ comments_get(delta *d)
 	}
 	return (d);
 }
+
+/*
+ * Prompt the user with a set of comments, returning
+ * 0 if they want to use them,
+ * -1 for an error or an abort.
+ */
+int
+comments_prompt(char *file)
+{
+	char	buf[10];
+	extern	char *editor;
+
+	unless (editor || (editor = getenv("EDITOR"))) editor = "vi";
+	while (1) {
+		printf("\n-------------------------------------------------\n");
+		fflush(stdout);
+		if (cat(file)) return (-1);
+		printf("-------------------------------------------------\n");
+		printf("Use these comments: (e)dit, (a)bort, (u)se? ");
+		fflush(stdout);
+		unless (getline(0, buf, sizeof(buf)) > 0) return (-1);
+		switch (buf[0]) {
+		    case 'y': 
+		    case 'u':
+			return (0);
+		    case 'e':
+			sprintf(buf, "%s %s", editor, file);
+			system(buf);
+			break;
+		    case 'a':
+		    case 'q':
+			return (-1);
+		}
+	}
+}
+
+int
+comments_readcfile(sccs *s, int prompt, delta *d)
+{
+	char	*cfile = sccs_Xfile(s, 'c');
+	char	*p;
+	MMAP	*m;
+
+	unless (access(cfile, R_OK) == 0) return (-1);
+	if (prompt && comments_prompt(cfile)) return (-2);
+	unless (m = mopen(cfile, "r")) return (-1);
+	while (p = mnext(m)) {
+		d->comments = addLine(d->comments, strnonldup(p));
+	}
+	mclose(m);
+	return (0);
+}
+
+void
+comments_cleancfile(char *file)
+{
+	char	*cfile = name2sccs(file);
+	char	*p;
+
+	p = strrchr(cfile, '/');
+	if (p) {
+		p[1] = 'c';
+		unlink(cfile);
+	}
+	free(cfile);
+}

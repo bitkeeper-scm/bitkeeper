@@ -37,6 +37,45 @@ fix_gmode(sccs *s, int gflags)
 	return (0);
 }
 
+private int
+hasTriggers(void)
+{
+	char	*t, **lines;
+	char	*dir;
+	int	ret;
+
+	if (getenv("_IN_DELTA")) return (0);
+	if (bk_proj && bk_proj->root) {
+		t = strdup(bk_proj->root);
+	} else unless (t = sccs_root(0)) {
+		return (0);
+	}
+	unless (streq(t, ".")) {
+		dir = aprintf("%s/BitKeeper/triggers", t);
+	} else {
+		dir = strdup("BitKeeper/triggers");
+	}
+	free(t);
+	lines = getTriggers(dir, "pre-delta");
+	ret = lines != 0;
+	freeLines(lines);
+	free(dir);
+	return (ret);
+}
+
+private int
+delta_trigger(sccs *s)
+{
+	char	*e = aprintf("BK_FILE=%s", s->gfile);
+	int	i;
+
+	putenv(e);
+	i = trigger("delta", "pre");
+	putenv("BK_FILE=");
+	free(e);
+	return (i);
+}
+
 int
 delta_main(int ac, char **av)
 {
@@ -56,7 +95,7 @@ delta_main(int ac, char **av)
 	MMAP	*diffs = 0;
 	MMAP	*init = 0;
 	pfile	pf;
-	int	dash, errors = 0;
+	int	dash, errors = 0, fire;
 	project	*proj = 0;
 
 	debug_main(av);
@@ -83,8 +122,8 @@ delta_main(int ac, char **av)
 		return (1);
 	}
 
-	while ((c = getopt(ac, av,
-			   "1abcdD:E|fg;GhI;ilm|M;npPqRrsuy|YZ|")) != -1) {
+	while ((c =
+	    getopt(ac, av, "1abcCdD:E|fg;GhI;ilm|M;npPqRrsuy|YZ|")) != -1) {
 		switch (c) {
 		    /* SCCS flags */
 		    case 'n': dflags |= DELTA_SAVEGFILE; break;	/* undoc? 2.0 */
@@ -133,6 +172,7 @@ comment:		comments_save(optarg);
 			}
 			break;
 		    case 'c': iflags |= INIT_NOCKSUM; break; 	/* doc 2.0 */
+		    case 'C': dflags |= DELTA_CFILE; break;	/* doc */
 		    case 'd': /* internal interface */ 		/* undoc 2.0 */
 			      dflags |= DELTA_NOPENDING; break;
 		    case 'D': diffsFile = optarg;		 /* doc 2.0 */
@@ -220,6 +260,7 @@ usage:			sprintf(buf, "bk help -s %s", name);
 			av[0], initFile, strerror(errno));
 		return (1);
 	}
+	if (fire = hasTriggers()) putenv("_IN_DELTA=YES");
 
 	while (name) {
 		delta	*d = 0;
@@ -277,7 +318,18 @@ usage:			sprintf(buf, "bk help -s %s", name);
 			if (co && (gf & GET_EDIT)) nrev = pf.newrev;
 		}
 
-		s->encoding = sccs_encoding (s, encp, compp);
+		if (fire) {
+			switch (delta_trigger(s)) {
+			    case 0: break;
+			    case 2: /* trigger ran delta, we won't */
+				goto next;
+			    default:
+				errors |= 32;
+				goto next;
+			}
+		}
+
+		s->encoding = sccs_encoding(s, encp, compp);
 		rc = sccs_delta(s, df, d, init, diffs, 0);
 		if (rc == -2) goto next; /* no diff in file */
 		if (rc == -1) {
@@ -285,6 +337,7 @@ usage:			sprintf(buf, "bk help -s %s", name);
 			errors |= 4;
 			goto next;
 		}
+		comments_cleancfile(s->gfile);
 
 		s = sccs_restart(s);
 		unless (s) {

@@ -132,8 +132,6 @@ resolve_main(int ac, char **av)
 private void
 resolve_post(int c)
 {
-	char	*av[] = { "resolve", 0 };
-
 	if (getenv("POST_INCOMING_TRIGGER") &&
 	    streq(getenv("POST_INCOMING_TRIGGER"), "NO")) {
 	    	return;
@@ -144,7 +142,7 @@ resolve_post(int c)
 	} else {
 		putenv("BK_STATUS=OK");
 	}
-	trigger(av, "post");
+	trigger("resolve", "post");
 }
 
 private void
@@ -2180,7 +2178,7 @@ pass4_apply(opts *opts)
 	char	key[MAXKEY];
 	char 	realname[MAXPATH];
 	MDBM	*permDB = mdbm_mem();
-	char	*fake_av[2] = { "apply", 0 };
+	char	*cmd = "apply";
 
 	if (opts->log) fprintf(opts->log, "==== Pass 4 ====\n");
 	opts->pass = 4;
@@ -2193,9 +2191,9 @@ pass4_apply(opts *opts)
 	 */
 	putenv("BK_CSETLIST=BitKeeper/etc/csets-in");
 	if (getenv("BK_REMOTE") && streq(getenv("BK_REMOTE"), "YES")) {
-		fake_av[0] = "remote apply";
+		cmd = "remote apply";
 	}
-	if (!opts->logging && (ret = trigger(fake_av,  "pre"))) {
+	if (!opts->logging && (ret = trigger(cmd,  "pre"))) {
 		switch (ret) {
 		    case 3: flags = CLEAN_MVRESYNC; break;
 		    case 2: flags = CLEAN_RESYNC; break;

@@ -170,7 +170,7 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		return (1);
 	}
 	if (opts.dont) putenv("BK_STATUS=DRYRUN");
-	if (!opts.metaOnly && trigger(av, "pre")) return (1);
+	if (!opts.metaOnly && trigger(av[0], "pre")) return (1);
 	bktemp(probe_list);
 	fd = open(probe_list, O_CREAT|O_WRONLY, 0644);
 	assert(fd >= 0);
@@ -241,7 +241,6 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 {
 	char	buf[MAXPATH * 2];
 	int	rc = 0, n, i;
-	char	*pr[2] = { "resolve", 0 };
 
 	if ((r->type == ADDR_HTTP) && bkd_connect(r, opts.gzip, !opts.quiet)) {
 		return (-1);
@@ -339,7 +338,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		 * We are about to run resolve, fire pre trigger
 		 */
 		putenv("BK_CSETLIST=BitKeeper/etc/csets-in");
-		if (!opts.metaOnly && (i = trigger(pr, "pre"))) {
+		if (!opts.metaOnly && (i = trigger("resolve", "pre"))) {
 			putenv("BK_STATUS=LOCAL TRIGGER FAILURE");
 			rc = 2;
 			if (i == 2) {
@@ -378,7 +377,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	}
 
 done:	putenv("BK_RESYNC=FALSE");
-	unless (opts.metaOnly || opts.noresolve) trigger(av, "post");
+	unless (opts.metaOnly || opts.noresolve) trigger(av[0], "post");
 	unlink(probe_list);
 
 	/*
