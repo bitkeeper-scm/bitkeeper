@@ -3174,23 +3174,21 @@ err:			free(s->gfile);
 sccs*
 sccs_init(char *name, u32 flags, char *root)
 {
-	sccs	*s = calloc(1, sizeof(*s));
+	sccs	*s;
 	struct	stat sbuf;
 	char	*t;
 
-	/* this should just go away and be the default */
-	assert(s);
 	platformSpecificInit(name); 
 	if (u_mask == 0x5eadbeef) {
 		u_mask = ~umask(0);
 		umask(~u_mask);
 	}
 	if (is_sccs(name)) {
+		s = calloc(1, sizeof(*s));
 		s->sfile = strdup(sPath(name, 0));
 		s->gfile = sccs2name(name);
 	} else {
 		fprintf(stderr, "Not an SCCS file: %s\n", name);
-		free(s);
 		return (0);
 	}
 	t = strrchr(s->sfile, '/');
@@ -3235,42 +3233,61 @@ sccs_init(char *name, u32 flags, char *root)
 	}
 	debug((stderr, "init(%s) -> %s, %s\n", name, s->sfile, s->gfile));
 	s->nextserial = 1;
+	s->fd = -1;
+	s->mmap = (caddr_t)-1;
 	if (flags & INIT_MAPWRITE) {
 		sbuf.st_mode |= 0200;
-		chmod(s->sfile, UMASK(sbuf.st_mode & 0777));
-		s->fd = open(s->sfile, 2, 0);
-		s->mmap = (char *) -1;
-		if (s->fd >= 0) {
-			s->mmap = mmap(0,
-			    s->size, PROT_READ|PROT_WRITE,
-			    MAP_SHARED, s->fd, 0);
-			if ((int)s->mmap == -1){
-				/*
-				 * MAP_SHARED not supported on SAMBA
-				 * file system yet
-				 * So we have to use MAP_PIVATE for now
-				 */
-				debug((stderr,
-				    "MAP_SHARED failed, trying MAP_PRIVATE\n"));
-				s->mmap = mmap(0,
-				    s->size, PROT_READ|PROT_WRITE,
-				    MAP_PRIVATE, s->fd, 0);
-				s->state |= S_MAPPRIVATE;
-			}
+		if (chmod(s->sfile, UMASK(sbuf.st_mode & 0777)) == 0) {
+			s->state |= S_CHMOD;
+			s->fd = open(s->sfile, O_RDWR, 0);
+		} else {
+			/* We might not be allowed to chmod this file, or
+			 * it might not exist yet.  Turn off MAPWRITE.
+			 */
+			sbuf.st_mode &= ~0200;
+			flags &= ~INIT_MAPWRITE;
+			s->fd = open(s->sfile, O_RDONLY, 0);
 		}
-		s->state |= S_CHMOD;
 	} else {
-		extern int errno;
-		s->fd = open(s->sfile, 0, 0);
-		if ((s->fd < 0) && (errno != ENOENT)) {
-			fprintf(stderr, "sccs_init: ");
-			perror(s->sfile);
-		}
-		s->mmap = mmap(0, s->size, PROT_READ, MAP_SHARED, s->fd, 0);
+		s->fd = open(s->sfile, O_RDONLY, 0);
 	}
-	if ((int)s->mmap == -1) {
-		s->cksumok = 1;
-		return (s);
+	if (s->fd >= 0) {
+		int mapmode = (flags & INIT_MAPWRITE)
+			? PROT_READ|PROT_WRITE
+			: PROT_READ;
+
+		debug((stderr, "Attempting map: %d for %u, %s\n",
+		       s->fd, s->size, (mapmode & PROT_WRITE) ? "rw" : "ro"));
+
+		s->mmap = mmap(0, s->size, mapmode, MAP_SHARED, s->fd, 0);
+		if (s->mmap == (caddr_t)-1) {
+			/* Some file systems don't support shared writable
+			 * maps (smbfs).
+			 */
+			debug((stderr,
+			       "MAP_SHARED failed, trying MAP_PRIVATE\n"));
+			s->mmap = mmap(0, s->size, mapmode, MAP_PRIVATE,
+				       s->fd, 0);
+			s->state |= S_MAPPRIVATE;
+		}
+	}
+
+	if (s->mmap == (caddr_t)-1) {
+		if (errno == ENOENT) {
+			/* Not an error if the file doesn't exist yet.  */
+			debug((stderr, "%s doesn't exist\n", s->sfile));
+			s->cksumok = -1;
+			return (s);
+		} else {
+			fputs("sccs_init: ", stderr);
+			perror(s->sfile);
+			free(s->sfile);
+			free(s->gfile);
+			free(s->pfile);
+			free(s->sfile);
+			free(s);
+			return (0);
+		}
 	}
 	debug((stderr, "mapped %s for %d at 0x%x\n",
 	    s->sfile, s->size, s->mmap));
@@ -4176,15 +4193,19 @@ fnlputs(char *buf, FILE *out)
 
 /*
  * This interface is used for writing the metadata (delta table, flags, etc).
+ *
+ * N.B. All checksum functions do the intermediate sum in an int variable
+ * because 16-bit register arithmetic can be up to 2x slower depending on
+ * the platform and compiler.
  */
 private sum_t
 fputmeta(sccs *s, u8 *buf, FILE *out)
 {
 	register u8	*t = buf;
-	register sum_t	 sum = 0;
+	register unsigned int sum = 0;
 
 	for (; *t; t++)	sum += *t;
-	s->cksum += sum;
+	s->cksum += (sum_t)sum;
 	fputs(buf, out);
 
 	return (sum);
@@ -4193,11 +4214,11 @@ fputmeta(sccs *s, u8 *buf, FILE *out)
 void
 gzip_sum(void *p, u8 *buf, int len, FILE *out)
 {
-	register sum_t sum = 0;
+	register unsigned int sum = 0;
 	register int i;
 
 	for (i = 0; i < len; sum += buf[i++]);
-	((sccs *)p)->cksum += sum;
+	((sccs *)p)->cksum += (sum_t)sum;
 	fwrite(buf, 1, len, out);
 }
 
@@ -4214,8 +4235,8 @@ static u8 *data_next = data_block;
 private sum_t
 fputdata(sccs *s, u8 *buf, FILE *out)
 {
-	sum_t	sum = 0;
-	u8	*p, *q, c;
+	unsigned int sum = 0, c;
+	u8	*p, *q;
 
 	/* Checksum up to and including the first newline
 	 * or the end of the string.
@@ -4228,25 +4249,20 @@ fputdata(sccs *s, u8 *buf, FILE *out)
 		if (c == '\0') break;
 		sum += c;
 		*q++ = c;
-		if (q == &data_block[sizeof(data_block)]) goto flush;
-flush_done:	if (c == '\n') break;
+		if (q == &data_block[sizeof(data_block)]) {
+			if (s->encoding & E_GZIP) {
+				zputs((void *)s, out, data_block,
+				      sizeof(data_block), gzip_sum);
+			} else {
+				fwrite(data_block, sizeof(data_block), 1, out);
+			}
+			q = data_block;
+		}
+		if (c == '\n') break;
 	}
 	data_next = q;
 	unless (s->encoding & E_GZIP) s->cksum += sum;
 	return (sum);
-
-	/* The compiler is too stupid to realize that if it puts
-	 * this code in the middle of the loop it trashes the cache
-	 * and the branch predictor.
-	 */
-flush:	if (s->encoding & E_GZIP) {
-		zputs((void *)s, out, data_block,
-		      sizeof(data_block), gzip_sum);
-	} else {
-		fwrite(data_block, sizeof(data_block), 1, out);
-	}
-	q = data_block;
-	goto flush_done;
 }
 
 /* Flush out data buffered by fputdata.  */
@@ -4651,7 +4667,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	ser_t	*slist = 0;
 	int	lines = 0, print = 0, popened, error = 0;
 	int	encoding = (flags&GET_ASCII) ? E_ASCII : s->encoding;
-	sum_t	sum;
+	unsigned int sum;
 	FILE 	*out;
 	char	*buf, *base, *f;
 	MDBM	*DB = 0;
@@ -4813,10 +4829,10 @@ out:			if (slist) free(slist);
 	if (d && (flags & NEWCKSUM) && !(flags&GET_SHUTUP) && lines) {
 		delta	*z = getCksumDelta(s, d);
 
-		if (!z || (sum != z->sum)) {
+		if (!z || ((sum_t)sum != z->sum)) {
 		    fprintf(stderr,
 			"get: bad delta cksum %u:%d for %s in %s, %s\n",
-			sum, z ? z->sum : -1, d->rev, s->sfile,
+			(sum_t)sum, z ? z->sum : -1, d->rev, s->sfile,
 			"gotten anyway.");
 		}
 	}
@@ -5338,7 +5354,7 @@ signed_badcksum(sccs *s)
 {
 	register char *t;
 	register char *end = s->mmap + s->size;
-	register sum_t sum = 0;
+	register unsigned int sum = 0;
 	int	filesum;
 
 	debug((stderr, "Checking sum from %x to %x (%d)\n",
@@ -5356,16 +5372,16 @@ signed_badcksum(sccs *s)
 	}
 	end += 16;
 	while (t < end) sum += *t++;
-	if (sum == filesum) {
+	if ((sum_t)sum == filesum) {
 		s->cksumok = 1;
 	} else {
 		fprintf(stderr,
 		    "Bad old style checksum for %s, got %d, wanted %d\n",
-		    s->sfile, sum, filesum);
+		    s->sfile, (sum_t)sum, filesum);
 	}
 	debug((stderr,
 	    "%s has %s cksum\n", s->sfile, s->cksumok ? "OK" : "BAD"));
-	return (sum != filesum);
+	return ((sum_t)sum != filesum);
 }
 
 /*
@@ -5376,7 +5392,7 @@ badcksum(sccs *s)
 {
 	register u8 *t;
 	register u8 *end = s->mmap + s->size;
-	register sum_t sum = 0;
+	register unsigned int sum = 0;
 	int	filesum;
 
 	debug((stderr, "Checking sum from %x to %x (%d)\n",
@@ -5394,14 +5410,14 @@ badcksum(sccs *s)
 	}
 	end += 16;
 	while (t < end) sum += *t++;
-	debug((stderr, "Calculated sum is %d\n", sum));
-	if (sum == filesum) {
+	debug((stderr, "Calculated sum is %d\n", (sum_t)sum));
+	if ((sum_t)sum == filesum) {
 		s->cksumok = 1;
 	} else {
 		if (signed_badcksum(s)) {
 			fprintf(stderr,
 			    "Bad checksum for %s, got %d, wanted %d\n",
-			    s->sfile, sum, filesum);
+			    s->sfile, (sum_t)sum, filesum);
 		} else {
 			fprintf(stderr,
 			    "Accepting old 7 bit checksum for %s\n", s->sfile);
@@ -5410,7 +5426,7 @@ badcksum(sccs *s)
 	}
 	debug((stderr,
 	    "%s has %s cksum\n", s->sfile, s->cksumok ? "OK" : "BAD"));
-	return (sum != filesum);
+	return ((sum_t)sum != filesum);
 }
 
 
@@ -8314,7 +8330,7 @@ getHashSum(sccs *sc, delta *n, FILE *diffs)
 	char	buf[MAXPATH*3];
 	char	*k, *v, *v2, *t;
 	u8	*e;
-	sum_t	sum = 0;
+	unsigned int sum = 0;
 	int	lines = 0;
 	int	flags = SILENT|GET_HASHONLY|GET_SUM|GET_SHUTUP;
 	delta	*d;
