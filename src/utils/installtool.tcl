@@ -309,6 +309,10 @@ proc widgets {} \
 			incr row
 		}
 
+                if {[llength $::runtime(places)] > 0} {
+                        after idle [list focus $w.rb-1]
+                }
+
 		set ::widgets(destinationEntry) $w.destinationEntry
 		set ::widgets(destinationButton) $w.destinationButton
 
@@ -405,6 +409,7 @@ proc widgets {} \
 			    pack $w.shellx-local -side top -fill x -anchor w
 			    pack $w.shellx-remote -side top -fill x -anchor w
 			    pack $w.bkscc -side top -fill x -anchor w
+			    after idle [list focus $w.shellx-local]
 		    } else {
 			    $this stepconfigure InstallDLLs \
 				-description [unwrap $::strings(InstallDLLsNoAdmin)]
@@ -447,6 +452,7 @@ proc widgets {} \
 					. configure -state pending
 				}
 			}
+                    after idle  [list focus $w.overwrite]
 
 		    if {$tcl_platform(platform) == "unix"} {
 			    # this gives the radiobuttons a nice
@@ -462,7 +468,6 @@ proc widgets {} \
 	. add step Install \
 	    -title "Install" \
 	    -body {
-		    
 		    $this configure -defaultbutton next
 		    $this buttonconfigure next -text Install
 
@@ -596,6 +601,7 @@ proc widgets {} \
 		pack $w.log -side left -fill both -expand y
 
 		. stepconfigure Summary -title "Installing.."
+                $this configure -defaultbutton none
 
 		doInstall
 
@@ -606,6 +612,7 @@ proc widgets {} \
 		}
 
 		$this buttonconfigure cancel -state disabled
+                $this configure -defaultbutton finish
 	}
 	    
 	bind . <<WizCancel>> {set ::done 1}

@@ -304,8 +304,8 @@ _fixtool() {
 	# We can't do while read x because we need stdin.
 	for x in `cat $fix`
 	do	test $ASK = YES && {
-			clear
-			bk diffs "$x" | ${PAGER} 
+			eval $CLEAR
+			bk diffs "$x" | bk more
 			echo $N "Fix ${x}? y)es q)uit n)o u)nedit: [no] "$NL
 			read ans 
 			DOIT=YES
@@ -1416,6 +1416,7 @@ _install()
 	(bk version
 	echo USER=`bk getuser`/`bk getuser -r`
 	echo HOST=`bk gethost`/`bk gethost -r`
+	echo UNAME=`uname -a` 2>/dev/null
 	) | bk mail -u http://bitmover.com/cgi-bin/bkdmail \
 	    -s 'bk install' install@bitmover.com >/dev/null 2>&1 &
 

@@ -3,7 +3,7 @@
 
 proc main {} \
 {
-	global argv options reglog shortcutlog
+	global argv options reglog shortcutlog tcl_platform
 	
 	set options(shellx_network) 0
 	set options(shellx_local) 0
@@ -22,6 +22,10 @@ proc main {} \
 		}
 	}
 	set destination [file nativename [lindex $argv 0]]
+	# 95 == 98 in tcl.
+	if {$tcl_platform(os) == "Windows 95"} {
+		set destination [shortname $destination]
+	}
 	set bk [file join $destination bk.exe]
 	if {![file exists $bk]} {
 		puts stderr "can't find a usable bk.exe in $destination"
@@ -88,7 +92,7 @@ proc registry_install {destination} \
 	# Also need to use / rather than \ because we may execute this
 	# in an msys shell.
 	reg set $HKLMS\\$MWC\\Uninstall\\$id UninstallString \
-	    "[shortname $destination]/bkuninstall -S \"$destination/install.log\""
+	    "[shortname $destination]\\bkuninstall -S \"$destination\\install.log\""
 	reg set $HKLMS\\$MWC\\Uninstall\\$id URLInfoAbout \
 		 "http://www.bitkeeper.com"
 	reg set $HKLMS\\$MWC\\Uninstall\\$id HelpLink \

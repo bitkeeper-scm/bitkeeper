@@ -35,9 +35,6 @@ void	extract(char *, char *, u32, char *);
 char	*findtmp(void);
 int	isdir(char*);
 void	rmTree(char *dir);
-#ifdef WIN32
-int	do_reboot(void);
-#endif
 
 int
 main(int ac, char **av)
@@ -57,6 +54,7 @@ main(int ac, char **av)
 	char	*bindir = 0;
 	char	regbuf[1024];
 	int	len = sizeof(regbuf);
+	HCURSOR h;
 
 	_fmode = _O_BINARY;
 	if (getReg(HKEY_LOCAL_MACHINE,
@@ -152,6 +150,9 @@ main(int ac, char **av)
 	if (dest) for (p = dest; *p; p++) if (*p == '\\') *p = '/';
 
 	sprintf(tmpdir, "%s/%s%u", tmp, TMP, pid);
+#ifdef	WIN32
+	h = SetCursor(LoadCursor(0, IDC_WAIT));
+#endif
 	fprintf(stderr, "Please wait while we unpack in %s ...\n", tmpdir);
 	if (mkdir(tmpdir, 0700)) {
 		perror(tmpdir);
@@ -222,6 +223,7 @@ main(int ac, char **av)
 		av[i] = 0;
 #ifdef	WIN32
 		fprintf(stderr, "Running installer...\n");
+		SetCursor(h);
 #endif
 		/*
 		 * Use our own version of system()
@@ -244,7 +246,13 @@ main(int ac, char **av)
 	 * Bitchin'
 	 */
 #ifdef WIN32
-	if (rc == 2) do_reboot();
+	if (rc == 2) {
+		do_reboot(
+		    "Some BitKeeper files from the previous install\n"
+		    "are in active use and cannot be deleted immediately.\n"
+	       	    "They will be deleted after the next reboot.\n"
+		    "Do you want to reboot the system now?\n");
+	}
 #endif
 	exit(0);
 }
