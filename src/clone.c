@@ -216,6 +216,12 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 
 	parent(opts, r);
 
+	if (consistency(opts.quiet)) {
+		fprintf(stderr,
+			"Consistency check failed, repository left locked.\n");
+		goto done;
+	}
+
 	/*
 	 * Invalidate the project cache, we have changed directory
 	 */
@@ -325,6 +331,32 @@ after(int quiet, char *rev)
 	return (WEXITSTATUS(i));
 }
 
+int
+consistency(int quiet)
+{
+	char	*cmds[10];
+	int	ret, i;
+
+	unless (quiet) {
+		fprintf(stderr, "Running consistency check ...\n");
+	}
+	cmds[i = 0] = "bk";
+	cmds[++i] = "-r";
+	cmds[++i] = "check";
+	cmds[++i] = "-acf";
+	cmds[++i] = 0;
+	ret = spawnvp_ex(_P_WAIT, "bk", cmds);
+	unless (WIFEXITED(ret)) return (-1);
+	ret = WEXITSTATUS(ret);
+	unless (ret == 2) return (ret);
+	unless (quiet) {
+		fprintf(stderr, "Running consistency check again ...\n");
+	}
+	cmds[i-1] = 0;
+	i = spawnvp_ex(_P_WAIT, "bk", cmds);
+	unless (WIFEXITED(i))  return (-1);
+	return (WEXITSTATUS(i));
+}
 
 private void
 parent(opts opts, remote *r)
@@ -464,28 +496,6 @@ perfile_work(char *sfile)
 	return (1);
 }
 
-private FILE *
-start_check(char **list)
-{
-	int	i;
-	FILE	*fd;
-	
-	EACH(list) {
-		perfile_work(list[i]);
-	}
-	fd = popen("bk check -acf -", "w");
-	unless (fd) {
-		fprintf(stderr, "ERROR: failed to run check\n");
-		exit(3);
-	}
-	EACH(list) {
-		/* stripdel might have removed a file */
-		if (exists(list[i])) fprintf(fd, "%s\n", list[i]);
-	}
-	freeLines(list);
-	return (fd);
-}
-
 int
 clonedo_main(int ac, char **av)
 {
@@ -493,9 +503,8 @@ clonedo_main(int ac, char **av)
 	char	**list = 0;
 	int	ok = 0;		/* +1 for cset +1 for BitKeeper */
 	int	inbk = 0;
-	FILE	*fd = 0;
-	int	status;
 	int	c;
+	int	i;
 
 	while ((c = getopt(ac, av, "q")) != -1) {
 		switch (c) {
@@ -506,14 +515,19 @@ clonedo_main(int ac, char **av)
 		}
 	}
 
+	/*
+	 * This loop is intended to start the file processing
+	 * after the ChangeSet file and the BitKeeper/ subdirectory
+	 * has been transfered. It also feed files to 'check' but
+	 * that has been disabled since check cannot run incrementally.  
+	 * (building idcache)
+	 */
 	for (name = sfileFirst("clonedo", &av[optind], 0);
 	     name; name = sfileNext()) {
 		if (ok >= 2) {
 			perfile_work(name);
-			fprintf(fd, "%s\n", name);
 		} else {
 			list = addLine(list, strdup(name));
-			
 			if (streq(name, CHANGESET)) ++ok;
 			if (strneq(name, "BitKeeper/", 10)) {
 				inbk = 1;
@@ -523,38 +537,23 @@ clonedo_main(int ac, char **av)
 					inbk = 0;
 				}
 			}
-			if (ok >= 2) fd = start_check(list);
+			if (ok >= 2) {
+				EACH(list) perfile_work(list[i]);
+				freeLines(list);
+				list = 0;
+			}
 		}
 	}
 	/* if BitKeeper dir was last */
 	if (ok == 1 && inbk) {
-		fd = start_check(list);
+		EACH(list) perfile_work(list[i]);
+		freeLines(list);
+		list = 0;
 	} else if (ok < 2) {
 		fprintf(stderr, 
-		    "clockdo ERROR: never saw ChangeSet and BitKeeper dir\n");
+		    "clonedo ERROR: never saw ChangeSet and BitKeeper dir\n");
 		exit(4);
 	}
-	status = pclose(fd);
-
-	if (WIFEXITED(status) && WEXITSTATUS(status) == 2) {
-		char	*cmds[10];
-		int	i;
-
-		unless (clonedo_quiet) {
-			fprintf(stderr, 
-			    "Running consistency check again...\n");
-		}
-		cmds[i = 0] = "bk";
-		cmds[++i] = "-r";
-		cmds[++i] = "check";
-		cmds[++i] = "-acf";
-		cmds[++i] = 0;
-		status = spawnvp_ex(_P_WAIT, "bk", cmds);
-	}
-	status = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
-	if (status != 0) {
-		fprintf(stderr, "ERROR: check exited with %d\n", status);
-	}
 	sfileDone();
-	return (status);
+	return (0);
 }

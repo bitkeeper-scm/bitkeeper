@@ -177,6 +177,7 @@ cmd_rclone_part2(int ac, char **av)
 	 * XXX TODO: set up parent pointer
 	 */
 
+	consistency(!opts.verbose);
 	/* restore original stderr */
 	dup2(fd2, 2); close(fd2);
 	fputc(BKD_NUL, stdout);

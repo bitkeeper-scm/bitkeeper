@@ -1087,6 +1087,7 @@ int	setlevel(int);
 void	sccs_rmUncommitted(int quiet);    
 void	rmEmptyDirs(int quiet);    
 int	after(int quiet, char *rev);
+int	consistency(int quiet);
 int	lod(int quiet, char *rev);
 int	logs_pending(int ptype, int skipRecentCset, int grace); 
 int	diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile);
