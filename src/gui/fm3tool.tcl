@@ -388,12 +388,14 @@ proc createDiffWidgets {w} \
 	    .diffs.left tag configure gcaline -background $gc($app.oldColor)
 	    .diffs.left tag configure hand -background lightyellow
 	    .diffs.left tag configure space -background black
+	    .diffs.left tag configure reverse -background orange
 	    .diffs.right tag configure diff -background $gc($app.newColor)
 	    .diffs.right tag configure diffline -background $gc($app.newColor)
 	    .diffs.right tag configure gca -background $gc($app.oldColor)
 	    .diffs.right tag configure gcaline -background $gc($app.oldColor)
 	    .diffs.right tag configure hand -background lightyellow
 	    .diffs.right tag configure space -background black
+	    .diffs.right tag configure reverse -background orange
 
 	    bind .diffs <Configure> { computeHeight "diffs" }
 }
@@ -425,7 +427,7 @@ proc prev {conflict} \
 
 proc dot {} \
 {
-	global	diffCount lastDiff conflicts app gc UNMERGED restore
+	global	diffCount lastDiff conflicts app gc UNMERGED restore undo
 
 	searchreset
 	foreach c {a m} {
@@ -435,6 +437,11 @@ proc dot {} \
 			.menu.edit.m entryconfigure \
 			    "Restore $c*" -state disabled
 		}
+	}
+	if {$undo} {
+		.menu.edit.m entryconfigure "Undo" -state normal
+	} else {
+		.menu.edit.m entryconfigure "Undo" -state disabled
 	}
 	.merge.menu.l configure -text \
 	    "Diff $lastDiff of $diffCount ($conflicts unresolved)"
@@ -705,20 +712,36 @@ proc readSmerge {} \
 
 proc smerge {} \
 {
-	global  argc argv filename smerge tmps tmp_dir annotate
+	global  argc argv filename smerge tmps tmp_dir annotate force
 
+	set smerge [file join $tmp_dir bksmerge_[pid]]
+	set tmps [list $smerge]
+	# set if we are annotated in the diffs window
+	set annotate 1
+	if {$argc == 1} {
+		set filename [lindex $argv 0]
+		exec cp $filename $smerge
+		return
+	}
+	if {$argc == 5 && [lindex $argv 0] == "-f"} {
+		set l [list]
+		foreach a $argv {
+			if {$a != "-f"} { lappend l $a }
+		}
+		set argv $l
+		set argc 4
+		set force 1
+	} else {
+		set force 0
+	}
 	if {$argc != 4} {
-		puts "Usage: fm3tool <local> <gca> <remote> <file>"
+		puts "Usage: fm3tool [-f] <local> <gca> <remote> <file>"
 		exit 1
 	}
 	set l [lindex $argv 0]
 	set g [lindex $argv 1]
 	set r [lindex $argv 2]
 	set f [lindex $argv 3]
-	set smerge [file join $tmp_dir bksmerge_[pid]]
-	set tmps [list $smerge]
-	# set if we are annotated in the diffs window
-	set annotate 1
 	if {[catch {exec bk smerge -Im -pf $l $g $r $f > $smerge}] == 0} {
 		# puts "No conflicts"
 		set junk 1
@@ -729,11 +752,11 @@ proc smerge {} \
 proc readFile {} \
 {
 	global	diffCount lastDiff conflicts dev_null 
-	global  app gc restore dir filename
+	global  app gc restore dir filename undo click
 
 	set dir "forward"
 	array set restore {}
-	foreach t {.diffs.left .diffs.right .merge.t} {
+	foreach t {.diffs.left .diffs.right .merge.t .merge.hi} {
 		$t configure -state normal
 		$t delete 1.0 end
 		$t tag delete [$t tag names]
@@ -741,6 +764,8 @@ proc readFile {} \
 
 	. configure -cursor watch
 	update
+	set undo 0
+	array set click {}
 	set diffCount 0
 	set conflicts 0
 	set lastDiff 0
@@ -1032,12 +1057,12 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "File" -menu $m
 	    menu $m
-		$m add command -label "Quit" \
-		    -command cleanup -accelerator $gc(fm3.quit)
 		$m add command -label "Save" \
-		    -command save -state disabled -accelerator <Alt-s>
+		    -command save -state disabled -accelerator <s>
 		$m add command \
 		    -label "Restart, discarding any merges" -command readFile
+		$m add command -label "Quit" \
+		    -command cleanup -accelerator $gc(fm3.quit)
 		$m add command -label "Run revtool" -command revtool
 		$m add command -label "Run csettool on additions" \
 		    -command { csettool new }
@@ -1054,13 +1079,15 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	    menu $m
 		$m add command \
 		    -label "Edit merge window" -command { edit_merge 1 1 }
+		$m add command -state disabled \
+		    -label "Undo" -command undo -accelerator <u>
 		$m add command \
-		    -label "Clear" -command edit_clear -accelerator <Alt-c>
+		    -label "Clear" -command edit_clear -accelerator <c>
 		$m add command \
-		    -label "Restore automerge" -accelerator <Alt-a> \
+		    -label "Restore automerge" -accelerator <a> \
 		    -command { edit_restore a }
 		$m add command \
-		    -label "Restore manual merge" -accelerator <Alt-m> \
+		    -label "Restore manual merge" -accelerator <m> \
 		    -command { edit_restore m }
 
 	    pack .menu.file -side left -fill y
@@ -1239,10 +1266,10 @@ proc keyboard_bindings {} \
 	bind all	<Shift-space>	{ next 1; break }
 	bind all	<p>		{ prev 0; break }
 	bind all	<P>		{ prev 1; break }
-	bind all	<Alt-c>		{ edit_clear }
-	bind all	<Alt-a>		{ edit_restore a }
-	bind all	<Alt-m>		{ edit_restore m }
-	bind all	<Alt-s>		{
+	bind all	<c>		{ edit_clear }
+	bind all	<a>		{ edit_restore a }
+	bind all	<m>		{ edit_restore m }
+	bind all	<s>		{
 	    global conflicts
 
 	    if {$conflicts} {
@@ -1252,6 +1279,7 @@ proc keyboard_bindings {} \
 	    	save
 	    }
 	}
+	bind all	<u>		{ undo }
 	bind all	<period>	{ dot; break }
 	bind all	<minus>		{
 	    global lastDiff
@@ -1309,7 +1337,7 @@ proc edit_done {} \
 		lappend lines " $buf"
 		incr l
 	}
-	change $lines 1 0
+	change $lines 1 0 0
 
 	# This code is supposed to adjust the marks in .hi
 	set i 1
@@ -1356,17 +1384,30 @@ proc cleanup {} \
 
 proc save {} \
 {
-	global	filename
+	global	filename force
 
+	set base [file tail $filename]
+	set dir [file dirname $filename]
+	set pfile "$dir/SCCS/p.$base"
+	if {[file exists $pfile] == 0} {
+		puts "The file is not edited, will not save"
+		exit 1
+	}
 	catch { exec bk clean "$filename" } error
-	if {[file exists $filename] && [file writable $filename]} {
+	if {$force == 0 && \
+	    [file exists $filename] && [file writable $filename]} {
 		puts "Won't overwrite modified $filename"
 		return
 	}
-	catch { exec bk edit -q "$filename" }
 	set f [open $filename "w"]
-	set buf [.merge.t get 1.0 end]
-	puts -nonewline $f $buf
+	set buf [.merge.t get 1.0 "end - 1 char"]
+	set len [expr {[string length $buf] - 1}]
+	set last [string index $buf $len]
+	if {"$last" == "\n"} {
+		puts -nonewline $f $buf
+	} else {
+		puts $f $Text
+	}
 	close $f
 	exit
 }
@@ -1407,13 +1448,20 @@ proc nextDiff {conflict} \
 
 proc nextCommon {} \
 {
-	global	lastDiff diffCount
+	global	lastDiff diffCount undo click
 
 	searchreset
 	catch {
 		.diffs.left tag delete next
 		.diffs.right tag delete next
 	}
+	foreach t {.merge.hi .merge.t} {
+		for {set i 0} {$i < $undo} {incr i} {
+			$t mark unset "u$i" "U$i"
+		}
+	}
+	array set click {}
+	set undo 0
 	set d "d$lastDiff"
 	set e "e$lastDiff"
 	set ls [.diffs.left index "d$lastDiff"]
@@ -1431,21 +1479,26 @@ proc nextCommon {} \
 		set text [list .diffs.right]
 		set rrevs [split [.diffs.right get $d $e] "\n"]
 	}
-	foreach t $text {
-		difflight $t $d $e
-	}
 	prs $lrevs .prs.left
 	prs $rrevs .prs.right
-
 	update
 	dot
+	# Has to be after dot, for the horizontal positioning
+	foreach t $text { difflight $t $d $e }
 	return 1
 }
 
 proc difflight {t d e} \
 {
+	global	annotate
+
 	$t tag remove gcaline 1.0 end
 	$t tag remove diffline 1.0 end
+	$t tag remove reverse 1.0 end
+	set old 0
+	set new 0
+	set oldstart -1
+	set newstart -1
 	set l 0
 	while {[$t compare "$d + $l lines" <= $e]} {
 		foreach {tag tagline} {gca gcaline diff diffline} {
@@ -1454,9 +1507,90 @@ proc difflight {t d e} \
 			if {$range != ""} {
 				$t tag add $tagline "$d + $l lines" \
 				    "$d + $l lines lineend + 1 char"
+				if {$tag == "gca"} {
+					incr old
+					if {$oldstart == -1} { set oldstart $l }
+				}
+				if {$tag == "diff"} {
+					incr new
+					if {$newstart == -1} { set newstart $l }
+				}
 			}
 		}
 		incr l
+	}
+
+	if {$old == 0 || $new == 0} { return }
+
+	# Go look for matching stuff
+# puts "difflight t=$t old=$old new=$new"
+	set o $oldstart
+	set n $newstart
+	while {$old && $new} {
+		set oc [$t get "$d + $o lines + 1 char"]
+		set nc [$t get "$d + $n lines + 1 char"]
+# puts "new=$new n=$n nc=$nc old=$old o=$o oc=$oc"
+		if {$oc == "s"} {
+			incr o
+			continue
+		}
+		if {$nc == "s"} {
+			incr n
+			continue
+		}
+		set N [$t get "$d + $n lines" "$d + $n lines lineend"]
+		set O [$t get "$d + $o lines" "$d + $o lines lineend"]
+		if {$annotate} {
+			set na [expr [string first "|" $N] + 2]
+			set oa [expr [string first "|" $O] + 2]
+		} else {
+			set na 1
+			set oa 1
+		}
+		set N [string range $N $na end]
+		set O [string range $O $oa end]
+		set ol [string length $O]
+		set nl [string length $N]
+# puts "ol=$ol o='$O'\nnl=$nl n='$N'"
+		if {$N == $O} {
+			incr old -1
+			incr new -1
+			incr o
+			incr n
+			continue
+		}
+		for {set lead 0} \
+		    {[string index $O $lead] == [string index $N $lead]} \
+		    {incr lead} { }
+		for {set tail 0; set j [expr $ol - 1]; set k [expr $nl - 1]} \
+		    {$j >= $lead && $k >= $lead && \
+		    [string index $O $j] == [string index $N $k]} \
+		    {incr tail; incr j -1; incr k -1} { }
+		if {[expr $lead + $tail] < [expr $nl / 3] || \
+		    [expr $lead + $tail] < [expr $ol / 3]} {
+			incr old -1
+			incr new -1
+			incr o
+			incr n
+			continue
+		}
+# puts "lead=$lead tail=$tail len=$ol/$nl"
+		set om [expr $ol - [expr $lead + $tail]]
+		incr oa $lead
+		set om [expr $oa + $om]
+		$t tag add reverse "$d + $o lines + $oa chars" \
+		    "$d + $o lines + $om chars"
+		$t see "$d + $o lines + $om chars"
+		set nm [expr $nl - [expr $lead + $tail]]
+		incr na $lead
+		set nm [expr $na + $nm]
+		$t tag add reverse "$d + $n lines + $na chars" \
+		    "$d + $n lines + $nm chars"
+		$t see "$d + $n lines + $nm chars"
+		incr old -1
+		incr new -1
+		incr o
+		incr n
 	}
 }
 
@@ -1563,18 +1697,46 @@ proc edit_restore {c} \
 		lappend l " $line"
 	}
 	if {$c == "a"} {
-		change $l 1 1
+		change $l 1 1 0
 	} else {
-		change $l 1 0
+		change $l 1 0 0
 	}
 	foreach t {.diffs.left .diffs.right} {
 		$t tag remove hand "d$lastDiff" "e$lastDiff"
 	}
 }
 
-proc change {lines replace orig} \
+proc undo {} \
 {
-	global	lastDiff diffCount UNMERGED conflicts restore annotate
+	global	lastDiff undo click
+
+	if {$undo == 0} { return }
+	.merge.hi configure -state normal
+	foreach t {.merge.hi .merge.t} {
+		$t delete [$t index "u$undo"] [$t index "U$undo"]
+		$t mark unset "u$undo" "U$undo"
+	}
+	.merge.hi configure -state disabled
+	set d "d$lastDiff"
+	set e "e$lastDiff"
+	set buf [.merge.t get $d $e]
+	if {$buf == ""} {
+		edit_restore a
+		set undo 0
+		.menu.edit.m entryconfigure "Undo" -state disabled
+	} else {
+		$click("w$undo") \
+		    tag remove hand $click("u$undo") $click("U$undo")
+		incr undo -1
+		if {$undo == 0} {
+			puts "Whoops, undo shouldn't have gotten here"
+		}
+	}
+}
+
+proc change {lines replace orig pipe} \
+{
+	global	lastDiff diffCount UNMERGED conflicts restore undo
 
 	edit_save
 	set next [expr $lastDiff + 1]
@@ -1596,10 +1758,13 @@ proc change {lines replace orig} \
 		if {$buf == $UNMERGED || $replace} { $t delete $d $e }
 		$t mark gravity $e right
 		catch { $t mark gravity $nextd right }
+		$t mark set "u$undo" $e
+		$t mark set "U$undo" $e
+        	$t mark gravity "u$undo" left
 	}
 	foreach line $lines {
 		set bar [string first "|" $line]
-		if {$annotate == 0 || $bar == -1} {
+		if {$pipe == 0 || $bar == -1} {
 			set l [string range $line 1 end]
 		} else {
 			incr bar 2
@@ -1620,13 +1785,19 @@ proc change {lines replace orig} \
 		$t see $e
 	}
 	.merge.hi configure -state disabled
+	if {[.merge.t get $d $e] == $UNMERGED} {
+		.merge.menu.l configure -bg red
+	}
 	edit_save
 }
 
 proc click {win block replace} \
 {
-	global	lastDiff annotate
+	global	lastDiff annotate click undo
 
+	incr undo
+	.menu.edit.m entryconfigure "Undo" -state normal
+	set click("w$undo") $win
 	set d "d$lastDiff"
 	set e "e$lastDiff"
 	set here [$win index current]
@@ -1642,10 +1813,12 @@ proc click {win block replace} \
 	}
 	set here [$win index current]
 	if {$block == 0} {
+		set click("u$undo") [$win index "$here linestart"]
+		set click("U$undo") [$win index "$here lineend + 1 chars"]
 		$win tag add hand "$here linestart" "$here lineend + 1 chars"
 		set buf [$win get "$here linestart + 2 chars" "$here lineend"]
 		set lines [list "$buf"]
-		change $lines $replace 0
+		change $lines $replace 0 $annotate
 		return
 	}
 	# Figure out the leading character, walk backwards as long as
@@ -1657,6 +1830,12 @@ proc click {win block replace} \
 		set tmp [$win index "$line - 1 lines linestart + 1 chars"]
 		set c [$win get $tmp]
 		if {$c != $char} { break }
+		# Break out if we hit stuff that we already selected
+		set ok 1
+		foreach t [$win tag names $tmp] {
+			if {$t == "hand"} { set ok 0 }
+		}
+		if {$ok == 0} { break }
 		set line $tmp
 	}
 	set l 1
@@ -1669,9 +1848,19 @@ proc click {win block replace} \
 		set tmp [$win index "$line + $l lines linestart + 1 chars"]
 		set c [$win get $tmp]
 		if {$c != $char} { break }
+		# Break out if we hit stuff that we already selected
+		set ok 1
+		foreach t [$win tag names $tmp] {
+			if {$t == "hand"} { set ok 0 }
+		}
+		if {$ok == 0} { break }
 		incr l
 	}
-	$win tag add hand "$line linestart" "$line + $l lines linestart"
+	set a [$win index "$line linestart"]
+	set b [$win index "$line + $l lines linestart"]
+	$win tag add hand $a $b
+	set click("u$undo") $a
+	set click("U$undo") $b
 	set a [.diffs.left index "d$lastDiff"]
 	set b [.diffs.left index "$line linestart"]
 	if {$a == $b} {
@@ -1681,7 +1870,7 @@ proc click {win block replace} \
 		.diffs.left see $b
 		.diffs.right see $b
 	}
-	change $lines $replace 0
+	change $lines $replace 0 $annotate
 }
 
 bk_init
