@@ -46,6 +46,7 @@ sub mkMerge
 	open (RD, "<$rdata") || die "cannot open $rdata\n";
 	open (OUT, ">$out") || die "cannot open $out\n";
 
+	binmode OUT;
 	while (defined($lm = <LM>)) {
 		chop $lm;
 		$ld = <LD>; 

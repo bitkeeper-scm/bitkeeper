@@ -140,7 +140,6 @@ mv(char *src, char *dest)
 {
 	//fprintf(stderr, "moving %s -> %s\n", src, dest);
 	if (rename(src, dest)) {	/* try mv(1) */
-		char	cmd[MAXPATH*2 + 5];
 
 		/* try making the dir and see if that helps */
 		mkdirf(dest);
@@ -149,6 +148,7 @@ mv(char *src, char *dest)
 		if (rename(src, dest)) return (1);
 #else
 		if (rename(src, dest)) { 	/* try mv(1) */
+			char	cmd[MAXPATH*2 + 5];
 			sprintf(cmd, "/bin/mv %s %s", src, dest);
 			if (system(cmd)) return (1);
 		}

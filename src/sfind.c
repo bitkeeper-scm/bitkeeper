@@ -129,7 +129,7 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 inline void
 xprint(char *f)
 {
-	if (!strneq("BitKeeper/log/", f, 14)) printf("%s\n", f);
+	if (!pathneq("BitKeeper/log/", f, 14)) printf("%s\n", f);
 }
 
 void
@@ -138,7 +138,7 @@ xfile(char *file)
 	char	*sfile = name2sccs(file);
 	char	*gfile = sccs2name(sfile);
 
-	if (streq(gfile, file) && !exists(sfile)) {
+	if (patheq(gfile, file) && !exists(sfile)) {
 		xprint(file);
 	}
 	free(sfile);
@@ -165,6 +165,7 @@ file(char *f, int (*func)())
 		if (sccs_filetype(f)) return (-1);
 		sfile = name2sccs(f);
 		if (lstat(sfile, &sb) != 0) return (-1);
+		memcpy(&fb, &sb, sizeof(fb));
 		f = sfile;
 	}
 	if (sccs_filetype(f)) {
@@ -174,7 +175,7 @@ file(char *f, int (*func)())
 	}
 
 	s = strrchr(f, '/');
-	if ((s >= f + 4) && strneq(s - 4, "SCCS/", 5) && !sccs_filetype(f)) {
+	if ((s >= f + 4) && pathneq(s - 4, "SCCS/", 5) && !sccs_filetype(f)) {
 		if (xFlg) xprint(f);
 		if (sfile) free(sfile);
 	    	return (0);
@@ -220,9 +221,9 @@ func(const char *filename, const struct stat *sb, int flag)
 				/*
 				 * If we are an SCCS directory, we don't count.
 				 */
-				if (streq(file, "SCCS") ||
+				if (patheq(file, "SCCS") ||
 				    ((s = strrchr(file, '/')) &&
-				    streq(s, "/SCCS"))) {
+				    patheq(s, "/SCCS"))) {
 				    	return (0);;
 				}
 
@@ -241,7 +242,7 @@ func(const char *filename, const struct stat *sb, int flag)
 	s = strrchr(file, '/');
 
 	if ((s >= file + 4) &&
-	    strneq(s - 4, "SCCS/", 5) && !sccs_filetype(file)) {
+	    pathneq(s - 4, "SCCS/", 5) && !sccs_filetype(file)) {
 		if (xFlg) xprint(file);
 	    	return (0);
 	}
@@ -274,6 +275,7 @@ func(const char *filename, const struct stat *sb, int flag)
 	if (Pflg) {
 		if (!isSccs(file)) return (0);
 	} else if (pFlg) {
+		// XXX TODO: win32 note: should also check for lower case sccs
 		if ((s-file < 5) || (s[-2] != 'S') || (s[-3] != 'C') ||
 		    (s[-4] != 'C') || (s[-5] != 'S')) {
 			if (!isSccs(file)) return (0);
@@ -434,13 +436,13 @@ caches(const char *filename, const struct stat *sb, int flag)
 		/* update the id cache only if root path != current path. */
 		assert(ino->pathname);
 		sccs_sdelta(sc, ino, buf);
-		unless (streq(ino->pathname, sc->gfile)) {
+		unless (patheq(ino->pathname, sc->gfile)) {
 			fprintf(id_cache, "%s %s\n", buf, sc->gfile);
 		}
 		save(sc, idDB, buf);
 		if (mixed && (t = sccs_iskeylong(buf))) {
 			*t = 0;
-			unless (streq(ino->pathname, sc->gfile)) {
+			unless (patheq(ino->pathname, sc->gfile)) {
 				fprintf(id_cache, "%s %s\n", buf, sc->gfile);
 			}
 			save(sc, idDB, buf);
