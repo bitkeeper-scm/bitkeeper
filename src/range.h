@@ -65,6 +65,7 @@
 			if (e == s->rstart) break; \
 		} \
 		s->state |= S_SET; \
-	}
+	} \
+	if ((expand == 3) && !(s->state & S_SET)) rangeConnect(s);
 
 #endif

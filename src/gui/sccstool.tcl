@@ -362,7 +362,7 @@ proc get {} \
 	set rev1 [getRev 2]; if {"$rev1" == ""} { return }
 	set base [file tail $file]
 	if {$base == "s.ChangeSet"} {
-		set get [open "| bk cset -l$rev1 | bk sccslog - 2>/dev/null"]
+		set get [open "| bk cset -r$rev1 | bk sccslog - 2>/dev/null"]
 	} else {
 		set get [open "| bk get -mudPr$rev1 $file 2>/dev/null"]
 	}
@@ -377,7 +377,7 @@ proc get {} \
 
 proc diff2 {} \
 {
-	global file rev1 rev2 diffOpts getOpts
+	global file rev1 rev2 diffOpts getOpts dspecnonl
 
 	if {[info exists rev1] != 1} { return }
 	.p.top.c delete yellow
@@ -385,7 +385,7 @@ proc diff2 {} \
 	if {"$rev2" == ""} { return }
 	set base [file tail $file]
 	if {$base == "s.ChangeSet"} {
-		set diffs [open "| bk cset -+l$rev1..$rev2 | bk sccslog - 2>/dev/null"]
+		set diffs [open "| bk cset -r$rev1..$rev2 | sort | bk -R prs {$dspecnonl} -"]
 		set lexp {^!@XXX!@FOO$}
 		set rexp {^!@XXX!@FOO$}
 	} else {
@@ -593,10 +593,12 @@ proc PaneStop {} \
 proc widgets {} \
 {
 	global	font bfont arrow background cmd_text swid diffOpts getOpts 
-	global	lineOpts dspec 
+	global	lineOpts dspec dspecnonl
 
 	set dspec \
 "-d:I:\t:D: :T::TZ: :P:\$if(:HT:){@:HT:}\$if(:PN:){  :PN:}\n\$each(:C:){\t(:C:)}\n"
+	set dspecnonl \
+"-d:I:\t:D: :T::TZ: :P:\$if(:HT:){@:HT:}\$if(:PN:){  :PN:}\n\$each(:C:){\t(:C:)}"
 	set diffOpts "-u"
 	set getOpts "-m"
 	set cmd_text ""

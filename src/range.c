@@ -109,6 +109,73 @@ rangeAdd(sccs *sc, char *rev, char *date)
 }
 
 /*
+ * Mark everything from here until we hit the starting point.
+ * If the starting point is someplace we wouldn't hit, complain.
+ */
+rangeMark(sccs *s, delta *d, delta *start)
+{
+	do {
+		d->flags |= D_SET;
+		if (d->merge) {
+			delta	*e = sfind(s, d->merge);
+
+			assert(e);
+			unless (e->flags & D_CSET) rangeMark(s, e, 0);
+		}
+		d = d->parent;
+	} while (d && !(d->flags & D_CSET));
+}
+
+delta *
+sccs_kid(sccs *s, delta *d)
+{
+	delta	*e;
+
+	unless (d->flags & D_MERGED) return (d->kid);
+	for (e = s->table; e; e = e->next) if (e->merge == d->serial) break;
+	assert(e);
+	return (e);
+}
+
+/*
+ * Connect the dots.  This picks the shortest path, tending towards
+ * the trunk, between the two nodes.  The alg is to take the starting
+ * node and walk down, following the kid pointer except in the case
+ * that this node is merged somewhere else; in that case, follow the
+ * merge.  This doesn't always do the most obviously correct thing,
+ * but it works.
+ */
+rangeConnect(sccs *s)
+{
+	delta	*d;
+
+	/*
+	 * Work the starting point (1.2.1.4) back onto the trunk.
+	 */
+	d = s->rstart;
+	d->flags |= D_SET;
+	while (d && d->r[2]) {
+		if (d = sccs_kid(s, d)) d->flags |= D_SET;
+	}
+
+	/*
+	 * Work backwards until they meet.
+	 */
+	for (d = s->rstop; d && !(d->flags & D_SET); d = d->parent) {
+		d->flags |= D_SET;
+	}
+
+	unless (d) {
+		fprintf(stderr, "Unable to connect %s to %s\n",
+		    s->rstart, s->rstop);
+		for (d= s->table; d; d = d->next) d->flags &= ~D_SET;
+		return (-1);
+	}
+	s->state |= S_SET;
+	return (0);
+}
+
+/*
  * Take a list, split it up in the list items, and mark the tree.
  * If there are any ranges, clear the rstart/rstop and call the
  * range code, then walk the range and mark the tree.
@@ -221,7 +288,7 @@ main(int ac, char **av)
 
 	while ((c = getopt(ac, av, "ec;r;")) != -1) {
 		switch (c) {
-		    case 'e': expand = 2; break;
+		    case 'e': expand++; break;
 		    RANGE_OPTS('c', 'r');
 		    default:
 usage:			fprintf(stderr,
@@ -239,6 +306,7 @@ usage:			fprintf(stderr,
 		if (s->state & S_SET) {
 			fprintf(stderr, "%s set:", s->gfile);
 			for (e = s->table; e; e = e->next) {
+				unless (e->type == 'D') continue;
 				if (e->flags & D_SET) {
 					fprintf(stderr, " %s", e->rev);
 				}
