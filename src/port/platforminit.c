@@ -82,12 +82,6 @@ platformInit(char **av)
 	}
 #endif
 	/*
-	 * for t/t.path regression test. We need a simple path but
-	 * MSYS insists on expanding it, so we revert it here.
-	 */
-	if (getenv("_BK_FORCE_BASE_PATH")) av[0] = basenm(av[0]);
-
-	/*
 	 * Find the program and if it is a symlink, then add where it
 	 * points to the path.
 	 * Otherwise, set the bin dir to whereever we found the program.
