@@ -6656,8 +6656,8 @@ out:			if (slist) free(slist);
 			}
 
 			e = buf;
-			unless (flags & GET_EXPAND) goto write;
 			sccs_expanded = rcs_expanded = 0;
+			unless (flags & GET_EXPAND) goto write;
 			if (SCCS(s)) {
 				for (e = buf; *e != '%' && *e != '\n'; e++);
 				if (*e == '%') {
