@@ -211,5 +211,6 @@ mkdir $REGRESSION || exit 1
 cd $REGRESSION || exit 1
 mkdir .tmp || exit 1
 BK_TMP=$REGRESSION/.tmp
-export BK_TMP
+BK_TRACE_LOG=YES
+export BK_TMP BK_TRACE_LOG
 if [ -d SCCS ]; then echo "There should be no SCCS directory here."; exit 1; fi

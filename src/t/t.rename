@@ -11,6 +11,7 @@ HERE=`pwd`
 mkdir gca; cd gca
 cset -qi .
 ${ECHO} "logging: none" > BitKeeper/etc/config
+${ECHO} "seats: 3" >> BitKeeper/etc/config
 ci -i $Q BitKeeper/etc/config
 mkdir src
 cd src
@@ -22,7 +23,7 @@ P src/regression.sh
 ------------------------------------------------
 EOF
 delta $Q -i -IINIT regression.sh
-bk commit $S -yBaseline
+bk commit $S -yBaseline > $DEV_NULL
 bk -r check -a
 
 # Now create two repositories with that file.
@@ -45,7 +46,7 @@ P src/t/regression.sh
 ------------------------------------------------
 EOF
 delta $Q -IINIT regression.sh
-bk commit $S -yRename
+bk commit $S -yRename > $DEV_NULL
 get $S -e regression.sh
 ${CAT} > INIT <<EOF
 D 1.3 99/08/07 15:48:49-07:00 lm@lm.bitmover.com 0 0 0/0/0
@@ -54,7 +55,7 @@ P src/t/regression.sh
 ------------------------------------------------
 EOF
 delta $Q -IINIT regression.sh
-bk commit $S -yObsolete
+bk commit $S -yObsolete > $DEV_NULL
 bk -r check -a
 
 # Now add some deltas in the other tree, not moving it.
@@ -68,7 +69,7 @@ P src/regression.sh
 ------------------------------------------------
 EOF
 delta $Q -IINIT regression.sh
-bk commit $S -ywhatever
+bk commit $S -ywhatever > $DEV_NULL
 bk -r check -a
 get $S -e regression.sh
 ${CAT} > INIT <<EOF
@@ -78,7 +79,7 @@ P src/regression.sh
 ------------------------------------------------
 EOF
 delta $Q -IINIT regression.sh
-bk commit $S -ywhatever
+bk commit $S -ywhatever > $DEV_NULL
 bk -r check -a
 trap '' 0
 set +e
@@ -94,7 +95,7 @@ ${CAT} > R <<EOF
 m
 C
 EOF
-bk resolve $Q -f R 2>resolve.out || { echo failed; cat resolve.out; exit 1; }
+bk resolve $Q -f R >resolve.out 2>&1 || { echo failed; cat resolve.out; exit 1; }
 ${CAT} > PRS <<EOF
 P src/t/regression.sh
 EOF
@@ -112,7 +113,7 @@ ${CAT} > R <<EOF
 m
 C
 EOF
-bk resolve $Q -f R 2>resolve.out #|| { echo failed; cat resolve.out; exit 1; }
+bk resolve $Q -f R >resolve.out 2>&1 #|| { echo failed; cat resolve.out; exit 1; }
 ${CAT} > PRS <<EOF
 P src/t/regression.sh
 EOF
