@@ -8,7 +8,7 @@ munge: munge.c
 	$(CC) -O munge.c -o munge
 
 image: munge mkbk extractor.c bitkeeper.sh gnu-os
-	mkbk
+	./mkbk
 
 clobber clean:
 	/bin/rm -f _data _data.c _data.o a.out munge testdata testdata.tar \
