@@ -527,7 +527,7 @@ mkfile(char *file)
 	int	fd;
 	int	first = 1;
 
-	if (Reserved(basenm(file))) {
+	if (reserved(basenm(file))) {
 bad_name:	getMsg("reserved_name", file, 0, stderr);
 		return (-1);
 	}

@@ -24,6 +24,7 @@ P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 bk sane 2> sane.out || { echo failed; cat sane.out; exit 1; }
 echo OK
+
 echo $N Create some data ............................................$NL
 mkdir src
 cd src
@@ -34,6 +35,7 @@ bk ci $Q -i foo.c bar.c h.h
 bk commit $Q -ycset1
 if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
 echo OK
+
 echo $N clone the workspace .........................................$NL
 bk clone $Q $HERE/project $HERE/copy
 cd $HERE/copy
@@ -45,6 +47,7 @@ do	P=`expr $P + 1`
 	bk bkd -q -d -p$P -c1 
 done
 echo OK
+
 # Win32 note: If bkd binary is on a network drive
 # NT will refuse to start the bkd service. (permission denied)
 # Please make sure the bk binary is on a local disk
@@ -58,6 +61,7 @@ bk push $Q -z0 bk://localhost:$P
 cd $HERE/copy/src
 if [ ! -f SCCS/s.woo.c ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N "pull a new changeset via bkd (no compression)" ...............$NL
 cd $HERE/project/src
 echo zoo > zoo.c
@@ -75,6 +79,7 @@ cd $HERE/copy/src
 bk pull $Q -t -z0 bk://localhost:$P
 if [ ! -f SCCS/s.zoo.c ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N "pull a new changeset via bkd (with compression)" .............$NL
 cd $HERE/project/src
 echo boo > boo.c
@@ -91,6 +96,7 @@ cd $HERE/copy/src
 bk pull -t $Q bk://localhost:$P
 if [ ! -f SCCS/s.boo.c ]; then echo failed; exit 1; fi
 echo OK
+
 rm -f d:/projects/bugfixes/src/trace
 echo $N "pull via bkd -xpull" .........................................$NL
 cd $HERE/project
@@ -105,6 +111,7 @@ bk pull -t bk://localhost:$P 2> pull.out
 grep -q "bkd has disabled" pull.out
 if [ $? -ne 0 ]; then echo failed; cat pull.out; exit 1; fi
 echo OK
+
 echo $N "push a new changeset via bkd (with compression)" .............$NL
 cd $HERE/copy
 P=50000
@@ -121,6 +128,7 @@ bk push $Q -z6 bk://localhost:$P
 cd $HERE/copy/src
 if [ ! -f SCCS/s.aoo.c ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N clone a tree via bkd ........................................$NL
 cd $HERE/project
 P=50000
@@ -133,6 +141,7 @@ bk clone $Q bk://localhost:$P $HERE/copy2
 cd $HERE/copy2/src
 if [ ! -f SCCS/s.aoo.c ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N "pull a new changeset via bkd -xcd -xpush " ...................$NL
 cd $HERE/project/src
 echo coo > coo.c
@@ -149,6 +158,7 @@ cd $HERE/copy/src
 bk pull -t $Q bk://localhost:$P
 if [ ! -f SCCS/s.coo.c ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N check a push to bkd with a gfile conflict ...................$NL
 CNT=6
 P=50000
@@ -174,6 +184,7 @@ grep -q "Did not resolve 1 renames, no conflicts causing abort." bk.out
 if [ $? -ne 0 ]; then echo failed; cat bk.out; exit 1; fi
 rm -f  $HERE/project/conflict.c
 echo OK
+
 echo $N check http pull from bkd ....................................$NL
 waitForUnlock $HERE/project
 cd $HERE/project/src
@@ -185,15 +196,18 @@ cd $HERE/copy
 bk pull $Q http://localhost:$P/.
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N check http clone from bkd ...................................$NL
 cd $HERE
 bk clone $Q http://localhost:$P $HERE/project2
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N check http clone with bad -r from bkd .......................$NL
 bk clone $Q -rbad http://localhost:$P $HERE/junk2
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 echo OK
+
 
 # Check bk basic mode behaviour
 echo $N Make sure bk/basic limits access to master repository only ..$NL
@@ -225,12 +239,14 @@ bk push -c0 bk://localhost:$P/$HERE/copy 2> bk.out3
 grep -q "bkd std cannot access non-master" bk.out3
 if [ $? -ne 0 ]; then echo failed 3; cat bk.out2 bk.out3; exit 1; fi
 echo OK
-waitForUnlock $HERE/copy
+
 echo $N Make sure bk/basic allows clone from master repository ......$NL
+waitForUnlock $HERE/copy
 mkdir $HERE/copy/BitKeeper/etc/.master
 bk clone $Q bk://localhost:$P/$HERE/copy $HERE/copy3
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N Make sure bk/basic allows push to master repository .........$NL
 cd $HERE/copy2
 ls > JUNK
@@ -242,6 +258,7 @@ if [ $? -eq 0 ]; then echo failed; cat bk.out; exit 1; fi
 grep -q "pushing to is .* changesets" bk.out
 if [ $? -ne 0 ]; then echo failed; cat bk.out; exit 1; fi
 echo OK
+
 echo $N Make sure bk/basic allows pull from master repository .......$NL
 cd $HERE/copy
 bk lock -U
@@ -250,7 +267,8 @@ bk undo -fqr+ || exit 1
 bk pull $Q -t bk://localhost:$P/$HERE/copy
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
-echo $N Make sure bkd -C disallow cd to parent dir ..................$NL
+
+echo $N Make sure bkd -C disallows cd to parent dir .................$NL
 cd $HERE/project/src
 P=50000
 bk bkd -q -d -Ce -p$P -c3
@@ -270,5 +288,43 @@ grep -q "cd to parent directory disabled" pull.out
 if [ $? -ne 0 ]; then echo failed; cat pull.out; exit 1 ; fi
 echo OK
 
+echo $N Make sure bkd logs requests under the remote user name ......$NL
+cd $HERE/project
+rm BitKeeper/log/*
+P=50000
+BK_USER=garbage bk bkd -qdp$P -c4
+while [ $? -eq 2 ]
+do	P=`expr $P + 1`
+	BK_USER=garbage bk bkd -qdp$P -c4
+done
+cd $HERE/copy
+BK_USER=pull_USER bk pull bk://localhost:$P/$HERE/project 2> pull.out
+grep -q pull_USER $HERE/project/BitKeeper/log/repo_log || {
+	echo failed to get first name right in pull
+	cat $HERE/project/BitKeeper/log/repo_log
+	exit 1
+}
+BK_USER=USER_PULL bk pull bk://localhost:$P/$HERE/project 2> pull.out
+grep -q USER_PULL $HERE/project/BitKeeper/log/repo_log || {
+	echo failed to get second name right in pull
+	cat $HERE/project/BitKeeper/log/repo_log
+	exit 1
+}
+BK_USER=CLONE bk clone $Q bk://localhost:$P/$HERE/project $HERE/clone
+grep -q CLONE $HERE/project/BitKeeper/log/repo_log || {
+	echo failed to get third name right in clone
+	cat $HERE/project/BitKeeper/log/repo_log
+	exit 1
+}
+BK_USER=PUSH bk push $Q bk://localhost:$P/$HERE/project 
+grep -q PUSH $HERE/project/BitKeeper/log/repo_log || {
+	echo failed to get fourth name right in push
+	cat $HERE/project/BitKeeper/log/repo_log
+	exit 1
+}
+bk lock -U
+cd $HERE/project
+bk lock -U
+echo OK
 
 if [ "$PLATFORM" = "WIN32" ]; then bk bkd -R 2> $DEV_NULL; fi
