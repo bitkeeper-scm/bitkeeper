@@ -66,7 +66,7 @@ echo $N trunk$NL >> foo.c
 echo >> bar.c
 echo $N trunk$NL >> bar.c
 bk delta $Q -ytrunk foo.c bar.c
-bk get $Q -e -r1.1 foo.c bar.c
+bk _get $Q -e -r1.1 foo.c bar.c
 echo $N branch$NL >> foo.c
 echo >> bar.c
 echo $N branch$NL >> bar.c

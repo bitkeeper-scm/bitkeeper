@@ -108,26 +108,6 @@ if [ $? -ne 0 ]; then echo Lost old path.; exit 1; fi
 grep -q '^.cP.*moved$' SCCS/s.moved
 if [ $? -ne 0 ]; then echo Did not add new path.; exit 1; fi
 echo OK
-#echo $N Make sure get -b works w/ no -b flag ........................$NL
-#bk get $S -eb date
-#grep -q '1.3 1.4 ' SCCS/p.date
-#if [ $? -ne 0 ]; then echo Failed, bad rev.; exit 1; fi
-#bk clean date
-#echo OK
-echo $N Make sure get -r1.1 works w/ no b flag ......................$NL
-bk get $S -er1.1 date
-if [ ! -f SCCS/p.date ]; then echo Failed, did not edit file.; exit 1; fi
-grep -q '1.1 1.1.1.1 ' SCCS/p.date
-if [ $? -ne 0 ]; then echo Failed, bad rev.; exit 1; fi
-bk clean date
-echo OK
-#echo $N Make sure get -b works with -b flag .........................$NL
-#bk admin $Q -fb date
-#bk get $S -eb date
-#grep -q '1.3 1.3.1.1 ' SCCS/p.date
-#if [ $? -ne 0 ]; then echo Failed, bad rev.; exit 1; fi
-#bk clean date
-#echo OK
 echo $N Make sure get -g does not get file ..........................$NL
 bk get $S -g date
 if [ -f date ]; then echo Failed, got file.; exit 1; fi

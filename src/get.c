@@ -50,6 +50,7 @@ _get_main(int ac, char **av, char *out)
 	int	getdiff = 0;
 	int	hasrevs = 0;
 	int	dohash = 0;
+	int	branch_ok = 0;
 	project	*proj = 0;
 	MDBM	*realNameCache = 0;
 	char	realname[MAXPATH];
@@ -65,6 +66,8 @@ _get_main(int ac, char **av, char *out)
 		}
 	} else if (streq(name, "edit")) {
 		flags |= GET_EDIT;
+	} else if (streq(name, "_get")) {
+		branch_ok = 1;
 	}
 
 	if (ac == 2 && streq("--help", av[1])) {
@@ -218,6 +221,16 @@ usage:			fprintf(stderr, "%s: usage error, try get --help\n",
 			}
 		}
 		if (hasrevs) rev = sfileRev();
+		if ((s->state & S_BITKEEPER) &&
+		    (flags & GET_EDIT)
+		    && rev && !branch_ok) {
+			fprintf(stderr,
+			   "Do not use -r to create branch, use \"bk setlod\"\n");
+			errors = 1;
+			sccs_free(s);
+			continue;
+			
+		}
 		if ((flags & (GET_DIFFS|GET_BKDIFFS|GET_HASHDIFFS))
 		    ? sccs_getdiffs(s, rev, flags, out)
 		    : sccs_get(s, rev, mRev, iLst, xLst, flags, out)) {

@@ -130,6 +130,7 @@ struct command cmdtbl[] = {
 	{"_loggingaccepted", loggingaccepted_main},
 	{"_loggingask", loggingask_main},
 	{"_loggingto", loggingto_main},
+	{"_get", get_main},
 	{"abort", abort_main},
 	{"adler32", adler32_main},
 	{"admin", admin_main},

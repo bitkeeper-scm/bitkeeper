@@ -1014,7 +1014,7 @@ type_delta(resolve *rs,
 	}
 	edit_tip(rs, sfile, o, rfile, loser);
 	if (S_ISREG(n->mode)) {
-		sprintf(buf, "bk get -kpq -r%s %s > %s", n->rev, sfile, g);
+		sprintf(buf, "bk _get -kpq -r%s %s > %s", n->rev, sfile, g);
 		if (sys(buf, rs->opts)) {
 			fprintf(stderr, "%s failed\n", buf);
 			freeStuff(rs->opts);
@@ -1164,7 +1164,7 @@ edit_tip(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 		fprintf(stderr, "edit_tip(%s %s %s)\n",
 		    sfile, d->rev, abs(which) == LOCAL ? "local" : "remote");
 	}
-	sprintf(buf, "bk get -e%s%s -r%s %s",
+	sprintf(buf, "bk _get -e%s%s -r%s %s",
 	    which < 0 ? "g" : "", rs->opts->log ? "" : "q", d->rev, sfile);
 	sys(buf, rs->opts);
 	if (which) {
@@ -1917,7 +1917,7 @@ merge_loggingok(resolve *rs)
 	 */
 	gettemp(left, "left");
 	gettemp(right, "right");
-	sprintf(cmd, "bk get -qp %s/%s > %s", RESYNC2ROOT, GLOGGING_OK, left);
+	sprintf(cmd, "bk _get -qp %s/%s > %s", RESYNC2ROOT, GLOGGING_OK, left);
 	if (sys(cmd, rs->opts) ||
 	    sccs_get(rs->s, 0, 0, 0, 0, SILENT|PRINT, right)) {
 		fprintf(stderr, "get failed, can't merge.\n");
