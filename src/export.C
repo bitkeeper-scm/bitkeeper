@@ -5,8 +5,8 @@ int
 export_main(int ac,  char **av)
 {
 	int	c, count;
-	int	vflag = 0, kflag = 0, tflag = 0, wflag = 0;
-	char	*rev = NULL;
+	int	vflag = 0, hflag = 1, kflag = 0, tflag = 0, wflag = 0;
+	char	*rev = NULL, *diff_style = NULL;
 	char	file_rev[MAXPATH];
 	char	buf[MAXLINE], buf1[MAXPATH];
 	char	include[MAXLINE] = "", exclude[MAXLINE] =  "";
@@ -16,13 +16,23 @@ export_main(int ac,  char **av)
 	sccs	*s;
 	delta	*d;
 	FILE	*f;
+	char	*type = 0;
 
-	while ((c = getopt(ac, av, "Dktwvi:x:r:")) != -1) {
+	while ((c = getopt(ac, av, "d:Dhkt:Twvi:x:r:")) != -1) {
 		switch (c) {
 		    case 'v':	vflag = 1; break;
+		    case 'd':	diff_style = optarg; break;
+		    case 'h':	hflag = 1; break; /* disbale patch header */
 		    case 'k':	kflag = 1; break;
 		    case 'r':	rev = optarg; break;
-		    case 't':	tflag = 1; break;
+		    case 't':	if (type) goto usage;
+				type = optarg; 
+				if (!streq(type, "patch") &&
+				    !streq(type, "plain")) {
+					goto usage;
+				}
+				break;
+		    case 'T':	tflag = 1; break;
 		    case 'w':	wflag = 1; break;
 		    case 'i':	sprintf(include, "| grep -E '%s' ",  optarg);
 				break;
@@ -30,12 +40,21 @@ export_main(int ac,  char **av)
 				break;
 		    default :
 usage:			fprintf(stderr,
-		"usage: bk export [-tDkwv] [-i<pattern>] [-x<pattern>]\n");
+		"usage: bk export [-tplain|patch] [-TDkwv] [-i<pattern>] [-x<pattern>]\n");
 			fprintf(stderr,
 				"\t[-r<rev> | -d<date>] [source] dest\n");
 			exit(1);
 		}
 	}
+
+	unless (type) type = "plain";
+	if (streq(type, "patch")) {
+		unless (diff_style) diff_style = "u";
+		sprintf(buf, "bk mkrev -r%s | bk gnupatch -d%c %s %s",
+		    rev, diff_style[0], hflag ? "-h" : "", tflag ? "-T" : "");
+		return (system(buf));
+	}
+
 	count =  ac - optind;
 	switch (count) {
 	    case 1: src = "."; dst = av[optind]; break;

@@ -81,7 +81,9 @@ fix_header(char *buf, MDBM *db)
 	*p = 0;
 	if (mdbm_fetch_str(db, line)) {
 		/* /dev/null must be printed with EPOC time */
-		printf("/dev/null\tWed Dec 31 16:00:00 1969\n");
+		fputs("/dev/null\t", stdout);
+		memmove(++p,"Wed Dec 31 16:00:00 1969", 24);
+		fputs(p, stdout);
 	} else {
 		*p = '\t';
 		fputs(line, stdout);
@@ -138,14 +140,16 @@ private void
 print_cset_log(char *cset1, char *cset2)
 {
 	char buf[MAXLINE];
+	char revs[50];
+	char *dspec =
+"-d# :D:\t:P:@:HT:\t:I:\n$each(:C:){# (:C:)}\n# --------------------------------------------";
+	char *prs_av[] = {"bk", "prs", "-h", revs, dspec, "ChangeSet", 0};
 
 	printf("#\n# The following is the BitKeeper ChangeSet Log\n");
 	printf("# --------------------------------------------\n");
 	fflush(stdout);
-	sprintf(buf,
-"bk prs -h -r%s..%s -d\"# :D:\t:P:@:HT:\t:I:\n\\$each(:C:){# (:C:)}\n# --------------------------------------------\" ChangeSet",
-		cset1, cset2);
-	system(buf);
+	sprintf(revs, "-r%s..%s", cset1, cset2);
+	spawnvp_ex(_P_WAIT, "bk", prs_av);
 	printf("#\n");
 	fflush(stdout);
 }
@@ -156,20 +160,22 @@ gnupatch_main(int ac, char **av)
 	char tmpdir[MAXPATH];
 	char *sfile, *path1, *rev1, *path2, *rev2;
 	char *cset1 = 0,  *cset2 = 0;
-	pid_t pid;
-	char *diff_av[] = { "diff", "-Nru", "a", "b", 0 };
+	char *diff_style = 0;
+	char diff_opts[50] ;
+	char *diff_av[] = { "diff", diff_opts, "a", "b", 0 };
 	char *clean_av[] = { "rm", "-rf", tmpdir, 0 };
 	int  c, rfd, header = 1, fix_mod_time = 0;
 	FILE *pipe;
 	MDBM *db;
 
-
-	while ((c = getopt(ac, av, "ht")) != -1) { 
+	while ((c = getopt(ac, av, "hTd:")) != -1) { 
 		switch (c) {
 		case 'h':	header = 0; break; /* disable header */
-		case 't':	fix_mod_time = 1; break; 
+		case 'T':	fix_mod_time = 1; break; 
+		case 'd':	diff_style = optarg; break;
 		defualt:
-				fprintf(stderr, "Usage: gnupatch [-h]\n");
+				fprintf(stderr,
+					"Usage: gnupatch [-hT] [-d u|c|n]\n");
 				return (1);
 		}
 	}
@@ -229,12 +235,19 @@ gnupatch_main(int ac, char **av)
 	if (header) print_cset_log(cset1, cset2);
 	chdir(tmpdir);
 	/*
-	 * now "diff -Nru" the left & right tree
+	 * now "diff -Nr" the left & right tree
 	 * and fix up the diff header
 	 */
+	unless (diff_style) diff_style = "u";
+	sprintf(diff_opts, "-Nr%c", diff_style[0]);
 	spawnvp_rPipe(diff_av, &rfd);
 	pipe = fdopen(rfd, "r");
 	while (fgets(buf, sizeof(buf), pipe)) {
+#ifdef WIN32
+		char *p;
+		p = strrchr(buf, '\r'); 
+		if (p) strcpy(p, "\n"); /* remove '\r' */
+#endif
 		if (strneq("--- ", buf, 4) || strneq("+++ ", buf, 4)) {
 			fix_header(buf, db);
 			continue;

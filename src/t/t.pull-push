@@ -237,3 +237,12 @@ bk get $Q foo.c
 bk pull -t $Q $HERE/project
 if [ -f foo.c ]; then echo failed to delete gfile; exit 1; fi
 echo OK
+echo $N pull with a mvdir event .....................................$NL
+cd $HERE/project
+bk mvdir src src2/src3
+bk commit $Q -ymvdir
+cd $HERE/copy2
+bk pull $Q -t $HERE/project
+if [ ! -f src2/src3/SCCS/s.bar.c ]; then echo failed; exit 1; fi
+if [ ! -f src2/src3/SCCS/s.h.h ]; then echo failed; exit 1; fi
+echo OK
