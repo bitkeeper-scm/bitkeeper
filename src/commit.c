@@ -546,13 +546,35 @@ logChangeSet(int l, char *rev, int quiet)
 	fflush(stdout); /* needed for citool */
 }
 
+private void
+printConfig(FILE *f, char *root, char *header)
+{
+	MDBM *db;
+	kvpair	kv;
+
+	unless (db = loadConfig(root, 1)) return;
+	fputs(header, f);
+	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
+		if (streq("description", kv.key.dptr) ||
+		    streq("bkweb", kv.key.dptr) ||
+		    streq("master", kv.key.dptr) ||
+		    streq("homepage", kv.key.dptr)) {
+			fprintf(f, "%-10s: %u\n", kv.key.dptr,
+					adler32(0, kv.val.dptr, kv.val.dsize));
+		} else {
+			fprintf(f, "%-10s: %s\n", kv.key.dptr, kv.val.dptr);
+		}
+	}
+	mdbm_close(db);
+}
+
 void
 config(FILE *f)
 {
 	kvpair	kv;
 	time_t	tm;
 	FILE	*f1;
-	MDBM	*db = loadConfig(".", 1);
+	MDBM	*db;
 	char	buf[MAXLINE], aliases[MAXPATH];
 	char	s_cset[MAXPATH] = CHANGESET;
 	char	*p, *dspec;
@@ -596,19 +618,10 @@ config(FILE *f)
 	sccs_free(s);
 	tm = time(0);
 	fprintf(f, "%-10s %s", "Date:", ctime(&tm));
-	assert(db);
-	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
-		if (streq("description", kv.key.dptr) ||
-		    streq("bkweb", kv.key.dptr) ||
-		    streq("master", kv.key.dptr) ||
-		    streq("homepage", kv.key.dptr)) {
-			fprintf(f, "%-10s: %u\n", kv.key.dptr,
-					adler32(0, kv.val.dptr, kv.val.dsize));
-		} else {
-			fprintf(f, "%-10s: %s\n", kv.key.dptr, kv.val.dptr);
-		}
-	}
-	mdbm_close(db);
+	fputs("\n", f);
+	printConfig(f, GLOBAL_ROOT, "== Global config ==\n");
+	printConfig(f, ".", "== Local Config ==\n");
+	fputs("\n", f);
 	if (db = loadOK()) {
 		fprintf(f, "Logging OK:\n");
 		for (kv = mdbm_first(db);
