@@ -7,6 +7,16 @@ bk url \- methods of accessing \*(BK repositories
 access method is determined by how the repository is referenced.  Each
 reference form is described below with an explanation of how the repository
 is accessed following each form.
+.LP
+In all cases below if the
+.ARG pathname
+part of the URL starts with a "/" then the pathname is absolute,
+otherwise it is relative to the location of the bkd.
+If
+.ARG pathname
+is not set then the implied remote directory must be the root of a 
+repository.
+See EXAMPLES below.
 .SH ACCESS METHODS
 .SS LOCAL
 .in +4
@@ -17,43 +27,29 @@ is accessed following each form.
 ..
 .head
 .ARG pathname
-.br
-Access is all local, through the local file system.
-.head
-.ARGc host :
-.ARG pathname
-.br
-Normally a remote repository unless 
-.ARG host 
-is what
-.B bk gethost
-returns or is
-.BR localhost .
-In either of those cases, this form is the same as the above form.
 .head
 \fBfile\fR://\c
 .ARG pathname
 .br
-Access is through the local file system.
+Access is all local, through the local file system.
 .SS RSH
 .in +4
 .head
 \fBrsh\fR://\c
-.ARGc host :
+.ARGc host /
 .ARG pathname
 .br
 .head
 \fBrsh\fR://\c
 .ARGc user @
-.ARGc host :
+.ARGc host /
 .ARG pathname
 .br
 Uses
 .B rsh
 to access
-.ARG host ,
-and starts a temporary
-.BR bkd .
+.ARG host 
+and starts in the user's home directory.
 .SS SSH
 .in +4
 .head
@@ -69,52 +65,35 @@ Uses
 .B ssh 
 (by default)
 to access 
-.ARG host ,
-and starts a temporary
-.BR bkd .
+.ARG host 
+and starts in the user's home directory.
 If 
 .B $BK_RSH 
-is set, then use that to talk to the host (allows proxying).
+is set, then that is used to talk to the host (allows for proxying).
 If no 
 .B ssh
 is found then falls back to
 .BR rsh.
 .head
 \fBssh\fR://\c
-.ARGc host :
+.ARGc host /
 .ARG pathname
 .br
 .head
 \fBssh\fR://\c
 .ARGc user @
-.ARGc host :
+.ARGc host /
 .ARG pathname
 .br
 Uses
 .B ssh
 to access
-.ARG host ,
-and starts a temporary
-.BR bkd .
-.head
-\fBbk\fR://\c
-.ARGc user @
 .ARG host 
-.br
-Connects to
-.ARG host
-using 
-.BR ssh ,
-assumes that 
-.B bkd
-is the login shell.
-The home directory of 
-.ARG user
-must be the root of the repository.
+and starts in the user's home directory.
 .head
 \fBbk\fR://\c
 .ARGc user @
-.ARGc host :
+.ARGc host /
 .ARG pathname
 .br
 Connects to
@@ -123,73 +102,29 @@ using
 .BR ssh ,
 assumes that 
 .B bkd
+is the login shell
+and starts in the user's home directory.
+.B Note:
+this is not the same as the preceding URL; this is a more secure form since
+the 
+.B bkd
 is the login shell.
-Changes directories to the specified pathname, which may be relative to the
-home directory or absolute.
+.\" XXX - remember to mention turning off remote when we get to 3.3.x
 .SS BKD
 .in +4
 .head
 \fBbk\fR://\c
-.ARG host
+.ARGc host /
+.ARG pathname
 .br
 Connects to an existing 
 .B bkd
 on the default 
 .B bkd
-port.
-The 
+port
+and starts in the directory where the long lived
 .B bkd
-must be at the root of the repository.
-.head
-\fBbk\fR://\c
-.ARGc host /
-.ARGc rel /
-.ARG path
-OR\ \fBbk\fR//\c
-.ARGc host /
-.ARGc rel /
-.ARG path
-.br
-Connects to an existing 
-.B bkd
-on the default bkd port,
-changes to 
-.ARGc rel /
-.ARG path ,
-then runs command.  Where
-.ARGc rel /
-.ARG path
-is the path relative to the root of the repository.
-.head
-\fBbk\fR://\c
-.ARGc host //
-.ARGc full /
-.ARG path
-OR\ \fBbk\fR//\c
-.ARGc host //
-.ARGc full /
-.ARG path
-.br
-Connects to an existing 
-.B bkd
-on the default bkd port,
-changes to 
-.ARGc full /
-.ARG path ,
-then runs command.  Where
-.ARGc full /
-.ARG path
-is the absolute path.
-.head
-\fBbk\fR://\c
-.ARGc host :
-.ARG port
-.br
-Connects to an existing 
-.B bkd
-on the specified port.
-.B bkd
-must be at the root of the repository.
+was initially started.
 .head
 \fBbk\fR://\c
 .ARGc host :
@@ -198,50 +133,41 @@ must be at the root of the repository.
 .br
 Connects to an existing 
 .B bkd
-on the specified port,
-changes to 
-.ARG pathname ,
-then runs command.
-.SS HTTPD
+on the specified port
+and starts in the directory where the long lived
+.B bkd
+was initially started.
+.SS HTTP
 .in +4
+.head
+\fBhttp\fR://\c
+.ARGc host /
+.ARG pathname
+.br
+Connects to an existing 
+.B bkd
+using the HTTP port and transfer protocol
+and starts in the directory where the long lived
+.B bkd
+was initially started.
 .head
 \fBhttp\fR://\c
 .ARGc host :
 .ARGc port /
-.ARGc relative /
-.ARG path
+.ARG pathname
 .br
-Connects to the specified port via the hypertext transfer protocol, changes
-to pathname, then runs the command.  Where
-.ARGc relative /
-.ARG path
-is the relative path from the root of the repository.
-.head
-\fBhttp\fR://\c
-.ARGc host :
-.ARGc port //
-.ARGc full /
-.ARG path
-.br
-Connects to the specified port via the hypertext transfer protocol, changes
-to pathname, then runs the command.  Where
-.ARGc full /
-.ARG path
-is the absolute path.
-.head
-\fBhttp\fR://\c
-.ARGc host :
-.ARGc port 
-.br
-Same as above, except that it assumes that the pwd of the bkd is the root
-of the source repository.
+Connects to the specified port 
+using the HTTP transfer protocol
+and starts in the directory where the long lived
+.B bkd
+was initially started.
 .SH PROXIES
 .LP
-\*(BK supports http proxy via environment variables on Unix systems and
-via the registry on win32 systems.
+\*(BK supports most HTTP proxies.  Information about proxies needs to be
+passed to \*(BK in the environment.
 .LP
-The following are the Unix environment variable options available for use.  
-.LP
+The following are the environmental variables are available for use:
+.br
 .RS .4i
 .Bc http_proxy= 
 .Bc http://
@@ -272,8 +198,65 @@ The following are the Unix environment variable options available for use.
 Note: if SOCKS_HOST is set, SOCK_PORT must also be set.
 If you are not sure if you should set environment variables, please consult
 your system administrator.
+.LP
+On Windows, \*(BK will also read
+.B Internet Explorer's
+proxy information from the registry.
+So in most cases if Internet Explorer can browse the web then
+\*(BK will work as well.
+.SH EXAMPLES
+To clone 
+.ARG old
+to 
+.ARG new :
+.DS
+bk clone old new
+.DE
+To clone from a repository named 
+.ARG old
+on a host named
+.ARG host 
+using ssh:
+.DS
+bk clone ssh://host/old new
+.DE
+To clone from a repository named 
+.ARG old
+on a host named
+.ARG host 
+using rsh:
+.DS
+bk clone rsh://host/old new
+.DE
+To clone from a repository named 
+.B /home/bk/mysql
+on a host named
+.ARG host 
+using ssh (note there are 2 slashes before "home"):
+.DS
+bk clone ssh://host//home/bk/mysql new
+.DE
+Suppose that you had a number of repositories in 
+.B /home/bk 
+and you wanted to make them available via the bkd protocol.  
+On the server you would run:
+.DS
+cd /home/bk
+bk bkd
+.DE
+and on the client you would run this to get 
+.BR /home/bk/mysql :
+.DS
+bk clone bk://server/mysql
+.DE
+.SH WARNING
+When using \*(BK in the free licensing model HTTP connectivity to
+.B openlogging.org
+is required for \*(BK to create an initial repository.
 .\" help://remote
 .\" help://naming
+.SH SEE ALSO
+.SA bkd 1
 .SH CATEGORY
 .B Repository
 .br

@@ -1,7 +1,9 @@
 
+BK = ../../src/bk
+
 # Override Solaris make.rules
 .SCCS_GET:
-	bk get -q $@
+	$(BK) get -q $@
 
 # Order is important, this is the order they will show up in helptool.
 SUM=All Overview Common Repository GUI-tools File Admin Licensing Compat Utility 
@@ -11,11 +13,11 @@ helptxt: FRC
 	@$(MAKE) summaries
 
 pages: ../bk-macros man2help.pl
-	@bk get -STq ../man1
+	@$(BK) get -STq ../man1
 	@perl -Ssw ./man2help.pl -debug ../bk-macros bk- `ls ../man1/*.1`
 
 helptxt2:
-	@cat -- *.fmt | bk undos > helptxt2
+	@cat -- *.fmt | $(BK) undos > helptxt2
 
 summaries: helptxt2 ../bk-macros help2sum.pl
 	@perl -Ssw ./help2sum.pl helptxt2
@@ -40,4 +42,4 @@ FRC:
 
 clobber clean:
 	/bin/rm -f -- *.fmt *.sum *.roff *.done helptxt* ALL UNIQUE tmp
-	-bk clean
+	-$(BK) clean
