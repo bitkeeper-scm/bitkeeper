@@ -1,4 +1,5 @@
 # Makefile for BitKeeper.
+# @(#) %K%
 
 BINS	= delta get admin diffs clean prs what sinfo sccssh sids \
 	  smoosh sccslog sfiles renumber lines rmdel takepatch \
@@ -59,7 +60,7 @@ SCRSRCS	= rcs2sccs.perl testfast.perl bk.sh import.sh \
 	  resync.perl uuwrap.sh unuuwrap.sh port/unix_platform.sh \
 	  port/unix_platform.tcl port/unix_platform.perl pmerge.perl
 MISC	= bkhelp.txt config.h.in configure substvars.in install.in \
-	  bitkeeper.config
+	  bitkeeper.config t/doit.sh
 
 all: $(ALL)
 
@@ -397,11 +398,11 @@ MANIFEST: Makefile
 	for pair in $(LINKTO); do echo $$pair; done | sed 's/:/ - /' >>M
 	mv -f M MANIFEST
 
-install-links:
+install-links: install-bin
 	cd /usr/bin; set -ex; \
 	for file in $(BINLINKS); do \
 	rm -f $$file; \
-	ln -s /usr/bitkeeper/$$file; \
+	ln -s /usr/bitkeeper/$$file $$file; \
 	done
 
 # The default .c.o rule is broken with some Makes.
