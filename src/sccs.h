@@ -933,7 +933,7 @@ int	bk_mode();
 int	cat(char *file);
 char	*bk_model(char *buf, int len);
 char	*getHomeDir();
-char	*age(time_t secs);
+char	*age(time_t secs, char *space);
 void	sortLines(char **);
 	/* this must be the last argument to all calls to sys/sysio */
 #define	SYS	(char*)0, 0xdeadbeef
