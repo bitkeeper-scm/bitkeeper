@@ -2389,6 +2389,7 @@ Got:\n\
 		fprintf(stderr,
 		    "resolve: running consistency check, please wait...\n");
 	}
+	fflush(save); /*  important */
 	if (strieq("yes", user_preference("partial_check"))) {
 		ret = check(APPLIED);
 	} else {
