@@ -50,7 +50,8 @@ bkd_main(int ac, char **av)
 		    case 'g': Opts.gid = optarg; break;		/* doc 2.0 */
 		    case 'h': Opts.http_hdr_out = 1; break;	/* doc 2.0 */
 		    case 'l':					/* doc 2.0 */
-			Opts.log = optarg ? fopen(optarg, "a") : stderr;
+			unless (optarg) Opts.log = stderr;
+			Opts.logfile = optarg;
 			break;
 		    case 'V':	/* XXX - should be documented */
 			vRootPrefix = strdup(optarg); break;
