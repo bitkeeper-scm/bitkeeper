@@ -23,6 +23,7 @@ install:
 	@make links
 	@make clean
 	@make all
+	@/bin/rm -f $(DIR)/*
 	@make cp
 
 cp:
