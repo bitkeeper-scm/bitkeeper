@@ -2582,9 +2582,9 @@ meta(sccs *s, delta *d, char *buf)
 		break;
 	    case 'V':
 		s->version = atoi(&buf[3]);
-		unless (s->version == SCCS_VERSION) {
+		unless (s->version <= SCCS_VERSION) {
 			fprintf(stderr,
-			    "Different version %d, forcing read only\n",
+			    "Later file format version %d, forcing read only\n",
 			    s->version);
 			s->state |= S_READ_ONLY;
 		}
@@ -3907,6 +3907,7 @@ date(delta *d, time_t tt)
 	}
 }
 
+char	*
 testdate(time_t t)
 {
 	struct	tm tm;

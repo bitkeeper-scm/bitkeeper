@@ -13,8 +13,9 @@ int
 bkd_main(int ac, char **av)
 {
 	int	c;
+	char	*uid = 0;
 
-	while ((c = getopt(ac, av, "deil|p:t:x:")) != -1) {
+	while ((c = getopt(ac, av, "deil|p:P:t:u:x:")) != -1) {
 		switch (c) {
 		    case 'd': Opts.daemon = 1; break;
 		    case 'e': Opts.errors_exit = 1; break;
@@ -23,7 +24,9 @@ bkd_main(int ac, char **av)
 			Opts.log = optarg ? fopen(optarg, "a") : stderr;
 			break;
 		    case 'p': Opts.port = atoi(optarg); break;
+		    case 'P': Opts.pidfile = optarg; break;
 		    case 't': Opts.alarm = atoi(optarg); break;
+		    case 'u': uid = optarg; break;
 		    case 'x': exclude(optarg); break;
 		    default: usage();
 	    	}
@@ -36,6 +39,7 @@ bkd_main(int ac, char **av)
 		    	Opts.interactive = 0;
 		}
 	}
+	if (uid) ids(uid);
 	putenv("PAGER=cat");
 	if (Opts.daemon) {
 		bkd_server();
@@ -77,6 +81,12 @@ bkd_server()
 	if (Opts.alarm) {
 		signal(SIGALRM, exit);
 		alarm(Opts.alarm);
+	}
+	if (Opts.pidfile) {
+		FILE	*f = fopen(Opts.pidfile, "w");
+
+		fprintf(f, "%u\n", getpid());
+		fclose(f);
 	}
 	while (1) {
 		int	n = tcp_accept(sock);
@@ -228,4 +238,24 @@ getav(int *acp, char ***avp)
 		}
 	}
 	return (0);
+}
+
+/*
+ * For now, accept only numeric ids.
+ * XXX - need to do groups.
+ */
+ids(char *uid)
+{
+	uid_t	u;
+	gid_t	g;
+
+	u = getuid();
+	if (uid && isdigit(uid[0])) {
+		u = atoi(uid);
+#ifdef	__hpux__
+		setresuid((uid_t)-1, u, (uid_t)-1);
+#else
+		seteuid(u);
+#endif
+	}
 }

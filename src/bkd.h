@@ -43,6 +43,8 @@ typedef struct {
 	FILE	*log;			/* if set, log commands to here */
 	int	alarm;			/* exit after this many seconds */
 	u16	port;			/* listen on this port */
+	char	*pidfile;		/* write the daemon pid here */
+	uid_t	uid;			/* run as uid */
 	char	remote[16];		/* a.b.c.d of client */
 } bkdopts;
 
