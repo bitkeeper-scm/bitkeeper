@@ -126,10 +126,15 @@ newroot(int single, char *ranbits)
 	}
 	pclose(f);
 	unless (single) return (rc);
-	system("bk get -egq BitKeeper/etc/config; "
-	    "bk get -qkp BitKeeper/etc/config | "
-	    "grep -v '^single_' > BitKeeper/etc/config;"
-	    "bk delta -qy'Convert to multi user' BitKeeper/etc/config");
-	system("bk commit -y'Convert to multi user'");
+	if (system("bk get -egq BitKeeper/etc/config") ||
+	    system("bk get -qkp BitKeeper/etc/config | "
+		"grep -v '^single_' > BitKeeper/etc/config") ||
+	    system("bk delta -qy'Convert to multi user' "
+		"BitKeeper/etc/config") ||
+	    system("bk commit -y'Convert to multi user'")) {
+		fprintf(stderr,
+		    "multiuser: editing BitKeeper/etc/config failed\n");
+		rc = 1;
+	}
 	return (rc);
 }
