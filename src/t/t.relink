@@ -75,6 +75,7 @@ echo $N Try to relink with read lock in the from repo, should fail ..$NL
 cd clone
 bk lock -r &
 PID=$!
+bk lock -L
 cd ..
 bk relink clone project 2>OUT && {
 	kill $PID
@@ -94,6 +95,7 @@ echo $N Try to relink with write lock in the from repo, should fail .$NL
 cd clone
 bk lock -w &
 PID=$!
+bk lock -L
 cd ..
 bk relink clone project 2>OUT && {
 	kill $PID
@@ -113,6 +115,7 @@ echo $N Try to relink with read lock in the to repo, should work ....$NL
 cd project
 bk lock -r &
 PID=$!
+bk lock -L
 cd ..
 bk relink clone project 2>OUT || {
 	kill $PID

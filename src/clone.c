@@ -24,7 +24,7 @@ private int	initProject(char *root);
 private	void	lclone(opts, remote *, char *to);
 private int	linkdir(char *from, char *to, char *dir);
 private int	relink(char *a, char *b);
-private	void	do_relink(char *from, char *to, int quiet, char *here);
+private	int	do_relink(char *from, char *to, int quiet, char *here);
 private int	out_trigger(char *status, char *rev, char *when);
 private int	in_trigger(char *status, char *rev, char *root);
 extern	int	rclone_main(int ac, char **av);
@@ -683,26 +683,24 @@ int
 relink_main(int ac, char **av)
 {
 	char	here[MAXPATH];
-	int	quiet = 0, i;
+	int	quiet = 0, i, errs = 0;
 	char	*to = av[ac-1];
 
 	if (av[1] && streq("-q", av[1])) quiet++, av++, ac--;
 
-	for (i = 1; av[i]; i++) {
-		unless (isdir(av[i])) {
-err:			system("bk help -s relink");
-			exit(1);
-		}
+	unless (av[2]) {
+err:		system("bk help -s relink");
+		exit(1);
 	}
-	unless (av[2]) goto err;	/* have to have at least 2 dirs */
 	getRealCwd(here, MAXPATH);
 	for (i = 1; av[i] != to; ++i) {
-		do_relink(av[i], to, quiet, here);
+		if (streq(av[i], to)) continue;
+		errs |= do_relink(av[i], to, quiet, here);
 	}
-	exit(0);
+	exit(errs);
 }
 
-private	void
+private	int
 do_relink(char *from, char *to, int quiet, char *here)
 {
 	char	frompath[MAXPATH];
@@ -713,19 +711,19 @@ do_relink(char *from, char *to, int quiet, char *here)
 
 	unless (chdir(here) == 0) {
 		fprintf(stderr, "relink: cannot chdir to %s\n", here);
-		exit(1);
+		return (1);
 	}
 	unless (chdir(from) == 0) {
 		fprintf(stderr, "relink: cannot chdir to %s\n", from);
-		exit(1);
+		return (2);
 	}
 	unless (exists(BKROOT)) {
 		fprintf(stderr, "relink: %s is not a package root\n", from);
-		exit(1);
+		return (4);
 	}
 	if (repository_wrlock()) {
 		fprintf(stderr, "relink: unable to write lock %s\n", from);
-		exit(1);
+		return (8);
 	}
 	getRealCwd(frompath, MAXPATH);
 	f = popen("bk sfiles", "r");
@@ -767,6 +765,7 @@ out:		chdir(frompath);
 	fprintf(stderr,
 	    "%s: relinked %u/%u files, %u different, %u already linked.\n",
 	    from, n, total, total - (n + linked), linked);
+	return (0);
 }
 
 /*
