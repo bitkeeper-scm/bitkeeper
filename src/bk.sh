@@ -1086,6 +1086,11 @@ __nusers() {
 _getLog()
 {
 	__cd2root
+	while getopts R opt
+	do	case "$opt" in
+		R) BK_ETC="../BitKeeper/etc/";; # called from RESYNC
+		esac
+	done
 	NAME=$1
 	if [ X$NAME = X ]; then NAME=`${BIN}getuser`@`${BIN}gethost`; fi
 	exec `__perl` ${BIN}getlog $NAME ${BK_ETC}/config;
@@ -1093,9 +1098,12 @@ _getLog()
 
 _setLog()
 {
-	# Can not disable logging when there are
-	# more then 1 user, unless it is BitKeeper/Pro
 	__cd2root
+	while getopts R opt
+	do	case "$opt" in
+		R) BK_ETC="../BitKeeper/etc/";; # called from RESYNC
+		esac
+	done
 	if [ -f ${BK_ETC}config ]; then ${BIN}clean ${BK_ETC}config; fi
 	${BIN}get -seg ${BK_ETC}config
 	${BIN}get -kps ${BK_ETC}config | sed -e '/^logging:/a\
