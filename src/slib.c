@@ -3525,7 +3525,9 @@ bad:
 comment:		switch (buf[1]) {
 			    case 'e': goto done;
 			    case 'c':
-				if (buf[2] != ' ') {
+				if (buf[2] == '_') {	/* strip it */
+					;
+				} else if (buf[2] != ' ') {
 					meta(s, d, buf);
 				} else {
 					d->comments =
