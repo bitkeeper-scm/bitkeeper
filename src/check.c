@@ -95,16 +95,25 @@ usage:		fprintf(stderr, "%s", check_help);
  * Look at the list handed in and make sure that we checked everything that
  * is in the ChangeSet file.  This will always fail if you are doing a partial
  * check.
+ *
+ * Also check that all files are where they are supposed to be.
  */
 checkAll(MDBM *db)
 {
 	FILE	*keys = popen("bk sccscat ChangeSet", "r");
 	char	*t;
 	int	errors = 0;
+	MDBM	*idDB;
+	sccs	*s;
+	delta	*d;
 	char	buf[MAXPATH*3];
 
 	unless (keys) {
 		perror("checkAll");
+		exit(1);
+	}
+	unless (idDB = loadIdDB()) {
+		perror("idcache");
 		exit(1);
 	}
 	while (fnext(buf, keys)) {
@@ -119,6 +128,33 @@ checkAll(MDBM *db)
 		errors++;
 	}
 	pclose(keys);
+	keys = popen("bk get -skp ChangeSet", "r");
+	unless (keys) {
+		perror("checkAll");
+		exit(1);
+	}
+	while (fnext(buf, keys)) {
+		t = strchr(buf, ' ');
+		assert(t);
+		*t++ = 0;
+		unless (s = sccs_keyinit(buf, 0, idDB)) {
+			fprintf(stderr, "keyinit(%s) failed.\n", buf);
+			exit(1);
+		}
+		s->state |= S_RANGE2;
+		unless (d = sccs_getrev(s, 0, 0, 0)) {
+			fprintf(stderr, "check: can't get TOT in %s\n",
+			    s->sfile);
+			exit(1);
+		}
+		/*
+		 * The location recorded and the location found should match.
+		 */
+		if (streq(s->gfile, d->pathname)) continue;	/* cool */
+		fprintf(stderr, "check: %s should be %s\n",
+		    s->sfile, d->pathname);
+		errors++;
+	}
 	return (errors);
 }
 

@@ -11797,40 +11797,40 @@ delta_strip(sccs *s, delta *d, FILE *sfile, int flags)
 int
 smartUnlink(char *file)
 {
-	int rc;
-	extern int errno;
+	int	rc;
+	int	save = 0;
+
 #undef	unlink
-	if ((rc = unlink(file))) {
-		chmod(file, S_IWRITE);
-		rc = unlink(file);
+	unless (rc = unlink(file)) return (0);
+	save = errno;
+	chmod(file, S_IWRITE);
+	unless (rc = unlink(file)) return (0);
+	unless (access(file, 0)) {
+		fprintf(stderr, "smartUnlink:can not unlink %s, errno = %d\n",
+		    file, save);
 	}
-	if ((rc) && (!access(file, 0))) {
-		fprintf(stderr,
-			"smartUnlink:can not unlink %s, errno = %d\n",
-			file, errno);
-	}
+	errno = save;
 	return (rc);
 }
 
 int
-smartRename(char * old, char *new)
+smartRename(char *old, char *new)
 {
-	int rc;
-	extern int errno;
+	int	rc;
+	int	save = 0;
+
 #undef	rename
-	if ((rc = rename(old, new))) {
-		if (smartUnlink(new)) {
-			debug((stderr,
-				"smartRename: unlink fail for %s, errno=%d\n",
-				new, errno));
-			return (rc);
-		}
-		rc = rename(old, new);
+	unless (rc = rename(old, new)) return (0);
+	save = errno;
+	if (smartUnlink(new)) {
+		debug((stderr, "smartRename: unlink fail for %s, errno=%d\n",
+		    new, errno));
+		errno = save;
+		return (rc);
 	}
-	if (rc < 0) {
-		fprintf(stderr,
-		    "smartRename: can not rename from %s to %s, errno=%d\n",
-			old, new, errno);
-	}
+	unless (rc = rename(old, new)) return (0);
+	fprintf(stderr, "smartRename: can not rename from %s to %s, errno=%d\n",
+	    old, new, errno);
+	errno = save;
 	return (rc);
 }

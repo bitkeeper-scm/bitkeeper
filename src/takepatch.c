@@ -1147,13 +1147,14 @@ init(FILE *p, int flags, char **resyncRootp)
 int
 mkdirp(char *file)
 {
-	char	*s = strrchr(file, '/');
+	char	*s;
 	char	*t;
 	char	buf[MAXPATH];
 
 	strcpy(buf, file);	/* for !writable string constants */
 	unless (s = strrchr(buf, '/')) return (0);
 	*s = 0;
+	if (isdir(buf)) return (0);
 	for (t = buf; t < s; ) {
 		if (t > buf) *t++ = '/';
 		if (t < s) {
