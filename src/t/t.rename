@@ -32,7 +32,7 @@ c Baseline
 P src/regression.sh
 ------------------------------------------------
 EOF
-delta $Q -i -IINIT regression.sh
+bk delta $Q -i -IINIT regression.sh
 bk commit $S -yBaseline > $DEV_NULL
 bk -r check -a
 
@@ -48,47 +48,47 @@ mkdir t
 mkdir t/SCCS
 mv SCCS/s.regression.sh t/SCCS
 cd t
-get $S -e regression.sh
+bk get $S -e regression.sh
 ${CAT} > INIT <<EOF
 D 1.2 99/08/07 15:46:14-07:00 lm@lm.bitmover.com 0 0 0/0/0
 c Rename: src/regression.sh -> src/t/regression.sh
 P src/t/regression.sh
 ------------------------------------------------
 EOF
-delta $Q -IINIT regression.sh
+bk delta $Q -IINIT regression.sh
 bk commit $S -yRename > $DEV_NULL
-get $S -e regression.sh
+bk get $S -e regression.sh
 ${CAT} > INIT <<EOF
 D 1.3 99/08/07 15:48:49-07:00 lm@lm.bitmover.com 0 0 0/0/0
 c obsolete
 P src/t/regression.sh
 ------------------------------------------------
 EOF
-delta $Q -IINIT regression.sh
+bk delta $Q -IINIT regression.sh
 bk commit $S -yObsolete > $DEV_NULL
 bk -r check -a
 
 # Now add some deltas in the other tree, not moving it.
 cd $HERE
 cd b/src
-get $S -e regression.sh
+bk get $S -e regression.sh
 ${CAT} > INIT <<EOF
 D 1.2 99/08/06 11:22:32-07:00 zack@zack.bitmover.com 0 0 0/0/0
 c Don't expect gzipping a uuencoded file to fail.
 P src/regression.sh
 ------------------------------------------------
 EOF
-delta $Q -IINIT regression.sh
+bk delta $Q -IINIT regression.sh
 bk commit $S -ywhatever > $DEV_NULL
 bk -r check -a
-get $S -e regression.sh
+bk get $S -e regression.sh
 ${CAT} > INIT <<EOF
 D 1.3 99/08/18 01:11:42-07:00 lm@lm.bitmover 0 0 0/0/0
 c Some linger prs cleanups.
 P src/regression.sh
 ------------------------------------------------
 EOF
-delta $Q -IINIT regression.sh
+bk delta $Q -IINIT regression.sh
 bk commit $S -ywhatever > $DEV_NULL
 bk -r check -a
 trap '' 0

@@ -13,7 +13,7 @@
 # %K%
 
 ${RM} -rf foo SCCS A
-mkdir SCCS; cset -i -s .
+mkdir SCCS; bk cset -i -s .
 echo $N Trying to check in some binary data .........................$NL
 cp ${binary_data} ${data}
 chmod u+w ${data}
@@ -21,90 +21,90 @@ chmod u+w ${data}
 echo '@A@ @B@ @D@ @E@ @F@ @G@ @H@ @I@ @L@ @M@ @P@ @R@ @S@ @T@ @U@ @W@ @Y@ @Z@ @@@' | sed s/@/%/g >> $data
 cp $data saved_bin
 binary_data=saved_bin
-admin $Q -i${data} -Ebinary uuencode
-co $Q -l uuencode
+bk admin $Q -i${data} -Ebinary uuencode
+bk co $Q -l uuencode
 cmp -s ${binary_data} uuencode
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Make sure symbols work on binary data .......................$NL
-clean uuencode
-admin $Q -Shi_there uuencode
-co $Q -l uuencode
+bk clean uuencode
+bk admin $Q -Shi_there uuencode
+bk co $Q -l uuencode
 cmp -s ${binary_data} uuencode
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Trying to diffs unchanged binary data .......................$NL
-diffs uuencode > d.out 2>&1
+bk diffs uuencode > d.out 2>&1
 touch d.ref
 cmp -s d.out d.ref
 if [ $? -ne 0 ]; then echo Failed; diff d.out d.ref; exit 1; fi
 echo OK
 echo $N Trying to check in unchanged binary data ....................$NL
-echo uuencode | ci $Q -y -
+echo uuencode | bk ci $Q -y -
 if [ $? -ne 0 ]; then echo Failed; exit 1; fi
-co $Q -l uuencode
+bk co $Q -l uuencode
 echo OK
 echo $N Trying to change some binary data ...........................$NL
 cp ${binary_data2} uuencode
-diffs uuencode > d.out 2>&1
+bk diffs uuencode > d.out 2>&1
 grep -q "uuencode differ" d.out
 if [ $? -ne 0 ]; then echo Failed; exit 1; fi
-ci $Q -y uuencode
-co $Q uuencode
+bk ci $Q -y uuencode
+bk co $Q uuencode
 cmp -s ${binary_data2} uuencode
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Checking that revision 1.1 is still OK ......................$NL
-co -r1.1 $Q uuencode
+bk co -r1.1 $Q uuencode
 cmp -s ${binary_data} uuencode
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Trying to clean an encoded file .............................$NL
-co $Q -l uuencode
-clean uuencode
+bk co $Q -l uuencode
+bk clean uuencode
 if [ $? -ne 0 ]; then echo Clean failed ; exit 1; fi
 if [ -f uuencode ]; then echo Clean failed ; exit 1; fi
 echo OK
 echo $N Verifying data checksum .....................................$NL
-admin $Q -fe0 uuencode
-co $Q -kr1.1 uuencode
-admin $Q -fe1 uuencode
-A=`prs -r1.1 -hd:CHKSUM: uuencode`
-B=`chksum < uuencode`
+bk admin $Q -fe0 uuencode
+bk co $Q -kr1.1 uuencode
+bk admin $Q -fe1 uuencode
+A=`bk prs -r1.1 -hd:CHKSUM: uuencode`
+B=`bk chksum < uuencode`
 if [ $A -ne $B ]; then echo Failed - chksums $A $B differ.; exit 1; fi
 echo OK
 echo $N Trying to compress uuencoded data ...........................$NL
-admin -Z uuencode
-co -r1.1 $Q uuencode
+bk admin -Z uuencode
+bk co -r1.1 $Q uuencode
 cmp -s ${binary_data} uuencode
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Trying to check in some gzipped+uu data .....................$NL
 cp ${binary_data} data
-admin $Q -idata -Euugzip gzipuu
-co -l $Q gzipuu
+bk admin $Q -idata -Euugzip gzipuu
+bk co -l $Q gzipuu
 cmp -s ${binary_data} gzipuu
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Trying to change some gzipped+uu data .......................$NL
 cp ${binary_data2} gzipuu
-ci $Q -y gzipuu
-co $Q -k gzipuu
+bk ci $Q -y gzipuu
+bk co $Q -k gzipuu
 cmp -s ${binary_data2} gzipuu
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Trying to clean a gzipped+uu file ...........................$NL
-co $Q -l gzipuu
-clean gzipuu
+bk co $Q -l gzipuu
+bk clean gzipuu
 if [ $? -ne 0 ]; then echo Clean failed ; exit 1; fi
 if [ -f gzipuu ]; then echo Clean failed ; exit 1; fi
 echo OK
 echo $N Verifying data checksum .....................................$NL
-admin $Q -fe0 gzipuu
-co $Q -kr1.1 gzipuu
-admin $Q -fe1 gzipuu
-A=`prs -r1.1 -hd:CHKSUM: gzipuu`
-B=`chksum < gzipuu`
+bk admin $Q -fe0 gzipuu
+bk co $Q -kr1.1 gzipuu
+bk admin $Q -fe1 gzipuu
+A=`bk prs -r1.1 -hd:CHKSUM: gzipuu`
+B=`bk chksum < gzipuu`
 if [ $A -ne $B ]; then echo Failed - chksums $A $B differ.; exit 1; fi
 echo OK
 echo $N Trying to check in some gzipped data ........................$NL
@@ -121,10 +121,10 @@ done
 done
 done
 cp gzipped data
-ci -i $Q gzipped
+bk ci -i $Q gzipped
 cp SCCS/s.gzipped SCCS/s.ref
-admin $Q -Z gzipped
-co -l $Q gzipped
+bk admin $Q -Z gzipped
+bk co -l $Q gzipped
 grep -q '^.f e 4$' SCCS/s.gzipped
 if [ $? -ne 0 ]; then echo Wrong encoding.; exit 1; fi
 cmp -s data gzipped
@@ -132,60 +132,60 @@ if [ $? -ne 0 ]; then echo Failed - files differ.; diff data gzipped; exit 1; fi
 echo OK
 echo $N "admin -Z; admin -Znone should be a no-op ...................."$NL
 cp SCCS/s.gzipped SCCS/s.cmp
-admin $Q -Znone cmp
+bk admin $Q -Znone cmp
 cmp SCCS/s.cmp SCCS/s.ref
 if [ $? -ne 0 ]; then echo Failed - files differ.; diff SCCS/s.cmp SCCS/s.ref; exit 1; fi
 echo OK
 rm -f SCCS/s.cmp SCCS/s.ref
 echo $N Check in gzipped data with delta -Z .........................$NL
-delta $Q -i -Z data
+bk delta $Q -i -Z data
 grep -q '^.f e 4$' SCCS/s.data
 if [ $? -ne 0 ]; then echo Wrong encoding.; exit 1; fi
 echo OK
 echo $N Uncompress and modify in one operation.......................$NL
 get $Q -e data
 echo '! @ # $ % ^ & * ( )' >>data
-delta $Q -Znone -y data
+bk delta $Q -Znone -y data
 grep -q '^.f e 0$' SCCS/s.data
 if [ $? -ne 0 ]; then echo Wrong encoding.; exit 1; fi
 echo OK
 echo $N Trying to change some gzipped data ..........................$NL
 ${ECHO} "here is some data" > gzipped
 cp gzipped ll
-ci $Q -y gzipped
-co $Q gzipped
+bk ci $Q -y gzipped
+bk co $Q gzipped
 cmp -s ll gzipped
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Trying to clean gzipped data ................................$NL
-co $Q -l gzipped
-clean gzipped
+bk co $Q -l gzipped
+bk clean gzipped
 if [ $? -ne 0 ]; then echo Clean failed ; exit 1; fi
 if [ -f gzipped ]; then echo Clean failed ; exit 1; fi
 echo OK
 echo $N Make a gzipped file ascii ...................................$NL
-admin -Znone gzipped
+bk admin -Znone gzipped
 grep -q '^.f e 0$' SCCS/s.gzipped
 if [ $? -ne 0 ]; then echo Wrong encoding.; exit 1; fi
 echo OK
 echo $N Make sure it still has the same data ........................$NL
-co $Q gzipped
+bk co $Q gzipped
 cmp -s ll gzipped
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Make it gzipped again .......................................$NL
-admin -Z gzipped
+bk admin -Z gzipped
 grep -q '^.f e 4$' SCCS/s.gzipped
 if [ $? -ne 0 ]; then echo Wrong encoding.; exit 1; fi
 echo OK
 echo $N Make sure it still has the same data ........................$NL
-co $Q gzipped
+bk co $Q gzipped
 cmp -s ll gzipped
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Verifying data checksum .....................................$NL
-co $Q -kr1.1 gzipped
-A=`prs -r1.1 -hd:CHKSUM: gzipped`
-B=`chksum < gzipped`
+bk co $Q -kr1.1 gzipped
+A=`bk prs -r1.1 -hd:CHKSUM: gzipped`
+B=`bk chksum < gzipped`
 if [ $A -ne $B ]; then echo Failed - chksums $A $B differ.; exit 1; fi
 echo OK

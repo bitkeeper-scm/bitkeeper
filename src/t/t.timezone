@@ -24,7 +24,7 @@ cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N Checking Delta in Positive Time zone ........................$NL
-get $S -e TIME
+bk get $S -e TIME
 echo "more data" >> TIME
 TZ=UTC-8 delta $S -y"" TIME
 ${CAT} > CMP1 <<EOF
@@ -36,7 +36,7 @@ cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N Checking Delta in 'GMT(UTC)' Time zone ........................$NL
-get $S -e TIME
+bk get $S -e TIME
 echo "more data" >> TIME
 TZ=UTC delta $S -y"" TIME
 ${CAT} > CMP1 <<EOF

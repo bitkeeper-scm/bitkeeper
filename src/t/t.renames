@@ -160,7 +160,7 @@ _moves()
 		  +?)	echo plus > ${arg#+}
 			delta $S -i ${arg#+}
 			;;
-		  ?-?)	sccsmv ${arg%-?} ${arg#?-}
+		  ?-?)	bk mv ${arg%-?} ${arg#?-}
 			;;
 		  *)	echo Mangled move operation $arg >&2
 			exit 1
@@ -197,8 +197,8 @@ _inspect()
 			;;
 		esac
 		[ -f SCCS/s.$NX ]
-		ON=`prs -h -r1.0 -d:DPN: $NX`
-		NN=`prs -h -r+   -d:DPN: $NX`
+		ON=`bk prs -h -r1.0 -d:DPN: $NX`
+		NN=`bk prs -h -r+   -d:DPN: $NX`
 		[ x$ON = x$OX ]
 		[ x$NN = x$NX ]
 	done

@@ -52,8 +52,8 @@ echo $N Move a file manually and resync a change to it ..............$NL
 cd src
 mv SCCS/s.bar.c SCCS/s.moved.c
 cd $HERE/project/src
-get $Q -e bar.c
-delta -ywhatever $Q bar.c
+bk get $Q -e bar.c
+bk delta -ywhatever $Q bar.c
 bk commit $Q -ywhatever
 cd $HERE
 bk resync $Q project clone 2>ERROR

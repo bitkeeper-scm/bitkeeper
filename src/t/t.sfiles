@@ -12,10 +12,10 @@
 echo $N Setup .......................................................$NL
 set -e
 trap 'echo failed' 0
-cset $Q -i .
+bk cset $Q -i .
 ${ECHO} "logging: none" > BitKeeper/etc/config
-ci -i $Q BitKeeper/etc/config
-sfiles -C | cset $Q -yInitial
+bk ci -i $Q BitKeeper/etc/config
+bk sfiles -C | bk cset $Q -yInitial
 mkdir bar
 mkdir bar/blech
 touch foo
@@ -27,7 +27,7 @@ trap '' 0
 set +e
 echo OK
 echo $N Check the list of SCCS files ................................$NL
-sfiles | sort > SFILES
+bk sfiles | sort > SFILES
 sort <<EOF > LIST
 SCCS/s.ChangeSet
 BitKeeper/etc/SCCS/s.config
@@ -45,7 +45,7 @@ SCCS/s.ChangeSet
 SCCS/s.s.foo
 bar/blech/s.foo
 EOF
-sfiles `cat .sfiles` | sort > SFILES
+bk sfiles `cat .sfiles` | sort > SFILES
 sort <<EOF > LIST
 SCCS/s.ChangeSet
 SCCS/s.s.foo
@@ -55,7 +55,7 @@ cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
 echo $N Check the list of g-files ...................................$NL
-sfiles -g | sort > SFILES
+bk sfiles -g | sort > SFILES
 sort <<EOF > LIST
 ChangeSet
 BitKeeper/etc/config
@@ -66,7 +66,7 @@ bar/blech/s.foo
 EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
-sfiles -g - < .sfiles | sort > SFILES
+bk sfiles -g - < .sfiles | sort > SFILES
 sort <<EOF > LIST
 ChangeSet
 s.foo
@@ -76,7 +76,7 @@ cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo list failed; diff SFILES LIST; exit 1; fi
 echo OK
 echo $N Check the list of pending files .............................$NL
-sfiles -C | sort > SFILES
+bk sfiles -C | sort > SFILES
 sort <<EOF > LIST
 SCCS/s.foo@1.1
 SCCS/s.s.foo@1.1
@@ -86,7 +86,7 @@ EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 # XXX -C cannot be used with file lists.
-#sfiles -C - < .sfiles | sort > SFILES
+#bk sfiles -C - < .sfiles | sort > SFILES
 #sort <<EOF > LIST
 #SCCS/s.ChangeSet@1.1
 #SCCS/s.s.foo@1.1
@@ -95,31 +95,31 @@ if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 #cmp -s SFILES LIST
 #if [ $? -ne 0 ]; then echo list failed; diff SFILES LIST; exit 1; fi
 echo OK
-cset $Q -yblah - <SFILES
-co $Q -l s.foo bar/s.foo
+bk cset $Q -yblah - <SFILES
+bk co $Q -l s.foo bar/s.foo
 ls >> bar/s.foo
 echo $N Check the list of changed files .............................$NL
-sfiles -c | sort > SFILES
+bk sfiles -c | sort > SFILES
 sort <<EOF > LIST
 bar/SCCS/s.s.foo
 EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
-sfiles -c - < .sfiles | sort > SFILES
+bk sfiles -c - < .sfiles | sort > SFILES
 sort <<EOF > LIST
 EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo list failed; diff SFILES LIST; exit 1; fi
 echo OK
 echo $N Check the list of locked files ..............................$NL
-sfiles -l | sort > SFILES
+bk sfiles -l | sort > SFILES
 sort <<EOF > LIST
 SCCS/s.s.foo
 bar/SCCS/s.s.foo
 EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
-sfiles -l - < .sfiles | sort > SFILES
+bk sfiles -l - < .sfiles | sort > SFILES
 sort <<EOF > LIST
 SCCS/s.s.foo
 EOF
@@ -127,7 +127,7 @@ cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo list failed; diff SFILES LIST; exit 1; fi
 echo OK
 echo $N Check the list of unlocked files ............................$NL
-sfiles -u | sort > SFILES
+bk sfiles -u | sort > SFILES
 sort <<EOF > LIST
 BitKeeper/etc/SCCS/s.config
 SCCS/s.ChangeSet
@@ -136,7 +136,7 @@ bar/blech/SCCS/s.s.foo
 EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
-sfiles -u - < .sfiles | sort > SFILES
+bk sfiles -u - < .sfiles | sort > SFILES
 sort <<EOF > LIST
 SCCS/s.ChangeSet
 bar/blech/SCCS/s.s.foo
@@ -145,11 +145,11 @@ cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo list failed; diff SFILES LIST; exit 1; fi
 echo OK
 echo $N Check the list of clean, unlocked files .....................$NL
-ci $Q -l -mfoo bar/s.foo
+bk ci $Q -l -mfoo bar/s.foo
 ls -R >bar/s.foo
-ci $Q -mfoo-R bar/s.foo
-ci $Q -mblech s.foo
-sfiles -u | sort > SFILES
+bk ci $Q -mfoo-R bar/s.foo
+bk ci $Q -mblech s.foo
+bk sfiles -u | sort > SFILES
 sort <<EOF > LIST
 BitKeeper/etc/SCCS/s.config
 SCCS/s.ChangeSet
@@ -160,7 +160,7 @@ bar/blech/SCCS/s.s.foo
 EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
-sfiles -u - < .sfiles | sort > SFILES
+bk sfiles -u - < .sfiles | sort > SFILES
 sort <<EOF > LIST
 SCCS/s.ChangeSet
 SCCS/s.s.foo
@@ -170,7 +170,7 @@ cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo list failed; diff SFILES LIST; exit 1; fi
 echo OK
 echo $N Check the list of pending files .............................$NL
-sfiles -C | sort > SFILES
+bk sfiles -C | sort > SFILES
 sort <<EOF > LIST
 bar/SCCS/s.s.foo@1.3
 EOF
@@ -178,7 +178,7 @@ cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
 echo $N Check the list of pending files with -A .....................$NL
-sfiles -CA | sort > SFILES
+bk sfiles -CA | sort > SFILES
 sort <<EOF > LIST
 bar/SCCS/s.s.foo@1.2
 bar/SCCS/s.s.foo@1.3
@@ -187,7 +187,7 @@ cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
 echo $N Check the list of pending files with -R .....................$NL
-sfiles -CR | sort > SFILES
+bk sfiles -CR | sort > SFILES
 sort <<EOF > LIST
 bar/SCCS/s.s.foo@1.1..1.3
 EOF
@@ -195,7 +195,7 @@ cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
 echo $N Check the list of pending files with -AR ....................$NL
-sfiles -CAR | sort > SFILES
+bk sfiles -CAR | sort > SFILES
 sort <<EOF > LIST
 bar/SCCS/s.s.foo@1.1..1.2
 bar/SCCS/s.s.foo@1.2..1.3
@@ -204,15 +204,15 @@ cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
 echo $N Commit work, check pending lists again ......................$NL
-sfiles -C | cset $Q -ysecond -
-sfiles -C | sort > SFILES
+bk sfiles -C | bk cset $Q -ysecond -
+bk sfiles -C | sort > SFILES
 if [ -s SFILES ]; then echo "Failed (short)"; cat SFILES; exit 1; fi
-sfiles -CA | sort > SFILES
+bk sfiles -CA | sort > SFILES
 if [ -s SFILES ]; then echo "Failed (long)"; cat SFILES; exit 1; fi
 echo OK
 echo $N Look for directories under SCCS control .....................$NL
 mkdir -p bar/not bar/notquite/SCCS
-sfiles -d | sort > SFILES
+bk sfiles -d | sort > SFILES
 sort <<EOF > LIST
 .
 bar
@@ -223,7 +223,7 @@ cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
 echo $N Look for directories not under SCCS control .................$NL
-sfiles -D | grep -v BitKeeper | sort > SFILES
+bk sfiles -D | grep -v BitKeeper | sort > SFILES
 sort <<EOF > LIST
 bar/not
 bar/notquite
@@ -234,7 +234,7 @@ if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
 echo $N Check the list of extra files ...............................$NL
 rm -f .sfiles
-sfiles -x | sort > SFILES
+bk sfiles -x | sort > SFILES
 sort <<EOF > LIST
 LIST
 SFILES
@@ -242,12 +242,12 @@ SFILES
 EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
-X=`sfiles -x LIST SCCS/s.foo`
+X=`bk sfiles -x LIST SCCS/s.foo`
 if [ "X$X" != "XLIST" ]; then echo failed; echo $X; exit 1; fi
 echo OK
 echo $N Make sure garbage in SCCS dir behaves .......................$NL
 touch SCCS/OLD-s.foo
-sfiles -x | sort > SFILES
+bk sfiles -x | sort > SFILES
 sort <<EOF > LIST
 LIST
 SCCS/OLD-s.foo
@@ -256,13 +256,13 @@ SFILES
 EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
-X=`sfiles -x SCCS/OLD-s.foo`
+X=`bk sfiles -x SCCS/OLD-s.foo`
 if [ "X$X" != "XSCCS/OLD-s.foo" ]; then echo failed; echo $X; exit 1; fi
 echo OK
 echo $N Make sure sfiles GFILE lists SCCS/s.GFILE ...................$NL
 if [ -f s.foo ]; then exit 1; fi
 if [ ! -f SCCS/s.s.foo ]; then exit 1; fi
-FOO="`sfiles s.foo`"
+FOO="`bk sfiles s.foo`"
 if [ "$FOO" != "SCCS/s.s.foo" ]; then echo Failed - got $FOO.; exit 1; fi
 echo OK
 cat <<EOF > BitKeeper/etc/ignore
@@ -272,7 +272,7 @@ s.*
 config
 EOF
 echo $N Test ignore lists with -u ...................................$NL
-sfiles -u | sort > SFILES
+bk sfiles -u | sort > SFILES
 sort <<EOF > LIST
 SCCS/s.foo
 SCCS/s.ChangeSet
@@ -281,7 +281,7 @@ cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
 echo $N Test ignore lists with -ug ..................................$NL
-sfiles -ug | sort > SFILES
+bk sfiles -ug | sort > SFILES
 sort <<EOF > LIST
 foo
 ChangeSet
@@ -295,7 +295,7 @@ SCCS/OLD-s.foo
 SFILES
 .tmp/keys
 EOF
-sfiles -x | sort > SFILES
+bk sfiles -x | sort > SFILES
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
@@ -308,7 +308,7 @@ SCCS/s.s.foo
 bar/SCCS/s.s.foo
 bar/blech/SCCS/s.s.foo
 EOF
-sfiles -au | sort > SFILES
+bk sfiles -au | sort > SFILES
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
@@ -320,7 +320,7 @@ SCCS/OLD-s.foo
 SFILES
 .tmp/keys
 EOF
-sfiles -ax | sort > SFILES
+bk sfiles -ax | sort > SFILES
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
@@ -332,17 +332,17 @@ SFILES
 bar/lib
 .tmp/keys
 EOF
-sfiles -x | sort > SFILES
+bk sfiles -x | sort > SFILES
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
 echo $N Test naive mode with s.files in odd places ..................$NL
 date > impostor
-ci $Q -i -m'boo!' impostor
-co $Q impostor
+bk ci $Q -i -m'boo!' impostor
+bk co $Q impostor
 mv SCCS/s.impostor s.impostor
 mv impostor SCCS/s.impostor
-sfiles | sort > SFILES
+bk sfiles | sort > SFILES
 sort <<EOF > LIST
 SCCS/s.foo
 SCCS/s.ChangeSet
@@ -352,7 +352,7 @@ cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
 echo $N Test mildly paranoid mode ...................................$NL
-sfiles -p | sort > SFILES
+bk sfiles -p | sort > SFILES
 sort <<EOF > LIST
 SCCS/s.foo
 SCCS/s.ChangeSet
@@ -363,7 +363,7 @@ cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
 echo $N Test truly paranoid mode ....................................$NL
-sfiles -P | sort > SFILES
+bk sfiles -P | sort > SFILES
 sort <<EOF > LIST
 SCCS/s.foo
 SCCS/s.ChangeSet

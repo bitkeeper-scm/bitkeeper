@@ -26,8 +26,8 @@ ${CAT} <<'EOF' > foo
 6
 7
 EOF
-delta $S -i foo
-get $S -e foo
+bk delta $S -i foo
+bk get $S -e foo
 ${RM} foo
 ${CAT} <<'EOF' > diff1
 D1 3
@@ -43,7 +43,7 @@ I7 1
 1.2 6
 EOF
 echo $N "Check making sfile using delta -D............................$NL"
-delta $S -y'' -Ddiff1 foo 2>${DEV_NULL}
+bk delta $S -y'' -Ddiff1 foo 2>${DEV_NULL}
 if [ $? != 0 ]; then echo Failed on Delta -D; exit 1; fi
 echo OK
 # Do a test
@@ -58,18 +58,18 @@ ${CAT} <<'EOF' > CMP1
 1.2 6
 EOF
 echo $N "Check gfile to verify correct creation.......................$NL"
-get $S -r1.2 foo
+bk get $S -r1.2 foo
 cmp -s foo CMP1
 if [ $? != 0 ]; then echo Failed on rev 1.2; diff foo CMP1; exit 1; fi
 echo OK
 ${RM} -f foo
 # See what kind of output is being generated ...
 echo $N "Check get -DD for BK style output ...........................$NL"
-get $S -DD -r1.2 foo > CMP1
+bk get $S -DD -r1.2 foo > CMP1
 cmp -s diff1 CMP1
 if [ $? != 0 ]; then echo Failed on rev 1.2; diff diff1 CMP1; exit 1; fi
 echo OK
-get $S -e foo
+bk get $S -e foo
 ${RM} foo
 ${CAT} <<'EOF' > diff1
 I0 1
@@ -77,7 +77,7 @@ I0 1
 1.2 2
 EOF
 echo $N "Check delta -D for error when bad diff file..................$NL"
-delta $S -y'' -Ddiff1 foo 2>${DEV_NULL}
+bk delta $S -y'' -Ddiff1 foo 2>${DEV_NULL}
 if [ $? = 0 ]; then echo Failed by returning zero on Delta -D; exit 1; fi
 echo OK
 ${RM} -f CMP1 CMP2 foo diff1 SCCS/s.foo

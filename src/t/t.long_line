@@ -38,9 +38,9 @@ do
 done
 ${ECHO} 12345678901234567890123456789012345678901234567890 >> long
 cp long long.sav
-ci $Q -i long
+bk ci $Q -i long
 if [ ! -f SCCS/s.long ]; then echo failed to create history; exit 1; fi
-co $Q long
+bk co $Q long
 cmp -s long long.sav
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
@@ -59,11 +59,11 @@ done
 echo 12345678901234567890123456789012345678901234567890 >> tmp
 sed -e's/@/%/g' < tmp > long1
 sed -e's/@I@/1.1/g' < tmp > X
-undos X > long1.ref 
+bk undos X > long1.ref 
 cp long1 long1_1.1.sav
-ci $Q -i long1
+bk ci $Q -i long1
 if [ ! -f SCCS/s.long1 ]; then echo failed to create history; exit 1; fi
-co $Q long1
+bk co $Q long1
 cmp -s long1 long1.ref
 if [ $? -ne 0 ]; then echo failed; diff long1 long1.ref; exit 1; fi
 echo OK
@@ -81,11 +81,11 @@ do
 done
 ${ECHO} 12345678901234567890123456789012345678901234567890 >> long2
 sed -e's/\$RCSfile\$/\$RCSfile: s.long2 \$/g' < long2 > X
-undos X > long2.ref 
-ci $Q -i long2
-admin -fRCS long2
+bk undos X > long2.ref 
+bk ci $Q -i long2
+bk admin -fRCS long2
 if [ ! -f SCCS/s.long2 ]; then echo failed to create history; exit 1; fi
-co $Q long2
+bk co $Q long2
 cmp -s long2 long2.ref
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
@@ -106,21 +106,21 @@ if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 echo OK
 echo $N Check propagation of delta w/ long line .....................$NL
 cd $HERE/project/src
-co $Q -l long1
+bk co $Q -l long1
 sed -e's/1/X/g' < long1 > tmp
-undos tmp > long1
+bk undos tmp > long1
 cp long1 long1_1.2.sav
-ci $Q -y long1
-co $Q long1
+bk ci $Q -y long1
+bk co $Q long1
 sed -e's/\%I\%/1.2/g' < tmp > X
-undos X > long1.ref
+bk undos X > long1.ref
 cmp -s long1 long1.ref
 if [ $? -ne 0 ]; then echo failed; diff long1 long1.ref; exit 1; fi
 bk commit $S -f -yCset
-bk send $Q -r1.3 - | (cd $HERE/copy; takepatch) 
+bk send $Q -r1.3 - | (cd $HERE/copy; bk takepatch) 
 cd $HERE/copy/src
 bk resolve $Q
-co $Q long1
+bk co $Q long1
 cmp -s long1 $HERE/project/src/long1.ref
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
@@ -130,13 +130,13 @@ bk clone $Q $HERE/project $HERE/copy2
 mkdir $HERE/copy3
 bk resync $Q -a -E $HERE/copy2 $HERE/copy3
 cd $HERE/copy2/src
-co $Q long1
+bk co $Q long1
 cmp -s long1 $HERE/project/src/long1.ref
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N Check diffs with long line ..................................$NL
 cd $HERE/project/src
-diffs -h -r1.1 -r1.2 long1 > diff
+bk diffs -h -r1.1 -r1.2 long1 > diff
 echo > diff.ref
 diff long1_1.1.sav long1_1.2.sav >> diff.ref
 diff diff diff.ref  

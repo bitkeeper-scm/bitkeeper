@@ -12,30 +12,30 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
-cset -i -s .
+bk cset -i -s .
 ${RM} -rf FILE SCCS
 echo $N Check ci -i -l ..............................................$NL
 echo HHHH > FILE
-ci $Q -i -l FILE
+bk ci $Q -i -l FILE
 isWritable FILE || { echo Failed; exit 1; }
 ${CAT} > CMP1 << EOF
 ======== FILE 1.1 ========
 1.1
 EOF
-prs -d":I:" FILE > CMP2
+bk prs -d":I:" FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N Check ci -l .................................................$NL
 echo JJJ >>FILE
-ci $Q -y -l FILE
+bk ci $Q -y -l FILE
 ${CAT} > CMP1 << EOF
 ======== FILE 1.1..1.2 ========
 1.2
 1.1
 EOF
 isWritable FILE || { echo Failed; exit 1; }
-prs -r1.1.. -d":I:" FILE  > CMP2
+bk prs -r1.1.. -d":I:" FILE  > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK

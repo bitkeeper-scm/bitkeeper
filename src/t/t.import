@@ -24,10 +24,10 @@ set -e
 ( echo plain; echo no ) | bk import import_dir project > import.out 2>&1
 cd $HERE/project/src
 [ -f SCCS/s.foo.c ]
-get $Q foo.c
+bk get $Q foo.c
 cmp -s foo.c $HERE/import_dir/src/foo.c
 [ -f SCCS/s.boo.c ]
-get $Q boo.c
+bk get $Q boo.c
 cmp -s boo.c $HERE/import_dir/src/boo.c
 echo OK
 echo $N Test import patch file ......................................$NL
@@ -37,7 +37,7 @@ ${ECHO} "foo-new" > $HERE/import_new/src/foo.c
 diff -Nru import_dir import_new > test_patch || : # legitimately exits 1
 ( echo patch; echo no ) | bk import test_patch project > import.out 2>&1
 cd $HERE/project/src
-get $Q foo.c
+bk get $Q foo.c
 cmp -s foo.c $HERE/import_new/src/foo.c
 echo OK
 cd $HERE
@@ -64,13 +64,13 @@ cd $HERE
 mkdir -p import_sccs/src
 cd $HERE/import_sccs/src
 ${ECHO} bar > bar.c
-ci $Q -i -l bar.c
+bk ci $Q -i -l bar.c
 ${ECHO} "bar-new" > bar.c
-ci $Q -y bar.c
+bk ci $Q -y bar.c
 cd $HERE
 ( echo SCCS; echo no ) | bk import import_sccs project  > import.out 2>&1
 cd $HERE/project/src
-get $Q bar.c $HERE/import_sccs/src/bar.c
+bk get $Q bar.c $HERE/import_sccs/src/bar.c
 cmp -s bar.c $HERE/import_sccs/src/bar.c
 echo OK
 trap '' 0
