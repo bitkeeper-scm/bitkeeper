@@ -14,7 +14,7 @@ bk commit \- commit deltas to a changeset
 .B ]
 .\}
 .if n
-bk commit [\-dFRqS<tag>:y<x>:Y<file>]
+bk commit [\-adFRqS<tag>:y<x>:Y<file>]
 .SH DESCRIPTION
 .LP
 Takes all of your current revisions and adds them to a changeset.
@@ -43,8 +43,17 @@ It's useful to have the output of
 in another window to see what you did.
 .SH OPTIONS
 .TP
+.B -a
+Do not ask the user about logging, fail the commit unless OK.
+.TP
 .B \-d
 Don't run interactively; do the commit with the default comments.
+.TP
+.B -F
+Force a commit even if no pending deltas.
+.TP
+.B -R
+Tell commit that it is processing the resync directory.
 .TP
 .B \-q
 Run quietly.

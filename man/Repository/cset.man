@@ -51,6 +51,9 @@ List each rev in
 .I range 
 as file@rev (may be multiline per file).
 .TP
+.AN -M range
+Mark the files included in the range of csets.
+.TP
 .AN \-m range
 Generate a patch of the changes in
 .IR range .

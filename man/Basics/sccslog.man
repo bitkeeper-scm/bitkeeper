@@ -20,6 +20,9 @@ bk sccslog [-Cpv] [-c<d>] [-r<r>] [file list...] | [-] | []
 displays part or all  of  the  SCCS  file in a user supplied format.
 .SH OPTIONS
 .TP
+.B -A
+Select all uncommited deltas in a file.
+.TP
 .AN -c dates
 Cut off dates.  See
 .IR range (1)
@@ -27,6 +30,12 @@ for details.
 .TP
 .B -C
 Produce comments for a changeset.
+.TP
+.AN -i d
+Indent output by 
+.if t .I d
+.if n <d>
+spaces.
 .TP
 .B -p
 Show basenames instead of full pathnames.

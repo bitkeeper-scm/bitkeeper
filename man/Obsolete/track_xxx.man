@@ -1,4 +1,4 @@
-.so ../Admin/MACROS
+.so ../macros
 .TH track_xxx Obsolete %G% "BitMover, Inc." BitKeeper
 .\"    ================= Tracking an upstream repository  =================
 .SH NAME

@@ -36,6 +36,7 @@ do diffs for all sfiles
 .TP
 .B -c
 do context diffs
+.TP
 .B -D
 prefix lines with dates
 .TP

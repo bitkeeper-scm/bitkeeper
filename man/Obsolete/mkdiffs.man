@@ -1,12 +1,16 @@
-.so ../Admin/MACROS
+.so ../macros
 .TH mkdiffs Obsolete %G% "BitMover, Inc." BitKeeper
 .\"    ================= Exporting traditional patches =================
 .SH NAME
 bk mkdiffs \- exporting traditional patches
 .SH SYNOPSIS
+.if t \{\
 .B bk mkdiffs [\-h] [\-b|\-z] \-r 
 .IB start , stop [\-l 
 .IB old , new ]
+.\}
+.if n
+bk mkdiffs [\-h] [\-b|\-z] \-r<start>,<stop> [\-l<old>,<new>]
 .SH DESCRIPTION
 .LP
 The mkdiffs command generates a patch identical (or very close to 

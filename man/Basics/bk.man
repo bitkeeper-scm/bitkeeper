@@ -17,7 +17,7 @@ bk [-r<dir>] [-R <cmd>] command [options]
 Change directories to the root of the repository and run 
 .IR cmd .
 .TP
-.AB -r dir
+.AN -r dir
 Starting at 
 .IR dir ,
 or the repository root if 

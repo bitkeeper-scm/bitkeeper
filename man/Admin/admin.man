@@ -53,7 +53,10 @@ same as -h, plus check file contents are ASCII
 .B \-z
 recalculate file checksum
 .TP
-.AN \-f FlagVal
+.if t
+.AN \-f Flag\ Val
+.if n
+.AN \-f Flag><Val
 set 
 .I Flag
 to value
@@ -88,7 +91,7 @@ Merge branch
 into TOT or 
 .I rev
 .TP
-.AL \-S sym rev
+.AL -S sym rev
 associate 
 .if t .I sym
 .if n <sym>

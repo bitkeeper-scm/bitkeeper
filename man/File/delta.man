@@ -10,12 +10,12 @@ bk delta \- check in modified files
 .B [\-Z
 .IB alg ] 
 .B [\-y
-.IB c ] 
+.IB comment ] 
 .BI [ files...
 .B ]
 \}
 .if n \{\ 
-bk delta [-iluYpqfach] [-S<sym>] [-Z<alg>] [-y<c>] [files...]
+bk delta [-iluYpqfach] [-S<sym>] [-Z<alg>] [-y<comment>] [files...]
 \}
 .SH DESCRIPTION
 .LP

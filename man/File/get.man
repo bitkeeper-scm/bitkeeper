@@ -5,7 +5,9 @@
 bk get \- check out BitKeeper files
 .SH SYNOPSIS
 .if t \{\
-.B bk get [\-qkepdmunN] [\-r
+.B bk get [\-qkepdmunN] [-G
+.IB name ]
+.B [\-r
 .IB rev | 
 .BI \-c date
 .B ] [
@@ -13,7 +15,7 @@ bk get \- check out BitKeeper files
 .IB \- ]
 \}
 .if n \{\ 
-bk get [-qkepdmunN] [-r<rev> | -c<date>] [files... | -]
+bk get [-qkepdmunN] [-G<name>] [-r<rev> | -c<date>] [files... | -]
 \}
 .SH DESCRIPTION
 .LP
@@ -37,11 +39,23 @@ Used with one of the following options [mNnud].
 Get the latest revision before the 
 .IR date .
 .TP
+.B -D
+Output a diff.
+.TP
+.B -DD
+Output cset diffs.
+.TP
+.B -DDD
+Output hash diffs.
+.TP
 .B \-d
 Prefix each line with the date of last modification.
 .TP
 .B \-e
 Get file for editing. A lock is placed on the s.file.
+.TP
+.B -F
+Don't verify the file checksum.
 .TP
 .AN \-G name
 Place the checked out file in 
@@ -51,12 +65,21 @@ instead of the default.
 .B \-g
 Suppress the retrieval of any text.
 .TP
+.B -H
+Put file in its historic location.
+.TP
+.B -h
+Invert sense of file's hash flag.
+.TP
 .AN \-i list
 Include revs in 
 .IR list .
 .TP
 .B \-k
 Don't expand RCS or SCCS keywords. \-k is implied by \-e.
+.TP
+.B -l
+Same as -e.
 .TP
 .AN \-M rev
 Merge with 
@@ -71,6 +94,9 @@ Prefix each line with its line number.
 .B \-n
 Prefix each line with the filename.
 .TP
+.B -P
+Write to stdout, force get.
+.TP
 .B \-p
 Write file to standard output (useful in scripts).
 Required with \-r
@@ -82,15 +108,24 @@ is anything other than the most recent delta.
 .B \-q
 Run quietly.
 .TP
+.B -R
+Rev is part of pathname.
+.TP
 .AN \-r rev
 Get this revision.
 .TP
 .B \-S
 If a gfile exists, don't check it out again.
 .TP
+.B -s
+Same as -q.
+.TP
 .B \-T
 Set the gfile's modification time to the delta's
 creation time.
+.TP
+.B -t
+Ignored, SCCS compat.
 .TP
 .B \-u
 Prefix each line with the user who last modified it.

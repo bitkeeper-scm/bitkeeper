@@ -37,6 +37,9 @@ information about your new repository.
 Use 
 .I config 
 as the configuration file to setup the repository.
+.TP
+.B -f
+Don't ask for confirmation.
 .SH EXAMPLES
 .LP
 When creating a repository called "mypackage", you type

@@ -37,6 +37,12 @@ and specify the child as the
 If the parent is a superset of the current repository,
 then automatically pull that work into the current repository.
 .TP
+.B -c
+Do not use compression when using ssh.
+.TP
+.B -g
+Allow the use of GUI tools during the resolve (unlike resolve -t).
+.TP
 .B \-l
 Do a long listing of changesets to be sent (like bk changes
 does).  May be combined with 

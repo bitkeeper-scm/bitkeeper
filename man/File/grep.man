@@ -37,7 +37,7 @@ Prefix each line with the rev it was last modified in.
 .B \-n
 Prefix each line with the filename.
 .TP
-.B \- u
+.B \-u
 Prefix each line with the user who last modified it.
 .SH "SEE ALSO"
 .B bk help sccscat

@@ -4,7 +4,7 @@
 .SH NAME
 bk -r check \- check repository for consistency
 .SH SYNOPSIS
-.B bk \-r check [\-av]
+.B bk \-r check [\-acfRv]
 .SH DESCRIPTION
 .LP
 Check is used to make sure that a repository is in a consistent state.
@@ -43,6 +43,21 @@ to get all of them, this is not recommended.
 .B \-a
 Ensures that the ChangeSet file and the repository
 agree on what files are in the repository.
+.TP
+.B -c
+Check file checksum.
+.TP
+.B -f
+Fix any fixable errors.
+.TP
+.B -g
+List gone keys only.
+.TP
+.B -p
+List deltas which are in more than one cset.
+.TP
+.B -R
+Only do checks which make sense in the RESYNC dir.
 .TP
 .B \-v
 Be verbose about files which are OK.  Normally, there is no output

@@ -51,6 +51,9 @@ Rebuild the id to pathname cache.
 .B \-u
 List only unlocked files.
 .TP
+.B -v
+Be verbose during id rebuild.
+.TP
 .B \-x
 List files which have no revision control files.
 .SH NOTES
