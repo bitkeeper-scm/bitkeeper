@@ -748,14 +748,12 @@ proc keyboard_bindings {} \
 
 proc main {} \
 {
-	global argv0 argv argc bin dev_null
+	global argv0 argv argc
 
 	if {[regexp {^[ \t]*-r(.*)} $argv dummy revs] == 0} {
 		puts "Usage: csettool -r<revs>"
 		exit 1
 	}
-	set bin "/usr/bitkeeper"
-	set dev_null "/dev/null"
 	bk_init
 	widgets
 	getFiles $revs

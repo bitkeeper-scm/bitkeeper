@@ -1,6 +1,10 @@
 # Makefile for BitKeeper.
 # @(#) %K%
 
+# You can set this to anywhere you like and do a "make production" and you'll
+# have an installed BitKeeper.
+BK_BIN	= /usr/bitkeeper
+
 BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  get gethost getuser key2rev lines prs range rechksum renumber	 \
 	  rmdel sccscat sccslog sccsmv sccsrm sccssh sfiles sfio sids	 \
@@ -118,9 +122,9 @@ gO:
 	$(MAKE) CFLAGS="-g -O"
 
 production_all:
-	$(MAKE) production_g prefix=$(prefix)/g
-	$(MAKE) production_debug prefix=$(prefix)/debug
-	$(MAKE) production_purify prefix=$(prefix)/purify
+	$(MAKE) production_g prefix=$(BK_BIN)/g
+	$(MAKE) production_debug prefix=$(BK_BIN)/debug
+	$(MAKE) production_purify prefix=$(BK_BIN)/purify
 	$(MAKE) production
 
 production: rebuild p install
@@ -201,7 +205,7 @@ t/doit: t/doit.sh substvars
 FORCE:
 
 gnu: FORCE
-	cd gnu && $(MAKE)
+	cd gnu && $(MAKE) BK_BIN=$(BK_BIN)
 
 zlib/libz.a: $(ZLIBOBJ)
 	$(AR) cr zlib/libz.a $(ZLIBOBJ)
@@ -426,12 +430,10 @@ mkindex: gui/mkindex.tcl substvars
 # Unfortunately, there is no portable way to avoid running config.status
 # several times.
 
-prefix=/usr/bitkeeper
-
 # ATT SCCS doesn't respect the stored file mode.
 config.status: configure
 	chmod +x configure
-	./configure --no-create --prefix=$(prefix)
+	./configure --no-create --bindir=$(BK_BIN)
 
 config.h: stamp-h
 stamp-h: config.h.in config.status
@@ -444,29 +446,30 @@ substvars: substvars.in config.status
 
 # Touch this and die.  --lm
 install: all 
-	cp -f $(BINS) $(SCRIPTS) $(DATA) $(prefix)
-	@if [ ! -d $(prefix)/t ]; \
-	then	mkdir $(prefix)/t; \
+	test -d $(BK_BIN) || mkdir -p $(BK_BIN)
+	cp -f $(BINS) $(SCRIPTS) $(DATA) $(BK_BIN)
+	@if [ ! -d $(BK_BIN)/t ]; \
+	then	mkdir $(BK_BIN)/t; \
 	fi
 	-get -q t/SCCS/s.t.* t/setup t/cleanup
-	cp -f t/doit t/t.* t/setup t/cleanup $(prefix)/t
+	cp -f t/doit t/t.* t/setup t/cleanup $(BK_BIN)/t
 	./chksum $(BINS) $(SCRIPTS) $(DATA) t/doit t/t.* t/setup t/cleanup \
-		| sort > $(prefix)/MANIFEST
+		| sort > $(BK_BIN)/MANIFEST
 	@set `echo $(LINKTO)`; \
 	while [ "X$$1" != X ]; \
-	do	rm -f $(prefix)/$$1; \
-		ln $(prefix)/$$2 $(prefix)/$$1; \
+	do	rm -f $(BK_BIN)/$$1; \
+		ln $(BK_BIN)/$$2 $(BK_BIN)/$$1; \
 		shift; shift; \
 	done
-	@if [ ! -d $(prefix)/tmp ]; \
-	then	mkdir $(prefix)/tmp; chmod 777 $(prefix)/tmp; \
+	@if [ ! -d $(BK_BIN)/tmp ]; \
+	then	mkdir $(BK_BIN)/tmp; chmod 777 $(BK_BIN)/tmp; \
 	fi
 	-@set -e; \
 	for file in $(BINLINKS); \
 	do	rm -f /usr/bin/$$file; \
-		ln -s /usr/bitkeeper/$$file /usr/bin/$$file; \
+		ln -s $(BK_BIN)/$$file /usr/bin/$$file; \
 	done
-	cd gnu && $(MAKE) install
+	cd gnu && $(MAKE) BK_BIN=$(BK_BIN) install
 
 # The default .c.o rule is broken with some Makes.
 .c.o:
