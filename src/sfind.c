@@ -564,9 +564,6 @@ walk(char *dir, int level)
 	int	i;
 	char	buf[MAXPATH], *p;
 	fifo	dlist = {0, 0};
-#ifndef WIN32	/* Linux 2.3.x NFS bug, skip repeats. */
-	char	*lastEntry = 0;
-#endif                                 
 
 	/*
 	 * Special processing for .bk_skip file
@@ -630,13 +627,6 @@ walk(char *dir, int level)
 			goto done;
 		}
 		EACH (dh) {
-#ifndef WIN32		/* Linux 2.3.x NFS bug, skip repeats. */
-			if (lastEntry && streq(lastEntry, dh[i])) continue;
-			lastEntry = dh[i];
-#endif
-			if (streq(dh[i], ".") || streq(dh[i], "..")) {
-				continue;
-			}
 			concat_path(buf, dir, dh[i]);
 			unless (isdir(buf)) {
 				do_print("xxxx", buf, 0);
@@ -884,20 +874,11 @@ sccsdir(char *dir, int level, char **sdh, char buf[MAXPATH])
 	sccs	*s = 0;
 	q_item	*item;
 	int	i;
-#ifndef WIN32	/* Linux 2.3.x NFS bug, skip repeats. */
-	char	*lastEntry = 0;
-#endif                                 
 
 	/*
 	 * Get all the SCCS/?.files
 	 */
-	lastEntry = 0;
 	EACH (sdh) {
-#ifndef WIN32	/* Linux 2.3.x NFS bug, skip repeats. */
-		if (lastEntry && streq(lastEntry, sdh[i])) continue;
-		lastEntry = sdh[i];
-#endif
-		if (streq(sdh[i], ".") || streq(sdh[i], "..")) continue;
 		/*
 		 * Skip files with paths that are too long
 		 * pad = "/SCCS/" = 6
@@ -935,11 +916,6 @@ sccsdir(char *dir, int level, char **sdh, char buf[MAXPATH])
 	 */
 	dh = getdir(dir);
 	EACH (dh) {
-#ifndef WIN32	/* Linux 2.3.x NFS bug, skip repeats. */
-		if (lastEntry && streq(lastEntry, dh[i])) continue;
-		lastEntry = dh[i];
-#endif
-		if (streq(dh[i], ".") || streq(dh[i], "..")) continue;
 		if (patheq(dh[i], "SCCS")) continue;
 
 		/*

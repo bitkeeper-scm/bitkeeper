@@ -649,9 +649,6 @@ lftw_inner(char *path, char *base, struct stat *sb,
 {
 	char		**d;
 	int		i, mode, n, plus2 = strneq(path, "./", 2);
-#ifndef WIN32	/* Linux 2.3.x NFS bug, skip repeats. */
-	char	*lastEntry = 0;
-#endif
 
 	if ((d = getdir(path)) == NULL) {
 		perror(path);
@@ -659,13 +656,6 @@ lftw_inner(char *path, char *base, struct stat *sb,
 	}
 	if (base[-1] != '/') *base++ = '/';
 	EACH (d) {
-#ifndef WIN32	/* Linux 2.3.x NFS bug, skip repeats. */
-		if (lastEntry && streq(lastEntry, d[i])) continue;
-		lastEntry = d[i];
-#endif
-		if (streq(d[i], ".") || streq(d[i], "..")) {
-			continue;
-		}
 		if (match_globs(d[i], ignore)) {
 			debug((stderr, "SKIP\t%s\n", d[i]));
 			continue;

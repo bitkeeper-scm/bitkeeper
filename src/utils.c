@@ -916,7 +916,7 @@ getdir(char *dir)
 	DIR	*d;
 	struct	dirent   *e;
 	struct  stat sb1, sb2;
-
+	int	i, j;
 
 again:	if (lstat(dir, &sb1)) {
 		if (errno == ENOENT) return (NULL);
@@ -942,5 +942,24 @@ again:	if (lstat(dir, &sb1)) {
 		goto again;
 	}
 	sortLines(lines);
+
+	/*
+	 * Remove duplicate files that can result on some filesystems.
+	 * Also remove "." and ".." they always exist and are usually 
+	 * ignored.
+	 */
+	j = 1;
+	EACH(lines) {
+		if ((i > 1 && streq(lines[i-1], lines[i])) ||
+		    streq(lines[i], ".") ||
+		    streq(lines[i], "..")) {
+			free(lines[i]);
+			continue;
+		}
+		if (j < i) lines[j] = lines[i];
+		++j;
+	}
+	lines[j] = 0;
+
 	return (lines);
 }
