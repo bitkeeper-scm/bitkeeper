@@ -35,7 +35,7 @@ c) as a stand-alone daemon, i.e., "bkd \-d".
 .LP
 The method used depends on how the remote repository is named.
 See 
-.B bk parent
+.B bk url
 for details on the naming syntax.
 .LP
 The preferred method is via ssh, since ssh provides a secure channel.
@@ -46,6 +46,45 @@ If security is a requirement, use
 .B ssh
 to get to the daemon.  See below for configuring the daemon as a login
 shell.
+.SS WIN32
+.LP
+At this time, bkd support on win32 is as a stand-alone deamon only
+and is restricted to one bkd service per host.  To initially start the
+bkd service:
+.DS
+open a cmd shell
+bk bkd -p<port> -s<dir>
+.DE
+.LP
+Once the bkd has been started, the service manager can be used
+to stop and start the bkd service.  On Win2K:
+.DS
+start->control\ panel->Administrative\ Tools->services
+right click on the bkd service
+click stop/start button
+.DE
+On WinNT:
+.DS
+start->control\ panel->services
+click the start/stop button
+.DE
+To remove the bkd service from the service manager:
+.DS
+open a cmd shell
+bk bkd -R
+.DE
+.LP
+Once launched, upon reboot, the bkd service is automatically re-started.
+To disable this feature on Win2K:
+.DS
+right click
+select properties
+change "startup type" to disable
+.DE
+On WinNT:
+.DS
+go to start->control\ panel->services->startup
+select disable
 .SH COMMANDS
 .LP
 \*(BK client programs interact with the daemon directly using
@@ -314,6 +353,7 @@ does not ship
 since it is export controlled.
 .SH "SEE ALSO"
 .SA parent
+.SA url
 .SA Howto-bkd 1
 .\" help://anonymous
 .\" help://deamon
