@@ -933,7 +933,7 @@ again:	if (lstat(dir, &sb1)) {
 		perror(dir);
 		return(NULL);
 	}
-	lines = addLine(lines, "f");
+	lines = addLine(lines, strdup("f"));
 	assert(streq("f", lines[1]));
 	removeLineN(lines, 1);
 	while (e = readdir(d)) {
