@@ -13,6 +13,16 @@ specified changeset[s].  The tool displays the list of changes in each
 changeset, the ChangeSet history, and the differences found
 in each file contained in each changeset.
 .LP
+Csettool is very useful when tracking down bugs. For example, one might 
+be using
+.B histtool
+to view comments for a specific file inorder to track when a change
+was made to the file. Once the desired file is found, the user can
+then click on the "View ChangeSet" button in
+.B histtool
+to see what other files were modified at the same time that the file
+of interest was modified.
+.LP
 To see the changes for a particular file, click on the file name
 in the top left window and you will see:
 .TP 2
@@ -32,7 +42,7 @@ the upper-right window
 Use the space bar to move between diffs and files.  Each time you
 hit the space bar, the next diff is brought into view.  If you are
 on the last diff, the tool moves to the next file. The Next (>>)
-buttons and Previous (<<) buttons in the upper-left corner will also
+buttons and Previous (<<) buttons in the top menu bar will also
 allow you to browse the files and diffs.
 .SH BINDINGS
 .TP 16
@@ -90,6 +100,10 @@ Next file
 .B P
 Previous file
 .tp
+.B Double-Clicking
+Double clicking the left mouse button on a file in the file list brings 
+up histtool for the specified file.
+.tp
 .B MouseWheel
 Move wheel towards you to view next diff and away from you to view previous 
 diff
@@ -100,6 +114,7 @@ are all shown color coded in one window.
 .SH "SEE ALSO"
 .SA cset 1
 .SA difftool 1
+.SA histtool 1
 .SA ranges 1
 .SH CATEGORY
 .B GUI-tools
