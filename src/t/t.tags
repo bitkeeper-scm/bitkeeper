@@ -84,7 +84,7 @@ bk tag $Q 'foo|bar' && {
 echo OK
 
 test $PLATFORM != "WIN32" && {
-echo $N "Tags may not contain a  \\n  .................................$NL"
+echo $N "Tags may not contain a newline ..............................$NL"
 bk tag $Q 'foo
 bar' && {
 	echo Should have failed

@@ -68,6 +68,9 @@ case "X`uname -s`" in
 		export CC LD 
 		CCXTRA="-DHAVE_GMTOFF -no-cpp-precomp"
 		;;
+	XHP-UX)
+		CCXTRA=-Dhpux
+		;;
 	*)
 		CHECK=1
 		;;

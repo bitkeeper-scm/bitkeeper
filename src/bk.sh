@@ -1156,17 +1156,19 @@ _install()
 		set -x
 	}
 	FORCE=0
-	while getopts f opt
+	CHMOD=YES
+	while getopts df opt
 	do
 		case "$opt" in
+		d) CHMOD=NO;;	# do not change permissions, dev install
 		f) FORCE=1;;	# force
-		*) echo "usage: bk install [-f] <destdir>"
+		*) echo "usage: bk install [-d] [-f] <destdir>"
 	 	   exit 1;;
 		esac
 	done
 	shift `expr $OPTIND - 1`
 	test X"$1" = X -o X"$2" != X && {
-		echo "usage: bk install [-f] <destdir>"
+		echo "usage: bk install [-d] [-f] <destdir>"
 		exit 1
 	}
 	DEST="$1"
@@ -1216,9 +1218,11 @@ _install()
 	done
 	# permissions
 	cd "$DEST"
-	(find . | xargs chown root) 2> /dev/null
-	(find . | xargs chgrp root) 2> /dev/null
-	find . | xargs chmod -w
+	test $CHMOD = YES && {
+		(find . | xargs chown root) 2> /dev/null
+		(find . | xargs chgrp root) 2> /dev/null
+		find . | xargs chmod -w
+	}
 	exit 0
 }
 
