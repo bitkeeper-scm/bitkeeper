@@ -8,7 +8,7 @@ RANLIB=ranlib
 	bk get -q $@
 
 OBJS = aes.o ampi.o base64.o bits.o crypt.o ctr.o hash.o hmac.o md5.o \
-	mem.o mpi.o packet.o prime.o rsa.o rsa_sys.o sprng.o yarrow.o \
+	mem.o mpi.o packet.o prime.o rsa.o rsa_sys.o yarrow.o randseed.o \
 	demos/test.o
 
 libtomcrypt.a: $(OBJS)
@@ -24,7 +24,7 @@ clobber:
 	rm -f libtomcrypt.a
 
 aes.o:		aes.c mycrypt.h mycrypt_cfg.h mpi.h mpi-config.h mpi-types.h \
-  		aes_tab.c
+		aes_tab.c
 ampi.o:		ampi.c mycrypt.h mycrypt_cfg.h mpi.h mpi-config.h mpi-types.h
 base64.o:	base64.c mycrypt.h mycrypt_cfg.h mpi.h mpi-config.h mpi-types.h
 bits.o:		bits.c mycrypt.h mycrypt_cfg.h mpi.h mpi-config.h mpi-types.h
@@ -39,6 +39,6 @@ packet.o:	packet.c mycrypt.h mycrypt_cfg.h mpi.h mpi-config.h mpi-types.h
 prime.o:	prime.c mycrypt.h mycrypt_cfg.h mpi.h mpi-config.h mpi-types.h
 rsa.o:		rsa.c mycrypt.h mycrypt_cfg.h mpi.h mpi-config.h mpi-types.h
 rsa_sys.o:	rsa_sys.c mycrypt.h mycrypt_cfg.h mpi.h mpi-config.h \
-  		mpi-types.h
-sprng.o:	sprng.c mycrypt.h mycrypt_cfg.h mpi.h mpi-config.h mpi-types.h
+		mpi-types.h
 yarrow.o:	yarrow.c mycrypt.h mycrypt_cfg.h mpi.h mpi-config.h mpi-types.h
+randseed.o:	randseed.c randseed.h

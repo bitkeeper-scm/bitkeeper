@@ -60,6 +60,9 @@ tar -C$D/mingw -xzf $W32TOOLS/w32api-2.5.tar.gz
 echo extract perl
 tar -C$D -xzf $W32TOOLS/perl.tar.gz
 
+echo extract gperf
+tar -C$D -xzf $W32TOOLS/gperf-3.0.1.tar.gz
+
 echo extract groff
 mkdir $D/groff
 tar -C$D/groff -xzf $W32TOOLS/groff-1.19.1-alpha-bin.tar.gz

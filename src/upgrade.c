@@ -22,7 +22,6 @@ private	int	upgrade_fetch(char *name, char *file);
 extern	int	upgrade_decrypt(char *infile, char *outfile);
 
 extern	char	*bin;
-extern	int	bk_commercial;
 
 private	char	*urlbase = 0;
 private	int	flags = 0;
