@@ -32,7 +32,8 @@ configure: tcl/$S/configure tk/$S/configure
 	for i in tcl/$S tk/$S; do \
 		cd $(HERE)/$$i; \
 		test -f configure || bk -Ur get -qS; \
-		CFLAGS=-O2 ./configure --enable-64bit \
+		CFLAGS='-O2 -DBK' \
+		./configure --enable-64bit \
 		    --disable-load --disable-shared; \
 		sed -e s/X11R4/X11R6/ < Makefile > MK; \
 		if [ "X$(OSTYPE)" = Xhpux11.00 ]; then \
@@ -72,6 +73,7 @@ bin/tclsh: tcl/$S/Makefile
 	rm -rf bin/tclsh lib/tcl*
 	cd tcl/$S && \
 	$(MAKE) prefix= exec_prefix= INSTALL_ROOT=../.. \
+	    XLIBS=../../../../tomcrypt/libtomcrypt.a \
 	    install-binaries install-libraries
 	rm -rf include usr lib/tcl8.4/tcltest1.0
 	mv bin/tclsh* bin/tclsh$(EXE)
@@ -81,6 +83,7 @@ bin/bkgui: tk/$S/Makefile
 	rm -rf bin/bkgui lib/tk*
 	cd tk/$S && \
 	$(MAKE) prefix= exec_prefix= INSTALL_ROOT=../.. \
+	    XLIBS=../../../../tomcrypt/libtomcrypt.a \
 	    install-binaries install-libraries
 	rm -rf include usr lib/tk8.4/images
 	cd lib/tcl8.4/encoding/; \

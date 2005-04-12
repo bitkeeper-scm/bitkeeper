@@ -1,6 +1,8 @@
 #include "system.h"
 #include "sccs.h"
 #include "tomcrypt/mycrypt.h"
+#include "tomcrypt/randseed.h"
+#include "cmd.h"
 
 extern char *bin;
 
@@ -10,8 +12,10 @@ private	int	validatedata(rsa_key *public, char *sign);
 private	int	cryptotest(void);
 private	int	encrypt_stream(rsa_key *public, FILE *fin, FILE *fout);
 private	int	decrypt_stream(rsa_key	*secret, FILE *fin, FILE *fout);
-
 private void	loadkey(char *file, rsa_key *key);
+
+private	int		wprng = -1;
+private	prng_state	*prng;
 
 /*
  * -i bits secret-key public-key
@@ -84,8 +88,7 @@ crypto_main(int ac, char **av)
 	setmode(0, _O_BINARY);
 	register_cipher(&rijndael_desc);
 	register_hash(&md5_desc);
-	register_prng(&yarrow_desc);
-	register_prng(&sprng_desc);
+	wprng = rand_getPrng(&prng);
 
 	switch (mode) {
 	    case 'i':
@@ -126,15 +129,11 @@ make_keypair(int bits, char *secret, char *public)
 	rsa_key	key;
 	unsigned long	size;
 	FILE	*f;
-	prng_state	prng;
 	char	out[4096];
 
-	if (rng_make_prng(128, find_prng("yarrow"), &prng, 0)) {
- err:		fprintf(stderr, "crypto: %s\n", crypt_error);
+	if (rsa_make_key(prng, wprng, bits/8, 655337, &key)) {
+err:		fprintf(stderr, "crypto: %s\n", crypt_error);
 		return (1);
-	}
-	if (rsa_make_key(&prng, find_prng("yarrow"), bits/8, 655337, &key)) {
-		goto err;
 	}
 	size = sizeof(out);
 	if (rsa_export(out, &size, PK_PRIVATE_OPTIMIZED, &key)) goto err;
@@ -204,7 +203,6 @@ hash_filehandle(int hash, FILE *in, unsigned char *dst)
 private	int
 signdata(rsa_key *key)
 {
-	int	wprng = find_prng("sprng");
 	int	hash = find_hash("md5");
 	unsigned long	hashlen, rsa_size, x, y;
 	unsigned char	rsa_in[4096], rsa_out[4096];
@@ -228,7 +226,7 @@ signdata(rsa_key *key)
 
 	/* pad it */
 	x = sizeof(rsa_in);
-	if (rsa_signpad(rsa_in, hashlen, rsa_out, &x, wprng, 0)) goto err;
+	if (rsa_signpad(rsa_in, hashlen, rsa_out, &x, wprng, prng)) goto err;
 
 	/* sign it */
 	rsa_size = sizeof(rsa_in);
@@ -565,7 +563,6 @@ signed_saveFile(char *filename, char *data)
 private int
 encrypt_stream(rsa_key *key, FILE *fin, FILE *fout)
 {
-	int	wprng = find_prng("sprng");
 	int	cipher = register_cipher(&rijndael_desc);
 	long	inlen, outlen, blklen;
 	int	i;
@@ -580,11 +577,11 @@ encrypt_stream(rsa_key *key, FILE *fin, FILE *fout)
 	inlen = i;
 
 	blklen = cipher_descriptor[cipher].block_length;
-	rng_get_bytes(skey, inlen, 0);
-	rng_get_bytes(sym_IV, blklen, 0);
+	rand_getBytes(skey, inlen);
+	rand_getBytes(sym_IV, blklen);
 
 	outlen = sizeof(out);
-	if (rsa_encrypt_key(skey, inlen, out, &outlen, 0, wprng, key)) {
+	if (rsa_encrypt_key(skey, inlen, out, &outlen, prng, wprng, key)) {
 err:		fprintf(stderr, "crypto encrypt: %s\n", crypt_error);
 		return (1);
 	}
@@ -686,4 +683,13 @@ upgrade_decrypt(char *infile, char *outfile)
 	fclose(fin);
 	fclose(fout);
 	return (0);
+}
+
+/*
+ * only setup the special key in the environment for restricted commands
+ */
+void
+bk_preSpawnHook(int flags, char *const av[])
+{
+	rand_setSeed((flags & _P_DETACH) ? 0 : 1);
 }

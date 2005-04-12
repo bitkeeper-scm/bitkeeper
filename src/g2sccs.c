@@ -8,7 +8,7 @@ static void	print_name(char *);
  * _g2sccs - convert gfile names to sfile names
  */
 int
-_g2sccs_main(int ac, char **av)
+g2sccs_main(int ac, char **av)
 {
 	int	i;
 

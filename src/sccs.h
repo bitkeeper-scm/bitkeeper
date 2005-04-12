@@ -1198,6 +1198,7 @@ int	global_locked(void);
 void	progressbar(int n, int max, char *msg);
 char	*signed_loadFile(char *filename);
 int	signed_saveFile(char *filename, char *data);
+void	bk_preSpawnHook(int flags, char *const av[]);
 
 void	align_diffs(u8 *vec, int n, int (*compare)(int a, int b),
     int (*is_whitespace)(int i));
@@ -1206,10 +1207,11 @@ int	diff_algor(int m, int n, u8 *lchg, u8 *rchg,
     int (*compare)(int a, int b));
 int   diffline(char *left, char *right);
 
-extern char *bk_vers;
-extern char *bk_utc;
-extern char *bk_time;
-extern char *bk_platform;
+extern	char	*bk_vers;
+extern	char	*bk_utc;
+extern	char	*bk_time;
+extern	char	*bk_platform;
+extern	int	bk_commercial;
 
 int	getMsg(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf);
 #endif	/* _SCCS_H_ */

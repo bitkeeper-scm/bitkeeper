@@ -5,6 +5,15 @@
  * Copyright (c) 2001 Larry McVoy & Andrew Chang       All rights reserved.
  */
 
+/*
+ * XXX This file should be moved out of the src/port directory and changed
+ * to just use 'rand_getBytes()'.  That is much faster than reading
+ * /dev/random and has good code for Windows and machines without /dev/random.
+ *
+ * almostUnique() should use the same routine.
+ */
+
+
 #ifndef WIN32
 /*
  * Dig out more information to make the file unique and stuff it in buf.
