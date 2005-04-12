@@ -73,7 +73,7 @@ tar cf TAR copy
 cd copy
 echo OK
 
-test "X`uname -s`" = XDarwin || {
+test "X`uname -s`" = XDarwin -o "X`uname -n`" = "Xhp-ia64" || {
 echo $N Make sure shell escapes to an interactive shell work ........$NL
 # XXX WIN32 note: the following construct does not work on WIN32
 # If we redirect stdin, we will lost it after we spawn the cygwin shell

@@ -355,5 +355,5 @@ bk new $Q foo
 bk commit $Q -yfoo
 cp SCCS/s.foo SCCS/s.foo2
 bk -r check -afc 2> $HERE/out
-grep -q "Are one of these files copied?" $HERE/out || { echo failed; exit 1; }
+grep -q "Is one of these files copied?" $HERE/out || { echo failed; exit 1; }
 echo OK

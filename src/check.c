@@ -230,7 +230,7 @@ check_main(int ac, char **av)
 				if (sameFiles(sfile, s->sfile)) {
 					fprintf(stderr,
 					    "%s and %s are identical. "
-					    "Are one of these files copied?\n",
+					    "Is one of these files copied?\n",
 					    s->sfile, sfile);
 				} else {
 					fprintf(stderr,

@@ -259,7 +259,7 @@ rebuild:
 	-@rm -f $(LIBS) bkdsubstr bkhelp.txt bkmsg.txt a.out
 	-@rm -f core bkver.c tclwrap tclwrap.o blowfish.o $(WIN_TMP)
 	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR)
-	-@rm -rf tmp
+	-@rm -rf tmp bkl5_hashs.h
 	-@for i in ../doc ../man gnu gui utils win32 mdbm zlib tomcrypt libc; \
 	do	cd $(HERE)/$$i && $(MAKE) clobber; \
 	done

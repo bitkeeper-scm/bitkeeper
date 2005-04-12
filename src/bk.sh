@@ -171,7 +171,7 @@ _superset() {
 		sed 's/^/    /' < $TMP2 >> $TMP1
 		EXIT=1
 	}
-	find BitKeeper/tmp -name 'park*' -print > $TMP2
+	bk _find BitKeeper/tmp -name 'park*' > $TMP2
 	test -s $TMP2 && {
 		test $LIST = NO && {
 			rm -f $TMP1 $TMP2
@@ -182,7 +182,7 @@ _superset() {
 		EXIT=1
 	}
 	rm -f $TMP2
-	test -d PENDING && find PENDING -type f -print > $TMP2
+	test -d PENDING &&  bk _find PENDING -type f > $TMP2
 	test -s $TMP2 && {
 		test $LIST = NO && {
 			rm -f $TMP1 $TMP2
@@ -193,7 +193,7 @@ _superset() {
 		EXIT=1
 	}
 	rm -f $TMP2
-	test -d RESYNC && find RESYNC -type f -print > $TMP2
+	test -d RESYNC &&  bk _find RESYNC -type f > $TMP2
 	test -s $TMP2 && {
 		test $LIST = NO && {
 			rm -f $TMP1 $TMP2
