@@ -1478,3 +1478,37 @@ bk commit $S -a -yCset_h3 2> $HERE/out
 grep -q "Cannot expand shell path" $HERE/out || { echo failed; exit 1; }
 echo OK
 fi
+
+echo $N Check that delta does NOT work in repo with trigger .........$NL
+# create a pre-delta trigger that should prevent delta from working and 
+# initial sanity check
+cd $HERE
+no_logging proj3
+echo foo >foo
+bk new $Q foo
+cd $HERE/proj3
+mkdir BitKeeper/triggers
+cat >BitKeeper/triggers/pre-delta <<EOF
+#!/bin/bash
+exit 1
+EOF
+chmod +x BitKeeper/triggers/*
+cd $HERE/proj3
+bk edit $Q foo 
+bk delta $Q -yfoo foo && {
+	echo Failed
+	exit 1 
+}
+echo OK
+
+echo $N Check delta does NOT work with trigger NOT checked out ......$NL
+cd $HERE/proj3
+# we have to ignore the pre-delta trigger (since it exit 1) when
+# checking in the pre-delta trigger...
+BK_NO_TRIGGERS=1 bk new $Q BitKeeper/triggers/pre-delta || exit 1
+bk edit $Q foo 
+bk delta $Q -ybar foo 2>/dev/null && {
+	echo "failed (bug 2005-04-13-001)"
+	exit 1
+}
+echo OK

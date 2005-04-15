@@ -160,7 +160,7 @@ trigger(char *cmd, char *when)
 	 * XXX - we should see if we need to fork this process before
 	 * doing so.  FIXME.
 	 */
-	sys("bk", "get", "-q", triggerDir, SYS);
+	sys("bk", "get", "-Sq", triggerDir, SYS);
 
 	/* run post-triggers with a read lock */
 	if (streq(when, "post")) repository_downgrade();
@@ -180,8 +180,7 @@ trigger(char *cmd, char *when)
 	 * XXX TODO need to think about the split root case
 	 */
 	sprintf(buf, "%s-%s", when, what);
-	triggers = getTriggers(triggerDir, buf);
-	unless (triggers) {
+	unless (triggers = getTriggers(triggerDir, buf)) {
 		if (streq(what, "resolve")) chdir(RESYNC2ROOT);
 		if (getenv("BK_SHOW_TRIGGERS")) {
 			ttyprintf("No %s triggers in %s \n", buf, triggerDir);
@@ -190,7 +189,7 @@ trigger(char *cmd, char *when)
 	}
 
 	/*
-	 * Sort it and run the triggers
+	 * Run the triggers, they are already sorted by getdir().
 	 */
 	unless (getenv("BK_STATUS")) putenv("BK_STATUS=UNKNOWN");
 	unless (strneq(cmd, "remote ", 7))  {
