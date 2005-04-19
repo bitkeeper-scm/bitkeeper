@@ -442,7 +442,7 @@ prunekey(sccs *s, remote *r, int outfd, int flags,
 					p = strchr(key, '|');
 					assert(p);
 					*p++ = 0;
-					write(outfd, key, strlen(key));
+					writen(outfd, key, strlen(key));
 					write(outfd, "\n", 1);
 					if (*p != '|') {
 						k[-1] = 0;
@@ -452,7 +452,7 @@ prunekey(sccs *s, remote *r, int outfd, int flags,
 				rcsets++;
 			}
 			if (flags & PK_RKEY) {
-				write(outfd, k, strlen(k));
+				writen(outfd, k, strlen(k));
 				write(outfd, "\n", 1);
 			}
 		}
@@ -470,7 +470,7 @@ prunekey(sccs *s, remote *r, int outfd, int flags,
 	if (flags & PK_RREV) {
 		int	i;
 		EACH(tags) {
-			write(outfd, tags[i], strlen(tags[i]));
+			writen(outfd, tags[i], strlen(tags[i]));
 			write(outfd, "\n", 1);
 		}
 		freeLines(tags, free);
@@ -480,17 +480,17 @@ empty:	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_RED) continue;
 		if (flags & PK_LSER) {
 			sprintf(key, "%u\n", d->serial);
-			write(outfd, key, strlen(key));
+			writen(outfd, key, strlen(key));
 		}
 		if (flags & PK_LREV) {
 			if (d->type == 'D') {
 				sprintf(key, "%s\n", d->rev);
-				write(outfd, key, strlen(key));
+				writen(outfd, key, strlen(key));
 			}
 		}
 		if (flags & PK_LKEY) {
 			sccs_sdelta(s, d, key);
-			write(outfd, key, strlen(key));
+			writen(outfd, key, strlen(key));
 			write(outfd, "\n", 1);
 		}
 		local++;
@@ -503,7 +503,7 @@ empty:	for (d = s->table; d; d = d->next) {
 			unless (d->flags & D_SYMBOLS) continue;
 			tag = sccs_d2tag(s, d);
 			if (tag) {
-				write(outfd, tag, strlen(tag));
+				writen(outfd, tag, strlen(tag));
 				write(outfd, "\n", 1);
 			}
 			

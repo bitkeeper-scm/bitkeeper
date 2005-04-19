@@ -515,7 +515,7 @@ maybe_trigger(remote *r)
 		if ((read_blk(r, &buf[n], 1) != 1) ||
 		    (buf[n] != "@TRIGGER INFO@\n"[n])) {
 			buf[n] = 0;
-			if (opts.verbose) write(2, buf, n);
+			if (opts.verbose) writen(2, buf, n);
 			return (0);
 		}
 	}
@@ -586,7 +586,7 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar)
 	if (streq(buf, "@TAKEPATCH INFO@")) {
 		while ((n = read_blk(r, buf, 1)) > 0) {
 			if (buf[0] == BKD_NUL) break;
-			if (opts.verbose) write(2, buf, n);
+			if (opts.verbose) writen(2, buf, n);
 		}
 		getline2(r, buf, sizeof(buf));
 		if (buf[0] == BKD_RC) {
@@ -619,7 +619,7 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar)
 					goto done;
 				}
 			} else if (opts.verbose) {
-				write(2, buf, n);
+				writen(2, buf, n);
 			}
 		}
 		getline2(r, buf, sizeof(buf));

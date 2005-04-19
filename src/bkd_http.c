@@ -653,7 +653,7 @@ http_cset(char *rev)
 		sccs_prs(cset, 0, 0, &dspec[2], stdout);
 		sccs_free(cset);
 		fflush(stdout);
-		EACH(lines) write(fd, lines[i], strlen(lines[i]));
+		EACH(lines) writen(fd, lines[i], strlen(lines[i]));
 		freeLines(lines, free);
 		close(fd);
 		waitpid(child, &i, 0);
@@ -1766,7 +1766,7 @@ has_temp_license()
 	unless (select(fd+1, 0, &fds, 0, &delay) > 0 && FD_ISSET(fd, &fds))
 		return 0;
 
-	if (write(fd, "MMI?", 4) == 4) {
+	if (writen(fd, "MMI?", 4) == 4) {
 		ack[4] = 0;
 		FD_ZERO(&fds);
 		FD_SET(fd, &fds);
@@ -1906,7 +1906,7 @@ http_license(char *page)
 	if (expires > 0 && expires < 480) {
 		/* also check the ip address we're coming from */
 		sprintf(arg, "S%03d", expires);
-		write(licenseServer[0], arg, 4);
+		writen(licenseServer[0], arg, 4);
 	}
 	exit(0);
 }

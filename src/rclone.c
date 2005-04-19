@@ -188,7 +188,7 @@ rclone_part2(char **av, opts opts, remote *r, char **envVar)
 	if (streq(buf, "@SFIO INFO@")) {
 		while ((n = read_blk(r, buf, 1)) > 0) {
 			if (buf[0] == BKD_NUL) break;
-			if (opts.verbose) write(2, buf, n);
+			if (opts.verbose) writen(2, buf, n);
 		}
 		getline2(r, buf, sizeof(buf));
 		if (buf[0] == BKD_RC) {

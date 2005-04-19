@@ -212,7 +212,7 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	assert(fd >= 0);
 	if (opts.gzip) gzip_init(opts.gzip);
 	while ((n = getline2(r, buf, sizeof(buf))) > 0) {
-		write(fd, buf, n);
+		writen(fd, buf, n);
 		write(fd, "\n", 1);
 		if (streq("@END PROBE@", buf)) break;
 	}

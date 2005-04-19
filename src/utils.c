@@ -113,7 +113,9 @@ writen(int to, char *buf, int size)
 
 	for (done = 0; done < size; ) {
 		n = write(to, buf + done, size - done);
-		if (n <= 0) {
+		if ((n == -1) && ((errno == EINTR) || (errno == EAGAIN))) {
+			usleep(10000);
+		} else if (n <= 0) {
 			break;
 		}
 		done += n;
@@ -207,7 +209,7 @@ write_blk(remote *r, char *buf, int len)
 	if (r->isSocket) {
 		return (send(r->wfd, buf, len, 0));
 	} else {
-		return (write(r->wfd, buf, len));
+		return (writen(r->wfd, buf, len));
 	}
 }
 

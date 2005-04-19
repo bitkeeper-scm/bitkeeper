@@ -2,7 +2,7 @@
  * Copyright (c) 2001 Larry McVoy & Andrew Chang       All rights reserved.
  */
 #include "../bkd.h"
-#define Respond(s)	write(licenseServer[1], s, 4)
+#define Respond(s)	writen(licenseServer[1], s, 4)
 
 extern	time_t	requestEnd;
 
@@ -91,7 +91,7 @@ requestWebLicense()
 			    LICENSE_REQUEST,
 			    sccs_gethost(), 
 			    Opts.port ? Opts.port : BK_PORT);
-			write(f, buf, strlen(buf));
+			writen(f, buf, strlen(buf));
 			read(f, buf, sizeof buf);
 			close(f);
 		}

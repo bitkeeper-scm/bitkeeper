@@ -12,9 +12,6 @@ int		licenseServer[2];	/* bkweb license pipe */
 time_t		licenseEnd = 0;		/* when a temp bk license expires */
 time_t		requestEnd = 0;
 
-#define	Respond(s)	write(licenseServer[1], s, 4)
-
-
 int
 bkd_main(int ac, char **av)
 {
