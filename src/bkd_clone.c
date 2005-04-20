@@ -14,7 +14,7 @@ cmd_clone(int ac, char **av)
 {
 	int	c, rc;
 	int	gzip = 0, delay = -1;
-	char 	*p, *rev = 0;
+	char 	*t, *p, *rev = 0;
 
 	/*
 	 * If BK_REMOTE_PROTOCOL is not defined,
@@ -33,7 +33,12 @@ cmd_clone(int ac, char **av)
 		drain();
 		return (1);
 	}
-
+#ifndef	WIN32
+	if ((t = user_preference("bufferclone")) &&
+	    (strieq(t, "yes") || streq(t, "1"))) {
+		Opts.buffer_clone = 1;
+	}
+#endif
 	while ((c = getopt(ac, av, "qr|w|z|")) != -1) {
 		switch (c) {
 		    case 'w':

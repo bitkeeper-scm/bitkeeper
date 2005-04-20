@@ -267,8 +267,7 @@ proj_relpath(project *p, char *path)
 MDBM *
 proj_config(project *p)
 {
-	unless (p) p = curr_proj();
-	unless (p) return (0);
+	unless (p || (p = curr_proj())) p = proj_fakenew();
 	unless (p->config) p->config = loadConfig(proj_root(p));
 	return (p->config);
 }

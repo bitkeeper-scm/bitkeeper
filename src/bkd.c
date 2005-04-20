@@ -15,7 +15,6 @@ private char	**exCmds;
 int
 bkd_main(int ac, char **av)
 {
-	char	*p;
 	int	port = 0;
 	int	daemon = 0;
 	int	i, c;
@@ -89,11 +88,6 @@ bkd_main(int ac, char **av)
 		fprintf(stderr,
 "bkd: The option -b to buffer clone data is not available on Windows.\n");
 		return (1);
-	}
-#else
-	if ((p = user_preference("bufferclone")) &&
-	    (strieq(p, "yes") || streq(p, "1"))) {
-		Opts.buffer_clone = 1;
 	}
 #endif
 	if ((Opts.start || Opts.remove) && !win32()) {
