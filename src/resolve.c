@@ -60,7 +60,6 @@ int
 resolve_main(int ac, char **av)
 {
 	int	c;
-	int	comment = 0;	/* set if they used -y */
 	static	opts opts;	/* so it is zero */
 	char	*checkout;
 
@@ -93,7 +92,8 @@ resolve_main(int ac, char **av)
 		    case 'r': opts.remerge = 1; break;		/* doc 2.0 */
 		    case 't': opts.textOnly = 1; break;		/* doc 2.0 */
 		    case 'y': 					/* doc 2.0 */
-			opts.comment = optarg; comment = 1; break;
+			unless (opts.comment = optarg) opts.comment = "";
+			break;
 		    case '1': opts.pass1 = 0; break;		/* doc 2.0 */
 		    case '2': opts.pass2 = 0; break;		/* doc 2.0 */
 		    case '3': opts.pass3 = 0; break;		/* doc 2.0 */
@@ -119,6 +119,7 @@ resolve_main(int ac, char **av)
 		bk_proj = proj_init(0);
 	}
 
+	unless (opts.textOnly) putenv("BK_GUI=WANT_CITOOL");
 	if (opts.pass3 && !opts.textOnly && !gui_useDisplay()) {
 		opts.textOnly = 1; 
 	}
@@ -126,14 +127,6 @@ resolve_main(int ac, char **av)
 	    !opts.textOnly && !opts.quiet && !win32() && gui_useDisplay()) {
 		fprintf(stderr,
 		    "Using %s as graphical display\n", gui_displayName());
-	}
-
-	if (opts.automerge) {
-		unless (comment || opts.comment) opts.comment = "Automerge";
-		opts.textOnly = 1;	/* Good idea??? */
-	}
-	unless (comment || opts.comment) {
-		opts.comment = "Merge";
 	}
 
 	checkout = user_preference("checkout");
@@ -1699,7 +1692,6 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		if (opts->log) {
 			fprintf(opts->log, "==== Pass 3 autocommits ====\n");
 		}
-		unless (opts->comment || pending(1)) opts->comment = "Merge";
 		unless (opts->noconflicts) ok_commit(0);
 		commit(opts);
 		return (0);
@@ -2153,10 +2145,15 @@ commit(opts *opts)
 	unless (opts->resolved || opts->renamed) cmds[++i] = "-F";
 	if (opts->quiet) cmds[++i] = "-s";
 	if (opts->comment) {
-		cmt = malloc(strlen(opts->comment) + 10);
-
-		sprintf(cmt, "-y%s", opts->comment);
-		cmds[++i] = cmt;
+	    	/* Only do comments if they really gave us one */
+		if( opts->comment[0]) {
+			cmt = malloc(strlen(opts->comment) + 10);
+			sprintf(cmt, "-y%s", opts->comment);
+			cmds[++i] = cmt;
+		}
+	} else if (exists("SCCS/c.ChangeSet")) {
+		// XXX - shouldn't this be automagic?
+		cmds[++i] = "-YSCCS/c.ChangeSet";
 	}
 	cmds[++i] = 0;
 	i = spawnvp_ex(_P_WAIT, "bk", cmds);

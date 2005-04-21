@@ -21,7 +21,8 @@ typedef	struct {
 } opts;
 
 private int	pull(char **av, opts opts, remote *r, char **envVar);
-private	int	resolve(opts opts, remote *r);
+private void	resolve_comments(remote *r);
+private	int	resolve(opts opts);
 private	int	takepatch(opts opts, int gzip, remote *r);
 
 private void
@@ -385,9 +386,10 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 			}
 			goto done;
 		}
+		resolve_comments(r);
 		unless (opts.noresolve) {
 			putenv("FROM_PULLPUSH=YES");
-			if (resolve(opts, r)) {
+			if (resolve(opts)) {
 				rc = 1;
 				putenv("BK_STATUS=CONFLICTS");
 				goto done;
@@ -504,17 +506,40 @@ takepatch(opts opts, int gzip, remote *r)
 	return (100);
 }
 
-private	int
-resolve(opts opts, remote *r)
+private void
+resolve_comments(remote *r)
 {
-	char	*cmd[20];
-	int	i;
-	char	buf[MAXPATH*2];
-	char	pwd[MAXPATH];
-	char	from[MAXPATH];
-	char	*f;
+	FILE	*f;
+	char	*u, *c;
 	char	*h = sccs_gethost();
-	int	status;
+	char	buf[MAXPATH];
+
+	getcwd(buf, sizeof(buf));
+	if (r->host) {
+		u = remote_unparse(r);
+	} else {
+		u = aprintf("%s:%s", h, r->path);
+	}
+	c = aprintf("Merge %s\ninto  %s:%s\n", u, h, buf);
+	free(u);
+	sprintf(buf, "%s/%s", ROOT2RESYNC, CHANGESET);
+	assert(exists(buf));
+	u = strrchr(buf, '/');
+	u[1] = 'c';
+	if (f = fopen(buf, "w")) {
+		fputs(c, f);
+		fclose(f);
+	} else {
+		perror(buf);
+	}
+	free(c);
+}
+
+private	int
+resolve(opts opts)
+{
+	int	i, status;
+	char	*cmd[20];
 
 	cmd[i = 0] = "bk";
 	cmd[++i] = "resolve";
@@ -522,19 +547,6 @@ resolve(opts opts, remote *r)
 	if (opts.textOnly) cmd[++i] = "-t";
 	if (opts.automerge) cmd[++i] = "-a";
 	if (opts.debug) cmd[++i] = "-d";
-	getcwd(pwd, sizeof(pwd));
-	if (r->host) {
-		f = remote_unparse(r);
-	} else {
-		sprintf(from, "%s:%s", h, r->path);
-		f = from;
-	}
-	sprintf(buf, "-yMerge %s into %s:%s", f, h ? h : "?", pwd);
-	if (strlen(buf) > 74) {
-		sprintf(buf, "-yMerge %s\ninto %s:%s", f, h ? h : "?", pwd);
-	}
-	if (r->host) free(f);
-	cmd[++i] = buf;
 	cmd[++i] = 0;
 	unless (opts.quiet) {
 		fprintf(stderr, "Running resolve to apply new work ...\n");
