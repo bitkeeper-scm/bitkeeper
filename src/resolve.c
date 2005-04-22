@@ -2146,10 +2146,8 @@ commit(opts *opts)
 	if (opts->quiet) cmds[++i] = "-s";
 	if (opts->comment) {
 	    	/* Only do comments if they really gave us one */
-		if( opts->comment[0]) {
-			cmt = malloc(strlen(opts->comment) + 10);
-			sprintf(cmt, "-y%s", opts->comment);
-			cmds[++i] = cmt;
+		if (opts->comment[0]) {
+			cmt = cmds[++i] = aprintf("-y%s", opts->comment);
 		}
 	} else if (exists("SCCS/c.ChangeSet")) {
 		// XXX - shouldn't this be automagic?
@@ -2157,12 +2155,11 @@ commit(opts *opts)
 	}
 	cmds[++i] = 0;
 	i = spawnvp_ex(_P_WAIT, "bk", cmds);
+	if (cmt) free(cmt);
 	if (WIFEXITED(i) && !WEXITSTATUS(i)) {
-		if (cmt) free(cmt);
 		opts->didMerge = opts->willMerge;
 		return;
 	}
-	if (cmt) free(cmt);
 	fprintf(stderr, "Commit aborted, no changes applied.\n");
 	resolve_cleanup(opts, 0);
 }

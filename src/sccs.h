@@ -1006,7 +1006,7 @@ char	*whichp(char *prog, int internal, int external);
 int	which(char *prog, int internal, int external);
 int	readn(int from, char *buf, int size);
 void	send_request(int fd, char * request, int len);
-int	writen(int to, char *buf, int size);
+int	writen(int to, void *buf, int size);
 long	almostUnique(int harder);
 int	repository_downgrade(void);
 int	repository_locked(project *p);

@@ -106,7 +106,7 @@ in(char *buf, int n)
 }
 
 int
-writen(int to, char *buf, int size)
+writen(int to, void *buf, int size)
 {
 	int	done;
 	int	n;
