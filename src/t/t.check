@@ -403,3 +403,14 @@ test -s E2 && {
 	exit 1
 }
 echo OK
+
+echo $N bk check should detect copied sfile .........................$NL
+cd $HERE
+no_logging proj2
+echo "hi" > foo
+bk new $Q foo
+bk commit $Q -yfoo
+cp SCCS/s.foo SCCS/s.foo2
+bk -r check -afc 2> $HERE/out
+grep -q "Is one of these files copied?" $HERE/out || { echo failed; exit 1; }
+echo OK

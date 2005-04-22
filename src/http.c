@@ -395,13 +395,13 @@ http_send(remote *r, char *msg,
 	header = aprintf(
 	    "POST http://%s:%d/cgi-bin/%s HTTP/1.0\r\n"
 	    "%s"			/* optional proxy authentication */
-	    "User-Agent: %s\r\n"
+	    "User-Agent: BitKeeper-%s/%s\r\n"
 	    "Accept: text/html\r\n"
 	    "Host: %s:%d\r\n"
 	    "Content-type: application/octet-stream\r\n"
 	    "Content-length: %u\r\n"
 	    "\r\n",
-	    r->host, r->port, cgi_script, proxy_auth, user_agent,
+	    r->host, r->port, cgi_script, proxy_auth, user_agent, bk_vers,
 	    r->host, r->port,
 	    mlen + extra);
 
@@ -460,11 +460,11 @@ http_fetch(remote *r, char *url, char *file)
 
 	header = aprintf(
 	    "GET %s HTTP/1.0\r\n"
-	    "User-Agent: BitKeeper/fetch\r\n"
+	    "User-Agent: BitKeeper-fetch/%s\r\n"
 	    "Accept: text/html\r\n"
 	    "Host: %s:%d\r\n"
 	    "\r\n",
-	    r->path ? r->path : "/", r->host, r->port);
+	    r->path ? r->path : "/", bk_vers, r->host, r->port);
 
 	if (r->trace) fprintf(stderr, "Sending http header:\n%s", header);
 	len = strlen(header);

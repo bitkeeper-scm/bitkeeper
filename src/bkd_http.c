@@ -122,7 +122,6 @@ cmd_httpget(int ac, char **av)
 			/* ignore everything else */
 		}
 	}
-
 	unless (av[1]) http_error(404, "get what?\n");
 
 	if ((strlen(name) + sizeof("BitKeeper/html") + 2) >= MAXPATH) {
@@ -481,7 +480,7 @@ httphdr(char *file)
 {
 	char	*buf = aprintf(
 	    "HTTP/1.0 200 OK\r\n"
-	    "%s\r\n"
+	    "Date: %s\r\n"
 	    "Server: bkhttp/%s\r\n"
 	    "Content-Type: %s\r\n"
 	    "Last-Modified: %s\r\n"
@@ -663,7 +662,7 @@ http_cset(char *rev)
 		sccs_prs(cset, 0, 0, &dspec[2], stdout);
 		sccs_free(cset);
 		fflush(stdout);
-		EACH(lines) write(fd, lines[i], strlen(lines[i]));
+		EACH(lines) writen(fd, lines[i], strlen(lines[i]));
 		freeLines(lines, free);
 		close(fd);
 		waitpid(child, &i, 0);
@@ -1639,7 +1638,7 @@ http_error(int status, char *fmt, ...)
 	} else {
 		sprintf(buf,
 		    "HTTP/1.0 %d Error\r\n"
-		    "%s\r\n"
+		    "Date: %s\r\n"
 		    "Server: bkhttp/%s\r\n"
 		    "Content-Type: text/html\r\n"
 		    "\r\n",
@@ -1787,7 +1786,7 @@ has_temp_license(void)
 	unless (select(fd+1, 0, &fds, 0, &delay) > 0 && FD_ISSET(fd, &fds))
 		return (0);
 
-	if (write(fd, "MMI?", 4) == 4) {
+	if (writen(fd, "MMI?", 4) == 4) {
 		ack[4] = 0;
 		FD_ZERO(&fds);
 		FD_SET(fd, &fds);
@@ -1933,7 +1932,7 @@ http_license(char *page)
 	}
 	/* also check the ip address we're coming from */
 	sprintf(arg, "S%03d", expires);
-	write(licsock, arg, 4);
+	writen(licsock, arg, 4);
 	close(licsock);
 	exit(0);
 }

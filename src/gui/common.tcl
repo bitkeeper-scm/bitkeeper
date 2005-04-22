@@ -33,7 +33,7 @@ proc resolveSymlink {filename} {
 
 proc displayMessage {msg {exit {}}} \
 {
-	global tcl_platform env
+	global tcl_platform
 
 	if {$exit != ""} {
 		set title "Error"
@@ -42,11 +42,7 @@ proc displayMessage {msg {exit {}}} \
 		set title "Info"
 		set icon "info"
 	}
-	if {[info exists env(BK_GUITEST)]} {
-		puts $msg
-	} else {
-		tk_messageBox -title $title -type ok -icon $icon -message $msg
-	}
+	tk_messageBox -title $title -type ok -icon $icon -message $msg
 	if {$exit == 1} {
 		exit 1
 	} else {

@@ -71,7 +71,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	bkd_license.o bkd_misc.o bkd_pending.o bkd_pull.o bkd_push.o bkd_pwd.o \
 	bkd_rclone.o bkd_rootkey.o bkd_status.o bkd_synckeys.o bkd_version.o \
 	bkpowered.o bkusers.o bkver.o cat.o changes.o \
-	check.o checksum.o clean.o cleanpath.o clone.o \
+	check.o checksum.o clean.o cleanpath.o clone.o cmd.o \
 	comment.o comments.o commit.o compress.o converge.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
 	dirs.o delta.o diffs.o diffsplit.o dir_gif.o \
@@ -151,7 +151,7 @@ SRCS	= bk.c $(OBJ:.o=.c) \
 HDRS	= $(SYS).h $(UWT_H) bkd.h lib_tcp.h liblines.h logging.h mmap.h proj.h \
 	  purify.h range.h rcs.h redblack.h resolve.h sccs.h system.h zgets.h \
 	  mdbm/mdbm.h mdbm/memhash.h tomcrypt/mycrypt.h zlib/zlib.h \
-	  regex/regex.h
+	  regex/regex.h cmd.h
 
 SCRSRCS	= bk.sh import.sh uuwrap.sh unuuwrap.sh port/unix_platform.sh \
 	  port/unix_platform.perl port/win32_platform.perl \
@@ -230,7 +230,7 @@ production_image: rebuild p image
 clean-obj: FORCE
 	-@rm -f bk bk.o cscope.out $(OBJ) $(SCRIPTS)
 	-@rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
-	-@rm -f $(LIBS) bkdsubstr bkmsg.txt bkhelp.txt a.out
+	-@rm -f $(LIBS) bkdsubstr bkmsg.txt bkhelp.txt a.out cmd.c cmd.h
 	-@rm -f core $(WIN_TMP)
 	-@cd ../doc && $(MAKE) clean-obj
 	-@cd ../man && $(MAKE) clean
@@ -263,7 +263,7 @@ rebuild:
 	-@rm -f $(LIBS) bkdsubstr bkhelp.txt bkmsg.txt a.out
 	-@rm -f core bkver.c tclwrap tclwrap.o blowfish.o $(WIN_TMP)
 	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR)
-	-@rm -rf tmp
+	-@rm -rf tmp bkl5_hashs.h
 	-@for i in ../doc ../man gnu gui utils win32 mdbm zlib regex tomcrypt libc; \
 	do	cd $(HERE)/$$i && $(MAKE) clobber; \
 	done
@@ -470,6 +470,12 @@ bkdsubstr: bkd.h
 	rm _bkdvers
 	chmod +x bkdsubstr
 
+logging.o: bkl5_hashs.h
+
+bkl5_hashs.h: mk_bkl5_license_tab.pl  USED_BKL5_LICENSES
+	perl mk_bkl5_license_tab.pl  USED_BKL5_LICENSES > $@
+
+
 # Quick and dirty target so we can make all the gui tools without the rest
 GUI: FORCE
 	@cd gui && make gui
@@ -544,3 +550,6 @@ tclwrap: blowfish.o tclwrap.o
 	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ tclwrap.o blowfish.o
 
 tclwrap.o blowfish.o: blowfish.h
+
+cmd.c cmd.h: mk-cmd.pl bk.sh
+	perl mk-cmd.pl || (rm -f cmd.c cmd.h; exit 1)

@@ -42,6 +42,7 @@ private	int	fix;		/* if set, fix up anything we can */
 private	int	goneKey;	/* 1: list files, 2: list deltas, 3: both */
 private	int	badWritable;	/* if set, list bad writable file only */
 private	int	names;		/* if set, we need to fix names */
+private	int	gotDupKey;	/* if set, we found dup keys */
 private	int	csetpointer;	/* if set, we need to fix cset pointers */
 private	int	lod;		/* if set, we need to fix lod data */
 private	int	mixed;		/* mixed short/long keys */
@@ -232,6 +233,7 @@ retry:	unless ((cset = sccs_init(s_cset, flags)) && HASGRAPH(cset)) {
 			if (fix) s = fix_merges(s);
 			errors |= 0x20;
 		}
+		sccs_close(s); /* for HP */
 
 		/*
 		 * Store the full length key and only if we are in mixed mode,
@@ -239,8 +241,22 @@ retry:	unless ((cset = sccs_init(s_cset, flags)) && HASGRAPH(cset)) {
 		 */
 		sccs_sdelta(s, sccs_ino(s), buf);
 		if (hash_storeStr(keys, buf, s->gfile)) {
-			fprintf(stderr, "Same key %s used by\n\t%s\n\t%s\n",
-			    buf, s->gfile, (char *)hash_fetch(keys, buf, 0, 0));
+			char *gfile, *sfile;
+
+			gfile = hash_fetchStr(keys, buf);
+			sfile = name2sccs(gfile);
+			if (sameFiles(sfile, s->sfile)) {
+				fprintf(stderr,
+				    "%s and %s are identical. "
+				    "Is one of these files copied?\n",
+				    s->sfile, sfile);
+			} else {
+				fprintf(stderr,
+				    "Same key %s used by\n\t%s\n\t%s\n",
+				    buf, s->gfile, gfile);
+			}
+			free(sfile);
+			gotDupKey = 1;
 			errors |= 1;
 		}
 		if (mixed) {
@@ -248,10 +264,22 @@ retry:	unless ((cset = sccs_init(s_cset, flags)) && HASGRAPH(cset)) {
 			assert(t);
 			*t = 0;
 			if (hash_storeStr(keys, buf, s->gfile)) {
-				fprintf(stderr,
-				    "Same key %s used by\n\t%s\n\t%s\n",
-				    buf, s->gfile,
-				    (char *)hash_fetch(keys, buf, 0, 0));
+				char *gfile, *sfile;
+
+				gfile = hash_fetchStr(keys, buf);
+				sfile = name2sccs(gfile);
+				if (sameFiles(sfile, s->sfile)) {
+					fprintf(stderr,
+					    "%s and %s are identical. "
+					    "Is one of these files copied?\n",
+					    s->sfile, sfile);
+				} else {
+					fprintf(stderr,
+					    "Same key %s used by\n\t%s\n\t%s\n",
+					    buf, s->gfile, gfile);
+				}
+				free(sfile);
+				gotDupKey = 1;
 				errors |= 1;
 			}
 		}
@@ -299,7 +327,7 @@ retry:	unless ((cset = sccs_init(s_cset, flags)) && HASGRAPH(cset)) {
 	hash_free(keys);
 	if (goneDB) mdbm_close(goneDB);
 	if (errors && fix) {
-		if (names) {
+		if (names && !gotDupKey) {
 			fprintf(stderr, "check: trying to fix names...\n");
 			system("bk -r names");
 			system("bk idcache");
@@ -323,7 +351,10 @@ retry:	unless ((cset = sccs_init(s_cset, flags)) && HASGRAPH(cset)) {
 			fprintf(stderr, "check: trying to remove lods...\n");
 			system("bk _fix_lod1");
 		}
-		if (names || xflags_failed || csetpointer || lod) return (2);
+		if (names || xflags_failed || csetpointer || lod) {
+			errors = 2;
+			goto out;
+		}
 	}
 	if (csetKeys.malloc) {
 		int	i;
@@ -347,6 +378,7 @@ retry:	unless ((cset = sccs_init(s_cset, flags)) && HASGRAPH(cset)) {
 	} else {
 		if (sys("bk", "sane", SYS)) errors |= 0x80;
 	}
+out:
 	if (verbose == 1) progressbar(nfiles, nfiles, errors ? "FAILED":"OK");
 	if (all && !errors && !(flags & INIT_NOCKSUM)) {
 		unlink(CHECKED);

@@ -69,7 +69,7 @@
 
 /* prngs */
 #define YARROW
-#define SPRNG
+//#define SPRNG
 
 #ifdef YARROW
    #ifndef CTR

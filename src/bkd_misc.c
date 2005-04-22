@@ -85,11 +85,10 @@ cmd_putenv(int ac, char **av)
 	 */
 	if (streq("BK_NO_TRIGGERS", var)) return (1);
 	if (streq("BK_HOST", var)) return (1);
-	unless (strneq("BK_", var, 3) ||
+	unless (strneq("BK_", var, 3) || strneq("BKU_", var, 4) ||
 	    strneq("BKD_", var, 4) || strneq("_BK_", var, 4)) {
 	    	return (1);
 	}
-
 	oldenv = getenv(var);
 	unless (oldenv && streq(oldenv, p+1)) {
 		if (streq(var, "_BK_USER")) {
@@ -108,6 +107,23 @@ cmd_putenv(int ac, char **av)
 			chdir(newpath);
 			free(newpath);
 		}
+	}
+
+	/*
+	 * Handle BK_SEED processing
+	 */
+	if (streq(var, "BK_SEED")) {
+		char	*seed, *oldseed = 0, *newseed;
+		int	i;
+
+		seed = av[1] + 8;
+		if (strchr(seed, '|')) {
+			oldseed = bkd_restoreSeed(getenv("BK_REPOID"));
+		}
+		i = bkd_seed(oldseed, seed, &newseed);
+		if (oldseed) safe_putenv("BK_SEED_OK=%d", !i);
+		unless (oldseed) bkd_saveSeed(getenv("BK_REPOID"), newseed);
+		safe_putenv("BKD_SEED=%s", newseed);
 	}
 	free(var);
 

@@ -94,7 +94,7 @@ gzip2fd(char *input, int len, int fd, int hflag)
 			n = bsize - gzip_out.avail_out;
 			bytes += n;
 			if (hflag) hbytes += send_gzip_hdr(fd, n);
-			unless (write(fd, buf, n) == n) {
+			unless (writen(fd, buf, n) == n) {
 				perror("write on fd gzip_in gzip2fd");
 				exit(1);
 			}
@@ -128,7 +128,7 @@ gunzip2fd(char *input, int len, int fd, int hflag)
 	for (;;) {
 		if ((status = inflate(&gzip_in, Z_PARTIAL_FLUSH)) == Z_OK) {
 			n = bsize - gzip_in.avail_out;
-			if (write(fd, buf, n) != n) {
+			if (writen(fd, buf, n) != n) {
 				perror("write on fd gzip_in gunzip2fd");
 				exit(1);
 			}

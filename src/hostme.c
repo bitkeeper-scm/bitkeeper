@@ -85,8 +85,7 @@ hostme_main(int ac, char **av)
 	http_connect(r);
 	m = mopen(hostme_info, "r");
 	assert(m);
-	rc = http_send(r,
-	    m->where, msize(m), 0, "BitKeeper/hostme", HOSTME_CGI);
+	rc = http_send(r, m->where, msize(m), 0, "hostme", HOSTME_CGI);
 	mclose(m);
 	skip_http_hdr(r);
 	unless (rc) rc = get_ok(r, 0, opts.verbose);

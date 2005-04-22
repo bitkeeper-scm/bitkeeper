@@ -14,19 +14,6 @@ mail_main(int ac, char **av)
 	char	**to = 0;
 	int	ret;
 
-	/*
-	 * WIN32 note: Win32 wish shell maps the console to a
-	 * to a invisiable window, messages printed to tty will be invisiable.
-	 * We therefore have to send it to stdout, which will be read and
-	 * displayed by citool.
-	 */
-	unless (wishConsoleVisible()) {
-		/* close stdout, so citool doesn't wait for us */
-		fclose(stdout);
-		usleep(0); /* release cpu, so citool can exit */
-		fopen(DEV_TTY, "w");
-	}
-
 	if (name = strrchr(av[0], '/')) {
 		name++;
 	} else {
@@ -120,7 +107,7 @@ bkmail(char *url, char **to, char *subject, char *file)
 	if (fin != stdin) fclose(fin);
 	fprintf(f, "\n.\n");
 	fclose(f);
-	rc = send_file(r, bkmsg, 0, 0);
+	rc = send_file(r, bkmsg, 0);
 	unlink(bkmsg);
 	free(bkmsg);
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);

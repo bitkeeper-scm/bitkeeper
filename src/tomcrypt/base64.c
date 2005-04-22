@@ -80,8 +80,11 @@ int base64_decode(const unsigned char *in,  unsigned long len,
 
    for (x = y = z = t = 0; x < len; x++) {
        c = map[in[x]];
-       if (c == 255) continue;
-       if (c == 254) { c = 0; g--; }
+       if (c == 255) continue;		/* ignored */
+       if (c == 254) {			/* matched '=' */
+	       c = 0;			/* val == 0 */
+	       if (!--g) goto error;	/* max of 2 '=' */
+       } else if (g != 3) goto error;	/* '=' only at end */
        t = (t<<6)|c;
        if (++y == 4) {
 	  if (z + g + 1 > *outlen) goto error;

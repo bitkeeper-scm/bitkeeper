@@ -1,6 +1,8 @@
 #include "system.h"
 #include "sccs.h"
 #include "tomcrypt/mycrypt.h"
+#include "tomcrypt/randseed.h"
+#include "cmd.h"
 
 extern char *bin;
 
@@ -12,6 +14,8 @@ private	int	encrypt_stream(rsa_key *public, FILE *fin, FILE *fout);
 private	int	decrypt_stream(rsa_key	*secret, FILE *fin, FILE *fout);
 private void	loadkey(char *file, rsa_key *key);
 
+private	int		wprng = -1;
+private	prng_state	*prng;
 private	int	use_sha1_hash = 0;
 private	int	hex_output = 0;
 
@@ -92,8 +96,7 @@ crypto_main(int ac, char **av)
 	setmode(0, _O_BINARY);
 	register_cipher(&rijndael_desc);
 	register_hash(&md5_desc);
-	register_prng(&yarrow_desc);
-	register_prng(&sprng_desc);
+	wprng = rand_getPrng(&prng);
 
 	switch (mode) {
 	    case 'i':
@@ -115,9 +118,10 @@ crypto_main(int ac, char **av)
 		break;
 	    case 'h':
 		if (av[optind+1]) {
-			hash = secure_hashstr(av[optind], av[optind+1]);
+			hash = secure_hashstr(av[optind], strlen(av[optind]),
+			    av[optind+1]);
 		} else {
-			hash = hashstr(av[optind]);
+			hash = hashstr(av[optind], strlen(av[optind]));
 		}
 		puts(hash);
 		free(hash);
@@ -134,15 +138,11 @@ make_keypair(int bits, char *secret, char *public)
 	rsa_key	key;
 	unsigned long	size;
 	FILE	*f;
-	prng_state	prng;
 	char	out[4096];
 
-	if (rng_make_prng(128, find_prng("yarrow"), &prng, 0)) {
- err:		fprintf(stderr, "crypto: %s\n", crypt_error);
+	if (rsa_make_key(prng, wprng, bits/8, 655337, &key)) {
+err:		fprintf(stderr, "crypto: %s\n", crypt_error);
 		return (1);
-	}
-	if (rsa_make_key(&prng, find_prng("yarrow"), bits/8, 655337, &key)) {
-		goto err;
 	}
 	size = sizeof(out);
 	if (rsa_export(out, &size, PK_PRIVATE_OPTIMIZED, &key)) goto err;
@@ -212,7 +212,6 @@ hash_filehandle(int hash, FILE *in, unsigned char *dst)
 private	int
 signdata(rsa_key *key)
 {
-	int	wprng = find_prng("sprng");
 	int	hash = find_hash("md5");
 	unsigned long	hashlen, rsa_size, x, y;
 	unsigned char	rsa_in[4096], rsa_out[4096];
@@ -236,7 +235,7 @@ signdata(rsa_key *key)
 
 	/* pad it */
 	x = sizeof(rsa_in);
-	if (rsa_signpad(rsa_in, hashlen, rsa_out, &x, wprng, 0)) goto err;
+	if (rsa_signpad(rsa_in, hashlen, rsa_out, &x, wprng, prng)) goto err;
 
 	/* sign it */
 	rsa_size = sizeof(rsa_in);
@@ -345,15 +344,28 @@ validatedata(rsa_key *key, char *signfile)
 }
 
 private char *
-publickey(void)
+publickey(int version)
 {
-	static	char *key;
+	char	*key;
 	unsigned long keylen;
 	int	i, len;
 	int	tmp;
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~h
+	char	*coded;
 
-	if (key) return (key);
+	if (version <= 5) {
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~U
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~0V
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~I
+~~~~~~~~~~t
+	} else {
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~/
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~U
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~4
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~G
+~~~~~~~~~~t
+	}
+
 	coded = strdup(coded);
 	len = strlen(coded);
 	for (i = 0; i < len/2; i++) {
@@ -362,24 +374,27 @@ publickey(void)
 		coded[len-i-1] = tmp;
 	}
 	keylen = len;
-	key = malloc(keylen);
+	key = malloc(len);
 	base64_decode(coded, len, key, &keylen);
 	free(coded);
 	return (key);
 }
 
 int
-check_licensesig(char *key, char *sign)
+check_licensesig(char *key, char *sign, int version)
 {
 	char	signbin[256];
 	unsigned long	outlen;
 	rsa_key	rsakey;
-	char	*pubkey = publickey();
+	char	*pubkey = publickey(version);
+	int	ret;
 	int	stat;
 
 	register_hash(&md5_desc);
 
-	if (rsa_import(pubkey, &rsakey) == CRYPT_ERROR) {
+	ret = rsa_import(pubkey, &rsakey);
+	free(pubkey);
+	if (ret == CRYPT_ERROR) {
 		fprintf(stderr, "crypto rsa_import: %s\n", crypt_error);
 		exit(1);
 	}
@@ -469,7 +484,7 @@ base64_main(int ac, char **av)
 }
 
 char *
-secure_hashstr(char *str, char *key)
+secure_hashstr(char *str, int len, char *key)
 {
 	int	hash = register_hash(use_sha1_hash ? &sha1_desc : &md5_desc);
 	unsigned long md5len, b64len;
@@ -478,17 +493,17 @@ secure_hashstr(char *str, char *key)
 	char	md5[32];
 	char	b64[32];
 
-	if (key && streq(str, "-")) {
+	if (key && (len == 1) && streq(str, "-")) {
 		if (hmac_filehandle(hash, stdin, key, strlen(key), md5)) {
 			return (0);
 		}
 	} else if (key) {
 		if (hmac_memory(hash, key, strlen(key),
-			str, strlen(str), md5)) return (0);
-	} else if (streq(str, "-")) {
+			str, len, md5)) return (0);
+	} else if ((len == 1) && streq(str, "-")) {
 		if (hash_filehandle(hash, stdin, md5)) return (0);
 	} else {
-		if (hash_memory(hash, str, strlen(str), md5)) return (0);
+		if (hash_memory(hash, str, len, md5)) return (0);
 	}
 	b64len = sizeof(b64);
 	md5len = hash_descriptor[hash].hashsize;
@@ -512,9 +527,9 @@ secure_hashstr(char *str, char *key)
 }
 
 char *
-hashstr(char *str)
+hashstr(char *str, int len)
 {
-	return (secure_hashstr(str, 0));
+	return (secure_hashstr(str, len, 0));
 }
 
 char *
@@ -530,7 +545,7 @@ signed_loadFile(char *filename)
 	*p = 0;
 	while ((p > data) && (*p != '\n')) --p;
 	*p++ = 0;
-	hash = secure_hashstr(data, bk_utc);
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~d
 	unless (streq(hash, p)) {
 		free(data);
 		data = 0;
@@ -550,7 +565,7 @@ signed_saveFile(char *filename, char *data)
 	unless (f = fopen(tmpf, "w")) {
 		return (-1);
 	}
-	hash = secure_hashstr(data, bk_utc);
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~0U
 	fprintf(f, "%s\n%s\n", data, hash);
 	fclose(f);
 	free(hash);
@@ -563,7 +578,6 @@ signed_saveFile(char *filename, char *data)
 private int
 encrypt_stream(rsa_key *key, FILE *fin, FILE *fout)
 {
-	int	wprng = find_prng("sprng");
 	int	cipher = register_cipher(&rijndael_desc);
 	long	inlen, outlen, blklen;
 	int	i;
@@ -578,11 +592,11 @@ encrypt_stream(rsa_key *key, FILE *fin, FILE *fout)
 	inlen = i;
 
 	blklen = cipher_descriptor[cipher].block_length;
-	rng_get_bytes(skey, inlen, 0);
-	rng_get_bytes(sym_IV, blklen, 0);
+	rand_getBytes(skey, inlen);
+	rand_getBytes(sym_IV, blklen);
 
 	outlen = sizeof(out);
-	if (rsa_encrypt_key(skey, inlen, out, &outlen, 0, wprng, key)) {
+	if (rsa_encrypt_key(skey, inlen, out, &outlen, prng, wprng, key)) {
 err:		fprintf(stderr, "crypto encrypt: %s\n", crypt_error);
 		return (1);
 	}
@@ -644,13 +658,36 @@ err:		fprintf(stderr, "crypto decrypt: %s\n", crypt_error);
 private char *
 upgrade_secretkey(void)
 {
-	static	char *key;
+	char	*key;
 	unsigned long keylen;
 	int	i, len;
 	int	tmp;
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~<
+	/*
+	 * generate like this:
+	 *    bk edit bkupgrade.key
+	 *    ./bk crypto -i 1024 bkupgrade.key.sec bkupgrade.key
+	 *    ./key2code.pl bkupgrade.key.sec
+	 */
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~0]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~0S
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~$
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~t
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~J
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~o
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~0T
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~0k
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~k
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~0
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~z
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~0`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~E
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~0O
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*
+~~~~~~~~~~~~~~~~~~~~~~~~0`
 
-	if (key) return (key);
 	coded = strdup(coded);
 	len = strlen(coded);
 	for (i = 0; i < len/2; i++) {
@@ -670,13 +707,18 @@ upgrade_decrypt(char *infile, char *outfile)
 {
 	FILE	*fin, *fout;
 	rsa_key	rsakey;
+	int	ret;
+	char	*seckey;
 
 	unless (fin = fopen(infile, "r")) return (1);
 	unless (fout = fopen(outfile, "w")) {
 		fclose(fin);
 		return (1);
 	}
-	if (rsa_import(upgrade_secretkey(), &rsakey)) {
+	seckey = upgrade_secretkey();
+	ret = rsa_import(seckey, &rsakey);
+	free(seckey);
+	if (ret) {
 		fprintf(stderr, "crypto rsa_import: %s\n", crypt_error);
 		exit(1);
 	}
@@ -684,4 +726,13 @@ upgrade_decrypt(char *infile, char *outfile)
 	fclose(fin);
 	fclose(fout);
 	return (0);
+}
+
+/*
+ * only setup the special key in the environment for restricted commands
+ */
+void
+bk_preSpawnHook(int flags, char *const av[])
+{
+	rand_setSeed((flags & _P_DETACH) ? 0 : 1);
 }

@@ -124,7 +124,7 @@ cmd_push_part1(int ac, char **av)
 	}
 	if (debug) {
 		fprintf(stderr, "cmd_push_part1: sending key list\n");
-		write(2, m->where,  msize(m));
+		writen(2, m->where,  msize(m));
 	}
 	ret = 0;
 	unless (writen(1, m->where,  msize(m)) == msize(m)) {

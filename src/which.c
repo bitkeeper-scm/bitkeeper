@@ -1,5 +1,6 @@
 #include "system.h"
 #include "sccs.h"
+#include "cmd.h"
 
 /*
  * Copyright (c) 2001 Larry McVoy       All rights reserved.
@@ -10,56 +11,18 @@ whichp(char *prog, int internal, int external)
 {
         char	*path;
 	char	*s, *t;
-	MMAP	*m;
-	int	i, lineno, len;
+	CMD	*cmd;
 	char	buf[MAXPATH];
 	extern	char *bin;
-	extern	struct command cmdtbl[];
-	extern	struct tool guis[];
 
-	unless (internal) goto PATH;
-
-	for (i = 0; cmdtbl[i].name; i++) {
-		if (streq(cmdtbl[i].name, prog)) {
+	if (internal) {
+		assert(bin);
+		if (cmd = cmd_lookup(prog, strlen(prog))) {
 			path = aprintf("%s/bk %s", bin, prog);
 			return (path);
 		}
 	}
-
-	for (i = 0; guis[i].prog; i++) {
-		if (streq(guis[i].prog, prog) ||
-		    (guis[i].alias && streq(guis[i].alias, prog))) {
-			prog = guis[i].prog;
-		    	path = aprintf("%s/bk %s", bin, prog);
-			return (path);
-		}
-	}
-
-	assert(bin);
-
-	path = aprintf("%s/bk.script", bin);
-	m = mopen(path, "rt");
-	free(path);
-	unless (m) return (0);
-	lineno = 0;
-	len = strlen(prog);
-	while (s = mnext(m)) {
-		lineno++;
-		/* _inode() { */
-		unless ((s + len + 3) < (m->mmap + m->size)) break;
-		unless ((s[0] == '_') && (s[1] != '_')) continue;
-		unless (strneq(++s, prog, len)) continue;
-		s += len;
-		if (strneq(s, "()", 2)) {
-			mclose(m);
-			path = aprintf("%s/bk %s (line %d of bk.script)",
-				    bin, prog, lineno);
-			return (path);
-		}
-	}
-	mclose(m);
-
-PATH:	unless (external) return (0);
+	unless (external) return (0);
 
 	if ((prog[0] == '/') && executable(prog)) return (strdup(prog));
 

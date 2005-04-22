@@ -158,7 +158,7 @@ send_part1_msg(opts opts, remote *r, char **envVar)
 	fputs("\n", f);
 	fclose(f);
 
-	rc = send_file(r, buf, 0, opts.gzip);
+	rc = send_file(r, buf, 0);
 	unlink(buf);
 	return (rc);
 }
@@ -192,7 +192,7 @@ rclone_part2(char **av, opts opts, remote *r, char **envVar)
 	if (streq(buf, "@SFIO INFO@")) {
 		while ((n = read_blk(r, buf, 1)) > 0) {
 			if (buf[0] == BKD_NUL) break;
-			if (opts.verbose) write(2, buf, n);
+			if (opts.verbose) writen(2, buf, n);
 		}
 		getline2(r, buf, sizeof(buf));
 		if (buf[0] == BKD_RC) {
@@ -269,7 +269,7 @@ send_sfio_msg(opts opts, remote *r, char **envVar)
 		assert(m > 0);
 		extra = m + 6;
 	}
-	rc = send_file(r, buf, extra, opts.gzip);
+	rc = send_file(r, buf, extra);
 	unlink(buf);
 
 	n = gensfio(opts, opts.verbose, gzip, r->wfd);

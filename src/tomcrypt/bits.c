@@ -91,10 +91,11 @@ static unsigned long rng_win32(unsigned char *buf, unsigned long len,
 
 #endif /* WIN32 */
 
-#ifdef WIN32
-#define	srandom(x)	srand(x)
-#define	random(x)	rand(x)
-#endif
+#ifndef WIN32
+/*
+ * XXX rng_fake() is not compiled on Windows because it is not needed
+ *     and because gettimeofday() is not in the standard library.
+ */
 
 /*
  * A "fake" random number generator for the BK regressions.
@@ -120,6 +121,7 @@ static unsigned long rng_fake(unsigned char *buf, unsigned long len)
 	while (x--) *buf++ = random();
 	return (len);
 }
+#endif
 
 unsigned long rng_get_bytes(unsigned char *buf, unsigned long len, 
                             void (*callback)(void))
@@ -133,7 +135,9 @@ unsigned long rng_get_bytes(unsigned char *buf, unsigned long len,
 #ifdef ANSI_RNG
    x += rng_ansic(buf+x, len-x, callback); if (x==len) { return x; }
 #endif
+#ifndef WIN32
    x += rng_fake(buf+x, len-x);	           if (x==len) { return x; }
+#endif
    return 0;
 }
 

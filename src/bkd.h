@@ -126,8 +126,7 @@ int	write_blk(remote *r, char *c, int len);
 sccs *	mk_probekey(FILE *f);
 int	getline2(remote *r, char *buf, int size); 
 int	get_ok(remote *r, char *read_ahead, int verbose); 
-int	send_msg(remote *r, char *msg, int mlen, int extra, int compress);
-int	send_file(remote *r, char *file, int extra, int gzip);
+int	send_file(remote *r, char *file, int extra);
 int	skip_hdr(remote *r);
 int	getTriggerInfoBlock(remote *r, int verbose); 
 int	bkd_connect(remote *r, int compress, int verbose);
@@ -149,4 +148,7 @@ int	remote_lock_fail(char *buf, int verbose);
 void	drainErrorMsg(remote *r, char *buf, int bsize);
 int	listType(char *type);
 int	unsafe_cd(char *path);
+int	bkd_seed(char *oldseed, char *newval, char **newout);
+void	bkd_saveSeed(char *repoid, char *seed);
+char	*bkd_restoreSeed(char *repoid);
 #endif

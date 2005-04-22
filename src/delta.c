@@ -53,9 +53,14 @@ hasTriggers(void)
 	} else {
 		dir = strdup("BitKeeper/triggers");
 	}
-	lines = getTriggers(dir, "pre-delta");
-	ret = lines != 0;
-	freeLines(lines, free);
+	if (isdir(dir)) {
+		sys("bk", "get", "-Sq", dir, SYS);
+		lines = getTriggers(dir, "pre-delta");
+		ret = (lines != 0);
+		freeLines(lines, free);
+	} else {
+		ret = 0;
+	}
 	free(dir);
 	return (ret);
 }

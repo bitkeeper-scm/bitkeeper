@@ -27,7 +27,7 @@ private	int	takepatch(opts opts, int gzip, remote *r);
 
 private void
 usage(void)
-{			
+{
 	system("bk help -s pull");
 }
 
@@ -200,7 +200,7 @@ send_part1_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	if (opts.debug) fprintf(f, " -d");
 	fputs("\n", f);
 	fclose(f);
-	rc = send_file(r, buf, 0, opts.gzip);	
+	rc = send_file(r, buf, 0);
 	unlink(buf);
 	return (rc);
 }
@@ -246,7 +246,7 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	assert(fd >= 0);
 	if (opts.gzip) gzip_init(opts.gzip);
 	while ((n = getline2(r, buf, sizeof(buf))) > 0) {
-		write(fd, buf, n);
+		writen(fd, buf, n);
 		write(fd, "\n", 1);
 		if (streq("@END PROBE@", buf)) break;
 	}
@@ -308,7 +308,7 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 		return (-1);
 	}
 
-	rc = send_file(r, msg_file, 0, opts.gzip);	
+	rc = send_file(r, msg_file, 0);
 	unlink(msg_file);
 	return (rc);
 }
@@ -422,7 +422,9 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	}
 
 	if (streq(buf, "@PATCH@")) {
-		if (takepatch(opts, opts.gzip, r)) {
+		if (i = takepatch(opts, opts.gzip, r)) {
+			fprintf(stderr,
+			    "Pull failed: takepatch exited %d.\n", i);
 			putenv("BK_STATUS=TAKEPATCH FAILED");
 			rc = 1;
 			goto done;

@@ -2,6 +2,9 @@
 #include "sccs.h"
 #include "range.h"
 #include "bkd.h"
+#include "cmd.h"
+#include "tomcrypt/mycrypt.h"
+#include "tomcrypt/randseed.h"
 
 #define	BK "bk"
 
@@ -14,6 +17,7 @@ char	**bk_environ;
 jmp_buf	exit_buf;
 char	cmdlog_buffer[MAXPATH*4];
 int	cmdlog_flags;
+int	bk_isSubCmd = 0;	/* if 1, BK called us and sent seed */
 
 private char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
 #define	LOGVER	0
@@ -23,393 +27,10 @@ int	launch_wish(char *script, char **av);
 private	void	cmdlog_exit(void);
 private	int	cmdlog_repo;
 private	void	cmdlog_dump(int, char **);
-private int	run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av);
+private int	cmd_run(char *prog, int is_bk, char *sopts, int ac, char **av);
 private int	usage(void);
 
 extern	void	platformInit(char **av);
-
-/* KEEP THIS SORTED! */
-int	_g2sccs_main(int, char **);
-int	abort_main(int, char **);
-int	adler32_main(int, char **);
-int	admin_main(int, char **);
-int	annotate_main(int, char **);
-int	applyall_main(int, char **);
-int	base64_main(int, char **);
-int	bkd_main(int, char **);
-int	cat_main(int, char **);
-int	changes_main(int, char **);
-int	check_main(int, char **);
-int	checksum_main(int, char **);
-int	clean_main(int, char **);
-int	cleanpath_main(int, char **);
-int	clone_main(int, char **);
-int	comments_main(int, char **);
-int	commit_main(int, char **);
-int	config_main(int, char **);
-int	converge_main(int, char **);
-int	cp_main(int, char **);
-int	create_main(int, char **);
-int	crypto_main(int, char **);
-int	cset_main(int, char **);
-int	csetprune_main(int, char **);
-int	deledit_main(int, char **);
-int	delget_main(int, char **);
-int	delta_main(int, char **);
-int	diffs_main(int, char **);
-int	diffsplit_main(int, char **);
-int	dotbk_main(int, char **);
-int	exists_main(int, char **);
-int	export_main(int, char **);
-int	f2csets_main(int, char **);
-int	files_main(int, char **);
-int	find_main(int, char **);
-int	findcset_main(int, char **);
-int	findkey_main(int, char **);
-int	fix_main(int, char **);
-int	fixlod_main(int, char **);
-int	gca_main(int, char **);
-int	get_main(int, char **);
-int	gethelp_main(int, char **);
-int	gethost_main(int, char **);
-int	getmsg_main(int, char **);
-int	getreg_main(int, char **);
-int	getuser_main(int, char **);
-int	glob_main(int, char **);
-int	gnupatch_main(int, char **);
-int	gone_main(int, char **);
-int	graft_main(int, char **);
-int	grep_main(int, char **);
-int	gzip_main(int, char **);
-int	help_main(int, char **);
-int	helpsearch_main(int, char **);
-int	helptopics_main(int, char **);
-int	httpfetch_main(int, char **);
-int	hostme_main(int, char **);
-int	idcache_main(int, char **);
-int	isascii_main(int, char **);
-int	key2path_main(int, char **);
-int	key2rev_main(int, char **);
-int	keycache_main(int, char **);
-int	keyunlink_main(int, char **);
-int	lconfig_main(int, char **);
-int	lease_main(int, char **);
-int	level_main(int, char **);
-int	license_main(int, char **);
-int	lines_main(int, char **);
-int	link_main(int, char **);
-int	listkey_main(int, char **);
-int	lock_main(int, char **);
-int	lod_main(int, char **);
-int	log_main(int, char **);
-int	logflags_main(int, char **);
-int	logging_main(int, char **);
-int	loggingaccepted_main(int ac, char **av);
-int	loggingask_main(int ac, char **av);
-int	loggingto_main(int, char **);
-int	mail_main(int, char **);
-int	mailsplit_main(int, char **);
-int	makepatch_main(int, char **);
-int	mdiff_main(int, char **);
-int	merge_main(int, char **);
-int	mklock_main(int, char **);
-int	more_main(int, char **);
-int	mtime_main(int, char **);
-int	mv_main(int, char **);
-int	mvdir_main(int, char **);
-int	mydiff_main(int, char **);
-int	names_main(int, char **);
-int	newroot_main(int, char **);
-int	opark_main(int, char **);
-int	ounpark_main(int, char **);
-int	parent_main(int, char **);
-int	park_main(int, char **);
-int	pending_main(int, char **);
-int	preference_main(int, char **);
-int	probekey_main(int, char **);
-int	prompt_main(int, char **);
-int	prs_main(int, char **);
-int	prunekey_main(int, char **);
-int	pull_main(int, char **);
-int	push_main(int, char **);
-int	pwd_main(int, char **);
-int	r2c_main(int, char **);
-int	range_main(int, char **);
-int	rcheck_main(int, char **);
-int	rclone_main(int, char **);
-int	rcs2sccs_main(int, char **);
-int	rcsparse_main(int, char **);
-int	receive_main(int, char **);
-int	regex_main(int, char **);
-int	repogca_main(int, char **);
-int	relink_main(int, char **);
-int	renumber_main(int, char **);
-int	repo_main(int, char **);
-int	resolve_main(int, char **);
-int	restore_main(int, char **);
-int	reviewmerge_main(int, char **);
-int	rm_main(int, char **);
-int	rmdel_main(int, char **);
-int	root_main(int, char **);
-int	rset_main(int, char **);
-int	sane_main(int, char **);
-int	sccs2bk_main(int, char **);
-int	sccscat_main(int, char **);
-int	sccslog_main(int, char **);
-int	scompress_main(int, char **);
-int	send_main(int, char **);
-int	sendbug_main(int, char **);
-int	set_main(int, char **);
-int	setup_main(int, char **);
-int	sfiles_main(int, char **);
-int	sfio_main(int, char **);
-int	shellSplit_test_main(int ac, char **av);
-int	shrink_main(int, char **);
-int	sinfo_main(int, char **);
-int	smerge_main(int, char **);
-int	sort_main(int, char **);
-int	sortmerge_main(int, char **);
-int	status_main(int, char **);
-int	strings_main(int, char **);
-int	stripdel_main(int, char **);
-int	synckeys_main(int, char **);
-int	tagmerge_main(int, char **);
-int	takepatch_main(int, char **);
-int	testdates_main(int, char **);
-int	timestamp_main(int, char **);
-int	unbk_main(int, char **);
-int	undo_main(int, char **);
-int	undos_main(int, char **);
-int	unedit_main(int, char **);
-int	unlink_main(int, char **);
-int	unlock_main(int, char **);
-int	unpark_main(int, char **);
-int	unpull_main(int, char **);
-int	unwrap_main(int, char **);
-int	upgrade_main(int, char **);
-int	users_main(int, char **);
-int	uudecode_main(int, char **);
-int	uuencode_main(int, char **);
-int	val_main(int, char **);
-int	version_main(int, char **);
-int	what_main(int, char **);
-int	which_main(int, char **);
-int	xflags_main(int, char **);
-int	zone_main(int, char **);
-
-struct	command cmdtbl[] = {
-	{"_adler32", adler32_main},
-	{"_applyall", applyall_main},
-	{"_converge", converge_main},
-	{"_cleanpath", cleanpath_main},
-	{"_exists", exists_main},
-	{"_find", find_main },
-	{"_findcset", findcset_main },
-	{"_g2sccs", _g2sccs_main},
-	{"_get", get_main},
-	{"_getreg", getreg_main},
-	{"_gzip", gzip_main }, 
-	{"_httpfetch", httpfetch_main },
-	{"_key2path", key2path_main},
-	{"_keyunlink", keyunlink_main },
-	{"_lconfig", lconfig_main},	
-	{"_lines", lines_main},	
-	{"_link", link_main},	
-	{"_listkey", listkey_main},	
-	{"_log", log_main},
-	{"_logflags", logflags_main},
-	{"_logging", logging_main},
-	{"_loggingaccepted", loggingaccepted_main},
-	{"_loggingask", loggingask_main},
-	{"_loggingto", loggingto_main},
-	{"_mail", mail_main},
-	{"_preference", preference_main},
-	{"_probekey", probekey_main},
-	{"_prunekey", prunekey_main},
-	{"_rclone", rclone_main},
-	{"_reviewmerge", reviewmerge_main},
-	{"_scompress", scompress_main},		/* undoc? 2.0 */
-	{"_sort", sort_main},
-	{"_sortmerge", sortmerge_main},
-	{"_shellSplit_test", shellSplit_test_main},
-	{"_strings", strings_main},
-	{"_unbk", unbk_main},			/* undoc? 2.0 */
-	{"_unlink", unlink_main },
-	{"abort", abort_main},			/* doc 2.0 */	
-	{"add", delta_main},			/* doc 2.0 */
-	{"admin", admin_main},			/* doc 2.0 */
-	{"annotate", annotate_main},		/* doc 2.0 */
-	{"base64", base64_main},		/* need doc 2.2 */
-	{"bkd", bkd_main },			/* doc 2.0 */
-	{"cat", cat_main},			/* doc 2.0 */
-	{"changes", changes_main},		/* doc 2.0 */
-	{"check", check_main},			/* doc 2.0 */
-	{"checksum", checksum_main},		/* doc 2.0 */
-	{"ci", delta_main},			/* doc 2.0 */
-	{"clean", clean_main},			/* doc 2.0 */
-	{"clone", clone_main},			/* doc 2.0 */
-	{"co", get_main},			/* doc 2.0 */
-	{"comment", comments_main}, /* alias for Linus, remove... */
-	{"comments", comments_main},
-	{"commit", commit_main},		/* doc 2.0 */
-	{"config", config_main},		/* doc 2.0 */
-	{"cp", cp_main},
-	{"create", create_main},		/* doc 2.0 */
-	{"crypto", crypto_main},		/* needs doc 2.2 */
-	{"cset", cset_main},			/* doc 2.0 */
-	{"csetprune", csetprune_main},
-	{"f2csets", f2csets_main},		/* undoc? 2.0 */
-	{"delta", delta_main},			/* doc 2.0 */
-	{"deledit", deledit_main},		/* doc 2.0 */
-	{"delget", delget_main},		/* doc 2.0 */
-	{"diffs", diffs_main},			/* doc 2.0 */
-	{"diffsplit", diffsplit_main},
-	{"dotbk", dotbk_main},
-	{"edit", get_main},	/* aliases */	/* doc 2.0 */
-	{"enter", delta_main},			/* doc 2.0 */
-	{"export", export_main},		/* doc 2.0 */
-	{"files", files_main},
-	{"findkey", findkey_main},		/* doc 2.0 */
-	{"fix", fix_main},			/* doc 2.0 */
-	{"_fix_lod1", fixlod_main},		/* undoc 2.0 */
-	{"gca", gca_main},			/* doc 2.0 */
-	{"get", get_main},			/* doc 2.0 */
-	{"gethelp", gethelp_main},		/* undoc? 2.0 */
-	{"gethost", gethost_main},		/* doc 2.0 */
-	{"getmsg", getmsg_main},		/* undoc? 2.0 */
-	{"getuser", getuser_main},		/* doc 2.0 */
-	{"graft", graft_main},			/* undoc? 2.0 */
-	{"grep", grep_main},			/* doc 2.0 */
-	{"glob", glob_main},
-	{"gnupatch", gnupatch_main},		/* doc 2.0 */
-	{"gone", gone_main},			/* doc 2.0 */
-	{"help", help_main},			/* doc 2.0 */
-	{"helpsearch", helpsearch_main},	/* undoc 2.0 */
-	{"helptopics", helptopics_main},	/* undoc 2.0 */
-	{"hostme", hostme_main},		/* undoc 2.0 */
-	{"info", sinfo_main},			/* doc 2.0 */
-	{"idcache", idcache_main},		/* undoc? 2.0 */
-	{"isascii", isascii_main},		/* doc 2.0 */
-	{"key2rev", key2rev_main},		/* doc 2.0 */
-	{"keycache", keycache_main},
-	{"lease", lease_main},
-	{"level", level_main},			/* doc 2.0 */
-	{"license", license_main},		/* undoc */
-	{"lock", lock_main},			/* doc 2.0 */
-	{"lod", lod_main},	/* XXX - doc 2.0 - says doesn't work yet */
-	{"log", log_main},
- 	{"mail", mail_main},
-	{"mailsplit", mailsplit_main},
-	{"makepatch", makepatch_main},		/* doc 2.0 */
-	{"mdiff", mdiff_main},
-	{"merge", merge_main},			/* doc 2.0 */
-	{"mklock", mklock_main},	/* regression test */ /* undoc 2.0 */
-	{"more", more_main},
-	{"mtime", mtime_main},		/* regression test */ /* undoc 2.0 */
-	{"mv", mv_main},			/* doc 2.0 */
-	{"mvdir", mvdir_main},			/* doc 2.0 */
-	{"multiuser", newroot_main},		/* doc 2.0 */
-	{"mydiff", mydiff_main},
-	{"names", names_main},			/* doc 2.0 */
-	{"newroot", newroot_main},		/* doc 2.0 */
-	{"new", delta_main},	/* aliases */	/* doc 2.0 */
-	{"opark", opark_main},			/* doc 2.0 */
-	{"ounpark", ounpark_main},			/* doc 2.0 */
-	{"parent", parent_main},		/* doc 2.0 */
-	{"park", park_main},			/* doc 2.0 */
-	{"pending", pending_main},		/* doc 2.0 */
-	{"prompt", prompt_main},
-	{"prs", prs_main},			/* doc 2.0 */
-	{"pull", pull_main},			/* doc 2.0 */
-	{"push", push_main},			/* doc 2.0 */
-	{"pwd", pwd_main},/* regression test */ /* undoc? 2.0 */
-	{"r2c", r2c_main},			/* doc 2.0 */
-	{"range", range_main},		/* XXX - doc 2.0 it sucks*/
-	{"rcheck", rcheck_main},		/* doc 2.0 */
-	{"rcs2sccs", rcs2sccs_main},		/* doc 2.0 */
-	{"rcsparse", rcsparse_main},		/* doc 2.0 */
-	{"receive", receive_main},		/* doc 2.0 */
-	{"rechksum", checksum_main},		/* obsolete - alias */
-	{"relink", relink_main},
-	{"renumber", renumber_main},		/* doc 2.0 */
-	{"repo", repo_main},	/* obsolete */ 	/* undoc 2.0 */
-	{"regex", regex_main},
-	{"repogca", repogca_main},
-	{"resolve", resolve_main},		/* doc 2.0 */
-	{"restore", restore_main},
-	{"rev2cset", r2c_main},	/* alias */	/* doc 2.0 as r2c */
-	{"root", root_main},			/* doc 2.0 */
-	{"rset", rset_main},			/* doc 2.0 */
-	{"rm", rm_main},			/* doc 2.0 */
-	{"rmdel", rmdel_main},			/* doc 2.0 */
-	{"sane", sane_main},			/* doc 2.0 */
-	{"sccs2bk", sccs2bk_main},		/* undoc? 2.0 */
-	{"sccscat", sccscat_main},		/* doc 2.0 as annotate */
-	{"sccsdiff", diffs_main},		/* doc 2.0 */
-	{"sccslog", sccslog_main},		/* doc 2.0 */
-	{"sccsmv", mv_main},	/* alias */	/* doc 2.0 as mv */
-	{"sccsrm", rm_main},	/* alias */	/* doc 2.0 as mv */
-	{"send", send_main},			/* doc 2.0 */
-	{"sendbug", sendbug_main},		/* doc 2.0 */
-	{"support", sendbug_main},		/* doc 3.0 */
-	{"set", set_main},
-	{"setup", setup_main },			/* doc 2.0 */
-	{"shrink", shrink_main}, 		/* undoc? 2.0 */
-	{"sfiles", sfiles_main},		/* doc 2.0 */
-	{"sfind", sfiles_main},	 /* alias */	/* doc 2.0 as sfiles */
-	{"sfio", sfio_main},			/* doc 2.0 */
-	{"sinfo", sinfo_main},	/* alias */	/* doc 2.0 as info */
-	{"smerge", smerge_main},		/* doc needed 2.0 */
-	{"status", status_main},		/* doc 2.0 */
-	{"stripdel", stripdel_main},		/* doc 2.0 */
-	{"synckeys", synckeys_main},
-	{"tagmerge", tagmerge_main},		/* */
-	{"takepatch", takepatch_main},		/* doc 2.0 */
-	{"testdates", testdates_main},		/* undoc 2.0 */
-	{"timestamps", timestamp_main},
-	{"undo", undo_main},			/* doc 2.0 */
-	{"undos", undos_main},			/* doc 2.0 */
-	{"unedit", unedit_main},		/* doc 2.0 */
-	{"unget", unedit_main},	/* aliases */	/* doc 2.0 as unedit */
-	{"unlock", unlock_main },		/* doc 2.0 */
-	{"unpark", unpark_main},		/* doc 2.0 */
-	{"unpull", unpull_main},		/* doc 2.0 */
-	{"unwrap", unwrap_main},		/* doc 2.0 */
-	{"upgrade", upgrade_main},
-	{"users", users_main},			/* doc 2.0 */
-	{"user", users_main},			/* aliases of "bk users" */
-	{"uudecode", uudecode_main},
-	{"uuencode", uuencode_main},
-	{"val", val_main},			/* doc 2.0 */
-	{"version", version_main},		/* doc 2.0 */
-	{"what", what_main},			/* doc 2.0 */
-	{"which", which_main },
-	{"xflags", xflags_main},		/* doc 2.0 */
-	{"zone", zone_main},			/* doc 2.0 */
-
-	{0, 0},
-};
-
-/* Keep this sorted too */
-struct tool guis[] = {
-	{ "citool", 0 },
-	{ "csettool", "csetool" },
-	{ "difftool", 0 },
-	{ "newdifftool", 0 },
-	{ "fm3tool", "fm3" },
-	{ "fmtool", "fm" },
-	{ "fmtool", "fm2tool" },
-	{ "helptool", 0 },
-	{ "installtool", 0 },
-	{ "msgtool", 0 },
-	{ "renametool", 0 },
-	{ "revtool", "histool" },
-	{ "revtool", "histtool" },
-	{ "revtool", "sccstool" },
-	{ "setuptool", 0 },
-
-	{ 0, 0 }
-};
 
 private int
 usage()
@@ -461,6 +82,8 @@ main(int ac, char **av, char **env)
 	char	*p, *prog, *argv[MAXARGS];
 	char	sopts[30];
 
+	reserveStdFds();
+	spawn_preHook = bk_preSpawnHook;
 	if (getenv("BK_SHOWPROC")) {
 		FILE	*f;
 
@@ -468,6 +91,7 @@ main(int ac, char **av, char **env)
 			fprintf(f, "BK (%u t: %5s)", getpid(), milli());
 			for (i = 0; av[i]; ++i) fprintf(f, " %s", av[i]);
 			fprintf(f, "\n");
+			fprintf(f, "-%u: %d %s\n", getpid(), rand_checkSeed(), getenv("RANDSEED"));
 			fclose(f);
 		}
 	}
@@ -522,6 +146,9 @@ main(int ac, char **av, char **env)
 	atexit(cmdlog_exit);
 	platformInit(av); 
 	bk_environ = env;
+
+	bk_isSubCmd = !rand_checkSeed();
+
 	unless (bin) {
 		fprintf(stderr,
 		    "Unable to find the BitKeeper bin directory, aborting\n");
@@ -647,52 +274,51 @@ run:	getoptReset();
 	}
 
 	cmdlog_start(av, 0);
-	ret = run_cmd(prog, is_bk, si > 1 ? sopts : 0, ac, av);
+	ret = cmd_run(prog, is_bk, si > 1 ? sopts : 0, ac, av);
 	cmdlog_end(ret);
 	exit(ret);
 }
 
 /*
- * The commands here needed to be spawned, not execed, so command logging works.
+ * The commands here needed to be spawned, not execed, so command
+ * logging works.
  */
 private int
-run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
+cmd_run(char *prog, int is_bk, char *sopts, int ac, char **av)
 {
-	int	i, j, ret;
+	int	i, j;
+	CMD	*cmd;
 	char	cmd_path[MAXPATH];
 	char	*argv[MAXARGS];
 
-	/*
-	 * look up the internal command 
-	 */
-	for (i = 0; cmdtbl[i].name; i++) {
-		if (streq(cmdtbl[i].name, prog)){
-			ret = cmdtbl[i].func(ac, av);
-			return (ret);
-		}
-	}
-	unless (is_bk) {
+	cmd = cmd_lookup(prog, strlen(prog));
+	unless (is_bk || (cmd && cmd->fcn)) {
 		fprintf(stderr, "%s is not a linkable command\n",  prog);
 		return (1);
 	}
-
-	/*
-	 * Handle Gui script
-	 */
-	for (i = 0; guis[i].prog; i++) {
-		unless (streq(guis[i].prog, prog) ||
-		    (guis[i].alias && streq(guis[i].alias, prog))) {
-			continue;
+	if (cmd) {
+		/* Handle aliases */
+		if (cmd->alias) {
+			cmd = cmd_lookup(cmd->alias, strlen(cmd->alias));
+			assert(cmd);
 		}
-		return (launch_wish(guis[i].prog, av+1));
+		/* Handle restricted commands */
+		if ((cmd->restricted && !bk_isSubCmd) ||
+		    (cmd->pro && !bk_commercial)) {
+			/* error message matches shell message */
+			cmd = 0;
+		}
 	}
+	/* unknown commands fall through to bk.script */
+	switch (cmd ? cmd->type : CMD_BK_SH) {
+	    case CMD_INTERNAL:		/* handle internal command */
+		assert(cmd->fcn);
+		return (cmd->fcn(ac, av));
 
-	/*
-	 * Handle shell scripts.
-	 */
-	if (streq(prog, "applypatch") ||
-	    streq(prog, "import") ||
-	    streq(prog, "resync")) {
+	    case CMD_GUI:		/* Handle Gui script */
+		return (launch_wish(cmd->name, av+1));
+
+	    case CMD_SHELL:		/* Handle shell scripts */
 		argv[0] = shell();
 		sprintf(cmd_path, "%s/%s", bin, prog);
 		argv[1] = cmd_path;
@@ -705,44 +331,41 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 		}
 		argv[i] = 0;
 		return (spawn_cmd(_P_WAIT, argv));
-	}
 
-	/*
-	 * Is it a known C program ?
-	 */
-	if (streq(prog, "patch") ||
-	    streq(prog, "cmp") ||
-	    streq(prog, "diff") ||
-	    streq(prog, "diff3") ||
-	    streq(prog, "sdiff")) {
+	    case CMD_CPROG:		/* Handle C programs */
 		return (spawn_cmd(_P_WAIT, av));
-	}
 
-	/* Handle GUI test */
-	if (streq(prog, "guitest")) {
-		sprintf(cmd_path, "%s/t/guitest.tcl", bin);
-		return (launch_wish(cmd_path, av+1));
-	}
-
-	/*
-	 * If we get here, it is a 
-	 * a) bk shell function
-	 *    or
-	 * b) external program/script
-	 * XXX This is slow because we are going thru the shell
-	 */
-	argv[0] = shell();
-	sprintf(cmd_path, "%s/bk.script", bin);
-	argv[1] = cmd_path;
-	for (i = 2, j = 0; av[j]; i++, j++) {
-		if (i >= (MAXARGS-10)) {
-			fprintf(stderr, "bk: too many args\n");
-			return (1);
+	    case CMD_BK_SH:
+		/* Handle GUI test */
+		if (streq(prog, "guitest")) {
+			sprintf(cmd_path, "%s/t/guitest.tcl", bin);
+			return (launch_wish(cmd_path, av+1));
 		}
-		argv[i] = av[j];
+
+		/*
+		 * If we get here, it is a
+		 * a) bk shell function
+		 *    or
+		 * b) external program/script
+		 * XXX This is slow because we are going thru the shell
+		 */
+		argv[0] = shell();
+		sprintf(cmd_path, "%s/bk.script", bin);
+		argv[1] = cmd_path;
+		for (i = 2, j = 0; av[j]; i++, j++) {
+			if (i >= (MAXARGS-10)) {
+				fprintf(stderr, "bk: too many args\n");
+				return (1);
+			}
+			argv[i] = av[j];
+		}
+		argv[i] = 0;
+		return (spawn_cmd(_P_WAIT, argv));
+	    default:
+		/* should never get here */
+		fprintf(stderr, "bk: '%s' not setup correctly.\n", prog);
+		return (1);
 	}
-	argv[i] = 0;
-	return (spawn_cmd(_P_WAIT, argv));
 }
 
 #define	LOG_BADEXIT	-100000		/* some non-valid exit */

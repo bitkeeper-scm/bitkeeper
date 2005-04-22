@@ -331,7 +331,6 @@
 #define	BK_HOSTME_SERVER "hostme.bkbits.net"
 #define	WEB_BKD_CGI	"web_bkd"
 #define	HOSTME_CGI	"hostme_cgi"
-#define	WEB_MAIL_CGI	"web_mail"
 #define	BK_CONFIG_URL	getenv("BK_CONFIG_URL")
 #define	BK_CONFIG_URL2	getenv("BK_CONFIG_URL2")
 #define	BK_CONFIG_CGI	"bk_config"
@@ -760,6 +759,7 @@ typedef struct {
 	char	*host;		/* remote host if set */
 	char	*path;		/* pathname (must be set) */
 	char 	*cred;		/* user:passwd for proxy authentication */
+	char	*seed;		/* seed saved to validate bkd */
 	int	contentlen;	/* len from http header (recieve only) */
 	pid_t	pid;		/* if pipe, pid of the child */
 } remote;
@@ -1181,9 +1181,9 @@ void	saveEnviroment(char *patch);
 void	restoreEnviroment(char *patch);
 int	run_check(char *partial, int fix, int quiet);
 char	*key2path(char *key, MDBM *idDB);
-int	check_licensesig(char *key, char *sign);
-char	*hashstr(char *str);
-char	*secure_hashstr(char *str, char *key);
+int	check_licensesig(char *key, char *sign, int version);
+char	*hashstr(char *str, int len);
+char	*secure_hashstr(char *str, int len, char *key);
 int	write_log(char *root, char *file, int rotate, char *format, ...);
 void	delete_cset_cache(char *rootpath, int save);
 time_t	mtime(char *path);
@@ -1210,6 +1210,7 @@ int	global_locked(void);
 void	progressbar(int n, int max, char *msg);
 char	*signed_loadFile(char *filename);
 int	signed_saveFile(char *filename, char *data);
+void	bk_preSpawnHook(int flags, char *const av[]);
 void	lockfile_cleanup(void);
 void	set_timestamps(char *sfile);
 
@@ -1238,10 +1239,11 @@ u32	crc(char *s);
 
 int	annotate_args(int flags, char *args);
 
-extern char *bk_vers;
-extern char *bk_utc;
-extern char *bk_time;
-extern char *bk_platform;
+extern	char	*bk_vers;
+extern	char	*bk_utc;
+extern	char	*bk_time;
+extern	char	*bk_platform;
+extern	int	bk_commercial;
 
 int	getMsg(char *msg_name, char *bkarg, char b, FILE *outf);
 int	getMsg2(char *msg_name, char *arg, char *arg2, char b, FILE *outf);

@@ -9,6 +9,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "tomcrypt/mycrypt.h"
+#include "tomcrypt/randseed.h"
 
 private	int	chk_permissions(void);
 private	int	chk_idcache(void);
@@ -77,6 +78,7 @@ sane(int readonly, int resync)
 		fprintf(stderr, "sane: not in a BitKeeper repository\n");
 		errors++;
 	}
+	assert(sizeof(u32) == 4);
 
 	/* See the port/system.c in this same changeset */
 	assert(sizeof(pid_t) <= sizeof(int));
@@ -281,10 +283,8 @@ chk_id(void)
 	fprintf(f, "%s|", sccs_realuser());
 
 	/*randbits*/
-	if (rng_get_bytes(buf, 3, 0) != 3) {
-		fprintf(stderr, "chk_id: failed to get random date\n");
-		exit(1);
-	}
+	rand_getBytes(buf, 3);
+
 	outlen = sizeof(rand);
 	if (base64_encode(buf, 3, rand, &outlen)) {
 		fprintf(stderr, "chk_id: %s\n", crypt_error);

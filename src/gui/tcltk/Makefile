@@ -36,7 +36,9 @@ configure: tcl/$S/configure tk/$S/configure
 	for i in tcl/$S tk/$S; do \
 		cd $(HERE)/$$i; \
 		test -f configure || bk -Ur get -qS; \
-		CFLAGS=-O2 ./configure --enable-64bit --disable-shared; \
+		CFLAGS='-O2 -DBK' \
+		./configure --enable-64bit \
+		    --disable-shared; \
 		sed -e s/X11R4/X11R6/ < Makefile > MK; \
 		if [ "X$(OSTYPE)" = Xhpux11.00 ]; then \
 			sed -e 's|^X11_LIB_SWITCHES.*|X11_LIB_SWITCHES        = -L/usr/lib/X11R6 -l:libX11.3|' < MK > MK2; \
@@ -106,6 +108,7 @@ bin/tclsh$(EXE): tcl/$S/Makefile
 	rm -rf bin/tclsh$(EXE) lib/tcl*
 	cd tcl/$S && \
 	$(MAKE) prefix= exec_prefix= INSTALL_ROOT=../.. \
+	    XLIBS=../../../../tomcrypt/libtomcrypt.a \
 	    install-binaries install-libraries
 	rm -rf include usr lib/tcl8.4/tcltest1.0
 	mv bin/tclsh* bin/tclsh$(EXE)
@@ -115,6 +118,7 @@ bin/bkgui$(EXE): tk/$S/Makefile bin/tclsh$(EXE)
 	rm -rf bin/bkgui$(EXE) lib/tk*
 	cd tk/$S && \
 	$(MAKE) prefix= exec_prefix= INSTALL_ROOT=../.. \
+	    XLIBS=../../../../tomcrypt/libtomcrypt.a \
 	    install-binaries install-libraries
 	rm -rf include usr lib/tk8.4/images
 	cd lib/tcl8.4/encoding/; \
