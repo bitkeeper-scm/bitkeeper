@@ -277,3 +277,36 @@ test -f BitKeeper/etc/RESYNC_TREE && {
 	exit 1
 }
 echo OK
+unset BK_DEBUG_CMD
+
+echo $N Keep keywords in an sccs merge ..............................$NL
+no_logging project
+echo '%K%' > foo
+bk new $Q foo
+bk commit $Q -yfoo
+cd ..
+bk clone $Q project copy
+cd project
+bk edit $Q foo
+echo project >> foo
+bk delta $Q -yfoo foo
+bk commit $Q -yfoo
+cd ../copy
+bk edit $Q foo
+echo copy >> foo
+bk delta $Q -yfoo foo
+bk commit $Q -yfoo
+bk pull $Q -R
+bk resolve -t << EOF > OUT 2> ERR
+s
+C
+.
+EOF
+bk edit $Q foo
+grep -q '^%K%$' foo || {
+  echo Failed
+  echo expected keywords
+  cat foo
+  exit 1
+}
+echo OK

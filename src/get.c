@@ -22,6 +22,7 @@ _get_main(int ac, char **av, char *out)
 	int	commitedOnly = 0;
 	int	branch_ok = 0;
 	int	caseFoldingFS = 1;
+	int	closetips = 0;
 	MDBM	*realNameCache = 0;
 	char	realname[MAXPATH];
 
@@ -66,7 +67,7 @@ _get_main(int ac, char **av, char *out)
 		    case 'i': iLst = optarg; break;		/* doc 2.0 */
 		    case 'k': flags &= ~GET_EXPAND; break;	/* doc 2.0 */
 		    case 'm': flags |= GET_REVNUMS; break;	/* doc 2.0 */
-		    case 'M': mRev = optarg; break;		/* doc 2.0 */
+		    case 'M': mRev = optarg; closetips = !mRev; break;
 		    case 'n': flags |= GET_MODNAME; break;	/* doc 2.0 */
 		    case 'N': flags |= GET_LINENUM; break;	/* doc 2.0 */
 		    case 'p': flags |= PRINT; break;		/* doc 2.0 */
@@ -136,6 +137,11 @@ onefile:	fprintf(stderr,
 	if (commitedOnly && (rev || cdate)) {
 		fprintf(stderr,
 		    "%s: -C can not be combined with rev/date.\n", av[0]);
+		goto usage;
+	}
+	if ((rev || cdate) && closetips) {
+		fprintf(stderr,
+		    "%s: -M can not be combined with rev/date.\n", av[0]);
 		goto usage;
 	}
 	if ((rev || cdate) && (sf_flags & SF_HASREVS)) {
@@ -258,6 +264,30 @@ onefile:	fprintf(stderr,
 				    "%s: can't specify revisions without -p\n",
 				    av[0]);
 				goto usage;
+			}
+		}
+		/* -M with no args means to close the open tip */
+		if (closetips) {
+			delta	*a, *b;
+
+			if (sccs_findtips(s, &a, &b)) {
+				if (a->r[2]) {
+					mRev = a->rev;
+				} else if (b->r[2]) {
+					mRev = b->rev;
+				} else {
+					fprintf(stderr, "%s: ERROR -M with"
+					    " neither tip on branch?\n",
+					    av[0]);
+					goto usage;
+				}
+			} else {
+				fprintf(stderr, "%s: No branches to close"
+				    " in %s, skipping...\n",
+				    av[0], s->gfile);
+				errors = 1;
+				sccs_free(s);
+				continue;
 			}
 		}
 		if ((flags & (GET_DIFFS|GET_BKDIFFS|GET_HASHDIFFS))

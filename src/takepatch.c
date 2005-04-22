@@ -369,42 +369,24 @@ getGone(int isLogPatch)
 private void
 merge(char *gfile)
 {
-	char	*s, l[200], g[200], r[200];
-	char	*sfile = name2sccs(gfile);
 	char	*rfile = name2sccs(gfile);
 	char	*mfile = name2sccs(gfile);
-	char	*t, buf[MAXPATH];
+	char	*t;
 
 	t = strrchr(rfile, '/'), t[1] = 'r';
 	t = strrchr(mfile, '/'), t[1] = 'm';
 	unlink(mfile);
 	free(mfile);
 	if (exists(rfile)) {
-		FILE	*f;
-
 		/*
 		 * Both remote and local have updated the file.
 		 * We automerge here, saves trouble later.
 		 */
-		f = fopen(rfile, "r");
-		fscanf(f, "merge deltas %s %s %s", l, g, r);
-		fclose(f);
-		s = strchr(l, '.'); s++;
-		s = strchr(s, '.');
-#define	TMP	"BitKeeper/tmp/CONTENTS"
-		sprintf(buf, "bk get -eqgM%s %s", s ? l : r, gfile);
-		system(buf);
-		sprintf(buf, "bk get -qpr%s %s > %s", l, gfile, TMP);
-		system(buf);
-		sprintf(buf, "bk get -qpr%s %s >> %s", r, gfile, TMP);
-		system(buf);
-		sprintf(buf, "bk _sort -u < %s > %s", TMP, gfile);
-		system(buf);
-		sprintf(buf, "bk ci -qdPyauto-union %s", gfile);
-		system(buf);
+		sys("bk", "get", "-qeM", gfile, SYS);
+		sysio(0, gfile, 0, "bk", "merge", "-s", gfile, SYS);
+		sys("bk", "ci", "-qdPyauto-union", gfile, SYS);
 		unlink(rfile);
 	} /* else remote update only */
-	free(sfile);
 	free(rfile);
 }
 

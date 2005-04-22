@@ -3,11 +3,14 @@
 .SH NAME
 bk merge \- three-way text based file merge
 .SH SYNOPSIS
-.B merge 
+.B merge [\-s]
 .ARG local
 .ARG ancestor
 .ARG remote
 .ARG merge
+.br
+.B merge [\-s]
+.ARG path/to/gfile
 .SH DESCRIPTION
 The
 .B bk merge
@@ -22,11 +25,14 @@ by
 .ARG remote
 and merges them into
 .ARG merge .
+When only a gfile is given on the command line, it is assumed to be a
+file in the RESYNC tree with an unresolved merge.  In that case the 3
+parts are extracted automatically and the merge output is written to
+stdout.  This form is mainly useful as part of pre-resolve triggers.
 .LP
 If all changes are made to different regions of the
 .ARG ancestor ,
-then the merge is said to be free of conflicts and happens without any
-further human intervention.
+then the merge is said to be free of conflicts.
 .LP
 A conflict occurs if both
 .ARG local
@@ -48,6 +54,14 @@ changes made in the remote repository
 It is up to the caller to edit the 
 .ARG merge 
 file and resolve any conflicts.
+.SH OPTIONS
+.if t .TP .6i
+.if n .TP 1i
+.B \-s
+Perform a set merge instead on a normal file merge.  In this case the
+files are assumed to be lists of items, one item per line, and the
+merge does an automatic union of the lists and writes the result in
+sorted order.  Conflicts cannot occur in this mode.
 .SH WARNING
 Nobody likes to hear this, but this sort of automatic merge can get you
 in trouble.  The problem is that this is a syntactic merge, not a semantic
