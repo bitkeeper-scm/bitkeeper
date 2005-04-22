@@ -1456,6 +1456,12 @@ _install()
 	exit 0
 }
 
+# alias for only removed 'bk _sortmerge'
+# 'bk merge -s' should be used instead
+__sortmerge()
+{
+    bk merge -s "$@"
+}
 
 # ------------- main ----------------------
 __platformInit
