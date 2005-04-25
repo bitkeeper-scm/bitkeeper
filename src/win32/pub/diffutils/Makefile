@@ -27,7 +27,7 @@ diff: $(D_OBJ) $(L_OBJ)
 diff3: $(D3_OBJ)
 
 depends: $(D_SRC) $(D3_SRC) $(L_SRC) $(H)
-	gcc -MM $(CFLAGS) $^ > $@
+	gcc -MM $(CFLAGS) $(CPPFLAGS) $^ > $@
 
 include depends
 

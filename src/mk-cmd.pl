@@ -155,7 +155,9 @@ dotbk
 _exists
 export
 f2csets
+files
 _find
+_findcset
 findkey
 fix
 fixlod
@@ -166,6 +168,7 @@ gethost
 getmsg
 _getreg
 getuser
+glob
 gnupatch
 gone
 graft
@@ -174,11 +177,13 @@ _gzip
 help
 helpsearch
 helptopics
+_httpfetch
 hostme
 idcache
 isascii
 key2rev
 _key2path
+keycache
 _keyunlink
 _lconfig
 lease
@@ -198,11 +203,13 @@ _loggingto
 mailsplit
 _mail
 makepatch
+mdiff
 merge
 mklock
 more
 mtime
 mv
+mvdir
 mydiff
 names
 newroot
@@ -211,7 +218,7 @@ ounpark
 parent
 park
 pending
-_preference
+preference
 _probekey restricted
 prompt
 prs
@@ -226,11 +233,14 @@ _rclone
 rcs2sccs
 rcsparse
 receive
+regex
 renumber
 repogca
 relink
 repo
 resolve
+restore
+_reviewmerge
 rm
 rmdel
 root
@@ -244,13 +254,12 @@ send
 sendbug
 set
 setup
-sfind
+sfiles
 sfio
 shrink
 sinfo
 smerge
 _shellSplit_test
-_socket2pipe
 _sort
 _sortmerge
 status
@@ -260,7 +269,8 @@ synckeys
 tagmerge
 takepatch
 testdates
-unbk
+timestamp
+_unbk
 undo
 undos
 unedit
@@ -293,12 +303,13 @@ _fix_lod1 => fixlod
 info => sinfo
 _log => log
 multiuser => newroot
+_preference => preference
 rchksum => checksum
 rev2cset => r2c
 sccsdiff => diffs
 sccsmv => mv
 sccsrm => rm
-sfiles => sfind
+sfind => sfiles
 user => users
 
 # guis
@@ -310,6 +321,7 @@ fmtool gui
 helptool gui
 installtool gui
 msgtool gui
+newdifftool gui
 revtool gui
 setuptool gui
 

@@ -23,7 +23,7 @@ patch: $(OBJS)
 include depends
 
 depends: $(SRCS) $(H)
-	gcc -MM $(CFLAGS) $^ > $@
+	gcc -MM $(CFLAGS) $(CPPFLAGS) $^ > $@
 
 clean clean-obj clobber:
 	rm -f *.o $(PROGRAMS) core

@@ -31,10 +31,6 @@ __cd2root() {
 	cd "$root"
 }
 
-_preference() {
-	bk _preference "$@"
-}
-
 # shorthand to dig out renames
 _renames() {
 	case "X$1" in

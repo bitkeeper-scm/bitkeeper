@@ -205,7 +205,7 @@ send_part1_msg(options *opts, remote *r)
 	system(cmd);
 	free(cmd);
 
-	rc = send_file(r, buf, 0, 0);
+	rc = send_file(r, buf, 0);
 	unlink(buf);
 	return (rc);
 }
@@ -240,7 +240,7 @@ send_part2_msg(options *opts, remote *r, char *key_list, int rcsets)
 
 	if (opts->verbose >= 0 ) {
 		if (rcsets > 0) {
-			rc = send_file(r, msgfile, size(key_list) + 17, 0);
+			rc = send_file(r, msgfile, size(key_list) + 17);
 			f = fopen(key_list, "rt");
 			assert(f);
 			write_blk(r, "@KEY LIST@\n", 11);
@@ -255,12 +255,12 @@ send_part2_msg(options *opts, remote *r, char *key_list, int rcsets)
 			write_blk(r, "@END@\n", 6);
 			fclose(f);
 		} else {
-			rc = send_file(r, msgfile, 14, 0);
+			rc = send_file(r, msgfile, 14);
 			write_blk(r, "@NO KEY LIST@\n", 16);
 		}
 	} else {
 		/* count or empty/notempty  */
-		rc = send_file(r, msgfile, 0, 0);
+		rc = send_file(r, msgfile, 0);
 	}
 	unlink(msgfile);
 	return (rc);

@@ -76,7 +76,7 @@ usage:			system("bk help -s upgrade");
 		notice("upgrade-require-lease", 0, "-e");
 		goto out;
 	}
-	if (want_commercial && !av[optind] && !bk_proj) {
+	if (want_commercial && !av[optind] && !proj_root(0)) {
 		notice("upgrade-commercial-needrepo", 0, "-e");
 		goto out;
 	}
