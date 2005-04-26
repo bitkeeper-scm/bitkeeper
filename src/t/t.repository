@@ -203,6 +203,9 @@ cd $HERE/copy2
 bk makepatch $Q -e1.3 > $HERE/patch
 cd $HERE/proj_log
 bk takepatch  $Q -a < $HERE/patch
+while [ -f PENDING/2*[0-9] -o -f PENDING/lock ]
+do	sleep 1
+done
 cd $HERE/proj_log
 bk -r check -a
 bk lock -U
