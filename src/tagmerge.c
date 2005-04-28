@@ -53,24 +53,16 @@ tagmerge()
 	 * Find the two oldest tag tips, and count up all tips.
 	 */
 	for (d = s->table, i = 0; d; d = d->next) {
-		unless (d->symLeaf) continue;
+		unless (d->symGraph) continue;
+		if (d->ptag) sfind(s, d->ptag)->flags |= D_RED;
+		if (d->mtag) sfind(s, d->mtag)->flags |= D_RED;
+		if (d->flags & D_RED) {
+			d->flags &= ~D_RED;
+			continue;
+		}
 		i++;
-		unless (a) {
-			a = d;
-			continue;
-		}
-		unless (b) {
-			b = d;
-			continue;
-		}
-		if (d->date < a->date) {
-			a = d;
-			continue;
-		}
-		if (d->date < b->date) {
-			b = d;
-			continue;
-		}
+		b = a;	/* b will be next oldest */
+		a = d; 	/* a will be oldest */
 	}
 	if (i <= 1) {
 		sccs_free(s);
