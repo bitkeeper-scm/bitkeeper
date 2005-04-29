@@ -4169,6 +4169,48 @@ loadGlobalConfig(MDBM *db)
 }
 
 /*
+ * Override the config db with values from the BK_CONFIG enviromental
+ * variable if it exists.
+ *
+ * BK_CONFIG='var1:value1;var2:values2'
+ */
+private MDBM *
+loadEnvConfig(MDBM *db)
+{
+	char	*env = getenv("BK_CONFIG");
+	char	**values;
+	int	i;
+	char	*k, *v, *p;
+
+	unless (env) return (db);
+	assert(db);
+	values = splitLine(env, ";", 0);
+	EACH (values) {
+		p = values[i];
+
+		while (isspace(*p)) p++;
+		k = p;
+		while (*p != ':' && *p) p++;
+		unless (*p) continue;
+		v = p+1;
+		while (isspace(p[-1])) --p;
+		*p = 0;
+		while (isspace(*v)) ++v;
+		if (*v) {
+			p = v;
+			while (*p) ++p;
+			while (isspace(p[-1])) --p;
+			*p = 0;
+			mdbm_store_str(db, k, v, MDBM_REPLACE);
+		} else {
+			mdbm_delete_str(db, k);
+		}
+	}
+	freeLines(values, free);
+	return (db);
+}
+
+/*
  * Load both local and global config
  */
 MDBM *
@@ -4176,9 +4218,14 @@ loadConfig(char *root)
 {
 	MDBM *db;
 
-	db = loadRepoConfig(root);
-	unless (db) return (NULL);
-	return (loadGlobalConfig(db));
+	if (root) {
+		unless (db = loadRepoConfig(root)) return (0);
+	} else {
+		db = mdbm_mem();
+	}
+	loadGlobalConfig(db);
+	loadEnvConfig(db);
+	return (db);
 }
 
 /*

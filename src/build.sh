@@ -13,24 +13,13 @@ ms_env()
 		exec C:/build/buildenv/bin/sh --login $0 $orig_args
 	}
 
-	SYS=win32
-	BK="bk.exe"
-
 	gcc --version | grep -q cyg && {
 		echo No Mingw GCC found, I quit.
 		exit 1
 	}
 
 	XLIBS="/mingw/lib/CRT_noglob.o -lws2_32 -lole32"
-	# BINDIR should really be :C:/Program Files/BitKeeper
-	# The shell can not handle space in pathname, so
-	# we use the short name here
-	BINDIR="C:/Progra~1/BitKeeper"
-	INSTALL=installdir
-	RESOURCE=bkres.o
 	CC="gcc -pipe"
-
-	export SYS BK BINDIR INSTALL RESOURCE CC
 }
 
 test "X$G" = X && G=-g
