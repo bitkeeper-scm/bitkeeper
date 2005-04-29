@@ -592,3 +592,32 @@ grep -q "commit: .1: tags can't start with a '.'" out || {
 	echo failed; exit 1;
 }
 echo OK
+
+echo $N Create tag graph with two tips ..............................$NL
+no_logging twotipbase
+cd ..
+bk clone $Q twotipbase twotip
+cd twotipbase
+touch foo
+bk new $Q foo
+bk commit $Q -yfoo
+bk tag $Q FOO
+bk tag $Q -r1.1 FOO
+bk edit $Q foo
+bk delta $Q -yfoo foo
+bk commit $Q -yfoo
+bk tag $Q FOO
+cd ../twotip
+bk tag $Q -r1.1 BAR
+bk pull $Q
+bk undo $Q -fr+
+echo OK
+# flow right into ...
+echo $N Create tag graph with missing node ..........................$NL
+# This scenario is a bug hit by Phil Marden
+bk undo $Q -fr+ 2>ERR || {
+	echo Failed
+	cat ERR
+	exit 1
+}
+echo OK
