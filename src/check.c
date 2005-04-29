@@ -22,7 +22,7 @@ private void	init_idcache(void);
 private int	checkKeys(sccs *s, char *root);
 private	int	chk_csetpointer(sccs *s);
 private void	warnPoly(void);
-private int	chk_gfile(sccs *s);
+private int	chk_gfile(sccs *s, MDBM *pathDB);
 private int	chk_dfile(sccs *s);
 private int	writable_gfile(sccs *s);
 private int	readonly_gfile(sccs *s);
@@ -84,6 +84,7 @@ check_main(int ac, char **av)
 	MDBM	*db;
 	MDBM	*idDB;
 	MDBM	*keys = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
+	MDBM	*pathDB = mdbm_mem();
 	sccs	*s;
 	int	errors = 0, eoln_native = 1, want_dfile;
 	int	e;
@@ -203,7 +204,7 @@ check_main(int ac, char **av)
 			if (sccs_resum(s, 0, 0, 0)) errors |= 0x04;
 			if (s->has_nonl && chk_nlbug(s)) errors |= 0x04;
 		}
-		if (chk_gfile(s)) errors |= 0x08;
+		if (chk_gfile(s, pathDB)) errors |= 0x08;
 		if (no_gfile(s)) errors |= 0x08;
 		if (readonly_gfile(s)) errors |= 0x08;
 		if (writable_gfile(s)) errors |= 0x08;
@@ -303,6 +304,7 @@ check_main(int ac, char **av)
 	unlink(ctmp);
 	mdbm_close(db);
 	mdbm_close(keys);
+	mdbm_close(pathDB);
 	if (goneDB) mdbm_close(goneDB);
 	if (proj) proj_free(proj);
 	if (errors && fix) {
@@ -414,12 +416,28 @@ chk_dfile(sccs *s)
 }
 
 private int
-chk_gfile(sccs *s)
+chk_gfile(sccs *s, MDBM *pathDB)
 {
 	char	*type;
+	char	*sfile;
+	char	buf[MAXPATH];
 
+	/* check for conflicts in the gfile pathname */
+	strcpy(buf, s->gfile);
+	while (1) {
+		if (streq(dirname(buf), ".")) break;
+		if (mdbm_store_str(pathDB, buf, "", MDBM_INSERT)) break;
+		sfile = name2sccs(buf);
+		if (exists(sfile)) {
+			free(sfile);
+			type = "directory";
+			goto err;
+		}
+		free(sfile);
+	}
 	unless (exists(s->gfile)) return (0);
 	if (isreg(s->gfile) || isSymlnk(s->gfile)) return (0);
+	strcpy(buf, s->gfile);
 	if (isdir(s->gfile)) {
 		type = "directory";
 err:		fprintf(stderr,
@@ -432,7 +450,7 @@ is where the file wants to be.  To correct this:\n\
 2) Check out the file \"bk get %s\"\n\
 3) If you want to get rid of the file, then use bk rm to get rid of it\n\
 ===========================================================================\n",
-		    s->gfile, type, type, s->gfile);
+		    buf, type, type, buf);
 		return (1);
 	} else {
 		type = "unknown-file-type";
