@@ -336,7 +336,7 @@ doit(int dash)
 	}
 	sccs_free(s);
 	fclose(stdout);
-	if (pid >= 0) waitpid(pid, 0, 0);
+	if (pid > 0) waitpid(pid, 0, 0);
 	return (0);
 
 next:	return (1);

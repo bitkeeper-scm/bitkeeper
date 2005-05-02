@@ -48,7 +48,7 @@ clean_main(int ac, char **av)
 		}
 next:		name = sfileNext();
 	}
-	sfileDone();
+	if (sfileDone()) ret = 1;
 	if (proj) proj_free(proj);
 	return (ret);
 }

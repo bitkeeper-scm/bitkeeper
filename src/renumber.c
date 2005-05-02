@@ -35,7 +35,7 @@ renumber_main(int ac, char **av)
 	sccs	*s = 0;
 	char	*name;
 	int	c, dont = 0, quiet = 0, flags = INIT_SAVEPROJ|INIT_WACKGRAPH;
-	int	spinners = 0;
+	int	spinners = 0, error = 0;
 	delta	*leaf(delta *tree);
 	project	*proj = 0;
 
@@ -80,9 +80,9 @@ renumber_main(int ac, char **av)
 		}
 		sccs_free(s);
 	}
-	sfileDone();
+	if (sfileDone()) error = 1;
 	if (proj) proj_free(proj);
-	return (0);
+	return (error);
 }
 
 /*

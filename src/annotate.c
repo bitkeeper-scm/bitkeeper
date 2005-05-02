@@ -91,7 +91,7 @@ annotate_main(int ac, char **av)
 		}
 		sccs_free(s);
 	}
-	sfileDone();
+	if (sfileDone()) errors = 1;
 	if (proj) proj_free(proj);
 	return (errors);
 }

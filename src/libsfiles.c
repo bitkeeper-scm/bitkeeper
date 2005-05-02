@@ -35,8 +35,10 @@ private	char buf[MAXPATH];	/* pathname we actually pass back */
 private	int unget;		/* if set, return path again */
 private	char *prog;		/* av[0], sort of */
 private	char rev[MAXREV+1];	/* 1.1.1.1 - see HASREVS */
+private	pid_t spid;		/* pid of sfiles for -r */
 
 private	int oksccs(char *s, int flags, int complain);
+private	int sfilesDied(int killit);
 
 private int
 isDelete(char *s)
@@ -51,7 +53,7 @@ isDelete(char *s)
  * Get the next file and munge it into an s.file name.
  */
 char *
-sfileNext()
+sfileNext(void)
 {
 	char	*name;
 
@@ -69,7 +71,10 @@ again:
 			flist = 0;
 			return (0);
 		}
-		chomp(buf);
+		unless (chomp(buf)) {
+			/* handle truncated buffer from sfiles being killed */
+			if (feof(flist) && sfilesDied(0)) return (0);
+		}
 		debug((stderr, "sfiles::FILE got %s\n", buf));
 	} else if (d) {
 		while (di <= nLines(d)) {
@@ -158,7 +163,7 @@ sfileRev()
 char *
 sfileFirst(char *cmd, char **Av, int Flags)
 {
-	sfileDone();
+	if (sfilesDied(0)) return (0);
 	rev[0] = 0;
 	prog = cmd;
 	flags = Flags|SF_HASREVS; 
@@ -227,9 +232,11 @@ sfileFirst(char *cmd, char **Av, int Flags)
 	return (sfileNext());
 }
 
-void
-sfileDone()
+int
+sfileDone(void)
 {
+	int	ret;
+
 	if (av) {
 		av = 0;
 		ac = 0;
@@ -241,6 +248,53 @@ sfileDone()
 		flist = 0;
 	}
 	prog = "";
+	if (ret = sfilesDied(0)) {
+		return (ret);
+	}
+	sfilesDied(1); /* kill sfiles */
+	return (0);
+}
+
+int
+sfiles(char *opts)
+{
+	int	pfd;
+	char	*sav[4] = {"bk", "sfiles", 0, 0};
+
+	sav[2] = opts;
+	if ((spid = spawnvp_rPipe(sav, &pfd, 0)) == -1) {
+		fprintf(stderr, "cannot spawn bk sfiles\n");
+		return (1);
+	}
+	dup2(pfd, 0);
+	close(pfd);
+	return (0);
+}
+
+int
+sfilesDied(int killit)
+{
+	int	ret, opt;
+	static	int sfilesRet = 0;
+
+	if (spid) {
+		opt = WNOHANG;
+		if (killit) {
+			kill(spid, SIGTERM);
+			opt = 0;
+		}
+		if (spid == waitpid(spid, &ret, opt)) {
+			if (WIFEXITED(ret)) {
+		    		sfilesRet = WEXITSTATUS(ret);
+			} else if (WIFSIGNALED(ret)) {
+				sfilesRet = WTERMSIG(ret);
+			} else {
+				sfilesRet = 1;
+			}
+			spid = 0;
+		}
+	}
+	return (sfilesRet);
 }
 
 private int

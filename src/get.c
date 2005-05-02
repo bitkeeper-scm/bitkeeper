@@ -280,7 +280,7 @@ onefile:	fprintf(stderr,
 			break;
 		}
 	}
-	sfileDone();
+	if (sfileDone()) errors = 1;
 	if (realNameCache) mdbm_close(realNameCache);
 	return (errors);
 }

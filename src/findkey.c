@@ -86,7 +86,7 @@ findkey_main(int ac, char **av)
 		findkey(s, look);
 		sccs_free(s);
 	}
-	sfileDone();
+	if (sfileDone()) errors |= 1;
 	if (proj) proj_free(proj);
 	return (errors);
 }

@@ -52,7 +52,7 @@ usage:		system("bk help sccs2bk");
 		errors |= sccs2bk(s, csetkey);
 		s = 0;	/* freed by sccs2bk */
 	}
-	sfileDone();
+	if (sfileDone()) errors |= 2;
 	if (proj) proj_free(proj);
 	fprintf(stderr, "\n");
 	return (errors);
