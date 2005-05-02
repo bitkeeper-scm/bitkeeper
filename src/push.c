@@ -119,6 +119,7 @@ usage:			system("bk help -s push");
 private int
 needLogMarker(remote *r)
 {
+	char	*p;
 	unless (opts.metaOnly) return (0);
 
 	/*
@@ -132,6 +133,17 @@ needLogMarker(remote *r)
 					streq(r->host, OPENLOG_HOST1)) {
 		return (0);
 	}
+	/* Requires Official BK server */
+	unless ((p = getenv("BKD_SEED_OK")) && streq(p, "2") &&
+	    (p = getenv("BKD_REALHOST")) &&
+	    (streq(p, "openlogging.org") || streq(p, "disks.bitmover.com"))) {
+		return (0);
+	}
+	/*
+	 * XXX perhaps instead of BKD_REALHOST I should test BKD_VERSION and
+	 * search for a version tagged *-openlogging.
+	 */
+
 	return (1);
 }
 
@@ -315,12 +327,6 @@ tags:			fprintf(opts.out,
 	}
 	sccs_free(s);
 	if (r->type == ADDR_HTTP) disconnect(r, 2);
-	/*
-	 * if opts.lcsets > 0, we update the log marker in push part 2
-	 */
-	if ((opts.lcsets == 0) && (needLogMarker(r))) {
-		updLogMarker(0, opts.debug, opts.out);
-	}
 	if ((opts.lcsets == 0) || !opts.doit) return (0);
 	if ((opts.rcsets || opts.rtags) && !opts.metaOnly) {
 		return (opts.autopull ? 1 : -1);
@@ -635,11 +641,7 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar)
 
 	if (opts.debug) fprintf(opts.out, "Remote terminated\n");
 
-	if (opts.metaOnly) {
-		if (needLogMarker(r)) {
-			updLogMarker(0, opts.debug, opts.out);
-		}
-	} else {
+	unless (opts.metaOnly) {
 		unlink(CSETS_OUT);
 		if (rename(rev_list, CSETS_OUT)) {
 			unlink(rev_list);
@@ -654,7 +656,12 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar)
 	}
 	putenv("BK_STATUS=OK");
 
-done:	if (!opts.metaOnly) {
+done:
+	if (opts.metaOnly) {
+		if (!rc && needLogMarker(r)) {
+			updLogMarker(0, opts.debug, opts.out);
+		}
+	} else {
 		if (rc) putenv("BK_STATUS=CONFLICTS");
 		trigger(av[0], "post");
 	}
