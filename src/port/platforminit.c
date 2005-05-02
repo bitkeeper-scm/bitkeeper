@@ -48,8 +48,10 @@ platformInit(char **av)
 	 * Allow overrides for the lease/config stuff.
 	 */
 #define	putKV(K, V) unless (getenv(K)) putenv(K "=" V);
-	putKV("BK_CONFIG_URL", "http://config.bitkeeper.com:80");
-	putKV("BK_CONFIG_URL2", "http://config2.bitkeeper.com:80");
+	putKV("BK_CONFIG_URL",
+	    "http://config.bitkeeper.com/cgi-bin/bk_config2");
+	putKV("BK_CONFIG_URL2",
+	    "http://config2.bitkeeper.com/cgi-bin/bk_config2");
 	putKV("OPENLOG_LEASE",
 	    "http://lease.openlogging.org/cgi-bin/bk_lease");
 	putKV("OPENLOG_LEASE2",
