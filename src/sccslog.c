@@ -48,6 +48,7 @@ sccslog_main(int ac, char **av)
 	sccs	*s;
 	char	*name;
 	int	save, c, flags = INIT_SAVEPROJ|SILENT;
+	int	errors = 0;
 	project	*proj = 0;
 	RANGE_DECL;
 
@@ -106,7 +107,7 @@ usage:			system("bk help -s sccslog");
 		verbose((stderr, "%s: %d deltas\n", s->sfile, n - save));
 next:		sccs_free(s);
 	}
-	sfileDone();
+	if (sfileDone()) errors = 1;
 	if (proj) proj_free(proj);
 	verbose((stderr, "Total %d deltas\n", n));
 	if (n) {
@@ -120,7 +121,7 @@ next:		sccs_free(s);
 		freelog();
 		if (pid > 0) waitpid(pid, 0, 0);
 	}
-	return (0);
+	return (errors);
 }
 
 /*

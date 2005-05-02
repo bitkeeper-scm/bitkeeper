@@ -92,7 +92,7 @@ usage:			system("bk help -s unlock");
 		}
 		name = sfileNext();
 	}
-	sfileDone();
+	if (sfileDone()) c |= 2;
 	if (proj) proj_free(proj);
 	return (c);
 }

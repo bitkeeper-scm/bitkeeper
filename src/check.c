@@ -283,7 +283,7 @@ check_main(int ac, char **av)
 		}
 		sccs_free(s);
 	}
-	sfileDone();
+	if (e = sfileDone()) return (e);
 	if (all || update_idcache(idDB, keys)) {
 		fprintf(idcache, "#$sum$ %u\n", id_sum);
 		fclose(idcache);

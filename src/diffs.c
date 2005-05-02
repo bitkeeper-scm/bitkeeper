@@ -279,7 +279,7 @@ next:		if (s) {
 		things = save;
 	}
 	if (proj) proj_free(proj);
-	sfileDone();
+	if (sfileDone()) errors |= 4;
 	if (cset) unlink(rset);
 	return (errors);
 }
