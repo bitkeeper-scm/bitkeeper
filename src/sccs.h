@@ -373,6 +373,7 @@ typedef	unsigned short	sum_t;
 typedef	char		**globv;
 
 #include "liblines.h"
+#include "bkver.h"
 
 /*
  * Struct delta - describes a single delta entry.
@@ -1207,12 +1208,6 @@ void	close_gaps(u8 *vec, int n, int (*compare)(int a, int b));
 int	diff_algor(int m, int n, u8 *lchg, u8 *rchg,
     int (*compare)(int a, int b));
 int   diffline(char *left, char *right);
-
-extern	char	*bk_vers;
-extern	char	*bk_utc;
-extern	char	*bk_time;
-extern	char	*bk_platform;
-extern	int	bk_commercial;
 
 int	getMsg(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf);
 #endif	/* _SCCS_H_ */

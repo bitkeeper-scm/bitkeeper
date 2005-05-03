@@ -280,7 +280,7 @@ cmd_run(char *prog, int is_bk, char *sopts, int ac, char **av)
 		}
 		/* Handle restricted commands */
 		if ((cmd->restricted && !bk_isSubCmd) ||
-		    (cmd->pro && !bk_commercial)) {
+		    (cmd->pro && !bk_commercial())) {
 			/* error message matches shell message */
 			cmd = 0;
 		}

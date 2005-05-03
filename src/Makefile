@@ -154,7 +154,7 @@ SRCS	= bk.c $(OBJ:.o=.c) \
 	zlib/uncompr.c zlib/zutil.c
 HDRS	= $(SYS).h $(UWT_H) bkd.h lib_tcp.h liblines.h logging.h mmap.h \
 	  purify.h range.h rcs.h resolve.h sccs.h system.h zgets.h \
-	  mdbm/mdbm.h tomcrypt/mycrypt.h zlib/zlib.h cmd.h
+	  mdbm/mdbm.h tomcrypt/mycrypt.h zlib/zlib.h cmd.h bkver.h
 SCRSRCS	= bk.sh import.sh uuwrap.sh unuuwrap.sh port/unix_platform.sh \
 	  port/unix_platform.perl port/win32_platform.perl \
 	  port/win32_platform.sh gzip_uuwrap.sh ungzip_uuwrap.sh \
@@ -233,6 +233,7 @@ clean-obj: FORCE
 	-@rm -f bk bk.o cscope.out $(OBJ) $(SCRIPTS)
 	-@rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
 	-@rm -f $(LIBS) bkdsubstr bkmsg.txt bkhelp.txt a.out cmd.c cmd.h
+	-@rm -f bkver.h
 	-@rm -f core $(WIN_TMP)
 	-@cd ../doc && $(MAKE) clean-obj
 	-@cd ../man && $(MAKE) clean
@@ -397,6 +398,15 @@ bkver.c: FRC
 	echo "int test_release = "$(TRIAL)";" >> bk.v
 	echo "int bk_commercial = $(COMMERCIAL);" >> bk.v
 	mv -f bk.v bkver.c
+
+bkver.h: Makefile
+	echo "/* auto-generated file */" > $@
+	echo "extern char *bk_vers;" >> $@
+	echo "extern char *bk_utc;" >> $@
+	echo "extern char *bk_time;" >> $@
+	echo "extern char *bk_platform;" >> $@
+	echo "#define bk_commercial() $(COMMERCIAL)" >> $@
+
 
 bkver.o: bkver.c
 

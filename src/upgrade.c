@@ -72,7 +72,7 @@ usage:			system("bk help -s upgrade");
 		goto out;
 	}
 	want_commercial = lease_anycommercial();
-	if (bk_commercial && !want_commercial) {
+	if (bk_commercial() && !want_commercial) {
 		notice("upgrade-require-lease", 0, "-e");
 		goto out;
 	}
