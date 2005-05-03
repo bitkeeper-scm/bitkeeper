@@ -429,7 +429,7 @@ bk commit $Q -ycomment2 2> ERR && {
 	echo commit should have failed
 	exit 1
 }
-grep -q "file/directory conflict: foo" ERR || {
+grep -q "File/directory conflict: foo" ERR || {
 	echo wrong error message
 	cat ERR
 	exit 1

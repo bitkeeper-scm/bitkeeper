@@ -33,8 +33,8 @@ usage:			system("bk help merge");
 	}
 	if (av[optind] && !av[optind+1]) {
 		unless (sname = name2sccs(av[optind])) goto usage;
-		unless (s = sccs_init(sname, 0, 0)) goto usage;
-		unless (n = getnames(sccs_Xfile(s, 'r'), 'r')) goto usage;
+		unless (s = sccs_init(sname, 0)) goto usage;
+		unless (n = res_getnames(sccs_Xfile(s, 'r'), 'r')) goto usage;
 		files[0] = getgfile(s, n->local);
 		/* XXX is this the "right" gca? */
 		files[1] = getgfile(s, n->gca);
