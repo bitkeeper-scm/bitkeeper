@@ -140,6 +140,7 @@ rm -f ../gonelog/SCCS/s.A
 bk edit $Q A
 bk delta $Q -y'none' A || exit 1
 bk commit $Q -y'none' || exit 1
+test -d ../gonelog/PENDING || mkdir ../gonelog/PENDING
 bk push -e ../gonelog 1>OUT 2>ERR || {
 	echo Failed
 	echo STDOUT

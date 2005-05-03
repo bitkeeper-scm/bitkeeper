@@ -451,7 +451,7 @@ next:		if (init) mclose(init);
 		sccs_free(s);
 		name = sfileNext();
 	}
-	sfileDone();
+	if (sfileDone()) errors |= 64;
 	comments_done();
 	return (errors);
 }

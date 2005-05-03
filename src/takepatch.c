@@ -85,6 +85,7 @@ private	char	*input;		/* input file name,
 private	int	encoding;	/* encoding before we started */
 private	char	*spin = "|/-\\";
 private	int	compat;		/* we are eating a compat patch, fail on tags */
+private	char	*comments;	/* -y'comments', pass to resolve. */
 private	char	**errfiles;	/* files had errors during apply */
 
 /*
@@ -121,7 +122,7 @@ takepatch_main(int ac, char **av)
 	setmode(0, O_BINARY); /* for win32 */
 	input = "-";
 	debug_main(av);
-	while ((c = getopt(ac, av, "acFf:iLmqsStv")) != -1) {
+	while ((c = getopt(ac, av, "acFf:iLmqsStvy;")) != -1) {
 		switch (c) {
 		    case 'q':					/* undoc 2.0 */
 		    case 's':					/* undoc 2.0 */
@@ -139,6 +140,7 @@ takepatch_main(int ac, char **av)
 		    case 'S': saveDirs++; break;		/* doc 2.0 */
 		    case 't': textOnly++; break;		/* doc 2.0 */
 		    case 'v': echo++; flags &= ~SILENT; break;	/* doc 2.0 */
+		    case 'y': comments = optarg; break;
 		    default: goto usage;
 		}
 	}
@@ -306,7 +308,7 @@ usage:		system("bk help -s takepatch");
 
 	touch(ROOT2RESYNC "/BitKeeper/etc/RESYNC_TREE", 0666);
 	if (resolve) {
-		char 	*resolve[] = {"bk", "resolve", 0, 0, 0, 0, 0};
+		char 	*resolve[] = {"bk", "resolve", 0, 0, 0, 0, 0, 0};
 		int 	i;
 
 		if (echo) {
@@ -317,6 +319,7 @@ usage:		system("bk help -s takepatch");
 		unless (echo) resolve[++i] = "-q";
 		if (textOnly) resolve[++i] = "-t";
 		if (noConflicts) resolve[++i] = "-c";
+		if (comments) resolve[++i] = aprintf("-y%s", comments);
 		i = spawnvp_ex(_P_WAIT, resolve[0], resolve);
 		unless (WIFEXITED(i)) return (-1);
 		error = WEXITSTATUS(i);
@@ -364,42 +367,24 @@ getGone(int isLogPatch)
 private void
 merge(char *gfile)
 {
-	char	*s, l[200], g[200], r[200];
-	char	*sfile = name2sccs(gfile);
 	char	*rfile = name2sccs(gfile);
 	char	*mfile = name2sccs(gfile);
-	char	*t, buf[MAXPATH];
+	char	*t;
 
 	t = strrchr(rfile, '/'), t[1] = 'r';
 	t = strrchr(mfile, '/'), t[1] = 'm';
 	unlink(mfile);
 	free(mfile);
 	if (exists(rfile)) {
-		FILE	*f;
-
 		/*
 		 * Both remote and local have updated the file.
 		 * We automerge here, saves trouble later.
 		 */
-		f = fopen(rfile, "r");
-		fscanf(f, "merge deltas %s %s %s", l, g, r);
-		fclose(f);
-		s = strchr(l, '.'); s++;
-		s = strchr(s, '.');
-#define	TMP	"BitKeeper/tmp/CONTENTS"
-		sprintf(buf, "bk get -eqgM%s %s", s ? l : r, gfile);
-		system(buf);
-		sprintf(buf, "bk get -qpr%s %s > %s", l, gfile, TMP);
-		system(buf);
-		sprintf(buf, "bk get -qpr%s %s >> %s", r, gfile, TMP);
-		system(buf);
-		sprintf(buf, "bk _sort -u < %s > %s", TMP, gfile);
-		system(buf);
-		sprintf(buf, "bk ci -qdPyauto-union %s", gfile);
-		system(buf);
+		sys("bk", "get", "-qeM", gfile, SYS);
+		sysio(0, gfile, 0, "bk", "merge", "-s", gfile, SYS);
+		sys("bk", "ci", "-qdPyauto-union", gfile, SYS);
 		unlink(rfile);
 	} /* else remote update only */
-	free(sfile);
 	free(rfile);
 }
 

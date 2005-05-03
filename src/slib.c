@@ -3970,17 +3970,20 @@ loadEnvConfig(MDBM *db)
 		while (isspace(p[-1])) --p;
 		*p = 0;
 		while (isspace(*v)) ++v;
-		unless (*v) continue;
-		p = v;
-		while (*p) ++p;
-		while (isspace(p[-1])) --p;
-		*p = 0;
-
-		mdbm_store_str(db, k, v, MDBM_REPLACE);
+		if (*v) {
+			p = v;
+			while (*p) ++p;
+			while (isspace(p[-1])) --p;
+			*p = 0;
+			mdbm_store_str(db, k, v, MDBM_REPLACE);
+		} else {
+			mdbm_delete_str(db, k);
+		}
 	}
 	freeLines(values, free);
 	return (db);
 }
+
 /*
  * Load both local and global config
  */
@@ -15535,6 +15538,34 @@ sccs_gca(sccs *s, delta *left, delta *right, char **inc, char **exc, int best)
 }
 
 /*
+ * Find the two tips of the graph so they can be closed by a merge.
+ */
+int
+sccs_findtips(sccs *s, delta **a, delta **b)
+{
+	delta	*d;
+
+	*a = *b = 0;
+
+	/*
+	 * b is that branch which needs to be merged.
+	 * At any given point there should be exactly one of these.
+	 */
+	for (d = s->table; d; d = d->next) {
+		if (d->type != 'D') continue;
+		unless (isleaf(s, d)) continue;
+		if (!*a) {
+			*a = d;
+		} else {
+			assert(LOGS_ONLY(s) || !*b);
+			*b = d;
+			/* Could break but I like the error checking */
+		}
+	}
+	return (*b != 0);
+}
+
+/*
  * Create resolve file.
  * The order of the deltas in the file is important - the "branch"
  * should be last.
@@ -15545,7 +15576,7 @@ int
 sccs_resolveFiles(sccs *s)
 {
 	FILE	*f = 0;
-	delta	*p, *d, *g = 0, *a = 0, *b = 0;
+	delta	*p, *g = 0, *a = 0, *b = 0;
 	char	*n[3];
 	int	retcode = -1;
 
@@ -15559,36 +15590,11 @@ err:
 	}
 
 	/*
-	 * b is that branch which needs to be merged.
-	 * At any given point there should be exactly one of these.
-	 */
-	for (d = s->table; d; d = d->next) {
-		if (d->type != 'D') continue;
-		unless (isleaf(s, d)) continue;
-		if (!a) {
-			a = d;
-		} else {
-			assert(LOGS_ONLY(s) || !b);
-			b = d;
-			if (a->r[0] != b->r[0]) {
-				fprintf(stderr, "resolveFiles: Found tips on "
-				 	"different LODs.\n"
-					"LODs are no longer supported.\n"
-					"Please run 'bk support' to "
-					"request assistance.\n");
-				goto err;
-			}
-			/* Could break but I like the error checking */
-		}
-		continue;
-	}
-
-	/*
 	 * If we have no conflicts, then make sure the paths are the same.
 	 * What we want to compare is whatever the tip path is with the
 	 * whatever the path is in the most recent delta.
 	 */
-	unless (b) {
+	unless (sccs_findtips(s, &a, &b)) {
 		for (p = s->table; p; p = p->next) {
 			if ((p->type == 'D') && !(p->flags & D_REMOTE)) {
 				break;
@@ -15602,6 +15608,14 @@ err:
 		retcode = 0;
 		goto rename;
 	} else {
+		if (a->r[0] != b->r[0]) {
+			fprintf(stderr, "resolveFiles: Found tips on "
+			    "different LODs.\n"
+			    "LODs are no longer supported.\n"
+			    "Please run 'bk support' to "
+			    "request assistance.\n");
+			goto err;
+		}
 		retcode = 1;
 	}
 

@@ -53,6 +53,7 @@ host=`bk gethost`
 					{ echo wrong parent $parent; exit 1; }
 cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
 echo OK
+
 echo $N Clone a nested repository ...................................$NL
 cd $HERE/project/src
 bk clone $Q $HERE/project sub_proj || exit 1
@@ -74,6 +75,7 @@ cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
 echo OK
 if [ $DO_REMOTE = YES ]; then
  cd $HERE/copy
+
  echo $N Pull with explicit remote parent ............................$NL
  bk pull -t $Q localhost:$HERE/project > /dev/null 2>&1 ||
 							{ echo failed; exit 1; }
@@ -81,6 +83,7 @@ if [ $DO_REMOTE = YES ]; then
  [ $revs -eq 2 ] || { echo failed; exit 1; }
  cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
  echo OK
+
  echo $N Pull with explicit remote parent and username ...............$NL
  cd $HERE/copy
  bk pull -t $Q $USER@localhost:$HERE/project > /dev/null 2>& 1 ||
@@ -89,6 +92,7 @@ if [ $DO_REMOTE = YES ]; then
  [ $revs -eq 2 ] || { echo failed; exit 1; }
  cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
  echo OK
+
  echo $N Pull with explicit local parent .............................$NL
  cd $HERE/copy
  HOSTNAME=`bk gethost -r`
@@ -202,6 +206,10 @@ KEY2="`bk prs -hd:KEY: -r+ $HERE/project/ChangeSet`"
 [ "$KEY" = "$KEY2" ] || { echo bad push; exit 1; }
 echo OK
 
+echo $N Make sure we left the c.ChangeSet file there ................$NL
+test -f RESYNC/SCCS/c.ChangeSet || exit 1
+echo OK
+
 echo $N Resolve by hand and push again ..............................$NL
 bk resolve $Q -F -t <<EOF >resolve.out 2>&1
 m
@@ -227,6 +235,20 @@ bk push $Q || { echo failed; exit 1; }
 KEY2="`cd $HERE/project && bk prs -hd:KEY: -r+ ChangeSet`"
 [ "$KEY" = "$KEY2" ] || { echo no push; exit 1; }
 cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
+echo OK
+
+echo $N Check merge commit comment ..................................$NL
+bk changes -r+ -d'$each(:C:){(:C:)\n}' > GOT
+# If the paths put into urls were sanatized we wouldn't need this hack
+if [ X$PLATFORM = XWIN32 ]
+then
+	grep -q '^Merge ' GOT || exit 1
+	grep -q '^into  ' GOT || exit 1
+else
+	(cd ../project && echo "Merge bk_regression.bk:`pwd`";
+	cd ../copy && echo "into  bk_regression.bk:`pwd`") > WANT
+	checkfiles WANT GOT
+fi
 echo OK
 
 if [ $DO_REMOTE = YES -a X$NO_TTY = X ]; then
@@ -304,6 +326,7 @@ bk push -nl $HERE/unrelated > push.out 2>&1
 grep -q "trying to synchronize with an unrelated" push.out
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N pull from unrelated project should error ....................$NL
 cd $HERE/project
 bk pull -nl $HERE/unrelated > pull.out 2>&1

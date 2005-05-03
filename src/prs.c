@@ -159,6 +159,6 @@ usage:			system("bk help -s prs");
 next:		rc = 1;
 		sccs_free(s);
 	}
-	sfileDone();
+	if (sfileDone()) rc = 1;
 	return (rc);
 }

@@ -109,6 +109,7 @@ cd $HERE/proj_log
 bk takepatch -aL < $HERE/patch
 bk -r check -a || { echo failed; exit 1; }
 cd $HERE/project
+test -d $HERE/proj_log/PENDING || mkdir $HERE/proj_log/PENDING
 bk push $Q -e $HERE/proj_log
 cd $HERE/proj_log
 while [ -d PENDING ]
@@ -145,7 +146,7 @@ bk clone $Q -r1.1 $HERE/project $HERE/copy
 cd $HERE/copy
 rm -f $HERE/post-incoming.out
 BK_TRIGGER_PATH=/etc bk takepatch -aL < $HERE/patch || exit 1
-while [ -f PENDING/2*[0-9] -o -f PENDING/lock ]
+while [ -z "`find PENDING -name 'BAD.*' -print 2>/dev/null`" ]
 do	sleep 1
 done
 grep -q "can't apply a logging patch to a regular file" PENDING/BAD.*.log
@@ -155,8 +156,12 @@ echo OK
 if [ $TRIGGERS -eq 1 ]; then
 echo $N A failed logging patch should still call the triggers........$NL
 test -f $HERE/post-incoming.out || {
-	echo trigger never ran
-	exit 1
+	# Give it a chance to get there.
+	sleep 1
+	test -f $HERE/post-incoming.out || {
+		echo trigger never ran
+		exit 1
+	}
 }
 perl -ne "
 	chop;
@@ -202,8 +207,11 @@ cd $HERE/copy1; bk push $Q -e $HERE/proj_log
 cd $HERE/copy2
 bk makepatch $Q -e1.3 > $HERE/patch
 cd $HERE/proj_log
+test -d PENDING || mkdir PENDING
 bk takepatch  $Q -a < $HERE/patch
-while [ -d PENDING ]; do sleep 1; done
+while [ -d PENDING ]
+do	sleep 1
+done
 bk -r check -a || exit 1
 bk lock -U
 echo OK

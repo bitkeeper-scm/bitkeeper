@@ -158,20 +158,10 @@ int
 c_smerge(resolve *rs)
 {
 	int	ret;
-	char	*branch;
-	char	*opt;
 
-	branch = strchr(rs->revs->local, '.');
-	assert(branch);
-	if (strchr(++branch, '.')) {
-		branch = rs->revs->local;
-	} else {
-		branch = rs->revs->remote;
-	}
-	/* bk get -pM{branch} {rs->s->gfile} > {rs->s->gfile} */
-	opt = aprintf("-pM%s", branch);
-	ret = sysio(0, rs->s->gfile, 0, "bk", "get", opt, rs->s->gfile, SYS);
-	free(opt);
+	/* bk get -pM {rs->s->gfile} > {rs->s->gfile} */
+	ret = sysio(0, rs->s->gfile, 0,
+	    "bk", "get", "-pkM", rs->s->gfile, SYS);
 	ret &= 0xffff;
 	/*
 	 * We need to restart even if there are errors, otherwise we think

@@ -194,9 +194,13 @@ done:		mdbm_close(vals);
 		}
 		if (s) sccs_free(s);
 	}
-	
+
 	/*
 	 * Get the contents of all files into CTMP, we'll sort -u them later.
+	 * XXX This is really wrong.  Really the files should be run past
+	 *     'bk merge -s' pairwise.  Otherwise deletes will be lost.
+	 *     But this converge code is so rarely run, I don't think it
+	 *     matters.
 	 */
 	unlink(CTMP);
 	fd1 = dup(1); close(1);

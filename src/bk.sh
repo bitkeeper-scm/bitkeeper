@@ -1413,6 +1413,13 @@ _install()
 	exit 0
 }
 
+# alias for only removed 'bk _sortmerge'
+# 'bk merge -s' should be used instead
+__sortmerge()
+{
+    bk merge -s "$@"
+}
+
 _tclsh() {
 	TCLSH=`bk bin`/gui/bin/tclsh
 	test "X$OSTYPE" = "Xmsys" && TCLSH=`win2msys $TCLSH`

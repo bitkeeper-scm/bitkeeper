@@ -34,7 +34,7 @@ renumber_main(int ac, char **av)
 {
 	sccs	*s = 0;
 	char	*name;
-	int	spinners = 0;
+	int	spinners = 0, error = 0;
 	int	c, dont = 0, quiet = 0, flags = INIT_WACKGRAPH;
 	delta	*leaf(delta *tree);
 
@@ -78,8 +78,8 @@ renumber_main(int ac, char **av)
 		}
 		sccs_free(s);
 	}
-	sfileDone();
-	return (0);
+	if (sfileDone()) error = 1;
+	return (error);
 }
 
 /*

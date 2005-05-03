@@ -86,7 +86,7 @@ usage:		/* system("bk help -s sccs2bk"); */
 		errors |= sccs2bk(s, verbose, csetkey);
 		s = 0;	/* freed by sccs2bk */
 	}
-	sfileDone();
+	if (sfileDone()) errors |= 2;
 	if (verbose == 1) fprintf(stderr, "\n");
 	return (errors);
 }

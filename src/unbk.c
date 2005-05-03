@@ -34,6 +34,6 @@ unbk_main(int ac, char **av)
 		    0, NEWCKSUM|ADMIN_RM1_0, 0, "none", 0, 0, 0, 0, 0, 0);
 		sccs_free(s);
 	}
-	sfileDone();
+	if (sfileDone()) errors |= 2;
 	return (errors);
 }

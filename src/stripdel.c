@@ -235,29 +235,35 @@ newleaf(sccs *s)
 private int
 set_meta(sccs *s, int stripBranches, int *count)
 {
-	int	n, left;
+	int	i, n, left;
 	int	redo_merge = 0;
 	delta	*e, *leaf = 0;
+	char	**tips = 0;
 
+	/* Use D_RED to figure out tag graph tips.  Leaves D_RED cleared */
 	for (n = left = 0, e = s->table; e; e = e->next) {
 		if (e->symLeaf) leaf = e;
+		if (e->symGraph) {
+			/*
+			 * build up a list of tips
+			 * XXX: while multi tips is not desired,
+			 * they do exist in the wild, so need to handle it
+			 */
+			unless (e->flags & D_RED) tips = addLine(tips, e);
+			if (e->ptag) sfind(s, e->ptag)->flags |= D_RED;
+			if (e->mtag) sfind(s, e->mtag)->flags |= D_RED;
+
+			e->flags &= ~D_RED;	/* done with it, so reset */
+		}
 
 		if (stripBranches && e->r[2]) e->flags |= D_SET;
 
 		/* Mark metas if their true parent is marked. */
 		if (e->type != 'D') {
-
-			/* if either of these is marked, then this one is too */
-			if (e->ptag && e->mtag &&
-			    (noparent(sfind(s, e->ptag)) ||
-			    noparent(sfind(s, e->mtag)))) {
-			    	e->flags |= D_SET;
-			}
 			if (noparent(e)) e->flags |= D_SET;
 			unless (e->flags & D_SET) continue;
 		}
 		if (e->flags & D_SET) {
-
 			n++;
 			MK_GONE(s, e);
 			if (e->merge) {
@@ -269,10 +275,9 @@ set_meta(sccs *s, int stripBranches, int *count)
 		left++;
 	}
 
-	if (leaf) {
-		marktags(s, leaf);
-		if (leaf->flags & D_GONE) newleaf(s);
-	}
+	/* strip out tags whose ancestry tags a removed delta */
+	EACH(tips) marktags(s, (delta *)tips[i]);
+	if (leaf && (leaf->flags & D_GONE)) newleaf(s);
 
 	/* Rebuild merge image:
 	 *   The D_MERGE tag means a delta is the parent of a merge
@@ -288,6 +293,7 @@ set_meta(sccs *s, int stripBranches, int *count)
 		}
 	}
 	*count = n;
+	if (tips) freeLines(tips, 0);
 	return left;
 }
 

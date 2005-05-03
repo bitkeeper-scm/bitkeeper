@@ -40,7 +40,7 @@ usage:			system("bk help -s rm");
 	    name; name = sfileNext()) {
 		errors |= sccs_rm(name, NULL, useCommonDir, force);
 	}
-	sfileDone();
+	if (sfileDone()) errors |= 2;
 	return (errors);
 }
 

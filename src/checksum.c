@@ -112,7 +112,7 @@ checksum_main(int ac, char **av)
 		}
 		sccs_free(s);
 	}
-	sfileDone();
+	if (sfileDone()) ret = 1;
 	fix ? repository_wrunlock(0) : repository_rdunlock(0);
 	return (ret ? ret : (doit ? 1 : 0));
 }

@@ -751,6 +751,9 @@ ok_local(sccs *s, int check_pending)
  * the deleted file will never be put in the non-deleted file.  That's
  * true but not fatal, all it means is that some poor schmuck will be
  * asked multiple times about the logging.
+ *
+ * XXX this routine should never actually be called and so should probably
+ *     be removed.
  */
 private int
 res_loggingok(resolve *rs)

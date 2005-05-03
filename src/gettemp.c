@@ -153,8 +153,6 @@ bktmpcleanup(void)
 			    "WARNING: not deleting orphan directory %s\n",
 			    tmpfiles[i]);
 		} else {
-			fprintf(stderr, "WARNING: deleting orphan file %s\n",
-				tmpfiles[i]);
 			unlink(tmpfiles[i]);
 		}
 		free(tmpfiles[i]);

@@ -47,6 +47,7 @@ sccslog_main(int ac, char **av)
 {
 	sccs	*s;
 	char	*name;
+	int	errors = 0;
 	int	save, c, flags = SILENT;
 	RANGE_DECL;
 
@@ -105,7 +106,7 @@ usage:			system("bk help -s sccslog");
 		verbose((stderr, "%s: %d deltas\n", s->sfile, n - save));
 next:		sccs_free(s);
 	}
-	sfileDone();
+	if (sfileDone()) errors = 1;
 	verbose((stderr, "Total %d deltas\n", n));
 	if (n) {
 		pid_t	pid;
@@ -118,7 +119,7 @@ next:		sccs_free(s);
 		freelog();
 		if (pid > 0) waitpid(pid, 0, 0);
 	}
-	return (0);
+	return (errors);
 }
 
 /*

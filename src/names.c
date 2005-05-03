@@ -62,7 +62,7 @@ names_main(int ac, char **av)
 		todo += names_rename(s->sfile, s->spathname, flags);
 		sccs_free(s);
 	}
-	sfileDone();
+	if (sfileDone()) error |= 4;
 	names_cleanup(flags);
 	return (error);
 }

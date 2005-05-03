@@ -60,7 +60,6 @@ int
 resolve_main(int ac, char **av)
 {
 	int	c;
-	int	comment = 0;	/* set if they used -y */
 	static	opts opts;	/* so it is zero */
 	char	*checkout;
 
@@ -101,7 +100,8 @@ resolve_main(int ac, char **av)
 			opts.excludes = addLine(opts.excludes, strdup(optarg));
 			break;
 		    case 'y': 					/* doc 2.0 */
-			opts.comment = optarg; comment = 1; break;
+			unless (opts.comment = optarg) opts.comment = "";
+			break;
 		    case '1': opts.pass1 = 0; break;		/* doc 2.0 */
 		    case '2': opts.pass2 = 0; break;		/* doc 2.0 */
 		    case '3': opts.pass3 = 0; break;		/* doc 2.0 */
@@ -125,6 +125,7 @@ usage:			system("bk help -s resolve");
 	if (av[optind]) goto usage;
 	if (opts.partial) opts.pass4 = 0;
 
+	unless (opts.textOnly) putenv("BK_GUI=WANT_CITOOL");
 	if (opts.pass3 && !opts.textOnly && !gui_useDisplay()) {
 		opts.textOnly = 1; 
 	}
@@ -132,13 +133,6 @@ usage:			system("bk help -s resolve");
 	    !opts.textOnly && !opts.quiet && !win32() && gui_useDisplay()) {
 		fprintf(stderr,
 		    "Using %s as graphical display\n", gui_displayName());
-	}
-
-	if (opts.automerge) {
-		unless (comment || opts.comment) opts.comment = "Automerge";
-	}
-	unless (comment || opts.comment) {
-		opts.comment = "Merge";
 	}
 
 	checkout = user_preference("checkout");
@@ -858,6 +852,12 @@ again:	if (how = slotTaken(opts, rs->dname)) {
 		/*
 		 * If this is the BitKeeper/etc/logging_ok file,
 		 * automerge it.
+		 * XXX This whole test is bogus.  Takepatch will always resolve
+		 *     conflicts in the logging_ok file, so we will never
+		 *     get to this point and still have a rename or contents
+		 *     conflict in the logging_ok file.
+		 *     This and then matching code in resolve_contents.c can
+		 *     all be removed.
 		 */
 		if (streq(GLOGGING_OK, rs->d->pathname)) {
 			ret = resolve_create(rs, LOGGING_OK_CONFLICT);
@@ -1714,7 +1714,6 @@ nocommit:
 		if (opts->log) {
 			fprintf(opts->log, "==== Pass 3 autocommits ====\n");
 		}
-		unless (opts->comment || pending(1)) opts->comment = "Merge";
 		unless (opts->noconflicts) ok_commit(0);
 		commit(opts);
 		return (0);
@@ -1992,7 +1991,15 @@ automerge(resolve *rs, names *n, int identical)
 	names	tmp;
 	int	do_free = 0;
 	int	flags;
-	
+	delta	*a, *b;
+
+	unless (sccs_findtips(rs->s, &a, &b)) {
+		unless (rs->opts->quiet) {
+			fprintf(stderr, "'%s' already merged\n",
+			    rs->s->gfile);
+		}
+		return;
+	}
 	if (rs->opts->debug) fprintf(stderr, "automerge %s\n", name);
 
 	unless (n) {
@@ -2041,7 +2048,7 @@ nomerge:	rs->opts->hadConflicts++;
 		ret = sysio(0, rs->s->gfile, 0, "bk", "smerge", rs->s->gfile, 
 		    rs->revs->local, rs->revs->remote, SYS);
 	}
-		
+
 	if (do_free) {
 		unlink(tmp.local);
 		unlink(tmp.gca);
@@ -2214,19 +2221,21 @@ commit(opts *opts)
 	unless (opts->resolved || opts->renamed) cmds[++i] = "-F";
 	if (opts->quiet) cmds[++i] = "-s";
 	if (opts->comment) {
-		cmt = malloc(strlen(opts->comment) + 10);
-
-		sprintf(cmt, "-y%s", opts->comment);
-		cmds[++i] = cmt;
+	    	/* Only do comments if they really gave us one */
+		if (opts->comment[0]) {
+			cmt = cmds[++i] = aprintf("-y%s", opts->comment);
+		}
+	} else if (exists("SCCS/c.ChangeSet")) {
+		// XXX - shouldn't this be automagic?
+		cmds[++i] = "-YSCCS/c.ChangeSet";
 	}
 	cmds[++i] = 0;
 	i = spawnvp_ex(_P_WAIT, "bk", cmds);
+	if (cmt) free(cmt);
 	if (WIFEXITED(i) && !WEXITSTATUS(i)) {
-		if (cmt) free(cmt);
 		opts->didMerge = opts->willMerge;
 		return;
 	}
-	if (cmt) free(cmt);
 	fprintf(stderr, "Commit aborted, no changes applied.\n");
 	resolve_cleanup(opts, 0);
 }

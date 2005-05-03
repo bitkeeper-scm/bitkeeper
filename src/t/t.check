@@ -414,3 +414,24 @@ cp SCCS/s.foo SCCS/s.foo2
 bk -r check -afc 2> $HERE/out
 grep -q "Is one of these files copied?" $HERE/out || { echo failed; exit 1; }
 echo OK
+
+echo $N bk check with partial_check should notice path conflicts ....$NL
+no_logging proj3
+bk edit $Q BitKeeper/etc/config
+echo partial_check:yes >> BitKeeper/etc/config
+echo hi > foo
+bk new $Q -ycomment foo || exit 1
+bk commit $Q -ycomment || exit 1
+mkdir foo
+echo problem > foo/bar
+bk new $Q -ycomment2 foo/bar || exit 1
+bk commit $Q -ycomment2 2> ERR && {
+	echo commit should have failed
+	exit 1
+}
+grep -q "file/directory conflict: foo" ERR || {
+	echo wrong error message
+	cat ERR
+	exit 1
+}
+echo OK

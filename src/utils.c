@@ -136,7 +136,7 @@ in(char *buf, int n)
 }
 
 int
-writen(int to, char *buf, int size)
+writen(int to, void *buf, int size)
 {
 	int	done;
 	int	n;
@@ -932,10 +932,10 @@ getServerInfoBlock(remote *r)
 	if (gotseed) {
 		i = bkd_seed(r->seed, getenv("BKD_SEED"), &newseed);
 	} else {
-		i = 1;
+		i = 0;
 		newseed = 0;
 	}
-	safe_putenv("BKD_SEED_OK=%d", !i);
+	safe_putenv("BKD_SEED_OK=%d", i);
 	if (r->seed) free(r->seed);
 	r->seed = newseed;
 	return (ret);
@@ -985,7 +985,7 @@ sendServerInfoBlock(int is_rclone)
 		sprintf(buf, "\nREPO_ID=%s", repoid);
 		out(buf);
 	}
-	/* only send back a seed if we recieved one */
+	/* only send back a seed if we received one */
 	if (p = getenv("BKD_SEED")) {
 		out("\nSEED=");
 		out(p);

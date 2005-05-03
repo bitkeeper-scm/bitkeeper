@@ -1,0 +1,67 @@
+
+
+echo $N setup repos .................................................$NL
+no_logging project
+mkdir BitKeeper/triggers
+cat <<'END' > BitKeeper/triggers/pre-resolve.automerge
+#!/bin/sh
+
+#exit 0 # XXX
+# list of files to merge.  'bar' included to show that files not
+# in RESYNC still work.
+FILES="foo bar"
+bk prs -r+ -hnd':GFILE:' $FILES |
+while read file; do
+	test "$file" || continue
+	# If get fails, we probably don't have a conflict on this file
+	bk get -qe -M "$file" 2> /dev/null || continue
+	bk merge -s "$file" > "$file" || exit 1
+	bk ci -q -yauto-merge "$file" || exit 1
+done
+END
+chmod +x BitKeeper/triggers/pre-resolve.automerge
+bk new $Q BitKeeper/triggers/pre-resolve.automerge
+
+cat <<END > foo
+a
+b
+c
+d
+END
+bk new $Q foo
+bk commit $Q -ystart
+cd $HERE
+bk clone $Q project copy
+cd project
+bk edit $Q foo
+cat <<END > foo
+a
+b
+b1
+c
+END
+bk ci $Q -ymod1 foo
+bk commit $Q -ymaster
+cd $HERE/copy
+bk edit $Q foo
+cat <<END > foo
+b
+b2
+c
+d
+END
+bk ci $Q -ymod2 foo
+bk commit $Q -yslave
+echo OK
+
+echo $N do pull .....................................................$NL
+bk pull $Q || exit 1
+bk get $Q foo
+cat <<END > want
+b
+b1
+b2
+c
+END
+checkfiles foo want
+echo OK

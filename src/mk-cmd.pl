@@ -92,7 +92,7 @@ close(H) or die;
 # and add to the hash table.
 open(SH, "bk.sh") || die;
 while (<SH>) {
-    if (/^(\w+)\(\)/) {
+    if (/^_(\w+)\(\)/) {
 	print C "$1, CMD_BK_SH, 0, 0, 0, 0\n";
     }
 }
@@ -261,7 +261,6 @@ sinfo
 smerge
 _shellSplit_test
 _sort
-_sortmerge
 status
 stripdel
 _strings

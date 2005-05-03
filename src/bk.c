@@ -253,13 +253,15 @@ main(int ac, char **av, char **env)
 		}
 
 		unless (prog = av[optind]) usage();
-		av = &av[optind];
-		for (ac = 0; av[ac]; ac++);
+		for (ac = 0; av[ac] = av[optind++]; ac++);
 		if (dashr) {
 			unless (streq(prog, "sfiles") || streq(prog, "sfind")) {
-				getoptReset();
 				signal(SIGPIPE, SIG_IGN); /* no-op on win32 */
-				return (bk_sfiles(si > 1 ? sopts : 0, ac, av));
+				if (sfiles(si > 1 ? sopts : 0)) return (1);
+				/* we have bk [-r...] cmd [opts] ... */
+				/* we want cmd [opts] ... - */
+				av[ac++] = "-";
+				av[ac] = 0;
 			}
 		}
 		prog = av[0];
@@ -754,55 +756,6 @@ usage:			system("bk help cmdlog");
 nextline:	;
 	}
 	fclose(f);
-}
-
-int
-bk_sfiles(char *opts, int ac, char **av)
-{
-	pid_t	pid;
-	int	i;
-	int	j, pfd;
-	int	status;
-	int	sac = 1;
-	char	*sav[3] = {"sfiles", 0, 0};
-	char	*cmds[100] = {"bk"};
-
-	assert(ac < 95);
-	for (i = 1, j = 0; cmds[i] = av[j]; i++, j++);
-	cmds[i++] = "-";
-	cmds[i] = 0;
-	if ((pid = spawnvp_wPipe(cmds, &pfd, 0)) == -1) {
-		fprintf(stderr, "cannot spawn %s %s\n", cmds[0], cmds[1]);
-		return(1);
-	} 
-	if (opts) {
-		sav[1] = opts;
-		sac++;
-	}
-	cmdlog_start(sav, 0);
-	close(1); dup(pfd); close(pfd);
-	if (status = sfiles_main(sac, sav)) {
-		kill(pid, SIGTERM);
-		waitpid(pid, 0, 0);
-		cmdlog_end(status);
-		exit(status);
-	}
-	fflush(stdout);
-	close(1);
-	waitpid(pid, &status, 0);
-	if (WIFEXITED(status)) {
-		cmdlog_end(WEXITSTATUS(status));
-		exit(WEXITSTATUS(status));
-	}
-	if (WIFSIGNALED(status)) {
-		fprintf(stderr,
-		    "Child was signaled with %d\n",
-		    WTERMSIG(status));
-		cmdlog_end(WTERMSIG(status));
-		exit(WTERMSIG(status));
-	}
-	cmdlog_end(100);
-	exit(100);
 }
 
 int

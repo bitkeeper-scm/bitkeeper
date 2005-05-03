@@ -50,7 +50,7 @@ usage:		fprintf(stderr, "usage: %s [-ns] [files...]\n", av[0]);
 		}
 next:		sccs_free(s);
 	}
-	sfileDone();
+	if (sfileDone()) ret = 1;
 	return (ret ? 1 : 0);
 }
 

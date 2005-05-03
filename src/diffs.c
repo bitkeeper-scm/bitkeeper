@@ -286,7 +286,7 @@ next:		if (s) {
 		name = sfileNext();
 		things = save;
 	}
-	sfileDone();
+	if (sfileDone()) errors |= 4;
 	if (mdiff) {
 		u32	status;
 

@@ -285,7 +285,7 @@ admin_main(int ac, char **av)
 next:		sccs_free(sc);
 		name = sfileNext();
 	}
-	sfileDone();
+	if (sfileDone()) error = 1;
 	return (error);
 usage:	system("bk help -s admin");
 	return (1);

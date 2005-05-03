@@ -63,6 +63,6 @@ done:			if (gfile) free(gfile);
 		e |= sccs_info(s, flags);
 		sccs_free(s);
 	}
-	sfileDone();
+	if (sfileDone()) e |= 2;
 	return (e);
 }

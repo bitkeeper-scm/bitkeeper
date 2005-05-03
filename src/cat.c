@@ -49,6 +49,6 @@ usage:		system("bk help -s cat");
 		if (sccs_get(s, 0, 0, 0, 0, SILENT|PRINT, "-")) errors |= 1;
 		sccs_free(s);
 	}
-	sfileDone();
+	if (sfileDone()) errors |= 2;
 	return (errors);
 }

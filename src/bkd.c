@@ -533,17 +533,23 @@ getav(int *acp, char ***avp, int *httpMode)
  *
  * The code looks like this:
  * client				server
- *   bkd_seed(0, 0, &pass1)
+ *   bkd_seed(0, 0, &pass1) => 0
  *        pass1 sent to bkd     -->
- *					bkd_seed(0, pass1, &pass2)
+ *					bkd_seed(0, pass1, &pass2) => 0
  *					bkd_saveSeed(BK_REPOID, pass2)
  *				<--  pass2 sent to bk
- *   bkd_seed(pass1, pass2, &pass3)
+ *   bkd_seed(pass1, pass2, &pass3) => 1
  *        pass3 sent to bkd     -->
  *					pass2 = bkd_restoreSeed(BK_REPOID)
- *					bkd_seed(pass2, pass3, &pass4)
+ *					bkd_seed(pass2, pass3, &pass4) => 2
  *				<--  pass4 sent to bk
- *   bkd_seed(pass3, pass4, 0);
+ *   bkd_seed(pass3, pass4, 0) => 2
+ *
+ * The return value:
+ *    -1  remote fails validation
+ *     0  first round, no validation
+ *     1  pass3 validation matches
+ *     2  pass4+ validation matches
  */
 int
 bkd_seed(char *oldseed, char *newval, char **newout)
@@ -556,12 +562,28 @@ bkd_seed(char *oldseed, char *newval, char **newout)
 	if (newval && oldseed) {
 		h = secure_hashstr(oldseed, strlen(oldseed),
 		    "43c0e4830eab85d9078971c5bcae5ef4");
+
 		if (p = strchr(newval, '|')) *p = 0;
-		unless (streq(h, newval)) ret = 1;
+		if (p && streq(h, newval)) {
+			ret = 1;
+			if (strchr(oldseed, '|')) ++ret;
+		} else {
+			/*
+			 * we sent a seed and the response either didn't have
+			 * a hash or the hash was wrong.  bad.
+			 */
+			newval = 0;  /* don't hash their bad data for them */
+			ret = -1;
+		}
 		free(h);
 		if (p) *p = '|';
-	} else {
-		if (oldseed) ret = 1;
+	} else if (newval && strchr(newval, '|')) {
+		/*
+		 * We didn't send them a seed and somehow they are coming back
+		 * with the hash of something. bad.
+		 */
+		newval = 0;  /* don't hash their bad data for them */
+		ret = -1;
 	}
 	if (newout) {
 		rng_get_bytes(rand, sizeof(rand), 0);

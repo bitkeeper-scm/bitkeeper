@@ -21,6 +21,7 @@ get_main(int ac, char **av)
 	int	dohash = 0;
 	int	branch_ok = 0;
 	int	caseFoldingFS = 1;
+	int	closetips = 0;
 	int	skip_bin = 0;
 	int	pnames = getenv("BK_PRINT_EACH_NAME") != 0;
 	MDBM	*realNameCache = 0;
@@ -71,7 +72,7 @@ get_main(int ac, char **av)
 		    case 'h': dohash = 1; break;		/* doc 2.0 */
 		    case 'i': iLst = optarg; break;		/* doc 2.0 */
 		    case 'k': flags &= ~GET_EXPAND; break;	/* doc 2.0 */
-		    case 'M': mRev = optarg; break;		/* doc 2.0 */
+		    case 'M': mRev = optarg; closetips = !mRev; break;
 		    case 'p': flags |= PRINT; break;		/* doc 2.0 */
 		    case 'P': flags |= PRINT|GET_FORCE; break;	/* doc 2.0 */
 		    case 'q': flags |= SILENT; break;		/* doc 2.0 */
@@ -116,6 +117,11 @@ onefile:	fprintf(stderr,
 	}
 	if (Gname && (flags & PRINT)) {
 		fprintf(stderr, "%s: can't use -G and -p together,\n", av[0]);
+		goto usage;
+	}
+	if ((rev || cdate) && closetips) {
+		fprintf(stderr,
+		    "%s: -M can not be combined with rev/date.\n", av[0]);
 		goto usage;
 	}
 	switch (getdiff) {
@@ -224,6 +230,30 @@ onefile:	fprintf(stderr,
 				goto usage;
 			}
 		}
+		/* -M with no args means to close the open tip */
+		if (closetips) {
+			delta	*a, *b;
+
+			if (sccs_findtips(s, &a, &b)) {
+				if (a->r[2]) {
+					mRev = a->rev;
+				} else if (b->r[2]) {
+					mRev = b->rev;
+				} else {
+					fprintf(stderr, "%s: ERROR -M with"
+					    " neither tip on branch?\n",
+					    av[0]);
+					goto usage;
+				}
+			} else {
+				fprintf(stderr, "%s: No branches to close"
+				    " in %s, skipping...\n",
+				    av[0], s->gfile);
+				errors = 1;
+				sccs_free(s);
+				continue;
+			}
+		}
 		if (BITKEEPER(s) && (flags & GET_EDIT) && rev && !branch_ok) {
 			/* recalc iLst and xLst to be relative to tip */
 			if (get_rollback(s, rev, &iLst, &xLst, av[0])) {
@@ -254,7 +284,7 @@ next:		sccs_free(s);
 			break;
 		}
 	}
-	sfileDone();
+	if (sfileDone()) errors = 1;
 	if (realNameCache) mdbm_close(realNameCache);
 	return (errors);
 }

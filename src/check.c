@@ -22,7 +22,7 @@ private void	init_idcache(void);
 private int	checkKeys(sccs *s, char *root);
 private	int	chk_csetpointer(sccs *s);
 private void	warnPoly(void);
-private int	chk_gfile(sccs *s);
+private int	chk_gfile(sccs *s, MDBM *pathDB);
 private int	chk_dfile(sccs *s);
 private int	writable_gfile(sccs *s);
 private int	readonly_gfile(sccs *s);
@@ -83,6 +83,7 @@ check_main(int ac, char **av)
 	int	c, n;
 	HASH	*db;
 	MDBM	*idDB;
+	MDBM	*pathDB = mdbm_mem();
 	HASH	*keys = hash_new();
 	sccs	*s;
 	int	errors = 0, eoln_native = 1, want_dfile;
@@ -222,7 +223,7 @@ retry:	unless ((cset = sccs_init(s_cset, flags)) && HASGRAPH(cset)) {
 			if (sccs_resum(s, 0, 0, 0)) errors |= 0x04;
 			if (s->has_nonl && chk_nlbug(s)) errors |= 0x04;
 		}
-		if (chk_gfile(s)) errors |= 0x08;
+		if (chk_gfile(s, pathDB)) errors |= 0x08;
 		if (no_gfile(s)) errors |= 0x08;
 		if (readonly_gfile(s)) errors |= 0x08;
 		if (writable_gfile(s)) errors |= 0x08;
@@ -291,7 +292,7 @@ retry:	unless ((cset = sccs_init(s_cset, flags)) && HASGRAPH(cset)) {
 		}
 		sccs_free(s);
 	}
-	sfileDone();
+	if (e = sfileDone()) return (e);
 	if (all || update_idcache(idDB, keys)) {
 		fprintf(idcache, "#$sum$ %u\n", id_sum);
 		fclose(idcache);
@@ -323,6 +324,7 @@ retry:	unless ((cset = sccs_init(s_cset, flags)) && HASGRAPH(cset)) {
 	}
 	if ((all || resync) && checkAll(keys)) errors |= 0x40;
 	unlink(ctmp);
+	mdbm_close(pathDB);
 	hash_free(db);
 	hash_free(keys);
 	if (goneDB) mdbm_close(goneDB);
@@ -430,20 +432,36 @@ chk_dfile(sccs *s)
 }
 
 private int
-chk_gfile(sccs *s)
+chk_gfile(sccs *s, MDBM *pathDB)
 {
 	char	*type;
+	char	*sfile;
+	char	buf[MAXPATH];
 
+	/* check for conflicts in the gfile pathname */
+	strcpy(buf, s->gfile);
+	while (1) {
+		if (streq(dirname(buf), ".")) break;
+		if (mdbm_store_str(pathDB, buf, "", MDBM_INSERT)) break;
+		sfile = name2sccs(buf);
+		if (exists(sfile)) {
+			free(sfile);
+			type = "directory";
+			goto err;
+		}
+		free(sfile);
+	}
 	unless (HAS_GFILE(s)) return (0);
 	/*
 	 * XXX when running in checkout:get mode, these checks are still
 	 * too expensive. Need to do ONE stat.
 	 */
 	if (isreg(s->gfile) || isSymlnk(s->gfile)) return (0);
+	strcpy(buf, s->gfile);
 	if (isdir(s->gfile)) {
 
 		type = "directory";
-err:		getMsg2("file_dir_conflict", s->gfile, type, '=', stderr);
+err:		getMsg2("file_dir_conflict", buf, type, '=', stderr);
 		return (1);
 	} else {
 		type = "unknown-file-type";
