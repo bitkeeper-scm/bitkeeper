@@ -943,7 +943,8 @@ sendServerInfoBlock(int is_rclone)
         	sprintf(buf, "LEVEL=%d\n", getlevel());
 		out(buf);
 		out("LICTYPE=");
-		out(bkcl(0) ? "bkcl\n" : "bkl\n");
+		out(license_name());
+		out("\n");
 	}
 	out("ROOT=");
 	getcwd(buf, sizeof(buf));

@@ -19,8 +19,6 @@
 private	int	noperms(char *target);
 private	int	upgrade_fetch(char *name, char *file);
 
-extern	int	upgrade_decrypt(char *infile, char *outfile);
-
 extern	char	*bin;
 
 private	char	*urlbase = 0;

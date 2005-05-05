@@ -149,6 +149,7 @@ again:		flush_fd0(); /* for Win/98 and Win/ME */
 		fprintf(stderr, "Setup: must provide a description.\n");
 		if (config_path) {
 err:			unlink("BitKeeper/etc/config");
+			unlink("BitKeeper/log/cmd_log");
 			mdbm_close(m); 
 			sccs_unmkroot("."); /* reverse  sccs_mkroot */
 			unless (allowNonEmptyDir) {

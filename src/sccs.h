@@ -950,6 +950,7 @@ int	linelen(char *s);
 int 	licenseAccept(int prompt);
 int	licenseAcceptOne(int prompt, char *lic);
 char	*licenses_accepted(void);
+char	*license_name(void);
 char	*mkline(char *mmap);
 int	mkdirp(char *dir);
 int	test_mkdirp(char *dir);
@@ -1201,6 +1202,7 @@ void	progressbar(int n, int max, char *msg);
 char	*signed_loadFile(char *filename);
 int	signed_saveFile(char *filename, char *data);
 void	bk_preSpawnHook(int flags, char *const av[]);
+int	upgrade_decrypt(char *infile, char *outfile);
 
 void	align_diffs(u8 *vec, int n, int (*compare)(int a, int b),
     int (*is_whitespace)(int i));
