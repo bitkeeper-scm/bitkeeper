@@ -130,12 +130,14 @@ SCRIPTS	= applypatch bk.script import resync \
 	b64wrap unb64wrap gzip_b64wrap ungzip_b64wrap
 LOCALSCR= build
 PSCR	= t/doit
+PROGS	= hidestring
 # Put UWTLIB first, it checks out files needed by mdbm on winblows.
 LIBS	= libc/libc.a $(UWTLIB) zlib/libz.a mdbm/libmdbm.a \
 	  tomcrypt/libtomcrypt.a
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES
-ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA) GUI
+ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA) \
+	$(PROGS) GUI
 
 CFLAGS	= $(CC_DEBUG)
 CPPFLAGS= -Ilibc/include -Izlib -Imdbm
@@ -264,7 +266,7 @@ rebuild:
 	-@rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
 	-@rm -f $(LIBS) bkdsubstr bkhelp.txt bkmsg.txt a.out
 	-@rm -f core bkver.c tclwrap tclwrap.o blowfish.o $(WIN_TMP)
-	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR)
+	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(PROGS)
 	-@rm -rf tmp bkl5_hashs.h
 	-@for i in ../doc ../man gnu gui utils win32 mdbm zlib tomcrypt libc; \
 	do	cd $(HERE)/$$i && $(MAKE) clobber; \
@@ -556,3 +558,6 @@ tclwrap.o blowfish.o: blowfish.h
 
 cmd.c cmd.h: mk-cmd.pl bk.sh
 	perl mk-cmd.pl || (rm -f cmd.c cmd.h; exit 1)
+
+hidestring: hidestring.c	
+	$(CC) $(CC_FAST) -o hidestring hidestring.c
