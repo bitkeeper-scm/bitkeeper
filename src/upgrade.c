@@ -23,6 +23,11 @@ extern	char	*bin;
 
 private	char	*urlbase = 0;
 private	int	flags = 0;
+private const char	key[] = {
+	0x06, 0x0f, 0x0e, 0x02, 0x24, 0x1d, 0x29, 0x1d, 0x17, 0x7f,
+	0x76, 0x32, 0x06, 0x1c, 0x29, 0x37, 0x44, 0x5d, 0x03, 0x2a,
+	0x2e, 0x2e
+};
 
 int
 upgrade_main(int ac, char **av)
@@ -40,6 +45,7 @@ upgrade_main(int ac, char **av)
 	FILE	*f;
 	int	rc = 2;
 	char	*tmpbin = 0;
+	char	salt[sizeof(key) + 1];
 	char	buf[MAXLINE];
 
 	while ((c = getopt(ac, av, "infq")) != -1) {
@@ -93,7 +99,8 @@ usage:			system("bk help -s upgrade");
 	while (p[-1] != '\n') --p;
 	strcpy(buf, p);	/* hmac */
 	*p = 0;
- 	p = secure_hashstr(index, strlen(index), "WXVTpmDYN1GusoFq5hkAoA");
+	makestring(salt, (char *)key, 'Q', sizeof(key));
+ 	p = secure_hashstr(index, strlen(index), salt);
 	unless (streq(p, buf)) {
 		fprintf(stderr, "upgrade: INDEX corrupted\n");
 		free(index);

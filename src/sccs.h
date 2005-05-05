@@ -1178,6 +1178,7 @@ char	*key2path(char *key, MDBM *idDB);
 int	check_licensesig(char *key, char *sign, int version);
 char	*hashstr(char *str, int len);
 char	*secure_hashstr(char *str, int len, char *key);
+char	*makestring(char *out, char *in, char seed, int size);
 void	delete_cset_cache(char *rootpath, int save);
 void	notice(char *key, char *arg, char *type);
 pid_t	findpid(pid_t pid);
