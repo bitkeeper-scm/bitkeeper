@@ -976,12 +976,6 @@ $
 The configured license key signature for for the current repository
 doesn't match the current license key: #BKARG#
 $
-#bad-key-signature
-When validating the license key signature for the current repository
-an error occured.  The current operation cannot be completed.
-The error was:
-   #BKARG#
-$
 #lease-nonet
 Unable to obtain permission to use this version of BitKeeper (#BKARG#) 
 from lease.openlogging.org.  That server issues certificates to use BK
