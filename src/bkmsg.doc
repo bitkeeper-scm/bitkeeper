@@ -1135,9 +1135,13 @@ with a current commercial license and run:
 	bk lease renew
 and then repeat this upgrade command.
 $
-#upgrade-commercial-needrepo
-To upgrade a commercial version of BitKeeper the current directory needs
-to be in a repository with a valid commercial license.
+#upgrade-needrepo
+The upgrade command needs to be run in a repository with a valid license.
+$
+#upgrade-devbuild
+This version of bk is a development build and cannot be upgraded
+automatically.  Please specify a valid code line and the -f option.
+Example: bk upgrade -l bk-pro -f
 $
 #comments-badfmt
 Illegal format for input to the 'bk comments' command.  Lines should

@@ -624,6 +624,30 @@ hashstr(char *str, int len)
 }
 
 char *
+hashstream(FILE *f)
+{
+	int	hash = register_hash(&md5_desc);
+	unsigned long md5len, b64len;
+	char	*p;
+	char	md5[32];
+	char	b64[32];
+
+	if (hash_filehandle(hash, f, md5)) return (0);
+	b64len = sizeof(b64);
+	md5len = hash_descriptor[hash].hashsize;
+	if (base64_encode(md5, md5len, b64, &b64len)) return (0);
+	for (p = b64; *p; p++) {
+		if (*p == '/') *p = '-';	/* dash */
+		if (*p == '+') *p = '_';	/* underscore */
+		if (*p == '=') {
+			*p = 0;
+			break;
+		}
+	}
+	return (strdup(b64));
+}
+
+char *
 signed_loadFile(char *filename)
 {
 	int	len;
@@ -757,18 +781,12 @@ upgrade_secretkey(void)
 }
 
 int
-upgrade_decrypt(char *infile, char *outfile)
+upgrade_decrypt(FILE *fin, FILE *fout)
 {
-	FILE	*fin, *fout;
 	rsa_key	rsakey;
 	int	ret;
 	char	*seckey;
 
-	unless (fin = fopen(infile, "r")) return (1);
-	unless (fout = fopen(outfile, "w")) {
-		fclose(fin);
-		return (1);
-	}
 	seckey = upgrade_secretkey();
 	ret = rsa_import(seckey, &rsakey);
 	free(seckey);
@@ -777,8 +795,6 @@ upgrade_decrypt(char *infile, char *outfile)
 		exit(1);
 	}
 	decrypt_stream(&rsakey, fin, fout);
-	fclose(fin);
-	fclose(fout);
 	return (0);
 }
 
