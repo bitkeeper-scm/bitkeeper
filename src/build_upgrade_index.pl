@@ -17,50 +17,43 @@ if (-x "$FindBin::Bin/bk") {
     $ENV{PATH} = $FindBin::Bin . ":" . $ENV{PATH};
 }
 
-my $is_free = qr/bk-3\.2\./;
-
-my($file, $md5sum, $version, $utc, $platform, $commercial);
-my(%platforms);
-
+my($file, $md5sum, $version, $utc, $platform, $codeline);
 my(%versions);
 
+my(%seen);
+
 open(I, ">INDEX") or die;
-print I "# file,md5sum,size,ver,utc,platform,commercial?\n";
+print I "# file,md5sum,ver,utc,platform,codeline\n";
 foreach $file (@ARGV) {
     my($base);
     ($base = $file) =~ s/.*\///;
     system("bk crypto -e $FindBin::Bin/bkupgrade.key < $file > $base");
     chomp($md5sum = `bk crypto -h - < $base`);
     
-    ($version, $platform) = ($base =~ /^(bk-.*?)-(.*)\./);
-    $commercial = ($base =~ $is_free) ? 0 : 1;
+    # parse bk install binary filename
+    #   CODELINE-VERSION-PLATFORM.{bin,exe}
+    #   CODELINE may contain dashes and always starts with 'bk'
+    #   VERSION starts with digit and . and can't contain dashes
+    #   PLATFORM may contain dashes
+    ($version, $codeline, $platform) = ($base =~ /^((bk.*?)-\d+\..*?)-(.*)\./);
+    die "Can't include $base, all revs must be tagged\n" unless $version;
 
-    if ($version =~ /^bk-(\d+)$/) {
-	$utc = $1;
-    } else {
-	$utc = undef;
-	foreach my $release (@releases) {
-	    $utc = `bk prs -hd:UTC: -r$version $release/ChangeSet 2>/dev/null`;
-	    last if $utc;
-	}
-	die "Can't find UTC of $version\n" unless $utc;
+    $utc = undef;
+    foreach my $release (@releases) {
+	$utc = `bk prs -hd:UTC: -r$version $release/ChangeSet 2>/dev/null`;
+	last if $utc;
     }
+    die "Can't find UTC of $version\n" unless $utc;
     
+    if ($seen{"$codeline-$platform"}) {
+	die "Only 1 of each codeline per platform: $base\n";
+    }
+    $seen{"$codeline-$platform"} = 1;
     $versions{$version} = 1;
 
-    my($line) = join(",", $base, $md5sum, $version, $utc, $platform);
-    print I "$line,$commercial\n";
-
-    # if only free a version exist for one platform, then mark that
-    # version as the commercial target as well.
-    if ($commercial) {
-	$platforms{$platform} = undef;
-    } elsif (! exists($platforms{$platform})) {
-	$platforms{$platform} = "$line,1\n";
-    }
-}
-foreach (grep {$_} values %platforms) {
-    print I;
+    print I join(",", $base, $md5sum, $version, $utc, $platform, $codeline);
+    print I "\n";
+    
 }
 
 my $olddir = getcwd;
@@ -73,8 +66,6 @@ foreach my $release (@releases) {
     chdir $release || die;
    
     foreach $version (keys %versions) {
-	next if $version =~ /^bk-\d+$/;	# ignore non-tagged releases
-	
 	$base = `bk r2c -r1.1 src/upgrade.c 2> /dev/null`;
 	next if $? != 0;  # no upgrade command
 	chomp($base);
@@ -90,7 +81,7 @@ foreach my $release (@releases) {
 chdir $olddir;
 
 foreach (sort keys %obsoletes) {
-    print I "old $_\n";
+    print I "old $_\n" unless $versions{$_};
 }
 print I "\n# checksum\n";
 close(I);

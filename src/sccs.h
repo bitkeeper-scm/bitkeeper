@@ -1175,6 +1175,7 @@ int	run_check(char *partial, int fix, int quiet);
 char	*key2path(char *key, MDBM *idDB);
 int	check_licensesig(char *key, char *sign, int version);
 char	*hashstr(char *str, int len);
+char	*hashstream(FILE *f);
 char	*secure_hashstr(char *str, int len, char *key);
 void	delete_cset_cache(char *rootpath, int save);
 void	notice(char *key, char *arg, char *type);
@@ -1200,6 +1201,7 @@ void	progressbar(int n, int max, char *msg);
 char	*signed_loadFile(char *filename);
 int	signed_saveFile(char *filename, char *data);
 void	bk_preSpawnHook(int flags, char *const av[]);
+int	upgrade_decrypt(FILE *fin, FILE *fout);
 
 void	align_diffs(u8 *vec, int n, int (*compare)(int a, int b),
     int (*is_whitespace)(int i));
