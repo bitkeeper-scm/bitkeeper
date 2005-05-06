@@ -3,7 +3,7 @@ echo $N Modify comments from stdin ..................................$NL
 no_logging proj
 touch bar.c
 bk new $Q bar.c
-BK_LICENSE=ACCEPTED bk commit $Q -ynew
+bk commit $Q -ynew
 cat >c <<EOF
 ### Comments for ChangeSet|1.2
 modified comment

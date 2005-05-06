@@ -19,12 +19,15 @@
 private	int	noperms(char *target);
 private	int	upgrade_fetch(char *name, char *file);
 
-extern	int	upgrade_decrypt(char *infile, char *outfile);
-
 extern	char	*bin;
 
 private	char	*urlbase = 0;
 private	int	flags = 0;
+private const char	key[] = {
+	0x06, 0x0f, 0x0e, 0x02, 0x24, 0x1d, 0x29, 0x1d, 0x17, 0x7f,
+	0x76, 0x32, 0x06, 0x1c, 0x29, 0x37, 0x44, 0x5d, 0x03, 0x2a,
+	0x2e, 0x2e
+};
 
 int
 upgrade_main(int ac, char **av)
@@ -38,15 +41,17 @@ upgrade_main(int ac, char **av)
 	char	*p, *e;
 	char	**data = 0;
 	int	len;
-	int	want_commercial;	/* do we want to commercial version? */
-	FILE	*f;
+	char	*want_codeline = 0;
+	FILE	*f, *fout;
 	int	rc = 2;
 	char	*tmpbin = 0;
+	char	salt[sizeof(key) + 1];
 	char	buf[MAXLINE];
 
-	while ((c = getopt(ac, av, "infq")) != -1) {
+	while ((c = getopt(ac, av, "il:nfq")) != -1) {
 		switch (c) {
 		    case 'i': install = 1; break;
+		    case 'l': want_codeline = optarg; break;
 		    case 'n': fetchonly = 1; break;
 		    case 'f': force = 1; break;
 		    case 'q': flags |= SILENT; break;
@@ -71,13 +76,19 @@ usage:			system("bk help -s upgrade");
 		notice("upgrade-badperms", bin, "-e");
 		goto out;
 	}
-	want_commercial = lease_anycommercial();
-	if (bk_commercial && !want_commercial) {
+	unless (want_codeline) {
+		if (!(p = strrchr(bk_vers, '-'))) {
+			notice("upgrade-devbuild", 0, "-e");
+			goto out;
+		}
+		want_codeline = strndup(bk_vers, p - bk_vers);
+	}
+	unless (streq(want_codeline, "bk-free") || lease_anycommercial()) {
 		notice("upgrade-require-lease", 0, "-e");
 		goto out;
 	}
-	if (want_commercial && !av[optind] && !proj_root(0)) {
-		notice("upgrade-commercial-needrepo", 0, "-e");
+	if (!av[optind] && !proj_root(0)) {
+		notice("upgrade-needrepo", 0, "-e");
 		goto out;
 	}
 	indexfn = bktmp(0, "upgrade-idx");
@@ -95,7 +106,8 @@ usage:			system("bk help -s upgrade");
 	while (p[-1] != '\n') --p;
 	strcpy(buf, p);	/* hmac */
 	*p = 0;
- 	p = secure_hashstr(index, strlen(index), "WXVTpmDYN1GusoFq5hkAoA");
+	makestring(salt, (char *)key, 'Q', sizeof(key));
+ 	p = secure_hashstr(index, strlen(index), salt);
 	unless (streq(p, buf)) {
 		fprintf(stderr, "upgrade: INDEX corrupted\n");
 		free(index);
@@ -107,7 +119,7 @@ usage:			system("bk help -s upgrade");
 	 * 3 version
 	 * 4 utc
 	 * 5 platform
-	 * 6 commercial? (1 or 0)
+	 * 6 codeline
 	 * -- new fields ALWAYS go at the end! --
 	 */
 	p = index;
@@ -121,7 +133,7 @@ usage:			system("bk help -s upgrade");
 			data = splitLine(p, ",", 0);
 			unless ((nLines(data) == 6) &&
 			    streq(data[5], bk_platform) &&
-			    ((data[6][0] - '0') == want_commercial)) {
+			    streq(data[6], want_codeline)) {
 				freeLines(data, free);
 				data = 0;
 			};
@@ -165,21 +177,26 @@ usage:			system("bk help -s upgrade");
 		fprintf(stderr, "upgrade: unable to fetch %s\n", data[1]);
 		goto out;
 	}
+
 	/* find checksum of the file we just fetched */
-	sprintf(buf, "bk crypto -h - < %s", tmpbin);
-	if (f = popen(buf, "r")) {
-		fnext(buf, f);
-		chomp(buf);
-		pclose(f);
-	}
-	unless (streq(buf, data[2])) {
+	f = fopen(tmpbin, "r");
+	p = hashstream(f);
+	rewind(f);
+	unless (streq(p, data[2])) {
 		fprintf(stderr, "upgrade: file %s fails to match checksum\n",
 		    data[1]);
-		goto out;
+		free(p);
+ 		goto out;
 	}
+	free(p);
+
 	/* decrypt data */
 	unlink(data[1]);
-	if (upgrade_decrypt(tmpbin, data[1])) goto out;
+	fout = fopen(data[1], "w");
+	assert(fout);
+	if (upgrade_decrypt(f, fout)) goto out;
+	fclose(f);
+	fclose(fout);
 	unlink(tmpbin);
 	free(tmpbin);
 	tmpbin = 0;

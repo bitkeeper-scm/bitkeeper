@@ -382,6 +382,7 @@ typedef	unsigned short	sum_t;
 typedef	char		**globv;
 
 #include "liblines.h"
+#include "bkver.h"
 
 /*
  * Struct delta - describes a single delta entry.
@@ -953,6 +954,7 @@ int	linelen(char *s);
 int 	licenseAccept(int prompt);
 int	licenseAcceptOne(int prompt, char *lic);
 char	*licenses_accepted(void);
+char	*license_name(void);
 char	*mkline(char *mmap);
 int	mkdirp(char *dir);
 int	test_mkdirp(char *dir);
@@ -1185,7 +1187,9 @@ int	run_check(char *partial, int fix, int quiet);
 char	*key2path(char *key, MDBM *idDB);
 int	check_licensesig(char *key, char *sign, int version);
 char	*hashstr(char *str, int len);
+char	*hashstream(FILE *f);
 char	*secure_hashstr(char *str, int len, char *key);
+char	*makestring(char *out, char *in, char seed, int size);
 int	write_log(char *root, char *file, int rotate, char *format, ...);
 void	delete_cset_cache(char *rootpath, int save);
 time_t	mtime(char *path);
@@ -1213,6 +1217,7 @@ void	progressbar(int n, int max, char *msg);
 char	*signed_loadFile(char *filename);
 int	signed_saveFile(char *filename, char *data);
 void	bk_preSpawnHook(int flags, char *const av[]);
+int	upgrade_decrypt(FILE *fin, FILE *fout);
 void	lockfile_cleanup(void);
 void	set_timestamps(char *sfile);
 
@@ -1238,14 +1243,7 @@ char	**parent_allp(void);
 int	restore_backup(char *backup_sfio);
 char	*parent_normalize(char *);
 u32	crc(char *s);
-
 int	annotate_args(int flags, char *args);
-
-extern	char	*bk_vers;
-extern	char	*bk_utc;
-extern	char	*bk_time;
-extern	char	*bk_platform;
-extern	int	bk_commercial;
 
 int	getMsg(char *msg_name, char *bkarg, char b, FILE *outf);
 int	getMsg2(char *msg_name, char *arg, char *arg2, char b, FILE *outf);

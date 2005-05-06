@@ -131,12 +131,14 @@ SCRIPTS	= applypatch bk.script import resync \
 	b64wrap unb64wrap gzip_b64wrap ungzip_b64wrap
 LOCALSCR= build
 PSCR	= t/doit
+PROGS	= hidestring
 # Put UWTLIB first, it checks out files needed by mdbm on winblows.
 LIBS	= libc/libc.a $(UWTLIB) zlib/libz.a mdbm/libmdbm.a tomcrypt/libtomcrypt.a \
 	regex/libregex.a
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES
-ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA) GUI
+ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA) \
+	$(PROGS) GUI
 
 CFLAGS	= $(CC_DEBUG)
 CPPFLAGS= -Ilibc/include -Izlib -Imdbm
@@ -157,7 +159,7 @@ SRCS	= bk.c $(OBJ:.o=.c) \
 HDRS	= $(SYS).h $(UWT_H) bkd.h lib_tcp.h liblines.h logging.h mmap.h proj.h \
 	  purify.h range.h rcs.h redblack.h resolve.h sccs.h system.h zgets.h \
 	  mdbm/mdbm.h mdbm/memhash.h tomcrypt/mycrypt.h zlib/zlib.h \
-	  regex/regex.h cmd.h
+	  regex/regex.h cmd.h bkver.h
 
 SCRSRCS	= bk.sh import.sh uuwrap.sh unuuwrap.sh port/unix_platform.sh \
 	  port/unix_platform.perl port/win32_platform.perl \
@@ -237,6 +239,7 @@ clean-obj: FORCE
 	-@rm -f bk bk.o cscope.out $(OBJ) $(SCRIPTS)
 	-@rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
 	-@rm -f $(LIBS) bkdsubstr bkmsg.txt bkhelp.txt a.out cmd.c cmd.h
+	-@rm -f bkver.h
 	-@rm -f core $(WIN_TMP)
 	-@cd ../doc && $(MAKE) clean-obj
 	-@cd ../man && $(MAKE) clean
@@ -268,7 +271,7 @@ rebuild:
 	-@rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
 	-@rm -f $(LIBS) bkdsubstr bkhelp.txt bkmsg.txt a.out
 	-@rm -f core bkver.c tclwrap tclwrap.o blowfish.o $(WIN_TMP)
-	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR)
+	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(PROGS)
 	-@rm -rf tmp bkl5_hashs.h
 	-@for i in ../doc ../man gnu gui utils win32 mdbm zlib regex tomcrypt libc; \
 	do	cd $(HERE)/$$i && $(MAKE) clobber; \
@@ -400,6 +403,15 @@ bkver.c: FRC
 	echo "int test_release = "$(TRIAL)";" >> bk.v
 	echo "int bk_commercial = $(COMMERCIAL);" >> bk.v
 	mv -f bk.v bkver.c
+
+bkver.h: Makefile
+	echo "/* auto-generated file */" > $@
+	echo "extern char *bk_vers;" >> $@
+	echo "extern char *bk_utc;" >> $@
+	echo "extern char *bk_time;" >> $@
+	echo "extern char *bk_platform;" >> $@
+	echo "#define bk_commercial() $(COMMERCIAL)" >> $@
+
 
 bkver.o: bkver.c
 
@@ -559,3 +571,6 @@ tclwrap.o blowfish.o: blowfish.h
 
 cmd.c cmd.h: mk-cmd.pl bk.sh
 	perl mk-cmd.pl || (rm -f cmd.c cmd.h; exit 1)
+
+hidestring: hidestring.c	
+	$(CC) $(CC_FAST) -o hidestring hidestring.c

@@ -2,23 +2,22 @@
 
 # Onetime script to turn a secret key into code to embed in bk
 
+# "0x55, " - 6 char chunks, and do 10 of them:
 $W = 60;
 
 $key = '';
-open(F, "bk base64 < $ARGV[0] |");
-while (<F>) {
-    chomp;
-    $key .= $_;
+open(F, "$ARGV[0]");
+while ($c = getc(F)) {
+	$count++;
+	$key .= sprintf("0x%02x, ", ord($c));
 }
 
-$key = reverse(split('', $key));
-
-print "\tchar\t*coded = \"";
-$_ = substr($key, 0, $W - 9, '');
-print "$_\"";
-
+print "private const u8	magickey[$count] = {\n";
 while ($key) {
+    print ",\n" if $sep;
+    $sep = 1;
     $_ = substr($key, 0, $W, '');
-    print "\n\t\t\"$_\"";
+    chop; chop;
+    print "\t$_";
 }
-print ";\n";
+print "\n};\n";
