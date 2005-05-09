@@ -96,7 +96,6 @@ main(int ac, char **av, char **env)
 			fprintf(f, "BK (%u t: %5s)", getpid(), milli());
 			for (i = 0; av[i]; ++i) fprintf(f, " %s", av[i]);
 			fprintf(f, "\n");
-			fprintf(f, "-%u: %d %s\n", getpid(), rand_checkSeed(), getenv("RANDSEED"));
 			fclose(f);
 		}
 	}
