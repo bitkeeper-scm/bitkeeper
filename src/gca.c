@@ -5,7 +5,6 @@
  */
 #include "system.h"
 #include "sccs.h"
-WHATSTR("%K%");
 
 int
 gca_main(int ac, char **av)

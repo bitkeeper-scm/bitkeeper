@@ -15,6 +15,7 @@ private	char	*getError(char *buf, int len);
 private	void	reportStatus(SERVICE_STATUS_HANDLE, int, int, int);
 private	int	bkd_register_ctrl(void);
 private	void	logMsg(char *msg);
+private void	argv_free(char **nav, int j);
 
 static	SERVICE_STATUS		srvStatus;
 static	SERVICE_STATUS_HANDLE	statusHandle;
@@ -25,7 +26,6 @@ static	int			running_service = 0;
 #endif
 
 private void	argv_save(int ac, char **av, char **nav, int j);
-private void	argv_free(char **nav, int j);
 
 	time_t	licenseEnd;	/* when a temp bk license expires */
 static	time_t	requestEnd;

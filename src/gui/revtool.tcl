@@ -1,8 +1,6 @@
 # revtool - a tool for viewing SCCS files graphically.
 # Copyright (c) 1998 by Larry McVoy; All rights reserved.
-#
-# %W% %@%
-#
+
 array set month {
 	""	"bad"
 	"01"	"JAN"

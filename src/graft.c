@@ -7,7 +7,6 @@
  */
 #include "system.h"
 #include "sccs.h"
-WHATSTR("@(#)%K%");
 
 private	void	sccs_patch(sccs *w, sccs *l);
 private void	_patch(delta *d);

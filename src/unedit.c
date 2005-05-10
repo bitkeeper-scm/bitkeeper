@@ -1,7 +1,6 @@
 /* Copyright (c) 1997 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
-WHATSTR("@(#)%K%");
 
 /*
  * This works even if there isn't a gfile.

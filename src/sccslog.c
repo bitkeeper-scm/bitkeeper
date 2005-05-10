@@ -6,7 +6,6 @@
 #include "system.h"
 #include "sccs.h"
 #include "range.h"
-WHATSTR("@(#)%K%");
 
 private	int	compar(const void *a, const void *b);
 private	void	sortlog(int flags);

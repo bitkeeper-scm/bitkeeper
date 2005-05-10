@@ -1,6 +1,5 @@
 #include "system.h"
 #include "sccs.h"
-WHATSTR("@(#)%K%");
 
 /*
  * sfiles.c - s.file file name processing.

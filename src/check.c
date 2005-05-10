@@ -7,7 +7,6 @@
 #include "system.h"
 #include "sccs.h"
 #include "range.h"
-WHATSTR("@(#)%K%");
 
 extern	int	sane_main(int ac, char **av);
 private	HASH	*buildKeys(sccs *cset, MDBM *idDB);

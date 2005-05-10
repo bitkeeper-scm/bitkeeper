@@ -1,7 +1,6 @@
 /* Copyright (c) 2000 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
-WHATSTR("@(#)%K%");
 
 int
 cat_main(int ac, char **av)

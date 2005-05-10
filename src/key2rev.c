@@ -1,6 +1,5 @@
 #include "system.h"
 #include "sccs.h"
-WHATSTR("@(#)%K%");
 
 /*
  * key2rev - convert keys names to revs

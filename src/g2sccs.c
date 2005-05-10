@@ -1,6 +1,5 @@
 #include "system.h"
 #include "sccs.h"
-WHATSTR("@(#)%K%");
 
 static void	print_name(char *);
 

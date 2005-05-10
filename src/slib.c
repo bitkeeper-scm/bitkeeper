@@ -14,7 +14,6 @@
 #include "bkd.h"
 #include "logging.h"
 #include "tomcrypt/mycrypt.h"
-WHATSTR("@(#)%K%");
 
 #define	VSIZE 4096
 

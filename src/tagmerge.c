@@ -2,7 +2,6 @@
 #include "sccs.h"
 #include "zlib/zlib.h"
 #define	NTAGS	50
-WHATSTR("@(#)%K%");
 
 private void	m(sccs *s, delta *l, delta *r);
 private	int	tagmerge(void);

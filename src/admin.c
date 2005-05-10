@@ -1,8 +1,6 @@
 /* Copyright (c) 1998 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
-WHATSTR("@(#)%K%");
-
 
 #define	OP(W, V, F) if (next##W < A_SZ-1) { \
 			W[next##W].thing = V; \

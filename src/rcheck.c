@@ -1,7 +1,6 @@
 /* Copyright (c) 2000 Andrew W. Chang */
 #include "bkd.h"
 #include "resolve.h"
-WHATSTR("@(#)%K%");
 
 private int send_check_msg(remote *r);
 private int remoteCheck(remote *r);

@@ -1,7 +1,6 @@
 #include "system.h"
 #include "sccs.h"
 #include "range.h"
-WHATSTR("@(#)%K%");
 
 private void	prevs(delta *d);
 private void	_prevs(delta *d);

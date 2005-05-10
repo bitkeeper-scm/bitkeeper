@@ -3,8 +3,6 @@
 #include "zlib/zlib.h"
 #include "logging.h"
 
-WHATSTR("@(#)%K%");
-
 private	int	do_chksum(int fd, int off, int *sump);
 private	int	chksum_sccs(char **files, char *offset);
 private	int	do_file(char *file, int off);

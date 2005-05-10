@@ -1,6 +1,5 @@
 #include "system.h"
 #include "sccs.h"
-WHATSTR("@(#)%K%");
 
 /*
  * _find - find regular files and symbolic links

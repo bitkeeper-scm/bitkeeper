@@ -1,6 +1,5 @@
 # renametool - deal with files which have been renamed/added/deleted
 # Copyright (c) 1999 by Larry McVoy; All rights reserved
-# %A% %@%
 
 proc next {} \
 {

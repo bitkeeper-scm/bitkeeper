@@ -36,10 +36,8 @@
  */
 #include "system.h"
 #include "sccs.h"
-WHATSTR("@(#)%K%");
 
 char		*lock_dir(void);
-
 private	char	*lockHome(void);
 private	char	*keysHome(void);
 private	int	uniq_regen(void);

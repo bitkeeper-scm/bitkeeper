@@ -2,7 +2,6 @@
 #include "system.h"
 #include "sccs.h"
 private int	cp(char *from, char *to);
-WHATSTR("@(#)%K%");
 
 /*
  * cp - copy a file to another file,

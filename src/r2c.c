@@ -1,7 +1,6 @@
 #include "system.h"
 #include "sccs.h"
 #include "range.h"
-WHATSTR("@(#)%K%");
 
 /*
  * r2c - convert rev to cset rev

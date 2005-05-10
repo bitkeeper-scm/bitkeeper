@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # gzip_b64wrap - the sending side of a gzip | base64 stream
-# %W%
+# %W% %K%
 
 PATH=$PATH:/usr/local/bin:/usr/freeware/bin
 

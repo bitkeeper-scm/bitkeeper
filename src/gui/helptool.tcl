@@ -1,6 +1,5 @@
 # helptool - a tool for showing BK help
 # Copyright (c) 1999 by Larry McVoy; All rights reserved
-# %W% %@%
 
 proc main {} \
 {

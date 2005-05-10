@@ -5,7 +5,6 @@
  */
 #include "system.h"
 #include "sccs.h"
-WHATSTR("@(#)%K%");
 
 #define	BASE_FLAGS	(GET_EXPAND|PRINT|SILENT)
 

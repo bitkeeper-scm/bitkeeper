@@ -1,7 +1,6 @@
 /* Copyright (c) 1997 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
-WHATSTR("@(#)%K%");
 
 /*
  * The weird setup is so that I can #include this file into sccssh.c

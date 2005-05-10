@@ -6,7 +6,6 @@
  */
 #include "system.h"
 #include "sccs.h"
-WHATSTR("@(#)%K%");
 
 private	int	print_id(char *file);
 

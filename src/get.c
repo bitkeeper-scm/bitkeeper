@@ -1,7 +1,6 @@
 /* Copyright (c) 1997 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
-WHATSTR("@(#)%K%");
 
 private int	get_rollback(sccs *s, char *rev,
 		    char **iLst, char **xLst, char *prog);

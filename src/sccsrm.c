@@ -1,7 +1,6 @@
 /* Copyright (c) 1997 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
-WHATSTR("@(#)%K%");
 
 private	int	sccs_gone(int quiet, FILE *f);
 

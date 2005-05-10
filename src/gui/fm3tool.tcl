@@ -332,7 +332,6 @@ proc search_widgets {w s} \
 
 # difflib - view differences; loosely based on fmtool
 # Copyright (c) 1999-2000 by Larry McVoy; All rights reserved
-# %A% %@%
 
 proc createDiffWidgets {w} \
 {

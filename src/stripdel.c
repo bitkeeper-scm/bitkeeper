@@ -2,7 +2,6 @@
 #include "system.h"
 #include "sccs.h"
 #include "range.h"
-WHATSTR("@(#)%K%");
 
 typedef struct {
 	u32	respectCset:1;

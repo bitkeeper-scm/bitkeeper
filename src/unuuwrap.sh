@@ -1,6 +1,6 @@
 #!/bin/sh
 
 # unuuwrap - the receiving side of a uuencode stream
-# %W%
+# %W% %K%
 
 exec bk uudecode 

@@ -3,7 +3,6 @@
  */    
 #include "system.h"
 #include "sccs.h"
-WHATSTR("@(#)%K%");
 
 private int	unpull(int force, int quiet, char *patch);
 

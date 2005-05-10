@@ -4,8 +4,6 @@
 #include "range.h"
 #include "zlib/zlib.h"
 
-WHATSTR("@(#)%K%");
-
 typedef	struct cset {
 	/* bits */
 	int	mixed;		/* if set, then both long and short keys */

@@ -1,6 +1,5 @@
 #include "../system.h"
 #include "../sccs.h"
-WHATSTR("@(#)%K%");
 
 /*
  * Copyright (c) 2001 Andrew Chang       All rights reserved.

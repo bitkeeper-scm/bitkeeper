@@ -3,7 +3,6 @@
 #include "sccs.h"
 #include "zlib/zlib.h"
 
-WHATSTR("@(#)%K%");
 private int	undoit(MDBM *m);
 private int	doit(int flags, char *file, char *op, char *revs);
 private int	commit(int quiet, delta *d);

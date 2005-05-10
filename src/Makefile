@@ -1,5 +1,4 @@
 # Makefile for BitKeeper.
-# @(#) %K%
 HERE    := $(shell pwd)
 REPO    := $(shell basename "`bk root`")
 URL     := $(shell echo bk://work/`bk root` | sed s,/home/bk/,,)

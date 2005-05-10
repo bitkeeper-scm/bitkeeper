@@ -1,7 +1,6 @@
 /* Copyright (c) 2001 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
-WHATSTR("@(#)%K%");
 
 /*
  * Convert a BK file to SCCS format.

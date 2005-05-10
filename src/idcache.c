@@ -1,8 +1,6 @@
 #include "system.h"
 #include "sccs.h"
 
-WHATSTR("@(#)%K%");
-
 private	u32	id_sum;
 private	MDBM	*idDB;		/* used to detect duplicate keys */
 private	int	dups;		/* duplicate key count */

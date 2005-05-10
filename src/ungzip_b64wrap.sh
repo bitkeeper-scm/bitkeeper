@@ -1,6 +1,6 @@
 #!/bin/sh
 
 # gzip_unb64wrap - the receiving side of a gzip | base64 stream
-# %W%
+# %W% %K%
 
 exec bk base64 -d | gunzip 

@@ -1,7 +1,6 @@
 /* Copyright (c) 1999 Andrew Chang */
 #include "system.h"
 #include "sccs.h"
-WHATSTR("%Z%%K%");
 
 private	char	*getRelativeName(char *, project *proj);
 private	void	rmDir(char *);

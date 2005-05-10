@@ -17,7 +17,6 @@
  */
 #include "system.h"
 #include "sccs.h"
-WHATSTR("@(#)%K%");
 
 private void	newRev(sccs *s, int flags, MDBM *db, delta *d);
 private void	remember(MDBM *db, delta *d);

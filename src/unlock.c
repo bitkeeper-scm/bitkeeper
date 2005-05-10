@@ -1,7 +1,6 @@
 /* Copyright (c) 1997-2000 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
-WHATSTR("@(#)%K%");
 
 #define	PLOCK	0x0002
 #define	XLOCK	0x0004

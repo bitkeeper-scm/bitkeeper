@@ -1,7 +1,6 @@
 /* Copyright (c) 2001 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
-WHATSTR("@(#)%K%");
 
 extern	int	delta_main(int ac, char **av);
 extern	int	get_main(int ac, char **av);

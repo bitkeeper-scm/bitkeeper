@@ -16,8 +16,6 @@
 #define	NSTATE	4	/* name state: n,' ' */
 #define	DSTATE	5	/* directory state: d, D, ' ' */
 
-WHATSTR("@(#)%K%");
-
 typedef struct winfo winfo;
 typedef	char	STATE[7];
 

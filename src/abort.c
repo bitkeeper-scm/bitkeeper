@@ -1,7 +1,6 @@
 /* Copyright (c) 2000 L.W.McVoy */
 #include "bkd.h"
 #include "resolve.h"
-WHATSTR("@(#)%K%");
 
 private	void	abort_patch(int leavepatch);
 private int	send_abort_msg(remote *r);

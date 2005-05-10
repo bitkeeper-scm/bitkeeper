@@ -1,7 +1,6 @@
 /* Copyright (c) 2001 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
-WHATSTR("@(#)%K%");
 
 private int xflagsDefault(sccs *s, int cset, int what);
 private int xflags(sccs *s, delta *d, int what);

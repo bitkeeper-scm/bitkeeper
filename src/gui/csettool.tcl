@@ -1,6 +1,5 @@
 # diffrtool - view differences between repositories
 # Copyright (c) 1999 by Larry McVoy; All rights reserved
-# @(#) csettool.tcl 1.39@(#) akushner@disks.bitmover.com
 
 # If even partially visible, return 1
 proc nextFile {} \

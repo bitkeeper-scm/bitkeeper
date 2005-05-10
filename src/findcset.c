@@ -4,7 +4,6 @@
 #include "system.h"
 #include "sccs.h"
 #include "range.h"
-WHATSTR("@(#)%K%");
 
 #define	MIN_GAP	(2*HOUR)
 #define	MAX_GAP	(30*DAY)

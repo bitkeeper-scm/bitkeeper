@@ -3,7 +3,6 @@
 #include "sccs.h"
 #include "zlib/zlib.h"
 #include "logging.h"
-WHATSTR("@(#)%K%");
 
 /*
  * Verbosity:

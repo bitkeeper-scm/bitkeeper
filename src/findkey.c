@@ -6,7 +6,6 @@
 #include "system.h"
 #include "sccs.h"
 #include "range.h"
-WHATSTR("@(#)%K%");
 
 typedef struct	{
 	char	*key;	/* if set, we have the whole key */

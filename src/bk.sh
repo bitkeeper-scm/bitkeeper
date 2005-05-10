@@ -2,7 +2,7 @@
 # No #!, it's done with shell() in bk.c
 
 # bk.sh - BitKeeper scripts
-# @(#)%K%
+# %W% %K%
 
 # Functions intended to be accessed as bk whatever by the user are
 # named _whatever.  Functions for internal use only are named

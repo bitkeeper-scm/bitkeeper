@@ -1,8 +1,7 @@
 #!/bin/sh
 
 # gzip_uuwrap - the sending side of a gzip | uuencode stream
-# %W%
-
+# %W% %K%
 
 PATH=$PATH:/usr/local/bin:/usr/freeware/bin
 

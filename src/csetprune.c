@@ -1,6 +1,5 @@
 #include "system.h"
 #include "sccs.h"
-WHATSTR("@(#)%K%");
 
 /*
  * csetprune - prune a list of files from a ChangeSet file

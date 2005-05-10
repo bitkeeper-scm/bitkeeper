@@ -2,7 +2,6 @@
 #include "system.h"
 #include "sccs.h"
 #include "range.h"
-WHATSTR("@(#)%K%");
 
 private	int	cset_boundries(sccs *s, char *rev);
 

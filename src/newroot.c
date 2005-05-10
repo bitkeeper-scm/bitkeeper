@@ -2,7 +2,6 @@
 #include "system.h"
 #include "sccs.h"
 private int	newroot(int single, char *ranbits);
-WHATSTR("@(#)%K%");
 
 /*
  * this is also an alias for 'bk multiuser'

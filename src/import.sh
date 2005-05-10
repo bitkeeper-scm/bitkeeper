@@ -5,7 +5,7 @@
 # TODO
 #	we allow repeated imports on patches but don't error check the other
 #	cases.  We should fail if the repository is not empty.
-# %W% %@%
+# %W% %K%
 
 import() {
 	if [ X"$1" = "X--help" ]

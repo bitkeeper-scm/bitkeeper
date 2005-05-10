@@ -1,5 +1,4 @@
 # Makefile for BitKeeper GUIs
-# @(#) %K%
 
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
 ifeq "$(OSTYPE)" "msys"

@@ -1,7 +1,6 @@
 /* Copyright (c) 2000 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
-WHATSTR("@(#)%K%");
 
 private	int	caught;
 private	void	abort_lock(int dummy) { caught++; }

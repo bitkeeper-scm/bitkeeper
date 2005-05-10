@@ -1,8 +1,6 @@
 /* Copyright (c) 2001 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
-WHATSTR("@(#)%K%");
-
 
 private	void	token(MDBM *m, char *t);
 private	void	print(MDBM *m, char *t);

@@ -2,7 +2,6 @@
 #include "system.h"
 #include "sccs.h"
 #include "range.h"
-WHATSTR("@(#)%K%");
 
 int
 prs_main(int ac, char **av)

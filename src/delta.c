@@ -3,8 +3,6 @@
 #include "sccs.h"
 #include "logging.h"
 
-WHATSTR("@(#)%K%");
-
 private int
 hasKeyword(sccs *s)
 {

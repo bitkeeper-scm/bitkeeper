@@ -25,8 +25,6 @@
 #endif
 
 #undef	unlink		/* I know the files are writable, I created them */
-WHATSTR("@(#)%K%");
-
 #define	SFIO_BSIZ	4096
 #define	SFIO_NOMODE	"SFIO v 1.4"	/* must be 10 bytes exactly */
 #define	SFIO_MODE	"SFIO vm1.4"	/* must be 10 bytes exactly */
