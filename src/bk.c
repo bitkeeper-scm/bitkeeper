@@ -747,11 +747,15 @@ launch_wish(char *script, char **av)
 		}
 	}
 	unless (path) {
-		fprintf(stderr, "Cannot find the graphical interpreter\n");
+		fprintf(stderr, "Cannot find the graphical interpreter.\n");
 		exit(1);
 	}
-
 	putenv("BK_GUI=YES");
+	unless (gui_useDisplay()) {
+		fprintf(stderr,
+		    "Cannot find a display to use (set $DISPLAY?).\n");
+		exit(1);
+	}
 	sig_catch(SIG_IGN);
 	argv[0] = path;
 	if (strchr(script, '/')) {
