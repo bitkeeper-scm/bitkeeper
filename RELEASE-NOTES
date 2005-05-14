@@ -33,7 +33,7 @@ Noteworthy bug fixes
 - bk sane will now refuse to pass if the ChangeSet file is missing.
 - Do not normalize urls when setting the parent.
 - Deleted files in BitKeeper/etc/ignored are now merged correctly.
-- Allow a file to be set to binary even if previous revisions were ascii.
+- Do not allow a file to be set to binary if previous revisions were ascii.
 - Make bk comments check for bad input.
 - Fix corner case bug in merge when a file has no ending newline.
 
