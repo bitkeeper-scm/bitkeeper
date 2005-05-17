@@ -15,7 +15,6 @@
 #define	GFILE_CONFLICT		2
 #define	DIR_CONFLICT		3
 #define	RESYNC_CONFLICT		4
-#define	LOGGING_OK_CONFLICT	5
 #define	LOCAL			1
 #define	REMOTE			2
 #define	BACKUP_LIST		"BitKeeper/tmp/resolve_backup_list"

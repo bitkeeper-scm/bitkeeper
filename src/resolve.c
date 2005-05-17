@@ -848,22 +848,7 @@ again:	if (how = slotTaken(opts, rs->dname)) {
 			opts->errors = 1;
 			return (-1);
 		}
-
-		/*
-		 * If this is the BitKeeper/etc/logging_ok file,
-		 * automerge it.
-		 * XXX This whole test is bogus.  Takepatch will always resolve
-		 *     conflicts in the logging_ok file, so we will never
-		 *     get to this point and still have a rename or contents
-		 *     conflict in the logging_ok file.
-		 *     This and then matching code in resolve_contents.c can
-		 *     all be removed.
-		 */
-		if (streq(GLOGGING_OK, rs->d->pathname)) {
-			ret = resolve_create(rs, LOGGING_OK_CONFLICT);
-		} else {
-			ret = resolve_create(rs, how);
-		}
+      		ret = resolve_create(rs, how);
 		if (opts->debug) {
 			fprintf(stderr, "resolve_create = %d %s\n",
 			    ret, ret == EAGAIN ? "EAGAIN" : "");
