@@ -45,6 +45,11 @@ case $CMD in
 	test "X$DOTBK" != X && rm -f "$DOTBK/lease/`bk gethost -r`"
 
 	cd $BKDIR/src
+	# If tagged tree, clear obj cache
+	test "`bk changes -r+ -d'$if(:SYMBOL:){1}'`" && {
+		echo Tagged tree: removing /build/obj
+		/bin/rm -rf /build/obj/*
+	}
 	bk get Makefile build.sh
 	make build || failed
 	./build p image install test || failed

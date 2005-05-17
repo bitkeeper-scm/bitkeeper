@@ -79,7 +79,7 @@ sccs_realuser(void)
 	unless (r && r[0]) {
 		if (id) {
 			struct	passwd	*p = getpwuid(id);
-			r = p->pw_name;
+			if (p) r = p->pw_name;
 		}
 	}
 #else

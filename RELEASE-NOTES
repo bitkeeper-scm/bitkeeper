@@ -142,6 +142,43 @@ Noteworthy bug fixes
 - Bugs 2000-12-29-001, 2004-10-06-000, 2003-09-25-001, 2001-01-26-001,
   2001-06-05-001, 2002-11-27-002, 2002-12-31-001.
 
+Release notes for BitKeeper version 3.2.4.   These release notes cover
+the following topics:
+
+. Upgrade Notes
+. New Features
+. Noteworthy bug fixes
+
+Upgrade notes
+----------------------------------------------------------------------------
+This should be a simple upgrade.  After upgrading, use bk upgrade to
+upgrade in the future.  For more information see 'bk help upgrade'.
+
+New Features
+----------------------------------------------------------------------------
+- bk upgrade command to check for new releases and install them.
+- New files may be commented in citool.
+- Pre-tag and pre-fix triggers.
+- Add the ability to export a changeset from csettool by hitting "s" (save).
+
+Noteworthy bug fixes
+----------------------------------------------------------------------------
+- Improve check performance.
+- Prevent variables, like BASH_ENV, from breaking installer.
+- Fix bug where BK could not handle a repository with more than 65,000 csets.
+- Make bk handle getting interrupted by ctrl-C more gracefully.
+- Allow checkouts in pre-delta triggers.
+- Improve the commit template support.
+- Improve 'bk check' to better handle copied SCCS files and NFS weirdness.
+- Fix http headers in BK/Web.
+- Option to set patch fuzz in bk import, default is 0.
+- Fix the "fk cache: insert error" bug.
+- bk sane will now refuse to pass if the ChangeSet file is missing.
+- Do not normalize urls when setting the parent.
+- Deleted files in BitKeeper/etc/ignored are now merged correctly.
+- Do not allow a file to be set to binary if previous revisions were ascii.
+- Make bk comments check for bad input.
+- Fix corner case bug in merge when a file has no ending newline.
 
 ===============================================================================
 Release notes for BitKeeper version 3.2.3.   These release notes cover
@@ -153,8 +190,7 @@ the following topics:
 
 Upgrade notes
 ----------------------------------------------------------------------------
-
-None known, this should be a simple upgrade.
+This should be a simple upgrade.
 
 New Features
 ----------------------------------------------------------------------------
