@@ -781,13 +781,12 @@ import_finish () {
 		fi
 		if [ X$QUIET = X ]
 		then	echo "Looking for changeset boundaries.."
-			bk -r _findcset -v -t$GAP $SKIP_OPT $tag
+			bk -r _findcset -v -t$GAP $SKIP_OPT $tag || Done 1
 		else
-			bk -r _findcset -t$GAP $SKIP_OPT $tag
+			bk -r _findcset -t$GAP $SKIP_OPT $tag || Done 1
 		fi
-		bk -r admin -C`bk identity`
 	fi
-	bk -r check -ac
+	bk -r check -ac || Done 1
 	unset BK_CONFIG
 	o=`bk _preference checkout`
 	test X$o = Xedit && bk -Ur edit -q
