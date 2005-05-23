@@ -398,7 +398,6 @@ bkver.c: FRC
 	echo "char *bk_platform = \""`./utils/os`"\";" >> bk.v
 	echo "unsigned build_timet = "`perl -e "print time"`";" >> bk.v
 	echo "int test_release = "$(TRIAL)";" >> bk.v
-	echo "int bk_commercial = $(COMMERCIAL);" >> bk.v
 	mv -f bk.v bkver.c
 
 bkver.h: Makefile

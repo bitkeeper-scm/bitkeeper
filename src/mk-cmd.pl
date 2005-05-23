@@ -309,6 +309,7 @@ fmtool gui
 helptool gui
 installtool gui
 msgtool gui
+renametool gui
 revtool gui
 setuptool gui
 
