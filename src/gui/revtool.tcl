@@ -151,41 +151,29 @@ proc highlight {id type {rev ""}} \
 			    -outline $gc(rev.revOutline) \
 			    -fill $gc(rev.oldColor) \
 			    -tags old]
-		catch {$w(graph) raise gca old}
-		catch {$w(graph) raise local old}
-		catch {$w(graph) raise remote old}
 	    }
 	    new   {\
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
 		    -outline $gc(rev.revOutline) -fill $gc(rev.newColor) \
 		    -tags new]}
-		catch {$w(graph) raise gca new}
-		catch {$w(graph) raise local new}
-		catch {$w(graph) raise remote new}
 	    local   {\
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
 		    -outline $gc(rev.revOutline) -fill $gc(rev.localColor) \
 		    -width 2 -tags local]}
-		catch {$w(graph) raise local new}
-		catch {$w(graph) raise local old}
 	    remote   {\
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
 		    -outline $gc(rev.revOutline) -fill $gc(rev.remoteColor) \
 		    -width 2 -tags remote]}
-		catch {$w(graph) raise remote new}
-		catch {$w(graph) raise remote old}
 	    gca  {
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
 			    -outline black -width 2 -fill $gc(rev.gcaColor) \
 			    -tags gca]
-		catch {$w(graph) raise gca new}
-		catch {$w(graph) raise gca old}
 	    }
 	}
 
-	$w(graph) raise tagged
-	$w(graph) raise anchor
-	$w(graph) raise revtext
+	if {$type ne "anchor"} {
+		$w(graph) lower $bg revtext
+	}
 
 	return $bg
 }
@@ -220,13 +208,14 @@ proc chkSpace {x1 y1 x2 y2} \
 #
 proc revMap {file} \
 {
-	global rev2date serial2rev dev_null revX rev2serial
+	global rev2date serial2rev dev_null revX rev2serial r2p
 
 	#set dspec "-d:I:-:P: :DS: :Dy:/:Dm:/:Dd:/:TZ: :UTC-FUDGE:\n"
 	set dspec "-d:I:-:P: :DS: :UTC: :UTC-FUDGE:\n"
 	set fid [open "|bk prs -h {$dspec} \"$file\" 2>$dev_null" "r"]
 	while {[gets $fid s] >= 0} {
 		set rev [lindex $s 0]
+		foreach {r p} [split $rev -] {set r2p($r) $p}
 		if {![info exists revX($rev)]} {continue}
 		set serial [lindex $s 1]
 		set date [lindex $s 2]
@@ -671,7 +660,8 @@ proc addline {y xspace ht l} \
 		# Figure out if we have another parent.
 		# 1.460.1.3-awc-890|1.459.1.2-awc-889
 		set m 0
-		if {[regexp $line_rev $word dummy a b] == 1} {
+		foreach {a b} [split $word |] {}
+		if {$b ne ""} {
 			splitRev $a trev tuser serial tagged
 			set rev "$trev-$tuser"
 			splitRev $b revb userb serialb taggedb
@@ -694,18 +684,17 @@ proc addline {y xspace ht l} \
 		set b [expr {$x - 2}]
 		if {$last > 0} {
 			set a [expr {$last + 2}]
-			regsub -- {-.*} $rev "" rnum
 			$w(graph) create line $a $ly $b $ly \
 			    -arrowshape {4 4 2} -width 1 \
 			    -fill $gc(rev.arrowColor) -arrow last \
-			    -tag "l_$rnum pline"
+			    -tag "l_$trev pline"
 		}
-		if {[regsub -- "-BAD" $rev "" rev] == 1} {
+		if {$tuser eq "BAD"} {
 			set id [$w(graph) create text $x $y \
 			    -fill $gc(rev.badColor) \
 			    -anchor sw -text "$txt" -justify center \
-			    -font $gc(rev.fixedBoldFont) -tags "$rev revtext"]
-			highlight $id "bad" $rev
+			    -font $gc(rev.fixedBoldFont) -tags "$trev revtext"]
+			highlight $id "bad" $trev
 			incr bad
 		} else {
 			set id [$w(graph) create text $x $y -fill #241e56 \
@@ -1104,9 +1093,9 @@ proc highlightAncestry {rev1} \
 		$w(graph) itemconfigure "l_$rev1-$r" -fill $gc(rev.hlineColor)
 	}
 	# Highlight the kid (XXX: There was a reason why I did this)
-	if {$attrs(KID) != ""} {
-		set kid $attrs(KID)
-		$w(graph) itemconfigure "l_$kid" -fill $gc(rev.hlineColor)
+	if {$attrs(KID) ne ""} {
+		$w(graph) \
+		    itemconfigure "l_$attrs(KID)" -fill $gc(rev.hlineColor)
 	}
 	# NOTE: I am only interested in the first MPARENT
 	set mpd [split $attrs(MPD)]
@@ -2406,7 +2395,7 @@ proc openNewFile {} \
 #  R		Revision, time period, or number of revs that we want to view
 proc revtool {lfname {R {}}} \
 {
-	global	bad revX revY search dev_null rev2date serial2rev w
+	global	bad revX revY search dev_null rev2date serial2rev w r2p
 	global  Opts gc file rev2rev_name cdim firstnode fname
 	global  merge diffpair firstrev
 	global rev1 rev2 anchor
@@ -2486,9 +2475,8 @@ The file $lfname was last modified ($ago) ago."
 	} else {
 		set r +
 	}
-	catch {exec bk prs -hr$r -d:I:-:P: $lfname 2>$dev_null} out
-	if {$out != ""} {
-		centerRev $out
+	if {[info exists r2p($r)]} {
+		centerRev "$r-$r2p($r)"
 	}
 	# Make sure we don't lose the highlighting when we do a select Range
 	if {[info exists merge(G)] && ($merge(G) != "")} {
