@@ -614,10 +614,12 @@ proc dateSeparate { } \
 				# place vertical line short distance behind 
 				# the revision bbox
 				set lx [ expr {$x - 15}]
-				$w(graph) create line $lx $miny $lx $maxy \
+				set lid \
+				    [$w(graph) create line $lx $miny $lx $maxy \
 				    -width 1 \
 				    -fill $gc(rev.dateLineColor) \
-				    -tags date_line
+				    -tags date_line]
+				$w(graph) lower $lid
 
 				# Attempt to center datestring between verticals
 				set tx [expr {$x - (($x - $lastx)/2) - 13}]
