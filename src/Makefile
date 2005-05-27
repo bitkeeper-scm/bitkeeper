@@ -160,9 +160,10 @@ HDRS	= $(SYS).h $(UWT_H) bkd.h lib_tcp.h liblines.h logging.h mmap.h proj.h \
 	  mdbm/mdbm.h mdbm/memhash.h tomcrypt/mycrypt.h zlib/zlib.h \
 	  regex/regex.h cmd.h bkver.h
 
-SCRSRCS	= bk.sh import.sh uuwrap.sh unuuwrap.sh port/unix_platform.sh \
-	  port/unix_platform.perl port/win32_platform.perl \
-	  port/win32_platform.sh gzip_uuwrap.sh ungzip_uuwrap.sh \
+SCRSRCS	= bk.sh import.sh kwextract.pl uuwrap.sh unuuwrap.sh \
+	  port/unix_platform.sh port/unix_platform.perl \
+	  port/win32_platform.perl port/win32_platform.sh \
+	  gzip_uuwrap.sh ungzip_uuwrap.sh \
 	  resync.sh substvars.sh b64wrap.sh gzip_b64wrap.sh \
 	  unb64wrap.sh ungzip_b64wrap.sh
 MISC	= bkmsg.doc bitkeeper.config t/doit.sh
@@ -263,6 +264,7 @@ clean-bin: FORCE
 clean clobber distclean: rebuild FORCE
 	-@bk -r clean
 	-@rm -f tags TAGS
+	-@rm -f kw2val_lookup.c
 
 rebuild:
 	-@rm -f *.bb *.bbg *.da *.gcov
@@ -570,6 +572,12 @@ tclwrap.o blowfish.o: blowfish.h
 
 cmd.c cmd.h: mk-cmd.pl bk.sh
 	perl mk-cmd.pl || (rm -f cmd.c cmd.h; exit 1)
+
+# This parses slib.c and extracts the meta-data keywords expanded
+# by kw2val() and passes them to gperf to generate hash lookup code.
+slib.o:	kw2val_lookup.c
+kw2val_lookup.c: slib.c mk-kw2val.pl
+	perl mk-kw2val.pl slib.c || (rm -f kw2val_lookup.c; exit 1)
 
 hidestring: hidestring.c	
 	$(CC) $(CC_FAST) -o hidestring hidestring.c
