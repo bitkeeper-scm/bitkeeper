@@ -363,7 +363,7 @@ prunekey(sccs *s, remote *r, HASH *skip, int outfd, int flags,
 	 * data and it will all be processed with this process so it is
 	 * much faster.
 	 */
-	r->rf = fdopen(r->rfd, "r");
+	unless (r->rf) r->rf = fdopen(r->rfd, "r");
 	assert(r->rf);
 
 	unless (getline2(r, key, sizeof(key)) > 0) {

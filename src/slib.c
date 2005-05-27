@@ -13205,6 +13205,13 @@ key2val(sccs *s, const char *key)
 	return (mdbm_fetch_str(s->mdbm, key));
 }
 
+/*
+ * Include the kw2val() hash lookup function.  This is dynamically
+ * generated during the build by kwextract.pl and gperf (see the
+ * Makefile).
+ */
+#include "kw2val_lookup.c"
+
 #define	notKeyword -1
 #define	nullVal    0
 #define	strVal	   1
@@ -13222,11 +13229,18 @@ key2val(sccs *s, const char *key)
  * XXX WARNING: If you add new keyord to this function, do _not_ print
  * to out directly, you _must_ use the fc()/fd()/fx()/f5d()/fs()
  * macros.
+ *
+ * ALSO: you must follow the format of the main switch statement below.
+ * Each leg MUST look like:
+ *     <tab>case KW_enumname:
+ * followed by a comment containing the keyword name.  If a block follows,
+ * the comment MUST appear before the {.
  */
 private int
 kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 	const char *suffix, int slen, sccs *s, delta *d)
 {
+	struct kwval *kwval;
 	char	*p, *q;
 #define	KW(x)	kw2val(out, vbuf, "", 0, x, "", 0, s, d)
 #define	fc(c)	show_d(s, d, out, vbuf, "%c", c)
@@ -13243,7 +13257,11 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "Dt")) {
+	kwval = kw2val_lookup(kw, strlen(kw));
+	unless (kwval) return notKeyword;
+
+	switch (kwval->kwnum) {
+	case KW_Dt: /* Dt */ {
 		/* :Dt: = :DT::I::D::T::P::DS::DP: */
 		KW("DT"); fc(' '); KW("I"); fc(' ');
 		KW("D"); fc(' '); KW("T"); fc(' ');
@@ -13251,32 +13269,32 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		KW("DP");
 		return (strVal);
 	}
-	if (streq(kw, "DL")) {
+	case KW_DL: /* DL */ {
 		/* :DL: = :LI:/:LD:/:LU: */
 		KW("LI"); fc('/'); KW("LD"); fc('/'); KW("LU");
 		return (strVal);
 	}
 
-	if (streq(kw, "I")) {
+	case KW_I: /* I */ {
 		fs(d->rev);
 		return (strVal);
 	}
 
-	if (streq(kw, "D")) {
+	case KW_D: /* D */ {
 		/* date */
 		KW("Dy"); fc('/'); KW("Dm"); fc('/'); KW("Dd");
 		return (strVal);
 	}
 
 
-	if (streq(kw, "T")) {
+	case KW_T: /* T */ {
 		/* Time */
 		/* XXX TODO: need to figure out when to print time zone info */
 		KW("Th"); fc(':'); KW("Tm"); fc(':'); KW("Ts");
 		return (strVal);
 	}
 
-	if (streq(kw, "DI")) {
+	case KW_DI: /* DI */ {
 		/* serial number of included and excluded deltas.
 		 * :DI: = :Dn:/:Dx:/:Dg: in ATT, we do :Dn:/:Dx:
 		 */
@@ -13289,7 +13307,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "RI")) {
+	case KW_RI: /* RI */ {
 		/* rev number of included and excluded deltas.
 		 * :DR: = :Rn:/:Rx:
 		 */
@@ -13302,7 +13320,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "Dn")) {
+	case KW_Dn: /* Dn */ {
 		/* serial number of included deltas */
 		int i;
 
@@ -13315,7 +13333,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "Dx")) {
+	case KW_Dx: /* Dx */ {
 		/* serial number of excluded deltas */
 		int i;
 
@@ -13328,14 +13346,14 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "Dg")) {
+	case KW_Dg: /* Dg */ {
 		/* ignored delta - definition unknow, not implemented	*/
 		/* always return null					*/
 		return (nullVal);
 	}
 
 	/* rev number of included deltas */
-	if (streq(kw, "Rn")) {
+	case KW_Rn: /* Rn */ {
 		int	i;
 		delta	*r;
 
@@ -13350,7 +13368,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	/* rev number of excluded deltas */
-	if (streq(kw, "Rx")) {
+	case KW_Rx: /* Rx */ {
 		int	i;
 		delta	*r;
 
@@ -13364,14 +13382,14 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "W")) {
+	case KW_W: /* W */ {
 		/* a form of "what" string */
 		/* :W: = :Z::M:\t:I: */
 		KW("Z"); KW("M"); fc('\t'); KW("I");
 		return (strVal);
 	}
 
-	if (streq(kw, "A")) {
+	case KW_A: /* A */ {
 		/* a form of "what" string */
 		/* :A: = :Z::Y: :M:I:Z: */
 		KW("Z"); KW("Y"); fc(' ');
@@ -13379,43 +13397,43 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "LI")) {
+	case KW_LI: /* LI */ {
 		/* lines inserted */
 		fd(d->added);
 		return (strVal);
 	}
 
-	if (streq(kw, "LD")) {
+	case KW_LD: /* LD */ {
 		/* lines deleted */
 		fd(d->deleted);
 		return (strVal);
 	}
 
-	if (streq(kw, "LU")) {
+	case KW_LU: /* LU */ {
 		/* lines unchanged */
 		fd(d->same);
 		return (strVal);
 	}
 
-	if (streq(kw, "Li")) {
+	case KW_Li: /* Li */ {
 		/* lines inserted */
 		f5d(d->added);
 		return (strVal);
 	}
 
-	if (streq(kw, "Ld")) {
+	case KW_Ld: /* Ld */ {
 		/* lines deleted */
 		f5d(d->deleted);
 		return (strVal);
 	}
 
-	if (streq(kw, "Lu")) {
+	case KW_Lu: /* Lu */ {
 		/* lines unchanged */
 		f5d(d->same);
 		return (strVal);
 	}
 
-	if (streq(kw, "DT")) {
+	case KW_DT: /* DT */ {
 		/* delta type */
 		if ((d->type == 'R') && d->symGraph) {
 			fc('T');
@@ -13425,14 +13443,14 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "R")) {
+	case KW_R: /* R */ {
 		/* release */
 		for (p = d->rev; *p && *p != '.'; )
 			fc(*p++);
 		return (strVal);
 	}
 
-	if (streq(kw, "L")) {
+	case KW_L: /* L */ {
 		/* level */
 		for (p = d->rev; *p && *p != '.'; p++); /* skip release field */
 		for (p++; *p && *p != '.'; )
@@ -13440,7 +13458,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "B")) {
+	case KW_B: /* B */ {
 		/* branch */
 		for (p = d->rev; *p && *p != '.'; p++); /* skip release field */
 		for (p++; *p && *p != '.'; p++);	/* skip branch field */
@@ -13449,7 +13467,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "S")) {
+	case KW_S: /* S */ {
 		/* sequence */
 		for (p = d->rev; *p && *p != '.'; p++); /* skip release field */
 		for (p++; *p && *p != '.'; p++);	/* skip branch field */
@@ -13459,7 +13477,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "Dy")) {
+	case KW_Dy: /* Dy */ {
 		/* year */
 		if (d->sdate) {
 			char	val[512];
@@ -13487,7 +13505,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "Dm")) {
+	case KW_Dm: /* Dm */ {
 		/* month */
 		if (d->sdate) {
 			for (p = d->sdate; *p && *p != '/'; p++);
@@ -13498,7 +13516,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "DM")) {
+	case KW_DM: /* DM */ {
 		/* month in Jan, Feb format */
 		if (d->sdate) {
 			for (p = d->sdate; *p && *p != '/'; p++);
@@ -13522,7 +13540,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "Dd")) {
+	case KW_Dd: /* Dd */ {
 		/* day */
 		if (d->sdate) {
 			for (p = d->sdate; *p && *p != '/'; p++);
@@ -13534,7 +13552,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "Th")) {
+	case KW_Th: /* Th */ {
 		/* hour */
 		if (d->sdate)
 		{
@@ -13546,7 +13564,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "Tm")) {
+	case KW_Tm: /* Tm */ {
 		/* minute */
 		if (d->sdate) {
 			for (p = d->sdate; *p && *p != ' '; p++);
@@ -13558,7 +13576,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "Ts")) {
+	case KW_Ts: /* Ts */ {
 		/* second */
 		if (d->sdate) {
 			for (p = d->sdate; *p && *p != ' '; p++);
@@ -13572,7 +13590,8 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 
-	if (streq(kw, "P") || streq(kw, "USER")) {
+	case KW_P: /* P */
+	case KW_USER: /* USER */ {
 		/* programmer */
 		if (d->user) {
 			if (p = strchr(d->user, '/')) *p = 0;
@@ -13582,7 +13601,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		}
 		return (nullVal);
 	}
-	if (streq(kw, "REALUSER")) {
+	case KW_REALUSER: /* REALUSER */ {
 		if (d->user) {
 			if (p = strchr(d->user, '/')) {
 				++p;
@@ -13594,7 +13613,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		}
 		return (nullVal);
 	}
-	if (streq(kw, "FULLUSER")) {
+	case KW_FULLUSER: /* FULLUSER */ {
 		if (d->user) {
 			fs(d->user);
 			return (strVal);
@@ -13602,26 +13621,26 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "DS")) {
+	case KW_DS: /* DS */ {
 		/* serial number */
 		fd(d->serial);
 		return (strVal);
 	}
 
-	if (streq(kw, "DP")) {
+	case KW_DP: /* DP */ {
 		/* parent serial number */
 		fd(d->pserial);
 		return (strVal);
 	}
 
 
-	if (streq(kw, "MR")) {
+	case KW_MR: /* MR */ {
 		/* MR numbers for delta				*/
 		/* not implemeted yet, return NULL for now	*/
 		return (strVal);
 	}
 
-	if (streq(kw, "C")) {
+	case KW_C: /* C */ {
 		int i, j = 0;
 		/* comments */
 		/* XXX TODO: we may need to the walk the comment graph	*/
@@ -13636,7 +13655,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "HTML_C")) {
+	case KW_HTML_C: /* HTML_C */ {
 		int	i;
 		char	html_ch[20];
 		unsigned char *p;
@@ -13668,52 +13687,52 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "UN")) {
+	case KW_UN: /* UN */ {
 		/* users name(s) */
 		/* XXX this is a multi-line text field, definition unknown */
 		fs("??");
 		return (strVal);
 	}
 
-	if (streq(kw, "FL")) {
+	case KW_FL: /* FL */ {
 		/* flag list */
 		/* XX TODO: ouput flags in symbolic names ? */
 		fx(d->flags);
 		return (strVal);
 	}
 
-	if (streq(kw, "Y")) {
+	case KW_Y: /* Y */ {
 		/* moudle type, not implemented */
 		fs("");
 		return (strVal);
 	}
 
-	if (streq(kw, "MF")) {
+	case KW_MF: /* MF */ {
 		/* MR validation flag, not implemented	*/
 		fs("");
 		return (strVal);
 	}
 
-	if (streq(kw, "MP")) {
+	case KW_MP: /* MP */ {
 		/* MR validation pgm name, not implemented */
 		fs("");
 		return (strVal);
 	}
 
-	if (streq(kw, "KF")) {
+	case KW_KF: /* KF */ {
 		/* keyword error warining flag	*/
 		/* not implemented		*/
 		fs("no");
 		return (strVal);
 	}
 
-	if (streq(kw, "KV")) {
+	case KW_KV: /* KV */ {
 		/* keyword validation string	*/
 		/* not impleemnted		*/
 		return (nullVal);
 	}
 
-	if (streq(kw, "BF")) {
+	case KW_BF: /* BF */ {
 		/* branch flag */
 		/* BitKeeper does not have a branch flag */
 		/* but we can derive the value		 */
@@ -13733,44 +13752,44 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "J")) {
+	case KW_J: /* J */ {
 		/* Join edit flag  */
 		/* not implemented */
 		fs("no");
 		return (strVal);
 	}
 
-	if (streq(kw, "LK")) {
+	case KW_LK: /* LK */ {
 		/* locked releases */
 		/* not implemented */
 		return (nullVal);
 	}
 
-	if (streq(kw, "Q")) {
+	case KW_Q: /* Q */ {
 		/* User defined keyword */
 		/* not implemented	*/
 		return (nullVal);
 	}
 
-	if (streq(kw, "M")) {
+	case KW_M: /* M */ {
 		/* XXX TODO: get the value from the	*/
 		/* 'm' flag if/when implemented		*/
 		fs(basenm(s->gfile));
 		return (strVal);
 	}
 
-	if (streq(kw, "FB")) {
+	case KW_FB: /* FB */ {
 		/* floor boundary */
 		/* not implemented */
 		return (nullVal);
 	}
 
-	if (streq(kw, "CB")) {
+	case KW_CB: /* CB */ {
 		/* ceiling boundary */
 		return (nullVal);
 	}
 
-	if (streq(kw, "Ds")) {
+	case KW_Ds: /* Ds */ {
 		/* default branch or "none", see also DFB */
 		if (s->defbranch) {
 			fs(s->defbranch);
@@ -13780,14 +13799,14 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "ND")) {
+	case KW_ND: /* ND */ {
 		/* Null delta flag */
 		/* not implemented */
 		fs("no");
 		return (strVal);
 	}
 
-	if (streq(kw, "FD")) {
+	case KW_FD: /* FD */ {
 		/* file description text */
 		int i = 0, j = 0;
 		EACH(s->text) {
@@ -13801,26 +13820,26 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "BD")) {
+	case KW_BD: /* BD */ {
 		/* Body text */
 		/* XX TODO: figure out where to extract this info */
 		fs("??");
 		return (strVal);
 	}
 
-	if (streq(kw, "GB")) {
+	case KW_GB: /* GB */ {
 		/* Gotten body */
 		sccs_restart(s);
 		sccs_get(s, d->rev, 0, 0, 0, GET_EXPAND|SILENT|PRINT, "-");
 		return (strVal);
 	}
 
-	if (streq(kw, "Z")) {
+	case KW_Z: /* Z */ {
 		fs("@(#)");
 		return (strVal);
 	}
 
-	if (streq(kw, "F")) {
+	case KW_F: /* F */ {
 		/* s file basename */
 		if (s->sfile) {
 			/* scan backward for '/' */
@@ -13832,7 +13851,8 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "PN") || streq(kw, "SFILE")) {
+	case KW_PN: /* PN */
+	case KW_SFILE: /* SFILE */ {
 		/* s file path */
 		if (s->sfile) {
 			fs(s->sfile);
@@ -13841,20 +13861,20 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return nullVal;
 	}
 
-	if (streq(kw, "N")) {
+	case KW_N: /* N */ {
 		fd(s->numdeltas);
 		return (strVal);
 	}
 
-	if (streq(kw, "ODD")) {
+	case KW_ODD: /* ODD */ {
 		return (s->prs_odd ? strVal : nullVal);
 	}
 
-	if (streq(kw, "EVEN")) {
+	case KW_EVEN: /* EVEN */ {
 		return (s->prs_odd ? nullVal : strVal);
 	}
 
-	if (streq(kw, "G")) {
+	case KW_G: /* G */ {
 		/* g file basename */
 		if (s->gfile) {
 			/* scan backward for '/' */
@@ -13866,7 +13886,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "DSUMMARY")) {
+	case KW_DSUMMARY: /* DSUMMARY */ {
 	/* :DT: :I: :D: :T::TZ: :P:$if(:HT:){@:HT:} :DS: :DP: :Li:/:Ld:/:Lu: */
 	 	KW("DT"); fc(' '); KW("I"); fc(' '); KW("D"); fc(' ');
 		KW("T"); KW("TZ"); fc(' '); KW("P");
@@ -13875,7 +13895,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "PATH")) {	/* $if(:DPN:){P :DPN:\n} */
+	case KW_PATH: /* PATH */ {	/* $if(:DPN:){P :DPN:\n} */
 		if (d->pathname) {
 			fs("P ");
 			fs(d->pathname);
@@ -13886,7 +13906,8 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	/* $each(:TAG:){S (:TAG:)\n} */
-	if (streq(kw, "SYMBOLS") || streq(kw, "TAGS")) {
+	case KW_SYMBOLS: /* SYMBOLS */
+	case KW_TAGS: /* TAGS */ {
 		symbol	*sym;
 		int	j = 0;
 
@@ -13903,7 +13924,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		
 	}
 
-	if (streq(kw, "COMMENTS")) {	/* $if(:C:){$each(:C:){C (:C:)}\n} */
+	case KW_COMMENTS: /* COMMENTS */ {	/* $if(:C:){$each(:C:){C (:C:)}\n} */
 		int i, j = 0;
 		/* comments */
 		/* XXX TODO: we may need to the walk the comment graph	*/
@@ -13918,7 +13939,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		
 	}
 
-	if (streq(kw, "DEFAULT")) {
+	case KW_DEFAULT: /* DEFAULT */ {
 		KW("DSUMMARY");
 		fc('\n');
 		KW("PATH");
@@ -13928,7 +13949,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "CSETFILE")) {
+	case KW_CSETFILE: /* CSETFILE */ {
 		if (s->tree->csetFile) {
 			fs(s->tree->csetFile);
 			return (strVal);
@@ -13936,7 +13957,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return nullVal;
 	}
 
-	if (streq(kw, "RANDOM")) {
+	case KW_RANDOM: /* RANDOM */ {
 		if (s->tree->random) {
 			fs(s->tree->random);
 			return (strVal);
@@ -13944,7 +13965,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return nullVal;
 	}
 
-	if (streq(kw, "ENC")) {
+	case KW_ENC: /* ENC */ {
 		switch (s->encoding & E_DATAENC) {
 		    case E_ASCII:
 			fs("ascii"); return (strVal);
@@ -13954,7 +13975,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return nullVal;
 	}
 
-	if (streq(kw, "COMPRESSION")) {
+	case KW_COMPRESSION: /* COMPRESSION */ {
 		switch (s->encoding & E_COMP) {
 		    case 0: 
 			fs("none"); return (strVal);
@@ -13964,12 +13985,12 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return nullVal;
 	}
 
-	if (streq(kw, "VERSION")) {
+	case KW_VERSION: /* VERSION */ {
 		fd(s->version);
 		return (strVal);
 	}
 
-	if (streq(kw, "X_FLAGS")) {
+	case KW_X_FLAGS: /* X_FLAGS */ {
 		char	buf[20];
 
 		sprintf(buf, "0x%x", sccs_xflags(d));
@@ -13977,7 +13998,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "X_XFLAGS")) {
+	case KW_X_XFLAGS: /* X_XFLAGS */ {
 		char	buf[20];
 
 		sprintf(buf, "0x%x", s->xflags);
@@ -13985,9 +14006,11 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "FLAGS") || streq(kw, "XFLAGS")) {
+	case KW_FLAGS: /* FLAGS */
+	case KW_XFLAGS: /* XFLAGS */ {
 		int	comma = 0;
-		int	flags = streq(kw, "FLAGS") ? sccs_xflags(d) : s->xflags;
+		int	flags =
+		    (kwval->kwnum == KW_FLAGS) ? sccs_xflags(d) : s->xflags;
 
 		if (flags & X_BITKEEPER) {
 			if (comma) fs(","); fs("BITKEEPER"); comma = 1;
@@ -14039,20 +14062,20 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "REV")) {
+	case KW_REV: /* REV */ {
 		fs(d->rev);
 		return (strVal);
 	}
 
 	/* print the first rev at/below this which is in a cset */
-	if (streq(kw, "CSETREV")) {
+	case KW_CSETREV: /* CSETREV */ {
 		while (d && !(d->flags & D_CSET)) d = d->kid;
 		unless (d) return (nullVal);
 		fs(d->rev);
 		return (strVal);
 	}
 
-	if (streq(kw, "CSETKEY")) {
+	case KW_CSETKEY: /* CSETKEY */ {
 		char key[MAXKEY];
 		unless (d->flags & D_CSET) return (nullVal);
 		sccs_sdelta(s, d, key);
@@ -14060,7 +14083,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "HASHCOUNT")) {
+	case KW_HASHCOUNT: /* HASHCOUNT */ {
 		int	n = sccs_hashcount(s);
 
 		unless (HASH(s)) return (nullVal);
@@ -14068,7 +14091,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "MD5KEY")) {
+	case KW_MD5KEY: /* MD5KEY */ {
 		char	b64[32];
 
 		sccs_md5delta(s, d, b64);
@@ -14076,7 +14099,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "KEY")) {
+	case KW_KEY: /* KEY */ {
 		char	key[MAXKEY];
 
 		sccs_sdelta(s, d, key);
@@ -14084,7 +14107,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "ROOTKEY")) {
+	case KW_ROOTKEY: /* ROOTKEY */ {
 		char key[MAXKEY];
 
 		sccs_sdelta(s, sccs_ino(s), key);
@@ -14092,7 +14115,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "SHORTKEY")) {
+	case KW_SHORTKEY: /* SHORTKEY */ {
 		char	buf[MAXPATH+200];
 		char	*t;
 
@@ -14102,7 +14125,8 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "SYMBOL") || streq(kw, "TAG")) {
+	case KW_SYMBOL: /* SYMBOL */
+	case KW_TAG: /* TAG */ {
 		symbol	*sym;
 		int	j = 0;
 
@@ -14119,19 +14143,19 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "TAG_PSERIAL")) {
+	case KW_TAG_PSERIAL: /* TAG_PSERIAL */ {
 		unless (d->ptag) return (nullVal);
 		fd(d->ptag);
 		return (strVal);
 	}
 
-	if (streq(kw, "TAG_MSERIAL")) {
+	case KW_TAG_MSERIAL: /* TAG_MSERIAL */ {
 		unless (d->mtag) return (nullVal);
 		fd(d->mtag);
 		return (strVal);
 	}
 
-	if (streq(kw, "TAG_PREV")) {
+	case KW_TAG_PREV: /* TAG_PREV */ {
 		delta	*p;
 
 		unless (d->ptag) return (nullVal);
@@ -14141,7 +14165,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "TAG_MREV")) {
+	case KW_TAG_MREV: /* TAG_MREV */ {
 		delta	*p;
 
 		unless (d->mtag) return (nullVal);
@@ -14151,14 +14175,15 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "GFILE")) {
+	case KW_GFILE: /* GFILE */ {
 		if (s->gfile) {
 			fs(s->gfile);
 		}
 		return (strVal);
 	}
 
-	if (streq(kw, "HT") || streq(kw, "HOST")) {
+	case KW_HT: /* HT */
+	case KW_HOST: /* HOST */ {
 		/* host without any importer name */
 		if (d->hostname) {
 			if (p = strchr(d->hostname, '/')) {
@@ -14176,7 +14201,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		}
 		return (nullVal);
 	}
-	if (streq(kw, "REALHOST")) {
+	case KW_REALHOST: /* REALHOST */ {
 		if (d->hostname) {
 			if (p = strchr(d->hostname, '/')) {
 				fs(p+1);
@@ -14191,7 +14216,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		}
 		return (nullVal);
 	}
-	if (streq(kw, "FULLHOST")) {
+	case KW_FULLHOST: /* FULLHOST */ {
 		if (d->hostname) {
 			if (p = strchr(d->hostname, '[')) {
 				*p = 0;
@@ -14205,7 +14230,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "IMPORTER")) {
+	case KW_IMPORTER: /* IMPORTER */ {
 		/* importer name */
 		if (d->hostname) {
 			for (p = d->hostname; *p && (*p != '['); p++);
@@ -14217,7 +14242,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "DOMAIN")) {
+	case KW_DOMAIN: /* DOMAIN */ {
 		/* domain: the truncated domain name.
 		 * Counting from the right, we keep zero or more
 		 * two-letter components, then zero or one three
@@ -14244,7 +14269,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "TZ")) {
+	case KW_TZ: /* TZ */ {
 		/* time zone */
 		if (d->zone) {
 			fs(d->zone);
@@ -14253,7 +14278,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "TIME_T")) {
+	case KW_TIME_T: /* TIME_T */ {
 		char	buf[20];
 
 		sprintf(buf, "%d", (int)d->date);
@@ -14261,7 +14286,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "UTC")) {
+	case KW_UTC: /* UTC */ {
 		char	*utcTime;
 		if (utcTime = sccs_utctime(d)) {
 			fs(utcTime);
@@ -14270,7 +14295,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "UTC-FUDGE")) {
+	case KW_UTC_FUDGE: /* UTC-FUDGE */ {
 		char	*utcTime;
 
 		DATE(d);
@@ -14284,7 +14309,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "FUDGE")) {
+	case KW_FUDGE: /* FUDGE */ {
 		char	buf[20];
 
 		sprintf(buf, "%d", (int)d->dateFudge);
@@ -14292,21 +14317,21 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "AGE")) {	/* how recently modified */
+	case KW_AGE: /* AGE */ {	/* how recently modified */
 		time_t	when = time(0) - (d->date - d->dateFudge);
 
 		fs(age(when, " "));
 		return (strVal);
 	}
 
-	if (streq(kw, "HTML_AGE")) {	/* how recently modified */
+	case KW_HTML_AGE: /* HTML_AGE */ {	/* how recently modified */
 		time_t	when = time(0) - (d->date - d->dateFudge);
 
 		fs(age(when, "&nbsp;"));
 		return (strVal);
 	}
 
-	if (streq(kw, "DSUM")) {
+	case KW_DSUM: /* DSUM */ {
 		if (d->flags & D_CKSUM) {
 			fd((int)d->sum);
 			return (strVal);
@@ -14319,7 +14344,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "FSUM")) {
+	case KW_FSUM: /* FSUM */ {
 		unless (s->cksumdone) badcksum(s, SILENT);
 		if (s->cksumok) {
 			char	buf[20];
@@ -14331,7 +14356,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "SYMLINK")) {
+	case KW_SYMLINK: /* SYMLINK */ {
 		if (d->symlink) {
 			fs(d->symlink);
 			return (strVal);
@@ -14339,7 +14364,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "MODE")) {
+	case KW_MODE: /* MODE */ {
 		char	buf[20];
 
 		sprintf(buf, "%o", (int)d->mode);
@@ -14347,7 +14372,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "RWXMODE")) {
+	case KW_RWXMODE: /* RWXMODE */ {
 		char	buf[20];
 
 		sprintf(buf, "%s", mode2a(d->mode));
@@ -14355,7 +14380,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "TYPE")) {
+	case KW_TYPE: /* TYPE */ {
 		if (BITKEEPER(s)) {
 			fs("BitKeeper");
 			if (CSET(s)) fs("|ChangeSet");
@@ -14365,7 +14390,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "RENAME")) {
+	case KW_RENAME: /* RENAME */ {
 		/* per delta path name if the pathname is a rename */
 		if (d->pathname && !(d->flags & D_DUPPATH)) {
 			fs(d->pathname);
@@ -14374,7 +14399,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "DPN")) {
+	case KW_DPN: /* DPN */ {
 		/* per delta path name */
 		if (d->pathname) {
 			fs(d->pathname);
@@ -14383,7 +14408,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "SPN")) {
+	case KW_SPN: /* SPN */ {
 		/* per delta SCCS path name */
 		if (d->pathname) {
 			char	*p = name2sccs(d->pathname);
@@ -14395,13 +14420,13 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "MGP")) {
+	case KW_MGP: /* MGP */ {
 		/* merge parent's serial number */
 		fd(d->merge);
 		return (strVal);
 	}
 
-	if (streq(kw, "PARENT")) {
+	case KW_PARENT: /* PARENT */ {
 		if (d->parent) {
 			fs(d->parent->rev);
 			return (strVal);
@@ -14409,7 +14434,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "MPARENT")) {	/* print the merge parent if present */
+	case KW_MPARENT: /* MPARENT */ {	/* print the merge parent if present */
 		if (d->merge && (d = sfind(s, d->merge))) {
 			fs(d->rev);
 			return (strVal);
@@ -14417,7 +14442,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "MERGE")) {	/* print this rev if a merge node */
+	case KW_MERGE: /* MERGE */ {	/* print this rev if a merge node */
 		if (d->merge) {
 			fs(d->rev);
 			return (strVal);
@@ -14425,7 +14450,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "GCA")) {		/* print gca rev if a merge node */
+	case KW_GCA: /* GCA */ {		/* print gca rev if a merge node */
 		if (d->merge && (d = gca(sfind(s, d->merge), d->parent))) {
 			fs(d->rev);
 			return (strVal);
@@ -14433,7 +14458,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "GCA2")) {	/* print gca rev if a merge node */
+	case KW_GCA2: /* GCA2 */ {	/* print gca rev if a merge node */
 		if (d->merge && (d = gca2(s, sfind(s, d->merge), d->parent))) {
 			fs(d->rev);
 			return (strVal);
@@ -14441,7 +14466,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "SETGCA")) {	/* print gca rev if a merge node */
+	case KW_SETGCA: /* SETGCA */ {	/* print gca rev if a merge node */
 		char	*inc, *exc;
 
 		if (d->merge &&
@@ -14462,7 +14487,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "GET_SETGCA")) {	/* print gca args for get*/
+	case KW_GET_SETGCA: /* GET_SETGCA */ {	/* print gca args for get*/
 		char	*inc, *exc;
 
 		if (d->merge &&
@@ -14484,7 +14509,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "GET_SETGCA301")) {	/* print gca args for get*/
+	case KW_GET_SETGCA301: /* GET_SETGCA301 */ {	/* print gca args for get*/
 		char	*inc, *exc;
 
 		if (d->merge &&
@@ -14497,7 +14522,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		}
 		return (nullVal);
 	}
-	if (streq(kw, "GET_SETGCA302")) {	/* print gca args for get*/
+	case KW_GET_SETGCA302: /* GET_SETGCA302 */ {	/* print gca args for get*/
 		char	*inc, *exc;
 
 		if (d->merge &&
@@ -14519,7 +14544,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "PREV")) {
+	case KW_PREV: /* PREV */ {
 		if (d->next) {
 			fs(d->next->rev);
 			return (strVal);
@@ -14527,7 +14552,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "NEXT")) {
+	case KW_NEXT: /* NEXT */ {
 		if (d = sccs_next(s, d)) {
 			fs(d->rev);
 			return (strVal);
@@ -14535,7 +14560,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "KID")) {
+	case KW_KID: /* KID */ {
 		if (d = d->kid) {
 			fs(d->rev);
 			return (strVal);
@@ -14543,7 +14568,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "KIDS")) {
+	case KW_KIDS: /* KIDS */ {
 		int	space = 0;
 
 		if (d->flags & D_MERGED) {
@@ -14567,7 +14592,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "TIP")) {
+	case KW_TIP: /* TIP */ {
 		if (sccs_isleaf(s, d)) {
 			fs(d->rev);
 			return (strVal);
@@ -14575,7 +14600,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "LODKEY")) {
+	case KW_LODKEY: /* LODKEY */ {
 		char key[MAXKEY];
 
 		while (d && d->r[2]) d = d->parent;
@@ -14588,7 +14613,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "SIBLINGS")) {
+	case KW_SIBLINGS: /* SIBLINGS */ {
 		if (d = d->siblings) {
 			fs(d->rev);
 			return (strVal);
@@ -14596,7 +14621,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "DFB")) {
+	case KW_DFB: /* DFB */ {
 		/* default branch */
 		if (s->defbranch) {
 			fs(s->defbranch);
@@ -14605,7 +14630,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "DANGLING")) {
+	case KW_DANGLING: /* DANGLING */ {
 		/* don't clause on MONOTONIC, we had a bug there, see chgset */
 		if (d->dangling) {
 			fs(d->rev);
@@ -14614,7 +14639,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "RREV")) {
+	case KW_RREV: /* RREV */ {
 		names	*n;
 
 		unless (s->rrevs) {
@@ -14628,7 +14653,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "LREV")) {
+	case KW_LREV: /* LREV */ {
 		names	*n;
 
 		unless (s->rrevs) {
@@ -14642,7 +14667,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "GREV")) {
+	case KW_GREV: /* GREV */ {
 		names	*n;
 
 		unless (s->rrevs) {
@@ -14656,7 +14681,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "RPN")) {
+	case KW_RPN: /* RPN */ {
 		names	*n;
 
 		unless (s->rrevs) {
@@ -14670,7 +14695,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "LPN")) {
+	case KW_LPN: /* LPN */ {
 		names	*n;
 
 		unless (s->rrevs) {
@@ -14684,7 +14709,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "GPN")) {
+	case KW_GPN: /* GPN */ {
 		names	*n;
 
 		unless (s->rrevs) {
@@ -14698,8 +14723,10 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "DIFFS") || streq(kw, "UDIFFS")) {
-		int	kind = streq(kw, "DIFFS") ? DF_DIFF : DF_UNIFIED;
+	case KW_DIFFS: /* DIFFS */
+	case KW_UDIFFS: /* UDIFFS */ {
+		int	kind =
+		    (kwval->kwnum == KW_DIFFS) ? DF_DIFF : DF_UNIFIED;
 
 		if (d == s->tree) return (nullVal);
 		if (out) {
@@ -14722,7 +14749,9 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	return notKeyword;
+	default:
+                return notKeyword;
+	}
 }
 
 /*
