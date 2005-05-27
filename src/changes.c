@@ -1049,6 +1049,7 @@ changes_part1(remote *r, char **av, char *key_list)
 	send_part1_msg(r, av);
 	if (r->rfd < 0) return (-1);
 
+	unless (r->rf) r->rf = fdopen(r->rfd, "r");
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	if (getline2(r, buf, sizeof(buf)) <= 0) return (-1);
 	if ((rc = remote_lock_fail(buf, 1))) {
@@ -1129,6 +1130,7 @@ changes_part2(remote *r, char **av, char *key_list, int ret)
 		return (1);
 	}
 
+	unless (r->rf) r->rf = fdopen(r->rfd, "r");
 	if (ret == 0){
 		send_end_msg(r, "@NOTHING TO SEND@\n");
 		/* No handshake?? */
