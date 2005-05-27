@@ -24,10 +24,6 @@ checksum_main(int ac, char **av)
 	char	*off = 0;
 	char	*rev = 0;
 
-	if (ac > 1 && streq("--help", av[1])) {
-		system("bk help checksum");
-		return (0);
-	}
 	while ((c = getopt(ac, av, "cfr;s|v/")) != -1) {
 		switch (c) {
 		    case 'c': break;	/* obsolete */

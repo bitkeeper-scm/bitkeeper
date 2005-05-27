@@ -38,11 +38,6 @@ admin_main(int ac, char **av)
 	int 	was_edited = 0, new_delta = 0;
 	pfile	pf;
 
-	debug_main(av);
-	if (ac > 1 && streq("--help", av[1])) {
-		system("bk help admin");
-		return (1);
-	}
 	bzero(f, sizeof(f));
 	bzero(u, sizeof(u));
 	bzero(s, sizeof(s));

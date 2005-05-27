@@ -11,10 +11,6 @@ version_main(int ac, char **av)
 	int	c;
 	char	*p;
 
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help version");
-		return (0);
-	}
 	while ((c = getopt(ac, av, "s")) != -1) {
 		switch (c) {
 		    case 's':

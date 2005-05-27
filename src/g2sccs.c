@@ -11,10 +11,6 @@ g2sccs_main(int ac, char **av)
 {
 	int	i;
 
-	if (ac == 2 && streq("--help", av[1])) {
-		fprintf(stderr, "usage: bk g2sccs file file file ... | -\n");
-		return (1);
-	}
 	if ((ac > 1) && strcmp(av[ac-1], "-")) {
 		for (i = 1; i < ac; ++i) {
 			print_name(av[i]);

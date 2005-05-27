@@ -38,11 +38,6 @@ clone_main(int ac, char **av)
 	remote 	*r = 0;
 	int	link = 0;
 
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help clone");
-		return (1);
-	}
-
 	bzero(&opts, sizeof(opts));
 	opts.gzip = 6;
 	while ((c = getopt(ac, av, "dE:lqr;w|z|")) != -1) {

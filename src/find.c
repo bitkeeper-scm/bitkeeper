@@ -4,9 +4,6 @@
 /*
  * _find - find regular files and symbolic links
  */
-private	char *files_usage = "\n\
-usage: _find [dir...] [-name bk_glob_pattern]\n\
-\n";
 private int	do_print(char *path, struct stat *sb, void *data);
 private	char 	**globs = 0;
 private	int	wantdir = 0;
@@ -17,12 +14,7 @@ find_main(int ac, char **av)
 	int	i;
 	char	**dirs = 0;
 
-	debug_main(av);
 
-	if ((ac > 1) && streq("--help", av[1])) {
-		fprintf(stderr, "%s", files_usage);
-		exit(0);
-	}
 	for (i = 1; av[i]; i++) {
 		if (streq("-name", av[i])) {
 			globs = addLine(globs, strdup(av[++i]));

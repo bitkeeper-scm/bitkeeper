@@ -133,10 +133,6 @@ send_main(int ac,  char **av)
 	char	*url = NULL;
 	FILE	*f;
 
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help send");
-		return (0);
-	}
 	while ((c = getopt(ac, av, "dfqr:u:w:")) != -1) {
 		switch (c) {
 		    case 'd':	dflag = "-d"; break;		/* doc 2.0 */

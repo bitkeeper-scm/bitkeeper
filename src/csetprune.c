@@ -49,17 +49,14 @@ csetprune_main(int ac, char **av)
 	int	c;
 
 	flags = PRUNE_NEW_TAG_GRAPH; /* |PRUNE_JUST_CHANGESET; */
-	debug_main(av);
-	if (ac > 1 && streq("--help", av[1])) {
-usage:		system("bk help -s csetprune");
-		return (1);
-	}
 	while ((c = getopt(ac, av, "k:qS")) != -1) {
 		switch (c) {
 		    case 'k': ranbits = optarg; break;
 		    case 'q': flags |= SILENT; break;
 		    case 'S': flags &= ~PRUNE_NEW_TAG_GRAPH; break;
-		    default: goto usage;
+		    default:
+usage:			system("bk help -s csetprune");
+			return (1);
 		}
 	}
 	if (ranbits) {

@@ -22,11 +22,6 @@ dsort(const void *a, const void *b)
 int
 tagmerge_main(int ac, char **av)
 {
-	debug_main(av);
-	if (ac == 2 && streq("--help", av[1])) {
-		//system("bk help tagmerge");
-		return (1);
-	}
 	if (!exists("SCCS/s.ChangeSet") && proj_cd2root()) {
 		fprintf(stderr, "Cannot find package root\n");
 		return (1);

@@ -43,10 +43,6 @@ pull_main(int ac, char **av)
 	remote	*r;
 	char	**envVar = 0, **urls = 0;
 
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help pull");
-		return (0);
-	}
 	bzero(&opts, sizeof(opts));
 	opts.gzip = 6;
 	opts.automerge = 1;

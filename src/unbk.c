@@ -12,7 +12,6 @@ unbk_main(int ac, char **av)
 	int	errors = 0;
 	char	*name;
 
-	debug_main(av);
 	unless(ac > 1 && streq("--I-know-this-destroys-my-bk-repo", av[1])) {
 		fprintf(stderr, 
 		    "usage: bk _unbk --I-know-this-destroys-my-bk-repo\n");

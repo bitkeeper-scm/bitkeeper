@@ -51,11 +51,6 @@ sccslog_main(int ac, char **av)
 	RANGE_DECL;
 
 	setmode(1, _O_TEXT);
-	debug_main(av);
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help sccslog");
-		return (0);
-	}
 	while ((c = getopt(ac, av, "AbCc;d|Dfi;npr|sv")) != -1) {
 		switch (c) {
 		    case 'A': opts.uncommitted = 1; break;	/* doc 2.0 */

@@ -6,17 +6,15 @@
 int
 level_main(int ac,  char **av)
 {
-	if (ac == 2 && streq("--help", av[1])) {
-usage:		system("bk help level");
-		return (0);
-	}
-
 	unless (av[1]) {
 		printf("Repository level is %d\n", getlevel());
 		exit(0);
 	}
 
-	unless (isdigit(av[1][0])) goto usage;
+	unless (isdigit(av[1][0])) {
+		system("bk help -s level");
+		return (1);
+	}
 	exit(setlevel(atoi(av[1])));
 }
 

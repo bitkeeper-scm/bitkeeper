@@ -54,10 +54,6 @@ makepatch_main(int ac, char **av)
 	char	*nav[15];
 	char	*range = 0;
 
-	if (ac == 2 && streq("--help", av[1])) {
-usage:		system("bk help -s makepatch");
-		return (0);
-	}
 	dash = streq(av[ac-1], "-");
 	nav[i=0] = "makepatch";
 	while ((c = getopt(ac, av, "c|e|dr|sCqv")) != -1) {
@@ -88,7 +84,8 @@ usage:		system("bk help -s makepatch");
 			nav[++i] = "-v";
 			break;
 		    default:
-		    	goto usage;
+usage:			system("bk help -s makepatch");
+			return (1);
 		}
 	}
 	unless (range) {
@@ -116,16 +113,7 @@ cset_main(int ac, char **av)
 	int	ignoreDeleted = 0;
 	char	*cFile = 0;
 	char	allRevs[6] = "1.0..";
-	char	buf[100];
 	RANGE_DECL;
-
-	debug_main(av);
-
-	if (ac > 1 && streq("--help", av[1])) {
-usage:		sprintf(buf, "bk help %s", av[0]);
-		system(buf);
-		return (1);
-	}
 
 	if (streq(av[0], "makepatch")) copts.makepatch = 1;
 	copts.notty = (getenv("BK_NOTTY") != 0);
@@ -202,8 +190,7 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 			r[rd++] = optarg;
 			break;
 		    default:
-			sprintf(buf, "bk help -s %s", av[0]);
-			system(buf);
+usage:			sys("bk", "help", "-s", av[0], SYS);
 			return (1);
 		}
 	}

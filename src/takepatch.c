@@ -114,14 +114,8 @@ takepatch_main(int ac, char **av)
 	int	resolve = 0;
 	int	textOnly = 0;
 
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help takepatch");
-		return (0);
-	}
-
 	setmode(0, O_BINARY); /* for win32 */
 	input = "-";
-	debug_main(av);
 	while ((c = getopt(ac, av, "acFf:iLmqsStvy;")) != -1) {
 		switch (c) {
 		    case 'q':					/* undoc 2.0 */

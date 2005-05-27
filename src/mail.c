@@ -19,11 +19,6 @@ mail_main(int ac, char **av)
 	} else {
 		name = av[0];
 	}
-	if (ac > 1 && streq("--help", av[1]))  {
-		sys("bk", "help", name, SYS);
-		return (0);
-	}
-
 	while ((c = getopt(ac, av, "s:u:")) != -1) {
 		switch (c) {
 		    case 's': subject = optarg; break;

@@ -35,10 +35,6 @@ undo_main(int ac,  char **av)
 	char	*checkfiles;	/* filename of list of files to check */
 	char	*patch = "BitKeeper/tmp/undo.patch";
 
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help undo");
-		return (0);
-	}
 	if (proj_cd2root()) {
 		fprintf(stderr, "undo: cannot find package root.\n");
 		exit(1);

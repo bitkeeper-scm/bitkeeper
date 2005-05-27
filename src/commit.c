@@ -29,11 +29,6 @@ commit_main(int ac, char **av)
 	int	dflags = 0;
 	c_opts	opts  = {0, 0, 0, 0};
 
-	if (ac > 1 && streq("--help", av[1])) {
-		system("bk help commit");
-		return (1);
-	}
-
 	while ((c = getopt(ac, av, "aAdf:FRqsS:y:Y:")) != -1) {
 		switch (c) {
 		    case 'a':	opts.alreadyAsked = 1; break;	/* doc 2.0 */

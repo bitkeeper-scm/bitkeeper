@@ -60,12 +60,6 @@ findcset_main(int ac, char **av)
 	int	save, c, flags = SILENT;
 	int	fileIdx;
 
-	debug_main(av);
-	if (ac == 2 && streq("--help", av[1])) {
-		//system("bk help findcset");
-		return (0);
-	}
-
 	while ((c = getopt(ac, av, "b:kt:T:ivu")) != -1) {
 		switch (c)  {
 		    case 'b' : opts.blackOutTime = atoi(optarg); break;

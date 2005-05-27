@@ -24,10 +24,6 @@ setup_main(int ac, char **av)
 	int	status;
 	int	print = 0;
 
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help setup");
-		return (0);
-	}
 	while ((c = getopt(ac, av, "ac:efF:p")) != -1) {
 		switch (c) {
 		    case 'c':					/* doc 2.0 */

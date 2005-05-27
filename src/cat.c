@@ -11,15 +11,12 @@ cat_main(int ac, char **av)
 	int	pnames = getenv("BK_PRINT_EACH_NAME") != 0;
 	int	c, gfile;
 
-	debug_main(av);
-	if (ac == 2 && streq("--help", av[1])) {
-usage:		system("bk help -s cat");
-		return (1);
-	}
 	while ((c = getopt(ac, av, "B")) != -1) {
 		switch (c) {
 		    case 'B': skip_bin = 1; break;
-		    default: goto usage;
+		    default:
+			system("bk help -s cat");
+			return (1);
 		}
 	}
 	for (name = sfileFirst("cat", &av[optind], 0);

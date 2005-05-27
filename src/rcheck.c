@@ -12,12 +12,6 @@ int
 rcheck_main(int ac, char **av)
 {
 
-	debug_main(av);
-	if (ac > 1 && streq("--help", av[1])) {
-		//system("bk help rcheck");
-		return (1);
-	}
-
 #if 	0
 	while ((c = getopt(ac, av, "")) != -1) {
 		switch (c) {

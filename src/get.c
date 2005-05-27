@@ -27,7 +27,6 @@ get_main(int ac, char **av)
 	char	*out = "-";
 	char	realname[MAXPATH];
 
-	debug_main(av);
 	prog = strrchr(av[0], '/');
 	if (prog) prog++;
 	else prog = av[0];
@@ -42,11 +41,6 @@ get_main(int ac, char **av)
 		branch_ok = 1;
 	}
 
-	if (ac == 2 && streq("--help", av[1])) {
-		sprintf(realname, "bk help %s", prog);
-		system(realname);
-		return (1);
-	}
 	if (streq(av[0], "edit")) flags |= GET_EDIT;
 	if (streq("GET", user_preference("checkout"))) flags |= GET_NOREGET;
 	while ((c =
@@ -84,8 +78,7 @@ get_main(int ac, char **av)
 		    case 'x': xLst = optarg; break;		/* doc 2.0 */
 
 		    default:
-usage:			sprintf(realname, "bk help -s %s", prog);
-			system(realname);
+usage:			sys("bk", "help", "-s", prog, SYS);
 			return (1);
 		}
 	}

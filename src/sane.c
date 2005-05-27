@@ -20,11 +20,6 @@ int
 sane_main(int ac, char **av)
 {
 	int	c, readonly = 0, resync = 0;
-	
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help sane");
-		return (0);
-	}
 
 	while ((c = getopt(ac, av, "rR")) != -1) {
 		switch (c) {

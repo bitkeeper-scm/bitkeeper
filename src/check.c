@@ -92,12 +92,6 @@ check_main(int ac, char **av)
 	char 	s_cset[] = CHANGESET;
 	char	*t;
 
-	debug_main(av);
-	if (ac > 1 && streq("--help", av[1])) {
-		system("bk help check");
-		return (1);
-	}
-
 	while ((c = getopt(ac, av, "acdefgpRvw")) != -1) {
 		switch (c) {
 		    case 'a': all++; break;			/* doc 2.0 */

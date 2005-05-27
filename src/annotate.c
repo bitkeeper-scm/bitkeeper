@@ -18,13 +18,8 @@ annotate_main(int ac, char **av)
 	char	*t, *name, *Rev = 0, *rev = 0, *cdate = 0;
 	delta	*d;
 
-	debug_main(av);
 	name = strrchr(av[0], '/');
 
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help annotate");
-		return (1);
-	}
 	if (t = getenv("BK_ANNOTATE")) {
 		if ((flags = annotate_args(flags, t)) == -1) {
 			fprintf(stderr,

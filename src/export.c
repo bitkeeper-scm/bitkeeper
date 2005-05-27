@@ -22,11 +22,6 @@ export_main(int ac,  char **av)
 	char	*type = 0;
 	int	sysfiles = 0;
 
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help export");
-		return (1);
-	}
-
 	while ((c = getopt(ac, av, "d:hkp:t:Twvi:x:r:S")) != -1) {
 		switch (c) {
 		    case 'v':	vflag = 1; break;		/* doc 2.0 */

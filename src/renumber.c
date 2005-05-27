@@ -37,11 +37,6 @@ renumber_main(int ac, char **av)
 	int	c, dont = 0, quiet = 0, flags = INIT_WACKGRAPH;
 	delta	*leaf(delta *tree);
 
-	debug_main(av);
-	if (ac > 1 && streq("--help", av[1])) {
-		system("bk help renumber");
-		return (0);
-	}
 	while ((c = getopt(ac, av, "nqs/")) != -1) {
 		switch (c) {
 		    case 'n': dont = 1; break;			/* doc 2.0 */

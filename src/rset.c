@@ -371,11 +371,6 @@ rset_main(int ac, char **av)
 	options	opts;
 
 	bzero(&opts, sizeof (options));
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help rset");
-		return (0);
-	}
-	
 	if (proj_cd2root()) {
 		fprintf(stderr, "mkrev: cannot find package root.\n");
 		exit(1);

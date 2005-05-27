@@ -21,12 +21,6 @@ extern	int	admin_main(int ac, char **av);
 int
 create_main(int ac, char **av)
 {
-	debug_main(av);
-	if (ac > 1 && streq("--help", av[1])) {
-		system("bk help sccs");
-		return (1);
-	}
-
 	av[0] = "add";
 	if (delta_main(ac, av)) exit(1);
 	av[0] = "get";

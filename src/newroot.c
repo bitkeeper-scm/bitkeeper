@@ -22,15 +22,12 @@ newroot_main(int ac, char **av)
 	}
 	if (streq(name, "multiuser")) single = 1;
 
-	debug_main(av);
-	if (ac > 1 && streq("--help", av[1])) {
- usage:		sys("bk", "help", "-s", name, SYS);
-		return (1);
-	}
 	while ((c = getopt(ac, av, "k:")) != -1) {
 		switch (c) {
 		    case 'k': ranbits = optarg; break;
-		    default: goto usage;
+		    default:
+usage:			sys("bk", "help", "-s", name, SYS);
+			return (1);
 		}
 	}
 	if (ranbits) {

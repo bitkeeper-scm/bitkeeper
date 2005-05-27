@@ -8,11 +8,6 @@ receive_main(int ac,  char **av)
 	char	buf[MAXLINE], opts[MAXLINE] = "";
 	char	*path;
 
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help receive");
-		return (0);
-	}
-
 	while ((c = getopt(ac, av, "acFiStv")) != -1) {
 		switch (c) { 
 		    case 'a': strcat(opts, " -a"); break;	/* doc 2.0 */

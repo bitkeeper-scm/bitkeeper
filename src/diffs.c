@@ -59,12 +59,6 @@ diffs_main(int ac, char **av)
 	char	*Rev = 0, *boundaries = 0;
 	RANGE_DECL;
 
-	debug_main(av);
-	if (ac > 1 && streq("--help", av[1])) {
-		system("bk help diffs");
-		return (1);
-	}
-
 	if (name = strrchr(av[0], '/')) {
 		kind = streq(++name, "sdiffs") ? DF_SDIFF : DF_DIFF;
 	} else {

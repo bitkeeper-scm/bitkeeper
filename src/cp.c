@@ -12,13 +12,11 @@ private int	cp(char *from, char *to);
 int
 cp_main(int ac, char **av)
 {
-	if ((ac == 2) && streq("--help", av[1])) {
-usage:		close(0);
-		//system("bk help -s cp");
-		fprintf(stderr, "No help for cp yet\n");
+	unless (ac == 3) {
+		close(0);
+		system("bk help -s cp");
 		return (1);
 	}
-	unless (ac == 3) goto usage;
 	exit(cp(av[1], av[2]));
 }
 

@@ -12,10 +12,6 @@ fix_main(int ac,  char **av)
 	int	save = 1, cset = 0, flags = 0;
 	char	*qflag = "-q";
 
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help fix");
-		return (1);
-	}
 	while ((c = getopt(ac, av, "cqsv")) != -1) {
 		switch (c) {
 		    case 'c': cset = 1; break;

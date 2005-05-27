@@ -12,11 +12,6 @@ undos_main(int ac, char **av)
 	int 	c;
 	int	redos = 0;
 
-	if (ac == 2 && !strcmp("--help", av[1])) {
-		system("bk help undos");
-		return (0);
-	}
-
  	while ((c = getopt(ac, av, "nr")) != -1) { 
 		switch (c) {
 		    case 'n': auto_new_line = 0; break;		/* doc 2.0 */

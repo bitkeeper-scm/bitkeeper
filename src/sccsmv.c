@@ -21,26 +21,18 @@ mv_main(int ac, char **av)
 	int	c;
 
 	has_proj("mv");
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help mv");
-		return (0);
-	}
-
 	while ((c = getopt(ac, av, "ful")) != -1) {
 		switch (c) {
 		    case 'f':	force = 1; break;
 		    case 'l':	skip_lock = 1; break;
 		    case 'u':	isUnDelete = 1; break;
-		    default:	system("bk help -s mv");
-				return (1);
+		    default:
+usage:			system("bk help -s mv");
+			return (1);
 		}
 	}
 
-	debug_main(av);
-	if (ac < 3) {
-		system("bk help -s mv");
-		return (1);
-	}
+	if (ac < 3) goto usage;
 	dest = av[ac-1];
 	localName2bkName(dest, dest);
 	cleanPath(dest, dest);
@@ -104,17 +96,12 @@ mvdir_main(int ac, char **av)
 	sccs	*s = NULL;
 	pfile   pf;
 
-	if (ac == 2 && streq("--help", av[1])) {
-usage:		system("bk help mv"); /* bk mv is prefered interface	*/
-				      /* bk mvdir is just a supporting	*/
-				      /* command used by bk mv		*/
-		return (rc);
-	}
-
 	while ((c = getopt(ac, av, "l")) != -1) {
 		switch (c) {
 		    case 'l':	skip_lock = 1; break; /* internal interface */
-		    default:	goto usage;
+		    default:
+usage:			system("bk help -s mvdir");
+			return (1);
 		}
 	}
 

@@ -22,11 +22,6 @@ unlock_main(int ac, char **av)
 	int	c, force = 0, flags = 0;
 	sccs	*s = 0;
 
-	debug_main(av);
-	if (ac > 1 && streq("--help", av[1])) {
-		system("bk help unlock");
-		return (0);
-	}
 	while ((c = getopt(ac, av, "fprswxz")) != -1) {
 		switch (c) {
 		    case 'f': force = 1; break;		/* doc 2.0 */

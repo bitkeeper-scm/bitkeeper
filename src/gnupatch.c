@@ -131,11 +131,6 @@ gnupatch_main(int ac, char **av)
 	FILE *pipe;
 	MDBM *db;
 
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help gnupatch");
-		return (1);
-	}
-
 	while ((c = getopt(ac, av, "ehTd|")) != -1) { 
 		switch (c) {
 		    case 'e':

@@ -15,10 +15,6 @@ gca_main(int ac, char **av)
 	int	trunk = 0, c;
 	char	*inc = 0, *exc = 0;
 
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help gca");
-		return (1);
-	}
 	while ((c = getopt(ac, av, "r|t")) != -1) {
 		switch (c) {
 		    case 't': trunk++; break;			/* undoc? 2.0 */

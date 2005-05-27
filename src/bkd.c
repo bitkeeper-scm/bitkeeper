@@ -21,11 +21,6 @@ bkd_main(int ac, char **av)
 	int	i, c;
 	char	**unenabled = 0;
 
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help bkd");
-		return (1);
-	}
-
 	bzero(&Opts, sizeof(Opts));	/* just in case */
 	Opts.errors_exit = 1;
 

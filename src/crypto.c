@@ -173,11 +173,6 @@ crypto_main(int ac, char **av)
 	char	*hash;
 	rsa_key	key;
 
-	if (ac > 1 && streq("--help", av[1])) {
-		system("bk help crypto");
-		return (1);
-	}
-
 	while ((c = getopt(ac, av, "dehisStvX")) != -1) {
 		switch (c) {
 		    case 'h': case 'i': case 's': case 't': case 'v':
@@ -534,11 +529,6 @@ base64_main(int ac, char **av)
 	int	unpack = 0;
 	long	len, outlen;
 	char	buf[4096], out[4096];
-
-	if (ac > 1 && streq("--help", av[1])) {
-		system("bk help base64");
-		return (1);
-	}
 
 	while ((c = getopt(ac, av, "d")) != -1) {
 		switch (c) {

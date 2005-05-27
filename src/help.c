@@ -14,12 +14,6 @@ help_main(int ac,  char **av)
 	char	*file = 0;
 	char 	*new_av[2] = {"help", 0 };
 
-	if (ac == 2 && streq("--help", av[1])) {
-		sprintf(buf, "bk help help | %s", pager());
-		system(buf);
-		return (0);
-	}
-
 	while ((c = getopt(ac, av, "af:kps")) != -1) {
 		switch (c) {
 		    case 'a': opt = "al"; break;		/* doc 2.0 */

@@ -13,11 +13,6 @@ _rmdel_main(int ac, char **av, char *out)
 	char	*name, *rev = 0;
 	delta	*d, *e;
 
-	debug_main(av);
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help rmdel");
-		return (0);
-	}
 	while ((c = getopt(ac, av, "qr;")) != -1) {
 		switch (c) {
 		    case 'q': flags |= SILENT; break;	/* doc 2.0 */

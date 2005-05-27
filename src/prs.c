@@ -21,11 +21,6 @@ prs_main(int ac, char **av)
 	char	*dspec = NULL;
 	RANGE_DECL;
 
-	debug_main(av);
-	if (ac > 1 && streq("--help", av[1])) {
-		system("bk help prs");
-		return (1);
-	}
 	while ((c = getopt(ac, av, "abc;C;d:DfhmMnopr|x:vY")) != -1) {
 		switch (c) {
 		    case 'a':					/* doc 2.0 */
