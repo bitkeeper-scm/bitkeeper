@@ -9,11 +9,6 @@ unwrap_main(int ac,  char **av)
 	char	buf[MAXLINE];
 	int	n;
 
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help unwrap");
-		return (0);
-	}
-
 	/* Has to be a getline because we don't want stdin eating part of
 	 * the input that we (may) want to send to the unwrap child.
 	 */

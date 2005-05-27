@@ -17,11 +17,6 @@ clean_main(int ac, char **av)
 	int	ret = 0;
 	char	*name;
 	
-	debug_main(av);
-	if (ac > 1 && streq("--help", av[1])) {
-		system("bk help clean");
-		return (1);
-	}
 	while ((c = getopt(ac, av, "pqv")) != -1) {
 		switch (c) {
 		    case 'p': flags |= PRINT; break;		/* doc 2.0 */

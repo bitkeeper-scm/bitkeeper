@@ -32,10 +32,6 @@ rcsparse_main(int ac, char **av)
 	int	graph = 0;
 	void	(*work)(RCS *rcs);
 
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help rcsparse");
-		return (0);
-	}
 	while ((c = getopt(ac, av, "b;gdt")) != -1) {
 		switch (c) {
 		    case 'b': cvsbranch = optarg; break;
@@ -1635,11 +1631,6 @@ cvs_init(char *file)
 int
 cvsparse_main(int ac, char **av)
 {
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help cvsparse");
-		return (0);
-	}
-
 	if (av[1]) {
 		CVS *cvs = cvs_init(av[1]);
 		RCSlist *f = cvs->files;

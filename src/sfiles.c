@@ -116,11 +116,6 @@ sfiles_main(int ac, char **av)
 		return (0);
 	}
 
-	if ((ac > 1) && streq("--help", av[1])) {
-		system("bk help sfiles");
-		return (0);
-	}
-
 	while ((c = getopt(ac, av, "1acdDeEgGjlno:p|P|SuUvx")) != -1) {
 		switch (c) {
 		    case '1':	opts.onelevel = 1; break;

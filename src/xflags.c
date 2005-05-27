@@ -20,16 +20,13 @@ xflags_main(int ac, char **av)
 	int	c, what = 0, ret = 0;
 	char	*name;
 
-	debug_main(av);
-	if (ac > 1 && streq("--help", av[1])) {
-usage:		fprintf(stderr, "usage: %s [-ns] [files...]\n", av[0]);
-		return (1);
-	}
 	while ((c = getopt(ac, av, "ns")) != -1) {
 		switch (c) {
 		    case 'n': what = XF_DRYRUN; break;		/* doc 2.0 */
 		    case 's': what = XF_STATUS; break;		/* doc 2.0 */
-		    default: goto usage;
+		    default:
+			fprintf(stderr, "usage: %s [-ns] [files...]\n", av[0]);
+			return (1);
 		}
 	}
 	for (name = sfileFirst("xflags", &av[optind], 0);

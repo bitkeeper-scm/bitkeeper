@@ -14,11 +14,6 @@ key2rev_main(int ac, char **av)
 	sccs	*s;
 	char	buf[MAXPATH];
 
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help key2rev");
-		return (0);
-	}
-
 	unless (av[1]) {
 		system("bk help -s key2rev");
 		return (1);

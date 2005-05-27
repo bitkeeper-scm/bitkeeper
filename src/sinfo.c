@@ -13,18 +13,15 @@ sinfo_main(int ac, char **av)
 	char	*name;
 	int	c, fast = 0, sf_flags = SF_SILENT|SF_GFILE, flags = 0;
 
-	debug_main(av);
-	if (ac > 1 && streq("--help", av[1])) {
-usage:		fprintf(stderr, "usage: %s [-f] [files...]\n", av[0]);
-		return (1);
-	}
 	while ((c = getopt(ac, av, "aft")) != -1) {
 		switch (c) {
 		    /*report new & unedited files */
 		    case 'a': sf_flags &= ~SF_GFILE; break;	/* undoc 2.0 */
 		    case 'f': fast = 1; break;			/* undoc? 2.0 */
 		    case 't': flags |= SINFO_TERSE; break;	/* undoc 2.0 */
-		    default: goto usage;
+		    default:
+			fprintf(stderr, "usage: %s [-f] [files...]\n", av[0]);
+			return (1);
 		}
 	}
 	for (name = sfileFirst("info", &av[optind], sf_flags);

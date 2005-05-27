@@ -18,11 +18,6 @@ merge_main(int ac, char **av)
 	names	*n;
 	char	*files[3];
 
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help merge");
-		return (0);
-	}
-
 	while ((c = getopt(ac, av, "s")) != -1) {
 		switch(c) {
 		    case 's': setmerge = 1; break;

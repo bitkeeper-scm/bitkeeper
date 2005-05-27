@@ -31,11 +31,6 @@ stripdel_main(int ac, char **av)
 	s_opts	opts = {1, 0, 0, 0, 0};
 	RANGE_DECL;
 
-	debug_main(av);
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help stripdel");
-		return (0);
-	}
 	while ((c = getopt(ac, av, "bcCdqr;")) != -1) {
 		switch (c) {
 		    case 'b': opts.stripBranches = 1; break;	/* doc 2.0 */

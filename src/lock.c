@@ -15,10 +15,6 @@ lock_main(int ac, char **av)
 	int	what = 0, silent = 0;
 	pid_t	pid;
 
-	if (ac > 1 && streq("--help", av[1])) {
-		system("bk help lock");
-		return (0);
-	}
 	while ((c = getopt(ac, av, "lqrswLU")) != -1) {
 		switch (c) {
 		    case 'q': /* fall thru */			/* doc 2.0 */

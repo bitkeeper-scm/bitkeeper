@@ -13,12 +13,6 @@ unedit_main(int ac, char **av)
 	int	ret = 0;
 	char	*name;
 
-	debug_main(av);
-	if (ac > 1 && streq("--help", av[1])) {
-		system("bk help unedit");
-		return (1);
-	}
-
 	/*
 	 * Too dangerous to unedit everything automagically,
 	 * make 'em spell it out.

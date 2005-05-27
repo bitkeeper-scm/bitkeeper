@@ -6,10 +6,6 @@ gethost_main(int ac, char **av)
 {
 	char 	*host;
 
-	if (ac == 2 && !strcmp("--help", av[1])) {
-		system("bk help gethost");
-		return (1);
-	}
 	if (ac == 2 && streq("-r", av[1])) {
 		host = sccs_realhost();
 	} else {

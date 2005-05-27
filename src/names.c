@@ -23,11 +23,6 @@ names_main(int ac, char **av)
 	int	c, todo = 0, error = 0;
 	u32	flags = 0;
 
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help names");
-		return (1);
-	}
-
 	while ((c = getopt(ac, av, "q")) != -1) {
 		switch (c) {
 		    case 'q':	flags |= SILENT; break;		/* doc 2.0 */

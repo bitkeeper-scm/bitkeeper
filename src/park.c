@@ -54,11 +54,6 @@ park_main(int ac, char **av)
 	time_t	tt;
 	FILE	*f = 0, *f2 = 0;
 
-	if (ac == 2 && streq("--help", av[1])) {
-		usage1();
-		return (rc);
-	}
-
 	while ((c = getopt(ac, av, "acflp:quy|")) != -1) {
 		switch (c) {
 		    case 'a':	aflag = 1; break; /* all */
@@ -1348,11 +1343,6 @@ unpark_main(int ac, char **av)
 	char	**d;
 	int	i, j, c;
 	int	top = 0, force = 0, clean = 0;
-
-	if (ac == 2 && streq("--help", av[1])) {
-		usage2();
-		return (0);
-	}
 
 	while ((c = getopt(ac, av, "cf")) != -1) {
 		switch (c) {

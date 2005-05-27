@@ -14,11 +14,6 @@ chksum_main(int ac, char **av)
 	int	sum, fd, i;
 	int	off = 0;
 
-	if (av[1] && streq(av[1], "--help")) {
-		system("bk help chksum");
-		return (1);
-	}
-
 	if (av[1] && (strncmp(av[1], "-o", 2) == 0)) {	/* -o doc 2.0 */
 		if (av[1][2]) {
 			off = atoi(&av[1][2]);

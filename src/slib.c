@@ -16370,20 +16370,6 @@ sccs_color(sccs *s, delta *d)
         d->flags |= D_RED;
 }                 
 
-#ifdef	DEBUG
-int
-debug_main(char **av)
-{
-	fprintf(stderr, "===<<<");
-	do {
-		fprintf(stderr, " %s", av[0]);
-		av++;
-	} while (av[0]);
-	fprintf(stderr, " >>>===\n");
-	return (0);
-}
-#endif
-
 /*
  * Given an SCCS structure with a list of marked deltas, strip them from
  * the delta table and place the striped body in out

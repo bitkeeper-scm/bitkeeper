@@ -79,7 +79,7 @@ main(int ac, char **av, char **env)
 {
 	int	i, c, si, is_bk = 0, dashr = 0;
 	int	ret;
-	char	*p, *prog, *argv[MAXARGS];
+	char	*p, *prog;
 	char	sopts[30];
 
 	reserveStdFds();
@@ -181,13 +181,6 @@ main(int ac, char **av, char **env)
 		printf("%s => %s\n", buf, real);
 		exit(0);
 	}
-	if (av[1] && streq(av[1], "--help") && !av[2]) {
-		system("bk help bk");
-		exit(0);
-	}
-
-	argv[0] = "help";
-	argv[1] = 0;
 
 	/*
 	 * Parse our options if called as "bk".
@@ -197,6 +190,10 @@ main(int ac, char **av, char **env)
 	prog = basenm(av[0]);
 	if (streq(prog, "sccs")) prog = "bk";
 	if (streq(prog, "bk")) {
+		if (av[1] && streq(av[1], "--help") && !av[2]) {
+			system("bk help bk");
+			return (0);
+		}
 		is_bk = 1;
 		while ((c = getopt(ac, av, "1acCdDeEgGjlnpr|RSuUx")) != -1) {
 			switch (c) {
@@ -207,8 +204,6 @@ main(int ac, char **av, char **env)
 			    case 'u': case 'x':
 				sopts[++si] = c;
 				break;
-			    case 'h':				/* undoc? 2.0 */
-				return (help_main(1, argv));
 			    case 'r':				/* doc 2.0 */
 				if (optarg) {
 					unless (chdir(optarg) == 0) {
@@ -229,6 +224,7 @@ main(int ac, char **av, char **env)
 					return(1);
 				}
 				break;
+			    case 'h':				/* undoc */
 			    default:
 				usage();
 			}
@@ -314,6 +310,10 @@ cmd_run(char *prog, int is_bk, char *sopts, int ac, char **av)
 	switch (cmd ? cmd->type : CMD_BK_SH) {
 	    case CMD_INTERNAL:		/* handle internal command */
 		assert(cmd->fcn);
+		if ((ac == 2) && streq("--help", av[1])) {
+			sys("bk", "help", prog, SYS);
+			return (0);
+		}
 		return (cmd->fcn(ac, av));
 
 	    case CMD_GUI:		/* Handle Gui script */

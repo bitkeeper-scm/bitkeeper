@@ -65,11 +65,6 @@ changes_main(int ac, char **av)
 	char	buf[MAXPATH];
 	pid_t	pid = 0; /* pager */
 
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help changes");
-		return (1);
-	}
-
 	bzero(&opts, sizeof(opts));
 	opts.showdups = opts.urls = opts.noempty = 1;
 	nav[nac++] = "bk";

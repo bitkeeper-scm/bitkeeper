@@ -67,10 +67,6 @@ set_main(int ac, char **av)
 	int	c;
 	char	*name, *r1 = 0, *r2 = 0;
 
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help set");
-		return (0);
-	}
 	bzero(&opts, sizeof(opts));
 	opts.format = REV;
 	while ((c = getopt(ac, av, "adeklnor;st|x")) != -1) {

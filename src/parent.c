@@ -33,11 +33,6 @@ parent_main(int ac,  char **av)
 	int	i;
 	char	**pull, **push, *which;
 
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help parent");
-		return (0);
-	}
-
 	if (proj_cd2root()) {
 		fprintf(stderr, "parent: cannot find package root.\n");
 		return (1);

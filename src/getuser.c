@@ -11,10 +11,6 @@ getuser_main(int ac, char **av)
 		real = 1;
 		ac--, av++;
 	}
-	if (ac == 2 && !strcmp("--help", av[1])) {
-		system("bk help getuser");
-		return (1);
-	}
 	user = real ? sccs_realuser() : sccs_getuser();
 	if ((user == NULL) || (*user == '\0')) return (1);
 	printf("%s\n", user);

@@ -17,12 +17,6 @@ rm_main(int ac, char **av)
 	int 	useCommonDir = 0;
 	int	force = 0;
 
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help rm");
-		return (0);
-	}
-
-	debug_main(av);
 	if (streq(basenm(av[0]), "rm")) useCommonDir = 1;
         while ((c = getopt(ac, av, "df")) != -1) {
                 switch (c) {
@@ -126,11 +120,6 @@ gone_main(int ac, char **av)
 	int	quiet = 0;
 	char	tmpfile[MAXPATH];
 	FILE	*f;
-
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help gone");
-		return (1);
-	}
 
 	while ((c =  getopt(ac, av, "q")) != -1) { 
 		switch (c) {

@@ -42,10 +42,6 @@ push_main(int ac, char **av)
 	char	**urls = 0;
 	remote 	*r;
 
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help push");
-		return (0);
-	}
 	bzero(&opts, sizeof(opts));
 	opts.gzip = 6;
 	opts.doit = opts.verbose = 1;

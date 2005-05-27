@@ -15,12 +15,6 @@ opark_main(int ac, char **av)
 	int 	lflag  = 0, qflag = 0, purge = 0, c, status, try = 0;
 	FILE	*f;
 
-	if (ac == 2 && streq("--help", av[1])) {
-		fprintf(stderr,
-		    "Park is a deprecated interface, please do not use it\n");
-		return (0);
-	}
-
 	while ((c = getopt(ac, av, "lp:qy:")) != -1) {
 		switch (c) {
 		    case 'l':	lflag = 1; break;		/* doc 2.0 */
@@ -166,11 +160,6 @@ ounpark_main(int ac, char **av)
 	char	**d;
 	int	i, j, top = 0;
 
-	if (ac == 2 && streq("--help", av[1])) {
-		fprintf(stderr,
-		    "Unpark is a deprecated interface, please do not use it\n");
-		return (0);
-	}
 	if (proj_cd2root()) {
 		fprintf(stderr, "Can't find package root\n");
 		return (0);

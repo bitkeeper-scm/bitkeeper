@@ -37,15 +37,6 @@ sccs2bk_main(int ac, char **av)
 	char	*name;
 	int	licChk = 0;
 
-	debug_main(av);
-	if (ac > 1 && streq("--help", av[1])) {
-		/* There is no man page, because this is internal for import */
-usage:		/* system("bk help -s sccs2bk"); */
-		fprintf(stderr,
-		    "Usage: bk sccs2bk -c<rootkey> [-q] <file> ...\n");
-		return (1);
-	}
-
 	while ((c = getopt(ac, av, "c|hLqv")) != -1) {
 		switch (c) {
 		    case 'c': csetkey = optarg; break;
@@ -53,7 +44,9 @@ usage:		/* system("bk help -s sccs2bk"); */
 		    case 'L': licChk = 1; break;
 		    case 'q': verbose = 0; break;
 		    case 'v': verbose++; break;
-		    default: goto usage;
+		    default:
+usage:			system("bk help -s sccs2bk");
+			return(1);
 		}
 	}
 

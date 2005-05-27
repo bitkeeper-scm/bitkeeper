@@ -29,11 +29,6 @@ findkey_main(int ac, char **av)
 	look	look;
 	char	*name;
 
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help findkey");
-		return (1);
-	}
-
 	/* user@host.domain|path/name|UTC|CKSUM|RANDOM
 	 * -b random
 	 * -c cksum

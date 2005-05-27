@@ -52,10 +52,6 @@ sfio_main(int ac, char **av)
 	int	c, mode = 0;
 
 	setmode(0, O_BINARY);
-	if (ac == 2 && streq(av[1], "--help")) {
-		system("bk help sfio");
-		return (0);
-	}
 	while ((c = getopt(ac, av, "eimopq")) != -1) {
 		switch (c) {
 		    case 'e': echo = 1; break;			/* doc 2.3 */

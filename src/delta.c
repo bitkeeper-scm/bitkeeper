@@ -137,7 +137,6 @@ delta_main(int ac, char **av)
 	pfile	pf;
 	int	dash, errors = 0, fire, dangling;
 
-	debug_main(av);
 	prog = strrchr(av[0], '/');
 	if (prog) prog++;
 	else prog = av[0];
@@ -154,11 +153,6 @@ delta_main(int ac, char **av)
 		dflags |= NEWFILE;
 		sflags |= SF_NODIREXPAND;
 		sflags &= ~SF_WRITE_OK;
-	}
-
-	if (ac > 1 && streq("--help", av[1])) {
-		sys("bk", "help", prog, SYS);
-		return (1);
 	}
 
 	while ((c =

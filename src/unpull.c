@@ -12,11 +12,6 @@ unpull_main(int ac, char **av)
 	int	c, force = 0, quiet = 0;
 	char	*patch = "-pBitKeeper/tmp/unpull.patch";
 
-	debug_main(av);
-	if (ac > 1 && streq("--help", av[1])) {
-		system("bk help unpull");
-		return (0);
-	}
 	while ((c = getopt(ac, av, "fqs")) != -1) {
 		switch (c) {
 		    case 'f': force = 1; break;			/* doc 2.0 */

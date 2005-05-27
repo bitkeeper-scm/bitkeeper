@@ -27,10 +27,6 @@ sccs_zone(time_t tt)
 int
 zone_main(int ac, char **av)
 {
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help zone");
-		return (0);
-	}
 	printf("%s\n", sccs_zone(time(0)));
 	return (0);
 }

@@ -27,11 +27,6 @@ shrink_main(int ac, char **av)
 	int	start, end;
 	MDBM	*m = mdbm_mem();
 
-	debug_main(av);
-	if (ac > 1 && streq("--help", av[1])) {
-		system("bk help shrink");
-		return (1);
-	}
 	if (proj_cd2root()) {
 		fprintf(stderr, "Cannot find package root.\n");
 		exit(1);

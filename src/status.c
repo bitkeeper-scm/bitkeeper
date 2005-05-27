@@ -8,10 +8,6 @@ status_main(int ac, char **av)
 	int verbose = 0;
 	char *package_path;
 
-	if (av[1] && streq(av[1], "--help")) {
-		system("bk help status");
-		return (0);
-	}
 	while ((c = getopt(ac, av, "v")) != -1) { 
 		switch (c) {
 		    case 'v': verbose++; break;			/* doc 2.0 */
