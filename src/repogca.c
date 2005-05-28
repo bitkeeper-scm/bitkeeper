@@ -4,45 +4,62 @@
 int
 repogca_main(int ac, char **av)
 {
-	char	*parent;
 	sccs	*s;
 	delta	*d;
 	FILE	*f;
-	char	**urls;
+	int	c, i, pid, rfd, status;
+	char	**urls, **nav;
+	char	*dspec = ":REV:";
 	char	buf[MAXKEY];
-	char	s_cset[] = CHANGESET;
 
-	if (proj_cd2root()) {
+	while ((c = getopt(ac, av, "d;k")) != -1) {
+		switch (c) {
+		    case 'd': dspec = optarg; break;
+		    case 'k': dspec = ":KEY:"; break;
+		    default:  system("bk help -s repogca"); return (1);
+		}
+	}
+	unless (proj_root(0)) {
 		fprintf(stderr, "repogca: must be run in a repository\n");
 		exit(1);
 	}
-	if (av[1]) {
-		parent = av[1];
+	nav = addLine(0, strdup("bk"));
+	nav = addLine(nav, strdup("changes"));
+	nav = addLine(nav, strdup("-L"));
+	nav = addLine(nav, strdup("-end:KEY:"));
+
+	if (av[optind]) {
+		for (i = optind; av[i]; i++) nav = addLine(nav, strdup(av[i]));
 	} else {
 		urls = parent_pullp();
-		parent = popLine(urls);
-		freeLines(urls, free);
+		EACH (urls) nav = addLine(nav, urls[i]);
+		freeLines(urls, 0);
 	}
-	s = sccs_init(s_cset, SILENT);
+	addLine(nav, 0);	/* null term list */
+	s = sccs_csetInit(SILENT);
 	assert(s && HASGRAPH(s));
-	sprintf(buf, "bk changes -L -end:KEY: %s", parent);
-	unless (f = popen(buf, "r")) {
-		perror(buf);
-		exit(1);
-	}
+	sccs_findKeyDB(s, 0);
+
+	pid = spawnvp_rPipe(nav + 1, &rfd, 0);
+	freeLines(nav, free);
+	f = fdopen(rfd, "r");
 	while (fnext(buf, f)) {
+		if (strneq(buf, "==== ", 5)) continue;
 		chop(buf);
-		d = sccs_findrev(s, buf);
+		d = sccs_findKey(s, buf);
 		assert(d);
 		d->flags |= D_RED;
 	}
-	pclose(f);
+	fclose(f);
+	waitpid(pid, &status, 0);
+
 	for (d = s->table; d; d = d->next) {
 		if ((d->type == 'D') && !(d->flags & D_RED)) {
-			printf("%s\n", d->rev);
+			sccs_prsdelta(s, d, 0, dspec, stdout);
 			sccs_free(s);
-			exit(0);
+			return (0);
 		}
 	}
-	exit(1);
+	sccs_free(s);
+	return (1);
 }

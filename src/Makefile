@@ -264,7 +264,6 @@ clean-bin: FORCE
 clean clobber distclean: rebuild FORCE
 	-@bk -r clean
 	-@rm -f tags TAGS
-	-@rm -f kw2val_lookup.c
 
 rebuild:
 	-@rm -f *.bb *.bbg *.da *.gcov
@@ -273,7 +272,7 @@ rebuild:
 	-@rm -f $(LIBS) bkdsubstr bkhelp.txt bkmsg.txt a.out
 	-@rm -f core bkver.c tclwrap tclwrap.o blowfish.o $(WIN_TMP)
 	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(PROGS)
-	-@rm -rf tmp bkl5_hashs.h
+	-@rm -f tmp bkl5_hashs.h kw2val_lookup.c cmd.[ch] bkver.h
 	-@for i in ../doc ../man gnu gui utils win32 mdbm zlib regex tomcrypt libc; \
 	do	cd $(HERE)/$$i && $(MAKE) clobber; \
 	done

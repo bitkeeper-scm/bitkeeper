@@ -1,0 +1,69 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2005 BitMover, Inc.
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+echo $N Create initial repository ...................................$NL
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+mkdir src
+cd src
+echo bar > bar.c
+echo h > h.h
+bk new $Q bar.c h.h
+bk commit $Q -yCset
+KEY=`bk changes -kr+`
+MD5KEY=`bk changes -r+ -nd:MD5KEY:`
+echo OK
+
+echo $N Create clones and unique changes in each clone ..............$NL
+cd $HERE
+for i in a b
+do	bk clone $Q project $i
+done
+for i in a b project
+do	cd $HERE/$i
+	date > date
+	bk new $Q date
+	bk commit $Q -y$i
+done
+echo OK
+
+echo $N Check repogca ...............................................$NL
+cd $HERE/a
+REPOGCA=`bk repogca -k ../project ../b`
+test "X$REPOGCA" = "X$KEY" || {
+	echo Failed
+	echo "Want $KEY"
+	echo "Got  $REPOGCA"
+	exit 1
+}
+echo OK
+
+echo $N Check repogca with MD5KEY ...................................$NL
+cd $HERE/a
+REPOGCA=`bk repogca -d:MD5KEY: ../project ../b`
+test "X$REPOGCA" = "X$MD5KEY" || {
+	echo Failed
+	echo "Want $MD5KEY"
+	echo "Got  $REPOGCA"
+	exit 1
+}
+echo OK
+
+echo $N Check repogca from subdir ...................................$NL
+cd $HERE/a/src
+REPOGCA=`bk repogca -k ../../project ../../b`
+test "X$REPOGCA" = "X$KEY" || {
+	echo Failed
+	echo "Want $KEY"
+	echo "Got  $REPOGCA"
+	exit 1
+}
+echo OK

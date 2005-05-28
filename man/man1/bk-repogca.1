@@ -1,23 +1,52 @@
 .so ../bk-macros
 .TH "bk repogca" 1 %E% "\*(BC" "\*(UM"
 .SH NAME
-bk repogca \- show greatest common ancestor of two repositories
+bk repogca \- show greatest common ancestor across a set of repositories
 .SH SYNOPSIS
 .B bk repogca
-.B [<url>]
+.Bc [
+.OPTreq \-d dspec
+]
+.B [\-k]
+.ARG repository
+.Bc [
+.ARGc repository...
+.B ]
 .SH DESCRIPTION
 .LP
-This command will print the latest revision in the current repository that
-exists in the remote repository.  By default, `bk parent` is the remote 
-repository.  You can override that by specifying another bk url.
-.SH EXAMPLE
+This command will print the latest revision in the current repository
+that exists in all of the the remote repositories either listed on the
+command line or implied in the parent pointer.
+By default, `bk parent` is the remote repository. 
+.SH OPTIONS
+.TP 1i
+.OPTreq \-d dspec
+Use
+.ARG dspec
+as the specification for displaying the revision.
+.TP
+.B \-k
+A short hand for asking for a dspec of ":KEY:".
+.SH EXAMPLES
 .LP
-To generate a GNU patch for the data that exists in the local repository 
-that doesn't exist in the parent you can do
+To generate a GNU patch for the changes that exist only in the local repository:
 .DS
 bk export -tpatch -r`bk repogca`,+ > patch
 .DE
+.LP
+To throw away all local work that doesn't exist in a remote repository:
+.DS
+bk undo -a`bk repogca URL`
+.DE
+Warning: This 
+.I might
+also throw away some local csets which also exist in the remote
+repository.
+That can happen if there are multiple common ancestors on different
+branches.
+The ancestor choosen is the one created most recently.
 .SH "SEE ALSO"
 .SA gca 1
+.SA dspec 1
 .SH CATEGORY
 .B Utility

@@ -190,7 +190,7 @@ print(void)
 	return (0);
 }
 
-void
+private void
 add(char *which, char *url, int *rc)
 {
 	char	*p, *m = 0;
@@ -275,7 +275,7 @@ add(char *which, char *url, int *rc)
  * If the URL matches one of the lines, remove that entry.
  * Set *rc if it isn't found.
  */
-void
+private void
 rm(char *which, char *url, int *rc)
 {
 	char	*m = 0, *p;
