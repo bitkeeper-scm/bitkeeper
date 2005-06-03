@@ -1,6 +1,6 @@
 proc getConfig {prog} \
 {
-	global tcl_platform gc app
+	global gc app env
 
 	# this causes variables like _RED_, _WHITE_, to exist in this proc
 	defineSymbolicColors
@@ -15,28 +15,6 @@ proc getConfig {prog} \
 	option add *Menu.activeBorderWidth 1 widgetDefault
 
 	initFonts $app _d
-
-	if {$tcl_platform(platform) == "windows"} {
-		set _d(cset.leftWidth) 40
-		set _d(cset.rightWidth) 80
-		set _d(ci.filesHeight) 8
-		set _d(ci.commentsHeight) 7	;# height of comment window
-		set _d(buttonColor) $SYSTEMBUTTONFACE	;# menu buttons
-		set _d(BG) $SYSTEMBUTTONFACE		;# default background
-	} else {
-                # windows uses native scrollbars; we don't want to dork
-                # with them
-                option add *Scrollbar.borderWidth 1 100
-		set _d(cset.leftWidth) 55
-		set _d(cset.rightWidth) 80
-		set _d(scrollWidth) 12		;# scrollbar width
-		set _d(help.scrollWidth) 14	;# helptool scrollbar width
-		set _d(ci.filesHeight) 9	;# num files to show in top win
-		set _d(ci.commentsHeight) 8	;# height of comment window
-		set _d(fm.editor) "fm2tool"
-		set _d(buttonColor) $SYSTEMBUTTONFACE	;# menu buttons
-		set _d(BG) $GRAY85		;# default background
-	}
 
 	set _d(tabwidth) 8		;# default width of a tab
 	set _d(backup) ""		;# Make backups in ciedit: XXX NOTDOC 
@@ -168,12 +146,58 @@ proc getConfig {prog} \
 	set _d(support.mandatoryColor) $BKSLATEGRAY1 ;# mandatory fields
 	set _d(entryColor) $WHITE	   ;# Color of input fields
 
-	# N.B. 'bk dotbk' has the side effect that it will move an
-	# old .bkgui/_bkgui file to the new location. Groovy.
-	if {$tcl_platform(platform) == "windows"} {
+	set _d(search.width)		15
+	set _d(search.buttonWidth)	15
+
+	set _d(windows) 0
+	set _d(aqua) 0
+	set _d(x11) 0
+
+	switch -exact -- [tk windowingsystem] {
+	    win32 {
+		set _d(windows) 1
+		set _d(cset.leftWidth) 40
+		set _d(cset.rightWidth) 80
+		set _d(ci.filesHeight) 8
+		set _d(ci.commentsHeight) 7	;# height of comment window
+		set _d(buttonColor) $SYSTEMBUTTONFACE	;# menu buttons
+		set _d(BG) $SYSTEMBUTTONFACE		;# default background
 		set rcfile [exec bk dotbk _bkgui config-gui]
-	} else {
+	    } 
+	    aqua {
+		set _d(aqua) 1
+		set _d(cset.leftWidth) 40
+		set _d(cset.rightWidth) 80
+		set _d(search.width) 4
+		set _d(search.buttonWidth) 12
+		set _d(ci.filesHeight) 8
+		set _d(ci.commentsHeight) 7	;# height of comment window
+		set _d(buttonColor) $SYSTEMBUTTONFACE	;# menu buttons
+		set _d(BG) $SYSTEMBUTTONFACE		;# default background
+		set _d(listBG) $WHITE
 		set rcfile [exec bk dotbk .bkgui config-gui]
+	    }
+	    x11 {
+		set _d(x11) 1
+
+                option add *Scrollbar.borderWidth 1 100
+		option add *Menubutton.relief raised
+		option add *Text.Background $WHITE
+		set _d(cset.leftWidth) 55
+		set _d(cset.rightWidth) 80
+		set _d(scrollWidth) 12		;# scrollbar width
+		set _d(help.scrollWidth) 14	;# helptool scrollbar width
+		set _d(ci.filesHeight) 9	;# num files to show in top win
+		set _d(ci.commentsHeight) 8	;# height of comment window
+		set _d(fm.editor) "fm2tool"
+		set _d(buttonColor) $SYSTEMBUTTONFACE	;# menu buttons
+		set _d(BG) $GRAY85		;# default background
+		set rcfile [exec bk dotbk .bkgui config-gui]
+	    }
+	    default {
+		puts "Unknown windowing system"
+		exit
+	    }
 	}
 
 	set gc(bkdir) [file dirname $rcfile]
@@ -202,7 +226,8 @@ proc getConfig {prog} \
         # final pass to exclude some options (for now just on windows)
         # can be defeated by setting gc(app.useFullGc)
         if {![info exists gc($app.useFullGC)]} {
-                if {$tcl_platform(platform) eq "windows"} {
+                if {[tk windowingsystem] eq "win32" ||
+		    [tk windowingsystem] eq "aqua"} {
                         scrollbar ._dummy_
                         set width [._dummy_ cget -width]
                         set gc($app.scrollWidth) $width
@@ -214,12 +239,13 @@ proc getConfig {prog} \
 
 proc initFonts {app var} \
 {
-	global tcl_platform
+	global env
 
-	if {$tcl_platform(platform) == "windows"} {
-		initFonts-windows $app $var
-	} else {
-		initFonts-unix $app $var
+	switch -- [tk windowingsystem] {
+		win32	{initFonts-windows $app $var}
+		aqua	{initFonts-macosx $app $var}
+		x11	{initFonts-unix $app $var}
+		default	{puts "Unknown windowing system"; exit}
 	}
 }
 
@@ -240,6 +266,19 @@ proc initFonts-windows {app var} \
 		set _d(fixedFont)  		{{Courier New} 10 normal}
 		set _d(fixedBoldFont)	{{Courier New} 10 normal bold}
 	}
+}
+
+proc initFonts-macosx {app var} \
+{
+	upvar 2 $var _d
+
+	set width [winfo screenwidth .]
+
+	# tested with 1024x768 only
+	set _d(buttonFont)	system
+	set _d(noticeFont)	{Arial 10 normal bold}
+	set _d(fixedFont)	{Monaco 10 normal}
+	set _d(fixedBoldFont)	{Monaco 10 normal bold}
 }
 
 proc initFonts-unix {app var} \
@@ -341,9 +380,11 @@ proc defineSymbolicColors {} \
 
 		# This is used for menubuttons, and is based on the
 		# "SystemButtonFace" on windows. 
-		if {$tcl_platform(platform) == "windows"} {
+		if {[tk windowingsystem] eq "win32"} {
 #			set SYSTEMBUTTONFACE #d4d0c8
                         set SYSTEMBUTTONFACE systembuttonface
+		} elseif {[tk windowingsystem] eq "aqua"} {
+			set SYSTEMBUTTONFACE $WHITE
 		} else {
 			set SYSTEMBUTTONFACE #d0d0d0
 		}

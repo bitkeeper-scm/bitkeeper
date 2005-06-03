@@ -874,16 +874,26 @@ proc adjustHeight {diff list} \
 
 proc widgets {} \
 {
-	global	scroll wish tcl_platform gc d
+	global	scroll wish gc d
 
-	if {$tcl_platform(platform) == "windows"} {
+	getConfig "rename"
+
+	set py 2
+	set px 4
+	set bw 2
+
+	if {$gc(windows)} {
 		set y 0
 		set filesHt 9
+	} elseif {$gc(aqua)} {
+		set y 1
+		set fileHt 9
+		set px 12
+		set py 1
 	} else {
 		set y 1
 		set filesHt 7
 	}
-	getConfig "rename"
 	option add *background $gc(BG)
 
 	set g [wm geometry .]
@@ -892,9 +902,6 @@ proc widgets {} \
 	}
 	wm title . "Rename Tool"
 
-	set py 2
-	set px 4
-	set bw 2
 	frame .menu -background $gc(rename.buttonColor)
 	    button .menu.prev -font $gc(rename.buttonFont) \
 		-bg $gc(rename.buttonColor) \
@@ -1172,6 +1179,10 @@ proc keyboard_bindings {} \
 		pixSelect .files.r rightLine rightFile %x %y
 		fillFile .diffs.r $rightFile
 		break
+	}
+	if {$gc(aqua)} {
+		bind all <Command-q> exit
+		bind all <Command-w> exit
 	}
 }
 

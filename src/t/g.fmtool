@@ -59,7 +59,7 @@ echo "OK"
 
 echo $N Use Left.....................................................$NL
 bk guitest fmtool left right merge >$OUT 2>&1 <<'EOF'
-    test_buttonPress "Use\nLeft"
+    test_buttonPress "Use Left"
     test_buttonPress Done
     after 5000 [list exit 99] ;# in case the buttonpress didn't work
 EOF
@@ -75,7 +75,7 @@ echo OK
 
 echo $N Use Right....................................................$NL
 bk guitest fmtool left right merge >$OUT 2>&1 <<'EOF'
-    test_buttonPress "Use\nright"
+    test_buttonPress "Use Right"
     test_buttonPress Done
     after 5000 [list exit 99] ;# in case the buttonpress didn't work
 EOF
@@ -91,9 +91,9 @@ echo OK
 
 echo $N Simple undo..................................................$NL
 bk guitest fmtool left right merge >$OUT 2>&1 <<'EOF'
-    test_buttonPress "Use\nLeft"
+    test_buttonPress "Use Left"
     test_buttonPress "Undo"
-    test_buttonPress "Use\nright"
+    test_buttonPress "Use Right"
     test_buttonPress Done
     after 5000 [list exit 99] ;# in case the buttonpress didn't work
 EOF

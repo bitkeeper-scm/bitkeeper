@@ -737,7 +737,13 @@ launch_wish(char *script, char **av)
 	/* If they set this, they can set TCL_LIB/TK_LIB as well */
 	unless ((path = getenv("BK_WISH")) && executable(path)) path = 0;
 	unless (path) {
-		path = aprintf("%s/gui/bin/bkgui", bin);
+		if (gui_useAqua()) {
+			path = aprintf(
+			    "%s/gui/bin/BitKeeper.app/Contents/MacOS/BitKeeper",
+			    bin);
+		} else {
+			path = aprintf("%s/gui/bin/bkgui", bin);
+		}
 		if (executable(path)) {
 			safe_putenv("TCL_LIBRARY=%s/tcltk/lib/tcl8.4", bin);
 			safe_putenv("TK_LIBRARY=%s/tcltk/lib/tk8.4", bin);

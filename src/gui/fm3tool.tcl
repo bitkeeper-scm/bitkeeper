@@ -260,6 +260,7 @@ proc search_widgets {w s} \
 	    -text "Search" -width 8 -state normal \
 	    -menu $m -indicatoron 1 
 	menu $m
+	if {$gc(aqua)} {$m configure -tearoff 0}
 	    $m add command -label "Prev match" -state disabled -command {
 		searchdir ?
 		searchnext
@@ -1028,7 +1029,7 @@ proc mscroll { a args } \
 
 proc widgets {} \
 {
-	global	scroll wish tcl_platform search gc d app DSPEC UNMERGED argv env
+	global	scroll wish search gc d app DSPEC UNMERGED argv env
 
 	set UNMERGED "<<<<<<\nUNMERGED\n>>>>>>\n"
 
@@ -1042,8 +1043,10 @@ proc widgets {} \
 	wm title . "BitKeeper FileMerge $argv"
 
 	set gc(bw) 1
-	if {$tcl_platform(platform) == "windows"} {
+	if {$gc(windows)} {
 		set gc(py) -2; set gc(px) 1
+	} elseif {$gc(aqua)} {
+		set gc(py) 1; set gc(px) 12
 	} else {
 		set gc(py) 1; set gc(px) 4
 	}
@@ -1060,6 +1063,7 @@ proc widgets {} \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "Goto" -menu $m
 	    menu $m
+	    if {$gc(aqua)} {$m configure -tearoff 0}
 		$m add command -label "Prev diff" \
 		    -accelerator [shortname $gc($app.prevDiff)] \
 		    -state disabled -command { prevDiff 0 }
@@ -1122,6 +1126,7 @@ proc widgets {} \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "File" -menu $m
 	    menu $m
+	    if {$gc(aqua)} {$m configure -tearoff 0}
 		$m add command -label "Save" \
 		    -command save -state disabled -accelerator <s>
 		$m add command \
@@ -1142,6 +1147,7 @@ proc widgets {} \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "Edit" -menu $m
 	    menu $m
+	    if {$gc(aqua)} {$m configure -tearoff 0}
 		$m add command \
 		    -label "Edit merge window" -command { edit_merge 1 1 }
 		$m add command -state disabled \
@@ -1315,7 +1321,7 @@ proc shortname {long} {
 # Set up keyboard accelerators.
 proc keyboard_bindings {} \
 {
-	global	search app gc tcl_platform
+	global	search app gc
 
 	bind all <Prior> { if {[Page "yview" -1 0] == 1} { break } }
 	bind all <Next> { if {[Page "yview" 1 0] == 1} { break } }
@@ -1367,11 +1373,16 @@ proc keyboard_bindings {} \
 	}
 	bind all	<u>				{ undo }
 	bind all	<period>			{ dot; break }
-	if {$tcl_platform(platform) == "windows"} {
+	if {$gc(windows) || $gc(aqua)} {
 		bind all <MouseWheel> {
 		    if {%D < 0} { next 0 } else { prev 0 }
 		}
-	} else {
+	}
+	if {$gc(aqua)} {
+		bind all <Command-q> cleanup
+		bind all <Command-w> cleanup
+	}
+	if {$gc(x11)} {
 		bind all <Button-4>			{ prev 0 }
 		bind all <Button-5>			{ next 0 }
 	}

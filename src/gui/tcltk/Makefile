@@ -7,6 +7,9 @@ ifeq "$(OSTYPE)" "msys"
 else
 	S := unix
 	EXE := 
+	ifeq "$(shell uname)" "Darwin"
+		BUILDAQUA := 1
+	endif
 endif
 CC := gcc
 LD := gcc
@@ -21,27 +24,6 @@ all: build version.sh
 	else	./build bin/tclsh bin/bkgui; \
 	fi
 	./build install
-
-tcl/$S/Makefile: build
-	./build configure
-
-tk/$S/Makefile: build
-	./build configure
-
-configure: tcl/$S/configure tk/$S/configure
-	for i in tcl/$S tk/$S; do \
-		cd $(HERE)/$$i; \
-		test -f configure || bk -Ur get -qS; \
-		CFLAGS='-O2 -DBK' \
-		./configure --enable-64bit \
-		    --disable-load --disable-shared; \
-		sed -e s/X11R4/X11R6/ < Makefile > MK; \
-		if [ "X$(OSTYPE)" = Xhpux11.00 ]; then \
-			sed -e 's|^X11_LIB_SWITCHES.*|X11_LIB_SWITCHES        = -L/usr/lib/X11R6 -l:libX11.3|' < MK > MK2; \
-			mv -f MK2 MK; \
-		fi; \
-		mv -f MK Makefile; \
-	done
 
 # fetch tcl subdirectory if needed
 tcl/$S/configure: TCLKEY
@@ -69,9 +51,17 @@ install: ./version.sh
 		chmod 666 "$$TCLVER"; \
 	fi
 
-bin/tclsh: tcl/$S/Makefile
+bin/tclsh: tcl/$S/configure
 	rm -rf bin/tclsh lib/tcl*
-	cd tcl/$S && \
+	cd tcl/$(S) ; \
+	test -f configure || bk -Ur get -qS
+	if [ "X$(BUILDAQUA)" != X ] ; then \
+		$(MAKE) -C tcl/macosx embedded ; \
+	fi
+	cd $(HERE)/tcl/$(S); \
+	CFLAGS='-O2' \
+	./configure --enable-64bit \
+	    --disable-load --disable-shared; \
 	$(MAKE) prefix= exec_prefix= INSTALL_ROOT=../.. \
 	    XLIBS=../../../../tomcrypt/libtomcrypt.a \
 	    install-binaries install-libraries
@@ -79,9 +69,25 @@ bin/tclsh: tcl/$S/Makefile
 	mv bin/tclsh* bin/tclsh$(EXE)
 	$(STRIP) bin/tclsh$(EXE)
 
-bin/bkgui: tk/$S/Makefile
+bin/bkgui: tk/$S/configure
 	rm -rf bin/bkgui lib/tk*
-	cd tk/$S && \
+	cd tk/$(S) ; \
+	test -f configure || bk -Ur get -qS
+	if [ "X$(BUILDAQUA)" != X ] ; then \
+		$(MAKE) -C tk/macosx embedded ; \
+		find /build/tk-$$USER/BitKeeper.app -name SCCS -exec rm -rf {} \; ; \
+		mv /build/tk-$$USER/BitKeeper.app bin/ ; \
+	fi
+	cd $(HERE)/tk/$(S); \
+	CFLAGS='-O2' \
+	./configure --enable-64bit \
+	    --disable-load --disable-shared; \
+	sed -e s/X11R4/X11R6/ < Makefile > MK; \
+	if [ "X$(OSTYPE)" = Xhpux11.00 ]; then \
+		sed -e 's|^X11_LIB_SWITCHES.*|X11_LIB_SWITCHES        = -L/usr/lib/X11R6 -l:libX11.3|' < MK > MK2; \
+		mv -f MK2 MK; \
+	fi; \
+	mv -f MK Makefile; \
 	$(MAKE) prefix= exec_prefix= INSTALL_ROOT=../.. \
 	    XLIBS=../../../../tomcrypt/libtomcrypt.a \
 	    install-binaries install-libraries
@@ -119,4 +125,4 @@ test:
 
 FORCE:
 
-.PHONY: all configure
+.PHONY: all

@@ -66,6 +66,28 @@ case "X`uname -s`" in
 		LD=cc
 		export CC LD 
 		CCXTRA="-DHAVE_GMTOFF -no-cpp-precomp"
+		case "X`uname -r`" in
+			X6.*)	CCXTRA="$CCXTRA -DMACOS_VER=1020"
+				;;
+			X7.*)	CCXTRA="$CCXTRA -DMACOS_VER=1030"
+				XLIBS="-lresolv"
+				;;
+			X8.*)	CCXTRA="$CCXTRA -DMACOS_VER=1040"
+				XLIBS="-lresolv"
+				;;
+			X9.*)	CCXTRA="$CCXTRA -DMACOS_VER=1050"
+				XLIBS="-lresolv"
+				;;
+			X10.*)	CCXTRA="$CCXTRA -DMACOS_VER=1060"
+				XLIBS="-lresolv"
+				;;
+			X11.*)	CCXTRA="$CCXTRA -DMACOS_VER=1070"
+				XLIBS="-lresolv"
+				;;
+			*)	echo "** Unknown version of Mac OS X"
+				exit 1
+				;;
+		esac
 		;;
 	XHP-UX)
 		CCXTRA=-Dhpux

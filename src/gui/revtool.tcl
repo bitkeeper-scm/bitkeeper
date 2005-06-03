@@ -1790,7 +1790,7 @@ proc busy {busy} \
 proc widgets {} \
 {
 	global	search Opts gc stacked d w dspec wish yspace paned 
-	global  tcl_platform fname app ttype sem
+	global  fname app ttype sem
 
 	set sem "start"
 	set ttype ""
@@ -1816,9 +1816,12 @@ proc widgets {} \
 	option add *background $gc(BG)
 
 	set gc(bw) 1
-	if {$tcl_platform(platform) == "windows"} {
+	if {$gc(windows)} {
 		set gc(py) 0; set gc(px) 1
 		set gc(histfile) [file join $gc(bkdir) "_bkhistory"]
+	} elseif {$gc(aqua)} {
+		set gc(py) 1; set gc(px) 12
+		set gc(histfile) [file join $gc(bkdir) ".bkhistory"]
 	} else {
 		set gc(py) 1; set gc(px) 4
 		set gc(histfile) [file join $gc(bkdir) ".bkhistory"]
@@ -1841,6 +1844,7 @@ proc widgets {} \
 		-text "Select Range" -width 15 -state normal \
 		-menu .menus.mb.menu
 		set m [menu .menus.mb.menu]
+		if {$gc(aqua)} {$m configure -tearoff 0}
 		$m add command -label "Last Day" \
 		    -command {revtool $fname -1D}
 		$m add command -label "Last 2 Days" \
@@ -1892,6 +1896,7 @@ proc widgets {} \
 		-text "Select File" -width 12 -state normal \
 		-menu .menus.fmb.menu
 		set gc(fmenu) [menu .menus.fmb.menu]
+		if {$gc(aqua)} {$gc(fmenu) configure -tearoff 0}
 		set gc(current) $gc(fmenu).current
 		$gc(fmenu) add command -label "Open new file..." \
 		    -command { 
@@ -2079,7 +2084,7 @@ proc widgets {} \
 	bind $w(graph) <Right>		"$w(graph) xview scroll  1 units"
 	bind $w(graph) <Shift-Home>	"$w(graph) xview moveto 0"
 	bind $w(graph) <Shift-End>	"$w(graph) xview moveto 1.0"
-	if {$tcl_platform(platform) == "windows"} {
+	if {$gc(windows) || $gc(aqua)} {
 		bind . <Shift-MouseWheel>   { 
 		    if {%D < 0} {
 		    	$w(graph) xview scroll -1 pages
@@ -2101,7 +2106,13 @@ proc widgets {} \
 			$w(aptext) yview scroll -5 units
 		    }
 		}
-	} else {
+	}
+	if {$gc(aqua)} {
+		bind . <Command-q> done
+		bind . <Command-w> done
+		bind $w(graph) <Option-1>  { diff2 0; currentMenu; break}
+	}
+	if {$gc(x11)} {
 		bind . <Shift-Button-4>   "$w(graph) xview scroll -1 pages"
 		bind . <Shift-Button-5>   "$w(graph) xview scroll 1 pages"
 		bind . <Control-Button-4> "$w(graph) yview scroll -1 units"
