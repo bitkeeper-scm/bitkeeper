@@ -1,5 +1,6 @@
 #include "../system.h"
 #include "../sccs.h"
+#include "../bkd.h"
 
 /*
  * Copyright (c) 2001 Andrew Chang       All rights reserved.
@@ -144,21 +145,34 @@ addProxy(char *type, char *line, char **proxies)
 private char **
 _get_http_proxy_reg(char **proxies, char *host)
 {
-#define KEY "Software\\Microsoft\\Windows\\CurrentVersion\\internet Settings"
+#define KEY "Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings"
 	char	*p, *q;
 	int	len;
-	int	proxyEnable = 0;
+	DWORD	proxyEnable = 0;
 	char	buf[MAXLINE];
 
-	if (getRegDWord(HKEY_CURRENT_USER,
-			KEY, "ProxyEnable", (DWORD *)&proxyEnable) == 0) {
+	len = sizeof(buf);  /* important */
+	unless (getReg(HKEY_CURRENT_USER, KEY "\\Connections",
+		"DefaultConnectionSettings", buf, &len)) {
+		/* Automatically detect settings */
+		if (buf[8] & 0x8) {
+			proxies = _get_http_autoproxy(proxies, host);
+			goto done;
+		}
+	}
+	len = sizeof(buf);  /* important */
+	unless (getReg(HKEY_CURRENT_USER, KEY, "AutoConfigURL", buf, &len)) {
+		/* Use automatic configuration script */
+		if (buf[0]) {
+			proxies = _get_http_autoproxyurl(proxies, host, buf);
+			goto done;
+		}
+	}
+	unless (getRegDWord(HKEY_CURRENT_USER,
+		KEY, "ProxyEnable", &proxyEnable)) {
 		goto done;
 	}
 	unless (proxyEnable) goto done;
-
-	len = sizeof(buf);  /* important */
-	getReg(HKEY_CURRENT_USER, KEY, "AutoConfigURL", buf, &len);
-	if (buf[0]) return(_get_http_autoproxyurl(proxies, host, buf));
 
 	len = sizeof(buf);  /* important */
 	if (getReg(HKEY_CURRENT_USER, KEY, "ProxyOverride", buf, &len)) {
@@ -216,9 +230,6 @@ get_http_proxy(char *host)
 	proxies = _get_socks_proxy(proxies);
 #ifdef WIN32
 	proxies = _get_http_proxy_reg(proxies, host);
-	unless (getenv("BK_HTTP_SKIP_AUTOPROXY")) {
-		proxies = _get_http_autoproxy(proxies, host);
-	}
 #endif
 	return (proxies);
 }
