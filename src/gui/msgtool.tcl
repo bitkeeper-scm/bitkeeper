@@ -2,9 +2,10 @@ set usage "Usage: bk msgtool ?-T title? ?-Y YES-label? ?-N NO-label? message"
 
 proc main {} \
 {
-	global	env
+	global	env gc
 
 	init
+	getConfig msgtool
 	widgets
 
 	after idle [list wm deiconify .]
@@ -115,7 +116,7 @@ proc init {} \
 # apps without having to do an exec to display a message
 proc widgets {} \
 {
-	global options widgets env tcl_platform
+	global options widgets env gc
 
 	set widgets(toplevel) .
 	set w ""
@@ -180,8 +181,10 @@ proc widgets {} \
 	# The display of the message depends on it's relative size.
 	# The number 10 is picked out of a hat. Most messages will
 	# either be one line, or many.
-	if {$tcl_platform(platform) == "windows"} {
+	if {$gc(windows)} {
 		set font {{Courier New} 8 normal}
+	} elseif {$gc(aqua)} {
+		set font {Monaco 10}
 	} else {
 		set width [winfo screenwidth .]
 		if {$width <= 1024} {

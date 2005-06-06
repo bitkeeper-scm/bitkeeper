@@ -321,6 +321,7 @@ helptool gui
 installtool gui
 msgtool gui
 newdifftool gui
+renametool gui
 revtool gui
 setuptool gui
 

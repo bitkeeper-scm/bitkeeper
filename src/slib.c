@@ -15293,16 +15293,24 @@ text:	if (d->flags & D_TEXT) {
 }
 
 private void
-prs_reverse(sccs *s, delta *d, int flags, char *dspec, FILE *out)
+prs_reverse(sccs *s, int flags, char *dspec, FILE *out)
 {
-	if (d->next) prs_reverse(s, d->next, flags, dspec, out);
-	if (d->flags & D_SET) sccs_prsdelta(s, d, flags, dspec, out);
+	delta	*d;
+	int	ser;
+	
+	for (ser = 1; ser < s->nextserial; ser++) {
+		if ((d = sfind(s, ser)) && (d->flags & D_SET)) {
+			sccs_prsdelta(s, d, flags, dspec, out);
+		}
+	}
 }
 
 private void
-prs_forward(sccs *s, delta *d, int flags, char *dspec, FILE *out)
+prs_forward(sccs *s, int flags, char *dspec, FILE *out)
 {
-	for (; d; d = d->next) {
+	delta	*d;
+
+	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_SET) sccs_prsdelta(s, d, flags, dspec, out);
 	}
 }
@@ -15333,9 +15341,9 @@ sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out)
 		}
 	}
 	if (reverse) {
-		 prs_reverse(s, s->table, flags, dspec, out);
+		 prs_reverse(s, flags, dspec, out);
 	} else {
-		 prs_forward(s, s->table, flags, dspec, out);
+		 prs_forward(s, flags, dspec, out);
 	}
 
 	if (KV(s) && s->mdbm) {

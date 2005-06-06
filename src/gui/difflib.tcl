@@ -347,7 +347,7 @@ proc right {r l n} \
 # Get the sdiff output. Make sure it contains no \r's from fucking DOS.
 proc sdiff {L R} \
 {
-	global	rmList sdiffw tcl_platform
+	global	rmList sdiffw gc
 
 	set rmList ""
 
@@ -359,7 +359,7 @@ proc sdiff {L R} \
 	#
 	# XXX For some reason, Larry's diff --ignore-trailing-cr option
 	# XXX have no effect when used in sdiff, need to figure out why.
-	if {$tcl_platform(platform) == "windows"} {
+	if {$gc(windows)} {
 		return [open "| $sdiffw \"$L\" \"$R\"" r]
 	}
 

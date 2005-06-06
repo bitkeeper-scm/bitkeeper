@@ -9,6 +9,11 @@ else
 	S := unix
 	EXE := 
 	TKTABLELIB := libTktable2.9.so
+	ifeq "$(shell uname)" "Darwin"
+		BUILDAQUA := 1
+		TKTABLELIB := libTktable2.9.dylib
+		LDFLAGS_TKTABLE := "LDFLAGS=-single_module"
+	endif
 endif
 CC := gcc
 LD := gcc
@@ -25,27 +30,6 @@ all: build version.sh
 		    lib/BWidget1.7/pkgIndex.tcl; \
 	fi
 	./build install
-
-tcl/$S/Makefile: build
-	./build configure
-
-tk/$S/Makefile: build
-	./build configure
-
-configure: tcl/$S/configure tk/$S/configure
-	for i in tcl/$S tk/$S; do \
-		cd $(HERE)/$$i; \
-		test -f configure || bk -Ur get -qS; \
-		CFLAGS='-O2 -DBK' \
-		./configure --enable-64bit \
-		    --disable-shared; \
-		sed -e s/X11R4/X11R6/ < Makefile > MK; \
-		if [ "X$(OSTYPE)" = Xhpux11.00 ]; then \
-			sed -e 's|^X11_LIB_SWITCHES.*|X11_LIB_SWITCHES        = -L/usr/lib/X11R6 -l:libX11.3|' < MK > MK2; \
-			mv -f MK2 MK; \
-		fi; \
-		mv -f MK Makefile; \
-	done
 
 # fetch tcl subdirectory if needed
 tcl/$S/configure: TCLKEY
@@ -76,7 +60,8 @@ tktable/Makefile: tktable/configure
 # Tktable libs
 lib/Tktable2.9/$(TKTABLELIB): tktable/Makefile bin/bkgui$(EXE)
 	cd tktable && \
-	$(MAKE) CFLAGS=-I../include prefix= exec_prefix= DESTDIR=../ \
+	$(MAKE) CFLAGS=-I../include $(LDFLAGS_TKTABLE) \
+		prefix= exec_prefix= DESTDIR=../ \
 		libdir=lib bindir=bin install
 
 lib/BWidget1.7/pkgIndex.tcl: BWIDGETKEY
@@ -104,9 +89,17 @@ install: ./version.sh
 		chmod 666 "$$TCLVER"; \
 	fi
 
-bin/tclsh$(EXE): tcl/$S/Makefile
+bin/tclsh$(EXE): tcl/$S/configure
 	rm -rf bin/tclsh$(EXE) lib/tcl*
-	cd tcl/$S && \
+	cd tcl/$(S) ; \
+	test -f configure || bk -Ur get -qS
+	if [ "X$(BUILDAQUA)" != X ] ; then \
+		$(MAKE) -C tcl/macosx embedded ; \
+	fi
+	cd $(HERE)/tcl/$(S); \
+	CFLAGS='-O2' \
+	./configure --enable-64bit \
+	    --disable-load; \
 	$(MAKE) prefix= exec_prefix= INSTALL_ROOT=../.. \
 	    XLIBS=../../../../tomcrypt/libtomcrypt.a \
 	    install-binaries install-libraries
@@ -114,9 +107,25 @@ bin/tclsh$(EXE): tcl/$S/Makefile
 	mv bin/tclsh* bin/tclsh$(EXE)
 	$(STRIP) bin/tclsh$(EXE)
 
-bin/bkgui$(EXE): tk/$S/Makefile bin/tclsh$(EXE)
+bin/bkgui$(EXE): tk/$S/configure bin/tclsh$(EXE)
 	rm -rf bin/bkgui$(EXE) lib/tk*
-	cd tk/$S && \
+	cd tk/$(S) ; \
+	test -f configure || bk -Ur get -qS
+	if [ "X$(BUILDAQUA)" != X ] ; then \
+		$(MAKE) -C tk/macosx embedded ; \
+		find /build/tk-$$USER/BitKeeper.app -name SCCS -exec rm -rf {} \; ; \
+		mv /build/tk-$$USER/BitKeeper.app bin/ ; \
+	fi
+	cd $(HERE)/tk/$(S); \
+	CFLAGS='-O2' \
+	./configure --enable-64bit \
+	    --disable-load; \
+	sed -e s/X11R4/X11R6/ < Makefile > MK; \
+	if [ "X$(OSTYPE)" = Xhpux11.00 ]; then \
+		sed -e 's|^X11_LIB_SWITCHES.*|X11_LIB_SWITCHES        = -L/usr/lib/X11R6 -l:libX11.3|' < MK > MK2; \
+		mv -f MK2 MK; \
+	fi; \
+	mv -f MK Makefile; \
 	$(MAKE) prefix= exec_prefix= INSTALL_ROOT=../.. \
 	    XLIBS=../../../../tomcrypt/libtomcrypt.a \
 	    install-binaries install-libraries
@@ -158,4 +167,4 @@ test:
 
 FORCE:
 
-.PHONY: all configure
+.PHONY: all

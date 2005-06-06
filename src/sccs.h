@@ -1100,6 +1100,7 @@ void	ttyprintf(char *fmt, ...);
 void	enableFastPendingScan(void);
 char	*isHostColonPath(char *);
 int	gui_useDisplay(void);
+int	gui_useAqua(void);
 char	*gui_displayName(void);
 char	*savefile(char *dir, char *prefix, char *pathname);
 void	has_proj(char *who);

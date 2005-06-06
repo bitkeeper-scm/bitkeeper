@@ -483,7 +483,7 @@ proc height {w} \
 
 proc widgets {L R O} \
 {
-	global	scroll wish tcl_platform gc d app
+	global	scroll wish gc d app
 
 	getConfig "fm"
 	option add *background $gc(BG)
@@ -572,11 +572,11 @@ proc widgets {L R O} \
 		    -command skip
 		button .merge.menu.left -font $gc(fm.buttonFont) \
 		    -bg $gc(fm.buttonColor) \
-		    -text "Use\nLeft" -width 7 -state disabled \
+		    -text "Use Left" -width 7 -state disabled \
 		    -command useLeft
 		button .merge.menu.right -font $gc(fm.buttonFont) \
 		    -bg $gc(fm.buttonColor) \
-		    -text "Use\nright" -width 7 -state disabled \
+		    -text "Use Right" -width 7 -state disabled \
 		    -command useRight
 		label .merge.menu.l -font $gc(fm.buttonFont) \
 		    -bg $gc(fm.buttonColor) \
@@ -681,6 +681,10 @@ proc keyboard_bindings {} \
 	bind all <Control-Down> {skip}
 	bind all <Control-Up> {undo}
 	bind all <$gc(fm.quit)> cmd_done 
+	if {$gc(aqua)} {
+		bind all <Command-q> cmd_done
+		bind all <Command-w> cmd_done
+	}
 }
 
 proc confirm_done {msg l} \
