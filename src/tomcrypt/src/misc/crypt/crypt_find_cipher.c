@@ -32,3 +32,7 @@ int find_cipher(const char *name)
    return -1;
 }
 
+
+/* $Source: /cvs/libtom/libtomcrypt/src/misc/crypt/crypt_find_cipher.c,v $ */
+/* $Revision: 1.3 $ */
+/* $Date: 2005/05/05 14:35:59 $ */

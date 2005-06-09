@@ -17,7 +17,10 @@ time_sqr();
 time_rsa();
 time_ecc();
 time_dh();
-
 return EXIT_SUCCESS;
 
 }
+
+/* $Source: /cvs/libtom/libtomcrypt/demos/timing.c,v $ */
+/* $Revision: 1.15 $ */
+/* $Date: 2005/05/10 11:29:48 $ */

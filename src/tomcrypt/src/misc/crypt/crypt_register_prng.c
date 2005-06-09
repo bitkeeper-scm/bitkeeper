@@ -44,3 +44,7 @@ int register_prng(const struct ltc_prng_descriptor *prng)
    /* no spot */
    return -1;
 }
+
+/* $Source: /cvs/libtom/libtomcrypt/src/misc/crypt/crypt_register_prng.c,v $ */
+/* $Revision: 1.4 $ */
+/* $Date: 2005/05/05 14:35:59 $ */

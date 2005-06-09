@@ -30,3 +30,7 @@ int find_hash_id(unsigned char ID)
    }
    return -1;
 }
+
+/* $Source: /cvs/libtom/libtomcrypt/src/misc/crypt/crypt_find_hash_id.c,v $ */
+/* $Revision: 1.3 $ */
+/* $Date: 2005/05/05 14:35:59 $ */

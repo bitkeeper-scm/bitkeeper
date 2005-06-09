@@ -44,3 +44,7 @@ int register_hash(const struct ltc_hash_descriptor *hash)
    /* no spot */
    return -1;
 }
+
+/* $Source: /cvs/libtom/libtomcrypt/src/misc/crypt/crypt_register_hash.c,v $ */
+/* $Revision: 1.3 $ */
+/* $Date: 2005/05/05 14:35:59 $ */

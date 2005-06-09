@@ -188,3 +188,7 @@ unsigned long rng_get_bytes(unsigned char *out,
 
 int rng_make_prng(int bits, int wprng, prng_state *prng, void (*callback)(void));
 
+
+/* $Source: /cvs/libtom/libtomcrypt/src/headers/tomcrypt_prng.h,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:35:58 $ */

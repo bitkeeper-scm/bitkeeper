@@ -27,3 +27,7 @@ int hash_is_valid(int idx)
    }
    return CRYPT_OK;
 }
+
+/* $Source: /cvs/libtom/libtomcrypt/src/misc/crypt/crypt_hash_is_valid.c,v $ */
+/* $Revision: 1.3 $ */
+/* $Date: 2005/05/05 14:35:59 $ */

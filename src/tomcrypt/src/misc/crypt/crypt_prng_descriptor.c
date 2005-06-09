@@ -17,3 +17,7 @@
 struct ltc_prng_descriptor prng_descriptor[TAB_SIZE] = {
 { NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL }
 };
+
+/* $Source: /cvs/libtom/libtomcrypt/src/misc/crypt/crypt_prng_descriptor.c,v $ */
+/* $Revision: 1.4 $ */
+/* $Date: 2005/05/05 14:35:59 $ */

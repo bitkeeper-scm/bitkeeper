@@ -19,3 +19,7 @@ struct ltc_cipher_descriptor cipher_descriptor[TAB_SIZE] = {
 { NULL, 0, 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL }
  };
 
+
+/* $Source: /cvs/libtom/libtomcrypt/src/misc/crypt/crypt_cipher_descriptor.c,v $ */
+/* $Revision: 1.7 $ */
+/* $Date: 2005/05/05 14:35:59 $ */

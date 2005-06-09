@@ -35,3 +35,7 @@ int unregister_prng(const struct ltc_prng_descriptor *prng)
    }
    return CRYPT_ERROR;
 }
+
+/* $Source: /cvs/libtom/libtomcrypt/src/misc/crypt/crypt_unregister_prng.c,v $ */
+/* $Revision: 1.3 $ */
+/* $Date: 2005/05/05 14:35:59 $ */
