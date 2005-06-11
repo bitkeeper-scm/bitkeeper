@@ -404,6 +404,7 @@ private	struct {
 	{"abort", CMD_FAST_EXIT},
 	{"check", CMD_FAST_EXIT},
 	{"commit", CMD_WRLOCK|CMD_WRUNLOCK},
+	{"fix", CMD_WRLOCK|CMD_WRUNLOCK},
 	{"license", CMD_FAST_EXIT},
 	{"pending_part1", CMD_RDLOCK|CMD_RDUNLOCK},
 	{"pending_part2", CMD_RDLOCK|CMD_RDUNLOCK},

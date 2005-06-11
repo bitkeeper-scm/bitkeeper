@@ -1,15 +1,15 @@
 #include "system.h"
 #include "sccs.h"
-private void cfile(sccs *s, char *rev);
-private	void do_cset(char *qflag, int flags, int save);
-private void doit(char *file, char *rev, char *qflag, int flags, char *force);
-private	int simple(sccs *s, delta *top, int flags);
+private void	cfile(sccs *s, char *rev);
+private	int	do_cset(char *qflag, int flags, int save);
+private int	doit(char *file, char *rev, char *qflg, int flags, char *force);
+private	int 	simple(sccs *s, delta *top, int flags);
 
 int
 fix_main(int ac,  char **av)
 {
 	int	c, i;
-	int	save = 1, cset = 0, flags = 0;
+	int	save = 1, cset = 0, flags = 0, rc = 0;
 	char	*qflag = "-q";
 
 	while ((c = getopt(ac, av, "cqsv")) != -1) {
@@ -24,17 +24,17 @@ fix_main(int ac,  char **av)
 		}
 	}
 	if (cset) {
-		do_cset(qflag, flags, save);
+		rc = do_cset(qflag, flags, save);
 	} else {
 		i =  optind - 1;
 		while (av[++i]) {
-			doit(av[i], "+", qflag, flags, "");
+			rc |= doit(av[i], "+", qflag, flags, "");
 		}
 	}
-	return (0);
+	return (rc);
 }
 
-private void
+private int
 do_cset(char *qflag, int flags, int save)
 {
 	int	c, i;
@@ -47,7 +47,7 @@ do_cset(char *qflag, int flags, int save)
 
 	if (proj_cd2root()) {
 		fprintf(stderr, "fix: can't find repository root\n");
-		exit(1);
+		return (1);
 	}
 	/* 
 	 * check to see if there are later deltas.
@@ -68,7 +68,7 @@ do_cset(char *qflag, int flags, int save)
 	}
 	if (pclose(f)) {
 		fprintf(stderr, "Sorry, unable to fix this cset.\n");
-		exit(1);
+		return (1);
 	}
 
 	EACH(lines) {
@@ -80,13 +80,13 @@ do_cset(char *qflag, int flags, int save)
 		unless (s && HASGRAPH(s)) {
 			fprintf(stderr,
 			    "fix: no graph in %s?\n", s->gfile);
-			exit(1);
+			return (1);
 		}
 		d = sccs_top(s);
 		if (CSET(s) && d->merge) {
 			fprintf(stderr, "Unable to fix merge changesets.\n");
 			sccs_free(s);
-			exit(1);
+			return (1);
 		}
 		unless (d && streq(p, d->rev)) {
 			fprintf(stderr,
@@ -94,21 +94,21 @@ do_cset(char *qflag, int flags, int save)
 			    "%s has a delta beyond %s\n",
 			    s->gfile, p);
 			sccs_free(s);
-			exit(1);
+			return (1);
 		}
 		if (sccs_clean(s, SILENT)) {
 			fprintf(stderr,
 			    "Unable to fix this changeset, %s is modified\n",
 			    s->gfile);
 			sccs_free(s);
-			exit(1);
+			return (1);
 		}
 		free(n);
 		sccs_free(s);
 		p[-1] = '|';
 	}
 
-	if (trigger("fix", "pre")) exit(1);
+	if (trigger("fix", "pre")) return (1);
 
 	/*
 	 * Saving the patch can fail if the repo is in a screwed up state,
@@ -119,7 +119,7 @@ do_cset(char *qflag, int flags, int save)
 			    0, "bk", "makepatch", "-r+", SYS);
 		if (rc) {
 			fprintf(stderr, "fix: unable to save patch, abort.\n");
-			exit(1);
+			return (1);
 		}
 	}
 
@@ -136,6 +136,7 @@ do_cset(char *qflag, int flags, int save)
 	}
 	freeLines(lines, free);
 	update_log_markers(streq(qflag, ""));
+	return (0);
 }
 
 /*
@@ -150,7 +151,7 @@ do_cset(char *qflag, int flags, int save)
  * user doesn't need to rebuild after running 'bk fix -c'.  At the
  * moment we end up refetching the gfile.
  */
-private void
+private int
 doit(char *file, char *rev, char *qflag, int flags, char *force)
 {
 	char	buf[MAXLINE];
@@ -160,11 +161,12 @@ doit(char *file, char *rev, char *qflag, int flags, char *force)
 	delta	*d;
 	mode_t	mode = 0;
 	int	cset;
+	int	rc = 0;
 
 	sprintf(fixfile, "%s-%u", file, getpid());
 	if (exists(fixfile)) {
 		printf("%s exists, skipping that file", fixfile);
-		return;
+		return (1);
 	}
 	assert(sccs_filetype(file) == 0);
 	p = name2sccs(file);
@@ -172,14 +174,14 @@ doit(char *file, char *rev, char *qflag, int flags, char *force)
 	unless (s && HASGRAPH(s)) {
 		fprintf(stderr, "%s removed while fixing?\n", s->sfile);
 		sccs_free(s);
-		return;
+		return (1);
 	}
 	cset = CSET(s);
 	if (sccs_clean(s, SILENT)) {
 		fprintf(stderr, "Unable to fix modified file %s\n", s->gfile);
 		sccs_free(s);
 		free(p);
-		return;
+		return (1);
 	}
 	unless (cset) {
 		d = sccs_top(s);
@@ -191,7 +193,7 @@ doit(char *file, char *rev, char *qflag, int flags, char *force)
 			sccs_get(s, 0, 0, 0, 0, SILENT, "-");
 			sccs_newchksum(s);
 			sccs_free(s);
-			return;
+			return (0);
 		}
 
 		assert(streq(d->rev, rev) || streq(rev, "+"));
@@ -220,7 +222,7 @@ doit(char *file, char *rev, char *qflag, int flags, char *force)
 			sccs_free(s);
 			unlink(p);
 			free(p);
-			return;
+			return (0);
 		}
 
 		mode = d->mode;
@@ -231,6 +233,7 @@ doit(char *file, char *rev, char *qflag, int flags, char *force)
 	sprintf(buf, "bk stripdel %s %s -r%s '%s'", qflag, force, rev, file);
 	if (system(buf)) {
 		unlink(fixfile);
+		rc = 1;
 	} else {
 		if (exists(p) && !cset) {
 			int gflags = SILENT|GET_SKIPGET|GET_EDIT;
@@ -239,16 +242,21 @@ doit(char *file, char *rev, char *qflag, int flags, char *force)
 			if (!IS_EDITED(s) &&
 			    sccs_get(s, 0, 0, 0, 0, gflags, "-")) {
 				fprintf(stderr, "cannot lock %s\n", file);
+				rc = 1;
 			}
 			sccs_free(s);
 		}
 		unless (cset) {
-			if (rename(fixfile, file) == -1) perror(file);
+			if (rename(fixfile, file) == -1) {
+				perror(file);
+				rc = 1;
+			}
 			if (mode) chmod(file, mode);
 			utime(file, 0);	/* touch gfile */
 		}
 	}
 	free(p);
+	return (rc);
 }
 
 /*
