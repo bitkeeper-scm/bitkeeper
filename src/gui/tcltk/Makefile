@@ -31,6 +31,27 @@ all: build version.sh
 	fi
 	./build install
 
+tcl/$S/Makefile: build
+	./build configure
+
+tk/$S/Makefile: build
+	./build configure
+
+configure: tcl/$S/configure tk/$S/configure
+	for i in tcl/$S tk/$S; do \
+		cd $(HERE)/$$i; \
+		test -f configure || bk -Ur get -qS; \
+		CFLAGS='-O2 -DBK' \
+		./configure --enable-64bit \
+		    --disable-shared; \
+		sed -e s/X11R4/X11R6/ < Makefile > MK; \
+		if [ "X$(OSTYPE)" = Xhpux11.00 ]; then \
+			sed -e 's|^X11_LIB_SWITCHES.*|X11_LIB_SWITCHES        = -L/usr/lib/X11R6 -l:libX11.3|' < MK > MK2; \
+			mv -f MK2 MK; \
+		fi; \
+		mv -f MK Makefile; \
+	done
+
 # fetch tcl subdirectory if needed
 tcl/$S/configure: TCLKEY
 	test -d tcl || bk clone -r`tail -1 TCLKEY` \
@@ -89,43 +110,22 @@ install: ./version.sh
 		chmod 666 "$$TCLVER"; \
 	fi
 
-bin/tclsh$(EXE): tcl/$S/configure
+bin/tclsh$(EXE): tcl/$S/Makefile
 	rm -rf bin/tclsh$(EXE) lib/tcl*
-	cd tcl/$(S) ; \
-	test -f configure || bk -Ur get -qS
-	if [ "X$(BUILDAQUA)" != X ] ; then \
-		$(MAKE) -C tcl/macosx embedded ; \
-	fi
-	cd $(HERE)/tcl/$(S); \
-	CFLAGS='-O2' \
-	./configure --enable-64bit \
-	    --disable-load; \
+	cd tcl/$S && \
 	$(MAKE) prefix= exec_prefix= INSTALL_ROOT=../.. \
 	    XLIBS=../../../../tomcrypt/libtomcrypt.a \
 	    install-binaries install-libraries
 	rm -rf include usr lib/tcl8.4/tcltest1.0
 	mv bin/tclsh* bin/tclsh$(EXE)
 	$(STRIP) bin/tclsh$(EXE)
-
-bin/bkgui$(EXE): tk/$S/configure bin/tclsh$(EXE)
-	rm -rf bin/bkgui$(EXE) lib/tk*
-	cd tk/$(S) ; \
-	test -f configure || bk -Ur get -qS
 	if [ "X$(BUILDAQUA)" != X ] ; then \
-		$(MAKE) -C tk/macosx embedded ; \
-		find /build/tk-$$USER/BitKeeper.app -name SCCS -exec rm -rf {} \; ; \
-		mv /build/tk-$$USER/BitKeeper.app bin/ ; \
+		$(MAKE) -C tcl/macosx embedded ; \
 	fi
-	cd $(HERE)/tk/$(S); \
-	CFLAGS='-O2' \
-	./configure --enable-64bit \
-	    --disable-load; \
-	sed -e s/X11R4/X11R6/ < Makefile > MK; \
-	if [ "X$(OSTYPE)" = Xhpux11.00 ]; then \
-		sed -e 's|^X11_LIB_SWITCHES.*|X11_LIB_SWITCHES        = -L/usr/lib/X11R6 -l:libX11.3|' < MK > MK2; \
-		mv -f MK2 MK; \
-	fi; \
-	mv -f MK Makefile; \
+
+bin/bkgui$(EXE): tk/$S/Makefile bin/tclsh$(EXE)
+	rm -rf bin/bkgui$(EXE) lib/tk*
+	cd tk/$S && \
 	$(MAKE) prefix= exec_prefix= INSTALL_ROOT=../.. \
 	    XLIBS=../../../../tomcrypt/libtomcrypt.a \
 	    install-binaries install-libraries
@@ -138,6 +138,12 @@ bin/bkgui$(EXE): tk/$S/configure bin/tclsh$(EXE)
 	    rmdir tmp
 	mv bin/wish* bin/bkgui$(EXE)
 	$(STRIP) bin/bkgui$(EXE)
+	if [ "X$(BUILDAQUA)" != X ] ; then \
+		$(MAKE) -C tk/macosx embedded ; \
+		find /build/tk-$$USER/BitKeeper.app \
+		    -name SCCS -exec rm -rf {} \; ; \
+		mv /build/tk-$$USER/BitKeeper.app bin/ ; \
+	fi
 
 clean-obj: FORCE
 	-test -d tcl && cd tcl/$S && test -f Makefile && $(MAKE) distclean
@@ -167,4 +173,4 @@ test:
 
 FORCE:
 
-.PHONY: all
+.PHONY: all configure

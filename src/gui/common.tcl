@@ -575,7 +575,8 @@ proc AboutAqua {} \
 	wm title .aboutaqua ""
 	frame .aboutaqua.f
 	::tk::unsupported::MacWindowStyle style .aboutaqua document {closeBox}
-	label .aboutaqua.f.title -text "The BitKeeper Revision Control System" \
+	label .aboutaqua.f.title \
+	    -text "The BitKeeper Configuration Management System" \
 	    -font {Helvetica 14 bold} \
 	    -justify center
 	label .aboutaqua.f.v \
