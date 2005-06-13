@@ -10,7 +10,7 @@
 #    modifications under any license.
 
 case "$HERE" in
-	[CD]:/*)	PREFIX=file://$HERE;;
+	[A-Z]:/*)	PREFIX=file://$HERE;;
 	*)		PREFIX=file:/$HERE;;
 esac
 
