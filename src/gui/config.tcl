@@ -181,8 +181,6 @@ proc getConfig {prog} \
 		set _d(x11) 1
 
                 option add *Scrollbar.borderWidth 1 100
-		option add *Menubutton.relief raised
-		option add *Text.Background $WHITE
 		set _d(cset.leftWidth) 55
 		set _d(cset.rightWidth) 80
 		set _d(scrollWidth) 12		;# scrollbar width
