@@ -2,12 +2,22 @@
 #include "sccs.h"
 #include "cmd.h"
 
+private int
+absolute(char *path)
+{
+	/* Any C:whatever is viewed as absolute */
+	if (win32() && isalpha(*path) && (path[1] == ':')) return (1);
+
+	return ((*path == '/') ||
+	    strneq("./", path, 2) || strneq("../", path, 3));
+}
+
 /*
  * Copyright (c) 2001 Larry McVoy       All rights reserved.
  */
 
 char	*
-whichp(char *prog, int internal, int external)
+whichp(char *exe, int internal, int external)
 {
         char	*path;
 	char	*s, *t;
@@ -17,14 +27,14 @@ whichp(char *prog, int internal, int external)
 
 	if (internal) {
 		assert(bin);
-		if (cmd = cmd_lookup(prog, strlen(prog))) {
-			path = aprintf("%s/bk %s", bin, prog);
+		if (cmd = cmd_lookup(exe, strlen(exe))) {
+			path = aprintf("%s/bk %s", bin, exe);
 			return (path);
 		}
 	}
 	unless (external) return (0);
 
-	if ((prog[0] == '/') && executable(prog)) return (strdup(prog));
+	if (executable(exe) && absolute(exe)) return (strdup(exe));
 
         path = aprintf("%s%c", getenv("PATH"), PATH_DELIM);
 	s = strrchr(path, PATH_DELIM);
@@ -32,7 +42,7 @@ whichp(char *prog, int internal, int external)
 	for (s = t = path; *t; t++) {
 		if (*t == PATH_DELIM) {
 			*t = 0;
-			sprintf(buf, "%s/%s", *s ? s : ".", prog);
+			sprintf(buf, "%s/%s", *s ? s : ".", exe);
 			if (executable(buf)) {
 				free(path);
 				return (strdup(buf));

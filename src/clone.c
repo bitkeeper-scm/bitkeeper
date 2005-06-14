@@ -455,7 +455,7 @@ after(int quiet, char *rev)
 	cmds[++i] = p = malloc(strlen(rev) + 3);
 	sprintf(cmds[i], "-a%s", rev);
 	cmds[++i] = 0;
-	i = spawnvp_ex(_P_WAIT, "bk", cmds);
+	i = spawnvp(_P_WAIT, "bk", cmds);
 	free(p);
 	unless (WIFEXITED(i))  return (-1);
 	return (WEXITSTATUS(i));
@@ -474,7 +474,7 @@ parent(opts opts, remote *r)
 	if (opts.quiet) cmds[++i] = "-q";
 	cmds[++i] = p = remote_unparse(r);
 	cmds[++i] = 0;
-	spawnvp_ex(_P_WAIT, "bk", cmds);
+	spawnvp(_P_WAIT, "bk", cmds);
 	free(p);
 }
 

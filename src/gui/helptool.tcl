@@ -355,18 +355,18 @@ proc scroll {what dir} \
 
 proc widgets {} \
 {
-	global	line gc firstConfig pixelsPerLine tcl_platform
+	global	line gc firstConfig pixelsPerLine
 	global	search_word stackMax stackPos d State
 
 	set stackMax 0
 	set stackPos 0
 
-	if {$tcl_platform(platform) == "windows"} {
+	getConfig "help"
+	if {$gc(windows) || $gc(aqua)} {
 		set py 0
 	} else {
 		set py 1
 	}
-	getConfig "help"
 	loadState
 
 	option add *background $gc(BG)
@@ -509,7 +509,7 @@ proc widgets {} \
 	bind all <Alt-Left>		{ upStack }
 	bind all <Alt-Right>		{ downStack }
 	bind all <$gc(help.quit)>	{ exit }
-	if {$tcl_platform(platform) == "windows"} {
+	if {$gc(windows) || $gc(aqua)} {
 		bind all <MouseWheel> {
 		    if {%D < 0} {
 			scroll "page" 1
@@ -517,7 +517,12 @@ proc widgets {} \
 			scroll "page" -1
 		    }
 		}
-	} else {
+	}
+	if {$gc(aqua)} {
+		bind all <Command-q> exit
+		bind all <Command-w> exit
+	}
+	if {$gc(x11)} {
 		bind all <Button-4> 	{ scroll "page" -1; break }
 		bind all <Button-5> 	{ scroll "page" 1; break }
 	}

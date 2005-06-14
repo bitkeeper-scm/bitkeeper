@@ -134,7 +134,7 @@ clean(char *file)
 	av[++i] = "-q";
 	av[++i] = file;
 	av[++i] = 0;
-	spawnvp_ex(_P_WAIT, "bk", av);
+	spawnvp(_P_WAIT, "bk", av);
 }
 
 private void
@@ -147,7 +147,7 @@ unedit()
 	av[++i] = "unlock";
 	av[++i] = CHANGESET;
 	av[++i] = 0;
-	spawnvp_ex(_P_WAIT, "bk", av);
+	spawnvp(_P_WAIT, "bk", av);
 }
 
 private	delta *
@@ -219,7 +219,7 @@ commit(int quiet, delta *d)
 	if (quiet) cmds[++i] = "-s";
 	cmds[++i] = comment;
 	cmds[++i] = 0;
-	i = spawnvp_ex(_P_WAIT, "bk", cmds);
+	i = spawnvp(_P_WAIT, "bk", cmds);
 	if (!WIFEXITED(i) || WEXITSTATUS(i)) {
 		fprintf(stderr, "cset: commit says 0x%x\n", (u32)i);
 		free(comment);
@@ -269,7 +269,7 @@ undoit(MDBM *m)
 		av[++i] = rev;
 		av[++i] = buf;
 		av[++i] = 0;
-		rc = spawnvp_ex(_P_WAIT, av[0], av);
+		rc = spawnvp(_P_WAIT, av[0], av);
 		if (!WIFEXITED(rc) || WEXITSTATUS(rc)) {
 			for (i = 0; av[i]; ++i) {
 				if (i) fprintf(stderr, " ");

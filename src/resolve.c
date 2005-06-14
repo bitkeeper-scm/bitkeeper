@@ -1300,7 +1300,7 @@ flags_delta(resolve *rs,
 	assert(n < 38);	/* matches 40 in declaration */
 	av[++n] = 0;
 
-	n = spawnvp_ex(_P_WAIT, av[0], av);
+	n = spawnvp(_P_WAIT, av[0], av);
 	if (!WIFEXITED(n) || WEXITSTATUS(n)) {
 		for (i = 0; av[i]; ++i) fprintf(stderr, "%s ", av[i]);
 		fprintf(stderr, "failed\n");
@@ -1729,7 +1729,7 @@ nocommit:
 			av[j++] = "-P";
 			EACH(pfiles) av[j++] = pfiles[i];
 			av[j] = 0;
-			spawnvp_ex(_P_WAIT, av[0], av);
+			spawnvp(_P_WAIT, av[0], av);
 			free(av);
 			/* Now that citool is done, remove r.files for
 			 * files that no longer need a delta.
@@ -2210,7 +2210,7 @@ commit(opts *opts)
 		cmds[++i] = "-YSCCS/c.ChangeSet";
 	}
 	cmds[++i] = 0;
-	i = spawnvp_ex(_P_WAIT, "bk", cmds);
+	i = spawnvp(_P_WAIT, "bk", cmds);
 	if (cmt) free(cmt);
 	if (WIFEXITED(i) && !WEXITSTATUS(i)) {
 		opts->didMerge = opts->willMerge;

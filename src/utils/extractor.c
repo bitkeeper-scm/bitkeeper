@@ -97,7 +97,7 @@ main(int ac, char **av)
 		unless (getenv("BK_NOLINKS")) dolinks = 1;
 #endif
 	} else if (av[1]
-#ifndef WIN32
+#if !defined(WIN32) && !defined(__APPLE__)
 		   || !getenv("DISPLAY")
 #endif
 		   ) {

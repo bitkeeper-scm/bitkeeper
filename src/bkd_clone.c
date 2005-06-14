@@ -126,7 +126,7 @@ uncompressed(void)
 {
 	int	status;
 
-	status = spawnvp_ex(_P_WAIT, sfiocmd[0], sfiocmd);
+	status = spawnvp(_P_WAIT, sfiocmd[0], sfiocmd);
 	return (!(WIFEXITED(status) && WEXITSTATUS(status) == 0));
 }
 

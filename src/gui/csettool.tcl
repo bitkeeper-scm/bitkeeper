@@ -397,13 +397,17 @@ proc fontSize {dir} \
 
 proc widgets {} \
 {
-	global	scroll gc wish tcl_platform d search fmenu app env
+	global	scroll gc wish d search fmenu app env
 
 	getConfig "cset"
 	option add *background $gc(BG)
 	set gc(bw) 1
-	if {$tcl_platform(platform) == "windows"} {
+	set gc(mbwid) 8
+	if {$gc(windows)} {
 		set gc(py) 0; set gc(px) 1
+	} elseif {$gc(aqua)} {
+		set gc(py) 3; set gc(px) 10
+		set gc(mbwid) 4
 	} else {
 		set gc(py) 1; set gc(px) 4
 	}
@@ -481,9 +485,10 @@ proc widgets {} \
 	        -indicatoron 1 \
 		-bg $gc(cset.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "File" -width 8 -state normal \
+		-text "File" -width $gc(mbwid) -state normal \
 		-menu .menu.fmb.menu
 		set fmenu(widget) [menu .menu.fmb.menu]
+		if {$gc(aqua)} {$fmenu(widget) configure -tearoff 0}
 	    $fmenu(widget) add checkbutton \
 	        -label "Show Annotations" \
 	        -onvalue 1 \
@@ -515,9 +520,10 @@ proc widgets {} \
 	        -indicatoron 1 \
 		-bg $gc(cset.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "History" -width 8 -state normal \
+		-text "History" -width $gc(mbwid) -state normal \
 		-menu .menu.mb.menu
 		set m [menu .menu.mb.menu]
+		if {$gc(aqua)} {$m configure -tearoff 0}
 		$m add command -label "Changeset History" \
 		    -command "exec bk revtool &"
 		$m add command -label "File History" \
@@ -694,8 +700,7 @@ proc updateShortcutMenu {} \
 # Set up keyboard accelerators.
 proc keyboard_bindings {} \
 {
-	global gc search tcl_platform
-	global afterId
+	global afterId gc search
 
 	bind all <Control-b> { if {[Page "yview" -1 0] == 1} { break } }
 	bind all <Control-f> { if {[Page "yview"  1 0] == 1} { break } }
@@ -738,11 +743,16 @@ proc keyboard_bindings {} \
 	bind all <Control-equal>	{ fontSize 1 }
 	bind all <Control-minus>	{ fontSize -1 }
 
-	if {$tcl_platform(platform) == "windows"} {
+	if {$gc(windows) || $gc(aqua)} {
 		bind all <MouseWheel> {
 		    if {%D < 0} { next } else { prev }
 		}
-	} else {
+	}
+	if {$gc(aqua)} {
+		bind all <Command-q> exit
+		bind all <Command-w> exit
+	}
+	if {$gc(x11)} {
 		bind all <Button-4>	prev
 		bind all <Button-5>	next
 	}

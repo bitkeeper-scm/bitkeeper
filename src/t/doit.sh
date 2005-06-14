@@ -19,8 +19,10 @@ win32_common_setup()
 	PLATFORM="WIN32"
 	WINDOWS=YES
 	DEV_NULL="nul"
-	if [ -z "$TST_DIR" ]
-	then	TST_DIR=`mount | sed -n 's, on /tmp.*,,p' | tr A-Z a-z`; fi
+	test -z "$TST_DIR" && test -d /r/temp && TST_DIR=/r/temp
+	test -z "$TST_DIR" && {
+		TST_DIR=`mount | sed -n 's, on /tmp.*,,p' | tr A-Z a-z`
+	}
 	BK_FS="|"
 	BK_BIN=`cd .. && ./bk pwd -s`
 	CWD="$BK_BIN/bk pwd"

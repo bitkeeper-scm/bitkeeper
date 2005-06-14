@@ -77,8 +77,7 @@ comments_main(int ac, char **av)
 	}
 	/* disable illegal combinations */
 	if ((rev && csetrev) ||
-	    (!av[optind] && rev) ||
-	    (av[optind] && csetrev)) {
+	    (!av[optind] && rev) || (av[optind] && csetrev)) {
 		usage();
 	}
 	/*
@@ -227,9 +226,11 @@ getfiles(char *csetrev)
 		files = addLine(files, aprintf("%s%c%s", sfile, BK_FS, t));
 		free(sfile);
 	}
+	/* Makes it easier to find stuff if you are wacking a big cset */
+	sortLines(files, 0);
 
 	waitpid(pid, &status, 0);
-	if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+	if (!WIFEXITED(status) || (WEXITSTATUS(status) != 0)) {
 		freeLines(files, free);
 		return (0);
 	}

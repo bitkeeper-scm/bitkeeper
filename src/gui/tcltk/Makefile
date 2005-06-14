@@ -9,6 +9,11 @@ else
 	S := unix
 	EXE := 
 	TKTABLELIB := libTktable2.9.so
+	ifeq "$(shell uname)" "Darwin"
+		BUILDAQUA := 1
+		TKTABLELIB := libTktable2.9.dylib
+		LDFLAGS_TKTABLE := "LDFLAGS=-single_module"
+	endif
 endif
 CC := gcc
 LD := gcc
@@ -76,7 +81,8 @@ tktable/Makefile: tktable/configure
 # Tktable libs
 lib/Tktable2.9/$(TKTABLELIB): tktable/Makefile bin/bkgui$(EXE)
 	cd tktable && \
-	$(MAKE) CFLAGS=-I../include prefix= exec_prefix= DESTDIR=../ \
+	$(MAKE) CFLAGS=-I../include $(LDFLAGS_TKTABLE) \
+		prefix= exec_prefix= DESTDIR=../ \
 		libdir=lib bindir=bin install
 
 lib/BWidget1.7/pkgIndex.tcl: BWIDGETKEY
@@ -113,6 +119,9 @@ bin/tclsh$(EXE): tcl/$S/Makefile
 	rm -rf include usr lib/tcl8.4/tcltest1.0
 	mv bin/tclsh* bin/tclsh$(EXE)
 	$(STRIP) bin/tclsh$(EXE)
+	if [ "X$(BUILDAQUA)" != X ] ; then \
+		$(MAKE) -C tcl/macosx embedded ; \
+	fi
 
 bin/bkgui$(EXE): tk/$S/Makefile bin/tclsh$(EXE)
 	rm -rf bin/bkgui$(EXE) lib/tk*
@@ -129,6 +138,12 @@ bin/bkgui$(EXE): tk/$S/Makefile bin/tclsh$(EXE)
 	    rmdir tmp
 	mv bin/wish* bin/bkgui$(EXE)
 	$(STRIP) bin/bkgui$(EXE)
+	if [ "X$(BUILDAQUA)" != X ] ; then \
+		$(MAKE) -C tk/macosx embedded ; \
+		find /build/tk-$$USER/BitKeeper.app \
+		    -name SCCS -exec rm -rf {} \; ; \
+		mv /build/tk-$$USER/BitKeeper.app bin/ ; \
+	fi
 
 clean-obj: FORCE
 	-test -d tcl && cd tcl/$S && test -f Makefile && $(MAKE) distclean

@@ -218,6 +218,7 @@ ounpark
 parent
 park
 pending
+_popensystem
 preference
 _probekey restricted
 prompt
@@ -321,6 +322,7 @@ helptool gui
 installtool gui
 msgtool gui
 newdifftool gui
+renametool gui
 revtool gui
 setuptool gui
 

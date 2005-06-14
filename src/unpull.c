@@ -92,7 +92,7 @@ unpull(int force, int quiet, char *patch)
 	t -= 2;
 	av[++i] = t;
 	av[++i] = 0;
-	status = spawnvp_ex(_P_WAIT, av[0], av);
+	status = spawnvp(_P_WAIT, av[0], av);
 	mclose(m);
 	if (WIFEXITED(status)) {
 		if (WEXITSTATUS(status) == 0) unlink(CSETS_IN);

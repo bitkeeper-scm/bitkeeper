@@ -522,8 +522,8 @@ writable_gfile(sccs *s)
 		 * patch them in minus the keyword expansion.
 		 */
 		if (s->xflags & (X_RCS|X_SCCS)) {
-			if ((diff_gfile(s, &pf, 1, DEV_NULL) == 1) ||
-			    (diff_gfile(s, &pf, 0, DEV_NULL) == 1)) {
+			if ((diff_gfile(s, &pf, 1, DEVNULL_WR) == 1) ||
+			    (diff_gfile(s, &pf, 0, DEVNULL_WR) == 1)) {
 				if (unlink(s->gfile)) return (1);
 				sys("bk", "edit", "-q", s->gfile, SYS);
 				return (0);
@@ -560,14 +560,14 @@ gfile_unchanged(sccs *s)
 		fprintf(stderr, "%s: cannot read pfile\n", s->gfile);
 		return (1);
 	}
-	rc = diff_gfile(s, &pf, 0, DEV_NULL);
+	rc = diff_gfile(s, &pf, 0, DEVNULL_WR);
 	if (rc == 1) return (1); /* no changed */
 	if (rc != 0) return (rc); /* error */
 
 	/*
 	 * If RCS/SCCS keyword enabled, try diff it with keyword expanded
 	 */
-	if (SCCS(s) || RCS(s)) return (diff_gfile(s, &pf, 1, DEV_NULL));
+	if (SCCS(s) || RCS(s)) return (diff_gfile(s, &pf, 1, DEVNULL_WR));
 	return (0); /* changed */
 }
 

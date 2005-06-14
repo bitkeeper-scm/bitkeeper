@@ -5,7 +5,7 @@
 
 proc widgets {} \
 {
-	global	scroll wish tcl_platform search gc d app
+	global	scroll wish search gc d app
 	global State env
 
 	getConfig "diff"
@@ -14,8 +14,10 @@ proc widgets {} \
 	option add *background $gc(BG)
 
 	set gc(bw) 1
-	if {$tcl_platform(platform) == "windows"} {
+	if {$gc(windows)} {
 		set gc(py) -2; set gc(px) 1
+	} elseif {$gc(aqua)} {
+		set gc(py) 1; set gc(px) 12
 	} else {
 		set gc(py) 1; set gc(px) 4
 	}
@@ -103,30 +105,16 @@ proc widgets {} \
 
 	    search_widgets .menu .diffs.right
 
-	#frame .line
-	    #text .line.diff \
-		#-width [expr $gc(diff.diffWidth) * 2 + $gc(diff.scrollWidth)] \
-		#-height 3 \
-		#-bg $gc(diff.textBG) -fg $gc(diff.textFG) -state disabled \
-		#-borderwidth 0 \
-		#-wrap none -font $gc(diff.fixedFont)
-	    #pack .line.diff -side left -fill both
-
 	grid .menu -row 0 -column 0 -sticky ew
 	grid .diffs -row 1 -column 0 -sticky nsew
-	#grid .line -row 2 -column 0 -sticky nsew
 	grid rowconfigure .diffs 1 -weight 1
-	#grid rowconfigure .line 2 -weight 1
 	grid rowconfigure . 0 -weight 0
 	grid rowconfigure . 1 -weight 1
-	#grid rowconfigure . 2 -weight 0
 	grid columnconfigure . 0 -weight 1
 
 	# smaller than this doesn't look good.
 	wm minsize . 300 300
 
-	#bind .diffs.left <Button-1> {stackedDiff %W %x %y "B1"; break}
-	#bind .diffs.right <Button-1> {stackedDiff %W %x %y "B1"; break}
 	foreach w {.diffs.left .diffs.right} {
 		bindtags $w {all Text .}
 	}
@@ -195,7 +183,7 @@ proc widgets {} \
 # Set up keyboard accelerators.
 proc keyboard_bindings {} \
 {
-	global	search gc tcl_platform
+	global	search gc
 
 	bind all <Prior> { if {[Page "yview" -1 0] == 1} { break } }
 	bind all <Next> { if {[Page "yview" 1 0] == 1} { break } }
@@ -228,11 +216,16 @@ proc keyboard_bindings {} \
 	bind all	<space>			next
 	bind all	<p>			prev
 	bind all	<period>		dot
-	if {$tcl_platform(platform) == "windows"} {
+	if {$gc(windows) || $gc(aqua)} {
 		bind all <MouseWheel> {
 		    if {%D < 0} { next } else { prev }
 		}
-	} else {
+	}
+	if {$gc(aqua)} {
+		bind all <Command-q> cleanup
+		bind all <Command-w> cleanup
+	}
+	if {$gc(x11)} {
 		bind all <Button-4>	prev
 		bind all <Button-5>	next
 	}
@@ -293,7 +286,7 @@ proc usage {} \
 proc getFiles {} \
 {
 	global argv0 argv argc dev_null lfile rfile tmp_dir unique
-	global gc tcl_platform tmps menu rev1 rev2 Diffs DiffsEnd
+	global gc tmps menu rev1 rev2 Diffs DiffsEnd
 
 	if {$argc > 3} { usage }
 	set files [list]
@@ -339,7 +332,7 @@ proc getFiles {} \
 			set rfile [lindex $argv 0]
 
 			# Fix Dos path, convert backward slash to forward slash
-			if {$tcl_platform(platform) == "windows"} {
+			if {$gc(windows)} {
 				regsub -all "\\\\" $rfile "/" rfile
 			}
 
@@ -376,7 +369,7 @@ proc getFiles {} \
 			set rfile [lindex $argv 1]
 
 			# Fix Dos path, convert backward slash to forward slash
-			if {$tcl_platform(platform) == "windows"} {
+			if {$gc(windows)} {
 				regsub -all "\\\\" $rfile "/" rfile
 				regsub -all "\\\\" $lfile "/" lfile
 			}
@@ -425,6 +418,11 @@ proc getFiles {} \
 			    -command \
 				"pickFile \"$lf\" \"$rf\" \"$fn\" $item $lr $rr"
 			incr item
+		}
+		if {$gc(aqua)} {
+			# can't disable tearoff because the logic is tied
+			# to the indices of the menu array
+			.menu.fmb.menu entryconfigure 0 -state disabled
 		}
 		pack configure .menu.filePrev .menu.fmb .menu.fileNext \
 		    -side left -fill y -after .menu.revtool

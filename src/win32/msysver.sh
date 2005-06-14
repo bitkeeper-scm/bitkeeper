@@ -15,5 +15,10 @@ else
         MSYSVER=`tail -1 MSYSKEY`
 fi
 
-mkdir -m 777 -p /c/build/obj
-echo /c/build/obj/msys-`bk crypto -h "$MSYSVER-$BUILDHASH"`.tgz
+if [ -d /r/temp ]
+then	BUILD=/r/build
+else	BUILD=/c/build
+fi
+
+mkdir -m 777 -p $BUILD/obj
+echo $BUILD/obj/msys-`bk crypto -h "$MSYSVER-$BUILDHASH"`.tgz

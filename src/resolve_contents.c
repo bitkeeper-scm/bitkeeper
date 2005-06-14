@@ -366,7 +366,7 @@ c_shell(resolve *rs)
 		av[++i] = rs->shell;
 	}
 	av[++i] = 0;
-	spawnvp_ex(_P_WAIT, av[0], av);
+	spawnvp(_P_WAIT, av[0], av);
 	safe_putenv("PATH=%s", path);
 	free(path);
 	return (0);

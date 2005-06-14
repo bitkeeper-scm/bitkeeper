@@ -445,7 +445,7 @@ err:		system("bk help -s prompt");
 		}
 		nav[++i] = 0;
 		assert(i < sizeof(nav)/sizeof(char*));
-		ret = spawnvp_ex(_P_WAIT, nav[0], nav);
+		ret = spawnvp(_P_WAIT, nav[0], nav);
 		if (prog) unlink(msgtmp);
 		if (WIFEXITED(ret)) exit(WEXITSTATUS(ret));
 		exit(2);
@@ -1228,7 +1228,7 @@ spawn_cmd(int flag, char **av)
 {
 	int ret;
 
-	ret = spawnvp_ex(flag, av[0], av); 
+	ret = spawnvp(flag, av[0], av); 
 	if (WIFSIGNALED(ret)) {
 		unless (WTERMSIG(ret) == SIGPIPE) {
 			fprintf(stderr,
@@ -1497,8 +1497,8 @@ reserveStdFds(void)
 #ifdef WIN32
 	closeBadFds();
 #endif
-	if ((fd0 = open(NULL_FILE, O_RDONLY, 0)) == 0) {
-do1:		if ((fd1 = open(DEV_NULL, O_WRONLY, 0)) != 1) {
+	if ((fd0 = open(DEVNULL_RD, O_RDONLY, 0)) == 0) {
+do1:		if ((fd1 = open(DEVNULL_WR, O_WRONLY, 0)) != 1) {
 			close(fd1);
 		}
 	} else {

@@ -404,6 +404,7 @@ private	struct {
 	{"abort", CMD_FAST_EXIT},
 	{"check", CMD_FAST_EXIT},
 	{"commit", CMD_WRLOCK|CMD_WRUNLOCK},
+	{"fix", CMD_WRLOCK|CMD_WRUNLOCK},
 	{"license", CMD_FAST_EXIT},
 	{"pending_part1", CMD_RDLOCK|CMD_RDUNLOCK},
 	{"pending_part2", CMD_RDLOCK|CMD_RDUNLOCK},
@@ -769,7 +770,13 @@ launch_wish(char *script, char **av)
 	/* If they set this, they can set TCL_LIB/TK_LIB as well */
 	unless ((path = getenv("BK_WISH")) && executable(path)) path = 0;
 	unless (path) {
-		path = aprintf("%s/gui/bin/bkgui", bin);
+		if (gui_useAqua()) {
+			path = aprintf(
+			    "%s/gui/bin/BitKeeper.app/Contents/MacOS/BitKeeper",
+			    bin);
+		} else {
+			path = aprintf("%s/gui/bin/bkgui", bin);
+		}
 		if (executable(path)) {
 			safe_putenv("TCL_LIBRARY=%s/tcltk/lib/tcl8.4", bin);
 			safe_putenv("TK_LIBRARY=%s/tcltk/lib/tk8.4", bin);
@@ -806,7 +813,7 @@ launch_wish(char *script, char **av)
 		unless (av[i]) break;
 		i++;
 	}
-	if ((pid = spawnvp_ex(_P_NOWAIT, argv[0], argv)) < 0) {
+	if ((pid = spawnvp(_P_NOWAIT, argv[0], argv)) < 0) {
 		fprintf(stderr, "bk: cannot spawn %s\n", argv[0]);
 	}
 #ifdef	WIN32
@@ -826,23 +833,4 @@ launch_wish(char *script, char **av)
 	} else {
 		return (WEXITSTATUS(ret));
 	}
-}
-
-char *
-shell(void)
-{
-	char	*sh;
-
-	/*
-	 * Remember that in the regressions we have a restricted PATH.
-	 * Search for BK_LIMITPATH
-	 */
-#ifndef	WIN32
-	if (sh = getenv("BK_SHELL")) return (sh);
-	if (sh = whichp("bash", 0, 1)) return (sh);
-	if (sh = whichp("ksh", 0, 1)) return (sh);
-#endif
-	if (sh = whichp("sh", 0, 1)) return (sh);
-	assert("No shell" == 0);
-	return (0);	/* Windows warns otherwise */
 }

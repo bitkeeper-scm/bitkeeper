@@ -27,7 +27,7 @@
 extern "C" {
 #endif
 
-#ifdef	__APPLE__
+#if	defined(__APPLE__) && MACOS_VER <= 1020
 #define	getopt		gnu_getopt
 #define	getopt_long	gnu_getopt_long
 #define	optind		gnu_optind

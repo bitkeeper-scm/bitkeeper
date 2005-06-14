@@ -15,7 +15,7 @@ proc eat {fd} \
 
 proc cmd_edit {which} \
 {
-	global	curLine edit_busy gc filename w tmp_dir env tcl_platform
+	global	curLine edit_busy gc filename w tmp_dir env
 
 	saveComments
 	if {$edit_busy == 1} { return }
@@ -39,12 +39,12 @@ proc cmd_edit {which} \
 			fileevent $fd readable "eat $fd"
 			vwait edit_busy
 			if {[file readable $merge]} {
-				if {$tcl_platform(platform) != "windows"} {
+				if {!$gc(windows)} {
 					set rwx \
 					[file attributes $filename -permissions]
 				}
 				catch {file rename -force $merge $filename}
-				if {$tcl_platform(platform) != "windows"} {
+				if {!$gc(windows)} {
 					file attributes \
 					    $filename -permissions $rwx
 				}
@@ -69,10 +69,10 @@ proc cmd_edit {which} \
 proc edit_widgets {} \
 {
 	global	adjust nextMark firstEditConfg edit_changed
-	global	tcl_platform gc
+	global	gc
 
 	# Defaults
-	if {$tcl_platform(platform) == "windows"} {
+	if {$gc(windows) || $gc(aqua)} {
 		set y 0
 		set x 2
 		set filesHt 9
@@ -202,6 +202,13 @@ proc edit_widgets {} \
 	bind .edit.t.t <Return> { edit_adjust 1 }
 	bind .edit.t.t <Key> {
 		if {"%A" != "{}"} { edit_changed }
+	}
+
+	if {$gc(aqua)} {
+		bind .edit.t.t <Command-w> edit_exit
+		# XXX: Is it a good idea to allow people to quit citool
+		# from ciedit? Most MacOS apps allow Command-q from anywhere...
+		bind .edit.t.t <Command-q> cmd_done
 	}
 
 	.edit.t.t tag configure "new" -background $gc(ci.selectColor)

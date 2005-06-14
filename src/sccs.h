@@ -161,6 +161,7 @@
 #define	DF_GNUB		0x00000080
 #define	DF_GNUp		0x00000100
 #define	DF_GNUw		0x00000200
+#define	DF_GNUN		0x00000400
 
 /*
  * Date handling.
@@ -1100,6 +1101,7 @@ void	ttyprintf(char *fmt, ...);
 void	enableFastPendingScan(void);
 char	*isHostColonPath(char *);
 int	gui_useDisplay(void);
+int	gui_useAqua(void);
 char	*gui_displayName(void);
 char	*savefile(char *dir, char *prefix, char *pathname);
 void	has_proj(char *who);

@@ -595,7 +595,7 @@ resolve(opts opts)
 	unless (opts.quiet) {
 		fprintf(stderr, "Running resolve to apply new work ...\n");
 	}
-	status = spawnvp_ex(_P_WAIT, "bk", cmd);
+	status = spawnvp(_P_WAIT, "bk", cmd);
 	unless (WIFEXITED(status)) return (100);
 	return (WEXITSTATUS(status));
 	return (0);

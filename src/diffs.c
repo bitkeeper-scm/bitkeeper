@@ -4,6 +4,7 @@
 #include "range.h"
 
 private	int	cset_boundries(sccs *s, char *rev);
+private int	nulldiff(char *name, u32 kind, u32 flags);
 
 /*
  * diffs - show differences of SCCS revisions.
@@ -53,18 +54,13 @@ diffs_main(int ac, char **av)
 {
 	int	verbose = 0, rc, c;
 	int	empty = 0, errors = 0, mdiff = 0;
-	u32	flags = DIFF_HEADER|SILENT, kind;
+	u32	flags = DIFF_HEADER|SILENT, kind = DF_DIFF;
 	pid_t	pid = 0; /* lint */
 	char	*name;
 	char	*Rev = 0, *boundaries = 0;
 	RANGE_DECL;
 
-	if (name = strrchr(av[0], '/')) {
-		kind = streq(++name, "sdiffs") ? DF_SDIFF : DF_DIFF;
-	} else {
-		kind = streq(av[0], "sdiffs") ? DF_SDIFF : DF_DIFF;
-	}
-	while ((c = getopt(ac, av, "a;A;bBcC|d;ehHIl|m|npr|R|suvw")) != -1) {
+	while ((c = getopt(ac, av, "a;A;bBcC|d;ehHIl|m|nNpr|R|suvw")) != -1) {
 		switch (c) {
 		    case 'A':
 			flags |= GET_ALIGN;
@@ -90,8 +86,9 @@ diffs_main(int ac, char **av)
 			if (optarg && (*optarg == 'r')) flags |= GET_LINENAME;
 			break;
 		    case 'n': kind |= DF_RCS; break;		/* doc 2.0 */
+		    case 'N': kind |= DF_GNUN; break;
 		    case 'p': kind |= DF_GNUp; break;		/* doc 2.0 */
-		    case 'R': Rev = optarg; break;		/* doc 2.0 */
+		    case 'R': unless (Rev = optarg) Rev = "-"; break;
 		    case 's':					/* doc 2.0 */
 			kind &= ~DF_DIFF;
 			kind |= DF_SDIFF;
@@ -152,11 +149,16 @@ usage:			system("bk help -s diffs");
 		char	*r1 = 0, *r2 = 0;
 		int	save = things;
 
-		/* unless we are given endpoints, don't diff */
+		/*
+		 * Unless we are given endpoints, don't diff.
+		 * This is a big performance win.
+		 * 2005-06: Endpoints meaning extended for diffs -N.
+		 */
 		unless (things || boundaries || Rev || sfileRev()) {
 			char	*gfile = sccs2name(name);
 
-			unless (writable(gfile)) {
+			unless (writable(gfile) ||
+			    ((kind&DF_GNUN) && !exists(name) && exists(gfile))){
 				free(gfile);
 				goto next;
 			}
@@ -164,7 +166,7 @@ usage:			system("bk help -s diffs");
 		}
 		s = sccs_init(name, flags);
 		unless (s && HASGRAPH(s)) {
-			errors |= 2;
+			if (nulldiff(name, kind, flags) == 2) goto out;
 			goto next;
 		}
 		if (boundaries) {
@@ -172,7 +174,15 @@ usage:			system("bk help -s diffs");
 		} else if (Rev) {
 			/* r1 == r2  means diff against the parent(s)(s)  */
 			/* XXX TODO: probably needs to support -R+	  */
-			r1 = r2 = Rev;
+			if (streq(Rev, "-")) {
+				unless (r1 = r2 = sfileRev()) {
+					fprintf(stderr,
+					    "diffs: -R- needs file|rev.\n");
+					goto next;
+				}
+			} else {
+				r1 = r2 = Rev;
+			}
 		} else {
 			int	restore = 0;
 
@@ -279,7 +289,7 @@ next:		if (s) {
 		name = sfileNext();
 		things = save;
 	}
-	if (sfileDone()) errors |= 4;
+out:	if (sfileDone()) errors |= 4;
 	if (mdiff) {
 		u32	status;
 
@@ -289,6 +299,48 @@ next:		if (s) {
 		errors |= WIFEXITED(status) ? WEXITSTATUS(status) : 1;
 	}
 	return (errors);
+}
+
+private int
+nulldiff(char *name, u32 kind, u32 flags)
+{
+	int	ret = 0;
+	char	*here, *file, *p;
+
+	name = sccs2name(name);
+	unless (kind & DF_GNUN) {
+		printf("New file: %s\n", name);
+		goto out;
+	}
+	unless (ascii(name)) {
+		fprintf(stderr, "Warning: skipping binary '%s'\n", name);
+		goto out;
+	}
+	if (flags & DIFF_HEADER) {
+		printf("===== New file: %s =====\n", name);
+		/* diff() uses write, not stdio */
+		if (fflush(stdout)) {
+			ret = 2;
+			goto out;
+		}
+	}
+	
+	/*
+	 * Wayne liked this better but I had to work around a nasty bug in
+	 * that the chdir() below changes the return from proj_cwd().
+	 * Hence the strdup.  I think we want a pushd/popd sort of interface.
+	 */
+	here = strdup(proj_cwd());
+	p = strrchr(here, '/');
+	assert(p);
+	file = aprintf("%s/%s", p+1, name);
+	chdir("..");
+	ret = diff(DEVNULL_RD, file, kind, "-");
+	chdir(here);
+	free(here);
+	free(file);
+out:	free(name);
+	return (ret);
 }
 
 private int

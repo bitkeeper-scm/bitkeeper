@@ -106,6 +106,34 @@ echo OK
 # We'll need this later
 bk clone $Q $HERE/project $HERE/save
 
+echo $N Make sure we do not attempt a fix with repository locked ....$NL
+cd $HERE/save
+bk -r prs -hnd:MD5KEY: -r+ | sort > WANT
+mkdir RESYNC
+bk fix -c > OUT 2>&1 && {
+	echo should have exited with an error
+	exit 1
+}
+grep -q RESYNC OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+bk -r prs -hnd:MD5KEY: -r+ | sort > GOT
+cmp -s WANT GOT || {
+	echo Some files were changed
+	diff WANT GOT
+	exit 1
+}
+test -z "`bk -cr`" || {
+	echo Some files left edited
+	bk -cr
+	exit 1
+}
+rmdir RESYNC
+cd $HERE/project
+echo OK
+
 echo $N Make sure ChangeSet is not left edited by fix -c ............$NL
 bk fix $Q -c
 test -f SCCS/p.ChangeSet && {

@@ -33,8 +33,6 @@ proc resolveSymlink {filename} {
 
 proc displayMessage {msg {exit {}}} \
 {
-	global tcl_platform
-
 	if {$exit != ""} {
 		set title "Error"
 		set icon "error"
@@ -567,4 +565,48 @@ proc ::bgExec::readFile {f} \
 		# Something else; should never happen.
 		set bgExec(status) 2
 	}
+}
+
+proc AboutAqua {} \
+{
+	if {[winfo exists .aboutaqua]} {return}
+	set version [exec bk version]
+	toplevel .aboutaqua
+	wm title .aboutaqua ""
+	frame .aboutaqua.f
+	::tk::unsupported::MacWindowStyle style .aboutaqua document {closeBox}
+	label .aboutaqua.f.title \
+	    -text "The BitKeeper Configuration Management System" \
+	    -font {Helvetica 14 bold} \
+	    -justify center
+	label .aboutaqua.f.v \
+	    -text $version \
+	    -font {Helvetica 12 normal} \
+	    -justify left
+	label .aboutaqua.f.copyright \
+	    -text "Copyright 2005 BitMover, Inc." \
+	    -font {Helvetica 11 normal} \
+	    -justify center
+	grid .aboutaqua.f.title -pady 2
+	grid .aboutaqua.f.v -pady 2
+	grid .aboutaqua.f.copyright -pady 2 -sticky we
+	grid .aboutaqua.f  -padx 20 -pady 20 -sticky nswe
+}
+
+proc AquaMenus {} \
+{
+	menu .mb
+	. configure -menu .mb
+	menu .mb.apple -tearoff 0
+	.mb.apple add command -label "About BitKeeper" -command AboutAqua
+	.mb add cascade -menu .mb.apple
+	menu .mb.help -tearoff 0
+	.mb add cascade -menu .mb.help
+	.mb.help add command \
+	    -label "BitKeeper Help" -command {exec bk helptool &}
+}
+
+# Mac OS X needs a _real_ menubar 
+if {[tk windowingsystem] eq "aqua"} {
+	AquaMenus
 }

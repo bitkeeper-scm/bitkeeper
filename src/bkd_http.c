@@ -559,7 +559,7 @@ http_changes(char *rev)
 	av[++i] = dspec;
 	av[++i] = "ChangeSet";
 	av[++i] = 0;
-	spawnvp_ex(_P_WAIT, "bk", av);
+	spawnvp(_P_WAIT, "bk", av);
 	out(INNER_END OUTER_END);
 	if (!embedded) trailer("ChangeSet");
 }
@@ -856,7 +856,7 @@ http_hist(char *pathrev)
 	    "</tr>\n");
 
 
-	spawnvp_ex(_P_WAIT, "bk", av);
+	spawnvp(_P_WAIT, "bk", av);
 
 	out(INNER_END OUTER_END);
 	if (!embedded) trailer("hist");
@@ -1141,7 +1141,7 @@ http_diffs(char *pathrev)
 	av[++i] = pathrev;
 	av[++i] = 0;
 
-	spawnvp_ex(_P_WAIT, "bk", av);
+	spawnvp(_P_WAIT, "bk", av);
 
 	out(INNER_END OUTER_END);
 
@@ -1981,7 +1981,7 @@ http_tags(char *page)
 	av[++i] = CHANGESET;
 	av[++i] = 0;
 
-	spawnvp_ex(_P_WAIT, "bk", av);
+	spawnvp(_P_WAIT, "bk", av);
 
 	out(INNER_END OUTER_END);
 
