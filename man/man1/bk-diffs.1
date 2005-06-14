@@ -7,6 +7,16 @@ bk diffs \- show differences in revision controlled files
 .OPT opts
 .BKARGS
 .SH DESCRIPTION
+The 
+.B bk diffs
+command is typically used to show changes to working files relative to the
+previously checked in version.
+.LP
+The 
+.B bk diffs
+command supports context, unified, procedural, and side-by-side diffs.
+All of the above can be optionally annotated with filename,
+author, date, and/or revision numbers.
 .LP
 To view changes you have made to all of the files in a directory
 since checking the files out, type:
@@ -17,11 +27,7 @@ To see the changes for all files in your tree, do the following:
 .DS
 $ bk \-r diffs | more
 .DE
-The 
-.B bk diffs
-command supports context, unified, procedural, and side-by-side diffs.
-All of the above can be optionally annotated with filename,
-author, date, and/or revision numbers.
+See the examples section for more ideas on how to use this useful command.
 .SH OPTIONS
 .if t .TP .7i
 .if n .TP 1.1i
@@ -70,7 +76,8 @@ Ignore  changes  that  just  insert or delete blank lines.
 Do context diffs.
 .tp
 .OPTreq \-d date
-Diff using date or symbol.
+Instead of using revision[s] as the versions to diff, use the revision[s]
+specified by the date.
 .tp
 .B \-h
 Don't print headers.
@@ -86,6 +93,12 @@ Show all changes made by the changeset containing rev
 .tp
 .B \-n
 Do RCS style diffs.
+.tp
+.B \-N
+If a specified file is not under revision control treat it as if it were under
+revision control and the previous checked in version was empty.
+Without this option specified files not under revision control are listed
+as "New file: <filename>".
 .tp
 .B \-p
 Procedural diffs, like
@@ -103,6 +116,8 @@ Show diffs between parent of
 .ARG rev
 and
 .ARG rev .
+If no revision is specified and the files are listed on standard input
+as file|rev then the revision is taken from the standard input.
 .tp
 .B \-s
 Display side-by-side diffs.
@@ -138,16 +153,18 @@ below, -r@<rev>, means use the revision as of changeset <rev>.
 $ bk -r diffs -u
 $ bk -r diffs -u -r@<rev>
 .DE
+To create a patch which captures all changes as well as all new files do this:
+.DS
+bk -xcr diffs -Nu
+.DE
 .SH BUGS
-The annotations, if any, are currently considered part of the data when diffing
-files.  This needs to work more like bk grep.
-.LP
-This command should support more of the GNU diff options.
+This command does not currently handle displaying differences for binary files.
 .SH SEE ALSO
-.BR diff (1)
+.SA diff
 .br
 .SA difftool 1
 .SA export 1
+.SA range
 .SA treediff
 .\" help://differences
 .\" help://sdiffs

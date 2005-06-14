@@ -8417,7 +8417,7 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 			strcpy(new, s->gfile);
 		}
 	} else { /* non regular file, e.g symlink */
-		strcpy(new, DEV_NULL);
+		strcpy(new, DEVNULL_WR);
 	}
 
 	/*
@@ -8440,7 +8440,7 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 			return (-1);
 		}
 	} else {
-		strcpy(old, DEV_NULL);
+		strcpy(old, DEVNULL_WR);
 	}
 
 	/*
@@ -8451,8 +8451,8 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 	} else {
 		ret = diff(old, new, DF_DIFF, tmpfile);
 	}
-	unless (streq(old, DEV_NULL)) unlink(old);
-	if (!streq(new, s->gfile) && !streq(new, DEV_NULL)){
+	unless (streq(old, DEVNULL_WR)) unlink(old);
+	if (!streq(new, s->gfile) && !streq(new, DEVNULL_WR)){
 		unlink(new);		/* careful */
 	}
 	switch (ret) {
@@ -8483,7 +8483,7 @@ diff_g(sccs *s, pfile *pf, char **tmpfile)
 {
 	static char	tmpname[MAXPATH];
 
-	*tmpfile = DEV_NULL;
+	*tmpfile = DEVNULL_WR;
 	switch (diff_gmode(s, pf)) {
 	    case 0: 		/* no mode change */
 		if (!isRegularFile(s->mode)) return 1;
@@ -8910,7 +8910,7 @@ ascii(char *file)
 private int
 openInput(sccs *s, int flags, FILE **inp)
 {
-	char	*file = (flags&DELTA_EMPTY) ? DEV_NULL : s->gfile;
+	char	*file = (flags&DELTA_EMPTY) ? DEVNULL_WR : s->gfile;
 	char	*mode = "rb";	/* default mode is binary mode */
 	int 	compress;
 
@@ -12326,7 +12326,7 @@ out:
 		if (diffs) mclose(diffs);
 		free_pfile(&pf);
 		if (free_syms) freeLines(syms, free); 
-		if (tmpfile  && !streq(tmpfile, DEV_NULL)) unlink(tmpfile);
+		if (tmpfile  && !streq(tmpfile, DEVNULL_WR)) unlink(tmpfile);
 		if (locked) sccs_unlock(s, 'z');
 		debug((stderr, "delta returns %d\n", error));
 		return (error);
@@ -12813,9 +12813,9 @@ mkTag(char *rev, char *revM, pfile *pf, char *path, char tag[])
 {
 	/*
 	 * 1.0 => create (or reverse create in a reverse pacth )
-	 * DEV_NULL => delete (i.e. sccsrm)
+	 * /dev/null => delete (i.e. sccsrm)
 	 */
-	if (streq(rev, "1.0") || streq(path, NULL_FILE)) {
+	if (streq(rev, "1.0") || streq(path, DEVNULL_RD)) {
 		sprintf(tag, "%s", "/dev/null");
 	} else {
 		strcpy(tag, rev);
@@ -13053,7 +13053,7 @@ mkDiffTarget(sccs *s,
 	char	*pat;
 
 	if (streq(rev, "1.0")) {
-		strcpy(target, NULL_FILE);
+		strcpy(target, DEVNULL_RD);
 		return (0);
 	}
 	pat = aprintf("%s-%s", basenm(s->gfile), rev);
@@ -13122,8 +13122,8 @@ normal_diff(sccs *s, char *lrev, char *lrevM,
 	 * Now diff the lfile & rfile
 	 */
 	rc = doDiff(s, flags, kind, lfile, rfile, out, lrev, rrev, ltag, rtag);
-done:	unless (streq(lfile, NULL_FILE)) unlink(lfile);
-	unless (streq(rfile, s->gfile) || streq(rfile, NULL_FILE)) unlink(rfile);
+done:	unless (streq(lfile, DEVNULL_RD)) unlink(lfile);
+	unless (streq(rfile, s->gfile) || streq(rfile, DEVNULL_RD)) unlink(rfile);
 	return (rc);
 }
 
@@ -13947,6 +13947,10 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		KW("COMMENTS");
 		fs("------------------------------------------------\n");
 		return (strVal);
+	}
+
+	case KW_CHANGESET: /* CHANGESET */ {
+		return (CSET(s) ? strVal : nullVal);
 	}
 
 	case KW_CSETFILE: /* CSETFILE */ {

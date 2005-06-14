@@ -38,6 +38,7 @@ EOF
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
+
 echo $N Checking diff -r1.8 against edited file .....................$NL
 bk diffs -r1.8 Mydiffs > D || exit 1
 bk undos > W <<EOF
@@ -50,6 +51,7 @@ EOF
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
+
 echo $N Checking diff filename\|1.8..1.9 with edited gfile ...........$NL
 bk diffs 'Mydiffs|1.8..1.9' > D || exit 1
 bk undos > W <<EOF
@@ -60,6 +62,13 @@ EOF
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
+
+echo $N Checking diff -R - with edited gfile .........................$NL
+echo 'Mydiffs|1.9' | bk diffs -R - > D || exit 1
+cmp -s D W
+if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
+echo OK
+
 echo $N Checking diff -r1.8 w/ no file ..............................$NL
 bk unedit Mydiffs
 bk diffs -r1.8 Mydiffs > D || exit 1
@@ -72,6 +81,7 @@ EOF
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
+
 echo $N Checking diff -R1.8 w/ no file ..............................$NL
 bk unedit Mydiffs
 bk diffs -R1.8 Mydiffs > D || exit 1
@@ -83,6 +93,7 @@ EOF
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
+
 echo $N Checking diff -r1.8 -r1.9 ...................................$NL
 bk diffs -r1.8 -r1.9 Mydiffs > D || exit 1
 bk undos > W <<EOF
@@ -93,6 +104,7 @@ EOF
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
+
 echo $N Checking diff filename\|1.8..1.9 .............................$NL
 bk diffs 'Mydiffs|1.8..1.9' > D || exit 1
 bk undos > W <<EOF
@@ -103,6 +115,7 @@ EOF
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
+
 echo $N Checking diff -r1.7 -r1.9 with no gfile .....................$NL
 bk diffs -r1.7 -r1.9 Mydiffs > D || exit 1
 bk undos > W <<EOF
@@ -114,6 +127,7 @@ EOF
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; diff D W; exit 1; fi
 echo OK
+
 echo $N Checking diff -r1.7 -r1.9 with wrong gfile ..................$NL
 bk _get $Q -r1.1 Mydiffs || exit 1
 bk diffs -r1.7 -r1.9 Mydiffs > D || exit 1
@@ -126,6 +140,7 @@ EOF
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; diff D W; exit 1; fi
 echo OK
+
 echo $N Checking diff -r1.7 -r1.9 with edited gfile .................$NL
 bk edit $Q Mydiffs || exit 1
 echo foo >> Mydiffs
@@ -139,6 +154,7 @@ EOF
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; diff D W; exit 1; fi
 echo OK
+
 echo $N Checking diff -R1.7 .........................................$NL
 bk diffs -R1.7 Mydiffs > D || exit 1
 bk undos > W <<EOF
@@ -149,6 +165,7 @@ EOF
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; cat D; exit 1; fi
 echo OK
+
 echo $N Checking diffs with no gfile ................................$NL
 bk unedit $Q Mydiffs
 bk diffs Mydiffs > D 2>E || exit 1
@@ -156,11 +173,13 @@ if [ -s D ]; then echo Failed to get correct diffs.; cat D; exit 1; fi
 ## XXX This prints "diffs: no such file: Mydiffs"
 ##     Is that OK?
 echo OK
+
 echo $N Checking diffs with readonly wrong gfile ....................$NL
 bk _get $Q -r1.1 Mydiffs || exit 1
 bk diffs -r+ Mydiffs > D || exit 1
 if [ -s D ]; then echo Failed to get correct diffs.; cat D; exit 1; fi
 echo OK
+
 echo $N Checking diffs -r1.8 with readonly wrong gfile ..............$NL
 bk _get $Q -r1.1 Mydiffs || exit 1
 bk diffs -r1.8 Mydiffs > D || exit 1
@@ -173,11 +192,13 @@ EOF
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; cat D; exit 1; fi
 echo OK
+
 echo $N Checking diffs -r+ with no gfile ............................$NL
 bk clean Mydiffs
 bk diffs -r+ Mydiffs > D || exit 1
 if [ -s D ]; then echo Failed to get correct diffs.; cat D; exit 1; fi
 echo OK
+
 echo $N Checking diffs -r+ with readonly wrong gfile ................$NL
 bk _get $Q -r1.1 Mydiffs || exit 1
 bk diffs -r+ Mydiffs > D || exit 1
@@ -203,6 +224,7 @@ if [ $? -ne 0 ]
 then 	echo 'failed (bug 2002-02-08-004)'
 else	echo 'bug 2002-02-08-004 passing!  update testcase.'
 fi
+
 echo $N Checking diffs -r+ with edited gfile ........................$NL
 bk edit $Q Mydiffs || exit 1
 echo foo >> Mydiffs
@@ -215,6 +237,32 @@ EOF
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; cat D; exit 1; fi
 echo OK
+
+echo $N Checking diffs with non-versioned file ......................$NL
+mkdir -p sub/dir/junk
+cat > sub/dir/junk/file <<EOF
+1
+2
+3
+EOF
+bk diffs -Nu sub/dir/junk/file > DIFFS
+grep -q "^+++ project/sub/dir/junk/file" DIFFS || {
+	echo failed to put in proper header for patch
+	cat DIFFS
+	exit 1
+}
+echo OK
+
+echo $N Checking diffs with non-versioned read-only file ............$NL
+chmod -w sub/dir/junk/file
+bk diffs -Nu sub/dir/junk/file > DIFFS
+grep -q "^+++ project/sub/dir/junk/file" DIFFS || {
+	echo failed to put in proper header for patch
+	cat DIFFS
+	exit 1
+}
+echo OK
+
 echo $N Checking diff on lines with many carriage returns ...........$NL
 echo > a
 echo > b
@@ -273,6 +321,7 @@ bk clean $Q a || {
 	exit 1
 }
 echo OK
+
 echo $N Checking diff with ignore-to-str option .....................$NL
 echo > a
 echo > b
@@ -320,3 +369,4 @@ bk diff --ignore-to-str='x ' --ignore-trailing-cr a b > DIFF || {
 	exit 1
 }
 echo OK
+

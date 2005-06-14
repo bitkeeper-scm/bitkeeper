@@ -1497,8 +1497,8 @@ reserveStdFds(void)
 #ifdef WIN32
 	closeBadFds();
 #endif
-	if ((fd0 = open(NULL_FILE, O_RDONLY, 0)) == 0) {
-do1:		if ((fd1 = open(DEV_NULL, O_WRONLY, 0)) != 1) {
+	if ((fd0 = open(DEVNULL_RD, O_RDONLY, 0)) == 0) {
+do1:		if ((fd1 = open(DEVNULL_WR, O_WRONLY, 0)) != 1) {
 			close(fd1);
 		}
 	} else {

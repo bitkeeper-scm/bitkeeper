@@ -225,7 +225,7 @@ sfio_size(opts opts, int gzip)
 	int     fd;
 	u32     n;
 
-	fd = open(DEV_NULL, O_WRONLY, 0644);
+	fd = open(DEVNULL_WR, O_WRONLY, 0644);
 	assert(fd > 0);
 	n = gensfio(opts, 0, gzip, fd);
 	close(fd);

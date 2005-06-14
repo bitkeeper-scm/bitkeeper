@@ -111,7 +111,7 @@ requestWebLicense(void)
 
 	/* connect stdout to /dev/null */
 	close(1);
-	fd = open(DEV_NULL, O_WRONLY, 0);
+	fd = open(DEVNULL_WR, O_WRONLY, 0);
 	if (fd != 1) {
 		dup2(fd, 1);
 		close(fd);

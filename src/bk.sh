@@ -434,11 +434,6 @@ _vi() {
 	exec vi "$@"
 }
 
-_sdiffs() {		# /* doc 2.0 as diffs -s */
-	bk diffs -s "$@"
-}
-
-
 # Undelete a file
 _unrm () {
 	FORCE=no

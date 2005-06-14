@@ -142,7 +142,7 @@ next:		sccs_free(s);
 	}
 	closeTags();
 	mdbm_close(csetBoundary);
-	sysio(NULL, DEV_NULL, DEV_NULL, "bk", "-R", "sfiles", "-P", SYS);
+	sysio(NULL, DEVNULL_WR, DEVNULL_WR, "bk", "-R", "sfiles", "-P", SYS);
 
 	/* update rootkey embedded in files */
 	unlink("BitKeeper/log/ROOTKEY");

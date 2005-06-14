@@ -1253,7 +1253,7 @@ err:		if (sfio_list[0]) unlink(sfio_list);
 		 * Send output to /dev/null because we do not want to see the 
 		 * warning message when we try to " bk edit" a extra file
 		 */
-		sysio(NULL, DEV_NULL, DEV_NULL, "bk", "edit", "-q", to, SYS);
+		sysio(0, DEVNULL_WR, DEVNULL_WR, "bk", "edit", "-q", to, SYS);
 		unlink(to); /* careful */
 		copyFileOrLink(from, to);
 		from = name2cname(from);
