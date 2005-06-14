@@ -568,14 +568,14 @@ tclwrap: blowfish.o tclwrap.o
 
 tclwrap.o blowfish.o: blowfish.h
 
-cmd.c cmd.h: mk-cmd.pl bk.sh
-	perl mk-cmd.pl || (rm -f cmd.c cmd.h; exit 1)
+cmd.c cmd.h: cmd.pl bk.sh
+	perl cmd.pl || (rm -f cmd.c cmd.h; exit 1)
 
 # This parses slib.c and extracts the meta-data keywords expanded
 # by kw2val() and passes them to gperf to generate hash lookup code.
 slib.o:	kw2val_lookup.c
-kw2val_lookup.c: slib.c mk-kw2val.pl
-	perl mk-kw2val.pl slib.c || (rm -f kw2val_lookup.c; exit 1)
+kw2val_lookup.c: slib.c kw2val.pl
+	perl kw2val.pl slib.c || (rm -f kw2val_lookup.c; exit 1)
 
 hidestring: hidestring.c	
 	$(CC) $(CC_FAST) -o hidestring hidestring.c

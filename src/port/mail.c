@@ -140,7 +140,7 @@ smtpmail(char **to, char *subject, char *file)
 	getMsg("win32-mailer-error", 0, '=', stderr);
 	return (-1);
  out:
-	pid = spawnvp_ex(_P_NOWAIT, av[1], av + 1);
+	pid = spawnvp(_P_NOWAIT, av[1], av + 1);
 	freeLines(av, free);
 	if (pid < 0) goto err;
 	return (pid);

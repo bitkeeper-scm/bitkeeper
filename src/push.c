@@ -406,7 +406,7 @@ patch_size(int gzip, char *rev_list)
 	int	fd;
 	u32	n;
 
-	fd = open(DEV_NULL, O_WRONLY, 0644);
+	fd = open(DEVNULL_WR, O_WRONLY, 0644);
 	assert(fd > 0);
 	n = genpatch(gzip, fd, rev_list);
 	close(fd);

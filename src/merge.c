@@ -76,7 +76,7 @@ do_merge(char *files[3])
 	new_av[6] = files[2];
 	new_av[7] = 0;
 
-	rc = spawnvp_ex(_P_WAIT, new_av[0], new_av);
+	rc = spawnvp(_P_WAIT, new_av[0], new_av);
 
 	unless (WIFEXITED(rc)) return (-1);
 	return (WEXITSTATUS(rc));

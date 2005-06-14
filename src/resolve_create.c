@@ -137,7 +137,7 @@ do_difftool(resolve *rs, char *left, char *right, int wait)
 	av[3] = right;
 	av[4] = 0;
 	if (wait) {
-		return (spawnvp_ex(_P_WAIT, "bk", av));
+		return (spawnvp(_P_WAIT, "bk", av));
 	} else {
 		spawnvp(_P_DETACH, "bk", av);
 	}

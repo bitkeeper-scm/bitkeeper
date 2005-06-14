@@ -234,6 +234,6 @@ gnupatch_main(int ac, char **av)
 	if (cset1) free(cset1);
 	if (cset2) free(cset2);
 	chdir("/");
-	spawnvp_ex(_P_WAIT, "rm", clean_av);
+	spawnvp(_P_WAIT, "rm", clean_av);
 	return (0);
 }

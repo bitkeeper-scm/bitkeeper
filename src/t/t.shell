@@ -9,9 +9,19 @@
 #    constitutes your permission for BitMover, Inc. to distribute  the
 #    modifications under any license.
 
+echo $N Test our popen/system commands ..............................$NL
+cat > trigger <<EOF
+#!/bin/sh
 
-# Copyright (c) 2000 Larry McVoy
-# %K%
+exit 7
+EOF
+chmod +x trigger
+bk _popensystem ./trigger 2>ERR || {
+	echo failed
+	cat ERR
+	exit 1
+}
+echo OK
 
 #
 # This test is not portable to WIN32;
