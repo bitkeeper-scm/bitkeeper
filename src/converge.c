@@ -208,7 +208,7 @@ done:		mdbm_close(vals);
 	assert(fd == 1);
 	for (kv = mdbm_first(vals); kv.key.dptr; kv = mdbm_next(vals)) {
 		get[3] = kv.val.dptr;
-		if (spawnvp_ex(_P_WAIT, get[0], get)  < 0) {
+		if (spawnvp(_P_WAIT, get[0], get)  < 0) {
 			fprintf(stderr, "converge; can't spawn get process\n");
 			exit(1);
 		}

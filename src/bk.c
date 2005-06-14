@@ -807,7 +807,7 @@ launch_wish(char *script, char **av)
 		unless (av[i]) break;
 		i++;
 	}
-	if ((pid = spawnvp_ex(_P_NOWAIT, argv[0], argv)) < 0) {
+	if ((pid = spawnvp(_P_NOWAIT, argv[0], argv)) < 0) {
 		fprintf(stderr, "bk: cannot spawn %s\n", argv[0]);
 	}
 #ifdef	WIN32
@@ -827,23 +827,4 @@ launch_wish(char *script, char **av)
 	} else {
 		return (WEXITSTATUS(ret));
 	}
-}
-
-char *
-shell(void)
-{
-	char	*sh;
-
-	/*
-	 * Remember that in the regressions we have a restricted PATH.
-	 * Search for BK_LIMITPATH
-	 */
-#ifndef	WIN32
-	if (sh = getenv("BK_SHELL")) return (sh);
-	if (sh = whichp("bash", 0, 1)) return (sh);
-	if (sh = whichp("ksh", 0, 1)) return (sh);
-#endif
-	if (sh = whichp("sh", 0, 1)) return (sh);
-	assert("No shell" == 0);
-	return (0);	/* Windows warns otherwise */
 }

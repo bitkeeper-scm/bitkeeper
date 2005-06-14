@@ -32,7 +32,7 @@ unwrap_main(int ac,  char **av)
 			if (executable(wrap_path)) {
 				char	*av[2] = {wrap_path, 0};
 
-				return (spawnvp_ex(_P_WAIT, wrap_path, av));
+				return (spawnvp(_P_WAIT, wrap_path, av));
 			} else {
 				FILE *f = fopen(DEV_TTY, "w");
 				fprintf(f,

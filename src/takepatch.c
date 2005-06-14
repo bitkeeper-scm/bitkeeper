@@ -314,7 +314,7 @@ usage:		system("bk help -s takepatch");
 		if (textOnly) resolve[++i] = "-t";
 		if (noConflicts) resolve[++i] = "-c";
 		if (comments) resolve[++i] = aprintf("-y%s", comments);
-		i = spawnvp_ex(_P_WAIT, resolve[0], resolve);
+		i = spawnvp(_P_WAIT, resolve[0], resolve);
 		unless (WIFEXITED(i)) return (-1);
 		error = WEXITSTATUS(i);
 	}

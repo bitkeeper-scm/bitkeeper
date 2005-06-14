@@ -16083,7 +16083,7 @@ sccs_reCache(int quiet)
 		av[2] = 0;
 	}
 	av[3] = 0;
-	i = spawnvp_ex(_P_WAIT, av[0], av);
+	i = spawnvp(_P_WAIT, av[0], av);
 	unless (WIFEXITED(i)) return (1);
 	return (WEXITSTATUS(i));
 }
@@ -16130,7 +16130,7 @@ recache:		first = 0;
 			/* get -s */
 			av[0] = "bk"; av[1] = "get"; av[2] = "-q";
 			av[3] = GONE; av[4] = 0;
-			spawnvp_ex(_P_WAIT, av[0], av);
+			spawnvp(_P_WAIT, av[0], av);
 			goto again;
 		}
 out:		if (f) fclose(f);
