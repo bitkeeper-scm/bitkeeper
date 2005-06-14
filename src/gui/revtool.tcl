@@ -253,12 +253,6 @@ proc orderSelectedNodes {reva revb} \
 		set rev2 [getRev new $reva]
 		set rev1 [getRev old $revb]
 	}
-	# make sure tag priorities still favor the merge tags
-  	foreach mergeTag {local remote gca} {
-  		foreach tag {new old anchor} {
-  			catch {$w(graph) raise $mergeTag $tag}
-  		}
-  	}
 }
 
 # Diff between a rev and its parent, or between the two highlighted
