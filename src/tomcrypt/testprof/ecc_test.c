@@ -67,7 +67,7 @@ int ecc_tests (void)
        return 1;
      }
      if (memcmp (buf[0], buf[2], x)) {
-       fprintf(stderr, "Failed.  Content didn't match.");
+       fprintf(stderr, "Failed.  Contents didn't match.");
        return 1;
      }
      ecc_free (&usera);
@@ -133,5 +133,5 @@ int ecc_tests(void)
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/testprof/ecc_test.c,v $ */
-/* $Revision: 1.8 $ */
-/* $Date: 2005/05/21 12:51:25 $ */
+/* $Revision: 1.9 $ */
+/* $Date: 2005/06/14 19:43:29 $ */

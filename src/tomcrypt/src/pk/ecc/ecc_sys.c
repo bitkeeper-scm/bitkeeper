@@ -458,5 +458,5 @@ done:
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/ecc/ecc_sys.c,v $ */
-/* $Revision: 1.16 $ */
-/* $Date: 2005/06/09 00:29:26 $ */
+/* $Revision: 1.18 $ */
+/* $Date: 2005/06/14 20:47:55 $ */
