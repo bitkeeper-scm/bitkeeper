@@ -536,12 +536,12 @@ lclone(opts opts, remote *r, char *to)
 out1:		remote_free(r);
 		return (1);
 	}
-	getRealCwd(here, MAXPATH);
+	getcwd(here, MAXPATH);
 	unless (chdir(r->path) == 0) {
 		fprintf(stderr, "clone: cannot chdir to %s\n", r->path);
 		goto out1;
 	}
-	getRealCwd(from, MAXPATH);
+	getcwd(from, MAXPATH);
 	unless (exists(BKROOT)) {
 		fprintf(stderr, "clone: %s is not a package root\n", from);
 		goto out1;
@@ -586,7 +586,7 @@ out:		chdir(from);
 		goto out;
 	}
 	chdir(to);
-	getRealCwd(dest, MAXPATH);
+	getcwd(dest, MAXPATH);
 	sccs_mkroot(".");
 	mkdir("RESYNC", 0777);		/* lock it */
 	chdir(from);
@@ -760,7 +760,7 @@ relink_main(int ac, char **av)
 		system("bk help -s relink");
 		exit(1);
 	}
-	getRealCwd(here, MAXPATH);
+	getcwd(here, MAXPATH);
 	for (i = 1; av[i] != to; ++i) {
 		if (streq(av[i], to)) continue;
 		errs |= do_relink(av[i], to, quiet, here);
@@ -793,7 +793,7 @@ do_relink(char *from, char *to, int quiet, char *here)
 		fprintf(stderr, "relink: unable to write lock %s\n", from);
 		return (8);
 	}
-	getRealCwd(frompath, MAXPATH);
+	getcwd(frompath, MAXPATH);
 	f = popen("bk sfiles", "r");
 	chdir(here);
 	unless (chdir(to) == 0) {

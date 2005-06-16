@@ -131,7 +131,7 @@ onefile:	fprintf(stderr,
 	}
 
 	if (proj_root(0)) {
-		caseFoldingFS = isCaseFoldingFS(proj_root(0));
+		caseFoldingFS = proj_isCaseFoldingFS(0);
 		realNameCache = mdbm_open(NULL,0, 0, GOOD_PSIZE);
 		assert(realNameCache);
 	}

@@ -65,8 +65,6 @@ resolve_main(int ac, char **av)
 
 	opts.pass1 = opts.pass2 = opts.pass3 = opts.pass4 = 1;
 	setmode(0, _O_TEXT);
-	unless (localDB) localDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
-	unless (resyncDB) resyncDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	while ((c = getopt(ac, av, "l|y|m;aAcdFi;qrtvx;1234")) != -1) {
 		switch (c) {
 		    case 'a': opts.automerge = 1; break;	/* doc 2.0 */
@@ -154,10 +152,14 @@ usage:			system("bk help -s resolve");
 		freeStuff(&opts);
 		exit(0);
 	}
+	if (proj_isCaseFoldingFS(0)) {
+		localDB = mdbm_mem();
+		resyncDB = mdbm_mem();
+	}
 	c = passes(&opts);
+	if (localDB) mdbm_close(localDB);
+	if (resyncDB) mdbm_close(resyncDB);
 	resolve_post(&opts, c);
-	mdbm_close(localDB);
-	mdbm_close(resyncDB);
 	return (c);
 }
 
@@ -506,9 +508,12 @@ nameOK(opts *opts, sccs *s)
 	 * Same path slot and key?
 	 */
 	sprintf(path, "%s/%s", RESYNC2ROOT, s->sfile);
-	getRealName(path, resyncDB, realname);
-	assert(realname);
-	assert(strcasecmp(path, realname) == 0);
+	if (resyncDB) {
+		getRealName(path, resyncDB, realname);
+		assert(strcasecmp(path, realname) == 0);
+	} else {
+		strcpy(realname, path);
+	}
 	if (streq(path, realname) &&
 	    (local = sccs_init(path, INIT_NOCKSUM)) &&
 	    HAS_SFILE(local)) {
@@ -2284,25 +2289,6 @@ rm_sfile(char *sfile, int leavedirs)
 }
 
 /*
- * Return true if we detected a case folding File system
- */
-int
-isCaseFoldingFS(char *root)
-{
-	char	s_cset[] = CHANGESET;
-	char	*p, *q;
-	int	rc;
-
-	p = strrchr(s_cset, '/');
-	assert(p && (p[1] == 's'));
-	p[1] = 'S';  /* change to upper case */
-	q = aprintf("%s/%s", root, s_cset);
-	rc = exists(q);
-	free(q);
-	return (rc);
-}
-
-/*
  * Make sure the file name did not change case orientation after we copied it
  */
 private int
@@ -2312,6 +2298,7 @@ chkCaseChg(FILE *f)
 
 	fflush(f);
 	rewind(f);
+	assert(localDB);
 	while (fnext(buf, f)) {
 		chomp(buf);
 		getRealName(buf, localDB, realname);
@@ -2514,7 +2501,7 @@ err:			unapply(save);
 	 * If case folding file system , make sure file name
 	 * did not change case after we copied it
 	 */
-	if (isCaseFoldingFS(".") && chkCaseChg(save)) goto err;
+	if (localDB && chkCaseChg(save)) goto err;
 
 	if (opts->logging) { /* hard-coded logging tree trigger */
 		metaUnionResync2();
