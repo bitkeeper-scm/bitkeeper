@@ -9,7 +9,6 @@ extern char *bin;
 private	int	make_keypair(int bits, char *secret, char *public);
 private	int	signdata(rsa_key *secret);
 private	int	validatedata(rsa_key *public, char *sign);
-private	int	cryptotest(void);
 private	int	encrypt_stream(rsa_key *public, FILE *fin, FILE *fout);
 private	int	decrypt_stream(rsa_key	*secret, FILE *fin, FILE *fout);
 private void	loadkey(char *file, rsa_key *key);
@@ -146,8 +145,6 @@ private const u8	seckey[828] = {
  *    # read signature from file and data from stdin
  *    # exit status indicates if the data matches signature
  *    # normally public key is used for this
- * -t
- *    # run internal test vectors on the library
  * -h <data> [<key>]
  *    # hash data with an optional key
  * -S
@@ -173,9 +170,9 @@ crypto_main(int ac, char **av)
 	char	*hash;
 	rsa_key	key;
 
-	while ((c = getopt(ac, av, "dehisStvX")) != -1) {
+	while ((c = getopt(ac, av, "dehisSvX")) != -1) {
 		switch (c) {
-		    case 'h': case 'i': case 's': case 't': case 'v':
+		    case 'h': case 'i': case 's': case 'v':
 		    case 'e': case 'd':
 			if (mode) usage();
 			mode = c;
@@ -191,7 +188,6 @@ crypto_main(int ac, char **av)
 	    case 'i': args = 3; break;
 	    case 'v': args = 2; break;
 	    default: args = 1; break;
-	    case 't': args = 0; break;
 	    case 'h': args = 1; optargs = 1; break;
 	}
 	if (ac - optind < args || ac - optind > args + optargs) {
@@ -218,9 +214,6 @@ crypto_main(int ac, char **av)
 		    case 'v': ret = validatedata(&key, av[optind+1]); break;
 		}
 		rsa_free(&key);
-		break;
-	    case 't':
-		ret = cryptotest();
 		break;
 	    case 'h':
 		if (av[optind+1]) {
@@ -488,38 +481,6 @@ check_licensesig(char *key, char *sign, int version)
 	if (rsa_verify(signbin, key, strlen(key), &stat, &rsakey)) return (-1);
 	rsa_free(&rsakey);
 	return (stat ? 0 : 1);
-}
-
-private	int
-cryptotest(void)
-{
-	extern void	store_tests(void);
-	extern void	cipher_tests(void);
-	extern void	hash_tests(void);
-	extern void	ctr_tests(void);
-	extern void	rng_tests(void);
-	extern void	test_prime(void);
-	extern void	rsa_test(void);
-	extern void	pad_test(void);
-	extern void	base64_test(void);
-	extern void	time_hash(void);
-
-	store_tests();
-	cipher_tests();
-	hash_tests();
-
-	ctr_tests();
-
-	rng_tests();
-	test_prime();
-	rsa_test();
-	pad_test();
-
-	base64_test();
-
-	time_hash();
-
-	return 0;
 }
 
 int

@@ -142,7 +142,7 @@ rand_setupPrng(u8 *seed, int len)
 
 	if (!seed) {
 		seed = buf;
-		len = rng_get_bytes(seed, sizeof(buf), 0);
+		len = rng_get_seedbytes(seed, sizeof(buf), 0);
 		assert(len == sizeof(buf));
 	}
 	ret = prng_descriptor[wprng].add_entropy(seed, len, &prng);
