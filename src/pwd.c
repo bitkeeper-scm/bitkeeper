@@ -28,7 +28,7 @@ pwd_main(int ac, char **av)
 	if (av[optind] && (chdir(av[optind]) != 0)) return (1);
 
 	p = &buf[3]; /* reserve same space in front, we might need it below */
-	if (getRealCwd(p, sizeof buf -3) == NULL){
+	if (getcwd(p, sizeof buf -3) == NULL){
 		perror("getcwd");
 	}
 

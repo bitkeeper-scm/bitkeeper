@@ -34,6 +34,7 @@ struct project {
 	/* per proj cache data */
 	char	*license;	/* filled from lease_licenseKey() */
 	u32	licensebits;	/* LOG_* and LIC_* from fetchLicenseBits() */
+	int	casefolding;
 	u8	leaseok:1;
 
 	/* internal state */
@@ -130,6 +131,7 @@ proj_init(char *dir)
 	/* Totally new project */
 	new(ret);
 	ret->root = root;
+	ret->casefolding = -1;
 
 	projcache_store(root, ret);
 	unless (streq(root, fdir)) projcache_store(fdir, ret);
@@ -470,3 +472,25 @@ proj_leaseOK(project *p, int *newok)
 	if (newok) p->leaseok = *newok;
 	return (p->leaseok);
 }
+
+int
+proj_isCaseFoldingFS(project *p)
+{
+	char	s_cset[] = CHANGESET;
+	char	*t, *q;
+
+	unless (p || (p = curr_proj())) return (-1);
+	if (p->casefolding != -1) return (p->casefolding);
+	if (p->rparent) {
+		p->casefolding = proj_isCaseFoldingFS(p->rparent);
+	} else {
+		t = strrchr(s_cset, '/');
+		assert(t && (t[1] == 's'));
+		t[1] = 'S';  /* change to upper case */
+		q = aprintf("%s/%s", p->root, s_cset);
+		p->casefolding = exists(q);
+		free(q);
+	}
+	return (p->casefolding);
+}
+

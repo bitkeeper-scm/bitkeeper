@@ -1585,7 +1585,7 @@ _relativeName(char *gName, int isDir, int mustHaveRmarker, int wantRealName,
 	 * Must cd to project root before we call getRealName()
 	 */
 	t[s-t] = 0; /* t now points to project root */
-	if (wantRealName) {
+	if (wantRealName && proj_isCaseFoldingFS(proj)) {
 		char here[MAXPATH];
 
 		fast_getcwd(here, MAXPATH);

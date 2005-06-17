@@ -384,7 +384,7 @@ header(sccs *cset, int diffs)
 	sccs_prsdelta(cset, sccs_ino(cset), 0, dspec, stdout);
 	printf("# User:\t%s\n", sccs_getuser());
 	printf("# Host:\t%s\n", sccs_gethost() ? sccs_gethost() : "?");
-	getRealCwd(pwd, sizeof(pwd));
+	getcwd(pwd, sizeof(pwd));
 	printf("# Root:\t%s\n", pwd);
 	cset->state = save;
 }

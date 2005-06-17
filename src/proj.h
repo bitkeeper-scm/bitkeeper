@@ -17,6 +17,7 @@ char*		proj_relpath(project *p, char *path);
 void		proj_reset(project *p);
 char*		proj_root(project *p);
 char*		proj_rootkey(project *p);
+int		proj_isCaseFoldingFS(project *p);
 project* 	proj_fakenew(void);
 
 #define		chdir	proj_chdir
