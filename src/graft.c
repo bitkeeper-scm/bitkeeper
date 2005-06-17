@@ -106,7 +106,7 @@ sccs_patch(sccs *winner, sccs *loser)
 	    d->hostname ? "@" : "",
 	    d->hostname ? d->hostname : "");
 	printf("c Grafted %s into %s\n", lfile, wfile);
-	printf("K %u\n", almostUnique(0));
+	printf("K %u\n", almostUnique());
 	printf("P %s\n", lfile);
 	printf("S _BK_GRAFT\n");
 	printf("------------------------------------------------\n\n\n");

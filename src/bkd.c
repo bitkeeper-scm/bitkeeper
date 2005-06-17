@@ -1,5 +1,6 @@
 #include "bkd.h"
 #include "tomcrypt/mycrypt.h"
+#include "tomcrypt/randseed.h"
 
 #define	Respond(s)	write(licenseServer[1], s, 4)
 
@@ -581,7 +582,7 @@ bkd_seed(char *oldseed, char *newval, char **newout)
 		ret = -1;
 	}
 	if (newout) {
-		rng_get_bytes(rand, sizeof(rand), 0);
+		rand_getBytes(rand, sizeof(rand));
 		r = hashstr(rand, sizeof(rand));
 		if (newval) {
 			h = secure_hashstr(newval, strlen(newval),

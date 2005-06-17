@@ -103,14 +103,14 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	port/hostColonPath.o port/http_proxy.o \
 	port/lock_dir.o port/mail.o port/mnext.o \
 	port/ns_sock_host2ip.o port/platforminit.o \
-	port/randomBits.o \
 	port/rlimit.o port/samepath.o \
 	port/sccs_getuser.o port/sccs_lockfile.o \
 	port/sccs_root.o port/sig.o \
 	port/spawn.o port/system.o \
 	port/tty.o \
 	prs.o pull.o purify.o push.o putenv.o pwd.o \
-	r2c.o range.o rcheck.o rclone.o rcs.o rcs2sccs.o rcsparse.o \
+	r2c.o randombits.o range.o rcheck.o rclone.o \
+	rcs.o rcs2sccs.o rcsparse.o \
 	receive.o redblack.o regex.o renumber.o repo.o repogca.o resolve.o \
 	resolve_binaries.o resolve_contents.o \
 	resolve_create.o resolve_filetypes.o \

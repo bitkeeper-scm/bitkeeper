@@ -3,6 +3,7 @@
 #ifndef WIN32
 #include <unistd.h>
 #include <sys/time.h>
+#include <sys/times.h>
 #endif
 
 /* on *NIX read /dev/random */
@@ -97,33 +98,45 @@ static unsigned long rng_win32(unsigned char *buf, unsigned long len,
  *     and because gettimeofday() is not in the standard library.
  */
 
+static unsigned char *add_entropy(
+	unsigned long seed, unsigned char *p,
+	unsigned char *buf, unsigned long len)
+{
+        while (seed) {
+                *p++ ^= (seed & 255);
+                seed >>= 8;
+                if ((p - buf) == len) p = buf;
+        }
+        return (p);
+}
+
 /*
- * A "fake" random number generator for the BK regressions.
- * This one is a lot faster than /dev/random which might wait
- * a long time for data to be generated.
+ * A "fake" random seed generator.
+ * This routine generates entropy to be used to seed a pseudo random
+ * number generator.  Since it is just used for seed's the data returned
+ * does not need to be mangled.
+ *
+ * XXX this code is still pretty weak
  */
 static unsigned long rng_fake(unsigned char *buf, unsigned long len)
 {
-	unsigned long	seed;
-	int	x = len;
-	struct timeval tv;
+	unsigned char	*p = buf;
+	struct timeval	tv;
+	struct tms	tms;
 
+	p = add_entropy(getpid(), p, buf, len);
 	gettimeofday(&tv, 0);
-	seed = tv.tv_usec;
-	seed ^= getpid();
-	seed = (seed << 7) | (seed >> 25);
-#ifndef WIN32
-	seed ^= (unsigned long)sbrk(0);
-	seed = (seed << 7) | (seed >> 25);
-#endif
-	seed ^= (unsigned long)&seed;
-	srandom(seed);
-	while (x--) *buf++ = random();
+	p = add_entropy(tv.tv_sec, p, buf, len);
+	p = add_entropy(tv.tv_usec, p, buf, len);
+	p = add_entropy(times(&tms), p, buf, len); /* this works really well */
+	p = add_entropy((unsigned long)sbrk(0), p, buf, len);
+	p = add_entropy((unsigned long)&len, p, buf, len);
+	p = add_entropy(getuid(), p, buf, len);
 	return (len);
 }
 #endif
 
-unsigned long rng_get_bytes(unsigned char *buf, unsigned long len, 
+unsigned long rng_get_seedbytes(unsigned char *buf, unsigned long len,
                             void (*callback)(void))
 {
    int x = 0;
@@ -161,7 +174,7 @@ int rng_make_prng(int bits, int wprng, prng_state *prng,
    }
 
    bits = ((bits/8)+(bits&7?1:0)) * 2;
-   if (rng_get_bytes(buf, bits, callback) != (unsigned long)bits) {
+   if (rng_get_seedbytes(buf, bits, callback) != (unsigned long)bits) {
       crypt_error = "Error reading rng in rng_make_prng().";
       return CRYPT_ERROR;
    }

@@ -9291,7 +9291,7 @@ out:		sccs_unlock(s, 'z');
 
 		n0 = sccs_dInit(n0, 'D', s, nodefault);
 		n0->flags |= D_CKSUM;
-		n0->sum = (unsigned short) almostUnique(1);
+		n0->sum = almostUnique();
 		dinsert(s, n0, !(flags & DELTA_PATCH));
 
 		n = prefilled ? prefilled : calloc(1, sizeof(*n));
@@ -9385,7 +9385,7 @@ out:		sccs_unlock(s, 'z');
 		}
 		if (CSET(s)) {
 			unless (first->csetFile) {
-				first->sum = (unsigned short) almostUnique(1);
+				first->sum = almostUnique();
 				first->flags |= D_ICKSUM;
 				sccs_sdelta(s, first, buf);
 				first->csetFile = strdup(buf);
@@ -10429,7 +10429,7 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
 	if (isNullDelta) {
 		n->added = n->deleted = 0;
 		n->same = p->same + p->added;
-		n->sum = (unsigned short) almostUnique(0);
+		n->sum = almostUnique();
 		n->flags |= D_CKSUM;
 	}
 	dinsert(sc, n, 1);
@@ -10628,7 +10628,7 @@ insert_1_0(sccs *s)
 			if (buf[0]) d->random = strdup(buf);
 		}
 		d->date = t->date - 1;
-		d->sum = (unsigned short) almostUnique(1);
+		d->sum = almostUnique();
 	}
 	date(d, d->date);
 	d = sccs_dInit(d, 'D', s, 0);
@@ -12777,7 +12777,7 @@ end(sccs *s, delta *n, FILE *out, int flags, int add, int del, int same)
 			    S_ISLNK(n->mode)) {
 				n->sum = s->dsum;
 			} else {
-				n->sum = (unsigned short) almostUnique(0);
+				n->sum = almostUnique();
 			}
 #if 0
 Breaks up citool
