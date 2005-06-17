@@ -97,6 +97,10 @@ unix_common_setup()
 		fi
 	done
 	export BK_LIMITPATH
+
+	# Use bash on MacOS, their ksh is broken.
+	test "X`uname`" = XDarwin &&
+	    test -x /bin/bash && ln -s /bin/bash $BK_LIMITPATH/bash
 }
 
 bad_mount()
