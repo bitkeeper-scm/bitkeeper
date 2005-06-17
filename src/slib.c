@@ -1262,7 +1262,12 @@ scandiff(char *s, int *where, char *what, int *howmany)
 private inline int
 scanrev(char *s, ser_t *a, ser_t *b, ser_t *c, ser_t *d)
 {
-	if (!isdigit(*s)) return (0);
+	char	*p;
+
+	/* make sure it's well formed or take nothing. */
+	for (p = s; isdigit(*p) || (*p == '.'); p++);
+	if (*p) return (0);
+
 	*a = atoi_p(&s);
 	if (b && *s == '.') {
 		s++;

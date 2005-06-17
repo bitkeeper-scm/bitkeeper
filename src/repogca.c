@@ -9,13 +9,13 @@ repogca_main(int ac, char **av)
 	FILE	*f;
 	int	c, i, pid, rfd, status;
 	char	**urls, **nav;
-	char	*dspec = ":REV:";
+	char	*dspec = ":REV:\n";
 	char	buf[MAXKEY];
 
 	while ((c = getopt(ac, av, "d;k")) != -1) {
 		switch (c) {
 		    case 'd': dspec = optarg; break;
-		    case 'k': dspec = ":KEY:"; break;
+		    case 'k': dspec = ":KEY:\n"; break;
 		    default:  system("bk help -s repogca"); return (1);
 		}
 	}

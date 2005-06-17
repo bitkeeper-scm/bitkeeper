@@ -278,7 +278,8 @@ rebuild:
 	done
 
 srcs src: FORCE
-	-@bk get -s $(HDRS) $(SRCS) $(SCRSRCS) $(MISC)
+	-@bk get -qS $(HDRS) $(SRCS) $(SCRSRCS) $(MISC)
+	-@bk get -qS libc zlib mdbm tomcrypt regex
 	-@bk -rlibc get -s
 	-@bk -rutils get -s
 
@@ -294,7 +295,8 @@ tags: FORCE
 	@bk -rlibc get -S -s
 	@bk -rutils get -S -s
 	@ctags --file-tags=yes --c-types=d+f+s+t \
-	    $(SRCS) $(HDRS) libc/*.c libc/string/*.c utils/*.c
+	    $(SRCS) $(HDRS) libc/*.c libc/string/*.c utils/*.c \
+	    zlib/*.[ch] mdbm/*.[ch] tomcrypt/*.[ch] regex/*.[ch]
 	@echo ctags completed
 TAGS: FORCE
 	-@bk get -qST $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
