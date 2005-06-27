@@ -185,12 +185,31 @@ int der_decode_sequence(const unsigned char *in,   unsigned long  inlen,
                inlen -= z;
                break;
 
+           case LTC_ASN1_UTCTIME:
+               z = inlen;
+               if ((err = der_decode_utctime(in + x, &z, data)) != CRYPT_OK) {
+                  goto LBL_ERR;
+               }
+               x     += z;
+               inlen -= z;
+               break;
+
            case LTC_ASN1_SEQUENCE:
                z = inlen;
                if ((err = der_decode_sequence(in + x, z, data, size)) != CRYPT_OK) {
                   goto LBL_ERR;
                }
                if ((err = der_length_sequence(data, size, &z)) != CRYPT_OK) {
+                  goto LBL_ERR;
+               }
+               x     += z;
+               inlen -= z;
+               break;
+
+
+           case LTC_ASN1_CHOICE:
+               z = inlen;
+               if ((err = der_decode_choice(in + x, &z, data, size)) != CRYPT_OK) {
                   goto LBL_ERR;
                }
                x     += z;
@@ -211,5 +230,5 @@ LBL_ERR:
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/asn1/der/sequence/der_decode_sequence.c,v $ */
-/* $Revision: 1.6 $ */
-/* $Date: 2005/06/01 00:06:05 $ */
+/* $Revision: 1.8 $ */
+/* $Date: 2005/06/18 19:20:23 $ */

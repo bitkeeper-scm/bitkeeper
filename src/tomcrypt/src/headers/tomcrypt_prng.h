@@ -178,6 +178,7 @@ int find_prng(const char *name);
 int register_prng(const struct ltc_prng_descriptor *prng);
 int unregister_prng(const struct ltc_prng_descriptor *prng);
 int prng_is_valid(int idx);
+LTC_MUTEX_PROTO(ltc_prng_mutex);
 
 /* Slow RNG you **might** be able to use to seed a PRNG with.  Be careful as this
  * might not work on all platforms as planned
@@ -190,5 +191,5 @@ int rng_make_prng(int bits, int wprng, prng_state *prng, void (*callback)(void))
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/headers/tomcrypt_prng.h,v $ */
-/* $Revision: 1.2 $ */
-/* $Date: 2005/05/05 14:35:58 $ */
+/* $Revision: 1.3 $ */
+/* $Date: 2005/06/19 18:00:28 $ */

@@ -279,6 +279,8 @@ int register_hash(const struct ltc_hash_descriptor *hash);
 int unregister_hash(const struct ltc_hash_descriptor *hash);
 int hash_is_valid(int idx);
 
+LTC_MUTEX_PROTO(ltc_hash_mutex);
+
 int hash_memory(int hash, 
                 const unsigned char *in,  unsigned long inlen, 
                       unsigned char *out, unsigned long *outlen);
@@ -325,5 +327,5 @@ int func_name (hash_state * md, const unsigned char *in, unsigned long inlen)   
 }
 
 /* $Source: /cvs/libtom/libtomcrypt/src/headers/tomcrypt_hash.h,v $ */
-/* $Revision: 1.11 $ */
-/* $Date: 2005/05/24 14:37:42 $ */
+/* $Revision: 1.12 $ */
+/* $Date: 2005/06/19 18:00:28 $ */

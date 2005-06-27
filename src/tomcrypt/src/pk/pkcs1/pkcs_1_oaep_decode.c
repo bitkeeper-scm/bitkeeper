@@ -160,7 +160,7 @@ int pkcs_1_oaep_decode(const unsigned char *msg,    unsigned long msglen,
 
    /* copy message */
    *outlen = (modulus_len - hLen - 1) - x;
-   XMEMCPY(out, DB + x, modulus_len - hLen - 1);
+   XMEMCPY(out, DB + x, modulus_len - hLen - 1 - x);
    x += modulus_len - hLen - 1;
 
    /* valid packet */
@@ -184,5 +184,5 @@ LBL_ERR:
 #endif /* PKCS_1 */
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/pkcs1/pkcs_1_oaep_decode.c,v $ */
-/* $Revision: 1.4 $ */
-/* $Date: 2005/05/05 14:35:59 $ */
+/* $Revision: 1.5 $ */
+/* $Date: 2005/06/18 02:37:06 $ */
