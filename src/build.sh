@@ -27,8 +27,10 @@ test "X$CC" = X && CC=gcc
 test "X$LD" = X && LD=$CC
 test "X$WARN" = X && WARN=YES  
 
+KEYFILE=/home/bk/internal/.wish-key
 case "X`uname -s`" in
     *_NT*|*_98*)
+	KEYFILE=/c/home/bk/internal/.wish-key
     	;;
     *)	AR=/usr/ccs/bin
 	GREP=/usr/xpg4/bin:/usr/xpg2/bin
@@ -38,6 +40,7 @@ case "X`uname -s`" in
 	if [ X$1 = X"-u" ]; then shift; fi; # -u option is ignored on Unix  
 	;;
 esac
+export KEYFILE
 case "X`uname -s`" in
 	XSunOS)	XLIBS="-lnsl -lsocket -lresolv"
 		export XLIBS
