@@ -37,68 +37,97 @@ echo OK
 #test -f $RC || { echo "failed"; ls -l `bk dotbk`; exit 1; }
 #echo "OK"
 
-echo $N Single User / Single Host....................................$NL
-# note the lack of single quotes around EOF, which is a bit unusual.
-# we want HERE to be expanded in the script
-bk guitest setuptool >$OUT 2>&1 <<EOF
-    focus -force .
-    test_buttonPress "Next >"
-    test_buttonPress "Single User*"
-    test_buttonPress "Next >"
-    test_buttonPress "I Agree"
-    test_buttonPress "Next >"
-    test_focus
-    test_inputString username
-    test_inputString \t
-    test_inputString test.bitkeeper.com
-    test_buttonPress "Next >"
-    test_focus
-    test_inputString $HERE/repo
-    test_inputString \t
-    test_inputString "this is the description"
-    test_inputString "\t"
-    test_inputString nobody@nowhere.bk
-    test_inputString "\t"
-    test_inputString "misc"
-    test_buttonPress "Next >"  ;# takes us to contact
-    test_buttonPress "Next >"  ;# takes us to keyword expansion
-    test_buttonPress "Next >"  ;# takes us to checkout mode
-    test_buttonPress "Next >"  ;# takes us to compression mode
-    test_buttonPress "Next >"  ;# takes us to autofix options
-    test_buttonPress "Next >"  ;# takes us to last step
-    test_buttonPress "Finish"  ;# do it!
-    after 5000 [list test_buttonPress OK] ;# darn confirmation popup :-(
-    after 10000 [list exit 99] ;# in case the buttonpress didn't work
+echo $N Creating a Commercial repository.............................$NL
+LICFILE=/Users/ob/bk/validkeys
+if [ ! -f $LICFILE ] ; then
+	echo skipped
+else 
+	# we can't pass the license file to the gui because a
+	# tk_getOpenFile can't be scripted, so we have to get the
+	# license and signatures from the file and pretend the user
+	# actually typed them
+	exec < $LICFILE
+	while read x
+	do
+		key=`echo $x | awk -F: '{print $1}'`
+		val=`echo $x | awk -F: '{print $2}'`
+		case $key in
+			license)  license=$val ;;
+			licsign1) licsign1=$val ;;
+			licsign2) licsign2=$val ;;
+			licsign3) licsign3=$val ;;
+			*)	;;
+		esac
+	done
+	# note the lack of single quotes around EOF, which is a bit unusual.
+	# we want HERE to be expanded in the script
+	bk guitest setuptool >$OUT 2>&1 <<EOF
+	    focus -force .
+    	    test_buttonPress "Next >"
+	    test_focus
+	    test_inputString  [string trim "$license"]
+	    test_inputString "\t\t"
+	    test_inputString [string trim "$licsign1"]
+	    test_inputString \t
+	    test_inputString [string trim "$licsign2"]
+	    test_inputString \t
+	    test_inputString [string trim "$licsign3"]
+	    test_buttonPress "Next >"
+	    test_focus
+	    test_inputString $HERE/repo
+	    test_inputString \t
+	    test_inputString "this is the description"
+	    test_inputString "\t"
+	    test_inputString nobody@nowhere.bk
+	    test_buttonPress "Next >"  ;# takes us to contact
+	    test_buttonPress "Next >"  ;# takes us to keyword expansion
+	    test_buttonPress "Next >"  ;# takes us to checkout mode
+	    test_buttonPress "Next >"  ;# takes us to compression mode
+	    test_buttonPress "Next >"  ;# takes us to autofix options
+	    test_buttonPress "Next >"  ;# takes us to last step
+	    test_buttonPress "Finish"  ;# do it!
+	    after 5000 [list test_buttonPress OK] ;# darn confirmation popup :-(
+	    after 10000 [list exit 99] ;# in case the buttonpress didn't work
 EOF
-err=$?
-if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
-grep -q 'The repository was successfully created.' $OUT
-if [ $? -ne 0 ] ; then echo failed ; cat $OUT ; exit 1 ; fi
-cat > $OUT <<EOF
+	err=$?
+	if [ $err -ne 0 ]; then 
+		echo failed; echo "exited $err expected 0"
+		exit 1
+	fi
+	grep -q 'The repository was successfully created.' $OUT
+	if [ $? -ne 0 ] ; then 
+		echo failed 
+		cat $OUT 
+		exit 1 
+	fi
+	cat > $OUT <<EOF
 description: this is the description
-category: misc
 email: nobody@nowhere.bk
 name: 
-street: 
-city: 
-state: 
-postal: 
-country: 
 phone: 
 cell: 
 pager: 
-hours: 
 logging: none
 keyword: none
 compression: gzip
 autofix: yes
 checkout: none
-single_user: username
-single_host: test.bitkeeper.com
+license: $license
+licsign1: $licsign1
+licsign2: $licsign2
+licsign3: $licsign3
 EOF
-CONFIG=$HERE/repo/BitKeeper/etc/config
-if [ ! -f $CONFIG ] ; then echo "failed to make config file" ; exit 1 ; fi
-bk diff $Q -w $OUT $CONFIG
-if [ $? -ne 0 ] ; then echo "failed" ; bk diff -w $OUT $CONFIG; exit 1 ; fi
-echo OK
+	CONFIG=$HERE/repo/BitKeeper/etc/config
+	if [ ! -f $CONFIG ] ; then 
+		echo "failed to make config file" 
+		exit 1 
+	fi
+	bk diff $Q -w $OUT $CONFIG
+	if [ $? -ne 0 ] ; then 
+		echo "failed" 
+		bk diff -w $OUT $CONFIG
+		exit 1 
+	fi
+	echo OK
+fi
 
