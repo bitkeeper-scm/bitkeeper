@@ -267,16 +267,17 @@ cmd_run(char *prog, int is_bk, char *sopts, int ac, char **av)
 	char	*argv[MAXARGS];
 
 	cmd = cmd_lookup(prog, strlen(prog));
+
+	/* Handle aliases */
+	if (cmd && cmd->alias) {
+		cmd = cmd_lookup(cmd->alias, strlen(cmd->alias));
+		assert(cmd);
+	}
 	unless (is_bk || (cmd && cmd->fcn)) {
 		fprintf(stderr, "%s is not a linkable command\n",  prog);
 		return (1);
 	}
 	if (cmd) {
-		/* Handle aliases */
-		if (cmd->alias) {
-			cmd = cmd_lookup(cmd->alias, strlen(cmd->alias));
-			assert(cmd);
-		}
 		/* Handle restricted commands */
 		if ((cmd->restricted && !bk_isSubCmd) ||
 		    (cmd->pro && !bk_commercial())) {
