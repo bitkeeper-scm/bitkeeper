@@ -10,6 +10,8 @@ ms_env()
 		bk get -S ./update_buildenv
 		BK_USEMSYS=1 bk sh ./update_buildenv
 		export HOME=`bk pwd`
+		test -d R:/build/buildenv/bin &&
+		    exec R:/build/buildenv/bin/sh --login $0 $orig_args
 		exec C:/build/buildenv/bin/sh --login $0 $orig_args
 	}
 

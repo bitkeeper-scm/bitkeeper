@@ -1229,7 +1229,7 @@ __do_win32_uninstall()
 
 	case "$UNINSTALL_CMD" in
 	    *UNWISE.EXE*)	# Uninstall bk3.0.x
-		mv "$DEST" "$OBK" || exit 3
+		rm -rf "$DEST" 2>/dev/null || mv "$DEST" "$OBK" || exit 3
 
 		mkdir "$DEST"
 		for i in UNWISE.EXE UNWISE.INI INSTALL.LOG
@@ -1266,7 +1266,7 @@ __do_win32_uninstall()
 		if [ $cnt -gt 60 ]; then exit 2; fi; # force installtool to exit
 		;;
 	    *bkuninstall*)	# Uninstall bk3.2.x
-		mv "$DEST" "$OBK" || exit 3
+		rm -rf "$DEST" 2>/dev/null || mv "$DEST" "$OBK" || exit 3
 
 		# replace $DEST with $OBK
 		X1=`__quoteSpace "$DEST"`
@@ -1278,7 +1278,7 @@ __do_win32_uninstall()
 		rm -f "$TEMP/bkuninstall_tmp$$" "$TEMP/bk_cmd$$"
 		;;
 	    *)	
-		mv "$DEST" "$OBK" || exit 3
+		rm -rf "$DEST" 2>/dev/null || mv "$DEST" "$OBK" || exit 3
 		rm -rf "$OBK" 2> /dev/null
 		if [ -f "$ODLL" ]
 		then "$SRC/gui/bin/tclsh" "$SRC/runonce.tcl" \

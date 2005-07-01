@@ -16,24 +16,28 @@ PATH="/bin:$MSYSWINDIR/system32:$MSYSWINDIR"
 BK_PATH=$(mount | tr 'A-Z' 'a-z' | sed -ne 's,\(.\):,/\1,' -e 's,\\,/,g' -e 's,/gnu/bin,,' -e 's, on /bin type.*,,p') 
 PATH="$PATH:$BK_PATH"
 
-D=/c/build/buildenv
+if [ -d /r/temp ]
+then	BUILD=/r/build
+else	BUILD=/c/build
+fi
+D=$BUILD/buildenv
 mkdir -p $D
 
-W32TOOLS=/c/build/win32tools
+W32TOOLS=$BUILD/win32tools
 if [ -d $W32TOOLS ]
 then	(cd $W32TOOLS; bk pull)
 else	bk clone bk://data.bitmover.com/win32tools $W32TOOLS
 fi
 
 # generate hash of this script
-bk crypto -h - < $0 > /c/build/HASH.want
+bk crypto -h - < $0 > $BUILD/HASH.want
 bk get -S win32/msysver.sh
-(cd win32; ./msysver.sh) >> /c/build/HASH.want
-bk prs -hnd:KEY: -r+ $W32TOOLS/ChangeSet >> /c/build/HASH.want
+(cd win32; ./msysver.sh) >> $BUILD/HASH.want
+bk prs -hnd:KEY: -r+ $W32TOOLS/ChangeSet >> $BUILD/HASH.want
 
 # if we already have the right stuff, then exit.
-cmp -s $D/HASH /c/build/HASH.want && {
-	rm -f /c/build/HASH.want
+cmp -s $D/HASH $BUILD/HASH.want && {
+	rm -f $BUILD/HASH.want
 	exit 0
 }
 
@@ -83,9 +87,12 @@ echo "export GRAP_DEFINES=$WD/groff/share/grap/grap.defines" >> $D/etc/profile
 # setup mountpoints
 mkdir -p $D/build
 rm -f $D/etc/fstab
-echo "c:/build /build" > $D/etc/fstab
+if [ -d /r/temp ]
+then	echo "r:/build /build" > $D/etc/fstab
+else	echo "c:/build /build" > $D/etc/fstab
+fi
 
 echo PS1=\'BUILD \\W \\$ \' >> $D/etc/profile
 cp $D/bin/sh.exe $D/bin/bash.exe
 
-mv /c/build/HASH.want $D/HASH
+mv $BUILD/HASH.want $D/HASH
