@@ -1443,3 +1443,10 @@ $
 This repository has no parent.  You must set a parent with "bk parent" or
 specify a repository on the command line for this command to work.
 $
+#no-pull-dash-r
+pull: remote version of BitKeeper is not capable of
+responding to the '-r' option.  Either upgrade the
+remote version of BitKeeper, or use:
+  bk clone -r<rev> <remote-URL> <local-temp-repo>
+  bk pull <local-temp-repo>
+$

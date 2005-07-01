@@ -180,6 +180,7 @@ cat > BitKeeper/triggers/pre-outgoing <<EOF
 #!/bin/bash
 set | grep $DASHA ^BK | grep -v _BK_ |
 	grep -v _SEED= |
+	grep -v _FEATURES |
 	grep -v BK_AUTH_HMAC=GOOD | bk _sort > $HERE/pre-outgoing
 exit 1
 EOF
@@ -187,6 +188,7 @@ cat > BitKeeper/triggers/post-outgoing <<EOF
 #!/bin/bash
 set | grep $DASHA ^BK | grep -v _BK_ |
 	grep -v _SEED= |
+	grep -v _FEATURES |
 	grep -v BK_AUTH_HMAC=GOOD | bk _sort > $HERE/post-outgoing
 EOF
 chmod +x BitKeeper/triggers/*
@@ -316,6 +318,7 @@ set | grep $DASHA ^BK | grep -v _BK_ |
     grep -v BK_IGNORELOCK |
     grep -v BKD_LEVEL |
     grep -v BK_REPO_ID |
+    grep -v _FEATURES |
     grep -v BKD_LICTYPE |
     grep -v BKD_SEED= |
     grep -v BKD_SEED_OK=1 |

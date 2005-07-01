@@ -13,7 +13,6 @@ typedef struct {
 } s_opts;
 
 private	delta	*checkCset(sccs *s);
-private int set_meta(sccs *s, int stripBranches, int *count);
 private int doit(sccs *, s_opts);
 private	int do_check(sccs *s, int flags);
 private int strip_list(s_opts);
@@ -132,7 +131,7 @@ doit(sccs *s, s_opts opts)
 		return (1);
 	}
 
-	left = set_meta(s, opts.stripBranches, &n); 
+	left = stripdel_setMeta(s, opts.stripBranches, &n); 
 	if (opts.checkOnly) return (do_check(s, flags));
 	unless (left) {
 		if (sccs_clean(s, SILENT)) {
@@ -226,8 +225,26 @@ newleaf(sccs *s)
 	}
 }
 
-private int
-set_meta(sccs *s, int stripBranches, int *count)
+int
+stripdel_markSet(sccs *s, delta *d)
+{
+	delta	*e;
+
+	for (e = s->table; e; e = e->next) {
+		unless (e->type == 'D') continue;
+		if ((e == d) || (e->flags & D_RED)) {
+			if (e->parent) e->parent->flags |= D_RED;
+			if (e->merge) sfind(s, e->merge)->flags |= D_RED;
+			e->flags &= ~D_RED;
+		} else {
+			e->flags |= D_SET;
+		}
+	}
+	return (0);
+}
+
+int
+stripdel_setMeta(sccs *s, int stripBranches, int *count)
 {
 	int	i, n, left;
 	int	redo_merge = 0;

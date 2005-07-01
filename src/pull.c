@@ -18,6 +18,7 @@ typedef	struct {
 	u32	gotsome:1;		/* we got some csets */
 	int	gzip;			/* -z[level] compression */
 	int	delay;			/* -w<delay> */
+	char	*rev;			/* -r<rev> - no revs after this */
 	u32	in, out;		/* stats */
 } opts;
 
@@ -32,7 +33,6 @@ usage(void)
 	system("bk help -s pull");
 }
 
-
 int
 pull_main(int ac, char **av)
 {
@@ -46,7 +46,7 @@ pull_main(int ac, char **av)
 	bzero(&opts, sizeof(opts));
 	opts.gzip = 6;
 	opts.automerge = 1;
-	while ((c = getopt(ac, av, "c:deE:GFilnqRtuw|z|")) != -1) {
+	while ((c = getopt(ac, av, "c:deE:GFilnqr;Rtuw|z|")) != -1) {
 		switch (c) {
 		    case 'G': opts.nospin = 1; break;
 		    case 'i': opts.automerge = 0; break;	/* doc 2.0 */
@@ -54,12 +54,18 @@ pull_main(int ac, char **av)
 			break;
 		    case 'n': opts.dont = 1; break;		/* doc 2.0 */
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
+		    case 'r': opts.rev = optarg; break;
 		    case 'R': opts.noresolve = 1; break;	/* doc 2.0 */
 		    case 't': opts.textOnly = 1; break;		/* doc 2.0 */
 		    case 'd': opts.debug = 1; break;		/* undoc 2.0 */
 		    case 'e': opts.metaOnly = 1; break;		/* undoc 2.0 */
 		    case 'F': opts.fullPatch = 1; break;	/* undoc 2.0 */
 		    case 'E': 					/* doc 2.0 */
+			unless (strneq("BKU_", optarg, 4)) {
+				fprintf(stderr,
+				    "pull: vars must start with BKU_\n");
+				return (1);
+			}
 			envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'c': try = atoi(optarg); break;	/* doc 2.0 */
 		    case 'u': opts.update_only = 1; break;
@@ -73,7 +79,6 @@ pull_main(int ac, char **av)
 			return(1);
 		}
 	}
-
 
 	/*
 	 * Get pull parent(s)
@@ -189,12 +194,7 @@ send_part1_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	sendEnv(f, envVar, r, 0);
 	if (r->path) add_cd_command(f, r);
 	fprintf(f, "pull_part1");
-	if (opts.gzip) fprintf(f, " -z%d", opts.gzip);
-	if (opts.metaOnly) fprintf(f, " -e");
-	if (opts.dont) fprintf(f, " -n");
-	for (rc = opts.list; rc--; ) fprintf(f, " -l");
-	if (opts.quiet) fprintf(f, " -q");
-	if (opts.debug) fprintf(f, " -d");
+	if (opts.rev) fprintf(f, " -r%s", opts.rev);
 	fputs("\n", f);
 	fclose(f);
 	rc = send_file(r, buf, 0);
@@ -226,6 +226,11 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	    (atoi(getenv("BKD_LEVEL")) > getlevel())) {
 	    	fprintf(stderr, "pull: cannot pull to lower level "
 		    "repository (remote level == %s)\n", getenv("BKD_LEVEL"));
+		disconnect(r, 2);
+		return (1);
+	}
+	if (opts.rev && !bkd_hasFeature("pull-r")) {
+		notice("no-pull-dash-r", 0, "-e");
 		disconnect(r, 2);
 		return (1);
 	}
@@ -276,6 +281,7 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	if (opts.dont) fprintf(f, " -n");
 	for (rc = opts.list; rc--; ) fprintf(f, " -l");
 	if (opts.quiet) fprintf(f, " -q");
+	if (opts.rev) fprintf(f, " -r%s", opts.rev);
 	if (opts.delay) fprintf(f, " -w%d", opts.delay);
 	if (opts.debug) fprintf(f, " -d");
 	if (opts.update_only) fprintf(f, " -u");

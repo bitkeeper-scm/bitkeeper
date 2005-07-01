@@ -1,0 +1,87 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2005 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+#
+# Copyright (c) 2005 Rick Smith
+# rick@desk.wscott.bitmover.com|src/t/t.pull-r|20050627160925|34686
+
+echo $N Simple pull -r test .........................................$NL
+commercial project
+cd ..
+bk clone $Q project copy
+cd project
+bk tag $Q T1
+bk changes -kr+ > ../BASELINE
+touch foo
+bk new $Q foo
+bk commit $Q -yfoo foo
+cd ../copy
+bk pull $Q -rT1 || {
+	echo failed
+	exit 1
+}
+bk changes -kr+ > KEY
+checkfiles ../BASELINE KEY
+echo OK
+
+echo $N Simple tag graph pull -r test ....,..........................$NL
+cd $HERE/project
+bk tag $Q -rT1 T1_PULL_THIS_TO_TEST_LEAF_MARKED
+bk changes -krT1 > ../KEY
+bk tag $Q T2
+bk tag $Q -rT1 NOT_THIS
+cd ../copy
+bk pull $Q -rT1 || {
+	echo failed
+	exit 1
+}
+bk changes -kr+ > KEY
+checkfiles ../KEY KEY
+bk changes -rNOT_THIS -ndx && {
+	echo failed: NOT_THIS tag sent
+	exit 1
+}
+# XXX: How to test if top tag is marked as a leaf node?
+echo OK
+
+echo $N Pull -r to create tag graph with merged tips ................$NL
+cd $HERE/project
+bk tag $Q FOO
+bk edit $Q foo
+bk delta $Q -yfoo foo
+bk commit $Q -yfoo
+bk tag $Q FOO
+cd ../copy
+bk tag $Q -rT1 BAR
+bk pull $Q -rT2 || {
+	echo failed
+	exit 1
+}
+# XXX: How to test tips merged?
+echo OK
+
+echo $N Pull -r to see that it propagates with no problems ..........$NL
+cd $HERE
+commercial copykid
+bk parent $Q $HERE/copy
+bk pull $Q -rBAR || {
+	echo failed
+	exit 1
+}
+# XXX: BAR new tip and should be tagged.  How to test?
+echo OK
+
+echo $N Pull without -r to see that it brings rest ..................$NL
+bk pull $Q || {
+	echo failed
+	exit 1
+}
+checkfiles SCCS/s.ChangeSet ../copy/SCCS/s.ChangeSet
+echo OK

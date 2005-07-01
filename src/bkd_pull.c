@@ -29,11 +29,15 @@ int
 cmd_pull_part1(int ac, char **av)
 {
 	char	*p, buf[4096];
-	char	*probekey_av[] = {"bk", "_probekey", 0};
+	char	*probekey_av[] = {"bk", "_probekey", 0, 0};
 	int	status, rfd;
+	int	rc = 1;
 	pid_t	pid;
 	FILE	*f;
 
+	if (av[1] && strneq(av[1], "-r", 2)) {
+		probekey_av[2] = av[1];
+	}
 	sendServerInfoBlock(0);
 	unless (isdir("BitKeeper/etc")) {
 		out("ERROR-Not at package root\n");
@@ -51,17 +55,27 @@ cmd_pull_part1(int ac, char **av)
 		drain();
 		return (1);
 	}
-
-	fputs("@OK@\n", stdout);
 	pid = spawnvp_rPipe(probekey_av, &rfd, 0);
 	f = fdopen(rfd, "r");
+	/* look to see if probekey returns an error */
+	unless (fnext(buf, f) && streq("@LOD PROBE@\n", buf)) {
+		fputs(buf, stdout);
+		goto done;
+	}
+	fputs("@OK@\n", stdout);
+	fputs(buf, stdout);	/* @LOD_PROBE@ */
 	while (fnext(buf, f)) {
 		fputs(buf, stdout);
 	}
+	rc = 0;
+done:
 	fclose(f);
 	fflush(stdout);
-	waitpid(pid, &status, 0);
-	return (0);
+	unless ((waitpid(pid, &status, 0) == pid) &&
+	    WIFEXITED(status) && (WEXITSTATUS(status) == 0)) {
+		return (1);
+	}
+	return (rc);
 }
 
 int
@@ -70,15 +84,16 @@ cmd_pull_part2(int ac, char **av)
 	int	c, n, rc = 0, fd, fd0, rfd, status, local, rem, debug = 0;
 	int	gzip = 0, metaOnly = 0, dont = 0, verbose = 1, list = 0;
 	int	rtags, update_only = 0, delay = -1;
-	char	s_cset[] = CHANGESET;
 	char	*keys = bktmp(0, "pullkey");
 	char	*makepatch[10] = { "bk", "makepatch", 0 };
+	char	*rev = 0;
+	char	*p;
 	sccs	*s;
 	delta	*d;
 	remote	r;
 	pid_t	pid;
 
-	while ((c = getopt(ac, av, "delnquw|z|")) != -1) {
+	while ((c = getopt(ac, av, "delnqr|uw|z|")) != -1) {
 		switch (c) {
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
@@ -89,6 +104,7 @@ cmd_pull_part2(int ac, char **av)
 		    case 'l': list++; break;
 		    case 'n': dont = 1; break;
 		    case 'q': verbose = 0; break;
+		    case 'r': rev = optarg; break;
 		    case 'w': delay = atoi(optarg); break;
 		    case 'u': update_only = 1; break;
 		    default: break;
@@ -96,14 +112,38 @@ cmd_pull_part2(int ac, char **av)
 	}
 
 	sendServerInfoBlock(0);
+	s = sccs_csetInit(0);
+	assert(s && HASGRAPH(s));
+	if (rev) {
+		int	count = 0;
+
+		unless (d = sccs_findrev(s, rev)) {
+			p = aprintf(
+			    "ERROR-Can't find revision %s\n", rev);
+			out(p);
+			free(p);
+			out("@END@\n");
+		}
+		stripdel_markSet(s, d);
+		stripdel_setMeta(s, 0, &count);
+		/*
+		 * The above sets D_GONE, but leaves other flags
+		 * altered.  We need D_RED intead of D_GONE and we
+		 * need D_BLUE to be cleared.  Might as well clean up
+		 * D_SET as well.
+		 */
+		for (d = s->table; d; d = d->next) {
+			d->flags &= ~(D_RED|D_BLUE|D_SET);
+			if (d->flags & D_GONE) d->flags |= D_RED;
+		}
+		s->state &= ~S_SET;
+	}
 
 	/*
 	 * What we want is: remote => bk _prunekey => keys
 	 */
 	fd = open(keys, O_WRONLY, 0);
 	bzero(&r, sizeof(r));
-	s = sccs_init(s_cset, 0);
-	assert(s && HASGRAPH(s));
  	if (prunekey(s, &r, 0, fd, PK_LKEY, 1, &local, &rem, &rtags) < 0) {
 		local = 0;	/* not set on error */
 		sccs_free(s);

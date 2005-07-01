@@ -5,10 +5,10 @@
 bk pull \- update a repository from its parent[s]
 .SH SYNOPSIS
 .Bc bk pull [\-iqRtu] [
+.OPTreq \-r rev
+.Bc ] [
 .OPTequal \-E env var
-.Bc ] [\-z[
-.ARGc d
-.Bc ]] [
+.Bc ] [
 .OPTreq \-c n
 .Bc ] [
 .ARGc parent
@@ -52,6 +52,7 @@ times before giving up (default forever).
 .tp
 .OPTequal \-E env val
 Export environment variable to remote site.
+The environment variable must start with "BKU_".
 .tp
 .B \-i
 Turn off automerge feature in resolve.
@@ -64,6 +65,12 @@ Do not run resolve at all.  You must run
 .B bk resolve 
 later.
 .tp
+.OPTreq \-r rev
+Pull up to and including this revision.
+(Or key or changeset revision. See 
+.B bk help terms
+under 'rev argument')
+.tp
 .B \-t
 Pass 
 .B \-t
@@ -74,17 +81,6 @@ means do not use the GUI tools.)
 .B \-u
 Do not complete the pull if there are local changesets, i.e., insist
 that this operation is an update operation.
-.tp
-.OPTreq \-z d
-Do compression at level
-.ARG d ,
-if possible, where 
-.ARG d
-is an integer value 0-9;
-default is 
-.BR \-z6 .
-Compression is possible when using ssh or the BK daemon,
-but not with rsh.
 .SH "SEE ALSO"
 .SA bkd 1
 .SA parent 1

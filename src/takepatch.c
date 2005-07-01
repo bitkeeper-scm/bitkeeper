@@ -1075,6 +1075,7 @@ applyCsetPatch(char *localPath, int nfound, int flags, sccs *perfile)
 	MMAP	*dF;
 	sccs	*s = 0;
 	delta	*d = 0;
+	delta	*remote_tagtip = 0;
 	int	n = 0;
 	int	confThisFile;
 	FILE	*csets = 0;
@@ -1166,6 +1167,7 @@ apply:
 			dF = p->diffMmap;
 			if (isLogPatch && chkEmpty(s, dF)) goto err;
 			d = cset_insert(s, iF, dF, p->pid);
+			if (!p->local && d->symGraph) remote_tagtip = d;
 		} else {
 			assert(s == 0);
 			unless (s = sccs_init(p->resyncFile, NEWFILE|SILENT)) {
@@ -1199,6 +1201,7 @@ apply:
 			cweave_init(s, nfound);
 			sccs_findKeyDB(s, 0);
 			d = cset_insert(s, iF, dF, p->pid);
+			if (!p->local && d->symGraph) remote_tagtip = d;
 			s->bitkeeper = 1;
 		}
 		/* LOD logging tree fix: All on LOD 1, renumber() will fix */
@@ -1212,6 +1215,16 @@ apply:
 			d->r[3] = 0;
 		}
 		p = p->next;
+	}
+	/*
+	 * pull -r can propagate a non-tip tag element as the tip.
+	 * We have to mark it here before writing the file out.
+	 */
+	if (remote_tagtip && !remote_tagtip->symLeaf) {
+		remote_tagtip->symLeaf = 1;
+		debug((stderr,
+		    "takepatch: adding leaf to tag delta %s (serial %d)\n",
+		    remote_tagtip->rev, remote_tagtip->serial));
 	}
 	if (cset_write(s)) {
 		SHOUT();

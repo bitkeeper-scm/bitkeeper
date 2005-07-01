@@ -134,6 +134,8 @@ void	disconnect(remote *r, int how);
 void	drain(void);
 char	**getClientInfoBlock(void);
 void	sendServerInfoBlock(int);
+int	bk_hasFeature(char *f);
+int	bkd_hasFeature(char *f);
 int	prunekey(sccs *, remote *, HASH *, int, int, int, int *, int *, int *);
 int	buf2fd(int gzip, char *buf, int len, int fd);
 void	add_cd_command(FILE *f, remote *r);

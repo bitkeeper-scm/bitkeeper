@@ -43,7 +43,10 @@ tag_probekey(sccs *s, FILE *f)
 	int	i, j;
 	char	key[MAXKEY];
 
-	for (d = s->table; d && !d->ptag; d = d->next);
+	for (d = s->table; d; d = d->next) {
+		/* Optimization: only tagprobe if tag with parent tag */
+		if (d->ptag && !(d->flags & D_GONE)) break;
+	}
 	unless (d) return;
 
 	fputs("@TAG PROBE@\n", f);
@@ -58,23 +61,30 @@ tag_probekey(sccs *s, FILE *f)
 int
 probekey_main(int ac, char **av)
 {
-	int	i;
 	sccs	*s;
-	delta	*d;
-	char	s_cset[] = CHANGESET;
-	char	rev[MAXREV+1];
+	delta	*d = 0;
+	int	count = 0;
 
-	unless ((s = sccs_init(s_cset, 0)) && HASGRAPH(s)) {
-		fprintf(stderr, "Can't init changeset\n");
+	unless ((s = sccs_csetInit(0)) && HASGRAPH(s)) {
+		out("ERROR-Can't init changeset\n@END@\n");
 		exit(1);
 	}
-	for (i = 1; i <= 0xffff; ++i) {
-		sprintf(rev, "%d.1", i);
-		unless (d = sccs_findrev(s, rev)) break;
-		while (d->kid && (d->kid->type == 'D')) d = d->kid;
-		fputs("@LOD PROBE@\n", stdout);
-		lod_probekey(s, d, stdout);
+	if (av[1] && strneq(av[1], "-r", 2)) {
+		unless (d = sccs_findrev(s, &av[1][2])) {
+			printf("ERROR-Can't find revision %s\n", &av[1][2]);
+			return (1);
+		}
+		/*
+		 * optimize: don't send tags that don't need to be sent
+		 * XXX: is it worth it?
+		 */
+		stripdel_markSet(s, d);
+		stripdel_setMeta(s, 0, &count);
+	} else {
+		d = sccs_top(s);
 	}
+	fputs("@LOD PROBE@\n", stdout);
+	lod_probekey(s, d, stdout);
 	tag_probekey(s, stdout);
 	fputs("@END PROBE@\n", stdout);
 	sccs_free(s);
@@ -94,7 +104,7 @@ sccs_tagcolor(sccs *s, delta *d)
 	if (d->ptag) sccs_tagcolor(s, sfind(s, d->ptag));
 	if (d->mtag) sccs_tagcolor(s, sfind(s, d->mtag));
 	d->flags |= D_RED;
-}                 
+}
 
 /*
  * Given a delta pointer 'd', return the tag
@@ -166,14 +176,14 @@ listkey_main(int ac, char **av)
 	 */
 	if (getline(0, key, sizeof(key)) <= 0) {
 		unless (quiet) {
-			fprintf(stderr, "Expected \"@LOD PROBE\"@, Got EOF\n");
+			fprintf(stderr, "Expected \"@LOD PROBE@\", Got EOF\n");
 			return (2);
 		}
 	}
 	unless (streq("@LOD PROBE@", key)) {
 		unless (quiet) {
 			fprintf(stderr,
-			    "Expected \"@LOD PROBE\"@, Got \"%s\"\n", key);
+			    "Expected \"@LOD PROBE@\", Got \"%s\"\n", key);
 		}
 		return(3); /* protocol error or repo locked */
 	}
@@ -497,7 +507,7 @@ empty:	for (d = s->table; d; d = d->next) {
 			}
 		}
 		if (flags & PK_LKEY) {
-			sccs_sdelta(s, d, key);
+			sccs_md5delta(s, d, key);
 			writen(outfd, key, strlen(key));
 			write(outfd, "\n", 1);
 		}
@@ -506,7 +516,7 @@ empty:	for (d = s->table; d; d = d->next) {
 	if (flags & PK_LREV) { /* list the tags */
 		for (d = s->table; d; d = d->next) {
 			char	*tag;
-			
+
 			if (d->flags & D_RED) continue;
 			unless (d->flags & D_SYMBOLS) continue;
 			tag = sccs_d2tag(s, d);
@@ -514,7 +524,6 @@ empty:	for (d = s->table; d; d = d->next) {
 				writen(outfd, tag, strlen(tag));
 				write(outfd, "\n", 1);
 			}
-			
 		}
 	}
 	if (remote_csets) *remote_csets = rcsets;

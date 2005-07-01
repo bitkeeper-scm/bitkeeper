@@ -1081,6 +1081,8 @@ void	sccs_tagMerge(sccs *s, delta *d, char *tag);
 int	sccs_tagleaves(sccs *, delta **, delta **);
 ser_t	*sccs_set(sccs *, delta *, char *iLst, char *xLst);
 int	sccs_graph(sccs *s, delta *d, ser_t *map, char **inc, char **exc);
+int	stripdel_setMeta(sccs *s, int stripBranches, int *count);
+int	stripdel_markSet(sccs *s, delta *d);
 
 int     http_connect(remote *r);
 int     http_send(remote *, char *, size_t, size_t, char *, char *); 

@@ -889,7 +889,7 @@ sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 	 */
 	unless (isClone) {
 		fprintf(f, "putenv BK_LEVEL=%d\n", getlevel());
-		
+
 		if (root = proj_root(0)) {
 			fprintf(f, "putenv BK_ROOT=%s\n", root);
 		}
@@ -898,6 +898,12 @@ sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 	EACH(envVar) {
 		fprintf(f, "putenv %s\n", envVar[i]);
 	}
+	/*
+	 * Send comma seperated list of client features so the bkd
+	 * knows which outputs are supported.
+	 *   lkey:1	use leasekey #1 to sign lease requests
+	 */
+	fprintf(f, "putenv BK_FEATURES=lkey:1\n");
 	unless (r->seed) bkd_seed(0, 0, &r->seed);
 	fprintf(f, "putenv BK_SEED=%s\n", r->seed);
 
@@ -986,12 +992,48 @@ sendServerInfoBlock(int is_rclone)
 		sprintf(buf, "\nREPO_ID=%s", repoid);
 		out(buf);
 	}
+	/*
+	 * Return a comma seperated list of features supported by the bkd.
+	 *   pull-r    pull -r is parsed corrently
+	 */
+	out("\nFEATURES=pull-r");
+
 	/* only send back a seed if we received one */
 	if (p = getenv("BKD_SEED")) {
 		out("\nSEED=");
 		out(p);
 	}
 	out("\n@END@\n");
+}
+
+private int
+has_feature(char *bk, char *f)
+{
+	int	len;
+	char	var[20];
+
+	sprintf(var, "%s_FEATURES", bk);
+	bk = getenv(var);
+	len = strlen(f);
+	while (bk) {
+		if (strneq(bk, f, len)) {
+			if (bk[len] == ',' || !bk[len]) return (1);
+		}
+		if (bk = strchr(bk, ',')) ++bk;
+	}
+	return (0);
+}
+
+int
+bk_hasFeature(char *f)
+{
+	return (has_feature("BK", f));
+}
+
+int
+bkd_hasFeature(char *f)
+{
+	return (has_feature("BKD", f));
 }
 
 void
