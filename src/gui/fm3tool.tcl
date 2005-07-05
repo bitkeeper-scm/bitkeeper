@@ -1887,8 +1887,9 @@ proc click {win block replace} \
 		change $lines $replace 0 $annotate
 		return
 	}
-	# Figure out the leading character, walk backwards as long as
-	# is the same, save that location, walk forwards printing as we go.
+	# Figure out the leading character ('+', '-', or ' '), 
+	# walk backwards as long as is the same (same diff), save that 
+	# location, walk forwards printing as we go.
 	set char [$win get "$here linestart + 1 chars"]
 	set line $here
 	set lines [list]
@@ -1899,6 +1900,8 @@ proc click {win block replace} \
 		# Break out if we hit stuff that we already selected
 		set ok 1
 		set tagged 0
+		# look at the tags of the _last_ character
+		set tmp [$win index "$tmp lineend - 1 char"]
 		foreach t [$win tag names $tmp] {
 			set tagged 1
 			if {$t == "hand"} { set ok 0 }
@@ -1919,6 +1922,8 @@ proc click {win block replace} \
 		# Break out if we hit stuff that we already selected
 		set ok 1
 		set tagged 0
+		# look at the tags of the _last_ character
+		set tmp [$win index "$tmp lineend - 1 char"]
 		foreach t [$win tag names $tmp] {
 			set tagged 1
 			if {$t == "hand"} { set ok 0 }
