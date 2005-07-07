@@ -258,6 +258,7 @@ _strings
 synckeys
 tagmerge
 takepatch
+_tclsh
 testdates
 unbk
 undo
