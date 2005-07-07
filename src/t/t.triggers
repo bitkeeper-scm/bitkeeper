@@ -180,13 +180,15 @@ cat > BitKeeper/triggers/pre-outgoing <<EOF
 #!/bin/bash
 set | grep $DASHA ^BK | grep -v _BK_ |
 	grep -v _SEED= |
-	grep -v BK_AUTH_HMAC=GOOD | bk _sort > $HERE/pre-outgoing
+	grep -v BK_LICENSE= |
+ 	grep -v BK_AUTH_HMAC=GOOD | bk _sort > $HERE/pre-outgoing
 exit 1
 EOF
 cat > BitKeeper/triggers/post-outgoing <<EOF
 #!/bin/bash
 set | grep $DASHA ^BK | grep -v _BK_ |
 	grep -v _SEED= |
+	grep -v BK_LICENSE= |
 	grep -v BK_AUTH_HMAC=GOOD | bk _sort > $HERE/post-outgoing
 EOF
 chmod +x BitKeeper/triggers/*
@@ -243,12 +245,16 @@ echo $N Make sure clone -l is passed the right variables ............$NL
 cd $HERE/project
 cat > BitKeeper/triggers/pre-outgoing <<EOF
 #!/bin/bash
-set | grep $DASHA ^BK | grep -v _BK_ | bk _sort > $HERE/pre-outgoing-l
+set | grep $DASHA ^BK | grep -v _BK_ |
+	grep -v BK_LICENSE= |
+	bk _sort > $HERE/pre-outgoing-l
 exit 1
 EOF
 cat > BitKeeper/triggers/post-outgoing <<EOF
 #!/bin/bash
-set | grep $DASHA ^BK | grep -v _BK_ | bk _sort > $HERE/post-outgoing-l
+set | grep $DASHA ^BK | grep -v _BK_ |
+	grep -v BK_LICENSE= |
+	bk _sort > $HERE/post-outgoing-l
 EOF
 chmod +x BitKeeper/triggers/*
 cd $HERE
@@ -353,6 +359,7 @@ cat > BitKeeper/triggers/post-incoming <<EOF
 #!/bin/bash
 set | grep $DASHA ^BK |
     grep -v _BK_ |
+    grep -v BK_LICENSE= |  # leftover from pre-triggers (remove in 3.3.x)
     grep -v BK_REPO_ID |
     bk _sort > $HERE/post-incoming-clone-l
 exit 0
@@ -412,6 +419,10 @@ grep -q BK_LOCALCSETS=3 $HERE/pre-outgoing || {
 grep -q BK_REMOTECSETS=0 $HERE/pre-outgoing || {
 	echo failed to put remote csets in the env
 	cat $HERE/pre-outgoing
+	exit 1
+}
+grep -q BK_LICENSE=single $HERE/pre-outgoing || {
+	echo didn\'t pass license
 	exit 1
 }
 test -d RESYNC && {
