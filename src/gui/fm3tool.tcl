@@ -1281,6 +1281,10 @@ proc widgets {} \
 		bind $w <Button-3> {click %W 0 0; break}
 		bind $w <Shift-Button-1> {click %W 1 1; break}
 		bind $w <Shift-Button-3> {click %W 0 1; break}
+		if {$gc(aqua)} {
+			bind $w <Command-1> {click %W 0 0; break}
+			bind $w <Shift-Command-1> {click %W 0 1; break}
+		}
 		bindtags $w [list $w]
 	}
 	foreach w {.merge.menu.t .prs.left .prs.right} {
