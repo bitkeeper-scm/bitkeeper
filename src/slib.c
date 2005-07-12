@@ -13014,7 +13014,7 @@ doDiff(sccs *s, u32 flags, char kind, char *opts, char *leftf, char *rightf,
 		c = atoi(columns);
 		for (i = 0; i < c/2 - 18; ) spaces[i++] = '=';
 		spaces[i] = 0;
-		sprintf(buf, "bk sdiff -w%s %s %s", columns, leftf, rightf);
+		sprintf(buf, "bk sdiff -w%s '%s' '%s'", columns, leftf, rightf);
 		diffs = popen(buf, "r");
 		if (!diffs) return (-1);
 		diffFile[0] = 0;

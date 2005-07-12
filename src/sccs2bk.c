@@ -322,7 +322,7 @@ mkinit(sccs *s, delta *d, char *file, char *key)
 
 	if (file) {
 		char	*p;
-		p = aprintf("bk get -qkpr1.1 %s", file);
+		p = aprintf("bk get -qkpr1.1 '%s'", file);
 		fh = popen(p, "r");
 		free(p);
 		while (size = fread(buf, 1, sizeof(buf), fh)) {
