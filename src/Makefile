@@ -315,6 +315,10 @@ realtest: $(ALL) t/doit
 	-./bk get -q t/SCCS/s.t.* t/setup t/x.chk_env
 	cd t && ./doit -i -f
 
+guitest: $(ALL) t/doit
+	-./bk get -q t/SCCS/s.g.* t/setup t/x.chk_env t/guitest.tcl
+	cd t && ./doit -g -i -f
+
 t/doit: t/doit.sh substvars
 	./substvars t/doit.sh > t/doit
 	chmod +x t/doit
