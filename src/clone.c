@@ -687,6 +687,7 @@ out_trigger(char *status, char *rev, char *when)
 		safe_putenv("BK_ACCEPTED=%s", lic);
 		free(lic);
 	}
+	safe_putenv("BK_LICENSE=%s", proj_license(0));
 	if (status) putenv(status);
 	if (rev) {
 		safe_putenv("BK_CSETS=1.0..%s", rev);

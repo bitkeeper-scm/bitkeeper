@@ -27,6 +27,7 @@ P=`bk pending | wc -l`
 if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 bk commit $S -a -yCset
 echo OK
+
 echo $N pull to a repo with edited files ............................$NL
 bk clone $Q $HERE/project $HERE/copy
 cd $HERE/project/src
@@ -44,6 +45,7 @@ bk pull  > pull.out 2>&1
 grep -q "bar.c is edited" pull.out || { echo failed; exit 1; }
 grep -q "h.h is edited" pull.out || { echo failed; cat pull.out; exit 1; }
 echo OK
+
 echo $N push to a repo with edited files ............................$NL
 cd $HERE/project
 bk push $HERE/copy > push.out 2>&1
@@ -77,6 +79,7 @@ else
 	echo 'buf 2001-05-11-001 passing! update testcase.'
 	exit 1
 fi
+
 echo $N check pull into busted repo containing part of a change......$NL
 cd $HERE
 rm -rf *
@@ -119,3 +122,29 @@ bk unlock -w $HERE/copy2
 waitForUnlock $HERE/copy2
 echo OK
 fi #---------------------------------------------------------------------
+
+echo $N Test spoofing of BK env vars sent to bkd ....................$NL
+cd $HERE
+no_logging spoof-remote
+cd ..
+bk clone $Q spoof-remote spoof-local
+cd spoof-remote
+mkdir BitKeeper/triggers || exit 1
+cat - <<'EOF' > BitKeeper/triggers/pre-outgoing
+#!/bin/sh
+echo "$BK_VERSION" > ../FROM_BKD
+exit 0
+EOF
+chmod +x BitKeeper/triggers/pre-outgoing
+bk new $Q BitKeeper/triggers/pre-outgoing
+bk commit $Q -yadd-trig
+cd ../spoof-local
+echo FOO > ../SPOOF
+bk pull $Q -E'BK_VERSION=FOO'
+cd ..
+cmp -s SPOOF FROM_BKD && {
+  echo failed
+  echo can spoof BK_VERSION to a bkd
+  exit 1
+}
+echo OK

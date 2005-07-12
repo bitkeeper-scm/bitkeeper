@@ -817,6 +817,9 @@ putroot(char *where)
 
 /*
  * Send env varibale to remote bkd.
+ *
+ * NOTE: When editing this function be sure to make the same changes in
+ *       clone.c:out_trigger()
  */
 void
 sendEnv(FILE *f, char **envVar, remote *r, int isClone)
@@ -824,6 +827,12 @@ sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 	int	i;
 	char	*root, *user, *host, *repo;
 	char	*lic;
+
+	/*
+	 * Send any vars the user requested first so that they can't
+	 * overwrite any of the standard variables.
+	 */
+	EACH(envVar) fprintf(f, "putenv %s\n", envVar[i]);
 
 	if (r->host)
 		fprintf(f, "putenv BK_VHOST=%s\n", r->host);
@@ -872,9 +881,7 @@ sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 		}
 	}
 
-	EACH(envVar) {
-		fprintf(f, "putenv %s\n", envVar[i]);
-	}
+	fprintf(f, "putenv BK_LICENSE=%s\n", proj_license(0));
 	unless (r->seed) bkd_seed(0, 0, &r->seed);
 	fprintf(f, "putenv BK_SEED=%s\n", r->seed);
 
@@ -918,6 +925,11 @@ getServerInfoBlock(remote *r)
 	return (ret);
 }
 
+/*
+ *
+ * NOTE: When editing this function be sure to make the same changes in
+ *       clone.c:in_trigger()
+ */
 void
 sendServerInfoBlock(int is_rclone)
 {
