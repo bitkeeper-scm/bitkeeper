@@ -901,7 +901,7 @@ proc csettool {what} \
 	}
 	set revs ""
 	foreach r [array names l] { 
-		set fd [open "|bk r2c -r$r $filename" "r"]
+		set fd [open [list |bk r2c -r$r $filename] "r"]
 		set r [gets $fd]
 		close $fd
 		set revs "$r,$revs"
@@ -1680,7 +1680,7 @@ proc doprs {text revs tag} \
 	if {$len > 0} {
 		incr len -2
 		set prs [string range $revs 0 $len]
-		set F [open "|bk prs -b -hr$prs {$DSPEC} $filename" "r"]
+		set F [open [list |bk prs -b -hr$prs {$DSPEC} $filename] "r"]
 		if {$tag == "old"} {
 			set lead "- "
 		} else {
