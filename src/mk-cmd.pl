@@ -158,7 +158,7 @@ f2csets
 _find
 findkey
 fix
-fixlod
+_fixlod
 gca
 get
 gethelp
@@ -188,7 +188,7 @@ _lines restricted
 _link
 _listkey restricted
 lock
-_lod
+lod
 log
 _logflags
 _logging
@@ -196,7 +196,7 @@ _loggingaccepted
 _loggingask
 _loggingto
 mailsplit
-_mail
+mail
 makepatch
 merge
 mklock
@@ -288,16 +288,19 @@ _get => get
 co => get
 edit => get
 comment => comments	# alias for Linus, remove...
-_fix_lod1 => fixlod
+_fix_lod1 => _fixlod
 info => sinfo
 _log => log
+_mail => mail
 multiuser => newroot
-rchksum => checksum
+rechksum => checksum
 rev2cset => r2c
 sccsdiff => diffs
 sccsmv => mv
 sccsrm => rm
 sfiles => sfind
+support => sendbug
+unget => unedit
 user => users
 
 # guis

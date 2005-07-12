@@ -267,16 +267,17 @@ cmd_run(char *prog, int is_bk, char *sopts, int ac, char **av)
 	char	*argv[MAXARGS];
 
 	cmd = cmd_lookup(prog, strlen(prog));
+
+	/* Handle aliases */
+	if (cmd && cmd->alias) {
+		cmd = cmd_lookup(cmd->alias, strlen(cmd->alias));
+		assert(cmd);
+	}
 	unless (is_bk || (cmd && cmd->fcn)) {
 		fprintf(stderr, "%s is not a linkable command\n",  prog);
 		return (1);
 	}
 	if (cmd) {
-		/* Handle aliases */
-		if (cmd->alias) {
-			cmd = cmd_lookup(cmd->alias, strlen(cmd->alias));
-			assert(cmd);
-		}
 		/* Handle restricted commands */
 		if ((cmd->restricted && !bk_isSubCmd) ||
 		    (cmd->pro && !bk_commercial())) {
@@ -313,7 +314,7 @@ cmd_run(char *prog, int is_bk, char *sopts, int ac, char **av)
 	    case CMD_BK_SH:
 		/* Handle GUI test */
 		if (streq(prog, "guitest")) {
-			sprintf(cmd_path, "%s/t/guitest.tcl", bin);
+			sprintf(cmd_path, "%s/t/guitest", bin);
 			return (launch_wish(cmd_path, av+1));
 		}
 
