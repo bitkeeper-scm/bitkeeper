@@ -601,7 +601,14 @@ resolve(opts opts)
 	unless (opts.quiet) {
 		fprintf(stderr, "Running resolve to apply new work ...\n");
 	}
+	/*
+	 * Since resolve ignores signals we need to ignore signal
+	 * while it is running so that no one hits ^C and leaves it
+	 * orphaned.
+	 */
+	sig_ignore();
 	status = spawnvp(_P_WAIT, "bk", cmd);
+	sig_default();
 	unless (WIFEXITED(status)) return (100);
 	return (WEXITSTATUS(status));
 	return (0);

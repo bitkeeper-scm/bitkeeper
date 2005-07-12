@@ -111,7 +111,7 @@ resolve_loop(char *name, resolve *rs, rfuncs *rf)
 	while (1) {
 		flush_fd0(); /* For Win98 and Win/ME */
 		fprintf(stderr, "(%s) %s>> ", name, rs->prompt);
-		getline(0, buf, sizeof(buf));
+		if (getline(0, buf, sizeof(buf)) < 0) strcpy(buf, "q");
 		unless (buf[0]) strcpy(buf, "?");
 		if (streq(buf, "dump")) {
 			resolve_dump(rs);
