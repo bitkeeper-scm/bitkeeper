@@ -120,7 +120,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	sccslog.o sccsmv.o sccsrm.o send.o sendbug.o \
 	set.o setup.o sfiles.o sfind.o sfio.o shellcmd.o shrink.o sinfo.o \
 	slib.o smerge.o sort.o status.o stripdel.o synckeys.o sys.o \
-	tagmerge.o takepatch.o testdates.o trigger.o \
+	tagmerge.o tclsh.o takepatch.o testdates.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \
 	unique.o unlink.o unlock.o unpull.o unwrap.o upgrade.o \
 	user.o utils.o uu.o version.o what.o which.o xflags.o zgets.o \
