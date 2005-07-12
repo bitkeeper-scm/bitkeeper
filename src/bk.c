@@ -314,7 +314,7 @@ cmd_run(char *prog, int is_bk, char *sopts, int ac, char **av)
 	    case CMD_BK_SH:
 		/* Handle GUI test */
 		if (streq(prog, "guitest")) {
-			sprintf(cmd_path, "%s/t/guitest.tcl", bin);
+			sprintf(cmd_path, "%s/t/guitest", bin);
 			return (launch_wish(cmd_path, av+1));
 		}
 

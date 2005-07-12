@@ -129,7 +129,7 @@ SCRIPTS	= applypatch bk.script import resync \
 	uuwrap unuuwrap gzip_uuwrap ungzip_uuwrap \
 	b64wrap unb64wrap gzip_b64wrap ungzip_b64wrap
 LOCALSCR= build
-PSCR	= t/doit
+PSCR	= t/doit t/guitest
 PROGS	= hidestring
 # Put UWTLIB first, it checks out files needed by mdbm on winblows.
 LIBS	= libc/libc.a $(UWTLIB) zlib/libz.a mdbm/libmdbm.a \
@@ -318,6 +318,9 @@ realtest: $(ALL) t/doit
 t/doit: t/doit.sh substvars
 	./substvars t/doit.sh > t/doit
 	chmod +x t/doit
+
+t/guitest: t/guitest.tcl tclwrap
+	./tclwrap < t/guitest.tcl > t/guitest
 
 FORCE:
 
