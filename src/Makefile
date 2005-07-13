@@ -80,23 +80,54 @@ TRIAL	=0
 TCLWRAP	=./tclwrap
 IMGDIR	=$(HERE)/tmp/bitkeeper
 
+# Handle warning arguments in GCC
+#
+# -Wall enables a bunch of warnings by default
 # -Wno-parentheses shuts up "suggest parentheses around assignment ...".
 #  Unfortunately it also turns off dangling else warnings.
 # -Wno-char-subscripts shuts up "subscript has type char", which comes
-#  up all the time with broken <ctype.h> implementations.  (To be turned
-#  back on for 1.1 or so.)
-#    WHS: Current versions of gcc (3.0?) supress warnings in system files 
-#	  by default. Perhaps this can be reenabled?
+#  up all the time with broken <ctype.h> implementations.  
+#  (renabled in GCC3 since it supresses warnings in system files by default)
 # -Wno-format-y2k supresses complains about '%y' in strftime formats
 # -Wstrict-prototypes    Don't allow non-ansi function declarations
-# other options wanted:
-#    -Wmissing-declarations Functions without a prototype
-#    -Wnested-externs	    Prototypes declared in a function
-#    -Wwrite-strings	    warn in string constant is passed to a char *
-#    -W
-#    -Wmissing-prototypes   Same as -Wmissing-declarations ??
-#    -Wredundant-decls	    Declaring same function twice (system header probs)
-WARNINGS=-Wall -Wno-parentheses -Wno-char-subscripts -Wno-format-y2k -Wstrict-prototypes
+WARNINGS=-Wall -Wno-parentheses -Wno-char-subscripts -Wno-format-y2k \
+	-Wstrict-prototypes
+
+# Warnings enabled with GCC newer than 3.0
+#
+# -Wredundant-decls	  Declaring same function twice
+# -Wmissing-declarations  Functions without a prototype
+WARNINGS_GCC3=-Wchar-subscripts -Wredundant-decls
+
+# Warnings enabled with GCC newer than 4.0
+#
+# -Wextra  enable a bunch of random things (called -Wextra in newer gccs)
+# -Wno-pointer-sign  Suppress warnings about changing the signs of pointers
+# -Wno-sign-compare  Suppress warnings about comparing signed and unsigned vars
+# -Wno-unsed-parameter Support warnings about function parameters that are 
+#  no used
+# -Wno-missing-field-initializers
+# -Wdeclaration-after-statement Warn if someone does a C++ thing of declaring
+#  a variable in the middle of a block
+WARNINGS_GCC4=-Wextra -Wno-pointer-sign -Wno-sign-compare \
+	-Wno-unused-parameter -Wno-missing-field-initializers \
+	-Wdeclaration-after-statement
+
+# Other options to consider enabling in the future:
+#
+# -Wnested-externs Prototypes declared in a function
+# -Wwrite-string warn in string constant is passed to a char *
+# -Wmissing-prototypes
+# -Wpointer-arith
+# -Wold-style-definition
+
+GCC_MAJOR_REV=$(shell $(CC) -dumpversion | sed 's/\..*//')
+ifeq ($(GCC_MAJOR_REV),3)
+	WARNINGS += $(WARNINGS_GCC3)
+endif 
+ifeq ($(GCC_MAJOR_REV),4)
+	WARNINGS += $(WARNINGS_GCC3) $(WARNINGS_GCC4)
+endif 
 CC_DEBUG=$G $(WARNINGS)
 CC_FAST_DEBUG=$G -O2 $(WARNINGS)
 CC_FAST	=$(CC_FAST_DEBUG)

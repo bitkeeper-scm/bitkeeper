@@ -43,6 +43,9 @@ private	char	root[MAXPATH];
 private int	embedded = 0;
 private int	expires = 0;
 
+extern	int	licenseServer[2];
+extern	time_t	licenseEnd;
+
 #define	COLOR		"lightblue"
 
 #define	OUTER_TABLE	"<table width=100% bgcolor=black cellspacing=0 border=0 cellpadding=2><tr><td>\n"
@@ -138,7 +141,7 @@ cmd_httpget(int ac, char **av)
 	if (user) sprintf(root+strlen(root), "user=%s/", user);
 	unless (*name) name = "index.html";
 
-	unless (streq(name, "license") || bk_options()&BKOPT_WEB) {
+	unless (streq(name, "license") || bk_options(0)&BKOPT_WEB) {
 		unless (has_temp_license()) {
 			http_error(503,
 			    "bkWeb option is disabled: %s",
@@ -1740,9 +1743,6 @@ has_temp_license()
 	int need = PULL|CLONE;
 	int i;
 
-	extern int licenseServer[2];
-	extern time_t licenseEnd;
-
 	if (time(0) < licenseEnd) return 1;
 
 	/*
@@ -1901,7 +1901,6 @@ private void
 http_license(char *page)
 {
 	char arg[5];
-	extern int licenseServer[2];
 
 	if (expires > 0 && expires < 480) {
 		/* also check the ip address we're coming from */

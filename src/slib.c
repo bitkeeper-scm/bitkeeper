@@ -5688,7 +5688,7 @@ printstate(const serlist *state, const ser_t *slist)
 	return (0);
 }
 
-private void inline
+private inline void
 fnnlputs(char *buf, FILE *out)
 {
 	register char	*t = buf;
@@ -5709,7 +5709,7 @@ fnnlputs(char *buf, FILE *out)
 	}
 }
 
-private void inline
+private inline void
 fnlputs(char *buf, FILE *out)
 {
 	register char	*t = buf;
