@@ -374,9 +374,9 @@ more changesets.
 $
 #eval-warn
 Warning: Evaluation licenses have a limited number of changesets. Your
-changeset quota is now down to #BKARG# which is less than 50 changesets
-away from the limit.  You will not be able to commit any more changesets
-when the quota reaches zero.  Please upgrade to a commercial license.
+changeset quota is now down to #BKARG# changesets.  You will not be
+able to commit any more changesets when the quota reaches zero.
+Please upgrade to a commercial license.
 $
 #takepatch-chksum
 Error: A checksum in the patch for the ChangeSet file does not match
@@ -1002,6 +1002,12 @@ Unable to obtain a permission to use this version of BitKeeper from
 lease.openlogging.org because the local clock on this computer is off
 by more than 24 hours.  Please verify the time on your computer and
 that the timezone is set correctly and try again.
+$
+#lease-eval-limit
+You are using an evaluation license and it appears that you have  
+reached the usage limit allowed for this license.  To continue  
+your work you will need a commercial license.  Please contact  
+sales@bitmover.com
 $
 #gui-support-submitter
 Please enter your valid email address here so we can reach you

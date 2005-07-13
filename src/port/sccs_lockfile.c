@@ -28,7 +28,6 @@ sccs_lockfile(const char *file, int waitsecs, int quiet)
 	char	*p, *uniq;
 	int	fd;
 	int	uslp = 1000, waited = 0;
-	extern	int fsync(int);
 
 	uniq = uniqfile(file);
 	unlink(uniq);
