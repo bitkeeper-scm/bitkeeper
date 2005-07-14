@@ -132,3 +132,29 @@ cd $HERE/copy2
 bk lock -U
 echo OK
 fi #---------------------------------------------------------------------
+
+echo $N Test spoofing of BK env vars sent to bkd ....................$NL
+cd $HERE
+no_logging spoof-remote
+cd ..
+bk clone $Q spoof-remote spoof-local
+cd spoof-remote
+mkdir BitKeeper/triggers || exit 1
+cat - <<'EOF' > BitKeeper/triggers/pre-outgoing
+#!/bin/sh
+echo "$BK_VERSION" > ../FROM_BKD
+exit 0
+EOF
+chmod +x BitKeeper/triggers/pre-outgoing
+bk new $Q BitKeeper/triggers/pre-outgoing
+bk commit $Q -yadd-trig
+cd ../spoof-local
+echo FOO > ../SPOOF
+bk pull $Q -E'BK_VERSION=FOO'
+cd ..
+cmp -s SPOOF FROM_BKD && {
+  echo failed
+  echo can spoof BK_VERSION to a bkd
+  exit 1
+}
+echo OK

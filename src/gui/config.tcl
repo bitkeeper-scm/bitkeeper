@@ -288,7 +288,7 @@ proc initFonts-macosx {app var} \
 
 	# tested with 1024x768 only
 	set _d(buttonFont)	system
-	set _d(noticeFont)	{Arial 10 normal bold}
+	set _d(noticeFont)	system
 	set _d(fixedFont)	{Monaco 10 normal}
 	set _d(fixedBoldFont)	{Monaco 10 normal bold}
 }

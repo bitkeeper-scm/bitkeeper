@@ -111,14 +111,13 @@ do_sdiff(resolve *rs, char *left, char *right, int wait)
 {
 	char	tmp[MAXPATH];
 	char	cols[10];
-	FILE	*p = popen("tput cols", "r");
+	FILE	*p;
 
-	unless (p && fnext(cols, p) && (atoi(cols) > 0)) {
-		strcpy(cols, "80");
-	} else {
-		chop(cols);
+	strcpy(cols, "80");
+	if (tty_init()) {
+		sprintf(cols, "%d", tty_cols());
+		tty_done();
 	}
-	if (p) pclose(p);
 	bktmp(tmp, "sdiff");
 	sysio(0, tmp, 0, "bk", "sdiff", "-w", cols, left, right, SYS);
 	more(rs, tmp);
@@ -139,7 +138,7 @@ do_difftool(resolve *rs, char *left, char *right, int wait)
 	if (wait) {
 		return (spawnvp(_P_WAIT, "bk", av));
 	} else {
-		spawnvp(_P_DETACH, "bk", av);
+		spawnvp_ex(_P_NOWAIT, "bk", av);
 	}
 	return (0);
 }
@@ -207,7 +206,7 @@ more(resolve *rs, char *file)
 	 * must use system(), _not_ sysio()
 	 * because on win32, pager may have arguments
 	 */
-	cmd = aprintf("%s < %s", rs->pager, file);
+	cmd = aprintf("%s < '%s'", rs->pager, file);
 	system(cmd);
 	return (0);
 }
@@ -274,7 +273,7 @@ revtool(char *name)
 	av[1] = "revtool";
 	av[2] = name;
 	av[3] = 0;
-	spawnvp(_P_DETACH, "bk", av);
+	spawnvp_ex(_P_NOWAIT, "bk", av);
 	return (0);
 }
 

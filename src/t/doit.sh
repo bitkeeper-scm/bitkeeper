@@ -249,8 +249,10 @@ setup_env()
 	BKL_EX1=YgAAAo4AAAADgQAAAAJjRmx5Yh+29UPROW4TAnToWOjNS4pf9Lmi7ONSkxY3Q17x
 	BKL_EX2=7elexrv7QX9ktCOjvKAA/hGbE9khR0kEgYEAz6PCQXihKBrGHdHJkCemon/e12gN
 	BKL_EX3=Xh6TrCfxuH/KQKtLvm6es8TWRKGdzIGCO/9vi9p3appOZGowM3HJILp8/P15oQ==
-	BK_NO_GUI_PROMPT=YES
-	export BK_NO_GUI_PROMPT
+	test "$GUI_TEST" = YES || {
+		BK_NO_GUI_PROMPT=YES
+		export BK_NO_GUI_PROMPT
+	}
 	BK_GLOB_TRANSLATE_EQUAL=NO
 }
 
@@ -347,8 +349,10 @@ get_options()
 	KEEP_GOING=NO
 	TESTS=0
 	PAUSE=NO
+	GUI_TEST=NO
 	while true
 	do	case $1 in
+		    -g) GUI_TEST=YES;;
 		    -p) PAUSE=YES;;
 	            -f) FAIL_WARNING=YES;;
 		    -i) KEEP_GOING=YES;;
@@ -367,7 +371,10 @@ get_options()
 		shift;
 	done
 	if [ -z "$list" ]
-	then	list=`ls -1 t.* | egrep -v '.swp|~'`
+	then	if [ "$GUI_TEST" == YES ]
+		then	list=`ls -1 g.* | egrep -v '.swp|~'`
+		else	list=`ls -1 t.* | egrep -v '.swp|~'`
+		fi
 	fi
 	# check echo -n options
 	if [ '-n foo' = "`echo -n foo`" ]

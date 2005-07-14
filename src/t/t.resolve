@@ -543,3 +543,45 @@ grep -q '^%K%$' foo || {
   exit 1
 }
 echo OK
+
+echo $N Check vr and vl when filename has spaces ....................$NL
+cd $HERE
+no_logging proj1
+echo VERSION 1 > 'foo bar'
+bk new $Q 'foo bar'
+bk commit $Q -yfoo
+cd ..
+bk clone $Q proj1 copy1
+cd proj1
+bk edit $Q 'foo bar'
+echo VERSION 2 > 'foo bar'
+bk delta $Q -y2 'foo bar'
+bk commit $Q -yfoo
+cd ../copy1
+bk edit $Q 'foo bar'
+echo VERSION 3 > 'foo bar'
+bk delta $Q -y2 'foo bar' 
+bk commit $Q -yfoo
+cd ../proj1
+bk pull $Q -R ../copy1
+bk resolve -t <<EOF > VR 2>&1
+vr
+q
+EOF
+grep -q "VERSION 3" VR || {
+	echo Fail
+	echo Expecting to contain the string "'VERSION 3'" and resolve gave
+	cat VR
+	exit 1
+}
+bk resolve -t <<EOF > VL 2>&1
+vl
+q
+EOF
+grep -q "VERSION 2" VL || {
+	echo Fail
+	echo Expecting to contain the string "'VERSION 2'" and resolve gave
+	cat VL
+	exit 1
+}
+echo OK

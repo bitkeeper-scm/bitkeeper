@@ -5446,7 +5446,7 @@ printstate(const serlist *state, const ser_t *slist)
 	return (0);
 }
 
-private void inline
+private inline void
 fnnlputs(char *buf, FILE *out)
 {
 	register char	*t = buf;
@@ -5467,7 +5467,7 @@ fnnlputs(char *buf, FILE *out)
 	}
 }
 
-private void inline
+private inline void
 fnlputs(char *buf, FILE *out)
 {
 	register char	*t = buf;
@@ -12934,7 +12934,7 @@ doDiff(sccs *s, u32 flags, u32 kind, char *leftf, char *rightf,
 		c = atoi(columns);
 		for (i = 0; i < c/2 - 18; ) spaces[i++] = '=';
 		spaces[i] = 0;
-		sprintf(buf, "bk sdiff -w%s %s %s", columns, leftf, rightf);
+		sprintf(buf, "bk sdiff -w%s '%s' '%s'", columns, leftf, rightf);
 		diffs = popen(buf, "r");
 		if (!diffs) return (-1);
 		diffFile[0] = 0;

@@ -160,7 +160,7 @@ _find
 _findcset
 findkey
 fix
-fixlod
+_fixlod
 gca
 get
 gethelp
@@ -193,7 +193,7 @@ _lines restricted
 _link
 _listkey restricted
 lock
-_lod
+lod
 log
 _logflags
 _logging
@@ -201,7 +201,7 @@ _loggingaccepted
 _loggingask
 _loggingto
 mailsplit
-_mail
+mail
 makepatch
 mdiff
 merge
@@ -268,6 +268,7 @@ _strings
 synckeys
 tagmerge
 takepatch
+_tclsh
 testdates
 timestamp
 _unbk
@@ -299,17 +300,20 @@ _get => get
 co => get
 edit => get
 comment => comments	# alias for Linus, remove...
-_fix_lod1 => fixlod
+_fix_lod1 => _fixlod
 info => sinfo
 _log => log
+_mail => mail
 multiuser => newroot
 _preference => preference
-rchksum => checksum
+rechksum => checksum
 rev2cset => r2c
 sccsdiff => diffs
 sccsmv => mv
 sccsrm => rm
 sfind => sfiles
+support => sendbug
+unget => unedit
 user => users
 
 # guis

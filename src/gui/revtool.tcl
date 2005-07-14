@@ -2148,6 +2148,9 @@ proc widgets {} \
 	}
 
 	bind $w(graph) <3>		{ diff2 0; currentMenu; break }
+	if {$gc(aqua)} {
+		bind $w(graph) <Command-1>  { diff2 0; currentMenu; break}
+	}
 	bind $w(graph) <a>		{ selectNode "id" ; break }
 	bind $w(graph) <C>		{ r2c; break }
 	bind $w(graph) <h>		"history"
@@ -2205,7 +2208,6 @@ proc widgets {} \
 	if {$gc(aqua)} {
 		bind . <Command-q> done
 		bind . <Command-w> done
-		bind $w(graph) <Option-1>  { diff2 0; currentMenu; break}
 	}
 	if {$gc(x11)} {
 		bind . <Shift-Button-4>   "$w(graph) xview scroll -1 pages"
@@ -2241,6 +2243,9 @@ proc widgets {} \
 		selectTag %W %x %y D1
 	}
 	bind $w(aptext) <Button-3> { selectTag %W %x %y "B3"; break}
+	if {$gc(aqua)} {
+		bind $w(aptext) <Command-1> {selectTag %W %x %y "B3"; break}
+	}
 
 	# highlighting.
 	$w(aptext) tag configure "newTag" -background $gc(rev.newColor)

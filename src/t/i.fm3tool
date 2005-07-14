@@ -107,3 +107,55 @@ echo $N "Starting fm3tool interactively; you must quit manually.......$NL"
 cd $HERE/local/RESYNC
 bk fm3tool -geometry 800x600 -o merge.raw -f 1.1.1.1 1.1 1.2 src/file1
 echo OK
+
+echo $N Boundary bug ................................................$NL
+# Need a license to get smerge to do its thing
+cd $HERE
+cat - <<EOF > c
+logging: none
+description: BitKeeper Test repository
+email: nobody@nowhere.bk
+license: $BKL_P
+licsign1: $BKL_P1
+licsign2: $BKL_P2
+licsign3: $BKL_P3
+EOF
+bk setup -f -cc boundary
+cd boundary
+# 1.1 of foo
+cat - <<'EOF' > foo
+orig line
+EOF
+bk new $Q foo
+# 1.2
+bk edit $Q foo
+cat - <<'EOF' > foo
+left click on this line, then type s
+orig line
+EOF
+bk delta $Q -y1.2 foo
+# 1.1.1.1 - simple replace line
+bk _get $Q -er1.1 foo
+cat - <<'EOF' > foo
+replaced line
+EOF
+bk delta $Q -y1.1.1.1 foo
+# 1.3 - same patch as 1.1.1.1
+bk edit $Q foo
+cat - <<'EOF' > foo
+left click on this line, then type s
+replaced line
+EOF
+bk delta $Q -y1.3 foo
+# "merge" and run fm3tool - fails in bk-3.2.4
+bk edit $Q -M1.1.1.1 foo
+BK_GUI=1 bk prompt -i \
+    "left click on line: 'left click on this line, then type s', then type s"
+bk fm3tool -f 1.3 1.1 1.1.1.1 foo
+bk get $Q foo
+cat - <<'EOF' > WANT
+left click on this line, then type s
+replaced line
+EOF
+checkfiles WANT foo
+echo OK

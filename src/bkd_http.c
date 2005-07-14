@@ -44,6 +44,9 @@ private int	embedded = 0;
 private int	expires = 0;
 private	char	*header_host;
 
+extern	int	licenseServer[2];
+extern	time_t	licenseEnd;
+
 #define	COLOR		"lightblue"
 
 #define	OUTER_TABLE	"<table width=100% bgcolor=black cellspacing=0 border=0 cellpadding=2><tr><td>\n"
@@ -147,7 +150,7 @@ cmd_httpget(int ac, char **av)
 	if (user) sprintf(root+strlen(root), "user=%s/", user);
 	unless (*name) name = "index.html";
 
-	unless (streq(name, "license") || bk_options()&BKOPT_WEB) {
+	unless (streq(name, "license") || bk_options(0)&BKOPT_WEB) {
 		unless (has_temp_license()) {
 			http_error(503,
 			    "BK/Web option has not been purchased.");
@@ -1756,8 +1759,6 @@ has_temp_license(void)
 #define	CLONE	0x02
 	int	need = PULL|CLONE;
 	int	i;
-
-	extern time_t licenseEnd;
 
 	if (time(0) < licenseEnd) return (1);
 

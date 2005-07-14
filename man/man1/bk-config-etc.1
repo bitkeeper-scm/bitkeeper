@@ -4,7 +4,7 @@
 bk config-etc \- configuring \*(BK per repository
 .SH DESCRIPTION
 \*(BK config files contain repository configuration information including
-project description, licensing information, logging information, 
+project description, licensing information, 
 user preferences, BKWeb preferences, and contact information.
 Each \*(BK repository must have the minimum configuration
 information available in order to properly execute \*(BK commands.
@@ -44,9 +44,12 @@ For example:
 Minimum content requirements for the BitKeeper/etc/config file 
 are the key value pairs for 
 .DS
-logging:
 description:
 email:
+license:
+licsig1:
+licsig2:
+licsig3:
 .DE
 (See "CONFIG FILE ENTRIES" section below for allowed values.)
 .LP
@@ -61,68 +64,26 @@ BitKeeper/etc/config file.  See bk help setup for more information.
 .SH "CONFIG FILE ENTRIES"
 .SS LICENSE KEY
 .LP
-The use of \*(BK without Open Logging enabled requires a commercial
+The use of \*(BK requires a commercial
 license key.  You can obtain a 30-day license for evaluation by
 emailing a request to sales@bitmover.com.
 .LP
-Once a license key is obtained, add a line to BitKeeper/etc/config
-that looks like:
+Once a license key is obtained, add lines to BitKeeper/etc/config
+that look like:
 .DS
 license: <license key>
+licsig1: <sig1>
+licsig2: <sig2>
+licsig3: <sig3>
 .DE
-.SS LOGGING
-.LP
-If there is an address to which you would like logs to be sent add
-a line to BitKeeper/etc/config:
-.DS
-logging:\c
-.ARG address
-.DE
-.LP
-To set up Open Logging for the repository add a line to BitKeeper/etc/config:
-.DS
-logging: logging@openlogging.org
-.DE
-.SS LOGGING CONFIRMATION
-.LP
-To configure the repository to not ask for confirmation
-to send logs, put the
-following line in the BitKeeper/etc/config file:
-.DS
-logging_ask:no
-.DE
-By doing this you are agreeing to send logs for all instances of
-this repository.
-.SS DISABLE LOGGING
-.LP
-To disable logging add a line to BitKeeper/etc/config:
-.DS
-logging:none
-.DE
-Please be aware this option is only available to customers with commercial
-licenses and single users.
-.SS SINGLE USERS
-.LP
-To set the package for a single user add the following lines to the
-BitKeeper/etc/config file:
-.DS
-single_user:\c
-.ARG user_name
-single_host:\c
-.ARG host_name
-.DE
-Please note, single user repositories can be changed to multi-user 
-repositories, but they can not be changed back to single_user repositories.
-See bk multiuser.
-.SS "PROJECT INFORMATION"
+.SS "DESCRIPTION"
 .LP
 The config file can contain information that helps describe the project.
 The description field is required.
 .DS
 description:
-category:
 .DE
-The values for these entries can be anything.
+The value for this entry can be anything.
 .SS "CONTACT INFORMATION"
 .LP
 By filling in the contact information, you are providing a contact
@@ -132,15 +93,6 @@ The email field is the only required field.
 .DS
 contact:
 email:
-street:
-city:
-state:
-postal:
-country:
-phone:
-cell:
-pager:
-hours:
 .DE
 .SS USER PREFERENCES
 .LP

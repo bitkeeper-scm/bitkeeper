@@ -118,3 +118,79 @@ test $TOP = $NTOP && {
 	exit 1
 }
 echo OK
+
+echo $N Test a patch that failed on windows .........................$NL
+undoit() {
+	perl -pe 'BEGIN {binmode(STDIN); binmode(STDOUT)} chomp;s/;/\r\n/g'
+}
+cd $HERE
+mkdir norepo
+cd norepo
+# The problem was giving a binary (\n) file to a text (\r\n) reading
+# process combining with a MS bug which caused tell() to return the
+# wrong value.  The fix was to switch 'patch' to always read binary
+# The data was distilled from Oscar's test case
+#
+# Make the file
+cat - <<'EOF' | undoit > file.crlf
+1;2;5;6;7;8;10;11;12;14;15;17;18;19;20;21;23;24;25;26;27;29;30;
+31;32;35;36;37;38;40;41;42;43;46;47;48;49;50;51;53;54;55;56;57;58;
+61;62;63;64;65;66;67;68;
+EOF
+bk undos < file.crlf > file.lf
+# Make the end result
+cat - <<'EOF' | undoit > want.crlf
+3;4;5;6;7;9;10;11;13;14;16;17;18;19;20;22;23;24;25;26;28;29;30;
+33;34;35;36;37;39;40;41;44;45;46;47;48;49;50;52;53;54;55;56;59;
+60;61;62;63;64;65;66;69;70;
+EOF
+bk undos < want.crlf > want.lf
+# Make the patch
+cat - <<'EOF' | undoit > patch.crlf
+--- file	Wed Jun 29 15:52:33 2005;
++++ newfile	Wed Jun 29 15:52:33 2005;
+@@ -1,53 +1,53 @@;
+-1;-2;+3;+4; 5; 6; 7;-8;+9; 10; 11;-12;+13; 14;-15;+16; 17; 18; 19;
+ 20;-21;+22; 23; 24; 25; 26;-27;+28; 29; 30;-31;-32;+33;+34; 35; 36;
+ 37;-38;+39; 40; 41;-42;-43;+44;+45; 46; 47; 48; 49; 50;-51;+52; 53;
+ 54; 55; 56;-57;-58;+59;+60; 61; 62; 63; 64; 65; 66;-67;-68;+69;+70;
+EOF
+bk undos < patch.crlf > patch.lf
+# Test it out
+cp file.lf file
+cp patch.lf patch
+bk patch -s < patch || {
+	echo failed
+	exit 1
+}
+checkfiles file want.lf
+echo OK
+
+if [ "$PLATFORM" = "WIN32" ]; then
+echo $N Try all other end of line combinations: result always lf ....$NL
+# file crlf and patch is lf => want is lf
+cp file.crlf file
+cp patch.lf patch
+bk patch -s < patch || {
+	echo failed
+	exit 1
+}
+checkfiles file want.lf
+# file crlf and patch is crlf => want is lf
+cp file.crlf file
+cp patch.crlf patch
+bk patch -s < patch || {
+	echo failed
+	exit 1
+}
+checkfiles file want.lf
+# file lf and patch is crlf => want is lf
+cp file.lf file
+cp patch.crlf patch
+bk patch -s < patch || {
+	echo failed
+	exit 1
+}
+checkfiles file want.lf
+echo OK
+fi	# if WIN32

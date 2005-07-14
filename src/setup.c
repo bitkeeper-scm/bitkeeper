@@ -139,8 +139,9 @@ again:		flush_fd0(); /* for Win/98 and Win/ME */
 		exit(1);
 	}
 	checkSingle();
-	unless (mdbm_fetch_str(m, "description")) {
-		fprintf(stderr, "Setup: must provide a description.\n");
+
+	if ((t = mdbm_fetch_str(m, "single_user")) && strchr(t, '@')) {
+		fprintf(stderr, "Setup: single_user should not have a hostname.\n");
 		if (config_path) {
 err:			unlink("BitKeeper/etc/config");
 			unlink("BitKeeper/log/cmd_log");
@@ -154,32 +155,12 @@ err:			unlink("BitKeeper/etc/config");
 		}
 		goto again;
 	}
-
-	unless (mdbm_fetch_str(m, "logging")) {
-		fprintf(stderr, "Setup: must define logging policy.\n");
-		if (config_path) goto err;
-		goto again;
-	}
-	unless (t = mdbm_fetch_str(m, "email")) {
-		fprintf(stderr, "Setup: must define email contact.\n");
-		if (config_path) goto err;
-		goto again;
-	}
-	unless (t = strchr(t, '@')) {
-		fprintf(stderr, "Setup: must define a valid email contact.\n");
-		if (config_path) goto err;
-		goto again;
-	}
-	unless (t = strchr(t, '.')) {
-		fprintf(stderr, "Setup: must define a valid email contact.\n");
-		if (config_path) goto err;
-		goto again;
-	}
 	if ((t = mdbm_fetch_str(m, "single_user")) && strchr(t, '@')) {
 		fprintf(stderr, "Setup: single_user should not have a hostname.\n");
 		if (config_path) goto err;
 		goto again;
 	}
+
 	if ((mdbm_fetch_str(m, "single_user") != 0) ^
 	    (mdbm_fetch_str(m, "single_host") != 0)) {
 		fprintf(stderr,
@@ -338,7 +319,6 @@ mkconfig(FILE *out, MDBM *flist, int verbose)
 	FILE	*in;
 	int	found = 0;
 	int	first = 1;
-	int	licensed = 0;
 	char	*p, *val;
 	kvpair	kv;
 	char	buf[1000], pattern[200];
@@ -399,19 +379,21 @@ mkconfig(FILE *out, MDBM *flist, int verbose)
 		flist = addField(flist, fld);
 	}
 
+	val = flist ? mdbm_fetch_str(flist, "logging") : 0;
+	/* force logging to default to none */
+	unless (val && *val) {
+		char fld[] =  "logging=none";
+		flist = addField(flist, fld);
+	}
+
 	/*
 	 * Now print the help message for each config entry
 	 */
-	licensed = flist && mdbm_fetch_str(flist, "license");
 	while (fgets(buf, sizeof(buf), in)) {
 		if (first && (buf[0] == '#')) continue;
 		first = 0;
 		if (streq("$\n", buf)) break;
 		chop(buf);
-		if (licensed && 
-		    (streq(buf, "single_user") || streq(buf, "single_host"))) {
-		    	continue;
-		}
 		if (verbose) {
 			sprintf(pattern, "config_%s", buf);
 			getMsgP(pattern, 0, "# ", 0, out);

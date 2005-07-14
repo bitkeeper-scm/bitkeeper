@@ -226,7 +226,6 @@ BitMover can be reached at:
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
-#config_license
 #license_none
 You do not have a valid license for BitKeeper and the logging field
 in the BitKeeper/etc/config file is not set to "logging@openlogging.org".
@@ -380,9 +379,9 @@ Thanks!
 $
 #eval_warn
 Warning: Evaluation licenses have a limited number of changesets. Your
-changeset quota is now down to #BKARG# which is less than 50 changesets
-away from the limit.  You will not be able to commit any more changesets
-when the quota reaches zero.  Please contact BitMover.
+changeset quota is now down to #BKARG# changesets.  You will not be
+able to commit any more changesets when the quota reaches zero.
+Please upgrade to a commercial license.
 BitMover can be reached at:
    +1-650-872-9900 (international and California)
    888-401-8808 (toll free in the US & Canada) 
@@ -553,11 +552,6 @@ NOTICE: you really do want to fill this out, if something goes wrong
 with your repository, or if someone changes the logging policy, we
 send mail to the contact listed here for confirmation.
 
-BitKeeper can maintain a log of your change comments (not your source,
-just the comments) on a centralized server.  This is useful as your
-project grows, it gives people a place to go see what is happening on
-a per project basis.  This is especially useful for distributed developers.
-
 $
 #config_setup
 The setup program is used when creating the initial package stored 
@@ -578,18 +572,15 @@ Name of the project, such as "BitKeeper" or "The GNU C compiler".
 
 $
 #config_category
-
-What (Red Hat package) category this project fits into, if any.
-
 $
 #config_logging
+$
+#config_license
 
-Open Logging server.  This site is where users go to see the
-ChangeSet comments for all instances of this repository.  If using
-BitMover's free use license(BKL), this must be logging@openlogging.org.
-The BKL terms require openlogging. "bk help bkl" will show you the
-default licensing terms.  If this repository is for use with a commercial
-license, it can be an internal email address or "none" to disable logging.
+Enter the license information for BitKeeper here.
+
+You can get a temporary license by sending a mail request to
+sales@bitmover.com
 
 $
 #config_contact
@@ -610,30 +601,6 @@ response from anyone else at your location after 90 days, then open logging
 will be implicitly approved.
 
 $
-#config_street
-
-Add your street address if you like, it is optional.
-
-$
-#config_hours
-
-Business Hours when we can contact you via phone.
-
-$
-#config_single_user
-
-If this field is set, all checkins will appear to be made by this user,
-in effect making this a single user package.  Single user packages are
-free from the logging constraint up to a maximum of 1000 files.  In order 
-for the package to really be free, both the single_user and the single_host 
-field need to be set.
-
-$
-#config_single_host
-
-If this field is set, all checkins will appear to be made on this host.
-
-$
 #config_compression
 
 Default compression algorithm for stored s.files is gzip.
@@ -648,27 +615,15 @@ If you want to manually fix them, set this to "no".
 $
 #config_template
 description
-category
 logging
 license
 licsign1
 licsign2
 licsign3
-single_user
-single_host
 compression
 autofix
 contact
 email
-street
-city
-state
-postal
-country
-phone
-cell
-pager
-hours
 $
 #warn_poly
 Warning: this repository has been found to have deltas which
@@ -686,64 +641,6 @@ file system are as follows:
         "aux", "con", "prn", "nul", "lpt?", "?:"
 Please rename the file and retry (see also "bk helptool mv")
 Note: You must perform the rename in the sending repository.
-$
-#setup_categories
-amusements/games
-amusements/graphics
-amusements/multimedia
-applications/archiving
-applications/communications
-applications/databases
-applications/dos/windows connectivity
-applications/editors
-applications/emulators
-applications/graphics
-applications/mail
-applications/mail/www/news tools
-applications/math
-applications/networking
-applications/news
-applications/productivity
-applications/publishing
-base
-base/kernel
-daemons
-development/building
-development/debuggers
-development/languages
-development/languages/tcl
-development/libraries
-development/libraries/libc
-development/system
-development/tools
-documentation
-games
-libraries
-networking
-networking/admin
-networking/daemons
-networking/development
-networking/utilities
-shells
-system environment/base
-system environment/file managers
-system environment/printer support
-user interface/gnome
-user interface/kde
-utilities
-utilities/archiving
-utilities/file
-utilities/printing
-utilities/system
-utilities/text
-x11
-x11/amusements
-x11/applications
-x11/applications/graphics
-x11/libraries
-x11/utilities
-x11/xfree86
-x11/xfree86/servers
 $
 #setuptool_step_BadUser
 You are logged in as '#BKARG#'. You may not create repositories when
@@ -798,11 +695,8 @@ username and hostname. The username and hostname you supply will
 be recorded with every checkin in this repository.
 $
 #setuptool_step_RepoInfo
-The following information uniquely identifies this repository. All fields 
-are required to be non-empty in order for you to continue.
-
-If the categories in the drop-down list do not meet your needs you may enter 
-any category you like.
+The following information uniquely identifies this repository. The fields
+highlighted in blue are required to be non-empty.
 $
 #setuptool_step_ContactInfo
 The following information is optional.
@@ -1018,6 +912,12 @@ Unable to obtain a lease for this version of BitKeeper from
 lease.openlogging.org because the local clock on this computer is off
 by more than 24 hours.  Please verify the time on your computer and that
 the timezone is set correctly and try again.
+$
+#lease-eval-limit
+You are using an evaluation license and it appears that you have  
+reached the usage limit allowed for this license.  To continue  
+your work you will need a commercial license.  Please contact  
+sales@bitmover.com
 $
 #gui-support-submitter
 Please enter your valid email address here so we can reach you

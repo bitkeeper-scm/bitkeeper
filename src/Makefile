@@ -1,9 +1,45 @@
 # Makefile for BitKeeper.
 HERE    := $(shell pwd)
-REPO    := $(shell basename "`bk root`")
-URL     := $(shell echo bk://work/`bk root` | sed s,/home/bk/,,)
-LOG	:= $(shell echo LOG-`bk getuser`)
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
+UTC	:= $(shell echo `perl -e " \
+		@l=localtime;  \
+		printf \"%04d%02d%02d%02d%02d%02d\", \
+		@l[5]+1900,@l[4],@l[3],@l[2],@l[1],@l[0];"`)
+TIME	:= $(shell echo `perl -e "print time"`)
+
+# Stuff that needs BK
+SYSBK	:= $(shell which bk)
+ifeq "$(shell test -x '$(SYSBK)' ; echo $$?)" "1"
+	TAGGED=0
+	BK_VERSION1="$(UTC)b for $(OSTYPE)"
+	BK_VERSION2= "char *bk_vers = \"$(UTC)b\"; \
+	    char *bk_utc = \"$(UTC)b\"; \
+	    char *bk_time = \"$(TIME)\";"
+	REPO	:= $(HERE)
+	URL	:= $(shell echo bk://work/$(HERE) | sed s,/home/bk,,)
+	LOG	:= $(shell echo LOG-`id -u`)
+else
+	TAGGED=$(shell $(SYSBK) -R prs -hr+ \
+	    -d'$$if(:SYMBOL:){1}$$unless(:SYMBOL:){0}' ChangeSet)
+	BK_VERSION1=$(shell echo \
+	    `$(SYSBK) prs -hr+ \
+	        -d'$$if(:SYMBOL:){:SYMBOL: }:UTC:\n' ../ChangeSet |\
+	    sed 's/ approved//g';` \
+	    for \
+	    `sh ./utils/os`)
+	BK_VERSION2=$(shell echo \
+	    `$(SYSBK) prs -hr+ \
+	    -d' \
+	    char *bk_vers = \
+	        \"$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}\"\; \
+	    char *bk_utc = \":UTC:\"\; \
+	    char *bk_time = \":TIME_T:\"\; \
+	    ' ../ChangeSet`)
+	REPO    := $(shell basename "`$(SYSBK) root`")
+	URL     := $(shell echo bk://work/`$(SYSBK) root` | sed s,/home/bk/,,)
+	LOG	:= $(shell echo LOG-`$(SYSBK) getuser`)
+endif
+
 
 # Is this building a commercial-only release of bk
 COMMERCIAL = 0
@@ -44,23 +80,54 @@ TRIAL	=0
 TCLWRAP	=./tclwrap
 IMGDIR	=$(HERE)/tmp/bitkeeper
 
+# Handle warning arguments in GCC
+#
+# -Wall enables a bunch of warnings by default
 # -Wno-parentheses shuts up "suggest parentheses around assignment ...".
 #  Unfortunately it also turns off dangling else warnings.
 # -Wno-char-subscripts shuts up "subscript has type char", which comes
-#  up all the time with broken <ctype.h> implementations.  (To be turned
-#  back on for 1.1 or so.)
-#    WHS: Current versions of gcc (3.0?) supress warnings in system files 
-#	  by default. Perhaps this can be reenabled?
+#  up all the time with broken <ctype.h> implementations.  
+#  (renabled in GCC3 since it supresses warnings in system files by default)
 # -Wno-format-y2k supresses complains about '%y' in strftime formats
 # -Wstrict-prototypes    Don't allow non-ansi function declarations
-# other options wanted:
-#    -Wmissing-declarations Functions without a prototype
-#    -Wnested-externs	    Prototypes declared in a function
-#    -Wwrite-strings	    warn in string constant is passed to a char *
-#    -W
-#    -Wmissing-prototypes   Same as -Wmissing-declarations ??
-#    -Wredundant-decls	    Declaring same function twice (system header probs)
-WARNINGS=-Wall -Wno-parentheses -Wno-char-subscripts -Wno-format-y2k -Wstrict-prototypes
+WARNINGS=-Wall -Wno-parentheses -Wno-char-subscripts -Wno-format-y2k \
+	-Wstrict-prototypes
+
+# Warnings enabled with GCC newer than 3.0
+#
+# -Wredundant-decls	  Declaring same function twice
+# -Wmissing-declarations  Functions without a prototype
+WARNINGS_GCC3=-Wchar-subscripts -Wredundant-decls
+
+# Warnings enabled with GCC newer than 4.0
+#
+# -Wextra  enable a bunch of random things (called -Wextra in newer gccs)
+# -Wno-pointer-sign  Suppress warnings about changing the signs of pointers
+# -Wno-sign-compare  Suppress warnings about comparing signed and unsigned vars
+# -Wno-unsed-parameter Support warnings about function parameters that are 
+#  no used
+# -Wno-missing-field-initializers
+# -Wdeclaration-after-statement Warn if someone does a C++ thing of declaring
+#  a variable in the middle of a block
+WARNINGS_GCC4=-Wextra -Wno-pointer-sign -Wno-sign-compare \
+	-Wno-unused-parameter -Wno-missing-field-initializers \
+	-Wdeclaration-after-statement
+
+# Other options to consider enabling in the future:
+#
+# -Wnested-externs Prototypes declared in a function
+# -Wwrite-string warn in string constant is passed to a char *
+# -Wmissing-prototypes
+# -Wpointer-arith
+# -Wold-style-definition
+
+GCC_MAJOR_REV=$(shell $(CC) -dumpversion | sed 's/\..*//')
+ifeq ($(GCC_MAJOR_REV),3)
+	WARNINGS += $(WARNINGS_GCC3)
+endif 
+ifeq ($(GCC_MAJOR_REV),4)
+	WARNINGS += $(WARNINGS_GCC3) $(WARNINGS_GCC4)
+endif 
 CC_DEBUG=$G $(WARNINGS)
 CC_FAST_DEBUG=$G -O2 $(WARNINGS)
 CC_FAST	=$(CC_FAST_DEBUG)
@@ -120,7 +187,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	sccslog.o sccsmv.o sccsrm.o send.o sendbug.o \
 	set.o setup.o sfiles.o sfio.o shellcmd.o shrink.o sinfo.o \
 	slib.o smerge.o sort.o status.o stripdel.o synckeys.o sys.o \
-	tagmerge.o takepatch.o testdates.o timestamp.o trigger.o \
+	tagmerge.o tclsh.o takepatch.o testdates.o timestamp.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \
 	unique.o unlink.o unlock.o unpull.o unwrap.o upgrade.o \
 	user.o utils.o uu.o version.o what.o which.o xflags.o zgets.o \
@@ -129,7 +196,7 @@ SCRIPTS	= applypatch bk.script import resync \
 	uuwrap unuuwrap gzip_uuwrap ungzip_uuwrap \
 	b64wrap unb64wrap gzip_b64wrap ungzip_b64wrap
 LOCALSCR= build
-PSCR	= t/doit
+PSCR	= t/doit t/guitest
 PROGS	= hidestring
 # Put UWTLIB first, it checks out files needed by mdbm on winblows.
 LIBS	= libc/libc.a $(UWTLIB) zlib/libz.a mdbm/libmdbm.a tomcrypt/libtomcrypt.a \
@@ -317,9 +384,16 @@ realtest: $(ALL) t/doit
 	-./bk -rt get -qS 't.*'
 	cd t && ./doit -i -f
 
+guitest: $(ALL) t/doit
+	-./bk get -q t/SCCS/s.g.* t/setup t/x.chk_env t/guitest.tcl
+	cd t && ./doit -g -i -f
+
 t/doit: t/doit.sh substvars
 	./substvars t/doit.sh > t/doit
 	chmod +x t/doit
+
+t/guitest: t/guitest.tcl tclwrap
+	./tclwrap < t/guitest.tcl > t/guitest
 
 FORCE:
 
@@ -388,17 +462,12 @@ FRC:
 # It is structured like this so that rebuilding prs doesn't
 # force bk.ver (and thus the bk script) to be regenerated.
 bk.ver: ../SCCS/s.ChangeSet utils/os utils/gnu-os
-	( echo \
-	  `./bk prs -hr+ -d'$$if(:SYMBOL:){:SYMBOL: }:UTC:\n' ../ChangeSet |\
-	  sed 's/ approved//g';` \
-	  for \
-	  `sh ./utils/os` \
-	) >bk.v
+	echo $(BK_VERSION1) > bk.v
 	mv -f bk.v bk.ver
 
 # This must be rebuilt every time because it includes the build time
 bkver.c: FRC
-	bk prs -hr+ -d'char *bk_vers = "$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}";\nchar *bk_utc = ":UTC:";\nchar *bk_time = ":TIME_T:";\n' ../ChangeSet > bk.v
+	@echo $(BK_VERSION2) > bk.v
 	@if [ ! -x utils/os ]; then bk get utils/os; fi
 	echo "char *bk_platform = \""`./utils/os`"\";" >> bk.v
 	echo "unsigned build_timet = "`perl -e "print time"`";" >> bk.v
@@ -527,6 +596,13 @@ trial_image trial-image:
 
 image:
 	test -x $(BK) || $(MAKE) p || exit 1
+	@if [ $(TAGGED) = 1 -a ! -f $(KEYFILE) -a X$(NOKEYS) = X ] ; \
+	then \
+		echo "No crypto keys, no image. Sorry." ; \
+		echo "If you want to bypass this, set the environment"; \
+		echo "variable NOKEYS to 1"; \
+		exit 1; \
+	fi
 	$(MAKE) -e _image
 
 _image: installdir
@@ -581,3 +657,10 @@ kw2val_lookup.c: slib.c kw2val.pl
 
 hidestring: hidestring.c	
 	$(CC) $(CC_FAST) -o hidestring hidestring.c
+show:
+	@echo SYSBK = $(SYSBK)
+	@echo BK_VERSION1 = $(BK_VERSION1)
+	@echo BK_VERSION2 = $(BK_VERSION2)
+	@echo UTC = $(UTC)
+	@echo TIME = $(TIME)
+	@echo TAGGED = $(TAGGED)

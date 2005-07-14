@@ -44,7 +44,7 @@ bkversion(FILE *f)
 	    default: buf[0] = 0; break;
 	}
 	if (buf[0]) {
-		o = bk_options();
+		o = bk_options(0);
 		if (o & BKOPT_WEB) strcat(buf, ",bkweb");
 		if (o & BKOPT_EVAL) strcat(buf, ",eval");
 	}
