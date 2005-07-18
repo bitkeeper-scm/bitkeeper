@@ -141,7 +141,11 @@ int	buf2fd(int gzip, char *buf, int len, int fd);
 void	add_cd_command(FILE *f, remote *r);
 int	skip_http_hdr(remote *r);
 int	getServerInfoBlock(remote *r);
-void	sendEnv(FILE *f, char **envVar, remote *r, int isClone);
+
+#define	SENDENV_NOREPO	   1 /* in clone, don't send info from this repo */
+#define	SENDENV_NOLICENSE  2 /* don't send BK_LICENSE, in lease code */
+void	sendEnv(FILE *f, char **envVar, remote *r, u32 flags);
+
 void	setLocalEnv(int in_out);
 void	wait_eof(remote *r, int verbose);
 void	try_clone1_2(int quiet, int gzip,

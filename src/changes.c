@@ -940,7 +940,7 @@ send_part1_msg(remote *r, char **av)
 	bktmp(buf, "changes");
 	f = fopen(buf, "w");
 	assert(f);
-	sendEnv(f, NULL, r, !opts.remote);
+	sendEnv(f, 0, r, (opts.remote ? 0 : SENDENV_NOREPO));
 	if (r->path) add_cd_command(f, r);
 	fprintf(f, "chg_part1");
 	if (opts.remote) {
@@ -977,7 +977,7 @@ send_end_msg(remote *r, char *msg)
 	bktmp(msgfile, "changes_end");
 	f = fopen(msgfile, "w");
 	assert(f);
-	sendEnv(f, NULL, r, !opts.remote);
+	sendEnv(f, 0, r, (opts.remote ? 0 : SENDENV_NOREPO));
 
 	/*
 	 * No need to do "cd" again if we have a non-http connection
@@ -1005,7 +1005,7 @@ send_part2_msg(remote *r, char **av, char *key_list)
 	bktmp(msgfile, "changes_msg");
 	f = fopen(msgfile, "w");
 	assert(f);
-	sendEnv(f, NULL, r, !opts.remote);
+	sendEnv(f, 0, r, (opts.remote ? 0 : SENDENV_NOREPO));
 
 	if (r->path && (r->type == ADDR_HTTP)) add_cd_command(f, r);
 	fprintf(f, "chg_part2");

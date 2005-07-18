@@ -79,7 +79,7 @@ bkmail(char *url, char **to, char *subject, char *file)
 	bkmsg = bktmp(0, "mail");
 	f = fopen(bkmsg, "w");
 	assert(f);
-	sendEnv(f, 0, r, 1);
+	sendEnv(f, 0, r, SENDENV_NOREPO);
 	if (r->path) add_cd_command(f, r);
 	fprintf(f, "MAIL FROM:<%s@%s>\n", sccs_getuser(), sccs_gethost());
 	EACH (to) fprintf(f, "RCPT TO:<%s>\n", to[i]);

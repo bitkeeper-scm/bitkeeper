@@ -23,7 +23,7 @@ tclsh_main(int ac, char **av)
 	}
 
 	av[0] = cmd;
-	if ((pid = spawnvp_ex(_P_NOWAIT, av[0], av)) < 0) {
+	if ((pid = spawnvp(_P_NOWAIT, av[0], av)) < 0) {
 		fprintf(stderr, "bk: cannot spawn %s\n", av[0]);
 	}
 	if (waitpid(pid, &ret, 0) < 0) {

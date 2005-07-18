@@ -44,6 +44,11 @@ clone_main(int ac, char **av)
 		switch (c) {
 		    case 'd': opts.debug = 1; break;		/* undoc 2.0 */
 		    case 'E': 					/* doc 2.0 */
+			unless (strneq("BKU_", optarg, 4)) {
+				fprintf(stderr,
+				    "clone: vars must start with BKU_\n");
+				return (1);
+			}
 			envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'l': link = 1; break;			/* doc 2.0 */
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
@@ -128,7 +133,7 @@ send_clone_msg(opts opts, int gzip, remote *r, char **envVar)
 	bktmp(buf, "clone");
 	f = fopen(buf, "w");
 	assert(f);
-	sendEnv(f, envVar, r, 1);
+	sendEnv(f, envVar, r, SENDENV_NOREPO);
 	if (r->path) add_cd_command(f, r);
 	fprintf(f, "clone");
 	if (gzip) fprintf(f, " -z%d", gzip);

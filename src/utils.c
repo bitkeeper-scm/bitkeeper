@@ -854,11 +854,12 @@ putroot(char *where)
  *       clone.c:out_trigger()
  */
 void
-sendEnv(FILE *f, char **envVar, remote *r, int isClone)
+sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 {
 	int	i;
-	char	*root, *user, *host, *repo;
+	char	*user, *host, *repo;
 	char	*lic;
+	project	*p = proj_init(".");
 
 	/*
 	 * Send any vars the user requested first so that they can't
@@ -890,21 +891,26 @@ sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 	fprintf(f, "putenv BK_REALHOST=%s\n", sccs_realhost());
 	fprintf(f, "putenv BK_PLATFORM=%s\n", platform());
 
-	/*
-	 * We have no Package root when we clone, so skip root related variables
-	 * This is important when we have nested repository. Otherwise, we may
-	 * incorrectly pick up info in the enclosing tree. Jack Moffitt's
-	 * icecast repository exposed this problem.
-	 */
-	unless (isClone) {
+	unless (flags & SENDENV_NOREPO) {
+		/*
+		 * This network connection is not necessarly run from
+		 * a repository, so don't send information about the
+		 * current repository.  Clone is the primary example
+		 * of this.
+		 */
+		assert(p);	/* We must be in a repo here */
 		fprintf(f, "putenv BK_LEVEL=%d\n", getlevel());
-
-		if (root = proj_root(0)) {
-			fprintf(f, "putenv BK_ROOT=%s\n", root);
-		}
+		fprintf(f, "putenv BK_ROOT=%s\n", proj_root(p));
 	}
-
-	fprintf(f, "putenv BK_LICENSE=%s\n", proj_license(0));
+	unless (flags & SENDENV_NOLICENSE) {
+		/*
+		 * Send information on the current license.
+		 * We might be outside a repository so suppress any failures.
+		 */
+		lease_checking(0);
+		fprintf(f, "putenv BK_LICENSE=%s\n", proj_license(p));
+		lease_checking(1);
+	}
 	/*
 	 * Send comma seperated list of client features so the bkd
 	 * knows which outputs are supported.
@@ -914,6 +920,7 @@ sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 	unless (r->seed) bkd_seed(0, 0, &r->seed);
 	fprintf(f, "putenv BK_SEED=%s\n", r->seed);
 
+	if (p) proj_free(p);
 }
 
 int

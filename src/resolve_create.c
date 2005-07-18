@@ -111,7 +111,6 @@ do_sdiff(resolve *rs, char *left, char *right, int wait)
 {
 	char	tmp[MAXPATH];
 	char	cols[10];
-	FILE	*p;
 
 	strcpy(cols, "80");
 	if (tty_init()) {
@@ -138,7 +137,7 @@ do_difftool(resolve *rs, char *left, char *right, int wait)
 	if (wait) {
 		return (spawnvp(_P_WAIT, "bk", av));
 	} else {
-		spawnvp_ex(_P_NOWAIT, "bk", av);
+		spawnvp(_P_NOWAIT, "bk", av);
 	}
 	return (0);
 }
@@ -273,7 +272,7 @@ revtool(char *name)
 	av[1] = "revtool";
 	av[2] = name;
 	av[3] = 0;
-	spawnvp_ex(_P_NOWAIT, "bk", av);
+	spawnvp(_P_NOWAIT, "bk", av);
 	return (0);
 }
 
