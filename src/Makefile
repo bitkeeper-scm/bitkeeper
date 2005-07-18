@@ -147,7 +147,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	comment.o comments.o commit.o compress.o converge.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
 	dirs.o delta.o diffs.o diffsplit.o dir_gif.o \
-	export.o file_gif.o \
+	export.o eula.o file_gif.o \
 	find.o findkey.o fix.o fixlod.o \
 	g2sccs.o gca.o get.o gethelp.o \
 	gethost.o getopt.o getreg.o gettemp.o getuser.o glob.o \
@@ -155,7 +155,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	isascii.o key2rev.o key2path.o kvfile.o \
 	lease.o level.o \
 	lib_tcp.o libcommit.o libdiff.o liblines.o librange.o \
-	libsfiles.o libusers.o license.o lines.o \
+	libsfiles.o libusers.o lines.o \
 	localtm.o lock.o locking.o lod.o logflags.o \
 	logging.o mail.o merge.o mkdir.o mklock.o \
 	mailsplit.o mmap.o mtime.o names.o newroot.o \
@@ -202,7 +202,8 @@ PROGS	= hidestring
 LIBS	= libc/libc.a $(UWTLIB) zlib/libz.a mdbm/libmdbm.a \
 	  tomcrypt/libtomcrypt.a
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt \
-	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES
+	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES \
+	bkl.lic bkcl.lic bkcl1.lic bkcl2.lic
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA) \
 	$(PROGS) GUI
 
@@ -646,6 +647,10 @@ cmd.c cmd.h: mk-cmd.pl bk.sh
 
 hidestring: hidestring.c	
 	$(CC) $(CC_FAST) -o hidestring hidestring.c
+
+%.lic: %.lic.txt bkupgrade.key $(BK)
+	./bk crypto -E 048d6aa55c30b3b4 < $< > $@
+
 show:
 	@echo SYSBK = $(SYSBK)
 	@echo BK_VERSION1 = $(BK_VERSION1)

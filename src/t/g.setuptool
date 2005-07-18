@@ -16,6 +16,7 @@ test -d $HERE/home || mkdir $HERE/home
 export BK_TEST_HOME=$HERE/home
 OUT=$HERE/out
 RC=`bk dotbk`/setup.rc
+ACCEPTED=`bk dotbk`/accepted
 
 echo $N Simple startup and exit......................................$NL
 bk guitest setuptool >$OUT 2>&1 <<'EOF'

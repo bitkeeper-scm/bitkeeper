@@ -950,7 +950,7 @@ int	linelen(char *s);
 int 	licenseAccept(int prompt);
 int	licenseAcceptOne(int prompt, char *lic);
 char	*licenses_accepted(void);
-char	*license_name(void);
+char	*eula_name(void);
 char	*mkline(char *mmap);
 int	mkdirp(char *dir);
 int	test_mkdirp(char *dir);
@@ -1206,6 +1206,8 @@ char	*signed_loadFile(char *filename);
 int	signed_saveFile(char *filename, char *data);
 void	bk_preSpawnHook(int flags, char *const av[]);
 int	upgrade_decrypt(FILE *fin, FILE *fout);
+int	crypto_symEncrypt(char *key, FILE *fin, FILE *fout);
+int	crypto_symDecrypt(char *key, FILE *fin, FILE *fout);
 
 void	align_diffs(u8 *vec, int n, int (*compare)(int a, int b),
     int (*is_whitespace)(int i));

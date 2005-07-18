@@ -43,7 +43,7 @@
 /* #define TWOFISH_TABLES */
 
 /* modes */
-//#define CFB
+#define CFB
 //#define OFB
 //#define ECB
 //#define CBC

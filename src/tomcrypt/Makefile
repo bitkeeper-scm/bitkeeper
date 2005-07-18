@@ -7,7 +7,7 @@ RANLIB=ranlib
 .SCCS_GET:
 	bk get -q $@
 
-OBJS = aes.o ampi.o base64.o bits.o crypt.o ctr.o hash.o hmac.o md5.o \
+OBJS = aes.o ampi.o base64.o bits.o crypt.o ctr.o cfb.o hash.o hmac.o md5.o \
 	mem.o mpi.o packet.o prime.o rsa.o rsa_sys.o yarrow.o randseed.o \
 	demos/test.o
 

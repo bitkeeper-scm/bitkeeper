@@ -829,7 +829,6 @@ pricing information negotiated by your management.  Your acceptance will
 be recorded on this machine and you will not be asked again.
 $
 #bkl_upgrade_preamble
-#bkcl_upgrade_preamble
 The BitKeeper license required for the use of this repository has changed
 and you need to accept the new version in order to make changes in this
 repository.  Your acceptance will be recorded on this machine and you will
