@@ -1,6 +1,6 @@
 
 echo $N Modify comments from stdin ..................................$NL
-no_logging proj
+commercial proj
 touch bar.c
 bk new $Q bar.c
 bk commit $Q -ynew

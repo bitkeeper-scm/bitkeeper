@@ -11,7 +11,7 @@
 #    modifications under any license.
 
 echo $N Create initial repository ...................................$NL
-no_logging project
+commercial project
 bk edit $Q BitKeeper/etc/config
 echo partial_check:yes >> BitKeeper/etc/config
 bk ci $Q -yy BitKeeper/etc/config

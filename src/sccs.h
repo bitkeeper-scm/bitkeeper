@@ -189,7 +189,7 @@
 #define	X_CSETMARKED	0x00000020	/* ChangeSet boundries are marked */
 #define	X_HASH		0x00000040	/* mdbm file */
 #define	X_SCCS		0x00000080	/* SCCS keywords */
-#define	X_SINGLE	0x00000100	/* single user, inherit user/host */
+#define	X_SINGLE	0x00000100	/* OLD single user */
 /*	X_DO_NOT_USE	0x00000200	   was used shortly, never reuse */
 #define	X_LOGS_ONLY	0x00000400	/* this is a logging repository */
 #define	X_EOLN_NATIVE	0x00000800	/* use eoln native to this OS */
@@ -251,7 +251,6 @@
 #define	CSETMARKED(s)	((s)->xflags & X_CSETMARKED)
 #define	HASH(s)		((s)->xflags & X_HASH)
 #define	SCCS(s)		((s)->xflags & X_SCCS)
-#define	SINGLE(s)	((s)->xflags & X_SINGLE)
 #define	LOGS_ONLY(s)	((s)->xflags & X_LOGS_ONLY)
 #define	EOLN_NATIVE(s)	((s)->xflags & X_EOLN_NATIVE)
 #define	LONGKEY(s)	((s)->xflags & X_LONGKEY)
@@ -872,7 +871,6 @@ void	sccs_resetuser(void);
 void	sccs_resethost(void);
 char	*sccs_realuser(void);
 char	*sccs_user(void);
-void	checkSingle(void);
 int	sccs_markMeta(sccs *);
 
 delta	*modeArg(delta *d, char *arg);

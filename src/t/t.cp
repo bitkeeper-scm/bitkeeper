@@ -11,7 +11,7 @@
 
 # Copyright (c) 2001 Amelia Graf
 
-no_logging project
+commercial project
 echo $N Test bk cp ..................................................$NL
 echo "This is file 1" > file1
 bk new $Q file1

@@ -245,8 +245,6 @@ out:		if (pendingFiles) unlink(pendingFiles);
 	p = pendingFiles2[0] ? pendingFiles2 : pendingFiles;
 	safe_putenv("BK_PENDING=%s", p);
 
-	checkSingle();
-
 	/* XXX could avoid if we knew if a trigger would fire... */
 	bktmp(commentFile, "comments");
 	comments_writefile(commentFile);

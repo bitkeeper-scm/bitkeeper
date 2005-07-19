@@ -75,7 +75,6 @@ private	void	uniqDelta(sccs *s);
 private	void	uniqRoot(sccs *s);
 private int	checkGone(sccs *s, int bit, char *who);
 private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
-private void	singleUser(sccs *s);
 private	int	parseConfig(char *buf, char **k, char **v);
 private	delta	*cset2rev(sccs *s, char *rev);
 private	void	taguncolor(sccs *s, delta *d);
@@ -2874,7 +2873,6 @@ sccs_tagMerge(sccs *s, delta *d, char *tag)
 	if (tag) len += strlen(tag);
 	buf = malloc(len);
 	/* XXX - if we ever remove |ChangeSet| from the keys fix P below */
-	checkSingle();
 	sprintf(buf,
 	    "M 0.0 %s%s %s@%s 0 0 0/0/0\nP ChangeSet\n"
 	    "%s%s%ss g\ns l\ns %s\ns %s\n%s\n",
@@ -3266,12 +3264,9 @@ meta(sccs *s, delta *d, char *buf)
 		break;
 	    case 'X':
 		assert(d);
-		if ((buf[3] == '0') && (buf[4] == 'x')) {
-			d->xflags = strtol(&buf[5], 0, 16);
-		} else {
-			d->xflags = atoi(&buf[3]);
-		}
-		if (d->xflags) d->flags |= D_XFLAGS;
+		d->xflags = strtol(&buf[3], 0, 0); /* hex or dec */
+		d->xflags &= ~X_SINGLE; /* clear old single_user bit */
+		d->flags |= D_XFLAGS;
 		break;
 	    case 'Z':
 		zoneArg(d, &buf[3]);
@@ -3561,14 +3556,9 @@ misc(sccs *s)
 			continue;
 		} else if (strneq(buf, "\001f x", 4)) { /* strip it */
 			unless (sccs_xflags(sccs_top(s))) {
-				u32	bits;
-
-				if ((buf[5] == '0') && (buf[6] == 'x')) {
-					bits = strtol(&buf[7], 0, 16);
-				} else {
-					bits = atoi(&buf[5]);
-				}
-				s->tree->xflags = bits;
+				/* hex or dec */
+				s->tree->xflags =
+					strtol(&buf[5], 0, 0) & ~X_SINGLE;
 				s->tree->flags |= D_XFLAGS;
 			}
 			continue;
@@ -7617,8 +7607,6 @@ delta_table(sccs *s, FILE *out, int willfix)
 		unless (s->tree->xflags) {
 			s->tree->flags |= D_XFLAGS;
 			s->tree->xflags = X_DEFAULT;
-			singleUser(s);
-			s->tree->xflags |= s->xflags & X_SINGLE;
 		}
 		/* for old binaries */
 		s->tree->xflags |= X_BITKEEPER|X_CSETMARKED;
@@ -7717,11 +7705,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 		*p++ = ' ';
 		p = fmts(p, d->sdate);
 		*p++ = ' ';
-		if (SINGLE(s)) {
-			p = fmts(p, s->tree->user);
-		} else {
-			p = fmts(p, d->user);
-		}
+		p = fmts(p, d->user);
 		*p++ = ' ';
 		p = fmtd(p, d->serial);
 		*p++ = ' ';
@@ -7771,12 +7755,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 		}
 
 		t = 0;
-		if (SINGLE(s)) {
-			if (d == s->tree) {
-				assert(s->tree->hostname);
-				t = s->tree->hostname;
-			}
-		} else if (d->hostname && !(d->flags & D_DUPHOST)) {
+		if (d->hostname && !(d->flags & D_DUPHOST)) {
 			t = d->hostname;
 		}
 		if (t) {
@@ -9110,53 +9089,6 @@ binaryCheck(MMAP *m)
 	return (0);
 }
 
-private void
-singleUser(sccs *s)
-{
-	delta	*d;
-	char	*user, *host;
-	MDBM	*m;
-
-	unless (s && s->proj) return;
-	unless (m = proj_config(s->proj)) return;
-
-	user = mdbm_fetch_str(m, "single_user");
-	host = mdbm_fetch_str(m, "single_host");
-	unless (user && host) return;
-	d = s->tree;
-	free(d->user);
-	d->user = strdup(user);
-	if (d->hostname) free(d->hostname);
-	d->hostname = strdup(host);
-	d->flags &= ~D_DUPHOST;
-	if (d->kid) {
-		d = d->kid;
-		free(d->user);
-		d->user = strdup(user);
-		if (d->hostname && !(d->flags & D_DUPHOST)) free(d->hostname);
-		d->hostname = s->tree->hostname;
-		d->flags |= D_DUPHOST;
-	}
-	s->xflags |= X_SINGLE;
-}
-
-/*
- * If we are a single user config, make sure we use the right user/host.
- */
-void
-checkSingle(void)
-{
-	char	*t;
-
-	t = user_preference("single_user");
-	if (streq(t, "")) return;
-	safe_putenv("BK_USER=%s", t);
-	t = user_preference("single_host");
-	safe_putenv("BK_HOST=%s", t);
-	sccs_resetuser();
-	sccs_resethost();
-}
-
 /*
  * Check in initial sfile.
  *
@@ -9386,7 +9318,6 @@ out:		sccs_unlock(s, 'z');
 		unless (flags & DELTA_PATCH) {
 			first->flags |= D_XFLAGS;
 			first->xflags = s->xflags;
-			singleUser(s);
 		}
 		if (CSET(s)) {
 			unless (first->csetFile) {
@@ -9403,7 +9334,6 @@ out:		sccs_unlock(s, 'z');
 				if (c) first->csetFile = strdup(c);
 			}
 		}
-		first->xflags |= (s->xflags & X_SINGLE);
 	}
 
 	if (delta_table(s, sfile, 1)) {
@@ -12015,11 +11945,8 @@ skip:
 	}
 
 	if (WANT('X')) {
-		if ((buf[2] == '0') && (buf[3] == 'x')) {
-			d->xflags = strtol(&buf[4], 0, 16);
-		} else {
-			d->xflags = atoi(&buf[2]);
-		}
+		d->xflags = strtol(&buf[2], 0, 0); /* hex or dec */
+		d->xflags &= ~X_SINGLE;
 		d->flags |= D_XFLAGS;
 		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
@@ -12338,8 +12265,6 @@ out:
 	}
 #define	OUT	{ error = -1; s->state |= S_WARNED; goto out; }
 #define	WARN	{ error = -1; goto out; }
-
-	unless (flags & DELTA_PATCH) checkSingle();
 
 	if (init) {
 		int	e;
@@ -14046,9 +13971,6 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		}
 		if (flags & X_SCCS) {
 			if (comma) fs(","); fs("SCCS"); comma = 1;
-		}
-		if (flags & X_SINGLE) {
-			if (comma) fs(","); fs("SINGLE"); comma = 1;
 		}
 		if (flags & X_LOGS_ONLY) {
 			if (comma) fs(","); fs("LOGS_ONLY"); comma = 1;

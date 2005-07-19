@@ -14,7 +14,7 @@
 export BK_YEAR2=YES
 
 echo $N Test import of a plain file .................................$NL
-no_logging project
+commercial project
 cd $HERE
 mkdir -p import_dir/src
 echo foo > X
@@ -334,7 +334,7 @@ then
 #----------------------------------------------------
 echo $N Test import of a symbolic link ..............................$NL
 cd $HERE
-no_logging symlink
+commercial symlink
 cd $HERE
 mkdir -p symlink/src
 echo foo > import_dir/src/foo.c
@@ -402,7 +402,7 @@ fi	# Win32
 
 echo $N Verify checkout:get with plain import .......................$NL
 cd $HERE
-no_logging projc
+commercial projc
 bk edit $Q BitKeeper/etc/config
 echo checkout:get >> BitKeeper/etc/config
 cd $HERE
@@ -791,7 +791,7 @@ echo OK
 
 echo $N Import a patch into a tree with versioned .rej files ........$NL
 cd $HERE
-no_logging rej
+commercial rej
 ls > foo.rej
 cat > data <<EOF
 A
@@ -846,7 +846,7 @@ echo OK
 
 echo $N Catch read only destinations ................................$NL
 cd $HERE
-no_logging dest
+commercial dest
 chmod 555 $HERE/dest
 mkdir $HERE/data
 cd $HERE/data
@@ -871,7 +871,7 @@ TESTDATA=/home/bk/test_data
 test -d $TESTDATA/lmbench && {
 echo $N Make sure that traditional RCS imports works ................$NL
 cd $HERE
-no_logging import-lmbench
+commercial import-lmbench
 bk import $Q -ftRCS $TESTDATA/lmbench . || exit 1
 test -f results/SCCS/s.Makefile || exit 1
 echo OK
@@ -883,7 +883,7 @@ then #-----------------------------------------------------------------
 test -d $TESTDATA/import-RCS+x && {
 echo $N Make import w/ undos does not lose execute bits .............$NL
 cd $HERE
-no_logging import-RCS+x
+commercial import-RCS+x
 bk import -quftRCS $TESTDATA/import-RCS+x .
 bk get -q 
 test -x ixadm.cgi || {
@@ -911,7 +911,7 @@ test -d $TESTDATA/import-CVS.1 && {
 
 echo $N Make sure that import handles Attic files ...................$NL
 cd $HERE
-no_logging import-CVS.1
+commercial import-CVS.1
 bk import -quftCVS $TESTDATA/import-CVS.1 .
 bk get -q
 P1=BitKeeper/deleted/SCCS/s..del-pkginfo*
@@ -944,7 +944,7 @@ echo OK
 echo $N Make sure that import -tCVS works with checkout:get .........$NL
 cd $HERE
 rm -rf import-CVS.1
-no_logging import-CVS.1
+commercial import-CVS.1
 bk edit $Q BitKeeper/etc/config
 echo checkout:get >> BitKeeper/etc/config
 bk import -quftCVS $TESTDATA/import-CVS.1 .
@@ -959,7 +959,7 @@ echo OK
 test -d $TESTDATA/import_data && {
 echo $N Multiple parallel imports ...................................$NL
 cd $HERE
-no_logging import
+commercial import
 cd ..
 LIST="1 2 3 4 5 6"
 for i in $LIST

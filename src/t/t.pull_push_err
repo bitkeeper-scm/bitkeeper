@@ -1,5 +1,5 @@
 echo $N Make sure pull print error if takepatch failed ..............$NL
-no_logging proj
+commercial proj
 bk  edit $Q BitKeeper/etc/config
 echo "checkout: edit" >> BitKeeper/etc/config
 bk delta $Q -ycheckout_edit BitKeeper/etc/config

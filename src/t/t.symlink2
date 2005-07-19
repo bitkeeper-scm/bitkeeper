@@ -20,7 +20,7 @@ fi
 
 echo $N symlink checksum in null delta ..............................$NL
 umask 0
-no_logging project
+commercial project
 echo whatever > testfile
 ln -s testfile ./link.to.testfile
 bk new $Q link.to.testfile

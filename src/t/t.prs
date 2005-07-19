@@ -12,13 +12,13 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
-no_logging project
+commercial project
 export USER=bk
 export BK_YEAR2=YES
 R=1
 for D in '87/05/28 23:49:57' '97/05/28 23:49:57' '97/05/30 01:34:11' '97/06/23 01:33:45+06:30' '98/01/30 17:45:17-05:00'
 do	cat > INITX <<EOF
-D 1.$R $D $USER 0 0 0/0/0
+D 1.$R $D $USER@bk_regression.bk 0 0 0/0/0
 c This is revision 1.$R of $D
 c This the second comment of 1.$R
 P this/is/the/pathname.$R
@@ -159,7 +159,7 @@ echo data > host
 bk ci -i host > ${DEV_NULL} 2>&1
 bk undos > CMP1 <<EOF
 ======== host 1.1 ========
-free.bk
+bk_regression.bk
 EOF
 bk prs -d':HT:\n' -r1.1 host > CMP2
 cmp -s CMP1 CMP2
@@ -227,27 +227,27 @@ echo OK
 echo $N checking default output......................................$NL
 bk undos > CMP1 <<EOF
 ======== FILE 1.1..1.5 ========
-D 1.5 98/01/30 17:45:17-05:00 ${USER}@free.bk 5 4 1/0/4
+D 1.5 98/01/30 17:45:17-05:00 ${USER}@bk_regression.bk 5 4 1/0/4
 P this/is/the/pathname.5
 C This is revision 1.5 of 98/01/30 17:45:17-05:00
 C This the second comment of 1.5
 ------------------------------------------------
-D 1.4 97/06/23 01:33:45+06:30 ${USER}@free.bk 4 3 1/0/3
+D 1.4 97/06/23 01:33:45+06:30 ${USER}@bk_regression.bk 4 3 1/0/3
 P this/is/the/pathname.4
 C This is revision 1.4 of 97/06/23 01:33:45+06:30
 C This the second comment of 1.4
 ------------------------------------------------
-D 1.3 97/05/30 01:34:11 ${USER}@free.bk 3 2 1/0/2
+D 1.3 97/05/30 01:34:11 ${USER}@bk_regression.bk 3 2 1/0/2
 P this/is/the/pathname.3
 C This is revision 1.3 of 97/05/30 01:34:11
 C This the second comment of 1.3
 ------------------------------------------------
-D 1.2 97/05/28 23:49:57 ${USER}@free.bk 2 1 1/0/1
+D 1.2 97/05/28 23:49:57 ${USER}@bk_regression.bk 2 1 1/0/1
 P this/is/the/pathname.2
 C This is revision 1.2 of 97/05/28 23:49:57
 C This the second comment of 1.2
 ------------------------------------------------
-D 1.1 87/05/28 23:49:57 ${USER}@free.bk 1 0 1/0/0
+D 1.1 87/05/28 23:49:57 ${USER}@bk_regression.bk 1 0 1/0/0
 P this/is/the/pathname.1
 C This is revision 1.1 of 87/05/28 23:49:57
 C This the second comment of 1.1

@@ -13,7 +13,7 @@
 # %K%
 
 echo $N Create two copies of a repository ...........................$NL
-no_logging project
+commercial project
 bk clone $Q $HERE/project $HERE/copy
 echo OK
 echo $N Create two different logging_ok files .......................$NL

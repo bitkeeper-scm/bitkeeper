@@ -304,7 +304,6 @@ _fix_lod1 => _fixlod
 info => sinfo
 _log => log
 _mail => mail
-multiuser => newroot
 _preference => preference
 rechksum => checksum
 rev2cset => r2c

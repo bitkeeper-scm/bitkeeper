@@ -12,7 +12,7 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
-no_logging stripdel
+commercial stripdel
 rm -rf FILE SCCS
 R=1
 for D in '87/05/28 23:49:57' '97/05/28 23:49:57' '97/05/30 01:34:11' '97/06/23 01:33:45+06:30' '98/01/30 17:45:17-05:00'
@@ -78,7 +78,7 @@ echo OK
 echo $N Create a repository with two files ..........................$NL
 cd $HERE
 rm -fr stripdel proj copy1 copy2 left right
-no_logging proj
+commercial proj
 touch foo bar
 bk new $Q foo bar
 bk commit $Q -Sfirst -ynewfoo

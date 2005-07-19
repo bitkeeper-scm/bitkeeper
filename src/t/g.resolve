@@ -13,7 +13,7 @@
 # %K%
 
 echon Creating initial repositories ...............................
-no_logging proj
+commercial proj
 echo line 1 > file
 bk new $Q file || exit 1
 mkdir dir1

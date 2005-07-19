@@ -406,7 +406,7 @@ echo OK
 
 echo $N bk check should detect copied sfile .........................$NL
 cd $HERE
-no_logging proj2
+commercial proj2
 echo "hi" > foo
 bk new $Q foo
 bk commit $Q -yfoo
@@ -416,7 +416,7 @@ grep -q "Is one of these files copied?" $HERE/out || { echo failed; exit 1; }
 echo OK
 
 echo $N bk check with partial_check should notice path conflicts ....$NL
-no_logging proj3
+commercial proj3
 bk edit $Q BitKeeper/etc/config
 echo partial_check:yes >> BitKeeper/etc/config
 echo hi > foo

@@ -26,7 +26,7 @@ Hi there, this is file foo.
 Hi there, this is file foo.
 Hi there, this is file foo.
 EOF
-no_logging project
+commercial project
 BK_NOCOMPRESS=YES
 export BK_NOCOMPRESS
 echo $N Creating an empty file ......................................$NL
@@ -142,7 +142,7 @@ bk admin $Q -n -t junk 2>ERR
 if [ $? -eq 0 ]; then echo Failed.; exit 1; fi
 echo OK
 
-cd $HERE; rm -rf project; no_logging project
+cd $HERE; rm -rf project; commercial project
 cp $HERE/SAVE foo_init
 echo $N Creating a file with a comment ..............................$NL
 bk admin $Q -n -y'THIS IS THE COMMENT' -ifoo_init foo
@@ -174,7 +174,7 @@ echo OK
 # test a graph which has a branch merged into a branch
 echo $N Check that range connect on a branch works ..................$NL
 
-cd $HERE; rm -rf project; no_logging project
+cd $HERE; rm -rf project; commercial project
 touch foo
 bk ci $Q -i foo
 bk co $Q -l foo

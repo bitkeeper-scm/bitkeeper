@@ -511,17 +511,11 @@ R %.8s\n",
 		fprintf(stderr, "Create of %s failed\n", g);
 		return (1);
 	}
-#if	0
-	/*
-	 * I can't control the username because the repository might
-	 * be single_user.
-	 */
 	sccs_sdelta(s, sccs_ino(s), buf);
 	if (strcmp(buf, rcs->rootkey) != 0) {
 		printf("missmatch:\n\t%s\n!=\t%s\n", buf, rcs->rootkey);
 		exit(1);
 	}
-#endif
 	sccs_free(s);
 	free(g);
 	mclose(init);

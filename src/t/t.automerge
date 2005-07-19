@@ -1,7 +1,7 @@
 
 
 echo $N setup repos .................................................$NL
-no_logging project
+commercial project
 mkdir BitKeeper/triggers
 cat <<'END' > BitKeeper/triggers/pre-resolve.automerge
 #!/bin/sh

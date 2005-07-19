@@ -13,7 +13,7 @@
 # %K%
 
 echo $N Create initial repository ...................................$NL
-no_logging project
+commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -123,7 +123,7 @@ fi
 echo $N "Aaron's file with 2 spaces in the name bug .................."$NL
 cd $HERE
 rm -rf project
-no_logging project
+commercial project
 mkdir src
 cd src
 echo "foo" > "a a a"
@@ -161,7 +161,7 @@ echo OK
 echo $N Test import of a file with spaces in the name ...............$NL
 cd $HERE
 rm -rf project
-no_logging project
+commercial project
 cd $HERE
 mkdir -p import_dir/src
 echo foo > import_dir/src/'s p a c e s'
@@ -179,7 +179,7 @@ echo OK
 echo $N Test RCS import of a file with spaces in the name ...........$NL
 cd $HERE
 rm -rf project import_dir
-no_logging project
+commercial project
 cd $HERE
 mkdir -p import_dir/src
 cat > import_dir/src/'S P A C E S,v' <<EOF
@@ -224,7 +224,7 @@ then #-----------------------------------------------------------------
 echo $N Test RCS import of a file with a backslash in the name ......$NL
 cd $HERE
 rm -rf project import_dir
-no_logging project
+commercial project
 cd $HERE
 mkdir -p import_dir/src
 cat > import_dir/src/'I\ m,v' <<EOF
@@ -268,7 +268,7 @@ fi #-------------------------------------------------------------------
 echo $N Test RCS import of a file starting with - ...................$NL
 cd $HERE
 rm -rf project import_dir
-no_logging project
+commercial project
 cd $HERE
 mkdir -p import_dir/src
 cat > import_dir/src/-dash,v <<EOF
@@ -308,7 +308,7 @@ then #-----------------------------------------------------------------
 echo $N Test RCS import of a file with double quotes in the name ....$NL
 cd $HERE
 rm -rf project import_dir
-no_logging project
+commercial project
 cd $HERE
 mkdir -p import_dir/src
 cat > import_dir/src/'I"m a little teacup,v' <<EOF

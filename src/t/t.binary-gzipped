@@ -146,7 +146,7 @@ echo OK
 
 echo $N Binary data problem: false match ............................$NL
 cd $HERE
-no_logging project2
+commercial project2
 echo 'Binary files foo.c differ' > test
 cd $HERE
 bk clone $Q project2 copy || exit 1

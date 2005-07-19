@@ -18,7 +18,7 @@
 echo $N set up ......................................................$NL
 trap 'echo failed' 0
 set -e
-no_logging gca
+commercial gca
 mkdir src
 cd src
 echo Baseline > regression.sh

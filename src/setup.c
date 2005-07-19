@@ -138,7 +138,6 @@ again:		flush_fd0(); /* for Win/98 and Win/ME */
 		fprintf(stderr, "No config file found\n");
 		exit(1);
 	}
-	checkSingle();
 
 	if ((t = mdbm_fetch_str(m, "single_user")) && strchr(t, '@')) {
 		fprintf(stderr, "Setup: single_user should not have a hostname.\n");
@@ -155,19 +154,6 @@ err:			unlink("BitKeeper/etc/config");
 		}
 		goto again;
 	}
-	if ((t = mdbm_fetch_str(m, "single_user")) && strchr(t, '@')) {
-		fprintf(stderr, "Setup: single_user should not have a hostname.\n");
-		if (config_path) goto err;
-		goto again;
-	}
-
-	if ((mdbm_fetch_str(m, "single_user") != 0) ^
-	    (mdbm_fetch_str(m, "single_host") != 0)) {
-		fprintf(stderr,
-		    "Setup: both single_user single_host are needed.\n");
-		if (config_path) goto err;
-		goto again;
-	}		
 #if 0	/* this makes setuptool appear to hang up when a non-approved
          * category is given.
 	 */

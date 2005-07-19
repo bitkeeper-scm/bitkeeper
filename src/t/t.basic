@@ -37,7 +37,7 @@ do	case "$D" in
 	cd $HERE
 	rm -rf root 
 	echo $N Create initial changeset ....................................$NL
-	no_logging root
+	commercial root
 	if [ ! -f SCCS/s.ChangeSet ]; then echo failed; exit 1; fi
 	if [ X$D != X ]; then mkdir -p $D; fi
 	echo OK

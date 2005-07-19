@@ -18,7 +18,7 @@
 
 echo $N Setting up cset split testing respositories .................$NL
 rm -rf simple
-TZ=UTC+0 no_logging simple
+TZ=UTC+0 commercial simple
 touch a b c d
 bk new $Q a b c d
 TZ=EST bk commit $Q -SBASETAG -y1.2 || exit 1

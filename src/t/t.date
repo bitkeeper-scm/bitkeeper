@@ -11,7 +11,7 @@
 
 # Copyright (c) 2003, BitMover, Inc.
 
-no_logging project
+commercial project
 export BK_YEAR2=YES
 echo $N Create a file with an old date, check that it did it ........$NL
 ZONE=`bk zone`

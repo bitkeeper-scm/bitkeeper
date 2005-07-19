@@ -14,7 +14,7 @@
 # wscott@wscott1.homeip.net|src/t/t.park|20011022192304|47939
 
 echo $N Create initial repository ...................................$NL
-no_logging project
+commercial project
 bk admin -Z
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi

@@ -10,7 +10,7 @@
 #    modifications under any license.
 
 echo $N Create initial repository ...................................$NL
-no_logging project
+commercial project
 bk clone $Q $HERE/project $HERE/copy
 mkdir src
 cd src

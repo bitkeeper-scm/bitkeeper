@@ -92,37 +92,3 @@ test "`bk compression config`" = "config none" && {
 	exit 1
 }
 echo OK
-
-# Single user
-# Can't gzip the ChangeSet file
-# Can gzip other files
-# Can't ungzip other files
-echo $N Create single user repository and check gzip on ChangeSet ...$NL
-cd $HERE
-no_logging single
-bk admin -Znone ChangeSet
-bk admin -Zgzip ChangeSet
-test "`bk compression ChangeSet`" = "ChangeSet none" || {
-	echo should not have compressed the ChangeSet file
-	exit 1
-}
-echo OK
-
-echo $N Make sure we can gzip other files ...........................$NL
-cd BitKeeper/etc
-bk admin -Zgzip config
-test "`bk compression config`" = "config gzip" || {
-	echo should have compressed the config file
-	bk compression config
-	exit 1
-}
-echo OK
-
-echo $N Make sure we cannot ungzip other files ......................$NL
-bk admin -Znone config
-test "`bk compression config`" = "config none" && {
-	echo should not have uncompressed the config file
-	exit 1
-}
-echo OK
-

@@ -1,7 +1,7 @@
 STRACE_ARGS="-f -q -c -e trace=file -S calls"
 
 echo $N Setup test project ..........................................$NL
-no_logging project
+commercial project
 mkdir dir1
 mkdir dir2
 mkdir dir2/dir3

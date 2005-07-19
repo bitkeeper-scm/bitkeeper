@@ -14,7 +14,7 @@
 # %K%
 
 echo $N Create a file ...............................................$NL
-no_logging project
+commercial project
 echo data > foo.c
 bk ci $Q -i foo.c
 mv SCCS/s.foo.c SCCS/s.bar.c

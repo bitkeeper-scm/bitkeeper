@@ -32,7 +32,7 @@ checkperm()
     esac
 }
 
-no_logging project
+commercial project
 echo $N Check in an executable file .................................$NL
 touch prog
 chmod 0751 prog

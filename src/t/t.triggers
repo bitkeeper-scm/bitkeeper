@@ -14,7 +14,7 @@ test X`uname -s` = XDarwin && DASHA=-a
 
 echo $N Check commit trigger environment variables ..................$NL
 cd $HERE
-no_logging project
+commercial project
 bk edit $Q BitKeeper/etc/config
 echo "checkout: get" >> BitKeeper/etc/config
 bk delta $Q -ycheckout BitKeeper/etc/config
@@ -424,7 +424,7 @@ grep -q BK_REMOTECSETS=0 $HERE/pre-outgoing || {
 	cat $HERE/pre-outgoing
 	exit 1
 }
-grep -q BK_LICENSE=single $HERE/pre-outgoing || {
+grep -q BK_LICENSE=$BKL_P $HERE/pre-outgoing || {
 	echo didn\'t pass license
 	exit 1
 }
@@ -999,7 +999,7 @@ cd $HERE
 rm -rf *
 
 echo $N Create initial repository ...................................$NL
-no_logging project
+commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -1403,7 +1403,7 @@ echo OK
 
 echo $N Modify comment in pre-commit trigger ........................$NL
 cd $HERE
-no_logging comment-chk
+commercial comment-chk
 trig=BitKeeper/triggers
 mkdir -p $trig
 cat > $trig/pre-commit.comments <<'EOF'
@@ -1423,7 +1423,7 @@ echo OK
 
 echo $N Check commit w perl trigger .................................$NL
 cd $HERE
-no_logging proj2
+commercial proj2
 bk edit $Q BitKeeper/etc/config
 echo "checkout: get" >> BitKeeper/etc/config
 bk delta $Q -ycheckout BitKeeper/etc/config
@@ -1474,7 +1474,7 @@ echo $N Check that delta does NOT work in repo with trigger .........$NL
 # create a pre-delta trigger that should prevent delta from working and 
 # initial sanity check
 cd $HERE
-no_logging proj3
+commercial proj3
 echo foo >foo
 bk new $Q foo
 cd $HERE/proj3

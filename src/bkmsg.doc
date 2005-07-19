@@ -230,9 +230,8 @@ $
 You do not have a valid license for BitKeeper and the logging field
 in the BitKeeper/etc/config file is not set to "logging@openlogging.org".
 You either need a commercial license (to run without open logging),
-or you need to convert your package to single user, or you need to
-configure your package to use openlogging.  Until you have done one of
-these things, you may not create any changesets.
+or you need to configure your package to use openlogging.  Until you
+have done one of these things, you may not create any changesets.
 
 You can get a temporary license by sending a mail request
 to sales@bitmover.com.  
@@ -347,25 +346,6 @@ is currently #BKARG# changesets and you will not be able to commit once
 your quota is down to zero. Please check your network configuration
 and make sure your logs are being transmitted properly. You can test your
 log transmission with the command "bk log -d".
-$
-#single_file_max
-Error: The BitKeeper free use license limits the total number of files
-in all of your single user repositories to 1000 files.  You will need
-to buy a commercial license or turn on openlogging to continue.
-BitMover can be reached in the United States at 888-401-8808
-during business hours (PST) or via email at sales@bitmover.com.
-Thanks!
-$
-#single_config_mismatch
-Error: This repository was orignially configured as a single user repository
-but the configuration has been updated to not have this restriction.
-This repository must be turned into a multiuser repository before it can
-be used.  Please read 'bk help multiuser' to do this.
-BitMover can be reached at:
-   +1-650-872-9900 (international and California)
-   888-401-8808 (toll free in the US & Canada) 
-during business hours (PST) or via email at sales@bitmover.com.
-Thanks!
 $
 #eval_max
 Error: Evaluation license are limited to #BKARG# changesets.  You are over 
@@ -669,16 +649,14 @@ Please take a moment to read the license agreement now. If you accept
 the terms below, click "I Agree", then "Next". Otherwise click Cancel.
 $
 #setuptool_step_LicenseType
-BitKeeper provides three types of licensing. If you have received a BitKeeper
+BitKeeper provides two types of licensing. If you have received a BitKeeper
 license key from BitMover, select "Commercial" and you will be prompted to
 enter the key.
 
-If you wish to use BitKeeper for free you must choose one of two options:
-single user or Open Logging. If you are a single user on a single host you
-may choose the "Single User / Single Host" option in which case you will
-be prompted for a username and hostname. If you choose "Open Logging"
-you will not have to enter any data for the license, and all checkin
-comments made in your repository will be posted at www.openlogging.org.
+If you wish to use BitKeeper for free you must choose the Open Logging
+option. If you choose "Open Logging" you will not have to enter any data
+for the license, and all checkin comments made in your repository will
+be posted at www.openlogging.org.
 $
 #setuptool_step_LicenseKey
 Please enter the license key and signatures exactly as they were given to
@@ -688,11 +666,6 @@ If the license keys are in a file, click the "From file..." button and the
 values will be extracted from the file. This should work even if the file 
 has mail headers or other text, and it is the easiest way to ensure the keys 
 are entered properly.
-$
-#setuptool_step_UserHostInfo
-For single user / single host configurations you must enter a 
-username and hostname. The username and hostname you supply will 
-be recorded with every checkin in this repository.
 $
 #setuptool_step_RepoInfo
 The following information uniquely identifies this repository. The fields

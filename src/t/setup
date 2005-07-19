@@ -66,16 +66,13 @@ waitForUnlock() {
 	bk lock -U $1
 }
 
-# Make a no_logging config file
-_no_logging_config() {
+# Make a commercial config file
+_openlogging_config() {
 	cat <<EOF
-logging: none
-single_user: bk
-single_host: free.bk
+logging: logging@openlogging.org
 description: BitKeeper Test repository
 email: nobody@nowhere.bk
 eoln: unix
-keyword: sccs
 EOF
 }
 
@@ -120,6 +117,23 @@ _get_cached_repo() {
 	mkdir -p BitKeeper/etc/.master
 }
 
+openlogging() {
+	
+	CF="$BK_CACHE"/openlogging.config
+	SFIO=$BK_CACHE/openlogging.sfio
+	test -f "$SFIO" || {
+		_openlogging_config > "$CF"
+		_make_repo openlogging "$CF" "$SFIO"
+	}
+	_get_cached_repo "$1" "$SFIO"
+}
+
+fresh_openlogging() {
+	_openlogging_config > c
+	bk setup -f -cc $1 || { echo "Setup failed!"; exit 1; }
+	cd $1
+}
+
 # Get a commercial repo, use cache copy if available
 # Usage: commercial dir
 commercial() {
@@ -133,24 +147,10 @@ commercial() {
 	_get_cached_repo "$1" "$SFIO"
 }
 
-# Get a no_logging (single user) repo, use cache copy if available
-# Usage: no_logging [-1|2] dir
-no_logging() {
-	CF="$BK_CACHE"/no_logging.config
-	SFIO=$BK_CACHE/no_logging.sfio
-	test -f "$SFIO"  || {
-		_no_logging_config > "$CF"
-		_make_repo no_logging "$CF" "$SFIO"
-	}
-	_get_cached_repo "$1" "$SFIO"
-}
-
-# Get a brand new no_logging repo. Some test does not want a cached repo
-# Usage: fresh_no_logging dir
-fresh_no_logging() {
-        _no_logging_config > c
-        bk setup -f -cc $1 || { echo "Setup failed!"; exit 1; }
-        cd $1
+fresh_commercial() {
+	_commercial_config > c
+	bk setup -f -cc $1 || { echo "Setup failed!"; exit 1; }
+	cd $1
 }
 
 echon() {

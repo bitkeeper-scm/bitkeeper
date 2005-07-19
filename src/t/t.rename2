@@ -14,7 +14,7 @@
 # %K%
 
 echo $N Create initial repository ...................................$NL
-no_logging project
+commercial project
 bk clone $Q $HERE/project $HERE/copy
 echo OK
 echo $N test rename conflict w unchecked file .......................$NL

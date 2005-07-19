@@ -14,7 +14,7 @@
 
 # Do not use this feature.
 # This feature is likely to be removed in the future
-no_logging project
+commercial project
 echo $N Test x flag .................................................$NL
 echo "echo this is a shell script > CMP1" > test_script.sh
 bk ci $Q -i test_script.sh

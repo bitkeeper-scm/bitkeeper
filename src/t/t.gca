@@ -14,7 +14,7 @@
 
 # Test the operation of various gca operations
 # These are not BK specific, per se
-no_logging project
+commercial project
 echo $N Create graph with some merge, -i, and -x stuff ..............$NL
 echo foo > foo.c
 bk ci $Q -i foo.c

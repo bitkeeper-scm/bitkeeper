@@ -22,7 +22,7 @@ fi
 umask 077
 
 echo $N Create initial repository ...................................$NL
-fresh_no_logging project
+fresh_commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 # commit the config file

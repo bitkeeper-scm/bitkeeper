@@ -194,9 +194,6 @@ pflags(u32 flags)
 	if (flags & X_SCCS) {
 		if (comma) fs(","); fs("SCCS"); comma = 1;
 	}
-	if (flags & X_SINGLE) {
-		if (comma) fs(","); fs("SINGLE"); comma = 1;
-	}
 	if (flags & X_LOGS_ONLY) {
 		if (comma) fs(","); fs("LOGS_ONLY"); comma = 1;
 	}
@@ -229,7 +226,6 @@ a2xflag(char *flag)
 	if (streq(flag, "CSETMARKED")) return (X_CSETMARKED);
 	if (streq(flag, "HASH")) return (X_HASH);
 	if (streq(flag, "SCCS")) return (X_SCCS);
-	if (streq(flag, "SINGLE")) return (X_SINGLE);
 	if (streq(flag, "LOGS_ONLY")) return (X_LOGS_ONLY);
 	if (streq(flag, "EOLN_NATIVE")) return (X_EOLN_NATIVE);
 	if (streq(flag, "LONGKEY")) return (X_LONGKEY);

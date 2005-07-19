@@ -19,7 +19,7 @@
 # per file information (flags, etc.)
 
 echo $N Create initial repository ...................................$NL
-no_logging project
+commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -d BitKeeper/tmp ]; then echo failed to make BitKeeper/tmp; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
@@ -67,7 +67,7 @@ cd $HERE
 bk clone $Q project copy
 echo $N Should not be able to resync unrelated repositories .........$NL
 cd $HERE
-fresh_no_logging project2
+fresh_commercial project2
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -610,7 +610,7 @@ echo "----------- Andrew's anomaly (file disappears) -----------"
 cd $HERE
 rm -fr project copy
 echo $N Create initial repository ...................................$NL
-no_logging project
+commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 mkdir src

@@ -15,7 +15,7 @@
 # Make sure that tags obey graph like invariants.
 
 echo $N Create initial repository with a tagged cset ................$NL
-no_logging project
+commercial project
 echo foo > foo.c
 bk ci $Q -i foo.c 
 if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi

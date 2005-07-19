@@ -11,7 +11,7 @@
 
 # Tests for pull, push, and clone.
 echo $N Create initial repository ...................................$NL
-no_logging project
+commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 echo bar > bar.c

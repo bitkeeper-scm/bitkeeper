@@ -11,7 +11,7 @@
 
 # Tests for pull, push, and clone.
 echo $N Create initial repository ...................................$NL
-no_logging project
+commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -56,7 +56,7 @@ echo OK
 echo $N pull into repo with edited non-locked files overwrites.......$NL
 cd $HERE
 rm -rf *
-no_logging project
+commercial project
 echo bar > bar
 bk new $Q bar || exit 1
 bk commit $Q -ywhat || exit 1
@@ -84,7 +84,7 @@ fi
 echo $N check pull into busted repo containing part of a change......$NL
 cd $HERE
 rm -rf *
-no_logging project
+commercial project
 mkdir src
 echo bar > src/bar
 bk new $Q src/bar || exit 1

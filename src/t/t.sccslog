@@ -13,14 +13,8 @@
 # %K%
 
 cd "$HERE"	# For Windows
-HOST=@free.bk
-echo "logging: none" > c
-echo "single_user: butthead" >> c
-echo "single_host: free.bk" >> c
-echo "description:	BitKeeper Test repository" >> c
-echo "email:		nobody@nowhere.bk" >> c
-bk setup -f -cc project
-cd project
+HOST=@bk_regression.bk
+fresh_commercial project
 mkdir -p a/b/c
 echo 1.1 > a/b/c/Data
 bk new -q a/b/c/Data
@@ -202,9 +196,11 @@ ChangeSet
   Initial repository create
 
 EOF
-bk sccslog -f | grep -v butthead@free.bk | bk undos > CMP2
-bk diff -i CMP1 CMP2 > /dev/null
-if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
+bk sccslog -f | grep -v $HOST | bk undos > CMP2
+bk diff -iu CMP1 CMP2 || {
+	echo Failed
+	exit 1
+}
 
 bk undos > CMP1 <<EOF
 a/b/c/Data
@@ -240,7 +236,7 @@ a/b/c/Data
   Rev 10
 
 EOF
-bk sccslog -f a/b/c/Data | grep -v butthead@free.bk | bk undos > CMP2
+bk sccslog -f a/b/c/Data | grep -v bk_regression.bk | bk undos > CMP2
 bk diff -i CMP1 CMP2 > /dev/null
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK

@@ -13,7 +13,7 @@
 # %K%
 
 echo $N Test resolving file missing a newline .......................$NL
-no_logging proj
+commercial proj
 echo line 1 > file
 bk new $Q file || exit 1
 bk commit $Q -ystart || exit 1
@@ -401,7 +401,7 @@ echo OK
 echo $N Check pass1 to see if dups when no dup.......................$NL
 cd $HERE
 export CLOCK_DRIFT=1
-no_logging p1d
+commercial p1d
 mkdir src
 cat > src/foo <<EOF
 line1
@@ -448,7 +448,7 @@ echo OK
 
 echo $N Make sure that a rename only conflict does partial check ....$NL
 cd $HERE
-no_logging parent
+commercial parent
 touch start
 bk new $Q start
 bk commit $Q -ybaseline
@@ -513,7 +513,7 @@ echo OK
 unset BK_DEBUG_CMD
 
 echo $N Keep keywords in an sccs merge ..............................$NL
-no_logging project
+commercial project
 echo '%K%' > foo
 bk new $Q foo
 bk commit $Q -yfoo
@@ -546,7 +546,7 @@ echo OK
 
 echo $N Check vr and vl when filename has spaces ....................$NL
 cd $HERE
-no_logging proj1
+commercial proj1
 echo VERSION 1 > 'foo bar'
 bk new $Q 'foo bar'
 bk commit $Q -yfoo

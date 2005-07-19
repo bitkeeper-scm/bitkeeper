@@ -14,7 +14,7 @@
 # %K%
 
 echo $N Create initial repository ...................................$NL
-no_logging project
+commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 echo OK
@@ -81,7 +81,7 @@ echo OK
 
 echo $N Do the setup of a bunch of repos ............................$NL
 cd $HERE
-no_logging gonebase
+commercial gonebase
 cd BitKeeper/etc
 bk edit $Q config
 if grep -q "^checkout" config; then

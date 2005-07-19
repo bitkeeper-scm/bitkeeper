@@ -364,7 +364,7 @@ checkfiles WANT GOT
 echo OK
 
 echo $N Demonstrate out of order changesets .........................$NL
-no_logging p
+commercial p
 touch foo
 bk new $Q foo
 # The long string needed to overcome fudges.
@@ -383,7 +383,7 @@ cd $HERE
 rm -rf p
 
 echo $N Demonstrate the other way they can be out of order ..........$NL
-no_logging p
+commercial p
 touch foo
 bk new $Q foo
 cd $HERE

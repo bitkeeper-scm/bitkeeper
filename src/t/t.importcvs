@@ -116,7 +116,7 @@ echo OK
 
 echo $N Import CVS trunk ............................................$NL
 cd $HERE
-no_logging import_trunk
+commercial import_trunk
 # verify that checkout:edit doesn't break anything
 bk edit $Q BitKeeper/etc/config || exit 1
 echo "checkout:edit" >> BitKeeper/etc/config

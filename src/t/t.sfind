@@ -12,7 +12,7 @@
 echo $N Setup .......................................................$NL
 set -e
 trap 'echo failed' 0
-no_logging project
+commercial project
 mkdir bar
 mkdir bar/blech
 touch foo

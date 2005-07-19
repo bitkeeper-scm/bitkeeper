@@ -182,9 +182,6 @@ admin_main(int ac, char **av)
 	if (strieq("get", ckopts) || strieq("edit", ckopts)) {
 		init_flags |= INIT_FIXSTIME;
 	}
-
-	checkSingle();
-
 	while (name) {
 		if (flags & NEWFILE) {
 			if (do_checkin(name, encp, compp,

@@ -11,7 +11,7 @@
 
 # Tests for tag propogation in new/old protocols.
 echo $N Create initial repository ...................................$NL
-no_logging project
+commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -207,7 +207,7 @@ echo OK
 echo $N Resolve a tag conflict, pick remote, see if it sticks .......$NL
 cd $HERE
 rm -rf project copy
-no_logging project
+commercial project
 echo hi > foo
 bk new $Q foo
 bk commit -yDsub1 $Q
@@ -323,7 +323,7 @@ echo OK
 echo $N Test propogation of the first tag ...........................$NL
 cd $HERE
 rm -rf tagpush tagchild
-no_logging tagpush
+commercial tagpush
 ls > file
 bk new $Q file
 bk commit $Q -ywhatever
@@ -584,7 +584,7 @@ echo OK
 
 echo $N Make sure we check for illegal char in tag ..................$NL
 cd $HERE
-no_logging proj
+commercial proj
 touch foo
 bk new $Q foo
 bk commit $Q -S.1 -yfoo  2>out && { echo failed; exit 1; }
@@ -594,7 +594,7 @@ grep -q "commit: .1: tags can't start with a '.'" out || {
 echo OK
 
 echo $N Create tag graph with two tips ..............................$NL
-no_logging twotipbase
+commercial twotipbase
 cd ..
 bk clone $Q twotipbase twotip
 cd twotipbase
@@ -624,7 +624,7 @@ bk undo $Q -fr+ 2>ERR || {
 echo OK
 
 echo $N Create tag graph with multiple tips .........................$NL
-no_logging tipbase
+commercial tipbase
 cd ..
 bk clone $Q tipbase tips
 bk clone $Q tipbase tipsave

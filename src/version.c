@@ -38,7 +38,6 @@ bkversion(FILE *f)
 	char	buf[MAXLINE];
 
 	switch (bk_mode(0)) {
-	    case BK_SINGLE: strcpy(buf, "/Single"); break;
 	    case BK_FREE: strcpy(buf, "/Free"); break;
 	    case BK_PRO: strcpy(buf, "/Pro"); break;
 	    default: buf[0] = 0; break;
