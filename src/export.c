@@ -8,7 +8,7 @@ export_main(int ac,  char **av)
 {
 	int	i, c, count, trim = 0;
 	int	vflag = 0, hflag = 0, kflag = 0, tflag = 0, wflag = 0;
-	char	*rev = NULL, *diff_style = NULL;
+	char	*rev = NULL, *diff_style = "u";
 	char	file_rev[MAXPATH];
 	char	buf[MAXLINE], buf1[MAXPATH];
 	char	**includes = 0;
@@ -27,12 +27,13 @@ export_main(int ac,  char **av)
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "d:hkp:t:Twvi:x:r:S")) != -1) {
+	while ((c = getopt(ac, av, "d|hkp:t:Twvi:x:r:S")) != -1) {
 		switch (c) {
 		    case 'v':	vflag = 1; break;		/* doc 2.0 */
 		    case 'q':					/* undoc 2.0 */
 				break; /* no op; for interface consistency */
-		    case 'd':	diff_style = optarg; break;	/* doc 2.0 */
+		    case 'd':
+			diff_style = notnull(optarg); break;	/* doc 2.0 */
 		    case 'h':					/* doc 2.0 */
 			hflag = 1; break; /*disable patch header*/
 		    case 'k':	kflag = 1; break;		/* doc 2.0 */
@@ -180,7 +181,6 @@ export_patch(char *diff_style,
 	char	buf[MAXLINE], file_rev[MAXPATH];
 	int	status;
 
-	unless (diff_style) diff_style = "u";
 	bktmp(file_rev, "file_rev");
 	sprintf(buf, "bk rset -hr'%s' > '%s'", rev ? rev : "+", file_rev);
 	status = system(buf);
@@ -188,8 +188,8 @@ export_patch(char *diff_style,
 		unlink(file_rev);
 		return (1);
 	}
-	sprintf(buf, "bk gnupatch -d%c %s %s",
-	    diff_style[0], hflag ? "-h" : "", tflag ? "-T" : "");
+	sprintf(buf, "bk gnupatch -d%s %s %s",
+	    diff_style, hflag ? "-h" : "", tflag ? "-T" : "");
 	f1 = popen(buf, "w");
 	f = fopen(file_rev, "rt");
 	assert(f);

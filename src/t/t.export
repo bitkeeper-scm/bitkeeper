@@ -276,6 +276,44 @@ grep -q b/src/foo.h ../PATCH || {
 }
 echo OK
 
+echo $N Test unified/procedural diffs in a patch ....................$NL
+cat > lod.c <<EOF
+int
+lod_main(int ac, char **av)
+{
+	int	i;
+	int	j;
+	int	k;
+
+	/* This is some filler */
+	/* This is some filler */
+	/* This is some filler */
+	return (lodMain(ac, av, 0));
+}
+EOF
+bk new $Q lod.c
+bk commit $Q -ylod.c
+bk edit $Q lod.c
+sed 's/, 0//' < lod.c > XXX
+mv XXX lod.c
+bk delta $Q -ydiff lod.c
+bk commit $Q -ydiff
+bk export -tpatch -dup > PATCH
+grep -q '@@ lod_main(int' PATCH || {
+	echo failed to do procedural diffs
+	cat PATCH
+	exit 1
+}
+echo OK
+
+echo $N Test regular diffs in a patch ...............................$NL
+bk export -tpatch -d > PATCH
+grep -q '> 	return' PATCH || {
+	echo failed to do regular diffs
+	cat PATCH
+	exit 1
+}
+echo OK
 # XXX - todo, test case where a patch includes a rename
 
 # 2004-02-06-001 - error out if source does not exist

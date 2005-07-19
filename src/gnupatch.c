@@ -126,7 +126,7 @@ gnupatch_main(int ac, char **av)
 	char tmpdir[MAXPATH];
 	char *path0, *path1, *rev1, *path2, *rev2;
 	char *cset1 = 0,  *cset2 = 0;
-	char *diff_style = 0;
+	char *diff_style = "u";
 	char diff_opts[50] ;
 	char *diff_av[] = { "diff", diff_opts, "a", "b", 0 };
 	char *clean_av[] = { "rm", "-rf", tmpdir, 0 };
@@ -146,8 +146,8 @@ gnupatch_main(int ac, char **av)
 		    case 'h':					/* doc 2.0 */
 			header = 0; break; /* disable header */
 		    case 'T':	fix_mod_time = 1; break;	/* doc 2.0 */
-		    case 'd':					/* doc 2.0 */
-			diff_style = optarg ? optarg : ""; break;
+		    case 'd':
+			diff_style = notnull(optarg); break;	/* doc 2.0 */
 		    default:	system("bk help -s gnupatch");
 				return (1);
 		}
@@ -214,8 +214,7 @@ gnupatch_main(int ac, char **av)
 	 * now "diff -Nr" the left & right tree
 	 * and fix up the diff header
 	 */
-	unless (diff_style) diff_style = "u";
-	sprintf(diff_opts, "-Nr%c", diff_style[0]);
+	sprintf(diff_opts, "-Nr%s", diff_style);
 	spawnvp_rPipe(diff_av, &rfd, BIG_PIPE);
 	pipe = fdopen(rfd, "r");
 	while (fgets(buf, sizeof(buf), pipe)) {
