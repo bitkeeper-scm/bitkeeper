@@ -242,7 +242,7 @@ echo $N Create a regular file and a symlink .........................$NL
 ln -s dangling/symlink link
 echo i am a file > file
 bk ci $Q -i link file
-bk commit $S -a -y"This is a \"Change Set\""
+bk commit $S -y"This is a \"Change Set\""
 echo OK
 cores
 echo $N Export the repository .......................................$NL

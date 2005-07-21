@@ -1130,8 +1130,7 @@ check(sccs *s, HASH *db)
 	} else unless (sccs_setpathname(s)) {
 		fprintf(stderr, "check: can't get spathname in %s\n", s->gfile);
 		errors++;
-	} else unless (resync ||
-	    streq(s->sfile, s->spathname) || LOGS_ONLY(s)) {
+	} else unless (resync || streq(s->sfile, s->spathname)) {
 		fprintf(stderr,
 		    "check: %s should be %s\n", s->sfile, s->spathname);
 		errors++;
@@ -1170,7 +1169,7 @@ check(sccs *s, HASH *db)
 
 	/*
 	 * Check BitKeeper invariants, such as:
-	 *  - no open branches (unless we are in a logging repository)
+	 *  - no open branches
 	 *  - xflags implied by s->state matches top-of-trunk delta.
 	 */
 #define	FL	ADMIN_BK|ADMIN_FORMAT|ADMIN_TIME

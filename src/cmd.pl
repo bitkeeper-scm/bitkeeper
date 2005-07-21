@@ -127,7 +127,6 @@ abort
 _adler32
 admin
 annotate
-_applyall restricted
 base64
 bkd
 cat
@@ -194,12 +193,7 @@ _link
 _listkey restricted
 lock
 lod
-log
-_logflags
 _logging
-_loggingaccepted
-_loggingask
-_loggingto
 mailsplit
 mail
 makepatch
@@ -302,7 +296,6 @@ edit => get
 comment => comments	# alias for Linus, remove...
 _fix_lod1 => _fixlod
 info => sinfo
-_log => log
 _mail => mail
 _preference => preference
 rechksum => checksum

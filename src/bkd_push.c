@@ -7,7 +7,7 @@ int
 cmd_push_part1(int ac, char **av)
 {
 	char	*p, buf[MAXKEY], cmd[MAXPATH];
-	int	c, n, status, gzip = 0,  metaOnly = 0;
+	int	c, n, status, gzip = 0;
 	int	debug = 0;
 	MMAP    *m;
 	FILE	*l;
@@ -21,41 +21,14 @@ cmd_push_part1(int ac, char **av)
 			if (gzip < 0 || gzip > 9) gzip = 6;
 			break;
 		    case 'd': debug = 1; break;
-		    case 'e':
-			metaOnly = 1;
-			putenv("BK_TRIGGER_PATH=/etc");
-			break;
 		    case 'n': putenv("BK_STATUS=DRYRUN"); break;
 		    default: break;
 		}
 	}
 
-	if (metaOnly) {
-		struct	stat	statbuf;
-		char	lockf[MAXPATH];
-
-		unless (getcwd(lockf, sizeof(lockf))) {
- lock:			out(LOCK_RD_BUSY "\n");
-			drain();
-			return (1);
-		}
-		strcat(lockf, ".lock");
-		if (exists(CHANGESET)) {
-			unlink(lockf);
-		} else if (!stat(lockf, &statbuf) &&
-		    time(0) - statbuf.st_ctime < HOUR) {
-			/*
-			 * When the project doesn't exist yet, only accept a
-			 * new client to create the project once an hour.
-			 */
-			goto lock;
-		} else {
-			touch(lockf, 0666);
-		}
-	}
 	if (debug) fprintf(stderr, "cmd_push_part1: sending server info\n");
 	setmode(0, _O_BINARY); /* needed for gzip mode */
-	sendServerInfoBlock(metaOnly);  /* tree might be missing */
+	sendServerInfoBlock(0);
 
 	if (getenv("BKD_LEVEL") && (atoi(getenv("BKD_LEVEL")) > getlevel())) {
 		/* they got sent the level so they are exiting already */
@@ -72,14 +45,6 @@ cmd_push_part1(int ac, char **av)
 		out("\n");
 		drain();
 		return (1);
-	}
-
-	if (emptyDir(".") && metaOnly) {
-		out("@OK@\n");
-		out("@EMPTY TREE@\n");
-		if (debug) fprintf(stderr, "cmd_push_part1: got empty tree\n");
-		drain();
-		return (0); /* for logging tree, not a error */
 	}
 
 	unless(isdir("BitKeeper")) { /* not a packageg root */
@@ -99,7 +64,7 @@ cmd_push_part1(int ac, char **av)
 
 	if (debug) fprintf(stderr, "cmd_push_part1: calling listkey\n");
 	lktmp = bktmp(0, "bkdpush");
-	sprintf(cmd, "bk _listkey %s > %s", metaOnly ? "-e": "", lktmp);
+	sprintf(cmd, "bk _listkey > %s", lktmp);
 	l = popen(cmd, "w");
 	while ((n = getline(0, buf, sizeof(buf))) > 0) {
 		if (debug) fprintf(stderr, "cmd_push_part1: %s\n", buf);
@@ -141,7 +106,7 @@ cmd_push_part1(int ac, char **av)
 int
 cmd_push_part2(int ac, char **av)
 {
-	int	fd2, pfd, c, rc = 0, gzip = 0, metaOnly = 0;
+	int	fd2, pfd, c, rc = 0, gzip = 0;
 	int	i, status, debug = 0, nothing = 0, conflict = 0;
 	int	quiet = 0;
 	pid_t	pid;
@@ -157,10 +122,6 @@ cmd_push_part2(int ac, char **av)
 			if (gzip < 0 || gzip > 9) gzip = 6;
 			break;
 		    case 'd': debug = 1; break;
-		    case 'e':
-			metaOnly = 1;
-			putenv("BK_TRIGGER_PATH=/etc");
-			break;
 		    case 'G': takepatch[2] = "-vv"; break;
 		    case 'n': putenv("BK_STATUS=DRYRUN"); break;
 		    case 'q': quiet = 1; break;
@@ -169,13 +130,13 @@ cmd_push_part2(int ac, char **av)
 	}
 
 	if (debug) fprintf(stderr, "cmd_push_part2: checking package root\n");
-	if (!isdir("BitKeeper") && (!metaOnly || !emptyDir("."))) {
+	unless (isdir("BitKeeper")) {
 		out("ERROR-Not at package root\n");
 		rc = 1;
 		goto done;
 	}
 
-	sendServerInfoBlock(metaOnly);  /* tree might be missing */
+	sendServerInfoBlock(0);
 	buf[0] = 0;
 	getline(0, buf, sizeof(buf));
 	if (streq(buf, "@ABORT@")) {
@@ -212,16 +173,9 @@ cmd_push_part2(int ac, char **av)
 	/* Arrange to have stderr go to stdout */
 	fd2 = dup(2); dup2(1, 2);
 	i = 2;
-	if (metaOnly && !debug) quiet = 1; /* force quiet for logging code */
 	unless (quiet) takepatch[i++] = "-vvv";
-	unless (metaOnly) takepatch[i++] = "-c"; /* normal patch no conflict */
-	/*
-	 * Tell takepatch to recieve a logging patch.  It will just
-	 * save the patch and spawn inself in the background.  to
-	 * apply and resolve the changes.
-	 */
+	takepatch[i++] = "-c"; /* normal patch no conflict */
 	putenv("BK_REMOTE=YES");
-	if (metaOnly) takepatch[i++] = "-aL";
 	takepatch[i] = 0;
 	pid = spawnvp_wPipe(takepatch, &pfd, BIG_PIPE);
 	dup2(fd2, 2); close(fd2);
@@ -251,11 +205,10 @@ cmd_push_part2(int ac, char **av)
 		rc = 1;
 		goto done;
 	}
-	if (metaOnly) goto done; /* no need for resolve */
 	proj_reset(0);
 
 	/*
-	 * Fire up the pre-trigger (for non-logging tree only)
+	 * Fire up the pre-trigger
 	 */
 	putenv("BK_CSETLIST=BitKeeper/etc/csets-in");
 	if (c = trigger("remote resolve",  "pre")) {
@@ -302,9 +255,9 @@ cmd_push_part2(int ac, char **av)
 	}
 
 done:	/*
-	 * Fire up the post-trigger (for non-logging tree only)
+	 * Fire up the post-trigger
 	 */
 	putenv("BK_RESYNC=FALSE");
-	unless (metaOnly) trigger(av[0],  "post");
+	trigger(av[0],  "post");
 	return (rc);
 }

@@ -22,7 +22,7 @@ echo OK
 echo $N Create some data ............................................$NL
 echo foo > foo
 bk new $Q foo
-bk commit $S -a -ywhatever
+bk commit $S -ywhatever
 echo OK
 echo $N Create a copy of the project ................................$NL
 cd $HERE

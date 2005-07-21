@@ -33,7 +33,7 @@ EOF
 chmod +x BitKeeper/triggers/*
 echo h > h.h
 bk ci $Q -i h.h
-bk commit $S -a -yCset
+bk commit $S -yCset
 grep -q BK_CSETS $HERE/pre-commit && {
 	echo should not have defined BK_CSETS in pre-commit
 	exit 1
@@ -67,7 +67,7 @@ EOF
 chmod +x BitKeeper/triggers/*
 echo c > c.c
 bk ci $Q -i c.c
-bk commit $S -a -yCset2 2>/dev/null && {
+bk commit $S -yCset2 2>/dev/null && {
 	echo failed to exit with an error status
 	exit 1
 }
@@ -141,7 +141,7 @@ cp \$BK_PENDING $HERE/BK_PENDING
 exit 1
 EOF
 chmod +x BitKeeper/triggers/*
-bk commit $S -a -yCset2 2>/dev/null && {
+bk commit $S -yCset2 2>/dev/null && {
 	echo failed to exit with an error status
 	exit 1
 }
@@ -169,7 +169,7 @@ cat > BitKeeper/triggers/pre-commit <<EOF
 exit 0
 EOF
 chmod +x BitKeeper/triggers/*
-bk commit $S -a -yCset2 || {
+bk commit $S -yCset2 || {
 	echo failed
 	exit 1
 }
@@ -1013,7 +1013,7 @@ bk ci $Q -i foo.c bar.c h.h
 if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
-bk commit $S -a -yCset
+bk commit $S -yCset
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 echo OK
@@ -1438,7 +1438,7 @@ EOF
 chmod +x BitKeeper/triggers/pre-commit
 echo h > h.h
 bk ci $Q -i h.h
-bk commit $S -a -yCset > $HERE/out
+bk commit $S -yCset > $HERE/out
 grep -q "I am in perl" $HERE/out || { echo failed; cat $HERE/out; exit 1; }
 echo OK
 
@@ -1453,7 +1453,7 @@ EOF
 bk edit $Q h.h
 echo "h2" > h.h
 bk delta $Q -yh2 h.h
-bk commit $S -a -yCset_bat > $HERE/out
+bk commit $S -yCset_bat > $HERE/out
 grep -q "I am a Windows BATCH file" $HERE/out || { echo failed; exit 1; }
 echo OK
 
@@ -1465,7 +1465,7 @@ EOF
 bk edit $Q h.h
 echo "h2" > h.h
 bk delta $Q -yh3 h.h
-bk commit $S -a -yCset_h3 2> $HERE/out
+bk commit $S -yCset_h3 2> $HERE/out
 grep -q "Cannot expand shell path" $HERE/out || { echo failed; exit 1; }
 echo OK
 fi

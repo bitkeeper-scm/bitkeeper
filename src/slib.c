@@ -1766,11 +1766,6 @@ findrev(sccs *s, char *rev)
 	    notnull(rev), s->sfile, defbranch(s)));
 	unless (HASGRAPH(s)) return (0);
 	if (!rev || !*rev || streq("+", rev)) {
-		if (LOGS_ONLY(s)) {
-			/* XXX - works only for 1 LOD trees */
-			for (e = s->table; e && TAG(e); e = e->next);
-			return (e);
-		}
 		rev = defbranch(s);
 	}
 
@@ -3166,9 +3161,6 @@ checkTags(sccs *s, int flags)
 
 	/* Nobody else has tags */
 	unless (CSET(s)) return (0);
-
-	/* Allow open tag branch for logging repository */
-	if (LOGS_ONLY(s)) return (0);
 
 	/* Make sure that tags don't contain weird characters */
 	for (sym = s->symbols; sym; sym = sym->next) {
@@ -6782,13 +6774,6 @@ sccs_get(sccs *s, char *rev,
 		fprintf(stderr, "get: no pathname for %s\n", s->sfile);
 		return (-1);
 	}
-	if (LOGS_ONLY(s) && !(flags & (PRINT|GET_SKIPGET))) {
-		assert(BITKEEPER(s));
-		unless (streq("ChangeSet", s->tree->pathname) ||
-		    strneq("BitKeeper/etc/", s->tree->pathname, 14)) {
-			return (0);
-		}
-	}
 	unless (s->state & S_SOPEN) {
 		fprintf(stderr, "get: couldn't open %s\n", s->sfile);
 err:		if (i2) free(i2);
@@ -7876,7 +7861,6 @@ delta_table(sccs *s, FILE *out, int willfix)
 			fputmeta(s, buf, out);
 		}
 		if (d->flags & D_XFLAGS) {
-			if (s->state & S_FORCELOGGING) d->xflags |= X_LOGS_ONLY;
 			sprintf(buf, "\001cX0x%x\n", d->xflags);
 			fputmeta(s, buf, out);
 		}
@@ -9515,9 +9499,6 @@ checkOpenBranch(sccs *s, int flags)
 {
 	delta	*d, *m, *tip = 0, *symtip = 0;
 	int	ret = 0, tips = 0, symtips = 0;
-
-	/* Allow open branch for logging repository */
-	if (LOGS_ONLY(s)) return (0);
 
 	for (d = s->table; d; (d->flags &= ~D_RED), d = d->next) {
 		/*
@@ -13972,9 +13953,6 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		if (flags & X_SCCS) {
 			if (comma) fs(","); fs("SCCS"); comma = 1;
 		}
-		if (flags & X_LOGS_ONLY) {
-			if (comma) fs(","); fs("LOGS_ONLY"); comma = 1;
-		}
 		if (flags & X_EOLN_NATIVE) {
 			if (comma) fs(","); fs("EOLN_NATIVE"); comma = 1;
 		}
@@ -15211,13 +15189,7 @@ text:	if (d->flags & D_TEXT) {
 		sccs_pdelta(s, e, out);
 		fprintf(out, "\n");
 	}
-	if (d->flags & D_XFLAGS) {
-		if (flags & PRS_LOGGING) {
-			fprintf(out, "X 0x%x\n", X_LOGS_ONLY | d->xflags);
-		} else {
-			fprintf(out, "X 0x%x\n", d->xflags);
-		}
-	}
+	if (d->flags & D_XFLAGS) fprintf(out, "X 0x%x\n", d->xflags);
 	if (s->tree->zone) assert(d->zone);
 	fprintf(out, "------------------------------------------------\n");
 	return (0);
@@ -15524,7 +15496,7 @@ sccs_findtips(sccs *s, delta **a, delta **b)
 		if (!*a) {
 			*a = d;
 		} else {
-			assert(LOGS_ONLY(s) || !*b);
+			assert(!*b);
 			*b = d;
 			/* Could break but I like the error checking */
 		}

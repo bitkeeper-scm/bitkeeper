@@ -29,7 +29,7 @@ bk ci $Q -i 'I am foo.c' bar.c h.h
 if [ ! -f SCCS/s.'I am foo.c' ]; then echo failed to create history; exit 1; fi
 echo OK
 echo $N Commit the files ............................................$NL
-bk commit $S -a -yCset -S"Hi there this is a changeset"
+bk commit $S -yCset -S"Hi there this is a changeset"
 if [ $? != 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N Check the repository ........................................$NL
@@ -128,11 +128,11 @@ mkdir src
 cd src
 echo "foo" > "a a a"
 bk new $Q "a a a"
-bk commit $Q -a -yCset
+bk commit $Q -yCset
 bk edit $Q "a a a"
 echo "bar" >> "a a a"
 bk delta $Q -y"test" "a a a"
-bk commit $Q -a -yCset
+bk commit $Q -yCset
 bk -R checksum ChangeSet || { echo checksum failed; exit 1; }
 echo OK
 

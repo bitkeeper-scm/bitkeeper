@@ -104,9 +104,7 @@
 #define PRS_ALL		0x80000000	/* scan all revs, not just type D */
 #define	PRS_GRAFT	0x01000000	/* put the perfile in the patch */
 #define	PRS_LF		0x02000000	/* terminate non-empty output with LF */
-#define	PRS_LOGGING	0x04000000	/* add logging bit to xflags */
 #define	PRS_COMPAT	0x08000000	/* for makepatch -C, send old tags */
-#define	PRS_LOGMARK	0x00100000	/* want log marker */
 
 #define SINFO_TERSE	0x10000000	/* print in terse format: sinfo -t */
 
@@ -142,7 +140,6 @@
 #define	S_SET		0x00002000	/* the tree is marked with a set */
 #define S_CACHEROOT	0x00004000	/* don't free the root entry */
 #define	S_FAKE_1_0	0x00008000	/* the 1.0 delta is a fake */
-#define	S_FORCELOGGING	0x00020000	/* Yuck - force it to logging */
 #define S_CONFIG	0x00040000	/* this is a config file */
 #define S_IMPORT	0x00080000	/* import mode */
 
@@ -191,7 +188,7 @@
 #define	X_SCCS		0x00000080	/* SCCS keywords */
 #define	X_SINGLE	0x00000100	/* OLD single user */
 /*	X_DO_NOT_USE	0x00000200	   was used shortly, never reuse */
-#define	X_LOGS_ONLY	0x00000400	/* this is a logging repository */
+/* old  X_LOGS_ONLY	0x00000400	   this is a logging repository */
 #define	X_EOLN_NATIVE	0x00000800	/* use eoln native to this OS */
 #define	X_LONGKEY	0x00001000	/* all keys are long format */
 #define	X_KV		0x00002000	/* key value file */
@@ -251,7 +248,6 @@
 #define	CSETMARKED(s)	((s)->xflags & X_CSETMARKED)
 #define	HASH(s)		((s)->xflags & X_HASH)
 #define	SCCS(s)		((s)->xflags & X_SCCS)
-#define	LOGS_ONLY(s)	((s)->xflags & X_LOGS_ONLY)
 #define	EOLN_NATIVE(s)	((s)->xflags & X_EOLN_NATIVE)
 #define	LONGKEY(s)	((s)->xflags & X_LONGKEY)
 #define	KV(s)		((s)->xflags & X_KV)
@@ -320,13 +316,6 @@
 
 #define	MAXREV	24	/* 99999.99999.99999.99999 */
 
-#define	OPENLOG_ADDR	"logging@openlogging.org"
-#define	OPENLOG_URL	"http://config.openlogging.org:80////LOG_ROOT///"
-#define	OPENLOG_BACKUP	"http://config2.openlogging.org:80////LOG_ROOT///"
-#define	OPENLOG_HOST	"config.openlogging.org"
-#define	OPENLOG_HOST1   "config2.openlogging.org"
-#define	OPENLOG_LEASE	getenv("OPENLOG_LEASE")
-#define	OPENLOG_LEASE2	getenv("OPENLOG_LEASE2")
 #define	BK_WEBMAIL_URL	getenv("BK_WEBMAIL_URL")
 #define	BK_HOSTME_SERVER "hostme.bkbits.net"
 #define	WEB_BKD_CGI	"web_bkd"
@@ -346,8 +335,6 @@
 #define	CHANGESET	"SCCS/s.ChangeSet"
 #define	CCHANGESET	"SCCS/c.ChangeSet"
 #define	GCHANGESET	"ChangeSet"
-#define	LOGGING_OK	"BitKeeper/etc/SCCS/s.logging_ok"
-#define	GLOGGING_OK	"BitKeeper/etc/logging_ok"
 #define	IDCACHE		"BitKeeper/etc/SCCS/x.id_cache"
 #define	IDCACHE_LOCK	"BitKeeper/etc/SCCS/z.id_cache"
 #define	DFILE		"BitKeeper/etc/SCCS/x.dfile"
@@ -705,7 +692,6 @@ typedef struct patch {
 #define	PATCH_COMPAT	"# Patch vers:\t1.2\n"
 #define PATCH_CURRENT	"# Patch vers:\t1.3\n"
 
-#define PATCH_LOGGING	"# Patch type:\tLOGGING\n"
 #define PATCH_REGULAR	"# Patch type:\tREGULAR\n"
 
 #define	BK_RELEASE	"2.O"	/* this is lame, we need a sccs keyword */

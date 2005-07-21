@@ -194,54 +194,6 @@ listPendingRenames()
 	dup2(fd1, 1); close(fd1);
 }
 
-private void
-setRepoType(opts *opts)
-{
-	if (exists(LOG_TREE)) {
-		opts->logging = 1;
-		putenv("BK_TRIGGER_PATH=/etc");
-	}
-}
-
-/*
- * For logging repository, we defer resolving path conflict
- * by moving  the conflicting remote file to the BitKeeper/conflicts
- * directory.
- * XXX - older inode should win so we converge?
- */
-private void
-removePathConflict(opts *opts, resolve *rs)
-{
-	char	*t, path[MAXPATH], encpath[MAXPATH];
-	int	n = 0;
-
-	if (slotTaken(opts, rs->dname)) {
-		sprintf(path, "BitKeeper/conflicts/SCCS/%s", basenm(rs->dname));
-		sprintf(encpath, "%s/%s", RESYNC2ROOT, path);
-		while (exists(path) || exists(encpath)) {
-			sprintf(path, "BitKeeper/conflicts/SCCS/%s~%d",
-			    basenm(rs->dname), n++);
-			sprintf(encpath, "%s/%s", RESYNC2ROOT, path);
-		}
-	} else {
-		strcpy(path, rs->dname);
-	}
-	mkdirf(path);
-	sccs_close(rs->s); /* for win32 */
-	if (rename(rs->s->sfile, path)) {
-		perror(path);
-		resolve_cleanup(opts, CLEAN_RESYNC);
-	}
-	if (opts->log) {
-		fprintf(opts->log, "rename(%s, %s)\n", rs->s->sfile, path);
-	}
-	unlink(sccs_Xfile(rs->s, 'm'));
-	t = strrchr(path, '/');
-	t[1] = 'r';
-	/* OK if this fails because the file isn't there */
-	rename(sccs_Xfile(rs->s, 'r'), path);
-}
-
 /*
  * Do the setup and then work through the passes.
  */
@@ -288,8 +240,6 @@ passes(opts *opts)
 		/* XXX - better help message */
 		resolve_cleanup(opts, 0);
 	}
-
-	setRepoType(opts);
 
 	/*
 	 * Pass 1 - move files to RENAMES and/or build up rootDB
@@ -689,11 +639,6 @@ pass2_renames(opts *opts)
 
 		n++;
 		rs = resolve_init(opts, s);
-
-		if (opts->logging) {
-			removePathConflict(opts, rs);
-			goto out;
-		}
 
 		/*
 		 * This code is ripped off from the create path.
@@ -1555,26 +1500,18 @@ can be resolved.  Please rerun resolve and fix these first.\n", n);
 	 */
 	conflicts = find_files(opts, 0);
 	EACH(conflicts) {
-		char	*t = strrchr(conflicts[i], '/');
-
 		if (opts->debug) fprintf(stderr, "pass3: %s\n", conflicts[i]);
 		if (streq(conflicts[i], "SCCS/s.ChangeSet")) continue;
 
 		if (opts->debug) fprintf(stderr, "pass3: %s", conflicts[i]);
 
-		if (opts->logging) {
-			t[1] = 'r';
-			unlink(conflicts[i]);
-			t[1] = 's';
-		} else {
-			conflict(opts, conflicts[i]);
-		}
+		conflict(opts, conflicts[i]);
 		if (opts->errors) {
 			pclose(p);
 			goto err;
 		}
 	}
-	unless (opts->logging) resolve_tags(opts);
+	resolve_tags(opts);
 	unless (opts->quiet || !opts->resolved) {
 		fprintf(stdlog,
 		    "resolve: resolved %d conflicts in pass 3\n",
@@ -1634,15 +1571,13 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		sccs	*s;
 		resolve	*rs;
 
-		unless (opts->logging) {
-			s = sccs_init(s_cset, INIT_NOCKSUM);
-			rs = resolve_init(opts, s);
-			edit(rs);
-			/* We may restore it if we bail early */
-			rename(sccs_Xfile(s, 'r'), "BitKeeper/tmp/r.ChangeSet");
-			resolve_free(rs);
-			opts->willMerge = 1;
-		}
+		s = sccs_init(s_cset, INIT_NOCKSUM);
+		rs = resolve_init(opts, s);
+		edit(rs);
+		/* We may restore it if we bail early */
+		rename(sccs_Xfile(s, 'r'), "BitKeeper/tmp/r.ChangeSet");
+		resolve_free(rs);
+		opts->willMerge = 1;
 	} else if (exists("SCCS/p.ChangeSet")) {
 		/*
 		 * The only way I can think of this happening is if we are
@@ -1668,11 +1603,6 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	}
 nocommit:
 
-	/*
-	 * For logging repository, do not commit merge node
-	 */ 
-	if (opts->logging) return (0);
-
 
 	/*
 	 * If there is nothing to do, bail out.
@@ -1693,13 +1623,12 @@ nocommit:
 	 * Always do autocommit if there are no pending changes.
 	 * We supply a default comment because there is little point
 	 * in bothering a user for a merge.
-	 * Go ask about logging if we need to.  We never ask on a push.
 	 */
 	unless (opts->partial || (pe && pendingEdits())) {
 		if (opts->log) {
 			fprintf(opts->log, "==== Pass 3 autocommits ====\n");
 		}
-		unless (opts->noconflicts) ok_commit(0);
+		unless (opts->noconflicts) ok_commit();
 		commit(opts);
 		return (0);
 	}
@@ -1777,7 +1706,7 @@ nocommit:
 
 	if (!opts->partial && pending(0)) {
 		assert(!opts->noconflicts);
-		ok_commit(0);
+		ok_commit();
 		commit(opts);
 	}
 
@@ -2193,7 +2122,7 @@ commit(opts *opts)
 	int	i;
 	char	*cmds[10], *cmt = 0;
 
-	unless (ok_commit(1)) {
+	unless (ok_commit()) {
 		fprintf(stderr,
 		   "Commit aborted because of licensing, no changes applied\n");
 		resolve_cleanup(opts, 0);
@@ -2201,7 +2130,7 @@ commit(opts *opts)
 
 	cmds[i = 0] = "bk";
 	cmds[++i] = "commit";
-	cmds[++i] = "-Ra";
+	cmds[++i] = "-R";
 	/* force a commit if we are a null merge */
 	unless (opts->resolved || opts->renamed) cmds[++i] = "-F";
 	if (opts->quiet) cmds[++i] = "-s";
@@ -2354,10 +2283,6 @@ pass4_apply(opts *opts)
 		resolve_cleanup(opts, CLEAN_NOSHOUT|flags);
 	}
 
-	if (opts->logging) { /* hard-coded logging tree trigger */
-		metaUnionResync1();
-	}
-	
 	/*
 	 * Pass 4a - check for edited files and build up a list of files to
 	 * backup and remove.
@@ -2503,10 +2428,6 @@ err:			unapply(save);
 	 */
 	if (localDB && chkCaseChg(save)) goto err;
 
-	if (opts->logging) { /* hard-coded logging tree trigger */
-		metaUnionResync2();
-	}
-
 	unless (opts->quiet) {
 		fprintf(stderr,
 		    "resolve: applied %d files in pass 4\n", opts->applied);
@@ -2638,11 +2559,7 @@ copyAndGet(opts *opts, char *from, char *to)
 		getFlags = default_getFlags;
 		//ttyprintf("checkout %s with defaults(%d)\n", key, getFlags);
 	}
-	if (opts->logging) {
-		unless (strneq(to, "BitKeeper/etc/SCCS", 18)) {
-			if (HAS_GFILE(s) && sccs_clean(s, SILENT)) return (-1);
-		}
-	} else if (getFlags) {
+	if (getFlags) {
 		sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-");
 	} else {
 		if (HAS_GFILE(s) && sccs_clean(s, SILENT)) return (-1);
@@ -2796,7 +2713,7 @@ resolve_cleanup(opts *opts, int what)
 	 *
 	 * if (opts->didMerge && !opts->logging) ...
 	 */
-	if (!opts->logging) logChangeSet(1);
+	logChangeSet();
 
 	/* Only get here from pass4_apply() */
 	unless (opts->quiet) {

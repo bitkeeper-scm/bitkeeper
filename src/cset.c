@@ -7,8 +7,6 @@
 typedef	struct cset {
 	/* bits */
 	int	mixed;		/* if set, then both long and short keys */
-	int	csetOnly;	/* if set, do logging ChangeSet */
-	int     metaOnly;	/* if set, do only metadata */
 	int	makepatch;	/* if set, act like makepatch */
 	int	listeach;	/* if set, list revs 1/line */
 	int	mark;		/* act like csetmark used to act */
@@ -56,7 +54,7 @@ makepatch_main(int ac, char **av)
 
 	dash = streq(av[ac-1], "-");
 	nav[i=0] = "makepatch";
-	while ((c = getopt(ac, av, "c|e|dr|sCqv")) != -1) {
+	while ((c = getopt(ac, av, "dr|sCqv")) != -1) {
 		if (i == 14) goto usage;
 		switch (c) {
 		    case 'd':					/* doc 2.0 */
@@ -64,8 +62,6 @@ makepatch_main(int ac, char **av)
 			break;
 		    case 'r':					/* doc 2.0 */
 		    	c = 'm';
-		    case 'c':					/* doc 2.0 */
-		    case 'e':					/* doc 2.0 */
 			if (range) goto usage;
 			range = malloc((optarg ? strlen(optarg) : 0) + 10);
 			sprintf(range, "-%c%s", c, optarg ? optarg : "");
@@ -120,7 +116,7 @@ cset_main(int ac, char **av)
 
 	while (
 	    (c =
-	    getopt(ac, av, "c|e|Cd|DfHhi;lm|M|pqr|svx;")) != -1) {
+	    getopt(ac, av, "Cd|DfHhi;lm|M|pqr|svx;")) != -1) {
 		switch (c) {
 		    case 'D': ignoreDeleted++; break;		/* undoc 2.0 */
 		    case 'f': copts.force++; break;		/* undoc? 2.0 */
@@ -145,18 +141,6 @@ cset_main(int ac, char **av)
 		    case 'd':					/* undoc? 2.0 */
 			if (c == 'd') copts.doDiffs++;
 		    	/* fall through */
-		    case 'e':					/* undoc? 2.0 */
-			if (c == 'e') {
-				copts.metaOnly++;
-				copts.makepatch = 1;
-			}
-			/* fall through */
-		    case 'c':					/* undoc? 2.0 */
-			if (c == 'c') {
-				copts.csetOnly++;
-				copts.makepatch = 1;
-			}
-			/* fall through */
 		    case 'M':					/* doc 2.0 */
 			if (c == 'M') copts.mark++;
 			/* fall through */
@@ -195,18 +179,14 @@ usage:			sys("bk", "help", "-s", av[0], SYS);
 		}
 	}
 
-	if (copts.doDiffs && (copts.csetOnly || copts.metaOnly)) {
-		fprintf(stderr, "Warning: ignoring -d option\n");
-		copts.doDiffs = 0;
-	}
 	if ((things > 1) && (list != 1)) {
 		fprintf(stderr, "%s: only one rev allowed with -t\n", av[0]);
 		goto usage;
 	}
 	if ((copts.include || copts.exclude) &&
-	    (copts.doDiffs || copts.csetOnly || copts.makepatch ||
+	    (copts.doDiffs || copts.makepatch ||
 	    copts.listeach || copts.mark || copts.force || copts.remark ||
-	    copts.historic || copts.metaOnly || av[optind])) {
+	    copts.historic || av[optind])) {
 	    	fprintf(stderr, "cset -x|-i must be stand alone.\n");
 		goto usage;
 	}
@@ -357,9 +337,7 @@ doit(cset_t *cs, sccs *sc)
 	if (cs->doDiffs) {
 		doDiff(sc, DF_UNIFIED);
 	} else if (cs->makepatch) {
-		if (!cs->csetOnly || (sc->state & S_CSET)) {
-			sccs_patch(sc, cs);
-		}
+		sccs_patch(sc, cs);
 	} else if (cs->mark) {
 		doMarks(cs, sc);
 	} else {
@@ -627,35 +605,30 @@ csetlist(cset_t *cs, sccs *cset)
 
 	bktmp(cat, "catZ");
 	bktmp(csort, "csort");
-	unless (cs->csetOnly) {
-		/*
-		 * Get the list of key tuples in a sorted file.
-		 */
-		if (sccs_cat(cset, GET_NOHASH|PRINT, cat)) {
-			sccs_whynot("cset", cset);
-			unlink(cat);
-			goto fail;
-		}
-		if (sysio(cat, csort, 0, "bk", "_sort", SYS)) {
-			unlink(cat);
-			goto fail;
-		}
-		chmod(csort, TMP_MODE);		/* in case we don't unlink */
+	/*
+	 * Get the list of key tuples in a sorted file.
+	 */
+	if (sccs_cat(cset, GET_NOHASH|PRINT, cat)) {
+		sccs_whynot("cset", cset);
 		unlink(cat);
-		if (cs->verbose > 5) {;
-			sys("cat", csort, SYS);
-		}
-		if (exists(SGONE)) {
-			char tmp_gone[MAXPATH];
+		goto fail;
+	}
+	if (sysio(cat, csort, 0, "bk", "_sort", SYS)) {
+		unlink(cat);
+		goto fail;
+	}
+	chmod(csort, TMP_MODE);		/* in case we don't unlink */
+	unlink(cat);
+	if (cs->verbose > 5) {;
+	sys("cat", csort, SYS);
+	}
+	if (exists(SGONE)) {
+		char tmp_gone[MAXPATH];
 
-			bktmp(tmp_gone, "gone");
-			sysio(0,
-			    tmp_gone, 0, "bk", "get", "-kpsr@+", GONE, SYS);
-			goneDB = loadDB(tmp_gone, 0, DB_KEYSONLY|DB_NODUPS);
-			unlink(tmp_gone);
-		}
-	} else {
-		close(creat(csort, TMP_MODE));
+		bktmp(tmp_gone, "gone");
+		sysio(0, tmp_gone, 0, "bk", "get", "-kpsr@+", GONE, SYS);
+		goneDB = loadDB(tmp_gone, 0, DB_KEYSONLY|DB_NODUPS);
+		unlink(tmp_gone);
 	}
 	unlink(cat);
 	unless (list = fopen(csort, "rt")) { /* win32 sort used text mode */
@@ -664,7 +637,7 @@ csetlist(cset_t *cs, sccs *cset)
 	}
 
 	/* checksum the output */
-	if (cs->makepatch && !cs->csetOnly) {
+	if (cs->makepatch) {
 		cs->pid = spawn_checksum_child();
 		if (cs->pid == -1) goto fail;
 	}
@@ -675,15 +648,9 @@ csetlist(cset_t *cs, sccs *cset)
 	}
 again:	/* doDiffs can make it two pass */
 	if (!cs->doDiffs && cs->makepatch) {
-		unless (cs->csetOnly) {
-			fputs("\n", stdout);
-			fputs(PATCH_PATCH, stdout);
-		}
-		if (cs->metaOnly || LOGS_ONLY(cset)) {
-			assert(!cs->compat);
-			fputs(PATCH_CURRENT, stdout);
-			fputs(PATCH_LOGGING, stdout);
-		} else if (cs->compat) {
+		fputs("\n", stdout);
+		fputs(PATCH_PATCH, stdout);
+		if (cs->compat) {
 			fputs(PATCH_COMPAT, stdout);
 		} else {
 			fputs(PATCH_CURRENT, stdout);
@@ -737,7 +704,7 @@ again:	/* doDiffs can make it two pass */
 		    "cset: marked %d revisions in %d files\n",
 		    cs->ndeltas, cs->nfiles);
 	}
-	if (cs->makepatch && !cs->csetOnly) {
+	if (cs->makepatch) {
 		fputs(PATCH_END, stdout);
 		fflush(stdout);
 		fclose(stdout);
@@ -757,7 +724,7 @@ again:	/* doDiffs can make it two pass */
 	return;
 
 fail:
-	if (cs->makepatch && !cs->csetOnly) {
+	if (cs->makepatch) {
 		printf(PATCH_ABORT);
 		fclose(stdout);
 		waitpid(cs->pid, &status, 0);	/* for win32: child inherited */
@@ -1190,16 +1157,6 @@ sccs_patch(sccs *s, cset_t *cs)
 		 * be a little faster.
 		 */
 		empty = 0;
-		if (cs->metaOnly) {
-			int len1 = strlen(s->tree->pathname);
-			int len2 = strlen("BitKeeper/");
-			unless ((s->state & S_CSET) ||
-			    ((len1 > len2) &&
-			    strneq(s->tree->pathname, "BitKeeper/", len2))) {
-				empty = 1;
-			}
-			prs_flags |= PRS_LOGGING;
-		}
 		if (sccs_prs(s, prs_flags, 0, NULL, stdout)) cset_exit(1);
 		printf("\n");
 		if (d->type == 'D') {

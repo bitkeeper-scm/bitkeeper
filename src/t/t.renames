@@ -71,7 +71,7 @@ echo 4 > D
 echo 5 > E
 bk ci $Q -i "A A" B 'c C#' D E
 if [ ! -f SCCS/s."A A" ]; then echo failed to create history; exit 1; fi
-bk commit $S -a -y"This is a \"Change Set\""
+bk commit $S -y"This is a \"Change Set\""
 echo OK
 cores
 bk -r check -a
@@ -1398,7 +1398,7 @@ tar xmf SAVE
 cp -rp project copy
 cd project
 bk sccsmv "A A" Z
-bk commit $S -a -y'A A->Z'
+bk commit $S -y'A A->Z'
 cd ..
 cd $HERE/copy
 bk pull -R -t $Q $HERE/project
@@ -1469,12 +1469,12 @@ cd $HERE/project
 bk get $Q -e Z
 echo same data >> Z
 bk ci $Q -y'change as Z'
-bk commit $S -a -y'change as Z'
+bk commit $S -y'change as Z'
 cd $HERE/copy
 bk get $Q -e "A A"
 echo same data >> "A A"
 bk ci $Q -y'change as A'
-bk commit $S -a -y'change as A'
+bk commit $S -y'change as A'
 bk pull -R -t $Q $HERE/project
 if [ ! -f RESYNC/SCCS/r.Z ]
 then	echo failed to create conflict for Z; exit 1

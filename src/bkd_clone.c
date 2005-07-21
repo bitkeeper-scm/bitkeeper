@@ -149,7 +149,6 @@ compressed(int level, int hflag)
 	tmpf1 = bktmp(0, "clone1");
 	tmpf2 = bktmp(0, "clone2");
 	fh = fopen(tmpf1, "w");
-	if (exists(LMARK)) fprintf(fh, LMARK "\n");
 	if (exists(CMARK)) fprintf(fh, CMARK "\n");
 	fclose(fh);
 	cmd = aprintf("bk sfiles > %s", tmpf2);

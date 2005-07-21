@@ -337,10 +337,10 @@ if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 echo foo > foo
 echo bar > bar.c
 bk new $Q foo bar.c
-bk commit $S -a -yCset
+bk commit $S -yCset
 bk get -e -x1.1 $Q foo
 bk delta -yexclude $Q foo
-bk commit $S -a -yCset2
+bk commit $S -yCset2
 echo OK
 cores
 
@@ -388,10 +388,10 @@ if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 echo foo > foo
 echo bar > bar.c
 bk new $Q foo bar.c
-bk commit $S -a -yCset
+bk commit $S -yCset
 bk get -e -x1.1 $Q foo
 bk delta -yexclude $Q foo
-bk commit $S -a -yCset2
+bk commit $S -yCset2
 echo OK
 cores
 

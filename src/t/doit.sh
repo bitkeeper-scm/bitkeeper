@@ -423,7 +423,6 @@ echo ''
 	mkdir -p $BK_TMP || exit 1
 	mkdir -p $BK_DOTBK || exit 1
 
-	bk license -a bkl || exit 1
 	bk license -a bkcl || exit 1
 
 	# Let's be safe out there boys and girls

@@ -39,13 +39,13 @@ then	echo Failed to prevent duplicate root keys
 	bk prs -r1.0 -d:KEY:  bar.c fooc.
 	exit 1
 fi
-bk commit $S -a -y"abc" 
+bk commit $S -y"abc" 
 if [ $? != 0 ]
 then	echo commit failed
 	exit 1
 fi
 bk sccsrm bar.c
-bk commit $S -a -y"rm"
+bk commit $S -y"rm"
 bk -r check -a || exit 1
 echo OK
 

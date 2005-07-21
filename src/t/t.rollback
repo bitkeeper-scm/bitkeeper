@@ -39,7 +39,7 @@ echo 4 > D
 echo 5 > E
 bk ci $Q -i A B C D E
 if [ ! -f SCCS/s.A ]; then echo failed to create history; exit 1; fi
-bk commit $S -a -y"This is a \"Change Set\""
+bk commit $S -y"This is a \"Change Set\""
 echo OK
 cores
 bk -r check -a

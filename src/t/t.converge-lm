@@ -21,18 +21,12 @@ NUM=0
 FILE=test$NUM
 
 echo $N Create repository ...........................................$NL
-echo "logging: logging@openlogging.org" > $HERE/c
-echo "description: BitKeeper Test repository" >> $HERE/c
-echo "email:		nobody@nowhere.bk" >> $HERE/c
-echo "eoln: unix" >> $HERE/c
-BK_LOGGING_OK=YES bk setup -f -c$HERE/c project
-touch project/BitKeeper/etc/SCCS/x.marked
+commercial project
 echo OK
+
 echo $N Add content to ignore, gone, logging_ok .....................$NL
-cd project
 bk ignore '*.o'
 bk gone $Q 'A@b.com|I/am/bogus|19990101000000|12345|random'
-bk _loggingaccepted
 bk commit $Q -ymeta-content
 test `bk sfiles -p | wc -l` -eq 0 || {
 	echo failed to commit all files
@@ -40,8 +34,8 @@ test `bk sfiles -p | wc -l` -eq 0 || {
 	exit 1
 }
 test -f BitKeeper/etc/SCCS/s.ignore || { echo No ignore; exit 1; }
-test -f BitKeeper/etc/SCCS/s.logging_ok || { echo No logging_ok; exit 1; }
 echo OK
+
 echo $N Clone, add user content, resync, check copies ...............$NL
 cd $HERE
 bk clone $Q project copy
@@ -54,7 +48,6 @@ bk pull -R $Q ../copy
 cd RESYNC || exit 1
 # The invariant is that you always get config but none of the others for updates
 test -f BitKeeper/etc/SCCS/s.ignore && { echo Copied ignore; exit 1; }
-test -f BitKeeper/etc/SCCS/s.logging_ok && { echo Copied logging_ok; exit 1; }
 test -f BitKeeper/etc/config || { echo No config; exit 1; }
 cd ..
 bk abort -f
@@ -69,19 +62,17 @@ cores
 cd RESYNC || exit 1
 # The invariant is that you always get config and all others for conflicts
 test -f BitKeeper/etc/SCCS/s.ignore || { echo No ignore; exit 1; }
-test -f BitKeeper/etc/SCCS/s.logging_ok || { echo No logging_ok; exit 1; }
 test -f BitKeeper/etc/config || { echo No config; exit 1; }
 cd ..
 bk abort -f
 echo OK
 
-# add an entry to each of logging_ok, ignore, config,
+# add an entry to each of ignore, config,
 # and gone, resync and make sure that we get the remote's version, not the
 # parent's version.
-for file in config ignore gone logging_ok
+for file in config ignore gone
 do
     case $file in
-	logging_ok)	FILE=logging_ok;;
 	ignore)		FILE="  $file  ";;
 	config)		FILE="  $file  ";;
 	gone)		FILE="   $file   ";;
@@ -117,8 +108,8 @@ done
 echo $N Create repository, clone, make csets as same users ..........$NL
 cd $HERE
 rm -rf project copy
-BK_LOGGING_OK=YES bk setup -f -c$HERE/c project
-touch project/BitKeeper/etc/SCCS/x.marked
+commercial project
+cd ..
 bk clone $Q project copy
 cd project
 bk gone $Q fff
@@ -158,8 +149,8 @@ echo OK
 echo $N Create repository, clone, csets as diff users, same time_t ..$NL
 cd $HERE
 rm -rf project copy
-BK_LOGGING_OK=YES bk setup -f -c$HERE/c project
-touch project/BitKeeper/etc/SCCS/x.marked
+commercial project
+cd ..
 bk clone $Q project copy
 cd project
 BK_USER=AAA
@@ -242,14 +233,12 @@ echo OK
 echo $N Create repository ...........................................$NL
 cd $HERE
 rm -rf project copy
-BK_LOGGING_OK=YES bk setup -f -c$HERE/c project
-touch project/BitKeeper/etc/SCCS/x.marked
+commercial project
 echo OK
 
 echo $N Force cset derived root key, clone ..........................$NL
 BK_USER=user
 BK_HOST=bk_regression.host.bk
-cd project
 cd BitKeeper/etc
 perl -ne 's,cPChangeSet,cPBitKeeper/etc/gone,; print unless /^.cC$/ || /^.cS/ || /^.cX/ || /^.f x 0x/;' \
     < ../../SCCS/s.ChangeSet | bk undos > X
@@ -318,8 +307,8 @@ echo OK
 echo $N Create repo, clone, commit in both and save .................$NL
 cd $HERE
 rm -rf project copy
-BK_LOGGING_OK=YES bk setup -f -c$HERE/c project
-touch project/BitKeeper/etc/SCCS/x.marked
+commercial project
+cd ..
 bk clone $Q project copy
 cd project
 bk gone $Q project34

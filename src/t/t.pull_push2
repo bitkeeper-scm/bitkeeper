@@ -25,7 +25,7 @@ bk ci $Q -i 'F!O#O$ B%A^R&RR(R)RR' bar.c h.h
 if [ ! -f SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ]; then echo failed to create history; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
-bk commit $S -a -yCset
+bk commit $S -yCset
 echo OK
 
 echo $N pull to a repo with edited files ............................$NL

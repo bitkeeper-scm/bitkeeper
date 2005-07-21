@@ -67,16 +67,6 @@ waitForUnlock() {
 }
 
 # Make a commercial config file
-_openlogging_config() {
-	cat <<EOF
-logging: logging@openlogging.org
-description: BitKeeper Test repository
-email: nobody@nowhere.bk
-eoln: unix
-EOF
-}
-
-# Make a commercial config file
 _commercial_config() {
 	cat <<EOF
 license: $BKL_P
@@ -115,23 +105,6 @@ _get_cached_repo() {
 	mkdir -p BitKeeper/tmp 		# because sfio does not copy dir
 	mkdir -p BitKeeper/deleted/SCCS 	
 	mkdir -p BitKeeper/etc/.master
-}
-
-openlogging() {
-	
-	CF="$BK_CACHE"/openlogging.config
-	SFIO=$BK_CACHE/openlogging.sfio
-	test -f "$SFIO" || {
-		_openlogging_config > "$CF"
-		_make_repo openlogging "$CF" "$SFIO"
-	}
-	_get_cached_repo "$1" "$SFIO"
-}
-
-fresh_openlogging() {
-	_openlogging_config > c
-	bk setup -f -cc $1 || { echo "Setup failed!"; exit 1; }
-	cd $1
 }
 
 # Get a commercial repo, use cache copy if available

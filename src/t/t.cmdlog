@@ -21,15 +21,7 @@ NUM=0
 FILE=test$NUM
 
 echo $N Create initial repository ...................................$NL
-echo "logging: logging@openlogging.org" > $HERE/c
-echo "logging_ok: a@b" >> $HERE/c
-echo "logging_ok: b@b" >> $HERE/c
-echo "logging_ok: c@b" >> $HERE/c
-echo "logging_ok: d@b" >> $HERE/c
-echo "description: BitKeeper Test repository" >> $HERE/c
-echo "email:		nobody@nowhere.bk" >> $HERE/c
-BK_LOGGING_OK=YES BK_HOST=bk_regression.bitkeeper.com \
-	bk setup -f -c$HERE/c project
+commercial project
 BK_HOST=$MYHOST
 echo OK
 

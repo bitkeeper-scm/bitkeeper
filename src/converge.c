@@ -42,7 +42,6 @@ converge_main(int ac, char **av)
 	char	*files[] = {
 			"BitKeeper/etc/gone",
 			"BitKeeper/etc/ignore",
-			"BitKeeper/etc/logging_ok",
 			"BitKeeper/etc/skipkeys",
 			0
 			};

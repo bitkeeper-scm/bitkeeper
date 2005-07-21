@@ -9,7 +9,6 @@ typedef	struct {
 	u32	dont:1;			/* -n: do not actually do it */
 	u32	quiet:1;		/* -q: shut up */
 	u32	nospin:1;		/* -Q: no spin for the GUI */
-	u32	metaOnly:1;		/* -e empty patch */
 	u32	fullPatch:1;		/* -F force fullpatch */
 	u32	noresolve:1;		/* -R: don't run resolve at all */
 	u32	textOnly:1;		/* -t: don't pass -t to resolve */
@@ -46,7 +45,7 @@ pull_main(int ac, char **av)
 	bzero(&opts, sizeof(opts));
 	opts.gzip = 6;
 	opts.automerge = 1;
-	while ((c = getopt(ac, av, "c:deE:GFilnqr;Rtuw|z|")) != -1) {
+	while ((c = getopt(ac, av, "c:dE:GFilnqr;Rtuw|z|")) != -1) {
 		switch (c) {
 		    case 'G': opts.nospin = 1; break;
 		    case 'i': opts.automerge = 0; break;	/* doc 2.0 */
@@ -58,7 +57,6 @@ pull_main(int ac, char **av)
 		    case 'R': opts.noresolve = 1; break;	/* doc 2.0 */
 		    case 't': opts.textOnly = 1; break;		/* doc 2.0 */
 		    case 'd': opts.debug = 1; break;		/* undoc 2.0 */
-		    case 'e': opts.metaOnly = 1; break;		/* undoc 2.0 */
 		    case 'F': opts.fullPatch = 1; break;	/* undoc 2.0 */
 		    case 'E': 					/* doc 2.0 */
 			unless (strneq("BKU_", optarg, 4)) {
@@ -239,7 +237,7 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		return (1);
 	}
 	if (opts.dont) putenv("BK_STATUS=DRYRUN");
-	if (!opts.metaOnly && trigger(av[0], "pre")) {
+	if (trigger(av[0], "pre")) {
 		disconnect(r, 2);
 		return (1);
 	}
@@ -277,7 +275,6 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	if (r->path && (r->type == ADDR_HTTP)) add_cd_command(f, r);
 	fprintf(f, "pull_part2");
 	if (opts.gzip) fprintf(f, " -z%d", opts.gzip);
-	if (opts.metaOnly) fprintf(f, " -e");
 	if (opts.dont) fprintf(f, " -n");
 	for (rc = opts.list; rc--; ) fprintf(f, " -l");
 	if (opts.quiet) fprintf(f, " -q");
@@ -436,7 +433,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		 * We are about to run resolve, fire pre trigger
 		 */
 		putenv("BK_CSETLIST=BitKeeper/etc/csets-in");
-		if (!opts.metaOnly && (i = trigger("resolve", "pre"))) {
+		if ((i = trigger("resolve", "pre"))) {
 			putenv("BK_STATUS=LOCAL TRIGGER FAILURE");
 			rc = 2;
 			if (i == 2) {
@@ -473,7 +470,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	}
 
 done:	putenv("BK_RESYNC=FALSE");
-	unless (opts.metaOnly || opts.noresolve) trigger(av[0], "post");
+	unless (opts.noresolve) trigger(av[0], "post");
 	unlink(probe_list);
 
 	/*

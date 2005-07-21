@@ -82,7 +82,7 @@ int
 cmd_pull_part2(int ac, char **av)
 {
 	int	c, n, rc = 0, fd, fd0, rfd, status, local, rem, debug = 0;
-	int	gzip = 0, metaOnly = 0, dont = 0, verbose = 1, list = 0;
+	int	gzip = 0, dont = 0, verbose = 1, list = 0;
 	int	rtags, update_only = 0, delay = -1;
 	char	*keys = bktmp(0, "pullkey");
 	char	*makepatch[10] = { "bk", "makepatch", 0 };
@@ -93,14 +93,13 @@ cmd_pull_part2(int ac, char **av)
 	remote	r;
 	pid_t	pid;
 
-	while ((c = getopt(ac, av, "delnqr|uw|z|")) != -1) {
+	while ((c = getopt(ac, av, "dlnqr|uw|z|")) != -1) {
 		switch (c) {
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
 			if (gzip < 0 || gzip > 9) gzip = 6;
 			break;
 		    case 'd': debug = 1; break;
-		    case 'e': metaOnly = 1; break;
 		    case 'l': list++; break;
 		    case 'n': dont = 1; break;
 		    case 'q': verbose = 0; break;
@@ -179,7 +178,7 @@ cmd_pull_part2(int ac, char **av)
 	}
 
 	/*
-	 * Fire up the pre-trigger (for non-logging tree only)
+	 * Fire up the pre-trigger
 	 */
 	safe_putenv("BK_CSETLIST=%s", keys);
 	if (dont) {
@@ -188,7 +187,7 @@ cmd_pull_part2(int ac, char **av)
 		putenv("BK_STATUS=NOTHING");
 	}
 
-	if (!metaOnly && trigger(av[0],  "pre")) {
+	if (trigger(av[0],  "pre")) {
 		rc = 1;
 		goto done;
 	}
@@ -210,7 +209,6 @@ cmd_pull_part2(int ac, char **av)
 	fflush(stdout); 
 
 	n = 2;
-	if (metaOnly) makepatch[n++] = "-e";
 	makepatch[n++] = "-";
 	makepatch[n] = 0;
 	/*
@@ -267,9 +265,9 @@ done:	fflush(stdout);
 		unlink(keys);	/* if we copied because they were in /tmp */
 	}
 	/*
-	 * Fire up the post-trigger (for non-logging tree only)
+	 * Fire up the post-trigger
 	 */
-	if (!metaOnly) trigger(av[0], "post");
+	trigger(av[0], "post");
 	if (delay > 0) sleep(delay);
 	free(keys);
 	return (rc);

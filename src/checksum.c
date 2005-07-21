@@ -119,8 +119,6 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 	char	before[25];	/* ^As 00000/00000/00000\n == 21 chars */
 	char	after[25];	/* ^As 00000/00000/00000\n == 21 chars */
 
-	if (LOGS_ONLY(s)) return (0);
-
 	unless (d) d = sccs_top(s);
 
 	if (S_ISLNK(d->mode)) {
@@ -499,7 +497,6 @@ cset_fixLinuxKernelChecksum(sccs *s)
 
 	sccs_sdelta(s, sccs_ino(s), key);
 	unless (streq(key, LINUX_ROOTKEY)) return (s); /* linux only */
-	if (exists(LOG_TREE)) return (s); /* don't fix openlogging */
 	unless (d = sccs_findMD5(s, BADKEY)) return (s);
 
 	if (sccs_findMD5(s, GOODKEY)) {

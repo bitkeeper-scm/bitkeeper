@@ -141,7 +141,6 @@ listkey_main(int ac, char **av)
 	delta	*d = 0;
 	int	i, c, debug = 0, quiet = 0, nomatch = 1;
 	int	sndRev = 0;
-	int	metaOnly = 0;
 	int	matched_tot = 0;
 	int	ForceFullPatch = 0; /* force a "makepatch -r1.0.." */
 	char	key[MAXKEY], rootkey[MAXKEY];
@@ -153,10 +152,9 @@ listkey_main(int ac, char **av)
 
 #define OUT(s)  unless(ForceFullPatch) out(s)
 
-	while ((c = getopt(ac, av, "deqrF")) != -1) {
+	while ((c = getopt(ac, av, "dqrF")) != -1) {
 		switch (c) {
 		    case 'd':	debug = 1; break;
-		    case 'e':	metaOnly = 1; break;
 		    case 'q':	quiet = 1; break;
 		    case 'r':	sndRev = 1; break;
 		    case 'F':   ForceFullPatch = 1; break;
@@ -288,18 +286,6 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 	sum = i = 0;
 	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_RED) continue;
-		/*
-		 * In a logging tree the fact that we have multiple
-		 * tips means that this list can get really huge.  In
-		 * the case of someone doing a logging push and their
-		 * top-of-trunk has already been logged, we skip this
-		 * section.  They don't need it to build a patch.  We
-		 * can't just skip it in general, because the push
-		 * case uses these keys to compute the number of csets
-		 * on the server that are missing in the local tree.
-		 */
-		if (matched_tot && metaOnly && d->type == 'D') continue;
-		
 		if (sndRev) {
 			assert(d->rev);
 			OUT(d->rev);

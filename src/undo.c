@@ -476,23 +476,19 @@ move_file(char *checkfiles)
 	return (rc);
 }
 
-private	char	*markfile[] = { LMARK, CMARK };
-private	int	valid_marker[2];
+private	int	valid_marker;
 
 void
 save_log_markers(void)
 {
-	int	i;
 	char	*mark;
 	sccs	*s = sccs_csetInit(0);
 	unless (s) return;
 
-	for (i = 0; i < 2; i++) {
-		valid_marker[i] = 0;
-		if (mark = signed_loadFile(markfile[i])) {
-			if (sccs_findKey(s, mark)) valid_marker[i] = 1;
-			free(mark);
-		}
+	valid_marker = 0;
+	if (mark = signed_loadFile(CMARK)) {
+		if (sccs_findKey(s, mark)) valid_marker = 1;
+		free(mark);
 	}
 	sccs_free(s);
 }
@@ -500,24 +496,17 @@ save_log_markers(void)
 void
 update_log_markers(int verbose)
 {
-	int	i;
 	sccs	*s = sccs_csetInit(0);
 	char	*mark;
 
 	unless (s) return;
 
-	/* Clear marks that are still valid */
-	for (i = 0; i < 2; i++) {
-		unless (valid_marker[i]) continue;
-		if (mark = signed_loadFile(markfile[i])) {
-			if (sccs_findKey(s, mark)) valid_marker[i] = 0;
+	if (valid_marker) {
+		if (mark = signed_loadFile(CMARK)) {
+			if (sccs_findKey(s, mark)) valid_marker = 0;
 			free(mark);
 		}
 	}
 	sccs_free(s);
-
-	/* Any remaing mark must have been deleted by the undo */
-	for (i = 0; i < 2; i++) {
-		if (valid_marker[i]) updLogMarker(i, verbose, stderr);
-	}
+	if (valid_marker) updLogMarker(verbose, stderr);
 }

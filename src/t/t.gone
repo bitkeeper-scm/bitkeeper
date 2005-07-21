@@ -25,7 +25,7 @@ echo bar > bar.c
 echo h > h.h
 bk ci $Q -i foo.c bar.c h.h
 if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
-bk commit $S -a -yCset
+bk commit $S -yCset
 cd $HERE
 bk clone $Q project copy
 echo OK
@@ -77,114 +77,4 @@ grep -q 'Marked gone (chk1): foo.c' MSGS || {
 	cat MSGS
 	exit 1
 }
-echo OK
-
-echo $N Do the setup of a bunch of repos ............................$NL
-cd $HERE
-commercial gonebase
-cd BitKeeper/etc
-bk edit $Q config
-if grep -q "^checkout" config; then
-	sed 's/^checkout.*/checkout: edit/' config
-else
-	echo 'checkout: edit/' >> config
-fi
-bk ci $Q -m'checkout: edit' config
-cd ../../
-touch A B C D
-bk new $Q A B C D
-bk commit $Q -y'setups'
-bk makepatch -e1.0.. > ../gone.e
-cd $HERE
-mkdir gonelog
-cd gonelog
-bk takepatch -ia -f ../gone.e || exit 1
-cd $HERE
-bk clone $Q gonebase gone1
-bk clone $Q gonebase gone2
-echo OK
-
-echo $N propogate info about a gone file ............................$NL
-cd gone1
-touch BitKeeper/etc/SCCS/x.marked # work around for bug 2002-08-27-003
-rm -f A SCCS/*.A
-bk -r check -ag | bk gone $Q -
-bk commit $Q -y'gone'
-bk push $Q -e ../gonelog 1>OUT 2>ERR || {
-	echo Failed
-	echo STDOUT
-	cat OUT
-	echo STDERR
-	cat ERR
-	exit 1
-}
-cd ../gone2
-bk edit $Q A
-bk delta $Q -y'none' A
-bk commit $Q -y'none'
-# NOTE: this passes: pushing info to a gone file which exists is fine
-bk push $Q -e ../gonelog 1>OUT 2>ERR || {
-	echo Failed
-	echo STDOUT
-	cat OUT
-	echo STDERR
-	cat ERR
-	exit 1
-}
-echo OK
-
-echo $N propogate info about truly gone file ........................$NL
-# logging file already has 'gone' file entry for A
-# now remove it from logging tree
-rm -f ../gonelog/SCCS/s.A
-bk edit $Q A
-bk delta $Q -y'none' A || exit 1
-bk commit $Q -y'none' || exit 1
-test -d ../gonelog/PENDING || mkdir ../gonelog/PENDING
-bk push -e ../gonelog 1>OUT 2>ERR || {
-	echo Failed
-	echo STDOUT
-	cat OUT
-	echo STDERR
-	cat ERR
-	exit 1
-}
-cd ../gonelog
-while [ -d PENDING ]
-do	sleep 1
-done
-echo OK
-
-echo $N Try removing just one delta from a file .....................$NL
-cd $HERE/project
-bk edit $Q bar.c || exit 1
-echo foo >> bar.c
-bk ci $Q -ynew bar.c || exit 1
-bk commit $Q -ynew || exit 1
-KEY="`bk prs -hr+ -d:KEY: bar.c`"
-bk stripdel -Cr+ $Q bar.c || exit 1
-bk -r check -a 2>ERR && {
-	echo should have failed
-	echo ERR
-	exit 1
-}
-grep -q "Missing delta (chk2) in bar.c" ERR || {
-	echo wrong error message
-	cat ERR
-	exit 1
-}
-bk -r check -agg > missing
-echo "$KEY" > wanted
-checkfiles missing wanted
-echo OK
-
-echo $N Update gone file and get check to pass again ................$NL
-bk -r check -agg | bk gone - 2> OUT || exit 1
-bk -r check -a || exit 1
-bk commit $Q -ynew2 || exit 1
-bk edit $Q bar.c || exit 1
-echo more >> bar.c
-bk ci $Q -ynew3 bar.c || exit 1
-bk commit $Q -ynew3 || exit 1
-bk -r check -a || exit 1
 echo OK

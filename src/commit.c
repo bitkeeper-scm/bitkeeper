@@ -7,15 +7,12 @@
  * commit options
  */
 typedef struct {
-	u32	alreadyAsked:1;
 	u32	quiet:1;
 	u32	resync:1;
-	u32	no_autoupgrade:1;
 } c_opts;
 
 extern	char	*editor, *bin, *BitKeeper;
 extern	int	do_clean(char *, int);
-extern	int	loggingask_main(int, char**);
 private int	do_commit(char **av, c_opts opts, char *sym,
 					char *pendingFiles, int dflags);
 
@@ -27,11 +24,10 @@ commit_main(int ac, char **av)
 	char	pendingFiles[MAXPATH] = "";
 	char	*sym = 0;
 	int	dflags = 0;
-	c_opts	opts  = {0, 0, 0, 0};
+	c_opts	opts  = {0, 0};
 
-	while ((c = getopt(ac, av, "aAdf:FRqsS:y:Y:")) != -1) {
+	while ((c = getopt(ac, av, "df:FRqsS:y:Y:")) != -1) {
 		switch (c) {
-		    case 'a':	opts.alreadyAsked = 1; break;	/* doc 2.0 */
 		    case 'd': 	doit = 1; break;		/* doc 2.0 */
 		    case 'f':					/* undoc 2.0 */
 			strcpy(pendingFiles, optarg); break;
@@ -57,9 +53,6 @@ commit_main(int ac, char **av)
 			}
 			dflags |= DELTA_DONTASK;
 			break;
-		    case 'A':	/* internal option for regression test only */
-				/* do not document */		/* undoc 2.0 */
-				opts.no_autoupgrade = 1; break;
 		    default:	system("bk help -s commit");
 				return (1);
 		}
@@ -173,77 +166,26 @@ commit_main(int ac, char **av)
 }
 
 private int
-pending(char *sfile)
-{
-	sccs	*s = sccs_init(sfile, 0);
-	delta	*d;
-	int	ret;
-
-	unless (s) return (0);
-	unless (HASGRAPH(s)) {
-		sccs_free(s);
-		return (0);
-	}
-	d = sccs_top(s);
-	ret = (d->flags & D_CSET) == 0;	/* pending if not set */
-	sccs_free(s);
-	return (ret);
-}
-
-private int
 do_commit(char **av,
 	c_opts opts, char *sym, char *pendingFiles, int dflags)
 {
 	int	rc, i;
-	char	buf[MAXLINE], *p;
-	char	pendingFiles2[MAXPATH] = "";
-	char    s_logging_ok[] = LOGGING_OK;
 	sccs	*cset;
 	char	**syms = 0;
-	FILE 	*f, *f2;
+	FILE 	*f;
 	char	commentFile[MAXPATH];
+	char	buf[MAXLINE];
 
-	unless (ok_commit(opts.alreadyAsked)) {
+	unless (ok_commit()) {
 out:		if (pendingFiles) unlink(pendingFiles);
 		return (1);
 	}
 
 	if (!opts.resync && enforceLicense(opts.quiet)) goto out;
-
-	if (pending(s_logging_ok)) {
-		int     len = strlen(s_logging_ok); 
-
-		/*
-		 * Redhat 5.2 cannot handle opening a file
-		 * in both read and write mode fopen(file, "rt+") at the
-		 * same time. Win32 is likely to have same problem too
-		 * So we open the file in read mode close it and re-open
-		 * it in write mode
-		 */
-		bktmp(pendingFiles2, "pending2");
-		f = fopen(pendingFiles, "r");
-		f2 = fopen(pendingFiles2, "w");
-		assert(f); assert(f2);
-		while (fnext(buf, f)) {
-			/*
-			 * Skip the logging_ok files
-			 * We'll add it back when we exit this loop
-			 */
-			if (strneq(s_logging_ok, buf, len) &&
-			    buf[len] == BK_FS) {
-				continue;
-			}
-			fputs(buf, f2);
-		}
-		fprintf(f2, "%s%c+\n", s_logging_ok, BK_FS); 
-		fclose(f);
-		fclose(f2);
-	}
 	/*
 	 * XXX Do we want to fire the trigger when we are in RESYNC ?
 	 */
-	p = pendingFiles2[0] ? pendingFiles2 : pendingFiles;
-	safe_putenv("BK_PENDING=%s", p);
+	safe_putenv("BK_PENDING=%s", pendingFiles);
 
 	/* XXX could avoid if we knew if a trigger would fire... */
 	bktmp(commentFile, "comments");
@@ -288,16 +230,13 @@ out:		if (pendingFiles) unlink(pendingFiles);
 	}
 
 	cset = sccs_csetInit(0);
-	rc = csetCreate(cset, dflags, p, syms);
+	rc = csetCreate(cset, dflags, pendingFiles, syms);
 
 	putenv("BK_STATUS=OK");
 	if (rc) putenv("BK_STATUS=FAILED");
 	trigger(opts.resync ? "merge" : av[0], "post");
 done:	if (unlink(pendingFiles)) perror(pendingFiles);
 	unlink(commentFile);
-	if (pendingFiles2[0]) {
-		if (unlink(pendingFiles2)) perror(pendingFiles2);
-	}
 	if (rc) return (rc); /* if commit failed do not send log */
 	/*
 	 * If we are doing a commit in RESYNC
@@ -305,6 +244,6 @@ done:	if (unlink(pendingFiles)) perror(pendingFiles);
 	 * do it after it moves the stuff in RESYNC to
 	 * the real tree. 
 	 */
-	unless (opts.resync) logChangeSet(opts.quiet);
+	unless (opts.resync) logChangeSet();
 	return (rc ? 1 : 0);
 }

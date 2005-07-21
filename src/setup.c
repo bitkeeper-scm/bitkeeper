@@ -196,7 +196,7 @@ err:			unlink("BitKeeper/etc/config");
 	sccs_free(s);
 	defaultIgnore();
 
-	unless (ok_commit(0)) return (1);
+	unless (ok_commit()) return (1);
 
 	status = sys("bk", "commit", "-qFyInitial repository create", SYS);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
@@ -362,13 +362,6 @@ mkconfig(FILE *out, MDBM *flist, int verbose)
 	/* force autofix to default on */
 	unless (val && *val) {
 		char fld[] =  "autofix=yes";
-		flist = addField(flist, fld);
-	}
-
-	val = flist ? mdbm_fetch_str(flist, "logging") : 0;
-	/* force logging to default to none */
-	unless (val && *val) {
-		char fld[] =  "logging=none";
 		flist = addField(flist, fld);
 	}
 

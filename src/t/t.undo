@@ -25,12 +25,12 @@ mkdir src
 cd $HERE/project/src
 echo foo > foo.c
 bk ci $Q -i foo.c
-bk commit $S -a -y"This is \"Change Set\" A"
+bk commit $S -y"This is \"Change Set\" A"
 bk clone $Q $HERE/project $HERE/copy1
 bk mv foo.c new_foo.c
 echo bar >> bar.c
 bk ci $Q -i bar.c
-bk commit $S -a -y"This is a \"Change Set\" B"
+bk commit $S -y"This is a \"Change Set\" B"
 bk clone $Q $HERE/project $HERE/copy2
 cd $HERE/copy2/src
 bk undo -fqr1.3

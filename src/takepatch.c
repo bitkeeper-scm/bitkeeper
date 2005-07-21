@@ -59,13 +59,9 @@ private	void	badpath(sccs *s, delta *tot);
 private void	merge(char *gfile);
 private	int	skipPatch(MMAP *p);
 private	void	getConfig(void);
-private	void	getGone(int isLogPatch);
-private void	metaUnion(void);
-private void	metaUnionFile(char *file, char *cmd);
-private void	metaUnionResyncFile(char *from, char *to);
+private	void	getGone(void);
 private	void	loadskips(void);
 
-private	int	isLogPatch = 0;	/* is a logging patch */
 private	int	echo = 0;	/* verbose level, more means more diagnostics */
 private	int	mkpatch = 0;	/* act like makepatch verbose */
 private	int	line;		/* line number in the patch file */
@@ -129,7 +125,6 @@ takepatch_main(int ac, char **av)
 			    input = optarg;
 			    break;
 		    case 'i': newProject++; break;		/* doc 2.0 */
-		    case 'L': isLogPatch = 1; break;
 		    case 'm': mkpatch++; break;			/* doc 2.0 */
 		    case 'S': saveDirs++; break;		/* doc 2.0 */
 		    case 't': textOnly++; break;		/* doc 2.0 */
@@ -150,27 +145,6 @@ usage:		system("bk help -s takepatch");
 	} else {
 		if (sane(0, 0)) exit(1);
 	}
-	if (streq(input, "-") && isLogPatch) {
-		if (newProject) {
-			/*
-			 * We will handle creating new logging repos
-			 * directly, so we won't be needing the .env
-			 * file.
-			 */
-			char	*env = aprintf("%s.env", pendingFile);
-			unlink(env);
-			free(env);
-		} else {
-			char	*applyall[] = {"bk", "_applyall", 0};
-
-			mclose(p);
-			mdbm_close(goneDB);
-			mdbm_close(idDB);
-
-			spawnvp(_P_DETACH, "bk", applyall);
-			return(0);
-		}
-	}
 
 	if (newProject) {
 		unless (idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) {
@@ -178,11 +152,6 @@ usage:		system("bk help -s takepatch");
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 		}
 	} else {
-		/*
-		 * before loading up special dbs, update gfile is
-		 * logging tree
-		 */
-		if (isLogPatch) metaUnion();
 
 		/* OK if this returns NULL */
 		goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
@@ -269,7 +238,7 @@ usage:		system("bk help -s takepatch");
 	 * particular file.  The converge code will make sure all of the
 	 * inodes are present.
 	 */
-	if (conflicts && !isLogPatch) {
+	if (conflicts) {
 		char key[MAXKEY], gfile[MAXPATH];
 		chdir(ROOT2RESYNC);
 		f = popen("bk sfiles BitKeeper/etc BitKeeper/deleted | "
@@ -281,8 +250,7 @@ usage:		system("bk help -s takepatch");
 			fnext(gfile, f);
 			unless (streq(q, "BitKeeper/etc/gone") ||
 				streq(q, "BitKeeper/etc/ignore") ||
-				streq(q, "BitKeeper/etc/skipkeys") ||
-				streq(q, "BitKeeper/etc/logging_ok")) {
+				streq(q, "BitKeeper/etc/skipkeys")) {
 				continue;
 			}
 			chop(gfile);
@@ -298,7 +266,7 @@ usage:		system("bk help -s takepatch");
 	 * Because user may have deleted the sfile in the
 	 * local tree,
 	 */
-	getGone(isLogPatch); 
+	getGone();
 
 	touch(ROOT2RESYNC "/BitKeeper/etc/RESYNC_TREE", 0666);
 	if (resolve) {
@@ -339,14 +307,8 @@ getConfig(void)
 }
 
 private void
-getGone(int isLogPatch)
+getGone(void)
 {
-	if (isLogPatch) {
-		chdir(ROOT2RESYNC);
-		metaUnionFile(GONE, "bk meta_union gone");
-		chdir(RESYNC2ROOT);
-		metaUnionResyncFile(GONE, "RESYNC/" GONE);
-	}
 	if (exists("BitKeeper/etc/SCCS/s.gone")) {
 		unless (exists("RESYNC/BitKeeper/etc/SCCS/s.gone")) {
 			system("bk cat BitKeeper/etc/gone "
@@ -455,10 +417,6 @@ extractPatch(char *name, MMAP *p, int flags)
 	if (strneq("New file: ", t, 10)) {
 		reallyNew = newFile = 1;
 		perfile = sccs_getperfile(p, &line);
-		if (isLogPatch && perfile && perfile->defbranch) {
-			free(perfile->defbranch);
-			perfile->defbranch = 0;
-		}
 		t = mkline(mnext(p));
 		line++;
 	}
@@ -483,8 +441,9 @@ again:	s = sccs_keyinit(t, SILENT|INIT_NOCKSUM, idDB);
 	 */
 	unless (s || newProject || newFile) {
 		if (gone(t, goneDB)) {
-			if (isLogPatch || getenv("BK_GONE_OK")) {
-				goto skip;
+			if (getenv("BK_GONE_OK")) {
+				skipPatch(p);
+				return (0);
 			} else {
 				errorMsg("tp_gone_error", t, 0);
 			}
@@ -501,23 +460,18 @@ again:	s = sccs_keyinit(t, SILENT|INIT_NOCKSUM, idDB);
 			}
 			goto again;
 		}
-		if (isLogPatch) {
-	skip:		skipPatch(p);
-			return (0);
-		} else {
-			SHOUT();
-			fprintf(stderr,
-			   "takepatch: can't find key '%s' in id cache\n", t);
-error:			if (perfile) sccs_free(perfile);
-			if (gfile) free(gfile);
-			if (s) {
-				errfiles =
-				    addLine(errfiles, sccs2name(s->sfile));
-				sccs_free(s);
-			}
-			free(name);
-			return (-1);
+		SHOUT();
+		fprintf(stderr,
+		    "takepatch: can't find key '%s' in id cache\n", t);
+error:		if (perfile) sccs_free(perfile);
+		if (gfile) free(gfile);
+		if (s) {
+			errfiles =
+				addLine(errfiles, sccs2name(s->sfile));
+			sccs_free(s);
 		}
+		free(name);
+		return (-1);
 	}
 
 	/*
@@ -537,7 +491,6 @@ error:			if (perfile) sccs_free(perfile);
 		if (IS_EDITED(s)) {
 			int cleanflags = SILENT|CLEAN_SHUTUP|CLEAN_CHECKONLY;
 
-			if (isLogPatch) cleanflags |= CLEAN_SKIPPATH;
 			if (sccs_clean(s, cleanflags)) {
 				shout();
 				fprintf(stderr,
@@ -558,7 +511,7 @@ error:			if (perfile) sccs_free(perfile);
 			s->state &= ~S_PFILE; 
 		}
 		sccs_setpathname(s);
-		unless (isLogPatch || streq(s->spathname, s->sfile)) {
+		unless (streq(s->spathname, s->sfile)) {
 			tmp = sccs_top(s);
 			badpath(s, tmp);
 			goto error;
@@ -657,128 +610,8 @@ sccscopy(sccs *to, sccs *from)
 	}
 	return (0);
 }
-/*
- * MetaUnion is a set of functions to aid the logging tree
- * to have a useful gfile of 'gone' and 'skipkeys' available
- * at the right time.  skipkeys is only used by takepatch,
- * and so needs to be correct before takepatch starts.
- * gone is used by checking and needs to be correct in
- * both the takepatch and resolve side of things.
- * there was already a function getGone() to do the setup
- * of the gone file for resolve.
- *
- * In resolve, modifications where to the pass4_apply function
- * to get a good copy of the files out of the resync directory
- * but because of clean() being called a number of times on a
- * file, it couldn't really be put into place.  At the end of
- * pass4_apply(), a call is made into here (metaUnionResync2())
- * to move the files into place.
- *
- * the whole code path, with skipkeys and all is a hack to help
- * out in switching lod design and make the logging tree work better.
- *
- * This used to also do 'skipkeys', but was that was removed because
- * new non 1.x deltas still caused problems in logging tree.
- *
- */
-#define METAUNIONHEAD  "# Automatically generated by BK.  Do not edit.\n"
-private void
-metaUnionFile(char *file, char *cmd)
-{
-	FILE	*f, *w;
-	char	buf[2 * MAXKEY];
-	int	ok;
-
-	ok = 0;
-	if (exists(file)) {
-		f = fopen(file, "rt");
-		assert(f);
-		if (fnext(buf, f)) {
-			if (buf[0] == '#') ok = 1;
-		}
-		fclose(f);
-	}
-	unless (ok) {
-		unlink(file);
-		w = fopen(file, "w");
-		assert(w);
-		fputs(METAUNIONHEAD, w);
-		f = popen(cmd, "r");
-		while (fnext(buf, f)) {
-			if (buf[0] == '#') continue;
-			fputs(buf, w);
-		}
-		fclose(w);
-		pclose(f);
-		chmod(file, 0444);
-	}
-}
 
 #define SKIPKEYS	"BitKeeper/etc/skipkeys"
-
-private void
-metaUnion(void)
-{
-	metaUnionFile(GONE, "bk meta_union gone");
-}
-
-private void
-metaUnionResyncFile(char *from, char *to)
-{
-	char	temp[MAXPATH];
-	char	buf[MAXLINE];
-	FILE	*f, *w;
-
-	unless (exists(from)) return;
-
-	unless (exists(to)) {
-		fileCopy(from, to);
-		chmod(to, 0444);
-		return;
-	}
-
-	sprintf(temp, "%s.cp", to);
-	unlink(temp);
-	sprintf(buf, "cat %s %s | bk _sort -u", from, to);
-	w = fopen(temp, "w");
-	f = popen(buf, "r");
-	fputs(METAUNIONHEAD, w);
-	while (fnext(buf, f)) {
-		if (buf[0] == '#') continue;
-		fputs(buf, w);
-	}
-	pclose(f);
-	fclose(w);
-	chmod(temp, 0444);
-	unlink(to);
-	fileCopy(temp, to);
-}
-
-private void
-metaUnionCopy(char *file)
-{
-	char	temp[MAXPATH];
-
-	sprintf(temp, "%s.cp", file);
-	unless (exists(temp)) return;
-	unlink(file);
-	rename(temp, file);
-}
-
-void
-metaUnionResync1(void)
-{
-	metaUnion();
-	chdir(RESYNC2ROOT);
-	metaUnionResyncFile("RESYNC/" GONE, GONE);
-	chdir(ROOT2RESYNC);
-}
-
-void
-metaUnionResync2(void)
-{
-	metaUnionCopy(GONE);
-}
 
 /*
  * Read in the BitKeeper/etc/skipkeys file
@@ -796,7 +629,6 @@ loadskips(void)
 	char	*dkey;
 	skips	*s = 0;
 
-	if (isLogPatch) return;
 	f = popen("bk cat " SKIPKEYS, "r");
 	while (fnext(buf, f)) {
 		chomp(buf);
@@ -826,7 +658,7 @@ skipkey(sccs *s, char *dkey)
 	skips	*sk;
 	int	i;
 
-	unless (s && skiplist && !isLogPatch) return (0);
+	unless (s && skiplist) return (0);
 	sccs_sdelta(s, sccs_ino(s), rkey);
 	for (sk = skiplist; sk; sk = sk->next) {
 		unless (streq(sk->rkey, rkey)) continue;
@@ -1013,45 +845,6 @@ badXsum(int a, int b)
 }
 
 /*
- * Make sure user files have no content
- * This function is called we process a logging patch
- */
-private int
-chkEmpty(sccs *s, MMAP *dF)
-{
-	char 	*p, root[MAXPATH];
-	int	len;
-
-	
-	unless (dF && (dF->size > 0)) return (0);
-	if (s->state & S_CSET) return (0);
-
-	/*
-	 * Two special case:
-	 * a) s->tree is null. This happen when we get a brand new file.
-	 * b) In some old repository, (e.g the BitKeeper tree), 
-	 *    pathname is not recorded in some old delta; 
-	 *    i.e. s->tree->patname is null. This should not happen in new tree.
-	 */
-	if (s->tree && s->tree->pathname) {
-		strcpy(root, "BitKeeper/");
-		p = s->tree->pathname; /* we want the root path */
-	} else {
-		strcpy(root, "RESYNC/BitKeeper/");
-		assert(s->sfile);
-		p = s->sfile;
-	}
-
-	len = strlen(root);
-	if ((strlen(p) > len) && !strneq(p, root, len)) {
-		fprintf(stderr,
-		    "Logging patch should not have source content\n");
-		return (1); /* failed */
-	}
-	return (0); /* ok */
-}
-
-/*
  * Most of the code in this function is copied from applyPatch
  * We may want to merge the two function later.
  * 
@@ -1115,23 +908,6 @@ applyCsetPatch(char *localPath, int nfound, int flags, sccs *perfile)
 		goto err;
 	}
 	unless (s = cset_fixLinuxKernelChecksum(s)) goto err;
-	if (isLogPatch) {
-		unless (LOGS_ONLY(s)) {
-			fprintf(stderr,
-	        		"takepatch: can't apply a logging "
-				"patch to a regular file %s\n",
-				p->resyncFile);
-			goto err;
-		}
-	} else {
-		if (LOGS_ONLY(s)) {
-			fprintf(stderr,
-	        		"takepatch: can't apply a regular "
-				"patch to a logging file %s\n",
-				p->resyncFile);
-			goto err;
-		}
-	}
 apply:
 	p = patchList;
 	if (p && p->pid) cweave_init(s, nfound);
@@ -1151,10 +927,6 @@ apply:
 				errorMsg("tp_ahead", p->pid, s->sfile);
 				/*NOTREACHED*/
 			}
-			if (isLogPatch) {
-				s->state |= S_FORCELOGGING;
-				s->xflags |= X_LOGS_ONLY;
-			}
 			if (echo>9) {
 				fprintf(stderr, "Child of %s", d->rev);
 				if (p->meta) {
@@ -1165,7 +937,6 @@ apply:
 			}
 			iF = p->initMmap;
 			dF = p->diffMmap;
-			if (isLogPatch && chkEmpty(s, dF)) goto err;
 			d = cset_insert(s, iF, dF, p->pid);
 			if (!p->local && d->symGraph) remote_tagtip = d;
 		} else {
@@ -1193,26 +964,11 @@ apply:
 			}
 			iF = p->initMmap;
 			dF = p->diffMmap;
-			if (isLogPatch) {
-				s->state |= S_FORCELOGGING;
-				s->xflags |= X_LOGS_ONLY;
-				if (chkEmpty(s, dF)) goto err;
-			}
 			cweave_init(s, nfound);
 			sccs_findKeyDB(s, 0);
 			d = cset_insert(s, iF, dF, p->pid);
 			if (!p->local && d->symGraph) remote_tagtip = d;
 			s->bitkeeper = 1;
-		}
-		/* LOD logging tree fix: All on LOD 1, renumber() will fix */
-		if (isLogPatch && d && !streq(d->rev, "1.0")
-		    && !streq(d->rev, "1.1")) {
-			free(d->rev);
-			d->rev = strdup("1.2");
-			d->r[0] = 1;
-			d->r[1] = 2;
-			d->r[2] = 0;
-			d->r[3] = 0;
 		}
 		p = p->next;
 	}
@@ -1430,25 +1186,6 @@ applyPatch(char *localPath, int flags, sccs *perfile)
 		}
 		return -1;
 	}
-	if (isLogPatch) {
-		unless (LOGS_ONLY(s)) {
-			fprintf(stderr,
-	        		"takepatch: can't apply a logging "
-				"patch to a regular file %s\n",
-				p->resyncFile);
-			sccs_free(s);
-			return -1;
-		}
-	} else {
-		if (LOGS_ONLY(s)) {
-			fprintf(stderr,
-	        		"takepatch: can't apply a regular "
-				"patch to a logging file %s\n",
-				p->resyncFile);
-			sccs_free(s);
-			return -1;
-		}
-	}
 	/* convert to uncompressed, it's faster, we saved the mode above */
 	if (s->encoding & E_GZIP) s = sccs_unzip(s);
 	unless (s) return (-1);
@@ -1519,10 +1256,6 @@ apply:
 				/*NOTREACHED*/
 			}
 			unless (sccs_restart(s)) { perror("restart"); exit(1); }
-			if (isLogPatch) {
-				s->state |= S_FORCELOGGING;
-				s->xflags |= X_LOGS_ONLY;
-			}
 			if (echo>9) {
 				fprintf(stderr, "Child of %s", d->rev);
 				if (p->meta) {
@@ -1560,7 +1293,6 @@ apply:
 					dF = p->diffMmap;
 					p->diffMmap = 0;
 				}
-				if (isLogPatch && chkEmpty(s, dF)) return -1;
 				newflags = 
 				    DELTA_FORCE|DELTA_PATCH|DELTA_NOPENDING;
 				if (echo <= 3) newflags |= SILENT;
@@ -1621,11 +1353,6 @@ apply:
 			} else {
 				dF = p->diffMmap;
 				p->diffMmap = 0;
-			}
-			if (isLogPatch) {
-				s->state |= S_FORCELOGGING;
-				s->xflags |= X_LOGS_ONLY;
-				if (chkEmpty(s, dF)) return -1;
 			}
 			d = 0;
 			newflags = 
@@ -1744,7 +1471,7 @@ getLocals(sccs *s, delta *g, char *name)
 		}
 		sccs_restart(s);
 		s->rstart = s->rstop = d;
-		sccs_prs(s, PRS_PATCH|PRS_LOGMARK|SILENT, 0, NULL, t);
+		sccs_prs(s, PRS_PATCH|SILENT, 0, NULL, t);
 		if (ferror(t)) {
 			perror("error on init file");
 			cleanup(CLEAN_RESYNC);
@@ -1947,11 +1674,7 @@ resync_lock(void)
  * we are still here.
  *
  * This function creates patches in the PENDING directory when the
- * patches are read from stdin.  On a logging tree, these patches are
- * written and then processed by a seperate applyall process.  So
- * logging processes need to be very careful to not touch any state
- * that might effect the other takepatch that might be running in the
- * background from a previous patch.
+ * patches are read from stdin.
  */
 private	MMAP	*
 init(char *inputFile, int flags)
@@ -2025,15 +1748,11 @@ init(char *inputFile, int flags)
 			proj_reset(0);
 		}
 	}
-	if (exists(LOG_TREE)) isLogPatch = 1;
-
 	if (streq(inputFile, "-")) {
 		/*
 		 * Save the patch in the pending dir
 		 * and record we're working on it.  We use a .incoming
-		 * file and then rename it later so that a background
-		 * applyall process on the logging server doesn't try
-		 * to process a partial patch.
+		 * file and then rename it later.
 		 */
 		unless (savefile("PENDING", ".incoming", pendingFile)) {
 			SHOUT();
@@ -2042,14 +1761,7 @@ init(char *inputFile, int flags)
 		}
 		f = fopen(pendingFile, "wb+");
 		assert(f);
-		/*
-		 * If we are in in the openlogging tree, bkd_push has dropped
-		 * the write lock to allow multiple incoming patches at the
-		 * same time.  We don't care about multiple tips so it's OK,
-		 * but it only works for logging trees.
-		 * So we don't take the RESYNC lock here, we do it later.
-		 */
-		unless (isLogPatch) resync_lock();
+		resync_lock();
 		for (;;) {
 			st.newline = streq("\n", buf);
 			if (echo > 10) {
@@ -2091,11 +1803,6 @@ init(char *inputFile, int flags)
 				if (streq(buf, PATCH_REGULAR)) {
 					st.type = 0;
 					st.version = 1;
-					isLogPatch = 0;
-				} else if (streq(buf, PATCH_LOGGING)) {
-					st.type = 0;
-					st.version = 1;
-					isLogPatch = 1;
 				} else {
 					fprintf(stderr, "Expected type\n");
 					goto error;
@@ -2268,7 +1975,6 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			perror("PENDING");
 			cleanup(CLEAN_RESYNC);
 		}
-		if (isLogPatch) saveEnviroment(pendingFile);
 		note = aprintf("%u", size(incoming));
 		cmdlog_addnote("psize", note);
 		free(note);
@@ -2284,22 +1990,12 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			perror(pendingFile);
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 		}
-		if (isLogPatch && newProject) {
-			resync_lock();
-			assert(exists("BitKeeper/etc"));
-			close(creat(LOG_TREE, 0666));
-			t = ROOT2RESYNC "/" LOG_TREE;
-			mkdirp(ROOT2RESYNC "/BitKeeper/etc");
-			close(creat(t, 0666));
+		unless (g = fopen("RESYNC/BitKeeper/tmp/patch", "w")) {
+			perror("RESYNC/BitKeeper/tmp/patch");
+			exit(1);
 		}
-		unless (isLogPatch && !newProject) {
-			unless (g = fopen("RESYNC/BitKeeper/tmp/patch", "w")) {
-				perror("RESYNC/BitKeeper/tmp/patch");
-				exit(1);
-			}
-			fprintf(g, "%s\n", pendingFile);
-			fclose(g);
-		}
+		fprintf(g, "%s\n", pendingFile);
+		fclose(g);
 	} else {
 		resync_lock();
 		unless (m = mopen(inputFile, "b")) {
@@ -2319,14 +2015,6 @@ error:					fprintf(stderr, "GOT: %s", buf);
 				len = linelen(t);
 				sumC = adler32(sumC, t, len);
 				t = mnext(m);
-				if (strneq(t, PATCH_LOGGING, len)) {
-					isLogPatch = 1;
-					assert(exists("BitKeeper/etc"));
-					close(creat(LOG_TREE, 0666));
-					mkdirp(ROOT2RESYNC "/BitKeeper/etc");
-					close(creat(ROOT2RESYNC
-					    "/" LOG_TREE, 0666));
-				}
 				i++;
 				break;
 			}
