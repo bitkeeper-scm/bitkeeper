@@ -39,13 +39,24 @@ bkversion(FILE *f)
 	FILE	*f1;
 	u32	o;
 	float	exp;
+	char	*p;
 	char	buf[MAXLINE];
 
+	buf[0] = 0;
 	switch (bk_mode()) {
 	    case BK_SINGLE: strcpy(buf, "/Single"); break;
 	    case BK_FREE: strcpy(buf, "/Free"); break;
-	    case BK_PRO: strcpy(buf, "/Pro"); break;
-	    default: buf[0] = 0; break;
+	    case BK_PRO: 
+		p = eula_type();
+		if (streq(p, "none")) goto look;
+		sprintf(buf, "/%s", p);
+		break;
+	    default:
+		/* Go see if we can find anything that looks commercial */
+look:		if (p = lease_anycommercial()) {
+			sprintf(buf, "/%s", p);
+			free(p);
+		}
 	}
 	if (buf[0]) {
 		o = bk_options(0);

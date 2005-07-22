@@ -92,14 +92,14 @@ proc main {} \
 	# which occurs on different steps for different license types
 	bind . <<WizNextStep>> {
 		switch -exact -- [. cget -step] {
-			EndUserLicense	{exec bk _eula -a $::licenseInfo(unaccepted)}
+			EndUserLicense	{exec bk _eula -a}
 			LicenseKey      {
 				if {![checkLicense]} {
 					break
 				}
 				getLicenseData
 				set path "commercial"
-				if {$::licenseInfo(unaccepted) ne ""} {
+				if {$::licenseInfo(text) ne ""} {
 					append path "-lic"
 				}
 				. configure -path $path
@@ -156,7 +156,6 @@ proc app_init {} \
 		licsign1      ""
 		licsign2      ""
 		licsign3      ""
-		unaccepted    ""
 		name          ""
 		repository    ""
 	}
@@ -762,8 +761,9 @@ proc parseLicenseData {type} \
 
 	} elseif {$type == "file"} {
 		set types {
-			{{Text Files} {.txt}}
 			{{All Files} *}
+			{{License Files} {.lic}}
+			{{Text Files} {.txt}}
 		}
 		set file [tk_getOpenFile -filetypes $types -parent .]
 		if {$file != "" && 
@@ -956,17 +956,8 @@ proc getLicenseData {} \
 	append BK_CONFIG "licsign1:$wizData(licsign1);"
 	append BK_CONFIG "licsign2:$wizData(licsign2);"
 	append BK_CONFIG "licsign3:$wizData(licsign3);"
-
 	set env(BK_CONFIG) $BK_CONFIG
-
-	set lic [exec bk _eula -l]
-	if {$lic eq ""} {
-		set licenseInfo(text) ""
-		set licenseInfo(unaccepted) ""
-	} else {
-		set licenseInfo(text) [exec bk _eula -s $lic]
-		set licenseInfo(unaccepted) $lic
-	}
+	set licenseInfo(text) [exec bk _eula -s]
 }
 
 proc moreInfo {which} {

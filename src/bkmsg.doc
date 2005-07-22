@@ -853,12 +853,6 @@ changed and you need to accept the new version in order to make changes in
 this repository.  Your acceptance will be recorded on this machine and you
 will not be asked again.
 $
-#lic_alwaysOK
-If you do not want to be prompted about license questions in the future,
-set the environment variable BK_LICENSE to the value ACCEPTED.  Doing so
-means that you are agreeing to any future versions of any license associated
-with this repository.
-$
 #missing-key-signature
 This repository is configured to use a commercial license 
 (#BKARG#), but does not contain a license key
@@ -868,6 +862,16 @@ $
 #invalid-key-signature
 The configured license key signature for for the current repository
 doesn't match the current license key: #BKARG#
+
+The config variables should look like
+
+license: #BKARG#
+licsign1: long string of characters
+licsign2: long string of characters
+licsign3: long string of characters
+
+A possible cause of this problem is a cut and paste error when adding
+those signatures to the config file or BK_CONFIG environment variable.
 $
 #lease-nonet
 Unable to obtain permission to use this version of BitKeeper (#BKARG#) 

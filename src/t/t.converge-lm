@@ -24,7 +24,7 @@ echo "logging: logging@openlogging.org" > $HERE/c
 echo "description: BitKeeper Test repository" >> $HERE/c
 echo "email:		nobody@nowhere.bk" >> $HERE/c
 echo "eoln: unix" >> $HERE/c
-BK_LOGGING_OK=YES bk setup -f -c$HERE/c project
+BK_LOGGING_OK=YES bk setup -a -f -c$HERE/c project
 touch project/BitKeeper/etc/SCCS/x.marked
 echo OK
 echo $N Add content to ignore, gone, logging_ok .....................$NL
@@ -116,7 +116,7 @@ done
 echo $N Create repository, clone, make csets as same users ..........$NL
 cd $HERE
 rm -rf project copy
-BK_LOGGING_OK=YES bk setup -f -c$HERE/c project
+BK_LOGGING_OK=YES bk setup -a -f -c$HERE/c project
 touch project/BitKeeper/etc/SCCS/x.marked
 bk clone $Q project copy
 cd project
@@ -157,7 +157,7 @@ echo OK
 echo $N Create repository, clone, csets as diff users, same time_t ..$NL
 cd $HERE
 rm -rf project copy
-BK_LOGGING_OK=YES bk setup -f -c$HERE/c project
+BK_LOGGING_OK=YES bk setup -a -f -c$HERE/c project
 touch project/BitKeeper/etc/SCCS/x.marked
 bk clone $Q project copy
 cd project
@@ -242,7 +242,7 @@ echo OK
 echo $N Create repository ...........................................$NL
 cd $HERE
 rm -rf project copy
-BK_LOGGING_OK=YES bk setup -f -c$HERE/c project
+BK_LOGGING_OK=YES bk setup -a -f -c$HERE/c project
 touch project/BitKeeper/etc/SCCS/x.marked
 echo OK
 
@@ -318,7 +318,7 @@ echo OK
 echo $N Create repo, clone, commit in both and save .................$NL
 cd $HERE
 rm -rf project copy
-BK_LOGGING_OK=YES bk setup -f -c$HERE/c project
+BK_LOGGING_OK=YES bk setup -a -f -c$HERE/c project
 touch project/BitKeeper/etc/SCCS/x.marked
 bk clone $Q project copy
 cd project
