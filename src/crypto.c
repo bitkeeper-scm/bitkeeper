@@ -147,6 +147,13 @@ private const u8	seckey[828] = {
  *    # normally public key is used for this
  * -h <data> [<key>]
  *    # hash data with an optional key
+ *
+ * -E key < plain > cipher
+ *    # simple aes symetric encryption of data
+ *    # key must be 16 bytes long
+ * -D key < plain > cipher
+ *    # simple aes symetric decryption of data
+ *    # key must be 16 bytes long
  * -S
  *    # use sha1 instead of md5 for -h
  * -X
@@ -170,10 +177,10 @@ crypto_main(int ac, char **av)
 	char	*hash;
 	rsa_key	key;
 
-	while ((c = getopt(ac, av, "dehisSvX")) != -1) {
+	while ((c = getopt(ac, av, "dDeEhisSvX")) != -1) {
 		switch (c) {
 		    case 'h': case 'i': case 's': case 'v':
-		    case 'e': case 'd':
+		    case 'e': case 'd': case 'E': case 'D':
 			if (mode) usage();
 			mode = c;
 			break;
@@ -214,6 +221,24 @@ crypto_main(int ac, char **av)
 		    case 'v': ret = validatedata(&key, av[optind+1]); break;
 		}
 		rsa_free(&key);
+		break;
+	    case 'E':
+		if (strlen(av[optind]) == 16) {
+			ret = crypto_symEncrypt(av[optind], stdin, stdout);
+		} else {
+			fprintf(stderr,
+			    "ERROR: key must be exactly 16 bytes\n");
+			ret = 1;
+		}
+		break;
+	    case 'D':
+		if (strlen(av[optind]) == 16) {
+			ret = crypto_symDecrypt(av[optind], stdin, stdout);
+		} else {
+			fprintf(stderr,
+			    "ERROR: key must be exactly 16 bytes\n");
+			ret = 1;
+		}
 		break;
 	    case 'h':
 		if (av[optind+1]) {
@@ -746,6 +771,54 @@ upgrade_decrypt(FILE *fin, FILE *fout)
 	decrypt_stream(&rsakey, fin, fout);
 	return (0);
 }
+
+/* key contains 16 bytes of data */
+int
+crypto_symEncrypt(char *key, FILE *fin, FILE *fout)
+{
+	int	cipher = register_cipher(&rijndael_desc);
+	long	blklen;
+	int	i;
+	symmetric_CFB	cfb;
+	u8	sym_IV[MAXBLOCKSIZE];
+	u8	buf[4096];
+
+	blklen = cipher_descriptor[cipher].block_length;
+	assert(blklen == 16);  // aes
+	memset(sym_IV, 0, blklen);
+
+	cfb_start(cipher, sym_IV, key, 16, 0, &cfb);
+
+	while ((i = fread(buf, 1, sizeof(buf), fin)) > 0) {
+		cfb_encrypt(buf, buf, i, &cfb);
+		fwrite(buf, 1, i, fout);
+	}
+	return (0);
+}
+
+int
+crypto_symDecrypt(char *key, FILE *fin, FILE *fout)
+{
+	int	cipher = register_cipher(&rijndael_desc);
+	long	blklen;
+	int	i;
+	symmetric_CFB	cfb;
+	u8	sym_IV[MAXBLOCKSIZE];
+	u8	buf[4096];
+
+	blklen = cipher_descriptor[cipher].block_length;
+	assert(blklen == 16);  // aes
+	memset(sym_IV, 0, blklen);
+
+	cfb_start(cipher, sym_IV, key, 16, 0, &cfb);
+
+	while ((i = fread(buf, 1, sizeof(buf), fin)) > 0) {
+		cfb_decrypt(buf, buf, i, &cfb);
+		fwrite(buf, 1, i, fout);
+	}
+	return (0);
+}
+
 
 /*
  * only setup the special key in the environment for restricted commands

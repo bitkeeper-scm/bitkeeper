@@ -839,7 +839,6 @@ pricing information negotiated by your management.  Your acceptance will
 be recorded on this machine and you will not be asked again.
 $
 #bkl_upgrade_preamble
-#bkcl_upgrade_preamble
 The BitKeeper license required for the use of this repository has changed
 and you need to accept the new version in order to make changes in this
 repository.  Your acceptance will be recorded on this machine and you will
@@ -864,12 +863,6 @@ changed and you need to accept the new version in order to make changes in
 this repository.  Your acceptance will be recorded on this machine and you
 will not be asked again.
 $
-#lic_alwaysOK
-If you do not want to be prompted about license questions in the future,
-set the environment variable BK_LICENSE to the value ACCEPTED.  Doing so
-means that you are agreeing to all future versions of any license associated
-with this repository.
-$
 #missing_key_sig
 This repository is configured to use a commercial license 
 	#BKARG#
@@ -885,6 +878,16 @@ $
 #invalid_key_sig
 The configured license key signature for the current repository
 doesn't match the current license key: #BKARG#
+
+The config variables should look like
+
+license: #BKARG#
+licsign1: long string of characters
+licsign2: long string of characters
+licsign3: long string of characters
+
+A possible cause of this problem is a cut and paste error when adding
+those signatures to the config file or BK_CONFIG environment variable.
 $
 #lease_nonet
 Unable to obtain permission to use this version of BitKeeper (#BKARG#) 

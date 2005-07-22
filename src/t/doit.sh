@@ -241,14 +241,49 @@ setup_env()
 	BK_DOTBK=$HERE/.bk
 	export BK_DOTBK
 	TMPDIR=/build/.tmp-$USER
-	BKL_P=BKL643168ad03d719ed00001200ffffe000000000
-	BKL_P1=YgAAAo4AAAADgQAAAAHWOZKDMTtJ8bpzsqoTH8mGDgZ4t8UnO7beZKpc/yZ6NN9k
-	BKL_P2=N+tj8pHeubjkO1FnuMCch8sMdSW5IVEthUpUP9cE3uYQRQmJIcaKzwz4/R7A8kBt
-	BKL_P3=iTqZHwNH3xI12yZG9fin2rvdAKq2F0JPGSK8udl4NvZfLUFDhw5bLfIRIT0DYQ==
+
+	# Valid bkcl (old style, pre eula bits) license
+	BKL_BKCL=BKL643168ad03d719ed00001200ffffe000000000
+	BKL_C1=YgAAAo4AAAADgQAAAAHWOZKDMTtJ8bpzsqoTH8mGDgZ4t8UnO7beZKpc/yZ6NN9k
+	BKL_C2=N+tj8pHeubjkO1FnuMCch8sMdSW5IVEthUpUP9cE3uYQRQmJIcaKzwz4/R7A8kBt
+	BKL_C3=iTqZHwNH3xI12yZG9fin2rvdAKq2F0JPGSK8udl4NvZfLUFDhw5bLfIRIT0DYQ==
+
+	# Valid Academic license
+	BKL_ACADEMIC=BKL64598bf80368c80800001200fffff000000001
+	BKL_A1=YgAAAo4AAAADgQAAAAIqwOeT5ZFPn48nIpi8w7XqdXJzgQdi3bQ6+7V9NSXqGBI7
+	BKL_A2=pNm64rpLPyXaTT/YxaA+YK9Z5Wm7+WO+oqoCevgLCelbM9EuaAmBfAgOoLVbuEKi
+	BKL_A3=HERoA7ajANQ5imcQ8yPqa+oyZjWmpRCcG9irLKInMuxZaNxMvUdnMBuxzAweyA==
+
+	# Valid Basic license
+	BKL_BASIC=BKL64598bf80368c80800001200fffff000000002
+	BKL_B1=YgAAAo4AAAADgQAAAAH7ViKO9ILvB30arkj3c1ANerlh+R8yZG6/2ufP0Ci4OaNK
+	BKL_B2=7fQNZe3SeRtbEBf/yeDeW6gxOmUuqCC8h7CLgO1QNjdZIgMSzph99sqo5JQ9pO67
+	BKL_B3=pDYwtHVVNqbT2X1diOnVfu1pV3MvVReq7DYn8G6XrDi1r2vgkQAhAOcUd9KeXw==
+
+	# Valid pro license
+	BKL_PRO=BKL64598bf80368c80800001200fffff000000003
+	BKL_P1=YgAAAo0AAAADgAAAABD29x6Osn0oKgVBi0vv9wSqCLUKggthVBC2ZLGY+/Eed8s2
+	BKL_P2=qnXdUUR1gSPGicnj1sbBtcQaMxkF4uzQQR/lR8Ux6IH8hxecuApiYXYfwUaIMzQB
+	BKL_P3=6gPR6+gJ/ryN/9kZkh2PVjdyaWKynN0bu7pkSsfEDFirk2IuxYgepCTB2E0T
+
+	# Valid Enterprise license
+	BKL_ENTERPRISE=BKL64598bf80368c80800001200fffff000000004
+	BKL_E1=YgAAAo4AAAADgQAAAAE3XEMdk4s3x3M2BS51lWyteff/1y7UQyxdlmrSR9U453vS
+	BKL_E2=p20V+KNj2hotrTMKGuOlhgFFaZ7PNKtVVwzdE12hngWNfdJDhMJqIe+6ptOSZqef
+	BKL_E3=OluffApYvPKfZ3HAJB7vMRfwG15Pm79YCM/LYdmmWQeFUPMrLy0EtNdPFM96/Q==
+
+	# Valid MLA license
+	BKL_MLA=BKL64598bf80368c80800001200fffff000000005
+	BKL_M1=YgAAAo4AAAADgQAAAAG5vPron90j9r8EEvJSBAd8AyTXKzUKhZ5aNWDCkZUuQ7Pa
+	BKL_M2=Fy863S9JzLNPN1BP/T4OUx52DPYL1ghmSCd9rWSAHcZ1d2F0qOFvSOYi0YnVBAdk
+	BKL_M3=r344WFFUOpwA7K1HYIE10/USOmQp0NIpTup6hdUKMdg/FbTsyW79dHkUk/PfUg==
+
+	# Expired license
 	BKL_EX=BKL63b1721503935edd00001200fffff000000000
 	BKL_EX1=YgAAAo4AAAADgQAAAAJjRmx5Yh+29UPROW4TAnToWOjNS4pf9Lmi7ONSkxY3Q17x
 	BKL_EX2=7elexrv7QX9ktCOjvKAA/hGbE9khR0kEgYEAz6PCQXihKBrGHdHJkCemon/e12gN
 	BKL_EX3=Xh6TrCfxuH/KQKtLvm6es8TWRKGdzIGCO/9vi9p3appOZGowM3HJILp8/P15oQ==
+
 	test "$GUI_TEST" = YES || {
 		BK_NO_GUI_PROMPT=YES
 		export BK_NO_GUI_PROMPT
@@ -324,9 +359,13 @@ init_main_loop()
 	export BK_CACHE
 	export RM
 	export NXL NX
-	export BKL_P BKL_EX BKL_B
-	export BKL_P1 BKL_P2 BKL_P3
-	export BKL_EX1 BKL_EX2 BKL_EX3
+	export BKL_BKCL BKL_C1 BKL_C2 BKL_C3
+	export BKL_ACADEMIC BKL_A1 BKL_A2 BKL_A3
+	export BKL_BASIC BKL_B1 BKL_B2 BKL_B3
+	export BKL_PRO BKL_P1 BKL_P2 BKL_P3
+	export BKL_ENTERPRISE BKL_E1 BKL_E2 BKL_E3
+	export BKL_MLA BKL_M1 BKL_M2 BKL_M3
+	export BKL_EX BKL_EX1 BKL_EX2 BKL_EX3
 	export BK_GLOB_TRANSLATE_EQUAL
 	export BK_BIN
 	mkdir -p $BK_CACHE
@@ -371,7 +410,7 @@ get_options()
 		shift;
 	done
 	if [ -z "$list" ]
-	then	if [ "$GUI_TEST" == YES ]
+	then	if [ "$GUI_TEST" = YES ]
 		then	list=`ls -1 g.* | egrep -v '.swp|~'`
 		else	list=`ls -1 t.* | egrep -v '.swp|~'`
 		fi
@@ -420,9 +459,6 @@ echo ''
 	mkdir -p $HERE || exit 1
 	mkdir -p $BK_TMP || exit 1
 	mkdir -p $BK_DOTBK || exit 1
-
-	bk license -a bkl || exit 1
-	bk license -a bkcl || exit 1
 
 	# Let's be safe out there boys and girls
 	case $TMPDIR in

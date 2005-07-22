@@ -82,7 +82,7 @@ EOF
 # Make a commercial config file
 _commercial_config() {
 	cat <<EOF
-license: $BKL_P
+license: $BKL_PRO
 licsign1: $BKL_P1
 licsign2: $BKL_P2
 licsign3: $BKL_P3
@@ -103,7 +103,7 @@ _make_repo() {
 	REPO=$BK_CACHE/${TYPE}
 
         if [ -d "$REPO" ]; then rm -rf "$REPO"; fi 	# should not happen
-        BK_LICENSE=ACCEPTED bk setup -f -c"$CF" "$REPO" || {
+        BK_LICENSE=ACCEPTED bk setup -a -f -c"$CF" "$REPO" || {
                 echo "Setup failed!"; exit 1;
         }
 	# Make a cached copy
@@ -149,7 +149,7 @@ no_logging() {
 # Usage: fresh_no_logging dir
 fresh_no_logging() {
         _no_logging_config > c
-        bk setup -f -cc $1 || { echo "Setup failed!"; exit 1; }
+        bk setup -a -f -cc $1 || { echo "Setup failed!"; exit 1; }
         cd $1
 }
 

@@ -19,7 +19,7 @@ echo "single_host: free.bk" >> $HERE/c
 echo "description: BitKeeper Test repository" >> $HERE/c
 echo "email:		nobody@nowhere.bk" >> $HERE/c
 echo "keyword:sccs,expand1" >> $HERE/c
-bk setup -f -c$HERE/c project
+bk setup -a -f -c$HERE/c project
 touch project/BitKeeper/etc/SCCS/x.marked
 cd project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
@@ -27,6 +27,7 @@ if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
+
 echo $N Create some data ............................................$NL
 mkdir src
 cd src
@@ -36,16 +37,19 @@ echo h > h.h
 bk ci $Q -i foo.c bar.c h.h
 if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
 echo OK
+
 echo $N Check pending ...............................................$NL
 P=`bk pending | wc -l`
 if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 echo OK
+
 echo $N Create a change set .........................................$NL
 bk commit $S -a -yCset
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 echo OK
 cores
+
 echo $N Create a copy of the project ................................$NL
 cd $HERE
 bk clone $Q project copy
@@ -54,6 +58,7 @@ cd copy
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 echo OK
+
 echo $N Check propagation of permission .............................$NL
 cd $HERE/project/src
 bk admin -m-rwx------ foo.c
@@ -64,6 +69,7 @@ cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.foo.c  $HERE/copy/src/SCCS/s.foo.c
 if [ $? -ne 0 ]; then echo failed to propagate permissions; exit 1; fi
 echo OK
+
 echo $N Check permission conflict ...................................$NL
 cd $HERE/project/src
 bk admin -m-rwxr----- foo.c
@@ -82,6 +88,7 @@ then	echo failed with mode $MODE
 	exit 1
 fi
 echo OK
+
 echo $N Check propagation of flags ..................................$NL
 cd $HERE
 rm -rf $HERE/copy
@@ -103,12 +110,14 @@ bk pull -t $Q $HERE/project
 diff $HERE/project/src/SCCS/s.bar.c  $HERE/copy/src/SCCS/s.bar.c
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N Check rollback of flags .....................................$NL
 bk clone $Q -r1.5 $HERE/copy $HERE/copy2
 cd $HERE/copy2/src
 diff $HERE/copy2/src/SCCS/s.bar.c  $HERE/ref
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N Check propagation of flags \& permission .....................$NL
 cd $HERE/project/src
 bk admin $Q -fRCS -m-rwxr--r-- bar.c
@@ -118,6 +127,7 @@ bk pull -t $Q $HERE/project
 diff $HERE/project/src/SCCS/s.bar.c  $HERE/copy/src/SCCS/s.bar.c
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N Check propagation of text field .............................$NL
 cd $HERE/project/src
 echo "this is a text entry line 1" > text
@@ -136,6 +146,7 @@ bk pull -t $Q $HERE/project
 diff $HERE/project/src/SCCS/s.h.h  $HERE/copy/src/SCCS/s.h.h
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N Check propagation of text, flags \& permission ...............$NL
 cd $HERE/project/src
 bk admin -ttext -fYEAR4 -m-rwx-w--w- h.h
@@ -160,6 +171,7 @@ then	echo failed
 	exit 1
 fi
 echo OK
+
 echo $N Check flags conflict ........................................$NL
 cd $HERE
 tar cf repo.tar project copy
@@ -185,6 +197,7 @@ then	echo failed with mode $FLAGS
 	exit 1
 fi
 echo OK
+
 echo $N Check flags conflict2 .......................................$NL
 cd $HERE
 rm -rf project copy
@@ -217,6 +230,7 @@ then	echo
 	exit 1
 fi
 echo OK
+
 echo $N Check flags conflict3 .......................................$NL
 cd $HERE
 rm -rf project copy
@@ -248,6 +262,7 @@ then	echo failed with mode $FLAGS
 	exit 1
 fi
 echo OK
+
 echo $N Check flags conflict automerge...............................$NL
 cd $HERE
 rm -rf project copy

@@ -147,7 +147,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	comment.o comments.o commit.o compress.o converge.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
 	dirs.o delta.o diffs.o diffsplit.o dir_gif.o \
-	export.o file_gif.o files.o \
+	eula.o export.o file_gif.o files.o \
 	find.o findcset.o findkey.o fix.o fixlod.o \
 	g2sccs.o gca.o get.o gethelp.o \
 	gethost.o getopt.o getreg.o gettemp.o getuser.o glob.o \
@@ -155,7 +155,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	idcache.o isascii.o key2rev.o key2path.o kvfile.o \
 	lease.o level.o \
 	lib_tcp.o libcommit.o libdiff.o liblines.o librange.o \
-	libsfiles.o libusers.o license.o lines.o \
+	libsfiles.o libusers.o lines.o \
 	localtm.o lock.o locking.o lod.o logflags.o \
 	logging.o mail.o mdiff.o merge.o mkdir.o mklock.o \
 	mailsplit.o mmap.o mtime.o names.o newroot.o \
@@ -202,7 +202,8 @@ PROGS	= hidestring
 LIBS	= libc/libc.a $(UWTLIB) zlib/libz.a mdbm/libmdbm.a tomcrypt/libtomcrypt.a \
 	regex/libregex.a
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt \
-	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES
+	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES \
+	Academic.lic Basic.lic Pro.lic Enterprise.lic MLA.lic bkl.lic bkcl.lic
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA) \
 	$(PROGS) GUI
 
@@ -338,7 +339,9 @@ rebuild:
 	-@rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
 	-@rm -f $(LIBS) bkdsubstr bkhelp.txt bkmsg.txt a.out
 	-@rm -f core bkver.c tclwrap tclwrap.o blowfish.o $(WIN_TMP)
+	-@rm -f bkver.h cmd.c 
 	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(PROGS)
+	-@rm -f Academic.lic Basic.lic Pro.lic Enterprise.lic MLA.lic bkcl.lic
 	-@rm -f tmp bkl5_hashs.h kw2val_lookup.c cmd.[ch] bkver.h
 	-@for i in ../doc ../man gnu gui utils win32 mdbm zlib regex tomcrypt libc; \
 	do	cd $(HERE)/$$i && $(MAKE) clobber; \
@@ -657,6 +660,14 @@ kw2val_lookup.c: slib.c kw2val.pl
 
 hidestring: hidestring.c	
 	$(CC) $(CC_FAST) -o hidestring hidestring.c
+
+MLA.lic: MLA.preamble Enterprise.lic.txt
+	cat MLA.preamble Enterprise.lic.txt | \
+	    ./bk crypto -E 048d6aa55c30b3b4 > MLA.lic
+	
+%.lic: %.lic.txt bkupgrade.key $(BK)
+	./bk crypto -E 048d6aa55c30b3b4 < $< > $@
+
 show:
 	@echo SYSBK = $(SYSBK)
 	@echo BK_VERSION1 = $(BK_VERSION1)

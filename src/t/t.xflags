@@ -23,7 +23,7 @@ echo "single_user: bk" >> $HERE/c
 echo "single_host: free.bk" >> $HERE/c
 echo "description: BitKeeper Test repository" >> $HERE/c
 echo "email:		nobody@nowhere.bk" >> $HERE/c
-bk setup -f -c$HERE/c project
+bk setup -a -f -c$HERE/c project
 touch project/BitKeeper/etc/SCCS/x.marked
 cd project
 echo $N Creat initial file ..........................................$NL

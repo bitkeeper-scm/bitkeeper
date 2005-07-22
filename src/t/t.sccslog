@@ -19,7 +19,7 @@ echo "single_user: butthead" >> c
 echo "single_host: free.bk" >> c
 echo "description:	BitKeeper Test repository" >> c
 echo "email:		nobody@nowhere.bk" >> c
-bk setup -f -cc project
+bk setup -a -f -cc project
 cd project
 mkdir -p a/b/c
 echo 1.1 > a/b/c/Data

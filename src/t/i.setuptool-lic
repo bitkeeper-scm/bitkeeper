@@ -1,0 +1,137 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2004 Larry McVoy
+# %K%
+
+test -d $HERE/home || mkdir $HERE/home
+export BK_TEST_HOME=$HERE/home
+OUT=$HERE/out
+RC=`bk dotbk`/setup.rc
+ACCEPTED=`bk dotbk`/accepted
+REPO=$HERE/repo
+
+echo $N Open Logging, unaccepted license ............................$NL
+cd $HERE
+rm -rf $ACCEPTED $REPO
+unset BK_CONFIG
+bk guitest setuptool >$OUT 2>&1 <<EOF
+    focus -force .
+    test_buttonPress "Next >"
+    test_buttonPress "Open Logging"
+    test_buttonPress "Next >"
+    test_focus
+    test_inputString "username\ttest.bitkeeper.com"
+    test_buttonPress "Next >"
+    test_buttonPress "I Agree"
+    test_buttonPress "Next >"
+    test_focus
+    test_inputString "$REPO\tthis is the description\tnobody@example.com\tmisc"
+    test_buttonPress "Next >"  ;# takes us to contact
+    test_buttonPress "Next >"  ;# takes us to keyword expansion
+    test_buttonPress "Next >"  ;# takes us to checkout mode
+    test_buttonPress "Next >"  ;# takes us to compression mode
+    test_buttonPress "Next >"  ;# takes us to autofix options
+    test_buttonPress "Next >"  ;# takes us to last step
+    tk_messageBox -message \
+	"After dismissing this dialog, click finish, then click OK on\\
+         the confirmation dialog that pops up"
+EOF
+err=$?
+if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; cat $OUT; exit 1; fi
+grep -q 'The repository was successfully created.' $OUT
+if [ $? -ne 0 ] ; then echo failed ; cat $OUT ; exit 1 ; fi
+cat > $OUT <<EOF
+description: this is the description
+category: misc
+email: nobody@example.com
+name: 
+street: 
+city: 
+state: 
+postal: 
+country: 
+phone: 
+cell: 
+pager: 
+hours: 
+logging: logging@openlogging.org
+keyword: none
+compression: gzip
+autofix: yes
+checkout: none
+EOF
+CONFIG=$REPO/BitKeeper/etc/config
+if [ ! -f $CONFIG ] ; then echo "failed to make config file" ; exit 1 ; fi
+bk diff $Q -w $OUT $CONFIG
+if [ $? -ne 0 ] ; then echo "failed" ; bk diff -w $OUT $CONFIG; exit 1 ; fi
+cd $REPO
+test -z `bk license -l` || (echo "failed; license not accepted"; exit 1)
+echo OK
+
+echo $N Open Logging, accepted license ..............................$NL
+cd $HERE
+rm -rf $ACCEPTED $REPO
+BK_CONFIG="logging:logging@openlogging.org"
+BK_CONFIG="$BK_CONFIG;license:;licsign1:;licsign2:;licsign3:"
+BK_CONFIG="$BK_CONFIG;single_user:;single_host:"
+export BK_CONFIG
+rm -rf $ACCEPTED
+bk license -a `bk license -l` 2>/dev/null
+bk guitest setuptool >$OUT 2>&1 <<EOF
+    focus -force .
+    test_buttonPress "Next >"
+    test_buttonPress "Open Logging"
+    test_buttonPress "Next >"
+    test_focus
+    test_inputString "$REPO\tthis is the description\tnobody@example.com\tmisc"
+    test_buttonPress "Next >"  ;# takes us to contact
+    test_buttonPress "Next >"  ;# takes us to keyword expansion
+    test_buttonPress "Next >"  ;# takes us to checkout mode
+    test_buttonPress "Next >"  ;# takes us to compression mode
+    test_buttonPress "Next >"  ;# takes us to autofix options
+    test_buttonPress "Next >"  ;# takes us to last step
+    tk_messageBox -message \
+	"After dismissing this dialog, click finish, then click OK on\\
+         the confirmation dialog that pops up"
+EOF
+err=$?
+if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; cat $OUT; exit 1; fi
+grep -q 'The repository was successfully created.' $OUT
+if [ $? -ne 0 ] ; then echo failed ; cat $OUT ; exit 1 ; fi
+cat > $OUT <<EOF
+description: this is the description
+category: misc
+email: nobody@example.com
+name: 
+street: 
+city: 
+state: 
+postal: 
+country: 
+phone: 
+cell: 
+pager: 
+hours: 
+logging: logging@openlogging.org
+keyword: none
+compression: gzip
+autofix: yes
+checkout: none
+EOF
+CONFIG=$REPO/BitKeeper/etc/config
+if [ ! -f $CONFIG ] ; then echo "failed to make config file" ; exit 1 ; fi
+bk diff $Q -w $OUT $CONFIG
+if [ $? -ne 0 ] ; then echo "failed" ; bk diff -w $OUT $CONFIG; exit 1 ; fi
+cd $REPO
+test -z `bk license -l` || (echo "failed; license not accepted"; exit 1)
+echo OK
+

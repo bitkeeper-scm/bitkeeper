@@ -991,7 +991,7 @@ sendServerInfoBlock(int is_rclone)
         	sprintf(buf, "LEVEL=%d\n", getlevel());
 		out(buf);
 		out("LICTYPE=");
-		out(license_name());
+		out(eula_name());
 		out("\n");
 	}
 	out("ROOT=");

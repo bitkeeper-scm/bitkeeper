@@ -12,20 +12,7 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
-cat > c <<EOF
-logging: lm@bitmover.com
-description: whatever
-email: lm@bitmover.com
-eoln: unix
-keyword: sccs
-logging_ask: no
-license: $BKL_P
-licsign1: $BKL_P1
-licsign2: $BKL_P2
-licsign3: $BKL_P3
-EOF
-BK_USER=joe bk setup -cc -f project
-cd project
+commercial project
 
 # create a sfile with unknown field "c?"
 echo data > GOOD
