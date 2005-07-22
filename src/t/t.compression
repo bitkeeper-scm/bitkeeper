@@ -14,16 +14,7 @@
 # Can gzip other files
 # Can ungzip other files
 echo $N Create commercial repository and check gzip on ChangeSet ....$NL
-echo "logging: none" > c
-echo "description: BitKeeper Test repository" >> c
-echo "email: nobody@nowhere.bk" >> c
-echo "license: $BKL_P" >> c
-echo "licsign1: $BKL_P1" >> c
-echo "licsign2: $BKL_P2" >> c
-echo "licsign3: $BKL_P3" >> c
-echo "eoln: unix" >> c
-BK_HOST=bk_regression.bitkeeper.com bk setup -f -c$HERE/c project
-cd project
+commercial project
 bk admin -Znone ChangeSet
 bk admin -Zgzip ChangeSet
 test "`bk compression ChangeSet`" = "ChangeSet none" || {

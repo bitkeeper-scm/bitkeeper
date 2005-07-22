@@ -88,15 +88,18 @@ proc main {} \
 		}
 	}
 
+	# this all deals with user acceptance of a particular license,
+	# which occurs on different steps for different license types
 	bind . <<WizNextStep>> {
 		switch -exact -- [. cget -step] {
-			EndUserLicense	{exec bk license -a bkcl}
+			EndUserLicense	{exec bk _eula -a}
 			LicenseKey      {
 				if {![checkLicense]} {
 					break
 				}
+				getLicenseData
 				set path "commercial"
-				if {!$::licenseInfo(accepted)} {
+				if {$::licenseInfo(text) ne ""} {
 					append path "-lic"
 				}
 				. configure -path $path
@@ -114,8 +117,6 @@ proc app_init {} \
 	global option
 	global readonly
 	global wizData
-
-	getLicenseData
 
 	getConfig "setup"
 
@@ -301,7 +302,6 @@ proc widgets {} \
 	    -steps [concat Begin LicenseKey EndUserLicense $common]
 	. add path commercial \
 	    -steps [concat Begin LicenseKey $common]
-
 
 	. add path BadUser -steps BadUser
 
@@ -771,8 +771,9 @@ proc parseLicenseData {type} \
 
 	} elseif {$type == "file"} {
 		set types {
-			{{Text Files} {.txt}}
 			{{All Files} *}
+			{{License Files} {.lic}}
+			{{Text Files} {.txt}}
 		}
 		set file [tk_getOpenFile -filetypes $types -parent .]
 		if {$file != "" && 
@@ -839,11 +840,10 @@ proc createConfigData {} \
 
 proc createRepo {errorVar} \
 {
-	global wizData
-	global option
-	global eflag
+	global wizData option eflag env
 	upvar $errorVar message
 
+	catch {unset env(BK_CONFIG)}
 	set pid [pid]
 	set filename [file join $::tmp_dir "config.$pid"]
 	set f [open $filename w]
@@ -932,7 +932,7 @@ proc checkLicense {} \
 	
 	global wizData dev_null
 
-	set f [open "|bk license -v > $dev_null" w]
+	set f [open "|bk _eula -v > $dev_null" w]
 	puts $f "
 	    license: $wizData(license)
 	    licsign1: $wizData(licsign1)
@@ -955,19 +955,19 @@ proc checkLicense {} \
 	return 0
 }
 
+# must be called after user has entered license keys
 proc getLicenseData {} \
 {
-	global licenseInfo wizData
+	global licenseInfo wizData env
 
-	# If "bk license -s" returns an empty string, 
-	# that license has been accepted. 
-	set licenseInfo(text) [exec bk license -s bkcl]
-
-	if {$licenseInfo(text) eq ""} {
-		set licenseInfo(accepted) 1
-	} else {
-		set licenseInfo(accepted) 0
-	}
+	# need to override any config currently in effect...
+	set BK_CONFIG "logging:none;"
+	append BK_CONFIG "license:$wizData(license);"
+	append BK_CONFIG "licsign1:$wizData(licsign1);"
+	append BK_CONFIG "licsign2:$wizData(licsign2);"
+	append BK_CONFIG "licsign3:$wizData(licsign3);"
+	set env(BK_CONFIG) $BK_CONFIG
+	set licenseInfo(text) [exec bk _eula -s]
 }
 
 proc moreInfo {which} {

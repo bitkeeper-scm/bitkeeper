@@ -7,8 +7,9 @@ RANLIB=ranlib
 .SCCS_GET:
 	bk get -q $@
 
-OBJS = aes.o ampi.o base64.o bits.o crypt.o ctr.o hash.o hmac.o md5.o sha1.o \
-	mem.o mpi.o packet.o prime.o rsa.o rsa_sys.o yarrow.o randseed.o
+OBJS =	aes.o ampi.o base64.o bits.o cfb.o crypt.o ctr.o hash.o hmac.o \
+	md5.o sha1.o mem.o mpi.o packet.o prime.o rsa.o rsa_sys.o \
+	yarrow.o randseed.o
 
 libtomcrypt.a: $(OBJS)
 	$(AR) $@ $(OBJS)
@@ -28,6 +29,7 @@ ampi.o:		ampi.c mycrypt.h mycrypt_cfg.h mpi.h mpi-config.h mpi-types.h
 base64.o:	base64.c mycrypt.h mycrypt_cfg.h mpi.h mpi-config.h mpi-types.h
 bits.o:		bits.c mycrypt.h mycrypt_cfg.h mpi.h mpi-config.h mpi-types.h
 crypt.o:	crypt.c mycrypt.h mycrypt_cfg.h mpi.h mpi-config.h mpi-types.h
+cfb.o:		cfb.c mycrypt.h mycrypt_cfg.h mpi.h mpi-config.h mpi-types.h
 ctr.o:		ctr.c mycrypt.h mycrypt_cfg.h mpi.h mpi-config.h mpi-types.h
 hash.o:		hash.c mycrypt.h mycrypt_cfg.h mpi.h mpi-config.h mpi-types.h
 hmac.o:		hmac.c mycrypt.h mycrypt_cfg.h mpi.h mpi-config.h mpi-types.h

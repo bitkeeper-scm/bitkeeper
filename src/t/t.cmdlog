@@ -23,6 +23,8 @@ FILE=test$NUM
 echo $N Create initial repository ...................................$NL
 commercial project
 BK_HOST=$MYHOST
+cd project
+bk _eula -a
 echo OK
 
 echo $N Check that bk cmdlog works with a missing repo_log ..........$NL

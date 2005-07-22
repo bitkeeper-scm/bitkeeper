@@ -58,7 +58,7 @@ tcltk: FORCE
 
 test: lib $(GUIS) $(DOIT) $(GUITEST) ../t/setup ../t/x.chk_env
 	@../bk get -S ../t/SCCS/s.g.* 
-	@(cd ../t && ./doit g.*)
+	@(cd ../t && ./doit -g g.*)
 
 $(DOIT):
 	@cd .. && $(MAKE) t/doit

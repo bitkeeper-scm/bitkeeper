@@ -28,6 +28,7 @@ if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
+
 echo $N Check ci co in EOLN_NATIVE mode .............................$NL
 # create a file with line terminated with CRLF 
 echo -e 'data\r' > data
@@ -40,6 +41,7 @@ bk edit $Q data
 cmp -s data data.ref
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N Check diffs in EOLN_NATIVE mode .............................$NL
 # in EOLN_NATIVE mode the diffs output is still LF terminated
 echo new_stuff > data
@@ -54,6 +56,7 @@ EOF
 cmp -s diffs.out diffs.ref
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N Check ci a file with LF only ................................$NL
 bk undos  > data << EOF
 new1

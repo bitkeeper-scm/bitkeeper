@@ -151,6 +151,7 @@ delta
 diffs
 diffsplit
 dotbk
+_eula
 _exists
 export
 f2csets
@@ -187,7 +188,6 @@ _keyunlink
 _lconfig
 lease
 level
-license
 _lines restricted
 _link
 _listkey restricted

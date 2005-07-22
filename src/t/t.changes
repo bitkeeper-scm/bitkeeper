@@ -14,19 +14,7 @@
 # %K%
 
 echo $N Create initial repository ...................................$NL
-cat > c <<EOF
-logging: none
-license: $BKL_P
-licsign1: $BKL_P1
-licsign2: $BKL_P2
-licsign3: $BKL_P3
-description: BitKeeper Test repository
-email: nobody@nowhere.bk
-EOF
-BK_HOST=bk_regression.bitkeeper.com
-export BK_HOST
-bk setup -f -cc project
-cd project
+commercial project
 echo foo > f
 BK_USER=adam bk delta $Q -i -y'Initial checkin' f
 BK_USER=adam bk commit $Q -y'Initial checkin' || exit 1

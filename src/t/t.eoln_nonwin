@@ -27,6 +27,7 @@ if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
+
 echo $N Check new and co with files having termination CRLF .........$NL
 # create a file with line terminated with CRLF 
 # reference file with only LF
@@ -40,6 +41,7 @@ bk edit $Q data
 cmp -s data data.ref
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N Check edit and co with files having termination CRLF ........$NL
 # File is checked out edit already
 printf 'last line\r\n' >> data
@@ -52,6 +54,7 @@ bk edit $Q data
 cmp -s data data.ref
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N Check edit and co with files having midline CF ..............$NL
 # File is checked out edit already
 echo -e 'last line\ranother last line' >> data
