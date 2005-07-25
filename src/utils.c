@@ -908,7 +908,7 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 		 * We might be outside a repository so suppress any failures.
 		 */
 		lease_checking(0);
-		fprintf(f, "putenv BK_LICENSE=%s\n", proj_license(p));
+		fprintf(f, "putenv BK_LICENSE=%s\n", proj_bkl(p));
 		lease_checking(1);
 	}
 	/*

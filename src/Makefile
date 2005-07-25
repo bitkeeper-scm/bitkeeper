@@ -203,7 +203,7 @@ LIBS	= libc/libc.a $(UWTLIB) zlib/libz.a mdbm/libmdbm.a tomcrypt/libtomcrypt.a \
 	regex/libregex.a
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES \
-	Academic.lic Basic.lic Pro.lic Enterprise.lic MLA.lic bkl.lic bkcl.lic
+	Academic.lic Basic.lic Pro.lic Enterprise.lic MLA.lic bkcl.lic
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA) \
 	$(PROGS) GUI
 
@@ -664,7 +664,7 @@ hidestring: hidestring.c
 MLA.lic: MLA.preamble Enterprise.lic.txt
 	cat MLA.preamble Enterprise.lic.txt | \
 	    ./bk crypto -E 048d6aa55c30b3b4 > MLA.lic
-	
+
 %.lic: %.lic.txt bkupgrade.key $(BK)
 	./bk crypto -E 048d6aa55c30b3b4 < $< > $@
 

@@ -1382,9 +1382,7 @@ apply:
 	 * Honor gzip on all files.
 	 * Always gzip !commercial files.
 	 */
-	if (!CSET(s) && ((encoding&E_GZIP) || !bkcl(0))) {
-		s = sccs_gzip(s);
-	}
+	if (!CSET(s) && (encoding & E_GZIP)) s = sccs_gzip(s);
 	for (d = 0, p = patchList; p; p = p->next) {
 		assert(p->me);
 		d = sccs_findKey(s, p->me);

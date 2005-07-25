@@ -73,8 +73,6 @@ license: $BKL_PRO
 licsign1: $BKL_P1
 licsign2: $BKL_P2
 licsign3: $BKL_P3
-logging: none
-logging_ask: no
 description: BitKeeper Test repository
 email: nobody@nowhere.bk
 eoln: unix
@@ -89,9 +87,10 @@ _make_repo() {
 	SFIO=$3
 	REPO=$BK_CACHE/${TYPE}
 
-        if [ -d "$REPO" ]; then rm -rf "$REPO"; fi 	# should not happen
-        BK_LICENSE=ACCEPTED bk setup -a -f -c"$CF" "$REPO" || {
-                echo "Setup failed!"; exit 1;
+	test -d "$REPO" && rm -rf "$REPO"		# should not happen
+	bk setup -a -f -c"$CF" "$REPO" || {
+		echo "Setup failed!"
+		exit 1
         }
 	# Make a cached copy
         (cd "$REPO" && find . -type f | bk sfio -qm -o > "$SFIO")
@@ -104,13 +103,12 @@ _get_cached_repo() {
 	bk sfio -qm -i < "$2"
 	mkdir -p BitKeeper/tmp 		# because sfio does not copy dir
 	mkdir -p BitKeeper/deleted/SCCS 	
-	mkdir -p BitKeeper/etc/.master
+	bk _eula -a
 }
 
 # Get a commercial repo, use cache copy if available
 # Usage: commercial dir
 commercial() {
-	
 	CF="$BK_CACHE"/commercial.config
 	SFIO=$BK_CACHE/commercial.sfio
 	test -f "$SFIO" || {

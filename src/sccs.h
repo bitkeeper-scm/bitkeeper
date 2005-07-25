@@ -327,7 +327,6 @@
 #define	BKDIR		"BitKeeper"
 #define	BKTMP		"BitKeeper/tmp"
 #define	BKROOT		"BitKeeper/etc"
-#define	BKMASTER	"BitKeeper/etc/.master"
 #define	GONE		"BitKeeper/etc/gone"
 #define	CSETS_IN	"BitKeeper/etc/csets-in"
 #define	CSETS_OUT	"BitKeeper/etc/csets-out"
@@ -938,7 +937,7 @@ int 	licenseAccept(int prompt);
 int	licenseAcceptOne(int prompt, char *lic);
 char	*licenses_accepted(void);
 char	*eula_name(void);
-char	*eula_type(void);
+char	*eula_type(int guess);
 int	eula_accept(void);
 char	*mkline(char *mmap);
 int	mkdirp(char *dir);

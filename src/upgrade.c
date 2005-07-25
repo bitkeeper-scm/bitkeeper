@@ -38,7 +38,7 @@ upgrade_main(int ac, char **av)
 	int	force = 0;
 	int	obsolete = 0;
 	char	*indexfn, *index;
-	char	*p, *e;
+	char	*p, *e, *key;
 	char	**data = 0;
 	int	len;
 	char	*want_codeline = 0;
@@ -83,7 +83,8 @@ usage:			system("bk help -s upgrade");
 		}
 		want_codeline = strndup(bk_vers, p - bk_vers);
 	}
-	unless (streq(want_codeline, "bk-free") || lease_anycommercial()) {
+	if (key = lease_latestLicense()) free(key);
+	unless (streq(want_codeline, "bk-free") || key) {
 		notice("upgrade-require-lease", 0, "-e");
 		goto out;
 	}

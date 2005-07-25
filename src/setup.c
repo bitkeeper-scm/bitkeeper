@@ -13,7 +13,7 @@ int
 setup_main(int ac, char **av)
 {
 	int	force = 0, allowNonEmptyDir = 0, accept = 0, c;
-	char	*package_path = 0, *config_path = 0, *t;
+	char	*package_path = 0, *config_path = 0;
 	char	buf[MAXLINE], my_editor[1024];
 	char	here[MAXPATH];
 	char 	s_config[] = "BitKeeper/etc/SCCS/s.config";
@@ -132,8 +132,11 @@ again:
 		exit(1);
 	}
 
-	if ((t = mdbm_fetch_str(m, "single_user")) && strchr(t, '@')) {
-		fprintf(stderr, "Setup: single_user should not have a hostname.\n");
+	/* When eula_name() stopped returning bkl on invalid signatures
+	 * we needed this to force a good error message.
+	 */
+	if (mdbm_fetch_str(m, "license") &&
+	    streq(getlicense(m, config_path != 0), "none")) {
 		if (config_path) {
 err:			unlink("BitKeeper/etc/config");
 			unlink("BitKeeper/log/cmd_log");
@@ -145,13 +148,6 @@ err:			unlink("BitKeeper/etc/config");
 			}
 			exit(1);
 		}
-		goto again;
-	}
-
-	/* When eula_name() stopped returning bkl on invalid signatures
-	 * we needed this to force a good error message.
-	 */
-	if ((t = mdbm_fetch_str(m, "license")) && !validLicense(t, m)) {
 		goto again;
 	}
 	mdbm_close(m);
@@ -179,7 +175,6 @@ err:			unlink("BitKeeper/etc/config");
                 fprintf(stderr, "setup: cannot find package root.\n");
                 return (1);
         }
-	mkdir(BKMASTER, 0775);
 	enableFastPendingScan();
 	sendConfig();
 	return (0);

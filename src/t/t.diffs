@@ -63,7 +63,7 @@ cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
 
-echo $N Checking diff -R - with edited gfile .........................$NL
+echo $N Checking diff -R - with edited gfile ........................$NL
 echo 'Mydiffs|1.9' | bk diffs -R - > D || exit 1
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi

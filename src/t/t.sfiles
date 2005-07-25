@@ -443,7 +443,6 @@ u--G-- BitKeeper/etc/SCCS/s.config
 u---n- SCCS/s.bad
 -----D BitKeeper
 -----D BitKeeper/deleted
------D BitKeeper/etc/.master
 -----D BitKeeper/log
 -----D BitKeeper/tmp
 -----D bar/not

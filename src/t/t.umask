@@ -37,7 +37,6 @@ cat <<EOF > WANT
 ./BitKeeper/deleted
 ./BitKeeper/deleted/SCCS
 ./BitKeeper/etc
-./BitKeeper/etc/.master
 ./BitKeeper/etc/SCCS
 ./BitKeeper/log
 ./BitKeeper/tmp

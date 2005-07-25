@@ -35,31 +35,22 @@ bkversion(FILE *f)
 	FILE	*f1;
 	u32	o;
 	float	exp;
-	char	*p;
+	char	*t = eula_type(1);
 	char	buf[MAXLINE];
 
-	buf[0] = 0;
-	switch (bk_mode(0)) {
-	    case BK_FREE: strcpy(buf, "/Free"); break;
-	    case BK_PRO: 
-		p = eula_type();
-		if (streq(p, "none")) goto look;
-		sprintf(buf, "/%s", p);
-		break;
-	    default:
-		/* Go see if we can find anything that looks commercial */
-look:		if (p = lease_anycommercial()) {
-			sprintf(buf, "/%s", p);
-			free(p);
-		}
+	if (t) {
+		sprintf(buf, "/%s", t);
+	} else {
+		buf[0] = 0;
 	}
-	if (buf[0]) {
-		o = bk_options(0);
-		if (o & BKOPT_WEB) strcat(buf, ",bkweb");
-		if (o & BKOPT_EVAL) strcat(buf, ",eval");
-	}
-
+	o = proj_bklbits(0);
+	// XXX - I really want this to have it's own line
+	if (o & LIC_WEB) strcat(buf, ",bkweb");
+	if (o & LIC_EVAL) strcat(buf, ",eval");
+	if (o & LIC_IMPORT) strcat(buf, ",import");
+	if (o & LIC_BUGDB) strcat(buf, ",bugdb");
 	getMsg("version", buf, 0, f);
+
 	if (f1 = popen("uname -s -r", "r")) {
 		if (fnext(buf, f1)) {
 			chomp(buf);

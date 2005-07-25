@@ -149,7 +149,7 @@ cmd_httpget(int ac, char **av)
 	if (user) sprintf(root+strlen(root), "user=%s/", user);
 	unless (*name) name = "index.html";
 
-	unless (streq(name, "license") || bk_options(0)&BKOPT_WEB) {
+	unless (streq(name, "license") || (proj_bklbits(0) & LIC_WEB)) {
 		unless (has_temp_license()) {
 			http_error(503,
 			    "BK/Web option has not been purchased.");

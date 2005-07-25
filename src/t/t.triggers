@@ -424,7 +424,7 @@ grep -q BK_REMOTECSETS=0 $HERE/pre-outgoing || {
 	cat $HERE/pre-outgoing
 	exit 1
 }
-grep -q BK_LICENSE=$BKL_P $HERE/pre-outgoing || {
+grep -q BK_LICENSE=$BKL_PRO $HERE/pre-outgoing || {
 	echo didn\'t pass license
 	exit 1
 }

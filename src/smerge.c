@@ -94,16 +94,6 @@ smerge_main(int ac, char **av)
 	int	do_diff3 = 0;
 	int	identical = 0;
 	char	*p;
-	project	*proj;
-
-	if ((ac > 2) && (proj = proj_init(av[ac-2]))) {
-		unless (bk_mode(proj) == BK_PRO) {
-			enable_mergefcns("all", 0);
-			enable_mergefcns("1,2,3", 1);
-			do_diff3 = 1;
-		}
-		proj_free(proj);
-	}
 
 	if (p = getenv("SMERGE_EMULATE_BUGS")) {
 		emubugs = atoi(p);

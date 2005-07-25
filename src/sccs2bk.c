@@ -50,10 +50,11 @@ usage:			system("bk help -s sccs2bk");
 		}
 	}
 
-	unless (bk_mode(0) == BK_PRO) {
+	unless (proj_bklbits(0) & LIC_IMPORT) {
 		if (verbose) {
+			// XXX - need a name
 			fputs("sccs2bk: operation requires "
-			    "a BK Pro license\n", stderr);
+			    "a license with import feature.\n", stderr);
 		}
 		return (1);
 	}

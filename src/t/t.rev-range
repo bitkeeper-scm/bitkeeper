@@ -27,8 +27,6 @@ Hi there, this is file foo.
 Hi there, this is file foo.
 EOF
 commercial project
-BK_NOCOMPRESS=YES
-export BK_NOCOMPRESS
 echo $N Creating an empty file ......................................$NL
 bk admin $Q -n empty
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
@@ -69,7 +67,7 @@ echo OK
 cd $HERE; rm -rf project; mkdir project; cd project
 
 # need license to work outside of a repository
-BK_CONFIG="license:$BKL_P;licsign1:$BKL_P1;licsign2:$BKL_P2;licsign3:$BKL_P3"
+BK_CONFIG="license:$BKL_PRO;licsign1:$BKL_P1;licsign2:$BKL_P2;licsign3:$BKL_P3"
 export BK_CONFIG
 
 echo $N Creating an empty file with rel 3.1 .........................$NL

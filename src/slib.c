@@ -10638,15 +10638,6 @@ sccs_admin(sccs *sc, delta *p, u32 flags, char *new_encp, char *new_compp,
 
 	new_enc = sccs_encoding(sc, new_encp, new_compp);
 	if (new_enc == -1) return (-1);
-	unless ((flags & ADMIN_FORCE) || CSET(sc) || bkcl(0)) {
-		static	int nocompress = -1;
-
-		/* this is for the test suite only */
-		if (nocompress == -1) nocompress = getenv("BK_NOCOMPRESS") != 0;
-		unless (nocompress && (sc->nextserial < 10)) {
-			new_enc |= E_GZIP;
-		}
-	}
 	debug((stderr, "new_enc is %d\n", new_enc));
 	GOODSCCS(sc);
 	unless (flags & (ADMIN_BK|ADMIN_FORMAT|ADMIN_GONE)) {

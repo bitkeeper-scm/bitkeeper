@@ -14,17 +14,8 @@
 # Copyright (c) 2000 David Parsons
 # %K%
 
-MYHOST=`bk gethost`
-MYNAME=`bk getuser`
-ME="${MYNAME}@${MYHOST}"
-NUM=0
-FILE=test$NUM
-
 echo $N Create initial repository ...................................$NL
 commercial project
-BK_HOST=$MYHOST
-cd project
-bk _eula -a
 echo OK
 
 echo $N Check that bk cmdlog works with a missing repo_log ..........$NL

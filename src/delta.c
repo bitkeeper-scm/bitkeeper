@@ -315,7 +315,12 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 			errors |= 1;
 			continue;
 		}
-		lease_writeReq(s->proj);
+		unless (lease_writeReq(s->proj)) {
+			fprintf(stderr, "no license XXX\n");
+			exit(1);
+			// goto next; ?? (too many errors)
+		}
+			
 		if (df & DELTA_AUTO) {
 			if (HAS_SFILE(s)) {
 				df &= ~NEWFILE;
@@ -324,9 +329,6 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 			}
 		}
 		if (dflags & NEWFILE) {
-			if (bk_mode(s->proj) != BK_PRO) {
-				compp = "gzip";
-			}
 			unless (ignorePreference || compp) compp = def_compp;
 		}
 

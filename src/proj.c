@@ -32,8 +32,8 @@ struct project {
 	project	*rparent;	/* if RESYNC, point at enclosing repo */
 
 	/* per proj cache data */
-	char	*license;	/* filled from lease_licenseKey() */
-	u32	licensebits;	/* LOG_* and LIC_* from fetchLicenseBits() */
+	char	*bkl;		/* filled from lease_bkl() */
+	u32	bklbits;	/* LIC_* from license_bklbits() */
 	int	casefolding;
 	u8	leaseok:1;
 
@@ -359,11 +359,11 @@ proj_reset(project *p)
 			mdbm_close(p->config);
 			p->config = 0;
 		}
-		if (p->license) {
-			free(p->license);
-			p->license = 0;
+		if (p->bkl) {
+			free(p->bkl);
+			p->bkl = 0;
 		}
-		p->licensebits = 0;
+		p->bklbits = 0;
 		p->leaseok = 0;
 	} else {
 		kv = hash_first(proj.cache);
@@ -439,7 +439,7 @@ proj_fakenew(void)
 }
 
 char *
-proj_license(project *p)
+proj_bkl(project *p)
 {
 	/*
 	 * If we are outside of any repository then we must get a
@@ -447,12 +447,12 @@ proj_license(project *p)
 	 */
 	unless (p || (p = curr_proj())) p = proj_fakenew();
 
-	unless (p->license) p->license = lease_licenseKey(p);
-	return (p->license);
+	unless (p->bkl) p->bkl = lease_bkl(p);
+	return (p->bkl);
 }
 
 u32
-proj_licensebits(project *p)
+proj_bklbits(project *p)
 {
 	/*
 	 * If we are outside of any repository then we must get a
@@ -460,8 +460,8 @@ proj_licensebits(project *p)
 	 */
 	unless (p || (p = curr_proj())) p = proj_fakenew();
 
-	unless (p->licensebits) p->licensebits = fetchLicenseBits(p);
-	return (p->licensebits);
+	unless (p->bklbits) p->bklbits = license_bklbits(proj_bkl(p));
+	return (p->bklbits);
 }
 
 int
