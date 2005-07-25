@@ -1,46 +1,10 @@
 # Makefile for BitKeeper.
 # @(#) %K%
 HERE    := $(shell pwd)
+REPO    := $(shell basename "`bk root`")
+URL     := $(shell echo bk://work/`bk root` | sed s,/home/bk/,,)
+LOG	:= $(shell echo LOG-`bk getuser`)
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
-UTC	:= $(shell echo `perl -e " \
-		@l=localtime;  \
-		printf \"%04d%02d%02d%02d%02d%02d\", \
-		@l[5]+1900,@l[4],@l[3],@l[2],@l[1],@l[0];"`)
-TIME	:= $(shell echo `perl -e "print time"`)
-
-# Stuff that needs BK
-SYSBK	:= $(shell which bk)
-ifeq "$(shell test -x '$(SYSBK)' ; echo $$?)" "1"
-	TAGGED=0
-	BK_VERSION1="$(UTC)b for $(OSTYPE)"
-	BK_VERSION2= "char *bk_vers = \"$(UTC)b\"; \
-	    char *bk_utc = \"$(UTC)b\"; \
-	    char *bk_time = \"$(TIME)\";"
-	REPO	:= $(HERE)
-	URL	:= $(shell echo bk://work/$(HERE) | sed s,/home/bk,,)
-	LOG	:= $(shell echo LOG-`id -u`)
-else
-	TAGGED=$(shell $(SYSBK) -R prs -hr+ \
-	    -d'$$if(:SYMBOL:){1}$$unless(:SYMBOL:){0}' ChangeSet)
-	BK_VERSION1=$(shell echo \
-	    `$(SYSBK) prs -hr+ \
-	        -d'$$if(:SYMBOL:){:SYMBOL: }:UTC:\n' ../ChangeSet |\
-	    sed 's/ approved//g';` \
-	    for \
-	    `sh ./utils/os`)
-	BK_VERSION2=$(shell echo \
-	    `$(SYSBK) prs -hr+ \
-	    -d' \
-	    char *bk_vers = \
-	        \"$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}\"\; \
-	    char *bk_utc = \":UTC:\"\; \
-	    char *bk_time = \":TIME_T:\"\; \
-	    ' ../ChangeSet`)
-	REPO    := $(shell basename "`$(SYSBK) root`")
-	URL     := $(shell echo bk://work/`$(SYSBK) root` | sed s,/home/bk/,,)
-	LOG	:= $(shell echo LOG-`$(SYSBK) getuser`)
-endif
-
 
 # Is this building a commercial-only release of bk
 COMMERCIAL = 0
@@ -460,12 +424,17 @@ FRC:
 # It is structured like this so that rebuilding prs doesn't
 # force bk.ver (and thus the bk script) to be regenerated.
 bk.ver: ../SCCS/s.ChangeSet utils/os utils/gnu-os
-	echo $(BK_VERSION1) > bk.v
+	( echo \
+	  `./bk prs -hr+ -d'$$if(:SYMBOL:){:SYMBOL: }:UTC:\n' ../ChangeSet |\
+	  sed 's/ approved//g';` \
+	  for \
+	  `sh ./utils/os` \
+	) >bk.v
 	mv -f bk.v bk.ver
 
 # This must be rebuilt every time because it includes the build time
 bkver.c: FRC
-	@echo $(BK_VERSION2) > bk.v
+	bk prs -hr+ -d'char *bk_vers = "$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}";\nchar *bk_utc = ":UTC:";\nchar *bk_time = ":TIME_T:";\n' ../ChangeSet > bk.v
 	@if [ ! -x utils/os ]; then bk get utils/os; fi
 	echo "char *bk_platform = \""`./utils/os`"\";" >> bk.v
 	echo "unsigned build_timet = "`perl -e "print time"`";" >> bk.v
@@ -594,13 +563,6 @@ trial_image trial-image:
 
 image:
 	test -x $(BK) || $(MAKE) p || exit 1
-	@if [ $(TAGGED) = 1 -a ! -f $(KEYFILE) -a X$(NOKEYS) = X ] ; \
-	then \
-		echo "No crypto keys, no image. Sorry." ; \
-		echo "If you want to bypass this, set the environment"; \
-		echo "variable NOKEYS to 1"; \
-		exit 1; \
-	fi
 	$(MAKE) -e _image
 
 _image: installdir
@@ -657,10 +619,3 @@ MLA.lic: MLA.preamble Enterprise.lic.txt
 %.lic: %.lic.txt bkupgrade.key $(BK)
 	./bk crypto -E 048d6aa55c30b3b4 < $< > $@
 
-show:
-	@echo SYSBK = $(SYSBK)
-	@echo BK_VERSION1 = $(BK_VERSION1)
-	@echo BK_VERSION2 = $(BK_VERSION2)
-	@echo UTC = $(UTC)
-	@echo TIME = $(TIME)
-	@echo TAGGED = $(TAGGED)
