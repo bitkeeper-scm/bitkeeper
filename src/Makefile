@@ -265,7 +265,7 @@ production_image: rebuild p image
 # Read the checkin comments on this delta before changing this.
 clean-obj: FORCE
 	-@rm -f bk bk.o cscope.out $(OBJ) $(SCRIPTS)
-	-@rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
+	-@rm -f substvars gnu/config.cache config.h config.log config.sub
 	-@rm -f $(LIBS) bkdsubstr bkmsg.txt bkhelp.txt a.out cmd.c cmd.h
 	-@rm -f bkver.h
 	-@rm -f core $(WIN_TMP)
@@ -296,7 +296,7 @@ clean clobber distclean: rebuild FORCE
 rebuild:
 	-@rm -f *.bb *.bbg *.da *.gcov
 	-@rm -f bk.o cscope.out $(OBJ) 
-	-@rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
+	-@rm -f substvars gnu/config.cache config.h config.log config.sub
 	-@rm -f $(LIBS) bkdsubstr bkhelp.txt bkmsg.txt a.out
 	-@rm -f core bkver.c tclwrap tclwrap.o blowfish.o $(WIN_TMP)
 	-@rm -f bkver.h cmd.c 
@@ -400,7 +400,7 @@ bk.script: bk.sh port/$(SYS)_platform.sh
 	cat port/$(SYS)_platform.sh bk.sh > bk.script
 	chmod +x bk.script 
 
-bkmsg.txt: bkmsg.doc bk.ver Makefile
+bkmsg.txt: bkmsg.doc bk.ver FRC
 	sed "s/@version@/`cat bk.ver`/" bkmsg.doc | \
 	sed "s?@builder@?`./bk getuser`@`./bk gethost -r` in `pwd`?" | \
 	sed "s/@built_date@/`date`/" > bkmsg.txt

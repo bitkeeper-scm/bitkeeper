@@ -3,7 +3,11 @@
 .SH NAME 
 bk export \- checks out clear-text version of all \*(BK files
 .SH SYNOPSIS
-.B bk export \-tpatch [\-hT] [\-d u|c]
+.Bc bk export \-tpatch [\-d[u|c|p]] [\-hT] [
+.OPTreq \-i pat
+.Bc ] [
+.OPTreq \-x pat
+.B ]
 .OPTreq \-r rev1,rev2
 .br
 .Bc bk export [\-tplain] [\-kTvw] [
@@ -51,10 +55,24 @@ You can do this using the following command:
 .DE
 .SH OPTIONS
 .if t .TP
-.if n .TP 1i
-.OPTreq \-d u|c
-Set patch's diff style to unified or context diff.  If no style
-specified, do regular diffs.
+.if n .TP 1.2i
+.OPTopt \-d u|c|p
+Select the style of 
+.BR diff (1)
+output, 
+.B \-d
+for regular diffs, 
+.B \-du
+for unified diffs, 
+.B \-dc
+for context diffs,
+.B \-dp
+for procedural (use 
+.B \-dup
+to get unified + procedural diffs).
+The default is
+.B \-du
+if this option is not used.
 .tp
 .B \-h
 Disable patch header.
