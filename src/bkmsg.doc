@@ -702,13 +702,6 @@ esac
 exit 0
 $
 #bkl_new_preamble
-In order to use BitKeeper in this repository, you must accept the 
-BitKeeper license.  The BitKeeper license is what grants you the right
-to use BitKeeper on this repository.  Please read the license carefully,
-it is a contract and you must abide by the terms.  Your acceptance will be
-recorded on this machine and you will not be asked again.
-$
-#bkcl_new_preamble
 In order to use BitKeeper in this repository, you need to accept the
 BitKeeper Commercial license.  This license is what grants you the right
 to use BitKeeper on this repository.  Please read the license carefully,

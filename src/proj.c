@@ -32,10 +32,10 @@ struct project {
 	project	*rparent;	/* if RESYNC, point at enclosing repo */
 
 	/* per proj cache data */
-	char	*bkl;		/* filled from lease_bkl() */
+	char	*bkl;		/* key - filled from lease_bkl() */
 	u32	bklbits;	/* LIC_* from license_bklbits() */
-	int	casefolding;
-	u8	leaseok:1;
+	int	casefolding;	/* mixed case file system: FOO == foo */
+	u8	leaseok:1;	/* if set, we've checked and have a lease */
 
 	/* internal state */
     	int	refcnt;
@@ -438,6 +438,7 @@ proj_fakenew(void)
 	return (ret);
 }
 
+/* return the BKL.... key as a string */
 char *
 proj_bkl(project *p)
 {
@@ -451,6 +452,7 @@ proj_bkl(project *p)
 	return (p->bkl);
 }
 
+/* return the decoded license/option bits (LIC_*) */
 u32
 proj_bklbits(project *p)
 {
@@ -464,13 +466,19 @@ proj_bklbits(project *p)
 	return (p->bklbits);
 }
 
+/*
+ * Return 0 the first time it is called for a repo and then 1 after that.
+ * This is a helper found used by lease.c to determine if lease have already
+ * been verified for this repository.
+ */
 int
-proj_leaseOK(project *p, int *newok)
+proj_leaseChecked(project *p)
 {
 	unless (p || (p = curr_proj())) return (0);
 
-	if (newok) p->leaseok = *newok;
-	return (p->leaseok);
+	if (p->leaseok) return (1);
+	p->leaseok = 1;
+	return (0);
 }
 
 int

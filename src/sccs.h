@@ -1175,7 +1175,7 @@ int	check_licensesig(char *key, char *sign, int version);
 char	*hashstr(char *str, int len);
 char	*hashstream(FILE *f);
 char	*secure_hashstr(char *str, int len, char *key);
-char	*makestring(char *out, char *in, char seed, int size);
+char	*makestring(char *out, const char *in, char seed, int size);
 void	delete_cset_cache(char *rootpath, int save);
 time_t	mtime(char *path);
 void	notice(char *key, char *arg, char *type);

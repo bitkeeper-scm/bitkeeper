@@ -839,7 +839,7 @@ bk_preSpawnHook(int flags, char *const av[])
  */
 
 char *
-makestring(char *out, char *in, char seed, int size)
+makestring(char *out, const char *in, char seed, int size)
 {
 	int	i;
 

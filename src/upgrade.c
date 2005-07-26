@@ -83,7 +83,7 @@ usage:			system("bk help -s upgrade");
 		}
 		want_codeline = strndup(bk_vers, p - bk_vers);
 	}
-	if (key = lease_latestLicense()) free(key);
+	if (key = lease_latestbkl()) free(key);
 	unless (streq(want_codeline, "bk-free") || key) {
 		notice("upgrade-require-lease", 0, "-e");
 		goto out;
@@ -107,7 +107,7 @@ usage:			system("bk help -s upgrade");
 	while (p[-1] != '\n') --p;
 	strcpy(buf, p);	/* hmac */
 	*p = 0;
-	makestring(salt, (char *)key, 'Q', sizeof(key));
+	makestring(salt, key, 'Q', sizeof(key));
  	p = secure_hashstr(index, strlen(index), salt);
 	unless (streq(p, buf)) {
 		fprintf(stderr, "upgrade: INDEX corrupted\n");
