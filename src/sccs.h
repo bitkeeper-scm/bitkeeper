@@ -938,7 +938,7 @@ int 	licenseAccept(int prompt);
 int	licenseAcceptOne(int prompt, char *lic);
 char	*licenses_accepted(void);
 char	*eula_name(void);
-char	*eula_type(int guess);
+char	*eula_type(u32 bits);
 int	eula_accept(void);
 char	*mkline(char *mmap);
 int	mkdirp(char *dir);

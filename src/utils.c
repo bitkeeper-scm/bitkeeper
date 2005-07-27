@@ -905,11 +905,8 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 	unless (flags & SENDENV_NOLICENSE) {
 		/*
 		 * Send information on the current license.
-		 * We might be outside a repository so suppress any failures.
 		 */
-		lease_checking(0);
-		fprintf(f, "putenv BK_LICENSE=%s\n", proj_bkl(p));
-		lease_checking(1);
+		fprintf(f, "putenv BK_LICENSE=%s\n", lease_latestbkl());
 	}
 	/*
 	 * Send comma seperated list of client features so the bkd
