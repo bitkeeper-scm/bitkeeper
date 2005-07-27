@@ -38,7 +38,7 @@ Noteworthy bug fixes
 ----------------------------------------------------------------------------
 - Fix installation problem that broke emacs vc mode
 - Fix problems with missing commands (renametool, support, unget)
-- Fix problem where 'bk revtool' would somtimes fail.
+- Fix problem where 'bk revtool' would sometimes fail.
 - GUIs work on x86_64 again
 - Fix resolver bug related to filenames with spaces.
 - Fix interaction with Visual Studio .net which checked in files like ~sak*

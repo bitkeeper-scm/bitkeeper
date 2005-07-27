@@ -15,6 +15,7 @@
 
 test -d $HERE/home || mkdir $HERE/home
 export BK_TEST_HOME=$HERE/home
+export BK_LICENSE=ACCEPTED
 
 echo $N Create test data ............................................$NL
 no_logging project
@@ -90,7 +91,7 @@ cd $HERE/local/RESYNC
 bk fm3tool -f 1.1.1.1 1.1 1.2 src/file1
 echo OK
 
-echo $N Boundary bug ................................................$NL
+echo $N Boundary bug - left click on left block, then type s.........$NL
 # Need a license to get smerge to do its thing
 cd $HERE
 cat - <<EOF > c
@@ -131,13 +132,12 @@ EOF
 bk delta $Q -y1.3 foo
 # "merge" and run fm3tool - fails in bk-3.2.4
 bk edit $Q -M1.1.1.1 foo
-BK_GUI=1 bk prompt -i \
-    "left click on line: 'left click on this line, then type s', then type s"
 bk fm3tool -f 1.3 1.1 1.1.1.1 foo
 bk get $Q foo
 cat - <<'EOF' > WANT
 left click on this line, then type s
 replaced line
 EOF
-checkfiles WANT foo
+bk undos < foo > GOT
+checkfiles WANT GOT
 echo OK
