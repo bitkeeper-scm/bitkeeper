@@ -316,6 +316,7 @@
 
 #define	MAXREV	24	/* 99999.99999.99999.99999 */
 
+#define	LEASE_URL	getenv("BK_LEASE_URL")
 #define	BK_WEBMAIL_URL	getenv("BK_WEBMAIL_URL")
 #define	BK_HOSTME_SERVER "hostme.bkbits.net"
 #define	WEB_BKD_CGI	"web_bkd"
