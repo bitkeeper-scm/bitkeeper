@@ -540,3 +540,60 @@ bk changes -k -L -R ../clone1 | grep -v '^==== ' > GOT
 checkfiles WANT GOT
 echo OK
 
+echo $N Set up for include/exclude tests ............................$NL
+cd $HERE/project
+for i in man src html
+do	mkdir $i
+done
+for i in foo bar blech
+do	echo $i > man/${i}.1
+	echo $i > src/${i}.c
+	echo $i > src/${i}.h
+	echo $i > html/${i}.html
+done
+bk extras | bk new $Q -
+bk commit $Q -ywhatever
+echo OK
+
+echo $N Exclude src subdirectory ....................................$NL
+bk changes -vr+ -x'src/*' -nd:GFILE: > GOT
+bk changes -vr+ -nd:GFILE: | grep -v src/ > WANT
+checkfiles GOT WANT
+echo OK
+
+echo $N Exclude man and html subdirectories .........................$NL
+bk changes -vr+ -x'man/*' -x'html/*' -nd:GFILE: > GOT
+bk changes -vr+ -nd:GFILE: | grep -v man/ | grep -v html/ > WANT
+checkfiles GOT WANT
+echo OK
+
+echo $N Exclude all .c and .h files .................................$NL
+bk changes -vr+ -x'*.[ch]' -nd:GFILE: > GOT
+bk changes -vr+ -nd:GFILE: | egrep -v '.*\.[ch]$' > WANT
+checkfiles GOT WANT
+echo OK
+
+echo $N Include html pages only .....................................$NL
+bk changes -vr+ -i'*.html' -nd:GFILE: | grep -v ChangeSet > GOT
+bk changes -vr+ -nd:GFILE: | egrep '.*\.html$' > WANT
+checkfiles GOT WANT
+echo OK
+
+echo $N Exclude all .c and .h files and include man pages ...........$NL
+bk changes -vr+ -x'*.[ch]' -i'*.1' -nd:GFILE: | grep -v ChangeSet > GOT
+bk changes -vr+ -nd:GFILE: | egrep -v '.*\.[ch]$' | egrep '.*\.1$' > WANT
+checkfiles GOT WANT
+echo OK
+
+echo $N Include all .c and .h files .................................$NL
+bk changes -vr+ -i'*.[ch]' -nd:GFILE: | grep -v ChangeSet > GOT
+bk changes -vr+ -nd:GFILE: | egrep '.*\.[ch]$' > WANT
+checkfiles GOT WANT
+echo OK
+
+echo $N Include all .c and .h files but exclude src/foo.c ...........$NL
+bk changes -vr+ -i'*.[ch]' -xsrc/foo.c -nd:GFILE: | grep -v ChangeSet > GOT
+bk changes -vr+ -nd:GFILE: | egrep '.*\.[ch]$' | grep -v src/foo.c > WANT
+checkfiles GOT WANT
+echo OK
+

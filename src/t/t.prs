@@ -42,6 +42,7 @@ bk prs -r1.5 -d':F:\n' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
+
 echo $N checking s file path name :PN: ..............................$NL
 bk undos > CMP1 <<EOF
 ======== FILE 1.5 ========
@@ -51,6 +52,7 @@ bk prs -r1.5 -d':PN:\n' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
+
 echo $N checking per delta path name :DPN: ..........................$NL
 bk undos > CMP1 <<EOF
 ======== FILE 1.1..1.5 ========
@@ -64,6 +66,7 @@ bk prs -r1.1..1.5 -d':DPN:\n' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
+
 echo $N checking comment :C: ........................................$NL
 bk undos > CMP1 <<EOF
 ======== FILE 1.1..1.5 ========
@@ -82,6 +85,7 @@ bk prs -r1.1..1.5 -d'$each(:C:){(:C:)\n}' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP[12]; exit 1; fi
 echo OK
+
 echo $N checking delta type :DT: ....................................$NL
 bk undos > CMP1 <<EOF
 ======== FILE 1.5 ========
@@ -91,6 +95,7 @@ bk prs -d ':DT:\n' -r1.5 FILE  >CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
+
 echo $N checking rev id :I: .........................................$NL
 bk undos > CMP1 <<EOF
 ======== FILE 1.3 ========
@@ -100,6 +105,7 @@ bk prs -d ':I:\n' -r1.3 FILE  >CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
+
 echo $N checking date :Dy: :Dm: :Dd: ................................$NL
 bk undos > CMP1 <<EOF
 ======== FILE 1.1 ========
@@ -132,6 +138,7 @@ bk prs -d':Dd:\n' -r1.4 FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
+
 echo $N checking time :T: ...........................................$NL
 bk undos > CMP1 <<EOF
 ======== FILE 1.1..1.5 ========
@@ -145,6 +152,7 @@ bk prs -r1.1..1.5 -d':T:\n' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
+
 echo $N checking user :P: ...........................................$NL
 bk undos > CMP1 <<EOF
 ======== FILE 1.1 ========
@@ -154,6 +162,7 @@ bk prs -r1.1 -d':P:\n' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
+
 echo $N checking host :HT: ..........................................$NL
 echo data > host
 bk ci -i host > ${DEV_NULL} 2>&1
@@ -180,6 +189,7 @@ bk prs -d':Li:\n' -r1.2 FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
+
 echo $N checking lines deleted :Ld: .................................$NL
 bk undos > CMP1 <<EOF
 ======== FILE 1.2 ========
@@ -189,6 +199,7 @@ bk prs -d':Ld:\n' -r1.2 FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
+
 echo $N checking lines unchanged :Lu: ...............................$NL
 bk undos > CMP1 <<EOF
 ======== FILE 1.3 ========
@@ -198,6 +209,7 @@ bk prs -d':Lu:\n' -r1.3 FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
+
 echo $N checking module name :M: ....................................$NL
 bk undos > CMP1 <<EOF
 ======== FILE 1.4 ========
@@ -207,6 +219,7 @@ bk prs -d':M:\n' -r1.4 FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
+
 echo $N checking UTC TIME :UTC: .....................................$NL
 bk undos > CMP1 <<EOF
 ======== FILE 1.5 ========
@@ -216,6 +229,7 @@ bk prs -d':UTC:\n' -r1.5 FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
+
 echo $N checking body :GB: ..........................................$NL
 bk undos > CMP1 <<EOF
 1.1
@@ -224,6 +238,7 @@ bk prs -r1.1 -h -d':GB:' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; sdiff -w80 CMP[12]; exit 1; fi
 echo OK
+
 echo $N checking default output......................................$NL
 bk undos > CMP1 <<EOF
 ======== FILE 1.1..1.5 ========
@@ -257,6 +272,7 @@ bk prs FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
+
 echo $N checking conditional prefix/suffix...........................$NL
 bk undos > CMP1 <<EOF
 ======== FILE 1.1..1.5 ========
@@ -275,6 +291,7 @@ bk prs -r1.1..1.5 -d'$each(:C:){:I: (:C:)\n}' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
+
 echo $N checking conditional with colon..............................$NL
 bk undos > CMP1 <<EOF
 ======== FILE 1.1..1.5 ========
@@ -293,6 +310,7 @@ bk prs -r1.1..1.5 -d'FOO $each(:C:){Comment: (:C:)\n}' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
+
 echo $N checking nested conditional..................................$NL
 bk undos > CMP1 <<EOF
 ======== FILE 1.1..1.5 ========
@@ -316,6 +334,7 @@ bk prs -r1.1..1.5 -d'$if(:DPN:){:DPN:\n$each(:C:){:I: (:C:)\n}}' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; sdiff -w80 CMP[12]; exit 1; fi
 echo OK
+
 echo $N another test for nested conditional..........................$NL
 bk co $Q -l FILE
 echo "new data" > FILE
@@ -332,6 +351,7 @@ EOF
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; sdiff -w80 CMP[12]; exit 1; fi
 echo OK
+
 bk stripdel $Q -r1.6 FILE
 echo $N checking escape of control symbol............................$NL
 bk undos > CMP1 <<EOF
@@ -342,6 +362,7 @@ bk prs -d'FOO \$if(PN){ BAR }\n' -r1.1 FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
+
 echo $N checking emulation of Sun prs................................$NL
 bk undos > CMP1 <<EOF
 D 1.5 98/01/30 17:45:17 ${USER} 5 4	00001/00000/00004
@@ -379,12 +400,14 @@ bk prs -h -r1.1.. -d':Dt:\t:Li:/:Ld:/:Lu:\nMRs:\n:MR:$if(:C:){COMMENTS:\n$each(:
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; sdiff -w80 CMP[12]; exit 1; fi
 echo OK
+
 echo $N checking expression in '$if'...................................$NL
 echo "$USER D 1.3 97/05/30 01:34:11 $USER 3 2" | bk undos > CMP1
 bk prs -h -d'$if(:I:=1.3){:P: :Dt:\n}' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
+
 echo $N checking expression in '$if !='................................$NL
 bk undos > CMP1 <<EOF
 ${USER} D 1.5 98/01/30 17:45:17 ${USER} 5 4
@@ -396,6 +419,7 @@ bk prs -h -d'$if(:I:!=1.3){:P: :Dt:\n}' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
+
 echo $N checking expression in '$if -gt'...............................$NL
 bk undos > CMP1 <<EOF
 ${USER} D 1.5 98/01/30 17:45:17 ${USER} 5 4
@@ -405,6 +429,7 @@ bk prs -h -d'$if(:UTC: -gt 19970601224809){:P: :Dt:\n}' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
+
 echo $N checking expression in '$if -lt'...............................$NL
 bk undos > CMP1 <<EOF
 ${USER} D 1.3 97/05/30 01:34:11 ${USER} 3 2
@@ -414,6 +439,7 @@ EOF
 bk prs -h -d'$if(:UTC: -lt 19970601224809){:P: :Dt:\n}' FILE > CMP2
 cmp -s CMP1 CMP2
 echo OK
+
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo $N checking descriptive text :FD: ..............................$NL
 echo dtext1 > dtext
@@ -427,6 +453,7 @@ bk prs -h -r+ -d'$each(:FD:){<(:FD:)>\n}' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; sdiff -w80 CMP[12]; exit 1; fi
 echo OK
+
 echo $N checking that libsfiles.a handles unterminated lines ........$NL
 rev=`echon 'ChangeSet|1.1' | bk -R prs -hn -d:REV: -`
 if [ $rev != "1.1" ]; then
@@ -434,6 +461,72 @@ if [ $rev != "1.1" ]; then
 	exit 1
 fi
 echo OK
+
 echo $N checking expression "\$if(:TAG:!='')" ..........................$NL
 bk prs -d"\$if(:TAG:!=''){:TAG:}" FILE > /dev/null || exit 1
+echo OK
+
+echo $N checking regular diffs ......................................$NL
+bk edit $Q FILE
+cat > FILE <<EOF
+main(int ac, char *av)
+{
+	some_function(1);
+	other_function(av[1]);
+}
+
+/*
+ * A function which takes an int.
+ */
+some_function(int x)
+{
+	/*
+	 * Comment to force us into this function name's context.
+	 */
+	printf("arg=%d\n", x);
+}
+
+/*
+ * A function which takes a string.
+ */
+other_function(char *s)
+{
+	/*
+	 * Comment to force us into this function name's context.
+	 */
+	printf("arg=%s\n", s);
+}
+EOF
+bk delta $Q -ywhatever FILE
+bk edit $Q FILE
+sed 's/printf(/fprintf(stderr, /' < FILE > XXX
+mv XXX FILE
+bk delta $Q -ywhatever FILE
+bk prs -r+ -h -d:DIFFS: FILE > GOT
+bk diffs -R+ -h FILE > WANT
+checkfiles WANT GOT
+echo OK
+
+echo $N checking unified diffs ......................................$NL
+# We need to remove the 1.7/FILE 2005-07-27 08:41:22 -07:00 header
+# because it can straddle a clock tick and be different by one second.
+bk prs -r1.8 -h -d:DIFFS_U: FILE | grep -v /FILE > GOT
+bk diffs -R1.8 -uh FILE | grep -v /FILE > WANT
+checkfiles WANT GOT
+echo OK
+
+echo $N checking unified / procedural diffs .........................$NL
+bk prs -r1.8 -h -d:DIFFS_UP: FILE | grep -v /FILE > GOT
+bk diffs -R1.8 -uph FILE | grep -v /FILE > WANT
+checkfiles WANT GOT
+grep -q '@@ some_function' GOT || {
+	echo should have noted the function name
+	cat GOT
+	exit 1
+}
+grep -q '@@ other_function' GOT || {
+	echo should have noted the other function name
+	cat GOT
+	exit 1
+}
 echo OK

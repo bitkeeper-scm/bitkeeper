@@ -126,6 +126,11 @@ backwards in time, i.e., most recent to least recent order.
 Produce html as output.  May not be combined with
 .BR \-d .
 .tp
+.OPTreq \-i pat
+Include information only from files matching
+.ARG pat
+pattern (see below).
+.tp
 .B \-k
 Produce a list of matching changeset keys, usually for scripts.
 Equivalent to 
@@ -179,7 +184,38 @@ Shows individual file change history as well as changeset history.
 Same as
 .B \-v
 except that each file's change history is followed by unified diffs
-for that change (using the :UDIFFS: keyword).
+for that change (using the :DIFFS_UP: keyword).
+.tp
+.OPTreq \-x pat
+Exclude information from files matching
+.ARG pat
+pattern (see below).
+.SH
+INCLUDE/EXCLUDE PROCESSING
+.LP
+Include and/or exclude patterns may be used to control which
+files are included in verbose reporting (-v/-vv, see above);
+There may be multiple include and/or exclude patterns.
+The patterns are a file glob the same as used by 
+.B bk ignore.
+Patterns are matched against the partial pathname from the root
+of the repository.
+If the partial pathname matches any of the exclude patterns then
+the file is skipped.
+If there are one or more include patterns but the partial
+pathname does not match any of the include patterns then the
+file is skipped.
+Exclude processing takes precedence over include processing.
+.LP
+When reporting information there can be ambiguity as to which name is used 
+for include/exclude processing because some files may have been moved 
+since the changeset in question.
+The include/exclude processing always applies to the file name as it was
+as of the changeset in question.
+For example, suppose you have a file that is currently deleted but
+at the time of the changeset was in \f(CWsrc/foo.c\fP.
+If you told the system to report \f(CWsrc/*\fP then the file will
+be in the set.
 .SH EXAMPLES
 Sample output:
 .DS

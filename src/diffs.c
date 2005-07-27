@@ -52,15 +52,15 @@ private int	nulldiff(char *name, u32 kind, u32 flags);
 int
 diffs_main(int ac, char **av)
 {
-	int	verbose = 0, rc, c;
-	int	empty = 0, errors = 0, mdiff = 0;
+	int	rc, c;
+	int	verbose = 0, empty = 0, errors = 0, mdiff = 0, force = 0;
 	u32	flags = DIFF_HEADER|SILENT, kind = DF_DIFF;
 	pid_t	pid = 0; /* lint */
 	char	*name;
 	char	*Rev = 0, *boundaries = 0;
 	RANGE_DECL;
 
-	while ((c = getopt(ac, av, "a;A;bBcC|d;ehHIl|m|nNpr|R|suvw")) != -1) {
+	while ((c = getopt(ac, av, "a;A;bBcC|d;efhHIl|m|nNpr|R|suvw")) != -1) {
 		switch (c) {
 		    case 'A':
 			flags |= GET_ALIGN;
@@ -74,6 +74,7 @@ diffs_main(int ac, char **av)
 		    case 'c': kind |= DF_CONTEXT; break;	/* doc 2.0 */
 		    case 'C': getMsg("diffs_C", 0, 0, stdout); exit(0);
 		    case 'e': empty = 1; break;			/* don't doc */
+		    case 'f': force = 1; break;
 		    case 'h': flags &= ~DIFF_HEADER; break;	/* doc 2.0 */
 		    case 'H':
 			flags |= DIFF_COMMENTS;
@@ -154,7 +155,7 @@ usage:			system("bk help -s diffs");
 		 * This is a big performance win.
 		 * 2005-06: Endpoints meaning extended for diffs -N.
 		 */
-		unless (things || boundaries || Rev || sfileRev()) {
+		unless (force || things || boundaries || Rev || sfileRev()) {
 			char	*gfile = sccs2name(name);
 
 			unless (writable(gfile) ||
@@ -246,7 +247,7 @@ usage:			system("bk help -s diffs");
 		 * XXX - I'm not sure this works with -C but we'll fix it in
 		 * the 3.1 tree.
 		 */
-		if (!things && !Rev && !IS_WRITABLE(s)) goto next;
+		if (!force && !things && !Rev && !IS_WRITABLE(s)) goto next;
 
 		/*
 		 * Optimize out the case where we have a locked file with

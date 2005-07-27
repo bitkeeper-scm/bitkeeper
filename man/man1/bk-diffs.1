@@ -79,6 +79,12 @@ Do context diffs.
 Instead of using revision[s] as the versions to diff, use the revision[s]
 specified by the date.
 .tp
+.B \-f
+Normally, bk diffs does not bother to diff against a checked out, read only
+file (unless a revision was specified).
+This option forces bk diffs to ignore the read only hint and to do the
+diff against all specified files.
+.tp
 .B \-h
 Don't print headers.
 .tp

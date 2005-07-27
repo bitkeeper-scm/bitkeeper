@@ -14733,10 +14733,15 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	case KW_DIFFS: /* DIFFS */
-	case KW_UDIFFS: /* UDIFFS */ {
-		int	kind =
-		    (kwval->kwnum == KW_DIFFS) ? DF_DIFF : DF_UNIFIED;
+	case KW_DIFFS_U: /* DIFFS_U */
+	case KW_DIFFS_UP: /* DIFFS_UP */ {
+		int	kind;
 
+		switch (kwval->kwnum) {
+		    case KW_DIFFS:	kind = DF_DIFF; break;
+		    case KW_DIFFS_U:	kind = DF_UNIFIED; break;
+		    case KW_DIFFS_UP:	kind = DF_UNIFIED|DF_GNUp; break;
+		}
 		if (d == s->tree) return (nullVal);
 		if (out) {
 			sccs_diffs(s, d->rev, d->rev, SILENT, kind, out);
@@ -14745,8 +14750,10 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 			FILE	*f;
 			char	buf[BUFSIZ];
 			
-			cmd = aprintf("bk diffs -%shR%s '%s'",
-			    kind == DF_DIFF ? "" : "u", d->rev, s->gfile);
+			cmd = aprintf("bk diffs -%s%shR%s '%s'",
+			    kind == DF_DIFF ? "" : "u",
+			    kind & DF_GNUp ? "p" : "",
+			    d->rev, s->gfile);
 			unless (f = popen(cmd, "r")) {
 				free(cmd);
 				return (nullVal);
