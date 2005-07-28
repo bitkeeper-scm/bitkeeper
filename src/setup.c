@@ -175,8 +175,11 @@ err:			unlink("BitKeeper/etc/config");
 	}
 	mdbm_close(m);
 
-	if (accept) eula_accept();
-	unless (licenseAccept(2)) exit(1);
+	if (accept) {
+		eula_accept(3, 0);
+	} else unless (eula_accept(2, 0)) {
+		exit(1);
+	}
 
 	lease_checking(0);
 	if (cset_setup(SILENT)) goto err;

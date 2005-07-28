@@ -73,7 +73,7 @@ usage:			system("bk help -s push");
 	r = remote_parse(av[optind]);
 	unless (r) goto usage;
 	if (opts.debug) r->trace = 1;
-	unless (licenseAccept(1)) {
+	unless (eula_accept(1, 0)) {
 		fprintf(stderr, "push: failed to accept license, aborting.\n");
 		exit(1);
 	}

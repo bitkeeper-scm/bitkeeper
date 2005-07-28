@@ -456,7 +456,7 @@ pull(char **av, opts opts, remote *r, char **envVar)
 			upgrade_msg);
 		exit(1);
 	}
-	unless (licenseAccept(1)) {
+	unless (eula_accept(1, 0)) {
 		fprintf(stderr, "pull: failed to accept license, aborting.\n");
 		exit(1);
 	}
