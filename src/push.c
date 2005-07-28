@@ -86,7 +86,7 @@ push_main(int ac, char **av)
 		fprintf(opts.out, "push: cannot find package root.\n");
 		exit(1);
 	}
-	unless (licenseAccept(1)) {
+	unless (eula_accept(1, 0)) {
 		fprintf(stderr, "push: failed to accept license, aborting.\n");
 		exit(1);
 	}

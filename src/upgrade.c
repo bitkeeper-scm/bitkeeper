@@ -161,7 +161,7 @@ usage:			system("bk help -s upgrade");
 		fprintf(stderr,
 "upgrade: A new version of BitKeeper is available (%s), but this\n"
 "version of BitKeeper (%s) is not marked as being obsoleted by the\n"
-"latested version so the upgrade is cancelled.  Rerun with the -f (force)\n"
+"latest version so the upgrade is cancelled.  Rerun with the -f (force)\n"
 "option to force the upgrade\n", data[3], bk_vers);
 		goto out;
 	}

@@ -29,7 +29,7 @@ echo OK
 # unfortunately we can't test that setting -tabwidth actually affects
 # the display, but we can at least test that the gc value is getting
 # passed on to the widgets
-echo $N 'Sanity check that gc(tabwidth) affects text widgets..........' $NL
+echo $N 'Sanity check that gc(tabwidth) affects text widgets..........'$NL
 mkdir $HERE/project/src
 cd $HERE/project/src
 echo 'set gc(tabwidth) 4' > $CONFIG
@@ -53,7 +53,7 @@ if [ $? -ne 0 ]; then
 fi
 echo "OK"
 
-echo $N 'Tool-specific setting overrides global setting...............' $NL
+echo $N Tool-specific setting overrides global setting...............$NL
 echo 'set gc(tabwidth) 4' > $CONFIG
 echo 'set gc(help.tabwidth) 6' > $CONFIG
 bk guitest helptool >$OUT 2>&1 <<'EOF'

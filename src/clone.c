@@ -2,6 +2,7 @@
  * Copyright (c) 2000-2002, Andrew Chang & Larry McVoy
  */    
 #include "bkd.h"
+#include "logging.h"
 
 /*
  * Do not change this sturct until we phase out bkd 1.2 support
@@ -70,8 +71,25 @@ clone_main(int ac, char **av)
 	 * Trigger note: it is meaningless to have a pre clone trigger
 	 * for the client side, since we have no tree yet
 	 */
-	r = remote_parse(av[optind]);
-	unless (r) usage();
+	unless (r = remote_parse(av[optind])) usage();
+
+	/*
+	 * Go prompt with the remotes license, it makes cleanup nicer.
+	 */
+	unless (r->host) {
+		char	here[MAXPATH];
+
+		getcwd(here, sizeof(here));
+		assert(r->path);
+		chdir(r->path);
+		unless (eula_accept(1, 0)) {
+			fprintf(stderr,
+			    "clone: failed to accept license, aborting.\n");
+			exit(1);
+		}
+		chdir(here);
+	}
+
 	if (link) {
 #ifdef WIN32
 		fprintf(stderr,
@@ -209,11 +227,26 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		goto done;
 	}
 
-	if ((lic = getenv("BKD_LICTYPE")) && !licenseAcceptOne(1, lic)) {
-		fprintf(stderr, "clone: failed to accept license '%s'\n",
-		    getenv("BKD_LICTYPE"));
-		disconnect(r, 2);
-		goto done;
+	if (lic = getenv("BKD_LICTYPE")) {
+		/*
+		 * Make sure we know about the remote's license.
+		 * XXX - even this isn't perfect, the remote side may have
+		 * a different version of "Pro".
+		 */
+		unless (eula_known(lic)) {
+			fprintf(stderr,
+			    "clone: remote BK has a different license: %s\n"
+			    "You will need to upgrade in order to proceed.\n",
+			    lic);
+			disconnect(r, 2);
+			goto done;
+		}
+		unless (eula_accept(1, lic)) {
+			fprintf(stderr,
+			    "clone: failed to accept license '%s'\n", lic);
+			disconnect(r, 2);
+			goto done;
+		}
 	}
 
 	unless (opts.quiet) {
@@ -280,7 +313,7 @@ clone2(opts opts, remote *r)
 	FILE	*f;
 	int	rc;
 
-	unless (licenseAccept(1)) {
+	unless (eula_accept(1, 0)) {
 		fprintf(stderr, "clone failed license accept check\n");
 		unlink("SCCS/s.ChangeSet");
 		return (-1);

@@ -1,4 +1,51 @@
-============================================================================
+===============================================================================
+Release notes for BitKeeper version 3.2.5.   These release notes cover
+the following topics:
+
+. Platforms
+. Upgrade Notes
+. New Features
+. Noteworthy bug fixes
+
+Platforms
+----------------------------------------------------------------------------
+We are dropping support for platforms for which we have no demand.
+
+    Tru64/Alpha
+    Linux/mipsel (Qube)
+    Linux/390 (zSeries)
+    Linux/Arm
+    Windows/ME
+    Windows/98
+    Windows/95
+    Windows/NT
+
+If your needs include any of those platforms please contact us so we can
+work with you to understand your needs and work out a solution.
+
+Upgrade notes
+----------------------------------------------------------------------------
+This should be a simple upgrade.  If you are running 3.2.4 you can
+upgrade using the 'bk upgrade' command.  For more information see 'bk
+help upgrade'.
+
+New Features
+----------------------------------------------------------------------------
+- bk export -dup (procedural diffs)
+- MacOS X is now fully supported with both Aqua and X11 guis included.
+
+Noteworthy bug fixes
+----------------------------------------------------------------------------
+- Fix installation problem that broke emacs vc mode
+- Fix problems with missing commands (renametool, support, unget)
+- Fix problem where 'bk revtool' would sometimes fail.
+- GUIs work on x86_64 again
+- Fix resolver bug related to filenames with spaces.
+- Fix interaction with Visual Studio .net which checked in files like ~sak*
+- Fix a bug in fm3tool where selecting a block also selected the next block
+- Fix a bug on Windows where bk patch misunderstood line endings
+
+===============================================================================
 Release notes for BitKeeper version 3.2.4.   These release notes cover
 the following topics:
 

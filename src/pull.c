@@ -503,7 +503,7 @@ pull(char **av, opts opts, remote *r, char **envVar)
 		exit(1);
 	}
 	gzip = opts.gzip && r->port;
-	unless (licenseAccept(1)) {
+	unless (eula_accept(1, 0)) {
 		fprintf(stderr, "pull: failed to accept license, aborting.\n");
 		exit(1);
 	}
