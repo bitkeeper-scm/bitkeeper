@@ -25,6 +25,8 @@ private struct {
 	char	*rev;		/* list this rev or range of revs */
 	char	**users;	/* lines list of users to include */
 	char	**notusers;	/* lines list of users to exclude */
+	char	**inc;		/* list of globs for files to include */
+	char	**exc;		/* list of globs for files to exclude */
 
 	/* not opts */
 	FILE	*f;		/* global for recursion */
@@ -73,7 +75,7 @@ changes_main(int ac, char **av)
 	 * XXX Warning: The 'changes' command can NOT use the -K
 	 * option.  that is used internally by the bkd command.
 	 */
-	while ((c = getopt(ac, av, "ac;Dd;efhkLmnqRr|tTu;U;v/;")) != -1) {
+	while ((c = getopt(ac, av, "ac;Dd;efhi;kLmnqRr|tTu;U;v/;x;")) != -1) {
 		unless (c == 'L' || c == 'R') {
 			if (optarg) {
 				nav[nac++] = aprintf("-%c%s", c, optarg);
@@ -93,6 +95,9 @@ changes_main(int ac, char **av)
 		    case 'e': opts.noempty = !opts.noempty; break;
 		    case 'f': opts.forwards = 1; break;
 		    case 'h': opts.html = 1; break;
+		    case 'i':
+			opts.inc = addLine(opts.inc, strdup(optarg));
+			break;
 		    /* case 'K': reserved */
 		    case 'k':
 			opts.keys = opts.all = 1;
@@ -114,6 +119,9 @@ changes_main(int ac, char **av)
 			opts.verbose =1 ;
 			break;
 		    case 'r': opts.rev = optarg; break;		/* doc 2.0 */
+		    case 'x':
+			opts.exc = addLine(opts.exc, strdup(optarg));
+			break;
 		    case '/': opts.search = search_parse(optarg);
 			      opts.doSearch = 1;
 			      break;
@@ -355,7 +363,7 @@ recurse(delta *d)
 		"\n" \
 		"$each(:C:){  (:C:)\n}" \
 		"$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}" \
-		"$if(:DPN:!=ChangeSet){:UDIFFS:}"
+		"$if(:DPN:!=ChangeSet){:DIFFS_UP:}"
 #define	HSPEC	"<tr bgcolor=lightblue><td font size=4>" \
 		"&nbsp;:Dy:-:Dm:-:Dd: :Th:::Tm:&nbsp;&nbsp;" \
 		":P:@:HT:&nbsp;&nbsp;:I:</td></tr>\n" \
@@ -815,12 +823,11 @@ cset(sccs *cset, FILE *f, char *dspec)
 	 */
 	list = NULL;
 	for (j = 0; j < m; ++j) {
+		int	done = 0;
+
 		ee = sorted[j];
 		sorted[j] = NULL;
-
-		/* print cset dspec */
 		e = ee->delta;
-		sccs_prsdelta(cset, e, flags, dspec, f);
 
 		/* get key list */
 		k.dptr = e->rev;
@@ -833,16 +840,43 @@ cset(sccs *cset, FILE *f, char *dspec)
 		EACH (keys) {
 			sccs	*s;
 			delta	*d;
-			char	*dkey;
+			char	*dkey, *path, *pipe;
 
 			dkey = separator(keys[i]);
 			assert(dkey);
 			*dkey++ = 0;
+			if (opts.inc || opts.exc) {
+				path = strchr(dkey, '|');
+				assert(path);
+				path++;
+				pipe = strchr(path, '|');
+				assert(pipe);
+				*pipe = 0;
+				if (opts.inc && 
+				    !match_globs(path, opts.inc, 0)) {
+					*pipe = '|';
+					continue;
+				}
+				if (opts.exc && match_globs(path, opts.exc, 0)){
+					*pipe = '|';
+					continue;
+				}
+				*pipe = '|';
+			}
 			s = sccs_keyinitAndCache(
 				keys[i], iflags, &idDB, graphDB, goneDB);
 			unless (s && !CSET(s)) continue;
 			d = sccs_findKey(s, dkey);
 			assert(d);
+
+			/* delay until we are going to print something else
+			 * in case the inc/exc filtered everything out.
+			 */
+			unless (done) {
+				/* print cset dspec */
+				sccs_prsdelta(cset, e, flags, dspec, f);
+				done = 1;
+			}
 
 			/*
 			 * CollectDelta() compute cset boundaries,

@@ -42,6 +42,10 @@ do
 		printf "%-10s %s\n" $host "`remote status`"
 		continue
 	    }
+	    test "X$@" = Xclean && {
+		printf "%-10s %s\n" $host "`remote clean`"
+		continue
+	    }
             trap "rm -f .[st].$host; exit" 0 1 2 3 15
 	    rcp $REMOTE ${host}:/build/.$REPO.$U
 	    /usr/bin/time -o .t.$host -f "%E" rsh $host \

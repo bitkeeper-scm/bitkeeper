@@ -589,6 +589,9 @@ cranksave: crank.sh remote.sh
 crankstatus: crank.sh remote.sh
 	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh LOG=$(LOG) bash crank.sh status
 
+crankclean: crank.sh remote.sh
+	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh LOG=$(LOG) bash crank.sh clean
+
 # It is OK if we fail to "rm build" on win32.
 # We can not "rm build" when we are running it.
 build: build.sh
