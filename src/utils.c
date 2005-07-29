@@ -879,10 +879,6 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 	fprintf(f, "putenv _BK_USER=%s\n", user);	/* XXX remove in 3.0 */
 	host = sccs_gethost();
 	fprintf(f, "putenv _BK_HOST=%s\n", host);
-	if (repo = repo_id()) {
-		fprintf(f, "putenv BK_REPO_ID=%s\n", repo);
-		free(repo);
-	}
 	if (lic = licenses_accepted()) {
 		fprintf(f, "putenv BK_ACCEPTED=%s\n", lic);
 		free(lic);
@@ -893,7 +889,7 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 
 	unless (flags & SENDENV_NOREPO) {
 		/*
-		 * This network connection is not necessarly run from
+		 * This network connection is not necessarily run from
 		 * a repository, so don't send information about the
 		 * current repository.  Clone is the primary example
 		 * of this.
@@ -901,6 +897,10 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 		assert(p);	/* We must be in a repo here */
 		fprintf(f, "putenv BK_LEVEL=%d\n", getlevel());
 		fprintf(f, "putenv BK_ROOT=%s\n", proj_root(p));
+		if (repo = repo_id()) {
+			fprintf(f, "putenv BK_REPO_ID=%s\n", repo);
+			free(repo);
+		}
 	}
 	unless (flags & SENDENV_NOLICENSE) {
 		/*
@@ -909,7 +909,7 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 		fprintf(f, "putenv BK_LICENSE=%s\n", lease_latestbkl());
 	}
 	/*
-	 * Send comma seperated list of client features so the bkd
+	 * Send comma separated list of client features so the bkd
 	 * knows which outputs are supported.
 	 *   lkey:1	use leasekey #1 to sign lease requests
 	 */

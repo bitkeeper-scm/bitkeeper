@@ -153,11 +153,7 @@ err:			unlink("BitKeeper/etc/config");
 	mdbm_close(m);
 
 	if (cset_setup(SILENT)) goto err;
-	if (accept) {
-		eula_accept(3, 0);
-	} else unless (eula_accept(2, 0)) {
-		exit(1);
-	}
+	unless (eula_accept(accept ? EULA_ACCEPT : EULA_PROMPT, 0)) exit(1);
 	s = sccs_init(s_config, SILENT);
 	assert(s);
 	sccs_delta(s, SILENT|NEWFILE, 0, 0, 0, 0);

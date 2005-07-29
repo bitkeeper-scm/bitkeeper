@@ -82,7 +82,7 @@ clone_main(int ac, char **av)
 		getcwd(here, sizeof(here));
 		assert(r->path);
 		chdir(r->path);
-		unless (eula_accept(1, 0)) {
+		unless (eula_accept(EULA_PROMPT, 0)) {
 			fprintf(stderr,
 			    "clone: failed to accept license, aborting.\n");
 			exit(1);
@@ -241,7 +241,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 			disconnect(r, 2);
 			goto done;
 		}
-		unless (eula_accept(1, lic)) {
+		unless (eula_accept(EULA_PROMPT, lic)) {
 			fprintf(stderr,
 			    "clone: failed to accept license '%s'\n", lic);
 			disconnect(r, 2);
@@ -313,7 +313,7 @@ clone2(opts opts, remote *r)
 	FILE	*f;
 	int	rc;
 
-	unless (eula_accept(1, 0)) {
+	unless (eula_accept(EULA_PROMPT, 0)) {
 		fprintf(stderr, "clone failed license accept check\n");
 		unlink("SCCS/s.ChangeSet");
 		return (-1);

@@ -2,6 +2,7 @@
  * Copyright (c) 2000, Andrew Chang & Larry McVoy
  */    
 #include "bkd.h"
+#include "logging.h"
 
 typedef	struct {
 	int	list;			/* -l: long listing */
@@ -503,7 +504,7 @@ pull(char **av, opts opts, remote *r, char **envVar)
 		exit(1);
 	}
 	gzip = opts.gzip && r->port;
-	unless (eula_accept(1, 0)) {
+	unless (eula_accept(EULA_PROMPT, 0)) {
 		fprintf(stderr, "pull: failed to accept license, aborting.\n");
 		exit(1);
 	}
