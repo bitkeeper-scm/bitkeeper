@@ -1326,6 +1326,12 @@ _install()
 	DEST="$1"
 	SRC=`bk bin`
 
+	__accept_eula || {
+		echo Installation aborted.
+		exit 1
+	}
+	bk _eula -a
+
 	OBK="$DEST.old$$"
 	NFILE=0
 	test -d "$DEST" && NFILE=`bk _find -type f "$DEST" | wc -l`
@@ -1400,10 +1406,15 @@ _install()
 	# symlinks to /usr/bin
 	if [ "$DOSYMLINKS" = "YES" ]
 	then
-	        LINKDIR=/usr/bin
-		test ! -w $LINKDIR && LINKDIR="$HOME/bin"
-	        test $VERBOSE = YES && echo "$DEST"/bk links "$LINKDIR"
-		"$DEST"/bk links "$LINKDIR"
+		if [ ! -w /usr/bin ]
+		then
+	        	test $VERBOSE = YES && echo "$DEST"/bk links /usr/bin
+			"$DEST"/bk links /usr/bin
+		else
+	        	test $VERBOSE = YES && {
+		    echo Skipping requested symlinks because is not writable.
+			}
+		fi
 	fi
 
 	if [ "X$OSTYPE" = "Xmsys" ]
@@ -1454,6 +1465,51 @@ _install()
 	    -s 'bk install' install@bitmover.com >/dev/null 2>&1 &
 
 	exit 0
+}
+
+# See if we know about a license and if so prompt for acceptance
+__accept_eula()
+{
+	bk _eula -u > /tmp/eula$$ 2>&1
+	DOTBK=`bk dotbk`
+	grep -q 'no license found, run this in a repository.' /tmp/eula$$ && {
+		cat <<EOF
+============================================================================
+
+No config file was found containing a license.  A license is required
+to install BitKeeper.
+
+If you have a BitKeeper repository with a valid license, retry the
+install from within that repository and it will use that license.
+
+If you have a license that was sent to you, place that license in 
+
+	$DOTBK/config
+
+and retry the install.
+
+If you have no license then contact BitMover to get one.
+
+BitMover can be reached at:
+   +1-650-872-9900 (international and California)
+   888-401-8808 (toll free in the US & Canada)
+during business hours (PST) or via email at sales@bitmover.com.
+
+============================================================================
+
+EOF
+		rm -f /tmp/eula$$
+		return 1
+	}
+	if [ -s /tmp/eula$$ ]
+	then	
+		bk prompt -f/tmp/eula$$ -n"I do not agree" -y"I agree" -tEULA
+		RET=$?
+	else
+		RET=0
+	fi
+	rm -f /tmp/eula$$
+	return $RET
 }
 
 # alias for only removed 'bk _sortmerge'

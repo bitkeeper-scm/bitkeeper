@@ -957,7 +957,7 @@ proc getLicenseData {} \
 	append BK_CONFIG "licsign2:$wizData(licsign2);"
 	append BK_CONFIG "licsign3:$wizData(licsign3);"
 	set env(BK_CONFIG) $BK_CONFIG
-	set licenseInfo(text) [exec bk _eula -s]
+	set licenseInfo(text) [exec bk _eula -u]
 }
 
 proc moreInfo {which} {

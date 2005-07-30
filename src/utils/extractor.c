@@ -30,6 +30,8 @@ extern unsigned int sfio_size;
 extern unsigned char sfio_data[];
 extern unsigned int data_size;
 extern unsigned char data_data[];
+extern unsigned int keys_size;
+extern unsigned char keys_data[];
 
 void	extract(char *, char *, u32, char *);
 char	*findtmp(void);
@@ -166,6 +168,7 @@ main(int ac, char **av)
 	/* The name "sfio.exe" should work on all platforms */
 	extract("sfio.exe", sfio_data, sfio_size, tmpdir);
 	extract("sfioball", data_data, data_size, tmpdir);
+	extract("config", keys_data, keys_size, tmpdir);
 
 	/* Unpack the sfio file, this creates ./bitkeeper/ */
 #ifdef	WIN32
@@ -178,6 +181,13 @@ main(int ac, char **av)
 		exit(1);
 	}
 	
+	/*
+	 * If the config file is a real one, move it in place.
+	 */
+	system("bk _eula -v < config > bitkeeper/config 2>/dev/null");
+	unlink("config");
+	unless (size("bitkeeper/config") > 0) unlink("bitkeeper/config");
+
 #ifdef	WIN32
 	mkdir("bitkeeper/gnu/tmp", 0777);
 #endif
@@ -275,6 +285,8 @@ extract(char *name, char *data, u32 size, char *dir)
 	}
 	close(fd);
 	gzclose(gz);
+	sprintf(buf, "%s/%s.zz", dir, name);
+	unlink(buf);
 }
 
 char *
@@ -367,6 +379,15 @@ findtmp(void)
 #else
 	return ("/tmp");
 #endif
+}
+
+int
+size(char *path)
+{
+	struct	stat sbuf;
+
+	if (stat(path, &sbuf)) return (0);
+	return ((int)sbuf.st_size);
 }
 
 int

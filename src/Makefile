@@ -539,6 +539,7 @@ gui-nowrap GUI-nowrap:
 	@cd gui && make nowrap
 
 install: installdir
+	tmp/bitkeeper/bk _eula -a
 	tmp/bitkeeper/bk install -d -f $(BINDIR)
 	-$(BINDIR)/bk links /usr/bin
 
