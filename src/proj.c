@@ -35,7 +35,7 @@ struct project {
 	char	*bkl;		/* key - filled from lease_bkl() */
 	u32	bklbits;	/* LIC_* from license_bklbits() */
 	int	casefolding;	/* mixed case file system: FOO == foo */
-	u8	leaseok:1;	/* if set, we've checked and have a lease */
+	int	leaseok;	/* if set, we've checked and have a lease */
 
 	/* internal state */
     	int	refcnt;
@@ -467,17 +467,19 @@ proj_bklbits(project *p)
 }
 
 /*
- * Return 0 the first time it is called for a repo and then 1 after that.
- * This is a helper found used by lease.c to determine if lease have already
- * been verified for this repository.
+ * Returns 1 if the repo has already been checked in this write mode
+ * and 0 otherwise.  It also saves the mark.
+ *
+ * This is a helper found used by lease.c to determine if lease have
+ * already been verified for this repository.
  */
 int
-proj_leaseChecked(project *p)
+proj_leaseChecked(project *p, int write)
 {
 	unless (p || (p = curr_proj())) return (0);
 
-	if (p->leaseok) return (1);
-	p->leaseok = 1;
+	if (p->leaseok == 1 + write) return (1);
+	p->leaseok = 1 + write;
 	return (0);
 }
 

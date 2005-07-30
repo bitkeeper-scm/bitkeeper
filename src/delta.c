@@ -315,12 +315,7 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 			errors |= 1;
 			continue;
 		}
-		unless (lease_writeReq(s->proj)) {
-			fprintf(stderr, "no license XXX\n");
-			exit(1);
-			// goto next; ?? (too many errors)
-		}
-			
+		lease_check(s->proj, s, 1);
 		if (df & DELTA_AUTO) {
 			if (HAS_SFILE(s)) {
 				df &= ~NEWFILE;

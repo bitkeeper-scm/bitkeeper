@@ -4191,7 +4191,7 @@ sccs_init(char *name, u32 flags)
 
 	signal(SIGPIPE, SIG_IGN); /* win32 platform does not have sigpipe */
 	if (sig_ignore() == 0) s->unblock = 1;
-	lease_check(s->proj, s);
+	lease_check(s->proj, s, 0);
  out:
 	return (s);
 }
@@ -14629,6 +14629,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		int	kind;
 
 		switch (kwval->kwnum) {
+		    default:
 		    case KW_DIFFS:	kind = DF_DIFF; break;
 		    case KW_DIFFS_U:	kind = DF_UNIFIED; break;
 		    case KW_DIFFS_UP:	kind = DF_UNIFIED|DF_GNUp; break;

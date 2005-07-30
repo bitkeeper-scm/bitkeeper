@@ -11,7 +11,7 @@ MDBM*		proj_config(project *p);
 char*		proj_cwd(void);
 void		proj_free(project *p);
 int		proj_isCaseFoldingFS(project *p);
-int		proj_leaseChecked(project *p);
+int		proj_leaseChecked(project *p, int write);
 char*		proj_md5rootkey(project *p);
 char*		proj_relpath(project *p, char *path);
 void		proj_reset(project *p);

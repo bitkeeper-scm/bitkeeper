@@ -135,12 +135,11 @@ again:
 	/* When eula_name() stopped returning bkl on invalid signatures
 	 * we needed this to force a good error message.
 	 */
-	if (mdbm_fetch_str(m, "license") &&
-	    streq(getlicense(m, config_path != 0), "none")) {
+	if (mdbm_fetch_str(m, "license") && !getlicense(m, config_path != 0)) {
 		if (config_path) {
 err:			unlink("BitKeeper/etc/config");
 			unlink("BitKeeper/log/cmd_log");
-			mdbm_close(m); 
+			mdbm_close(m);
 			sccs_unmkroot("."); /* reverse  sccs_mkroot */
 			unless (allowNonEmptyDir) {
 				chdir(here);
