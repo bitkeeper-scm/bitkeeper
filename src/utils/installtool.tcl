@@ -8,6 +8,7 @@ proc main {} \
 {
 	global	argv env options installer runtime
 
+	bk_init
 	initGlobals
 
 	if {[llength $argv] == 1} {
@@ -69,7 +70,7 @@ proc initGlobals {} \
 		set ::runtime(user) ""
 	}
 
-	if {![string equal $::runtime(user) "root"]} {
+	if {$::runtime(user) ne "root"} {
 		set home [homedir]
 		if {[file exists $home]} {
 			lappend ::runtime(places) \
@@ -194,6 +195,23 @@ proc homedir {} \
 	}
 }
 
+# XXX: config file *must* have fields in order 
+# (license, licsign1, licsign2, licsign3)
+proc readLicense {config} \
+{
+	set result [list]
+	set fd [open $config r]
+	while {[gets $fd line] != -1} {
+		foreach {field value} [split $line :] {
+			if {[string range $field 0 2] eq "lic"} {
+				lappend result [string trim $value]
+			}
+		}
+	}
+	catch {close $fd}
+	return $result
+}
+
 proc widgets {} \
 {
 	global tcl_platform
@@ -207,6 +225,8 @@ proc widgets {} \
 	    -icon bklogo
 
 	. buttonconfigure finish -text "Done"
+	# XXX: Creating two paths, one with EULA prompting and one
+	# without is so lame, but it's either that or understanding tkwizard
 	if {$tcl_platform(platform) eq "windows"} {
 		. add path new -steps \
 		    {Welcome PickPlace InstallDLLs Install Summary}
@@ -214,6 +234,12 @@ proc widgets {} \
 		    {Welcome PickPlace OverWrite InstallDLLs Install Summary}
 		. add path createDir -steps \
 		    {Welcome PickPlace CreateDir InstallDLLs Install Summary}
+		. add path new-lic -steps \
+		    {Welcome EULA PickPlace InstallDLLs Install Summary}
+		. add path existing-lic -steps \
+		    {Welcome EULA PickPlace OverWrite InstallDLLs Install Summary}
+		. add path createDir-lic -steps \
+		    {Welcome EULA PickPlace CreateDir InstallDLLs Install Summary}
 	} else {
 		. add path new -steps \
 		    {Welcome PickPlace Install Summary}
@@ -221,6 +247,12 @@ proc widgets {} \
 		    {Welcome PickPlace OverWrite Install Summary}
 		. add path createDir -steps \
 		    {Welcome PickPlace CreateDir Install Summary}
+		. add path new-lic -steps \
+		    {Welcome EULA PickPlace Install Summary}
+		. add path existing-lic -steps \
+		    {Welcome EULA PickPlace OverWrite Install Summary}
+		. add path createDir-lic -steps \
+		    {Welcome EULA PickPlace CreateDir Install Summary}
 	}
 	. configure -path new
 
@@ -241,6 +273,61 @@ proc widgets {} \
 		    set d [string map $map $::strings(Welcome.$p)]
 		    $this stepconfigure Welcome -description [unwrap $d]
 	    }
+
+	#-----------------------------------------------------------------------
+	. add step EULA \
+	    -title "End User License" \
+	    -description [wrap [getmsg setuptool_step_EndUserLicense]]
+
+	. stepconfigure EULA -body {
+
+		global wizData
+		global licenseInfo
+
+		set wizData(licenseAccept) ""
+		$this configure -defaultbutton next
+
+		set w [$this info workarea]
+
+		text $w.text \
+		    -yscrollcommand [list $w.vsb set] \
+		    -wrap none \
+		    -takefocus 0 \
+		    -bd 1 \
+		    -width 80
+		scrollbar $w.vsb -command [list $w.text yview] -bd 1
+		scrollbar $w.hsb -command [list $w.text.xview] -bd 1
+
+		frame $w.radioframe -bd 0
+		radiobutton $w.radioframe.accept \
+		    -text "I Agree" \
+		    -underline 2 \
+		    -variable wizData(licenseAccept) \
+		    -command [list $this configure -state normal] \
+		    -value 1
+		radiobutton $w.radioframe.dont \
+		    -text "I Do Not Agree" \
+		    -underline 2 \
+		    -variable wizData(licenseAccept) \
+		    -command [list $this configure -state pending] \
+		    -value 0
+
+		pack $w.radioframe.accept -side left
+		pack $w.radioframe.dont -side left -padx 8
+		pack $w.radioframe -side bottom -fill x -pady 1
+		pack $w.vsb -side right -fill y -expand n
+		pack $w.text -side left -fill both -expand y
+
+		$w.text insert end $licenseInfo(text)
+		$w.text configure -state disabled
+
+		if {$wizData(licenseAccept) == 1} {
+			$this configure -state normal
+		} else {
+			$this configure -state pending
+		}
+
+	}
 
 	#-----------------------------------------------------------------------
 	. add step PickPlace -title "Install Directory" 
@@ -319,9 +406,9 @@ proc widgets {} \
 		    -borderwidth 1 \
 		    -command {
 			    set f $::runtime(destination)
-			    if {[string equal $f ""]} {
+			    if {$f eq ""} {
 				    catch {exec id -un} id
-				    if {[string equal $id root]} {
+				    if {$id eq "root"} {
 					    set f "/"
 				    } else {
 					    set f ~
@@ -329,7 +416,7 @@ proc widgets {} \
 			    }
 				    
 			    set tmp [tk_chooseDirectory -initialdir $f]
-			    if {![string equal $tmp ""]} {
+			    if {$tmp ne ""} {
 				    set ::runtime(destination) $tmp
 				    set ::runtime(destinationRB) ""
 				    setDestination $tmp
@@ -628,35 +715,62 @@ proc widgets {} \
 		# this button may have been reconfigured to say "Install"..
 		%W buttonconfigure next -text "Next >"
 
-		set step [. cget -step]
+		switch -exact -- [. cget -step] {
+			PickPlace {
+				set ::runtime(destination) \
+				    [string trim $::runtime(destination)]
 
-		if {[string equal $step PickPlace]} {
-			set ::runtime(destination) \
-			    [string trim $::runtime(destination)]
-
-			if {[string equal $::runtime(destination) ""]} {
-				bell
-				break
-			}
-
-			if {[file exists $::runtime(destination)]} {
-				set result [validateDestination]
-				$widgets(dirStatus) configure \
-				    -text $result \
-				    -foreground red
-				if {![string equal $result ""]} {
+				if {$::runtime(destination) eq ""} {
 					bell
 					break
 				}
-			}
 
-			if {[file exists $::runtime(destination)] && \
-			    ![isempty $::runtime(destination)]} {
-				. configure -path existing
-			} else {
-				. configure -path new
+				if {[file exists $::runtime(destination)]} {
+					set result [validateDestination]
+					$widgets(dirStatus) configure \
+					    -text $result \
+					    -foreground red
+					if {$result ne ""} {
+						bell
+						break
+					}
+				}
+	
+				if {[file exists $::runtime(destination)] && \
+				    ![isempty $::runtime(destination)]} {
+					. configure -path existing
+				} else {
+					. configure -path new
+				}
 			}
-
+			EULA {exec bk _eula -a}
+			Welcome {
+				set bk_bin [exec bk bin]
+				set licfields [readLicense "$bk_bin/config"]
+				set license [lindex $licfields 0]
+				set licsign1 [lindex $licfields 1]
+				set licsign2 [lindex $licfields 2]
+				set licsign3 [lindex $licfields 3]
+				if {![checkLicense \
+				    $license \
+				    $licsign1 \
+				    $licsign2 \
+				    $licsign3]} {
+				        popupMessage -W \
+					    [getmsg "setuptool_invalid_license"]
+					break
+				}
+				set ::licenseInfo(text) [getEulaText \
+				    $license \
+				    $licsign1 \
+				    $licsign2 \
+				    $licsign3]
+				set ::path [. configure -path]
+				if {$::licenseInfo(text) ne ""} {
+					append ::path "-lic"
+				}
+				. configure -path $::path
+			}
 		}
 	}
 }
@@ -716,7 +830,7 @@ proc doCommand {args} \
 {
 	global pipeOutput errorCode strings
 
-	if {[string equal [lindex $args 0] -nolog]} {
+	if {[lindex $args 0] eq "-nolog"} {
 		set args [lrange $args 1 end]
 		set log 0
 	} else {
@@ -793,7 +907,7 @@ proc setDestination {dir} \
 {
 	global widgets
 
-	if {[string equal $dir ""]} {
+	if {$dir eq ""} {
 		$widgets(destinationButton) configure -state normal
 		$::widgets(dirStatus) configure -text ""
 		. configure -state pending

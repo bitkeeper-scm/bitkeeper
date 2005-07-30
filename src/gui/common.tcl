@@ -493,6 +493,80 @@ proc ::bgExec::readFile {f} \
 	}
 }
 
+proc popupMessage {args} \
+{
+	if {[llength $args] == 1} {
+		set option ""
+		set message [lindex $args 0]
+	} else {
+		set option [lindex $args 0]
+		set message [lindex $args 1]
+	}
+
+	# export BK_MSG_GEOM so the popup will show in the right
+	# place...
+	if {[winfo viewable .]} {
+		set x [expr {[winfo rootx .] + 40}]
+		set y [expr {[winfo rooty .] + 40}]
+		set ::env(BK_MSG_GEOM) "+${x}+${y}"
+	}
+
+	# Messages look better with a little whitespace attached
+	append message \n
+
+	# hopefully someday we'll turn the msgtool code into a library
+	# so we don't have to exec. For now, though, exec works just fine.
+	if {[info exists ::env(BK_TEST_HOME)]} {
+		# we are running in test mode; spew to stderr
+		puts stderr $message
+	} else {
+		eval exec bk msgtool $option \$message
+	}
+}
+
+# License Functions
+
+proc checkLicense {license licsign1 licsign2 licsign3} \
+{
+	
+	global dev_null
+
+	set f [open "|bk _eula -v > $dev_null" w]
+	puts $f "
+	    license: $license
+	    licsign1: $licsign1
+	    licsign2: $licsign2
+	    licsign3: $licsign3
+	"
+
+	set ::errorCode NONE
+	catch {close $f}
+		      
+	if {($::errorCode == "NONE") || 
+	    ([lindex $::errorCode 0] == "CHILDSTATUS" &&
+	     [lindex $::errorCode 2] == 0)} {
+		return 1
+	}
+	return 0
+}
+
+# Side Effect: the license data is put in the environment variable BK_CONFIG
+proc getEulaText {license licsign1 licsign2 licsign3} \
+{
+	global env
+
+	# need to override any config currently in effect...
+	set BK_CONFIG "logging:none;"
+	append BK_CONFIG "license:$license;"
+	append BK_CONFIG "licsign1:$licsign1;"
+	append BK_CONFIG "licsign2:$licsign2;"
+	append BK_CONFIG "licsign3:$licsign3;"
+	set env(BK_CONFIG) $BK_CONFIG
+	return [exec bk _eula -u]
+}
+
+# Aqua stuff
+
 proc AboutAqua {} \
 {
 	if {[winfo exists .aboutaqua]} {return}
