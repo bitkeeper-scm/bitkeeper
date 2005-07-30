@@ -220,6 +220,26 @@ BitMover can be reached at:
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
+#missing_config_install
+No config file was found containing a license.  A license is required
+to install BitKeeper.
+
+If you have a BitKeeper repository with a valid license, retry the
+install from within that repository and it will use that license.
+
+If you have a license that was sent to you, place that license in 
+
+	#BKARG#/config
+
+and retry the install.
+
+If you have no license then contact BitMover to get one.
+
+BitMover can be reached at:
+   +1-650-872-9900 (international and California)
+   888-401-8808 (toll free in the US & Canada)
+during business hours (PST) or via email at sales@bitmover.com.
+$
 #open_log_query
 This repository is configured to send changeset summaries to
 	#BKARG#
@@ -813,13 +833,13 @@ it is a contract and you must abide by the terms.  Your acceptance will be
 recorded on this machine and you will not be asked again.
 $
 #bkcl_new_preamble
-In order to use BitKeeper in this repository, you need to accept the
-BitKeeper Commercial license.  This license is what grants you the right
-to use BitKeeper on this repository.  Please read the license carefully,
-it is a contract and you must abide by the terms.  The license text below
-does not include all of the referenced "schedules" because these include
-pricing information negotiated by your management.  Your acceptance will
-be recorded on this machine and you will not be asked again.
+In order to use the BitKeeper software, you must accept the BitKeeper
+Commercial license.  This license grants you specific rights and also
+contains various restrictions.  Please read the license carefully,
+it is a contract and you must abide by the terms.
+
+Your acceptance will be recorded on this machine and you will not be
+asked again during the term of this license.
 $
 #bkl_upgrade_preamble
 The BitKeeper license required for the use of this repository has changed

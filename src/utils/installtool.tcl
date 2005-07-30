@@ -22,7 +22,14 @@ proc main {} \
 	if {[file exists bitkeeper/gui/images/bk16.ico]} {
 		catch {wm iconbitmap . bitkeeper/gui/images/bk16.ico}
 	}
-	centerWindow . 500 350
+	set width [winfo screenwidth .]
+	if {$width <= 1024} { 
+		centerWindow . 500 350
+	} elseif {$width <= 1280} { 
+		centerWindow . 600 375
+	} else {
+		centerWindow . 700 400
+	}
 	. configure -step Welcome
 	. show
 	wm deiconify .
@@ -195,23 +202,6 @@ proc homedir {} \
 	}
 }
 
-# XXX: config file *must* have fields in order 
-# (license, licsign1, licsign2, licsign3)
-proc readLicense {config} \
-{
-	set result [list]
-	set fd [open $config r]
-	while {[gets $fd line] != -1} {
-		foreach {field value} [split $line :] {
-			if {[string range $field 0 2] eq "lic"} {
-				lappend result [string trim $value]
-			}
-		}
-	}
-	catch {close $fd}
-	return $result
-}
-
 proc widgets {} \
 {
 	global tcl_platform
@@ -223,6 +213,8 @@ proc widgets {} \
 	    -title "BK Installation Assistant" \
 	    -sequential 1 \
 	    -icon bklogo
+
+	initFonts
 
 	. buttonconfigure finish -text "Done"
 	# XXX: Creating two paths, one with EULA prompting and one
@@ -283,6 +275,7 @@ proc widgets {} \
 
 		global wizData
 		global licenseInfo
+		global fixedFont
 
 		set wizData(licenseAccept) ""
 		$this configure -defaultbutton next
@@ -290,6 +283,8 @@ proc widgets {} \
 		set w [$this info workarea]
 
 		text $w.text \
+		    -background white \
+		    -font $fixedFont \
 		    -yscrollcommand [list $w.vsb set] \
 		    -wrap none \
 		    -takefocus 0 \
@@ -297,6 +292,10 @@ proc widgets {} \
 		    -width 80
 		scrollbar $w.vsb -command [list $w.text yview] -bd 1
 		scrollbar $w.hsb -command [list $w.text.xview] -bd 1
+		bind all <Next> "$w.text yview scroll 1 pages"
+		bind all <Prior> "$w.text yview scroll -1 pages"
+		bind all <Down> "$w.text yview scroll 1 units"
+		bind all <Up> "$w.text yview scroll -1 units"
 
 		frame $w.radioframe -bd 0
 		radiobutton $w.radioframe.accept \
@@ -314,7 +313,7 @@ proc widgets {} \
 
 		pack $w.radioframe.accept -side left
 		pack $w.radioframe.dont -side left -padx 8
-		pack $w.radioframe -side bottom -fill x -pady 1
+		pack $w.radioframe -side bottom -fill x -pady 5
 		pack $w.vsb -side right -fill y -expand n
 		pack $w.text -side left -fill both -expand y
 
@@ -658,11 +657,13 @@ proc widgets {} \
 	    }
 
 	. stepconfigure Summary -body {
+		global	fixedFont
+
 		set w [$this info workarea]
 
 		set ::widgets(log) $w.log
 		text $w.log \
-		    -font {Helvetica 11} \
+		    -font $fixedFont \
 		    -wrap none \
 		    -yscrollcommand [list $w.vsb set] \
 		    -xscrollcommand [list $w.hsb set] \
@@ -677,6 +678,11 @@ proc widgets {} \
 		    -borderwidth 1 \
 		    -orient horizontal \
 		    -command [list $w.log xview]
+
+		bind all <Next> "$w.log yview scroll 1 pages"
+		bind all <Prior> "$w.log yview scroll -1 pages"
+		bind all <Down> "$w.log yview scroll 1 units"
+		bind all <Up> "$w.log yview scroll -1 units"
 
 		$w.log tag configure error -foreground red
 		$w.log tag configure skipped -foreground blue
@@ -745,27 +751,14 @@ proc widgets {} \
 			}
 			EULA {exec bk _eula -a}
 			Welcome {
-				set bk_bin [exec bk bin]
-				set licfields [readLicense "$bk_bin/config"]
-				set license [lindex $licfields 0]
-				set licsign1 [lindex $licfields 1]
-				set licsign2 [lindex $licfields 2]
-				set licsign3 [lindex $licfields 3]
-				if {![checkLicense \
-				    $license \
-				    $licsign1 \
-				    $licsign2 \
-				    $licsign3]} {
-				        popupMessage -W \
-					    [getmsg "setuptool_invalid_license"]
+				if {[catch { set b [exec bk _eula -u 2>&1] }]} {
+					set d [exec bk dotbk]
+					set b [getmsg missing_config_install $d]
+				        popupMessage -E $b
 					break
 				}
-				set ::licenseInfo(text) [getEulaText \
-				    $license \
-				    $licsign1 \
-				    $licsign2 \
-				    $licsign3]
 				set ::path [. configure -path]
+				set ::licenseInfo(text) $b
 				if {$::licenseInfo(text) ne ""} {
 					append ::path "-lic"
 				}
@@ -1076,10 +1069,10 @@ set strings(Welcome.unix) {
 	Thank you for installing BitKeeper.  
 
 	This installer will install BitKeeper in the location of your
-	choosing.  We recommend that you choose to install the
-	BitKeeper binaries in a subdirectory named "bitkeeper" so that
-	it is easy to do a manual uninstall if you wish. The installer
-	will also create some symlinks, if you are running as root,
+	choosing.  We recommend that you choose to install the BitKeeper
+	binaries in a subdirectory named "bitkeeper" so that it is easy to
+	do a manual uninstall if you wish. The installer will also create
+	some symlinks, if you are running with sufficient privileges,
 	from %B to that directory to provide SCCS compatible
 	interfaces for make, patch, emacs, etc.
 

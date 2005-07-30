@@ -1473,31 +1473,7 @@ __accept_eula()
 	bk _eula -u > /tmp/eula$$ 2>&1
 	DOTBK=`bk dotbk`
 	grep -q 'no license found, run this in a repository.' /tmp/eula$$ && {
-		cat <<EOF
-============================================================================
-
-No config file was found containing a license.  A license is required
-to install BitKeeper.
-
-If you have a BitKeeper repository with a valid license, retry the
-install from within that repository and it will use that license.
-
-If you have a license that was sent to you, place that license in 
-
-	$DOTBK/config
-
-and retry the install.
-
-If you have no license then contact BitMover to get one.
-
-BitMover can be reached at:
-   +1-650-872-9900 (international and California)
-   888-401-8808 (toll free in the US & Canada)
-during business hours (PST) or via email at sales@bitmover.com.
-
-============================================================================
-
-EOF
+		bk prompt -e -p"bk getmsg missing_config_install `bk dotbk`" 
 		rm -f /tmp/eula$$
 		return 1
 	}
