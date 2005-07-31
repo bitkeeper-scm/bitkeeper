@@ -202,9 +202,80 @@ proc homedir {} \
 	}
 }
 
+proc validateLicense {args} \
+{
+	# This doesn't validate the license per se,
+	# only whether the user has entered one. Validation
+	# is expensive, so we'll only do it when the user
+	# presses "Next"
+	if {$::wizData(license)  eq "" ||
+	    $::wizData(licsign1) eq "" ||
+	    $::wizData(licsign2) eq "" ||
+	    $::wizData(licsign3) eq "" ||
+	    (![string match "BKL*" $::wizData(license)])} {
+		. configure -state pending
+	} else {
+		. configure -state normal
+	}
+}
+
+# This not only sets the focus, but attempts to put the cursor in
+# the right place
+proc focusEntry {w} \
+{
+	catch {
+		$w selection range 0 end
+		$w icursor end
+		focus $w
+	}
+}
+
+proc parseLicenseData {type} \
+{
+	global wizData
+	set data ""
+
+	if {$type == "clipboard"} {
+		# this is experimental... It needs a lot of testing on
+		# our supported platforms before we bless it. 
+		if {[catch {selection get -displayof . -selection PRIMARY} data]} {
+			catch {clipboard get} data
+		}
+
+	} elseif {$type == "file"} {
+		set types {
+			{{All Files} *}
+			{{License Files} {.lic}}
+			{{Text Files} {.txt}}
+		}
+		set file [tk_getOpenFile -filetypes $types -parent .]
+		if {$file != "" && 
+		    [file exists $file] && 
+		    [file readable $file]} {
+
+			catch {
+				set f [open $file r]
+				set data [read $f]
+				close $f
+			}
+		}
+	}
+
+	foreach line [split $data \n] {
+		if {[regexp {license: *(BKL.+)$} $line -> value]} {
+			set wizData(license) $value
+		}
+		if {[regexp {(licsign[123]): *(.*)$} $line -> key value]} {
+			set wizData($key) $value
+		}
+	}
+}
+
+
 proc widgets {} \
 {
 	global tcl_platform
+	global paths
 
 	option add *Entry*BorderWidth            1 startupFile
 	option add *WizSeparator*stripe          #00008b startupFile
@@ -217,34 +288,25 @@ proc widgets {} \
 	initFonts
 
 	. buttonconfigure finish -text "Done"
-	# XXX: Creating two paths, one with EULA prompting and one
-	# without is so lame, but it's either that or understanding tkwizard
+
 	if {$tcl_platform(platform) eq "windows"} {
-		. add path new -steps \
-		    {Welcome PickPlace InstallDLLs Install Summary}
-		. add path existing -steps \
+		set paths(new) {Welcome PickPlace InstallDLLs Install Summary}
+		. add path new -steps $paths(new)
+		set paths(existing) \
 		    {Welcome PickPlace OverWrite InstallDLLs Install Summary}
-		. add path createDir -steps \
+		. add path existing -steps $paths(existing)
+		set paths(createDir) \
 		    {Welcome PickPlace CreateDir InstallDLLs Install Summary}
-		. add path new-lic -steps \
-		    {Welcome EULA PickPlace InstallDLLs Install Summary}
-		. add path existing-lic -steps \
-		    {Welcome EULA PickPlace OverWrite InstallDLLs Install Summary}
-		. add path createDir-lic -steps \
-		    {Welcome EULA PickPlace CreateDir InstallDLLs Install Summary}
+		. add path createDir -steps $paths(createDir)
 	} else {
-		. add path new -steps \
-		    {Welcome PickPlace Install Summary}
-		. add path existing -steps \
+		set paths(new) {Welcome PickPlace Install Summary}
+		. add path new -steps $paths(new)
+		set paths(existing) \
 		    {Welcome PickPlace OverWrite Install Summary}
-		. add path createDir -steps \
+		. add path existing -steps $paths(existing)
+		set paths(createDir) \
 		    {Welcome PickPlace CreateDir Install Summary}
-		. add path new-lic -steps \
-		    {Welcome EULA PickPlace Install Summary}
-		. add path existing-lic -steps \
-		    {Welcome EULA PickPlace OverWrite Install Summary}
-		. add path createDir-lic -steps \
-		    {Welcome EULA PickPlace CreateDir Install Summary}
+		. add path createDir -steps $paths(createDir)
 	}
 	. configure -path new
 
@@ -267,6 +329,73 @@ proc widgets {} \
 	    }
 
 	#-----------------------------------------------------------------------
+	. add step LicenseKey \
+	    -title "Commercial License" \
+	    -description [wrap [getmsg setuptool_step_LicenseKey]]
+
+	. stepconfigure LicenseKey -body {
+		global wizData
+		global gc
+
+		$this configure -defaultbutton next
+
+		set w [$this info workarea]
+
+		set ::widgets(license)  $w.license
+		set ::widgets(licsign1) $w.licsign1Entry
+		set ::widgets(licsign2) $w.licsign2Entry
+		set ::widgets(licsign3) $w.licsign3Entry
+
+		set BKSLATEGRAY1	#deeaf4
+		label $w.keyLabel -text "License Key:"
+		entry $w.keyEntry  -textvariable wizData(license) \
+		    -background $BKSLATEGRAY1
+		button $w.fileButton -text "From file..." \
+		    -command {parseLicenseData file}
+		label $w.licsign1Label -text "Key Signature #1:"
+		entry $w.licsign1Entry -textvariable wizData(licsign1) \
+		    -background $BKSLATEGRAY1
+		label $w.licsign2Label -text "Key Signature #2:"
+		entry $w.licsign2Entry -textvariable wizData(licsign2) \
+		    -background $BKSLATEGRAY1
+		label $w.licsign3Label -text "Key Signature #3:"
+		entry $w.licsign3Entry -textvariable wizData(licsign3) \
+		    -background $BKSLATEGRAY1
+
+		grid $w.keyLabel       -row 0 -column 0 -sticky e
+		grid $w.keyEntry       -row 0 -column 1 -sticky ew -pady 2
+		grid $w.fileButton     -row 0 -column 2 -sticky w
+		grid $w.licsign1Label  -row 1 -column 0 -sticky e 
+		grid $w.licsign1Entry  -row 1 -column 1 -sticky ew -pady 2
+		grid $w.licsign2Label  -row 2 -column 0 -sticky e
+		grid $w.licsign2Entry  -row 2 -column 1 -sticky ew -pady 2
+		grid $w.licsign3Label  -row 3 -column 0 -sticky e
+		grid $w.licsign3Entry  -row 3 -column 1 -sticky ew -pady 3
+
+		grid columnconfigure $w 0 -weight 0
+		grid columnconfigure $w 1 -weight 1
+		grid columnconfigure $w 2 -weight 0
+		grid rowconfigure $w 0 -weight 0
+		grid rowconfigure $w 1 -weight 0
+		grid rowconfigure $w 2 -weight 0
+		grid rowconfigure $w 3 -weight 0
+		grid rowconfigure $w 4 -weight 1
+
+		bind $w.keyEntry <<Paste>> {parseLicenseData clipboard}
+
+		# running the validate command will set the wizard buttons to 
+		# the proper state; this is mostly useful if they enter
+		# a license, go to the next step, then come back.
+		validateLicense
+		trace variable wizData(license) w [list validateLicense $w]
+		trace variable wizData(licsign1) w [list validateLicense $w]
+		trace variable wizData(licsign2) w [list validateLicense $w]
+		trace variable wizData(licsign3) w [list validateLicense $w]
+
+		after idle [list focusEntry $w.keyEntry]
+	}
+
+	#-----------------------------------------------------------------------
 	. add step EULA \
 	    -title "End User License" \
 	    -description [wrap [getmsg setuptool_step_EndUserLicense]]
@@ -284,6 +413,7 @@ proc widgets {} \
 
 		text $w.text \
 		    -background white \
+		    -relief sunken \
 		    -font $fixedFont \
 		    -yscrollcommand [list $w.vsb set] \
 		    -wrap none \
@@ -750,19 +880,76 @@ proc widgets {} \
 				}
 			}
 			EULA {exec bk _eula -a}
-			Welcome {
-				if {[catch { set b [exec bk _eula -u 2>&1] }]} {
-					set d [exec bk dotbk]
-					set b [getmsg missing_config_install $d]
-				        popupMessage -E $b
+			LicenseKey {
+				set ::path [. configure -path]
+				if {![checkLicense \
+				    $::wizData(license) \
+				    $::wizData(licsign1) \
+				    $::wizData(licsign2) \
+				    $::wizData(licsign3)]} {
+				        popupMessage -W \
+					    [getmsg "setuptool_invalid_license"]
 					break
 				}
+				set ::licenseInfo(text) [getEulaText \
+				    $::wizData(license) \
+				    $::wizData(licsign1) \
+				    $::wizData(licsign2) \
+				    $::wizData(licsign3)]
+				if {$::licenseInfo(text) ne ""} {
+					# Insert EULA step into path
+					set curStep [. configure -step]
+					set i [lsearch -exact \
+					    $::paths($::path) $curStep]
+					incr i
+					set ::paths($::path) \
+					    [linsert $::paths($::path) $i EULA]
+					# Don't know how to modify a path, so
+					# I just delete it and re-add it
+					. delete path $::path
+					. add path $::path -steps \
+					    $::paths($::path)
+					. configure -path $::path
+					. configure -step $curStep
+				}
+			}
+			Welcome {
 				set ::path [. configure -path]
+				if {[catch { set b [exec bk _eula -u 2>&1] }]} {
+					# No license found, so prompt for it
+					set curStep [. configure -step]
+					set i [lsearch -exact \
+					    $::paths($::path) $curStep]
+					incr i
+					set ::paths($::path) \
+					    [linsert $::paths($::path) \
+					    $i LicenseKey]
+					# Don't know how to modify a path, so
+					# I just delete it and re-add it
+					. delete path $::path
+					. add path $::path -steps \
+					    $::paths($::path)
+					. configure -path $::path
+					. configure -step LicenseKey
+					break
+				}
 				set ::licenseInfo(text) $b
 				if {$::licenseInfo(text) ne ""} {
-					append ::path "-lic"
+					# Insert EULA step into path
+					set curStep [. configure -step]
+					set i [lsearch -exact \
+					    $::paths($::path) $curStep]
+					incr i
+					set ::paths($::path) \
+					    [linsert $::paths($::path) $i EULA]
+					# Don't know how to modify a path, so
+					# I just delete it and re-add it
+					. delete path $::path
+					. add path $::path -steps \
+					    $::paths($::path)
+					. configure -path $::path
+					. configure -step $curStep
 				}
-				. configure -path $::path
 			}
 		}
 	}
