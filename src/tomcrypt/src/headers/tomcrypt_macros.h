@@ -10,7 +10,7 @@
 /* this is the "32-bit at least" data type 
  * Re-define it to suit your platform but it must be at least 32-bits 
  */
-#if defined(__x86_64__)
+#if defined(__x86_64__) || (defined(__sparc__) && defined(__arch64__))
    typedef unsigned ulong32;
 #else
    typedef unsigned long ulong32;
@@ -360,10 +360,13 @@ static inline unsigned long ROR64c(unsigned long word, const int i)
 
 #endif
 
-#undef MAX
-#undef MIN
-#define MAX(x, y) ( ((x)>(y))?(x):(y) )
-#define MIN(x, y) ( ((x)<(y))?(x):(y) )
+#ifndef MAX
+   #define MAX(x, y) ( ((x)>(y))?(x):(y) )
+#endif
+
+#ifndef MIN
+   #define MIN(x, y) ( ((x)<(y))?(x):(y) )
+#endif
 
 /* extract a byte portably */
 #ifdef _MSC_VER
@@ -373,5 +376,5 @@ static inline unsigned long ROR64c(unsigned long word, const int i)
 #endif   
 
 /* $Source: /cvs/libtom/libtomcrypt/src/headers/tomcrypt_macros.h,v $ */
-/* $Revision: 1.7 $ */
-/* $Date: 2005/05/05 14:35:58 $ */
+/* $Revision: 1.9 $ */
+/* $Date: 2005/07/30 01:38:49 $ */

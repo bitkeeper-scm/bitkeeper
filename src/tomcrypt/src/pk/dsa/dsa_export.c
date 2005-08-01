@@ -47,19 +47,19 @@ int dsa_export(unsigned char *out, unsigned long *outlen, int type, dsa_key *key
    if (type == PK_PRIVATE) {
       return der_encode_sequence_multi(out, outlen,
                                  LTC_ASN1_BIT_STRING,   1UL, flags,
-                                 LTC_ASN1_INTEGER,      1UL, &key->g,
-                                 LTC_ASN1_INTEGER,      1UL, &key->p,
-                                 LTC_ASN1_INTEGER,      1UL, &key->q,
-                                 LTC_ASN1_INTEGER,      1UL, &key->y,
-                                 LTC_ASN1_INTEGER,      1UL, &key->x,
+                                 LTC_ASN1_INTEGER,      1UL, key->g,
+                                 LTC_ASN1_INTEGER,      1UL, key->p,
+                                 LTC_ASN1_INTEGER,      1UL, key->q,
+                                 LTC_ASN1_INTEGER,      1UL, key->y,
+                                 LTC_ASN1_INTEGER,      1UL, key->x,
                                  LTC_ASN1_EOL,          0UL, NULL);
    } else {
       return der_encode_sequence_multi(out, outlen,
                                  LTC_ASN1_BIT_STRING,   1UL, flags,
-                                 LTC_ASN1_INTEGER,      1UL, &key->g,
-                                 LTC_ASN1_INTEGER,      1UL, &key->p,
-                                 LTC_ASN1_INTEGER,      1UL, &key->q,
-                                 LTC_ASN1_INTEGER,      1UL, &key->y,
+                                 LTC_ASN1_INTEGER,      1UL, key->g,
+                                 LTC_ASN1_INTEGER,      1UL, key->p,
+                                 LTC_ASN1_INTEGER,      1UL, key->q,
+                                 LTC_ASN1_INTEGER,      1UL, key->y,
                                  LTC_ASN1_EOL,          0UL, NULL);
    }
 }
@@ -68,5 +68,5 @@ int dsa_export(unsigned char *out, unsigned long *outlen, int type, dsa_key *key
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/dsa/dsa_export.c,v $ */
-/* $Revision: 1.6 $ */
-/* $Date: 2005/06/03 19:24:31 $ */
+/* $Revision: 1.7 $ */
+/* $Date: 2005/07/18 02:36:47 $ */

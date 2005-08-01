@@ -18,9 +18,9 @@ struct ltc_prng_descriptor prng_descriptor[TAB_SIZE] = {
 { NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL }
 };
 
-LTC_MUTEX_GLOBAL(ltc_prng_mutex);
+LTC_MUTEX_GLOBAL(ltc_prng_mutex)
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/misc/crypt/crypt_prng_descriptor.c,v $ */
-/* $Revision: 1.5 $ */
-/* $Date: 2005/06/19 18:00:28 $ */
+/* $Revision: 1.6 $ */
+/* $Date: 2005/07/30 23:13:01 $ */

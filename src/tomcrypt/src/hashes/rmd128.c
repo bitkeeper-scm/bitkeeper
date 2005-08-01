@@ -37,7 +37,8 @@ const struct ltc_hash_descriptor rmd128_desc =
     &rmd128_init,
     &rmd128_process,
     &rmd128_done,
-    &rmd128_test
+    &rmd128_test,
+    NULL
 };
 
 /* the four basic functions F(), G() and H() */
@@ -405,5 +406,5 @@ int rmd128_test(void)
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/hashes/rmd128.c,v $ */
-/* $Revision: 1.6 $ */
-/* $Date: 2005/05/23 02:42:07 $ */
+/* $Revision: 1.7 $ */
+/* $Date: 2005/07/16 19:56:37 $ */

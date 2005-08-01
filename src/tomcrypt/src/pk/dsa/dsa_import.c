@@ -33,7 +33,7 @@ int dsa_import(const unsigned char *in, unsigned long inlen, dsa_key *key)
    LTC_ARGCHK(key != NULL);
 
    /* init key */
-   if (mp_init_multi(&key->p, &key->g, &key->q, &key->x, &key->y, NULL) != MP_OKAY) {
+   if (mp_init_multi(&key->p, &key->g, &key->q, &key->x, &key->y, NULL) != CRYPT_OK) {
       return CRYPT_MEM;
    }
 
@@ -47,11 +47,11 @@ int dsa_import(const unsigned char *in, unsigned long inlen, dsa_key *key)
    if (flags[0] == 1) {
       if ((err = der_decode_sequence_multi(in, inlen,
                                  LTC_ASN1_BIT_STRING,   1UL, flags,
-                                 LTC_ASN1_INTEGER,      1UL, &key->g,
-                                 LTC_ASN1_INTEGER,      1UL, &key->p,
-                                 LTC_ASN1_INTEGER,      1UL, &key->q,
-                                 LTC_ASN1_INTEGER,      1UL, &key->y,
-                                 LTC_ASN1_INTEGER,      1UL, &key->x,
+                                 LTC_ASN1_INTEGER,      1UL, key->g,
+                                 LTC_ASN1_INTEGER,      1UL, key->p,
+                                 LTC_ASN1_INTEGER,      1UL, key->q,
+                                 LTC_ASN1_INTEGER,      1UL, key->y,
+                                 LTC_ASN1_INTEGER,      1UL, key->x,
                                  LTC_ASN1_EOL,          0UL, NULL)) != CRYPT_OK) {
          goto error;
       }
@@ -59,31 +59,31 @@ int dsa_import(const unsigned char *in, unsigned long inlen, dsa_key *key)
    } else {
       if ((err = der_decode_sequence_multi(in, inlen,
                                  LTC_ASN1_BIT_STRING,   1UL, flags,
-                                 LTC_ASN1_INTEGER,      1UL, &key->g,
-                                 LTC_ASN1_INTEGER,      1UL, &key->p,
-                                 LTC_ASN1_INTEGER,      1UL, &key->q,
-                                 LTC_ASN1_INTEGER,      1UL, &key->y,
+                                 LTC_ASN1_INTEGER,      1UL, key->g,
+                                 LTC_ASN1_INTEGER,      1UL, key->p,
+                                 LTC_ASN1_INTEGER,      1UL, key->q,
+                                 LTC_ASN1_INTEGER,      1UL, key->y,
                                  LTC_ASN1_EOL,          0UL, NULL)) != CRYPT_OK) {
          goto error;
       }
       key->type = PK_PUBLIC;
   }
-  key->qord = mp_unsigned_bin_size(&key->q);
+  key->qord = mp_unsigned_bin_size(key->q);
 
   if (key->qord >= MDSA_MAX_GROUP || key->qord <= 15 ||
-      key->qord >= mp_unsigned_bin_size(&key->p) || (mp_unsigned_bin_size(&key->p) - key->qord) >= MDSA_DELTA) {
+      (unsigned long)key->qord >= mp_unsigned_bin_size(key->p) || (mp_unsigned_bin_size(key->p) - key->qord) >= MDSA_DELTA) {
       err = CRYPT_INVALID_PACKET;
       goto error;
    }
 
   return CRYPT_OK;
 error: 
-   mp_clear_multi(&key->p, &key->g, &key->q, &key->x, &key->y, NULL);
+   mp_clear_multi(key->p, key->g, key->q, key->x, key->y, NULL);
    return err;
 }
 
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/dsa/dsa_import.c,v $ */
-/* $Revision: 1.7 $ */
-/* $Date: 2005/06/08 23:31:17 $ */
+/* $Revision: 1.10 $ */
+/* $Date: 2005/07/30 23:13:01 $ */

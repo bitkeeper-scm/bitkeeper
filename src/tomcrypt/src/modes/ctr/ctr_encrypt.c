@@ -39,7 +39,7 @@ int ctr_encrypt(const unsigned char *pt, unsigned char *ct, unsigned long len, s
    }
    
    /* is blocklen/padlen valid? */
-   if (ctr->blocklen < 0 || ctr->blocklen > (int)sizeof(ctr->ctr) ||
+   if (ctr->blocklen < 1 || ctr->blocklen > (int)sizeof(ctr->ctr) ||
        ctr->padlen   < 0 || ctr->padlen   > (int)sizeof(ctr->pad)) {
       return CRYPT_INVALID_ARG;
    }
@@ -104,5 +104,5 @@ int ctr_encrypt(const unsigned char *pt, unsigned char *ct, unsigned long len, s
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/modes/ctr/ctr_encrypt.c,v $ */
-/* $Revision: 1.13 $ */
-/* $Date: 2005/05/05 14:35:59 $ */
+/* $Revision: 1.14 $ */
+/* $Date: 2005/07/28 03:21:11 $ */

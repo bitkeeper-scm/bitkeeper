@@ -167,7 +167,7 @@ typedef union Symmetric_key {
    void   *data;
 } symmetric_key;
 
-/* A block cipher ECB structure */
+/** A block cipher ECB structure */
 typedef struct {
    /** The index of the cipher chosen */
    int                 cipher, 
@@ -177,7 +177,7 @@ typedef struct {
    symmetric_key       key;
 } symmetric_ECB;
 
-/* A block cipher CFB structure */
+/** A block cipher CFB structure */
 typedef struct {
    /** The index of the cipher chosen */
    int                 cipher, 
@@ -193,7 +193,7 @@ typedef struct {
    symmetric_key       key;
 } symmetric_CFB;
 
-/* A block cipher OFB structure */
+/** A block cipher OFB structure */
 typedef struct {
    /** The index of the cipher chosen */
    int                 cipher, 
@@ -207,7 +207,7 @@ typedef struct {
    symmetric_key       key;
 } symmetric_OFB;
 
-/* A block cipher CBC structure */
+/** A block cipher CBC structure */
 typedef struct {
    /** The index of the cipher chosen */
    int                 cipher, 
@@ -219,7 +219,7 @@ typedef struct {
    symmetric_key       key;
 } symmetric_CBC;
 
-/* A block cipher CTR structure */
+/** A block cipher CTR structure */
 typedef struct {
    /** The index of the cipher chosen */
    int                 cipher,
@@ -237,7 +237,7 @@ typedef struct {
    symmetric_key       key;
 } symmetric_CTR;
 
-/* cipher descriptor table, last entry has "name == NULL" to mark the end of table */
+/** cipher descriptor table, last entry has "name == NULL" to mark the end of table */
 extern struct ltc_cipher_descriptor {
    /** name of cipher */
    char *name;
@@ -622,8 +622,8 @@ int register_cipher(const struct ltc_cipher_descriptor *cipher);
 int unregister_cipher(const struct ltc_cipher_descriptor *cipher);
 int cipher_is_valid(int idx);
 
-LTC_MUTEX_PROTO(ltc_cipher_mutex);
+LTC_MUTEX_PROTO(ltc_cipher_mutex)
 
 /* $Source: /cvs/libtom/libtomcrypt/src/headers/tomcrypt_cipher.h,v $ */
-/* $Revision: 1.16 $ */
-/* $Date: 2005/06/19 18:00:28 $ */
+/* $Revision: 1.18 $ */
+/* $Date: 2005/07/30 23:13:00 $ */

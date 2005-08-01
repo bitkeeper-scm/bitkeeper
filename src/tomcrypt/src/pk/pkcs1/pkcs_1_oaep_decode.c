@@ -148,12 +148,12 @@ int pkcs_1_oaep_decode(const unsigned char *msg,    unsigned long msglen,
 
    /* error out if wasn't 0x01 */
    if (x == (modulus_len - hLen - 1) || DB[x] != 0x01) {
-      err = CRYPT_OK;
+      err = CRYPT_INVALID_PACKET;
       goto LBL_ERR;
    }
 
    /* rest is the message (and skip 0x01) */
-   if ((modulus_len - hLen - 1) - ++x > *outlen) {
+   if ((modulus_len - hLen - 1 - ++x) > *outlen) {
       err = CRYPT_BUFFER_OVERFLOW;
       goto LBL_ERR;
    }
@@ -184,5 +184,5 @@ LBL_ERR:
 #endif /* PKCS_1 */
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/pkcs1/pkcs_1_oaep_decode.c,v $ */
-/* $Revision: 1.5 $ */
-/* $Date: 2005/06/18 02:37:06 $ */
+/* $Revision: 1.6 $ */
+/* $Date: 2005/07/30 23:05:43 $ */

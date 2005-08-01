@@ -27,7 +27,8 @@ const struct ltc_hash_descriptor sha384_desc =
     &sha384_init,
     &sha512_process,
     &sha384_done,
-    &sha384_test
+    &sha384_test,
+    NULL
 };
 
 /**
@@ -130,5 +131,5 @@ int  sha384_test(void)
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/hashes/sha2/sha384.c,v $ */
-/* $Revision: 1.5 $ */
-/* $Date: 2005/05/23 02:42:07 $ */
+/* $Revision: 1.6 $ */
+/* $Date: 2005/07/16 19:56:37 $ */

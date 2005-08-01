@@ -223,9 +223,6 @@ const char *crypt_build_settings =
 #if defined(MRSA)
     "   RSA \n"
 #endif
-#if defined(MDH)
-    "   DH\n"
-#endif
 #if defined(MECC)
     "   ECC\n"
 #endif
@@ -305,11 +302,18 @@ const char *crypt_build_settings =
 #if defined(LTC_PTHREAD)
     " LTC_PTHREAD "
 #endif
+#if defined(LTM_DESC)
+    " LTM_DESC "
+#endif
+#if defined(TFM_DESC)
+    " TFM_DESC "
+#endif
+
     "\n"
     "\n\n\n"
     ;
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/misc/crypt/crypt.c,v $ */
-/* $Revision: 1.11 $ */
-/* $Date: 2005/06/19 18:00:28 $ */
+/* $Revision: 1.13 $ */
+/* $Date: 2005/07/24 20:42:35 $ */

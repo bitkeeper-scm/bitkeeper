@@ -53,10 +53,10 @@ int rsa_sign_hash(const unsigned char *in,       unsigned long  inlen,
   }
   
   /* get modulus len in bits */
-  modulus_bitlen = mp_count_bits(&(key->N));
+  modulus_bitlen = mp_count_bits( (key->N));
 
   /* outlen must be at least the size of the modulus */
-  modulus_bytelen = mp_unsigned_bin_size(&(key->N));
+  modulus_bytelen = mp_unsigned_bin_size( (key->N));
   if (modulus_bytelen > *outlen) {
      return CRYPT_BUFFER_OVERFLOW;
   }
@@ -75,5 +75,5 @@ int rsa_sign_hash(const unsigned char *in,       unsigned long  inlen,
 #endif /* MRSA */
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/rsa/rsa_sign_hash.c,v $ */
-/* $Revision: 1.3 $ */
-/* $Date: 2005/05/05 14:35:59 $ */
+/* $Revision: 1.4 $ */
+/* $Date: 2005/07/17 23:38:55 $ */

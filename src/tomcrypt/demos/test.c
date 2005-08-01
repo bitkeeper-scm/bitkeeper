@@ -4,6 +4,16 @@ int main(void)
 {
    int x;
    reg_algs();
+
+#ifdef USE_LTM
+   ltc_mp = ltm_desc;
+#elif defined(USE_TFM)
+   ltc_mp = tfm_desc;
+#else
+   extern ltc_math_descriptor EXT_MATH_LIB;
+   ltc_mp = EXT_MATH_LIB;
+#endif
+
    printf("build == \n%s\n", crypt_build_settings);
    printf("\nstore_test...."); fflush(stdout); x = store_test();       printf(x ? "failed" : "passed");if (x) exit(EXIT_FAILURE);
    printf("\ncipher_test..."); fflush(stdout); x = cipher_hash_test(); printf(x ? "failed" : "passed");if (x) exit(EXIT_FAILURE);
@@ -14,11 +24,10 @@ int main(void)
    printf("\nrsa_test......"); fflush(stdout); x = rsa_test();         printf(x ? "failed" : "passed");if (x) exit(EXIT_FAILURE);
    printf("\necc_test......"); fflush(stdout); x = ecc_tests();        printf(x ? "failed" : "passed");if (x) exit(EXIT_FAILURE);
    printf("\ndsa_test......"); fflush(stdout); x = dsa_test();         printf(x ? "failed" : "passed");if (x) exit(EXIT_FAILURE);
-   printf("\ndh_test......."); fflush(stdout); x = dh_tests();         printf(x ? "failed" : "passed");if (x) exit(EXIT_FAILURE);
    printf("\n");
    return EXIT_SUCCESS;
 }
 
 /* $Source: /cvs/libtom/libtomcrypt/demos/test.c,v $ */
-/* $Revision: 1.12 $ */
-/* $Date: 2005/06/19 12:06:58 $ */
+/* $Revision: 1.16 $ */
+/* $Date: 2005/07/23 13:59:28 $ */

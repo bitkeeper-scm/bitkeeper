@@ -24,11 +24,11 @@
 void dsa_free(dsa_key *key)
 {
    LTC_ARGCHK(key != NULL);
-   mp_clear_multi(&key->g, &key->q, &key->p, &key->x, &key->y, NULL);
+   mp_clear_multi(key->g, key->q, key->p, key->x, key->y, NULL);
 }
 
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/dsa/dsa_free.c,v $ */
-/* $Revision: 1.3 $ */
-/* $Date: 2005/05/05 14:35:59 $ */
+/* $Revision: 1.4 $ */
+/* $Date: 2005/07/18 02:36:47 $ */

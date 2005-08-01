@@ -30,7 +30,8 @@ const struct ltc_hash_descriptor chc_desc = {
    &chc_init,
    &chc_process,
    &chc_done,
-   &chc_test
+   &chc_test,
+   NULL
 };
 
 /**
@@ -293,5 +294,5 @@ int chc_test(void)
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/hashes/chc/chc.c,v $ */
-/* $Revision: 1.3 $ */
-/* $Date: 2005/05/05 14:35:58 $ */
+/* $Revision: 1.4 $ */
+/* $Date: 2005/07/16 19:56:37 $ */

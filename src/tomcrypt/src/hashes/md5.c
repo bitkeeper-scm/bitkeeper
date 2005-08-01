@@ -32,7 +32,8 @@ const struct ltc_hash_descriptor md5_desc =
     &md5_init,
     &md5_process,
     &md5_done,
-    &md5_test
+    &md5_test,
+    NULL
 };
 
 #define F(x,y,z)  (z ^ (x & (y ^ z)))
@@ -363,5 +364,5 @@ int  md5_test(void)
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/hashes/md5.c,v $ */
-/* $Revision: 1.5 $ */
-/* $Date: 2005/05/23 02:42:07 $ */
+/* $Revision: 1.6 $ */
+/* $Date: 2005/07/16 19:56:37 $ */

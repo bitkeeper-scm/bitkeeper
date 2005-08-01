@@ -7,8 +7,8 @@ int pkcs_1_mgf1(const unsigned char *seed, unsigned long seedlen,
                       int            hash_idx,
                       unsigned char *mask, unsigned long masklen);
 
-int pkcs_1_i2osp(mp_int *n, unsigned long modulus_len, unsigned char *out);
-int pkcs_1_os2ip(mp_int *n, unsigned char *in, unsigned long inlen);
+int pkcs_1_i2osp(void *n, unsigned long modulus_len, unsigned char *out);
+int pkcs_1_os2ip(void *n, unsigned char *in, unsigned long inlen);
 
 /* *** v2.1 padding */
 int pkcs_1_oaep_encode(const unsigned char *msg,    unsigned long msglen,
@@ -54,5 +54,5 @@ int pkcs_5_alg2(const unsigned char *password, unsigned long password_len,
 #endif  /* PKCS_5 */
 
 /* $Source: /cvs/libtom/libtomcrypt/src/headers/tomcrypt_pkcs.h,v $ */
-/* $Revision: 1.3 $ */
-/* $Date: 2005/05/14 11:46:08 $ */
+/* $Revision: 1.4 $ */
+/* $Date: 2005/07/17 23:38:54 $ */

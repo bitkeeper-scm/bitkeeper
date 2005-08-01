@@ -31,7 +31,8 @@ const struct ltc_hash_descriptor md2_desc =
     &md2_init,
     &md2_process,
     &md2_done,
-    &md2_test
+    &md2_test,
+    NULL
 };
 
 static const unsigned char PI_SUBST[256] = {
@@ -246,5 +247,5 @@ int md2_test(void)
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/hashes/md2.c,v $ */
-/* $Revision: 1.5 $ */
-/* $Date: 2005/05/23 02:42:07 $ */
+/* $Revision: 1.6 $ */
+/* $Date: 2005/07/16 19:56:37 $ */

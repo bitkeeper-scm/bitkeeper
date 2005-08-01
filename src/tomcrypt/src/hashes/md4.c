@@ -31,7 +31,8 @@ const struct ltc_hash_descriptor md4_desc =
     &md4_init,
     &md4_process,
     &md4_done,
-    &md4_test
+    &md4_test,
+    NULL
 };
 
 #define S11 3
@@ -302,5 +303,5 @@ int md4_test(void)
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/hashes/md4.c,v $ */
-/* $Revision: 1.5 $ */
-/* $Date: 2005/05/23 02:42:07 $ */
+/* $Revision: 1.6 $ */
+/* $Date: 2005/07/16 19:56:37 $ */

@@ -31,7 +31,8 @@ const struct ltc_hash_descriptor sha256_desc =
     &sha256_init,
     &sha256_process,
     &sha256_done,
-    &sha256_test
+    &sha256_test,
+    NULL
 };
 
 #ifdef LTC_SMALL_CODE
@@ -335,5 +336,5 @@ int  sha256_test(void)
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/hashes/sha2/sha256.c,v $ */
-/* $Revision: 1.5 $ */
-/* $Date: 2005/05/23 02:42:07 $ */
+/* $Revision: 1.6 $ */
+/* $Date: 2005/07/16 19:56:37 $ */

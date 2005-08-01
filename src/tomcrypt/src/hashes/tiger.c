@@ -32,7 +32,8 @@ const struct ltc_hash_descriptor tiger_desc =
     &tiger_init,
     &tiger_process,
     &tiger_done,
-    &tiger_test
+    &tiger_test,
+    NULL
 };
 
 #define t1 (table)
@@ -809,5 +810,5 @@ Hash of "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-ABCDEFG
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/hashes/tiger.c,v $ */
-/* $Revision: 1.5 $ */
-/* $Date: 2005/05/23 02:42:07 $ */
+/* $Revision: 1.6 $ */
+/* $Date: 2005/07/16 19:56:37 $ */

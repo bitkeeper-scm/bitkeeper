@@ -24,12 +24,12 @@
 void rsa_free(rsa_key *key)
 {
    LTC_ARGCHK(key != NULL);
-   mp_clear_multi(&key->e, &key->d, &key->N, &key->dQ, &key->dP,
-                  &key->qP, &key->p, &key->q, NULL);
+   mp_clear_multi( key->e,  key->d,  key->N,  key->dQ,  key->dP,
+                   key->qP,  key->p,  key->q, NULL);
 }
 
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/rsa/rsa_free.c,v $ */
-/* $Revision: 1.3 $ */
-/* $Date: 2005/05/05 14:35:59 $ */
+/* $Revision: 1.4 $ */
+/* $Date: 2005/07/17 23:38:55 $ */

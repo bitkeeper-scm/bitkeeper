@@ -32,7 +32,8 @@ const struct ltc_hash_descriptor sha1_desc =
     &sha1_init,
     &sha1_process,
     &sha1_done,
-    &sha1_test
+    &sha1_test,
+    NULL
 };
 
 #define F0(x,y,z)  (z ^ (x & (y ^ z)))
@@ -283,5 +284,5 @@ int  sha1_test(void)
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/hashes/sha1.c,v $ */
-/* $Revision: 1.5 $ */
-/* $Date: 2005/05/23 02:42:07 $ */
+/* $Revision: 1.6 $ */
+/* $Date: 2005/07/16 19:56:37 $ */
