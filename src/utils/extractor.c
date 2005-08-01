@@ -42,15 +42,13 @@ char	*getdest(void);
 int
 main(int ac, char **av)
 {
-	char	*p, *dest = 0, *tmp = findtmp();
 	int	i;
-	int	rc = 0;
+	int	rc = 0, dolinks = 0, upgrade = 0;
 	pid_t	pid = getpid();
 	FILE	*f;
-	int	dolinks = 0;
-	int	upgrade = 0;
-	char	tmpdir[MAXPATH];
-	char	buf[MAXPATH];
+	char	*p;
+	char	*dest = 0, *tmp = findtmp();
+	char	tmpdir[MAXPATH], buf[MAXPATH], pwd[MAXPATH];
 #ifndef	WIN32
 	char	*bindir = "/usr/libexec/bitkeeper";
 #else
@@ -73,6 +71,8 @@ main(int ac, char **av)
 	setbuf(stderr, 0);
 	setbuf(stdout, 0);
 
+	getcwd(pwd, sizeof(pwd));
+
 	/*
 	 * If they want to upgrade, go find that dir before we fix the path.
 	 */
@@ -89,9 +89,7 @@ main(int ac, char **av)
 #else
 		unless (av[1][0] == '/') {
 #endif
-			getcwd(buf, sizeof(buf));
-			strcat(buf, "/");
-			strcat(buf, av[1]);
+			sprintf(buf, "%s/%s", pwd, av[1]);
 			dest = strdup(buf);
 		} else {
 			dest = av[1];
@@ -182,11 +180,44 @@ main(int ac, char **av)
 	}
 	
 	/*
-	 * If the config file is a real one, move it in place.
+	 * See if we have an embedded license and move it in place
+	 * but don't overwrite an existing config file.
+	 * If we find a license in the old dir, set BK_CONFIG with it.
 	 */
-	system("bk _eula -v < config > bitkeeper/config 2>/dev/null");
-	unlink("config");
-	unless (size("bitkeeper/config") > 0) unlink("bitkeeper/config");
+	sprintf(buf, "%s/config", dest);
+	unless (upgrade && exists(buf)) {
+		system("bk _eula -v < config > bitkeeper/config 2>/dev/null");
+		unlink("config");
+		/*
+		 * If that didn't work, try looking in the original directory.
+		 */
+		unless (size("bitkeeper/config") > 0) {
+			char	buf[MAXPATH*2];
+			char	*config = 0;
+
+			unlink("bitkeeper/config");
+			chdir(pwd);
+			sprintf(buf, "bk _preference |bk _eula -v 2>/dev/null");
+			f = popen(buf, "r");
+			while (fgets(buf, sizeof(buf), f)) {
+				if ((p = strchr(buf, '\r')) ||
+				    (p = strchr(buf, '\n'))) {
+				    	*p = 0;
+				}
+				if (strneq("license:", buf, 8)) {
+					config = malloc(2000);
+					sprintf(config, "BK_CONFIG=%s;", buf);
+					continue;
+				}
+				unless (strneq("licsign", buf, 7)) continue;
+				strcat(config, buf);
+				strcat(config, ";");
+			}
+			pclose(f);
+			if (config) putenv(config);
+			chdir(tmpdir);
+		}
+	}
 
 #ifdef	WIN32
 	mkdir("bitkeeper/gnu/tmp", 0777);
@@ -227,7 +258,9 @@ main(int ac, char **av)
 		 * because the native one on win98 does not return the
 		 * correct exit code
 		 */
+		chdir(pwd);		/* so relative paths work */
 		rc = system(buf);
+		chdir(tmpdir);
 	}
 
 	/* Clean up your room, kids. */
@@ -388,6 +421,14 @@ size(char *path)
 
 	if (stat(path, &sbuf)) return (0);
 	return ((int)sbuf.st_size);
+}
+
+int
+exists(char *path)
+{
+	struct	stat sbuf;
+
+	return (stat(path, &sbuf) == 0);
 }
 
 int

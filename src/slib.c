@@ -4196,10 +4196,9 @@ MDBM *
 loadDotBkConfig(MDBM *db)
 {
 	char 	*config;
-	char	*dotbk = getDotBk();
 
 	assert(db);
-	config = aprintf("%s/config", dotbk);
+	config = aprintf("%s/config", getDotBk());
 	config2mdbm(db, config);
 	free(config);
 	return(db);

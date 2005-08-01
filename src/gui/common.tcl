@@ -561,6 +561,7 @@ proc getEulaText {license licsign1 licsign2 licsign3} \
 	append BK_CONFIG "licsign1:$licsign1;"
 	append BK_CONFIG "licsign2:$licsign2;"
 	append BK_CONFIG "licsign3:$licsign3;"
+	append BK_CONFIG "single_user:;single_host:;"
 	set env(BK_CONFIG) $BK_CONFIG
 	return [exec bk _eula -u]
 }

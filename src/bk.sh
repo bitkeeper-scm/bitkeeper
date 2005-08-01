@@ -1304,6 +1304,7 @@ _install()
 	VERBOSE=NO
 	DLLOPTS=""
 	DOSYMLINKS=NO
+	CONFIG=
 	while getopts dfvlnsS opt
 	do
 		case "$opt" in
@@ -1326,11 +1327,10 @@ _install()
 	DEST="$1"
 	SRC=`bk bin`
 
-	__accept_eula || {
+	bk _eula -p || {
 		echo Installation aborted.
 		exit 1
 	}
-	bk _eula -a
 
 	OBK="$DEST.old$$"
 	NFILE=0
@@ -1353,6 +1353,10 @@ _install()
 			echo "bk install: destination is not an existing bk tree, failed"
 			exit 1
 		}
+		test "$DEST/config" && {
+			CONFIG=/tmp/config$$
+			cp "$DEST/config" $CONFIG
+	    	}
 		test $VERBOSE = YES && echo Uninstalling $DEST
 		if [ "X$OSTYPE" = "Xmsys" ]
 		then
@@ -1380,6 +1384,10 @@ _install()
 	}
 	# make DEST canonical full path w long names.
 	DEST=`bk pwd "$DEST"`
+	test X$CONFIG != X && {
+		cp $CONFIG "$DEST/config"
+		rm -f $CONFIG
+	}
 	# copy data
 	V=
 	test $VERBOSE = YES && {
@@ -1412,7 +1420,9 @@ _install()
 			"$DEST"/bk links /usr/bin
 		else
 	        	test $VERBOSE = YES && {
-		    echo Skipping requested symlinks because is not writable.
+		    		A='Skipping requested symlinks because'
+				B='/usr/bin is not writable.'
+				echo $A $B
 			}
 		fi
 	fi
@@ -1465,27 +1475,6 @@ _install()
 	    -s 'bk install' install@bitmover.com >/dev/null 2>&1 &
 
 	exit 0
-}
-
-# See if we know about a license and if so prompt for acceptance
-__accept_eula()
-{
-	bk _eula -u > /tmp/eula$$ 2>&1
-	DOTBK=`bk dotbk`
-	grep -q 'no license found, run this in a repository.' /tmp/eula$$ && {
-		bk prompt -e -p"bk getmsg missing_config_install `bk dotbk`" 
-		rm -f /tmp/eula$$
-		return 1
-	}
-	if [ -s /tmp/eula$$ ]
-	then	
-		bk prompt -f/tmp/eula$$ -n"I do not agree" -y"I agree" -tEULA
-		RET=$?
-	else
-		RET=0
-	fi
-	rm -f /tmp/eula$$
-	return $RET
 }
 
 # alias for only removed 'bk _sortmerge'

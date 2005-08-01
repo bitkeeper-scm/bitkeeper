@@ -1,7 +1,7 @@
 .so ../bk-macros
 .TH "bk config-etc" 1 %E% "\*(BC" "\*(UM"
 .SH NAME 
-bk config-etc \- configuring \*(BK per repository
+bk config-etc \- configuring \*(BK
 .SH DESCRIPTION
 \*(BK config files contain repository configuration information including
 project description, licensing information, 
@@ -9,26 +9,38 @@ user preferences, BKWeb preferences, and contact information.
 Each \*(BK repository must have the minimum configuration
 information available in order to properly execute \*(BK commands.
 .LP
-Repository configuration information can be stored in two files, a
-repository level config file and a system level config file:
-.TP 2.6i
-.B
-BitKeeper/etc/config
-Repository level config file (required)
+Repository configuration information is searched for in the following 
+places, in order:
+.TP 3.2i
+.B $BK_CONFIG
+Environment variable.
 .tp
-.B
-/etc/BitKeeper/etc/config
-System level config file (optional)
+.B `bk root`/BitKeeper/etc/config
+Repository level config file
+.tp
+.B `bk dotbk`/config
+Personal config file
+.tp
+.B /etc/BitKeeper/etc/config
+Per-machine config file
+.tp
+.B `bk bin`/config
+Per-installation config file
 .LP
-Repository level configuration specifications take precedence over
-system level specifications by default, meaning,
-if both BitKeeper/etc/config and /etc/BitKeeper/etc/config files exist, 
-BitKeeper/etc/config values are augmented by /etc/BitKeeper/etc/config
-values that do not exist in BitKeeper/etc/config.   BitKeeper/etc/config
-values will not be replaced by values in /etc/BitKeeper/etc/config.
-However, if a '!' is put at the end of the line in the System config file 
-(/etc/BitKeeper/etc/config) then that setting will override any 
-matching key in local config files.  
+For each key/value pair, the first instance of a key found is the one
+used by default.
+An earlier value may be overridden by a later value by following the
+value (not the key) with an exclamation point like so:
+.DS
+checkout: get!
+.DE
+The
+.I BK_CONFIG
+may contain a list of key:value pairs separated by semicolons.
+For example:
+.DS
+BK_CONFIG=key1:value2;key2:value2;key3:value3
+.DE
 .LP
 Minimum content requirements for the BitKeeper/etc/config file 
 are the key value pairs for 
@@ -43,11 +55,12 @@ licsig3:
 (See "CONFIG FILE ENTRIES" section below for allowed values.)
 .LP
 A default config file may be created in order to make setup easier
-consistent for every repository on the system by creating a file,
+consistent for every repository on the system by creating a template:
 .DS
 /etc/BitKeeper/etc/config.template
+or
+`bk dotbk`/config.template
 .DE
-that is readable by all bk users on that system.
 If this file exists, bk setup will automatically use that as the 
 BitKeeper/etc/config file.  See bk help setup for more information.
 .SH "CONFIG FILE ENTRIES"
@@ -252,9 +265,9 @@ the location from which source can be cloned
 .LP
 For example,
 .DS
-bkweb:    http://www.bitkeeper.com:8888//home/bk/stable
-master:   bk://www.bitkeeper.com:7000
-homepage: http://www.bitkeeper.com
+bkweb:    http://mysql.bkbits.net:8080/mysql-5.0
+master:   bk://mysql.bkbits.net/mysql-5.0
+homepage: http://www.mysql.com
 .DE
 .SH "SEE ALSO"
 .SA config-gui 1

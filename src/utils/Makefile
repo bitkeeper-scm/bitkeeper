@@ -32,7 +32,7 @@ CPPFLAGS=-I../libc/include
 VERS	:= $(shell test -x vers || bk get vers; ./vers)
 IMAGE:= $(shell bk get -qS gnu-os os; echo $(VERS)-`./os`.$(EXT) )
 
-all image: $(BINDIR)/bk$(EXE) sfioball _data.o $(IMAGE) 
+all image: $(BINDIR)/bk$(EXE) sfioball _data.o $(IMAGE) inskeys
 	$(STRIP) $(IMAGE)
 
 sfioball: installtool $(BINDIR) $(BINDIR)/gui/bin/bkgui$(EXE)
@@ -65,6 +65,9 @@ sfio_utils.o: sfio_utils.c
 
 sfio$(EXE): $(SFIO_OBJS)
 	$(LD) $(LFLAGS) $(SFIO_OBJS) $(LIBS) ../zlib/libz.a -o $@
+
+inskeys: inskeys.c
+	$(CC) $(LFLAGS) $< $(LIBS) -o $@
 
 installtool: ../port/$(SYS)_platform.tcl installtool.tcl font.tcl \
 	../gui/tkwizard.tcl ../gui/common.tcl \

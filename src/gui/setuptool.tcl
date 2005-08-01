@@ -956,6 +956,7 @@ proc getLicenseData {} \
 	append BK_CONFIG "licsign1:$wizData(licsign1);"
 	append BK_CONFIG "licsign2:$wizData(licsign2);"
 	append BK_CONFIG "licsign3:$wizData(licsign3);"
+	append BK_CONFIG "single_user:;single_host:;"
 	set env(BK_CONFIG) $BK_CONFIG
 	set licenseInfo(text) [exec bk _eula -u]
 }
