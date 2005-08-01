@@ -108,3 +108,7 @@ int fast_s_mp_sqr (mp_int * a, mp_int * b)
   return MP_OKAY;
 }
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_fast_s_mp_sqr.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */

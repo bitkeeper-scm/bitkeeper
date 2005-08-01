@@ -62,3 +62,7 @@ int mp_div_2(mp_int * a, mp_int * b)
   return MP_OKAY;
 }
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_mp_div_2.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */

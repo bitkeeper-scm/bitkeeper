@@ -66,3 +66,7 @@ void mp_rshd (mp_int * a, int b)
   a->used -= b;
 }
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_mp_rshd.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */

@@ -26,3 +26,7 @@ void mp_dr_setup(mp_int *a, mp_digit *d)
 }
 
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_mp_dr_setup.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */

@@ -52,3 +52,7 @@ if (a->used >= KARATSUBA_SQR_CUTOFF) {
   return res;
 }
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_mp_sqr.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */

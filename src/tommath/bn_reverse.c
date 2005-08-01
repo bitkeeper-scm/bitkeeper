@@ -33,3 +33,7 @@ bn_reverse (unsigned char *s, int len)
   }
 }
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_reverse.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */

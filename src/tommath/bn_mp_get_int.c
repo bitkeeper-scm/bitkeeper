@@ -39,3 +39,7 @@ unsigned long mp_get_int(mp_int * a)
   return res & 0xFFFFFFFFUL;
 }
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_mp_get_int.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */

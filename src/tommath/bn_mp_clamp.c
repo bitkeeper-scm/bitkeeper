@@ -38,3 +38,7 @@ mp_clamp (mp_int * a)
   }
 }
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_mp_clamp.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */

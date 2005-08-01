@@ -169,3 +169,7 @@ LBL_ERR:mp_clear_multi (&x, &y, &u, &v, &A, &B, &C, &D, NULL);
   return res;
 }
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_mp_invmod_slow.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */

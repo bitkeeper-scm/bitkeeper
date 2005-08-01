@@ -56,3 +56,7 @@ LBL_T:mp_clear (&t);
   return err;
 }
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_mp_prime_fermat.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */

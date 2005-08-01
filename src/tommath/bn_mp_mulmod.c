@@ -16,8 +16,7 @@
  */
 
 /* d = a * b (mod c) */
-int
-mp_mulmod (mp_int * a, mp_int * b, mp_int * c, mp_int * d)
+int mp_mulmod (mp_int * a, mp_int * b, mp_int * c, mp_int * d)
 {
   int     res;
   mp_int  t;
@@ -35,3 +34,7 @@ mp_mulmod (mp_int * a, mp_int * b, mp_int * c, mp_int * d)
   return res;
 }
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_mp_mulmod.c,v $ */
+/* $Revision: 1.3 $ */
+/* $Date: 2005/07/28 01:32:42 $ */

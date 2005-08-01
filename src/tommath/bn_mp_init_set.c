@@ -26,3 +26,7 @@ int mp_init_set (mp_int * a, mp_digit b)
   return err;
 }
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_mp_init_set.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */

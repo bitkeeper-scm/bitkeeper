@@ -76,3 +76,7 @@ int mp_read_radix (mp_int * a, const char *str, int radix)
   return MP_OKAY;
 }
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_mp_read_radix.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */

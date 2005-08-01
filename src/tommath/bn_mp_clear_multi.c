@@ -28,3 +28,7 @@ void mp_clear_multi(mp_int *mp, ...)
     va_end(args);
 }
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_mp_clear_multi.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */

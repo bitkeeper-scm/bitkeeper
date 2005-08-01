@@ -97,3 +97,7 @@ LBL_N1:mp_clear (&n1);
   return err;
 }
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_mp_prime_miller_rabin.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */

@@ -77,3 +77,7 @@ LBL_B:mp_clear (&b);
   return err;
 }
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_mp_prime_is_prime.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */

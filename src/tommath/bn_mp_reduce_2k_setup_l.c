@@ -38,3 +38,7 @@ ERR:
    return res;
 }
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_mp_reduce_2k_setup_l.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */

@@ -23,3 +23,7 @@ void mp_set (mp_int * a, mp_digit b)
   a->used  = (a->dp[0] != 0) ? 1 : 0;
 }
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_mp_set.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */

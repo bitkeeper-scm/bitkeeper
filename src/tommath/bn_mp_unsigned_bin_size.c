@@ -22,3 +22,7 @@ int mp_unsigned_bin_size (mp_int * a)
   return (size / 8 + ((size & 7) != 0 ? 1 : 0));
 }
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_mp_unsigned_bin_size.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */

@@ -47,3 +47,7 @@ int mp_cnt_lsb(mp_int *a)
 }
 
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_mp_cnt_lsb.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */

@@ -72,3 +72,7 @@ int mp_radix_size (mp_int * a, int radix, int *size)
 }
 
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_mp_radix_size.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */

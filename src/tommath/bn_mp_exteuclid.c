@@ -76,3 +76,7 @@ _ERR: mp_clear_multi(&u1, &u2, &u3, &v1, &v2, &v3, &t1, &t2, &t3, &q, &tmp, NULL
    return err;
 }
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_mp_exteuclid.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */

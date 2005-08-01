@@ -103,3 +103,7 @@ ERR:mp_clear(&t);
   return res;
 }
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_mp_is_square.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */

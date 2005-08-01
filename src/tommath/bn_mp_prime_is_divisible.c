@@ -44,3 +44,7 @@ int mp_prime_is_divisible (mp_int * a, int *result)
   return MP_OKAY;
 }
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_mp_prime_is_divisible.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */

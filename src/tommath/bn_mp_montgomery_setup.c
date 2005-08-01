@@ -53,3 +53,7 @@ mp_montgomery_setup (mp_int * n, mp_digit * rho)
   return MP_OKAY;
 }
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_mp_montgomery_setup.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */

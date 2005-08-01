@@ -26,3 +26,7 @@ int mp_init_copy (mp_int * a, mp_int * b)
   return mp_copy (b, a);
 }
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_mp_init_copy.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */

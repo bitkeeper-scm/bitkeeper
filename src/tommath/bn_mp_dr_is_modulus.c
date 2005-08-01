@@ -37,3 +37,7 @@ int mp_dr_is_modulus(mp_int *a)
 }
 
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_mp_dr_is_modulus.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */

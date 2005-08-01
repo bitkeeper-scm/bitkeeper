@@ -61,3 +61,7 @@ int mp_fread(mp_int *a, int radix, FILE *stream)
 }
 
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_mp_fread.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */

@@ -21,3 +21,7 @@ int mp_signed_bin_size (mp_int * a)
   return 1 + mp_unsigned_bin_size (a);
 }
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_mp_signed_bin_size.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */

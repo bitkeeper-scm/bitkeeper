@@ -25,3 +25,7 @@ int mp_init_set_int (mp_int * a, unsigned long b)
   return mp_set_int(a, b);
 }
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_mp_init_set_int.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */

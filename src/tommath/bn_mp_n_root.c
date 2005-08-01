@@ -126,3 +126,7 @@ LBL_T1:mp_clear (&t1);
   return res;
 }
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_mp_n_root.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */

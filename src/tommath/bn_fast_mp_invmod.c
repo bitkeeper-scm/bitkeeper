@@ -142,3 +142,7 @@ LBL_ERR:mp_clear_multi (&x, &y, &u, &v, &B, &D, NULL);
   return res;
 }
 #endif
+
+/* $Source: /cvs/libtom/libtommath/bn_fast_mp_invmod.c,v $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/05/05 14:38:45 $ */
