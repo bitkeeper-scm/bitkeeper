@@ -38,6 +38,7 @@ char	*findtmp(void);
 int	isdir(char*);
 void	rmTree(char *dir);
 char	*getdest(void);
+void	cd(char *dir);
 
 int
 main(int ac, char **av)
@@ -79,10 +80,7 @@ main(int ac, char **av)
 	if (av[1] && (streq(av[1], "-u") || streq(av[1], "--upgrade"))) {
 		upgrade = 1;
 		unless (dest = getdest()) dest = bindir;
-		if (chdir(tmp)) {
-			perror(tmp);
-			exit(1);
-		}
+		cd(tmp);
 	} else if (av[1] && (av[1][0] != '-')) {
 #ifdef	WIN32
 		unless ((av[1][1] ==':') || (av[1][0] == '/')) {
@@ -145,10 +143,7 @@ main(int ac, char **av)
 		perror(tmpdir);
 		exit(1);
 	}
-	if (chdir(tmpdir)) {
-		perror(tmpdir);
-		exit(1);
-	}
+	cd(tmpdir);
 
 	/*
 	 * Add this directory and BK directory to the path.
@@ -186,7 +181,8 @@ main(int ac, char **av)
 	 */
 	sprintf(buf, "%s/config", dest);
 	unless (upgrade && exists(buf)) {
-		system("bk _eula -v < config > bitkeeper/config 2>/dev/null");
+		system("bk _eula -v < config > bitkeeper/config 2>"
+		    DEV_NULL);
 		unlink("config");
 		/*
 		 * If that didn't work, try looking in the original directory.
@@ -196,8 +192,8 @@ main(int ac, char **av)
 			char	*config = 0;
 
 			unlink("bitkeeper/config");
-			chdir(pwd);
-			sprintf(buf, "bk _preference |bk _eula -v 2>/dev/null");
+			cd(pwd);
+			sprintf(buf, "bk _preference|bk _eula -v 2>" DEV_NULL);
 			f = popen(buf, "r");
 			while (fgets(buf, sizeof(buf), f)) {
 				if ((p = strchr(buf, '\r')) ||
@@ -215,7 +211,7 @@ main(int ac, char **av)
 			}
 			pclose(f);
 			if (config) putenv(config);
-			chdir(tmpdir);
+			cd(tmpdir);
 		}
 	}
 
@@ -258,18 +254,29 @@ main(int ac, char **av)
 		 * because the native one on win98 does not return the
 		 * correct exit code
 		 */
-		chdir(pwd);		/* so relative paths work */
+		cd(pwd);		/* so relative paths work */
 		rc = system(buf);
-		chdir(tmpdir);
+		cd(tmpdir);
+			
 	}
 
 	/* Clean up your room, kids. */
 	unless (getenv("BK_SAVE_INSTALL")) {
-		chdir("..");
+		cd("..");
 		fprintf(stderr,
 		    "Cleaning up temp files in %s%u ...\n", TMP, pid);
 		sprintf(buf, "%s%u", TMP, pid);
-		rmTree(buf); /* careful */
+		/*
+		 * Sometimes windows has processes sitting in here and we
+		 * have to wait for them to go away.
+		 * XXX - what processes?  Why are they here?
+		 */
+		for (i = 0; i < 10; ) {
+			/* careful */
+			rmTree(buf);
+			unless (isdir(buf)) break;
+			sleep(++i);
+		}
 	}
 
 	/*
@@ -285,6 +292,15 @@ main(int ac, char **av)
 	}
 #endif
 	exit(0);
+}
+
+void
+cd(char *dir)
+{
+	if (chdir(dir)) {
+		perror(dir);
+		exit(1);
+	}
 }
 
 void

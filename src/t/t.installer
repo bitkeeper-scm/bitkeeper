@@ -49,14 +49,17 @@ rm -f "$DOTBK"/accepted
 echo y | $BK_INSTALLER relative > OUT 2>&1
 grep -q LICENSE OUT || {
 	echo Did not prompt for license
+	cat OUT
 	exit 1
 }
 test -d relative || {
 	echo did not create relative 
+	cat OUT
 	exit 1
 }
 test -f relative/config && {
 	echo left config file
+	cat OUT
 	exit 1
 }
 echo OK
@@ -66,14 +69,17 @@ rm -f "$DOTBK"/accepted
 echo y | $BK_INSTALLER $HERE/absolute > OUT 2>&1
 grep -q LICENSE OUT || {
 	echo Did not prompt for license
+	cat OUT
 	exit 1
 }
 test -d absolute || {
 	echo did not create relative 
+	cat OUT
 	exit 1
 }
 test -f absolute/config && {
 	echo left config file
+	cat OUT
 	exit 1
 }
 echo OK
@@ -83,10 +89,12 @@ rm -f "$DOTBK"/accepted
 echo n | $BK_INSTALLER refuse > OUT 2>&1
 grep -q LICENSE OUT || {
 	echo Did not prompt for license
+	cat OUT
 	exit 1
 }
 test -d refuse && {
 	echo did not create relative 
+	cat OUT
 	exit 1
 }
 echo OK
@@ -125,7 +133,7 @@ rm -f "$DOTBK"/accepted
 # XXX - it would be nice if we looked in the destination for the config
 # on upgrades.
 cp $HERE/config "$DOTBK"/config
-chmod +w absolute
+chmod +w absolute >/dev/null 2>&1	# SCO's chmod barfs
 cp $HERE/config absolute
 echo "foo: bar" >> absolute/config
 echo y | $BK_INSTALLER -u > OUT 2>&1
@@ -162,14 +170,17 @@ grep -q 'Inserted key of size' OUT || {
 echo y | ./bk-academic embedded > OUT 2>&1
 grep -q LICENSE OUT || {
 	echo Did not prompt for license
+	cat OUT
 	exit 1
 }
 test -d embedded || {
 	echo did not create relative 
+	cat OUT
 	exit 1
 }
 test -f embedded/config || {
 	echo did not leave config file
+	cat OUT
 	exit 1
 }
 echo OK
@@ -178,5 +189,5 @@ echo OK
 # Careful!!!!
 #####################################################################
 cd $HERE
-chmod -R +w *
+chmod -R +w * >/dev/null 2>&1	# SCO's chmod barfs
 rm -rf *

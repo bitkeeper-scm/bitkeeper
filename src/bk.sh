@@ -1324,6 +1324,8 @@ _install()
 		echo "usage: bk install [-dfSv] <destdir>"
 		exit 1
 	}
+	test X$BK_REGRESSION != X && CRANKTURN=YES
+
 	DEST="$1"
 	SRC=`bk bin`
 
@@ -1454,6 +1456,10 @@ _install()
 	else
 		find . -type d | xargs chmod 777
 	fi
+
+	# Don't update registry et al if cranking.
+	test $CRANKTURN = YES && exit 0
+
 	# registry
 	if [ "X$OSTYPE" = "Xmsys" ]
 	then
@@ -1463,6 +1469,7 @@ _install()
 		# This tells extract.c to reboot if it is needed
 		test $CRANKTURN = NO -a -f "$OBK/BkShellX.dll" && exit 2
 	fi
+
 
 	# Log the fact that the installation occurred
 	PATH="${DEST}:$PATH"

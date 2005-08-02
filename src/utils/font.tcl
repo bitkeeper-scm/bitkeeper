@@ -17,7 +17,7 @@ proc initFonts-windows {} \
 	if {$width <= 1024} {
 		set fixedFont	{{Courier New} 8 normal}
 	}  else {
-		set fixedFont	{{Courier New} 10 normal}
+		set fixedFont	{{Courier New} 9 normal}
 	}
 }
 

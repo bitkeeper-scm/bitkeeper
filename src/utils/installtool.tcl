@@ -915,8 +915,7 @@ proc widgets {} \
 			}
 			Welcome {
 				set ::path [. configure -path]
-				if {[catch {
-				    set b [exec bk _eula -u 2>@ stdout] }]} {
+				if {[catch {set b [exec bk _eula -u]}]} {
 					# No license found, so prompt for it
 					set curStep [. configure -step]
 					set i [lsearch -exact \
