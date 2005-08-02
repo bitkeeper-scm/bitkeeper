@@ -61,7 +61,7 @@ tk/$S/configure: TKKEY
 install: ./version.sh
 	find bin lib -type d -print | xargs chmod ug+w
 	rm -rf ../bin ../lib
-	cp -r bin lib ..
+	tar cf - bin lib | (cd .. && tar xf -)
 	-TCLVER=`./version.sh`; \
 	if [ -n "$$TCLVER" -a \! -f "$$TCLVER" ]; \
 	then	test -d /build/obj || { \

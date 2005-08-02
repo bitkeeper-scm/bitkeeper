@@ -401,8 +401,9 @@ bk.script: bk.sh port/$(SYS)_platform.sh
 	chmod +x bk.script 
 
 bkmsg.txt: bkmsg.doc bk.ver FRC
+	PWD=`pwd`; \
 	sed "s/@version@/`cat bk.ver`/" bkmsg.doc | \
-	sed "s?@builder@?`./bk getuser`@`./bk gethost -r` in `pwd`?" | \
+	sed "s?@builder@?`./bk getuser`@`./bk gethost -r` in $$PWD?" | \
 	sed "s/@built_date@/`date`/" > bkmsg.txt
 
 bkhelp.txt: build FRC
@@ -429,7 +430,7 @@ bk.ver: ../SCCS/s.ChangeSet utils/os utils/gnu-os
 	  sed 's/ approved//g';` \
 	  for \
 	  `sh ./utils/os` \
-	) >bk.v
+	) | ./bk undos >bk.v
 	mv -f bk.v bk.ver
 
 # This must be rebuilt every time because it includes the build time

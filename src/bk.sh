@@ -1355,7 +1355,7 @@ _install()
 			echo "bk install: destination is not an existing bk tree, failed"
 			exit 1
 		}
-		test "$DEST/config" && {
+		test -f "$DEST/config" && {
 			CONFIG=/tmp/config$$
 			cp "$DEST/config" $CONFIG
 	    	}

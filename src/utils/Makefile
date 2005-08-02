@@ -101,5 +101,5 @@ zz$(EXE): zz.c
 
 clobber clean clean-obj:
 	/bin/rm -f _data _data.c _data.o a.out munge$(EXE) sfioball sfio zz \
-	core* bk-*.bin *.o *.exe *.obj *.pdb *.ilk sfio *.zz installtool
+	core* bk-*.bin *.o *.exe *.obj *.pdb *.ilk sfio *.zz installtool inskeys
 	bk -r. clean

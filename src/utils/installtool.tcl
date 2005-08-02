@@ -985,7 +985,6 @@ proc log {string {tag {}}} \
 	if {[lindex $yview 1] >= 1} {
 		$::widgets(log) see end-1c
 	}
-	update idletasks
 }
 
 proc busy {on} \
@@ -1000,7 +999,7 @@ proc busy {on} \
 		$widgets(log) configure -cursor watch
 	} else {
 		. configure -state normal
-		if {[tk windowinsystem] eq "x11"} {
+		if {[tk windowingsystem] eq "x11"} {
 			$widgets(log) configure -cursor {}
 		} else {
 			$widgets(log) configure -cursor arrow
