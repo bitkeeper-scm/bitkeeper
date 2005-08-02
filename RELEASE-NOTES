@@ -25,13 +25,14 @@ do not currently support please let us know.
 
 Licensing Changes
 ----------------------------------------------------------------------------
-This release implements some changes in the way licensing is handled.
-One change is that it requires a valid license in order to install.
-We are moving toward a model wherein evaluation images are sent out with
-the license embedded; after an installation the license will be saved in
-`bk bin`/config (see below).  If that file is left in the config directory
-it will be used for each new repository created; remove the file if that
-is not what you want.
+This release implements the first of a series of license improvements
+on the BitKeeper roadmap.  One change is that a valid license key is
+required in order to install.  In the future evaluation images will
+be sent out with the license embedded; after an install the license
+will be saved in `bk bin`/config (see below).  If that file is left
+in the config directory it will be used for each new repository
+created.  If you do not want to use this license for each new
+repository you may remove the file from your install directory.
 
 You may be prompted to accept a new license as the license terms have
 been changed to handle our wider range of customers (from Academic to

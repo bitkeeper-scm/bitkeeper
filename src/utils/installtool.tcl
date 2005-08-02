@@ -6,7 +6,7 @@ catch {wm withdraw .}
 
 proc main {} \
 {
-	global	argv env options installer runtime
+	global	argv env options installer runtime fixedFont
 
 	bk_init
 	initGlobals
@@ -22,14 +22,11 @@ proc main {} \
 	if {[file exists bitkeeper/gui/images/bk16.ico]} {
 		catch {wm iconbitmap . bitkeeper/gui/images/bk16.ico}
 	}
-	set width [winfo screenwidth .]
-	if {$width <= 1024} { 
-		centerWindow . 500 350
-	} elseif {$width <= 1280} { 
-		centerWindow . 600 375
-	} else {
-		centerWindow . 700 400
-	}
+
+	set w [expr [font measure $fixedFont "="] * 79]
+	incr w 50
+	centerWindow . $w 375
+
 	. configure -step Welcome
 	. show
 	wm deiconify .
@@ -271,6 +268,30 @@ proc parseLicenseData {type} \
 	}
 }
 
+# Insert a step right after the current step
+# Side Effect: The global variable paths is modified with the 
+# new path
+proc wizInsertStep {step} \
+{
+	global paths
+
+	set curPath [. configure -path]
+	set curStep [. configure -step]
+	if {![info exists paths($curPath)]} {
+		return -code error "paths($curPath) doesn't exist"
+	}
+	set i [lsearch -exact $paths($curPath) $curStep]
+	incr i
+
+	# Bail if the step was already in the path as the next step
+	if {[lindex $paths($curPath) $i] eq $step} {return}
+
+	# I don't know how to modify a path, so I just add a new one
+	set newpath "${curPath}_${step}"
+	set paths($newpath) [linsert $paths($curPath) $i $step]
+	. add path $newpath -steps $paths($newpath)
+	. configure -path $newpath
+}
 
 proc widgets {} \
 {
@@ -426,6 +447,13 @@ proc widgets {} \
 		bind all <Prior> "$w.text yview scroll -1 pages"
 		bind all <Down> "$w.text yview scroll 1 units"
 		bind all <Up> "$w.text yview scroll -1 units"
+		bind all <MouseWheel> "
+			if {%D < 0} {
+				$w.text yview scroll +1 units
+			} else {
+				$w.text yview scroll -1 units
+			}
+		"
 
 		frame $w.radioframe -bd 0
 		radiobutton $w.radioframe.accept \
@@ -813,6 +841,13 @@ proc widgets {} \
 		bind all <Prior> "$w.log yview scroll -1 pages"
 		bind all <Down> "$w.log yview scroll 1 units"
 		bind all <Up> "$w.log yview scroll -1 units"
+		bind all <MouseWheel> "
+			if {%D < 0} {
+				$w.log yview scroll +1 units
+			} else {
+				$w.log yview scroll -1 units
+			}
+		"
 
 		$w.log tag configure error -foreground red
 		$w.log tag configure skipped -foreground blue
@@ -881,74 +916,43 @@ proc widgets {} \
 			}
 			EULA {exec bk _eula -a}
 			LicenseKey {
-				set ::path [. configure -path]
 				if {![checkLicense \
 				    $::wizData(license) \
 				    $::wizData(licsign1) \
 				    $::wizData(licsign2) \
 				    $::wizData(licsign3)]} {
-				        popupMessage -W \
-					    [getmsg "setuptool_invalid_license"]
+					# we don't need to do anything here
+					# because checkLicense warns the user
+					# if the license is invalid
 					break
 				}
-				set ::licenseInfo(text) [getEulaText \
-				    $::wizData(license) \
-				    $::wizData(licsign1) \
-				    $::wizData(licsign2) \
-				    $::wizData(licsign3)]
+				if {![info exists ::licenseInfo(text)] ||
+				    $::licenseInfo(text) eq ""} {
+					set ::licenseInfo(text) [getEulaText \
+					    $::wizData(license) \
+					    $::wizData(licsign1) \
+					    $::wizData(licsign2) \
+					    $::wizData(licsign3)]
+				}
 				if {$::licenseInfo(text) ne ""} {
 					# Insert EULA step into path
-					set curStep [. configure -step]
-					set i [lsearch -exact \
-					    $::paths($::path) $curStep]
-					incr i
-					set ::paths($::path) \
-					    [linsert $::paths($::path) $i EULA]
-					# Don't know how to modify a path, so
-					# I just delete it and re-add it
-					. delete path $::path
-					. add path $::path -steps \
-					    $::paths($::path)
-					. configure -path $::path
-					. configure -step $curStep
+					wizInsertStep EULA
 				}
 			}
 			Welcome {
-				set ::path [. configure -path]
 				if {[catch {set b [exec bk _eula -u]}]} {
 					# No license found, so prompt for it
-					set curStep [. configure -step]
-					set i [lsearch -exact \
-					    $::paths($::path) $curStep]
-					incr i
-					set ::paths($::path) \
-					    [linsert $::paths($::path) \
-					    $i LicenseKey]
-					# Don't know how to modify a path, so
-					# I just delete it and re-add it
-					. delete path $::path
-					. add path $::path -steps \
-					    $::paths($::path)
-					. configure -path $::path
+					wizInsertStep LicenseKey
 					. configure -step LicenseKey
 					break
 				}
-				set ::licenseInfo(text) $b
+				if {![info exists ::licenseInfo(text)] ||
+				    $::licenseInfo(text) eq ""} {
+					set ::licenseInfo(text) $b
+				}
 				if {$::licenseInfo(text) ne ""} {
 					# Insert EULA step into path
-					set curStep [. configure -step]
-					set i [lsearch -exact \
-					    $::paths($::path) $curStep]
-					incr i
-					set ::paths($::path) \
-					    [linsert $::paths($::path) $i EULA]
-					# Don't know how to modify a path, so
-					# I just delete it and re-add it
-					. delete path $::path
-					. add path $::path -steps \
-					    $::paths($::path)
-					. configure -path $::path
-					. configure -step $curStep
+					wizInsertStep EULA
 				}
 			}
 		}
@@ -996,7 +1000,12 @@ proc busy {on} \
 		$widgets(log) configure -cursor watch
 	} else {
 		. configure -state normal
-		$widgets(log) configure -cursor {}
+		if {[tk windowinsystem] eq "x11"} {
+			$widgets(log) configure -cursor {}
+		} else {
+			$widgets(log) configure -cursor arrow
+		}
+
 	}
 	update
 }

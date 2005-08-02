@@ -26,11 +26,10 @@ proc initFonts-macosx {} \
 	global	fixedFont
 
 	set width [winfo screenwidth .]
-	if {$width <= 1024} { 
-		set fixedFont	{Monaco 10 normal}
-	} else {
-		set fixedFont	{Monaco 11 normal}
-	}
+	# MacOS has this nice property that fonts just look good
+	# and scale well independent of screen resolution. I guess
+	# those caligraphy classes that Steve Jobs took paid off.
+	set fixedFont	{Monaco 11 normal}
 }
 
 proc initFonts-unix {} \

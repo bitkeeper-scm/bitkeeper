@@ -78,6 +78,17 @@ installtool: ../port/$(SYS)_platform.tcl installtool.tcl font.tcl \
 	 echo "main"\
 	) > installtool
 
+html: inskeys A P
+	test `find . -name 'bk*' | wc -l` -eq 1 || { \
+		echo Wrong number of images; \
+		exit 1; \
+	}
+	cp bk* /home/lm/public_html/bk-no-lic.bin
+	cp bk* /home/lm/public_html/bk-academic.bin
+	cp bk* /home/lm/public_html/bk-pro.bin
+	inskeys /home/lm/public_html/bk-academic.bin A
+	inskeys /home/lm/public_html/bk-pro.bin P
+
 munge.o: munge.c $H
 	$(CC) -c $(CFLAGS) munge.c $(CC_OUT)
 

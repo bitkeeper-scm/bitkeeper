@@ -528,9 +528,10 @@ proc popupMessage {args} \
 
 proc checkLicense {license licsign1 licsign2 licsign3} \
 {
-	
 	global dev_null
 
+	# bk _eula -v has the side effect of popping up a messagebox
+	# warning the user if the license is invalid. 
 	set f [open "|bk _eula -v > $dev_null" w]
 	puts $f "
 	    license: $license
