@@ -545,12 +545,12 @@ install: installdir
 	-$(BINDIR)/bk links /usr/bin
 
 installdir: utils/registry.tcl
-	rm -rf $(IMGDIR)
+	rm -rf $(IMGDIR) || exit 1
 	mkdir -p $(IMGDIR)
 	tar cf - $(BINS) $(SCRIPTS) gui/bin gui/lib gui/images | \
 		(cd $(IMGDIR) && tar xf -)
 	cp $(DATA) $(IMGDIR)
-	@if [ $(SYS) = unix ]; \
+	if [ $(SYS) = unix ]; \
 	then	(cd gnu && $(MAKE) install BINDIR=$(IMGDIR)) ;\
 		bk get -S ../man/Makefile; \
 		cd ../man && $(MAKE) install BINDIR=$(IMGDIR) ;\
@@ -558,6 +558,10 @@ installdir: utils/registry.tcl
 		(cd win32 && $(MAKE) BINDIR=$(IMGDIR) install); \
 		cp utils/registry.tcl $(IMGDIR)/gui/lib; \
 	fi
+	cd $(IMGDIR); \
+	    find . -type l | \
+		perl -ne 'chomp; $$a = readlink; print "$$a|$$_\n";'>symlinks; \
+	    test -s symlinks || rm -f symlinks
 	@true
 
 trial_image trial-image:

@@ -33,12 +33,14 @@ extern unsigned char data_data[];
 extern unsigned int keys_size;
 extern unsigned char keys_data[];
 
+void	cd(char *dir);
+void	chomp(char *buf);
 void	extract(char *, char *, u32, char *);
-char	*findtmp(void);
+char*	findtmp(void);
+char*	getdest(void);
 int	isdir(char*);
 void	rmTree(char *dir);
-char	*getdest(void);
-void	cd(char *dir);
+void	symlinks(void);
 
 int
 main(int ac, char **av)
@@ -173,6 +175,7 @@ main(int ac, char **av)
 		perror("sfio");
 		exit(1);
 	}
+	symlinks();
 	
 	/*
 	 * See if we have an embedded license and move it in place
@@ -196,10 +199,7 @@ main(int ac, char **av)
 			sprintf(buf, "bk _preference|bk _eula -v 2>" DEV_NULL);
 			f = popen(buf, "r");
 			while (fgets(buf, sizeof(buf), f)) {
-				if ((p = strchr(buf, '\r')) ||
-				    (p = strchr(buf, '\n'))) {
-				    	*p = 0;
-				}
+				chomp(buf);
 				if (strneq("license:", buf, 8)) {
 					config = malloc(2000);
 					sprintf(config, "BK_CONFIG=%s;", buf);
@@ -292,6 +292,38 @@ main(int ac, char **av)
 	}
 #endif
 	exit(0);
+}
+
+void
+chomp(char *buf)
+{
+	char	*p;
+
+	if ((p = strchr(buf, '\r')) || (p = strchr(buf, '\n'))) *p = 0;
+}
+
+/*
+ * If we have symlinks file then emulate:
+ * while read a b; do ln -s $a $b; done < symlinks
+ */
+void
+symlinks(void)
+{
+	FILE	*f;
+	char	*p;
+	char	buf[MAXPATH*2];
+
+	unless (size("bitkeeper/symlinks") > 0) return;
+	cd("bitkeeper");
+	unless (f = fopen("symlinks", "r")) goto out;
+	while (fgets(buf, sizeof(buf), f)) {
+		chomp(buf);
+		unless (p = strchr(buf, '|')) goto out;
+		*p++ = 0;
+		symlink(buf, p);
+	}
+out:	fclose(f);
+	cd("..");
 }
 
 void
