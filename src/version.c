@@ -36,7 +36,7 @@ bkversion(FILE *f)
 	char	*key, *t;
 	char	buf[MAXLINE];
 
-	lease_refresh();	/* get a lease, but don't fail */
+	lease_refresh(0, O_RDONLY);	/* get a lease, but don't fail */
 	key = lease_latestbkl();
 	if (key) {
 		bits = license_bklbits(key);

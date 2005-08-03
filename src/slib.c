@@ -4191,7 +4191,7 @@ sccs_init(char *name, u32 flags)
 
 	signal(SIGPIPE, SIG_IGN); /* win32 platform does not have sigpipe */
 	if (sig_ignore() == 0) s->unblock = 1;
-	lease_check(s->proj, s, 0);
+	lease_check(s->proj, O_RDONLY, s);
  out:
 	return (s);
 }

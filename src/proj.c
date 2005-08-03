@@ -132,6 +132,7 @@ proj_init(char *dir)
 	new(ret);
 	ret->root = root;
 	ret->casefolding = -1;
+	ret->leaseok = -1;
 
 	projcache_store(root, ret);
 	unless (streq(root, fdir)) projcache_store(fdir, ret);
@@ -364,7 +365,7 @@ proj_reset(project *p)
 			p->bkl = 0;
 		}
 		p->bklbits = 0;
-		p->leaseok = 0;
+		p->leaseok = -1;
 	} else {
 		kv = hash_first(proj.cache);
 		while (kv.key.dptr) {
@@ -478,8 +479,11 @@ proj_leaseChecked(project *p, int write)
 {
 	unless (p || (p = curr_proj())) return (0);
 
-	if (p->leaseok == 1 + write) return (1);
-	p->leaseok = 1 + write;
+	if ((p->leaseok == O_WRONLY) ||
+	    ((p->leaseok == O_RDONLY) && (write == O_RDONLY))) {
+		return (1);
+	}
+	p->leaseok = write;
 	return (0);
 }
 

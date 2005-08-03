@@ -315,7 +315,7 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 			errors |= 1;
 			continue;
 		}
-		lease_check(s->proj, s, 1);
+		lease_check(s->proj, O_WRONLY, s);
 		if (df & DELTA_AUTO) {
 			if (HAS_SFILE(s)) {
 				df &= ~NEWFILE;
