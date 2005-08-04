@@ -97,8 +97,8 @@ unix_common_setup()
 	mkdir $BK_LIMITPATH
 	for f in awk expr sh ksh grep egrep sed env test [ sleep getopts \
 	    basename dirname cat cp ln mkdir mv rm rmdir touch wc xargs \
-	    co rcs ssh rsh gzip gunzip remsh rcmd uname xterm vi \
-	    perl
+	    co rcs ssh rsh gzip gunzip remsh rcmd uname xterm vi tar find \
+	    chmod perl
 	do	p=`bk which -e $f`
 		if [ $? -eq 0 ]
 		then	ln -s $p $BK_LIMITPATH/$f
@@ -185,7 +185,7 @@ check_w()
 }
 
 
-chech_enclosing_repo()
+check_enclosing_repo()
 {
 	for i in . .. ../.. ../../.. ../../..
 	do	if [ -d ${TST_DIR}/${i}/BitKeeper/etc ]
@@ -220,7 +220,7 @@ setup_env()
 		check_w
 		;;
 	esac
-	chech_enclosing_repo
+	check_enclosing_repo
 
 	BK_USER=bk
 	export BK_USER

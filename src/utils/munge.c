@@ -21,6 +21,8 @@
  *	unsigned char	sfio_data[installer_size];
  *	unsigned int	data_size;
  *	unsigned char	data_data[data_size];
+ *	unsigned int	keys_size;
+ *	unsigned char	keys_data[keys_size];
  */
 uchar	init[] = { 255, 6, 1, 2, 3, 4, 255, 3, 9, 62, 255, 10, 4, 61, 255, 0 };
 
@@ -101,21 +103,21 @@ fill:	printf("Inserting data ");
 int
 main(int ac, char **av)
 {
-	int	sfio, data, out;
+	int	sfio, data, config, out;
 	uchar	buf[1024];
 	char	*cc;
 	char	*map;
 	uchar	*p;
 	struct	stat asb;
-	off_t	sf_size, d_size, a_size;
+	off_t	sf_size, d_size, k_size;
 
 #ifdef	WIN32
 	_fmode = _O_BINARY;
 #endif
 
-	if (ac != 3) {
+	if (ac != 4) {
 		fprintf(stderr,
-		    "usage: %s sfio data\n", av[0]);
+		    "usage: %s sfio data config\n", av[0]);
 		return (1);
 	}
 	setbuf(stdout, 0);
@@ -132,6 +134,12 @@ main(int ac, char **av)
 	}
 	setmode(data, _O_BINARY);
 
+	if ((config = open(av[3], O_RDONLY, 0)) < 0) {
+		perror(av[3]);
+		return (1);
+	}
+	setmode(config, _O_BINARY);
+
 	if ((out = open(OUTPUT, O_CREAT|O_WRONLY|O_TRUNC, 0666)) < 0) {
 		perror(OUTPUT);
 		return (1);
@@ -139,6 +147,7 @@ main(int ac, char **av)
 	setmode(out, _O_BINARY);
 	sf_size = setup(out, "sfio", sfio);
 	d_size = setup(out, "data", data);
+	k_size = setup(out, "keys", config);
 	close(out);
 
 	if (!(cc = getenv("CC"))) cc = "cc";
@@ -160,7 +169,8 @@ main(int ac, char **av)
 		return (1);
 	}
 	p = install((uchar *)map, (uchar *)map, asb.st_size, sfio);
-	install((uchar *)map, p, asb.st_size, data);
+	p = install((uchar *)map, p, asb.st_size, data);
+	install((uchar *)map, p, asb.st_size, config);
 	munmap(map, asb.st_size);
 	return (0);
 }

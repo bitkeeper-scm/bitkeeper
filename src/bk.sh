@@ -1256,6 +1256,7 @@ _install()
 	VERBOSE=NO
 	DLLOPTS=""
 	DOSYMLINKS=NO
+	CONFIG=
 	while getopts dfvlnsS opt
 	do
 		case "$opt" in
@@ -1275,8 +1276,15 @@ _install()
 		echo "usage: bk install [-dfSv] <destdir>"
 		exit 1
 	}
+	test X$BK_REGRESSION != X && CRANKTURN=YES
+
 	DEST="$1"
 	SRC=`bk bin`
+
+	bk _eula -p || {
+		echo Installation aborted.
+		exit 1
+	}
 
 	OBK="$DEST.old$$"
 	NFILE=0
@@ -1299,6 +1307,10 @@ _install()
 			echo "bk install: destination is not an existing bk tree, failed"
 			exit 1
 		}
+		test -f "$DEST/config" && {
+			CONFIG=/tmp/config$$
+			cp "$DEST/config" $CONFIG
+	    	}
 		test $VERBOSE = YES && echo Uninstalling $DEST
 		if [ "X$OSTYPE" = "Xmsys" ]
 		then
@@ -1326,6 +1338,10 @@ _install()
 	}
 	# make DEST canonical full path w long names.
 	DEST=`bk pwd "$DEST"`
+	test X$CONFIG != X && {
+		cp $CONFIG "$DEST/config"
+		rm -f $CONFIG
+	}
 	# copy data
 	V=
 	test $VERBOSE = YES && {
@@ -1352,10 +1368,17 @@ _install()
 	# symlinks to /usr/bin
 	if [ "$DOSYMLINKS" = "YES" ]
 	then
-	        LINKDIR=/usr/bin
-		test ! -w $LINKDIR && LINKDIR="$HOME/bin"
-	        test $VERBOSE = YES && echo "$DEST"/bk links "$LINKDIR"
-		"$DEST"/bk links "$LINKDIR"
+		if [ ! -w /usr/bin ]
+		then
+	        	test $VERBOSE = YES && echo "$DEST"/bk links /usr/bin
+			"$DEST"/bk links /usr/bin
+		else
+	        	test $VERBOSE = YES && {
+		    		A='Skipping requested symlinks because'
+				B='/usr/bin is not writable.'
+				echo $A $B
+			}
+		fi
 	fi
 
 	if [ "X$OSTYPE" = "Xmsys" ]
@@ -1385,6 +1408,10 @@ _install()
 	else
 		find . -type d | xargs chmod 777
 	fi
+
+	# Don't update registry et al if cranking.
+	test $CRANKTURN = YES && exit 0
+
 	# registry
 	if [ "X$OSTYPE" = "Xmsys" ]
 	then
@@ -1394,6 +1421,7 @@ _install()
 		# This tells extract.c to reboot if it is needed
 		test $CRANKTURN = NO -a -f "$OBK/BkShellX.dll" && exit 2
 	fi
+
 
 	# Log the fact that the installation occurred
 	PATH="${DEST}:$PATH"

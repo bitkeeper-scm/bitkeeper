@@ -2,26 +2,46 @@
 Release notes for BitKeeper version 3.2.5.   These release notes cover
 the following topics:
 
-. Platforms
+. Platform News
 . Upgrade Notes
+. Licensing Changes
+. Installation changes
 . New Features
 . Noteworthy bug fixes
 
-Platforms
+Platform News
 ----------------------------------------------------------------------------
 We are dropping support for platforms for which we have no demand.
 
-    Tru64/Alpha
-    Linux/mipsel (Qube)
-    Linux/390 (zSeries)
-    Linux/Arm
-    Windows/ME
-    Windows/98
-    Windows/95
-    Windows/NT
+    Tru64/Alpha, Linux/mipsel (Qube), Linux/390 (zSeries), Linux/Arm,
+    Windows/ME, Windows/98, Windows/95, and Windows/NT.
 
 If your needs include any of those platforms please contact us so we can
 work with you to understand your needs and work out a solution.
+
+We continue to support a wide range of platforms including Linux, 
+Windows, MacOS, Solaris, FreeBSD, and HPUX.  If you need a platform we
+do not currently support please let us know.
+
+Licensing Changes
+----------------------------------------------------------------------------
+This release implements the first of a series of license improvements
+on the BitKeeper roadmap.  One change is that a valid license key is
+required in order to install.  In the future evaluation images will
+be sent out with the license embedded; after an install the license
+will be saved in `bk bin`/config (see below).  If that file is left
+in the config directory it will be used for each new repository
+created.  If you do not want to use this license for each new
+repository you may remove the file from your install directory.
+
+You may be prompted to accept a new license as the license terms have
+been changed to handle our wider range of customers (from Academic to
+the Enterprise).  Please read the license carefully to be sure you 
+are comfortable with the terms.  
+
+If you have nightly jobs which use BitKeeper, please remember to verify
+after upgrading that these jobs are still working.  It's possible that
+a license prompt which goes unanswered could stop a script.
 
 Upgrade notes
 ----------------------------------------------------------------------------
@@ -29,10 +49,27 @@ This should be a simple upgrade.  If you are running 3.2.4 you can
 upgrade using the 'bk upgrade' command.  For more information see 'bk
 help upgrade'.
 
+Installation changes
+----------------------------------------------------------------------------
+The download/install process has been streamlined.  Some install images
+will contain an embedded license so that the process of finding and
+the license keys is automated.  For images without embedded licenses,
+the system searches in more places for the keys (see "config file" below).
+
 New Features
 ----------------------------------------------------------------------------
 - bk export -dup (procedural diffs)
 - MacOS X is now fully supported with both Aqua and X11 guis included.
+- config file search order has been expanded and is now:
+
+  	$BK_CONFIG
+  	`bk root`/BitKeeper/etc/config
+  	`bk dotbk`/config			(NEW in bk-3.2.5)
+  	/etc/BitKeeper/etc/config
+  	`bk bin`/config				(NEW in bk-3.2.5)
+  
+  Note that "bk dotbk" prints the path to your personal BK directory, which
+  is usually $HOME/.bk
 
 Noteworthy bug fixes
 ----------------------------------------------------------------------------

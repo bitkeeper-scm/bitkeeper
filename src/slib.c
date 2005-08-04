@@ -3929,6 +3929,42 @@ loadGlobalConfig(MDBM *db)
 }
 
 /*
+ * "Append" bin config to local config.
+ * I.e local field have priority over global field.
+ * If local field exists, it masks out the global counter part.
+ */
+MDBM *
+loadBinConfig(MDBM *db)
+{
+	char 	*config;
+	extern	char *bin;
+
+	assert(db);
+	config = aprintf("%s/config", bin);
+	config2mdbm(db, config);
+	free(config);
+	return(db);
+}
+
+
+/*
+ * "Append" .bk/config config to local config.
+ * I.e local field have priority over global field.
+ * If local field exists, it masks out the global counter part.
+ */
+MDBM *
+loadDotBkConfig(MDBM *db)
+{
+	char 	*config;
+
+	assert(db);
+	config = aprintf("%s/config", getDotBk());
+	config2mdbm(db, config);
+	free(config);
+	return(db);
+}
+
+/*
  * Override the config db with values from the BK_CONFIG enviromental
  * variable if it exists.
  *
@@ -3978,9 +4014,15 @@ loadConfig(char *root)
 {
 	MDBM *db;
 
-	db = loadRepoConfig(root);
-	unless (db) db = mdbm_mem();
+
+	if (root) {
+		unless (db = loadRepoConfig(root)) return (0);
+	} else {
+		db = mdbm_mem();
+	}
+	loadDotBkConfig(db);
 	loadGlobalConfig(db);
+	loadBinConfig(db);
 	loadEnvConfig(db);
 	return (db);
 }

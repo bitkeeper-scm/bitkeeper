@@ -406,8 +406,9 @@ bk.script: bk.sh port/$(SYS)_platform.sh
 	chmod +x bk.script 
 
 bkmsg.txt: bkmsg.doc bk.ver FRC
+	PWD=`pwd`; \
 	sed "s/@version@/`cat bk.ver`/" bkmsg.doc | \
-	sed "s?@builder@?`./bk getuser`@`./bk gethost -r` in `pwd`?" | \
+	sed "s?@builder@?`./bk getuser`@`./bk gethost -r` in $$PWD?" | \
 	sed "s/@built_date@/`date`/" > bkmsg.txt
 
 bkhelp.txt: build FRC
@@ -434,7 +435,7 @@ bk.ver: ../SCCS/s.ChangeSet utils/os utils/gnu-os
 	  sed 's/ approved//g';` \
 	  for \
 	  `sh ./utils/os` \
-	) >bk.v
+	) | ./bk undos >bk.v
 	mv -f bk.v bk.ver
 
 # This must be rebuilt every time because it includes the build time
@@ -544,16 +545,17 @@ gui-nowrap GUI-nowrap:
 	@cd gui && make nowrap
 
 install: installdir
+	tmp/bitkeeper/bk _eula -a
 	tmp/bitkeeper/bk install -d -f $(BINDIR)
 	-$(BINDIR)/bk links /usr/bin
 
 installdir: utils/registry.tcl
-	rm -rf $(IMGDIR)
+	rm -rf $(IMGDIR) || exit 1
 	mkdir -p $(IMGDIR)
 	tar cf - $(BINS) $(SCRIPTS) gui/bin gui/lib gui/images | \
 		(cd $(IMGDIR) && tar xf -)
 	cp -f $(DATA) $(IMGDIR)
-	@if [ $(SYS) = unix ]; \
+	if [ $(SYS) = unix ]; \
 	then	(cd gnu && $(MAKE) install BINDIR=$(IMGDIR)) ;\
 		bk get -S ../man/Makefile; \
 		cd ../man && $(MAKE) install BINDIR=$(IMGDIR) ;\
@@ -561,6 +563,10 @@ installdir: utils/registry.tcl
 		(cd win32 && $(MAKE) BINDIR=$(IMGDIR) install); \
 		cp utils/registry.tcl $(IMGDIR)/gui/lib; \
 	fi
+	cd $(IMGDIR); \
+	    find . -type l | \
+		perl -ne 'chomp; $$a = readlink; print "$$a|$$_\n";'>symlinks; \
+	    test -s symlinks || rm -f symlinks
 	@true
 
 trial_image trial-image:

@@ -39,7 +39,9 @@ case $CMD in
 	}
 	sleep 5		# give the other guys time to get rcp'ed and started
 
-	BK_NOTTY=YES BK_LICENSE=ACCEPTED bk clone -z0 $URL $BKDIR || failed
+	echo y | BK_NOTTY=YES BK_LICENSE=ACCEPTED bk clone -z0 $URL $BKDIR || {
+		failed
+	}
 
 	DOTBK=`bk dotbk`
 	test "X$DOTBK" != X && rm -f "$DOTBK/lease/`bk gethost -r`"
