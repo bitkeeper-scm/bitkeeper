@@ -389,7 +389,7 @@ getfile(char *buf)
 	p = strchr(file, '|');
 	unless (p && strneq(p, "|CRC|", 5)) return (0);
 	*p = 0;
-	unless (crc(file) == atoi(p + 5)) {
+	unless (crc(file) == strtoul(p + 5, 0, 10)) {
 		*p = '|';
 		return (0);
 	}
