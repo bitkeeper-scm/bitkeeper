@@ -4012,34 +4012,15 @@ loadEnvConfig(MDBM *db)
 MDBM *
 loadConfig(char *root)
 {
-	MDBM *db;
+	MDBM	*db;
 
-
-	if (root) {
-		unless (db = loadRepoConfig(root)) return (0);
-	} else {
-		db = mdbm_mem();
-	}
+	unless (db = loadRepoConfig(root)) db = mdbm_mem();
 	loadDotBkConfig(db);
-	loadGlobalConfig(db);
+	unless (getenv("BK_REGRESSION")) loadGlobalConfig(db);
 	loadBinConfig(db);
 	loadEnvConfig(db);
 	return (db);
 }
-
-#if	defined(linux) && defined(sparc)
-flushDcache()
-{
-	u32	i, j;
-#define	SZ	(17<<8)	/* 17KB buffer of ints */
-	u32	buf[SZ];
-
-	for (i = j = 0; i < SZ; i++) {
-		j += buf[i];
-	}
-	fchmod(-1, j);	/* use the result */
-}
-#endif
 
 /*
  * Return 0 for OK, -1 for error.
@@ -4346,16 +4327,6 @@ sccs_open(sccs *s, struct stat *sp)
 		s->fd = -1;
 		return (-1);
 	}
-#if	defined(linux) && defined(sparc)
-	/*
-	 * Sparc linux has an aliasing bug where the data gets
-	 * screwed up.  We can work around it by invalidating the
-	 * dache by stepping through it.
-	 */
-	else {
-		flushDcache();
-	}
-#endif
 	s->state |= S_SOPEN;
 	return (0);
 }
@@ -4376,9 +4347,6 @@ sccs_close(sccs *s)
 		return;
 	}
 	munmap(s->mmap, s->size);
-#if	defined(linux) && defined(sparc)
-	flushDcache();
-#endif
 	close(s->fd);
 	s->mmap = (caddr_t) -1;
 	s->fd = -1;
@@ -7198,7 +7166,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		s->state |= S_WARNED;
 		return (-1);
 	}
-	tmppat = aprintf("%s-%s", basenm(s->gfile), d->rev);
+	tmppat = aprintf("%s-%d", basenm(s->gfile), d->serial);
 	tmpfile = bktmp(0, tmppat);
 	free(tmppat);
 	popened = openOutput(s, encoding, printOut, &out);
@@ -16759,7 +16727,6 @@ sparc_fclose(FILE *f)
 #else
 	ret = fclose(f);
 #endif
-	unless (getenv("BK_NO_SPARC_FLUSH")) flushDcache();
 	return (ret);
 }
 #endif

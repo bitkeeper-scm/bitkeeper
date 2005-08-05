@@ -184,7 +184,7 @@ main(int ac, char **av)
 	sprintf(buf, "%s/config", dest);
 	unless (upgrade && exists(buf)) {
 		system("bk _eula -v < config > bitkeeper/config 2>"
-		    DEV_NULL);
+		    DEVNULL_WR);
 		unlink("config");
 		/*
 		 * If that didn't work, try looking in the original directory.
@@ -195,7 +195,7 @@ main(int ac, char **av)
 
 			unlink("bitkeeper/config");
 			cd(pwd);
-			sprintf(buf, "bk _preference|bk _eula -v 2>" DEV_NULL);
+			sprintf(buf, "bk _preference|bk _eula -v 2>"DEVNULL_WR);
 			f = popen(buf, "r");
 			while (fgets(buf, sizeof(buf), f)) {
 				chomp(buf);

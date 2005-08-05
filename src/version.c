@@ -37,9 +37,9 @@ bkversion(FILE *f)
 	char	buf[MAXLINE];
 
 	lease_refresh(0, O_RDONLY);	/* get a lease, but don't fail */
-	key = lease_latestbkl();
-	if (key) {
+	if (key = lease_latestbkl()) {
 		bits = license_bklbits(key);
+		free(key);
 		if (t = eula_type(bits)) sprintf(buf, "/%s", t);
 	} else {
 		buf[0] = 0;

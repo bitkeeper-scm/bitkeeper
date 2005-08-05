@@ -906,7 +906,10 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 		/*
 		 * Send information on the current license.
 		 */
-		fprintf(f, "putenv BK_LICENSE=%s\n", lease_latestbkl());
+		if (lic = lease_latestbkl()) {
+			fprintf(f, "putenv BK_LICENSE=%s\n", lic);
+			free(lic);
+		}
 	}
 	/*
 	 * Send comma separated list of client features so the bkd

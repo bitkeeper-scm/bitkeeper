@@ -23,6 +23,9 @@ fi
 # Note: This test assumes the shell "echo" comamnd output in binary mode
 echo $N Create initial repository ...................................$NL
 commercial project
+bk edit $Q BitKeeper/etc/config
+grep -v eoln BitKeeper/etc/config > c
+mv c BitKeeper/etc/config
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -31,15 +34,22 @@ echo OK
 
 echo $N Check ci co in EOLN_NATIVE mode .............................$NL
 # create a file with line terminated with CRLF 
-echo -e 'data\r' > data
+printf "data\r\n" > data
 cp data data.ref
-bk  ci $Q -i data
+bk ci $Q -i data
 bk co $Q data
-cmp -s data data.ref
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
+cmp -s data data.ref || {
+	echo failed after ci
+	od -c data data.ref
+	bk flags data
+	exit 1
+}
 bk edit $Q data
-cmp -s data data.ref
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
+cmp -s data data.ref || {
+	echo failed after edit
+	od -c data data.ref
+	exit 1
+}
 echo OK
 
 echo $N Check diffs in EOLN_NATIVE mode .............................$NL
