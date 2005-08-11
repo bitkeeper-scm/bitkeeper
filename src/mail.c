@@ -80,7 +80,6 @@ bkmail(char *url, char **to, char *subject, char *file)
 
 	r = remote_parse(url);
 	assert(r);
-	loadNetLib();
 	if (bkd_connect(r, 0, 1)) return (1);
 	bkmsg = bktmp(0, "mail");
 	f = fopen(bkmsg, "w");

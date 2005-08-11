@@ -109,7 +109,7 @@ cmd_httpget(int ac, char **av)
 	 */
 	if (ac > 2) {
 		while (fnext(buf, stdin)) {
-			// fputs(buf, stderr);
+			//fputs(buf, stderr);
 			if (buf[0] == '\r' || buf[0] == '\n') {
 				break;
 			}
@@ -1692,7 +1692,7 @@ url(char *path)
 
 	strcpy(buf, "http://");
 	strcat(buf, sccs_gethost());
-	sprintf(buf+strlen(buf), ":%d/", Opts.port ? Opts.port : BK_PORT);
+	sprintf(buf+strlen(buf), ":%s/", getenv("BKD_PORT"));
 	if (path) {
 		strcat(buf, path);
 		unless (buf[strlen(buf)-1] == '/') strcat(buf, "/");
@@ -1731,19 +1731,20 @@ http_page(char *page, vfn content, char *argument)
 }
 
 private int
-has_temp_license()
+has_temp_license(void)
 {
-	fd_set fds;
+	fd_set	fds;
 	struct timeval delay;
-	char ack[5];
-	int fd;
-	int timeleft = 30;
+	char	ack[5];
+	char	*p;
+	int	fd;
+	int	timeleft = 30;
 #define PULL	0x01
 #define	CLONE	0x02
-	int need = PULL|CLONE;
-	int i;
+	int	need = PULL|CLONE;
+	int	i;
 
-	if (time(0) < licenseEnd) return 1;
+	if (time(0) < licenseEnd) return (1);
 
 	/*
 	 * Only try to obtain a temp license if both pull
@@ -1753,9 +1754,13 @@ has_temp_license()
 		if (strneq(cmds[i].name, "pull", 4)) need &= ~PULL;
 		if (strneq(cmds[i].name, "clone", 5)) need &= ~CLONE;
 	}
-	if (need) return 0;
+	if (need) return (0);
 
-	fd = licenseServer[0];
+	unless (p = getenv("BK_LICENSE_SOCKPORT")) return (0);
+	if ((fd = tcp_connect("127.0.0.1", atoi(p))) < 0) {
+		perror("license connect2");
+		return (0);
+	}
 
     again:
 	FD_ZERO(&fds);
@@ -1764,7 +1769,7 @@ has_temp_license()
 	delay.tv_usec = 0;
 
 	unless (select(fd+1, 0, &fds, 0, &delay) > 0 && FD_ISSET(fd, &fds))
-		return 0;
+		return (0);
 
 	if (writen(fd, "MMI?", 4) == 4) {
 		ack[4] = 0;
@@ -1776,18 +1781,18 @@ has_temp_license()
 		unless (select(fd+1, &fds, 0, 0, &delay)) return 0;
 
 		if (FD_ISSET(fd, &fds) && read(fd, ack, 4) == 4) {
-			if (strneq(ack, "YES\0", 4)) return 1;
-
+			if (strneq(ack, "YES\0", 4)) {
+				close(fd);
+				return (1);
+			}
 			if (strneq(ack, "NO\0\0", 4) && --timeleft > 0) {
 				sleep(1);
 				goto again;
 			}
-
-			return 0;
+			return (0);
 		}
 	}
-
-	return 0;
+	return (0);
 }
 
 
@@ -1900,13 +1905,20 @@ http_related(char *file)
 private void
 http_license(char *page)
 {
-	char arg[5];
+	char	*p;
+	int	licsock;
+	char	arg[5];
 
-	if (expires > 0 && expires < 480) {
-		/* also check the ip address we're coming from */
-		sprintf(arg, "S%03d", expires);
-		writen(licenseServer[0], arg, 4);
+	unless (expires > 0 && expires < 480) return;
+	unless (p = getenv("BK_LICENSE_SOCKPORT")) return;
+	if ((licsock = tcp_connect("127.0.0.1", atoi(p))) < 0) {
+		perror("license connect");
+		return;
 	}
+	/* also check the ip address we're coming from */
+	sprintf(arg, "S%03d", expires);
+	write(licsock, arg, 4);
+	close(licsock);
 	exit(0);
 }
 

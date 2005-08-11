@@ -2,9 +2,34 @@
  * Copyright (c) 2001 Larry McVoy & Andrew Chang       All rights reserved.
  */
 #include "../bkd.h"
-#define Respond(s)	writen(licenseServer[1], s, 4)
 
-extern	time_t	requestEnd;
+#ifdef	WIN32
+#define SERVICENAME        	"BitKeeperService"
+#define SERVICEDISPLAYNAME 	"BitKeeper Service"
+
+private	void	bkd_start_service(void);
+private	void	bkd_install_service(bkdopts *opts, int ac, char **av);
+private	void	bkd_remove_service(int verbose);
+private	void	WINAPI bkd_service_ctrl(DWORD dwCtrlCode);
+private	char	*getError(char *buf, int len);
+private	void	reportStatus(SERVICE_STATUS_HANDLE, int, int, int);
+private	int	bkd_register_ctrl(void);
+private	void	logMsg(char *msg);
+
+static	SERVICE_STATUS		srvStatus;
+static	SERVICE_STATUS_HANDLE	statusHandle;
+static	HANDLE			hServerStopEvent = NULL;
+static	char			err[256];
+static	int			running_service = 0;
+
+#endif
+
+private void	argv_save(int ac, char **av, char **nav, int j);
+private void	argv_free(char **nav, int j);
+
+	time_t	licenseEnd;	/* when a temp bk license expires */
+static	time_t	requestEnd;
+static	int	bkd_quit = 0;
 
 #ifndef WIN32
 #include <grp.h>
@@ -52,114 +77,172 @@ uid:	unless (Opts.uid && *Opts.uid) return;
 }
 #else
 void
-ids() {} /* no-op */
+ids(void) {} /* no-op */
 #endif
 
-#ifndef WIN32
 void
 reap(int sig)
 {
+/* There is no need to reap processes on Windows */
+#ifndef WIN32
 	while (waitpid((pid_t)-1, 0, WNOHANG) > 0);
 	signal(SIGCHLD, reap);
-}
-#else
-/*
- * There is no need to reap process on NT
- */
-void reap(int sig) {} /* no-op */
 #endif
+}
 
-#ifndef WIN32
-void
-requestWebLicense()
+private void
+requestWebLicense(void)
 {
-
-#define LICENSE_HOST	"licenses.bitkeeper.com"
-#define	LICENSE_PORT	80
-#define LICENSE_REQUEST	"/cgi-bin/bkweb-license.cgi"
-
-	int f;
-	char buf[MAXPATH];
-	extern char *url(char*);
+	char	*av[10];
+	char	*url;
+	int	i;
+	int	fd;
 
 	time(&requestEnd);
 	requestEnd += 60;
 
-	if (fork() == 0) {
-		if ((f = tcp_connect(LICENSE_HOST, LICENSE_PORT)) != -1) {
-			sprintf(buf, "GET %s?license=%s:%u\n\n",
-			    LICENSE_REQUEST,
-			    sccs_gethost(), 
-			    Opts.port ? Opts.port : BK_PORT);
-			writen(f, buf, strlen(buf));
-			read(f, buf, sizeof buf);
-			close(f);
-		}
+	url = aprintf("http://%s/cgi-bin/bkweb-license.cgi?license=%s:%s",
+	    "licenses.bitmover.com", sccs_gethost(), getenv("BKD_PORT"));
 
-		exit(0);
+	av[i=0] = "bk";
+	av[++i] = "_httpfetch";
+	av[++i] = url;
+	av[++i] = 0;
+
+	/* connect stdout to /dev/null */
+	close(1);
+	fd = open(DEV_NULL, O_WRONLY, 0);
+	if (fd != 1) {
+		dup2(fd, 1);
+		close(fd);
 	}
+	/* spawn fetch in background */
+	spawnvp_ex(_P_DETACH, av[0], av);
+	close(1);		/* close /dev/null */
+	free(url);
 }
-#endif
 
-#ifndef WIN32
 void
 bkd_server(int ac, char **av)
 {
-	fd_set	fds;
-	int	sock;
+	int	port;
+	int	sock, licsock;
 	int	maxfd;
-	time_t	now;
-	extern	int licenseServer[2];	/* bkweb license pipe */ 
-	extern	time_t licenseEnd;	/* when a temp bk license expires */
+	int	ret;
+	char	*p;
+	FILE	*f;
+#ifdef	WIN32
+	SERVICE_STATUS_HANDLE   sHandle = 0;
+#endif
+	int	i, j;
+	char	*nav[100];
+	fd_set	fds;
 
-	sock = tcp_server(Opts.port ? Opts.port : BK_PORT, Opts.quiet);
-	ids();
-	if (sock < 0) exit(-sock);
-	unless (Opts.debug) if (fork()) exit(0);
-	unless (Opts.debug) setsid();	/* lose the controlling tty */
-	if (Opts.pidfile) {
-		FILE	*f = fopen(Opts.pidfile, "w");
-
-		if (f) {
-			fprintf(f, "%u\n", getpid());
-			fclose(f);
-		}
+#ifdef	WIN32
+	if ((p = getenv("BKD_START")) && *p) {
+		chdir(p);
+		putenv("BKD_START=");
+		bkd_start_service();
+		exit(0);
 	}
-	if (Opts.logfile) Opts.log = fopen(Opts.logfile, "a");
+	if (Opts.start) {
+		/* install and start bkd service */
+		bkd_install_service(&Opts, ac, av);
+		exit (0);
+	} else if (Opts.remove) { 
+		bkd_remove_service(1);
+		exit(0);
+	}
+#endif
+	if (p = getenv("BKD_SOCK_STDIN")) {
+		sock = dup(0);
+	} else {
+		port = atoi(getenv("BKD_PORT"));
+		sock = tcp_server(port, Opts.quiet);
+		if (sock < 0) exit(-sock);
+	}
+	putenv("BKD_DAEMON=1");	/* for save_cd code */
+
+	ids();
+	unless (Opts.debug) {
+		putenv("BKD_SOCK_STDIN=1");
+		dup2(sock, 0);
+		dup2(sock, 1);
+		closesocket(sock);
+		i = 0;
+		nav[i++] = "bk";
+		nav[i++] = "bkd";
+		nav[i++] = "-D";
+		j = 1;
+		while (nav[i++] = av[j++]);
+		spawnvp_ex(_P_DETACH, nav[0], nav);
+		exit(0);
+	}
+	i = 0;
+	nav[i++] = "bk";
+	nav[i++] = "bkd";
+	argv_save(ac, av, nav, i);
+
+#ifdef	WIN32
+	/*
+	 * Register our control interface with the service manager
+	 */
+	if (running_service && (sHandle = bkd_register_ctrl()) == 0) goto done;
+#endif
+
+        if ((licsock = tcp_server(0, 0)) < 0) {
+		fprintf(stderr, "Failed to open license socket\n");
+		exit(1);
+	}
+	make_fd_uninheritable(sock);
+	make_fd_uninheritable(licsock);
+	assert(sock > 2);
+	assert(licsock > 2);
+	safe_putenv("BK_LICENSE_SOCKPORT=%d", sockport(licsock));
+
+	if (Opts.pidfile && (f = fopen(Opts.pidfile, "w"))) {
+		fprintf(f, "%u\n", getpid());
+		fclose(f);
+	}
 	signal(SIGCHLD, reap);
 	signal(SIGPIPE, SIG_IGN);
 	if (Opts.alarm) {
 		signal(SIGALRM, exit);
 		alarm(Opts.alarm);
 	}
-	maxfd = (sock > licenseServer[1]) ? sock : licenseServer[1];
-
+	maxfd = (sock > licsock) ? sock : licsock;
+	close(0);
+	close(1);
+#ifdef	WIN32
+	if (sHandle) reportStatus(sHandle, SERVICE_RUNNING, NO_ERROR, 0);
+#endif
 	for (;;) {
 		int n;
 		struct timeval delay;
 
 		FD_ZERO(&fds);
-		FD_SET(licenseServer[1], &fds);
+		FD_SET(licsock, &fds);
 		FD_SET(sock, &fds);
 		delay.tv_sec = 60;
 		delay.tv_usec = 0;
 
-		unless (select(maxfd+1, &fds, 0, 0, &delay) > 0) continue;
+		if ((ret = select(maxfd+1, &fds, 0, 0, &delay)) < 0) continue;
+		if (FD_ISSET(licsock, &fds) && ((n = tcp_accept(sock)) >= 0)) {
+			char	req[5];
+			time_t	now;
 
-		if (FD_ISSET(licenseServer[1], &fds)) {
-			char req[5];
-
-			if (read(licenseServer[1], req, 4) == 4) {
+			if (read(n, req, 4) == 4) {
 				if (strneq(req, "MMI?", 4)) {
 					/* get current license (YES/NO) */
 					time(&now);
 
 					if (now < licenseEnd) {
-						Respond("YES\0");
+						write(n, "YES\0", 4);
 					} else {
-						if (requestEnd < now)
+						if (requestEnd < now) {
 							requestWebLicense();
-						Respond("NO\0\0");
+						}
+						write(n, "NO\0\0", 4);
 					}
 				} else if (req[0] == 'S') {
 					/* set license: usage is Sddd */
@@ -167,59 +250,36 @@ bkd_server(int ac, char **av)
 					licenseEnd = now + (60*atoi(1+req));
 				}
 			}
+			closesocket(n);
 		}
-
 		unless (FD_ISSET(sock, &fds)) continue;
 
-		if ( (n = tcp_accept(sock)) == -1) continue;
-
-		if (fork()) {
-		    	close(n);
-			/* reap 'em if you got 'em */
-			reap(0);
-			if ((Opts.count > 0) && (--(Opts.count) == 0)) break;
-			continue;
-		}
-
-		if (Opts.log) {
-			char	*name;
-
-			strcpy(Opts.remote, (name = peeraddr(n)) ? name : "unknown");
-		}
+		if ((n = tcp_accept(sock)) < 0) continue;
+		safe_putenv("BKD_PEER=%s", (p = peeraddr(n)) ? p : "unknown");
 		/*
 		 * Make sure all the I/O goes to/from the socket
 		 */
-		close(0); dup(n);
-		close(1); dup(n);
-		close(n);
-		close(sock);
+		assert(n == 0);
+		dup2(n, 1);
 		signal(SIGCHLD, SIG_DFL);	/* restore signals */
-		do_cmds();
-		exit(0);
+		spawnvp_ex(_P_NOWAIT, "bk", nav);
+		ret = close(0);
+		ret = close(1);
+		/* reap 'em if you got 'em */
+		reap(0);
+		if ((Opts.count > 0) && (--(Opts.count) == 0)) break;
+		if (bkd_quit == 1) break;
 	}
+done:
+#ifdef	WIN32
+	if (sHandle) reportStatus(sHandle, SERVICE_STOPPED, NO_ERROR, 0);
+	argv_free(nav, 9);
+	_exit(0); /* We don't want to process atexit() in this */
+		  /* env. otherwise XP will flag an error      */
+#endif
 }
 
-#else
 
-#define APPNAME            	"BitKeeper"
-#define SERVICENAME        	"BitKeeperService"
-#define SERVICEDISPLAYNAME 	"BitKeeper Service"
-#define DEPENDENCIES       	""
-
-static	SERVICE_STATUS		srvStatus;
-static	SERVICE_STATUS_HANDLE	statusHandle;
-static	HANDLE			hServerStopEvent = NULL;
-static	char			err[256];
-static	int			bkd_quit = 0; /* global */
-
-private	void	WINAPI bkd_service_ctrl(DWORD dwCtrlCode);
-private	char	*getError(char *buf, int len);
-private	void	reportStatus(SERVICE_STATUS_HANDLE, int, int, int);
-private	void	bkd_remove_service(int verbose);
-private	void	bkd_install_service(bkdopts *opts, int ac, char **av);
-private	void	bkd_start_service(void (*service_func)(int, char**));
-private	int	bkd_register_ctrl(void);
-private	void	logMsg(char *msg);
 
 private void
 argv_save(int ac, char **av, char **nav, int j)
@@ -232,9 +292,13 @@ argv_save(int ac, char **av, char **nav, int j)
 	 */
 	getoptReset();
 	while ((c =
-	    getopt(ac, av, "c:CdDeE:g:hi:l|L:p:P:qRs:St:u:V:x:z")) != -1) {
+	    getopt(ac, av, "c:CdDeE:g:hi:l|L:p:P:qRSt:u:V:x:")) != -1) {
 		switch (c) {
 		    case 'C':	nav[j++] = strdup("-C"); break;
+		    case 'c':
+			nav[j++] = strdup("-c");
+			nav[j++] = strdup(optarg);
+			break;
 		    case 'D':	nav[j++] = strdup("-D"); break;
 		    case 'i':
 			nav[j++] = strdup("-i");
@@ -285,117 +349,10 @@ argv_free(char **nav, int j)
 	while (nav[j]) free(nav[j++]);
 }
 
-private void
-bkd_service_loop(int ac, char **av)
-{
-	SOCKET	sock = 0;
-	int	n;
-	char	pipe_size[50], socket_handle[20];
-	char	*nav[100] = {
-		"bk", "_socket2pipe",
-		"-s", socket_handle,	/* socket handle */
-		"-p", pipe_size,	/* set pipe size */
-		"bk", "bkd", "-z",	/* bkd command */
-		0};
-	SERVICE_STATUS_HANDLE   sHandle;
-	
-	/*
-	 * Register our control interface with the service manager
-	 */
-	if ((sHandle = bkd_register_ctrl()) == 0) goto done;
-
-	/*
-	 * Get a socket
-	 */
-	sock = (SOCKET) tcp_server(Opts.port ? Opts.port : BK_PORT, 1);
-	if (sock < 0) goto done;
-
-	if (Opts.startDir) {
-		if (chdir(Opts.startDir) != 0) {
-			char msg[MAXLINE];
-
-			sprintf(msg, "bkd: cannot cd to \"%s\"",
-								Opts.startDir);
-			logMsg(msg);
-			goto done;
-		}
-	}
-	if (Opts.logfile) Opts.log = fopen(Opts.logfile, "a");
-
-	/*
-	 * Main loop
-	 */
-	sprintf(pipe_size, "%d", BIG_PIPE);
-	argv_save(ac, av, nav, 9);
-	reportStatus(sHandle, SERVICE_RUNNING, NO_ERROR, 0);
-	for (;;) {
-		n = accept(sock, 0 , 0);
-		/*
-		 * We could be interrupted if the service manager
-		 * want to shut us down.
-		 */
-		if (bkd_quit == 1) break; 
-		if (n == INVALID_SOCKET) {
-			logMsg("bkd: got invalid socket, re-trying...");
-			continue; /* re-try */
-		}
-		/*
-		 * On win32, we cannot dup a socket,
-		 * so just pass the socket handle as a argument
-		 */
-		sprintf(socket_handle, "%d", n);
-		if (Opts.log) {
-			char	*name = peeraddr(n);
-
-			strcpy(Opts.remote, name ? name : "unknown");
-		}
-		/*
-		 * Spawn a socket helper which will spawn a new bkd process
-		 * to service this connection. The new bkd process is connected
-		 * to the socket helper via pipes. Socket helper forward
-		 * all data between the pipes and the socket.
-		 */
-		if (spawnvp_ex(_P_NOWAIT, nav[0], nav) == -1) {
-			logMsg("bkd: cannot spawn socket_helper");
-			break;
-		}
-		CloseHandle((HANDLE) n); /* important for EOF */
-        	if ((Opts.count > 0) && (--(Opts.count) == 0)) break;
-		if (bkd_quit == 1) break;
-	}
-
-done:	if (sock) CloseHandle((HANDLE)sock);
-	if (sHandle) reportStatus(sHandle, SERVICE_STOPPED, NO_ERROR, 0);
-	argv_free(nav, 9);
-	_exit(0); /* We don't want to process atexit() in this */
-		  /* env. otherwise XP will flag an error      */
-}
-
-
-/*
- * There are two major differences between the Unix/Win32
- * bkd_server implementation:
- * 1) Unix bkd is a regular daemon, win32 bkd is a NT service
- *    (NT services has a more complex interface, think 10 X)
- * 2) Win32 bkd uses a socket_helper process to convert a pipe interface
- *    to socket intertface, because the main code always uses read()/write()
- *    instead of send()/recv(). On win32, read()/write() does not
- *    work on socket.
- */
-void
-bkd_server(int ac, char **av)
-{
-	if (Opts.start) { 
-		bkd_start_service(bkd_service_loop);
-		exit(0);
-	} else if (Opts.remove) { 
-		bkd_remove_service(1);
-		exit(0);
-	} else {
-		/* install and start bkd service */
-		bkd_install_service(&Opts, ac, av);
-	}
-}
+#ifdef	WIN32
+/**************************************************************
+ * Code to start and stop a win32 service
+ **************************************************************/
 
 /* e.g. return env string " -E \"BK_DOTBK=path\"" */
 private char *
@@ -418,27 +375,26 @@ bkd_install_service(bkdopts *opts, int ac, char **av)
 	SC_HANDLE   schSCManager = 0;
 	SERVICE_STATUS serviceStatus;
 	char	path[1024], here[1024];
-	char	*start_dir, *cmd, *p;
+	char	*cmd, *p;
+	int	port;
 	char	**nav;
-	char	*eVars[] = {"BK_REGRESION", "BK_DOTBK", "PATH", 0};
+	char	*eVars[] = {
+		"BK_REGRESION", "BK_DOTBK", "PATH", "BKD_START", 0};
 	int	i, len, try = 0;
 	char	buf[MAXLINE];
+
+	/* Tell the bkd to start the service */
+	getcwd(here, sizeof(here));
+	safe_putenv("BKD_START=%s", here);
 
 	if (GetModuleFileName(NULL, path, sizeof(path)) == 0) {
 		fprintf(stderr, "Unable to install %s - %s\n",
 		    SERVICEDISPLAYNAME, getError(err, 256));
 		return;
 	}
-
-	if (opts->startDir) {
-		start_dir = opts->startDir;
-	}  else {
-		getcwd(here, sizeof(here));
-		start_dir = here;
-	}
 	
-	p = aprintf("\"%s\"  bkd -S -p %d -c %d \"-s%s\"",
-		path, opts->port, opts->count, start_dir);
+	port = atoi(getenv("BKD_PORT"));
+	p = aprintf("\"%s\"  bkd -D -p %d -c %d", path, port, opts->count);
 	len = strlen(p) + 1;
 	for (i = 0; eVars[i]; i++) len += strlen(genEnvArgs(buf, eVars[i]));
 	nav = malloc((ac + 1) * sizeof(char *));
@@ -458,11 +414,7 @@ bkd_install_service(bkdopts *opts, int ac, char **av)
 	unless (schSCManager = OpenSCManager(0, 0, SC_MANAGER_ALL_ACCESS)) {
         	fprintf(stderr,
 		    "OpenSCManager failed - %s\n", getError(err, 256));
-out:		if (cmd) free(cmd);
-		if (schService) CloseServiceHandle(schService);
-       		if (schSCManager) CloseServiceHandle(schSCManager);
-		argv_free(nav, 0);
-		return;
+		goto out;
 	}
 
 	schService = OpenService(schSCManager, SERVICENAME, SERVICE_ALL_ACCESS);
@@ -478,7 +430,7 @@ out:		if (cmd) free(cmd);
 			SERVICEDISPLAYNAME, SERVICE_ALL_ACCESS,
 			SERVICE_WIN32_OWN_PROCESS, SERVICE_AUTO_START,
 			SERVICE_ERROR_NORMAL, cmd, NULL, NULL,
-			DEPENDENCIES, NULL, NULL))) {
+			NULL, NULL, NULL))) {
 		if (try++ > 3) {
 			fprintf(stderr,
 			    "CreateService failed - %s\n", getError(err, 256));
@@ -493,7 +445,7 @@ out:		if (cmd) free(cmd);
 	/*
 	 * Here is where we enter the bkd_service_loop()
 	 */
-	if (StartService(schService, --ac, (LPCTSTR *)++av) == 0) {
+	unless (StartService(schService, 0, 0)) {
 		fprintf(stderr, "%s cannot start service. %s\n",
 		    SERVICEDISPLAYNAME, getError(err, 256));
 		goto out;
@@ -518,21 +470,23 @@ out:		if (cmd) free(cmd);
 		fprintf(stderr, "%s started.\n", SERVICEDISPLAYNAME);
 	}
 	
-	goto out;
+ out:	if (cmd) free(cmd);
+	if (schService) CloseServiceHandle(schService);
+	if (schSCManager) CloseServiceHandle(schSCManager);
+	argv_free(nav, 0);
 }
 
 /*
  * start bkd service
  */
 private void
-bkd_start_service(void (*service_func)(int, char **))
+bkd_start_service(void)
 {
 	SERVICE_TABLE_ENTRY dispatchTable[] = {
-		{SERVICENAME, NULL},
+		{SERVICENAME, bkd_server},
 		{NULL, NULL}
 	};
-
-	dispatchTable[0].lpServiceProc = (LPSERVICE_MAIN_FUNCTION) service_func;
+	running_service = 1;
 	unless (StartServiceCtrlDispatcher(dispatchTable)) {
 		logMsg("StartServiceCtrlDispatcher failed.");
 	}
@@ -583,7 +537,7 @@ bkd_remove_service(int verbose)
 			    "\n%s failed to stop.\n", SERVICEDISPLAYNAME);
 		}
 	}
-	if(DeleteService(schService)) {
+	if (DeleteService(schService)) {
 		if (verbose) {
 			fprintf(stderr, "%s removed.\n", SERVICEDISPLAYNAME);
 		}
@@ -618,7 +572,7 @@ helper(LPVOID param)
 		 * calling reportStatus() and exit(0) in the signal handler,
 		 * it may be enough to keep the service manager happy.
 		 */
-		sock = tcp_connect("localhost", Opts.port ?Opts.port : BK_PORT);
+		sock = tcp_connect("localhost", atoi(getenv("BKD_PORT")));
 		CloseHandle((HANDLE) sock);
 	}
 }

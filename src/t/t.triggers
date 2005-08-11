@@ -1178,7 +1178,7 @@ bk delta foo.c >OUT 2>&1 < /dev/null || {
 	exit 1
 }
 test -f SCCS/c.foo.c && {
-	should have cleaned up c.file
+	echo should have cleaned up c.file
 	cat OUT
 	exit 1
 }

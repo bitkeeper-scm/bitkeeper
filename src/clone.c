@@ -65,7 +65,6 @@ clone_main(int ac, char **av)
 	}
 	unless (av[optind]) usage();
 
-	loadNetLib();
 	/*
 	 * Trigger note: it is meaningless to have a pre clone trigger
 	 * for the client side, since we have no tree yet
@@ -290,9 +289,9 @@ done:	if (rc) {
 	/*
 	 * XXX This is a workaround for a csh fd leak:
 	 * Force a client side EOF before we wait for server side EOF.
-	 * Needed only if remote is running csh; csh have a fd lead
-	 * which cause it fail to send us EOF when we close stdout and stderr.
-	 * Csh only send us EOF when the bkd exit, yuck !!
+	 * Needed only if remote is running csh; csh has a fd leak
+	 * which causes it fail to send us EOF when we close stdout
+	 * and stderr.  Csh only sends us EOF and the bkd exit, yuck !!
 	 */
 	disconnect(r, 1);
 

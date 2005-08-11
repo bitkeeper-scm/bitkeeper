@@ -75,23 +75,18 @@ typedef struct {
 	u32	interactive:1;		/* show prompts, etc */
 	u32	errors_exit:1;		/* exit on any error */
 	u32	debug:1;		/* don't fork for daemons, etc. */
-	u32	daemon:1;		/* listen for TCP connections */
 	u32	start:1;		/* start NT bkd service */
 	u32	remove:1;		/* remove NT bkd service */
-	u32	nt_service;		/* running as NT bkd service */
 	u32	http_hdr_out:1;		/* print http header to output */
 	u32	quiet:1;		/* quiet mode */
 	u32	safe_cd:1;		/* do not allow chdir up */
 	FILE	*log;			/* if set, log commands to here */
 	int	alarm;			/* exit after this many seconds */
 	int	count;			/* exit after this many connections */
-	u16	port;			/* listen on this port */
 	char	*uid;			/* desired uid or null */
 	char	*gid;			/* desired gid or null */
 	char	*pidfile;		/* write the daemon pid here */
 	char	*logfile;		/* if set, log commands to here */
-	char	*startDir;		/* start up directory for daemon */
-	char	remote[16];		/* a.b.c.d of client */
 } bkdopts;
 
 /*
@@ -106,11 +101,10 @@ extern	bkdopts Opts;
 extern	char cmdlog_buffer[];
 extern	char *logRoot;
 
-void	bkd_server(int, char **);
+void	bkd_server(int ac, char **av);
 remote	*remote_parse(const char *url);
 char	*remote_unparse(remote *r);
 pid_t	bkd(int compress, remote *r);
-void	bkd_reap(pid_t resync, int r_pipe, int w_pipe);
 int	gunzip2fd(char *input, int len, int fd, int hflag);
 int	gzip2fd(char *input, int len, int fd, int hflag);
 void	gzip_done(void);
@@ -144,14 +138,11 @@ int	getServerInfoBlock(remote *r);
 void	sendEnv(FILE *f, char **envVar, remote *r, int isClone);
 void	setLocalEnv(int in_out);
 void	wait_eof(remote *r, int verbose);
-void	flush2remote(remote *r);
-int	flushSocket(int fd);
 void	try_clone1_2(int quiet, int gzip,
 				char *rev, remote *r, char *local, char *msg);
 int	remote_lock_fail(char *buf, int verbose);
 void	drainErrorMsg(remote *r, char *buf, int bsize);
 int	listType(char *type);
-void	send_flush_block(remote *r);
 int	unsafe_cd(char *path);
 int	bkd_seed(char *oldseed, char *newval, char **newout);
 void	bkd_saveSeed(char *repoid, char *seed);

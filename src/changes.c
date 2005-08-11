@@ -645,7 +645,6 @@ doit_remote(char **av, char *url)
 	int	rc;
 	remote	*r;
 
-	loadNetLib();
 	if (opts.remote) has_proj("changes");
 	r = remote_parse(url);
 	unless (r) {

@@ -464,7 +464,7 @@ http_fetch(remote *r, char *url, char *file)
 	    "Accept: text/html\r\n"
 	    "Host: %s:%d\r\n"
 	    "\r\n",
-	    url, bk_vers, r->host, r->port);
+	    r->path ? r->path : "/", bk_vers, r->host, r->port);
 
 	if (r->trace) fprintf(stderr, "Sending http header:\n%s", header);
 	len = strlen(header);
@@ -486,7 +486,7 @@ http_fetch(remote *r, char *url, char *file)
 		}
 		if (buf[0] == 0) break; /*ok */
 	}
-	if (f = fopen(file, "w")) {
+	if (f = streq(file, "-") ? stdout : fopen(file, "w")) {
 		if (binary && len) {
 			got = 0;
 			while (got < len) {
@@ -507,7 +507,7 @@ http_fetch(remote *r, char *url, char *file)
 				fprintf(f, "%s\n", buf);
 			}
 		}
-		fclose(f);
+		if (f != stdout) fclose(f);
 		rc = 0;
 	}
  out:
@@ -516,3 +516,13 @@ http_fetch(remote *r, char *url, char *file)
 	return (rc);
 }
 
+int
+httpfetch_main(int ac, char **av)
+{
+	unless (av[1] && !av[2]) {
+		fprintf(stderr, "usage: bk _httpfetch <url>\n");
+		return (1);
+	}
+	http_fetch_direct(av[1], "-");
+	return (0);
+}

@@ -63,7 +63,7 @@ unsafe_cd(char *path)
 
 	getcwd(a, MAXPATH);
 	if (chdir(path)) return (1);
-	unless (Opts.daemon || Opts.safe_cd) return (0);
+	unless (Opts.safe_cd || getenv("BKD_DAEMON")) return (0);
 	getcwd(b, MAXPATH);
 	unless ((strlen(b) >= strlen(a)) && pathneq(a, b, strlen(a))) {
 		send_cderror(path);
