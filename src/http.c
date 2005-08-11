@@ -519,10 +519,12 @@ http_fetch(remote *r, char *url, char *file)
 int
 httpfetch_main(int ac, char **av)
 {
+	remote	*r;
 	unless (av[1] && !av[2]) {
 		fprintf(stderr, "usage: bk _httpfetch <url>\n");
 		return (1);
 	}
-	http_fetch_direct(av[1], "-");
-	return (0);
+	r = remote_parse(av[1]);
+	if (http_connect(r)) return (1);
+	return (http_fetch(r, av[1], "-"));
 }

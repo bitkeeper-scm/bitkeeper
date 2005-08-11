@@ -250,7 +250,6 @@ shrink
 sinfo
 smerge
 _shellSplit_test
-_socket2pipe
 _sort
 status
 stripdel

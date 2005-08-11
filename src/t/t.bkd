@@ -32,6 +32,12 @@ echo foo > foo.c
 echo bar > bar.c
 echo h > h.h
 bk ci $Q -i foo.c bar.c h.h
+BK="`bk bin`/bk"
+test $PLATFORM = WIN32 && BK=${BK}.exe
+for i in 1 2 3
+do	cp $BK bk$i
+done
+bk new $Q bk?
 bk commit $Q -ycset1
 if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
 echo OK
@@ -41,11 +47,29 @@ bk clone $Q $HERE/project $HERE/copy
 cd $HERE/copy
 if [ ! -f "BitKeeper/etc/SCCS/x.dfile" ]; then echo failed; exit 1; fi
 P=50000
-bk bkd -q -d -p$P -c1 
+bk bkd -q -d -p$P -c2 > $HERE/BKD 2>&1
 while [ $? -eq 2 ]
 do	P=`expr $P + 1`
-	bk bkd -q -d -p$P -c1 
+	bk bkd -q -d -p$P -c2 > $HERE/BKD 2>&1
 done
+echo OK
+
+echo $N die part way through a clone and make sure we clean locks ...$NL
+cd $HERE
+BK_DIE_OFFSET=10 bk clone bk://localhost:$P junk > OUT 2>&1
+# cat OUT
+cd $HERE/copy
+for i in 1 2 3
+do	bk lock -q && break
+	sleep $i
+done
+bk lock -q || {
+	echo failed to clean up locks
+	bk lock -l
+	exit 1
+}
+cd $HERE
+rm -rf junk
 echo OK
 
 # Win32 note: If bkd binary is on a network drive

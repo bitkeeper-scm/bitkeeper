@@ -277,6 +277,7 @@ done:
 	_exit(0); /* We don't want to process atexit() in this */
 		  /* env. otherwise XP will flag an error      */
 #endif
+	return;
 }
 
 

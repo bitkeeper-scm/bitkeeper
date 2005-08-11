@@ -532,7 +532,7 @@ repository_lockcleanup(void)
 	unless (root) return;
 	chdir(root);
 
-	if (repository_mine('r')) {
+	if (repository_mine('r') && !getenv("BK_DIE_OFFSET")) {
 		ttyprintf(
 "WARNING: process %u is exiting and it has left the repository at\n"
 "%s read locked!!  This is the result of a process that has been\n"
@@ -542,7 +542,7 @@ repository_lockcleanup(void)
 		repository_rdunlock(0);
 	}
 
-	if (repository_mine('w')) {
+	if (repository_mine('w') && !getenv("BK_DIE_OFFSET")) {
 		ttyprintf(
 "ERROR: process %u is exiting and it has left the repository at\n"
 "%s write locked!!  This is the result of a process that has been\n"
