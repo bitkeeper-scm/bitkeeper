@@ -111,7 +111,6 @@ do_sdiff(resolve *rs, char *left, char *right, int wait)
 {
 	char	tmp[MAXPATH];
 	char	cols[10];
-	FILE	*p;
 
 	strcpy(cols, "80");
 	if (tty_init()) {

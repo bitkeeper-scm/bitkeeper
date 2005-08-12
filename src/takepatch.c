@@ -2546,10 +2546,8 @@ cleanup(int what)
 		goto done;
 	}
 	if (what & CLEAN_RESYNC) {
-		char cmd[1024];
 		assert(exists("RESYNC"));
-		sprintf(cmd, "%s -rf RESYNC", RM);
-		system(cmd);
+		rmtree("RESYNC");
 	} else {
 		fprintf(stderr, "takepatch: RESYNC directory left intact.\n");
 	}

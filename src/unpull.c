@@ -50,26 +50,28 @@ unpull(int force, int quiet, char *patch)
 
 	if (sccs_cd2root(0, 0)) {
 		fprintf(stderr, "unpull: can not find package root.\n");
-		exit(1);
+		return (1);
 	}
 	if (isdir(ROOT2RESYNC)) {
 		fprintf(stderr, 
 		    "unpull: RESYNC exists, did you want 'bk abort'?\n");
-		exit(1);
+		return (1);
 	}
 	unless (exists(CSETS_IN) && (m = mopen(CSETS_IN, ""))) {
 		fprintf(stderr,
 		    "unpull: no csets-in file, nothing to unpull.\n");
-		exit(1);
+		return (1);
 	}
 	t = malloc(m->size + 3);
 	*t++ = '-';
 	*t++ = 'r';
 	memcpy(t, m->where, m->size);
 	t[m->size] = 0;
+	mclose(m);
 	for (r = t; *r; r++) if ((*r == '\r') || (*r == '\n')) *r = ',';
 	while ((--r > t) && (*r == ',')) *r = 0;	/* chop */
 	while (--r > t) if (r[-1] == ',') break;
+	t -= 2;
 	assert(r && *r);
 	s = sccs_init(cset, 0, 0);
 	assert(s && HASGRAPH(s));
@@ -77,17 +79,16 @@ unpull(int force, int quiet, char *patch)
 	unless (e = sccs_findrev(s, r)) {
 		fprintf(stderr, "unpull: stale csets-in file removed.\n");
 		sccs_free(s);
-		mclose(m);
+		free(t);
 		unlink(CSETS_IN);
-		exit(1);
+		return (1);
 	}
-		
 	unless (d == e) {
 		fprintf(stderr,
 		    "unpull: will not unpull local changeset %s\n", d->rev);
 		sccs_free(s);
-		mclose(m);
-		exit(1);
+		free(t);
+		return (1);
 	}
 	sccs_free(s);
 	av[i=0] = "bk";
@@ -95,15 +96,12 @@ unpull(int force, int quiet, char *patch)
 	av[++i] = patch ? patch : "-s";
 	if (force) av[++i] = "-f";
 	if (quiet) av[++i] = "-q";
-	t -= 2;
 	av[++i] = t;
 	av[++i] = 0;
 	status = spawnvp_ex(_P_WAIT, av[0], av);
-	mclose(m);
-	if (WIFEXITED(status)) {
-		if (WEXITSTATUS(status) == 0) unlink(CSETS_IN);
-		exit(WEXITSTATUS(status));
-	}
+	free(t);
+	/* undo deletes csets-in */
+	if (WIFEXITED(status)) exit(WEXITSTATUS(status));
 	fprintf(stderr, "unpull: unable to unpull, undo failed.\n");
 	exit(1);
 }

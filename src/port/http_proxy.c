@@ -1,5 +1,6 @@
 #include "../system.h"
 #include "../sccs.h"
+#include "../bkd.h"
 
 /*
  * Copyright (c) 2001 Andrew Chang       All rights reserved.
