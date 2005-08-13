@@ -915,7 +915,7 @@ buildKeys(sccs *cset, MDBM *idDB)
 		unless (streq(buf, s)) {
 			/* mark the file boundries */
 			if (buf[0]) csetKeys.deltas[csetKeys.n++] = (char*)1;
-			*(int *)hash_alloc(r2i, s, 0, sizeof(int)) = csetKeys.n;
+			hash_store(r2i, s, 0, &csetKeys.n, sizeof(int));
 			strcpy(buf, s);
 		}
 		csetKeys.deltas[csetKeys.n++] = t;
@@ -927,7 +927,7 @@ buildKeys(sccs *cset, MDBM *idDB)
 	/* Add in ChangeSet keys */
 	sccs_sdelta(cset, sccs_ino(cset), key);
 	if (csetKeys.n > 0) csetKeys.deltas[csetKeys.n++] = (char*)1;
-	*(int *)hash_alloc(r2i, key, 0, sizeof(int)) = csetKeys.n;
+	hash_store(r2i, key, 0, &csetKeys.n, sizeof(int));
 	for (d = cset->table; d; d = d->next) {
 		unless ((d->type == 'D') && (d->flags & D_CSET)) continue;
 		sccs_sdelta(cset, d, buf);
