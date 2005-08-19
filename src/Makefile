@@ -92,10 +92,11 @@ endif
 ifeq ($(GCC_MAJOR_REV),4)
 	WARNINGS += $(WARNINGS_GCC3) $(WARNINGS_GCC4)
 endif 
-CC_DEBUG=$G $(WARNINGS)
-CC_FAST_DEBUG=$G -O2 $(WARNINGS)
+GCCOPTS=-fno-builtin 
+CC_DEBUG=$(GCCOPTS) $G $(WARNINGS)
+CC_FAST_DEBUG=$(GCCOPTS) $G -O2 $(WARNINGS)
 CC_FAST	=$(CC_FAST_DEBUG)
-CC_WALL=$G -DLINT $(WARNINGS)
+CC_WALL=$(GCCOPTS) $G -DLINT $(WARNINGS)
 WIN_TMP	=*.idb *.pdb *.ilk *.exe *~bkp
 BINS	= $(BK)
 
@@ -133,7 +134,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	port/hostColonPath.o port/http_proxy.o \
 	port/lock_dir.o port/mail.o port/mnext.o \
 	port/ns_sock_host2ip.o port/platforminit.o \
-	port/randomBits.o \
+	port/randomBits.o port/rmtree.o \
 	port/rlimit.o port/samepath.o \
 	port/sccs_getuser.o port/sccs_lockfile.o \
 	port/sccs_root.o port/sig.o \
@@ -620,7 +621,7 @@ hidestring: hidestring.c
 MLA.lic: MLA.preamble Enterprise.lic.txt
 	cat MLA.preamble Enterprise.lic.txt | \
 	    ./bk crypto -E 048d6aa55c30b3b4 > MLA.lic
-	
+
 %.lic: %.lic.txt bkupgrade.key $(BK)
 	./bk crypto -E 048d6aa55c30b3b4 < $< > $@
 

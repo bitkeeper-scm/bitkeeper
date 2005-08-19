@@ -1145,7 +1145,6 @@ int	sccs_scompress(sccs *s, int flags);
 int	hasRootFile(char *gRoot, char *sRoot);
 int	mkBkRootIcon(char *path);
 int	unmkBkRootIcon(char *path);
-char	*fast_getcwd(char *buf, int len);
 void	sccs_tagcolor(sccs *s, delta *d);
 int	checkXflags(sccs *s, delta *d, int what);
 void	metaUnionResync1(void);
@@ -1205,6 +1204,7 @@ void	bk_preSpawnHook(int flags, char *const av[]);
 int	upgrade_decrypt(FILE *fin, FILE *fout);
 int	crypto_symEncrypt(char *key, FILE *fin, FILE *fout);
 int	crypto_symDecrypt(char *key, FILE *fin, FILE *fout);
+int	rmtree(char *dir);
 
 void	align_diffs(u8 *vec, int n, int (*compare)(int a, int b),
     int (*is_whitespace)(int i));

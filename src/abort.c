@@ -95,8 +95,7 @@ abort_patch(int leavepatch)
 	}
 
 	assert(exists("RESYNC"));
-	sprintf(buf, "%s -rf RESYNC", RM);
-	system(buf);
+	rmtree("RESYNC");
 	if (!leavepatch && pendingFile[0]) unlink(pendingFile);
 	rmdir(ROOT2PENDING);
 	unlink(BACKUP_LIST);

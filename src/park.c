@@ -105,8 +105,8 @@ err:		if (s) sccs_free(s);
 
 	if (lflag) return (listParkFile());
 	if (purge) return (purgeParkFile(purge));
-	if (clean) return (sys(RM, "-rf", PARKDIR, SYS));
-	if (force && exists(PARKDIR)) sys(RM, "-rf", PARKDIR, SYS);
+	if (clean) return (rmtree(PARKDIR));
+	if (force && exists(PARKDIR)) rmtree(PARKDIR);
 	if (exists(PARKDIR)) {
 		fprintf(stderr, "%s exists, park aborted\n", PARKDIR);
 		goto err;
@@ -142,7 +142,7 @@ err:		if (s) sccs_free(s);
 		sprintf(parkfile, "%s/parkfile_%d.sfio", BKTMP, ++try);
 	} while (exists(parkfile));
 
-	if (force && exists(PARKDIR)) sys(RM, "-rf", PARKDIR, SYS);
+	if (force && exists(PARKDIR)) rmtree(PARKDIR);
 	if (exists(PARKDIR)) {
 		fprintf(stderr, "%s exists, park aborted\n", PARKDIR);
 		goto err;
@@ -245,7 +245,7 @@ err:		if (s) sccs_free(s);
 
 	if (ask && !comments)  comments = getParkComment(&err);
 	if (err) {
-		sys(RM, "-rf", PARKDIR, SYS);
+		rmtree(PARKDIR);
 		return (1);
 	}
 
@@ -323,7 +323,7 @@ err:		if (s) sccs_free(s);
 	 * clean up
 	 * pwd is project root
 	 */
-	sys(RM, "-rf", PARKDIR, SYS);
+	rmtree(PARKDIR);
 
 	unless (unedit) goto done; /* skip unedit */
 
@@ -1050,7 +1050,7 @@ do_unpark(int id, int clean, int force)
 	FILE	*f, *f3;
 
 	sfio_list[0] = unpark_list[0] = 0;
-	if (clean && exists(PARKDIR)) sys(RM, "-rf", PARKDIR, SYS);
+	if (clean && exists(PARKDIR)) rmtree(PARKDIR);
 
 	if (exists(PARKDIR)) {
 		fprintf(stderr, "%s exists, unpark aborted\n", PARKDIR);
@@ -1239,7 +1239,7 @@ skip_apply:
 		    id, PARKDIR, PARKDIR, cset_key, d ? d->rev : "");
 		sccs_free(s);
 	} else {
-		sys(RM, "-rf", PARKDIR, SYS);
+		rmtree(PARKDIR);
 	}
 	unlink(sfio_list);
 	unlink(unpark_list);
