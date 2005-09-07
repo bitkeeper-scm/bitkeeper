@@ -87,6 +87,7 @@ main(int ac, char **av, char **env)
 	char	*prog, *argv[MAXARGS];
 	char	sopts[30];
 
+	for (i = 3; i < 20; i++) close(i);
 	reserveStdFds();
 	spawn_preHook = bk_preSpawnHook;
 	if (getenv("BK_SHOWPROC")) {
@@ -622,11 +623,11 @@ cmdlog_end(int ret)
 	mdbm_close(notes);
 	notes = 0;
 	if (write_log(bk_proj->root, "cmd_log", 0, "%s", log)) {
-		return (flags);
+		goto out;
 	}
 	if (cmdlog_repo &&
 	    write_log(bk_proj->root, "repo_log", LOG_MAXSIZE, "%s", log)) {
-		return (flags);
+		goto out;
 	}
 	free(log);
 
@@ -647,6 +648,15 @@ cmdlog_end(int ret)
 	cmdlog_buffer[0] = 0;
 	cmdlog_repo = 0;
 	cmdlog_flags = 0;
+out:
+	if (!getenv("NOCLOSE") && getenv("BK_REGRESSION")) {
+		int	i;
+		for (i = 3; i < 20; i++) {
+			if (close(i)) continue;
+			fprintf(stderr, "%u: warning fh %d left open\n",
+			    getpid(), i);
+		}
+	}
 	return (flags);
 }
 

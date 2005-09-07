@@ -145,10 +145,12 @@ usage:			system("bk help -s changes");
 		/*
 		 * Send "bk synckey" stdout into the pipe
 		 */
-		fd1 = dup(1); close(1);
-		dup2(wfd, 1); close(wfd);
+		fd1 = dup(1);
+		dup2(wfd, 1);
+		close(wfd);
 		sys("bk", "synckeys", "-lk", url, SYS);
-		close(1); dup2(fd1, 1); /* restore fd1, just in case */
+		dup2(fd1, 1); /* restore fd1, just in case */
+		close(fd1);
 		waitpid(pid, &status, 0);
 		if (WIFEXITED(status)) return (WEXITSTATUS(status));
 out:		for (c = 2; c < nac; c++) free(nav[c]);

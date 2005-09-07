@@ -271,6 +271,8 @@ bkd_server(int ac, char **av)
 		if (bkd_quit == 1) break;
 	}
 done:
+	closesocket(licsock);
+	closesocket(sock);
 #ifdef	WIN32
 	if (sHandle) reportStatus(sHandle, SERVICE_STOPPED, NO_ERROR, 0);
 	argv_free(nav, 9);

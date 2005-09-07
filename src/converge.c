@@ -245,8 +245,9 @@ done:		mdbm_close(vals);
 				 */
 				sccs_free(winner);
 				winner = s;
+			} else {
+				sccs_free(s);
 			}
-
 		} else {
 			sccs_free(s);
 		}

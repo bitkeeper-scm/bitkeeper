@@ -104,6 +104,7 @@ cset_inex(int flags, char *op, char *revs)
 			rlist = addLine(rlist, strdup(&t[1]));
 		}
 	}
+	fclose(f);
 	if (file[0]) {
 		revbuf = joinLines(",", rlist);
 		freeLines(rlist, free);
