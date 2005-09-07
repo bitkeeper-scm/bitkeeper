@@ -1175,7 +1175,16 @@ int	check_licensesig(char *key, char *sign, int version);
 char	*hashstr(char *str, int len);
 char	*hashstream(FILE *f);
 char	*secure_hashstr(char *str, int len, char *key);
-char	*makestring(char *out, const char *in, char seed, int size);
+
+#define	KEY_LEASE		0
+#define	KEY_BK_AUTH_HMAC	1
+#define	KEY_LCONFIG		2
+#define	KEY_UPGRADE		3
+#define	KEY_SIGNEDFILE		4
+#define	KEY_SEED		5
+#define	KEY_EULA		6
+char	*makestring(int keynum);
+
 void	delete_cset_cache(char *rootpath, int save);
 time_t	mtime(char *path);
 void	notice(char *key, char *arg, char *type);

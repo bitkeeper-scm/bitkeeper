@@ -649,7 +649,7 @@ send_file(remote *r, char *file, int extra)
 	assert(strneq(m->mmap, "putenv ", 7));
 	len = m->size;
 
-	q = secure_hashstr(m->mmap, len, "11ef64c95df9b6227c5654b8894c8f00");
+	q = secure_hashstr(m->mmap, len, makestring(KEY_BK_AUTH_HMAC));
 	hdr = aprintf("putenv BK_AUTH_HMAC=%d|%d|%s\n", len, extra, q);
 	free(q);
 	rc = send_msg(r, hdr, strlen(hdr), len+extra);
