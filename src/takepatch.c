@@ -2556,7 +2556,9 @@ cleanup(int what)
 		assert(exists("PENDING"));
 		assert(pendingFile);
 		unlink(pendingFile);
-		if (rmdir("PENDING")) {
+		if (emptyDir("PENDING")) {
+			rmdir("PENDING");
+		} else {
 			fprintf(stderr,
 			    "takepatch: other patches left in PENDING\n");
 		}

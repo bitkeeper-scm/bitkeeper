@@ -649,6 +649,7 @@ cmdlog_end(int ret)
 	cmdlog_repo = 0;
 	cmdlog_flags = 0;
 out:
+	rmdir_findprocs();
 	if (!getenv("NOCLOSE") && getenv("BK_REGRESSION")) {
 		int	i;
 		for (i = 3; i < 20; i++) {
