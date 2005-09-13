@@ -51,19 +51,22 @@ milli(void)
 {
 	struct	timeval	tv;
 	u64	now, start;
-	static	char time[20];
+	double	d;
+	static	char time[20];	/* 12345.999\0 plus slop */
 
 	gettimeofday(&tv, 0);
 	unless (getenv("BK_SEC")) {
 		safe_putenv("BK_SEC=%u", tv.tv_sec);
 		safe_putenv("BK_MSEC=%u", tv.tv_usec / 1000);
-		return ("0");
+		d = 0;
+	} else {
+		start = (u64)atoi(getenv("BK_SEC")) * (u64)1000;
+		start += (u64)atoi(getenv("BK_MSEC"));
+		now = (u64)tv.tv_sec * (u64)1000;
+		now += (u64)(tv.tv_usec / 1000);
+		d = now - start;
 	}
-	start = (u64)atoi(getenv("BK_SEC")) * (u64)1000;
-	start += (u64)atoi(getenv("BK_MSEC"));
-	now = (u64)tv.tv_sec * (u64)1000;
-	now += (u64)(tv.tv_usec / 1000);
-	sprintf(time, "%u", (u32)(now - start));
+	sprintf(time, "%6.3f", d / 1000.0);
 	return (time);
 }
 
@@ -248,6 +251,10 @@ run:	getoptReset();
 		return (0);
 	}
 
+#ifdef	WIN32
+	/* This gets rid of an annoying message when sfiles is killed */
+	nt_loadWinSock();
+#endif
 	cmdlog_start(av, 0);
 	ret = cmd_run(prog, is_bk, si > 1 ? sopts : 0, ac, av);
 	cmdlog_end(ret);
@@ -790,9 +797,8 @@ launch_wish(char *script, char **av)
 	 * since we won't be using it.  This is so that we don't have
 	 * a unused console windows in the background of the GUIs.
 	 * WARNING: after this we shouldn't try to do any console IO.
-	 * This does not work on Win/Me (probably also Win/98)
 	 */
-	unless (isWin98()) FreeConsole();
+	FreeConsole();
 #endif
 	if (waitpid(pid, &ret, 0) < 0) {
 		return (126);

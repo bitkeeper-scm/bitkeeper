@@ -39,6 +39,12 @@ platformInit(char **av)
 	m = umask(0) & 002;
 	umask(m);
 
+	unless (win_supported()) {
+		fprintf(stderr,
+		    "This version of BK requires Windows 2000 or later.\n");
+		exit(1);
+	}
+
 	unless (p = getenv("PATH")) return;	/* and pray */
 
 #ifndef	WIN32

@@ -70,116 +70,24 @@ keysHome(void)
 	return (keysFile);
 }
 
-#ifdef WIN32
-private void
-mk_prelock(char *linkpath, int me)
-{
-	/* no op */
-}
-
-private int
-atomic_create(char *noused, char *lock, int me)
-{
-	int	fd, flags = O_EXCL|O_CREAT|O_WRONLY;
-	char	buf[100];
-
-	if (getenv("BK_REGRESSION")) flags &= ~O_EXCL; /* for faster test */
-	fd = open(lock, flags, 0666);
-	if (fd < 0) return (-1);
-	
-	sprintf(buf, "#%d\n", me);
-	write(fd, buf, strlen(buf));
-	close(fd);
-	return (0);
-}
-#else
-private void
-mk_prelock(char *linkpath, int me)
-{
-	FILE 	*f;
-
-	unless (f = fopen(linkpath, "w")) {
-		unlink(linkpath);
-		f = fopen(linkpath, "w");
-	}
-	assert(f);
-	fprintf(f, "#%d\n", me);
-	fclose(f);
-}
-
-private int
-atomic_create(char *linkpath, char *lock, int me)
-{
-	return (link(linkpath, lock));
-}
-#endif
-
 /* -1 means error, 0 means OK */
 int
 uniq_lock()
 {
-	FILE	*f;
-	int	slept = 0;
-	char	linkpath[MAXPATH];
 	char	*lock = lockHome();
-	pid_t	me = getpid();
-	static	int flags = -1;
+	static	int quiet = -1;
 
-	if (flags == -1) {
+	if (quiet == -1) {
 		if (getenv("_BK_SHUT_UP")) {
-			flags = SILENT;
+			quiet = 0;
 		} else {
-			flags = 0;
+			quiet = 5;
 		}
 	}
-
-	sprintf(linkpath, "%s.%u", lock, me);
-	mk_prelock(linkpath, me);
-	while (atomic_create(linkpath, lock, me) != 0) {
-		if (f = fopen(lock, "r")) {
-			int	pid = 0;
-
-			/*
-			 * We added a leading "#" character
-			 * because some pid (e.g 844) would pop
-			 * a bogus Norton virus alert.
-			 */
-			fscanf(f, "#%d\n", &pid);
-			fclose(f);
-			unless (pid) continue;	/* must be gone */
-			assert(pid != me);
-			if (kill(pid, 0) != 0) {
-				if (unlink(lock) == 0) {
-					fprintf(stderr,
-					   "removing stale lock %s\n", lock);
-					continue;
-				}
-				fprintf(stderr,
-				    "Unable to remove lock %s, "
-				    "error: %s, sleeping...\n",
-				    lock, strerror(errno));
-				sleep(10);
-			}
-			/* bitch every second */
-			if ((slept >= 1000) && !(slept % 1000)) {
-				verbose((stderr,
-				"%d: waiting for process %d who has lock %s\n",
-				    me, pid, lock));
-			}
-			/*
-			 * Randomize this a bit based on pids.
-			 */
-			unless (slept) {
-				/* 99 * 1000 = .1 seconds */
-				usleep((me % 100) * 1000);
-				slept = 1000;	/* fake but OK */
-			} else {
-				usleep(200000);
-				slept += 200;
-			}
-		}
+	if (sccs_lockfile(lock, 600, 1)) {
+		fprintf(stderr, "Timed out waiting for %s, abort.\n", lock);
+		exit(1);
 	}
-	unlink(linkpath);
 	return (0);
 }
 
@@ -187,22 +95,10 @@ int
 uniq_unlock()
 {
 	char	*tmp;
-	int	fd;
 
 	unless (tmp = lockHome()) return (-2);
-	if (unlink(tmp) == 0) return (0);
-	perror(tmp);
-	/* We hit a race on HPUX, be paranoid an be sure it is a race */
-	if ((fd = open(tmp, 0, 0)) >= 0) {
-		char	buf[20];
-
-		bzero(buf, sizeof(buf));
-		if (read(fd, buf, sizeof(buf)) > 0) {
-			assert(getpid() != atoi(buf));
-		}
-		close(fd);
-	}
-	return 0;
+	unless (sccs_unlockfile(tmp)) return (0);
+	return (-1);
 }
 
 /*

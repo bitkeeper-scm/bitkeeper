@@ -8,7 +8,7 @@ private	remote	*url_parse(char *p, int default_port);
  * Turn either
  *	bk://host:port/pathname		<- running bkd form
  *	bk://user@host:port/pathname	<- rsh host -l user
- * or	user@host:pathname		<- rsh host bkd -e
+ * or	user@host:pathname		<- rsh host bkd
  * into a struct remote.
  * If nothing is passed in, use `bk parent`.
  */
@@ -416,7 +416,7 @@ bkd(int compress, remote *r)
 				cmd[++i] = "env";
 				cmd[++i] = freeme;
 			}
-			cmd[++i] = "bk bkd -e";
+			cmd[++i] = "bk bkd";
 		} else if (streq(cmd[0], "rsh") || streq(cmd[0], "remsh")) {
 			fprintf(stderr,
 			    "Warning: rsh doesn't work with bkd loginshell\n");
@@ -426,8 +426,7 @@ bkd(int compress, remote *r)
 		putenv("_BK_BKD_IS_LOCAL=1");
 		cmd[0] = "bk";
 		cmd[1] = "bkd";
-		cmd[2] = "-e";
-		cmd[3] = 0;
+		cmd[2] = 0;
     	}
 	if (getenv("BK_DEBUG")) {
 		for (i = 0; cmd[i]; i++) {

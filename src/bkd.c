@@ -1,20 +1,21 @@
 #include "bkd.h"
 #include "tomcrypt/mycrypt.h"
 
-private	void	exclude(char *cmd);
 private	int	findcmd(int ac, char **av);
 private	int	getav(int *acp, char ***avp, int *httpMode);
+private	void	exclude(char *cmd);
 private	void	log_cmd(char *peer, int ac, char **av);
 private	void	usage(void);
+private int	service(char *cmd, int ac, char **av);
 
 char 		*logRoot, *vRootPrefix;
+char		*bkd_getopt = "cCdDeE:g:hi:l|L:p:P:qRSt:u:V:x:";
 
 int
 bkd_main(int ac, char **av)
 {
 	int	c;
-	int	port = 0;
-	int	daemon = 0;
+	int	port = 0, daemon = 0, check = 0;
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help bkd");
@@ -26,22 +27,22 @@ bkd_main(int ac, char **av)
 
 	/*
 	 * Win32 note: -u/-t options have no effect on win32; win32 cannot
-	 *	 support alarm and setuid.	 
-	 * Unix note: -E/-s/-S/-R/-z options have no effect on Unix;
+	 *	 support alarm and setuid.
+	 * Unix note: -S/-R options have no effect on Unix;
 	 * 	 These option are used by the win32 bkd service as internal
 	 *	 interface.
-	 * XXX Win32 note: WARNING: If you add a new option,  you _must_
-	 * XXX propagate the option in  bkd_install_service() and 
-	 * XXX bkd_service_loop(). The NT service is a 3 level spawning
-	 * XXX architechture!! (The above functions are in port/bkd_server.c)
+	 * -c now means check arguments and if they are OK echo the starting
+	 * dir and exit.  Used for service.
 	 */
-	while ((c = getopt(ac, av,
-			"c:CdDeE:g:hil|L:p:P:qRSt:u:V:x:")) != -1) {
+	while ((c = getopt(ac, av, bkd_getopt)) != -1) {
 		switch (c) {
+		    case 'c': check = 1; break;
 		    case 'C': Opts.safe_cd = 1; break;		/* doc */
 		    case 'd': daemon = 1; break;		/* doc 2.0 */
-		    case 'D': Opts.debug = 1; break;		/* doc 2.0 */
-		    case 'i': Opts.interactive = 1; break;	/* doc 2.0 */
+		    case 'D': Opts.foreground = 1; break;	/* doc 2.0 */
+		    case 'i':					/* undoc 2.0 */
+			if (streq(optarg, "kill")) Opts.kill_ok = 1;
+			break;
 		    case 'g': Opts.gid = optarg; break;		/* doc 2.0 */
 		    case 'h': Opts.http_hdr_out = 1; break;	/* doc 2.0 */
 		    case 'l':					/* doc 2.0 */
@@ -53,15 +54,15 @@ bkd_main(int ac, char **av)
 		    case 'p': port = atoi(optarg); break;	/* doc 2.0 */
 		    case 'P': Opts.pidfile = optarg; break;	/* doc 2.0 */
 		    case 'S': 					/* undoc 2.0 */
-			Opts.start = 1; daemon = 1; break;
 		    case 'R': 					/* doc 2.0 */
-			Opts.remove = 1; daemon = 1; break;
+			if (getenv("BKD_SERVICE")) break;	/* ignore it */
+			return (
+			    service(c == 'S'? "install" : "uninstall", ac, av));
 		    case 'u': Opts.uid = optarg; break;		/* doc 2.0 */
 		    case 'x':					/* doc 2.0 */
 			exclude(optarg); 
 			break;
-		    case 'c': Opts.count = atoi(optarg); break;	/* undoc */
-		    case 'e': break;				/* undoc */
+		    case 'e': break;				/* obsolete */
 		    case 'E': putenv(optarg); break;		/* undoc */
 		    case 'L': logRoot = strdup(optarg); break;	/* undoc */
 		    case 'q': Opts.quiet = 1; break; 		/* undoc */
@@ -70,10 +71,13 @@ bkd_main(int ac, char **av)
 	    	}
 	}
 
-	if ((Opts.start || Opts.remove) && !win32()) {
-		fprintf(stderr, "bkd: -S and -R only make sense on Windows\n");
-		return (1);
+	if (av[optind] && !getenv("BKD_SERVICE")) usage();
+
+	if (av[optind] && chdir(av[optind])) {
+		perror(av[optind]);
+		exit(1);
 	}
+
 	if (logRoot && !IsFullPath(logRoot)) {
 		fprintf(stderr,
 		    "bad log root: %s: must be a full path name\n", logRoot);
@@ -86,19 +90,32 @@ bkd_main(int ac, char **av)
 		return (1);
 	}
 
-	if (port) {
-		daemon = 1;
-		if (Opts.interactive) {
-			fprintf(stderr,
-			    "Disabling interactive in daemon mode\n");
-		    	Opts.interactive = 0;
-		}
+	if (port) daemon = 1;
+	if (daemon && Opts.log && !Opts.logfile && !Opts.foreground) {
+		fprintf(stderr, "bkd: Can't log to stderr in daemon mode\n");
+		return (1);
 	}
 	core();
 	putenv("PAGER=cat");
 	putenv("_BK_IN_BKD=1");
 	if (daemon) {
-		safe_putenv("BKD_PORT=%d", port ? port : BK_PORT);
+		if (daemon && isWin2000() &&
+		    !getenv("BK_ALLOW_BKD") && !getenv("BK_REGRESSION")) {
+			fprintf(stderr,
+			    "bkd: daemon is not supported on Windows 2000\n");
+			return (1);
+		}
+		unless (port) port = BK_PORT;
+		if (tcp_connect("127.0.0.1", port) > 0) {
+			unless (Opts.quiet) {
+				fprintf(stderr,
+				    "bkd: localhost:%d is already in use.\n",
+				    port);
+			}
+			return (2);	/* regressions count on 2 */
+		}
+		if (check) return (0);
+		safe_putenv("BKD_PORT=%d", port);
 		bkd_server(ac, av);
 		exit(1);
 		/* NOTREACHED */
@@ -226,9 +243,6 @@ do_cmds(void)
 				exit(ret);
 			}
 			if (ret != 0) {
-				if (Opts.interactive) {
-					out("ERROR-CMD FAILED\n");
-				}
 				if (Opts.errors_exit) {
 					out("ERROR-exiting\n");
 					drain();
@@ -426,7 +440,6 @@ getav(int *acp, char ***avp, int *httpMode)
 	 * XXX TODO need to handle escaped quote character in args
 	 *     This can be done easily with shellSplit()
 	 */
-	if (Opts.interactive) out("BK> ");
 	for (ac = i = 0; len != 0 && (buf[i] = nextbyte()); i++) {
 		--len;
 		if (i >= sizeof(buf) - 1) {
@@ -631,4 +644,24 @@ bkd_restoreSeed(char *repoid)
 	unlink(d);
 	free(d);
 	return (ret);
+}
+
+/*
+ * This is only done on windows for now but we could support it in inetd.
+ * av[0] = bkd
+ * av[1] = -S ....
+ */
+private int
+service(char *cmd, int ac, char **av)
+{
+	char	**nav = 0;
+	int	status;
+
+	nav = addLine(nav, "bk");
+	nav = addLine(nav, "service");
+	nav = addLine(nav, cmd);
+	for (ac = 1; av[ac]; nav = addLine(nav, av[ac]));
+	nav = addLine(nav, 0);
+	status = spawnvp_ex(P_WAIT, nav[1], &nav[1]);
+	return (WEXITSTATUS(status));
 }

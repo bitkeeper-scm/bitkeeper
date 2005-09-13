@@ -1,0 +1,43 @@
+WinServ 1.00 (c) 2004-2005 Anton Kovalenko / Sw4me.com
+LICENSE: Do what you want with this software, but don't blame me.
+
+Available subcommands: 
+  Getting this help
+    winserv help 
+
+  Service installation and management.
+    winserv install <name> [service options] <command> [<arg> ...]
+    winserv configure <name> [service options] [ <command> [<arg> ...] ]
+    winserv uninstall <name>
+    winserv showconfig <name1> [<name2> ... ]
+
+  Change & examine current service status.
+    winserv start <name> [arguments]
+    winserv stop <name> [-nowait]
+    winserv pause <name> [-nowait]
+    winserv continue <name> [-nowait]
+    winserv usercontrol <name> -code <control code>
+    winserv paramchange <name>
+    winserv restart <name> [arguments]
+    winserv status <name1> [<name2> ... ]
+
+Service options:
+    -displayname <user-visible service name>
+    -description <description>
+    -binary <path & filename of the winserv executable>
+    -ipcmethod <blind, pipe or stdio>
+    -start <auto, demand or disabled>
+    -errorcontrol <ignore, normal, severe or critical>
+    -expand or -noexpand  
+    -interactive or -noninteractive
+    -loadordergroup <group>
+    -depends service1,service2,...
+    -user <user name>
+    -password <password>
+    -forceforeign  (enables certain operations on non-WinServ services)
+
+NOTE: The service name may be given in the form \\<MACHINE>\<service>,
+   that means remote service <service> on the <MACHINE>. 
+
+For more information, go http://www.sw4me.com/products/winserv 
+

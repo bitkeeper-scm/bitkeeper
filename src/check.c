@@ -841,8 +841,10 @@ buildKeys(MDBM *idDB)
 	}
 	sprintf(buf, "bk sccscat -h ChangeSet | bk _sort > %s", ctmp);
 	status = system(buf);
-	unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0) &&
-		((sz = size(ctmp)) > 0)) {
+	unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) {
+		fprintf(stderr, "Unable to run %s\n", buf);
+	}
+	unless ((sz = size(ctmp)) > 0) {
 		fprintf(stderr, "Unable to create %s\n", ctmp);
 		exit(1);
 	}

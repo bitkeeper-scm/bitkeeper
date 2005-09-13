@@ -106,10 +106,31 @@ echon() {
 	echo $NX "$*"$NXL
 }
 
+# Find an unused port for a bkd
+port() {
+	p=
+	for i in 1 2 3 4 5
+	do	bk bkd -cqp$1$i && {
+			p=$1$i
+			break
+		}
+	done
+	test X$p = X && exit 1
+	echo $p
+}
+
 # args: GOT WANT
+cmpfiles() {
+        $BKDIFF -q --ignore-trailing-cr "$1" "$2" || {
+                diff -u "$1" "$2"
+                exit 1
+        }
+}
+
+# args: GOT WANT, does a byte for byte comparison
 checkfiles() {
-        cmp -s "$1" "$2" || {
-                echo "$1" and "$2" don\'t match
+	cmp -s "$1" "$2" || {
+		echo "$1" and "$2" don\'t match
                 diff -u "$1" "$2"
                 exit 1
         }

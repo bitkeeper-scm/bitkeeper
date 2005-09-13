@@ -105,7 +105,7 @@ BINS	= $(BK)
 OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	arrow_gif.o back_gif.o bkd.o bkd_cd.o \
 	bkd_changes.o bkd_client.o bkd_clone.o bkd_cmdtab.o bkd_http.o \
-	bkd_misc.o bkd_pull.o bkd_push.o bkd_pwd.o \
+	bkd_kill.o bkd_misc.o bkd_pull.o bkd_push.o bkd_pwd.o \
 	bkd_rclone.o bkd_rootkey.o bkd_status.o bkd_synckeys.o bkd_version.o \
 	bkpowered.o bkusers.o bkver.o cat.o changes.o \
 	check.o checksum.o clean.o cleanpath.o clone.o cmd.o \
@@ -117,7 +117,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	g2sccs.o gca.o get.o gethelp.o \
 	gethost.o getopt.o getreg.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \
-	isascii.o key2rev.o key2path.o kvfile.o \
+	isascii.o key2rev.o key2path.o kill.o kvfile.o \
 	lease.o level.o \
 	lib_tcp.o libcommit.o libdiff.o liblines.o librange.o \
 	libsfiles.o libusers.o lines.o \
@@ -134,19 +134,19 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	port/hostColonPath.o port/http_proxy.o \
 	port/lock_dir.o port/mail.o port/mnext.o \
 	port/ns_sock_host2ip.o port/platforminit.o \
-	port/randomBits.o port/rmtree.o \
+	port/randomBits.o \
 	port/rlimit.o port/samepath.o \
 	port/sccs_getuser.o port/sccs_lockfile.o \
 	port/sccs_root.o port/sig.o \
-	port/spawn.o port/system.o \
-	port/tty.o \
+	port/spawn.o port/svcinfo.o port/system.o \
+	port/tty.o port/utils.o \
 	prs.o pull.o purify.o push.o putenv.o pwd.o \
 	r2c.o range.o rcheck.o rclone.o rcs.o rcs2sccs.o rcsparse.o \
 	receive.o renumber.o repogca.o resolve.o \
 	resolve_binaries.o resolve_contents.o \
 	resolve_create.o resolve_filetypes.o \
 	resolve_flags.o resolve_generic.o resolve_modes.o \
-	resolve_renames.o resolve_tags.o rmdel.o \
+	resolve_renames.o resolve_tags.o rmdel.o rmtree.o \
 	root.o rset.o scompress.o sane.o sccs.o sccs_mv.o sccs2bk.o sccscat.o \
 	sccslog.o sccsmv.o sccsrm.o send.o sendbug.o \
 	set.o setup.o sfiles.o sfind.o sfio.o shellcmd.o shrink.o sinfo.o \
@@ -185,7 +185,8 @@ SRCS	= bk.c $(OBJ:.o=.c) \
 	zlib/adler32.c zlib/compress.c zlib/crc32.c zlib/deflate.c \
 	zlib/gzio.c zlib/infblock.c zlib/infcodes.c zlib/inffast.c \
 	zlib/inflate.c zlib/inftrees.c zlib/infutil.c zlib/trees.c \
-	zlib/uncompr.c zlib/zutil.c
+	zlib/uncompr.c zlib/zutil.c \
+	win32/uwtlib/wapi_intf.c win32/uwtlib/wcrt_intf.c
 HDRS	= $(SYS).h $(UWT_H) bkd.h lib_tcp.h liblines.h logging.h mmap.h \
 	  purify.h range.h rcs.h resolve.h sccs.h system.h zgets.h \
 	  mdbm/mdbm.h tomcrypt/mycrypt.h zlib/zlib.h cmd.h bkver.h

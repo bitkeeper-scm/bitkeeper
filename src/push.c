@@ -14,7 +14,7 @@ private	struct {
 	u32	metaOnly:1;
 	u32	forceInit:1;
 	u32	debug:1;
-	u32	gzip;
+	int	gzip;
 	u32	inBytes, outBytes;		/* stats */
 	u32	lcsets;
 	u32	rcsets;

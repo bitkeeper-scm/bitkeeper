@@ -181,6 +181,7 @@ isascii
 key2rev
 _key2path
 _keyunlink
+_kill
 _lconfig
 lease
 level
@@ -188,6 +189,7 @@ _lines restricted
 _link
 _listkey restricted
 lock
+_locktest
 lod
 log
 _logflags
@@ -254,6 +256,7 @@ _sort
 status
 stripdel
 _strings
+_svcinfo
 synckeys
 tagmerge
 takepatch
@@ -270,6 +273,7 @@ unpull
 unwrap
 upgrade
 users
+_usleep
 uuencode
 uudecode
 val

@@ -137,12 +137,8 @@ if [ "$PLATFORM" = "UNIX" ]
 then #---------------------------------------------------------------------
 echo $N Make sure clone fails with existing write lock in source \#2 .$NL
 cd $HERE/project
-P=50000
-bk bkd -d -p$P -c1 2>/dev/null
-while [ $? -eq 2 ]
-do	P=`expr $P + 1`
-	bk bkd -d -p$P -c1 2>/dev/null
-done
+P=`port 50000`
+bk bkd -d -p$P -ikill 2>/dev/null
 cd $HERE
 bk clone bk://localhost:$P clone 2> clone.out
 echo "ERROR-Can't get read lock on the repository." > ref
@@ -152,6 +148,7 @@ cmp -s clone.out ref || {
 	exit 1
 }
 if [ -d clone ]; then echo clone failed to clean up; exit 1; fi
+bk _kill bk://localhost:$P || exit 1
 echo OK
 
 fi #------------------------------------------------------------------------
@@ -370,3 +367,10 @@ grep -q 'ERROR-Unable to lock repository for update.' commit.out || {
 }
 echo OK
 
+echo $N Parallel lock tests .........................................$NL
+for i in 1 2 3 4
+do	bk _locktest LOCK 100 &
+done > OUT 2>&1
+wait
+grep O_EXCL OUT && exit 1
+echo OK

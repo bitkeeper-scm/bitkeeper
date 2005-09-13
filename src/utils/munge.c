@@ -10,6 +10,7 @@
 #include "../system.h"
 #include "../zlib/zlib.h"
 #undef	system
+#undef	perror
 
 #define	uchar	unsigned char
 #define	OUTPUT	"_data.c"

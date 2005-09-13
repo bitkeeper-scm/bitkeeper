@@ -365,8 +365,8 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 EOF
 cat tmp tmp tmp tmp tmp tmp tmp tmp tmp tmp > tmp10
-mv tmp10 tmp
-cat tmp tmp > big
+cat tmp10 tmp10 > big
+rm -f tmp10
 bk new $Q big
 bk edit $Q big
 echo 'There is a null right here X>' | tr X '\000' >> big
