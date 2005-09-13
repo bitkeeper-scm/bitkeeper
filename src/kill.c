@@ -7,13 +7,20 @@ kill_main(int ac, char **av)
 {
 	int	rc = 0;
 	remote	*r;
-	char	*tmpf;
+	char	*p, *tmpf;
 	FILE	*f;
 	char	buf[MAXLINE];
 
 	unless (av[1] && !av[2]) {
 usage:		fprintf(stderr, "Usage: bk kill URL\n");
 		return (1);
+	}
+	if (strneq("127.0.0.1:", av[1], 10)) {
+		p = strchr(av[1], ':');
+		*p++ = 0;
+		if ((rc = tcp_connect(av[1], atoi(p))) < 0) exit(1);
+		close(rc);
+		exit(0);
 	}
 	unless (r = remote_parse(av[1])) {
 		fprintf(stderr, "remote parse failed\n");

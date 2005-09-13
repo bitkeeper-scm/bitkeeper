@@ -59,13 +59,6 @@ unsetHttpProxy() {
 	unset HTTP_PROXY # workaround for cygwin
 }
 
-# Usage: waitForUnlock <root>
-waitForUnlock() {
-	test X$LOCKPID != X && wait $LOCKPID
-	LOCKPID=
-	bk lock -U $1
-}
-
 no_logging() {
 	echo "logging: none" > c
 	echo "single_user: bk" >> c

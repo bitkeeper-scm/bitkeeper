@@ -158,8 +158,6 @@ bk commit $Q -ycset1
 cd $HERE/project
 PORT=`port 5100`
 bk service install $BKDNAME -EBK_REGRESSION=1 -p$PORT 
-# LMXXX - I think this is nonsense.
-# waitForUnlock $HERE/copy        # needed on Freebsd4
 cd $HERE/copy/src
 bk pull -z0 bk://localhost:$PORT >OUT 2>&1
 test -f SCCS/s.zoo.c || {
@@ -244,7 +242,7 @@ echo data2 > old.c
 bk new $Q old.c
 bk commit $Q -yold.c || exit 1
 bk push -c1 $Q bk://localhost:$PORT || exit 1
-waitForUnlock $HERE/project
+bk lock -U $HERE/project
 cd $HERE/copy
 bk mv old.c conflict.c
 bk commit $Q -ygconflict
@@ -255,7 +253,7 @@ rm -f  $HERE/project/conflict.c
 echo OK
 
 echo $N check http pull from bkd ....................................$NL
-waitForUnlock $HERE/project
+bk lock -U $HERE/project
 cd $HERE/project/src
 bk edit $Q bar.c
 echo data3 > bar.c
