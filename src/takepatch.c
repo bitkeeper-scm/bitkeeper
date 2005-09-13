@@ -2536,6 +2536,7 @@ rebuild_id(char *id)
 private	void
 cleanup(int what)
 {
+	int	i;
 	int	rc = 1;
 
 	if (patchList) freePatchList();
@@ -2545,6 +2546,7 @@ cleanup(int what)
 		fprintf(stderr, "takepatch: neither directory removed.\n");
 		goto done;
 	}
+	for (i = 3; i < 20; ++i) close(i);
 	if (what & CLEAN_RESYNC) {
 		assert(exists("RESYNC"));
 		rmtree("RESYNC");

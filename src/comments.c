@@ -142,7 +142,6 @@ comments_prompt(char *file)
 		fflush(stdout);
 		if (cat(file)) return (-1);
 
-		flush_fd0(); /* for Win98 and Win/ME */
 		printf("-------------------------------------------------\n");
 		printf("Use these comments: (e)dit, (a)bort, (u)se? ");
 		fflush(stdout);

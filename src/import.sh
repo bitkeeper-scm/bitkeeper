@@ -31,7 +31,7 @@ import() {
 	UNDOS=
 	VERBOSE=-q
 	VERIFY=-h
-	LOCKPID=
+	LOCKURL=
 	FUZZOPT=-F0
 	while getopts ACc:efFHij:l:p:qRrS:t:uvxy:z: opt
 	do	case "$opt" in
@@ -129,9 +129,10 @@ import() {
 	fi
 	cd "$2"
 	TO="`bk pwd`"
-	bk lock -w &
-	LOCKPID=$!
+	bk lock -w -t > /tmp/lock$$ &
 	bk lock -L
+	LOCKURL=`cat /tmp/lock$$`
+	rm -f /tmp/lock$$
 	export BK_IGNORELOCK=YES
 	trap 'Done 100' 1 2 3 15
 
@@ -733,13 +734,8 @@ Done() {
 		plist creates deletes keys commit
 	do	$RM -f ${TMP}${i}$$
 	done
-	test X$LOCKPID != X && {
-		# Win32 note: Do not use cygwin "kill" to kill a non-cygwin
-		# process such as "bk lock -w". It does not work,
-		# you will get "Operation not permitted".
-		bk unlock -w
-		# If the process is gone already (why?) then this errors
-		wait $LOCKPID > /dev/null 2>&1
+	test X$LOCKURL != X && {
+		bk _kill $LOCKURL
 		trap '' 0 2 3 15
 	}
 	exit $1

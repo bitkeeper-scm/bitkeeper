@@ -5,7 +5,7 @@ private int getsfio(int verbose, int gzip);
 typedef	struct {
 	u32	debug:1;
 	u32	verbose:1;
-	u32	gzip;
+	int	gzip;
 	char    *rev;
 } opts;
 

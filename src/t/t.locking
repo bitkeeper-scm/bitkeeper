@@ -47,34 +47,34 @@ if [ -f A ]; then echo failed to remove A; exit 1; fi
 echo OK
 
 echo $N Check edit with existing stale read lock ....................$NL
-bk lock -r &
-LOCKPID=$!
+bk lock -tr >L &
 bk lock -L
+LOCKURL=`cat L`
 bk edit $Q A 2> /dev/null
 if [ ! -w A ]; then echo failed to get writable file; exit 1; fi
 bk clean A
+bk _kill $LOCKURL
+bk lock -U
 echo OK
 
 echo $N Check edit with existing stale write lock ...................$NL
-bk unlock -r
-waitForUnlock
 if [ -d BitKeeper/readers ]
 then	echo failed to clean up read lock; ls -l BitKeeper/readers; exit 1
 fi
-bk lock -w &
-LOCKPID=$!
+bk lock -tw >L &
 bk lock -L
+LOCKURL=`cat L`
 bk edit $Q A 2> /dev/null
 if [ ! -w A ]; then echo failed to get writable file; exit 1; fi
+bk _kill $LOCKURL
+bk lock -U
 echo OK
 
 echo $N Check edit with existing valid read lock ....................$NL
 bk clean A
-bk unlock -w
-waitForUnlock
-bk lock -r &
-LOCKPID=$!
+bk lock -tr >L &
 bk lock -L
+LOCKURL=`cat L`
 mv BitKeeper/readers/* BitKeeper/readers/1234@nowhere.nowhere
 bk edit $Q A
 writable A || { echo failed to lock A; exit 1; }
@@ -95,8 +95,9 @@ if [ -w A ]; then echo failed to clean; exit 1; fi
 echo OK
 
 echo $N Check edit with existing valid write lock ...................$NL
+bk _kill $LOCKURL
 bk unlock -r
-waitForUnlock
+bk lock -U
 rm -rf BitKeeper/writer
 mkdir BitKeeper/writer
 echo 1234 nowhere.nowhere 2147480000 > BitKeeper/writer/1234@nowhere.nowhere.lock
@@ -132,17 +133,10 @@ bk clone $Q project clone 2>/dev/null
 if [ -d clone ]; then echo clone failed to clean up; exit 1; fi
 echo OK
 
-# This test would not work on Win98/WinMe; no bkd support
-if [ "$PLATFORM" = "UNIX" ]
-then #---------------------------------------------------------------------
 echo $N Make sure clone fails with existing write lock in source \#2 .$NL
 cd $HERE/project
-P=50000
-bk bkd -d -p$P -c1 2>/dev/null
-while [ $? -eq 2 ]
-do	P=`expr $P + 1`
-	bk bkd -d -p$P -c1 2>/dev/null
-done
+P=`port 50000`
+bk bkd -d -p$P -ikill 2>/dev/null
 cd $HERE
 bk clone bk://localhost:$P clone 2> clone.out
 echo "ERROR-Can't get read lock on the repository." > ref
@@ -152,16 +146,16 @@ cmp -s clone.out ref || {
 	exit 1
 }
 if [ -d clone ]; then echo clone failed to clean up; exit 1; fi
+bk _kill bk://localhost:$P || exit 1
 echo OK
 
-fi #------------------------------------------------------------------------
 echo $N Make sure clone works with existing read lock in source .....$NL
 cd $HERE/project
 bk unlock -w
-waitForUnlock
-bk lock -r &
-LOCKPID=$!
+bk lock -U
+bk lock -tr >L &
 bk lock -L
+LOCKURL=`cat L`
 mv BitKeeper/readers/* BitKeeper/readers/1234@nowhere.nowhere
 cd $HERE
 bk clone $Q project clone 2>/dev/null
@@ -183,8 +177,9 @@ echo OK
 
 echo $N Make sure pull fails with global write lock .................$NL
 cd $HERE/project
-bk unlock -rw
-waitForUnlock
+bk _kill $LOCKURL
+bk unlock -r
+bk lock -U
 ls > C
 bk new $Q C
 bk commit $Q -ywhatever
@@ -196,14 +191,12 @@ echo OK
 
 echo $N Make sure pull fails with existing write lock in source .....$NL
 cd $HERE/project
-bk unlock -rw
-waitForUnlock
 ls > CC
 bk new $Q CC
 bk commit $Q -ywhatever
-bk lock -w &
-LOCKPID=$!
+bk lock -tw >L &
 bk lock -L
+LOCKURL=`cat L`
 cd $HERE/clone
 bk pull -t -c0 $Q 2>/dev/null
 if [ $? != 1 ]; then echo pull failed to exit with error; exit 1; fi
@@ -211,11 +204,11 @@ echo OK
 
 echo $N Make sure pull works with existing read lock in source ......$NL
 cd $HERE/project
-bk unlock -w
-waitForUnlock
-bk lock -r &
-LOCKPID=$!
+bk _kill $LOCKURL
+bk lock -U
+bk lock -tr >L &
 bk lock -L
+LOCKURL=`cat L`
 mv BitKeeper/readers/* BitKeeper/readers/1234@nowhere.nowhere
 cd $HERE/clone
 bk pull -t $Q -R 2>/dev/null
@@ -241,8 +234,9 @@ echo OK
 
 echo $N Make sure push fails with global read lock ..................$NL
 cd $HERE/project
-bk unlock -rw
-waitForUnlock
+bk _kill $LOCKURL
+bk unlock -r
+bk lock -U
 cd $HERE/clone
 touch $HERE/read_lock
 BK_READ_LOCK=$HERE/read_lock bk push -c0 > OUT 2>&1 && {
@@ -259,9 +253,6 @@ grep -q 'ERROR-Unable to lock repository for update.' OUT || {
 echo OK
 
 echo $N Make sure push fails with global write lock .................$NL
-cd $HERE/project
-bk unlock -rw
-waitForUnlock
 cd $HERE/clone
 BK_WRITE_LOCK=$HERE/write_lock bk push -c0 > OUT 2>&1 && {
 	echo push failed to exit with an error
@@ -278,16 +269,14 @@ echo OK
 
 echo $N Make sure push fails with existing write lock in dest .......$NL
 cd $HERE/project
-bk unlock -rw
-waitForUnlock
-bk lock -w &
-LOCKPID=$!
+bk lock -tw >L &
 bk lock -L
+LOCKURL=`cat L`
 cd $HERE/clone
 bk push -c0 > OUT 2>&1 && {
 	echo push failed to exit with an error
 	cat OUT
-	kill $LOCKPID
+	bk _kill $LOCKURL
 	exit 1
 }
 grep -q 'ERROR-Unable to lock repository for update.' OUT || {
@@ -296,19 +285,15 @@ grep -q 'ERROR-Unable to lock repository for update.' OUT || {
 	exit 1
 }
 cd $HERE/project
-bk unlock -w
-waitForUnlock
+bk _kill $LOCKURL
+bk lock -U
 echo OK
 
 echo $N Make sure push succeeds with no locks in destination ........$NL
-cd $HERE/project
-bk unlock -rw
-waitForUnlock
 cd $HERE/clone
 bk push $Q
 if [ $? != 0 ]; then echo push exited with an error; exit 1; fi
 cd $HERE/project
-waitForUnlock
 bk pull -t $HERE/clone > OUT 2>&1
 grep -q 'Nothing to pull' OUT || {
 	echo failed - bad status message
@@ -370,3 +355,10 @@ grep -q 'ERROR-Unable to lock repository for update.' commit.out || {
 }
 echo OK
 
+echo $N Parallel lock tests .........................................$NL
+for i in 1 2 3 4
+do	bk _locktest LOCK 100 &
+done > OUT 2>&1
+wait
+grep O_EXCL OUT && exit 1
+echo OK

@@ -1193,19 +1193,7 @@ fix_stime(sccs *s)
 	 * INIT_FIXSTIME flag.
 	 */
 	ut.actime = time(0);
-#ifdef WIN32
-	/*
-	 * For unknown reason, Win/Me round up the time by one second
-	 * so we need to set the mod time to gtime - 2 to compmensate.
-	 */
-	if (isWin98()) {
-		ut.modtime = s->gtime - 2; /* for Win/Me */
-	} else {
-		ut.modtime = s->gtime - 1;
-	}
-#else
 	ut.modtime = s->gtime - 1;
-#endif
 	if (utime(s->sfile, &ut)) {
 		fprintf(stderr, "fix_stime: failed\n");
 		perror(s->sfile);
@@ -2589,11 +2577,12 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 		/* NOTE: this string *must* match the case label below */
 		if (strchr("ABCDEFGHIKLMPQRSTUWYZ@", t[1])) hasKeyword = 1;
 	}
-	unless (hasKeyword) return l;
+	unless (hasKeyword) return (l);
 	buf_size = t - l + EXTRA; /* get extra memory for keyword expansion */
 
 	/* ok, we need to expand keyword, allocate a new buffer */
 	t = buf = malloc(buf_size);
+	a[0] = a[1] = a[2] = a[3] = 0;	/* bogus gcc 4 warning */
 	while (*l != '\n') {
 		if (l[0] != '%' || l[1] == '\n' || l[2] != '%') {
 			*t++ = *l++;

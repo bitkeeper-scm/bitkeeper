@@ -299,7 +299,6 @@ prompt(char *msg, char *buf)
 	caught = 0;
 	sig_catch(abort_prompt);
 
-	flush_fd0(); /* for Win/98 and Win/ME */
 	write(2, msg, strlen(msg));
 	write(2, " ", 1);
 	ret = getline(0, buf, MAXPATH) > 1;
@@ -320,7 +319,6 @@ confirm(char *msg)
 	caught = 0;
 	sig_catch(abort_prompt);
 
-	flush_fd0(); /* for Win/98 and Win/Me */
 	write(2, msg, strlen(msg));
 	write(2, " (y/n) ", 7);
 	gotsome = getline(0, buf, sizeof(buf)) > 1;
@@ -332,6 +330,13 @@ confirm(char *msg)
 	unless (gotsome) return (0);
 	for (p = buf; *p && isspace(*p); p++);
 	return ((*p == 'y') || (*p == 'Y'));
+}
+
+int
+usleep_main(int ac, char **av)
+{
+	usleep(atoi(av[1]));
+	return (0);
 }
 
 /*
@@ -879,8 +884,8 @@ sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 			free(root);
 		}
 	}
-
-	fprintf(f, "putenv BK_LICENSE=%s\n", proj_license(0));
+	/* XXX gross hack to remove in 3.3.x */
+	if (isClone < 2) fprintf(f, "putenv BK_LICENSE=%s\n", proj_license(0));
 	unless (r->seed) bkd_seed(0, 0, &r->seed);
 	fprintf(f, "putenv BK_SEED=%s\n", r->seed);
 
@@ -891,7 +896,7 @@ getServerInfoBlock(remote *r)
 {
 	int	ret = 1; /* protocol error, never saw @END@ */
 	int	gotseed = 0;
-	int	i;
+	int	i, cnt;
 	char	*newseed;
 	char	buf[4096];
 
@@ -904,6 +909,14 @@ getServerInfoBlock(remote *r)
 		if (strneq(buf, "PROTOCOL", 8)) {
 			safe_putenv("BK_REMOTE_%s", buf);
 		} else {
+			for (cnt = i = 0; buf[i]; i++) {
+				if (buf[i] == '=') ++cnt;
+			}
+			unless (cnt == 1) {
+				fprintf(stderr, "Invalid data from bkd: %s\n",
+				    buf);
+				return (2);
+			}
 			safe_putenv("BKD_%s", buf);
 			if (strneq(buf, "REPO_ID=", 8)) {
 				cmdlog_addnote("rmts", buf+8);
@@ -1469,21 +1482,20 @@ progressbar(int n, int max, char *msg)
 void
 reserveStdFds(void)
 {
-	int	fd0, fd1;
-						
+	int	fd;
+
 #ifdef WIN32
 	closeBadFds();
 #endif
-	if ((fd0 = open(NULL_FILE, O_RDONLY, 0)) == 0) {
-do1:		if ((fd1 = open(DEV_NULL, O_WRONLY, 0)) != 1) {
-			close(fd1);
+	/* reserve stdin */
+	if ((fd = open(NULL_FILE, O_RDONLY, 0)) != 0) close(fd);
+	if (fd <= 2) {
+		/* reserve stdout & stderr */
+		if ((fd = open(DEV_NULL, O_WRONLY, 0)) > 2) close(fd);
+		if (fd == 1) {
+			if ((fd = open(DEV_NULL, O_WRONLY, 0)) > 2) close(fd);
 		}
-	} else {
-		close(fd0);
-		if (fd0 == 1) {
-			goto do1;
-		}
-											}
+	}
 }
 
 #ifndef	WIN32

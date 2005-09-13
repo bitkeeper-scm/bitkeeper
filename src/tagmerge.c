@@ -178,6 +178,7 @@ m(sccs *s, delta *l, delta *r)
 		fprintf(stderr, "takepatch failed, contact BitMover please.\n");
 		exit(1);
 	}
-	system("mv -f RESYNC/SCCS/s.ChangeSet SCCS/s.ChangeSet");
+	unlink("SCCS/s.ChangeSet");
+	rename("RESYNC/SCCS/s.ChangeSet", "SCCS/s.ChangeSet");
 	system("bk abort -f");
 }

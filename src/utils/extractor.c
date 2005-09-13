@@ -21,6 +21,7 @@
 #define	mkdir(a, b)	_mkdir(a)
 #define	RMDIR		"rmdir /s /q"
 #define	PFKEY		"\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion"
+#define	WIN_UNSUPPORTED	"Windows 2000 or later required to install BitKeeper"
 #else
 #define	RMDIR		"/bin/rm -rf"
 #endif
@@ -59,6 +60,31 @@ main(int ac, char **av)
 	char	regbuf[1024];
 	int	len = sizeof(regbuf);
 	HCURSOR h;
+
+	/* Refuse to install on unsupported versions of Windows */
+
+	/* The following code has been commented out because right now the
+	 * bk installer is a Console application (i.e. if it doesn't have
+	 * a console because the user double-clicked on the icon, a console
+	 * is created. There's a cset in the RTI queue (2005-08-18-001) that
+	 * GUIfies the installer. When that cset gets pulled, this code should
+	 * be used instead of the next block.
+	 *
+	 *unless (win_supported()) {
+	 *	if (hasConsole()) {
+	 *		fprintf(stderr, "%s\n", WIN_UNSUPPORTED);
+	 *		exit(1);
+	 *	} else {
+	 *		MessageBox(0, WIN_UNSUPPORTED, 0, 
+	 *		    MB_OK | MB_ICONERROR);
+	 *		exit(1);
+	 *	}
+	 *}
+	 */
+	 unless (win_supported()) {
+	 	MessageBox(0, WIN_UNSUPPORTED, 0, MB_OK | MB_ICONERROR);
+	 	exit(1);
+	 }
 
 	_fmode = _O_BINARY;
 	if (getReg(HKEY_LOCAL_MACHINE,
@@ -494,11 +520,7 @@ rmTree(char *dir)
 {
 	char buf[MAXPATH], cmd[MAXPATH + 12];
 
-	if (isWin98()) {
-		sprintf(cmd, "deltree /Y %s", dir);
-	} else {
-		sprintf(cmd, "rmdir /s /q %s", dir);
-	}
+	sprintf(cmd, "rmdir /s /q %s", dir);
 	/* use native system() funtion  so we get cmd.exe/command.com */
 	(system)(cmd);
 }

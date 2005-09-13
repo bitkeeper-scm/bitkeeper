@@ -1,4 +1,34 @@
 ===============================================================================
+Release notes for BitKeeper version 3.2.6.   These release notes cover
+the following topics:
+
+. Upgrade Notes
+. Release Summary
+
+Upgrade Notes
+----------------------------------------------------------------------------
+Prior to upgrading on a Windows platform please uninstall any BitKeeper
+services with the following command:
+
+	bk bkd -R
+
+Release Summary
+----------------------------------------------------------------------------
+This release is primarily for the Windows based platforms and has the 
+following changes:
+
+- Win/98, Win/95, Win/ME are all explicitly unsupported (see below)
+- The networking layer has been rewritten to solve some locking bugs
+  associated with long running bkd servers on Windows platforms.  The
+  rewrite forced us to choose between supporting those platforms or 
+  fixing the bugs.
+- Running BitKeeper as a service is improved, you may run multiple instances
+  on different ports and different repositories if needed.
+- Running a bkd works as it did/does on POSIX based systems.  You can run
+  bk bkd -dDl
+  to see the log output if needed for debugging.
+
+===============================================================================
 Release notes for BitKeeper version 3.2.5.   These release notes cover
 the following topics:
 

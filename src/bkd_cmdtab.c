@@ -41,5 +41,6 @@ struct cmd cmds[] = {
   { "chg_part2", "chg_1.3", 
     "get new csets in remote repository",
     cmd_chg_part2 },
+  { "kill", "kill_1.3", "kill remote bkd", cmd_kill },
   { 0, 0, 0 }
 };

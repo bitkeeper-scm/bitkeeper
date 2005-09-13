@@ -1,11 +1,12 @@
 HERE	:= $(shell pwd)
 
-all: uwtlib diffutils patch msys bkscc bkshellx
+all: uwtlib svcmgr diffutils patch msys bkscc bkshellx
 	cd pub/winctl && unset MAKEFLAGS && make
 
 clean clean-obj clobber:
 	test -d c:/ && { \
 		cd $(HERE)/uwtlib && make $@; \
+		cd $(HERE)/svcmgr && make $@; \
 		cd $(HERE)/pub/blat && make $@; \
 		cd $(HERE)/pub/winctl && make $@; \
 		cd $(HERE)/pub/diffutils && make $@; \
@@ -18,6 +19,9 @@ FORCE:
 
 uwtlib: FORCE
 	cd uwtlib && make
+
+svcmgr: FORCE
+	cd svcmgr && make
 
 blat: FORCE
 	cd pub/blat && make
@@ -61,6 +65,7 @@ bkscc: getdatarepo BKSCCKEY FORCE
 
 install: all blat data/bk.ico
 	@if [ X$(BINDIR) = X ]; then echo Must set BINDIR; exit 1; fi
+	cp -f svcmgr/svcmgr.exe $(BINDIR)/svcmgr.exe
 	cp -f data/bk.ico $(BINDIR)/bk.ico
 	cp -f dll/scc/lib/bkscc.dll $(BINDIR)
 	cp -f dll/shellx/bin/shellx $(BINDIR)
