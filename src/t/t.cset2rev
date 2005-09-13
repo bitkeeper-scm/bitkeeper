@@ -14,7 +14,7 @@
 # %K%
 
 echo $N Create initial repository using setup .......................$NL
-no_logging project
+commercial project
 echo 1 > file1
 bk new $Q file1 || exit 1
 echo 2 > file2

@@ -14,7 +14,7 @@
 # %K%
 
 echo $N Create initial repository ...................................$NL
-no_logging project
+commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -33,7 +33,7 @@ if [ ! -f d2/SCCS/s.b ]; then echo failed to create files; exit 1; fi
 echo OK
 
 echo $N Commit the data .............................................$NL
-bk commit $S -a -yCset
+bk commit $S -yCset
 test `bk sfiles -pC | wc -l` -eq 0 || {
 	echo failed to commit all files
 	exit 1
@@ -43,7 +43,7 @@ echo OK
 echo $N Make version 1 LOD structures ...............................$NL
 bk edit $Q d1/a || exit 1
 bk delta $Q -y'new lod' d1/a || exit 1
-bk commit $S -a -yCset || exit 1
+bk commit $S -yCset || exit 1
 rev=`bk prs -r+ -hnd:I: ChangeSet`
 perl -pe "binmode(STDOUT); s/ D $rev / D 2.1 /" SCCS/s.ChangeSet > tmp
 mv SCCS/s.ChangeSet old-s.ChangeSet

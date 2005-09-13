@@ -218,22 +218,15 @@ Your license for BitKeeper has expired.  You are beyond the
 grace period and you may not create any changesets until you
 have contacted BitMover to purchase a new license.
 
-For more information, please run "bk helptool license"
-
 BitMover can be reached at:
    +1-650-872-9900 (international and California)
    888-401-8808 (toll free in the US & Canada) 
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
-#config_license
 #license_none
-You do not have a valid license for BitKeeper and the logging field
-in the BitKeeper/etc/config file is not set to "logging@openlogging.org".
-You either need a commercial license (to run without open logging),
-or you need to convert your package to single user, or you need to
-configure your package to use openlogging.  Until you have done one of
-these things, you may not create any changesets.
+You do not have a license for BitKeeper and you need one to create
+any changesets.
 
 You can get a temporary license by sending a mail request
 to sales@bitmover.com.  
@@ -244,50 +237,30 @@ BitMover can be reached at:
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
-#open_log_query
-This repository is configured to send changeset summaries to
-	#BKARG#
-so others can follow your work.  This is called Open Logging.
+#missing_config_install
+No config file was found containing a license.  A license is required
+to install BitKeeper.
 
-We need to get an OK from each user that it is OK to publish your
-change logs.  You should say no if you are working on proprietary
-and/or sensitive information that you or your employer would not
-want made public.  If you are working on an Open Source project,
-or any other project whose existence and status can be publicized,
-you can say yes.
+If you have a BitKeeper repository with a valid license, retry the
+install from within that repository and it will use that license.
 
-Saying no means the changeset will neither be logged nor be
-created, which means a loss of the distributed functionality
-of BitKeeper.  If it is important that you keep the information
-private, you can contact BitMover for a closed use license.
+If you have a license that was sent to you, place that license in 
+
+	#BKARG#/config
+
+and retry the install.
+
+If you have no license then contact BitMover to get one.
+
 BitMover can be reached at:
    +1-650-872-9900 (international and California)
-   888-401-8808 (toll free in the US & Canada) 
+   888-401-8808 (toll free in the US & Canada)
 during business hours (PST) or via email at sales@bitmover.com.
-
-Saying yes will send the changeset comments and per file comments.
-It will NOT send your source code.
-Saying yes also means that you are accepting the terms of the BKL,
-the license under which you obtained this software.  You can read
-that license by saying "bk help license" in another window.
-
-If you have been asked this before, it is because we ask once for
-each new host.
-$
-#log_abort
-BitKeeper is aborting this commit.
-
-This repository is for projects that wish to publish their progress via
-Open Logging.  To purchase a copy of BitKeeper without the Open Logging
-feature, please contact sales@bitmover.com.  Thank you.
 $
 #seat_info
 Your user count has exceeded the number of purchased licenses.
 To purchase more seats, please email sales@bitmover.com.  Thank you.
 
-$
-#logging_commercial
-Open logging is not allowed on a commercial repository.
 $
 #no_accept_no_cset
 Changeset not created due to license rejection.
@@ -323,51 +296,6 @@ presented by running 'bk support'.
 
 	bk _lconfig -d
 $
-#unlogged_max
-Error: Max pending log exceeded, commit aborted.
-
-This error indicates that the BitKeeper program is unable to contact
-www.openlogging.org to send the ChangeSet log[s]. The number of unlogged
-changesets have exceeded the allowed threshold of #BKARG# changesets.
-
-There are two possible causes for this error:
-a) Network connectivity problems such as firewall/proxy configuration.
-b) Problems in the logging tree at www.openlogging.org
-
-Please run the logging command in debug mode to see what the problem is:
-	bk log -d
-After you have ruled out a network connectivity problem and configuration
-problems at your site, please include the following information when
-running 'bk support':
-a) Output of the above logging command
-b) Output of the "bk identity" command
-$
-#unlogged
-Warning: BitKeeper allows a limited number of offline commits.  Your quota
-is currently #BKARG# changesets and you will not be able to commit once
-your quota is down to zero. Please check your network configuration
-and make sure your logs are being transmitted properly. You can test your
-log transmission with the command "bk log -d".
-$
-#single_file_max
-Error: The BitKeeper free use license limits the total number of files
-in all of your single user repositories to 1000 files.  You will need
-to buy a commercial license or turn on openlogging to continue.
-BitMover can be reached in the United States at 888-401-8808
-during business hours (PST) or via email at sales@bitmover.com.
-Thanks!
-$
-#single_config_mismatch
-Error: This repository was orignially configured as a single user repository
-but the configuration has been updated to not have this restriction.
-This repository must be turned into a multiuser repository before it can
-be used.  Please read 'bk help multiuser' to do this.
-BitMover can be reached at:
-   +1-650-872-9900 (international and California)
-   888-401-8808 (toll free in the US & Canada) 
-during business hours (PST) or via email at sales@bitmover.com.
-Thanks!
-$
 #eval_max
 Error: Evaluation license are limited to #BKARG# changesets.  You are over 
 that limit and you will need to get a commercial license to make any
@@ -380,9 +308,9 @@ Thanks!
 $
 #eval_warn
 Warning: Evaluation licenses have a limited number of changesets. Your
-changeset quota is now down to #BKARG# which is less than 50 changesets
-away from the limit.  You will not be able to commit any more changesets
-when the quota reaches zero.  Please contact BitMover.
+changeset quota is now down to #BKARG# changesets.  You will not be
+able to commit any more changesets when the quota reaches zero.
+Please upgrade to a commercial license.
 BitMover can be reached at:
    +1-650-872-9900 (international and California)
    888-401-8808 (toll free in the US & Canada) 
@@ -548,16 +476,6 @@ $
 This is the BitKeeper configuration for this package.
 
 Please take a minute to fill it out carefully, it needs to be accurate.
-
-NOTICE: you really do want to fill this out, if something goes wrong
-with your repository, or if someone changes the logging policy, we
-send mail to the contact listed here for confirmation.
-
-BitKeeper can maintain a log of your change comments (not your source,
-just the comments) on a centralized server.  This is useful as your
-project grows, it gives people a place to go see what is happening on
-a per project basis.  This is especially useful for distributed developers.
-
 $
 #config_setup
 The setup program is used when creating the initial package stored 
@@ -578,18 +496,13 @@ Name of the project, such as "BitKeeper" or "The GNU C compiler".
 
 $
 #config_category
-
-What (Red Hat package) category this project fits into, if any.
-
 $
-#config_logging
+#config_license
 
-Open Logging server.  This site is where users go to see the
-ChangeSet comments for all instances of this repository.  If using
-BitMover's free use license(BKL), this must be logging@openlogging.org.
-The BKL terms require openlogging. "bk help bkl" will show you the
-default licensing terms.  If this repository is for use with a commercial
-license, it can be an internal email address or "none" to disable logging.
+Enter the license information for BitKeeper here.
+
+You can get a temporary license by sending a mail request to
+sales@bitmover.com
 
 $
 #config_contact
@@ -603,35 +516,6 @@ $
 #config_email
 
 It is very important that this email address is filled out and accurate.
-If someone converts your repository to open logging (which you may not
-want), we will contact this email address for confirmation that you really
-did want open logging.  If the email address is inaccurate and we get no
-response from anyone else at your location after 90 days, then open logging
-will be implicitly approved.
-
-$
-#config_street
-
-Add your street address if you like, it is optional.
-
-$
-#config_hours
-
-Business Hours when we can contact you via phone.
-
-$
-#config_single_user
-
-If this field is set, all checkins will appear to be made by this user,
-in effect making this a single user package.  Single user packages are
-free from the logging constraint up to a maximum of 1000 files.  In order 
-for the package to really be free, both the single_user and the single_host 
-field need to be set.
-
-$
-#config_single_host
-
-If this field is set, all checkins will appear to be made on this host.
 
 $
 #config_compression
@@ -648,27 +532,14 @@ If you want to manually fix them, set this to "no".
 $
 #config_template
 description
-category
-logging
 license
 licsign1
 licsign2
 licsign3
-single_user
-single_host
 compression
 autofix
 contact
 email
-street
-city
-state
-postal
-country
-phone
-cell
-pager
-hours
 $
 #warn_poly
 Warning: this repository has been found to have deltas which
@@ -686,64 +557,6 @@ file system are as follows:
         "aux", "con", "prn", "nul", "lpt?", "?:"
 Please rename the file and retry (see also "bk helptool mv")
 Note: You must perform the rename in the sending repository.
-$
-#setup_categories
-amusements/games
-amusements/graphics
-amusements/multimedia
-applications/archiving
-applications/communications
-applications/databases
-applications/dos/windows connectivity
-applications/editors
-applications/emulators
-applications/graphics
-applications/mail
-applications/mail/www/news tools
-applications/math
-applications/networking
-applications/news
-applications/productivity
-applications/publishing
-base
-base/kernel
-daemons
-development/building
-development/debuggers
-development/languages
-development/languages/tcl
-development/libraries
-development/libraries/libc
-development/system
-development/tools
-documentation
-games
-libraries
-networking
-networking/admin
-networking/daemons
-networking/development
-networking/utilities
-shells
-system environment/base
-system environment/file managers
-system environment/printer support
-user interface/gnome
-user interface/kde
-utilities
-utilities/archiving
-utilities/file
-utilities/printing
-utilities/system
-utilities/text
-x11
-x11/amusements
-x11/applications
-x11/applications/graphics
-x11/libraries
-x11/utilities
-x11/xfree86
-x11/xfree86/servers
 $
 #setuptool_step_BadUser
 You are logged in as '#BKARG#'. You may not create repositories when
@@ -771,18 +584,6 @@ $
 Please take a moment to read the license agreement now. If you accept 
 the terms below, click "I Agree", then "Next". Otherwise click Cancel.
 $
-#setuptool_step_LicenseType
-BitKeeper provides three types of licensing. If you have received a BitKeeper
-license key from BitMover, select "Commercial" and you will be prompted to
-enter the key.
-
-If you wish to use BitKeeper for free you must choose one of two options:
-single user or Open Logging. If you are a single user on a single host you
-may choose the "Single User / Single Host" option in which case you will
-be prompted for a username and hostname. If you choose "Open Logging"
-you will not have to enter any data for the license, and all checkin
-comments made in your repository will be posted at www.openlogging.org.
-$
 #setuptool_step_LicenseKey
 Please enter the license key and signatures exactly as they were given to
 you.
@@ -792,17 +593,9 @@ values will be extracted from the file. This should work even if the file
 has mail headers or other text, and it is the easiest way to ensure the keys 
 are entered properly.
 $
-#setuptool_step_UserHostInfo
-For single user / single host configurations you must enter a 
-username and hostname. The username and hostname you supply will 
-be recorded with every checkin in this repository.
-$
 #setuptool_step_RepoInfo
-The following information uniquely identifies this repository. All fields 
-are required to be non-empty in order for you to continue.
-
-If the categories in the drop-down list do not meet your needs you may enter 
-any category you like.
+The following information uniquely identifies this repository. The fields
+highlighted in blue are required to be non-empty.
 $
 #setuptool_step_ContactInfo
 The following information is optional.
@@ -929,23 +722,15 @@ esac
 exit 0
 $
 #bkl_new_preamble
-In order to use BitKeeper in this repository, you must accept the 
-BitKeeper license.  The BitKeeper license is what grants you the right
-to use BitKeeper on this repository.  Please read the license carefully,
-it is a contract and you must abide by the terms.  Your acceptance will be
-recorded on this machine and you will not be asked again.
-$
-#bkcl_new_preamble
-In order to use BitKeeper in this repository, you need to accept the
-BitKeeper Commercial license.  This license is what grants you the right
-to use BitKeeper on this repository.  Please read the license carefully,
-it is a contract and you must abide by the terms.  The license text below
-does not include all of the referenced "schedules" because these include
-pricing information negotiated by your management.  Your acceptance will
-be recorded on this machine and you will not be asked again.
+In order to use the BitKeeper software, you must accept the BitKeeper
+Commercial license.  This license grants you specific rights and also
+contains various restrictions.  Please read the license carefully,
+it is a contract and you must abide by the terms.
+
+Your acceptance will be recorded on this machine and you will not be
+asked again during the term of this license.
 $
 #bkl_upgrade_preamble
-#bkcl_upgrade_preamble
 The BitKeeper license required for the use of this repository has changed
 and you need to accept the new version in order to make changes in this
 repository.  Your acceptance will be recorded on this machine and you will
@@ -970,12 +755,6 @@ changed and you need to accept the new version in order to make changes in
 this repository.  Your acceptance will be recorded on this machine and you
 will not be asked again.
 $
-#lic_alwaysOK
-If you do not want to be prompted about license questions in the future,
-set the environment variable BK_LICENSE to the value ACCEPTED.  Doing so
-means that you are agreeing to all future versions of any license associated
-with this repository.
-$
 #missing_key_sig
 This repository is configured to use a commercial license 
 	#BKARG#
@@ -991,21 +770,28 @@ $
 #invalid_key_sig
 The configured license key signature for the current repository
 doesn't match the current license key: #BKARG#
+
+The config variables should look like
+
+license: #BKARG#
+licsign1: long string of characters
+licsign2: long string of characters
+licsign3: long string of characters
+
+A possible cause of this problem is a cut and paste error when adding
+those signatures to the config file or BK_CONFIG environment variable.
 $
 #lease_nonet
-Unable to obtain permission to use this version of BitKeeper (#BKARG#) 
-from lease.openlogging.org.  That server issues certificates to use BK
-for openlogging for 30 days at a time.  The bk binary needs to be able
-to make a http connection to lease.openlogging.org at least once a month.
+Unable to fetch a new license from #BKARG#
+Either that server is not responding or you have a network
+problem.
 
 Look at 'bk help url' if you need to tell 'bk' about a proxy.
 $
 #lease_unsupported_version
 The version of BK that you are currently using (#BKARG#) is no
-longer supported by BitMover because it contains bugs which have been
-fixed.  Since you are using BitKeeper in openlogging mode, you must
-upgrade to the current version before continuing.  Please download the
-latest version at http://www.bitkeeper.com.
+longer supported by your license server.  Please use 'bk upgrade'
+to obtain the latest version of BitKeeper.
 $
 #lease_other_error
 BitKeeper was unable to validate this version of BitKeeper.
@@ -1014,10 +800,15 @@ The error code returned from BitMover was:
 Please run 'bk support' to request assistance.
 $
 #lease_timesync
-Unable to obtain a lease for this version of BitKeeper from
-lease.openlogging.org because the local clock on this computer is off
-by more than 24 hours.  Please verify the time on your computer and that
-the timezone is set correctly and try again.
+The time on the local machine is out of sync with your license server.
+Please verify the time on your computer and that the timezone is set
+correctly and try again.
+$
+#lease-eval-limit
+You are using an evaluation license and it appears that you have  
+reached the usage limit allowed for this license.  To continue  
+your work you will need a commercial license.  Please contact  
+sales@bitmover.com
 $
 #gui-support-submitter
 Please enter your valid email address here so we can reach you

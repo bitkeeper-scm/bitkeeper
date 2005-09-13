@@ -1184,7 +1184,7 @@ proc csettool {what} \
 	}
 	set revs ""
 	foreach r [array names l] { 
-		set fd [open "|bk r2c -r$r $filename" "r"]
+		set fd [open [list |bk r2c -r$r $filename] "r"]
 		set r [gets $fd]
 		close $fd
 		set revs "$r,$revs"
@@ -1656,6 +1656,10 @@ proc widgets {} \
 		bind $w <Button-3> {click %W 0 0; break}
 		bind $w <Shift-Button-1> {click %W 1 1; break}
 		bind $w <Shift-Button-3> {click %W 0 1; break}
+		if {$gc(aqua)} {
+			bind $w <Command-1> {click %W 0 0; break}
+			bind $w <Shift-Command-1> {click %W 0 1; break}
+		}
 		bindtags $w [list $w]
 	}
 	foreach w {.merge.menu.t .prs.left .prs.right} {
@@ -2217,7 +2221,7 @@ proc doprs {text revs tag} \
 	if {$len > 0} {
 		incr len -2
 		set prs [string range $revs 0 $len]
-		set F [open "|bk prs -b -hr$prs {$DSPEC} $filename" "r"]
+		set F [open [list |bk prs -b -hr$prs {$DSPEC} $filename] "r"]
 		if {$tag == "old"} {
 			set lead "- "
 		} else {
@@ -2428,8 +2432,9 @@ proc click {win block replace} \
 		change $lines $replace 0 $annotate
 		return
 	}
-	# Figure out the leading character, walk backwards as long as
-	# is the same, save that location, walk forwards printing as we go.
+	# Figure out the leading character ('+', '-', or ' '), 
+	# walk backwards as long as is the same (same diff), save that 
+	# location, walk forwards printing as we go.
 	set char [$win get "$here linestart + 1 chars"]
 	set line $here
 	set lines [list]
@@ -2440,6 +2445,8 @@ proc click {win block replace} \
 		# Break out if we hit stuff that we already selected
 		set ok 1
 		set tagged 0
+		# look at the tags of the _last_ character
+		set tmp [$win index "$tmp lineend - 1 char"]
 		foreach t [$win tag names $tmp] {
 			set tagged 1
 			if {$t == "hand"} { set ok 0 }
@@ -2460,6 +2467,8 @@ proc click {win block replace} \
 		# Break out if we hit stuff that we already selected
 		set ok 1
 		set tagged 0
+		# look at the tags of the _last_ character
+		set tmp [$win index "$tmp lineend - 1 char"]
 		foreach t [$win tag names $tmp] {
 			set tagged 1
 			if {$t == "hand"} { set ok 0 }

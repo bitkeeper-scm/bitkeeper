@@ -12,7 +12,7 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
-no_logging project
+commercial project
 echo $N Test sccsmv w/ p locked file ................................$NL
 mkdir A B D E
 echo "This is file 1" > A/file1
@@ -252,7 +252,7 @@ echo $N Test check -ag ..............................................$NL
 echo y | bk commit $Q -ycset
 rm -f CCCC/SCCS/s.file6
 bk -r check -a 2>  ck.out
-grep -q 'Missing file (chk3) bk@free.bk'  ck.out || {
+grep -q 'Missing file (chk3) .*@bk_regression.bk'  ck.out || {
 	echo Bad error message
 	cat ck.out
 	exit 1
@@ -264,7 +264,7 @@ echo OK
 echo $N Test clones of an editted moved file ........................$NL
 cd $HERE
 rm -rf project
-no_logging project
+commercial project
 date > d
 bk delta -i $Q d
 bk commit -q -ywhatever
@@ -286,7 +286,7 @@ echo OK
 echo $N Test pulls into a project with an editted moved file ........$NL
 cd $HERE
 rm -rf project copy
-no_logging project
+commercial project
 date > d
 bk delta -i $Q d
 bk commit $Q -ywhatever
@@ -310,7 +310,7 @@ if [ ! -f SCCS/s.qqq ]; then echo failed; exit 1; fi
 echo OK
 echo $N Test mv of directory ........................................$NL
 cd $HERE
-no_logging src
+commercial src
 mkdir foo
 cd foo
 echo bar > bar
@@ -515,7 +515,7 @@ if [ "$PLATFORM" = "WIN32" ]
 then    #----------------------------------------------------------------
 echo $N Make sure bk mv work with back slash style dos path..........$NL
         cd $HERE
-        no_logging project2
+        commercial project2
         mkdir src
         cd src
         echo foo > foo.c

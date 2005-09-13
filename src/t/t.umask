@@ -22,11 +22,11 @@ fi
 umask 077
 
 echo $N Create initial repository ...................................$NL
-fresh_no_logging project
+fresh_commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 # commit the config file
-bk commit $S -a -y"This is \"Change Set\" A"
+bk commit $S -y"This is \"Change Set\" A"
 echo OK
 
 echo $N Make sure that BitKeeper and subdirs are 0775 mode ..........$NL
@@ -37,7 +37,6 @@ cat <<EOF > WANT
 ./BitKeeper/deleted
 ./BitKeeper/deleted/SCCS
 ./BitKeeper/etc
-./BitKeeper/etc/.master
 ./BitKeeper/etc/SCCS
 ./BitKeeper/log
 ./BitKeeper/tmp

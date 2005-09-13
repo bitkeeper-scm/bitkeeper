@@ -14,7 +14,7 @@
 # %K%
 
 echo $N Create some data ............................................$NL
-no_logging project
+commercial project
 mkdir src
 cd src
 echo foo > foo.c

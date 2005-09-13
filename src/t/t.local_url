@@ -1,7 +1,7 @@
 if [ $DO_REMOTE = YES ]
 then
  echo $N check this_host:relative_path ...............................$NL
- no_logging proj
+ commercial proj
  # We put "copy" under $HERE/proj becuase the old/buggy code would
  # have picked it up because it failed to do a chdir to $HOME.
  bk clone $Q $HERE/proj $HERE/proj/copy

@@ -14,7 +14,7 @@
 # %K%
 
 echo $N Create initial repository and some data .....................$NL
-no_logging project
+commercial project
 bk edit $Q BitKeeper/etc/config
 echo "autofix:yes" >> BitKeeper/etc/config
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi

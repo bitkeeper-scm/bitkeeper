@@ -26,7 +26,7 @@ setup_tmpdirs(void)
 		tmp = aprintf("%s/" BKTMP, proj_root(0));
 		mkdirp(tmp);
 		/* Don't allow pathnames with shell characters */
-		if (strcspn(tmp, " \t\n\r\'\"><|`$&;[]*()\\") == strlen(tmp)) {
+		if (strcspn(tmp, " \t\n\r\'\"><|`$&;[]*()\\\?")==strlen(tmp)) {
 			tmpdirs[tmpdirs_len++] = (strdup)(tmp);
 		}
 		free(tmp);

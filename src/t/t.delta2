@@ -1,4 +1,4 @@
-no_logging project
+commercial project
 # This test case shows a bug of the strncmp() function supplied by MS C libary
 # bk.exe will be aborted by the OS unless we use our own strncmp().
 echo $N show XP strncmp bug .........................................$NL

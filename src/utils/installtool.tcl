@@ -6,8 +6,9 @@ catch {wm withdraw .}
 
 proc main {} \
 {
-	global	argv env options installer runtime
+	global	argv env options installer runtime fixedFont
 
+	bk_init
 	initGlobals
 
 	if {[llength $argv] == 1} {
@@ -21,7 +22,11 @@ proc main {} \
 	if {[file exists bitkeeper/gui/images/bk16.ico]} {
 		catch {wm iconbitmap . bitkeeper/gui/images/bk16.ico}
 	}
-	centerWindow . 500 350
+
+	set w [expr [font measure $fixedFont "="] * 79]
+	incr w 50
+	centerWindow . $w 375
+
 	. configure -step Welcome
 	. show
 	wm deiconify .
@@ -69,7 +74,7 @@ proc initGlobals {} \
 		set ::runtime(user) ""
 	}
 
-	if {![string equal $::runtime(user) "root"]} {
+	if {$::runtime(user) ne "root"} {
 		set home [homedir]
 		if {[file exists $home]} {
 			lappend ::runtime(places) \
@@ -194,9 +199,104 @@ proc homedir {} \
 	}
 }
 
+proc validateLicense {args} \
+{
+	# This doesn't validate the license per se,
+	# only whether the user has entered one. Validation
+	# is expensive, so we'll only do it when the user
+	# presses "Next"
+	if {$::wizData(license)  eq "" ||
+	    $::wizData(licsign1) eq "" ||
+	    $::wizData(licsign2) eq "" ||
+	    $::wizData(licsign3) eq "" ||
+	    (![string match "BKL*" $::wizData(license)])} {
+		. configure -state pending
+	} else {
+		. configure -state normal
+	}
+}
+
+# This not only sets the focus, but attempts to put the cursor in
+# the right place
+proc focusEntry {w} \
+{
+	catch {
+		$w selection range 0 end
+		$w icursor end
+		focus $w
+	}
+}
+
+proc parseLicenseData {type} \
+{
+	global wizData
+	set data ""
+
+	if {$type == "clipboard"} {
+		# this is experimental... It needs a lot of testing on
+		# our supported platforms before we bless it. 
+		if {[catch {selection get -displayof . -selection PRIMARY} data]} {
+			catch {clipboard get} data
+		}
+
+	} elseif {$type == "file"} {
+		set types {
+			{{All Files} *}
+			{{License Files} {.lic}}
+			{{Text Files} {.txt}}
+		}
+		set file [tk_getOpenFile -filetypes $types -parent .]
+		if {$file != "" && 
+		    [file exists $file] && 
+		    [file readable $file]} {
+
+			catch {
+				set f [open $file r]
+				set data [read $f]
+				close $f
+			}
+		}
+	}
+
+	foreach line [split $data \n] {
+		if {[regexp {license: *(BKL.+)$} $line -> value]} {
+			set wizData(license) $value
+		}
+		if {[regexp {(licsign[123]): *(.*)$} $line -> key value]} {
+			set wizData($key) $value
+		}
+	}
+}
+
+# Insert a step right after the current step
+# Side Effect: The global variable paths is modified with the 
+# new path
+proc wizInsertStep {step} \
+{
+	global paths
+
+	set curPath [. configure -path]
+	set curStep [. configure -step]
+	if {![info exists paths($curPath)]} {
+		return -code error "paths($curPath) doesn't exist"
+	}
+	set i [lsearch -exact $paths($curPath) $curStep]
+	incr i
+
+	# Bail if the step was already in the path as the next step
+	if {[lindex $paths($curPath) $i] eq $step} {return}
+
+	# I don't know how to modify a path, so I just add a new one
+	set newpath "${curPath}_${step}"
+	set paths($newpath) [linsert $paths($curPath) $i $step]
+	. add path $newpath -steps $paths($newpath)
+	. configure -path $newpath
+}
+
 proc widgets {} \
 {
 	global tcl_platform
+	global paths
 
 	option add *Entry*BorderWidth            1 startupFile
 	option add *WizSeparator*stripe          #00008b startupFile
@@ -206,21 +306,28 @@ proc widgets {} \
 	    -sequential 1 \
 	    -icon bklogo
 
+	initFonts
+
 	. buttonconfigure finish -text "Done"
+
 	if {$tcl_platform(platform) eq "windows"} {
-		. add path new -steps \
-		    {Welcome PickPlace InstallDLLs Install Summary}
-		. add path existing -steps \
+		set paths(new) {Welcome PickPlace InstallDLLs Install Summary}
+		. add path new -steps $paths(new)
+		set paths(existing) \
 		    {Welcome PickPlace OverWrite InstallDLLs Install Summary}
-		. add path createDir -steps \
+		. add path existing -steps $paths(existing)
+		set paths(createDir) \
 		    {Welcome PickPlace CreateDir InstallDLLs Install Summary}
+		. add path createDir -steps $paths(createDir)
 	} else {
-		. add path new -steps \
-		    {Welcome PickPlace Install Summary}
-		. add path existing -steps \
+		set paths(new) {Welcome PickPlace Install Summary}
+		. add path new -steps $paths(new)
+		set paths(existing) \
 		    {Welcome PickPlace OverWrite Install Summary}
-		. add path createDir -steps \
+		. add path existing -steps $paths(existing)
+		set paths(createDir) \
 		    {Welcome PickPlace CreateDir Install Summary}
+		. add path createDir -steps $paths(createDir)
 	}
 	. configure -path new
 
@@ -241,6 +348,143 @@ proc widgets {} \
 		    set d [string map $map $::strings(Welcome.$p)]
 		    $this stepconfigure Welcome -description [unwrap $d]
 	    }
+
+	#-----------------------------------------------------------------------
+	. add step LicenseKey \
+	    -title "Commercial License" \
+	    -description [wrap [getmsg setuptool_step_LicenseKey]]
+
+	. stepconfigure LicenseKey -body {
+		global wizData
+		global gc
+
+		$this configure -defaultbutton next
+
+		set w [$this info workarea]
+
+		set ::widgets(license)  $w.license
+		set ::widgets(licsign1) $w.licsign1Entry
+		set ::widgets(licsign2) $w.licsign2Entry
+		set ::widgets(licsign3) $w.licsign3Entry
+
+		set BKSLATEGRAY1	#deeaf4
+		label $w.keyLabel -text "License Key:"
+		entry $w.keyEntry  -textvariable wizData(license) \
+		    -background $BKSLATEGRAY1
+		button $w.fileButton -text "From file..." \
+		    -command {parseLicenseData file}
+		label $w.licsign1Label -text "Key Signature #1:"
+		entry $w.licsign1Entry -textvariable wizData(licsign1) \
+		    -background $BKSLATEGRAY1
+		label $w.licsign2Label -text "Key Signature #2:"
+		entry $w.licsign2Entry -textvariable wizData(licsign2) \
+		    -background $BKSLATEGRAY1
+		label $w.licsign3Label -text "Key Signature #3:"
+		entry $w.licsign3Entry -textvariable wizData(licsign3) \
+		    -background $BKSLATEGRAY1
+
+		grid $w.keyLabel       -row 0 -column 0 -sticky e
+		grid $w.keyEntry       -row 0 -column 1 -sticky ew -pady 2
+		grid $w.fileButton     -row 0 -column 2 -sticky w
+		grid $w.licsign1Label  -row 1 -column 0 -sticky e 
+		grid $w.licsign1Entry  -row 1 -column 1 -sticky ew -pady 2
+		grid $w.licsign2Label  -row 2 -column 0 -sticky e
+		grid $w.licsign2Entry  -row 2 -column 1 -sticky ew -pady 2
+		grid $w.licsign3Label  -row 3 -column 0 -sticky e
+		grid $w.licsign3Entry  -row 3 -column 1 -sticky ew -pady 3
+
+		grid columnconfigure $w 0 -weight 0
+		grid columnconfigure $w 1 -weight 1
+		grid columnconfigure $w 2 -weight 0
+		grid rowconfigure $w 0 -weight 0
+		grid rowconfigure $w 1 -weight 0
+		grid rowconfigure $w 2 -weight 0
+		grid rowconfigure $w 3 -weight 0
+		grid rowconfigure $w 4 -weight 1
+
+		bind $w.keyEntry <<Paste>> {parseLicenseData clipboard}
+
+		# running the validate command will set the wizard buttons to 
+		# the proper state; this is mostly useful if they enter
+		# a license, go to the next step, then come back.
+		validateLicense
+		trace variable wizData(license) w [list validateLicense $w]
+		trace variable wizData(licsign1) w [list validateLicense $w]
+		trace variable wizData(licsign2) w [list validateLicense $w]
+		trace variable wizData(licsign3) w [list validateLicense $w]
+
+		after idle [list focusEntry $w.keyEntry]
+	}
+
+	#-----------------------------------------------------------------------
+	. add step EULA \
+	    -title "End User License" \
+	    -description [wrap [getmsg setuptool_step_EndUserLicense]]
+
+	. stepconfigure EULA -body {
+
+		global wizData
+		global licenseInfo
+		global fixedFont
+
+		set wizData(licenseAccept) ""
+		$this configure -defaultbutton next
+
+		set w [$this info workarea]
+
+		text $w.text \
+		    -background white \
+		    -relief sunken \
+		    -font $fixedFont \
+		    -yscrollcommand [list $w.vsb set] \
+		    -wrap none \
+		    -takefocus 0 \
+		    -bd 1 \
+		    -width 80
+		scrollbar $w.vsb -command [list $w.text yview] -bd 1
+		scrollbar $w.hsb -command [list $w.text.xview] -bd 1
+		bind all <Next> "$w.text yview scroll 1 pages"
+		bind all <Prior> "$w.text yview scroll -1 pages"
+		bind all <Down> "$w.text yview scroll 1 units"
+		bind all <Up> "$w.text yview scroll -1 units"
+		bind all <MouseWheel> "
+			if {%D < 0} {
+				$w.text yview scroll +1 units
+			} else {
+				$w.text yview scroll -1 units
+			}
+		"
+
+		frame $w.radioframe -bd 0
+		radiobutton $w.radioframe.accept \
+		    -text "I Agree" \
+		    -underline 2 \
+		    -variable wizData(licenseAccept) \
+		    -command [list $this configure -state normal] \
+		    -value 1
+		radiobutton $w.radioframe.dont \
+		    -text "I Do Not Agree" \
+		    -underline 2 \
+		    -variable wizData(licenseAccept) \
+		    -command [list $this configure -state pending] \
+		    -value 0
+
+		pack $w.radioframe.accept -side left
+		pack $w.radioframe.dont -side left -padx 8
+		pack $w.radioframe -side bottom -fill x -pady 5
+		pack $w.vsb -side right -fill y -expand n
+		pack $w.text -side left -fill both -expand y
+
+		$w.text insert end $licenseInfo(text)
+		$w.text configure -state disabled
+
+		if {$wizData(licenseAccept) == 1} {
+			$this configure -state normal
+		} else {
+			$this configure -state pending
+		}
+
+	}
 
 	#-----------------------------------------------------------------------
 	. add step PickPlace -title "Install Directory" 
@@ -319,9 +563,9 @@ proc widgets {} \
 		    -borderwidth 1 \
 		    -command {
 			    set f $::runtime(destination)
-			    if {[string equal $f ""]} {
+			    if {$f eq ""} {
 				    catch {exec id -un} id
-				    if {[string equal $id root]} {
+				    if {$id eq "root"} {
 					    set f "/"
 				    } else {
 					    set f ~
@@ -329,7 +573,7 @@ proc widgets {} \
 			    }
 				    
 			    set tmp [tk_chooseDirectory -initialdir $f]
-			    if {![string equal $tmp ""]} {
+			    if {$tmp ne ""} {
 				    set ::runtime(destination) $tmp
 				    set ::runtime(destinationRB) ""
 				    setDestination $tmp
@@ -571,11 +815,13 @@ proc widgets {} \
 	    }
 
 	. stepconfigure Summary -body {
+		global	fixedFont
+
 		set w [$this info workarea]
 
 		set ::widgets(log) $w.log
 		text $w.log \
-		    -font {Helvetica 11} \
+		    -font $fixedFont \
 		    -wrap none \
 		    -yscrollcommand [list $w.vsb set] \
 		    -xscrollcommand [list $w.hsb set] \
@@ -590,6 +836,18 @@ proc widgets {} \
 		    -borderwidth 1 \
 		    -orient horizontal \
 		    -command [list $w.log xview]
+
+		bind all <Next> "$w.log yview scroll 1 pages"
+		bind all <Prior> "$w.log yview scroll -1 pages"
+		bind all <Down> "$w.log yview scroll 1 units"
+		bind all <Up> "$w.log yview scroll -1 units"
+		bind all <MouseWheel> "
+			if {%D < 0} {
+				$w.log yview scroll +1 units
+			} else {
+				$w.log yview scroll -1 units
+			}
+		"
 
 		$w.log tag configure error -foreground red
 		$w.log tag configure skipped -foreground blue
@@ -628,35 +886,75 @@ proc widgets {} \
 		# this button may have been reconfigured to say "Install"..
 		%W buttonconfigure next -text "Next >"
 
-		set step [. cget -step]
+		switch -exact -- [. cget -step] {
+			PickPlace {
+				set ::runtime(destination) \
+				    [string trim $::runtime(destination)]
 
-		if {[string equal $step PickPlace]} {
-			set ::runtime(destination) \
-			    [string trim $::runtime(destination)]
-
-			if {[string equal $::runtime(destination) ""]} {
-				bell
-				break
-			}
-
-			if {[file exists $::runtime(destination)]} {
-				set result [validateDestination]
-				$widgets(dirStatus) configure \
-				    -text $result \
-				    -foreground red
-				if {![string equal $result ""]} {
+				if {$::runtime(destination) eq ""} {
 					bell
 					break
 				}
-			}
 
-			if {[file exists $::runtime(destination)] && \
-			    ![isempty $::runtime(destination)]} {
-				. configure -path existing
-			} else {
-				. configure -path new
+				if {[file exists $::runtime(destination)]} {
+					set result [validateDestination]
+					$widgets(dirStatus) configure \
+					    -text $result \
+					    -foreground red
+					if {$result ne ""} {
+						bell
+						break
+					}
+				}
+	
+				if {[file exists $::runtime(destination)] && \
+				    ![isempty $::runtime(destination)]} {
+					. configure -path existing
+				} else {
+					. configure -path new
+				}
 			}
-
+			EULA {exec bk _eula -a}
+			LicenseKey {
+				if {![checkLicense \
+				    $::wizData(license) \
+				    $::wizData(licsign1) \
+				    $::wizData(licsign2) \
+				    $::wizData(licsign3)]} {
+					# we don't need to do anything here
+					# because checkLicense warns the user
+					# if the license is invalid
+					break
+				}
+				if {![info exists ::licenseInfo(text)] ||
+				    $::licenseInfo(text) eq ""} {
+					set ::licenseInfo(text) [getEulaText \
+					    $::wizData(license) \
+					    $::wizData(licsign1) \
+					    $::wizData(licsign2) \
+					    $::wizData(licsign3)]
+				}
+				if {$::licenseInfo(text) ne ""} {
+					# Insert EULA step into path
+					wizInsertStep EULA
+				}
+			}
+			Welcome {
+				if {[catch {set b [exec bk _eula -u]}]} {
+					# No license found, so prompt for it
+					wizInsertStep LicenseKey
+					. configure -step LicenseKey
+					break
+				}
+				if {![info exists ::licenseInfo(text)] ||
+				    $::licenseInfo(text) eq ""} {
+					set ::licenseInfo(text) $b
+				}
+				if {$::licenseInfo(text) ne ""} {
+					# Insert EULA step into path
+					wizInsertStep EULA
+				}
+			}
 		}
 	}
 }
@@ -687,7 +985,6 @@ proc log {string {tag {}}} \
 	if {[lindex $yview 1] >= 1} {
 		$::widgets(log) see end-1c
 	}
-	update idletasks
 }
 
 proc busy {on} \
@@ -702,7 +999,12 @@ proc busy {on} \
 		$widgets(log) configure -cursor watch
 	} else {
 		. configure -state normal
-		$widgets(log) configure -cursor {}
+		if {[tk windowingsystem] eq "x11"} {
+			$widgets(log) configure -cursor {}
+		} else {
+			$widgets(log) configure -cursor arrow
+		}
+
 	}
 	update
 }
@@ -716,7 +1018,7 @@ proc doCommand {args} \
 {
 	global pipeOutput errorCode strings
 
-	if {[string equal [lindex $args 0] -nolog]} {
+	if {[lindex $args 0] eq "-nolog"} {
 		set args [lrange $args 1 end]
 		set log 0
 	} else {
@@ -793,7 +1095,7 @@ proc setDestination {dir} \
 {
 	global widgets
 
-	if {[string equal $dir ""]} {
+	if {$dir eq ""} {
 		$widgets(destinationButton) configure -state normal
 		$::widgets(dirStatus) configure -text ""
 		. configure -state pending
@@ -962,10 +1264,10 @@ set strings(Welcome.unix) {
 	Thank you for installing BitKeeper.  
 
 	This installer will install BitKeeper in the location of your
-	choosing.  We recommend that you choose to install the
-	BitKeeper binaries in a subdirectory named "bitkeeper" so that
-	it is easy to do a manual uninstall if you wish. The installer
-	will also create some symlinks, if you are running as root,
+	choosing.  We recommend that you choose to install the BitKeeper
+	binaries in a subdirectory named "bitkeeper" so that it is easy to
+	do a manual uninstall if you wish. The installer will also create
+	some symlinks, if you are running with sufficient privileges,
 	from %B to that directory to provide SCCS compatible
 	interfaces for make, patch, emacs, etc.
 

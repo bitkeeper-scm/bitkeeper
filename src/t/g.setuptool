@@ -16,6 +16,7 @@ test -d $HERE/home || mkdir $HERE/home
 export BK_TEST_HOME=$HERE/home
 OUT=$HERE/out
 RC=`bk dotbk`/setup.rc
+ACCEPTED=`bk dotbk`/accepted
 
 echo $N Simple startup and exit......................................$NL
 bk guitest setuptool >$OUT 2>&1 <<'EOF'
@@ -37,30 +38,33 @@ echo OK
 #test -f $RC || { echo "failed"; ls -l `bk dotbk`; exit 1; }
 #echo "OK"
 
-echo $N Single User / Single Host....................................$NL
+echo $N Creating an Academic repository .............................$NL
+rm -rf `bk dotbk`/accepted $HERE/repo
 # note the lack of single quotes around EOF, which is a bit unusual.
 # we want HERE to be expanded in the script
 bk guitest setuptool >$OUT 2>&1 <<EOF
     focus -force .
     test_buttonPress "Next >"
-    test_buttonPress "Single User*"
+    test_focus
+    test_inputString  [string trim "$BKL_ACADEMIC"]
+    test_inputString "\t\t"
+    test_inputString [string trim "$BKL_A1"]
+    test_inputString \t
+    test_inputString [string trim "$BKL_A2"]
+    test_inputString \t
+    test_inputString [string trim "$BKL_A3"]
     test_buttonPress "Next >"
+    test_focus
     test_buttonPress "I Agree"
     test_buttonPress "Next >"
     test_focus
-    test_inputString username
-    test_inputString \t
-    test_inputString test.bitkeeper.com
-    test_buttonPress "Next >"
-    test_focus
-    test_inputString $HERE/repo
+    test_inputString "$HERE/repo"
     test_inputString \t
     test_inputString "this is the description"
-    test_inputString "\t"
+    test_inputString \t
+    test_inputString "No Body"
+    test_inputString \t
     test_inputString nobody@nowhere.bk
-    test_inputString "\t"
-    test_inputString "misc"
-    test_buttonPress "Next >"  ;# takes us to contact
     test_buttonPress "Next >"  ;# takes us to keyword expansion
     test_buttonPress "Next >"  ;# takes us to checkout mode
     test_buttonPress "Next >"  ;# takes us to compression mode
@@ -70,119 +74,238 @@ bk guitest setuptool >$OUT 2>&1 <<EOF
     after 5000 [list test_buttonPress OK] ;# darn confirmation popup :-(
     after 10000 [list exit 99] ;# in case the buttonpress didn't work
 EOF
-err=$?
-if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
-grep -q 'The repository was successfully created.' $OUT
-if [ $? -ne 0 ] ; then echo failed ; cat $OUT ; exit 1 ; fi
+test $? -eq 0 || {
+	echo failed
+	echo guitest returned with non-zero exit status
+	exit 1
+}
+grep -q 'The repository was successfully created.' $OUT || {
+	echo failed 
+	cat $OUT 
+	exit 1 
+}
 cat > $OUT <<EOF
 description: this is the description
-category: misc
 email: nobody@nowhere.bk
-name: 
-street: 
-city: 
-state: 
-postal: 
-country: 
-phone: 
-cell: 
-pager: 
-hours: 
-logging: none
+name: No Body
 keyword: none
 compression: gzip
 autofix: yes
 checkout: none
-single_user: username
-single_host: test.bitkeeper.com
+license: $BKL_ACADEMIC
+licsign1: $BKL_A1
+licsign2: $BKL_A2
+licsign3: $BKL_A3
 EOF
 CONFIG=$HERE/repo/BitKeeper/etc/config
-if [ ! -f $CONFIG ] ; then echo "failed to make config file" ; exit 1 ; fi
-bk diff $Q -w $OUT $CONFIG
-if [ $? -ne 0 ] ; then echo "failed" ; bk diff -w $OUT $CONFIG; exit 1 ; fi
+test -f $CONFIG || {
+	echo "failed to make config file" 
+	exit 1 
+}
+bk undos < $CONFIG > $HERE/config
+checkfiles $OUT $HERE/config
 echo OK
 
-echo $N -R licenseType:commercial....................................$NL
-bk guitest setuptool -R licenseType:commercial >$OUT 2>&1 <<'EOF'
-    global widgets
+echo $N Creating a Basic repository .................................$NL
+rm -rf `bk dotbk`/accepted $HERE/repo
+# note the lack of single quotes around EOF, which is a bit unusual.
+# we want HERE to be expanded in the script
+bk guitest setuptool >$OUT 2>&1 <<EOF
     focus -force .
-    test_buttonPress "Next >" ;# takes us to license type
-    foreach {widget expected} {
-	    paidrb normal paidmi normal 
-	    singlerb disabled singlemi disabled
-	    olrb disabled olmi disabled
-    } {
-	    if {[$widgets(LicenseType).$widget cget -state] ne $expected} {
-		    puts "widget $widget should be $expected but isn't"
-		    exit 1
-	    }
-    }
-
-    exit 0
+    test_buttonPress "Next >"
+    test_focus
+    test_inputString  [string trim "$BKL_BASIC"]
+    test_inputString "\t\t"
+    test_inputString [string trim "$BKL_B1"]
+    test_inputString \t
+    test_inputString [string trim "$BKL_B2"]
+    test_inputString \t
+    test_inputString [string trim "$BKL_B3"]
+    test_buttonPress "Next >"
+    test_focus
+    test_buttonPress "I Agree"
+    test_buttonPress "Next >"
+    test_focus
+    test_inputString "$HERE/repo"
+    test_inputString \t
+    test_inputString "this is the description"
+    test_inputString \t
+    test_inputString "No Body"
+    test_inputString \t
+    test_inputString nobody@nowhere.bk
+    test_buttonPress "Next >"  ;# takes us to keyword expansion
+    test_buttonPress "Next >"  ;# takes us to checkout mode
+    test_buttonPress "Next >"  ;# takes us to compression mode
+    test_buttonPress "Next >"  ;# takes us to autofix options
+    test_buttonPress "Next >"  ;# takes us to last step
+    test_buttonPress "Finish"  ;# do it!
     after 5000 [list test_buttonPress OK] ;# darn confirmation popup :-(
     after 10000 [list exit 99] ;# in case the buttonpress didn't work
 EOF
-err=$?
-if [ $err -eq 2 ]; then 
-    echo failed;
-    cat $OUT
-    exit 1
-fi
+test $? -eq 0 || {
+	echo failed
+	echo guitest returned with non-zero exit status
+	exit 1
+}
+grep -q 'The repository was successfully created.' $OUT || {
+	echo failed 
+	cat $OUT 
+	exit 1 
+}
+cat > $OUT <<EOF
+description: this is the description
+email: nobody@nowhere.bk
+name: No Body
+keyword: none
+compression: gzip
+autofix: yes
+checkout: none
+license: $BKL_BASIC
+licsign1: $BKL_B1
+licsign2: $BKL_B2
+licsign3: $BKL_B3
+EOF
+CONFIG=$HERE/repo/BitKeeper/etc/config
+test -f $CONFIG || {
+	echo "failed to make config file" 
+	exit 1 
+}
+bk undos < $CONFIG > $HERE/config
+checkfiles $OUT $HERE/config
 echo OK
 
-echo $N -R licenseType:single .......................................$NL
-bk guitest setuptool -R licenseType:single >$OUT 2>&1 <<'EOF'
-    global widgets
+echo $N Creating a Pro repository ...................................$NL
+rm -rf `bk dotbk`/accepted $HERE/repo
+# note the lack of single quotes around EOF, which is a bit unusual.
+# we want HERE to be expanded in the script
+bk guitest setuptool >$OUT 2>&1 <<EOF
     focus -force .
-    test_buttonPress "Next >" ;# takes us to license type
-    foreach {widget expected} {
-	    paidrb disabled paidmi disabled
-	    singlerb normal singlemi normal
-	    olrb disabled olmi disabled
-    } {
-	    if {[$widgets(LicenseType).$widget cget -state] ne $expected} {
-		    puts "widget $widget should be $expected but isn't"
-		    exit 1
-	    }
-    }
-
-    exit 0
+    test_buttonPress "Next >"
+    test_focus
+    test_inputString  [string trim "$BKL_PRO"]
+    test_inputString "\t\t"
+    test_inputString [string trim "$BKL_P1"]
+    test_inputString \t
+    test_inputString [string trim "$BKL_P2"]
+    test_inputString \t
+    test_inputString [string trim "$BKL_P3"]
+    test_buttonPress "Next >"
+    test_focus
+    test_buttonPress "I Agree"
+    test_buttonPress "Next >"
+    test_focus
+    test_inputString "$HERE/repo"
+    test_inputString \t
+    test_inputString "this is the description"
+    test_inputString \t
+    test_inputString "No Body"
+    test_inputString \t
+    test_inputString nobody@nowhere.bk
+    test_buttonPress "Next >"  ;# takes us to keyword expansion
+    test_buttonPress "Next >"  ;# takes us to checkout mode
+    test_buttonPress "Next >"  ;# takes us to compression mode
+    test_buttonPress "Next >"  ;# takes us to autofix options
+    test_buttonPress "Next >"  ;# takes us to last step
+    test_buttonPress "Finish"  ;# do it!
     after 5000 [list test_buttonPress OK] ;# darn confirmation popup :-(
     after 10000 [list exit 99] ;# in case the buttonpress didn't work
 EOF
-err=$?
-if [ $err -eq 2 ]; then 
-    echo failed;
-    cat $OUT
-    exit 1
-fi
+test $? -eq 0 || {
+	echo failed
+	echo guitest returned with non-zero exit status
+	exit 1
+}
+grep -q 'The repository was successfully created.' $OUT || {
+	echo failed 
+	cat $OUT 
+	exit 1 
+}
+cat > $OUT <<EOF
+description: this is the description
+email: nobody@nowhere.bk
+name: No Body
+keyword: none
+compression: gzip
+autofix: yes
+checkout: none
+license: $BKL_PRO
+licsign1: $BKL_P1
+licsign2: $BKL_P2
+licsign3: $BKL_P3
+EOF
+CONFIG=$HERE/repo/BitKeeper/etc/config
+test -f $CONFIG || {
+	echo "failed to make config file" 
+	exit 1 
+}
+bk undos < $CONFIG > $HERE/config
+checkfiles $OUT $HERE/config
 echo OK
 
-echo $N -R licenseType:openlogging...................................$NL
-bk guitest setuptool -R licenseType:commercial >$OUT 2>&1 <<'EOF'
-    global widgets
+echo $N Creating an Enterprise repository ...........................$NL
+rm -rf `bk dotbk`/accepted $HERE/repo
+# note the lack of single quotes around EOF, which is a bit unusual.
+# we want HERE to be expanded in the script
+bk guitest setuptool >$OUT 2>&1 <<EOF
     focus -force .
-    test_buttonPress "Next >" ;# takes us to license type
-    foreach {widget expected} {
-	    paidrb disabled paidmi disabled
-	    singlerb disabled singlemi disabled
-	    olrb normal olmi normal
-    } {
-	    if {[$widgets(LicenseType).$widget cget -state] ne $expected} {
-		    puts "widget $widget should be $expected but isn't"
-		    exit 1
-	    }
-    }
-
-    exit 0
+    test_buttonPress "Next >"
+    test_focus
+    test_inputString  [string trim "$BKL_ENTERPRISE"]
+    test_inputString "\t\t"
+    test_inputString [string trim "$BKL_E1"]
+    test_inputString \t
+    test_inputString [string trim "$BKL_E2"]
+    test_inputString \t
+    test_inputString [string trim "$BKL_E3"]
+    test_buttonPress "Next >"
+    test_focus
+    test_buttonPress "I Agree"
+    test_buttonPress "Next >"
+    test_focus
+    test_inputString "$HERE/repo"
+    test_inputString \t
+    test_inputString "this is the description"
+    test_inputString \t
+    test_inputString "No Body"
+    test_inputString \t
+    test_inputString nobody@nowhere.bk
+    test_buttonPress "Next >"  ;# takes us to keyword expansion
+    test_buttonPress "Next >"  ;# takes us to checkout mode
+    test_buttonPress "Next >"  ;# takes us to compression mode
+    test_buttonPress "Next >"  ;# takes us to autofix options
+    test_buttonPress "Next >"  ;# takes us to last step
+    test_buttonPress "Finish"  ;# do it!
     after 5000 [list test_buttonPress OK] ;# darn confirmation popup :-(
     after 10000 [list exit 99] ;# in case the buttonpress didn't work
 EOF
-err=$?
-if [ $err -eq 2 ]; then 
-    echo failed;
-    cat $OUT
-    exit 1
-fi
+test $? -eq 0 || {
+	echo failed
+	echo guitest returned with non-zero exit status
+	exit 1
+}
+grep -q 'The repository was successfully created.' $OUT || {
+	echo failed 
+	cat $OUT 
+	exit 1 
+}
+cat > $OUT <<EOF
+description: this is the description
+email: nobody@nowhere.bk
+name: No Body
+keyword: none
+compression: gzip
+autofix: yes
+checkout: none
+license: $BKL_ENTERPRISE
+licsign1: $BKL_E1
+licsign2: $BKL_E2
+licsign3: $BKL_E3
+EOF
+CONFIG=$HERE/repo/BitKeeper/etc/config
+test -f $CONFIG || {
+	echo "failed to make config file" 
+	exit 1 
+}
+bk undos < $CONFIG > $HERE/config
+checkfiles $OUT $HERE/config
 echo OK
-

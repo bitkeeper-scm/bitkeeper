@@ -23,9 +23,7 @@ version_main(int ac, char **av)
 			return (0);
 		}
 	}
-	lease_checking(0);
 	bkversion(stdout);
-	lease_checking(1);
 	return (0);
 }
 
@@ -33,23 +31,28 @@ void
 bkversion(FILE *f)
 {
 	FILE	*f1;
-	u32	o;
+	u32	bits;
 	float	exp;
+	char	*key, *t;
 	char	buf[MAXLINE];
 
-	switch (bk_mode(0)) {
-	    case BK_SINGLE: strcpy(buf, "/Single"); break;
-	    case BK_FREE: strcpy(buf, "/Free"); break;
-	    case BK_PRO: strcpy(buf, "/Pro"); break;
-	    default: buf[0] = 0; break;
-	}
-	if (buf[0]) {
-		o = bk_options();
-		if (o & BKOPT_WEB) strcat(buf, ",bkweb");
-		if (o & BKOPT_EVAL) strcat(buf, ",eval");
+	lease_refresh(0, O_RDONLY);	/* get a lease, but don't fail */
+	if (key = lease_latestbkl()) {
+		bits = license_bklbits(key);
+		free(key);
+		if (t = eula_type(bits)) sprintf(buf, "/%s", t);
+	} else {
+		buf[0] = 0;
+		bits = 0;
 	}
 
+	// XXX - I really want this to have it's own line
+	if (bits & LIC_WEB) strcat(buf, ",bkweb");
+	if (bits & LIC_EVAL) strcat(buf, ",eval");
+	if (bits & LIC_IMPORT) strcat(buf, ",import");
+	if (bits & LIC_BUGDB) strcat(buf, ",bugdb");
 	getMsg("version", buf, 0, f);
+
 	if (f1 = popen("uname -s -r", "r")) {
 		if (fnext(buf, f1)) {
 			chomp(buf);

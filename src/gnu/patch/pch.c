@@ -106,12 +106,9 @@ open_patch_file (char const *filename)
       {
 	file_offset stdin_pos;
 #if HAVE_SETMODE
-	if (binary_transput)
-	  {
-	    if (isatty (STDIN_FILENO))
-	      fatal ("cannot read binary data from tty on this platform");
-	    setmode (STDIN_FILENO, O_BINARY);
-	  }
+	if (isatty (STDIN_FILENO))
+	  fatal ("cannot read binary data from tty on this platform");
+	setmode (STDIN_FILENO, O_BINARY); 
 #endif
 	if (fstat (STDIN_FILENO, &st) != 0)
 	  pfatal ("fstat");

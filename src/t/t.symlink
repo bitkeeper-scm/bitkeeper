@@ -20,7 +20,7 @@ fi
 
 echo $N Create a symlink ............................................$NL
 umask 0
-no_logging project
+commercial project
 echo "xx" > file
 ln -s file symlink
 mv file file.tmp
@@ -235,14 +235,14 @@ rm -rf project
 # Test resyncing and resolving symlink <-> file conflicts
 echo $N Create initial repository for symlink resync ................$NL
 cd $HERE
-no_logging SL
+commercial SL
 touch BitKeeper/etc/SCCS/x.marked
 echo OK
 echo $N Create a regular file and a symlink .........................$NL
 ln -s dangling/symlink link
 echo i am a file > file
 bk ci $Q -i link file
-bk commit $S -a -y"This is a \"Change Set\""
+bk commit $S -y"This is a \"Change Set\""
 echo OK
 cores
 echo $N Export the repository .......................................$NL
@@ -551,7 +551,7 @@ echo OK
 
 echo $N Check renaming a dir and replacing with symlink .............$NL
 cd $HERE
-no_logging project
+commercial project
 mkdir dir
 cd dir
 echo hi > file

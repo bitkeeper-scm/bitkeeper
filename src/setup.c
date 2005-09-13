@@ -12,21 +12,22 @@ private MDBM	*addField(MDBM *flist, char *field);
 int
 setup_main(int ac, char **av)
 {
-	int	force = 0, allowNonEmptyDir = 0, ask = 1, c;
-	char	*package_path = 0, *config_path = 0, *t;
+	int	force = 0, allowNonEmptyDir = 0, accept = 0, c;
+	char	*package_path = 0, *config_path = 0;
 	char	buf[MAXLINE], my_editor[1024];
 	char	here[MAXPATH];
 	char 	s_config[] = "BitKeeper/etc/SCCS/s.config";
 	char 	config[] = "BitKeeper/etc/config";
 	sccs	*s;
-	MDBM	*m, *flist = 0;
+	MDBM	*m = 0, *flist = 0;
 	FILE	*f, *f1;
 	int	status;
 	int	print = 0;
 
 	while ((c = getopt(ac, av, "ac:efF:p")) != -1) {
 		switch (c) {
-		    case 'c':					/* doc 2.0 */
+		    case 'a': accept = 1; break;
+		    case 'c':
 		    	unless(exists(optarg)) {
 				fprintf(stderr, 
 				    "setup: %s doesn't exist. Exiting\n",
@@ -36,23 +37,11 @@ setup_main(int ac, char **av)
 			localName2bkName(optarg, optarg);
 			config_path = fullname(optarg, 0);
 			break;
-		    case 'e':					/* to be doc*/
-			allowNonEmptyDir = 1;
-			break;
-		    case 'f':					/* doc 2.0 */
-			force = 1;
-			break;
-		    case 'F':
-			flist = addField(flist, optarg);
-			break;
-		    case 'a':		// XXX - is this used?
-			ask = 0;	/* don't ask */
-			break;
-		    case 'p':
-			print = 1;
-			break;
-		    default:
-			usage();
+		    case 'e': allowNonEmptyDir = 1; break;
+		    case 'f': force = 1; break;
+		    case 'F': flist = addField(flist, optarg); break;
+		    case 'p': print = 1; break;
+		    default: usage();
 		}
 	}
 
@@ -98,9 +87,7 @@ setup_main(int ac, char **av)
 		package_path);
 	}
 	sccs_mkroot(".");
-	if (config_path == NULL) {
-		FILE 	*f;
-
+	if (config_path == 0) {
 		getMsg("setup_3", 0, '-', stdout);
 		/* notepad.exe wants text mode */
 		f = fopen("BitKeeper/etc/config", "wt");
@@ -109,7 +96,13 @@ setup_main(int ac, char **av)
 		fclose(f);
 		if (flist) mdbm_close(flist);
 		chmod("BitKeeper/etc/config", 0664);
-again:		flush_fd0(); /* for Win/98 and Win/ME */
+again:		
+		/*
+		 * Yes, I know this is ugly but it replaces a zillion error
+		 * path gotos below.
+		 */
+		if (config_path) goto err;
+		flush_fd0(); /* for Win/98 and Win/ME */
 		printf("Editor to use [%s] ", editor);
 		unless (fgets(my_editor, sizeof(my_editor), stdin)) {
 			my_editor[0] = '\0';
@@ -138,13 +131,15 @@ again:		flush_fd0(); /* for Win/98 and Win/ME */
 		fprintf(stderr, "No config file found\n");
 		exit(1);
 	}
-	checkSingle();
-	unless (mdbm_fetch_str(m, "description")) {
-		fprintf(stderr, "Setup: must provide a description.\n");
+
+	/* When eula_name() stopped returning bkl on invalid signatures
+	 * we needed this to force a good error message.
+	 */
+	if (mdbm_fetch_str(m, "license") && !getlicense(m, config_path != 0)) {
 		if (config_path) {
 err:			unlink("BitKeeper/etc/config");
 			unlink("BitKeeper/log/cmd_log");
-			mdbm_close(m); 
+			mdbm_close(m);
 			sccs_unmkroot("."); /* reverse  sccs_mkroot */
 			unless (allowNonEmptyDir) {
 				chdir(here);
@@ -154,72 +149,10 @@ err:			unlink("BitKeeper/etc/config");
 		}
 		goto again;
 	}
-
-	unless (mdbm_fetch_str(m, "logging")) {
-		fprintf(stderr, "Setup: must define logging policy.\n");
-		if (config_path) goto err;
-		goto again;
-	}
-	unless (t = mdbm_fetch_str(m, "email")) {
-		fprintf(stderr, "Setup: must define email contact.\n");
-		if (config_path) goto err;
-		goto again;
-	}
-	unless (t = strchr(t, '@')) {
-		fprintf(stderr, "Setup: must define a valid email contact.\n");
-		if (config_path) goto err;
-		goto again;
-	}
-	unless (t = strchr(t, '.')) {
-		fprintf(stderr, "Setup: must define a valid email contact.\n");
-		if (config_path) goto err;
-		goto again;
-	}
-	if ((t = mdbm_fetch_str(m, "single_user")) && strchr(t, '@')) {
-		fprintf(stderr, "Setup: single_user should not have a hostname.\n");
-		if (config_path) goto err;
-		goto again;
-	}
-	if ((mdbm_fetch_str(m, "single_user") != 0) ^
-	    (mdbm_fetch_str(m, "single_host") != 0)) {
-		fprintf(stderr,
-		    "Setup: both single_user single_host are needed.\n");
-		if (config_path) goto err;
-		goto again;
-	}		
-#if 0	/* this makes setuptool appear to hang up when a non-approved
-         * category is given.
-	 */
-	if ( (t = mdbm_fetch_str(m, "category")) && strlen(t) > 0) {
-		bktmp(buf, "cat");
-		if (f = fopen(buf, "wt")) {
-			getMsg("setup_categories", 0, 0, f);
-			fclose(f);
-		}
-		if (f = fopen(buf, "rt")) {
-			cat = sccs_keys2mdbm(f);
-			fclose(f);
-			unlink(buf);
-
-			if (cat) {
-				unless (mdbm_fetch_str(cat, t)) {
-					flush_fd0(); /* for Win98 and Win/ME */
-					fprintf(stderr, "<%s> is not a known project category; use anyway[y/N]? ", t);
-					unless (fgets(buf, sizeof buf, stdin)) buf[0] = 0;
-				}
-				else buf[0] = 'y';
-				mdbm_close(cat);
-				unless (buf[0] == 'y' || buf[0] == 'Y') goto again;
-			}
-		}
-		else unlink(buf);
-	}
-#endif
-
 	mdbm_close(m);
 
-	if (cset_setup(SILENT, ask)) goto err;
-	unless (licenseAccept(2)) exit(1);
+	if (cset_setup(SILENT)) goto err;
+	unless (eula_accept(accept ? EULA_ACCEPT : EULA_PROMPT, 0)) exit(1);
 	s = sccs_init(s_config, SILENT);
 	assert(s);
 	sccs_delta(s, SILENT|NEWFILE, 0, 0, 0, 0);
@@ -229,7 +162,7 @@ err:			unlink("BitKeeper/etc/config");
 	sccs_free(s);
 	defaultIgnore();
 
-	unless (ok_commit(0)) return (1);
+	unless (ok_commit()) return (1);
 
 	status = sys("bk", "commit", "-qFyInitial repository create", SYS);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
@@ -240,7 +173,6 @@ err:			unlink("BitKeeper/etc/config");
                 fprintf(stderr, "setup: cannot find package root.\n");
                 return (1);
         }
-	mkdir(BKMASTER, 0775);
 	enableFastPendingScan();
 	sendConfig();
 	return (0);
@@ -338,7 +270,6 @@ mkconfig(FILE *out, MDBM *flist, int verbose)
 	FILE	*in;
 	int	found = 0;
 	int	first = 1;
-	int	licensed = 0;
 	char	*p, *val;
 	kvpair	kv;
 	char	buf[1000], pattern[200];
@@ -402,16 +333,11 @@ mkconfig(FILE *out, MDBM *flist, int verbose)
 	/*
 	 * Now print the help message for each config entry
 	 */
-	licensed = flist && mdbm_fetch_str(flist, "license");
 	while (fgets(buf, sizeof(buf), in)) {
 		if (first && (buf[0] == '#')) continue;
 		first = 0;
 		if (streq("$\n", buf)) break;
 		chop(buf);
-		if (licensed && 
-		    (streq(buf, "single_user") || streq(buf, "single_host"))) {
-		    	continue;
-		}
 		if (verbose) {
 			sprintf(pattern, "config_%s", buf);
 			getMsgP(pattern, 0, "# ", 0, out);

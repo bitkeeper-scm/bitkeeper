@@ -50,10 +50,11 @@ usage:			system("bk help -s sccs2bk");
 		}
 	}
 
-	unless (bk_mode(0) == BK_PRO) {
+	unless (proj_bklbits(0) & LIC_IMPORT) {
 		if (verbose) {
+			// XXX - need a name
 			fputs("sccs2bk: operation requires "
-			    "a BK Pro license\n", stderr);
+			    "a license with import feature.\n", stderr);
 		}
 		return (1);
 	}
@@ -348,7 +349,7 @@ mkinit(sccs *s, delta *d, char *file, char *key)
 
 	if (file) {
 		char	*p;
-		p = aprintf("bk get -qkPr1.1 %s", file);
+		p = aprintf("bk get -qkPr1.1 '%s'", file);
 		fh = popen(p, "r");
 		free(p);
 		while (size = fread(buf, 1, sizeof(buf), fh)) {

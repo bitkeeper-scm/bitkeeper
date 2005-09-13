@@ -37,7 +37,7 @@ do	case "$D" in
 	cd $HERE
 	rm -rf root 
 	echo $N Create initial changeset ....................................$NL
-	no_logging root
+	commercial root
 	if [ ! -f SCCS/s.ChangeSet ]; then echo failed; exit 1; fi
 	if [ X$D != X ]; then mkdir -p $D; fi
 	echo OK
@@ -97,7 +97,7 @@ cd $HERE
 rm -rf root
 
 # need license to work outside of a repository
-BK_CONFIG="license:$BKL_P;licsign1:$BKL_P1$BKL_P2$BKL_P3"
+BK_CONFIG="license:$BKL_PRO;licsign1:$BKL_P1$BKL_P2$BKL_P3"
 export BK_CONFIG
 
 echo $N Check in files named s.something ............................$NL

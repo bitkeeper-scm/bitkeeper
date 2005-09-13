@@ -12,7 +12,7 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
-no_logging project
+commercial project
 echo $N Make sure delta -i works ....................................$NL
 echo hi there > init
 bk delta $S -i init
@@ -240,16 +240,7 @@ rm -rf A garbage
 echo $N Make sure delta works with checkout:edit preference .........$NL
 cd $HERE
 rm -rf project
-echo "logging: none" > c
-echo "description: BitKeeper Test repository" >> c
-echo "email: nobody@nowhere.bk" >> c
-echo "keyword: sccs" >> c
-echo "license: $BKL_P" >> c
-echo "licsign1: $BKL_P1" >> c
-echo "licsign2: $BKL_P2" >> c
-echo "licsign3: $BKL_P3" >> c
-BK_HOST=bk_regression.bitkeeper.com bk setup -f -c$HERE/c project
-cd project
+commercial project
 BK_USER=one; BK_HOST=one.com.bk_regression.bk
 export BK_USER BK_HOST
 cd $HERE/project

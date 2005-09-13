@@ -1,7 +1,7 @@
 
 
 echo $N setup repos .................................................$NL
-no_logging project
+commercial project
 mkdir BitKeeper/triggers
 cat <<'END' > BitKeeper/triggers/pre-resolve.automerge
 #!/bin/sh
@@ -31,7 +31,7 @@ END
 bk new $Q foo
 bk commit $Q -ystart
 cd $HERE
-bk clone $Q project copy
+bk clone $Q project copy || exit 1
 cd project
 bk edit $Q foo
 cat <<END > foo

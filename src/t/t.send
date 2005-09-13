@@ -20,7 +20,7 @@ then
 fi
 
 echo $N Create initial repository ...................................$NL
-no_logging project
+commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -33,7 +33,7 @@ echo foo > foo.c
 echo bar > bar.c
 echo h > h.h
 bk ci $Q -i foo.c bar.c h.h
-bk commit $S -a -yCset
+bk commit $S -yCset
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
@@ -43,7 +43,7 @@ do
 	date >> foo.c
 	date >> bar.c
 	bk ci $Q -y$i foo.c bar.c
-	bk commit $S -a -yCset$i
+	bk commit $S -yCset$i
 done
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
@@ -56,7 +56,6 @@ if [ ! -f ../copy/src/SCCS/s.h.h ]; then echo failed to receive; exit 1; fi
 cd $HERE/project; bk -r clean; bk -r admin -Zgzip
 cd $HERE/copy; bk -r clean; bk -r admin -Zgzip
 cd $HERE
-rmdir project/BitKeeper/etc/.master
 rm -f project/BitKeeper/etc/SCCS/x.dfile
 rm -f project/BitKeeper/etc/SCCS/x.id_cache
 rm -f copy/BitKeeper/etc/SCCS/x.id_cache

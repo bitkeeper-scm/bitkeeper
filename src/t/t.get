@@ -13,7 +13,7 @@
 # %K%
 
 SAVE=`bk getuser`
-no_logging project
+commercial project
 echo Hallo > date
 bk new $Q date
 
@@ -117,7 +117,7 @@ if [ $? -ne 0 ]; then echo No path found.; exit 1; fi
 echo OK
 
 echo $N Check hosts in file .........................................$NL
-hostname=free.bk
+hostname=bk_regression.bk
 grep -q "^.cH.*$hostname\$" SCCS/s.date
 if [ $? -ne 0 ]; then echo No host found.; exit 1; fi
 X=`grep -c "^.cH.*$hostname\$" SCCS/s.date`

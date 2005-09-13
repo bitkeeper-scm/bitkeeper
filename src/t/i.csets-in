@@ -12,7 +12,7 @@
 # Copyright (c) 2001 Larry McVoy
 # %K%
 
-no_logging project
+commercial project
 echo $N Create initial repository ...................................$NL
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi

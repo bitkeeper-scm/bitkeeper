@@ -111,7 +111,7 @@ send_abort_msg(remote *r)
 	bktmp(buf, "abort");
 	f = fopen(buf, "w");
 	assert(f);
-	sendEnv(f, NULL, r, 1);
+	sendEnv(f, 0, r, SENDENV_NOREPO);
 	if (r->path) add_cd_command(f, r);
 	fprintf(f, "abort\n");
 	fclose(f);

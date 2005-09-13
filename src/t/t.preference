@@ -14,7 +14,7 @@
 # %K%
 
 echo $N Create initial repository ...................................$NL
-no_logging project
+commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -375,7 +375,7 @@ echo OK
 
 echo $N checkout:none w pull ........................................$NL
 cd $HERE
-no_logging pp
+commercial pp
 cd $HERE
 bk clone $Q pp cc || exit 1
 cd $HERE/pp

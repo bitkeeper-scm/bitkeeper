@@ -32,10 +32,10 @@ struct project {
 	project	*rparent;	/* if RESYNC, point at enclosing repo */
 
 	/* per proj cache data */
-	char	*license;	/* filled from lease_licenseKey() */
-	u32	licensebits;	/* LOG_* and LIC_* from fetchLicenseBits() */
-	int	casefolding;
-	u8	leaseok:1;
+	char	*bkl;		/* key - filled from lease_bkl() */
+	u32	bklbits;	/* LIC_* from license_bklbits() */
+	int	casefolding;	/* mixed case file system: FOO == foo */
+	int	leaseok;	/* if set, we've checked and have a lease */
 
 	/* internal state */
     	int	refcnt;
@@ -132,6 +132,7 @@ proj_init(char *dir)
 	new(ret);
 	ret->root = root;
 	ret->casefolding = -1;
+	ret->leaseok = -1;
 
 	projcache_store(root, ret);
 	unless (streq(root, fdir)) projcache_store(fdir, ret);
@@ -359,12 +360,12 @@ proj_reset(project *p)
 			mdbm_close(p->config);
 			p->config = 0;
 		}
-		if (p->license) {
-			free(p->license);
-			p->license = 0;
+		if (p->bkl) {
+			free(p->bkl);
+			p->bkl = 0;
 		}
-		p->licensebits = 0;
-		p->leaseok = 0;
+		p->bklbits = 0;
+		p->leaseok = -1;
 	} else {
 		kv = hash_first(proj.cache);
 		while (kv.key.dptr) {
@@ -438,8 +439,9 @@ proj_fakenew(void)
 	return (ret);
 }
 
+/* return the BKL.... key as a string */
 char *
-proj_license(project *p)
+proj_bkl(project *p)
 {
 	/*
 	 * If we are outside of any repository then we must get a
@@ -447,12 +449,13 @@ proj_license(project *p)
 	 */
 	unless (p || (p = curr_proj())) p = proj_fakenew();
 
-	unless (p->license) p->license = lease_licenseKey(p);
-	return (p->license);
+	unless (p->bkl) p->bkl = lease_bkl(p);
+	return (p->bkl);
 }
 
+/* return the decoded license/option bits (LIC_*) */
 u32
-proj_licensebits(project *p)
+proj_bklbits(project *p)
 {
 	/*
 	 * If we are outside of any repository then we must get a
@@ -460,17 +463,28 @@ proj_licensebits(project *p)
 	 */
 	unless (p || (p = curr_proj())) p = proj_fakenew();
 
-	unless (p->licensebits) p->licensebits = fetchLicenseBits(p);
-	return (p->licensebits);
+	unless (p->bklbits) p->bklbits = license_bklbits(proj_bkl(p));
+	return (p->bklbits);
 }
 
+/*
+ * Returns 1 if the repo has already been checked in this write mode
+ * and 0 otherwise.  It also saves the mark.
+ *
+ * This is a helper found used by lease.c to determine if lease have
+ * already been verified for this repository.
+ */
 int
-proj_leaseOK(project *p, int *newok)
+proj_leaseChecked(project *p, int write)
 {
 	unless (p || (p = curr_proj())) return (0);
 
-	if (newok) p->leaseok = *newok;
-	return (p->leaseok);
+	if ((p->leaseok == O_WRONLY) ||
+	    ((p->leaseok == O_RDONLY) && (write == O_RDONLY))) {
+		return (1);
+	}
+	p->leaseok = write;
+	return (0);
 }
 
 int

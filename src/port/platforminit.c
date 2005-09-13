@@ -52,8 +52,8 @@ platformInit(char **av)
 	    "http://config.bitkeeper.com/cgi-bin/bk_config2");
 	putKV("BK_CONFIG_URL2",
 	    "http://config2.bitkeeper.com/cgi-bin/bk_config2");
-	putKV("OPENLOG_LEASE", "http://lease.openlogging.org/cgi-bin/bk_lease");
-	putKV("OPENLOG_LEASE2", "http://lease2.openlogging.org/cgi-bin/bk_lease");
+	putKV("BK_LEASE_URL",
+	    "http://lease.bitkeeper.com/cgi-bin/bk_lease2");
 	putKV("BK_WEBMAIL_URL", "http://webmail.bitkeeper.com:80");
 
 #ifdef WIN32

@@ -11,10 +11,9 @@ private	struct {
 	u32	textOnly:1;
 	u32	autopull:1;
 	int	list;
-	u32	metaOnly:1;
 	u32	forceInit:1;
 	u32	debug:1;
-	u32	gzip;
+	int	gzip;
 	u32	inBytes, outBytes;		/* stats */
 	u32	lcsets;
 	u32	rcsets;
@@ -52,7 +51,6 @@ push_main(int ac, char **av)
 		    case 'a': opts.autopull = 1; break;		/* doc 2.0 */
 		    case 'c': try = atoi(optarg); break;	/* doc 2.0 */
 		    case 'd': opts.debug = 1; break;		/* undoc 2.0 */
-		    case 'e': opts.metaOnly = 1; break;		/* undoc 2.0 */
 		    case 'E': 					/* doc 2.0 */
 				envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'G': opts.nospin = 1; break;
@@ -88,7 +86,7 @@ push_main(int ac, char **av)
 		fprintf(opts.out, "push: cannot find package root.\n");
 		exit(1);
 	}
-	unless (licenseAccept(1)) {
+	unless (eula_accept(EULA_PROMPT, 0)) {
 		fprintf(stderr, "push: failed to accept license, aborting.\n");
 		exit(1);
 	}
@@ -144,7 +142,7 @@ err:		freeLines(envVar, free);
 			fprintf(opts.out, "lcsets=%d rcsets=%d rtags=%d\n",
 			    opts.lcsets, opts.rcsets, opts.rtags);
 		}
-		if (!opts.metaOnly && (opts.rcsets || opts.rtags)) rc = 1;
+		if (opts.rcsets || opts.rtags) rc = 1;
 		if (rc == -2) rc = 1; /* if retry failed, set exit code to 1 */
 		if (rc) break;
 	}
@@ -153,37 +151,6 @@ err:		freeLines(envVar, free);
 	freeLines(envVar, free);
 	if (opts.out && (opts.out != stderr)) fclose(opts.out);
 	return (rc);
-}
-
-private int
-needLogMarker(remote *r)
-{
-	char	*p;
-	unless (opts.metaOnly) return (0);
-
-	/*
-	 * Look for OPENLOG_URL and OPENLOG_IP address
-	 */
-	unless(r->host) return (0);
-	unless(r->path) return (0);
-	unless(r->port == 80) return (0);
-	unless (streq(r->path, "///LOG_ROOT///")) return (0);
-	unless (streq(r->host, OPENLOG_HOST) ||
-					streq(r->host, OPENLOG_HOST1)) {
-		return (0);
-	}
-	/* Requires Official BK server */
-	unless ((p = getenv("BKD_SEED_OK")) && streq(p, "2") &&
-	    (p = getenv("BKD_REALHOST")) &&
-	    (streq(p, "openlogging.org") || streq(p, "disks.bitmover.com"))) {
-		return (0);
-	}
-	/*
-	 * XXX perhaps instead of BKD_REALHOST I should test BKD_VERSION and
-	 * search for a version tagged *-openlogging.
-	 */
-
-	return (1);
 }
 
 private void
@@ -207,7 +174,6 @@ send_part1_msg(remote *r, char rev_list[], char **envVar)
 	fprintf(f, "push_part1");
 	if (gzip) fprintf(f, " -z%d", opts.gzip);
 	if (opts.debug) fprintf(f, " -d");
-	if (opts.metaOnly) fprintf(f, " -e");
 	unless (opts.doit) fprintf(f, " -n");
 	fputs("\n", f);
 	fclose(f);
@@ -251,7 +217,7 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 		return (rc); /* -2 means locked */
 	} else if (streq(buf, "@SERVER INFO@")) {
 		if (getServerInfoBlock(r)) return (-1);
-		if (!opts.metaOnly && getenv("BKD_LEVEL") &&
+		if (getenv("BKD_LEVEL") &&
 		    (atoi(getenv("BKD_LEVEL")) < getlevel())) {
 			fprintf(opts.out,
 "push: cannot push to lower level repository (remote level == %s)\n",
@@ -309,14 +275,14 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 	 */
 	if (opts.verbose || opts.list) {
 		char	*url = remote_unparse(r);
-		if (opts.rcsets && !opts.metaOnly && opts.doit) {
+		if (opts.rcsets && opts.doit) {
 			fprintf(opts.out,
 			    "Unable to push to %s\nThe", url);
 csets:			fprintf(opts.out,
 " repository that you are pushing to is %d changesets\n\
 ahead of your repository. Please do a \"bk pull\" to get \n\
 these changes or do a \"bk changes -R\" to see what they are.\n", opts.rcsets);
-		} else if (opts.rtags && !opts.metaOnly && opts.doit) {
+		} else if (opts.rtags && opts.doit) {
 tags:			fprintf(opts.out,
 			    "Not pushing because of %d tags only in %s\n",
 			    opts.rtags, url);
@@ -349,25 +315,25 @@ tags:			fprintf(opts.out,
 			fprintf(opts.out,
 			    "------------------------------------------"
 			    "-------------------------------------\n");
-			if (opts.rcsets && !opts.metaOnly) {
+			if (opts.rcsets) {
 				fprintf(opts.out, "except that the");
 				goto csets;
 			}
-			if (opts.rtags && !opts.metaOnly) goto tags;
+			if (opts.rtags) goto tags;
 		} else if (opts.lcsets == 0) {
 			fprintf(opts.out, "Nothing to push.\n");
-			if (opts.rcsets && !opts.metaOnly) {
+			if (opts.rcsets) {
 				fprintf(opts.out, "but the");
 				goto csets;
 			}
-			if (opts.rtags && !opts.metaOnly) goto tags;
+			if (opts.rtags) goto tags;
 		}
 		free(url);
 	}
 	sccs_free(s);
 	if (r->type == ADDR_HTTP) disconnect(r, 2);
 	if ((opts.lcsets == 0) || !opts.doit) return (0);
-	if ((opts.rcsets || opts.rtags) && !opts.metaOnly) {
+	if ((opts.rcsets || opts.rtags)) {
 		return (opts.autopull ? 1 : -1);
 	}
 	return (2);
@@ -382,7 +348,6 @@ genpatch(int level, int wfd, char *rev_list)
 
 	opts.inBytes = opts.outBytes = 0;
 	n = opts.verbose ? 3 : 2;
-	if (opts.metaOnly) makepatch[n++] = "-e";
 	makepatch[n++] = "-";
 	makepatch[n] = 0;
 	/*
@@ -439,7 +404,6 @@ send_end_msg(remote *r, char *msg, char *rev_list, char **envVar)
 	if (r->path && (r->type == ADDR_HTTP)) add_cd_command(f, r);
 	fprintf(f, "push_part2");
 	if (gzip) fprintf(f, " -z%d", opts.gzip);
-	if (opts.metaOnly) fprintf(f, " -e");
 	unless (opts.doit) fprintf(f, " -n");
 	fputs("\n", f);
 
@@ -481,7 +445,6 @@ send_patch_msg(remote *r, char rev_list[], int ret, char **envVar)
 	fprintf(f, "push_part2");
 	if (gzip) fprintf(f, " -z%d", opts.gzip);
 	if (opts.debug) fprintf(f, " -d");
-	if (opts.metaOnly) fprintf(f, " -e");
 	if (!opts.verbose) fprintf(f, " -q");
 	if (opts.nospin) {
 		char	*tt = getenv("BKD_TIME_T");
@@ -595,7 +558,7 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar)
 		 * script wants it.
 		 */
 		safe_putenv("BK_CSETLIST=%s", rev_list);
-		if (!opts.metaOnly && trigger(av[0], "pre")) {
+		if (trigger(av[0], "pre")) {
 			send_end_msg(r, "@ABORT@\n", rev_list, envVar);
 			rc = 1;
 			done = 1;
@@ -674,30 +637,22 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar)
 
 	if (opts.debug) fprintf(opts.out, "Remote terminated\n");
 
-	unless (opts.metaOnly) {
-		unlink(CSETS_OUT);
-		if (rename(rev_list, CSETS_OUT)) {
-			unlink(rev_list);
-			unless (errno == EROFS) {
-				fprintf(stderr, "Failed to move %s to " 
-					CSETS_OUT, rev_list);
-				return (-1);
-			}
+	unlink(CSETS_OUT);
+	if (rename(rev_list, CSETS_OUT)) {
+		unlink(rev_list);
+		unless (errno == EROFS) {
+			fprintf(stderr, "Failed to move %s to " 
+			    CSETS_OUT, rev_list);
+			return (-1);
 		}
-		putenv("BK_CSETLIST=" CSETS_OUT);
-		rev_list[0] = 0;
 	}
+	putenv("BK_CSETLIST=" CSETS_OUT);
+	rev_list[0] = 0;
 	putenv("BK_STATUS=OK");
 
 done:
-	if (opts.metaOnly) {
-		if (!rc && needLogMarker(r)) {
-			updLogMarker(0, opts.debug, opts.out);
-		}
-	} else {
-		if (rc) putenv("BK_STATUS=CONFLICTS");
-		trigger(av[0], "post");
-	}
+	if (rc) putenv("BK_STATUS=CONFLICTS");
+	trigger(av[0], "post");
 	if (rev_list[0]) unlink(rev_list);
 
 	/*

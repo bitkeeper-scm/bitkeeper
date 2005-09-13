@@ -12,7 +12,7 @@
 # See also src/Notes/MONOTONIC
 
 echo $N Mark a file as MONOTONIC, add a delta, check for danglers ...$NL
-no_logging project
+commercial project
 bk admin -fMONOTONIC BitKeeper/etc/config
 bk edit $Q BitKeeper/etc/config
 echo "bogus1: bogus" >> BitKeeper/etc/config
@@ -225,10 +225,10 @@ test `bk prs -r+ -hnd:I: BitKeeper/etc/config` = 1.2 || {
 	bk prs -nd':I: :DANGLING:' BitKeeper/etc/config
 	exit 1
 }
-test `bk prs -r+ -hnd:FLAGS: BitKeeper/etc/config` = "BITKEEPER,CSETMARKED,SCCS,SINGLE,MONOTONIC" || {
+test `bk prs -r+ -hnd:FLAGS: BitKeeper/etc/config` = "BITKEEPER,CSETMARKED,SCCS,MONOTONIC" || {
 	echo failed to preserve flags
 	bk prs -r+ -hnd'GOT :FLAGS:' BitKeeper/etc/config
-	echo Wanted BITKEEPER,CSETMARKED,SCCS,SINGLE,MONOTONIC
+	echo Wanted BITKEEPER,CSETMARKED,SCCS,MONOTONIC
 	exit 1
 }
 echo OK
@@ -236,7 +236,7 @@ echo OK
 echo $N Edit a MONOTONIC file, change it, get diffs .................$NL
 cd $HERE
 rm -rf project
-no_logging project
+commercial project
 bk admin -fMONOTONIC BitKeeper/etc/config
 for i in 1 2 3
 do	bk edit $Q BitKeeper/etc/config

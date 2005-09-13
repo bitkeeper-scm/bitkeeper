@@ -60,5 +60,4 @@ void cfb_decrypt(const unsigned char *ct, unsigned char *pt, int len, symmetric_
 
 #endif
 
-static const char *ID_TAG = "cfb.c"; 
- 
+static const char __attribute__((unused)) *ID_TAG = "cfb.c";

@@ -12,7 +12,7 @@
 # Copyright (c) 2004 BitMover, Inc.
 
 echo $N Make sure we do not have duplicates in a bk edit ............$NL
-no_logging project
+commercial project
 for i in ChangeLog FAQ INDEX Make_vms.com Makefile Makefile.in \
 	Makefile.riscos README adler32.c algorithm.txt compress.c \
 	configure crc32.c deflate.c deflate.h descrip.mms example.c \

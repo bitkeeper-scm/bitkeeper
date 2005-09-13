@@ -18,7 +18,7 @@ OUT=$HERE/out
 RC=`bk dotbk`/rev.rc
 
 echo $N Create initial repository ...................................$NL
-no_logging project
+commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -59,7 +59,7 @@ bk guitest revtool --bogus >$OUT 2>&1 <<'EOF'
     after 5000 [list exit 99] ;# in case the buttonpress didn't work
 EOF
 if [ $? -ne 1 ]; then echo "failed"; echo "exited $err; expected 1"; exit 1; fi
-egrep -q 'usage:.*bk ' $OUT
+egrep 'usage:.*bk ' $OUT > $DEV_NULL
 if [ "$?" -ne 0 ] ; then echo failed; cat $OUT; exit 1; fi
 echo OK
 

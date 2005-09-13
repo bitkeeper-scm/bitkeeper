@@ -1,32 +1,19 @@
 /* Copyright (c) 2001 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
-private int	newroot(int single, char *ranbits);
+private int	newroot(char *ranbits);
 
-/*
- * this is also an alias for 'bk multiuser'
- *      - convert a repository to multi-user from single user.
- */
 int
 newroot_main(int ac, char **av)
 {
 	int	c;
-	int	single = 0;
 	char	*ranbits = 0;
-	char	*name;
-
-	if (name = strrchr(av[0], '/')) {
-		++name;
-	} else {
-		name = av[0];
-	}
-	if (streq(name, "multiuser")) single = 1;
 
 	while ((c = getopt(ac, av, "k:")) != -1) {
 		switch (c) {
 		    case 'k': ranbits = optarg; break;
 		    default:
-usage:			sys("bk", "help", "-s", name, SYS);
+usage:			sys("bk", "help", "-s", "newroot", SYS);
 			return (1);
 		}
 	}
@@ -44,22 +31,17 @@ k_err:			fprintf(stderr,
 		}
 		if (*p) goto k_err;
 	}
-	return (newroot(single, ranbits));
+	return (newroot(ranbits));
 }
 
 /*
- * Start with the ChangeSet file, bail if it is not single && want single.
- * Generate a new ROOTKEY by adding "+" to the end of random bits.
+ * Generate a new ROOTKEY
  * Update the csetfile pointer in all files.
- * Update all xflags (single case).
- * Update the config file (single case).
- * Create a changeset (single case).
  */
 private int
-newroot(int single, char *ranbits)
+newroot(char *ranbits)
 {
 	sccs	*s;
-	delta	*d;
 	int	rc = 0;
 	char	cset[] = CHANGESET;
 	char	buf[MAXPATH];
@@ -73,10 +55,6 @@ newroot(int single, char *ranbits)
 	unless ((s = sccs_init(cset, 0)) && HASGRAPH(s)) {
 		fprintf(stderr, "Cannot init ChangeSet.\n");
 		exit(1);
-	}
-	if (single && !(s->tree->xflags & X_SINGLE)) {
-		fprintf(stderr, "Already converted.\n");
-		exit(0);
 	}
 	if (ranbits) {
 		if (strlen(ranbits) > MAXPATH - 1) {
@@ -112,23 +90,9 @@ newroot(int single, char *ranbits)
 		}
 		free(s->tree->csetFile);
 		s->tree->csetFile = strdup(key);
-		for (d = s->table; d && single; d = d->next) {
-			if (d->xflags & X_SINGLE) d->xflags &= ~X_SINGLE;
-		}
 		if (sccs_newchksum(s)) rc = 1;
 		sccs_free(s);
 	}
 	pclose(f);
-	unless (single) return (rc);
-	if (system("bk get -egq BitKeeper/etc/config") ||
-	    system("bk get -qkp BitKeeper/etc/config | "
-		"grep -v '^single_' > BitKeeper/etc/config") ||
-	    system("bk delta -qy'Convert to multi user' "
-		"BitKeeper/etc/config") ||
-	    system("bk commit -y'Convert to multi user'")) {
-		fprintf(stderr,
-		    "multiuser: editing BitKeeper/etc/config failed\n");
-		rc = 1;
-	}
 	return (rc);
 }

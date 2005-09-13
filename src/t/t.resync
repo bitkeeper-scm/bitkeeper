@@ -19,7 +19,7 @@
 # per file information (flags, etc.)
 
 echo $N Create initial repository ...................................$NL
-no_logging project
+commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -d BitKeeper/tmp ]; then echo failed to make BitKeeper/tmp; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
@@ -40,7 +40,7 @@ P=`bk pending | wc -l`
 if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 echo OK
 echo $N Create a change set .........................................$NL
-bk commit $S -a -y"This is a \"Change Set\""
+bk commit $S -y"This is a \"Change Set\""
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 echo OK
@@ -67,14 +67,14 @@ cd $HERE
 bk clone $Q project copy
 echo $N Should not be able to resync unrelated repositories .........$NL
 cd $HERE
-fresh_no_logging project2
+fresh_commercial project2
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo "don't stand in the doorway, don't block up the hall" > times
 bk ci $Q -i -ydylan times
-bk commit $S -a -yCset2
+bk commit $S -yCset2
 bk pull $Q -R $HERE/project 2>pull.out
 if [ $? -eq 0 ]; then echo failed; cat pull.out; exit 1; fi
 if [ -d project2/src ]; then echo failed; exit 1; fi
@@ -610,7 +610,7 @@ echo "----------- Andrew's anomaly (file disappears) -----------"
 cd $HERE
 rm -fr project copy
 echo $N Create initial repository ...................................$NL
-no_logging project
+commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 mkdir src
@@ -623,7 +623,7 @@ EOF
 cp aaa.c bbb.c
 cp aaa.c ccc.c
 bk ci $Q -i aaa.c bbb.c ccc.c
-bk commit $S -a -yCset
+bk commit $S -yCset
 echo OK
 echo $N Create a copy of the project ................................$NL
 cd $HERE

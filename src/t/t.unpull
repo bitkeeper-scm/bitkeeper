@@ -15,14 +15,14 @@
 # 3) pull, add a cset, make sure unpull fails
 # 4) undo the locally added cset, unpull again, should succeed
 echo $N Setup test case .............................................$NL
-no_logging project
+commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo bar > bar.c
 bk ci $Q -i bar.c 
-bk commit $S -a -yCset
+bk commit $S -yCset
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 cd $HERE
@@ -36,7 +36,7 @@ echo foo > foo.c
 bk ci $Q -i foo.c 
 bk edit $Q bar.c
 bk delta $Q -ynull bar.c
-bk commit $S -a -yCset
+bk commit $S -yCset
 cd $HERE/copy
 bk pull $Q || exit 1
 test -f SCCS/s.foo.c || { echo no foo.c; exit 1; }
@@ -52,7 +52,7 @@ echo $N Pull with automerge, unpull, make sure both are gone ........$NL
 cd $HERE/copy
 echo snafu > snafu.c
 bk ci $Q -i snafu.c 
-bk commit $S -a -yCset
+bk commit $S -yCset
 bk pull $Q || exit 1
 test -f SCCS/s.foo.c || { echo no foo.c; exit 1; }
 bk unpull -f $Q || exit 1

@@ -10,14 +10,14 @@
 #    modifications under any license.
 
 echo $N Create initial repository ...................................$NL
-no_logging project
+commercial project
 bk clone $Q $HERE/project $HERE/copy
 mkdir src
 cd src
 echo bar > bar.c
 echo h > h.h
 bk ci $Q -i bar.c h.h
-bk commit $S -a -yCset
+bk commit $S -yCset
 bk tag $Q proj1
 mkdir $HERE/copy/src
 cd $HERE/copy/src

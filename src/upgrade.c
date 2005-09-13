@@ -23,11 +23,6 @@ extern	char	*bin;
 
 private	char	*urlbase = 0;
 private	int	flags = 0;
-private const char	key[] = {
-	0x06, 0x0f, 0x0e, 0x02, 0x24, 0x1d, 0x29, 0x1d, 0x17, 0x7f,
-	0x76, 0x32, 0x06, 0x1c, 0x29, 0x37, 0x44, 0x5d, 0x03, 0x2a,
-	0x2e, 0x2e
-};
 
 int
 upgrade_main(int ac, char **av)
@@ -38,14 +33,13 @@ upgrade_main(int ac, char **av)
 	int	force = 0;
 	int	obsolete = 0;
 	char	*indexfn, *index;
-	char	*p, *e;
+	char	*p, *e, *key;
 	char	**data = 0;
 	int	len;
 	char	*want_codeline = 0;
 	FILE	*f, *fout;
 	int	rc = 2;
 	char	*tmpbin = 0;
-	char	salt[sizeof(key) + 1];
 	char	buf[MAXLINE];
 
 	while ((c = getopt(ac, av, "il:nfq")) != -1) {
@@ -83,7 +77,8 @@ usage:			system("bk help -s upgrade");
 		}
 		want_codeline = strndup(bk_vers, p - bk_vers);
 	}
-	unless (streq(want_codeline, "bk-free") || lease_anycommercial()) {
+	if (key = lease_latestbkl()) free(key);
+	unless (streq(want_codeline, "bk-free") || key) {
 		notice("upgrade-require-lease", 0, "-e");
 		goto out;
 	}
@@ -106,8 +101,7 @@ usage:			system("bk help -s upgrade");
 	while (p[-1] != '\n') --p;
 	strcpy(buf, p);	/* hmac */
 	*p = 0;
-	makestring(salt, (char *)key, 'Q', sizeof(key));
- 	p = secure_hashstr(index, strlen(index), salt);
+ 	p = secure_hashstr(index, strlen(index), makestring(KEY_UPGRADE));
 	unless (streq(p, buf)) {
 		fprintf(stderr, "upgrade: INDEX corrupted\n");
 		free(index);
@@ -160,7 +154,7 @@ usage:			system("bk help -s upgrade");
 		fprintf(stderr,
 "upgrade: A new version of BitKeeper is available (%s), but this\n"
 "version of BitKeeper (%s) is not marked as being obsoleted by the\n"
-"latested version so the upgrade is cancelled.  Rerun with the -f (force)\n"
+"latest version so the upgrade is cancelled.  Rerun with the -f (force)\n"
 "option to force the upgrade\n", data[3], bk_vers);
 		goto out;
 	}

@@ -104,9 +104,7 @@
 #define PRS_ALL		0x80000000	/* scan all revs, not just type D */
 #define	PRS_GRAFT	0x01000000	/* put the perfile in the patch */
 #define	PRS_LF		0x02000000	/* terminate non-empty output with LF */
-#define	PRS_LOGGING	0x04000000	/* add logging bit to xflags */
 #define	PRS_COMPAT	0x08000000	/* for makepatch -C, send old tags */
-#define	PRS_LOGMARK	0x00100000	/* want log marker */
 
 #define SINFO_TERSE	0x10000000	/* print in terse format: sinfo -t */
 
@@ -142,7 +140,6 @@
 #define	S_SET		0x00002000	/* the tree is marked with a set */
 #define S_CACHEROOT	0x00004000	/* don't free the root entry */
 #define	S_FAKE_1_0	0x00008000	/* the 1.0 delta is a fake */
-#define	S_FORCELOGGING	0x00020000	/* Yuck - force it to logging */
 #define S_CONFIG	0x00040000	/* this is a config file */
 #define S_IMPORT	0x00080000	/* import mode */
 
@@ -189,9 +186,9 @@
 #define	X_CSETMARKED	0x00000020	/* ChangeSet boundries are marked */
 #define	X_HASH		0x00000040	/* mdbm file */
 #define	X_SCCS		0x00000080	/* SCCS keywords */
-#define	X_SINGLE	0x00000100	/* single user, inherit user/host */
+#define	X_SINGLE	0x00000100	/* OLD single user */
 /*	X_DO_NOT_USE	0x00000200	   was used shortly, never reuse */
-#define	X_LOGS_ONLY	0x00000400	/* this is a logging repository */
+/* old  X_LOGS_ONLY	0x00000400	   this is a logging repository */
 #define	X_EOLN_NATIVE	0x00000800	/* use eoln native to this OS */
 #define	X_LONGKEY	0x00001000	/* all keys are long format */
 #define	X_KV		0x00002000	/* key value file */
@@ -251,8 +248,6 @@
 #define	CSETMARKED(s)	((s)->xflags & X_CSETMARKED)
 #define	HASH(s)		((s)->xflags & X_HASH)
 #define	SCCS(s)		((s)->xflags & X_SCCS)
-#define	SINGLE(s)	((s)->xflags & X_SINGLE)
-#define	LOGS_ONLY(s)	((s)->xflags & X_LOGS_ONLY)
 #define	EOLN_NATIVE(s)	((s)->xflags & X_EOLN_NATIVE)
 #define	LONGKEY(s)	((s)->xflags & X_LONGKEY)
 #define	KV(s)		((s)->xflags & X_KV)
@@ -321,13 +316,7 @@
 
 #define	MAXREV	24	/* 99999.99999.99999.99999 */
 
-#define	OPENLOG_ADDR	"logging@openlogging.org"
-#define	OPENLOG_URL	"http://config.openlogging.org:80////LOG_ROOT///"
-#define	OPENLOG_BACKUP	"http://config2.openlogging.org:80////LOG_ROOT///"
-#define	OPENLOG_HOST	"config.openlogging.org"
-#define	OPENLOG_HOST1   "config2.openlogging.org"
-#define	OPENLOG_LEASE	getenv("OPENLOG_LEASE")
-#define	OPENLOG_LEASE2	getenv("OPENLOG_LEASE2")
+#define	LEASE_URL	getenv("BK_LEASE_URL")
 #define	BK_WEBMAIL_URL	getenv("BK_WEBMAIL_URL")
 #define	BK_HOSTME_SERVER "hostme.bkbits.net"
 #define	WEB_BKD_CGI	"web_bkd"
@@ -339,7 +328,6 @@
 #define	BKDIR		"BitKeeper"
 #define	BKTMP		"BitKeeper/tmp"
 #define	BKROOT		"BitKeeper/etc"
-#define	BKMASTER	"BitKeeper/etc/.master"
 #define	GONE		"BitKeeper/etc/gone"
 #define	CSETS_IN	"BitKeeper/etc/csets-in"
 #define	CSETS_OUT	"BitKeeper/etc/csets-out"
@@ -347,8 +335,6 @@
 #define	CHANGESET	"SCCS/s.ChangeSet"
 #define	CCHANGESET	"SCCS/c.ChangeSet"
 #define	GCHANGESET	"ChangeSet"
-#define	LOGGING_OK	"BitKeeper/etc/SCCS/s.logging_ok"
-#define	GLOGGING_OK	"BitKeeper/etc/logging_ok"
 #define	IDCACHE		"BitKeeper/etc/SCCS/x.id_cache"
 #define	IDCACHE_LOCK	"BitKeeper/etc/SCCS/z.id_cache"
 #define	DFILE		"BitKeeper/etc/SCCS/x.dfile"
@@ -706,7 +692,6 @@ typedef struct patch {
 #define	PATCH_COMPAT	"# Patch vers:\t1.2\n"
 #define PATCH_CURRENT	"# Patch vers:\t1.3\n"
 
-#define PATCH_LOGGING	"# Patch type:\tLOGGING\n"
 #define PATCH_REGULAR	"# Patch type:\tREGULAR\n"
 
 #define	BK_RELEASE	"2.O"	/* this is lame, we need a sccs keyword */
@@ -849,8 +834,6 @@ char	*sccs_gethost(void);
 char	*sccs_realhost(void);
 char	*sccs_host(void);
 int	sccs_getComments(char *, char *, delta *);
-int	sccs_getHostName(delta *);
-int	sccs_getUserName(delta *);
 int	sccs_badTag(char *, char *, int);
 MDBM    *sccs_keys2mdbm(FILE *f);
 void	sfileUnget(void);
@@ -872,7 +855,6 @@ void	sccs_resetuser(void);
 void	sccs_resethost(void);
 char	*sccs_realuser(void);
 char	*sccs_user(void);
-void	checkSingle(void);
 int	sccs_markMeta(sccs *);
 
 delta	*modeArg(delta *d, char *arg);
@@ -952,10 +934,11 @@ off_t	mtell(MMAP *m);
 size_t	msize(MMAP *m);
 MMAP	*mrange(char *start, char *stop, char *mode);
 int	linelen(char *s);
-int 	licenseAccept(int prompt);
-int	licenseAcceptOne(int prompt, char *lic);
 char	*licenses_accepted(void);
-char	*license_name(void);
+int	eula_known(char *lic);
+int	eula_accept(int prompt, char *lic);
+char	*eula_name(void);
+char	*eula_type(u32 bits);
 char	*mkline(char *mmap);
 int	mkdirp(char *dir);
 int	test_mkdirp(char *dir);
@@ -1038,9 +1021,9 @@ void	comments_done(void);
 delta	*comments_get(delta *d);
 void	comments_writefile(char *file);
 void	host_done(void);
-delta	*host_get(delta *, int);
+delta	*host_get(delta *);
 void	user_done(void);
-delta	*user_get(delta *, int);
+delta	*user_get(delta *);
 char	*shell(void);
 void	names_init(void);
 int	names_rename(char *old_spath, char *new_spath, u32 flags);
@@ -1056,7 +1039,7 @@ void	do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out);
 char 	**get_http_proxy(char *host);
 int	confirm(char *msg);
 int	csetCreate(sccs *cset, int flags, char *files, char **syms);
-int	cset_setup(int flags, int ask);
+int	cset_setup(int flags);
 off_t	fsize(int fd);
 char	*separator(char *);
 int	trigger(char *cmd, char *when);
@@ -1192,8 +1175,16 @@ int	check_licensesig(char *key, char *sign, int version);
 char	*hashstr(char *str, int len);
 char	*hashstream(FILE *f);
 char	*secure_hashstr(char *str, int len, char *key);
-char	*makestring(char *out, char *in, char seed, int size);
-int	write_log(char *root, char *file, int rotate, char *format, ...);
+
+#define	KEY_LEASE		0
+#define	KEY_BK_AUTH_HMAC	1
+#define	KEY_LCONFIG		2
+#define	KEY_UPGRADE		3
+#define	KEY_SIGNEDFILE		4
+#define	KEY_SEED		5
+#define	KEY_EULA		6
+char	*makestring(int keynum);
+
 void	delete_cset_cache(char *rootpath, int save);
 time_t	mtime(char *path);
 void	notice(char *key, char *arg, char *type);
@@ -1220,6 +1211,8 @@ char	*signed_loadFile(char *filename);
 int	signed_saveFile(char *filename, char *data);
 void	bk_preSpawnHook(int flags, char *const av[]);
 int	upgrade_decrypt(FILE *fin, FILE *fout);
+int	crypto_symEncrypt(char *key, FILE *fin, FILE *fout);
+int	crypto_symDecrypt(char *key, FILE *fin, FILE *fout);
 void	lockfile_cleanup(void);
 void	set_timestamps(char *sfile);
 

@@ -26,9 +26,7 @@ Hi there, this is file foo.
 Hi there, this is file foo.
 Hi there, this is file foo.
 EOF
-no_logging project
-BK_NOCOMPRESS=YES
-export BK_NOCOMPRESS
+commercial project
 echo $N Creating an empty file ......................................$NL
 bk admin $Q -n empty
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
@@ -69,7 +67,7 @@ echo OK
 cd $HERE; rm -rf project; mkdir project; cd project
 
 # need license to work outside of a repository
-BK_CONFIG="license:$BKL_P;licsign1:$BKL_P1;licsign2:$BKL_P2;licsign3:$BKL_P3"
+BK_CONFIG="license:$BKL_PRO;licsign1:$BKL_P1;licsign2:$BKL_P2;licsign3:$BKL_P3"
 export BK_CONFIG
 
 echo $N Creating an empty file with rel 3.1 .........................$NL
@@ -102,16 +100,7 @@ if [ $? -eq 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
 
 cd $HERE; rm -rf project
-echo "logging: none" > c
-echo "description: BitKeeper Test repository" >> c
-echo "email: nobody@nowhere.bk" >> c
-echo "license: $BKL_P" >> c
-echo "licsign1: $BKL_P1" >> c
-echo "licsign2: $BKL_P2" >> c
-echo "licsign3: $BKL_P3" >> c
-echo "eoln: unix" >> c
-BK_HOST=bk_regression.bitkeeper.com bk setup -f -c$HERE/c project
-cd project
+commercial project
 
 echo This is the description. > $HERE/D
 echo $N Creating a file with description ............................$NL
@@ -142,7 +131,7 @@ bk admin $Q -n -t junk 2>ERR
 if [ $? -eq 0 ]; then echo Failed.; exit 1; fi
 echo OK
 
-cd $HERE; rm -rf project; no_logging project
+cd $HERE; rm -rf project; commercial project
 cp $HERE/SAVE foo_init
 echo $N Creating a file with a comment ..............................$NL
 bk admin $Q -n -y'THIS IS THE COMMENT' -ifoo_init foo
@@ -174,7 +163,7 @@ echo OK
 # test a graph which has a branch merged into a branch
 echo $N Check that range connect on a branch works ..................$NL
 
-cd $HERE; rm -rf project; no_logging project
+cd $HERE; rm -rf project; commercial project
 touch foo
 bk ci $Q -i foo
 bk co $Q -l foo

@@ -13,7 +13,7 @@
 # %K%
 
 echo $N Create initial repository ...................................$NL
-no_logging project
+commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -25,12 +25,12 @@ mkdir src
 cd $HERE/project/src
 echo foo > foo.c
 bk ci $Q -i foo.c
-bk commit $S -a -y"This is \"Change Set\" A"
+bk commit $S -y"This is \"Change Set\" A"
 bk clone $Q $HERE/project $HERE/copy1
 bk mv foo.c new_foo.c
 echo bar >> bar.c
 bk ci $Q -i bar.c
-bk commit $S -a -y"This is a \"Change Set\" B"
+bk commit $S -y"This is a \"Change Set\" B"
 bk clone $Q $HERE/project $HERE/copy2
 cd $HERE/copy2/src
 bk undo -fqr1.3
@@ -89,7 +89,7 @@ echo OK
 
 echo $N Check dangling tag undo .....................................$NL
 cd $HERE
-no_logging tag
+commercial tag
 ls > file
 bk new $Q file
 bk commit -SRELEASE -ywhatever $Q
@@ -107,7 +107,7 @@ echo OK
 
 echo $N Try and undo a merge changeset ..............................$NL
 cd $HERE
-no_logging merge
+commercial merge
 ls > file
 bk new $Q file
 bk commit -ywhatever $Q
@@ -134,7 +134,7 @@ echo OK
 
 echo $N Undo a rename where renumber needs to run before names ......$NL
 cd $HERE
-no_logging rename
+commercial rename
 echo a > a
 echo b > b
 bk new $Q a b

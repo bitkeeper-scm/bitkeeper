@@ -315,7 +315,7 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 			errors |= 1;
 			continue;
 		}
-		lease_writeReq(s->proj);
+		lease_check(s->proj, O_WRONLY, s);
 		if (df & DELTA_AUTO) {
 			if (HAS_SFILE(s)) {
 				df &= ~NEWFILE;
@@ -324,9 +324,6 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 			}
 		}
 		if (dflags & NEWFILE) {
-			if (bk_mode(s->proj) != BK_PRO) {
-				compp = "gzip";
-			}
 			unless (ignorePreference || compp) compp = def_compp;
 		}
 

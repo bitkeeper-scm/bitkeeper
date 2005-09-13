@@ -2,6 +2,7 @@
  * Copyright (c) 2000-2002, Andrew Chang & Larry McVoy
  */    
 #include "bkd.h"
+#include "logging.h"
 
 /*
  * Do not change this sturct until we phase out bkd 1.2 support
@@ -44,6 +45,11 @@ clone_main(int ac, char **av)
 		switch (c) {
 		    case 'd': opts.debug = 1; break;		/* undoc 2.0 */
 		    case 'E': 					/* doc 2.0 */
+			unless (strneq("BKU_", optarg, 4)) {
+				fprintf(stderr,
+				    "clone: vars must start with BKU_\n");
+				return (1);
+			}
 			envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'l': link = 1; break;			/* doc 2.0 */
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
@@ -65,8 +71,25 @@ clone_main(int ac, char **av)
 	 * Trigger note: it is meaningless to have a pre clone trigger
 	 * for the client side, since we have no tree yet
 	 */
-	r = remote_parse(av[optind]);
-	unless (r) usage();
+	unless (r = remote_parse(av[optind])) usage();
+
+	/*
+	 * Go prompt with the remotes license, it makes cleanup nicer.
+	 */
+	unless (r->host) {
+		char	here[MAXPATH];
+
+		getcwd(here, sizeof(here));
+		assert(r->path);
+		chdir(r->path);
+		unless (eula_accept(EULA_PROMPT, 0)) {
+			fprintf(stderr,
+			    "clone: failed to accept license, aborting.\n");
+			exit(1);
+		}
+		chdir(here);
+	}
+
 	if (link) {
 #ifdef WIN32
 		fprintf(stderr,
@@ -128,7 +151,7 @@ send_clone_msg(opts opts, int gzip, remote *r, char **envVar)
 	bktmp(buf, "clone");
 	f = fopen(buf, "w");
 	assert(f);
-	sendEnv(f, envVar, r, 1);
+	sendEnv(f, envVar, r, SENDENV_NOREPO);
 	if (r->path) add_cd_command(f, r);
 	fprintf(f, "clone");
 	if (gzip) fprintf(f, " -z%d", gzip);
@@ -204,11 +227,26 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		goto done;
 	}
 
-	if ((lic = getenv("BKD_LICTYPE")) && !licenseAcceptOne(1, lic)) {
-		fprintf(stderr, "clone: failed to accept license '%s'\n",
-		    getenv("BKD_LICTYPE"));
-		disconnect(r, 2);
-		goto done;
+	if (lic = getenv("BKD_LICTYPE")) {
+		/*
+		 * Make sure we know about the remote's license.
+		 * XXX - even this isn't perfect, the remote side may have
+		 * a different version of "Pro".
+		 */
+		unless (eula_known(lic)) {
+			fprintf(stderr,
+			    "clone: remote BK has a different license: %s\n"
+			    "You will need to upgrade in order to proceed.\n",
+			    lic);
+			disconnect(r, 2);
+			goto done;
+		}
+		unless (eula_accept(EULA_PROMPT, lic)) {
+			fprintf(stderr,
+			    "clone: failed to accept license '%s'\n", lic);
+			disconnect(r, 2);
+			goto done;
+		}
 	}
 
 	unless (opts.quiet) {
@@ -275,7 +313,7 @@ clone2(opts opts, remote *r)
 	FILE	*f;
 	int	rc;
 
-	unless (licenseAccept(1)) {
+	unless (eula_accept(EULA_PROMPT, 0)) {
 		fprintf(stderr, "clone failed license accept check\n");
 		unlink("SCCS/s.ChangeSet");
 		return (-1);
@@ -674,6 +712,7 @@ out_trigger(char *status, char *rev, char *when)
 		safe_putenv("BK_ACCEPTED=%s", lic);
 		free(lic);
 	}
+	safe_putenv("BK_LICENSE=%s", proj_bkl(0));
 	if (status) putenv(status);
 	if (rev) {
 		safe_putenv("BK_CSETS=1.0..%s", rev);

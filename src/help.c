@@ -28,6 +28,12 @@ help_main(int ac,  char **av)
 		}
 	}
 	bktmp(out, "help");
+	if (av[i=optind] && 
+	    (streq(av[i], "bkl") ||
+	    streq(av[i], "bkcl") || streq(av[i], "license"))) {
+		sysio(0, out, 0, "bk", "_eula", "-S", SYS);
+		goto print;
+	}
 	unless (av[optind]) {
 		av = new_av;
 		optind = -0;

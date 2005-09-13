@@ -55,50 +55,6 @@ sccs_getComments(char *file, char *rev, delta *n)
 	return (caught("Check in") ? -1 : 0);
 }
 
-int
-sccs_getHostName(delta *n)
-{
-	char	buf2[1024];
-
-	flush_fd0(); /* for Win/98 and Win/ME */
-	fprintf(stderr, "Hostname of your machine>>  ");
-	catch();
-	while (getline(0, buf2, sizeof(buf2)) > 0) {
-		if (isValidHost(buf2)) {
-			n->hostname = strdup(buf2);
-			break;
-		}
-		fprintf(stderr, "%s is not a valid hostname\n", buf2);
-		fprintf(stderr, "Hostname of your machine>>  ");
-	}
-	return (caught("Check in") ? -1 : 0);
-}
-
-
-int
-sccs_getUserName(delta *n)
-{
-	char	buf2[1024];
-
-	catch();
-	flush_fd0(); /* for Win/98 and Win/ME */
-	fprintf(stderr, "User name>>  ");
-	while (getline(0, buf2, sizeof(buf2)) > 0) {
-		char	*t;
-
-		/* Null the newline */
-		for (t = buf2; *t; t++);
-		t[-1] = 0;
-		if (isValidUser(buf2)) {
-			n->user = strdup(buf2);
-			break;
-		}
-		fprintf(stderr, "%s is not a valid user name\n", buf2);
-		fprintf(stderr, "User name>>  ");
-	}
-	return (caught("Check in") ? -1 : 0);
-}
-
 char **
 getParkComment(int *err)
 {

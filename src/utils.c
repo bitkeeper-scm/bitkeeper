@@ -649,7 +649,7 @@ send_file(remote *r, char *file, int extra)
 	assert(strneq(m->mmap, "putenv ", 7));
 	len = m->size;
 
-	q = secure_hashstr(m->mmap, len, "11ef64c95df9b6227c5654b8894c8f00");
+	q = secure_hashstr(m->mmap, len, makestring(KEY_BK_AUTH_HMAC));
 	hdr = aprintf("putenv BK_AUTH_HMAC=%d|%d|%s\n", len, extra, q);
 	free(q);
 	rc = send_msg(r, hdr, strlen(hdr), len+extra);
@@ -849,13 +849,23 @@ putroot(char *where)
 
 /*
  * Send env varibale to remote bkd.
+ *
+ * NOTE: When editing this function be sure to make the same changes in
+ *       clone.c:out_trigger()
  */
 void
-sendEnv(FILE *f, char **envVar, remote *r, int isClone)
+sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 {
 	int	i;
-	char	*root, *user, *host, *repo;
+	char	*user, *host, *repo;
 	char	*lic;
+	project	*p = proj_init(".");
+
+	/*
+	 * Send any vars the user requested first so that they can't
+	 * overwrite any of the standard variables.
+	 */
+	EACH(envVar) fprintf(f, "putenv %s\n", envVar[i]);
 
 	if (r->host)
 		fprintf(f, "putenv BK_VHOST=%s\n", r->host);
@@ -869,10 +879,6 @@ sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 	fprintf(f, "putenv _BK_USER=%s\n", user);	/* XXX remove in 3.0 */
 	host = sccs_gethost();
 	fprintf(f, "putenv _BK_HOST=%s\n", host);
-	if (repo = repo_id()) {
-		fprintf(f, "putenv BK_REPO_ID=%s\n", repo);
-		free(repo);
-	}
 	if (lic = licenses_accepted()) {
 		fprintf(f, "putenv BK_ACCEPTED=%s\n", lic);
 		free(lic);
@@ -881,25 +887,32 @@ sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 	fprintf(f, "putenv BK_REALHOST=%s\n", sccs_realhost());
 	fprintf(f, "putenv BK_PLATFORM=%s\n", platform());
 
-	/*
-	 * We have no Package root when we clone, so skip root related variables
-	 * This is important when we have nested repository. Otherwise, we may
-	 * incorrectly pick up info in the enclosing tree. Jack Moffitt's
-	 * icecast repository exposed this problem.
-	 */
-	unless (isClone) {
+	unless (flags & SENDENV_NOREPO) {
+		/*
+		 * This network connection is not necessarily run from
+		 * a repository, so don't send information about the
+		 * current repository.  Clone is the primary example
+		 * of this.
+		 */
+		assert(p);	/* We must be in a repo here */
 		fprintf(f, "putenv BK_LEVEL=%d\n", getlevel());
-
-		if (root = proj_root(0)) {
-			fprintf(f, "putenv BK_ROOT=%s\n", root);
+		fprintf(f, "putenv BK_ROOT=%s\n", proj_root(p));
+		if (repo = repo_id()) {
+			fprintf(f, "putenv BK_REPO_ID=%s\n", repo);
+			free(repo);
 		}
 	}
-
-	EACH(envVar) {
-		fprintf(f, "putenv %s\n", envVar[i]);
+	unless (flags & SENDENV_NOLICENSE) {
+		/*
+		 * Send information on the current license.
+		 */
+		if (lic = lease_latestbkl()) {
+			fprintf(f, "putenv BK_LICENSE=%s\n", lic);
+			free(lic);
+		}
 	}
 	/*
-	 * Send comma seperated list of client features so the bkd
+	 * Send comma separated list of client features so the bkd
 	 * knows which outputs are supported.
 	 *   lkey:1	use leasekey #1 to sign lease requests
 	 */
@@ -907,6 +920,7 @@ sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 	unless (r->seed) bkd_seed(0, 0, &r->seed);
 	fprintf(f, "putenv BK_SEED=%s\n", r->seed);
 
+	if (p) proj_free(p);
 }
 
 int
@@ -947,6 +961,11 @@ getServerInfoBlock(remote *r)
 	return (ret);
 }
 
+/*
+ *
+ * NOTE: When editing this function be sure to make the same changes in
+ *       clone.c:in_trigger()
+ */
 void
 sendServerInfoBlock(int is_rclone)
 {
@@ -972,7 +991,7 @@ sendServerInfoBlock(int is_rclone)
         	sprintf(buf, "LEVEL=%d\n", getlevel());
 		out(buf);
 		out("LICTYPE=");
-		out(license_name());
+		out(eula_name());
 		out("\n");
 	}
 	out("ROOT=");

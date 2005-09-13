@@ -3,21 +3,21 @@
 
 typedef struct	project project;
 
+char*		proj_bkl(project *p);
+u32		proj_bklbits(project *p);
 int		proj_cd2root(void);
 int		proj_chdir(char *newdir);
-char*		proj_cwd(void);
 MDBM*		proj_config(project *p);
+char*		proj_cwd(void);
 void		proj_free(project *p);
-project*	proj_init(char *dir);
-int		proj_leaseOK(project *p, int *newok);
-char*		proj_license(project *p);
-u32		proj_licensebits(project *p);
+int		proj_isCaseFoldingFS(project *p);
+int		proj_leaseChecked(project *p, int write);
 char*		proj_md5rootkey(project *p);
 char*		proj_relpath(project *p, char *path);
 void		proj_reset(project *p);
 char*		proj_root(project *p);
 char*		proj_rootkey(project *p);
-int		proj_isCaseFoldingFS(project *p);
+project*	proj_init(char *dir);
 project* 	proj_fakenew(void);
 
 #define		chdir	proj_chdir

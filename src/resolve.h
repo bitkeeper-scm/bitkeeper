@@ -45,7 +45,6 @@ typedef struct {
 	u32	verbose:1;	/* be verbose on gets, etc */
 	u32	willMerge:1;	/* set if we will create a merge delta */
 	u32	didMerge:1;	/* set if we created a cset merge delta */
-	u32	logging:1;	/* set if we are in a logging only repo */
 	u32	from_pullpush:1;/* set if we are being called from pull/push */
 	u32	partial:1;	/* partial resolve - don't commit changeset */
 	int	hadConflicts;	/* conflicts during automerge */

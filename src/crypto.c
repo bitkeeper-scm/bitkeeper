@@ -43,7 +43,7 @@ private const u8	pubkey6[151] = {
 ~~~~~~~~~~~~~~~~~~~~~~D
 ~~~~~~~~~~w
 };
-private const u8	seckey[828] = {
+private const u8	upgrade_secretkey[828] = {
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~4
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~I
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~7
@@ -147,6 +147,13 @@ private const u8	seckey[828] = {
  *    # normally public key is used for this
  * -h <data> [<key>]
  *    # hash data with an optional key
+ *
+ * -E key < plain > cipher
+ *    # simple aes symetric encryption of data
+ *    # key must be 16 bytes long
+ * -D key < plain > cipher
+ *    # simple aes symetric decryption of data
+ *    # key must be 16 bytes long
  * -S
  *    # use sha1 instead of md5 for -h
  * -X
@@ -170,10 +177,10 @@ crypto_main(int ac, char **av)
 	char	*hash;
 	rsa_key	key;
 
-	while ((c = getopt(ac, av, "dehisSvX")) != -1) {
+	while ((c = getopt(ac, av, "dDeEhisSvX")) != -1) {
 		switch (c) {
 		    case 'h': case 'i': case 's': case 'v':
-		    case 'e': case 'd':
+		    case 'e': case 'd': case 'E': case 'D':
 			if (mode) usage();
 			mode = c;
 			break;
@@ -214,6 +221,24 @@ crypto_main(int ac, char **av)
 		    case 'v': ret = validatedata(&key, av[optind+1]); break;
 		}
 		rsa_free(&key);
+		break;
+	    case 'E':
+		if (strlen(av[optind]) == 16) {
+			ret = crypto_symEncrypt(av[optind], stdin, stdout);
+		} else {
+			fprintf(stderr,
+			    "ERROR: key must be exactly 16 bytes\n");
+			ret = 1;
+		}
+		break;
+	    case 'D':
+		if (strlen(av[optind]) == 16) {
+			ret = crypto_symDecrypt(av[optind], stdin, stdout);
+		} else {
+			fprintf(stderr,
+			    "ERROR: key must be exactly 16 bytes\n");
+			ret = 1;
+		}
 		break;
 	    case 'h':
 		if (av[optind+1]) {
@@ -442,35 +467,19 @@ validatedata(rsa_key *key, char *signfile)
 	return (ret);
 }
 
-private char *
-publickey(int version)
-{
-	char	*p;
-	
-	if (version <= 5) {
-		p = malloc(sizeof(pubkey5));
-		memcpy(p, pubkey5, sizeof(pubkey5));
-	} else {
-		p = malloc(sizeof(pubkey6));
-		memcpy(p, pubkey6, sizeof(pubkey6));
-	}
-	return (p);
-}
-
 int
 check_licensesig(char *key, char *sign, int version)
 {
 	char	signbin[256];
 	unsigned long	outlen;
 	rsa_key	rsakey;
-	char	*pubkey = publickey(version);
+	const char	*pubkey = (version <= 5) ? pubkey5 : pubkey6;
 	int	ret;
 	int	stat;
 
 	register_hash(&md5_desc);
 
 	ret = rsa_import(pubkey, &rsakey);
-	free(pubkey);
 	if (ret == CRYPT_ERROR) {
 		fprintf(stderr, "crypto rsa_import: %s\n", crypt_error);
 		exit(1);
@@ -609,7 +618,8 @@ signed_loadFile(char *filename)
 	*p = 0;
 	while ((p > data) && (*p != '\n')) --p;
 	*p++ = 0;
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~d
+	hash = secure_hashstr(data, (p - data - 1),
+	    makestring(KEY_SIGNEDFILE));
 	unless (streq(hash, p)) {
 		free(data);
 		data = 0;
@@ -629,7 +639,7 @@ signed_saveFile(char *filename, char *data)
 	unless (f = fopen(tmpf, "w")) {
 		return (-1);
 	}
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~0U
+	hash = secure_hashstr(data, strlen(data), makestring(KEY_SIGNEDFILE));
 	fprintf(f, "%s\n%s\n", data, hash);
 	fclose(f);
 	free(hash);
@@ -719,26 +729,13 @@ err:		fprintf(stderr, "crypto decrypt: %s\n", crypt_error);
 	return (0);
 }
 
-char *
-upgrade_secretkey(void)
-{
-	char	*p;
-	
-	p = malloc(sizeof(seckey));
-	memcpy(p, seckey, sizeof(seckey));
-	return (p);
-}
-
 int
 upgrade_decrypt(FILE *fin, FILE *fout)
 {
 	rsa_key	rsakey;
 	int	ret;
-	char	*seckey;
 
-	seckey = upgrade_secretkey();
-	ret = rsa_import(seckey, &rsakey);
-	free(seckey);
+	ret = rsa_import(upgrade_secretkey, &rsakey);
 	if (ret) {
 		fprintf(stderr, "crypto rsa_import: %s\n", crypt_error);
 		exit(1);
@@ -746,6 +743,54 @@ upgrade_decrypt(FILE *fin, FILE *fout)
 	decrypt_stream(&rsakey, fin, fout);
 	return (0);
 }
+
+/* key contains 16 bytes of data */
+int
+crypto_symEncrypt(char *key, FILE *fin, FILE *fout)
+{
+	int	cipher = register_cipher(&rijndael_desc);
+	long	blklen;
+	int	i;
+	symmetric_CFB	cfb;
+	u8	sym_IV[MAXBLOCKSIZE];
+	u8	buf[4096];
+
+	blklen = cipher_descriptor[cipher].block_length;
+	assert(blklen == 16);  // aes
+	memset(sym_IV, 0, blklen);
+
+	cfb_start(cipher, sym_IV, key, 16, 0, &cfb);
+
+	while ((i = fread(buf, 1, sizeof(buf), fin)) > 0) {
+		cfb_encrypt(buf, buf, i, &cfb);
+		fwrite(buf, 1, i, fout);
+	}
+	return (0);
+}
+
+int
+crypto_symDecrypt(char *key, FILE *fin, FILE *fout)
+{
+	int	cipher = register_cipher(&rijndael_desc);
+	long	blklen;
+	int	i;
+	symmetric_CFB	cfb;
+	u8	sym_IV[MAXBLOCKSIZE];
+	u8	buf[4096];
+
+	blklen = cipher_descriptor[cipher].block_length;
+	assert(blklen == 16);  // aes
+	memset(sym_IV, 0, blklen);
+
+	cfb_start(cipher, sym_IV, key, 16, 0, &cfb);
+
+	while ((i = fread(buf, 1, sizeof(buf), fin)) > 0) {
+		cfb_decrypt(buf, buf, i, &cfb);
+		fwrite(buf, 1, i, fout);
+	}
+	return (0);
+}
+
 
 /*
  * only setup the special key in the environment for restricted commands
@@ -756,6 +801,60 @@ bk_preSpawnHook(int flags, char *const av[])
 	rand_setSeed((flags & _P_DETACH) ? 0 : 1);
 }
 
+
+private const u8	leasekey[] = {
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~V
+~~~~~~~~~~~~~~~~~~~~~~~~~~~M
+~~~~v
+};
+private const u8	bk_auth_hmackey[] = {
+~~~~~~~~~~~~~~~~~~~~~~~~~~~{
+~~~~~~~~~~~~~~~~~~~~~~~~~~~0T
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~`
+~~~~x
+};
+private const u8	lconfigkey[] = {
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~0l
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~A
+~~~~~]
+};
+private const u8	upgradekey[] = {
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~0l
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~A
+~~~~~]
+};
+private const u8	signedfilekey[] = {
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~G
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~E
+~~~~~]
+};
+private const u8	seedkey[] = {
+~~~~~~~~~~~~~~~~~~~~~~~~~~~0X
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~Q
+~~~~w
+};
+private const u8	eulakey[] = {
+~~~~~~~~~~~~~~~~~~~~~~~~~~~0T
+~~~~~~~~~~~~~~~y
+};
+
+struct {
+	const	u8	*key;
+	int		size;
+} savedkeys[] = {
+	{ leasekey, sizeof(leasekey) },			/* 0 */
+	{ bk_auth_hmackey, sizeof(bk_auth_hmackey) },	/* 1 */
+	{ lconfigkey, sizeof(lconfigkey) },		/* 2 */
+	{ upgradekey, sizeof(upgradekey) },		/* 3 */
+	{ signedfilekey, sizeof(signedfilekey) },	/* 4 */
+	{ seedkey, sizeof(seedkey) },			/* 5 */
+	{ eulakey, sizeof(eulakey) },			/* 6 */
+	{ 0, 0 }
+};
+
+
 /*
  * keep strings from showing up in strings by encoding them in char
  * arrays, then rebuild the strings with this.  Out is one more
@@ -764,12 +863,23 @@ bk_preSpawnHook(int flags, char *const av[])
  * The inverse, array generating routine is in a standalone
  * program ./hidestring (source in hidestring.c).
  */
-
 char *
-makestring(char *out, char *in, char seed, int size)
+makestring(int keynum)
 {
-	int	i;
+	const	char	*in;
+	int		i, size;
+	char		seed = 'Q';
+	static	char	*out;
 
+	unless (out) {
+		size = 0;
+		for (i = 0; savedkeys[i].key; i++) {
+			if (size < savedkeys[i].size) size = savedkeys[i].size;
+		}
+		out = malloc(size + 1);
+	}
+	in = savedkeys[keynum].key;
+	size = savedkeys[keynum].size;
 	for (i = 0; i < size; i++) {
 		out[i] = (seed ^= in[i]);
 	}

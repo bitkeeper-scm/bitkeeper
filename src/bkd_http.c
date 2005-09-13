@@ -44,6 +44,9 @@ private int	embedded = 0;
 private int	expires = 0;
 private	char	*header_host;
 
+extern	int	licenseServer[2];
+extern	time_t	licenseEnd;
+
 #define	COLOR		"lightblue"
 
 #define	OUTER_TABLE	"<table width=100% bgcolor=black cellspacing=0 border=0 cellpadding=2><tr><td>\n"
@@ -59,7 +62,6 @@ private char	thisPage[MAXPATH];
 private char	*user;
 private char	*prefix;
 private char	*suffix;
-private int	isLoggingTree;
 private	char	*expr;
 
 private struct pageref {
@@ -147,14 +149,14 @@ cmd_httpget(int ac, char **av)
 	if (user) sprintf(root+strlen(root), "user=%s/", user);
 	unless (*name) name = "index.html";
 
-	unless (streq(name, "license") || bk_options()&BKOPT_WEB) {
+	unless (streq(name, "license") || (proj_bklbits(0) & LIC_WEB)) {
 		unless (has_temp_license()) {
 			http_error(503,
 			    "BK/Web option has not been purchased.");
 		}
 	}
 
-	isLoggingTree = exists(LOG_TREE);
+
 	for (i = 0; pages[i].content; i++) {
 		if (pages[i].size == 0) {
 			ret = streq(pages[i].name, name);
@@ -595,19 +597,17 @@ http_cset(char *rev)
 	    "<td>:HTML_C:</td></tr>\n"
 	    "%s",
 	    prefix,
-	    isLoggingTree ? "" :
-	      "$if(:GFILE:=ChangeSet){"
-	        "<a href=patch@:REV:%s>\n"
-	        "<font size=2 color=darkblue>all diffs</font></a>\n"
-	      "}",
+	    "$if(:GFILE:=ChangeSet){"
+	    "<a href=patch@:REV:%s>\n"
+	    "<font size=2 color=darkblue>all diffs</font></a>\n"
+	    "}",
 	    navbar,
-	    isLoggingTree ? "" :
-	      "&nbsp;&nbsp;"
-	      "<a href=anno/:GFILE:@:REV:%s>\n"
-	      "<font size=2 color=darkblue>annotate</font></a>\n"
-	      "&nbsp;&nbsp;"
-	      "<a href=diffs/:GFILE:@:REV:%s>\n"
-	      "<font size=2 color=darkblue>diffs</font></a>\n",
+	    "&nbsp;&nbsp;"
+	    "<a href=anno/:GFILE:@:REV:%s>\n"
+	    "<font size=2 color=darkblue>annotate</font></a>\n"
+	    "&nbsp;&nbsp;"
+	    "<a href=diffs/:GFILE:@:REV:%s>\n"
+	    "<font size=2 color=darkblue>diffs</font></a>\n",
 	    suffix);
 	if (i == -1) http_error(500, "buffer overflow in http_cset");
 	i = snprintf(dspec, sizeof(dspec), buf, navbar, navbar, navbar);
@@ -820,11 +820,11 @@ http_hist(char *pathrev)
 		"</td>\n <td>:HTML_C:</td>\n"
 		"</tr>\n%s",
 		prefix,
-		isLoggingTree ? "" : "<a href=\"diffs/:GFILE:@:I:",
-		isLoggingTree ? "" : navbar,
-		isLoggingTree ? "" : "\">",
+	        "<a href=\"diffs/:GFILE:@:I:",
+		navbar,
+		"\">",
 		":I:",
-		isLoggingTree ? "" : "</a>",
+		"</a>",
 		suffix);
 	if (i == -1) {
 		http_error(500, "buffer overflow in http_hist");
@@ -1022,14 +1022,7 @@ http_anno(char *pathrev)
 		htmlify(buf, n);
 	}
 	pclose(f);
-	if (empty) {
-		if (isLoggingTree) {
-			out("\nThis is an Open Logging tree so there is "
-			    "no data in this file.\n");
-		} else {
-			out("\nEmpty file\n");
-		}
-	}
+	if (empty) out("\nEmpty file\n");
 	out("</pre>\n");
 	if (!embedded) trailer("anno");
 }
@@ -1547,10 +1540,8 @@ http_index(char *page)
 	    "Changeset comments<br>\n"
 	    "<input type=radio name=search value=\"file comments\">"
 	    "File comments<br>\n");
-	unless (isLoggingTree) {
-		out("<input type=radio name=search value=\"file contents\">"
-		    "File contents<br>\n");
-	}
+	out("<input type=radio name=search value=\"file contents\">"
+	    "File contents<br>\n");
 	out("</td><td align=right>"
 	    "<input type=submit value=Search><br>"
 	    "<input type=reset value=\"Clear search\">\n"
@@ -1756,8 +1747,6 @@ has_temp_license(void)
 #define	CLONE	0x02
 	int	need = PULL|CLONE;
 	int	i;
-
-	extern time_t licenseEnd;
 
 	if (time(0) < licenseEnd) return (1);
 

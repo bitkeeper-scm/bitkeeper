@@ -13,7 +13,7 @@
 # %K%
 data="data"
 
-no_logging proj
+commercial proj
 cp -rp $HERE/proj $HERE/ascii
 echo $N Trying to check in some binary data .........................$NL
 cp ${BIN1} ${data}

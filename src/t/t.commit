@@ -13,7 +13,7 @@
 # %K%
 
 
-no_logging project
+commercial project
 echo $N Test commit -y with multiline comments ......................$NL
 echo hi there > file
 bk new $Q file

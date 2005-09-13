@@ -75,7 +75,6 @@ private	void	uniqDelta(sccs *s);
 private	void	uniqRoot(sccs *s);
 private int	checkGone(sccs *s, int bit, char *who);
 private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
-private void	singleUser(sccs *s);
 private	int	parseConfig(char *buf, char **k, char **v);
 private	delta	*cset2rev(sccs *s, char *rev);
 private	void	taguncolor(sccs *s, delta *d);
@@ -1767,11 +1766,6 @@ findrev(sccs *s, char *rev)
 	    notnull(rev), s->sfile, defbranch(s)));
 	unless (HASGRAPH(s)) return (0);
 	if (!rev || !*rev || streq("+", rev)) {
-		if (LOGS_ONLY(s)) {
-			/* XXX - works only for 1 LOD trees */
-			for (e = s->table; e && TAG(e); e = e->next);
-			return (e);
-		}
 		rev = defbranch(s);
 	}
 
@@ -2874,7 +2868,6 @@ sccs_tagMerge(sccs *s, delta *d, char *tag)
 	if (tag) len += strlen(tag);
 	buf = malloc(len);
 	/* XXX - if we ever remove |ChangeSet| from the keys fix P below */
-	checkSingle();
 	sprintf(buf,
 	    "M 0.0 %s%s %s@%s 0 0 0/0/0\nP ChangeSet\n"
 	    "%s%s%ss g\ns l\ns %s\ns %s\n%s\n",
@@ -3169,9 +3162,6 @@ checkTags(sccs *s, int flags)
 	/* Nobody else has tags */
 	unless (CSET(s)) return (0);
 
-	/* Allow open tag branch for logging repository */
-	if (LOGS_ONLY(s)) return (0);
-
 	/* Make sure that tags don't contain weird characters */
 	for (sym = s->symbols; sym; sym = sym->next) {
 		unless (sym->symname) continue;
@@ -3266,12 +3256,9 @@ meta(sccs *s, delta *d, char *buf)
 		break;
 	    case 'X':
 		assert(d);
-		if ((buf[3] == '0') && (buf[4] == 'x')) {
-			d->xflags = strtol(&buf[5], 0, 16);
-		} else {
-			d->xflags = atoi(&buf[3]);
-		}
-		if (d->xflags) d->flags |= D_XFLAGS;
+		d->xflags = strtol(&buf[3], 0, 0); /* hex or dec */
+		d->xflags &= ~X_SINGLE; /* clear old single_user bit */
+		d->flags |= D_XFLAGS;
 		break;
 	    case 'Z':
 		zoneArg(d, &buf[3]);
@@ -3561,14 +3548,9 @@ misc(sccs *s)
 			continue;
 		} else if (strneq(buf, "\001f x", 4)) { /* strip it */
 			unless (sccs_xflags(sccs_top(s))) {
-				u32	bits;
-
-				if ((buf[5] == '0') && (buf[6] == 'x')) {
-					bits = strtol(&buf[7], 0, 16);
-				} else {
-					bits = atoi(&buf[5]);
-				}
-				s->tree->xflags = bits;
+				/* hex or dec */
+				s->tree->xflags =
+					strtol(&buf[5], 0, 0) & ~X_SINGLE;
 				s->tree->flags |= D_XFLAGS;
 			}
 			continue;
@@ -3947,6 +3929,42 @@ loadGlobalConfig(MDBM *db)
 }
 
 /*
+ * "Append" bin config to local config.
+ * I.e local field have priority over global field.
+ * If local field exists, it masks out the global counter part.
+ */
+MDBM *
+loadBinConfig(MDBM *db)
+{
+	char 	*config;
+	extern	char *bin;
+
+	assert(db);
+	config = aprintf("%s/config", bin);
+	config2mdbm(db, config);
+	free(config);
+	return(db);
+}
+
+
+/*
+ * "Append" .bk/config config to local config.
+ * I.e local field have priority over global field.
+ * If local field exists, it masks out the global counter part.
+ */
+MDBM *
+loadDotBkConfig(MDBM *db)
+{
+	char 	*config;
+
+	assert(db);
+	config = aprintf("%s/config", getDotBk());
+	config2mdbm(db, config);
+	free(config);
+	return(db);
+}
+
+/*
  * Override the config db with values from the BK_CONFIG enviromental
  * variable if it exists.
  *
@@ -3994,28 +4012,15 @@ loadEnvConfig(MDBM *db)
 MDBM *
 loadConfig(char *root)
 {
-	MDBM *db;
+	MDBM	*db;
 
-	db = loadRepoConfig(root);
-	unless (db) db = mdbm_mem();
-	loadGlobalConfig(db);
+	unless (db = loadRepoConfig(root)) db = mdbm_mem();
+	loadDotBkConfig(db);
+	unless (getenv("BK_REGRESSION")) loadGlobalConfig(db);
+	loadBinConfig(db);
 	loadEnvConfig(db);
 	return (db);
 }
-
-#if	defined(linux) && defined(sparc)
-flushDcache()
-{
-	u32	i, j;
-#define	SZ	(17<<8)	/* 17KB buffer of ints */
-	u32	buf[SZ];
-
-	for (i = j = 0; i < SZ; i++) {
-		j += buf[i];
-	}
-	fchmod(-1, j);	/* use the result */
-}
-#endif
 
 /*
  * Return 0 for OK, -1 for error.
@@ -4209,7 +4214,7 @@ sccs_init(char *name, u32 flags)
 
 	signal(SIGPIPE, SIG_IGN); /* win32 platform does not have sigpipe */
 	if (sig_ignore() == 0) s->unblock = 1;
-	lease_check(s->proj, s);
+	lease_check(s->proj, O_RDONLY, s);
  out:
 	return (s);
 }
@@ -4322,16 +4327,6 @@ sccs_open(sccs *s, struct stat *sp)
 		s->fd = -1;
 		return (-1);
 	}
-#if	defined(linux) && defined(sparc)
-	/*
-	 * Sparc linux has an aliasing bug where the data gets
-	 * screwed up.  We can work around it by invalidating the
-	 * dache by stepping through it.
-	 */
-	else {
-		flushDcache();
-	}
-#endif
 	s->state |= S_SOPEN;
 	return (0);
 }
@@ -4352,9 +4347,6 @@ sccs_close(sccs *s)
 		return;
 	}
 	munmap(s->mmap, s->size);
-#if	defined(linux) && defined(sparc)
-	flushDcache();
-#endif
 	close(s->fd);
 	s->mmap = (caddr_t) -1;
 	s->fd = -1;
@@ -5446,7 +5438,7 @@ printstate(const serlist *state, const ser_t *slist)
 	return (0);
 }
 
-private void inline
+private inline void
 fnnlputs(char *buf, FILE *out)
 {
 	register char	*t = buf;
@@ -5467,7 +5459,7 @@ fnnlputs(char *buf, FILE *out)
 	}
 }
 
-private void inline
+private inline void
 fnlputs(char *buf, FILE *out)
 {
 	register char	*t = buf;
@@ -6792,13 +6784,6 @@ sccs_get(sccs *s, char *rev,
 		fprintf(stderr, "get: no pathname for %s\n", s->sfile);
 		return (-1);
 	}
-	if (LOGS_ONLY(s) && !(flags & (PRINT|GET_SKIPGET))) {
-		assert(BITKEEPER(s));
-		unless (streq("ChangeSet", s->tree->pathname) ||
-		    strneq("BitKeeper/etc/", s->tree->pathname, 14)) {
-			return (0);
-		}
-	}
 	unless (s->state & S_SOPEN) {
 		fprintf(stderr, "get: couldn't open %s\n", s->sfile);
 err:		if (i2) free(i2);
@@ -7181,7 +7166,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		s->state |= S_WARNED;
 		return (-1);
 	}
-	tmppat = aprintf("%s-%s", basenm(s->gfile), d->rev);
+	tmppat = aprintf("%s-%d", basenm(s->gfile), d->serial);
 	tmpfile = bktmp(0, tmppat);
 	free(tmppat);
 	popened = openOutput(s, encoding, printOut, &out);
@@ -7617,8 +7602,6 @@ delta_table(sccs *s, FILE *out, int willfix)
 		unless (s->tree->xflags) {
 			s->tree->flags |= D_XFLAGS;
 			s->tree->xflags = X_DEFAULT;
-			singleUser(s);
-			s->tree->xflags |= s->xflags & X_SINGLE;
 		}
 		/* for old binaries */
 		s->tree->xflags |= X_BITKEEPER|X_CSETMARKED;
@@ -7717,11 +7700,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 		*p++ = ' ';
 		p = fmts(p, d->sdate);
 		*p++ = ' ';
-		if (SINGLE(s)) {
-			p = fmts(p, s->tree->user);
-		} else {
-			p = fmts(p, d->user);
-		}
+		p = fmts(p, d->user);
 		*p++ = ' ';
 		p = fmtd(p, d->serial);
 		*p++ = ' ';
@@ -7771,12 +7750,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 		}
 
 		t = 0;
-		if (SINGLE(s)) {
-			if (d == s->tree) {
-				assert(s->tree->hostname);
-				t = s->tree->hostname;
-			}
-		} else if (d->hostname && !(d->flags & D_DUPHOST)) {
+		if (d->hostname && !(d->flags & D_DUPHOST)) {
 			t = d->hostname;
 		}
 		if (t) {
@@ -7897,7 +7871,6 @@ delta_table(sccs *s, FILE *out, int willfix)
 			fputmeta(s, buf, out);
 		}
 		if (d->flags & D_XFLAGS) {
-			if (s->state & S_FORCELOGGING) d->xflags |= X_LOGS_ONLY;
 			sprintf(buf, "\001cX0x%x\n", d->xflags);
 			fputmeta(s, buf, out);
 		}
@@ -9110,53 +9083,6 @@ binaryCheck(MMAP *m)
 	return (0);
 }
 
-private void
-singleUser(sccs *s)
-{
-	delta	*d;
-	char	*user, *host;
-	MDBM	*m;
-
-	unless (s && s->proj) return;
-	unless (m = proj_config(s->proj)) return;
-
-	user = mdbm_fetch_str(m, "single_user");
-	host = mdbm_fetch_str(m, "single_host");
-	unless (user && host) return;
-	d = s->tree;
-	free(d->user);
-	d->user = strdup(user);
-	if (d->hostname) free(d->hostname);
-	d->hostname = strdup(host);
-	d->flags &= ~D_DUPHOST;
-	if (d->kid) {
-		d = d->kid;
-		free(d->user);
-		d->user = strdup(user);
-		if (d->hostname && !(d->flags & D_DUPHOST)) free(d->hostname);
-		d->hostname = s->tree->hostname;
-		d->flags |= D_DUPHOST;
-	}
-	s->xflags |= X_SINGLE;
-}
-
-/*
- * If we are a single user config, make sure we use the right user/host.
- */
-void
-checkSingle(void)
-{
-	char	*t;
-
-	t = user_preference("single_user");
-	if (streq(t, "")) return;
-	safe_putenv("BK_USER=%s", t);
-	t = user_preference("single_host");
-	safe_putenv("BK_HOST=%s", t);
-	sccs_resetuser();
-	sccs_resethost();
-}
-
 /*
  * Check in initial sfile.
  *
@@ -9386,7 +9312,6 @@ out:		sccs_unlock(s, 'z');
 		unless (flags & DELTA_PATCH) {
 			first->flags |= D_XFLAGS;
 			first->xflags = s->xflags;
-			singleUser(s);
 		}
 		if (CSET(s)) {
 			unless (first->csetFile) {
@@ -9403,7 +9328,6 @@ out:		sccs_unlock(s, 'z');
 				if (c) first->csetFile = strdup(c);
 			}
 		}
-		first->xflags |= (s->xflags & X_SINGLE);
 	}
 
 	if (delta_table(s, sfile, 1)) {
@@ -9585,9 +9509,6 @@ checkOpenBranch(sccs *s, int flags)
 {
 	delta	*d, *m, *tip = 0, *symtip = 0;
 	int	ret = 0, tips = 0, symtips = 0;
-
-	/* Allow open branch for logging repository */
-	if (LOGS_ONLY(s)) return (0);
 
 	for (d = s->table; d; (d->flags &= ~D_RED), d = d->next) {
 		/*
@@ -10727,15 +10648,6 @@ sccs_admin(sccs *sc, delta *p, u32 flags, char *new_encp, char *new_compp,
 
 	new_enc = sccs_encoding(sc, new_encp, new_compp);
 	if (new_enc == -1) return (-1);
-	unless ((flags & ADMIN_FORCE) || CSET(sc) || bkcl(0)) {
-		static	int nocompress = -1;
-
-		/* this is for the test suite only */
-		if (nocompress == -1) nocompress = getenv("BK_NOCOMPRESS") != 0;
-		unless (nocompress && (sc->nextserial < 10)) {
-			new_enc |= E_GZIP;
-		}
-	}
 	debug((stderr, "new_enc is %d\n", new_enc));
 	GOODSCCS(sc);
 	unless (flags & (ADMIN_BK|ADMIN_FORMAT|ADMIN_GONE)) {
@@ -12015,11 +11927,8 @@ skip:
 	}
 
 	if (WANT('X')) {
-		if ((buf[2] == '0') && (buf[3] == 'x')) {
-			d->xflags = strtol(&buf[4], 0, 16);
-		} else {
-			d->xflags = atoi(&buf[2]);
-		}
+		d->xflags = strtol(&buf[2], 0, 0); /* hex or dec */
+		d->xflags &= ~X_SINGLE;
 		d->flags |= D_XFLAGS;
 		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
@@ -12338,8 +12247,6 @@ out:
 	}
 #define	OUT	{ error = -1; s->state |= S_WARNED; goto out; }
 #define	WARN	{ error = -1; goto out; }
-
-	unless (flags & DELTA_PATCH) checkSingle();
 
 	if (init) {
 		int	e;
@@ -12934,7 +12841,7 @@ doDiff(sccs *s, u32 flags, u32 kind, char *leftf, char *rightf,
 		c = atoi(columns);
 		for (i = 0; i < c/2 - 18; ) spaces[i++] = '=';
 		spaces[i] = 0;
-		sprintf(buf, "bk sdiff -w%s %s %s", columns, leftf, rightf);
+		sprintf(buf, "bk sdiff -w%s '%s' '%s'", columns, leftf, rightf);
 		diffs = popen(buf, "r");
 		if (!diffs) return (-1);
 		diffFile[0] = 0;
@@ -14047,12 +13954,6 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		if (flags & X_SCCS) {
 			if (comma) fs(","); fs("SCCS"); comma = 1;
 		}
-		if (flags & X_SINGLE) {
-			if (comma) fs(","); fs("SINGLE"); comma = 1;
-		}
-		if (flags & X_LOGS_ONLY) {
-			if (comma) fs(","); fs("LOGS_ONLY"); comma = 1;
-		}
 		if (flags & X_EOLN_NATIVE) {
 			if (comma) fs(","); fs("EOLN_NATIVE"); comma = 1;
 		}
@@ -14733,10 +14634,16 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	case KW_DIFFS: /* DIFFS */
-	case KW_UDIFFS: /* UDIFFS */ {
-		int	kind =
-		    (kwval->kwnum == KW_DIFFS) ? DF_DIFF : DF_UNIFIED;
+	case KW_DIFFS_U: /* DIFFS_U */
+	case KW_DIFFS_UP: /* DIFFS_UP */ {
+		int	kind;
 
+		switch (kwval->kwnum) {
+		    default:
+		    case KW_DIFFS:	kind = DF_DIFF; break;
+		    case KW_DIFFS_U:	kind = DF_UNIFIED; break;
+		    case KW_DIFFS_UP:	kind = DF_UNIFIED|DF_GNUp; break;
+		}
 		if (d == s->tree) return (nullVal);
 		if (out) {
 			sccs_diffs(s, d->rev, d->rev, SILENT, kind, out);
@@ -14745,8 +14652,10 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 			FILE	*f;
 			char	buf[BUFSIZ];
 			
-			cmd = aprintf("bk diffs -%shR%s '%s'",
-			    kind == DF_DIFF ? "" : "u", d->rev, s->gfile);
+			cmd = aprintf("bk diffs -%s%shR%s '%s'",
+			    kind == DF_DIFF ? "" : "u",
+			    kind & DF_GNUp ? "p" : "",
+			    d->rev, s->gfile);
 			unless (f = popen(cmd, "r")) {
 				free(cmd);
 				return (nullVal);
@@ -15289,13 +15198,7 @@ text:	if (d->flags & D_TEXT) {
 		sccs_pdelta(s, e, out);
 		fprintf(out, "\n");
 	}
-	if (d->flags & D_XFLAGS) {
-		if (flags & PRS_LOGGING) {
-			fprintf(out, "X 0x%x\n", X_LOGS_ONLY | d->xflags);
-		} else {
-			fprintf(out, "X 0x%x\n", d->xflags);
-		}
-	}
+	if (d->flags & D_XFLAGS) fprintf(out, "X 0x%x\n", d->xflags);
 	if (s->tree->zone) assert(d->zone);
 	fprintf(out, "------------------------------------------------\n");
 	return (0);
@@ -15602,7 +15505,7 @@ sccs_findtips(sccs *s, delta **a, delta **b)
 		if (!*a) {
 			*a = d;
 		} else {
-			assert(LOGS_ONLY(s) || !*b);
+			assert(!*b);
 			*b = d;
 			/* Could break but I like the error checking */
 		}
@@ -16824,7 +16727,6 @@ sparc_fclose(FILE *f)
 #else
 	ret = fclose(f);
 #endif
-	unless (getenv("BK_NO_SPARC_FLUSH")) flushDcache();
 	return (ret);
 }
 #endif

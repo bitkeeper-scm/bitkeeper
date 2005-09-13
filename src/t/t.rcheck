@@ -13,7 +13,7 @@
 unsetHttpProxy
 
 echo $N Create initial repository ...................................$NL
-no_logging project
+commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -27,7 +27,7 @@ bk ci $Q -i 'F!O#O$ B%A^R&RR(R)RR' bar.c h.h
 if [ ! -f SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ]; then echo failed to create history; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
-bk commit $S -a -yCset
+bk commit $S -yCset
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 bk level 3
@@ -52,7 +52,7 @@ bk rcheck bk://localhost:$P/$HERE/copy || { echo failed; exit 1; }
 rm -f $HERE/copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR'
 cd $HERE/project
 bk rcheck bk://localhost:$P/$HERE/copy |
-    grep -q 'Missing file (chk3) bk@free.bk' || {
+    grep -q 'Missing file (chk3) bk@bk_regression.bk' || {
 	echo failed with bad output
 	bk rcheck bk://localhost:$P/$HERE/copy 
 	exit 1
@@ -69,7 +69,7 @@ bk rcheck http://localhost:$P/$HERE/copy2 || { echo failed; exit 1; }
 # force a error
 rm -f $HERE/copy2/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR'
 bk rcheck http://localhost:$P/$HERE/copy2 |
-    grep -q 'Missing file (chk3) bk@free.bk' || {
+    grep -q 'Missing file (chk3) bk@bk_regression.bk' || {
 	echo failed with bad output
 	bk rcheck http://localhost:$P/$HERE/copy 
 	exit 1

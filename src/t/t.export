@@ -13,7 +13,7 @@
 # %K%
 
 echo $N Create initial repository ...................................$NL
-no_logging project
+commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -25,19 +25,19 @@ cd $HERE/project
 echo foo.c > foo.c
 echo bar.c > bar.c
 bk new $Q foo.c bar.c
-bk commit $S -a -SCSET1 -y'foo.c and bar.c'
+bk commit $S -SCSET1 -y'foo.c and bar.c'
 echo OK
 
 echo $N Create 2nd changeset with a change to bar.c .................$NL
 bk edit $Q bar.c
 echo bar.c version 2 > bar.c
 bk delta $Q -ywhatever bar.c
-bk commit $S -a -SCSET2 -y'bar.c v2'
+bk commit $S -SCSET2 -y'bar.c v2'
 echo OK
 
 echo $N Create 3rd changeset in which we bk rm foo.c ................$NL
 bk rm foo.c
-bk commit $S -a -y'rm foo.c'
+bk commit $S -y'rm foo.c'
 if [ -f SCCS/s.foo.c ]
 then	echo failed to remove foo.c; exit 1
 fi
@@ -52,7 +52,7 @@ echo OK
 
 echo $N Create 4th changeset in which we bk rm -d bar.c .............$NL
 bk rm -d bar.c
-bk commit $S -a -y'rm -d bar.c'
+bk commit $S -y'rm -d bar.c'
 if [ -f SCCS/s.bar.c ]
 then	echo failed to remove bar.c; exit 1
 fi
@@ -276,6 +276,44 @@ grep -q b/src/foo.h ../PATCH || {
 }
 echo OK
 
+echo $N Test unified/procedural diffs in a patch ....................$NL
+cat > lod.c <<EOF
+int
+lod_main(int ac, char **av)
+{
+	int	i;
+	int	j;
+	int	k;
+
+	/* This is some filler */
+	/* This is some filler */
+	/* This is some filler */
+	return (lodMain(ac, av, 0));
+}
+EOF
+bk new $Q lod.c
+bk commit $Q -ylod.c
+bk edit $Q lod.c
+sed 's/, 0//' < lod.c > XXX
+mv XXX lod.c
+bk delta $Q -ydiff lod.c
+bk commit $Q -ydiff
+bk export -tpatch -dup > PATCH
+grep -q '@@ lod_main(int' PATCH || {
+	echo failed to do procedural diffs
+	cat PATCH
+	exit 1
+}
+echo OK
+
+echo $N Test regular diffs in a patch ...............................$NL
+bk export -tpatch -d > PATCH
+grep -q '> 	return' PATCH || {
+	echo failed to do regular diffs
+	cat PATCH
+	exit 1
+}
+echo OK
 # XXX - todo, test case where a patch includes a rename
 
 # 2004-02-06-001 - error out if source does not exist

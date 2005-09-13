@@ -16,7 +16,7 @@ BK_YEAR4=1
 export BK_YEAR4
 
 echo $N Create initial repository ...................................$NL
-no_logging project
+commercial project
 cat <<EOF > file1
 The quick foxy
 brown
@@ -111,7 +111,7 @@ echo $N annotated grep -au ..........................................$NL
 bk grep -au bitkeeper subdir > GOT
 cat <<EOF > WANT
 bk:bitkeeper rocks!
-bk:bitkeeper rocks!
+joe:bitkeeper rocks!
 EOF
 checkfiles WANT GOT
 echo OK
@@ -120,7 +120,7 @@ echo $N annotated grep -abdru .......................................$NL
 bk grep -abdru bitkeeper subdir > GOT
 cat <<EOF > WANT
 old:1998/01/11:bk:1.1:bitkeeper rocks!
-user:2004/08/23:bk:1.1:bitkeeper rocks!
+user:2004/08/23:joe:1.1:bitkeeper rocks!
 EOF
 checkfiles WANT GOT
 echo OK
@@ -129,7 +129,7 @@ echo $N annotated grep -abdru -n ....................................$NL
 bk grep -n -abdru bitkeeper subdir > GOT
 cat <<EOF > WANT
 3:old:1998/01/11:bk:1.1:bitkeeper rocks!
-3:user:2004/08/23:bk:1.1:bitkeeper rocks!
+3:user:2004/08/23:joe:1.1:bitkeeper rocks!
 EOF
 checkfiles WANT GOT
 echo OK
@@ -138,7 +138,7 @@ echo $N annotated grep -adru -n -H ..................................$NL
 bk grep -n -H -adru bitkeeper subdir > GOT
 cat <<EOF > WANT
 subdir/old:3:1998/01/11:bk:1.1:bitkeeper rocks!
-subdir/user:3:2004/08/23:bk:1.1:bitkeeper rocks!
+subdir/user:3:2004/08/23:joe:1.1:bitkeeper rocks!
 EOF
 checkfiles WANT GOT
 echo OK
@@ -147,7 +147,7 @@ echo $N annotated grep -adru -H .....................................$NL
 bk grep -H -adru bitkeeper subdir > GOT
 cat <<EOF > WANT
 subdir/old:1998/01/11:bk:1.1:bitkeeper rocks!
-subdir/user:2004/08/23:bk:1.1:bitkeeper rocks!
+subdir/user:2004/08/23:joe:1.1:bitkeeper rocks!
 EOF
 checkfiles WANT GOT
 echo OK
@@ -156,7 +156,7 @@ echo $N annotated grep -adpru .......................................$NL
 bk grep -apdru bitkeeper subdir > GOT
 cat <<EOF > WANT
 subdir/old:1998/01/11:bk:1.1:bitkeeper rocks!
-subdir/user:2004/08/23:bk:1.1:bitkeeper rocks!
+subdir/user:2004/08/23:joe:1.1:bitkeeper rocks!
 EOF
 checkfiles WANT GOT
 echo OK
@@ -174,7 +174,7 @@ echo $N annotated grep -aub .........................................$NL
 bk grep -aub bitkeeper subdir > GOT
 cat <<EOF > WANT
 old:bk:bitkeeper rocks!
-user:bk:bitkeeper rocks!
+user:joe:bitkeeper rocks!
 EOF
 checkfiles WANT GOT
 echo OK
@@ -183,7 +183,7 @@ echo $N annotated grep -adpru, recursive ............................$NL
 bk -r grep -apdru bitkeeper > GOT
 cat <<EOF > WANT
 subdir/old:1998/01/11:bk:1.1:bitkeeper rocks!
-subdir/user:2004/08/23:bk:1.1:bitkeeper rocks!
+subdir/user:2004/08/23:joe:1.1:bitkeeper rocks!
 EOF
 checkfiles WANT GOT
 echo OK
@@ -192,7 +192,7 @@ echo $N annotated grep -i -adpru, recursive .........................$NL
 bk -Ur grep -i -apdru BITKEEPER > GOT
 cat <<EOF > WANT
 subdir/old:1998/01/11:bk:1.1:bitkeeper rocks!
-subdir/user:2004/08/23:bk:1.1:bitkeeper rocks!
+subdir/user:2004/08/23:joe:1.1:bitkeeper rocks!
 EOF
 checkfiles WANT GOT
 echo OK

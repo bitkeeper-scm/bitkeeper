@@ -14,7 +14,7 @@
 export BK_YEAR2=YES
 
 echo $N Test import of a plain file .................................$NL
-no_logging project
+commercial project
 cd $HERE
 mkdir -p import_dir/src
 echo foo > X
@@ -334,7 +334,7 @@ then
 #----------------------------------------------------
 echo $N Test import of a symbolic link ..............................$NL
 cd $HERE
-no_logging symlink
+commercial symlink
 cd $HERE
 mkdir -p symlink/src
 echo foo > import_dir/src/foo.c
@@ -402,7 +402,7 @@ fi	# Win32
 
 echo $N Verify checkout:get with plain import .......................$NL
 cd $HERE
-no_logging projc
+commercial projc
 bk edit $Q BitKeeper/etc/config
 echo checkout:get >> BitKeeper/etc/config
 cd $HERE
@@ -426,13 +426,12 @@ rm -rf import1 import2 projc
 echo OK
 
 # need license to work outside of a repository
-BK_CONFIG="license:$BKL_P;licsign1:$BKL_P1;licsign2:$BKL_P2;licsign3:$BKL_P3"
+BK_CONFIG="license:$BKL_PRO;licsign1:$BKL_P1;licsign2:$BKL_P2;licsign3:$BKL_P3"
 export BK_CONFIG
 
 echo $N Test import of an sccs file .................................$NL
 cd $HERE
-echo "logging: none" > c
-echo "license: $BKL_P" >> c
+echo "license: $BKL_PRO" > c
 echo "licsign1: $BKL_P1" >> c
 echo "licsign2: $BKL_P2" >> c
 echo "licsign3: $BKL_P3" >> c
@@ -668,8 +667,7 @@ bk edit $Q co_edit_foo
 echo again >> co_edit_foo
 bk delta $Q -yagain co_edit_foo
 # checkout: edit repo
-echo "logging: none" > c
-echo "license: $BKL_P" >> c
+echo "license: $BKL_PRO" > c
 echo "licsign1: $BKL_P1" >> c
 echo "licsign2: $BKL_P2" >> c
 echo "licsign3: $BKL_P3" >> c
@@ -743,55 +741,15 @@ trap '' 0
 cd $HERE
 rm -rf project A B
 echo $N Create initial repository ...................................$NL
-echo "logging: logging@openlogging.org" > $HERE/c
-echo "logging_ok: a@b" >> $HERE/c
-echo "logging_ok: b@b" >> $HERE/c
-echo "logging_ok: c@b" >> $HERE/c
-echo "logging_ok: d@b" >> $HERE/c
-echo "description: BitKeeper Test repository" >> $HERE/c
-echo "email:		nobody@nowhere.bk" >> $HERE/c
-BK_LOGGING_OK=YES bk setup -f -c$HERE/c project
-cd project 
-touch BitKeeper/etc/SCCS/x.marked
+commercial project
 ls > LS
 bk new $Q LS
-bk _loggingaccepted
 bk commit $Q -ywhatever 
-echo OK
-
-
-echo $N Import a patch which deletes the logging_ok file ............$NL
-bk export -S $HERE/A
-bk export -S $HERE/B
-cd $HERE
-rm -f B/BitKeeper/etc/logging_ok
-bk diff -Nur A B > P
-rm -rf SAVE
-cp -rp project SAVE
-unset BK_GUI
-echo no | bk import $Q -tpatch P project > OUT 2>&1
-grep -q 'BitKeeper is aborting this commit' OUT || {
-	echo failed to produce error message
-	cat OUT
-	exit 1
-}
-cd $HERE
-echo yes | bk import -tpatch P SAVE > OUT 2>&1
-grep -q 'Creating changeset for P' OUT || {
-	echo failed to produce OK message
-	cat OUT
-	exit 1
-}
-cd SAVE/BitKeeper
-test -f etc/SCCS/s.logging_ok || {
-	echo failed to preserve logging ok file
-	exit 1
-}
 echo OK
 
 echo $N Import a patch into a tree with versioned .rej files ........$NL
 cd $HERE
-no_logging rej
+commercial rej
 ls > foo.rej
 cat > data <<EOF
 A
@@ -846,7 +804,7 @@ echo OK
 
 echo $N Catch read only destinations ................................$NL
 cd $HERE
-no_logging dest
+commercial dest
 chmod 555 $HERE/dest
 mkdir $HERE/data
 cd $HERE/data
@@ -871,7 +829,7 @@ TESTDATA=/home/bk/test_data
 test -d $TESTDATA/lmbench && {
 echo $N Make sure that traditional RCS imports works ................$NL
 cd $HERE
-no_logging import-lmbench
+commercial import-lmbench
 bk import $Q -ftRCS $TESTDATA/lmbench . || exit 1
 test -f results/SCCS/s.Makefile || exit 1
 echo OK
@@ -883,7 +841,7 @@ then #-----------------------------------------------------------------
 test -d $TESTDATA/import-RCS+x && {
 echo $N Make import w/ undos does not lose execute bits .............$NL
 cd $HERE
-no_logging import-RCS+x
+commercial import-RCS+x
 bk import -quftRCS $TESTDATA/import-RCS+x .
 bk get -q 
 test -x ixadm.cgi || {
@@ -911,7 +869,7 @@ test -d $TESTDATA/import-CVS.1 && {
 
 echo $N Make sure that import handles Attic files ...................$NL
 cd $HERE
-no_logging import-CVS.1
+commercial import-CVS.1
 bk import -quftCVS $TESTDATA/import-CVS.1 .
 bk get -q
 P1=BitKeeper/deleted/SCCS/s..del-pkginfo*
@@ -944,7 +902,7 @@ echo OK
 echo $N Make sure that import -tCVS works with checkout:get .........$NL
 cd $HERE
 rm -rf import-CVS.1
-no_logging import-CVS.1
+commercial import-CVS.1
 bk edit $Q BitKeeper/etc/config
 echo checkout:get >> BitKeeper/etc/config
 bk import -quftCVS $TESTDATA/import-CVS.1 .
@@ -959,7 +917,7 @@ echo OK
 test -d $TESTDATA/import_data && {
 echo $N Multiple parallel imports ...................................$NL
 cd $HERE
-no_logging import
+commercial import
 cd ..
 LIST="1 2 3 4 5 6"
 for i in $LIST

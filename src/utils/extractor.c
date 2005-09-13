@@ -29,25 +29,28 @@ extern unsigned int sfio_size;
 extern unsigned char sfio_data[];
 extern unsigned int data_size;
 extern unsigned char data_data[];
+extern unsigned int keys_size;
+extern unsigned char keys_data[];
 
+void	cd(char *dir);
+void	chomp(char *buf);
 void	extract(char *, char *, u32, char *);
-char	*findtmp(void);
+char*	findtmp(void);
+char*	getdest(void);
 int	isdir(char*);
 void	rmTree(char *dir);
-char	*getdest(void);
+void	symlinks(void);
 
 int
 main(int ac, char **av)
 {
-	char	*p, *dest = 0, *tmp = findtmp();
 	int	i;
-	int	rc = 0;
+	int	rc = 0, dolinks = 0, upgrade = 0;
 	pid_t	pid = getpid();
 	FILE	*f;
-	int	dolinks = 0;
-	int	upgrade = 0;
-	char	tmpdir[MAXPATH];
-	char	buf[MAXPATH];
+	char	*p;
+	char	*dest = 0, *tmp = findtmp();
+	char	tmpdir[MAXPATH], buf[MAXPATH], pwd[MAXPATH];
 #ifndef	WIN32
 	char	*bindir = "/usr/libexec/bitkeeper";
 #else
@@ -70,25 +73,22 @@ main(int ac, char **av)
 	setbuf(stderr, 0);
 	setbuf(stdout, 0);
 
+	getcwd(pwd, sizeof(pwd));
+
 	/*
 	 * If they want to upgrade, go find that dir before we fix the path.
 	 */
 	if (av[1] && (streq(av[1], "-u") || streq(av[1], "--upgrade"))) {
 		upgrade = 1;
 		unless (dest = getdest()) dest = bindir;
-		if (chdir(tmp)) {
-			perror(tmp);
-			exit(1);
-		}
+		cd(tmp);
 	} else if (av[1] && (av[1][0] != '-')) {
 #ifdef	WIN32
 		unless ((av[1][1] ==':') || (av[1][0] == '/')) {
 #else
 		unless (av[1][0] == '/') {
 #endif
-			getcwd(buf, sizeof(buf));
-			strcat(buf, "/");
-			strcat(buf, av[1]);
+			sprintf(buf, "%s/%s", pwd, av[1]);
 			dest = strdup(buf);
 		} else {
 			dest = av[1];
@@ -144,10 +144,7 @@ main(int ac, char **av)
 		perror(tmpdir);
 		exit(1);
 	}
-	if (chdir(tmpdir)) {
-		perror(tmpdir);
-		exit(1);
-	}
+	cd(tmpdir);
 
 	/*
 	 * Add this directory and BK directory to the path.
@@ -165,6 +162,7 @@ main(int ac, char **av)
 	/* The name "sfio.exe" should work on all platforms */
 	extract("sfio.exe", sfio_data, sfio_size, tmpdir);
 	extract("sfioball", data_data, data_size, tmpdir);
+	extract("config", keys_data, keys_size, tmpdir);
 
 	/* Unpack the sfio file, this creates ./bitkeeper/ */
 #ifdef	WIN32
@@ -176,7 +174,46 @@ main(int ac, char **av)
 		perror("sfio");
 		exit(1);
 	}
+	symlinks();
 	
+	/*
+	 * See if we have an embedded license and move it in place
+	 * but don't overwrite an existing config file.
+	 * If we find a license in the old dir, set BK_CONFIG with it.
+	 */
+	sprintf(buf, "%s/config", dest);
+	unless (upgrade && exists(buf)) {
+		system("bk _eula -v < config > bitkeeper/config 2>"
+		    DEVNULL_WR);
+		unlink("config");
+		/*
+		 * If that didn't work, try looking in the original directory.
+		 */
+		unless (size("bitkeeper/config") > 0) {
+			char	buf[MAXPATH*2];
+			char	*config = 0;
+
+			unlink("bitkeeper/config");
+			cd(pwd);
+			sprintf(buf, "bk _preference|bk _eula -v 2>"DEVNULL_WR);
+			f = popen(buf, "r");
+			while (fgets(buf, sizeof(buf), f)) {
+				chomp(buf);
+				if (strneq("license:", buf, 8)) {
+					config = malloc(2000);
+					sprintf(config, "BK_CONFIG=%s;", buf);
+					continue;
+				}
+				unless (strneq("licsign", buf, 7)) continue;
+				strcat(config, buf);
+				strcat(config, ";");
+			}
+			pclose(f);
+			if (config) putenv(config);
+			cd(tmpdir);
+		}
+	}
+
 #ifdef	WIN32
 	mkdir("bitkeeper/gnu/tmp", 0777);
 #endif
@@ -216,16 +253,29 @@ main(int ac, char **av)
 		 * because the native one on win98 does not return the
 		 * correct exit code
 		 */
+		cd(pwd);		/* so relative paths work */
 		rc = system(buf);
+		cd(tmpdir);
+			
 	}
 
 	/* Clean up your room, kids. */
 	unless (getenv("BK_SAVE_INSTALL")) {
-		chdir("..");
+		cd("..");
 		fprintf(stderr,
 		    "Cleaning up temp files in %s%u ...\n", TMP, pid);
 		sprintf(buf, "%s%u", TMP, pid);
-		rmTree(buf); /* careful */
+		/*
+		 * Sometimes windows has processes sitting in here and we
+		 * have to wait for them to go away.
+		 * XXX - what processes?  Why are they here?
+		 */
+		for (i = 0; i < 10; ) {
+			/* careful */
+			rmTree(buf);
+			unless (isdir(buf)) break;
+			sleep(++i);
+		}
 	}
 
 	/*
@@ -241,6 +291,47 @@ main(int ac, char **av)
 	}
 #endif
 	exit(0);
+}
+
+void
+chomp(char *buf)
+{
+	char	*p;
+
+	if ((p = strchr(buf, '\r')) || (p = strchr(buf, '\n'))) *p = 0;
+}
+
+/*
+ * If we have symlinks file then emulate:
+ * while read a b; do ln -s $a $b; done < symlinks
+ */
+void
+symlinks(void)
+{
+	FILE	*f;
+	char	*p;
+	char	buf[MAXPATH*2];
+
+	unless (size("bitkeeper/symlinks") > 0) return;
+	cd("bitkeeper");
+	unless (f = fopen("symlinks", "r")) goto out;
+	while (fgets(buf, sizeof(buf), f)) {
+		chomp(buf);
+		unless (p = strchr(buf, '|')) goto out;
+		*p++ = 0;
+		symlink(buf, p);
+	}
+out:	fclose(f);
+	cd("..");
+}
+
+void
+cd(char *dir)
+{
+	if (chdir(dir)) {
+		perror(dir);
+		exit(1);
+	}
 }
 
 void
@@ -274,6 +365,8 @@ extract(char *name, char *data, u32 size, char *dir)
 	}
 	close(fd);
 	gzclose(gz);
+	sprintf(buf, "%s/%s.zz", dir, name);
+	unlink(buf);
 }
 
 char *
@@ -366,6 +459,23 @@ findtmp(void)
 #else
 	return ("/tmp");
 #endif
+}
+
+int
+size(char *path)
+{
+	struct	stat sbuf;
+
+	if (stat(path, &sbuf)) return (0);
+	return ((int)sbuf.st_size);
+}
+
+int
+exists(char *path)
+{
+	struct	stat sbuf;
+
+	return (stat(path, &sbuf) == 0);
 }
 
 int

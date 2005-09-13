@@ -14,20 +14,7 @@
 # %K%
 
 echo $N Create initial repository ...................................$NL
-cat > c <<EOF
-logging: lm@bitmover.com
-description: whatever
-email: lm@bitmover.com
-eoln: unix
-keyword: sccs
-logging_ask: no
-license: $BKL_P
-licsign1: $BKL_P1
-licsign2: $BKL_P2
-licsign3: $BKL_P3
-EOF
-BK_USER=joe bk setup -cc -f project
-cd project
+commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -46,7 +33,7 @@ if [ ! -f d3/sub2/SCCS/s.a ]; then echo failed to create files; exit 1; fi
 echo OK
 
 echo $N Commit the data .............................................$NL
-bk commit $S -a -yCset
+bk commit $S -yCset
 if [ `bk sfiles -pC | wc -l` -ne 0 ];
 then	echo failed to commit all files; exit 1; fi
 echo OK
@@ -57,7 +44,7 @@ bk sfiles -g | grep -v ChangeSet | grep -v BitKeeper | while read x
 do	echo more data >> $x
 done
 bk -r ci $Q -ycset2
-bk commit $S -a -yCset2
+bk commit $S -yCset2
 if [ `bk sfiles -pC | wc -l` -ne 0 ];
 then	echo failed to commit all files; exit 1; fi
 echo OK
@@ -68,7 +55,7 @@ bk sfiles -g | grep -v ChangeSet | grep -v BitKeeper | while read x
 do	echo more data >> $x
 done
 bk -r ci $Q -ycset3
-bk commit $S -a -yCset3
+bk commit $S -yCset3
 if [ `bk sfiles -pC | wc -l` -ne 0 ];
 then	echo failed to commit all files; exit 1; fi
 echo OK
@@ -84,7 +71,7 @@ bk sfiles -g | grep -v ChangeSet | grep -v BitKeeper | while read x
 do	echo more data >> $x
 done
 bk -r ci $Q -ycset4
-bk commit $S -a -yCset4
+bk commit $S -yCset4
 if [ `bk sfiles -pC | wc -l` -ne 0 ];
 then	echo failed to commit all files; exit 1; fi
 echo OK
@@ -359,11 +346,13 @@ TESTDATA=/home/bk/test_data
 test -d $TESTDATA/cset-gzipped && {
 echo $N Make sure check works with compressed ChangeSet files........$NL
 cd $HERE
+BK_CONFIG="license:$BKL_PRO;licsign1:$BKL_P1$BKL_P2$BKL_P3" \
 bk clone $Q $TESTDATA/cset-gzipped p || {
 	echo "failed"
 	exit 1
 }
 cd p
+BK_CONFIG="license:$BKL_PRO;licsign1:$BKL_P1$BKL_P2$BKL_P3" \
 bk -r check -a || {
 	echo "failed"
 	exit 1
@@ -406,7 +395,7 @@ echo OK
 
 echo $N bk check should detect copied sfile .........................$NL
 cd $HERE
-no_logging proj2
+commercial proj2
 echo "hi" > foo
 bk new $Q foo
 bk commit $Q -yfoo
@@ -416,7 +405,7 @@ grep -q "Is one of these files copied?" $HERE/out || { echo failed; exit 1; }
 echo OK
 
 echo $N bk check with partial_check should notice path conflicts ....$NL
-no_logging proj3
+commercial proj3
 bk edit $Q BitKeeper/etc/config
 echo partial_check:yes >> BitKeeper/etc/config
 echo hi > foo

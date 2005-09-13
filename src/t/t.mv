@@ -13,7 +13,7 @@
 # Copyright (c) 2002 Andrew chang
 # %K%
 
-no_logging project
+commercial project
 echo $N Test bk mvdir ...............................................$NL
 mkdir foo
 cd foo

@@ -51,7 +51,7 @@ send_check_msg(remote *r)
 	bktmp(buf, "check");
 	f = fopen(buf, "w");
 	assert(f);
-	sendEnv(f, NULL, r, 1);
+	sendEnv(f, 0, r, SENDENV_NOREPO);
 	if (r->path) add_cd_command(f, r);
 	fprintf(f, "check\n");
 	fclose(f);

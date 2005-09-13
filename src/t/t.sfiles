@@ -14,7 +14,7 @@ CFS=@
 echo $N Setup .......................................................$NL
 set -e
 trap 'echo failed' 0
-no_logging project
+commercial project
 mkdir bar
 mkdir bar/blech
 touch foo
@@ -443,7 +443,6 @@ u--G-- BitKeeper/etc/SCCS/s.config
 u---n- SCCS/s.bad
 -----D BitKeeper
 -----D BitKeeper/deleted
------D BitKeeper/etc/.master
 -----D BitKeeper/log
 -----D BitKeeper/tmp
 -----D bar/not

@@ -16,7 +16,7 @@
 set -e
 
 echo $N Create initial repository ...................................$NL
-no_logging project
+commercial project
 mkdir src
 cd src
 echo foo > foo.c

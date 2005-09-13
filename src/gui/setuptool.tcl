@@ -88,14 +88,21 @@ proc main {} \
 		}
 	}
 
+	# this all deals with user acceptance of a particular license,
+	# which occurs on different steps for different license types
 	bind . <<WizNextStep>> {
 		switch -exact -- [. cget -step] {
-			LicenseType	{recomputePath}
-			EndUserLicense	{acceptLicense}
+			EndUserLicense	{exec bk _eula -a}
 			LicenseKey      {
 				if {![checkLicense]} {
 					break
 				}
+				getLicenseData
+				set path "commercial"
+				if {$::licenseInfo(text) ne ""} {
+					append path "-lic"
+				}
+				. configure -path $path
 			}
 		}
 	}
@@ -110,8 +117,6 @@ proc app_init {} \
 	global option
 	global readonly
 	global wizData
-
-	getLicenseData
 
 	getConfig "setup"
 
@@ -135,20 +140,13 @@ proc app_init {} \
 	option add *Text*font             $gc(setup.fixedFont)   startupFile
 	option add *Scrollbar.width       $gc(setup.scrollWidth) startupFile
 
-	# These are base-level defaults. Some will get overridden wth
-	# something more useful (eg: single_host will be the hostname),
-	# but I find it useful to go ahead and make sure everthing is
-	# defined, if only to an empty string. Note that not all of these
-	# will end up in the config file, for whatever that's worth.
+	# These are base-level defaults. Some will get overridden.
+	# All of these will end up in the config file.
 	array set wizData {
 		autofix       "yes"
-		cell          ""
 		checkout      "none"
-		city          ""
 		closeOnCreate 1
 		compression   "gzip"
-		country       ""
-		hours         ""
 		keyword,sccs  0
 		keyword,rcs   0
 		keyword,expand1 0
@@ -159,15 +157,8 @@ proc app_init {} \
 		licsign2      ""
 		licsign3      ""
 		name          ""
-		pager         ""
-		phone         ""
-		postal        ""
 		repository    ""
-		state         ""
 	}
-	set wizData(single_user) $bkuser
-	set wizData(single_host) [exec bk gethost]
-	set wizData(email) ${wizData(single_user)}@$wizData(single_host)
 
 	# Override those with the config.template
 	# If we want to modify this code to not only create repos but
@@ -288,7 +279,7 @@ proc widgets {} \
 
 
 	set common {
-		RepoInfo ContactInfo 
+		RepoInfo
 		KeywordExpansion CheckoutMode 
 		Compression Autofix Finish
 	}
@@ -307,23 +298,10 @@ proc widgets {} \
 		set common [lreplace $common $i $i]
 	}
 
-	# each type of license (commercial, openlogging, singleuser) has
-	# two paths: one where the license is presented and one not. We'll
-	# pick the appropriate path at runtime
 	. add path commercial-lic  \
-	    -steps [concat Begin LicenseType EndUserLicense LicenseKey $common]
+	    -steps [concat Begin LicenseKey EndUserLicense $common]
 	. add path commercial \
-	    -steps [concat Begin LicenseType LicenseKey $common]
-
-	. add path openlogging-lic \
-	    -steps [concat Begin LicenseType EndUserLicense $common]
-	. add path openlogging \
-	    -steps [concat Begin LicenseType $common]
-
-	. add path singleuser-lic  \
-	    -steps [concat Begin LicenseType EndUserLicense UserHostInfo $common]
-	. add path singleuser  \
-	    -steps [concat Begin LicenseType UserHostInfo $common]
+	    -steps [concat Begin LicenseKey $common]
 
 	. add path BadUser -steps BadUser
 
@@ -389,12 +367,7 @@ proc widgets {} \
 		pack $w.vsb -side right -fill y -expand n
 		pack $w.text -side left -fill both -expand y
 
-		if {$wizData(licenseType) == "commercial"} {
-			set license $licenseInfo(text,bkcl)
-		} else {
-			set license $licenseInfo(text,bkl)
-		}
-		$w.text insert end $license
+		$w.text insert end $licenseInfo(text)
 		$w.text configure -state disabled
 
 		if {$wizData(licenseAccept) == 1} {
@@ -404,91 +377,6 @@ proc widgets {} \
 		}
 
 	}
-
-	#-----------------------------------------------------------------------
-	. add step LicenseType \
-	    -title "License Information" \
-	    -description [wrap [getmsg setuptool_step_LicenseType]]
-
-	. stepconfigure LicenseType -body {
-
-		global wizData readonly widgets
-
-		$this configure -defaultbutton next
-
-		set w [$this info workarea]
-		set widgets(LicenseType) $w
-
-		radiobutton $w.paidrb \
-		    -text "Commercial" \
-		    -value "commercial" \
-		    -variable wizData(licenseType) \
-		    -command {. configure -path commercial-lic}
-
-		button $w.paidmi -text "More info" \
-		    -bd 1 \
-		    -command [list moreInfo commercial]
-
-		radiobutton $w.singlerb \
-		    -text "Single User / Single Host" \
-		    -value "singleuser" \
-		    -variable wizData(licenseType) \
-		    -command {. configure -path singleuser-lic}
-
-		button $w.singlemi -text "More info" -bd 1 \
-		    -command [list moreInfo singleuser]
-
-		radiobutton $w.olrb \
-		    -text "Open Logging" \
-		    -value "openlogging" \
-		    -variable wizData(licenseType) \
-		    -command {. configure -path openlogging-lic}
-
-		button $w.olmi -text "More info" -bd 1 \
-		    -command [list moreInfo openlogging]
-		
-		grid $w.paidrb -row 0 -column 0 -sticky w
-		grid $w.singlerb     -row 1 -column 0 -sticky w
-		grid $w.olrb -row 2 -column 0 -sticky w
-
-		grid $w.paidmi  -row 0 -column 1 -padx 8
-		grid $w.singlemi      -row 1 -column 1 -padx 8
-		grid $w.olmi -row 2 -column 1 -padx 8
-
-		# this adds invisible rows and columns to take up the slack
-		grid columnconfigure $w 2 -weight 1
-		grid rowconfigure $w 3 -weight 1
-
-		if {[info exists readonly(licenseType)]} {
-			switch -exact -- $wizData(licenseType) {
-				commercial {
-					$w.paidrb configure -state normal
-					$w.singlerb configure -state disabled
-					$w.olrb configure -state disabled
-					$w.paidmi configure -state normal
-					$w.singlemi configure -state disabled
-					$w.olmi configure -state disabled
-				}
-				singleuser {
-					$w.paidrb configure -state disabled
-					$w.singlerb configure -state normal
-					$w.olrb configure -state disabled
-					$w.paidmi configure -state disabled
-					$w.singlemi configure -state normal
-					$w.olmi configure -state disabled
-				}
-				openlogging {
-					$w.paidrb configure -state disabled
-					$w.singlerb configure -state disabled
-					$w.olrb configure -state normal
-					$w.paidmi configure -state disabled
-					$w.singlemi configure -state disabled
-					$w.olmi configure -state normal
-				}
-			}
-		}
-	}
-
 
 	#-----------------------------------------------------------------------
 	. add step LicenseKey \
@@ -557,49 +445,6 @@ proc widgets {} \
 	}
 
 	#-----------------------------------------------------------------------
-	. add step UserHostInfo \
-	    -title " Username / Hostname" \
-	    -description [wrap [getmsg setuptool_step_UserHostInfo]]
-
-	. stepconfigure UserHostInfo -body {
-		global wizData gc widgets
-
-		$this configure -defaultbutton next
-
-		# running the validate command will set the wizard buttons to 
-		# the proper state
-		validate userhost
-
-		trace variable wizData(single_user) w {validate user/host}
-		trace variable wizData(single_host) w {validate user/host}
-
-		set w [$this info workarea]
-		set widgets(UserHostInfo) $w
-
-		label $w.usernameLabel -text "Username:"
-		label $w.hostnameLabel -text "Host:"
-		entry $w.usernameEntry \
-		    -textvariable wizData(single_user) \
-		    -background $gc(setup.mandatoryColor)
-		entry $w.hostnameEntry \
-		    -textvariable wizData(single_host) \
-		    -background $gc(setup.mandatoryColor)
-
-		grid $w.usernameLabel -row 0 -column 0 -sticky e
-		grid $w.usernameEntry -row 0 -column 1 -sticky ew
-		grid $w.hostnameLabel -row 1 -column 0 -sticky e
-		grid $w.hostnameEntry -row 1 -column 1 -sticky ew
-		
-		grid rowconfigure $w 0 -weight 0
-		grid rowconfigure $w 1 -weight 0
-		grid rowconfigure $w 2 -weight 1
-		grid columnconfigure $w 0 -weight 0
-		grid columnconfigure $w 1 -weight 1
-
-		after idle [list focusEntry $w.usernameEntry]
-	}
-
-	#-----------------------------------------------------------------------
 	. add step RepoInfo \
 	    -title "Repository Information" \
 	    -description [wrap [getmsg setuptool_step_RepoInfo]]
@@ -613,81 +458,33 @@ proc widgets {} \
 		set w [$this info workarea]
 		set widgets(RepoInfo) $w
 
-		trace variable wizData(description) w {validate repoInfo}
-		trace variable wizData(email) w {validate repoInfo}
-		trace variable wizData(category) w {validate repoInfo}
 		trace variable wizData(repository) w {validate repoInfo}
 
 		label $w.repoPathLabel -text "Repository Path:"
 		label $w.descLabel     -text "Description:"
+		label $w.nameLabel     -text "Contact name:"
 		label $w.emailLabel    -text "Contact email address:"
-		label $w.categoryLabel -text "Category:"
 		entry $w.repoPathEntry \
 		    -textvariable wizData(repository) \
 		    -background $gc(setup.mandatoryColor)
 		entry $w.descEntry     \
-		    -textvariable wizData(description) \
-		    -background $gc(setup.mandatoryColor)
+		    -textvariable wizData(description)
+		entry $w.nameEntry     \
+		    -textvariable wizData(name)
 		entry $w.emailEntry    \
-		    -textvariable wizData(email) \
-		    -background $gc(setup.mandatoryColor)
-		entry $w.categoryEntry \
-		    -textvariable wizData(category) \
-		    -background $gc(setup.mandatoryColor)
-		menubutton $w.categoryMenuButton \
-		    -takefocus 1 \
-		    -highlightthickness 1 \
-		    -borderwidth 1 \
-		    -relief raised \
-		    -text "Select" \
-		    -width 8 \
-		    -indicatoron 1 \
-		    -menu $w.categoryMenuButton.menu
-		menu $w.categoryMenuButton.menu -tearoff 0
+		    -textvariable wizData(email)
 		button $w.moreInfoRepoInfo -bd 1 \
 		    -text "More info" \
 		    -command [list moreInfo repoinfo]
-
-		set categories [split [getmsg setup_categories] \n]
-		set menu $w.categoryMenuButton.menu
-		foreach category $categories {
-			set i [string first / $category]
-			set group [string range $category 0 [incr i -1]]
-			set subgroup [string range $category [incr i 2] end]
-			
-			if {$group == ""} {
-				# this is a top-level category
-				$w.categoryMenuButton.menu add command \
-				    -label $category \
-				    -command \
-				    [list set ::wizData(category) $category]
-			} else {
-				# strip out whitspace; tk's menu system has 
-				# problems with menunames that have spaces in 
-				# them
-				regsub "\[ \t\]+" $group {} tmp
-				set submenu $menu.group$tmp
-				if {![winfo exists $submenu]} {
-					menu $submenu -tearoff 0
-					$menu add cascade -label $group \
-					    -menu $submenu
-				}
-				$submenu add command \
-				    -label $subgroup \
-				    -command \
-				    [list set ::wizData(category) $category]
-			}
-		}
 
 		grid $w.repoPathLabel -row 0 -column 0 -sticky e
 		grid $w.repoPathEntry -row 0 -column 1 -sticky ew -columnspan 2 
 		grid $w.descLabel     -row 1 -column 0 -sticky e
 		grid $w.descEntry     -row 1 -column 1 -sticky ew -columnspan 2 
-		grid $w.emailLabel    -row 2 -column 0 -sticky e
-		grid $w.emailEntry    -row 2 -column 1 -sticky ew -columnspan 2 
-		grid $w.categoryLabel -row 3 -column 0 -sticky e
-		grid $w.categoryEntry -row 3 -column 1 -sticky ew
-		grid $w.categoryMenuButton -row 3 -column 2 -sticky ew
+		grid $w.nameLabel     -row 2 -column 0 -sticky e
+		grid $w.nameEntry     -row 2 -column 1 -sticky ew -columnspan 2
+		grid $w.emailLabel    -row 3 -column 0 -sticky e
+		grid $w.emailEntry    -row 3 -column 1 -sticky ew -columnspan 2 
 		grid $w.moreInfoRepoInfo -row 4 -column 0 -sticky e -pady 8
 
 		grid columnconfigure $w 0 -weight 0
@@ -715,82 +512,6 @@ proc widgets {} \
 		# the proper state
 		validate repoInfo
 
-	}
-
-	#-----------------------------------------------------------------------
-	. add step ContactInfo \
-	    -title "Contact Information" \
-	    -description [wrap [getmsg setuptool_step_ContactInfo]]
-
-	. stepconfigure ContactInfo -body {
-		global wizData widgets
-
-		$this configure -defaultbutton next
-
-		set w [$this info workarea]
-		set widgets(ContactInfo) $w
-
-		label $w.nameLabel    -text "Name:"
-		label $w.streetLabel  -text "Street:"
-		label $w.cityLabel    -text "City:"
-		label $w.stateLabel   -text "State:"
-		label $w.postalLabel  -text "Postal code:"
-		label $w.countryLabel -text "Country:"
-		label $w.phoneLabel   -text "Work Phone:"
-		label $w.cellLabel    -text "Cell Phone:"
-		label $w.pagerLabel   -text "Pager:"
-		label $w.hoursLabel   -text "Best Hours to Contact:"
-
-		entry $w.nameEntry    -textvariable wizData(name)
-		entry $w.streetEntry  -textvariable wizData(street)
-		entry $w.cityEntry    -textvariable wizData(city)    -width 20
-		entry $w.stateEntry   -textvariable wizData(state)   -width 3
-		entry $w.postalEntry  -textvariable wizData(postal)  -width 11
-		entry $w.countryEntry -textvariable wizData(country) -width 11
-		entry $w.phoneEntry   -textvariable wizData(phone) 
-		entry $w.cellEntry    -textvariable wizData(cell) 
-		entry $w.pagerEntry   -textvariable wizData(pager) 
-		entry $w.hoursEntry   -textvariable wizData(hours) 
-
-		grid $w.nameLabel    -row 0 -column 0 -sticky e
-		grid $w.nameEntry    -row 0 -column 1 -sticky ew -columnspan 6
-		grid $w.streetLabel  -row 1 -column 0 -sticky e
-		grid $w.streetEntry  -row 1 -column 1 -sticky ew -columnspan 6
-		grid $w.cityLabel    -row 2 -column 0 -sticky e
-		grid $w.cityEntry    -row 2 -column 1 -sticky ew -columnspan 6
-		grid $w.stateLabel   -row 3 -column 0 -sticky e 
-		grid $w.stateEntry   -row 3 -column 1 -sticky ew
-		grid $w.postalLabel  -row 3 -column 2 -sticky e
-		grid $w.postalEntry  -row 3 -column 3 -sticky ew
-		grid $w.countryLabel -row 3 -column 4 -sticky e
-		grid $w.countryEntry -row 3 -column 5 -sticky ew
-		grid $w.phoneLabel   -row 5 -column 0 -sticky e
-		grid $w.phoneEntry   -row 5 -column 1 -sticky ew -columnspan 2
-		grid $w.cellLabel    -row 6 -column 0 -sticky e
-		grid $w.cellEntry    -row 6 -column 1 -sticky ew -columnspan 2
-		grid $w.pagerLabel   -row 7 -column 0 -sticky e
-		grid $w.pagerEntry   -row 7 -column 1 -sticky ew -columnspan 2
-		grid $w.hoursLabel   -row 8 -column 0 -sticky e
-		grid $w.hoursEntry   -row 8 -column 1 -sticky ew -columnspan 2
-
-		grid columnconfigure $w 0 -weight 0
-		grid columnconfigure $w 1 -weight 0
-		grid columnconfigure $w 2 -weight 0
-		grid columnconfigure $w 3 -weight 0
-		grid columnconfigure $w 4 -weight 0
-		grid columnconfigure $w 5 -weight 1
-
-		grid rowconfigure $w 1 -weight 0
-		grid rowconfigure $w 2 -weight 0
-		grid rowconfigure $w 3 -weight 0
-		grid rowconfigure $w 4 -weight 0 -minsize 8
-		grid rowconfigure $w 5 -weight 0
-		grid rowconfigure $w 6 -weight 0
-		grid rowconfigure $w 7 -weight 0
-		grid rowconfigure $w 8 -weight 0
-		grid rowconfigure $w 9 -weight 1
-
-		after idle [list focusEntry $w.nameEntry]
 	}
 
 	#-----------------------------------------------------------------------
@@ -1015,10 +736,10 @@ proc validate {which args} \
 			# only whether the user has entered one. Validation
 			# is expensive, so we'll only do it when the user
 			# presses "Next"
-			if {([string length $wizData(license)] == 0) ||
-			    ([string length $wizData(licsign1)] == 0) ||
-			    ([string length $wizData(licsign2)] == 0) ||
-			    ([string length $wizData(licsign3)] == 0) ||
+			if {$wizData(license)  eq "" ||
+			    $wizData(licsign1) eq "" ||
+			    $wizData(licsign2) eq "" ||
+			    $wizData(licsign3) eq "" ||
 			    (![string match "BKL*" $wizData(license)])} {
 				. configure -state pending
 			} else {
@@ -1026,20 +747,8 @@ proc validate {which args} \
 			}
 		}
 
-		"user/host" {
-			if {([string length $wizData(single_user)] == 0) ||
-			    ([string length $wizData(single_host)] == 0) } {
-				. configure -state pending
-			} else {
-				. configure -state normal
-			}
-		}
-
 		"repoInfo" {
-			if {([string length $wizData(repository)] == 0) ||
-			    ([string length $wizData(description)] == 0) ||
-			    ([string length $wizData(email)] == 0) ||
-			    ([string length $wizData(category)] == 0)} {
+			if {$wizData(repository) eq ""} {
 				. configure -state pending
 			} else {
 				. configure -state normal
@@ -1062,8 +771,9 @@ proc parseLicenseData {type} \
 
 	} elseif {$type == "file"} {
 		set types {
-			{{Text Files} {.txt}}
 			{{All Files} *}
+			{{License Files} {.lic}}
+			{{Text Files} {.txt}}
 		}
 		set file [tk_getOpenFile -filetypes $types -parent .]
 		if {$file != "" && 
@@ -1109,28 +819,13 @@ proc createConfigData {} \
 	global wizData
 	set configData ""
 
-	switch $wizData(licenseType) {
-		commercial {
-			set wizData(logging) "none"
-			set licenseOptions {
-				license licsign1 licsign2 licsign3
-			}
-		}
-		singleuser {
-			set wizData(logging) "none"
-			set licenseOptions {single_user single_host}
-		}
-		openlogging {
-			set wizData(logging) "logging@openlogging.org"
-			set licenseOptions {}
-		}
+	set licenseOptions {
+		license licsign1 licsign2 licsign3
 	}
 
 	foreach key {
-		description category email
-		name street city state postal country
-		phone cell pager hours
-		logging
+		description email
+		name
 		keyword compression autofix checkout
 	} {
 		append configData "$key: $wizData($key)\n"
@@ -1145,11 +840,10 @@ proc createConfigData {} \
 
 proc createRepo {errorVar} \
 {
-	global wizData
-	global option
-	global eflag
+	global wizData option eflag env
 	upvar $errorVar message
 
+	catch {unset env(BK_CONFIG)}
 	set pid [pid]
 	set filename [file join $::tmp_dir "config.$pid"]
 	set f [open $filename w]
@@ -1238,7 +932,7 @@ proc checkLicense {} \
 	
 	global wizData dev_null
 
-	set f [open "|bk license -v > $dev_null" w]
+	set f [open "|bk _eula -v > $dev_null" w]
 	puts $f "
 	    license: $wizData(license)
 	    licsign1: $wizData(licsign1)
@@ -1261,74 +955,27 @@ proc checkLicense {} \
 	return 0
 }
 
-
-# this proc assumes that the only way it can be called is if the user
-# has seen and accepted a license.
-proc acceptLicense {} \
-{
-	global wizData
-
-	switch -exact -- $wizData(licenseType) {
-		commercial {
-			exec bk license -a bkcl
-		}
-		default {
-			exec bk license -a bkl
-		}
-	}
-}
-
-# recompute wizard path, based on the license type the user selected and
-# whether or not they've accepted the license before
-proc recomputePath {} \
-{
-	global wizData
-	global licenseInfo
-
-	switch -exact -- $wizData(licenseType) {
-		commercial {
-			set path "commercial"
-			if {!$licenseInfo(accepted,bkcl)} {append path "-lic"}
-		}
-
-		singleuser {
-			set path "singleuser"
-			if {!$licenseInfo(accepted,bkl)} {append path "-lic"}
-		}
-
-		openlogging {
-			set path "openlogging"
-			if {!$licenseInfo(accepted,bkl)} {append path "-lic"}
-		}
-	}
-	. configure -path $path
-}
-
+# must be called after user has entered license keys
 proc getLicenseData {} \
 {
-	global licenseInfo
+	global licenseInfo wizData env
 
-	# The rule seems to be, if "bk license -s <lic>" returns an
-	# empty string, that license has been accepted. 
-	set licenseInfo(text,bkl)  [exec bk license -s bkl]
-	set licenseInfo(text,bkcl) [exec bk license -s bkcl]
-
-	foreach type {bkl bkcl} {
-		if {[string length $licenseInfo(text,$type)] == 0} {
-			set licenseInfo(accepted,$type) 1
-		} else {
-			set licenseInfo(accepted,$type) 0
-		}
-	}
+	# need to override any config currently in effect...
+	set BK_CONFIG "logging:none;"
+	append BK_CONFIG "license:$wizData(license);"
+	append BK_CONFIG "licsign1:$wizData(licsign1);"
+	append BK_CONFIG "licsign2:$wizData(licsign2);"
+	append BK_CONFIG "licsign3:$wizData(licsign3);"
+	append BK_CONFIG "single_user:;single_host:;"
+	set env(BK_CONFIG) $BK_CONFIG
+	set licenseInfo(text) [exec bk _eula -u]
 }
 
 proc moreInfo {which} {
 	global dev_null
 
 	switch -exact -- $which {
-		openlogging	{set topic licensing}
 		commercial	{set topic licensing}
-		singleuser	{set topic licensing}
 		repoinfo	{set topic config-etc}
 		keywords	{set topic keywords}
 		autofix		{set topic check}

@@ -37,7 +37,6 @@
 #include "system.h"
 #include "sccs.h"
 
-char		*lock_dir(void);
 private	char	*lockHome(void);
 private	char	*keysHome(void);
 private	int	uniq_regen(void);
@@ -142,7 +141,6 @@ keycache_main(int ac, char **av)
 		fprintf(stderr, "keycache: must be called in repo\n");
 		return (1);
 	}
-	checkSingle();
 	kc.cutoff = time(0) - uniq_drift();
 	unless (kc.host = sccs_gethost()) {
 		fprintf(stderr, "keycache: cannot figure out host name\n");

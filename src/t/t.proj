@@ -13,10 +13,10 @@
 # %K%
 
 echo $N 'bk new' of two projects from outside any project..............$NL
-no_logging project1
+commercial project1
 echo file1 > file1
 cd $HERE
-no_logging project2
+commercial project2
 echo file2 > file1
 cd $HERE
 bk new $Q project1/file1 project2/file1 
@@ -44,13 +44,13 @@ echo OK
 echo $N 'bk new' of two projects from a third project..................$NL
 cd $HERE
 rm -rf project1 project2
-no_logging project1
+commercial project1
 echo file1 > file1
 cd $HERE
-no_logging project2
+commercial project2
 echo file2 > file1
 cd $HERE
-no_logging project3
+commercial project3
 echo file3 > file1
 bk new $Q ../project1/file1 ../project2/file1 
 if [ $? != 0 ]; then echo Failed - new returned an error; exit 1; fi

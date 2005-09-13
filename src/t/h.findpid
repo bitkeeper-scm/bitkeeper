@@ -5,7 +5,7 @@
 
 
 echo $N Test locks from multiple users ...............................$NL
-no_logging project
+commercial project
 chmod -R og+w .
 bk lock -r &
 PID=$!

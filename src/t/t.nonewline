@@ -20,12 +20,13 @@
 #	1.2 file with newline
 
 echo $N Create initial repository ...................................$NL
-no_logging project
+commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
+
 echo $N Create files with and without newlines ......................$NL
 echo foo > X; 
 bk undos -n X > foo.c
@@ -38,10 +39,12 @@ bk get $Q foo.c bar.c
 cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1; }
 cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1; }
 echo OK
+
 echo $N Create a change set .........................................$NL
-bk commit $S -a -ywhatever
+bk commit $S -ywhatever
 echo OK
 cores
+
 echo $N Create a copy of the project ................................$NL
 cd $HERE
 bk clone $Q project copy
@@ -50,6 +53,7 @@ cd copy
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 echo OK
+
 echo $N Check resynced files for newline status .....................$NL
 echo foo > X
 bk undos -n X > SAVEfoo.c
@@ -60,6 +64,7 @@ bk get $Q foo.c bar.c
 cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1; }
 cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1; }
 echo OK
+
 echo $N Check including no newline deltas ...........................$NL
 bk get $Q -e foo.c bar.c
 echo $N trunk$NL >> foo.c
@@ -88,7 +93,8 @@ bk get $Q foo.c bar.c
 cmp -s foo.c X || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1; }
 cmp -s bar.c Y || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1; }
 echo OK
-bk commit $S -a -ywhatever
+
+bk commit $S -ywhatever
 echo $N Check for no newline changes back to project ................$NL
 cd $HERE/project
 bk pull -t $Q ../copy
@@ -100,21 +106,13 @@ bk get $Q foo.c bar.c
 cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c X; exit 1; }
 cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c Y; exit 1; }
 echo OK
+
 # This test more meaningful on WIN32 since diff is output to stdout
 # and redirected to a file as 'text' altering '\r\n' to '\n' leading
 # the output of normal diff to get translated.  Fix to io.c in same cset.
 echo $N Last line carraige return with no linefeed ..................$NL
 cd $HERE
-echo "logging: none" > c
-echo "description: BitKeeper Test repository" >> c
-echo "email: nobody@nowhere.bk" >> c
-echo "license: $BKL_P" >> c
-echo "licsign1: $BKL_P1" >> c
-echo "licsign2: $BKL_P2" >> c
-echo "licsign3: $BKL_P3" >> c
-echo "eoln: unix" >> c
-BK_HOST=bk_regression.bitkeeper.com bk setup -f -c$HERE/c commercial
-cd commercial
+commercial commercial
 echo a > x
 bk new $Q x
 bk edit $Q x

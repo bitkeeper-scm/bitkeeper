@@ -10,7 +10,7 @@
 #    modifications under any license.
 
 echon Max line length .............................................
-no_logging project
+commercial project
 awk 'BEGIN {for (i = 0; i < 2047; i++) printf "."; printf "\n"}' >long
 cp long foo
 bk new $Q foo || exit 1

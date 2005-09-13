@@ -12,7 +12,7 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
-no_logging whatever
+commercial whatever
 echo some text >X
 echo other text >Y
 bk delta $Q -i X Y

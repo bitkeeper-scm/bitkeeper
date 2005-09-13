@@ -414,7 +414,7 @@ nextbyte(void)
 		hmac.buf[hmac.i++] = ret;
 		if (hmac.i == hmac.len) {
 			h = secure_hashstr(hmac.buf, hmac.len,
-			    "11ef64c95df9b6227c5654b8894c8f00");
+			    makestring(KEY_BK_AUTH_HMAC));
 			safe_putenv("BK_AUTH_HMAC=%s",
 			    streq(h, hmac.hash) ? "GOOD" : "BAD");
 			free(h);
@@ -557,7 +557,7 @@ bkd_seed(char *oldseed, char *newval, char **newout)
 	/* validate newval */
 	if (newval && oldseed) {
 		h = secure_hashstr(oldseed, strlen(oldseed),
-		    "43c0e4830eab85d9078971c5bcae5ef4");
+		    makestring(KEY_SEED));
 
 		if (p = strchr(newval, '|')) *p = 0;
 		if (p && streq(h, newval)) {
@@ -586,7 +586,7 @@ bkd_seed(char *oldseed, char *newval, char **newout)
 		r = hashstr(rand, sizeof(rand));
 		if (newval) {
 			h = secure_hashstr(newval, strlen(newval),
-			    "43c0e4830eab85d9078971c5bcae5ef4");
+			    makestring(KEY_SEED));
 			*newout = aprintf("%s|%s", h, r);
 			free(h);
 			free(r);

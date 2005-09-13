@@ -13,7 +13,7 @@
 # %K%
 
 echo $N Create initial repository ...................................$NL
-no_logging P1
+commercial P1
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -22,7 +22,7 @@ echo OK
 echo $N Create some data ............................................$NL
 echo foo > foo
 bk new $Q foo
-bk commit $S -a -ywhatever
+bk commit $S -ywhatever
 echo OK
 echo $N Create a copy of the project ................................$NL
 cd $HERE

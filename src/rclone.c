@@ -296,7 +296,6 @@ gensfio(opts opts, int verbose, int level, int wfd)
 
 	tmpf = bktmp(0, "rclone_sfiles");
 	fh = fopen(tmpf, "w");
-	if (exists(LMARK)) fprintf(fh, LMARK "\n");
 	if (exists(CMARK)) fprintf(fh, CMARK "\n");
 	fclose(fh);
 	cmd = aprintf("bk sfiles >> %s", tmpf);

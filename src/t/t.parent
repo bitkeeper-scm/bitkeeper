@@ -16,7 +16,7 @@ esac
 
 # Tests for parent manipulation
 echo $N Create initial repositories .................................$NL
-no_logging project
+commercial project
 bk clone $Q . ../clone
 echo OK
 cores

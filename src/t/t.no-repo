@@ -15,7 +15,6 @@
 # Except stuff like editor/vi/etc that needs a tty
 cat > .INTERFACES <<EOF
 _adler32
-_applyall
 _cleanpath
 _converge
 _exists
@@ -32,12 +31,7 @@ _lconfig
 _lines
 _link
 _listkey
-_log
-_logflags
 _logging
-_loggingaccepted
-_loggingask
-_loggingto
 _mail
 _preference
 _probekey

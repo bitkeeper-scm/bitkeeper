@@ -12,7 +12,7 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
-no_logging project
+commercial project
 R=1
 for D in '87/05/28 23:49:57' '97/05/28 23:49:57' '97/05/30 01:34:11' '97/06/23 01:33:45+06:30' '98/01/30 17:45:17-05:00'
 do	cat > INITX <<EOF
@@ -84,7 +84,7 @@ cd $HERE
 mkdir resync
 cd resync
 HERE=$HERE/resync
-no_logging project
+commercial project
 echo foo > foo.c
 bk ci $Q -i foo.c
 bk commit $Q -ywhatever

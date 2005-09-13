@@ -1,113 +1,88 @@
 ===============================================================================
-Release notes for BitKeeper version 3.3.x
+Release notes for BitKeeper version 3.2.5.   These release notes cover
+the following topics:
 
-All platforms default to using bash to run any shell based functions.
-We know that bash always works, you can also try ksh if you don't have
-bash.  We look for bash, ksh, sh in that order, and use the first thing 
-found anywhere in your path.
+. Platform News
+. Upgrade Notes
+. Licensing Changes
+. Installation changes
+. New Features
+. Noteworthy bug fixes
 
-You may override the shell used with 
-	setenv BK_SHELL /usr/local/bin/bash
-	BK_SHELL=/usr/local/bin/bash
+Platform News
+----------------------------------------------------------------------------
+We are dropping support for platforms for which we have no demand.
 
-Interface changes:
+    Tru64/Alpha, Linux/mipsel (Qube), Linux/390 (zSeries), Linux/Arm,
+    Windows/ME, Windows/98, Windows/95, and Windows/NT.
 
-bk grep
-    bk grep has been rewritten, it mimics GNU grep for the most part.  
-    Backwards compat is basically gone but this one is far nicer.
+If your needs include any of those platforms please contact us so we can
+work with you to understand your needs and work out a solution.
 
-bk get/sccscat/grep
-    All commands which take options to enable annotations have had those 
-    options changed.  The commands are: grep, get, annotate, sccscat, diffs.
-    The new interface is in general:
-	-A<opts>
-	-a<opts>
-    where the first form is asking for aligned ("human readable") annotations
-    and the second one is asking for program readable output.  The option
-    argument specifies which annotations, see the get man page for a full
-    list.
+We continue to support a wide range of platforms including Linux, 
+Windows, MacOS, Solaris, FreeBSD, and HPUX.  If you need a platform we
+do not currently support please let us know.
 
-bk sfiles
-    bk sfiles has many subtle interface changes to support GUI integration.
-    The unchanged interfaces are:
-    -a (consider all files)
-    -c (list changed files)
-    -d (list directories with BK controlled files)
-    -D (list directories without BK controlled files)
-    -g (list gfile name, not sfile name)
-    -j (list junk files)
-    -l (list locked files)
-    -n (list files not in the correct location)
-    -o (output)
-    -p (pending)
-    -P (pending)
-    -S (summary)
-    -u (unlocked)
-    -U (user files only)
-    -x (extras)
+Licensing Changes
+----------------------------------------------------------------------------
+This release implements the first of a series of license improvements
+on the BitKeeper roadmap.  One change is that a valid license key is
+required in order to install.  In the future evaluation images will
+be sent out with the license embedded; after an install the license
+will be saved in `bk bin`/config (see below).  If that file is left
+in the config directory it will be used for each new repository
+created.  If you do not want to use this license for each new
+repository you may remove the file from your install directory.
 
-    The changed interfaces are:
-    Old		New	Meaning
-    -e		-e	-dDGjluvx (adds -d -D -G)
-    -E		-E	-cdDGjlnpuvx (adds -d -D -G)
-    <none>	-G	list files which are checked out
-    -S		-S	now lists -d/-D/-G summaries as well
-    -v		-v	now a 6 column listing instead of 4 with slots for
-    			-l/-u/-c/-p/-G/-n/-d/-D/-j/-x (see man page)
-    -C		-pC	remove undocumented alias
-    -A		-pA	remove undocumented alias
+You may be prompted to accept a new license as the license terms have
+been changed to handle our wider range of customers (from Academic to
+the Enterprise).  Please read the license carefully to be sure you 
+are comfortable with the terms.  
 
-    Removed interfaces:
-    -s		<none>	we have options for everything now
-    -i			-e is pretty close
+If you have nightly jobs which use BitKeeper, please remember to verify
+after upgrading that these jobs are still working.  It's possible that
+a license prompt which goes unanswered could stop a script.
 
-    XXX - leave in -i as undocumented alias after making regressions work?
+Upgrade notes
+----------------------------------------------------------------------------
+This should be a simple upgrade.  If you are running 3.2.4 you can
+upgrade using the 'bk upgrade' command.  For more information see 'bk
+help upgrade'.
 
-bk get
-    get -C is gone; use get -r@+ instead.  This @+ rev is special cased for
-    performance.
+Installation changes
+----------------------------------------------------------------------------
+The download/install process has been streamlined.  Some install images
+will contain an embedded license so that the process of finding and
+the license keys is automated.  For images without embedded licenses,
+the system searches in more places for the keys (see "config file" below).
 
-bk prs, changes, sccslog ...
-    In commands which produce date output, such as prs, changes, sccslog,
-    the old default was YY/MM/DD or YY-MM-DD but you could force it into
-    4 digits with BK_YEAR4=1.  The 4 digit years are now the default.
+New Features
+----------------------------------------------------------------------------
+- bk export -dup (procedural diffs)
+- MacOS X is now fully supported with both Aqua and X11 guis included.
+- config file search order has been expanded and is now:
 
-bk resolve
-    bk resolve now goes straight into merge mode after attempting to automerge
-    all conflicts.
+  	$BK_CONFIG
+  	`bk root`/BitKeeper/etc/config
+  	`bk dotbk`/config			(NEW in bk-3.2.5)
+  	/etc/BitKeeper/etc/config
+  	`bk bin`/config				(NEW in bk-3.2.5)
+  
+  Note that "bk dotbk" prints the path to your personal BK directory, which
+  is usually $HOME/.bk
 
-    bk resolve may be used to resolve part of a set of conflicts, see the
-    man page for details.
+Noteworthy bug fixes
+----------------------------------------------------------------------------
+- Fix installation problem that broke emacs vc mode
+- Fix problems with missing commands (renametool, support, unget)
+- Fix problem where 'bk revtool' would sometimes fail.
+- GUIs work on x86_64 again
+- Fix resolver bug related to filenames with spaces.
+- Fix interaction with Visual Studio .net which checked in files like ~sak*
+- Fix a bug in fm3tool where selecting a block also selected the next block
+- Fix a bug on Windows where bk patch misunderstood line endings
 
-bk conflicts
-    This is a new command which lists which files have conflicts in the RESYNC
-    directory.  It may be used to examine changes to see who should resolve 
-    those changes.
-
-filetypes.1
-    This is a rename of the files.1 man page.
-
-bk files
-    This is a demo program to show file name expansion
-
-bk glob
-    BitKeeper now respects globs on the command line.  If you say
-
-	bk command '*.c'
-
-    that means operate on all files that match *.c, not run the command
-    on the single file named "*.c".  To get the old behaviour you can
-    do either
-
-	bk command './*.c'	# This does not do glob expansion
-
-    or 
-
-	export BK_NO_FILE_GLOB=TRUE
-	bk command './*.c'
-
-    There is a glob man page.
-============================================================================
+===============================================================================
 Release notes for BitKeeper version 3.2.4.   These release notes cover
 the following topics:
 

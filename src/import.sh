@@ -591,12 +591,6 @@ import_patch() {
 	then	Done 0
 	fi
 
-	# Ask about logging before commit, commit reads stdin.
-	bk _loggingask
-	if [ $? -eq 1 ]
-	then 	Done 1
-	fi
-
 	# We limit the commit to only the files we patched and created.
 	# Note: the create list may have files that are no longer a
 	# real "create" # because renametool may have matched it up with
@@ -613,7 +607,7 @@ import_patch() {
 	cat ${TMP}creates$$ ${TMP}patching$$ |
 	    bk _sort -u | bk sfiles -pC - > ${TMP}commit$$
 	BK_NO_REPO_LOCK=YES bk commit \
-	    $QUIET $SYMBOL -a -y"`basename $PNAME`" - < ${TMP}commit$$
+	    $QUIET $SYMBOL -y"`basename $PNAME`" - < ${TMP}commit$$
 
 	msg Done.
 	unset BK_CONFIG

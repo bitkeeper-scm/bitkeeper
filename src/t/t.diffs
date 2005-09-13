@@ -12,7 +12,7 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
-no_logging project
+commercial project
 echo '%A%' > Mydiffs
 echo 1.1 >> Mydiffs
 bk new -q Mydiffs
@@ -63,7 +63,7 @@ cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
 
-echo $N Checking diff -R - with edited gfile .........................$NL
+echo $N Checking diff -R - with edited gfile ........................$NL
 echo 'Mydiffs|1.9' | bk diffs -R - > D || exit 1
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
@@ -200,14 +200,10 @@ if [ -s D ]; then echo Failed to get correct diffs.; cat D; exit 1; fi
 echo OK
 
 echo $N Checking diffs -r+ with readonly wrong gfile ................$NL
-bk _get $Q -r1.1 Mydiffs || exit 1
+bk _get $Q -kr1.1 Mydiffs || exit 1
 bk diffs -r+ Mydiffs > D || exit 1
 bk undos > W <<EOF
 ===== Mydiffs 1.10 vs ? =====
-1c1
-< @(#) Mydiffs 1.10@(#)
----
-> @(#) Mydiffs 1.1@(#)
 3,11d2
 < 1.2
 < 1.3
@@ -224,6 +220,45 @@ if [ $? -ne 0 ]
 then 	echo 'failed (bug 2002-02-08-004)'
 else	echo 'bug 2002-02-08-004 passing!  update testcase.'
 fi
+
+echo $N Checking diffs with readonly wrong gfile - want nothing .....$NL
+test -w Mydiffs && {
+	echo 'why is this writable?'
+	exit 1
+}
+bk diffs Mydiffs > D || exit 1
+test -s D && {
+	echo should not have produced output, should have skipped this file
+	cat D
+	exit 1
+}
+echo OK
+
+echo $N Checking diffs -f with readonly wrong gfile - should work ...$NL
+bk diffs -f Mydiffs > D || exit 1
+test -s D || {
+	echo should have produced output
+	exit 1
+}
+bk undos > W <<EOF
+===== Mydiffs 1.10 vs ? =====
+3,11d2
+< 1.2
+< 1.3
+< 1.4
+< 1.5
+< 1.6
+< 1.7
+< 1.8
+< 1.9
+< 1.10
+EOF
+cmp -s D W || {
+	echo should be the same
+	diff D W
+	exit 1
+}
+echo OK
 
 echo $N Checking diffs -r+ with edited gfile ........................$NL
 bk edit $Q Mydiffs || exit 1

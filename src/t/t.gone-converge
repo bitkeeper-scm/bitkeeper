@@ -13,24 +13,24 @@
 # %K%
 
 echo $N Create two copies of a repository ...........................$NL
-no_logging project
+commercial project
 bk clone $Q $HERE/project $HERE/copy
 echo OK
-echo $N Create two different logging_ok files .......................$NL
+echo $N Create two different gone files .............................$NL
 cd $HERE/project/BitKeeper/etc
-cat > logging_ok <<EOF
+cat > gone <<EOF
 lm@bitmover.com
 lm@work.bitmover.com
 awc@etp3.bitmover.com
 EOF
-bk new $Q logging_ok
+bk new $Q gone
 bk commit $Q -ywhatever
 cd $HERE/copy/BitKeeper/etc
-cat > logging_ok <<EOF
+cat > gone <<EOF
 lm@lm.bitmover.com
 beth@work.bitmover.com
 EOF
-bk new $Q logging_ok
+bk new $Q gone
 bk commit $Q -ywhatever
 echo OK
 
@@ -41,8 +41,8 @@ tar cf TAR project copy
 echo $N Pull, should union the data and leave one file ..............$NL
 cd $HERE/copy
 bk pull -t $Q
-bk get $Q BitKeeper/etc/logging_ok
-if [ ! -f BitKeeper/etc/logging_ok ]
+bk get $Q BitKeeper/etc/gone
+if [ ! -f BitKeeper/etc/gone ]
 then	echo 'Where oh where did my little file go?'
 	exit 1
 fi
@@ -53,11 +53,11 @@ lm@bitmover.com
 lm@lm.bitmover.com
 lm@work.bitmover.com
 EOF
-diff WANT BitKeeper/etc/logging_ok > DIFFS
+diff WANT BitKeeper/etc/gone > DIFFS
 if [ `wc -l < DIFFS` -ne 0 ]
 then	echo failed to union the data in the file
 	echo WANT vs GOT
-	sdiff -w80 WANT BitKeeper/etc/logging_ok
+	sdiff -w80 WANT BitKeeper/etc/gone
 	exit 1
 fi
 echo OK
@@ -68,8 +68,8 @@ rm -rf project copy
 tar xmf TAR
 cd $HERE/project
 bk pull -t $Q ../copy
-bk get $Q BitKeeper/etc/logging_ok
-if [ ! -f BitKeeper/etc/logging_ok ]
+bk get $Q BitKeeper/etc/gone
+if [ ! -f BitKeeper/etc/gone ]
 then	echo 'Where oh where did my little file go?'
 	exit 1
 fi
@@ -80,7 +80,7 @@ lm@bitmover.com
 lm@lm.bitmover.com
 lm@work.bitmover.com
 EOF
-diff X BitKeeper/etc/logging_ok > DIFFS
+diff X BitKeeper/etc/gone > DIFFS
 if [ `wc -l < DIFFS` -ne 0 ]
 then	echo failed to union the data in the file
 	cat DIFFS
@@ -92,8 +92,8 @@ echo $N Paranoid - make sure the push works .........................$NL
 cd $HERE/project
 bk push -t $Q ../copy
 cd $HERE/copy
-bk get $Q BitKeeper/etc/logging_ok
-if [ ! -f BitKeeper/etc/logging_ok ]
+bk get $Q BitKeeper/etc/gone
+if [ ! -f BitKeeper/etc/gone ]
 then	echo 'Where oh where did my little file go?'
 	exit 1
 fi
@@ -104,7 +104,7 @@ lm@bitmover.com
 lm@lm.bitmover.com
 lm@work.bitmover.com
 EOF
-diff X BitKeeper/etc/logging_ok > DIFFS
+diff X BitKeeper/etc/gone > DIFFS
 if [ `wc -l < DIFFS` -ne 0 ]
 then	echo failed to union the data in the file
 	cat DIFFS
@@ -114,13 +114,13 @@ echo OK
 
 echo $N Update both copies of the same file, should automerge .......$NL
 cd $HERE/project/BitKeeper/etc
-bk edit $Q logging_ok
-echo "project@foo.com" >> logging_ok
+bk edit $Q gone
+echo "project@foo.com" >> gone
 bk delta $Q -yproject
 bk commit -ywhatever $Q
 cd $HERE/copy/BitKeeper/etc
-bk edit $Q logging_ok
-echo "copy@foo.com" >> logging_ok
+bk edit $Q gone
+echo "copy@foo.com" >> gone
 bk delta $Q -ycopy
 bk commit -ywhatever $Q
 cd $HERE/copy
@@ -129,8 +129,8 @@ if [ -f RESYNC ]
 then	echo failed to complete resync
 	exit 1
 fi
-bk get $Q BitKeeper/etc/logging_ok
-if [ ! -f BitKeeper/etc/logging_ok ]
+bk get $Q BitKeeper/etc/gone
+if [ ! -f BitKeeper/etc/gone ]
 then	echo 'Where oh where did my little file go?'
 	exit 1
 fi
@@ -143,11 +143,11 @@ lm@lm.bitmover.com
 lm@work.bitmover.com
 project@foo.com
 EOF
-diff X BitKeeper/etc/logging_ok > DIFFS
+diff X BitKeeper/etc/gone > DIFFS
 if [ `wc -l < DIFFS` -ne 0 ]
 then	echo failed to union the data in the file
 	cat DIFFS
-	bk prs -h '-d:I: :KEY:\n' BitKeeper/etc/logging_ok
+	bk prs -h '-d:I: :KEY:\n' BitKeeper/etc/gone
 	exit 1
 fi
 echo OK
