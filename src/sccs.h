@@ -1118,7 +1118,6 @@ struct tm
         *utc2tm(time_t t);
 void	fix_stime(sccs *s);
 int	isLocalHost(char *h);
-void	do_cmds(void);
 void	core(void);
 void	ids(void);
 void	http_hdr(void);

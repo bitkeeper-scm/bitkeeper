@@ -1498,7 +1498,7 @@ reserveStdFds(void)
 	}
 }
 
-#ifndef	WIN32
+#ifndef	NOPROC
 
 extern	char	*bin;
 
@@ -1516,7 +1516,7 @@ void
 rmdir_findprocs(void)
 {
 	char	**d;
-	int	i, c;
+	int	i, j, c;
 	char	buf1[MAXLINE], buf2[MAXLINE];
 
 	unless (getenv("BK_REGRESSION")) return;
@@ -1530,16 +1530,24 @@ rmdir_findprocs(void)
 		sprintf(buf1, "/proc/%s/cwd", d[i]);
 		if ((c = readlink(buf1, buf2, sizeof(buf2))) < 0) continue;
 		buf2[c] = 0;
-		if (streq(buf2 + c - 9, "(deleted)")) {
-			buf2[c - 10] = 0;
-			fprintf(stderr,
-			    "proc %s is in dir %s which has been deleted\n",
-			    d[i], buf2);
-			ttyprintf(
-			    "proc %s is in dir %s which has been deleted\n",
-			    d[i], buf2);
-			assert(0);
+		unless (streq(buf2 + c - 9, "(deleted)")) continue;
+
+		/* give them a chance to go away */
+		for (j = 0; j < 60; ++j) {
+			usleep(500000);
+			if ((c = readlink(buf1, buf2, sizeof(buf2))) < 0) break;
 		}
+		/* we know they are gone if we broke out early */
+		if (j < 60) continue;
+		
+		buf2[c] = 0;
+		unless (streq(buf2 + c - 9, "(deleted)")) continue;
+		buf2[c - 10] = 0;
+		ttyprintf("proc %s is in dir %s which has been deleted\n",
+		    d[i], buf2);
+		sprintf(buf2, "/bin/ls -l /proc/%s > /dev/tty", d[i]);
+		system(buf2);
+		assert(0);
 	}
 	freeLines(d, free);
 }

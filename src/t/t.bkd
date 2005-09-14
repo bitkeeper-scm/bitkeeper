@@ -39,7 +39,7 @@ if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
 echo OK
 
 echo $N clone the workspace .........................................$NL
-bk clone $Q $HERE/project $HERE/copy
+bk clone $Q $HERE/project $HERE/copy || exit 1
 cd $HERE/copy
 if [ ! -f "BitKeeper/etc/SCCS/x.dfile" ]; then echo failed; exit 1; fi
 P=`port 50000`
@@ -69,7 +69,10 @@ echo $N Make sure that we leave the pid file there - background .....$NL
 cd $HERE/project
 rm -f $HERE/LOG
 P=`port 51000`
-bk bkd -dqp$P -l$HERE/LOG -P$HERE/PID -ikill
+# We want the pid of the process that is running, not the parent process
+bk bkd -dqp$P -l$HERE/LOG -P$HERE/PID -ikill &
+PARENT=$!
+wait $PARENT
 test -f $HERE/PID || {
 	echo No pid file
 	exit 1
@@ -79,11 +82,23 @@ test X$PID = X && {
 	echo Empty pid file
 	exit 1
 }
+test $PARENT = $PID && {
+	echo wrong pid in pid file
+	exit 1
+}
+echo OK
+
+echo $N Make sure that commands leave the pid file alone ............$NL
+bk changes bk://localhost:$P > /dev/null || exit 1
+GOT=`cat $HERE/PID`
+test $PID = $GOT || {
+	echo Child stomped on pid file
+	exit 1
+}
 echo OK
 
 echo $N Make sure that we support log files - background ............$NL
-bk changes -r+ bk://localhost:$P > /dev/null
-sleep 2
+sleep 1
 test -f $HERE/LOG || {
 	echo No log file
 	exit 1
@@ -174,6 +189,7 @@ bk commit $Q -ycset1
 bk push $Q -z0 bk://localhost:$P
 cd $HERE/copy/src
 if [ ! -f SCCS/s.woo.c ]; then echo failed; exit 1; fi
+bk lock -U $HERE/copy
 bk _kill bk://localhost:$P || exit 1
 echo OK
 
@@ -189,6 +205,7 @@ bk lock -U $HERE/copy        # needed on Freebsd4
 cd $HERE/copy/src
 bk pull $Q -t -z0 bk://localhost:$P
 if [ ! -f SCCS/s.zoo.c ]; then echo failed; exit 1; fi
+bk lock -U $HERE/project
 bk _kill bk://localhost:$P || exit 1
 echo OK
 
@@ -203,6 +220,7 @@ bk bkd -q -d -p$P -ikill
 cd $HERE/copy/src
 bk pull -t $Q bk://localhost:$P
 if [ ! -f SCCS/s.boo.c ]; then echo failed; exit 1; fi
+bk lock -U $HERE/project
 bk _kill bk://localhost:$P || exit 1
 echo OK
 
@@ -214,6 +232,7 @@ cd $HERE/copy/src
 bk pull -t bk://localhost:$P > pull.out 2>&1
 grep -q "bkd has disabled" pull.out
 if [ $? -ne 0 ]; then echo failed; cat pull.out; exit 1; fi
+bk lock -U $HERE/project
 bk _kill bk://localhost:$P || exit 1
 echo OK
 
@@ -228,6 +247,7 @@ bk commit $Q -ycset1
 bk push $Q -z6 bk://localhost:$P
 cd $HERE/copy/src
 if [ ! -f SCCS/s.aoo.c ]; then echo failed; exit 1; fi
+bk lock -U $HERE/copy
 bk _kill bk://localhost:$P || exit 1
 echo OK
 
@@ -238,6 +258,7 @@ bk bkd -q -d -p$P -ikill
 bk clone $Q bk://localhost:$P $HERE/copy2
 cd $HERE/copy2/src
 if [ ! -f SCCS/s.aoo.c ]; then echo failed; exit 1; fi
+bk lock -U $HERE/project
 bk _kill bk://localhost:$P || exit 1
 echo OK
 
@@ -252,6 +273,7 @@ bk bkd -q -d -p$P -xcd -xpush -ikill
 cd $HERE/copy/src
 bk pull -t $Q bk://localhost:$P
 if [ ! -f SCCS/s.coo.c ]; then echo failed; exit 1; fi
+bk lock -U $HERE/project
 bk _kill bk://localhost:$P || exit 1
 echo OK
 
@@ -304,6 +326,7 @@ echo OK
 echo $N check http clone with bad -r from bkd .......................$NL
 bk clone $Q -rbad http://localhost:$P $HERE/junk2
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
+bk lock -U $HERE/project
 bk _kill bk://localhost:$P || exit 1
 echo OK
 
@@ -314,13 +337,14 @@ bk bkd -q -d -C -p$P -ikill
 cd $HERE/copy
 bk pull bk://localhost:$P/$HERE/project > pull.out 2>&1
 grep -q "ERROR-cannot cd to" pull.out
-if [ $? -ne 0 ]; then echo failed; cat pull.out; exit 1 ; fi
+if [ $? -ne 0 ]; then echo failed 1; cat pull.out; exit 1 ; fi
 bk pull bk://localhost:$P.. > pull.out 2>&1
 grep -q "ERROR-cannot cd to" pull.out
-if [ $? -ne 0 ]; then echo failed; cat pull.out; exit 1 ; fi
+if [ $? -ne 0 ]; then echo failed 2; cat pull.out; exit 1 ; fi
 bk pull bk://localhost:$P/sub/../../project > pull.out 2>&1
 grep -q "ERROR-cannot cd to" pull.out
-if [ $? -ne 0 ]; then echo failed; cat pull.out; exit 1 ; fi
+if [ $? -ne 0 ]; then echo failed 3; cat pull.out; exit 1 ; fi
+bk lock -U $HERE/project
 bk _kill bk://localhost:$P || exit 1
 echo OK
 
@@ -358,8 +382,7 @@ grep -q PUSH $HERE/project/BitKeeper/log/repo_log || {
 	cat $HERE/project/BitKeeper/log/repo_log
 	exit 1
 }
+bk lock -U $HERE/project
 bk _kill bk://localhost:$P || exit 1
-bk lock -U
-cd $HERE/project
 bk lock -U
 echo OK

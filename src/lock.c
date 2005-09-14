@@ -60,7 +60,8 @@ usage:			system("bk help -s lock");
 		}
 		/* make ourselves go away after the lock is gone */
 		if (tcp) {
-			tcp_accept(tcp);
+			closesocket(tcp_accept(tcp));
+			closesocket(tcp);
 			repository_rdunlock(0);
 			exit(0);
 		}
@@ -78,7 +79,8 @@ usage:			system("bk help -s lock");
 		}
 		/* make ourselves go away after the lock is gone */
 		if (tcp) {
-			tcp_accept(tcp);
+			closesocket(tcp_accept(tcp));
+			closesocket(tcp);
 			repository_wrunlock(0);
 			exit(0);
 		}

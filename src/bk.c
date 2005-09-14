@@ -652,19 +652,33 @@ cmdlog_end(int ret)
 	}
 	if (cmdlog_flags & (CMD_WRUNLOCK|CMD_RDUNLOCK)) repository_unlock(0);
 
+#ifndef	NOPROC
+	rmdir_findprocs();
+#endif
+	if (getenv("BK_REGRESSION")) {
+		int	i;
+		struct	stat sbuf;
+		char	buf[100];
+
+		for (i = 3; i < 20; i++) {
+			if (fstat(i, &sbuf)) continue;
+#if	defined(F_GETFD) && defined(FD_CLOEXEC)
+			if (fcntl(i, F_GETFD) & FD_CLOEXEC) continue;
+#endif
+			ttyprintf(
+			    "%s: warning fh %d left open\n", cmdlog_buffer, i);
+#ifndef	NOPROC
+			sprintf(buf,
+			    "/bin/ls -l /proc/%d/fd | grep '%d -> ' >/dev/tty",
+			    getpid(), i);
+			system(buf);
+#endif
+		}
+	}
 	cmdlog_buffer[0] = 0;
 	cmdlog_repo = 0;
 	cmdlog_flags = 0;
 out:
-	rmdir_findprocs();
-	if (!getenv("NOCLOSE") && getenv("BK_REGRESSION")) {
-		int	i;
-		for (i = 3; i < 20; i++) {
-			if (close(i)) continue;
-			fprintf(stderr, "%u: warning fh %d left open\n",
-			    getpid(), i);
-		}
-	}
 	return (flags);
 }
 

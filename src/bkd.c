@@ -7,6 +7,7 @@ private	void	exclude(char *cmd);
 private	void	log_cmd(char *peer, int ac, char **av);
 private	void	usage(void);
 private int	service(char *cmd, int ac, char **av);
+private	void	do_cmds(void);
 
 char 		*logRoot, *vRootPrefix;
 char		*bkd_getopt = "cCdDeE:g:hi:l|L:p:P:qRSt:u:V:x:";
@@ -46,8 +47,7 @@ bkd_main(int ac, char **av)
 		    case 'g': Opts.gid = optarg; break;		/* doc 2.0 */
 		    case 'h': Opts.http_hdr_out = 1; break;	/* doc 2.0 */
 		    case 'l':					/* doc 2.0 */
-			unless (optarg) Opts.log = stderr;
-			Opts.logfile = optarg;
+			Opts.logfile = optarg ? optarg : (char*)1;
 			break;
 		    case 'V':	/* XXX - should be documented */
 			vRootPrefix = strdup(optarg); break;
@@ -91,7 +91,7 @@ bkd_main(int ac, char **av)
 	}
 
 	if (port) daemon = 1;
-	if (daemon && Opts.log && !Opts.logfile && !Opts.foreground) {
+	if (daemon && (Opts.logfile == (char*)1) && !Opts.foreground) {
 		fprintf(stderr, "bkd: Can't log to stderr in daemon mode\n");
 		return (1);
 	}
@@ -106,12 +106,13 @@ bkd_main(int ac, char **av)
 			return (1);
 		}
 		unless (port) port = BK_PORT;
-		if (tcp_connect("127.0.0.1", port) > 0) {
+		if ((c = tcp_connect("127.0.0.1", port)) > 0) {
 			unless (Opts.quiet) {
 				fprintf(stderr,
 				    "bkd: localhost:%d is already in use.\n",
 				    port);
 			}
+			closesocket(c);
 			return (2);	/* regressions count on 2 */
 		}
 		if (check) return (0);
@@ -121,11 +122,6 @@ bkd_main(int ac, char **av)
 		/* NOTREACHED */
 	} else {
 		ids();
-		if (Opts.logfile) Opts.log = fopen(Opts.logfile, "a");
-		if (Opts.alarm) {
-			signal(SIGALRM, exit);
-			alarm(Opts.alarm);
-		}
 		do_cmds();
 		return (0);
 	}
@@ -193,7 +189,7 @@ save_byte_count(unsigned int byte_count)
 	}
 }
 
-void
+private void
 do_cmds(void)
 {
 	int	ac;
@@ -208,6 +204,10 @@ do_cmds(void)
 		logged_peer = 1;
 	}
 
+	if (Opts.alarm) {
+		signal(SIGALRM, exit);
+		alarm(Opts.alarm);
+	}
 	httpMode = Opts.http_hdr_out;
 	while (getav(&ac, &av, &httpMode)) {
 		if (debug) {
@@ -217,7 +217,7 @@ do_cmds(void)
 		}
 		getoptReset();
 		if ((i = findcmd(ac, av)) != -1) {
-			if (Opts.log) log_cmd(peer, ac, av);
+			if (Opts.logfile) log_cmd(peer, ac, av);
 			if (!bk_proj ||
 			    !bk_proj->root || !isdir(bk_proj->root)) {
 				if (bk_proj) proj_free(bk_proj);
@@ -266,34 +266,40 @@ log_cmd(char *peer, int ac, char **av)
 	time_t	t;
 	struct	tm *tp;
 	int	i;
+	FILE	*log;
 	static	char	**putenv;
 
 	if (streq(av[0], "putenv")) {
 		putenv = addLine(putenv, strdup(av[1]));
 		return;
 	}
+
+	log = (Opts.logfile == (char*)1) ? stderr : fopen(Opts.logfile, "a");
+	unless (log) return;
+
 	time(&t);
 	tp = localtimez(&t, 0);
 	if (putenv) {
-		fprintf(Opts.log, "%s %.24s ", peer, asctime(tp));
+		fprintf(log, "%s %.24s ", peer, asctime(tp));
 		sortLines(putenv, 0);
 		EACH(putenv) {
 			if (strneq("_BK_", putenv[i], 4) ||
 			    strneq("BK_", putenv[i], 3)) {
-			    	fprintf(Opts.log, "%s ", &putenv[i][3]);
+			    	fprintf(log, "%s ", &putenv[i][3]);
 			} else {
-			    	fprintf(Opts.log, "%s ", putenv[i]);
+			    	fprintf(log, "%s ", putenv[i]);
 			}
 		}
-		fprintf(Opts.log, "\n");
+		fprintf(log, "\n");
 		freeLines(putenv, free);
 		putenv = 0;
 	}
-	fprintf(Opts.log, "%s %.24s ", peer, asctime(tp));
+	fprintf(log, "%s %.24s ", peer, asctime(tp));
 	for (i = 0; i < ac; ++i) {
-		fprintf(Opts.log, "%s ", av[i]);
+		fprintf(log, "%s ", av[i]);
 	}
-	fprintf(Opts.log, "\n");
+	fprintf(log, "\n");
+	unless (log == stderr) fclose(log);
 }
 
 /*

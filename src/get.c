@@ -205,19 +205,17 @@ onefile:	fprintf(stderr,
 			} else {
 				perror(s->sfile);
 			}
-			sccs_free(s);
+err:			sccs_free(s);
 			errors = 1;
 			continue;
 		}
 		if (cdate) {
 			s->state |= S_RANGE2;
-			d = sccs_getrev(s, 0, cdate, ROUNDUP);
-			if (!d) {
+			unless (d = sccs_getrev(s, 0, cdate, ROUNDUP)) {
 				fprintf(stderr,
 				    "No delta like %s in %s\n",
 				    cdate, s->sfile);
-				sccs_free(s);
-				continue;
+				goto err;
 			}
 			rev = d->rev;
 		}
@@ -233,21 +231,16 @@ onefile:	fprintf(stderr,
 			delta	*d = sccs_top(s);
 
 			while (d && !(d->flags & D_CSET)) d = d->parent;
-			if (!d) {
+			unless (d) {
 				verbose((stderr,
 				    "No committed deltas in %s\n", s->gfile));
-				errors = 1;
-				sccs_free(s);
-				continue;
+				goto err;
 			}
 			rev = d->rev;
 		}
 		if (BITKEEPER(s) && (flags & GET_EDIT) && rev && !branch_ok) {
 			fprintf(stderr, "Cannot create branch\n");
-			errors = 1;
-			sccs_free(s);
-			continue;
-			
+			goto err;
 		}
 		if (BITKEEPER(s) &&
 		    (iLst || xLst) && !branch_ok && !(flags & GET_EDIT)) {
@@ -255,7 +248,7 @@ onefile:	fprintf(stderr,
 				fprintf(stderr,
 				    "%s: can't specify include/exclude "
 				    "without -p, -e or -l\n", av[0]);
-				goto usage;
+				goto err;
 			}
 		}
 		if (BITKEEPER(s) && rev && !branch_ok && !streq(rev, "+")) {
@@ -263,7 +256,7 @@ onefile:	fprintf(stderr,
 				fprintf(stderr,
 				    "%s: can't specify revisions without -p\n",
 				    av[0]);
-				goto usage;
+				goto err;
 			}
 		}
 		/* -M with no args means to close the open tip */
@@ -279,15 +272,13 @@ onefile:	fprintf(stderr,
 					fprintf(stderr, "%s: ERROR -M with"
 					    " neither tip on branch?\n",
 					    av[0]);
-					goto usage;
+					goto err;
 				}
 			} else {
 				fprintf(stderr, "%s: No branches to close"
 				    " in %s, skipping...\n",
 				    av[0], s->gfile);
-				errors = 1;
-				sccs_free(s);
-				continue;
+				goto err;
 			}
 		}
 		if ((flags & (GET_DIFFS|GET_BKDIFFS|GET_HASHDIFFS))
