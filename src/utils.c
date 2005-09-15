@@ -1512,6 +1512,8 @@ checking_rmdir(char *dir)
 	return (rc);
 }
 
+#define	WAIT	60	/* /2 to get seconds */
+
 void
 rmdir_findprocs(void)
 {
@@ -1533,12 +1535,13 @@ rmdir_findprocs(void)
 		unless (streq(buf2 + c - 9, "(deleted)")) continue;
 
 		/* give them a chance to go away */
-		for (j = 0; j < 60; ++j) {
+		for (j = 0; j < WAIT; ++j) {
 			usleep(500000);
 			if ((c = readlink(buf1, buf2, sizeof(buf2))) < 0) break;
+			if (j == 20) ttyprintf("Waiting for %s\n", buf1);
 		}
 		/* we know they are gone if we broke out early */
-		if (j < 60) continue;
+		if (j < WAIT) continue;
 		
 		buf2[c] = 0;
 		unless (streq(buf2 + c - 9, "(deleted)")) continue;
@@ -1546,6 +1549,9 @@ rmdir_findprocs(void)
 		ttyprintf("proc %s is in dir %s which has been deleted\n",
 		    d[i], buf2);
 		sprintf(buf2, "/bin/ls -l /proc/%s > /dev/tty", d[i]);
+		system(buf2);
+		sprintf(buf2,
+		    "/usr/bin/od -c /proc/%s/cmdline > /dev/tty", d[i]);
 		system(buf2);
 		assert(0);
 	}
