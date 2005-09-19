@@ -57,23 +57,28 @@ char *
 bktmp(char *buf, const char *template)
 {
 	int	i;
+	char	*tmp, *p;
 
 	unless (tmpdirs_len) setup_tmpdirs();
 	unless (template) template = "none";
-	unless (buf) buf = malloc(tmpdirs_max + strlen(template) + 12);
+	tmp = strdup(template);
+	while (p = strchr(tmp, '?')) *p = '_';
+	unless (buf) buf = malloc(tmpdirs_max + strlen(tmp) + 12);
 
 	for (i = 0; i < tmpdirs_len; i++) {
 		int	fd;
-		sprintf(buf, "%s/bk_%s_XXXXXX", tmpdirs[i], template);
+		sprintf(buf, "%s/bk_%s_XXXXXX", tmpdirs[i], tmp);
 		fd  = mkstemp(buf);
 		if (fd != -1) {
 			tmpfiles = addLine(tmpfiles, strdup(buf));
 			close(fd);
+			free(tmp);
 			return(buf);
 		}
 	}
 	perror("mkstemp() failed");
 	buf[0] = 0;
+	free(tmp);
 	return (0);
 }
 
@@ -146,6 +151,14 @@ bktmpcleanup(void)
 	int	i;
 
 	unless (tmpfiles) return;
+	/*
+	 * If we were interrupted we may not have closed the files so let's
+	 * try and close so winblows can delete them.
+	 */
+	for (i = 3; i < 20; ++i) {
+		closesocket(i);
+		close(i);
+	}
 	EACH(tmpfiles) {
 		unless (exists(tmpfiles[i])) continue;
 		if (isdir(tmpfiles[i])) {

@@ -495,7 +495,7 @@ repository_lockcleanup(void)
 	unless (root) return;
 	chdir(root);
 
-	if (repository_mine('r')) {
+	if (repository_mine('r') && !getenv("BK_DIE_OFFSET")) {
 		char	*pid = aprintf("%u", getpid());
 		
 		getMsg2("read_locked", pid, root, '=', stderr);
@@ -503,7 +503,7 @@ repository_lockcleanup(void)
 		repository_rdunlock(0);
 	}
 
-	if (repository_mine('w')) {
+	if (repository_mine('w') && !getenv("BK_DIE_OFFSET")) {
 		char	*pid = aprintf("%u", getpid());
 		
 		getMsg2("write_locked", pid, root, '=', stderr);

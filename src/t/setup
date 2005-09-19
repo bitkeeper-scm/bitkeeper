@@ -59,13 +59,6 @@ unsetHttpProxy() {
 	unset HTTP_PROXY # workaround for cygwin
 }
 
-# Usage: waitForUnlock <root>
-waitForUnlock() {
-	test X$LOCKPID != X && wait $LOCKPID
-	LOCKPID=
-	bk lock -U $1
-}
-
 # Make a commercial config file
 _commercial_config() {
 	cat <<EOF
@@ -128,18 +121,31 @@ echon() {
 	echo $NX ${1+"$@"}$NXL
 }
 
-# args: GOT WANT
-checkfiles() {
-        cmp -s "$1" "$2" || {
-		test $WINDOWS = YES && {
-			bk undos < "$1" > /tmp/A$$
-			bk undos < "$2" > /tmp/B$$
-			cmp /tmp/A$$ /tmp/B$$
-			STATUS=$?
-			rm -f /tmp/[AB]$$
-			test $STATUS -eq 0 && return
+# Find an unused port for a bkd
+port() {
+	p=
+	for i in 1 2 3 4 5
+	do	bk bkd -cqp$1$i && {
+			p=$1$i
+			break
 		}
-                echo "$1" and "$2" don\'t match
+	done
+	test X$p = X && exit 1
+	echo $p
+}
+
+# args: GOT WANT
+cmpfiles() {
+        $BKDIFF -q --ignore-trailing-cr "$1" "$2" || {
+                diff -u "$1" "$2"
+                exit 1
+        }
+}
+
+# args: GOT WANT, does a byte for byte comparison
+checkfiles() {
+	cmp -s "$1" "$2" || {
+		echo "$1" and "$2" don\'t match
                 bk diff -u "$1" "$2"
                 exit 1
         }

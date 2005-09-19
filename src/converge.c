@@ -247,7 +247,6 @@ done:		mdbm_close(vals);
 			} else {
 				sccs_free(s);
 			}
-
 		} else {
 			sccs_free(s);
 		}

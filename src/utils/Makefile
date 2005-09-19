@@ -25,9 +25,10 @@ else
 	STRIP=strip
 	RESOURCES=
 endif
-SFIO_OBJS=sfio.o sfio_utils.o ../port/fast_lstat.c ../port/fileinfo.o
+SFIO_OBJS=sfio.o sfio_utils.o \
+	../port/fast_lstat.c ../port/fileinfo.o ../port/utils.o
 SYSTEM_OBJS=../port/system.o ../port/spawn.o ../liblines.o ../purify.o \
-	../libc/libc.a stubs.o
+	../port/utils.o ../libc/libc.a stubs.o
 SFIO=sfio$(EXE)
 CPPFLAGS=-I../libc/include
 VERS	:= $(shell test -x vers || bk get vers; ./vers)

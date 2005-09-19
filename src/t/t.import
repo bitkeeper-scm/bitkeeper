@@ -933,6 +933,8 @@ cd ..
 for i in $LIST
 do	cd import$i
 	bk sfiles | sort > ../MINE
+	bk -r prs -r1.2.. -hnd:KEY: >> ../KEYS
+	bk -Ur prs -r1.0,1.1 -hnd:KEY: >> ../KEYS
 	cmp -s ../LIST ../MINE || {
 		echo different lists of files in import$i
 		diff ../LIST ../MINE
@@ -940,6 +942,12 @@ do	cd import$i
 	}
 	cd ..
 done
+ALL=`wc -l < KEYS`
+UNIQ=`sort -u < KEYS | wc -l`
+test $ALL -eq $UNIQ || {
+	echo failed to create all uniq keys
+	exit 1
+}
 echo OK
 }
 

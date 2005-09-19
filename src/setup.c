@@ -65,7 +65,6 @@ setup_main(int ac, char **av)
 	}
 	unless (force) {
 		getMsg("setup_1", 0, '-', stdout);
-		flush_fd0(); /* for Win/98 and Win/ME */
 		printf("Create new package? [no] ");
 		if (fgets(buf, sizeof(buf), stdin) == NULL) buf[0] = 'n';
 		if ((buf[0] != 'y') && (buf[0] != 'Y')) exit (0);
@@ -102,7 +101,6 @@ again:
 		 * path gotos below.
 		 */
 		if (config_path) goto err;
-		flush_fd0(); /* for Win/98 and Win/ME */
 		printf("Editor to use [%s] ", editor);
 		unless (fgets(my_editor, sizeof(my_editor), stdin)) {
 			my_editor[0] = '\0';

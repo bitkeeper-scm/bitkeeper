@@ -92,10 +92,11 @@ endif
 ifeq ($(GCC_MAJOR_REV),4)
 	WARNINGS += $(WARNINGS_GCC3) $(WARNINGS_GCC4)
 endif 
-CC_DEBUG=$G $(WARNINGS)
-CC_FAST_DEBUG=$G -O2 $(WARNINGS)
+GCCOPTS=-fno-builtin 
+CC_DEBUG=$(GCCOPTS) $G $(WARNINGS)
+CC_FAST_DEBUG=$(GCCOPTS) $G -O2 $(WARNINGS)
 CC_FAST	=$(CC_FAST_DEBUG)
-CC_WALL=$G -DLINT $(WARNINGS)
+CC_WALL=$(GCCOPTS) $G -DLINT $(WARNINGS)
 WIN_TMP	=*.idb *.pdb *.ilk *.exe *~bkp
 BINS	= $(BK)
 
@@ -104,7 +105,8 @@ BINS	= $(BK)
 OBJ =	abort.o adler32.o admin.o annotate.o \
 	arrow_gif.o back_gif.o bkd.o bkd_cd.o \
 	bkd_changes.o bkd_client.o bkd_clone.o bkd_cmdtab.o bkd_http.o \
-	bkd_license.o bkd_misc.o bkd_pending.o bkd_pull.o bkd_push.o bkd_pwd.o \
+	bkd_kill.o bkd_license.o bkd_misc.o \
+	bkd_pending.o bkd_pull.o bkd_push.o bkd_pwd.o \
 	bkd_rclone.o bkd_rootkey.o bkd_status.o bkd_synckeys.o bkd_version.o \
 	bkpowered.o bkusers.o bkver.o cat.o changes.o \
 	check.o checksum.o clean.o cleanpath.o clone.o cmd.o \
@@ -116,7 +118,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	g2sccs.o gca.o get.o gethelp.o \
 	gethost.o getopt.o getreg.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \
-	idcache.o isascii.o key2rev.o key2path.o kvfile.o \
+	idcache.o isascii.o key2rev.o key2path.o kill.o kvfile.o \
 	lease.o level.o \
 	lib_tcp.o libcommit.o libdiff.o liblines.o librange.o \
 	libsfiles.o libusers.o lines.o \
@@ -137,8 +139,8 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	port/rlimit.o port/samepath.o \
 	port/sccs_getuser.o port/sccs_lockfile.o \
 	port/sccs_root.o port/sig.o \
-	port/spawn.o port/system.o \
-	port/tty.o \
+	port/spawn.o port/svcinfo.o port/system.o \
+	port/tty.o port/utils.o \
 	prs.o pull.o purify.o push.o putenv.o pwd.o \
 	r2c.o randombits.o range.o rcheck.o rclone.o \
 	rcs.o rcs2sccs.o rcsparse.o \
@@ -146,7 +148,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	resolve_binaries.o resolve_contents.o \
 	resolve_create.o resolve_filetypes.o \
 	resolve_flags.o resolve_generic.o resolve_modes.o \
-	resolve_renames.o resolve_tags.o restore.o review.o rmdel.o \
+	resolve_renames.o resolve_tags.o restore.o review.o rmdel.o rmtree.o \
 	root.o rset.o scompress.o sane.o sccs.o sccs_mv.o sccs2bk.o sccscat.o \
 	sccslog.o sccsmv.o sccsrm.o send.o sendbug.o \
 	set.o setup.o sfiles.o sfio.o shellcmd.o shrink.o sinfo.o \

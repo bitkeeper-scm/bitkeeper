@@ -103,6 +103,7 @@ cset_inex(int flags, char *op, char *revs)
 			rlist = addLine(rlist, strdup(&t[1]));
 		}
 	}
+	fclose(f);
 	if (file[0]) {
 		revbuf = joinLines(",", rlist);
 		freeLines(rlist, free);
@@ -333,21 +334,17 @@ doit(int flags, char *file, char *op, char *revs)
 	free(sfile);
 	unless (HASGRAPH(s)) {
 		fprintf(stderr, "cset: no graph in %s?\n", s->gfile);
-		sccs_free(s);
+err:		sccs_free(s);
 		return (1);
 	}
 	unless (sccs_top(s)->flags & D_CSET) {
 		fprintf(stderr,
 		    "cset: %s has uncommitted deltas, aborting.\n", s->gfile);
-		sccs_free(s);
-		return (1);
+		goto err;
 	}
-	if (sccs_clean(s, SILENT)) {
-		sccs_free(s);
-		return (1);
-	}
+	if (sccs_clean(s, SILENT)) goto err;
 	if (CSET(s)) {
-		if (mergeInList(s, revs)) return (1);
+		if (mergeInList(s, revs)) goto err;
 		flags |= GET_SKIPGET;
 	}
 	if (streq(op, "-i")) {
@@ -357,8 +354,7 @@ doit(int flags, char *file, char *op, char *revs)
 	}
 	if (ret) {
 		fprintf(stderr, "cset: get -e of %s failed\n", s->gfile);
-		sccs_free(s);
-		return (1);
+		goto err;
 	}
 	if (flags & GET_SKIPGET) goto ok;	/* we are the cset file */
 	if (comments_got()) {
@@ -371,8 +367,7 @@ doit(int flags, char *file, char *op, char *revs)
 	sccs_restart(s);
 	if (sccs_delta(s, SILENT|DELTA_FORCE, d, 0, 0, 0)) {
 		fprintf(stderr, "cset: could not delta %s\n", s->gfile);
-		sccs_free(s);
-		return (1);
+		goto err;
 	}
 	do_checkout(s);
 ok:	sccs_free(s);

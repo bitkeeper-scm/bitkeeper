@@ -175,6 +175,7 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 		sum = adler32(sum, buf, n);
 		if (writen(1, buf, n) != n) {
 			perror(file);
+			close(fd);
 			return (1);
 		}
 		*byte_count += n;
@@ -182,6 +183,7 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 	if (nread != sp->st_size) {
 		fprintf(stderr, "Size mismatch on %s %u:%u\n",
 		    file, nread, (unsigned int)sp->st_size);
+		close(fd);
 		return (1);
 	}
 	sprintf(buf, "%010u", sum);

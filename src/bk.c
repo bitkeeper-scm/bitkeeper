@@ -46,19 +46,22 @@ milli(void)
 {
 	struct	timeval	tv;
 	u64	now, start;
-	static	char time[20];
+	double	d;
+	static	char time[20];	/* 12345.999\0 plus slop */
 
 	gettimeofday(&tv, 0);
 	unless (getenv("BK_SEC")) {
 		safe_putenv("BK_SEC=%u", tv.tv_sec);
 		safe_putenv("BK_MSEC=%u", tv.tv_usec / 1000);
-		return ("0");
+		d = 0;
+	} else {
+		start = (u64)atoi(getenv("BK_SEC")) * (u64)1000;
+		start += (u64)atoi(getenv("BK_MSEC"));
+		now = (u64)tv.tv_sec * (u64)1000;
+		now += (u64)(tv.tv_usec / 1000);
+		d = now - start;
 	}
-	start = (u64)atoi(getenv("BK_SEC")) * (u64)1000;
-	start += (u64)atoi(getenv("BK_MSEC"));
-	now = (u64)tv.tv_sec * (u64)1000;
-	now += (u64)(tv.tv_usec / 1000);
-	sprintf(time, "%u", (u32)(now - start));
+	sprintf(time, "%6.3f", d / 1000.0);
 	return (time);
 }
 
@@ -82,6 +85,7 @@ main(int ac, char **av, char **env)
 	char	*p, *prog;
 	char	sopts[30];
 
+	for (i = 3; i < 20; i++) close(i);
 	reserveStdFds();
 	spawn_preHook = bk_preSpawnHook;
 	if (getenv("BK_SHOWPROC")) {
@@ -270,6 +274,10 @@ run:	getoptReset();
 		return (0);
 	}
 
+#ifdef	WIN32
+	/* This gets rid of an annoying message when sfiles is killed */
+	nt_loadWinSock();
+#endif
 	cmdlog_start(av, 0);
 	ret = cmd_run(prog, is_bk, si > 1 ? sopts : 0, ac, av);
 	cmdlog_end(ret);
@@ -654,11 +662,11 @@ cmdlog_end(int ret)
 	mdbm_close(notes);
 	notes = 0;
 	if (write_log(proj_root(0), "cmd_log", 0, "%s", log)) {
-		return (flags);
+		goto out;
 	}
 	if (cmdlog_repo &&
 	    write_log(proj_root(0), "repo_log", LOG_MAXSIZE, "%s", log)) {
-		return (flags);
+		goto out;
 	}
 	free(log);
 
@@ -677,9 +685,33 @@ cmdlog_end(int ret)
 	if (cmdlog_flags & (CMD_WRUNLOCK|CMD_RDUNLOCK)) repository_unlock(0);
 
 out:
+#ifndef	NOPROC
+	rmdir_findprocs();
+#endif
+	if (getenv("BK_REGRESSION")) {
+		int	i;
+		struct	stat sbuf;
+		char	buf[100];
+
+		for (i = 3; i < 20; i++) {
+			if (fstat(i, &sbuf)) continue;
+#if	defined(F_GETFD) && defined(FD_CLOEXEC)
+			if (fcntl(i, F_GETFD) & FD_CLOEXEC) continue;
+#endif
+			ttyprintf(
+			    "%s: warning fh %d left open\n", cmdlog_buffer, i);
+#ifndef	NOPROC
+			sprintf(buf,
+			    "/bin/ls -l /proc/%d/fd | grep '%d -> ' >/dev/tty",
+			    getpid(), i);
+			system(buf);
+#endif
+		}
+	}
 	cmdlog_buffer[0] = 0;
 	cmdlog_repo = 0;
 	cmdlog_flags = 0;
+out:
 	return (flags);
 }
 
@@ -823,9 +855,8 @@ launch_wish(char *script, char **av)
 	 * since we won't be using it.  This is so that we don't have
 	 * a unused console windows in the background of the GUIs.
 	 * WARNING: after this we shouldn't try to do any console IO.
-	 * This does not work on Win/Me (probably also Win/98)
 	 */
-	unless (isWin98()) FreeConsole();
+	FreeConsole();
 #endif
 	if (waitpid(pid, &ret, 0) < 0) {
 		return (126);

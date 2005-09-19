@@ -66,6 +66,7 @@ int	cmd_pending_part2(int ac, char **av);
 
 int	cmd_rclone_part1(int ac, char **av);
 int	cmd_rclone_part2(int ac, char **av);
+int	cmd_kill(int ac, char **av);
 
 struct cmd {
 	char	*name;		/* command name */
@@ -76,16 +77,12 @@ struct cmd {
 
 typedef struct {
 	u32	errors_exit:1;		/* exit on any error */
-	u32	debug:1;		/* don't fork for daemons, etc. */
-	u32	start:1;		/* start NT bkd service */
-	u32	remove:1;		/* remove NT bkd service */
+	u32	foreground:1;		/* don't fork for daemons, etc. */
 	u32	http_hdr_out:1;		/* print http header to output */
 	u32	quiet:1;		/* quiet mode */
 	u32	safe_cd:1;		/* do not allow chdir up */
 	u32	buffer_clone:1;		/* stream clone from copy */
-	FILE	*log;			/* if set, log commands to here */
 	int	alarm;			/* exit after this many seconds */
-	int	count;			/* exit after this many connections */
 	char	*uid;			/* desired uid or null */
 	char	*gid;			/* desired gid or null */
 	char	*pidfile;		/* write the daemon pid here */

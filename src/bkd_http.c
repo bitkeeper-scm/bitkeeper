@@ -24,7 +24,6 @@ private void	http_gif(char *path);
 private void	http_stats(char *path);
 private void	http_search(char *path);
 private void	http_related(char *path);
-private void	http_license(char *path);
 private void	http_tags(char *path);
 private void	http_robots(char *junk);
 private void	title(char *title, char *desc, char *color);
@@ -35,7 +34,6 @@ private char	*parseurl(char *);
 private void	trailer(char *path);
 private char	*units(char *t);
 private char	*findRoot(char *name);
-private int	has_temp_license(void);
 private int	include(char *path, char *file);
 private void	expand(char *s);
 
@@ -43,9 +41,6 @@ private	char	root[MAXPATH];
 private int	embedded = 0;
 private int	expires = 0;
 private	char	*header_host;
-
-extern	int	licenseServer[2];
-extern	time_t	licenseEnd;
 
 #define	COLOR		"lightblue"
 
@@ -87,7 +82,6 @@ private struct pageref {
     { http_search,  "search",    "search/", 7 },
     { http_stats,   "stats",     "stats",  0, HAS_ARG, 0 },
     { http_related, "related",   "related/", 8 },
-    { http_license, 0,           "license" },
     { http_tags,    "tags",      "tags" },
     { http_robots,  "robots",	 "robots.txt", 10},
     { 0 },
@@ -108,7 +102,6 @@ cmd_httpget(int ac, char **av)
 	 */
 	if (ac > 2) {
 		while (fnext(buf, stdin)) {
-			// fputs(buf, stderr);
 			if (strneq(buf, "Host:", 5)) {
 				char	*s;
 				s = &buf[5];
@@ -138,7 +131,7 @@ cmd_httpget(int ac, char **av)
 	 * Don't give seperate error messages as that is an information leak.
 	 */
 	getcwd(a, MAXPATH);
-	unless (strneq(name, "license", 7)) name = findRoot(name);
+	name = findRoot(name);
 	getcwd(b, MAXPATH);
 	unless (name && 
 	    (strlen(b) >= strlen(a)) && strneq(a, b, strlen(a))) {
@@ -149,11 +142,8 @@ cmd_httpget(int ac, char **av)
 	if (user) sprintf(root+strlen(root), "user=%s/", user);
 	unless (*name) name = "index.html";
 
-	unless (streq(name, "license") || (proj_bklbits(0) & LIC_WEB)) {
-		unless (has_temp_license()) {
-			http_error(503,
-			    "BK/Web option has not been purchased.");
-		}
+	unless (proj_bklbits(0) & LIC_WEB) {
+		http_error(503,	"BK/Web option has not been purchased.");
 	}
 
 
@@ -1734,73 +1724,6 @@ http_page(char *page, vfn content, char *argument)
     }
 }
 
-private int
-has_temp_license(void)
-{
-	fd_set	fds;
-	struct timeval delay;
-	char	ack[5];
-	char	*p;
-	int	fd;
-	int	timeleft = 30;
-#define PULL	0x01
-#define	CLONE	0x02
-	int	need = PULL|CLONE;
-	int	i;
-
-	if (time(0) < licenseEnd) return (1);
-
-	/*
-	 * Only try to obtain a temp license if both pull
-	 * and clone have not been disabled.
-	 */
-	for (i=0; cmds[i].name; i++) {
-		if (strneq(cmds[i].name, "pull", 4)) need &= ~PULL;
-		if (strneq(cmds[i].name, "clone", 5)) need &= ~CLONE;
-	}
-	if (need) return (0);
-
-	unless (p = getenv("BK_LICENSE_SOCKPORT")) return (0);
-	if ((fd = tcp_connect("127.0.0.1", atoi(p))) < 0) {
-		perror("license connect2");
-		return (0);
-	}
-
-    again:
-	FD_ZERO(&fds);
-	FD_SET(fd, &fds);
-	delay.tv_sec = 5;
-	delay.tv_usec = 0;
-
-	unless (select(fd+1, 0, &fds, 0, &delay) > 0 && FD_ISSET(fd, &fds))
-		return (0);
-
-	if (writen(fd, "MMI?", 4) == 4) {
-		ack[4] = 0;
-		FD_ZERO(&fds);
-		FD_SET(fd, &fds);
-		delay.tv_sec = 1;
-		delay.tv_usec = 0;
-
-		unless (select(fd+1, &fds, 0, 0, &delay)) return 0;
-
-		if (FD_ISSET(fd, &fds) && read(fd, ack, 4) == 4) {
-			if (strneq(ack, "YES\0", 4)) {
-				close(fd);
-				return (1);
-			}
-			if (strneq(ack, "NO\0\0", 4) && --timeleft > 0) {
-				sleep(1);
-				goto again;
-			}
-			return (0);
-		}
-	}
-	return (0);
-}
-
-
-
 private char *
 parseurl(char *url)
 {
@@ -1905,27 +1828,6 @@ http_related(char *file)
 	if (!embedded) trailer("related");
 	if (f) fclose(f);
 }
-
-private void
-http_license(char *page)
-{
-	char	*p;
-	int	licsock;
-	char	arg[5];
-
-	unless (expires > 0 && expires < 480) return;
-	unless (p = getenv("BK_LICENSE_SOCKPORT")) return;
-	if ((licsock = tcp_connect("127.0.0.1", atoi(p))) < 0) {
-		perror("license connect");
-		return;
-	}
-	/* also check the ip address we're coming from */
-	sprintf(arg, "S%03d", expires);
-	writen(licsock, arg, 4);
-	close(licsock);
-	exit(0);
-}
-
 
 private void
 http_tags(char *page)

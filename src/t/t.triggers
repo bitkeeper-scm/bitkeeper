@@ -863,7 +863,7 @@ set | grep $DASHA ^BK | grep -v _BK_ | bk _sort >> $HERE/pre-resolve
 exit 1
 EOF
 chmod +x BitKeeper/triggers/*
-waitForUnlock $HERE/project
+bk lock -U $HERE/project
 cd $HERE/clone
 rm -f BitKeeper/triggers/* $HERE/pre-resolve
 bk push > OUT 2>&1 && {
@@ -1023,13 +1023,11 @@ echo $N Create trivial server side triggers .........................$NL
 cd $HERE
 mkdir project/BitKeeper/triggers || exit 1
 cd project/BitKeeper/triggers
-echo "#! /bin/sh"                > good
-#echo "echo \`bk root\`/\$0: trigger fired"	>> good
-echo "bk root"			>> good
-echo "PROOT=\`bk root\`"			>> good
-echo "echo \$PROOT/\$0: trigger fired"	>> good
-echo "exit 0"                   >> good
-bk undos good > X
+bk undos > X <<EOF
+#!/bin/sh
+echo \`bk root\`/\$0: trigger fired
+exit 0
+EOF
 chmod +x X
 for x in pre post;do
 	for y in commit incoming outgoing;do
@@ -1221,6 +1219,13 @@ grep -q "1.3" pull.out
 if [ $? -ne 0 ]; then echo failed 2; cat pull.out; exit 1; fi
 grep -q "project/.*BitKeeper/triggers/pre-outgoing: trigger fired" pull.out
 if [ $? -ne 0 ]; then echo failed 3; cat pull.out; exit 1; fi
+# XXX - There can be spurious errors here depending on how the output gets
+# mixed together.
+# I saw: 
+# /build/.regression-lm/project 
+# /build/.regression-lm/project/B2.76X expansion
+#                                ^^^^^^^^^^^^^^^
+# which is the bkd trigger output mixed with takepatch output.
 grep -q "project/.*BitKeeper/triggers/post-outgoing: trigger fired" pull.out
 if [ $? -ne 0 ]; then echo failed 4; cat pull.out; exit 1; fi
 grep -q "copy/.*BitKeeper/triggers/pre-incoming: trigger fired" pull.out

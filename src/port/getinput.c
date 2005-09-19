@@ -33,7 +33,6 @@ sccs_getComments(char *file, char *rev, delta *n)
 {
 	char	buf2[1024];
 
-	flush_fd0(); /* for Win98 and Win/ME */
 	fprintf(stderr, "End comments with \".\" by itself or a blank line.\n");
 	assert(file);
 	if (rev) {
@@ -61,7 +60,6 @@ getParkComment(int *err)
         char    buf2[1024];
 	char	**comments = NULL;
 
-	flush_fd0(); /* for Win/98 and Win/ME */
 	fprintf(stderr, "End comments with \".\" by itself or a blank line.\n");
         fprintf(stderr, "parkfile>>  ");
 	catch();

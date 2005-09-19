@@ -1455,6 +1455,131 @@ _wish() {
 	exec "$WISH" "$@"
 }
 
+error() {
+	echo "$@" 1>&2
+}
+
+# bk service install [name] [options]
+# bk service status [-a | name]
+# bk service uninstall [-a | name]
+# bk service list
+_service()
+{
+	test X$ext = X.exe || {
+	    echo "bk service not supported on UNIX" 1>&2
+	    return 1
+	}
+
+	CMD="$1"
+	shift
+
+	test X$CMD = Xlist || {
+	    case "X$1" in
+		X-a)	NAME=-a	
+			shift
+			test "X$1" = X -a $CMD != install || {
+				bk help -s service
+				return 1
+			}
+			;;
+		X-*|X)	NAME=BKD;;
+		*)	NAME="$1"; shift;;
+	     esac
+	}
+
+	test "$NAME" = '-a' && {
+		SEP=""
+		bk _svcinfo -l | while read NAME
+		do	test "X$SEP" = X || echo $SEP
+			test $CMD = uninstall && echo bk service $CMD "$NAME"
+			( _service $CMD "$NAME" ) || exit 1
+			test $CMD = status && SEP=---
+		done
+		return 0
+	}
+		
+	SNAME="BK.$NAME"
+	case X$CMD in
+	    Xlist)
+		bk _svcinfo -l
+		return $?
+		;;
+	    Xstatus)
+	        svcmgr status "$SNAME" && bk _svcinfo -i "$SNAME"
+		return 0
+		;;
+	    Xuninstall)
+		RC=0
+		svcmgr status "$SNAME" > /tmp/svc$$ 2>/dev/null
+		grep -q 'RUNNING' /tmp/svc$$ && {
+			svcmgr stop "$SNAME"
+			RC=$?
+		}
+		svcmgr status "$SNAME" > /tmp/svc$$ 2>/dev/null
+		grep -q 'STOPPED' /tmp/svc$$ && {
+			svcmgr uninstall "$SNAME"
+			RC=$?
+		}
+		rm -f /tmp/svc$$
+		return $RC
+		;;
+	    Xinstall)
+		svcmgr status "$SNAME" >/dev/null 2>&1 && {
+			error BitKeeper Service "$NAME" is already installed.
+			exit 1
+		}
+		BIN=`bk bin`
+		BIN=`bk pwd "$BIN"`
+		BK="$BIN/bk.exe"
+		SVC="$BIN/svcmgr"
+		EV="-EBKD_SERVICE=YES"
+		# Do a little error checking before the install.
+		bk bkd -c $EV -dD ${1+"$@"} 2>/tmp/err$$ || {
+			cat /tmp/err$$ 1>&2
+			rm -f /tmp/err$$
+			error service install "$NAME" failed.
+			return 1
+		}
+		rm -f /tmp/err$$
+		DIRW=`bk pwd -w`
+		DIR=`bk pwd`
+		test "X$DIR" = X && {
+			echo Failed to get current working directory, abort.
+			exit 1
+		}
+		"$SVC" install "$SNAME" \
+		    -start auto \
+		    -displayname "BitKeeper ($NAME) daemon" \
+		    -description "BitKeeper ($NAME) daemon in $DIRW" \
+		    "$BK" bkd $EV -dD ${1+"$@"} "$DIR"
+		RC=$?
+		test $RC = 0 || {
+			error service install "$NAME" failed with $?
+			return 1
+		}
+		svcmgr start "$SNAME"
+		bk _usleep 250000
+		svcmgr status "$SNAME" > /tmp/svc$$ 2>/dev/null
+		# XXX - It would be oh-so-nice if we could redirect
+		# stderr from the bkd and catch error messages.
+		grep -q 'RUNNING' /tmp/svc$$ || {
+			error Failed to install and start the service.
+			MSG="Check the arguments,"
+			MSG="$MSG especially the ports, and retry."
+			error $MSG
+			( _service uninstall "$NAME" )
+			RC=2
+		}
+		rm -f /tmp/svc$$
+		return $RC
+		;;
+	    X*)
+		bk help -s service
+		return 1
+		;;
+	esac
+}
+
 _conflicts() {
 	FM3TOOL=0
 	REVTOOL=0

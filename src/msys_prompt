@@ -1,0 +1,11 @@
+#!/bin/sh
+
+test "$MSYSBUILDENV" || {
+	echo running in wrong environment, respawning...
+	bk get -S ./update_buildenv
+	BK_USEMSYS=1 bk sh ./update_buildenv
+	export HOME=`bk pwd`
+	test -d R:/build/buildenv/bin &&
+	    exec R:/build/buildenv/bin/sh --login -i
+	exec C:/build/buildenv/bin/sh --login -i
+}

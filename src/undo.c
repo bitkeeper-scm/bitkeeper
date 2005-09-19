@@ -86,7 +86,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 			exit(1);
 		}
 		unlink(BACKUP_SFIO);
-		if (rmresync) sys(RM, "-rf", "RESYNC", SYS);
+		if (rmresync && exists("RESYNC")) rmtree("RESYNC");
 		exit(1);
 	}
 	EACH (csetrev_list) {
@@ -169,7 +169,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 	update_log_markers(!quiet);
 	if (rc) return (rc); /* do not remove backup if check failed */
 	unlink(BACKUP_SFIO);
-	sys(RM, "-rf", "RESYNC", SYS);
+	rmtree("RESYNC");
 	unlink(CSETS_IN);	/* no longer valid */
 	return (rc);
 }

@@ -7,19 +7,21 @@ bk bkd \- the \*(BK daemon
 .SH DESCRIPTION
 .LP
 The \*(BK daemon, bkd, is used to synchronize and query repositories.
-It is usually run in one of three ways:
+It is typically run in one of the following ways:
 .TP 4
 a)
-automatically started when accessing a remote repository via rsh, ssh, and/or
-the file system;
+automatically started when accessing a remote repository via rsh, ssh, http,
+and/or the file system;
 .tp
 b)
 automatically started via ssh as a login shell;
 .tp
 c)
-manually started as a long running stand-alone daemon.
+manually started as a long running stand-alone daemon;
+d)
+automatically started as a long running service at boot time.
 .LP
-The method used depends on how the remote repository is named.
+The method used usually depends on how the remote repository is named.
 See 
 .B bk help url
 for details on the naming syntax.
@@ -44,7 +46,7 @@ the directory in which the bkd was started.
 If you want to export a single repository, pick a port number, and 
 do this:
 .DS
-cd /u/linux
+cd /home/bk/linux-2.6
 bk bkd \-d \-p5555 \-xcd \-xpush
 .DE
 .LP
@@ -119,65 +121,16 @@ exec bk bkd -C -xcd
 .B Note:
 using the bkd as a login shell when accessing the system using
 .BR rsh 
-is unsupported for two reasons: 
-.B rsh 
-is insecure and there is a bug which prevents correct operation 
-in this configuration.
+is unsupported and is known not to work due to a long standing rsh bug.
 .SH BK/WEB
 The bkd is a self contained http server which provides the optional
-BK/Web feature of \*(BK.  In order for this feature to work, one of
-two things must be true:
-.TP 4
-a)
-The bkd must be run at the root of a repository which contains a 
-commercial license which has the BK/Web option enabled;
-.tp
-b)
-The bkd must be run on a machine which is directly connected to the
-Internet and the
-.BR clone
-and
-.BR pull
-commands cannot be disabled.
+BK/Web feature of \*(BK.  In order for this feature to work the 
+repository served by the bkd must contain (or reference) a commercial
+license which has the BK/Web option enabled.
 .SH WINDOWS BASED BKD
 .LP
-At this time, bkd support on win32 is as a stand-alone daemon only
-and is restricted to one bkd service per host.  To initially start the
-bkd service:
-.DS
-open a cmd shell
-bk bkd -p<port>
-.DE
-.LP
-Once the bkd has been started, the service manager can be used
-to stop and start the bkd service.  On Win2K:
-.DS
-start->control\ panel->Administrative\ Tools->services
-right click on the bkd service
-click stop/start button
-.DE
-On WinNT:
-.DS
-start->control\ panel->services
-click the start/stop button
-.DE
-To remove the bkd service from the service manager:
-.DS
-open a cmd shell
-bk bkd -R
-.DE
-.LP
-Once launched, upon reboot, the bkd service is automatically re-started.
-To disable this feature on Win2K:
-.DS
-right click on BitKeeper service
-select properties
-change "startup type" to disable
-.DE
-On WinNT:
-.DS
-go to start->control\ panel->services->BitKeeper\ service->startup
-select disable
+It is possible to install a single bkd as a Windows service,
+see bk help service.
 .SH OPTIONS
 .TP 1i
 .B \-C
@@ -204,7 +157,7 @@ to
 (This option is not supported on the Windows platform.)
 .tp
 .B \-d
-Run as a daemon.  Implies \-C.
+Run as a daemon in the background.
 .tp
 .B \-D
 Debug mode, do not fork and run in the background.
@@ -262,10 +215,6 @@ status,
 synckeys,
 and
 version.
-.SH WINDOWS ONLY OPTIONS
-.TP 1i
-.B \-R
-Shutdown the bkd service.
 .SH EXAMPLES
 .LP
 We use the following in 
@@ -283,13 +232,13 @@ $ bk getmsg bitkeeper.init
 .DE
 We use the it in
 .BR /etc/rc.d/init.d/bitkeeper
-to start up \*(BK on bitkeeper.com (a Red Hat based Linux system):
+to start up \*(BK on bkbits.net (a Linux system):
 .DS
 #----------------------\ cut\ here\ --------------------------
 #!/bin/sh
 #
 # chkconfig: 2345 24 84
-# description: BitKeeper server for work
+# description: BitKeeper server for bkbits.net
 
 # Source networking configuration.
 if [ \-f /etc/sysconfig/network ]
@@ -350,7 +299,7 @@ esac
 exit 0
 #----------------------\ cut\ here\ --------------------------
 .DE
-.SH BUGS
+.SH BUGS/NOTES
 Needs 
 .B ssh
 to provide access controlled, authenticated users.
@@ -361,11 +310,12 @@ does not ship
 .B ssh
 since it is export controlled.
 .LP
-On Windows the bkd does not work when started from a network drive.
+On Windows the bkd service does not work when started from a network drive.
 .LP
-On Windows the bkd does not work when started from a subst'ed drive.
+On Windows the bkd service does not work when started from a subst'ed drive.
 .SH "SEE ALSO"
 .SA parent
+.SA service
 .SA url
 .SA Howto-bkd 1
 .\" help://anonymous

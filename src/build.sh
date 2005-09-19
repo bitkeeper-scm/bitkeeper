@@ -21,7 +21,7 @@ ms_env()
 	}
 
 	XLIBS="/mingw/lib/CRT_noglob.o -lws2_32 -lole32"
-	CC="gcc -pipe"
+	CC="gcc -pipe -DNOPROC"
 }
 
 test "X$G" = X && G=-g
@@ -44,33 +44,16 @@ case "X`uname -s`" in
 esac
 export KEYFILE
 case "X`uname -s`" in
-	XSunOS)	XLIBS="-lnsl -lsocket -lresolv"
-		export XLIBS
-		CHECK=1
+	XAIX)	CCXTRA="-DHAVE_LOCALZONE -DNOPROC"
 		;;
-	XSCO_SV)
-		XLIBS="-lsocket"
-		export XLIBS
-		CHECK=1
-		;;
-	XAIX)	CHECK=1
-		;;
-	X*_NT*|X*_98*)
+	XCYGWIN*|XMINGW*)
 		ms_env;
-		;;
-	XOSF1)
-		CC=gcc
-		LD=gcc
-		G=-g
-		CHECK=1
-		WARN=NO
-		export CC LD G WARN
 		;;
 	XDarwin)
 		CC=cc
 		LD=cc
 		export CC LD 
-		CCXTRA="-DHAVE_GMTOFF -no-cpp-precomp"
+		CCXTRA="-DHAVE_GMTOFF -DNOPROC -no-cpp-precomp"
 		case "X`uname -r`" in
 			X6.*)	CCXTRA="$CCXTRA -DMACOS_VER=1020"
 				;;
@@ -94,8 +77,39 @@ case "X`uname -s`" in
 				;;
 		esac
 		;;
+	XFreeBSD)
+		CCXTRA="-DNOPROC -DHAVE_GMTOFF"
+		;;
 	XHP-UX)
-		CCXTRA=-Dhpux
+		CCXTRA="-Dhpux -DNOPROC"
+		;;
+	XIRIX*)
+		CCXTRA="-DHAVE_LOCALZONE -DNOPROC"
+		;;
+	XLinux) CCXTRA=-DHAVE_GMTOFF
+		;;
+	XNetBSD)
+		CCXTRA="-DHAVE_GMTOFF -DNOPROC"
+		;;
+	XOpenBSD)
+		CCXTRA="-DHAVE_GMTOFF -DNOPROC"
+		;;
+	XSCO_SV)
+		XLIBS="-lsocket"
+		export XLIBS
+		CCXTRA="-DHAVE_LOCALZONE -DNOPROC"
+		;;
+	XSunOS)	XLIBS="-lnsl -lsocket -lresolv"
+		export XLIBS
+		CCXTRA="-DHAVE_LOCALZONE -DNOPROC"
+		;;
+	XOSF1)
+		CC=gcc
+		LD=gcc
+		G=-g
+		CHECK=1
+		WARN=NO
+		export CC LD G WARN
 		;;
 	*)
 		CHECK=1
@@ -120,8 +134,9 @@ if [ "$CHECK" ]; then
 		if $CC -o $$ $$.c 1>/dev/null 2>/dev/null; then
 			CCXTRA="$CCXTRA -DHAVE_LOCALZONE"
 		fi
-    fi
-    rm -f $$ $$.c
+	fi
+	rm -f $$ $$.c
+	test -d /proc || CCXTRA="$CCXTRA -DNOPROC"
 fi
 
 test -f /build/.static && BK_STATIC=YES

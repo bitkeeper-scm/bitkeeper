@@ -2668,7 +2668,9 @@ resolve_cleanup(opts *opts, int what)
 	if ((what & CLEAN_OK) && exists(buf)) csets_in(opts);
 	if (what & CLEAN_RESYNC) {
 		assert(exists("RESYNC"));
-		sys(RM, "-rf", "RESYNC", SYS);
+		if (rmtree("RESYNC")) {
+			fprintf(stderr, "resolve: rmtree failed\n");
+		}
 	} else if (what & CLEAN_MVRESYNC) {
 		char	*dir = savefile(".", "RESYNC-", 0);
 

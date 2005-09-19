@@ -333,7 +333,6 @@ prompt(char *msg, char *buf)
 	caught = 0;
 	sig_catch(abort_prompt);
 
-	flush_fd0(); /* for Win/98 and Win/ME */
 	write(2, msg, strlen(msg));
 	write(2, " ", 1);
 	ret = getline(0, buf, MAXPATH) > 1;
@@ -354,7 +353,6 @@ confirm(char *msg)
 	caught = 0;
 	sig_catch(abort_prompt);
 
-	flush_fd0(); /* for Win/98 and Win/Me */
 	write(2, msg, strlen(msg));
 	write(2, " (y/n) ", 7);
 	gotsome = getline(0, buf, sizeof(buf)) > 1;
@@ -366,6 +364,13 @@ confirm(char *msg)
 	unless (gotsome) return (0);
 	for (p = buf; *p && isspace(*p); p++);
 	return ((*p == 'y') || (*p == 'Y'));
+}
+
+int
+usleep_main(int ac, char **av)
+{
+	usleep(atoi(av[1]));
+	return (0);
 }
 
 /*
@@ -928,7 +933,7 @@ getServerInfoBlock(remote *r)
 {
 	int	ret = 1; /* protocol error, never saw @END@ */
 	int	gotseed = 0;
-	int	i;
+	int	i, cnt;
 	char	*newseed;
 	char	buf[4096];
 
@@ -941,6 +946,14 @@ getServerInfoBlock(remote *r)
 		if (strneq(buf, "PROTOCOL", 8)) {
 			safe_putenv("BK_REMOTE_%s", buf);
 		} else {
+			for (cnt = i = 0; buf[i]; i++) {
+				if (buf[i] == '=') ++cnt;
+			}
+			unless (cnt == 1) {
+				fprintf(stderr, "Invalid data from bkd: %s\n",
+				    buf);
+				return (2);
+			}
 			safe_putenv("BKD_%s", buf);
 			if (strneq(buf, "REPO_ID=", 8)) {
 				cmdlog_addnote("rmts", buf+8);
@@ -1553,22 +1566,78 @@ progressbar(int n, int max, char *msg)
 void
 reserveStdFds(void)
 {
-	int	fd0, fd1;
+	int	fd;
+
 
 #ifdef WIN32
 	closeBadFds();
 #endif
-	if ((fd0 = open(DEVNULL_RD, O_RDONLY, 0)) == 0) {
-do1:		if ((fd1 = open(DEVNULL_WR, O_WRONLY, 0)) != 1) {
-			close(fd1);
-		}
-	} else {
-		close(fd0);
-		if (fd0 == 1) {
-			goto do1;
+	/* reserve stdin */
+	if ((fd = open(DEVNULL_RD, O_RDONLY, 0)) != 0) close(fd);
+	if (fd <= 2) {
+		/* reserve stdout & stderr */
+		if ((fd = open(DEVNULL_WR, O_WRONLY, 0)) > 2) close(fd);
+		if (fd == 1) {
+			if ((fd = open(DEVNULL_WR, O_WRONLY, 0)) > 2) close(fd);
 		}
 	}
 }
+
+#ifndef	NOPROC
+
+extern	char	*bin;
+
+int
+checking_rmdir(char *dir)
+{
+	int	rc;
+
+	rc = (rmdir)(dir);
+	rmdir_findprocs();
+	return (rc);
+}
+
+void
+rmdir_findprocs(void)
+{
+	char	**d;
+	int	i, j, c;
+	char	buf1[MAXLINE], buf2[MAXLINE];
+
+	unless (getenv("BK_REGRESSION")) return;
+	d = getdir("/proc");
+	EACH (d) {
+		unless (isdigit(d[i][0])) continue;
+		sprintf(buf1, "/proc/%s/exe", d[i]);
+		if ((c = readlink(buf1, buf2, sizeof(buf2))) < 0) continue;
+		buf2[c] = 0;
+		unless (strneq(buf2, bin, strlen(bin))) continue;
+		sprintf(buf1, "/proc/%s/cwd", d[i]);
+		if ((c = readlink(buf1, buf2, sizeof(buf2))) < 0) continue;
+		buf2[c] = 0;
+		unless (streq(buf2 + c - 9, "(deleted)")) continue;
+
+		/* give them a chance to go away */
+		for (j = 0; j < 60; ++j) {
+			usleep(500000);
+			if ((c = readlink(buf1, buf2, sizeof(buf2))) < 0) break;
+		}
+		/* we know they are gone if we broke out early */
+		if (j < 60) continue;
+		
+		buf2[c] = 0;
+		unless (streq(buf2 + c - 9, "(deleted)")) continue;
+		buf2[c - 10] = 0;
+		ttyprintf("proc %s is in dir %s which has been deleted\n",
+		    d[i], buf2);
+		sprintf(buf2, "/bin/ls -l /proc/%s > /dev/tty", d[i]);
+		system(buf2);
+		assert(0);
+	}
+	freeLines(d, free);
+}
+
+#endif
 
 /*
  * Portable way to print a pointer.  Results are returned in a static buffer

@@ -395,6 +395,7 @@ rset_main(int ac, char **av)
 		case 'r':	opts.rflg = 1;			/* doc 2.0 */
 				if (parse_rev(s, optarg,
 						&rev1, &revM, &rev2, rbuf)) {
+					sccs_free(s);
 					return (1); /* parse failed */
 				}
 				break;
@@ -415,6 +416,7 @@ usage:				system("bk help -s rset");
 	if (csetIds_merge(s, rev1, revM)) {
 		fprintf(stderr,
 		    "Cannot get ChangeSet for revision %s\n", rev1);
+		sccs_free(s);
 		return (1);
 	}
 	db1 = s->mdbm; s->mdbm = NULL;
@@ -423,6 +425,7 @@ usage:				system("bk help -s rset");
 		if (csetIds(s, rev2)) {
 			fprintf(stderr,
 			    "Cannot get ChangeSet for revision %s\n", rev2);
+			sccs_free(s);
 			return (1);
 		}
 		db2 = s->mdbm; s->mdbm = NULL;

@@ -2125,15 +2125,18 @@ cleanup(int what)
 		fprintf(stderr, "takepatch: neither directory removed.\n");
 		goto done;
 	}
+	for (i = 3; i < 20; ++i) close(i);
 	if (what & CLEAN_RESYNC) {
-		sys(RM, "-rf", ROOT2RESYNC, SYS);
+		rmtree(ROOT2RESYNC);
 	} else {
 		fprintf(stderr, "takepatch: RESYNC directory left intact.\n");
 	}
 	unless (streq(input, "-")) goto done;
 	if (what & CLEAN_PENDING) {
 		unlink(pendingFile);
-		if (rmdir("PENDING") && (errno == ENOTEMPTY)) {
+		if (emptyDir("PENDING")) {
+			rmdir("PENDING");
+		} else {
 			fprintf(stderr,
 			    "takepatch: other patches left in PENDING\n");
 		}

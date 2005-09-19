@@ -1,13 +1,13 @@
 #include "../system.h"
 #include "../sccs.h"
 
-#ifdef	WIN32
-#define	link(f, t)	win32link(f, t)
-private int	win32link(const char *from, const char *to);
-#endif
-
-private	char	*uniqfile(const char *file);
+#ifndef	WIN32
 private	int	linkcount(const char *file);
+#endif
+private	char	*uniqfile(const char *file);
+
+private	int	incr = 25000;
+private	int	failed = 0;
 private	void	addLock(const char *, const char *);
 
 private	char	**lockfiles;
@@ -24,76 +24,91 @@ private	int	lockfiles_pid;
  * Note: certain client side NFS implementations take a long time to time
  * out the attributes so calling this with a low value (under 120 or so)
  * for the seconds arg is not suggested.
+ *
+ * sccs_unlock() and others want the uniq file even if we are windows.
  */
 int
 sccs_lockfile(const char *file, int waitsecs, int quiet)
 {
 	char	*p, *uniq;
 	int	fd;
-	int	uslp = 1000, waited = 0;
+	int	uslp = incr;
+	u64	waited = 0;
 
 	uniq = uniqfile(file);
 	unlink(uniq);
-	fd = creat(uniq, 0666);
-	unless (fd >= 0) {
+	unless ((fd = open(uniq, O_CREAT|O_RDWR|O_EXCL, 0644)) >= 0) {
 		fprintf(stderr, "Can't create lockfile %s\n", uniq);
 		free(uniq);
 		return (-1);
 	}
 	p = aprintf("%u %s %u\n", getpid(), sccs_realhost(), time(0));
 	write(fd, p, strlen(p));
-	unless (getenv("BK_REGRESSION")) fsync(fd);
-	close(fd);
 	for ( ;; ) {
-		if (link(uniq, file) == -1) {
-			if (errno == EPERM) {
-				fd = open(file, O_EXCL|O_CREAT|O_WRONLY, 0666);
-				if (fd != -1) {
-					write(fd, p, strlen(p));
-					unless (getenv("BK_REGRESSION")) {							fsync(fd);
-						fsync(fd);
-					}
-					close(fd);
-					addLock(uniq, file);
-					free(uniq);
-					free(p);
-					return (0);
-				}
+#ifdef	WIN32
+		HANDLE	h;
+		DWORD	out;
+
+		h = CreateFile(file, GENERIC_WRITE, 0, 0, CREATE_NEW, 0, 0);
+		unless (h == INVALID_HANDLE_VALUE) {
+			WriteFile(h, p, strlen(p), &out, 0);
+			CloseHandle(h);
+			if (out == strlen(p)) {
+				close(fd);
+				addLock(uniq, file);
+				free(p);
+				free(uniq);
+				return (0);
 			}
+			unlink(file);
 		}
-		/* not true on windows file systems */
-		if (linkcount(uniq) == 2) {
+#else
+		if ((link(uniq, file) == 0) && (linkcount(uniq) == 2)) {
+			close(fd);
 			addLock(uniq, file);
 			free(uniq);
 			free(p);
 			return (0);
 		}
+#endif
+		failed++;
 		if (sccs_stalelock(file, 1)) continue;
 		unless (waitsecs) {
-			unlink(uniq);
-			return (-1);
-		}
-		if ((waitsecs > 0) && ((waited / 1000000) >= waitsecs)) {
-			unless (quiet < 2) {
-				fprintf(stderr,
-				    "Timed out waiting for %s\n", file);
-			}
+			close(fd);
 			unlink(uniq);
 			free(uniq);
 			free(p);
 			return (-1);
 		}
-		waited += uslp;
-		if (uslp < 1000000) uslp <<= 1;
-		/* usleep() doesn't appear to work on NetBSD.  Sigh. */
-		if (uslp < 1000000) {
-			usleep(uslp);
-		} else {
-			unless (quiet) {
-				fprintf(stderr, "Waiting for lock %s\n", file);
+		if ((waitsecs != -1) && ((waited / 1000000) >= waitsecs)) {
+			unless (quiet < 2) {
+				fprintf(stderr,
+				    "Timed out waiting for %s\n", file);
 			}
-			sleep(uslp/1000000);
+			close(fd);
+			unlink(uniq);
+			free(uniq);
+			free(p);
+			return (-1);
 		}
+		if (!quiet && ((quiet*1000000) > waited)) {
+			fprintf(stderr,
+			    "%d: waiting for lock %s\n", getpid(), file);
+		}
+		waited += uslp;
+		/*
+		 * If there is a lot of contention this means that some
+		 * processes may starve if we go too high.  So cap it
+		 * at a level that isn't going to hurt system performance
+		 * with everyone after the lock but isn't too long either.
+		 */
+		if ((uslp < 100000) && (incr > 1)) uslp += incr;
+#ifdef	__NetBSD__
+		/* usleep() doesn't appear to work on NetBSD.  Sigh. */
+		sleep(1);
+#else
+		usleep(uslp);
+#endif
 	}
 	/* NOTREACHED */
 }
@@ -264,29 +279,7 @@ uniqfile(const char *file)
 	return (uniq);
 }
 
-#ifdef WIN32
-/*
- * TODO Move this interface into the uwtlib
- * after we fixed all other code which uses
- * link() as a "fast copy" interface.
- */
-private int
-win32link(const char *from, const char *to)
-{
-	errno = EPERM;
-	return (-1);
-}
-
-private int
-linkcount(const char *file)
-{
-	/*
-	 * stat() is a _very_ expensive call on win32
-	 * since no win32 FS supports hard links, just return 1
-	 */
-	return (1);
-}
-#else
+#ifndef WIN32
 private int
 linkcount(const char *file)
 {
@@ -297,6 +290,63 @@ linkcount(const char *file)
 
 }
 #endif
+
+/*
+ * usage: bk locktest file [n]
+ *
+ * This will loop calling sccs_lockfile(file) and while it is locked go
+ * make sure that we can do an exclusive open of /tmp/lock
+ */
+int
+locktest_main(int ac, char **av)
+{
+	char	*lock = av[1];
+	int	i, fd, fd2;
+	int	n = 1000, lie = getenv("BK_FAKE_LOCK") != 0;
+	char	tmp[200];
+
+	unless (av[1]) exit(1);
+	if (av[2]) n = atoi(av[2]);
+	sprintf(tmp, "/tmp/lock-%s", sccs_getuser());
+	if (streq(av[1], "O_EXCL")) {
+		unlink(tmp);
+		fd = open(tmp, O_CREAT|O_RDWR|O_EXCL, 0600);
+		fd2 = open(tmp, O_CREAT|O_RDWR|O_EXCL, 0600);
+		if (fd == -1) {
+			perror("first open");
+			return (1);
+		}
+		if (fd2 != -1) {
+			perror("second open");
+			close(fd);
+			unlink(tmp);
+			return (1);
+		}
+		close(fd);
+		return (0);
+	}
+	incr = 1;	/* so we hammer on the lock */
+	for (i = 0; i < n; ++i) {
+		if (!lie && sccs_lockfile(lock, -1, 1)) {
+			perror("lockfile");
+			return (1);
+		}
+		fd = open(tmp, O_CREAT|O_RDWR|O_EXCL, 0600);
+		if (fd == -1) {
+			perror(tmp);
+			fprintf(stderr, "Got lock but not O_EXCL lock\n");
+			return (1);
+		}
+
+		usleep(1);
+		close(fd);
+		unlink(tmp);
+		sccs_unlockfile(lock);
+		usleep(1);
+	}
+	printf("%d failed attempts, %d successes\n", failed, n);
+	return (0);
+}
 
 void
 lockfile_cleanup(void)

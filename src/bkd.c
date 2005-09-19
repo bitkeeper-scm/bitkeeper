@@ -2,23 +2,24 @@
 #include "tomcrypt/mycrypt.h"
 #include "tomcrypt/randseed.h"
 
-#define	Respond(s)	write(licenseServer[1], s, 4)
-
 private	void	exclude(char *cmd, int verbose);
 private void	unexclude(char **list, char *cmd);
 private	int	findcmd(int ac, char **av);
 private	int	getav(int *acp, char ***avp, int *httpMode);
+private	void	exclude(char *cmd);
 private	void	log_cmd(char *peer, int ac, char **av);
 private	void	usage(void);
+private int	service(char *cmd, int ac, char **av);
+private	void	do_cmds(void);
 
+char		*bkd_getopt = "BcCdDeE:g:hi:l|L:p:P:qRSt:u:V:x:";
 char 		*logRoot;
 private char	**exCmds;
 
 int
 bkd_main(int ac, char **av)
 {
-	int	port = 0;
-	int	daemon = 0;
+	int	port = 0, daemon = 0, check = 0;
 	int	i, c;
 	char	**unenabled = 0;
 
@@ -31,46 +32,42 @@ bkd_main(int ac, char **av)
 	 * Note the freeLines below does not free the line itself.
 	 */
 	unenabled = addLine(unenabled, "license");
+	unenabled = addLine(unenabled, "kill");
 
 	/*
 	 * Win32 note: -u/-t options have no effect on win32; win32 cannot
-	 *	 support alarm and setuid.	 
-	 * Unix note: -E/-s/-S/-R/-z options have no effect on Unix;
+	 *	 support alarm and setuid.
+	 * Unix note: -S/-R options have no effect on Unix;
 	 * 	 These option are used by the win32 bkd service as internal
 	 *	 interface.
-	 * XXX Win32 note: WARNING: If you add a new option,  you _must_
-	 * XXX propagate the option in  bkd_install_service() and 
-	 * XXX bkd_service_loop(). The NT service is a 3 level spawning
-	 * XXX architechture!! (The above functions are in port/bkd_server.c)
+	 * -c now means check arguments and if they are OK echo the starting
+	 * dir and exit.  Used for service.
 	 */
-	while ((c =
-	    getopt(ac, av, "Bc:CdDeE:g:hi:l|L:p:P:qRSt:u:V:x:")) != -1) {
+	while ((c = getopt(ac, av, bkd_getopt)) != -1) {
 		switch (c) {
 		    case 'B': Opts.buffer_clone = 1; break;
+		    case 'c': check = 1; break;
 		    case 'C': Opts.safe_cd = 1; break;		/* doc */
 		    case 'd': daemon = 1; break;		/* doc 2.0 */
-		    case 'D': Opts.debug = 1; break;		/* doc 2.0 */
+		    case 'D': Opts.foreground = 1; break;	/* doc 2.0 */
 		    case 'i': unexclude(unenabled, optarg); break;
 		    case 'g': Opts.gid = optarg; break;		/* doc 2.0 */
 		    case 'h': Opts.http_hdr_out = 1; break;	/* doc 2.0 */
 		    case 'l':					/* doc 2.0 */
-			unless (optarg) Opts.log = stderr;
-			Opts.logfile = optarg;
+			Opts.logfile = optarg ? optarg : (char*)1;
 			break;
 		    case 'V':	/* XXX - should be documented */
 			Opts.vhost_dirpath = strdup(optarg); break;
 		    case 'p': port = atoi(optarg); break;	/* doc 2.0 */
 		    case 'P': Opts.pidfile = optarg; break;	/* doc 2.0 */
 		    case 'S': 					/* undoc 2.0 */
-			Opts.start = 1; daemon = 1; break;
 		    case 'R': 					/* doc 2.0 */
-			unless (win32()) usage();
-			Opts.remove = 1; daemon = 1;
-			break;
+			if (getenv("BKD_SERVICE")) break;	/* ignore it */
+			return (
+			    service(c == 'S'? "install" : "uninstall", ac, av));
 		    case 'u': Opts.uid = optarg; break;		/* doc 2.0 */
 		    case 'x': exclude(optarg, 1); break;	/* doc 2.0 */
-		    case 'c': Opts.count = atoi(optarg); break;	/* undoc */
-		    case 'e': break;				/* undoc */
+		    case 'e': break;				/* obsolete */
 		    case 'E': putenv(optarg); break;		/* undoc */
 		    case 'L': logRoot = strdup(optarg); break;	/* undoc */
 		    case 'q': Opts.quiet = 1; break; 		/* undoc */
@@ -87,10 +84,13 @@ bkd_main(int ac, char **av)
 		return (1);
 	}
 #endif
-	if ((Opts.start || Opts.remove) && !win32()) {
-		fprintf(stderr, "bkd: -S and -R only make sense on Windows\n");
-		return (1);
+	if (av[optind] && !getenv("BKD_SERVICE")) usage();
+
+	if (av[optind] && chdir(av[optind])) {
+		perror(av[optind]);
+		exit(1);
 	}
+
 	if (logRoot && !IsFullPath(logRoot)) {
 		fprintf(stderr,
 		    "bad log root: %s: must be a full path name\n", logRoot);
@@ -100,21 +100,37 @@ bkd_main(int ac, char **av)
 	unless (Opts.vhost_dirpath) Opts.vhost_dirpath = strdup(".");
 
 	if (port) daemon = 1;
+	if (daemon && (Opts.logfile == (char*)1) && !Opts.foreground) {
+		fprintf(stderr, "bkd: Can't log to stderr in daemon mode\n");
+		return (1);
+	}
 	core();
 	putenv("PAGER=cat");
 	putenv("_BK_IN_BKD=1");
 	if (daemon) {
-		safe_putenv("BKD_PORT=%d", port ? port : BK_PORT);
+		if (daemon && isWin2000() &&
+		    !getenv("BK_ALLOW_BKD") && !getenv("BK_REGRESSION")) {
+			fprintf(stderr,
+			    "bkd: daemon is not supported on Windows 2000\n");
+			return (1);
+		}
+		unless (port) port = BK_PORT;
+		if ((c = tcp_connect("127.0.0.1", port)) > 0) {
+			unless (Opts.quiet) {
+				fprintf(stderr,
+				    "bkd: localhost:%d is already in use.\n",
+				    port);
+			}
+			closesocket(c);
+			return (2);	/* regressions count on 2 */
+		}
+		if (check) return (0);
+		safe_putenv("BKD_PORT=%d", port);
 		bkd_server(ac, av);
 		exit(1);
 		/* NOTREACHED */
 	} else {
 		ids();
-		if (Opts.logfile) Opts.log = fopen(Opts.logfile, "a");
-		if (Opts.alarm) {
-			signal(SIGALRM, exit);
-			alarm(Opts.alarm);
-		}
 		do_cmds();
 		return (0);
 	}
@@ -190,7 +206,7 @@ save_byte_count(unsigned int byte_count)
 	}
 }
 
-void
+private void
 do_cmds(void)
 {
 	int	ac;
@@ -205,6 +221,10 @@ do_cmds(void)
 		logged_peer = 1;
 	}
 
+	if (Opts.alarm) {
+		signal(SIGALRM, exit);
+		alarm(Opts.alarm);
+	}
 	httpMode = Opts.http_hdr_out;
 	while (getav(&ac, &av, &httpMode)) {
 		if (debug) {
@@ -214,7 +234,7 @@ do_cmds(void)
 		}
 		getoptReset();
 		if ((i = findcmd(ac, av)) != -1) {
-			if (Opts.log) log_cmd(peer, ac, av);
+			if (Opts.logfile) log_cmd(peer, ac, av);
 			proj_reset(0); /* XXX needed? */
 
 			if (Opts.http_hdr_out) http_hdr();
@@ -267,34 +287,40 @@ log_cmd(char *peer, int ac, char **av)
 	time_t	t;
 	struct	tm *tp;
 	int	i;
+	FILE	*log;
 	static	char	**putenv;
 
 	if (streq(av[0], "putenv")) {
 		putenv = addLine(putenv, strdup(av[1]));
 		return;
 	}
+
+	log = (Opts.logfile == (char*)1) ? stderr : fopen(Opts.logfile, "a");
+	unless (log) return;
+
 	time(&t);
 	tp = localtimez(&t, 0);
 	if (putenv) {
-		fprintf(Opts.log, "%s %.24s ", peer, asctime(tp));
+		fprintf(log, "%s %.24s ", peer, asctime(tp));
 		sortLines(putenv, 0);
 		EACH(putenv) {
 			if (strneq("_BK_", putenv[i], 4) ||
 			    strneq("BK_", putenv[i], 3)) {
-			    	fprintf(Opts.log, "%s ", &putenv[i][3]);
+			    	fprintf(log, "%s ", &putenv[i][3]);
 			} else {
-			    	fprintf(Opts.log, "%s ", putenv[i]);
+			    	fprintf(log, "%s ", putenv[i]);
 			}
 		}
-		fprintf(Opts.log, "\n");
+		fprintf(log, "\n");
 		freeLines(putenv, free);
 		putenv = 0;
 	}
-	fprintf(Opts.log, "%s %.24s ", peer, asctime(tp));
+	fprintf(log, "%s %.24s ", peer, asctime(tp));
 	for (i = 0; i < ac; ++i) {
-		fprintf(Opts.log, "%s ", av[i]);
+		fprintf(log, "%s ", av[i]);
 	}
-	fprintf(Opts.log, "\n");
+	fprintf(log, "\n");
+	unless (log == stderr) fclose(log);
 }
 
 /*
@@ -648,4 +674,24 @@ bkd_restoreSeed(char *repoid)
 	unlink(d);
 	free(d);
 	return (ret);
+}
+
+/*
+ * This is only done on windows for now but we could support it in inetd.
+ * av[0] = bkd
+ * av[1] = -S ....
+ */
+private int
+service(char *cmd, int ac, char **av)
+{
+	char	**nav = 0;
+	int	status;
+
+	nav = addLine(nav, "bk");
+	nav = addLine(nav, "service");
+	nav = addLine(nav, cmd);
+	for (ac = 1; av[ac]; nav = addLine(nav, av[ac]));
+	nav = addLine(nav, 0);
+	status = spawnvp_ex(P_WAIT, nav[1], &nav[1]);
+	return (WEXITSTATUS(status));
 }

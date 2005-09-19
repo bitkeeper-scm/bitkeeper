@@ -175,14 +175,16 @@ listkey_main(int ac, char **av)
 	if (getline(0, key, sizeof(key)) <= 0) {
 		unless (quiet) {
 			fprintf(stderr, "Expected \"@LOD PROBE@\", Got EOF\n");
-			return (2);
 		}
+		sccs_free(s);
+		return (2);
 	}
 	unless (streq("@LOD PROBE@", key)) {
 		unless (quiet) {
 			fprintf(stderr,
 			    "Expected \"@LOD PROBE@\", Got \"%s\"\n", key);
 		}
+		sccs_free(s);
 		return(3); /* protocol error or repo locked */
 	}
 
@@ -225,6 +227,7 @@ listkey_main(int ac, char **av)
 mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 		out("@NO MATCH@\n");
 		out("@END@\n");
+		sccs_free(s);
 		return (1); /* package key mismatch */
 	}
 

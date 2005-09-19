@@ -10,16 +10,22 @@ int
 pwd_main(int ac, char **av)
 {
 	char	buf[MAXPATH], *p;
-	int	c, shortname = 0, bk_rpath = 0;
+	int	c, shortname = 0, bk_rpath = 0, windows = 0;
 
-	while ((c = getopt(ac, av, "sr")) != -1) {
+	while ((c = getopt(ac, av, "srw")) != -1) {
 		switch (c) {
 			case 's': shortname = 1; break;
 			case 'r': bk_rpath = 1; break; /* bk relative path */
+			case 'w': windows = 1; break;
 			default: fprintf(stderr, usage); exit(1);
 		}
 	}
 	
+	if (bk_rpath && windows) {
+		fprintf(stderr, "pwd: -r or -w but not both.\n");
+		return (1);
+	}
+
 	/*
 	 * If a pathname is supplied, chdir there first
 	 * before we do a getcwd(). This is a efficient way
@@ -42,6 +48,7 @@ pwd_main(int ac, char **av)
 		GetShortPathName(p, p, sizeof buf - (p - buf));
 		nt2bmfname(p, p); /* needed for win98 */
 	}
+	if (windows) bm2ntfname(p, p);
 #endif
 	printf("%s\n", bk_rpath ? _relativeName(p, 1, 1, 1, 0): p);
 	return (0);

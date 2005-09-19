@@ -73,18 +73,18 @@ echo OK
 
 echo $N Try to relink with read lock in the from repo, should fail ..$NL
 cd clone
-bk lock -r &
-LOCKPID=$!
+bk lock -tr > L &
 bk lock -L
+LOCKURL=`cat L`
 cd ..
 bk relink clone project 2>OUT && {
-	kill $LOCKPID
+	bk _kill $LOCKURL
 	echo Should have failed
 	cat OUT
 	exit 1
 }
-bk unlock -r clone
-waitForUnlock clone
+bk _kill $LOCKURL
+bk lock -U
 grep -q "relink: unable to write lock clone" OUT || {
 	echo Bad status message
 	cat OUT
@@ -94,18 +94,18 @@ echo OK
 
 echo $N Try to relink with write lock in the from repo, should fail .$NL
 cd clone
-bk lock -w &
-LOCKPID=$!
+bk lock -tw > L &
 bk lock -L
+LOCKURL=`cat L`
 cd ..
 bk relink clone project 2>OUT && {
-	kill $LOCKPID
+	bk _kill $LOCKURL
 	echo Should have failed
 	cat OUT
 	exit 1
 }
-bk unlock -w clone
-waitForUnlock clone
+bk _kill $LOCKURL
+bk lock -U
 grep -q "relink: unable to write lock clone" OUT || {
 	echo Bad status message
 	cat OUT
@@ -115,17 +115,17 @@ echo OK
 
 echo $N Try to relink with read lock in the to repo, should work ....$NL
 cd project
-bk lock -r &
-LOCKPID=$!
+bk lock -tr > L &
 bk lock -L
+LOCKURL=`cat L`
 cd ..
 bk relink clone project 2>OUT || {
-	kill $LOCKPID
+	bk _kill $LOCKURL
 	cat OUT
 	exit 1
 }
-bk unlock -r project
-waitForUnlock project
+bk _kill $LOCKURL
+bk lock -U
 grep -q "relinked 0/$NFILE files, 0 different, $NFILE already linked." OUT || {
 	echo Bad status message
 	cat OUT

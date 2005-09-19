@@ -50,13 +50,8 @@ echo OK
 echo $N rClone via bk:// ............................................$NL
 cd $HERE
 rm -rf copy copy2
-P=50000
-bk bkd -q -p$P -c8
-while [ $? -eq 2 ]
-do      P=`expr $P + 1`
-        bk bkd -q -p$P -c8
-done 
-
+P=`port 50000`
+bk bkd -q -p$P -ikill
 bk clone $Q $HERE/project bk://localhost:$P/$HERE/copy
 [ -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
 cd $HERE/copy
@@ -89,6 +84,7 @@ grep -q 'illegal cd' OUT || {
        cat OUT
        exit 1
 }
+bk _kill http://localhost:$P || exit 1
 echo OK
 echo $N Make sure rclone respect checkout preference ................$NL
 cd $HERE/project/BitKeeper/etc

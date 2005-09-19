@@ -204,7 +204,13 @@ gunzipAll2fd(int rfd, int wfd, int level, int *in, int *out)
 	u32 	hlen;
 	char	buf[4096];
 	int	i;
-	int	j = 0, k = 0;
+	int	moved = 0, offset = 0;
+
+	if (getenv("BK_REGRESSION")) {
+		char	*p = getenv("BK_DIE_OFFSET");
+	
+		if (p) offset = atoi(p);
+	}
 
 	gzip_init(level);
 	setmode(rfd, _O_BINARY);
@@ -212,17 +218,16 @@ gunzipAll2fd(int rfd, int wfd, int level, int *in, int *out)
 	while (1) {
 		hlen = gzip_hdr(rfd); 
 		unless (hlen)  break;
-		j += hlen;
 		if (in) *in += hlen;
 		unless (readn(rfd, buf, hlen) == hlen) {
 			fprintf( stderr, "I/O error 1\n");
 			break;
 		}
 		i = gunzip2fd(buf, hlen, wfd, 1);
-		k += i;
-		if (out) *out += i;
+		moved += i;
+		if (offset && (moved >= offset)) exit(1);
 	}
-	//fprintf(stderr, "gunzip: %d => %d: %d X expansion\n", j, k, k/j);
+	if (out) *out = moved;
 	gzip_done();
 	return (0);
 }

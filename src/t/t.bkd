@@ -9,10 +9,6 @@
 #    constitutes your permission for BitMover, Inc. to distribute  the
 #    modifications under any license.
 
-
-# Copyright (c) 1999 Andrew Chang
-# %K%
-
 # Because some proxy disallow proxy for localhost
 unsetHttpProxy
 
@@ -32,20 +28,151 @@ echo foo > foo.c
 echo bar > bar.c
 echo h > h.h
 bk ci $Q -i foo.c bar.c h.h
+BK="`bk bin`/bk"
+test $PLATFORM = WIN32 && BK=${BK}.exe
+for i in 1 2 3
+do	cp $BK bk$i
+done
+bk new $Q bk?
 bk commit $Q -ycset1
 if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
 echo OK
 
 echo $N clone the workspace .........................................$NL
-bk clone $Q $HERE/project $HERE/copy
+bk clone $Q $HERE/project $HERE/copy || exit 1
 cd $HERE/copy
 if [ ! -f "BitKeeper/etc/SCCS/x.dfile" ]; then echo failed; exit 1; fi
-P=50000
-bk bkd -q -d -p$P -c1 
-while [ $? -eq 2 ]
-do	P=`expr $P + 1`
-	bk bkd -q -d -p$P -c1 
+P=`port 50000`
+bk bkd -q -d -p$P -ikill > $HERE/BKD 2>&1
+echo OK
+
+echo $N die part way through a clone and make sure we clean locks ...$NL
+cd $HERE
+BK_DIE_OFFSET=10 bk clone bk://localhost:$P junk > OUT 2>&1
+# cat OUT
+bk _kill bk://localhost:$P || exit 1
+cd $HERE/copy
+for i in 1 2 3
+do	bk lock -q && break
+	sleep $i
 done
+bk lock -q || {
+	echo failed to clean up locks
+	bk lock -l
+	exit 1
+}
+cd $HERE
+rm -rf junk
+echo OK
+
+echo $N Make sure that we leave the pid file there - background .....$NL
+cd $HERE/project
+rm -f $HERE/LOG
+P=`port 51000`
+# We want the pid of the process that is running, not the parent process
+bk bkd -dqp$P -l$HERE/LOG -P$HERE/PID -ikill &
+PARENT=$!
+wait $PARENT
+test -f $HERE/PID || {
+	echo No pid file
+	exit 1
+}
+PID=`cat $HERE/PID`
+test X$PID = X && {
+	echo Empty pid file
+	exit 1
+}
+test $PARENT = $PID && {
+	echo wrong pid in pid file
+	exit 1
+}
+echo OK
+
+echo $N Make sure that commands leave the pid file alone ............$NL
+bk changes bk://localhost:$P > /dev/null || exit 1
+GOT=`cat $HERE/PID`
+test $PID = $GOT || {
+	echo Child stomped on pid file
+	exit 1
+}
+echo OK
+
+echo $N Make sure that we support log files - background ............$NL
+sleep 1
+test -f $HERE/LOG || {
+	echo No log file
+	exit 1
+}
+grep -q changes $HERE/LOG || {
+	echo bad log file
+	cat $HERE/LOG
+	exit 1
+}
+echo OK
+
+echo $N Make sure that we disallow looking out of repo ..............$NL
+bk changes -r+ bk://localhost:$P/$HERE/copy > $HERE/WANT 2>&1
+grep -q 'ERROR-cannot cd to' $HERE/WANT || {
+	echo failed 
+	cat $HERE/WANT
+	exit 1
+}
+bk _kill bk://localhost:$P || exit 1
+echo OK
+
+# Now we know that $P is an unused port, go grab it
+echo $N Make sure that we leave the pid file there - foreground .....$NL
+cd $HERE/project
+rm -f $HERE/PID $HERE/LOG BitKeeper/log/*log
+# I know the "&" seems like it is background but what I mean is that it
+# is not a daemon, it's waiting around.  I have to do & to run the test.
+bk bkd -ikill -dDp$P -l$HERE/LOG -P$HERE/PID &
+WANT=$!
+sleep 2
+test -f $HERE/PID || {
+	echo No pid file
+	ls $HERE
+	exit 1
+}
+PID=`cat $HERE/PID`
+test X$PID = X && {
+	echo Empty pid file
+	exit 1
+}
+kill -0 $WANT || {
+	unable to kill $PID
+	exit 1
+}
+# create log file
+bk changes -r+ bk://localhost:$P >/dev/null 2>&1
+echo OK
+
+echo $N Make sure that we support log files - foreground ............$NL
+bk _usleep 10000
+test -f $HERE/LOG || {
+	echo No log file
+	exit 1
+}
+grep -q changes $HERE/LOG || {
+	echo bad log file
+	cat $HERE/LOG
+	exit 1
+}
+echo OK
+
+echo $N Make sure that we exit 2 if the port is in use - background .$NL
+bk bkd -p$P > OUT 2>&1
+test $? -eq 2 || {
+	echo failed
+	exit 1
+}
+grep -q use OUT || {
+	echo failed
+	cat OUT
+	exit 1
+}
+# Flush bkd
+bk _kill bk://localhost:$P || exit 1
 echo OK
 
 # Win32 note: If bkd binary is on a network drive
@@ -53,6 +180,8 @@ echo OK
 # Please make sure the bk binary is on a local disk
 # before you run this test.
 echo $N "push a new changeset via bkd (no compression)" ...............$NL
+cd $HERE/copy
+bk bkd -q -d -p$P -ikill > $HERE/BKD 2>&1
 cd $HERE/project/src
 echo woo > woo.c
 bk ci $Q -i woo.c || exit 1
@@ -60,6 +189,8 @@ bk commit $Q -ycset1 || exit 1
 bk push $Q -z0 bk://localhost:$P || exit 1
 cd $HERE/copy/src
 if [ ! -f SCCS/s.woo.c ]; then echo failed; exit 1; fi
+bk lock -U $HERE/copy
+bk _kill bk://localhost:$P || exit 1
 echo OK
 
 echo $N "pull a new changeset via bkd (no compression)" ...............$NL
@@ -68,16 +199,14 @@ echo zoo > zoo.c
 bk ci $Q -i zoo.c
 bk commit $Q -ycset1
 cd $HERE/project
-P=50000
-bk bkd -q -d -p$P -c1 
-while [ $? -eq 2 ]
-do	P=`expr $P + 1`
-	bk bkd -q -d -p$P -c1 
-done
-waitForUnlock $HERE/copy        # needed on Freebsd4
+P=`port 50000`
+bk bkd -q -d -p$P -ikill
+bk lock -U $HERE/copy        # needed on Freebsd4
 cd $HERE/copy/src
 bk pull $Q -t -z0 bk://localhost:$P
 if [ ! -f SCCS/s.zoo.c ]; then echo failed; exit 1; fi
+bk lock -U $HERE/project
+bk _kill bk://localhost:$P || exit 1
 echo OK
 
 echo $N "pull a new changeset via bkd (with compression)" .............$NL
@@ -86,39 +215,31 @@ echo boo > boo.c
 bk ci $Q -i boo.c
 bk commit $Q -ycset1
 cd $HERE/project
-P=50000
-bk bkd -q -d -p$P -c1 
-while [ $? -eq 2 ]
-do	P=`expr $P + 1`
-	bk bkd -q -d -p$P -c1 
-done
+P=`port 50000`
+bk bkd -q -d -p$P -ikill
 cd $HERE/copy/src
 bk pull -t $Q bk://localhost:$P
 if [ ! -f SCCS/s.boo.c ]; then echo failed; exit 1; fi
+bk lock -U $HERE/project
+bk _kill bk://localhost:$P || exit 1
 echo OK
 
 echo $N "pull via bkd -xpull" .........................................$NL
 cd $HERE/project
-P=50000
-bk bkd -q -xpull -p$P -c1 
-while [ $? -eq 2 ]
-do	P=`expr $P + 1`
-	bk bkd -q -xpull -p$P -c1 
-done
+P=`port 50000`
+bk bkd -q -xpull -p$P -ikill
 cd $HERE/copy/src
 bk pull -t bk://localhost:$P > pull.out 2>&1
 grep -q "bkd has disabled" pull.out
 if [ $? -ne 0 ]; then echo failed; cat pull.out; exit 1; fi
+bk lock -U $HERE/project
+bk _kill bk://localhost:$P || exit 1
 echo OK
 
 echo $N "push a new changeset via bkd (with compression)" .............$NL
 cd $HERE/copy
-P=50000
-bk bkd -q -d -p$P -c1 
-while [ $? -eq 2 ]
-do	P=`expr $P + 1`
-	bk bkd -q -d -p$P -c1 
-done
+P=`port 50000`
+bk bkd -q -d -p$P -ikill -l$HERE/LOG
 cd $HERE/project/src
 echo aoo > aoo.c
 bk ci $Q -i aoo.c
@@ -126,20 +247,20 @@ bk commit $Q -ycset1
 bk push $Q -z6 bk://localhost:$P
 cd $HERE/copy/src
 if [ ! -f SCCS/s.aoo.c ]; then echo failed; exit 1; fi
+bk lock -U $HERE/copy
+bk _kill bk://localhost:$P || exit 1
 echo OK
 
 echo $N clone a tree via bkd ........................................$NL
 cd $HERE/project
-P=50000
-bk bkd -q -d -p$P -c1 
-while [ $? -eq 2 ]
-do	P=`expr $P + 1`
-	bk bkd -q -d -p$P -c1 
-done
+P=`port 50000`
+bk bkd -q -d -p$P -ikill
 bk clone $Q bk://localhost:$P $HERE/copy2
 if [ -f BitKeeper/tmp/clone.sfio ]; then echo failed; exit 1; fi
 cd $HERE/copy2/src
 if [ ! -f SCCS/s.aoo.c ]; then echo failed; exit 1; fi
+bk lock -U $HERE/project
+bk _kill bk://localhost:$P || exit 1
 echo OK
 
 if [ "$PLATFORM" != "WIN32" ]
@@ -166,26 +287,19 @@ echo coo > coo.c
 bk ci $Q -i coo.c
 bk commit $Q -ycset1
 cd $HERE/project
-P=50000
-bk bkd -q -d -p$P -xcd -xpush -c1 
-while [ $? -eq 2 ]
-do	P=`expr $P + 1`
-	bk bkd -q -d -p$P -xcd -xpush -c1 
-done
+P=`port 50000`
+bk bkd -q -d -p$P -xcd -xpush -ikill 
 cd $HERE/copy/src
 bk pull -t $Q bk://localhost:$P
 if [ ! -f SCCS/s.coo.c ]; then echo failed; exit 1; fi
+bk lock -U $HERE/project
+bk _kill bk://localhost:$P || exit 1
 echo OK
 
 echo $N check a push to bkd with a gfile conflict ...................$NL
-CNT=7
-P=50000
+P=`port 50000`
 cd $HERE/project
-bk bkd -q -d -p$P -c$CNT
-while [ $? -eq 2 ]
-do	P=`expr $P + 1`
-	bk bkd -q -d -p$P -c$CNT
-done
+bk bkd -q -d -p$P -ikill
 cd $HERE/project
 echo data1 > conflict.c
 cd $HERE/copy
@@ -193,7 +307,7 @@ echo data2 > old.c
 bk new $Q old.c
 bk commit $Q -yold.c || exit 1
 bk push -c1 $Q bk://localhost:$P || exit 1
-waitForUnlock $HERE/project
+bk lock -U $HERE/project
 cd $HERE/copy
 bk mv old.c conflict.c || exit 1
 bk commit $Q -ygconflict
@@ -204,7 +318,7 @@ rm -f  $HERE/project/conflict.c
 echo OK
 
 echo $N check http pull from bkd ....................................$NL
-waitForUnlock $HERE/project
+bk lock -U $HERE/project
 cd $HERE/project/src
 bk edit $Q bar.c
 echo data3 > bar.c
@@ -231,65 +345,63 @@ echo OK
 echo $N check http clone with bad -r from bkd .......................$NL
 bk clone $Q -rbad http://localhost:$P $HERE/junk2
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
+bk lock -U $HERE/project
+bk _kill bk://localhost:$P || exit 1
 echo OK
 
 echo $N Make sure bkd -C disallows cd to parent dir .................$NL
 cd $HERE/project/src
-P=50000
-bk bkd -q -d -Ce -p$P -c3
-while [ $? -eq 2 ]
-do	P=`expr $P + 1`
-	bk bkd -q -d -Ce -p$P -c3
-done
+P=`port 50000`
+bk bkd -q -d -C -p$P -ikill
 cd $HERE/copy
 bk pull bk://localhost:$P/$HERE/project > pull.out 2>&1
 grep -q "ERROR-cannot cd to" pull.out
-if [ $? -ne 0 ]; then echo failed; cat pull.out; exit 1 ; fi
+if [ $? -ne 0 ]; then echo failed 1; cat pull.out; exit 1 ; fi
 bk pull bk://localhost:$P.. > pull.out 2>&1
 grep -q "ERROR-cannot cd to" pull.out
-if [ $? -ne 0 ]; then echo failed; cat pull.out; exit 1 ; fi
+if [ $? -ne 0 ]; then echo failed 2; cat pull.out; exit 1 ; fi
 bk pull bk://localhost:$P/sub/../../project > pull.out 2>&1
 grep -q "ERROR-cannot cd to" pull.out
-if [ $? -ne 0 ]; then echo failed; cat pull.out; exit 1 ; fi
+if [ $? -ne 0 ]; then echo failed 3; cat pull.out; exit 1 ; fi
+bk lock -U $HERE/project
+bk _kill bk://localhost:$P || exit 1
 echo OK
 
 echo $N Make sure bkd logs requests under the remote user name ......$NL
 cd $HERE/project
 cp /dev/null BitKeeper/log/repo_log
-P=50000
-BK_USER=garbage bk bkd -qdp$P -c4
-while [ $? -eq 2 ]
-do	P=`expr $P + 1`
-	BK_USER=garbage bk bkd -qdp$P -c4
-done
+P=`port 50000`
+BK_USER=garbage bk bkd -qdp$P -ikill
 cd $HERE/copy
 BK_USER=pull_USER bk pull bk://localhost:$P/$HERE/project > pull.out 2>&1
+bk _usleep 250000
 grep -q pull_USER $HERE/project/BitKeeper/log/repo_log || {
 	echo failed to get first name right in pull
 	cat $HERE/project/BitKeeper/log/repo_log
 	exit 1
 }
 BK_USER=USER_PULL bk pull bk://localhost:$P/$HERE/project > pull.out 2>&1
+bk _usleep 250000
 grep -q USER_PULL $HERE/project/BitKeeper/log/repo_log || {
 	echo failed to get second name right in pull
 	cat $HERE/project/BitKeeper/log/repo_log
 	exit 1
 }
 BK_USER=CLONE bk clone $Q bk://localhost:$P/$HERE/project $HERE/clone
+bk _usleep 250000
 grep -q CLONE $HERE/project/BitKeeper/log/repo_log || {
 	echo failed to get third name right in clone
 	cat $HERE/project/BitKeeper/log/repo_log
 	exit 1
 }
 BK_USER=PUSH bk push $Q bk://localhost:$P/$HERE/project 
+bk _usleep 250000
 grep -q PUSH $HERE/project/BitKeeper/log/repo_log || {
 	echo failed to get fourth name right in push
 	cat $HERE/project/BitKeeper/log/repo_log
 	exit 1
 }
-bk lock -U
-cd $HERE/project
+bk lock -U $HERE/project
+bk _kill bk://localhost:$P || exit 1
 bk lock -U
 echo OK
-
-if [ "$PLATFORM" = "WIN32" ]; then bk bkd -R 2> $DEV_NULL; fi

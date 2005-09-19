@@ -38,10 +38,12 @@ win32_common_setup()
 	DO_REMOTE=NO
 	export DO_REMOTE
 
-	BIN1="`bk bin`/bk.exe"
-	BIN2="`bk bin`/diff.exe"
-	BIN3="`bk bin`/diff3.exe"
-	export BIN1 BIN2 BIN3
+	B=`bk bin`
+	BIN1="$B/bk.exe"
+	BIN2="$B/diff.exe"
+	BIN3="$B/diff3.exe"
+	BKDIFF="$B/diff.exe"
+	export BIN1 BIN2 BIN3 BKDIFF
 
 	export WINDOWS
 }
@@ -88,7 +90,8 @@ unix_common_setup()
 	BIN3=/bin/cat
 	test -r $BIN3 || BIN3=/usr/gnu/bin/wc
 	test -r $BIN3 || exit 1
-	export BIN1 BIN2 BIN3
+	BKDIFF="`bk bin`/diff"
+	export BIN1 BIN2 BIN3 BKDIFF
 
 	test `uname` = SCO_SV && return
 

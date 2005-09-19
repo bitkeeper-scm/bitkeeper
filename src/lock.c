@@ -1,6 +1,7 @@
 /* Copyright (c) 2000 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
+#include "lib_tcp.h"
 
 private	int	caught;
 private	void	abort_lock(int dummy) { caught++; }
@@ -12,10 +13,10 @@ int
 lock_main(int ac, char **av)
 {
 	int	c, uslp = 1000;
-	int	what = 0, silent = 0;
+	int	what = 0, silent = 0, tcp = 0;
 	pid_t	pid;
 
-	while ((c = getopt(ac, av, "lqrswLU")) != -1) {
+	while ((c = getopt(ac, av, "lqrstwLU")) != -1) {
 		switch (c) {
 		    case 'q': /* fall thru */			/* doc 2.0 */
 		    case 's': silent = 1; break;		/* undoc 2.0 */
@@ -29,6 +30,7 @@ lock_main(int ac, char **av)
 				break;
 			}
 			/* fall through */
+		    case 't': tcp = 1; break;
 		    default:
 usage:			system("bk help -s lock");
 			return (1);
@@ -39,6 +41,11 @@ usage:			system("bk help -s lock");
 	proj_cd2root();
 	pid = getpid();
 	sig_catch(abort_lock);
+	if (tcp) {
+		tcp = tcp_server(0, 0);
+		printf("127.0.0.1:%d\n", sockport(tcp));
+		fflush(stdout);
+	}
 	switch (what) {
 	    case 'r':	/* read lock the repository */
 		if (repository_rdlock()) {
@@ -47,6 +54,12 @@ usage:			system("bk help -s lock");
 			exit(1);
 		}
 		/* make ourselves go away after the lock is gone */
+		if (tcp) {
+			closesocket(tcp_accept(tcp));
+			closesocket(tcp);
+			repository_rdunlock(0);
+			exit(0);
+		}
 		do {
 			usleep(500000);
 		} while (repository_mine('r') && !caught);
@@ -60,6 +73,12 @@ usage:			system("bk help -s lock");
 			exit(1);
 		}
 		/* make ourselves go away after the lock is gone */
+		if (tcp) {
+			closesocket(tcp_accept(tcp));
+			closesocket(tcp);
+			repository_wrunlock(0);
+			exit(0);
+		}
 		do {
 			usleep(500000);
 		} while (repository_mine('w') && !caught);
