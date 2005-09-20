@@ -296,7 +296,7 @@ bk changes -R -k $HERE/clone > keylist1
 bk changes -R -D -k $HERE/clone $HERE/clone2 > keylist2
 cmp -s keylist1 keylist2 || { echo failed; exit 1; }
 cd $HERE/clone2
-waitForUnlock $HERE/clone2
+bk lock -U
 bk edit $Q f
 echo "new" >> f
 bk delta $Q -ynew f

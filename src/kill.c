@@ -34,7 +34,7 @@ usage:		fprintf(stderr, "Usage: bk kill URL\n");
 	tmpf = bktmp(0, 0);
 	f = fopen(tmpf, "w");
 	assert(f);
-	sendEnv(f, 0, r, 2);
+	sendEnv(f, 0, r, SENDENV_NOREPO|SENDENV_NOLICENSE);
 	fprintf(f, "kill\n");
 	fclose(f);
 	send_file(r, tmpf, 0);

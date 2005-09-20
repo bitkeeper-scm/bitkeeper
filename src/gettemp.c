@@ -150,7 +150,6 @@ bktmpcleanup(void)
 {
 	int	i;
 
-	unless (tmpfiles) return;
 	/*
 	 * If we were interrupted we may not have closed the files so let's
 	 * try and close so winblows can delete them.
@@ -159,6 +158,7 @@ bktmpcleanup(void)
 		closesocket(i);
 		close(i);
 	}
+	unless (tmpfiles) return;
 	EACH(tmpfiles) {
 		unless (exists(tmpfiles[i])) continue;
 		if (isdir(tmpfiles[i])) {

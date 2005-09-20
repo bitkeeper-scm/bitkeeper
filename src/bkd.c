@@ -6,7 +6,6 @@ private	void	exclude(char *cmd, int verbose);
 private void	unexclude(char **list, char *cmd);
 private	int	findcmd(int ac, char **av);
 private	int	getav(int *acp, char ***avp, int *httpMode);
-private	void	exclude(char *cmd);
 private	void	log_cmd(char *peer, int ac, char **av);
 private	void	usage(void);
 private int	service(char *cmd, int ac, char **av);
@@ -50,7 +49,10 @@ bkd_main(int ac, char **av)
 		    case 'C': Opts.safe_cd = 1; break;		/* doc */
 		    case 'd': daemon = 1; break;		/* doc 2.0 */
 		    case 'D': Opts.foreground = 1; break;	/* doc 2.0 */
-		    case 'i': unexclude(unenabled, optarg); break;
+		    case 'i':                                   /* undoc 2.0 */
+			if (streq(optarg, "kill")) Opts.kill_ok = 1;
+			unexclude(unenabled, optarg);
+			break;
 		    case 'g': Opts.gid = optarg; break;		/* doc 2.0 */
 		    case 'h': Opts.http_hdr_out = 1; break;	/* doc 2.0 */
 		    case 'l':					/* doc 2.0 */
@@ -692,6 +694,6 @@ service(char *cmd, int ac, char **av)
 	nav = addLine(nav, cmd);
 	for (ac = 1; av[ac]; nav = addLine(nav, av[ac]));
 	nav = addLine(nav, 0);
-	status = spawnvp_ex(P_WAIT, nav[1], &nav[1]);
+	status = spawnvp(P_WAIT, nav[1], &nav[1]);
 	return (WEXITSTATUS(status));
 }

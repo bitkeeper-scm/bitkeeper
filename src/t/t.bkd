@@ -267,18 +267,15 @@ if [ "$PLATFORM" != "WIN32" ]
 then
 echo $N clone a tree via bkd with buffer_clone enabled ..............$NL
 cd $HERE/project
-P=50000
-bk bkd -q -Bd -p$P -c1 
-while [ $? -eq 2 ]
-do	P=`expr $P + 1`
-	bk bkd -q -Bd -p$P -c1 
-done
+P=`port 50000`
+bk bkd -q -Bd -p$P -ikill
 rm -rf $HERE/copy2
 bk clone $Q bk://localhost:$P $HERE/copy2
 if [ ! -f BitKeeper/tmp/clone.sfio ]; then echo failed; exit 1; fi
 cd $HERE/copy2/src
 if [ ! -f SCCS/s.aoo.c ]; then echo failed; exit 1; fi
 echo OK
+bk _kill bk://localhost:$P || exit 1
 fi
 
 echo $N "pull a new changeset via bkd -xcd -xpush " ...................$NL

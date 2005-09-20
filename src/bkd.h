@@ -82,6 +82,7 @@ typedef struct {
 	u32	quiet:1;		/* quiet mode */
 	u32	safe_cd:1;		/* do not allow chdir up */
 	u32	buffer_clone:1;		/* stream clone from copy */
+	u32	kill_ok:1;		/* enable kill socket */
 	int	alarm;			/* exit after this many seconds */
 	char	*uid;			/* desired uid or null */
 	char	*gid;			/* desired gid or null */

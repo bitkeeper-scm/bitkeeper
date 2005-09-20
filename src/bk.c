@@ -684,7 +684,6 @@ cmdlog_end(int ret)
 	}
 	if (cmdlog_flags & (CMD_WRUNLOCK|CMD_RDUNLOCK)) repository_unlock(0);
 
-out:
 #ifndef	NOPROC
 	rmdir_findprocs();
 #endif
