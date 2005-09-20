@@ -748,6 +748,7 @@ typedef struct {
 	u16	progressbar:1;	/* display progressbar for large transfers */
 	u16	isSocket:1;	/* if set, rfd and wfd are sockets */
 	u16	badhost:1;	/* if set, hostname lookup failed */
+	u16	badconnect:1;	/* if set, connect failed */
 	int	rfd;		/* read fd for the remote channel */
 	FILE	*rf;		/* optional stream handle for remote channel */
 	int	wfd;		/* write fd for the remote channel */

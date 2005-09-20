@@ -553,7 +553,6 @@ isCsetFile(char *spath)
 	return (isdir(buf));					/* case ' e' */
 }
 
-
 int
 bkd_connect(remote *r, int compress, int verbose)
 {
@@ -563,23 +562,20 @@ bkd_connect(remote *r, int compress, int verbose)
 		fprintf(stderr,
 		    "bkd_connect: r->rfd = %d, r->wfd = %d\n", r->rfd, r->wfd);
 	}
-	if (r->wfd < 0) {
-		if (verbose) {
-			if (r->badhost) {
-				fprintf(stderr,
-					"Cannot resolve host %s\n", r->host);
-			} else {
-				char	*rp = remote_unparse(r);
-				perror(rp);
-				free(rp);
-			}
-		}
-		return (-1);
+	if (r->wfd >= 0) return (0);
+	unless (verbose) return (-1);
+	if (r->badhost) {
+		fprintf(stderr, "Cannot resolve host '%s'.\n", r->host);
+	} else if (r->badconnect) {
+		fprintf(stderr, "Unable to connect to host '%s'.\n", r->host);
+	} else {
+		char	*rp = remote_unparse(r);
+
+		perror(rp);
+		free(rp);
 	}
-	return (0);
+	return (-1);
 }
-
-
 
 private int
 send_msg(remote *r, char *msg, int mlen, int extra)

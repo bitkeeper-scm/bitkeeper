@@ -235,8 +235,15 @@ cmd_push_part2(int ac, char **av)
 		fprintf(stderr, "cmd_push: warning: lost end marker\n");
 	}
 
-	waitpid(pid, &status, 0);
-	rc =  WEXITSTATUS(status);
+	if ((rc = waitpid(pid, &status, 0)) != pid) {
+		perror("takepatch subprocess");
+		rc = 254;
+	}
+	if (WIFEXITED(status)) {
+		rc =  WEXITSTATUS(status);
+	} else {
+		rc = 253;
+	}
 	write(1, &bkd_nul, 1);
 	if (rc) {
 		printf("%c%d\n", BKD_RC, rc);
