@@ -12,21 +12,42 @@ services with the following command:
 
 	bk bkd -R
 
+and then run "bk help service" to reinstall your services.
+
 Release Summary
 ----------------------------------------------------------------------------
 This release is primarily for the Windows based platforms and has the 
 following changes:
 
+- File handling has been changed to deal with Windows sharing violations.
+  Google desktop search (and virus scanners et al) have increased the 
+  chance of sharing violations.  BitKeeper expected POSIX file system
+  semantics, that's not Windows, this release makes BitKeeper dramatically
+  more robust on Windows in the face of other applications holding files
+  open.  You may see delays with messages like "waiting for file XYZ"
+  when sharing conflicts occur.
+- Improved support for Windows/2000 platforms.  For some inexplicable
+  reason, Microsoft decided to reuse process ID's instantly on this
+  platform.  This wrecked havoc with any Unix shell, such as bash, as
+  well as any application that used the PID as a handle to the process.
+  We've worked around the problems but as a result no longer support
+  running long lived BKD's on Win2K.
 - Win/98, Win/95, Win/ME are all explicitly unsupported (see below)
 - The networking layer has been rewritten to solve some locking bugs
   associated with long running bkd servers on Windows platforms.  The
   rewrite forced us to choose between supporting those platforms or 
   fixing the bugs.
 - Running BitKeeper as a service is improved, you may run multiple instances
-  on different ports and different repositories if needed.
+  on different ports and different repositories if needed.  There is a 
+  "bk service" interface, see the documentation for details.
 - Running a bkd works as it did/does on POSIX based systems.  You can run
   bk bkd -dDl
   to see the log output if needed for debugging.
+- Attempting to reuse an inuse TCP port for a bkd server will generate an
+  error message and fail on all platforms (Windows allowed this before,
+  leading to non-deterministic results).
+- We've added Windows 2000 Server and Windows 2000 Advanced Server to the
+  list of supported platforms (we don't recommend them but we support them).
 
 ===============================================================================
 Release notes for BitKeeper version 3.2.5.   These release notes cover
