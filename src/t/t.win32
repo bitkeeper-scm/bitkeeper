@@ -1,0 +1,15 @@
+if [ X$PLATFORM != X"WIN32" ]
+then
+	echo "For win32 only...............................................skipped"
+	exit 0;
+fi
+
+cd $HERE
+
+echo $N Test win32 waitpid when child has exited.....................$NL
+# See src/win32/t/waitpid-test-01.c
+waitpid-test-01 || {
+	echo failed
+	exit 1
+}
+echo OK
