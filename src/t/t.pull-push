@@ -418,19 +418,9 @@ grep -q "Assert" ERR && {
 	exit 1
 }
 
-BAD_HOST_MSG=0
-grep -q "Cannot resolve host badhostname" ERR && BAD_HOST_MSG=1
-
-CONN_FAILED_MSG=0
-grep -q "client helper: Connection failed" ERR && CONN_FAILED_MSG=1
-
-if [ $BAD_HOST_MSG -eq 1 ]
-then	echo OK
-else
-	if [ "$PLATFORM" = "WIN32" -a $CONN_FAILED_MSG -eq 1 ]
-	then	echo OK
-	else	echo failed
-		cat ERR
-		exit 1
-	fi
-fi
+grep -q "Cannot resolve host 'badhostname'." ERR || {
+	echo failed
+	cat ERR
+	exit 1
+}
+echo OK

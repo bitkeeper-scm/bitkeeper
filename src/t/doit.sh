@@ -24,6 +24,8 @@ win32_common_setup()
 		TST_DIR=`mount | sed -n 's, on /tmp.*,,p' | tr A-Z a-z`
 	}
 	BK_FS="|"
+	PATH=${PATH}:${BK_BIN}/win32/t
+	export PATH
 	BK_BIN=`cd .. && ./bk pwd -s`
 	CWD="$BK_BIN/bk pwd"
 	touch `msys2win $TEMP`/BitKeeper_nul

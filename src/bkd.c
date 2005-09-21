@@ -8,8 +8,8 @@ private	int	findcmd(int ac, char **av);
 private	int	getav(int *acp, char ***avp, int *httpMode);
 private	void	log_cmd(char *peer, int ac, char **av);
 private	void	usage(void);
-private int	service(char *cmd, int ac, char **av);
 private	void	do_cmds(void);
+private int	svc_uninstall(void);
 
 char		*bkd_getopt = "BcCdDeE:g:hi:l|L:p:P:qRSt:u:V:x:";
 char 		*logRoot;
@@ -63,10 +63,10 @@ bkd_main(int ac, char **av)
 		    case 'p': port = atoi(optarg); break;	/* doc 2.0 */
 		    case 'P': Opts.pidfile = optarg; break;	/* doc 2.0 */
 		    case 'S': 					/* undoc 2.0 */
+		    	usage();
 		    case 'R': 					/* doc 2.0 */
 			if (getenv("BKD_SERVICE")) break;	/* ignore it */
-			return (
-			    service(c == 'S'? "install" : "uninstall", ac, av));
+			return (svc_uninstall());
 		    case 'u': Opts.uid = optarg; break;		/* doc 2.0 */
 		    case 'x': exclude(optarg, 1); break;	/* doc 2.0 */
 		    case 'e': break;				/* obsolete */
@@ -678,22 +678,11 @@ bkd_restoreSeed(char *repoid)
 	return (ret);
 }
 
-/*
- * This is only done on windows for now but we could support it in inetd.
- * av[0] = bkd
- * av[1] = -S ....
- */
 private int
-service(char *cmd, int ac, char **av)
+svc_uninstall(void)
 {
-	char	**nav = 0;
-	int	status;
+	int	status = sys("bk", "service", "uninstall", "-a", SYS);
 
-	nav = addLine(nav, "bk");
-	nav = addLine(nav, "service");
-	nav = addLine(nav, cmd);
-	for (ac = 1; av[ac]; nav = addLine(nav, av[ac]));
-	nav = addLine(nav, 0);
-	status = spawnvp(P_WAIT, nav[1], &nav[1]);
+	assert(WIFEXITED(status));
 	return (WEXITSTATUS(status));
 }
