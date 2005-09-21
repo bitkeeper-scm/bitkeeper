@@ -686,8 +686,7 @@ echo OK
 
 echo $N Make sure that import -tCVS works with checkout:get .........$NL
 cd $HERE
-rm -rf import-CVS.1
-no_logging import-CVS.1
+no_logging import-CVS.2
 bk edit $Q BitKeeper/etc/config
 echo checkout:get >> BitKeeper/etc/config
 bk import -AquftCVS $TESTDATA/import-CVS.1 .
@@ -702,6 +701,7 @@ echo OK
 test -d $TESTDATA/import_data && {
 echo $N Multiple parallel imports ...................................$NL
 cd $HERE
+cp -rp $TESTDATA/import_data import_data
 no_logging import
 cd ..
 LIST="1 2 3 4 5 6"
@@ -710,7 +710,7 @@ do	cp -rp import import$i
 done
 mv import import0
 for i in 0 $LIST
-do	( cd import$i && bk import -tplain -f $Q $TESTDATA/import_data . ) &
+do	( cd import$i && bk import -tplain -f $Q $HERE/import_data . ) &
 done; wait
 cd import0
 bk sfiles | sort > ../LIST

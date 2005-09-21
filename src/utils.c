@@ -553,7 +553,6 @@ isCsetFile(char *spath)
 	return (isdir(buf));					/* case ' e' */
 }
 
-
 int
 bkd_connect(remote *r, int compress, int verbose)
 {
@@ -563,23 +562,20 @@ bkd_connect(remote *r, int compress, int verbose)
 		fprintf(stderr,
 		    "bkd_connect: r->rfd = %d, r->wfd = %d\n", r->rfd, r->wfd);
 	}
-	if (r->wfd < 0) {
-		if (verbose) {
-			if (r->badhost) {
-				fprintf(stderr,
-					"Cannot resolve host %s\n", r->host);
-			} else {
-				char	*rp = remote_unparse(r);
-				perror(rp);
-				free(rp);
-			}
-		}
-		return (-1);
+	if (r->wfd >= 0) return (0);
+	unless (verbose) return (-1);
+	if (r->badhost) {
+		fprintf(stderr, "Cannot resolve host '%s'.\n", r->host);
+	} else if (r->badconnect) {
+		fprintf(stderr, "Unable to connect to host '%s'.\n", r->host);
+	} else {
+		char	*rp = remote_unparse(r);
+
+		perror(rp);
+		free(rp);
 	}
-	return (0);
+	return (-1);
 }
-
-
 
 private int
 send_msg(remote *r, char *msg, int mlen, int extra)
@@ -1512,6 +1508,8 @@ checking_rmdir(char *dir)
 	return (rc);
 }
 
+#define	WAIT	60	/* /2 to get seconds */
+
 void
 rmdir_findprocs(void)
 {
@@ -1533,12 +1531,13 @@ rmdir_findprocs(void)
 		unless (streq(buf2 + c - 9, "(deleted)")) continue;
 
 		/* give them a chance to go away */
-		for (j = 0; j < 60; ++j) {
+		for (j = 0; j < WAIT; ++j) {
 			usleep(500000);
 			if ((c = readlink(buf1, buf2, sizeof(buf2))) < 0) break;
+			if (j == 20) ttyprintf("Waiting for %s\n", buf1);
 		}
 		/* we know they are gone if we broke out early */
-		if (j < 60) continue;
+		if (j < WAIT) continue;
 		
 		buf2[c] = 0;
 		unless (streq(buf2 + c - 9, "(deleted)")) continue;
@@ -1546,6 +1545,9 @@ rmdir_findprocs(void)
 		ttyprintf("proc %s is in dir %s which has been deleted\n",
 		    d[i], buf2);
 		sprintf(buf2, "/bin/ls -l /proc/%s > /dev/tty", d[i]);
+		system(buf2);
+		sprintf(buf2,
+		    "/usr/bin/od -c /proc/%s/cmdline > /dev/tty", d[i]);
 		system(buf2);
 		assert(0);
 	}

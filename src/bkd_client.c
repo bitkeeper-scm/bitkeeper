@@ -333,6 +333,7 @@ bkd_tcp_connect(remote *r)
 		if (i < 0) {
 			r->rfd = r->wfd = -1;
 			if (i == -2) r->badhost = 1;
+			if (i == -3) r->badconnect = 1;
 		} else {
 			r->rfd = r->wfd = i;
 		}

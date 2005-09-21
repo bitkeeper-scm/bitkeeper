@@ -195,6 +195,7 @@ bkd_server(int ac, char **av)
 	closesocket(sock);
 
 	/* confirm death */
+	chdir("/");
 	if ((nsock = tcp_accept(killsock)) >= 0) {
 		buf[0] = 'K';
 		write(nsock, buf, 1);

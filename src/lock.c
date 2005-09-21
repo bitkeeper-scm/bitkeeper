@@ -13,7 +13,7 @@ private	void	abort_lock(int dummy) { caught++; }
 int
 lock_main(int ac, char **av)
 {
-	int	c, uslp = 1000;
+	int	nsock, c, uslp = 1000;
 	int	what = 0, silent = 0, tcp = 0;
 	pid_t	pid;
 
@@ -47,7 +47,7 @@ usage:			system("bk help -s lock");
 	pid = getpid();
 	sig_catch(abort_lock);
 	if (tcp) {
-		tcp = tcp_server(0, 0);
+		tcp = tcp_server(0, 1);
 		printf("127.0.0.1:%d\n", sockport(tcp));
 		fflush(stdout);
 	}
@@ -60,9 +60,12 @@ usage:			system("bk help -s lock");
 		}
 		/* make ourselves go away after the lock is gone */
 		if (tcp) {
-			closesocket(tcp_accept(tcp));
-			closesocket(tcp);
+			nsock = tcp_accept(tcp);
 			repository_rdunlock(0);
+			chdir("/");
+			write(nsock, &c, 1);
+			closesocket(nsock);
+			closesocket(tcp);
 			exit(0);
 		}
 		do {
@@ -79,9 +82,12 @@ usage:			system("bk help -s lock");
 		}
 		/* make ourselves go away after the lock is gone */
 		if (tcp) {
-			closesocket(tcp_accept(tcp));
-			closesocket(tcp);
+			nsock = tcp_accept(tcp);
 			repository_wrunlock(0);
+			chdir("/");
+			write(nsock, &c, 1);
+			closesocket(nsock);
+			closesocket(tcp);
 			exit(0);
 		}
 		do {

@@ -19,6 +19,8 @@ usage:		fprintf(stderr, "Usage: bk kill URL\n");
 		p = strchr(av[1], ':');
 		*p++ = 0;
 		if ((rc = tcp_connect(av[1], atoi(p))) < 0) exit(1);
+		/* Wait for ACK */
+		read(rc, buf, 1);
 		close(rc);
 		exit(0);
 	}

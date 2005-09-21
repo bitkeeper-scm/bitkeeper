@@ -1,6 +1,6 @@
 HERE	:= $(shell pwd)
 
-all: uwtlib svcmgr diffutils patch msys bkscc bkshellx
+all: uwtlib svcmgr diffutils patch msys bkscc bkshellx t
 	cd pub/winctl && unset MAKEFLAGS && make
 
 clean clean-obj clobber:
@@ -11,6 +11,7 @@ clean clean-obj clobber:
 		cd $(HERE)/pub/winctl && make $@; \
 		cd $(HERE)/pub/diffutils && make $@; \
 		cd $(HERE)/pub/patch && make $@; \
+		cd $(HERE)/t && make $@; \
 		cd $(HERE) && rm -rf dll; \
 	}
 	@true
@@ -31,6 +32,9 @@ diffutils: FORCE
 
 patch: FORCE
 	cd pub/patch && unset MAKEFLAGS && make
+
+t:	FORCE
+	cd t && make
 
 MSYSBIN = ../gnu
 msys: ./msysver.sh MSYSKEY FORCE
