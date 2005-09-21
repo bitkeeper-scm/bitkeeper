@@ -92,7 +92,7 @@ unix_common_setup()
 	BIN3=/bin/cat
 	test -r $BIN3 || BIN3=/usr/gnu/bin/wc
 	test -r $BIN3 || exit 1
-	BKDIFF="`bk bin`/diff"
+	BKDIFF="`bk bin`/gnu/bin/diff"
 	export BIN1 BIN2 BIN3 BKDIFF
 
 	test `uname` = SCO_SV && return
