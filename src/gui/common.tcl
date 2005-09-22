@@ -270,6 +270,7 @@ proc restoreGeometry {app {w .} {force 0}} \
 
 	if {[catch {
 		regexp {([0-9]+)x([0-9]+)} $geometry -> width height
+		# Truncate sizes down to actual screen size
 		set width [expr {$width > $rwidth ? $rwidth : $width}]
 		set height [expr {$height > $rheight ? $rheight : $height}]
 	} message]} {
@@ -304,9 +305,7 @@ proc restoreGeometry {app {w .} {force 0}} \
 	# Bzzt.  I like the restore feature.  --lm
 	if {![info exists gc($app.noAutoRestoreXY)]} {
 		# Skip the width by ht stuff
-		set l [expr [string length $width] + [string length $height]]
-		incr l
-		set loc [string range $geometry $l end]
+		set loc [string trimleft $geometry "0123456789x"]
 		if {$loc != ""} {
 			wm geometry $w $loc
 		}
