@@ -464,7 +464,7 @@ http_fetch(remote *r, char *url, char *file)
 	    "Accept: text/html\r\n"
 	    "Host: %s:%d\r\n"
 	    "\r\n",
-	    r->path ? r->path : "/", bk_vers, r->host, r->port);
+	    url, bk_vers, r->host, r->port);
 
 	if (r->trace) fprintf(stderr, "Sending http header:\n%s", header);
 	len = strlen(header);
