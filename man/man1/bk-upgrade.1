@@ -36,13 +36,13 @@ install it.
 If the
 .B upgrade
 command is unable to determine if the currently installed version of
-BitKeeper has been replace by a newly released version, then an
+BitKeeper has been replaced by a newly released version, then an
 warning message is printed and the upgrade is aborted.  The
 .B \-f
 option allow the user to force the new version to be used.
 .tp
 .B \-q
-This cause the upgrade program to suppress extra output when running.
+This causes the upgrade program to suppress extra output when running.
 .SH EXAMPLES
 To check for new upgrades:
 .DS
@@ -52,7 +52,7 @@ To install a new version of bk:
 .DS
 bk upgrade -i
 .DE
-To upgrade a give installation of bk on this machine:
+To upgrade a given installation of bk on this machine:
 .DS
 /home/user/bitkeeper/bk upgrade -i
 .DE
@@ -60,11 +60,20 @@ To fetch the latest installer:
 .DS
 bk upgrade -nf
 .DE
+.SH NOTES
+The default URL that BitKeeper uses to search for new updates can be
+overridden with the 'upgrade-url' config option.  This will usually be
+used in a corporate environment to prevent users from using a new
+version of BitKeeper that hasn't been certified locally. Usually an
+internal URL will be put in a config file in the BitKeeper install
+directory.
 .SH EXIT STATUS
 0 if a new version of BitKeeper is found
 .br
 1 if no updates are available.
 .br
 2 if errors occurred fetching new updates.
+.SH "SEE ALSO"
+.SA config-etc
 .SH CATEGORY
 .B Utility

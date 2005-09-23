@@ -1,0 +1,91 @@
+
+echo $N Test upgrade without a commercial lease .....................$NL
+bk upgrade -fl bk 2>ERR && {
+	echo should have failed
+	exit 1
+}
+grep -q "commercial customers only" ERR || {
+	echo wrong error message
+	cat ERR
+	exit 1
+}
+echo OK
+	
+echo $N Test upgrade to get status from bitmover ....................$NL
+commercial junk2
+bk lease renew
+cd $HERE
+bk upgrade -fl bk >OUT 2>ERR || {
+	echo should not have failed
+	cat OUT
+	cat ERR
+	exit 1
+}
+cat <<END > WANT
+Fetching http://upgrades.bitkeeper.com/upgrades/INDEX
+END
+checkfiles ERR WANT
+
+grep -q "BitKeeper version .* is available for download." OUT || {
+	echo wrong output
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Test upgrade to get status from bitmover using a proxy.......$NL
+# squid proxy running on work.  Only accepts 10.0.0.0/8 connections.
+# XXX test proxy passwords too?
+http_proxy=http://data.bitmover.com:3128
+export http_proxy
+bk upgrade -fl bk >OUT 2>ERR || {
+	echo should not have failed
+	cat OUT
+	cat ERR
+	exit 1
+}
+cat <<END > WANT
+Fetching http://upgrades.bitkeeper.com/upgrades/INDEX
+END
+checkfiles ERR WANT
+
+grep -q "BitKeeper version .* is available for download." OUT || {
+	echo wrong output
+	cat OUT
+	exit 1
+}
+echo OK
+
+# This should also skip Windows machines...
+test -d /home/bk/bk-3.2.x || exit 0
+
+# Not everyone has a /usr/bin/perl which is what the script wants
+test -x /usr/bin/perl || exit 0
+
+# Not everyone has strict.pm or understands it.
+test `uname` = NetBSD && exit 0
+
+# create a fake upgrade area and test the whole encryption decryption loop
+echo $N Create local upgrade area ...................................$NL
+OS=`bk version | sed -n 's/.* for //p'`
+INSTALLER=bk-3.2.6-$OS.bin
+cp "$BIN1" $INSTALLER
+mkdir upgrade
+cd upgrade
+bk get $Q -S `bk bin`/build_upgrade_index.pl `bk bin`/bkupgrade.key
+`bk bin`/build_upgrade_index.pl ../$INSTALLER
+cd ..
+mv $INSTALLER ORIG
+bk upgrade -nfl bk `pwd`/upgrade >OUT || {
+	echo should not have failed
+	exit 1
+}
+grep -q "New version of bk fetched: $INSTALLER" OUT || {
+	echo Wrong message
+	exit 1
+}
+cmp -s $INSTALLER ORIG || {
+	echo wrong file
+	exit 1
+}
+echo OK 

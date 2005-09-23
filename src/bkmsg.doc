@@ -1055,13 +1055,14 @@ with a current commercial license and run:
 	bk lease renew
 and then repeat this upgrade command.
 $
-#upgrade-needrepo
-The upgrade command needs to be run in a repository with a valid license.
+#upgrade-msys-shell
+The upgrade command may not be run from an Msys shell, the removal of the
+existing BitKeeper will fail.  Please try again from a command shell.
 $
 #upgrade-devbuild
 This version of bk is a development build and cannot be upgraded
 automatically.  Please specify a valid code line and the -f option.
-Example: bk upgrade -l bk-pro -f
+Example: bk upgrade -l bk -f
 $
 #comments-badfmt
 Illegal format for input to the 'bk comments' command.  Lines should

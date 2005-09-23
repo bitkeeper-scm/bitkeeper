@@ -300,10 +300,10 @@ rebuild:
 	-@rm -f substvars gnu/config.cache config.h config.log config.sub
 	-@rm -f $(LIBS) bkdsubstr bkhelp.txt bkmsg.txt a.out
 	-@rm -f core bkver.c tclwrap tclwrap.o blowfish.o $(WIN_TMP)
-	-@rm -f bkver.h cmd.c 
+	-@rm -f bkver.h bk.ver cmd.c cmd.h
 	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(PROGS)
 	-@rm -rf tmp bkl5_hashs.h
-	-@rm -f Academic.lic Basic.lic Pro.lic Enterprise.lic MLA.lic bkcl.lic
+	-@rm -f Academic.lic Basic.lic Pro.lic Enterprise.lic MLA.lic bkl.lic bkcl.lic
 	-@for i in ../doc ../man gnu gui utils win32 mdbm zlib tomcrypt libc; \
 	do	cd $(HERE)/$$i && $(MAKE) clobber; \
 	done

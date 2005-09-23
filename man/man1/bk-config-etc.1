@@ -269,11 +269,25 @@ bkweb:    http://mysql.bkbits.net:8080/mysql-5.0
 master:   bk://mysql.bkbits.net/mysql-5.0
 homepage: http://www.mysql.com
 .DE
+.SS UPGRADE URL
+.LP
+The upgrade command normally looks for new versions of BitKeeper here:
+.I http://upgrades.bitkeeper.com/upgrades/
+but that location may be overridden by setting the
+.I upgrade-url
+field to an different URL.
+.LP
+For example,
+.DS
+upgrade-url:	http://www.example.com/bk-release/
+.DE
+The contents of that directory needs to be mirrored from a BitMover release.
 .SH "SEE ALSO"
-.SA config-gui 1
-.SA config 1
-.SA setup
 .SA admin
+.SA config-gui
+.SA config
+.SA setup
+.SA upgrade
 .\" help://configuration
 .\" help://user preferences
 .\" help://repository preferences
