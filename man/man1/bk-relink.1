@@ -12,6 +12,8 @@ bk relink \- recreate broken hardlinks
 .ARG from3
 \&...\fB]\fP
 .ARG to
+.br
+.B bk relink [\-q]
 .SH DESCRIPTION
 .LP
 The relink command is used to conserve disk space.  It is typical for
@@ -34,6 +36,12 @@ repository
 with a hardlink to the file in the
 .ARG to
 repository.
+.LP
+If no repositories are specifed, then 
+.ARG from
+defaults to the current repository and
+.ARG to
+defaults to all parent[s] of the current repository.
 .SH OPTIONS
 .TP 
 .B \-q

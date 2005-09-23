@@ -789,12 +789,40 @@ linkdir(char *from, char *dir)
 int
 relink_main(int ac, char **av)
 {
-	char	here[MAXPATH];
 	int	quiet = 0, i, errs = 0;
 	char	*to = av[ac-1];
+	char	**parents;
+	remote	*r;
+	char	here[MAXPATH];
 
 	if (av[1] && streq("-q", av[1])) quiet++, av++, ac--;
 
+	if (ac == 1) {
+		if (proj_cd2root()) {
+			fprintf(stderr, "relink: cannot find package root.\n");
+			exit(1);
+		}
+		getcwd(here, MAXPATH);
+		unless (parents = parent_allp()) {
+perr:			fprintf(stderr,
+			    "relink: unable to find package parent[s].\n");
+			exit(1);
+		}
+		EACH(parents) {
+			to = parents[i];
+			unless (r = remote_parse(to)) goto perr;
+			unless (r->type == ADDR_FILE) {
+				fprintf(stderr,
+				    "relink: skipping non-local parent %s.\n",
+				    to);
+				continue;
+			}
+			errs |= do_relink(here, r->path, quiet, here);
+			remote_free(r);
+		}
+		freeLines(parents, free);
+		return (errs);
+	}
 	unless (ac >= 3) {
 		system("bk help -s relink");
 		exit(1);
