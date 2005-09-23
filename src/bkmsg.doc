@@ -877,8 +877,12 @@ Email address where to send this bug submission.
 For what project is this bug being submitted?
 $
 #gui-bug-attachment
-Please attach any files that may help in understanding and fixing
-the problem.
+Please enter the path of a file that will be attached to the bug report.
+You can either type the path, or use the button to the right of the field
+to select the file using a standard file open dialog. 
+
+You can only attach one file to the bug report. Attaching directories or
+symbolic links is not supported.
 $
 #unrelated_repos
 You are trying to synchronize with an unrelated package.
@@ -1207,13 +1211,14 @@ with a current commercial license and run:
 	bk lease renew
 and then repeat this upgrade command.
 $
-#upgrade-needrepo
-The upgrade command needs to be run in a repository with a valid license.
+#upgrade-msys-shell
+The upgrade command may not be run from an Msys shell, the removal of the
+existing BitKeeper will fail.  Please try again from a command shell.
 $
 #upgrade-devbuild
 This version of bk is a development build and cannot be upgraded
 automatically.  Please specify a valid code line and the -f option.
-Example: bk upgrade -l bk-pro -f
+Example: bk upgrade -l bk -f
 $
 #comments-badfmt
 Illegal format for input to the 'bk comments' command.  Lines should

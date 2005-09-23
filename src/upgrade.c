@@ -5,7 +5,6 @@
 
 /*
  * TODO
- *  - update crypto manpage?
  *  - test http proxy password (changed base64 code)
  *
  *  - There should be a check for upgrades item in the Windows startup
@@ -62,6 +61,11 @@ usage:			system("bk help -s upgrade");
 	} else {
 		urlbase = UPGRADEBASE;
 	}
+	if (win32() && (p = getenv("OSTYPE"))
+	    && streq(p, "msys") && (fetchonly || install)) {
+		notice("upgrade-nomsys", 0, "-e");
+		goto out;
+	}
 	if (install && fetchonly) {
 		fprintf(stderr, "upgrade: -i or -n but not both.\n");
 		goto out;
@@ -77,13 +81,10 @@ usage:			system("bk help -s upgrade");
 		}
 		want_codeline = strndup(bk_vers, p - bk_vers);
 	}
-	if (key = lease_latestbkl()) free(key);
-	unless (streq(want_codeline, "bk-free") || key) {
+	if (key = lease_latestbkl()) {
+		free(key);
+	} else {
 		notice("upgrade-require-lease", 0, "-e");
-		goto out;
-	}
-	if (!av[optind] && !proj_root(0)) {
-		notice("upgrade-needrepo", 0, "-e");
 		goto out;
 	}
 	indexfn = bktmp(0, "upgrade-idx");
