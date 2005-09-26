@@ -11,7 +11,7 @@ private	void	usage(void);
 private	void	do_cmds(void);
 private int	svc_uninstall(void);
 
-char		*bkd_getopt = "BcCdDeE:g:hi:l|L:p:P:qRSt:u:V:x:";
+char		*bkd_getopt = "BcCdDeE:hi:l|L:p:P:qRSt:V:x:";
 char 		*logRoot;
 private char	**exCmds;
 
@@ -53,7 +53,6 @@ bkd_main(int ac, char **av)
 			if (streq(optarg, "kill")) Opts.kill_ok = 1;
 			unexclude(unenabled, optarg);
 			break;
-		    case 'g': Opts.gid = optarg; break;		/* doc 2.0 */
 		    case 'h': Opts.http_hdr_out = 1; break;	/* doc 2.0 */
 		    case 'l':					/* doc 2.0 */
 			Opts.logfile = optarg ? optarg : (char*)1;
@@ -67,7 +66,6 @@ bkd_main(int ac, char **av)
 		    case 'R': 					/* doc 2.0 */
 			if (getenv("BKD_SERVICE")) break;	/* ignore it */
 			return (svc_uninstall());
-		    case 'u': Opts.uid = optarg; break;		/* doc 2.0 */
 		    case 'x': exclude(optarg, 1); break;	/* doc 2.0 */
 		    case 'e': break;				/* obsolete */
 		    case 'E': putenv(optarg); break;		/* undoc */
@@ -132,7 +130,6 @@ bkd_main(int ac, char **av)
 		exit(1);
 		/* NOTREACHED */
 	} else {
-		ids();
 		do_cmds();
 		return (0);
 	}

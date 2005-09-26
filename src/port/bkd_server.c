@@ -1,58 +1,6 @@
-/*
- * Copyright (c) 2001 Larry McVoy & Andrew Chang       All rights reserved.
- */
 #include "../bkd.h"
 
 private void	argv_save(int ac, char **av, char **nav, int j);
-
-#ifndef WIN32
-#include <grp.h>
-
-void
-ids(void)
-{
-	struct	passwd *pw;
-	struct	group *gp;
-	gid_t	g;
-	uid_t	u;
-
-	unless (Opts.gid && *Opts.gid) goto uid;
-
-	if (isdigit(*Opts.gid)) {
-		g = (gid_t)atoi(Opts.gid);
-	} else {
-		while (gp = getgrent()) {
-			if (streq(Opts.gid, gp->gr_name)) break;
-		}
-		unless (gp) {
-			fprintf(stderr,
-			    "Unable to find group '%s', abort\n", Opts.gid);
-			exit(1);
-		}
-		g = gp->gr_gid;
-	}
-	if (setgid(g)) perror("setgid");
-
-uid:	unless (Opts.uid && *Opts.uid) return;
-
-	if (isdigit(*Opts.uid)) {
-		u = (uid_t)atoi(Opts.uid);
-	} else {
-		unless (pw = getpwnam(Opts.uid)) {
-			fprintf(stderr,
-			    "Unable to find user '%s', abort\n", Opts.uid);
-			exit(1);
-		}
-		u = pw->pw_uid;
-	}
-	if (setuid(u)) perror("setuid");
-	pw = getpwuid(getuid());
-	safe_putenv("USER=%s", pw->pw_name);
-}
-#else
-void
-ids(void) {} /* no-op */
-#endif
 
 void
 reap(int sig)
@@ -77,7 +25,6 @@ bkd_server(int ac, char **av)
 
 	putenv("BKD_DAEMON=1");		/* for safe_cd code */
 
-	ids();
 	/*
 	 * If we're a standard daemon respawn ourselves in background and
 	 * we are done.

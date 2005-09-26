@@ -180,20 +180,10 @@ Write the pid of daemon process into this file at startup.
 Specify an alternative port.  The default port is 0x3962 (aka 14690).
 This option implies \-d.
 .tp
-.OPTreq \-g gid
-Attempt to run with group id
-.ARG gid 
-(POSIX compatible systems only).
-.tp
 .OPTreq \-i cmd
 Include
 .ARG cmd
 from the by default excluded command list.
-.tp
-.OPTreq \-u uid
-Attempt to run with user id
-.ARG uid
-(POSIX compatible systems only).
 .tp
 .OPTreq \-x cmd
 Exclude 
@@ -222,7 +212,8 @@ We use the following in
 to provide anonymous read only access to some \*(BK repositories.  
 .DS
 #----------------------\ cut\ here\ --------------------------
-/bk -C \-u99 \-g10
+nobody /home/bk/bk-3.2.x -C -xpush -p3200
+nobody /home/bk/bk-3.3.x -C -xpush -p3300
 #----------------------\ cut\ here\ --------------------------
 .DE
 .LP
@@ -263,12 +254,12 @@ case "$1" in
 			echo Nothing advertised
 			exit 0
 		}
-		while read dir opts
+		while read user dir opts
 		do	(
 			cd $dir || exit 1
 			F=`basename $dir`
 			CMD="bk bkd \-d $opts \-l$VAR/log.$F \-P$VAR/pid.$F"
-			eval $CMD 2>> $VAR/errors
+			su -c "$CMD" $user 2>> $VAR/errors
 			echo Started $CMD in $dir
 			)
 		done < repositories

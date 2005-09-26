@@ -20,6 +20,9 @@ bk bkd
     data to be transmitted to <repo>/BitKeeper/tmp and dropping the
     lock before transmitting.
 
+    -u/-g options have been removed, use su(1) instead, it interacts 
+    better with license management.
+
 Multiple parents
     Repositories can have a list of parent URLs.  With this change a
     'bk pull' can fetch new data from a list of sources and 'bk push'

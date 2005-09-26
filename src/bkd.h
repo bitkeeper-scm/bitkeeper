@@ -84,8 +84,6 @@ typedef struct {
 	u32	buffer_clone:1;		/* stream clone from copy */
 	u32	kill_ok:1;		/* enable kill socket */
 	int	alarm;			/* exit after this many seconds */
-	char	*uid;			/* desired uid or null */
-	char	*gid;			/* desired gid or null */
 	char	*pidfile;		/* write the daemon pid here */
 	char	*logfile;		/* if set, log commands to here */
 	char	*vhost_dirpath;		/* directory path to start from */

@@ -686,13 +686,13 @@ case "$1" in
 			echo Nothing advertised
 			exit 0
 		}
-		while read dir opts
+		while read user dir opts
 		do	(
 			cd $dir || exit 1
 			F=`basename $dir`
 			CMD="bk bkd -d $opts -l$VAR/log.$F -P$VAR/pid.$F"
-			eval $CMD 2>> $VAR/errors
-			echo Started $CMD in $dir
+			su -c "$CMD" $user 2>> $VAR/errors
+			echo Started $CMD in $dir as $user
 			)
 		done < repositories
 	    	;;
