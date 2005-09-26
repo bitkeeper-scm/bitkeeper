@@ -772,7 +772,6 @@ import_finish () {
 	$RM -f ${TMP}import$$ ${TMP}admin$$
 	bk idcache -q
 	# So it doesn't run consistency check.
-	touch BitKeeper/etc/SCCS/x.marked
 	if [ $FINDCSET = NO ]
 	then	if [ X$QUIET = X ]
 		then echo "Creating initial changeset (should be +$NFILES)"

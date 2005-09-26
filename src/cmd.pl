@@ -139,7 +139,6 @@ clone
 comments
 commit
 config
-_converge restricted
 cp
 create
 crypto

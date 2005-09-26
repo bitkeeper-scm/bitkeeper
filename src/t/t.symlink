@@ -236,7 +236,6 @@ rm -rf project
 echo $N Create initial repository for symlink resync ................$NL
 cd $HERE
 commercial SL
-touch BitKeeper/etc/SCCS/x.marked
 echo OK
 echo $N Create a regular file and a symlink .........................$NL
 ln -s dangling/symlink link

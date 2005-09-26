@@ -9100,7 +9100,6 @@ checkin(sccs *s,
 	admin	l[2];
 	int	no_lf = 0;
 	int	error = 0;
-	int	bk_etc = 0;
 	int	short_key = 0;
 	MDBM	*db;
 
@@ -9171,15 +9170,9 @@ out:		sccs_unlock(s, 'z');
 		goto out;
 	}
 
+	/* pathname, we need this below */
 	buf[0] = 0;
-	t = relativeName(s, 0);
-	if (CSET(s) || (t && !IsFullPath(t))) {
-		if ((strlen(t) > 14) &&
-		    strneq("BitKeeper/etc/", t, 14)) {
-			bk_etc = 1;
-		}
-	}
-	if (t) strcpy(buf, t); /* pathname, we need this below */
+	if (t = relativeName(s, 0)) strcpy(buf, t);
 
 	sfile = fopen(sccsXfile(s, 'x'), "wb");
 	unless (s) {

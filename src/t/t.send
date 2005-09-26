@@ -59,8 +59,6 @@ cd $HERE
 rm -f project/BitKeeper/etc/SCCS/x.dfile
 rm -f project/BitKeeper/etc/SCCS/x.id_cache
 rm -f copy/BitKeeper/etc/SCCS/x.id_cache
-rm -f project/BitKeeper/etc/SCCS/x.marked
-rm -f copy/BitKeeper/etc/SCCS/x.marked
 rm -f project/BitKeeper/log/cmd copy/BitKeeper/log/cmd
 rm -f copy/BitKeeper/etc/csets-in
 rm -f project/BitKeeper/log/*
@@ -125,8 +123,6 @@ cd $HERE/uu; bk -r clean; bk -r admin -Zgzip
 cd $HERE
 rm -f project/BitKeeper/etc/SCCS/x.id_cache
 rm -f uu/BitKeeper/etc/SCCS/x.id_cache
-rm -f project/BitKeeper/etc/SCCS/x.marked
-rm -f uu/BitKeeper/etc/SCCS/x.marked
 rm -f project/BitKeeper/log/cmd uu/BitKeeper/log/cmd
 rm -f uu/BitKeeper/etc/csets-in
 rm -f project/BitKeeper/log/*
@@ -146,8 +142,6 @@ cd $HERE/csets; bk -r clean; bk -r admin -Zgzip
 cd $HERE
 rm -f project/BitKeeper/etc/SCCS/x.id_cache
 rm -f csets/BitKeeper/etc/SCCS/x.id_cache
-rm -f project/BitKeeper/etc/SCCS/x.marked
-rm -f csets/BitKeeper/etc/SCCS/x.marked
 rm -f project/BitKeeper/log/cmd csets/BitKeeper/log/cmd
 rm -f csets/BitKeeper/etc/csets-in
 rm -f project/BitKeeper/log/*

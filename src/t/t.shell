@@ -63,7 +63,6 @@ bk prs -hr+ binary | grep -q binary || {
 	bk prs -hr+ binary
 	exit 1
 }
-touch BitKeeper/etc/SCCS/x.marked
 bk commit $Q -ywhatever 
 echo OK
 echo $N Clone it, modify it in both, and resync it ..................$NL

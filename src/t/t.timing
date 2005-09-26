@@ -58,7 +58,6 @@ echo $N Create changesets quickly ...................................$NL
 cd P1
 bk commit $Q -ywhatever
 cd ../P2
-touch BitKeeper/etc/SCCS/x.marked
 bk commit $Q -ywhatever
 cd ..
 A=`bk prs -hr+ -d:KEY: P1/ChangeSet`

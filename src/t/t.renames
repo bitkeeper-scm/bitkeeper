@@ -61,7 +61,6 @@ if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
-touch BitKeeper/etc/SCCS/x.marked
 echo OK
 echo $N Create 5 files with 1,2,3,4,5 as contents ...................$NL
 echo 1 > "A A"

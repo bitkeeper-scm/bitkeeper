@@ -56,7 +56,6 @@ private	void	cleanup(int what);
 private	void	freePatchList(void);
 private	void	fileCopy2(char *from, char *to);
 private	void	badpath(sccs *s, delta *tot);
-private void	merge(char *gfile);
 private	int	skipPatch(MMAP *p);
 private	void	getConfig(void);
 private	void	getGone(void);
@@ -104,7 +103,7 @@ takepatch_main(int ac, char **av)
 	int	c;
 	int	flags = SILENT;
 	int	files = 0;
-	char	*t, *q;
+	char	*t;
 	int	error = 0;
 	int	remote = 0;
 	int	resolve = 0;
@@ -238,28 +237,7 @@ usage:		system("bk help -s takepatch");
 	 * particular file.  The converge code will make sure all of the
 	 * inodes are present.
 	 */
-	if (conflicts) {
-		char key[MAXKEY], gfile[MAXPATH];
-		chdir(ROOT2RESYNC);
-		f = popen("bk sfiles BitKeeper/etc BitKeeper/deleted | "
-			  "bk prs -r+ -hd':ROOTKEY:\n:GFILE:\n' -", "r");
-		assert(f);
-		while (fnext(key, f))  {
-			q = strchr(key, '|') + 1;
-			t = strchr(q, '|'); *t = 0;
-			fnext(gfile, f);
-			unless (streq(q, "BitKeeper/etc/gone") ||
-				streq(q, "BitKeeper/etc/ignore") ||
-				streq(q, "BitKeeper/etc/skipkeys")) {
-				continue;
-			}
-			chop(gfile);
-			merge(gfile);
-		}
-		pclose(f);
-		system("bk _converge -R");
-		chdir(RESYNC2ROOT);
-	}
+	if (conflicts) converge_hash_files();
 
 	/* 
 	 * We need the Gone file even for no conflict case
@@ -315,33 +293,6 @@ getGone(void)
 			    "> RESYNC/BitKeeper/etc/gone");
 		}
     	}
-}
-
-/*
- * Automerge any updates before converging the inodes.
- */
-private void
-merge(char *gfile)
-{
-	char	*rfile = name2sccs(gfile);
-	char	*mfile = name2sccs(gfile);
-	char	*t;
-
-	t = strrchr(rfile, '/'), t[1] = 'r';
-	t = strrchr(mfile, '/'), t[1] = 'm';
-	unlink(mfile);
-	free(mfile);
-	if (exists(rfile)) {
-		/*
-		 * Both remote and local have updated the file.
-		 * We automerge here, saves trouble later.
-		 */
-		sys("bk", "get", "-qeM", gfile, SYS);
-		sysio(0, gfile, 0, "bk", "merge", "-s", gfile, SYS);
-		sys("bk", "ci", "-qdPyauto-union", gfile, SYS);
-		unlink(rfile);
-	} /* else remote update only */
-	free(rfile);
 }
 
 private	delta *
