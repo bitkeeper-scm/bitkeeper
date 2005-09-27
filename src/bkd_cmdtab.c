@@ -43,11 +43,5 @@ struct cmd cmds[] = {
     cmd_chg_part2 },
   { "kill", "kill_1.3", "kill remote bkd", cmd_kill },
   { "license", "license_1.3", "fetch license keys", cmd_license },
-  { "pending_part1", "pending_1.3", 
-    "get pending items in remote repository",
-    cmd_pending_part1 },
-  { "pending_part2", "pending_1.3", 
-    "get pending items in remote repository",
-    cmd_pending_part2 },
   { 0, 0, 0 }
 };
