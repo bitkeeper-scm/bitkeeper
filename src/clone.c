@@ -493,6 +493,7 @@ after(int quiet, char *rev)
 	cmds[++i] = p = malloc(strlen(rev) + 3);
 	sprintf(cmds[i], "-a%s", rev);
 	cmds[++i] = 0;
+	putenv("BK_NO_REPO_LOCK=YES");	/* so undo doesn't lock */
 	i = spawnvp(_P_WAIT, "bk", cmds);
 	free(p);
 	unless (WIFEXITED(i))  return (-1);
@@ -613,7 +614,8 @@ out2:		repository_rdunlock(0);
 	unless (to) to = basenm(r->path);
 	if (exists(to)) {
 		fprintf(stderr, "clone: %s exists\n", to);
-out:		chdir(from);
+out:		repository_wrunlock(0);
+		chdir(from);
 		repository_rdunlock(0);
 		remote_free(r);
 		out_trigger("BK_STATUS=FAILED", opts.rev, "post");
@@ -626,7 +628,10 @@ out:		chdir(from);
 	chdir(to);
 	getcwd(dest, MAXPATH);
 	sccs_mkroot(".");
-	mkdir("RESYNC", 0777);		/* lock it */
+	if (repository_wrlock()) {
+		fprintf(stderr, "Unable to lock new repo?\n");
+		goto out;
+	}
 	chdir(from);
 	unless (f = popen("bk sfiles -d", "r")) goto out;
 	level = getlevel();
@@ -645,7 +650,8 @@ out:		chdir(from);
 		}
 		if (linkdir(from, buf)) {
 			pclose(f);
-			goto out;	/* don't unlock RESYNC */
+			mkdir(ROOT2RESYNC, 0775);	/* leave it locked */
+			goto out;
 		}
 	}
 	pclose(f);
@@ -677,14 +683,14 @@ out:		chdir(from);
 	repository_rdunlock(0);
 	fromid = repo_id();
 	if (chdir(dest)) goto out;
-	rmdir("RESYNC");		/* undo wants it gone */
 	if (clone2(opts, r)) {
-		mkdir("RESYNC", 0777);
 		in_trigger("BK_STATUS=FAILED", opts.rev, from, fromid);
 		free(fromid);
+		mkdir(ROOT2RESYNC, 0775);	/* leave it locked */
 		goto out;
 	}
 	in_trigger("BK_STATUS=OK", opts.rev, from, fromid);
+	repository_wrunlock(0);
 	free(fromid);
 	chdir(from);
 

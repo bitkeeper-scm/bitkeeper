@@ -174,7 +174,7 @@ import() {
 	bk lock -L
 	LOCKURL=`cat /tmp/lock$$`
 	rm -f /tmp/lock$$
-	export BK_IGNORELOCK=YES
+	export BK_IGNORE_WRLOCK=YES
 	trap 'Done 100' 1 2 3 15
 
 	getIncExc

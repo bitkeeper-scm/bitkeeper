@@ -256,6 +256,8 @@ cat > BitKeeper/triggers/post-outgoing <<EOF
 #!/bin/bash
 set | grep $DASHA ^BK | grep -v _BK_ |
 	grep -v BK_LICENSE= |
+	grep -v BK_NO_REPO_LOCK= |
+	grep -v BK_IGNORE_WRLOCK= |
 	bk _sort > $HERE/post-outgoing-l
 EOF
 chmod +x BitKeeper/triggers/*
@@ -321,7 +323,7 @@ cat > BitKeeper/triggers/post-incoming <<EOF
 #!/bin/bash
 # ignore BK_REPO_ID because clone and clone-l had different ids
 set | grep $DASHA ^BK | grep -v _BK_ |
-    grep -v BK_IGNORELOCK |
+    grep -v BK_IGNORE_WRLOCK |
     grep -v BKD_LEVEL |
     grep -v BK_REPO_ID |
     grep -v _FEATURES |
@@ -364,6 +366,8 @@ set | grep $DASHA ^BK |
     grep -v _BK_ |
     grep -v BK_LICENSE= |  # leftover from pre-triggers (remove in 3.3.x)
     grep -v BK_REPO_ID |
+    grep -v BK_IGNORE_WRLOCK |
+    grep -v BK_NO_REPO_LOCK |
     bk _sort > $HERE/post-incoming-clone-l
 exit 0
 EOF

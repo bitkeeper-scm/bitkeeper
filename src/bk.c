@@ -431,7 +431,7 @@ private	struct {
 	{"remote rclone part1", CMD_BYTES},
 	{"remote rclone part2", CMD_BYTES|CMD_FAST_EXIT},
 	{"synckeys", CMD_RDLOCK|CMD_RDUNLOCK},
-	{"undo", 0},
+	{"undo", CMD_WRLOCK|CMD_WRUNLOCK},
 	{ 0, 0 },
 };
 
@@ -505,6 +505,9 @@ cmdlog_start(char **av, int httpMode)
 			}
 			switch (i) {
 			    case LOCKERR_LOST_RACE:
+				/* It would be nice if these went to stderr
+				 * for local processes.
+				 */
 				out(LOCK_WR_BUSY);
 				break;
 			    case LOCKERR_PERM:

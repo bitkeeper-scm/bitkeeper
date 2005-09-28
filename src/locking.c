@@ -164,7 +164,7 @@ global_locked(void)
 
 /*
  * See if the repository is locked.  If there are no readlocks, we
- * respect BK_IGNORELOCK.
+ * respect BK_IGNORE_WRLOCK.
  */
 int
 repository_locked(project *p)
@@ -182,7 +182,7 @@ repository_locked(project *p)
 	}
 	ret = repository_hasLocks(root, READER_LOCK_DIR);
 	unless (ret) {
-		if ((s = getenv("BK_IGNORELOCK")) && streq(s, "YES")) {
+		if ((s = getenv("BK_IGNORE_WRLOCK")) && streq(s, "YES")) {
 			ldebug(("repository_locked(%s) = 0\n", root));
 			return (0);
 		}
@@ -360,7 +360,7 @@ wrlock(void)
 	/* XXX - this should really be some sort cookie which we pass through,
 	 * like the contents of the lock file.  Then we ignore iff that matches.
 	 */
-	putenv("BK_IGNORELOCK=YES");
+	putenv("BK_IGNORE_WRLOCK=YES");
 	ldebug(("WRLOCK %u\n", getpid()));
 	return (0);
 }
@@ -467,7 +467,7 @@ repository_wrunlock(int all)
 		return (0);
 	}
 
-	putenv("BK_IGNORELOCK=NO");
+	putenv("BK_IGNORE_WRLOCK=NO");
 	sprintf(path, "%s/%s", root, WRITER_LOCK);
 	if (sccs_mylock(path) && (sccs_unlockfile(path) == 0)) {
 		write_log(root, "cmd_log", 1,
