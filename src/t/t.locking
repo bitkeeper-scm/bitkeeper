@@ -340,17 +340,150 @@ grep -q 'Global write lock .*/write_lock' OUT || {
 }
 echo OK
 
-
 echo $N Make sure commit respects repository lock ...................$NL
 bk co $Q -l D
 date > D
 bk ci $Q -ynew_styff D
 mkdir -p $HERE/project/RESYNC/stuff
-bk commit $Q -y"should-failed" > commit.out 2>&1
-if [ $? -eq 0 ]; then echo failed; exit 1; fi
+bk commit $Q -y"should-failed" > commit.out 2>&1 && {
+	echo failed
+	cat commit.out
+	exit 1
+}
 grep -q 'ERROR-Unable to lock repository for update.' commit.out || {
 	echo unexpected error message
 	cat commit.out
+	exit 1
+}
+rm -rf $HERE/project/RESYNC
+bk lock -U
+echo OK
+
+echo $N Make sure repo write lock will fix dir permissions if it can.$NL
+cd $HERE/project/BitKeeper
+test -d $HERE/project/BitKeeper/writer && {
+	echo failed to clean up writer directory
+	ps -xf
+	ls -l writer
+	exit 1
+}
+mkdir writer
+chmod 0555 writer
+test -w writer && {
+	echo chmod failed
+	exit 1
+}
+bk lock -tw > port &
+bk lock -L
+test -w writer || {
+	echo failed to fix permissions
+	exit 1
+}
+bk _kill `cat port`
+test -d writer && {
+	echo failed to clean up writer directory
+	exit 1
+}
+echo OK
+
+echo $N Make sure repo read lock will fix dir permissions if it can..$NL
+cd $HERE/project/BitKeeper
+test -d $HERE/project/BitKeeper/readers && {
+	echo failed to clean up readers directory
+	ps -xf
+	ls -l readers
+	exit 1
+}
+mkdir readers
+chmod 0555 readers
+test -w readers && {
+	echo chmod failed
+	exit 1
+}
+bk lock -tr > port &
+bk lock -L
+test -w readers || {
+	echo failed to fix permissions
+	exit 1
+}
+bk _kill `cat port`
+test -d readers && {
+	echo failed to clean up writer directory
+	exit 1
+}
+echo OK
+
+echo $N Make sure stale locks clean lock and uniq file ..............$NL
+cd $HERE/project/BitKeeper
+test -d $HERE/project/BitKeeper/writer && {
+	echo failed to clean up writer directory
+	ps -xf
+	ls -l writer
+	exit 1
+}
+mkdir writer
+# I'm counting on 2^31-1 being an unsigned that is not a pid and
+# 2^32 - 1 being a time_t in the future.  Fix this when time_t > 32 bits.
+if [ "`uname -s`" = SCO_SV ]
+then	PID=32767	# SCO wraps at 30000, use 2^15-1 to avoid sign bit
+else	PID=2147483647
+fi
+TIME=4294967295
+HOST=`bk gethost -r`
+echo "${PID} ${HOST} ${TIME}" > writer/"${PID}@${HOST}.lock" 
+if [ "$PLATFORM" = "WIN32" ]
+then	cp writer/"${PID}@${HOST}.lock" writer/lock
+else	ln writer/"${PID}@${HOST}.lock" writer/lock
+fi
+bk lock -wt > port &
+for i in 1 2 3 4 5
+do	test -f writer/"${PID}@${HOST}.lock" && bk _usleep 250000
+done
+test -f writer/"${PID}@${HOST}.lock" && {
+	echo failed to clean up stale uniq file
+	ls -l writer
+	cat writer/"${PID}@${HOST}.lock"
+	bk _kill `cat port`
+	exit 1
+}
+test -f writer/lock || {
+	echo failed to lock repo
+	ls -l writer
+	bk _kill `cat port`
+	exit 1
+}
+test "`cat writer/lock`" = "${PID} ${HOST} ${TIME}" && {
+	echo failed to replace lock contents with legit contents
+	bk _kill `cat port`
+	exit 1
+}
+bk _kill `cat port`
+test -d writer && {
+	echo failed to clean up writer directory
+	exit 1
+}
+echo OK
+
+echo $N Make sure sccs lock will fix directory permissions if it can.$NL
+cd $HERE
+mkdir nowrite
+cd nowrite
+chmod 0555 .
+test -w . && {
+	echo chmod failed
+	exit 1
+}
+bk lock -tflockfile > $HERE/port &
+while [ ! -f lockfile ]
+do	sleep 1
+done
+test -w . || {
+	echo failed to fix permissions
+	exit 1
+}
+bk _kill `cat $HERE/port`
+test -f lockfile && {
+	echo failed to clean up lock
 	exit 1
 }
 echo OK

@@ -299,10 +299,15 @@ rdlock(void)
 	 * write lock.  If there is, we lost the race and we back off.
 	 */
 	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
-	unless (exists(path)) {
-		mkdir(path, 0777);
-		chmod(path, 0777);	/* kill their umask */
+	unless (exists(path)) mkdir(path, 0777);
+	chmod(path, 0777);		/* ignore their umask */
+
+	unless (access(path, W_OK) == 0) {
+		proj_free(p);
+		return (LOCKERR_PERM);
 	}
+
+	/* XXX - use sccs_lockfile!!! */
 	rdlockfile(p->root, path);
 	close(creat(path, 0666));
 	unless (exists(path)) {
@@ -314,6 +319,8 @@ rdlock(void)
 	if (exists(path) || global_wrlocked()) {
 		rdlockfile(p->root, path);
 		unlink(path);
+		sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
+		(void)rmdir(path);
 		proj_free(p);
 		ldebug(("RDLOCK by %u failed, write locked\n", getpid()));
 		return (LOCKERR_LOST_RACE);
@@ -352,10 +359,9 @@ wrlock(void)
 	ldebug(("repository_wrlock(%s)\n", p->root));
 
 	sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
-	unless (exists(path)) {
-		mkdir(path, 0777);
-		chmod(path, 0777);	/* kill their umask */
-	}
+	unless (exists(path)) mkdir(path, 0777);
+	chmod(path, 0777);		/* ignore their umask */
+
 	unless (access(path, W_OK) == 0) {
 		proj_free(p);
 		return (LOCKERR_PERM);
@@ -363,6 +369,7 @@ wrlock(void)
 
 	sprintf(lock, "%s/%s", p->root, WRITER_LOCK);
 	if (global_locked() || sccs_lockfile(lock, 0, 0)) {
+		(void)rmdir(path);
 		proj_free(p);
 		ldebug(("WRLOCK by %u failed, lockfile failed\n", getpid()));
 		return (LOCKERR_LOST_RACE);
@@ -370,8 +377,10 @@ wrlock(void)
 
 	sprintf(path, "%s/%s", p->root, ROOT2RESYNC);
 	if (exists(path)) {
-		proj_free(p);
 		sccs_unlockfile(lock);
+		sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
+		(void)rmdir(path);
+		proj_free(p);
 		ldebug(("WRLOCK by %d failed, RESYNC won\n"));
 		return (LOCKERR_LOST_RACE);
 	}
@@ -380,8 +389,10 @@ wrlock(void)
 	 * Make sure no readers sneaked in
 	 */
 	if (repository_hasLocks(p->root, READER_LOCK_DIR)) {
-		proj_free(p);
 	    	sccs_unlockfile(lock);
+		sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
+		(void)rmdir(path);
+		proj_free(p);
 		ldebug(("WRLOCK by %u failed, readers won\n", getpid()));
 		return (LOCKERR_LOST_RACE);
 	}

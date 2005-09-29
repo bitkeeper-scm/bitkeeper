@@ -5,7 +5,7 @@
 private	int	linkcount(const char *file);
 #endif
 private int	readlockf(const char *file, pid_t *, char **hostp, time_t *tp);
-private	char	*uniqfile(const char *file);
+private	char	*uniqfile(const char *file, pid_t p, char *host);
 
 private	int	incr = 25000;
 private	int	failed = 0;
@@ -32,7 +32,16 @@ sccs_lockfile(const char *file, int waitsecs, int quiet)
 	int	uslp = incr;
 	u64	waited = 0;
 
-	uniq = uniqfile(file);
+	p = dirname_alloc((char*)file);
+	unless (access(p, W_OK) == 0) {
+		if (chmod(p, 0775)) {
+			fprintf(stderr, "lockfile: %s is not writable.\n", p);
+			free(p);
+			return (-1);
+		}
+	}
+	free(p);
+	uniq = uniqfile(file, getpid(), sccs_realhost());
 	unlink(uniq);
 	unless ((fd = open(uniq, O_CREAT|O_RDWR|O_EXCL, 0644)) >= 0) {
 		fprintf(stderr, "Can't create lockfile %s\n", uniq);
@@ -111,7 +120,7 @@ sccs_lockfile(const char *file, int waitsecs, int quiet)
 int
 sccs_unlockfile(const char *file)
 {
-	char	*uniq = uniqfile(file);
+	char	*uniq = uniqfile(file, getpid(), sccs_realhost());
 	int	error = 0;
 
 	if (unlink(uniq)) error++;
@@ -128,7 +137,7 @@ sccs_unlockfile(const char *file)
 int
 sccs_stalelock(const char *file, int discard)
 {
-	char	*host;
+	char	*host, *uniq;
 	pid_t	pid;
 	time_t	t;
 	const	int DAY = 24*60*60;
@@ -137,7 +146,12 @@ sccs_stalelock(const char *file, int discard)
 
 	if (streq(host, sccs_realhost()) && !isLocalHost(host)) {
 		if (findpid(pid) == 0) {
-stale:			if (discard) unlink((char*)file);
+stale:			if (discard) {
+				uniq = uniqfile(file, pid, host);
+				unlink(uniq);
+				free(uniq);
+				unlink((char*)file);
+			}
 			if (getenv("BK_DBGLOCKS")) {
 				ttyprintf("STALE %s\n", file);
 			}
@@ -254,7 +268,7 @@ readlockf(const char *file, pid_t *pidp, char **hostp, time_t *tp)
 }
 
 private char *
-uniqfile(const char *file)
+uniqfile(const char *file, pid_t pid, char *host)
 {
 	char	*p, *dir,  *uniq;
 
@@ -263,10 +277,10 @@ uniqfile(const char *file)
 		p = strrchr(dir, '/');
 		*p++ = 0;
 		uniq = aprintf("%s/%u@%s.%s",
-		    dir, getpid(), sccs_realhost(), p);
+		    dir, pid, host, p);
 		free(dir);
 	} else {
-		uniq = aprintf("%u@%s.%s", getpid(), sccs_realhost(), file);
+		uniq = aprintf("%u@%s.%s", pid, host, file);
 	}
 	return (uniq);
 }

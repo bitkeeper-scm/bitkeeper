@@ -967,6 +967,7 @@ int	sccs_isleaf(sccs *s, delta *d);
 int	exists(char *file);
 int	emptyDir(char *dir);
 char	*dirname(char *path);
+char	*dirname_alloc(char *path);
 int	fileCopy(char *from, char *to);
 off_t	size(char *s);
 int	sameFiles(char *file1, char *file2);
