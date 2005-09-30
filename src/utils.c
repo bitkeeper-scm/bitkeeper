@@ -1615,6 +1615,15 @@ rmdir_findprocs(void)
 		buf2[c] = 0;
 		unless (streq(buf2 + c - 9, "(deleted)")) continue;
 
+		/* can't block on myself... */
+		if (atoi(d[i]) == getpid()) {
+			/*
+			 * Can't dump core if we are in a deleted directory...
+			 */
+			chdir(getenv("BK_REGRESSION"));
+			assert(0);
+		}
+
 		/* give them a chance to go away */
 		for (j = 0; j < WAIT; ++j) {
 			usleep(500000);

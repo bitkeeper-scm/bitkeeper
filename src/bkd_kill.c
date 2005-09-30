@@ -5,7 +5,6 @@
 int
 cmd_kill(int ac, char **av)
 {
-	int	good = 1;
 	int	sock;
 	char	*p, *err;
 	char	buf[4];
@@ -20,17 +19,28 @@ cmd_kill(int ac, char **av)
 	}
 	if ((sock = tcp_connect("127.0.0.1", atoi(p))) >= 0) {
 		/* wait for it to really die */
-		unless ((read(sock, buf, 1) == 1) && (buf[0] == 'K')) {
+		if ((read(sock, buf, 1) == 1) && (buf[0] == 'K')) {
+			/*
+			 * When a 'bk _kill' command returns sucessful
+			 * it needs to be OK to delete the directory
+			 * where the bkd was running. If this
+			 * processes (spawned from the parent bkd)
+			 * takes a log time to write logs and exit,
+			 * then it be in a deleted directory.  We cd
+			 * to / to fix this, but it does prevent the
+			 * cmdlog from getting the end of the bkd_kill
+			 * command.
+			 */
+			chdir("/");
+			out("@END@\n");
+		} else {
 			out("ERROR-bkd not killed\n");
-			good = 0;
 		}
 		closesocket(sock);
 	} else {
 		err = aprintf("ERROR-failed to contact localhost:%s\n", p);
 		out(err);
 		free(err);
-		good = 0;
 	}
-	if (good) out("@END@\n");
 	return (0);
 }
