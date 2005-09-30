@@ -357,7 +357,11 @@ bk new $Q hh
 bk commit $Q -ynewhh || exit 1
 cd $HERE/copy2
 echo hj > hh
-(echo rr; echo y) | bk pull $Q 2> ERRS || exit 1
+(echo rr; echo y) | BK_FORCE_RESOLVE_RERUN=YES bk pull > OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
 echo OK
 
 echo $N Check vr when remote is on a branch .........................$NL
@@ -487,7 +491,7 @@ test -f BitKeeper/etc/RESYNC_TREE && {
 }
 echo OK
 
-echo $N Make sure resolve reruns when there are conflicts ...........$NL
+echo $N Make sure resolve does not rerun with conflicts and -s ......$NL
 cd $HERE/proj
 bk abort -f
 cd $HERE
@@ -503,6 +507,18 @@ done
 cd $HERE/conflict
 ( echo '?'
   echo q
+) | BK_FORCE_RESOLVE_RERUN=YES bk pull -s > OUT 2>&1
+grep -q 'starting manual resolve process.' OUT && {
+	echo Should not have restarted resolve
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure resolve reruns when there are conflicts ...........$NL
+bk abort -f
+( echo '?'
+  echo q
 ) | BK_FORCE_RESOLVE_RERUN=YES bk pull > OUT 2>&1
 grep -q 'starting manual resolve process.' OUT || {
 	echo Did not restart resolve
@@ -510,7 +526,149 @@ grep -q 'starting manual resolve process.' OUT || {
 	exit 1
 }
 echo OK
-unset BK_DEBUG_CMD
+
+echo $N Make sure resolve is not interactive with rename conflicts ..$NL
+bk abort -f
+for i in proj conflict
+do
+	cd $HERE/$i
+	test $i = proj && bk mv dir1 dir1-proj
+	bk mv foo foo-$i
+	bk commit $Q -y$i 
+done
+cd $HERE/conflict
+( echo '?'
+  echo q
+) | BK_FORCE_RESOLVE_RERUN=YES bk pull -s > OUT 2>&1
+grep -q 'starting manual resolve process.' OUT && {
+	echo Should not have restarted resolve
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure we can finish the resolve, both name and content ..$NL
+( 
+  echo '?'
+  echo 'l'
+  echo '?'
+  echo q
+) | bk resolve > OUT 2>&1
+grep -q 'Local:  foo-conflict pathname is available locally' OUT &&
+grep -q 'Remote: foo-proj pathname is available locally' OUT &&
+grep -q 'added locally and remotely and must be merged.' OUT || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure xflags always automerge ...........................$NL
+cd $HERE
+bk clone $Q proj xflags
+cd $HERE/proj
+bk admin -fEXPAND1 foo-proj
+bk commit $Q -yproj
+cd $HERE/xflags
+bk admin -fEOLN_NATIVE foo-proj
+bk commit $Q -yxflags
+bk pull -R $Q
+( echo '?'
+  echo q
+) | bk resolve > OUT 2>&1
+grep -q 'Added merged flags to both local and remote versions.' OUT || {
+	echo Should have automerged xflags
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure resolve automerges modes when it can ..............$NL
+cd $HERE/proj
+date > mode
+bk new $Q mode
+bk chmod 0600 mode
+test `bk prs -hr+ -nd:RWXMODE: mode` = -rw------- || {
+	echo failed
+	bk prs -hr+ -nd:RWXMODE: mode
+	exit 1
+}
+bk commit $Q -yproj
+cd $HERE
+bk clone $Q proj mode
+cd proj
+bk chmod g+rw mode
+test `bk prs -hr+ -nd:RWXMODE: mode` = -rw-rw---- || {
+	echo failed
+	bk prs -hr+ -nd:RWXMODE: mode
+	exit 1
+}
+bk commit $Q -yproj
+cd ../mode
+bk edit $Q mode
+echo whatever >> mode
+bk delta $Q -ywhatever mode
+bk commit $Q -ywhatever mode
+( echo '?'
+  echo q
+) | BK_FORCE_RESOLVE_RERUN=YES bk pull -s > OUT 2>&1
+grep -q 'mode conflict' OUT && {
+	echo Should not have gone into interactive mode with -s
+	cat OUT
+	exit 1
+}
+test -d RESYNC && {
+	echo did not finish resolve
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure resolve is not interactive with mode conflicts ....$NL
+cd $HERE/proj
+bk chmod 0777 mode
+test `bk prs -hr+ -nd:RWXMODE: mode` = -rwxrwxrwx || {
+	echo failed
+	bk prs -hr+ -nd:RWXMODE: mode
+	exit 1
+}
+bk commit $Q -yproj
+cd $HERE/mode
+bk chmod 0710 mode
+test `bk prs -hr+ -nd:RWXMODE: mode` = -rwx--x--- || {
+	echo failed
+	bk prs -hr+ -nd:RWXMODE: mode
+	exit 1
+}
+bk commit $Q -ymode
+( echo '?'
+  echo q
+) | BK_FORCE_RESOLVE_RERUN=YES bk pull -s > OUT 2>&1
+grep -q 'mode conflict' OUT && {
+	echo Should not have gone into interactive mode with -s
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure we can finish the resolve .........................$NL
+( 
+  echo '?'
+  echo 'l'
+  echo 'm'
+  echo 'C'
+  echo '?'
+  echo q
+) | BK_FORCE_RESOLVE_RERUN=YES bk resolve -a > OUT 2>&1
+grep -q 'The file has conflict changes to the modes.' OUT &&
+grep -q 'changed mode to -rwx--x---' OUT &&
+grep -q 'changed mode to -rwxrwxrwx' OUT &&
+grep -q 'resolve complete.' OUT || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
 
 echo $N Keep keywords in an sccs merge ..............................$NL
 commercial project

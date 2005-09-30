@@ -23,6 +23,7 @@ if [ $? -ne 0 ]; then echo fail; fi
 if [ ! -f SCCS/s.foo.c ]; then echo fail; fi
 bk commit $Q -ywhatever
 echo OK
+
 echo $N Identical gfile conflict should autoresolve .................$NL
 cd $HERE
 bk clone $Q project clone
@@ -53,6 +54,7 @@ test -f SCCS/s.date || {
 	exit 1
 }
 echo OK
+
 echo $N Different gfile conflict should not autoresolve .............$NL
 cd $HERE/project
 echo A > A

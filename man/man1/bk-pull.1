@@ -4,7 +4,7 @@
 .SH NAME
 bk pull \- update a repository from its parent[s]
 .SH SYNOPSIS
-.Bc bk pull [\-iqRtu] [
+.Bc bk pull [\-iqRstu] [
 .OPTreq \-r rev
 .Bc ] [
 .OPTequal \-E env var
@@ -71,10 +71,17 @@ Pull up to and including this revision.
 .B bk help terms
 under 'rev argument')
 .tp
+.B \-s
+Pass 
+.B \-s
+to resolve (\c
+.B \-s
+means do not do interactive resolve of any conflicts, leave that for later.)
+.tp
 .B \-t
 Pass 
 .B \-t
-to resolve (
+to resolve (\c
 .B \-t
 means do not use the GUI tools.)
 .tp

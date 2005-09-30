@@ -153,7 +153,7 @@ rfuncs	t_funcs[] = {
  *
  * We walk the two branches and see if any tag exists on both
  */
-int
+void
 resolve_tags(opts *opts)
 {
 	char 	s_cset[] = CHANGESET;
@@ -170,16 +170,22 @@ resolve_tags(opts *opts)
 
 	unless (m) {
 		sccs_free(s);
-		return (1);
+		return;
 	}
 	for (kv = mdbm_first(m); kv.key.dsize; kv = mdbm_next(m)) {
 		i++;
 	}
 	unless (i) {
 		sccs_tagMerge(s, 0, 0);
-		sccs_free(s);
+out:		sccs_free(s);
 		mdbm_close(m);
-		return (1);
+		return;
+	}
+	if (opts->automerge) {
+		opts->hadConflicts++;
+		opts->notmerged =
+		    addLine(opts->notmerged, strdup("| tag conflict |"));
+		goto out;
 	}
 	chdir(RESYNC2ROOT);
 	local = sccs_init(s_cset, 0);
@@ -248,5 +254,5 @@ resolve_tags(opts *opts)
 	sccs_free(local);
 	mdbm_close(m);
 	resolve_free(rs);
-	return (1);
+	return;
 }

@@ -21,6 +21,7 @@ if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
+
 echo $N Create some data ............................................$NL
 mkdir src
 cd src
@@ -30,6 +31,7 @@ echo h > h.h
 bk ci $Q -i foo.c bar.c h.h
 if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
 echo OK
+
 echo $N Check basic park/unpark cycle ...............................$NL
 bk edit $Q foo.c bar.c
 echo foo-new > foo.c
@@ -58,6 +60,7 @@ if [ ! -f $HERE/project/SCCS/c.ChangeSet ]; then echo failed; exit 1; fi
 cmp -s $HERE/project/SCCS/c.ChangeSet $HERE/cc.ref
 if [ $? -ne 0 ]; then echo failed 3; exit 1; fi
 echo OK
+
 echo $N Check basic park/unpark via stdin ...........................$NL
 bk park -y"hi mom" 2> /dev/null || exit 1
 mv $HERE/project/BitKeeper/tmp/parkfile_1.sfio $HERE/parkfile$$
@@ -66,6 +69,7 @@ cmp -s foo.c $HERE/foo.sav
 if [ $? -ne 0 ]; then echo failed 1; exit 1; fi
 echo OK
 rm -f $HERE/parkfile$$ 
+
 echo $N Check basic park/unpark with reject file ....................$NL
 bk unedit bar.c
 bk edit $Q foo.c
@@ -85,6 +89,7 @@ bk unpark 2> /dev/null 1>&2
 # make sure unpark does not delete the parkfile
 if [ ! -f $HERE/project/BitKeeper/tmp/parkfile_1.sfio ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N Check unpark -f with reject file ............................$NL
 bk park -c  2>/dev/null 1>&2
 bk unpark -f  2>/dev/null 1>&2
@@ -107,6 +112,7 @@ EOF
 cmp -s foo.c CMP2
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N Check unpark with renamed and edited file ...................$NL
 bk undos > move_me <<EOF
 111
@@ -131,6 +137,7 @@ bk undos > new_me.ref <<EOF
 EOF
 cmp -s new_me new_me.ref || { echo failed; exit 1; }
 echo OK
+
 echo $N Should not unpark binary over changed file ..................$NL
 cp $BIN1 binary
 bk new $Q -lb binary
@@ -155,6 +162,7 @@ cmp -s $BIN2 binary_moved || { echo failed; exit 1; }
 if [ ! -f extra ]; then echo failed; exit 1; fi
 cmp -s extra $HERE/extra.ref || { echo failed 3; exit 1; }
 echo OK
+
 echo $N Should failed unpark binary changed delta ...................$NL
 bk park -y -a 2> /dev/null
 bk edit $Q binary_moved
@@ -165,11 +173,13 @@ bk unpark 2> unpark.out 1>&2
 grep -q "unsafe to unpark over changed binary file" unpark.out || {
 							echo failed; exit 1; }
 echo OK
+
 echo $N Unpark \-f should overide local changed delta  ................$NL
 bk unpark -cf 2> /dev/null 1>&2
 if [ ! -f binary_moved ]; then echo failed; exit 1; fi
 cmp -s $BIN2 binary_moved || { echo failed; exit 1; }
 echo OK
+
 if [ "$PLATFORM" = "WIN32" ]
 then #--------------------------------------------------------------------
 echo $N Check park/unpark with mix Unix Dos EOLN ....................$NL
@@ -188,7 +198,9 @@ bk unpark 2> /dev/null 1>&2
 cmp -s bar.c bar.ref || { echo failed; exit 1; }
 cmp -s foo.c foo.ref || { echo failed; exit 1; }
 echo OK
+
 fi   #--------------------------------------------------------------------
+
 if [ "$PLATFORM" = "UNIX" ]
 then  #--------------------------------------------------------------------
 echo $N Make sure park/unpark ignore symlink ........................$NL
@@ -212,6 +224,7 @@ if [ ! -e sym ]; then echo failed; exit 1; fi
 bk unpark 2> /dev/null 1>&2
 cmp -s new_me new_me.ref || { echo failed; exit 1; }
 echo OK
+
 echo $N Make sure park -a handle symlink ............................$NL
 bk park -y -a 2> /dev/null
 if [ -h "sym" ]; then echo failed; exit 1; fi
@@ -219,15 +232,7 @@ bk unpark 2> /dev/null 1>&2
 if [ ! -h "sym" ]; then echo failed; exit 1; fi
 ls -l sym | grep -q "\-> foo.c" || { echo failed; exit 1; }
 echo OK
-echo $N Make sure park -a handle symlink to Text case  ...............$NL
-rm -f sym
-echo "I AM CHANGING FROM A SYMLINK TO A TEXT FILE" > sym
-cp sym sym.ref
-bk park -y -a 2> /dev/null
-if [ -e sym ]; then echo failed; exit 1; fi
-bk unpark 2> /dev/null 1>&2
-cmp -s sym sym.ref || { echo failed; exit 1; }
-echo OK
+
 echo $N Make sure park -a handle symlink as extra file ..............$NL
 bk unedit $Q sym
 ln -s foo.c extra_sym
@@ -237,4 +242,5 @@ bk unpark 2> /dev/null 1>&2
 if [ ! -h "extra_sym" ]; then echo failed; exit 1; fi
 ls -l extra_sym | grep -q "\-> foo.c" || { echo failed; exit 1; }
 echo OK
+
 fi   #--------------------------------------------------------------------
