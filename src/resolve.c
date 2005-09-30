@@ -65,7 +65,7 @@ resolve_main(int ac, char **av)
 
 	opts.pass1 = opts.pass2 = opts.pass3 = opts.pass4 = 1;
 	setmode(0, _O_TEXT);
-	while ((c = getopt(ac, av, "l|y|m;aAcdFi;qrtvx;1234")) != -1) {
+	while ((c = getopt(ac, av, "l|y|m;aAcdFi;qrstvx;1234")) != -1) {
 		switch (c) {
 		    case 'a': opts.automerge = 1; break;	/* doc 2.0 */
 		    case 'A': opts.advance = 1; break;		/* doc 2.0 */
@@ -83,6 +83,7 @@ resolve_main(int ac, char **av)
 		    case 'm': opts.mergeprog = optarg; break;	/* doc 2.0 */
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
 		    case 'r': opts.remerge = 1; break;		/* doc 2.0 */
+		    case 's': opts.autoOnly = 1; break;		/* doc */
 		    case 't': opts.textOnly = 1; break;		/* doc 2.0 */
 		    case 'i':
 			opts.partial = 1;
@@ -357,6 +358,11 @@ that will work too, it just gets another patch.\n");
 			opts->resolveNames = 1;
 			pass2_renames(opts);
 			resolve_cleanup(opts, CLEAN_RESYNC|CLEAN_PENDING);
+		}
+
+		if (opts->automerge) {
+			opts->hadConflicts = n;
+			goto pass3;
 		}
 
 		/*
@@ -764,6 +770,7 @@ create(resolve *rs)
 	sccs	*local;
 	int	ret = 0;
 	int	how;
+	extern	int gc_sameFiles(resolve *);
 	static	char *cnames[4] = {
 			"Huh?",
 			"an SCCS file",
@@ -781,6 +788,12 @@ create(resolve *rs)
 	 * See if this name is taken in the repository.
 	 */
 again:	if (how = slotTaken(opts, rs->dname)) {
+		if (!opts->noconflicts &&
+		    (how == GFILE_CONFLICT) && (ret = gc_sameFiles(rs))) {
+			if (ret == EAGAIN) goto again;
+			return (ret);
+		}
+
 		/* If we are just looking for space, skip this one */
 		unless (opts->resolveNames) return (-1);
 
@@ -1467,22 +1480,25 @@ private	int
 pass3_resolve(opts *opts)
 {
 	char	buf[MAXPATH], **conflicts, s_cset[] = CHANGESET;
-	FILE	*p;
 	int	n = 0, i;
 	int	mustCommit = 0, pc, pe;
 
 	if (opts->log) fprintf(opts->log, "==== Pass 3 ====\n");
 	opts->pass = 3;
 
-	unless (p = popen("bk _find . -name 'm.*'", "r")) {
-		perror("popen of find");
-		resolve_cleanup(opts, 0);
+	unless (opts->automerge) {
+		FILE	*p;
+
+		unless (p = popen("bk _find . -name 'm.*'", "r")) {
+			perror("popen of find");
+			resolve_cleanup(opts, 0);
+		}
+		while (fnext(buf, p)) {
+			fprintf(stderr, "Needs rename: %s", buf);
+			n++;
+		}
+		pclose(p);
 	}
-	while (fnext(buf, p)) {
-		fprintf(stderr, "Needs rename: %s", buf);
-		n++;
-	}
-	pclose(p);
 	if (n) {
 		fprintf(stderr,
 "There are %d pending renames which need to be resolved before the conflicts\n\
@@ -1507,7 +1523,6 @@ can be resolved.  Please rerun resolve and fix these first.\n", n);
 
 		conflict(opts, conflicts[i]);
 		if (opts->errors) {
-			pclose(p);
 			goto err;
 		}
 	}
@@ -1527,6 +1542,17 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	if (opts->hadConflicts) {
 		char	*nav[20];
 		int	i;
+
+		if (opts->autoOnly) {
+			unless (opts->quiet) {
+				fprintf(stderr,
+				    "resolve: %d conflicts "
+				    "will need manual resolve.\n",
+				    opts->hadConflicts);
+			}
+			resolve_cleanup(opts, 0);
+			/* NOT REACHED */
+		}
 
 		if (getenv("BK_REGRESSION") &&
 		    !getenv("BK_FORCE_RESOLVE_RERUN")) {
@@ -1760,6 +1786,8 @@ checkins(opts *opts, char *comment)
  * Merge a conflict, manually or automatically.
  * We handle permission conflicts here as well.
  *
+ * XXX - when in automerge we will go interactive on types, modes, flags.
+ *
  * XXX - we need to handle descriptive text, lods, and symbols.
  * The symbol case is weird: a conflict is when the same symbol name
  * is in both branches without one below the trunk.
@@ -1788,7 +1816,10 @@ conflict(opts *opts, char *sfile)
 	 */
 	unless (fileType(d.local->mode) == fileType(d.remote->mode)) {
 		rs->opaque = (void*)&d;
-		resolve_filetypes(rs);
+		if (resolve_filetypes(rs) == EAGAIN) {
+			resolve_free(rs);
+			return;
+		}
 		s = rs->s;
 		if (opts->errors) return;
 		/* Need to re-init these, the resolve stomped on the s-> */
@@ -1799,7 +1830,10 @@ conflict(opts *opts, char *sfile)
 
 	unless (d.local->mode == d.remote->mode) {
 		rs->opaque = (void*)&d;
-		resolve_modes(rs);
+		if (resolve_modes(rs) == EAGAIN) {
+			resolve_free(rs);
+			return;
+		}
 		s = rs->s;
 		if (opts->errors) return;
 		/* Need to re-init these, the resolve stomped on the s-> */
@@ -2696,6 +2730,9 @@ resolve_cleanup(opts *opts, int what)
 		rmdir(ROOT2PENDING);
 	}
 
+	/* XXX - shouldn't this be below the CLEAN_OK?
+	 * And maybe claused on opts->pass4?
+	 */
 	restore_checkouts(opts);
 
 	freeStuff(opts);
@@ -2795,6 +2832,10 @@ typedef	struct {
 	u32	pfiles_only:1;
 } cinfo;
 
+/*
+ * LMXXX - This does way too many things and is almost certainly going to
+ * bite us someday, I'd like it split up to do one thing well.
+ */
 private int
 resolvewalk(char *file, struct stat *sb, void *data)
 {
@@ -2808,6 +2849,8 @@ resolvewalk(char *file, struct stat *sb, void *data)
 	file += 2;
 	assert(p[1] = 's');
 	if (opts->partial && streq(file, "SCCS/s.ChangeSet")) return (0);
+	p[1] = 'm';
+	if (opts->automerge && exists(file)) goto out;
 	p[1] = 'r';
 	unless (ci->pfiles_only || exists(file)) goto out;
 	p[1] = 'p';

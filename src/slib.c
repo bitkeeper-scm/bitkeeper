@@ -2877,7 +2877,7 @@ sccs_tagMerge(sccs *s, delta *d, char *tag)
 	assert(strlen(buf) < len);
 	m = mrange(buf, buf + strlen(buf), "");
 	/* note: this rewrites the s.file, no pointers make sense after it */
-	sccs_meta(s, d, m, 1);
+	sccs_meta("resolve", s, d, m, 1);
 	free(buf);
 }
 
@@ -2913,7 +2913,7 @@ sccs_tagLeaf(sccs *s, delta *d, delta *md, char *tag)
 	    "------------------------------------------------");
 	m = mrange(buf, buf + strlen(buf), "");
 	/* note: this rewrites the s.file, no pointers make sense after it */
-	sccs_meta(s, d, m, 1);
+	sccs_meta("resolve", s, d, m, 1);
 	free(buf);
 }
 
@@ -4079,6 +4079,7 @@ sccs_init(char *name, u32 flags)
 	char	*t;
 	static	int _YEAR4;
 	int	rc;
+	delta	*d;
 
 	if (strchr(name, '\n') || strchr(name, '\r')) {
 		fprintf(stderr,
@@ -4200,6 +4201,21 @@ sccs_init(char *name, u32 flags)
 		 */
 		s->xflags = sccs_xflags(sccs_top(s));
 		unless (BITKEEPER(s)) s->xflags |= X_SCCS;
+
+		/*
+		 * Don't allow them to check in a gfile of a different type.
+		 */
+		if (HAS_GFILE(s)) {
+			for (d = s->table; !REG(d); d = d->next);
+			assert(d);
+			if ((d->flags & D_MODE) &&
+			    (fileType(d->mode) != fileType(s->mode))) {
+				verbose((stderr,
+				    "%s has different file types, treating "
+				    "this file as read only.\n", s->gfile));
+		    		s->state |= S_READ_ONLY;
+			}
+		}
 	}
 
 	/*
@@ -7984,10 +8000,6 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 
 	if (inex && (pf->mRev || pf->iLst || pf->xLst)) RET(2);
 
-	/* If the file type changed, it is a diff */
-	if (d->flags & D_MODE) {
-		if (fileType(s->mode) != fileType(d->mode)) RET(1);
-	}
 	if (S_ISLNK(s->mode)) RET(!streq(s->symlink, d->symlink));
 
 	/* If the path changed, it is a diff */
@@ -8278,7 +8290,6 @@ diff_gmode(sccs *s, pfile *pf)
 		}
 	}
 
-	unless (sameFileType(s, d)) return (1);
 	if (S_ISLNK(s->mode)) {
 		unless (streq(s->symlink, d->symlink)) {
 			return (2);
@@ -8586,8 +8597,8 @@ sccs_clean(sccs *s, u32 flags)
 	unless (sameFileType(s, d)) {
 		unless (flags & PRINT) {
 			fprintf(stderr,
-			    "%s has different file types, needs delta.\n",
-			    s->gfile);
+			    "%s has different file types "
+			    "which is unsupported.\n", s->gfile);
                 } else {
 			printf("===== %s (file type) %s vs edited =====\n",
 			    s->gfile, pf.oldrev);
@@ -9003,7 +9014,6 @@ private int
 needsMode(sccs *s, delta *p)
 {
 	unless (p) return (1);
-	unless (sameFileType(s, p)) return (1);
 	unless (s->symlink) return (0);
 	return (!streq(s->symlink, p->symlink));
 }
@@ -12102,7 +12112,7 @@ isValidUser(char *u)
  * which can handle all of those cases.
  */
 int
-sccs_meta(sccs *s, delta *parent, MMAP *iF, int fixDate)
+sccs_meta(char *me, sccs *s, delta *parent, MMAP *iF, int fixDate)
 {
 	delta	*m;
 	int	i, e = 0;
@@ -12170,8 +12180,8 @@ abort:		fclose(sfile);
 	t = sccsXfile(s, 'x');
 	if (rename(t, s->sfile)) {
 		fprintf(stderr,
-		    "takepatch: can't rename(%s, %s) left in %s\n",
-		    t, s->sfile, t);
+		    "%s: can't rename(%s, %s) left in %s\n",
+		    me, t, s->sfile, t);
 		sccs_unlock(s, 'z');
 		exit(1);
 	}

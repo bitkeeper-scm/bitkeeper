@@ -27,7 +27,7 @@ m_help(resolve *rs)
 
 	fprintf(stderr,
 "---------------------------------------------------------------------------\n\
-The file has a mode conflict of some type.\n\
+The file has conflict changes to the modes.\n\
 Local:  %s@%s\n\t%s\n\
 Remote: %s@%s\n\t%s\n\
 ---------------------------------------------------------------------------\n",
@@ -104,9 +104,30 @@ rfuncs	m_funcs[] = {
 int
 resolve_modes(resolve *rs)
 {
+	deltas	*d = (deltas *)rs->opaque;
+
         if (rs->opts->debug) {
 		fprintf(stderr, "resolve_modes: ");
 		resolve_dump(rs);
+	}
+	if (rs->opts->automerge) {
+		if ((d->gca->mode == d->local->mode) &&
+		    (d->gca->mode != d->remote->mode)) {
+		    	/* remote only change, use remote */
+			m_remote(rs);
+			return (1);
+		} else if ((d->gca->mode != d->local->mode) &&
+		    (d->gca->mode == d->remote->mode)) {
+		    	/* local only change, use local */
+			m_local(rs);
+			return (1);
+		} else {
+			rs->opts->hadConflicts++;
+			rs->opts->notmerged =
+			    addLine(rs->opts->notmerged,
+			    aprintf("%s (modes)", rs->s->gfile));
+			return (EAGAIN);
+		}
 	}
 	rs->prompt = rs->s->gfile;
 	return (resolve_loop("mode conflict", rs, m_funcs));

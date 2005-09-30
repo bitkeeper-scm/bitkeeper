@@ -61,7 +61,7 @@ rl
 y
 q
 EOF
-bk resolve -l -a $Q < CMDS > OUT 2>&1
+BK_FORCE_RESOLVE_RERUN=Y bk resolve -l -a $Q < CMDS > OUT 2>&1
 if [ -d RESYNC ]
 then	echo failed to finish resolve
 	cat OUT
@@ -93,7 +93,7 @@ ml
 JUNK
 q
 EOF
-bk resolve -l -a $Q < CMDS > OUT 2>&1
+BK_FORCE_RESOLVE_RERUN=Y bk resolve -l -a $Q < CMDS > OUT 2>&1
 if [ -d RESYNC ]
 then	echo failed to finish resolve
 	cat OUT
@@ -142,7 +142,7 @@ rl
 y
 q
 EOF
-bk resolve -d -l -a $Q < CMDS > OUT 2>&1
+BK_FORCE_RESOLVE_RERUN=Y bk resolve -d -l -a $Q < CMDS > OUT 2>&1
 if [ -d RESYNC ]
 then	echo failed to finish resolve
 	cat OUT
@@ -174,7 +174,7 @@ ml
 JUNKDIR
 q
 EOF
-bk resolve -d -l -a $Q < CMDS > OUT 2>&1
+BK_FORCE_RESOLVE_RERUN=Y bk resolve -d -l -a $Q < CMDS > OUT 2>&1
 if [ -d RESYNC ]
 then	echo failed to finish resolve
 	cat OUT

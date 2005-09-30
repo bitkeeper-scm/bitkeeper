@@ -21,15 +21,17 @@ fi
 echo $N Create a symlink ............................................$NL
 umask 0
 commercial project
+echo foo > textfile
 echo "xx" > file
 ln -s file symlink
 mv file file.tmp
-bk ci $Q -i symlink
+bk ci $Q -i symlink textfile
 grep -q '^.cOlrwxrwxrwx file' SCCS/s.symlink
 if [ $? -ne 0 ]; then echo bad mode.; exit 1; fi
 bk admin -h symlink 2> ${DEV_NULL}
 if [ $? -ne 0 ]; then echo bad sfile.; exit 1; fi
 echo OK
+
 rm -f symlink
 echo $N Create a symlink with admin -i ..............................$NL
 ln -s /what/ever link222
@@ -45,6 +47,7 @@ if [ $? -ne 0 ]; then echo bad mode.; exit 1; fi
 bk admin -h link-name 2> ${DEV_NULL}
 if [ $? -ne 0 ]; then echo bad sfile.; exit 1; fi
 echo OK
+
 rm -f symlink
 echo $N Check checkout of symlink ...................................$NL
 bk co $Q symlink
@@ -53,6 +56,7 @@ mv file.tmp file
 cmp -s symlink file
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
+
 rm -f symlink
 echo $N Check update of symlink .....................................$NL
 bk co $Q -l symlink
@@ -85,58 +89,49 @@ mv file2.tmp file2
 cmp -s symlink file2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
+
 echo $N check chmod on symlink ......................................$NL
 bk co $Q -l symlink
 bk admin -m-rwx------ symlink 2> /dev/null
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 echo OK
-echo $N Symlink to real file conversion .............................$NL
+
+echo $N Symlink to real file conversion should error ................$NL
 rm -f symlink
 echo "this is a real file" > symlink
-cp symlink symlink.ref
-cat > CMP1 << EOF
-===== symlink (file type) 1.2 vs edited =====
-< SYMLINK
--
-> FILE
-EOF
-bk clean -p  > CMP2
-cmp -s CMP1 CMP2
-if [ $? -ne 0 ]; then echo clean Failed.; exit 1; fi
-bk ci $Q -y symlink
-rm -f symlink
-bk co $Q symlink
-cmp -s symlink.ref symlink
-if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+bk ci -y symlink > OUT 2>&1 && {
+	echo should have failed
+	cat OUT
+	exit 1
+}
 echo OK
-echo $N Check change text file into a symlink........................$NL
-bk co $Q -l symlink
-rm -f symlink
+
+echo $N Changing a text file into a symlink should error ............$NL
+bk co $Q -l textfile
+rm -f textfile
 echo "this is file3" > file3
-ln -s file3 symlink
-cat > CMP1 << EOF
-symlink has different file types, needs delta.
-EOF
-bk clean 2> CMP2
-cmp -s CMP1 CMP2
-if [ $? -ne 0 ]; then echo Failed - got `cat CMP2`; exit 1; fi
-bk ci $Q -y symlink
-rm -f symlink
-bk co $Q symlink
-if [ ! -h symlink ]; then echo failed; exit 1; fi
-cmp -s symlink file3
-if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+ln -s file3 textfile
+echo textfile has different file types which is unsupported. > WANT
+bk clean textfile 2> GOT
+cmpfiles WANT GOT
+bk ci $Q -y textfile > GOT 2>&1 && {
+	echo should have failed
+	cat GOT
+	exit 1
+}
+rm -f textfile
 echo OK
-rm -f symlink
+
 echo $N Check symlink to a directory ................................$NL
 mkdir dir1
-bk co $Q -l symlink
-rm -f symlink
+bk unedit symlink
+bk edit -g $Q symlink
 ln -s dir1 symlink
 bk ci $Q -y symlink
 grep -q '^.cOlrwxrwxrwx dir1' SCCS/s.symlink
 if [ $? -ne 0 ]; then echo bad mode.; exit 1; fi
 echo OK
+
 echo $N Check dangling symlink ......................................$NL
 bk co $Q -l symlink
 rm -f symlink
@@ -145,22 +140,19 @@ bk ci $Q -y symlink
 grep -q '^.cOlrwxrwxrwx this_file_does_not_exist' SCCS/s.symlink
 if [ $? -ne 0 ]; then echo bad mode.; exit 1; fi
 echo OK
+
+echo $N Check clean on symlink directory ............................$NL
 bk co $Q -l symlink
 rm -f symlink
 ln -f -s dir1 symlink
 bk ci $Q -y symlink
-echo $N Check clean on symlink directory ............................$NL
 bk co $Q symlink
 touch dir1/data
 bk ci $Q -i -l dir1/data
 bk clean .
 if [ -h symlink ]; then echo failed; exit 1; fi
 echo OK
-echo $N Make sure text data is preserved.............................$NL
-bk co $Q -r1.3 -Gsymlink symlink
-cmp -s symlink.ref symlink
-if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
-echo OK
+
 echo $N Check print option for symlink ..............................$NL
 cat > CMP1 << EOF
 SYMLINK -> dir1
@@ -169,30 +161,7 @@ bk get $Q -p symlink > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
-echo $N Check diff option for text/symlink ..........................$NL
-cat > CMP1 << EOF
-===== symlink 1.3 vs 1.4 =====
-1c1
-< this is a real file
----
-> SYMLINK -> file3
-EOF
-bk diffs -r1.3 -r1.4 symlink > CMP2
-cmp -s CMP1 CMP2
-if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
-echo OK
-echo $N Check diff option for symlink/text ..........................$NL
-cat > CMP1 << EOF
-===== symlink 1.2 vs 1.3 =====
-1c1
-< SYMLINK -> file2
----
-> this is a real file
-EOF
-bk diffs -r1.2 -r1.3 symlink > CMP2
-cmp -s CMP1 CMP2
-if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
-echo OK
+
 echo $N Check diff option for symlink/symlink .......................$NL
 cat > CMP1 << EOF
 ===== symlink 1.1 vs 1.2 =====
@@ -205,6 +174,7 @@ bk diffs -r1.1 -r1.2 symlink > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
+
 echo $N Test sfile -c on symlink ....................................$NL
 bk co $Q -l symlink
 if [ ! -h symlink ]; then echo failed; exit 1; fi
@@ -215,6 +185,7 @@ ln -f -s file1 symlink
 CNT=`bk sfiles -c symlink | wc -l`
 if [ $CNT != 1 ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N Test sfile -x  on symlink ....................................$NL
 CNT=`bk sfiles -x symlink | wc -l`
 if [ $CNT != 0 ]; then echo failed; exit 1; fi
@@ -222,6 +193,7 @@ ln -f -s file3 newlink
 CNT=`bk sfiles -x newlink | wc -l`
 if [ $CNT != 1 ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N Test clean on symlink .......................................$NL
 bk unedit symlink
 bk co $Q -l symlink
@@ -229,302 +201,8 @@ bk clean
 if [ -f SCCS/p.symlink ]; then echo failed; exit 1; fi;
 echo OK
 
-cd $HERE
-rm -rf project
-
-# Test resyncing and resolving symlink <-> file conflicts
-echo $N Create initial repository for symlink resync ................$NL
-cd $HERE
-commercial SL
-touch BitKeeper/etc/SCCS/x.marked
-echo OK
-echo $N Create a regular file and a symlink .........................$NL
-ln -s dangling/symlink link
-echo i am a file > file
-bk ci $Q -i link file
-bk commit $S -y"This is a \"Change Set\""
-echo OK
-cores
-echo $N Export the repository .......................................$NL
-bk export $HERE/copy
-if test -h $HERE/copy/link; then
-    echo OK
-else
-    echo failed
-    exit 1
-fi
-
-cores
-bk -r check -a
-echo $N Save a tarball of the repository ............................$NL
-cd $HERE
-tar cf SAVE SL
-echo OK
-
-echo $N Check that a symlink to file transition resyncs .............$NL
-cd $HERE
-rm -rf SL copy
-tar xmf SAVE
-mv SL copy
-tar xmf SAVE
-cd SL
-bk edit $Q link
-rm link
-echo convert link to file > link
-bk ci $Q -y'link -> file' link
-bk commit $Q -y'link -> file' 
-cd $HERE/copy
-bk pull -t $Q $HERE/SL
-bk co $Q link
-if [ ! -f link ]
-then	echo failed to upgrade file to a regular file; exit 1
-fi
-if [ "`cat link`" != 'convert link to file' ]
-then	echo failed to put contents in file; exit 1
-fi
-echo OK
-
-echo $N Check that a file to symlink transition resyncs .............$NL
-cd $HERE
-rm -rf SL copy
-tar xmf SAVE
-mv SL copy
-tar xmf SAVE
-cd SL
-bk edit $Q file
-rm file
-ln -s another/dangling/link file
-bk ci $Q -y'file -> link' file
-bk commit $Q -y'file -> link' 
-cd $HERE/copy
-bk pull -t $Q $HERE/SL
-bk co $Q file
-if [ -f file ]
-then	echo failed to upgrade file to a link; exit 1
-fi
-grep -q '^.cOl......... another/dangling/link' SCCS/s.file
-if [ $? -ne 0 ]
-then	echo failed to convert to symlink; exit 1
-fi
-echo OK
-
-echo $N Check symlink to file, choosing file ........................$NL
-cd $HERE
-rm -rf SL copy
-tar xmf SAVE
-mv SL copy
-tar xmf SAVE
-cd SL
-bk edit $Q link
-rm link
-echo convert link to file > link
-bk ci $Q -y'link -> file' link
-bk commit $Q -y'link -> file' 
-cd $HERE/copy
-bk edit $Q link
-rm link
-ln -s a/different/pointer link
-bk ci $Q -ywhatever link
-bk commit $Q -ywhatever
-cd $HERE
-tar cf SAVE2 SL copy
-cd copy
-bk pull -R -t $Q $HERE/SL
-bk resolve $Q -t <<EOF >RESOLVE 2>&1
-r
-u
-EOF
-if [ $? -ne 0 ]
-then	echo resolve failed; exit 1
-fi
-bk co $Q link
-if [ ! -f link ]
-then	echo failed to upgrade file to a regular file; exit 1
-fi
-if [ "`cat link`" != 'convert link to file' ]
-then	echo failed to put contents in file; exit 1
-fi
-echo OK
-
-echo $N Check symlink to file, choosing symlink .....................$NL
-cd $HERE
-rm -rf SL copy
-tar xmf SAVE2
-cd copy
-bk pull -R -t $Q $HERE/SL
-bk resolve $Q -t <<EOF >RESOLVE 2>&1
-l
-u
-EOF
-if [ $? -ne 0 ]
-then	echo resolve failed; cat RESOLVE; exit 1
-fi
-bk co $Q link
-if [ ! -h link ]
-then	echo failed to leave link a link; ls -l link; cat RESOLVE; exit 1
-fi
-echo OK
-
-echo $N Check file to symlink, choosing file ........................$NL
-cd $HERE
-rm -rf SL copy
-tar xmf SAVE
-mv SL copy
-tar xmf SAVE
-cd SL
-bk edit $Q link
-rm link
-echo convert link to file > link
-bk ci $Q -y'link -> file' link
-bk commit $Q -y'link -> file' 
-cd $HERE/copy
-bk edit $Q link
-rm link
-ln -s a/different/pointer link
-bk ci $Q -ywhatever link
-bk commit $Q -ywhatever
-cd $HERE
-tar cf SAVE2 SL copy
-cd SL
-bk pull -R -t $Q $HERE/copy
-bk resolve $Q -t <<EOF >RESOLVE 2>&1
-l
-u
-EOF
-if [ $? -ne 0 ]
-then	echo resolve failed; exit 1
-fi
-bk co $Q link
-if [ ! -f link ]
-then	echo failed to upgrade file to a regular file; exit 1
-fi
-if [ "`cat link`" != 'convert link to file' ]
-then	echo failed to put contents in file; exit 1
-fi
-echo OK
-
-echo $N Check file to symlink, choosing symlink .....................$NL
-cd $HERE
-rm -rf SL copy
-tar xmf SAVE2
-cd SL
-bk pull -R -t $Q $HERE/copy
-bk resolve $Q -t <<EOF >RESOLVE 2>&1
-r
-u
-EOF
-if [ $? -ne 0 ]
-then	echo resolve failed; cat RESOLVE; exit 1
-fi
-bk co $Q link
-if [ ! -h link ]
-then	echo failed to leave link a link; ls -l link; cat RESOLVE; exit 1
-fi
-echo OK
-
-echo $N Check file to symlink, with rename, choosing symlink ........$NL
-cd $HERE
-rm -rf SL copy
-tar xmf SAVE2
-cd copy
-bk mv link renamed
-bk commit $Q -ymv
-cd $HERE/SL
-bk pull -R -t $Q $HERE/copy
-bk resolve -t $Q <<EOF >RESOLVE 2>&1
-r
-u
-EOF
-if [ $? -ne 0 ]
-then	echo resolve failed; cat RESOLVE; exit 1
-fi
-bk co $Q renamed
-if [ ! -h renamed ]
-then	echo failed to leave renamed a link; ls -l renamed; cat RESOLVE; exit 1
-fi
-echo OK
-
-echo $N Both renamed, symlink converted to file, choose l l .........$NL
-cd $HERE
-rm -rf SL copy
-tar xmf SAVE2
-cd copy
-bk mv link copy
-bk commit $Q -ymv
-cd $HERE/SL
-bk mv link SL
-bk commit $Q -ymv
-cd $HERE/SL
-bk pull -R -t $Q $HERE/copy
-cd $HERE
-tar cf SAVE3 SL
-cd SL
-# At this point
-#	local		remote
-#	SL		copy
-#	FILE		SYMLINK
-# resolve does name, then file type
-bk resolve -t $Q <<EOF >RESOLVE 2>&1
-l
-l
-u
-EOF
-if [ $? -ne 0 ]
-then	echo resolve failed; cat RESOLVE; exit 1
-fi
-bk co $Q SL
-if [ ! -f SL ]
-then	echo failed to make SL a file; exit 1
-fi
-if [ "`cat SL`" != 'convert link to file' ]
-then	echo bad contents: `cat SL`
-	exit 1
-fi
-echo OK
-
-echo $N Both renamed, symlink converted to file, choose l r .........$NL
-cd $HERE
-rm -rf SL copy
-tar xmf SAVE2
-cd copy
-bk mv link copy
-bk commit $Q -ymv
-cd $HERE/SL
-bk mv link SL
-bk commit $Q -ymv
-cd $HERE/SL
-bk pull -R -t $Q $HERE/copy
-cd $HERE
-tar cf SAVE3 SL
-cd SL
-# At this point
-#	local		remote
-#	SL		copy
-#	FILE		SYMLINK
-# resolve does name, then file type
-bk resolve -t $Q <<EOF >RESOLVE 2>&1
-l
-r
-u
-EOF
-if [ $? -ne 0 ]
-then	echo resolve failed; cat RESOLVE; exit 1
-fi
-bk co $Q SL
-if [ ! -h SL ]
-then	echo failed to make SL a file; exit 1
-fi
-if [ "`bk get -pq SL`" != 'SYMLINK -> a/different/pointer' ]
-then	echo bad link contents: `bk get -pq SL`
-	exit 1
-fi
-echo OK
-
 echo $N Make sure edited symlinks do not fail checks ................$NL
-cd $HERE
-rm -rf SL copy
-tar xmf SAVE2
-cd copy
+bk -r unedit
 bk -r edit $Q
 bk -r check -a 2>OUT || {
 	echo check failed
@@ -534,23 +212,23 @@ bk -r check -a 2>OUT || {
 echo OK
 
 echo $N Check diff of edited symlinks ...............................$NL
-bk diffs link || exit 1
-rm -f link
-ln -sf foobar link
-cat > CMP1 << EOF
-===== link 1.2 vs edited =====
+bk edit $Q symlink
+rm symlink
+ln -s junk symlink
+bk diffs symlink > GOT || exit 1
+cat > WANT << EOF
+===== symlink 1.5 vs edited =====
 1c1
-< SYMLINK -> a/different/pointer
+< SYMLINK -> dir1
 ---
-> SYMLINK -> foobar
+> SYMLINK -> junk
 EOF
-bk diffs link > CMP2
-cmp -s CMP1 CMP2
-if [ $? -ne 0 ]; then echo Failed.; diff -u CMP1 CMP2; exit 1; fi
+cmpfiles WANT GOT
 echo OK
 
 echo $N Check renaming a dir and replacing with symlink .............$NL
 cd $HERE
+rm -rf project
 commercial project
 mkdir dir
 cd dir

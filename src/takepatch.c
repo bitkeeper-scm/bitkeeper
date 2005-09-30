@@ -1268,7 +1268,7 @@ apply:
 				MMAP	*m = p->initMmap;
 
 				unless (m) m = mopen(p->initFile, "b");
-				if (sccs_meta(s, d, m, 0)) {
+				if (sccs_meta("takepatch", s, d, m, 0)) {
 					unless (s->io_error) perror("meta");
 					return -1;
 				}

@@ -902,7 +902,7 @@ int	sccs_parent_revs(sccs *s, char *rev, char **revP, char **revM);
 char	*sccs_setpathname(sccs *s);
 delta	*sccs_next(sccs *s, delta *d);
 int	sccs_reCache(int quiet);
-int	sccs_meta(sccs *s, delta *parent, MMAP *initFile, int fixDates);
+int	sccs_meta(char *m,sccs *s, delta *parent, MMAP *initFile, int fixDates);
 int	sccs_findtips(sccs *s, delta **a, delta **b);
 int	sccs_resolveFiles(sccs *s);
 sccs	*sccs_keyinit(char *key, u32 flags, MDBM *idDB);

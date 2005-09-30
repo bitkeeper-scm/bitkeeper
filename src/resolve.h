@@ -47,6 +47,7 @@ typedef struct {
 	u32	didMerge:1;	/* set if we created a cset merge delta */
 	u32	from_pullpush:1;/* set if we are being called from pull/push */
 	u32	partial:1;	/* partial resolve - don't commit changeset */
+	u32	autoOnly:1;	/* do as much as possible automatically &exit */
 	int	hadConflicts;	/* conflicts during automerge */
 	int	pass;		/* which pass are we in now */
 	char	*comment;	/* checkin comment for commit */
@@ -172,7 +173,7 @@ int	slotTaken(opts *opts, char *slot);
 void	do_delta(opts *opts, sccs *s, char *comment);
 int	oldsys(char *cmd, opts *o);
 void	export_revs(resolve *rs);
-int	resolve_tags(opts *opts);
+void	resolve_tags(opts *opts);
 void	resolve_dump(resolve *rs);
 int	do_diff(resolve *rs, char *left, char *right, int wait);
 int	resolve_binary(resolve *rs);

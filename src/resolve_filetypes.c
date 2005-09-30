@@ -70,6 +70,7 @@ ft_local(resolve *rs)
 	delta	*l = sccs_findrev(rs->s, rs->revs->local);
 	delta	*r = sccs_findrev(rs->s, rs->revs->remote);
 
+	sccs_close(rs->s);	/* for windows */
 	type_delta(rs, rs->s->sfile, l, r, sccs_Xfile(rs->s, 'r'), LOCAL);
 	return (1);
 }
@@ -81,6 +82,7 @@ ft_remote(resolve *rs)
 	delta	*l = sccs_findrev(rs->s, rs->revs->local);
 	delta	*r = sccs_findrev(rs->s, rs->revs->remote);
 
+	sccs_close(rs->s);	/* for windows */
 	type_delta(rs, rs->s->sfile, l, r, sccs_Xfile(rs->s, 'r'), REMOTE);
 	return (1);
 }
@@ -101,13 +103,45 @@ rfuncs	ft_funcs[] = {
 
 /*
  * Given an SCCS file, resolve the file types.
+ *
+ * Note on automerge: this isn't precisely correct, consider this:
+ * GCA: typeA
+ * Local: change to typeB then back to typeA
+ * Remote: change to typeB
+ * Result: automerge to typeB but many people would want a manual merge there.
+ * My thinking is they can fix up the merge after the fact because the far
+ * more common case is that it's a change on one side.
+ * The other answer is just refuse to allow switching of types.
  */
 int
 resolve_filetypes(resolve *rs)
 {
+	deltas	*d = (deltas *)rs->opaque;
+
         if (rs->opts->debug) {
 		fprintf(stderr, "resolve_filetypes: ");
 		resolve_dump(rs);
+	}
+	if (rs->opts->automerge) {
+#define	SAME(a, b)	(fileType(a) == fileType(b))
+		if (SAME(d->gca->mode, d->local->mode) &&
+		    !SAME(d->gca->mode, d->remote->mode)) {
+		    	/* remote only change, use remote */
+			ft_remote(rs);
+			return (1);
+		} else if (!SAME(d->gca->mode, d->local->mode) &&
+		    SAME(d->gca->mode, d->remote->mode)) {
+		    	/* local only change, use local */
+			ft_local(rs);
+			return (1);
+		} else {
+			/* XXX - this will never happen, right? */
+			rs->opts->hadConflicts++;
+			rs->opts->notmerged =
+			    addLine(rs->opts->notmerged,
+			    aprintf("%s (types)", rs->s->gfile));
+			return (EAGAIN);
+		}
 	}
 	rs->prompt = rs->s->gfile;
 	return (resolve_loop("filetype conflict", rs, ft_funcs));

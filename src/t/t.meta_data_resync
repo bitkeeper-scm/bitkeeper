@@ -78,9 +78,10 @@ bk commit $S -yperm2
 cd $HERE/copy/src
 bk admin -m-rwx-w---- foo.c
 bk commit $S -yperm3
-bk pull -t $Q $HERE/project 2>/dev/null 1>&2 <<EOF
+bk pull -R -t $Q $HERE/project 
+bk resolve 2>/dev/null 1>&2 <<EOF
 r
-u
+q
 EOF
 MODE=`bk prs -h -r1.4 -d":MODE:" foo.c`
 if [ "$MODE" != "100740" ]

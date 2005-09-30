@@ -261,7 +261,7 @@ echo "checkout:EDIT" >> BitKeeper/etc/config
 cd src
 bk mv foo.c foo3.c
 bk commit $Q -yrename
-bk pull -t $Q $HERE/edit_1 2> /dev/null <<EOF
+BK_FORCE_RESOLVE_RERUN=Y bk pull -t $Q $HERE/edit_1 2> /dev/null <<EOF
 r
 EOF
 if [ ! -f $HERE/edit_2/src/foo2.c ]; then echo failed 1; exit 1; fi
