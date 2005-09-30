@@ -34,7 +34,7 @@ SRCS =	$(patsubst %,string/%, \
 OBJS := $(SRCS:.c=.o)
 
 CC = gcc
-WARNINGS=-Wall -Wno-parentheses -Wno-char-subscripts -Wno-format-y2k -Wstrict-prototypes -Wmissing-declarations -Wredundant-decls
+WARNINGS=-Wall -Wno-parentheses -Wno-char-subscripts -Wno-format-y2k -Wstrict-prototypes -Wredundant-decls
 AR=ar rc
 RANLIB=ranlib
 

@@ -14,12 +14,14 @@ lock_main(int ac, char **av)
 {
 	int	nsock, c, uslp = 1000;
 	int	what = 0, silent = 0, tcp = 0;
+	char	*file = 0;
 	pid_t	pid;
 
-	while ((c = getopt(ac, av, "lqrstwLU")) != -1) {
+	while ((c = getopt(ac, av, "f;lqrstwLU")) != -1) {
 		switch (c) {
 		    case 'q': /* fall thru */			/* doc 2.0 */
 		    case 's': silent = 1; break;		/* undoc 2.0 */
+		    case 'f': file = optarg;
 		    case 'l':					/* doc 2.0 */
 		    case 'r':					/* doc 2.0 */
 		    case 'w':					/* doc 2.0 */
@@ -47,13 +49,35 @@ usage:			system("bk help -s lock");
 		fflush(stdout);
 	}
 	switch (what) {
+	    case 'f':	/* lock using the specified file */
+		unless (file) exit(1);
+	    	if (sccs_lockfile(file, -1, 1)) {
+			perror(file);
+			exit(1);
+		}
+		/* make ourselves go when told */
+		if (tcp) {
+			nsock = tcp_accept(tcp);
+			sccs_unlockfile(file);
+			chdir("/");
+			write(nsock, &c, 1);
+			closesocket(nsock);
+			closesocket(tcp);
+			exit(0);
+		}
+		do {
+			usleep(500000);
+		} while (sccs_mylock(file) && !caught);
+		sccs_unlockfile(file);
+		exit(0);
+
 	    case 'r':	/* read lock the repository */
 		if (repository_rdlock()) {
 			fprintf(stderr, "read lock failed.\n");
 			repository_lockers(0);
 			exit(1);
 		}
-		/* make ourselves go away after the lock is gone */
+		/* make ourselves go when told */
 		if (tcp) {
 			nsock = tcp_accept(tcp);
 			repository_rdunlock(0);
@@ -63,6 +87,7 @@ usage:			system("bk help -s lock");
 			closesocket(tcp);
 			exit(0);
 		}
+		/* make ourselves go away after the lock is gone */
 		do {
 			usleep(500000);
 		} while (repository_mine('r') && !caught);
@@ -75,7 +100,7 @@ usage:			system("bk help -s lock");
 			repository_lockers(0);
 			exit(1);
 		}
-		/* make ourselves go away after the lock is gone */
+		/* make ourselves go when told */
 		if (tcp) {
 			nsock = tcp_accept(tcp);
 			repository_wrunlock(0);
@@ -85,6 +110,7 @@ usage:			system("bk help -s lock");
 			closesocket(tcp);
 			exit(0);
 		}
+		/* make ourselves go away after the lock is gone */
 		do {
 			usleep(500000);
 		} while (repository_mine('w') && !caught);
@@ -99,15 +125,17 @@ usage:			system("bk help -s lock");
 		}
 		exit(0);
 	    
-	    case 'L':	/* wait for the repository to become locked */
-		while (!repository_locked(0)) {
+	    case 'L':	/* wait for the file|repository to become locked */
+		while ((file && !exists(file)) ||
+		    (!file && !repository_locked(0))) {
 			usleep(uslp);
 			if (uslp < 1000000) uslp <<= 1;
 		}
 		exit(0);
 
-	    case 'U':	/* wait for the repository to become unlocked */
-		while (repository_locked(0)) {
+	    case 'U':	/* wait for the file|repository to become unlocked */
+		while ((file && exists(file)) ||
+		    (!file && repository_locked(0))) {
 			usleep(uslp);
 			if (uslp < 1000000) uslp <<= 1;
 		}

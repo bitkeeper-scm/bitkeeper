@@ -277,10 +277,12 @@ rdlock(void)
 	 * write lock.  If there is, we lost the race and we back off.
 	 */
 	sprintf(path, "%s/%s", root, READER_LOCK_DIR);
-	unless (exists(path)) {
-		mkdir(path, 0777);
-		chmod(path, 0777);	/* kill their umask */
-	}
+	unless (exists(path)) mkdir(path, 0777);
+	chmod(path, 0777);		/* ignore their umask */
+
+	unless (access(path, W_OK) == 0) return (LOCKERR_PERM);
+
+	/* XXX - need a version of sccs_lockfile that does non-exclusive */
 	rdlockfile(root, path);
 	close(creat(path, 0666));
 	unless (exists(path)) {
@@ -291,6 +293,8 @@ rdlock(void)
 	if (exists(path) || global_wrlocked()) {
 		rdlockfile(root, path);
 		unlink(path);
+		sprintf(path, "%s/%s", root, READER_LOCK_DIR);
+		(void)rmdir(path);
 		ldebug(("RDLOCK by %u failed, write locked\n", getpid()));
 		return (LOCKERR_LOST_RACE);
 	}
@@ -327,16 +331,14 @@ wrlock(void)
 	ldebug(("repository_wrlock(%s)\n", root));
 
 	sprintf(path, "%s/%s", root, WRITER_LOCK_DIR);
-	unless (exists(path)) {
-		mkdir(path, 0777);
-		chmod(path, 0777);	/* kill their umask */
-	}
-	unless (access(path, W_OK) == 0) {
-		return (LOCKERR_PERM);
-	}
+	unless (exists(path)) mkdir(path, 0777);
+	chmod(path, 0777);		/* ignore their umask */
+
+	unless (access(path, W_OK) == 0) return (LOCKERR_PERM);
 
 	sprintf(lock, "%s/%s", root, WRITER_LOCK);
 	if (global_locked() || sccs_lockfile(lock, 0, 0)) {
+		(void)rmdir(path);
 		ldebug(("WRLOCK by %u failed, lockfile failed\n", getpid()));
 		return (LOCKERR_LOST_RACE);
 	}
@@ -344,6 +346,8 @@ wrlock(void)
 	sprintf(path, "%s/%s", root, ROOT2RESYNC);
 	if (exists(path)) {
 		sccs_unlockfile(lock);
+		sprintf(path, "%s/%s", root, WRITER_LOCK_DIR);
+		(void)rmdir(path);
 		ldebug(("WRLOCK by %d failed, RESYNC won\n"));
 		return (LOCKERR_LOST_RACE);
 	}
@@ -353,6 +357,8 @@ wrlock(void)
 	 */
 	if (repository_hasLocks(root, READER_LOCK_DIR)) {
 	    	sccs_unlockfile(lock);
+		sprintf(path, "%s/%s", root, WRITER_LOCK_DIR);
+		(void)rmdir(path);
 		ldebug(("WRLOCK by %u failed, readers won\n", getpid()));
 		return (LOCKERR_LOST_RACE);
 	}

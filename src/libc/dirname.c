@@ -32,9 +32,8 @@
  */
 
 /* From @(#)dirname.c	8.4 (Berkeley) 5/4/95 */
-#ifndef LINT
-static const char what[] = "@(#)%K%";
-#endif
+#include <stdlib.h>
+#include <string.h>
 
 char *
 dirname(char *path)
@@ -105,4 +104,18 @@ dirname(char *path)
 	 */
 	*p = '\0';
 	return p == path ? "/" : path;
+}
+
+char *
+dirname_alloc(char *path)
+{
+	char	*ret;
+
+	path = strdup(path);
+	if ((ret = dirname(path)) != path) {
+		/* they returned a constant, dup it */
+		free(path);
+		ret = strdup(ret);
+	}
+	return (ret);
 }
