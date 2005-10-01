@@ -57,3 +57,18 @@ REV=`bk prs -hr+ -d':REV:' A/file3`
 # test with 1.4 because we have an extra rev with the new file for the cp
 if [ ${REV}X != "1.4"X ]; then echo Failed; exit 1; fi
 echo OK
+
+echo $N Test copy between repos .....................................$NL
+cd $HERE
+commercial copy
+cd $HERE/project
+bk cp file1 ../copy/file2 2>ERR && {
+	echo should have failed
+	exit 1
+}
+grep -q "are not in the same BitKeeper repository" ERR || {
+	echo wrong error message
+	cat ERR
+	exit 1
+}
+echo OK
