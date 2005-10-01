@@ -19,6 +19,7 @@ char*		proj_root(project *p);
 char*		proj_rootkey(project *p);
 project*	proj_init(char *dir);
 project* 	proj_fakenew(void);
+int		proj_samerepo(char *source, char *dest);
 
 #define		chdir	proj_chdir
 

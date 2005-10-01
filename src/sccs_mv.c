@@ -116,6 +116,8 @@ err:		if (sname) free(sname);
 	}
 	t = destfile = name2sccs(buf);
 
+	unless (proj_samerepo(sname, destfile)) goto err;
+
 	sfile = strdup(t);
 	gfile = sccs2name(t);
 	t = 0;
@@ -349,11 +351,15 @@ again:
 private	char *
 getRelativeName(char *name, project *proj)
 {
-	char	*t, *rpath;
+	char	*p, *t, *rpath;
 
 	/* TODO: we should cache the root value for faster lookup */
 	t = sccs2name(name);
-	rpath = strdup(_relativeName(t, 0, 0, 0, proj));
+	if (p = _relativeName(t, 0, 0, 0, proj)) {
+		rpath = strdup(p);
+	} else {
+		rpath = 0;
+	}
 	free(t);
 	return rpath;
 }

@@ -527,4 +527,14 @@ echo $N Make sure bk mv work with back slash style dos path..........$NL
         if [ -f src/SCCS/s.bar.c ]; then echo failed 2; exit 1; fi
         echo OK
 fi      #----------------------------------------------------------------
+
+echo $N Make sure we can not move outside bitkeeper directories .....$NL
+cd $HERE/project
+echo "stuff" > foo.c
+bk new $Q foo.c
+bk mv foo.c $HERE 2> mv.out
+grep -q "not in a BitKeeper repository" mv.out || { echo failed; exit 1; }
+bk mv foo.c $HERE/copy 2> mv.out
+grep -q "not in the same BitKeeper repository" mv.out || { echo failed; exit 1; }
+echo OK
 exit 0

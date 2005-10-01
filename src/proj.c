@@ -508,3 +508,30 @@ proj_isCaseFoldingFS(project *p)
 	return (p->casefolding);
 }
 
+int
+proj_samerepo(char *source, char *dest)
+{
+	int	rc = 0;
+	project	*pj1, *pj2;
+
+	unless (pj1 = proj_init(source)) {
+		fprintf(stderr,
+		    "%s: is not in a BitKeeper repository\n",
+		    source);
+		return (0);
+	}
+	unless (pj2 = proj_init(dest)) {
+		fprintf(stderr,
+		    "%s: is not in a BitKeeper repository\n",
+		    dest);
+		return (0);
+	}
+	unless (rc = (pj1 == pj2)) {
+		fprintf(stderr,
+		    "%s & %s are not in the same BitKeeper repository\n",
+		    source, dest);
+	}
+	proj_free(pj1);
+	proj_free(pj2);
+	return (rc);
+}

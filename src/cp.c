@@ -32,6 +32,7 @@ cp(char *from, char *to)
 	int	err;
 
 	assert(from && to);
+	unless (proj_samerepo(from, to)) return (1);
 	sfile = name2sccs(from);
 	unless (s = sccs_init(sfile, 0)) return (1);
 	unless (HASGRAPH(s) && s->cksumok) return (1);
