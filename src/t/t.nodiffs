@@ -32,7 +32,6 @@ cat > file <<EOF
 EOF
 bk ci $Q -i file
 if [ ! -f SCCS/s.file ]; then echo failed to create history; exit 1; fi
-touch BitKeeper/etc/SCCS/x.marked
 bk commit $Q -ywhatever 
 echo OK
 echo $N Clone, modify both, resync, resolve should autocomment ......$NL

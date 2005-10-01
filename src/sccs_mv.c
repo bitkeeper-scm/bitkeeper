@@ -8,35 +8,6 @@ private	int	update_idcache(sccs *s, char *old, char *new);
 private char	**xfileList(char *sfile);
 
 /*
- * Return TRUE if s has cset derived root key
- */
-int
-sccs_hasCsetDerivedKey(sccs *s)
-{
-	sccs	*sc;
-	delta	*d1, *d2;
-	char 	*p;
-	char	buf1[MAXKEY], buf2[MAXKEY];
-
-	d1 = sccs_findrev(s, "1.0");
-	assert(d1);
-	sccs_sdelta(s, d1, buf1);
-
-	sprintf(buf2, "%s/%s", proj_root(s->proj), CHANGESET);
-	sc = sccs_init(buf2, 0);
-	assert(sc);
-	d2 = sccs_findrev(sc, "1.0");
-	assert(d2);
-	p = d2->pathname;
-	d2->pathname = d1->pathname;
-	sccs_sdelta(sc, d2, buf2);
-	d2->pathname = p;
-	sccs_free(sc);
-
-	return (streq(buf1, buf2));
-}
-
-/*
  * Give a pathname to a file or a dir, remove the SCCS dir, the parent,
  * etc, up to the root of the repository.
  */

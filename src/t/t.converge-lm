@@ -82,7 +82,6 @@ do
     rm -rf copy
     bk clone $Q project copy
     cd copy
-    touch BitKeeper/etc/SCCS/x.marked
     bk edit $Q BitKeeper/etc/$file
     echo "# XYXYXYXYXYXYXYXYXYXYXYXYXYXY" >> BitKeeper/etc/$file
     bk delta $Q -y'fake update' BitKeeper/etc/$file

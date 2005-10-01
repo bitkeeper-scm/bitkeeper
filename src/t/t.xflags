@@ -25,7 +25,6 @@ echo "licsign3: $BKL_P3" >> $HERE/c
 echo "description: BitKeeper Test repository" >> $HERE/c
 echo "email:		nobody@nowhere.bk" >> $HERE/c
 bk setup -a -f -c$HERE/c project
-touch project/BitKeeper/etc/SCCS/x.marked
 cd project
 echo $N Creat initial file ..........................................$NL
 echo Yo yo yo yo > xflags

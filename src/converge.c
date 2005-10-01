@@ -3,71 +3,33 @@
 
 #define	CTMP	"BitKeeper/tmp/CONTENTS"
 
-private int	converge(char *file, int resync);
- 
+private int	converge(char *file);
+private void	merge(char *gfile);
+
 /*
  * Return TRUE if s has cset derived root key
  */
 private int
 hasCsetDerivedKey(sccs *s)
 {
-        sccs    *sc;
-        char    buf1[MAXKEY], buf2[MAXKEY], *p;
-        delta   *d1, *d2;
- 
-	d1 = sccs_ino(s);
-        sccs_sdelta(s, d1, buf1);
- 
-        sprintf(buf2, "%s/%s", proj_root(s->proj), CHANGESET);
-        sc = sccs_init(buf2, 0);
-        assert(sc);
-	d2 = sccs_ino(sc);
-        assert(d2);
-        p = d2->pathname;
-        d2->pathname = d1->pathname;
-        sccs_sdelta(sc, d2, buf2);
-        d2->pathname = p;
-        sccs_free(sc);
- 
-        return (streq(buf1, buf2));
-}  
+	delta   *d;
+	char	*csetkey;
+	char	*p, *t, *k;
+	char    buf1[MAXKEY], buf2[MAXKEY];
 
-/*
- * Usage: converge [-R]
- */
-int
-converge_main(int ac, char **av)
-{
-	int	ret = 0, c, resync = 0;
-	char	*files[] = {
-			"BitKeeper/etc/gone",
-			"BitKeeper/etc/ignore",
-			"BitKeeper/etc/skipkeys",
-			0
-			};
+	d = sccs_ino(s);
+	sccs_sdelta(s, d, buf1);
 
-	while ((c = getopt(ac, av, "R")) != -1) {
-		switch (c) {
-		    case 'R': resync = 1; break;
-		    default:
-			system("bk help -s converge");
-			return (1);
-                }
-        }  
+	csetkey = proj_rootkey(s->proj);
+	p = csetkey;
+	t = buf2;
+	while ((*t++ = *p++) != '|');	/* copy user@host */
+	k = d->pathname;
+	while (*k) *t++ = *k++;		/* copy sfile's pathname */
+	p = strchr(p, '|');
+	while ((*t++ = *p++));		/* copy rest of csetkey */
 
-	if (proj_cd2root()) {
-		fprintf(stderr, "converge: cannot find root directory\n");
-		return (1);
-	}
-
-	/*
-	 * Do the per file work
-	 */
-	for (c = 0; files[c]; c++) {
-		ret += converge(files[c], resync);
-		sys("bk", "clean", "-q", files[c], SYS);
-	}
-	return (ret);
+	return (streq(buf1, buf2));
 }
 
 private MDBM *
@@ -164,13 +126,13 @@ resync_list(char *gfile)
 }
 
 private int
-converge(char *gfile, int resync)
+converge(char *gfile)
 {
 	char	key[MAXKEY];
 	char	*sfile;
 	char	*get[10] = { "bk", "get", "-kpq", 0, 0 };
 	sccs	*s, *winner = 0;
-	MDBM	*vals = resync ? resync_list(gfile) : list(gfile);
+	MDBM	*vals = resync_list(gfile);
 	kvpair	kv;
 	int	i, fd, fd1;
 
@@ -291,4 +253,74 @@ done:		mdbm_close(vals);
 	if (winner) sccs_free(winner);
 	free(sfile);
 	return (1);
+}
+
+void
+converge_hash_files(void)
+{
+	FILE	*f;
+	char	*q, *t;
+	int	i;
+	char	*files[] = {
+		int2p(6),
+		"BitKeeper/etc/gone",
+		"BitKeeper/etc/ignore",
+		"BitKeeper/etc/skipkeys",
+		0
+	};
+	char key[MAXKEY], gfile[MAXPATH];
+
+	chdir(ROOT2RESYNC);
+	f = popen("bk sfiles BitKeeper/etc BitKeeper/deleted | "
+	    "bk prs -r+ -hd':ROOTKEY:\n:GFILE:\n' -", "r");
+	assert(f);
+	while (fnext(key, f))  {
+		q = strchr(key, '|') + 1;
+		t = strchr(q, '|'); *t = 0;
+		fnext(gfile, f);
+
+		/* is q in files? */
+		EACH(files) if (streq(q, files[i])) break;
+		unless (files[i]) continue;
+
+		chop(gfile);
+		merge(gfile);
+	}
+	pclose(f);
+
+	/*
+	 * Do the per file work
+	 */
+	EACH(files) {
+		converge(files[i]);
+		sys("bk", "clean", "-q", files[i], SYS);
+	}
+	chdir(RESYNC2ROOT);
+}
+
+/*
+ * Automerge any updates before converging the inodes.
+ */
+private void
+merge(char *gfile)
+{
+	char	*rfile = name2sccs(gfile);
+	char	*mfile = name2sccs(gfile);
+	char	*t;
+
+	t = strrchr(rfile, '/'), t[1] = 'r';
+	t = strrchr(mfile, '/'), t[1] = 'm';
+	unlink(mfile);
+	free(mfile);
+	if (exists(rfile)) {
+		/*
+		 * Both remote and local have updated the file.
+		 * We automerge here, saves trouble later.
+		 */
+		sys("bk", "get", "-qeM", gfile, SYS);
+		sysio(0, gfile, 0, "bk", "merge", "-s", gfile, SYS);
+		sys("bk", "ci", "-qdPyauto-union", gfile, SYS);
+		unlink(rfile);
+	} /* else remote update only */
+	free(rfile);
 }

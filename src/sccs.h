@@ -1239,7 +1239,7 @@ int	restore_backup(char *backup_sfio);
 char	*parent_normalize(char *);
 u32	crc(char *s);
 int	annotate_args(int flags, char *args);
-
+void	converge_hash_files(void);
 int	getMsg(char *msg_name, char *bkarg, char b, FILE *outf);
 int	getMsg2(char *msg_name, char *arg, char *arg2, char b, FILE *outf);
 int	getMsgP(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf);

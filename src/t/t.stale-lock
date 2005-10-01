@@ -28,7 +28,6 @@ licsign3: $BKL_P3
 EOF
 BK_USER=joe bk setup -cc -a -f project
 cd project
-touch BitKeeper/etc/SCCS/x.marked
 echo 1 > A
 echo 2 > B
 bk ci $Q -i A B

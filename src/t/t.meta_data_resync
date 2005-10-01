@@ -21,7 +21,6 @@ echo "description: BitKeeper Test repository" >> $HERE/c
 echo "email:		nobody@nowhere.bk" >> $HERE/c
 echo "keyword:sccs,expand1" >> $HERE/c
 bk setup -a -f -c$HERE/c project
-touch project/BitKeeper/etc/SCCS/x.marked
 cd project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
