@@ -966,7 +966,6 @@ int	sccs_mv(char *, char *, int, int, int, int);
 delta	*sccs_gca(sccs *, delta *l, delta *r, char **i, char **x, int best);
 char	*_relativeName(char *gName, int isDir,
 	    int mustHaveRmarker, int wantRealName, project *proj);
-void	rcs(char *cmd, int argc, char **argv);
 char	*findBin(void);
 int 	prompt(char *msg, char *buf);
 void	parse_url(char *url, char *host, char *path);
@@ -1254,7 +1253,6 @@ int	getMsgv(char *msg_name, char **bkarg, char *prefix, char b, FILE *outf);
 extern	char	*editor;
 extern	char	*bin;
 extern	char	*BitKeeper;
-extern	char	**environ;
 extern	time_t	licenseEnd;
 
 #endif	/* _SCCS_H_ */

@@ -141,10 +141,6 @@ delta_main(int ac, char **av)
 	if (prog) prog++;
 	else prog = av[0];
 	if (streq(prog, "ci")) {
-		if (!isdir("SCCS") && isdir("RCS")) {
-			rcs("ci", ac, av);
-			/* NOTREACHED */
-		}
 		isci = 1;
 	} else if (streq(prog, "delta")) {
 		dflags = DELTA_FORCE;

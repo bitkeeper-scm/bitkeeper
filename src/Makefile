@@ -143,7 +143,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	port/tty.o port/utils.o \
 	prs.o pull.o purify.o push.o putenv.o pwd.o \
 	r2c.o randombits.o range.o rcheck.o rclone.o \
-	rcs.o rcs2sccs.o rcsparse.o \
+	rcs2sccs.o rcsparse.o \
 	receive.o redblack.o regex.o renumber.o repo.o repogca.o resolve.o \
 	resolve_binaries.o resolve_contents.o \
 	resolve_create.o resolve_filetypes.o \

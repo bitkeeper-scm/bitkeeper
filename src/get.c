@@ -30,12 +30,7 @@ get_main(int ac, char **av)
 	prog = strrchr(av[0], '/');
 	if (prog) prog++;
 	else prog = av[0];
-	if (streq(prog, "co")) {
-		if (!isdir("SCCS") && isdir("RCS")) {
-			rcs("co", ac, av);
-			/* NOTREACHED */
-		}
-	} else if (streq(prog, "edit")) {
+	if (streq(prog, "edit")) {
 		flags |= GET_EDIT;
 	} else if (streq(prog, "_get")) {
 		branch_ok = 1;

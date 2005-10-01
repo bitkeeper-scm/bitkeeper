@@ -815,7 +815,7 @@ perr:			fprintf(stderr,
 		}
 		EACH(parents) {
 			to = parents[i];
-			unless (r = remote_parse(to)) goto perr;
+			unless (r = remote_parse(to, REMOTE_BKDURL)) goto perr;
 			unless (r->type == ADDR_FILE) {
 				fprintf(stderr,
 				    "relink: skipping non-local parent %s.\n",
