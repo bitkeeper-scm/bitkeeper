@@ -54,7 +54,7 @@ void
 ids(void) {} /* no-op */
 #endif
 
-void
+private void
 reap(int sig)
 {
 /* There is no need to reap processes on Windows */

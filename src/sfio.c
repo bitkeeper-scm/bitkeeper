@@ -83,7 +83,7 @@ usage:	system("bk help -s sfio");
  * sfio -o - produce an sfio file on stdout from a list on stdin.
  */
 int
-sfio_out()
+sfio_out(void)
 {
 	char	buf[MAXPATH];
 	char	len[5];

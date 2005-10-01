@@ -8,7 +8,6 @@
 #include "sccs.h"
 #include "range.h"
 
-extern	int	sane_main(int ac, char **av);
 private	HASH	*buildKeys(sccs *cset, MDBM *idDB);
 private	char	*csetFind(char *key);
 private	int	check(sccs *s, HASH *db);
@@ -777,7 +776,7 @@ listFound(HASH *db)
 }
 
 private void
-init_idcache()
+init_idcache(void)
 {
 	unless (bktmp_local(id_tmp, "check")) {
 		perror("bktmp_local");

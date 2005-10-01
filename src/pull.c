@@ -314,7 +314,7 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	return (rc);
 }
 
-int
+private int
 pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 {
 	char	buf[MAXPATH * 2];

@@ -23,7 +23,6 @@ whichp(char *exe, int internal, int external)
 	char	*s, *t;
 	CMD	*cmd;
 	char	buf[MAXPATH];
-	extern	char *bin;
 
 	if (internal) {
 		assert(bin);

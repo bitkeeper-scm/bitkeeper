@@ -164,6 +164,7 @@ debug((stderr, "getrev(%s, %s) = %s\n", rev, date, tmp?tmp->rev:"NULL"));
 	return (0);
 }
 
+#ifdef	NOT_USED
 /*
  * Mark everything from here until we hit the starting point.
  * If the starting point is someplace we wouldn't hit, complain.
@@ -182,6 +183,7 @@ rangeMark(sccs *s, delta *d, delta *start)
 		d = d->parent;
 	} while (d && !(d->flags & D_CSET));
 }
+#endif
 
 private void
 walkClr(sccs *s, delta *d)

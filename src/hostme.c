@@ -104,7 +104,7 @@ hostme_main(int ac, char **av)
 }
 
 private void
-usage()
+usage(void)
 {
 	fprintf(stderr,
 	    "Usage: bk hostme "

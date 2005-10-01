@@ -119,7 +119,7 @@ next:		sccs_free(s);
 /*
  * Compare to deltas in a way suitable for qsort.
  */
-int
+private int
 sccs_dcmp(delta *d1, delta *d2)
 {
 	char	k1[MAXKEY], k2[MAXKEY];
@@ -383,7 +383,7 @@ reallocDelta(sccs *s, delta *d)
 }
 
 private	void
-freelog()
+freelog(void)
 {
 	delta	*d;
 

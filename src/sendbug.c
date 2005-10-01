@@ -1,9 +1,5 @@
 #include "bkd.h"
 
-extern char *editor;
-extern	int launch_wish(char *script, char **av);
-extern char *bin;
-
 int
 sendbug_main(int ac,  char **av)
 {

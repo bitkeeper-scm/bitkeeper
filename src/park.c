@@ -17,7 +17,6 @@ private int append(char *, char *);
 private int parkfile_header(sccs *, delta *, char *, FILE *);
 private	char *name2tname(char *);
 private char *tname2sname(char *);
-char **getParkComment(int *err);
 
 private void
 usage1(void)
@@ -427,7 +426,7 @@ printComments(char *parkfile)
 }
 
 private int
-listParkFile()
+listParkFile(void)
 {
 	int	i;
 	char	**d;

@@ -191,7 +191,7 @@ sort(MDBM *m)
 u8	a2i[256], i2a[256];
 
 private void
-convert_init()
+convert_init(void)
 {
 	a2i[2] = 0; i2a[0] = 2;
 	a2i[3] = 1; i2a[1] = 3;

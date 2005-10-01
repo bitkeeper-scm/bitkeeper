@@ -329,8 +329,6 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 	return (d);
 }
 
-extern int sccs_csetPatchWeave(sccs *s, FILE *f);
-
 /*
  * Write out the new ChangeSet file.
  */

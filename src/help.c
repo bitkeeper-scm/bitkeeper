@@ -1,8 +1,6 @@
 #include "system.h"
 #include "sccs.h"
 
-extern char *editor, *bin;
-
 int
 help_main(int ac,  char **av)
 {

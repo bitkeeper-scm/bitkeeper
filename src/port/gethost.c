@@ -35,7 +35,7 @@ sccs_realhost(void)
 }
 
 char *
-sccs_host()
+sccs_host(void)
 {
 	char	*r = sccs_realhost();
 	char	*e = sccs_gethost();

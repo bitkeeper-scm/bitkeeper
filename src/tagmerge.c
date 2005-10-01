@@ -12,13 +12,6 @@ private	int	tagmerge(void);
  * Copyright (c) 2001 L.W.McVoy
  */
 
-
-int
-dsort(const void *a, const void *b)
-{
-	return ((*(delta**)a)->date - (*(delta**)b)->date);
-}
-
 int
 tagmerge_main(int ac, char **av)
 {
@@ -32,7 +25,7 @@ tagmerge_main(int ac, char **av)
 }
 
 private int
-tagmerge()
+tagmerge(void)
 {
 	sccs	*s;
 	delta	*d, *a = 0, *b = 0;

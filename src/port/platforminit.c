@@ -5,8 +5,6 @@
  * Copyright (c) 2001 Andrew Chang       All rights reserved.
  */
 
-extern	char    *editor, *bin;
-
 #ifdef	WIN32
 /*
  * For better performance, do not use getRealCwd(), use the

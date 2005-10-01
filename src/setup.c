@@ -2,7 +2,6 @@
 #include "sccs.h"
 #include "logging.h"
 
-extern char *editor, *bin;
 private int	mkconfig(FILE *out, MDBM *flist, int verbose);
 private void    usage(void);
 private void	defaultIgnore(void);
@@ -177,7 +176,7 @@ err:			unlink("BitKeeper/etc/config");
 }
 
 private void
-defaultIgnore()
+defaultIgnore(void)
 {
 	int	fd = open("BitKeeper/etc/ignore", O_CREAT|O_RDWR, 0664);
 
@@ -192,7 +191,7 @@ err:		perror("write");
 }
 
 private void
-usage()
+usage(void)
 {
 	system("bk help -s setup");
 	exit(1);
@@ -241,7 +240,7 @@ use_default:	fputs(field, out);
 /*
  * Return a file pointer to the config template, if we can find one.
  */
-FILE	*
+private FILE	*
 config_template(void)
 {
 	FILE	*f;

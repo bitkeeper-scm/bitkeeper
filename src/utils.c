@@ -142,7 +142,7 @@ writen(int to, void *buf, int size)
 	int	n;
 
 	for (done = 0; done < size; ) {
-		n = write(to, buf + done, size - done);
+		n = write(to, (u8 *)buf + done, size - done);
 		if ((n == -1) && ((errno == EINTR) || (errno == EAGAIN))) {
 			usleep(10000);
 		} else if (n <= 0) {
@@ -825,13 +825,6 @@ add_cd_command(FILE *f, remote *r)
 }
 
 void
-put_trigger_env(char *prefix, char *v, char *value)
-{
-	unless (value) value = "";
-	safe_putenv("%s_%s=%s", prefix, v, value);
-}
-
-void
 putroot(char *where)
 {
 	char	*root = proj_root(0);
@@ -1345,7 +1338,7 @@ pager(void)
  * Set up pager and connect it to our stdout
  */
 pid_t
-mkpager()
+mkpager(void)
 {
 	int	pfd;
 	pid_t	pid;
@@ -1580,8 +1573,6 @@ reserveStdFds(void)
 }
 
 #ifndef	NOPROC
-
-extern	char	*bin;
 
 int
 checking_rmdir(char *dir)

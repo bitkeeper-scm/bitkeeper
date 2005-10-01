@@ -4,7 +4,6 @@
 #define	HELPURL	"help://"
 #define	HSZ	7		/* number of chars, not counting NULL */
 
-extern char     *bin;
 private int synopsis;
 
 int

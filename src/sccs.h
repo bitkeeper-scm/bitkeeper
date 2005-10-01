@@ -370,6 +370,7 @@ typedef	char		**globv;
 
 #include "liblines.h"
 #include "bkver.h"
+#include "cmd.h"
 
 /*
  * Struct delta - describes a single delta entry.
@@ -788,6 +789,7 @@ int	sccs_get(sccs *s,
 	    char *rev, char *mRev, char *i, char *x, u32 flags, char *out);
 int	sccs_hashcount(sccs *s);
 int	sccs_clean(sccs *s, u32 flags);
+void	do_clean(char *file, int flags);
 int	sccs_unedit(sccs *s, u32 flags);
 int	sccs_info(sccs *s, u32 flags);
 int	sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out);
@@ -1239,9 +1241,20 @@ int	restore_backup(char *backup_sfio);
 char	*parent_normalize(char *);
 u32	crc(char *s);
 int	annotate_args(int flags, char *args);
+void	platformInit(char **av);
+int	sccs_csetPatchWeave(sccs *s, FILE *f);
+MDBM	*loadkv(char *file);
+char	**getParkComment(int *err);
+int	launch_wish(char *script, char **av);
 
 int	getMsg(char *msg_name, char *bkarg, char b, FILE *outf);
 int	getMsg2(char *msg_name, char *arg, char *arg2, char b, FILE *outf);
 int	getMsgP(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf);
 int	getMsgv(char *msg_name, char **bkarg, char *prefix, char b, FILE *outf);
+extern	char	*editor;
+extern	char	*bin;
+extern	char	*BitKeeper;
+extern	char	**environ;
+extern	time_t	licenseEnd;
+
 #endif	/* _SCCS_H_ */

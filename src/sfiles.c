@@ -473,7 +473,7 @@ file(char *f)
 }
 
 private void
-print_summary()
+print_summary(void)
 {
 	fprintf(opts.out, "%6d files under revision control.\n", s_count);
 	if (opts.extras) {
@@ -716,7 +716,7 @@ chk_diffs(sccs *s)
 	return (different);
 }
 
-int
+private int
 isIgnored(char *file)
 {
 	char *gfile, *p, *q, save;
@@ -1094,7 +1094,7 @@ sccsdir(winfo *wi)
  * Caller must ensure we at at the project root
  */
 void
-enableFastPendingScan()
+enableFastPendingScan(void)
 {
 	touch(DFILE, 0666);
 }

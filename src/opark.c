@@ -80,7 +80,7 @@ empty:		unless (qflag) printf("Nothing to park\n");
 }
 
 private int
-listParkFile()
+listParkFile(void)
 {
 	char	**d;
 	int	i, j;

@@ -60,18 +60,9 @@ struct RCSlist {
 	rdelta	*lastver;  /* The last version added to BK */
 };
 
-typedef struct CVS CVS;
-struct CVS {
-	char	*server;
-	char	*module;
-	RCSlist	*files;
-};
-
 RCS	*rcs_init(char *file, char *branch);
 rdelta	*rcs_findit(const RCS *rcs, char *rev);
 void	rcs_free(RCS *r);
-
-CVS	*cvs_init(char *file);
 
 #ifdef	RCS_DEBUG
 #define	rcsdebug(x)	fprintf x

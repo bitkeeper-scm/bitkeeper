@@ -139,7 +139,7 @@ clean(char *file)
 }
 
 private void
-unedit()
+unedit(void)
 {
 	int	i;
 	char	*av[20];

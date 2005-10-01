@@ -11,8 +11,6 @@ typedef struct {
 	u32	resync:1;
 } c_opts;
 
-extern	char	*editor, *bin, *BitKeeper;
-extern	int	do_clean(char *, int);
 private int	do_commit(char **av, c_opts opts, char *sym,
 					char *pendingFiles, int dflags);
 

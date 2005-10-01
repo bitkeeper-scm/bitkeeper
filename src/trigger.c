@@ -7,8 +7,12 @@ private int localTrigger(char *, char *, char **);
 private int remotePreTrigger(char *, char *, char **);
 private int remotePostTrigger(char *, char *, char **);
 
-int put_trigger_env(char *where, char *v, char *value);
-
+private void
+put_trigger_env(char *prefix, char *v, char *value)
+{
+	unless (value) value = "";
+	safe_putenv("%s_%s=%s", prefix, v, value);
+}
 
 /*
  * set up the trigger environment

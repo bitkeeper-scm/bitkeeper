@@ -22,18 +22,14 @@ int	bk_isSubCmd = 0;	/* if 1, BK called us and sent seed */
 private char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
 #define	LOGVER	0
 
-
-int	launch_wish(char *script, char **av);
 private	void	cmdlog_exit(void);
 private	int	cmdlog_repo;
 private	void	cmdlog_dump(int, char **);
-private int	cmd_run(char *prog, int is_bk, char *sopts, int ac, char **av);
+private int	cmd_run(char *prog, int is_bk, int ac, char **av);
 private int	usage(void);
 
-extern	void	platformInit(char **av);
-
 private int
-usage()
+usage(void)
 {
 	system("bk help -s bk");
 	exit(1);
@@ -41,7 +37,7 @@ usage()
 
 #define	MAXARGS	1024
 
-char *
+private char *
 milli(void)
 {
 	struct	timeval	tv;
@@ -279,7 +275,7 @@ run:	getoptReset();
 	nt_loadWinSock();
 #endif
 	cmdlog_start(av, 0);
-	ret = cmd_run(prog, is_bk, si > 1 ? sopts : 0, ac, av);
+	ret = cmd_run(prog, is_bk, ac, av);
 	cmdlog_end(ret);
 	exit(ret);
 }
@@ -289,7 +285,7 @@ run:	getoptReset();
  * logging works.
  */
 private int
-cmd_run(char *prog, int is_bk, char *sopts, int ac, char **av)
+cmd_run(char *prog, int is_bk, int ac, char **av)
 {
 	int	i, j;
 	CMD	*cmd;

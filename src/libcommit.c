@@ -3,10 +3,6 @@
 #include "logging.h"
 #include <time.h>
 
-
-extern char	*editor, *bin;
-extern char	*BitKeeper;
-
 void
 do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out)
 {
@@ -56,7 +52,7 @@ get(char *path, int flags, char *output)
 }
 
 char *
-package_name()
+package_name(void)
 {
 	MDBM	*m;
 	char	*n;

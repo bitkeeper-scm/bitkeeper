@@ -348,7 +348,7 @@ navbutton(int active, int tag, char *start, char *end)
 
 
 private void
-printnavbar()
+printnavbar(void)
 {
 	char *start, *end;
 	int first = 1;
@@ -1547,7 +1547,7 @@ http_index(char *page)
  *  01234567890123456789012345678
  */
 private char	*
-http_time()
+http_time(void)
 {
 	time_t	tt;
 	static	time_t save_tt;
@@ -1575,7 +1575,7 @@ http_time()
  *  01234567890123456789012345678
  */
 private char	*
-http_expires()
+http_expires(void)
 {
 	time_t	expires;
 	struct	tm *t;

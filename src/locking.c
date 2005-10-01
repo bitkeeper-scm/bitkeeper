@@ -300,7 +300,7 @@ rdlock(void)
 }
 
 int
-repository_rdlock()
+repository_rdlock(void)
 {
 	int	i, ret;
 

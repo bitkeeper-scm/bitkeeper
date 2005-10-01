@@ -28,7 +28,7 @@ private int	delstate(ser_t ser, const serlist *state, const ser_t *slist);
 private int	whatstate(const serlist *state);
 private int	visitedstate(const serlist *state, const ser_t *slist);
 private void	changestate(register serlist *state, char type, int serial);
-private serlist *allocstate(serlist *old, int oldsize, int n);
+private serlist *allocstate(serlist *old, int n);
 private int	end(sccs *, delta *, FILE *, int, int, int, int);
 private void	date(delta *d, time_t tt);
 private int	getflags(sccs *s, char *buf);
@@ -355,16 +355,6 @@ chomp(char *s)
 	*p = 0;
 	return (any);
 	return (any);
-}
-
-/* chop if there is a trailing slash */
-void
-chopslash(char *s)
-{
-	assert(s);
-	unless (*s) return;
-	s += strlen(s) - 1;
-	if (*s == '/') *s = 0;
 }
 
 /*
@@ -2381,7 +2371,7 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 	char	*tmp, *g;
 	time_t	now = 0;
 	struct	tm *tm = 0;
-	ser_t	a[4];
+	ser_t	a[4] = {0, 0, 0, 0};
 	int hasKeyword = 0, buf_size;
 #define EXTRA 1024
 
@@ -3764,7 +3754,7 @@ pref_parse(char *buf)
 /*
  * filter: return 1 if match
  */
-int
+private int
 filter(char *buf)
 {
 	remote *r;
@@ -3792,7 +3782,7 @@ no_match:	remote_free(r);
 	return (1);
 }
 
-char	*
+private char	*
 filterMatch(char *buf)
 {
 	char	*end = strchr(buf, ']');
@@ -3933,7 +3923,6 @@ MDBM *
 loadBinConfig(MDBM *db)
 {
 	char 	*config;
-	extern	char *bin;
 
 	assert(db);
 	config = aprintf("%s/config", bin);
@@ -5326,7 +5315,7 @@ changestate(register serlist *state, char type, int serial)
  * [SFREE].serial is the number of free nodes.
  */
 private serlist *
-allocstate(serlist *old, int oldsize, int n)
+allocstate(serlist *old, int n)
 {
 	serlist *s;
 	int	i;
@@ -5496,7 +5485,7 @@ fputmeta(sccs *s, u8 *buf, FILE *out)
 	return (sum);
 }
 
-void
+private void
 gzip_sum(void *p, u8 *buf, int len, FILE *out)
 {
 	register unsigned int sum = 0;
@@ -5608,7 +5597,7 @@ fflushdata(sccs *s, FILE *out)
 #define	ENC(c)	((((uchar)c) & 0x3f) + ' ')
 #define	DEC(c)	((((uchar)c) - ' ') & 0x3f)
 
-inline int
+private inline int
 uuencode1(register uchar *from, register char *to, int n)
 {
 	int	space[4];
@@ -5632,7 +5621,7 @@ uuencode1(register uchar *from, register char *to, int n)
 	return (to - save);
 }
 
-int
+private int
 uuencode_sum(sccs *s, FILE *in, FILE *out)
 {
 	uchar	ibuf[450];
@@ -5697,7 +5686,7 @@ uuencode(FILE *in, FILE *out)
 	return (++added);
 }
 
-inline int
+private inline int
 uudecode1(register char *from, register uchar *to)
 {
 	int	length, save;
@@ -6052,7 +6041,7 @@ sccs_rewrite_pfile(sccs *s, pfile *pf)
 /*
  * Returns: valid address if OK, (char*)-1 if error, 0 if not ok but not error.
  */
-char *
+private char *
 setupOutput(sccs *s, char *printOut, int flags, delta *d)
 {
 	char *f;
@@ -6136,7 +6125,7 @@ getSymlnkCksumDelta(sccs *s, delta *d)
 }
 
 private sum_t
-getKey(MDBM *DB, char *buf, int flags, char *root)
+getKey(MDBM *DB, char *buf, int flags)
 {
 	char	*k, *v;
 	int	len;
@@ -6319,7 +6308,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 		strcat(align, "| ");
 	}
 
-	state = allocstate(0, 0, s->nextserial);
+	state = allocstate(0, s->nextserial);
 
 	unless (flags & GET_HASHONLY) {
 		f = d ? setupOutput(s, printOut, flags, d) : printOut;
@@ -6384,8 +6373,7 @@ out:			if (slist) free(slist);
 				continue;
 			}
 			if (hash) {
-				if (getKey(DB, buf, hashFlags|flags,
-					proj_root(s->proj)) == 1) {
+				if (getKey(DB, buf, hashFlags|flags) == 1) {
 					unless (flags &
 					    (GET_HASHONLY|GET_SUM)) {
 						fnlputs(buf, out);
@@ -7205,7 +7193,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		goto done2;
 	}
 	slist = serialmap(s, d, 0, 0, &error);
-	state = allocstate(0, 0, s->nextserial);
+	state = allocstate(0, s->nextserial);
 	seekto(s, s->data);
 	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
 	side = NEITHER;
@@ -8027,7 +8015,7 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 	assert(s->state & S_SOPEN);
 	slist = serialmap(s, d, pf->iLst, pf->xLst, &error);
 	assert(!error);
-	state = allocstate(0, 0, s->nextserial);
+	state = allocstate(0, s->nextserial);
 	seekto(s, s->data);
 	if (s->encoding & E_GZIP) {
 		zgets_init(s->where, s->size - s->data);
@@ -10173,7 +10161,7 @@ commentArg(delta *d, char *arg)
 /*
  * Explode the rev.
  */
-delta *
+private delta *
 revArg(delta *d, char *arg)
 {
 	if (!d) d = (delta *)calloc(1, sizeof(*d));
@@ -11136,7 +11124,7 @@ doctrl(sccs *s, char *pre, int val, char *post, FILE *out)
 	fputdata(s, "\n", out);
 }
 
-void
+private void
 finish(sccs *s, int *ip, int *pp, FILE *out, register serlist *state,
 	ser_t *slist)
 {
@@ -11194,7 +11182,7 @@ finish(sccs *s, int *ip, int *pp, FILE *out, register serlist *state,
 #define	nextline(inc)	nxtline(s, &inc, 0, &lines, &print, out, state, slist)
 #define	beforeline(inc) nxtline(s, &inc, 1, &lines, &print, out, state, slist)
 
-void
+private void
 nxtline(sccs *s, int *ip, int before, int *lp, int *pp, FILE *out,
 	register serlist *state, ser_t *slist)
 {
@@ -11332,7 +11320,7 @@ bad:		fprintf(stderr, "bad diffs: '%.*s'\n", linelen(buf), buf);
 	return (0);
 }
 
-int
+private int
 delta_body(sccs *s, delta *n, MMAP *diffs, FILE *out, int *ap, int *dp, int *up)
 {
 	serlist *state = 0;
@@ -11365,7 +11353,7 @@ delta_body(sccs *s, delta *n, MMAP *diffs, FILE *out, int *ap, int *dp, int *up)
 	slist = serialmap(s, n, 0, 0, 0);	/* XXX - -gLIST */
 	s->dsum = 0;
 	assert(s->state & S_SOPEN);
-	state = allocstate(0, 0, s->nextserial);
+	state = allocstate(0, s->nextserial);
 	while (b = mnext(diffs)) {
 		int	where;
 		char	what;
@@ -12589,7 +12577,7 @@ out:
 /*
  * works for 32 bit unsigned only
  */
-void
+private void
 fit(char *buf, unsigned int i)
 {
 	int	j;
@@ -13090,7 +13078,6 @@ void
 sccs_loadkv(sccs *s)
 {
 	char x_kv[MAXPATH];
-	extern MDBM *loadkv(char *file);
 
 	bktmp(x_kv, "kv");
 	sccs_get(s, 0, 0, 0, 0, SILENT|PRINT, x_kv);
@@ -15272,13 +15259,7 @@ numNodes(delta *d)
 	return (1 + numNodes(d->kid) + numNodes(d->siblings));
 }
 
-int
-dcmp(const void *a, const void *b)
-{
-	return ((*(delta **)a)->date - (*(delta **)b)->date);
-}
-
-void
+private void
 addNodes(sccs *s, delta **list, int j, delta *d)
 {
 	if (!d || (d->type != 'D')) return;
@@ -16301,7 +16282,7 @@ stripDeltas(sccs *s, FILE *out)
 
 	slist = setmap(s, D_SET, 1);
 
-	state = allocstate(0, 0, s->nextserial);
+	state = allocstate(0, s->nextserial);
 	seekto(s, s->data);
 	if (s->encoding & E_GZIP) {
 		zgets_init(s->where, s->size - s->data);

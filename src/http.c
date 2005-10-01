@@ -190,7 +190,7 @@ connect_srv(char *srv, int port, int trace)
 	return (fd);
 }
 
-int
+private int
 connect_socks4_srv(remote *r, char *host, int port)
 {
 	unsigned char sbuf[BUFSIZ];

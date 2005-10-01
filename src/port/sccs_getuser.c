@@ -26,7 +26,7 @@ cleanup(char *s)
 }
 
 void
-sccs_resetuser()
+sccs_resetuser(void)
 {
 	s = r = 0;
 	uid = (uid_t)-1;
@@ -93,7 +93,7 @@ sccs_realuser(void)
 }
 
 char *
-sccs_user()
+sccs_user(void)
 {
 	char	*r = sccs_realuser();
 	char	*e = sccs_getuser();
