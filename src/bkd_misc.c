@@ -25,7 +25,7 @@ cmd_help(int ac, char **av)
 	return (0);
 }
 
-char *
+private char *
 vpath_translate(const char *path)
 {
 	char	*vhost;

@@ -160,7 +160,7 @@ norev:
 }
 
 char *
-sfileRev()
+sfileRev(void)
 {
 	return (rev[0] ? rev : 0);
 }

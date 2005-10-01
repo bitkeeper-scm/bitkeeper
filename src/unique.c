@@ -46,7 +46,7 @@ private	MDBM	*db;
 private	char	*lockFile;		/* cache it */
 
 private char	*
-lockHome()
+lockHome(void)
 {
 	char	path[MAXPATH];
 
@@ -86,7 +86,7 @@ keysHome(void)
  * project struct.
  */
 time_t
-uniq_drift()
+uniq_drift(void)
 {
 	static	time_t t = (time_t)-1;
 	char	*drift;
@@ -150,7 +150,7 @@ keycache_main(int ac, char **av)
 }
 
 private	int
-uniq_regen()
+uniq_regen(void)
 {
 	char	*tmp = keysHome();
 
@@ -164,7 +164,7 @@ uniq_regen()
 }
 
 int
-uniq_open()
+uniq_open(void)
 {
 	char	*s, *tmp;
 	FILE	*f;
@@ -262,7 +262,7 @@ uniq_update(char *key, time_t t)
  * Rewrite the file.  The database is locked.
  */
 int
-uniq_close()
+uniq_close(void)
 {
 	FILE	*f;
 	kvpair	kv;

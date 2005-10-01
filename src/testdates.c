@@ -3,7 +3,7 @@
 #include "system.h"
 #include "sccs.h"
 
-void
+int
 testdates_main(int argc, char **argv)
 {
 	time_t	m, y, start, t;
@@ -28,4 +28,5 @@ testdates_main(int argc, char **argv)
 			y += 31536000;
 		}
 	}
+	return (0);
 }

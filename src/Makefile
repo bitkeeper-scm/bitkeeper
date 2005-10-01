@@ -75,15 +75,15 @@ WARNINGS_GCC3=-Wchar-subscripts -Wredundant-decls
 #  a variable in the middle of a block
 WARNINGS_GCC4=-Wextra -Wno-pointer-sign -Wno-sign-compare \
 	-Wno-unused-parameter -Wno-missing-field-initializers \
-	-Wdeclaration-after-statement
+	-Wdeclaration-after-statement -Wpointer-arith
 
 # Other options to consider enabling in the future:
 #
 # -Wnested-externs Prototypes declared in a function
 # -Wwrite-string warn in string constant is passed to a char *
 # -Wmissing-prototypes
-# -Wpointer-arith
-# -Wold-style-definition
+# -Wunused-parameter
+# -Wold-style-definition Would be nice, but zlib falls all over here
 
 GCC_MAJOR_REV=$(shell $(CC) -dumpversion | sed 's/\..*//')
 ifeq ($(GCC_MAJOR_REV),3)

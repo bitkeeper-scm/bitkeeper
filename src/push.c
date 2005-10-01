@@ -154,7 +154,7 @@ err:		freeLines(envVar, free);
 }
 
 private void
-send_part1_msg(remote *r, char rev_list[], char **envVar)
+send_part1_msg(remote *r, char **envVar)
 {
 	char	*cmd, buf[MAXPATH];
 	FILE 	*f;
@@ -205,7 +205,7 @@ push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 	delta	*d;
 
 	if (bkd_connect(r, opts.gzip, opts.verbose)) return (-3);
-	send_part1_msg(r, rev_list, envVar);
+	send_part1_msg(r, envVar);
 	if (r->rfd < 0) return (-1);
 
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
@@ -418,7 +418,7 @@ send_end_msg(remote *r, char *msg, char *rev_list, char **envVar)
 
 
 private int
-send_patch_msg(remote *r, char rev_list[], int ret, char **envVar)
+send_patch_msg(remote *r, char rev_list[], char **envVar)
 {
 	char	msgfile[MAXPATH];
 	FILE	*f;
@@ -562,7 +562,7 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar)
 			send_end_msg(r, "@ABORT@\n", rev_list, envVar);
 			rc = 1;
 			done = 1;
-		} else if (send_patch_msg(r, rev_list, ret, envVar)) {
+		} else if (send_patch_msg(r, rev_list, envVar)) {
 			rc = 1;
 			done = 1;
 		}

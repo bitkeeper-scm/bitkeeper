@@ -7,9 +7,6 @@ private char	**getfiles(char *csetrev);
 private void	write_editfile(FILE *f, char **files, int to_stdout);
 private void	read_editfile(FILE *f);
 
-extern	char	*editor;
-
-
 private void
 usage(void)
 {

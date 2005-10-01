@@ -1,8 +1,6 @@
 #include "../system.h"
 #include "../sccs.h"
 
-extern	char	*bin;
-
 /*
  * Copyright (c) 2001 Andrew Chang       All rights reserved.
  */

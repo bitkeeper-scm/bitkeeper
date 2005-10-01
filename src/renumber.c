@@ -35,7 +35,6 @@ renumber_main(int ac, char **av)
 	char	*name;
 	int	spinners = 0, error = 0;
 	int	c, dont = 0, quiet = 0, flags = INIT_WACKGRAPH;
-	delta	*leaf(delta *tree);
 
 	while ((c = getopt(ac, av, "nqs/")) != -1) {
 		switch (c) {

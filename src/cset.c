@@ -42,8 +42,6 @@ private	void	cset_exit(int n);
 private	char	csetFile[] = CHANGESET; /* for win32, need writable buffer */
 private	cset_t	copts;
 private char	*spin = "|/-\\";
-int		cset_main(int ac, char **av);
-extern	int	sane_main(int ac, char **av);
 
 int
 makepatch_main(int ac, char **av)

@@ -1,14 +1,12 @@
 #include "rcs.h"
 
-extern	int	isascii_main(int, char**);
-
 private	char	*sccsname(char *path);
 private	int	rcs2sccs(RCS *rcs, char *sfile);
 private	int	create(char *sfile, int flags, RCS *rcs);
 private	int	encoding(char *file);
 private	mode_t	mode(char *file);
 private	int	newDelta(RCS *rcs, rdelta *d, sccs *s, int rev, int flags);
-private int	verifyFiles(sccs *s, RCS *rcs, rdelta *d, char *g);
+private int	verifyFiles(RCS *rcs, rdelta *d, char *g);
 private	void	doit(char *file, char *cvsbranch);
 private	rdelta *first_rdelta(RCS *rcs);
 
@@ -272,7 +270,7 @@ rcs2sccs(RCS *rcs, char *sfile)
 			fflush(stdout);
 			len = strlen(d->sccsrev) + strlen(d->rev) + 3;
 		}
-		if (verifyFiles(s, rcs, d, g)) {
+		if (verifyFiles(rcs, d, g)) {
 			free(g);
 			sccs_free(s);
 			return (1);
@@ -291,7 +289,7 @@ rcs2sccs(RCS *rcs, char *sfile)
 }
 
 private int
-verifyFiles(sccs *s, RCS *rcs, rdelta *d, char *g)
+verifyFiles(RCS *rcs, rdelta *d, char *g)
 {
 	char	tmpfile[MAXPATH];
 	char	*cmd;

@@ -146,11 +146,11 @@ usage:			system("bk help -s lock");
 	}
 }
 
-void
+int
 repo_main(int ac, char **av)
 {
 	fprintf(stderr, "The repo command has been replaced.\n");
 	fprintf(stderr, "To lock use bk lock.\n");
 	fprintf(stderr, "To unlock use bk unlock.\n");
-	exit(1);
+	return (1);
 }

@@ -28,7 +28,6 @@ private int	relink(char *a, char *b);
 private	int	do_relink(char *from, char *to, int quiet, char *here);
 private int	out_trigger(char *status, char *rev, char *when);
 private int	in_trigger(char *status, char *rev, char *root, char *repoid);
-extern	int	rclone_main(int ac, char **av);
 
 int
 clone_main(int ac, char **av)
@@ -135,7 +134,7 @@ err:			if (r) remote_free(r);
 }
 
 private void
-usage()
+usage(void)
 {
 	system("bk help -s clone");
     	exit(1);

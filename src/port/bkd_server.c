@@ -2,7 +2,7 @@
 
 private void	argv_save(int ac, char **av, char **nav, int j);
 
-void
+private void
 reap(int sig)
 {
 /* There is no need to reap processes on Windows */

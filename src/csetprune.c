@@ -25,7 +25,6 @@
  * Copyright (c) 2001 Larry McVoy & Rick Smith
  */
 
-int	csetprune_main(int ac, char **av);
 private	int rmKeys(MDBM *s);
 private	int found(delta *start, delta *stop);
 private void _pruneEmpty(delta *d);

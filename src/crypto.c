@@ -4,8 +4,6 @@
 #include "tomcrypt/randseed.h"
 #include "cmd.h"
 
-extern char *bin;
-
 private	int	make_keypair(int bits, char *secret, char *public);
 private	int	signdata(rsa_key *secret);
 private	int	validatedata(rsa_key *public, char *sign);

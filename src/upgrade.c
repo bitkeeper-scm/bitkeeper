@@ -18,8 +18,6 @@
 private	int	noperms(char *target);
 private	int	upgrade_fetch(char *name, char *file);
 
-extern	char	*bin;
-
 private	char	*urlbase = 0;
 private	int	flags = 0;
 

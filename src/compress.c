@@ -27,8 +27,8 @@ gzip_init(int level)
 
 /* Frees any data structures allocated for compression. */
 
-void 
-gzip_done()
+void
+gzip_done(void)
 {
 	inflateEnd(&gzip_in);
 	deflateEnd(&gzip_out);

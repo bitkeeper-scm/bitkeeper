@@ -13,7 +13,6 @@ int
 what_main(int ac, char **av)
 {
 	char	*name, *gfile;
-	int	doit(char *file);
 
 	for (name = sfileFirst("what", &av[1], 0); name; name = sfileNext()) {
 		gfile = sccs2name(name);

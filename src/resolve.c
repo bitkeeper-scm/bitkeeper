@@ -24,7 +24,6 @@
 #include "resolve.h"
 #include "logging.h"
 
-extern	char	*bin;
 private	void	commit(opts *opts);
 private	void	conflict(opts *opts, char *rfile);
 private	int	create(resolve *rs);
@@ -184,7 +183,7 @@ resolve_post(opts *opts, int c)
 }
 
 private void
-listPendingRenames()
+listPendingRenames(void)
 {
 	int fd1;
 
@@ -1446,7 +1445,7 @@ slotTaken(opts *opts, char *slot)
 /* ---------------------------- Pass3 stuff ---------------------------- */
 
 private int
-noDiffs()
+noDiffs(void)
 {
 	FILE	*p = popen("bk -r diffs", "r");
 	int	none;
@@ -2075,7 +2074,7 @@ edit(resolve *rs)
 /* ---------------------------- Pass4 stuff ---------------------------- */
 
 private	int
-pendingRenames()
+pendingRenames(void)
 {
 	char	**d;
 	int	i, n = 0;
@@ -2129,7 +2128,7 @@ pending(int checkComments)
  * Return true if there are modified files not yet checked in (except ChangeSet)
  */
 private	int
-pendingEdits()
+pendingEdits(void)
 {
 	char	buf[MAXPATH];
 	FILE	*f;

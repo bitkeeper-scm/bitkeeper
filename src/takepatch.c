@@ -1538,7 +1538,7 @@ reversePatch(void)
 }
 
 private	void
-freePatchList()
+freePatchList(void)
 {
 	patch	*p;
 
@@ -1567,7 +1567,7 @@ freePatchList()
  * Create enough stuff that the tools can find the project root.
  */
 private	void
-initProject()
+initProject(void)
 {
 	unless (emptyDir(".")) {
 		SHOUT();

@@ -4,8 +4,6 @@
 
 #define	BACKUP_SFIO "BitKeeper/tmp/undo_backup_sfio"
 
-extern char *bin;
-
 private char	**getrev(char *rev, int aflg);
 private char	**mk_list(char *, char **);
 private int	clean_file(char **);

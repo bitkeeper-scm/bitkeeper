@@ -7,7 +7,7 @@
 
 #ifdef WIN32
 char *
-globalroot()
+globalroot(void)
 {
         static	char	*globalRoot = NULL;
 	char	buf[MAXPATH], tmp[MAXPATH];
@@ -26,7 +26,7 @@ globalroot()
 }
 #else
 char *
-globalroot()
+globalroot(void)
 {
 	return ("/etc");
 }

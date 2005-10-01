@@ -966,7 +966,7 @@ mkList(sccs *s, int fileIdx)
 }
 
 private	void
-freeList()
+freeList(void)
 {
 	delta	*d;
 

@@ -30,7 +30,7 @@ printable(char c)
  * sending a mmaped buffer down a pipe.
  * We will fix it when we  port this code to win32
  */
-void
+private void
 printFilteredText(MMAP *m)
 {
 	u8	*p, *end;

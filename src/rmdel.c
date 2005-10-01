@@ -2,11 +2,8 @@
 #include "system.h"
 #include "sccs.h"
 
-/*
- * The weird setup is so that I can #include this file into sccssh.c
- */
 int
-_rmdel_main(int ac, char **av, char *out)
+rmdel_main(int ac, char **av)
 {
 	sccs	*s;
 	int	c, flags = 0;
@@ -77,10 +74,4 @@ err:		sccs_free(s);
 	sccs_free(s);
 	sfileDone();
 	return (0);
-}
-
-int
-rmdel_main(int ac, char **av)
-{
-	return (_rmdel_main(ac, av, "-"));
 }

@@ -75,13 +75,13 @@ comments_savefile(char *s)
 }
 
 int
-comments_got()
+comments_got(void)
 {
 	return (gotComment);
 }
 
 void
-comments_done()
+comments_done(void)
 {
 	int	i;
 
@@ -134,7 +134,6 @@ int
 comments_prompt(char *file)
 {
 	char	*cmd, buf[10];
-	extern	char *editor;
 
 	unless (editor || (editor = getenv("EDITOR"))) editor = EDITOR;
 	while (1) {

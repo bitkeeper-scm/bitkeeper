@@ -6,7 +6,7 @@
  */
 
 int
-gui_useDisplay()
+gui_useDisplay(void)
 {
 	if (getenv("BK_NO_GUI_PROMPT")) return (0);
 	if (win32() || macosx()) return (getenv("BK_GUI") != (char*)0);
@@ -14,7 +14,7 @@ gui_useDisplay()
 }
 
 char *
-gui_displayName()
+gui_displayName(void)
 {
 #ifdef WIN32
 	return ("monitor");
@@ -26,7 +26,7 @@ gui_displayName()
 }
 
 int
-gui_useAqua()
+gui_useAqua(void)
 {
 #ifdef	__APPLE__
 	unless (getenv("DISPLAY")) {return (1);}

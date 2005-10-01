@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 
 #include "system.h"
+#include "sccs.h"
 
 int
 mtime_main(int ac, char **av)

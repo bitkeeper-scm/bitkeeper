@@ -75,7 +75,7 @@ rclone_main(int ac, char **av)
 }
 
 private void
-usage()
+usage(void)
 {
 	fprintf(stderr, "Usage: bk rclone local-tree new-remote-tree\n");
 	exit(1);

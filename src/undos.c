@@ -41,7 +41,7 @@ undos_main(int ac, char **av)
  * it does a s|\r|\n| otherwise it does a s|\r||.
  */
 private void
-undos_stdin()
+undos_stdin(void)
 {
 	int	c;
 

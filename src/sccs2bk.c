@@ -146,7 +146,7 @@ sccs2bk(sccs *s, int verbose, char *csetkey)
  * read map key <serial> => val <rev> in new imported system
  * no entry if <rev> -eq <d->rev>
  */
-char	*
+private char	*
 rev(MDBM *revs, delta *r)
 {
 	datum	k, v;

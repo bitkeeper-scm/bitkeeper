@@ -1,6 +1,6 @@
 #include "bkd.h"
 
-private int	getsfio(int verbose, int gzip);
+private int	getsfio(int gzip);
 
 typedef	struct {
 	u32	debug:1;
@@ -162,7 +162,7 @@ cmd_rclone_part2(int ac, char **av)
 	fflush(stdout);
 	/* Arrange to have stderr go to stdout */
 	fd2 = dup(2); dup2(1, 2);
-	rc = getsfio(opts.verbose, opts.gzip);
+	rc = getsfio(opts.gzip);
 	getline(0, buf, sizeof(buf));
 	if (!streq("@END@", buf)) {
 		fprintf(stderr, "cmd_rclone: warning: lost end marker\n");
@@ -216,7 +216,7 @@ done:
 }
 
 private int
-getsfio(int verbose, int gzip)
+getsfio(int gzip)
 {
 	int	status, pfd;
 	u32	in, out;
