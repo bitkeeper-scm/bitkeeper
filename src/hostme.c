@@ -77,15 +77,15 @@ hostme_main(int ac, char **av)
 	if (opts.host) {
 		host = opts.host;
 	}
-	sprintf(buf, "http://%s:80", host);
+	sprintf(buf, "http://%s:80/cgi-bin/hostme_cgi", host);
 	url = buf;
-	r = remote_parse(url);
+	r = remote_parse(url, 0);
 	if (opts.debug) r->trace = 1;
 	assert(r);
 	http_connect(r);
 	m = mopen(hostme_info, "r");
 	assert(m);
-	rc = http_send(r, m->where, msize(m), 0, "hostme", HOSTME_CGI);
+	rc = http_send(r, m->where, msize(m), 0, "hostme");
 	mclose(m);
 	skip_http_hdr(r);
 	unless (rc) rc = get_ok(r, 0, opts.verbose);

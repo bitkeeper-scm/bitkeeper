@@ -257,11 +257,11 @@ upgrade_fetch(char *name, char *file)
 		return (fileCopy(buf, file));
 	}
 	verbose((stderr, "Fetching %s\n", buf));
-	r = remote_parse(buf);
+	r = remote_parse(buf, 0);
 	if (http_connect(r)) goto out;
 	r->progressbar = 1;
 	if (getenv("BK_NOTTY") || (flags & SILENT)) r->progressbar = 0;
-	rc = http_fetch(r, buf, file);
+	rc = http_fetch(r, file);
 out:
 	remote_free(r);
 	return (rc);

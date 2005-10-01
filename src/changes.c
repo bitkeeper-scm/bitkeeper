@@ -1206,7 +1206,7 @@ _doit_remote(char **av, char *url)
 	int	rc;
 	remote	*r;
 
-	r = remote_parse(url);
+	r = remote_parse(url, REMOTE_BKDURL);
 	unless (r) {
 		fprintf(stderr, "invalid url: %s\n", url);
 		return (1);

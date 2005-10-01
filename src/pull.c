@@ -112,7 +112,7 @@ err:		freeLines(envVar, free);
 	 * pull from each parent
 	 */
 	EACH (urls) {
-		r = remote_parse(urls[i]);
+		r = remote_parse(urls[i], REMOTE_BKDURL);
 		unless (r) goto err;
 		if (opts.debug) r->trace = 1;
 		unless (opts.quiet) {
@@ -161,14 +161,14 @@ fromTo(char *op, remote *f, remote *t)
 	if (f) {
 		from = remote_unparse(f);
 	} else {
-		tmp = remote_parse(proj_root(0));
+		tmp = remote_parse(proj_root(0), REMOTE_BKDURL);
 		from = remote_unparse(tmp);
 		remote_free(tmp);
 	}
 	if (t) {
 		to = remote_unparse(t);
 	} else {
-		tmp = remote_parse(proj_root(0));
+		tmp = remote_parse(proj_root(0), REMOTE_BKDURL);
 		to = remote_unparse(tmp);
 		remote_free(tmp);
 	}

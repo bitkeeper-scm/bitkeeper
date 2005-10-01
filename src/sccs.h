@@ -319,11 +319,8 @@
 #define	LEASE_URL	getenv("BK_LEASE_URL")
 #define	BK_WEBMAIL_URL	getenv("BK_WEBMAIL_URL")
 #define	BK_HOSTME_SERVER "hostme.bkbits.net"
-#define	WEB_BKD_CGI	"web_bkd"
-#define	HOSTME_CGI	"hostme_cgi"
 #define	BK_CONFIG_URL	getenv("BK_CONFIG_URL")
 #define	BK_CONFIG_URL2	getenv("BK_CONFIG_URL2")
-#define	BK_CONFIG_CGI	"bk_config"
 #define	SCCSTMP		"SCCS/T.SCCSTMP"
 #define	BKDIR		"BitKeeper"
 #define	BKTMP		"BitKeeper/tmp"
@@ -740,12 +737,14 @@ typedef struct {
 	u16	isSocket:1;	/* if set, rfd and wfd are sockets */
 	u16	badhost:1;	/* if set, hostname lookup failed */
 	u16	badconnect:1;	/* if set, connect failed */
+	u16	withproxy:1;	/* connected via a proxy */
 	int	rfd;		/* read fd for the remote channel */
 	FILE	*rf;		/* optional stream handle for remote channel */
 	int	wfd;		/* write fd for the remote channel */
 	char	*user;		/* remote user if set */
 	char	*host;		/* remote host if set */
 	char	*path;		/* pathname (must be set) */
+	char	*httppath;	/* pathname for http URL, see REMOTE_BKDURL */
 	char 	*cred;		/* user:passwd for proxy authentication */
 	char	*seed;		/* seed saved to validate bkd */
 	int	contentlen;	/* len from http header (recieve only) */
@@ -1069,8 +1068,8 @@ int	stripdel_setMeta(sccs *s, int stripBranches, int *count);
 int	stripdel_markSet(sccs *s, delta *d);
 
 int     http_connect(remote *r);
-int     http_send(remote *, char *, size_t, size_t, char *, char *); 
-int	http_fetch(remote *r, char *url, char *file);
+int	http_send(remote *, char *msg, size_t len, size_t ex, char *ua);
+int	http_fetch(remote *r, char *file);
 char *	user_preference(char *what);
 char	*bktmp(char *buf, const char *template);
 void	bktmpenv(void);

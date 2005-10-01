@@ -73,7 +73,7 @@ bkmail(char *url, char **to, char *subject, char *file)
 		return (status);
 	}
 
-	r = remote_parse(url);
+	r = remote_parse(url, 0);
 	assert(r);
 	if (bkd_connect(r, 0, 1)) return (1);
 	bkmsg = bktmp(0, "mail");

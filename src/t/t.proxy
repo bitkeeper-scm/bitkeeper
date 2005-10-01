@@ -1,0 +1,28 @@
+
+echo $N Verify that bkd access works through a proxy ................$NL
+http_proxy=http://data.bitmover.com:3128
+export http_proxy
+
+BK_TRACE_REMOTE=1 bk changes -rbk-3.2.5 -nd:MD5KEY: \
+    http://data.bitmover.com:14690/bk-3.2.x >OUT 2>ERR || {
+	echo should not have failed
+	exit 1
+}
+test "`cat OUT`" = 42f14254Fy_o9xwl7u_Ej-1mle8SMQ || {
+	echo wrong result
+	cat OUT
+	exit 1
+}
+grep -q "trying PROXY data.bitmover.com:3128" ERR || {
+	echo did not use proxy
+	cat ERR
+	exit 1
+}
+grep -q "direct connection" ERR && {
+	echo used direct connection
+	cat ERR
+	exit 1
+}
+echo OK
+
+# XXX need to test proxy authentication (Oscar?)

@@ -25,7 +25,7 @@ usage:			//system("bk help -s rcheck");
 	if (av[optind]) {
 		remote *r;
 
-		r = remote_parse(av[optind]);
+		r = remote_parse(av[optind], REMOTE_BKDURL);
 		unless (r) {
 			fprintf(stderr, "Cannot parse \"%s\"\n", av[optind]);
 			return (1);
