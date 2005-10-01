@@ -71,7 +71,7 @@ clone_main(int ac, char **av)
 	 * Trigger note: it is meaningless to have a pre clone trigger
 	 * for the client side, since we have no tree yet
 	 */
-	unless (r = remote_parse(av[optind])) usage();
+	unless (r = remote_parse(av[optind], REMOTE_BKDURL)) usage();
 
 	/*
 	 * Go prompt with the remotes license, it makes cleanup nicer.
@@ -102,7 +102,7 @@ clone_main(int ac, char **av)
 	}
 	if (av[optind + 1]) {
 		remote	*l;
-		l = remote_parse(av[optind + 1]);
+		l = remote_parse(av[optind + 1], REMOTE_BKDURL);
 		unless (l) {
 err:			if (r) remote_free(r);
 			if (l) remote_free(l);
@@ -250,7 +250,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	}
 
 	unless (opts.quiet) {
-		remote	*l = remote_parse(local);
+		remote	*l = remote_parse(local, REMOTE_BKDURL);
 
 		fromTo("Clone", r, l);
 		remote_free(l);

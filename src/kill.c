@@ -24,7 +24,7 @@ usage:		fprintf(stderr, "Usage: bk kill URL\n");
 		close(rc);
 		exit(0);
 	}
-	unless (r = remote_parse(av[1])) {
+	unless (r = remote_parse(av[1], REMOTE_BKDURL)) {
 		fprintf(stderr, "remote parse failed\n");
 		goto usage;
 	}

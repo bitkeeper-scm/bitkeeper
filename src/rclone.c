@@ -51,7 +51,7 @@ rclone_main(int ac, char **av)
 	 * Validate argument
 	 */
 	unless (av[optind] && av[optind + 1]) usage();
-	l = remote_parse(av[optind]);
+	l = remote_parse(av[optind], REMOTE_BKDURL);
 	unless (l) usage();
 	isLocal = (l->host == NULL);
 	remote_free(l);
@@ -65,7 +65,7 @@ rclone_main(int ac, char **av)
 		fprintf(stderr, "%s is not a BitKeeper root\n", av[optind]);
 		exit(1);
 	}
-	r = remote_parse(av[optind + 1]);
+	r = remote_parse(av[optind + 1], REMOTE_BKDURL);
 	unless (r) usage();
 
 	rc = rclone(av, opts, r, envVar);

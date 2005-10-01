@@ -662,7 +662,7 @@ synckeys_main(int ac, char **av)
 	}
 
 	has_proj("synckeys");
-	r = remote_parse(av[optind]);
+	r = remote_parse(av[optind], REMOTE_BKDURL);
 	assert(r);
 
 	if (proj_cd2root()) { 

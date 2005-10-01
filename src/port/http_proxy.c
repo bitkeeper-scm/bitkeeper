@@ -395,14 +395,14 @@ _get_http_autoproxyurl(char **proxies, char *host, char *WPAD_url)
 	}
 
 	unless (tmpf = bktmp(0, "proxy")) goto out;
-	r = remote_parse(WPAD_url);
+	r = remote_parse(WPAD_url, 0);
 	r->rfd = r->wfd = connect_srv(r->host, r->port, r->trace);
 	if (r->rfd < 0) {
 		verbose((stderr, "Unable to connect to %s\n", WPAD_url));
 		goto out;
 	}
 	r->isSocket = 1;
-	if (http_fetch(r, WPAD_url, tmpf)) {
+	if (http_fetch(r, tmpf)) {
 		verbose((stderr, "Fetch of %s to %s failed\n",
 		    WPAD_url, tmpf));
 		goto out;

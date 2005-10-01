@@ -59,21 +59,6 @@ str2base64(const char *s)
 }
 
 /*
- * Make a Proxy-Authorzation header
- * Caller should free memory when done
- */
-private char *
-proxyAuthHdr(const char *cred)
-{
-	char	*t1, *t2;
-
-	t1 = str2base64(cred);
-	t2 = aprintf("Proxy-Authorization: BASIC %s\r\n", t1);
-	free(t1);
-	return (t2);
-}
-
-/*
  * Parse url to host and path
  */
 void
@@ -342,6 +327,7 @@ http_connect(remote *r)
 			}
 			/* Save the credential, needed in http_send() */
 			if (cred) r->cred = strdup(cred);
+			if (streq(proxy_type, "PROXY")) r->withproxy = 1;
 			freeLines(proxies, free);
 			return (0);
 		}
@@ -369,51 +355,79 @@ http_connect(remote *r)
 }
 
 
-int
-http_send(remote *r, char *msg,
-	size_t mlen, size_t extra, char *user_agent, char *cgi_script)
+private int
+http_sendheader(remote *r, char *user_agent, char *cmd, size_t len)
 {
-	unsigned int start, len, l;
-	int	n = 0;
-	char	*header = 0;
-	char	*spin = "|/-\\";
-	char	*proxy_auth = "";
-
+	int	rc;
+	char	*p, *header;
+	char	**hh = 0;
 
 	/*
 	 * make HTTP header
 	 */
 	assert(r);
 	assert(r->host);
+
+#define	APPEND(h)	(hh = addLine(hh, aprintf h))
+
+	APPEND(("%s ", cmd));
+	/*
+	 * setup Request-URI for message
+	 * see rfc2616 sec 5.1.2
+	 */
+	if (r->withproxy) APPEND(("http://%s:%d", r->host, r->port));
+	if (r->httppath) {
+		if (r->httppath[0] != '/') APPEND(("/"));
+		APPEND(("%s", r->httppath));
+	} else {
+		APPEND(("/"));
+	}
+	APPEND((" HTTP/1.0\r\n"));
 	if (r->cred) {
 		if (r->trace){
 			fprintf(stderr, "Proxy Authorization => (%s)\n",
 			    r->cred);
 		}
-		proxy_auth = proxyAuthHdr(r->cred);
+		p = str2base64(r->cred);
+		APPEND(("Proxy-Authorization: BASIC %s\r\n", p));
+		free(p);
 	}
-	header = aprintf(
-	    "POST http://%s:%d/cgi-bin/%s HTTP/1.0\r\n"
-	    "%s"			/* optional proxy authentication */
+	APPEND((
 	    "User-Agent: BitKeeper-%s/%s\r\n"
 	    "Accept: text/html\r\n"
-	    "Host: %s:%d\r\n"
-	    "Content-type: application/octet-stream\r\n"
-	    "Content-length: %u\r\n"
-	    "\r\n",
-	    r->host, r->port, cgi_script, proxy_auth, user_agent, bk_vers,
-	    r->host, r->port,
-	    mlen + extra);
+	    "Host: %s:%d\r\n",
+	    user_agent, bk_vers,
+	    r->host, r->port));
+	if (len) {
+		APPEND((
+		    "Content-type: application/octet-stream\r\n"
+		    "Content-length: %u\r\n",
+		    len));
+	}
+	APPEND(("\r\n"));	/* blank line at end of header */
+	header = joinLines("", hh);
+	freeLines(hh, free);
+#undef	APPEND
 
-	if (*proxy_auth) free(proxy_auth);
 	if (r->trace) fprintf(stderr, "Sending http header:\n%s", header);
-
 	len = strlen(header);
+	rc = 0;
 	if (write_blk(r, header, len) != len) {
 		if (r->trace) fprintf(stderr, "Send failed\n");
-err:		if (header) free(header);
-		return (-1);
+		rc = -1;
 	}
+	free(header);
+	return (rc);
+}
+
+int
+http_send(remote *r, char *msg, size_t mlen, size_t extra, char *user_agent)
+{
+	unsigned int start, len, l;
+	int	n = 0;
+	char	*spin = "|/-\\";
+
+	if (http_sendheader(r, user_agent, "POST", mlen + extra)) return (-1);
 	if (r->trace) fprintf(stderr, "Sending data file ");
 
 	for (start = 0; start < mlen; ) {
@@ -436,42 +450,25 @@ err:		if (header) free(header);
 				"Send failed, wanted %d, got %d\n",
 				(int)mlen, start);
 		}
-		goto err;
+		return (-1);
 	}
-	free(header);
-	return 0;
+	return (0);
 }
 
 int
-http_fetch(remote *r, char *url, char *file)
+http_fetch(remote *r, char *file)
 {
-	char	*header = 0;
 	int	got, len, i;
 	int	rc = -1;
 	int	binary = 0;
 	FILE	*f;
 	char	buf[MAXLINE];
 
-#ifndef	WIN32
-	/* This requires the win32-socket code ... */
 	r->rf = fdopen(r->rfd, "r");
 	assert(r->rf);
-#endif
 
-	header = aprintf(
-	    "GET %s HTTP/1.0\r\n"
-	    "User-Agent: BitKeeper-fetch/%s\r\n"
-	    "Accept: text/html\r\n"
-	    "Host: %s:%d\r\n"
-	    "\r\n",
-	    url, bk_vers, r->host, r->port);
+	if (http_sendheader(r, "fetch", "GET", 0)) goto out;
 
-	if (r->trace) fprintf(stderr, "Sending http header:\n%s", header);
-	len = strlen(header);
-	if (write_blk(r, header, len) != len) {
-		if (r->trace) fprintf(stderr, "Send failed\n");
-		goto out;
-	}
 	/* skip http header */
 	buf[0] = 0;
 	getline2(r, buf, sizeof(buf));
@@ -511,7 +508,6 @@ http_fetch(remote *r, char *url, char *file)
 		rc = 0;
 	}
  out:
-	if (header) free(header);
 	disconnect(r, 2);
 	return (rc);
 }
@@ -525,7 +521,8 @@ httpfetch_main(int ac, char **av)
 		fprintf(stderr, "usage: bk _httpfetch <url>\n");
 		return (1);
 	}
-	r = remote_parse(av[1]);
+	r = remote_parse(av[1], 0);
+	r->httppath = r->path;
 	if (http_connect(r)) return (1);
-	return (http_fetch(r, av[1], "-"));
+	return (http_fetch(r, "-"));
 }

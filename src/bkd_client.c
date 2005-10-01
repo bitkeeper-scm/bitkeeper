@@ -12,7 +12,7 @@ private	remote	*url_parse(char *p, int default_port);
  * into a struct remote.
  */
 remote *
-remote_parse(const char *url)
+remote_parse(const char *url, u32 flags)
 {
 	char	*freeme = 0;
 	static	int echo = -1;
@@ -36,7 +36,9 @@ remote_parse(const char *url)
 		}
 	} else if (strneq("http://", p, 7)) {
 		r = url_parse(p + 7, WEB_PORT);
-		if (r) r->type = ADDR_HTTP;;
+		if (r) r->type = ADDR_HTTP;
+		r->httppath =
+		    (flags & REMOTE_BKDURL) ? "/cgi-bin/web_bkd" : r->path;
 	} else if (strneq("rsh://", p, 6)) {
 		r = url_parse(p + 6, 0);
 		if (r) {
@@ -316,12 +318,8 @@ private pid_t
 bkd_tcp_connect(remote *r)
 {
 	int	i;
-	char	*cgi = WEB_BKD_CGI;
 
 	if (r->type == ADDR_HTTP) {
-		if (r->path && strneq(r->path, "cgi-bin/", 8)) {
-			cgi = r->path + 8;
-		}
 		http_connect(r);
 	} else {
 		i = tcp_connect(r->host, r->port);

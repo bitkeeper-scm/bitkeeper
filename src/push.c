@@ -110,7 +110,7 @@ err:		freeLines(envVar, free);
 	}
 
 	EACH (urls) {
-		r = remote_parse(urls[i]);
+		r = remote_parse(urls[i], REMOTE_BKDURL);
 		unless (r) goto err;
 		if (opts.debug) r->trace = 1;
 		opts.lcsets = opts.rcsets = opts.rtags = 0;

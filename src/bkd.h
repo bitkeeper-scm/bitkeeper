@@ -102,7 +102,9 @@ extern	char cmdlog_buffer[];
 extern	char *logRoot;
 
 void	bkd_server(int ac, char **av);
-remote	*remote_parse(const char *url);
+
+#define	REMOTE_BKDURL	1	/* URL is for BKD (effects http headers) */
+remote	*remote_parse(const char *url, u32 flags);
 char	*remote_unparse(remote *r);
 pid_t	bkd(int compress, remote *r);
 int	gunzip2fd(char *input, int len, int fd, int hflag);
