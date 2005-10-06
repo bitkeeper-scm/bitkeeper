@@ -344,7 +344,7 @@ wrlock(void)
 	}
 
 	sprintf(path, "%s/%s", root, ROOT2RESYNC);
-	if (exists(path)) {
+	if (exists(path) && !getenv("_BK_IGNORE_RESYNC_LOCK")) {
 		sccs_unlockfile(lock);
 		sprintf(path, "%s/%s", root, WRITER_LOCK_DIR);
 		(void)rmdir(path);

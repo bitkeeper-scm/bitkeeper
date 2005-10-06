@@ -86,10 +86,13 @@ push_main(int ac, char **av)
 		fprintf(opts.out, "push: cannot find package root.\n");
 		exit(1);
 	}
+
 	unless (eula_accept(EULA_PROMPT, 0)) {
 		fprintf(stderr, "push: failed to accept license, aborting.\n");
 		exit(1);
 	}
+
+	if (sane(0, 0) != 0) return (1);
 
 	unless (urls) {
 		urls = parent_pushp();

@@ -201,10 +201,11 @@ private	int
 passes(opts *opts)
 {
 	sccs	*s = 0;
+	FILE	*p = 0;
+	char	*t;
 	char	buf[MAXPATH];
 	char	path[MAXPATH];
 	char	flist[MAXPATH];
-	FILE	*p = 0;
 
 	/* Make sure only one user is in here at a time. */
 	if (sccs_lockfile(RESOLVE_LOCK, 0, 0)) {
@@ -360,6 +361,8 @@ that will work too, it just gets another patch.\n");
 		}
 
 		if (opts->automerge) {
+			t = aprintf("| %d unresolved name conflict[s] |", n);
+			opts->notmerged = addLine(opts->notmerged, t);
 			opts->hadConflicts = n;
 			goto pass3;
 		}
@@ -601,29 +604,26 @@ pass1_renames(opts *opts, sccs *s)
 private	int
 pass2_renames(opts *opts)
 {
-	char	path[MAXPATH];
 	sccs	*s = 0;
-	FILE	*f;
 	int	n = 0;
+	int	i;
 	resolve	*rs;
 	char	*t;
+	char	**names;
+	char	path[MAXPATH];
 
 	if (opts->debug) fprintf(stderr, "pass2_renames\n");
 
 	unless (exists("BitKeeper/RENAMES/SCCS")) return (0);
 
 	/*
-	 * This needs to be an find|sort or the regressions don't pass
+	 * This needs to be sorted or the regressions don't pass
 	 * because some filesystems do not do FIFO ordering on directory
 	 * files (think hashed directories.
 	 */
-	unless (f =
-	    popen("bk _find BitKeeper/RENAMES/SCCS | bk _sort", "r")) {
-	    	return (0);
-	}
-	while (fnext(path, f)) {
-		chop(path);
-		localName2bkName(path, path);
+	names = getdir("BitKeeper/RENAMES/SCCS");
+	EACH(names) {
+		sprintf(path, "BitKeeper/RENAMES/SCCS/%s", names[i]);
 
 		/* may have just been deleted it but be in readdir cache */
 		unless (exists(path)) continue;
@@ -678,7 +678,7 @@ pass2_renames(opts *opts)
 		}
 out:		resolve_free(rs);
 	}
-	pclose(f);
+	freeLines(names, free);
 	return (n);
 }
 
@@ -769,7 +769,6 @@ create(resolve *rs)
 	sccs	*local;
 	int	ret = 0;
 	int	how;
-	extern	int gc_sameFiles(resolve *);
 	static	char *cnames[4] = {
 			"Huh?",
 			"an SCCS file",
@@ -1785,8 +1784,6 @@ checkins(opts *opts, char *comment)
  * Merge a conflict, manually or automatically.
  * We handle permission conflicts here as well.
  *
- * XXX - when in automerge we will go interactive on types, modes, flags.
- *
  * XXX - we need to handle descriptive text, lods, and symbols.
  * The symbol case is weird: a conflict is when the same symbol name
  * is in both branches without one below the trunk.
@@ -2296,6 +2293,31 @@ pass4_apply(opts *opts)
 	if (opts->log) fprintf(opts->log, "==== Pass 4 ====\n");
 	opts->pass = 4;
 
+	/*
+	 * If the user called us directly we don't have a repo lock and need
+	 * to get one.
+	 */
+	chdir(RESYNC2ROOT);
+	putenv("_BK_IGNORE_RESYNC_LOCK=YES");
+	for ( ; !opts->from_pullpush; ) {
+		unless (ret = repository_wrlock()) break;
+		switch (ret) {
+		    case LOCKERR_LOST_RACE:
+			fprintf(stderr, "Waiting for write lock...\n");
+			if (getenv("_BK_NO_LOCK_RETRY")) {
+				resolve_cleanup(opts, 0);
+			}
+			sleep(1);
+			break;
+		    case LOCKERR_PERM:
+			assert(0);	/* sane should have caught this */
+		    default:
+			fprintf(stderr, "Unknown locking error.\n");
+			resolve_cleanup(opts, 0);
+		}
+	}
+	chdir(ROOT2RESYNC);
+
 	unfinished(opts);
 
 	/*
@@ -2681,6 +2703,8 @@ resolve_cleanup(opts *opts, int what)
 		fprintf(stderr, "cleanup: nothing removed.\n");
 		goto exit;
 	}
+
+	unless (opts->from_pullpush) repository_wrunlock(0);
 
 	/*
 	 * Get the patch file name from RESYNC before deleting RESYNC.

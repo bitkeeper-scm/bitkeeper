@@ -178,3 +178,4 @@ void	resolve_dump(resolve *rs);
 int	do_diff(resolve *rs, char *left, char *right, int wait);
 int	resolve_binary(resolve *rs);
 void	restore_checkouts(opts *opts);
+int	gc_sameFiles(resolve *rs);

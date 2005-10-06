@@ -136,10 +136,24 @@ echo OK
 echo $N Make sure that no args means relink to the parent ...........$NL
 cd $HERE/clone
 bk -r admin -z
+MINE=`/bin/ls -li SCCS/s.ChangeSet | awk '{print $1}'`
+PARENT=`/bin/ls -li $HERE/project/SCCS/s.ChangeSet | awk '{print $1}'`
 bk relink 2>OUT || exit 1
 grep -q "relinked $NFILE/$NFILE files, 0 different, 0 already linked." OUT || {
 	echo Bad status message
 	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure that no args means use the parent inode ...........$NL
+INO=`/bin/ls -li SCCS/s.ChangeSet | awk '{print $1}'`
+test $MINE -eq $INO && {
+	echo failed
+	exit 1
+}
+test $PARENT -eq $INO || {
+	echo failed to use parent
 	exit 1
 }
 echo OK

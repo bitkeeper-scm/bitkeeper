@@ -901,7 +901,13 @@ out:		chdir(frompath);
 	repository_rdunlock(0);
 	chdir(frompath);
 	repository_wrunlock(0);
-	if (quiet) exit(0);
+
+	/*
+	 * XXX - we could put in logic here that says if we relinked enough
+	 * (or were already relinked enough) to the parent the exit.
+	 * I doubt we'll have more than one local parent so I'm skipping it.
+	 */
+	if (quiet)  return (0);
 	fprintf(stderr,
 	    "%s: relinked %u/%u files, %u different, %u already linked.\n",
 	    from, n, total, total - (n + linked), linked);

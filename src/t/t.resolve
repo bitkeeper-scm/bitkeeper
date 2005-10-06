@@ -362,6 +362,11 @@ echo hj > hh
 	cat OUT
 	exit 1
 }
+grep -q '| 1 unresolved name conflict' OUT || {
+	echo wrong message
+	cat OUT
+	exit 1
+}
 echo OK
 
 echo $N Check vr when remote is on a branch .........................$NL
@@ -651,6 +656,7 @@ grep -q 'mode conflict' OUT && {
 }
 echo OK
 
+cp -rp $HERE/mode $HERE/locktest
 echo $N Make sure we can finish the resolve .........................$NL
 ( 
   echo '?'
@@ -660,7 +666,7 @@ echo $N Make sure we can finish the resolve .........................$NL
   echo '?'
   echo q
 ) | BK_FORCE_RESOLVE_RERUN=YES bk resolve -a > OUT 2>&1
-grep -q 'The file has conflict changes to the modes.' OUT &&
+grep -q 'The file has conflicting changes to the modes.' OUT &&
 grep -q 'changed mode to -rwx--x---' OUT &&
 grep -q 'changed mode to -rwxrwxrwx' OUT &&
 grep -q 'resolve complete.' OUT || {
@@ -668,6 +674,25 @@ grep -q 'resolve complete.' OUT || {
 	cat OUT
 	exit 1
 }
+echo OK
+
+echo $N Make sure that we get a lock in pass4 .......................$NL
+cd $HERE/locktest
+bk lock -tr > PORT &
+bk lock -L
+( 
+  echo 'l'
+  echo 'm'
+  echo 'C'
+  echo q
+) | _BK_NO_LOCK_RETRY=YES BK_FORCE_RESOLVE_RERUN=YES bk resolve -a > OUT 2>&1
+grep -q 'Waiting for write lock...' OUT || {
+	echo failed
+	cat OUT
+	bk _kill `cat PORT`
+	exit 1
+}
+bk _kill `cat PORT`
 echo OK
 
 echo $N Keep keywords in an sccs merge ..............................$NL

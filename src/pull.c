@@ -95,6 +95,13 @@ pull_main(int ac, char **av)
 		fprintf(stderr, "pull: cannot find package root.\n");
 		exit(1);
 	}
+	unless (eula_accept(EULA_PROMPT, 0)) {
+		fprintf(stderr, "pull: failed to accept license, aborting.\n");
+		exit(1);
+	}
+
+	if (sane(0, 0) != 0) return (1);
+
 	unless (urls) {
 		urls = parent_pullp();
 		unless (urls) {

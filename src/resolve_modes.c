@@ -27,7 +27,7 @@ m_help(resolve *rs)
 
 	fprintf(stderr,
 "---------------------------------------------------------------------------\n\
-The file has conflict changes to the modes.\n\
+The file has conflicting changes to the modes.\n\
 Local:  %s@%s\n\t%s\n\
 Remote: %s@%s\n\t%s\n\
 ---------------------------------------------------------------------------\n",
