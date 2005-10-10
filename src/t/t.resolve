@@ -469,10 +469,6 @@ touch parent
 bk new $Q parent
 bk commit $Q -ychild
 bk pull $Q -R
-test -f RESYNC/BitKeeper/etc/RESYNC_TREE || {
-	echo failed to create RESYNC/BitKeeper/etc/RESYNC_TREE
-	exit 1
-}
 BK_DEBUG_CMD=YES
 export BK_DEBUG_CMD
 (
@@ -488,10 +484,6 @@ test -d RESYNC && {
 grep -q 'SYSIO {bk} {check} {-c} {-}' OUT || {
 	echo failed to run check
 	cat OUT
-	exit 1
-}
-test -f BitKeeper/etc/RESYNC_TREE && {
-	echo Should not have lifted up BitKeeper/etc/RESYNC_TREE
 	exit 1
 }
 echo OK

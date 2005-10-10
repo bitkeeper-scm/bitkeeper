@@ -535,3 +535,11 @@ proj_samerepo(char *source, char *dest)
 	proj_free(pj2);
 	return (rc);
 }
+
+int
+proj_isResync(project *p)
+{
+	unless (p) p = curr_proj();
+
+	return (p && p->rparent);
+}

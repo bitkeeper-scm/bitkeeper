@@ -246,7 +246,6 @@ usage:		system("bk help -s takepatch");
 	 */
 	getGone();
 
-	touch(ROOT2RESYNC "/BitKeeper/etc/RESYNC_TREE", 0666);
 	if (resolve) {
 		char 	*resolve[] = {"bk", "resolve", 0, 0, 0, 0, 0, 0};
 		int 	i;
