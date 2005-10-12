@@ -156,12 +156,12 @@ err:		freeLines(envVar, free);
 	return (rc);
 }
 
-private void
+private int
 send_part1_msg(remote *r, char **envVar)
 {
 	char	*cmd, buf[MAXPATH];
 	FILE 	*f;
-	int	gzip;
+	int	gzip, rc;
 
 	/*
 	 * If we are using ssh/rsh do not do gzip ourself
@@ -185,8 +185,9 @@ send_part1_msg(remote *r, char **envVar)
 	system(cmd);
 	free(cmd);
 
-	send_file(r, buf, 0);
+	rc = send_file(r, buf, 0);
 	unlink(buf);
+	return (rc);
 }
 
 /*
@@ -208,7 +209,7 @@ push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 	delta	*d;
 
 	if (bkd_connect(r, opts.gzip, opts.verbose)) return (-3);
-	send_part1_msg(r, envVar);
+	if (send_part1_msg(r, envVar)) return (-3);
 	if (r->rfd < 0) return (-1);
 
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
@@ -486,7 +487,7 @@ send_patch_msg(remote *r, char rev_list[], char **envVar)
 		disconnect(r, 2);
 		return (-1);
 	}
-	write_blk(r, "@END@\n", 6);	/* important for win32 socket helper */
+	writen(r->wfd, "@END@\n", 6);
 	disconnect(r, 1);
 
 	if (unlink(msgfile)) perror(msgfile);

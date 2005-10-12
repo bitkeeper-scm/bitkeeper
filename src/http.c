@@ -412,7 +412,7 @@ http_sendheader(remote *r, char *user_agent, char *cmd, size_t len)
 	if (r->trace) fprintf(stderr, "Sending http header:\n%s", header);
 	len = strlen(header);
 	rc = 0;
-	if (write_blk(r, header, len) != len) {
+	if (writen(r->wfd, header, len) != len) {
 		if (r->trace) fprintf(stderr, "Send failed\n");
 		rc = -1;
 	}
@@ -435,7 +435,7 @@ http_send(remote *r, char *msg, size_t mlen, size_t extra, char *user_agent)
 
 		if (len > 4096) len = 4096;
 
-		l = write_blk(r, msg + start, len);
+		l = writen(r->wfd, msg + start, len);
 		if (l <= 0) {
 			perror("http_send");
 			break;

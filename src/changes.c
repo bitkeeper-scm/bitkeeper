@@ -250,10 +250,11 @@ out:	if (pid > 0)  {
 	return (rc);
 }
 
-private void
+private int
 _doit_local(int nac, char **nav, char *url, int wfd)
 {
 	FILE	*p;
+	int	status;
 	char	buf[MAXKEY];
 
 	sprintf(buf, "bk synckeys -lk %s", url);
@@ -268,16 +269,19 @@ _doit_local(int nac, char **nav, char *url, int wfd)
 			*v += 1;
 		}
 	}
-	pclose(p);
+	status = pclose(p);
+	if (status == -1) return (1);
+	unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) return (1);
+	return (0);
 }
 
 private int
 doit_local(int nac, char **nav, char **urls)
 {
-	int	wfd, status;
+	int	wfd, status, i;
 	pid_t	pid;
 	kvpair	kv;
-	int	m = 0, i;
+	int	m = 0, rc = 0;
 
 	/*
 	 * What we want is: bk synckey -lk url | bk changes opts -
@@ -294,14 +298,14 @@ doit_local(int nac, char **nav, char **urls)
 			printf("==== changes -L %s ====\n", urls[i]);
 			fflush(stdout);
 		}
-		_doit_local(nac, nav, urls[i], wfd);
+		rc |= _doit_local(nac, nav, urls[i], wfd);
 	}
 	close(wfd);
-	waitpid(pid, &status, 0);
+	if (waitpid(pid, &status, 0) == -1) return (1);
 	unless (WIFEXITED(status)) return (1); /* interrupted */
 	if (WEXITSTATUS(status) != 0) return (1);
 
-	unless (opts.showdups) return (0);
+	unless (opts.showdups) return (rc);
 
 	/* If opts.showdups was set, _doit_local() filled up the
 	 * seen HASH with a set of keys, and the number of repositories
@@ -313,12 +317,11 @@ doit_local(int nac, char **nav, char **urls)
 
 		if (x > m) m = x;
 	}
-
 	EACH_HASH(seen) {
 		if (*(int *)kv.val.dptr == m) fputs(kv.key.dptr, stdout);
 	}
 
-	return (0);
+	return (rc);
 }
 
 private int
@@ -1052,14 +1055,14 @@ send_part2_msg(remote *r, char **av, char *key_list)
 	unlink(msgfile);
 	f = fopen(key_list, "rt");
 	assert(f);
-	write_blk(r, "@KEY LIST@\n", 11);
+	writen(r->wfd, "@KEY LIST@\n", 11);
 	while (fnext(buf, f)) {
-		write_blk(r, buf, strlen(buf));
+		writen(r->wfd, buf, strlen(buf));
 		chomp(buf);
 		/* mark the seen key, so we can skip it on next repo */
 		unless (opts.showdups) hash_storeStr(seen, buf, "");
 	}
-	write_blk(r, "@END@\n", 6);
+	writen(r->wfd, "@END@\n", 6);
 	fclose(f);
 	return (rc);
 }
@@ -1075,7 +1078,7 @@ changes_part1(remote *r, char **av, char *key_list)
 	sccs	*s;
 
 	if (bkd_connect(r, 0, 1)) return (-1);
-	send_part1_msg(r, av);
+	if (send_part1_msg(r, av)) return (-1);
 	if (r->rfd < 0) return (-1);
 
 	unless (r->rf) r->rf = fdopen(r->rfd, "r");
@@ -1243,5 +1246,5 @@ doit_remote(char **nav, char *url)
 		    "changes: remote locked, trying again...\n");
 		sleep(min((i++ * 2), 10)); /* auto back off */
 	}
-	return (rc);
+	return (rc ? 1 : 0);
 }

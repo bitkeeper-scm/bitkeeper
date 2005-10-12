@@ -105,11 +105,13 @@ bkmail(char *url, char **to, char *subject, char *file)
 	rc = send_file(r, bkmsg, 0);
 	unlink(bkmsg);
 	free(bkmsg);
-	if (r->type == ADDR_HTTP) skip_http_hdr(r);
-	while (getline2(r, buf, sizeof (buf)) > 0) {
-		unless (buf[0]) break;
-		if (streq(buf, "@OK@")) break;
-		printf("%s\n", buf);
+	unless (rc) {
+		if (r->type == ADDR_HTTP) skip_http_hdr(r);
+		while (getline2(r, buf, sizeof (buf)) > 0) {
+			unless (buf[0]) break;
+			if (streq(buf, "@OK@")) break;
+			printf("%s\n", buf);
+		}
 	}
 	disconnect(r, 1);
 	wait_eof(r, 0);

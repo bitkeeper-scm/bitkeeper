@@ -120,7 +120,6 @@ void	remote_print(remote *r, FILE *f);
 int	outfd(int fd, char*buf);
 
 int	read_blk(remote *r, char *c, int len);
-int	write_blk(remote *r, char *c, int len);
 sccs *	mk_probekey(FILE *f);
 int	getline2(remote *r, char *buf, int size); 
 int	get_ok(remote *r, char *read_ahead, int verbose); 

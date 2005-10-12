@@ -131,7 +131,10 @@ _superset() {
 	test "X$@" = X && {
 		test "X`bk parent -il1`" = "X" && exit 1
 	}
-	bk changes -Laq $CHANGES "$@" > $TMP2
+	bk changes -Laq $CHANGES "$@" > $TMP2 || {
+		rm -f $TMP1 $TMP2
+		exit 1
+	}
 	test -s $TMP2 && {
 		test $LIST = NO && {
 			rm -f $TMP1 $TMP2

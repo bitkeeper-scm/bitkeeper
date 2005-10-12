@@ -112,18 +112,15 @@ rclone_part1(opts opts, remote *r, char **envVar)
 	char	buf[MAXPATH];
 
 	if (bkd_connect(r, opts.gzip, opts.verbose)) return (-1);
-	send_part1_msg(opts, r, envVar);
-
+	if (send_part1_msg(opts, r, envVar)) return (-1);
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	if (getline2(r, buf, sizeof(buf)) <= 0) return (-1);
-
 	if (streq(buf, "@SERVER INFO@"))  {
 		if (getServerInfoBlock(r)) return (-1);
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
 		exit(1);
 	}
-
 	if (getline2(r, buf, sizeof(buf)) <= 0) return (-1);
 	if (streq(buf, "@TRIGGER INFO@")) {
 		if (getTriggerInfoBlock(r, opts.verbose)) return (-1);
@@ -279,7 +276,7 @@ send_sfio_msg(opts opts, remote *r, char **envVar)
 		disconnect(r, 2);
 		return (-1);
 	}
-	write_blk(r, "@END@\n", 6);
+	writen(r->wfd, "@END@\n", 6);
 	return (rc);
 }
 

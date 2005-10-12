@@ -39,14 +39,16 @@ usage:		fprintf(stderr, "Usage: bk kill URL\n");
 	sendEnv(f, 0, r, SENDENV_NOREPO|SENDENV_NOLICENSE);
 	fprintf(f, "kill\n");
 	fclose(f);
-	send_file(r, tmpf, 0);
+	rc = send_file(r, tmpf, 0);
 	unlink(tmpf);
 	free(tmpf);
-	if (r->type == ADDR_HTTP) skip_http_hdr(r);
-	getline2(r, buf, sizeof (buf));
-	unless (streq("@END@", buf)) {
-		printf("%s\n", buf);
-		rc = 1;
+	unless (rc) {
+		if (r->type == ADDR_HTTP) skip_http_hdr(r);
+		getline2(r, buf, sizeof (buf));
+		unless (streq("@END@", buf)) {
+			printf("%s\n", buf);
+			rc = 1;
+		}
 	}
 	disconnect(r, 1);
 	return (rc);

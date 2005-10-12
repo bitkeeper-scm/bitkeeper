@@ -225,12 +225,6 @@ read_blk(remote *r, char *buf, int len)
 	}
 }
 
-int
-write_blk(remote *r, char *buf, int len)
-{
-	return (writen(r->wfd, buf, len));
-}
-
 /*
  * We have completed our transactions with a remote bkd and closed our
  * write filehandle, now we want to wait until the remote bkd has
@@ -622,10 +616,8 @@ send_msg(remote *r, char *msg, int mlen, int extra)
 			return (-1);
 		}
 	} else {
-		if (write_blk(r, msg, mlen) != mlen) {
-			perror("send_msg");
-			fprintf(stderr, "r->wfd = %d errno = %d\n",
-			    r->wfd, errno);
+		if (writen(r->wfd, msg, mlen) != mlen) {
+			remote_perror(r, "write");
 			return (-1);
 		}
 	}
@@ -650,7 +642,12 @@ send_file(remote *r, char *file, int extra)
 	free(q);
 	rc = send_msg(r, hdr, strlen(hdr), len+extra);
 	free(hdr);
-	unless (rc) if (write_blk(r, m->mmap, len) != len) rc = -1;
+	unless (rc) {
+		if (writen(r->wfd, m->mmap, len) != len) {
+			remote_perror(r, "write");
+			rc = -1;
+		}
+	}
 	mclose(m);
 	return (rc);
 }

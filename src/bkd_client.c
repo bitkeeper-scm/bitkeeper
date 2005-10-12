@@ -314,6 +314,17 @@ remote_print(remote *r, FILE *f)
 	fprintf(f, "\n");
 }
 
+void
+remote_perror(remote *r, char *msg)
+{
+	char	*p;
+
+	unless (r) return;
+	p = remote_unparse(r);
+	fprintf(stderr, "%s: %s: %s\n", p, msg, strerror(errno));
+	free(p);
+}
+
 private pid_t
 bkd_tcp_connect(remote *r)
 {

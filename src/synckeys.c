@@ -562,11 +562,12 @@ prunekey_main(int ac, char **av)
 }
 
 
-private void
+private int
 send_sync_msg(remote *r)
 {
-	char	*cmd, buf[MAXPATH];
 	FILE 	*f;
+	int	rc;
+	char	*cmd, buf[MAXPATH];
 
 	bktmp(buf, "synccmds");
 	f = fopen(buf, "w");
@@ -581,19 +582,23 @@ send_sync_msg(remote *r)
 	system(cmd);
 	free(cmd);
 
-	send_file(r, buf, 0);
+	rc = send_file(r, buf, 0);
 	unlink(buf);
+	return (rc);
 }
 
+/*
+ * Negative returns indicate error, positive returns are from prunekey.
+ */
 private int
 synckeys(remote *r, int flags)
 {
-	char	buf[MAXPATH], s_cset[] = CHANGESET;
 	int	rc;
 	sccs	*s;
+	char	buf[MAXPATH], s_cset[] = CHANGESET;
 
 	if (bkd_connect(r, 0, 1)) return (-1);
-	send_sync_msg(r);
+	if (send_sync_msg(r)) return (-1);
 	if (r->rfd < 0) return (-1);
 
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
@@ -605,7 +610,7 @@ synckeys(remote *r, int flags)
 		getline2(r, buf, sizeof(buf));
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
-		exit(1);
+		return (-1);
 	}
 	if (get_ok(r, buf, 1)) return (-1);
 
@@ -620,11 +625,11 @@ synckeys(remote *r, int flags)
 		    case -2:
 			getMsg("unrelated_repos", 0, '=', stderr);
 			sccs_free(s);
-			return (1); /* needed to force bkd unlock */
+			return (-1); /* needed to force bkd unlock */
 		    case -3:
 			getMsg("no_repo", 0, '=', stderr);
 			sccs_free(s);
-			return (1); /* empty dir */
+			return (-1); /* empty dir */
 			break;
 		}
 		rc = -1;
@@ -669,7 +674,7 @@ synckeys_main(int ac, char **av)
 		fprintf(stderr, "synckeys: cannot find package root.\n"); 
 		exit(1);
 	}
-	synckeys(r, flags);
+	c = synckeys(r, flags);
 	remote_free(r);
-	return (0);
+	return (c >= 0 ? 0 : -c);
 }

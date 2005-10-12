@@ -100,6 +100,8 @@ main(int ac, char **av, char **env)
 		exit(1);
 	}
 
+	signal(SIGPIPE, SIG_IGN); /* no-op on win32 */
+
 	/*
 	 * Support redirection via BK_STDIO=$HOST:$PORT.
 	 * Similarly for STDERR except that it is write only.
@@ -251,7 +253,6 @@ main(int ac, char **av, char **env)
 		for (ac = 0; av[ac] = av[optind++]; ac++);
 		if (dashr) {
 			unless (streq(prog, "sfiles") || streq(prog, "sfind")) {
-				signal(SIGPIPE, SIG_IGN); /* no-op on win32 */
 				if (sfiles(si > 1 ? sopts : 0)) return (1);
 				/* we have bk [-r...] cmd [opts] ... */
 				/* we want cmd [opts] ... - */
