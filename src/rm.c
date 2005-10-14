@@ -14,13 +14,10 @@ rm_main(int ac, char **av)
 {
 	char	*name;
 	int	c, errors = 0;
-	int 	useCommonDir = 0;
 	int	force = 0;
 
-	if (streq(basenm(av[0]), "rm")) useCommonDir = 1;
-        while ((c = getopt(ac, av, "df")) != -1) {
+        while ((c = getopt(ac, av, "f")) != -1) {
                 switch (c) {
-                    case 'd': useCommonDir++; break;		/* undoc? 2.0 */
 		    case 'f': force = 1; break;
                     default:
 usage:			system("bk help -s rm");
@@ -31,14 +28,14 @@ usage:			system("bk help -s rm");
 
 	for (name = sfileFirst("sccsrm",&av[optind], 0);
 	    name; name = sfileNext()) {
-		errors |= sccs_rm(name, NULL, useCommonDir, force);
+		errors |= sccs_rm(name, force);
 	}
 	if (sfileDone()) errors |= 2;
 	return (errors);
 }
 
 char *
-sccs_rmName(sccs *s, int useCommonDir)
+sccs_rmName(sccs *s)
 {
 	char	path[MAXPATH];
 	char	*r, *t, *b;
@@ -47,20 +44,20 @@ sccs_rmName(sccs *s, int useCommonDir)
 	char	*root;
 
 	b = basenm(s->sfile);
-	if (useCommonDir) {
-		unless (root = proj_root(s->proj)) {
-			fprintf(stderr, "sccsrm: cannot find root?\n");
-			return (NULL);
-		}
-		sprintf(path, "%s/BitKeeper/deleted/SCCS", root);
-		t = &path[strlen(path)];
-		*t++ = '/';
-	} else {
-		strcpy(path, s->sfile);
-		t = strrchr(path, '/');
-		assert(t);
-		t++;
+	b += 2;
+	unless (root = proj_root(s->proj)) {
+		fprintf(stderr, "sccsrm: cannot find root?\n");
+		return (NULL);
 	}
+
+	/* easy way */
+	sprintf(path, "%s/BitKeeper/deleted/SCCS/s..del-%s", root, b);
+	unless (exists(path)) return (strdup(path));
+
+	/* hard way */
+	sprintf(path, "%s/BitKeeper/deleted/SCCS", root);
+	t = &path[strlen(path)];
+	*t++ = '/';
 	d = sccs_ino(s);
 	if (d->random) {
 		r = d->random;
@@ -72,17 +69,17 @@ sccs_rmName(sccs *s, int useCommonDir)
 	}
 	for (try = 0; ; try++) {
 		if (try) {
-			sprintf(t, "s..del-%s~%s~%d", &b[2], r, try);
+			sprintf(t, "s..del-%s~%s~%d", b, r, try);
 		} else {
-			sprintf(t, "s..del-%s~%s", &b[2], r);
+			sprintf(t, "s..del-%s~%s", b, r);
 		}
 		unless (exists(path)) break;
 	}
-	return(strdup(path));
+	return (strdup(path));
 }
 
 int
-sccs_rm(char *name, char *del_name, int useCommonDir, int force)
+sccs_rm(char *name, int force)
 {
 	char	*rmName;
 	char	*sfile;
@@ -103,9 +100,18 @@ sccs_rm(char *name, char *del_name, int useCommonDir, int force)
 		sccs_free(s);
 		return (1);
 	}
+	if (sccs_clean(s, SILENT|CLEAN_SHUTUP)) {
+		unless (force) {
+			fprintf(stderr,
+			    "rm: %s is modified, delta|unedit first.\n",
+			    s->gfile);
+			sccs_free(s);
+			return (1);
+		}
+		sccs_unedit(s, SILENT);
+	}
 	sccs_close(s);
-	rmName = sccs_rmName(s, useCommonDir);
-	if (del_name) strcpy(del_name, rmName);
+	rmName = sccs_rmName(s);
 	error |= sccs_mv(sfile, rmName, 0, 1, 0, force);
 	sccs_free(s);
 	free(rmName);

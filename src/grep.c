@@ -80,9 +80,9 @@ grep_main(int ac, char **av)
 			break;
 		    case 'R':				/* BK range opt */
 			if (optarg && optarg[0]) {
-				range = aprintf("-r%s", optarg);
+				range = aprintf("-R%s", optarg);
 			} else {
-				range = aprintf("-r1.0..");
+				range = aprintf("-R1.0..");
 			}
 			break;
 
@@ -139,9 +139,8 @@ grep_main(int ac, char **av)
 		cmd = addLine(cmd, "-kpq");
 		cmd = addLine(cmd, rev);
 	} else if (range) {
-		cmd = addLine(cmd, "sccscat");
-		cmd = addLine(cmd, "-q");
-		if (range) cmd = addLine(cmd, range);
+		cmd = addLine(cmd, "annotate");
+		cmd = addLine(cmd, range);
 	} else {
 		cmd = addLine(cmd, "cat");
 	}

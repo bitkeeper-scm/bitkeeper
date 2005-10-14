@@ -34,7 +34,7 @@ f2csets_main(int argc, char **argv)
 	sccs_sdelta(s, sccs_ino(s), rootkey);
 	sccs_free(s);
 
-	i = sprintf(buf, "bk -R sccscat -ar -h " CHANGESET);
+	i = sprintf(buf, "bk -R annotate -R -ar -h " CHANGESET);
 
 	unless (f = popen(buf, "r")) {
 		perror(buf);

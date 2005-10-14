@@ -62,6 +62,7 @@ if [ $? -eq 0 ]; then echo failed 6; exit 1; fi
 bk ci $Q -yrename B/file1
 bk -r check -a || { echo check exits $?; exit 1; }
 echo OK
+
 echo $N Test sccsmv w/ unlocked file ................................$NL
 bk mv B/file2 C/file3
 if [ -f C/file3 ]; then echo failed; exit 1; fi
@@ -73,6 +74,7 @@ DPATH=`bk prs -hr1.1 -d:DPN: C/file3`
 if [ ${DPATH}X != "B/file2"X ]; then echo failed; exit 1; fi
 bk -r check -a || exit 1
 echo OK
+
 echo $N Test sccsmv to directory ....................................$NL
 bk mv B/file1 B/file4 C
 if [ ! -f C/SCCS/s.file1 ]; then echo failed; exit 1; fi
@@ -82,6 +84,7 @@ mkdir B
 bk mv C/file1 C/file4 B
 bk -r check -a || exit 1
 echo OK
+
 echo $N Test bk mvdir to directory that does not exist ..............$NL
 mkdir B/B1
 date > B/B1/fileB1
@@ -95,12 +98,14 @@ then	echo failed to move fileB1; exit 1
 fi
 bk -r check -a || exit 1
 echo OK
+
 echo $N And move it back ............................................$NL
 bk mv "BB BB/CCCC/DDDD" B || { echo error; exit 1; }
 if [ ! -f B/B1/SCCS/s.fileB1 ]
 then	echo failed to move fileB1; exit 1
 fi
 echo OK
+
 echo $N Test move sub-dir to dot ....................................$NL
 bk get $Q B/B1/fileB1
 mv B/B1 .
@@ -112,110 +117,121 @@ if [ ! -f B1/SCCS/s.fileB1 ]; then echo failed; exit 1; fi
 bk mv B1 B
 if [ ! -f B/B1/SCCS/s.fileB1 ]; then echo failed; exit 1; fi
 echo OK
-echo $N Test sccsrm w/ p locked file ................................$NL
+
+echo $N Test bk rm w/ p locked file .................................$NL
 bk get $Q -e B/file1
-bk sccsrm B/file1
-if [ -f B/SCCS/p..del-file1 ]; then echo failed 1; exit 1; fi
-#if [ ! -f B/SCCS/s..del-file1 ]; then echo failed 2; exit 1; fi
-ls B/SCCS | grep -q "^s..del-file1"
-if [ $? -ne 0 ]; then echo failed 2; exit 1; fi
-SFILE=`ls B/SCCS | grep "^s..del-file1"`
-REV=`bk prs -hr+ -d:I: B/SCCS/$SFILE`
+bk rm B/file1
+test -f BitKeeper/deleted/SCCS/s..del-file1 || {
+	echo failed to move file to deleted
+	find . -type f
+	exit 1
+}
+test -f B/SCCS/p.file1 && {
+	echo failed to clean up old p.file
+	exit 1
+}
+test -f BitKeeper/deleted/SCCS/p..del-file1 && {
+	echo failed to toss p..del
+	exit 1
+}
+REV=`bk prs -hr+ -d:I: BitKeeper/deleted/.del-file1`
 if [ ${REV}X != "1.10"X ]; then echo failed 3 $REV; exit 1; fi
 echo OK
-echo $N Test sccsrm w non p-locked file .............................$NL
-bk sccsrm C/file3
-if [ -f C/SCCS/p..del-file3 ]; then echo failed; exit 1; fi
-#if [ ! -f C/SCCS/s..del-file3 ]; then echo failed; exit 1; fi
-ls C/SCCS | grep -q "^s..del-file3"
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
-SFILE=`ls C/SCCS | grep "^s..del-file3"`
-GFILE=`bk prs -hr+ -d:GFILE: C/SCCS/$SFILE`
-echo $GFILE | grep -q "^C/.del-file3"
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
+
+echo $N Test bk rm w/ p locked file with changes ....................$NL
+echo foo > foo
+bk new $Q foo
+bk edit $Q foo
+echo bar > foo
+bk rm foo > OUT 2>&1 && {
+	echo should have failed
+	cat OUT
+	exit 1
+}
+grep -q 'rm: foo is modified' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+bk rm -f foo || {
+	echo rm -f should have worked
+	exit 1
+}
+test -f BitKeeper/deleted/SCCS/s..del-foo || {
+	echo failed to move file to deleted
+	exit 1
+}
+test -f SCCS/p.foo && {
+	echo failed to clean up old p.file
+	exit 1
+}
+test -f BitKeeper/deleted/SCCS/p..del-foo && {
+	echo failed to clean deleted p.file
+	exit 1
+}
+rm -f OUT
 echo OK
-bk -r check -ac
+
+echo $N Test bk rm w non p-locked file ..............................$NL
+bk rm C/file3
+test -f BitKeeper/deleted/SCCS/s..del-file3 || {
+	echo failed to move file to deleted
+	exit 1
+}
+echo OK
+
 echo $N Check implied file lists for rm-ed files ....................$NL
+mkdir C
 cd C
-GFILE=`basename $GFILE`
+echo foo > foo
+bk new $Q foo
+bk mv foo .del-foo
 bk co $Q
-if [ -f $GFILE ]; then echo Failed - file was gotten; exit 1; fi
+if [ -f .del-foo ]; then echo Failed - file was gotten; exit 1; fi
 echo OK
+
 echo $N Explicitly get a removed file ...............................$NL
-bk co $Q $GFILE
-if [ ! -f $GFILE ]; then echo Failed to get file; exit 1; fi
+bk co $Q .del-foo
+if [ ! -f .del-foo ]; then echo Failed to get file; exit 1; fi
 echo OK
+
 echo $N Clean all including rm-ed file ..............................$NL
 bk clean
-if [ -f $GFILE ]; then echo Failed to clean file; exit 1; fi
+if [ -f .del-foo ]; then echo Failed to clean file; exit 1; fi
 echo OK
-cd ..
-echo $N Test sccsrm w/ -d option ....................................$NL
-# this directory should be created by "bk setup"
-mkdir -p BitKeeper/deleted/SCCS
-bk clean A
-bk rm A/file3
-DDIR=BitKeeper/deleted
-SFILE=`ls $DDIR/SCCS | grep "^s..del-file3"`
-if [ ! -f $DDIR/SCCS/$SFILE ]; then echo failed; exit 1; fi
-ls ${DDIR}/SCCS | grep -q "^p..del-file3"
-if [ $? -eq 0 ]; then  echo failed; exit 1; fi
-DPATH=`bk prs -hr+ -d:DPN: ${DDIR}/SCCS/$SFILE`
-SFILE2=`bk _g2sccs $DPATH`
-if [ ${SFILE2}X != "${DDIR}/SCCS/$SFILE"X ]; then echo failed; exit 1; fi
-echo OK
-echo $N Test sccsrm w/ -d \& p locked file ...........................$NL
-bk get $Q -e A/file4
-echo "This is a comment for file4" > A/SCCS/c.file4
-echo "This is a old comment for file4" > A/SCCS/c.file4@1.1
-REV=`bk prs -hr+ -d:I: A/file4`
-bk rm A/file4
-if [ -f $A/SCCS/s.file4 ]; then echo failed; exit 1; fi
-if [ -f $A/SCCS/c.file4 ]; then echo failed; exit 1; fi
-if [ -f $A/SCCS/c.file4@1.1 ]; then echo failed; exit 1; fi
-SFILE=`ls $DDIR/SCCS | grep "^s..del-file4"`
-if [ ! -f $DDIR/SCCS/$SFILE ]; then echo failed; exit 1; fi
-ls ${DDIR}/SCCS | grep -q "^p..del-file3"
-if [ $? -eq 0 ]; then  echo failed; exit 1; fi
-CFILE=`ls $DDIR/SCCS | grep "^c..del-file4"`
-if [ "$CFILE" != "" ];  then echo failed; exit 1; fi
-if [ ! -f $DDIR/SCCS/$SFILE ]; then echo failed; exit 1; fi
-REV=`bk prs -hr+ -d:I: ${DDIR}/SCCS/$SFILE`
-if [ ${REV}X != "1.5"X ]; then echo failed; exit 1; fi
-DPATH=`bk prs -hr+ -d:DPN: ${DDIR}/SCCS/$SFILE`
-SFILE2=`bk _g2sccs $DPATH`
-if [ ${SFILE2}X != "${DDIR}/SCCS/$SFILE"X ]; then echo failed; exit 1; fi
-bk sfiles -l ${SFILE2} | grep -q ${SFILE2}
-if [ $? -eq 0 ]; then echo failed; exit 1; fi
-if [ -f $DPATH ]; then echo failed; exit 1; fi
-echo OK
-echo $N Test sccsrm \& empty directory ...............................$NL
-cd D
-bk sccsrm -d file5 || { echo failed.; exit 1; }
+
+echo $N Test sccsrm and empty directory .............................$NL
+cd $HERE/project/D
+bk rm file5 || { echo failed.; exit 1; }
 if [ -d SCCS ]; then echo fail to remove empty SCCS; exit 1; fi
 echo OK
-cd ..
+
 echo $N Test bk unrm ................................................$NL
+cd $HERE/project
+bk rm A/file4
 bk unrm A/file4 > /dev/null
 if [ ! -f A/SCCS/s.file4 ]; then echo failed; exit 1; fi
 if [ -f A/SCCS/c.file4 ]; then echo failed; exit 1; fi
 if [ -f A/SCCS/c.file4@1.1 ]; then echo failed; exit 1; fi
 XFILES=`bk -R sfiles -x`
-if [ "$XFILES" != "" ]; then echo filed; exit 1; fi
+if [ "$XFILES" != "" ]; then echo failed; echo $XFILES; exit 1; fi
 bk rm A/file4
 echo OK
-echo $N Test sccsmv to directory that does not exist ................$NL
+
+echo $N Test mvdir to directory that does not exist .................$NL
 date > C/file6
 bk new $Q C/file6
 bk mvdir C CCCC
-if [ ! -f CCCC/SCCS/s.file6 ]
-then	echo failed to move file; exit 1
-fi
-ls  CCCC/SCCS | grep -q "^s..del-file3"
-if [ $? -ne 0 ]
-then	echo failed to move deleted file; exit 1
-fi
+test -f CCCC/SCCS/s.file6 || {
+	echo failed to move file
+	exit 1
+}
+test -f CCCC/SCCS/s..del-foo || {
+	echo failed to move deleted file
+	exit 1
+}
 echo OK
+
 echo $N Edit G, rm G, should create rm delta ........................$NL
 date > G
 bk new $Q G
@@ -227,6 +243,7 @@ cmp -s S.G SCCS/s..del-G
 if [ $? = 0 ]; then echo Failed to add rm delta; exit 1; fi
 if [ -f p.G ]; then echo Failed to rm p.G; exit 1; fi
 echo OK
+
 echo $N Test bk rmdir ...............................................$NL
 date > B/B1/fileB2
 bk rmdir B | grep "extra" > /dev/null
@@ -242,12 +259,14 @@ if [ -d B ]; then echo failed; exit 1; fi
 bk -r check -a
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N Test bk rm on non bitkeeper file ............................$NL
 echo hi > non_bk_file 
 bk rm non_bk_file 2> rm.out
 grep -q "not a BitKeeper file, ignored" rm.out
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N Test check -ag ..............................................$NL
 echo y | bk commit $Q -ycset
 rm -f CCCC/SCCS/s.file6
@@ -261,6 +280,7 @@ bk -r check -ag | bk gone -q -
 bk -r check -a
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N Test clones of an editted moved file ........................$NL
 cd $HERE
 rm -rf project
@@ -308,6 +328,7 @@ bk mv f newf
 bk pull $Q || exit 1
 if [ ! -f SCCS/s.qqq ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N Test mv of directory ........................................$NL
 cd $HERE
 commercial src
@@ -509,7 +530,6 @@ test -d BitKeeper || {
 	exit 1
 }
 echo OK
-
 
 if [ "$PLATFORM" = "WIN32" ]
 then    #----------------------------------------------------------------

@@ -227,7 +227,7 @@ import() {
 			Done 1
 		}
 		if [ $TYPE != SCCS ]
-		then	bk _g2sccs < ${TMP}import$$ > ${TMP}sccs$$
+		then	bk _g2bk < ${TMP}import$$ > ${TMP}sccs$$
 			x=`bk _exists < ${TMP}sccs$$` && {
 				echo "import: $x exists, entire import aborted"
 				$RM -f .x ${TMP}sccs$$ ${TMP}import$$
@@ -310,7 +310,7 @@ BitKeeper can currently handle the following types of imports:
     MKS		- files controlled by MKS Source Integrity
 
 If the files you wish to import do not match any of these forms, you will
-have to write your own conversion scripts.  See the rcs2sccs program for
+have to write your own conversion scripts.  See the rcs2bk program for
 an example.  If you write such a script, please consider contributing
 it to the BitKeeper project.
 
@@ -716,9 +716,9 @@ import_RCS () {
 	fi    
 	ARGS="$BRANCH $UNDOS $CUTOFF $VERIFY $QUIET"
 	if [ $PARALLEL -eq 1 ]
-	then	bk rcs2sccs $ARGS - < ${TMP}import$$ ||
+	then	bk rcs2bk $ARGS - < ${TMP}import$$ ||
 		{
-		    echo rcs2sccs exited with an error code, aborting
+		    echo rcs2bk exited with an error code, aborting
 		    Done 1
 		}
 		bk _unlink - < ${TMP}import$$
@@ -729,7 +729,7 @@ import_RCS () {
 	test $LINES -eq 0 && LINES=1
 	split -$LINES ${TMP}import$$ ${TMP}split$$
 	for i in ${TMP}split$$*
-	do	bk rcs2sccs $ARGS -q - < $i &
+	do	bk rcs2bk $ARGS -q - < $i &
 	done
 	wait
 	bk _unlink - < ${TMP}import$$

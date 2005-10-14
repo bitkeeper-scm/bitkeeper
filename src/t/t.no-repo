@@ -21,7 +21,7 @@ _exists
 _find
 _findcset
 _fix_lod1
-_g2sccs
+_g2bk
 _get
 _gzip
 _key2path
@@ -136,6 +136,7 @@ mode
 mtime
 multiuser
 mv
+mv
 mvdir
 mydiff
 names
@@ -155,7 +156,7 @@ pwd
 r2c
 range
 rcheck
-rcs2sccs
+rcs2bk
 rcsparse
 receive
 rechksum
@@ -171,6 +172,7 @@ resolve
 restore
 rev2cset
 rm
+rm
 rmdel
 rmdir
 rmgone
@@ -178,11 +180,7 @@ root
 rset
 sane
 sccs2bk
-sccscat
-sccsdiff
 sccslog
-sccsmv
-sccsrm
 send
 set
 setup

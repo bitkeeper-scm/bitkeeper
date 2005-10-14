@@ -1,0 +1,183 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+echo $N Create initial repository ...................................$NL
+commercial project
+mkdir subdir
+cd subdir
+cat <<EOF > file
+line1
+line2
+line3
+EOF
+BK_DATE_TIME_ZONE="04/08/01 13:13:13-8:00" BK_USER=joe BK_HOST=blow.com \
+    bk new $Q file
+bk commit $Q -yfirst
+bk edit $Q file
+echo line4 >> file
+BK_DATE_TIME_ZONE="04/08/23 14:14:14-8:00" BK_USER=jane BK_HOST=shoes.com \
+    bk delta -ywhatever $Q file
+bk commit $Q -ysecond
+echo OK
+
+echo $N Check bk annotate -ab .......................................$NL
+bk annotate -ab file > GOT
+cat <<EOF > WANT
+file	line1
+file	line2
+file	line3
+file	line4
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check bk annotate -ad .......................................$NL
+bk annotate -ad file > GOT
+cat <<EOF > WANT
+2004/08/01	line1
+2004/08/01	line2
+2004/08/01	line3
+2004/08/23	line4
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check bk annotate -ap .......................................$NL
+bk annotate -ap file > GOT
+cat <<EOF > WANT
+subdir/file	line1
+subdir/file	line2
+subdir/file	line3
+subdir/file	line4
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check bk annotate -ar .......................................$NL
+bk annotate -ar file > GOT
+cat <<EOF > WANT
+1.1	line1
+1.1	line2
+1.1	line3
+1.2	line4
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check bk annotate -ar -r1.1 .................................$NL
+bk annotate -ar -r1.1 file > GOT
+cat <<EOF > WANT
+1.1	line1
+1.1	line2
+1.1	line3
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check bk annotate -au .......................................$NL
+bk annotate -au file > GOT
+cat <<EOF > WANT
+joe	line1
+joe	line2
+joe	line3
+jane	line4
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check bk annotate -an .......................................$NL
+bk annotate -an file > GOT
+cat <<EOF > WANT
+1	line1
+2	line2
+3	line3
+4	line4
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check bk annotate -abdnru ...................................$NL
+bk annotate -abdnru file > GOT
+cat <<EOF > WANT
+file	2004/08/01	joe	1.1	1	line1
+file	2004/08/01	joe	1.1	2	line2
+file	2004/08/01	joe	1.1	3	line3
+file	2004/08/23	jane	1.2	4	line4
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check bk annotate -ab -R+ ...................................$NL
+bk annotate -ab -R+ file > GOT
+cat <<EOF > WANT
+file	line4
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check bk annotate -ad -R1.1 .................................$NL
+bk annotate -ad -R1.1 file > GOT
+cat <<EOF > WANT
+2004/08/01	line1
+2004/08/01	line2
+2004/08/01	line3
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check bk annotate -an -R ....................................$NL
+bk annotate -an -R file > GOT
+cat <<EOF > WANT
+1	line1
+2	line2
+3	line3
+4	line4
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check that bk annotate -r and -R are mutually exclusive .....$NL
+bk annotate -R+ -r+ file > GOT 2>&1 && {
+	echo should have failed
+	exit 1
+}
+echo OK
+
+echo $N Check that bk annotate -c and -R are mutually exclusive .....$NL
+bk annotate -R+ -c2004 file > GOT 2>&1 && {
+	echo should have failed
+	exit 1
+}
+echo OK
+
+echo $N Check that bk annotate -c does not accept ranges ............$NL
+bk annotate -c2004..2004 file > GOT 2>&1 && {
+	echo should have failed
+	exit 1
+}
+echo OK
+
+echo $N Check that bk annotate -r does not accept ranges ............$NL
+bk annotate -r1.1..+ file > GOT 2>&1 && {
+	echo should have failed
+	exit 1
+}
+echo OK
+
+echo $N Make sure that we can use annotate -R -h like sccscat -h ....$NL
+cd $HERE/project
+bk annotate -R+ -h ChangeSet > GOT
+bk prs -hr+ -nd':ROOTKEY: :KEY:' subdir/file > WANT
+cmpfiles WANT GOT
+bk annotate -R1.2 -h ChangeSet > GOT
+bk prs -hr1.1 -nd':ROOTKEY: :KEY:' subdir/file > WANT
+cmpfiles WANT GOT
+echo OK

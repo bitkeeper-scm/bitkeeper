@@ -713,7 +713,7 @@ checkAll(HASH *db)
 			goto full;
 		}
 		sprintf(buf,
-		    "bk sccscat -h %s/ChangeSet | bk _sort", RESYNC2ROOT);
+		    "bk annotate -R -h %s/ChangeSet | bk _sort", RESYNC2ROOT);
 		f = popen(buf, "r");
 		while (fgets(buf, sizeof(buf), f)) {
 			unless (hash_alloc(local, buf, 0, 0)) {
@@ -956,7 +956,7 @@ buildKeys(sccs *cset, MDBM *idDB)
 private void
 listCsetRevs(char *key)
 {
-	FILE	*keys = popen("bk sccscat -ar -h ChangeSet", "r");
+	FILE	*keys = popen("bk annotate -R -ar -h ChangeSet", "r");
 	char	*t;
 	int	first = 1;
 	char	buf[MAXPATH*3];
@@ -1394,7 +1394,7 @@ csetFind(char *key)
 
 	char *k, *r =0;
 
-	sprintf(buf, "bk sccscat -ar -h ChangeSet");
+	sprintf(buf, "bk annotate -R -ar -h ChangeSet");
 	unless (p = popen(buf, "r")) return (strdup("[popen failed]"));
 	while (fnext(buf, p)) {
 		if (r) continue;

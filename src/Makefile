@@ -115,7 +115,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	dirs.o delta.o diffs.o diffsplit.o dir_gif.o \
 	eula.o export.o file_gif.o files.o \
 	find.o findcset.o findkey.o fix.o fixlod.o \
-	g2sccs.o gca.o get.o gethelp.o \
+	g2bk.o gca.o get.o gethelp.o \
 	gethost.o getopt.o getreg.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \
 	idcache.o isascii.o key2rev.o key2path.o kill.o kvfile.o \
@@ -124,7 +124,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	libsfiles.o libusers.o lines.o \
 	localtm.o lock.o locking.o lod.o \
 	logging.o mail.o mdiff.o merge.o mkdir.o mklock.o \
-	mailsplit.o mmap.o mtime.o names.o newroot.o \
+	mailsplit.o mmap.o mtime.o mv.o names.o newroot.o \
 	opark.o parent.o park.o \
 	pending.o preference.o proj.o \
 	port/bkd_server.o \
@@ -143,14 +143,15 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	port/tty.o port/utils.o \
 	prs.o pull.o purify.o push.o putenv.o pwd.o \
 	r2c.o randombits.o range.o rcheck.o rclone.o \
-	rcs2sccs.o rcsparse.o \
+	rcs2bk.o rcsparse.o \
 	receive.o redblack.o regex.o renumber.o repo.o repogca.o resolve.o \
 	resolve_binaries.o resolve_contents.o \
 	resolve_create.o resolve_filetypes.o \
 	resolve_flags.o resolve_generic.o resolve_modes.o \
-	resolve_renames.o resolve_tags.o restore.o review.o rmdel.o rmtree.o \
-	root.o rset.o scompress.o sane.o sccs.o sccs_mv.o sccs2bk.o sccscat.o \
-	sccslog.o sccsmv.o sccsrm.o send.o sendbug.o \
+	resolve_renames.o resolve_tags.o restore.o review.o \
+	rm.o rmdel.o rmtree.o \
+	root.o rset.o scompress.o sane.o sccs.o sccs2bk.o \
+	sccslog.o sccs_mv.o send.o sendbug.o \
 	set.o setup.o sfiles.o sfio.o shellcmd.o shrink.o sinfo.o \
 	slib.o smerge.o sort.o status.o stripdel.o synckeys.o sys.o \
 	tagmerge.o tclsh.o takepatch.o testdates.o timestamp.o trigger.o \

@@ -197,6 +197,44 @@ EOF
 checkfiles WANT GOT
 echo OK
 
+echo $N annotated grep -R -ab .......................................$NL
+cat > file <<EOF
+line1
+line2
+line3
+EOF
+bk new $Q file
+bk edit $Q file
+echo line4 >> file
+bk delta $Q -ywhatever file
+bk grep -R -ab line file > GOT
+cat > WANT <<EOF
+file:line1
+file:line2
+file:line3
+file:line4
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N annotated grep -R+ -ab ......................................$NL
+bk grep -R+ -ab line file > GOT
+cat > WANT <<EOF
+file:line4
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N annotated grep -R1.1 -ab ....................................$NL
+bk grep -R1.1 -ab line file > GOT
+cat > WANT <<EOF
+file:line1
+file:line2
+file:line3
+EOF
+cmpfiles GOT WANT
+echo OK
+
 # echo $N recursive grep -a ...........................................$NL
 # bk -r grep -a fox > OUT || exit 1
 # cat <<EOF > expected

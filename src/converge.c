@@ -110,7 +110,7 @@ resync_list(char *gfile)
 		/* reset the proj->root to RESYNC root */
 		proj_free(s->proj);
 		s->proj = proj_init(".");
-		t = sccs_rmName(s, 1);
+		t = sccs_rmName(s);
 		sccs_free(s);
 
 		mkdirf(kv.val.dptr);

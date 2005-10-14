@@ -106,6 +106,9 @@ void	bkd_server(int ac, char **av);
 #define	REMOTE_BKDURL	1	/* URL is for BKD (effects http headers) */
 remote	*remote_parse(const char *url, u32 flags);
 char	*remote_unparse(remote *r);
+void	remote_free(remote *r);
+void	remote_print(remote *r, FILE *f);
+void	remote_perror(remote *r, char *msg);
 pid_t	bkd(int compress, remote *r);
 int	gunzip2fd(char *input, int len, int fd, int hflag);
 int	gzip2fd(char *input, int len, int fd, int hflag);
@@ -115,8 +118,6 @@ int	gzipAll2fd(int rfd, int wfd, int level, int *in, int *out,
 							int hflag, int verbose);
 int	gunzipAll2fd(int rfd, int wfd, int level, int *in, int *out);
 int	in(char *s, int len);
-void	remote_free(remote *r);
-void	remote_print(remote *r, FILE *f);
 int	outfd(int fd, char*buf);
 
 int	read_blk(remote *r, char *c, int len);

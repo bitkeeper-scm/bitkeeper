@@ -1055,7 +1055,7 @@ noupdates(char *localPath)
 	 */
 	s = sccs_init(resync, INIT_NOCKSUM);
 	sccs_sdelta(s, sccs_ino(s), key);
-	f = popen("bk sccscat -h " ROOT2RESYNC "/ChangeSet", "r");
+	f = popen("bk annotate -R -h " ROOT2RESYNC "/ChangeSet", "r");
 	while (fnext(buf, f)) {
 		chomp(buf);
 		p = separator(buf);

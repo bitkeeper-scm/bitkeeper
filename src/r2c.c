@@ -68,7 +68,7 @@ r2c_main(int ac, char **av)
 	RANGE("r2c", cset, 2, 1);
 	if (sccs_cat(cset, PRINT|GET_NOHASH|GET_REVNUMS, tmpfile)) {
 		unless (BEEN_WARNED(s)) {
-			fprintf(stderr, "r2c: sccscat of ChangeSet failed.\n");
+			fprintf(stderr, "r2c: annotate of ChangeSet failed.\n");
 		}
 		exit(1);
 	}

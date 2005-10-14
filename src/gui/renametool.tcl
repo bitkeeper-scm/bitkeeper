@@ -681,7 +681,7 @@ proc Apply {} \
 				set msg ""
 			}
 		} elseif {[regexp {^bk rm (.*)$} $buf dummy rm]} {
-			set status [catch {exec bk rm -d $rm} msg]
+			set status [catch {exec bk rm $rm} msg]
 		} elseif {[regexp {^bk new (.*)$} $buf dummy new]} {
 			puts $NEW "$new"
 			set status 0

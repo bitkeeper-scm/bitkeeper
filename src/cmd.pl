@@ -122,7 +122,7 @@ close(C) or die;
 __DATA__
 
 # builtin functions (sorted)
-_g2sccs
+_g2bk
 abort
 _adler32
 admin
@@ -226,7 +226,7 @@ r2c
 range
 rcheck
 _rclone
-rcs2sccs
+rcs2bk
 rcsparse
 receive
 regex
@@ -243,7 +243,6 @@ root
 rset
 sane
 sccs2bk
-sccscat
 sccslog
 _scompress
 send
@@ -304,8 +303,6 @@ _preference => preference
 rechksum => checksum
 rev2cset => r2c
 sccsdiff => diffs
-sccsmv => mv
-sccsrm => rm
 sfind => sfiles
 support => sendbug
 unget => unedit

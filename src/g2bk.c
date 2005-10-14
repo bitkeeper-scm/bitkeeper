@@ -4,10 +4,10 @@
 static void	print_name(char *);
 
 /*
- * _g2sccs - convert gfile names to sfile names
+ * _g2bk - convert gfile names to sfile names
  */
 int
-g2sccs_main(int ac, char **av)
+g2bk_main(int ac, char **av)
 {
 	int	i;
 

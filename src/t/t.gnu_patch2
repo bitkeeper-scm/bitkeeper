@@ -174,7 +174,7 @@ cd $HERE/project/src
 echo dup > dup.c
 bk ci $Q -i dup.c
 bk commit $S -y"dup"
-bk sccsrm -d dup.c
+bk rm dup.c
 # XXX need "sleep 1" to avoid dup key problen
 sleep 1
 echo new-dup > dup.c

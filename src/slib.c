@@ -6976,7 +6976,7 @@ prefix(sccs *s, delta *d, u32 flags, int lines, char *name, FILE *out)
 		}
 		if (flags&GET_USER) fprintf(out, "%s\t", d->user);
 		if (flags&GET_REVNUMS) fprintf(out, "%s\t", d->rev);
-		if (flags&GET_LINENUM) fprintf(out, "%6d\t", lines);
+		if (flags&GET_LINENUM) fprintf(out, "%d\t", lines);
 #endif
 	}
 }
@@ -6989,23 +6989,23 @@ sccs_cat(sccs *s, u32 flags, char *printOut)
 {
 	int	lines = 0, error;
 
-	debug((stderr, "sccscat(%s, %x, %s)\n",
+	debug((stderr, "annotate(%s, %x, %s)\n",
 	    s->sfile, flags, printOut));
 	unless (s->state & S_SOPEN) {
-		fprintf(stderr, "sccscat: couldn't open %s\n", s->sfile);
+		fprintf(stderr, "annotate: couldn't open %s\n", s->sfile);
 err:		return (-1);
 	}
 	unless (s->cksumok) {
-		fprintf(stderr, "sccscat: bad chksum on %s\n", s->sfile);
+		fprintf(stderr, "annotate: bad chksum on %s\n", s->sfile);
 		goto err;
 	}
 	unless (HASGRAPH(s)) {
-		fprintf(stderr, "sccscat: no/bad delta tree in %s\n", s->sfile);
+		fprintf(stderr, "annotate: no delta tree in %s\n", s->sfile);
 		goto err;
 	}
 	if ((s->state & S_BADREVS) && !(flags & GET_FORCE)) {
 		fprintf(stderr,
-		    "sccscat: bad revisions, run renumber on %s\n", s->sfile);
+		    "annotate: bad revisions, run renumber on %s\n", s->sfile);
 		s->state |= S_WARNED;
 		goto err;
 	}

@@ -1396,7 +1396,7 @@ rm -rf project copy
 tar xmf SAVE
 cp -rp project copy
 cd project
-bk sccsmv "A A" Z
+bk mv "A A" Z
 bk commit $S -y'A A->Z'
 cd ..
 cd $HERE/copy

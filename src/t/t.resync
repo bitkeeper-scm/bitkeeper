@@ -97,10 +97,10 @@ cd $HERE/project/src
 # b.c = File 1
 # c.c = File 2
 # a.c = File 3
-bk sccsmv SCCS/s.c.c SCCS/s.d.c
-bk sccsmv SCCS/s.b.c SCCS/s.c.c
-bk sccsmv SCCS/s.a.c SCCS/s.b.c
-bk sccsmv SCCS/s.d.c SCCS/s.a.c
+bk mv SCCS/s.c.c SCCS/s.d.c
+bk mv SCCS/s.b.c SCCS/s.c.c
+bk mv SCCS/s.a.c SCCS/s.b.c
+bk mv SCCS/s.d.c SCCS/s.a.c
 bk commit $S -yclockwise
 cd $HERE/copy
 bk pull -t $Q $HERE/project
@@ -124,7 +124,7 @@ echo $N Check conflict within a patch ...............................$NL
 cd $HERE/project/src
 # d.c = File 2
 # c.c = File 4
-bk sccsmv c.c d.c
+bk mv c.c d.c
 echo "File 4" > c.c
 bk ci $Q -i c.c
 bk commit $S -y'Add d.c'
@@ -205,10 +205,10 @@ cd  $HERE/copy/src
 # a.c = File 2
 # b.c = File 3
 # c.c = File 1
-bk sccsmv a.c tmp
-bk sccsmv b.c a.c
-bk sccsmv c.c b.c
-bk sccsmv tmp c.c
+bk mv a.c tmp
+bk mv b.c a.c
+bk mv c.c b.c
+bk mv tmp c.c
 if [ "`bk get -qp a.c`" != "File 2" ]
 then	echo a.c is not File 2; exit 1
 fi
@@ -283,10 +283,10 @@ cd  $HERE/copy/src
 # a.c = File 2
 # b.c = File 3
 # c.c = File 1
-bk sccsmv a.c tmp
-bk sccsmv b.c a.c
-bk sccsmv c.c b.c
-bk sccsmv tmp c.c
+bk mv a.c tmp
+bk mv b.c a.c
+bk mv c.c b.c
+bk mv tmp c.c
 if [ "`bk get -qp a.c`" != "File 2" ]
 then	echo a.c is not File 2; exit 1
 fi
@@ -362,13 +362,13 @@ bk resolve -t $L $Q $HERE/copy
 cd $HERE/copy/src
 if [ ! -f SCCS/s.g.c ]; then echo failed, no g.c; exit 1; fi
 cd $HERE/project/src
-bk sccsmv g.c r.c
+bk mv g.c r.c
 bk commit $S -yrename
 cd $HERE/copy/src
-bk sccsmv g.c l.c
+bk mv g.c l.c
 echo "this is file p" > p.c
 bk ci $Q -i p.c
-bk sccsmv p.c r.c
+bk mv p.c r.c
 bk commit $S -yrename
 bk pull $Q -R $HERE/project
 bk resolve $L $Q -t -yMerge << EOF 2> resolve.out
@@ -421,7 +421,7 @@ echo $N Key conflict in a single workspace ..........................$NL
 # this colud fail on a very fast machine
 echo "12" > $HERE/project/src/aa.c
 bk ci $Q -i $HERE/project/src/aa.c
-bk sccsmv $HERE/project/src/aa.c  $HERE/project/src/bb.c
+bk mv $HERE/project/src/aa.c  $HERE/project/src/bb.c
 echo "21" > $HERE/project/src/aa.c
 bk ci $Q -i $HERE/project/src/aa.c
 KEY1=`bk prs -hr+ -d:KEY: $HERE/project/src/bb.c`

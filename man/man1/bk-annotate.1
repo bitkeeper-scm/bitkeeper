@@ -3,10 +3,7 @@
 .SH NAME
 bk annotate \- provide annotated listing of source files
 .SH SYNOPSIS
-.Bc bk annotate [opts] 
-.BKARGS
-.br
-.Bc bk sccscat opts
+.B bk annotate [opts] 
 .BKARGS
 .SH DESCRIPTION
 .LP
@@ -16,33 +13,35 @@ extra level of information which can be useful.
 .LP
 \*(BK has two kinds of annotations:  annotations of a specific version,
 and annotations of all (or some) versions (the second form is unique to \*(BK).
-.SH ANNOTATE
 .LP
-The 
+By default, the
 .B annotate
 command will display a specific version of a file with annotations. 
+The default version of file is the most recent version; the 
+.B \-r
+option may be used to specify an alternative version.
 The default annotations are the revision in which the change was
-made and the user who made that change.  Specifying any options
-overrides all of the default options.
-.SH SCCSCAT
+made and the user who made that change.  
+Selecting any annotations overrides all of the default annotations.
 .LP
-By default,
-.B bk sccscat
-will display 
-.B all
-lines in 
-.B all
-versions of a file, with each version of a line grouped closely with
-other versions of that line.  This is useful for determining when a
-particular feature was added.
-.LP
-.B bk sccscat 
-can restrict the set of lines displayed to those lines added in a 
-specified revision or date range.  In that case, the whole file is
-not displayed, instead, only the lines which were added in that 
-range of changes are displayed.  This form is usually a result of
-specifying a range to
-.BR "bk grep" .
+An alternate form of the
+.B annotate
+command may be used to show or annotate either all lines added by
+all versions or just the lines added by one or more versions (in
+the latter case, the whole file is not displayed, instead, only
+the lines which were added in that range of changes are
+displayed.)
+The
+.B \-R
+option turns on this form of annotate.
+Each version of a line is grouped closely with other versions of
+that line.
+This can be useful for determining when a particular feature was
+added or modified.
+This form of annotate has no annotations by default, any desired
+annotations may be specified.
+If no annotations are specified then the selected lines are shown
+without annotations.
 .SH OPTIONS
 .if t .TP .7i
 .if n .TP 1.1i
@@ -82,31 +81,36 @@ Prefix each line the name of the user who last modified it.
 .if n \fB\-a\fP\fI<bdnpru>\fP
 Similar to
 .B \-A 
-but without the alignment.
+but without the alignment (each annotation is followed by a tab).
 .tp
 .OPTreq \-c date
-.B bk annotate: 
 annotate the latest version before
-.ARG date .
-See bk range for date specs;
-.br
-.B bk sccscat:
-annotate the set of versions matching the range
 .ARG date .
 See bk range for date specs.
 .tp
 .B \-k
-.B bk annotate:
 do not expand RCS or SCCS keywords.
-.B bk sccscat
-never expands keywords.
+This option is implied by
+.B \-R.
 .tp
 .OPTreq \-r rev
-.B bk annotate: 
-annotate this revision;
-.br
-.B bk sccscat:
-annotate the lines added by this revision.
+annotate this version of the file.
+.tp
+.OPTopt \-R rev
+annotate the lines added by the specified revision (or range of revisions).
+If
+.ARG rev
+is not specified, that implies all revisions (i.e., 1.0..+).
+The difference between this option and the previous option
+is that in this case
+.B "bk annotate"
+looks in the lines 
+.B added
+by the specified revision, but in the 
+.B \-r
+case, the entire contents of the specified version is annotated.
+.SH NOTES
+The -R form is a replacement for the removed command "sccscat".
 .SH SEE ALSO
 .LP
 .SA get 1

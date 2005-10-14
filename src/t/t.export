@@ -50,9 +50,9 @@ then	echo failed to get foo.c; exit 1
 fi
 echo OK
 
-echo $N Create 4th changeset in which we bk rm -d bar.c .............$NL
-bk rm -d bar.c
-bk commit $S -y'rm -d bar.c'
+echo $N Create 4th changeset in which we bk rm bar.c ................$NL
+bk rm bar.c
+bk commit $S -y'rm bar.c'
 if [ -f SCCS/s.bar.c ]
 then	echo failed to remove bar.c; exit 1
 fi

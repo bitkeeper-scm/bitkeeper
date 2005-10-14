@@ -594,7 +594,7 @@ _rmdir() {		# /* doc 2.0 */
 		exit 1
 	fi
 	bk sfiles "$1" | bk clean -q -
-	bk sfiles "$1" | bk _sort | bk sccsrm -d -
+	bk sfiles "$1" | bk _sort | bk rm -
 	SNUM=`bk sfiles "$1" | wc -l`
 	if [ "$SNUM" -ne 0 ]; 
 	then
@@ -878,7 +878,7 @@ _meta_union() {
 	do	test -d BitKeeper/$d/SCCS || continue
 		bk _find BitKeeper/$d/SCCS -name "s.${1}*"
 	done | bk prs -hr1.0 -nd'$if(:DPN:=BitKeeper/etc/'$1'){:GFILE:}' - |
-		bk sccscat - | bk _sort -u
+		bk annotate -R - | bk _sort -u
 }
 
 # Convert a changeset revision, tag, or key to the file rev 

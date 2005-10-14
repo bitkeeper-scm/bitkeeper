@@ -1,7 +1,7 @@
 #include "rcs.h"
 
 private	char	*sccsname(char *path);
-private	int	rcs2sccs(RCS *rcs, char *sfile);
+private	int	rcs2bk(RCS *rcs, char *sfile);
 private	int	create(char *sfile, int flags, RCS *rcs);
 private	int	encoding(char *file);
 private	mode_t	mode(char *file);
@@ -20,7 +20,7 @@ private	char	*cutoff;
 extern	int	in_rcs_import;
 
 int
-rcs2sccs_main(int ac, char **av)
+rcs2bk_main(int ac, char **av)
 {
 	int	c, i;
 	char	buf[MAXPATH];
@@ -40,7 +40,7 @@ rcs2sccs_main(int ac, char **av)
 		    case 'h': verify++; break;			/* doc 2.0 */
 		    case 'u': undos++; break;			/* doc 2.0 */
 		    default:
-			    system("bk help -s rcs2sccs");
+			    system("bk help -s rcs2bk");
 			    return (1);
 		}
 	}
@@ -54,7 +54,7 @@ rcs2sccs_main(int ac, char **av)
 	}
 	unless (co_prog && executable(co_prog)) {
 		fprintf(stderr,
-"rcs2sccs needs the RCS program co, which was not found in your PATH.\n");
+"rcs2bk needs the RCS program co, which was not found in your PATH.\n");
 		exit(1);
 	}
 
@@ -115,7 +115,7 @@ doit(char *file, char *cvsbranch)
 	 * and can be ignored.
 	 */
 	if (first_rdelta(r)) {
-		if (rcs2sccs(r, sfile)) exit(1);
+		if (rcs2bk(r, sfile)) exit(1);
 		/*
 		 * After file is completed, determine if the sfile needs
 		 * to be moved to the BitKeeper/deleted directory.
@@ -185,7 +185,7 @@ first_rdelta(RCS *rcs)
 }
 
 private	int
-rcs2sccs(RCS *rcs, char *sfile)
+rcs2bk(RCS *rcs, char *sfile)
 {
 	rdelta	*d, *stop = 0;
 	sccs	*s;
@@ -398,7 +398,7 @@ realloc:
 	}
 	if (d->dead) {
 		char	*p1, *p2;
-		char	*rmName = sccs_rmName(s, 1);
+		char	*rmName = sccs_rmName(s);
 
 		p1 = sccs2name(rmName);
 		free(rmName);
