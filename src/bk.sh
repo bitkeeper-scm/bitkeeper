@@ -1416,7 +1416,7 @@ _install()
 	# symlinks to /usr/bin
 	if [ "$DOSYMLINKS" = "YES" ]
 	then
-		if [ ! -w /usr/bin ]
+		if [ -w /usr/bin ]
 		then
 	        	test $VERBOSE = YES && echo "$DEST"/bk links /usr/bin
 			"$DEST"/bk links /usr/bin
