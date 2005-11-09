@@ -197,6 +197,7 @@ _logging
 _loggingaccepted
 _loggingask
 _loggingto
+_lstat
 mailsplit
 mail
 makepatch
@@ -253,6 +254,7 @@ sinfo
 smerge
 _shellSplit_test
 _sort
+_stattest
 status
 stripdel
 _strings

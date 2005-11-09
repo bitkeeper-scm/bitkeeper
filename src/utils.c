@@ -1376,7 +1376,7 @@ run_check(char *partial, int fix, int quiet)
  again:
 	fixopt = (fix ? "-f" : "--");
 	if (!partial || 
-	    fast_lstat(CHECKED, &sb) || ((now - sb.st_mtime) > STALE)) {
+	    lstat(CHECKED, &sb) || ((now - sb.st_mtime) > STALE)) {
 		ret = sys("bk", "-r", "check", opts, fixopt, SYS);
 	} else {
 		ret = sysio(partial, 0, 0, "bk", "check", fixopt, "-", SYS);
