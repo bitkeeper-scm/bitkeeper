@@ -128,8 +128,8 @@ proc centerWindow {w args} \
 		set width [winfo reqwidth $w]
 		set height [winfo reqheight $w]
 	}
-	set x [expr {([winfo vrootwidth $w] - $width) /2}]
-	set y [expr {([winfo vrootheight $w] - $height) /2}]
+	set x [expr {round(([winfo vrootwidth $w] - $width) /2)}]
+	set y [expr {round(([winfo vrootheight $w] - $height) /2)}]
 
 	wm geometry $w ${width}x${height}+${x}+${y}
 
