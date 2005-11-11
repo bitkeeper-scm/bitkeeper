@@ -1,0 +1,31 @@
+
+echo $N Test stat command across daylight savings time ..............$NL
+
+cat <<'EOF' > test.pl
+$_ = <>;
+die unless /^f1:/;
+$_ = <>;
+die unless /^(\d+)\S+ (\d+)/;
+
+die "wrong f1 mtime" unless abs($1 - 1130587200) < 3;
+die "wrong f1 atime" unless abs($2 - 1130544000) < 24*3600;
+
+$_ = <>;
+die unless /^f2:/;
+$_ = <>;
+die unless /^(\d+)\S+ (\d+)/;
+
+die "wrong f2 mtime" unless abs($1 - 1130846400) < 3;
+die "wrong f2 atime" unless abs($2 - 1130803200) < 24*3600;
+
+$_ = <>;
+die unless /^f3:/;
+$_ = <>;
+die unless /^(\d+)\S+ (\d+)/;
+
+$now = time;
+die "wrong f3 mtime" unless abs($1 - $now) < 1000;
+die "wrong f2 atime" unless abs($2 - $now) < 24*3600 + 1000;
+EOF
+bk _stattest | perl test.pl || exit 1
+echo OK

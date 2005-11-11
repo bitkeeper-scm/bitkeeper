@@ -21,7 +21,7 @@ ms_env()
 	}
 
 	XLIBS="/mingw/lib/CRT_noglob.o -lws2_32 -lole32"
-	CC="gcc -pipe -DNOPROC"
+	CC="gcc -pipe -DNOPROC -DWINVER=0x0500"
 }
 
 test "X$G" = X && G=-g
