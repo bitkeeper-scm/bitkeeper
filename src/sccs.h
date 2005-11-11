@@ -922,10 +922,10 @@ delta	*sfind(sccs *s, ser_t ser);
 int	sccs_lock(sccs *, char);	/* respects repo locks */
 int	sccs_unlock(sccs *, char);
 
-int	sccs_lockfile(const char *lockfile, int wait, int quiet);
-int	sccs_stalelock(const char *lockfile, int discard);
-int	sccs_unlockfile(const char *file);
-int	sccs_mylock(const char *lockf);
+int	sccs_lockfile(char *lockfile, int wait, int quiet);
+int	sccs_stalelock(char *lockfile, int discard);
+int	sccs_unlockfile(char *file);
+int	sccs_mylock(char *lockf);
 
 sccs	*sccs_unzip(sccs *s);
 sccs	*sccs_gzip(sccs *s);
@@ -1201,7 +1201,7 @@ int	global_locked(void);
 void	progressbar(int n, int max, char *msg);
 char	*signed_loadFile(char *filename);
 int	signed_saveFile(char *filename, char *data);
-void	bk_preSpawnHook(int flags, char *const av[]);
+void	bk_preSpawnHook(int flags, char *av[]);
 int	upgrade_decrypt(FILE *fin, FILE *fout);
 int	crypto_symEncrypt(char *key, FILE *fin, FILE *fout);
 int	crypto_symDecrypt(char *key, FILE *fin, FILE *fout);
