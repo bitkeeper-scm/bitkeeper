@@ -127,7 +127,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	opark.o parent.o park.o \
 	pending.o preference.o port/bkd_server.o \
 	port/check_rsh.o \
-	port/fast_lstat.o port/filecopy.o port/fileinfo.o port/findpid.o \
+	port/filecopy.o port/fileinfo.o port/findpid.o \
 	port/fullname.o port/gethomedir.o \
 	port/gethost.o port/getinput.o port/getnull.o \
 	port/getrealcwd.o port/getrealname.o port/globalroot.o port/gui.o \
@@ -150,7 +150,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	root.o rset.o scompress.o sane.o sccs.o sccs_mv.o sccs2bk.o sccscat.o \
 	sccslog.o sccsmv.o sccsrm.o send.o sendbug.o \
 	set.o setup.o sfiles.o sfind.o sfio.o shellcmd.o shrink.o sinfo.o \
-	slib.o smerge.o sort.o status.o stripdel.o synckeys.o sys.o \
+	slib.o smerge.o sort.o stat.o stattest.o status.o stripdel.o synckeys.o sys.o \
 	tagmerge.o tclsh.o takepatch.o testdates.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \
 	unique.o unlink.o unlock.o unpull.o unwrap.o upgrade.o \
